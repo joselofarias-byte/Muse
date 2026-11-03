@@ -175,7 +175,7 @@ class FactStore(
     private val importantKeywords = listOf("gusta", "encanta", "odia", "odio", "miedo", "sueñ", "objetivo", "hábito", "habito")
 
     /** Negaciones en español, solo como palabra completa para no coincidir dentro de "nombre" o "normal". */
-    private val NEGATION_RE = Regex("(?<!\\p{L})(?:no|nunca|jamás|jamas|tampoco|nada|sin)(?!\\p{L})", RegexOption.IGNORE_CASE)
+    private val negationPattern = Regex("(?<!\\p{L})(?:no|nunca|jamás|jamas|tampoco|nada|sin)(?!\\p{L})", RegexOption.IGNORE_CASE)
 
     /** v1.x: Deduplicación mejorada — Umbral de similitud de Jaccard del bigrama de caracteres(≥ Tratar como duplicado).
      * Las duplicaciones reales son en su mayoría diferencias menores en la redacción.(Insertar/eliminar/orden de las palabras),Jaccard Generalmente en 0.5-0.8;
@@ -261,7 +261,7 @@ class FactStore(
         }
 
     /** Número de palabras negativas(No/No/todavía no/no lo hagas/Ninguno/no). */
-    private fun negationCount(text: String): Int = NEGATION_RE.findAll(text).count()
+    private fun negationCount(text: String): Int = negationPattern.findAll(text).count()
 
     /** Bigrama de personaje parecido a Jaccard. */
     private fun bigramSimilarity(a: String, b: String): Double {
