@@ -95,7 +95,7 @@ class MemoryDbArchiveRecoveryTest {
         val result = recovery.restoreLatestIfEmpty()
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("ya tengo datos"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("ya tiene datos"))
         assertEquals("new", db.sessionSummaryDao().get("new-session")?.summary)
         db.close()
     }

@@ -9,9 +9,9 @@ class RollingSummaryPromptTest {
     fun promptKeepsAssistantCommitmentsAndVibeInsideConversationTimeline() {
         val prompt = RollingSummaryPrompt.buildSystemPrompt(locale = "es")
 
-        assertTrue(prompt.contains("El compromiso claro del asistente"))
+        assertTrue(prompt.contains("compromiso claro del asistente"))
         assertTrue(prompt.contains("Vibe"))
-        assertTrue(prompt.contains("Los sentimientos expresados por el asistente en ese momento."))
+        assertTrue(prompt.contains("sentimiento expresado por el asistente en ese momento"))
         assertTrue(prompt.contains("Sparks"))
         assertTrue(prompt.contains("Reflections"))
         assertTrue(prompt.contains("Will"))

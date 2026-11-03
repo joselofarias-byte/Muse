@@ -983,7 +983,7 @@ class MemoryCompiler(
 
     private fun normalizeLine(text: String): String {
         return text.trim().lowercase()
-            .replace(Regex("^(Usuario|yo|el|ella|este usuario|the user|i am|he is|she is)\\s*"), "")
+            .replace(Regex("^(usuario|yo|el|ella|este usuario|the user|i am|he is|she is)\\s*"), "")
             .trim()
             .toHalfWidth()
             .replace(whiteSpaceRe, " ")

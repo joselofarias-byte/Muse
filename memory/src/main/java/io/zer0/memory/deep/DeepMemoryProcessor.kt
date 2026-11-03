@@ -27,7 +27,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 private val ASSISTANT_ATTRIBUTED_LINE_REGEX =
-    Regex("""^\s*[-*+]\s*\[(?:asistente|assistant)[^\]]*\].*$""", RegexOption.IGNORE_CASE)
+    Regex(
+        """^\s*[-*+]\s*\[(?:asistente|assistant|léame de vibe del asistente)[^\]]*\].*$""",
+        RegexOption.IGNORE_CASE,
+    )
 
 internal fun filterAssistantAttributedMemoryEntries(summary: String): String = summary.lineSequence()
     .filterNot { ASSISTANT_ATTRIBUTED_LINE_REGEX.matches(it) }

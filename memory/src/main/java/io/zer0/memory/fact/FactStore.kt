@@ -171,11 +171,11 @@ class FactStore(
      *  - contiene"me gusta/no me gusta/Me encanta comer/la mayoría"espera → importancia 1(importante)
      *  - Otra vida diaria → importancia 0(ordinario)
      */
-    private val criticalKeywords = listOf("Alergia", "Contraseña", "dirección", "cumpleaños", "tarjeta de identificación", "telefono", "tipo de sangre", "urgente", "Registros médicos")
-    private val importantKeywords = listOf("me gusta", "no me gusta", "Me encanta comer", "la mayoría", "odio", "miedo", "soñar", "objetivo", "hábito")
+    private val criticalKeywords = listOf("alérg", "alergia", "contraseña", "dirección", "cumpleaños", "identificación", "teléfono", "telefono", "sangre", "urgente", "historia clínica")
+    private val importantKeywords = listOf("gusta", "encanta", "odia", "odio", "miedo", "sueñ", "objetivo", "hábito", "habito")
 
-    /** v1.x: Deduplicación mejorada — palabra negativa regular(Los sucesos varían = La semántica puede ser opuesta.,no fusionar). */
-    private val NEGATION_RE = Regex("No|No|todavía no|no lo hagas|Ninguno|no")
+    /** Negaciones en español, solo como palabra completa para no coincidir dentro de "nombre" o "normal". */
+    private val NEGATION_RE = Regex("(?<!\\p{L})(?:no|nunca|jamás|jamas|tampoco|nada|sin)(?!\\p{L})", RegexOption.IGNORE_CASE)
 
     /** v1.x: Deduplicación mejorada — Umbral de similitud de Jaccard del bigrama de caracteres(≥ Tratar como duplicado).
      * Las duplicaciones reales son en su mayoría diferencias menores en la redacción.(Insertar/eliminar/orden de las palabras),Jaccard Generalmente en 0.5-0.8;
@@ -207,6 +207,8 @@ class FactStore(
         val nb = normalizeDedupText(b)
         if (na == nb) return true
         if (na.isBlank() || nb.isBlank()) return false
+        // Polaridad opuesta (gusta/odia) no es un duplicado.
+        if (isContradictory(a, b)) return false
         // protección de palabras negativas:Los sucesos negativos varían = La semántica puede ser opuesta.,Nunca fusionar
         if (negationCount(na) != negationCount(nb)) return false
         val short = if (na.length <= nb.length) na else nb
@@ -565,13 +567,17 @@ class FactStore(
      */
     private fun isContradictory(a: String, b: String): Boolean {
         fun polarity(text: String): Int {
+            val lower = text.lowercase()
             var score = 0
-            if (text.contains("me gusta") || text.contains("Me encanta comer") || text.contains("me encanta beber")) score += 1
-            if (text.contains("odio") || text.contains("no me gusta") || text.contains("miedo") || text.contains("Resistir")) score -= 1
-            if (text.contains("voluntad") && !text.contains("No")) score += 1
-            if (text.contains("No")) score -= 1
-            if (text.contains("levantarse temprano") || text.contains("Vete a la cama temprano")) score += 1
-            if (text.contains("quedarse despierto hasta tarde") || text.contains("dormir hasta tarde")) score -= 1
+            val dislikes = lower.contains("no me gusta") || lower.contains("odia") ||
+                lower.contains("odio") || lower.contains("miedo") ||
+                text.contains("讨厌") || text.contains("不喜欢") || text.contains("害怕")
+            val likes = lower.contains("gusta") || lower.contains("encanta") ||
+                text.contains("喜欢") || text.contains("爱喝") || text.contains("爱吃")
+            if (likes && !dislikes) score += 1
+            if (dislikes) score -= 1
+            if (lower.contains("levantarse temprano") || lower.contains("acostarse temprano")) score += 1
+            if (lower.contains("quedarse despierto hasta tarde") || lower.contains("dormir hasta tarde")) score -= 1
             return score
         }
         val pa = polarity(a)

@@ -91,8 +91,8 @@ class FactDbProviderScopeIsolationTest {
             )
 
             assertEquals("Cada una de las dos subbases de datos se incrementa y la primera identificación de hecho es la misma.", idA, idB)
-            assertTrue("A La biblioteca lee los registros de A según su propia identificación.", storeA.getById(idA)?.fact?.contains("A asistente") == true)
-            assertTrue("B La biblioteca lee el registro de B según la misma identificación.", storeB.getById(idB)?.fact?.contains("B asistente") == true)
+            assertTrue("A La biblioteca lee los registros de A según su propia identificación.", storeA.getById(idA)?.fact?.contains("A hechos") == true)
+            assertTrue("B La biblioteca lee el registro de B según la misma identificación.", storeB.getById(idB)?.fact?.contains("B hechos") == true)
         } finally {
             provider.releaseAll()
         }

@@ -114,9 +114,9 @@ object FailureClassifier {
         val msg = (error.message ?: "").lowercase()
         // Cuota/El estado final de autenticación tiene prioridad sobre las funciones reintentables:"rate limit exceeded: quota" Este tipo de noticias son mixtas.
         // palabras limitantes,Pero el verdadero significado es que la cuota se ha agotado.,No tiene sentido volver a intentarlo.
-        if (TERMINAL_QUOTA_OR_AUTH_PATTERNS.any { msg.contains(it) }) return FailureKind.PERMANENT
-        if (RETRYABLE_PATTERNS.any { msg.contains(it) }) return FailureKind.RETRYABLE
-        if (PERMANENT_PATTERNS.any { msg.contains(it) }) return FailureKind.PERMANENT
+        if (matches(msg, TERMINAL_QUOTA_OR_AUTH_PATTERNS)) return FailureKind.PERMANENT
+        if (matches(msg, RETRYABLE_PATTERNS)) return FailureKind.RETRYABLE
+        if (matches(msg, PERMANENT_PATTERNS)) return FailureKind.PERMANENT
 
         // Tipo de cobertura:serialización/analizar/Incluso si la clase de parámetro falla y se vuelve a intentar, no mejorará.
         if (error is SerializationException ||
@@ -136,8 +136,11 @@ object FailureClassifier {
      * "not asked again before 02:49"),Si lo volvemos a presionar 30 segundos después, continuaremos obteniendo 402.
      * Sólo cubre dos tipos de estados irrecuperables: dinero y vales.,analizar/Si la clase de parámetro falla, aún se permiten ejecuciones de recuperación.(LLM hay aleatoriedad).
      */
+    private fun matches(msg: String, patterns: List<String>): Boolean =
+        patterns.any { msg.contains(it.lowercase()) }
+
     fun isTerminalQuotaOrAuth(error: Throwable?): Boolean {
         val msg = (error?.message ?: "").lowercase()
-        return msg.isNotBlank() && TERMINAL_QUOTA_OR_AUTH_PATTERNS.any { msg.contains(it) }
+        return msg.isNotBlank() && matches(msg, TERMINAL_QUOTA_OR_AUTH_PATTERNS)
     }
 }

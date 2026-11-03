@@ -606,7 +606,7 @@ class MemoryTickerTest {
             assertFalse("scope Es imposible tener un cronómetro funcionando cuando estás muerto.", ticker.isTimerRunning())
             assertTrue(
                 "Se debe emitir WARN cuando se inicia la solicitud pero al final no hay ningún temporizador. De hecho,: $warnings",
-                warnings.any { it.contains("no pudo comenzar") },
+                warnings.any { it.contains("no pudo iniciarse") },
             )
         } finally {
             Logger.sink = previousSink

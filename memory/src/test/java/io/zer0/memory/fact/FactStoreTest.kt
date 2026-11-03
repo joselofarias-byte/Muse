@@ -244,9 +244,9 @@ class FactStoreTest {
     @Test
     fun `searchFullText single chinese char falls back to LIKE`() = runTest {
         // Consulta de una sola palabra COMO reserva(FTS4 2-gram No se puede acertar una sola palabra)
-        store.add(FactStore.Fact(fact = "modo oscuro"))
+        store.add(FactStore.Fact(fact = "深色模式"))
 
-        val results = store.searchFullText("profundo")
+        val results = store.searchFullText("深")
         assertTrue("Las consultas de una sola palabra deben realizarse mediante ME GUSTA", results.isNotEmpty())
     }
 
@@ -338,7 +338,7 @@ class FactStoreTest {
         assertEquals("Debe haber al menos 1 aparición.", 1, outOfRecall)
         assertEquals("Se deben conservar las filas.,Decay ya no elimina datos", 1, store.size())
         assertNotNull("Se debe escribir el tiempo de aparición.", store.getById(id)!!.suppressedAt)
-        assertTrue("Los datos con puntuaciones bajas ya no deberían recordarse automáticamente", store.searchRelevantFacts("cafe", limit = 5).isEmpty())
+        assertTrue("Los datos con puntuaciones bajas ya no deberían recordarse automáticamente", store.searchRelevantFacts("café", limit = 5).isEmpty())
         // La página de memoria aún puede incluir este elemento. —— La apariencia simplemente ya no está involucrada en el retiro.
         assertEquals(1, store.getByScope("main").size)
     }
@@ -362,7 +362,7 @@ class FactStoreTest {
         assertEquals("Los hechos recientes no deberían aparecer.", 0, outOfRecall)
         assertNull(store.getById(id)!!.suppressedAt)
         assertTrue("La puntuación debe bajar y estar por encima del umbral.", store.getById(id)!!.score >= MemoryConfig().compileThreshold)
-        assertTrue(store.searchRelevantFacts("cafe", limit = 5).any { it.id == id })
+        assertTrue(store.searchRelevantFacts("café", limit = 5).any { it.id == id })
     }
 
     @Test
@@ -384,7 +384,7 @@ class FactStoreTest {
         val outOfRecall = store.applyDecay(MemoryConfig())
         assertEquals("Disfruta el hecho de haber acertado hitBonus,no debería aparecer", 0, outOfRecall)
         assertNull(store.getById(id)!!.suppressedAt)
-        assertTrue(store.searchRelevantFacts("cafe", limit = 5).any { it.id == id })
+        assertTrue(store.searchRelevantFacts("café", limit = 5).any { it.id == id })
     }
 
     @Test
@@ -471,13 +471,13 @@ class FactStoreTest {
         assertNotNull(store.getById(id)!!.suppressedAt)
 
         // búsqueda explícita(pagina de memoria / search_memory)Aún se pueden acceder a las filas que ya han aparecido.,y tire hacia atrás para recordar
-        val explicitHits = store.searchFullTextScoped("cafe", scope = "main", spaceId = "default", limit = 5)
+        val explicitHits = store.searchFullTextScoped("café", scope = "main", spaceId = "default", limit = 5)
         assertTrue("La recuperación explícita debería poder ver el recuerdo que ha aparecido.", explicitHits.any { it.id == id })
 
         val revived = store.getById(id)!!
         assertNull("La marca de salida debe borrarse después de la visita.", revived.suppressedAt)
         assertTrue("La puntuación debería volver a superar el umbral.", revived.score >= MemoryConfig().compileThreshold)
-        assertTrue("Se debe volver a ingresar la recuperación automática", store.searchRelevantFacts("cafe", limit = 5).any { it.id == id })
+        assertTrue("Se debe volver a ingresar la recuperación automática", store.searchRelevantFacts("café", limit = 5).any { it.id == id })
     }
 
     @Test
@@ -497,7 +497,7 @@ class FactStoreTest {
         assertEquals("No es necesario introducir nuevos hechos.", 0, outOfRecall)
         val revived = store.getById(id)!!
         assertNull("Debería volver a recordar después de haber sido nuevamente referenciado.", revived.suppressedAt)
-        assertTrue(store.searchRelevantFacts("cafe", limit = 5).any { it.id == id })
+        assertTrue(store.searchRelevantFacts("café", limit = 5).any { it.id == id })
     }
 
     @Test
@@ -687,8 +687,8 @@ class FactStoreTest {
     @Test
     fun `dedupPass merges existing duplicates and skips pinned`() = runTest {
         // Recorrido completo para eliminar duplicados: inserción de texto/diferencia de eliminación de palabras(Candidato LIKE no encontrado,Sólo falta la coincidencia de prefijos)También se puede fusionar
-        store.add(FactStore.Fact(fact = "Mañana por la mañana haré el examen CET-4.", time = "2026-08-08T09:00"))
-        store.add(FactStore.Fact(fact = "Mañana por la mañana haré el examen CET-4.", time = "2026-08-08T09:00"))
+        store.add(FactStore.Fact(fact = "Mañana por la mañana tengo que rendir el examen CET-4", time = "2026-08-08T09:00"))
+        store.add(FactStore.Fact(fact = "Mañana por la mañana rendiré el examen CET-4", time = "2026-08-08T09:00"))
         // Los recuerdos fijados no se incluyen en la combinación
         val pinned = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
         dao.updatePinnedAt(pinned, Instant.now().toString())
@@ -699,7 +699,7 @@ class FactStoreTest {
         assertTrue("Debe fusionar al menos 1", merged >= 1)
         // Solo debe quedar 1 elemento en la categoría del examen.
         val all = store.getAll("main")
-        assertEquals("Solo debe quedar 1 elemento en la categoría del examen.", 1, all.count { it.fact.contains("Nivel 4") })
+        assertEquals("Solo debe quedar 1 elemento en la categoría del examen.", 1, all.count { it.fact.contains("CET-4") })
         // La memoria fijada permanece(incluso si es similar a otro)
         assertNotNull(store.getById(pinned))
     }
@@ -722,7 +722,7 @@ class FactStoreTest {
 
             val tombstones = storeWithTombstones.getTombstones()
             assertEquals("La lápida se debe registrar después de la eliminación", 1, tombstones.size)
-            assertTrue(tombstones[0].contains("alergia a la penicilina"))
+            assertTrue(tombstones[0].contains("alérgico a la penicilina"))
             // golpe de redacción precisa
             assertTrue(FactStore.matchesTombstone("El usuario es alérgico a la penicilina.", tombstones[0]))
         } finally {
@@ -750,7 +750,7 @@ class FactStoreTest {
             )
             assertTrue(
                 "Las diferencias de puntuación deberían afectar",
-                FactStore.matchesTombstone("A los usuarios les gusta beber café americano.", tombstones[0]),
+                FactStore.matchesTombstone("A los usuarios les gusta tomar café americano.", tombstones[0]),
             )
         } finally {
             tombstoneFile.delete()
@@ -897,7 +897,7 @@ class FactStoreTest {
     @Test
     fun `filterTombstonedLines drops tombstoned lines and keeps others`() {
         val text = "El usuario es alérgico a la penicilina.\nA los usuarios les gusta correr\nEl usuario vive en Beijing."
-        val filtered = FactStore.filterTombstonedLines(text, listOf("alergia a la penicilina"))
+        val filtered = FactStore.filterTombstonedLines(text, listOf("alérgico a la penicilina"))
         assertEquals("A los usuarios les gusta correr\nEl usuario vive en Beijing.", filtered)
     }
 
@@ -934,20 +934,20 @@ class FactStoreTest {
         // recuperación automática(<relevant_memory>)Solo quedan nuevos
         assertFalse(
             "La memoria reemplazada no debe recuperarse automáticamente nuevamente",
-            store.searchRelevantFacts("cafe", limit = 8).any { it.id == old },
+            store.searchRelevantFacts("café", limit = 8).any { it.id == old },
         )
-        assertTrue(store.searchRelevantFacts("cafe", limit = 8).any { it.id == fresh })
+        assertTrue(store.searchRelevantFacts("café", limit = 8).any { it.id == fresh })
         // búsqueda explícita(search_memory Herramientas/Búsqueda de páginas de memoria)Todavía se pueden encontrar viejos recuerdos.
         assertTrue(
             "La recuperación explícita debería encontrar la memoria reemplazada.",
-            store.searchFullTextScoped("le gusta tomar cafe", scope = "main", spaceId = "default", limit = 5).any { it.id == old },
+            store.searchFullTextScoped("café", scope = "main", spaceId = "default", limit = 5).any { it.id == old },
         )
 
         // Arrepentimiento del usuario:borrar nueva memoria,Los viejos recuerdos vuelven automáticamente al contexto
         store.delete(fresh)
         assertTrue(
             "Después de que la parte señalante borre la memoria anterior, debe recuperarse",
-            store.searchRelevantFacts("cafe", limit = 8).any { it.id == old },
+            store.searchRelevantFacts("café", limit = 8).any { it.id == old },
         )
         assertTrue(FactsSectionProjector.project(store.getByScopeAndSpace("main", "default")).contains(oldText))
     }
@@ -957,7 +957,7 @@ class FactStoreTest {
     fun `flip flopping back supersedes the intervening fact`() = runTest {
         store.add(FactStore.Fact(fact = "A Zhang San le gusta tomar café.", source = "user_explicit", entityKey = "Zhang San"))
         val dislike = store.add(FactStore.Fact(fact = "Zhang San odia tomar café", source = "user_explicit", entityKey = "Zhang San"))
-        val likeAgain = store.add(FactStore.Fact(fact = "A Zhang San le encanta tomar café.", source = "user_explicit", entityKey = "Zhang San"))
+        val likeAgain = store.add(FactStore.Fact(fact = "A Zhang San le encanta el espresso italiano", source = "user_explicit", entityKey = "Zhang San"))
 
         assertEquals("La última declaración debería reemplazar a la del medio.", dislike, store.getById(likeAgain)!!.supersedesId)
         assertEquals(
@@ -1008,7 +1008,7 @@ class FactStoreTest {
     @Test
     fun `ambiguous old state is left alone instead of guessing`() = runTest {
         store.add(FactStore.Fact(fact = "A Zhang San le gusta tomar café.", source = "user_explicit", entityKey = "Zhang San"))
-        store.add(FactStore.Fact(fact = "A Zhang San le encanta tomar café con leche", source = "user_explicit", entityKey = "Zhang San"))
+        store.add(FactStore.Fact(fact = "A Zhang San le encanta el latte de vainilla", source = "user_explicit", entityKey = "Zhang San"))
         val fresh = store.add(FactStore.Fact(fact = "Zhang San odia tomar café", source = "user_explicit", entityKey = "Zhang San"))
 
         assertNull("Cuando hay más de una contradicción en la memoria antigua, la sustitución no debe designarse arbitrariamente.", store.getById(fresh)!!.supersedesId)

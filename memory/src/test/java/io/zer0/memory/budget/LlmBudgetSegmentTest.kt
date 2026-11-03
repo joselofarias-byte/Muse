@@ -117,7 +117,7 @@ class LlmBudgetSegmentTest {
         assertEquals(4, segments.size)
         assertEquals("## hechos importantes", segments[0].heading)
         assertEquals("## situación a largo plazo", segments[3].heading)
-        assertTrue("El último párrafo debe ser un texto de larga duración.", segments[3].body.contains("memoria a largo plazo A"))
+        assertTrue("El último párrafo debe ser un texto de larga duración.", segments[3].body.contains("memoria A a largo plazo"))
     }
 
     @Test

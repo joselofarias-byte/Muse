@@ -63,9 +63,9 @@ class LlmDedupJudgeIntegrationTest {
         val judge = FakeJudge(DedupVerdict(same = true, confidence = 0.95f, reason = "equivalencia semántica"))
         val store = FactStore(dao, db, dedupJudge = judge)
 
-        val id1 = store.add(FactStore.Fact(fact = "El usuario tiene un corgi.", entityKey = "Usuario"))
-        // capa de algoritmo: bigram Baja similitud significa que no hay similitud;LLM determinar lo mismo
-        val id2 = store.add(FactStore.Fact(fact = "el tiene un corgi", entityKey = "Usuario"))
+        val id1 = store.add(FactStore.Fact(fact = "El usuario tiene un corgi.", entityKey = "usuario"))
+        // El algoritmo no los ve parecidos; el juez LLM sí.
+        val id2 = store.add(FactStore.Fact(fact = "En casa vive un perro pequeño de orejas paradas.", entityKey = "usuario"))
 
         assertEquals("LLM Si se determina que son idénticos, deben fusionarse.", id1, id2)
         assertTrue("judge debería ser llamado", judge.calls >= 1)

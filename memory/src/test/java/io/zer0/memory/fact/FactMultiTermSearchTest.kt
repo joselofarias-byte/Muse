@@ -84,9 +84,9 @@ class FactMultiTermSearchTest {
         addFact("A Ziqi le gusta hacer senderismo en las montañas los fines de semana.")
         addFact("Los desarrolladores tratan este proyecto como un pasatiempo a largo plazo.")
 
-        val andHits = dao.searchFtsBySpace(FactFtsManager.toMatchQuery("Desarrollador Ziqi"), 10, "main", "default")
+        val andHits = dao.searchFtsBySpace(FactFtsManager.toMatchQuery("desarrolladores Ziqi"), 10, "main", "default")
         val orHits = dao.searchFtsBySpace(
-            FactFtsManager.toMatchQuery("Desarrollador Ziqi", orSemantics = true),
+            FactFtsManager.toMatchQuery("desarrolladores Ziqi", orSemantics = true),
             10,
             "main",
             "default",
@@ -126,13 +126,13 @@ class FactMultiTermSearchTest {
     @Test
     fun `index ngram still carries the trailing single character`() {
         // El comportamiento del lado del índice no ha cambiado:La última palabra todavía está ahí.,De lo contrario, no se encontrarán los caracteres al final de los fragmentos con longitudes impares.
-        assertEquals("hola buen mundo mundo mundo", FactFtsManager.toNgram("hola mundo"))
-        assertEquals("hola buen mundo mundo", FactFtsManager.toNgram("hola mundo", includeTrailingTailChar = false))
+        assertEquals("你好 好世 世界 界", FactFtsManager.toNgram("你好世界"))
+        assertEquals("你好 好世 世界", FactFtsManager.toNgram("你好世界", includeTrailingTailChar = false))
     }
 
     @Test
     fun `query terms split on whitespace and punctuation`() {
-        assertEquals(listOf("Ziqi", "Desarrollador", "asistente"), FactFtsManager.toQueryTerms("Ziqi, desarrollador;asistente"))
+        assertEquals(listOf("Ziqi", "desarrollador", "asistente"), FactFtsManager.toQueryTerms("Ziqi, desarrollador;asistente"))
         assertEquals(listOf("GPT", "4"), FactFtsManager.toQueryTerms("GPT-4"))
     }
 }

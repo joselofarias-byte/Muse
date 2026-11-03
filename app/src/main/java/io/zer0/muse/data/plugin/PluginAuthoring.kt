@@ -77,7 +77,7 @@ object PluginAuthoringRules {
                 return "El nombre de la herramienta es ilegal.: ${tool.name}(Solo se permiten letras, números, guiones bajos y guiones, longitud 1-64)"
             }
             if (!FUNCTION_NAME_REGEX.matches(tool.functionName)) {
-                return "El nombre de la función de la herramienta es ilegal.: ${tool.functionName}(Solo letras, números, guiones bajos y $y no puede comenzar con un número)"
+                return "El nombre de la función de la herramienta es ilegal.: ${tool.functionName}(Solo letras, números, guiones bajos y el signo \$, y no puede comenzar con un número)"
             }
             if (!definesFunction(request.code, tool.functionName)) {
                 return "No hay ninguna función de herramienta definida en el código del complemento. ${tool.functionName}(requiere declaración de función de nivel superior)"

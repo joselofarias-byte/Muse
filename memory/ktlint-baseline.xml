@@ -137,36 +137,39 @@
         <error line="254" column="45" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/memory/deep/DeepMemoryProcessor.kt">
-        <error line="104" column="9" source="standard:function-signature" />
-        <error line="105" column="9" source="standard:function-signature" />
-        <error line="106" column="9" source="standard:function-signature" />
         <error line="107" column="9" source="standard:function-signature" />
-        <error line="107" column="47" source="standard:function-signature" />
-        <error line="156" column="9" source="standard:function-signature" />
-        <error line="157" column="9" source="standard:function-signature" />
-        <error line="158" column="9" source="standard:function-signature" />
+        <error line="108" column="9" source="standard:function-signature" />
+        <error line="109" column="9" source="standard:function-signature" />
+        <error line="110" column="9" source="standard:function-signature" />
+        <error line="110" column="47" source="standard:function-signature" />
         <error line="159" column="9" source="standard:function-signature" />
         <error line="160" column="9" source="standard:function-signature" />
-        <error line="160" column="47" source="standard:function-signature" />
-        <error line="184" column="9" source="standard:function-signature" />
-        <error line="185" column="9" source="standard:function-signature" />
-        <error line="186" column="9" source="standard:function-signature" />
+        <error line="161" column="9" source="standard:function-signature" />
+        <error line="162" column="9" source="standard:function-signature" />
+        <error line="163" column="9" source="standard:function-signature" />
+        <error line="163" column="47" source="standard:function-signature" />
         <error line="187" column="9" source="standard:function-signature" />
         <error line="188" column="9" source="standard:function-signature" />
-        <error line="188" column="47" source="standard:function-signature" />
-        <error line="332" column="9" source="standard:function-signature" />
-        <error line="333" column="9" source="standard:function-signature" />
-        <error line="334" column="9" source="standard:function-signature" />
+        <error line="189" column="9" source="standard:function-signature" />
+        <error line="190" column="9" source="standard:function-signature" />
+        <error line="191" column="9" source="standard:function-signature" />
+        <error line="191" column="47" source="standard:function-signature" />
         <error line="335" column="9" source="standard:function-signature" />
         <error line="336" column="9" source="standard:function-signature" />
-        <error line="336" column="34" source="standard:function-signature" />
-        <error line="352" column="9" source="standard:function-signature" />
-        <error line="353" column="9" source="standard:function-signature" />
-        <error line="353" column="47" source="standard:function-signature" />
-        <error line="381" column="9" source="standard:function-signature" />
-        <error line="382" column="9" source="standard:function-signature" />
-        <error line="383" column="9" source="standard:function-signature" />
-        <error line="383" column="24" source="standard:function-signature" />
+        <error line="337" column="9" source="standard:function-signature" />
+        <error line="338" column="9" source="standard:function-signature" />
+        <error line="339" column="9" source="standard:function-signature" />
+        <error line="339" column="34" source="standard:function-signature" />
+        <error line="355" column="9" source="standard:function-signature" />
+        <error line="356" column="9" source="standard:function-signature" />
+        <error line="356" column="47" source="standard:function-signature" />
+        <error line="384" column="9" source="standard:function-signature" />
+        <error line="385" column="9" source="standard:function-signature" />
+        <error line="386" column="9" source="standard:function-signature" />
+        <error line="386" column="24" source="standard:function-signature" />
+    </file>
+    <file name="src/main/java/io/zer0/memory/deep/FactAtomicityValidator.kt">
+        <error line="87" column="50" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/memory/fact/FactDao.kt">
         <error line="181" column="9" source="standard:function-signature" />
@@ -194,106 +197,106 @@
     <file name="src/main/java/io/zer0/memory/fact/FactStore.kt">
         <error line="178" column="17" source="standard:property-naming" />
         <error line="183" column="17" source="standard:property-naming" />
-        <error line="233" column="128" source="standard:function-signature" />
-        <error line="540" column="116" source="standard:function-signature" />
-        <error line="604" column="9" source="standard:function-signature" />
-        <error line="605" column="9" source="standard:function-signature" />
-        <error line="606" column="9" source="standard:function-signature" />
-        <error line="607" column="9" source="standard:function-signature" />
-        <error line="608" column="9" source="standard:function-signature" />
-        <error line="609" column="9" source="standard:function-signature" />
-        <error line="609" column="25" source="standard:function-signature" />
-        <error line="627" column="124" source="standard:function-signature" />
-        <error line="670" column="9" source="standard:function-signature" />
-        <error line="671" column="9" source="standard:function-signature" />
-        <error line="672" column="9" source="standard:function-signature" />
-        <error line="672" column="53" source="standard:function-signature" />
-        <error line="770" column="9" source="standard:function-signature" />
-        <error line="771" column="9" source="standard:function-signature" />
-        <error line="772" column="9" source="standard:function-signature" />
-        <error line="773" column="9" source="standard:function-signature" />
-        <error line="774" column="9" source="standard:function-signature" />
-        <error line="774" column="33" source="standard:function-signature" />
-        <error line="1097" column="42" source="standard:argument-list-wrapping" />
-        <error line="1097" column="59" source="standard:argument-list-wrapping" />
-        <error line="1097" column="71" source="standard:argument-list-wrapping" />
-        <error line="1097" column="82" source="standard:argument-list-wrapping" />
-        <error line="1097" column="89" source="standard:argument-list-wrapping" />
-        <error line="1117" column="77" source="standard:function-signature" />
-        <error line="1130" column="120" source="standard:function-signature" />
-        <error line="1157" column="115" source="standard:function-signature" />
-        <error line="1162" column="9" source="standard:function-signature" />
-        <error line="1163" column="9" source="standard:function-signature" />
-        <error line="1164" column="9" source="standard:function-signature" />
-        <error line="1165" column="9" source="standard:function-signature" />
-        <error line="1166" column="9" source="standard:function-signature" />
-        <error line="1166" column="43" source="standard:function-signature" />
-        <error line="1182" column="9" source="standard:function-signature" />
-        <error line="1183" column="9" source="standard:function-signature" />
-        <error line="1184" column="9" source="standard:function-signature" />
-        <error line="1185" column="9" source="standard:function-signature" />
-        <error line="1185" column="25" source="standard:function-signature" />
-        <error line="1224" column="134" source="standard:function-signature" />
-        <error line="1303" column="9" source="standard:function-signature" />
-        <error line="1304" column="9" source="standard:function-signature" />
-        <error line="1305" column="9" source="standard:function-signature" />
-        <error line="1306" column="9" source="standard:function-signature" />
-        <error line="1307" column="9" source="standard:function-signature" />
-        <error line="1307" column="43" source="standard:function-signature" />
-        <error line="1342" column="9" source="standard:function-signature" />
-        <error line="1343" column="9" source="standard:function-signature" />
-        <error line="1344" column="9" source="standard:function-signature" />
-        <error line="1344" column="53" source="standard:function-signature" />
-        <error line="1360" column="9" source="standard:function-signature" />
-        <error line="1361" column="9" source="standard:function-signature" />
-        <error line="1362" column="9" source="standard:function-signature" />
-        <error line="1363" column="9" source="standard:function-signature" />
-        <error line="1363" column="43" source="standard:function-signature" />
-        <error line="1386" column="9" source="standard:function-signature" />
-        <error line="1387" column="9" source="standard:function-signature" />
-        <error line="1388" column="9" source="standard:function-signature" />
-        <error line="1388" column="43" source="standard:function-signature" />
-        <error line="1410" column="115" source="standard:function-signature" />
-        <error line="1415" column="9" source="standard:function-signature" />
-        <error line="1416" column="9" source="standard:function-signature" />
-        <error line="1417" column="9" source="standard:function-signature" />
-        <error line="1418" column="9" source="standard:function-signature" />
-        <error line="1419" column="9" source="standard:function-signature" />
-        <error line="1419" column="25" source="standard:function-signature" />
+        <error line="235" column="128" source="standard:function-signature" />
+        <error line="542" column="116" source="standard:function-signature" />
+        <error line="610" column="9" source="standard:function-signature" />
+        <error line="611" column="9" source="standard:function-signature" />
+        <error line="612" column="9" source="standard:function-signature" />
+        <error line="613" column="9" source="standard:function-signature" />
+        <error line="614" column="9" source="standard:function-signature" />
+        <error line="615" column="9" source="standard:function-signature" />
+        <error line="615" column="25" source="standard:function-signature" />
+        <error line="633" column="124" source="standard:function-signature" />
+        <error line="676" column="9" source="standard:function-signature" />
+        <error line="677" column="9" source="standard:function-signature" />
+        <error line="678" column="9" source="standard:function-signature" />
+        <error line="678" column="53" source="standard:function-signature" />
+        <error line="776" column="9" source="standard:function-signature" />
+        <error line="777" column="9" source="standard:function-signature" />
+        <error line="778" column="9" source="standard:function-signature" />
+        <error line="779" column="9" source="standard:function-signature" />
+        <error line="780" column="9" source="standard:function-signature" />
+        <error line="780" column="33" source="standard:function-signature" />
+        <error line="1103" column="42" source="standard:argument-list-wrapping" />
+        <error line="1103" column="59" source="standard:argument-list-wrapping" />
+        <error line="1103" column="71" source="standard:argument-list-wrapping" />
+        <error line="1103" column="82" source="standard:argument-list-wrapping" />
+        <error line="1103" column="89" source="standard:argument-list-wrapping" />
+        <error line="1123" column="77" source="standard:function-signature" />
+        <error line="1136" column="120" source="standard:function-signature" />
+        <error line="1163" column="115" source="standard:function-signature" />
+        <error line="1168" column="9" source="standard:function-signature" />
+        <error line="1169" column="9" source="standard:function-signature" />
+        <error line="1170" column="9" source="standard:function-signature" />
+        <error line="1171" column="9" source="standard:function-signature" />
+        <error line="1172" column="9" source="standard:function-signature" />
+        <error line="1172" column="43" source="standard:function-signature" />
+        <error line="1188" column="9" source="standard:function-signature" />
+        <error line="1189" column="9" source="standard:function-signature" />
+        <error line="1190" column="9" source="standard:function-signature" />
+        <error line="1191" column="9" source="standard:function-signature" />
+        <error line="1191" column="25" source="standard:function-signature" />
+        <error line="1230" column="134" source="standard:function-signature" />
+        <error line="1309" column="9" source="standard:function-signature" />
+        <error line="1310" column="9" source="standard:function-signature" />
+        <error line="1311" column="9" source="standard:function-signature" />
+        <error line="1312" column="9" source="standard:function-signature" />
+        <error line="1313" column="9" source="standard:function-signature" />
+        <error line="1313" column="43" source="standard:function-signature" />
+        <error line="1348" column="9" source="standard:function-signature" />
+        <error line="1349" column="9" source="standard:function-signature" />
+        <error line="1350" column="9" source="standard:function-signature" />
+        <error line="1350" column="53" source="standard:function-signature" />
+        <error line="1366" column="9" source="standard:function-signature" />
+        <error line="1367" column="9" source="standard:function-signature" />
+        <error line="1368" column="9" source="standard:function-signature" />
+        <error line="1369" column="9" source="standard:function-signature" />
+        <error line="1369" column="43" source="standard:function-signature" />
+        <error line="1392" column="9" source="standard:function-signature" />
+        <error line="1393" column="9" source="standard:function-signature" />
+        <error line="1394" column="9" source="standard:function-signature" />
+        <error line="1394" column="43" source="standard:function-signature" />
+        <error line="1416" column="115" source="standard:function-signature" />
+        <error line="1421" column="9" source="standard:function-signature" />
+        <error line="1422" column="9" source="standard:function-signature" />
         <error line="1423" column="9" source="standard:function-signature" />
         <error line="1424" column="9" source="standard:function-signature" />
         <error line="1425" column="9" source="standard:function-signature" />
-        <error line="1426" column="9" source="standard:function-signature" />
-        <error line="1427" column="9" source="standard:function-signature" />
-        <error line="1427" column="26" source="standard:function-signature" />
-        <error line="1485" column="97" source="standard:function-signature" />
-        <error line="1489" column="9" source="standard:function-signature" />
-        <error line="1490" column="9" source="standard:function-signature" />
-        <error line="1491" column="9" source="standard:function-signature" />
-        <error line="1492" column="9" source="standard:function-signature" />
-        <error line="1492" column="41" source="standard:function-signature" />
-        <error line="1619" column="136" source="standard:function-signature" />
-        <error line="1711" column="9" source="standard:function-signature" />
-        <error line="1712" column="9" source="standard:function-signature" />
-        <error line="1713" column="9" source="standard:function-signature" />
-        <error line="1714" column="9" source="standard:function-signature" />
-        <error line="1714" column="33" source="standard:function-signature" />
-        <error line="1911" column="9" source="standard:function-signature" />
-        <error line="1912" column="9" source="standard:function-signature" />
-        <error line="1913" column="9" source="standard:function-signature" />
-        <error line="1914" column="9" source="standard:function-signature" />
-        <error line="1915" column="9" source="standard:function-signature" />
-        <error line="1916" column="9" source="standard:function-signature" />
+        <error line="1425" column="25" source="standard:function-signature" />
+        <error line="1429" column="9" source="standard:function-signature" />
+        <error line="1430" column="9" source="standard:function-signature" />
+        <error line="1431" column="9" source="standard:function-signature" />
+        <error line="1432" column="9" source="standard:function-signature" />
+        <error line="1433" column="9" source="standard:function-signature" />
+        <error line="1433" column="26" source="standard:function-signature" />
+        <error line="1491" column="97" source="standard:function-signature" />
+        <error line="1495" column="9" source="standard:function-signature" />
+        <error line="1496" column="9" source="standard:function-signature" />
+        <error line="1497" column="9" source="standard:function-signature" />
+        <error line="1498" column="9" source="standard:function-signature" />
+        <error line="1498" column="41" source="standard:function-signature" />
+        <error line="1625" column="136" source="standard:function-signature" />
+        <error line="1717" column="9" source="standard:function-signature" />
+        <error line="1718" column="9" source="standard:function-signature" />
+        <error line="1719" column="9" source="standard:function-signature" />
+        <error line="1720" column="9" source="standard:function-signature" />
+        <error line="1720" column="33" source="standard:function-signature" />
         <error line="1917" column="9" source="standard:function-signature" />
-        <error line="1917" column="29" source="standard:function-signature" />
-        <error line="1957" column="113" source="standard:function-signature" />
-        <error line="2280" column="104" source="standard:function-signature" />
-        <error line="2348" column="85" source="standard:function-signature" />
-        <error line="2359" column="81" source="standard:function-signature" />
-        <error line="2381" column="58" source="standard:function-signature" />
-        <error line="2419" column="60" source="standard:function-signature" />
-        <error line="2439" column="116" source="standard:function-signature" />
-        <error line="2450" column="83" source="standard:function-signature" />
+        <error line="1918" column="9" source="standard:function-signature" />
+        <error line="1919" column="9" source="standard:function-signature" />
+        <error line="1920" column="9" source="standard:function-signature" />
+        <error line="1921" column="9" source="standard:function-signature" />
+        <error line="1922" column="9" source="standard:function-signature" />
+        <error line="1923" column="9" source="standard:function-signature" />
+        <error line="1923" column="29" source="standard:function-signature" />
+        <error line="1963" column="113" source="standard:function-signature" />
+        <error line="2286" column="104" source="standard:function-signature" />
+        <error line="2354" column="85" source="standard:function-signature" />
+        <error line="2365" column="81" source="standard:function-signature" />
+        <error line="2387" column="58" source="standard:function-signature" />
+        <error line="2425" column="60" source="standard:function-signature" />
+        <error line="2445" column="116" source="standard:function-signature" />
+        <error line="2456" column="83" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/memory/fact/LlmFactConsolidator.kt">
         <error line="38" column="122" source="standard:function-signature" />
@@ -317,6 +320,7 @@
     </file>
     <file name="src/main/java/io/zer0/memory/observe/FailureClassifier.kt">
         <error line="37" column="19" source="standard:discouraged-comment-location" />
+        <error line="139" column="72" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/memory/observe/MemoryStepRunner.kt">
         <error line="66" column="9" source="standard:function-signature" />
@@ -707,12 +711,12 @@
         <error line="153" column="33" source="standard:function-signature" />
     </file>
     <file name="src/test/java/io/zer0/memory/pii/PiiGuardTest.kt">
-        <error line="130" column="51" source="standard:discouraged-comment-location" />
-        <error line="131" column="52" source="standard:discouraged-comment-location" />
-        <error line="132" column="53" source="standard:discouraged-comment-location" />
-        <error line="133" column="54" source="standard:discouraged-comment-location" />
-        <error line="134" column="54" source="standard:discouraged-comment-location" />
-        <error line="135" column="57" source="standard:discouraged-comment-location" />
+        <error line="130" column="36" source="standard:discouraged-comment-location" />
+        <error line="131" column="37" source="standard:discouraged-comment-location" />
+        <error line="132" column="38" source="standard:discouraged-comment-location" />
+        <error line="133" column="39" source="standard:discouraged-comment-location" />
+        <error line="134" column="39" source="standard:discouraged-comment-location" />
+        <error line="135" column="42" source="standard:discouraged-comment-location" />
     </file>
     <file name="src/test/java/io/zer0/memory/summary/MemoryDbDowngradeGuardTest.kt">
         <error line="185" column="47" source="standard:function-signature" />

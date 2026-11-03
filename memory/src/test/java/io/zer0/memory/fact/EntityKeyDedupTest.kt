@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
 /**
  * v12: Clave de normalización de entidad(EntityKey)Eliminar pruebas duplicadas.
  *
- * escenario objetivo: Comentarios de los usuarios"Hay 3 memorias duplicadas para el mismo nombre de usuario"(Como por ejemplo"Zhang San"/"Sr. Zhang"/"Maestro Zhang San").
+ * escenario objetivo: Comentarios de los usuarios"Hay 3 memorias duplicadas para el mismo nombre de usuario"(Como por ejemplo"Zhangsan"/"Sr. Zhang"/"Maestro Zhangsan").
  * Después de la reparación, el hecho de que el texto bajo la misma clave de entidad sea esencialmente el mismo debe fusionarse en uno,En lugar de agregar tres nuevos.
  *
  * Portada:
@@ -52,10 +52,10 @@ class EntityKeyDedupTest {
 
     @Test
     fun `same entity key different wordings merge into one fact`() = runTest {
-        // Escenarios de comentarios de los usuarios: 3 formas de escribir la misma entidad,entity_key todos son"Zhang San"
-        val id1 = store.add(FactStore.Fact(fact = "A Zhang San le gusta la fotografía", entityKey = "Zhang San"))
-        val id2 = store.add(FactStore.Fact(fact = "Al Sr. Zhang le gusta la fotografía.", entityKey = "Zhang San"))
-        val id3 = store.add(FactStore.Fact(fact = "Al profesor Zhang San le gusta la fotografía", entityKey = "Zhang San"))
+        // Escenarios de comentarios de los usuarios: 3 formas de escribir la misma entidad,entity_key todos son"Zhangsan"
+        val id1 = store.add(FactStore.Fact(fact = "A Zhangsan le gusta la fotografía", entityKey = "Zhangsan"))
+        val id2 = store.add(FactStore.Fact(fact = "Al Sr. Zhang le gusta la fotografía.", entityKey = "Zhangsan"))
+        val id3 = store.add(FactStore.Fact(fact = "Al profesor Zhangsan le gusta la fotografía", entityKey = "Zhangsan"))
 
         // Los tres artículos deberían fusionarse en uno solo.(Los dos últimos se fusionan en el primero.,volver lo mismo id)
         assertEquals("La segunda escritura debe fusionarse y devolver el existente. id", id1, id2)
@@ -63,14 +63,14 @@ class EntityKeyDedupTest {
 
         val all = store.getByScopeAndSpace("main", "default")
         assertEquals("Sólo debe haber 1 elemento con la misma entidad y el mismo hecho.", 1, all.size)
-        assertEquals("mantener la declaración completa", "Al profesor Zhang San le gusta la fotografía", all[0].fact)
-        assertEquals("Las claves de entidad deben conservarse", "Zhang San", all[0].entityKey)
+        assertEquals("mantener la declaración completa", "Al profesor Zhangsan le gusta la fotografía", all[0].fact)
+        assertEquals("Las claves de entidad deben conservarse", "zhangsan", all[0].entityKey)
     }
 
     @Test
     fun `same entity key different facts do not merge`() = runTest {
-        val id1 = store.add(FactStore.Fact(fact = "A Zhang San le gusta tomar café.", entityKey = "Zhang San"))
-        val id2 = store.add(FactStore.Fact(fact = "Zhang San odia el cilantro", entityKey = "Zhang San"))
+        val id1 = store.add(FactStore.Fact(fact = "A Zhangsan le gusta tomar café.", entityKey = "Zhangsan"))
+        val id2 = store.add(FactStore.Fact(fact = "Zhangsan odia el cilantro", entityKey = "Zhangsan"))
 
         assertTrue("Los diferentes identificadores de hechos deberían ser diferentes", id1 != id2)
         val all = store.getByScopeAndSpace("main", "default")
@@ -79,8 +79,8 @@ class EntityKeyDedupTest {
 
     @Test
     fun `same entity key across spaces stays isolated`() = runTest {
-        val work = store.add(FactStore.Fact(fact = "A Zhang San le gusta el café americano", entityKey = "Zhang San"), spaceId = "work")
-        val life = store.add(FactStore.Fact(fact = "A Zhang San le gusta el café americano", entityKey = "Zhang San"), spaceId = "life")
+        val work = store.add(FactStore.Fact(fact = "A Zhangsan le gusta el café americano", entityKey = "Zhangsan"), spaceId = "work")
+        val life = store.add(FactStore.Fact(fact = "A Zhangsan le gusta el café americano", entityKey = "Zhangsan"), spaceId = "life")
 
         assertTrue("No fusionar espacios,id debería ser diferente", work != life)
         assertEquals("work Espacio 1 artículo", 1, store.getByScopeAndSpace("main", "work").size)
@@ -89,11 +89,11 @@ class EntityKeyDedupTest {
 
     @Test
     fun `update triggering dedup merges into existing fact`() = runTest {
-        val id1 = store.add(FactStore.Fact(fact = "Li Si está aprendiendo a nadar.", entityKey = "Juan Pérez"))
-        val id2 = store.add(FactStore.Fact(fact = "Li Si está aprendiendo a tocar la guitarra.", entityKey = "Juan Pérez"))
+        val id1 = store.add(FactStore.Fact(fact = "Lisi está aprendiendo a nadar.", entityKey = "juanperez"))
+        val id2 = store.add(FactStore.Fact(fact = "Lisi colecciona sellos postales antiguos.", entityKey = "juanperez"))
 
         // Cambie id2 a algo esencialmente igual que id1 → debería fusionarse(Eliminar id2,Reservar id1)
-        store.update(id2, "Li Si está aprendiendo a nadar.", "main")
+        store.update(id2, "Lisi está aprendiendo a nadar.", "main")
 
         val all = store.getByScopeAndSpace("main", "default")
         assertEquals("update Después de activar la deduplicación, solo debería quedar 1 elemento.", 1, all.size)
@@ -103,7 +103,7 @@ class EntityKeyDedupTest {
 
     @Test
     fun `normalization treats full-width case and space differences as identical`() = runTest {
-        val id1 = store.add(FactStore.Fact(fact = "Zhang San likes coffee", entityKey = "zhang san"))
+        val id1 = store.add(FactStore.Fact(fact = "Zhangsan likes coffee", entityKey = "zhang san"))
         // Letras de ancho completo + espacios extra + diferencias de mayúsculas,Después de la normalización, se debe juzgar como el mismo hecho que id1.
         val id2 = store.add(FactStore.Fact(fact = "zhang san  likes coffee", entityKey = "zhang san"))
 

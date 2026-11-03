@@ -75,9 +75,9 @@ class CompiledSectionSearchTest {
 
     @Test
     fun `scanned hits carry the section they came from`() = runTest {
-        writeSection("today", "- Ziqi fue de excursión a las montañas hoy.\n- Acabo de comprar un bastón de senderismo nuevo.")
+        writeSection("today", "- Ziqi fue de excursión a las montañas hoy.\n- Ziqi compró un bastón para las montañas.")
 
-        val hits = compiler.searchCompiledSections("Montañismo Ziqi", "main", "default", limit = 10)
+        val hits = compiler.searchCompiledSections("Ziqi montañas", "main", "default", limit = 10)
 
         assertEquals("Ambas líneas deberían chocar: $hits", 2, hits.size)
         assertTrue("Las visitas deben marcar el segmento en el que se encuentran.: $hits", hits.all { it.sectionKey == "today" })
@@ -115,12 +115,12 @@ class CompiledSectionSearchTest {
     @Test
     fun `scanner ranks lines by how many words they contain`() {
         val sections = listOf(
-            "today" to "- Ziqi está escribiendo código\n- Ziqi es un desarrollador independiente,Normalmente escribo códigos y documentos.",
+            "today" to "- Ziqi está escribiendo código\n- Ziqi es un desarrollador independiente, escribe código y documentos.",
         )
 
-        val hits = scanCompiledSections(sections, "Documentación del código Ziqi", limit = 10)
+        val hits = scanCompiledSections(sections, "Ziqi código documentos", limit = 10)
 
         assertEquals(2, hits.size)
-        assertTrue("Las líneas que contengan tres palabras deben ir primero: $hits", hits.first().text.contains("Documentación"))
+        assertTrue("Las líneas que contengan tres palabras deben ir primero: $hits", hits.first().text.contains("documentos"))
     }
 }

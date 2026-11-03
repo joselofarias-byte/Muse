@@ -222,20 +222,20 @@ class ReconcileFactsSectionTest {
         sectionDao.upsert(
             CompiledSectionEntity(
                 sectionKey = MemoryCompiler.Section.FACTS.key,
-                content = "A los usuarios les gusta tomar café americano.\nEl usuario se está preparando actualmente para moverse.",
+                content = "Usuario le gusta tomar café americano.\nEl usuario se está preparando actualmente para moverse.",
                 fingerprint = null,
                 updatedAt = java.time.Instant.now().toString(),
             ),
         )
         // facts Este hecho en la tabla ha sido editado por el usuario en variaciones de redacción.(Ir al tema+Diferencia total de la mitad del ancho,Equivalente después de la normalización)
-        factStore.add(FactStore.Fact(fact = "Le gusta tomar café americano.", entityKey = "Usuario"))
+        factStore.add(FactStore.Fact(fact = "le gusta tomar café americano.", entityKey = "usuario"))
 
         val changed = compiler.reconcileFactsSectionWithStore(factStore.getByScopeAndSpace("main", "default"))
 
         assertEquals("Debería haber actualizaciones", 1, changed)
         val content = compiler.readSection(MemoryCompiler.Section.FACTS)
-        assertTrue("Los productos deben contener nuevas expresiones para los valores de la tabla.", content.contains("Le gusta tomar café americano."))
-        assertTrue("Las líneas de asunto antiguas deben reemplazarse por proyecciones.", !content.contains("A los usuarios les gusta tomar café americano."))
+        assertTrue("Los productos deben contener nuevas expresiones para los valores de la tabla.", content.contains("le gusta tomar café americano."))
+        assertTrue("Las líneas de asunto antiguas deben reemplazarse por proyecciones.", !content.contains("Usuario le gusta tomar café americano."))
         // D3-P2: Fila de huérfanos("Preparándose para mudarse")absorbido en la mesa primero,Entonces guárdalo con la proyección.(Prevención de pérdidas)
         assertTrue("Las filas huérfanas deben absorberse y conservarse", content.contains("El usuario se está preparando actualmente para moverse."))
     }
@@ -245,19 +245,19 @@ class ReconcileFactsSectionTest {
         sectionDao.upsert(
             CompiledSectionEntity(
                 sectionKey = MemoryCompiler.Section.FACTS.key,
-                content = "A los usuarios les gusta zhangsan",
+                content = "usuario le gusta ｚｈａｎｇｓａｎ",
                 fingerprint = null,
                 updatedAt = java.time.Instant.now().toString(),
             ),
         )
         // facts Valor de presentación como variante de ancho completo
-        factStore.add(FactStore.Fact(fact = "a los usuarios les gustazhangsan"))
+        factStore.add(FactStore.Fact(fact = "usuario le gusta zhangsan"))
 
         val changed = compiler.reconcileFactsSectionWithStore(factStore.getByScopeAndSpace("main", "default"))
         assertEquals("Las variantes de ancho medio completo deberían activar actualizaciones de proyección", 1, changed)
         val content = compiler.readSection(MemoryCompiler.Section.FACTS)
-        assertTrue("El producto debe tener un valor de tabla(medio tamaño)", content.contains("a los usuarios les gustazhangsan"))
-        assertTrue("Las variantes de ancho completo deben reemplazarse", !content.contains("zhangsan"))
+        assertTrue("El producto debe tener un valor de tabla(medio tamaño)", content.contains("usuario le gusta zhangsan"))
+        assertTrue("Las variantes de ancho completo deben reemplazarse", !content.contains("ｚｈａｎｇｓａｎ"))
     }
 
     @Test

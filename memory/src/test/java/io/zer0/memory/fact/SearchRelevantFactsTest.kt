@@ -47,9 +47,9 @@ class SearchRelevantFactsTest {
         store.add(FactStore.Fact(fact = "El usuario se está preparando actualmente para moverse."))
         store.add(FactStore.Fact(fact = "El usuario enviará el primer borrador del artículo la próxima semana."))
 
-        val hits = store.searchRelevantFacts("cafe", limit = 5)
+        val hits = store.searchRelevantFacts("café", limit = 5)
         assertEquals("Datos sobre el café que conviene recordar", 1, hits.size)
-        assertTrue(hits[0].fact.contains("cafe"))
+        assertTrue(hits[0].fact.contains("café"))
     }
 
     @Test
@@ -58,10 +58,10 @@ class SearchRelevantFactsTest {
         store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."), scope = "assistant-1", spaceId = "default")
         store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."), scope = "main", spaceId = "work")
 
-        val mainHits = store.searchRelevantFacts("cafe", scope = "main", spaceId = "default", limit = 5)
+        val mainHits = store.searchRelevantFacts("café", scope = "main", spaceId = "default", limit = 5)
         assertEquals("Recuperar solo el espacio principal/predeterminado", 1, mainHits.size)
 
-        val workHits = store.searchRelevantFacts("cafe", scope = "main", spaceId = "work", limit = 5)
+        val workHits = store.searchRelevantFacts("café", scope = "main", spaceId = "work", limit = 5)
         assertEquals("Recuperar solo el espacio principal/de trabajo", 1, workHits.size)
     }
 
@@ -80,7 +80,7 @@ class SearchRelevantFactsTest {
             spaceId = "default",
         )
 
-        val hits = store.searchRelevantFacts("cafe", scope = "main", spaceId = "default", limit = 1)
+        val hits = store.searchRelevantFacts("café", scope = "main", spaceId = "default", limit = 1)
 
         assertEquals(1, hits.size)
         assertEquals("Preferencias de café del asistente actual", hits.single().fact)
@@ -92,7 +92,7 @@ class SearchRelevantFactsTest {
         store.add(FactStore.Fact(fact = "Preferencias de café en los espacios habitables."), scope = "main", spaceId = "life")
         store.add(FactStore.Fact(fact = "Preferencias de café en otros asistentes"), scope = "assistant-1", spaceId = "work")
 
-        val hits = store.searchFullTextScoped("cafe", scope = "main", spaceId = "work", limit = 10)
+        val hits = store.searchFullTextScoped("café", scope = "main", spaceId = "work", limit = 10)
 
         assertEquals(1, hits.size)
         assertEquals("Preferencias de café en el espacio de trabajo", hits.single().fact)
@@ -153,7 +153,7 @@ class SearchRelevantFactsTest {
         }
         store.rebuildFtsIndex()
 
-        val hits = store.searchRelevantFacts("cafe", limit = 5)
+        val hits = store.searchRelevantFacts("café", limit = 5)
 
         assertEquals("El número de retiros no debe reducirse al ingresar al mercado.", 5, hits.size)
         assertTrue("Los resultados de la recuperación no deben incluir recuerdos que hayan aparecido.", hits.none { it.id in suppressedIds })

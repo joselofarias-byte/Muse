@@ -128,7 +128,7 @@ Registre lo que sucedió en esta sesión en orden cronológico, con marca de tie
 ## reglas
 1. Cuando ya existe un resumen: fusionar el contenido antiguo y el nuevo. En lo mismo prevalecerá la nueva información. No lo repitas.
 2. La anotación de tiempo se extrae de la marca de tiempo del mensaje (YYYY-MM-DD HH:MM formato)
-3. La vibra del asistente proporcionada en la entrada es el sentimiento expresado por el asistente en ese momento y debe atribuirse claramente al asistente y no puede escribirse como hechos psicológicos objetivos; no grabar chispas,Reflections,Will o razonamiento oculto
+3. La vibra del asistente proporcionada en la entrada es el sentimiento expresado por el asistente en ese momento y debe atribuirse claramente al asistente y no puede escribirse como hechos psicológicos objetivos; no grabar Sparks, Reflections, Will o razonamiento oculto
 4. Archivos proporcionados por el usuario/Adjunto: registre solo el nombre del archivo y el propósito, ignore el contenido específico
 5. La salida larga del asistente: solo registra la salida y no extrae el contenido.
 6. Es mejor ser breve que largo: la longitud del resumen es directamente proporcional a la densidad de información real de la conversación, unas pocas palabras de pequeña charla solo ocupan una o dos líneas.

@@ -9,8 +9,8 @@ class FactExtractionPromptTest {
     fun promptExcludesAssistantVibeAndCommitmentsFromUserFacts() {
         val prompt = FactExtractionPrompt.buildSystemPrompt(locale = "es")
 
-        assertTrue(prompt.contains("Léame de Vibe del asistente"))
-        assertTrue(prompt.contains("Promesa del asistente"))
-        assertTrue(prompt.contains("No es un hecho de usuario"))
+        assertTrue(prompt.contains("vibración del asistente"))
+        assertTrue(prompt.contains("compromisos del asistente"))
+        assertTrue(prompt.contains("datos del usuario"))
     }
 }

@@ -83,31 +83,33 @@ object FactAtomicityValidator {
         return distinct
     }
 
-    /** Elimina el espacio en blanco al principio y al final del párrafo y lee la oración. */
-    private fun cleanPart(part: String): String = part.trim().trimEnd('.', ',', ';', ';', '.', ',', '!', '!', '?', '?').trim()
+    /** Quita espacios y puntuación sobrante en los extremos del fragmento. */
+    private fun cleanPart(part: String): String =
+        part.trim().trimEnd('。', '，', '；', ';', '.', '、', '！', '!', '？', '?', '¿', '¡', ',').trim()
 
-    /** Si este párrafo contiene morfemas predicados(chino)o palabras en inglés. */
-    private fun partHasPredicate(part: String): Boolean = PREDICATE_TOKENS.any { part.contains(it) } || LATIN_WORD_RE.containsMatchIn(part)
+    /** El fragmento parece una afirmación si contiene un verbo o predicado conocido. */
+    private fun partHasPredicate(part: String): Boolean {
+        val lower = part.lowercase()
+        return PREDICATE_TOKENS.any { lower.contains(it) }
+    }
 
     /**
-     * Punto de división. Conectivos introducidos por comas(“, además”espera)coma del consumo total,Evite encabezados de párrafos residuales;
-     * “y/y/al mismo tiempo”No permitir comas(“Le gusta leer y le gusta escribir.”).
-     * Partidos de rama regulares de izquierda a derecha.,Por lo tanto“, y”antes“y”golpear.
+     * Conectivos fuertes. La "y" suelta no parte (es una preferencia única: "fotografía y viajes").
+     * Las alternativas más largas van primero para que ", y además" no se quede en "y además".
      */
-    private val SPLIT_POINTS = Regex("(?:[;;]|, y|, y|, al mismo tiempo|, además|, además|, y|y|y|al mismo tiempo)")
-
-    /** palabras en ingles(Puertas de predicado para operaciones en inglés). */
-    private val LATIN_WORD_RE = Regex("[A-Za-z]{2,}")
+    private val SPLIT_POINTS = Regex(
+        "(?:;|,\\s*y además|,\\s*además|,\\s*al mismo tiempo|,\\s*así como|\\by además\\b|\\bal mismo tiempo\\b)",
+        RegexOption.IGNORE_CASE,
+    )
 
     /**
-     * Tabla de morfemas de predicados chinos —— solo para“¿Es esta imagen un juicio?”tamiz grueso,No busques el agotamiento;
-     * Deje de dividirse cuando no haya suficientes golpes(Es mejor desmontarlo accidentalmente que desmontarlo accidentalmente.).
-     * excluir deliberadamente“en/aprender/usar/hacer/mira/escuchar/leer/escribir/jugar/levantar”Palabras que pueden usarse fácilmente como subcadenas de sustantivos.
+     * Predicados en español e inglés. No vale cualquier palabra latina: en español casi todo
+     * el texto lo es y la puerta dejaría de filtrar enumeraciones de sustantivos.
      */
     private val PREDICATE_TOKENS = listOf(
-        "me gusta", "amor", "odio", "miedo", "esperanza", "querer", "planear", "planear", "preparar", "son", "vivir en", "de",
-        "participar en", "responsable", "hábito", "a menudo", "normalmente", "trabajo", "vida", "aprender", "participar", "Completo", "uso",
-        "sentir", "pensar", "necesitar", "Alergia", "vegetariano", "corriendo", "nadando", "viajar", "Fotografía", "aptitud", "montañismo", "leyendo", "ejercicio",
-        "si", "si", "voluntad", "querer", "pensar",
+        "gusta", "ama", "odia", "teme", "espera", "quiere", "planea", "prepara",
+        "trabaja", "vive", "estudia", "necesita", "alérg", "vegetariano",
+        "busca", "escribe", "corre", "nada", "viaja", "escala",
+        "works", "likes", "lives", "wants", "needs",
     )
 }
