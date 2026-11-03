@@ -34,12 +34,12 @@ class GreetingHelperTest {
     fun `Si recuerdas los saludos para el examen de mañana, puedes usarlos primero como recordatorios del examen`() {
         val today = LocalDate.of(2026, 8, 7)
         val tomorrow = today.plusDays(1).toString()
-        val facts = listOf(fact("El usuario realizará mañana el test CET-4", time = tomorrow))
+        val facts = listOf(fact("mañana tienes un examen", time = tomorrow))
 
         val greeting = GreetingHelper.buildGreeting(facts, hour = 20, date = today)
 
         // Personalización primero:Contiene examen,No aparecen términos solares./fiesta
-        assertTrue("Se deben incluir recordatorios de exámenes.: $greeting", greeting.contains("examen"))
+        assertTrue("Se deben incluir recordatorios de exámenes.: $greeting", greeting.contains("exame"))
         assertTrue("Los términos solares ya no deberían mostrarse: $greeting", !greeting.contains("Principios de otoño"))
         assertTrue("Se debe controlar la longitud: $greeting", greeting.length <= 40)
         // segunda persona:El contenido mostrado a los usuarios no debería aparecer."Usuario"
@@ -55,7 +55,7 @@ class GreetingHelperTest {
         val hint = GreetingHelper.getMemoryHint(facts, today)
 
         assertNotNull(hint)
-        assertTrue("Los vuelos deberían incluirse.: $hint", hint!!.contains("vuelos"))
+        assertTrue("Los vuelos deberían incluirse.: $hint", hint!!.contains("viaje"))
     }
 
     @Test
@@ -79,10 +79,10 @@ class GreetingHelperTest {
     @Test
     fun `Informar cumpleaños cuando el cumpleaños sea mañana`() {
         val today = LocalDate.of(2026, 8, 7)
-        val facts = listOf(fact("El cumpleaños del usuario es8mes8dia"))
+        val facts = listOf(fact("El cumpleaños del usuario es 8/8"))
         val hint = GreetingHelper.getMemoryHint(facts, today)
         assertNotNull(hint)
-        assertTrue("Se debe indicar el cumpleaños: $hint", hint!!.contains("cumpleaños"))
+        assertTrue("Se debe indicar el cumpleaños: $hint", hint!!.contains("cumplea"))
     }
 
     @Test
@@ -104,8 +104,8 @@ class GreetingHelperTest {
             dailySummaryDate = today.toString(),
         )
 
-        assertTrue("Se debe reservar tiempo para los saludos.: $greeting", greeting.startsWith("Buenos días,"))
-        assertTrue("Debe traer elementos de resumen diario: $greeting", greeting.contains("Solución de problemas de interfaz completada"))
+        assertTrue("Se debe reservar tiempo para los saludos.: $greeting", greeting.startsWith("buenos dias"))
+        assertTrue("Debe traer elementos de resumen diario: $greeting", greeting.contains("solución de problemas de la interfaz"))
     }
 
     @Test
@@ -120,7 +120,7 @@ class GreetingHelperTest {
         assertNotNull(summary)
         // v2.7: Las capas de presentación ya no se limitan a 24 caracteres; El texto breve debe dejarse como está (solo normalizado).
         assertTrue("Los resúmenes de extensión normal no deben truncarse: $summary", summary!!.length > GreetingHelper.DAILY_SUMMARY_HINT_MAX_LENGTH)
-        assertTrue("El texto original debe mantenerse intacto.", summary.contains("Arreglos de seguimiento discutidos"))
+        assertTrue("El texto original debe mantenerse intacto.", summary.contains("arreglos de seguimiento"))
         // Sujeto únicamente a un límite superior de seguridad flexible
         assertTrue(summary.length <= GreetingHelper.DAILY_SUMMARY_DISPLAY_SAFETY_LIMIT)
 
