@@ -24,8 +24,8 @@ class StickerCategoryMatchTest {
 
     @Test
     fun `edit distance one with same length`() {
-        // Reemplazo de una sola palabra:feliz → feliz
-        assertEquals("feliz", matchStickerCategory(cats, "feliz"))
+        // Sustitución de un carácter:feliz → felis
+        assertEquals("feliz", matchStickerCategory(cats, "felis"))
     }
 
     @Test
@@ -56,7 +56,7 @@ class StickerCategoryMatchTest {
     @Test
     fun `levenshtein sanity`() {
         assertEquals(0, levenshteinDistance("feliz", "feliz"))
-        assertEquals(1, levenshteinDistance("feliz", "feliz"))
+        assertEquals(1, levenshteinDistance("feliz", "felis"))
         assertEquals(1, levenshteinDistance("happy", "happi"))
         assertEquals(3, levenshteinDistance("kitten", "sitting"))
         assertEquals(2, levenshteinDistance("", "ab"))

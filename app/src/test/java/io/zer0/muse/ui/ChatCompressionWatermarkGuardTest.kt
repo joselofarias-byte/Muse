@@ -20,7 +20,7 @@ class ChatCompressionWatermarkGuardTest {
         // Utilice el posicionamiento del punto de anclaje de anotación recién agregado(También hay ramas degradadas en el archivo que también se determinan mediante displaySessionId.)
         val start = src.indexOf("AUD-UI-F5")
         assertTrue("Bloque de protección AUD-UI-F5 no encontrado", start >= 0)
-        val body = src.substring(start, (start + 700).coerceAtMost(src.length))
+        val body = src.substring(start, (start + 1400).coerceAtMost(src.length))
         assertTrue(
             "Solo escribe si aún se muestra la sesión checkpointCoveredSessionId",
             body.contains("host.checkpointCoveredSessionId = sessionId"),
@@ -37,7 +37,7 @@ class ChatCompressionWatermarkGuardTest {
         val guard = src.indexOf("AUD-UI-F5")
         assertTrue("Bloque de protección AUD-UI-F5 no encontrado", guard >= 0)
         // Dentro del bloque de protección deben aparecer al mismo tiempo: juicio, escritura del nivel del agua,token Recalcular
-        val block = src.substring(guard, (guard + 700).coerceAtMost(src.length))
+        val block = src.substring(guard, (guard + 1400).coerceAtMost(src.length))
         assertTrue(block.contains("host.displayedSessionId() == sessionId"))
         assertTrue(block.contains("host.checkpointCoveredSessionId = sessionId"))
     }

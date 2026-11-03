@@ -35,7 +35,7 @@ class MessageFtsDdlTest {
 
     @Test
     fun `toFts5MatchQuery quotes phrases and escapes quotes`() {
-        assertEquals("\"hola mundo\"", MessageFtsManager.toFts5MatchQuery("hola mundo"))
+        assertEquals("\"hola\" \"mundo\"", MessageFtsManager.toFts5MatchQuery("hola mundo"))
         assertEquals("\"hello\" \"world\"", MessageFtsManager.toFts5MatchQuery("hello  world"))
         assertEquals("\"a\" \"\"\"quote\"\"\"", MessageFtsManager.toFts5MatchQuery("a \"quote\""))
         assertEquals("", MessageFtsManager.toFts5MatchQuery("   "))

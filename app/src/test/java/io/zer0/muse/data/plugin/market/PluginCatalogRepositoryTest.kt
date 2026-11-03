@@ -58,7 +58,7 @@ class PluginCatalogRepositoryTest {
         val rejected = repository.refresh("https://example.com/catalog.json")
 
         assertTrue(rejected is CatalogRefreshResult.Rejected)
-        assertTrue((rejected as CatalogRefreshResult.Rejected).reason.contains("revertir"))
+        assertTrue((rejected as CatalogRefreshResult.Rejected).reason.contains("Reversión"))
         assertEquals(5L, repository.currentCatalog()?.payload?.sequence)
         assertEquals(listOf("safe-plugin"), repository.loadCache().entries.map { it.id })
     }
@@ -76,7 +76,7 @@ class PluginCatalogRepositoryTest {
             .refresh("https://example.com/catalog.json")
 
         assertTrue(expiredResult is CatalogRefreshResult.Rejected)
-        assertTrue((expiredResult as CatalogRefreshResult.Rejected).reason.contains("Caducado"))
+        assertTrue((expiredResult as CatalogRefreshResult.Rejected).reason.contains("caducado"))
         assertTrue(untrustedResult is CatalogRefreshResult.Rejected)
         assertTrue((untrustedResult as CatalogRefreshResult.Rejected).reason.contains("firma"))
     }
@@ -143,7 +143,7 @@ class PluginCatalogRepositoryTest {
         assertNotNull(tamperedSnapshot.error)
         assertNull(tamperedRepository.currentCatalog())
         assertTrue(expiredSnapshot.entries.isEmpty())
-        assertTrue(expiredSnapshot.error.orEmpty().contains("Caducado"))
+        assertTrue(expiredSnapshot.error.orEmpty().contains("caducado"))
         // La protección alternativa conserva la secuencia aceptada incluso si el caché no está disponible.
         assertEquals(3L, expiredRepository.lastAcceptedSequence(CATALOG_ID))
     }

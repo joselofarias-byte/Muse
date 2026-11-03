@@ -17,7 +17,7 @@ class OAuthManagerTest {
         )
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("tiempo de espera"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("Tiempo de espera"))
     }
 
     @Test

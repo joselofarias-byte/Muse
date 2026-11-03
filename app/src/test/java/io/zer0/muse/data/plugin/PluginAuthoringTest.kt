@@ -137,7 +137,7 @@ class PluginAuthoringTest {
 
         assertTrue(result.isFailure)
         val reason = result.exceptionOrNull()?.message.orEmpty()
-        assertTrue("El motivo debe indicar que el contenido ha sido modificado.: $reason", reason.contains("Modificar") || reason.contains("Resumen"))
+        assertTrue("El motivo debe indicar que el contenido ha sido modificado.: $reason", reason.contains("se modificó antes de firmar"))
         val plugin = requireNotNull(env.manager.findPlugin("assistant-tool"))
         assertEquals(PluginSecurityGate.SignatureStatus.UNSIGNED, plugin.signatureStatus)
         assertFalse(plugin.installationConfirmed)

@@ -89,7 +89,7 @@ class VisionBridgePureFunctionsTest {
         val notice = bridge.buildFailureNotice("Tiempo de espera del modelo")
         assertTrue(notice.contains("Tiempo de espera del modelo"))
         assertTrue(notice.contains("El análisis de la imagen falló"))
-        assertTrue(notice.contains("Se pide al usuario que vuelva a intentarlo más tarde."))
+        assertTrue(notice.contains("pedirle al usuario que vuelva a intentarlo más tarde"))
 
         val blank = bridge.buildFailureNotice(null)
         assertFalse(blank.contains("null"))

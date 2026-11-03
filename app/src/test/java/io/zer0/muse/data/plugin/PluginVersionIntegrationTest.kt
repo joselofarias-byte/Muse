@@ -180,7 +180,7 @@ class PluginVersionIntegrationTest {
 
         assertTrue("Las instalaciones degradadas deben rechazarse", downgraded.isFailure)
         assertTrue(
-            downgraded.exceptionOrNull()?.message.orEmpty().contains("Rebajar"),
+            downgraded.exceptionOrNull()?.message.orEmpty().contains("degradación"),
         )
         assertEquals("2.0.0", manager.findPlugin("downgrade-plugin")?.version)
         trustFile.delete()
@@ -196,7 +196,7 @@ class PluginVersionIntegrationTest {
         val hijack = install(manager, signedPackage("lineage-plugin", "1.1.0", newKeyPair()))
 
         assertTrue("Los complementos con el mismo nombre que cambian las claves públicas deben rechazarse", hijack.isFailure)
-        assertTrue(hijack.exceptionOrNull()?.message.orEmpty().contains("Emisor"))
+        assertTrue(hijack.exceptionOrNull()?.message.orEmpty().contains("emisor"))
         assertEquals("1.0.0", manager.findPlugin("lineage-plugin")?.version)
         trustFile.delete()
         Unit
@@ -213,7 +213,7 @@ class PluginVersionIntegrationTest {
         )
 
         assertTrue(tooNew.isFailure)
-        assertTrue(tooNew.exceptionOrNull()?.message.orEmpty().contains("App versión"))
+        assertTrue(tooNew.exceptionOrNull()?.message.orEmpty().contains("versión de la aplicación"))
         assertNull(manager.findPlugin("future-plugin"))
         trustFile.delete()
         Unit

@@ -255,7 +255,7 @@ class PdfVisionParserTest {
         val result = parser.parse(fakePdf.absolutePath)
 
         assertFalse("El modelo visual no está disponible y debería fallar", result.success)
-        assertTrue("Debería indicar que el modelo visual no está configurado.", result.error?.contains("Visión") == true)
+        assertTrue("Debería indicar que el modelo visual no está configurado.", result.error?.contains("visión no configurado") == true)
         assertEquals("isAvailable=false no debe ser llamado cuando ocr", 0, fakeOcr.ocrCallCount)
     }
 

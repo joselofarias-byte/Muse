@@ -25,7 +25,7 @@ class TranslatePromptGlossaryTest {
             glossary = glossary,
         )
 
-        assertTrue("Las palabras del mensaje por lotes deben tener un glosario", batch.contains("Consulte el siguiente glosario."))
+        assertTrue("Las palabras del mensaje por lotes deben tener un glosario", batch.contains("Consulte el siguiente glosario para la traducción."))
         assertTrue("Debe contener mapeo API", batch.contains("API→API"))
         assertTrue("Debe contener mapeo de GPU", batch.contains("GPU→procesador de gráficos"))
 
@@ -36,7 +36,7 @@ class TranslatePromptGlossaryTest {
             sourceLanguage = "ingles",
             glossary = glossary,
         )
-        assertTrue("Una sola palabra clave debe ir acompañada de un glosario.", single.contains("Consulte el siguiente glosario."))
+        assertTrue("Una sola palabra clave debe ir acompañada de un glosario.", single.contains("Consulte el siguiente glosario para la traducción."))
     }
 
     @Test
@@ -52,8 +52,8 @@ class TranslatePromptGlossaryTest {
             targetLanguage = "chino",
             sourceLanguage = "ingles",
         )
-        assertFalse(batch.contains("Consulte el siguiente glosario."))
-        assertFalse(single.contains("Consulte el siguiente glosario."))
+        assertFalse(batch.contains("Consulte el siguiente glosario para la traducción."))
+        assertFalse(single.contains("Consulte el siguiente glosario para la traducción."))
     }
 
     @Test

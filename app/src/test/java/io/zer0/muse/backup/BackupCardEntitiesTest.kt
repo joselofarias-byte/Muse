@@ -228,7 +228,7 @@ class BackupCardEntitiesTest {
         assertTrue("Debe arrojar error", error is IllegalStateException)
         assertTrue(
             "El mensaje de error debería indicar que la ranura está duplicada.,En lugar de SQLite UNIQUE constraint failed: ${error?.message}",
-            error?.message?.contains("Ranuras de acoplamiento duplicadas") == true,
+            error?.message?.contains("Ranuras de acoplamiento para tarjetas duplicadas") == true,
         )
         // Puede haber varias tarjetas desacopladas y no se cuentan como duplicadas.
         requireNoDuplicateDockSlots(listOf(card("a"), card("b")))

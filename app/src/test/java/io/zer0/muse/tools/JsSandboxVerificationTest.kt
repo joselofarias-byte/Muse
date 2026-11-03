@@ -60,6 +60,6 @@ class JsSandboxVerificationTest {
     fun `Devuelve un no objeto cuando falla el análisis en lugar de pasar en silencio`() {
         val (ok, issues) = JsSandbox.parseVerificationResult("\"just a string\"")
         assertFalse(ok)
-        assertTrue(issues.single().startsWith("El análisis de resultados de la autoprueba falló"))
+        assertTrue(issues.single().startsWith("Error en el análisis del resultado de la autoprueba"))
     }
 }

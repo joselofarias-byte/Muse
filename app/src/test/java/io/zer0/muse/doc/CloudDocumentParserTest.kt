@@ -130,7 +130,7 @@ class CloudDocumentParserTest {
                 mineruMode = true,
             )
             assertTrue(result is Result.Error)
-            assertTrue((result as Result.Error).message.contains("tiempo de espera"))
+            assertTrue((result as Result.Error).message.contains("Tiempo de espera"))
         } finally {
             server.stop(0)
         }

@@ -205,7 +205,7 @@ class SkillBridgeHttpClientTest {
                 client.get(origin.url("/").withHost(host), maxSize = 1024)
             }
 
-            assertTrue(failure.message.orEmpty().contains("conexión proxy"))
+            assertTrue(failure.message.orEmpty().contains("conexiones proxy"))
             assertEquals(0, origin.requestCount)
             assertEquals(0, proxy.requestCount)
         } finally {

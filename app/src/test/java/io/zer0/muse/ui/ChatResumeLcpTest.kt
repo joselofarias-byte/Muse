@@ -52,14 +52,14 @@ class ChatResumeLcpTest {
 
     @Test
     fun `chinese text overlapped prefix measured in code units`() {
-        // "hoy dia" = 3 personajes,Seguimiento "enojado" con "lluvia" diferente → Prefijo común para obtener índice 3
-        assertEquals(3, longestCommonPrefix("El clima esta muy bueno hoy", "esta lloviendo hoy"))
+        // "Hoy " = 4 unidades UTF-16, luego "llueve" y "nieva" divergen
+        assertEquals(4, longestCommonPrefix("Hoy llueve", "Hoy nieva"))
     }
 
     @Test
     fun `chinese identical shares full length`() {
-        // "Hola mundo Hola mundo" = 9 caracteres chinos,El prefijo común para la misma cadena es la longitud completa
-        assertEquals(9, longestCommonPrefix("Hola mundo Hola mundo", "Hola mundo Hola mundo"))
+        val phrase = "Hola mundo Hola mundo"
+        assertEquals(phrase.length, longestCommonPrefix(phrase, phrase))
     }
 
     @Test
@@ -115,8 +115,8 @@ class ChatResumeLcpTest {
 
     @Test
     fun `attempt containing original head supersedes partial content`() {
-        val original = "Puedo charlar contigo. ¿Cómo puedo ayudarte hoy??"
-        val attempt = "¡Hola! Soy Muse y es genial charlar contigo. ¿Hay algo que pueda hacer para ayudarte??"
+        val original = "Puedo charlar contigo. ¿Cómo puedo ayudarte hoy?"
+        val attempt = "Puedo ayudarte con lo que necesites hoy"
         val current = original + attempt
         assertTrue(shouldReplaceOnResumeSupersede(original, attempt, current))
     }

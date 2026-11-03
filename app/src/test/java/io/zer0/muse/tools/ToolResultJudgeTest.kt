@@ -49,8 +49,8 @@ class ToolResultJudgeTest {
             "desconocido skill: y",
             "URL debe ser https",
             "No se puede leer el archivo",
-            "Sesión con id abc no encontrada",
-            "El subasistente no pudo ejecutarse",
+            "Sesión no encontrada abc",
+            "sub-asistente no pudo ejecutarse",
             "error: Error al generar la imagen",
             "falló: verify",
             "tiempo de espera: Las solicitudes exceden 30s",
@@ -102,6 +102,6 @@ class ToolResultJudgeTest {
         assertFalse(ToolResultJudge.isSuccess("falló(Coordenadas fuera de límites)"))
         assertFalse(ToolResultJudge.isSuccess("falló(Nombre de paquete no válido)"))
         assertFalse(ToolResultJudge.isSuccess("No se puede abrir el flujo de salida"))
-        assertFalse(ToolResultJudge.isSuccess("Botones de pantalla virtual no compatibles:home"))
+        assertFalse(ToolResultJudge.isSuccess("No compatible: botones de pantalla virtual home"))
     }
 }

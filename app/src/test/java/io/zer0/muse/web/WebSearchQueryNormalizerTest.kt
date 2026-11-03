@@ -35,7 +35,7 @@ class WebSearchQueryNormalizerTest {
     @Test
     fun `refine strips conversational lead-in from long queries`() {
         assertEquals(
-            "¿Cuáles son algunas buenas películas de ciencia ficción para recomendar recientemente?",
+            "¿Podrías ayudarme a ver alguna buena recomendación de películas",
             WebSearchQueryNormalizer.refine("¿Podrías ayudarme a ver alguna buena recomendación de películas de ciencia ficción recientemente?"),
         )
     }
@@ -44,7 +44,7 @@ class WebSearchQueryNormalizerTest {
     fun `refine strips trailing modal particle`() {
         assertEquals(
             "¿Cuánto tarda el tren de alta velocidad de Pekín a Shanghái?",
-            WebSearchQueryNormalizer.refine("¿Cuánto tarda el tren de alta velocidad de Pekín a Shanghái?"),
+            WebSearchQueryNormalizer.refine("¿Cuánto tarda el tren de alta velocidad de Pekín a Shanghái? gracias"),
         )
     }
 

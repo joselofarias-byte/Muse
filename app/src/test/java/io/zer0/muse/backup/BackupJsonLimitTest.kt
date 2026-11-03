@@ -39,6 +39,6 @@ class BackupJsonLimitTest {
         val msg = BackupService.singleJsonTooLargeMessage(70L * 1024 * 1024)
         assertTrue(msg.contains("64MB"))
         assertTrue(msg.contains("Importación rechazada"))
-        assertEquals("El tamaño de la copia de seguridad JSON única de 70 MB supera el límite superior 64MB,Importación rechazada", msg)
+        assertEquals("Volumen de copia de seguridad JSON único 70MB Superar el límite superior 64MB,Importación rechazada", msg)
     }
 }

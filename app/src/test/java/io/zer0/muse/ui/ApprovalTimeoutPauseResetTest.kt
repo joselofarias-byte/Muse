@@ -20,7 +20,7 @@ class ApprovalTimeoutPauseResetTest {
         val src = source()
         val start = src.indexOf("AUD-UI-F12")
         assertTrue("Bloque de protección AUD-UI-F12 no encontrado", start >= 0)
-        val body = src.substring(start, (start + 600).coerceAtMost(src.length))
+        val body = src.substring(start, (start + 900).coerceAtMost(src.length))
         assertTrue(
             "Debe usar DesechableEffect para restablecer al salir",
             body.contains("DisposableEffect(Unit)"),

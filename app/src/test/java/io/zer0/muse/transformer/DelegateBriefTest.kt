@@ -45,7 +45,7 @@ class DelegateBriefTest {
             tagsJson = """["escribiendo","polaco","redacción"]""",
         )
 
-        assertEquals("Redacción, pulido, redacción publicitaria.", brief(a))
+        assertEquals("escribiendo,polaco,redacción", brief(a))
     }
 
     @Test
@@ -54,8 +54,8 @@ class DelegateBriefTest {
 
         val out = brief(a)
 
-        assertTrue("Los abridores genéricos deberían eliminarse, en realidad: $out", !out.startsWith("eres un"))
-        assertTrue("Debe conservarse la parte distintiva", out.contains("asesor legal"))
+        assertTrue("Los abridores genéricos deberían eliminarse, en realidad: $out", !out.startsWith("Usted es un"))
+        assertTrue("Debe conservarse la parte distintiva", out.contains("consultor jurídico"))
     }
 
     @Test
@@ -71,12 +71,12 @@ class DelegateBriefTest {
     @Test
     fun `two assistants with identical generic openings still get different briefs`() {
         // Este es el escenario que reportan los usuarios que “los perfiles son casi iguales”
-        val a = assistant("x", systemPrompt = "Eres un asistente de IA. Bueno en análisis de datos e informes.")
-        val b = assistant("y", systemPrompt = "Eres un asistente de IA. Bueno en la creación de novelas y la configuración de la visión del mundo.")
+        val a = assistant("x", systemPrompt = "eres un asistente de IA. Bueno en análisis de datos e informes.")
+        val b = assistant("y", systemPrompt = "eres un asistente de IA. Bueno en la creación de novelas y la configuración de la visión del mundo.")
 
         assertNotEquals("La introducción debe diferenciar entre los dos asistentes.", brief(a), brief(b))
         assertTrue(brief(a).contains("análisis de datos"))
-        assertTrue(brief(b).contains("Creación novedosa"))
+        assertTrue(brief(b).contains("creación de novelas"))
     }
 
     @Test

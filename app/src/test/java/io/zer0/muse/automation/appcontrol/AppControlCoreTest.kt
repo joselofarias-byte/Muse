@@ -187,20 +187,20 @@ class AppControlCoreTest {
                 app(pkg = "io.zer0.muse", label = "Muse", self = true),
             ),
         )
-        assertTrue(text.contains("3 aplicaciones ejecutables en total"))
+        assertTrue(text.contains("total 3 aplicaciones ejecutables"))
         assertTrue(text.contains("WeChat | com.tencent.mm"))
         assertTrue(text.contains("Aplicación del sistema"))
         assertTrue(text.contains("Esta aplicación"))
 
-        assertTrue(AppControlCore.renderAppList(emptyList()).contains("no encontrado"))
+        assertTrue(AppControlCore.renderAppList(emptyList()).contains("No se encontró"))
     }
 
     @Test
     fun `render app list respects the displayed limit but reports the real total`() {
         val apps = (1..5).map { app(pkg = "com.example.app$it", label = "App$it") }
         val text = AppControlCore.renderAppList(apps, limit = 2)
-        assertTrue(text.contains("5 aplicaciones ejecutables en total"))
-        assertTrue(text.contains("Solo enumera los primeros 2"))
+        assertTrue(text.contains("total 5 aplicaciones ejecutables"))
+        assertTrue(text.contains("solo listado antes 2"))
         assertFalse(text.contains("com.example.app5"))
     }
 

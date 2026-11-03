@@ -59,12 +59,12 @@ class WarmupHistoryTest {
     fun `La sesión informativa es un mensaje del sistema y no se puede reclamar`() {
         val briefing = WarmupHistory.briefingMessage(truncated = true)
         assertEquals(MessageRole.SYSTEM, briefing.role)
-        assertTrue(briefing.content.contains("importar"))
-        assertTrue(briefing.content.contains("Lo último"))
-        assertTrue(briefing.content.contains("mantener parte reciente"))
+        assertTrue(briefing.content.contains("se importaron"))
+        assertTrue(briefing.content.contains("últimos mensajes"))
+        assertTrue(briefing.content.contains("parte más reciente se ha retenido"))
 
         val full = WarmupHistory.briefingMessage(truncated = false)
-        assertFalse(full.content.contains("mantener parte reciente"))
+        assertFalse(full.content.contains("parte más reciente se ha retenido"))
     }
 
     @Test

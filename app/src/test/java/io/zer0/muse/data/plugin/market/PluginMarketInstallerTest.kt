@@ -35,7 +35,7 @@ class PluginMarketInstallerTest {
             .confirmAndInstall(plan, trustPublisher = false)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("Caducado"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("caducado"))
         coVerify(exactly = 0) { manager.installConfirmedFromFile(any(), any(), any()) }
     }
 
@@ -50,7 +50,7 @@ class PluginMarketInstallerTest {
             .confirmAndInstall(plan, trustPublisher = false)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("cambiar"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("cambiado"))
         coVerify(exactly = 0) { manager.installConfirmedFromFile(any(), any(), any()) }
     }
 

@@ -20,7 +20,7 @@ class ToolRouteExecutionGuardTest {
     fun `unregistered tool is rejected before execution`() = runBlocking {
         val registry = ToolRegistry(context)
         val result = ToolRouteExecutionGuard(registry).executeFromJson("removed_mcp", "{}")
-        assertTrue(result.contains("No existe o ha sido desconectado"))
+        assertTrue(result.contains("se ha cerrado sesión"))
     }
 
     @Test

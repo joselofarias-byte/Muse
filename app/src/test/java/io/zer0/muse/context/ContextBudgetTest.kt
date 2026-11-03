@@ -16,7 +16,7 @@ class ContextBudgetTest {
         val result = budget.clamp(ContextSection.LONG_TERM_MEMORY, "texto corto")
         assertFalse(result.truncated)
         assertEquals("texto corto", result.text)
-        assertEquals(3, result.originalChars)
+        assertEquals("texto corto".length, result.originalChars)
     }
 
     @Test
@@ -31,7 +31,7 @@ class ContextBudgetTest {
         // La anotación incluye partición, longitud original y límite superior.,Diagnosticable
         assertTrue(result.text.contains("Partición=LONG_TERM_MEMORY"))
         assertTrue(result.text.contains("originales 30000"))
-        assertTrue(result.text.contains("límite superior 24000"))
+        assertTrue(result.text.contains("límite superior de caracteres 24000"))
     }
 
     @Test

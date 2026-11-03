@@ -31,7 +31,7 @@ class ResourceToolsRegistrarTest {
         ResourceToolsRegistrar(context, registry)
         val add = registry.execute("resource_add", mapOf("title" to "Recursos de prueba", "content" to "Texto"))
         assertFalse(add.isError)
-        val id = add.content.substringAfterLast(" ").trim()
+        val id = add.content.substringAfter("id:").substringBefore("\n").trim()
         val get = registry.execute("resource_get", mapOf("id" to id))
         assertFalse(get.isError)
         assertTrue(get.content.contains("Recursos de prueba"))

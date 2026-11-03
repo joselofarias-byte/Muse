@@ -18,7 +18,7 @@ class LorebookTransformerTest {
     private fun entity(
         id: String = "lb1",
         name: String = "test-lore",
-        keywordsJson: String = """["magia","mago"]""",
+        keywordsJson: String = """["magia"]""",
         content: String = "El Gremio de Magos es una antigua organización secreta.",
         priority: Int = 0,
         insertionPosition: String = "after_system",
@@ -52,7 +52,7 @@ class LorebookTransformerTest {
         assertEquals(4, result.size)
         assertEquals(MessageRole.SYSTEM, result[2].role)
         assertTrue(result[2].content.contains("lorebook"))
-        assertTrue(result[2].content.contains("gremio de magos"))
+        assertTrue(result[2].content.contains("Gremio de Magos"))
         assertTrue(result[2].content.contains("test-lore"))
     }
 
@@ -104,7 +104,7 @@ class LorebookTransformerTest {
         // resultado:declaration + lorebook-before + system + user = 4
         assertEquals(4, result.size)
         assertTrue(result[1].content.contains("lorebook"))
-        assertTrue(result[1].content.contains("gremio de magos"))
+        assertTrue(result[1].content.contains("Gremio de Magos"))
     }
 
     @Test

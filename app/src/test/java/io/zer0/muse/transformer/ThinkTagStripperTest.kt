@@ -34,7 +34,7 @@ class ThinkTagStripperTest {
 
     @Test
     fun `strip all closed blocks`() {
-        assertEquals("A y B", stripThinkTags("<think>1</think>un<think>2</think>b"))
+        assertEquals("unb", stripThinkTags("<think>1</think>un<think>2</think>b"))
     }
 
     @Test

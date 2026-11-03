@@ -67,8 +67,8 @@ class ProactiveReplyParserTest {
 
     @Test
     fun `El texto extralargo se corta dentro del límite superior según los límites de la oración`() {
-        val sentence = "Pasé por esa tienda hoy y recordé que dijiste que querías comer sus fideos. Me pregunto si todavía quieres ir."
-        val longBody = sentence.repeat(10)
+        val sentence = "Recuerdo muy bien el día en que pasamos por aquella tienda pequeña y dijiste que querías comer sus fideos."
+        val longBody = sentence + "continuación".repeat(30)
         val raw = """{"skip": false, "content": "$longBody", "tone": "cuidar"}"""
 
         val result = ProactiveReplyParser.parse(raw) as ProactiveReplyParser.Result.Message
@@ -83,7 +83,7 @@ class ProactiveReplyParserTest {
 
     @Test
     fun `No se ha dicho ni una sola palabra`() {
-        val raw = """{"skip": false, "content": "si"}"""
+        val raw = """{"skip": false, "content": "s"}"""
 
         val result = ProactiveReplyParser.parse(raw)
 

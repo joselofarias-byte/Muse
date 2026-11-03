@@ -99,7 +99,7 @@ class SkillImporterTest {
     fun `prompt skill rejects over-long text`() {
         val tooLong = "largo".repeat(SkillImporter.MAX_PROMPT_CHARS + 1)
         val reason = errReason(promptSkillJson(prompt = tooLong))
-        assertTrue("Debería indicar que es demasiado largo.,real: $reason", reason.contains("demasiado tiempo"))
+        assertTrue("Debería indicar que es demasiado largo.,real: $reason", reason.contains("Texto de comando demasiado largo"))
     }
 
     @Test
@@ -127,7 +127,7 @@ class SkillImporterTest {
               "requiredJson": "[\"path\"]"
             }
         """.trimIndent()
-        assertTrue(errReason(json).contains("autorización de seguridad"))
+        assertTrue(errReason(json).contains("revisión de seguridad"))
     }
 
     @Test
@@ -138,7 +138,7 @@ class SkillImporterTest {
 
     @Test
     fun `prompt skill rejects reserved id and plugin category`() {
-        assertTrue(errReason(promptSkillJson(id = "read_file")).contains("Incorporado"))
+        assertTrue(errReason(promptSkillJson(id = "read_file")).contains("habilidades incorporadas"))
         assertTrue(errReason(promptSkillJson(category = "plugin")).contains("category"))
     }
 
@@ -209,6 +209,6 @@ class SkillImporterTest {
             category = "custom",
         )
         assertTrue(bad is SkillImporter.Result.Err)
-        assertTrue((bad as SkillImporter.Result.Err).reason.contains("Incorporado"))
+        assertTrue((bad as SkillImporter.Result.Err).reason.contains("habilidades incorporadas"))
     }
 }

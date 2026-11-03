@@ -99,7 +99,7 @@ class KnowledgeKeywordFallbackTest {
             content = "Contenido de la base de conocimientos",
         )
 
-        coEvery { fts.searchBm25Safe("\"conocimiento\" \"base de conocimientos\"", any()) } returns listOf(
+        coEvery { fts.searchBm25Safe("base de conocimientos", any()) } returns listOf(
             KnowledgeChunkFtsHit("chunk-cn", -1.0),
         )
         coEvery { chunks.getByIds(listOf("chunk-cn")) } returns listOf(chunk)

@@ -1759,6 +1759,7 @@ class SystemPromptAssembler(
          */
         internal val GENERIC_OPENINGS = listOf(
             "eres un", "eres un", "jugarás", "tu eres ahora", "tu papel es", "tu eres",
+            "Usted es un",
             "You are a", "You are an", "You are", "Act as", "You'll play",
         )
 

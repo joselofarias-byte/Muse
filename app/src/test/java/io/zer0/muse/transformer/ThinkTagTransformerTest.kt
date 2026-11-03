@@ -207,6 +207,6 @@ class ThinkTagTransformerTest {
     @Test
     fun `stripThinkTags handles text before and after tags`() {
         val result = stripThinkTags("comienzo<think>medio</think>finalizando")
-        assertEquals("Principio y final", result)
+        assertEquals("comienzofinalizando", result)
     }
 }

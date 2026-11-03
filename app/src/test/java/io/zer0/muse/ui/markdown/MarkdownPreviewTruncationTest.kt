@@ -78,7 +78,7 @@ class MarkdownPreviewTruncationTest {
 
     @Test
     fun `truncates on block boundary instead of mid paragraph`() {
-        val blockOne = "primer párrafo".repeat(20) // 60 palabra
+        val blockOne = "primer párrafo".repeat(5) // 70 caracteres, dentro del límite de 80
         val blockTwo = "Segundo párrafo".repeat(20)
         val body = "$blockOne\n\n$blockTwo"
 

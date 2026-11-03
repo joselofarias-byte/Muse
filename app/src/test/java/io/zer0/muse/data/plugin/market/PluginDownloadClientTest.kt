@@ -64,7 +64,7 @@ class PluginDownloadClientTest {
         val result = client().download(entry(sha256("expected-bytes")))
 
         assertFalse(result.success)
-        assertTrue(result.error.orEmpty().contains("Resumen"))
+        assertTrue(result.error.orEmpty().contains("resumen"))
         assertTrue(staging.listFiles().isNullOrEmpty())
     }
 

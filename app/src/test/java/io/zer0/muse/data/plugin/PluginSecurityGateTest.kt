@@ -46,7 +46,7 @@ class PluginSecurityGateTest {
         )
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("Formato ilegal") == true)
+        assertTrue(decision.reason?.contains("formato del nombre de la capacidad") == true)
     }
 
     @Test
@@ -81,7 +81,7 @@ class PluginSecurityGateTest {
         )
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("El nombre o el nombre de la función es ilegal.") == true)
+        assertTrue(decision.reason?.contains("nombre de la función es ilegal") == true)
     }
 
     @Test
@@ -219,7 +219,7 @@ class PluginSecurityGateTest {
         val decision = PluginSecurityGate.review(packageOf(tools = emptyList()))
 
         assertFalse(decision.allowed)
-        assertTrue(decision.reason?.contains("No se declaran herramientas") == true)
+        assertTrue(decision.reason?.contains("ninguna herramienta") == true)
     }
 
     @Test

@@ -21,7 +21,7 @@ class SwitchAgentAssistantRefcountTest {
         val src = source()
         val start = src.indexOf("AUD-UI-F4")
         assertTrue("Bloque de protección AUD-UI-F4 no encontrado", start >= 0)
-        val body = src.substring(start, (start + 800).coerceAtMost(src.length))
+        val body = src.substring(start, (start + 1100).coerceAtMost(src.length))
         assertTrue(
             "Primero se deben tomar instantáneas de las sesiones antiguas. id",
             body.contains("val previousAgentSessionId = _state.value.agentSessionId"),
@@ -38,7 +38,7 @@ class SwitchAgentAssistantRefcountTest {
         val src = source()
         val start = src.indexOf("AUD-UI-F4")
         assertTrue("Bloque de protección AUD-UI-F4 no encontrado", start >= 0)
-        val body = src.substring(start, (start + 800).coerceAtMost(src.length))
+        val body = src.substring(start, (start + 1100).coerceAtMost(src.length))
         assertTrue(
             "La misma identificación no puede adquirir y al mismo tiempo release",
             body.contains("previousAgentSessionId != sessionId"),

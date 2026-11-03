@@ -120,7 +120,7 @@ class SubagentRunnerTest {
     fun `renderBudgetExhausted includes maxToolCalls value`() {
         val text = SubagentXmlRenderer.renderBudgetExhausted(8)
         assertTrue(text.contains("8"))
-        assertTrue(text.contains("Límite de cuota"))
+        assertTrue(text.contains("límite de cuota"))
     }
 
     @Test
@@ -665,7 +665,7 @@ class SubagentRunnerTest {
 
             coVerify(exactly = 0) { mockToolRegistry.executeFromJson(probeTool, any()) }
             assertFalse(result.progressEntries[0].success)
-            assertTrue(result.progressEntries[0].result.contains("Rechazo duro paramétrico"))
+            assertTrue(result.progressEntries[0].result.contains("Rechazo duro parametrizado"))
         } finally {
             // La política de parámetros es un registro global.:Vuelva a cambiarlo a "sin intercepción" inmediatamente después de su uso.,Sin efectos secundarios de otras pruebas.
             ParamPolicies.register(probeTool) { null }

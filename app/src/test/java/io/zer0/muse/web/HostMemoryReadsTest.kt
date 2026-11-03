@@ -123,14 +123,14 @@ class HostMemoryReadsTest {
         val content = "A los usuarios les gusta acudir los fines de semana a librerías de segunda mano en el oeste de la ciudad." + "Hay muchos detalles más adelante.".repeat(20)
 
         val event = HostMemoryReads.searchEvent(
-            query = "librería usada",
+            query = "segunda mano",
             records = listOf(record(7, content = content, pinned = true)),
             requestId = "req-search",
         )
 
         assertEquals(HostMemoryReads.TYPE_SEARCH, event.type)
         val hit = event.memoryHits.single()
-        assertTrue("El fragmento debe contener la palabra clave.: ${hit.snippet}", hit.snippet.contains("librería usada"))
+        assertTrue("El fragmento debe contener la palabra clave.: ${hit.snippet}", hit.snippet.contains("segunda mano"))
         assertTrue(hit.snippet.length <= HostMemoryReads.SNIPPET_LIMIT)
         assertEquals("7", hit.entry.id)
         assertTrue(hit.entry.pinned)

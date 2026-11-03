@@ -123,7 +123,7 @@ class PreferenceStore(private val context: Context) {
      * No debes confiar en las reglas de cadenas para adivinar.
      */
     private fun normalize(text: String): String =
-        text.trim().lowercase().replace(Regex("""\s+"""), "").trimEnd('.', '.', '!', '!', '?', '?')
+        text.trim().lowercase().replace(Regex("""\s+"""), "").trimEnd('。', '.', '！', '!', '？', '?')
 
     private fun decode(json: String): List<UserPreference> {
         if (json.isBlank()) return emptyList()

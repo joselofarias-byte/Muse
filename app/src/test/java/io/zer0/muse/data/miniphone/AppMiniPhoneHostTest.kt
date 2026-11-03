@@ -188,7 +188,7 @@ class AppMiniPhoneHostTest {
         val body = host(generator = generator).composeMoment("a1", "el clima de hoy")
 
         assertEquals("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.", body)
-        assertTrue("Los materiales deben indicar que están publicados en Momentos.: ${captured.captured}", captured.captured.contains("Momentos"))
+        assertTrue("Los materiales deben indicar que están publicados en Moments.: ${captured.captured}", captured.captured.contains("Moments"))
         assertTrue("Se deben traer materiales hint: ${captured.captured}", captured.captured.contains("el clima de hoy"))
     }
 
@@ -201,12 +201,12 @@ class AppMiniPhoneHostTest {
 
         host.composeMoment("a1", null)
         assertBannedMarks(captured.captured)
-        assertTrue("Al realizar actualizaciones, indique que las publicó usted mismo.: ${captured.captured}", captured.captured.contains("No responder a nadie"))
+        assertTrue("Al realizar actualizaciones, indique que las publicó usted mismo.: ${captured.captured}", captured.captured.contains("no es una respuesta para nadie"))
         assertTrue("Requisitos dinámicos 30-80 palabras", captured.captured.contains("30-80"))
 
         host.composeProactiveMessage("a1", null)
         assertBannedMarks(captured.captured)
-        assertTrue("Al enviar un mensaje privado, indique que está hablando usted mismo.: ${captured.captured}", captured.captured.contains("Lo que dijiste por iniciativa propia."))
+        assertTrue("Al enviar un mensaje privado, indique que está hablando usted mismo.: ${captured.captured}", captured.captured.contains("tomó la iniciativa de decir"))
         assertTrue("Sólo una o dos frases en un mensaje privado.", captured.captured.contains("una o dos frases"))
     }
 
@@ -446,7 +446,7 @@ class AppMiniPhoneHostTest {
         BANNED_MARKS.forEach { mark ->
             assertTrue("Al material le faltan elementos prohibidos \"$mark\": $material", material.contains(mark))
         }
-        assertTrue("El material requiere que solo se imprima el texto principal.: $material", material.contains("Sólo texto de salida"))
+        assertTrue("El material requiere que solo se imprima el texto principal.: $material", material.contains("texto en sí"))
     }
 
     /** El ensamblaje de personalidad resulta cuando solo hay un mensaje de usuario:Un mensaje del sistema + este mensaje. */
@@ -518,13 +518,13 @@ class AppMiniPhoneHostTest {
 
         val BANNED_MARKS = listOf(
             "MOOD",
-            "valor emocional",
-            "Favorabilidad",
+            "valor de opinión",
+            "preferencia",
             "barra de estado",
             "etiqueta del sistema",
-            "acción de soporte",
+            "acción entre corchetes",
             "narración",
-            "Marca de tiempo",
+            "marca de tiempo",
             "comillas",
             "#tema",
         )

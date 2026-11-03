@@ -415,7 +415,7 @@ class UiAgentRunner(
                 mapOf("text" to action.text)
             }
             is UiAgentProtocol.Action.Key -> {
-                val key = virtualKeyName(action.key) ?: return "Botones de pantalla virtual no compatibles:${action.key}"
+                val key = virtualKeyName(action.key) ?: return "No compatible: botones de pantalla virtual ${action.key}"
                 mapOf("key" to key)
             }
             is UiAgentProtocol.Action.Finish, is UiAgentProtocol.Action.Wait, is UiAgentProtocol.Action.Launch -> return "ok"
@@ -430,7 +430,7 @@ class UiAgentRunner(
             is UiAgentProtocol.Action.Finish, is UiAgentProtocol.Action.Wait, is UiAgentProtocol.Action.Launch -> return "ok"
         }
         val command = VirtualDisplayInputCommand.build(displayId, actionName, args)
-            ?: return if (action is UiAgentProtocol.Action.Key) "Botones de pantalla virtual no compatibles:${action.key}" else "El parámetro de acción de la pantalla virtual no es válido"
+            ?: return if (action is UiAgentProtocol.Action.Key) "No compatible: botones de pantalla virtual ${action.key}" else "El parámetro de acción de la pantalla virtual no es válido"
         when (val check = DeviceCommandPolicy.validate(command.shellCommand)) {
             is DeviceCommandPolicy.Check.Invalid -> return "comando rechazado:${check.reason}"
             DeviceCommandPolicy.Check.Valid -> Unit

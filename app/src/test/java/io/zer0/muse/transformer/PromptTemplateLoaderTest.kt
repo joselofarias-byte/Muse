@@ -47,11 +47,15 @@ class PromptTemplateLoaderTest {
 
     @Test
     fun `supported non-chinese locales fall back to english`() {
-        // dia/Corea/Oeste/portugués/Aún no existe una plantilla exclusiva para Rusia,Debería recurrir al inglés en lugar del chino.
+        // ja/ko/pt/ru no tienen plantilla propia y recurren al inglés.
+        // es tiene plantilla española propia y no debe coincidir con la inglesa.
         val en = loader.render("tool_discipline", "en")
-        for (loc in listOf("ja", "ko", "es", "pt", "ru")) {
+        for (loc in listOf("ja", "ko", "pt", "ru")) {
             assertEquals("$loc La disciplina de las herramientas inglesas debería retroceder", en, loader.render("tool_discipline", loc))
         }
+        val es = loader.render("tool_discipline", "es")
+        assertEquals("es debe usar la plantilla en español", loader.render("tool_discipline", "es"), es)
+        assertNotEquals("es no debe coincidir con la plantilla en inglés", en, es)
     }
 
     @Test
@@ -90,7 +94,7 @@ class PromptTemplateLoaderTest {
 
     @Test
     fun `tool discipline declares three tier web priority`() {
-        assertTrue("La disciplina de herramientas debe declarar prioridad de nivel tres", loader.render("tool_discipline", "zh").contains("Prioridad de nivel tres"))
+        assertTrue("La disciplina de herramientas debe declarar prioridad de nivel tres", loader.render("tool_discipline", "zh").contains("Prioridad de nivel 3"))
         assertTrue("La disciplina de herramientas inglesas debería declarar prioridad de tercer nivel", loader.render("tool_discipline", "en").contains("Three-tier priority"))
     }
 

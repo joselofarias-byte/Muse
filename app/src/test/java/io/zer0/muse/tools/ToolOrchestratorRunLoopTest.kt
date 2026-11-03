@@ -247,7 +247,7 @@ class ToolOrchestratorRunLoopTest {
         assertTrue(history.any { it.role == MessageRole.TOOL && it.content.contains("tool_execution_paused") })
         assertEquals(TaskStepStatus.CANCELLED, uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().status)
         assertTrue(
-            uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().result.contains("suspendido"),
+            uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().result.contains("En pausa"),
         )
     }
 

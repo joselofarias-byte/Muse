@@ -117,7 +117,7 @@ class ConversationExporterTest {
             chatTitle = "sesión",
             locale = Locale.SIMPLIFIED_CHINESE,
         )
-        assertTrue(out.contains("lang=\"zh-CN\""))
+        assertTrue(out.contains("lang=\"es\""))
     }
 
     @Test

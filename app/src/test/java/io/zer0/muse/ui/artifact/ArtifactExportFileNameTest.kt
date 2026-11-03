@@ -20,7 +20,7 @@ class ArtifactExportFileNameTest {
 
     @Test
     fun `título chino reservado`() {
-        assertEquals("análisis de datos.txt", artifactExportFileName("análisis de datos"))
+        assertEquals("análisis_de_datos.txt", artifactExportFileName("análisis de datos"))
     }
 
     @Test

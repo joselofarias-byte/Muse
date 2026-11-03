@@ -150,7 +150,7 @@ class EmbeddingServiceCacheTest {
         val provider = service.getProvider(cloudConfig())
 
         assertTrue(provider is LocalKeywordEmbeddingProvider)
-        assertTrue("API Key La degradación provocada por estar vacío debe tener un registro de advertencia.,real:$warnings", warnings.any { it.contains("API Key esta vacio") })
+        assertTrue("API Key La degradación provocada por estar vacío debe tener un registro de advertencia.,real:$warnings", warnings.any { it.contains("La clave API está vacía") })
     }
 
     @Test

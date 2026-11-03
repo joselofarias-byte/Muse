@@ -80,8 +80,8 @@ class TranslatePromptStylePrecedenceTest {
             glossary = glossary,
         )
         // Después de extraer el asistente compartido, las filas del glosario solo pueden provenir de un lugar; Si hay duplicados en el futuro, fallarán aquí primero.
-        assertEquals(1, countWhere(single, "Consulte el siguiente glosario."))
-        assertEquals(1, countWhere(batch, "Consulte el siguiente glosario."))
+        assertEquals(1, countWhere(single, "Consulte el siguiente glosario para la traducción."))
+        assertEquals(1, countWhere(batch, "Consulte el siguiente glosario para la traducción."))
         assertEquals(1, countWhere(single, "API→API"))
         assertEquals(1, countWhere(batch, "API→API"))
     }

@@ -30,8 +30,8 @@ class UserMessageTimeContextTest {
 
         assertTrue(context.contains("2026-10-01 09:00:00 UTC"))
         assertTrue(context.contains("2026-10-01 09:01:05 UTC"))
-        assertTrue(context.contains("1 minutos 5 segundos"))
-        assertTrue(context.contains("No se puede reemplazar por el pensamiento asistente, la ejecución de herramientas o la solicitud de API que consumen mucho tiempo."))
+        assertTrue(context.contains("1 puntos 5 segundos"))
+        assertTrue(context.contains("no se puede sustituir por el pensamiento del asistente, la ejecución de la herramienta o el tiempo transcurrido de la solicitud API."))
     }
 
     @Test
@@ -41,7 +41,7 @@ class UserMessageTimeContextTest {
             ZoneId.of("UTC"),
         )
 
-        assertTrue(context.contains("No existe ningún mensaje de usuario anterior comparable"))
+        assertTrue(context.contains("No hay ningún mensaje de usuario anterior con el que comparar"))
         assertFalse(context.contains("intervalo de mensaje:"))
     }
 

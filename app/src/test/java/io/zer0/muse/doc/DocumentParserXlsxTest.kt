@@ -66,7 +66,7 @@ class DocumentParserXlsxTest {
         """.trimIndent()
         val list = parser.parseSharedStrings(xml)
         assertEquals(2, list.size)
-        assertEquals("negrita normal", list[0])
+        assertEquals("Negritaordinario", list[0])
         assertEquals("texto plano", list[1])
     }
 

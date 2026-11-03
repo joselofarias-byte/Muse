@@ -35,8 +35,8 @@ class ConversationRecallFormatterTest {
         assertTrue(section.contains("Rastreo del texto de la conversación"))
         assertTrue(section.contains("Usuario"))
         assertTrue(section.contains("asistente"))
-        assertTrue(section.contains("Especialmente después de la compresión, todavía queremos poder rastrear los detalles."))
-        assertTrue(section.contains("Sólo como referencia histórica"))
+        assertTrue(section.contains("especialmente después de comprimirlo, y aún quieren poder rastrear los detalles."))
+        assertTrue(section.contains("Sólo se utiliza como referencia histórica"))
     }
 
     @Test

@@ -78,7 +78,7 @@ class InternalMarkupSanitizerCardStateTest {
 
         val exported = InternalMarkupSanitizer.exportContent(raw)
 
-        assertEquals("hola mundo", exported)
+        assertEquals("Hola mundo", exported)
         assertFalse(exported.contains("card_state"))
     }
 

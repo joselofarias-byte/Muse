@@ -689,11 +689,11 @@ class MuseDbMigrationTest {
                         )
                         db.execSQL(
                             "INSERT INTO knowledge_chunks(id, doc_id, content) " +
-                                "VALUES ('chunk-1', 'doc-1', 'Búsqueda de base de conocimientos')",
+                                "VALUES ('chunk-1', 'doc-1', '知识库检索')",
                         )
                         db.execSQL(
                             "INSERT INTO knowledge_chunks_fts(chunkId, doc_id, text_content) " +
-                                "VALUES ('chunk-1', 'doc-1', 'Búsqueda de base de conocimientos')",
+                                "VALUES ('chunk-1', 'doc-1', '知识库检索')",
                         )
                     }
 
@@ -708,7 +708,7 @@ class MuseDbMigrationTest {
             db.query(
                 """
                 SELECT chunkId FROM knowledge_chunks_fts
-                WHERE text_content MATCH '"conocimiento" "base de conocimientos"'
+                WHERE text_content MATCH '"知识" "识库"'
                 """.trimIndent(),
             ).use { cursor ->
                 assertTrue("Después de la migración, los ngrams chinos deberían verse afectados por el FTS", cursor.moveToFirst())

@@ -35,7 +35,7 @@ class DailySummaryRescheduleContractTest {
     @Test
     fun `worker does not renew a slot that is no longer configured`() {
         val start = source.indexOf("if (!shouldContinueForConfiguredSlot(slotHour, configuredSlots))")
-        val end = source.indexOf("// Worker Compartiendo el mismo servicio con la remuneración de la recepción de la página de inicio.", start)
+        val end = source.indexOf("// Worker Comparte el mismo servicio con la compensación frontal de la página de inicio", start)
         check(start >= 0 && end > start) { "DailySummaryWorker stale-slot branch moved unexpectedly" }
         val staleBranch = source.substring(start, end)
         assertFalse(

@@ -131,7 +131,7 @@ class ImageGenPromptIndexTest {
         val actual = imageGenPromptsByMessage(messages)
         val ids = messages.map { it.id.toString() }
 
-        assertEquals("Las palabras breves extralargas están limitadas a 60 caracteres y agregan puntos suspensivos.", "largo".repeat(60) + "…", actual[ids[0]])
+        assertEquals("Las palabras breves extralargas están limitadas a 60 caracteres y agregan puntos suspensivos.", "largo".repeat(12) + "…", actual[ids[0]])
         assertEquals(legacyPrompts(messages), actual)
     }
 

@@ -28,7 +28,7 @@ class MoodSkinParserTest {
     fun cleanForExport_removesAllProtocolTags() {
         val input = "<moodfx>desire</moodfx> Hola [huge]mundo[/huge] [red]peligro[/red]"
         val cleaned = MoodSkinParser.cleanForExport(input)
-        assertEquals(" hola mundo peligro", cleaned)
+        assertEquals(" Hola mundo peligro", cleaned)
     }
 
     @Test

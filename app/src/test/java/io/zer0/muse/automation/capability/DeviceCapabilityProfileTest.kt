@@ -130,22 +130,22 @@ class DeviceCapabilityProfileTest {
     fun `operating guide covers channel selection verification and escalation`() {
         val guide = DeviceCapabilityProfile().renderOperatingGuide()
         // Detectar primero antes de actuar
-        assertTrue(guide, guide.contains("Confirma tu habilidad antes de actuar."))
+        assertTrue(guide, guide.contains("Confirme sus habilidades antes de actuar"))
         // Seleccione el canal de acuerdo con el nivel suficiente más bajo (evite tocar Root tan pronto como comience)
-        assertTrue(guide, guide.contains("Seleccione el canal según el nivel más bajo suficiente"))
+        assertTrue(guide, guide.contains("Seleccione canales según el nivel más bajo disponible"))
         // Las herramientas de la capa de aplicación no requieren autorización automatizada → Los procedimientos deben estar escritos; de lo contrario, el modelo omitirá la capa menos problemática.
         assertTrue(guide, guide.contains("app_list"))
         assertTrue(guide, guide.contains("app_launch"))
         assertTrue(guide, guide.contains("app_settings"))
         assertTrue(guide, guide.contains("app_force_stop"))
         // Cada paso de la verificación
-        assertTrue(guide, guide.contains("Verifica cada paso"))
+        assertTrue(guide, guide.contains("Cada paso debe ser verificado"))
         // Repetir el proceso de escritura del guión.
-        assertTrue(guide, guide.contains("Guión primero"))
+        assertTrue(guide, guide.contains("deben escribirse primero como scripts"))
         // Falta de autoridad para decir la verdad.
-        assertTrue(guide, guide.contains("Si te falta permiso, di la verdad."))
+        assertTrue(guide, guide.contains("Si faltan permisos, diga la verdad"))
         assertTrue(guide, guide.contains("display=auto"))
-        assertTrue(guide, guide.contains("Esta pantalla virtual exclusiva"))
+        assertTrue(guide, guide.contains("esta pantalla virtual exclusiva"))
     }
 
     // ── Hook límites de comportamiento ──────────────────────────────────────────

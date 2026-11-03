@@ -46,15 +46,15 @@ class ToolChannelPreflightTest {
         val blocked = ToolChannelPreflight.check("screen_tap", emptySet()) as ToolChannelPreflight.Result.Blocked
 
         assertTrue("Explica lo que falta", blocked.message.contains("Accesibilidad"))
-        assertTrue("Para abrir un camino", blocked.message.contains("ajustes"))
-        assertTrue("Para dejar claro que esta vez no se implementó.", blocked.message.contains("No ejecutado"))
+        assertTrue("Para abrir un camino", blocked.message.contains("Configuración"))
+        assertTrue("Para dejar claro que esta vez no se implementó.", blocked.message.contains("no se ejecutó"))
     }
 
     @Test
     fun `blocked message offers an alternative path`() {
         val blocked = ToolChannelPreflight.check("screen_tap", emptySet()) as ToolChannelPreflight.Result.Blocked
 
-        assertTrue("Proporcione alternativas; de lo contrario, el modelo simplemente lo volverá a intentar una y otra vez.", blocked.message.contains("Puedes usarlo en su lugar"))
+        assertTrue("Proporcione alternativas; de lo contrario, el modelo simplemente lo volverá a intentar una y otra vez.", blocked.message.contains("Primero puedes usar"))
     }
 
     @Test

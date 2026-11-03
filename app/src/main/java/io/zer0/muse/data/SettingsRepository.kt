@@ -3196,7 +3196,7 @@ class SettingsRepository(
             text.startsWith("escribir codigo") || text.startsWith("Programación") || text.startsWith("darse cuenta") ||
                 text.startsWith("debug") || text.startsWith("Depuración") || text.startsWith("función") ||
                 text.contains("código") || text.contains("bug") || text.contains("algoritmo") -> TaskType.CODE
-            text.startsWith("análisis") || text.startsWith("Resumen") || text.startsWith("Estadísticas") ||
+            text.startsWith("análisis") || text.startsWith("analizar") || text.startsWith("Resumen") || text.startsWith("Estadísticas") ||
                 text.startsWith("comparar") || text.startsWith("Contraste") || text.startsWith("informe") ||
                 text.contains("análisis de datos") -> TaskType.ANALYSIS
             text.startsWith("por qué") || text.startsWith("como") || text.startsWith("razonamiento") ||

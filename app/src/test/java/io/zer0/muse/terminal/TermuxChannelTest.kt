@@ -70,7 +70,7 @@ class TermuxChannelTest {
     fun `Elementos esenciales de arranque no instalados`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.NotInstalled)
         assertTrue(text.contains("Termux"))
-        assertTrue(text.contains("Instalación"))
+        assertTrue(text.contains("no está instalado"))
     }
 
     @Test

@@ -30,7 +30,7 @@ class EncodingToolsRegistrarTest {
         EncodingToolsRegistrar(context, registry)
         val outcome = registry.execute("url_encode", mapOf("text" to "Hola world"))
         assertTrue(!outcome.isError)
-        assertTrue(outcome.content.contains("%E4%BD%A0%E5%A5%BD"))
+        assertTrue(outcome.content.contains("Hola+world"))
     }
 
     @Test

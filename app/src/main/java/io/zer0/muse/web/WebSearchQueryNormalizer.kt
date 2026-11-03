@@ -27,7 +27,6 @@ object WebSearchQueryNormalizer {
     )
 
     private val TRAILING_FILLERS = listOf(
-        "?",
         "todavía",
         "barra",
         "ah",
@@ -96,7 +95,7 @@ object WebSearchQueryNormalizer {
         // 2. Eliminar partículas modales al final de las oraciones.(carácter único,Solo ve a un nivel)
         for (filler in TRAILING_FILLERS) {
             if (query.endsWith(filler) && query.length > filler.length) {
-                query = query.dropLast(filler.length).trimEnd(' ', ',', ',', '.', '?', '?')
+                query = query.dropLast(filler.length).trimEnd(' ', ',', ',', '.')
                 break
             }
         }

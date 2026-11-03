@@ -57,7 +57,7 @@ class PreferenceStoreTest {
     fun `duplicate detection ignores whitespace and trailing punctuation`() = runTest {
         store.add("No uses estímulos vacíos")
 
-        val added = store.add("  No utilices estímulos vacíos. ")
+        val added = store.add("  No uses estímulos vacíos. ")
 
         assertFalse("Si son iguales después de la normalización, no se deben agregar.", added)
         assertEquals(1, store.enabledPreferences().size)

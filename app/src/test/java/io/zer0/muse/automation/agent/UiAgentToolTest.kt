@@ -32,8 +32,8 @@ class UiAgentToolTest {
 
         val description = registry.listTools().first { it.name == "ui_agent" }.description
 
-        assertTrue(description.contains("Las capturas de pantalla pueden contener información confidencial, como chats o cuentas."))
-        assertTrue(description.contains("Enviar al modelo de visión seleccionado para su análisis"))
+        assertTrue(description.contains("información confidencial como chat o cuenta"))
+        assertTrue(description.contains("enviará al modelo visual seleccionado para su análisis"))
     }
 
     @Test

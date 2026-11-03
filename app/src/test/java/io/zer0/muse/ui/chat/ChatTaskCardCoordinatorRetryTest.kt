@@ -194,7 +194,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         val step = stepOf(accessor, "s0")
         assertEquals(TaskStepStatus.FAILED, step?.status)
-        assertTrue("Se le pedirá que vuelva a intentarlo manualmente.", step!!.result.contains("No reintentar automáticamente"))
+        assertTrue("Se le pedirá que vuelva a intentarlo manualmente.", step!!.result.contains("No lo vuelve a intentar automáticamente"))
         io.mockk.coVerify(exactly = 0) { registry.executeFromJson("send_sms", any<String>()) }
     }
 

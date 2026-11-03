@@ -67,6 +67,6 @@ class SkillMediaToolsImplTest {
             "{}",
         )
 
-        assertTrue(output.contains("Eliminado") || output.contains("La verificación falló"))
+        assertTrue(output.contains("la herramienta se eliminó") || output.contains("verificación de entrada del complemento falló"))
     }
 }

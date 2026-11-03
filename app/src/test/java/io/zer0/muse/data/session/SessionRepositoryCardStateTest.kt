@@ -110,7 +110,7 @@ class SessionRepositoryCardStateTest {
 
         val indexed = ftsContentFor(messageId)
 
-        assertTrue("Los resúmenes de texto aún deben poder buscarse", indexed.contains("dormir"))
+        assertTrue("Los resúmenes de texto aún deben poder buscarse", indexed.contains("sueño"))
         assertFalse("La etiqueta de estado de la tarjeta no se puede indexar", indexed.contains("card"))
         assertFalse("La identidad de la tarjeta no se puede indexar", indexed.contains("cardid"))
         assertFalse("JSON Los valores clave no se pueden indexar", indexed.contains("hours"))
@@ -129,7 +129,7 @@ class SessionRepositoryCardStateTest {
         )
 
         assertEquals("una frase común", database.sessionDao().getById(sessionId)!!.lastMessagePreview)
-        assertEquals("Ordinario, una frase, una frase.", ftsContentFor(messageId).trim())
+        assertEquals("una frase común", ftsContentFor(messageId).trim())
     }
 
     private suspend fun newSession(tag: String): String {

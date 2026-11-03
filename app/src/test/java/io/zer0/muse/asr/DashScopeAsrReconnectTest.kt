@@ -47,9 +47,9 @@ class DashScopeAsrReconnectTest {
     @Test
     fun `exhausted message is user visible degradation with manual retry hint`() {
         val message = DashScopeReconnectPolicy.EXHAUSTED_MESSAGE
-        assertTrue(message.contains("Vuelva a conectarse 3 veces"))
-        assertTrue(message.contains("Reservado"))
-        assertTrue(message.contains("Empezar a grabar de nuevo"))
+        assertTrue(message.contains("Se volvió a conectar automáticamente 3 veces"))
+        assertTrue(message.contains("retenido"))
+        assertTrue(message.contains("comience a grabar nuevamente"))
     }
 
     // ── Sentencia de acción de desconexión ─────────────────────────────────────────────────────

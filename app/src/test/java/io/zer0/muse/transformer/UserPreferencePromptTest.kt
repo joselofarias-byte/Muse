@@ -37,8 +37,8 @@ class UserPreferencePromptTest {
     fun `wording marks it as a hard constraint not a suggestion`() {
         val out = render(listOf("No uses estímulos vacíos"))
 
-        assertTrue("Hay que decir claramente que es una limitación dura.", out.contains("Debe cumplir con"))
-        assertTrue("Para aclarar prioridades", out.contains("Prioridad superior a"))
+        assertTrue("Hay que decir claramente que es una limitación dura.", out.contains("limitaciones estrictas"))
+        assertTrue("Para aclarar prioridades", out.contains("tener prioridad sobre"))
         assertFalse("No se pueden escribir como sugerencias suaves.", out.contains("haz tu mejor esfuerzo"))
     }
 
@@ -46,8 +46,8 @@ class UserPreferencePromptTest {
     fun `conflict handling is spelled out`() {
         val out = render(listOf("No uses estímulos vacíos"))
 
-        assertTrue("En caso de conflicto, prevalecerá la preferencia. Sea claro.", out.contains("Sujeto a esto"))
-        assertTrue("Explique cuándo no puede satisfacer sus necesidades en lugar de ignorarlas en silencio.", out.contains("explicar razones"))
+        assertTrue("En caso de conflicto, prevalecerá la preferencia. Sea claro.", out.contains("prevalecerá cuando entre en conflicto"))
+        assertTrue("Explique cuándo no puede satisfacer sus necesidades en lugar de ignorarlas en silencio.", out.contains("explique el motivo"))
     }
 
     @Test

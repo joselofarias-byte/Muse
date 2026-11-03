@@ -70,16 +70,16 @@ class MoodSkinInlineEffectParityTest {
         assertFalse(MoodSkinParser.containsInlineEffect("El texto no tiene efectos especiales."))
         assertTrue("No distingue entre mayúsculas y minúsculas", MoodSkinParser.containsInlineEffect("Texto[GlOw]brillante[/GLOW]"))
 
-        assertEquals("Terminaciones de palabras brillantes en el texto.", MoodSkinParser.stripInlineEffects("Texto[glow]palabras brillantes[/glow]finalizando"))
+        assertEquals("Textopalabras brillantesfinalizando", MoodSkinParser.stripInlineEffects("Texto[glow]palabras brillantes[/glow]finalizando"))
         assertEquals("Texto original", MoodSkinParser.stripInlineEffects("Texto original"))
         assertEquals(
             "También se deben eliminar las letras mayúsculas y minúsculas mixtas.",
-            "Mayúsculas y minúsculas",
+            "mayúsculasconminúscula",
             MoodSkinParser.stripInlineEffects("[Glow]mayúsculas[/GLOW]con[Big]minúscula[/bIg]"),
         )
         assertEquals(
             "Se despegan varias secciones en secuencia y la última sección no se ve afectada por la sección anterior.",
-            "uno dos tres",
+            "unodostres",
             MoodSkinParser.stripInlineEffects("[glow]uno[/glow][red]dos[/red][shake]tres[/shake]"),
         )
         assertEquals(
@@ -92,7 +92,7 @@ class MoodSkinInlineEffectParityTest {
     @Test
     fun `cleanForExport still strips moodfx then inline effects`() {
         val raw = "<moodfx>rage</moodfx>Texto[glow]palabras brillantes[/glow]"
-        assertEquals("Palabras brillantes en el texto principal.", MoodSkinParser.cleanForExport(raw))
+        assertEquals("Textopalabras brillantes", MoodSkinParser.cleanForExport(raw))
         assertEquals("El efecto peeling es el mismo que antes del cambio.", legacyStrip("Texto[glow]palabras brillantes[/glow]"), MoodSkinParser.cleanForExport(raw))
     }
 }

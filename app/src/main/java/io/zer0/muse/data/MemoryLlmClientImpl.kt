@@ -264,7 +264,7 @@ internal fun resolveMemoryLlmRawText(systemPrompt: String, text: String, reasoni
 }
 
 private val JSON_OUTPUT_PROMPT_RE = Regex(
-    """JSON\s*(?:matriz|objeto)|estricto\s*JSON|strict\s*JSON|JSON\s*(?:array|object)|Output\s+Format""",
+    """JSON\s*(?:matriz|objeto)|(?:matriz|objeto)\s+JSON|estricto\s*JSON|strict\s*JSON|JSON\s*(?:array|object)|Output\s+Format""",
     RegexOption.IGNORE_CASE,
 )
 

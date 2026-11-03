@@ -110,7 +110,7 @@ class PluginManagerTest {
         val result = draftInstall(manager, file)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("exceder el límite") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("excede el límite") == true)
         file.delete()
         Unit
     }
@@ -206,7 +206,7 @@ class PluginManagerTest {
         )
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("sandboxed") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("espacio aislado") == true)
         assertTrue(manager.list().none { it.id == "untrusted-full-access" })
     }
 
@@ -259,7 +259,7 @@ class PluginManagerTest {
         )
         val result = draftInstall(manager, zip)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("Formato ilegal") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("formato del nombre de la capacidad") == true)
         assertTrue(manager.list().isEmpty())
     }
 
@@ -387,7 +387,7 @@ class PluginManagerTest {
         val result = draftInstall(manager, zip(manifest = manifest))
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("Repetir") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("duplicado") == true)
         assertTrue(dao.rows.isEmpty())
     }
 

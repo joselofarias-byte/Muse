@@ -197,7 +197,7 @@ class ToolOrchestratorOutputWriteTest {
             "El registro de progreso del encabezado no debe ocupar la vista previa.",
             content.contains(progress.take(TOOL_RESULT_PREVIEW_CHARS)),
         )
-        assertTrue(content.contains("Vista previa al final de los resultados"))
+        assertTrue(content.contains("vista previa al final de los resultados"))
     }
 
     @Test
@@ -244,7 +244,7 @@ class ToolOrchestratorOutputWriteTest {
         val content = runWithOutput("read_file", bigOutput, orchestrator)
 
         assertTrue("Se debe conservar el resultado original de la herramienta.", content.startsWith(bigOutput))
-        assertTrue("La falta de creación de una copia del documento debe indicarse claramente.", content.contains("Tiempo de espera de colocación"))
+        assertTrue("La falta de creación de una copia del documento debe indicarse claramente.", content.contains("tiempo de espera de colocación"))
         assertFalse(content.contains("[El resultado completo se ha guardado en:"))
         // El bucle de herramientas no está bloqueado por la escritura lenta de 60 segundos(El resultado completo de la memoria se devolverá después de un tiempo de espera de 20 ms.)
         assertTrue(
@@ -262,7 +262,7 @@ class ToolOrchestratorOutputWriteTest {
         val content = runWithOutput("read_file", bigOutput, orchestrator)
 
         assertTrue("Se debe conservar el resultado original de la herramienta.", content.startsWith(bigOutput))
-        assertTrue(content.contains("Colocación fallida"))
+        assertTrue(content.contains("La salida completa falló"))
         assertFalse(content.contains("[El resultado completo se ha guardado en:"))
     }
 

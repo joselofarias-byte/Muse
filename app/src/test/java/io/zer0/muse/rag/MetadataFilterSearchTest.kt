@@ -154,7 +154,7 @@ class MetadataFilterSearchTest {
 
     @Test
     fun `title keyword filter applies to both paths`() = runBlocking {
-        val filter = VectorSearchService.MetadataFilter(titleKeyword = "infracción")
+        val filter = VectorSearchService.MetadataFilter(titleKeyword = "extracontractual")
 
         val vector = vectorService()
         val vectorHits = vector.search(sharedVector, topK = 10, threshold = 0f, metadataFilter = filter)
@@ -162,7 +162,7 @@ class MetadataFilterSearchTest {
         assertTrue("Después del filtrado del encabezado, los enlaces vectoriales deben quedar solo con doc-B", vectorHits.all { it.docId == "doc-B" })
 
         val hybridHits = hybridService(vector).hybridSearch(
-            query = "infracción",
+            query = "extracontractual",
             queryVector = sharedVector,
             topK = 10,
             threshold = 0f,
@@ -214,7 +214,7 @@ class MetadataFilterSearchTest {
             tag = "rag",
             startTime = 100L,
             endTime = 200L,
-            titleKeyword = "contrato",
+            titleKeyword = "contractual",
             sourceKeyword = "legal",
         )
         assertFalse(filter.isEmpty())

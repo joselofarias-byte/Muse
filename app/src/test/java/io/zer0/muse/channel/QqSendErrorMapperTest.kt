@@ -50,13 +50,13 @@ class QqSendErrorMapperTest {
     @Test
     fun `Si no está en el grupo, se le pedirá que se una primero al grupo`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034101}", isGroup = true)
-        assertTrue(text.contains("Únete al grupo"))
+        assertTrue(text.contains("agregue el robot al grupo"))
     }
 
     @Test
     fun `Si no hay permiso de mensaje activo, significa que el chat grupal no admite el envío activo`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034102}", isGroup = true)
-        assertTrue(text.contains("Toma la iniciativa"))
+        assertTrue(text.contains("no admite envíos activos"))
     }
 
     @Test

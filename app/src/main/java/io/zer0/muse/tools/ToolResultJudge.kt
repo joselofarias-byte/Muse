@@ -37,7 +37,7 @@ internal object ToolResultJudge {
      * palabras débiles de fracaso:Gran ambigüedad al aparecer solo(Probablemente solo el comienzo del texto normal.),Necesidad de cooperar"texto corto"o"seguido por separador"Se consideró un fracaso.
      */
     private val WEAK_FAILURE_PREFIXES = listOf(
-        "error", "falló", "anormal", "tiempo de espera", "Cancelar", "No configurado", "esta vacio", "No disponible", "incapaz", "No compatible",
+        "error", "falló", "anormal", "tiempo de espera", "Cancelar", "No configurado", "esta vacio", "No disponible", "incapaz", "No se puede", "No compatible",
     )
 
     /**
@@ -46,7 +46,7 @@ internal object ToolResultJudge {
     private val STRONG_FAILURE_PREFIXES = listOf(
         "La herramienta no existe", "Excepción de ejecución de herramienta", "Falló el análisis de parámetros", "skill excepción de ejecución",
         "Anulación de ruta", "Parámetro faltante", "Archivo demasiado grande", "El archivo no existe", "desconocido skill",
-        "URL debe", "No encontrado con identificación", "sub-asistente",
+        "URL debe", "Sesión no encontrada", "sub-asistente",
     )
 
     /** Las palabras de error débiles van seguidas inmediatamente de estos delimitadores.,Explique que es una etiqueta y no parte del texto. */

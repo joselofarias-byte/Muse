@@ -17,8 +17,8 @@ class ToolManifestCountSectionTest {
 
     @Test
     fun `reports the callable count`() {
-        assertTrue("Debe aparecer \"Se puede convocar esta ronda\"", section.contains("Se puede llamar a esta ronda."))
-        assertTrue(section.contains("Hay un total de 12 herramientas que se pueden invocar en esta ronda."))
+        assertTrue("Debe aparecer \"Se puede convocar esta ronda\"", section.contains("se pueden llamar esta ronda"))
+        assertTrue(section.contains("Un total de herramientas que se pueden llamar esta ronda. 12"))
     }
 
     @Test
@@ -35,7 +35,7 @@ class ToolManifestCountSectionTest {
 
     @Test
     fun `explains the find_tools tier separately`() {
-        assertTrue("Cabe señalar que find_tools tiene un calibre mayor.", section.contains("find_tools Puede enumerar 20"))
+        assertTrue("Cabe señalar que find_tools tiene un calibre mayor.", section.contains("find_tools puede listar 20"))
         assertFalse("No se puede confundir 20 con \"se puede llamar en esta ronda\" en un solo número", section.contains("Hay un total de 20 herramientas que se pueden invocar en esta ronda."))
     }
 }

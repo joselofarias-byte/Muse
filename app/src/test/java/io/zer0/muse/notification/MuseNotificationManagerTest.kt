@@ -40,6 +40,8 @@ class MuseNotificationManagerTest {
         val notification = Notification.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .build()
+        // Other tests in the same process can leave notifications behind (for example the update id 9001).
+        platformManager.cancelAll()
         val museIds = setOf(0x1000_0001, 0x1000_0002, 1004)
         val unrelatedId = 9000
         (museIds + unrelatedId).forEach { platformManager.notify(it, notification) }

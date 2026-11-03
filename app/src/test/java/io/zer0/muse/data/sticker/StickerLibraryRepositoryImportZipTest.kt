@@ -63,7 +63,7 @@ class StickerLibraryRepositoryImportZipTest {
         val zip = createZip(emptyMap(), emptyList())
         val result = repository.importZip(Uri.fromFile(zip), null)
         assertTrue("Se debe devolver un zip vacío. Error", result.isError)
-        assertTrue(result.toString().contains("No se encontró ninguna imagen"))
+        assertTrue(result.toString().contains("Archivo de imagen no encontrado"))
     }
 
     private fun createZip(entries: Map<String, ByteArray>, noiseEntries: List<String>): File {

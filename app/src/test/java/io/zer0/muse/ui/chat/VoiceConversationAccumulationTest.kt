@@ -138,12 +138,12 @@ class VoiceConversationAccumulationTest {
         asrEndsByItself("El clima de hoy")
 
         // La conversación reabierta reenviará el texto completo que contiene el contenido antiguo.:Deduplicación de prefijo,Sin empalmes repetidos
-        asrCallback("El clima esta agradable hoy")
-        assertEquals("El clima esta agradable hoy", voiceState.transcript.value)
+        asrCallback("El clima de hoy esta agradable")
+        assertEquals("El clima de hoy esta agradable", voiceState.transcript.value)
 
         // Continuar en la misma conversación.:Solo ponlo junto
-        asrCallback("¿Qué pasa mañana?")
-        assertEquals("Hace buen tiempo hoy. ¿Qué pasa mañana?", voiceState.transcript.value)
+        asrCallback("y manana")
+        assertEquals("El clima de hoy esta agradable y manana", voiceState.transcript.value)
         assertTrue("Nadie ha terminado todavía", sent.isEmpty())
     }
 
@@ -153,17 +153,17 @@ class VoiceConversationAccumulationTest {
         stateStore.state.value = uiState(ASRStatus.Listening)
         asrCallback("El clima de hoy")
         asrEndsByItself("El clima de hoy")
-        asrCallback("El clima esta agradable hoy")
-        asrCallback("¿Qué pasa mañana?")
+        asrCallback("El clima de hoy esta agradable")
+        asrCallback("y manana")
 
         // ASR está escuchando después de reiniciar la grabación
         stateStore.state.value = uiState(ASRStatus.Listening)
         controller.finishVoiceConversationListening()
         verify { audioCoordinator.stopVoiceConversationListening() }
         // El estado de cierre sólo lleva el último párrafo de esta sesión.,El texto enviado debe acumularse a lo largo de la ronda.
-        asrEndsByItself("¿Qué pasa mañana?")
+        asrEndsByItself("y manana")
 
-        assertEquals(listOf("Hace buen tiempo hoy. ¿Qué pasa mañana?"), sent)
+        assertEquals(listOf("El clima de hoy esta agradable y manana"), sent)
         assertEquals(VoiceConversationState.THINKING, voiceState.state.value)
         assertEquals("La acumulación se borra después del envío.", "", voiceState.transcript.value)
     }
@@ -203,8 +203,8 @@ class VoiceConversationAccumulationTest {
         stateStore.state.value = uiState(ASRStatus.Listening)
         asrCallback("El clima de hoy")
         asrEndsByItself("El clima de hoy")
-        asrCallback("El clima esta agradable hoy")
-        assertEquals("El clima esta agradable hoy", voiceState.transcript.value)
+        asrCallback("El clima de hoy esta agradable")
+        assertEquals("El clima de hoy esta agradable", voiceState.transcript.value)
 
         controller.interruptVoiceConversation()
 

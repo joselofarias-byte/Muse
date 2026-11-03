@@ -56,7 +56,7 @@ class TeamWorkflowExecutorTest {
 
         assertFalse(result.success)
         assertEquals(listOf("team-1/prepare"), calls)
-        assertTrue(result.error.orEmpty().contains("Condiciones"))
+        assertTrue(result.error.orEmpty().contains("condicional"))
     }
 
     @Test

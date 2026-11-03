@@ -19,7 +19,7 @@ class TaskerNotificationPolicyTest {
         val src = source()
         val start = src.indexOf("AUD-CHANNEL-F10")
         assertTrue("AUD-CHANNEL-F10 bloque de protección no encontrado", start >= 0)
-        val body = src.substring(start, (start + 600).coerceAtMost(src.length))
+        val body = src.substring(start, (start + 900).coerceAtMost(src.length))
         assertTrue(
             "Debe leer la política de notificación al usuario",
             body.contains("settings?.notificationPolicyFlow?.first()"),

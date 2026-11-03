@@ -674,6 +674,6 @@ class ToolOrchestratorPureFunctionsTest {
         // Se puede analizar como JSON = Los parámetros incompletos no se integran en el contenido del modelo.
         assertEquals("arguments_truncated_by_output_limit", jsonStringField(json, "error"))
         assertEquals("show\"card", jsonStringField(json, "tool"))
-        assertTrue(jsonStringField(json, "detail")!!.contains("Reiniciar"))
+        assertTrue(jsonStringField(json, "detail")!!.contains("Reinicie"))
     }
 }

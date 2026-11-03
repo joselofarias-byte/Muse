@@ -1,6 +1,7 @@
 package io.zer0.muse.rag
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,22 +41,19 @@ class TextChunkerOverlapTest {
     @Test
     fun `overlap Cuando es 0, no se produce superposición`() {
         val chunker = TextChunker(targetSize = 100, overlap = 0, markdownAware = true)
-        // Cada contenido es único, evita“El mismo texto reaparece naturalmente.”Determinación de superposición de interferencias
-        val text = (1..6).joinToString("\n\n") {
-            "párrafo$it:" + "contenido$".repeat(20)
+        // Cada párrafo termina en un marcador propio. El relleno "x" no repite el token de cola del primer bloque.
+        val text = (1..6).joinToString("\n\n") { n ->
+            "inicio$n-" + "x".repeat(70) + "-fin$n"
         }
 
         val chunks = chunker.split(text)
         assertTrue(chunks.size >= 2)
-        // overlap=0 Cuando, si el final del bloque anterior aparece en el bloque siguiente, sólo puede significar que el texto completo no está separado.
-        for (i in 0 until chunks.size - 1) {
-            val tail = chunks[i].content.takeLast(10)
-            if (tail.isBlank()) continue
-            assertTrue(
-                "overlap=0 tiempos $i La cola del bloque no debe copiarse al siguiente bloque como una superposición",
-                !chunks[i + 1].content.startsWith(tail),
-            )
-        }
+        val tail = chunks[0].content.takeLast(10)
+        assertEquals("o2-xxxxxxx", tail)
+        assertFalse(
+            "overlap=0: la cola del bloque 0 no debe copiarse al inicio del bloque 1",
+            chunks[1].content.startsWith(tail),
+        )
     }
 
     @Test

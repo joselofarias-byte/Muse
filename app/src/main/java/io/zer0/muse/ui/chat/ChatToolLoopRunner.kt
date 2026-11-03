@@ -102,6 +102,7 @@ internal object ContextOverflowSignals {
             "range of input length",
             "exceeded model token limit",
             "Entrada demasiado larga",
+            "la entrada es demasiado larga",
             // El cuerpo de la solicitud es demasiado grande: el mismo tratamiento que "no se puede acomodar el contexto" (reenviar después de la compresión)
             "request entity too large",
             "request is too large",

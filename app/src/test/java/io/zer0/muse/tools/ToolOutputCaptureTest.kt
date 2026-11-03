@@ -48,7 +48,7 @@ class ToolOutputCaptureTest {
 
         val result = capture.finish(header = "exit=0", emptyMessage = "(Sin salida)")
 
-        assertTrue("El mensaje de paginación debe indicar la cantidad total del texto original.", result.contains("texto original total ${output.length} palabra"))
+        assertTrue("El mensaje de paginación debe indicar la cantidad total del texto original.", result.contains("total del texto original ${output.length} palabra"))
         assertTrue("El mensaje de paginación debe indicar que la vista previa se toma desde el final.", result.contains("final de la salida"))
         assertTrue(result.contains("offset_chars=0"))
     }
@@ -63,8 +63,8 @@ class ToolOutputCaptureTest {
         val result = capture.finish(header = "", emptyMessage = "(vacío)")
 
         assertTrue("El comienzo de la salida de la clase de archivo es más útil.", result.contains(output.take(TOOL_RESULT_PREVIEW_CHARS)))
-        assertTrue(result.contains("Inicio de la salida"))
-        assertTrue(result.contains("texto original total ${output.length} palabra"))
+        assertTrue(result.contains("el comienzo de la salida"))
+        assertTrue(result.contains("total del texto original ${output.length} palabras"))
     }
 
     @Test
@@ -81,7 +81,7 @@ class ToolOutputCaptureTest {
         assertFalse("La vista previa no puede contener caracteres sustitutos huérfanos", hasUnpairedSurrogate(result))
         assertTrue(result.contains("DONE exit=0"))
         // Después de perder la mitad del agente, la cantidad de palabras en el mensaje aún debe ser consistente: mostradas + no mostradas = Cantidad total de texto original.
-        val notice = Regex("""fin (\d+) Vista previa de palabras; total del texto original (\d+) palabra, comienzo (\d+) Palabras no mostradas""").find(result)
+        val notice = Regex("""final de la salida\. (\d+) Vista previa de palabras; total del texto original (\d+) palabra, comienzo (\d+) Las palabras no se muestran""").find(result)
         assertTrue("El mensaje de búsqueda debe dar tres números.", notice != null)
         val shown = notice!!.groupValues[1].toInt()
         val total = notice.groupValues[2].toInt()

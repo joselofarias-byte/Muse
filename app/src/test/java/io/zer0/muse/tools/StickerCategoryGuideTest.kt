@@ -53,9 +53,9 @@ class StickerCategoryGuideTest {
 
     @Test
     fun `a category matching multiple moods appears under each`() {
-        val out = guide(listOf("feliz sanación"))
+        val out = guide(listOf("feliz curar"))
 
-        assertTrue("Contiene \"feliz\" y \"curación\" al mismo tiempo, ambos deberían aparecer", out.contains("feliz/celebrar"))
+        assertTrue("Contiene \"feliz\" y \"curar\" al mismo tiempo, ambos deberían aparecer", out.contains("feliz/celebrar"))
         assertTrue(out.contains("comodidad/curar"))
     }
 
