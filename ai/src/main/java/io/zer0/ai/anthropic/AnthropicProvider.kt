@@ -253,7 +253,10 @@ class AnthropicProvider(
                             call.cancel()
                             producerScope.launch {
                                 delay(finalDelay)
-                                if (request.abortSignal.aborted || producerScope.isClosedForSend) return@launch
+                                if (request.abortSignal.aborted || producerScope.isClosedForSend) {
+                                    close()
+                                    return@launch
+                                }
                                 connect()
                             }
                             return
@@ -484,7 +487,10 @@ class AnthropicProvider(
                         eventSource.cancel()
                         producerScope.launch {
                             delay(delayMs)
-                            if (request.abortSignal.aborted || producerScope.isClosedForSend) return@launch
+                            if (request.abortSignal.aborted || producerScope.isClosedForSend) {
+                                close()
+                                return@launch
+                            }
                             connect()
                         }
                         return

@@ -1202,9 +1202,11 @@ class OpenAIProvider(
                             )
                             scope.launch {
                                 delay(backoffMs)
-                                if (!request.abortSignal.aborted && !scope.isClosedForSend) {
-                                    connect()
+                                if (request.abortSignal.aborted || scope.isClosedForSend) {
+                                    close()
+                                    return@launch
                                 }
+                                connect()
                             }
                             return
                         }
@@ -2764,9 +2766,11 @@ class OpenAIProvider(
                             connectionGeneration.incrementAndGet()
                             scope.launch {
                                 delay(backoffMs)
-                                if (!request.abortSignal.aborted && !scope.isClosedForSend) {
-                                    connect()
+                                if (request.abortSignal.aborted || scope.isClosedForSend) {
+                                    close()
+                                    return@launch
                                 }
+                                connect()
                             }
                             return
                         }
