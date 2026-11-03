@@ -61,7 +61,7 @@ class PluginVersionPolicyTest {
     @Test
     fun downgradeIsRejectedUnlessExplicitlyAllowed() {
         val decision = PluginVersionPolicy.evaluate(candidate(version = "0.9.0"), installed("1.0.0"), appVersion)
-        assertTrue(rejected(decision).contains("Rebajar"))
+        assertTrue(rejected(decision).contains("degradación"))
 
         // La entrada de reversión se libera explícitamente.
         assertEquals(
@@ -82,14 +82,14 @@ class PluginVersionPolicyTest {
             installed(),
             appVersion,
         )
-        assertTrue(rejected(otherKey).contains("Emisor"))
+        assertTrue(rejected(otherKey).contains("editor"))
 
         val otherId = PluginVersionPolicy.evaluate(
             candidate(publisherId = "someone-else"),
             installed(),
             appVersion,
         )
-        assertTrue(rejected(otherId).contains("Emisor"))
+        assertTrue(rejected(otherId).contains("editor"))
     }
 
     @Test
@@ -156,7 +156,7 @@ class PluginVersionPolicyTest {
             null,
             appVersion,
         )
-        assertTrue(rejected(decision).contains("App versión"))
+        assertTrue(rejected(decision).contains("versión de la aplicación"))
     }
 
     @Test
@@ -179,7 +179,7 @@ class PluginVersionPolicyTest {
             installed("1.0.0"),
             appVersion,
         )
-        assertTrue(rejected(decision).contains("Rebajar"))
+        assertTrue(rejected(decision).contains("degradación"))
     }
 
     @Test
@@ -198,6 +198,6 @@ class PluginVersionPolicyTest {
             installed("1.0.0"),
             PluginVersionPolicy.DEV_SENTINEL_VERSION,
         )
-        assertTrue(rejected(downgrade).contains("Rebajar"))
+        assertTrue(rejected(downgrade).contains("degradación"))
     }
 }
