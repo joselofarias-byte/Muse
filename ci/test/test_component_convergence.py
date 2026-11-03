@@ -118,7 +118,7 @@ def test_symbols_snapshot_mismatch_fails():
     baseline = baseline_from(scans)
     baseline["symbols"] = ["Card"]
     failures, _ = evaluate(scans, baseline)
-    assert any("symbols" in f for f in failures), failures
+    assert any("símbolos" in f for f in failures), failures
 
 
 def test_update_baseline_refuses_increase():

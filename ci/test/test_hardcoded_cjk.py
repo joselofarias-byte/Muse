@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""test_hardcoded_cjk.py — check_hardcoded_cjk.py pruebas unitarias.
+"""test_hardcoded_cjk.py — check_hardcoded_cjk.py 的单元测试。
 
-correr: py -3 ci/test/test_hardcoded_cjk.py
+运行: py -3 ci/test/test_hardcoded_cjk.py
 """
 
 import sys
@@ -18,8 +18,8 @@ def test_hardcoded_cjk_in_text_detected():
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "Sample.kt"
         p.write_text(
-            'Text("hola mundo")\n'
-            'val label = "chino"\n',
+            'Text("你好，世界")\n'
+            'val label = "中文"\n',
             encoding="utf-8",
         )
         vs = scan_file(p)
@@ -30,9 +30,9 @@ def test_comment_with_cjk_ignored():
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "Sample.kt"
         p.write_text(
-            "// Chino en comentarios\n"
-            "/* Bloquear comentarios: chino */\n"
-            "val x = 1 // Chino de fin de línea\n",
+            "// 注释里的中文\n"
+            "/* 块注释：中文 */\n"
+            "val x = 1 // 行尾中文\n",
             encoding="utf-8",
         )
         vs = scan_file(p)
@@ -44,10 +44,10 @@ def test_multiline_kdoc_before_logger_call_is_ignored():
         p = Path(tmp) / "Sample.kt"
         p.write_text(
             "/**\n"
-            " * KDoc Contiene instrucciones en chino.\n"
+            " * KDoc 含中文说明。\n"
             " */\n"
             "Logger.i(\n"
-            '    "texto de diagnóstico",\n'
+            '    "诊断文本",\n'
             "    error,\n"
             ")\n",
             encoding="utf-8",
@@ -56,10 +56,10 @@ def test_multiline_kdoc_before_logger_call_is_ignored():
 
 
 def test_logger_call_stripping_preserves_following_ui_text():
-    code = 'Logger.i(TAG, "Diagnóstico") Text("Hola")'
+    code = 'Logger.i(TAG, "诊断") Text("你好")'
     stripped, in_logger_call = strip_cjk_logger_calls(code)
-    assert 'Text("Hola")' in stripped
-    assert "Diagnóstico" not in stripped
+    assert 'Text("你好")' in stripped
+    assert "诊断" not in stripped
     assert not in_logger_call
 
 
@@ -78,7 +78,7 @@ def test_mixed_line_only_reports_string_cjk():
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "Sample.kt"
         p.write_text(
-            'Text("Hola") // También hay chino en los comentarios.\n',
+            'Text("你好") // 注释里也有中文\n',
             encoding="utf-8",
         )
         vs = scan_file(p)
@@ -89,8 +89,8 @@ def test_logger_cjk_ignored():
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "Sample.kt"
         p.write_text(
-            'Logger.w(TAG, "Error al cargar: $msg")\n'
-            'Text("Por favor inténtalo de nuevo")\n',
+            'Logger.w(TAG, "加载失败: $msg")\n'
+            'Text("请重试")\n',
             encoding="utf-8",
         )
         vs = scan_file(p)

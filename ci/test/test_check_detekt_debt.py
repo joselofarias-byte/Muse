@@ -44,7 +44,7 @@ def test_within_cap_passes():
 def test_total_over_cap_fails():
     root, cap = make_env({"app": 10, "common": 5}, 13, {"app": 10, "common": 5})
     errors = check(root, cap)
-    assert len(errors) == 1 and "cantidad total" in errors[0]
+    assert len(errors) == 1 and "deuda total" in errors[0]
 
 
 def test_module_over_cap_fails():

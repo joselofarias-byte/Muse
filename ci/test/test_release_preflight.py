@@ -85,7 +85,7 @@ def test_release_version_rejects_tag_drift():
 def test_release_signing_never_falls_back_to_debug_keystore():
     gradle_text = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
     assert 'signingConfigs.getByName("debug")' not in gradle_text
-    assert "Ya no vuelve a recurrir cuando falta debug keystore" in gradle_text
+    assert "deshabilite la reversión de la firma de depuración" in gradle_text
 
 
 def test_secret_text_removes_bom_and_transport_whitespace():
@@ -244,7 +244,7 @@ def test_release_apk_verification_rejects_unexpected_certificate():
             try:
                 verify_apk(apk, apksigner)
             except RuntimeError as error:
-                assert "El certificado no coincide con el certificado de emisión." in str(error)
+                assert "certificado de firma no coincide" in str(error)
             else:
                 raise AssertionError("unexpected release certificate must fail")
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_translation_residue.py — check_translation_residue.py pruebas unitarias.
+test_translation_residue.py — check_translation_residue.py 的单元测试。
 
-correr: py -3 ci/test/test_translation_residue.py
+运行: py -3 ci/test/test_translation_residue.py
 """
 
 import json
@@ -36,9 +36,9 @@ def strings(body: str) -> str:
 
 
 def test_attributed_string_detected():
-    """Requisitos de secuencias de comandos de PowerShell heredados `<string name="x">` al lado de,Con atributos, se extrañará. —— Esta es una prueba de regresión."""
+    """旧 PowerShell 脚本要求 `<string name="x">` 紧邻,带属性会漏报 —— 这条是回归测试。"""
     root = make_root(
-        {"values-en/strings.xml": strings('<string name="x" formatted="false">restos chinos</string>')}
+        {"values-en/strings.xml": strings('<string name="x" formatted="false">中文残留</string>')}
     )
     found = scan_res(root)
     assert len(found["en"]) == 1, found
@@ -46,14 +46,14 @@ def test_attributed_string_detected():
 
 def test_translatable_false_excluded():
     root = make_root(
-        {"values-en/strings.xml": strings('<string name="x" translatable="false">chino</string>')}
+        {"values-en/strings.xml": strings('<string name="x" translatable="false">中文</string>')}
     )
     assert scan_res(root)["en"] == []
 
 
 def test_commented_entry_excluded():
     root = make_root(
-        {"values-en/strings.xml": strings('<!-- <string name="x">chino</string> -->')}
+        {"values-en/strings.xml": strings('<!-- <string name="x">中文</string> -->')}
     )
     assert scan_res(root)["en"] == []
 
@@ -62,7 +62,7 @@ def test_plurals_item_detected():
     root = make_root(
         {
             "values-ru/strings.xml": strings(
-                '<plurals name="p"><item quantity="one">uno</item>'
+                '<plurals name="p"><item quantity="one">一个</item>'
                 '<item quantity="other">many</item></plurals>'
             )
         }
@@ -74,9 +74,9 @@ def test_plurals_item_detected():
 def test_ja_and_default_values_excluded():
     root = make_root(
         {
-            "values/strings.xml": strings('<string name="x">fuente china</string>'),
+            "values/strings.xml": strings('<string name="x">中文源</string>'),
             "values-ja/strings.xml": strings('<string name="x">画面の読み取り</string>'),
-            "values-v31/themes.xml": strings('<string name="x">chino</string>'),
+            "values-v31/themes.xml": strings('<string name="x">中文</string>'),
         }
     )
     found = scan_res(root)
@@ -101,7 +101,7 @@ def test_clean_pack_passes():
 
 def test_over_baseline_fails():
     root = make_root(
-        {"values-en/strings.xml": strings('<string name="x" formatted="false">chino</string>')}
+        {"values-en/strings.xml": strings('<string name="x" formatted="false">中文</string>')}
     )
     found = scan_res(root)
     failures, _ = evaluate(found, {"locales": {"en": 0}})
@@ -109,14 +109,14 @@ def test_over_baseline_fails():
 
 
 def test_new_locale_over_zero_baseline_fails():
-    root = make_root({"values-fr/strings.xml": strings('<string name="x">chino</string>')})
+    root = make_root({"values-fr/strings.xml": strings('<string name="x">中文</string>')})
     failures, _ = evaluate(scan_res(root), {"locales": {"en": 0}})
     assert any("Paquetes de idiomas no básicos" in f for f in failures), failures
 
 
 def test_update_baseline_refuses_increase():
     root = make_root(
-        {"values-en/strings.xml": strings('<string name="x">chino</string>')}
+        {"values-en/strings.xml": strings('<string name="x">中文</string>')}
     )
     found = scan_res(root)
     with tempfile.TemporaryDirectory() as tmp:
@@ -128,12 +128,12 @@ def test_update_baseline_refuses_increase():
 
 
 def test_broken_xml_fails_closed():
-    root = make_root({"values-en/strings.xml": strings('<string name="x">chino</resources>')})
+    root = make_root({"values-en/strings.xml": strings('<string name="x">中文</resources>')})
     try:
         scan_res(root)
     except ValueError:
         return
-    raise AssertionError("XML Debe lanzarse cuando falla el análisis. ValueError,No puedo saltar en silencio")
+    raise AssertionError("un XML roto debe lanzar ValueError")
 
 
 if __name__ == "__main__":
