@@ -16,9 +16,9 @@ import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 
 /**
- * 外部插件发行者信任根测试。
+ * Pruebas de raíz de confianza del editor de complementos externos.
  *
- * 覆盖：显式信任、同 ID 换钥拒绝、非规范 Base64 归一化、撤销和损坏文件隔离。
+ * Cubierto: Confianza explícita, rechazo de intercambio de claves del mismo ID, normalización Base64 no canónica, revocación y cuarentena de archivos corruptos.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,7 +46,7 @@ class PluginTrustStoreTest {
         val second = store.trust("publisher.test", publicKey())
 
         assertTrue(second.isFailure)
-        assertTrue(second.exceptionOrNull()?.message?.contains("另一把公钥") == true)
+        assertTrue(second.exceptionOrNull()?.message?.contains("otra clave pública") == true)
     }
 
     @Test

@@ -29,12 +29,12 @@ class ResourceToolsRegistrarTest {
     fun execute_addListGetDeleteRoundTrip() = runBlocking {
         val registry = ToolRegistry(context)
         ResourceToolsRegistrar(context, registry)
-        val add = registry.execute("resource_add", mapOf("title" to "测试资源", "content" to "正文"))
+        val add = registry.execute("resource_add", mapOf("title" to "Recursos de prueba", "content" to "Texto"))
         assertFalse(add.isError)
         val id = add.content.substringAfterLast(" ").trim()
         val get = registry.execute("resource_get", mapOf("id" to id))
         assertFalse(get.isError)
-        assertTrue(get.content.contains("测试资源"))
+        assertTrue(get.content.contains("Recursos de prueba"))
         val del = registry.execute("resource_delete", mapOf("id" to id))
         assertFalse(del.isError)
     }

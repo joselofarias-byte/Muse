@@ -18,8 +18,8 @@ class AssistantAvatarMemoryWiringTest {
                 ?.let { Files.newBufferedReader(it).use { reader -> reader.readText() } }
                 ?: error("AssistantAvatar.kt not found")
 
-        assertTrue("头像请求必须经过有界尺寸 helper", source.contains("assistantAvatarImageRequest"))
-        assertTrue("头像请求必须传入渲染尺寸，不能按原图解码", source.contains(".size(boundedSize, boundedSize)"))
-        assertTrue("渲染尺寸必须从实际 dp 约束换算为像素", source.contains("density.density"))
+        assertTrue("Las solicitudes de avatar deben pasar por dimensiones acotadas helper", source.contains("assistantAvatarImageRequest"))
+        assertTrue("La solicitud de avatar debe pasar el tamaño de renderizado y no se puede decodificar de acuerdo con la imagen original.", source.contains(".size(boundedSize, boundedSize)"))
+        assertTrue("El tamaño de renderizado debe convertirse de las restricciones de dp reales a píxeles", source.contains("density.density"))
     }
 }

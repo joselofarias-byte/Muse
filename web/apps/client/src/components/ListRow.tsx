@@ -5,22 +5,22 @@ import "./primitives.css";
 export interface ListRowProps {
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
-  /** 左侧内容（通常是图标）。 */
+  /** Contenido a la izquierda (normalmente iconos). */
   readonly leading?: ReactNode;
-  /** 右侧内容（Switch / 值文字 / 自定义元素）。 */
+  /** Contenido a la derecha (Switch / valor literal/elemento personalizado). */
   readonly trailing?: ReactNode;
-  /** 右侧追加 Muse 右箭头（与 trailing 可叠加）。 */
+  /** Se agrega una flecha hacia la derecha de Muse a la derecha (se puede superponer con una flecha final). */
   readonly chevron?: boolean;
   readonly onClick?: () => void;
-  /** 底部分隔线，默认 true；分组最后一行传 false。 */
+  /** Línea separadora inferior, valor predeterminado verdadero; pase falso para la última línea del grupo. */
   readonly divider?: boolean;
 }
 
 /**
- * 设置项行：标题 + 副标题 + 右侧箭头/开关 + 分隔线。
+ * Establecer fila de elementos: título + subtítulo + flecha derecha/Interruptor + Divisor.
  *
- * 规格取自 MuseListItem / MuseDivider —— 最小高 60dp、水平 16dp / 垂直 12dp、
- * 标题 titleMedium、副标题 bodyMedium、分隔线 0.5dp 且左缩进 56dp。
+ * Especificaciones tomadas de MuseListItem / MuseDivider —— Altura mínima 60dp, horizontal 16dp / vertical 12dp,
+ * Título títuloMedio, cuerpo del subtítuloMedio, separador 0,5dp y sangría izquierda 56dp.
  */
 export function ListRow({
   title,

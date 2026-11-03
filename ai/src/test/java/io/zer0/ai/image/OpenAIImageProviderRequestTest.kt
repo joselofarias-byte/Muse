@@ -9,7 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /**
- * R-TEST-20: OpenAI 文生图请求体 DTO 黄金字段测试。
+ * R-TEST-20: OpenAI Vincent diagrama solicitud cuerpo DTO prueba de campo dorado.
  */
 class OpenAIImageProviderRequestTest {
 

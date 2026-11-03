@@ -1,11 +1,11 @@
 package io.zer0.muse.data.proactive
 
 /**
- * 牵挂账本的记账与维护。
+ * Se ocupa de la contabilidad y mantenimiento de libros mayores.
  *
- * 只关心「记什么、记到哪、什么时候该清掉」，不关心「该不该说」——
- * 那是判定引擎的事。这条边界让两边都能单独测：
- * 记账逻辑不需要构造一个可发送的场景，判定逻辑也不需要真的写库。
+ * Sólo me importa "qué recordar, dónde recordarlo y cuándo borrarlo" y no "debería decirlo o no".——
+ * Eso es cuestión de juzgar el motor. Este límite permite medir ambos lados de forma independiente:
+ * La lógica contable no necesita construir un escenario que se pueda enviar y la lógica de juicio no necesita escribirse en una biblioteca.
  */
 class ProactiveThoughtRepository(
     private val readDao: PendingThoughtDao,
@@ -13,20 +13,20 @@ class ProactiveThoughtRepository(
 ) {
 
     companion object {
-        /** 同一件事说过这么多次还没反应，就放弃，不再念叨。 */
+        /** Si has dicho lo mismo tantas veces y aún no has respondido, simplemente desiste y deja de hablar de ello. */
         const val MAX_SURFACE_COUNT = 4
 
-        /** 已结束的牵挂保留天数。 */
+        /** El número de días que finalizó la inquietud. */
         private const val RETENTION_DAYS = 30
     }
 
     /**
-     * 记一条牵挂。
+     * Recuerde una preocupación.
      *
-     * [PendingThoughtEntity.sourceRef] 非空时做去重：同一来源只允许存在一条 OPEN 的牵挂。
-     * 没有这道去重，同一条记忆会每轮被重新推导一次，账本一小时就能膨胀几十条。
+     * [PendingThoughtEntity.sourceRef] La deduplicación se realiza cuando no está vacío: solo se permite una preocupación OPEN de la misma fuente.
+     * Sin esta deduplicación, se volvería a derivar la misma memoria en cada ronda y el libro mayor podría expandirse a docenas de entradas en una hora.
      *
-     * @return true = 真的记下了；false = 已存在同源 OPEN 项，跳过
+     * @return true = Escríbalo realmente;false = El elemento ABRIR de la misma fuente ya existe, omitir
      */
     suspend fun note(thought: PendingThoughtEntity): Boolean {
         val ref = thought.sourceRef
@@ -35,17 +35,17 @@ class ProactiveThoughtRepository(
         return true
     }
 
-    /** 标记某条牵挂已说出口。 */
+    /** Marque que se ha expresado una preocupación. */
     suspend fun markSurfaced(id: String, at: Long) {
         writeDao.markSurfaced(id, at)
     }
 
-    /** 用户已经把这件事解决了（由对话或用户手动标记）。 */
+    /** El usuario ya ha resuelto este asunto (marcado por la conversación o manualmente por el usuario). */
     suspend fun complete(id: String) {
         writeDao.updateStatus(id, ThoughtStatus.DONE.name)
     }
 
-    /** 用户不关心这件事了。 */
+    /** A los usuarios ya no les importa esto. */
     suspend fun drop(id: String) {
         writeDao.updateStatus(id, ThoughtStatus.DROPPED.name)
     }
@@ -58,15 +58,15 @@ class ProactiveThoughtRepository(
 
     suspend fun countOpen(assistantId: String): Int = readDao.countOpen(assistantId)
 
-    /** 已记账的来源 id 集合，供推导时批量去重。 */
+    /** Una colección de ID de origen contabilizados para la deduplicación por lotes durante la derivación. */
     suspend fun getOpenSourceRefs(assistantId: String): Set<String> =
         readDao.getOpenSourceRefs(assistantId).toSet()
 
     /**
-     * 例行清理：过期、念叨太多次、太久远的已结束记录。
+     * Limpieza de rutina: registros finalizados que están vencidos, mencionados demasiadas veces o son demasiado antiguos.
      *
-     * 应该在每次调度前跑一遍，而不是单独定时 —— 它很便宜（两条 UPDATE），
-     * 而「过期了但状态还是 OPEN」会让判定引擎反复处理同一批死数据。
+     * Debe ejecutarse antes de cada envío, en lugar de programarse por separado. —— Es barato (dos ACTUALIZACIONES),
+     * Y "caducado pero aún en estado ABIERTO" hará que el motor de decisiones procese el mismo lote de datos inactivos repetidamente.
      */
     suspend fun maintenance(now: Long, outcomeDao: ProactiveOutcomeDao? = null): MaintenanceResult {
         val expired = writeDao.expireOverdue(now)
@@ -90,11 +90,11 @@ class ProactiveThoughtRepository(
 }
 
 /**
- * 关系亲密度与当日预算。
+ * Intimidad de la relación y presupuesto del día.
  *
- * 跨日重置放在这一层而不是 DAO：「今天是哪天」是业务语义，
- * 存储层不该知道。放在这里也让「重置」和「读取」天然成对，
- * 不会出现读到了昨天的计数却忘了清零的情况。
+ * El reinicio entre días se coloca en esta capa en lugar de DAO: "Qué día es hoy" es semántica empresarial.
+ * Se supone que la capa de almacenamiento no debe saberlo. Ponerlo aquí también hace que "restablecer" y "leer" sean un par natural.
+ * No habrá ninguna situación en la que leas el recuento de ayer y te olvides de borrarlo.
  */
 class ProactiveRelationRepository(
     private val dao: ProactiveRelationDao,
@@ -109,8 +109,8 @@ class ProactiveRelationRepository(
     }
 
     /**
-     * 取关系状态，不存在则按默认值创建。
-     * 顺带做跨日预算重置：新的一天，额度和回补都从零开始。
+     * Obtenga el estado de la relación. Si no existe, créelo con el valor predeterminado.
+     * Por cierto, reinicie el presupuesto entre días: en un nuevo día, la cuota y el reabastecimiento comienzan desde cero.
      */
     suspend fun getOrCreate(assistantId: String, now: Long): ProactiveRelationEntity {
         val today = dateKey(now)
@@ -126,16 +126,16 @@ class ProactiveRelationRepository(
         return result
     }
 
-    /** 发出一条主动消息后消耗额度。 */
+    /** El crédito se consume después de enviar un mensaje activo. */
     suspend fun consume(assistantId: String) {
         dao.incrementSpent(assistantId)
     }
 
     /**
-     * 用户说「最近别烦我」。
+     * El usuario dijo "No me molestes últimamente".
      *
-     * 同时把亲密度打一记重扣：这不是一次普通的划掉，是显式的拒绝。
-     * 冷却结束后额度也不会立刻回到原样，得靠后续互动慢慢挣回来。
+     * Al mismo tiempo, el nivel de intimidad se ve muy afectado: no se trata de una tachadura cualquiera, sino de un rechazo explícito.
+     * Una vez finalizado el tiempo de reutilización, la cantidad no volverá a su valor original inmediatamente y deberá ganarse lentamente a través de interacciones posteriores.
      */
     suspend fun startCooldown(assistantId: String, now: Long, days: Int = 7) {
         dao.updateCooldown(assistantId, now + days * DAY_MS)
@@ -144,11 +144,11 @@ class ProactiveRelationRepository(
     }
 
     /**
-     * 取消冷却。
+     * Cancelar el tiempo de reutilización.
      *
-     * 冷却本来是个「说一次就管七天」的强动作，但它写在界面上是个单程按钮。
-     * 点了想反悔没有出口 —— 用户只能等，或者去关掉整个主动消息开关。
-     * 这两种代价都远大于「点错了」本身。
+     * El enfriamiento es originalmente una acción fuerte que "lo dice una vez y se ocupa de ello durante siete días", pero está escrito como un botón unidireccional en la interfaz.
+     * Hice clic y quise arrepentirme, pero no tenía salida. —— Los usuarios solo pueden esperar o desactivar todo el interruptor de mensajería activa.
+     * Ambos costos son mucho mayores que el propio "clic equivocado".
      */
     suspend fun clearCooldown(assistantId: String) {
         dao.updateCooldown(assistantId, 0L)
@@ -159,17 +159,17 @@ class ProactiveRelationRepository(
     }
 
     /**
-     * 重置主动等级：档位回默认，同时把今天的额度记账清零。
+     * Restablezca el nivel activo: devuelva el equipo a su valor predeterminado y borre el límite de crédito actual a cero.
      *
-     * 只回档位不清账的话，用户从「黏人」切回「标准」会发现今天依旧没额度 ——
-     * 上一档已经花掉的名额会继续占着新档位的额度，看起来就像「重置没生效」。
+     * Si el usuario solo regresa al grupo pero no paga el saldo, encontrará que todavía no hay límite hoy si cambia de "fijo" a "estándar". ——
+     * La cuota que se gastó en el nivel anterior seguirá ocupando la cuota en el nuevo nivel, que parece que "el reinicio no ha surtido efecto".
      */
     suspend fun resetIntensity(assistantId: String, today: String) {
         dao.updateIntensity(assistantId, ProactiveIntensity.DEFAULT.name)
         dao.resetBudget(assistantId, today)
     }
 
-    /** 直接写亲密度。只给结果回写用，界面上不暴露。 */
+    /** Escribe intimidad directamente. Solo se utiliza para reescribir resultados y no está expuesto en la interfaz. */
     suspend fun setIntimacy(assistantId: String, intimacy: Float) {
         dao.updateIntimacy(assistantId, intimacy.coerceIn(0f, 1f))
     }
@@ -178,10 +178,10 @@ class ProactiveRelationRepository(
 }
 
 /**
- * 主动消息的结果账。
+ * Cuenta de resultados de mensajes proactivos.
  *
- * 结果与亲密度必须一起变：只记结果不改亲密度，学习等于没发生；
- * 只改亲密度不记结果，就回溯不了「它为什么变得这么克制」。
+ * Los resultados y la intimidad deben cambiar juntos: si sólo recuerdas los resultados sin cambiar la intimidad, el aprendizaje no sucederá;
+ * Si sólo cambias la intimidad sin recordar los resultados, no podrás rastrear "por qué se volvió tan restringida".
  */
 class ProactiveOutcomeRepository(
     private val dao: ProactiveOutcomeDao,
@@ -190,22 +190,22 @@ class ProactiveOutcomeRepository(
 
     companion object {
         /**
-         * 发出多久还没任何反应就算过期。
+         * Se considerará caducado si no hay respuesta después de enviarlo durante un tiempo prolongado.
          *
-         * 一天的尺度是「今天没看到就是没看到」：一条主动消息挂上两三天再收尾，
-         * 学习结果是滞后两三天才拿到的；而太早收尾会把「明天早上才看到」当成没兴趣。
+         * La escala de un día es "Si no lo viste hoy, no lo viste": un mensaje activo se publicará durante dos o tres días antes de que finalice.
+         * Los resultados del aprendizaje se obtendrán con un desfase de dos o tres días; si lo terminas demasiado pronto, "solo lo veré mañana por la mañana" se considerará una falta de interés.
          */
         const val EXPIRE_AFTER_HOURS = 24
 
-        /** 同上，毫秒。 */
+        /** Igual que arriba, milisegundos. */
         const val EXPIRE_AFTER_MS = EXPIRE_AFTER_HOURS * 3_600_000L
     }
 
     /**
-     * 记一条刚发出去的消息，状态为 PENDING。
+     * Recuerda un mensaje que acaba de ser enviado, el estado es PENDIENTE.
      *
-     * @return 新建记录的 id。通知上的「这次不用」按钮靠它回到同一条记录，
-     *         所以不能只写不管 —— 内部生成的主键必须回传给调用方。
+     * @return La identificación del nuevo registro. El botón "Esta vez no" en la notificación depende de él para volver al mismo registro.
+     *         Así que no puedes simplemente escribir y dejarlo en paz. —— La clave principal generada internamente debe devolverse a la persona que llama.
      */
     suspend fun recordSent(
         thought: PendingThoughtEntity?,
@@ -218,15 +218,15 @@ class ProactiveOutcomeRepository(
         dao.upsert(
             ProactiveOutcomeEntity(
                 id = id,
-                // 牵挂是可选的：现在大多数主动消息来自「接着对话说」，
-                // 并没有对应的账本条目。
+                // La preocupación es opcional: la mayoría de los mensajes no solicitados ahora provienen de "continuar la conversación",
+                // No existe ningún asiento correspondiente en el libro mayor.
                 thoughtId = thought?.id,
                 assistantId = thought?.assistantId ?: assistantId,
                 sessionId = sessionId,
                 kind = thought?.kind ?: ThoughtKind.FOLLOW_UP.name,
                 sentAt = now,
                 state = OutcomeState.PENDING.name,
-                // 存下来才能在下一轮反查出「上次说了什么」，用于防重复。
+                // Sólo guardándolo podrás saber "lo que se dijo la última vez" en la siguiente ronda para evitar repeticiones.
                 messageId = messageId,
             ),
         )
@@ -234,10 +234,10 @@ class ProactiveOutcomeRepository(
     }
 
     /**
-     * 更新一条结果的去向，并同步调整亲密度。
+     * Actualiza el destino de un resultado y ajusta el nivel de intimidad simultáneamente.
      *
-     * 已经终结的状态不会被降级覆盖（回复之后再划掉通知仍是 REPLIED）——
-     * 否则用户点开读过又顺手清通知，会被记成一次负反馈。
+     * El estado de terminación no se sobrescribirá con la degradación (la notificación aún será RESPONDIDA si la tachas después de responder)——
+     * De lo contrario, si el usuario hace clic para leer y luego borra la notificación, se registrará como un comentario negativo.
      */
     suspend fun resolve(outcomeId: String, state: OutcomeState, now: Long) {
         val current = dao.getById(outcomeId) ?: return
@@ -254,7 +254,7 @@ class ProactiveOutcomeRepository(
         if (next != relation.intimacy) relations.setIntimacy(current.assistantId, next)
     }
 
-    /** 把时间戳写到对应的列上。状态列总是更新，时间列按状态分。 */
+    /** Escriba la marca de tiempo en la columna correspondiente. La columna de estado siempre se actualiza y la columna de tiempo se divide por estado. */
     private fun ProactiveOutcomeEntity.stamped(state: OutcomeState, now: Long): ProactiveOutcomeEntity =
         when (state) {
             OutcomeState.OPENED -> copy(state = state.name, openedAt = now)
@@ -263,17 +263,17 @@ class ProactiveOutcomeRepository(
             OutcomeState.EXPIRED, OutcomeState.PENDING -> copy(state = state.name)
         }
 
-    /** 找某会话里最近一条还在等反应的主动消息，用于回复检测与「打开即已读」。 */
+    /** Encuentre el mensaje activo más reciente en una conversación que aún está esperando una respuesta, para detección de respuesta y \"abrir como leído\". */
     suspend fun findPendingInSession(sessionId: String): ProactiveOutcomeEntity? =
         dao.findPendingInSession(sessionId)
 
     /**
-     * 把发出去超过 [EXPIRE_AFTER_MS] 仍然没人理的记录收尾成 EXPIRED。
+     * enviar por encima [EXPIRE_AFTER_MS] El registro aún desatendido termina con EXPIRADO.
      *
-     * 交给 [resolve] 逐条走，而不是直接一条 UPDATE 改状态：收尾也是一次反馈，
-     * 亲密度得跟着掉一点点；只改状态的话，这条「发出去没人理」在关系上等于没发生。
+     * entregar [resolve] Vaya uno por uno en lugar de actualizar directamente el estado: el final también es una retroalimentación,
+     * La intimidad tendrá que bajar un poco; si simplemente cambia el estado, este "envíelo y nadie le prestará atención" significa que no ha sucedido en la relación.
      *
-     * @return 本次收尾的条数
+     * @return El número de elementos al final de este tiempo.
      */
     suspend fun expireOverdue(now: Long): Int {
         val stale = dao.listPendingBefore(now - EXPIRE_AFTER_MS)
@@ -282,10 +282,10 @@ class ProactiveOutcomeRepository(
     }
 
     /**
-     * 这些类型里哪些已经被用户用脚投票否决了。
+     * ¿Cuáles de estos tipos han sido rechazados por los usuarios con los pies?
      *
-     * 一次把候选涉及的类型问完，而不是逐条牵挂查库：候选可能有十几条，
-     * 而类型只有那么几种，按类型判定的结果天然可以复用。
+     * Pregunte sobre los tipos de candidatos involucrados a la vez, en lugar de consultar la base de datos uno por uno: puede haber más de una docena de candidatos,
+     * Solo hay unos pocos tipos y, naturalmente, los resultados determinados por tipo se pueden reutilizar.
      */
     suspend fun unpopularKinds(assistantId: String, kinds: Collection<ThoughtKind>): Set<ThoughtKind> =
         kinds.filterTo(mutableSetOf()) { isKindUnpopular(assistantId, it) }
@@ -294,10 +294,10 @@ class ProactiveOutcomeRepository(
         dao.getRecent(assistantId, limit)
 
     /**
-     * 某类型是否已经被用户用脚投票否决了。
+     * Si un tipo ha sido rechazado por los usuarios con los pies.
      *
-     * 用途：用户对里程碑从来不感冒时，就别再发成就播报。
-     * 判据本身（样本量下限、划掉率过半）在 [ProactiveLearning] 里，这里只取数。
+     * Propósito: Cuando los usuarios no estén interesados ​​en los hitos, dejar de publicar informes de logros.
+     * El criterio en sí (límite inferior del tamaño de la muestra, más de la mitad de la tasa tachada) es [ProactiveLearning] Aquí solo se toman números.
      */
     suspend fun isKindUnpopular(assistantId: String, kind: ThoughtKind): Boolean {
         val dismissed = dao.countKindState(assistantId, kind.name, OutcomeState.DISMISSED.name)

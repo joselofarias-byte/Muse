@@ -27,7 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class OpenAIProviderCustomTemplateTest {
 
     init {
-        // JVM 单测没有 android.util.Log 实现,关闭全局日志避免触发 not-mocked 异常
+        // JVM No hay ninguna implementación de android.util.Log en una sola prueba,Desactive el registro global para evitar activar excepciones no simuladas
         Logger.enabled = false
     }
 

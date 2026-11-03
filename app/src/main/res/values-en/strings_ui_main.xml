@@ -783,7 +783,7 @@
     <string name="tts_not_ready">TTS is initializing, please retry later</string>
     <string name="chat_list_reorder">Drag to reorder</string>
 
-    <!-- 前端修复 (i18n-3.x): Settings screen search index entry titles -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Settings screen search index entry titles -->
     <string name="settings_screen_entry_tts_playback">TTS voice playback</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">Archived chats</string>

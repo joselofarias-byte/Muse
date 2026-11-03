@@ -1,18 +1,18 @@
 /**
- * Muse 插件：数据工具箱（CSV / JSON）
+ * Muse Complemento: Caja de herramientas de datos (CSV / JSON)
  *
- * 运行契约（宿主 WebViewSkillEngine / JsSandbox）：
- *  - 宿主把本文件整体 eval 进 WebView 的 V8，再执行
- *    `JSON.stringify(<functionName>.apply(null, [参数对象]))`；
- *  - 每个工具 = 一个顶层函数，只接收一个参数对象，返回普通对象（不要自己 JSON.stringify）；
- *  - 失败返回 { error: "中文原因" }，任何情况下都不向外抛异常。
+ * Ejecute el contrato (alojado por WebViewSkillEngine/JsSandbox):
+ *  - El host evalúa el archivo completo en el V8 de WebView y luego lo ejecuta.
+ *    `JSON.stringify(<functionName>.apply(null, [objeto de parámetro]))`;
+ *  - cada herramienta = Una función de nivel superior que solo recibe un objeto de parámetro y devuelve un objeto normal (no utilice JSON.stringify usted mismo);
+ *  - Retorno del fracaso { error: "razón china" }, no se lanzará ninguna excepción bajo ninguna circunstancia.
  *
- * CSV 规则（RFC 4180 兼容，宽松解析）：
- *  - 双引号包裹的字段内可含分隔符、换行与转义的双引号（""）；
- *  - 有表头时首行作键名，无表头时键名为 col1..colN；
- *  - 完全空白的行会被忽略。
- *  - 上限：文本 500000 字符、列 200 列、单次最多输出 10000 行。
- * 纯本地计算：不联网、不读写文件。
+ * CSV reglas (RFC 4180 Análisis compatible y suelto):
+ *  - Los campos entre comillas dobles pueden contener delimitadores, nuevas líneas y comillas dobles escapadas ("");
+ *  - Cuando hay un encabezado, la primera fila es el nombre de la clave y cuando no hay encabezado, el nombre de la clave es col1..colN;
+ *  - Se ignoran las líneas completamente en blanco.
+ *  - Límite superior: 500.000 caracteres de texto, 200 columnas y un máximo de 10.000 líneas de salida a la vez.
+ * Computación local pura: sin acceso a Internet, sin lectura ni escritura de archivos.
  */
 
 var CSV_MAX_TEXT = 500000;
@@ -21,18 +21,18 @@ var CSV_ROWS_DEFAULT = 1000;
 var CSV_MAX_COLUMNS = 200;
 var CSV_NUMBER_RE = /^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
 
-/** 参数对象兜底。 */
+/** El objeto de parámetro cuenta la historia. */
 function csvArgsObject(args) {
     return args !== null && typeof args === "object" && !Array.isArray(args) ? args : {};
 }
 
-/** 异常统一转文本。 */
+/** Las excepciones se convierten uniformemente en texto. */
 function csvMessage(e) {
     if (e && e.message) return String(e.message);
     return String(e);
 }
 
-/** 宽松布尔读取。 */
+/** Lectura booleana relajada. */
 function csvBool(value, def) {
     if (value === undefined || value === null) return def;
     if (typeof value === "string") {
@@ -43,18 +43,18 @@ function csvBool(value, def) {
     return !!value;
 }
 
-/** 分隔符规范化：默认逗号，支持 ; | 制表符等单字符。 */
+/** Normalización del delimitador: coma predeterminada, compatible ; | Caracteres individuales como tabulación. */
 function csvNormalizeDelimiter(value) {
     if (value === undefined || value === null || value === "") return { delimiter: "," };
-    if (typeof value !== "string") return { error: "delimiter 必须是字符串" };
+    if (typeof value !== "string") return { error: "delimiter debe ser una cuerda" };
     var text = value;
     if (text === "\\t" || text.toLowerCase() === "tab") text = "\t";
-    if (text.length !== 1) return { error: "delimiter 必须是单个字符（如 , ; | 或制表符）" };
-    if (text === "\"" || text === "\r" || text === "\n") return { error: "delimiter 不能是双引号或换行符" };
+    if (text.length !== 1) return { error: "delimiter Debe ser un solo carácter (p. ej. , ; | o pestaña)" };
+    if (text === "\"" || text === "\r" || text === "\n") return { error: "delimiter No pueden ser comillas dobles ni nuevas líneas." };
     return { delimiter: text };
 }
 
-/** 读取 CSV 文本参数（主参数 csv，兼容 text / data / input 别名）。 */
+/** Leer parámetro de texto CSV (parámetro principal csv, compatible text / data / input alias). */
 function csvReadText(args) {
     var candidates = [args.csv, args.text, args.data, args.input];
     var value = null;
@@ -64,18 +64,18 @@ function csvReadText(args) {
             break;
         }
     }
-    if (value === null) return { error: "缺少 csv 参数（需要 CSV 文本字符串）" };
+    if (value === null) return { error: "Falta el parámetro csv (requiere una cadena de texto CSV)" };
     if (value.length > CSV_MAX_TEXT) {
-        return { error: "CSV 文本过长（上限 " + CSV_MAX_TEXT + " 字符，当前 " + value.length + "）" };
+        return { error: "CSV Texto demasiado largo (máximo " + CSV_MAX_TEXT + " personaje, actual " + value.length + ")" };
     }
     var text = value.replace(/^\uFEFF/, "");
-    if (text.replace(/\s+/g, "") === "") return { error: "CSV 文本为空" };
+    if (text.replace(/\s+/g, "") === "") return { error: "CSV El texto está vacío." };
     return { text: text };
 }
 
 /**
- * 解析 CSV 为二维数组（宽松 RFC 4180）。
- * 返回 { rows, error }；未闭合的双引号视为格式错误。
+ * Analice CSV en una matriz bidimensional (RFC 4180 relajado).
+ * Regresar { rows, error };Las comillas dobles no cerradas se consideran un error de formato.
  */
 function csvParseRows(text, delimiter) {
     var rows = [];
@@ -134,8 +134,8 @@ function csvParseRows(text, delimiter) {
         field += ch;
         i++;
     }
-    if (inQuotes) return { error: "CSV 存在未闭合的双引号" };
-    // rowQuoted 也要算：末尾是 "" 这种引号包裹的空字段时不能丢行
+    if (inQuotes) return { error: "CSV Hay una comilla doble no cerrada." };
+    // rowQuoted Cuente también: el final es "" Las líneas no se pueden perder cuando los campos vacíos están entre comillas.
     if (field.length > 0 || row.length > 0 || rowQuoted) {
         row.push(field);
         rows.push(row);
@@ -149,7 +149,7 @@ function csvParseRows(text, delimiter) {
     return { rows: filtered };
 }
 
-/** 生成列名：空列名补 colN，重名加 _2/_3 后缀，__proto__ 换成 colN。 */
+/** Generar nombres de columnas: los nombres de columnas vacías se completan con colN, los nombres duplicados se agregan con el sufijo _2/_3,__proto__ Reemplace con columna. */
 function csvUniqueNames(headerRow, width) {
     var names = [];
     var seen = {};
@@ -170,7 +170,7 @@ function csvUniqueNames(headerRow, width) {
     return names;
 }
 
-/** 单元格取值转文本：null/undefined 为空串，对象/数组用 JSON 文本。 */
+/** Convertir el valor de la celda a texto:null/undefined es una cadena vacía, objeto/Las matrices utilizan texto JSON. */
 function csvFormatCell(value) {
     if (value === undefined || value === null) return "";
     if (typeof value === "string") return value;
@@ -184,7 +184,7 @@ function csvFormatCell(value) {
     return text === undefined ? "" : text;
 }
 
-/** RFC 4180 转义：含分隔符、引号或换行的值加引号并把 " 写成 ""。 */
+/** RFC 4180 Escape: los valores que contienen delimitadores, comillas o nuevas líneas se citan y se incluyen entre " escrito como "". */
 function csvQuoteCell(text, delimiter) {
     if (text.indexOf("\"") >= 0 || text.indexOf(delimiter) >= 0 ||
         text.indexOf("\n") >= 0 || text.indexOf("\r") >= 0) {
@@ -193,7 +193,7 @@ function csvQuoteCell(text, delimiter) {
     return text;
 }
 
-/** 判断字符串是否为纯数字（允许正负号、小数与科学计数法）。 */
+/** Determine si la cadena es un número puro (permitiendo signos más y menos, decimales y notación científica). */
 function csvIsNumber(value) {
     var text = String(value).trim();
     if (text === "") return false;
@@ -203,14 +203,14 @@ function csvIsNumber(value) {
     return true;
 }
 
-/** 保留 6 位小数的数值整理（避免浮点误差写进结果）。 */
+/** Clasificación numérica que conserva 6 decimales (para evitar que se escriban errores de punto flotante en el resultado). */
 function csvRound(value) {
     if (value === null || value === undefined) return null;
     if (typeof value !== "number" || isNaN(value) || value === Infinity || value === -Infinity) return null;
     return Math.round(value * 1000000) / 1000000;
 }
 
-/** 取出现次数最多的前 limit 个取值（次数相同按首次出现顺序）。 */
+/** Obtenga los primeros valores límite que aparecen con más frecuencia (el mismo número de veces está en orden de primera aparición). */
 function csvTopValues(freq, limit) {
     var keys = Object.keys(freq);
     var items = [];
@@ -228,15 +228,15 @@ function csvTopValues(freq, limit) {
     return out;
 }
 
-/** 读取 maxRows / top 之类的正整数参数。 */
+/** Lea parámetros enteros positivos como maxRows/top. */
 function csvReadCount(value, def, max, label) {
     if (value === undefined || value === null || value === "") return { value: def };
     var num = typeof value === "number" ? value : parseInt(String(value), 10);
-    if (isNaN(num) || num < 1) return { error: label + " 必须是 >=1 的整数" };
+    if (isNaN(num) || num < 1) return { error: label + " debe ser >=1 entero" };
     return { value: num > max ? max : Math.floor(num) };
 }
 
-/** 工具 csv_to_json：CSV 文本转对象数组。 */
+/** Herramienta csv_to_json:CSV Convierte texto en matriz de objetos. */
 function csvToJson(args) {
     args = csvArgsObject(args);
     var input = csvReadText(args);
@@ -250,13 +250,13 @@ function csvToJson(args) {
     var parsed = csvParseRows(input.text, delim.delimiter);
     if (parsed.error) return parsed;
     var rows = parsed.rows;
-    if (rows.length === 0) return { error: "CSV 没有可解析的内容" };
+    if (rows.length === 0) return { error: "CSV No hay contenido para analizar" };
     var width = 0;
     for (var i = 0; i < rows.length; i++) {
         if (rows[i].length > width) width = rows[i].length;
     }
     if (width > CSV_MAX_COLUMNS) {
-        return { error: "列数超过上限（最多 " + CSV_MAX_COLUMNS + " 列，当前 " + width + " 列）" };
+        return { error: "El número de columnas excede el límite superior (máximo " + CSV_MAX_COLUMNS + " columna, actual " + width + " columna)" };
     }
     var columns = csvUniqueNames(header ? rows[0] : null, width);
     var dataRows = header ? rows.slice(1) : rows.slice(0);
@@ -283,31 +283,31 @@ function csvToJson(args) {
         truncated: truncated,
         delimiter: delim.delimiter,
         header: header,
-        note: "字段内的逗号与换行由双引号包裹处理，\"\" 还原为字面双引号；" +
-            "truncated 为 true 表示只返回了前 " + maxRows.value + " 行。"
+        note: "Las comas y los saltos de línea dentro de los campos se manejan entre comillas dobles.\"\" Volver a comillas dobles literales;" +
+            "truncated es cierto para indicar que sólo el primero " + maxRows.value + " DE ACUERDO."
     };
 }
 
-/** 工具 json_to_csv：对象数组转 CSV（列顺序取并集的首次出现顺序）。 */
+/** Herramienta json_to_csv: convierte una matriz de objetos a CSV (el orden de las columnas se toma en el orden en que apareció la primera unión). */
 function jsonToCsv(args) {
     args = csvArgsObject(args);
     var raw = args.data;
     if (raw === undefined || raw === null) raw = args.json;
     if (raw === undefined || raw === null) raw = args.rows;
-    if (raw === undefined || raw === null) return { error: "缺少 data 参数（JSON 数组，或它的字符串形式）" };
+    if (raw === undefined || raw === null) return { error: "Parámetro de datos faltantes (JSON matriz, o su forma de cadena)" };
     var data = raw;
     if (typeof data === "string") {
         var trimmed = data.replace(/^\s+|\s+$/g, "");
-        if (trimmed === "") return { error: "data 是空字符串，无法解析出 JSON 数组" };
+        if (trimmed === "") return { error: "data es una cadena vacía y no se puede analizar en una matriz JSON." };
         try {
             data = JSON.parse(trimmed);
         } catch (e) {
-            return { error: "JSON 解析失败: " + csvMessage(e) };
+            return { error: "JSON El análisis falló: " + csvMessage(e) };
         }
     }
-    if (!Array.isArray(data)) return { error: "data 必须是 JSON 数组" };
+    if (!Array.isArray(data)) return { error: "data Debe ser una matriz JSON" };
     if (data.length > CSV_MAX_ROWS) {
-        return { error: "数组元素过多（上限 " + CSV_MAX_ROWS + " 条，当前 " + data.length + " 条）" };
+        return { error: "Demasiados elementos de matriz (límite superior " + CSV_MAX_ROWS + " barra, actual " + data.length + " artículo)" };
     }
     var delim = csvNormalizeDelimiter(args.delimiter);
     if (delim.error) return delim;
@@ -321,7 +321,7 @@ function jsonToCsv(args) {
             columns: [],
             delimiter: delim.delimiter,
             header: header,
-            note: "数组为空，输出空文本。"
+            note: "Si la matriz está vacía, se genera texto vacío."
         };
     }
     var allObjects = true;
@@ -347,7 +347,7 @@ function jsonToCsv(args) {
             for (var k = 0; k < keys.length; k++) {
                 var key = keys[k];
                 if (key === "__proto__") {
-                    if (warnings.length === 0) warnings.push("已跳过非法字段名 __proto__");
+                    if (warnings.length === 0) warnings.push("Se omitieron nombres de campos ilegales __proto__");
                     continue;
                 }
                 if (!Object.prototype.hasOwnProperty.call(seen, key)) {
@@ -369,7 +369,7 @@ function jsonToCsv(args) {
             if (data[a].length > width) width = data[a].length;
         }
         if (width > CSV_MAX_COLUMNS) {
-            return { error: "列数超过上限（最多 " + CSV_MAX_COLUMNS + " 列，当前 " + width + " 列）" };
+            return { error: "El número de columnas excede el límite superior (máximo " + CSV_MAX_COLUMNS + " columna, actual " + width + " columna)" };
         }
         columns = csvUniqueNames(null, width);
         for (var b = 0; b < data.length; b++) {
@@ -407,14 +407,14 @@ function jsonToCsv(args) {
         columns: columns,
         delimiter: delim.delimiter,
         header: useHeader,
-        note: "含分隔符、双引号或换行的值会自动加引号并按 RFC 4180 把 \" 转义为 \"\"；" +
-            "缺失字段留空；只有对象数组且 header 为 true 时才输出表头行。"
+        note: "Los valores que contienen delimitadores, comillas dobles o nuevas líneas se citan y configuran automáticamente de acuerdo con RFC 4180. \" Escapó como \"\";" +
+            "Los campos faltantes se dejan en blanco; Las filas del encabezado se generan solo si el objeto es una matriz y el encabezado es verdadero."
     };
     if (warnings.length > 0) response.warnings = warnings;
     return response;
 }
 
-/** 工具 csv_stats：按列统计类型、非空计数、数值分布与高频取值。 */
+/** Herramienta csv_stats: tipo de estadísticas de columna, recuento no nulo, distribución numérica y valores de alta frecuencia. */
 function csvStats(args) {
     args = csvArgsObject(args);
     var input = csvReadText(args);
@@ -427,19 +427,19 @@ function csvStats(args) {
     var parsed = csvParseRows(input.text, delim.delimiter);
     if (parsed.error) return parsed;
     var rows = parsed.rows;
-    if (rows.length === 0) return { error: "CSV 没有可解析的内容" };
+    if (rows.length === 0) return { error: "CSV No hay contenido para analizar" };
     var width = 0;
     for (var i = 0; i < rows.length; i++) {
         if (rows[i].length > width) width = rows[i].length;
     }
     if (width > CSV_MAX_COLUMNS) {
-        return { error: "列数超过上限（最多 " + CSV_MAX_COLUMNS + " 列，当前 " + width + " 列）" };
+        return { error: "El número de columnas excede el límite superior (máximo " + CSV_MAX_COLUMNS + " columna, actual " + width + " columna)" };
     }
     var columns = csvUniqueNames(header ? rows[0] : null, width);
     var dataRows = header ? rows.slice(1) : rows.slice(0);
-    if (dataRows.length === 0) return { error: "CSV 只有表头行，没有数据行" };
+    if (dataRows.length === 0) return { error: "CSV Sólo filas de encabezado, sin filas de datos" };
     if (dataRows.length > CSV_MAX_ROWS * 10) {
-        return { error: "数据行过多（上限 " + (CSV_MAX_ROWS * 10) + " 行，当前 " + dataRows.length + " 行）" };
+        return { error: "Demasiadas filas de datos (límite superior " + (CSV_MAX_ROWS * 10) + " Bien, actual " + dataRows.length + " bien)" };
     }
     var stats = [];
     for (var c = 0; c < width; c++) {
@@ -503,7 +503,7 @@ function csvStats(args) {
         columnCount: width,
         delimiter: delim.delimiter,
         header: header,
-        note: "type 判定：非空值全为数字则 number，否则 text，全空则 empty；" +
-            "number 列给出 min/max/sum/mean（保留 6 位小数），text 列给出 distinct 与出现最多的 top 个取值。"
+        note: "type Determinación: si el valor no vacío son todos números, es un número, de lo contrario es texto, si está todo vacío, está vacío;" +
+            "number Las columnas dan mínimo/máximo/suma/media (con 6 decimales),text Las columnas proporcionan valores distintos y los que ocurren con mayor frecuencia."
     };
 }

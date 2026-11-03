@@ -16,16 +16,16 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * get_token_usage 的返回格式与降级路径。
+ * get_token_usage El formato de retorno y la ruta de degradación.
  *
- * 这里钉住的都是「模型看到的那几行」：数字简写口径、今日窗口起点、会话 id 缺失 /
- * 无数据 / 上下文探针缺失时分别该显示什么。DAO 只做替身，真实聚合在 TokenUsageDaoTest 里跑。
+ * Lo que está fijado aquí son las "esas líneas vistas por el modelo": el calibre de abreviatura numérica, el punto de partida de la ventana de hoy y la identificación de sesión que falta. /
+ * Qué se debe mostrar cuando no hay datos o falta la sonda de contexto.DAO Solo se usa como sustituto y la agregación real se ejecuta en TokenUsageDaoTest.
  */
 class TokenUsageToolTest {
 
     private val zone = ZoneId.of("Asia/Shanghai")
 
-    /** 2026-10-29 10:00 (+08:00)，今日起点应为 2026-10-28T16:00Z。 */
+    /** 2026-10-29 10:00 (+08:00), el punto de partida de hoy debería ser 2026-10-28T16:00Z. */
     private val now = Instant.parse("2026-10-29T02:00:00Z").toEpochMilli()
     private val startOfToday = Instant.parse("2026-10-28T16:00:00Z").toEpochMilli()
 
@@ -134,7 +134,7 @@ class TokenUsageToolTest {
             )
 
         assertTrue(text.contains("session: unavailable"))
-        // 会话维度拿不到就不查流水：不按时间窗口臆造一个「本会话」数字
+        // Si no se puede obtener la dimensión de la sesión, no se comprobará el flujo: no se creará un número de "esta sesión" según la ventana de tiempo.
         assertNull(dao.lastSinceMs)
     }
 

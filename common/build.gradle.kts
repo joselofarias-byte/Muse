@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
-    // Phase 2.1: Kover — 插桩本模块字节码,数据上提到 root 聚合报告
+    // Phase 2.1: Kover — Instrumentar el código de bytes de este módulo.,Datos mencionados en el informe de agregación raíz
     alias(libs.plugins.kover)
 }
 
@@ -30,12 +30,12 @@ dependencies {
     // Serialization (Json helper)
     implementation(libs.kotlinx.serialization.json)
 
-    // 测试
+    // prueba
     testImplementation(libs.junit)
 }
 
-// P4-5: 覆盖率门禁补全 — common 此前无 verify 规则(静默不算数)。
-// 按当前实测 LINE 22.6% 设定,低于该值即失败。
+// P4-5: Finalización del control de acceso a la cobertura — common No había ninguna regla de verificación antes(El silencio no cuenta.).
+// Establecer según la LÍNEA medida actual 22,6%,La falla ocurre por debajo de este valor.
 kover {
     reports {
         verify {

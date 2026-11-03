@@ -3,34 +3,34 @@ package io.zer0.muse.data
 import io.zer0.ai.core.ProviderConfig
 
 /**
- * P2-1: Provider 冲突(重复配置)检测器。
+ * P2-1: Provider conflicto(Configuración duplicada)detector.
  *
- * 当用户在不同条目里填入「相同 baseUrl + 相同 API Key 末 4 位」时,
- * 视为可能重复的供应商配置,提示用户合并以避免混淆。
+ * Cuando el usuario completa "la misma URL base + los mismos últimos 4 dígitos de la clave API" en diferentes entradas,
+ * La configuración del proveedor se considera potencialmente duplicada,Se solicita a los usuarios que se fusionen para evitar confusiones.
  *
- * 设计要点:
- *  - baseUrl 规范化:去 `http(s)://` 前缀、去尾斜杠、转小写,保留 host+port+path,
- *    使 `https://API.OpenAI.com/v1/` 与 `http://api.openai.com/v1` 视为同源。
- *  - apiKey 仅比较末 4 位:避免在内存/日志中留存完整密钥,保护隐私。
- *    两侧 apiKey 均为空时也视为「末 4 位相同」(都是空串),提示用户清理重复空壳配置。
- *  - 同一 baseUrl 但 apiKey 末 4 位不同 → 不算冲突(可能是同一中转站多账号)。
- *  - 仅对成对比较结果非自身的两条配置产出 [ProviderCollision]。
+ * Puntos de diseño:
+ *  - baseUrl estandarizar:ir `http(s)://` Prefijo, eliminar barra diagonal, convertir a minúsculas,Reservar host+port+path,
+ *    hacer `https://API.OpenAI.com/v1/` con `http://api.openai.com/v1` considerados homólogos.
+ *  - apiKey Compara solo los últimos 4 dígitos:evitar en la memoria/Mantenga la clave completa en el registro.,Proteger la privacidad.
+ *    Cuando apiKey en ambos lados está vacío, también se considera que "los últimos 4 dígitos son iguales".(Todas son cadenas vacías),Solicita a los usuarios que limpien configuraciones de shell vacías duplicadas.
+ *  - La misma baseUrl pero los últimos 4 dígitos de apiKey son diferentes → No es un conflicto(Pueden ser varias cuentas en la misma estación de transferencia.).
+ *  - Salida solo para dos configuraciones cuyo resultado de comparación por pares no es él mismo [ProviderCollision].
  *
- * 使用方:[io.zer0.muse.ui.settings.providerListSection] 在列表上方展示警告卡片。
+ * Usuario:[io.zer0.muse.ui.settings.providerListSection] Muestre una tarjeta de advertencia encima de la lista.
  */
 object ProviderCollisionDetector {
 
     /**
-     * 检测 provider 列表中的冲突:相同 baseUrl(规范化后,去尾斜杠+小写)
-     * + apiKey 末 4 位视为冲突。
+     * Detectar conflictos en la lista de proveedores:Lo mismo baseUrl(Después de la normalización,Quitar barra diagonal+minúscula)
+     * + apiKey Los últimos 4 dígitos se consideran conflictos.
      *
-     * @return 冲突列表;空列表表示未检测到重复。每对冲突只返回一次(A<B 时才记录)。
+     * @return lista de conflictos;Una lista vacía significa que no se detectaron duplicados. Cada par de conflictos se devuelve solo una vez(A<B registrado sólo cuando).
      */
     fun detect(providers: List<ProviderConfig>): List<ProviderCollision> {
         if (providers.size < 2) return emptyList()
 
-        // 预计算每条配置的规范化键,避免在 N² 内层重复计算。
-        // 空 API Key 的条目(如 Ollama / 未填 key 的空壳)不参与冲突判定。
+        // Precalcular claves normalizadas para cada configuración.,evitar en N² La capa interior se repite.
+        // Entrada para clave API vacía(Como Ollama/cáscara vacía sin clave)No involucrado en la determinación de conflictos.
         val normalized = providers.mapNotNull { p -> normalizeKey(p)?.let { p to it } }
         val collisions = mutableListOf<ProviderCollision>()
         for (i in normalized.indices) {
@@ -41,7 +41,7 @@ object ProviderCollisionDetector {
                     collisions += ProviderCollision(
                         providerA = a,
                         providerB = b,
-                        reason = "相同 baseUrl 与 API Key",
+                        reason = "Misma URL base que API Key",
                     )
                 }
             }
@@ -50,14 +50,14 @@ object ProviderCollisionDetector {
     }
 
     /**
-     * 规范化 baseUrl:去 `http(s)://` 前缀、去尾斜杠、转小写,保留 host+port+path。
-     * 例:`https://API.OpenAI.com/v1/` → `api.openai.com/v1`
+     * Normalizar baseUrl:ir `http(s)://` Prefijo, eliminar barra diagonal, convertir a minúsculas,Mantenga host+puerto+ruta.
+     * Ejemplo:`https://API.OpenAI.com/v1/` → `api.openai.com/v1`
      *
-     * 与 apiKey 的 SHA-256 摘要拼接为统一比较键。
-     * 空 apiKey 返回 null(该条目不参与冲突判定)。
+     * Concatenado con el resumen SHA-256 de apiKey en una clave de comparación unificada.
+     * APIKey vacía devuelta null(Esta entrada no participa en la determinación de conflictos.).
      *
-     * 用摘要而非明文末 4 位:末 4 位会碰撞(不同 key 被判为同一配置),
-     * 摘要既避免明文留存,又几乎不会误判。
+     * Utilice resumen en lugar de los últimos 4 dígitos del texto sin formato:Los últimos 4 bits colisionarán(Se considera que diferentes claves tienen la misma configuración.),
+     * El resumen evita retener texto plano.,Casi no hay errores de juicio.
      */
     private fun normalizeKey(config: ProviderConfig): String? {
         if (config.apiKey.isBlank()) return null
@@ -75,11 +75,11 @@ object ProviderCollisionDetector {
 }
 
 /**
- * 一对冲突的 Provider 配置。
+ * Un par de configuraciones de proveedor en conflicto.
  *
- * @param providerA 冲突双方之一
- * @param providerB 冲突双方之一
- * @param reason 人类可读的冲突原因(如「相同 baseUrl 与 API Key」)
+ * @param providerA una de las partes en conflicto
+ * @param providerB una de las partes en conflicto
+ * @param reason Motivo del conflicto legible por humanos(Como "Misma baseUrl y clave API")
  */
 data class ProviderCollision(
     val providerA: ProviderConfig,

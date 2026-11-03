@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    v2.2.1 虚拟屏服务端。
-    本 APK 从不安装到系统:产物改名 muse-vd-server.jar 由主应用分发到 /data/local/tmp,
-    以 shell uid 的 app_process 进程运行(CLASSPATH 加载其中的 classes.dex)。
-    因此不需要任何组件声明。
+    v2.2.1 Servidor de pantalla virtual.
+    Este APK nunca se instala en el sistema.:El producto pasó a llamarse muse-vd-server.jar y se distribuyó a /data/local/tmp,
+    Ejecutar como proceso app_process con shell uid(CLASSPATH cargado en classes.dex).
+    Por tanto, no se requiere ninguna declaración de componentes.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application android:label="Muse VD Server" />

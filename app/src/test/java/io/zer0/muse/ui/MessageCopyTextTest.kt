@@ -7,8 +7,8 @@ class MessageCopyTextTest {
 
     @Test
     fun `copy copies body only and never appends reasoning`() {
-        // 用户反馈「点复制拿到的是思考」：正文和思考都在时，只复制正文。
-        // 想要思考有专门的「复制思考」按钮，不该靠复制按钮捎带。
+        // Comentarios de los usuarios "Lo que obtienes cuando haces clic en copiar es pensar": cuando tanto el texto como el pensamiento están presentes, solo se copia el texto.
+        // Si quieres pensar, hay un botón especial "Copiar pensamiento". No debes confiar en el botón copiar.
         assertEquals("answer", messageCopyText("answer", "thinking"))
     }
 

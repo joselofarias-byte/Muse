@@ -4,31 +4,31 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * 模型能力库(`model-catalog`)。
+ * Biblioteca de capacidades de modelo(`model-catalog`).
  *
- * 把"模型能做什么"从散落的硬编码收敛成 **一份数据** —— 现状是
- * `ProviderCompat` 的 host 白名单、`ModelRegistry` 的名称前缀规则、`KnownModels`
- * 词典三条独立链并存,同一模型可能得出不同结论。这里统一为单一真相。
+ * poner"Qué puede hacer el modelo"Convergiendo de la codificación rígida dispersa a **un dato** —— La situación actual es
+ * `ProviderCompat` lista blanca de hosts,`ModelRegistry` reglas de prefijo de nombre,`KnownModels`
+ * Coexisten tres cadenas independientes de diccionarios,Un mismo modelo puede llevar a conclusiones diferentes. Aquí unificados en una sola verdad.
  *
- * 字段命名对齐上游目录,便于互导;数据源可为内置 JSON,将来也可替换为远端目录
- * (留 [schemaVersion] / [publishedAt] 两个口子)。
+ * El nombre de los campos se alinea con el directorio ascendente,Conveniente para la conducción mutua.;Las fuentes de datos se pueden incorporar JSON,También puede ser reemplazado por un directorio remoto en el futuro.
+ * (quedarse [schemaVersion] / [publishedAt] Dos aperturas).
  */
 @Serializable
 data class ModelCatalog(
     val schemaVersion: Int = 1,
     val publishedAt: String = "",
-    /** providerId → (modelId → 能力条目)。 */
+    /** providerId → (modelId → entrada de habilidad). */
     val providers: Map<String, Map<String, ModelCatalogEntry>> = emptyMap(),
 ) {
-    /** 查一个模型的能力条目;provider 或 model 不存在返回 null。 */
+    /** Verifique las entradas de capacidad de un modelo.;provider O el modelo no existe y devuelve nulo. */
     fun entryOf(providerId: String, modelId: String): ModelCatalogEntry? = providers[providerId]?.get(modelId)
 
     /**
-     * 按模型 id 全局查（跨 provider 第一个命中）。
+     * Busque globalmente por ID de modelo (primer resultado entre proveedores).
      *
-     * 用于 user 自建供应商场景 —— 它们的 providerId 是运行时生成的（provider-xxx），
-     * 与目录里的逻辑供应商名对不上，此时以模型名（上游全局唯一）为准。
-     * 惰性索引,不参与序列化,首次查询时构建。
+     * Se utiliza en escenarios de proveedores autoconstruidos por el usuario. —— Su ID de proveedor se genera en tiempo de ejecución (provider-xxx),
+     * No coincide con el nombre lógico del proveedor en el directorio. En este caso, prevalecerá el nombre del modelo (único globalmente ascendente).
+     * índice perezoso,No participa en la serialización.,Construido cuando se consultó por primera vez.
      */
     fun entryByModelId(modelId: String): ModelCatalogEntry? = byModelIdIndex[modelId]
 
@@ -40,11 +40,11 @@ data class ModelCatalog(
         }
     }
 
-    /** 某 provider 下所有模型条目。 */
+    /** Todas las entradas de modelos de un determinado proveedor. */
     fun modelsOf(providerId: String): Map<String, ModelCatalogEntry> = providers[providerId] ?: emptyMap()
 }
 
-/** 单个模型的能力画像。 */
+/** Retrato de capacidades de un solo modelo. */
 @Serializable
 data class ModelCatalogEntry(
     val name: String = "",
@@ -52,26 +52,26 @@ data class ModelCatalogEntry(
     val maxOutput: Long? = null,
     val image: Boolean? = null,
     val reasoning: Boolean? = null,
-    /** 工具调用规格 —— 含"方言",替代按 host / 名称前缀猜的那一套。 */
+    /** Especificaciones de llamada de herramienta —— Contiene"dialecto",En lugar de adivinar por el prefijo de nombre/host. */
     val toolUse: ToolUseSpec? = null,
-    /** 支持的推理档位(如 low/medium/high/xhigh/max);空表示不支持推理档位。 */
+    /** Engranajes de inferencia soportados(Como por ejemplo low/medium/high/xhigh/max);Vacío significa que no se admite el equipo de inferencia. */
     val thinkingLevels: List<String> = emptyList(),
     val defaultThinkingLevel: String? = null,
-    /** 兼容性画像(替代硬编码 host 白名单)。 */
+    /** Retrato de compatibilidad(Reemplazo de la lista blanca de hosts codificados). */
     val compat: CompatProfile? = null,
 )
 
-/** 工具调用规格。 */
+/** Especificaciones de llamada de herramienta. */
 @Serializable
 data class ToolUseSpec(
     val supportsTools: Boolean = false,
-    /** 工具调用方言:openai / anthropic / gemini。 */
+    /** dialecto de llamada de herramientas:openai / anthropic / gemini. */
     val dialect: String = "openai",
-    /** 工具结果回传格式:message / tool-result。 */
+    /** Formato de devolución de resultados de la herramienta:message / tool-result. */
     val toolResultFormat: String = "message",
 )
 
-/** 兼容性画像。 */
+/** Retrato de compatibilidad. */
 @Serializable
 data class CompatProfile(
     val thinkingFormat: String? = null,
@@ -79,10 +79,10 @@ data class CompatProfile(
 )
 
 /**
- * 模型能力库加载入口。
+ * Entrada de carga de la biblioteca de capacidades de modelo.
  *
- * 解析失败返回**空库**而不抛异常 —— 调用方读到空库时自然退回各自的兜底逻辑,
- * 避免一份坏数据把整条链路打挂(与上游"失败保留旧 snapshot"同一取向)。
+ * Devolver si falla el análisis**biblioteca vacia**sin lanzar una excepción —— Cuando la persona que llama lee la biblioteca vacía, naturalmente recurrirá a su propia lógica.,
+ * Evite que un dato incorrecto destruya todo el enlace(con aguas arriba"No mantenerte viejo snapshot"misma orientación).
  */
 object ModelCatalogLoader {
     private val json = Json { ignoreUnknownKeys = true }

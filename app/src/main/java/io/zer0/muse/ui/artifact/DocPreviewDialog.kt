@@ -39,10 +39,10 @@ import io.zer0.muse.ui.common.surface.museSafeTopInsetPadding
 import io.zer0.muse.ui.theme.MuseIconSizes
 
 /**
- * v2.0.1: 文档预览（PDF）— 全屏 WebView + pdf.js（assets 离线分发）。
+ * v2.0.1: Vista previa del documento (PDF)— WebView de pantalla completa + pdf.js (assets distribución fuera de línea).
  *
- * 数据以 base64 注入 viewer.html 的 `window.renderPdf`（避免 file:// 跨域限制）；
- * 超过 [MAX_DOC_BYTES] 的文件回退加载失败态（后续可扩展分块加载）。
+ * Los datos se inyectan en Viewer.html como base64. `window.renderPdf`(Evite las restricciones entre dominios file://);
+ * exceder [MAX_DOC_BYTES] El archivo volverá al estado de carga fallida (carga fragmentada expandible posterior).
  */
 @Composable
 fun DocPreviewDialog(fileName: String, loadBytes: suspend () -> ByteArray?, onDismiss: () -> Unit) {
@@ -143,5 +143,5 @@ fun DocPreviewDialog(fileName: String, loadBytes: suspend () -> ByteArray?, onDi
     }
 }
 
-/** 文档预览大小上限（base64 注入路径的保守值）。 */
+/** Tamaño máximo de vista previa del documento (base64 valor conservador para la ruta de inyección). */
 private const val MAX_DOC_BYTES = 20 * 1024 * 1024

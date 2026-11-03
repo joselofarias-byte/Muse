@@ -55,7 +55,7 @@
     <string name="skill_delegate_failed">Falha na chamada do subassistente %1$s: %2$s</string>
     <string name="skill_delegate_timeout">Chamada do subassistente %1$s expirou (%2$d s)</string>
     <string name="skill_delegate_empty">O subassistente %1$s retornou conteúdo vazio</string>
-    <string name="skill_delegate_done">「%1$s」concluiu a tarefa delegada:</string>
+    <string name="skill_delegate_done">「%1$s"concluiu a tarefa delegada:</string>
     <string name="skill_delegate_max_depth">A profundidade de aninhamento delegado excedeu o limite (%1$d), recusou-se a aninhar mais</string>
     <string name="skill_task_blank">a tarefa não pode ficar vazia</string>
     <string name="skill_title_blank">o título não pode ficar vazio</string>
@@ -399,7 +399,7 @@
     <string name="skill_update_validate_failed">Falha na validação da atualização: %1$s</string>
     <string name="skill_updated">Skill atualizada: %1$s(id=%2$s)</string>
 
-    <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
+    <!-- Control de aplicaciones (app_* Herramienta): Los resultados se devuelven al modelo y la redacción debe explicarse por sí misma. -->
     <string name="app_control_need_app_arg">Informe o nome do aplicativo ou do pacote.</string>
     <string name="app_control_launch_action">abrir</string>
     <string name="app_control_settings_action">abrir as configuracoes de</string>

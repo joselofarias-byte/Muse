@@ -13,10 +13,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.2（用户反馈）: 通知 → 记忆 梳理器的解析与提示词回归测试。
+ * v2.6.2(comentarios de los usuarios): Notificación → Análisis y pruebas de regresión de palabras clave de preparadores de memoria.
  *
- * 锁死：LLM 输出的 JSON（含 think/围栏/前后噪声）都能正确解析为事实列表；
- * 提示词在中文环境下包含「值得记」与「不值得记」的判定准则。
+ * Bloqueado:LLM Salida JSON (con think/fences/Tanto el ruido delantero como el trasero) se pueden analizar correctamente en listas de hechos;
+ * Las palabras clave incluyen los criterios de juicio de "vale la pena recordar" y "no vale la pena recordar" en el entorno chino.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -43,26 +43,26 @@ class NotificationMemoryDigestParseTest {
 
     @Test
     fun `plain json parses`() {
-        val r = newDigest().parseResult("""{"facts": ["快递已到菜鸟驿站", "明天 10 点开会"]}""")
-        assertEquals(listOf("快递已到菜鸟驿站", "明天 10 点开会"), r?.facts)
+        val r = newDigest().parseResult("""{"facts": ["El envío urgente ha llegado a la estación de Cainiao", "Reunión mañana a las 10 en punto."]}""")
+        assertEquals(listOf("El envío urgente ha llegado a la estación de Cainiao", "Reunión mañana a las 10 en punto."), r?.facts)
     }
 
     @Test
     fun `json inside markdown fence parses`() {
-        val raw = "```json\n{\"facts\": [\"还款日 5 号\"]}\n```"
-        assertEquals(listOf("还款日 5 号"), newDigest().parseResult(raw)?.facts)
+        val raw = "```json\n{\"facts\": [\"Fecha de amortización 5.\"]}\n```"
+        assertEquals(listOf("Fecha de amortización 5."), newDigest().parseResult(raw)?.facts)
     }
 
     @Test
     fun `json after think block parses`() {
-        val raw = "<think>先看看有哪些通知…</think>{\"facts\": [\"体检预约周三\"]}"
-        assertEquals(listOf("体检预约周三"), newDigest().parseResult(raw)?.facts)
+        val raw = "<think>Veamos primero qué notificaciones hay…</think>{\"facts\": [\"Cita de examen físico el miércoles.\"]}"
+        assertEquals(listOf("Cita de examen físico el miércoles."), newDigest().parseResult(raw)?.facts)
     }
 
     @Test
     fun `json with leading noise parses`() {
-        val raw = "好的，以下是结果：{\"facts\": [\"取件码 1234\"]} 完毕"
-        assertEquals(listOf("取件码 1234"), newDigest().parseResult(raw)?.facts)
+        val raw = "Bien, aquí están los resultados:{\"facts\": [\"código de recogida 1234\"]} Terminado"
+        assertEquals(listOf("código de recogida 1234"), newDigest().parseResult(raw)?.facts)
     }
 
     @Test
@@ -77,22 +77,22 @@ class NotificationMemoryDigestParseTest {
 
     @Test
     fun `no json returns null`() {
-        assertNull(newDigest().parseResult("完全没有 JSON"))
+        assertNull(newDigest().parseResult("En absoluto JSON"))
         assertNull(newDigest().parseResult(""))
     }
 
     @Test
     fun `system prompt contains keep and drop guidance`() {
         val prompt = NotificationMemoryDigest.buildSystemPrompt("zh-CN", null)
-        assertTrue(prompt.contains("值得记"))
-        assertTrue(prompt.contains("不值得记"))
+        assertTrue(prompt.contains("digno de recordar"))
+        assertTrue(prompt.contains("No vale la pena recordar"))
         assertTrue(prompt.contains("facts"))
     }
 
     @Test
     fun `system prompt embeds existing memories when provided`() {
-        val prompt = NotificationMemoryDigest.buildSystemPrompt("zh-CN", "- 用户喜欢喝茶")
-        assertTrue(prompt.contains("用户喜欢喝茶"))
+        val prompt = NotificationMemoryDigest.buildSystemPrompt("zh-CN", "- A los usuarios les gusta tomar té.")
+        assertTrue(prompt.contains("A los usuarios les gusta tomar té."))
     }
 
     @Test

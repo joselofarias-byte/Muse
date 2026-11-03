@@ -7,10 +7,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /**
- * QQ 入站消息落库。
+ * QQ Los mensajes entrantes se colocan en la base de datos.
  *
- * 图片消息先下载转 base64 再入库；下载失败降级成占位文本。
- * 单独成文件是为了不让接收器承担过多职责。
+ * Los mensajes de imagen primero se descargan y convierten a base64 antes de almacenarlos en la base de datos; si la descarga falla, se degradan a texto de marcador de posición.
+ * Se utilizan archivos separados para evitar que el receptor asuma demasiadas responsabilidades.
  */
 internal fun recordQqInbound(scope: CoroutineScope, source: ChannelInbox.Source, data: JsonObject, text: String) {
     val attachment = (data["attachments"] as? JsonArray)?.firstOrNull() as? JsonObject
@@ -29,8 +29,8 @@ internal fun recordQqInbound(scope: CoroutineScope, source: ChannelInbox.Source,
                 media = ChannelInbox.Media(kind = "image", base64 = base64),
             )
         } else {
-            Logger.w("QqReceiver", "QQ 图片获取失败(from=${source.from})")
-            ChannelInbox.record(source, "[图片(未能获取)]", "")
+            Logger.w("QqReceiver", "QQ Error en la adquisición de imágenes(from=${source.from})")
+            ChannelInbox.record(source, "[fotos(No se pudo obtener)]", "")
         }
     }
 }

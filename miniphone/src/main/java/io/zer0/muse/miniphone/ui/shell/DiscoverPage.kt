@@ -24,10 +24,10 @@ import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 发现页。
+ * Página de descubrimiento.
  *
- * 本阶段只有一条「朋友圈」入口,点击交给调用方决定(真正打开动态流在下一阶段接);
- * 空实现期间点击仍有水波纹,不装作点了没反应。
+ * En este momento solo hay una entrada a "Momentos",Haga clic para dejar que la persona que llama decida(Realmente abre el flujo dinámico en la siguiente etapa.);
+ * Todavía se producen ondas de agua al hacer clic durante la implementación vacía,No finjas no responder.
  */
 @Composable
 internal fun DiscoverPage(modifier: Modifier = Modifier, onOpenMoments: () -> Unit = {}) {
@@ -59,7 +59,7 @@ internal fun DiscoverPage(modifier: Modifier = Modifier, onOpenMoments: () -> Un
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = "朋友圈",
+                text = "Momentos",
                 style = typography.body.copy(color = colors.textPrimary),
             )
             Spacer(Modifier.weight(1f))

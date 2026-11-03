@@ -3,20 +3,20 @@ import { useI18n } from "../i18n/I18nProvider.js";
 import type { PlatformAvailability } from "./featureCapabilities.js";
 
 interface PlatformPageProps {
-  /** Host 已本地化的条目标题。 */
+  /** Host Título del artículo localizado. */
   readonly title: string;
-  /** 这个功能是做什么的：优先用 Host 下发的条目说明。 */
+  /** Qué hace esta función: Priorizar la descripción de entrada emitida por el Anfitrión. */
   readonly description?: string | undefined;
   readonly availability: PlatformAvailability;
   readonly onBack: () => void;
 }
 
 /**
- * 平台专有页（无障碍 / 虚拟屏 / 终端 / 通知监听 / UI 自动化）。
+ * Páginas específicas de la plataforma (Accesibilidad/Pantalla virtual/Terminal/Escucha de notificaciones/Automatización de UI).
  *
- * 只展示三件事：这个功能是做什么的、当前可用性（类型来自 system.status.capabilities）、
- * 以及「只能在手机上开启」。不可用时也只说明情况——不给「去设置」按钮，
- * 因为那是手机的设置，网页点不了。
+ * Muestra solo tres cosas: qué hace esta característica, disponibilidad actual (escriba desde system.status.capabilities),
+ * y "Sólo se puede abrir en teléfonos celulares". Si no está disponible, simplemente explique la situación.——No le des al botón "Ir a Configuración",
+ * Debido a que esa es la configuración del teléfono celular, no se puede hacer clic en la página web.
  */
 export function PlatformPage({ title, description, availability, onBack }: PlatformPageProps) {
   const { t } = useI18n();

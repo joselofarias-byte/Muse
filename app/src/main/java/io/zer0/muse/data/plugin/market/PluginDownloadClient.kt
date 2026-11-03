@@ -36,19 +36,19 @@ internal class PluginDownloadClient(
         val expectedSha = entry.artifactSha256.lowercase()
         return try {
             if (!stagingDir.exists() && !stagingDir.mkdirs()) {
-                return DownloadResult(error = "无法创建插件缓存目录")
+                return DownloadResult(error = "No se puede crear el directorio de caché del complemento")
             }
             val response = httpClient.getBytes(entry.artifactUrl, maxArtifactBytes)
             if (response.status !in 200..299) {
-                return DownloadResult(error = "插件下载失败: HTTP ${response.status}")
+                return DownloadResult(error = "Falló la descarga del complemento: HTTP ${response.status}")
             }
             val bytes = response.body
             if (bytes.size.toLong() > maxArtifactBytes) {
-                return DownloadResult(error = "插件包超过大小限制")
+                return DownloadResult(error = "El paquete de complementos excede el límite de tamaño")
             }
             val actual = sha256Hex(bytes)
             if (!actual.equals(expectedSha, ignoreCase = true)) {
-                return DownloadResult(error = "插件包摘要与目录不一致")
+                return DownloadResult(error = "El resumen del paquete de complementos no coincide con el directorio")
             }
             val target = File(stagingDir, stagedFileName(entry))
             target.writeBytes(bytes)
@@ -56,8 +56,8 @@ internal class PluginDownloadClient(
         } catch (cancellation: kotlinx.coroutines.CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            Logger.w("PluginDownloadClient", "插件下载失败: ${entry.id}", error)
-            DownloadResult(error = error.message ?: "插件下载失败")
+            Logger.w("PluginDownloadClient", "Falló la descarga del complemento: ${entry.id}", error)
+            DownloadResult(error = error.message ?: "Falló la descarga del complemento")
         }
     }
 
@@ -68,7 +68,7 @@ internal class PluginDownloadClient(
         /** Matches the plugin package size limit enforced by PluginManager. */
         internal const val MAX_ARTIFACT_BYTES = 20 * 1024 * 1024
 
-        /** staging 文件的唯一命名规则；安装计划据此确认可删除的文件。 */
+        /** staging Una convención de nomenclatura única para archivos; el plan de instalación utiliza esto para identificar archivos que se pueden eliminar. */
         internal fun stagedFileName(entry: PluginCatalogEntry): String = "${entry.id}-${entry.version}.muse-plugin"
     }
 }

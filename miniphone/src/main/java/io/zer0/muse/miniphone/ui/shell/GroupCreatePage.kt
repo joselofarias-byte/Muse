@@ -35,17 +35,17 @@ import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 发起群聊页:列出全部角色,勾够两个人才放行。
+ * Iniciar una página de chat grupal:enumerar todos los roles,Sólo cuando dos personas hayan sido enganchadas serán liberadas.
  *
- * 分组与排序直接用通讯录那份 [MiniPhoneContactSection](首字母分组、`#` 收尾),
- * 在这里另排一套只会让「同一个人在两页的位置不一样」。
+ * Utilice la libreta de direcciones directamente para agrupar y ordenar [MiniPhoneContactSection](agrupación inicial,`#` Refinamiento),
+ * Organizar otro conjunto aquí sólo hará que "la misma persona aparezca en diferentes posiciones en las dos páginas".
  *
- * 状态全从外面来:选中集合与两个回调。页面自己不认识库,也不建群 ——
- * 建群是 [MiniPhoneShellViewModel] 的事,这里只负责把「选了谁」交出去。
+ * Todo el estado viene de afuera.:Colección seleccionada con dos devoluciones de llamada. La página en sí no conoce la biblioteca.,Tampoco se construye grupo ——
+ * Construir un grupo es [MiniPhoneShellViewModel] cosa,La única responsabilidad aquí es entregar "quien ha sido elegido".
  *
- * @param selectedIds 已选中的角色 id;顺序不参与判断,建群顺序由点击先后决定(见外壳)
- * @param onToggle 点一行:没选就选上,选过就取消
- * @param onDone 点「完成」;选不够 [MIN_GROUP_MEMBERS] 个时它不可按,所以不会走到这里
+ * @param selectedIds Rol seleccionado id;La orden no participa en la sentencia.,El orden de creación del grupo está determinado por el orden de los clics.(ver concha)
+ * @param onToggle Haga clic en una línea:Si no eliges, elígelo.,Cancelar una vez seleccionado
+ * @param onDone Haga clic en "Listo";No hay suficientes opciones [MIN_GROUP_MEMBERS] No se puede presionar en este momento.,Entonces no vendrá aquí
  */
 @Composable
 internal fun GroupCreatePage(
@@ -82,10 +82,10 @@ internal fun GroupCreatePage(
 }
 
 /**
- * 选人页的顶栏:返回、标题、完成;标题下面一行写已选几个人。
+ * La barra superior de la página de selección.:devolución, título, finalización;En la línea debajo del título, escribe cuántas personas han sido seleccionadas.
  *
- * [tagPrefix] 派生三个测试标签(返回 / 完成 / 人数行),两个选人页各有各的前缀,
- * 测试点「完成」时点的是哪一页一目了然。
+ * [tagPrefix] Derivar tres etiquetas de prueba(Devolución/Completa/Número de personas),Cada una de las dos páginas de selección tiene su propio prefijo.,
+ * De un vistazo queda claro en qué página se hizo clic cuando se "completa" el punto de prueba.
  */
 @Composable
 internal fun GroupPickHeader(title: String, hint: String, canFinish: Boolean, tagPrefix: String, onBack: () -> Unit, onDone: () -> Unit) {
@@ -110,7 +110,7 @@ internal fun GroupPickHeader(title: String, hint: String, canFinish: Boolean, ta
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Back,
-                    contentDescription = "返回",
+                    contentDescription = "Regresar",
                     tint = colors.textPrimary,
                     modifier = Modifier.size(GroupHeaderIconSize),
                 )
@@ -150,12 +150,12 @@ internal fun GroupPickHeader(title: String, hint: String, canFinish: Boolean, ta
 }
 
 /**
- * 可选角色的分组列表:首字母分组、整行可点、右侧选中圈;一个人都没有时给空态。
+ * Lista agrupada de roles opcionales:Agrupación de la primera letra, fila completa en la que se puede hacer clic, selección del círculo derecho;Nadie tiene tiempo para dar el estado vacío.
  *
- * 建群与加成员共用这一份 —— 两个入口看到的顺序、分组、选中样式因此完全一致。
+ * Crea un grupo y agrega miembros para compartir esta copia. —— Por tanto, el orden, agrupación y estilo de selección vistos por las dos entradas son completamente coherentes.
  *
- * @param emptyTitle 没有任何可选角色时的标题
- * @param emptyHint 同一屏的第二行说明
+ * @param emptyTitle Título cuando no hay caracteres opcionales
+ * @param emptyHint Descripción de segunda línea en la misma pantalla.
  */
 @Composable
 internal fun GroupPickList(
@@ -186,7 +186,7 @@ internal fun GroupPickList(
     }
 }
 
-/** 分组标题:与通讯录同一套小字。 */
+/** Título del grupo:El mismo conjunto de letras pequeñas que la libreta de direcciones. */
 @Composable
 private fun GroupPickSectionHeader(key: String) {
     val colors = MiniPhoneTheme.colors
@@ -202,7 +202,7 @@ private fun GroupPickSectionHeader(key: String) {
     )
 }
 
-/** 一行可选角色:头像 + 名字 + 选择圈。整行可点,不必非要点中那个圈。 */
+/** Una fila de roles opcionales:Avatar + nombre + círculo de selección. Se puede hacer clic en toda la línea,No es necesario que hagas clic en ese círculo. */
 @Composable
 private fun GroupPickRow(character: MpCharacter, selected: Boolean, onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -241,7 +241,7 @@ private fun GroupPickRow(character: MpCharacter, selected: Boolean, onClick: () 
     }
 }
 
-/** 选择圈:选中时填强调色并画一枚对勾,没选时只描一圈淡边。 */
+/** círculo de selección:Cuando esté seleccionado, complete el color de acento y coloque una marca de verificación,Si no se selecciona, sólo se dibujará un borde claro. */
 @Composable
 private fun SelectionMark(selected: Boolean, characterId: String) {
     val colors = MiniPhoneTheme.colors
@@ -266,7 +266,7 @@ private fun SelectionMark(selected: Boolean, characterId: String) {
     }
 }
 
-/** 一个可选角色都没有:说清为什么,而不是留一片白。 */
+/** Ni un solo carácter opcional:explica por qué,En lugar de dejarlo en blanco. */
 @Composable
 private fun GroupPickEmptyState(title: String, hint: String, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -285,19 +285,19 @@ private fun GroupPickEmptyState(title: String, hint: String, modifier: Modifier 
     }
 }
 
-/** 已选人数那一行:不到两个人时顺带说明门槛。 */
+/** La fila de personas seleccionadas.:Cuando sean menos de dos personas, por cierto, explica el umbral. */
 internal fun selectedHintOf(selectedCount: Int): String = if (selectedCount < MIN_GROUP_MEMBERS) {
-    "已选 $selectedCount 人,至少选 $MIN_GROUP_MEMBERS 人"
+    "Seleccionado $selectedCount gente,Elige al menos $MIN_GROUP_MEMBERS gente"
 } else {
-    "已选 $selectedCount 人"
+    "Seleccionado $selectedCount gente"
 }
 
-private const val GROUP_CREATE_TITLE: String = "发起群聊"
-private const val GROUP_PICK_DONE_LABEL: String = "完成"
-private const val EMPTY_CONTACTS_TITLE: String = "通讯录还是空的"
-private const val EMPTY_CONTACTS_HINT: String = "先有角色,才凑得起一个群"
+private const val GROUP_CREATE_TITLE: String = "Iniciar un chat grupal"
+private const val GROUP_PICK_DONE_LABEL: String = "Completo"
+private const val EMPTY_CONTACTS_TITLE: String = "La libreta de direcciones todavía está vacía."
+private const val EMPTY_CONTACTS_HINT: String = "Primero hay roles,Sólo puedo permitirme un grupo"
 
-/** 建群页的标签前缀:派生出的值就是对外约定的那几个标签。 */
+/** Prefijo de etiqueta para la página de creación de grupos:Los valores derivados son las etiquetas acordadas externamente. */
 private const val GROUP_CREATE_TAG_PREFIX: String = "mp-group-create"
 
 private val GroupHeaderButtonSize = 40.dp

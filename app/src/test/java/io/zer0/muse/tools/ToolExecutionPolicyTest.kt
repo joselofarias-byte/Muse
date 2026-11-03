@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * M3.2: 工具执行预算策略测试。
+ * M3.2: La herramienta realiza pruebas de estrategia presupuestaria.
  *
- * 覆盖验收:工具风暴能在预算内停止;重复调用被识别;
- * 输出超限截断;时间预算可配置启停。
+ * Aceptación de cobertura:Las tormentas de herramientas se pueden detener sin gastar mucho dinero;Se reconocen llamadas repetidas;
+ * La salida excede el límite de truncamiento;El presupuesto de tiempo se puede configurar para iniciar y detener.
  */
 class ToolExecutionPolicyTest {
 
@@ -18,7 +18,7 @@ class ToolExecutionPolicyTest {
         val policy = ToolExecutionPolicy()
         repeat(10) { i ->
             val decision = policy.beforeExecute("tool_$i", "{\"i\":$i}")
-            assertTrue("第 $i 次调用应放行", decision.allowed)
+            assertTrue("No. $i las llamadas deben ser liberadas", decision.allowed)
             policy.afterExecute("tool_$i", "{\"i\":$i}", success = true)
         }
         assertEquals(10, policy.executedCalls)
@@ -45,9 +45,9 @@ class ToolExecutionPolicyTest {
             policy.afterExecute("read_file", args, success = true)
         }
         val blocked = policy.beforeExecute("read_file", args)
-        assertFalse("第 4 次连续相同调用应被拦截", blocked.allowed)
+        assertFalse("La cuarta llamada idéntica consecutiva debe ser interceptada.", blocked.allowed)
         assertEquals(ToolExecutionPolicy.StopReason.REPEATED_IDENTICAL_CALL, blocked.reason)
-        // 指纹详情不回显完整参数原文
+        // Los detalles de la huella digital no devuelven el texto original completo del parámetro
         assertFalse(blocked.detail.contains("/data/log.txt"))
     }
 
@@ -59,10 +59,10 @@ class ToolExecutionPolicyTest {
             assertTrue(policy.beforeExecute("read_file", args).allowed)
             policy.afterExecute("read_file", args, success = true)
         }
-        // 换一次不同调用
+        // Haz una llamada diferente
         assertTrue(policy.beforeExecute("list_dir", "{}").allowed)
         policy.afterExecute("list_dir", "{}", success = true)
-        // 再次连续相同调用重新计数,未达上限放行
+        // Las llamadas consecutivas idénticas vuelven a contar,Liberado si no se alcanza el límite superior
         assertTrue(policy.beforeExecute("read_file", args).allowed)
     }
 
@@ -77,7 +77,7 @@ class ToolExecutionPolicyTest {
         assertFalse(blocked.allowed)
         assertEquals(ToolExecutionPolicy.StopReason.CONSECUTIVE_FAILURES, blocked.reason)
 
-        // 新策略实例中:失败两次后成功一次,连击清零
+        // En la nueva instancia de estrategia:Falló dos veces y tuvo éxito una vez.,Borrar combinación
         val other = ToolExecutionPolicy(ToolExecutionLimits(maxConsecutiveFailures = 3))
         repeat(2) { i ->
             other.beforeExecute("t", "{\"n\":$i}")
@@ -90,7 +90,7 @@ class ToolExecutionPolicyTest {
 
     @Test
     fun `time budget only active when configured`() {
-        // 默认关闭
+        // Desactivado de forma predeterminada
         val defaultPolicy = ToolExecutionPolicy()
         assertFalse(defaultPolicy.isTimeBudgetExhausted(nowMs = defaultPolicy.startedAtMs + Long.MAX_VALUE / 2))
 
@@ -106,9 +106,9 @@ class ToolExecutionPolicyTest {
         val (clamped, truncated) = policy.clampOutput(big)
         assertTrue(truncated)
         assertTrue(clamped.startsWith("x".repeat(100)))
-        assertTrue(clamped.contains("输出已截断"))
+        assertTrue(clamped.contains("La salida está truncada"))
 
-        // 未超限原样返回
+        // Devolver como está sin exceder el límite
         val (same, wasTruncated) = policy.clampOutput("small")
         assertFalse(wasTruncated)
         assertEquals("small", same)
@@ -194,13 +194,13 @@ class ToolExecutionPolicyTest {
 
     @Test
     fun `skipped call is not recorded as failure`() {
-        // 审批拒绝/预算拦截路径:beforeExecute 放行后若未真正执行,不调用 afterExecute,计数不变。
+        // Aprobación rechazada/ruta de intersección presupuestaria:beforeExecute Si realmente no se ejecuta después del lanzamiento,no llamado afterExecute,El recuento se mantiene sin cambios.
         val policy = ToolExecutionPolicy(ToolExecutionLimits(maxConsecutiveFailures = 3))
         policy.afterExecute("t", "{\"a\":1}", success = true)
         assertEquals(1, policy.executedCalls)
         assertEquals(0, policy.consecutiveFailuresCount)
         assertTrue(policy.beforeExecute("t", "{\"a\":2}").allowed)
-        // 未调用 afterExecute(模拟未执行)
+        // no llamado afterExecute(Simulación no ejecutada)
         assertEquals(1, policy.executedCalls)
         assertEquals(0, policy.consecutiveFailuresCount)
     }
@@ -216,16 +216,16 @@ class ToolExecutionPolicyTest {
         policy.recordStreamedChars(40)
         assertEquals(5, policy.emittedToolCallCount)
         assertEquals(160, policy.streamedCharCount)
-        // 统计与预算执行计数彼此独立
+        // Las estadísticas y los recuentos de ejecución presupuestaria son independientes entre sí.
         assertEquals(0, policy.executedCalls)
     }
 
     @Test
     fun `round budget reports remaining quota across dimensions`() {
-        // 空跑:一切放行
+        // Corriendo en vacío:todo esta permitido
         assertTrue(ToolExecutionPolicy().checkRoundBudget().allowed)
 
-        // 总调用数耗尽 → 轮次开头拦截
+        // Total de llamadas agotadas → Intercepción al comienzo de la ronda.
         val calls = ToolExecutionPolicy(ToolExecutionLimits(maxTotalCalls = 2))
         repeat(2) { i ->
             calls.beforeExecute("t", "{\"n\":$i}")
@@ -235,7 +235,7 @@ class ToolExecutionPolicyTest {
         assertFalse(callBlocked.allowed)
         assertEquals(ToolExecutionPolicy.StopReason.MAX_TOTAL_CALLS, callBlocked.reason)
 
-        // 输出字符累计超限 → 轮次开头拦截
+        // El número acumulado de caracteres de salida excede el límite. → Intercepción al comienzo de la ronda.
         val chars = ToolExecutionPolicy(ToolExecutionLimits(maxTotalOutputChars = 100))
         chars.recordOutputChars(60)
         chars.recordOutputChars(50)
@@ -244,7 +244,7 @@ class ToolExecutionPolicyTest {
         assertFalse(charBlocked.allowed)
         assertEquals(ToolExecutionPolicy.StopReason.MAX_TOTAL_OUTPUT_CHARS, charBlocked.reason)
 
-        // 时间预算(测试注入 nowMs)→ 轮次开头拦截
+        // presupuesto de tiempo(inyección de prueba nowMs)→ Intercepción al comienzo de la ronda.
         val timed = ToolExecutionPolicy(ToolExecutionLimits(totalBudgetMs = 1_000))
         assertTrue(timed.checkRoundBudget(nowMs = timed.startedAtMs + 500).allowed)
         assertFalse(timed.checkRoundBudget(nowMs = timed.startedAtMs + 2_500).allowed)

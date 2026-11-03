@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 2. 樱花主题 (粉色系)
+// 2. tema de sakura (color rosa)
 // ─────────────────────────────────────────────────────────────────────────────
 private val SakuraPrimary = Color(0xFFD85F8C)
 private val SakuraPrimaryLightContainer = Color(0xFFFFD9E4)
@@ -34,10 +34,10 @@ val SakuraTheme = PresetTheme(
         onSecondaryContainer = Color(0xFF3B0F22),
         tertiary = SakuraPrimary,
         onTertiary = SakuraOnPrimaryLight,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = SakuraPrimaryLightContainer,
         onTertiaryContainer = Color(0xFF3B0F22),
-        // M-2: surface 容器梯度,surfaceContainer 复用 AiBubble(已为"略深于 surface"的粉调)。
+        // M-2: surface gradiente de contenedor,surfaceContainer Reutilizar AiBubble(ya por"ligeramente más profundo que surface"tono rosa).
         surfaceContainer = SakuraLightAiBubble,
         surfaceContainerLow = SakuraLightBg,
         surfaceContainerHigh = Color(0xFFEFD9E0),
@@ -71,10 +71,10 @@ val SakuraTheme = PresetTheme(
         onSecondaryContainer = SakuraOnPrimaryDark,
         tertiary = SakuraPrimary,
         onTertiary = SakuraOnPrimaryDark,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = SakuraPrimaryDarkContainer,
         onTertiaryContainer = SakuraOnPrimaryDark,
-        // M-2: surface 容器梯度(深色越 high 越亮),surfaceContainer 复用 AiBubble。
+        // M-2: surface gradiente de contenedor(Cuanto más oscuro es el color, más brillante es),surfaceContainer Reutilizar AiBubble.
         surfaceContainer = SakuraDarkAiBubble,
         surfaceContainerLow = SakuraDarkBg,
         surfaceContainerHigh = Color(0xFF3A2D32),

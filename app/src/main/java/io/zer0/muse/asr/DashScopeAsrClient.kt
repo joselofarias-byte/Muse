@@ -36,37 +36,37 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 阿里云 DashScope Paraformer 流式语音识别 Controller。
+ * Controlador de reconocimiento de voz en streaming Alibaba Cloud DashScope Paraformer.
  *
- * 与旧版 [AsrClient] 一次性 recognize 不同,本 Controller 实现 [ASRController] 接口,
- * 边录边传边回调,支持中间结果实时显示。
+ * con versión antigua [AsrClient] Una sola vez reconoce diferentes,Este controlador implementa [ASRController] interfaz,
+ * Graba, transmite y vuelve a llamar al mismo tiempo,Admite visualización en tiempo real de resultados intermedios.
  *
- * 协议(沿用 DashScope 原生 Paraformer,不变):
- *  1. 建立 WebSocket(wss://dashscope.aliyuncs.com/api-ws/v1/inference)
- *  2. 发送 run-task,接收 task-started
- *  3. 启动 AudioRecord(VOICE_COMMUNICATION)循环采集 PCM
- *  4. 每帧:计算 RMS 振幅 → 更新 state.amplitudes;Base64/二进制发送 → WebSocket(带背压检查)
- *  5. onMessage 解析 result-generated:sentence_end=true 累积,sentence_end=false 按 sentence_id 替换中间结果
- *  6. stop():发 finish-task,等 task-finished(5s 超时强制切 Idle)
- *  7. dispose():取消协程,关 WebSocket,释放 AudioRecord
+ * Acuerdo(Siga usando DashScope nativo Paraformer,sin cambios):
+ *  1. crear WebSocket(wss://dashscope.aliyuncs.com/api-ws/v1/inference)
+ *  2. enviar run-task,recibir task-started
+ *  3. empezar AudioRecord(VOICE_COMMUNICATION)Colección de bucles PCM
+ *  4. por cuadro:Calcular la amplitud RMS → actualizar state.amplitudes;Base64/envío binario → WebSocket(Con control de contrapresión)
+ *  5. onMessage analizar result-generated:sentence_end=true acumular,sentence_end=false Reemplazar resultados intermedios por frase_id
+ *  6. stop():enviar finish-task,espera task-finished(5s Corte forzado después del tiempo de espera Idle)
+ *  7. dispose():Cancelar corrutina,cerrar WebSocket,liberar AudioRecord
  *
- * 状态流转:Idle → Connecting → Listening → Stopping → Idle(或 Error)
+ * Flujo de estado:Idle → Connecting → Listening → Stopping → Idle(o Error)
  *
- * @param config ASR 配置(必须有 apiKey 和 model)
- * @param sharedClient 可注入共享 OkHttpClient(由调用方管理生命周期)
- * @param appContext 应用 Context(用于把用户可见错误文案解析为本地化字符串)
+ * @param config ASR Configuración(Debe tener apiKey y model)
+ * @param sharedClient Compartir inyectables OkHttpClient(El ciclo de vida lo gestiona la persona que llama.)
+ * @param appContext Solicitud Context(Se utiliza para analizar el texto de error visible para el usuario en cadenas localizadas)
  */
 class DashScopeAsrController(
     private val config: AsrConfig,
-    // 可注入共享 OkHttpClient,避免每次新建独立 client
+    // Compartir inyectables OkHttpClient,Evite crear nuevos independientes client
     sharedClient: OkHttpClient? = null,
-    // CONS-05: 注入 Application Context,用于把用户可见错误文案解析为本地化字符串
+    // CONS-05: inyectar Application Context,Se utiliza para analizar el texto de error visible para el usuario en cadenas localizadas
     private val appContext: Context,
 ) : ASRController {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    // 优先复用注入的共享 client;未注入时自建(ownsClient=true,dispose 时才 shutdown)
+    // Priorizar la reutilización de acciones inyectadas client;Autoconstruido cuando no se inyecta(ownsClient=true,dispose Sólo entonces shutdown)
     private val ownsClient: Boolean = sharedClient == null
     private val client: OkHttpClient = sharedClient ?: io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
         .connectTimeout(AsrConstants.CONNECT_TIMEOUT_SEC, TimeUnit.SECONDS)
@@ -86,48 +86,48 @@ class DashScopeAsrController(
 
     @Volatile private var currentTaskId: String? = null
 
-    // 累积的最终结果(sentence_end=true 的文本)+ 当前中间结果(sentence_id → text)
+    // resultado final acumulado(sentence_end=true el texto de)+ resultado intermedio actual(sentence_id → text)
     private val completedTranscripts = StringBuilder()
     private val partialTranscripts = ConcurrentHashMap<String, String>()
 
-    // 可选本地 VAD(用户在 config 中显式启用;DashScope 服务端已自带 VAD,通常不需要本地)
+    // Local opcional VAD(El usuario lo habilita explícitamente en la configuración.;DashScope El servidor viene con VAD,Generalmente no hay locales)
     private var vadDetector: VadDetector? = null
 
-    // ── Phase 3: 断线重连相关字段(对齐 [OpenAiRealtimeAsrController] 的重连实现) ──
-    /** 已触发的重连次数(重连成功后清零)。 */
+    // ── Phase 3: Campos relacionados con la desconexión y la reconexión(Alineación [OpenAiRealtimeAsrController] implementación de reconexión) ──
+    /** Número de reconexiones activadas(Borrado después de una reconexión exitosa). */
     private var reconnectAttempt = 0
 
-    /** 重连期间缓冲的 PCM 音频帧(按入队顺序补发)。 */
+    /** Tramas de audio PCM almacenadas en búfer durante la reconexión(Reedición por orden de incorporación al equipo.). */
     private val audioBuffer = ArrayDeque<ByteArray>()
 
-    /** [audioBuffer] 锁:录音线程入队与重连补发互斥。 */
+    /** [audioBuffer] cerrar:La puesta en cola del hilo de grabación y la reconexión son mutuamente excluyentes. */
     private val audioBufferLock = Any()
 
-    /** [audioBuffer] 当前累计字节数,用于上限判断。 */
+    /** [audioBuffer] Número acumulado actual de bytes,Se utiliza para juzgar el límite superior. */
     @Volatile private var audioBufferBytes = 0
 
-    /** 当前调度的退避重连协程;stop/dispose/start 时取消。 */
+    /** La rutina de reconexión de retroceso actualmente programada;stop/dispose/start Cancelar en el momento. */
     private var reconnectJob: Job? = null
 
-    /** dispose 标志,防止 dispose 后仍在重连。 */
+    /** dispose logotipo,Evite la reconexión después de desecharlo. */
     private val isDisposed = AtomicBoolean(false)
 
     override fun start(onTranscriptChange: ((String) -> Unit)?) {
-        // dispose 后必须保持终态；否则 scope 已取消但 start 仍会把 state 改成 Connecting，造成 UI 永久假连接。
+        // dispose Se debe mantener el estado final; de lo contrario, el alcance se canceló pero el inicio aún cambiará el estado a Conectando, lo que provocará que la interfaz de usuario se conecte de forma permanente y falsa.
         if (isDisposed.get()) return
-        // 仅在 Listening 态拒绝重复 start;Connecting/Stopping 过渡态允许新 start 接续
+        // Rechazar duplicados solo en estado de escucha start;Connecting/Stopping El estado de transición permite que continúe el nuevo comienzo.
         if (_state.value.status == ASRStatus.Listening) {
-            Logger.w(TAG, "已在录音,忽略重复 start")
+            Logger.w(TAG, "Ya grabando,ignorar duplicados start")
             return
         }
         if (config.apiKey.isBlank()) {
-            Logger.w(TAG, "DashScope ASR 未配置 apiKey")
+            Logger.w(TAG, "DashScope ASR No configurado apiKey")
             _state.update {
                 it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_no_apikey))
-            } // CONS-05: 硬编码中文迁移到字符串资源
+            } // CONS-05: Migración de chino codificado a recursos de cadena
             return
         }
-        // Phase 3: 重连中重新 start → 取消重连并释放录音资源,走全新连接(避免两套录音叠加)
+        // Phase 3: Reconectarse durante la reconexión start → Cancelar la reconexión y liberar recursos de grabación,Tomar una nueva conexión(Evite la superposición de dos conjuntos de grabaciones.)
         if (_state.value.status == ASRStatus.Reconnecting) {
             cancelReconnect()
             releaseAudioRecord()
@@ -151,7 +151,7 @@ class DashScopeAsrController(
         scope.launch { connectAndRecord() }
     }
 
-    /** 建立 WebSocket、发 run-task、等 task-started、启动录音线程(首次连接路径)。 */
+    /** Establezca WebSocket, envíe la tarea de ejecución, espere a que se inicie la tarea e inicie el hilo de grabación(primera ruta de conexión). */
     private suspend fun connectAndRecord() {
         if (establishConnection(isInitial = true)) {
             startRecordingInternal()
@@ -159,29 +159,29 @@ class DashScopeAsrController(
     }
 
     /**
-     * Phase 3: 建立一次 WebSocket 会话(发 run-task + 等 task-started)。
+     * Phase 3: Establecer una sesión de WebSocket(Enviar tarea de ejecución + etc. task-started).
      *
-     * @param isInitial true=首次连接(失败切 Error,不重连);false=断线重连
-     *   (失败由 [attemptReconnect] 继续退避)
-     * @return true=已收到 task-started,连接可用
+     * @param isInitial true=Conexión por primera vez(No cortar Error,Sin reconexión);false=Desconectar y volver a conectar
+     *   (falló por [attemptReconnect] continuar retirándose)
+     * @return true=Recibido task-started,Conexión disponible
      */
     private suspend fun establishConnection(isInitial: Boolean): Boolean {
         val taskId = java.util.UUID.randomUUID().toString()
         currentTaskId = taskId
 
-        // 创建会话:onMessage 解析后既入 channel(供 waitForEvent 取 task-started),
-        // 又派发到 onEvent(后续持续监听 result-generated / task-finished / task-failed)
+        // Crear sesión:onMessage Ingrese después del análisis channel(Para esperar a que llegue Evento task-started),
+        // Distribuido a onEvent(Seguimiento monitoreo continuo result-generated / task-finished / task-failed)
         val streamSession = DashScopeSession(taskId, json) { event ->
-            // onMessage 在 OkHttp 线程触发,派发到 Main scope 保证 handleEvent 在主线程执行
+            // onMessage Activado en el hilo OkHttp,El envío al ámbito principal garantiza que handleEvent se ejecute en el hilo principal
             scope.launch { handleEvent(event) }
         }
-        // Phase 3: 断线回调 — 同样派发到 Main scope,与状态更新串行
+        // Phase 3: Desconectar devolución de llamada — También enviado a Main scope,Serie con actualizaciones de estado.
         streamSession.onDisconnected = { reason ->
             scope.launch { onWebSocketDisconnected(reason) }
         }
         session = streamSession
 
-        // L-ASR3: 端点优先取 config.asrEndpoint,空时回退到内置默认值
+        // L-ASR3: Prioridad de punto final config.asrEndpoint,Volver a los valores predeterminados integrados cuando está vacío
         val endpoint = config.asrEndpoint.ifBlank { ENDPOINT }
         val request = Request.Builder()
             .url(endpoint)
@@ -193,55 +193,55 @@ class DashScopeAsrController(
         webSocket = ws
 
         return try {
-            // H-ASR1: 直接发送 run-task,再等 task-started
+            // H-ASR1: Enviar directamente run-task,Espera un poco más task-started
             val runTask = buildRunTaskMessage(taskId, config.sampleRate)
             if (!ws.send(runTask)) {
-                Logger.w(TAG, "发送 run-task 失败")
+                Logger.w(TAG, "Error al enviar la tarea de ejecución")
                 cleanupConnection()
                 if (isInitial) {
                     _state.update {
                         it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_send_run_task_failed))
-                    } // CONS-05: 硬编码中文迁移到字符串资源
+                    } // CONS-05: Migración de chino codificado a recursos de cadena
                 }
                 return false
             }
 
-            // 等 task-started(run-task 后服务端确认)
+            // espera task-started(run-task Confirmación posterior al servidor)
             val started = streamSession.waitForEvent("task-started", TIMEOUT_EVENT_MS)
             if (started == null) {
-                Logger.w(TAG, "run-task 后未收到 task-started")
+                Logger.w(TAG, "run-task no recibido después task-started")
                 cleanupConnection()
                 if (isInitial) {
                     _state.update {
                         it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_no_task_started))
-                    } // CONS-05: 硬编码中文迁移到字符串资源
+                    } // CONS-05: Migración de chino codificado a recursos de cadena
                 }
                 return false
             }
 
             if (isInitial) {
-                // P2-13: 握手期间用户可能已 stop/dispose — 状态不再处于 Connecting 时放弃启动录音,
-                // 否则会把用户的停止意图覆盖成 Listening 并继续录音
+                // P2-13: Durante el apretón de manos, el usuario puede tener stop/dispose — Dejar de iniciar la grabación cuando el estado ya no sea Conectando,
+                // De lo contrario, la intención de parada del usuario se sobrescribirá y continuará la escucha y la grabación.
                 if (_state.value.status != ASRStatus.Connecting) {
-                    Logger.d(TAG, "握手完成但状态已变化(${_state.value.status}),放弃启动录音")
+                    Logger.d(TAG, "Apretón de manos completado pero el estado cambió(${_state.value.status}),Dejar de iniciar la grabación")
                     cleanupConnection()
                     return false
                 }
-                // 已收到 task-started,切 Listening 并启动录音
+                // Recibido task-started,Cambie a Escuchar y comience a grabar
                 _state.update { it.copy(status = ASRStatus.Listening) }
             } else {
                 if (_state.value.status != ASRStatus.Connecting) {
-                    Logger.d(TAG, "重连完成但状态已变化(${_state.value.status}),放弃恢复")
+                    Logger.d(TAG, "Reconexión completada pero el estado ha cambiado(${_state.value.status}),renunciar a la recuperación")
                     return false
                 }
-                // 重连成功:重置退避计数,状态切回 Listening,补发缓冲音频
+                // Reconexión exitosa:Restablecer el recuento de retrocesos,Cambio de estado hacia atrás Listening,Reedición de audio almacenado en buffer
                 onReconnected()
             }
             true
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "establishConnection 异常: ${e.message}")
+            Logger.w(TAG, "establishConnection anormal: ${e.message}")
             cleanupConnection()
             if (isInitial) {
                 _state.update {
@@ -249,20 +249,20 @@ class DashScopeAsrController(
                         status = ASRStatus.Error,
                         errorMessage = e.message ?: appContext.getString(R.string.asr_error_connection_exception),
                     )
-                } // CONS-05: 硬编码中文迁移到字符串资源
+                } // CONS-05: Migración de chino codificado a recursos de cadena
             }
             false
         }
     }
 
-    /** 启动 AudioRecord 录音线程(循环采集 + 上传)。 */
+    /** Iniciar el hilo de grabación AudioRecord(Colección de bucles + carga). */
     @SuppressLint("MissingPermission")
     private fun startRecordingInternal() {
         val capture = AsrAudioCapture.create(config.sampleRate, TAG)
         if (capture == null) {
             _state.update {
                 it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_mic_init_failed))
-            } // CONS-05: 硬编码中文迁移到字符串资源
+            } // CONS-05: Migración de chino codificado a recursos de cadena
             return
         }
         val record = capture.recorder
@@ -270,37 +270,37 @@ class DashScopeAsrController(
         try {
             record.startRecording()
         } catch (e: IllegalStateException) {
-            Logger.w(TAG, "AudioRecord 启动失败: ${e.message}", e)
+            Logger.w(TAG, "AudioRecord El inicio falló: ${e.message}", e)
             record.release()
             audioRecord = null
             _state.update {
                 it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_recording_start_failed))
-            } // CONS-05: 硬编码中文迁移到字符串资源
+            } // CONS-05: Migración de chino codificado a recursos de cadena
             return
         }
 
-        // 录音线程:循环读 PCM → 计算振幅 → 发 WebSocket(带背压检查)
-        // Phase 3: Reconnecting 期间继续录音,音频帧先入缓冲,重连成功后补发
+        // hilo de grabación:Lectura en bucle PCM → Calcular amplitud → enviar WebSocket(Con control de contrapresión)
+        // Phase 3: Reconnecting Continuar grabando durante,Primer búfer del cuadro de audio,Reemisión después de una reconexión exitosa
         recordJob = scope.launch(Dispatchers.IO) {
             val chunk = ByteArray(AUDIO_CHUNK_BYTES)
             try {
                 while (isActive && _state.value.isRecording) {
                     val read = record.read(chunk, 0, chunk.size)
                     if (read > 0) {
-                        // 1. 计算 RMS 振幅 → 更新 state.amplitudes(归一化 0-1f)
+                        // 1. Calcular la amplitud RMS → actualizar state.amplitudes(normalización 0-1f)
                         val amp = AudioAmplitude.calculateRmsAmplitude(chunk, read)
                         _state.update { it.copy(amplitudes = it.amplitudes.appendAmplitude(amp)) }
 
-                        // 2. 本地 VAD(若启用):静音超阈值主动触发 stop
-                        //    DashScope 服务端已自带 VAD(sentence_end 自动断句),本地 VAD 仅用于自动停止录音
+                        // 2. locales VAD(Si está habilitado):Gatillo activo silencioso de ultraumbral stop
+                        //    DashScope El servidor viene con VAD(sentence_end Segmentación automática de oraciones),El VAD local solo se utiliza para detener la grabación automáticamente
                         if (vadDetector?.processFrame(chunk, read, amp) == true) {
-                            Logger.d(TAG, "本地 VAD 触发,主动停止")
+                            Logger.d(TAG, "Activador VAD local,Detenerse activamente")
                             scope.launch { stop() }
                             break
                         }
 
-                        // 3. Listening 期间正常发送;其余过渡态(Reconnecting / 重连建立中)先缓冲,
-                        //    避免在 run-task/task-started 握手完成前把 PCM 发到新 WebSocket
+                        // 3. Listening Enviar normalmente durante el período.;Otros estados de transición(Reconnecting / Se está estableciendo la reconexión)Buffer primero,
+                        //    Evite enviar PCM a un nuevo servidor antes de que se complete el protocolo de enlace de tarea de ejecución/inicio de tarea WebSocket
                         if (_state.value.status == ASRStatus.Listening) {
                             sendAudioFrame(chunk, read)
                         } else {
@@ -309,7 +309,7 @@ class DashScopeAsrController(
                     } else if (read == 0) {
                         delay(10L)
                     } else if (read < 0) {
-                        Logger.w(TAG, "AudioRecord.read 错误: $read")
+                        Logger.w(TAG, "AudioRecord.read error: $read")
                         if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
                             failAsr(appContext.getString(R.string.asr_error_recording_read_failed, read))
                         }
@@ -320,29 +320,29 @@ class DashScopeAsrController(
                 throw cancelled
             } catch (error: Exception) {
                 if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                    Logger.w(TAG, "录音循环异常: ${error.message}", error)
+                    Logger.w(TAG, "Anomalía en el bucle de grabación: ${error.message}", error)
                     failAsr(error.message ?: appContext.getString(R.string.asr_error_recording_start_failed))
                 }
             }
         }
     }
 
-    /** Phase 3: Listening 状态下发送一帧 PCM(背压超限丢帧,避免内存堆积)。 */
+    /** Phase 3: Listening Enviar una trama en el estado PCM(Pérdida de marco debido a una contrapresión excesiva,Evitar la acumulación de memoria.). */
     private fun sendAudioFrame(chunk: ByteArray, read: Int) {
         val ws = webSocket
         if (ws != null && ws.queueSize() < MAX_QUEUE_BYTES) {
-            // 用 okio.Buffer 构造 ByteString(二进制 PCM 直传,DashScope 协议支持)
+            // Construido con okio.Buffer ByteString(Transferencia directa PCM binaria,DashScope Soporte de protocolo)
             val byteString = okio.Buffer().apply { write(chunk, 0, read) }.readByteString()
             if (!ws.send(byteString)) {
-                Logger.w(TAG, "发送音频块失败,触发重连")
-                scope.launch { onWebSocketDisconnected("发送音频块失败") }
+                Logger.w(TAG, "No se pudo enviar el fragmento de audio,Activar reconexión")
+                scope.launch { onWebSocketDisconnected("No se pudo enviar el fragmento de audio") }
             }
         } else {
-            Logger.d(TAG, "背压超限,丢帧 queueSize=${ws?.queueSize()}")
+            Logger.d(TAG, "La contrapresión excede el límite,marcos caídos queueSize=${ws?.queueSize()}")
         }
     }
 
-    /** Phase 3: Reconnecting 状态下把一帧 PCM 入队缓冲(超上限丢帧避免 OOM)。 */
+    /** Phase 3: Reconnecting Coloque un marco de PCM en el búfer de cola(Evitar la pérdida de fotogramas más allá del límite superior OOM). */
     private fun bufferAudioFrame(chunk: ByteArray, read: Int) {
         val frame = chunk.copyOf(read)
         synchronized(audioBufferLock) {
@@ -350,12 +350,12 @@ class DashScopeAsrController(
                 audioBuffer.addLast(frame)
                 audioBufferBytes += frame.size
             } else {
-                Logger.w(TAG, "重连期间音频缓冲已满($audioBufferBytes 字节),丢帧")
+                Logger.w(TAG, "El buffer de audio está lleno durante la reconexión($audioBufferBytes bytes),marcos caídos")
             }
         }
     }
 
-    /** 处理 WebSocket 事件(在 Main 线程执行)。 */
+    /** Manejo de eventos WebSocket(Ejecutado en el hilo principal). */
     private fun handleEvent(event: JsonObject) {
         if (isDisposed.get() || (_state.value.status == ASRStatus.Error || _state.value.status == ASRStatus.Idle)) return
         val eventType = event.optString("event")
@@ -367,25 +367,25 @@ class DashScopeAsrController(
                 val sentenceId = sentence?.optString("sentence_id") ?: "_partial"
                 if (text.isNotEmpty()) {
                     if (isFinal) {
-                        // 句子结束:累积到 completedTranscripts,清除对应的中间结果
+                        // final de la frase:acumulado hasta completedTranscripts,Borrar los resultados intermedios correspondientes
                         completedTranscripts.append(text).append(" ")
                         partialTranscripts.remove(sentenceId)
                     } else {
-                        // 中间结果:按 sentence_id 替换(同一句的中间结果会反复更新)
+                        // resultado intermedio:Reemplazar por id_oración(Los resultados intermedios de la misma frase se actualizarán repetidamente.)
                         partialTranscripts[sentenceId] = text
                     }
-                    // 拼接 completed + partial,回调主线程
+                    // empalme completed + partial,Devolución de llamada al hilo principal
                     val full = buildTranscript()
                     _state.update { it.copy(transcript = full) }
                     onTranscriptChange?.invoke(full)
                 }
             }
             "task-finished" -> {
-                // 只有用户发起 stop()(状态已置 Stopping)时,task-finished 才是本段输入的结束信号。
-                // 服务端自行收尾(长时间静音/会话超时)不代表用户说完了:这里只回退状态,
-                // 由上层重新开录音,不提交任何文本给模型。
+                // Solo iniciado por el usuario stop()(El estado ha sido establecido. Stopping)tiempo,task-finished Esta es la señal final de entrada en esta sección.
+                // El servidor termina solo(mudo por mucho tiempo/Tiempo de espera de la sesión)No significa que el usuario haya terminado de hablar.:Sólo el estado de retorno está aquí.,
+                // Reiniciar la grabación desde arriba,No se envía ningún texto al modelo.
                 val userStopped = _state.value.status == ASRStatus.Stopping
-                Logger.d(TAG, "收到 task-finished,识别结束 | userStopped=$userStopped")
+                Logger.d(TAG, "recibido task-finished,Fin del reconocimiento | userStopped=$userStopped")
                 val full = buildTranscript()
                 _state.update { it.copy(status = ASRStatus.Idle, transcript = full, amplitudes = emptyList()) }
                 onTranscriptChange?.invoke(full)
@@ -398,17 +398,17 @@ class DashScopeAsrController(
                 val errMsg = (event["header"] as? JsonObject)?.let {
                     (it["error_message"] as? JsonPrimitive)?.content
                 } ?: event.toString()
-                Logger.w(TAG, "DashScope ASR 任务失败: $errMsg")
+                Logger.w(TAG, "DashScope ASR Tarea fallida: $errMsg")
                 failAsr(errMsg)
             }
             "task-started" -> {
-                // 已在 connectAndRecord 的 waitForEvent 处理,此处忽略
+                // Ya manejado en waitForEvent de connectAndRecord,ignorar aquí
             }
-            else -> { /* 忽略未知事件 */ }
+            else -> { /* Ignorar eventos desconocidos */ }
         }
     }
 
-    /** 拼接 completedTranscripts + partialTranscripts.values,空格分隔。 */
+    /** empalme completedTranscripts + partialTranscripts.values,separados por espacios. */
     private fun buildTranscript(): String {
         val parts = mutableListOf<String>()
         if (completedTranscripts.isNotEmpty()) {
@@ -419,15 +419,15 @@ class DashScopeAsrController(
         return parts.joinToString(" ").trim()
     }
 
-    // ── Phase 3: 断线重连(指数退避,对齐 OpenAiRealtimeAsrController 的实现) ──
+    // ── Phase 3: Desconectar y volver a conectar(retroceso exponencial,Alinear la implementación de OpenAiRealtimeAsrController) ──
 
     /**
-     * WebSocket 断开回调(由 [DashScopeSession.onDisconnected] 派发到 Main scope)。
+     * WebSocket Desconectar devolución de llamada(por [DashScopeSession.onDisconnected] Distribuido a Main scope).
      *
-     * 决策见 [resolveAsrDisconnectAction]:
-     *  - dispose / 终态 / 用户停止中 / 首次连接中 → 忽略;
-     *  - Listening(或重连中) → 指数退避重连;
-     *  - 重试耗尽 → 切 Error 并释放录音资源,附用户可见降级文案。
+     * Toma de decisiones [resolveAsrDisconnectAction]:
+     *  - dispose / Estado final/El usuario se está deteniendo/Conectándose por primera vez → ignorar;
+     *  - Listening(o reconectarse) → Reconexión de retroceso exponencial;
+     *  - Reintentos agotados → Cortar errores y liberar recursos de grabación,Se adjunta una copia de degradación visible para el usuario.
      */
     private fun onWebSocketDisconnected(reason: String) {
         when (
@@ -438,22 +438,22 @@ class DashScopeAsrController(
             )
         ) {
             AsrDisconnectAction.IGNORE -> {
-                Logger.d(TAG, "忽略 WebSocket 断开(状态=${_state.value.status}): $reason")
+                Logger.d(TAG, "Ignorar las desconexiones de WebSocket(Estado=${_state.value.status}): $reason")
             }
             AsrDisconnectAction.GIVE_UP -> {
                 giveUpReconnect(reason)
             }
             AsrDisconnectAction.RECONNECT -> {
-                Logger.w(TAG, "WebSocket 断开,触发重连: $reason (attempt=$reconnectAttempt)")
+                Logger.w(TAG, "WebSocket Desconectar,Activar reconexión: $reason (attempt=$reconnectAttempt)")
                 scheduleReconnect(reason)
             }
         }
     }
 
     /**
-     * 调度下一次指数退避重连:500ms → 1s → 2s([DashScopeReconnectPolicy])。
+     * Programe la próxima reconexión exponencial:500ms → 1s → 2s([DashScopeReconnectPolicy]).
      *
-     * 退避期间状态为 [ASRStatus.Reconnecting],录音线程继续采集并缓冲音频帧。
+     * Durante el período de retiro, el estado es [ASRStatus.Reconnecting],El hilo de grabación continúa recopilando y almacenando fotogramas de audio.
      */
     private fun scheduleReconnect(reason: String) {
         if (isDisposed.get()) return
@@ -461,15 +461,15 @@ class DashScopeAsrController(
             giveUpReconnect(reason)
             return
         }
-        // 已有重连任务在调度/执行(如 onFailure + onClosing 双回调、连续发送失败)时忽略重复调度
+        // Ya se está programando una tarea de reconexión/ejecutar(Como onFailure + onClosing doble devolución de llamada, falla de envío continuo)Ignorar la programación duplicada cuando
         if (reconnectJob?.isActive == true) {
-            Logger.d(TAG, "重连已在进行中,忽略重复调度: $reason")
+            Logger.d(TAG, "La reconexión está en progreso,Ignorar horarios duplicados: $reason")
             return
         }
         val attemptIndex = reconnectAttempt
         val attemptNumber = attemptIndex + 1
         val delayMs = DashScopeReconnectPolicy.delayForAttempt(attemptIndex)
-        Logger.w(TAG, "调度第 $attemptNumber/$MAX_RECONNECT_ATTEMPTS 次重连,${delayMs}ms 后执行($reason)")
+        Logger.w(TAG, "Programación No. $attemptNumber/$MAX_RECONNECT_ATTEMPTS reconexión,${delayMs}ms Después de la ejecución($reason)")
         _state.update {
             it.copy(
                 status = ASRStatus.Reconnecting,
@@ -477,7 +477,7 @@ class DashScopeAsrController(
                     R.string.asr_reconnecting_message,
                     attemptNumber,
                     MAX_RECONNECT_ATTEMPTS,
-                ), // CONS-05: 硬编码中文迁移到字符串资源
+                ), // CONS-05: Migración de chino codificado a recursos de cadena
             )
         }
         reconnectJob = scope.launch {
@@ -487,62 +487,62 @@ class DashScopeAsrController(
         reconnectAttempt++
     }
 
-    /** 执行一次重连尝试(仅当仍处于 Reconnecting 时;失败继续退避,耗尽则降级)。 */
+    /** Realizar un intento de reconexión(Sólo mientras aún nos estamos reconectando;Continuar retrocediendo después del fracaso.,Degradado si está agotado). */
     private suspend fun attemptReconnect() {
         if (isDisposed.get()) return
         if (_state.value.status != ASRStatus.Reconnecting) {
-            Logger.d(TAG, "退避期间状态变化(${_state.value.status}),取消重连")
+            Logger.d(TAG, "Cambios de estado durante el retiro(${_state.value.status}),Cancelar la reconexión")
             return
         }
-        // 临时切 Connecting 表示正在建立连接(退避已完成);该状态下断开由 establishConnection 自行处理
+        // Cambiar temporalmente a Conectando indica que se está estableciendo una conexión.(Retroceso completado);La desconexión en este estado la maneja el propio establishmentConnection.
         _state.update { it.copy(status = ASRStatus.Connecting) }
         if (!establishConnection(isInitial = false)) {
-            Logger.w(TAG, "重连失败(attempt=$reconnectAttempt),继续退避")
-            scheduleReconnect("重连尝试失败")
+            Logger.w(TAG, "Error de reconexión(attempt=$reconnectAttempt),continuar retirándose")
+            scheduleReconnect("El intento de reconexión falló")
         }
     }
 
-    /** 重连成功:重置退避计数,状态切回 Listening 并补发最近一段缓冲音频。 */
+    /** Reconexión exitosa:Restablecer el recuento de retrocesos,El estado vuelve a Escuchar y reenvía el último audio almacenado en el buffer. */
     private fun onReconnected() {
-        // 竞态保护:重连握手期间用户可能已 stop/dispose,状态不再是 Connecting 时放弃恢复
+        // protección de carrera:Durante el protocolo de enlace de reconexión, el usuario puede tener stop/dispose,Cancelar la recuperación cuando el estado ya no sea Conectando
         if (_state.value.status != ASRStatus.Connecting) {
-            Logger.d(TAG, "重连成功但状态已变化(${_state.value.status}),放弃恢复")
+            Logger.d(TAG, "La reconexión se realizó correctamente pero el estado cambió(${_state.value.status}),renunciar a la recuperación")
             cleanupConnection()
             clearAudioBuffer()
             return
         }
-        Logger.i(TAG, "WebSocket 重连成功,补发缓冲音频(${audioBuffer.size} 帧,$audioBufferBytes 字节)")
+        Logger.i(TAG, "WebSocket Reconexión exitosa,Reedición de audio almacenado en buffer(${audioBuffer.size} marco,$audioBufferBytes bytes)")
         reconnectAttempt = 0
         _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
         flushAudioBuffer()
     }
 
     /**
-     * 重连耗尽:切 Error 状态(附用户可见降级文案),关闭连接并释放麦克风。
+     * Reconexión agotada:Estado de error del interruptor(Se adjunta una copia de degradación visible para el usuario.),Cierra la conexión y suelta el micrófono.
      *
-     * 已识别的文本保留在 state.transcript 中,用户可复制后再重试。
+     * El texto reconocido se conserva en state.transcript,Los usuarios pueden copiar e intentar nuevamente.
      */
     private fun giveUpReconnect(reason: String) {
-        Logger.w(TAG, "重连 $MAX_RECONNECT_ATTEMPTS 次仍未恢复,降级为 Error: $reason")
+        Logger.w(TAG, "Reconectar $MAX_RECONNECT_ATTEMPTS Aún no recuperado,degradado a Error: $reason")
         _state.update {
             it.copy(
                 status = ASRStatus.Error,
                 errorMessage = appContext.getString(R.string.asr_reconnect_exhausted),
-            ) // CONS-05: 硬编码中文迁移到字符串资源
+            ) // CONS-05: Migración de chino codificado a recursos de cadena
         }
         cleanupConnection()
         releaseAudioRecord()
     }
 
     /**
-     * 重连成功后补发最近一小段缓冲 PCM 并清空缓冲。
+     * Después de una reconexión exitosa, vuelva a enviar el último PCM con almacenamiento en búfer corto y borre el búfer.
      *
-     * 对齐 OpenAiRealtimeAsrController.B-28:只补发最近 [MAX_REPLAY_BYTES](≈2 秒),
-     * 更早的帧直接丢弃,避免断线前的整段音频被新会话当作新语音重复识别。
+     * Alineación OpenAiRealtimeAsrController.B-28: Reemitir solo el más reciente [MAX_REPLAY_BYTES](≈2 segundos),
+     * Los fotogramas anteriores se descartan directamente.,Esto evita que todo el segmento de audio antes de la desconexión se reconozca repetidamente como una nueva voz en una nueva sesión.
      */
     private fun flushAudioBuffer() {
         val ws = webSocket ?: run {
-            Logger.w(TAG, "flushAudioBuffer: webSocket 为空,丢弃缓冲")
+            Logger.w(TAG, "flushAudioBuffer: webSocket esta vacio,descartar buffer")
             clearAudioBuffer()
             return
         }
@@ -555,7 +555,7 @@ class DashScopeAsrController(
                 audioBufferBytes -= chunk.size
                 val byteString = okio.Buffer().apply { write(chunk) }.readByteString()
                 if (!ws.send(byteString)) {
-                    Logger.w(TAG, "补发音频帧失败,剩余 ${audioBuffer.size} 帧丢弃")
+                    Logger.w(TAG, "No se pudo reenviar el cuadro de audio,restante ${audioBuffer.size} cuadro caído")
                     break
                 }
             }
@@ -574,7 +574,7 @@ class DashScopeAsrController(
         releaseAudioRecord()
     }
 
-    /** 清空重连音频缓冲(start/stop/dispose 时调用)。 */
+    /** Borrar el búfer de audio de reconexión(start/stop/dispose llamado cuando). */
     private fun clearAudioBuffer() {
         synchronized(audioBufferLock) {
             audioBuffer.clear()
@@ -582,19 +582,19 @@ class DashScopeAsrController(
         }
     }
 
-    /** 取消正在调度/执行的重连(不修改状态),用户主动停止时调用。 */
+    /** Cancelar programación/Realizar reconexión(No modificar estado),Se llama cuando el usuario se detiene activamente. */
     private fun cancelReconnect() {
         reconnectJob?.cancel()
         reconnectJob = null
     }
 
-    /** 释放 AudioRecord 硬件资源(取消录音协程 + stop + release)。 */
+    /** Liberar recursos de hardware de AudioRecord(Cancelar la grabación de rutina + stop + release). */
     private fun releaseAudioRecord() {
         recordJob?.cancel()
         recordJob = null
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* 已停止或未初始化 */ }
+        } catch (_: Throwable) { /* Detenido o no inicializado */ }
         val recorder = audioRecord
         audioRecord = null
         runCatching { recorder?.release() }
@@ -602,30 +602,30 @@ class DashScopeAsrController(
 
     override fun stop() {
         if (!_state.value.isRecording) return
-        // Phase 3: 用户主动停止,取消进行中的重连并清空重连缓冲
+        // Phase 3: El usuario se detiene activamente,Cancele la reconexión en curso y borre el búfer de reconexión
         cancelReconnect()
         clearAudioBuffer()
         _state.update { it.copy(status = ASRStatus.Stopping) }
-        // 先停 AudioRecord(解除 read 阻塞),再取消录音协程,最后释放
+        // Detente primero AudioRecord(Desbloquear lectura),Cancelar la rutina de grabación nuevamente.,lanzamiento final
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* 已停止或未初始化 */ }
+        } catch (_: Throwable) { /* Detenido o no inicializado */ }
         recordJob?.cancel()
         audioRecord?.release()
         audioRecord = null
 
-        // 发 finish-task,等 task-finished(由 handleEvent 处理切回 Idle)
+        // enviar finish-task,espera task-finished(El cambio de retorno es manejado por handleEvent Idle)
         val ws = webSocket
         val tid = currentTaskId
         if (ws != null && tid != null) {
             ws.send(buildFinishTaskMessage(tid))
         }
 
-        // 超时保护:5 秒未收到 task-finished,强制切 Idle
+        // Protección de tiempo de espera:5 No recibido en segundos task-finished,corte forzado Idle
         scope.launch {
             delay(STOP_TIMEOUT_MS)
             if (_state.value.status == ASRStatus.Stopping) {
-                Logger.w(TAG, "stop() 等待 task-finished 超时,强制切 Idle")
+                Logger.w(TAG, "stop() Esperando el tiempo de espera de finalización de la tarea,corte forzado Idle")
                 val full = buildTranscript()
                 _state.update { it.copy(status = ASRStatus.Idle, transcript = full) }
                 cleanupConnection()
@@ -635,13 +635,13 @@ class DashScopeAsrController(
 
     override fun dispose() {
         isDisposed.set(true)
-        // Phase 3: 取消重连并清空缓冲,防止 dispose 后仍重连
+        // Phase 3: Cancelar la reconexión y borrar el búfer,Evite la reconexión después de desechar
         cancelReconnect()
         clearAudioBuffer()
         recordJob?.cancel()
         try {
             audioRecord?.stop()
-        } catch (_: Throwable) { /* 已停止或未初始化 */ }
+        } catch (_: Throwable) { /* Detenido o no inicializado */ }
         audioRecord?.release()
         audioRecord = null
         webSocket?.close(1000, "disposed")
@@ -649,14 +649,14 @@ class DashScopeAsrController(
         session = null
         scope.cancel()
         _state.update { it.copy(status = ASRStatus.Idle, amplitudes = emptyList()) }
-        // 仅当自建 client 时才 shutdown(共享 client 由调用方管理生命周期)
+        // Solo cuando se construye un cliente propio shutdown(El ciclo de vida del cliente compartido lo gestiona la persona que llama)
         if (ownsClient) {
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()
         }
     }
 
-    /** 关闭 WebSocket 并清理会话引用。 */
+    /** Cierre WebSocket y limpie la referencia de la sesión. */
     private fun cleanupConnection() {
         webSocket?.close(1000, "session ended")
         webSocket = null
@@ -664,18 +664,18 @@ class DashScopeAsrController(
     }
 
     /**
-     * 构造 run-task 指令 JSON。
+     * Construya la directiva de ejecución de tareas JSON.
      *
-     * 支持的模型(config.model):
-     *  - paraformer-realtime-v2(默认,实时流式 Paraformer v2)
-     *  - paraformer-realtime-v3(v3,识别准确度提升,支持方言增强)
-     *  - sensevoice-v1(SenseVoice,支持情绪识别 + ASR,多语种强)
+     * Modelos compatibles(config.model):
+     *  - paraformer-realtime-v2(Predeterminado,transmisión en vivo Paraformer v2)
+     *  - paraformer-realtime-v3(v3,Precisión de reconocimiento mejorada,Mejora del dialecto de soporte)
+     *  - sensevoice-v1(SenseVoice,Apoyar el reconocimiento de emociones. + ASR,Fuerte multilingüismo)
      *
-     * 热词参数:DashScope Paraformer 支持通过 `vocabulary_id`(预创建词表 ID)传入热词,
-     * 当前 [AsrConfig.hotwords] 是 inline 列表,通过 `hotwords` 参数传入(DashScope 部分
-     * 模型版本支持 inline 热词 map,格式 {word: weight});如服务端不接受 inline 形式,
-     * 用户应改用 DashScope 控制台预创建词表并填入 [AsrConfig.hotwords] 第一个元素
-     * 作为 vocabulary_id(此处会自动检测:单元素且不以非字母数字结尾时视为 vocabulary_id)。
+     * Parámetros de palabras calientes:DashScope Paraformer Soporte a través de `vocabulary_id`(Vocabulario creado previamente ID)palabras calientes entrantes,
+     * actual [AsrConfig.hotwords] es una lista en línea,Pase `hotwords` Parámetros pasados(DashScope parte
+     * La versión del modelo admite palabras activas en línea. map,Formato {word: weight});Si el servidor no acepta el formulario en línea,
+     * En su lugar, los usuarios deberían usar la consola DashScope para crear previamente la lista de palabras y completarla. [AsrConfig.hotwords] primer elemento
+     * como vocabulary_id(Se detectará automáticamente aquí.:Se considera un solo elemento que no termina en un carácter no alfanumérico. vocabulary_id).
      */
     private fun buildRunTaskMessage(taskId: String, sampleRate: Int): String {
         val parameters = buildJsonObject {
@@ -684,7 +684,7 @@ class DashScopeAsrController(
             put("punctuation_prediction_enabled", config.enablePunctuation)
             put("inverse_text_normalization_enabled", config.enableInverseTextNormalization)
             config.language?.let { put("language_hints", JsonArray(listOf(JsonPrimitive(it)))) }
-            // 热词:inline 列表转为 hotwords map(word -> 默认权重 1)
+            // palabras calientes:inline La lista se convierte en hotwords map(word -> Peso predeterminado 1)
             if (config.hotwords.isNotEmpty()) {
                 val hotwordsMap = buildJsonObject {
                     config.hotwords.forEach { word ->
@@ -718,7 +718,7 @@ class DashScopeAsrController(
         return json.encodeToString(JsonObject.serializer(), msg)
     }
 
-    /** 构造 finish-task 指令 JSON。 */
+    /** Construya la directiva de tarea final JSON. */
     private fun buildFinishTaskMessage(taskId: String): String {
         val msg = buildJsonObject {
             put(
@@ -739,7 +739,7 @@ class DashScopeAsrController(
         return json.encodeToString(JsonObject.serializer(), msg)
     }
 
-    /** JsonObject 扩展工具(容错取值)。 */
+    /** JsonObject Herramientas de extensión(Valor de tolerancia a fallos). */
     private fun JsonObject.optString(key: String): String = (this[key] as? JsonPrimitive)?.content ?: ""
 
     private fun JsonObject.optInt(key: String): Int? = (this[key] as? JsonPrimitive)?.content?.toIntOrNull()
@@ -753,37 +753,37 @@ class DashScopeAsrController(
         private const val ENDPOINT = "wss://dashscope.aliyuncs.com/api-ws/v1/inference"
         private const val TIMEOUT_EVENT_MS = 15_000L
 
-        /** 音频分块大小:100ms @ 16kHz 16-bit mono = 16000 * 2 * 0.1 = 3200 bytes。 */
+        /** Tamaño del fragmento de audio:100ms @ 16kHz 16-bit mono = 16000 * 2 * 0.1 = 3200 bytes. */
         private const val AUDIO_CHUNK_BYTES = 3200
 
-        /** WebSocket 发送队列背压上限(字节),超限丢帧避免内存堆积。 */
+        /** WebSocket Límite superior de contrapresión de cola de envío(bytes),Suelte fotogramas más allá del límite para evitar la acumulación de memoria. */
         private const val MAX_QUEUE_BYTES = 100_000L
 
-        /** stop() 等待 task-finished 的超时,超时强制切 Idle。 */
+        /** stop() Tiempo de espera de finalización de la tarea,Obligado a cambiar a inactivo después del tiempo de espera. */
         private const val STOP_TIMEOUT_MS = 5_000L
 
-        /** Phase 3: 最大重连尝试次数(与 Step/Whisper 的 AsrConstants.RECONNECT_MAX_ATTEMPTS 对齐)。 */
+        /** Phase 3: Número máximo de intentos de reconexión(Alineado con AsrConstants.RECONNECT_MAX_ATTEMPTS de Step/Whisper). */
         private const val MAX_RECONNECT_ATTEMPTS = DashScopeReconnectPolicy.MAX_ATTEMPTS
 
-        /** Phase 3: 重连期间 PCM 缓冲上限(5MB,对齐 OpenAiRealtimeAsrController,避免 OOM)。 */
+        /** Phase 3: Límite del búfer PCM durante la reconexión(5MB,Alineación OpenAiRealtimeAsrController,evitar OOM). */
         private const val MAX_AUDIO_BUFFER_BYTES = 5 * 1024 * 1024
 
         /**
-         * Phase 3: 重连成功后最多补发的音频字节数。
-         * 2 秒 @16kHz/16bit/mono ≈ 64KB(与 OpenAiRealtimeAsrController.MAX_REPLAY_BYTES 一致)。
+         * Phase 3: La cantidad máxima de bytes de audio que se pueden retransmitir después de una reconexión exitosa.
+         * 2 segundos @16kHz/16bit/mono ≈ 64KB(con OpenAiRealtimeAsrController.MAX_REPLAY_BYTES consistente).
          */
         private const val MAX_REPLAY_BYTES = 2 * 16_000 * 2
     }
 }
 
 /**
- * DashScope WebSocket 会话,用 Channel 桥接回调到协程(持续监听模式)。
- * - onMessage(text) → 解析 JSON → 入 events Channel(供 waitForEvent 取 task-started)
- * - 同时通过 onEvent 回调持续派发所有事件(供 Controller 处理 result-generated / task-finished)
- * - waitForEvent(type) 从 Channel 取指定类型事件,null 类型取任意
+ * DashScope WebSocket sesión,Utilice Channel para unir devoluciones de llamadas a corrutinas(Modo de escucha continua).
+ * - onMessage(text) → analizar JSON → entrar events Channel(Para esperar a que llegue Evento task-started)
+ * - Al mismo tiempo, todos los eventos se envían continuamente a través de la devolución de llamada onEvent.(para que el Controlador procese result-generated / task-finished)
+ * - waitForEvent(type) Obtener el tipo de evento especificado del canal,null El tipo puede ser arbitrario.
  *
- * Phase 3: 新增 [onDisconnected] 回调 — WebSocket 失败/服务端关闭时通知 Controller
- * 触发指数退避重连(本地 close() 触发的 onClosed 不通知,避免自触发重连)。
+ * Phase 3: Nuevo [onDisconnected] devolución de llamada — WebSocket falló/Notificar cuando el servidor se apaga Controller
+ * Activar la reconexión de retroceso exponencial(locales close() Activado onClosed no notifica,Evite la reconexión autoactivada).
  */
 internal class DashScopeSession(
     private val taskId: String,
@@ -794,57 +794,57 @@ internal class DashScopeSession(
     private val events = kotlinx.coroutines.channels.Channel<JsonObject>(kotlinx.coroutines.channels.Channel.UNLIMITED)
 
     /**
-     * Phase 3: 断线回调(由 Controller 设置)。
-     * - [onFailure]: 连接失败/异常断开;
-     * - [onClosing]: 服务端主动关闭连接(本地 close() 不会触发)。
-     * 由 Controller 决定是重连还是降级为 Error。
+     * Phase 3: Desconectar devolución de llamada(Establecido por el controlador).
+     * - [onFailure]: La conexión falló/Desconexión anormal;
+     * - [onClosing]: El servidor cierra activamente la conexión.(locales close() no disparará).
+     * Depende del Controlador decidir si reconectarse o bajar a Error.
      */
     var onDisconnected: ((String) -> Unit)? = null
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        Logger.d(TAG, "WebSocket 连接已建立")
+        Logger.d(TAG, "WebSocket Conexión establecida")
     }
 
     override fun onMessage(webSocket: WebSocket, text: String) {
-        // L-ASR1: 用 resultOf 替代 runCatching,避免吞 CancellationException
+        // L-ASR1: Utilice resultOf en su lugar runCatching,evitar tragar CancellationException
         resultOf {
             val obj = json.parseToJsonElement(text) as JsonObject
             val header = obj["header"] as? JsonObject ?: return@resultOf
-            // 合并 header.event 到顶层便于取值
+            // Fusione header.event con el nivel superior para recuperar fácilmente el valor
             val merged = JsonObject(obj + ("event" to (header["event"] ?: JsonPrimitive(""))))
-            // 入 channel 供 waitForEvent 取(主要给 task-started)
+            // Ingrese el canal para que se realice waitForEvent(Principalmente a task-started)
             events.trySend(merged)
-            // 持续派发给 Controller 处理(result-generated / task-finished / task-failed)
+            // Envío continuo al Controlador para su procesamiento(result-generated / task-finished / task-failed)
             onEvent(merged)
         }.onError { message, throwable ->
-            Logger.w(TAG, "解析服务端消息失败: ${throwable?.message ?: message}")
+            Logger.w(TAG, "No se pudo analizar el mensaje del servidor: ${throwable?.message ?: message}")
         }
     }
 
     override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
-        // DashScope ASR 不返回二进制消息,忽略
+        // DashScope ASR No devolver mensajes binarios,ignorar
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-        // Phase 3: 服务端主动关闭(本地 close() 不触发 onClosing) → 通知 Controller 决策重连
-        Logger.w(TAG, "服务端关闭连接: code=$code reason=$reason")
-        onDisconnected?.invoke("服务端关闭连接: code=$code reason=$reason")
+        // Phase 3: El servidor se apaga activamente(locales close() No activado onClosing) → Notificar al Controlador sobre la decisión de reconectarse
+        Logger.w(TAG, "El servidor cierra la conexión: code=$code reason=$reason")
+        onDisconnected?.invoke("El servidor cierra la conexión: code=$code reason=$reason")
         webSocket.close(code, reason)
     }
 
     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-        // 本地 close() 也会走到这里,不在此触发重连(否则 cleanupConnection 会自触发)
+        // locales close() también vendrá aquí,No active la reconexión aquí(De lo contrario, cleanupConnection se activará solo)
         closeChannel()
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        Logger.w(TAG, "WebSocket 失败: ${t.message}")
-        // Phase 3: 断线重连 — 由 Controller 按状态与退避次数决定重连/降级(F-34 TODO 落地)
-        onDisconnected?.invoke(t.message ?: "WebSocket 连接失败")
+        Logger.w(TAG, "WebSocket falló: ${t.message}")
+        // Phase 3: Desconectar y volver a conectar — El Controlador determina la reconexión según el estado y la cantidad de interrupciones./Rebajar(F-34 TODO aterrizaje)
+        onDisconnected?.invoke(t.message ?: "WebSocket La conexión falló")
         closeChannel()
     }
 
-    /** 挂起等待指定事件类型,timeoutMs 超时返回 null。type=null 取任意事件。 */
+    /** Suspender la espera del tipo de evento especificado,timeoutMs Devuelve nulo cuando se agota el tiempo de espera.type=null Tome cualquier evento. */
     suspend fun waitForEvent(type: String?, timeoutMs: Long): JsonObject? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
@@ -853,15 +853,15 @@ internal class DashScopeSession(
             if (type == null) return event
             val eventType = event["event"]?.let { (it as? JsonPrimitive)?.content }
             if (eventType == type) return event
-            // L-ASR2: 对 task-failed 等错误事件特殊处理,其他非目标事件至少 Logger.d
+            // L-ASR2: Manejo especial de eventos de error como tarea fallida,Otros eventos no objetivo son al menos Logger.d
             if (eventType == "task-failed") {
                 val errMsg = (event["header"] as? JsonObject)?.let {
                     (it["error_message"] as? JsonPrimitive)?.content
                 } ?: event.toString()
-                Logger.w(TAG, "等待 $type 时收到 task-failed: $errMsg")
+                Logger.w(TAG, "espera $type recibido cuando task-failed: $errMsg")
                 return null
             }
-            Logger.d(TAG, "等待 $type 时丢弃非目标事件: $eventType")
+            Logger.d(TAG, "espera $type Descartar eventos no objetivo: $eventType")
         }
         return null
     }
@@ -876,56 +876,56 @@ internal class DashScopeSession(
 }
 
 /**
- * Phase 3: DashScope 断线重连策略。
+ * Phase 3: DashScope Estrategia de desconexión y reconexión.
  *
- * 尝试上限与分批量客户端(Step/Whisper 的 AsrConstants.RECONNECT_MAX_ATTEMPTS)对齐,
- * 退避曲线对齐 [OpenAiRealtimeAsrController](指数翻倍 + 封顶):
- * 500ms → 1s → 2s,单次上限 8s,最多 3 次。
+ * Pruebe el cliente limitado o por lotes(Step/Whisper de AsrConstants.RECONNECT_MAX_ATTEMPTS)Alineación,
+ * Alineación de la curva de retroceso [OpenAiRealtimeAsrController](Índice duplicado + limitado):
+ * 500ms → 1s → 2s,Límite único 8s,Hasta 3 veces.
  */
 internal object DashScopeReconnectPolicy {
-    /** 最大重连尝试次数(与 Step/Whisper 的 3 次对齐)。 */
+    /** Número máximo de intentos de reconexión(3 alineaciones con Paso/Susurro). */
     const val MAX_ATTEMPTS = 3
 
-    /** 首次重连退避(毫秒)。 */
+    /** Primer retiro de reconexión(milisegundos). */
     const val BASE_DELAY_MS = 500L
 
-    /** 单次退避上限(毫秒)。 */
+    /** Límite de retiro único(milisegundos). */
     const val MAX_DELAY_MS = 8_000L
 
     /**
-     * 重连耗尽后的用户可见降级文案:说明已保留内容,并给出明确的手动重试方式。
-     * CONS-05: 生产路径(giveUpReconnect)已迁移到字符串资源 asr_reconnect_exhausted;
-     * 此常量仅保留给 DashScopeAsrReconnectTest 的文案断言使用,不再进入用户可见路径。
+     * La copia de degradación es visible para los usuarios una vez que se agota la reconexión.:Descripción del contenido reservado,Y proporcione un método de reintento manual claro.
+     * CONS-05: ruta de producción(giveUpReconnect)Migrado a recursos de cadena asr_reconnect_exhausted;
+     * Esta constante está reservada solo para afirmaciones de copia de DashScopeAsrReconnectTest,Ya no ingresa a la ruta visible para el usuario.
      */
-    const val EXHAUSTED_MESSAGE = "语音连接中断,自动重连 3 次仍未恢复。已识别的内容已保留," +
-        "请检查网络后重新开始录音。"
+    const val EXHAUSTED_MESSAGE = "Se perdió la conexión de voz,Se volvió a conectar automáticamente 3 veces y aún no se restablece. Contenido identificado retenido," +
+        "Verifique la red y comience a grabar nuevamente."
 
-    /** 第 attempt 次(0-based)重连前等待的退避时长:500ms → 1s → 2s(上限 8s)。 */
+    /** intento(0-based)Tiempo de espera antes de volver a conectarse:500ms → 1s → 2s(límite superior 8s). */
     fun delayForAttempt(attempt: Int): Long {
         val safeAttempt = attempt.coerceIn(0, 16)
         return minOf(MAX_DELAY_MS, BASE_DELAY_MS shl safeAttempt)
     }
 }
 
-/** Phase 3: WebSocket 断开后控制器应执行的动作。 */
+/** Phase 3: WebSocket Qué debe hacer el controlador después de la desconexión. */
 internal enum class AsrDisconnectAction {
-    /** 忽略(已 dispose / 终态 / 用户停止中 / 首次连接由 establishConnection 自行处理)。 */
+    /** ignorar(Eliminado / Estado final / El usuario se está deteniendo / La primera conexión es manejada por el propio establishmentConnection). */
     IGNORE,
 
-    /** 进入指数退避重连。 */
+    /** Ingrese a un retroceso exponencial y vuelva a conectarse. */
     RECONNECT,
 
-    /** 重试耗尽,降级为 Error 并释放录音资源。 */
+    /** Reintentos agotados,Baje a Error y libere los recursos de grabación. */
     GIVE_UP,
 }
 
 /**
- * Phase 3: 根据当前状态判定断开处理动作(纯函数,便于单测)。
+ * Phase 3: Determinar la acción de procesamiento de desconexión según el estado actual(función pura,Conveniente para pruebas individuales).
  *
- * - dispose 后、Idle/Error 终态:忽略;
- * - Stopping(用户主动停止中):忽略,由 stop() 超时逻辑收尾;
- * - Connecting(首次连接/重连建立中):忽略,由 establishConnection 自行处理失败;
- * - 其余(Listening/Reconnecting):重连;达到 [maxAttempts] 则降级。
+ * - dispose Después,Idle/Error estado final:ignorar;
+ * - Stopping(El usuario se está deteniendo activamente.):ignorar,por stop() Finalización de la lógica de tiempo de espera;
+ * - Connecting(Conexión por primera vez/Se está estableciendo la reconexión):ignorar,El error es manejado por el propio establishmentConnection.;
+ * - el resto(Listening/Reconnecting):Reconectar;alcanzar [maxAttempts] Luego rebajar.
  */
 internal fun resolveAsrDisconnectAction(
     status: ASRStatus,
@@ -942,10 +942,10 @@ internal fun resolveAsrDisconnectAction(
 }
 
 /**
- * Phase 3: 断线重连的退避等待。
+ * Phase 3: Espera de retroceso para la desconexión y reconexión.
  *
- * 单独抽出便于单测验证取消语义:delay 抛出的 CancellationException 必须原样向上传播
- * (不 catch、不吞),否则 stop()/dispose() 取消重连后协程仍会继续执行。
+ * Extraer por separado para facilitar la verificación de prueba única de la semántica de cancelación:delay La CancellationException lanzada debe propagarse hacia arriba sin cambios.
+ * (No atrapar, no tragar),De lo contrario stop()/dispose() La corrutina continuará ejecutándose después de cancelar la reconexión.
  */
 internal suspend fun awaitReconnectBackoff(attempt: Int) {
     delay(DashScopeReconnectPolicy.delayForAttempt(attempt))

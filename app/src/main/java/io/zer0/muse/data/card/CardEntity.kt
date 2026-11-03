@@ -12,23 +12,23 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 卡片实体（v2.6.8 / MuseDb 118）。
+ * entidad de tarjeta (v2.6.8 / MuseDb 118).
  *
- * 为什么要有这张表：卡片此前是「消息文本尾巴里的一段 JSON + 进程内 card_data.json」，
- * 一旦卡片离开消息流（被拖到侧边停靠、或被系统悬浮窗渲染），就没有任何地方存放它的内容与状态，
- * 也没有跨重启稳定的身份（`c_xxx` 是时间戳 + 进程内自增，重启可撞）。本表把卡片升为
- * 一等实体：UUID 主键、内容（code/dataJson）与停靠状态（dockSlot/dockedAt）都落在这里，
- * 消息侧只保留 `cardId` 引用，供占位条与拖回定位。
+ * ¿Por qué aparece esta tabla? La tarjeta anteriormente era "un fragmento de JSON al final del texto del mensaje + card_data.json en proceso".
+ * Una vez que la tarjeta abandona el flujo de mensajes (se arrastra hacia un lado y se acopla, o se presenta en la ventana flotante del sistema), no hay lugar para almacenar su contenido y estado.
+ * Tampoco hay una identidad estable entre reinicios (`c_xxx` Es la marca de tiempo + se incrementa automáticamente en el proceso y se puede eliminar después de reiniciar). Esta tabla actualiza la tarjeta a
+ * Entidades de primera clase:UUID Clave principal, contenido (code/dataJson) y estado atracado (dockSlot/dockedAt) todos caen aquí,
+ * El lado del mensaje solo conserva `cardId` Referencia, utilizada para la barra de marcador de posición y el posicionamiento de arrastre hacia atrás.
  *
- * 与消息的关系（不要在这里加外键）：
- * - 卡片可以从消息流脱离独立存在，消息被删也不该连带删卡；
- * - [originMessageId] / [originSessionId] 只是溯源信息，可空。
+ * Relación con el mensaje (no agregue claves externas aquí):
+ * - Las tarjetas pueden existir independientemente del flujo de mensajes y, si se elimina el mensaje, la tarjeta no debe eliminarse también;
+ * - [originMessageId] / [originSessionId] Es sólo información de trazabilidad y puede dejarse vacía.
  *
- * 停靠语义：
- * - [dockSlot] 为 NULL = 仅在消息流内联渲染，不参与停靠区；
- * - [dockSlot] >= 0 = 停靠顺序（0 起），唯一索引保证同一槽位不会有两张卡。
- *   SQLite 的唯一索引把 NULL 视为互不相等，因此「多张卡都未停靠」不会互相冲突。
- * - 拖回只是把 [dockSlot] 置回 NULL，不删行（见设计规格 §3.2）。
+ * Semántica del muelle:
+ * - [dockSlot] para NULL = Solo se presenta en línea en el flujo de mensajes y no participa en el área de acoplamiento;
+ * - [dockSlot] >= 0 = orden de atraque (0 ), el índice único asegura que no habrá dos tarjetas en la misma ranura.
+ *   SQLite El índice único trata a NULL como desigual, por lo que "varias tarjetas no acopladas" no entrarán en conflicto entre sí.
+ * - arrastrar hacia atrás solo poner [dockSlot] Vuelva a establecer NULL y no elimine filas (consulte las especificaciones de diseño §3.2).
  */
 @Entity(
     tableName = "card_entities",
@@ -38,73 +38,73 @@ import kotlinx.coroutines.flow.Flow
     ],
 )
 data class CardEntity(
-    /** UUID，跨重启稳定的卡片身份。 */
+    /** UUID, identidad de tarjeta estable durante los reinicios. */
     @PrimaryKey val id: String,
     /**
-     * 旧 `c_xxx` 卡片 id，仅供存量数据回填匹配。
+     * viejo `c_xxx` ID de tarjeta, solo para completar la coincidencia de datos existentes.
      *
-     * 读取侧保留「按旧 id 也能找到卡」的能力，写入侧不再生成这种 id。
+     * El lado de lectura conserva la capacidad de "encontrar la tarjeta por la identificación anterior" y el lado de escritura ya no genera dichas identificaciones.
      */
     @ColumnInfo(defaultValue = "NULL") val legacyCardId: String? = null,
-    /** 来源会话 id。卡片脱离消息流后仍可追溯它属于哪次对话。 */
+    /** ID de sesión de origen. Una vez que una tarjeta abandona la transmisión, aún puedes rastrear la conversación a la que pertenece. */
     @ColumnInfo(defaultValue = "NULL") val originSessionId: String? = null,
-    /** 来源消息 id。用于消息流占位条与拖回定位。 */
+    /** ID del mensaje fuente. Se utiliza para la barra de marcador de posición del flujo de mensajes y el posicionamiento de arrastre hacia atrás. */
     @ColumnInfo(defaultValue = "NULL") val originMessageId: String? = null,
-    /** 卡片标题。 */
+    /** Título de la tarjeta. */
     @ColumnInfo(defaultValue = "") val title: String = "",
-    /** HTML / SVG 源。 */
+    /** HTML / SVG fuente. */
     @ColumnInfo(defaultValue = "") val code: String = "",
-    /** 渲染分支：true = SVG，false = HTML。 */
+    /** Rama de renderizado:true = SVG,false = HTML. */
     @ColumnInfo(defaultValue = "0") val isSvg: Boolean = false,
-    /** 绑定数据（原 card_data.json 里的 JSON 文本）。 */
+    /** Vincular datos (texto JSON en card_data.json original). */
     @ColumnInfo(defaultValue = "NULL") val dataJson: String? = null,
-    /** NULL = 仅在消息流；>= 0 = 停靠顺序。 */
+    /** NULL = Sólo en el flujo de mensajes;>= 0 = secuencia de atraque. */
     @ColumnInfo(defaultValue = "NULL") val dockSlot: Int? = null,
-    /** 停靠时间，用于排序兜底（dockSlot 相同或历史数据缺槽位时）。 */
+    /** Tiempo de muelle, utilizado para clasificar (dockSlot Cuando falten slots al mismo o al dato histórico). */
     @ColumnInfo(defaultValue = "NULL") val dockedAt: Long? = null,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = 0L,
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0L,
 )
 
 /**
- * 卡片实体 DAO。
+ * Entidad de tarjeta DAO.
  *
- * 只做存取，不做业务判断：槽位怎么分配、拖出/拖回何时发生、回填是否成功，
- * 都由上层仓储决定。这里的方法一律返回原始行或受影响行数。
+ * Solo acceso, sin juicio empresarial: cómo asignar espacios y arrastrarlos/¿Cuándo ocurre el retroceso y si el relleno es exitoso?
+ * Todos están determinados por el almacenamiento de nivel superior. Los métodos aquí siempre devuelven la fila original o el número de filas afectadas.
  */
 @Dao
-@Suppress("TooManyFunctions") // 卡片域的读写各入口天然分开（按 id / 来源消息 / 旧 id / 停靠区 / 全量 / 清空 / 槽位增删），合并反而碎
+@Suppress("TooManyFunctions") // Las entradas de lectura y escritura del dominio de la tarjeta están naturalmente separadas (por identificación/información de origen/identificación anterior/área de acoplamiento/lleno/borrado/adición y eliminación de ranuras), y la fusión provocará fragmentación.
 interface CardEntityDao {
 
     @Query("SELECT * FROM card_entities WHERE id = :id")
     suspend fun getById(id: String): CardEntity?
 
     /**
-     * 按来源消息取卡。
+     * Obtenga la tarjeta según el mensaje fuente.
      *
-     * 返回列表而非单条：一条消息可以承载多张卡（卡片组），一张卡一行。
-     * 需要「该消息的卡片占位」时由调用方按 dockSlot / createdAt 自行挑选。
+     * Devuelve una lista en lugar de un solo mensaje: un mensaje puede contener varias cartas (barajas), una carta por línea.
+     * Cuando se necesita el "marcador de posición de la tarjeta para el mensaje", la persona que llama puede seleccionarlo presionando dockSlot/creadoAt.
      */
     @Query("SELECT * FROM card_entities WHERE originMessageId = :originMessageId ORDER BY createdAt ASC")
     suspend fun getByOriginMessageId(originMessageId: String): List<CardEntity>
 
-    /** 按旧 `c_xxx` id 读（存量数据兼容）。 */
+    /** prensa vieja `c_xxx` id Leer (compatible con datos existentes). */
     @Query("SELECT * FROM card_entities WHERE legacyCardId = :legacyCardId LIMIT 1")
     suspend fun getByLegacyCardId(legacyCardId: String): CardEntity?
 
-    /** 全部停靠卡，按槽位升序（停靠区 Pager 的顺序来源）。 */
+    /** Todas las tarjetas de muelle, en orden ascendente por ranura (la fuente de orden del buscapersonas del área de muelle). */
     @Query("SELECT * FROM card_entities WHERE dockSlot IS NOT NULL ORDER BY dockSlot ASC")
     suspend fun getDockedCards(): List<CardEntity>
 
-    /** 同上，供停靠区订阅。 */
+    /** Lo mismo ocurre con las suscripciones al área de atraque. */
     @Query("SELECT * FROM card_entities WHERE dockSlot IS NOT NULL ORDER BY dockSlot ASC")
     fun observeDockedCards(): Flow<List<CardEntity>>
 
     /**
-     * 全量（备份导出用）。
+     * Importe total (para copia de seguridad y exportación).
      *
-     * 不加 ORDER BY：导出顺序由备份侧 [io.zer0.muse.backup.inDockOrder] 定，
-     * 排序规则属于线格式契约，不该藏在 DAO 里；这里只如实交出行。
+     * Sin ORDER BY: el orden de exportación lo determina el lado de respaldo [io.zer0.muse.backup.inDockOrder] determinado,
+     * Las reglas de clasificación pertenecen al contrato de formato electrónico y no deben ocultarse en la DAO; aquí sólo entregamos las líneas tal como están.
      */
     @Query("SELECT * FROM card_entities")
     suspend fun getAll(): List<CardEntity>
@@ -116,24 +116,24 @@ interface CardEntityDao {
     suspend fun upsert(card: CardEntity)
 
     /**
-     * 批量写入（备份恢复用），冲突即替换。
+     * Escritura por lotes (para copia de seguridad y recuperación), se reemplazarán los conflictos.
      *
-     * 用 `@Insert(REPLACE)` 而不是逐条 [upsert]：恢复前已整表清空，同一批内的重复
-     * 主键属于坏数据，替换语义让它覆盖而不是中断整次恢复（真正的完整性由
-     * 停靠槽位预校验与恢复后对账负责）。
+     * usar `@Insert(REPLACE)` en lugar de elemento por elemento [upsert]: Toda la tabla se borró antes de la recuperación y hay duplicados en el mismo lote.
+     * La clave principal son datos incorrectos y la semántica de reemplazo permite sobrescribirlos en lugar de interrumpir toda la recuperación (la verdadera integridad la proporciona
+     * Responsable de la verificación previa de los slots de atraque y conciliación posterior a la recuperación).
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(cards: List<CardEntity>)
 
-    /** 恢复备份前清空（与其它表同口径）。 */
+    /** Borrar antes de restaurar la copia de seguridad (mismo calibre que otras tablas). */
     @Query("DELETE FROM card_entities")
     suspend fun deleteAll()
 
-    /** 写槽位（拖出）。调用方负责给出槽位号与时间戳。 */
+    /** Ranura de escritura (arrastrar). La persona que llama es responsable de proporcionar el número de ranura y la marca de tiempo. */
     @Query("UPDATE card_entities SET dockSlot = :dockSlot, dockedAt = :dockedAt, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateDockSlot(id: String, dockSlot: Int, dockedAt: Long, updatedAt: Long): Int
 
-    /** 清槽位（拖回）。卡片行保留，只取消停靠。 */
+    /** Borrar ranura (arrastrar hacia atrás). La fila de tarjetas se conserva, sólo se cancela el acoplamiento. */
     @Query("UPDATE card_entities SET dockSlot = NULL, dockedAt = NULL, updatedAt = :updatedAt WHERE id = :id")
     suspend fun clearDockSlot(id: String, updatedAt: Long): Int
 }

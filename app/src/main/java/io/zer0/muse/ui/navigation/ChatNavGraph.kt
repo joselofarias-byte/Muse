@@ -27,14 +27,14 @@ import io.zer0.muse.ui.settings.PromptTemplateManagerPage
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * 聊天域 NavGraph — 包含首页、搜索、聊天详情、群聊详情、最近删除、快速记录、
- * 定时任务、Agent 私信、里程碑、表情包、翻译、HTML 预览共 12 个 composable。
+ * Área de chat NavGraph — Incluye página de inicio, búsqueda, detalles del chat, detalles del chat grupal, registros rápidos eliminados recientemente,
+ * tareas programadas,Agent Mensajes privados, hitos, emoticones, traducciones,HTML Vista previa de 12 elementos componibles en total.
  *
- * 从 MainActivity 抽取以解决后者过载问题(原 1804 行 → 目标 ≤ 800 行)。
- * HOME 使用垂直过渡,其余页面统一使用 [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit]。
+ * Extracto de MainActivity para resolver el último problema de sobrecarga(Línea original 1804 → objetivo ≤ 800 OK).
+ * HOME Utilice transiciones verticales,Utilice lo mismo para todas las demás páginas. [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit].
  */
 fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewModel: ChatViewModel) {
-    // v0.22: 首页 — 顶部 Tab 导航(垂直过渡,HOME 专属)
+    // v0.22: pagina de inicio — Navegación de la pestaña superior(transición vertical,HOME Exclusivo)
     composable<HomeRoute>(
         enterTransition = { MuseTransitions.verticalPushEnter() },
         exitTransition = { MuseTransitions.verticalPushExit() },
@@ -49,17 +49,17 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onOpenQuickTranslate = { navController.navigate(TranslateRoute) },
             onOpenKnowledgeBase = { navController.navigate(KnowledgeRoute) },
             onOpenMiniPhone = { navController.navigate(MiniPhoneRoute) },
-            // v0.27: 点击任务项 / 新建任务 → push 到独立聊天详情页(右滑入场,滑动式 push 过渡)
+            // v0.27: Haga clic en elemento de tarea/nueva tarea → push Ir a la página de detalles del chat independiente(Desliza hacia la derecha para ingresar,transición de empuje deslizante)
             onOpenChat = { navController.navigate(ChatDetailRoute) },
-            // v0.45: 右上角搜索 → 独立全局搜索页
+            // v0.45: Busca en la esquina superior derecha → Página de búsqueda global independiente
             onOpenSearch = { navController.navigate(SearchRoute) },
-            // v1.30: 群聊卡片点击 → 群聊详情页(右滑入场)
+            // v1.30: Clic en la tarjeta de chat grupal → Página de detalles del chat grupal(Desliza hacia la derecha para ingresar)
             onOpenGroupChat = { chatId ->
                 navController.navigate(GroupChatDetailRoute(chatId))
             },
             onOpenRecentlyDeleted = { navController.navigate(RecentlyDeletedRoute) },
             onOpenArchivedChats = { navController.navigate(ArchivedChatsRoute) },
-            // HTML/SVG 代码块全屏预览:URL 编码后跳转 HtmlPreviewScreen
+            // HTML/SVG Vista previa en pantalla completa de bloques de código:URL Saltar después de codificar HtmlPreviewScreen
             onHtmlPreview = { html ->
                 navController.navigate(HtmlPreviewRoute(html))
             },
@@ -67,8 +67,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onOpenPromptTemplateManager = { navController.navigate(PromptTemplateManagerRoute) },
         )
     }
-    // v0.45: 独立全局搜索页(从首页右上角搜索按钮进入,右滑入场)
-    // v1.0.80: 纯 slide 无淡入淡出 — 避免半透明透出深色背景形成"黑色遮罩"
+    // v0.45: Página de búsqueda global independiente(Ingrese desde el botón de búsqueda en la esquina superior derecha de la página de inicio,Desliza hacia la derecha para ingresar)
+    // v1.0.80: Deslizamiento puro sin aparición ni desaparición — Evite que la translucidez se vea a través de fondos oscuros."máscara negra"
     composable<SearchRoute>(
         enterTransition = { MuseTransitions.horizontalSlideEnter() },
         popExitTransition = { MuseTransitions.horizontalSlidePopExit() },
@@ -76,21 +76,21 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
         SearchScreen(
             onBack = { navController.popBackStack() },
             onOpenSession = { sessionId ->
-                // 切换会话后回到首页(任务列表会高亮该会话)
+                // Volver a la página de inicio después de cambiar de sesión(La lista de tareas resaltará la sesión.)
                 sharedViewModel.switchSession(sessionId)
                 navController.popBackStack(HomeRoute, inclusive = false)
             },
-            // v2.x: Tab=消息内容 点击消息项跳转 — 切换会话 + 设置目标消息,
-            // 回到 HOME 后 ChatScreen 监听 targetMessageId 滚动定位 + 短暂高亮
+            // v2.x: Tab=Contenido del mensaje Haga clic en el elemento del mensaje para saltar. — Cambiar conversación + establecer mensaje objetivo,
+            // Después de regresar a INICIO, ChatScreen monitorea el posicionamiento de desplazamiento de targetMessageId + resaltado breve
             onOpenMessage = { sessionId, messageId, query ->
-                // v2.x: 先切会话再定位(避免竞态丢定位),然后进入对话页
+                // v2.x: Corta la sesión primero y luego localízala.(Evitar la competencia y perder posicionamiento.),Luego ingresa a la página de conversación.
                 sharedViewModel.openMessageFromSearch(sessionId, messageId, query)
                 navController.popBackStack(HomeRoute, inclusive = false)
                 navController.navigate(ChatDetailRoute)
             },
         )
     }
-    // v2.6.9: 常驻后台设置页
+    // v2.6.9: Página de configuración de fondo permanente
     composable<KeepAliveSettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -100,14 +100,14 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
         )
     }
 
-    // v2.6.7: 小手机内子路由一并受总闸控制（本版不对外发布）。
+    // v2.6.7: Las subrutas internas de los teléfonos celulares pequeños también están controladas por la puerta principal (esta versión no se hará pública).
     if (io.zer0.muse.feature.FeatureFlags.MINI_PHONE) {
-        // 小手机入口：整页由 :miniphone 模块自绘，主 App 只提供路由。
+        // Entrada del miniteléfono: toda la página es autodibujada por el módulo: miniteléfono y la aplicación principal solo proporciona enrutamiento.
         composable<MiniPhoneRoute> {
             io.zer0.muse.miniphone.ui.MiniPhoneRoot()
         }
 
-        // v2.6.7（P0-3）: 小手机内聊天页 — 微信风格外壳，返回回到小手机而不是主 App
+        // v2.6.7(P0-3): Página de chat en un pequeño teléfono celular — Carcasa estilo WeChat, vuelve al teléfono pequeño en lugar del teléfono principal App
         composable<MiniPhoneChatRoute>(
             enterTransition = { MuseTransitions.horizontalPushEnter() },
             popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -121,7 +121,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
                 },
             )
         }
-        // v2.6.7（P1-1）: 角色关系设置页
+        // v2.6.7(P1-1): Página de configuración de relaciones de roles
         composable<RelationshipSettingsRoute>(
             enterTransition = { MuseTransitions.horizontalPushEnter() },
             popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -131,7 +131,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             )
         }
     }
-    // 归档聊天列表 — 从首页归档入口进入
+    // Archivar lista de chats — Ingrese desde la entrada del archivo de la página de inicio
     composable<ArchivedChatsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -145,17 +145,17 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
                 sharedViewModel.switchSession(id)
                 navController.popBackStack(HomeRoute, inclusive = false)
             },
-            // ST-01: 归档会话加载失败错误态 + 重试
+            // ST-01: Estado de error fallido al cargar la sesión de archivo + inténtelo de nuevo
             error = state.archivedSessionsError,
             onRetry = { sharedViewModel.retryLoadArchivedSessions() },
-            // ST-02: 取消归档可撤销 — 撤销 = 重新归档
+            // ST-02: Deshacer el archivo es reversible — Cancelar = Rearchivar
             onUnarchiveUndo = { id -> sharedViewModel.setSessionArchived(id, true) },
         )
     }
 
-    // v0.27: 聊天详情页 — 从首页 push 进入,右滑入场 + 左滑返回(滑动式 push 过渡)
-    // P1-4 平板适配:Expanded 模式下双列布局(左 ChatListScreen 40% + 右 ChatScreen 60%),
-    //               Compact/Medium 保持单列 push/pop
+    // v0.27: Página de detalles del chat — Empuja desde la página de inicio para entrar,Desliza hacia la derecha para ingresar + desliza hacia la izquierda para regresar(transición de empuje deslizante)
+    // P1-4 Adaptación de tableta:Expanded Diseño de doble columna en modo(Pantalla de lista de chat izquierda 40% + derecha ChatScreen 60%),
+    //               Compact/Medium mantener una sola columna push/pop
     composable<ChatDetailRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -163,9 +163,9 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
         val state by sharedViewModel.state.collectAsStateWithLifecycle()
         val widthClass = rememberWindowWidthClass()
         if (widthClass == WindowWidthClass.Expanded) {
-            // P1-4: Expanded 双列布局 — 左列任务列表(40%) + 右列聊天(60%)
+            // P1-4: Expanded Diseño de doble columna — lista de tareas de la columna izquierda(40%) + Chat de la columna derecha(60%)
             Row(modifier = Modifier.fillMaxSize()) {
-                // 左列:任务列表(与 HomeScreen Tab 0 同源,共享 sharedViewModel.state)
+                // columna izquierda:lista de tareas(Mismo origen que HomeScreen Tab 0,Compartir sharedViewModel.state)
                 Box(modifier = Modifier.weight(0.4f).fillMaxSize()) {
                     ChatListScreen(
                         sessions = state.sessions,
@@ -173,8 +173,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
                         currentSessionId = state.currentSessionId,
                         onSelect = { id -> sharedViewModel.switchSession(id) },
                         onCreate = { sharedViewModel.createNewSession() },
-                        // 宽屏双栏遗漏修复:此前未传这两个回调,默认空 lambda 让
-                        // 左列输入条发送被丢弃、置顶拖拽排序松手即失效。
+                        // Falta la solución de doble columna de pantalla ancha:Estas dos devoluciones de llamada no se han pasado antes.,La lambda vacía predeterminada permite
+                        // La barra de entrada en la columna de la izquierda se descarta y la clasificación de arrastre superior deja de ser válida cuando se suelta.
                         onCreateWithText = { text -> sharedViewModel.sendToNewChat(text) },
                         onDelete = sharedViewModel::deleteSession,
                         onRename = { session ->
@@ -205,7 +205,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-                // 右列:聊天页(onBack=null,列表常驻无需返回按钮)
+                // columna derecha:pagina de chat(onBack=null,La lista es permanente sin botón de retorno.)
                 Box(modifier = Modifier.weight(0.6f).fillMaxSize()) {
                     ChatScreen(
                         onOpenAssistants = { navController.navigate(AssistantsRoute) },
@@ -224,7 +224,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             ChatScreen(
                 onOpenAssistants = { navController.navigate(AssistantsRoute) },
                 onBack = {
-                    // 退出对话时触发 AI 摘要命名(仅当标题仍为默认值且有至少一轮完整对话)
+                    // Activar nombres de resumen de IA al salir de una conversación(Sólo si el título sigue siendo el predeterminado y hay al menos una ronda completa de diálogo.)
                     val currentSessionId = sharedViewModel.state.value.currentSessionId
                     if (!sharedViewModel.state.value.isAgentMode && currentSessionId != null) {
                         sharedViewModel.autoTitleOnExit(currentSessionId)
@@ -235,7 +235,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
                     navController.popBackStack()
                 },
                 isAgentMode = state.isAgentMode,
-                // HTML/SVG 代码块全屏预览:URL 编码后跳转 HtmlPreviewScreen
+                // HTML/SVG Vista previa en pantalla completa de bloques de código:URL Saltar después de codificar HtmlPreviewScreen
                 onHtmlPreview = { html ->
                     navController.navigate(HtmlPreviewRoute(html))
                 },
@@ -244,8 +244,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             )
         }
     }
-    // v1.30: 群聊详情页 — 从群聊列表 push 进入,右滑入场 + 左滑返回
-    // B0-07: 提示词模板管理页(从聊天/群聊模板弹窗进入)
+    // v1.30: Página de detalles del chat grupal — Ingrese desde la lista de chat grupal push,Desliza hacia la derecha para ingresar + desliza hacia la izquierda para regresar
+    // B0-07: Página de administración de plantillas de Word rápida(desde el chat/Entrada de ventana emergente de plantilla de chat grupal)
     composable<PromptTemplateManagerRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -262,16 +262,16 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
         io.zer0.muse.ui.groupchat.GroupChatDetailScreen(
             chatId = chatId,
             onBack = { navController.popBackStack() },
-            // HTML/SVG 代码块全屏预览:URL 编码后跳转 HtmlPreviewScreen
+            // HTML/SVG Vista previa en pantalla completa de bloques de código:URL Saltar después de codificar HtmlPreviewScreen
             onHtmlPreview = { html ->
                 navController.navigate(HtmlPreviewRoute(html))
             },
             onOpenPromptTemplateManager = { navController.navigate(PromptTemplateManagerRoute) },
-            // v1.0.72: 编辑助手供应商 → 模型与服务设置页
+            // v1.0.72: Proveedor de asistente de edición → Página de configuración de modelo y servicio
             onEditAssistantProvider = { navController.navigate(io.zer0.muse.ui.navigation.SettingsModelRoute) },
         )
     }
-    // 定时任务(首页大方块入口)
+    // tareas programadas(Entrada a la casa grande y cuadrada.)
     composable<ScheduledTasksRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -280,7 +280,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onBack = { navController.popBackStack() },
         )
     }
-    // 通知点击:打开指定定时任务并自动展开最近执行记录。
+    // Clic de notificación:Abra la tarea programada especificada y expanda automáticamente los registros ejecutados recientemente.
     composable<ScheduledTaskRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -291,8 +291,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             initialTaskId = route.taskId,
         )
     }
-    // v1.136: 快速记录(首页大方块入口替代原知识库)
-    // v1.0.17: 改用 QuickNotesViewModel(Room 持久化 + 回收站),替代 QuickNoteStore
+    // v1.136: registro rápido(La gran entrada cuadrada en la página de inicio reemplaza la base de conocimientos original.)
+    // v1.0.17: Usar en su lugar QuickNotesViewModel(Room Persistencia + Papelera de reciclaje),sustituto QuickNoteStore
     composable<QuickNotesRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -307,7 +307,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             },
         )
     }
-    // 通知点击:打开指定快速记录并展开正文。
+    // Clic de notificación:Abra el registro rápido especificado y expanda el texto.
     composable<QuickNoteRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -324,7 +324,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             },
         )
     }
-    // v1.126: Agent 私信收件箱(从 Agent 设置页进入)
+    // v1.126: Agent Bandeja de entrada de mensajes privados(Ingrese desde la página de configuración del agente)
     composable<AgentDmRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -333,7 +333,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.127: 里程碑管理页
+    // v1.127: Página de gestión de hitos
     composable<MilestonesRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -342,8 +342,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.127: 表情包管理页
-    // v1.97 gap8: 独立翻译页(设置 → 工具 → AI 翻译)
+    // v1.127: Página de gestión de emoticonos
+    // v1.97 gap8: Página de traducción independiente(ajustes → Herramientas → AI Traducción)
     composable<TranslateRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -351,7 +351,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
         io.zer0.muse.ui.translate.TranslateScreen(
             onBack = { navController.popBackStack() },
             onSendToNewChat = { text ->
-                // 创建新会话并发送文本,然后跳转到聊天详情页
+                // Crea una nueva conversación y envía un mensaje de texto.,Luego salta a la página de detalles del chat.
                 sharedViewModel.sendToNewChat(text)
                 navController.navigate(ChatDetailRoute) {
                     popUpTo(TranslateRoute) { inclusive = true }
@@ -359,7 +359,7 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             },
         )
     }
-    // v2.0: 最近删除页(从 ChatListScreen 进入)
+    // v2.0: Páginas eliminadas recientemente(Ingrese desde ChatListScreen)
     composable<RecentlyDeletedRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -368,8 +368,8 @@ fun NavGraphBuilder.chatNavGraph(navController: NavHostController, sharedViewMod
             onBack = { navController.popBackStack() },
         )
     }
-    // HTML 全屏预览页 — 从消息气泡内 HTML/SVG 代码块入口进入
-    // 类型安全路由直接传递原始 HTML，无需 URL 编码
+    // HTML Página de vista previa en pantalla completa — Ingrese desde la entrada del bloque de código HTML/SVG en la burbuja del mensaje
+    // El enrutamiento con seguridad de tipos pasa HTML sin procesar directamente sin codificación URL
     composable<HtmlPreviewRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },

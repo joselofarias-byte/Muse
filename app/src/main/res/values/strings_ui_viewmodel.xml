@@ -1,189 +1,189 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <!-- ===== QuickMessageScreen 快捷消息页 ===== -->
-    <!-- 顶部栏 -->
-    <string name="quick_msg_screen_title">快捷消息 QuickMessage</string>
-    <string name="quick_msg_new_cd">新建 QuickMessage</string>
-    <string name="quick_msg_intro">预设消息模板。支持变量： {{input}}（当前输入） / {{clipboard}}（剪贴板） / {{date}}(日期）。</string>
-    <string name="quick_msg_empty_title">还没有 QuickMessage</string>
-    <string name="quick_msg_empty_subtitle">点右下角 + 新建</string>
-    <string name="quick_msg_delete_title">删除 QuickMessage</string>
-    <!-- 卡片 -->
-    <string name="quick_msg_new_default_name">新快捷消息</string>
-    <string name="quick_msg_unnamed">（未命名）</string>
-    <string name="quick_msg_disabled">已禁用</string>
-    <string name="quick_msg_scope_global">全局</string>
+    <!-- ===== QuickMessageScreen página de mensaje rápido ===== -->
+    <!-- barra superior -->
+    <string name="quick_msg_screen_title">mensaje rapido QuickMessage</string>
+    <string name="quick_msg_new_cd">Nuevo QuickMessage</string>
+    <string name="quick_msg_intro">Plantillas de mensajes preestablecidos. Variables admitidas: {{input}}(entrada actual) / {{clipboard}}(portapapeles) / {{date}}(fecha).</string>
+    <string name="quick_msg_empty_title">todavía no QuickMessage</string>
+    <string name="quick_msg_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="quick_msg_delete_title">Eliminar QuickMessage</string>
+    <!-- tarjeta -->
+    <string name="quick_msg_new_default_name">Nuevo mensaje rápido</string>
+    <string name="quick_msg_unnamed">(sin nombre)</string>
+    <string name="quick_msg_disabled">Discapacitado</string>
+    <string name="quick_msg_scope_global">situación general</string>
     <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
-    <string name="quick_msg_scope_label">作用域： %1$s</string>
-    <string name="quick_msg_enabled_cd">已启用</string>
-    <string name="quick_msg_disabled_cd">已禁用</string>
-    <string name="quick_msg_edit_cd">编辑</string>
-    <string name="quick_msg_delete_cd">删除</string>
-    <!-- 编辑页 -->
-    <string name="quick_msg_unsaved_title">有未保存的修改</string>
-    <string name="quick_msg_unsaved_content">退出将丢失当前编辑，确认放弃？</string>
-    <string name="quick_msg_discard">放弃</string>
-    <string name="quick_msg_new_title">新建 QuickMessage</string>
-    <string name="quick_msg_edit_title">编辑 QuickMessage</string>
-    <string name="quick_msg_save">保存</string>
-    <string name="quick_msg_section_basic">基础</string>
-    <string name="quick_msg_field_name">名称</string>
-    <string name="quick_msg_section_content">模板内容</string>
-    <string name="quick_msg_field_content">内容（支持 {{input}} / {{clipboard}} / {{date}} 变量）</string>
-    <string name="quick_msg_section_scope">作用域</string>
-    <string name="quick_msg_field_scope">作用域</string>
-    <string name="quick_msg_scope_global_opt">全局（所有 Assistant 共享）</string>
-    <string name="quick_msg_scope_assistant_opt">Assistant 绑定（仅指定 Assistant 显示）</string>
-    <string name="quick_msg_field_bind_assistant">绑定 Assistant</string>
-    <string name="quick_msg_section_behavior">行为</string>
-    <string name="quick_msg_field_sort_index">排序序号（越小越靠前）</string>
-    <string name="quick_msg_field_enabled">启用</string>
-    <string name="quick_msg_field_enabled_desc">关闭后此条目不显示在 InputBar chip 行</string>
+    <string name="quick_msg_scope_label">Alcance: %1$s</string>
+    <string name="quick_msg_enabled_cd">Habilitado</string>
+    <string name="quick_msg_disabled_cd">Discapacitado</string>
+    <string name="quick_msg_edit_cd">Editar</string>
+    <string name="quick_msg_delete_cd">Eliminar</string>
+    <!-- editar página -->
+    <string name="quick_msg_unsaved_title">Hay cambios no guardados</string>
+    <string name="quick_msg_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="quick_msg_discard">rendirse</string>
+    <string name="quick_msg_new_title">Nuevo QuickMessage</string>
+    <string name="quick_msg_edit_title">Editar QuickMessage</string>
+    <string name="quick_msg_save">guardar</string>
+    <string name="quick_msg_section_basic">Conceptos básicos</string>
+    <string name="quick_msg_field_name">Nombre</string>
+    <string name="quick_msg_section_content">Contenido de la plantilla</string>
+    <string name="quick_msg_field_content">Contenido (soporta {{input}} / {{clipboard}} / {{date}} variable)</string>
+    <string name="quick_msg_section_scope">Alcance</string>
+    <string name="quick_msg_field_scope">Alcance</string>
+    <string name="quick_msg_scope_global_opt">Global (compartido por todos los asistentes)</string>
+    <string name="quick_msg_scope_assistant_opt">Assistant Encuadernación (mostrada únicamente por el asistente designado)</string>
+    <string name="quick_msg_field_bind_assistant">vinculante Assistant</string>
+    <string name="quick_msg_section_behavior">comportamiento</string>
+    <string name="quick_msg_field_sort_index">Número de clasificación (cuanto menor es el número, mayor es)</string>
+    <string name="quick_msg_field_enabled">habilitar</string>
+    <string name="quick_msg_field_enabled_desc">Esta entrada no aparece en la fila del chip InputBar después del cierre.</string>
 
-    <!-- ===== LorebookScreen 世界书页 ===== -->
-    <!-- 顶部栏 -->
-    <string name="lorebook_screen_title">世界书 Lorebook</string>
-    <string name="lorebook_new_cd">新建 Lorebook</string>
-    <string name="lorebook_intro">关键词触发的上下文注入。当用户消息命中关键词时，把对应设定作为 SYSTEM 上下文注入。</string>
-    <string name="lorebook_empty_title">还没有 Lorebook</string>
-    <string name="lorebook_empty_subtitle">点右下角 + 新建</string>
-    <string name="lorebook_delete_title">删除 Lorebook</string>
-    <!-- 卡片 -->
-    <string name="lorebook_new_default_name">新条目</string>
-    <string name="lorebook_unnamed">（未命名）</string>
-    <string name="lorebook_disabled">已禁用</string>
-    <string name="lorebook_keywords_label">关键词： %1$s</string>
-    <string name="lorebook_enabled_cd">已启用</string>
-    <string name="lorebook_disabled_cd">已禁用</string>
-    <string name="lorebook_edit_cd">编辑</string>
-    <string name="lorebook_delete_cd">删除</string>
-    <!-- 编辑页 -->
-    <string name="lorebook_unsaved_title">有未保存的修改</string>
-    <string name="lorebook_unsaved_content">退出将丢失当前编辑，确认放弃？</string>
-    <string name="lorebook_discard">放弃</string>
-    <string name="lorebook_new_title">新建 Lorebook</string>
-    <string name="lorebook_edit_title">编辑 Lorebook</string>
-    <string name="lorebook_save">保存</string>
-    <string name="lorebook_section_basic">基础</string>
-    <string name="lorebook_field_name">名称</string>
-    <string name="lorebook_field_keywords">触发关键词（逗号分隔）</string>
-    <string name="lorebook_field_keywords_placeholder">如： 魔法， 法术， 咒语</string>
-    <string name="lorebook_section_content">注入内容</string>
-    <string name="lorebook_field_content">内容（命中关键词时作为 SYSTEM 上下文注入）</string>
-    <string name="lorebook_section_behavior">行为</string>
-    <string name="lorebook_field_priority">优先级（数字越大越先注入）</string>
-    <string name="lorebook_field_insertion_position">注入位置</string>
-    <!-- ST-04: 注入位置选项用户可读文案 -->
-    <string name="lorebook_insertion_before_system">系统提示词之前</string>
-    <string name="lorebook_insertion_after_system">系统提示词之后</string>
-    <string name="lorebook_insertion_before_last">最后一条消息之前</string>
-    <string name="lorebook_field_case_sensitive">区分大小写</string>
-    <string name="lorebook_field_case_sensitive_desc">开启后关键词匹配区分大小写</string>
-    <string name="lorebook_field_whole_word">全词匹配</string>
-    <string name="lorebook_field_whole_word_desc">关键词需完整成词才触发（适用于英文；中文关键词自动退化）</string>
-    <string name="lorebook_field_enabled">启用</string>
-    <string name="lorebook_field_enabled_desc">关闭后此条目不再触发注入</string>
+    <!-- ===== LorebookScreen páginas de libros del mundo ===== -->
+    <!-- barra superior -->
+    <string name="lorebook_screen_title">libro mundial Lorebook</string>
+    <string name="lorebook_new_cd">Nuevo Lorebook</string>
+    <string name="lorebook_intro">Inyección de contexto activada por palabras clave. Cuando el mensaje del usuario llega a una palabra clave, la configuración correspondiente se inyecta como contexto del SISTEMA.</string>
+    <string name="lorebook_empty_title">todavía no Lorebook</string>
+    <string name="lorebook_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="lorebook_delete_title">Eliminar Lorebook</string>
+    <!-- tarjeta -->
+    <string name="lorebook_new_default_name">nueva entrada</string>
+    <string name="lorebook_unnamed">(sin nombre)</string>
+    <string name="lorebook_disabled">Discapacitado</string>
+    <string name="lorebook_keywords_label">Palabras clave: %1$s</string>
+    <string name="lorebook_enabled_cd">Habilitado</string>
+    <string name="lorebook_disabled_cd">Discapacitado</string>
+    <string name="lorebook_edit_cd">Editar</string>
+    <string name="lorebook_delete_cd">Eliminar</string>
+    <!-- editar página -->
+    <string name="lorebook_unsaved_title">Hay cambios no guardados</string>
+    <string name="lorebook_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="lorebook_discard">rendirse</string>
+    <string name="lorebook_new_title">Nuevo Lorebook</string>
+    <string name="lorebook_edit_title">Editar Lorebook</string>
+    <string name="lorebook_save">guardar</string>
+    <string name="lorebook_section_basic">Conceptos básicos</string>
+    <string name="lorebook_field_name">Nombre</string>
+    <string name="lorebook_field_keywords">Palabras clave de activación (separadas por comas)</string>
+    <string name="lorebook_field_keywords_placeholder">Tales como: magia, hechizo, hechizo</string>
+    <string name="lorebook_section_content">Inyectar contenido</string>
+    <string name="lorebook_field_content">Contenido (inyectado como contexto del SISTEMA cuando se presiona una palabra clave)</string>
+    <string name="lorebook_section_behavior">comportamiento</string>
+    <string name="lorebook_field_priority">Prioridad (cuanto mayor sea el número, primero se inyectará)</string>
+    <string name="lorebook_field_insertion_position">Ubicación de la inyección</string>
+    <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
+    <string name="lorebook_insertion_before_system">Antes de la palabra de aviso del sistema</string>
+    <string name="lorebook_insertion_after_system">Después de la palabra de aviso del sistema</string>
+    <string name="lorebook_insertion_before_last">antes del último mensaje</string>
+    <string name="lorebook_field_case_sensitive">distingue entre mayúsculas y minúsculas</string>
+    <string name="lorebook_field_case_sensitive_desc">Cuando está activada, la concordancia de palabras clave distingue entre mayúsculas y minúsculas.</string>
+    <string name="lorebook_field_whole_word">coincidencia de palabras completas</string>
+    <string name="lorebook_field_whole_word_desc">Las palabras clave deben estar completamente formadas antes de activarse (aplicable al inglés; las palabras clave chinas se degradarán automáticamente)</string>
+    <string name="lorebook_field_enabled">habilitar</string>
+    <string name="lorebook_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
 
-    <!-- ===== PromptInjectionScreen 模式注入页 ===== -->
-    <!-- 顶部栏 -->
-    <string name="prompt_injection_screen_title">模式注入 PromptInjection</string>
-    <string name="prompt_injection_new_cd">新建 PromptInjection</string>
-    <string name="prompt_injection_intro">模式触发的上下文注入。用户在会话中切换模式（创意/编程/角色扮演等）时，对应注入立即生效。</string>
-    <string name="prompt_injection_empty_title">还没有 PromptInjection</string>
-    <string name="prompt_injection_empty_subtitle">点右下角 + 新建</string>
-    <string name="prompt_injection_delete_title">删除 PromptInjection</string>
-    <!-- 卡片 -->
-    <string name="prompt_injection_new_default_name">新注入</string>
-    <string name="prompt_injection_unnamed">（未命名）</string>
-    <string name="prompt_injection_disabled">已禁用</string>
-    <string name="prompt_injection_mode_label">模式： %1$s</string>
-    <string name="prompt_injection_enabled_cd">已启用</string>
-    <string name="prompt_injection_disabled_cd">已禁用</string>
-    <string name="prompt_injection_edit_cd">编辑</string>
-    <string name="prompt_injection_delete_cd">删除</string>
-    <!-- 编辑页 -->
-    <string name="prompt_injection_unsaved_title">有未保存的修改</string>
-    <string name="prompt_injection_unsaved_content">退出将丢失当前编辑，确认放弃？</string>
-    <string name="prompt_injection_discard">放弃</string>
-    <string name="prompt_injection_new_title">新建 PromptInjection</string>
-    <string name="prompt_injection_edit_title">编辑 PromptInjection</string>
-    <string name="prompt_injection_save">保存</string>
-    <string name="prompt_injection_section_basic">基础</string>
-    <string name="prompt_injection_field_name">名称</string>
-    <string name="prompt_injection_field_mode">模式</string>
-    <string name="prompt_injection_field_display_name">显示名（UI 中显示，留空用模式默认名）</string>
-    <string name="prompt_injection_section_content">注入内容</string>
-    <string name="prompt_injection_field_content">内容（切换到此模式时作为 SYSTEM 上下文注入）</string>
-    <string name="prompt_injection_section_behavior">行为</string>
-    <string name="prompt_injection_field_priority">优先级（同模式多个注入时排序，数字越大越先注入）</string>
-    <string name="prompt_injection_field_insertion_position">注入位置</string>
-    <string name="prompt_injection_field_enabled">启用</string>
-    <string name="prompt_injection_field_enabled_desc">关闭后此条目不再触发注入</string>
+    <!-- ===== PromptInjectionScreen Página de inyección de esquema ===== -->
+    <!-- barra superior -->
+    <string name="prompt_injection_screen_title">inyección de patrón PromptInjection</string>
+    <string name="prompt_injection_new_cd">Nuevo PromptInjection</string>
+    <string name="prompt_injection_intro">Inyección de contexto activada por modo. El usuario cambia de modo a mitad de sesión (creativo/Programación/juegos de rol, etc.), la inyección correspondiente surte efecto inmediatamente.</string>
+    <string name="prompt_injection_empty_title">todavía no PromptInjection</string>
+    <string name="prompt_injection_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
+    <string name="prompt_injection_delete_title">Eliminar PromptInjection</string>
+    <!-- tarjeta -->
+    <string name="prompt_injection_new_default_name">Nueva inyección</string>
+    <string name="prompt_injection_unnamed">(sin nombre)</string>
+    <string name="prompt_injection_disabled">Discapacitado</string>
+    <string name="prompt_injection_mode_label">Modo: %1$s</string>
+    <string name="prompt_injection_enabled_cd">Habilitado</string>
+    <string name="prompt_injection_disabled_cd">Discapacitado</string>
+    <string name="prompt_injection_edit_cd">Editar</string>
+    <string name="prompt_injection_delete_cd">Eliminar</string>
+    <!-- editar página -->
+    <string name="prompt_injection_unsaved_title">Hay cambios no guardados</string>
+    <string name="prompt_injection_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="prompt_injection_discard">rendirse</string>
+    <string name="prompt_injection_new_title">Nuevo PromptInjection</string>
+    <string name="prompt_injection_edit_title">Editar PromptInjection</string>
+    <string name="prompt_injection_save">guardar</string>
+    <string name="prompt_injection_section_basic">Conceptos básicos</string>
+    <string name="prompt_injection_field_name">Nombre</string>
+    <string name="prompt_injection_field_mode">modo</string>
+    <string name="prompt_injection_field_display_name">nombre para mostrar (UI se muestra en , déjelo en blanco para usar el nombre predeterminado del esquema)</string>
+    <string name="prompt_injection_section_content">Inyectar contenido</string>
+    <string name="prompt_injection_field_content">Contenido (inyectado como contexto del SISTEMA al cambiar a este modo)</string>
+    <string name="prompt_injection_section_behavior">comportamiento</string>
+    <string name="prompt_injection_field_priority">Prioridad (ordenada cuando se realizan múltiples inyecciones en el mismo modo, cuanto mayor sea el número, se inyectará primero)</string>
+    <string name="prompt_injection_field_insertion_position">Ubicación de la inyección</string>
+    <string name="prompt_injection_field_enabled">habilitar</string>
+    <string name="prompt_injection_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
 
-    <!-- ===== AssistantScreen 助手页 ===== -->
-    <!-- 顶部栏 -->
-    <string name="assistant_screen_title">助手</string>
-    <string name="assistant_import_card_cd">导入角色卡</string>
-    <string name="assistant_section_my_assistants">我的助手</string>
-    <string name="assistant_default_title">默认助手</string>
-    <string name="assistant_default_picker_title">选择默认助手</string>
-    <string name="assistant_default_hint">新任务默认使用的助手</string>
-    <string name="assistant_section_actions">添加或导入</string>
-    <string name="assistant_empty_create">尚未创建助手，点击新建</string>
-    <string name="assistant_unnamed">（未命名）</string>
-    <string name="assistant_current">当前</string>
-    <string name="assistant_more_cd">更多操作</string>
-    <string name="assistant_new_action">新建助手</string>
-    <string name="assistant_new_default_name">新助手</string>
-    <string name="assistant_clone_name">%1$s 副本</string>
-    <!-- 操作菜单 -->
-    <string name="assistant_move_up_cd">上移</string>
-    <string name="assistant_move_up">上移</string>
-    <string name="assistant_move_down_cd">下移</string>
-    <string name="assistant_move_down">下移</string>
-    <string name="assistant_clone_cd">克隆</string>
-    <string name="assistant_clone">克隆</string>
-    <!-- U-26: 助手启用/停用 -->
-    <string name="assistant_enable">启用</string>
-    <string name="assistant_disable">停用</string>
-    <string name="assistant_enable_cd">启用助手</string>
-    <string name="assistant_disable_cd">停用助手</string>
-    <string name="assistant_export_card_cd">导出角色卡</string>
-    <string name="assistant_export_card">导出角色卡</string>
-    <string name="assistant_delete_cd">删除</string>
-    <string name="assistant_delete">删除</string>
-    <string name="assistant_close">关闭</string>
-    <string name="assistant_delete_title">删除助手</string>
+    <!-- ===== AssistantScreen Página del asistente ===== -->
+    <!-- barra superior -->
+    <string name="assistant_screen_title">asistente</string>
+    <string name="assistant_import_card_cd">Importar cartas de personajes</string>
+    <string name="assistant_section_my_assistants">mi asistente</string>
+    <string name="assistant_default_title">Asistente predeterminado</string>
+    <string name="assistant_default_picker_title">Elige un asistente predeterminado</string>
+    <string name="assistant_default_hint">Asistente utilizado por defecto para nuevas tareas</string>
+    <string name="assistant_section_actions">Agregar o importar</string>
+    <string name="assistant_empty_create">El asistente aún no ha sido creado, haga clic en Nuevo</string>
+    <string name="assistant_unnamed">(sin nombre)</string>
+    <string name="assistant_current">actual</string>
+    <string name="assistant_more_cd">Más acciones</string>
+    <string name="assistant_new_action">Crear nuevo asistente</string>
+    <string name="assistant_new_default_name">nuevo asistente</string>
+    <string name="assistant_clone_name">%1$s copiar</string>
+    <!-- Menú de operación -->
+    <string name="assistant_move_up_cd">subir</string>
+    <string name="assistant_move_up">subir</string>
+    <string name="assistant_move_down_cd">bajar</string>
+    <string name="assistant_move_down">bajar</string>
+    <string name="assistant_clone_cd">clonar</string>
+    <string name="assistant_clone">clonar</string>
+    <!-- U-26: Asistente habilitado/desactivar -->
+    <string name="assistant_enable">habilitar</string>
+    <string name="assistant_disable">desactivar</string>
+    <string name="assistant_enable_cd">Habilitar asistente</string>
+    <string name="assistant_disable_cd">Deshabilitar asistente</string>
+    <string name="assistant_export_card_cd">Exportar tarjeta de personaje</string>
+    <string name="assistant_export_card">Exportar tarjeta de personaje</string>
+    <string name="assistant_delete_cd">Eliminar</string>
+    <string name="assistant_delete">Eliminar</string>
+    <string name="assistant_close">cerrar</string>
+    <string name="assistant_delete_title">Eliminar asistente</string>
     <!-- Toast -->
-    <string name="assistant_toast_exported">已导出角色卡： %1$s</string>
-    <string name="assistant_toast_export_failed">导出失败： %1$s</string>
-    <string name="assistant_toast_imported">已导入角色卡： %1$s</string>
-    <string name="assistant_toast_import_invalid">导入失败： 文件格式无效</string>
-    <string name="assistant_toast_import_failed">导入失败： %1$s</string>
+    <string name="assistant_toast_exported">Tarjeta de personaje exportada: %1$s</string>
+    <string name="assistant_toast_export_failed">Error al exportar: %1$s</string>
+    <string name="assistant_toast_imported">Tarjetas de personajes importadas: %1$s</string>
+    <string name="assistant_toast_import_invalid">Error de importación: formato de archivo no válido</string>
+    <string name="assistant_toast_import_failed">Error de importación: %1$s</string>
 
-    <!-- ===== SillyTavern 角色卡 (PNG/JSON 通用格式) ===== -->
-    <!-- 助手列表页: 导入入口 (列表项, 位于 + 新建助手 下方) -->
-    <string name="assistant_import_sillytavern_cd">导入 SillyTavern 角色卡</string>
-    <string name="assistant_import_sillytavern">导入 SillyTavern 角色卡</string>
-    <!-- 助手详情页: 角色卡分享区块 -->
-    <string name="assistant_detail_share_section">角色卡分享</string>
-    <string name="assistant_detail_export_png">导出为 PNG 角色卡</string>
-    <string name="assistant_detail_export_png_desc">SillyTavern 格式 （含元数据）</string>
-    <string name="assistant_detail_export_json">导出为 JSON 角色卡</string>
+    <!-- ===== SillyTavern tarjeta de personaje (PNG/JSON formato común) ===== -->
+    <!-- Página de lista de asistentes: Entrada de importación (elemento de la lista, Ubicado debajo + Nuevo Asistente) -->
+    <string name="assistant_import_sillytavern_cd">Importar tarjetas de personajes de SillyTavern</string>
+    <string name="assistant_import_sillytavern">Importar tarjetas de personajes de SillyTavern</string>
+    <!-- Página de detalles del asistente: Bloque para compartir tarjetas de personaje -->
+    <string name="assistant_detail_share_section">Compartir tarjeta de personaje</string>
+    <string name="assistant_detail_export_png">Exportar como tarjeta de personaje PNG</string>
+    <string name="assistant_detail_export_png_desc">SillyTavern Formato (incluidos metadatos)</string>
+    <string name="assistant_detail_export_json">Exportar como tarjeta de personaje JSON</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
-    <!-- 助手详情页: Muse 角色卡分享(系统分享) -->
-    <string name="assistant_detail_share_muse_card">分享 Muse 角色卡</string>
-    <string name="assistant_detail_share_muse_card_desc">生成视觉化卡片并通过系统分享</string>
-    <string name="assistant_detail_share_muse_json">分享 Muse JSON</string>
-    <string name="assistant_detail_share_muse_json_desc">通过系统分享 Muse 格式 JSON</string>
-    <string name="assistant_detail_share_pack">发送角色包</string>
-    <string name="assistant_detail_share_pack_desc">通过任意应用发送完整角色包（含头像），对方可直接导入</string>
-    <string name="assistant_import_preview_title">导入角色卡</string>
-    <string name="assistant_import_preview_confirm">导入</string>
-    <string name="assistant_detail_share_muse_failed">分享失败：%1$s</string>
+    <!-- Página de detalles del asistente: Muse Compartir tarjeta de personaje(Compartir sistema) -->
+    <string name="assistant_detail_share_muse_card">Compartir tarjeta de personaje de Muse</string>
+    <string name="assistant_detail_share_muse_card_desc">Genera tarjetas visuales y compártelas a través del sistema.</string>
+    <string name="assistant_detail_share_muse_json">Compartir Muse JSON</string>
+    <string name="assistant_detail_share_muse_json_desc">Comparte el formato Muse a través del sistema. JSON</string>
+    <string name="assistant_detail_share_pack">enviar paquete de personajes</string>
+    <string name="assistant_detail_share_pack_desc">Envíe un paquete de personajes completo (incluido el avatar) a través de cualquier aplicación y la otra parte podrá importarlo directamente</string>
+    <string name="assistant_import_preview_title">Importar cartas de personajes</string>
+    <string name="assistant_import_preview_confirm">importar</string>
+    <string name="assistant_detail_share_muse_failed">Error al compartir:%1$s</string>
     <!-- Toast -->
-    <string name="assistant_toast_sillytavern_imported">已导入 SillyTavern 角色卡： %1$s</string>
-    <string name="assistant_toast_sillytavern_import_failed">SillyTavern 角色卡导入失败： %1$s</string>
-    <string name="assistant_toast_sillytavern_exported">已导出 SillyTavern 角色卡</string>
-    <string name="assistant_toast_sillytavern_export_failed">SillyTavern 角色卡导出失败： %1$s</string>
+    <string name="assistant_toast_sillytavern_imported">Tarjetas de personajes de SillyTavern importadas: %1$s</string>
+    <string name="assistant_toast_sillytavern_import_failed">SillyTavern Error al importar la tarjeta de personaje: %1$s</string>
+    <string name="assistant_toast_sillytavern_exported">Tarjeta de personaje de SillyTavern exportada</string>
+    <string name="assistant_toast_sillytavern_export_failed">SillyTavern Error al exportar la tarjeta de personaje: %1$s</string>
 </resources>

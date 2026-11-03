@@ -27,17 +27,17 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MuseSwitchSizes
 
 /**
- * v1.51: 开关 — 替代 Material3 默认 [androidx.compose.material3.Switch]。
+ * v1.51: cambiar — Anular el valor predeterminado de Material3 [androidx.compose.material3.Switch].
  *
- * 视觉差异(对比 Material Switch):
- *  - 胶囊轨道(51×31dp vs Material 52×32dp 但更柔和)
- *  - 拇指圆形(27dp),开启时向右滑动,带平滑动画
- *  - 开启色 primary,关闭色 surfaceVariant(opacity 调整)
- *  - 拇指 onPrimary 描边确保对比度
- *  - 完整 a11y 语义:H-SW1 改用 Modifier.toggleable(Role.Switch),
- *    自动注册 toggleableState + onClick 无障碍动作;H-SW2 外层包 48dp 最小触摸目标。
+ * diferencias visuales(Contraste Material Switch):
+ *  - pista de cápsula(51×31dp vs Material 52×32dp pero mas suave)
+ *  - pulgar redondo(27dp),Desliza hacia la derecha al abrir,Con animación fluida
+ *  - color abierto primary,Cerrar color surfaceVariant(opacity ajustar)
+ *  - Pulgar en el trazo principal asegura el contraste.
+ *  - Semántica completa a11y:H-SW1 Usar en su lugar Modifier.toggleable(Role.Switch),
+ *    Registrar automáticamente acciones de accesibilidad toggleableState + onClick;H-SW2 Paquete exterior Objetivo táctil mínimo de 48 dp.
  *
- * 用法:
+ * Uso:
  * ```
  * MuseSwitch(checked = enabled, onCheckedChange = { v -> update { it.copy(enabled = v) } })
  * ```
@@ -49,7 +49,7 @@ fun MuseSwitch(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
 ) {
-    // CMP-08: 几何全部走令牌 — 轨道/拇指规格见 MuseSwitchSizes,拇指内缩复用 MusePaddings.tinyGap。
+    // CMP-08: Geometría todo va token — órbita/Especificaciones del pulgar ver MuseSwitchSizes,La retracción del pulgar reutiliza MusePaddings.tinyGap.
     val trackWidth = MuseSwitchSizes.trackWidth
     val trackHeight = MuseSwitchSizes.trackHeight
     val thumbSize = MuseSwitchSizes.thumbSize
@@ -61,7 +61,7 @@ fun MuseSwitch(
     val thumbSizePx = with(density) { thumbSize.toPx() }
     val trackPaddingPx = with(density) { trackPadding.toPx() }
 
-    // 拇指位置动画(左/右)
+    // Animación de la posición del pulgar(izquierda/correcto)
     val targetThumbX = if (checked) {
         trackWidthPx - thumbSizePx - trackPaddingPx
     } else {
@@ -73,13 +73,13 @@ fun MuseSwitch(
         label = "iosSwitchThumb",
     )
 
-    // v2.x: 轨道颜色过渡 — 原为瞬时切换(v1.0.74 审计有记),现与拇指滑动同步走令牌。
+    // v2.x: Seguimiento de la transición de color — Conmutación originalmente instantánea(v1.0.74 Registros de auditoría),Los tokens ahora se mueven sincronizados al deslizar el pulgar.
     val trackColor by animateColorAsState(
         targetValue = if (checked) {
             MaterialTheme.colorScheme.primary
         } else {
-            // v2.0: 原 surfaceVariant@80% 在浅色主题下与背景只差 1 个色阶(实测 #FCFCFC vs #FBFBFC),
-            // 关闭态轨道几乎不可见;改为向 onSurface 混入 12%,亮/暗主题下都有清晰轨道。
+            // v2.0: La variación de superficie original al 80% tiene solo 1 nivel de color diferente del fondo en el tema claro.(Medición real #FCFCFC vs #FBFBFC),
+            // Los orbitales cerrados son casi invisibles;Mezclar en onSurface en su lugar 12%,brillante/Hay pistas claras bajo el tema oscuro.
             androidx.compose.ui.graphics.lerp(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.onSurface,
@@ -96,12 +96,12 @@ fun MuseSwitch(
     }
     val thumbInnerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
 
-    // H-SW2: 外层 Box 提供最小 48dp 触摸目标(视觉仍为 51×31dp,Canvas 居中)。
-    // H-SW1: 用 Modifier.toggleable 替代 pointerInput detectTapGestures,
-    //        自动注册 Role.Switch + toggleableState + onClick 无障碍动作,
-    //        TalkBack 可正确朗读开关状态并执行点击切换。
-    // v1.120: 显式传 indication = null 禁用默认点击反馈(ripple/高亮矩形),
-    //         开关本身有拇指滑动动画作为视觉反馈,叠加 ripple 会产生黑色方框遮罩。
+    // H-SW2: La caja exterior proporciona un objetivo táctil mínimo de 48 dp(La visión sigue siendo 51×31dp,Canvas centro).
+    // H-SW1: Utilice Modifier.toggleable en su lugar pointerInput detectTapGestures,
+    //        Registro automático Role.Switch + toggleableState + onClick Acciones accesibles,
+    //        TalkBack Lee correctamente el estado del interruptor y realiza el cambio de clic.
+    // v1.120: pasar explícitamente indication = null Deshabilitar la respuesta de clic predeterminada(ripple/Resaltar rectángulo),
+    //         El interruptor en sí tiene una animación de diapositiva con el pulgar como respuesta visual.,La superposición de ondas produce una máscara de caja negra.
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
@@ -127,14 +127,14 @@ fun MuseSwitch(
         Canvas(
             modifier = Modifier.size(width = trackWidth, height = trackHeight),
         ) {
-            // 轨道(胶囊形)
+            // órbita(forma de cápsula)
             drawRoundRect(
                 color = trackColor,
                 topLeft = Offset.Zero,
                 size = Size(trackWidthPx, trackHeightPx),
                 cornerRadius = CornerRadius(trackHeightPx / 2, trackHeightPx / 2),
             )
-            // 拇指(圆形)
+            // pulgar(redondo)
             drawCircle(
                 color = thumbColor,
                 radius = thumbSizePx / 2,
@@ -143,7 +143,7 @@ fun MuseSwitch(
                     trackHeightPx / 2,
                 ),
             )
-            // 开启时拇指内圈淡色(装饰)
+            // El anillo interior del pulgar es de color claro cuando se enciende.(decoracion)
             if (checked) {
                 drawCircle(
                     color = thumbInnerColor,

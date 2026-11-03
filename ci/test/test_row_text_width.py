@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_row_text_width.py — check_row_text_width.py 的单元测试。
+test_row_text_width.py — check_row_text_width.py pruebas unitarias.
 
-运行: py -3 ci/test/test_row_text_width.py
+correr: py -3 ci/test/test_row_text_width.py
 """
 
 import sys
@@ -13,7 +13,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_row_text_width import scan_file  # noqa: E402
 
-# 反例：Row 内两个子项，文本没有取宽 → 放大字号时会被压成一列
+# Contraejemplo:Row Dentro de los dos subpuntos, el texto no se amplía. → Al ampliar el tamaño de la fuente, se comprimirá en una columna.
 RISKY = """
 @Composable
 fun Row(row: Server) {
@@ -27,7 +27,7 @@ fun Row(row: Server) {
 }
 """
 
-# 已修：文本加了 weight(1f) 取剩余宽度
+# Corregido: texto agregado weight(1f) Obtener el ancho restante
 SAFE_WEIGHT = """
 @Composable
 fun Row(row: Server) {
@@ -41,7 +41,7 @@ fun Row(row: Server) {
 }
 """
 
-# 已修：单行文本 + maxLines 兜底（不会撑成几十行）
+# Corregido: una sola línea de texto + maxLines para cubrir toda la historia (no se extenderá en docenas de líneas)
 SAFE_MAXLINES = """
 @Composable
 fun Row(row: Server) {
@@ -52,7 +52,7 @@ fun Row(row: Server) {
 }
 """
 
-# 已修：取了宽且限行 → 安全
+# Revisado: cambiado a "amplio y restringido" → seguro
 SAFE_WEIGHT_AND_LINES = """
 @Composable
 fun Row(row: Server) {
@@ -69,7 +69,7 @@ fun Row(row: Server) {
 }
 """
 
-# 只取宽、不限行：剩余宽度极小时仍会逐字换行撑高整行 → 仍需 maxLines 兜底
+# Tome solo el ancho, sin límite de línea: cuando el ancho restante es extremadamente pequeño, aún se ajustará palabra por palabra para hacer que toda la línea sea más alta. → Todavía necesito maxLines para saber la verdad.
 RISKY_WEIGHT_ONLY = """
 @Composable
 fun Row(row: Server) {
@@ -84,7 +84,7 @@ fun Row(row: Server) {
 }
 """
 
-# 单子项 Row 且文本未显式取宽：Row 会按最大宽度给唯一子项，无兄弟竞争 → 不判定
+# Fila de un solo hijo y el texto no se amplía explícitamente:Row Al hijo único se le dará el ancho máximo, sin competencia entre hermanos. → Sin juicio
 SINGLE_CHILD_UNBOUNDED = """
 @Composable
 fun Row(row: Server) {
@@ -97,13 +97,13 @@ fun Row(row: Server) {
 }
 """
 
-# 槽位参数里的 Text（TextField 的 label）不是行内直接子项，不判定
+# Texto en el parámetro de ranura (TextField etiqueta) no es un hijo directo de la línea y no se juzga
 SAFE_SLOT_LAMBDA = """
 @Composable
 fun Row() {
     Row(modifier = Modifier.fillMaxWidth()) {
         MuseTextField(
-            label = { Text("名称") },
+            label = { Text("Nombre") },
             value = name,
             onValueChange = {},
         )
@@ -112,20 +112,20 @@ fun Row() {
 }
 """
 
-# 嵌套：Row 内的 Column 里有 Text，Text 不是 Row 的直接子项但从父级取宽 → 不判定
+# Anidamiento:Row Hay texto en la columna interior.Text No es un hijo directo de Row pero toma el ancho del padre → Sin juicio
 SAFE_NESTED_COLUMN = """
 @Composable
 fun Row() {
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "标题")
+            Text(text = "Título")
         }
         MuseSwitch(checked = true, onCheckedChange = {})
     }
 }
 """
 
-# Row 跨行写法：参数换行后 `) {` 另起一行
+# Row Método de escritura entre líneas: después del salto de línea del parámetro `) {` Iniciar una nueva línea
 RISKY_MULTILINE = """
 @Composable
 fun Row(row: Server) {
@@ -166,15 +166,15 @@ def main() -> int:
             hits = scan_file(path)
             ok = len(hits) == expected
             status = "OK  " if ok else "FAIL"
-            print(f"[{status}] {name}: 期望 {expected} 处, 实际 {len(hits)} 处")
+            print(f"[{status}] {name}: Expectativa {expected} en, real {len(hits)} en")
             if not ok:
                 failed += 1
                 for ln, text in hits:
                     print(f"        L{ln}: {text[:90]}")
     if failed:
-        print(f"\n{failed} 个用例失败")
+        print(f"\n{failed} casos de uso fallidos")
         return 1
-    print(f"\n全部 {len(CASES)} 个用例通过")
+    print(f"\nTodos {len(CASES)} casos de uso pasados")
     return 0
 
 

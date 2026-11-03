@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 
 /**
- * Host 聊天页的折叠块：工具调用与思考过程共用一套外观（默认折叠，标题行 = 图标 + 标题 + 状态）。
+ * Host El bloque contraído de la página de chat: las llamadas a herramientas y los procesos de pensamiento comparten la misma apariencia (contraído por defecto, fila de título = icono + título + estado).
  *
- * 用原生 `<details>`：折叠状态由浏览器维护，重连推快照时不会因为 React 重建而丢失展开内容。
+ * Usar nativo `<details>`: El navegador mantiene el estado colapsado y el contenido expandido no se perderá debido a la reconstrucción de React cuando se vuelva a conectar la instantánea.
  */
 export interface CollapsibleBlockProps {
   readonly icon: ReactNode;
   readonly label: string;
-  /** 标题行右侧的状态文案；没有就不渲染。 */
+  /** La copia de estado en el lado derecho de la línea del título; si no, no se procesará. */
   readonly status?: string | undefined;
-  /** running / awaiting 用主色点出「还在动」，其余走中性灰。 */
+  /** running / awaiting Utilice el color principal para resaltar \"Aún en movimiento\" y utilice gris neutro para el resto. */
   readonly tone?: "neutral" | "accent" | "warn";
   readonly children: ReactNode;
 }

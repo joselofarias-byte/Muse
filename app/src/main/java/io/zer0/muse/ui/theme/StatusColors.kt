@@ -7,17 +7,17 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * 语义状态色 — 深浅色成对定义,随 MuseTheme 自动切换。
+ * Color de estado semántico — Definición de pares de colores claros y oscuros.,Cambia automáticamente con MuseTheme.
  *
- * 用途:成功 / 警告 / 错误 / 信息 / 中性 五类状态语义,
- * 覆盖工具风险等级、Snackbar 反馈、日志等级、文档类型图标等业务场景。
+ * Propósito:Éxito/advertencia/error/información/cinco tipos neutrales de semántica de estado,
+ * Cubriendo los niveles de riesgo de las herramientas,Snackbar Comentarios, nivel de registro, ícono de tipo de documento y otros escenarios comerciales.
  *
- * 设计原则:
- *  - 浅色主题用深一档色(保证浅底对比度 ≥ 4.5:1)
- *  - 深色主题用亮一档色(保证深底对比度)
- *  - [highlight] 为半透明黄,深浅主题通用(搜索高亮 / 调试标记)
+ * principios de diseño:
+ *  - Utilice un color más oscuro para temas claros.(Garantizar un contraste inferior poco profundo ≥ 4.5:1)
+ *  - Utilice un color más claro para temas oscuros.(Contraste profundo garantizado)
+ *  - [highlight] amarillo translúcido,Común a temas oscuros y claros.(Indicadores de resaltado/depuración de búsqueda)
  *
- * 用法:
+ * Uso:
  * ```
  * color = MaterialTheme.statusColors.success
  * ```
@@ -28,11 +28,11 @@ data class MuseStatusColors(
     val error: Color,
     val info: Color,
     val neutral: Color,
-    /** 半透明高亮底色(搜索命中 / 调试标记),深浅通用。 */
+    /** Color base iluminador translúcido(Buscar resultados/marcadores de depuración),Universal para ambos tonos. */
     val highlight: Color,
 )
 
-/** 浅色主题状态色 — Material 深档,浅底可读。 */
+/** Color de estado del tema claro — Material engranaje profundo,Legible sobre fondo poco profundo. */
 val LightStatusColors = MuseStatusColors(
     success = Color(0xFF2E7D32),
     warning = Color(0xFFEF6C00),
@@ -42,7 +42,7 @@ val LightStatusColors = MuseStatusColors(
     highlight = Color(0x66FFEB3B),
 )
 
-/** 深色主题状态色 — Material 亮档,深底可读。 */
+/** Color de estado del tema oscuro — Material archivo brillante,Legible en profundidad. */
 val DarkStatusColors = MuseStatusColors(
     success = Color(0xFF66BB6A),
     warning = Color(0xFFFFB74D),
@@ -54,7 +54,7 @@ val DarkStatusColors = MuseStatusColors(
 
 val LocalStatusColors = compositionLocalOf { LightStatusColors }
 
-/** 便捷访问: `MaterialTheme.statusColors.success`。 */
+/** Fácil acceso: `MaterialTheme.statusColors.success`. */
 @Suppress("UnusedReceiverParameter")
 val MaterialTheme.statusColors: MuseStatusColors
     @Composable
@@ -62,10 +62,10 @@ val MaterialTheme.statusColors: MuseStatusColors
     get() = LocalStatusColors.current
 
 /**
- * 代码语法高亮色 — 深浅色成对,随 MuseTheme 自动切换。
+ * Color de resaltado de sintaxis de código — Colores oscuros y claros en pares.,Cambia automáticamente con MuseTheme.
  *
- * 从 ui/markdown/CodeHighlighter.kt 上移,让代码高亮成为主题体系的一部分,
- * 自定义主题后续可覆盖。
+ * Subido desde ui/markdown/CodeHighlighter.kt,Hacer que el código resaltado forme parte del sistema temático,
+ * Los temas personalizados se pueden sobrescribir más tarde.
  */
 data class MuseCodeColors(
     val keyword: Color,
@@ -73,15 +73,15 @@ data class MuseCodeColors(
     val comment: Color,
     val number: Color,
     val annotation: Color,
-    /** diff 新增行(+)。语义复用 success 色,浅深主题各取对应档位。 */
+    /** diff Agregar nueva fila(+). Color del éxito de la reutilización semántica,Los temas superficiales y profundos tienen cada uno niveles correspondientes. */
     val diffAdded: Color,
-    /** diff 删除行(-)。语义复用 error 色。 */
+    /** diff Eliminar fila(-). Reutilización semántica de colores de error. */
     val diffRemoved: Color,
-    /** diff hunk 头(+++/---/@@)。语义复用 info 色。 */
+    /** diff hunk cabeza(+++/---/@@). Reutilización semántica de colores de información. */
     val diffHunk: Color,
 )
 
-/** 浅色主题代码高亮(原 CodeHighlighter light 调色板)。 */
+/** Resaltado de código de tema claro(Paleta de luces CodeHighlighter original). */
 val LightCodeColors = MuseCodeColors(
     keyword = Color(0xFF537D96),
     string = Color(0xFF10A37F),
@@ -93,7 +93,7 @@ val LightCodeColors = MuseCodeColors(
     diffHunk = Color(0xFF1976D2),
 )
 
-/** 深色主题代码高亮(原 CodeHighlighter dark 调色板,亮化版)。 */
+/** Resaltado de código de tema oscuro(Paleta oscura Original CodeHighlighter,Versión iluminada). */
 val DarkCodeColors = MuseCodeColors(
     keyword = Color(0xFF8AB4CC),
     string = Color(0xFF7FD4B0),
@@ -107,24 +107,24 @@ val DarkCodeColors = MuseCodeColors(
 
 val LocalCodeColors = compositionLocalOf { LightCodeColors }
 
-/** 便捷访问: `MaterialTheme.codeColors.keyword`。 */
+/** Fácil acceso: `MaterialTheme.codeColors.keyword`. */
 @Suppress("UnusedReceiverParameter")
 val MaterialTheme.codeColors: MuseCodeColors
     @Composable
     @ReadOnlyComposable
     get() = LocalCodeColors.current
 
-// ── 品牌色(固定值,不随主题切换) ─────────────────────────────────────
-// 第三方服务商品牌识别色,必须与品牌保持一致,深浅主题下不改变。
+// ── Color de la marca(valor fijo,No cambia con el tema.) ─────────────────────────────────────
+// Color de identificación de la marca del proveedor de servicios de terceros,Debe ser consistente con la marca.,No cambia bajo temas oscuros y claros.
 
-/** DeepSeek 品牌蓝。 */
+/** DeepSeek Marca azul. */
 val BrandDeepSeek = Color(0xFF4D6BFA)
 
-/** OpenAI 品牌绿。 */
+/** OpenAI Marca verde. */
 val BrandOpenAI = Color(0xFF10A37F)
 
-/** Anthropic 品牌棕。 */
+/** Anthropic Marca marrón. */
 val BrandAnthropic = Color(0xFFD4A574)
 
-/** Google Gemini 品牌蓝。 */
+/** Google Gemini Marca azul. */
 val BrandGemini = Color(0xFF4285F4)

@@ -9,7 +9,7 @@ import org.junit.Test
 /**
  * Locks the production shapes for tool terminal states.
  *
- * The orchestrator synthesises bracketed markers (`[超时]`, `[中断]`) and hooks/MCP
+ * The orchestrator synthesises bracketed markers (`[tiempo de espera]`, `[interrumpir]`) and hooks/MCP
  * bridges return structured `{"error": ...}` payloads; the previous bare-word prefix
  * list matched none of them, so timeouts were reported as successes.
  */
@@ -24,9 +24,9 @@ class ToolResultSuccessTest {
     fun bracketedTerminalStatesAreFailures() {
         val coordinator = coordinator()
 
-        assertFalse(coordinator.isToolResultSuccess("[超时] 工具 web_search 120 秒未响应,已终止"))
-        assertFalse(coordinator.isToolResultSuccess("[中断] 工具 read_file 执行被取消"))
-        assertFalse(coordinator.isToolResultSuccess("[工具输出已截断: 共 40000 字符]"))
+        assertFalse(coordinator.isToolResultSuccess("[tiempo de espera] La herramienta web_search no responde durante 120 segundos,terminado"))
+        assertFalse(coordinator.isToolResultSuccess("[interrumpir] Ejecución de herramienta read_file cancelada"))
+        assertFalse(coordinator.isToolResultSuccess("[La salida de la herramienta está truncada: 40000 caracteres en total]"))
     }
 
     @Test
@@ -42,15 +42,15 @@ class ToolResultSuccessTest {
         val coordinator = coordinator()
 
         assertFalse(coordinator.isToolResultSuccess("error: unknown tool"))
-        assertFalse(coordinator.isToolResultSuccess("工具执行异常: timeout"))
-        assertFalse(coordinator.isToolResultSuccess("文件不存在: /tmp/a.txt"))
+        assertFalse(coordinator.isToolResultSuccess("Excepción de ejecución de herramienta: timeout"))
+        assertFalse(coordinator.isToolResultSuccess("El archivo no existe: /tmp/a.txt"))
     }
 
     @Test
     fun normalResultsStaySuccessful() {
         val coordinator = coordinator()
 
-        assertTrue(coordinator.isToolResultSuccess("搜索到 3 条结果"))
+        assertTrue(coordinator.isToolResultSuccess("3 resultados encontrados"))
         assertTrue(coordinator.isToolResultSuccess("""{"items": [1, 2, 3]}"""))
         assertTrue(coordinator.isToolResultSuccess(""))
     }

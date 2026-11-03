@@ -4,12 +4,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 工具重试预算说明的测试。
+ * La herramienta vuelve a intentar la prueba de la descripción del presupuesto.
  *
- * 助手自审第 15 条：「失败没有重试预算的可视化，我一次失败后就很保守，
- * 其实有些是可以安全重试的」。
+ * Ítem 15 de autoevaluación del asistente: "No se visualiza el presupuesto de reintento en caso de falla. Soy muy conservador después de una falla.
+ * De hecho, es seguro que algunos de ellos vuelvan a intentarlo”.
  *
- * 这里钉住三种情形：还有机会 / 已用尽 / 本来就不该重试。
+ * Aquí se señalan tres situaciones: todavía hay una posibilidad / agotado / no deberías volver a intentarlo en primer lugar.
  */
 class ToolRetryBudgetTest {
 
@@ -17,24 +17,24 @@ class ToolRetryBudgetTest {
     fun `first retryable failure says how many chances remain`() {
         val line = ToolRetryBudget.describe("web_fetch", attempt = 1, retryable = true)
 
-        assertTrue("要说清第几次", line.contains("第 1 次失败"))
-        assertTrue("要给出剩余机会", line.contains("还剩 1 次重试机会"))
+        assertTrue("¿Cuántas veces debería decírtelo?", line.contains("1er fracaso"))
+        assertTrue("Dar oportunidades restantes", line.contains("Queda 1 oportunidad de reintento"))
     }
 
     @Test
     fun `exhausted budget tells the model to stop calling the same tool`() {
         val line = ToolRetryBudget.describe("web_fetch", attempt = 2, retryable = true)
 
-        assertTrue(line.contains("重试机会已用尽"))
-        assertTrue("要明确叫停", line.contains("不要再调用同一工具"))
+        assertTrue(line.contains("Oportunidades para volver a intentarlo agotadas"))
+        assertTrue("Deja claro que parar", line.contains("No vuelvas a llamar a la misma herramienta"))
     }
 
     @Test
     fun `non-retryable failure says so regardless of remaining budget`() {
         val line = ToolRetryBudget.describe("screen_tap", attempt = 1, retryable = false)
 
-        assertTrue("不可重试时不能给出剩余机会", !line.contains("还剩"))
-        assertTrue(line.contains("本次失败不可重试"))
+        assertTrue("No se pueden dar las oportunidades restantes cuando no es posible volver a intentarlo.", !line.contains("izquierda"))
+        assertTrue(line.contains("Este error no se puede volver a intentar."))
     }
 
     @Test
@@ -48,13 +48,13 @@ class ToolRetryBudgetTest {
     fun `attempt beyond the budget is clamped instead of going negative`() {
         val line = ToolRetryBudget.describe("x", attempt = 9, retryable = true)
 
-        assertTrue("不能出现负数", !line.contains("-"))
-        assertTrue(line.contains("已用尽"))
+        assertTrue("No se permiten números negativos.", !line.contains("-"))
+        assertTrue(line.contains("agotado"))
     }
 
     @Test
     fun `budget matches the prompt rule of one correction`() {
-        // 提示词写的是「失败只按错误信息修正一次」= 首次失败后再给 1 次
-        assertTrue("上限必须与提示词口径一致", ToolRetryBudget.MAX_RETRIES == 1)
+        // El mensaje dice "Si falla, simplemente presione el mensaje de error para corregirlo una vez".= Dar 1 vez más después del primer fallo.
+        assertTrue("El límite superior debe ser coherente con la palabra calibre.", ToolRetryBudget.MAX_RETRIES == 1)
     }
 }

@@ -52,6 +52,6 @@ class ContextCompressBudgetTest {
         )
 
         assertTrue(result.size < messages.size)
-        assertTrue(result.any { it.content.contains("历史暂不可用") })
+        assertTrue(result.any { it.content.contains("El historial aún no está disponible") })
     }
 }

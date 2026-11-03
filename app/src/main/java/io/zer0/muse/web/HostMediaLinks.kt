@@ -3,21 +3,21 @@ package io.zer0.muse.web
 import java.util.Base64
 
 /**
- * 消息里的媒体引用 → 浏览器可取的链接。
+ * Citas de medios en mensajes. → Enlaces que el navegador puede recuperar.
  *
- * App 侧的图片/语音引用有三种形态：`file:///data/user/…` 绝对路径、`data:image/…;base64,…`
- * 内联数据、以及裸 base64。三种在浏览器里都取不到（前者是本机路径，后两者不是地址），
- * 下发前统一换成 [MEDIA_PATH_PREFIX] + token；[HostMediaStore] 登记不上的（文件已清理、
- * 指向允许目录之外、内容不是可识别媒体）直接从数组里剔除，不留一个必然 404 的地址 ——
- * 网页端拿到不可用地址会比拿到空数组更难处理。
+ * App foto lateral/Hay tres formas de cita de discurso:`file:///data/user/…` camino absoluto,`data:image/…;base64,…`
+ * Datos en línea y base64 desnuda. Ninguno de los tres está disponible en el navegador (la primera es la ruta local y las dos últimas no son direcciones).
+ * Reemplácelos uniformemente antes de emitir [MEDIA_PATH_PREFIX] + token;[HostMediaStore] Los que no se pueden registrar (los expedientes han sido borrados,
+ * Los puntos fuera del directorio permitido y el contenido no son medios identificables) se eliminan directamente de la matriz, sin dejar ninguna dirección 404 inevitable. ——
+ * Obtener una dirección no disponible en una página web será más difícil de manejar que obtener una matriz vacía.
  *
- * `http(s)` 地址原样下发：浏览器本来就能取，绕一圈代理反而多一层失败点。
+ * `http(s)` La dirección se entrega tal como está: el navegador puede recuperarla originalmente, pero evitar el proxy agregará otra capa de puntos de falla.
  */
 internal class HostMediaLinks(
     private val store: HostMediaStore,
 ) {
 
-    /** 单条引用的转换；返回 null 表示这条媒体在网页端不可用。[ownerMessageId] 用于内联落盘文件的归属前缀。 */
+    /** Conversión de una única referencia; devolver nulo indica que los medios no están disponibles en la página web.[ownerMessageId] El prefijo de propiedad utilizado para archivos de disco en línea. */
     fun link(value: String, ownerMessageId: String): String? {
         val trimmed = value.trim()
         if (trimmed.isEmpty()) return null
@@ -25,19 +25,19 @@ internal class HostMediaLinks(
         return tokenFor(trimmed, ownerMessageId)?.let { MEDIA_PATH_PREFIX + it }
     }
 
-    /** 列表版转换，顺带剔除不可用项。 */
+    /** Convierta la versión de la lista y elimine los elementos no disponibles. */
     fun links(values: List<String>, ownerMessageId: String): List<String> =
         values.mapNotNull { link(it, ownerMessageId) }
 
-    /** 语音引用单独走一条链：非语音消息不下发 voiceUrl。 */
+    /** Las referencias de voz siguen una cadena separada: los mensajes que no son de voz no se envían a voiceUrl. */
     fun voiceLink(value: String?, ownerMessageId: String): String? =
         value?.takeIf { it.isNotBlank() }?.let { link(it, ownerMessageId) }
 
     /**
-     * 头像这类一次性资源：只认本地文件与 `http(s)`。
+     * Recursos desechables como avatares: solo reconoce archivos locales y `http(s)`.
      *
-     * 内联 base64 不在这里落盘 —— 头像不属于任何消息，落下来的文件没有删除时机，
-     * 徒增孤儿；转不了就给 null，由前端退回首字。
+     * Base64 en línea no se coloca aquí —— El avatar no pertenece a ningún mensaje y los archivos eliminados no tienen posibilidad de eliminarse.
+     * Simplemente agregue huérfanos; si no se puede transferir, se devolverá a nulo y el primer carácter se devolverá desde el front-end.
      */
     fun fileOrHttpLink(value: String?): String? {
         val trimmed = value?.trim().orEmpty()
@@ -47,7 +47,7 @@ internal class HostMediaLinks(
         return store.tokenForFile(trimmed)?.let { MEDIA_PATH_PREFIX + it }
     }
 
-    /** 按引用形态分派；每一种都只在 [HostMediaStore] 的允许目录内才会拿到 token。 */
+    /** Enviado por formulario de referencia; cada uno está disponible sólo en [HostMediaStore] El token se obtendrá únicamente en el directorio permitido. */
     private fun tokenFor(value: String, ownerMessageId: String): String? = when {
         value.startsWith(FILE_SCHEME) || isLocalPath(value) -> store.tokenForFile(value)
         value.startsWith(DATA_SCHEME) -> store.tokenForInlineData(
@@ -60,19 +60,19 @@ internal class HostMediaLinks(
         else -> null
     }
 
-    /** 不带 `file://` 前缀的本机路径：Unix 绝对路径与 Windows 盘符路径。 */
+    /** sin `file://` Ruta nativa prefijada:Unix Rutas absolutas frente a rutas de letras de unidades de Windows. */
     private fun isLocalPath(value: String): Boolean =
         value.startsWith("/") || value.startsWith(UNC_PREFIX) || DRIVE_PATH.matches(value)
 
     private fun looksLikeBase64(value: String): Boolean {
         if (value.length < MIN_BASE64_LENGTH) return false
-        // base64 长度 mod 4 不可能为 1（奇数个尾部字节会多出一个填充位）。
+        // base64 La longitud mod 4 no puede ser 1 (un número impar de bytes finales daría como resultado un bit de relleno adicional).
         if (value.length % 4 == 1) return false
         return runCatching { Base64.getMimeDecoder().decode(value).isNotEmpty() }.getOrDefault(false)
     }
 
     companion object {
-        /** 媒体路由前缀，与 WebServer 里安装的 `/api/media/{token}` 路径一致。 */
+        /** Prefijo de enrutamiento de medios, tal como está instalado en WebServer `/api/media/{token}` Los caminos son consistentes. */
         const val MEDIA_PATH_PREFIX = "/api/media/"
 
         private const val FILE_SCHEME = "file://"
@@ -80,13 +80,13 @@ internal class HostMediaLinks(
         private const val HTTP_SCHEME = "http://"
         private const val HTTPS_SCHEME = "https://"
 
-        /** 网络共享路径前缀（`\\server\share\x.png`），也是本机可解析的路径写法。 */
+        /** Prefijo de ruta compartida de red (`\\server\share\x.png`), que también es un método de escritura de ruta que puede ser analizado por esta máquina. */
         private const val UNC_PREFIX = "\\\\"
 
-        /** 短于此长度不可能是图片数据（占位 gif 也远长于此）。 */
+        /** Cualquier valor inferior a esta longitud no puede ser datos de imagen (los gifs de marcador de posición también son mucho más largos). */
         private const val MIN_BASE64_LENGTH = 32
 
-        /** Windows 盘符路径（`C:\…` / `C:/…`）。 */
+        /** Windows Ruta de la letra de unidad (`C:\…` / `C:/…`). */
         private val DRIVE_PATH = Regex("^[A-Za-z]:[\\\\/].*")
     }
 }

@@ -55,10 +55,10 @@ import io.zer0.muse.miniphone.ui.shell.contactSectionsOf
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 群成员页能做的四件事:改群名、加人、移出某人、解散并退出。
+ * Cuatro cosas que puedes hacer en la página de miembros del grupo:Cambie el nombre del grupo, agregue personas, elimine a alguien, disuélvalo y salga.
  *
- * 页面本身不认识库,也不判断权限 —— 能进来就说明这是群会话(私信的顶栏根本不带这个入口),
- * 每个动作交给 ViewModel,写完由成员表与会话行的流把界面带回来。
+ * La página en sí no reconoce la biblioteca.,Tampoco determina permisos —— Si puedes entrar, significa que es una conversación grupal.(La barra superior del mensaje privado no tiene esta entrada en absoluto.),
+ * Cada acción se da a ViewModel,Después de escribir el flujo de tablas de miembros y filas de sesión, recupere la interfaz.
  */
 @Immutable
 internal class GroupAdminActions(
@@ -68,37 +68,37 @@ internal class GroupAdminActions(
     val onDisband: () -> Unit = {},
 )
 
-/** 成员行上能做的事。 */
+/** Qué pueden hacer los miembros. */
 internal enum class GroupMemberAction(
     val label: String,
 ) {
-    REMOVE("移出群聊"),
+    REMOVE("Salir del chat grupal"),
 }
 
 /**
- * 成员行上的动作项,空列表表示这一行没有可做的事。
+ * Elementos de acción en filas de miembros,Una lista vacía significa que no hay nada que hacer en esta línea.
  *
- * 只剩一个人时什么都不给:群里总得留一个能开口的角色,删到空的话这个群就再也说不了话。
+ * No des nada cuando solo quede una persona:Debe haber un personaje en el grupo que pueda hablar.,Si lo borras hasta dejarlo vacío, este grupo ya no podrá hablar.
  */
 internal fun groupMemberActionsFor(memberCount: Int): List<GroupMemberAction> =
     if (memberCount <= MIN_GROUP_MEMBERS_AFTER_REMOVE) emptyList() else listOf(GroupMemberAction.REMOVE)
 
-/** 还能加进来的人:宿主给的全部角色里排掉已经在群里的,没名字的也不列。 */
+/** ¿Quién más se puede agregar?:Excluye todos los personajes proporcionados por el anfitrión que ya están en el grupo.,Los que no tienen nombre tampoco figuran en la lista. */
 internal fun addableCharactersOf(characters: List<MpCharacter>, members: List<ChatMemberUi>): List<MpCharacter> {
     val inGroup = members.map { member -> member.characterId }.toSet()
     return characters.filter { character -> character.id !in inGroup && character.name.isNotBlank() }
 }
 
 /**
- * 群成员页:群名、成员列表与四个管理动作。
+ * Página de miembros del grupo:Nombre del grupo, lista de miembros y cuatro acciones de gestión.
  *
- * 顺序就是库里那份入群先后(建群时按选择顺序),这里不再排一次 ——
- * 同一批人在群成员页与建群页上的顺序一致,才看得出「这群就是刚选的那几个人」。
+ * El orden es la parte que le corresponde a Curry al unirse al grupo.(Al crear un grupo, siga el orden de selección.),No más colas aquí ——
+ * El orden del mismo grupo de personas en la página de miembros del grupo y en la página de creación del grupo es el mismo.,Sólo entonces se pudo ver que "estas son las personas que acabamos de seleccionar".
  *
- * @param members 群成员(只含角色),已按入群先后排好
- * @param title 当前群名;改完之后由上层带着新名字回来重画
- * @param characters 宿主的全部角色,「还能加谁」从这里算
- * @param onBack 返回聊天页;解散之后也要回到消息列表,由调用方决定
+ * @param members miembros del grupo(Solo roles),Ya arreglado según el orden de incorporación al grupo.
+ * @param title Nombre del grupo actual;Una vez completado el cambio, la alta dirección regresará con un nuevo nombre y lo rediseñará.
+ * @param characters Todos los roles del anfitrión.,"¿A quién más puedo agregar?" Cuenta desde aquí
+ * @param onBack Volver a la página de chat;Después de disolverse, debe regresar a la lista de mensajes.,Determinado por la persona que llama
  */
 @Composable
 internal fun GroupMembersPage(
@@ -112,7 +112,7 @@ internal fun GroupMembersPage(
     val colors = MiniPhoneTheme.colors
     var editingTitle by rememberSaveable { mutableStateOf(false) }
     var addingMembers by rememberSaveable { mutableStateOf(false) }
-    // 加人页的选中集合:按点击先后,加入顺序因此稳定
+    // Colección seleccionada para agregar página:Haga clic primero,Por tanto, el orden de unión es estable.
     var addSelection by rememberSaveable { mutableStateOf(listOf<String>()) }
     var menuFor by remember(members) { mutableStateOf<String?>(null) }
     var pendingRemove by remember { mutableStateOf<ChatMemberUi?>(null) }
@@ -219,7 +219,7 @@ internal fun GroupMembersPage(
     }
 }
 
-/** 顶栏:返回 + 「群成员」+ 人数。 */
+/** barra superior:Volver + \"Miembros del grupo\"+ Número de personas. */
 @Composable
 private fun GroupMembersHeader(count: Int, onBack: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -243,7 +243,7 @@ private fun GroupMembersHeader(count: Int, onBack: () -> Unit) {
             ) {
                 Icon(
                     imageVector = MiniPhoneIcons.Back,
-                    contentDescription = "返回",
+                    contentDescription = "Regresar",
                     tint = colors.textPrimary,
                     modifier = Modifier.size(GroupMembersIconSize),
                 )
@@ -264,7 +264,7 @@ private fun GroupMembersHeader(count: Int, onBack: () -> Unit) {
     }
 }
 
-/** 群名一行:点一下改名。右侧那句「点击修改」是把入口说出来,不用人猜。 */
+/** Una línea del nombre del grupo:Haga clic para cambiar el nombre. La frase \"Haga clic para modificar\" a la derecha indica la entrada.,Nadie necesita adivinar. */
 @Composable
 private fun GroupTitleRow(title: String, onClick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -299,7 +299,7 @@ private fun GroupTitleRow(title: String, onClick: () -> Unit) {
     }
 }
 
-/** 一行成员:头像 + 名字;能不能移出由 [onLongPress] 有没有给出来决定。 */
+/** miembros de un partido:avatar + nombre;¿Se puede quitar de [onLongPress] ¿Se ha tomado una decisión? */
 @Composable
 private fun GroupMemberRow(member: ChatMemberUi, onLongPress: (() -> Unit)?) {
     val colors = MiniPhoneTheme.colors
@@ -329,7 +329,7 @@ private fun GroupMemberRow(member: ChatMemberUi, onLongPress: (() -> Unit)?) {
     }
 }
 
-/** 长按成员弹出的动作浮层:只有一项「移出群聊」。 */
+/** La acción superpuesta que aparece al presionar prolongadamente a un miembro:Sólo hay una opción para \"salir del chat grupal\". */
 @Composable
 private fun MemberRowMenu(onDismiss: () -> Unit, onRemove: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -364,7 +364,7 @@ private fun MemberRowMenu(onDismiss: () -> Unit, onRemove: () -> Unit) {
     }
 }
 
-/** 页脚两个动作:加人,以及解散这个群。 */
+/** Pie de página dos acciones:Agregar personas,y disolver el grupo. */
 @Composable
 private fun MemberAdminFooter(onAdd: () -> Unit, onDisband: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -394,7 +394,7 @@ private fun MemberAdminFooter(onAdd: () -> Unit, onDisband: () -> Unit) {
     }
 }
 
-/** 改群名:一个小弹层,里面一个输入框。空名不保存,超长截断。 */
+/** Cambiar nombre de grupo:una pequeña capa elástica,Hay un cuadro de entrada en el interior. Los nombres vacíos no se guardan,Truncamiento extralargo. */
 @Composable
 private fun GroupTitleEditDialog(initialTitle: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -453,12 +453,12 @@ private fun GroupTitleEditDialog(initialTitle: String, onDismiss: () -> Unit, on
     }
 }
 
-/** 移出成员前的确认:说清他说过的话不会跟着消失。 */
+/** Confirmación antes de eliminar a un miembro:Deje claro que lo que dijo no desaparecerá. */
 @Composable
 private fun MemberRemoveDialog(name: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     ConfirmDialog(
         tag = MiniPhoneChatTags.MEMBER_REMOVE_DIALOG,
-        title = "把${name}移出群聊?",
+        title = "poner${name}Salir del chat grupal?",
         hint = REMOVE_HINT,
         confirmTag = MiniPhoneChatTags.MEMBER_REMOVE_CONFIRM,
         cancelTag = MiniPhoneChatTags.MEMBER_REMOVE_CANCEL,
@@ -467,7 +467,7 @@ private fun MemberRemoveDialog(name: String, onDismiss: () -> Unit, onConfirm: (
     )
 }
 
-/** 解散前的确认:整群都会没,文案里必须写明不可恢复。 */
+/** Confirmación antes de la disolución:todo el grupo se habrá ido,La copia debe indicar que no es recuperable. */
 @Composable
 private fun DisbandGroupDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     ConfirmDialog(
@@ -481,7 +481,7 @@ private fun DisbandGroupDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     )
 }
 
-/** 两个确认框只差文案与标签,形状与按钮位置一样。 */
+/** La única diferencia entre los dos cuadros de confirmación es la copia y la etiqueta.,La forma es la misma que la ubicación del botón. */
 @Composable
 private fun ConfirmDialog(
     tag: String,
@@ -523,7 +523,7 @@ private fun ConfirmDialog(
     }
 }
 
-/** 确认框底部两个文字按钮:取消在左,危险动作在右。 */
+/** Dos botones de texto en la parte inferior del cuadro de confirmación:Cancelar a la izquierda,El movimiento peligroso está en la derecha. */
 @Composable
 private fun DialogActions(
     confirmColor: Color,
@@ -562,9 +562,9 @@ private fun DialogActions(
 }
 
 /**
- * 添加成员页:复用建群那份多选列表,只列还不在群里的人。
+ * Agregar página de miembro:Reutilizar la lista de selección múltiple para la creación de grupos,Enumere solo las personas que aún no están en el grupo.
  *
- * 选中一人就能点「完成」—— 加人没有「至少两个」的门槛,门槛在「群至少留一个人」那边。
+ * Seleccione una persona y haga clic en "Listo"—— No existe un umbral de "al menos dos" para agregar personas,El umbral es "dejar al menos una persona en el grupo".
  */
 @Composable
 private fun GroupAddMembersPage(
@@ -583,7 +583,7 @@ private fun GroupAddMembersPage(
     ) {
         GroupPickHeader(
             title = ADD_MEMBER_TITLE,
-            hint = ADD_MEMBER_HINT_PREFIX + selectedIds.size + " 人",
+            hint = ADD_MEMBER_HINT_PREFIX + selectedIds.size + " gente",
             canFinish = selectedIds.isNotEmpty(),
             tagPrefix = GROUP_ADD_TAG_PREFIX,
             onBack = onBack,
@@ -599,7 +599,7 @@ private fun GroupAddMembersPage(
     }
 }
 
-/** 群名输入框下面那行:当前字数与上限。 */
+/** La línea debajo del cuadro de entrada del nombre del grupo:Recuento de palabras actual y límite superior. */
 internal fun titleHintOf(length: Int): String = "$length / $GROUP_TITLE_MAX_LENGTH"
 
 private val GroupMembersButtonSize = 40.dp
@@ -610,23 +610,23 @@ private val WindowCorner = 8.dp
 private val DialogActionCorner = 8.dp
 private val DialogActionHeight = 36.dp
 
-private const val GROUP_MEMBERS_TITLE: String = "群成员"
-private const val GROUP_TITLE_LABEL: String = "群名"
-private const val GROUP_TITLE_EDIT_HINT: String = "点击修改"
-private const val GROUP_TITLE_EDIT_TITLE: String = "修改群名"
-private const val ADD_MEMBER_LABEL: String = "+ 添加成员"
-private const val ADD_MEMBER_TITLE: String = "添加成员"
-private const val ADD_MEMBER_HINT_PREFIX: String = "已选 "
-private const val ADD_MEMBER_EMPTY_TITLE: String = "没有可以加入的角色"
-private const val ADD_MEMBER_EMPTY_HINT: String = "通讯录里的人都已经在群里了"
-private const val DISBAND_LABEL: String = "删除并退出"
-private const val DISBAND_TITLE: String = "删除并退出?"
-private const val DISBAND_HINT: String = "整个群和里面的全部消息都会从这台手机上删掉,无法恢复。"
-private const val REMOVE_HINT: String = "移出后他之前说过的话留在群里。"
-private const val UNTITLED_GROUP_NAME: String = "群聊"
-private const val SAVE_LABEL: String = "保存"
-private const val CANCEL_LABEL: String = "取消"
-private const val DELETE_LABEL: String = "删除"
+private const val GROUP_MEMBERS_TITLE: String = "miembros del grupo"
+private const val GROUP_TITLE_LABEL: String = "Nombre del grupo"
+private const val GROUP_TITLE_EDIT_HINT: String = "Haga clic para modificar"
+private const val GROUP_TITLE_EDIT_TITLE: String = "Modificar el nombre del grupo"
+private const val ADD_MEMBER_LABEL: String = "+ Agregar miembro"
+private const val ADD_MEMBER_TITLE: String = "Agregar miembro"
+private const val ADD_MEMBER_HINT_PREFIX: String = "Seleccionado "
+private const val ADD_MEMBER_EMPTY_TITLE: String = "No hay ningún rol para unirse."
+private const val ADD_MEMBER_EMPTY_HINT: String = "Todos los usuarios de la libreta de direcciones ya están en el grupo."
+private const val DISBAND_LABEL: String = "Eliminar y salir"
+private const val DISBAND_TITLE: String = "Eliminar y salir?"
+private const val DISBAND_HINT: String = "Todo el grupo y todos los mensajes que contiene se eliminarán de este teléfono.,No se puede recuperar."
+private const val REMOVE_HINT: String = "Lo que dijo antes permanecerá en el grupo después de ser eliminado."
+private const val UNTITLED_GROUP_NAME: String = "chat grupal"
+private const val SAVE_LABEL: String = "guardar"
+private const val CANCEL_LABEL: String = "Cancelar"
+private const val DELETE_LABEL: String = "Eliminar"
 
-/** 添加成员页的标签前缀:与建群页分开,测试点的是哪一页一眼能看出。 */
+/** Agregar prefijo de etiqueta a la página de miembro:Separado de la página del grupo,Puede saber de un vistazo en qué página se encuentra la prueba. */
 private const val GROUP_ADD_TAG_PREFIX: String = "mp-group-add-member"

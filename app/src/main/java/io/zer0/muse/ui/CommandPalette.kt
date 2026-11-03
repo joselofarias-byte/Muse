@@ -74,18 +74,18 @@ import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 
 /**
- * C1 全局命令面板 — 桌面 Ctrl+K / 首页搜索按钮唤起的统一入口。
+ * C1 panel de comando global — Escritorio Ctrl+K / Portal unificado evocado por el botón de búsqueda de la página de inicio.
  *
- * 两种模式自动识别:
- *  - 以 `/` 开头:命令模式,列出可执行动作(新建对话/设置/完整搜索),Enter 执行。
- *  - 其他:即时搜索模式,复用 [ChatViewModel.search]/[searchMessageContent]
- *    (FTS4 + LIKE 回退),同时展示会话结果与消息结果;点击复用既有
- *    [ChatViewModel.switchSession]/[openMessageFromSearch] 跳转链路。
+ * Reconocimiento automático de dos modos.:
+ *  - a `/` comienzo:modo comando,Listar acciones ejecutables(Nueva conversación/ajustes/búsqueda completa),Enter Ejecutar.
+ *  - Otros:Modo de búsqueda instantánea,Reutilizar [ChatViewModel.search]/[searchMessageContent]
+ *    (FTS4 + LIKE revertir),Mostrar los resultados de la conversación y los resultados de los mensajes simultáneamente;Haga clic para reutilizar los existentes
+ *    [ChatViewModel.switchSession]/[openMessageFromSearch] Enlace de salto.
  *
- * 与独立搜索页并存(深度三域搜索保留,面板内提供 /search 入口跳转)。
- * 键盘:↑/↓ 选择、Enter 执行、Esc 关闭。
+ * Coexistiendo con una página de búsqueda separada(Retención profunda de búsqueda en tres dominios,/salto de entrada de búsqueda se proporciona en el panel).
+ * teclado:↑/↓ seleccionar,Enter ejecución,Esc Cerca.
  */
-// 屏幕级 Dialog:键盘分发 + 命令/搜索双模式分派为固有分支结构,复杂度仅超阈值 1。
+// Diálogo a nivel de pantalla: distribución de teclado + comando/Buscar despacho bimodal para estructuras ramificadas intrínsecas,La complejidad sólo supera el umbral 1.
 @Suppress("CyclomaticComplexMethod")
 @Composable
 internal fun CommandPalette(
@@ -98,13 +98,13 @@ internal fun CommandPalette(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedIndex by remember { mutableStateOf(0) }
-    // CHAT-15: 搜索失败后手动重试触发器
+    // CHAT-15: Reintentar manualmente el activador después de una búsqueda fallida
     var searchRetryKey by remember { mutableStateOf(0) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
-    // 防抖搜索(复用 ChatViewModel 的 search/searchMessageContent,与 SearchScreen 同链路)
-    // CHAT-15: 加入 searchRetryKey,失败后「重试」可重新触发本链路。
+    // Búsqueda anti-vibración(Reutilizar ChatViewModel search/searchMessageContent,Mismo enlace que SearchScreen)
+    // CHAT-15: Unirse searchRetryKey,"Reintentar" después de un error puede reactivar este enlace.
     LaunchedEffect(query, searchRetryKey) {
         if (query.isNotBlank() && !query.startsWith("/")) {
             delay(300)
@@ -121,14 +121,14 @@ internal fun CommandPalette(
         CommandEntry("/settings", R.string.command_palette_settings, MuseIcons.sliders, onOpenSettings),
         CommandEntry("/search", R.string.command_palette_full_search, MuseIcons.search, onOpenSearch),
     )
-    // 命令模式过滤
+    // Filtrado del modo de comando
     val isCommandMode = query.startsWith("/")
     val visibleCommands = if (isCommandMode) {
         commands.filter { it.command.startsWith(query, ignoreCase = true) || query == "/" }
     } else {
         emptyList()
     }
-    // 搜索结果可能按消息命中返回同一会话多次,命令面板只展示一次会话入口。
+    // Los resultados de búsqueda pueden devolver la misma conversación varias veces por mensaje acertado,El panel de comando solo muestra la entrada de la sesión una vez.
     val sessionResults = remember(state.searchResults) {
         state.searchResults.distinctBy { it.sessionId }
     }
@@ -137,7 +137,7 @@ internal fun CommandPalette(
     }
     val totalItems = visibleCommands.size + sessionResults.size + messageResults.size
 
-    // 执行选中条目:统一解析目标后执行(命令 / 会话跳转 / 消息跳转)。
+    // Ejecutar elemento seleccionado:Ejecutar después del análisis unificado del objetivo.(Comando/Salto de sesión/Salto de mensaje).
     @Suppress("CyclomaticComplexMethod")
     fun execute() {
         val action = resolveSelectionAction(
@@ -200,7 +200,7 @@ internal fun CommandPalette(
                         }
                     },
             ) {
-                // v2.0.1: 椭圆（胶囊）搜索栏 — 半透明玻璃感（比设置页吸顶玻璃更实，透出更少）。
+                // v2.0.1: Barra de búsqueda elíptica (cápsula) — Sensación de vidrio translúcido (más sólido que el vidrio del techo de la página de configuración, mostrando menos).
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.pill,
@@ -221,10 +221,10 @@ internal fun CommandPalette(
                         onExecute = { execute() },
                     )
                 }
-                // 结果面板：胶囊下方 12dp，实色圆角卡片。
-                // v2.0.1: 仅在「输入了内容」时显示 — 刚打开时保持干净（用户反馈：输入后有匹配才显示）；
-                // 无匹配由面板内部空态承担；"/" 命令模式同样走 query 非空分支。
-                // v2.x: 动效补齐 — 结果面板出现/消失走令牌 slide+fade（向下展开感）
+                // Panel de resultados: 12 dp debajo de la cápsula, tarjeta sólida y redondeada.
+                // v2.0.1: Solo se muestra cuando "se ha ingresado contenido" — Manténgalo limpio cuando lo abra por primera vez (comentarios de los usuarios: las coincidencias solo se mostrarán después de la entrada);
+                // Ninguna coincidencia corre a cargo del estado vacío dentro del panel;"/" El modo de comando también toma la rama de consulta no vacía.
+                // v2.x: Finalización del efecto de movimiento — Aparece el panel de resultados./Desaparecer token deslizante + desvanecimiento (sensación de expansión hacia abajo)
                 AnimatedVisibility(
                     visible = query.isNotBlank(),
                     enter = MuseMotion.verticalSlideFadeEnter(initialOffsetY = { -(it * MuseAnimation.SLIDE_FRACTION_CONTENT).toInt() }),
@@ -245,7 +245,7 @@ internal fun CommandPalette(
                             sessionResults = sessionResults,
                             messageResults = messageResults,
                             selectedIndex = selectedIndex,
-                            // CHAT-15: 搜索中/失败态
+                            // CHAT-15: Buscando/estado fallido
                             isSearching = state.isSearching,
                             searchError = state.searchError,
                             onRetrySearch = { searchRetryKey++ },
@@ -261,7 +261,7 @@ internal fun CommandPalette(
     }
 }
 
-/** 把选中索引解析为具体动作;null 表示无可执行项。 */
+/** Analizar el índice seleccionado en acciones específicas;null Indica que no hay elementos ejecutables. */
 private fun resolveSelectionAction(
     selectedIndex: Int,
     visibleCommands: List<CommandEntry>,
@@ -271,8 +271,8 @@ private fun resolveSelectionAction(
     viewModel: ChatViewModel,
     onOpenChat: () -> Unit,
 ): (() -> Unit)? {
-    // 按展示顺序构建统一条目列表:命令 + 会话 + 消息,索引与 selectedIndex 对齐。
-    // isCommandMode 时搜索未触发,会话/消息列表为空,列表即命令集。
+    // Cree una lista unificada de elementos en orden de presentación.:comando + sesión + mensaje,El índice está alineado con el índice seleccionado.
+    // isCommandMode La búsqueda no se activa cuando,sesión/La lista de mensajes está vacía,Una lista es un conjunto de comandos.
     val entries = buildList {
         visibleCommands.forEach { add(it.action) }
         sessionResults.forEach { session ->
@@ -291,7 +291,7 @@ private fun resolveSelectionAction(
     return entries.getOrNull(selectedIndex)
 }
 
-/** 输入行:图标 + 输入框 + 清空按钮。 */
+/** línea de entrada:Icono + cuadro de entrada + botón borrar. */
 @Composable
 private fun PaletteSearchField(
     query: String,
@@ -352,7 +352,7 @@ private fun PaletteSearchField(
     }
 }
 
-/** 结果列表:命令 / 会话 / 消息三段渲染。 */
+/** Lista de resultados:Representación de tres partes de comando/sesión/mensaje. */
 @Composable
 private fun PaletteResultList(
     query: String,
@@ -361,14 +361,14 @@ private fun PaletteResultList(
     sessionResults: List<SearchResult>,
     messageResults: List<SearchResult>,
     selectedIndex: Int,
-    // CHAT-15: 搜索中 / 失败态
+    // CHAT-15: Búsqueda/Error
     isSearching: Boolean,
     searchError: String?,
     onRetrySearch: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    // CHAT-15: 键盘上下选中时滚动跟随 — 按 LazyColumn 实际条目顺序(含 section 标题)换算索引。
+    // CHAT-15: Desplácese para seguir al seleccionar arriba y abajo en el teclado — Por orden de entrada real de LazyColumn(Contiene el título de la sección)índice de conversión.
     LaunchedEffect(
         selectedIndex,
         isCommandMode,
@@ -409,7 +409,7 @@ private fun PaletteResultList(
                 visibleCommands,
                 key = { index, entry -> "command_${entry.command}_$index" },
             ) { index, entry ->
-                // v2.x: 动效补齐 — 结果行入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — Entrada de fila de resultados(ficha animateItem)
                 Box(museAnimateItem()) {
                     CommandRow(
                         icon = entry.icon,
@@ -426,7 +426,7 @@ private fun PaletteResultList(
                 }
             }
         } else if (query.isNotBlank()) {
-            // CHAT-15: 失败态优先;搜索中且无结果时显示加载,不再提前显示「无匹配结果」
+            // CHAT-15: Prioridad de falla;Mostrar carga al buscar y no hay resultados.,No se mostrarán más "resultados no coincidentes" por adelantado
             if (searchError != null) {
                 item(key = "search_error") {
                     PaletteError(message = searchError, onRetry = onRetrySearch)
@@ -444,7 +444,7 @@ private fun PaletteResultList(
                         sessionResults,
                         key = { index, session -> "s_${session.sessionId}_$index" },
                     ) { index, session ->
-                        // v2.x: 动效补齐 — 结果行入场(令牌 animateItem)
+                        // v2.x: Finalización del efecto de movimiento — Entrada de fila de resultados(ficha animateItem)
                         Box(museAnimateItem()) {
                             CommandRow(
                                 icon = MuseIcons.search,
@@ -464,7 +464,7 @@ private fun PaletteResultList(
                         messageResults,
                         key = { index, message -> "m_${message.messageId}_$index" },
                     ) { index, message ->
-                        // v2.x: 动效补齐 — 结果行入场(令牌 animateItem)
+                        // v2.x: Finalización del efecto de movimiento — Entrada de fila de resultados(ficha animateItem)
                         Box(museAnimateItem()) {
                             CommandRow(
                                 icon = MuseIcons.search,
@@ -483,7 +483,7 @@ private fun PaletteResultList(
                 }
             }
         } else {
-            // 空查询:显示可用命令提示
+            // consulta vacía:Mostrar mensajes de comando disponibles
             item(key = "empty_hint") {
                 PaletteEmpty(stringResource(R.string.command_palette_empty_hint))
             }
@@ -491,7 +491,7 @@ private fun PaletteResultList(
     }
 }
 
-/** CHAT-15: 命令面板搜索中状态 — 防抖/查询期间不再误显示「无匹配结果」。 */
+/** CHAT-15: Estado de búsqueda del panel de comando — Anti-vibración/\"No hay resultados coincidentes\" ya no se mostrará por error durante la consulta. */
 @Composable
 private fun PaletteLoading() {
     Row(
@@ -507,7 +507,7 @@ private fun PaletteLoading() {
     }
 }
 
-/** CHAT-15: 命令面板搜索失败态 — 展示错误并可重试。 */
+/** CHAT-15: La búsqueda en el panel de comando falló — Muestra el error y vuelve a intentarlo. */
 @Composable
 private fun PaletteError(message: String, onRetry: () -> Unit) {
     Column(
@@ -532,7 +532,7 @@ private fun PaletteError(message: String, onRetry: () -> Unit) {
     }
 }
 
-/** 命令面板条目(斜杠命令)。 */
+/** entrada del panel de comando(comando de barra diagonal). */
 private data class CommandEntry(
     val command: String,
     val labelRes: Int,
@@ -540,7 +540,7 @@ private data class CommandEntry(
     val action: () -> Unit,
 )
 
-/** 结果区小节标题。 */
+/** Título de la sección del área de resultados. */
 @Composable
 private fun PaletteSectionHeader(title: String) {
     Text(
@@ -552,7 +552,7 @@ private fun PaletteSectionHeader(title: String) {
     )
 }
 
-/** 单行结果项(选中态高亮)。 */
+/** Elemento de resultado de una sola fila(Estado seleccionado resaltado). */
 @Composable
 private fun CommandRow(icon: ImageVector, label: String, detail: String, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -598,7 +598,7 @@ private fun CommandRow(icon: ImageVector, label: String, detail: String, selecte
     }
 }
 
-/** 空结果提示。 */
+/** Mensaje de resultado vacío. */
 @Composable
 private fun PaletteEmpty(text: String) {
     Text(

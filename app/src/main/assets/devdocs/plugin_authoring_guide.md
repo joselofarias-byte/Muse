@@ -1,53 +1,53 @@
-<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
-# 插件编写完整指南
+<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
+# La guía completa para escribir complementos
 
-> 触发场景: 用户问"插件怎么写""能做插件吗""插件和技能什么区别"时,参考本文档据实回答。
-> 本文档基于源码 data/plugin/ 模块(PluginPackageLoader/PluginManifest/PluginManager)+ tools/script/ 引擎的真实实现。
+> escena desencadenante: Usuario preguntó"Cómo escribir un complemento""¿Puedo crear un complemento?""¿Cuál es la diferencia entre complementos y habilidades?"tiempo,Consulte este documento y responda con sinceridad.
+> Este documento se basa en los datos/complemento/módulo del código fuente.(PluginPackageLoader/PluginManifest/PluginManager)+ tools/script/ Implementación real del motor.
 
-## 一、概述
+## 1. Descripción general
 
-Muse 的插件是 **JS 技能包**,文件格式为 `.muse-plugin`(ZIP): 一个包含 manifest.json + main.js 的目录,打包后加载进应用,提供新的工具能力。与 install_skill(Kotlin 白名单实现)不同,插件用 **JS 引擎执行**(WebViewSkillEngine),能力更灵活(但仍受沙盒限制)。
+Muse El complemento es **JS paquete de habilidades**,El formato del archivo es `.muse-plugin`(ZIP): Un directorio que contiene manifest.json + main.js,Empaquetar y cargar en la aplicación.,Proporciona nuevas capacidades de herramientas. con install_skill(Kotlin Implementación de la lista blanca)diferente,Para complementos **JS ejecución del motor**(WebViewSkillEngine),Capacidad de ser más flexible.(Pero aún está sujeto a restricciones de zona de pruebas).
 
-> `.skillpkg` 预览格式已下架,只保留 `.muse-plugin` 一种插件包格式。
+> `.skillpkg` El formato de vista previa se ha eliminado de los estantes.,sólo mantener `.muse-plugin` Un formato de paquete de complemento.
 
-## 二、.muse-plugin 包结构
+## 2..muse-plugin Estructura del paquete
 
 ```
 my-plugin.muse-plugin (ZIP)
-├── manifest.json   # 包描述(必填)
-├── main.js         # 插件主逻辑(必填,kind=tool/provider 时；runtime=js)
-├── main.py         # Python 插件主逻辑(runtime=python 时,入口为 .py)
-└── assets/         # 可选,插件资源
+├── manifest.json   # descripción del paquete(Requerido)
+├── main.js         # Lógica principal del complemento(Requerido,kind=tool/provider tiempo;runtime=js)
+├── main.py         # Python Lógica principal del complemento(runtime=python tiempo,La entrada es .py)
+└── assets/         # Opcional,Recursos complementarios
 ```
 
-### manifest.json 字段全解
-| 字段 | 必填 | 说明 |
+### manifest.json Solución completa de campo
+| campo | Requerido | Descripción |
 |---|---|---|
-| id | ✅ | 插件唯一 id(小写字母/数字/下划线/连字符) |
-| name | ✅ | 显示名 |
-| description | ✅ | 功能描述(给 LLM 看,决定何时调用) |
-| version | 可选 | 版本号,默认 0.1.0 |
-| entry | 可选 | 入口文件,默认 main.js(runtime=python 时应为 .py) |
-| runtime | 可选 | 运行时: js(默认,WebView V8 沙盒) / python(内置 Python 3.14) |
-| kind | 可选 | 插件类型: tool(默认) / ui-skin / provider |
-| trust | 可选 | 信任级别;外部 ZIP 必须为 sandboxed |
-| capabilities | 可选 | 声明的能力(resource.read / resource.write / network / ui / ui.mood) |
-| tools | 可选 | 暴露的工具定义(名称/参数/描述) |
-| signature | 可选 | 发行者签名 envelope(公钥 + SHA256withECDSA 签名) |
+| id | ✅ | Solo complemento id(letras minúsculas/numeros/subrayado/guión) |
+| name | ✅ | nombre para mostrar |
+| description | ✅ | Descripción de la función(Muéstralo a LLM,Decidir cuando llamar) |
+| version | Opcional | número de versión,Predeterminado 0.1.0 |
+| entry | Opcional | Archivo de entrada,Predeterminado main.js(runtime=python el tiempo debería ser .py) |
+| runtime | Opcional | tiempo de ejecución: js(Predeterminado,WebView V8 caja de arena) / python(Incorporado Python 3.14) |
+| kind | Opcional | Tipo de complemento: tool(Predeterminado) / ui-skin / provider |
+| trust | Opcional | nivel de confianza;El ZIP externo debe ser sandboxed |
+| capabilities | Opcional | capacidades declaradas(resource.read / resource.write / network / ui / ui.mood) |
+| tools | Opcional | Definición de herramienta expuesta(Nombre/parámetros/Descripción) |
+| signature | Opcional | firma del emisor envelope(Clave pública + SHA256 con firma ECDSA) |
 
-### main.js 编写规范
-- 使用 JS 引擎支持的 API(见 SkillEngine)
-- 导出工具处理函数,参数从调用上下文获取
-- 返回值(字符串/JSON)回填给 LLM
-- 如需 IO 能力(HTTP 等),可直接用 `fetch` / `XMLHttpRequest` / `WebSocket`(沙盒已放开网络),也可返回 `{ __bridge__: true, action: "...", params: {...} }` 桥接请求对象由 Kotlin 侧执行(两种都行,桥接对文件/剪贴板等能力更直接)
+### main.js escribir especificaciones
+- Usando el soporte del motor JS API(ver SkillEngine)
+- Función de procesamiento de herramienta de exportación,Los parámetros se obtienen del contexto de llamada.
+- valor de retorno(cuerda/JSON)rellenar para LLM
+- Necesita capacidades IO(HTTP espera),Se puede utilizar directamente `fetch` / `XMLHttpRequest` / `WebSocket`(El sandbox ha liberado la red.),También puedes regresar `{ __bridge__: true, action: "...", params: {...} }` El objeto de solicitud de puente es ejecutado por el lado de Kotlin.(ambos estan bien,archivo de par de puentes/Funciones como el portapapeles son más directas)
 
-### main.py 编写规范(runtime=python)
-- 入口文件定义与 `tools[].functionName` **同名的函数**;函数接受一个 `dict` 参数(工具调用参数)
-- 返回值可为 dict/list/str/数字;会被 JSON 序列化回填给 LLM
-- 可用**完整标准库**(ssl/sqlite3/zlib/hashlib/json/re/urllib 等),文件读写与网络直接可用(子进程隔离)
-- 可 `import` 通过 pip 安装的第三方纯 Python 包(`python -m pip install <包名>`)
-- 可用 `host.getConfig(key)` 读取插件配置(与 JS 插件同语义)
-- 示例:
+### main.py escribir especificaciones(runtime=python)
+- Definición del archivo de entrada y `tools[].functionName` **función con el mismo nombre**;La función acepta una `dict` parámetros(Parámetros de llamada de herramienta)
+- El valor de retorno puede ser dict/list/str/number;será rellenado por la serialización JSON para LLM
+- Disponible**Biblioteca estándar completa**(ssl/sqlite3/zlib/hashlib/json/re/urllib espera),La lectura y escritura de archivos están disponibles directamente en la red.(Aislamiento de procesos secundarios)
+- si `import` Paquetes de Python puros de terceros instalados mediante pip(`python -m pip install <nombre del paquete>`)
+- Disponible `host.getConfig(key)` Leer la configuración del complemento(Misma semántica que el complemento JS)
+- Ejemplo:
   ```python
   def fetch_stats(args):
       import json, urllib.request
@@ -56,58 +56,58 @@ my-plugin.muse-plugin (ZIP)
       return {"count": len(data)}
   ```
 
-## 三、执行模型
+## 3. Modelo de ejecución
 
-| 引擎 | 说明 |
+| motor | Descripción |
 |---|---|
-| WebViewSkillEngine | WebView V8 沙盒执行(生产 JS 技能引擎,实现 SkillEngine 接口) |
-| ProcessSkillEngine | 内置 Node.js 运行时执行(runtime=js 时可选用,完整能力) |
-| PythonSkillEngine | 内置 Python 3.14 运行时执行(runtime=python 时使用;子进程隔离) |
-| SkillBridge | `__bridge__` 桥接执行器: JS 返回桥接请求 → Kotlin 执行安全实现 |
+| WebViewSkillEngine | WebView V8 ejecución de zona de pruebas(Motor de habilidades de producción JS,Implementar la interfaz SkillEngine) |
+| ProcessSkillEngine | Ejecución incorporada en tiempo de ejecución de Node.js(runtime=js opcional,capacidad total) |
+| PythonSkillEngine | Ejecución en tiempo de ejecución integrada de Python 3.14(runtime=python usado cuando;Aislamiento de procesos secundarios) |
+| SkillBridge | `__bridge__` actuador de puente: JS Solicitud de puente de retorno → Kotlin Realizar implementación de seguridad |
 
-插件运行时选择: manifest 的 `runtime` 字段决定用哪套引擎。`js`(默认)走 WebView V8
-沙盒 + `__bridge__` 桥接;`python` 走内置 Python 运行时(子进程,完整标准库 + pip 第三方包,
-无 WebView 沙盒限制也无桥接层——子进程自身已有完整能力)。
+Selección de tiempo de ejecución del complemento: manifest de `runtime` El campo determina qué motor utilizar.`js`(Predeterminado)ir WebView V8
+caja de arena + `__bridge__` puente;`python` Vaya con el tiempo de ejecución de Python incorporado(proceso hijo,Biblioteca estándar completa + paquete de terceros pip,
+Sin restricciones de zona de pruebas de WebView ni capa puente——El proceso hijo en sí tiene capacidades completas.).
 
-安全边界（v2.x 沙盒已放开）:
-- JS 在沙盒内执行，**可直接使用网络**（fetch/XHR/WebSocket）；仅**页面导航**被禁（不能弹窗/跳页）
-- 本地文件通过 file:// / content:// 读取仍被隔离（防跨域读取）
-- 明文 HTTP 受限：系统 network_security_config 禁明文，除 localhost/127.0.0.1 例外，其余需 https
-- `__bridge__` 桥接动作**默认全部放行**（不再逐项声明能力）；其中 `fs_*` 锁定在插件自己的沙盒目录，`http_*` 走 SSRF 防护
-- 能力声明（manifest 的 capabilities）现仅用于安装预览展示，不再作为安装硬门槛
-- 外部包必须声明 `trust: "sandboxed"`;发行者签名仍会验证（防篡改）
-- **python 运行时**：脚本在独立子进程执行（崩溃不影响宿主），但拥有该进程的完整能力
-  （文件读写/网络/子进程）；插件工具本身仍走统一的工具审批链（HIGH 风险需用户确认）
+límite de seguridad (v2.x La caja de arena ha sido lanzada):
+- JS Ejecutar dentro del sandbox,**Acceso directo a la red.**(fetch/XHR/WebSocket); solo**Navegación de página**Prohibido (no se pueden abrir ventanas emergentes)/Saltar página)
+- Los archivos locales leídos a través de file:///content:// todavía están aislados (lectura anti-entre dominios)
+- El texto sin formato HTTP está restringido: el sistema network_security_config prohíbe el texto sin formato, excepto localhost/127.0.0.1, el resto requiere https
+- `__bridge__` acción de puente**Todos están permitidos por defecto.**(La habilidad ya no se declarará elemento por elemento); entre los cuales `fs_*` Bloqueado en el propio directorio sandbox del complemento,`http_*` Ir protegido por la SSRF
+- Declaración de capacidad (manifest capacidades) ahora solo se usan para la visualización de vista previa de la instalación y ya no se usan como un umbral estricto para la instalación.
+- Los paquetes externos deben declarar `trust: "sandboxed"`;La firma del emisor aún verifica (a prueba de manipulaciones)
+- **python tiempo de ejecución**: El script se ejecuta en un proceso hijo independiente (el bloqueo no afecta al host), pero tiene todas las capacidades del proceso.
+  (Lectura y escritura de archivos/red/proceso hijo); la herramienta enchufable todavía sigue una cadena de aprobación de herramienta unificada (HIGH Los riesgos requieren la confirmación del usuario)
 
-## 四、加载/分发/更新
+## 4. Cargando/Distribuir/actualizar
 
-- 打包: .muse-plugin 目录 → zip(扩展名 .muse-plugin)
-- 分发: 分享 zip 文件 / 从插件市场安装
-- 加载: PluginPackageLoader 解析 manifest → 校验安全约束(ZIP 防炸弹/路径遍历/入口存在)→ 注册工具到 ToolRegistry(带插件前缀)
-- 信任: 发行者 P-256 ECDSA 签名 + 本机信任根 + 内置官方目录;未签名或不受信发行者的包不会自动受信
-- 更新: 重新导入覆盖(按 id)
+- paquete: .muse-plugin Directorio → zip(extensión .muse-plugin)
+- Distribuir: Compartir archivo zip/instalar desde el mercado de complementos
+- Cargar: PluginPackageLoader analizar manifest → Verificar las restricciones de seguridad(ZIP a prueba de bombas/recorrido del camino/La entrada existe)→ Registrar herramienta para ToolRegistry(con prefijo de complemento)
+- confianza: Editor P-256 ECDSA firmado + raíz de confianza nativa + directorio oficial incorporado;Los paquetes de editores no firmados o que no son de confianza no son automáticamente confiables
+- actualizar: Cobertura de reimportación(prensa id)
 
-## 五、插件与 install_skill 的区别
+## 5. La diferencia entre complementos e install_skill
 
-| 维度 | install_skill(Kotlin 白名单) | 插件(.muse-plugin, JS) |
+| Dimensiones | install_skill(Kotlin lista blanca) | complemento(.muse-plugin, JS) |
 |---|---|---|
-| 实现 | 复用 8 个内置 Kotlin 实现 | 自写 JS 逻辑 |
-| 灵活性 | 低(仅组合白名单) | 高(可写复杂逻辑) |
-| 安全 | 高(无任意代码) | 中(JS 沙盒 + 桥接审计) |
-| 适用 | 简单工具(查/读/写/搜) | 复杂插件(流程/计算/多步) |
-| 创建者 | 用户/LLM(对话创建) | 开发者(写代码打包) |
+| darse cuenta | Reutilice 8 implementaciones integradas de Kotlin | Lógica JS autoescrita |
+| Flexibilidad | bajo(Solo lista blanca combinada) | alto(Puede escribir lógica compleja) |
+| seguro | alto(Sin código arbitrario) | en(JS Sandbox + Auditoría de Puente) |
+| Aplicable | herramienta sencilla(comprobar/leer/escribir/Buscar) | Complementos complejos(proceso/calcular/múltiples pasos) |
+| Creador | Usuario/LLM(Creación de conversación) | Desarrollador(Escribir código y paquete) |
 
-## 六、常见问题 Q&A
+## 6. Preguntas frecuentes Q&A
 
-1. **"我不会写代码能做插件吗"**: 简单工具用对话让 AI 创建(install_skill)即可;复杂插件需要 JS 基础。
-2. **"插件安全吗"**: JS 在沙盒执行,不能直接访问系统;网络请求走 Kotlin 桥接审计;导入不明来源插件需谨慎。
-3. **"插件和技能哪个好"**: 简单场景用技能(install_skill 免代码);要自定义逻辑用插件。
-4. **"怎么分享插件"**: 打包成 .muse-plugin zip 发给别人导入即可。
-5. **"插件能用网络吗"**: 通过 __bridge__ 桥接;HTTP 请求经 Kotlin 侧 SSRF 防护后执行。
+1. **"¿Puedo crear un complemento si no puedo escribir código?"**: Una herramienta sencilla permite a la IA crear con la conversación(install_skill)Eso es todo;Los complementos complejos requieren conceptos básicos de JS.
+2. **"¿Son seguros los complementos?"**: JS Ejecutar en sandbox,Sin acceso directo al sistema.;Las solicitudes de red pasan por la auditoría del puente Kotlin;Tenga cuidado al importar complementos de fuentes desconocidas.
+3. **"¿Qué es mejor, los complementos o las habilidades?"**: Habilidades para escenas simples.(install_skill Sin código);Utilice complementos para personalizar la lógica.
+4. **"Cómo compartir complementos"**: Simplemente empaquetelo en un zip .muse-plugin y envíelo a otros para que lo importen.
+5. **"¿Se puede utilizar el complemento en línea?"**: Puente a través de __bridge__;HTTP La solicitud se ejecuta después de estar protegida contra SSRF en el lado de Kotlin.
 
-## 七、LLM 调用要点
+## 7.LLM Puntos de llamada
 
-- 用户要"简单的查/读/写工具" → 用 install_skill 现场创建(免代码)
-- 用户要"复杂自定义插件" → 引导用户说明需要 JS,可参考插件开发模板
-- 插件注册的工具像普通工具一样调用,参数按 manifest 定义
-- 插件执行失败/报错,如实反馈错误信息,不编造
+- El usuario quiere"cheque sencillo/leer/herramientas de escritura" → Crear en el sitio con install_skill(Sin código)
+- El usuario quiere"Complementos personalizados complejos" → Guiar a los usuarios para que expliquen sus necesidades. JS,Consulte la plantilla de desarrollo del complemento.
+- Las herramientas registradas por el complemento se denominan herramientas normales.,Los parámetros están definidos por manifiesto.
+- La ejecución del complemento falló/Informar un error,Información de error de comentarios sinceramente,No lo inventes

@@ -1,7 +1,7 @@
 package io.zer0.muse.web
 
 /**
- * R-TEST-12: WebServer 登录限流与 JWT 纯逻辑。
+ * R-TEST-12: WebServer Límite actual de inicio de sesión y lógica pura JWT.
  */
 internal object WebServerAuthPolicy {
 

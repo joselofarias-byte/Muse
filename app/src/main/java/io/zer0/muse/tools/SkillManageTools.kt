@@ -8,19 +8,19 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * 技能管理工具集 —— 让助手能对技能做日常管理。
+ * Conjunto de herramientas de gestión de habilidades —— Deje que el asistente realice la gestión diaria de las habilidades.
  *
- * 此前助手只有 install_skill（新建），列/启停/删全部做不到。
- * 与知识库管理、会话管理同款模式。
+ * Anteriormente, el asistente solo tenía install_skill (nuevo), en la lista/Iniciar y detener/No puedo borrarlos todos.
+ * El mismo modelo que la gestión de bases de conocimientos y la gestión de sesiones.
  *
- * 命名统一 `skill_manage_`（避免与内置 skill 的 id 冲突）：
- *  - `skill_manage_list`     列出全部技能及启停状态（SAFE）
- *  - `skill_manage_toggle`   启停一个技能（NORMAL）
- *  - `skill_manage_delete`   删除一个自定义技能（HIGH；内置技能不可删）
+ * denominación unificada `skill_manage_`(Para evitar conflictos con los identificadores de habilidades integrados):
+ *  - `skill_manage_list`     Enumere todas las habilidades y el estado de inicio y finalización (SAFE)
+ *  - `skill_manage_toggle`   Iniciar y detener una habilidad (NORMAL)
+ *  - `skill_manage_delete`   Eliminar una habilidad personalizada (HIGH;Las habilidades integradas no se pueden eliminar)
  *
- * 设计约束：
- *  - 内置技能（BUILT_IN_SKILLS）不可删，只可启停；
- *  - 删除不可撤销，走审批。
+ * Restricciones de diseño:
+ *  - Habilidades incorporadas (BUILT_IN_SKILLS) no se puede eliminar, solo se puede iniciar y detener;
+ *  - La eliminación es irrevocable y requiere aprobación.
  */
 class SkillManageTools(
     private val skillRepository: SkillRepository,
@@ -28,7 +28,7 @@ class SkillManageTools(
     companion object {
         private const val TAG = "SkillManageTools"
 
-        /** 内置技能 id 集合（不可删除，只可启停）。 */
+        /** Colección de ID de habilidades incorporada (no se puede eliminar, solo se puede iniciar y detener). */
         private val BUILT_IN_SKILL_IDS = setOf(
             "knowledge_search", "web_search", "web_fetch", "http_get", "http_post",
             "arxiv_search", "read_file", "write_file", "install_skill", "author_plugin",
@@ -46,10 +46,10 @@ class SkillManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "skill_manage_list",
-                description = "列出全部技能及启停状态（id、名称、分类、是否启用、是否内置）。" +
-                    "用于启停/删除前确认技能 id。",
+                description = "Enumere todas las habilidades y el estado de inicio y finalización (id, nombre, clasificación, si está habilitado, si está integrado)." +
+                    "Se utiliza para iniciar y detener/Confirme la identificación de la habilidad antes de eliminarla.",
                 parameters = mapOf(
-                    "query" to "可选，按名称或分类过滤",
+                    "query" to "Opcional, filtrar por nombre o categoría",
                 ),
                 required = emptySet(),
                 riskLevel = ToolRiskLevel.SAFE,
@@ -67,12 +67,12 @@ class SkillManageTools(
                     }
                 }
                 if (filtered.isEmpty()) {
-                    "没有匹配的技能。"
+                    "No hay habilidades coincidentes."
                 } else {
                     filtered.joinToString("\n") { s ->
                         "${s.id} | ${s.name} | ${s.category} | " +
-                            "${if (s.enabled) "启用" else "停用"} | " +
-                            "${if (s.id in BUILT_IN_SKILL_IDS) "内置" else "自定义"}"
+                            "${if (s.enabled) "habilitar" else "desactivar"} | " +
+                            "${if (s.id in BUILT_IN_SKILL_IDS) "Incorporado" else "Personalizar"}"
                     }
                 }
             }
@@ -83,10 +83,10 @@ class SkillManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "skill_manage_toggle",
-                description = "启用或停用一个技能。停用后助手无法再调用该技能，用户可在设置→Skill 重新开启。",
+                description = "Activa o desactiva una habilidad. Después de la desactivación, el asistente ya no puede activar la habilidad. Los usuarios pueden→Skill Reanudar.",
                 parameters = mapOf(
-                    "skill_id" to "必填，技能 id（可用 skill_manage_list 获取）",
-                    "enabled" to "true=启用，false=停用；默认 true",
+                    "skill_id" to "Requerido, ID de habilidad (se puede obtener con Skill_manage_list)",
+                    "enabled" to "true=habilitar,false=Desactivado; predeterminado true",
                 ),
                 required = setOf("skill_id"),
                 riskLevel = ToolRiskLevel.NORMAL,
@@ -95,16 +95,16 @@ class SkillManageTools(
             val id = args["skill_id"]?.trim().orEmpty()
             val enabled = args["enabled"]?.trim()?.lowercase() != "false"
             if (id.isBlank()) {
-                errorJson("参数 skill_id 缺失或为空")
+                errorJson("El parámetro Skill_id falta o está vacío.")
             } else {
                 runBlocking {
                     val skill = skillRepository.getById(id)
                     if (skill == null) {
-                        errorJson("未找到技能 $id")
+                        errorJson("Habilidad no encontrada $id")
                     } else {
                         skillRepository.setEnabled(id, enabled)
-                        Logger.i(TAG, "工具${if (enabled) "启用" else "停用"}技能: $id")
-                        okJson("已${if (enabled) "启用" else "停用"}技能「${skill.name}」（$id）。")
+                        Logger.i(TAG, "Herramientas${if (enabled) "habilitar" else "desactivar"}Habilidades: $id")
+                        okJson("Ya${if (enabled) "habilitar" else "desactivar"}Habilidades${skill.name}\"($id).")
                     }
                 }
             }
@@ -115,10 +115,10 @@ class SkillManageTools(
         registry.register(
             ToolRegistry.ToolDef(
                 name = "skill_manage_delete",
-                description = "删除一个自定义技能（不可撤销）。内置技能不可删除，只可启停。" +
-                    "执行前应先用 skill_manage_list 确认技能 id。",
+                description = "Eliminar una habilidad personalizada (irreversible). Las habilidades integradas no se pueden eliminar, sólo se pueden iniciar y detener." +
+                    "Skill_manage_list debe usarse para confirmar la identificación de la habilidad antes de la ejecución.",
                 parameters = mapOf(
-                    "skill_id" to "必填，技能 id",
+                    "skill_id" to "Requerido, habilidades id",
                 ),
                 required = setOf("skill_id"),
                 riskLevel = ToolRiskLevel.HIGH,
@@ -126,16 +126,16 @@ class SkillManageTools(
         ) { args ->
             val id = args["skill_id"]?.trim().orEmpty()
             when {
-                id.isBlank() -> errorJson("参数 skill_id 缺失或为空")
-                id in BUILT_IN_SKILL_IDS -> errorJson("内置技能 $id 不可删除（只可启停），与 UI 层保护一致")
+                id.isBlank() -> errorJson("El parámetro Skill_id falta o está vacío.")
+                id in BUILT_IN_SKILL_IDS -> errorJson("Habilidades incorporadas $id No se puede eliminar (solo se puede iniciar y detener), de acuerdo con la protección de la capa de UI")
                 else -> runBlocking {
                     val skill = skillRepository.getById(id)
                     if (skill == null) {
-                        errorJson("未找到技能 $id")
+                        errorJson("Habilidad no encontrada $id")
                     } else {
                         skillRepository.delete(id)
-                        Logger.i(TAG, "工具删除技能: $id (${skill.name})")
-                        okJson("已删除技能「${skill.name}」（$id）。")
+                        Logger.i(TAG, "Habilidad de eliminación de herramientas: $id (${skill.name})")
+                        okJson("Habilidad eliminada \"${skill.name}\"($id).")
                     }
                 }
             }
@@ -153,7 +153,7 @@ class SkillManageTools(
     }.toString()
 }
 
-/** 注册器：走 Koin 注入，由 ToolRegistrarBootstrapper 统一引导。 */
+/** Registrador: Inyección de Koin, guiada uniformemente por ToolRegistrarBootstrapper. */
 class SkillManageToolsRegistrar(
     private val toolRegistry: ToolRegistry,
     private val tools: SkillManageTools,

@@ -29,7 +29,7 @@ class CloudDocumentParserTest {
 
     @Test
     fun extractResultTextPrefersMarkdownFields() {
-        val body = """{"code":0,"data":{"full_ocr":{"md_content":"# 公式\n\n${'$'}${'$'}E=mc^2${'$'}${'$'}"}}}"""
+        val body = """{"code":0,"data":{"full_ocr":{"md_content":"# fórmula\n\n${'$'}${'$'}E=mc^2${'$'}${'$'}"}}}"""
         val text = parser.extractResultText(body)
         assertTrue(text != null && text.contains("E=mc"))
     }
@@ -70,7 +70,7 @@ class CloudDocumentParserTest {
             respond(
                 exchange,
                 200,
-                """{"state":"done","data":{"full_ocr":{"md_content":"# 公式\n\n${'$'}${'$'}E=mc^2${'$'}${'$'}"}}}""",
+                """{"state":"done","data":{"full_ocr":{"md_content":"# fórmula\n\n${'$'}${'$'}E=mc^2${'$'}${'$'}"}}}""",
                 "application/json",
             )
         }
@@ -130,7 +130,7 @@ class CloudDocumentParserTest {
                 mineruMode = true,
             )
             assertTrue(result is Result.Error)
-            assertTrue((result as Result.Error).message.contains("超时"))
+            assertTrue((result as Result.Error).message.contains("tiempo de espera"))
         } finally {
             server.stop(0)
         }

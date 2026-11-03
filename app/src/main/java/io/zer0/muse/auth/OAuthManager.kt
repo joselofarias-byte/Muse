@@ -37,106 +37,106 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * P1-6: OAuth 登录管理器 — 为支持 OAuth 的供应商(如 xAI)自动获取 apiKey。
+ * P1-6: OAuth Administrador de inicio de sesión — Para proveedores que admiten OAuth(Como por ejemplo xAI)Obtenga automáticamente apiKey.
  *
- * 支持两种流程:
- *  1. **Device Flow**(RFC 8628):[OAuthConfig.deviceCodeUrl] 非空时优先走此流程。
- *     POST deviceCodeUrl 拿 device_code + user_code + verification_uri,
- *     通过 [stateFlow] (AWAITING_USER) 把 user_code 推给 UI 弹窗显示,
- *     然后轮询 tokenUrl 直到拿到 access_token。
- *  2. **Authorization Code Flow + PKCE**:[OAuthConfig.deviceCodeUrl] 为空时走此流程。
- *     用 Intent.ACTION_VIEW 打开系统浏览器到 [OAuthConfig.authorizeUrl],
- *     通过 Deep Link(`io.zer0.muse://oauth/callback`)接收 code,
- *     由 [OAuthCallbackActivity] 调用 [completeAuthorizationCodeFlow] 完成回调,
- *     最后用 code + code_verifier 换 access_token。
+ * Soporta dos procesos:
+ *  1. **Device Flow**(RFC 8628):[OAuthConfig.deviceCodeUrl] Este proceso tendrá prioridad cuando no esté vacío.
+ *     POST deviceCodeUrl tomar device_code + user_code + verification_uri,
+ *     Pase [stateFlow] (AWAITING_USER) Inserte el código de usuario en la ventana emergente de la interfaz de usuario,
+ *     Luego sondee tokenUrl hasta obtener access_token.
+ *  2. **Authorization Code Flow + PKCE**:[OAuthConfig.deviceCodeUrl] Siga este proceso cuando esté vacío.
+ *     Utilice Intent.ACTION_VIEW para abrir el navegador del sistema para [OAuthConfig.authorizeUrl],
+ *     Pase Deep Link(`io.zer0.muse://oauth/callback`)recibir code,
+ *     por [OAuthCallbackActivity] llamar [completeAuthorizationCodeFlow] devolución de llamada de finalización,
+ *     Finalmente, use código + code_verifier para reemplazar access_token.
  *
- * 状态机(IDLE → AWAITING_USER/POLLING → SUCCESS/ERROR → IDLE)通过 [stateFlow] 暴露,
- * UI 可观察以驱动弹窗 / 进度条 / 错误提示。
+ * máquina de estados(IDLE → AWAITING_USER/POLLING → SUCCESS/ERROR → IDLE)Pase [stateFlow] expuesto,
+ * UI Se puede observar que genera ventanas emergentes/barras de progreso/mensajes de error.
  *
- * 线程模型:网络 IO 在 Dispatchers.IO;状态更新在 Main(由 StateFlow 解决并发)。
+ * Modelo de roscado:E/S de red en Dispatchers.IO;Estado actualizado en Main(Simultaneidad resuelta por StateFlow).
  *
- * P2-11: 凭证隔离 — 注入 [SecureCredentialStore] 后,登录成功自动把 TokenBundle
- * (access_token + refresh_token + expiresAt + scope)加密写入独立 SP(与普通 API Key 物理隔离),
- * 并提供 [getStoredToken] / [refreshTokenIfNeeded] 让 UI 在 token 未过期时直接复用、
- * 过期时自动刷新,无需用户每次重新登录。
+ * P2-11: Aislamiento de credenciales — inyectar [SecureCredentialStore] después,Automáticamente después de iniciar sesión correctamente TokenBundle
+ * (access_token + refresh_token + expiresAt + scope)Escritura cifrada independiente SP(Aislado físicamente de las claves API ordinarias),
+ * y proporcionar [getStoredToken] / [refreshTokenIfNeeded] Deje que la interfaz de usuario se reutilice directamente cuando el token no haya caducado.
+ * Actualizar automáticamente cuando caduque,No es necesario que los usuarios vuelvan a iniciar sesión cada vez.
  */
 object OAuthManager {
 
     private const val TAG = "OAuthManager"
 
-    /** Codex 设备码流用 JSON body。 */
+    /** Codex El flujo de código del dispositivo utiliza el cuerpo JSON. */
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    /** P2-11: 安全凭证存储(由 [init] 注入,未注入时跳过持久化)。 */
+    /** P2-11: Almacenamiento seguro de credenciales(por [init] inyectar,Saltar la persistencia cuando no se inyecta). */
     @Volatile
     private var secureStore: SecureCredentialStore? = null
 
     /**
-     * P2-11: 注入 [SecureCredentialStore],由 MuseApp.onCreate 在 startKoin 后调用一次。
+     * P2-11: inyectar [SecureCredentialStore],MuseApp.onCreate lo llama una vez después de startKoin.
      *
-     * 注入前调用的 launch* / getStoredToken / refreshTokenIfNeeded 会以「无持久化」模式工作
-     * (登录成功但不落盘,刷新时返回 null/失败),不会崩溃 — 便于单元测试与早期启动场景。
+     * Llamado antes de la inyección. launch* / getStoredToken / refreshTokenIfNeeded Funcionará en modo "sin persistencia"
+     * (Iniciar sesión correctamente pero no realizar el pedido,Devuelve nulo/falla al actualizar),No chocará — Conveniente para pruebas unitarias y escenarios de inicio temprano.
      */
     fun init(secureStore: SecureCredentialStore) {
         this.secureStore = secureStore
     }
 
     /**
-     * v2.6.2: 暴露已注入的凭证存储（未注入时为 null）。
+     * v2.6.2: Expone el almacén de credenciales inyectadas (nulo si no se inyecta).
      *
-     * 供启动自愈（Codex 账号头补写）读取已登录用户的 id_token；
-     * 普通调用方仍走 [getStoredToken] / [refreshTokenIfNeeded] 封装的路径。
+     * para iniciar la autocuración (Codex Escritura complementaria del encabezado de la cuenta) lee el id_token del usuario que inició sesión;
+     * Las personas comunes y corrientes todavía van [getStoredToken] / [refreshTokenIfNeeded] El camino encapsulado.
      */
     fun secureStoreOrNull(): SecureCredentialStore? = secureStore
 
-    /** P2-11: providerId → OAuthConfig 缓存,供 [refreshTokenIfNeeded] 查询 tokenUrl/clientId 等。 */
+    /** P2-11: providerId → OAuthConfig caché,suministro [refreshTokenIfNeeded] Consulta tokenUrl/clientId, etc. */
     private val providerConfigs = mutableMapOf<String, OAuthConfig>()
 
     /** Prevent concurrent refresh-token rotation for the same provider. */
     private val refreshLocks = ConcurrentHashMap<String, Mutex>()
 
-    /** token 即将过期的提前刷新窗口(秒),避免边界时间窗内的 401。 */
+    /** token Venciendo la ventana de actualización anticipada(segundos),Evite los 401 dentro de períodos de tiempo acotados. */
     private const val REFRESH_BUFFER_SECONDS = 60L
     private const val AUTH_CODE_FLOW_TIMEOUT_MS = 5 * 60 * 1000L
 
-    /** Codex 设备码流程超时(与官方 CLI 一致约 15 分钟)。 */
+    /** Codex Tiempo de espera del proceso del código del dispositivo(Aproximadamente 15 minutos según la CLI oficial). */
     private const val CODEX_DEVICE_TIMEOUT_MS = 15 * 60 * 1000L
 
-    /** OAuth 流程当前状态,UI 通过 [stateFlow] 观察。 */
+    /** OAuth Estado actual del proceso,UI Pase [stateFlow] Observar. */
     sealed class State {
-        /** 空闲,无进行中的 OAuth 流程。 */
+        /** gratis,No hay ningún flujo de OAuth en curso. */
         object IDLE : State()
 
         /**
-         * 等待用户操作。
-         * - Device Flow:携带 [userCode] + [verificationUri],UI 应弹窗显示给用户。
-         * - Auth Code Flow:[userCode] 为空,UI 应提示「浏览器已打开,请完成授权」。
+         * Espere la acción del usuario.
+         * - Device Flow:llevar [userCode] + [verificationUri],UI Se debe mostrar una ventana emergente al usuario.
+         * - Auth Code Flow:[userCode] esta vacio,UI Debería indicar "El navegador está abierto".,Por favor complete la autorización."
          */
         @Suppress("ktlint:standard:class-naming")
         data class AWAITING_USER(val userCode: String = "", val verificationUri: String = "") : State()
 
-        /** Device Flow 正在轮询 token 端点。 */
+        /** Device Flow Sondeando el punto final del token. */
         object POLLING : State()
 
-        /** 成功,[apiKey] 为换到的 access_token。 */
+        /** éxito,[apiKey] ¿Se intercambia el token de acceso? */
         data class SUCCESS(val apiKey: String, val idToken: String? = null) : State()
 
-        /** 失败,[message] 为错误描述。 */
+        /** falló,[message] para la descripción del error. */
         data class ERROR(val message: String) : State()
     }
 
     private val _stateFlow = MutableStateFlow<State>(State.IDLE)
 
-    /** 状态流,UI 观察以驱动弹窗/进度/错误提示。 */
+    /** flujo de estado,UI Mire para generar ventanas emergentes/Progreso/Mensaje de error. */
     val stateFlow: StateFlow<State> = _stateFlow.asStateFlow()
 
     /**
-     * v2.6.0: 全局代理配置提供者。
+     * v2.6.0: Proveedor de configuración de proxy global.
      *
-     * OAuthManager 为 object,无法 Koin 注入;由 AppKoinModule 在启动时装配一个
-     * 读取 SettingsRepository.proxyConfigFlow 的提供者 —— token 交换/刷新必须与
-     * 全局代理一致,否则代理用户会“浏览器授权成功但应用 token 交换失败”
-     * (直连 auth.openai.com 被地区拒绝)。
+     * OAuthManager para object,No se puede inyectar Koin;Ensamblado por AppKoinModule al inicio
+     * Proveedor para leer SettingsRepository.proxyConfigFlow —— token Intercambio/La actualización debe realizarse con
+     * Coherencia global del agente,De lo contrario, el usuario proxy“La autorización del navegador es exitosa pero el intercambio de tokens de la aplicación falla”
+     * (La región rechazó la conexión directa a auth.openai.com).
      */
     @Volatile
     private var proxyConfigProvider: (() -> io.zer0.muse.data.ProxyConfig)? = null
@@ -146,11 +146,11 @@ object OAuthManager {
     }
 
     /**
-     * token 交换用的 OkHttp client(短超时,OAuth 流程不应长时间阻塞)。
+     * token para intercambio OkHttp client(breve tiempo de espera,OAuth Los procesos no deben bloquearse durante largos períodos de tiempo.).
      *
-     * v2.6.0: 每次调用都重建以反映最新代理配置 —— 用户可能在启动后修改代理,
-     * 而 lazy 单例会把首次(可能为空)的代理配置固定住。OAuth 是低频操作,
-     * 重建成本可忽略。
+     * v2.6.0: Reconstruya en cada llamada para reflejar la configuración de proxy más reciente —— Los usuarios pueden modificar el agente después del inicio.,
+     * El singleton perezoso reemplazará al primero.(puede estar vacío)La configuración del proxy es fija.OAuth Es operación de baja frecuencia.,
+     * Los costos de reconstrucción son insignificantes.
      */
     private fun buildHttpClient(): OkHttpClient {
         val builder = OkHttpClient.Builder()
@@ -160,18 +160,18 @@ object OAuthManager {
         return builder.build()
     }
 
-    /** 当前进行中的 Auth Code Flow(用于 [completeAuthorizationCodeFlow] 完成回调)。 */
+    /** Actualmente en progreso Auth Code Flow(usado para [completeAuthorizationCodeFlow] devolución de llamada de finalización). */
     private val pendingAuthCodeFlow = MutableStateFlow<PendingAuthCode?>(null)
     private val authCodeFlowLock = Any()
 
-    /** Auth Code Flow 内部上下文(state + code_verifier + 完成信号)。 */
+    /** Auth Code Flow contexto interno(state + code_verifier + señal de finalización). */
     internal data class PendingAuthCode(
         val state: String,
         val codeVerifier: String,
         val deferred: CompletableDeferred<String>,
     )
 
-    /** Device Flow 的 device_code 响应(RFC 8628 §3.2)。 */
+    /** Device Flow La respuesta del código_dispositivo(RFC 8628 §3.2). */
     @Serializable
     private data class DeviceCodeResponse(
         val device_code: String = "",
@@ -184,7 +184,7 @@ object OAuthManager {
         val error_description: String? = null,
     )
 
-    /** Token 端点响应(标准 OAuth 2.0 token response)。 */
+    /** Token respuesta del punto final(Estándar OAuth 2.0 token response). */
     @Serializable
     @Suppress("FunctionParameterNaming")
     private data class TokenResponse(
@@ -193,7 +193,7 @@ object OAuthManager {
         val expires_in: Long = 0L,
         val refresh_token: String? = null,
         val scope: String? = null,
-        // v2.x（Codex）: OpenID Connect 的 id_token，内含 chatgpt_account_id 等 claim（请求头需要）。
+        // v2.x(Codex): OpenID Connect El id_token contiene chatgpt_account_id y otros reclamos (requeridos en el encabezado de la solicitud).
         @SerialName("id_token")
         val idToken: String? = null,
         val error: String? = null,
@@ -201,45 +201,45 @@ object OAuthManager {
     )
 
     /**
-     * 启动 Device Flow(RFC 8628)。
+     * empezar Device Flow(RFC 8628).
      *
-     * 步骤:
-     *  1. POST [OAuthConfig.deviceCodeUrl] 拿 device_code + user_code + verification_uri
-     *  2. 通过 [stateFlow] 推 AWAITING_USER(userCode, verificationUri),UI 弹窗显示
-     *  3. 按 interval 轮询 [OAuthConfig.tokenUrl],直到拿到 access_token 或超时/失败
-     *  4. 推 SUCCESS(apiKey),返回 Result.success(access_token)
+     * pasos:
+     *  1. POST [OAuthConfig.deviceCodeUrl] tomar device_code + user_code + verification_uri
+     *  2. Pase [stateFlow] empujar AWAITING_USER(userCode, verificationUri),UI Visualización de ventana emergente
+     *  3. Encuesta por intervalo [OAuthConfig.tokenUrl],Hasta que obtengas access_token o timeout/falló
+     *  4. empujar SUCCESS(apiKey),Regresar Result.success(access_token)
      *
-     * 失败时推 ERROR(message),返回 Result.failure。
+     * presionar sobre el fracaso ERROR(message),Devolver resultado.fallo.
      *
-     * P2-11: 若 [providerId] 非空,登录成功后会自动把 TokenBundle 加密写入 [secureStore],
-     *        供 [getStoredToken] / [refreshTokenIfNeeded] 后续复用。
+     * P2-11: si [providerId] No vacío,Después de iniciar sesión correctamente, el TokenBundle se cifrará y escribirá automáticamente. [secureStore],
+     *        suministro [getStoredToken] / [refreshTokenIfNeeded] Reutilización posterior.
      *
-     * @param config OAuth 配置(必须含 deviceCodeUrl,否则返回失败)
-     * @param providerId P2-11: 供应商 ID(空字符串表示不持久化,保留旧调用方兼容)
-     * @return 成功时 Result.success(access_token);失败时 Result.failure(异常)
+     * @param config OAuth Configuración(debe contener deviceCodeUrl,De lo contrario, no se devolverá)
+     * @param providerId P2-11: proveedor ID(Una cadena vacía significa que no hay persistencia,Mantenga compatibles las llamadas tradicionales)
+     * @return cuando tiene éxito Result.success(access_token);en el fracaso Result.failure(anormal)
      */
     suspend fun launchDeviceFlow(config: OAuthConfig, providerId: String = ""): Result<String> {
-        // v2.6.0: Codex 专用设备码流程(非标准 RFC 8628)—— 走独立实现。
+        // v2.6.0: Codex Proceso de código de dispositivo especial(no estándar RFC 8628)—— Implementar de forma independiente.
         if (config.codexDeviceAuth) {
             return launchCodexDeviceAuth(config, providerId)
         }
         val deviceCodeUrl = config.deviceCodeUrl
         if (deviceCodeUrl.isNullOrBlank()) {
-            val msg = "Device Flow 不可用:deviceCodeUrl 为空"
+            val msg = "Device Flow No disponible:deviceCodeUrl esta vacio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
         if (config.clientId.isBlank()) {
-            val msg = "Device Flow 不可用:clientId 为空"
+            val msg = "Device Flow No disponible:clientId esta vacio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
-        // P2-11: 缓存 config 供 refreshTokenIfNeeded 查询
+        // P2-11: Configuración de caché para la consulta de actualizaciónTokenIfNeeded
         if (providerId.isNotBlank()) {
             synchronized(providerConfigs) { providerConfigs[providerId] = config }
         }
 
-        // 1. 请求 device_code
+        // 1. Solicitar device_code
         val deviceResp: Result<DeviceCodeResponse> = withContext(Dispatchers.IO) {
             try {
                 val form = FormBody.Builder()
@@ -248,16 +248,16 @@ object OAuthManager {
                     .build()
                 val request = Request.Builder()
                     .url(deviceCodeUrl)
-                    // v2.6.0: GitHub 的 device code 端点默认返回 form-urlencoded,
-                    // 必须带 Accept: application/json 才返回 JSON(否则解析报
-                    // "Expected start of the object '{', but had 'd'")。
+                    // v2.6.0: GitHub El punto final del código del dispositivo regresa de forma predeterminada. form-urlencoded,
+                    // Debe traer Accept: application/json antes de regresar JSON(En caso contrario, el informe de análisis
+                    // "Expected start of the object '{', but had 'd'").
                     .header("Accept", "application/json")
                     .post(form)
                     .build()
                 val response = buildHttpClient().newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         val body = resp.body?.string().orEmpty()
-                        error("device_code 请求失败: HTTP ${resp.code}${oauthErrorField(body)}")
+                        error("device_code Solicitud fallida: HTTP ${resp.code}${oauthErrorField(body)}")
                     }
                     io.zer0.common.AppJson.decodeFromString(
                         DeviceCodeResponse.serializer(),
@@ -272,26 +272,26 @@ object OAuthManager {
             }
         }
         if (deviceResp.isFailure) {
-            val msg = "device_code 请求异常: ${deviceResp.exceptionOrNull()?.message ?: "未知"}"
+            val msg = "device_code Solicitar excepción: ${deviceResp.exceptionOrNull()?.message ?: "desconocido"}"
             Logger.w(TAG, msg)
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(deviceResp.exceptionOrNull() ?: IllegalStateException(msg))
         }
         val dc = deviceResp.getOrThrow()
         if (dc.device_code.isBlank() || dc.user_code.isBlank()) {
-            val msg = "device_code 响应缺字段: device_code/user_code 为空"
+            val msg = "device_code Faltan campos de respuesta: device_code/user_code esta vacio"
             Logger.w(TAG, msg)
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
 
-        // 2. 推 AWAITING_USER,UI 弹窗显示 user_code
+        // 2. empujar AWAITING_USER,UI Visualización de ventana emergente user_code
         _stateFlow.value = State.AWAITING_USER(
             userCode = dc.user_code,
             verificationUri = dc.verification_uri_complete ?: dc.verification_uri,
         )
 
-        // 3. 轮询 token 端点
+        // 3. Sondear el punto final del token
         _stateFlow.value = State.POLLING
         val intervalMs = (dc.interval.coerceAtLeast(1) * 1000L)
         val deadline = System.currentTimeMillis() + dc.expires_in.coerceAtLeast(1) * 1000L
@@ -299,10 +299,10 @@ object OAuthManager {
         while (System.currentTimeMillis() < deadline) {
             delay(currentInterval)
             val tokenResp = pollToken(config, dc.device_code)
-            // 拿到 access_token
+            // conseguir access_token
             if (tokenResp.access_token.isNotBlank() && tokenResp.error == null) {
-                // P2-11: 持久化 TokenBundle(refresh_token/expiresAt/scope 一并存储,
-                // 供后续 refreshTokenIfNeeded 使用)
+                // P2-11: persistencia TokenBundle(refresh_token/expiresAt/scope almacenar juntos,
+                // Para uso posterior de refrescoTokenIfNeeded)
                 if (providerId.isNotBlank()) {
                     persistTokenBundle(providerId, tokenResp)
                 }
@@ -311,54 +311,54 @@ object OAuthManager {
             }
             when (tokenResp.error) {
                 "authorization_pending" -> {
-                    // 用户尚未完成授权,继续轮询
+                    // El usuario no ha completado la autorización.,Continuar encuestando
                     currentInterval = intervalMs
                 }
                 "slow_down" -> {
-                    // 服务端要求降速,interval 增加 5s
+                    // El servidor requiere desaceleración,interval aumentar 5s
                     currentInterval = (currentInterval + 5000L).coerceAtMost(60_000L)
                 }
                 "expired_token" -> {
-                    val msg = "device_code 已过期,请重新发起 OAuth 登录"
+                    val msg = "device_code Caducado,Reinicie el inicio de sesión de OAuth"
                     _stateFlow.value = State.ERROR(msg)
                     return Result.failure(IllegalStateException(msg))
                 }
                 "access_denied" -> {
-                    val msg = "用户拒绝了授权请求"
+                    val msg = "Solicitud de autorización rechazada por el usuario"
                     _stateFlow.value = State.ERROR(msg)
                     return Result.failure(IllegalStateException(msg))
                 }
                 null -> {
-                    // 无 error 但也无 access_token,继续轮询
+                    // No hay error pero no access_token,Continuar encuestando
                 }
                 else -> {
-                    val msg = "OAuth token 轮询失败: ${tokenResp.error} — ${tokenResp.error_description ?: "未知"}"
+                    val msg = "OAuth token El sondeo falló: ${tokenResp.error} — ${tokenResp.error_description ?: "desconocido"}"
                     _stateFlow.value = State.ERROR(msg)
                     return Result.failure(IllegalStateException(msg))
                 }
             }
         }
-        val msg = "OAuth 登录超时,请重试"
+        val msg = "OAuth Tiempo de espera de inicio de sesión,Por favor inténtalo de nuevo"
         _stateFlow.value = State.ERROR(msg)
         return Result.failure(IllegalStateException(msg))
     }
 
     /**
-     * v2.6.0: OpenAI Codex 专用设备码登录(官方 codex CLI `--device-auth` 同款)。
+     * v2.6.0: OpenAI Codex Inicio de sesión con código de dispositivo especial(oficial codex CLI `--device-auth` Mismo estilo).
      *
-     * 与标准 RFC 8628 的区别:
-     *  1. 设备码端点不是 /device/code,而是 /api/accounts/deviceauth/usercode(JSON body);
-     *  2. 轮询 /api/accounts/deviceauth/token 返回的**不是 token**而是 authorization_code
-     *     + PKCE code_verifier(两段式);
-     *  3. 最后用它们到 /oauth/token 换真 token,redirect_uri 固定 deviceauth/callback。
+     * Diferencias con el estándar RFC 8628:
+     *  1. El punto final del código del dispositivo no es /device/code,más bien /api/accounts/deviceauth/usercode(JSON body);
+     *  2. Sondeo /api/accounts/deviceauth/token devuelto**No token**más bien authorization_code
+     *     + PKCE code_verifier(dos etapas);
+     *  3. Finalmente úselos en /oauth/token para cambiar el valor real token,redirect_uri Se corrigió la autenticación del dispositivo/devolución de llamada.
      *
-     * 价值:全程无需 localhost:1455 回调 —— 用户在代理环境下不会再遇到
-     * “回环地址被代理吞掉 → ERR_CONNECTION_TIMED_OUT”。
+     * valor:No es necesario realizar una devolución de llamada localhost:1455 durante todo el proceso —— Los usuarios ya no encontrarán
+     * “La dirección de bucle invertido fue tragada por el proxy. → ERR_CONNECTION_TIMED_OUT”.
      */
     @Suppress("CyclomaticComplexMethod", "ReturnCount", "TooGenericExceptionCaught", "LongMethod")
     private suspend fun launchCodexDeviceAuth(config: OAuthConfig, providerId: String): Result<String> {
         if (config.clientId.isBlank()) {
-            val msg = "Codex 登录不可用:clientId 为空"
+            val msg = "Codex Iniciar sesión no disponible:clientId esta vacio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
@@ -366,7 +366,7 @@ object OAuthManager {
             synchronized(providerConfigs) { providerConfigs[providerId] = config }
         }
 
-        // 1. 请求 user_code(JSON body)
+        // 1. Solicitar user_code(JSON body)
         val base = config.authorizeUrl.substringBefore("/oauth/authorize").trimEnd('/')
         val userCodeResp: CodexUserCodeResponse? = withContext(Dispatchers.IO) {
             resultOf {
@@ -379,13 +379,13 @@ object OAuthManager {
                     .build()
                 buildHttpClient().newCall(request).execute().use { resp ->
                     val text = resp.body?.string().orEmpty()
-                    if (!resp.isSuccessful) error("usercode 请求失败: HTTP ${resp.code}${oauthErrorField(text)}")
+                    if (!resp.isSuccessful) error("usercode Solicitud fallida: HTTP ${resp.code}${oauthErrorField(text)}")
                     io.zer0.common.AppJson.decodeFromString(CodexUserCodeResponse.serializer(), text)
                 }
-            }.onError { msg, t -> Logger.w(TAG, "Codex usercode 请求异常: $msg", t) }.getOrNull()
+            }.onError { msg, t -> Logger.w(TAG, "Codex usercode Solicitar excepción: $msg", t) }.getOrNull()
         }
         if (userCodeResp == null || userCodeResp.resolvedUserCode.isBlank() || userCodeResp.deviceAuthId.isBlank()) {
-            val msg = "Codex 登录失败:未获取到设备码"
+            val msg = "Codex Error al iniciar sesión:Código de dispositivo no obtenido"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
@@ -393,7 +393,7 @@ object OAuthManager {
         val deviceUrl = "$base/codex/device"
         _stateFlow.value = State.AWAITING_USER(userCodeResp.resolvedUserCode, deviceUrl)
 
-        // 2. 轮询 authorization_code(403/404 = 尚未授权)
+        // 2. sondeo authorization_code(403/404 = Aún no autorizado)
         _stateFlow.value = State.POLLING
         val intervalMs = (userCodeResp.interval.coerceAtLeast(3) * 1000L)
         val deadline = System.currentTimeMillis() + CODEX_DEVICE_TIMEOUT_MS
@@ -416,7 +416,7 @@ object OAuthManager {
                         val text = resp.body?.string().orEmpty()
                         io.zer0.common.AppJson.decodeFromString(CodexAuthCodeResponse.serializer(), text)
                     }
-                }.onError { msg, t -> Logger.w(TAG, "Codex 设备码轮询异常: $msg", t) }.getOrNull()
+                }.onError { msg, t -> Logger.w(TAG, "Codex Excepción de sondeo de código de dispositivo: $msg", t) }.getOrNull()
             }
             if (polled != null && polled.authorizationCode.isNotBlank()) {
                 codeResult = CodexAuthCode(polled.authorizationCode, polled.codeVerifier)
@@ -424,12 +424,12 @@ object OAuthManager {
             }
         }
         if (codeResult == null) {
-            val msg = "Codex 授权超时或未完成,请重试"
+            val msg = "Codex Autorización caducada o incompleta,Por favor inténtalo de nuevo"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
 
-        // 3. 用 authorization_code + code_verifier 换 token
+        // 3. Reemplazar con código_autorización + verificador_código token
         _stateFlow.value = State.POLLING
         val tokenResp = withContext(Dispatchers.IO) {
             resultOf {
@@ -444,15 +444,15 @@ object OAuthManager {
                 buildHttpClient().newCall(request).execute().use { resp ->
                     val text = resp.body?.string().orEmpty()
                     if (!resp.isSuccessful) {
-                        Logger.w(TAG, "Codex token 交换失败: HTTP ${resp.code}${oauthErrorField(text)}")
+                        Logger.w(TAG, "Codex token Error en el intercambio: HTTP ${resp.code}${oauthErrorField(text)}")
                         return@use null
                     }
                     io.zer0.common.AppJson.decodeFromString(TokenResponse.serializer(), text)
                 }
-            }.onError { msg, t -> Logger.w(TAG, "Codex token 交换异常: $msg", t) }.getOrNull()
+            }.onError { msg, t -> Logger.w(TAG, "Codex token Excepción de cambio: $msg", t) }.getOrNull()
         }
         if (tokenResp == null || tokenResp.access_token.isBlank()) {
-            val msg = "Codex token 交换失败"
+            val msg = "Codex token Error en el intercambio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
@@ -461,7 +461,7 @@ object OAuthManager {
         return Result.success(tokenResp.access_token)
     }
 
-    /** Codex 设备码响应(官方 CLI: device_auth_id + user_code + interval)。 */
+    /** Codex Respuesta del código del dispositivo(oficial CLI: device_auth_id + user_code + interval). */
     @Serializable
     private data class CodexUserCodeResponse(
         @SerialName("device_auth_id") val deviceAuthId: String = "",
@@ -469,7 +469,7 @@ object OAuthManager {
         @SerialName("usercode") val usercodeAlias: String = "",
         val interval: Long = 5L,
     ) {
-        /** user_code 兼容两种字段名(官方不同版本)。 */
+        /** user_code Compatible con ambos nombres de campo(Diferentes versiones oficiales). */
         val resolvedUserCode: String get() = userCode.ifBlank { usercodeAlias }
     }
 
@@ -482,36 +482,36 @@ object OAuthManager {
     )
 
     /**
-     * 启动 Authorization Code Flow + PKCE。
+     * empezar Authorization Code Flow + PKCE.
      *
-     * 步骤:
-     *  1. 生成 PKCE code_verifier + code_challenge + state(CSRF)
-     *  2. 构造 authorizeUrl,用 Intent.ACTION_VIEW 打开系统浏览器
-     *  3. 通过 [stateFlow] 推 AWAITING_USER(空 userCode),UI 提示「浏览器已打开」
-     *  4. 等待 [completeAuthorizationCodeFlow] 被 [OAuthCallbackActivity] 调用,
-     *     拿到 code,用 code + code_verifier 换 access_token
-     *  5. 推 SUCCESS(apiKey),返回 Result.success(access_token)
+     * pasos:
+     *  1. generar PKCE code_verifier + code_challenge + state(CSRF)
+     *  2. estructura authorizeUrl,Abra el navegador del sistema con Intent.ACTION_VIEW
+     *  3. Pase [stateFlow] empujar AWAITING_USER(vacío userCode),UI Mensaje "El navegador está abierto"
+     *  4. espera [completeAuthorizationCodeFlow] ser [OAuthCallbackActivity] llamar,
+     *     conseguir code,Reemplazar con código + code_verifier access_token
+     *  5. empujar SUCCESS(apiKey),Regresar Result.success(access_token)
      *
-     * P2-11: 若 [providerId] 非空,登录成功后会自动把 TokenBundle 加密写入 [secureStore]。
+     * P2-11: si [providerId] No vacío,Después de iniciar sesión correctamente, el TokenBundle se cifrará y escribirá automáticamente. [secureStore].
      *
-     * @param activity 用于 startActivity 的 Activity 上下文
-     * @param config OAuth 配置
-     * @param providerId P2-11: 供应商 ID(空字符串表示不持久化,保留旧调用方兼容)
-     * @return 成功时 Result.success(access_token);失败时 Result.failure(异常)
+     * @param activity Contexto de actividad utilizado para startActivity
+     * @param config OAuth Configuración
+     * @param providerId P2-11: proveedor ID(Una cadena vacía significa que no hay persistencia,Mantenga compatibles las llamadas tradicionales)
+     * @return cuando tiene éxito Result.success(access_token);en el fracaso Result.failure(anormal)
      */
-    // v2.6.0: 增加 loopback 回调服务器分支；整体复杂度 16/15，流程线性（准备→浏览器→回调→换 token），拆分会打散授权时序，按项目惯例按点豁免。
+    // v2.6.0: Agregar rama del servidor de devolución de llamada de bucle invertido; complejidad general 16/15, linealidad del proceso (preparación→Navegador→devolución de llamada→Reemplazo de token), la división interrumpirá la secuencia de autorización y estará exenta por punto de acuerdo con la práctica del proyecto.
     @Suppress("CyclomaticComplexMethod", "ReturnCount")
     suspend fun launchAuthorizationCodeFlow(activity: Activity, config: OAuthConfig, providerId: String = ""): Result<String> {
         if (config.clientId.isBlank()) {
-            val msg = "Auth Code Flow 不可用:clientId 为空"
+            val msg = "Auth Code Flow No disponible:clientId esta vacio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
-        // P2-11: 缓存 config 供 refreshTokenIfNeeded 查询
+        // P2-11: Configuración de caché para la consulta de actualizaciónTokenIfNeeded
         if (providerId.isNotBlank()) {
             synchronized(providerConfigs) { providerConfigs[providerId] = config }
         }
-        // 1. 生成 PKCE 对 + state；同一进程只允许一个浏览器授权回调等待者。
+        // 1. Generar par PKCE + estado; solo se permite un camarero de devolución de llamada de autorización del navegador en el mismo proceso.
         val pending = synchronized(authCodeFlowLock) {
             if (pendingAuthCodeFlow.value != null) {
                 null
@@ -523,7 +523,7 @@ object OAuthManager {
                 }
             }
         } ?: run {
-            val msg = "已有 OAuth 授权流程正在等待回调"
+            val msg = "Ya existe un proceso de autorización de OAuth esperando una devolución de llamada"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
@@ -532,28 +532,28 @@ object OAuthManager {
         val state = pending.state
         val deferred = pending.deferred
 
-        // 2. 构造 authorizeUrl
+        // 2. estructura authorizeUrl
         val authUrl = buildAuthorizationUrl(config, codeChallenge, state)
 
-        // 3. 打开浏览器
+        // 3. Abrir navegador
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { activity.startActivity(intent) }.onFailure {
-            val msg = "无法打开浏览器: ${it.message ?: "未知"}"
+            val msg = "No puedo abrir el navegador: ${it.message ?: "desconocido"}"
             _stateFlow.value = State.ERROR(msg)
             clearPendingAuthCodeFlow(pending)
             return Result.failure(it)
         }
 
-        // 4. 等待回调 —— 两种通道：
-        //    a) Deep Link(自定义 scheme,OAuthCallbackActivity → completeAuthorizationCodeFlow)
-        //    b) Loopback HTTP(v2.6.0: redirectUri 为 http://localhost:<port>/… 时，
-        //       Codex CLI 同款公开 client 只允许 loopback 回调，启动临时 HTTP 服务器接收)
+        // 4. Esperar devolución de llamada —— Dos canales:
+        //    a) Deep Link(Personalizar scheme,OAuthCallbackActivity → completeAuthorizationCodeFlow)
+        //    b) Loopback HTTP(v2.6.0: redirectUri para http://localhost:<port>/… cuando,
+        //       Codex CLI El mismo cliente público solo permite devoluciones de llamadas en bucle e inicia un servidor HTTP temporal para recibir)
         _stateFlow.value = State.AWAITING_USER()
         val loopbackServer = if (config.redirectUri.startsWith("http://localhost:") ||
             config.redirectUri.startsWith("http://127.0.0.1:")
         ) {
             runCatching { LoopbackCallbackServer.start(config.redirectUri, pending) }.getOrElse {
-                Logger.e(TAG, "Loopback 回调服务器启动失败", it)
+                Logger.e(TAG, "Loopback El servidor de devolución de llamada no pudo iniciarse", it)
                 null
             }
         } else {
@@ -563,22 +563,22 @@ object OAuthManager {
         loopbackServer?.stop()
         if (codeResult.isFailure) {
             clearPendingAuthCodeFlow(pending)
-            val error = codeResult.exceptionOrNull() ?: IllegalStateException("授权回调失败")
-            _stateFlow.value = State.ERROR(error.message ?: "授权回调失败")
+            val error = codeResult.exceptionOrNull() ?: IllegalStateException("Error en la devolución de llamada de autorización")
+            _stateFlow.value = State.ERROR(error.message ?: "Error en la devolución de llamada de autorización")
             return Result.failure(error)
         }
         val code = codeResult.getOrThrow()
 
-        // 5. 用 code + code_verifier 换 access_token
+        // 5. Reemplazar con código + code_verifier access_token
         _stateFlow.value = State.POLLING
         val tokenResp = exchangeCodeForToken(config, code, codeVerifier)
         clearPendingAuthCodeFlow(pending)
         if (tokenResp == null || tokenResp.access_token.isBlank()) {
-            val msg = "OAuth token 交换失败"
+            val msg = "OAuth token Error en el intercambio"
             _stateFlow.value = State.ERROR(msg)
             return Result.failure(IllegalStateException(msg))
         }
-        // P2-11: 持久化 TokenBundle
+        // P2-11: persistencia TokenBundle
         if (providerId.isNotBlank()) {
             persistTokenBundle(providerId, tokenResp)
         }
@@ -587,40 +587,40 @@ object OAuthManager {
     }
 
     /**
-     * 由 [OAuthCallbackActivity] 在收到 Deep Link 回调时调用,完成 Auth Code Flow。
+     * por [OAuthCallbackActivity] Llamado al recibir una devolución de llamada de Deep Link,Complete el flujo del código de autenticación.
      *
-     * 校验 state(CSRF 防护),匹配后解析 code 并 resolve 挂起的 Deferred。
+     * verificar state(CSRF protección),Analiza el código después de hacer coincidir y resuelve el diferido pendiente.
      *
-     * @param code OAuth 回调里的 code 参数
-     * @param state OAuth 回调里的 state 参数
-     * @return true 表示状态匹配,流程将继续换 token;false 表示无 pending 流程或 state 不匹配
+     * @param code OAuth parámetro de código en devolución de llamada
+     * @param state OAuth El parámetro de estado en la devolución de llamada.
+     * @return true Indica coincidencia de estado,El proceso seguirá cambiando. token;false Indica que no hay ningún proceso pendiente o el estado no coincide
      */
     fun completeAuthorizationCodeFlow(code: String, state: String): Boolean {
         val pending = pendingAuthCodeFlow.value ?: run {
-            Logger.w(TAG, "completeAuthorizationCodeFlow 但无 pending Auth Code Flow")
+            Logger.w(TAG, "completeAuthorizationCodeFlow pero no pending Auth Code Flow")
             return false
         }
         if (state != pending.state) {
-            Logger.w(TAG, "OAuth state 不匹配: expected=${pending.state.take(4)}***, got=${state.take(4)}***")
+            Logger.w(TAG, "OAuth state no hay coincidencia: expected=${pending.state.take(4)}***, got=${state.take(4)}***")
             return false
         }
         if (code.isBlank()) {
-            Logger.w(TAG, "OAuth 回调 code 为空")
+            Logger.w(TAG, "OAuth el código de devolución de llamada está vacío")
             return false
         }
         return pending.deferred.complete(code)
     }
 
     /**
-     * 等待授权回调但不允许损坏/缺失的 deep link 永久挂起 OAuth 流程。
-     * 外部协程取消仍然向上传播，不被转换成普通超时。
+     * Espere la devolución de llamada de autorización pero no permita la corrupción/La falta de un enlace profundo bloquea permanentemente el flujo de OAuth.
+     * La cancelación de la rutina externa todavía se propaga hacia arriba y no se convierte en un tiempo de espera normal.
      */
     internal suspend fun awaitAuthorizationCode(deferred: Deferred<String>, timeoutMs: Long): Result<String> {
         require(timeoutMs > 0) { "timeoutMs must be positive" }
         return try {
             Result.success(withTimeout(timeoutMs) { deferred.await() })
         } catch (timeout: TimeoutCancellationException) {
-            Result.failure(IllegalStateException("OAuth 授权回调超时", timeout))
+            Result.failure(IllegalStateException("OAuth Tiempo de espera de devolución de llamada de autorización", timeout))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -634,27 +634,27 @@ object OAuthManager {
         }
     }
 
-    /** 取消当前进行中的 OAuth 流程(用户主动取消 / 页面退出时调用)。 */
+    /** Cancelar un proceso OAuth actualmente en curso(Se llama cuando el usuario cancela/sale activamente de la página.). */
     fun cancel() {
         pendingAuthCodeFlow.value?.deferred?.completeExceptionally(OAuthCancelledException())
         pendingAuthCodeFlow.value = null
         _stateFlow.value = State.IDLE
     }
 
-    /** 重置状态为 IDLE(UI 关闭弹窗后调用)。 */
+    /** Restablecer estado a IDLE(UI Llamado después de cerrar la ventana emergente.). */
     fun resetState() {
         _stateFlow.value = State.IDLE
     }
 
-    // ── P2-11: 凭证隔离相关 API ──────────────────────────────────────
+    // ── P2-11: Relacionado con el aislamiento de credenciales API ──────────────────────────────────────
 
     /**
-     * P2-11: 读取已持久化的 OAuth token。
+     * P2-11: Lea el token de OAuth persistente.
      *
-     * UI 进入 ProviderEditPage 时调用,若返回非空且未过期,可直接复用 access_token 填入 apiKey 输入框,
-     * 无需用户重新登录。
+     * UI Llamado al ingresar a ProviderEditPage,Si la devolución no está vacía y no ha caducado,Access_token se puede reutilizar directamente para completar el cuadro de entrada apiKey,
+     * No es necesario que el usuario vuelva a iniciar sesión.
      *
-     * @return 已存储的 [TokenBundle];未初始化 store / 无记录 / 解密失败均返回 null
+     * @return almacenado [TokenBundle];Se devolverá el almacenamiento no inicializado/sin registro/error de descifrado. null
      */
     suspend fun getStoredToken(providerId: String): TokenBundle? {
         val store = secureStore ?: return null
@@ -663,11 +663,11 @@ object OAuthManager {
     }
 
     /**
-     * P2-11: 删除已持久化的 OAuth token(撤销访问)。
+     * P2-11: Eliminar el persistente OAuth token(revocar el acceso).
      *
-     * UI「撤销访问」按钮调用,清空本地存储的 access/refresh token。
-     * 注意:这仅撤销本地存储,不会通知服务端 invalidate token(需调用服务端的 revocation 端点,
-     * 多数供应商未公开此端点)。撤销后 UI 应清空 apiKey 输入框。
+     * UILlamada al botón "Revocar acceso",Borre el token de acceso/actualización almacenado localmente.
+     * Nota:Esto sólo revoca el almacenamiento local.,El servidor no será notificado. invalidate token(Necesita llamar al punto final de revocación del servidor.,
+     * La mayoría de los proveedores no exponen este punto final). La interfaz de usuario debe borrar el cuadro de entrada apiKey después de la revocación.
      */
     suspend fun revokeStoredToken(providerId: String) {
         val store = secureStore ?: return
@@ -677,22 +677,22 @@ object OAuthManager {
     }
 
     /**
-     * P2-11: 自动刷新 token(若已过期或即将过期)。
+     * P2-11: Actualización automática token(Si ha caducado o está a punto de caducar).
      *
-     * 流程:
-     *  1. 读取已存储的 [TokenBundle]
-     *  2. 若 expiresAt 为 0(不过期/未知)或 expiresAt > now + [REFRESH_BUFFER_SECONDS],直接返回当前 access_token
-     *  3. 若有 refresh_token,POST refresh_token grant 换新 token;成功后更新 [TokenBundle] 并返回新 access_token
-     *  4. 无 refresh_token 或刷新失败,返回 Result.failure(用户需重新登录)
+     * proceso:
+     *  1. Leer almacenado [TokenBundle]
+     *  2. Si expira en es 0(No caducado/desconocido)o expiresAt > now + [REFRESH_BUFFER_SECONDS],Volver directamente a la actualidad access_token
+     *  3. Si es así refresh_token,POST refresh_token grant Reemplazar por otros nuevos token;Actualización después del éxito [TokenBundle] y volver nuevo access_token
+     *  4. No hay ningún token de actualización o la actualización falló,Regresar Result.failure(El usuario necesita iniciar sesión nuevamente)
      *
-     * @param providerId 供应商 ID
-     * @param config 调用方持有的 [OAuthConfig](如持久化的 [ProviderConfig.oauthConfig]);非空时优先使用,
-     *   规避 App 重启后内存 [providerConfigs] 缓存为空导致的刷新失败(B-24);为空则退回内存缓存。
-     * @return 成功时 Result.success(有效的 access_token);失败时 Result.failure(异常)
+     * @param providerId proveedor ID
+     * @param config retenido por la persona que llama [OAuthConfig](tan persistente [ProviderConfig.oauthConfig]);Prioridad utilizada cuando no está vacía,
+     *   Evite la pérdida de memoria después de reiniciar la aplicación [providerConfigs] Error de actualización causado por caché vacío(B-24);Si está vacío, regresa a la memoria caché.
+     * @return cuando tiene éxito Result.success(válido access_token);en el fracaso Result.failure(anormal)
      */
     suspend fun refreshTokenIfNeeded(providerId: String, config: OAuthConfig? = null): Result<String> {
         if (providerId.isBlank()) {
-            return Result.failure(IllegalArgumentException("providerId 为空"))
+            return Result.failure(IllegalArgumentException("providerId esta vacio"))
         }
         val lock = refreshLocks.computeIfAbsent(providerId) { Mutex() }
         return lock.withLock { refreshTokenIfNeededLocked(providerId, config) }
@@ -700,34 +700,34 @@ object OAuthManager {
 
     private suspend fun refreshTokenIfNeededLocked(providerId: String, config: OAuthConfig? = null): Result<String> {
         val store = secureStore ?: run {
-            return Result.failure(IllegalStateException("SecureCredentialStore 未初始化"))
+            return Result.failure(IllegalStateException("SecureCredentialStore no inicializado"))
         }
         val bundle = store.getOAuthToken(providerId)
-            ?: return Result.failure(IllegalStateException("无已存储的 OAuth token"))
+            ?: return Result.failure(IllegalStateException("Ninguno almacenado OAuth token"))
         val now = System.currentTimeMillis()
         val bufferMs = REFRESH_BUFFER_SECONDS * 1000L
-        // 未过期(含 expiresAt=0 未知)直接返回当前 access_token
+        // No caducado(Contiene expiresAt=0 desconocido)Volver directamente a la actualidad access_token
         if (bundle.expiresAt == 0L || bundle.expiresAt > now + bufferMs) {
             return Result.success(bundle.accessToken)
         }
-        // 过期但无 refresh_token,无法刷新
+        // Caducado pero no refresh_token,No se puede actualizar
         val refreshToken = bundle.refreshToken
         if (refreshToken.isNullOrBlank()) {
-            return Result.failure(IllegalStateException("token 已过期且无 refresh_token"))
+            return Result.failure(IllegalStateException("token Caducado y no refresh_token"))
         }
-        // B-24: 优先使用调用方传入的 config(跨 App 重启后持久化配置仍可刷新),
-        // 仅在调用方未传时退回内存缓存(providerConfigs 只在 launch* 流程填充)
+        // B-24: Dar prioridad al pasado por la persona que llama config(La configuración de persistencia aún se puede actualizar después del reinicio entre aplicaciones),
+        // Solo recurra a la memoria caché si la persona que llama no lo pasa(providerConfigs solo en launch* proceso de llenado)
         val oauthConfig = config ?: synchronized(providerConfigs) { providerConfigs[providerId] }
-            ?: return Result.failure(IllegalStateException("无缓存的 OAuthConfig,无法刷新"))
-        // 调用 refresh_token grant
+            ?: return Result.failure(IllegalStateException("sin caché OAuthConfig,No se puede actualizar"))
+        // llamar refresh_token grant
         val refreshResult = refreshAccessToken(oauthConfig, refreshToken)
         if (refreshResult == null || refreshResult.access_token.isBlank()) {
-            // 刷新失败,清掉本地存储(强制用户重新登录)
+            // Error al actualizar,Borrar almacenamiento local(Forzar al usuario a iniciar sesión nuevamente)
             store.deleteOAuthToken(providerId)
-            return Result.failure(IllegalStateException("refresh_token 已失效,请重新登录"))
+            return Result.failure(IllegalStateException("refresh_token Caducado,Por favor inicia sesión nuevamente"))
         }
-        // 更新 TokenBundle(refresh_token 部分供应商每次刷新都返回新的,部分只首次返回;
-        // 若响应未带 refresh_token,保留旧值以备下次刷新)
+        // actualizar TokenBundle(refresh_token Algunos proveedores devuelven otros nuevos cada vez que actualizan,La pieza solo regresa por primera vez.;
+        // Si la respuesta no incluye refresh_token,Mantener los valores antiguos para la próxima actualización)
         val newBundle = TokenBundle(
             accessToken = refreshResult.access_token,
             refreshToken = refreshResult.refresh_token ?: refreshToken,
@@ -738,7 +738,7 @@ object OAuthManager {
         return Result.success(newBundle.accessToken)
     }
 
-    /** P2-11: 把 [TokenResponse] 转 [TokenBundle] 并写入 [secureStore]。 */
+    /** P2-11: poner [TokenResponse] girar [TokenBundle] y escribe [secureStore]. */
     private suspend fun persistTokenBundle(providerId: String, resp: TokenResponse) {
         val store = secureStore ?: return
         val bundle = TokenBundle(
@@ -746,13 +746,13 @@ object OAuthManager {
             refreshToken = resp.refresh_token,
             expiresAt = computeExpiresAt(resp.expires_in),
             scope = resp.scope.orEmpty(),
-            // v2.x（Codex）: 保存 id_token —— 请求头 ChatGPT-Account-ID 从这里解析。
+            // v2.x(Codex): guardar id_token —— El encabezado de solicitud ChatGPT-Account-ID se analiza desde aquí.
             idToken = resp.idToken,
         )
         store.storeOAuthToken(providerId, bundle)
     }
 
-    /** P2-11: 用 refresh_token 换新 access_token(refresh_token grant)。 */
+    /** P2-11: Reemplazar con refresco_token access_token(refresh_token grant). */
     private suspend fun refreshAccessToken(config: OAuthConfig, refreshToken: String): TokenResponse? {
         return withContext(Dispatchers.IO) {
             resultOf {
@@ -766,8 +766,8 @@ object OAuthManager {
                 buildHttpClient().newCall(request).execute().use { resp ->
                     val body = resp.body?.string().orEmpty()
                     if (!resp.isSuccessful) {
-                        // C-25: 响应体原文可能回显敏感参数,只记 HTTP code + 脱敏 error 字段
-                        Logger.w(TAG, "refresh_token 失败: HTTP ${resp.code}${oauthErrorField(body)}")
+                        // C-25: El texto original del cuerpo de la respuesta puede reflejar parámetros sensibles.,Recuerde solo el código HTTP + campo de error insensibilizado
+                        Logger.w(TAG, "refresh_token falló: HTTP ${resp.code}${oauthErrorField(body)}")
                         return@use null
                     }
                     io.zer0.common.AppJson.decodeFromString(
@@ -775,29 +775,29 @@ object OAuthManager {
                         body,
                     )
                 }
-            }.onError { msg, t -> Logger.w(TAG, "refresh_token 请求异常: $msg", t) }.getOrNull()
+            }.onError { msg, t -> Logger.w(TAG, "refresh_token Solicitar excepción: $msg", t) }.getOrNull()
         }
     }
 
-    /** P2-11: 根据 expires_in(秒)计算过期时间戳(epoch millis)。 */
+    /** P2-11: Según expires_in(segundos)Calcular la marca de tiempo de vencimiento(epoch millis). */
     private fun computeExpiresAt(expiresInSeconds: Long): Long {
         if (expiresInSeconds <= 0L) return 0L
         return System.currentTimeMillis() + expiresInSeconds * 1000L
     }
 
     /**
-     * C-25: 从 token 交换错误响应体中提取 error 字段用于日志。
-     * 不记响应体原文 — 原文可能回显 code/redirect_uri 等敏感参数。
-     * 解析失败返回空串(只记 HTTP code)。
+     * C-25: Extraiga el campo de error del cuerpo de respuesta de error del intercambio de tokens para registrarlo.
+     * No recuerdo el texto original del cuerpo de la respuesta. — El texto original puede reflejar parámetros confidenciales como code/redirect_uri.
+     * El error de análisis devuelve una cadena vacía(Solo recuerda HTTP code).
      */
     private fun oauthErrorField(body: String): String = runCatching {
         val obj = io.zer0.common.AppJson.parseToJsonElement(body).jsonObject
         obj["error"]?.jsonPrimitive?.content?.let { ", error=$it" } ?: ""
     }.getOrDefault("")
 
-    // ── 内部工具 ───────────────────────────────────────────────────────
+    // ── herramientas internas ───────────────────────────────────────────────────────
 
-    /** 轮询 token 端点(Device Flow)。 */
+    /** Sondear el punto final del token(Device Flow). */
     private suspend fun pollToken(config: OAuthConfig, deviceCode: String): TokenResponse {
         return withContext(Dispatchers.IO) {
             resultOf {
@@ -809,29 +809,29 @@ object OAuthManager {
                     .build()
                 val request = Request.Builder()
                     .url(config.tokenUrl)
-                    // v2.6.0: GitHub 的 token 端点需 Accept: application/json 才返回 JSON。
+                    // v2.6.0: GitHub El punto final del token requiere Aceptar: aplicación/json para devolver JSON.
                     .header("Accept", "application/json")
                     .post(form)
                     .build()
                 buildHttpClient().newCall(request).execute().use { resp ->
                     val body = resp.body?.string().orEmpty()
-                    // HTTP 4xx 也可能携带 error 字段(authorization_pending 等),按 body 解析
+                    // HTTP 4xx También puede llevar un campo de error(authorization_pending espera),analizar por cuerpo
                     io.zer0.common.AppJson.decodeFromString(
                         TokenResponse.serializer(),
                         body,
                     )
                 }
-            }.onError { msg, t -> Logger.w(TAG, "OAuth token 轮询请求异常: $msg", t) }
+            }.onError { msg, t -> Logger.w(TAG, "OAuth token Excepción de solicitud de sondeo: $msg", t) }
                 .getOrNull()
-                ?: TokenResponse(error = "network_error", error_description = "网络请求失败")
+                ?: TokenResponse(error = "network_error", error_description = "Error en la solicitud de red")
         }
     }
 
     /**
-     * 用 code + code_verifier 换 access_token。
+     * Reemplace access_token con código + code_verifier.
      *
-     * P2-11: 返回完整 [TokenResponse](含 refresh_token / expires_in / scope),
-     * 供调用方构造 [TokenBundle] 持久化。
+     * P2-11: Volver para completar [TokenResponse](Contiene refresh_token / expires_in / scope),
+     * Para que las personas que llaman construyan [TokenBundle] Persistencia.
      */
     private suspend fun exchangeCodeForToken(config: OAuthConfig, code: String, codeVerifier: String): TokenResponse? {
         return withContext(Dispatchers.IO) {
@@ -848,8 +848,8 @@ object OAuthManager {
                 buildHttpClient().newCall(request).execute().use { resp ->
                     val body = resp.body?.string().orEmpty()
                     if (!resp.isSuccessful) {
-                        // C-25: 响应体原文可能回显敏感参数,只记 HTTP code + 脱敏 error 字段
-                        Logger.w(TAG, "token 交换失败: HTTP ${resp.code}${oauthErrorField(body)}")
+                        // C-25: El texto original del cuerpo de la respuesta puede reflejar parámetros sensibles.,Recuerde solo el código HTTP + campo de error insensibilizado
+                        Logger.w(TAG, "token Error en el intercambio: HTTP ${resp.code}${oauthErrorField(body)}")
                         return@use null
                     }
                     val token = io.zer0.common.AppJson.decodeFromString(
@@ -857,16 +857,16 @@ object OAuthManager {
                         body,
                     )
                     if (token.access_token.isBlank()) {
-                        Logger.w(TAG, "token 响应无 access_token: error=${token.error}, desc=${token.error_description}")
+                        Logger.w(TAG, "token Respuesta Ninguna access_token: error=${token.error}, desc=${token.error_description}")
                         return@use null
                     }
                     token
                 }
-            }.onError { msg, t -> Logger.w(TAG, "token 交换请求异常: $msg", t) }.getOrNull()
+            }.onError { msg, t -> Logger.w(TAG, "token Excepción de solicitud de cambio: $msg", t) }.getOrNull()
         }
     }
 
-    /** 构造 Authorization Code Flow 的授权 URL(含 PKCE + state)。 */
+    /** Autorización de construcción para flujo de código de autorización URL(Contiene PKCE + state). */
     private fun buildAuthorizationUrl(config: OAuthConfig, codeChallenge: String, state: String): String {
         val params = buildList {
             add("response_type" to "code")
@@ -884,7 +884,7 @@ object OAuthManager {
         return config.authorizeUrl + separator + query
     }
 
-    // ── PKCE 工具(RFC 7636,与 McpOAuthFlow 等价但独立实现) ───────────
+    // ── PKCE Herramientas(RFC 7636,Equivalente a McpOAuthFlow pero implementado de forma independiente) ───────────
 
     private const val VERIFIER_LENGTH = 64
     private val VERIFIER_CHARS: CharArray = (
@@ -901,7 +901,7 @@ object OAuthManager {
 
     private fun computeCodeChallenge(verifier: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
-        // RFC 7636: BASE64URL 编码,去掉 = 填充
+        // RFC 7636: BASE64URL codificación,eliminar = relleno
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 
@@ -913,16 +913,16 @@ object OAuthManager {
     }
 }
 
-/** OAuth 流程被取消时用的异常(用户主动取消 / 页面退出)。 */
-private class OAuthCancelledException : Exception("OAuth 流程已取消")
+/** OAuth Excepciones utilizadas cuando se cancela el proceso(El usuario cancela/sale activamente de la página). */
+private class OAuthCancelledException : Exception("OAuth Proceso cancelado")
 
 /**
- * v2.x（Codex）: 解析 JWT payload 里的指定 claim（无签名校验 —— 仅读取声明，
- * 不用于鉴权；鉴权仍由 Bearer access_token 承担）。
+ * v2.x(Codex): Analice el reclamo especificado en la carga útil JWT (sin verificación de firma —— Leer solo la declaración,
+ * No se utiliza para autenticación; la autenticación todavía la realiza el token de acceso del portador).
  *
- * @param jwt 形如 `header.payload.signature` 的 JWT 字符串
- * @param claim 要取的 claim 名（如 `chatgpt_account_id`）
- * @return claim 的字符串值；JWT 不合法/claim 不存在返回 null
+ * @param jwt en forma de `header.payload.signature` La cadena JWT
+ * @param claim El nombre del reclamo que se dará (p. ej. `chatgpt_account_id`)
+ * @return claim valor de cadena;JWT ilegal/claim no existe retorno null
  */
 @Suppress("ReturnCount")
 internal fun parseJwtClaim(jwt: String?, claim: String): String? {
@@ -932,20 +932,20 @@ internal fun parseJwtClaim(jwt: String?, claim: String): String? {
 }
 
 /**
- * v2.6.2（Codex 登录修复）: 解析 JWT payload 为 JsonObject（无签名校验）。
+ * v2.6.2(Codex Solución de inicio de sesión): Analice la carga útil de JWT en JsonObject (sin verificación de firma).
  *
- * 修正 base64url 解码 —— 原实现只把 `-`/`_` 换成 `+`/`/`，未补 `=` padding，
- * Android `Base64.DEFAULT` 对长度非 4 倍数的串会解码失败，导致 payload 解析
- * 静默返回 null（Codex account-id 因此永远取不到）。
+ * Reparar la decodificación base64url —— Solo la implementación original. `-`/`_` Reemplazar con `+`/`/`, no añadido `=` padding,
+ * Android `Base64.DEFAULT` La decodificación de cadenas cuya longitud no sea múltiplo de 4 fallará, lo que resultará en el análisis de la carga útil
+ * Devuelve silenciosamente nulo (Codex account-id Por lo tanto nunca podrá obtenerse).
  */
 internal fun parseJwtPayload(jwt: String?): kotlinx.serialization.json.JsonObject? {
     val segment = jwt?.split(".")?.takeIf { it.size >= 2 }?.get(1)
     val json = segment?.let { seg ->
         runCatching {
             val normalized = seg.replace('-', '+').replace('_', '/')
-            // base64url 无 padding，按 4 的倍数补齐后再解码。
-            // 用 java.util.Base64（API 26+，与 minSdk 一致）而非 android.util.Base64，
-            // 使本函数为纯 JVM 可测（无需 Robolectric）。
+            // base64url Sin relleno, rellene en múltiplos de 4 antes de decodificar.
+            // Utilice java.util.Base64(API 26+, consistente con minSdk) en lugar de android.util.Base64,
+            // Haga que esta función sea puramente comprobable por JVM (no se requiere Robolectric).
             val padded = normalized + "=".repeat((4 - normalized.length % 4) % 4)
             java.util.Base64.getDecoder().decode(padded).decodeToString()
         }.getOrNull()
@@ -958,18 +958,18 @@ internal fun parseJwtPayload(jwt: String?): kotlinx.serialization.json.JsonObjec
 }
 
 /**
- * v2.6.2（Codex 登录修复）: 从 OpenAI 的 id_token 解析 ChatGPT 账号 ID。
+ * v2.6.2(Codex Solución de inicio de sesión): Analice el ID de la cuenta ChatGPT del id_token de OpenAI.
  *
- * OpenAI 把该 claim 嵌套在 URL 命名空间 `https://api.openai.com/auth` 下，
- * 而非顶层：
+ * OpenAI Anidar el reclamo en el espacio de nombres de la URL `https://api.openai.com/auth` abajo,
+ * En lugar del nivel superior:
  * ```json
  * { "https://api.openai.com/auth": { "chatgpt_account_id": "..." } }
  * ```
- * 社区实现（Ruby / LangChain）统一用 `dig('https://api.openai.com/auth',
- * 'chatgpt_account_id')` 取值。原实现只读顶层 claim，恒为 null，
- * 导致 `ChatGPT-Account-ID` 头从未写入 —— Codex 端点全部 403。
+ * implementación comunitaria (Ruby / LangChain) utilizado uniformemente `dig('https://api.openai.com/auth',
+ * 'chatgpt_account_id')` Toma valor. La implementación original solo leía el reclamo de nivel superior, que siempre era nulo.
+ * causa `ChatGPT-Account-ID` encabezado nunca escrito —— Codex Puntos finales todos 403.
  *
- * 兼容顺序：嵌套命名空间 → 顶层（旧版/个别账号可能直挂顶层）。
+ * Orden de compatibilidad: espacios de nombres anidados → Nivel superior (versión antigua)/Algunas cuentas pueden estar directamente vinculadas al nivel superior).
  */
 internal fun parseChatGptAccountId(jwt: String?): String? {
     val payload = parseJwtPayload(jwt) ?: return null

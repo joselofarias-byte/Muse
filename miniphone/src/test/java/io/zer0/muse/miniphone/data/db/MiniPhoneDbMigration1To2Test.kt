@@ -18,11 +18,11 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 1 → 2 迁移:老库(没有 status 列)升上来之后数据还在、状态默认为「已发出」。
+ * 1 → 2 Migrar:laoku(Sin columna de estado)Después de la actualización, los datos siguen ahí y el estado predeterminado es "Enviado".
  *
- * 先用导出的 1.json 造一个与真机同形的 v1 库 —— 建表语句、索引、甚至 room_master_table 里的
- * 身份哈希都按 schema 写,所以这里跑的是「已经有数据的老设备升级」这条路,不是空库建表。
- * 断言分两层:Room 能打开并读到历史行(说明 schema 校验过关),以及 status 真的是 0。
+ * Primero use el 1.json exportado para crear una biblioteca v1 que sea la misma que la máquina real. —— Declaraciones de creación de tablas, índices e incluso room_master_table
+ * Los hashes de identidad se escriben según el esquema.,Entonces, lo que estamos ejecutando aquí es el camino de "actualizar equipos antiguos que ya tienen datos".,No es una base de datos vacía para crear una tabla.
+ * Hay dos niveles de afirmaciones.:Room Capacidad para abrir y leer líneas de historial.(Verificación del esquema de descripción aprobada),y el estado es realmente 0.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -45,24 +45,24 @@ class MiniPhoneDbMigration1To2Test {
         context.deleteDatabase(name)
         createVersion1Database(file, messageCount = 3)
 
-        // 迁移前:老结构里根本没有这一列
-        assertFalse("v1 库里不该有 status 列", columnNames(file).contains("status"))
+        // Antes de la migración:No existe tal columna en la estructura antigua.
+        assertFalse("v1 No debería haber una columna de estado en la biblioteca.", columnNames(file).contains("status"))
 
         val db = openMigrated(name)
         try {
             runBlocking {
                 val messages = db.messageDao().observeMessages(LEGACY_THREAD_ID).first()
 
-                assertEquals("历史消息不能丢", 3, messages.size)
-                assertEquals(listOf("第 1 句", "第 2 句", "第 3 句"), messages.map { it.content })
-                assertEquals("历史行全部按「已发出」补齐", List(3) { MpMessageStatus.SENT }, messages.map { it.status })
-                assertEquals("会话行也还在", "第 3 句", db.threadDao().getThread(LEGACY_THREAD_ID)?.lastMessagePreview)
-                assertEquals("库版本升到当前版本", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
+                assertEquals("La información histórica no se puede perder.", 3, messages.size)
+                assertEquals(listOf("Oración 1", "Oración 2", "Oración 3"), messages.map { it.content })
+                assertEquals("Haga clic en \"Problema\" para completar todas las filas del historial.", List(3) { MpMessageStatus.SENT }, messages.map { it.status })
+                assertEquals("La línea de conversación sigue ahí.", "Oración 3", db.threadDao().getThread(LEGACY_THREAD_ID)?.lastMessagePreview)
+                assertEquals("Actualice la versión de la biblioteca a la versión actual", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
             }
         } finally {
             db.close()
         }
-        // 新库同样要在裸 SQL 里看得出默认值:后续任何一条不带 status 的写入都该落 0
+        // La nueva biblioteca también debe ver el valor predeterminado en SQL simple.:Cualquier escritura posterior sin estado debe ser 0
         assertEquals("0", statusColumnDefault(file))
     }
 
@@ -70,14 +70,14 @@ class MiniPhoneDbMigration1To2Test {
     fun columnDefaultKeepsOldStyleWritesAndStatusUpdatesWork() {
         val db = newInMemoryMiniPhoneDb()
         try {
-            // 不带 status 的写入(旧代码路径、手工 SQL)落成「已发出」
+            // Escribiendo sin estatus(Ruta de código antigua, manual SQL)Finalización "Emitida"
             db.openHelper.writableDatabase.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt) " +
-                    "VALUES ('m1', 't1', 'c1', 'character', 'text', '在的', 1000)",
+                    "VALUES ('m1', 't1', 'c1', 'character', 'text', 'en', 1000)",
             )
             assertEquals(MpMessageStatus.SENT, runBlocking { db.messageDao().getMessage("m1") }?.status)
 
-            // 状态能被改写:失败与重发成功的流转都靠这一句
+            // El estado se puede sobrescribir:El flujo del fracaso y el éxito de la reedición depende de esta frase.
             runBlocking { db.messageDao().updateStatus("m1", MpMessageStatus.FAILED) }
             assertEquals(MpMessageStatus.FAILED, runBlocking { db.messageDao().getMessage("m1") }?.status)
         } finally {
@@ -85,7 +85,7 @@ class MiniPhoneDbMigration1To2Test {
         }
     }
 
-    /** 按 1.json 原样造一个 v1 库,并写入几条历史消息。 */
+    /** Cree una biblioteca v1 como 1.json,Y escribir varios mensajes históricos. */
     private fun createVersion1Database(file: File, messageCount: Int) {
         val schema = JSONObject(readAsset(SCHEMA_ASSET)).getJSONObject("database")
         val legacy = SQLiteDatabase.openOrCreateDatabase(file, null)
@@ -100,21 +100,21 @@ class MiniPhoneDbMigration1To2Test {
                     legacy.execSQL(indices.getJSONObject(indexAt).getString("createSql").replace(TABLE_PLACEHOLDER, table))
                 }
             }
-            // 与真机一致:room_master_table 里存的是 v1 的身份哈希
+            // Consistente con la máquina real.:room_master_table Lo que se almacena en él es el hash de identidad de la v1.
             val setup = schema.getJSONArray("setupQueries")
             for (index in 0 until setup.length()) {
                 legacy.execSQL(setup.getString(index))
             }
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
-                    "VALUES ('$LEGACY_THREAD_ID', '$LEGACY_CHARACTER_ID', 0, 0, '第 3 句', 3000, 0)",
+                    "VALUES ('$LEGACY_THREAD_ID', '$LEGACY_CHARACTER_ID', 0, 0, 'Oración 3', 3000, 0)",
             )
             repeat(messageCount) { offset ->
                 val number = offset + 1
                 legacy.execSQL(
                     "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt) " +
                         "VALUES ('legacy-$number', '$LEGACY_THREAD_ID', '$LEGACY_CHARACTER_ID', 'character', 'text', " +
-                        "'第 $number 句', ${number * 1000})",
+                        "'No. $number frase', ${number * 1000})",
                 )
             }
             legacy.version = 1

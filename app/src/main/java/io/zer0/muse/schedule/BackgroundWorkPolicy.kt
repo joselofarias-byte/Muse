@@ -3,11 +3,11 @@ package io.zer0.muse.schedule
 import kotlinx.coroutines.CancellationException
 
 /**
- * 后台调度总控的失败策略。
+ * La estrategia de falla del control maestro de programación en segundo plano.
  *
- * SettingsRepository 的 Flow 自身提供默认值；只有读取链路明确得到 true 才允许
- * 继续执行副作用任务。读取失败或依赖缺失时跳过本次执行，避免用户关闭后台调度
- * 后因 DataStore/Koin 异常被 fail-open 放行通知、网络或备份操作。
+ * SettingsRepository El propio flujo proporciona valores predeterminados; Sólo se permiten enlaces de lectura que se vuelvan verdaderos explícitamente.
+ * Continúe con las tareas de efectos secundarios. Omita esta ejecución cuando falle la lectura o falten dependencias para evitar que los usuarios desactiven la programación en segundo plano.
+ * Más tarde, debido a una excepción de DataStore/Koin, la operación de notificación, red o copia de seguridad falló al abrirse.
  */
 internal fun scheduleWorkEnabledOrFalse(value: Boolean?): Boolean = value == true
 

@@ -4,7 +4,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 外部插件桥接能力门测试。 */
+/** Prueba de puerta de capacidad de puenteo de complementos externos. */
 class SkillBridgeTest {
 
     @Test
@@ -15,14 +15,14 @@ class SkillBridgeTest {
         )
 
         assertTrue(result is SkillBridge.HandleResult.Failure)
-        // v2.x: 默认用 ALL_ACTIONS 全放行；此处显式传入受限动作集，验证机制仍在（message 已改为新文案）。
-        assertTrue((result as SkillBridge.HandleResult.Failure).message.contains("不在放行动作集内"))
+        // v2.x: ALL_ACTIONS se utiliza de forma predeterminada; el conjunto de acciones restringidas se pasa explícitamente aquí y el mecanismo de verificación sigue siendo (message Se ha cambiado a una nueva copia).
+        assertTrue((result as SkillBridge.HandleResult.Failure).message.contains("No en el conjunto de acciones de lanzamiento"))
     }
 
     @Test
     fun allActionsAllowsNetworkBridgeByDefault() = runBlocking {
-        // v2.x（沙盒放开）：默认全放行，http_get 不再需要插件声明能力。
-        // 注意：不实际发网络请求，仅验证门不拦（url 为非法时会被 SSRF/协议校验挡在下一层）。
+        // v2.x(Versión Sandbox): Versión completa de forma predeterminada.http_get Ya no se requieren capacidades declarativas de complementos.
+        // Nota: En realidad, no envíe solicitudes de red, solo verifique la puerta sin bloquear (url Si es ilegal, será bloqueado por la SSRF/verificación de protocolo en el siguiente nivel).
         val result = SkillBridge.tryHandle(
             """{"__bridge__":true,"action":"device_info","params":{}}""",
             allowedActions = SkillBridge.ALL_ACTIONS,
@@ -33,7 +33,7 @@ class SkillBridgeTest {
 
     @Test
     fun allActionsIncludesEveryBridgeAction() {
-        // 防止将来误把动作从全放行集里去掉。
+        // Esto evita que las acciones se eliminen accidentalmente del conjunto de versiones completo en el futuro.
         val expected = setOf(
             "echo", "http_get", "http_post", "fs_list", "fs_read", "fs_write", "fs_delete",
             "clipboard_read", "clipboard_write", "notify", "device_info",

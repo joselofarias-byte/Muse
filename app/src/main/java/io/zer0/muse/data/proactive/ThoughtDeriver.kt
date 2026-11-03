@@ -6,46 +6,46 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
- * 从记忆和里程碑里推导「值得惦记的事」。
+ * Derive “cosas memorables” a partir de recuerdos e hitos.
  *
- * 这一步是**纯本地规则**，不调用任何模型，因此可以随每次调度免费跑。
- * 这是整个设计能有燃料却不烧钱的关键：记账不产生额外 token 成本。
+ * Este paso es**reglas puramente locales**, no llama a ningún modelo, por lo que se puede ejecutar de forma gratuita con cada programación.
+ * Ésta es la clave para que todo el diseño pueda tener combustible pero no quemar dinero: la contabilidad no genera costos simbólicos adicionales.
  *
- * 规则刻意保守。账本里塞满碎事会毁掉整套机制 ——
- * 一旦用户发现「它记的东西我自己都不觉得重要」，所有主动消息都会显得廉价。
- * 所以宁可漏记：这里只认三类信号（未来事件、身体状态、未成行的打算），
- * 而日常闲聊里的琐碎由对话内的 `note_thought` 工具自己决定要不要记。
+ * Las reglas son deliberadamente conservadoras. Llenar el libro mayor con basura destruirá todo el mecanismo. ——
+ * Una vez que los usuarios descubren que "no creo que lo que recuerda sea importante", todos los mensajes proactivos parecerán baratos.
+ * Así que prefiero omitirlo: aquí sólo se reconocen tres tipos de señales (eventos futuros, condición física, planes incumplidos),
+ * Y los asuntos triviales del chat diario se reflejan en el diálogo. `note_thought` La herramienta decide si recordarlo o no.
  */
 object ThoughtDeriver {
 
     private const val HOUR_MS = 3_600_000L
     private const val DAY_MS = 86_400_000L
 
-    /** 未来事件提前多久开始惦记。太早记下来会变成长期噪音。 */
+    /** ¿Con cuánta anticipación empiezas a pensar en eventos futuros? Escribirlo demasiado pronto puede convertirse en ruido a largo plazo. */
     private const val EVENT_LOOKAHEAD_DAYS = 3L
 
-    /** 事件结束后再多留 26 小时（含当天），之后这条彻底作废。 */
+    /** Una vez finalizado el evento, deje 26 horas adicionales (incluido el día), después de las cuales este artículo dejará de ser completamente válido. */
     private const val EVENT_TAIL_HOURS = 26L
 
-    /** 碰过的记忆只在这么久之内参与推导，老记忆不重复惦记。 */
+    /** Los recuerdos que han sido tocados solo participan en la derivación durante un tiempo determinado y los recuerdos antiguos no se recuerdan repetidamente. */
     private const val FACT_FRESHNESS_DAYS = 7L
 
-    /** 身体状态类关键词。命中即当作 CARE。 */
+    /** Palabras clave del estado físico. Los golpes se tratan como CUIDADO. */
     private val CARE_KEYWORDS = listOf(
-        "失眠", "睡不着", "熬夜", "感冒", "发烧", "生病", "头疼", "头痛",
-        "焦虑", "压力", "难过", "低落", "emo", "累了", "好累", "疲惫", "失恋", "吵架",
+        "insomnio", "no puedo dormir", "quedarse despierto hasta tarde", "frio", "fiebre", "enfermo", "dolor de cabeza", "dolor de cabeza",
+        "ansiedad", "presión", "triste", "abajo", "emo", "cansado", "tan cansado", "cansado", "enamorado", "pelea",
     )
 
-    /** 未成行的打算类关键词。命中即当作 FOLLOW_UP。 */
+    /** Palabras clave de planificación inacabadas. Un hit se trata como FOLLOW_UP. */
     private val INTENT_KEYWORDS = listOf(
-        "想去看", "打算", "准备去", "计划", "要去", "想试试", "想学",
-        "考虑", "琢磨", "再看吧", "等我",
+        "quiero ver", "planear", "listo para ir", "planear", "quiero ir", "quiero probar", "quiero aprender",
+        "considerar", "reflexionar", "Mira de nuevo", "esperame",
     )
 
     /**
-     * 从一批记忆推导牵挂。
+     * Derivando preocupaciones de un lote de recuerdos.
      *
-     * @param alreadyTracked 已有关联来源 id，跳过已记过的（DAO 层也会兜一次）
+     * @param alreadyTracked Ya existe un ID de fuente asociado, omita los que han sido desmerecidos (DAO La capa también viajará una vez)
      */
     fun fromFacts(
         facts: List<FactStore.Fact>,
@@ -56,7 +56,7 @@ object ThoughtDeriver {
         deriveOne(fact, assistantId, now, factRef(fact), alreadyTracked)
     }
 
-    /** 单条记忆 → 至多一条牵挂。三道规则按优先级依次尝试。 */
+    /** memoria única → Como mucho una preocupación. Las tres reglas se prueban en orden de prioridad. */
     private fun deriveOne(
         fact: FactStore.Fact,
         assistantId: String,
@@ -65,7 +65,7 @@ object ThoughtDeriver {
         alreadyTracked: Set<String>,
     ): PendingThoughtEntity? {
         val text = fact.fact.trim()
-        // 太老的记忆不惦记：一个上周提过的小毛病，这周再问反而奇怪
+        // Demasiado viejo para recordarlo: un problema menor que mencioné la semana pasada, pero es extraño volver a preguntar sobre ello esta semana.
         val age = parseMillis(fact.createdAt)?.let { now - it } ?: 0L
         val eligible = text.isNotBlank() && ref !in alreadyTracked && age <= FACT_FRESHNESS_DAYS * DAY_MS
         val base = Base(assistantId, ref, text, now, ThoughtSource.MEMORY)
@@ -76,7 +76,7 @@ object ThoughtDeriver {
         }
     }
 
-    /** ① 未来 1~3 天内的事 → 立即类提醒，过期即作废，绝不补发。 */
+    /** ① futuro 1~3 cosas en el dia → Recordatorio inmediato: dejará de ser válido al vencimiento y nunca se volverá a emitir. */
     private fun asEvent(base: Base, fact: FactStore.Fact): PendingThoughtEntity? {
         val date = parseDate(fact.time)
         val days = date?.let { ChronoUnit.DAYS.between(LocalDate.now(), it) }
@@ -95,7 +95,7 @@ object ThoughtDeriver {
         }
     }
 
-    /** ② 身体/情绪状态 → 窗口类关心，48 小时内说都合适。 */
+    /** ② cuerpo/estado emocional → La clase de ventana se preocupa,48 Es apropiado decir dentro de una hora. */
     private fun asCare(base: Base): PendingThoughtEntity? {
         if (CARE_KEYWORDS.none { base.seed.contains(it) }) return null
         return draft(
@@ -107,7 +107,7 @@ object ThoughtDeriver {
         )
     }
 
-    /** ③ 没成行的打算 → 宽窗口跟进，一周内都可以问一句「后来去了吗」。 */
+    /** ③ No hay planes de ir → Con una amplia ventana de seguimiento, puedes preguntar \"¿Fuiste allí más tarde?\" dentro de una semana. */
     private fun asIntent(base: Base): PendingThoughtEntity? {
         if (INTENT_KEYWORDS.none { base.seed.contains(it) }) return null
         return draft(
@@ -120,10 +120,10 @@ object ThoughtDeriver {
     }
 
     /**
-     * 从里程碑推导。
+     * Derivación de hitos.
      *
-     * 只取最近 7 天内、且没被用户关掉的，且最多一条。
-     * 里程碑一周来一次已经是上限，再多就变成成就播报，不像人说话。
+     * Sólo se toman las que dentro de los últimos 7 días no han sido cerradas por el usuario, y hay un máximo de una.
+     * Los hitos que se realizan una vez por semana ya son el límite superior. Un poco más y se convierte en una transmisión de logros, que no es como hablar con un ser humano.
      */
     fun fromMilestones(
         milestones: List<MilestoneRecord>,
@@ -138,7 +138,7 @@ object ThoughtDeriver {
         .take(1)
         .map { m ->
             draft(
-                base = Base(assistantId, "ms_${m.id}", "${m.title}：${m.message}", now, ThoughtSource.MILESTONE),
+                base = Base(assistantId, "ms_${m.id}", "${m.title}:${m.message}", now, ThoughtSource.MILESTONE),
                 kind = ThoughtKind.MILESTONE,
                 urgency = ThoughtUrgency.EVERGREEN,
                 expiresAt = null,
@@ -147,7 +147,7 @@ object ThoughtDeriver {
         }
         .toList()
 
-    /** 里程碑的最小投影，避免让本文件依赖 Room 实体。 */
+    /** Proyección mínima de hitos para evitar que este documento dependa de entidades de Sala. */
     data class MilestoneRecord(
         val id: Long,
         val title: String,
@@ -157,10 +157,10 @@ object ThoughtDeriver {
     )
 
     // ══════════════════════════════════════════════════════════════
-    // 工具
+    // Herramientas
     // ══════════════════════════════════════════════════════════════
 
-    /** 各规则共用的那部分字段，避免每个 draft 都重复传一遍。 */
+    /** Los campos que son comunes a todas las reglas impiden que se vuelva a pasar cada borrador. */
     private data class Base(
         val assistantId: String,
         val ref: String,
@@ -188,7 +188,7 @@ object ThoughtDeriver {
         weight = weight.coerceIn(0f, 1f),
     )
 
-    /** 记忆的稳定标识，用于去重与回溯。 */
+    /** Identificación estable de memorias para deduplicación y recuperación. */
     private fun factRef(fact: FactStore.Fact): String = "fact_${fact.id}"
 
     private fun parseMillis(iso: String?): Long? =
@@ -196,7 +196,7 @@ object ThoughtDeriver {
 
     private fun parseDate(raw: String?): LocalDate? {
         val s = raw?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        // 记忆里的 time 可能是纯日期，也可能是完整 ISO 时间戳
+        // La hora en la memoria puede ser una fecha pura o una marca de tiempo ISO completa.
         return runCatching { LocalDate.parse(s.substringBefore("T")) }.getOrNull()
     }
 }

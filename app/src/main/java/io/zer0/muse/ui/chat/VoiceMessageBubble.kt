@@ -40,31 +40,31 @@ import io.zer0.muse.ui.speech.VoiceMessageStore
 import io.zer0.muse.ui.speech.VoicePlaybackController
 import org.koin.compose.koinInject
 
-/** 语音条节点标识（测试与无障碍定位用）。 */
+/** Identificación de nodos de barra de voz (para pruebas y posicionamiento de accesibilidad). */
 internal const val VOICE_MESSAGE_BUBBLE_TAG = "voice-message-bubble"
 
-/** 语音存档已失效时的静态节点标识。 */
+/** ID de nodo estático cuando el archivo de voz ha caducado. */
 internal const val VOICE_MESSAGE_EXPIRED_TAG = "voice-message-expired"
 
-/** 播放/暂停图标标识（断言图标真的切过）。 */
+/** jugar/Pausa la identificación del icono (afirma que el icono está realmente cortado). */
 internal const val VOICE_MESSAGE_PLAY_ICON_TAG = "voice-message-icon-play"
 internal const val VOICE_MESSAGE_PAUSE_ICON_TAG = "voice-message-icon-pause"
 
-/** 播放按钮的图标尺寸。 */
+/** El tamaño del icono del botón de reproducción. */
 private val VOICE_ICON_SIZE = 20.dp
 
-/** 语音条高度(胶囊高度,触控目标由外层列表间距兜底)。 */
+/** Altura de la barra de voz(altura de la cápsula,Los objetivos táctiles están cubiertos por el espaciado de lista exterior). */
 private val VOICE_ROW_HEIGHT = 40.dp
 
-/** 波形柱数量：再密就看不出"波形"了，再疏填充的推进感就没了。 */
+/** Número de columnas de forma de onda: no importa cuán densa sea, no podrás verla"forma de onda", la sensación de avance desaparece al adelgazar y rellenar. */
 private const val VOICE_WAVE_BAR_COUNT = 26
 
 /**
- * 语音条宽度分档（不随秒数匀速增长）。
+ * El ancho de la barra de voz se divide en pasos (no aumenta uniformemente con la cantidad de segundos).
  *
- * 三档而不是连续映射：语音时长分布极不均（大部分 3–10 秒），匀速映射会让绝大多数
- * 语音挤在最窄的一端看不出差别，超长语音又会一路撑到占满整行。分档后短、中、长
- * 各有稳定的视觉宽度，且最长一档也明显短于气泡可用宽度。
+ * Tres niveles en lugar de un mapeo continuo: la duración del habla está distribuida de manera extremadamente desigual (la mayoría 3–10 segundos), el mapeo uniforme hará que la mayoría
+ * Si la voz se aprieta en el extremo más estrecho, no se puede ver ninguna diferencia, y si la voz es muy larga, se estirará hasta llenar toda la línea. Dividido en corto, medio y largo.
+ * Cada uno tiene un ancho visual estable y el más largo es significativamente más corto que el ancho disponible de la burbuja.
  */
 internal fun voiceBubbleWidth(durationMs: Long): Dp = when {
     durationMs <= 15_000L -> 132.dp
@@ -73,10 +73,10 @@ internal fun voiceBubbleWidth(durationMs: Long): Dp = when {
 }
 
 /**
- * 语音时长文案：毫秒 → "M:SS"（超过 1 小时 "H:MM:SS"）。
+ * Copia de duración de voz: milisegundos → "M:SS"(más de 1 hora "H:MM:SS").
  *
- * 时长未知（<= 0）时给 "--:--" 而不是 "0:00" —— 后者会被读成"零秒语音"。
- * 纯数字 + 冒号，不做本地化。
+ * Duración desconocida (<= 0) tiempo dado "--:--" en lugar de "0:00" —— Este último se leerá como"Voz de cero segundos".
+ * Números puros + dos puntos, sin localización.
  */
 internal fun formatVoiceDuration(durationMs: Long): String {
     if (durationMs <= 0L) return "--:--"
@@ -88,20 +88,20 @@ internal fun formatVoiceDuration(durationMs: Long): String {
 }
 
 /**
- * 语音消息条。
+ * Tira de mensajes de voz.
  *
- * 助手消息与用户消息共用：圆角胶囊 + 左侧播放/暂停 + 中间窄波形 + 右侧时长。
- * 播放权交给共享的 [VoicePlaybackController]，气泡自身不持有播放器 —— 同一时刻
- * 只会有一条语音在播，换条点按会先停掉上一条。
+ * Los mensajes del asistente se comparten con los mensajes del usuario: cápsula con esquinas redondeadas + reproducción en el lado izquierdo/Pausa + forma de onda estrecha en el medio + duración a la derecha.
+ * Los derechos de reproducción se otorgan a los compartidos. [VoicePlaybackController], la burbuja en sí no sostiene al jugador —— mismo momento
+ * Solo se reproducirá una voz y al hacer clic para cambiar la voz se detendrá primero la voz anterior.
  *
- * 时长未知时右侧显示 "--:--"；播放中显示已播时长，空闲/暂停时显示总时长
- * （播放中要知道"听到哪儿了"，空闲时要知道"这条多长"）。
+ * Cuando se desconoce la duración, se muestra a la derecha. "--:--";Durante la reproducción, se muestran el tiempo de reproducción transcurrido y el tiempo de inactividad./Mostrar la duración total mientras está en pausa
+ * (Sepa mientras juega"¿Dónde lo escuchaste?", para saber cuando tienes tiempo libre"¿Cuánto dura este?").
  *
- * [store] 解析失败的引用（文件被清掉）降级为静态"语音已失效"，不抛异常也不可点。
+ * [store] Las referencias que no se pudieron resolver (el archivo se borró) se degradan a estáticas"La voz ha caducado", no se puede hacer clic en él sin generar una excepción.
  *
- * @param voiceUri [VoiceMessageStore] 的存档引用
- * @param durationMs 语音总时长（毫秒），0 表示未知
- * @param isFromUser 用户侧气泡配色与助手侧不同
+ * @param voiceUri [VoiceMessageStore] Citas archivadas para
+ * @param durationMs Duración total de la voz (milisegundos),0 Indica desconocido
+ * @param isFromUser El color de la burbuja en el lado del usuario es diferente al del lado del asistente.
  */
 @Composable
 internal fun VoiceMessageBubble(
@@ -127,7 +127,7 @@ internal fun VoiceMessageBubble(
     val timeText = formatVoiceDuration(if (isPlaying) positionMs else durationMs)
     val toggleLabel = stringResource(if (isPlaying) R.string.chat_voice_pause_cd else R.string.chat_voice_play_cd)
 
-    // 切后台/离开页面时释放播放器：气泡是被动方，只在自己正占着播放权时叫停。
+    // Cortar fondo/Suelta el reproductor al salir de la página: la burbuja es pasiva y sólo se detendrá cuando esté ocupando los derechos de reproducción.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, voiceUri) {
         val observer = LifecycleEventObserver { _, event ->
@@ -174,7 +174,7 @@ internal fun VoiceMessageBubble(
     }
 }
 
-/** 存档已失效：只留一条静态说明，不可点、不建播放器。 */
+/** El archivo ha caducado: sólo queda una descripción estática. No se puede hacer clic en él ni se puede construir el reproductor. */
 @Composable
 private fun VoiceExpiredBubble(
     isFromUser: Boolean,
@@ -206,8 +206,8 @@ private fun VoiceExpiredBubble(
 }
 
 /**
- * 窄波形：一排定宽圆头竖条，波峰高度由 [seed] 决定（同一条语音每次绘制一致，
- * 不会随重组跳动），已播部分换强调色。
+ * Forma de onda estrecha: una fila de barras verticales con cabezas redondas de ancho fijo, la altura de la cresta de la onda es [seed] Decisión (la misma voz se dibuja consistentemente cada vez,
+ * No saltará con la reorganización) y la parte reproducida se cambiará al color de acento.
  */
 @Composable
 private fun VoiceWaveform(
@@ -236,7 +236,7 @@ private fun VoiceWaveform(
     }
 }
 
-/** 由种子生成稳定的波峰高度比例（0.25–1.0）。 */
+/** Generar una relación de altura máxima estable a partir de la semilla (0.25–1.0). */
 private fun wavePeaks(seed: Int, count: Int): List<Float> {
     var state = seed.toLong() * 2654435761L + 0x9E3779B9L
     return List(count) {

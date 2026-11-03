@@ -1,71 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ===== ui/onboarding ===== 开机引导页 -->
-    <!-- 步骤 0:欢迎页 -->
+    <!-- ===== ui/onboarding ===== Página de inicio -->
+    <!-- Paso 0: página de bienvenida -->
 
-    <!-- 步骤 1:语言与外观 -->
-    <string name="onboarding_language_title">先选个语言。</string>
-    <string name="onboarding_language_subtitle">界面文字会用它，随时可改。</string>
-    <string name="onboarding_theme_title">换个喜欢的模样。</string>
-    <string name="onboarding_theme_subtitle">主题可随时在设置里更换。</string>
-    <string name="onboarding_lang_zh">简体中文</string>
-    <string name="onboarding_lang_zh_tw">繁体中文</string>
+    <!-- Paso 1: idioma y apariencia -->
+    <string name="onboarding_language_title">Elija un idioma primero.</string>
+    <string name="onboarding_language_subtitle">El texto de la interfaz lo utilizará y se puede cambiar en cualquier momento.</string>
+    <string name="onboarding_theme_title">Cambia a algo que te guste.</string>
+    <string name="onboarding_theme_subtitle">El tema se puede cambiar en cualquier momento en la configuración.</string>
+    <string name="onboarding_lang_es">Español</string>
+    <string name="onboarding_lang_pt">Portugués</string>
+    <string name="onboarding_lang_ru">Ruso</string>
     <string name="onboarding_lang_en">English</string>
     <string name="onboarding_lang_ja">日本語</string>
     <string name="onboarding_lang_ko">한국어</string>
 
-    <!-- 步骤 2:你的名字 -->
-    <string name="onboarding_names_title">先认识一下。</string>
-    <string name="onboarding_names_subtitle">称呼和名字，之后都能改。</string>
-    <string name="onboarding_names_user_label">我该怎么称呼你？</string>
-    <string name="onboarding_names_agent_label">给它起个名字</string>
-    <string name="onboarding_names_hint">名字会用在默认助手上，随时可改。</string>
-    <string name="onboarding_memory_title">让我记住你。</string>
-    <string name="onboarding_memory_subtitle">开启后，对话结束会自动整理成长记忆。记忆频繁更新会降低模型缓存命中率（关掉通常更省钱），但长期陪伴会好得多。</string>
-    <string name="onboarding_memory_switch_title">启用记忆系统</string>
-    <string name="onboarding_memory_switch_subtitle">对话结束自动整理；随时可在设置中关闭</string>
+    <!-- Paso 2: Tu nombre -->
+    <string name="onboarding_names_title">Conózcanse primero.</string>
+    <string name="onboarding_names_subtitle">El título y el nombre se pueden cambiar más adelante.</string>
+    <string name="onboarding_names_user_label">¿Cómo debería llamarte?</string>
+    <string name="onboarding_names_agent_label">dale un nombre</string>
+    <string name="onboarding_names_hint">El nombre se utilizará en el asistente predeterminado y se podrá cambiar en cualquier momento.</string>
+    <string name="onboarding_memory_title">Déjame recordarte.</string>
+    <string name="onboarding_memory_subtitle">Después de encenderlo, los recuerdos de crecimiento se ordenarán automáticamente después de la conversación. Las actualizaciones frecuentes de la memoria reducirán la tasa de aciertos de la caché del modelo (normalmente es más económico desactivarla), pero es mucho mejor mantenerla a largo plazo.</string>
+    <string name="onboarding_memory_switch_title">Habilitar sistema de memoria</string>
+    <string name="onboarding_memory_switch_subtitle">Clasificación automática al final de las conversaciones; Se puede desactivar en cualquier momento en la configuración.</string>
 
-    <!-- 步骤 3:配置供应商 -->
-    <string name="onboarding_provider_title">接上大脑。</string>
-    <string name="onboarding_provider_subtitle">选一个模型服务，填好 Key 并测试连接。成功后自动拉取模型清单并匹配能力。</string>
-    <string name="onboarding_provider_err_auth">认证失败：请检查 API Key 是否正确。</string>
-    <string name="onboarding_provider_err_empty">连接成功，但上游没有返回任何模型——请检查接口地址。</string>
-    <string name="onboarding_provider_err_other">连接失败：%1$s</string>
-    <string name="onboarding_provider_caps">能力已匹配：视觉 %1$d · 推理 %2$d · 工具 %3$d</string>
-    <string name="onboarding_provider_select_label">选择供应商</string>
+    <!-- Paso 3: Configurar el proveedor -->
+    <string name="onboarding_provider_title">Conecta el cerebro.</string>
+    <string name="onboarding_provider_subtitle">Seleccione un modelo de servicio, complete la Clave y pruebe la conexión. Después del éxito, la lista de modelos se extrae automáticamente y las capacidades coinciden.</string>
+    <string name="onboarding_provider_err_auth">Error de autenticación: verifique si la clave API es correcta.</string>
+    <string name="onboarding_provider_err_empty">La conexión es exitosa, pero no se devuelve ningún modelo desde el nivel ascendente.——Por favor verifique la dirección de la interfaz.</string>
+    <string name="onboarding_provider_err_other">La conexión falló:%1$s</string>
+    <string name="onboarding_provider_caps">Habilidad emparejada: Visión %1$d · razonamiento %2$d · Herramientas %3$d</string>
+    <string name="onboarding_provider_select_label">Seleccionar proveedor</string>
     <string name="onboarding_provider_apikey_label">API Key</string>
-    <string name="onboarding_provider_apikey_input">输入 API Key</string>
-    <string name="onboarding_provider_apikey_show">显示密钥</string>
-    <string name="onboarding_provider_apikey_hide">隐藏密钥</string>
-    <string name="onboarding_provider_test_button">测试连接</string>
-    <string name="onboarding_provider_test_success">连接成功，共 %1$d 个可用模型</string>
-    <string name="onboarding_provider_skip">稍后在设置里配置</string>
-    <string name="onboarding_provider_custom">自定义（OpenAI 兼容）</string>
-    <string name="onboarding_provider_custom_baseurl_label">自定义接口地址</string>
+    <string name="onboarding_provider_apikey_input">entrada API Key</string>
+    <string name="onboarding_provider_apikey_show">mostrar clave</string>
+    <string name="onboarding_provider_apikey_hide">Ocultar clave</string>
+    <string name="onboarding_provider_test_button">conexión de prueba</string>
+    <string name="onboarding_provider_test_success">Conexión exitosa, total %1$d modelos disponibles</string>
+    <string name="onboarding_provider_skip">Configurarlo más tarde en ajustes</string>
+    <string name="onboarding_provider_custom">personalizado (OpenAI compatibles)</string>
+    <string name="onboarding_provider_custom_baseurl_label">Dirección de interfaz personalizada</string>
     <string name="onboarding_provider_custom_baseurl_input">https://api.example.com/v1</string>
 
-    <!-- 步骤 4:选择模型 -->
-    <string name="onboarding_model_title">挑一个主力模型。</string>
-    <string name="onboarding_model_search_label">搜索模型</string>
-    <string name="onboarding_model_empty_title">未配置供应商</string>
-    <string name="onboarding_model_empty_desc">可稍后在设置中配置供应商并选择模型。</string>
+    <!-- Paso 4: Selecciona un modelo -->
+    <string name="onboarding_model_title">Elija un modelo de caballo de batalla.</string>
+    <string name="onboarding_model_search_label">Modelo de búsqueda</string>
+    <string name="onboarding_model_empty_title">Ningún proveedor configurado</string>
+    <string name="onboarding_model_empty_desc">Puede configurar el proveedor y seleccionar el modelo más adelante en la configuración.</string>
 
-    <!-- 步骤 5:完成页 -->
-    <string name="onboarding_complete_title">准备好了。</string>
-    <string name="onboarding_complete_subtitle">接下来可以试试这些</string>
-    <string name="onboarding_tutorial_chat_title">日常聊天</string>
-    <string name="onboarding_tutorial_chat_desc">文字、图片、文件都能发，回复自然</string>
-    <string name="onboarding_tutorial_assistant_title">助手与记忆</string>
-    <string name="onboarding_tutorial_assistant_desc">自定义人设，还记得你聊过的事</string>
-    <string name="onboarding_tutorial_tools_title">工具与知识库</string>
-    <string name="onboarding_tutorial_tools_desc">设闹钟、查天气、搜文档，直接说就行</string>
-    <string name="onboarding_tutorial_backup_title">数据备份</string>
-    <string name="onboarding_tutorial_backup_desc">支持 WebDAV/S3 云备份，换机不丢数据</string>
+    <!-- Paso 5: página completa -->
+    <string name="onboarding_complete_title">Listo.</string>
+    <string name="onboarding_complete_subtitle">Puedes probar estos a continuación</string>
+    <string name="onboarding_tutorial_chat_title">charla diaria</string>
+    <string name="onboarding_tutorial_chat_desc">Puede enviar texto, imágenes y archivos, y puede responder con naturalidad.</string>
+    <string name="onboarding_tutorial_assistant_title">Asistentes y memoria</string>
+    <string name="onboarding_tutorial_assistant_desc">Personaliza tu personalidad y recuerda de qué hablaste.</string>
+    <string name="onboarding_tutorial_tools_title">Herramientas y base de conocimientos</string>
+    <string name="onboarding_tutorial_tools_desc">Pon un despertador, consulta el tiempo, busca documentos, solo pregunta</string>
+    <string name="onboarding_tutorial_backup_title">Copia de seguridad de datos</string>
+    <string name="onboarding_tutorial_backup_desc">Admite copia de seguridad en la nube WebDAV/S3, sin pérdida de datos al cambiar de dispositivo</string>
 
-    <!-- 底部按钮 -->
-    <string name="onboarding_button_start">开始设置</string>
-    <string name="onboarding_button_previous">上一步</string>
-    <string name="onboarding_button_next">下一步</string>
-    <string name="onboarding_button_finish">去聊聊吧</string>
-    <string name="onboarding_step_progress">第 %1$d 步 / 共 %2$d 步</string>
+    <!-- botón inferior -->
+    <string name="onboarding_button_start">Empezar a configurar</string>
+    <string name="onboarding_button_previous">Paso anterior</string>
+    <string name="onboarding_button_next">Siguiente paso</string>
+    <string name="onboarding_button_finish">Ve y charla</string>
+    <string name="onboarding_step_progress">No. %1$d pasos/total %2$d paso</string>
 </resources>

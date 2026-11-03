@@ -3,10 +3,10 @@ package io.zer0.muse.ui.memory
 import io.zer0.memory.fact.FactStore
 
 /**
- * 选择星座节点的纯函数。
+ * Funciones puras que seleccionan nodos de constelaciones.
  *
- * 关系边、重要度和置顶状态只影响展示优先级，不再决定普通事实是否可见；
- * 否则刚写入但尚未完成关系整理的事实会在记忆星座中消失。
+ * Los límites de relación, la importancia y el estado fijado sólo afectan la prioridad de visualización y ya no determinan si los hechos ordinarios son visibles;
+ * De lo contrario, los hechos que se acaban de escribir pero que aún no se han resuelto se perderán en la constelación de la memoria.
  */
 internal fun selectGraphFacts(facts: List<FactStore.Fact>, linkedFactIds: Set<Long>, maxNodes: Int): List<FactStore.Fact> = facts
     .sortedWith(

@@ -19,26 +19,26 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 会话附件索引服务。
+ * Servicio de indexación de archivos adjuntos de sesión.
  *
- * 聊天文档选择流程触发索引,会话删除流程触发清理;检索复用统一 RAG chunk 存储。
+ * El proceso de selección de documentos de chat activa la indexación,El proceso de eliminación de sesión desencadena la limpieza;Recupere el almacenamiento de fragmentos RAG unificados multiplexados.
  *
- * 职责:
- *  - 附件添加时自动 chunk + embed 到临时索引(复用 [RagService.indexDocument])
- *  - 维护附件索引状态机:[SessionAttachmentStatus]
- *  - 进度回调更新 UI(通过 [attachmentsBySession] StateFlow)
- *  - 会话结束清理索引(删除 chunk 表中对应 docId 的记录)
+ * Responsabilidades:
+ *  - Fragmentar e incrustar automáticamente en un índice temporal cuando se agregan archivos adjuntos(Reutilizar [RagService.indexDocument])
+ *  - Mantener la máquina de estado del índice de archivos adjuntos:[SessionAttachmentStatus]
+ *  - Actualización de devolución de llamada de progreso UI(Pase [attachmentsBySession] StateFlow)
+ *  - Limpiar índice después de finalizar la sesión(Eliminar el registro correspondiente al docId en la tabla de fragmentos)
  *
- * 设计:
- *  - 索引存储:复用 KnowledgeChunk 表(通过 docId 前缀 "session-attach-" 区分)
- *  - 状态存储:内存 StateFlow(按 sessionId 分组),避免数据库 schema 变更
- *  - 并发:每会话单索引任务(同 sessionId 串行),避免 embedding 批次冲突
- *  - 清理:会话结束时调用 [dropSessionAttachments] 删除 chunk 记录
+ * diseño:
+ *  - Almacenamiento de índice:Reutilizar la tabla KnowledgeChunk(Por prefijo docId "session-attach-" distinguir)
+ *  - almacenamiento estatal:memoria StateFlow(Agrupar por ID de sesión),Evite cambios en el esquema de la base de datos
+ *  - concurrencia:Tarea de indexación única por sesión(Igual que el ID de sesión serial),Evite incrustar conflictos por lotes
+ *  - limpiar:Llamado cuando termina la sesión. [dropSessionAttachments] Eliminar registros fragmentados
  *
- * 检索集成:
- *  - kb_search 工具检索时,RagService.retrieve 会自动包含会话附件 chunk
- *    (因 docId 前缀不影响 chunk 表查询,除非显式按 KB 过滤)
- *  - 如需隔离,可在 retrieve 时过滤 isSessionAttachmentDocId
+ * Integración de búsqueda:
+ *  - kb_search Al recuperar herramientas,RagService.retrieve Los archivos adjuntos de la conversación se incluyen automáticamente chunk
+ *    (Porque el prefijo docId no afecta la consulta de la tabla fragmentada,A menos que se filtre explícitamente por KB)
+ *  - Si se requiere cuarentena,Se puede filtrar al recuperar isSessionAttachmentDocId
  */
 class SessionAttachmentService(
     private val ragService: RagService,
@@ -47,35 +47,35 @@ class SessionAttachmentService(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** 内存状态:sessionId → 附件列表(并发安全)。 */
+    /** estado de la memoria:sessionId → Lista de archivos adjuntos(Seguridad de concurrencia). */
     private val sessionAttachments = ConcurrentHashMap<String, MutableList<SessionAttachment>>()
 
-    /** 每个附件的后台索引任务，删除会话时先取消并等待它结束。 */
+    /** Tarea de indexación en segundo plano para cada archivo adjunto, cancelar y esperar a que finalice al eliminar una sesión. */
     private val activeJobs = ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
-    /** 处理删除与后台索引之间的竞态，防止取消窗口后再次写入文档元数据。 */
+    /** Maneje la condición de carrera entre la eliminación y la indexación en segundo plano para evitar que los metadatos del documento se escriban nuevamente después de cancelar la ventana. */
     private val droppedAttachmentIds = ConcurrentHashMap.newKeySet<String>()
 
-    /** 可观察的状态流:所有会话附件(扁平列表)。 */
+    /** Flujo de estado observable:Todos los archivos adjuntos de la sesión(lista plana). */
     private val _attachmentsFlow = MutableStateFlow<List<SessionAttachment>>(emptyList())
     val attachmentsFlow: StateFlow<List<SessionAttachment>> = _attachmentsFlow.asStateFlow()
 
-    /** 获取指定会话的附件列表。 */
+    /** Obtenga la lista de archivos adjuntos para la sesión especificada. */
     fun attachmentsBySession(sessionId: String): List<SessionAttachment> = sessionAttachments[sessionId]?.toList() ?: emptyList()
 
     /**
-     * 索引一个会话附件。
+     * Indexar un archivo adjunto de sesión.
      *
-     * 流程:
-     *  1. 生成 attachmentId 和 docId(前缀 "session-attach-")
-     *  2. 状态 QUEUED → CHUNKING → EMBEDDING → READY
-     *  3. 复用 [RagService.indexDocument] 完成分块 + embedding
-     *  4. 进度回调更新内存状态,触发 StateFlow emit
+     * proceso:
+     *  1. Generar adjuntoId y docId(prefijo "session-attach-")
+     *  2. Estado QUEUED → CHUNKING → EMBEDDING → READY
+     *  3. Reutilizar [RagService.indexDocument] fragmentación completa + embedding
+     *  4. La devolución de llamada de progreso actualiza el estado de la memoria,gatillo StateFlow emit
      *
-     * @param sessionId 会话 ID
-     * @param name 附件显示名(文件名)
-     * @param content 附件文本内容(已由 DocumentParser 解析)
-     * @return attachmentId(可用于后续状态查询)
+     * @param sessionId sesión ID
+     * @param name Nombre para mostrar del archivo adjunto(nombre de archivo)
+     * @param content Contenido del texto adjunto(Analizado por DocumentParser)
+     * @return attachmentId(Se puede utilizar para consultas de estado posteriores.)
      */
     fun indexSessionAttachment(sessionId: String, name: String, content: String): String {
         val attachmentId = UUID.randomUUID().toString()
@@ -87,13 +87,13 @@ class SessionAttachmentService(
             name = name,
             status = SessionAttachmentStatus.QUEUED,
         )
-        // 加入内存状态
+        // Agregar estado de memoria
         sessionAttachments.compute(sessionId) { _, list ->
             (list ?: mutableListOf()).apply { add(attachment) }
         }
         emitState()
 
-        // 异步执行索引
+        // Índice de ejecución asincrónica
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 currentCoroutineContext().ensureActive()
@@ -105,8 +105,8 @@ class SessionAttachmentService(
                 updateAttachment(attachmentId, sessionId) {
                     it.copy(status = SessionAttachmentStatus.EMBEDDING)
                 }
-                // RAG 检索的安全回填以 knowledge_docs 为元数据真源;
-                // 只写 chunk 会在 applyIsInternal 阶段被 fail-closed 丢弃。
+                // RAG Relleno seguro para recuperación con Knowledge_docs como fuente veraz de metadatos;
+                // Los fragmentos de solo escritura se cerrarán y descartarán durante la fase applyIsInternal.
                 docDao.upsert(attachment.toKnowledgeDoc(content))
                 currentCoroutineContext().ensureActive()
                 val chunkCount = ragService.indexDocument(
@@ -123,9 +123,9 @@ class SessionAttachmentService(
                 if (attachmentId in droppedAttachmentIds) return@launch
                 if (chunkCount == 0) {
                     updateAttachment(attachmentId, sessionId) {
-                        it.copy(status = SessionAttachmentStatus.FAILED, errorMessage = "内容为空或分块失败")
+                        it.copy(status = SessionAttachmentStatus.FAILED, errorMessage = "El contenido está vacío o la fragmentación falló")
                     }
-                    Logger.w(TAG, "会话附件索引失败:内容为空 | sessionId=$sessionId | name=$name")
+                    Logger.w(TAG, "Error en el índice de datos adjuntos de sesión:El contenido está vacío. | sessionId=$sessionId | name=$name")
                 } else {
                     updateAttachment(attachmentId, sessionId) {
                         it.copy(
@@ -142,16 +142,16 @@ class SessionAttachmentService(
                             contentHash = RagService.computeContentHash(content),
                         ),
                     )
-                    Logger.i(TAG, "会话附件索引完成 | sessionId=$sessionId | name=$name | chunks=$chunkCount")
+                    Logger.i(TAG, "Indexación de archivos adjuntos de sesión completada | sessionId=$sessionId | name=$name | chunks=$chunkCount")
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
-                // 删除会话/附件是正常取消，不应把已删除任务改写为 FAILED。
+                // Eliminar sesión/Los archivos adjuntos se cancelan normalmente y las tareas eliminadas no deben reescribirse como FALLIDAS.
                 throw e
             } catch (e: Throwable) {
                 updateAttachment(attachmentId, sessionId) {
                     it.copy(status = SessionAttachmentStatus.FAILED, errorMessage = e.message)
                 }
-                Logger.e(TAG, "会话附件索引异常 | sessionId=$sessionId | name=$name", e)
+                Logger.e(TAG, "Excepción del índice de datos adjuntos de sesión | sessionId=$sessionId | name=$name", e)
             } finally {
                 activeJobs.remove(attachmentId)
             }
@@ -162,13 +162,13 @@ class SessionAttachmentService(
     }
 
     /**
-     * 清理指定会话的所有附件索引。
+     * Limpia todos los índices de archivos adjuntos para la sesión especificada.
      *
-     * 会话结束时调用,删除 chunk 表中对应 docId 的记录,释放存储。
-     * 清理后附件状态置为 [SessionAttachmentStatus.DROPPED]。
+     * Llamado cuando termina la sesión.,Eliminar el registro correspondiente al docId en la tabla de fragmentos,Liberar almacenamiento.
+     * Después de la limpieza, el estado del accesorio se establece en [SessionAttachmentStatus.DROPPED].
      *
-     * @param sessionId 会话 ID
-     * @param keepIndex 是否保留索引(默认 false 清理)
+     * @param sessionId sesión ID
+     * @param keepIndex Si se debe mantener el índice(Limpieza falsa predeterminada)
      */
     suspend fun dropSessionAttachments(sessionId: String, keepIndex: Boolean = false) {
         val attachments = sessionAttachments[sessionId] ?: return
@@ -180,19 +180,19 @@ class SessionAttachmentService(
         if (!keepIndex) {
             for (attachment in attachments) {
                 runCatching {
-                    // QUEUED/CHUNKING 也要清理：任务可能已写入部分 chunk 或文档元数据。
+                    // QUEUED/CHUNKING También limpie: la tarea puede haber escrito fragmentos parciales o metadatos del documento.
                     ragService.deleteDocIndex(attachment.docId)
                     docDao.delete(attachment.docId)
-                }.onFailure { Logger.w(TAG, "删除附件索引失败 | docId=${attachment.docId}", it) }
+                }.onFailure { Logger.w(TAG, "No se pudo eliminar el índice del archivo adjunto | docId=${attachment.docId}", it) }
             }
         }
         sessionAttachments.remove(sessionId)
         attachments.forEach { droppedAttachmentIds.remove(it.id) }
         emitState()
-        Logger.i(TAG, "会话附件已清理 | sessionId=$sessionId | keepIndex=$keepIndex | count=${attachments.size}")
+        Logger.i(TAG, "Se limpiaron los archivos adjuntos de la sesión | sessionId=$sessionId | keepIndex=$keepIndex | count=${attachments.size}")
     }
 
-    /** 更新指定附件的状态(内存)。 */
+    /** Actualizar el estado del archivo adjunto especificado(memoria). */
     private fun updateAttachment(attachmentId: String, sessionId: String, transform: (SessionAttachment) -> SessionAttachment) {
         sessionAttachments[sessionId]?.let { list ->
             synchronized(list) {
@@ -205,7 +205,7 @@ class SessionAttachmentService(
         emitState()
     }
 
-    /** 触发 StateFlow emit(扁平化所有会话附件)。 */
+    /** gatillo StateFlow emit(Aplanar todos los archivos adjuntos de la sesión). */
     private fun emitState() {
         _attachmentsFlow.update {
             sessionAttachments.values.flatten().toList()

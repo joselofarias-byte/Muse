@@ -22,13 +22,13 @@ import java.nio.file.Files
 import java.util.Date
 
 /**
- * `/api/media/{token}` 的读取行为：鉴权、正确的 Content-Type、越界与缺失一律 404。
+ * `/api/media/{token}` El comportamiento de lectura: autenticación, tipo de contenido correcto, fuera de límites y faltante son todos 404.
  *
- * 这里用真 HTTP 请求打真 Ktor 服务，验的是「路由装在 `authenticate` 块里」这条约束：
- * 不带凭证的请求应该被鉴权管道拦在路由外面，连处理函数都进不去。
+ * Aquí, se utiliza una solicitud HTTP real para crear un servicio Ktor real. Lo que se prueba es que "la ruta está instalada en `authenticate` bloquear" esta restricción:
+ * El canal de autenticación debe bloquear el enrutamiento de las solicitudes sin credenciales y ni siquiera pueden ingresar a la función de procesamiento.
  *
- * 闸门装的就是生产那一份 [installHostAuthProvider]（bearer provider + java-jwt HMAC 校验），
- * 不是替身。
+ * La puerta se llena con la porción de producción. [installHostAuthProvider](bearer provider + java-jwt HMAC verificación),
+ * No es un suplente.
  */
 class HostMediaRoutesTest {
 
@@ -39,14 +39,14 @@ class HostMediaRoutesTest {
     private val jwtSecret = "muse-media-test-secret"
     private val algorithm: Algorithm = Algorithm.HMAC256(jwtSecret)
 
-    /** 与 WebServer.issueJwt 同口径:subject=muse-web、24h 有效期内。 */
+    /** Mismo calibre que WebServer.issueJwt:subject=muse-web,24h Dentro del período de validez. */
     private fun signedToken(): String = JWT.create()
         .withSubject(HOST_AUTH_SUBJECT)
         .withIssuedAt(Date())
         .withExpiresAt(Date(System.currentTimeMillis() + 60_000L))
         .sign(algorithm)
 
-    /** 起一个真 Ktor 服务:媒体路由装在 `authenticate` 块里,与 WebServer 的摆放同一层。 */
+    /** Iniciar un verdadero servicio Ktor:El enrutamiento de medios está instalado en `authenticate` bloquear,Situado al mismo nivel que WebServer. */
     private fun withServer(store: HostMediaStore, block: (port: Int, authorization: String) -> Unit) {
         val port = ServerSocket(0).use { it.localPort }
         val server = embeddedServer(CIO, host = "127.0.0.1", port = port) {
@@ -78,7 +78,7 @@ class HostMediaRoutesTest {
             val response = get(port, mediaPath(token))
 
             assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, response.status)
-            assertTrue("未鉴权不该把图片字节带出去: ${response.text()}", response.body.isEmpty())
+            assertTrue("Los bytes de imagen no deben eliminarse sin autenticación: ${response.text()}", response.body.isEmpty())
         }
     }
 
@@ -107,11 +107,11 @@ class HostMediaRoutesTest {
 
             assertEquals("body=${response.text()}", HttpURLConnection.HTTP_OK, response.status)
             assertTrue(
-                "Content-Type 应由文件头判定,实际: ${response.contentType}",
+                "Content-Type Debe estar determinado por el encabezado del archivo.,real: ${response.contentType}",
                 response.contentType.orEmpty().startsWith("image/png"),
             )
-            assertNotNull("应带 Cache-Control", response.cacheControl)
-            assertTrue("响应头应允许浏览器私有缓存: ${response.cacheControl}", response.cacheControl!!.contains("private"))
+            assertNotNull("deberia traer Cache-Control", response.cacheControl)
+            assertTrue("Los encabezados de respuesta deben permitir el almacenamiento en caché privado del navegador: ${response.cacheControl}", response.cacheControl!!.contains("private"))
             assertTrue(response.cacheControl!!.contains("max-age"))
             assertEquals(PNG_BYTES.size, response.body.size)
         }
@@ -135,14 +135,14 @@ class HostMediaRoutesTest {
     fun `mapping that points outside the media directories is a not found`() {
         val store = HostMediaStore(imageDir, voiceDir)
         val secret = File(outsideDir, "prefs.xml").apply { writeBytes("<prefs><token>secret</token></prefs>".toByteArray()) }
-        // 预置一条绕过登记校验的映射:读取侧必须自己拦住。
+        // Preestablecer una asignación para omitir la verificación de registro:El lado de lectura debe bloquearse.
         store.seedMapping("escaped", secret.absolutePath)
 
         withServer(store) { port, authorization ->
             val response = get(port, MEDIA_PATH + "escaped", authorization)
 
             assertEquals("body=${response.text()}", HttpURLConnection.HTTP_NOT_FOUND, response.status)
-            assertTrue("越界请求不能把文件内容带出去", response.body.isEmpty())
+            assertTrue("Una solicitud fuera de límites no puede eliminar el contenido del archivo.", response.body.isEmpty())
         }
     }
 
@@ -190,7 +190,7 @@ class HostMediaRoutesTest {
             if (ready) return
             Thread.sleep(10)
         }
-        error("媒体路由测试服务未启动")
+        error("El servicio de prueba de enrutamiento de medios no se inicia")
     }
 
     private companion object {

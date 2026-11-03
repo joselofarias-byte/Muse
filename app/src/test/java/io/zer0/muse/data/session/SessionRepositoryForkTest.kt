@@ -82,11 +82,11 @@ class SessionRepositoryForkTest {
     }
 
     /**
-     * §11-11: fork 副本不继承收藏位。
+     * §11-11: fork Las copias no heredan el espacio de colección.
      *
-     * 以前 entity.copy 把 favorite 一并抄过去，同一句话在两个会话里各占一条收藏，
-     * 在收藏夹取消其中一条时另一条还在，看起来像删除失败。
-     * 原会话的收藏必须完好，副本必须干净。
+     * En el pasado, entidad.copia copiaba favoritos juntos y la misma oración ocupaba una colección en cada una de las dos sesiones.
+     * Cuando cancelas uno de los favoritos, el otro sigue ahí y parece que la eliminación falló.
+     * La colección de la sesión original debe estar intacta y la copia debe estar limpia.
      */
     @Test
     fun forkDoesNotDuplicateFavorites() = runBlocking {
@@ -107,7 +107,7 @@ class SessionRepositoryForkTest {
                     content = "anchor",
                     seq = 2,
                     commitSeq = 2,
-                ).copy(favorite = true, favoriteTag = "重点"),
+                ).copy(favorite = true, favoriteTag = "centrarse"),
             ),
         )
         val repository = SessionRepository(
@@ -117,23 +117,23 @@ class SessionRepositoryForkTest {
             context = context,
             messageImageStore = imageStore,
         )
-        // 同 forkStopsAtAnchorWhenLaterMessagesShareItsTimestamp: Robolectric 的 FTS4 回退会中断
-        // 外围事务,这里只验证主数据边界。
+        // Lo mismo forkStopsAtAnchorWhenLaterMessagesShareItsTimestamp: Robolectric Se rompe el respaldo de FTS4
+        // asuntos periféricos,Aquí sólo se verifican los límites de los datos maestros.
         MessageFtsRuntime.useFts5 = true
 
         val forkedId = repository.forkSession("source-session", "a1")
         assertNotNull(forkedId)
 
         val allFavorites = database.messageDao().observeAllFavorites().first()
-        assertEquals("分叉不得让同一句话变成两条收藏", 1, allFavorites.size)
-        assertEquals("原会话的收藏必须保留", "a1", allFavorites.single().id)
+        assertEquals("No se permite la bifurcación para convertir la misma frase en dos conjuntos", 1, allFavorites.size)
+        assertEquals("Se deben conservar los favoritos de la sesión original.", "a1", allFavorites.single().id)
 
         val copied = database.messageDao().observeBySession(forkedId!!).first()
-        assertTrue("副本不带收藏位", copied.none { it.favorite })
-        assertTrue("副本也不带分组标签", copied.all { it.favoriteTag == null })
+        assertTrue("La copia no tiene ranura de colección.", copied.none { it.favorite })
+        assertTrue("La copia tampoco tiene etiquetas de agrupación.", copied.all { it.favoriteTag == null })
     }
 
-    /** 构造一条源会话消息（收藏位由调用方 copy 覆盖）。 */
+    /** Construye un mensaje de sesión de origen (los bits favoritos son anulados por la copia de la persona que llama). */
     private fun message(id: String, role: String, content: String, seq: Long, commitSeq: Long) = MessageEntity(
         id = id,
         sessionId = "source-session",

@@ -37,12 +37,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * v1.97: 二维码分享弹窗 — 显示 Provider 配置的二维码。
+ * v1.97: Ventana emergente para compartir códigos QR — Mostrar el código QR de configuración del Proveedor.
  *
- * 生成二维码 Bitmap 并居中显示,提示用户"包含 apiKey,请谨慎分享"。
+ * Generar código QR Bitmap y mostrarlo en el centro,usuario rápido"contiene apiKey,Por favor comparte con precaución".
  *
- * @param content 编码后的二维码字符串(由 QrCodeGenerator.encodeProvider 生成)
- * @param onDismiss 关闭回调
+ * @param content Cadena de código QR codificada(Generado por QrCodeGenerator.encodeProvider)
+ * @param onDismiss Cerrar devolución de llamada
  */
 @Composable
 fun QrCodeShareDialog(content: String, onDismiss: () -> Unit) {
@@ -90,13 +90,13 @@ fun QrCodeShareDialog(content: String, onDismiss: () -> Unit) {
 }
 
 /**
- * v1.97: 二维码扫描弹窗 — 从相册选图片识别二维码。
+ * v1.97: Ventana emergente de escaneo de código QR — Seleccione una imagen del álbum para identificar el código QR.
  *
- * 调用系统图片选择器,选中后用 ML Kit 识别二维码,
- * 成功且为 Provider 格式时回调 onResult。
+ * Llame al selector de imágenes del sistema,Después de seleccionar, use ML Kit para identificar el código QR.,
+ * Devolución de llamada a onResult cuando tenga éxito y en formato de proveedor.
  *
- * @param onDismiss 关闭回调
- * @param onResult 扫描成功回调,返回解析后的二维码原始内容
+ * @param onDismiss Cerrar devolución de llamada
+ * @param onResult Devolución de llamada de escaneo exitoso,Devuelve el contenido original analizado del código QR
  */
 @Composable
 fun QrCodeScanDialog(onDismiss: () -> Unit, onResult: (String) -> Unit) {
@@ -115,9 +115,9 @@ fun QrCodeScanDialog(onDismiss: () -> Unit, onResult: (String) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    // v1.114: 用全局 ImageLoader 单例(coil.imageLoader 扩展属性),
-                    // 替代每次 new ImageLoader(context),避免绕过内存/磁盘缓存。
-                    // 同时加 .size(1024) 约束,防止大图全分辨率解码(扫码只需 1024px 足够)。
+                    // v1.114: Utilice el singleton global de ImageLoader(coil.imageLoader atributos extendidos),
+                    // Reemplazar cada vez new ImageLoader(context),Evite pasar por alto la memoria/Caché de disco.
+                    // Añadir al mismo tiempo .size(1024) restricción,Evite la decodificación de imágenes grandes en resolución completa(Sólo 1024px son suficientes para escanear el código QR).
                     val bmp = context.imageLoader.execute(
                         ImageRequest.Builder(context).data(uri).size(1024).build(),
                     ).drawable?.toBitmap()
@@ -176,7 +176,7 @@ fun QrCodeScanDialog(onDismiss: () -> Unit, onResult: (String) -> Unit) {
     )
 }
 
-/**coil 的 Drawable.toBitmap() 在 coil3 中变更了 API,这里用兼容写法。*/
+/**coil de Drawable.toBitmap() Cambiado en bobina3 API,Aquí se utiliza escritura compatible.*/
 private fun android.graphics.drawable.Drawable.toBitmap(): Bitmap {
     return if (this is android.graphics.drawable.BitmapDrawable) {
         bitmap

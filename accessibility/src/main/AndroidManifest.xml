@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-        无障碍服务由 :app 的清单注册,保持稳定组件名并避免 library 合并出第二个
-        “Muse UI 自动化”服务。此模块只提供共享实现和 AIDL 契约。
+        Los servicios de accesibilidad están registrados mediante el manifiesto de la aplicación.,Mantenga estables los nombres de los componentes y evite que la biblioteca fusione el segundo
+        “Muse UI Automatización”servicio. Este módulo solo proporciona implementaciones compartidas y contratos AIDL.
     -->
 
 </manifest>

@@ -2,23 +2,23 @@ import type { HostConnectionStatus } from "../api.js";
 import type { MessageKey } from "../i18n/messages.js";
 
 /**
- * 断线提示的纯逻辑。
+ * Lógica pura para avisos de desconexión.
  *
- * 三态文案要分得清：正在重连（第 N 次）/ 已断开 / 网络已断开（浏览器自己说离线时
- * 不要再显示「正在重连」，那是误导）。这里只给**词条 key + 参数**，
- * 具体文案由组件按当前语言翻译。
+ * Se debe distinguir claramente la redacción publicitaria de tres estados: Reconectar (enésima vez)/ Desconectado/red desconectada (cuando el propio navegador dice desconectado)
+ * No vuelva a mostrar "Reconectando", eso es engañoso). aqui solo**Clave de término + parámetro**,
+ * El componente traduce una copia específica al idioma actual.
  */
 export interface ConnectionBanner {
   readonly visible: boolean;
-  /** 文案词条；visible=false 时无意义。 */
+  /** entradas de redacción publicitaria;visible=false El tiempo no tiene sentido. */
   readonly textKey: MessageKey;
   readonly params?: { readonly attempt: number } | undefined;
-  /** 是否给「手动重试」入口（连续失败到阈值、或已断开）。 */
+  /** Si se debe dar una entrada de \"reintento manual\" (la falla continua alcanza el umbral o se desconecta). */
   readonly retry: boolean;
   readonly tone: "info" | "warn" | "danger";
 }
 
-/** 连续重连这么多次还没成功，就给用户一个手动重试的出口。 */
+/** Después de volver a conectarse tantas veces sin éxito, el usuario tiene una salida para volver a intentarlo manualmente. */
 export const MANUAL_RETRY_AFTER = 3;
 
 const HIDDEN: ConnectionBanner = { visible: false, textKey: "connection.connecting", retry: false, tone: "info" };
@@ -30,7 +30,7 @@ export function connectionBanner(input: {
   readonly everConnected: boolean;
 }): ConnectionBanner {
   const { online, status, attempt, everConnected } = input;
-  // 浏览器自己知道没网：这时候的「正在重连」是假象，直接说原因。
+  // El propio navegador sabe que no hay red: "reconectarse" en este momento es una ilusión, digamos el motivo directamente.
   if (!online) return { visible: true, textKey: "connection.offline", retry: false, tone: "danger" };
   if (status === "connected") return HIDDEN;
   if (status === "closed") {
@@ -53,8 +53,8 @@ export function connectionBanner(input: {
 }
 
 /**
- * 输入框的禁用说明。undefined 表示可以正常输入。
- * 离线优先：没网时说要恢复网络，而不是让用户等一个本来就连不上的重连。
+ * Deshabilite la descripción del cuadro de entrada.undefined Indica que es posible una entrada normal.
+ * Prioridad sin conexión: cuando no hay red, le indica que restaure la red, en lugar de dejar que el usuario espere una reconexión que originalmente no estaba disponible.
  */
 export function composerDisabledHint(input: {
   readonly online: boolean;

@@ -1,17 +1,17 @@
 package io.zer0.muse.data.plugin
 
-/** 待安装插件的版本相关身份信息。 */
+/** Información de identidad relacionada con la versión del complemento que se instalará. */
 data class PluginInstallCandidate(
     val id: String,
     val version: String,
     val publisherId: String,
     val publisherKeyFingerprint: String,
-    /** 是否带有效发行者签名（未签名的隔离草稿为 false）。 */
+    /** Si está firmado por un editor válido (falso para borradores de cuarentena sin firmar). */
     val signed: Boolean,
     val minAppVersion: String,
 )
 
-/** 已安装插件的版本相关身份；用于比较发行者血缘与降级。 */
+/** Identidad relativa a la versión del complemento instalado; se utiliza para comparar la descendencia y las rebajas del editor. */
 data class InstalledPluginIdentity(
     val version: String,
     val publisherId: String,
@@ -25,21 +25,21 @@ sealed class PluginVersionDecision {
 }
 
 /**
- * 插件安装的版本策略（纯逻辑，便于单测）。
+ * Estrategia de versión para la instalación del complemento (lógica pura, conveniente para pruebas individuales).
  *
- * 拦住三类真实风险：
- *  1. **降级安装**：比已安装版本更旧的包（可能带已知漏洞）被静默装上。回滚走显式入口，
- *     那条路径由用户主动发起并会重新校验，所以用 [allowDowngrade] 放行。
- *  2. **发行者换人**：同名插件 id 被另一把公钥的包覆盖，等于接管已装插件的身份与技能。
- *  3. **未签名覆盖已签名**：隔离草稿（AI 生成或本地导入的未签名包）绝不允许顶掉用户
- *     已经确认过信任的签名版本。
+ * Bloquea tres tipos de riesgos reales:
+ *  1. **Instalación de degradación**: Los paquetes que son anteriores a la versión instalada (posiblemente con vulnerabilidades conocidas) se instalan de forma silenciosa. Retroceder para realizar una entrada explícita,
+ *     Esa ruta la inicia el usuario y se volverá a verificar, así que use [allowDowngrade] Liberar.
+ *  2. **Cambio de editor**: El ID del complemento con el mismo nombre se sobrescribe con otro paquete de clave pública, lo que equivale a asumir la identidad y las habilidades del complemento instalado.
+ *  3. **Sobrescrituras sin firmar firmadas**:borrador aislado(AI Los paquetes sin firmar generados o importados localmente) nunca pueden votar a favor de los usuarios.
+ *     Se ha confirmado una versión firmada del fideicomiso.
  *
- * 另外强制 manifest 的 `minAppVersion`：要求高于当前 App 版本的插件直接拒绝，
- * 而不是装上一个注定运行失败的插件。
+ * Además, manifiesto obligatorio. `minAppVersion`: Los complementos que requieran una versión superior a la versión actual de la aplicación serán rechazados directamente.
+ * En lugar de instalar un complemento destinado a fallar.
  */
 object PluginVersionPolicy {
 
-    /** 本地构建未注入 versionName 时的占位版本号，与 build.gradle.kts 的兵底值一致。 */
+    /** El número de versión del marcador de posición cuando versionName no se inyecta en la compilación local es coherente con el valor base de build.gradle.kts. */
     const val DEV_SENTINEL_VERSION = "0.0.0-dev"
 
     fun evaluate(
@@ -48,32 +48,32 @@ object PluginVersionPolicy {
         appVersion: String,
         allowDowngrade: Boolean = false,
         /**
-         * 本机作者密钥的发行者 id。
+         * La identificación del emisor de la clave de autor nativo.
          *
-         * 由它签名的安装允许被**新的未签名草稿**覆盖：这是助手迭代自己写的插件的唯一路径，
-         * 且草稿依旧是禁用+未确认状态，必须由用户再次签名才会生效，因此不构成提权。
-         * 第三方已签名安装仍然拒绝被未签名包覆盖。
+         * Las instalaciones firmadas por él podrán ser**nuevo borrador sin firmar**Anulación: esta es la única ruta para que el asistente repita los complementos escritos por él mismo.
+         * Y los borradores todavía están deshabilitados.+En el estado no confirmado, deberá ser firmado nuevamente por el usuario para que surta efecto, por lo que no constituye una escalada de privilegios.
+         * Las instalaciones firmadas por terceros todavía se niegan a ser sobrescritas por paquetes no firmados.
          */
         localAuthorPublisherId: String? = null,
     ): PluginVersionDecision {
         val candidateVersion = PluginVersion.parse(candidate.version)
-            ?: return PluginVersionDecision.Reject("插件版本号不是语义化版本: ${candidate.version}")
+            ?: return PluginVersionDecision.Reject("El número de versión del complemento no es una versión semántica: ${candidate.version}")
         val requiredApp = PluginVersion.parse(candidate.minAppVersion)
-            ?: return PluginVersionDecision.Reject("minAppVersion 不是语义化版本: ${candidate.minAppVersion}")
+            ?: return PluginVersionDecision.Reject("minAppVersion No es una versión semántica: ${candidate.minAppVersion}")
         val currentApp = PluginVersion.parse(appVersion)
-            ?: return PluginVersionDecision.Reject("无法解析当前 App 版本: $appVersion")
+            ?: return PluginVersionDecision.Reject("No se puede resolver la versión actual de la aplicación: $appVersion")
 
         if (requiredApp > currentApp) {
-            // 本地构建不带 -PversionName 时版本号是哨兵值，比任何插件要求的版本都小。
-            // 那种包本来就不是发出去的包，卡在版本门槛上只会挡住调试；
-            // 其余校验（签名、权限、schema）照旧执行。
+            // El número de versión cuando se compila localmente sin -PversionName es un valor centinela, más pequeño que la versión requerida por cualquier complemento.
+            // Ese tipo de paquete no es un paquete que deba enviarse en primer lugar, y quedarse atascado en el umbral de la versión sólo bloqueará la depuración;
+            // El resto de la verificación (firma, permisos,schema) se ejecutará como de costumbre.
             if (appVersion == DEV_SENTINEL_VERSION) {
                 io.zer0.common.Logger.w(
                     "PluginVersionPolicy",
-                    "开发构建（$DEV_SENTINEL_VERSION）跳过 minAppVersion 门槛：插件要求 $requiredApp",
+                    "desarrollar construir ($DEV_SENTINEL_VERSION) omitir umbral minAppVersion: requisito de complemento $requiredApp",
                 )
             } else {
-                return PluginVersionDecision.Reject("插件要求 App 版本不低于 $requiredApp，当前为 $currentApp")
+                return PluginVersionDecision.Reject("El complemento requiere que la versión de la aplicación sea al menos $requiredApp, actualmente $currentApp")
             }
         }
         val existing = installed ?: return PluginVersionDecision.Allow
@@ -83,7 +83,7 @@ object PluginVersionPolicy {
                 existing.publisherId.isNotEmpty() &&
                 existing.publisherId == localAuthorPublisherId
             if (!authoredLocally) {
-                return PluginVersionDecision.Reject("已安装签名版本，不能用未签名包覆盖")
+                return PluginVersionDecision.Reject("Se instala una versión firmada y no se puede sobrescribir con un paquete sin firmar.")
             }
         }
         if (existing.signed && candidate.signed) {
@@ -95,15 +95,15 @@ object PluginVersionPolicy {
                     ignoreCase = true,
                 )
             if (!samePublisher) {
-                return PluginVersionDecision.Reject("插件发行者与已安装版本不一致，拒绝覆盖安装")
+                return PluginVersionDecision.Reject("El editor del complemento no coincide con la versión instalada y se rechaza la sobrescritura de la instalación.")
             }
         }
 
         val installedVersion = PluginVersion.parse(existing.version)
-            ?: return PluginVersionDecision.Allow // 旧记录版本号不规范时不阻止升级到规范版本
+            ?: return PluginVersionDecision.Allow // Si el número de versión del registro antiguo no está estandarizado, no impedirá la actualización a la versión estandarizada.
         if (candidateVersion < installedVersion && !allowDowngrade) {
             return PluginVersionDecision.Reject(
-                "新版本 $candidateVersion 低于已安装的 $installedVersion，已拒绝降级安装",
+                "nueva versión $candidateVersion inferior al instalado $installedVersion, la instalación de degradación ha sido rechazada",
             )
         }
         return PluginVersionDecision.Allow

@@ -1,206 +1,206 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ===== ui/common 通用组件 ===== -->
-    <string name="common_state_enabled">已启用</string>
-    <string name="common_state_disabled">已禁用</string>
-    <string name="common_confirm_delete_message">确定删除「%1$s」？</string>
-    <string name="common_delete">删除</string>
-    <string name="common_confirm_delete_consequence_default">此操作不可撤销。</string>
-    <string name="common_cancel">取消</string>
-    <string name="common_confirm">确定</string>
-    <string name="common_got_it">知道了</string>
-    <string name="common_close">关闭</string>
-    <string name="common_retry">重试</string>
-    <string name="common_collapse">收起</string>
-    <string name="common_expand">展开</string>
-    <string name="common_avatar_cd">%1$s的头像</string>
-    <string name="common_slider_cd">滑块，当前值 %1$s</string>
-    <string name="common_open_file_failed">无法打开文件： %1$s</string>
+    <!-- ===== ui/common Componentes comunes ===== -->
+    <string name="common_state_enabled">Habilitado</string>
+    <string name="common_state_disabled">Discapacitado</string>
+    <string name="common_confirm_delete_message">Confirmar para eliminar "%1$s”?</string>
+    <string name="common_delete">Eliminar</string>
+    <string name="common_confirm_delete_consequence_default">Esta acción no se puede deshacer.</string>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_confirm">OK</string>
+    <string name="common_got_it">Lo tengo</string>
+    <string name="common_close">cerrar</string>
+    <string name="common_retry">Inténtalo de nuevo</string>
+    <string name="common_collapse">cerrar</string>
+    <string name="common_expand">Expandir</string>
+    <string name="common_avatar_cd">%1$savatar</string>
+    <string name="common_slider_cd">control deslizante, valor actual %1$s</string>
+    <string name="common_open_file_failed">No se puede abrir el archivo: %1$s</string>
 
-    <!-- ===== ui/markdown Markdown 渲染 ===== -->
-    <string name="markdown_only_http">仅支持 http/https 链接</string>
-    <string name="markdown_open_link_failed">无法打开链接： %1$s</string>
-    <!-- v1.97: URL 点击二次确认 -->
-    <string name="markdown_open_link_confirm_title">打开链接</string>
-    <string name="markdown_open_link_confirm_message">是否在浏览器中打开此链接？</string>
-    <string name="markdown_open_link_confirm_open">打开</string>
-    <string name="markdown_open_link_confirm_copy">复制链接</string>
-    <string name="markdown_open_link_dont_ask_again">本会话不再确认（长按可直接打开）</string>
-    <string name="markdown_link_copied">已复制链接</string>
-    <string name="markdown_line_count">%1$d 行</string>
-    <string name="markdown_copied_lines">已复制 %1$d 行代码</string>
-    <string name="markdown_copy_code_cd">复制代码</string>
-    <string name="markdown_collapse_remaining">展开剩余 %1$d 行</string>
-    <string name="markdown_svg_label">SVG 图形</string>
-    <string name="markdown_html_label">HTML 卡片</string>
-    <string name="markdown_chart_label">图表</string>
-    <string name="markdown_mermaid_label">Mermaid 图表</string>
-    <string name="markdown_plantuml_label">PlantUML 图</string>
-    <string name="markdown_svg_cd">SVG 图形</string>
-    <string name="markdown_html_cd">HTML 内容</string>
-    <string name="markdown_chart_cd">图表： %1$s</string>
-    <string name="markdown_mermaid_cd">Mermaid 图： %1$s</string>
-    <string name="markdown_plantuml_cd">PlantUML 图： %1$s</string>
-    <string name="markdown_formula_cd">数学公式： %1$s</string>
-    <string name="markdown_chart_render_failed">图表渲染失败</string>
-    <string name="markdown_chart_show_source">显示源码</string>
-    <string name="markdown_chart_loading">渲染中…</string>
-    <string name="markdown_chart_render_failed_prefix">渲染失败： </string>
-    <!-- Phase 2: 富内容源码复制 / PlantUML 第三方渲染提示 -->
-    <string name="markdown_source_copied">已复制源码</string>
-    <string name="card_save_cd">保存为文件</string>
-    <string name="card_favorite">收藏卡片</string>
-    <string name="card_favorite_done">卡片已放进收藏夹</string>
-    <string name="card_favorite_failed">收藏卡片失败：%1$s</string>
-    <string name="card_favorite_session_title">卡片收藏</string>
-    <string name="card_favorite_wrapper">卡片收藏：%1$s</string>
-    <string name="markdown_plantuml_remote_notice">PlantUML 图表需要联网，且图表源码会发送到第三方服务 plantuml.com 进行在线渲染。</string>
-    <string name="markdown_plantuml_render_online">仍要联网渲染</string>
-    <!-- HTML 预览功能 -->
-    <string name="html_preview_title">HTML 预览</string>
-    <string name="html_preview_open_in_browser_cd">在浏览器中打开</string>
-    <string name="html_preview_copy_source_cd">复制源码</string>
-    <string name="html_preview_open_in_browser_failed">无法在外部浏览器打开： %1$s</string>
-    <string name="html_preview_source_copied">已复制 HTML 源码</string>
-    <string name="html_preview_button_cd">全屏预览</string>
-    <!-- v1.0.47 P8-2: 下载产物 -->
-    <string name="html_preview_download_cd">下载</string>
-    <string name="html_preview_download_success">已保存到下载目录： %1$s</string>
-    <string name="html_preview_download_failed">下载失败： %1$s</string>
+    <!-- ===== ui/markdown Markdown renderizado ===== -->
+    <string name="markdown_only_http">Sólo admite enlaces http/https</string>
+    <string name="markdown_open_link_failed">No se puede abrir el enlace: %1$s</string>
+    <!-- v1.97: URL Haga clic dos veces para confirmar -->
+    <string name="markdown_open_link_confirm_title">enlace abierto</string>
+    <string name="markdown_open_link_confirm_message">¿Abrir este enlace en su navegador?</string>
+    <string name="markdown_open_link_confirm_open">abierto</string>
+    <string name="markdown_open_link_confirm_copy">Copiar enlace</string>
+    <string name="markdown_open_link_dont_ask_again">Esta sesión ya no está confirmada (mantén pulsada para abrirla directamente)</string>
+    <string name="markdown_link_copied">Enlace copiado</string>
+    <string name="markdown_line_count">%1$d OK</string>
+    <string name="markdown_copied_lines">copiado %1$d líneas de código</string>
+    <string name="markdown_copy_code_cd">Copiar código</string>
+    <string name="markdown_collapse_remaining">Ampliar el resto %1$d OK</string>
+    <string name="markdown_svg_label">SVG gráficos</string>
+    <string name="markdown_html_label">HTML tarjeta</string>
+    <string name="markdown_chart_label">cuadro</string>
+    <string name="markdown_mermaid_label">Mermaid cuadro</string>
+    <string name="markdown_plantuml_label">PlantUML Figura</string>
+    <string name="markdown_svg_cd">SVG gráficos</string>
+    <string name="markdown_html_cd">HTML contenido</string>
+    <string name="markdown_chart_cd">Gráfico: %1$s</string>
+    <string name="markdown_mermaid_cd">Mermaid Imagen: %1$s</string>
+    <string name="markdown_plantuml_cd">PlantUML Imagen: %1$s</string>
+    <string name="markdown_formula_cd">Fórmula matemática: %1$s</string>
+    <string name="markdown_chart_render_failed">Error al renderizar el gráfico</string>
+    <string name="markdown_chart_show_source">Mostrar código fuente</string>
+    <string name="markdown_chart_loading">Representación…</string>
+    <string name="markdown_chart_render_failed_prefix">Falló el renderizado: </string>
+    <!-- Phase 2: Copia de código fuente de contenido enriquecido/sugerencias de renderizado de terceros de PlantUML -->
+    <string name="markdown_source_copied">Código fuente copiado</string>
+    <string name="card_save_cd">guardar como archivo</string>
+    <string name="card_favorite">Coleccionar cartas</string>
+    <string name="card_favorite_done">La tarjeta ha sido puesta en favoritos.</string>
+    <string name="card_favorite_failed">No se pudo recoger la tarjeta:%1$s</string>
+    <string name="card_favorite_session_title">colección de tarjetas</string>
+    <string name="card_favorite_wrapper">Colección de tarjetas:%1$s</string>
+    <string name="markdown_plantuml_remote_notice">PlantUML Los gráficos deben estar conectados a Internet y el código fuente del gráfico se enviará al servicio de terceros plantuml.com para su representación en línea.</string>
+    <string name="markdown_plantuml_render_online">Todavía es necesario renderizarlo en línea.</string>
+    <!-- HTML Función de vista previa -->
+    <string name="html_preview_title">HTML Vista previa</string>
+    <string name="html_preview_open_in_browser_cd">Abrir en el navegador</string>
+    <string name="html_preview_copy_source_cd">Copiar código fuente</string>
+    <string name="html_preview_open_in_browser_failed">No se puede abrir en un navegador externo: %1$s</string>
+    <string name="html_preview_source_copied">Código fuente HTML copiado</string>
+    <string name="html_preview_button_cd">Vista previa en pantalla completa</string>
+    <!-- v1.0.47 P8-2: Descargar producto -->
+    <string name="html_preview_download_cd">Descargar</string>
+    <string name="html_preview_download_success">Guardado en el directorio de descargas: %1$s</string>
+    <string name="html_preview_download_failed">Error en la descarga: %1$s</string>
 
-    <!-- ===== ui/theme 预设主题名称 ===== -->
-    <string name="theme_warm_paper">暖纸</string>
-    <string name="theme_sakura">樱花</string>
-    <string name="theme_ocean">海洋</string>
-    <string name="theme_spring">春</string>
-    <string name="theme_autumn">秋</string>
-    <string name="theme_mono">黑白</string>
-    <string name="theme_sumi">墨</string>
-    <string name="theme_washi">和紙</string>
-    <string name="theme_aizome">藍染</string>
-    <string name="theme_twilight_purple">暮紫韵</string>
-    <string name="theme_amber_gold">琥珀金</string>
-    <string name="theme_dusk_rose">暮霭玫</string>
-    <string name="settings_theme_schedule">定时切换</string>
-    <string name="settings_theme_schedule_auto">自动切换</string>
-    <string name="settings_theme_schedule_auto_subtitle">在起床/睡觉时间自动切换亮暗模式</string>
-    <string name="settings_theme_wake_time_title">起床时间（浅色）</string>
-    <string name="settings_theme_sleep_time_title">睡觉时间（深色）</string>
+    <!-- ===== ui/theme Nombre del tema predeterminado ===== -->
+    <string name="theme_warm_paper">papel caliente</string>
+    <string name="theme_sakura">flores de cerezo</string>
+    <string name="theme_ocean">océano</string>
+    <string name="theme_spring">primavera</string>
+    <string name="theme_autumn">otoño</string>
+    <string name="theme_mono">blanco y negro</string>
+    <string name="theme_sumi">tinta</string>
+    <string name="theme_washi">papel japonés</string>
+    <string name="theme_aizome">Aizen</string>
+    <string name="theme_twilight_purple">Mu Ziyun</string>
+    <string name="theme_amber_gold">oro ámbar</string>
+    <string name="theme_dusk_rose">rosa crepuscular</string>
+    <string name="settings_theme_schedule">Conmutación programada</string>
+    <string name="settings_theme_schedule_auto">Conmutación automática</string>
+    <string name="settings_theme_schedule_auto_subtitle">levantarse/Cambia automáticamente entre los modos claro y oscuro durante la hora de dormir</string>
+    <string name="settings_theme_wake_time_title">Hora de despertarse (color claro)</string>
+    <string name="settings_theme_sleep_time_title">Hora de dormir (oscuro)</string>
 
-    <!-- ===== ui/speech 语音输入与 TTS ===== -->
-    <string name="speech_speak_prompt">请说话…</string>
-    <string name="speech_tts_init_failed">语音引擎初始化失败，朗读功能不可用</string>
-    <string name="speech_tts_play_error">语音播放出错</string>
-    <string name="speech_tts_fallback_to_system">网络异常，已切换系统语音</string>
-    <string name="speech_tts_no_engine">设备无 TTS 引擎，请安装语音服务</string>
-    <string name="speech_tts_engine_not_ready">语音引擎未就绪或文本为空</string>
-    <string name="speech_stop_reading_cd">停止朗读</string>
-    <string name="speech_playback_speed_cd">播放速度 %1$sx</string>
-    <string name="speech_seek_forward_5s_cd">快进 5 秒</string>
-    <string name="speech_seek_backward_5s_cd">后退 5 秒</string>
-    <string name="speech_previous_chunk_cd">上一段</string>
-    <string name="speech_next_chunk_cd">下一段</string>
-    <string name="speech_pause_cd">暂停</string>
-    <string name="speech_resume_cd">继续</string>
+    <!-- ===== ui/speech Entrada de voz y TTS ===== -->
+    <string name="speech_speak_prompt">por favor habla…</string>
+    <string name="speech_tts_init_failed">La inicialización del motor de voz falló y la función de lectura no está disponible.</string>
+    <string name="speech_tts_play_error">Error de reproducción de voz</string>
+    <string name="speech_tts_fallback_to_system">Anormalidad en la red, la voz del sistema ha sido cambiada</string>
+    <string name="speech_tts_no_engine">El dispositivo no tiene motor TTS, instale el servicio de voz</string>
+    <string name="speech_tts_engine_not_ready">El motor de voz no está listo o el texto está vacío</string>
+    <string name="speech_stop_reading_cd">deja de leer</string>
+    <string name="speech_playback_speed_cd">velocidad de juego %1$sx</string>
+    <string name="speech_seek_forward_5s_cd">Avance rápido 5 segundos</string>
+    <string name="speech_seek_backward_5s_cd">Retroceder 5 segundos</string>
+    <string name="speech_previous_chunk_cd">Párrafo anterior</string>
+    <string name="speech_next_chunk_cd">siguiente párrafo</string>
+    <string name="speech_pause_cd">pausa</string>
+    <string name="speech_resume_cd">continuar</string>
 
-    <!-- ===== ui/ModelSwitchSheet 模型切换面板 ===== -->
-    <string name="model_switch_title">模型</string>
-    <string name="model_switch_no_provider">尚未配置任何 Provider\n请到「设置 → Provider 管理」添加</string>
-    <string name="model_switch_provider_label">供应商</string>
-    <string name="model_switch_no_provider_selected">未选择 Provider</string>
-    <string name="model_switch_models_label">模型（%1$s）</string>
-    <string name="model_switch_fetching">拉取中</string>
-    <string name="model_switch_refresh">刷新</string>
-    <string name="model_switch_fetching_upstream">正在从上游拉取模型...</string>
-    <string name="model_switch_no_models">当前供应商没有可用模型
-点击刷新从上游拉取列表</string>
-    <!-- v1.0.4 (P2): 模型拉取失败重试按钮 -->
-    <string name="model_switch_retry">重试</string>
-    <string name="model_switch_default">%1$s(默认)</string>
-    <string name="model_switch_selected_cd">已选中</string>
-    <string name="model_switch_ability_vision">视觉</string>
-    <string name="model_switch_ability_reasoning">推理</string>
-    <string name="model_switch_ability_tool">工具</string>
-    <string name="model_switch_ability_image">绘图</string>
-    <string name="model_switch_ability_search">联网</string>
-    <string name="model_switch_search_placeholder">搜索模型</string>
-    <string name="model_switch_expand_all">全部展开</string>
-    <string name="model_switch_collapse_all">全部折叠</string>
+    <!-- ===== ui/ModelSwitchSheet Panel de interruptores modelo ===== -->
+    <string name="model_switch_title">modelo</string>
+    <string name="model_switch_no_provider">Aún no configurado Provider\nPor favor vaya a "Configuración" → Provider Administrar"Agregar</string>
+    <string name="model_switch_provider_label">proveedor</string>
+    <string name="model_switch_no_provider_selected">No seleccionado Provider</string>
+    <string name="model_switch_models_label">modelo(%1$s)</string>
+    <string name="model_switch_fetching">tirando</string>
+    <string name="model_switch_refresh">Actualizar</string>
+    <string name="model_switch_fetching_upstream">Tirando del modelo desde aguas arriba...</string>
+    <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
+Haga clic en Actualizar para extraer la lista desde arriba</string>
+    <!-- v1.0.4 (P2): Botón de reintento fallido al extraer el modelo -->
+    <string name="model_switch_retry">Inténtalo de nuevo</string>
+    <string name="model_switch_default">%1$s(Predeterminado)</string>
+    <string name="model_switch_selected_cd">seleccionado</string>
+    <string name="model_switch_ability_vision">Visión</string>
+    <string name="model_switch_ability_reasoning">razonamiento</string>
+    <string name="model_switch_ability_tool">Herramientas</string>
+    <string name="model_switch_ability_image">Dibujo</string>
+    <string name="model_switch_ability_search">Redes</string>
+    <string name="model_switch_search_placeholder">Modelo de búsqueda</string>
+    <string name="model_switch_expand_all">Expandir todo</string>
+    <string name="model_switch_collapse_all">Contraer todo</string>
     <string name="model_switch_group_count">%1$s (%2$d)</string>
-    <!-- v1.0.18: 免费模型徽章/提示(对齐 FreeModelConfig) -->
-    <string name="model_switch_free_badge">免费</string>
-    <string name="model_switch_free_provider_hint">免登录可用，选模型即用</string>
-    <string name="model_switch_context_limit">上下文 %1$s</string>
-    <string name="model_switch_output_limit">输出上限 %1$s tokens</string>
-    <string name="model_switch_metadata_unverified">能力信息未验证</string>
-    <string name="model_switch_metadata_suspicious">能力信息可疑</string>
+    <!-- v1.0.18: insignia de modelo gratis/Consejos(Alineación FreeModelConfig) -->
+    <string name="model_switch_free_badge">gratis</string>
+    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente seleccione el modelo y úselo inmediatamente</string>
+    <string name="model_switch_context_limit">contexto %1$s</string>
+    <string name="model_switch_output_limit">Límite superior de salida %1$s tokens</string>
+    <string name="model_switch_metadata_unverified">Información de competencia no verificada</string>
+    <string name="model_switch_metadata_suspicious">Información de capacidad sospechosa</string>
 
-    <!-- ===== ui/HomeScreen 首页 ===== -->
-    <string name="home_tab_tasks">任务</string>
+    <!-- ===== ui/HomeScreen pagina de inicio ===== -->
+    <string name="home_tab_tasks">Tarea</string>
 <string name="home_tab_agent">Agent</string>
-    <string name="home_tab_group_chat">群聊</string>
-    <string name="home_settings_cd">设置</string>
-    <string name="home_search_cd">搜索</string>
-    <string name="home_miniphone_cd">小手机</string>
+    <string name="home_tab_group_chat">chat grupal</string>
+    <string name="home_settings_cd">ajustes</string>
+    <string name="home_search_cd">Buscar</string>
+    <string name="home_miniphone_cd">pequeño teléfono celular</string>
 
-    <!-- ===== ui/FavoritesScreen 收藏夹 ===== -->
-    <string name="favorites_title">收藏夹 (%1$d)</string>
-    <string name="favorites_empty_title">还没有收藏的消息</string>
-    <string name="favorites_empty_subtitle">在聊天页点击消息操作行的星标即可收藏</string>
-    <string name="favorites_role_user">我</string>
-    <string name="favorites_role_system">系统</string>
-    <string name="favorites_role_tool">工具</string>
-    <string name="favorites_unfavorite_cd">取消收藏</string>
-    <string name="favorites_group_action_cd">设置分组</string>
-    <!-- v1.104 U7: 收藏分组/标签 -->
-    <string name="favorites_filter_all">全部 (%1$d)</string>
-    <string name="favorites_filter_ungrouped">未分组 (%1$d)</string>
+    <!-- ===== ui/FavoritesScreen Favoritos ===== -->
+    <string name="favorites_title">Favoritos (%1$d)</string>
+    <string name="favorites_empty_title">Aún no hay noticias favoritas</string>
+    <string name="favorites_empty_subtitle">Haga clic en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
+    <string name="favorites_role_user">yo</string>
+    <string name="favorites_role_system">sistema</string>
+    <string name="favorites_role_tool">Herramientas</string>
+    <string name="favorites_unfavorite_cd">Cancelar favoritos</string>
+    <string name="favorites_group_action_cd">Configurar grupos</string>
+    <!-- v1.104 U7: Agrupación de colecciones/etiqueta -->
+    <string name="favorites_filter_all">Todos (%1$d)</string>
+    <string name="favorites_filter_ungrouped">No agrupado (%1$d)</string>
     <string name="favorites_tag_chip">%1$s (%2$d)</string>
-    <string name="favorites_tag_edit_title">设置分组</string>
-    <string name="favorites_tag_edit_hint">分组名（留空 = 未分组）</string>
-    <string name="favorites_tag_edit_clear">清除分组</string>
-    <string name="favorites_tag_edit_confirm">确定</string>
-    <string name="favorites_tag_edit_cancel">取消</string>
-    <string name="favorites_tag_label">分组：%1$s</string>
-    <string name="favorites_empty_in_filter">该分组下暂无收藏</string>
-    <string name="favorites_stale_variant_badge">后来重新生成过，这一条是旧版本</string>
+    <string name="favorites_tag_edit_title">Configurar grupos</string>
+    <string name="favorites_tag_edit_hint">Nombre del grupo (dejar en blanco = no agrupado)</string>
+    <string name="favorites_tag_edit_clear">grupo claro</string>
+    <string name="favorites_tag_edit_confirm">OK</string>
+    <string name="favorites_tag_edit_cancel">Cancelar</string>
+    <string name="favorites_tag_label">Agrupación:%1$s</string>
+    <string name="favorites_empty_in_filter">Actualmente no hay colecciones en este grupo.</string>
+    <string name="favorites_stale_variant_badge">Fue regenerado más tarde y ésta es una versión antigua.</string>
 
-    <!-- ===== ui/ImageSaveUtils 图片保存 ===== -->
-    <string name="image_save_decode_failed">无法解码图片</string>
-    <string name="image_save_mediastore_insert_failed">MediaStore insert 失败</string>
-    <string name="image_save_open_stream_failed">无法打开输出流</string>
+    <!-- ===== ui/ImageSaveUtils guardar imagen ===== -->
+    <string name="image_save_decode_failed">No se puede decodificar la imagen</string>
+    <string name="image_save_mediastore_insert_failed">MediaStore insert falló</string>
+    <string name="image_save_open_stream_failed">No se puede abrir el flujo de salida</string>
 
 
-    <!-- ===== ui/activity/ActivityPanel 活动日志 ===== -->
-    <string name="activity_log_title">活动日志</string>
-    <string name="activity_empty">暂无活动记录。</string>
+    <!-- ===== ui/activity/ActivityPanel Registro de actividad ===== -->
+    <string name="activity_log_title">Registro de actividad</string>
+    <string name="activity_empty">Aún no hay registro de actividad.</string>
 
-    <!-- ===== Launcher 长按快捷方式(shortcuts.xml 引用) ===== -->
-    <string name="shortcut_new_chat_short">新对话</string>
-    <string name="shortcut_new_chat_long">开始新对话</string>
-    <string name="shortcut_translate_short">翻译</string>
-    <string name="shortcut_translate_long">打开翻译</string>
-    <string name="shortcut_voice_input_short">语音</string>
-    <string name="shortcut_voice_input_long">语音输入</string>
-    <string name="shortcut_settings_short">设置</string>
-    <string name="shortcut_settings_long">打开设置</string>
-    <!-- v1.0.18: 快速记录快捷方式 -->
-    <string name="shortcut_quick_notes_short">速记</string>
-    <string name="shortcut_quick_notes_long">快速记录</string>
-    <!-- v1.0.69: 浏览器可视化查看器 -->
-    <string name="browser_viewer_collapse">收起</string>
-    <string name="browser_viewer_refresh">刷新</string>
-    <string name="browser_viewer_close">关闭浏览器</string>
-    <!-- v1.x: 内置浏览器显性入口与用户可见状态 -->
-    <string name="browser_status_not_started">未启动</string>
-    <string name="browser_status_blank">等待导航</string>
-    <string name="browser_status_loading">加载中…</string>
-    <string name="browser_status_ready">已就绪</string>
-    <string name="browser_status_cd">浏览器：%1$s，点击查看</string>
-    <string name="browser_viewer_blank_title">浏览器已打开</string>
-    <string name="browser_viewer_blank_message">等待 AI 打开网页，或使用浏览器工具导航。</string>
-    <string name="browser_menu_clear_cookies">清除 Cookie</string>
-    <string name="browser_menu_open_external">在系统浏览器打开</string>
-    <string name="browser_menu_copy_link">复制链接</string>
-    <string name="browser_cookies_cleared">已清除 Cookie</string>
+    <!-- ===== Launcher Atajo de pulsación larga(shortcuts.xml Cotización) ===== -->
+    <string name="shortcut_new_chat_short">nueva conversación</string>
+    <string name="shortcut_new_chat_long">Iniciar una nueva conversación</string>
+    <string name="shortcut_translate_short">Traducción</string>
+    <string name="shortcut_translate_long">Traducción abierta</string>
+    <string name="shortcut_voice_input_short">Voz</string>
+    <string name="shortcut_voice_input_long">Entrada de voz</string>
+    <string name="shortcut_settings_short">ajustes</string>
+    <string name="shortcut_settings_long">Abrir configuración</string>
+    <!-- v1.0.18: Acceso directo a grabación rápida -->
+    <string name="shortcut_quick_notes_short">taquigrafía</string>
+    <string name="shortcut_quick_notes_long">registro rápido</string>
+    <!-- v1.0.69: Visor visual del navegador -->
+    <string name="browser_viewer_collapse">cerrar</string>
+    <string name="browser_viewer_refresh">Actualizar</string>
+    <string name="browser_viewer_close">Cerrar el navegador</string>
+    <!-- v1.x: Entrada explícita del navegador integrado y estado visible para el usuario -->
+    <string name="browser_status_not_started">No iniciado</string>
+    <string name="browser_status_blank">Esperando navegación</string>
+    <string name="browser_status_loading">Cargando…</string>
+    <string name="browser_status_ready">Listo</string>
+    <string name="browser_status_cd">Navegador:%1$s, haga clic para ver</string>
+    <string name="browser_viewer_blank_title">El navegador está abierto</string>
+    <string name="browser_viewer_blank_message">Espere a que la IA abra la página web o utilice las herramientas del navegador para navegar.</string>
+    <string name="browser_menu_clear_cookies">Borrar Cookie</string>
+    <string name="browser_menu_open_external">Abrir en el navegador del sistema</string>
+    <string name="browser_menu_copy_link">Copiar enlace</string>
+    <string name="browser_cookies_cleared">despejado Cookie</string>
 </resources>

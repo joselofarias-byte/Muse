@@ -18,37 +18,37 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.random.Random
 
-/** 一轮主动私信的结果:发出去了、跳过了、还是失败了。日志里能看到的判断,这里也能断言。 */
+/** El resultado de una ronda de mensajes privados proactivos:Enviado, omitido o fallido. Sentencias que se pueden ver en el registro,También se puede afirmar aquí. */
 sealed interface MpProactiveChatOutcome {
-    /** 消息落库成功,并且该会话未读 +1。 */
+    /** Mensaje eliminado exitosamente,Y la conversación no está leída +1. */
     data class Sent(val threadId: String, val characterId: String) : MpProactiveChatOutcome
 
-    /** 判定为不发(或生成为空),原因见 [reason]。 */
+    /** Juzgado como no enviado(o generado como vacío),ver la razón [reason]. */
     data class Skipped(val reason: MpProactiveChatSkipReason) : MpProactiveChatOutcome
 
-    /** 读设置 / 落库这类硬失败;[reason] 是写进日志的取值。 */
+    /** Fallos graves como lectura de configuraciones/caída de la biblioteca;[reason] ¿Es el valor escrito en el registro? */
     data class Failed(val reason: String) : MpProactiveChatOutcome
 }
 
 /**
- * 「让角色主动发一条私信」的一轮完整流程。
+ * Un proceso completo de "dejar que el personaje tome la iniciativa de enviar un mensaje privado".
  *
- * 顺序与 [MpProactiveChatPlan.decide] 一致:先选出会话、取到「用户最后说过话的时间」,再过八道判定,
- * 判完才挑角色、调宿主生成、落库、记时间。
- * 失败**不重试** —— 主动消息不该因为一次失败反复打扰,下个周期自然会再来。
+ * secuencia con [MpProactiveChatPlan.decide] consistente:Primero seleccione la conversación y obtenga la "hora en la que el usuario habló por última vez".,Ocho sentencias más,
+ * Una vez completado el juicio, seleccione el personaje, ajuste la generación del anfitrión, colóquelo en la biblioteca y registre el tiempo.
+ * falló**no lo vuelvas a intentar** —— Los mensajes proactivos no deben interrumpirse repetidamente debido a una falla.,Naturalmente, volverá el próximo ciclo.
  *
- * 「最近活跃的会话」= 有消息的会话里最后一条最新的那个:角色接的是真实聊过的那条线,
- * 不会凭空开一个新的。用户刚在那条会话里说过话(10 分钟内)时整轮不发 —— 插话就是打断。
+ * "Conversaciones activas recientemente"= El último y último mensaje de la conversación con mensajes.:El personaje tomó la línea de la que realmente hablaron.,
+ * No abrirás uno nuevo de la nada. El usuario acaba de hablar en esa conversación.(10 en minutos)No hay tiros durante toda la ronda. —— Interrumpir es interrumpir.
  *
- * 时间、时区、随机源、主键都由调用方交进来(默认取系统值),于是这套流程能在测试里完整跑一遍。
+ * La persona que llama entrega la hora, la zona horaria, la fuente aleatoria y la clave principal.(El valor predeterminado es el valor del sistema),Entonces este proceso se puede ejecutar completamente en la prueba.
  *
- * 开口的素材由 [material] 拼:最近聊过什么、现在几点,都不在本类里查 ——
- * 角色说什么得像接着上文说,而不是凭空冒一句。
+ * El material de apertura es de [material] luchar:¿De qué hemos hablado recientemente? ¿Qué hora es ahora?,Ninguno de ellos es buscado en esta categoría. ——
+ * Lo que dice el personaje debería ser como la continuación de lo anterior.,En lugar de simplemente decir algo de la nada.
  *
- * @param now 时间源,默认系统时钟
- * @param random 概率骰子,一次一轮,测试可钉死
- * @param zone 判定「现在几点」用的时区
- * @param newId 消息主键生成器,默认 UUID
+ * @param now fuente de tiempo,Reloj del sistema predeterminado
+ * @param random dados de probabilidad,una ronda a la vez,La prueba se puede clavar
+ * @param zone La zona horaria utilizada para determinar "qué hora es ahora"
+ * @param newId Generador de claves primarias de mensajes,Predeterminado UUID
  */
 class MpProactiveChatRunner(
     private val host: MiniPhoneHost,
@@ -62,7 +62,7 @@ class MpProactiveChatRunner(
     private val newId: () -> String = { UUID.randomUUID().toString() },
 ) {
 
-    /** 跑一轮。可失败但**不抛异常**:所有异常都归一成 [MpProactiveChatOutcome]。 */
+    /** Corre una ronda. Puede fallar pero**No lanzar excepción**:Todas las excepciones están normalizadas. [MpProactiveChatOutcome]. */
     suspend fun run(): MpProactiveChatOutcome {
         val at = now()
         val enabled = resultOf { store.isChatProactiveEnabled() }
@@ -94,23 +94,23 @@ class MpProactiveChatRunner(
         }
     }
 
-    /** 判定为不发:留一条能看出原因的日志,然后结束。 */
+    /** Juzgado como no enviado:Deje un registro que muestre el motivo.,Entonces se acabó. */
     private fun skip(reason: MpProactiveChatSkipReason): MpProactiveChatOutcome {
-        Logger.d(TAG, "主动私信跳过 | reason=${reason.value}")
+        Logger.d(TAG, "Saltar mensajes privados activos | reason=${reason.value}")
         return MpProactiveChatOutcome.Skipped(reason)
     }
 
-    /** 挑角色 → 让宿主生成 → 落库 → 未读 +1 → 记下这次的时间。任一步不成立就收手。 */
+    /** Elige un papel → Deja que el anfitrión genere → Cayó en la biblioteca → no leído +1 → Tome nota de la hora esta vez. Si algún paso no funciona, detente. */
     private suspend fun send(characters: List<MpCharacter>, thread: MpThreadEntity?, at: Long): MpProactiveChatOutcome {
         val target = thread ?: return skip(MpProactiveChatSkipReason.NO_HISTORY)
-        // 会话里的角色可能已经在宿主侧被删掉:那就没有能开口的人
+        // Es posible que los personajes de la sesión se hayan eliminado en el lado del anfitrión.:Entonces no habrá quien pueda hablar.
         val character = characters.firstOrNull { it.id == target.characterId }
-        // 空白输出不落库:落一条空消息比不发更糟,而且会白白吃掉 4 小时的间隔
+        // La salida en blanco no cae en la biblioteca:Un mensaje vacío es peor que ningún mensaje,Y se comerá el intervalo de 4 horas en vano.
         val content = if (character == null) null else compose(character, at)
         return when {
             character == null -> skip(MpProactiveChatSkipReason.NO_CHARACTER)
             content.isNullOrBlank() -> {
-                Logger.w(TAG, "主动私信跳过 | reason=${MpProactiveChatSkipReason.NO_CONTENT.value}")
+                Logger.w(TAG, "Saltar mensajes privados activos | reason=${MpProactiveChatSkipReason.NO_CONTENT.value}")
                 MpProactiveChatOutcome.Skipped(MpProactiveChatSkipReason.NO_CONTENT)
             }
 
@@ -119,7 +119,7 @@ class MpProactiveChatRunner(
         }
     }
 
-    /** 生成一句:素材带最近聊过什么与现在几点,收尾一句是此刻的由头;失败返回 null。 */
+    /** generar una oración:El material muestra de qué hablamos recientemente y qué hora es ahora.,La última frase es el motivo de este momento.;Devuelve nulo en caso de error. */
     private suspend fun compose(character: MpCharacter, at: Long): String? {
         val hint = resultOf { material.forProactiveChat(character.id, focusFor(at)) }
             .onError { msg, t -> fail("material_error", t, msg) }
@@ -129,7 +129,7 @@ class MpProactiveChatRunner(
             .getOrNull()
     }
 
-    /** 落库 + 未读 +1。两步要么都成,要么当成这一轮失败(下一轮会重新生成)。 */
+    /** Descartado + No leído +1. Ambos pasos son posibles,O tratar esta ronda como un fracaso(Se regenerará en la siguiente ronda.). */
     private suspend fun write(thread: MpThreadEntity, content: String): Boolean {
         val appended = resultOf {
             ChatMessageWriter(
@@ -138,7 +138,7 @@ class MpProactiveChatRunner(
                 threadDao = threadDao,
                 now = now,
                 newId = newId,
-                // 后台没有界面挂着:界面自己从 Room 的 Flow 收到这条消息,不需要回调
+                // No hay ninguna interfaz colgada en segundo plano.:La propia interfaz recibe este mensaje de Room's Flow.,No se requiere devolución de llamada
                 onStored = {},
             ).append(
                 ChatOutgoingMessage(
@@ -154,20 +154,20 @@ class MpProactiveChatRunner(
         return appended.isSuccess
     }
 
-    /** 真的发出去了才记时间:生成失败、落库失败都不记,下一轮还能再来一次。 */
+    /** Sólo recuerdo el momento después de que lo envié.:No se registrarán las fallas al generar y colocar en la biblioteca.,Podemos volver a hacerlo en la próxima ronda. */
     private suspend fun sent(thread: MpThreadEntity, content: String, at: Long): MpProactiveChatOutcome {
-        // 时间戳写失败不影响已经落库的消息:最多让下一轮少一次防抖保护
+        // No escribir marcas de tiempo no afecta los mensajes que se han colocado en la biblioteca:Como máximo, se necesitará una protección antivibración menos para la siguiente ronda.
         resultOf { store.markProactiveChat(at) }
             .onError { msg, t -> fail("settings_write", t, msg) }
-        Logger.d(TAG, "主动私信落库 | threadId=${thread.id} | characterId=${thread.characterId} | len=${content.length}")
+        Logger.d(TAG, "Enviar activamente mensajes privados a la base de datos. | threadId=${thread.id} | characterId=${thread.characterId} | len=${content.length}")
         return MpProactiveChatOutcome.Sent(threadId = thread.id, characterId = thread.characterId)
     }
 
     /**
-     * 有消息的会话里最后一条最新的那个;一条消息都没有的会话不算「能搭话」。
+     * El último y último mensaje de la conversación con mensajes.;Una conversación sin un solo mensaje no se considera "conversable".
      *
-     * 群会话一律跳过:主动私信是「某个角色单独找你」,而群会话的 characterId 只是第一个成员 ——
-     * 拿它去开口就会在群里以一个人的身份插一句跟上下文无关的话。
+     * Las conversaciones grupales siempre se omiten:Un mensaje privado activo es "Cierto personaje te busca solo",El ID de personaje de la sesión grupal es solo el primer miembro. ——
+     * Si lo usas para hablar, insertarás una oración como persona del grupo que no tiene nada que ver con el contexto.
      */
     private suspend fun latestActiveThread(): MpThreadEntity? {
         val threads = resultOf { threadDao.observeThreads().first() }
@@ -176,7 +176,7 @@ class MpProactiveChatRunner(
         return threads?.filter { it.lastMessageAt > 0L && !it.isGroup }?.maxByOrNull { it.lastMessageAt }
     }
 
-    /** 选中会话里最后一条「用户发出」的消息时间;没有则 null。 */
+    /** Seleccione la hora del último mensaje \"enviado por el usuario\" en la conversación;Si no, nulo. */
     private suspend fun lastUserMessageAt(threadId: String): Long? {
         val sent = resultOf { messageDao.lastMessageAt(threadId, MpActorType.USER.value) }
             .onError { msg, t -> fail("messages_unreadable", t, msg) }
@@ -184,16 +184,16 @@ class MpProactiveChatRunner(
         return sent?.takeIf { it > 0L }
     }
 
-    /** 按小时给一句开口的由头,交给宿主的生成器当素材的收尾指令。 */
+    /** Da una razón para hablar por horas.,Entrégaselo al generador del anfitrión como instrucción final para el material. */
     private fun focusFor(atMillis: Long): String = when (MpProactiveChatPlan.hourOf(atMillis, zone)) {
-        in 8..10 -> "早上刚醒,随口打个招呼"
-        in 11..13 -> "中午休息,问一句吃了没"
-        in 14..17 -> "下午想起对方,闲聊一句"
-        else -> "晚上,随口聊两句"
+        in 8..10 -> "Recién me desperté por la mañana,Saluda casualmente"
+        in 11..13 -> "descanso del mediodía,¿Preguntar si has comido?"
+        in 14..17 -> "Pensar el uno en el otro por la tarde,tener una pequeña charla"
+        else -> "noche,Charla casualmente"
     }
 
     private fun fail(reason: String, throwable: Throwable?, message: String) {
-        Logger.w(TAG, "主动私信失败 | reason=$reason | ${throwable?.message ?: message}", throwable)
+        Logger.w(TAG, "Error en el mensaje privado no solicitado | reason=$reason | ${throwable?.message ?: message}", throwable)
     }
 
     private companion object {

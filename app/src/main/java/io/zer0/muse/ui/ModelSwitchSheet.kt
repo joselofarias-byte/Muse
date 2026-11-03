@@ -49,32 +49,32 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
 /**
- * 阶段 5: 模型切换底部面板。
+ * Etapa 5: El modelo cambia el panel inferior.
  *
- * 设计:
- *  - 上半:Provider 横向 chip 行(单选,切换激活 Provider)
- *  - 下半:当前激活 Provider 的模型列表,按 [groupFor] 分组折叠展示
- *  - 选中态用 primary 月桂绿 Check 图标点缀(符合"深夜台灯"<5% 品牌色铁律)
- *  - 几乎不用 elevation,靠 surfaceVariant 色块和 divider 分组
+ * diseño:
+ *  - primera mitad:Provider Filas de virutas horizontales(elección única,Activación de alternar Provider)
+ *  - segunda mitad:Lista de modelos actualmente activos en el Proveedor,prensa [groupFor] Expositor plegable agrupado
+ *  - El estado seleccionado está decorado con el icono de verificación principal de color verde laurel.(conformarse a"lámpara de mesa nocturna"<5% La ley de hierro del color de marca)
+ *  - Apenas usado elevation,Agrupados por superficieBloque de color variante y divisor
  *
- * v1.x: 模型列表改造为分组折叠结构,
- *  - 每组头部用 [MuseCardPress] 风格的卡片,点击切换展开/折叠
- *  - 折叠状态用 [rememberSaveable] + 自定义 Saver 持久化(默认折叠)
- *  - 顶部加搜索框过滤模型 id / name
- *  - 多组时显示"全部展开 / 全部折叠"批量操作按钮
+ * v1.x: La lista de modelos se transforma en una estructura agrupada y plegada.,
+ *  - Para cada grupo de cabezas [MuseCardPress] tarjetas de estilo,Haga clic para alternar para expandir/doblar
+ *  - Para estado plegado [rememberSaveable] + Persistencia del protector personalizado(Plegado predeterminado)
+ *  - Agregar modelo de filtro del cuadro de búsqueda en la parte superior id / name
+ *  - Se muestra cuando varios grupos"Expandir todo / Contraer todo"Botón de operación por lotes
  *
- * 调用方:[ChatScreen] TopAppBar 的"模型切换"按钮触发展开。
+ * llamador:[ChatScreen] TopAppBar de"Cambio de modelo"El botón activa la expansión.
  *
- * @param providers 全部已配置 Provider
- * @param activeProviderId 当前激活 Provider id
- * @param selectedModelId 当前选中模型 id(null 表示回退到 Provider 首个模型)
- * @param onPickProvider 切换激活 Provider(内部会清空 selectedModelId)
- * @param onPickModel 选择模型(传 null 回退到 Provider 首个模型)
- * @param onPickDefaultModel 可选：把 Provider 首个模型作为显式绑定项；为空时保持旧的“清除绑定”语义
- * @param onRefreshModels 手动刷新当前 Provider 的模型列表(传 provider id)
- * @param isFetchingModels 是否正在拉取模型(显示加载态)
- * @param fetchModelsError 拉取模型错误信息
- * @param onDismiss 关闭面板
+ * @param providers Todo configurado Provider
+ * @param activeProviderId Actualmente activo Provider id
+ * @param selectedModelId Modelo actualmente seleccionado id(null Representa una alternativa al primer modelo del Proveedor.)
+ * @param onPickProvider Activación de alternar Provider(El interior será limpiado selectedModelId)
+ * @param onPickModel Seleccionar modelo(Pase nulo para volver al primer modelo del Proveedor)
+ * @param onPickDefaultModel Opcional: convierta el primer modelo del proveedor en un enlace explícito; si está vacío, quédese con el anterior“encuadernación clara”Semántica
+ * @param onRefreshModels Actualizar manualmente la lista de modelos del proveedor actual(pasar provider id)
+ * @param isFetchingModels Si el modelo está siendo retirado(Mostrar estado de carga)
+ * @param fetchModelsError Mensaje de error de extracción del modelo
+ * @param onDismiss Cerrar panel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,21 +91,21 @@ internal fun ModelSwitchSheet(
     onDismiss: () -> Unit,
 ) {
     val activeProvider = providers.firstOrNull { it.id == activeProviderId }
-    // 当前生效模型:显式选中优先,否则回退到 Provider 首个模型
+    // Modelo actualmente vigente:La selección explícita tiene prioridad,De lo contrario, recurra al primer modelo del Proveedor.
     val effectiveModelId = selectedModelId ?: activeProvider?.models?.firstOrNull()?.id
 
-    // 搜索框状态(rememberSaveable 持久化,避免旋转屏清空)
+    // estado del cuadro de búsqueda(rememberSaveable persistencia,Evite girar la pantalla para borrar)
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
-    // 各组折叠状态:组名 → 是否折叠(true=折叠,false=展开);未在 Map 中的组默认折叠(true)
-    // 选用父级 SnapshotStateMap 而非子级 rememberSaveable(组名),是因为"全部展开/折叠"按钮
-    // 需一次性修改所有组状态,父级管理更直接;通过自定义 Saver 持久化到 Bundle,配置变更后状态保留。
+    // El estado de plegado de cada grupo.:Nombre del grupo → Ya sea para doblar(true=doblar,false=Expandir);Los grupos que no están en el mapa están contraídos de forma predeterminada(true)
+    // Seleccione SnapshotStateMap principal en lugar de secundario rememberSaveable(Nombre del grupo),es porque"Expandir todo/doblar"botón
+    // Necesidad de modificar el estado de todos los grupos a la vez.,La gestión de padres es más directa;Persistir a través de Saver personalizado para Bundle,El estado se conserva después de los cambios de configuración.
     val collapsedMap = rememberSaveable(saver = CollapsedMapSaver) {
         mutableStateMapOf<String, Boolean>()
     }
     val isGroupCollapsed: (String) -> Boolean = { name -> collapsedMap[name] ?: true }
 
-    // MuseDialog 替代原 ModalBottomSheet,避免真机 scrim 卡死
+    // MuseDialog sustituto original ModalBottomSheet,Evite los atascos de malla en máquinas reales
     MuseDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.model_switch_title),
@@ -114,7 +114,7 @@ internal fun ModelSwitchSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (providers.isEmpty()) {
-                    // 空状态:无任何 Provider 配置
+                    // Estado vacío:Sin configuración de proveedor
                     Text(
                         text = stringResource(R.string.model_switch_no_provider),
                         style = MaterialTheme.typography.bodyMedium,
@@ -124,8 +124,8 @@ internal fun ModelSwitchSheet(
                     return@Column
                 }
 
-                // v1.0.28: Provider 改为纵向列排列,避免长名称(如 OpenCode Go)在横向 Row 中
-                // 空间不足导致文字竖排崩坏,也便于展示更多 Provider。
+                // v1.0.28: Provider Cambiar a disposición de columnas verticales,evitar nombres largos(Como por ejemplo OpenCode Go)En fila horizontal
+                // El espacio insuficiente hace que el texto se colapse verticalmente,También es conveniente mostrar más Proveedores.
                 Text(
                     text = stringResource(R.string.model_switch_provider_label),
                     style = MaterialTheme.typography.labelMedium,
@@ -158,7 +158,7 @@ internal fun ModelSwitchSheet(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                // L-MSw1: Provider 类型单字母标识(项目无专属图标资源,用首字母替代 Emoji)
+                                // L-MSw1: Provider Escriba identificador de una sola letra(El proyecto no tiene recursos de íconos exclusivos.,Reemplazar con iniciales Emoji)
                                 Text(
                                     text = providerEmoji(provider.type),
                                     style = MaterialTheme.typography.bodyMedium,
@@ -174,7 +174,7 @@ internal fun ModelSwitchSheet(
                                     },
                                     modifier = Modifier.weight(1f),
                                 )
-                                // v1.0.18: SiliconFlow 免费供应商(未填 key)追加「免费」徽章
+                                // v1.0.18: SiliconFlow proveedor gratuito(No completado key)Se agregó la insignia "Gratis"
                                 if (FreeModelConfig.isFreeProvider(
                                         provider.id,
                                         provider.baseUrl,
@@ -189,8 +189,8 @@ internal fun ModelSwitchSheet(
                     }
                 }
 
-                // v1.0.18 / R-SEC-07: 当前激活供应商为 SiliconFlow 免费供应商时,展示免登录提示;
-                // fallback key 为占位符/空时改为可见的不可用提示。
+                // v1.0.18 / R-SEC-07: Cuando el proveedor actualmente activado es un proveedor gratuito de SiliconFlow,No mostrar mensaje de inicio de sesión;
+                // fallback key como marcador de posición/Se cambió a mensaje visible no disponible cuando está vacío.
                 if (activeProvider != null &&
                     FreeModelConfig.isFreeProvider(
                         activeProvider.id,
@@ -221,7 +221,7 @@ internal fun ModelSwitchSheet(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 )
 
-                // 下半:当前 Provider 的模型列表
+                // segunda mitad:Lista de modelos para el Proveedor actual
                 if (activeProvider == null) {
                     Text(
                         text = stringResource(R.string.model_switch_no_provider_selected),
@@ -232,7 +232,7 @@ internal fun ModelSwitchSheet(
                     return@Column
                 }
 
-                // 标题行:模型数量 + 刷新按钮
+                // línea de título:Número de modelos + botón de actualización
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -304,7 +304,7 @@ internal fun ModelSwitchSheet(
                                 MaterialTheme.colorScheme.outline
                             },
                         )
-                        // v1.0.4 (P2): 拉取失败时就近显示"重试"按钮,避免用户还得去找顶部刷新按钮
+                        // v1.0.4 (P2): Mostrar cerca cuando falla la extracción"Inténtalo de nuevo"botón,Evite que los usuarios tengan que buscar el botón de actualización en la parte superior
                         if (fetchModelsError != null && !isFetchingModels) {
                             MuseCapsuleButton(
                                 text = stringResource(R.string.model_switch_retry),
@@ -317,7 +317,7 @@ internal fun ModelSwitchSheet(
                     return@Column
                 }
 
-                // === 新增:搜索框(按 id / name 过滤模型) ===
+                // === Nuevo:cuadro de búsqueda(Filtrar modelos por ID/nombre) ===
                 MuseTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -353,9 +353,9 @@ internal fun ModelSwitchSheet(
                         .padding(vertical = MusePaddings.contentGap),
                 )
 
-                // === 计算展示的模型 ===
-                // 搜索为空时,首个模型作为"默认"项单独显示(调用 onPickModel(null) 回退到 Provider 默认),
-                // 其余模型按分组折叠展示;搜索时显示全部过滤后模型,不单独显示默认项。
+                // === Calcular el modelo mostrado ===
+                // Cuando la búsqueda está vacía,El primer modelo es como"Predeterminado"Los elementos aparecen individualmente(llamar onPickModel(null) Volver al valor predeterminado del proveedor),
+                // Los modelos restantes se muestran colapsados ​​en grupos.;Mostrar todos los modelos filtrados al buscar,Los elementos predeterminados no se muestran individualmente.
                 val firstModel = activeProvider.models.first()
                 val showDefault = searchQuery.isBlank()
                 val displayModels = if (showDefault) {
@@ -377,7 +377,7 @@ internal fun ModelSwitchSheet(
                 val groups = groupModels(filteredModels.map { it.id })
                 val modelById = filteredModels.associateBy { it.id }
 
-                // === 新增:全部展开 / 全部折叠(仅多组时显示) ===
+                // === Nuevo:Expandir todo / Contraer todo(Solo se muestra cuando hay varios grupos) ===
                 if (groups.size > 1) {
                     Row(
                         modifier = Modifier
@@ -406,8 +406,8 @@ internal fun ModelSwitchSheet(
                     }
                 }
 
-                // === 默认项(回退到 Provider 首个模型) ===
-                // 仅在搜索为空时显示,避免与分组列表中的首个模型重复。
+                // === Elemento predeterminado(Respaldo al primer modelo del proveedor) ===
+                // Mostrar solo si la búsqueda está vacía,Evite la duplicación con el primer modelo de la lista agrupada.
                 if (showDefault) {
                     ModelRow(
                         model = firstModel,
@@ -421,10 +421,10 @@ internal fun ModelSwitchSheet(
                     )
                 }
 
-                // === 分组折叠列表 ===
-                // 注:MuseDialog 内容区为 Box + verticalScroll,内部不能用 LazyColumn
-                // (会触发"Vertically scrollable component was measured with an infinity maximum
-                //  height constraints"错误),故用 Column + forEach 等效实现,功能与 LazyColumn 等价。
+                // === Lista colapsada agrupada ===
+                // Nota:MuseDialog El área de contenido es Box + verticalScroll,No se puede utilizar internamente LazyColumn
+                // (activará"Vertically scrollable component was measured with an infinity maximum
+                //  height constraints"error),Por lo tanto, use Column + forEach para lograr el equivalente,Funcionalmente equivalente a LazyColumn.
                 if (filteredModels.isEmpty()) {
                     Text(
                         text = stringResource(R.string.model_switch_no_models),
@@ -469,15 +469,15 @@ internal fun ModelSwitchSheet(
 }
 
 /**
- * 分组头部 — 可点击卡片,显示组名 + 模型数量 + 展开/折叠箭头。
+ * encabezado del paquete — tarjetas en las que se puede hacer clic,Mostrar nombre del grupo + número de modelos + expandir/Flecha de colapso.
  *
- * 用 [MuseCardPress] 替代裸 clickable,获得 200ms easeOutCubic 颜色渐变按压效果
- * 和触觉反馈。
+ * usar [MuseCardPress] alternativa desnuda clickable,Obtenga un efecto de presión de gradiente de color de 200 ms de facilidad OutCubic
+ * y retroalimentación táctil.
  *
- * @param groupName 组名(如 "GPT" / "Claude")
- * @param modelCount 该组模型数量
- * @param isCollapsed 当前是否折叠(true=折叠,显示向下箭头;false=展开,显示向上箭头)
- * @param onToggle 点击切换折叠状态
+ * @param groupName Nombre del grupo(Como por ejemplo "GPT" / "Claude")
+ * @param modelCount El número de modelos en este grupo.
+ * @param isCollapsed Si actualmente está plegado(true=doblar,Mostrar flecha hacia abajo;false=Expandir,Mostrar flecha hacia arriba)
+ * @param onToggle Haga clic para alternar el estado colapsado
  */
 @Composable
 private fun GroupHeader(groupName: String, modelCount: Int, isCollapsed: Boolean, onToggle: () -> Unit) {
@@ -496,7 +496,7 @@ private fun GroupHeader(groupName: String, modelCount: Int, isCollapsed: Boolean
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // LAYOUT-01: 分组名取剩余宽度（右侧仅一个固定宽折叠箭头），长组名不再逐字换行
+            // LAYOUT-01: El nombre del grupo toma el ancho restante (solo una flecha plegable de ancho fijo a la derecha) y los nombres de grupo largos ya no se ajustan palabra por palabra.
             Text(
                 text = stringResource(R.string.model_switch_group_count, groupName, modelCount),
                 style = MaterialTheme.typography.titleSmall,
@@ -521,17 +521,17 @@ private fun GroupHeader(groupName: String, modelCount: Int, isCollapsed: Boolean
 }
 
 /**
- * Provider 是否具备原生搜索能力(与主聊天路径 ChatViewModel.nativeWebSearchEnabled
- * 的判断保持一致:仅 GEMINI / OPENAI_RESPONSES 支持 Provider 原生搜索协议)。
+ * Provider ¿Tiene capacidades de búsqueda nativas?(Ruta de chat con principal ChatViewModel.nativeWebSearchEnabled
+ * el juicio sigue siendo consistente:Sólo GEMINI/OPENAI_RESPONSES admite el protocolo de búsqueda nativo del proveedor).
  */
 private fun providerSupportsNativeWebSearch(providerType: ProviderType): Boolean =
     providerType == ProviderType.GEMINI || providerType == ProviderType.OPENAI_RESPONSES
 
 /**
- * 单个模型行 — 左侧模型名 + 能力标签,右侧 Check(选中态)。
+ * fila de modelo único — Nombre del modelo + etiqueta de habilidad a la izquierda,lado derecho Check(Estado seleccionado).
  *
- * @param hasNativeWebSearch 当前 Provider 是否支持原生搜索;true 时即使模型未内置
- *   SEARCH 工具也展示"联网"标签。
+ * @param hasNativeWebSearch Si el proveedor actual admite la búsqueda nativa;true incluso si el modelo no está incorporado
+ *   SEARCH También se muestran las herramientas."Redes"etiqueta.
  */
 @Composable
 private fun ModelRow(
@@ -563,14 +563,14 @@ private fun ModelRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // v1.0.18: SiliconFlow 免费白名单模型追加「免费」徽章(对齐 FreeModelConfig.FREE_MODEL_IDS)
+                // v1.0.18: SiliconFlow El modelo de lista blanca gratuita añade la insignia "gratuita"(Alineación FreeModelConfig.FREE_MODEL_IDS)
                 if (FreeModelConfig.FREE_MODEL_IDS.any { it.equals(model.id, ignoreCase = true) }) {
                     Spacer(Modifier.width(6.dp))
                     FreeBadge()
                 }
             }
-            // 能力标签行:视觉 / 推理 / 工具调用 / 绘图 / 联网
-            // stringResource 需在 @Composable 直接调用位置提取,buildList 非 @Composable,故预提取到局部变量。
+            // Fila de etiqueta de capacidad:Visión/razonamiento/llamada de herramientas/dibujo/redes
+            // stringResource Debe extraerse en la ubicación de llamada directa de @Composable,buildList no @Composable,Por lo tanto, las variables locales se obtienen previamente.
             val visionLabel = stringResource(R.string.model_switch_ability_vision)
             val reasoningLabel = stringResource(R.string.model_switch_ability_reasoning)
             val toolLabel = stringResource(R.string.model_switch_ability_tool)
@@ -580,10 +580,10 @@ private fun ModelRow(
                 if (model.supportsVisionInput()) add(visionLabel to MuseIcons.eye)
                 if (model.supportsReasoning()) add(reasoningLabel to MuseIcons.brain)
                 if (model.supportsToolCalling()) add(toolLabel to MuseIcons.wrench)
-                // v0.47: 补充绘图能力(模型支持图片输出)
+                // v0.47: Habilidades de dibujo suplementarias.(El modelo admite salida de imágenes.)
                 if (model.supportsImageOutput()) add(imageLabel to MuseIcons.image)
-                // v0.47: 补充联网搜索能力(model.tools 含 SEARCH 或 Provider 支持原生搜索)
-                // v2.x: 图标从 languages(翻译语义)修正为 globe
+                // v0.47: Complementar las capacidades de búsqueda en Internet(model.tools Contiene BÚSQUEDA o Proveedor para admitir la búsqueda nativa)
+                // v2.x: Icono de languages(semántica de traducción)Corregido a globe
                 if (model.tools.contains(BuiltInTool.SEARCH) || hasNativeWebSearch) add(searchLabel to MuseIcons.globe)
             }
             if (abilities.isNotEmpty()) {
@@ -610,8 +610,8 @@ private fun ModelRow(
                     }
                 }
             }
-            // v0.47/v1.0.87: 显示模型能力目录中的上下文窗口与输出上限。
-            // 这些是模型元数据上限，不代表每次请求一定会分配同样预算。
+            // v0.47/v1.0.87: Muestra la ventana de contexto y el límite de salida en el catálogo de capacidades del modelo.
+            // Estos son límites de metadatos del modelo y no significan necesariamente que a cada solicitud se le asignará el mismo presupuesto.
             val ctxWindow = model.contextWindow
             val outputLimit = model.maxOutputTokens
             val hasContextLimit = ctxWindow?.let { it > 0 } == true
@@ -653,7 +653,7 @@ private fun ModelRow(
                 ModelVerification.VERIFIED -> Unit
             }
         }
-        // 选中态:primary 月桂绿 Check
+        // Estado seleccionado:primary verde laurel Check
         if (isSelected) {
             Icon(
                 imageVector = MuseIcons.check,
@@ -665,7 +665,7 @@ private fun ModelRow(
     }
 }
 
-/** 将 token 数压缩成设置页可读的 K/M 文本。 */
+/** Comprima el número de token en texto K/M que sea legible en la página de configuración. */
 private fun formatTokenCount(tokens: Int): String = when {
     tokens >= 1_000_000 -> "${tokens / 1_000_000}M"
     tokens >= 1_000 -> "${tokens / 1_000}K"
@@ -673,7 +673,7 @@ private fun formatTokenCount(tokens: Int): String = when {
 }
 
 /**
- * 按 ProviderType 返回 Emoji 标识(项目无专属图标资源,采用与 AssistantSection 一致的 Emoji 方案)。
+ * Devolver ID de Emoji por tipo de proveedor(El proyecto no tiene recursos de íconos exclusivos.,Utilice el mismo esquema de Emoji que AssistantSection).
  */
 private fun providerEmoji(type: ProviderType): String = when (type) {
     ProviderType.OPENAI -> "O"
@@ -683,10 +683,10 @@ private fun providerEmoji(type: ProviderType): String = when (type) {
 }
 
 /**
- * v1.0.18: 「免费」徽章 — 用于标记 SiliconFlow 免费白名单模型/供应商。
+ * v1.0.18: Insignia "gratis" — Modelos gratuitos incluidos en la lista blanca para etiquetar SiliconFlow/proveedor.
  *
- * 设计:小号 pill 形状胶囊,primary 透明背景 + primary 文字,
- * 与能力标签(视觉/推理/工具)视觉层级一致但颜色更突出(品牌色)。
+ * diseño:cápsulas pequeñas en forma de pastilla,primary Fondo transparente + texto principal,
+ * con etiquetas de habilidad(Visión/razonamiento/Herramientas)La jerarquía visual es la misma pero los colores son más prominentes.(Color de la marca).
  */
 @Composable
 private fun FreeBadge() {
@@ -705,14 +705,14 @@ private fun FreeBadge() {
 }
 
 /**
- * 折叠状态 Map 的 [listSaver] — 将 [SnapshotStateMap] 序列化为扁平 List,
- * 以满足 Bundle 可序列化要求(直接保存 Map<String, Boolean> 不被 Bundle 支持)。
+ * Colapso estado Mapa de [listSaver] — voluntad [SnapshotStateMap] serializar a plano List,
+ * Para cumplir con los requisitos de serialización del paquete(guardar directamente Map<String, Boolean> No compatible con el paquete).
  *
- * 序列化格式:[key1, value1, key2, value2, ...](基础类型 String + Boolean 均可被 Bundle 序列化)。
+ * formato de serialización:[key1, value1, key2, value2, ...](Los tipos básicos String + Boolean se pueden serializar mediante Bundle).
  */
 private val CollapsedMapSaver = listSaver<SnapshotStateMap<String, Boolean>, Any>(
     save = { stateMap ->
-        // 扁平化为 [k1, v1, k2, v2, ...] 列表,元素均为 Bundle 可序列化基础类型。
+        // aplanado a [k1, v1, k2, v2, ...] lista,Todos los elementos son tipos básicos serializables en paquetes.
         buildList {
             stateMap.forEach { (k, v) ->
                 add(k)

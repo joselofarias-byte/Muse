@@ -1,15 +1,15 @@
 package io.zer0.ai.core
 
 /**
- * v2.6.1: 剥离 one-api/new-api 系中转站在模型列表里附加的前导渠道分组标签。
+ * v2.6.1: Retire la etiqueta de agrupación de canales principal adjunta a la estación de transferencia del sistema one-api/new-api en la lista de modelos.
  *
- * 部分中转站在 `/v1/models` 里用 `[分组]模型名` 展示渠道分组(如 `[ais]gemini-3.8-flash`),
- * 但该方括号段**不是可路由的模型名**,原样发出会得到
- * `No available channel for model [ais]xxx ... code=model_not_found`(真实用户实测)。
+ * Algunas estaciones de transferencia `/v1/models` Usado en el interior `[grupo]Nombre del modelo` Mostrar agrupación de canales(Como por ejemplo `[ais]gemini-3.8-flash`),
+ * Pero la sección de corchetes**No es un nombre de modelo enrutable**,Si lo envías tal cual, recibirás
+ * `No available channel for model [ais]xxx ... code=model_not_found`(Pruebas de usuarios reales).
  *
- * 合法模型名不含方括号,因此只要存在前导 `[...]` 就剥离;支持多级(如 `[A][vip]claude-3`)。
- * - 模型名中间的方括号(如 `model[1]`)不属于前导标签,保持原样。
- * - 纯标签、剥后为空(无真实模型名)时回退原值,避免把请求发成空 model。
+ * Los nombres de los modelos legales no contienen corchetes,Por lo tanto, mientras haya una dirección `[...]` Sólo quítalo;Soporte multinivel(Como por ejemplo `[A][vip]claude-3`).
+ * - Corchetes entre nombres de modelos(Como por ejemplo `model[1]`)No es una etiqueta principal,Déjalo como está.
+ * - Etiqueta pura, vacía después de pelar(Sin nombre de modelo real)Volver al valor original,Evite enviar solicitudes a un modelo vacío.
  */
 internal fun stripChannelGroupLabels(modelId: String): String {
     val trimmed = modelId.trim()

@@ -20,50 +20,50 @@ import kotlinx.serialization.json.put
 import java.io.File
 
 /**
- * F-17 + v2.2.1 大沙盒:JS 桥接执行器（__bridge__）。
+ * F-17 + v2.2.1 gran caja de arena:JS Actuador de puente (__bridge__).
  *
- * JS 函数可通过返回桥接请求对象获得受控能力（网络/沙盒文件/剪贴板/通知/设备信息）：
+ * JS Las funciones pueden obtener capacidades controladas (red/archivo de zona de pruebas/portapapeles/Notificación/Información del dispositivo):
  * ```js
  * return { __bridge__: true, action: "http_get", params: { url: "..." } };
  * ```
- * 一次执行只截获一个桥接请求，Kotlin 侧在脚本执行结果处取到它，审计后执行对应的
- * 安全实现，再把结果作为技能返回值返回（request-response 模式）。
+ * Sólo se intercepta una solicitud de puente a la vez,Kotlin Consígalo del resultado de la ejecución del script y ejecute el correspondiente
+ * Implementarlo de forma segura y luego devolver el resultado como valor de retorno de la habilidad (request-response modo).
  *
- * 注意边界：桥接是「让脚本拿到受控能力」的通道（沙盒文件/剪贴板/通知等），
- * 不是网络代理——沙盒里直接 fetch 不走这里，因而不受本文件的 SSRF 判据保护。
+ * Preste atención a los límites: el puente es el canal que "permite que el script obtenga capacidades controladas" (archivo sandbox/portapapeles/notificaciones, etc.),
+ * No es un proxy de red——La recuperación directa en el entorno sandbox no va aquí, por lo que no está protegida por el criterio SSRF de este archivo.
  *
- * 动作清单与门槛（v2.x 沙盒放开后不再需要逐项声明）：
- *  - `echo`：原样回显（验证通路）
- *  - `http_get` / `http_post`：SSRF 防护 HTTP（拒内网/本地地址）
- *  - `fs_list` / `fs_read` / `fs_write` / `fs_delete`：沙盒目录内文件操作
- *    （限宿主的 [Host.fsRoot]，路径 canonical 校验防逃逸）
+ * Lista de acciones y umbral (v2.x Una vez que se lanza la zona de pruebas, ya no se requieren declaraciones detalladas):
+ *  - `echo`: Eco tal como está (ruta de verificación)
+ *  - `http_get` / `http_post`:SSRF Proteger HTTP (denegar intranet/dirección local)
+ *  - `fs_list` / `fs_read` / `fs_write` / `fs_delete`: Operaciones de archivos en el directorio sandbox
+ *    (Solo anfitrión [Host.fsRoot], ruta de verificación canónica para evitar el escape)
  *  - `clipboard_read` / `clipboard_write`
- *  - `notify`：应用内提示
- *  - `device_info`：设备基础信息
+ *  - `notify`: Indicaciones en la aplicación
+ *  - `device_info`:Información básica del dispositivo
  *
- * 调用方默认传 [ALL_ACTIONS] 全放行；能力声明仅用于展示，不再作为硬门槛。
- * 调用方（skill 执行结果处理处）先调用 [tryHandle]：若返回值不含 `__bridge__`
- * 字段则返回 [HandleResult.NotBridge]（按普通结果处理）；否则返回执行产物/错误。
+ * La persona que llama pasa por defecto [ALL_ACTIONS] Lanzamiento completo; la declaración de capacidad es sólo para demostración y ya no sirve como un umbral estricto.
+ * persona que llama (skill Departamento de procesamiento de resultados de ejecución) se llama primero [tryHandle]: Si el valor de retorno no contiene `__bridge__`
+ * se devuelve el campo [HandleResult.NotBridge](procesado como resultados normales); de lo contrario volver al producto de ejecución/Error.
  */
 object SkillBridge {
 
     private const val TAG = "SkillBridge"
 
-    /** v2.2.1: http_post 请求体上限(256KB)。 */
+    /** v2.2.1: http_post Solicitar límite de cuerpo(256KB). */
     private const val MAX_REQUEST_BYTES = 256 * 1024
 
-    /** B-2: 手动跟随重定向的最大跳数,防止重定向链无限延伸。 */
+    /** B-2: Número máximo de saltos para seguir una redirección manualmente,Evite que la cadena de redireccionamiento se extienda indefinidamente. */
     private const val MAX_REDIRECTS = 5
 
-    /** 默认放行的最小动作集（向后兼容：仅 echo + http_get）。 */
+    /** Conjunto mínimo de acciones permitidas de forma predeterminada (compatibilidad con versiones anteriores: solo echo + http_get). */
     val DEFAULT_ALLOWED_ACTIONS: Set<String> = setOf("echo", "http_get")
 
     /**
-     * v2.x（沙盒放开）：全部桥接动作。调用方默认传它，不再按 manifest 声明逐项报批。
+     * v2.x(Sandbox Unleashed): Todas las acciones del puente. La persona que llama lo pasa de forma predeterminada y ya no lo envía para su aprobación elemento por elemento de acuerdo con la declaración del manifiesto.
      *
-     * 保留的底线不在“动作是否允许”，而在各动作实现内：
-     *  - `fs_*` 锁定在宿主 [Host.fsRoot]（路径 canonical 校验防逃逸）；
-     *  - `http_*` 走 SSRF 防护（拒内网/本地地址）。
+     * El resultado final de la reserva no está ahí.“¿Está permitida la acción?”, y dentro de cada implementación de acción:
+     *  - `fs_*` encerrado en el anfitrión [Host.fsRoot](Verificación canónica del camino para evitar fugas);
+     *  - `http_*` Utilice protección SSRF (rechace la red interna)/dirección local).
      */
     val ALL_ACTIONS: Set<String> = setOf(
         "echo",
@@ -80,25 +80,25 @@ object SkillBridge {
     )
 
     /**
-     * v2.2.1: 桥接宿主 —— 提供动作所需的系统上下文与沙盒根目录。
+     * v2.2.1: anfitrión del puente —— Proporcione el contexto del sistema y la raíz del espacio aislado necesarios para la acción.
      *
-     * @param context 剪贴板/提示等系统能力需要；这类动作之外的场景可为 null
-     * @param fsRoot `fs_*` 动作的沙盒根（如 `workspace/plugins/<pluginId>`）；为空时 fs 动作拒绝
+     * @param context portapapeles/Se requieren indicaciones y otras capacidades del sistema; escenas distintas a tales acciones pueden ser null
+     * @param fsRoot `fs_*` La raíz de la zona de pruebas de la acción (p. ej. `workspace/plugins/<pluginId>`); La acción fs rechaza cuando está vacía.
      */
     class Host(val context: Context?, val fsRoot: File?)
 
     /**
-     * 桥接专用 HTTP 出口。DNS 解析、连接地址校验和逐跳重定向都在该出口内完成。
-     * 不复用其他网络出口，避免把 DNS 策略泛化到聊天、插件或 WebView 流量。
+     * Puente de salida HTTP privada.DNS El análisis, la verificación de la dirección de conexión y la redirección salto a salto se completan en esta salida.
+     * No reutilice otras salidas de red y evite generalizar las políticas de DNS al tráfico de chat, complementos o WebView.
      */
     private val bridgeHttpClient: SkillBridgeHttpClient by lazy { SkillBridgeHttpClient() }
 
     /**
-     * 桥接处理结果密封类。
+     * Clase de sellado del resultado del procesamiento del puente.
      *
-     *  - [NotBridge]：返回值不含 `__bridge__`，调用方按普通脚本结果继续处理
-     *  - [Output]：桥接请求已执行，产出结果 JSON 字符串
-     *  - [Failure]：桥接请求解析或执行失败（含"action 不支持"）
+     *  - [NotBridge]:El valor de retorno no contiene `__bridge__`, la persona que llama continúa procesando de acuerdo con los resultados normales del script.
+     *  - [Output]: La solicitud de puente se ha ejecutado y se genera la cadena JSON resultante.
+     *  - [Failure]: Falló el análisis o la ejecución de la solicitud de puente (incluido"action No compatible")
      */
     sealed class HandleResult {
         object NotBridge : HandleResult()
@@ -107,12 +107,12 @@ object SkillBridge {
     }
 
     /**
-     * 尝试处理一个 skill 脚本的执行返回值。
+     * Intente manejar el valor de retorno de ejecución de un script de habilidad.
      *
-     * @param valueJson 脚本返回值的 JSON 字符串（SkillEngineResult.Success.valueJson）
-     * @param allowedActions 放行动作集（v2.x 默认传 [ALL_ACTIONS] 全放行）
-     * @param host 桥接宿主（fs/剪贴板等动作需要）
-     * @return 见 [HandleResult]
+     * @param valueJson Cadena JSON del valor de retorno del script (SkillEngineResult.Success.valueJson)
+     * @param allowedActions Conjunto de acciones de liberación (v2.x Transmisión predeterminada [ALL_ACTIONS] Lanzamiento completo)
+     * @param host anfitrión del puente (fs/Requerido para acciones como portapapeles)
+     * @return ver [HandleResult]
      */
     suspend fun tryHandle(valueJson: String, allowedActions: Set<String> = DEFAULT_ALLOWED_ACTIONS, host: Host? = null): HandleResult {
         val obj = runCatching {
@@ -122,9 +122,9 @@ object SkillBridge {
         if (!isBridge) return HandleResult.NotBridge
 
         val action = (obj["action"] as? JsonPrimitive)?.contentOrNull
-            ?: return HandleResult.Failure("__bridge__ 缺少 action 字段")
+            ?: return HandleResult.Failure("__bridge__ falta el campo de acción")
         if (action !in allowedActions) {
-            return HandleResult.Failure("__bridge__ action '$action' 不在放行动作集内")
+            return HandleResult.Failure("__bridge__ action '$action' No en el conjunto de acciones de lanzamiento")
         }
         val params = obj["params"] as? JsonObject ?: buildJsonObject { }
         return when (action) {
@@ -139,36 +139,36 @@ object SkillBridge {
             "clipboard_write" -> execClipboardWrite(host, params)
             "notify" -> execNotify(host, params)
             "device_info" -> HandleResult.Output(deviceInfoJson())
-            else -> HandleResult.Failure("__bridge__ action '$action' 不受支持")
+            else -> HandleResult.Failure("__bridge__ action '$action' No compatible")
         }
     }
 
     // ── HTTP ─────────────────────────────────────────────────────────────
 
-    /** 执行 http_get：SSRF 防护(含重定向逐跳校验) + 完整输出落盘。 */
+    /** Ejecute http_get:SSRF protección(Contiene verificación de redirección salto a salto) + Salida completa al disco. */
     private fun execHttpGet(params: JsonObject, host: Host?): HandleResult {
         val url = (params["url"] as? JsonPrimitive)?.contentOrNull
-            ?: return HandleResult.Failure("http_get 缺少 url 参数")
+            ?: return HandleResult.Failure("http_get Parámetro de URL faltante")
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            return HandleResult.Failure("http_get url 仅支持 http/https 协议")
+            return HandleResult.Failure("http_get url Solo admite protocolo http/https")
         }
         val outputDirectory = host?.context?.let { File(it.filesDir, TOOL_OUTPUTS_DIR) }
-            ?: return HandleResult.Failure("http_get 缺少完整响应存储上下文")
+            ?: return HandleResult.Failure("http_get Falta el contexto de almacenamiento de respuesta completo")
         return execHttpGetWithRedirects(url, outputDirectory)
     }
 
-    /** v2.2.1: 执行 http_post（不跟随重定向，fail-closed）。 */
+    /** v2.2.1: Ejecute http_post (sin seguir redirecciones,fail-closed). */
     private fun execHttpPost(params: JsonObject, host: Host?): HandleResult {
         val url = (params["url"] as? JsonPrimitive)?.contentOrNull
-            ?: return HandleResult.Failure("http_post 缺少 url 参数")
+            ?: return HandleResult.Failure("http_post Parámetro de URL faltante")
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            return HandleResult.Failure("http_post url 仅支持 http/https 协议")
+            return HandleResult.Failure("http_post url Solo admite protocolo http/https")
         }
         val outputDirectory = host?.context?.let { File(it.filesDir, TOOL_OUTPUTS_DIR) }
-            ?: return HandleResult.Failure("http_post 缺少完整响应存储上下文")
+            ?: return HandleResult.Failure("http_post Falta el contexto de almacenamiento de respuesta completo")
         val body = (params["body"] as? JsonPrimitive)?.contentOrNull.orEmpty()
         if (body.toByteArray(Charsets.UTF_8).size > MAX_REQUEST_BYTES) {
-            return HandleResult.Failure("http_post 请求体超过上限(${MAX_REQUEST_BYTES / 1024}KB)")
+            return HandleResult.Failure("http_post El cuerpo de la solicitud supera el límite superior.(${MAX_REQUEST_BYTES / 1024}KB)")
         }
         val contentType = (params["content_type"] as? JsonPrimitive)?.contentOrNull
             ?.takeIf { it.isNotBlank() } ?: "text/plain; charset=utf-8"
@@ -181,11 +181,11 @@ object SkillBridge {
                 }.toString(),
             )
         } catch (e: Exception) {
-            Logger.w(TAG, "http_post 桥接失败: ${e.message}")
+            Logger.w(TAG, "http_post Puente falló: ${e.message}")
             val message = if (e is SkillBridgeHttpClient.PinnedAddressException) {
-                "http_post 拒绝访问内网/非公网地址: ${e.url}"
+                "http_post Denegar el acceso a la intranet/Dirección de red no pública: ${e.url}"
             } else {
-                // v2.2.1: 带地址与失败阶段(超时/解析/TLS)
+                // v2.2.1: Con dirección y etapa de falla.(tiempo de espera/analizar/TLS)
                 ToolFailureText.httpFailure("http_post", url, e)
             }
             HandleResult.Failure(message)
@@ -193,13 +193,13 @@ object SkillBridge {
     }
 
     /**
-     * 手动跟随重定向的 http_get 执行。
+     * Siga manualmente la ejecución de http_get redirigido.
      *
-     * DNS 解析与连接级校验由 [SkillBridgeHttpClient] 完成；它为每一跳固定同一份已校验
-     * 地址列表，避免“先校验 getAllByName、再由系统重新解析”的 TOCTOU。重定向仍由客户端
-     * 禁用自动跟随并逐跳校验，任一跳失败即 fail-closed。
+     * DNS El análisis y la verificación del nivel de conexión se realizan mediante [SkillBridgeHttpClient] Completo; corrige la misma copia verificada para cada salto
+     * listas de direcciones para evitar“Primero verifique getAllByName y luego el sistema lo vuelva a analizar.”TOCTOU. Los redireccionamientos todavía son manejados por el cliente.
+     * Deshabilite el seguimiento automático y la verificación salto a salto. Si algún salto falla, se cierra por fallas.
      */
-    @Suppress("TooGenericExceptionCaught") // 底层网络异常统一转为用户可见失败信息
+    @Suppress("TooGenericExceptionCaught") // Las anomalías subyacentes de la red se convierten uniformemente en mensajes de error visibles para el usuario.
     private fun execHttpGetWithRedirects(startUrl: String, outputDirectory: File): HandleResult {
         return try {
             val result = bridgeHttpClient.getComplete(startUrl, outputDirectory, MAX_REDIRECTS)
@@ -210,20 +210,20 @@ object SkillBridge {
                 }.toString(),
             )
         } catch (e: Exception) {
-            Logger.w(TAG, "http_get 桥接失败: ${e.message}")
+            Logger.w(TAG, "http_get Puente falló: ${e.message}")
             val message = if (e is SkillBridgeHttpClient.PinnedAddressException) {
-                "http_get 拒绝访问内网/非公网地址: ${e.url}"
+                "http_get Denegar el acceso a la intranet/Dirección de red no pública: ${e.url}"
             } else {
-                // v2.2.1: 带地址与失败阶段(超时/解析/TLS)
+                // v2.2.1: Con dirección y etapa de falla.(tiempo de espera/analizar/TLS)
                 ToolFailureText.httpFailure("http_get", startUrl, e)
             }
             HandleResult.Failure(message)
         }
     }
 
-    // ── 沙盒文件 ──────────────────────────────────────────────────────────
+    // ── archivo de zona de pruebas ──────────────────────────────────────────────────────────
 
-    private fun fsRootOf(host: Host?): File = host?.fsRoot ?: throw SkillBridgeFs.BridgeFsException("当前动作未提供沙盒目录")
+    private fun fsRootOf(host: Host?): File = host?.fsRoot ?: throw SkillBridgeFs.BridgeFsException("La acción actual no proporciona un directorio de zona de pruebas")
 
     private fun execFsList(host: Host?, params: JsonObject): HandleResult {
         return try {
@@ -258,7 +258,7 @@ object SkillBridge {
         return try {
             val root = fsRootOf(host)
             val path = paramString(params, "path")
-            if (path.isEmpty()) return HandleResult.Failure("fs_read 缺少 path 参数")
+            if (path.isEmpty()) return HandleResult.Failure("fs_read parámetro de ruta faltante")
             val content = SkillBridgeFs.read(
                 root = root,
                 path = path,
@@ -280,7 +280,7 @@ object SkillBridge {
         return try {
             val root = fsRootOf(host)
             val path = paramString(params, "path")
-            if (path.isEmpty()) return HandleResult.Failure("fs_write 缺少 path 参数")
+            if (path.isEmpty()) return HandleResult.Failure("fs_write parámetro de ruta faltante")
             val content = paramString(params, "content")
             val written = SkillBridgeFs.write(root, path, content)
             HandleResult.Output(
@@ -298,7 +298,7 @@ object SkillBridge {
         return try {
             val root = fsRootOf(host)
             val path = paramString(params, "path")
-            if (path.isEmpty()) return HandleResult.Failure("fs_delete 缺少 path 参数")
+            if (path.isEmpty()) return HandleResult.Failure("fs_delete parámetro de ruta faltante")
             SkillBridgeFs.delete(root, path)
             HandleResult.Output(
                 buildJsonObject {
@@ -313,54 +313,54 @@ object SkillBridge {
 
     private fun fsFailure(action: String, e: Exception): HandleResult = HandleResult.Failure(
         if (e is SkillBridgeFs.BridgeFsException) {
-            "$action 被拒绝: ${e.message}"
+            "$action rechazado: ${e.message}"
         } else {
-            "$action 失败: ${e.message ?: "未知错误"}"
+            "$action falló: ${e.message ?: "error desconocido"}"
         },
     )
 
-    // ── 系统能力 ──────────────────────────────────────────────────────────
+    // ── Capacidades del sistema ──────────────────────────────────────────────────────────
 
     private suspend fun execClipboardRead(host: Host?): HandleResult {
-        val context = host?.context ?: return HandleResult.Failure("桥接宿主缺少 Context,无法读取剪贴板")
+        val context = host?.context ?: return HandleResult.Failure("Falta el host del puente Context,No se puede leer el portapapeles")
         return withContext(Dispatchers.Main) {
             try {
                 val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                    ?: return@withContext HandleResult.Failure("剪贴板服务不可用")
+                    ?: return@withContext HandleResult.Failure("El servicio de portapapeles no está disponible")
                 val text = manager.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
                 HandleResult.Output(buildJsonObject { put("text", JsonPrimitive(text)) }.toString())
             } catch (e: Exception) {
-                HandleResult.Failure("clipboard_read 失败: ${e.message ?: "未知错误"}")
+                HandleResult.Failure("clipboard_read falló: ${e.message ?: "error desconocido"}")
             }
         }
     }
 
     private suspend fun execClipboardWrite(host: Host?, params: JsonObject): HandleResult {
-        val context = host?.context ?: return HandleResult.Failure("桥接宿主缺少 Context,无法写入剪贴板")
+        val context = host?.context ?: return HandleResult.Failure("Falta el host del puente Context,No se puede escribir en el portapapeles")
         val text = paramString(params, "text")
         return withContext(Dispatchers.Main) {
             try {
                 val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                    ?: return@withContext HandleResult.Failure("剪贴板服务不可用")
+                    ?: return@withContext HandleResult.Failure("El servicio de portapapeles no está disponible")
                 manager.setPrimaryClip(ClipData.newPlainText("muse-skill", text))
                 HandleResult.Output("""{"ok":true}""")
             } catch (e: Exception) {
-                HandleResult.Failure("clipboard_write 失败: ${e.message ?: "未知错误"}")
+                HandleResult.Failure("clipboard_write falló: ${e.message ?: "error desconocido"}")
             }
         }
     }
 
     private suspend fun execNotify(host: Host?, params: JsonObject): HandleResult {
-        val context = host?.context ?: return HandleResult.Failure("桥接宿主缺少 Context,无法发送提示")
+        val context = host?.context ?: return HandleResult.Failure("Falta el host del puente Context,No se puede enviar el recordatorio")
         val title = paramString(params, "title")
         val body = paramString(params, "body").ifBlank { title }
-        if (body.isBlank()) return HandleResult.Failure("notify 缺少 title/body")
+        if (body.isBlank()) return HandleResult.Failure("notify desaparecido title/body")
         return withContext(Dispatchers.Main) {
             try {
                 android.widget.Toast.makeText(context, body, android.widget.Toast.LENGTH_SHORT).show()
                 HandleResult.Output("""{"ok":true}""")
             } catch (e: Exception) {
-                HandleResult.Failure("notify 失败: ${e.message ?: "未知错误"}")
+                HandleResult.Failure("notify falló: ${e.message ?: "error desconocido"}")
             }
         }
     }

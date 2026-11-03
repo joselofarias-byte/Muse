@@ -4,10 +4,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-CHANNEL-F4: 渠道存储恢复失败必须隔离坏文件,而非静默清零后覆盖。
+ * AUD-CHANNEL-F4: La recuperación del almacenamiento del canal falla y los archivos defectuosos deben ponerse en cuarentena,En lugar de borrar silenciosamente y luego sobrescribir.
  *
- * 原实现解码失败仅记日志、继续用空列表,后续写入会用新内容覆盖坏文件,
- * 原始现场丢失、无法诊断。项目已有 AtomicFileStore.quarantine 惯例。
+ * La implementación original solo registra registros cuando falla la decodificación y continúa usando una lista vacía.,Las escrituras posteriores sobrescriben el archivo defectuoso con contenido nuevo.,
+ * La escena original está perdida y es imposible de diagnosticar. Los proyectos ya tienen la convención AtomicFileStore.quarantine.
  */
 class ChannelStoreQuarantineTest {
 
@@ -17,7 +17,7 @@ class ChannelStoreQuarantineTest {
     fun `inbox restore failure quarantines the file`() {
         val src = source("ChannelInbox.kt")
         assertTrue(
-            "收件箱恢复失败必须隔离坏文件",
+            "La recuperación de la bandeja de entrada falla y los archivos defectuosos deben ponerse en cuarentena",
             src.contains("AtomicFileStore.quarantine(inboxFile"),
         )
     }
@@ -26,7 +26,7 @@ class ChannelStoreQuarantineTest {
     fun `conversation store restore failure quarantines the file`() {
         val src = source("ChannelConversationStore.kt")
         assertTrue(
-            "对话历史恢复失败必须隔离坏文件",
+            "La recuperación del historial de conversaciones falla y los archivos defectuosos deben ponerse en cuarentena",
             src.contains("AtomicFileStore.quarantine(target"),
         )
     }
@@ -35,11 +35,11 @@ class ChannelStoreQuarantineTest {
     fun `webhook ledger oversize quarantines instead of throwing`() {
         val src = source("WebhookEventDeduplicator.kt")
         assertTrue(
-            "超容量账本应隔离重开,而非 require 抛错",
+            "Los libros de contabilidad de exceso de capacidad deben aislarse y reabrirse,En lugar de requerir arrojar un error",
             src.contains("AtomicFileStore.quarantine(file, \"webhook_ledger_oversize\")"),
         )
         assertTrue(
-            "不应再有 require(...) 容量抛错",
+            "No debería haber más require(...) error de capacidad",
             !src.contains("require(loaded.size <= MAX_ENTRIES)"),
         )
     }

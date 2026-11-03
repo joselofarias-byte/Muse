@@ -10,63 +10,63 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 
 /**
- * P2-13: 桌面端键盘快捷键定义。
+ * P2-13: Definiciones de atajos de teclado de escritorio.
  *
- * 仅在 [WindowWidthClass.Expanded] 且检测到物理键盘时启用。
- * 用 `Modifier.onKeyEvent` 拦截硬件键盘事件。
+ * solo en [WindowWidthClass.Expanded] y se habilita cuando se detecta un teclado físico.
+ * usar `Modifier.onKeyEvent` Interceptar eventos de teclado de hardware.
  *
- * 设计原则:
- *  - 不破坏 InputBar 已有的 `enterToSend` 行为(用户在设置中可切换"回车发送"或"Shift+回车发送")
- *  - 全局快捷键(Ctrl+K / Ctrl+N / Ctrl+, / Esc)在 MainActivity 根部拦截
- *  - 局部快捷键(Enter 发送 / Ctrl+Shift+C 复制回复)在 ChatScreen 内部拦截
- *  - 快捷键仅作用于硬件键盘场景(软键盘不触发),通过 [rememberHasPhysicalKeyboard] 门控
+ * principios de diseño:
+ *  - No destruye el InputBar existente `enterToSend` comportamiento(Los usuarios pueden cambiar la configuración"Entra para enviar"o"Shift+Entra para enviar")
+ *  - Teclas de acceso directo globales(Ctrl+K / Ctrl+N / Ctrl+, / Esc)Interceptar en la raíz de MainActivity
+ *  - Teclas de acceso directo locales(Enter Enviar / Ctrl+Shift+C Copiar respuesta)Intercepción dentro de ChatScreen
+ *  - Las teclas de método abreviado solo funcionan en escenarios de teclado de hardware(El teclado virtual no se activa),Pase [rememberHasPhysicalKeyboard] puerta
  *
- * 修饰键约定(对齐桌面应用习惯):
- *  - Ctrl 修饰:全局导航类快捷键(搜索 / 新建 / 设置)
- *  - Shift 修饰:与基本键组合产生反向行为(Shift+Enter = 换行,Enter = 发送)
- *  - Ctrl+Shift 修饰:辅助操作(复制最后回复)
- *  - 无修饰:Esc 关闭
+ * Convención de clave modificadora(Alinear los hábitos de las aplicaciones de escritorio):
+ *  - Ctrl Modificar:Teclas de acceso directo de navegación global(Buscar/Nuevo/Configuración)
+ *  - Shift Modificar:Produzca un comportamiento inverso con combinaciones de teclas básicas.(Shift+Enter = nueva línea,Enter = enviar)
+ *  - Ctrl+Shift Modificar:Operaciones auxiliares(Copiar la última respuesta)
+ *  - Sin modificación:Esc cerrar
  */
 object DesktopShortcuts {
-    /** Enter(无 Shift): 发送消息 — 仅在 `enterToSend=true` 时由 InputBar 自身处理 */
+    /** Enter(Ninguno Shift): enviar mensaje — solo en `enterToSend=true` es manejado por el propio InputBar */
     val SEND_MESSAGE: Key = Key.Enter
 
-    /** Shift+Enter: 换行(覆盖 enterToSend 行为,Shift 修饰表示换行而非发送) */
+    /** Shift+Enter: nueva línea(Anular el comportamiento enterToSend,Shift Decorar significa envolver en lugar de enviar.) */
     val NEWLINE: Key = Key.Enter
 
-    /** Ctrl+K: 聚焦搜索框(若无内嵌搜索框则打开外部搜索页) */
+    /** Ctrl+K: Cuadro de búsqueda de enfoque(Si no hay un cuadro de búsqueda integrado, abra la página de búsqueda externa) */
     val FOCUS_SEARCH: Key = Key.K
 
-    /** Ctrl+N: 新建对话 */
+    /** Ctrl+N: Nueva conversación */
     val NEW_CHAT: Key = Key.N
 
-    /** Ctrl+,: 打开设置(对齐 VS Code / Slack 等桌面应用习惯) */
+    /** Ctrl+,: Abrir configuración(Alinear VS Code/Slack y otros hábitos de aplicaciones de escritorio) */
     val OPEN_SETTINGS: Key = Key.Comma
 
-    /** Ctrl+Shift+C: 复制最后一条 AI 回复到剪贴板 */
+    /** Ctrl+Shift+C: Copia la última respuesta de IA al portapapeles */
     val COPY_LAST_REPLY: Key = Key.C
 
-    /** Esc: 关闭对话框 / 退出当前页(等价于系统返回) */
+    /** Esc: Cerrar el cuadro de diálogo/salir de la página actual(Equivalente al retorno del sistema) */
     val CLOSE: Key = Key.Escape
 }
 
 /**
- * 检测当前是否有物理键盘连接。
+ * Detecta si hay un teclado físico actualmente conectado.
  *
- * 通过 [Configuration.keyboard] 判断:
- *  - [Configuration.KEYBOARD_NOKEYS]:无物理键盘(纯触摸设备)
- *  - [Configuration.KEYBOARD_QWERTY] / [Configuration.KEYBOARD_12KEY]:有物理键盘
+ * Pase [Configuration.keyboard] juez:
+ *  - [Configuration.KEYBOARD_NOKEYS]:Sin teclado físico(Dispositivo táctil puro)
+ *  - [Configuration.KEYBOARD_QWERTY] / [Configuration.KEYBOARD_12KEY]:Tiene un teclado fisico
  *
- * 在 ChromeOS / Android Desktop / 外接蓝牙键盘场景下,`Configuration.keyboard`
- * 会从 `KEYBOARD_NOKEYS` 切换为 `KEYBOARD_QWERTY`,且 [LocalConfiguration] 在配置
- * 变更(插拔键盘)时自动重组,因此 `remember(configuration)` 即可保证状态同步。
+ * en ChromeOS / Android Desktop / En el escenario de teclado Bluetooth externo,`Configuration.keyboard`
+ * seguirá `KEYBOARD_NOKEYS` cambiar a `KEYBOARD_QWERTY`,y [LocalConfiguration] En configuración
+ * cambiar(Conectar y desconectar el teclado)Reorganizar automáticamente cuando,Por lo tanto `remember(configuration)` Esto garantiza la sincronización del estado.
  *
- * 返回 [State] 而非裸 `Boolean`,便于在 `Modifier.onKeyEvent` 链中按需读取最新值。
+ * Regresar [State] en lugar de desnudo `Boolean`,Conveniente para `Modifier.onKeyEvent` El último valor de la cadena se lee bajo demanda.
  *
- * 注意:Android 11+ 系统在键盘可见性切换时会调用 Activity 的 `onConfigurationChanged`,
- * 但 Compose 的 `LocalConfiguration` 仅在 Activity 重启或 `applyResourceConfigurations`
- * 刷新后才更新。对大多数场景足够;若需更精细的实时检测,可结合 `WindowInsets`
- * 的 `ime` 状态,但不在本任务范围内。
+ * Nota:Android 11+ El sistema llama a la actividad. `onConfigurationChanged`,
+ * Pero Compose `LocalConfiguration` Sólo después de reiniciar la actividad o `applyResourceConfigurations`
+ * Actualización tras actualización. Suficiente para la mayoría de los escenarios;Si necesita una detección más precisa en tiempo real,Se puede combinar `WindowInsets`
+ * de `ime` Estado,Pero está fuera del alcance de esta tarea.
  */
 @Composable
 fun rememberHasPhysicalKeyboard(): State<Boolean> {
@@ -77,14 +77,14 @@ fun rememberHasPhysicalKeyboard(): State<Boolean> {
 }
 
 /**
- * P2-13: 桌面快捷键启用判定。
+ * P2-13: Las teclas de acceso directo del escritorio permiten juzgar.
  *
- * 同时满足两个条件才启用快捷键:
- *  1. 窗口宽度分级为 [WindowWidthClass.Expanded](平板横屏 / 桌面)
- *  2. 检测到物理键盘(非纯触摸设备)
+ * Las teclas de acceso directo se habilitan solo cuando se cumplen dos condiciones al mismo tiempo:
+ *  1. Los anchos de las ventanas se clasifican como [WindowWidthClass.Expanded](Tableta horizontal/escritorio)
+ *  2. Teclado físico detectado(Dispositivos no táctiles puros)
  *
- * 在手机竖屏 + 软键盘场景下,两个条件均不满足,快捷键自动禁用,
- * 不会与软键盘的 IME Action 冲突。
+ * En el escenario de pantalla vertical del teléfono celular + teclado virtual,Ninguna condición se cumple,Teclas de acceso directo desactivadas automáticamente,
+ * No entrará en conflicto con la acción IME del teclado virtual.
  */
 @Composable
 fun rememberDesktopShortcutsEnabled(): Boolean {

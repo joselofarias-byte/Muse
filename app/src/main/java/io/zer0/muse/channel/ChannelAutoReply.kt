@@ -44,20 +44,20 @@ internal data class ChannelAgentCheckpoint(
 
 internal const val CHANNEL_AGENT_CHECKPOINT_UNREADABLE = "CHECKPOINT_UNREADABLE"
 
-/** 排队超窗预检的终态错误码：被动回复窗口已被队列等待耗尽。 */
-internal const val REPLY_WINDOW_EXPIRED_BY_QUEUE = "被动回复窗口已过期(排队超时)"
+/** Código de error final de la verificación previa de ventana en cola que excede: la cola de espera agotó la ventana de respuesta pasiva. */
+internal const val REPLY_WINDOW_EXPIRED_BY_QUEUE = "La ventana de respuesta pasiva ha expirado(Tiempo de espera de cola)"
 
 /**
- * 排队超窗预检：被动回复窗口是否已被队列等待耗尽。
+ * Comprobación previa de la cola fuera de la ventana: si la ventana de respuesta pasiva se ha agotado debido a la cola de espera.
  *
- * 只对 QQ 有实际作用；其它平台 [ChannelAutoReply.replyWindowDeadlineMillis] 返回 [Long.MAX_VALUE]，
- * 这里恒为 false。返回 true 时调用方必须直接收终态，不再进模型。
+ * Sólo tiene efecto práctico sobre QQ; otras plataformas [ChannelAutoReply.replyWindowDeadlineMillis] Regresar [Long.MAX_VALUE],
+ * Esto siempre es falso. Cuando se devuelve verdadero, la persona que llama debe regresar directamente al estado final y ya no ingresar al modelo.
  */
 internal fun queuedReplyWindowExpired(inbound: ChannelInbox.Inbound, nowMillis: Long): Boolean =
     nowMillis >= ChannelAutoReply.replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
 
 internal class ChannelAgentCheckpointUnreadableException(cause: Throwable) :
-    IllegalStateException("渠道 Agent 恢复断点不可读取", cause)
+    IllegalStateException("El punto de interrupción de recuperación del agente de canal no se puede leer", cause)
 
 private sealed interface ChannelAgentRunResult {
     data class Ready(val text: String) : ChannelAgentRunResult
@@ -70,14 +70,14 @@ private data class ChannelToolExecution(
     val outcomeUnknown: Boolean,
 )
 
-/** 保守合并工具执行的不确定性,避免后续恢复时重跑潜在副作用。 */
+/** Incertidumbre en la ejecución de herramientas de fusión conservadoras,Evite los posibles efectos secundarios de volver a correr durante la recuperación posterior. */
 internal fun channelToolOutcomeUnknown(
     previousUnknown: Boolean,
     recoveringUncertainCall: Boolean,
     executionOutcomeUnknown: Boolean,
 ): Boolean = previousUnknown || recoveringUncertainCall || executionOutcomeUnknown
 
-/** NORMAL 工具出现异常或返回标准化错误时,保守视为副作用结果未知。 */
+/** NORMAL Cuando una herramienta arroja una excepción o devuelve un error estandarizado,Los efectos secundarios se consideran conservadoramente desconocidos. */
 internal fun channelToolResultUnknown(risk: ToolRiskLevel, executionThrew: Boolean, result: String): Boolean {
     return risk == ToolRiskLevel.NORMAL &&
         (executionThrew || result.startsWith("Error:", ignoreCase = true))
@@ -94,9 +94,9 @@ internal suspend fun encryptChannelAgentCheckpoint(checkpoint: ChannelAgentCheck
 internal suspend fun decryptChannelAgentCheckpoint(encrypted: String): ChannelAgentCheckpoint {
     return try {
         val plaintext = SecureKeyStore.decryptOrNull(encrypted)
-            ?: error("无法解密渠道 Agent 恢复断点")
+            ?: error("No se puede descifrar el punto de interrupción de recuperación del agente del canal")
         if (!plaintext.startsWith(AGENT_CHECKPOINT_PREFIX)) {
-            error("渠道 Agent 恢复断点格式不匹配")
+            error("El formato del punto de interrupción de recuperación del agente de canal no coincide")
         }
         AppJson.decodeFromString(
             ChannelAgentCheckpoint.serializer(),
@@ -110,16 +110,16 @@ internal suspend fun decryptChannelAgentCheckpoint(encrypted: String): ChannelAg
 }
 
 /**
- * v2.0: 渠道自动回复 — 入站消息闭环(收到 → 跑一轮 → 回发到来源)。
+ * v2.0: Respuesta automática del canal. — Bucle cerrado de mensajería entrante(recibido → correr una ronda → Devolución de datos a la fuente).
  *
- * 由 [ChannelInbox] 的持久化队列驱动:入站消息可靠落盘后,若存在
- * 开启 [ChannelConfig.autoReply] 的渠道配置,则以绑定/默认助手跑一轮非流式对话,
- * 并把回复通过对应渠道回发到消息来源(from)。
+ * por [ChannelInbox] Controlador de cola de persistencia:Los mensajes entrantes se colocan de manera confiable después de su colocación,si existe
+ * encender [ChannelConfig.autoReply] configuración del canal,Luego atar/El asistente predeterminado ejecuta una ronda de conversaciones que no se transmiten,
+ * Y enviar la respuesta de vuelta a la fuente del mensaje a través del canal correspondiente.(from).
  *
- * 设计约束:
- *  - 全局单消费者:事件在处理完成前保持持久化,进程重启后继续派发;
- *  - 失败按退避重试,生成结果先落盘再发送;
- *  - 入站 ACK 只确认本地队列已接收,外部发送窗口按至少一次语义处理。
+ * restricciones de diseño:
+ *  - consumidor único global:Los eventos permanecen persistentes hasta que se completa el procesamiento,Continuar la distribución después de reiniciar el proceso.;
+ *  - Si falla, presione Escape para intentarlo nuevamente.,Los resultados generados se comercializan primero y luego se envían.;
+ *  - El ACK entrante solo acusa recibo por parte de la cola local,Las ventanas de envío externo se manejan con semántica de al menos una vez.
  */
 @Suppress("LargeClass") // Durable dispatch, agent recovery, and channel tool policy share one lifecycle owner.
 class ChannelAutoReply(
@@ -128,20 +128,20 @@ class ChannelAutoReply(
     private val assistantRepository: AssistantRepository,
     private val context: Context,
     private val appScope: CoroutineScope,
-    /** v2.0.1: 用户档案(助手名/用户昵称) — 供系统提示词模板变量渲染。 */
+    /** v2.0.1: Perfil de usuario(Nombre del asistente/Apodo de usuario) — Proporciona representación variable de plantilla de Word de aviso del sistema. */
     private val settings: SettingsRepository,
-    /** v2.0.1: 工具注册表 — 渠道对话继承助手工具集(排除群聊工具与高风险工具)。 */
+    /** v2.0.1: Registro de herramientas — Conjunto de herramientas del asistente de herencia de conversaciones de canales(Excluir herramientas de chat grupal y herramientas de alto riesgo). */
     private val toolRegistry: ToolRegistry,
-    /** v2.0.1: 视觉辅助 — 模型不支持视觉时把图片转为文字描述(降级路径)。 */
+    /** v2.0.1: ayuda visual — Cuando el modelo no admite visión, la imagen se convertirá en una descripción de texto.(Ruta de degradación). */
     private val visionBridge: VisionBridge,
 ) {
     private val wakeups = Channel<Unit>(Channel.CONFLATED)
     private var dispatcherJob: Job? = null
 
-    /** v2.0.1: 模板渲染器 — 与聊天主链路一致地替换 {{char}}/{{user}} 等变量。 */
+    /** v2.0.1: renderizador de plantillas — Reemplazado consistentemente con el enlace de chat principal. {{char}}/{{user}} y otras variables. */
     private val templateTransformer = TemplateTransformer(context)
 
-    /** 挂载入站监听(幂等,App 启动时调用一次)。 */
+    /** Montar la escucha entrante(idempotente,App Llamado una vez al inicio). */
     @Synchronized
     @Suppress("TooGenericExceptionCaught") // App startup must keep retrying recoverable storage/key-store failures.
     fun start() {
@@ -156,7 +156,7 @@ class ChannelAutoReply(
                     try {
                         ChannelInbox.journal.recoverInterruptedDispatches()
                     } catch (error: Exception) {
-                        Logger.e(TAG, "恢复中断的渠道事件失败: ${error.message}", error)
+                        Logger.e(TAG, "No se pudo restaurar el evento del canal interrumpido: ${error.message}", error)
                         kotlinx.coroutines.delay(DISPATCH_STATE_RETRY_DELAY_MS)
                         continue
                     }
@@ -183,7 +183,7 @@ class ChannelAutoReply(
     private suspend fun claimNextPendingOrDelay(): ChannelInbox.Inbound? = try {
         ChannelInbox.journal.claimNextPending()
     } catch (error: Exception) {
-        Logger.e(TAG, "领取渠道入站事件失败: ${error.message}", error)
+        Logger.e(TAG, "No se pudo recibir el evento entrante del canal: ${error.message}", error)
         kotlinx.coroutines.delay(DISPATCH_STATE_RETRY_DELAY_MS)
         null
     }
@@ -197,7 +197,7 @@ class ChannelAutoReply(
             runCatching { ChannelInbox.journal.releaseDispatch(inbound.dispatchId) }
             throw error
         } catch (error: Exception) {
-            Logger.w(TAG, "自动回复处理异常,稍后重试: ${error.message}", error)
+            Logger.w(TAG, "Excepción de manejo de respuesta automática,Vuelve a intentarlo más tarde: ${error.message}", error)
             HandleResult.Retry
         }
         return persistOutcome(inbound, outcome)
@@ -210,7 +210,7 @@ class ChannelAutoReply(
                 ChannelInbox.journal.completeDispatch(inbound.dispatchId, ignored = false)
                 appScope.launch {
                     runCatching { maybeCompress(outcome.config, outcome.from) }
-                        .onFailure { error -> Logger.w(TAG, "上下文压缩失败: ${error.message}") }
+                        .onFailure { error -> Logger.w(TAG, "La compresión del contexto falló: ${error.message}") }
                 }
             }
             HandleResult.Ignored -> ChannelInbox.journal.completeDispatch(inbound.dispatchId, ignored = true)
@@ -219,7 +219,7 @@ class ChannelAutoReply(
         }
         true
     } catch (error: Exception) {
-        Logger.e(TAG, "自动回复派发状态落盘失败: ${error.message}", error)
+        Logger.e(TAG, "Responder automáticamente al estado de distribución y la realización del pedido falló.: ${error.message}", error)
         false
     }
 
@@ -232,16 +232,16 @@ class ChannelAutoReply(
         channelManager.refresh()
         val config = selectAutoReplyConfig(channelManager.channels.value, inbound)
         if (config == null) return HandleResult.Ignored
-        // 排队超窗预检：窗口判断原本只在 runAgent 里做，消息在队列里排过窗口之后
-        // 仍会先跑完一轮模型，才发现根本发不出去。
-        // 必须早于 appendTurn：否则会话里会留下一条没有回复的用户消息，污染后续上下文。
+        // Verificación previa de la cola fuera de la ventana: el juicio de la ventana originalmente solo se realiza en runAgent, después de que el mensaje se coloca en la cola y pasa a través de la ventana
+        // De todos modos, primero revisé una ronda del modelo, solo para descubrir que no se puede enviar en absoluto.
+        // Debe ser anterior a appendTurn: de lo contrario, se dejará un mensaje de usuario sin respuesta en la sesión, contaminando el contexto posterior.
         val now = System.currentTimeMillis()
         if (queuedReplyWindowExpired(inbound, now)) {
             val deadline = replyDeadline(inbound)
             Logger.w(
                 TAG,
-                "入站消息排队超窗,跳过模型调用(platform=${inbound.platform}, from=${inbound.from}, " +
-                    "等待 ${now - inbound.timestamp}ms, deadline=$deadline, now=$now)",
+                "La cola de mensajes entrantes excede la ventana,Saltar llamada de modelo(platform=${inbound.platform}, from=${inbound.from}, " +
+                    "espera ${now - inbound.timestamp}ms, deadline=$deadline, now=$now)",
             )
             return HandleResult.Blocked(REPLY_WINDOW_EXPIRED_BY_QUEUE)
         }
@@ -272,7 +272,7 @@ class ChannelAutoReply(
             is ChannelAgentRunResult.Blocked -> ReplyPreparation.Blocked(generated.errorCode)
             ChannelAgentRunResult.Retry -> ReplyPreparation.Retry
             is ChannelAgentRunResult.Ready -> if (generated.text.isBlank()) {
-                Logger.w(TAG, "模型返回空回复,本条入站消息标记为忽略")
+                Logger.w(TAG, "El modelo devuelve una respuesta vacía,Este mensaje entrante está marcado para ignorar")
                 ReplyPreparation.Ignored
             } else if (ChannelInbox.journal.savePreparedReply(inbound.dispatchId, generated.text)) {
                 ReplyPreparation.Ready(generated.text)
@@ -283,13 +283,13 @@ class ChannelAutoReply(
     }
 
     private suspend fun sendPreparedReply(inbound: ChannelInbox.Inbound, config: ChannelConfig, reply: String): HandleResult {
-        // v2.6.0 (AUD-CHANNEL-F9): appendTurn 移到发送成功之后。
-        // 原实现先 appendTurn 再发送:发送失败→Retry→下轮重新生成新文本 reply',
-        // 第二次 appendTurn 因 dispatchId 去重被跳过 → 会话库存的是第一次文本,
-        // 而用户实际收到第二次,上下文漂移(下次对话引用的是错版本)。
+        // v2.6.0 (AUD-CHANNEL-F9): appendTurn Pasar a después de enviar correctamente.
+        // La implementación original appendTurn primero y luego envía:Envío fallido→Retry→Regenerar texto nuevo en la siguiente ronda. reply',
+        // El segundo appendTurn se omite debido a la deduplicación de despachoId. → El inventario de sesiones es el primer texto.,
+        // Y el usuario realmente recibe el segundo,deriva del contexto(La próxima conversación citará la versión incorrecta.).
         val contextTokenOverride = resolveReplyContextToken(inbound)
         return when (contextTokenOverride) {
-            // v2.6.0 (AUD-CHANNEL-F7): 解密失败转终态 BLOCKED,不再无限 Retry
+            // v2.6.0 (AUD-CHANNEL-F7): El descifrado no llega al estado final BLOCKED,Ya no es infinito Retry
             is ContextTokenOverride.DecryptFailed -> HandleResult.Blocked(contextTokenOverride.detail)
             ContextTokenOverride.Absent, is ContextTokenOverride.Value -> {
                 val tokenValue = (contextTokenOverride as? ContextTokenOverride.Value)?.value
@@ -299,14 +299,14 @@ class ChannelAutoReply(
     }
 
     /**
-     * 分段发送一条回复。
+     * Envíe una respuesta por partes.
      *
-     * 为什么要分段：QQ 官方对一条入站消息最多允许 5 次被动回复，而模型
-     * 经常吐出带空行的多段落 —— 直接发会变成一大片空白，拆成几条发反而像真人。
+     * Por qué segmentación:QQ Los funcionarios permiten hasta cinco respuestas pasivas a un mensaje entrante, mientras que los modelos
+     * A menudo escupe varios párrafos con líneas en blanco. —— Si lo publicas directamente, se convertirá en un gran espacio en blanco, pero si lo divides en varios pelos, parecerá una persona real.
      *
-     * 重试语义（关键）：
-     *  - 一段都没发出去 → 可重试，但配置类错误（不在群里/无权限）直接终态
-     *  - 已经发出部分 → **不重试**，否则用户会收到重复的前几段
+     * Reintentar semántica (clave):
+     *  - No se envió ni un solo párrafo. → Se puede volver a intentar, pero error de configuración (no en el grupo/Sin permiso) estado final directo
+     *  - enviado parcialmente → **no lo vuelvas a intentar**, de lo contrario el usuario recibirá un duplicado de los primeros párrafos
      */
     private suspend fun deliverSegments(
         inbound: ChannelInbox.Inbound,
@@ -316,7 +316,7 @@ class ChannelAutoReply(
     ): HandleResult {
         val segments = ChannelReplyFormatter.plan(reply)
         if (segments.isEmpty()) {
-            Logger.w(TAG, "回复整形后为空,本条标记为忽略")
+            Logger.w(TAG, "La respuesta está vacía después de darle forma.,Marcar este artículo como ignorado")
             return HandleResult.Ignored
         }
         val qqEventIdOverride = qqReplyEventIdOverride(
@@ -326,8 +326,8 @@ class ChannelAutoReply(
             receivedAt = inbound.timestamp,
         )
         val isQq = inbound.platform == ChannelPlatform.QQ.name
-        // msg_seq 必须在同一 msg_id 内递增；重试时从尝试次数续上，避免平台去重。
-        // 上限跟着平台：群聊 5 次、单聊 4 次，超出的序号平台直接拒。
+        // msg_seq Debe incrementarse dentro del mismo msg_id; al volver a intentarlo, continúe con la cantidad de intentos para evitar la deduplicación de la plataforma.
+        // El límite superior depende de la plataforma: 5 veces de chat grupal y 4 veces de chat individual. La plataforma rechazará directamente el número de serie que supere el límite.
         val maxSeq = QqMsgIdCache.maxRepliesFor(inbound.from)
         val baseSeq = (inbound.attemptCount + 1).coerceIn(1, maxSeq)
 
@@ -353,11 +353,11 @@ class ChannelAutoReply(
         return finishDelivery(inbound, config, segments, sent, lastError)
     }
 
-    /** 本次回复必须在此之前发出，否则被动回复窗口已关。 */
+    /** Esta respuesta debe enviarse antes de esa fecha; de lo contrario, se cerrará la ventana de respuesta pasiva. */
     private fun replyDeadline(inbound: ChannelInbox.Inbound): Long =
         replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
 
-    /** 根据实际发出了几段决定终态，并把“用户真正收到的内容”写回会话。 */
+    /** Se emitieron varios párrafos para determinar el estado final en función de la situación real, y el“Lo que realmente reciben los usuarios”Vuelve a escribir a la sesión. */
     private suspend fun finishDelivery(
         inbound: ChannelInbox.Inbound,
         config: ChannelConfig,
@@ -366,15 +366,15 @@ class ChannelAutoReply(
         lastError: String?,
     ): HandleResult {
         if (sent == 0) {
-            Logger.w(TAG, "自动回复发送失败(${inbound.platform}): $lastError")
+            Logger.w(TAG, "No se pudo enviar la respuesta automática(${inbound.platform}): $lastError")
             return if (QqSendErrorMapper.isPermanent(lastError)) {
                 HandleResult.Blocked(lastError.orEmpty())
             } else {
                 HandleResult.Retry
             }
         }
-        // 只记录实际发出的部分：库里的回复要等于用户看到的内容（F9 同口径），
-        // 否则下一轮模型会以为自己已经说完，接着重复后半段。
+        // Registre únicamente la parte realmente enviada: la respuesta de la biblioteca debe ser igual a lo que ve el usuario (F9 mismo calibre),
+        // De lo contrario, el modelo de la siguiente ronda pensará que ha terminado de hablar y luego repetirá la segunda mitad.
         ChannelConversationStore.appendTurn(
             config.id,
             inbound.from,
@@ -384,8 +384,8 @@ class ChannelAutoReply(
                 dispatchId = inbound.dispatchId,
             ),
         )
-        val partial = if (sent < segments.size) "（${sent}/${segments.size} 段）" else ""
-        Logger.i(TAG, "自动回复已发送${partial}(${inbound.platform} ← ${inbound.from})")
+        val partial = if (sent < segments.size) "(${sent}/${segments.size} párrafo)" else ""
+        Logger.i(TAG, "Respuesta automática enviada${partial}(${inbound.platform} ← ${inbound.from})")
         return HandleResult.Sent(config, inbound.from)
     }
 
@@ -406,19 +406,19 @@ class ChannelAutoReply(
     private sealed interface ContextTokenOverride {
         data class Value(val value: String?) : ContextTokenOverride
 
-        /** 本就无令牌（不支持的平台 / 空令牌）—— 正常放行，不带令牌发送。 */
+        /** Sin token (plataforma no compatible/token vacío)—— Libere normalmente y envíe sin token. */
         data object Absent : ContextTokenOverride
 
         /**
-         * v2.6.0 (AUD-CHANNEL-F7): 有加密令牌但解密失败（如 Keystore 失效）。
-         * 与 checkpoint 不可读同口径转终态 BLOCKED，不再走无限 Retry ——
-         * 否则每 5 分钟重试一次、每次都重新解密失败，占住共享派发器节拍并刷日志。
+         * v2.6.0 (AUD-CHANNEL-F7): Hay un token cifrado pero se produjo un error en el descifrado (como un error en el almacén de claves).
+         * El mismo calibre que el punto de control ilegible cambia al estado final BLOQUEADO, ya no es infinito Retry ——
+         * De lo contrario, se volverá a intentar cada 5 minutos y el descifrado fallará cada vez, ocupando el tiempo del despachador compartido y eliminando los registros.
          */
         data class DecryptFailed(val detail: String) : ContextTokenOverride
     }
 
-    // AUD-CHANNEL-F7: 解密失败需捕获任意异常(Keystore 不可用/密文损坏/格式异常
-    // 均可归为“令牌不可读”),与 checkpoint 不可读同口径转终态;此处按点豁免。
+    // AUD-CHANNEL-F7: Si el descifrado falla, es necesario detectar cualquier excepción.(Keystore No disponible/Texto cifrado corrupto/Formato anormal
+    // se puede clasificar como“El token no es legible”),Mismo calibre que el punto de control ilegible hasta el estado final;Aquí hay una exención punto por punto.
     @Suppress("TooGenericExceptionCaught", "ReturnCount")
     private suspend fun resolveReplyContextToken(inbound: ChannelInbox.Inbound): ContextTokenOverride {
         val isSupported = inbound.platform == ChannelPlatform.WECLAW.name ||
@@ -438,13 +438,13 @@ class ChannelAutoReply(
         } catch (error: kotlin.coroutines.cancellation.CancellationException) {
             throw error
         } catch (error: Exception) {
-            Logger.e(TAG, "回发上下文令牌解密失败(${inbound.platform}): ${error.message}", error)
+            Logger.e(TAG, "Error al descifrar el token de contexto de devolución de datos(${inbound.platform}): ${error.message}", error)
             return ContextTokenOverride.DecryptFailed("context_token_unreadable")
         }
         return ContextTokenOverride.Value(restored)
     }
 
-    /** 跑一轮对话(渠道对话上下文 + 工具循环);失败按可恢复/不可恢复分类。 */
+    /** Ejecutar una conversación(Contexto de conversación del canal + bucle de herramientas);Presione para recuperar si falla/Clasificación irrecuperable. */
     @Suppress("CyclomaticComplexMethod", "ReturnCount", "TooGenericExceptionCaught")
     private suspend fun runAgent(
         config: ChannelConfig,
@@ -455,15 +455,15 @@ class ChannelAutoReply(
         val restoredCheckpoint = try {
             loadAgentCheckpoint(dispatchId)
         } catch (error: ChannelAgentCheckpointUnreadableException) {
-            Logger.e(TAG, "渠道 Agent 恢复断点不可读取,转人工复核: ${error.message}", error)
+            Logger.e(TAG, "El punto de interrupción de recuperación del agente de canal no se puede leer,Cambiar a revisión manual: ${error.message}", error)
             return ChannelAgentRunResult.Blocked(CHANNEL_AGENT_CHECKPOINT_UNREADABLE)
         }
         return try {
             val assistant = resolveAssistant(config)
-            // v2.0.1: 渲染系统提示词的模板变量 — 此前直接发送原始文本,模型会复读 "{{char}}" 字面量。
+            // v2.0.1: Variables de plantilla para representar palabras de aviso del sistema — Anteriormente el texto original se enviaba directamente,El modelo repetirá "{{char}}" Literal.
             val renderedSystem = if (restoredCheckpoint == null) renderSystemPrompt(assistant) else ""
-            // v2.0.1: 与聊天主链路同规则解析模型/Provider — 修复此前不带 model 请求、
-            // 落到 Provider 首个模型(表现为"默认降级到免费模型")的问题。
+            // v2.0.1: El mismo modelo de análisis de reglas que el enlace principal del chat./Provider — Arreglar la solicitud anterior sin modelo,
+            // Caer al primer modelo de Proveedor(Se muestra como"Bajar al modelo gratuito por defecto")problema.
             val (model, providerConfig) = resolveModelAndProvider(assistant)
             val workingMessages = restoredCheckpoint?.workingMessages?.toMutableList()
                 ?: buildInitialAgentMessages(config, from, renderedSystem, model)
@@ -473,10 +473,10 @@ class ChannelAutoReply(
                         IllegalStateException("Agent checkpoint does not contain a user message"),
                     )
                 }
-                // 防御性兜底:理论上入站消息已入库,不会走到这里。
+                // cobertura defensiva:En teoría, los mensajes entrantes se almacenan en la base de datos.,No llegará tan lejos.
                 return ChannelAgentRunResult.Retry
             }
-            // v2.0.1: 工具继承 — 与聊天同源的工具集(助手白名单 + 排除群聊/高风险工具)。
+            // v2.0.1: Herencia de herramientas — Conjunto de herramientas que proviene de la misma fuente que el chat.(Lista blanca del asistente + excluir chat grupal/herramientas de alto riesgo).
             val toolDefs = resolveToolDefinitions(assistant)
             val offeredToolNames = toolDefs.mapTo(mutableSetOf()) { it.name }
             var checkpoint = restoredCheckpoint ?: ChannelAgentCheckpoint(
@@ -489,8 +489,8 @@ class ChannelAutoReply(
             var finalText: String? = null
             var plainFallback = ""
             var round = 0
-            // 循环条件里带截止时间：QQ 被动回复只有 5 分钟窗口，超出就白白生成一条发不出去的话。
-            // 用条件而非 break，是为了让「轮次用尽 / 超窗 / 已收口」三种退出写在同一处。
+            // Condición de bucle con fecha límite:QQ La respuesta pasiva sólo tiene una ventana de 5 minutos. Si excede la ventana, se generará un mensaje en vano y no se podrá enviar.
+            // El propósito de usar condiciones en lugar de pausa es permitir que las tres salidas de "agotamiento redondo/ventana excesiva/cerrada" se escriban en el mismo lugar.
             while (round < MAX_TOOL_ROUNDS && finalText == null && System.currentTimeMillis() < deadlineAt) {
                 round++
                 val budgetMs = deadlineAt - System.currentTimeMillis()
@@ -510,7 +510,7 @@ class ChannelAutoReply(
                 if (toolCalls.isEmpty()) {
                     finalText = completion.text
                 } else {
-                    // 回填带 tool_calls 的 assistant 消息 — OpenAI 兼容协议要求 TOOL 消息紧跟其前置。
+                    // Rellene los mensajes del asistente con tool_calls — OpenAI Los protocolos de compatibilidad requieren que un mensaje HERRAMIENTA lo preceda inmediatamente.
                     workingMessages += UIMessage(
                         role = MessageRole.ASSISTANT,
                         content = completion.text,
@@ -522,9 +522,9 @@ class ChannelAutoReply(
                 }
             }
             if (finalText == null && plainFallback.isBlank() && round > 0) {
-                Logger.w(TAG, "被动回复窗口耗尽且无可用文本，本次不发送 | dispatchId=$dispatchId")
+                Logger.w(TAG, "La ventana de respuesta pasiva está agotada y no hay texto disponible; esta vez no se enviará | dispatchId=$dispatchId")
             }
-            // 轮次用尽仍未收口时,回退最后一次纯文本输出。
+            // Cuando se agotan los rounds y la boca sigue abierta,Rebobina la última salida de texto sin formato.
             val text = io.zer0.muse.transformer.stripThinkTags(finalText ?: plainFallback)
                 .trim()
                 .take(MAX_REPLY_LENGTH)
@@ -532,10 +532,10 @@ class ChannelAutoReply(
         } catch (error: CancellationException) {
             throw error
         } catch (error: ChannelAgentCheckpointUnreadableException) {
-            Logger.e(TAG, "渠道 Agent 恢复断点不可读取,转人工复核: ${error.message}", error)
+            Logger.e(TAG, "El punto de interrupción de recuperación del agente de canal no se puede leer,Cambiar a revisión manual: ${error.message}", error)
             ChannelAgentRunResult.Blocked(CHANNEL_AGENT_CHECKPOINT_UNREADABLE)
         } catch (error: Exception) {
-            Logger.w(TAG, "自动回复生成失败: ${error.message}")
+            Logger.w(TAG, "Falló la generación de respuesta automática: ${error.message}")
             ChannelAgentRunResult.Retry
         }
     }
@@ -554,7 +554,7 @@ class ChannelAutoReply(
                 add(UIMessage(role = MessageRole.SYSTEM, content = renderedSystem))
             }
             conversation?.summary?.takeIf { it.isNotBlank() }?.let { summary ->
-                add(UIMessage(role = MessageRole.SYSTEM, content = "更早的对话摘要：$summary"))
+                add(UIMessage(role = MessageRole.SYSTEM, content = "Un resumen de una conversación anterior:$summary"))
             }
             contextTurns.forEach { turn ->
                 add(buildInitialAgentTurn(config, from, turn, imageContext))
@@ -585,16 +585,16 @@ class ChannelAutoReply(
                 imageContext.visionCapable && turn.at in imageContext.recentNativeAts ->
                     UIMessage(
                         role = role,
-                        content = turn.text.ifBlank { "[图片]" },
+                        content = turn.text.ifBlank { "[fotos]" },
                         imageBase64List = listOf(turn.mediaBase64),
                     )
                 !imageContext.visionCapable && turn.at in imageContext.recentFallbackAts ->
                     UIMessage(role = role, content = resolveImageContent(config, from, turn))
                 turn.mediaDescription.isNotBlank() -> UIMessage(role = role, content = turn.mediaDescription)
-                else -> UIMessage(role = role, content = turn.text.ifBlank { "[图片]" })
+                else -> UIMessage(role = role, content = turn.text.ifBlank { "[fotos]" })
             }
         } else {
-            UIMessage(role = role, content = turn.text.ifBlank { "[空]" })
+            UIMessage(role = role, content = turn.text.ifBlank { "[vacío]" })
         }
     }
 
@@ -667,8 +667,8 @@ class ChannelAutoReply(
             checkpoint.sideEffectOutcomeUnknown && risk == ToolRiskLevel.NORMAL ->
                 TOOL_BLOCKED_AFTER_UNCERTAIN_ACTION
             !mayExecuteChannelToolCall(toolCall.name, offeredToolNames, risk) -> {
-                Logger.w(TAG, "拒绝执行未授权或需审批的渠道工具: ${toolCall.name}")
-                "工具未授权或需要交互审批，渠道自动回复未执行"
+                Logger.w(TAG, "Denegar la ejecución de herramientas del canal que no estén autorizadas o requieran aprobación: ${toolCall.name}")
+                "La herramienta no está autorizada o requiere aprobación interactiva y no se ejecuta la respuesta automática del canal."
             }
             else -> {
                 if (risk == ToolRiskLevel.NORMAL) {
@@ -705,7 +705,7 @@ class ChannelAutoReply(
             ),
         )
         persistAgentCheckpoint(updated)
-        Logger.i(TAG, "渠道工具调用: ${toolCall.name}")
+        Logger.i(TAG, "Llamada a la herramienta de canal: ${toolCall.name}")
         return updated
     }
 
@@ -726,7 +726,7 @@ class ChannelAutoReply(
             throw error
         } catch (error: Exception) {
             ChannelToolExecution(
-                content = "工具执行失败: ${error.message}",
+                content = "La ejecución de la herramienta falló: ${error.message}",
                 outcomeUnknown = channelToolResultUnknown(
                     risk = risk,
                     executionThrew = true,
@@ -742,7 +742,7 @@ class ChannelAutoReply(
         if (encrypted.isBlank()) return null
         return try {
             decryptChannelAgentCheckpoint(encrypted).also {
-                check(it.dispatchId == dispatchId) { "渠道 Agent 恢复断点派发 ID 不匹配" }
+                check(it.dispatchId == dispatchId) { "El ID de envío del punto de interrupción de recuperación del agente de canal no coincide" }
             }
         } catch (error: CancellationException) {
             throw error
@@ -754,18 +754,18 @@ class ChannelAutoReply(
     private suspend fun persistAgentCheckpoint(checkpoint: ChannelAgentCheckpoint) {
         val encrypted = encryptChannelAgentCheckpoint(checkpoint)
         check(ChannelInbox.journal.saveEncryptedAgentCheckpoint(checkpoint.dispatchId, encrypted)) {
-            "渠道 Agent 恢复断点未能持久化"
+            "El punto de interrupción de recuperación del agente de canal no pudo persistir"
         }
     }
 
     /**
-     * v2.0.1: 渠道可用工具集 — 与聊天同源([ToolRegistry.listToolsAsToolDefinitions]),
-     * 按助手白名单过滤,并排除群聊 channel_* 工具与高风险(HIGH)工具。
+     * v2.0.1: Conjuntos de herramientas disponibles para canales — Misma fuente que el chat.([ToolRegistry.listToolsAsToolDefinitions]),
+     * Filtrar por lista blanca de asistentes,y excluir chats grupales channel_* Herramientas y altos riesgos(HIGH)Herramientas.
      */
     private fun resolveToolDefinitions(assistant: AssistantEntity): List<ToolDefinition> {
         val configured = parseChannelToolAllowlist(assistant.toolIdsJson)
         if (configured == null) {
-            Logger.w(TAG, "助手工具白名单格式无效，渠道自动回复不暴露工具")
+            Logger.w(TAG, "El formato de lista blanca de la herramienta asistente no es válido y la respuesta automática del canal no expone la herramienta.")
             return emptyList()
         }
         return runCatching {
@@ -776,19 +776,19 @@ class ChannelAutoReply(
                 selectedByTool && notGroupChatTool && notHighRisk
             }
         }.onFailure { e ->
-            Logger.w(TAG, "工具集解析失败: ${e.message}")
+            Logger.w(TAG, "Error al analizar el conjunto de herramientas: ${e.message}")
         }.getOrDefault(emptyList())
     }
 
     /**
-     * v2.0.1: 视觉降级 — 把图片经视觉模型转为文字描述(结果缓存回 Turn,每张图只分析一次)。
-     * 失败时返回占位文本(不缓存,下次触发重试)。
+     * v2.0.1: degradación visual — Convierta imágenes en descripciones de texto a través de modelos visuales.(Los resultados se almacenan en caché. Turn,Cada imagen se analiza solo una vez.).
+     * Devolver texto de marcador de posición en caso de error(No almacenar en caché,Reintentar la próxima vez).
      */
     private suspend fun resolveImageContent(config: ChannelConfig, from: String, turn: ChannelConversationStore.Turn): String {
         if (turn.mediaDescription.isNotBlank()) return turn.mediaDescription
         val prepared = runCatching {
             visionBridge.prepare(
-                text = turn.text.ifBlank { "[图片]" },
+                text = turn.text.ifBlank { "[fotos]" },
                 images = listOf(turn.mediaBase64),
                 userRequest = turn.text,
             )
@@ -798,12 +798,12 @@ class ChannelAutoReply(
             ChannelConversationStore.updateTurnDescription(config.id, from, turn.at, text)
             return text
         }
-        return "[图片(视觉辅助暂不可用)]" + if (turn.text.isNotBlank()) "\n${turn.text}" else ""
+        return "[fotos(La ayuda visual aún no está disponible)]" + if (turn.text.isNotBlank()) "\n${turn.text}" else ""
     }
 
     /**
-     * v2.0.1: 上下文自动压缩 — 轮次超过 [COMPRESS_THRESHOLD] 时,
-     * 把最旧的一段轮次经 LLM 合并进滚动摘要;失败仅记日志,下次触发时重试。
+     * v2.0.1: Compresión automática de contexto — rondas [COMPRESS_THRESHOLD] tiempo,
+     * Fusionar la época más antigua en el resumen continuo mediante LLM;Solo falla al iniciar sesión,Inténtalo de nuevo la próxima vez que se active.
      */
     private suspend fun maybeCompress(config: ChannelConfig, from: String) {
         val conversation = ChannelConversationStore.conversation(config.id, from) ?: return
@@ -812,7 +812,7 @@ class ChannelAutoReply(
         if (drainCount <= 0) return
         val toCompress = conversation.turns.take(drainCount)
         val assistant = resolveAssistant(config)
-        // v2.x: 摘要压缩优先走辅助模型路由「小工具」档(留空回退助手的模型解析)
+        // v2.x: La compresión de resumen da prioridad al archivo "gadget" de enrutamiento del modelo auxiliar(Dejar en blanco para recurrir al asistente de análisis del modelo.)
         val routed = runCatching {
             io.zer0.muse.data.routing.UtilityModelRouter(settings)
                 .resolve(io.zer0.muse.data.routing.UtilityTier.SMALL)
@@ -824,13 +824,13 @@ class ChannelAutoReply(
         }
         val prompt = buildString {
             if (conversation.summary.isNotBlank()) {
-                appendLine("已有摘要：${conversation.summary}")
+                appendLine("Resumen existente:${conversation.summary}")
             }
-            appendLine("新增对话：")
+            appendLine("Nueva conversación:")
             toCompress.forEach { turn ->
-                appendLine("${if (turn.role == "assistant") "助手" else "用户"}：${turn.text}")
+                appendLine("${if (turn.role == "assistant") "asistente" else "Usuario"}:${turn.text}")
             }
-            appendLine("请把上述内容合并成一段简洁的中文对话摘要，保留关键信息、称呼与待办。只输出摘要正文。")
+            appendLine("Combine el contenido anterior en un resumen conciso de la conversación en chino, conservando la información clave, el título y las tareas pendientes. Sólo se emite el texto resumido.")
         }
         val summary = withTimeoutOrNull(COMPRESS_TIMEOUT_MS) {
             chatService.completeText(
@@ -842,8 +842,8 @@ class ChannelAutoReply(
             )
         }?.text?.let { io.zer0.muse.transformer.stripThinkTags(it).trim() } ?: return
         if (summary.isBlank()) return
-        // v2.3.2: 条件回写 —— 压缩期间新到的轮次必须保留(原实现整份覆盖会把它们丢掉),
-        // 摘要已被另一次压缩更新时本次结果作废。
+        // v2.3.2: Reescritura condicional —— Los cartuchos recién llegados deben conservarse durante la compactación.(La implementación original de una cobertura total los desecharía),
+        // Este resultado queda invalidado cuando el resumen ha sido actualizado por otra compresión.
         val applied =
             ChannelConversationStore.applyCompression(
                 channelId = config.id,
@@ -853,15 +853,15 @@ class ChannelAutoReply(
                 summary = summary.take(SUMMARY_MAX_CHARS),
             )
         if (applied) {
-            Logger.i(TAG, "上下文已压缩(${config.id} ← $from): ${toCompress.size} 轮并入摘要")
+            Logger.i(TAG, "El contexto está comprimido.(${config.id} ← $from): ${toCompress.size} resumen de fusión redonda")
         } else {
-            Logger.i(TAG, "压缩结果未写入(${config.id} ← $from): 对话已被更新,留待下次重试")
+            Logger.i(TAG, "Los resultados de la compresión no se escriben.(${config.id} ← $from): La conversación ha sido actualizada.,Déjalo para intentarlo de nuevo la próxima vez.")
         }
     }
 
     /**
-     * v2.0.1: 解析助手应使用的模型与 Provider — 与聊天主链路同规则:
-     * 助手配置的 modelId/providerId 优先,回退全局选择模型,再回退激活 Provider 首个模型。
+     * v2.0.1: El modelo que debe utilizar el asistente de análisis es el mismo que Provider — Mismas reglas que el enlace principal del chat.:
+     * El modelId/providerId de la configuración del asistente tiene prioridad,Modelo de selección global alternativo,Luego regrese y active el primer modelo de Proveedor.
      */
     private suspend fun resolveModelAndProvider(assistant: AssistantEntity): Pair<Model?, ProviderConfig?> {
         val allProviders = runCatching { settings.getAllProviders() }.getOrDefault(emptyList())
@@ -893,8 +893,8 @@ class ChannelAutoReply(
     }
 
     /**
-     * v2.0.1: 渲染人设 systemPrompt 的模板变量({{char}}/{{user}}/日期等)。
-     * 与聊天主链路同一套 TemplateTransformer;渲染失败回退原文,不阻塞回复。
+     * v2.0.1: Variables de plantilla del sistema de caracteres de representaciónPrompt({{char}}/{{user}}/Fecha, etc.).
+     * El mismo conjunto que el enlace de chat principal. TemplateTransformer;La renderización falla y vuelve al texto original.,No bloquea las respuestas.
      */
     private suspend fun renderSystemPrompt(assistant: AssistantEntity): String {
         val raw = assistant.systemPrompt
@@ -911,12 +911,12 @@ class ChannelAutoReply(
                 ),
             ).firstOrNull()?.content
         }.onFailure { e ->
-            Logger.w(TAG, "系统提示词模板渲染失败: ${e.message}")
+            Logger.w(TAG, "Falló la representación de la plantilla de Word del mensaje del sistema: ${e.message}")
         }.getOrNull()
         return rendered?.takeIf { it.isNotBlank() } ?: raw
     }
 
-    /** v2.0.1: 渠道绑定助手优先,再回退默认助手,再兜底第一个;完全无助手则抛出(由 runAgent 捕获)。 */
+    /** v2.0.1: Se prefiere el asistente de vinculación de canales.,Volver al asistente predeterminado,Sé el primero en dar el paso;Lanza si no hay ningún ayudante(Capturado por runAgent). */
     private suspend fun resolveAssistant(config: ChannelConfig): AssistantEntity {
         val assistants = assistantRepository.observeAll.first()
         val bound = config.assistantId.takeIf { it.isNotBlank() }
@@ -930,20 +930,20 @@ class ChannelAutoReply(
     companion object {
         private const val TAG = "ChannelAutoReply"
 
-        /** 单轮 AI 调用超时(与定时任务一致,毫秒)。 */
+        /** Tiempo de espera de llamada de IA de una sola ronda(Consistente con las tareas programadas.,milisegundos). */
         private const val LLM_TIMEOUT_MS = 60_000L
 
-    /** QQ 被动回复窗口（官方值，群聊与单聊一致）。 */
+    /** QQ Ventana de respuesta pasiva (valor oficial, consistente con chat grupal y chat único). */
     private const val QQ_PASSIVE_WINDOW_MS = 5 * 60 * 1000L
 
-    /** 给发送本身预留的余量，避免生成到最后一秒才发才发现窗口已关。 */
+    /** El margen reservado para el envío en sí para evitar enviar hasta el último segundo y descubrir que la ventana se ha cerrado. */
     private const val SEND_MARGIN_MS = 15_000L
 
         /**
-         * 被动回复窗口的截止时刻（毫秒）。
+         * La hora de finalización de la ventana de respuesta pasiva (milisegundos).
          *
-         * 只对 QQ 有意义：其它平台没有被动回复窗口，返回 [Long.MAX_VALUE] 表示永不超窗。
-         * 发送前判断与排队超窗预检共用这一份计算，避免两处阈值走偏。
+         * Solo tiene sentido para QQ: otras plataformas no tienen ventanas de respuesta pasiva, regrese [Long.MAX_VALUE] Indica no exceder nunca la ventana.
+         * El juicio previo al envío y la verificación previa de la ventana de cola comparten este cálculo para evitar la desviación de los dos umbrales.
          */
         internal fun replyWindowDeadlineMillis(platform: String, receivedAtMillis: Long): Long =
             if (platform == ChannelPlatform.QQ.name) {
@@ -952,33 +952,33 @@ class ChannelAutoReply(
                 Long.MAX_VALUE
             }
 
-        /** 回发文本上限,防止超长内容超出各平台消息限制。 */
+        /** Límite de texto de devolución,Evite que contenidos extremadamente largos excedan el límite de mensajes de cada plataforma. */
         private const val MAX_REPLY_LENGTH = 4_000
         private const val DISPATCH_STATE_RETRY_DELAY_MS = 1_000L
 
-        /** v2.0.1: 提供给模型的最近轮次上限。 */
+        /** v2.0.1: El límite de época más reciente proporcionado al modelo. */
         private const val CONTEXT_TURNS = 30
 
         /**
-         * v2.0.1: 压缩触发阈值(轮次)、压缩后保留轮次。
+         * v2.0.1: Umbral de activación de compresión(rondas), retenga las rondas después de la compresión.
          *
-         * X-5 说明：渠道侧按 **turn（轮次）** 而非 **message（消息条数）** 计数，
-         * 且走 ChannelConversationStore 独立存储、不经 Transformer 管道 —— 与主对话自动压缩
-         * （见 [io.zer0.muse.transformer.CompressionPolicy]）是**两套子系统**，阈值刻意独立，
-         * 不与 CompressionPolicy 合并。
+         * X-5 Descripción: Prensa lateral del canal **turn(redondo)** en vez de **message(número de mensajes)** contando,
+         * Y utilice ChannelConversationStore para almacenamiento independiente sin pasar por el proceso de Transformer. —— Compresión automática de conversaciones con el maestro.
+         * (Ver [io.zer0.muse.transformer.CompressionPolicy]) es**Dos conjuntos de subsistemas**, los umbrales son deliberadamente independientes,
+         * No fusionado con CompressionPolicy.
          */
         private const val COMPRESS_THRESHOLD = 40
         private const val KEEP_TURNS = 20
 
-        /** v2.0.1: 压缩调用超时与摘要上限。 */
+        /** v2.0.1: Tiempo de espera de llamada de compresión y límite de resumen. */
         private const val COMPRESS_TIMEOUT_MS = 30_000L
         private const val SUMMARY_MAX_TOKENS = 1200
         private const val SUMMARY_MAX_CHARS = 2_000
 
-        /** v2.0.1: 工具循环上限。 */
+        /** v2.0.1: Límite del ciclo de herramienta. */
         private const val MAX_TOOL_ROUNDS = 5
 
-        /** v2.0.1: 上下文内携带图片的上限 — 原生模型最近 N 张、降级分析最近 N 张。 */
+        /** v2.0.1: El límite superior de imágenes transportadas dentro del contexto. — Las últimas N imágenes del modelo nativo y las últimas N imágenes del análisis degradado. */
         private const val MAX_NATIVE_VISION_TURNS = 4
         private const val MAX_FALLBACK_VISION_TURNS = 2
         private const val TOOL_OUTCOME_UNCERTAIN =
@@ -1008,9 +1008,9 @@ internal fun qqReplyEventIdOverride(
 ): String? {
     if (platform != ChannelPlatform.QQ.name) return null
     val age = nowMillis - receivedAt
-    // 过期必须返回 null 而不是空串。空串是个「看起来有值」的毒值：
-    // 下游 QqMsgIdCache.replyContext 用 `sourceEventId != null` 判断是否走事件分支，
-    // 空串会命中分支、又在 isNotBlank 处塌成 null，于是彻底绕开缓存里那条可用的 msg_id。
+    // La caducidad debe devolver un valor nulo en lugar de una cadena vacía. La cadena vacía es un valor venenoso que "parece valioso":
+    // Se utiliza QqMsgIdCache.replyContext en sentido descendente `sourceEventId != null` Determinar si tomar la rama de eventos,
+    // La cadena vacía llegará a la rama y colapsará a nula en isNotBlank, evitando así por completo el msg_id disponible en el caché.
     return sourceEventId.takeIf {
         it.isNotBlank() && age in 0..QqMsgIdCache.windowFor(target)
     }

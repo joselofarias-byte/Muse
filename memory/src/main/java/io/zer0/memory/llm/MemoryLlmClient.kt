@@ -3,27 +3,27 @@ package io.zer0.memory.llm
 import io.zer0.ai.core.Model
 
 /**
- * memory 模块的 LLM 客户端抽象(callText 文本调用)。
+ * memory Abstracción de cliente LLM para módulos(callText llamada de texto).
  *
- * memory 模块不直接依赖 ai 模块的 [io.zer0.ai.core.Provider],
- * 而是通过这个接口由 app 模块注入实现(委托给 [io.zer0.ai.ChatService.completeText])。
+ * memory El módulo no depende directamente del módulo ai. [io.zer0.ai.core.Provider],
+ * En cambio, el módulo de la aplicación lo inyecta e implementa a través de esta interfaz.(confiado a [io.zer0.ai.ChatService.completeText]).
  *
- * 这样 memory 模块保持独立,可以单独编译测试。
+ * De esta manera el módulo de memoria permanece independiente.,Las pruebas se pueden compilar por separado.
  */
 interface MemoryLlmClient {
 
     /**
-     * 非流式调用 LLM,返回完整文本。
+     * llamada sin transmisión LLM,Devuelve el texto completo.
      *
-     * @param systemPrompt system 消息内容
-     * @param userContent user 消息内容
-     * @param model 目标模型,null 时由实现侧用 Provider 配置里的第一个模型
-     * @param temperature 采样温度(0~2),memory 路径固定 0.3
-     * @param maxTokens 输出上限(memory 路径按调用类型分配: rolling 150-750 / compile 300-600 / fact 4096)
-     * @param timeoutMs v1.78: 超时毫秒,默认 30s。超时抛 TimeoutCancellationException。
-     *                  防止 LLM 调用挂起导致 daily pipeline 永久卡死。
-     * @return 完整文本
-     * @throws Exception 网络/HTTP/解析错误/超时
+     * @param systemPrompt system Contenido del mensaje
+     * @param userContent user Contenido del mensaje
+     * @param model modelo objetivo,null La implementación utiliza el primer modelo en la configuración del proveedor.
+     * @param temperature Temperatura de muestreo(0~2),memory Camino arreglado 0.3
+     * @param maxTokens Límite superior de salida(memory Las rutas se asignan por tipo de llamada.: rolling 150-750 / compile 300-600 / fact 4096)
+     * @param timeoutMs v1.78: Tiempo de espera en milisegundos,30 por defecto. El tiempo de espera genera TimeoutCancellationException.
+     *                  Evite que las llamadas de LLM se cuelguen y provoquen que la canalización diaria se bloquee permanentemente.
+     * @return texto completo
+     * @throws Exception red/HTTP/error de análisis/tiempo de espera
      */
     suspend fun callText(
         systemPrompt: String,

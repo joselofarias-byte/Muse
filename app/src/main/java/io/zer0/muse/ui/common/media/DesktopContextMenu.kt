@@ -42,12 +42,12 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * P2-13: 桌面端右键菜单项。
+ * P2-13: Elemento del menú contextual del escritorio.
  *
- * @param label 显示文本(已本地化)
- * @param icon 可选图标(对齐桌面应用习惯,左侧显示)
- * @param onClick 点击回调(组件会在调用后自动 dismiss)
- * @param destructive 是否为危险操作(删除等),true 时图标与文字改用 error 红色
+ * @param label mostrar texto(localizado)
+ * @param icon icono opcional(Alinear los hábitos de las aplicaciones de escritorio,Mostrar a la izquierda)
+ * @param onClick Haga clic en devolución de llamada(El componente automáticamente dismiss)
+ * @param destructive ¿Es una operación peligrosa?(Eliminar etc),true El icono y el texto cambian a color rojo de error.
  */
 data class ContextMenuItem(
     val label: String,
@@ -57,28 +57,28 @@ data class ContextMenuItem(
 )
 
 /**
- * P2-13: 桌面端右键上下文菜单。
+ * P2-13: Menú contextual del botón derecho del escritorio.
  *
- * 设计要点(对齐桌面应用语境,而非移动端 ActionSheet):
- *  - 容器:Surface + [MuseShapes.medium] 圆角 + surface 色 + 无 tonalElevation
- *  - 宽度:固定 220dp(对齐 macOS / VS Code 右键菜单宽度)
- *  - 项:左侧图标 + 文字 + 全宽点击区,高度满足 [MuseIconSizes.touchTarget] 红线
- *  - 危险项([ContextMenuItem.destructive] = true)用 error 红色高亮
- *  - 按压时透明度变化(替代 ripple,与 [MuseDialog] 按钮风格一致)
- *  - 不使用 Material3 AlertDialog / Button(遵守项目设计令牌约束)
+ * Puntos de diseño(Alinear el contexto de la aplicación de escritorio,en lugar de celular ActionSheet):
+ *  - recipiente:Surface + [MuseShapes.medium] esquinas redondeadas + color de superficie + ninguno tonalElevation
+ *  - Ancho:Fijo 220dp(Alinear el ancho del menú contextual de macOS/VS Code)
+ *  - artículo:Icono izquierdo + texto + área de clic de ancho completo,Altamente satisfecho [MuseIconSizes.touchTarget] linea roja
+ *  - Artículos peligrosos([ContextMenuItem.destructive] = true)Resaltar con error en rojo
+ *  - La transparencia cambia al presionar(sustituto ripple,con [MuseDialog] Estilo de botón consistente)
+ *  - No usado Material3 AlertDialog / Button(Cumplir con las restricciones de tokens de diseño del proyecto.)
  *
- * 显示位置:Compose `Dialog` 默认居中,在桌面语境下足够使用;若后续需要跟随光标,
- * 可在外层用 `Popup` + offset 替代,但不在本任务范围内。
+ * mostrar ubicación:Compose `Dialog` Centrado por defecto,Suficiente para usar en contexto de escritorio;Si necesitas seguir el cursor más tarde,
+ * Se puede utilizar en el exterior `Popup` + offset sustituto,Pero está fuera del alcance de esta tarea.
  *
- * @param items 菜单项列表(顺序即显示顺序)
- * @param onDismiss 用户点击外部 / Esc / 选择菜单项后的关闭回调
+ * @param items Lista de elementos del menú(El orden es el orden de visualización.)
+ * @param onDismiss Cerrar la devolución de llamada después de que el usuario haga clic en externo/Esc/seleccione el elemento del menú
  */
 @Composable
 fun DesktopContextMenu(items: List<ContextMenuItem>, onDismiss: () -> Unit) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            // 桌面语境:点击外部关闭 + Esc 关闭(对齐桌面应用习惯)
+            // contexto de escritorio:Haga clic afuera para cerrar + Esc para cerrar(Alinear los hábitos de las aplicaciones de escritorio)
             dismissOnClickOutside = true,
             dismissOnBackPress = true,
             decorFitsSystemWindows = false,
@@ -111,7 +111,7 @@ fun DesktopContextMenu(items: List<ContextMenuItem>, onDismiss: () -> Unit) {
 }
 
 /**
- * 单个菜单项行 — 全宽点击区 + 左侧图标 + 文字 + 按压透明度反馈。
+ * Fila de elemento de menú único — Área de clic de ancho completo + icono izquierdo + texto + información de transparencia de prensa.
  */
 @Composable
 private fun ContextMenuRow(item: ContextMenuItem, onDismiss: () -> Unit) {
@@ -156,7 +156,7 @@ private fun ContextMenuRow(item: ContextMenuItem, onDismiss: () -> Unit) {
                 modifier = Modifier.size(MuseIconSizes.iconMedium),
             )
         } else {
-            // 无图标时占位,保持文字对齐
+            // Marcador de posición cuando no hay ningún icono,Mantener el texto alineado
             Spacer(modifier = Modifier.width(MuseIconSizes.iconMedium))
         }
         Text(

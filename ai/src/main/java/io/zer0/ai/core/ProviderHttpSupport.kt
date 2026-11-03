@@ -10,66 +10,66 @@ import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
 /**
- * v1.80 (M3+M5): AI Provider HTTP 公共支持。
+ * v1.80 (M3+M5): AI Provider HTTP Apoyo público.
  *
- * 集中三家 Provider(OpenAI / Gemini / Anthropic)的共用 HTTP 逻辑:
- *  - OkHttpClient 构建(统一超时配置,消除三处硬编码)
- *  - 错误体安全读取(消除 `runCatching { resp.body.string() }.getOrDefault("")` 重复)
- *  - HTTP 状态码分类(支撑差异化重试/提示)
+ * Centrarse en tres empresas Provider(OpenAI / Gemini / Anthropic)Lógica HTTP compartida para:
+ *  - OkHttpClient construir(Configuración de tiempo de espera unificada,Eliminar tres códigos duros)
+ *  - Lectura segura del cuerpo del error(eliminar `runCatching { resp.body.string() }.getOrDefault("")` Repetir)
+ *  - HTTP Clasificación del código de estado(Admite reintento diferenciado/Consejos)
  *
- * v1.73 已记录 M3(三 Provider 异常处理同构可抽 ProviderHttpSupport)和
- * M5(错误体 runCatching 重复),此处统一落地。
+ * v1.73 grabado M3(Se pueden extraer tres isomorfismos de manejo de excepciones del proveedor ProviderHttpSupport)y
+ * M5(Ejecución del cuerpo del errorCapturando duplicados),Aquí viene el aterrizaje unificado.
  *
- * v1.0.1: 新增 [keyRoulette] 共享单例 + [effectiveApiKey] 辅助方法,
- *  支持多 key 轮换与限流降级。各 Provider 在构造请求前调 [effectiveApiKey]
- *  取当前应使用的 key,429 错误时调 [keyRoulette].pickNext 切换 key 重试。
+ * v1.0.1: Nuevo [keyRoulette] Singleton compartido + [effectiveApiKey] Métodos auxiliares,
+ *  Admite rotación de múltiples teclas y degradación de limitación de corriente. Cada proveedor llama antes de construir la solicitud. [effectiveApiKey]
+ *  Obtenga el actual que debe usarse key,429 Momento equivocado [keyRoulette].pickNext Cambie de clave e inténtelo de nuevo.
  */
 abstract class ProviderHttpSupport(
     protected val config: ProviderConfig,
 ) : Provider {
 
     /**
-     * 共享 OkHttpClient — 所有 Provider 统一超时配置。
+     * Compartir OkHttpClient — Configuración de tiempo de espera unificada para todos los Proveedores.
      *
-     * v1.80 (M-HTTP1): 改为引用 companion object 中的全局单例 [sharedHttpClient],
-     * 避免每个 ProviderHttpSupport 子类实例化时各建一个 OkHttpClient(浪费连接池资源)。
+     * v1.80 (M-HTTP1): En su lugar, haga referencia al singleton global en el objeto complementario. [sharedHttpClient],
+     * Evite crear uno para cada subclase ProviderHttpSupport al crear una instancia. OkHttpClient(Desperdicio de recursos del grupo de conexiones).
      *
-     * 子类如需额外自定义(如 Gemini VertexAi 的短超时 client),
-     * 可用 `httpClient.newBuilder().xxx().build()` 派生,共享连接池。
+     * Si se requiere personalización adicional para las subclases(Tiempos de espera cortos como Gemini VertexAi client),
+     * Disponible `httpClient.newBuilder().xxx().build()` derivado,Grupo de conexiones compartido.
      */
     protected val httpClient: OkHttpClient get() = sharedHttpClient
 
     /**
-     * v1.0.1: 当前 Provider 实例使用的 API key。
+     * v1.0.1: La clave API utilizada por la instancia del proveedor actual.
      *
-     * 通过 [keyRoulette] 从 [ProviderConfig.apiKey](可能含多个逗号分隔的 key)中
-     * 按 LRU 策略选取。每次请求前调用,确保多 key 时负载分摊。
+     * Pase [keyRoulette] de [ProviderConfig.apiKey](Puede contener varias comas separadas key)en
+     * Seleccionar por política LRU. Llamado antes de cada solicitud.,Asegúrese de compartir la carga cuando utilice varias claves.
      *
-     * 单 key 场景下直接返回原 key,无性能开销。
+     * En un escenario clave único, regrese directamente al original key,Sin gastos generales de rendimiento.
      *
-     * 429 限流时,Provider 应调 [switchToNextKey] 切换到下一个 key 重试,
-     * 而非用同一 key 反复重试。
+     * 429 Cuando la corriente es limitada,Provider debe ser ajustado [switchToNextKey] Cambie a la siguiente clave e inténtelo de nuevo,
+     * En lugar de volver a intentarlo con la misma clave.
      */
-    // B-27: @Volatile — currentApiKey 由 keyRoulette 轮换时在回调线程/请求线程写入,构造时初始化,
-    //     多线程读写需 volatile 保证可见性,避免读到未发布的半初始化 key。
+    // B-27: @Volatile — currentApiKey En el hilo de devolución de llamada cuando se gira con keyRoulette/Solicitar hilo para escribir,inicializado en la construcción,
+    //     La lectura y escritura de subprocesos múltiples requieren volátil para garantizar la visibilidad,Evite leer claves semiinicializadas no publicadas.
     @Volatile
     protected var currentApiKey: String = config.apiKey
         private set
 
     init {
-        // T0.2-G1: 初始化时校验 baseUrl 是否指向内网(本地 LLM 豁免,仅告警)
+        // T0.2-G1: Verifique si baseUrl apunta a la intranet durante la inicialización(Exención de LLM local,Sólo alarma)
         warnIfBaseUrlLooksInternal(config.resolvedBaseUrl())
     }
 
     /**
-     * v1.0.1: 取当前应使用的 API key。
+     * v1.0.1: Obtenga la clave API actual que se debe utilizar.
      *
-     * 单 key 场景(config.apiKey 不含逗号/换行)直接返回 trim 后的原 key,跳过 LRU 逻辑。
+     * Escenario clave única(config.apiKey sin coma/nueva línea)Devuelve directamente el valor original después de recortar key,Omita la lógica LRU.
      *
-     * T1.2 修复:多 key 场景每次调用都重新走 LRU pick,不再命中"缓存"分支直接返回
-     * [currentApiKey] —— 否则会锁死在 [switchToNextKey] / [markKeyFailed] 轮换出的单个
-     * key 上,失去 LRU 轮换与黑名单跳过的意义。Provider 在构造请求 header / query param
-     * 时调用此方法。
+     * T1.2 Reparación:Los escenarios de múltiples claves se vuelven a ejecutar cada vez que se llaman. LRU pick,No más golpes"caché"La sucursal regresa directamente
+     * [currentApiKey] —— De lo contrario quedará bloqueado [switchToNextKey] / [markKeyFailed] rotado solo
+     * key en,Se pierde el significado de rotación de LRU y omisión de listas negras.Provider Construyendo una solicitud header / query param
+     * Este método se llama cuando
      */
     protected fun effectiveApiKey(): String {
         if (!hasMultipleKeys()) {
@@ -83,12 +83,12 @@ abstract class ProviderHttpSupport(
     }
 
     /**
-     * v2.6.1: 写进请求头前校验 API Key 字符集。
+     * v2.6.1: Verifique el juego de caracteres de la clave API antes de escribir el encabezado de la solicitud.
      *
-     * HTTP header 只接受 ASCII。密钥里混入中文等非 ASCII 字符(常见于“从中文界面连标题
-     * 一起复制粘贴”,如第一个字符是“百”)时,OkHttp 会在发请求前抛
-     * `Unexpected char 0x767e at 7 in Authorization value`,定位困难。
-     * 这里提前拦下并报出可读原因,提示用户检查密钥首尾与粘贴内容。
+     * HTTP header Sólo se acepta ASCII. Los caracteres chinos y otros caracteres no ASCII se mezclan en la clave.(común en“Conecte el título desde la interfaz china
+     * Copiar y pegar juntos”,Si el primer carácter es“cien”)tiempo,OkHttp Se lanzará antes de enviar la solicitud.
+     * `Unexpected char 0x767e at 7 in Authorization value`,Dificultad en el posicionamiento.
+     * Deténgase aquí con anticipación e informe un motivo legible.,Solicita al usuario que verifique el principio y el final de la clave y el contenido pegado.
      */
     private fun requireHeaderSafeApiKey(key: String) {
         if (key.isEmpty()) return
@@ -98,28 +98,28 @@ abstract class ProviderHttpSupport(
             val hex = offending.code.toString(16).uppercase().padStart(4, '0')
             throw ProviderException(
                 ProviderError.InvalidRequest(
-                    displayMessage = "API Key 含非法字符(第 $position 位:'$offending',U+$hex)。" +
-                        "密钥只能是 ASCII 可见字符,请检查是否夹带了中文或空格(常见于连同标题一起粘贴)。",
+                    displayMessage = "API Key Contiene caracteres ilegales(No. $position poco:'$offending',U+$hex)." +
+                        "La clave sólo puede ser caracteres visibles ASCII.,Comprueba si se incluyen caracteres chinos o espacios.(Se usa comúnmente cuando se pega junto con el título.).",
                 ),
             )
         }
     }
 
     /**
-     * v1.0.18: 取当前应使用的 API key,带免费模型 fallback 兜底。
+     * v1.0.18: Obtenga el actual que debe usarse API key,Con funda de respaldo de modelo gratuita.
      *
-     * 在 [effectiveApiKey] 基础上追加一层 fallback:
-     *  - 用户已填 apiKey(单/多 key)→ 返回用户 key,fallback 不生效
-     *  - 用户未填 apiKey + baseUrl 命中 siliconflow + modelId 在白名单
-     *    → 返回 [FreeModelConfig.FALLBACK_API_KEY](CI/CD 注入)
-     *  - 其余场景 → 返回空串(让调用方按 [ProviderConfig.allowMissingApiKey] 处理)
+     * en [effectiveApiKey] Añade una capa a lo básico. fallback:
+     *  - El usuario ha completado apiKey(soltero/mucho key)→ usuario de retorno key,fallback No efectivo
+     *  - El usuario no completó apiKey + baseUrl y accedió a Siliconflow + modelId en la lista blanca
+     *    → Regresar [FreeModelConfig.FALLBACK_API_KEY](CI/CD inyectar)
+     *  - escenas restantes → Devolver cadena vacía(Haga que la persona que llama presione [ProviderConfig.allowMissingApiKey] Proceso)
      *
-     * @param modelId 当前请求的模型 id(用于白名单校验,空串表示未知)
+     * @param modelId El modelo solicitado actualmente. id(Utilizado para la verificación de la lista blanca,Cadena vacía significa desconocido)
      */
     protected fun resolveEffectiveApiKey(modelId: String = ""): String {
         val userKey = effectiveApiKey()
         if (userKey.isNotBlank()) return userKey
-        // v1.0.18: 免费模型 fallback(host + modelId 双重白名单校验)
+        // v1.0.18: modelo libre fallback(host + modelId Doble verificación de lista blanca)
         return FreeModelConfig.resolveApiKey(
             providerId = config.id,
             baseUrl = config.resolvedBaseUrl(),
@@ -130,13 +130,13 @@ abstract class ProviderHttpSupport(
     }
 
     /**
-     * v1.0.1: 429 限流时切换到下一个 key。
+     * v1.0.1: 429 Cambie a la siguiente tecla cuando la corriente sea limitada.
      *
-     * 把当前 key 加入软黑名单(60s),然后选取下一个 key。
-     * 如果只有一个 key,返回原 key(由 Provider 走指数退避重试)。
+     * Agregue la clave actual a la lista negra suave(60s),Luego seleccione la siguiente clave.
+     * si solo hay uno key,Volver al original key(El proveedor utiliza un retroceso exponencial para volver a intentarlo.).
      *
-     * @return true 表示成功切换到新 key(Provider 应立即重试);
-     *         false 表示只有一个 key 或切换后仍是同一 key(Provider 应走指数退避)
+     * @return true Indica un cambio exitoso al nuevo key(Provider Debería intentarlo de nuevo inmediatamente.);
+     *         false Indica que solo hay una clave o que sigue siendo la misma después del cambio. key(Provider Debería tomar un retroceso exponencial)
      */
     protected fun switchToNextKey(): Boolean {
         if (!hasMultipleKeys()) {
@@ -148,15 +148,15 @@ abstract class ProviderHttpSupport(
     }
 
     /**
-     * v1.0.1: 标记当前 key 为失败(如 401 鉴权失败)。
+     * v1.0.1: Marcar la clave actual como fallida(Como la autenticación 401 falló).
      *
-     * 与 [switchToNextKey] 的区别:
-     *  - [markKeyFailed] 用于不可恢复的错误(401/403/key 失效),hardBlock=true,
-     *    5 分钟内完全排除该 key
-     *  - [switchToNextKey] 用于可恢复的限流(429),软黑名单 60s
+     * con [switchToNextKey] la diferencia:
+     *  - [markKeyFailed] por errores irrecuperables(401/403/key Inválido),hardBlock=true,
+     *    5 excluir completamente el key
+     *  - [switchToNextKey] para estrangulamiento recuperable(429),lista negra suave 60s
      *
-     * @return true 表示还有其他 key 可用(Provider 应切换后重试);
-     *         false 表示只有一个 key 或所有 key 都已失败
+     * @return true Indica que hay otras claves disponibles.(Provider Deberías volver a intentarlo después de cambiar.);
+     *         false Indica que solo una clave o todas las claves han fallado
      */
     protected fun markKeyFailed(hardBlock: Boolean = true): Boolean {
         if (!hasMultipleKeys()) {
@@ -164,21 +164,21 @@ abstract class ProviderHttpSupport(
         }
         val failedKey = currentApiKey
         keyRoulette.markFailed(config.id, failedKey, hardBlock = hardBlock)
-        currentApiKey = "" // 重置,下次 effectiveApiKey 会重新选取
+        currentApiKey = "" // restablecer,EffectiveApiKey se volverá a seleccionar la próxima vez
         val newKey = effectiveApiKey()
         return newKey != failedKey
     }
 
     /**
-     * T0.2-G1: 在发起请求前对 baseUrl 做一次轻量级 SSRF 校验(无 DNS 解析,仅 host 字面量匹配)。
+     * T0.2-G1: Realice una verificación SSRF ligera en baseUrl antes de realizar una solicitud(Sin resolución DNS,Sólo coinciden los literales del host).
      *
-     * 命中 RFC1918 / 169.254 / 0.0.0.0/8 / ULA fc00::/7 等内网地址时:
-     *  - Ollama 豁免: host 为 127.0.0.1 / localhost / ::1,或 baseUrl 含 "ollama" 或端口 11434 → 仅记日志
-     *  - 其余 → 记 Logger.w 提示用户该 baseUrl 可能指向内网(本地 LLM 服务正常用法,不强制阻断)
+     * golpear RFC1918 / 169.254 / 0.0.0.0/8 / ULA fc00::/7 Al esperar la dirección de intranet:
+     *  - Ollama exención: host para 127.0.0.1 / localhost / ::1,o baseUrl contiene "ollama" o puerto 11434 → Sólo inicia sesión
+     *  - el resto → Tenga en cuenta que Logger.w le pregunta al usuario que baseUrl puede apuntar a la intranet.(Uso normal del servicio LLM local,Sin bloqueo forzado)
      *
-     * 不阻断调用: Provider baseUrl 由用户手动填写,本地 Ollama/llama.cpp/LM Studio 是合法使用场景。
-     * 仅做**早期可见告警**,真正的 SSRF 攻击面(参考图下载、MCP server、工具 URL)已由各
-     * 调用点的 SsrfGuard.isBlocked 强制拒绝。
+     * No bloquear llamadas: Provider baseUrl Completado manualmente por el usuario,Local Ollama/llama.cpp/LM Studio es un escenario de uso legal.
+     * solo hazlo**Alerta visible temprana**,Verdadera superficie de ataque de la SSRF(Descarga de imágenes de referencia,MCP server, herramientas URL)han sido
+     * SsrfGuard.isBlocked en el sitio de la llamada fuerza una denegación.
      */
     protected fun warnIfBaseUrlLooksInternal(baseUrl: String) {
         val host = try {
@@ -189,15 +189,15 @@ abstract class ProviderHttpSupport(
         if (host == null) return
 
         val hostLower = host.lowercase()
-        // 127.0.0.1 / localhost / ::1 — 纯回环
+        // 127.0.0.1 / localhost / ::1 — Bucle invertido puro
         val isLoopback = hostLower in setOf("127.0.0.1", "localhost", "::1")
         if (isLoopback) return
 
-        // Ollama / 本地 LLM 豁免: URL 字面量含 "ollama" 或端口 11434
+        // Ollama / Exención de LLM local: URL literal contiene "ollama" o puerto 11434
         val lower = baseUrl.lowercase()
         if (lower.contains("ollama") || ":11434" in lower) return
 
-        // 字面量 RFC1918 / link-local / 0.0.0.0/8 / ULA 检查(无 DNS)
+        // literal RFC1918 / link-local / 0.0.0.0/8 / ULA comprobar(Ninguno DNS)
         val isLiteralInternal = when {
             hostLower.startsWith("10.") || hostLower.startsWith("192.168.") -> true
             hostLower.startsWith("169.254.") -> true
@@ -212,7 +212,7 @@ abstract class ProviderHttpSupport(
         if (isLiteralInternal) {
             io.zer0.common.Logger.w(
                 "ProviderHttpSupport",
-                "baseUrl 指向内网地址(host=$host),若非本地 LLM 请检查配置: $baseUrl",
+                "baseUrl Señale la dirección de intranet(host=$host),Si no es un LLM local, verifique la configuración.: $baseUrl",
             )
         }
     }
@@ -220,35 +220,35 @@ abstract class ProviderHttpSupport(
     private fun hasMultipleKeys(): Boolean = config.apiKey.contains(',') || config.apiKey.contains('\n')
 
     companion object {
-        /** 错误体最大截取长度(防止超大 HTML 错误页撑爆日志/UI)。 */
+        /** Longitud máxima de interceptación del cuerpo del error(Evite que las páginas de error HTML de gran tamaño abrumen el registro/UI). */
         const val ERROR_BODY_MAX_LEN = 500
 
         /**
-         * v1.0.1: 全局共享 KeyRoulette 单例。
+         * v1.0.1: Singleton de KeyRoulette compartido globalmente.
          *
-         * 所有 ProviderHttpSupport 子类共用同一实例,确保多 key 轮换状态全局一致。
-         * 通过 [keyRoulette] 属性访问。
+         * Todas las subclases de ProviderHttpSupport comparten la misma instancia,Asegúrese de que el estado de rotación de múltiples claves sea globalmente consistente.
+         * Pase [keyRoulette] Acceso a la propiedad.
          */
         private val sharedKeyRoulette: KeyRoulette by lazy { KeyRoulette() }
 
-        /** v1.0.1: 暴露给子类使用的 KeyRoulette 访问器。 */
+        /** v1.0.1: Accesor KeyRoulette expuesto para uso de subclases. */
         protected val keyRoulette: KeyRoulette get() = sharedKeyRoulette
 
         /**
-         * 全局共享 OkHttpClient 单例(M-HTTP1)。
-         * 所有 ProviderHttpSupport 子类共用同一实例,共享连接池与超时配置。
-         * 子类可用 `sharedHttpClient.newBuilder().xxx().build()` 派生差异化配置。
+         * Singleton OkHttpClient compartido globalmente(M-HTTP1).
+         * Todas las subclases de ProviderHttpSupport comparten la misma instancia,Grupo de conexiones compartidas y configuración de tiempo de espera.
+         * Subclases disponibles `sharedHttpClient.newBuilder().xxx().build()` Derivar configuraciones diferenciadas.
          *
-         * v1.135 性能优化:
-         *  - 扩大连接池到 10 个空闲连接、keep-alive 5 分钟,减少多 Provider / 并发请求时的
-         *    连接重建与 TLS 握手开销。
-         *  - 显式启用 HTTP/2 + HTTP/1.1 协商,对支持 HTTP/2 的端点降低延迟。
-         *  - 启用 gzip(OkHttp 默认已开启),这里显式保留意图。
+         * v1.135 Optimización del rendimiento:
+         *  - Expanda el grupo de conexiones a 10 conexiones inactivas,keep-alive 5 minutos,Reducir el número de múltiples proveedores/solicitudes simultáneas
+         *    Restablecimiento de la conexión y sobrecarga del protocolo de enlace TLS.
+         *  - Habilitar explícitamente la negociación HTTP/2 + HTTP/1.1,Reduzca la latencia para puntos finales habilitados para HTTP/2.
+         *  - habilitar gzip(OkHttp Habilitado por defecto),La intención se preserva aquí explícitamente.
          */
         private val sharedHttpClient: OkHttpClient by lazy {
-            // v2.6.9（用户反馈）: 应用全局代理。
-            // 这个 client 是视觉 / embedding / 工具调用等大量旁路请求的共用入口，
-            // 此前未应用代理，导致用户配了代理但这些请求仍直连。
+            // v2.6.9(comentarios de los usuarios): Aplicar proxy global.
+            // Este cliente es la entrada común para una gran cantidad de solicitudes de omisión, como llamadas visuales/incrustadas/de herramientas.
+            // El proxy no se ha aplicado antes, lo que da como resultado que el usuario esté configurado con un proxy, pero estas solicitudes aún están conectadas directamente.
             io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
                 .connectTimeout(ProviderHttpDefaults.CONNECT_TIMEOUT_SEC, TimeUnit.SECONDS)
                 .readTimeout(ProviderHttpDefaults.READ_TIMEOUT_SEC, TimeUnit.SECONDS)
@@ -262,19 +262,19 @@ abstract class ProviderHttpSupport(
                     ),
                 )
                 .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-                // T0.2-G1: 禁止 OkHttp 自动跟随 3xx 重定向,防止用户配置的 provider baseUrl
-                // 经 302 跳到内网/云 metadata 地址(重定向目标无法在 shared client 层做 SSRF 校验)
+                // T0.2-G1: Deshabilite OkHttp para que no siga automáticamente redirecciones 3xx,Impedir la configuración del usuario provider baseUrl
+                // Saltar a intranet vía 302/Dirección de metadatos de la nube(El objetivo de redireccionamiento no puede realizar la verificación SSRF en la capa de cliente compartido)
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .build()
         }
 
         /**
-         * 安全读取 Response body,失败返回空串。
-         * 替代各家重复的 `runCatching { resp.body.string() }.getOrDefault("")`。
-         * 只捕获 IOException,不吞 CancellationException / OOM。
-         * v1.97: 追加捕获 IllegalStateException — EventSourceListener/WebSocketListener
-         * 回调中的 Response body 已被框架 stripped,读取会抛 IllegalStateException。
+         * lectura segura Response body,Devuelve una cadena vacía en caso de error.
+         * Reemplazar los duplicados de cada empresa. `runCatching { resp.body.string() }.getOrDefault("")`.
+         * capturar solo IOException,No se trague CancellationException / OOM.
+         * v1.97: Agregar captura IllegalStateException — EventSourceListener/WebSocketListener
+         * El cuerpo de la respuesta en la devolución de llamada ha sido enmarcado. stripped,La lectura arroja IllegalStateException.
          */
         fun readBodySafely(response: Response): String = try {
             response.body?.string() ?: ""
@@ -285,7 +285,7 @@ abstract class ProviderHttpSupport(
         }
 
         /**
-         * 安全读取 Response body 并截断到 [maxLen],防止超大错误体。
+         * Lea con seguridad el cuerpo de la respuesta y trunquelo a [maxLen],Evite cuerpos de error de gran tamaño.
          */
         fun readBodyCapped(response: Response, maxLen: Int = ERROR_BODY_MAX_LEN): String {
             val body = readBodySafely(response)
@@ -293,13 +293,13 @@ abstract class ProviderHttpSupport(
         }
 
         /**
-         * v2.6.8: 描述 JSON 响应的**结构形状**，用于诊断“200 但内容为空”。
+         * v2.6.8: Describe la respuesta JSON.**forma estructural**, utilizado para el diagnóstico“200 pero el contenido está vacío”.
          *
-         * 只输出键名与类型，不输出任何值 —— 响应里可能有用户正文 / 密钥 / 个人信息，
-         * 不能写进日志或错误提示。
+         * Solo se generan el nombre y el tipo de clave, no se generan valores. —— La respuesta puede contener texto/clave/información personal del usuario,
+         * No se puede escribir en registros o mensajes de error.
          *
-         * 典型输出：`{choices:[0 items], model:string, usage:object}`
-         * 用户看到 `choices:[0 items]` 就能判断是上游给的空结果，而不是 app 解析坏了。
+         * Salida típica:`{choices:[0 items], model:string, usage:object}`
+         * los usuarios ven `choices:[0 items]` Se puede juzgar que es el resultado vacío proporcionado por el flujo ascendente, en lugar de que el análisis de la aplicación esté roto.
          */
         fun describeJsonShape(raw: String, maxKeys: Int = 8): String = when {
             raw.isBlank() -> "<empty body>"
@@ -310,7 +310,7 @@ abstract class ProviderHttpSupport(
             val root = resultOf { AppJson.parseToJsonElement(raw) }.getOrNull()
             val obj = root as? kotlinx.serialization.json.JsonObject
             return when {
-                // 不是 JSON（常见：中转站返回 HTML 错误页）
+                // No JSON (común: el relé devuelve una página de error HTML)
                 root == null -> {
                     val head = raw.trimStart().take(60).lowercase()
                     if (head.startsWith("<!doctype") || head.startsWith("<html")) {
@@ -334,12 +334,12 @@ abstract class ProviderHttpSupport(
         }
 
         /**
-         * B-03: 带大小上限的流式响应体读取 — contentLength 未知(chunked)或未声明时同样生效。
+         * B-03: Lectura del cuerpo de respuesta de transmisión con límite de tamaño superior — contentLength desconocido(chunked)O será eficaz aunque no se declare.
          *
-         * 逐块累计,超过 [maxBytes] 即中断(丢弃剩余),避免 chunked 响应绕过
-         * contentLength 检查把超大响应整读进内存。
+         * Bloque acumulado por bloque,exceder [maxBytes] es decir, interrumpir(Descartar el resto),Evite la omisión de respuestas fragmentadas
+         * contentLength Compruebe que toda la respuesta grande se lea en la memoria.
          *
-         * @return Pair<已读文本(最多 maxBytes), 是否超限>
+         * @return Pair<Leer texto(la mayoría maxBytes), Si excede el límite>
          */
         fun readBodyCappedStreaming(response: Response, maxBytes: Int): Pair<String, Boolean> {
             val body = response.body ?: return "" to false
@@ -363,14 +363,14 @@ abstract class ProviderHttpSupport(
                     }
                 }
             } catch (_: java.io.IOException) {
-                // 读取中断按已读内容返回,由调用方按超限/短响应处理
+                // La interrupción de lectura regresa según el contenido leído.,Sobrelímite presionado por la persona que llama/Procesamiento de respuestas cortas
             }
             return sb.toString() to over
         }
 
         /**
-         * 按 HTTP 状态码返回人类可读的错误分类,用于差异化提示/重试决策。
-         * 返回 null 表示无需特殊分类(如 400/404 等业务错误)。
+         * Devuelve una clasificación de error legible por humanos según el código de estado HTTP,Se utiliza para indicaciones diferenciadas./Vuelva a intentar la decisión.
+         * Devuelve nulo para indicar que no se requiere una clasificación especial(Errores comerciales como 400/404).
          */
         fun classifyHttpCode(code: Int): String? = when (code) {
             401 -> "authentication failed"
@@ -384,8 +384,8 @@ abstract class ProviderHttpSupport(
         }
 
         /**
-         * 构建标准化的 HTTP 错误消息(含状态码分类 + 截断的 body 摘要)。
-         * 各 Provider 的 parseErrorMessage 可在此基础上追加自家错误结构解析。
+         * Cree mensajes de error HTTP estandarizados(Resumen del cuerpo con clasificación de código de estado + truncado).
+         * El parseErrorMessage de cada proveedor puede agregar su propia estructura de error analizando sobre esta base.
          */
         fun buildHttpErrorMessage(prefix: String, code: Int, body: String): String {
             val category = classifyHttpCode(code)
@@ -399,17 +399,17 @@ abstract class ProviderHttpSupport(
         }
 
         /**
-         * v1.0.16: 清理共享连接池中所有空闲连接。
+         * v1.0.16: Limpie todas las conexiones inactivas en el grupo de conexiones compartidas.
          *
-         * 应用从后台回到前台时调用,丢弃可能已被系统/路由器关闭的 idle socket,
-         * 避免下一次请求复用失效连接导致首次 HTTP 即失败(表现为切后台回来报错)。
-         * 正在使用的活跃连接不受影响。
+         * Se llama cuando la aplicación vuelve al primer plano desde el fondo.,Es posible que el sistema haya eliminado el descarte./El enrutador está apagado idle socket,
+         * Evite que la siguiente solicitud reutilice la conexión caducada, lo que provocará que falle el primer HTTP.(El rendimiento es que después de cambiar al fondo, se informa un error.).
+         * Las conexiones activas en uso no se ven afectadas.
          */
         fun evictIdleConnections() {
             runCatching {
                 sharedHttpClient.connectionPool.evictAll()
             }.onFailure {
-                io.zer0.common.Logger.w("ProviderHttpSupport", "evictIdleConnections 失败", it)
+                io.zer0.common.Logger.w("ProviderHttpSupport", "evictIdleConnections falló", it)
             }
         }
     }

@@ -1,5 +1,5 @@
 {
-  "note": "A11Y-03 大字体裁切基线。只允许下降: 基线外的新文件或处数高于本文件即失败。改造后运行 py -3 ci/script/check_font_scale_clipping.py --update-baseline 收紧(默认拒绝写入上升值,需 --allow-increase)。",
+  "note": "A11Y-03 Las fuentes grandes recortan la línea base. solo se permite descender: Los archivos nuevos fuera de la línea base o los archivos con un número mayor que este archivo fallarán. Después de la transformación, ejecute py -3 ci/script/check_font_scale_clipping.py --update-baseline para ajustar(Denegar escritura de valor ascendente por defecto,necesidad --allow-increase).",
   "scan_roots": [
     "app/src/main/java/io/zer0/muse/ui",
     "app/src/main/java/io/zer0/muse/automation/ui"

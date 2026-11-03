@@ -88,14 +88,14 @@ internal fun ProviderEditBottomBar(
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 获取(主操作:黑色实心胶囊按钮);不可获取时半透明灰显
+            // Obtener(operación principal:Botón Cápsula Sólido Negro);Translúcido atenuado cuando no está disponible
             val fetchContentColor = MaterialTheme.colorScheme.inverseOnSurface.copy(
                 alpha = if (canFetch) 1f else 0.5f,
             )
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(MuseIconSizes.touchTarget) // 底部操作栏按钮统一 48dp 触摸目标
+                    .height(MuseIconSizes.touchTarget) // Botones de la barra de acción inferior objetivo táctil unificado de 48 dp
                     .background(
                         color = if (canFetch) {
                             MaterialTheme.colorScheme.inverseSurface
@@ -130,11 +130,11 @@ internal fun ProviderEditBottomBar(
                 }
             }
 
-            // 添加新模型(次操作:描边胶囊按钮)
+            // Agregar nuevo modelo(operaciones:Botón de cápsula de trazo)
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(MuseIconSizes.touchTarget) // 底部操作栏按钮统一 48dp 触摸目标
+                    .height(MuseIconSizes.touchTarget) // Botones de la barra de acción inferior objetivo táctil unificado de 48 dp
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                         shape = MuseShapes.huge,
@@ -163,11 +163,11 @@ internal fun ProviderEditBottomBar(
                 }
             }
 
-            // 删除(图标按钮,仅可删除时显示)
+            // Eliminar(botón icono,Solo se muestra cuando la eliminación está disponible)
             if (canDelete) {
                 Box(
                     modifier = Modifier
-                        .size(MuseIconSizes.touchTarget) // 底部操作栏按钮统一 48dp 触摸目标
+                        .size(MuseIconSizes.touchTarget) // Botones de la barra de acción inferior objetivo táctil unificado de 48 dp
                         .background(
                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                             shape = MuseShapes.huge,
@@ -261,7 +261,7 @@ internal fun ConfigTab(
     onOpenAIImagesPathChange: (String) -> Unit,
     openAIStripModelPrefix: String,
     onOpenAIStripModelPrefixChange: (String) -> Unit,
-    // v2.6.2: OpenAI 型供应商的自定义请求头/请求体（中转站强制头场景）。
+    // v2.6.2: OpenAI Encabezados de solicitud personalizados de proveedores de tipos/Cuerpo de la solicitud (escenario de encabezado obligatorio de la estación de transferencia).
     openAICustomHeadersText: String,
     onOpenAICustomHeadersTextChange: (String) -> Unit,
     openAICustomBodyText: String,
@@ -283,7 +283,7 @@ internal fun ConfigTab(
     fetchError: String?,
     onFetchErrorDismiss: () -> Unit,
     onFetchRetry: () -> Unit = {},
-    // v2.4: 独立测试连接相关参数(只测不改,不写入 modelsState)
+    // v2.4: Pruebe de forma independiente los parámetros relacionados con la conexión(Solo prueba sin cambiar,no escribas modelsState)
     isTestingConnection: Boolean,
     testConnectionResult: String?,
     testConnectionError: String?,
@@ -294,20 +294,20 @@ internal fun ConfigTab(
     balanceResult: String?,
     onQueryBalance: () -> Unit,
     onImportServiceAccountJson: () -> Unit,
-    // P1-6: OAuth 登录(仅当 oauthConfig != null 时显示)
+    // P1-6: OAuth Iniciar sesión(solo si oauthConfig != null visualización de la hora)
     oauthConfig: OAuthConfig? = null,
     onOAuthLogin: () -> Unit = {},
     isOAuthLoading: Boolean = false,
-    // P2-11: 已存储 OAuth token 状态 + 撤销回调
+    // P2-11: Estado del token OAuth almacenado + revocar devolución de llamada
     hasStoredOAuthToken: Boolean = false,
     onRevokeOAuth: () -> Unit = {},
-    // P1-3: 限流参数(RPM + 最大并发,空串表示不限)
+    // P1-3: Parámetros limitantes actuales(RPM + Simultaneidad máxima,Una cadena vacía significa que no hay límite)
     requestLimitPerMinuteText: String = "",
     onRequestLimitPerMinuteTextChange: (String) -> Unit = {},
     maxConcurrentRequestsText: String = "",
     onMaxConcurrentRequestsTextChange: (String) -> Unit = {},
 ) {
-    // 前缀匹配字符串(用于 startsWith/contains 判断)
+    // Cadena de coincidencia de prefijo(Usado para iniciosCon/contiene juicio)
     val connectionSuccessPrefix = stringResource(R.string.settings_provider_prefix_connection_success)
     val cannotConnectPrefix = stringResource(R.string.settings_provider_prefix_cannot_connect)
     val fetchModelsFailedPrefix = stringResource(R.string.settings_provider_prefix_fetch_models_failed)
@@ -316,7 +316,7 @@ internal fun ConfigTab(
     val pathNotFoundPrefix = stringResource(R.string.settings_provider_prefix_path_not_found)
     val unableToResolvePrefix = stringResource(R.string.settings_provider_prefix_unable_to_resolve)
     val queryTimeoutPrefix = stringResource(R.string.settings_provider_prefix_query_timeout)
-    // 状态描述字符串(需在 @Composable 上下文中提取,不能在 semantics{} lambda 内调用 stringResource)
+    // cadena de descripción de estado(Debe extraerse en el contexto @Composable,no puedo estar ahí semantics{} lambda llamar dentro stringResource)
     val stateEnabledText = stringResource(R.string.settings_state_enabled)
     val stateDisabledText = stringResource(R.string.settings_state_disabled)
 
@@ -331,9 +331,9 @@ internal fun ConfigTab(
                     modifier = Modifier.padding(MusePaddings.cardInner),
                     verticalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
                 ) {
-                    // 类型选择
+                    // Selección de tipo
                     Text(stringResource(R.string.settings_provider_type), style = MaterialTheme.typography.labelMedium)
-                    // 类型数量会随供应商协议扩展，横向滚动避免末项被卡片宽度裁切。
+                    // La cantidad de tipos se expande con el acuerdo del proveedor y el desplazamiento horizontal evita que el último elemento quede recortado por el ancho de la tarjeta.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -341,7 +341,7 @@ internal fun ConfigTab(
                         horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                     ) {
                         ProviderType.entries.forEach { t ->
-                            // v1.134 P0-8: FilterChip → MuseChip 胶囊
+                            // v1.134 P0-8: FilterChip → MuseChip cápsula
                             MuseChip(
                                 selected = type == t,
                                 onClick = { onTypeChange(t) },
@@ -362,11 +362,11 @@ internal fun ConfigTab(
                             ProviderType.OPENAI -> ProviderConfig.DEFAULT_OPENAI_BASE_URL
                             ProviderType.ANTHROPIC -> ProviderConfig.DEFAULT_ANTHROPIC_BASE_URL
                             ProviderType.GEMINI -> ProviderConfig.DEFAULT_GEMINI_BASE_URL
-                            // v1.0.6: OPENAI_RESPONSES 复用 OpenAI 同款 UI 配置(/v1/responses 切换由 useResponseApi 开关控制)
+                            // v1.0.6: OPENAI_RESPONSES Reutilice la misma configuración de interfaz de usuario de OpenAI(/v1/responses El cambio está controlado por el interruptor useResponseApi)
                             ProviderType.OPENAI_RESPONSES -> ProviderConfig.DEFAULT_OPENAI_RESPONSES_BASE_URL
                         },
                     )
-                    // F-11: 多 Key 池输入(按行/逗号分隔,支持多 key 的 429/401 轮换)
+                    // F-11: Entrada de grupo de claves múltiples(por fila/separados por comas,Admite rotación 429/401 de múltiples teclas)
                     ApiKeyPoolField(
                         apiKey = apiKey,
                         onApiKeyChange = onApiKeyChange,
@@ -374,12 +374,12 @@ internal fun ConfigTab(
                         onApiKeyVisibleChange = onApiKeyVisibleChange,
                     )
 
-                    // P1-6: OAuth 登录按钮 + 状态行(仅当 oauthConfig != null 时显示)
-                    // - 用 Surface + MuseShapes.pill 包裹,非 Material3 Button
-                    // - 加载中(AWAITING_USER / POLLING):按钮禁用 + 圆形进度 + "等待授权完成..."
-                    // - 点击:调用 onOAuthLogin,由 ProviderEditPage 启动 Device Flow / Auth Code Flow
-                    // P2-11: 已存储 token 时额外显示「撤销访问」按钮(红色 errorContainer 配色,
-                    //   与登录按钮风格统一但语义对立)
+                    // P1-6: OAuth Botón de inicio de sesión + línea de estado(solo si oauthConfig != null visualización de la hora)
+                    // - Envolver con Surface + MuseShapes.pill,no Material3 Button
+                    // - Cargando(AWAITING_USER / POLLING):Botón desactivado + progreso circular + "Espere a que se complete la autorización..."
+                    // - Haga clic:llamar onOAuthLogin,Iniciado por ProviderEditPage Device Flow / Auth Code Flow
+                    // P2-11: Cuando se ha almacenado el token, se muestra un botón adicional "Revocar acceso".(Error rojoCoincidencia de color del contenedor,
+                    //   Mismo estilo que el botón de inicio de sesión pero opuesto en semántica.)
                     if (oauthConfig != null) {
                         Row(
                             modifier = Modifier
@@ -388,7 +388,7 @@ internal fun ConfigTab(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                         ) {
-                            // OAuth 登录胶囊按钮(非 Material3 Button,用 Surface + clickable 包裹)
+                            // OAuth Botón de inicio de sesión(no Material3 Button,Envuelto con Surface + en el que se puede hacer clic)
                             val oauthBtnBg = if (isOAuthLoading) {
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             } else {
@@ -429,10 +429,10 @@ internal fun ConfigTab(
                                     )
                                 }
                             }
-                            // P2-11: 撤销访问胶囊按钮(仅当已有已存储 token 时显示)
-                            // - 用 Surface + MuseShapes.pill,与登录按钮风格一致
-                            // - errorContainer 配色暗示「破坏性操作」
-                            // - 已在登录流程中(isOAuthLoading)禁用,避免状态冲突
+                            // P2-11: Revocar el acceso al botón de la cápsula(Solo se muestra si ya hay un token almacenado)
+                            // - usar Surface + MuseShapes.pill,Mismo estilo que el botón de inicio de sesión.
+                            // - errorContainer La combinación de colores sugiere "operaciones destructivas".
+                            // - Ya en el proceso de inicio de sesión(isOAuthLoading)Desactivar,Evitar conflictos estatales
                             if (hasStoredOAuthToken) {
                                 val revokeBtnBg = if (isOAuthLoading) {
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -468,7 +468,7 @@ internal fun ConfigTab(
                                     }
                                 }
                             }
-                            // 加载状态提示
+                            // Mensaje de estado de carga
                             if (isOAuthLoading) {
                                 Text(
                                     text = stringResource(R.string.oauth_polling),
@@ -480,12 +480,12 @@ internal fun ConfigTab(
                         }
                     }
 
-                    // v2.4: 独立测试连接按钮 + 结果胶囊
-                    // - 测试中: 按钮内 CircularProgressIndicator
-                    // - 成功: 绿色 ✓ 胶囊 + "连接正常 · N 个模型"
-                    // - 失败: 红色 ✗ 胶囊 + 分级错误信息(API Key 无效 / URL 不支持 / 连接超时 / 无法连接服务器)
-                    // - 用 MuseShapes.pill 胶囊形
-                    // - 关闭按钮用 MuseTactileButton 而非 Material3 IconButton
+                    // v2.4: Botón de conexión de prueba independiente + cápsula de resultados
+                    // - Bajo prueba: botón interior CircularProgressIndicator
+                    // - éxito: verde ✓ cápsula + "La conexión es normal. · N modelos"
+                    // - falló: rojo ✗ Cápsulas + Mensaje de error de clasificación(API Key No válida/URL no compatible/Se agotó el tiempo de espera de la conexión/No se puede conectar al servidor)
+                    // - Forma de cápsula con MuseShapes.pill
+                    // - Utilice MuseTactileButton en lugar del botón de cerrar Material3 IconButton
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -493,7 +493,7 @@ internal fun ConfigTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                     ) {
-                        // 测试连接按钮(胶囊形,非 Material3 IconButton)
+                        // Botón de prueba de conexión(forma de cápsula,no Material3 IconButton)
                         val testBtnBg = if (canTestConnection) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
@@ -527,7 +527,7 @@ internal fun ConfigTab(
                                         )
                                     }
                                     Spacer(Modifier.size(6.dp))
-                                    // F-12: 端点测试(仅调 /models)与模型测试(完整链路)语义区分
+                                    // F-12: Pruebas de punto final(Sólo ajustar /models)Prueba con modelo(enlace completo)distinción semántica
                                     Text(
                                         text = stringResource(R.string.settings_provider_test_connection_endpoint),
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
@@ -542,7 +542,7 @@ internal fun ConfigTab(
                             }
                         }
 
-                        // 结果胶囊(成功/失败态,MuseShapes.pill 形状)
+                        // Cápsula de resultados(éxito/estado fallido,MuseShapes.pill forma)
                         if (testConnectionResult != null || testConnectionError != null) {
                             val isSuccess = testConnectionResult != null
                             val message = testConnectionResult ?: testConnectionError ?: ""
@@ -578,7 +578,7 @@ internal fun ConfigTab(
                                         color = capsuleColor,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    // 关闭按钮:用 MuseTactileButton 而非 Material3 IconButton
+                                    // botón cerrar:Utilice MuseTactileButton en su lugar Material3 IconButton
                                     MuseTactileButton(
                                         icon = MuseIcons.x,
                                         onClick = onTestResultDismiss,
@@ -595,7 +595,7 @@ internal fun ConfigTab(
             }
         }
 
-        // 拉取错误提示
+        // Extraer mensaje de error
         if (fetchError != null) {
             item {
                 MuseErrorStateBox(
@@ -606,7 +606,7 @@ internal fun ConfigTab(
             }
         }
 
-        // 自动获取失败后提示手动添加
+        // Solicitud de adición manual después de que falla la adquisición automática
         if (fetchError != null &&
             (
                 fetchError.contains(cannotConnectPrefix) ||
@@ -624,7 +624,7 @@ internal fun ConfigTab(
             }
         }
 
-        // Vertex AI 配置(仅 GEMINI)
+        // Vertex AI Configuración(solo GEMINI)
         if (type == ProviderType.GEMINI) {
             item {
                 SettingsGroup {
@@ -733,7 +733,7 @@ internal fun ConfigTab(
             }
         }
 
-        // 高级字段(可折叠)
+        // Campos avanzados(plegable)
         item {
             SettingsGroup {
                 Column(
@@ -748,7 +748,7 @@ internal fun ConfigTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // LAYOUT-01: 「高级」折叠头取剩余宽度 + 限行,防止被右侧 chevron 图标挤成一列。
+                        // LAYOUT-01: El encabezado plegable "avanzado" toma el ancho restante + límite de línea,Evite que el ícono de galón a la derecha lo apriete.
                         Text(
                             text = stringResource(R.string.settings_common_advanced),
                             style = MaterialTheme.typography.labelMedium,
@@ -800,8 +800,8 @@ internal fun ConfigTab(
                             onValueChange = onBalanceResultPathChange,
                             placeholder = "\$.data.total_usage",
                         )
-                        // P1-3: 限流参数 — RPM(每分钟最大请求数)+ 最大并发请求数
-                        // 空 = 不限;> 0 时 ProviderRegistry.create 叠加 RateLimitDecorator
+                        // P1-3: Parámetros limitantes actuales — RPM(Número máximo de solicitudes por minuto)+ Número máximo de solicitudes simultáneas
+                        // vacío = Sin límite;> 0 Cuando ProviderRegistry.crea superposiciones RateLimitDecorator
                         SettingField(
                             label = stringResource(R.string.settings_provider_rate_limit_rpm),
                             value = requestLimitPerMinuteText,
@@ -816,7 +816,7 @@ internal fun ConfigTab(
                             placeholder = stringResource(R.string.settings_provider_max_concurrent_hint),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         )
-                        // v1.134 P0-3: 余额查询按钮用 Surface+clickable 胶囊
+                        // v1.134 P0-3: El botón de consulta de saldo utiliza Surface+cápsula en la que se puede hacer clic
                         val balanceEnabled = !isQueryingBalance && balanceApiPath.isNotBlank() && baseUrl.isNotBlank()
                         Surface(
                             shape = MuseShapes.pill,
@@ -862,9 +862,9 @@ internal fun ConfigTab(
                             )
                         }
 
-                        // Provider 特定高级字段
+                        // Provider Campos avanzados específicos
                         when (type) {
-                            // v1.0.6: OPENAI_RESPONSES 复用 OpenAI 同款 UI 配置(/v1/responses 切换由 useResponseApi 开关控制)
+                            // v1.0.6: OPENAI_RESPONSES Reutilice la misma configuración de interfaz de usuario de OpenAI(/v1/responses El cambio está controlado por el interruptor useResponseApi)
                             ProviderType.OPENAI, ProviderType.OPENAI_RESPONSES -> if (isCustomSpecific) {
                                 Text(
                                     text = stringResource(R.string.settings_provider_custom_specific),
@@ -967,9 +967,9 @@ internal fun ConfigTab(
                                     onValueChange = onOpenAIStripModelPrefixChange,
                                     placeholder = stringResource(R.string.settings_provider_strip_model_prefix_placeholder),
                                 )
-                                // v2.6.2: OpenAI 型供应商也开放自定义请求头/请求体。
-                                // 部分中转站（如 OpenCode Go）强制要求会话头，缺失直接 400；
-                                // 旧实现只在 Custom 型下渲染此入口，预设供应商无从填写。
+                                // v2.6.2: OpenAI Los proveedores de tipos también abren encabezados de solicitud personalizados/Cuerpo de solicitud.
+                                // Algunas estaciones de transferencia (como OpenCode Go) exigen encabezados de sesión y, si faltan, se emitirá un 400;
+                                // La implementación anterior solo muestra esta entrada bajo el tipo Personalizado y el proveedor predeterminado no puede completarla.
                                 MuseTextField(
                                     value = openAICustomHeadersText,
                                     onValueChange = onOpenAICustomHeadersTextChange,
@@ -1042,7 +1042,7 @@ internal fun ConfigTab(
                                 )
                             }
 
-                            ProviderType.GEMINI -> { /* Vertex AI 已在独立卡片配置 */ }
+                            ProviderType.GEMINI -> { /* Vertex AI Ya configurado en tarjeta independiente */ }
                         }
                     }
                 }
@@ -1052,22 +1052,22 @@ internal fun ConfigTab(
 }
 
 /**
- * F-11: 多 Key 池输入组件。
+ * F-11: Componente de entrada de grupo de claves múltiples.
  *
- * 将 provider 的 API Key 字符串(逗号/换行分隔,与 [io.zer0.ai.util.KeyRoulette] 解析格式一致)
- * 拆分为多行展示,支持:
- *  - 顶部多行 TextArea 直接编辑/粘贴多个 key
- *  - 指示行:有活动 key 时显示其脱敏尾号(如 sk-***aB3),否则显示"已配置 N 个 Key"
- *  - 每行末尾删除按钮(逐条删除)
- *  - "全部清空"按钮
+ * Establezca la cadena de clave API del proveedor en(coma/nueva línea separada,con [io.zer0.ai.util.KeyRoulette] El formato de análisis es consistente.)
+ * Dividir en varias líneas para mostrar,apoyo:
+ *  - Edición directa superior de TextArea de varias líneas/Pegar varios key
+ *  - línea de instrucción:Cuando hay una llave activa se muestra su número de cola de desensibilización.(Como por ejemplo sk-***aB3),De lo contrario mostrar"N configurado Key"
+ *  - botón eliminar al final de cada línea(Eliminar elementos uno por uno)
+ *  - "Borrar todo"botón
  *
- * 持久化仍为逗号分隔字符串,与现有 KeyRoulette 轮换逻辑兼容。
+ * La persistencia sigue siendo una cadena separada por comas.,Compatible con la lógica de rotación de KeyRoulette existente.
  *
- * @param apiKey 原始 key 字符串(逗号或换行分隔)
- * @param onApiKeyChange 保存时回传更新后的字符串
- * @param apiKeyVisible 是否明文显示
- * @param onApiKeyVisibleChange 明文/掩码切换回调
- * @param activeKey 当前正在使用的 key 脱敏尾号;为 null 时显示配置个数
+ * @param apiKey cadena de clave original(Separados por coma o nueva línea)
+ * @param onApiKeyChange Devuelve la cadena actualizada al guardar
+ * @param apiKeyVisible Ya sea para mostrar en texto claro
+ * @param onApiKeyVisibleChange texto plano/Devolución de llamada de cambio de máscara
+ * @param activeKey El número de cola de desensibilización de la clave actualmente en uso;Cuando es nulo, se muestra el número de configuraciones.
  */
 @Composable
 internal fun ApiKeyPoolField(
@@ -1077,17 +1077,17 @@ internal fun ApiKeyPoolField(
     onApiKeyVisibleChange: (Boolean) -> Unit,
     activeKey: String? = null,
 ) {
-    // 按 KeyRoulette 解析语法拆分(逗号/换行),记住便于稳定渲染删除行
+    // Dividido por la sintaxis de análisis de KeyRoulette(coma/nueva línea),Recuerde eliminar filas para una representación estable
     val keys = remember(apiKey) { parseApiKeys(apiKey) }
 
     Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap)) {
-        // 多行输入区:支持直接粘贴多个 key(逗号或换行分隔)
+        // Área de entrada multilínea:Admite pegar directamente varios key(Separados por coma o nueva línea)
         MuseTextField(
             value = apiKey,
             onValueChange = onApiKeyChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.settings_provider_api_key_pool)) },
-            // 空着时给出格式提示：这个框有一百多像素高，纯灰一片时用户不知道该粘什么。
+            // Cuando está vacío, aparece un mensaje de formato: este cuadro tiene más de cien píxeles de alto. Cuando es gris puro, el usuario no sabe qué pegar.
             placeholder = {
                 Text(
                     text = stringResource(R.string.settings_provider_api_key_pool_hint),
@@ -1112,7 +1112,7 @@ internal fun ApiKeyPoolField(
             },
         )
 
-        // 指示行:活动 key 尾号(有信息时)或已配置个数 + "全部清空"
+        // línea de instrucción:Número de cola de clave de actividad(cuando hay información)O número configurado + "Borrar todo"
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1124,8 +1124,8 @@ internal fun ApiKeyPoolField(
             Text(
                 text = indicator,
                 style = MaterialTheme.typography.labelSmall,
-                // 状态信息必须可读：此前用 outline（边框色）当正文色，灰到几乎看不见，
-                // 而同排的「全部清空」却是纯实色，层级完全颠倒。
+                // La información de estado debe ser legible: anteriormente se utilizaba el contorno (color del borde) como color del texto, que era tan gris que era casi invisible.
+                // "Borrar todo" en la misma fila es de color sólido puro, con la jerarquía completamente invertida.
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
@@ -1139,7 +1139,7 @@ internal fun ApiKeyPoolField(
             }
         }
 
-        // 逐条 Key 展示 + 每行删除按钮
+        // Visualización de claves una por una + botón de eliminar para cada fila
         keys.forEachIndexed { index, key ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1170,8 +1170,8 @@ internal fun ApiKeyPoolField(
 }
 
 /**
- * 按 KeyRoulette 的解析语法拆分 key 字符串(与 [io.zer0.ai.util.KeyRoulette] 内部
- * parseKeys 保持一致:以逗号/换行分隔,去首尾空白并过滤空项)。
+ * Dividir cadena de claves según la sintaxis de análisis de KeyRoulette(con [io.zer0.ai.util.KeyRoulette] interno
+ * parseKeys ser consistente:con coma/nueva línea separada,Elimine los espacios en blanco iniciales y finales y filtre los elementos vacíos).
  */
 private fun parseApiKeys(keysString: String): List<String> {
     return keysString.split(",", "\n", "\r\n")
@@ -1180,8 +1180,8 @@ private fun parseApiKeys(keysString: String): List<String> {
 }
 
 /**
- * 生成 key 的脱敏尾号,格式如 "sk-***aB3"(保留头部 3 位 + 尾部 3 位)。
- * 对过短(<=6 位)的 key 全部掩码,避免泄露信息。
+ * Generar número de cola insensibilizado de clave,El formato es como "sk-***aB3"(Mantenga los primeros 3 bits + los últimos 3 bits).
+ * Demasiado corto(<=6 poco)La clave de todas las mascarillas,Evite filtrar información.
  */
 private fun maskApiKey(key: String): String {
     return if (key.length <= 6) {

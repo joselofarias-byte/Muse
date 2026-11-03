@@ -3,72 +3,72 @@ package io.zer0.muse.tools
 import java.io.File
 
 /**
- * 命令边界用到的词法层:把一段 shell 字符串切成可判定的单元。
+ * Capa léxica utilizada para límites de comando:Divida una cadena de shell en unidades decidibles.
  *
- *  - [ShellSegment]:按 shell 控制符(`|` `||` `&&` `;` `&` 换行)切出的一段命令,
- *    带取「一级命令名 / 参数 / 像路径的参数」的小工具。
- *  - [ShellLocator]:把一个路径参数放到工作区基准下判落点(工作区内 / 工作区根 /
- *    `/data` 应用私有数据 / 系统分区 / 存储卷 / 设备根 / 工作区外 / 判不出)。
- *  - [ShellCommandLex]:参数形状的判断(递归开关、世界可写模式、无害汇聚点)。
+ *  - [ShellSegment]:Presione el carácter de control de shell(`|` `||` `&&` `;` `&` nueva línea)Recorta una sección de comando.,
+ *    Una pequeña herramienta que toma "nombre de comando de primer nivel/parámetro/ruta similar a parámetro".
+ *  - [ShellLocator]:Coloque un parámetro de ruta en el punto de referencia del espacio de trabajo para determinar el punto de aterrizaje(Dentro del espacio de trabajo/raíz del espacio de trabajo /
+ *    `/data` Datos privados de la aplicación/partición del sistema/volumen de almacenamiento/raíz del dispositivo/fuera del espacio de trabajo/no se pueden determinar).
+ *  - [ShellCommandLex]:Juicio de la forma del parámetro.(Cambio de recursividad, modo de escritura mundial, punto de encuentro inofensivo).
  *
- * 这里刻意**不**做 shell 语义解析:只做分段与参数级匹配。破坏力判据本身在
- * [ShellCommandBoundary],那边按「一条命令能毁掉什么」组织,这边只回答「它碰到哪」。
+ * aquí es deliberado**No**Hacer análisis semántico de shell:Sólo se realiza la coincidencia a nivel de segmento y parámetro. El criterio de fuerza destructiva en sí es
+ * [ShellCommandBoundary],¿Existe una organización basada en "¿Qué se puede destruir con una sola orden"?,Aquí sólo respondemos "donde toca".
  */
 
-/** 一个路径参数能碰到什么。 */
+/** Qué se puede encontrar con un parámetro de ruta. */
 internal enum class ShellScope {
-    /** 严格落在工作区内部:工具的正常作用域。 */
+    /** Estrictamente dentro del espacio de trabajo:El alcance normal de la herramienta. */
     WORKSPACE,
 
-    /** 工作区根本身。 */
+    /** La propia raíz del espacio de trabajo. */
     WORKSPACE_ROOT,
 
-    /** `/data` 下工作区以外的应用私有数据(含其它应用)。 */
+    /** `/data` Aplicación de datos privados fuera del espacio de trabajo.(Contiene otras aplicaciones). */
     APP_DATA,
 
-    /** 系统分区与内核接口。 */
+    /** Partición del sistema e interfaz del kernel. */
     SYSTEM,
 
-    /** 用户可见存储卷。 */
+    /** Volúmenes de almacenamiento visibles para el usuario. */
     STORAGE,
 
-    /** 设备根 `/`。 */
+    /** Raíz del dispositivo `/`. */
     DEVICE_ROOT,
 
-    /** `/dev/null` 这类无害汇聚点。 */
+    /** `/dev/null` Puntos de reunión tan inofensivos. */
     SINK,
 
-    /** 工作区以外的其它路径。 */
+    /** Otros caminos fuera del espacio de trabajo. */
     OUTSIDE,
 
-    /** 判不出落点(没有工作目录基准的相对路径)。 */
+    /** No puedo decir el punto de aterrizaje(Ruta relativa sin base de directorio de trabajo). */
     UNKNOWN,
 }
 
-/** 路径参数的落点,以及它打到的是「整个目录」还是「目录里的一个子集」。 */
+/** Punto de caída de los parámetros de ruta,Y si llega a \"todo el directorio\" o \"a un subconjunto del directorio\". */
 internal data class ShellTarget(val scope: ShellScope, val wholeDirectory: Boolean)
 
 /**
- * 一段命令:它的分隔符与切好的 token。
- * `|` 段是「被上一段输出喂」的命令;`&&`/`||`/`;` 段各自是独立命令。
+ * un comando:Su delimitador es el mismo que el de la ficha cortada.
+ * `|` La sección es un comando que se "alimenta con el resultado de la sección anterior".;`&&`/`||`/`;` Cada segmento es un comando independiente.
  */
 internal class ShellSegment(val separator: String, val tokens: List<String>) {
 
-    /** 上游通过管道把输出喂给本段。 */
+    /** El aguas arriba alimenta la salida a esta sección a través de la tubería. */
     val isPipeInput: Boolean get() = separator == "|"
 
-    /** 一级命令下标:跳过 `FOO=bar` 环境变量前缀与 `nohup`/`timeout` 这类包装命令。 */
+    /** Subíndice de comando de primer nivel:saltar `FOO=bar` Prefijo de variable de entorno con `nohup`/`timeout` Este tipo de comando de empaquetado. */
     private fun verbIndex(): Int? = tokens.indexOfFirst { token ->
         !ENV_ASSIGNMENT.matches(token) && bareName(token) !in COMMAND_WRAPPERS
     }.takeIf { it >= 0 }
 
-    /** 一级命令名(去掉路径前缀、转小写)。 */
+    /** Nombre del comando de primer nivel(Eliminar el prefijo de ruta y convertirlo a minúsculas). */
     fun verb(): String? = verbIndex()?.let { bareName(tokens[it]) }
 
-    /** 一级命令之后的参数。 */
+    /** Parámetros después del comando de primer nivel. */
     fun args(): List<String> = verbIndex()?.let { tokens.drop(it + 1) } ?: emptyList()
 
-    /** 参数里「像路径」的 token:排除选项与 `of=x` 这类操作数。 */
+    /** El token \"como ruta\" en el parámetro: opción de exclusión y `of=x` Tales operandos. */
     fun pathArgs(): List<String> = args().filterNot { it.startsWith("-") || OPERAND_ASSIGNMENT.matches(it) }
 
     private fun bareName(token: String) = token.substringAfterLast('/').lowercase()
@@ -77,13 +77,13 @@ internal class ShellSegment(val separator: String, val tokens: List<String>) {
         private val SEGMENT_SEPARATOR = Regex("""\|\||&&|[;|&\r\n]""")
         private val WHITESPACE = Regex("\\s+")
 
-        /** `FOO=bar rm -rf x` 里的 `FOO=bar` 是环境变量赋值,不是命令。 */
+        /** `FOO=bar rm -rf x` adentro `FOO=bar` ¿Es la asignación de variable de entorno?,No es una orden. */
         private val ENV_ASSIGNMENT = Regex("""[A-Za-z_][A-Za-z0-9_]*=.*""")
 
-        /** `dd of=x` 这类 `key=value` 操作数不是位置参数,不当路径看。 */
+        /** `dd of=x` este tipo `key=value` El operando no es un parámetro posicional.,Camino equivocado para mirar. */
         private val OPERAND_ASSIGNMENT = Regex("""[a-z]{1,4}=.*""")
 
-        /** 包装命令:真正的一级命令在它后面,取命令名要跳过它们。 */
+        /** comando contenedor:El verdadero comando de primer nivel está detrás de esto.,Omítelos al elegir nombres de comandos. */
         private val COMMAND_WRAPPERS = setOf(
             "env", "nohup", "time", "timeout", "nice", "ionice", "xargs", "watch", "command", "exec",
             "busybox", "toybox",
@@ -113,13 +113,13 @@ internal class ShellSegment(val separator: String, val tokens: List<String>) {
 }
 
 /**
- * 路径落点判定器:以工具的工作区目录为基准,把命令参数里的路径归类。
+ * Determinador del punto de caída de la ruta:Basado en el directorio del espacio de trabajo de la herramienta.,Clasifique las rutas en los parámetros del comando.
  *
- * 设备上的工作区是 `/data/user/0/<pkg>/files/workspace`,而 `/data/data/<pkg>` 是同一份数据的
- * 软链写法,所以绝对路径要按「原样」与「解软链后」两种写法一起比 —— 否则
- * `cat x > /data/data/<pkg>/files/workspace/out.txt` 这种工作区内的正常写法会被误判成越界。
+ * El espacio de trabajo en el dispositivo es `/data/user/0/<pkg>/files/workspace`,y `/data/data/<pkg>` son los mismos datos
+ * Método de escritura de enlaces suaves,Por lo tanto, la ruta absoluta debe escribirse de dos maneras: "tal cual" y "después de desbloquear el enlace suave". —— De lo contrario
+ * `cat x > /data/data/<pkg>/files/workspace/out.txt` La escritura normal en este espacio de trabajo se considerará erróneamente como fuera de los límites.
  *
- * @param workspaceDir 工具的工作目录;为 null 时相对路径判不出落点,一律不参与拦截
+ * @param workspaceDir Directorio de trabajo de la herramienta;Cuando es nulo, la ruta relativa no puede determinar el punto de aterrizaje.,Nunca participes en la interceptación.
  */
 internal class ShellLocator(private val workspaceDir: File?) {
 
@@ -127,14 +127,14 @@ internal class ShellLocator(private val workspaceDir: File?) {
         toPosix(runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath))
     }
 
-    /** 把一个路径参数放到工作区基准下判落点。 */
+    /** Coloque un parámetro de ruta en el punto de referencia del espacio de trabajo para determinar el punto de aterrizaje. */
     fun target(raw: String): ShellTarget {
         val trimmed = ShellCommandLex.stripQuotes(raw).trim()
         if (trimmed.isEmpty()) return ShellTarget(ShellScope.UNKNOWN, wholeDirectory = true)
         val path = expandHome(trimmed).removeSurrounding("$(", ")").removeSurrounding("(", ")")
         val lastSegment = path.substringAfterLast('/')
         val globbed = lastSegment.isNotEmpty() && lastSegment.all { it == '*' || it == '?' }
-        // `*` 打到目录下全部内容,`*.log` 只打到一个子集 —— 破坏力不同级
+        // `*` Pulsa todos los contenidos del directorio.,`*.log` Golpea solo un subconjunto —— Diferentes niveles de poder destructivo.
         val container = if (globbed) path.substringBeforeLast('/', "").ifEmpty { "." } else path
         return ShellTarget(classify(absoluteize(normalizeTrailing(container))), wholeDirectory = !globbed || lastSegment == "*")
     }
@@ -142,7 +142,7 @@ internal class ShellLocator(private val workspaceDir: File?) {
     private fun classify(path: String?): ShellScope = when {
         path == null -> ShellScope.UNKNOWN
         path == "/" -> ShellScope.DEVICE_ROOT
-        // 工作区判定必须前置于 /data:工作区本身就挂在 /data 下
+        // La determinación del espacio de trabajo debe colocarse antes de /data: el espacio de trabajo en sí está colgado debajo de /data
         resolvesToWorkspaceRoot(path) -> ShellScope.WORKSPACE_ROOT
         resolvesInsideWorkspace(path) -> ShellScope.WORKSPACE
         ShellCommandLex.isHarmlessSink(path) -> ShellScope.SINK
@@ -161,7 +161,7 @@ internal class ShellLocator(private val workspaceDir: File?) {
     private fun insideWorkspace(absolute: String) =
         workspacePosix != null && absolute != workspacePosix && absolute.startsWith("$workspacePosix/")
 
-    /** 同一个绝对路径的其它写法(解软链);判不出更深的写法时按原样。 */
+    /** Otras formas de escribir la misma ruta absoluta(Desatar la cadena suave);Si no puedes encontrar una forma más profunda de escribir, déjala como está. */
     private fun variants(path: String): List<String> {
         if (!path.startsWith("/")) return emptyList()
         val canonical = runCatching { toPosix(File(path).canonicalPath) }.getOrDefault(path)
@@ -169,8 +169,8 @@ internal class ShellLocator(private val workspaceDir: File?) {
     }
 
     /**
-     * 相对路径按工作区解析成绝对路径;没有工作区基准时返回 null ——
-     * 判不出落点就不参与拦截,避免凭空误杀。
+     * Las rutas relativas se resuelven en rutas absolutas según el espacio de trabajo.;Devuelto cuando no hay una línea base del espacio de trabajo null ——
+     * Si no puede determinar el punto de aterrizaje, no participará en la interceptación.,Evite la muerte accidental.
      */
     private fun absoluteize(path: String): String? {
         if (path.startsWith("/")) return path
@@ -178,7 +178,7 @@ internal class ShellLocator(private val workspaceDir: File?) {
         return runCatching { File(workspaceDir, path).canonicalPath }.getOrNull()?.let(::toPosix)
     }
 
-    /** Android 应用进程里 `~`/`$HOME` 展开到设备根,不能当成「用户自己的小窝」。 */
+    /** Android En el proceso de solicitud `~`/`$HOME` Expandir a la raíz del dispositivo,No puede considerarse como \"el propio nido del usuario\". */
     private fun expandHome(path: String): String {
         val forms = listOf("~", "\$HOME", "\${HOME}")
         if (path in forms) return "/"
@@ -192,8 +192,8 @@ internal class ShellLocator(private val workspaceDir: File?) {
 
     companion object {
         /**
-         * 会被这些前缀碰到的路径:整机只读分区或内核接口,终端的正常用途碰不到。
-         * `/dev/block` `/dev/disk` 单列 —— `/dev/null` 这类无害节点不在此列。
+         * Rutas que serán afectadas por estos prefijos:Partición de solo lectura o interfaz del kernel de toda la máquina,El terminal no se puede utilizar para fines normales.
+         * `/dev/block` `/dev/disk` columna única —— `/dev/null` Estos nodos inofensivos no están incluidos en esta lista.
          */
         private val SYSTEM_PATHS = listOf(
             "/system", "/vendor", "/product", "/apex", "/boot", "/recovery", "/sbin",
@@ -204,24 +204,24 @@ internal class ShellLocator(private val workspaceDir: File?) {
     }
 }
 
-/** 参数形状的判断:与落点无关,只看这个 token / 这串参数本身说明了什么操作。 */
+/** Juicio de la forma del parámetro.:No tiene nada que ver con el punto de aterrizaje.,Basta con mirar qué operación describe este token/cadena de parámetros. */
 internal object ShellCommandLex {
 
     private val HARMLESS_SINKS = listOf("/dev/null", "/dev/zero", "/dev/stdout", "/dev/stderr", "/dev/tty")
 
     private val WORLD_WRITABLE_LAST_DIGITS = charArrayOf('6', '7')
 
-    /** 显式声明「stdin 就是我的命令来源」的参数。 */
+    /** Declarar explícitamente \"stdin Este es el parámetro de mi fuente de comando\". */
     private val STDIN_CODE_ARGS = setOf("-", "-s", "--stdin")
 
     fun isHarmlessSink(path: String) = HARMLESS_SINKS.any { path == it || path.startsWith("$it/") }
 
-    /** `-r`/`-R`/`-rf`/`--recursive`:递归开关(组合短选项逐字符看)。 */
+    /** `-r`/`-R`/`-rf`/`--recursive`:interruptor recursivo(Las opciones cortas combinadas se ven carácter por carácter). */
     fun isRecursiveFlag(token: String) =
         token == "--recursive" ||
             (token.startsWith("-") && !token.startsWith("--") && token.any { it == 'r' || it == 'R' })
 
-    /** 世界可写的模式:`777`/`776`/`o+w`/`a+w` 这类放开了其它用户写权限的写法。 */
+    /** Modo de escritura mundial:`777`/`776`/`o+w`/`a+w` Este tipo de escritura permite que otros usuarios escriban permisos. */
     fun isWorldWritableMode(token: String): Boolean {
         if (token.startsWith("-")) return false
         if (token.contains("+w") && (token.startsWith("a") || token.startsWith("o") || token == "+w")) return true
@@ -232,10 +232,10 @@ internal object ShellCommandLex {
     fun stripQuotes(token: String) = token.removeSurrounding("\"").removeSurrounding("'")
 
     /**
-     * 管道上游是不是被当成**命令码**读:
-     *  - 解释器没有脚本参数,或参数是 `-`/`-s`/`--stdin` → stdin 是命令来源
-     *  - shell 只要不带 `-c` 就从 stdin 读命令
-     * `… | python3 -m json.tool`、`… | python3 fmt.py`、`… | sh -c 'echo hi'` 都不算。
+     * ¿Se considera la aguas arriba del oleoducto?**código de comando**leer:
+     *  - El intérprete no tiene argumentos de guión.,o el parámetro es `-`/`-s`/`--stdin` → stdin es la fuente del comando
+     *  - shell Mientras no lo traigas `-c` Simplemente lea el comando de stdin
+     * `… | python3 -m json.tool`,`… | python3 fmt.py`,`… | sh -c 'echo hi'` Ninguno de ellos cuenta.
      */
     fun stdinIsCommandSource(args: List<String>, isShell: Boolean) = when {
         args.isEmpty() || args.first() in STDIN_CODE_ARGS -> true
@@ -243,7 +243,7 @@ internal object ShellCommandLex {
         else -> false
     }
 
-    /** 参数里是不是在拉远程内容(`eval "$(curl …)"` 这类判据用)。 */
+    /** ¿Los parámetros están extrayendo contenido remoto?(`eval "$(curl …)"` Este tipo de criterio se utiliza). */
     fun loadsRemoteContent(token: String) =
         token.contains("curl") || token.contains("wget") || token.contains("://")
 }

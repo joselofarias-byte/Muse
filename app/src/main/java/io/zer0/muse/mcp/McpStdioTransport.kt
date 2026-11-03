@@ -15,17 +15,17 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * P1-A: MCP stdio 传输 — 本地子进程（Node 系 MCP server）的 JSON-RPC 行协议。
+ * P1-A: MCP stdio transmisión — proceso hijo local (Node Protocolo JSON-RPC para servidor MCP).
  *
- * 职责边界：
- *  - 本类只负责「进程 + 行收发」；JSON-RPC 语义（id 匹配、通知分发）由 [McpClient] 处理。
- *  - 进程运行在应用内置 Node 运行时之上（[McpStdioCommand] 解析命令，
- *    [MuseRuntime.buildEnv] 构造环境），工作目录为 `filesDir/muse-runtime/mcp/<serverId>/`。
+ * Límites de responsabilidades:
+ *  - Esta clase solo es responsable del "proceso + envío y recepción de líneas";JSON-RPC Semántica (id coincidencia, distribución de notificaciones) por [McpClient] tratamiento.
+ *  - El proceso se ejecuta sobre el tiempo de ejecución de Nodo integrado de la aplicación ([McpStdioCommand] comando de análisis,
+ *    [MuseRuntime.buildEnv] entorno de construcción), el directorio de trabajo es `filesDir/muse-runtime/mcp/<serverId>/`.
  *
- * 消息格式：stdio 传输为「一行一条 JSON」（NDJSON）；stdout 中非 JSON 行被忽略。
+ * Formato del mensaje:stdio Transmitido como "JSON por línea" (NDJSON);stdout Las líneas que no son JSON se ignoran.
  *
- * @param onMessage 收到一条 JSON 消息（响应 / 通知 / server 请求均由调用方分流）。
- * @param onExit 子进程退出回调（主动 [stop] 时也会触发，调用方需自行区分）。
+ * @param onMessage Se recibe un mensaje JSON (la persona que llama descarga la respuesta/notificación/solicitud del servidor).
+ * @param onExit Devolución de llamada de salida del proceso hijo (activa [stop] También se activará cuando la persona que llama necesite distinguirlo por sí mismo).
  */
 class McpStdioTransport(
     private val config: McpServerConfig,
@@ -44,12 +44,12 @@ class McpStdioTransport(
 
     fun isAlive(): Boolean = process?.isAlive == true
 
-    /** 启动子进程并挂载 stdout/stderr 处理循环。返回是否启动成功。 */
+    /** Inicie un subproceso y monte el bucle de procesamiento stdout/stderr. Devuelve si el inicio fue exitoso. */
     suspend fun start(): Boolean = withContext(Dispatchers.IO) {
         val argv = when (val r = McpStdioCommand.resolve(config.command, context)) {
             is McpStdioCommand.Result.Ok -> r.argv
             is McpStdioCommand.Result.Error -> {
-                Logger.w(TAG, "[${config.name}] 命令解析失败: ${r.message}")
+                Logger.w(TAG, "[${config.name}] Falló el análisis del comando: ${r.message}")
                 return@withContext false
             }
         }
@@ -65,16 +65,16 @@ class McpStdioTransport(
             mountStdout(p)
             mountStderr(p)
             mountExit(p)
-            Logger.i(TAG, "[${config.name}] stdio 进程已启动: ${argv.firstOrNull()}")
+            Logger.i(TAG, "[${config.name}] stdio Proceso iniciado: ${argv.firstOrNull()}")
             true
         }.getOrElse {
-            Logger.e(TAG, "[${config.name}] stdio 启动失败: ${it.message}", it)
+            Logger.e(TAG, "[${config.name}] stdio El inicio falló: ${it.message}", it)
             stop()
             false
         }
     }
 
-    /** stdout 行循环 → JSON 消息分发。 */
+    /** stdout bucle de fila → JSON Distribución de mensajes. */
     private fun mountStdout(p: Process) {
         scope.launch(Dispatchers.IO) {
             val reader = p.inputStream.bufferedReader()
@@ -89,12 +89,12 @@ class McpStdioTransport(
                     }
                 }
             } catch (_: Exception) {
-                // 进程结束时 readLine 抛出/EOF,静默退出循环
+                // readLine se lanza cuando finaliza el proceso/EOF,Salir del bucle en silencio
             }
         }
     }
 
-    /** stderr → 日志（限流,避免服务端刷屏）。 */
+    /** stderr → Registro (límite actual,Evite deslizar la pantalla del lado del servidor). */
     private fun mountStderr(p: Process) {
         scope.launch(Dispatchers.IO) {
             var count = 0
@@ -111,18 +111,18 @@ class McpStdioTransport(
         }
     }
 
-    /** 进程退出监听（经 [onExit] 回调；主动 stop 由调用方区分）。 */
+    /** Monitoreo de salidas de proceso (vía [onExit] devolución de llamada; parada activa distinguida por el llamante). */
     private fun mountExit(p: Process) {
         scope.launch(Dispatchers.IO) {
             val code = runCatching { p.waitFor() }.getOrDefault(-1)
-            // 仅当当前进程仍是本实例时回调（防止旧进程退出影响重启后的新进程）
+            // Devolución de llamada solo cuando el proceso actual sigue siendo esta instancia (para evitar que la salida del proceso anterior afecte al nuevo proceso después del reinicio)
             if (process === p) {
                 onExit(code)
             }
         }
     }
 
-    /** 发送一行 JSON（线程安全；进程不可用时返回 false）。 */
+    /** Envía una línea de JSON (seguro para subprocesos; devuelve falso si el proceso no está disponible). */
     fun send(json: String): Boolean {
         val w = writer ?: return false
         return runCatching {
@@ -133,12 +133,12 @@ class McpStdioTransport(
             }
             true
         }.getOrElse {
-            Logger.w(TAG, "[${config.name}] stdin 写入失败: ${it.message}")
+            Logger.w(TAG, "[${config.name}] stdin Error de escritura: ${it.message}")
             false
         }
     }
 
-    /** 停止子进程（幂等）。 */
+    /** Detener el proceso hijo (idempotente). */
     fun stop() {
         runCatching { writer?.close() }
         writer = null

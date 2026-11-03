@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">中文</a> · <a href="README_EN.md">English</a> · <b>日本語</b> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
+  <a href="README.md">Español</a> · <a href="README_EN.md">English</a> · <b>日本語</b> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
   <a href="#ダウンロード">ダウンロード</a> ·
   <a href="#クイックスタート">クイックスタート</a> ·
   <a href="#機能一覧">機能一覧</a> ·
-  <a href="用户手册.md">ユーザーマニュアル（中国語）</a> ·
+  <a href="manual-de-usuario.md">ユーザーマニュアル（中国語）</a> ·
   <a href="#オープンソース">オープンソース</a>
 </p>
 
@@ -103,7 +103,7 @@ Muse がやるのは 4 つです：
 2. **会話を始める** — ホームに戻って最初のメッセージを送ります。記憶はこの瞬間から積み上がり始めます。モデルを変えてもセッションを変えても、あなたを覚えています。
 3. **必要に応じてシステム機能を解放する（任意）** — 「実際に動かしたい」場合は **設定 → 権限設定ウィザード** を開き、案内に従ってアクセシビリティ / Shizuku / Root / Termux のうち必要なチャネルを有効にします。各ステップに検出とテストの入口があります。
 
-> より詳しい使い方（各種ジェスチャーや隠れた操作を含む）は [ユーザーマニュアル（中国語）](用户手册.md)、またはアプリ内の **設定 → 使い方チュートリアル** を参照してください。
+> より詳しい使い方（各種ジェスチャーや隠れた操作を含む）は [ユーザーマニュアル（中国語）](manual-de-usuario.md)、またはアプリ内の **設定 → 使い方チュートリアル** を参照してください。
 
 ## なぜ Muse なのか
 
@@ -321,7 +321,7 @@ python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*
 
 プロジェクトへの参加を歓迎します：
 
-- [コントリビューションガイド](CONTRIBUTING.md) · [セキュリティポリシー](SECURITY.md) · [UI コンポーネントライブラリ保守規約（中国語）](UI组件库维护规范.md)
+- [コントリビューションガイド](CONTRIBUTING.md) · [セキュリティポリシー](SECURITY.md) · [UI コンポーネントライブラリ保守規約（中国語）](guia-biblioteca-ui.md)
 - PR を出す前に、ローカルのゲートスクリプトと単体テストを通してください。新しい文字列はすべての言語パックに同期が必要です
 - ゲートとリリースパイプラインのスクリプトは `ci/script/` 以下にあります。アプリ内チュートリアル（設定 → 使い方チュートリアル）も併せてメンテナンスしています
 

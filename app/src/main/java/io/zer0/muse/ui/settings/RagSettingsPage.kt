@@ -52,17 +52,17 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
 /**
- * v1.56: RAG 知识库检索配置页。
+ * v1.56: RAG Página de configuración de búsqueda de la base de conocimientos.
  *
- * 配置项:
- *  - RAG 总开关(自动注入)
- *  - Embedding 来源(云端 API / 本地 ONNX)
- *  - 云端 Provider 选择(从已配置的 Provider 列表中选)
- *  - 云端 embedding 模型名
- *  - 检索 topK(1-10)
- *  - 相似度阈值(0.0-1.0)
- *  - 分块大小(100-2000 字符)
- *  - 分块重叠(0-200 字符)
+ * Elementos de configuración:
+ *  - RAG interruptor principal(inyección automática)
+ *  - Embedding Fuente(API en la nube/local ONNX)
+ *  - Selección de proveedor de nube(Seleccione de la lista de proveedores configurados)
+ *  - Nombre del modelo de incrustación en la nube
+ *  - Buscar topK(1-10)
+ *  - umbral de similitud(0.0-1.0)
+ *  - Tamaño del fragmento(100-2000 personaje)
+ *  - Trozos superpuestos(0-200 personaje)
  */
 @Composable
 fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
@@ -71,15 +71,15 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
     val embeddingService: io.zer0.muse.rag.EmbeddingService = koinInject()
     val config by settings.ragConfigFlow.collectAsStateWithLifecycle(initialValue = RagConfig())
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList<ProviderConfig>())
-    // 当前实际生效的 embedding 后端;null 表示还没跑过检索,此时不渲染状态卡
+    // El backend de inserción actualmente efectivo;null Indica que la búsqueda aún no se ha ejecutado,La tarjeta de estado no se muestra en este momento.
     val activeBackend by embeddingService.activeBackend.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    // P2-4: embedding 连通性测试状态
+    // P2-4: embedding Estado de la prueba de conectividad
     var embeddingTestRunning by remember { mutableStateOf(false) }
     var embeddingTestResult by remember { mutableStateOf<TestResult?>(null) }
 
-    // P2-7: ONNX 模型文件选择（SAF）。复制到应用私有目录，避免 SAF URI 授权过期。
+    // P2-7: ONNX Selección de archivo de modelo (SAF). Copie al directorio privado de la aplicación para evitar la caducidad de la autorización URI de SAF.
     val onnxPicker = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -105,8 +105,8 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
         }
     }
 
-    // 进页面就解析一次实际生效的后端:否则状态卡要等第一次检索才出现,
-    // 而降级原因恰恰是用户刚改完配置时最需要看见的。
+    // Al ingresar a la página, el backend real que entra en vigencia se analizará una vez.:De lo contrario, la tarjeta de estado no aparecerá hasta la primera recuperación.,
+    // El motivo de la degradación es exactamente lo que los usuarios más necesitan ver cuando acaban de cambiar la configuración.
     LaunchedEffect(
         config.embeddingSource,
         config.cloudProviderId,
@@ -116,19 +116,19 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
         resolveActiveBackendQuietly(embeddingService, config)
     }
 
-    // M-RAG1: 临时状态,避免每次 Slider/TextField 变更即写 DataStore,仅在松手(debounce)时保存
+    // M-RAG1: estado temporal,Evite escribir cada vez que cambie Slider/TextField DataStore,Sólo al soltar(debounce)guardar cuando
     var cloudModelTemp by remember(config.cloudModel) { mutableStateOf(config.cloudModel) }
     var topKTemp by remember(config.topK) { mutableStateOf(config.topK) }
     var thresholdTemp by remember(config.threshold) { mutableStateOf(config.threshold) }
     var chunkSizeTemp by remember(config.chunkSize) { mutableStateOf(config.chunkSize) }
     var chunkOverlapTemp by remember(config.chunkOverlap) { mutableStateOf(config.chunkOverlap) }
-    // v1.133: 高级检索临时状态
+    // v1.133: Búsqueda avanzada de estado temporal
     var mmrLambdaTemp by remember(config.mmrLambda) { mutableStateOf(config.mmrLambda) }
     var tokenBudgetTemp by remember(config.tokenBudget) { mutableStateOf(config.tokenBudget) }
-    // B4-02: 混合检索权重临时状态
+    // B4-02: Estado temporal del peso de recuperación híbrido
     var hybridBm25WeightTemp by remember(config.hybridBm25Weight) { mutableStateOf(config.hybridBm25Weight) }
     var hybridVectorWeightTemp by remember(config.hybridVectorWeight) { mutableStateOf(config.hybridVectorWeight) }
-    // TextField 无 onValueChangeFinished,用 debounce 保存
+    // TextField Ninguno onValueChangeFinished,Ahorra con rebote
     LaunchedEffect(cloudModelTemp) {
         delay(300)
         if (cloudModelTemp != config.cloudModel) {
@@ -144,7 +144,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
     }
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_rag_page_title), onBack = onBack) {
-        // ── 总开关 ──
+        // ── interruptor principal ──
         item { SectionLabel(stringResource(R.string.settings_rag_injection_section)) }
         item {
             SettingsGroup {
@@ -160,7 +160,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 会话附件检索(从实验性转正;默认开) ──
+        // ── Recuperación de archivos adjuntos de sesión(De experimental a regular;Activado de forma predeterminada) ──
         item { SectionLabel(stringResource(R.string.settings_rag_attachment_section)) }
         item {
             SettingsGroup {
@@ -176,7 +176,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── Embedding 来源 ──
+        // ── Embedding Fuente ──
         item { SectionLabel(stringResource(R.string.settings_rag_embedding_source_section)) }
         item {
             SettingsGroup {
@@ -196,14 +196,14 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     icon = MuseIcons.cloudOff,
                     title = stringResource(R.string.settings_rag_local_keyword),
                     subtitle = stringResource(R.string.settings_rag_local_keyword_subtitle),
-                    // v1.x: LOCAL 与 LOCAL_KEYWORD(默认离线关键词)均视为"本地"选中态,
-                    // 未选择时(默认 LOCAL_KEYWORD)也应显示为已选,不再出现"两个都不选中"
+                    // v1.x: LOCAL con LOCAL_KEYWORD(Palabras clave sin conexión predeterminadas)son considerados como"locales"Estado seleccionado,
+                    // Cuando no está seleccionado(Predeterminado LOCAL_KEYWORD)También debería aparecer como seleccionado.,Nunca vuelvas a aparecer"No seleccione ninguno"
                     selected = config.embeddingSource != RagConfig.EmbeddingSource.CLOUD,
                     onClick = {
                         scope.launch {
                             settings.saveRagConfig(
-                                // 同时清空云端字段:否则历史上配过云端的用户在一次性迁移后会被判回 CLOUD,
-                                // 「本地关键词」永远读不出来。
+                                // Limpia también los campos de nubes.:De lo contrario, los usuarios que se hayan configurado con la nube en el historial serán devueltos después de una migración única. CLOUD,
+                                // Las "palabras clave locales" nunca se pueden leer.
                                 config.copy(
                                     embeddingSource = RagConfig.EmbeddingSource.LOCAL_KEYWORD,
                                     cloudProviderId = "",
@@ -216,17 +216,17 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 当前实际生效的 embedding 后端 ──
-        // 云端配置失效时 EmbeddingService 会回落本地关键词(语义检索能力下降),
-        // 这条降级必须显示给用户,不能只留在日志里。
+        // ── El backend de inserción actualmente efectivo ──
+        // Cuando falla la configuración de la nube, EmbeddingService recurrirá a palabras clave locales.(Disminución de la capacidad de recuperación semántica.),
+        // Esta degradación debe mostrarse al usuario.,No puedes simplemente dejarlo en el registro.
         if (activeBackend != null) {
             item { SectionLabel(stringResource(R.string.settings_rag_active_backend_section)) }
             item { ActiveBackendCard(activeBackend) }
         }
 
-        // ── P2-7: 本地 ONNX 模型选择（非 CLOUD 模式显示）──
-        // 审计报告: RagConfig.localModelPath 在 ui/ 目录 0 命中，普通用户永远配不了
-        // ONNX 模型，LOCAL 模式恒降级到 LOCAL_KEYWORD（512 维哈希词频，非语义检索）。
+        // ── P2-7: Selección de modelo ONNX nativo (visualización en modo no NUBE)──
+        // Informe de auditoría: RagConfig.localModelPath Presione en el directorio ui/ 0, los usuarios normales nunca podrán coincidir
+        // ONNX modelo,LOCAL El modo se degrada permanentemente a LOCAL_KEYWORD (512 Frecuencia de palabras dihash, recuperación no semántica).
         if (config.embeddingSource != RagConfig.EmbeddingSource.CLOUD) {
             item { SectionLabel(stringResource(R.string.settings_rag_onnx_section)) }
             item {
@@ -284,7 +284,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 云端配置(仅 CLOUD 模式显示)──
+        // ── Configuración de la nube(Sólo se muestra en modo NUBE)──
         if (config.embeddingSource == RagConfig.EmbeddingSource.CLOUD) {
             item { SectionLabel(stringResource(R.string.settings_rag_cloud_provider_section)) }
             item {
@@ -347,7 +347,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                 }
             }
 
-            // 模型名输入
+            // Entrada del nombre del modelo
             item { SectionLabel(stringResource(R.string.settings_rag_embedding_model_section)) }
             item {
                 SettingsGroup {
@@ -362,7 +362,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         MuseTextField(
-                            // M-RAG1: 绑定临时状态,由 LaunchedEffect debounce 后写 DataStore
+                            // M-RAG1: Vincular estado temporal,Publicado por rebote de LaunchedEffect DataStore
                             value = cloudModelTemp,
                             onValueChange = { v ->
                                 cloudModelTemp = v
@@ -394,18 +394,18 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
                         )
-                        // P2-3（审计报告）: 不再强行过滤 Provider 列表 —— 中转站到底是否
-                        // 提供 embedding，静态无法判定（同一个 Provider 下既有对话模型也有
-                        // embedding 模型）。改为明确提示 + 提供一键验证。
+                        // P2-3(informe de auditoría): No más filtrado forzado de la lista de proveedores —— es la estación de transferencia
+                        // Proporciona incrustación, que no se puede determinar estáticamente (hay modelos de diálogo y
+                        // embedding modelo). Cambie a un mensaje claro + proporcione verificación con un solo clic.
                         Text(
                             text = stringResource(R.string.settings_rag_embedding_provider_hint),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.padding(top = 6.dp),
                         )
-                        // P2-4（审计报告）: embedding / rerank 没有任何连通性测试。
-                        // 配错（模型名错、余额不足、Provider 不支持）只能等重建索引才发现，
-                        // 且失败信息只进 logcat。现在可一键 embed 一句 "ping" 并回显维度与耗时。
+                        // P2-4(informe de auditoría): embedding / rerank No hay pruebas de conectividad.
+                        // Falta de coincidencia (nombre de modelo incorrecto, saldo insuficiente,Provider No compatible) Solo puede averiguarlo después de reconstruir el índice.
+                        // Y la información de falla solo se ingresa en logcat. Ahora puedes insertar una oración con un solo clic. "ping" Y haga eco de las dimensiones y el consumo de tiempo.
                         Spacer(Modifier.height(12.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -478,14 +478,14 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 检索参数 ──
+        // ── Parámetros de recuperación ──
         item { SectionLabel(stringResource(R.string.settings_rag_search_params_section)) }
         item {
             SettingsGroup {
                 SettingsSliderRow(
                     icon = MuseIcons.stack,
                     title = stringResource(R.string.settings_rag_top_k),
-                    // M-RAG1: 绑定临时状态,仅在松手时写 DataStore
+                    // M-RAG1: Vincular estado temporal,Sólo escribe cuando te sueltes DataStore
                     value = topKTemp.toFloat(),
                     valueRange = 1f..10f,
                     steps = 8,
@@ -504,7 +504,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     icon = MuseIcons.gauge,
                     title = stringResource(R.string.settings_rag_similarity_threshold),
                     subtitle = stringResource(R.string.settings_rag_similarity_threshold_subtitle),
-                    // M-RAG1: 绑定临时状态,仅在松手时写 DataStore
+                    // M-RAG1: Vincular estado temporal,Sólo escribe cuando te sueltes DataStore
                     value = thresholdTemp,
                     valueRange = 0f..1f,
                     steps = 19,
@@ -521,7 +521,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── v1.0.47 P7-1: 文档解析器 ──
+        // ── v1.0.47 P7-1: analizador de documentos ──
         item { SectionLabel(stringResource(R.string.settings_rag_parser_section)) }
         item {
             SettingsGroup {
@@ -562,7 +562,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                 )
             }
         }
-        // CLOUD / MINERU endpoint 配置(仅选中时显示)
+        // CLOUD / MINERU endpoint Configuración(Mostrar solo cuando se selecciona)
         if (config.documentParserType == RagConfig.ParserType.CLOUD) {
             item {
                 SettingsGroup {
@@ -599,7 +599,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 分块参数 ──
+        // ── Parámetros de fragmentación ──
         item { SectionLabel(stringResource(R.string.settings_rag_chunk_params_section)) }
         item {
             SettingsGroup {
@@ -607,7 +607,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     icon = MuseIcons.layoutColumns,
                     title = stringResource(R.string.settings_rag_chunk_size),
                     subtitle = stringResource(R.string.settings_rag_chunk_size_subtitle),
-                    // M-RAG1: 绑定临时状态,仅在松手时写 DataStore
+                    // M-RAG1: Vincular estado temporal,Sólo escribe cuando te sueltes DataStore
                     value = chunkSizeTemp.toFloat(),
                     valueRange = 100f..2000f,
                     steps = 18,
@@ -626,7 +626,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     icon = MuseIcons.layoutColumns,
                     title = stringResource(R.string.settings_rag_chunk_overlap),
                     subtitle = stringResource(R.string.settings_rag_chunk_overlap_subtitle),
-                    // M-RAG1: 绑定临时状态,仅在松手时写 DataStore
+                    // M-RAG1: Vincular estado temporal,Sólo escribe cuando te sueltes DataStore
                     value = chunkOverlapTemp.toFloat(),
                     valueRange = 0f..200f,
                     steps = 19,
@@ -641,7 +641,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     },
                 )
                 SettingsGroupDivider()
-                // v1.133: Markdown 感知分块
+                // v1.133: Markdown fragmentación perceptiva
                 SettingsSwitchRow(
                     icon = MuseIcons.layoutColumns,
                     title = stringResource(R.string.settings_rag_markdown_aware),
@@ -652,7 +652,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     },
                 )
                 SettingsGroupDivider()
-                // v1.133: 按 token 分块
+                // v1.133: Trozo por ficha
                 SettingsSwitchRow(
                     icon = MuseIcons.layoutColumns,
                     title = stringResource(R.string.settings_rag_chunk_by_token),
@@ -665,11 +665,11 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── v1.133: 高级检索 ──
+        // ── v1.133: Búsqueda avanzada ──
         item { SectionLabel(stringResource(R.string.settings_rag_advanced_section)) }
         item {
             SettingsGroup {
-                // MMR 多样性
+                // MMR Diversidad
                 SettingsSliderRow(
                     icon = MuseIcons.affiliate,
                     title = stringResource(R.string.settings_rag_mmr_lambda),
@@ -688,7 +688,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     },
                 )
                 SettingsGroupDivider()
-                // 混合检索
+                // Búsqueda híbrida
                 SettingsSwitchRow(
                     icon = MuseIcons.swapHorizontal,
                     title = stringResource(R.string.settings_rag_hybrid),
@@ -742,7 +742,7 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
                     },
                 )
                 SettingsGroupDivider()
-                // Token 预算
+                // Token presupuesto
                 SettingsSliderRow(
                     icon = MuseIcons.wallet,
                     title = stringResource(R.string.settings_rag_token_budget),
@@ -763,8 +763,8 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
             }
         }
 
-        // ── 说明 ──
-        // v1.133: 多知识库管理入口(放在说明 section 标题之前,作为独立 section)
+        // ── Descripción ──
+        // v1.133: Portal de gestión de bases de conocimientos múltiples(Colocar antes del título de la sección de descripción.,como independiente section)
         item { SectionLabel(stringResource(R.string.settings_rag_manage_kbs)) }
         item {
             SettingsGroup {
@@ -810,13 +810,13 @@ fun RagSettingsPage(onBack: () -> Unit, onManageKbs: () -> Unit = {}) {
 }
 
 /**
- * 主动解析一次当前实际生效的 embedding 后端,让状态卡不必等第一次检索。
+ * Analizar activamente el backend de incrustación actualmente efectivo,Evite que la tarjeta de estado tenga que esperar a la primera recuperación.
  *
- * 已经解析过就直接返回,避免每次进页面都重建 Provider 实例(检索路径与设置页共用同一份缓存)。
- * 解析失败时只记日志,状态卡保持不渲染,不允许把设置页带崩。
+ * Si se ha analizado, se devolverá directamente.,Evite reconstruir la instancia del Proveedor cada vez que ingresa a la página(La ruta de búsqueda y la página de configuración comparten el mismo caché).
+ * Registrar solo cuando falla el análisis,La tarjeta de estado permanece sin procesar,No está permitido bloquear la página de configuración.
  *
- * LOCAL(ONNX)模式只建 Provider 实例并做文件是否存在检查,模型与 ONNX session 在首次 embed 时才加载,
- * 因此这里可以无条件调用。
+ * LOCAL(ONNX)El modo solo crea una instancia de Proveedor y verifica si el archivo existe.,El modelo y la sesión ONNX no se cargan hasta la primera inserción.,
+ * Por eso se puede llamar incondicionalmente aquí.
  */
 @Suppress("TooGenericExceptionCaught")
 private suspend fun resolveActiveBackendQuietly(
@@ -831,16 +831,16 @@ private suspend fun resolveActiveBackendQuietly(
     } catch (e: Exception) {
         Logger.w(
             "RagSettingsPage",
-            "解析 embedding 后端失败(source=${config.embeddingSource}): ${e.message ?: e::class.java.simpleName}",
+            "No se pudo analizar el backend incrustado(source=${config.embeddingSource}): ${e.message ?: e::class.java.simpleName}",
         )
     }
 }
 
 /**
- * 「当前实际在用哪个 embedding 后端」状态卡。
+ * Tarjeta de estado "Qué backend de inserción se está utilizando actualmente".
  *
- * 主行是后端显示名 + 模型名;降级时追加一行原因(缺原因时用资源里的兜底文案)。
- * [state] 为 null 时整块不渲染。
+ * La línea principal es el nombre para mostrar del backend + nombre del modelo.;Agregue una línea de razones al bajar de categoría(Cuando falten motivos, utilizar la copia de seguridad en los recursos.).
+ * [state] Cuando es nulo, no se representa todo el bloque.
  */
 @Composable
 private fun ActiveBackendCard(state: io.zer0.muse.rag.EmbeddingService.BackendState?) {
@@ -905,8 +905,8 @@ private fun EmbeddingSourceOption(
 }
 
 /**
- * v1.0.47 P7-1: endpoint 输入行(用于 CLOUD/MINERU 解析器配置)。
- * 用 debounce 保存(与 cloudModel 一致),避免每次按键写 DataStore。
+ * v1.0.47 P7-1: endpoint línea de entrada(para la configuración del analizador CLOUD/MINERU).
+ * Ahorra con rebote(Consistente con el modelo de nube),Evite escribir en el DataStore cada vez que se presiona una tecla.
  */
 @Composable
 private fun EndpointInputRow(
@@ -942,5 +942,5 @@ private fun EndpointInputRow(
     }
 }
 
-/** P2-4: embedding 测试结果（成功/失败 + 可读消息）。 */
+/** P2-4: embedding Resultado de la prueba (exitoso)/Fallo + mensaje legible). */
 private data class TestResult(val ok: Boolean, val message: String)

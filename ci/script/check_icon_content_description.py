@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-check_icon_content_description.py — 交互图标语义检查。
+check_icon_content_description.py — Comprobación semántica de iconos interactivos.
 
-扫描 ui/ 目录，粗略识别“可点击容器内的 Icon 却没有 contentDescription”的情况：
-  - 在 contentDescription = null 上方 8 行内出现 IconButton / clickable / combinedClickable
+Escanee el directorio ui/ e identifíquelo aproximadamente“El icono en el contenedor en el que se puede hacer clic no es contentDescription”situación:
+  - en contentDescription = null Aparece dentro de las 8 líneas anteriores IconButton / clickable / combinedClickable
     / toggleable / selectable
-  - 该窗口内没有其它 contentDescription = 赋值（避免父级已提供语义的误报）
+  - No hay nada más en esta ventana. contentDescription = Tarea (para evitar falsos positivos que el padre haya proporcionado semántica)
 
-Baseline 机制：存量放过、新增拦截、只降不升。
+Baseline Mecanismo: abandonar las existencias existentes, agregar nuevas intercepciones, solo disminuir pero no aumentar.
 
-已知局限：
-  - 不是 AST 级分析，跨多行的点击容器可能漏报或误报
-  - 带语义的父级如果离 Icon 超过 8 行仍会误报，需人工复核
+Limitaciones conocidas:
+  - No es un análisis de nivel AST; es posible que se omitan contenedores de clics que abarcan varias filas o que se obtengan falsos positivos.
+  - Si el padre con semántica está a más de 8 líneas del ícono, aún se informará falsamente y requerirá revisión manual.
 
-用法：
+Uso:
   py -3 ci/script/check_icon_content_description.py
   py -3 ci/script/check_icon_content_description.py --update-baseline
 """
@@ -84,11 +84,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# icon_content_description baseline — 交互图标语义存量清单",
-        "# 格式: <file>: <违规数>;新增或上升都会失败,只允许下降",
-        "# 清理存量后运行: py -3 ci/script/check_icon_content_description.py --update-baseline",
+        "# icon_content_description baseline — Inventario semántico de iconos interactivos",
+        "# Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender",
+        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_icon_content_description.py --update-baseline",
         "#",
-        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
+        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
     ]
     for file, hits in sorted(violations.items()):
         lines.append(f"{file}: {len(hits)}")
@@ -96,7 +96,7 @@ def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="交互图标语义检查")
+    parser = argparse.ArgumentParser(description="Comprobación semántica de iconos interactivos")
     parser.add_argument("--baseline", type=Path, default=BASELINE_PATH)
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--verbose", action="store_true")
@@ -107,11 +107,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline 已更新: {args.baseline}")
-        print(f"  共 {total} 处,分布 {len(violations)} 个文件")
+        print(f"baseline actualizado: {args.baseline}")
+        print(f"  total {total} en,Distribución {len(violations)} archivos")
         return 0
 
-    print(f"[icon-cd] 扫描 ui/ 目录: {total} 处交互图标缺 contentDescription,分布 {len(violations)} 个文件")
+    print(f"[icon-cd] Escanee el directorio ui/: {total} Falta el icono interactivo contentDescription,Distribución {len(violations)} archivos")
 
     if args.verbose:
         for file, hits in sorted(violations.items()):
@@ -128,26 +128,26 @@ def main() -> int:
         current = len(hits)
         allowed = baseline.get(file, 0)
         if current > allowed:
-            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {current - allowed})")
+            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {current - allowed})")
         elif current < allowed:
             improved.append(f"  {file}: {allowed} → {current}")
     cleaned = [f for f in baseline if f not in violations]
     for f in cleaned:
-        improved.append(f"  {f}: 已清零")
+        improved.append(f"  {f}: Borrado")
 
     if improved:
-        print("[icon-cd] 有改善,建议 --update-baseline 收紧:")
+        print("[icon-cd] hay mejora,Se recomienda ajustar --update-baseline:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[icon-cd] FAILED — 新增交互图标缺 contentDescription:")
+        print("[icon-cd] FAILED — Falta el nuevo ícono interactivo contentDescription:")
         for line in failures:
             print(line)
-        print("修复方式: 在可点击 Icon 上补 contentDescription;装饰性图标在父级提供语义")
+        print("como solucionarlo: Agregar al icono en el que se puede hacer clic contentDescription;Los iconos decorativos proporcionan semántica a nivel principal")
         return 1
 
-    print(f"[icon-cd] PASS — 无新增交互图标语义缺失 (存量 {total} 处,按 baseline 豁免)")
+    print(f"[icon-cd] PASS — No hay nuevos íconos interactivos ni falta semántica (Valores {total} en,Exento por línea de base)")
     return 0
 
 

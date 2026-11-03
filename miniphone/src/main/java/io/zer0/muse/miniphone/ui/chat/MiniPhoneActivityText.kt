@@ -3,9 +3,9 @@ package io.zer0.muse.miniphone.ui.chat
 import io.zer0.muse.miniphone.api.MpActivityKind
 
 /**
- * 生成期间那一行文案。
+ * Esa línea de copia durante la generación.
  *
- * 只按 [MpActivityKind] 取句子:宿主不交出工具名、参数与返回值,这里也没有任何可以显示它们的地方。
+ * Sólo presione [MpActivityKind] tomar sentencia:El anfitrión no entrega el nombre de la herramienta, los parámetros ni el valor de retorno.,Tampoco hay nada aquí para mostrarlos.
  */
 internal object MiniPhoneActivityText {
 
@@ -18,10 +18,10 @@ internal object MiniPhoneActivityText {
         MpActivityKind.OTHER -> OTHER
     }
 
-    private const val SEARCHING: String = "对方正在翻找…"
-    private const val REMEMBERING: String = "对方想起了点什么…"
-    private const val CALENDAR: String = "对方在看日程…"
-    private const val WEATHER: String = "对方看了眼窗外…"
-    private const val NOTES: String = "对方翻着笔记…"
-    private const val OTHER: String = "对方正在忙别的…"
+    private const val SEARCHING: String = "La otra parte está hurgando…"
+    private const val REMEMBERING: String = "La otra parte recordó algo.…"
+    private const val CALENDAR: String = "La otra parte está mirando el horario.…"
+    private const val WEATHER: String = "La otra parte miró por la ventana.…"
+    private const val NOTES: String = "La otra parte hojeó las notas.…"
+    private const val OTHER: String = "La otra parte está ocupada con otras cosas.…"
 }

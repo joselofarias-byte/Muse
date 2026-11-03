@@ -37,9 +37,9 @@ class ChatScreenSessionScopeWiringTest {
         assertFalse(source.contains("LaunchedEffect(state.hasDraft, state.currentSessionId)"))
         assertFalse(source.contains("LaunchedEffect(state.targetMessageId, state.currentSessionId)"))
         assertTrue(source.contains("LaunchedEffect(effectiveChatSessionId(state))"))
-        // v2.6.7: 草稿恢复到不弹 toast、不显示标签 —— 用户要求“不要任何提示，把输入框持久化就行”。
-        // 原来这里断言存在 LaunchedEffect(state.hasDraft, effectiveChatSessionId(state))，
-        // 那条 toast 已按要求删除，断言随之反转为“不该出现”。
+        // v2.6.7: Restaurar borradores para que no se muestren como brindis ni se muestren etiquetas —— Requisitos del usuario“No se requieren indicaciones, simplemente haga que el cuadro de entrada sea persistente.”.
+        // Resulta que aquí hay una afirmación. LaunchedEffect(state.hasDraft, effectiveChatSessionId(state)),
+        // El brindis se eliminó según lo solicitado y la afirmación se revirtió a“no debería haber aparecido”.
         assertFalse(
             source.contains("LaunchedEffect(state.hasDraft, effectiveChatSessionId(state))"),
         )

@@ -11,39 +11,39 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * v1.0.1: Provider 错误归一化 sealed class。
+ * v1.0.1: Provider Clase sellada de normalización de errores.
  *
- * 用类型安全的错误分类替代字符串 contains 匹配,供 ChatViewModel / ChatService /
- * Provider 各层统一消费。
+ * La cadena de reemplazo contiene coincidencias con clasificación de error de tipo seguro,suministro ChatViewModel / ChatService /
+ * Provider Todos los niveles consumen uniformemente.
  *
- * 设计原则:
- *  - 每种错误类型携带最小必要信息(code / retryAfterSec / cause)
- *  - [isRetryable] 集中表达"是否值得重试"的策略,调用方不再自行推理
- *  - [Retry-After] 头解析下沉到构造时,而非各调用方重复解析
+ * principios de diseño:
+ *  - Cada tipo de error lleva la información mínima necesaria.(code / retryAfterSec / cause)
+ *  - [isRetryable] Centrarse en la expresión"¿Vale la pena intentarlo de nuevo?"estrategia,La persona que llama ya no razona por sí sola
+ *  - [Retry-After] El análisis del encabezado se hunde hasta el tiempo de construcción,En lugar de realizar un análisis repetido para cada persona que llama
  *
- * 类型语义:
- *  - [Network]: IOException / 超时 / 连接断开,可重试
- *  - [RateLimit]: 429 / RESOURCE_EXHAUSTED,可重试;优先用 Retry-After 头
- *  - [ServerError]: 5xx(含 Anthropic 529 overloaded),可重试
- *  - [AuthError]: 401 / 403,不可重试(凭证问题)
- *  - [InvalidRequest]: 400 / 413 / 422 / 404,不可重试(请求本身有问题,重试无意义)
- *  - [Cancelled]: 协程或 AbortSignal 取消,不可重试
- *  - [Unknown]: 未识别的错误,默认不可重试(避免无限重试未知问题)
+ * tipo semántica:
+ *  - [Network]: IOException / Tiempo de espera/Desconexión,Se puede volver a intentar
+ *  - [RateLimit]: 429 / RESOURCE_EXHAUSTED,Se puede volver a intentar;Prefiero usar el encabezado Retry-After
+ *  - [ServerError]: 5xx(Contiene Anthropic 529 overloaded),Se puede volver a intentar
+ *  - [AuthError]: 401 / 403,No reintentable(Problemas de credenciales)
+ *  - [InvalidRequest]: 400 / 413 / 422 / 404,No reintentable(Hay algún problema con la solicitud en sí.,No tiene sentido volver a intentarlo)
+ *  - [Cancelled]: Cancelación de rutina o cancelación de señal de aborto,No reintentable
+ *  - [Unknown]: Error no reconocido,No reintentar de forma predeterminada(Evite problemas desconocidos con reintentos infinitos)
  */
 sealed class ProviderError {
-    /** HTTP 状态码(若来自 HTTP 响应),null 表示非 HTTP 错误(如纯 IOException)。 */
+    /** HTTP código de estado(Si de la respuesta HTTP),null Indica un error no HTTP(Ru Chun IOException). */
     abstract val httpCode: Int?
 
-    /** 是否值得重试(由具体类型决定)。 */
+    /** ¿Vale la pena intentarlo de nuevo?(Depende del tipo específico). */
     abstract val isRetryable: Boolean
 
-    /** 人类可读的错误消息(含状态码分类 + body 摘要)。 */
+    /** Mensaje de error legible por humanos(Contiene clasificación de código de estado + resumen del cuerpo.). */
     abstract val displayMessage: String
 
-    /** 原始 throwable(可选,用于日志和调试)。 */
+    /** originales throwable(Opcional,para iniciar sesión y depurar). */
     open val cause: Throwable? = null
 
-    /** 网络异常 / 超时 / 连接断开。 */
+    /** Excepción/tiempo de espera/desconexión de red. */
     data class Network(
         override val displayMessage: String,
         override val cause: Throwable? = null,
@@ -53,10 +53,10 @@ sealed class ProviderError {
     }
 
     /**
-     * 限流(429 / RESOURCE_EXHAUSTED)。
+     * Limitación de corriente(429 / RESOURCE_EXHAUSTED).
      *
-     * @param retryAfterSec Retry-After 头解析出的秒数,null 表示未提供。
-     *   重试时应优先使用此值,缺省时用指数退避。
+     * @param retryAfterSec Retry-After El número de segundos analizados desde el encabezado.,null Indica no proporcionado.
+     *   Este valor se debe utilizar con preferencia al volver a intentarlo.,El valor predeterminado es el retroceso exponencial.
      */
     data class RateLimit(
         override val httpCode: Int? = 429,
@@ -67,7 +67,7 @@ sealed class ProviderError {
         override val isRetryable: Boolean = true
     }
 
-    /** 服务器错误(500-599,含 Anthropic 529 overloaded)。 */
+    /** error del servidor(500-599,Contiene Anthropic 529 overloaded). */
     data class ServerError(
         override val httpCode: Int,
         override val displayMessage: String,
@@ -76,7 +76,7 @@ sealed class ProviderError {
         override val isRetryable: Boolean = true
     }
 
-    /** 认证/权限错误(401 / 403),不可重试。 */
+    /** Certificación/error de permiso(401 / 403),No es posible volver a intentarlo. */
     data class AuthError(
         override val httpCode: Int? = null,
         override val displayMessage: String,
@@ -85,7 +85,7 @@ sealed class ProviderError {
         override val isRetryable: Boolean = false
     }
 
-    /** 请求参数错误(400 / 422 / 404),不可重试。 */
+    /** Error de parámetro de solicitud(400 / 422 / 404),No es posible volver a intentarlo. */
     data class InvalidRequest(
         override val httpCode: Int? = null,
         override val displayMessage: String,
@@ -94,7 +94,7 @@ sealed class ProviderError {
         override val isRetryable: Boolean = false
     }
 
-    /** 取消(协程或 AbortSignal),不可重试。 */
+    /** Cancelar(corrutina o AbortSignal),No es posible volver a intentarlo. */
     data class Cancelled(
         override val displayMessage: String = "cancelled",
         override val cause: Throwable? = null,
@@ -103,7 +103,7 @@ sealed class ProviderError {
         override val isRetryable: Boolean = false
     }
 
-    /** 未识别错误,默认不可重试。 */
+    /** error no reconocido,De forma predeterminada, no es posible volver a intentarlo. */
     data class Unknown(
         override val httpCode: Int? = null,
         override val displayMessage: String,
@@ -113,13 +113,13 @@ sealed class ProviderError {
     }
 
     /**
-     * v2.6.8（用户反馈）: 额度/余额不足（HTTP 402 与各家等价错误码）。
+     * v2.6.8(comentarios de los usuarios): Cuota/Saldo insuficiente (HTTP 402 Códigos de error equivalentes con cada empresa).
      *
-     * 为什么不归到 [InvalidRequest]：402 与请求参数毫无关系，用户看到的提示
-     * 却是“参数、上下文长度或模型能力限制不符合要求”，于是去反复调参数、换模型，
-     * 而真正要做的是充值。这是一个会把用户带偏的错误引导。
+     * ¿Por qué no regresar? [InvalidRequest]:402 No tiene nada que ver con los parámetros de la solicitud. El mensaje que ve el usuario es
+     * pero lo es“Los parámetros, la longitud del contexto o las restricciones de capacidad del modelo no cumplen con los requisitos”, así que ajusté repetidamente los parámetros y cambié los modelos,
+     * Lo que realmente necesitas hacer es recargar. Esta es una guía equivocada que desviará a los usuarios.
      *
-     * 不可重试：余额不会因为重试而恢复；重试只会白耗时间。
+     * No reintentable: el saldo no se restablecerá al volver a intentarlo; volver a intentarlo sólo será una pérdida de tiempo.
      */
     data class InsufficientQuota(
         override val httpCode: Int? = 402,
@@ -133,12 +133,12 @@ sealed class ProviderError {
         private const val TAG = "ProviderError"
 
         /**
-         * v2.6.8: 判断错误体是否是“额度 / 余额不足”。
+         * v2.6.8: Determinar si el cuerpo del error es“Cuota/saldo insuficiente”.
          *
-         * 各家写法不一，用户截图里这次是 OpenAI 风格的：
+         * Cada empresa escribe de diferentes maneras. La captura de pantalla del usuario esta vez es en estilo OpenAI:
          *   `You exceeded your current quota ... type: insufficient_quota`
-         * 也有中转站用 `余额不足` / `quota exceeded` / `credit` 等。
-         * 只用于把错误归入 [ProviderError.InsufficientQuota]，不改变任何重试策略阈值。
+         * También se utiliza como estación de transferencia. `Saldo insuficiente` / `quota exceeded` / `credit` Esperar.
+         * Sólo se utiliza para clasificar los errores en [ProviderError.InsufficientQuota], no cambia ningún umbral de política de reintento.
          */
         fun isInsufficientQuotaBody(body: String?): Boolean {
             if (body.isNullOrBlank()) return false
@@ -148,19 +148,19 @@ sealed class ProviderError {
                 lower.contains("exceeded your current quota") ||
                 lower.contains("quota exceeded") ||
                 lower.contains("billing") ||
-                lower.contains("余额不足") ||
-                lower.contains("额度不足") ||
-                lower.contains("余额已用尽")
+                lower.contains("Saldo insuficiente") ||
+                lower.contains("Cuota insuficiente") ||
+                lower.contains("Saldo agotado")
         }
 
         /**
-         * v2.5.3 (P2-3): 判断一条错误详情是否为「思考块绑定到不同会话」类 400。
+         * v2.5.3 (P2-3): Determine si los detalles de un error son de clase 400 "Bloque de pensamiento vinculado a una sesión diferente".
          *
-         * Claude 的 thinking 块签名绑定会话前缀；用户编辑历史后，“拿旧思考块 + 新上下文”
-         * 发给上游会返回 400（典型文案：“Thinking block is bound to a different conversation”、
-         * “Invalid signature”、“signature ... not valid” 等）。这类错误可自愈：剔除对应思考块后重试一次。
+         * Claude La firma del bloque de pensamiento vincula el prefijo de sesión; después de que el usuario edita el historial,“Tome viejos bloques de pensamiento + nuevo contexto”
+         * Enviarlo al upstream devolverá 400 (copia típica:“Thinking block is bound to a different conversation”,
+         * “Invalid signature”,“signature ... not valid” etcétera). Este tipo de error se cura solo: elimina el bloque de pensamiento correspondiente y vuelve a intentarlo.
          *
-         * 只匹配这一种诊断，其他 400（参数错、鉴权等）照常上抛。
+         * Solo se coincide con este tipo de diagnóstico y se generarán otros 400 (parámetros incorrectos, autenticación, etc.) como de costumbre.
          */
         fun isThinkingBlockBondError(body: String?): Boolean {
             if (body.isNullOrBlank()) return false
@@ -179,24 +179,24 @@ sealed class ProviderError {
         }
 
         /**
-         * 从 HTTP 状态码 + body + throwable 归一化为 [ProviderError]。
+         * Normalizado desde código de estado HTTP + cuerpo + arrojable a [ProviderError].
          *
-         * 优先级:
-         *  1. throwable 是 IOException → [Network]
+         * prioridad:
+         *  1. throwable si IOException → [Network]
          *  2. code == 401 / 403 → [AuthError]
          *  3. code == 400 / 413 / 422 / 404 → [InvalidRequest]
-         *  4. code == 429 → [RateLimit](解析 Retry-After 头)
+         *  4. code == 429 → [RateLimit](Analizando el encabezado Reintentar después)
          *  5. code in 500..599 → [ServerError]
-         *  6. code == null 且 throwable != null → [Network] 或 [Unknown]
-         *  7. 其他 → [Unknown]
+         *  6. code == null y throwable != null → [Network] o [Unknown]
+         *  7. Otros → [Unknown]
          *
-         * @param code HTTP 状态码,null 表示非 HTTP 错误
-         * @param body 错误响应 body(已截断)
-         * @param retryAfterSec Retry-After 头秒数(由调用方解析后传入,避免本类依赖 OkHttp)
-         * @param throwable 原始异常
+         * @param code HTTP código de estado,null Indica un error no HTTP
+         * @param body respuesta de error body(truncado)
+         * @param retryAfterSec Retry-After primeros segundos(Pasado después de ser analizado por la persona que llama,Evita este tipo de dependencia OkHttp)
+         * @param throwable excepción original
          */
         fun from(code: Int?, body: String, retryAfterSec: Int? = null, throwable: Throwable? = null): ProviderError = when {
-            // IOException 优先归为 Network(即使 code 非 null,如 SSE 中断后 IOException)。
+            // IOException priorizar a Network(Incluso si el código no es null,Si se interrumpe SSE IOException).
             throwable is IOException ->
                 Network(
                     displayMessage = safeErrorDetail(throwable.message.orEmpty()) ?: "network error",
@@ -212,10 +212,10 @@ sealed class ProviderError {
         }
 
         private fun fromHttpStatus(code: Int, body: String, retryAfterSec: Int?): ProviderError = when {
-            // v2.6.8: 余额不足必须最先判。
-            // 理由：部分中转站把额度不足包在 403 里返回（用户截图里的真实文案就是
-            // “用户额度不足, 剩余额度: -0.08”），如果先判 401/403 就会归成 AuthError，
-            // 提示变成“API Key 无效”—— 又是一个把用户带偏的错误引导。
+            // v2.6.8: Primero se debe juzgar el saldo insuficiente.
+            // Motivo: algunas estaciones de transferencia devuelven una cuota insuficiente en 403 (la copia real en la captura de pantalla del usuario es
+            // “Cuota de usuarios insuficiente, saldo restante: -0.08”), si 401/403 se juzga primero, se clasificará como AuthError.
+            // El mensaje se convierte“API Key Inválido”—— Otra guía equivocada que desvía a los usuarios.
             code == 402 || isInsufficientQuotaBody(body) -> InsufficientQuota(
                 httpCode = code,
                 displayMessage = buildDisplayMessage(code, body, "insufficient quota"),
@@ -244,21 +244,21 @@ sealed class ProviderError {
         }
 
         /**
-         * 从 Throwable 归一化(无 HTTP 响应场景,如纯网络异常)。
+         * Normalizar desde Throwable(Sin escenario de respuesta HTTP,Como pura anomalía de la red.).
          */
         fun from(throwable: Throwable): ProviderError {
             return from(code = null, body = "", throwable = throwable)
         }
 
         /**
-         * 解析 Retry-After 头。
+         * Analice el encabezado Reintentar después.
          *
-         * RFC 7231 允许两种格式:
-         *  - 纯数字(秒):"120" → 120
-         *  - HTTP-date:"Wed, 21 Oct 2026 07:28:00 GMT" → 距该时间的秒数
+         * RFC 7231 Se permiten dos formatos:
+         *  - numeros puros(segundos):"120" → 120
+         *  - HTTP-date:"Wed, 21 Oct 2026 07:28:00 GMT" → El número de segundos desde este momento.
          *
-         * 日期形式按向上取整计算，避免把仍不足一秒的等待误判成已到期；过去的日期返回
-         * 0，表示服务端允许立即重试。解析失败仍返回 null，让调用方使用指数退避兜底。
+         * El formato de fecha se calcula redondeando hacia arriba para evitar errores de cálculo al esperar menos de un segundo como vencido; se devuelven fechas pasadas
+         * 0, indicando que el servidor permite un reintento inmediato. Si el análisis falla, se devolverá nulo, lo que permitirá a la persona que llama utilizar un retroceso exponencial.
          */
         fun parseRetryAfter(headerValue: String?): Int? {
             if (headerValue.isNullOrBlank()) return null
@@ -325,14 +325,14 @@ sealed class ProviderError {
 }
 
 /**
- * v1.0.1: Provider 异常基类,携带归一化的 [ProviderError]。
+ * v1.0.1: Provider Clase base de excepción,llevar normalizado [ProviderError].
  *
- * 各 Provider 在 HTTP 错误 / 解析失败时抛此异常的子类,上层 catch 后可直接取
- * [providerError] 字段做类型分支,无需字符串匹配。
+ * Cada proveedor genera una subclase de esta excepción cuando falla el análisis o los errores HTTP.,Se puede obtener directamente después de la captura en la capa superior.
+ * [providerError] Ramificación de tipo de campo,No se requiere coincidencia de cadenas.
  *
- * 注意:该异常仅用于"需要向上传递错误信息"的场景(如 completeText)。
- * 流式 streamChat 的错误通过 [ChatStreamEvent.Error] 传递,也应填充
- * [ChatStreamEvent.Error.providerError] 字段供消费方使用。
+ * Nota:Esta excepción sólo se utiliza para"Necesidad de pasar información de error hacia arriba."escena(Como por ejemplo completeText).
+ * Error en la transmisión de streamChat vía [ChatStreamEvent.Error] pasar,también debe llenarse
+ * [ChatStreamEvent.Error.providerError] Los campos son utilizados por los consumidores.
  */
 open class ProviderException(
     val providerError: ProviderError,
@@ -344,20 +344,20 @@ open class ProviderException(
 }
 
 /**
- * v1.0.1: ChatStreamEvent.Error 扩展字段,携带归一化的 [ProviderError]。
+ * v1.0.1: ChatStreamEvent.Error campos de extensión,llevar normalizado [ProviderError].
  *
- * 现有代码用 [ChatStreamEvent.Error.message] + [ChatStreamEvent.Error.throwable] 传递错误,
- * 上层用字符串 contains 判断类型,脆弱。新增 [providerError] 字段后,上层可直接
- * `event.providerError?.let { it is ProviderError.RateLimit }` 做类型分支。
+ * Para código existente [ChatStreamEvent.Error.message] + [ChatStreamEvent.Error.throwable] error de entrega,
+ * La capa superior usa cadenas que contienen para determinar el tipo.,Vulnerable. Nuevo [providerError] después del campo,La capa superior puede directamente
+ * `event.providerError?.let { it is ProviderError.RateLimit }` Escriba ramificación.
  *
- * 向后兼容:[providerError] 为可选字段,默认 null;现有调用方不传时行为不变。
+ * compatible con versiones anteriores:[providerError] es un campo opcional,Predeterminado null;El comportamiento no cambia cuando no se pasa la persona que llama existente.
  */
 val ChatStreamEvent.Error.providerError: ProviderError?
     get() {
-        // 优先从 throwable 提取(若 throwable 是 ProviderException)
+        // Extracto del arrojable primero.(si es arrojable ProviderException)
         val pe = (throwable as? ProviderException)?.providerError
         if (pe != null) return pe
-        // 兜底:从 message 字符串推断(兼容旧 Provider 未抛 ProviderException 的场景)
+        // Ten todo en cuenta:Inferido de la cadena del mensaje(Compatible con escenarios donde el antiguo proveedor no lanza ProviderException)
         return runCatching {
             inferFromMessage(message, throwable)
         }.getOrElse {
@@ -367,20 +367,20 @@ val ChatStreamEvent.Error.providerError: ProviderError?
     }
 
 /**
- * v1.0.1: 从错误消息字符串推断 [ProviderError](兜底路径)。
+ * v1.0.1: Inferido de la cadena del mensaje de error [ProviderError](camino sucio).
  *
- * 仅在 Provider 未抛 [ProviderException] 时使用,解析 message 中的关键字。
- * 保留向后兼容,新代码应直接构造 [ProviderException]。
+ * Sólo si el Proveedor no es lanzado [ProviderException] usado cuando,Analiza las palabras clave en el mensaje.
+ * Mantener la compatibilidad con versiones anteriores,El nuevo código debe construirse directamente [ProviderException].
  *
- * v1.0.1 (P4): 改为 public,供 ChatViewModel.classifyErrorType 使用,
- * 替代原字符串 contains 匹配。
+ * v1.0.1 (P4): Cambiar a public,Para uso de ChatViewModel.classifyErrorType,
+ * Reemplaza la cadena original con una coincidencia que contiene.
  *
- * v1.0.27 Phase 5-A: 现已不推荐使用,Provider 应直接抛 [ProviderException] 让类型路径
- * `(throwable as? ProviderException)?.providerError` 生效。保留作为向后兼容兜底,
- * 供未迁移的 Provider 使用。
+ * v1.0.27 Phase 5-A: Ahora en desuso,Provider Debe ser arrojado directamente [ProviderException] dejar escribir ruta
+ * `(throwable as? ProviderException)?.providerError` Tener un efecto. Reservado como alternativa para la compatibilidad con versiones anteriores,
+ * Para uso de proveedores que no han sido migrados.
  */
 @Deprecated(
-    "Provider 应直接抛 ProviderException,用 (throwable as? ProviderException)?.providerError 替代字符串推断",
+    "Provider Debe ser arrojado directamente ProviderException,usar (throwable as? ProviderException)?.providerError Inferencia de cadenas alternativa",
     ReplaceWith("(throwable as? ProviderException)?.providerError"),
 )
 fun inferFromMessage(message: String, throwable: Throwable?): ProviderError? {
@@ -389,7 +389,7 @@ fun inferFromMessage(message: String, throwable: Throwable?): ProviderError? {
     val msg = safeMessage.lowercase()
     return when {
         throwable is IOException ||
-            msg.contains("timeout") || msg.contains("network") || msg.contains("网络") ->
+            msg.contains("timeout") || msg.contains("network") || msg.contains("red") ->
             ProviderError.Network(safeMessage, throwable)
         msg.contains("401") || msg.contains("403") ||
             msg.contains("api key") || msg.contains("unauthorized") ->
@@ -401,32 +401,32 @@ fun inferFromMessage(message: String, throwable: Throwable?): ProviderError? {
             ProviderError.ServerError(httpCode = 529, displayMessage = safeMessage, cause = throwable)
         msg.contains("400") || msg.contains("422") || msg.contains("404") ->
             ProviderError.InvalidRequest(displayMessage = safeMessage, cause = throwable)
-        else -> null // 不强推断为 Unknown,让上层保留原行为
+        else -> null // No se infiere fuertemente que Unknown,Deje que la capa superior conserve el comportamiento original.
     }
 }
 
 /**
- * v1.0.27 Phase 5-A: 把 [ErrorCode] 映射到类型化的 [ProviderError]。
+ * v1.0.27 Phase 5-A: poner [ErrorCode] asignado a escrito [ProviderError].
  *
- * 用于激活 [ProviderException] 类型路径 — Provider 抛 [ProviderException] 后,
- * 消费端用 `(throwable as? ProviderException)?.providerError` 即可拿到强类型错误,
- * 不再需要 [inferFromMessage] 字符串解析。
+ * para activación [ProviderException] escriba la ruta — Provider tirar [ProviderException] después,
+ * Para uso del consumidor `(throwable as? ProviderException)?.providerError` Puede obtener errores tipográficos graves,
+ * ya no es necesario [inferFromMessage] Análisis de cadenas.
  *
- * [displayMessage] 保留原 [ErrorCode.toMessage] 字符串,向后兼容 —
- * 即便消费端仍走 inferFromMessage 路径,也能解析出对应类型。
+ * [displayMessage] Mantener original [ErrorCode.toMessage] cuerda,compatible con versiones anteriores —
+ * Incluso si el consumidor sigue tomando la ruta inferFromMessage,También se puede analizar el tipo correspondiente.
  *
- * 映射策略 (基于 ErrorCode 语义):
- *  - 请求/参数错误 → [ProviderError.InvalidRequest] (不可重试)
- *  - 认证/权限 → [ProviderError.AuthError] (不可重试)
- *  - 限流/资源耗尽 → [ProviderError.RateLimit] (可重试)
- *  - 服务端错误 → [ProviderError.ServerError] (可重试)
- *  - 网络/超时 → [ProviderError.Network] (可重试)
- *  - 其他 → [ProviderError.Unknown] (不可重试)
+ * Estrategia de mapeo (Basado en la semántica de ErrorCode):
+ *  - Solicitar/Error de parámetro → [ProviderError.InvalidRequest] (No reintentable)
+ *  - Certificación/Permisos → [ProviderError.AuthError] (No reintentable)
+ *  - Limitación de corriente/recursos agotados → [ProviderError.RateLimit] (Se puede volver a intentar)
+ *  - error del servidor → [ProviderError.ServerError] (Se puede volver a intentar)
+ *  - red/tiempo de espera → [ProviderError.Network] (Se puede volver a intentar)
+ *  - Otros → [ProviderError.Unknown] (No reintentable)
  */
 fun ErrorCode.toProviderError(vararg args: Any?): ProviderError {
     val message = toMessage(*args)
     return when (this) {
-        // 请求/参数错误 (不可重试)
+        // Solicitar/Error de parámetro (No reintentable)
         ErrorCode.NO_PROVIDER_CONFIGURED,
         ErrorCode.NO_MODEL_SELECTED,
         ErrorCode.INVALID_RESPONSE,
@@ -441,52 +441,52 @@ fun ErrorCode.toProviderError(vararg args: Any?): ProviderError {
         ErrorCode.MEMORY_TOKEN_BUDGET_INVALID,
         -> ProviderError.InvalidRequest(displayMessage = message)
 
-        // 认证错误 (不可重试)
+        // Error de autenticación (No reintentable)
         ErrorCode.AUTH_FAILED,
         ErrorCode.IMAGE_API_KEY_MISSING,
         ErrorCode.VERTEX_AI_TOKEN_FAILED,
         -> ProviderError.AuthError(displayMessage = message)
 
-        // 限流/资源耗尽 (可重试)
+        // Limitación de corriente/recursos agotados (Se puede volver a intentar)
         ErrorCode.RATE_LIMITED,
         ErrorCode.RESOURCE_EXHAUSTED,
         ErrorCode.IMAGE_RESPONSE_TOO_LARGE,
         ErrorCode.IMAGE_REFERENCE_TOO_LARGE,
         -> ProviderError.RateLimit(displayMessage = message)
 
-        // 服务端错误 (可重试)
+        // error del servidor (Se puede volver a intentar)
         ErrorCode.SERVICE_UNAVAILABLE,
         ErrorCode.OVERLOADED,
         ErrorCode.API_ERROR,
         -> ProviderError.ServerError(httpCode = 500, displayMessage = message)
 
-        // 网络/超时 (可重试)
+        // red/tiempo de espera (Se puede volver a intentar)
         ErrorCode.REQUEST_TIMEOUT,
         ErrorCode.STREAM_INTERRUPTED,
         ErrorCode.NETWORK_ERROR,
         ErrorCode.IMAGE_REFERENCE_DOWNLOAD_FAILED,
         -> ProviderError.Network(displayMessage = message)
 
-        // 权限 (不可重试,归为 AuthError)
+        // Permisos (No reintentable,atribuido a AuthError)
         ErrorCode.PERMISSION_DENIED,
         ErrorCode.PRECONDITION_FAILED,
         -> ProviderError.AuthError(displayMessage = message)
 
-        // 图像生成失败 (其他,不可重试)
+        // Error al generar la imagen (Otros,No reintentable)
         ErrorCode.IMAGE_GEN_FAILED -> ProviderError.Unknown(displayMessage = message)
     }
 }
 
 /**
- * v1.0.27 Phase 5-A: 便捷构造 [ProviderException]。
+ * v1.0.27 Phase 5-A: Estructura conveniente [ProviderException].
  *
- * 等价于 `ProviderException(errorCode.toProviderError(*args))`,
- * 让 Provider 的 throw 点更简洁:
+ * equivalente a `ProviderException(errorCode.toProviderError(*args))`,
+ * Hacer que el punto de lanzamiento del proveedor sea más conciso:
  *
  * ```kotlin
- * // 旧:
+ * // viejo:
  * throw RuntimeException(ErrorCode.INVALID_RESPONSE.toMessage("empty_body", resp.code))
- * // 新:
+ * // nuevo:
  * throw errorCode.toProviderException("empty_body", resp.code)
  * ```
  */

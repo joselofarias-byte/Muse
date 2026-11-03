@@ -1,19 +1,19 @@
-# 人民币套餐与额度设计
+# Paquete de RMB y diseño de cuotas
 
-## 领域对象
+## Objetos de dominio
 
-`Plan`、`PriceVersion`、`Entitlement`、`Subscription`、`Invoice`、`Payment`、`CreditLedger`、`UsageRecord`、`Coupon`、`Refund`。
+`Plan`,`PriceVersion`,`Entitlement`,`Subscription`,`Invoice`,`Payment`,`CreditLedger`,`UsageRecord`,`Coupon`,`Refund`.
 
-## 原则
+## principios
 
-- 金额统一使用分，不使用浮点数。
-- 价格版本支持未来生效、历史追溯和回滚。
-- 已支付周期使用订单中的价格快照，不因后台调价改变。
-- 所有额度扣减使用不可变账本 + 幂等键。
-- BYOK 用户不扣模型托管额度，但可扣存储、记忆、文件、Agent 和高级功能额度。
-- Hosted 用户在模型请求前预扣或预授权，结束后按实际 usage 结算，多退少补。
-- 模拟支付先行；支付宝通过 `PaymentProvider` 接口接入，生产凭据不进入代码库。
+- La cantidad se expresa uniformemente en centavos y no se utilizan números de punto flotante.
+- La versión de precio admite efectos futuros, seguimiento histórico y reversión.
+- El ciclo de pago utiliza la instantánea del precio en el pedido y no cambia debido a ajustes de precio en segundo plano.
+- Todas las deducciones de crédito utilizan libros de contabilidad inmutables + claves idempotentes.
+- BYOK A los usuarios no se les deducirá la cuota de hosting del modelo, pero sí podrán deducir almacenamiento, memoria, archivos,Agent y créditos de funciones premium.
+- Hosted El usuario retiene o autoriza previamente el modelo antes de solicitarlo y luego lo liquida en función del uso real. Cualquier exceso será reembolsado o compensado.
+- El pago analógico es lo primero; pases alipay `PaymentProvider` Acceso a la interfaz, las credenciales de producción no ingresan a la base del código.
 
-## 后台首批可调参数
+## El primer lote de parámetros ajustables en segundo plano.
 
-套餐名称、月价、年价、试用期、消息额度、Token 额度、Agent 次数、图片/视频次数、存储、MCP 数量、并发数、BYOK 开关、Hosted 开关、超额策略和 Feature Flag。
+Nombre del paquete, precio mensual, precio anual, período de prueba, cuota de mensajes,Token cuota,Agent tiempos, fotos/Tiempos de vídeo, almacenamiento,MCP Cantidad, número de concurrencias,BYOK interruptor,Hosted Conmutadores, políticas excedentes e indicadores de funciones.

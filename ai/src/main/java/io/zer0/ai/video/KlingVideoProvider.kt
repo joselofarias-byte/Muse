@@ -26,33 +26,33 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * 可灵(Kling)视频生成 Provider 实现(v1.137 重构,实现 [VideoProvider])。
+ * ke ling(Kling)Implementación del proveedor de generación de video.(v1.137 Refactorizar,darse cuenta [VideoProvider]).
  *
- * API 参考: https://kling.kuaishou.com/docs
+ * API Referencia: https://kling.kuaishou.com/docs
  *
- * 端点:
- *  - 文生视频: POST {baseUrl}/videos/generations/text2video
- *  - 图生视频: POST {baseUrl}/videos/generations/image2video
- *  - 查询任务: GET  {baseUrl}/videos/generations/{taskId}
+ * punto final:
+ *  - Vídeo de Vicente: POST {baseUrl}/videos/generations/text2video
+ *  - vídeo de tusheng: POST {baseUrl}/videos/generations/image2video
+ *  - Tareas de consulta: GET  {baseUrl}/videos/generations/{taskId}
  *
- * 认证: Bearer Token(API Key 直接放 Authorization 头)
+ * Certificación: Bearer Token(API Key Coloque el encabezado de Autorización directamente)
  *
- * 任务状态映射([mapStatus]):
+ * Mapeo del estado de la tarea([mapStatus]):
  *  - "submit" / "submitted" / "pending" → [PollStatus.PENDING]
- *  - "processing" / "running"          → [PollStatus.PENDING](仍属处理中,继续轮询)
+ *  - "processing" / "running"          → [PollStatus.PENDING](Aún en proceso,Continuar encuestando)
  *  - "succeed" / "success" / "succeeds" → [PollStatus.SUCCESS]
  *  - "failed" / "fail" / "error"       → [PollStatus.FAILED]
- *  - 未知状态 → [PollStatus.FAILED](避免静默卡死)
+ *  - estado desconocido → [PollStatus.FAILED](Evite las heladas silenciosas)
  *
- * v1.137 改动:
- *  - 实现新的 [VideoProvider] 接口,统一 submit/poll 协议
- *  - 轮询调度上移到 [VideoGenerationService],本类只负责单次查询
- *  - 修复 providerId 路由 bug:providerId 保持 "kling",
- *    由 [VideoProviderRegistry] 按 specId/host 匹配 preset_kling / kling / 用户自定义 ID
- *  - [supportsMultiFrameToVideo] = false(Kling 仅支持单图图生视频)
+ * v1.137 Cambiar:
+ *  - implementar nuevo [VideoProvider] interfaz,Unificar el protocolo de envío/encuesta
+ *  - El cronograma de votación avanza hasta [VideoGenerationService],Esta clase solo es responsable de una única consulta.
+ *  - Solucionar el error de enrutamiento de ProviderId: el ProviderId permanece "kling",
+ *    por [VideoProviderRegistry] Coincidir con preset_kling / kling / definido por el usuario por specId/host ID
+ *  - [supportsMultiFrameToVideo] = false(Kling Solo admite videos Tusheng de una sola imagen)
  *
- * @param client OkHttp 客户端(由 Koin 注入 named("chat"))
- * @param baseUrl 可灵 API 基础 URL,默认 https://api.klingai.com/v1
+ * @param client OkHttp cliente(Inyectado por Koin named("chat"))
+ * @param baseUrl Conceptos básicos de la API de Keling URL,Predeterminado https://api.klingai.com/v1
  */
 class KlingVideoProvider(
     private val client: OkHttpClient,
@@ -66,38 +66,38 @@ class KlingVideoProvider(
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * 按 taskId 缓存的 apiKey(poll 时需要)。
+     * Almacenado en caché por taskId apiKey(poll cuando sea necesario).
      *
-     * v1.137: 任务终态后由 [poll] 在 SUCCESS/FAILED 时主动清理;
-     * 若上层因超时/取消不再调用 poll,条目会残留(有界,不致内存泄漏)。
+     * v1.137: El estado final de la tarea es seguido por [poll] Limpiar proactivamente cuando haya ÉXITO/FALLO;
+     * Si la capa superior se agota/Cancelar ya no llama poll,Las entradas permanecerán(acotado,Sin pérdidas de memoria).
      */
     private val apiKeyForQuery = ConcurrentHashMap<String, String>()
 
-    // 审计修复 (7.7): 同步记录每个任务的 baseUrl,poll 用同一端点
+    // Reparación de auditoría (7.7): Registre sincrónicamente cada tarea baseUrl,poll Utilice el mismo punto final
     private val baseUrlForQuery = ConcurrentHashMap<String, String>()
 
     /**
-     * 提交视频生成任务。
+     * Envíe una tarea de generación de video.
      *
-     * 根据 [VideoGenRequest.referenceImages] 是否非空选择端点:
-     *  - 空 → POST /videos/generations/text2video(文生视频)
-     *  - 非空(取首张) → POST /videos/generations/image2video(图生视频)
+     * Según [VideoGenRequest.referenceImages] Si el punto final seleccionado no es nulo:
+     *  - vacío → POST /videos/generations/text2video(Vídeo de Vicente)
+     *  - No vacío(Toma la primera página.) → POST /videos/generations/image2video(vídeo de tusheng)
      *
-     * 返回 isAsync=true,taskId 为可灵任务 ID。
+     * Regresar isAsync=true,taskId es el ID de la tarea de Keling.
      */
     override suspend fun submit(request: VideoGenRequest): VideoSubmitResult = withContext(Dispatchers.IO) {
         resultOf {
             if (request.apiKey.isBlank()) {
-                error("Kling API key 为空")
+                error("Kling API key esta vacio")
             }
             if (request.prompt.isBlank()) {
-                error("Prompt 为空")
+                error("Prompt esta vacio")
             }
 
             val images = request.referenceImages.filter { it.isNotBlank() }
             val path = if (images.isNotEmpty()) "image2video" else "text2video"
-            // 审计修复 (7.7): 优先用 request.baseUrl(用户配置自建代理/中转),
-            // 原实现忽略 request.baseUrl 固定用构造默认值,自定义端点永远不生效。
+            // Reparación de auditoría (7.7): prioridad request.baseUrl(Agente autoconstruido de configuración de usuario/tránsito),
+            // La implementación original ignora request.baseUrl y en su lugar utiliza el valor predeterminado construido.,Los puntos finales personalizados nunca entran en vigor.
             val effectiveBase = request.baseUrl?.trim()?.trimEnd('/')?.ifBlank { baseUrl } ?: baseUrl
             val url = "$effectiveBase/videos/generations/$path"
 
@@ -120,35 +120,35 @@ class KlingVideoProvider(
                 if (!resp.isSuccessful) {
                     val apiMsg = parseApiErrorMessage(respBody)
                     error(
-                        "Kling submit 失败: HTTP ${resp.code}" +
+                        "Kling submit falló: HTTP ${resp.code}" +
                             (apiMsg?.let { ": $it" }
                                 ?: ProviderError.safeErrorDetail(respBody)?.let { ": $it" }.orEmpty()),
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
                 val code = root["code"]?.jsonPrimitive?.content
-                // 可灵 API 业务错误:code != 0
+                // Error empresarial de Keling API:code != 0
                 if (code != null && code != "0") {
                     val msg = root["message"]?.jsonPrimitive?.content ?: "unknown error"
                     error("Kling submit API error: code=$code message=$msg")
                 }
                 val data = root["data"]?.jsonObject
-                    ?: error("Kling submit 响应缺少 data: $respBody")
+                    ?: error("Kling submit Falta respuesta data: $respBody")
                 val taskId = data["task_id"]?.jsonPrimitive?.content
-                    ?: error("Kling submit 响应缺少 task_id: $respBody")
+                    ?: error("Kling submit Falta respuesta task_id: $respBody")
                 apiKeyForQuery[taskId] = request.apiKey
                 baseUrlForQuery[taskId] = request.baseUrl?.trim()?.trimEnd('/')?.ifBlank { baseUrl } ?: baseUrl
-                Logger.i(TAG, "submit 成功: taskId=$taskId")
+                Logger.i(TAG, "submit éxito: taskId=$taskId")
                 VideoSubmitResult(taskId = taskId, isAsync = true, modelName = request.model)
             }
         }.getOrThrow()
     }
 
     /**
-     * 查询任务状态(单次,不做轮询调度)。
+     * Consultar el estado de la tarea(soltero,Sin programación de votaciones).
      *
-     * 轮询调度(自适应频率 / 错误计数)由 [VideoGenerationService] 统一处理。
-     * 本方法在网络异常时返回 PENDING + errorMessage,让上层按连续错误计数处理。
+     * Programación por turnos(Frecuencia adaptativa/recuento de errores)por [VideoGenerationService] Procesamiento unificado.
+     * Este método regresa cuando la red es anormal. PENDING + errorMessage,Deje que la capa superior lo maneje de acuerdo con el recuento continuo de errores.
      */
     override suspend fun poll(taskId: String): VideoPollResult = withContext(Dispatchers.IO) {
         val r = resultOf {
@@ -173,7 +173,7 @@ class KlingVideoProvider(
                 val code = root["code"]?.jsonPrimitive?.content
                 if (code != null && code != "0") {
                     val msg = root["message"]?.jsonPrimitive?.content ?: "unknown error"
-                    // 业务错误直接判失败(非瞬时网络问题)
+                    // Los errores empresariales determinan directamente el fracaso(Problemas de red no transitorios)
                     apiKeyForQuery.remove(taskId)
                     baseUrlForQuery.remove(taskId)
                     return@use VideoPollResult(
@@ -187,7 +187,7 @@ class KlingVideoProvider(
                         baseUrlForQuery.remove(taskId)
                         return@use VideoPollResult(
                             status = PollStatus.FAILED,
-                            errorMessage = "Kling query 响应缺少 data: $respBody",
+                            errorMessage = "Kling query Falta respuesta data: $respBody",
                         )
                     }
 
@@ -206,7 +206,7 @@ class KlingVideoProvider(
                         if (videoUrl == null) {
                             VideoPollResult(
                                 status = PollStatus.FAILED,
-                                errorMessage = "Kling 任务成功但未找到视频 URL: $respBody",
+                                errorMessage = "Kling Misión exitosa pero no se encontró ningún video. URL: $respBody",
                             )
                         } else {
                             VideoPollResult(status = status, videoUrl = videoUrl)
@@ -215,7 +215,7 @@ class KlingVideoProvider(
                     PollStatus.FAILED -> {
                         val failInfo = data["task_fail_info"]?.jsonObject
                         val errMsg = failInfo?.get("message")?.jsonPrimitive?.content
-                            ?: "Kling 任务失败(status=$statusStr)"
+                            ?: "Kling Tarea fallida(status=$statusStr)"
                         apiKeyForQuery.remove(taskId)
                         baseUrlForQuery.remove(taskId)
                         VideoPollResult(status = status, errorMessage = errMsg)
@@ -228,25 +228,25 @@ class KlingVideoProvider(
             is io.zer0.common.Result.Success -> r.data
             is io.zer0.common.Result.Error -> VideoPollResult(
                 status = PollStatus.PENDING,
-                errorMessage = "Kling poll 异常: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
+                errorMessage = "Kling poll anormal: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
             )
         }
     }
 
     /**
-     * 构造请求体 JSON(文生视频 / 图生视频通用)。
+     * Construir cuerpo de solicitud JSON(Vídeo de Wensheng/vídeo de Tusheng general).
      *
-     * @param imageUrl 单张参考图(图生视频时非空)
+     * @param imageUrl Imagen de referencia única(El tiempo del video de Tusheng no está vacío.)
      */
     internal fun buildRequestBody(request: VideoGenRequest, imageUrl: String?): JsonObject {
         return buildJsonObject {
             put("model", request.model.ifBlank { DEFAULT_MODEL })
             put("prompt", request.prompt)
-            // duration 必须是 5 或 10(可灵限制),非法则回退 5
+            // duration Debe ser 5 o 10(Límite de flexibilidad),Respaldo ilegal 5
             val duration = if (request.duration == 5 || request.duration == 10) request.duration else 5
             put("duration", duration)
             put("resolution", request.resolution.ifBlank { "720p" })
-            // mode 默认 std(标准模式),pro 模式需付费更高,不暴露
+            // mode Predeterminado std(Modo estándar),pro El modo requiere un pago más alto,no expuesto
             put("mode", "std")
             if (!imageUrl.isNullOrBlank()) {
                 put("image", imageUrl)
@@ -255,12 +255,12 @@ class KlingVideoProvider(
     }
 
     /**
-     * 把可灵 task_status 字符串映射到 [PollStatus]。
+     * Asigne la cadena de recopilación task_status a [PollStatus].
      *
-     * 注意:processing / running 在新模型下统一映射为 PENDING
-     * (二者都属于"未完成,继续轮询"语义,[PollStatus] 不再单独区分 PROCESSING)。
+     * Nota:processing / running Bajo el nuevo modelo, el mapeo unificado es PENDING
+     * (Ambos pertenecen a"No completado,Continuar encuestando"Semántica,[PollStatus] ya no se separan PROCESSING).
      *
-     * 未知状态映射为 FAILED 并告警,避免未知状态被静默当作 PENDING 导致任务卡死。
+     * El estado desconocido se asigna a FALLADO y alertas,Evite que los estados desconocidos sean tratados silenciosamente como PENDIENTE, lo que provoca que las tareas se bloqueen.
      */
     internal fun mapStatus(statusStr: String): PollStatus {
         return when (statusStr.lowercase()) {
@@ -269,14 +269,14 @@ class KlingVideoProvider(
             "succeed", "success", "succeeds" -> PollStatus.SUCCESS
             "failed", "fail", "error" -> PollStatus.FAILED
             else -> {
-                Logger.w(TAG, "未知任务状态: $statusStr，映射为 FAILED")
+                Logger.w(TAG, "Estado de tarea desconocido: $statusStr, asignado a FAILED")
                 PollStatus.FAILED
             }
         }
     }
 
     /**
-     * 尝试解析可灵 API 错误响应 {"code": non-zero, "message": "..."}。
+     * Intente analizar la respuesta de error de la API de KeLing {"code": non-zero, "message": "..."}.
      */
     internal fun parseApiErrorMessage(body: String): String? {
         if (body.isBlank()) return null
@@ -287,7 +287,7 @@ class KlingVideoProvider(
     }
 
     /**
-     * 读取响应体(限制 1MB,防止异常响应导致 OOM)。
+     * Leer cuerpo de respuesta(Límite 1MB,Evitar que respuestas anormales causen OOM).
      */
     private fun readBody(resp: Response): String {
         val bytes = resp.body?.bytes() ?: return ""
@@ -298,7 +298,7 @@ class KlingVideoProvider(
     }
 
     /**
-     * 协程取消可传播的 OkHttp 请求执行(按 ImageService.exec)。
+     * La rutina cancela la ejecución de la solicitud OkHttp propagable(prensa ImageService.exec).
      */
     private suspend fun exec(request: Request): Response = suspendCancellableCoroutine { cont ->
         val call = client.newCall(request)
@@ -317,16 +317,16 @@ class KlingVideoProvider(
     companion object {
         private const val TAG = "KlingVideoProvider"
 
-        /** Provider 唯一标识(由 [VideoProviderRegistry] 匹配 specId/host)。 */
+        /** Provider identificador único(por [VideoProviderRegistry] partido specId/host). */
         const val PROVIDER_ID = "kling"
 
-        /** 可灵 API 默认基础 URL。 */
+        /** URL base predeterminada de la API de Keling. */
         const val DEFAULT_BASE_URL = "https://api.klingai.com/v1"
 
-        /** 默认模型(可灵 v1,5 秒视频生成)。 */
+        /** Modelo predeterminado(ke ling v1,5 Segunda generación de vídeo.). */
         const val DEFAULT_MODEL = "kling-v1"
 
-        /** 响应体大小上限 1MB(任务查询响应通常 < 10KB,1MB 兜底)。 */
+        /** Límite de tamaño del cuerpo de respuesta 1MB(La respuesta a la consulta de tarea generalmente < 10KB,1MB Ten todo en cuenta). */
         private const val MAX_RESPONSE_BYTES = 1 * 1024 * 1024
     }
 }

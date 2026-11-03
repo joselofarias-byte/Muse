@@ -82,16 +82,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.koin.compose.koinInject
 
 /**
- * 阶段 7: MCP server 管理 section — 分组列表。
+ * Etapa 7: gestión del servidor MCP section — Lista agrupada.
  *
- * 每个 server 渲染为 [SettingsGroup] 内的一行,显示名称/URL/状态,
- * 右侧 trailing 放重连 + 删除按钮,行间细分割线。
- * 添加按钮放在分组外(对齐系统列表底部的"添加"操作)。
+ * Cada servidor se representa como [SettingsGroup] una línea dentro,nombre para mostrar/URL/Estado,
+ * Al final a la derecha está el botón de reconectar + eliminar,Delgada línea divisoria entre líneas.
+ * Agregar botón fuera del grupo(Alinear al final de la lista del sistema"agregar"Operación).
  */
 @Composable
 internal fun McpSection() {
     val mcpRegistry: McpRegistry = koinInject()
-    // v1.0.79 (E-1): 注入 ToolRegistry,用于统计各 server 已注册工具数(连接但 0 工具时提示)
+    // v1.0.79 (E-1): inyectar ToolRegistry,Se utiliza para contar el número de herramientas registradas para cada servidor.(Aviso al conectar pero 0 herramientas)
     val toolRegistry: io.zer0.muse.tools.ToolRegistry = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -107,7 +107,7 @@ internal fun McpSection() {
         color = MaterialTheme.colorScheme.outline,
         modifier = Modifier.padding(top = 4.dp),
     )
-    // v1.0.92 (B-5): 风险自动判定说明(可折叠,解释为何某些工具需要审批)
+    // v1.0.92 (B-5): Instrucciones de determinación automática de riesgos(plegable,Explicar por qué ciertas herramientas requieren aprobación.)
     var riskNoteExpanded by remember { mutableStateOf(false) }
     Surface(
         shape = MuseShapes.medium,
@@ -126,8 +126,8 @@ internal fun McpSection() {
                     text = stringResource(R.string.settings_mcp_risk_note_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
-                    // LAYOUT-01: 折叠标题取剩余宽度 + 限行(仅取宽时剩余宽度仍可能极小,
-                    // 中文会逐字换行撑高整行),防止被右侧 chevron 图标挤成一列。
+                    // LAYOUT-01: El título plegado toma el ancho restante + límite de línea.(Cuando solo se toma el ancho, el ancho restante aún puede ser extremadamente pequeño,
+                    // Los caracteres chinos se ajustarán palabra por palabra para que toda la línea sea más alta.),Evite que el ícono de galón a la derecha lo apriete.
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -141,7 +141,7 @@ internal fun McpSection() {
             }
             AnimatedVisibility(
                 visible = riskNoteExpanded,
-                // v2.x: 补令牌 spec(原为默认 spec)
+                // v2.x: ficha de complemento spec(estaba por defecto spec)
                 enter = fadeIn(animationSpec = MuseMotion.tween(MuseAnimation.FAST_NORMAL_MS)) +
                     expandVertically(
                         animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS),
@@ -164,7 +164,7 @@ internal fun McpSection() {
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // v1.74: 局部变量捕获避免 !! 非空断言(委托属性无法 smart-cast)
+        // v1.74: Evitación de captura de variables locales !! aserción no nula(Las propiedades delegadas no pueden smart-cast)
         val serverList = servers
         when {
             serverList == null -> {
@@ -178,8 +178,8 @@ internal fun McpSection() {
                 }
             }
             serverList.isEmpty() -> {
-                // 空态直接给出添加入口：此前只有一句「点击下方添加」，
-                // 而真正的 `+` 在页面另一处，用户要满屏找按钮。
+                // El estado vacío proporciona directamente la entrada para agregar: anteriormente solo había una oración "Haga clic a continuación para agregar".
+                // y lo real `+` En otra parte de la página, el usuario debe llenar la pantalla para encontrar el botón.
                 MuseEmptyState(
                     icon = MuseIcons.puzzle,
                     title = stringResource(R.string.settings_mcp_empty_title),
@@ -189,8 +189,8 @@ internal fun McpSection() {
                 )
             }
             else -> {
-                // v1.0.92 性能: 预计算各 server 工具数 — 旧实现每个 server 行各自全量扫描工具表
-                // (O(server×tools),每次重组都跑);改为按连接状态刷新一次、按前缀归属。
+                // v1.0.92 Rendimiento: Precalcular el número de herramientas para cada servidor. — La implementación anterior escanea completamente la tabla de herramientas para cada fila del servidor.
+                // (O(server×tools),Ejecute cada reorganización);En su lugar, actualice una vez por estado de conexión y atributo por prefijo.
                 val toolCountByServerId = remember(serverList, serversState) {
                     val all = toolRegistry.listTools()
                     serverList.associate { s -> s.id to all.count { it.name.startsWith("mcp_${s.id}__") } }
@@ -209,8 +209,8 @@ internal fun McpSection() {
                         server = server,
                         state = state,
                         mcpRegistry = mcpRegistry,
-                        // v1.0.79 (E-1): 该 server 已注册的工具数(连接成功但 0 工具时警示)
-                        // v1.0.92 性能: 取预计算值,不再逐行扫描工具表
+                        // v1.0.79 (E-1): El número de herramientas registradas para este servidor.(Advertencia cuando la conexión es exitosa pero 0 herramientas)
+                        // v1.0.92 Rendimiento: Obtener valor precalculado,No más escaneo progresivo de tablas de herramientas
                         toolCount = toolCountByServerId[server.id] ?: -1,
                         onToggleEnabled = { enabled ->
                             scope.launch {
@@ -242,7 +242,7 @@ internal fun McpSection() {
         }
     }
 
-    // 添加按钮(分组外)
+    // botón agregar(Fuera del grupo)
     MuseTactileButton(
         icon = MuseIcons.plus,
         onClick = { showAddDialog = true },
@@ -260,10 +260,10 @@ internal fun McpSection() {
 }
 
 /**
- * 单个 MCP server 行(状态点 + 名称/URL/状态 + 启停开关 + 更多菜单 + 重连/删除按钮)。
+ * Fila de servidor MCP única(punto de estado + nombre/URL/Estado + Interruptor de inicio/parada + Más menú + Reconectar/boton borrar).
  *
- * 抽出为独立 Composable 是为了让"更多"下拉菜单与 Resources/Prompts 浏览 dialog 的
- * 状态能够按行独立持有(避免在 forEach 中共享 remember 状态)。
+ * Extraído como Composable independiente es para permitir"Más"Menú desplegable con diálogo de exploración de Recursos/Solicitudes
+ * El estado se puede mantener de forma independiente por fila.(Evite compartir recuerde el estado en forEach).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -271,7 +271,7 @@ private fun McpServerRow(
     server: McpServerConfig,
     state: McpConnectionState,
     mcpRegistry: McpRegistry,
-    /** v1.0.79 (E-1): 该 server 已注册的工具数;CONNECTED 但为 0 时警示。 */
+    /** v1.0.79 (E-1): El número de herramientas registradas para este servidor.;CONNECTED Pero cuando es 0, se emite una advertencia. */
     toolCount: Int = -1,
     onToggleEnabled: (Boolean) -> Unit,
     onReconnect: () -> Unit,
@@ -282,9 +282,9 @@ private fun McpServerRow(
     var menuExpanded by remember { mutableStateOf(false) }
     var showResources by remember { mutableStateOf(false) }
     var showPrompts by remember { mutableStateOf(false) }
-    // OAuth 支持:启用 OAuth 配置或已注册 clientId
+    // OAuth apoyo:Configuración de OAuth habilitada o registrada clientId
     val oauthSupported = server.oauthConfig.let { it.enabled || it.clientId.isNotBlank() }
-    // 状态描述字符串(需在 @Composable 上下文中提取,不能在 semantics{} lambda 内调用 stringResource)
+    // cadena de descripción de estado(Debe extraerse en el contexto @Composable,no puedo estar ahí semantics{} lambda llamar dentro stringResource)
     val stateEnabledText = stringResource(R.string.settings_state_enabled)
     val stateDisabledText = stringResource(R.string.settings_state_disabled)
 
@@ -295,7 +295,7 @@ private fun McpServerRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 状态指示小圆点(高级感)
+        // Punto indicador de estado(Sensación de lujo)
         io.zer0.muse.ui.common.settings.StatusDot(
             color = when (state) {
                 McpConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
@@ -303,7 +303,7 @@ private fun McpServerRow(
                 McpConnectionState.FAILED -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.outline
             },
-            // L-SC5: StatusDot.size 改 Dp 类型,调用方 8 → 8.dp。
+            // L-SC5: StatusDot.size Cambiar tipo de DP,llamador 8 → 8.dp.
             size = 8.dp,
             pulse = state == McpConnectionState.CONNECTING,
         )
@@ -335,7 +335,7 @@ private fun McpServerRow(
                     else -> MaterialTheme.colorScheme.outline
                 },
             )
-            // v1.0.79 (E-1): 已连接但没有注册任何工具 — 提示用户检查 server 或助手扩展绑定
+            // v1.0.79 (E-1): Conectado pero sin herramientas registradas — Solicita al usuario que verifique los enlaces del servidor o de la extensión auxiliar
             if (state == McpConnectionState.CONNECTED && toolCount == 0) {
                 Text(
                     text = stringResource(R.string.settings_mcp_connected_no_tools),
@@ -349,7 +349,7 @@ private fun McpServerRow(
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
-            // v1.0.92 (B-4): 未连接时展示最后一次成功连接时间(帮助判断 server 是否曾可用)
+            // v1.0.92 (B-4): Muestra la última hora de conexión exitosa cuando no está conectado(Ayuda a determinar si el servidor ha estado disponible)
             if (state != McpConnectionState.CONNECTED && server.lastConnectedAt > 0L) {
                 Text(
                     text = stringResource(
@@ -361,7 +361,7 @@ private fun McpServerRow(
                 )
             }
         }
-        // 阶段 D: 启停开关(独立于连接,允许保留配置但不连接)
+        // Etapa D: interruptor de arranque/parada(independiente de la conexión,Permitir que la configuración se conserve pero no se conecte)
         MuseSwitch(
             checked = server.enabled,
             onCheckedChange = onToggleEnabled,
@@ -369,13 +369,13 @@ private fun McpServerRow(
                 stateDescription = if (server.enabled) stateEnabledText else stateDisabledText
             },
         )
-        // v1.134 P0-6: 更多操作菜单按钮用 MuseTactileButton(48dp 触摸目标 + 无 ripple)
+        // v1.134 P0-6: Más botones del menú de operación para MuseTactileButton(48dp Tocar objetivo + Ninguno ripple)
         MuseTactileButton(
             icon = MuseIcons.moreVertical,
             onClick = { menuExpanded = true },
             contentDescription = stringResource(R.string.settings_mcp_more),
         )
-        // v1.134 P0-7: DropdownMenu → MuseDialog 操作列表
+        // v1.134 P0-7: DropdownMenu → MuseDialog Lista de operaciones
         if (menuExpanded) {
             MuseDialog(
                 onDismissRequest = { menuExpanded = false },
@@ -476,7 +476,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // 高级字段(按 ProviderSection 的 showAdvanced 折叠模式)
+    // Campos avanzados(Mostrar modo contraído avanzado por ProviderSection)
     var showAdvanced by remember { mutableStateOf(false) }
     var headersText by remember { mutableStateOf("") }
     var autoReconnect by remember { mutableStateOf(true) }
@@ -492,7 +492,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
         McpServerTemplates.find(selectedTemplateId)
     }
     val feishuAutoRefresh = selectedTemplate.id == "feishu_remote"
-    // 状态描述字符串(需在 @Composable 上下文中提取,不能在 semantics{} lambda 内调用 stringResource)
+    // cadena de descripción de estado(Debe extraerse en el contexto @Composable,no puedo estar ahí semantics{} lambda llamar dentro stringResource)
     val stateEnabledText = stringResource(R.string.settings_state_enabled)
     val stateDisabledText = stringResource(R.string.settings_state_disabled)
 
@@ -501,12 +501,12 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
         title = stringResource(R.string.settings_mcp_add_title),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // v1.74: 改 ?.let 避免 !!(委托属性无法 smart-cast)
+                // v1.74: cambiar ?.let evitar !!(Las propiedades delegadas no pueden smart-cast)
                 addError?.let { err ->
                     InlineError(message = err, onDismiss = { addError = null })
                 }
                 Text(
-                    text = "配置模板",
+                    text = "Plantilla de configuración",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -619,8 +619,8 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                         fillWidth = false,
                     )
                 }
-                // Phase 11.1.1: stdio 传输在 Android 沙箱不可用(SELinux 限制 exec),
-                // 明确提示用户仅支持 SSE / StreamableHTTP 两种网络传输
+                // Phase 11.1.1: stdio La transferencia no está disponible en la zona de pruebas de Android(SELinux Límite exec),
+                // Solicitar claramente a los usuarios que solo admitan dos transmisiones de red SSE / StreamableHTTP
                 Text(
                     text = stringResource(R.string.settings_mcp_stdio_hint),
                     style = MaterialTheme.typography.labelSmall,
@@ -628,19 +628,19 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                 )
                 if (feishuAutoRefresh) {
                     SettingField(
-                        label = "飞书 App ID",
+                        label = "Feishu App ID",
                         value = feishuAppId,
                         onValueChange = { feishuAppId = it },
                         placeholder = "cli_xxxxx",
                     )
                     SettingField(
-                        label = "飞书 App Secret",
+                        label = "Feishu App Secret",
                         value = feishuAppSecret,
                         onValueChange = { feishuAppSecret = it },
                         visualTransformation = PasswordVisualTransformation(),
                     )
                     Text(
-                        text = "Muse 会自动获取并续期 tenant_access_token，不需要每 2 小时手动更换 TAT。",
+                        text = "Muse El Tenent_access_token se obtiene y renueva automáticamente, lo que elimina la necesidad de reemplazar manualmente el TAT cada 2 horas.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -653,7 +653,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                     )
                 }
 
-                // 高级折叠区(headers / 重连参数 / 超时)
+                // Área de plegado avanzada(headers / Reconectar parámetros/tiempo de espera)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Row(
                     modifier = Modifier
@@ -663,7 +663,7 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    // LAYOUT-01: 「高级」折叠头取剩余宽度 + 限行,防止被右侧 chevron 图标挤成一列。
+                    // LAYOUT-01: El encabezado plegable "avanzado" toma el ancho restante + límite de línea,Evite que el ícono de galón a la derecha lo apriete.
                     Text(
                         text = stringResource(R.string.settings_common_advanced),
                         style = MaterialTheme.typography.labelMedium,
@@ -743,9 +743,9 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
             if (transportType == McpTransportType.STDIO && command.isBlank()) {
                 addError = context.getString(R.string.settings_mcp_stdio_command_required)
             } else if (transportType != McpTransportType.STDIO && url.isBlank()) {
-                addError = context.getString(R.string.settings_mcp_failed, "URL 不能为空")
+                addError = context.getString(R.string.settings_mcp_failed, "URL no puede estar vacío")
             } else if (feishuAutoRefresh && (feishuAppId.isBlank() || feishuAppSecret.isBlank())) {
-                addError = context.getString(R.string.settings_mcp_failed, "飞书模板需要填写 App ID 和 App Secret")
+                addError = context.getString(R.string.settings_mcp_failed, "La plantilla Feishu requiere completar el ID de la aplicación y App Secret")
             } else {
                 val config = McpServerConfig(
                     id = "mcp-" + System.currentTimeMillis(),
@@ -783,10 +783,10 @@ private fun McpServerAddDialog(onDismiss: () -> Unit, onAdd: suspend (McpServerC
 }
 
 /**
- * 浏览指定 server 的 Resources(Phase 11.1.2 listAllResources / readResource 接入)。
+ * Explorar el servidor especificado Resources(Phase 11.1.2 listAllResources / readResource Acceso).
  *
- * - 列表态:Column + forEach 展示 uri / name / description
- * - 详情态:点击某项后读取内容,叠加一个 MuseDialog 展示文本/blob
+ * - estado de la lista:Column + forEach mostrar uri / name / description
+ * - Estado de los detalles:Leer contenido después de hacer clic en un elemento,Superponer un MuseDialog para mostrar texto/blob
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -817,7 +817,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
         title = stringResource(R.string.settings_mcp_browse_resources_title),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // v1.74: 改 ?.let 避免 !!(委托属性无法 smart-cast)
+                // v1.74: cambiar ?.let evitar !!(Las propiedades delegadas no pueden smart-cast)
                 loadError?.let { err ->
                     InlineError(message = err, onDismiss = { loadError = null })
                 }
@@ -835,7 +835,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
                         Text(stringResource(R.string.settings_mcp_loading), style = MaterialTheme.typography.bodySmall)
                     }
                 } else if (resources.isEmpty()) {
-                    // v1.48: h14 Resources 空态改为带图标的居中 Row(空间小,不用 MuseEmptyState 大组件)
+                    // v1.48: h14 Resources El estado vacío cambió a centrado con un icono Row(Pequeño espacio,No se necesitan componentes grandes de MuseEmptyState)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -853,8 +853,8 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
                         )
                     }
                 } else {
-                    // v1.0.7 修复:MuseDialog content 已自带 verticalScroll,不能嵌套 LazyColumn。
-                    // 改用 Column + forEach,由 MuseDialog 外层统一滚动(对齐 VoiceCloningPage v1.132)。
+                    // v1.0.7 Reparación:MuseDialog content Ya traído verticalScroll,LazyColumns no se puede anidar.
+                    // Usar en su lugar Column + forEach,Desplazamiento unificado por la capa exterior de MuseDialog(Alineación VoiceCloningPage v1.132).
                     Column {
                         resources.forEach { res ->
                             Column(
@@ -900,7 +900,7 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
         onConfirm = onDismiss,
     )
 
-    // 资源内容详情(叠加在列表 dialog 之上)
+    // Detalles del contenido del recurso(Superpuesto en la parte superior del cuadro de diálogo de la lista)
     viewingContent?.let { contents ->
         MuseDialog(
             onDismissRequest = { viewingContent = null },
@@ -926,12 +926,12 @@ private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, o
 }
 
 /**
- * 浏览指定 server 的 Prompts(Phase 11.1.2 listAllPrompts / getPrompt 接入)。
+ * Explorar el servidor especificado Prompts(Phase 11.1.2 listAllPrompts / getPrompt Acceso).
  *
- * 三态:
- *  - 列表:展示 name / description / 参数名
- *  - 参数输入:选中某个 prompt 后,动态渲染其 arguments 的输入框
- *  - 结果展示:getPrompt 返回的 messages(role + content)
+ * tres estados:
+ *  - lista:Nombre para mostrar/descripción/nombre de parámetro
+ *  - Entrada de parámetros:Después de seleccionar un mensaje,Representar dinámicamente un cuadro de entrada con sus argumentos
+ *  - Visualización de resultados:getPrompt regresó messages(role + content)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -965,7 +965,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
         title = stringResource(R.string.settings_mcp_browse_prompts_title),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // v1.74: 改 ?.let 避免 !!(委托属性无法 smart-cast)
+                // v1.74: cambiar ?.let evitar !!(Las propiedades delegadas no pueden smart-cast)
                 loadError?.let { err ->
                     InlineError(message = err, onDismiss = { loadError = null })
                 }
@@ -980,7 +980,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
                         Text(stringResource(R.string.settings_mcp_loading), style = MaterialTheme.typography.bodySmall)
                     }
                 } else if (prompts.isEmpty()) {
-                    // v1.48: h14 Prompts 空态改为带图标的居中 Row(空间小,不用 MuseEmptyState 大组件)
+                    // v1.48: h14 Prompts El estado vacío cambió a centrado con un icono Row(Pequeño espacio,No se necesitan componentes grandes de MuseEmptyState)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -998,8 +998,8 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
                         )
                     }
                 } else {
-                    // v1.0.7 修复:MuseDialog content 已自带 verticalScroll,不能嵌套 LazyColumn。
-                    // 改用 Column + forEach,由 MuseDialog 外层统一滚动。
+                    // v1.0.7 Reparación:MuseDialog content Ya traído verticalScroll,LazyColumns no se puede anidar.
+                    // Usar en su lugar Column + forEach,Desplazamiento unificado por la capa exterior de MuseDialog.
                     Column {
                         prompts.forEach { p ->
                             Column(
@@ -1042,14 +1042,14 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
         onConfirm = onDismiss,
     )
 
-    // 参数输入 dialog(选中 prompt 后弹出)
+    // Entrada de parámetros dialog(Aparece después de seleccionar el mensaje)
     selectedPrompt?.let { prompt ->
         MuseDialog(
             onDismissRequest = { selectedPrompt = null },
             title = stringResource(R.string.settings_mcp_prompt_title, prompt.name),
             content = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // v1.74: 改 ?.let 避免 !!(委托属性无法 smart-cast)
+                    // v1.74: cambiar ?.let evitar !!(Las propiedades delegadas no pueden smart-cast)
                     promptError?.let { err ->
                         InlineError(message = err, onDismiss = { promptError = null })
                     }
@@ -1113,7 +1113,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
         )
     }
 
-    // 结果展示 dialog
+    // Visualización de resultados dialog
     promptResult?.let { result ->
         MuseDialog(
             onDismissRequest = { promptResult = null },
@@ -1151,7 +1151,7 @@ private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onD
 }
 
 /**
- * Dialog 内容区错误条 — 替代 MuseToast,避免 Toast 被 Dialog 窗口遮挡。
+ * Dialog Barra de error del área de contenido — sustituto MuseToast,Evite que Toast sea bloqueado por la ventana de diálogo.
  */
 @Composable
 private fun InlineError(message: String, onDismiss: () -> Unit) {
@@ -1190,8 +1190,8 @@ private fun InlineError(message: String, onDismiss: () -> Unit) {
 }
 
 /**
- * 把"每行 key:value"的文本解析成 headers Map。
- * 空行 / 无冒号的行被忽略,空文本返回空 map。
+ * poner"por línea key:value"El texto se analiza en un mapa de encabezados.
+ * Las líneas vacías o sin dos puntos se ignoran,El texto vacío devuelve un mapa vacío.
  */
 private fun parseHeaders(text: String): Map<String, String> {
     return text.lines()
@@ -1206,8 +1206,8 @@ private fun parseHeaders(text: String): Map<String, String> {
 }
 
 /**
- * 把 MCP prompt message 的 content(JsonElement)转成可显示文本。
- * 形如 {type:"text", text:"..."} 提取 text;否则 toString()。
+ * Poner el mensaje de aviso de MCP content(JsonElement)Convertir a texto visualizable.
+ * en forma de {type:"text", text:"..."} Extracto text;De lo contrario toString().
  */
 private fun JsonElement.toDisplayText(): String {
     val obj = this as? JsonObject ?: return toString()

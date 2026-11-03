@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 缓存读/写拆分：字段语义、计价倍数、旧数据兼容。
+ * lectura de caché/División de escritura: semántica de campos, múltiplos de precios, compatibilidad de datos antiguos.
  */
 class CacheUsageSplitTest {
 
@@ -16,15 +16,15 @@ class CacheUsageSplitTest {
 
         assertEquals(1_000, usage.cacheReadTokens)
         assertEquals(200, usage.cacheWriteTokens)
-        // 兼容视图：拆分前 cachedTokens 装的是读 + 写
+        // Vista de compatibilidad: cachedTokens se cargó con lectura + escritura antes de dividirse
         assertEquals(1_200, usage.cachedTokensTotal)
-        // 既有口径不变：total 仍只看 prompt + completion
+        // El calibre existente permanece sin cambios:total Todavía sólo mirando prompt + completion
         assertEquals(150, usage.total)
     }
 
     @Test
     fun `legacy usage with only cachedTokens is treated as cache read`() {
-        // 旧记录只有合并值（读 + 写）落在 cachedTokens 上，读取时按「读」解释，写入视为 0
+        // Solo el valor combinado (lectura + escritura) del registro anterior recae en cachedTokens. Al leer se interpreta como "leer" y al escribir se considera "leer". 0
         val legacy = UsageTokens(promptTokens = 1_000_000, cachedTokens = 400_000)
 
         assertEquals(400_000, legacy.cacheReadTokens)
@@ -38,7 +38,7 @@ class CacheUsageSplitTest {
                 pricingCachedInputPer1M = 0.3,
             )
         val cost = TokenCostCalculator.cost(TokenCostCalculator.fromUsageTokens(legacy), info)
-        // 600k 普通输入 * 3.0 + 400k 缓存读 * 0.3 = 1.8 + 0.12
+        // 600k Entrada normal * 3.0 + 400k lectura de caché * 0.3 = 1.8 + 0.12
         assertTrue(cost.known)
         assertEquals(1.92, cost.usd, 1e-9)
     }
@@ -49,7 +49,7 @@ class CacheUsageSplitTest {
         val cost = TokenCostCalculator.costFor("anthropic", "claude-sonnet-4", usage)
 
         assertTrue(cost.known)
-        // claude-sonnet-4 输入价 3.0，缓存写入 1.25 倍 = 3.75
+        // claude-sonnet-4 Precio de entrada 3.0, escritura en caché 1.25x = 3.75
         assertEquals(3.75, cost.usd, 1e-9)
     }
 
@@ -76,8 +76,8 @@ class CacheUsageSplitTest {
 
     @Test
     fun `anthropic prompt tokens are not clamped when cache is large`() {
-        // Anthropic 的 input_tokens 是非缓存输入，缓存读/写单列；一旦按「prompt 含缓存」相减，
-        // 5000+2000 的缓存量会把 1000 普通输入夹到 0，输入费直接消失。
+        // Anthropic Los input_tokens son entradas no almacenadas en caché, lecturas almacenadas en caché/Escribe una sola columna; una vez que presionas "prompt incluyendo caché" se restan,
+        // 5000+2000 La cantidad de caché limitará 1000 entradas normales a 0 y la tarifa de entrada desaparecerá directamente.
         val anthropic =
             UsageTokens(
                 promptTokens = 1_000,
@@ -88,17 +88,17 @@ class CacheUsageSplitTest {
         val cost = TokenCostCalculator.costFor("anthropic", "claude-sonnet-4", anthropic)
 
         assertTrue(cost.known)
-        // 1000 输入 * 3.0 + 5000 缓存读 * 3.0（无缓存读单价时按输入价）+ 2000 写入 * 3.75
+        // 1000 entrada * 3.0 + 5000 lectura de caché * 3.0(Al leer el precio unitario sin caché, se utilizará el precio de entrada)+ 2000 escribir * 3.75
         val expected = 6_000 / 1_000_000.0 * 3.0 + 2_000 / 1_000_000.0 * 3.75
         assertEquals(expected, cost.usd, 1e-12)
 
-        // 同样数字若按「prompt 含缓存」算（OpenAI/Gemini 口径），普通输入被夹成 0，金额更小
+        // Para el mismo número, si presiona "prompt Incluyendo el cálculo de caché" (OpenAI/Gemini calibre), la entrada ordinaria se fija en 0 y la cantidad es menor
         val clamped = TokenCostCalculator.costFor(
             "anthropic",
             "claude-sonnet-4",
             anthropic.copy(promptTokensIncludeCache = true),
         )
-        assertTrue("相减口径会漏掉输入费，金额应更小", clamped.usd < cost.usd)
+        assertTrue("El calibre de resta perderá la tarifa de entrada y la cantidad debería ser menor", clamped.usd < cost.usd)
     }
 
     @Test
@@ -110,7 +110,7 @@ class CacheUsageSplitTest {
                 pricingCompletionPer1M = 15.0,
                 pricingCachedInputPer1M = 0.3,
             )
-        // 默认 promptTokensIncludeCache = true：全部命中缓存时普通输入为 0
+        // Predeterminado promptTokensIncludeCache = true: Cuando todo llega al caché, la entrada normal es 0
         val cost = TokenCostCalculator.cost(TokenCostCalculator.fromUsageTokens(usage), info)
 
         assertEquals(0.3, cost.usd, 1e-9)

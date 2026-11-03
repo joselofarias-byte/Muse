@@ -6,12 +6,12 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Session 摘要实体(JSON 文件 → Room)。
+ * Session entidad resumen(JSON Archivo → Room).
  *
- * 每个 session 一个摘要,通过 rollingSummary() 滚动更新(覆盖式,非追加)。
- * snapshot 字段记录上次 deep-memory 处理时的摘要副本,用于 diff 抽取新事实。
+ * Un resumen por sesión,Pase rollingSummary() actualización continua(Cubierto,no agregar).
+ * snapshot Una copia resumida del último procesamiento en memoria profunda del registro de campo.,Se utiliza para diff para extraer nuevos hechos.
  *
- * Phase 7: @Serializable 用于备份导出/导入。
+ * Phase 7: @Serializable para exportación de respaldo/Importar.
  */
 @Serializable
 @Entity(tableName = "session_summaries")
@@ -26,31 +26,31 @@ data class SessionSummaryEntity(
     @ColumnInfo(name = "updated_at")
     val updatedAt: String,
 
-    /** 摘要正文(rolling summary,两节 markdown 格式)。 */
+    /** Texto abstracto(rolling summary,Formato de rebajas de dos secciones). */
     @ColumnInfo(name = "summary")
     val summary: String = "",
 
-    /** 已覆盖的消息总数(用于增量取新消息)。 */
+    /** Número total de mensajes cubiertos(Se utiliza para recuperar mensajes nuevos de forma incremental.). */
     @ColumnInfo(name = "message_count")
     val messageCount: Int = 0,
 
-    /** source_time_range JSON(包含 start/end/timezone/localDates)。 */
+    /** source_time_range JSON(contiene start/end/timezone/localDates). */
     @ColumnInfo(name = "source_time_range")
     val sourceTimeRange: String? = null,
 
-    /** 上次 deep-memory 处理时的摘要副本(diff 基线)。 */
+    /** Una copia del resumen de la última vez que se procesó la memoria profunda.(diff línea de base). */
     @ColumnInfo(name = "snapshot")
     val snapshot: String = "",
 
-    /** 上次 deep-memory 处理时间。 */
+    /** Última hora de procesamiento de memoria profunda. */
     @ColumnInfo(name = "snapshot_at")
     val snapshotAt: String? = null,
 
-    /** 所属 Assistant id（v0.22: 用于 per-assistant facts.db 隔离）。空表示未关联。 */
+    /** ID del asistente perteneciente (v0.22: para aislamiento de Facts.db por asistente). Vacío significa no asociado. */
     @ColumnInfo(name = "assistant_id")
     val assistantId: String = "",
 
-    /** v2: 所属记忆空间；旧摘要统一兼容到 default。 */
+    /** v2: El espacio de memoria al que pertenece; Los resúmenes antiguos son compatibles con los predeterminados. */
     @ColumnInfo(name = "space_id", defaultValue = "default")
     val spaceId: String = "default",
 )

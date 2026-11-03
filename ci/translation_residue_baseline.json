@@ -1,11 +1,11 @@
 {
-  "note": "I18N-02 非中文语言包 CJK 残留基线。只允许下降: 高于本文件或出现基线外语言包的残留即失败。补完翻译后运行 py -3 ci/script/check_translation_residue.py --update-baseline 收紧(默认拒绝写入上升值,需 --allow-increase)。",
-  "measure": "每个语言包中值含 CJK 的 string/plurals-item/string-array-item 条目数",
+  "note": "I18N-02 Línea de base residual CJK del paquete de idioma distinto del chino. solo se permite descender: Fallará si es superior a este archivo o si hay restos de paquetes de idiomas fuera de la línea base. Después de completar la traducción, ejecute py -3 ci/script/check_translation_residue.py --update-baseline para ajustar(Denegar escritura de valor ascendente por defecto,necesidad --allow-increase).",
+  "measure": "Número de entradas de cadena/elemento de plurales/elemento de matriz de cadena que contienen CJK en cada paquete de idioma",
   "excluded": [
-    "values(默认/中文源)",
-    "values-ja(日文汉字合法)",
-    "values-zh*(中文变体)",
-    "values-vNN(纯限定符)"
+    "values(Predeterminado/fuente china)",
+    "values-ja(Los kanji japoneses son legales)",
+    "values-zh*(variante china)",
+    "values-vNN(puro calificador)"
   ],
   "locales": {
     "en": 0,

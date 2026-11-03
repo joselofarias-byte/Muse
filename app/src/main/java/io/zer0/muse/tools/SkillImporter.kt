@@ -14,14 +14,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * v0.23: Skill 导入器 — 解析 .skill.json 文件并校验。
+ * v0.23: Skill importador — Analice el archivo .skill.json y verifíquelo.
  *
- * .skill.json 格式(用户可分享/导入的 skill 定义文件):
+ * .skill.json Formato(Los usuarios pueden compartir/Archivo de definición de habilidades importado):
  * ```json
  * {
  *   "id": "fetch_weather",
- *   "name": "查询天气",
- *   "description": "查询指定城市的天气",
+ *   "name": "comprobar el clima",
+ *   "description": "Consulta el clima de una ciudad específica",
  *   "parametersJson": "{\"type\":\"object\",...}",
  *   "requiredJson": "[\"city\"]",
  *   "implementationKotlin": "http_get",
@@ -29,96 +29,96 @@ import kotlinx.serialization.json.put
  * }
  * ```
  *
- * 安全约束:
- *  - [implementationKotlin] 必须是 [SkillExecutor] 支持的内置实现之一
- *    (read_file / write_file / http_get / http_post),否则拒绝导入。
- *    这样保证用户导入的 skill 不会执行任意代码,只复用预定义的 Kotlin 函数。
- *  - 提示词技能是唯一例外:声明 `implementationKotlin = "prompt"` 并用 `prompt` 字段
- *    给出指令文本,入库时编码为 `implementationKotlin = "prompt:<文本>"`(见 [PROMPT_PREFIX])。
- *    指令文本只受 8KB 上限约束,**不受注入关键词黑名单约束**(产品取舍,见 [safetyReview]);
- *    执行时不跑任何 Kotlin 代码。
- *  - 缺失字段用合理默认值兜底。
+ * restricciones de seguridad:
+ *  - [implementationKotlin] debe ser [SkillExecutor] Una de las implementaciones integradas admitidas.
+ *    (read_file / write_file / http_get / http_post),En caso contrario se rechaza la importación.
+ *    Esto garantiza que la habilidad importada por el usuario no ejecutará ningún código.,Reutilice únicamente funciones de Kotlin predefinidas.
+ *  - La habilidad de palabra rápida es la única excepción.:Declaración `implementationKotlin = "prompt"` Usar juntos `prompt` campo
+ *    dar texto de comando,El código al entrar al almacén es `implementationKotlin = "prompt:<texto>"`(ver [PROMPT_PREFIX]).
+ *    El texto de las instrucciones solo está sujeto al límite de 8 KB.,**No sujeto a la lista negra de palabras clave inyectadas**(Compensaciones de productos,ver [safetyReview]);
+ *    No se ejecuta ningún código Kotlin durante la ejecución.
+ *  - Utilice valores predeterminados razonables para los campos faltantes.
  *
- * Phase 2(会话内 LLM 生成)会用同样的格式与校验入库。
+ * Phase 2(Generación de LLM durante la sesión)Se utilizará el mismo formato y verificación para el almacenamiento.
  */
 object SkillImporter {
 
     /**
-     * 内置实现 key 白名单(与 SkillExecutor.execute 的 when 分支一致)。
-     * v0.24: 新增搜索与信息获取类实现。
+     * Implementación incorporada de lista blanca de claves(Consistente con la rama when de SkillExecutor.execute).
+     * v0.24: Se agregaron nuevas implementaciones de clases de búsqueda y adquisición de información.
      *
-     * M-SI2: 用户导入 skill 仅限复用以下实现,不含自我扩展/管理/交互/破坏类
+     * M-SI2: Las habilidades de importación de usuarios se limitan a reutilizar las siguientes implementaciones,No incluye autoexpansión/gestión/interacción/Tipo de destrucción
      * (install_skill / author_plugin / delegate_agent / channel_* / agent_phone /
      * task_plan / update_plan_step / list_skills / uninstall_skill / disable_skill /
-     * delete_file 等不开放给用户 skill)。
-     * v1.0.92 (A-2): 放宽只读探索与低风险实用类实现,与 execute 路由能力对齐。
+     * delete_file No puedo esperar para abrirlo a los usuarios. skill).
+     * v1.0.92 (A-2): Exploración relajante de solo lectura e implementación de clases de utilidad de bajo riesgo,Alineado con la capacidad de ejecución de enrutamiento.
      */
     val ALLOWED_IMPLEMENTATIONS: Set<String> = setOf(
-        // v0.22 文件/HTTP 基础
+        // v0.22 Archivo/HTTP Conceptos básicos
         "read_file", "write_file", "http_get", "http_post",
-        // v0.24 搜索与信息获取(用户导入的 skill 可复用这些实现)
+        // v0.24 Búsqueda y adquisición de información.(Las habilidades importadas por el usuario pueden reutilizar estas implementaciones)
         "web_search", "web_fetch", "knowledge_search",
         "arxiv_search",
-        // v1.0.92 (A-2): 文件探索类(只读)
+        // v1.0.92 (A-2): clase de exploración de archivos(solo lectura)
         "list_dir", "file_exists", "read_public_file", "list_public_files",
-        // v1.0.92 (A-2): 下载与保存(写入仅落在公共下载区)
+        // v1.0.92 (A-2): Descargar y guardar(Las escrituras caen solo en el área de descarga pública.)
         "file_download", "save_to_downloads",
-        // v1.0.92 (A-2): 通用实用工具
+        // v1.0.92 (A-2): Utilidad general
         "translate", "generate_qr", "generate_image", "list_stickers",
         "send_sticker",
     )
 
     /**
-     * 提示词技能(prompt skill):内容是一段指令文本,不执行任何 Kotlin 实现。
+     * Habilidades de palabras rápidas(prompt skill):El contenido es un texto de comando.,No se implementa ninguna implementación de Kotlin.
      *
-     * ## 存储编码
+     * ## codificación de almacenamiento
      *
-     * Room schema 不改列,复用既有 [SkillEntity.implementationKotlin] 文本列,
-     * 以判别前缀 [PROMPT_PREFIX] 编码:
-     *  - 数据库内:`implementationKotlin = "prompt:<指令文本>"`(文本原样保留,不含转义);
-     *  - `.skill.json` 导入时:`implementationKotlin = "prompt"`,指令文本放 `prompt`
-     *    字段(兼容 `promptText` 别名);也接受直接传 `"prompt:<指令文本>"`。
+     * Room schema No se debe cambiar,Reutilizar existente [SkillEntity.implementationKotlin] columna de texto,
+     * distinguir el prefijo [PROMPT_PREFIX] codificación:
+     *  - en la base de datos:`implementationKotlin = "prompt:<texto de comando>"`(Deja el texto como está,Sin escape);
+     *  - `.skill.json` Al importar:`implementationKotlin = "prompt"`,poner texto de comando `prompt`
+     *    campo(compatibles `promptText` Alias);También se acepta transmisión directa. `"prompt:<texto de comando>"`.
      *
-     * ## 解析规则
+     * ## reglas de análisis
      *
-     *  - [isPromptSkill]:`implementationKotlin == "prompt"` 或 `startsWith("prompt:")`;
-     *  - [decodePromptText]:剥离 `prompt:` 前缀得到指令文本(非提示词技能返回 null);
-     *  - 执行时由 `SkillManagementToolsImpl.execPromptSkill` 把文本以 `[技能指令]` 前缀
-     *    返回给模型,不接收参数(调用方传参一律忽略)。
+     *  - [isPromptSkill]:`implementationKotlin == "prompt"` o `startsWith("prompt:")`;
+     *  - [decodePromptText]:despegar `prompt:` el prefijo obtiene el texto del comando(Regreso de habilidades con palabras sin indicaciones null);
+     *  - ejecutado por `SkillManagementToolsImpl.execPromptSkill` Cambie el texto a `[comando de habilidad]` prefijo
+     *    volver al modelo,no acepta parametros(Los parámetros pasados ​​por la persona que llama se ignoran).
      *
-     * 选前缀而非新列的原因:避免 Room 迁移(项目 schema 由主代理统一维护),
-     * 且该列本就是"如何执行"的路由键,前缀判别与 `plugin:` 既有约定一致。
+     * Razones para elegir prefijos en lugar de nuevas columnas:Evitar la migración de habitaciones(El esquema del proyecto es mantenido uniformemente por el agente principal.),
+     * Y la columna es"como ejecutar"clave de enrutamiento,Discriminación de prefijos y `plugin:` Consistente con el acuerdo existente.
      */
     const val PROMPT_PREFIX = "prompt:"
 
-    /** `.skill.json` 中声明提示词技能的 [SkillEntity.implementationKotlin] 取值。 */
+    /** `.skill.json` Habilidad de palabra rápida de declaración media [SkillEntity.implementationKotlin] Toma valor. */
     const val PROMPT_IMPLEMENTATION_KEY = "prompt"
 
-    /** 提示词技能指令文本长度上限(字符数,对齐 8KB)。超长直接拒绝导入。 */
+    /** Límite máximo de longitud de texto para instrucciones rápidas sobre habilidades con palabras(Número de caracteres,Alineación 8KB). Si el archivo es demasiado largo, la importación será directamente rechazada. */
     const val MAX_PROMPT_CHARS = 8 * 1024
 
     /**
-     * 空参数 JSON Schema — 提示词技能与无参 skill 统一使用。
+     * parámetro vacío JSON Schema — Las habilidades con palabras rápidas y sin parámetros se utilizan de manera uniforme.
      *
-     * 不用字面 `{}`:OpenAI 兼容端点对 object 类型要求 `properties` 存在,
-     * 且 ChatStreamCoordinator.normalizeSkillSchema 只在缺失 `type` 时补 type,
-     * `{}` 会产出 `{"type":"object"}` 被严格 provider 拒绝。
+     * No es necesario utilizar palabras literales. `{}`:OpenAI Los puntos finales compatibles requieren el tipo de objeto `properties` existir,
+     * y ChatStreamCoordinator.normalizeSkillSchema solo falta `type` Es hora de compensar type,
+     * `{}` producirá `{"type":"object"}` Rechazado por un proveedor estricto.
      */
     const val EMPTY_PARAMETERS_JSON = """{"type":"object","properties":{}}"""
 
-    /** [EMPTY_PARAMETERS_JSON] 的解析结果,提示词技能与无参 skill 的规范化入库值。 */
+    /** [EMPTY_PARAMETERS_JSON] El resultado del análisis de,El valor de almacenamiento normalizado de habilidad de palabra rápida y habilidad sin parámetro. */
     private val EMPTY_PARAMS_OBJECT: JsonObject = buildJsonObject {
         put("type", "object")
         put("properties", buildJsonObject { })
     }
 
-    /** 是否为提示词技能(见 [PROMPT_PREFIX] 的编码说明)。 */
+    /** Si se trata de una habilidad de palabra rápida(ver [PROMPT_PREFIX] Instrucciones de codificación para). */
     fun isPromptSkill(implementationKotlin: String): Boolean =
         implementationKotlin == PROMPT_IMPLEMENTATION_KEY || implementationKotlin.startsWith(PROMPT_PREFIX)
 
     /**
-     * 解析提示词技能的指令文本(剥离 `prompt:` 前缀)。
-     * @return 非提示词技能返回 null;`prompt:` 后为空文本时返回空串
+     * Analizar el texto del comando para obtener habilidades con las palabras(despegar `prompt:` prefijo).
+     * @return Regreso de habilidades con palabras sin indicaciones null;`prompt:` Devuelve una cadena vacía si hay texto vacío después
      */
     fun decodePromptText(implementationKotlin: String): String? = if (implementationKotlin.startsWith(PROMPT_PREFIX)) {
         implementationKotlin.removePrefix(PROMPT_PREFIX)
@@ -126,67 +126,67 @@ object SkillImporter {
         null
     }
 
-    /** 编码提示词技能指令文本为 [SkillEntity.implementationKotlin] 存储形式。 */
+    /** El texto de instrucción de habilidades de palabras de indicación de codificación es [SkillEntity.implementationKotlin] Forma de almacenamiento. */
     fun encodePromptText(text: String): String = PROMPT_PREFIX + text
 
     /**
-     * H-SI1: 内置保留 id 集合 — 不允许用户导入的 skill 用这些 id,
-     * 防止 LLM 通过 install_skill 覆盖内置 skill(如 id="read_file" 覆盖内置工具)。
-     * 来源:[SkillExecutor.BUILT_IN_SKILLS] 中所有内置 skill 的 id。
+     * H-SI1: Colección de identificación retenida incorporada — Las habilidades importadas por el usuario no pueden utilizar estas id,
+     * Evite que LLM sobrescriba el sistema integrado a través de install_skill skill(Como por ejemplo id="read_file" Anular herramientas integradas).
+     * Fuente:[SkillExecutor.BUILT_IN_SKILLS] Los identificadores de todas las habilidades integradas en .
      *
-     * v1.0.4 修复 HTTP 400 "Tool names must be unique":同时屏蔽 [ToolRegistry.BUILT_IN_TOOL_IDS]
-     * 中所有内置工具名,防止用户导入与本地工具同名的 skill(如 generate_image / calculator / notify 等),
-     * 否则助手同时启用该 skill 与同名本地工具时,会发出重复 tools 触发 DeepSeek/中转站 400。
+     * v1.0.4 Reparación HTTP 400 "Tool names must be unique":Bloquear simultáneamente [ToolRegistry.BUILT_IN_TOOL_IDS]
+     * Todos los nombres de herramientas integradas en,Evitar que los usuarios importen archivos con el mismo nombre que las herramientas locales skill(Como por ejemplo generate_image / calculator / notify espera),
+     * De lo contrario, cuando el asistente habilita la habilidad y la herramienta local con el mismo nombre al mismo tiempo,,Se emiten herramientas duplicadas que activan DeepSeek/Relay 400.
      */
     val RESERVED_IDS: Set<String> =
         SkillExecutor.BUILT_IN_SKILLS.map { it.id }.toSet() + ToolRegistry.BUILT_IN_TOOL_IDS.toSet()
 
-    /** 解析结果。 */
+    /** Analiza los resultados. */
     sealed class Result {
         data class Ok(val skill: SkillEntity) : Result()
         data class Err(val reason: String) : Result()
     }
 
-    /** L-SI6: id 合法 slug 正则(小写字母/数字/下划线/连字符)。 */
+    /** L-SI6: id Babosa legal regular(letras minúsculas/numeros/subrayado/guión). */
     private val ID_REGEX = Regex("^[a-z0-9_-]+$")
 
     /**
-     * B-19: 用户导入 skill 允许的 category 白名单。
+     * B-19: El usuario importa la lista blanca de categorías permitidas por la habilidad.
      *
-     * 取值与 install_skill 文档(SkillExecutor)一致:file/http/search/knowledge/system/agent/sticker/custom,
-     * 另兼容既有的 user 分类(SkillManagementToolsImpl 按 "user"/"custom" 过滤用户自有 skill)。
+     * Documentación de valor e install_skill(SkillExecutor)consistente:file/http/search/knowledge/system/agent/sticker/custom,
+     * También compatible con categorías de usuarios existentes(SkillManagementToolsImpl prensa "user"/"custom" Filtrar usuario propio skill).
      *
-     * 安全原因:
-     *  - category="plugin" 由 PluginManager 创建真实插件 skill 时独占设置(PluginManager.kt category="plugin"),
-     *    ChatStreamCoordinator 用 listEnabled().filter { it.category == "plugin" } 把这些 skill
-     *    无条件并入每个会话的工具定义(绕过助手 skillIdsJson 白名单)。
-     *    若允许用户导入 skill 自填 "plugin",即可伪装成插件跳过白名单 → B-19 越权。
-     *  - 因此 plugin 不在导入白名单内,导入时显式拒绝。
+     * razones de seguridad:
+     *  - category="plugin" Establecido exclusivamente al crear una habilidad de complemento real por parte de PluginManager(PluginManager.kt category="plugin"),
+     *    ChatStreamCoordinator usar listEnabled().filter { it.category == "plugin" } pon estos skill
+     *    Fusionar incondicionalmente definiciones de herramientas en cada sesión(Omitir la lista blanca de skillsIdsJson de ayuda).
+     *    Si los usuarios pueden importar habilidades y completarlas ellos mismos "plugin",Puedes pretender ser un complemento y saltarte la lista blanca. → B-19 Ultra vires.
+     *  - Por lo tanto, el complemento no está en la lista blanca de importación.,Rechazar explícitamente al importar.
      */
     private val ALLOWED_CATEGORIES: Set<String> = setOf(
         "file", "http", "search", "knowledge", "system", "agent", "sticker", "custom", "user",
     )
 
     /**
-     * 参数类型白名单 — 自定义 skill 的 parametersJson 中每个 property 的 type 必须在此集合内。
-     * 禁止 function / null / any 等模糊类型,降低 LLM 生成非法参数的风险。
+     * Lista blanca de tipos de parámetros — El tipo de cada propiedad en los parámetros Json de la habilidad personalizada debe estar en esta colección.
+     * prohibido function / null / any tipo difuso,Reducir el riesgo de que LLM genere parámetros ilegales.
      */
     private val ALLOWED_PARAM_TYPES: Set<String> = setOf("string", "integer", "number", "boolean", "array", "object")
 
     /**
-     * Prompt injection / 社会工程关键词黑名单(大小写不敏感)。
-     * 若 name / description 中出现这些词汇,说明该 skill 可能试图覆盖系统提示、改变 AI 行为或诱导用户。
+     * Prompt injection / Lista negra de palabras clave de ingeniería social(No distingue entre mayúsculas y minúsculas).
+     * Si estas palabras aparecen en el nombre/descripción,Indica que esta habilidad puede intentar anular las indicaciones del sistema, cambiar el comportamiento de la IA o inducir al usuario.
      */
     private val BLOCKED_KEYWORDS: List<String> = listOf(
         "system prompt", "system instruction", "ignore previous", "ignore all", "ignore the",
         "override", "jailbreak", "dan mode", "do anything now", "developer mode",
         "you are now", "you are a", "pretend to be", "roleplay as",
-        "忽略之前", "忽略此前", "忽略上面", "覆盖系统", "系统提示", "你是", "你现在是",
-        "扮演", "假装", "不要告诉用户", "不要透露", "保密",
+        "ignorar antes", "ignorar anterior", "ignorar arriba", "sistema de superposición", "Aviso del sistema", "tu eres", "tu eres ahora",
+        "jugar", "fingir", "no decirle a los usuarios", "no revelar", "Confidencial",
     )
 
     /**
-     * 敏感系统 id 前缀/子串黑名单 — 防止 LLM 用 admin/system/root 等 id 伪装成系统工具。
+     * Prefijo de identificación del sistema sensible/lista negra de subcadenas — Evite que LLM se disfrace de herramientas del sistema utilizando ID como admin/system/root.
      */
     private val BLOCKED_ID_SUBSTRINGS: List<String> = listOf(
         "system", "admin", "root", "builtin", "internal", "dev", "debug", "master",
@@ -194,56 +194,56 @@ object SkillImporter {
     )
 
     /**
-     * 安全审查:检查 LLM 生成的 skill 是否包含 prompt injection、社会工程或过宽权限。
-     * 失败时返回具体原因,成功返回 null。
+     * autorización de seguridad:Compruebe si la habilidad generada por LLM contiene inyección rápida, ingeniería social o permisos excesivos.
+     * Devolver motivo específico en caso de falla,Devuelve nulo en caso de éxito.
      *
-     * @param promptText 提示词技能的指令文本(非提示词技能为 null);
-     *   非 null 表示这是提示词技能,此时跳过 [BLOCKED_KEYWORDS] 关键词黑名单
+     * @param promptText Texto de comando para habilidad con palabras rápidas(Las habilidades con palabras que no se solicitan son null);
+     *   No nulo significa que esta es una habilidad de palabra rápida,saltar ahora [BLOCKED_KEYWORDS] Lista negra de palabras clave
      */
     private fun safetyReview(id: String, name: String, description: String, params: JsonObject, promptText: String? = null): String? {
-        // 1. 基本长度检查
-        if (name.length < 2) return "name 长度过短(至少 2 个字符)"
-        if (description.length < 5) return "description 长度过短(至少 5 个字符),请补充该 skill 的用途和触发场景"
+        // 1. Comprobación de longitud básica
+        if (name.length < 2) return "name Longitud demasiado corta(al menos 2 caracteres)"
+        if (description.length < 5) return "description Longitud demasiado corta(Al menos 5 caracteres),Agregue el propósito y los escenarios desencadenantes de esta habilidad."
 
-        // 2. id 黑名单
+        // 2. id lista negra
         val lowerId = id.lowercase()
         for (sub in BLOCKED_ID_SUBSTRINGS) {
             if (lowerId.contains(sub)) {
-                return "id '$id' 包含保留词 '$sub',不允许伪装成系统 skill"
+                return "id '$id' Contiene palabras reservadas '$sub',No está permitido pretender ser un sistema. skill"
             }
         }
 
-        // 3. name / description 关键词黑名单(大小写不敏感)
+        // 3. name / description Lista negra de palabras clave(No distingue entre mayúsculas y minúsculas)
         //
-        // 提示词型技能**不受该黑名单约束**:它的内容本来就是给模型的工作指令,而关键词表
-        // (含「你是」「扮演」等)会把大量正常中文指令误判成注入,与这个类型的用途直接冲突。
-        // 提示词技能剩下的门槛是:创建/更新都要经过用户审批、指令文本有长度上限(8KB)、
-        // 执行时以「[技能指令] 以下内容不是系统指令」的框架注入。这是明确的产品取舍,
-        // 不是遗漏——若要恢复限制,把下面这段的适用条件改回包含 promptText 即可。
+        // Habilidades para escribir palabras rápidas**No sujeto a esta lista negra**:Su contenido es originalmente una instrucción de trabajo del modelo.,Y la lista de palabras clave
+        // (Contiene "tú eres", "jugar", etc.)Una gran cantidad de comandos chinos normales se considerarán erróneamente como inyección,Entra directamente en conflicto con el propósito de este tipo.
+        // El umbral restante para las habilidades con palabras rápidas es:crear/Las actualizaciones deben ser aprobadas por el usuario y el texto de instrucciones tiene una longitud máxima.(8KB),
+        // Al ejecutar, utilice "[comando de habilidad] El siguiente contenido no es una inyección de fotogramas del "comando del sistema". Esta es una clara compensación de producto.,
+        // No es una omisión——Para restaurar las restricciones,Simplemente cambie las condiciones aplicables en el siguiente párrafo para incluir el texto inmediato.
         if (promptText == null) {
             val combinedText = "$name $description".lowercase()
             for (keyword in BLOCKED_KEYWORDS) {
                 if (combinedText.contains(keyword.lowercase())) {
-                    return "name / description 包含不被允许的内容('$keyword'),可能涉及提示词注入或行为覆盖"
+                    return "name / description Contiene contenido no permitido('$keyword'),Puede implicar la inyección rápida de palabras o anulaciones de comportamiento."
                 }
             }
         }
 
-        // 4. parametersJson 结构检查
+        // 4. parametersJson inspección estructural
         val type = params["type"]?.jsonPrimitive?.contentOrNull
         if (type != "object") {
-            return "parametersJson 的 type 必须是 'object',实际为 '$type'"
+            return "parametersJson El tipo debe ser 'object',En realidad '$type'"
         }
         val properties = params["properties"]?.jsonObject
         if (properties == null) {
-            return "parametersJson 缺少 properties 对象"
+            return "parametersJson objeto de propiedades faltantes"
         }
         for ((paramName, paramDef) in properties) {
-            if (paramDef !is JsonObject) return "参数 '$paramName' 的定义必须是 JSON 对象"
+            if (paramDef !is JsonObject) return "parámetros '$paramName' La definición de debe ser un objeto JSON."
             val paramType = paramDef["type"]?.jsonPrimitive?.contentOrNull
-            if (paramType.isNullOrBlank()) return "参数 '$paramName' 缺少 type 字段"
+            if (paramType.isNullOrBlank()) return "parámetros '$paramName' Campo de tipo faltante"
             if (paramType !in ALLOWED_PARAM_TYPES) {
-                return "参数 '$paramName' 的类型 '$paramType' 不在允许范围内($ALLOWED_PARAM_TYPES)"
+                return "parámetros '$paramName' tipo '$paramType' No dentro del rango permitido($ALLOWED_PARAM_TYPES)"
             }
         }
 
@@ -251,10 +251,10 @@ object SkillImporter {
     }
 
     /**
-     * v1.0.92: 导出技能包(Recipe) — 多个技能打包为单一 JSON,便于分享与批量导入。
+     * v1.0.92: Exportar paquete de habilidades(Recipe) — Múltiples habilidades empaquetadas en una sola JSON,Fácil de compartir e importar por lotes.
      *
-     * 格式: {"recipe":1,"name":"...","exportedAt":123,"skills":[{...单个 skill json...}]}
-     * 每个元素与 [parse] 读取的字段对齐,可被 [parseRecipe] 批量导入。
+     * Formato: {"recipe":1,"name":"...","exportedAt":123,"skills":[{...soltero skill json...}]}
+     * Cada elemento está relacionado con [parse] Leer alineación de campo,puede ser [parseRecipe] Importación por lotes.
      */
     fun exportRecipe(skills: List<SkillEntity>, name: String = "Muse Skills"): String {
         val obj = kotlinx.serialization.json.buildJsonObject {
@@ -283,25 +283,25 @@ object SkillImporter {
         return AppJson.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), obj)
     }
 
-    /** v1.0.92: 技能包解析结果。 */
+    /** v1.0.92: Resultados del análisis del paquete de habilidades. */
     sealed interface RecipeParseResult {
         data class Ok(val skills: List<SkillEntity>) : RecipeParseResult
         data class Err(val reason: String) : RecipeParseResult
     }
 
     /**
-     * v1.0.92: 解析技能包(Recipe)并逐个校验。
+     * v1.0.92: Paquete de habilidades analíticas(Recipe)Y revisa uno por uno.
      *
-     * 包内每个技能走与 [parse] 相同的白名单/分类/提示词校验;
-     * 个别失败不阻塞其余技能,全部失败时返回 [RecipeParseResult.Err]。
+     * Cada habilidad en el paquete está relacionada con [parse] Misma lista blanca/Clasificación/Verificación rápida de palabras;
+     * Los fracasos individuales no bloquearán otras habilidades,Regresa cuando todo falla [RecipeParseResult.Err].
      */
     fun parseRecipe(jsonText: String): RecipeParseResult {
         val root = resultOf {
             AppJson.decodeFromString(kotlinx.serialization.json.JsonObject.serializer(), jsonText)
-        }.getOrNull() ?: return RecipeParseResult.Err("JSON 解析失败")
+        }.getOrNull() ?: return RecipeParseResult.Err("JSON El análisis falló")
         val arr = root["skills"] as? kotlinx.serialization.json.JsonArray
-            ?: return RecipeParseResult.Err("不是技能包格式(缺少 skills 数组)")
-        if (arr.isEmpty()) return RecipeParseResult.Err("技能包为空")
+            ?: return RecipeParseResult.Err("No en formato de paquete de habilidades(Conjunto de habilidades faltantes)")
+        if (arr.isEmpty()) return RecipeParseResult.Err("El paquete de habilidades está vacío")
         val valid = mutableListOf<SkillEntity>()
         val errors = mutableListOf<String>()
         arr.forEachIndexed { index, element ->
@@ -312,18 +312,18 @@ object SkillImporter {
             }
         }
         return if (valid.isEmpty()) {
-            RecipeParseResult.Err("包内没有可导入的技能: ${errors.take(3).joinToString("; ")}")
+            RecipeParseResult.Err("No hay habilidades importables en el paquete.: ${errors.take(3).joinToString("; ")}")
         } else {
             RecipeParseResult.Ok(valid)
         }
     }
 
     /**
-     * v1.0.92: 导出单个 skill 为 .skill.json 文本。
+     * v1.0.92: Exporte una sola habilidad como texto .skill.json.
      *
-     * 字段与 [parse] 读取的键一一对应(id/name/description/category/
+     * campos con [parse] Las claves de lectura corresponden uno a uno.(id/name/description/category/
      * implementationKotlin/parametersJson/requiredJson),
-     * 导出文本可直接再次导入(内置实现或提示词技能)。
+     * El texto exportado se puede volver a importar directamente(Implementación incorporada o habilidades de palabras rápidas).
      */
     fun exportToJson(skill: SkillEntity): String {
         val obj = kotlinx.serialization.json.buildJsonObject {
@@ -339,61 +339,61 @@ object SkillImporter {
     }
 
     /**
-     * 解析 .skill.json 文本并校验。
-     * @param jsonText 文件内容
-     * @return [Result.Ok] 含可入库的 [SkillEntity];[Result.Err] 含失败原因
+     * Analice el texto .skill.json y verifíquelo.
+     * @param jsonText Contenido del archivo
+     * @return [Result.Ok] Incluye almacenaje [SkillEntity];[Result.Err] Incluyendo razones de falla
      */
     fun parse(jsonText: String): Result {
-        // L-SI5: 改用 resultOf 保持风格统一(正确重抛 CancellationException)
+        // L-SI5: Utilice resultOf en su lugar para mantener el estilo consistente(Lanzamiento correcto CancellationException)
         val raw: JsonObject = resultOf {
             AppJson.decodeFromString(JsonObject.serializer(), jsonText)
         }.onError { msg, _ ->
-            Logger.w("SkillImporter", "JSON 解析失败: $msg")
-        }.getOrNull() ?: return Result.Err("JSON 解析失败")
+            Logger.w("SkillImporter", "JSON El análisis falló: $msg")
+        }.getOrNull() ?: return Result.Err("JSON El análisis falló")
 
         val id = raw["id"]?.jsonPrimitive?.contentOrNull?.trim()
-            ?: return Result.Err("缺少 id 字段")
-        // L-SI6: 校验 id 长度(1..64)和合法 slug(仅小写字母/数字/下划线/连字符)
+            ?: return Result.Err("Falta el campo de identificación")
+        // L-SI6: Comprobar longitud de identificación(1..64)y legal slug(solo letras minusculas/numeros/subrayado/guión)
         if (id.isBlank() || id.any { it.isWhitespace() }) {
-            return Result.Err("id 不能为空或包含空白字符")
+            return Result.Err("id No puede estar vacío ni contener espacios en blanco.")
         }
         if (id.length > 64) {
-            return Result.Err("id 长度不能超过 64 字符(当前 ${id.length})")
+            return Result.Err("id No puede exceder los 64 caracteres de longitud(actual ${id.length})")
         }
         if (!ID_REGEX.matches(id)) {
-            return Result.Err("id 只能包含小写字母、数字、下划线和连字符(如 fetch_weather / my-skill-1)")
+            return Result.Err("id Solo puede contener letras minúsculas, números, guiones bajos y guiones.(Como por ejemplo fetch_weather / my-skill-1)")
         }
-        // H-SI1: 校验 id 不在内置保留 id 集合,防止覆盖内置 skill
+        // H-SI1: La identificación de verificación no está en la colección de identificación reservada incorporada,Evitar la sobrescritura incorporada skill
         if (id in RESERVED_IDS) {
-            return Result.Err("id '$id' 与内置 skill 冲突,不允许覆盖内置 skill,请改用其它 id")
+            return Result.Err("id '$id' Conflictos con habilidades incorporadas,No se permite anular el incorporado skill,Por favor usa otro id")
         }
 
         val name = raw["name"]?.jsonPrimitive?.contentOrNull?.trim()
-            ?: return Result.Err("缺少 name 字段")
+            ?: return Result.Err("Falta el campo de nombre")
         val description = raw["description"]?.jsonPrimitive?.contentOrNull?.trim() ?: ""
         val parametersJson = raw["parametersJson"]?.jsonPrimitive?.contentOrNull ?: "{}"
         val requiredJson = raw["requiredJson"]?.jsonPrimitive?.contentOrNull ?: "[]"
         val implementationKotlin = raw["implementationKotlin"]?.jsonPrimitive?.contentOrNull?.trim()
-            ?: return Result.Err("缺少 implementationKotlin 字段")
+            ?: return Result.Err("Falta implementación del campo Kotlin")
         val category = raw["category"]?.jsonPrimitive?.contentOrNull?.trim()?.ifBlank { "custom" } ?: "custom"
-        // B-19: 导入时做 category 白名单校验。缺省/空回退 "custom"(向后兼容);
-        // 非白名单值一律拒绝,尤其防御 category="plugin" 伪装绕过助手白名单。
+        // B-19: Realice la verificación de la lista blanca de categorías al importar. Predeterminado/respaldo vacío "custom"(compatible con versiones anteriores);
+        // Los valores que no están en la lista blanca siempre se rechazan,especialmente defensivo category="plugin" Finge eludir la lista blanca del asistente.
         if (category !in ALLOWED_CATEGORIES) {
             return Result.Err(
-                "category '$category' 不在允许范围内($ALLOWED_CATEGORIES);" +
-                    "导入的 skill 不能声明为 'plugin'(插件 skill 由插件管理器独占管理)",
+                "category '$category' No dentro del rango permitido($ALLOWED_CATEGORIES);" +
+                    "Las habilidades importadas no pueden declararse como 'plugin'(Las habilidades de complementos son administradas exclusivamente por el administrador de complementos.)",
             )
         }
 
         val isPrompt = isPromptSkill(implementationKotlin)
         if (!isPrompt && implementationKotlin !in ALLOWED_IMPLEMENTATIONS) {
             return Result.Err(
-                "implementationKotlin 必须是内置实现之一: $ALLOWED_IMPLEMENTATIONS 或提示词技能 key '$PROMPT_IMPLEMENTATION_KEY'," +
-                    "实际为 '$implementationKotlin'。自定义 skill 只能复用预定义的 Kotlin 函数或使用提示词技能(不支持任意代码执行)。",
+                "implementationKotlin Debe ser una de las implementaciones integradas.: $ALLOWED_IMPLEMENTATIONS o habilidades de palabras rápidas key '$PROMPT_IMPLEMENTATION_KEY'," +
+                    "En realidad '$implementationKotlin'. Las habilidades personalizadas solo pueden reutilizar funciones de Kotlin predefinidas o usar habilidades de palabras rápidas(No admite la ejecución de código arbitrario).",
             )
         }
 
-        // 提示词技能:提取并校验指令文本;无参数(parametersJson/requiredJson 固定为空)
+        // Habilidades de palabras rápidas:Extraer y verificar el texto del comando;sin parámetros(parametersJson/requiredJson Fijado al vacio)
         var promptText: String? = null
         val storedImplementation: String
         val validatedParams: JsonObject
@@ -406,39 +406,39 @@ object SkillImporter {
             }.trim()
             if (promptText.isEmpty()) {
                 return Result.Err(
-                    "prompt 技能的指令文本不能为空: 请用 prompt 字段给出指令文本," +
-                        "或把 implementationKotlin 写成 '$PROMPT_PREFIX<指令文本>'",
+                    "prompt El texto del comando de la habilidad no puede estar vacío.: Utilice el campo de solicitud para proporcionar el texto del comando," +
+                        "O escriba implementaciónKotlin como '$PROMPT_PREFIX<texto de comando>'",
                 )
             }
             if (promptText.length > MAX_PROMPT_CHARS) {
                 return Result.Err(
-                    "prompt 指令文本过长(${promptText.length} 字符,上限 $MAX_PROMPT_CHARS)," +
-                        "请精简后重试",
+                    "prompt Texto de comando demasiado largo(${promptText.length} personaje,límite superior $MAX_PROMPT_CHARS)," +
+                        "Simplifique y vuelva a intentarlo.",
                 )
             }
             storedImplementation = encodePromptText(promptText)
             validatedParams = EMPTY_PARAMS_OBJECT
             validatedRequiredJson = "[]"
         } else {
-            // M-SI3: 校验 parametersJson 是否为合法 JSON 对象
+            // M-SI3: Verifique si parámetrosJson es un objeto JSON legal
             validatedParams = resultOf {
                 AppJson.decodeFromString(JsonObject.serializer(), parametersJson)
-            }.getOrNull() ?: return Result.Err("parametersJson 不是合法的 JSON 对象: $parametersJson")
-            // 校验 requiredJson 是否为合法 JSON 数组
+            }.getOrNull() ?: return Result.Err("parametersJson No es un objeto JSON válido: $parametersJson")
+            // Verifique si requireJson es una matriz JSON legal
             resultOf {
                 AppJson.decodeFromString(
                     kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.json.JsonElement.serializer()),
                     requiredJson,
                 )
-            }.getOrNull() ?: return Result.Err("requiredJson 不是合法的 JSON 数组: $requiredJson")
+            }.getOrNull() ?: return Result.Err("requiredJson No es una matriz JSON válida: $requiredJson")
             validatedRequiredJson = requiredJson
             storedImplementation = implementationKotlin
         }
 
-        // M-SI4: 安全审查(prompt injection / 社会工程 / 非法参数类型)
+        // M-SI4: autorización de seguridad(prompt injection / Ingeniería social/tipo de parámetro ilegal)
         safetyReview(id, name, description, validatedParams, promptText)?.let {
-            Logger.w("SkillImporter", "skill '$id' 安全审查未通过: $it")
-            return Result.Err("安全审查未通过: $it")
+            Logger.w("SkillImporter", "skill '$id' Error en la revisión de seguridad: $it")
+            return Result.Err("Error en la revisión de seguridad: $it")
         }
 
         val now = System.currentTimeMillis()
@@ -459,11 +459,11 @@ object SkillImporter {
     }
 
     /**
-     * 供 `update_skill` 复用同一套导入校验:把更新后的字段拼装成等价的 .skill.json
-     * 再走 [parse],保证更新路径与安装路径的约束(保留 id / category 白名单 /
-     * 实现白名单 / 注入黑名单 / prompt 文本上限)完全一致。
+     * suministro `update_skill` Reutilizar el mismo conjunto de controles de importación:Reúna los campos actualizados en equivalentes .skill.json
+     * ir de nuevo [parse],Garantizar restricciones en las rutas de actualización y de instalación.(Mantener lista blanca de ID/categoría /
+     * Implementar lista blanca/lista negra de inyección/límite de texto rápido)Totalmente consistente.
      *
-     * @return [Result.Ok] 含校验通过后的新实体(createdAt/enabled 由调用方覆盖)
+     * @return [Result.Ok] Contiene nuevas entidades después de la verificación.(createdAt/enabled Anulado por la persona que llama)
      */
     fun validateForUpdate(
         id: String,
@@ -486,6 +486,6 @@ object SkillImporter {
         return parse(json)
     }
 
-    /** 读取字符串字段;字段缺失或不是字符串时返回 null(不抛异常)。 */
+    /** Leer campo de cadena;Devuelto si falta el campo o no hay una cadena null(No lanzar excepción). */
     private fun stringField(raw: JsonObject, name: String): String? = (raw[name] as? JsonPrimitive)?.contentOrNull
 }

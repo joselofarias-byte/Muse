@@ -12,9 +12,9 @@ import androidx.compose.ui.graphics.luminance
 /**
  * Shared visual scrim for modal surfaces; platform window dim remains disabled.
  *
- * 深浅主题要分别取 alpha：深色主题的背景本身已经很暗，沿用浅色主题的 38% 黑
- * 会让遮罩几乎看不出层次，弹窗和背景糊在一起、发灰。深色下需要更重的遮罩才能
- * 把底层推远，所以两档分开取值。
+ * Los temas oscuro y claro deben elegir alfa respectivamente: el fondo del tema oscuro ya es muy oscuro y se utiliza el 38% de color negro del tema claro.
+ * Hará que la capa de máscara sea casi invisible y la ventana emergente y el fondo se verán borrosos y grises. Los colores más oscuros requieren un enmascaramiento más intenso.
+ * Empuje la capa inferior lejos, para que los dos niveles tengan valores separados.
  */
 @Composable
 internal fun museModalScrimColor(): Color {
@@ -24,11 +24,11 @@ internal fun museModalScrimColor(): Color {
 }
 
 /**
- * 模态遮罩：**状态栏与导航栏区域都不压暗**。
+ * Máscara modal:**Las áreas de la barra de estado y de la barra de navegación no están atenuadas.**.
  *
- * 之前只留了导航栏安全区，状态栏被遮罩整片盖住 —— 浅色主题下表现为「一弹窗
- * 状态栏就突然变黑」，与不弹窗时的白底形成明显割裂。这里把状态栏也留出来，
- * 让系统栏始终保持宿主窗口原本的样子，遮罩只覆盖真正的内容区域。
+ * Anteriormente, solo se dejaba el área segura de la barra de navegación y la barra de estado estaba completamente cubierta por la máscara. —— Bajo el tema claro, aparece como "una ventana emergente".
+ * La barra de estado de repente se vuelve negra", lo que obviamente está separado del fondo blanco cuando no hay una ventana emergente. La barra de estado también se deja aquí.
+ * Deje que la barra del sistema mantenga siempre la apariencia original de la ventana del host y la máscara solo cubra el área de contenido real.
  */
 @Composable
 internal fun Modifier.museModalScrim(): Modifier = statusBarsPadding()

@@ -11,26 +11,26 @@ import io.ktor.server.routing.get
 import io.zer0.common.Logger
 
 /**
- * 消息媒体的读取路由：`GET /api/media/{token}`。
+ * Leer ruta de los medios del mensaje:`GET /api/media/{token}`.
  *
- * 只读、只认 [HostMediaStore] 里登记过的 token。装到与 `/ws` 同级的 JWT 鉴权块里：
- * 图片与语音就是聊天记录本身，未登录的局域网设备不该能翻出历史会话的截图。
+ * Sólo lectura, sólo reconocimiento [HostMediaStore] token registrado en. instalado con `/ws` En el bloque de autenticación JWT del mismo nivel:
+ * Las imágenes y las voces son registros de chat en sí mismos, y los dispositivos LAN que no estén conectados no deberían poder obtener capturas de pantalla de conversaciones históricas.
  *
- * 越界与不存在统一 404，不回 403 也不回 500：前者不给探测者反馈，后者不该由
- * 「文件被清理」这种正常情况触发。
+ * 404 unificado transfronterizo e inexistente, ni 403 ni 500: el primero no da retroalimentación al detector y el segundo no debe ser devuelto por
+ * Esto se desencadena por la situación normal de "archivo en limpieza".
  */
 internal fun Route.installHostMediaRoutes(mediaStore: HostMediaStore) {
     get("/api/media/{token}") {
         val token = call.parameters["token"].orEmpty()
         val file = token.takeIf { it.isNotBlank() }?.let(mediaStore::resolve)
         if (file == null) {
-            if (token.isNotBlank()) Logger.d(TAG, "媒体不可用: token=$token")
+            if (token.isNotBlank()) Logger.d(TAG, "medios no disponibles: token=$token")
             call.respond(HttpStatusCode.NotFound)
             return@get
         }
         val contentType = HostMediaContentType.of(file) ?: HostMediaContentType.OCTET_STREAM
         call.response.header(HttpHeaders.CacheControl, CACHE_CONTROL)
-        // LocalFileContent 直接把文件交给引擎分块发送,不把整张图读进内存。
+        // LocalFileContent Envíe el archivo directamente al motor para enviarlo en fragmentos.,No lea la imagen completa en la memoria.
         call.respond(LocalFileContent(file, ContentType.parse(contentType)))
     }
 }
@@ -38,7 +38,7 @@ internal fun Route.installHostMediaRoutes(mediaStore: HostMediaStore) {
 private const val TAG = "HostMediaRoutes"
 
 /**
- * 媒体内容按内容哈希命名、token 与路径一一对应，同一份文件的内容不会变，所以可以缓存；
- * `private` 是不允许中间代理共享，`max-age=300` 是不把已删会话的图片在浏览器里多留半天。
+ * El contenido multimedia se denomina mediante hash de contenido,token Correspondencia uno a uno con la ruta, el contenido del mismo archivo no cambiará, por lo que se puede almacenar en caché;
+ * `private` No se permite compartir proxy intermedio.`max-age=300` No conservar las imágenes de la conversación eliminadas en el navegador durante medio día.
  */
 private const val CACHE_CONTROL = "private, max-age=300"

@@ -2,24 +2,24 @@ import { formatDayLabel, formatSessionTime as formatSessionTimeIntl } from "../i
 import { DEFAULT_LOCALE, type Locale } from "../i18n/locale.js";
 
 /**
- * 聊天页的时间格式化：实现放在 `src/i18n/format.ts`（走 Intl + 词条表），
- * 这里只保留分桶用的纯函数和几个转发，避免调用方散落两套格式化逻辑。
+ * Formato de hora en la página de chat: la implementación se coloca en `src/i18n/format.ts`(Ir Internacional + lista de entradas),
+ * Aquí solo se conservan funciones puras para agrupar y algunos reenvíos para evitar que la persona que llama disperse dos conjuntos de lógica de formato.
  */
 
-/** Host 下发的是 epoch 毫秒；对秒级取整的历史数据做一次归一。 */
+/** Host Lo que se emite son milisegundos de época; los datos históricos redondeados al segundo nivel se normalizan una vez. */
 function toMillis(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
   return value < 1_000_000_000_000 ? value * 1_000 : value;
 }
 
-/** 会话列表里的时间：当天给时刻，同年给月日，跨年给完整日期。 */
+/** La hora en la lista de conversaciones: proporcione la hora del mismo día, proporcione el mes y el día del mismo año y proporcione la fecha completa si abarca años nuevos. */
 export function formatSessionTime(value: number | undefined, locale: Locale = DEFAULT_LOCALE): string {
   return formatSessionTimeIntl(value, locale);
 }
 
 /**
- * 本地时区的「天」分桶键。跨天判定必须按本地日历日，不能用 UTC（否则 00:30 的消息
- * 会被算到前一天）。时间戳不可用时返回 undefined，调用方据此跳过分隔条。
+ * La clave del segmento "día" para la zona horaria local. La determinación entre días debe basarse en el día del calendario local, no se puede utilizar UTC (de lo contrario, el mensaje a las 00:30
+ * se contará hasta el día anterior). Si la marca de tiempo no está disponible, se devuelve indefinido, lo que permite a la persona que llama omitir la barra separadora.
  */
 export function dayKey(value: number | undefined): string | undefined {
   const ms = toMillis(value);
@@ -29,13 +29,13 @@ export function dayKey(value: number | undefined): string | undefined {
 }
 
 /**
- * 消息流分隔条文案：今天 / 昨天带时刻，更早给日期 + 时刻（都由 Intl 按语言格式化）。
+ * Texto separador de flujo de mensajes: hoy/ayer con hora, antes con fecha + hora (ambos con formato internacional por idioma).
  */
 export function formatDaySeparator(value: number | undefined, now: number = Date.now(), locale: Locale = DEFAULT_LOCALE): string {
   return formatDayLabel(value, now, locale);
 }
 
-/** 语音时长：「12″」，超过一分钟走「1′05″」。未知时长返回空串，由调用方给本地化文案。 */
+/** Duración de la voz: \"12″\"Falta más de un minuto\"1′05″”. Si se desconoce la duración, se devuelve una cadena vacía y la persona que llama proporcionará una copia de localización. */
 export function formatVoiceDuration(durationMs: number | undefined): string {
   if (durationMs === undefined || !Number.isFinite(durationMs) || durationMs <= 0) return "";
   const totalSeconds = Math.max(1, Math.round(durationMs / 1_000));
@@ -43,7 +43,7 @@ export function formatVoiceDuration(durationMs: number | undefined): string {
   return `${Math.floor(totalSeconds / 60)}′${String(totalSeconds % 60).padStart(2, "0")}″`;
 }
 
-/** 工具耗时：10 秒以下给一位小数（0.3s / 1.2s），一分钟以上拆成分秒。 */
+/** Tiempo de herramienta:10 Indique un decimal debajo de los segundos (0.3s / 1.2s), más de un minuto se divide en segundos. */
 export function formatToolDuration(durationMs: number | undefined): string | undefined {
   if (durationMs === undefined || !Number.isFinite(durationMs) || durationMs < 0) return undefined;
   if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;

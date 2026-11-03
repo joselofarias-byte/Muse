@@ -1,69 +1,69 @@
-# Muse 2.3.0 归档说明（本地构建 · 记忆修复 + 工具循环/上下文连续性大批次）
+# Muse 2.3.0 Instrucciones de archivo (compilación local · Reparación de memoria + ciclo de herramientas/Continuidad contextual para lotes grandes)
 
-- 归档时间：2026-09-28 凌晨（GMT+8）
-- 构建来源：`E:\1Project\Muse\1muse` @ commit `5aba0591`（本地共领先远端 58 提交；远端基线 `899b2ef8` = v2.2.0）
-- 构建命令：`.\gradlew :app:assembleRelease "-PversionName=2.3.0" "-PversionCode=230"`
-- 状态：**本地归档，未推送 / 未打 tag / 未发布**（等用户实测）
-- 说明：本包**取代 2.2.1 归档**（2.2.1 从未推送，仅本地流转；其记忆修复已全部包含在本包内）
+- Tiempo de archivo:2026-09-28 Temprano en la mañana (GMT+8)
+- Fuente de compilación:`E:\1Project\Muse\1muse` @ commit `5aba0591`(Listas locales remotas por 58 confirmaciones en total; línea de base remota `899b2ef8` = v2.2.0)
+- Comando de compilación:`.\gradlew :app:assembleRelease "-PversionName=2.3.0" "-PversionCode=230"`
+- Estado:**Archivo local, no enviado/no etiquetado/no publicado**(Esperando pruebas de usuarios reales)
+- Descripción: Este paquete**Reemplaza 2.2.1 Archivado**(2.2.1 Nunca empujado, sólo circuló localmente; sus reparaciones de memoria están todas incluidas en este paquete)
 
-## 本版包含的修复与改动
+## Correcciones y cambios incluidos en esta versión.
 
-### 一、记忆系统归档缺陷根治（2.2.1 批次，含数据救援）
-- 版本守卫写死 `≤13` 而库已 v14 → 每次启动把当前真库误归档重建为空库。现守卫与数据库版本三处同源；
-- 归档前 `wal_checkpoint` 保真（失败时 WAL 随备份保留）；
-- 新增一次性误归档恢复：修复版首启自动从"含有数据的误归档备份"找回记忆（空备份救不回——历史 WAL 已被旧版删除）；
-- 记忆页接线归档/恢复提示；长记忆点击展开。
+### 1. Cura radical para los defectos de archivo del sistema de memoria (2.2.1 lote, incluido el rescate de datos)
+- Guardián de la versión escrito hasta la muerte. `≤13` la biblioteca tiene v14 → Cada vez que se inicia, la biblioteca real actual se archiva por error y se reconstruye en una biblioteca vacía. Ahora la versión guard y la base de datos tienen el mismo origen en tres lugares;
+- Antes de archivar `wal_checkpoint` Fidelidad (WAL se conserva con la copia de seguridad en caso de falla);
+- Se agregó recuperación de archivos accidental por única vez: la versión reparada se recuperará automáticamente de"Copia de seguridad mal archivada que contiene datos"Recuperar memoria (la copia de seguridad vacía no se puede restaurar)——El WAL histórico ha sido eliminado por versiones anteriores);
+- Archivo de cableado de la página de memoria/Restaurar consejos; Memoria larga, haga clic para ampliar.
 
-### 二、工具轮次放开（新）
-- 新设置「工具轮次上限」：无限制（默认）/100/50/25（设置→聊天→上下文）；
-- 单轮总调用上限 60→300；死循环保护（重复调用指纹/无进展/连续失败早停）不变。
+### 2. Liberación de rotación de herramienta (nueva)
+- Nueva configuración "Límite de ronda de herramientas": sin límite (predeterminado)/100/50/25(ajustes→charlar→contexto);
+- El límite superior de llamadas totales en una sola ronda 60→300;Protección de bucle infinito (llamada repetida de huellas dactilares/Sin progreso/La falla continua (parada anticipada) permanece sin cambios.
 
-### 三、上下文连续性修复（新，核心）
-- 窗口外历史不再静默丢弃：生成 `[HISTORY_DIGEST]` 确定性摘录（用户/助手自然语言原文片段 + 工具条目）插在窗口前；
-- 工具回合压缩摘要保留"助手说明"预览；
-- 压缩调用加 20s 超时护栏（实测曾拖慢首字 ~31s）。
+### 3. Solución de continuidad del contexto (nueva, central)
+- La historia fuera de la ventana ya no se descarta silenciosamente: generar `[HISTORY_DIGEST]` Extracto determinista (usuario/Asistente de fragmento de texto original en lenguaje natural + entrada de herramienta) se inserta delante de la ventana;
+- Resumen de compresión de rondas de herramientas conservado"Instrucciones del asistente"Vista previa;
+- Agregue una barrera de tiempo de espera de 20 segundos para las llamadas de compresión (las pruebas reales han ralentizado la primera palabra) ~31s).
 
-### 四、工具权限分层（新）
-- 需 Shizuku/Root、无障碍、Termux 的工具全量标注；find_tools 带 `[needs X; READY/NOT READY]` + 通道状态行；系统提示工具索引标 `*` + 图例；
-- 执行前预检：通道未就绪直接返回结构化 `permission_required` 错误（替代"假成功"文案）；
-- `screen_permission_status` 提为常驻可见；补登记 4 个漏分类工具。
+### 4. Estratificación de permisos de herramientas (nuevo)
+- Requiere Shizuku/Root, Accesibilidad,Termux Todas las herramientas están completamente etiquetadas;find_tools traer `[needs X; READY/NOT READY]` + Línea de estado del canal; índice de herramientas de aviso del sistema `*` + leyenda;
+- Verificación previa antes de la ejecución: el canal no está listo y regresa directamente a la estructura `permission_required` Error (reemplazando"falso éxito"redacción);
+- `screen_permission_status` Hazlo permanentemente visible; registrar 4 herramientas de clasificación faltantes.
 
-### 五、技能与诊断（新）
-- 提示词技能支持可选 `input` 参数（`{{input}}`/`{{args}}` 占位符；无占位符追加末尾）；
-- 内置技能 seed 改为"缺失插入 + 已存在刷新定义字段（保留启停）"——修复老库 schema 永不更新；
-- knowledge_search：兜底评分连续化（旧离散分使 threshold≤0.5 完全无区分度——"传 0.5 没效果"的真根因）+ 未命中诊断回显；
-- MOOD 调试出口（`MoodDebug` 日志）；`skill_system_guide` 增补 Skill vs Plugin 选择指引。
+### 5. Habilidades y Diagnóstico (Nuevo)
+- El soporte rápido para habilidades de palabras es opcional `input` Parámetros (`{{input}}`/`{{args}}` marcador de posición; no se añade ningún marcador de posición al final);
+- La semilla de habilidad incorporada se cambia a"Falta inserción + campo de definición de actualización existente (conservar inicio y detención)"——Se corrigió el antiguo esquema de la biblioteca que nunca se actualizaba;
+- knowledge_search: Puntuación continua (antigua distribución discreta) threshold≤0.5 Completamente indistinguible——"Pasar 0.5 no tiene ningún efecto"la verdadera causa raíz)+ Eco diagnóstico perdido;
+- MOOD salida de depuración (`MoodDebug` registro);`skill_system_guide` Se agregó una guía de selección de habilidades versus complementos.
 
-### 六、UI 与零星修复
-- 消息渠道卡片两行式重设计（长名称/长 ID 不再挤成竖排；ID 中段省略）；
-- 补 `com.android.alarm.permission.SET_ALARM`（此前 set_alarm/set_timer 被系统拦截）；闹钟失败文案加 `[失败]` 判定标记。
+### 6.UI con arreglos poco a poco
+- Rediseño de dos líneas de la tarjeta del canal de mensajes (nombre largo/Las identificaciones largas ya no se agrupan en filas verticales;ID Se omite la sección central);
+- suplemento `com.android.alarm.permission.SET_ALARM`(anteriormente set_alarm/set_timer fue interceptado por el sistema); el despertador no pudo agregar texto `[falló]` Marca de juicio.
 
-## 产物与校验和（SHA-256）
+## producto con suma de comprobación (SHA-256)
 
-| 文件 | 大小 | SHA-256 |
+| Archivo | tamaño | SHA-256 |
 |---|---|---|
 | Muse_v2.3.0_arm64-v8a.apk | 66MB | `87fd0a8cf8042b30d14eabec42e8881e2616d98ebed4eace3595dd88f0dfebd7` |
 | Muse_v2.3.0_armeabi-v7a.apk | 55MB | `c56d221aab2bea8de9b325e6d9dd86aff3c3fa206bf6bb80ced35301fe7aded2` |
 | Muse_v2.3.0_universal.apk | 167MB | `10827b06df5b7d8203aa15e5fe19f0c70eab4aa161b03e4887c8bf633b289a75` |
 | Muse_v2.3.0_accessibility-provider.apk | 2MB | `e70be8d0d82e727a664e966cf0853ddc5e217a70985ade3307208855b6f179e3` |
 
-> 主应用与 Provider 同一把 release keystore（证书 SHA-256 `e82f4ecde8304b7d78b530336a48e41a42b80c0ebac8af2d2c10448277644ebf`）。
-> 三变体包内 `assets/a11y/accessibility-provider.apk` 与独立产物逐字节一致（已验证）。
+> La aplicación principal y el proveedor utilizan el mismo almacén de claves de versión (certificado SHA-256 `e82f4ecde8304b7d78b530336a48e41a42b80c0ebac8af2d2c10448277644ebf`).
+> Tres variantes en el paquete. `assets/a11y/accessibility-provider.apk` Sea coherente byte por byte con el producto independiente (verificado).
 
-## 出厂验证记录
+## Registro de verificación de fábrica
 
-- aapt2：`versionCode=230 / versionName=2.3.0` ✓
-- 官方校验器 `ci/script/validate_release_apks.py`：三包签名 PASS ✓
-- 全量单测（app+memory+ai）复跑绿（2m28s）；新增测试：ContextHistoryDigest 5 / ContextWindowSplit 4 / ToolTraceProjection +1 / ToolPermissionStatus 4 / seedOrRefreshBuiltIn 1 ✓
-- ktlint 门禁：app+ai 基线刷新后二跑 SUCCESS ✓
-- 记忆恢复演练（MuMu，2.2.1 批次）：制造"含 1 条记忆的误归档备份 + 未消费标记" → 首启日志 `已从归档恢复事实记忆: 1 条` → 连续两次重启事实保持且无新归档 ✓
+- aapt2:`versionCode=230 / versionName=2.3.0` ✓
+- Validador oficial `ci/script/validate_release_apks.py`:Tres firmas de garantía PASS ✓
+- Prueba única completa (app+memory+ai) volver a estar en verde (2m28s); Nueva prueba:ContextHistoryDigest 5 / ContextWindowSplit 4 / ToolTraceProjection +1 / ToolPermissionStatus 4 / seedOrRefreshBuiltIn 1 ✓
+- ktlint Control de acceso:app+ai Segunda ejecución después de la actualización de la línea base SUCCESS ✓
+- Ejercicio de recuperación de memoria (MuMu,2.2.1 Lote): Fabricación"Copia de seguridad mal archivada con 1 memoria + marca no consumida" → Primer registro de inicio `Memoria de hechos recuperada del archivo: 1 Artículo` → Dos reinicios consecutivos con hechos persistidos y sin nuevos archivos ✓
 
-## 安装注意
+## Notas de instalación
 
-- 手机上如装有 2.2.1 修复版/2.2.0 正式版：同签名直接覆盖升级；
-- 如装有调试包：需先卸载（签名不同）。
+- Si tiene la versión de reparación 2.2.1 instalada en su teléfono/2.2.0 Versión oficial: cobertura directa y actualización con la misma firma;
+- Si el paquete de depuración está instalado: primero es necesario desinstalarlo (la firma es diferente).
 
-## 归档约定
+## Convenciones de archivo
 
-- 正式归档位：仓库内 `E:\1Project\Muse\1muse\releases\v2.3.0\`（2026-09-28 起启用，APK 由 `.gitignore` 排除，仅作本地产物与 GitHub Release 上传暂存）；
-- 已推送 Git 的版本以 GitHub Release 资产为准；2.2.0 及更早未做本地归档。
+- Lugar oficial de presentación: En el almacén `E:\1Project\Muse\1muse\releases\v2.3.0\`(2026-09-28 habilitado desdeAPK por `.gitignore` Excluido, solo para productos locales y carga de versión de GitHub y almacenamiento temporal);
+- La versión de Git que se ha enviado está sujeta a los activos de la versión de GitHub;2.2.0 No se realizó ningún archivo local anteriormente.

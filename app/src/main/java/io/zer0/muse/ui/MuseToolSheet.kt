@@ -85,7 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** B7-07: 加号工具面板的数据驱动条目。 */
+/** B7-07: Entrada basada en datos para el panel de herramientas plus. */
 internal data class ToolEntry(
     val icon: ImageVector,
     val title: String,
@@ -97,16 +97,16 @@ internal data class ToolEntry(
 )
 
 /**
- * v1.0.72: 输入栏加号工具面板(浮层式重写)。
+ * v1.0.72: Panel de herramientas de signo más de campo de entrada(Reescritura de capa flotante).
  *
- * 布局(从下往上):
- *  - 顶部媒体区:第一格 = 相机实时取景预览(点击进入系统相机拍照),
- *    后面跟随相册最近图片(横向缩略图)。
- *  - 功能 tab 行:相册 / 文件 / 文章(知识库) / 技能 / 委托 / 绘图(横向图标+文字)。
- *  - 工具列表:保留原有数据驱动 entries(联网搜索/深度思考/重启上下文等)。
+ * Diseño(de abajo hacia arriba):
+ *  - área de medios superior:primera grilla = Vista previa de la cámara en vivo(Haga clic para ingresar a la cámara del sistema para tomar fotografías.),
+ *    Seguido de fotos recientes en el álbum.(Miniatura horizontal).
+ *  - Fila de pestaña de función:Álbumes/Documentos/Artículos(base de conocimientos) / Habilidades / Comisión / Dibujo(icono de paisaje+texto).
+ *  - Lista de herramientas:Mantener el controlador de datos original entries(búsqueda en internet/pensamiento profundo/Reiniciar contexto, etc.).
  *
- * 相机权限:预览需要 CAMERA 权限;未授权时第一格显示相机图标,点击请求权限。
- * 拍照:点击预览格 → TakePicture contract 调系统相机,拍完图片加入待发送。
+ * Permisos de la cámara:La vista previa requiere permiso de la CÁMARA;Cuando no esté autorizado, el icono de la cámara se mostrará en el primer cuadro.,Haga clic en Solicitar permiso.
+ * tomar fotos:Haga clic en el marco de vista previa → TakePicture contract Ajustar la cámara del sistema,Después de tomar las fotografías, agrégalas para enviarlas.
  */
 @Composable
 internal fun MuseToolSheet(
@@ -131,7 +131,7 @@ internal fun MuseToolSheet(
 
         Spacer(Modifier.height(MusePaddings.contentGap))
 
-        // ── 第一行:拍照预览 + 最近相册图片 ──
+        // ── primera linea:Vista previa de fotos + fotos de álbumes recientes ──
         val cameraPermission = android.Manifest.permission.CAMERA
         val hasCameraPermission = remember {
             ContextCompat.checkSelfPermission(context, cameraPermission) ==
@@ -171,7 +171,7 @@ internal fun MuseToolSheet(
             selectedGalleryImages = selectedGalleryImages.filter { it in recentImages }
         }
 
-        // 拍照:系统相机 intent(TakePicture 不需要 CAMERA 权限,FileProvider 保存)
+        // tomar fotos:Cámara del sistema intent(TakePicture No se requiere permiso de la CÁMARA,FileProvider guardar)
         var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
         val takePictureLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.TakePicture(),
@@ -245,7 +245,7 @@ internal fun MuseToolSheet(
                 )
             }
 
-            // 保留完整系统相册入口,没有最近图片时也能直接选择媒体。
+            // Mantener la entrada completa del álbum del sistema,También puede seleccionar medios directamente cuando no hay imágenes recientes.
             ToolMediaCard(
                 icon = MuseIcons.image,
                 label = stringResource(R.string.chat_tool_photo),
@@ -264,7 +264,7 @@ internal fun MuseToolSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "已选 ${selectedGalleryImages.size} 张",
+                    text = "Seleccionado ${selectedGalleryImages.size} zhang",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -283,16 +283,16 @@ internal fun MuseToolSheet(
             }
         }
 
-        // v2.x: 面板内分区间距对齐设置页新标准(cardGap 20)—— 媒体区 / 工具开关 / 附件
-        // 三个分区之间拉开同级的"组间距",组内仍用 contentGap 保持紧凑。
+        // v2.x: Nuevo estándar para la página de configuración de alineación del espaciado de particiones dentro de los paneles(cardGap 20)—— Área de medios/Interruptores de herramientas/Accesorios
+        // Dividir el mismo nivel entre tres particiones."espaciado de grupos",ContentGap todavía se usa dentro del grupo para mantenerlo compacto.
         Spacer(Modifier.height(MusePaddings.cardGap))
 
-        // ── 第二行:联网搜索 + 深度思考 ──
+        // ── segunda linea:Búsqueda en Internet + pensamiento profundo ──
         val findEntry: (String) -> ToolEntry? = { keyword ->
             entries.firstOrNull { it.title.contains(keyword) || keyword in it.title }
         }
-        val webSearchEntry = findEntry("联网")
-        val deepThinkingEntry = findEntry("深度思考")
+        val webSearchEntry = findEntry("Redes")
+        val deepThinkingEntry = findEntry("pensamiento profundo")
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -324,7 +324,7 @@ internal fun MuseToolSheet(
 
         Spacer(Modifier.height(MusePaddings.cardGap))
 
-        // ── 第三行:相册、附件、引用知识库及其余杂项，保持小胶囊并横向滚动 ──
+        // ── la tercera linea:Álbumes, archivos adjuntos, citas y otros elementos diversos, manténgalos pequeños y desplácese hacia los lados ──
         val miscEntries = buildList {
             add(
                 QuickAttachEntry(
@@ -336,14 +336,14 @@ internal fun MuseToolSheet(
                     },
                 ),
             )
-            entries.firstOrNull { it.title.contains("附件") || it.title.contains("文档") }?.let { entry ->
+            entries.firstOrNull { it.title.contains("Accesorios") || it.title.contains("Documentación") }?.let { entry ->
                 add(QuickAttachEntry(entry.icon, entry.title, onClick = entry.onClick))
             }
-            entries.firstOrNull { it.title.contains("知识库") }?.let { entry ->
+            entries.firstOrNull { it.title.contains("base de conocimientos") }?.let { entry ->
                 add(QuickAttachEntry(entry.icon, entry.title, onClick = entry.onClick))
             }
-            // 第三层容纳所有剩余杂项：提示词、技能、绘图、委托、重启上下文等。
-            // 只排除第二层的两个核心开关，以及已经放入本行的入口，避免重复。
+            // La tercera capa alberga todo el resto del material: palabras clave, habilidades, dibujos, delegados, contextos de reinicio, etc.
+            // Excluya únicamente los dos interruptores centrales en el segundo nivel y las entradas que se han colocado en esta fila para evitar duplicaciones.
             val usedTitles = map { it.label }.toSet()
             entries
                 .filter { it.title !in usedTitles }
@@ -383,7 +383,7 @@ internal fun MuseToolSheet(
     }
 }
 
-/** v1.0.72: 功能 tab 行条目(带可选激活态 + 长按)。 */
+/** v1.0.72: Entrada de fila de la pestaña de función(Con activación opcional + pulsación larga). */
 private data class QuickAttachEntry(
     val icon: ImageVector,
     val label: String,
@@ -392,7 +392,7 @@ private data class QuickAttachEntry(
     val onLongClick: (() -> Unit)? = null,
 )
 
-/** v1.0.72: 功能 tab(圆形图标 + 下方独立文字,不截断)。 */
+/** v1.0.72: Función tab(Icono redondo + texto independiente debajo,no truncar). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QuickAttachTab(
@@ -405,10 +405,10 @@ private fun QuickAttachTab(
     dense: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    // v2.x: 交互动效重做 — 按压缩放 + 颜色弹性过渡(自绘反馈,无 ripple)
+    // v2.x: Efectos de interacción reelaborados — Presione para comprimir y expandir + transición elástica de color(Comentarios de autodibujo,Ninguno ripple)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    // v2.x: reduced-motion 降级 — 系统"关闭动画"时用 snap 直切,不做弹簧
+    // v2.x: reduced-motion Rebajar — sistema"Desactivar animación"Utilice el ajuste para cortar recto,no es una primavera
     val reducedMotion = MuseMotion.isReducedMotion()
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 0.93f else 1f,
@@ -463,7 +463,7 @@ private fun QuickAttachTab(
                 },
             )
             .clip(if (compact) MuseShapes.pill else MuseShapes.large)
-            // v2.x: 背景在 clickable 之前;按压反馈走缩放+颜色(自绘,与全局去 ripple 决策一致)
+            // v2.x: fondo antes de hacer clic;Presione comentarios para hacer zoom+color(autopintado,Consistente con la decisión global de reducción de la onda expansiva)
             .background(containerColor)
             .then(
                 if (onLongClick != null) {
@@ -553,7 +553,7 @@ private fun QuickAttachTab(
     }
 }
 
-/** 最近相册图片缩略图,支持多选并显示选择顺序。 */
+/** Miniaturas de imágenes de álbumes recientes,Admite múltiples selecciones y muestra el orden de selección. */
 @Composable
 private fun GalleryThumbnail(uri: Uri, selectionIndex: Int, onClick: () -> Unit) {
     val shape = MuseShapes.extraLarge
@@ -604,18 +604,18 @@ private fun GalleryThumbnail(uri: Uri, selectionIndex: Int, onClick: () -> Unit)
 }
 
 /**
- * v1.0.72: 相机实时取景预览(CameraX)。
+ * v1.0.72: Vista previa de la cámara en vivo(CameraX).
  *
- * 生命周期绑定 LocalLifecycleOwner,预览挂载到 PreviewView;
- * 点击预览格触发 [onTap](由调用方启动系统相机拍照)。
+ * enlace del ciclo de vida LocalLifecycleOwner,Vista previa montada en PreviewView;
+ * Haga clic en el marco de vista previa para activar [onTap](Inicie la cámara del sistema para tomar fotografías de la persona que llama).
  */
 @Composable
 private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnTap by rememberUpdatedState(onTap)
-    // 持有 provider 引用;面板离开组合(onRelease)时解绑,避免相机在加号菜单关闭后
-    // 仍绑定在 RESUMED Activity 上(指示灯常亮/耗电/阻塞其他相机应用)。
+    // tiene referencia del proveedor;Grupo de hojas de panel(onRelease)Desvincular cuando,Evitar que la cámara se cierre después del menú más
+    // Aún vinculado a actividad REANUDA(La luz indicadora está siempre encendida./Consumo de energía/Bloquear otras aplicaciones de cámara).
     val cameraProviderHolder = remember { arrayOfNulls<ProcessCameraProvider>(1) }
     AndroidView(
         factory = { ctx ->
@@ -639,11 +639,11 @@ private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
                             preview,
                         )
                     }.onFailure { e ->
-                        Logger.w("MuseToolSheet", "相机预览绑定失败", e)
+                        Logger.w("MuseToolSheet", "Error al vincular la vista previa de la cámara", e)
                     }
                 }, ContextCompat.getMainExecutor(ctx))
             }.onFailure { e ->
-                Logger.w("MuseToolSheet", "相机预览初始化失败", e)
+                Logger.w("MuseToolSheet", "Falló la inicialización de la vista previa de la cámara", e)
             }
             previewView
         },
@@ -655,7 +655,7 @@ private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
     )
 }
 
-/** B7-07: 工具菜单中的媒体快捷卡片。 */
+/** B7-07: Tarjeta de acceso directo a medios en el menú Herramientas. */
 @Composable
 private fun ToolMediaCard(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
@@ -684,7 +684,7 @@ private fun ToolMediaCard(icon: ImageVector, label: String, modifier: Modifier =
     }
 }
 
-/** B7-07: 工具菜单中的列表行。 */
+/** B7-07: Fila de lista en el menú Herramientas. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ToolListRow(
@@ -752,12 +752,12 @@ private fun ToolListRow(
     }
 }
 
-/** v1.0.72: 媒体区高度(相机/照片入口统一尺寸)。 */
+/** v1.0.72: altura del área de medios(cámara/Portal de fotos tamaño uniforme). */
 private val TelegramMediaHeight = 128.dp
 
 private const val MAX_GALLERY_SELECTION = 4
 
-/** 查询系统相册最近图片。每次打开面板都会重新读取,保证显示最新内容。 */
+/** Consulta las últimas imágenes en el álbum del sistema. El panel se volverá a leer cada vez que se abra.,Garantizado para mostrar el contenido más reciente. */
 private fun queryRecentGalleryImages(context: Context, maxCount: Int): List<Uri> {
     return runCatching {
         val uris = mutableListOf<Uri>()
@@ -779,5 +779,5 @@ private fun queryRecentGalleryImages(context: Context, maxCount: Int): List<Uri>
             }
         }
         uris
-    }.onFailure { e -> Logger.w("MuseToolSheet", "查询相册失败", e) }.getOrDefault(emptyList())
+    }.onFailure { e -> Logger.w("MuseToolSheet", "No se pudo consultar el álbum", e) }.getOrDefault(emptyList())
 }

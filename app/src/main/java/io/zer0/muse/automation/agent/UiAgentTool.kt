@@ -5,7 +5,7 @@ import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.tools.ToolRiskLevel
 
 /**
- * v2.2.1: 把 GUI Agent 环注册为 `ui_agent` 工具(HIGH,强制审批)。
+ * v2.2.1: Registre el anillo del Agente GUI como `ui_agent` Herramientas(HIGH,Aprobación obligatoria).
  */
 class UiAgentTool(private val runner: UiAgentRunner) {
 
@@ -13,34 +13,34 @@ class UiAgentTool(private val runner: UiAgentRunner) {
         registry.registerOutcome(
             ToolRegistry.ToolDef(
                 name = "ui_agent",
-                description = "GUI Agent 环:用视觉模型看着屏幕,一步步操作手机完成跨 App 的多步任务" +
-                    "(如\"打开微信给张三发消息\")。内部自动循环:截图→视觉决策→点击/滑动/输入,默认最多 15 步。" +
-                    "display=auto(默认) 在有 package_name 且独立虚拟屏可用时优先隔离执行,否则降级到前台无障碍;" +
-                    "display=foreground 强制当前主屏;display=virtual 强制独立屏并要求 Shizuku/Root。" +
-                    "需要视觉辅助已配置(设置→视觉辅助)。每步会截取当前执行界面并发送到所选视觉模型分析，截图可能包含聊天或账号等敏感信息；仅在用户明确授权的任务范围内调用。" +
-                    "单步操作请直接用 screen_* 工具,多步流程再用本工具。",
+                description = "GUI Agent anillo:Mirando la pantalla con un modelo visual.,Utilice su teléfono paso a paso para completar tareas de varios pasos en todas las aplicaciones" +
+                    "(Como por ejemplo\"Abre WeChat y envía un mensaje a Zhang San.\"). Ciclo automático interno:captura de pantalla→toma de decisiones visuales→Haga clic/Deslizar/entrada,El valor predeterminado es hasta 15 pasos." +
+                    "display=auto(Predeterminado) Cuando existe nombre_paquete y hay disponible una pantalla virtual independiente, se da prioridad a la ejecución aislada.,De lo contrario, se rebajará a recepción por razones de accesibilidad.;" +
+                    "display=foreground Forzar la pantalla de inicio actual;display=virtual Fuerza la pantalla independiente y requiere Shizuku/Root." +
+                    "Requiere ayuda visual configurada(ajustes→ayuda visual). Cada paso interceptará la interfaz de ejecución actual y la enviará al modelo visual seleccionado para su análisis. La captura de pantalla puede contener información confidencial como chat o cuenta; solo será llamado dentro del alcance de las tareas explícitamente autorizadas por el usuario." +
+                    "Úselo directamente para una operación de un solo paso screen_* Herramientas,Utilice esta herramienta para procesos de varios pasos.",
                 parameters = mapOf(
-                    "task" to "必填。要完成的任务描述,尽量具体(目标 App、对象、操作意图)",
-                    "max_steps" to "可选。最大步数 3-30,默认 15",
-                    "display" to "可选。auto(默认) 有目标包名时优先独立虚拟屏，否则前台；也可指定 foreground 或 virtual",
-                    "package_name" to "可选目标应用包名，例如 com.example.app；virtual 模式必填，auto 模式提供后会先尝试隔离运行",
+                    "task" to "Requerido. Descripción de la tarea a realizar.,Sea lo más específico posible(Aplicación de destino, objeto, intención de operación)",
+                    "max_steps" to "Opcional. Número máximo de pasos 3-30,Predeterminado 15",
+                    "display" to "Opcional.auto(Predeterminado) Cuando hay un nombre de paquete de destino, se le da prioridad a la pantalla virtual independiente; de ​​lo contrario, al primer plano; También puede especificar primer plano o virtual",
+                    "package_name" to "Nombre del paquete de la aplicación de destino opcional, como com.example.app;virtual Se requiere patrón,auto Una vez proporcionado el modo, primero intentará ejecutarse de forma aislada.",
                 ),
                 required = setOf("task"),
                 riskLevel = ToolRiskLevel.HIGH,
             ),
         ) { args ->
             val task = args["task"]?.trim().orEmpty()
-            if (task.isBlank()) return@registerOutcome ToolOutcome.error("错误:缺少 task 参数")
+            if (task.isBlank()) return@registerOutcome ToolOutcome.error("error:Parámetro de tarea faltante")
             val maxSteps = args["max_steps"]?.toIntOrNull() ?: UiAgentRunner.DEFAULT_MAX_STEPS
             val displayMode = when (args["display"]?.trim()?.lowercase()) {
                 null, "", "auto" -> UiAgentRunner.DisplayMode.AUTO
                 "foreground" -> UiAgentRunner.DisplayMode.FOREGROUND
                 "virtual" -> UiAgentRunner.DisplayMode.VIRTUAL
-                else -> return@registerOutcome ToolOutcome.error("错误:display 只支持 auto、foreground 或 virtual")
+                else -> return@registerOutcome ToolOutcome.error("error:display Solo admite auto,foreground o virtual")
             }
             val result = runner.run(task, maxSteps, displayMode = displayMode, packageName = args["package_name"])
             val content = buildString {
-                append(if (result.finished) "任务结束:" else "任务未完成:")
+                append(if (result.finished) "Misión terminada:" else "Tarea no completada:")
                 append('\n')
                 append(result.summary)
             }

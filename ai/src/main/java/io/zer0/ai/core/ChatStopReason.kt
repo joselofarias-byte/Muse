@@ -1,10 +1,10 @@
 package io.zer0.ai.core
 
 /**
- * Provider 无关的回复停止原因判定。
+ * Provider Respuesta irrelevante para detener la determinación del motivo.
  *
- * 不同 API 对“输出达到上限”的命名不同：OpenAI 常见为 `length` / `max_tokens`，
- * Anthropic 为 `max_tokens`，Gemini 为 `MAX_TOKENS`。UI 和上层编排不应各自维护字符串表。
+ * Diferentes pares de API“La salida alcanza el límite superior”La denominación es diferente:OpenAI Comúnmente visto como `length` / `max_tokens`,
+ * Anthropic para `max_tokens`,Gemini para `MAX_TOKENS`.UI y la orquestación de capa superior no debe mantener tablas de cadenas por separado.
  */
 object ChatStopReason {
 
@@ -21,7 +21,7 @@ object ChatStopReason {
         "max_token_limit",
     )
 
-    /** 判断 Provider 返回的停止原因是否表示回复因输出长度达到上限而结束。 */
+    /** Determine si el motivo de detención devuelto por el proveedor indica que la respuesta finalizó porque la longitud de salida alcanzó el límite superior. */
     fun isLengthLimited(reason: String?): Boolean {
         val normalized = reason?.trim()?.lowercase()?.replace(' ', '_') ?: return false
         return normalized in lengthLimitedReasons
@@ -35,10 +35,10 @@ object ChatStopReason {
     )
 
     /**
-     * v2.6.1 (#5): 判断 Provider 返回的停止原因是否表示“模型停下是为了调用工具”。
+     * v2.6.1 (#5): Determinar si el motivo de detención devuelto por el proveedor indica“El modelo se detiene para llamar a la herramienta.”.
      *
-     * 这种情况下的输出属于工具协议而非用户可见正文：即使正文为空、工具调用又未解析出来，
-     * 也不能把 reasoning 当作回复上屏（否则用户会看到思考过程/协议片段掺杂进正文）。
+     * La salida en este caso pertenece al protocolo de la herramienta en lugar del cuerpo visible para el usuario: incluso si el cuerpo está vacío y la llamada a la herramienta no se analiza,
+     * Tampoco se puede utilizar el razonamiento como respuesta en la pantalla (de lo contrario, el usuario verá el proceso de pensamiento)./Se incorporan al texto fragmentos del protocolo).
      */
     fun isToolCallStop(reason: String?): Boolean {
         val normalized = reason?.trim()?.lowercase()?.replace(' ', '_') ?: return false

@@ -7,7 +7,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import java.io.File
 import java.security.MessageDigest
 
-/** 持久化短时 webhook 事件 ID，去重范围不受 UI inbox 的保留条数影响。 */
+/** El ID del evento del webhook a corto plazo persiste y el rango de deduplicación no se ve afectado por la cantidad de elementos retenidos en la bandeja de entrada de la interfaz de usuario. */
 internal class WebhookEventDeduplicator(
     private val file: File,
     private val nowMillis: () -> Long = System::currentTimeMillis,
@@ -45,9 +45,9 @@ internal class WebhookEventDeduplicator(
     private fun loadEntries(): List<Entry> {
         if (!file.exists()) return emptyList()
         val loaded = AppJson.decodeFromString(ListSerializer(Entry.serializer()), file.readText())
-        // v2.6.0 (AUD-CHANNEL-F4): 超容量（异常写入/被篡改）的账本隔离后重开，
-        // 而不是让构造抛错——抛错会让 attach 标记账本不可用、后续事件全部被拒。
-        // 隔离保留现场供诊断，同时让去重器从干净状态继续工作。
+        // v2.6.0 (AUD-CHANNEL-F4): Sobrecapacidad (escritura anormal/El libro mayor que ha sido manipulado será aislado y reabierto.
+        // En lugar de que el constructor arroje un error——Lanzar un error hará que adjunto marque el libro mayor como no disponible y todos los eventos posteriores serán rechazados.
+        // El aislamiento preserva el sitio para el diagnóstico y al mismo tiempo permite que el deduplicador continúe trabajando desde un estado limpio.
         return if (loaded.size > MAX_ENTRIES) {
             AtomicFileStore.quarantine(file, "webhook_ledger_oversize")
             emptyList()

@@ -29,18 +29,18 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * 群聊 UI 状态。
+ * Estado de la interfaz de usuario del chat grupal.
  *
- * @param chats 群聊列表(按 updatedAt 降序)
- * @param currentChat 当前选中的群聊实体(null 表示未选中)
- * @param currentMessages 当前群聊的消息列表(按时间升序)
- * @param inputText 输入框文本
- * @param isAgentResponding 是否正在等待 Agent 轮转回复
- * @param assistants 全部助手列表(新建群聊成员选择用)
- * @param teams 全部协作团队(新建群聊关联团队用)
+ * @param chats Lista de chat grupal(Orden descendente por actualizadoEn)
+ * @param currentChat La entidad de chat grupal actualmente seleccionada(null Indica no seleccionado)
+ * @param currentMessages Lista de mensajes del chat grupal actual(orden ascendente por tiempo)
+ * @param inputText Texto del cuadro de entrada
+ * @param isAgentResponding Ya sea esperando la respuesta de rotación de agentes
+ * @param assistants Lista de todos los asistentes(Para crear un nuevo miembro del chat grupal, seleccione)
+ * @param teams Todos los equipos colaborativos(Crear un nuevo chat grupal para equipos asociados)
  */
 /**
- * 群聊消息展开状态 — 用于切页后保持 mood / reasoning 折叠状态。
+ * Estado de expansión de mensajes de chat grupal — Se utiliza para mantener el estado de ánimo/razonamiento plegado después de cortar la página.
  */
 data class GroupChatMessageExpandedState(
     val isMoodExpanded: Boolean? = null,
@@ -49,7 +49,7 @@ data class GroupChatMessageExpandedState(
 
 data class GroupChatUiState(
     val chats: List<GroupChatEntity> = emptyList(),
-    /** v1.72: 群聊列表首次加载标志(避免闪空状态) */
+    /** v1.72: Primera bandera de carga de la lista de chat grupal(Evite el estado flash) */
     val isChatsLoading: Boolean = true,
     val currentChat: GroupChatEntity? = null,
     val currentMessages: List<GroupChatMessageEntity> = emptyList(),
@@ -57,72 +57,72 @@ data class GroupChatUiState(
     val pendingImages: List<String> = emptyList(),
     val pendingFileAttachments: List<FileAttachment> = emptyList(),
     val isAgentResponding: Boolean = false,
-    /** v2.x: 轮转是否已被用户暂停(导演控制),暂停中可点击"继续"或"跳过剩余" */
+    /** v2.x: Si el usuario ha pausado la rotación(control del director),Se puede hacer clic durante la pausa"continuar"o"saltar restante" */
     val roundPaused: Boolean = false,
-    /** v2.x: 本轮剩余待发言成员名(队列可视化,导演条展示)。 */
+    /** v2.x: Los nombres de los miembros restantes que hablarán en esta ronda.(Visualización de colas,Visualización de la barra del director). */
     val upcomingSpeakers: List<String> = emptyList(),
-    /** v1.104: 当前正在发言的 Agent(用于"谁在思考"指示),null=无人在发言 */
+    /** v1.104: actualmente hablando Agent(usado para"quien esta pensando"instrucciones),null=nadie esta hablando */
     val currentSpeaker: AssistantEntity? = null,
     val assistants: List<AssistantEntity> = emptyList(),
     val teams: List<AgentTeam> = emptyList(),
-    /** v1.45: 聊天偏好(控制 mood/reasoning 显示与默认展开)。 */
+    /** v1.45: Preferencias de chat(Controlar la visualización del estado de ánimo/razonamiento y la expansión predeterminada). */
     val chatPreferences: ChatPreferences = ChatPreferences(),
-    /** v1.45: 列表滚动位置缓存(切页/后台后恢复)。 */
+    /** v1.45: Lista de caché de posición de desplazamiento(Cortar páginas/Reanudar después del fondo). */
     val listFirstVisibleItemIndex: Int = 0,
     val listFirstVisibleItemScrollOffset: Int = 0,
-    /** v1.45: 消息级展开状态缓存(mood/reasoning 折叠状态不因切页丢失)。 */
+    /** v1.45: Caché de estado de expansión a nivel de mensaje(mood/reasoning El estado plegado no se pierde debido al corte de página.). */
     val messageExpandedStates: Map<String, GroupChatMessageExpandedState> = emptyMap(),
-    /** M7: 群聊删除标志,详情页据此自动返回。 */
+    /** M7: Marca de eliminación de chat grupal,La página de detalles volverá automáticamente en consecuencia. */
     val chatDeleted: Boolean = false,
-    /** v1.126: 操作错误提示(null=无错误) */
+    /** v1.126: Mensaje de error de operación(null=Sin errores) */
     val errorMessage: String? = null,
-    /** v1.53-GC: 是否还有更早的历史消息可加载(上滑加载更多用)。 */
+    /** v1.53-GC: ¿Hay algún mensaje histórico anterior que se pueda cargar?(Desliza hacia arriba para cargar más). */
     val hasMoreHistory: Boolean = false,
-    /** v1.53-GC: 是否正在加载更多历史消息(防止重复触发 + UI 顶部加载指示器)。 */
+    /** v1.53-GC: Está cargando más mensajes históricos.(Evitar disparos repetidos + indicador de carga superior de la interfaz de usuario). */
     val isLoadingMore: Boolean = false,
-    /** v1.x: 多选模式选中的消息 id 集合(非空 = 多选模式)。 */
+    /** v1.x: Colección de identificadores de mensajes seleccionados en modo de selección múltiple(No vacío = Modo de selección múltiple). */
     val selectedMessageIds: Set<String> = emptySet(),
-    /** v1.x: 当前群聊正在流式生成的助手回复内容(null=无流式输出)。 */
+    /** v1.x: El contenido de respuesta del asistente generado por el chat grupal actual se está transmitiendo(null=Sin salida de transmisión). */
     val streamingContent: String? = null,
-    /** v1.0.72: 群聊搜索状态。 */
+    /** v1.0.72: Estado de búsqueda del chat grupal. */
     val searchResults: List<GroupChatMessageEntity> = emptyList(),
     val isSearching: Boolean = false,
     /**
-     * v1.53-GC: 最近一次"加载更多"插入的历史条数。
+     * v1.53-GC: más reciente"cargar más"El número de elementos del historial insertados.
      *
-     * UI 监听该字段变化(>0)后,通过 [androidx.compose.foundation.lazy.LazyListState.scrollToItem]
-     * 跳过新插入的条数,保持用户视觉位置不跳动(原来在顶部的消息现在在该 index),
-     * 然后调 [GroupChatViewModel.clearHistoryLoadCount] 清空。
+     * UI Monitorear los cambios en este campo.(>0)después,Pase [androidx.compose.foundation.lazy.LazyListState.scrollToItem]
+     * Omitir la cantidad de elementos recién insertados,Evita que la posición visual del usuario salte(El mensaje que estaba en la parte superior ahora está en la parte superior. index),
+     * Luego ajuste [GroupChatViewModel.clearHistoryLoadCount] Vacío.
      */
     val lastHistoryLoadCount: Int = 0,
     /**
-     * ActivityHub: 当前群聊各 agent 的活动状态列表。
+     * ActivityHub: Lista de estado de actividad de cada agente en el chat grupal actual.
      *
-     * 由 [GroupChatActivityHub.activities] StateFlow 派生,仅包含当前群聊的活动。
-     * UI 据此渲染 [AgentActivityBar] 中的状态 chip(IDLE 状态被过滤不显示)。
+     * por [GroupChatActivityHub.activities] StateFlow derivado,Solo contiene actividad para el chat grupal actual.
+     * UI Renderizar en consecuencia [AgentActivityBar] en estado chip(IDLE El estado se filtra y no se muestra).
      */
     val activities: List<AgentActivity> = emptyList(),
 )
 
 /**
- * 群聊 ViewModel — 管理群聊列表 / 消息流 / Agent 轮转调度。
+ * chat grupal ViewModel — Administre la lista de chat grupal/flujo de mensajes/horario de rotación de agentes.
  *
- * 职责:
- *  - 观察群聊列表(observeChats)与助手列表(AssistantRepository.observeAll)
- *  - 切换当前群聊时分页加载消息流(getPagedMessages 首屏 Flow + loadMoreHistory 上滑加载更多)
- *  - 用户发消息后调用 [GroupChatScheduler.triggerAgentRoundRobin] 串行触发各 Agent 发言
- *  - 创建 / 删除群聊
+ * Responsabilidades:
+ *  - Ver lista de chat grupal(observeChats)con lista de ayuda(AssistantRepository.observeAll)
+ *  - Cargue el flujo de mensajes en páginas al cambiar el chat grupal actual(getPagedMessages Primera pantalla Flujo + cargarMásHistoria Desliza hacia arriba para cargar más)
+ *  - Llamado después de que el usuario envía un mensaje. [GroupChatScheduler.triggerAgentRoundRobin] Activar que cada agente hable en serie
+ *  - Crear/eliminar chat grupal
  *
- * v1.53-GC: 消息列表改分页加载,复用单聊 v1.53 方案(窗口查询 + Repository reversed +
- * ViewModel loadMoreHistory)。首屏加载 [INITIAL_PAGE_SIZE] 条,上滑到顶触发
- * [loadMoreHistory] 取更早 [LOAD_MORE_PAGE_SIZE] 条;新消息通过 Flow 增量追加到列表尾部。
+ * v1.53-GC: La lista de mensajes se carga en páginas.,Reutilizar la solución de chat único v1.53(consulta de ventana + Repository reversed +
+ * ViewModel loadMoreHistory). Cargando la primera pantalla [INITIAL_PAGE_SIZE] Artículo,Deslice hacia arriba para activar
+ * [loadMoreHistory] tomar antes [LOAD_MORE_PAGE_SIZE] Artículo;Los mensajes nuevos se agregan incrementalmente al final de la lista a través de Flow.
  *
- * @param groupChatRepository 群聊仓库
- * @param scheduler 群聊调度器(触发 Agent 轮转)
- * @param assistantRepository 助手仓库(加载成员候选列表)
- * @param settings 设置仓库(读取团队配置 + 用户名)
- * @param activityHub 群聊活动状态管理器,
- *        订阅其 [GroupChatActivityHub.activities] 派生当前群聊的活动列表到 UI state。
+ * @param groupChatRepository Almacén de chat grupal
+ * @param scheduler Programador de chat grupal(Rotación del agente desencadenante)
+ * @param assistantRepository Auxiliar de almacén(Cargar lista de candidatos a miembros)
+ * @param settings Configurar almacén(Leer configuración del equipo + nombre de usuario)
+ * @param activityHub Administrador de estado de actividad de chat grupal,
+ *        Suscríbete a su [GroupChatActivityHub.activities] Deriva la lista activa del chat grupal actual al estado de la interfaz de usuario.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupChatViewModel(
@@ -138,13 +138,13 @@ class GroupChatViewModel(
     companion object {
         private const val TAG = "GroupChatViewModel"
 
-        /** v1.126: 发送消息最小间隔(ms),防止快速点击重复发送 */
+        /** v1.126: Intervalo mínimo para enviar mensajes.(ms),Evite que los clics rápidos se envíen repetidamente */
         private const val SEND_DEBOUNCE_MS = 500L
 
-        /** v1.53-GC: 群聊消息分页 — 首屏页大小(初始加载条数)。 */
+        /** v1.53-GC: Paginación de mensajes de chat grupal — Tamaño de la página de inicio(Número inicial de artículos cargados). */
         private const val INITIAL_PAGE_SIZE = GroupChatRepository.INITIAL_PAGE_SIZE
 
-        /** v1.53-GC: 群聊消息分页 — 上滑加载更多页大小。 */
+        /** v1.53-GC: Paginación de mensajes de chat grupal — Desliza hacia arriba para cargar más tamaños de página. */
         private const val LOAD_MORE_PAGE_SIZE = GroupChatRepository.LOAD_MORE_PAGE_SIZE
     }
 
@@ -152,33 +152,33 @@ class GroupChatViewModel(
     private val json = Json { ignoreUnknownKeys = true }
     val state: StateFlow<GroupChatUiState> = _state.asStateFlow()
 
-    /** v1.126: 上次发送时间戳,用于 debounce */
+    /** v1.126: Marca de tiempo del último envío,usado para debounce */
     private var lastSendTimestamp = 0L
 
-    /** 当前选中的群聊 id(用于 flatMapLatest 切换消息流)。 */
+    /** Chat grupal actualmente seleccionado id(Utilice flatMapLatest para cambiar el flujo de mensajes). */
     private val currentChatId = MutableStateFlow<String?>(null)
 
     /**
-     * 把一条 UI 状态流的收集整体收敛进日志(不向上抛,但绝不静默)。
+     * Convergir la colección de un flujo de estado de la interfaz de usuario en un registro(No lo vomites,Pero nunca en silencio).
      *
-     * 为什么需要它:init 里这些 `viewModelScope.launch { flow.collect { } }` 此前对异常完全
-     * 没有防线。上游(Room / DataStore 仓储流)发射时抛错、或下游 collect 块自身抛错,都会变成
-     * 协程的未捕获异常:轻则这条 UI 流静默死亡(界面从此不再刷新且无任何日志),重则交给
-     * 默认 UncaughtExceptionHandler 崩进程。测试里则会泄漏到下一个用例
-     * (`UncaughtExceptionsBeforeTest`),让无关用例 flaky。
+     * por qué es necesario:init Aquí están estos `viewModelScope.launch { flow.collect { } }` Anteriormente, las excepciones eran completamente
+     * No hay línea de defensa. aguas arriba(Room / DataStore flujo de almacenamiento)Se genera un error al emitir, o el propio bloque de recopilación descendente genera un error.,se convertirá
+     * Excepción no detectada de la rutina:Al menos este flujo de interfaz de usuario muere silenciosamente(La interfaz ya no se actualizará y no habrá registros.),Más importante aún, déjelo así.
+     * El UncaughtExceptionHandler predeterminado bloquea el proceso. En la prueba, se filtrará al siguiente caso de uso.
+     * (`UncaughtExceptionsBeforeTest`),Haga que los casos de uso irrelevantes sean inestables.
      *
-     * 覆盖两层异常:
-     *  1. 上游 —— `this@guardUpstream.collect` 里的发射异常;
-     *  2. 下游 —— collect 块自身抛出的异常(它从 `emit` 里冒出来,同样落在本 try 内)。
-     * 只做上游 `Flow.catch` 收不到第 2 类,所以这里用 `flow {}` 包一层。
+     * Cubriendo dos capas de excepciones:
+     *  1. aguas arriba —— `this@guardUpstream.collect` La anomalía de emisión en;
+     *  2. aguas abajo —— collect Excepciones lanzadas por el propio bloque.(comienza desde `emit` salir,También entra dentro de este intento.).
+     * Sólo aguas arriba `Flow.catch` Categoría 2 no recibida,Entonces aquí usamos `flow {}` Envuelve una capa.
      *
-     * **为什么可以吞**:本方法只用于只读的 UI 状态流(群聊列表 / 消息窗口 / 助手列表 /
-     * 活动广播 / 生成状态 / 偏好)。它们不参与写入一致性,异常时最坏结果是"这块 UI 不再刷新",
-     * 数据本身仍在 DB 里,用户重新进入页面即恢复。写路径(发送/删除/归档/共享文档等)的
-     * 异常一律走各自的 try/catch 并置 errorMessage,不经本方法。
+     * **¿Por qué puedo tragarlo?**:Este método solo se utiliza para el flujo de estado de la interfaz de usuario de solo lectura.(Lista de chat grupal/ventana de mensajes/lista de asistentes /
+     * Difusión de actividad/Estado de compilación/Preferencias). No participan en la coherencia de la escritura.,El peor resultado cuando ocurre una excepción es"Esta interfaz de usuario ya no se actualizará",
+     * Los datos en sí todavía están en la base de datos.,La página se restaurará cuando el usuario vuelva a ingresar a ella. escribir ruta(enviar/Eliminar/Archivo/Comparte documentos y más)de
+     * Las excepciones siempre pasan por sus propias combinaciones try/catch. errorMessage,Sin este método.
      *
-     * CancellationException 必须原样重抛:viewModelScope 清理与 flatMapLatest 切换上游都会
-     * 用它做正常取消信号,吞掉会把取消变成"流程正常结束",后续清理逻辑失效。
+     * CancellationException Debe volverse a lanzar tal como está.:viewModelScope Limpieza con flatMapLatest y cambio ascendente
+     * Úselo como señal de cancelación normal.,La deglución convertirá la cancelación en"El proceso finaliza normalmente",La lógica de limpieza posterior falla.
      */
     private fun <T> Flow<T>.guardUpstream(tag: String): Flow<T> = flow {
         try {
@@ -186,14 +186,14 @@ class GroupChatViewModel(
         } catch (ce: kotlin.coroutines.cancellation.CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w(TAG, "群聊 UI 状态流中断($tag): ${e.message}", e)
+            Logger.w(TAG, "Se interrumpió el flujo de estado de la interfaz de usuario del chat grupal($tag): ${e.message}", e)
         }
     }
 
     init {
-        // H-GC2 修复: 原先用 appScope.launch 收集 Flow,ViewModel 销毁后收集器永不取消,
-        // 造成 Flow 泄漏与 StateFlow 旧订阅残留。改用 viewModelScope,随 ViewModel 清理自动取消。
-        // 观察群聊列表
+        // H-GC2 Reparación: Recopilado originalmente usando appScope.launch Flow,ViewModel El coleccionista nunca cancela después de la destrucción.,
+        // Provoca fugas de Flow y restos de suscripciones antiguas de StateFlow. Usar en su lugar viewModelScope,Cancelado automáticamente con la limpieza de ViewModel.
+        // Ver lista de chat grupal
         viewModelScope.launch {
             groupChatRepository.observeChats()
                 .guardUpstream("observeChats")
@@ -201,8 +201,8 @@ class GroupChatViewModel(
                     _state.update { it.copy(chats = chats, isChatsLoading = false) }
                 }
         }
-        // 观察助手列表(新建群聊成员选择用)
-        // v1.111: assistants 加载后同步更新 currentSpeaker(切页重建时 scheduler 可能已有活跃生成)
+        // Lista de asistentes de observación(Para crear un nuevo miembro del chat grupal, seleccione)
+        // v1.111: assistants Sincronizar actualizaciones después de cargar currentSpeaker(Es posible que el programador ya se haya generado activamente cuando se corta y reconstruye la página.)
         viewModelScope.launch {
             assistantRepository.observeAll.guardUpstream("observeAll").collect { assistants ->
                 val activeGen = scheduler.activeGroupGeneration.value
@@ -212,7 +212,7 @@ class GroupChatViewModel(
                 _state.update { it.copy(assistants = assistants, currentSpeaker = speaker) }
             }
         }
-        // v1.x: 群聊流式输出 — 订阅 ActivityHub 的流式内容广播,映射到当前群聊
+        // v1.x: Salida de transmisión de chat grupal — Suscríbete a las retransmisiones de contenidos en streaming de ActivityHub,Mapa al chat grupal actual
         viewModelScope.launch {
             activityHub.streamingContent.guardUpstream("streamingContent").collect { streaming ->
                 val chatId = currentChatId.value
@@ -221,10 +221,10 @@ class GroupChatViewModel(
                 }
             }
         }
-        // v1.53-GC: 观察当前群聊最近一页消息(Flow),增量追加新消息到 currentMessages。
-        // v1.0.21: 重写 collect 块 — 移除 isEmpty() 守卫(会导致首条消息丢失),
-        //   用 it.currentMessages 替代陈旧快照 current(避免覆盖并发修改),
-        //   currentMessages 为空时直接用 recentWindow 作为首屏(Flow 接管初始加载)。
+        // v1.53-GC: Observe la última página de mensajes en el chat grupal actual(Flow),Agregue incrementalmente nuevos mensajes a currentMessages.
+        // v1.0.21: Anular el bloque de recopilación — Quitar isEmpty() guardia(Hará que se pierda el primer mensaje.),
+        //   Reemplace las instantáneas obsoletas con it.currentMessages current(Evite sobrescribir modificaciones simultáneas),
+        //   currentMessages Si está vacío, utilice la ventana reciente directamente como primera pantalla.(Flow Asumir la carga inicial).
         viewModelScope.launch {
             currentChatId.flatMapLatest { chatId ->
                 if (chatId != null) {
@@ -234,19 +234,19 @@ class GroupChatViewModel(
                 }
             }.guardUpstream("pagedMessages").collect { recentWindow ->
                 if (recentWindow.isEmpty()) return@collect
-                // 同 chatId 守卫:防切换群聊时旧消息与新 Flow 串扰
+                // Igual que el guardia chatId:Evite la interferencia entre mensajes antiguos y flujo nuevo al cambiar de chat grupal
                 val windowChatId = recentWindow.first().chatId
                 if (windowChatId != currentChatId.value) return@collect
                 _state.update { state ->
                     val current = state.currentMessages
                     if (current.isEmpty()) {
-                        // 首屏:直接用 recentWindow(Flow 接管初始加载,与 loadInitialPage 互补)
+                        // Por encima del pliegue:Usar directamente recentWindow(Flow Asumir la carga inicial,Complementario a loadInitialPage)
                         state.copy(currentMessages = recentWindow)
                     } else {
-                        // v1.0.22: 乐观消息去重 — recentWindow 已包含对应真实消息时,
-                        //   移除乐观消息(id 以 "optimistic-" 前缀标识)避免重复显示。
-                        //   匹配条件:senderType + body 一致 且 timestamp 接近(±2s,
-                        //   覆盖 scheduler 异步写入 DB 的延迟)。
+                        // v1.0.22: Deduplicación de noticias optimista — recentWindow Cuando se incluye el mensaje real correspondiente,
+                        //   Eliminar noticias optimistas(id a "optimistic-" identificador de prefijo)Evite la visualización duplicada.
+                        //   Condición de partido:senderType + body Cierre consistente y con marca de tiempo(±2s,
+                        //   Anule el retraso del programador al escribir de forma asincrónica en la base de datos).
                         val hasOptimistic = current.any { it.id.startsWith("optimistic-") }
                         val dedupedCurrent = if (hasOptimistic) {
                             val realMessages = recentWindow.filterNot { it.id.startsWith("optimistic-") }
@@ -259,15 +259,15 @@ class GroupChatViewModel(
                                 }
                                 !matched
                             }
-                            // 去重后为空(全部乐观消息都已匹配到真实消息)则直接用 recentWindow
+                            // Vacío después de la deduplicación(Todas las noticias optimistas se han comparado con noticias reales.)Entonces úsalo directamente recentWindow
                             if (filtered.isEmpty() && recentWindow.isNotEmpty()) recentWindow else filtered
                         } else {
                             current
                         }
-                        // 同 chatId 二次守卫
+                        // Igual que la guardia secundaria chatId
                         val lastLoaded = dedupedCurrent.last()
                         if (lastLoaded.chatId != windowChatId) return@update state
-                        // 增量合并:仅追加比 dedupedCurrent 最新一条 (timestamp, id) 更新的消息
+                        // Fusión incremental:Agregue solo el elemento más reciente que el dedupedCurrent (timestamp, id) noticias actualizadas
                         val newMessages = recentWindow.filter { msg ->
                             msg.timestamp > lastLoaded.timestamp ||
                                 (msg.timestamp == lastLoaded.timestamp && msg.id > lastLoaded.id)
@@ -281,7 +281,7 @@ class GroupChatViewModel(
                 }
             }
         }
-        // 观察当前群聊元数据(标题刷新用)
+        // Observar los metadatos actuales del chat grupal(Para actualizar el título)
         viewModelScope.launch {
             currentChatId.flatMapLatest { chatId ->
                 if (chatId != null) groupChatRepository.observeChat(chatId) else flowOf(null)
@@ -289,19 +289,19 @@ class GroupChatViewModel(
                 _state.update { it.copy(currentChat = chat) }
             }
         }
-        // 加载团队列表(从内存缓存读,零阻塞)
+        // Cargar lista de equipo(Leer desde la memoria caché,Bloqueo cero)
         viewModelScope.launch {
             settings.multiAgentConfigFlow.guardUpstream("multiAgentConfig").collect { config ->
                 _state.update { it.copy(teams = config.teams) }
             }
         }
-        // 加载聊天偏好
+        // Cargar preferencias de chat
         viewModelScope.launch {
             settings.chatPreferencesFlow.guardUpstream("chatPreferences").collect { prefs ->
                 _state.update { it.copy(chatPreferences = prefs) }
             }
         }
-        // v1.111: 订阅群聊生成状态(切页后重建 ViewModel 时恢复 isAgentResponding / currentSpeaker)
+        // v1.111: Suscripción al estado de generación de chat grupal.(Restaurado cuando ViewModel se reconstruye después del corte de página isAgentResponding / currentSpeaker)
         viewModelScope.launch {
             scheduler.activeGroupGeneration.guardUpstream("activeGroupGeneration").collect { gen ->
                 if (gen == null) {
@@ -314,7 +314,7 @@ class GroupChatViewModel(
                         )
                     }
                 } else if (gen.chatId == currentChatId.value) {
-                    // 只在当前群聊匹配时显示生成状态(避免其他群聊的生成干扰当前页)
+                    // Mostrar el estado de generación solo cuando coincida el chat grupal actual(Evitar que otros chats grupales interfieran con la página actual)
                     val speaker = gen.currentSpeakerId?.let { id ->
                         _state.value.assistants.firstOrNull { it.id == id }
                     }
@@ -326,13 +326,13 @@ class GroupChatViewModel(
                         )
                     }
                 } else {
-                    // 其他群聊在生成,当前页不显示
+                    // Se están generando otros chats grupales.,La página actual no se muestra
                     _state.update { it.copy(isAgentResponding = false, currentSpeaker = null) }
                 }
             }
         }
-        // ActivityHub: 订阅活动状态,派生当前群聊的活动列表到 UI(渲染 AgentActivityBar chip)。
-        // 只取当前群聊的活动;其他群聊的活动不展示,避免跨群聊串扰。
+        // ActivityHub: Estado de actividad de la suscripción,Derivar la lista de actividades del chat grupal actual para UI(renderizado AgentActivityBar chip).
+        // Obtenga solo las actividades del chat grupal actual;No se muestran las actividades de otros chats grupales.,Evite las conversaciones cruzadas en los chats grupales.
         viewModelScope.launch {
             activityHub.activities.guardUpstream("activities").collect { allActivities ->
                 val chatId = currentChatId.value
@@ -343,11 +343,11 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.45: 缓存列表滚动位置,切页/后台后恢复。
+     * v1.45: Posición de desplazamiento de la lista de caché,Cortar páginas/Reanudar después de la preparación de antecedentes.
      */
     fun onListScrollPositionChanged(index: Int, offset: Int) {
-        // L-GC6 修复: 用 _state.update {} 原子更新,替代 _state.value = _state.value.copy(...)
-        // 避免读-改-写竞态(高频滚动时并发更新可能丢失中间状态)
+        // L-GC6 Reparación: usar _state.update {} Actualizaciones atómicas,sustituto _state.value = _state.value.copy(...)
+        // evitar leer-cambiar-Escribir condiciones de carrera(Las actualizaciones simultáneas pueden perder el estado intermedio durante el desplazamiento de alta frecuencia)
         _state.update {
             it.copy(
                 listFirstVisibleItemIndex = index,
@@ -357,7 +357,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.45: 切换指定消息 mood 块的展开/折叠状态。
+     * v1.45: Alterna la expansión del bloque de estado de ánimo del mensaje especificado/estado plegado.
      */
     fun toggleMessageMoodExpanded(messageId: String) {
         _state.update { current ->
@@ -372,7 +372,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.45: 切换指定消息 reasoning 块的展开/折叠状态。
+     * v1.45: Alternar la expansión del bloque de razonamiento para el mensaje especificado/estado plegado.
      */
     fun toggleMessageReasoningExpanded(messageId: String) {
         _state.update { current ->
@@ -387,17 +387,17 @@ class GroupChatViewModel(
     }
 
     /**
-     * 选中群聊,切换消息流观察并触发分页首屏加载。
+     * Seleccionar chat grupal,Cambie a la observación del flujo de mensajes y active la carga de la pantalla de inicio de paginación.
      *
-     * v1.53-GC: 改为分页加载 — 立即清空旧消息(避免跨群聊串扰),随后异步加载最近
-     * [INITIAL_PAGE_SIZE] 条;新消息由 init 中的 [getPagedMessages] Flow 增量追加。
+     * v1.53-GC: Cambiar a carga de página — Borrar mensajes antiguos ahora(Evite las conversaciones cruzadas en los chats grupales),Luego cargue asincrónicamente la última
+     * [INITIAL_PAGE_SIZE] Artículo;Los nuevos mensajes son generados por init [getPagedMessages] Flow Anexo incremental.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     fun selectChat(chatId: String) {
         currentChatId.value = chatId
-        // 立即清空旧消息 + 分页状态,避免新群聊首屏加载完成前残留旧群聊内容
-        // ActivityHub: 同时清空活动列表,避免旧群聊的 chip 残留(新群聊的活动由 subscriber 重新派生)
+        // Borrar inmediatamente mensajes antiguos + estado de paginación,Evite abandonar el contenido antiguo del chat grupal antes de que se cargue la primera pantalla del nuevo chat grupal.
+        // ActivityHub: También borre la lista de actividades.,Evite los residuos de chips de los chats grupales antiguos(Las actividades del nuevo chat grupal se derivan nuevamente del suscriptor.)
         _state.update {
             it.copy(
                 currentMessages = emptyList(),
@@ -411,9 +411,9 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.53-GC: 分页首屏加载 — 取最近 [INITIAL_PAGE_SIZE] 条消息,并据总数设置 hasMoreHistory。
+     * v1.53-GC: Cargando la pantalla de inicio de paginación — Toma el más cercano [INITIAL_PAGE_SIZE] mensajes,Y configure hasMoreHistory según el número total.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     private fun loadInitialPage(chatId: String) {
         viewModelScope.launch {
@@ -441,22 +441,22 @@ class GroupChatViewModel(
                     )
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "群聊首屏分页加载失败 chatId=$chatId", e)
+                Logger.e(TAG, "No se pudo cargar la paginación de la página de inicio del chat grupal chatId=$chatId", e)
                 _state.update { it.copy(isLoadingMore = false, hasMoreHistory = false) }
             }
         }
     }
 
     /**
-     * v1.53-GC: 上滑加载更多历史消息。
+     * v1.53-GC: Desliza hacia arriba para cargar más noticias históricas.
      *
-     * 取当前 currentMessages 最早一条消息的 (timestamp, id) 作为双锚点,从 DB 取早于该锚点的
-     * [LOAD_MORE_PAGE_SIZE] 条消息,前置插入到 currentMessages。
+     * Obtenga el mensaje más antiguo de los mensajes actuales actuales (timestamp, id) como doble ancla,Obtener de DB antes de este punto de anclaje
+     * [LOAD_MORE_PAGE_SIZE] mensajes,Anteponer a mensajes actuales.
      *
-     * - isLoadingMore=true 时跳过(防止重复触发)
-     * - hasMoreHistory=false 时跳过(已加载完)
-     * - currentMessages 为空时跳过(首屏尚未加载完成)
-     * - 加载完成后设置 [GroupChatUiState.lastHistoryLoadCount],UI 监听后调整滚动位置保持视觉位置
+     * - isLoadingMore=true salto de tiempo(Prevenir disparos repetidos)
+     * - hasMoreHistory=false salto de tiempo(cargado)
+     * - currentMessages Saltar si está vacío(La primera pantalla aún no se ha cargado.)
+     * - Establecer después de que se complete la carga [GroupChatUiState.lastHistoryLoadCount],UI Ajuste la posición de desplazamiento después de escuchar para mantener la posición visual
      */
     fun loadMoreHistory() {
         val state = _state.value
@@ -476,7 +476,7 @@ class GroupChatViewModel(
                     _state.update { it.copy(hasMoreHistory = false, isLoadingMore = false) }
                     return@launch
                 }
-                // 重新读取最新 state.currentMessages,防止加载期间 Flow 追加的新消息被覆盖
+                // Releer lo último state.currentMessages,Evitar que se sobrescriban los mensajes nuevos agregados por Flow durante la carga
                 val current = _state.value.currentMessages
                 _state.update {
                     it.copy(
@@ -487,18 +487,18 @@ class GroupChatViewModel(
                     )
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "群聊加载更多历史失败 chatId=$chatId", e)
+                Logger.e(TAG, "El chat grupal no pudo cargar más historial chatId=$chatId", e)
                 _state.update { it.copy(isLoadingMore = false, hasMoreHistory = false) }
             }
         }
     }
 
     /**
-     * v1.53-GC: 清空 [GroupChatUiState.lastHistoryLoadCount]。
+     * v1.53-GC: Borrar [GroupChatUiState.lastHistoryLoadCount].
      *
-     * UI 在 [GroupChatDetailScreen] 监听 lastHistoryLoadCount 变化(>0)后,调
-     * [androidx.compose.foundation.lazy.LazyListState.scrollToItem] 跳过新插入的条数,
-     * 保持视觉位置不跳动,然后调本方法清空(避免重组时重复跳转)。
+     * UI en [GroupChatDetailScreen] Supervisar los cambios de lastHistoryLoadCount(>0)después,sintonizar
+     * [androidx.compose.foundation.lazy.LazyListState.scrollToItem] Omitir la cantidad de elementos recién insertados,
+     * Evita que la posición visual salte.,Luego llame a este método para borrarlo.(Evite saltos repetidos durante la reorganización).
      */
     fun clearHistoryLoadCount() {
         if (_state.value.lastHistoryLoadCount != 0) {
@@ -507,28 +507,28 @@ class GroupChatViewModel(
     }
 
     /**
-     * 更新输入框文本。
+     * Actualice el texto del cuadro de entrada.
      */
     fun updateInput(text: String) {
         _state.update { it.copy(inputText = text) }
     }
 
     /**
-     * 添加待发送图片(base64 字符串)。
+     * Añadir fotos para enviar(base64 cuerda).
      */
     fun addPendingImage(base64Image: String) {
         _state.update { it.copy(pendingImages = it.pendingImages + base64Image) }
     }
 
     /**
-     * 移除指定待发送图片。
+     * Elimina la imagen especificada que se enviará.
      */
     fun removePendingImage(base64Image: String) {
         _state.update { it.copy(pendingImages = it.pendingImages - base64Image) }
     }
 
     /**
-     * 清空所有待发送图片。
+     * Borrar todas las imágenes pendientes.
      */
     fun clearPendingImages() {
         _state.update { it.copy(pendingImages = emptyList()) }
@@ -546,10 +546,10 @@ class GroupChatViewModel(
         }
     }
 
-    // ── v2.x: 轮转导演控制(暂停/继续/跳过剩余) ──────────────────
-    // 暂停 + 继续的组合使用即"单步推进":每放行一位成员再停下细看。
+    // ── v2.x: Rotar el control del director(pausa/continuar/saltar restante) ──────────────────
+    // La combinación de pausa + reanudación es"Un solo paso adelante":Deténgase y observe más de cerca después de que cada miembro sea liberado.
 
-    /** v2.x: 暂停当前群聊的轮转(下一位成员开始前挂起)。 */
+    /** v2.x: Pausar la rotación del chat grupal actual(Cuelgue antes de que comience el próximo miembro.). */
     fun pauseRound() {
         currentChatId.value?.let { id ->
             scheduler.pauseRound(id)
@@ -557,7 +557,7 @@ class GroupChatViewModel(
         }
     }
 
-    /** v2.x: 继续被暂停的轮转。 */
+    /** v2.x: Continuar una rotación pausada. */
     fun resumeRound() {
         currentChatId.value?.let { id ->
             scheduler.resumeRound(id)
@@ -565,7 +565,7 @@ class GroupChatViewModel(
         }
     }
 
-    /** v2.x: 跳过本轮剩余成员,立即结算(已发言的保留)。 */
+    /** v2.x: Salta a los miembros restantes de esta ronda.,Liquidación inmediata(reserva hablada). */
     fun skipRoundRemaining() {
         currentChatId.value?.let { id ->
             scheduler.skipRoundRemaining(id)
@@ -574,62 +574,62 @@ class GroupChatViewModel(
     }
 
     /**
-     * v2.x: 把总结消息沉淀为群共享文档(讨论结晶)。
+     * v2.x: Precipitar mensajes resumidos en documentos compartidos en grupo(Cristalización de la discusión).
      *
-     * 沉淀后,下次任何成员发言时该文档会自动注入其 system prompt 的【群共享文档】段——
-     * 讨论成果从"一条消息"变成"全员共识背景",供后续讨论继续引用。
+     * Después de la precipitación,La próxima vez que un miembro hable, el documento se insertará automáticamente en la sección [Documento compartido del grupo] del indicador del sistema.——
+     * Los resultados de la discusión provienen de"un mensaje"convertirse en"Antecedentes de consenso de todos los miembros.",Se proporcionan referencias para discusión posterior.
      */
     fun saveSummaryAsSharedDoc(messageId: String) {
         val chatId = currentChatId.value ?: return
         viewModelScope.launch {
             val message = _state.value.currentMessages.firstOrNull { it.id == messageId } ?: return@launch
             if (message.body.isBlank()) return@launch
-            // v2.3.1: 标题走字符串资源(7 语言);时间戳格式与语言无关,保持原样
+            // v2.3.1: El título toma recurso de cadena(7 Idioma);El formato de marca de tiempo es independiente del idioma.,quédate como está
             val stamp = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date(message.timestamp))
             val title = appContext.getString(R.string.groupchat_summary_doc_title, stamp)
             runCatching {
                 groupChatRepository.addSharedDoc(chatId, title, message.body)
             }.onFailure { t ->
-                Logger.w("GroupChatViewModel", "总结存为共享文档失败", t)
+                Logger.w("GroupChatViewModel", "No se pudo guardar el resumen como documento compartido", t)
             }
         }
     }
 
     /**
-     * 发送用户消息并触发 Agent 轮转回复。
+     * Envíe mensajes de usuario y active respuestas de rotación de agentes.
      *
-     * v1.111: 轮转运行在 [GroupChatScheduler.launchRoundRobin] 的 appScope 中,
-     * 切页/后台不中断。ViewModel 只负责前置检查 + 清空输入框 + 委托给 scheduler。
+     * v1.111: Correr en rotación [GroupChatScheduler.launchRoundRobin] en aplicaciónScope,
+     * Cortar páginas/No hay interrupción en el fondo.ViewModel Solo responsable de verificar previamente + borrar el cuadro de entrada + delegarlo al programador.
      *
-     * @param text 消息正文
+     * @param text Texto del mensaje
      */
     fun sendMessage(text: String) {
         val chatId = currentChatId.value ?: return
         if (text.isBlank() && _state.value.pendingImages.isEmpty() && _state.value.pendingFileAttachments.isEmpty()) return
-        // v1.126: debounce — 防止快速点击重复发送
+        // v1.126: debounce — Evite que los clics rápidos se envíen repetidamente
         val now = System.currentTimeMillis()
         if (now - lastSendTimestamp < SEND_DEBOUNCE_MS) return
         lastSendTimestamp = now
-        // v2.x: 插话机制 — 轮转进行中不丢弃用户消息:先中断当前轮(已发言内容保留),
-        // 待旧轮退场后以本条消息开启新一轮,所有成员都能看到用户的最新发言。
+        // v2.x: mecanismo de interjección — Los mensajes de usuario no se descartan durante la rotación.:Interrumpe primero la ronda actual.(Se mantiene lo dicho),
+        // Después de que se retire la ronda anterior, comience una nueva ronda con este mensaje,Todos los miembros pueden ver los últimos comentarios del usuario.
         val interrupting = scheduler.hasActiveGeneration(chatId)
         if (interrupting) scheduler.stop(chatId)
 
         val images = _state.value.pendingImages
         val fileAttachments = _state.value.pendingFileAttachments
         _state.update { it.copy(inputText = "", pendingImages = emptyList(), pendingFileAttachments = emptyList()) }
-        // v1.0.52: text 为空但有图片时,给 body 添加占位文本,
-        // 让 LLM 知道用户发了图片(否则空 body 可能被 scheduler/LLM 忽略)
+        // v1.0.52: text Cuando está vacío pero con fotos.,Agregar texto de marcador de posición al cuerpo,
+        // Informe a LLM que el usuario publicó la imagen.(De lo contrario, el planificador/LLM puede ignorar el cuerpo vacío.)
         val effectiveText = when {
-            text.isBlank() && images.isNotEmpty() -> "[图片]"
-            text.isBlank() && fileAttachments.isNotEmpty() -> "[文件]"
+            text.isBlank() && images.isNotEmpty() -> "[fotos]"
+            text.isBlank() && fileAttachments.isNotEmpty() -> "[Archivo]"
             else -> text
         }
-        // v1.0.21: 乐观 UI 更新 — 立即把用户消息追加到 currentMessages,
-        //   不依赖 Room Flow 回流(原实现因 collect 守卫/竞态导致消息发送后不显示)
-        // v1.0.22: 乐观消息 id 加 "optimistic-" 前缀,collect 合并时据此识别并去重,
-        //   避免 scheduler 写入 DB 的真实消息回流后被追加导致重复显示
+        // v1.0.21: Actualización optimista de la interfaz de usuario — Agregue inmediatamente mensajes de usuario a currentMessages,
+        //   No depende del reflujo de Room Flow(Razón original recoger guardia/La condición de carrera hace que el mensaje no se muestre después de enviarse)
+        // v1.0.22: ID de noticias optimista plus "optimistic-" prefijo,collect Identifique y elimine duplicados basándose en esto al fusionar,
+        //   Evite que los mensajes reales escritos por el programador en la base de datos se agreguen después de redistribuirse, lo que resulta en una visualización repetida
         val imageJson = if (images.isNotEmpty()) {
             json.encodeToString(images)
         } else {
@@ -640,7 +640,7 @@ class GroupChatViewModel(
             chatId = chatId,
             senderType = "user",
             senderId = "local_user",
-            senderName = "我",
+            senderName = "yo",
             body = effectiveText,
             imageBase64Json = imageJson,
             fileAttachmentsJson = if (fileAttachments.isNotEmpty()) {
@@ -655,7 +655,7 @@ class GroupChatViewModel(
         )
         _state.update { it.copy(currentMessages = it.currentMessages + optimisticMsg) }
         if (interrupting) {
-            // v2.x: 等待被中断的旧轮退场(最多 3s),避免两轮并发写同一群聊
+            // v2.x: Esperando que se retire la vieja rueda interrumpida(la mayoría 3s),Evite escribir el mismo chat grupal en dos rondas simultáneamente
             viewModelScope.launch {
                 var waited = 0
                 while (scheduler.hasActiveGeneration(chatId) && waited < 30) {
@@ -670,7 +670,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.111: 手动停止当前群聊生成。
+     * v1.111: Detenga manualmente la generación actual del chat grupal.
      */
     fun stopGeneration() {
         val chatId = currentChatId.value ?: return
@@ -678,7 +678,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v2.x: 指定 AI 重新生成其最后一条消息。
+     * v2.x: Especifica que la IA regenera su último mensaje.
      */
     fun regenerateAgentMessage(assistantId: String) {
         val chatId = currentChatId.value ?: return
@@ -687,7 +687,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v2.x: 发起表决。
+     * v2.x: Iniciar una votación.
      */
     fun launchVote(topic: String) {
         val chatId = currentChatId.value ?: return
@@ -696,7 +696,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v2.x: 结论总结器。
+     * v2.x: Resumen de conclusiones.
      */
     fun launchSummary(summarizerId: String? = null) {
         val chatId = currentChatId.value ?: return
@@ -705,7 +705,7 @@ class GroupChatViewModel(
     }
 
     /**
-     * v2.x: 发送悄悄话给指定 AI。
+     * v2.x: Envía un mensaje privado a la IA especificada.
      */
     fun sendWhisper(targetAssistantId: String, text: String) {
         val chatId = currentChatId.value ?: return
@@ -714,13 +714,13 @@ class GroupChatViewModel(
         scheduler.launchWhisper(chatId, targetAssistantId, text)
     }
 
-    // ── v2.x 群聊上下文管理:群共享文档 + AI 专属上下文 ──
+    // ── v2.x Gestión del contexto del chat grupal:Documentos compartidos en grupo + contexto exclusivo de IA ──
 
     /**
-     * v2.x: 添加群共享文档。
+     * v2.x: Agregue documentos compartidos en grupo.
      *
-     * @param title 文档标题
-     * @param content 文档正文
+     * @param title Título del documento
+     * @param content Texto del documento
      */
     fun addSharedDoc(title: String, content: String) {
         val chatId = currentChatId.value ?: return
@@ -729,16 +729,16 @@ class GroupChatViewModel(
             try {
                 groupChatRepository.addSharedDoc(chatId, title.trim(), content)
             } catch (e: Exception) {
-                Logger.e(TAG, "添加群共享文档失败", e)
+                Logger.e(TAG, "No se pudo agregar el documento compartido del grupo", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }
             }
         }
     }
 
     /**
-     * v2.x: 删除群共享文档。
+     * v2.x: Eliminar documentos compartidos del grupo.
      *
-     * @param docId 文档 id
+     * @param docId Documentación id
      */
     fun removeSharedDoc(docId: String) {
         val chatId = currentChatId.value ?: return
@@ -746,17 +746,17 @@ class GroupChatViewModel(
             try {
                 groupChatRepository.removeSharedDoc(chatId, docId)
             } catch (e: Exception) {
-                Logger.e(TAG, "删除群共享文档失败", e)
+                Logger.e(TAG, "No se pudo eliminar el documento compartido del grupo", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }
             }
         }
     }
 
     /**
-     * v2.x: 设置某个群成员的专属上下文(仅该 AI 可见)。
+     * v2.x: Establecer un contexto exclusivo para un miembro del grupo(Visible sólo para esta IA).
      *
-     * @param assistantId 成员 AI id
-     * @param contextText 专属上下文文本(空字符串则清除)
+     * @param assistantId miembro AI id
+     * @param contextText Texto contextual exclusivo(Se borra la cadena vacía)
      */
     fun setMemberPrivateContext(assistantId: String, contextText: String) {
         val chatId = currentChatId.value ?: return
@@ -764,45 +764,45 @@ class GroupChatViewModel(
             try {
                 groupChatRepository.setMemberPrivateContext(chatId, assistantId, contextText)
             } catch (e: Exception) {
-                Logger.e(TAG, "设置成员专属上下文失败", e)
+                Logger.e(TAG, "No se pudo establecer el contexto específico del miembro", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }
             }
         }
     }
 
     /**
-     * 创建新群聊。
+     * Crea un nuevo chat grupal.
      *
-     * @param name 群聊名称
-     * @param memberIds 成员助手 id 列表
-     * @param teamId 可选关联团队 id
-     * @return 新创建的群聊 id
+     * @param name Nombre del chat grupal
+     * @param memberIds Lista de identificación de ayudante de miembros
+     * @param teamId Equipo asociado opcional id
+     * @return Chat grupal recién creado id
      */
     suspend fun createChat(name: String, memberIds: List<String>, teamId: String? = null): String {
         return groupChatRepository.createChat(name, memberIds, teamId)
     }
 
     /**
-     * v1.126: 清空错误提示。
+     * v1.126: Borre el mensaje de error.
      */
     fun clearError() {
         _state.update { it.copy(errorMessage = null) }
     }
 
     /**
-     * 删除群聊(级联删除其全部消息)。
+     * Eliminar chat grupal(Elimina en cascada todos sus mensajes.).
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     fun deleteChat(chatId: String) {
         viewModelScope.launch {
             try {
                 groupChatRepository.deleteChat(chatId)
-                // 若删除的是当前群聊,清空选中状态并通知详情页返回
+                // Si eliminas el chat grupal actual,Borre el estado seleccionado y notifique a la página de detalles para regresar
                 if (currentChatId.value == chatId) {
                     currentChatId.value = null
-                    // M7: 设置删除标志,详情页据此自动返回
-                    // v1.53-GC: 分页模式下 Flow 不再全量重发,手动清空消息 + 分页状态
+                    // M7: Establecer bandera de eliminación,La página de detalles volverá automáticamente en consecuencia.
+                    // v1.53-GC: El flujo ya no se reenvía completo en modo de paginación,Borrar mensajes manualmente + estado de búsqueda
                     _state.update {
                         it.copy(
                             chatDeleted = true,
@@ -814,37 +814,37 @@ class GroupChatViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "删除群聊失败", e)
+                Logger.e(TAG, "No se pudo eliminar el chat grupal", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_delete_failed)) }
             }
         }
     }
 
     /**
-     * v1.0.72: 清空指定群聊的群聊记忆(风格残留清理)。
+     * v1.0.72: Borrar la memoria del chat grupal del chat grupal especificado(Limpieza de residuos de estilo).
      *
-     * 群聊记忆独立于主记忆系统(用户删主记忆删不到这里),
-     * 历史测试期的欠揍风格可能残留在摘要里并被注入 system prompt,
-     * 提供显式清空入口让用户一键清除。
+     * La memoria del chat grupal es independiente del sistema de memoria principal.(Si el usuario borra la memoria principal, no podrá borrarla aquí.),
+     * El mal estilo del período de prueba histórico puede permanecer en el resumen y ser inyectado en él. system prompt,
+     * Proporcione una entrada de compensación explícita para que los usuarios la borren con un solo clic.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     fun clearChatMemory(chatId: String) {
         viewModelScope.launch {
             try {
                 groupChatMemoryRepository?.deleteByGroupChat(chatId)
-                Logger.i(TAG, "已清空群聊记忆: $chatId")
+                Logger.i(TAG, "Se borró la memoria del chat grupal: $chatId")
             } catch (e: Exception) {
-                Logger.e(TAG, "清空群聊记忆失败", e)
-                _state.update { it.copy(errorMessage = "清空群聊记忆失败") }
+                Logger.e(TAG, "No se pudo borrar la memoria del chat grupal", e)
+                _state.update { it.copy(errorMessage = "No se pudo borrar la memoria del chat grupal") }
             }
         }
     }
 
     /**
-     * v1.0.72: 群聊内搜索消息(关键词匹配正文,按时间倒序)。
+     * v1.0.72: Buscar mensajes en el chat grupal(Texto de coincidencia de palabras clave,en orden cronológico inverso).
      *
-     * @param query 搜索关键词,空白时清空结果
+     * @param query Buscar palabras clave,Borrar resultados cuando esté en blanco
      */
     fun searchMessages(query: String) {
         val chatId = currentChatId.value ?: return
@@ -859,14 +859,14 @@ class GroupChatViewModel(
                 _state.update { it.copy(searchResults = results, isSearching = false) }
             } catch (e: Exception) {
                 if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                Logger.e(TAG, "群聊搜索失败", e)
+                Logger.e(TAG, "La búsqueda del chat grupal falló", e)
                 _state.update { it.copy(searchResults = emptyList(), isSearching = false) }
             }
         }
     }
 
     /**
-     * v1.0.72: 更新指定助手的供应商/模型(per-assistant,群聊"编辑助手供应商"用)。
+     * v1.0.72: Actualizar el proveedor del asistente especificado/modelo(per-assistant,chat grupal"Proveedor de asistente de edición"usar).
      */
     fun updateAssistantModel(assistantId: String, providerId: String?, modelId: String?) {
         viewModelScope.launch {
@@ -877,47 +877,47 @@ class GroupChatViewModel(
                 )
             } catch (e: Exception) {
                 if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                Logger.e(TAG, "更新助手模型失败", e)
+                Logger.e(TAG, "Error en la actualización del modelo auxiliar", e)
             }
         }
     }
 
     /**
-     * v1.77: 删除群聊中的单条消息。
+     * v1.77: Eliminar un solo mensaje en un chat grupal.
      *
-     * @param messageId 消息 id
+     * @param messageId noticias id
      */
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {
                 groupChatRepository.deleteMessage(messageId)
-                // v1.53-GC: 分页模式下 Flow 只增量追加新消息、不重发全量,
-                // 需手动从 currentMessages 移除已删消息(避免残留)
+                // v1.53-GC: En el modo de paginación, Flow solo agrega mensajes nuevos de forma incremental y no reenvía la cantidad total.,
+                // Los mensajes eliminados deben eliminarse manualmente de mensajes actuales(evitar residuos)
                 _state.update { state ->
                     state.copy(currentMessages = state.currentMessages.filterNot { it.id == messageId })
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "删除消息失败", e)
+                Logger.e(TAG, "No se pudo eliminar el mensaje", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_delete_msg_failed)) }
             }
         }
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // v1.x: 多选模式(长按菜单"选择"进入,支持批量删除)
+    // v1.x: Modo de selección múltiple(Menú de pulsación larga"elegir"entrar,Admite eliminación por lotes)
     // ══════════════════════════════════════════════════════════════════
 
-    /** 进入多选模式并选中当前消息。 */
+    /** Ingrese al modo de selección múltiple y seleccione el mensaje actual. */
     fun startSelection(messageId: String) {
         _state.update { it.copy(selectedMessageIds = setOf(messageId)) }
     }
 
-    /** 切换单条消息选中状态。 */
+    /** Alterna el estado seleccionado de un solo mensaje. */
     fun toggleMessageSelection(messageId: String) {
         _state.update { state ->
             val current = state.selectedMessageIds
             if (current.isEmpty()) {
-                // 未在多选模式时点击视为进入并选中
+                // Hacer clic cuando no se está en modo de selección múltiple se considera ingresado y seleccionado.
                 state.copy(selectedMessageIds = setOf(messageId))
             } else {
                 val next = if (messageId in current) current - messageId else current + messageId
@@ -927,34 +927,34 @@ class GroupChatViewModel(
     }
 
     /**
-     * v1.0.72: 搜索点击跳转 — 滚动到目标消息位置并高亮。
-     * 简单实现:在 currentMessages 中定位消息 index,UI 侧监听 jumpTargetId 滚动。
+     * v1.0.72: Buscar haga clic para saltar — Desplácese hasta la ubicación del mensaje deseado y resáltela.
+     * Implementación sencilla:Localizar mensaje en mensajes actuales index,UI Escucha lateral de desplazamiento jumpTargetId.
      */
     private val _jumpTargetId = MutableStateFlow<String?>(null)
     val jumpTargetId: StateFlow<String?> = _jumpTargetId.asStateFlow()
 
     fun jumpToMessage(messageId: String) {
         _jumpTargetId.value = messageId
-        // 短暂高亮后清除
+        // Resalte brevemente y luego borre
         viewModelScope.launch {
             delay(3000)
             if (_jumpTargetId.value == messageId) _jumpTargetId.value = null
         }
     }
 
-    /** 全选当前可见消息。 */
+    /** Seleccione todos los mensajes actualmente visibles. */
     fun selectAllVisible() {
         _state.update { state ->
             state.copy(selectedMessageIds = state.currentMessages.map { it.id }.toSet())
         }
     }
 
-    /** 退出多选模式。 */
+    /** Salga del modo de selección múltiple. */
     fun clearSelection() {
         _state.update { it.copy(selectedMessageIds = emptySet()) }
     }
 
-    /** 批量删除选中消息。 */
+    /** Eliminar mensajes seleccionados en lotes. */
     fun deleteSelectedMessages() {
         val ids = _state.value.selectedMessageIds.toList()
         if (ids.isEmpty()) return
@@ -963,7 +963,7 @@ class GroupChatViewModel(
                 try {
                     groupChatRepository.deleteMessage(id)
                 } catch (e: Exception) {
-                    Logger.e(TAG, "批量删除消息失败: $id", e)
+                    Logger.e(TAG, "No se pudieron eliminar mensajes en lotes: $id", e)
                 }
             }
             _state.update { state ->
@@ -976,38 +976,38 @@ class GroupChatViewModel(
     }
 
     /**
-     * 切换群聊置顶状态。
+     * Cambia el chat grupal al estado superior.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     fun togglePin(chatId: String) {
         viewModelScope.launch {
             try {
                 groupChatRepository.togglePin(chatId)
             } catch (e: Exception) {
-                Logger.e(TAG, "切换置顶失败", e)
+                Logger.e(TAG, "No se pudo cambiar al principio", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_operation_failed)) }
             }
         }
     }
 
     /**
-     * v2.x: 切换群聊归档状态。
+     * v2.x: Alternar el estado del archivo del chat grupal.
      */
     fun toggleArchive(chatId: String, archived: Boolean) {
         viewModelScope.launch {
             try {
                 groupChatRepository.toggleArchive(chatId, archived)
             } catch (e: Exception) {
-                Logger.e(TAG, "归档操作失败", e)
+                Logger.e(TAG, "Error en la operación de archivado", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }
             }
         }
     }
 
     /**
-     * v2.x: 创建写作团队快速模板群聊。
-     * 使用写作团队模板的团队成员，自动创建群聊并关联写作团队。
+     * v2.x: Cree una plantilla de chat grupal rápida para su equipo de redacción.
+     * Utilice la plantilla del equipo de redacción para que los miembros del equipo creen automáticamente chats grupales y asocien equipos de redacción.
      */
     fun createWritingGroupChat() {
         viewModelScope.launch {
@@ -1020,23 +1020,23 @@ class GroupChatViewModel(
                         memberIds = writingTeam.memberIds,
                         teamId = writingTeam.id,
                     )
-                    // 打开创建的群聊
+                    // Abrir el chat grupal creado
                     selectChat(chatId)
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "创建写作群聊失败", e)
+                Logger.e(TAG, "No se pudo crear el chat del grupo de escritura", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_create_failed)) }
             }
         }
     }
 
     /**
-     * v1.97: 更新群聊信息(名称/描述/成员)。
+     * v1.97: Actualizar la información del chat grupal(Nombre/Descripción/miembro).
      *
-     * @param chatId 群聊 id
-     * @param name 新名称(null 表示不改)
-     * @param description 新描述(null 表示不改)
-     * @param memberIds 新成员列表(null 表示不改)
+     * @param chatId chat grupal id
+     * @param name nuevo nombre(null No indica ningún cambio)
+     * @param description nueva descripción(null No indica ningún cambio)
+     * @param memberIds Nueva lista de miembros(null No indica ningún cambio)
      */
     fun updateChat(
         chatId: String,
@@ -1053,32 +1053,32 @@ class GroupChatViewModel(
             try {
                 groupChatRepository.updateChat(chatId, name, description, memberIds, discussionMode, autoMaxRounds, hostId, replyLengthMode, observerIds)
             } catch (e: Exception) {
-                Logger.e(TAG, "更新群聊失败", e)
+                Logger.e(TAG, "No se pudo actualizar el chat grupal", e)
                 _state.update { it.copy(errorMessage = appContext.getString(R.string.err_group_chat_update_failed)) }
             }
         }
     }
 
     /**
-     * 解析群聊成员 id 列表。
+     * Analice la lista de ID de miembros del chat grupal.
      */
     fun parseMemberIds(chat: GroupChatEntity): List<String> = groupChatRepository.parseMemberIds(chat)
 
-    /** v2.x: 解析群聊观察者成员 id 列表(编辑对话框预选用)。 */
+    /** v2.x: Analizar la lista de identificación de miembros observadores del chat grupal(Editar cuadro de diálogo preseleccionado). */
     fun parseObserverIds(chat: GroupChatEntity): List<String> = groupChatRepository.parseObserverIds(chat)
 
     /**
-     * v2.x: 解析群聊的共享文档列表(供 UI 渲染)。
+     * v2.x: Analizar la lista de documentos compartidos de un chat grupal(Para renderizado de interfaz de usuario).
      */
     fun parseSharedDocs(chat: GroupChatEntity): List<io.zer0.muse.data.groupchat.GroupSharedDoc> = groupChatRepository.parseSharedDocs(chat)
 
     /**
-     * v2.x: 解析群聊成员的专属上下文 Map(供 UI 渲染)。
+     * v2.x: Analizando el contexto exclusivo de los miembros del chat grupal Map(Para renderizado de interfaz de usuario).
      */
     fun parseMemberPrivateContext(chat: GroupChatEntity): Map<String, String> = groupChatRepository.parseMemberPrivateContext(chat)
 
     /**
-     * 取指定群聊的最新一条消息(用于列表页预览)。
+     * Obtenga el último mensaje del chat grupal especificado(Para obtener una vista previa de la página de lista).
      */
     suspend fun getLatestMessage(chatId: String): GroupChatMessageEntity? = groupChatRepository.getLatestMessage(chatId)
 }

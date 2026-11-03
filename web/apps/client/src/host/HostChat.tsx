@@ -67,13 +67,13 @@ export function HostChat({ onLogout }: HostChatProps) {
     toastTimer.current = window.setTimeout(() => setToast(undefined), TOAST_MS);
   }, []);
 
-  // 翻译器先按默认语言建一个稳定的转发（hook 的选项要在还没拿到设置时就有 t），
-  // 真正的语言解析出来后只换实现，转发函数本身的引用不变。
+  // El traductor primero crea un reenvío estable en el idioma predeterminado (hook La opción debe estar disponible antes de obtener la configuración),
+  // Una vez analizado el lenguaje real, solo se cambia la implementación y la referencia de la función de reenvío permanece sin cambios.
   const translatorRef = useRef(createTranslator(DEFAULT_LOCALE));
   const translate: Translate = useCallback((key, params) => translatorRef.current(key, params), []);
   const { status, reconnectAttempt, ready, snapshot, previews, assistants, providers, assistantDetails, assistantDetailUnsupported, memory, knowledge, knowledgeDocuments, tasks, system, settings, send, sendOptimistic, requestPreviews, requestAssistants, requestProviders, requestAssistantDetail, requestMemory, requestKnowledge, requestKnowledgeDocuments, requestTasks, requestSystemStatus, requestSettings, updateSetting, updateSettingValue, retry } = useHostConnection({
     onError: pushToast,
-    // perf 计时：快照落地时刻（只在 ?perf=1 时用到）。
+    // perf Sincronización: En el momento en que aterriza la instantánea (solo en ?perf=1 utilizado cuando).
     onSnapshot: () => {
       snapshotAtRef.current = performance.now();
     },
@@ -81,55 +81,55 @@ export function HostChat({ onLogout }: HostChatProps) {
   });
   const { sessions, messages, sessionId, isStreaming, approvals } = snapshot;
   const [everConnected, setEverConnected] = useState(false);
-  /** 浏览器自身的联网状态：离线时不显示「正在重连」。 */
+  /** El estado de la red del propio navegador: \"Reconectando\" no se muestra cuando está desconectado. */
   const online = useOnline();
-  /** 界面语言：设置里的 language（system 时按浏览器语言）；值一变，整棵树立刻换语言。 */
+  /** Idioma de la interfaz: idioma en la configuración (system Presione el idioma del navegador); una vez que cambia el valor, todo el árbol cambia de idioma inmediatamente. */
   const locale = useHostLocale(settings);
   const t = useMemo(() => createTranslator(locale), [locale]);
   translatorRef.current = t;
-  /** 首屏骨架延迟 300ms，避免一闪而过。 */
+  /** El primer esqueleto de pantalla tiene un retraso de 300 ms para evitar que pase rápidamente. */
   const chatSkeletonDue = useDelayedFlag(!ready);
 
   const [draft, setDraft] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showJump, setShowJump] = useState(false);
-  /** 设置主页是这个壳里的一层页面："chat" 是聊天，"settings" 是设置主页。 */
+  /** Configurar la página de inicio es una capa de páginas en este shell:"chat" esta charlando,"settings" es configurar la página de inicio. */
   const [view, setView] = useState<"chat" | "settings">("chat");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const stickRef = useRef(true);
-  /** 同一时刻只有一条消息亮着复制入口；存的是渲染项的 key。 */
+  /** Sólo un mensaje ilumina la entrada de copia al mismo tiempo; lo que se almacena es la clave del elemento de renderizado. */
   const [activeKey, setActiveKey] = useState<string | undefined>(undefined);
-  /** 正在全屏查看的图片地址。 */
+  /** La dirección de la imagen que se está viendo en pantalla completa. */
   const [previewImage, setPreviewImage] = useState<string | undefined>(undefined);
-  /** 桌面档左栏是否收起（手机 / 平板档不读它）。 */
+  /** Si la columna izquierda del archivo de escritorio está contraída (los archivos de dispositivos celulares/tabletas no la leen). */
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  /** 多选模式：顶栖换成操作条，每条消息左侧出勾选。 */
+  /** Modo de selección múltiple: la parte superior se reemplaza por una barra de operaciones y aparece una casilla de verificación en el lado izquierdo de cada mensaje. */
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
-  /** 乐观删除：先在本地藏起来，Host 拒绝就放回去。 */
+  /** Eliminación optimista: primero ocúltelo localmente,Host Si te niegas, devuélvelo. */
   const [removedIds, setRemovedIds] = useState<readonly string[]>([]);
-  /** 乐观收藏：Host 不下发 favorite 字段时靠它把菜单文案翻成「取消收藏」。 */
+  /** Colección optimista:Host Cuando el campo favorito no se envía, confíe en él para traducir la copia del menú a \"Cancelar favorito\". */
   const [favoriteOverrides, setFavoriteOverrides] = useState<Readonly<Record<string, boolean>>>({});
-  /** 引用草稿：输入区上方那条。 */
+  /** Borrador de cotización: el que está encima del área de entrada. */
   const [quoteDraft, setQuoteDraft] = useState<{ readonly messageId: string; readonly excerpt: string } | undefined>(undefined);
-  /** 归档会话默认隐藏，抽屉 / 左栏共用一个开关。 */
+  /** Las sesiones de archivo están ocultas de forma predeterminada y el cajón/columna izquierda comparte un interruptor. */
   const [showArchived, setShowArchived] = useState(false);
-  /** 新建会话选助手：助手多于一个时先弹这个。 */
+  /** Al crear una nueva sesión, selecciona un asistente: cuando haya más de un asistente, este jugará primero. */
   const [pickerOpen, setPickerOpen] = useState(false);
-  /** 正在切换到的会话：切换期间的轻量加载提示。 */
+  /** Sesión que se cambia a: Aviso de carga ligera durante el cambio. */
   const [switchingTo, setSwitchingTo] = useState<string | undefined>(undefined);
-  /** 每个会话上次的滚动位置（仅内存）。 */
+  /** La última posición de desplazamiento por sesión (solo memoria). */
   const scrollMemoryRef = useRef(new ScrollMemory());
-  /** ?perf=1 调试开关与「快照到达时刻」，平时都不打开。 */
+  /** ?perf=1 El interruptor de depuración y la \"hora de llegada de la instantánea\" generalmente no están activados. */
   const perfOn = useRef(typeof window === "undefined" ? false : perfFlag(window.location.search));
   const snapshotAtRef = useRef(0);
-  /** 稳定回调要读的最新数据（memo 化后闭包会停在旧渲染，不能直接捕获状态）。 */
+  /** Los últimos datos que leerá la devolución de llamada estable (memo Después de la renderización, el cierre se detendrá en la renderización anterior y no podrá capturar el estado directamente). */
   const messagesRef = useRef<readonly HostMessage[]>([]);
   const sessionIdRef = useRef<string | undefined>(undefined);
   const sessionsRef = useRef(sessions);
   const favoriteOverridesRef = useRef<Readonly<Record<string, boolean>>>({});
-  /** 切会话后等内容换完再落一次位置。 */
+  /** Después de cambiar de sesión, espere hasta que se cambie el contenido y luego colóquelo nuevamente. */
   const pendingRestoreRef = useRef<{ readonly sessionId: string; readonly top: number } | undefined>(undefined);
 
   useVisualViewport();
@@ -139,27 +139,27 @@ export function HostChat({ onLogout }: HostChatProps) {
   useEffect(() => {
     if (status === "connected") setEverConnected(true);
   }, [status]);
-  // 助手列表每次连上都取一次：新建会话要选助手，顶栖要显示名字与头像。
+  // La lista de asistentes se recupera cada vez que te conectas: debes seleccionar un asistente al crear una nueva sesión, y el nombre y el avatar deben mostrarse en la parte superior.
   useEffect(() => {
     if (status === "connected") requestAssistants();
   }, [status, requestAssistants]);
-  // 外观（主题 / 字号）也要靠设置快照：连上就拉一次，不等用户打开设置页。
+  // La apariencia (tema/tamaño de fuente) también depende de la instantánea de configuración: simplemente levántela una vez, sin esperar a que el usuario abra la página de configuración.
   useEffect(() => {
     if (status === "connected") requestSettings();
   }, [status, requestSettings]);
-  // 把 data-theme / data-font-scale 写到根元素；值变（含回滚）就重写。
+  // Escriba tema de datos / escala de fuente de datos en el elemento raíz; reescribir cuando el valor cambie (incluida la reversión).
   useAppearance(settings);
-  // 会话切换完成（快照里的 sessionId 已跟上）：收起切换提示。
+  // Se completa el cambio de sesión (el ID de sesión en la instantánea se ha actualizado): cierre el mensaje de cambio.
   useEffect(() => {
     if (switchingTo !== undefined && switchingTo === sessionId) setSwitchingTo(undefined);
   }, [sessionId, switchingTo]);
-  // 切换失败（例如焦点被别的设备抢走）时 sessionId 不会变：给个超时，别让提示挂着。
+  // El sessionId no cambiará cuando el cambio falla (por ejemplo, otro dispositivo quita el foco): dé un tiempo de espera y no permita que el mensaje se cuelgue.
   useEffect(() => {
     if (switchingTo === undefined) return;
     const timer = window.setTimeout(() => setSwitchingTo(undefined), 4000);
     return () => window.clearTimeout(timer);
   }, [switchingTo]);
-  // 设置主页只在打开时请一次 settings.snapshot；重连回来也会重取一次。
+  // Para configurar la página de inicio, solo necesita tomar la instantánea de configuración una vez cuando la abra; se tomará nuevamente cuando se vuelva a conectar.
   useEffect(() => {
     if (view !== "settings" || status !== "connected") return;
     requestSettings();
@@ -170,27 +170,27 @@ export function HostChat({ onLogout }: HostChatProps) {
   }, []);
 
   const currentSession = sessions.find((session) => session.id === sessionId);
-  /** 当前会话的助手：顶栖显示名字与头像；没有会话时给一句引导语。 */
+  /** Asistente para la sesión actual: Dingqi muestra el nombre y el avatar; Da una guía cuando no hay sesión. */
   const currentAssistant =
     currentSession === undefined ? undefined : assistants.find((assistant) => assistant.id === currentSession.assistantId);
 
-  /** 本地已乐观删除的消息不再进入列表，其余顺序完全按 Host 给的。 */
+  /** Los mensajes que se hayan eliminado localmente de forma optimista ya no entrarán en la lista y el resto del orden será exactamente como lo indique el anfitrión. */
   const visibleMessages = useMemo(
     () => (removedIds.length === 0 ? messages : messages.filter((message) => !removedIds.includes(message.id))),
     [messages, removedIds],
   );
-  /** 消息流清单：按天插入时间分隔，分隔条参与列表渲染但不参与「贴底」判断。 */
+  /** Lista de flujo de mensajes: Insertar separación horaria por día. La barra separadora participa en la representación de la lista pero no en el juicio \"inferior\". */
   const items = useMemo(() => buildStreamItems(visibleMessages, Date.now(), locale), [visibleMessages, locale]);
-  /** 长列表窗口化：超过阈值只渲染可视区 ± 20，两端等高占位。 */
+  /** Ventanas de lista larga: solo renderiza el área visible cuando se excede el umbral ± 20, ocupando alturas iguales en ambos extremos. */
   const windowPlan = useMessageWindow({
     scrollRef,
     itemCount: items.length,
     pinnedToEnd: stickRef.current,
     resetKey: sessionId ?? "",
   });
-  /** 待审批的 toolCallId 集合，用来把工具块标成「待确认」。 */
+  /** Una colección de toolCallIds pendiente de aprobación, utilizada para marcar bloques de herramientas como \"pendientes de confirmación\". */
   const approvalIds = useMemo(() => new Set(approvals.map((approval) => approval.toolCallId)), [approvals]);
-  /** Host 声明的能力位：缺 media 不渲染图片/语音，缺 message_status 不显示状态与重试。 */
+  /** Host Bit de capacidad declarada: los medios faltantes no representan imágenes/Voz, falta message_status no muestra el estado y vuelve a intentarlo. */
   const capabilities = useMemo(() => readCapabilities(snapshot.capabilities), [snapshot.capabilities]);
 
   function scrollToBottom(smooth = false) {
@@ -201,9 +201,9 @@ export function HostChat({ onLogout }: HostChatProps) {
     element.scrollTo({ top: element.scrollHeight, behavior: smooth ? "smooth" : "auto" });
   }
 
-  // 换会话：取出这一条上次的滚动位置；没记录过就贴底。
-  // 旧位置由 handleScroll 持续记录，这里不再补记——快照换完内容后 scrollTop 可能已被
-  // 新的内容高度截断，在这时读会记错值。
+  // Cambiar sesión: elimine la última posición de desplazamiento de este artículo; si no está grabado, pégalo en la parte inferior.
+  // handleScroll registra continuamente la posición anterior y no se volverá a registrar aquí.——Después de que la instantánea cambia el contenido, es posible que scrollTop haya sido
+  // El nuevo contenido está muy truncado y se recordará el valor incorrecto al leerlo.
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (sessionId === undefined) return;
@@ -213,15 +213,15 @@ export function HostChat({ onLogout }: HostChatProps) {
       setShowJump(false);
       return;
     }
-    // 这时列表里可能还是上一个会话的内容，高度对不上：先落一次，等内容换完再落一次。
+    // En este momento, es posible que el contenido de la lista aún sea el contenido de la sesión anterior y la altura no coincida: suéltelo una vez primero y luego suéltelo nuevamente después de cambiar el contenido.
     pendingRestoreRef.current = { sessionId, top: saved };
     stickRef.current = false;
     setShowJump(saved > 0);
     if (element !== null) element.scrollTop = saved;
   }, [sessionId]);
 
-  // 内容变化后：有待恢复的位置就落位，否则维持原来的「贴底才跟随」。
-  // 依赖 items 而不是 messages：新插入时间分隔也会改变列表高度，同样要贴底。
+  // Después de que el contenido cambie: se colocará la posición a restaurar; de lo contrario, se mantendrá el "seguir en la parte inferior" original.
+  // Confíe en elementos en lugar de mensajes: los intervalos de tiempo recién insertados también cambiarán la altura de la lista, también hacia la parte inferior.
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (element === null) return;
@@ -235,7 +235,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     element.scrollTop = element.scrollHeight;
   }, [items, sessionId]);
 
-  // ?perf=1：把「收到快照 → 渲染提交」的耗时与条数打到控制台（未带参数时零开销）。
+  // ?perf=1: Poner "instantánea recibida" → La hora y el número de envíos de renderizado se informan a la consola (sin sobrecarga cuando no se proporcionan parámetros).
   useLayoutEffect(() => {
     if (!perfOn.current || snapshotAtRef.current === 0) return;
     const elapsed = performance.now() - snapshotAtRef.current;
@@ -267,7 +267,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     const atBottom = distance < 80;
     stickRef.current = atBottom;
     setShowJump((current) => (current === !atBottom ? current : !atBottom));
-    // 每个会话记住自己的位置，切回去时不再从头开始。
+    // Cada sesión recuerda su posición y no comienza de nuevo cuando vuelve a cambiar.
     if (sessionId !== undefined) scrollMemoryRef.current.remember(sessionId, element.scrollTop);
   }
 
@@ -283,7 +283,7 @@ export function HostChat({ onLogout }: HostChatProps) {
       type: "chat.send",
       ...(sessionId === undefined ? {} : { sessionId }),
       text,
-      // 引用随 chat.send 带被引用消息的 id：Host 给这个字段起的名字是 quotedMessageId。
+      // Las referencias se envían con chat.send con el id del mensaje al que se hace referencia:Host El nombre dado a este campo es quotedMessageId.
       ...(quoted === undefined ? {} : { quotedMessageId: quoted.messageId }),
     });
     window.requestAnimationFrame(() => scrollToBottom(true));
@@ -296,7 +296,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     setSelectionMode(false);
     setSelectedIds([]);
     if (nextId === sessionId) return;
-    // 切换期间给一条轻量提示（旧内容还在，不白屏），快照跟上后自动消失。
+    // Dé un ligero recordatorio durante el cambio (el contenido antiguo todavía está allí, no hay pantalla blanca) y la instantánea desaparecerá automáticamente después de que se ponga al día.
     setSwitchingTo(nextId);
     writeCommand({ type: "session.select", sessionId: nextId });
   }
@@ -304,7 +304,7 @@ export function HostChat({ onLogout }: HostChatProps) {
   function newSession() {
     setDrawerOpen(false);
     stickRef.current = true;
-    // 助手多于一个时先让用户选；一个直接带上它，零个交给 Host 的默认助手。
+    // Si hay más de un asistente, dejar que el usuario elija primero; si uno se usa directamente, el otro se entrega al asistente predeterminado del anfitrión.
     if (shouldAskAssistant(assistants)) {
       setPickerOpen(true);
       return;
@@ -320,7 +320,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     writeCommand({ type: "session.new", assistantId });
   }
 
-  /** 重命名直接用行内输入给出的标题（空名在会话面板里已经被拦住）。 */
+  /** Cambie el nombre del título proporcionado directamente mediante la entrada en línea (los nombres vacíos se bloquean en el panel de sesión). */
   function renameSession(targetId: string, title: string) {
     const trimmed = title.trim();
     if (trimmed.length === 0) return;
@@ -333,7 +333,7 @@ export function HostChat({ onLogout }: HostChatProps) {
 
   function deleteSession(targetId: string) {
     const title = sessions.find((session) => session.id === targetId)?.title ?? "";
-    // 文案要写清「会话 + 全部消息」，不能只说「不可撤销」。
+    // La copia debe indicar claramente "conversación + todos los mensajes", no sólo "irrevocable".
     if (window.confirm(t("sessions.deleteConfirm", { name: title.trim() || t("sessions.untitled") }))) writeCommand({ type: "session.delete", sessionId: targetId });
   }
 
@@ -361,13 +361,13 @@ export function HostChat({ onLogout }: HostChatProps) {
   })();
   const isFavorited = (messageId: string, fallback: boolean | undefined): boolean => favoriteOverrides[messageId] ?? fallback === true;
 
-  // 每次渲染把最新数据放进 ref：下面的回调都是用 useCallback 固定引用的，靠 ref 拿新值。
+  // Coloque los datos más recientes en referencia para cada representación: las siguientes devoluciones de llamada son referencias fijas que utilizan useCallback y dependen de referencia para obtener nuevos valores.
   messagesRef.current = visibleMessages;
   sessionIdRef.current = sessionId;
   sessionsRef.current = sessions;
   favoriteOverridesRef.current = favoriteOverrides;
 
-  /** 复制正文：网页不在 secure context 时 Clipboard API 不存在，只好看能不能退到 execCommand。 */
+  /** Copiar texto: cuando la página web no está en el contexto seguro, la API del Portapapeles no existe, por lo que tenemos que ver si podemos recurrir a execCommand. */
   const copyMessage = useCallback(
     async (text: string) => {
       const copied = await copyTextToClipboard(text);
@@ -376,7 +376,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     [pushToast],
   );
 
-  /** 引用：本地先拼摘要（不等往返），发送时随 chat.send 带 quotedMessageId。 */
+  /** Cita: el resumen se escribe primero localmente (no de ida y vuelta) y el quotedMessageId se incluye con chat.send al enviar. */
   const quoteMessageById = useCallback((messageId: string) => {
     const message = messagesRef.current.find((item) => item.id === messageId);
     if (message === undefined) return;
@@ -385,7 +385,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     inputRef.current?.focus();
   }, []);
 
-  /** 收藏 / 取消收藏：先翻本地状态，Host 拒绝时撤回去并说明原因。 */
+  /** Cobro/cancelación de cobro: primero verifique el estado local,Host Cuando sea rechazado, retírese y explique por qué. */
   const toggleFavoriteById = useCallback(
     (messageId: string) => {
       const message = messagesRef.current.find((item) => item.id === messageId);
@@ -404,7 +404,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     [sendOptimistic],
   );
 
-  /** 删除（单条或多选）：先二次确认，再从列表里乐观移除；失败就放回去。 */
+  /** Eliminar (selección única o múltiple): Confirme dos veces antes de eliminarlo de la lista con optimismo; si falla, vuelva a colocarlo. */
   const deleteMessages = useCallback(
     (ids: readonly string[]) => {
       if (ids.length === 0) return;
@@ -416,11 +416,11 @@ export function HostChat({ onLogout }: HostChatProps) {
       sendOptimistic(
         { type: "message.delete", messageIds: [...ids] },
         () => {
-          // Host 拒绝：把被乐观藏起来的消息放回去。
+          // Host Rechazo: Devolver el mensaje que ha ocultado el optimismo.
           setRemovedIds((current) => current.filter((id) => !ids.includes(id)));
         },
         (event) => {
-          // 回执里点名跳过的（比如正在生成的那条）：同样恢复显示，并说一句原因。
+          // Para artículos que se omitieron por nombre en el recibo (como el que se está generando): restaure la visualización e indique el motivo.
           const skipped = event.skippedMessageIds ?? [];
           if (skipped.length === 0) return;
           setRemovedIds((current) => current.filter((id) => !skipped.includes(id)));
@@ -431,7 +431,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     [sendOptimistic, pushToast],
   );
 
-  /** 菜单分发：只带 messageId，回调本身保持稳定引用（memo 才有效）。 */
+  /** Distribución del menú: solo tome el ID del mensaje, la devolución de llamada en sí mantiene una referencia estable (memo es eficaz). */
   const handleMessageAction = useCallback(
     (messageId: string, action: MessageActionId) => {
       switch (action) {
@@ -486,7 +486,7 @@ export function HostChat({ onLogout }: HostChatProps) {
 
   const openImage = useCallback((src: string) => setPreviewImage(src), []);
 
-  /** 从助手详情直接开一个会话：回到聊天页，带上该助手。 */
+  /** Inicie una conversación directamente desde los detalles del asistente: regrese a la página de chat y traiga al asistente con usted. */
   const startSessionWith = useCallback(
     (assistantId: string) => {
       setView("chat");
@@ -518,7 +518,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     exitSelection();
   }
 
-  // 换会话不该带着上一条的消息操作条、多选态和全屏图过去。
+  // Al cambiar de conversación, no debe llevar consigo la barra de operación del mensaje anterior, el estado de selección múltiple ni la imagen de pantalla completa.
   useEffect(() => {
     setActiveKey(undefined);
     setPreviewImage(undefined);
@@ -527,7 +527,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     setQuoteDraft(undefined);
   }, [sessionId]);
 
-  // Esc：先收起消息菜单，其次退出多选。
+  // Esc: Primero cierre el menú de mensajes, luego salga de la selección múltiple.
   useEffect(() => {
     if (activeKey === undefined && !selectionMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -562,7 +562,7 @@ export function HostChat({ onLogout }: HostChatProps) {
     </div>
   );
 
-  // 设置主页同样要看到连接提示条：断线时不许用户面对一个永远转圈的设置页。
+  // Al configurar la página de inicio, también necesita ver un mensaje de conexión: cuando se desconecta, el usuario no puede enfrentarse a una página de configuración que siempre girará en círculo.
   if (view === "settings") {
     return (
       <I18nProvider locale={locale}>
@@ -610,7 +610,7 @@ export function HostChat({ onLogout }: HostChatProps) {
   return (
     <I18nProvider locale={locale}>
     <div className={sidebarCollapsed ? "host-root host-scope is-sidebar-collapsed" : "host-root host-scope"}>
-      {/* 桌面档（≥1024）常驻左栏，可收起；手机 / 平板仍用抽屉，两者由 CSS 互斥。 */}
+      {/* Archivo de escritorio (≥1024) está ubicado permanentemente en la columna de la izquierda y se puede contraer; Los teléfonos celulares/tabletas todavía usan cajones, y CSS los dos se excluyen mutuamente. */}
       <BlockBoundary name={t("block.sessions")}>
         <SessionSidebar
           sessions={sessions}
@@ -653,7 +653,7 @@ export function HostChat({ onLogout }: HostChatProps) {
           </header>
         ) : (
         <header className="host-topbar">
-          {/* 桌面档收起左栏后用它展开；手机 / 平板档由 CSS 隐藏，☰ 仍是抽屉入口 */}
+          {/* El archivo del escritorio contrae la columna izquierda y luego la expande; el archivo del celular/tableta está oculto por CSS.☰ Todavía la entrada del cajón. */}
           <button
             className="quiet host-icon-button host-sidebar-toggle"
             type="button"

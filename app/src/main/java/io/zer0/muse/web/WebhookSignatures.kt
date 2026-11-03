@@ -1,24 +1,24 @@
 package io.zer0.muse.web
 
 /**
- * v2.0: webhook 签名工具 — 基于 [Ed25519](纯 Kotlin 实现)。
+ * v2.0: webhook herramienta de firma — Basado en [Ed25519](Implementación pura de Kotlin).
  *
- * 用于 QQ 开放平台回调:
- *  - [signChallenge]: op=13 回调地址验证(对 event_ts + plain_token 签名);
- *  - [verifyWebhook]: 事件推送防篡改校验(对 timestamp + body 验签)。
+ * Se utiliza para devolución de llamada de plataforma abierta QQ:
+ *  - [signChallenge]: op=13 Verificación de dirección de devolución de llamada(Firmar event_ts + Plain_token);
+ *  - [verifyWebhook]: Verificación a prueba de manipulaciones mediante eventos(Verificar marca de tiempo + firma del cuerpo).
  *
- * 密钥为渠道配置中的 Bot Secret(APP Secret)。
+ * La clave es la que está en la configuración del canal. Bot Secret(APP Secret).
  */
 internal object WebhookSignatures {
 
-    /** op=13 挑战响应:返回 hex 签名。 */
+    /** op=13 respuesta al desafío:Devuelve la firma hexadecimal. */
     fun signChallenge(secret: String, eventTs: String, plainToken: String): String {
         val seed = Ed25519.seedFromSecret(secret)
         val signature = Ed25519.sign(seed, (eventTs + plainToken).toByteArray(Charsets.UTF_8))
         return signature.joinToString("") { "%02x".format(it) }
     }
 
-    /** 事件推送验签:校验 hex 签名对 timestamp + body 有效。 */
+    /** Verificación de firma push de eventos:Verifique que la firma hexadecimal sea válida para la marca de tiempo + cuerpo. */
     fun verifyWebhook(secret: String, timestamp: String, body: String, signatureHex: String): Boolean {
         if (secret.isBlank() || timestamp.isBlank() || signatureHex.isBlank()) return false
         if (signatureHex.length != 128) return false

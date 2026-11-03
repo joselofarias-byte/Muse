@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-verify_unused_resources.py — 严格校验 lint 报的 UnusedResources 是否真的无引用。
+verify_unused_resources.py — Verifique estrictamente si los recursos no utilizados informados por lint realmente no tienen referencias.
 
-## 为什么需要它
+## por qué es necesario
 
-lint 的 UnusedResources 会误报（实测 920 个里至少 25 个仍被 Kotlin 引用）。
-手工删资源前必须用比 lint 更严的口径复核，否则会删掉在用字符串 →
-界面空白/崩溃。
+lint Los recursos no utilizados se informarán falsamente (Kotlin todavía hace referencia a al menos 25 de los 920 medidos).
+Antes de eliminar recursos manualmente, debe verificar con un estándar más estricto que lint; de lo contrario, se eliminará la cadena en uso. →
+Interfaz en blanco/colapsar.
 
-## 校验口径（任一命中即视为"仍被使用"，不可删）
+## Calibre de verificación (cualquier acierto se considera"todavía usado", no se puede eliminar)
 
-1. Kotlin/XML 源码中出现的 `R.<type>.<name>`（Kotlin）
-2. XML 中的 `@<type>/<name>`
-3. 源码里带引号的资源名字面量（保守，防字符串拼接）；
-   但排除设置项 key 声明（DataStore 键名与资源同名属无关）。
+1. Kotlin/XML Aparece en el código fuente. `R.<type>.<name>`(Kotlin)
+2. XML en `@<type>/<name>`
+3. Literales de nombres de recursos entre comillas en el código fuente (conservadores, que evitan la unión de cadenas);
+   Pero excluya la declaración de clave del elemento de configuración (DataStore El nombre de la clave no tiene nada que ver con el recurso con el mismo nombre).
 
-## 性能
+## Rendimiento
 
-一次性扫描全部源码，建「被引用资源名」集合，再对每条待删项做集合查询
-（O(n+m)，不做逐条正则回溯）。
+Escanee todos los códigos fuente a la vez, cree una colección de "nombres de recursos referenciados" y luego realice una consulta de colección en cada elemento que desee eliminar.
+(O(n+m), sin retroceder periódicamente uno por uno).
 
-## 用法
+## Uso
 
   python ci/script/verify_unused_resources.py --baseline app/lint-baseline.xml \
       --out E:/tmp/unused-verified.json
@@ -46,11 +46,11 @@ XML_REF_RE = re.compile(r"@(?P<type>\w+)/(?P<name>\w+)\b")
 
 
 def load_unused(baseline: Path) -> list[dict]:
-    """从 lint baseline 抽取 UnusedResources 条目。
+    """Extraiga las entradas de UnusedResources de la línea base de pelusa.
 
-    重要：lint 会把**同一行里的多个资源**合并成一条记录，且只在 message 里
-    写第一个名字。因此必须同时解析 errorLine1 里的**全部** name=，
-    否则会漏掉同行后续资源（它们可能仍在被引用）。
+    Importante:lint voluntad**Múltiples recursos en la misma fila**Fusionar en un registro, solo en el mensaje
+    Escribe el nombre. Por lo tanto, los errores en errorLine1 deben analizarse al mismo tiempo.**Todos** name=,
+    De lo contrario, se perderán los recursos de seguimiento entre pares (es posible que aún se haga referencia a ellos).
     """
     tree = ET.parse(baseline)
     out = []
@@ -66,7 +66,7 @@ def load_unused(baseline: Path) -> list[dict]:
         res_type = m.group("type")
         names = [m.group("name")]
 
-        # 补：errorLine1 里同行的其他 name=（lint 合并记录时漏报的）
+        # Suplemento:errorLine1 Otras personas viajando juntas name=(lint omitido al fusionar registros)
         line1 = issue.get("errorLine1") or ""
         for nm in re.findall(r'name="([^"]+)"', line1):
             if nm not in names:
@@ -85,7 +85,7 @@ def load_unused(baseline: Path) -> list[dict]:
 
 
 def build_index() -> tuple[set[str], set[str], set[str]]:
-    """返回 (kt_refs, xml_refs, kt_literals)：资源名集合。"""
+    """Regresar (kt_refs, xml_refs, kt_literals): Colección de nombres de recursos."""
     kt_refs: set[str] = set()
     xml_refs: set[str] = set()
     kt_literals: set[str] = set()
@@ -94,7 +94,7 @@ def build_index() -> tuple[set[str], set[str], set[str]]:
         text = p.read_text(encoding="utf-8", errors="ignore")
         for m in KT_REF_RE.finditer(text):
             kt_refs.add(m.group("name"))
-        # 字面量：排除设置 key 声明行
+        # Literal: excluir la línea de declaración de clave de configuración
         for line in text.splitlines():
             if re.search(r"KEY_[A-Z_]+|private val [A-Z_]+ =", line):
                 continue
@@ -134,11 +134,11 @@ def main() -> int:
             safe.append(e)
 
     result = {"safe_to_delete": safe, "still_used": used}
-    print(f"UnusedResources 总计: {len(unused)}")
-    print(f"  确认无引用（可删）: {len(safe)}")
-    print(f"  仍被引用（保留）  : {len(used)}")
+    print(f"UnusedResources total: {len(unused)}")
+    print(f"  Confirmar que no hay referencias (se pueden eliminar): {len(safe)}")
+    print(f"  Todavía referenciado (retenido)  : {len(used)}")
     if used:
-        print("\n仍被引用的全部条目:")
+        print("\nTodos los artículos aún citados:")
         for e in used:
             print(f"  {e['type']}.{e['name']}  <- {', '.join(e['evidence'])}")
 
@@ -146,7 +146,7 @@ def main() -> int:
         Path(args.out).write_text(
             json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"\n已写出: {args.out}")
+        print(f"\nha sido escrito: {args.out}")
     return 0
 
 

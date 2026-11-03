@@ -9,10 +9,10 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Lorebook DAO — Phase 8.5。
- * - observeAll: 全部世界书(管理页用,按 sortIndex + name 排序)
- * - observeEnabled: 仅启用的(注入时用)
- * - getByIds: 按 id 列表查(Assistant 绑定的)
+ * Lorebook DAO — Phase 8.5.
+ * - observeAll: todos los libros del mundo(Para la página de gestión,Ordenar por sortIndex + nombre)
+ * - observeEnabled: Sólo habilitado(Se utiliza al inyectar)
+ * - getByIds: Buscar por lista de identificación(Assistant atado)
  */
 @Dao
 interface LorebookDao {

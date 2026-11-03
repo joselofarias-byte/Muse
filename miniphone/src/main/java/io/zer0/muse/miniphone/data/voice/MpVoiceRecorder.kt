@@ -22,37 +22,37 @@ import java.io.IOException
 import java.util.UUID
 
 /**
- * 录音的对外契约。
+ * Contrato externo para grabación.
  *
- * 真实现是 [MpVoiceRecorder];抽成接口是因为「按下麦克风」这条路径必须能在单测里走完,
- * 而单测不该真开麦克风,也不该为了一次状态迁移去申请权限。
+ * lo real es [MpVoiceRecorder];El motivo de la interfaz de extracción es que el camino de "presionar el micrófono" debe completarse en una sola prueba.,
+ * Y realmente no deberías encender el micrófono durante una sola prueba.,No debe solicitar permiso para una migración estatal.
  */
 internal interface MpVoiceCapture {
 
-    /** 开始采集;拿不到麦克风或起采失败返回 false(此时不留任何临时文件)。 */
+    /** Empezar a coleccionar;No se pudo conseguir el micrófono o no se pudo recoger y devolver false(No quedan archivos temporales en este momento). */
     fun start(): Boolean
 
-    /** 停止采集并交出整段 WAV;没有在录、或这段音频为空时返回 null。 */
+    /** Detener la recogida y entregar el segmento completo. WAV;Devuelve nulo cuando no hay grabación o el audio está vacío. */
     suspend fun stop(): ByteArray?
 
-    /** 丢弃这次录音:停采并删掉临时文件。 */
+    /** Descartar esta grabación:Deje de minar y elimine archivos temporales. */
     fun cancel()
 }
 
 /**
- * 聊天页语音入口的录音器。
+ * Grabador para el portal de voz de la página de chat.
  *
- * PCM16 / 16kHz / 单声道,采集线程边读边写临时文件 —— 六十秒是 1.9MB 左右,
- * 全放内存不算大,但录音期间内存会一直被占着,dump 出来也看不出这段音频长什么样。
- * 停止时把临时文件补上 WAV 头整段读出来,再删掉文件:交出的是字节,不是路径。
+ * PCM16 / 16kHz / mono,El hilo de adquisición lee y escribe archivos temporales al mismo tiempo. —— Sesenta segundos son aproximadamente 1,9 MB.,
+ * La memoria completa no es demasiado grande.,Sin embargo, la memoria quedará ocupada durante la grabación.,dump No puedo decir cómo se ve el audio.
+ * Al detenerse, agregue el encabezado WAV al archivo temporal y lea la sección completa.,Eliminar el archivo nuevamente:Lo que se entrega son bytes.,No es un camino.
  *
- * 采集最长 [MAX_DURATION_MS]:到点就不再往里写,免得用户忘了端点把磁盘写满。
- * 到点之后仍需外面调 [stop] 才会拿到音频 —— 谁决定「录完了」由状态机说了算。
+ * La colección más larga [MAX_DURATION_MS]:Cuando llegue el momento, no escribiré más.,No sea que el usuario se olvide del punto final y llene el disco.
+ * Después de llegar, aún debes organizarlo afuera. [stop] para obtener el audio —— Quien decide "la grabación ha terminado" lo decide la máquina de estados.
  *
- * @param directory 临时文件目录,通常传 `cacheDir`
- * @param factory 造采集器的口子;测试用它换掉真麦克风
- * @param ioDispatcher 采集与读写文件的线程
- * @param maxDurationMs 单次录音的时长上限
+ * @param directory directorio de archivos temporales,Generalmente pasa `cacheDir`
+ * @param factory Haz un agujero para el coleccionista.;Pruebe usarlo para reemplazar el micrófono real.
+ * @param ioDispatcher Hilos para recopilar, leer y escribir archivos.
+ * @param maxDurationMs Duración máxima de una sola grabación
  */
 internal class MpVoiceRecorder(
     private val directory: File,
@@ -63,11 +63,11 @@ internal class MpVoiceRecorder(
 
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
-    /** 正在进行的这一次录音;null 表示没在录。 */
+    /** Esta grabación en progreso.;null Dijo que no estaba grabando. */
     private var session: Session? = null
 
     init {
-        // 上次进程被杀留下的临时文件在后台清掉:构造发生在组合里,不能在这里做文件 IO
+        // Los archivos temporales que dejó el último proceso que se eliminó se borran en segundo plano.:La construcción ocurre en composición.,No puedo hacer archivos aquí IO
         scope.launch { cleanupStaleRecordings(directory) }
     }
 
@@ -86,14 +86,14 @@ internal class MpVoiceRecorder(
         return true
     }
 
-    /** 拿一个可用的采集器;初始化抛异常或拿不到都当作这次录音没开始。 */
+    /** Consigue un coleccionista disponible;Si se produce una excepción durante la inicialización o no se puede obtener, se considerará que la grabación no ha comenzado. */
     private fun openRecord(): MpAudioRecord? = runCatching { factory.create(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE) }
-        .onFailure { Logger.w(TAG, "麦克风初始化失败: ${it.message}") }
+        .onFailure { Logger.w(TAG, "Falló la inicialización del micrófono: ${it.message}") }
         .getOrNull()
 
-    /** 起采;采集器拒绝启动也算失败。 */
+    /** Empezar a minar;Si el recolector se niega a arrancar, se considera un fracaso. */
     private fun beginCapture(record: MpAudioRecord): Boolean = runCatching { record.start() }
-        .onFailure { Logger.w(TAG, "起采失败: ${it.message}") }
+        .onFailure { Logger.w(TAG, "La minería falló: ${it.message}") }
         .isSuccess
 
     override suspend fun stop(): ByteArray? = withContext(ioDispatcher) {
@@ -112,7 +112,7 @@ internal class MpVoiceRecorder(
         session = null
         current.record.stopQuietly()
         current.job?.cancel()
-        // 等采集循环真的退出再删,免得删在一个还开着的流上
+        // Espere hasta que el bucle de recopilación realmente salga antes de eliminarlo.,Para no eliminarlo en una transmisión que aún está abierta.
         scope.launch {
             runCatching { current.job?.join() }
             current.record.releaseQuietly()
@@ -120,7 +120,7 @@ internal class MpVoiceRecorder(
         }
     }
 
-    /** 采集循环:读到多少写多少,写满上限就自己停手。 */
+    /** Bucle de adquisición:Escribe tanto como lees,Deténgase cuando se alcance el límite. */
     private suspend fun pump(current: Session) {
         try {
             FileOutputStream(current.file).use { sink ->
@@ -132,10 +132,10 @@ internal class MpVoiceRecorder(
                         sink.write(buffer, 0, read)
                         written += read
                     } else if (read == 0) {
-                        // 采集器暂时没数据:让出一下,不要空转烧 CPU
+                        // El recopilador no tiene datos temporalmente.:ceder el paso,No te quedes inactivo y quemes CPU
                         delay(READ_RETRY_MS)
                     } else {
-                        Logger.w(TAG, "AudioRecord.read 返回 $read,本次录音提前结束")
+                        Logger.w(TAG, "AudioRecord.read Regresar $read,Esta grabación termina temprano")
                         break
                     }
                 }
@@ -143,11 +143,11 @@ internal class MpVoiceRecorder(
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
-            Logger.w(TAG, "录音写入失败: ${e.message}")
+            Logger.w(TAG, "La escritura de grabación falló: ${e.message}")
         } catch (e: IllegalStateException) {
-            Logger.w(TAG, "采集器状态异常: ${e.message}")
+            Logger.w(TAG, "Estado anormal del colector: ${e.message}")
         } finally {
-            // 正常结束、写满上限、被取消都在这里停采:pump 退出后不该继续占着麦克风
+            // Si finaliza normalmente, si se llena el límite superior o si se cancela, la minería se detendrá aquí.:pump No debes seguir ocupando el micrófono después de salir
             current.record.stopQuietly()
         }
     }
@@ -155,9 +155,9 @@ internal class MpVoiceRecorder(
     private fun createTempFile(): File? = runCatching {
         directory.mkdirs()
         File(directory, TEMP_PREFIX + UUID.randomUUID() + TEMP_SUFFIX)
-    }.onFailure { Logger.w(TAG, "临时文件创建失败: ${it.message}") }.getOrNull()
+    }.onFailure { Logger.w(TAG, "Falló la creación del archivo temporal: ${it.message}") }.getOrNull()
 
-    /** 临时文件里只有裸 PCM,读出来补上 WAV 头;一个字节都没采到就当没有音频。 */
+    /** Solo hay archivos desnudos en el archivo temporal. PCM,Léelo y agrega el encabezado WAV.;Si no se recopila ni un solo byte, se supone que no hay audio. */
     private fun readWavOrNull(file: File): ByteArray? = runCatching {
         val pcm = file.readBytes()
         if (pcm.isEmpty()) return null
@@ -166,9 +166,9 @@ internal class MpVoiceRecorder(
             header.copyInto(wav)
             pcm.copyInto(wav, header.size)
         }
-    }.onFailure { Logger.w(TAG, "读取录音失败: ${it.message}") }.getOrNull()
+    }.onFailure { Logger.w(TAG, "No se pudo leer la grabación: ${it.message}") }.getOrNull()
 
-    /** 一次录音的全部现场:采集器、临时文件、写入上限。 */
+    /** Toda la escena grabada de una vez.:Colector, archivo temporal, límite de escritura. */
     private class Session(
         val record: MpAudioRecord,
         val file: File,
@@ -178,65 +178,65 @@ internal class MpVoiceRecorder(
     }
 
     companion object {
-        /** 16kHz:语音识别服务端最常用的采样率,再高只是白占带宽。 */
+        /** 16kHz:La frecuencia de muestreo más utilizada para servidores de reconocimiento de voz.,No importa qué tan alto sea, ocupa ancho de banda en vano. */
         const val SAMPLE_RATE: Int = 16_000
 
         const val CHANNELS: Int = 1
 
         const val BITS_PER_SAMPLE: Int = 16
 
-        /** 一次最多录六十秒。 */
+        /** Graba hasta sesenta segundos a la vez. */
         const val MAX_DURATION_MS: Long = 60_000L
 
-        /** 这段时间能采到的字节数:PCM 每秒 = 采样率 × 声道 × 位深 / 8。 */
+        /** El número de bytes que se pueden recopilar durante este período.:PCM por segundo = Tasa de muestreo × tracto vocal × Profundidad de bits / 8. */
         private fun bytesOf(durationMs: Long): Long = durationMs * SAMPLE_RATE * CHANNELS * (BITS_PER_SAMPLE / 8) / 1_000L
     }
 }
 
 /**
- * 清掉残留的录音临时文件。
+ * Borre los archivos de grabación temporales restantes.
  *
- * 只动本模块前缀、且一小时以上没改过的文件:单次录音上限一分钟、正常结束就删文件,
- * 活过一小时的 `mp-voice-*` 只可能是进程被杀留下的。按时间卡一刀,
- * 即使清理恰好与另一个页面刚建好的采集器撞在一起,也不会删掉正在录的那个。
+ * Mueva únicamente archivos con el prefijo de este módulo y que no hayan sido modificados durante más de una hora.:El límite máximo para una sola grabación es de un minuto y el archivo se eliminará cuando finalice normalmente.,
+ * Sobrevivió una hora `mp-voice-*` Sólo puede quedar cuando se mata el proceso. Un cuchillo según tarjeta de tiempo.,
+ * Incluso si la limpieza choca con el recopilador recién creado de otra página,,El que se está grabando no se eliminará.
  *
- * @return 实际删掉了几个;目录不在、文件删不掉都只记日志,不向外抛
+ * @return De hecho, eliminé algunos;Si el directorio no está allí y el archivo no se puede eliminar, solo se registrará el registro.,No lo tires
  */
 internal fun cleanupStaleRecordings(directory: File, now: Long = System.currentTimeMillis()): Int = runCatching {
     (directory.listFiles() ?: emptyArray())
         .filter { it.isFile && it.isStaleRecording(now) }
         .count { it.deleteQuietly() }
-}.onFailure { Logger.w(TAG, "清理残留录音失败: ${it.message}") }.getOrDefault(0)
+}.onFailure { Logger.w(TAG, "No se pudieron borrar las grabaciones residuales: ${it.message}") }.getOrDefault(0)
 
 private fun File.isStaleRecording(now: Long): Boolean = name.startsWith(TEMP_PREFIX) && now - lastModified() > STALE_RECORDING_MS
 
-private fun File.deleteQuietly(): Boolean = runCatching { delete() }.onFailure { Logger.w(TAG, "删除残留录音失败: $name") }.getOrDefault(false)
+private fun File.deleteQuietly(): Boolean = runCatching { delete() }.onFailure { Logger.w(TAG, "No se pudo eliminar la grabación residual: $name") }.getOrDefault(false)
 
 private const val TAG = "MpVoiceRecorder"
 
-/** 一小时内改过的录音文件一律不碰:那是活着的录音,不是残留。 */
+/** Los archivos de grabación que hayan sido modificados dentro de una hora no serán tocados.:Esa es una grabación viva,Ni un residuo. */
 private const val STALE_RECORDING_MS = 60L * 60L * 1_000L
 
 private const val BUFFER_BYTES = 8_192
 private const val READ_RETRY_MS = 10L
 
-/** 临时文件名的落盘形式;清理逻辑靠这个前缀认自己人。 */
+/** La forma de ubicación en disco del nombre del archivo temporal.;La lógica de limpieza se basa en este prefijo para identificar a las personas. */
 private const val TEMP_PREFIX = "mp-voice-"
 private const val TEMP_SUFFIX = ".pcm"
 
 /**
- * 标准 44 字节 WAV 头:RIFF 外壳 + 16 字节 fmt(PCM)+ data 块长度。
+ * Encabezado WAV estándar de 44 bytes:RIFF cáscara + 16 bytes fmt(PCM)+ data longitud del bloque.
  *
- * @param dataLength 后面跟着的 PCM 字节数
- * @param sampleRate 采样率
- * @param channels 声道数
- * @param bitsPerSample 位深
+ * @param dataLength seguido del número de bytes PCM
+ * @param sampleRate Tasa de muestreo
+ * @param channels Número de canales
+ * @param bitsPerSample profundidad de bits
  */
 internal fun wavHeader(dataLength: Int, sampleRate: Int, channels: Int = 1, bitsPerSample: Int = 16): ByteArray {
-    require(dataLength >= 0) { "dataLength 不能为负: $dataLength" }
+    require(dataLength >= 0) { "dataLength no puede ser negativo: $dataLength" }
     val blockAlign = channels * bitsPerSample / 8
     val header = ByteArray(WAV_HEADER_SIZE)
-    header.writeIntLe(OFFSET_RIFF_SIZE, WAV_HEADER_SIZE - 8 + dataLength) // RIFF 块长度 = 36 + dataLength
+    header.writeIntLe(OFFSET_RIFF_SIZE, WAV_HEADER_SIZE - 8 + dataLength) // RIFF longitud del bloque = 36 + dataLength
     header.writeAscii(OFFSET_RIFF, "RIFF")
     header.writeAscii(OFFSET_WAVE, "WAVE")
     header.writeAscii(OFFSET_FMT, "fmt ")
@@ -270,7 +270,7 @@ private const val OFFSET_BITS_PER_SAMPLE = 34
 private const val OFFSET_DATA = 36
 private const val OFFSET_DATA_SIZE = 40
 
-/** 小端写入 4 字节:WAV 头里的长度与采样率都是小端。 */
+/** Little endian escribe 4 bytes:WAV La longitud y la frecuencia de muestreo del encabezado son little-endian. */
 private fun ByteArray.writeIntLe(offset: Int, value: Int) {
     this[offset] = (value and 0xFF).toByte()
     this[offset + 1] = (value shr 8 and 0xFF).toByte()
@@ -278,7 +278,7 @@ private fun ByteArray.writeIntLe(offset: Int, value: Int) {
     this[offset + 3] = (value shr 24 and 0xFF).toByte()
 }
 
-/** 小端写入 2 字节。 */
+/** Little endian escribe 2 bytes. */
 private fun ByteArray.writeShortLe(offset: Int, value: Int) {
     this[offset] = (value and 0xFF).toByte()
     this[offset + 1] = (value shr 8 and 0xFF).toByte()
@@ -288,7 +288,7 @@ private fun ByteArray.writeAscii(offset: Int, text: String) {
     text.encodeToByteArray().copyInto(this, offset)
 }
 
-/** 采集器的最小可用面:只留采集要用的四个动作,测试据此替换真麦克风。 */
+/** Área mínima útil del colector.:Sólo quedan las cuatro acciones necesarias para el cobro.,En consecuencia, la prueba reemplaza el micrófono real. */
 internal interface MpAudioRecord {
     fun start()
 
@@ -299,12 +299,12 @@ internal interface MpAudioRecord {
     fun release()
 }
 
-/** 造 [MpAudioRecord] 的口子;拿不到可用采集器时返回 null。 */
+/** hacer [MpAudioRecord] la boca;Devuelve nulo cuando no hay ningún recopilador disponible. */
 internal fun interface MpAudioRecordFactory {
     fun create(sampleRate: Int, channels: Int, bitsPerSample: Int): MpAudioRecord?
 }
 
-/** 真麦克风:[AudioRecord] 按语音识别的源与单声道 PCM16 配好再交出去。 */
+/** micrófono real:[AudioRecord] Haga coincidir la fuente de reconocimiento de voz con el mono PCM16 y entréguelo. */
 private class SystemMpAudioRecordFactory : MpAudioRecordFactory {
 
     @SuppressLint("MissingPermission")
@@ -328,12 +328,12 @@ private class SystemMpAudioRecordFactory : MpAudioRecordFactory {
     }
 
     private companion object {
-        /** 读取缓冲区下限:8KB 在 16kHz/16bit 下是 250ms,再小就容易频繁唤醒线程。 */
+        /** Leer límite inferior del búfer:8KB A 16kHz/16bit es 250ms,Por pequeño que sea, será fácil despertar el hilo con frecuencia. */
         const val MIN_RECORD_BUFFER_BYTES = 8_192
     }
 }
 
-/** [MpAudioRecord] 的真实现:把 AudioRecord 的几个调用原样转发。 */
+/** [MpAudioRecord] verdadera realización:Reenviar varias llamadas a AudioRecord sin cambios. */
 private class SystemMpAudioRecord(private val record: AudioRecord) : MpAudioRecord {
 
     override fun start() = record.startRecording()
@@ -346,9 +346,9 @@ private class SystemMpAudioRecord(private val record: AudioRecord) : MpAudioReco
 }
 
 private fun MpAudioRecord.stopQuietly() {
-    runCatching { stop() }.onFailure { Logger.w("MpVoiceRecorder", "停采失败: ${it.message}") }
+    runCatching { stop() }.onFailure { Logger.w("MpVoiceRecorder", "No detener la producción: ${it.message}") }
 }
 
 private fun MpAudioRecord.releaseQuietly() {
-    runCatching { release() }.onFailure { Logger.w("MpVoiceRecorder", "释放采集器失败: ${it.message}") }
+    runCatching { release() }.onFailure { Logger.w("MpVoiceRecorder", "No se pudo liberar el recopilador: ${it.message}") }
 }

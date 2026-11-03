@@ -19,7 +19,7 @@ If creating visual artifacts, copy assets out and create static HTML files. If w
 - `library-consumption.json` — recommended downstream read order
 
 ## Essentials at a glance
-- Brand primary #2A7A55 — Muse Laurel Green (月桂绿), scarce interactive accent on 90% neutral canvas
+- Brand primary #2A7A55 — Muse Laurel Green (verde laurel), scarce interactive accent on 90% neutral canvas
 - Radius 4/8/12/18/20/24/28/pill — iOS progressive rounding, bubble tail 6px asymmetric
 - 40px default control height, 4px spacing unit, 8-pt grid, 20px message gap for iOS breathing
 - Type: system font stack (-apple-system, system-ui, "PingFang SC"); Noto Serif SC (literati headings); SF Mono/JetBrains Mono (code)

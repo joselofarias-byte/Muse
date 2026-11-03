@@ -1,6 +1,6 @@
-# Row 内文本未取宽基线（只降不升）
-# 格式: <文件相对路径>:<允许处数>
-# 收紧: py -3 ci/script/check_row_text_width.py --update-baseline
-# 说明: 空基线 = 全仓零容忍。用户正文（ui/markdown/MarkdownText.kt）由脚本 EXEMPT_FILES 永久豁免，
-#       卡片装饰（DataCardRenderer / RichContentCard 的标题与语言标签）已在调用处限行。
+# Row El texto interior no toma una línea de base amplia (sólo desciende pero no sube)
+# Formato: <Ruta relativa del archivo>:<Número de transacciones permitidas>
+# apretar: py -3 ci/script/check_row_text_width.py --update-baseline
+# Descripción: línea base vacía = Tolerancia cero para todas las posiciones. texto de usuario (ui/markdown/MarkdownText.kt) están permanentemente exentos por el script EXEMPT_FILES,
+#       decoración de tarjetas (DataCardRenderer / RichContentCard El título y la etiqueta de idioma) han sido restringidos en el sitio de la llamada.
 

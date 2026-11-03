@@ -15,17 +15,17 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 /**
- * v2.6: 可复用「玻璃岛」容器 —— 顶栏三岛 / 输入岛 / 更多菜单 / 按钮统一走这里，
- * 保证玻璃质感一致。
+ * v2.6: Contenedor reutilizable "isla de cristal" —— Barra superior tres islas / isla de entrada / más menú / botón unificado, vaya aquí,
+ * Asegure una textura de vidrio consistente.
  *
- * 引擎与降级由 [glassSurfaceModifier] 统一决策（FROST=backdrop / WATER=liquid /
- * 低版本=假玻璃），本容器不再直接依赖具体引擎，也不区分 haze/backdrop 两套源。
+ * Motor y degradación por [glassSurfaceModifier] toma de decisiones unificada (FROST=backdrop / WATER=liquid /
+ * versión baja=Vidrio falso), este contenedor ya no depende directamente de un motor específico, ni distingue entre fuentes de neblina o fondo.
  *
- * 玻璃未启用时回退为 [solidColor] 实色底，调用方无需分支。
+ * Volver a cuando el vidrio no está habilitado [solidColor] Fondo de color sólido, la persona que llama no necesita bifurcarse.
  *
- * @param shape 岛形（胶囊/圆角/圆形）
- * @param solidColor 关闭玻璃时的实色底（也是玻璃 tint 的基调色）
- * @param contentPadding 岛内容内边距
+ * @param shape forma de isla (cápsula/esquinas redondeadas/redondo)
+ * @param solidColor El color base sólido cuando el vidrio está cerrado (también el color base del tinte del vidrio)
+ * @param contentPadding relleno de contenido de la isla
  */
 @Suppress("FunctionNaming", "LongParameterList")
 @Composable
@@ -50,7 +50,7 @@ fun GlassIsland(
         } else {
             Modifier.clip(shape).then(Modifier.background(solidColor))
         }
-    // v2.6: 玻璃岛内容色自适应 —— 背景偏暗时岛内内容用浅色，否则用主题内容色。
+    // v2.6: Color del contenido de la isla de cristal adaptable —— Cuando el fondo sea oscuro, utilice un color claro para el contenido de la isla; de lo contrario, utilice el color del contenido del tema.
     val islandContent =
         if (useGlass && LocalGlassIsBackgroundDark.current) {
             Color.White.copy(alpha = 0.92f)

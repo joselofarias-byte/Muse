@@ -1,16 +1,16 @@
 package io.zer0.muse.transformer
 
 /**
- * 经验条目的小写文本缓存。
+ * Caché de texto en minúsculas de entradas de experiencias.
  *
- * 经验库段每轮都要参与「按当前问题相关性排序」，而打分的做法是把
- * `title + " " + content` 整段小写成一份副本再做子串扫描。经验条数是用户积累出来的，
- * 内容也可能很长 —— 每轮为每条经验新分配一份完整小写副本，是纯重复劳动。
+ * El segmento del banco de experiencias debe participar en "clasificar según la relevancia del problema actual" en cada ronda, y el método de puntuación es
+ * `title + " " + content` Haga una copia del párrafo completo en minúsculas y luego escanee la subcadena. La cantidad de elementos de experiencia la acumulan los usuarios.
+ * El contenido también puede ser muy largo. —— Cada ronda asigna una nueva copia completa en minúscula de cada experiencia, lo cual es pura duplicación de trabajo.
  *
- * 键用 `id + updatedAt`：经验被编辑后 `updatedAt` 必变，旧副本自然失效，
- * 不需要监听写入事件。容量按条数封顶，超出淘汰最久未用的。
+ * clave `id + updatedAt`: Después de que la experiencia haya sido editada `updatedAt` Debe cambiarse y, naturalmente, la copia anterior dejará de ser válida.
+ * No es necesario escuchar los eventos de escritura. El aforo se limita en función del número de artículos, y se eliminarán aquellos que lleven más tiempo sin utilizarse.
  *
- * 只缓存小写副本本身（不缓存打分结果）：打分依赖当前问题，问题每轮都不同。
+ * Solo se almacena en caché la copia en minúsculas (los resultados de la puntuación no se almacenan en caché): la puntuación depende de la pregunta actual y las preguntas son diferentes en cada ronda.
  */
 internal class ExperienceTextCache(
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
@@ -20,11 +20,11 @@ internal class ExperienceTextCache(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > maxEntries
     }
 
-    /** 命中次数（诊断用）。 */
+    /** Número de aciertos (con fines de diagnóstico). */
     var hits: Int = 0
         private set
 
-    /** 未命中次数（诊断用）。 */
+    /** Número de errores (para fines de diagnóstico). */
     var misses: Int = 0
         private set
 

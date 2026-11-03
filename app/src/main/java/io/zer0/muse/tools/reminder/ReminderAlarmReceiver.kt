@@ -8,18 +8,18 @@ import io.zer0.muse.notification.MuseNotificationManager
 import io.zer0.muse.notification.MuseNotificationTarget
 
 /**
- * v1.136: 定时提醒闹钟接收器。
+ * v1.136: Receptor de despertador con recordatorio regular.
  *
- * AlarmManager 到点时触发本 Receiver,弹出通知,然后从 [ReminderStore] 移除该提醒。
+ * AlarmManager Activa esto cuando se alcance el punto. Receiver,Notificación emergente,luego de [ReminderStore] Elimina este recordatorio.
  */
 class ReminderAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra(EXTRA_ID) ?: return
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "muse 提醒"
+        val title = intent.getStringExtra(EXTRA_TITLE) ?: "muse recordatorio"
         val message = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
 
-        Logger.i(TAG, "提醒触发: id=$id, title=$title")
+        Logger.i(TAG, "Activador de recordatorio: id=$id, title=$title")
 
         val target = if (
             intent.getStringExtra(EXTRA_TARGET_TYPE) == TARGET_QUICK_NOTE &&

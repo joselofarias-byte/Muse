@@ -57,7 +57,7 @@ fun DataManagementScreen(
     factStore: FactStore = koinInject(),
     summaryManager: SessionSummaryManager = koinInject(),
     memoryCompiler: MemoryCompiler = koinInject(),
-    // P0-10: 注入分库提供者与 daily 文件写入器,重置记忆需级联清理子助手分库与 daily/*.md
+    // P0-10: Inyecte el proveedor de subbiblioteca y el escritor de archivos diario,Para restablecer la memoria, debe conectar en cascada la biblioteca del subasistente de limpieza y daily/*.md
     factDbProvider: FactDbProvider = koinInject(),
     memoryFileWriter: MemoryFileWriter = koinInject(),
 ) {
@@ -90,7 +90,7 @@ fun DataManagementScreen(
             MuseTopBar(
                 title = stringResource(R.string.data_management_title),
                 onBack = onBack,
-                // CMP-10: 子页统一大标题规则(与 SettingsSubPageScaffold 系一致)
+                // CMP-10: Reglas de títulos unificadas para subpáginas(Consistente con SettingsSubPageScaffold)
                 largeTitle = true,
             )
         },
@@ -194,9 +194,9 @@ fun DataManagementScreen(
                 showResetMemoryDialog = false
                 scope.launch {
                     withContext(Dispatchers.IO) {
-                        // P0-10: 重置级联清理 — 默认库 + 所有子助手分库(事实/FTS/墓碑/图谱边)
-                        // + daily/*.md + 会话摘要 + 编译段。此前只清默认库与部分文件,
-                        // 旧日记经 assembleWeekFromDaily 从 daily/*.md 复活,子助手分库完全未清理。
+                        // P0-10: Restablecer la limpieza en cascada — Biblioteca predeterminada + todas las bibliotecas del subasistente(hechos/FTS/lápida sepulcral/Bordes del gráfico)
+                        // + daily/*.md + Resumen de la sesión + segmento compilado. Anteriormente, sólo se borraban la biblioteca predeterminada y algunos archivos.,
+                        // Viejo diario ensamblar SemanaDesdeDiariamente desde daily/*.md resurrección,La biblioteca del subasistente no se ha limpiado en absoluto.
                         factStore.clearAllWithLinks()
                         context.filesDir.listFiles { f ->
                             f.name.startsWith("facts_") && f.name.endsWith(".db") && f.name != "facts.db"
@@ -205,7 +205,7 @@ fun DataManagementScreen(
                                 .takeIf { it.isNotBlank() } ?: return@forEach
                             runCatching { factDbProvider.getFactStore(assistantId).clearAllWithLinks() }
                                 .onFailure { error ->
-                                    Logger.w("DataManagementScreen", "清理子助手记忆分库失败: $assistantId", error)
+                                    Logger.w("DataManagementScreen", "No se pudo limpiar la biblioteca de memoria del subasistente: $assistantId", error)
                                 }
                         }
                         memoryFileWriter.clearAllDailyFiles()
@@ -228,7 +228,7 @@ private fun StatRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // LAYOUT-01: 标签取剩余宽度（数值仍固定靠右），放大字号下不再逐字换行
+        // LAYOUT-01: La etiqueta toma el ancho restante (el valor todavía está fijo a la derecha) y ya no se ajusta palabra por palabra cuando se amplía el tamaño de fuente.
         Text(
             label,
             style = MaterialTheme.typography.bodyMedium,
@@ -237,7 +237,7 @@ private fun StatRow(label: String, value: String) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        // LAYOUT-01: 数值靠右固定（SpaceBetween），只限行、不取宽
+        // LAYOUT-01: El valor se fija a la derecha (SpaceBetween), solo línea, sin ancho
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium,

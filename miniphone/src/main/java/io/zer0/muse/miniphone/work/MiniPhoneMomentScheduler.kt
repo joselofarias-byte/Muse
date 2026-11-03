@@ -11,31 +11,31 @@ import io.zer0.common.resultOf
 import java.util.concurrent.TimeUnit
 
 /**
- * 模块后台定时任务的注册口。
+ * Puerto de registro para tareas programadas en segundo plano del módulo.
  *
- * 由宿主在「小手机可用」的时机调 [start] 一次、在关掉小手机时调 [stop]。
- * 本模块没有自己的 Application,也没有 manifest 里的初始化入口 —— 不在模块里偷偷自启:
- * WorkManager 是宿主已经在用的同一个运行时,注册时机属于宿主的产品决定。
+ * Llamado por el anfitrión cuando "hay un teléfono celular pequeño disponible" [start] Una vez, al apagar el pequeño celular [stop].
+ * Este módulo no tiene su propio Application,No hay ninguna entrada de inicialización en el manifiesto. —— No empieces en secreto en el módulo.:
+ * WorkManager es el mismo tiempo de ejecución que el host ya está usando,El momento del registro es una decisión del producto del anfitrión.
  *
- * 宿主只认这一个入口,所以模块里的两套周期任务(朋友圈动态、角色主动私信)都在这里排期:
- * 主动私信那一套见 [MiniPhoneProactiveChatScheduler]。
+ * El anfitrión sólo reconoce esta entrada.,Entonces los dos conjuntos de tareas periódicas en el módulo(Actualizaciones de momentos, mensajes privados activos de personajes.)Todo programado aquí:
+ * Nos vemos si tomas la iniciativa de enviar un mensaje privado. [MiniPhoneProactiveChatScheduler].
  *
- * 注册要点:
- * - **周期 3 小时**:低频、不打扰。WorkManager 的周期本来就不精确(系统会按电量/待机往后挪),
- *   所以防抖不靠周期精度,靠 runner 里的判定
- * - **约束**:要联网(生成必须走网络)、电量不低(低电量时别把用户手机拉起来做生成)
- * - **唯一任务 + KEEP**:同一时刻只有一个实例;已注册就保留旧的,不重置周期
- *   (否则每次冷启动都会把计时器清零,永远不会到点)
+ * Puntos de registro:
+ * - **Ciclo 3 horas**:Baja frecuencia, no perturbadora.WorkManager El ciclo es inherentemente inexacto(El sistema presionará la batería./Volver al modo de espera),
+ *   Por lo tanto, la antivibración no depende de la precisión del período.,Depende del juicio del corredor.
+ * - **restricción**:Necesidad de conectarse a Internet(La generación debe conectarse), la batería no está baja(Cuando la batería esté baja, no levante el teléfono del usuario para generar datos.)
+ * - **única tarea + KEEP**:Solo hay una instancia al mismo tiempo.;Ya registrado, conserva el anterior.,Sin ciclo de reinicio
+ *   (De lo contrario, el temporizador se borrará cada vez que se produzca un arranque en frío.,Nunca llega al punto)
  */
 object MiniPhoneMomentScheduler {
 
-    /** 唯一任务名。改它会留下一份孤儿周期任务,只能靠 [stop] 显式取消。 */
+    /** Nombre de tarea único. Cambiarlo dejará una tarea periódica huérfana,Sólo puedo confiar en [stop] Cancelar explícitamente. */
     const val UNIQUE_WORK_NAME: String = "miniphone_auto_moment"
 
-    /** 周期:3 小时。 */
+    /** ciclo:3 horas. */
     private const val REPEAT_INTERVAL_HOURS: Long = 3L
 
-    /** 注册周期任务。重复调用是安全的(KEEP)。 */
+    /** Registrar tareas periódicas. Es seguro llamar repetidamente(KEEP). */
     fun start(context: Context) {
         resultOf {
             val request = PeriodicWorkRequestBuilder<MpMomentWorker>(REPEAT_INTERVAL_HOURS, TimeUnit.HOURS)
@@ -51,15 +51,15 @@ object MiniPhoneMomentScheduler {
                 ExistingPeriodicWorkPolicy.KEEP,
                 request,
             )
-        }.onError { msg, t -> Logger.w(TAG, "朋友圈定时注册失败 | reason=${t?.message ?: msg}", t) }
-        // 主动私信:同样的 3 小时周期 + 90 分钟初始延迟,与上面错开半拍
+        }.onError { msg, t -> Logger.w(TAG, "Error en el registro programado de Momentos | reason=${t?.message ?: msg}", t) }
+        // mensaje privado activo:Mismo período de 3 horas + retraso inicial de 90 minutos,A medio latido de la cima
         MiniPhoneProactiveChatScheduler.start(context)
     }
 
-    /** 取消周期任务(下次 [start] 会重新排期)。 */
+    /** Cancelar tareas periódicas(la próxima vez [start] Será reprogramado). */
     fun stop(context: Context) {
         resultOf { WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME) }
-            .onError { msg, t -> Logger.w(TAG, "朋友圈定时取消失败 | reason=${t?.message ?: msg}", t) }
+            .onError { msg, t -> Logger.w(TAG, "La cancelación programada de Momentos falló | reason=${t?.message ?: msg}", t) }
         MiniPhoneProactiveChatScheduler.stop(context)
     }
 

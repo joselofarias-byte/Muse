@@ -30,14 +30,14 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 单个联系人的会话流。
+ * Flujo de conversación para un solo contacto.
  *
- * 为什么要有这一页：之前所有联系人在一个列表里平铺，每条消息是「角色：正文」一行，
- * 聊得久了根本看不出上下文是怎么接的。这里改成气泡流 —— 谁说的、先后顺序、
- * 隔了多久，一眼能看出来。
+ * ¿Por qué aparece esta página? Anteriormente, todos los contactos se presentaban en una lista y cada mensaje era una línea de "Rol: Texto".
+ * Después de charlar durante tanto tiempo, no podía decir cómo se conectaba el contexto. Cámbialo aquí a flujo de burbujas. —— ¿Quién lo dijo y en qué orden?
+ * El tiempo que ha pasado se puede ver de un vistazo.
  *
- * 这一页只看不发：渠道回复由自动回复链路负责，用户在这里回消息
- * 会绕开派发台账，反而制造不一致。
+ * Esta página es solo para visualización: la respuesta del canal se maneja mediante el enlace de respuesta automática y los usuarios responden a los mensajes aquí.
+ * Pasará por alto el libro de distribución y, en su lugar, creará inconsistencias.
  */
 @Composable
 fun ChannelChatScreen(channelId: String, from: String, onBack: () -> Unit) {
@@ -76,7 +76,7 @@ fun ChannelChatScreen(channelId: String, from: String, onBack: () -> Unit) {
                     )
                 }
             } else {
-                // 这页没有输入框：说清楚是只看，否则用户会以为能在这儿回。
+                // No hay ningún cuadro de entrada en esta página: deje en claro que es solo para visualización; de lo contrario, los usuarios pensarán que pueden responder aquí.
                 item(key = "hint") {
                     Text(
                         text = stringResource(R.string.channel_chat_readonly_hint),
@@ -88,11 +88,11 @@ fun ChannelChatScreen(channelId: String, from: String, onBack: () -> Unit) {
             }
             itemsIndexed(
                 items = turns,
-                // 不用 at 做 key：同毫秒可能重复，重复 key 会让 LazyColumn 直接崩。
+                // No utilice at como clave: el mismo milisegundo puede repetirse y las claves repetidas harán que LazyColumn falle directamente.
                 key = { index, _ -> "turn_$index" },
             ) { index, turn ->
                 val previous = turns.getOrNull(index - 1)
-                // 隔了 10 分钟以上才插一个时间分隔，否则整屏都是时间戳
+                // Inserte un intervalo de tiempo solo después de un intervalo de más de 10 minutos; de lo contrario, toda la pantalla se llenará de marcas de tiempo.
                 if (previous == null || turn.at - previous.at > TIME_GAP_MS) {
                     Text(
                         text = formatTime(turn.at),
@@ -107,7 +107,7 @@ fun ChannelChatScreen(channelId: String, from: String, onBack: () -> Unit) {
     }
 }
 
-/** 单条消息气泡。助手靠左、用户靠右，和主聊天界面同一套视觉直觉。 */
+/** Burbuja de mensaje único. El asistente está a la izquierda, el usuario a la derecha y tiene la misma intuición visual que la interfaz de chat principal. */
 @Composable
 private fun ChannelBubble(turn: ChannelConversationStore.Turn) {
     val isAssistant = turn.role == "assistant"
@@ -156,25 +156,25 @@ private fun ChannelBubble(turn: ChannelConversationStore.Turn) {
 }
 
 /**
- * 气泡正文。
+ * Texto de burbuja.
  *
- * 媒体消息在渠道里存的是 base64 或本地路径，这里不还原图片 ——
- * 这一页是「看对话怎么接的」，不是图库；图片给一行占位说明就够。
- * 视觉降级的描述如果有，优先用它，那本来就是给模型看的文字版。
+ * Los mensajes multimedia se almacenan en base64 o rutas locales en el canal, y las imágenes no se restauran aquí. ——
+ * Esta página es para "ver cómo termina la conversación", no una galería de fotos; una línea de descripción de marcador de posición para la imagen es suficiente.
+ * Si hay una descripción de degradación visual, úsela primero. Originalmente es una versión de texto para que la lea el modelo.
  */
 private fun turnBody(turn: ChannelConversationStore.Turn): String = when {
     turn.mediaDescription.isNotBlank() -> turn.mediaDescription
-    turn.mediaKind == "image" -> "[图片]"
-    turn.mediaPath.isNotBlank() -> "[附件]"
+    turn.mediaKind == "image" -> "[fotos]"
+    turn.mediaPath.isNotBlank() -> "[Accesorios]"
     turn.text.isNotBlank() -> turn.text
-    else -> "[空消息]"
+    else -> "[mensaje vacío]"
 }
 
 private fun formatTime(at: Long): String =
     SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(at))
 
-/** 气泡最多占屏宽的多少。留出对侧空白，才看得出是「谁说的」。 */
+/** La cantidad máxima de ancho de pantalla que ocupan las burbujas. Deje el lado opuesto en blanco para que pueda ver \"quién lo dijo\". */
 private const val BUBBLE_WIDTH_FRACTION = 0.82f
 
-/** 超过这个间隔才插时间分隔。 */
+/** Los intervalos de tiempo se insertan más allá de este intervalo. */
 private const val TIME_GAP_MS = 10 * 60 * 1000L

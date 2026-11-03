@@ -40,11 +40,11 @@ import io.zer0.muse.miniphone.ui.icons.MiniPhoneIcons
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 发布页:整屏接管内容区,上半写正文,下半是已选图片的九宫格。
+ * Página de lanzamiento:Toma el control de toda el área de contenido de la pantalla,Escribe el texto principal en la primera mitad.,La mitad inferior es una cuadrícula de nueve cuadrados de la imagen seleccionada.
  *
- * 选图走系统选择器,一次最多九张;「发布」在两样都空时点不动 —— 空白动态没有意义。
- * 选中的 [Uri] 只在发布页活着:发布成功由 ViewModel 复制进私有目录并落库,
- * 失败(什么都没写)时这一页也不会留下半截草稿。
+ * Selecciona imagen y ve al selector de sistema.,Hasta nueve a la vez;No se puede hacer clic en "Publicar" cuando ambos elementos están vacíos —— Las dinámicas vacías no tienen sentido.
+ * seleccionado [Uri] Sólo vivo en la página de publicación.:Una vez que el lanzamiento se realiza correctamente, ViewModel se copia en el directorio privado y se coloca en la biblioteca.,
+ * falló(nada escrito)Esta página no se quedará a medio borrador.
  */
 @Composable
 internal fun MomentPublishScreen(onClose: () -> Unit, onPublish: (String, List<Uri>, Boolean) -> Unit, modifier: Modifier = Modifier) {
@@ -95,7 +95,7 @@ internal fun MomentPublishScreen(onClose: () -> Unit, onPublish: (String, List<U
     }
 }
 
-/** 顶栏:左关闭、中间标题、右发布。 */
+/** barra superior:Izquierda para cerrar, título central, derecha para publicar. */
 @Composable
 private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -145,7 +145,7 @@ private fun PublishTopBar(canPublish: Boolean, onClose: () -> Unit, onConfirm: (
     }
 }
 
-/** 正文输入:最小高度一屏四分之一,写完再多也不顶着图片区。 */
+/** Entrada de texto:Altura mínima: un cuarto de la pantalla,No importa cuánto escriba, no me molestaré en el área de las imágenes. */
 @Composable
 private fun PublishTextField(text: String, onTextChange: (String) -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -177,7 +177,7 @@ private fun PublishTextField(text: String, onTextChange: (String) -> Unit) {
     }
 }
 
-/** 已选图片:三列方格,末尾一格是选图入口,选满九张后不再显示。 */
+/** Imagen seleccionada:Tres columnas de cuadrados,El último cuadro es la entrada de selección de imágenes.,Ya no se mostrará después de seleccionar nueve imágenes. */
 @Composable
 private fun PickedImageGrid(picked: List<Uri>, onPick: () -> Unit) {
     val cellCount = picked.size + if (picked.size < MOMENT_MAX_IMAGES) 1 else 0
@@ -193,7 +193,7 @@ private fun PickedImageGrid(picked: List<Uri>, onPick: () -> Unit) {
     }
 }
 
-/** 已选的一张图。 */
+/** Se ha seleccionado una imagen. */
 @Composable
 private fun PickedThumb(uri: Uri) {
     val colors = MiniPhoneTheme.colors
@@ -212,7 +212,7 @@ private fun PickedThumb(uri: Uri) {
     }
 }
 
-/** 选图入口:一枚相框图标占一格。 */
+/** Entrada de selección de imágenes.:Un icono de marco ocupa un espacio. */
 @Composable
 private fun PickerTile(onPick: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -236,9 +236,9 @@ private fun PickerTile(onPick: () -> Unit) {
 }
 
 /**
- * 可见范围开关:只给「仅自己可见」一个选项,默认关(空串 = 所有人可见)。
+ * interruptor de rango visible:Sólo da la opción "Visible sólo para mí",Desactivado predeterminado(cadena vacía = Visible para todos).
  *
- * 角色白名单留到以后,本阶段不把可见对象拍成一个多选列表。
+ * Dejar la lista blanca de roles para más tarde,Los objetos visibles no se fotografían en una lista de selección múltiple en esta etapa.
  */
 @Composable
 private fun VisibilitySwitch(onlySelf: Boolean, onToggle: () -> Unit) {
@@ -263,7 +263,7 @@ private fun VisibilitySwitch(onlySelf: Boolean, onToggle: () -> Unit) {
     }
 }
 
-/** 开关键道:开时圆点靠右、底色换强调色。 */
+/** cambiar de canal clave:Cuando está abierto, los puntos se mueven hacia la derecha y el color de fondo cambia al color de acento. */
 @Composable
 private fun VisibilityTrack(on: Boolean) {
     val colors = MiniPhoneTheme.colors
@@ -294,12 +294,12 @@ private val TrackHeight = 22.dp
 private val TrackPadding = 3.dp
 private val TrackKnob = 16.dp
 
-private const val TITLE: String = "写动态"
-private const val CLOSE_LABEL: String = "取消"
-private const val CONFIRM_LABEL: String = "发布"
-private const val PLACEHOLDER: String = "这一刻的想法……"
-private const val PICK_LABEL: String = "选择图片"
-private const val ONLY_SELF_LABEL: String = "仅自己可见"
+private const val TITLE: String = "Escribir actualizaciones"
+private const val CLOSE_LABEL: String = "Cancelar"
+private const val CONFIRM_LABEL: String = "publicar"
+private const val PLACEHOLDER: String = "pensamientos en este momento……"
+private const val PICK_LABEL: String = "Seleccionar imagen"
+private const val ONLY_SELF_LABEL: String = "Visible solo para ti"
 
-/** 选图网格的列数。 */
+/** Número de columnas en la cuadrícula de selección. */
 private const val PICKED_COLUMNS: Int = 3

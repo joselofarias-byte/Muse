@@ -6,43 +6,43 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * D6 第 2 期: [FactAtomicityValidator] 单元测试。
+ * D6 Número 2: [FactAtomicityValidator] Pruebas unitarias.
  *
- * 覆盖三类:
- *  - 正例:含连接词/分号的多断言条目应被拆开
- *  - 反例:单一断言、名词枚举、短句不得被拆
- *  - 边界:段数上限、谓词门、去重、元数据透传、计数
+ * Cubriendo tres categorías:
+ *  - Ejemplo positivo:Contiene conjunciones/Varias entradas de aserciones deben dividirse con punto y coma
+ *  - Contraejemplo:Las afirmaciones individuales, las enumeraciones de sustantivos y las oraciones cortas no deben dividirse
+ *  - frontera:Límite superior del número de segmentos, puerta de predicados, deduplicación, transmisión transparente de metadatos, conteo
  *
- * 纯 JVM 测试,不依赖 Android/Room(校验层只处理字符串 + FactStore.Fact 数据类)。
+ * Pruebas JVM puras,no depende de Android/Room(La capa de verificación solo procesa cadenas + clase de datos FactStore.Fact).
  */
 class FactAtomicityValidatorTest {
 
-    // ── 正例 ───────────────────────────────────────────────────────────────
+    // ── Ejemplo positivo ───────────────────────────────────────────────────────────────
 
     @Test
     fun `splits two assertions joined by comma connective`() {
-        val parts = FactAtomicityValidator.splitAssertions("用户在北京工作，而且周末喜欢爬山")
-        assertEquals(listOf("用户在北京工作", "周末喜欢爬山"), parts)
+        val parts = FactAtomicityValidator.splitAssertions("El usuario trabaja en Beijing y le gusta escalar montañas los fines de semana.")
+        assertEquals(listOf("El usuario trabaja en Beijing", "Me gusta el senderismo los fines de semana."), parts)
     }
 
     @Test
     fun `splits two assertions joined by bare connective`() {
-        val parts = FactAtomicityValidator.splitAssertions("他喜欢读书并且喜欢写作")
-        assertEquals(listOf("他喜欢读书", "喜欢写作"), parts)
+        val parts = FactAtomicityValidator.splitAssertions("le gusta leer y escribir")
+        assertEquals(listOf("le gusta leer", "como escribir"), parts)
     }
 
     @Test
     fun `splits on semicolon`() {
-        val parts = FactAtomicityValidator.splitAssertions("用户正在准备搬家；同时在找新工作")
+        val parts = FactAtomicityValidator.splitAssertions("El usuario se está preparando para moverse; buscando un nuevo trabajo al mismo tiempo")
         assertEquals(2, parts.size)
-        assertEquals("用户正在准备搬家", parts[0])
-        assertTrue("第二段应保留“找新工作”这一断言", parts[1].contains("找新工作"))
+        assertEquals("El usuario se está preparando para moverse.", parts[0])
+        assertTrue("Debe mantenerse el segundo párrafo“encontrar un nuevo trabajo”esta afirmación", parts[1].contains("encontrar un nuevo trabajo"))
     }
 
     @Test
     fun `splits medical multi assertion`() {
-        val parts = FactAtomicityValidator.splitAssertions("用户是素食主义者，并且对花生过敏")
-        assertEquals(listOf("用户是素食主义者", "对花生过敏"), parts)
+        val parts = FactAtomicityValidator.splitAssertions("El usuario es vegetariano y alérgico al maní.")
+        assertEquals(listOf("El usuario es vegetariano.", "alérgico al maní"), parts)
     }
 
     @Test
@@ -52,43 +52,43 @@ class FactAtomicityValidatorTest {
         assertEquals("The user works in Beijing", parts[0])
     }
 
-    // ── 反例 ───────────────────────────────────────────────────────────────
+    // ── Contraejemplo ───────────────────────────────────────────────────────────────
 
     @Test
     fun `short sentence is untouched`() {
-        assertEquals(listOf("在北京"), FactAtomicityValidator.splitAssertions("在北京"))
+        assertEquals(listOf("en pekín"), FactAtomicityValidator.splitAssertions("en pekín"))
     }
 
     @Test
     fun `single assertion with and is untouched`() {
-        // “和”不在拆分点内,属单一偏好断言
-        assertEquals(listOf("用户喜欢摄影和旅行"), FactAtomicityValidator.splitAssertions("用户喜欢摄影和旅行"))
+        // “y”No dentro del punto de división,afirmación de preferencia única
+        assertEquals(listOf("A los usuarios les gusta la fotografía y los viajes."), FactAtomicityValidator.splitAssertions("A los usuarios les gusta la fotografía y los viajes."))
     }
 
     @Test
     fun `enumeration with no comma connector is untouched`() {
-        // “以及”仅在逗号引导时才作为拆分点
-        val text = "用户喜欢跑步、游泳以及爬山"
+        // “y”Sólo como punto de división cuando está precedido por una coma
+        val text = "Los usuarios disfrutan corriendo, nadando y escalando."
         assertEquals(listOf(text), FactAtomicityValidator.splitAssertions(text))
     }
 
     @Test
     fun `noun phrase split is blocked by predicate gate`() {
-        // 第二段“上海的美食”不含谓词 → 判定为名词短语被误拆,放弃
-        val text = "用户喜欢北京，以及上海的美食"
+        // Segundo párrafo“comida de shanghai”sin predicado → Se determinó que el sintagma nominal fue dividido por error,rendirse
+        val text = "A los usuarios les gusta la comida de Beijing y Shanghai"
         assertEquals(listOf(text), FactAtomicityValidator.splitAssertions(text))
     }
 
     @Test
     fun `too many parts is not split`() {
-        // 6 段 > MAX_PARTS(5) → 视为异常输出,原样保留
-        val text = "他喜欢跑步并且他喜欢游泳并且他喜欢爬山并且他喜欢读书并且他喜欢旅行并且他喜欢健身"
+        // 6 segmento > MAX_PARTS(5) → tratado como salida anormal,Déjalo como está
+        val text = "Le gusta correr, nadar, escalar, leer, viajar y mantenerse en forma."
         assertEquals(listOf(text), FactAtomicityValidator.splitAssertions(text))
     }
 
     @Test
     fun `duplicate parts collapse and stay unsplit`() {
-        val text = "他喜欢咖啡并且他喜欢咖啡"
+        val text = "le gusta el café y le gusta el café"
         assertEquals(listOf(text), FactAtomicityValidator.splitAssertions(text))
     }
 
@@ -99,7 +99,7 @@ class FactAtomicityValidatorTest {
         assertTrue(parts[0].isBlank())
     }
 
-    // ── 边界:enforce 整体 ─────────────────────────────────────────────────
+    // ── frontera:enforce entero ─────────────────────────────────────────────────
 
     @Test
     fun `empty input yields empty result`() {
@@ -112,31 +112,31 @@ class FactAtomicityValidatorTest {
     @Test
     fun `enforce counts split and added entries and keeps unsplittable`() {
         val input = listOf(
-            FactStore.Fact(fact = "用户在北京工作，而且周末喜欢爬山"),
-            FactStore.Fact(fact = "用户喜欢摄影和旅行"),
+            FactStore.Fact(fact = "El usuario trabaja en Beijing y le gusta escalar montañas los fines de semana."),
+            FactStore.Fact(fact = "A los usuarios les gusta la fotografía y los viajes."),
         )
         val result = FactAtomicityValidator.enforce(input)
 
         assertEquals(3, result.facts.size)
         assertEquals(1, result.splitCount)
         assertEquals(1, result.addedCount)
-        assertTrue("不可拆条目原样保留", result.facts.any { it.fact == "用户喜欢摄影和旅行" })
-        assertTrue("拆分结果保留第一段", result.facts.any { it.fact == "用户在北京工作" })
-        assertTrue("拆分结果保留第二段", result.facts.any { it.fact == "周末喜欢爬山" })
+        assertTrue("Los elementos no desmontables se dejan intactos.", result.facts.any { it.fact == "A los usuarios les gusta la fotografía y los viajes." })
+        assertTrue("El resultado dividido conserva el primer párrafo.", result.facts.any { it.fact == "El usuario trabaja en Beijing" })
+        assertTrue("El resultado dividido mantiene el segundo párrafo.", result.facts.any { it.fact == "Me gusta el senderismo los fines de semana." })
     }
 
     @Test
     fun `metadata is preserved across split parts`() {
         val fact = FactStore.Fact(
-            fact = "用户在北京工作，而且周末喜欢爬山",
-            tags = listOf("近况", "工作"),
+            fact = "El usuario trabaja en Beijing y le gusta escalar montañas los fines de semana.",
+            tags = listOf("Situación actual", "trabajo"),
             time = "2026-08-12T09:00",
             sessionId = "session-1",
             importance = 2,
             category = "event",
             confidence = 0.5f,
             source = "user_explicit",
-            entityKey = "张三",
+            entityKey = "Zhang San",
         )
         val result = FactAtomicityValidator.enforce(listOf(fact))
 

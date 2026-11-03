@@ -11,14 +11,14 @@ import io.zer0.muse.data.routing.UtilityTier
 import kotlinx.coroutines.flow.first
 
 /**
- * 主动消息这一轮用哪个模型。
+ * Qué modelo utilizar para esta ronda de mensajes activos.
  *
- * 默认跟这个助手平时聊天用的模型一致 —— 主动消息是它自己在说话，
- * 换一个模型等于换一个人。人格断裂比多发几条消息糟糕得多，
- * 省下的那点 token 钱在这里完全不划算。
+ * Por defecto, es coherente con el modelo que utiliza este asistente para el chat diario. —— Las noticias activas hablan por sí solas,
+ * Cambiar de modelo equivale a cambiar de persona. Una fractura de personalidad es mucho peor que enviar demasiados mensajes;
+ * El dinero simbólico ahorrado no vale la pena aquí.
  *
- * 回退顺序：助手指定的模型 → 全局选中的模型 → 工具档模型。
- * 最后一档只为了保证「还能开口」，语气差一点也比发不出去强。
+ * Orden alternativa: modelo especificado por el asistente → Modelo seleccionado globalmente → Modelo de archivo de herramienta.
+ * El último paso es simplemente asegurarse de que "aún puedas hablar". Es mejor tener mal tono que no poder decirlo en absoluto.
  */
 internal object ProactiveModelPicker {
 
@@ -35,12 +35,12 @@ internal object ProactiveModelPicker {
             ?: readOrNull { settings.selectedModelIdFlow.first() }
 
         if (modelId.isNullOrBlank()) {
-            Logger.w(TAG, "助手与全局都没有绑定模型，退回工具档")
+            Logger.w(TAG, "Ni el asistente ni el modelo global están vinculados al modelo, así que regrese al archivo de herramientas.")
             return utilityModel(router)
         }
         val resolved = runCatching {
             router.resolveBinding(UtilityModelBinding(providerId = providerId.orEmpty(), modelId = modelId))
-        }.onFailure { e -> Logger.w(TAG, "按聊天模型解析失败，退回工具档: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "El análisis según el modelo de chat falló y volvió al archivo de la herramienta.: ${e.message}") }
             .getOrNull()
         return resolved ?: utilityModel(router)
     }

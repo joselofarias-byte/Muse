@@ -22,16 +22,16 @@ import java.io.FileOutputStream
 import kotlin.coroutines.resume
 
 /**
- * 保存图片到应用私有图片目录,并在 Android Q+ 自动插入系统相册。
+ * Guarde imágenes en el directorio de imágenes privado de la aplicación,Y se inserta automáticamente en el álbum del sistema en Android Q+.
  *
- * 优势:
- *  - 不依赖 WRITE_EXTERNAL_STORAGE 权限,全版本可用。
- *  - Android Q+ 通过 MediaStore 写入 Pictures/Muse/,相册可见。
- *  - Android P 及以下写入应用外部私有目录,并通过 MediaScanner 让相册可见。
+ * Ventajas:
+ *  - No depende del permiso WRITE_EXTERNAL_STORAGE,Versión completa disponible.
+ *  - Android Q+ Escribiendo a través de MediaStore Pictures/Muse/,El álbum de fotos es visible.
+ *  - Android P y lo siguiente se escribe en el directorio privado fuera de la aplicación,Y haga que el álbum sea visible a través de MediaScanner.
  *
- * @param uri 图片 URI(http/https/data URI/本地 file 均可)
- * @param displayName 保存后的显示文件名(不含扩展名)
- * @return 保存后的本地文件路径或 MediaStore URI 字符串
+ * @param uri fotos URI(http/https/data URI/Se puede utilizar cualquier archivo local.)
+ * @param displayName Mostrar el nombre del archivo después de guardarlo(sin extensión)
+ * @return Ruta del archivo local guardado o cadena URI de MediaStore
  */
 suspend fun saveImageToGallery(context: Context, uri: String, displayName: String = "muse_${System.currentTimeMillis()}"): String =
     withContext(Dispatchers.IO) {
@@ -41,7 +41,7 @@ suspend fun saveImageToGallery(context: Context, uri: String, displayName: Strin
         try {
             val fileName = "$displayName.png"
 
-            // 1. 先写入应用外部私有目录(Pictures/Muse/),作为稳定缓存
+            // 1. Primero escriba en el directorio privado fuera de la aplicación.(Pictures/Muse/),como caché estable
             val appPicturesDir = File(
                 context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
                 "Muse",
@@ -51,7 +51,7 @@ suspend fun saveImageToGallery(context: Context, uri: String, displayName: Strin
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
             }
 
-            // 2. Android Q+ 同时插入 MediaStore 使相册可见
+            // 2. Android Q+ Inserte también MediaStore para que el álbum sea visible
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
@@ -76,7 +76,7 @@ suspend fun saveImageToGallery(context: Context, uri: String, displayName: Strin
                     throw e
                 }
             } else {
-                // Android P 及以下: 扫描到相册
+                // Android P y abajo: Escanear al álbum
                 suspendCancellableCoroutine { continuation ->
                     MediaScannerConnection.scanFile(
                         context,
@@ -87,7 +87,7 @@ suspend fun saveImageToGallery(context: Context, uri: String, displayName: Strin
                 return@withContext cacheFile.absolutePath
             }
         } finally {
-            // 写入完成后释放 Bitmap 内存,避免 OOM(特别是手动 createBitmap 创建的 Bitmap)
+            // Liberar la memoria de mapa de bits una vez completada la escritura,evitar OOM(Especialmente aquellos creados manualmente con createBitmap Bitmap)
             bitmap.recycle()
         }
     }
@@ -97,13 +97,13 @@ private suspend fun loadBitmapFromUri(context: Context, uri: String): Bitmap? = 
         uri.startsWith("data:image") -> {
             val base64 = uri.substringAfter("base64,", "")
             val bytes = Base64.decode(base64, Base64.DEFAULT)
-            // 降采样:先用 inJustDecodeBounds 获取尺寸,再按 inSampleSize 解码,避免高分辨率图片 OOM
+            // Reducción de resolución:Primero use inJustDecodeBounds para obtener el tamaño,Luego presione inSampleSize para decodificar,Evite las imágenes de alta resolución OOM
             val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
             if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             } else {
-                // 计算 inSampleSize 使最大边长 <= 2048px(保存到相册不需要原始分辨率)
+                // Calcule inSampleSize para que la longitud máxima del lado <= 2048px(Guardar en un álbum de fotos no requiere resolución original)
                 val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                 var sampleSize = 1
                 while (maxDim / sampleSize > 2048) sampleSize *= 2
@@ -120,7 +120,7 @@ private suspend fun loadBitmapFromUri(context: Context, uri: String): Bitmap? = 
             (result as? SuccessResult)?.drawable?.let { drawable ->
                 val width = drawable.intrinsicWidth
                 val height = drawable.intrinsicHeight
-                // 尺寸限制:超过 2048px 时按比例缩小 Canvas 绘制尺寸,避免 OOM(保存到相册不需要原始分辨率)
+                // límite de tamaño:Reducir el tamaño del dibujo del lienzo proporcionalmente cuando supere los 2048 px,evitar OOM(Guardar en un álbum de fotos no requiere resolución original)
                 val maxDim = maxOf(width, height)
                 val scale = if (maxDim > 2048) 2048f / maxDim else 1f
                 val targetWidth = (width * scale).toInt().coerceAtLeast(1)
@@ -135,17 +135,17 @@ private suspend fun loadBitmapFromUri(context: Context, uri: String): Bitmap? = 
         }
         else -> {
             context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-                // 降采样:先用 inJustDecodeBounds 获取尺寸,再重新打开流用 inSampleSize 解码,避免高分辨率图片 OOM
+                // Reducción de resolución:Primero use inJustDecodeBounds para obtener el tamaño,Luego vuelva a abrir la transmisión y use inSampleSize para decodificar,Evite las imágenes de alta resolución OOM
                 val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeStream(input, null, boundsOptions)
                 if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
                     null
                 } else {
-                    // 计算 inSampleSize 使最大边长 <= 2048px(保存到相册不需要原始分辨率)
+                    // Calcule inSampleSize para que la longitud máxima del lado <= 2048px(Guardar en un álbum de fotos no requiere resolución original)
                     val maxDim = maxOf(boundsOptions.outWidth, boundsOptions.outHeight)
                     var sampleSize = 1
                     while (maxDim / sampleSize > 2048) sampleSize *= 2
-                    // 第一次解码消耗了流,需要重新打开 InputStream 用 inSampleSize 解码
+                    // La primera decodificación consume la transmisión.,Es necesario volver a abrir InputStream para decodificar con inSampleSize
                     context.contentResolver.openInputStream(Uri.parse(uri))?.use { decodeInput ->
                         val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
                         BitmapFactory.decodeStream(decodeInput, null, decodeOptions)

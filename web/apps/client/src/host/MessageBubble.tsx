@@ -14,7 +14,7 @@ import { resolveMessageImages, resolveVoiceUrl } from "./messageMedia.js";
 import { ToolCallBlocks } from "./ToolCallBlocks.js";
 import { VoiceBar } from "./VoiceBar.js";
 
-/** 长按判定：按住超过这个时长、手指没有明显移动，才算长按。 */
+/** Juicio de presión prolongada: si se presiona el dedo durante más de este tiempo y no hay un movimiento obvio del dedo, se considera una presión prolongada. */
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_SLOP = 10;
 
@@ -25,25 +25,25 @@ interface MessageBubbleProps {
   readonly showActions: boolean;
   readonly onRegenerate: () => void;
   readonly onContinue: () => void;
-  /** 工具调用块的状态；老 Host 没有 toolCalls[] 时用它推断。 */
+  /** El estado del bloque de llamada de herramienta; El antiguo anfitrión no lo tiene. toolCalls[] Úselo para inferir. */
   readonly toolStatus?: ToolStatus | undefined;
-  /** Host 声明的能力位，决定图片/语音/状态/菜单项要不要渲染。 */
+  /** Host El bit de capacidad declarado determina la imagen./Voz/Estado/Si se deben representar los elementos del menú. */
   readonly capabilities: HostCapabilities;
-  /** 这条消息当前是否已收藏（Host 未下发时由上层按本地乐观状态给）。 */
+  /** ¿Este mensaje está actualmente marcado como favorito (Host Si no se emite, lo dará la capa superior según el estado optimista local). */
   readonly favorited?: boolean | undefined;
-  /** 复制这条消息的正文；成功与否由上层负责说出来。 */
+  /** Copie el texto de este mensaje; Es responsabilidad de la alta dirección decir si tiene éxito o no. */
   readonly onCopy?: ((text: string) => void) | undefined;
-  /** 引用 / 收藏 / 取消收藏 / 删除 / 多选；带上消息 id，上层就能用稳定回调。 */
+  /** Citar/favorito/no favorito/eliminar/selección múltiple; con el ID del mensaje, la capa superior puede usar devoluciones de llamada estables. */
   readonly onAction?: ((messageId: string, action: MessageActionId) => void) | undefined;
-  /** 操作条是否展开：同一时刻只让一条消息亮着菜单。 */
+  /** Si la barra de operaciones está expandida: solo un mensaje iluminará el menú al mismo tiempo. */
   readonly actionsOpen?: boolean | undefined;
-  /** 点击或长按气泡时通知上层切换这条的菜单。 */
+  /** Cuando hace clic o mantiene presionada la burbuja, notifica a la capa superior para cambiar este menú. */
   readonly onToggleActions?: ((messageId: string) => void) | undefined;
-  /** 发送失败时的重试（Host 命令 chat.retry）。 */
+  /** Vuelva a intentarlo cuando el envío falle (Host comando chat.reintentar). */
   readonly onRetry?: ((messageId: string) => void) | undefined;
-  /** 点开图片全屏查看。 */
+  /** Haga clic en la imagen para verla en pantalla completa. */
   readonly onOpenImage?: ((src: string) => void) | undefined;
-  /** 多选模式：点气泡是选中/取消，而不是开菜单。 */
+  /** Modo de selección múltiple: haga clic en la burbuja para seleccionar/Cancelar en lugar de abrir el menú. */
   readonly selectionMode?: boolean | undefined;
   readonly onToggleSelect?: ((messageId: string) => void) | undefined;
 }
@@ -55,10 +55,10 @@ function toolTone(status: ToolStatus): "neutral" | "accent" | "warn" {
 }
 
 /**
- * 长按或点击气泡的手势。
+ * Mantenga presionado o toque el gesto en la burbuja.
  *
- * 长按触发后置位 fired，紧随其后的 click 会被吞掉，不会把刚打开的菜单又关掉；
- * 长按成功时顺手挡掉浏览器原生的长按选择菜单，避免两层菜单叠在一起。
+ * Después de activar una pulsación larga, el bit disparado se activa, el clic que sigue será tragado y el menú que acaba de abrir no se cerrará nuevamente;
+ * Cuando la pulsación larga tiene éxito, el menú de selección de pulsación larga nativo del navegador se bloqueará para evitar que las dos capas de menús se superpongan.
  */
 function usePressActions(onActivate: () => void) {
   const timer = useRef<number | undefined>(undefined);
@@ -106,7 +106,7 @@ function usePressActions(onActivate: () => void) {
   };
 }
 
-/** 消息菜单：横向可换行的小胶囊，点开后出现在消息内部下方，不会顶出屏幕。 */
+/** Menú de mensajes: una pequeña cápsula que se puede envolver horizontalmente. Después de hacer clic en él, aparecerá debajo del mensaje y no saldrá de la pantalla. */
 function MessageActionMenu({
   actions,
   onPick,
@@ -176,20 +176,20 @@ function MessageBubbleView({  message,
         press.fired.current = false;
         return;
       }
-      // 多选模式下点消息 = 勾选，不再弹菜单。
+      // Haga clic en el mensaje en modo de selección múltiple = Marque esta casilla para dejar de mostrar el menú.
       if (selectionMode) {
         onToggleSelect?.(message.id);
         return;
       }
-      // 点按钮 / 链接 / 代码块 / 语音控件是原本的手势，不抢来当「打开菜单」。
+      // Hacer clic en botones/enlaces/bloques de código/controles de voz son gestos originales y no deben usarse como "menús abiertos".
       if ((event.target as HTMLElement).closest("button,a,pre,summary,audio") !== null) return;
-      // 正在选文字（双击选词、拖选手势的收尾 click）也不抢。
+      // No hay prisas a la hora de seleccionar texto (hacer doble clic para seleccionar una palabra, arrastrar el clic final de un gesto).
       if (window.getSelection()?.toString().length) return;
       onToggleActions?.(message.id);
     },
     onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
-      // 键盘等价于长按：Enter / 空格开合菜单（触控与鼠标之外的那条路径）。
-      // 只在消息本身聚焦时生效：内部的折叠头、按钮、链接不能被我抢走按键。
+      // Equivalente en teclado a una pulsación larga:Enter / El espacio abre y cierra el menú (el camino más allá del tacto y el mouse).
+      // Solo tiene efecto cuando el mensaje en sí está enfocado: no puedo quitar los encabezados, botones y enlaces internos plegables.
       if (event.target !== event.currentTarget) return;
       if (event.key !== "Enter" && event.key !== " ") return;
       if (selectionMode) return;
@@ -199,7 +199,7 @@ function MessageBubbleView({  message,
     ...press.handlers,
   };
 
-  // Host 未来可能下发新的 role：不认识的按一行中性展示处理，绝不抛异常。
+  // Host Es posible que se emitan nuevos roles en el futuro: aquellos que no reconozca se tratarán como una visualización neutral en una línea y nunca se generarán excepciones.
   const role: string = message.role;
 
   if (role === "tool") {
@@ -239,11 +239,11 @@ function MessageBubbleView({  message,
   }
 
   const isUser = role === "user";
-  // 缺 media 能力位就整块不渲染：宁可少一块，也不给一片永远加载不出的图。
+  // Si falta la capacidad multimedia, no se renderizará todo el bloque: sería mejor perder un bloque que tener una imagen que nunca podrá cargarse.
   const images = capabilities.media ? resolveMessageImages(message.imageUrls) : [];
   const voiceSrc = capabilities.media ? resolveVoiceUrl(message.voiceUrl) : undefined;
   const hasVoice = capabilities.media && (message.voiceUrl !== undefined || (message.voiceDurationMs ?? 0) > 0);
-  // 老 Host 没有 toolCalls[]，退回消息级 toolName + 状态推断。
+  // El antiguo anfitrión no tiene toolCalls[], volver al nivel de mensaje nombre de herramienta + inferencia de estado.
   const calls = capabilities.toolCallDetails ? message.toolCalls ?? [] : [];
   const status = capabilities.messageStatus ? message.status : undefined;
   const quoted = message.quotedContent !== undefined && message.quotedContent.trim().length > 0 ? message.quotedContent : undefined;
@@ -322,8 +322,8 @@ function MessageBubbleView({  message,
 }
 
 /**
- * 消息组件外包一层 memo：比较函数只看真正影响渲染的字段（见 areBubblePropsEqual），
- * 长会话里一次快照只有流式那一条会重渲染。回调全部由上层用稳定函数传入（带 messageId），
- * 所以不在比较范围里——否则每次渲染新闭包会把 memo 全打穿。
+ * El componente de mensaje se subcontrata con una capa de memo: la función de comparación solo mira los campos que realmente afectan la representación (consulte areBubblePropsEqual).
+ * Para una instantánea en una sesión larga, solo se volverá a renderizar la de transmisión. Todas las devoluciones de llamada las pasa la capa superior mediante funciones estables (con messageId).
+ * Por lo tanto no está incluido en el rango de comparación.——De lo contrario, la nota se destruirá por completo cada vez que se realice un nuevo cierre.
  */
 export const MessageBubble = memo(MessageBubbleView, areBubblePropsEqual);

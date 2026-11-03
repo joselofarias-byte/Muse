@@ -7,38 +7,38 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * 工具调用"续片归位"判定测试。
+ * llamada de herramienta"El regreso de la secuela"Prueba de decisión.
  *
- * ## 对应的真实事故
+ * ## Accidente real correspondiente
  *
- * 实测日志（商汤/中转站流式）把一个逻辑调用拆成"带名字的首片 + 多个无名参数续片"：
+ * Registro de medición real (SenseTime/Transmisión de estación de transferencia) divide una llamada lógica en"Primera película titulada + múltiples secuelas paramétricas sin nombre":
  *
  * ```
- * index=0  {id, function:{name:"search_memory"}}      ← 首片带名字，参数为空
- * index=1  {function:{arguments:"{\"limit\": 15, "}}  ← 无名续片
- * index=3  {function:{arguments:"query\": \"晏临"}}    ← 无名续片
- * index=4  {function:{arguments:"来\"}"}}              ← 无名续片
+ * index=0  {id, function:{name:"search_memory"}}      ← La primera pieza tiene un nombre y los parámetros están vacíos.
+ * index=1  {function:{arguments:"{\"limit\": 15, "}}  ← Secuela sin título
+ * index=3  {function:{arguments:"query\": \"Yanlin"}}    ← Secuela sin título
+ * index=4  {function:{arguments:"ven\"}"}}              ← Secuela sin título
  * ```
  *
- * 修复前：无名续片各自变成独立调用 → 参数丢失、真正有名字的调用参数长度为 0 →
- * 下游报"缺少必填参数: query"，同时参数 JSON 被当正文吐给用户。
+ * Antes de la solución: las secuelas sin título se convierten en llamadas independientes → Falta el parámetro y la longitud del parámetro de llamada con un nombre real es 0 →
+ * periódico aguas abajo"Falta el parámetro requerido: query", y el parámetro JSON se envía al usuario como texto.
  *
- * 这里锁定"能不能归位、归位到谁"的判定：**只有一个候选才归位，多个候选一律不猜**。
+ * Bloquear aquí"¿Se puede devolver a su lugar y a quién?"Sentencia:**Solo se devolverá un candidato, no se adivinarán varios candidatos.**.
  */
 class ToolCallContinuationCandidateTest {
 
-    /** 造一个"已命名、参数为空"的待补调用。 */
+    /** hacer uno"Nombrado, los parámetros están vacíos"de llamadas pendientes. */
     private fun namedPending(name: String = "search_memory"): ToolCallAccState =
         ToolCallAccState().apply { this.name = name }
 
-    /** 造一个"已命名且已有参数"的调用（不再等待续片）。 */
+    /** hacer uno"Nombrado y tiene parámetros."llamada (ya no esperando continuación). */
     private fun namedWithArgs(name: String = "search_memory"): ToolCallAccState =
         ToolCallAccState().apply {
             this.name = name
-            args.append("""{"query":"晏临"}""")
+            args.append("""{"query":"Yanlin"}""")
         }
 
-    /** 造一个"仅收到参数、名字未到"的调用。 */
+    /** hacer uno"Solo se recibieron los parámetros, el nombre no llegó"llamar. */
     private fun anonymousWithArgs(arguments: String): ToolCallAccState =
         ToolCallAccState().apply { args.append(arguments) }
 
@@ -50,27 +50,27 @@ class ToolCallContinuationCandidateTest {
 
     @Test
     fun `no candidate when nothing is waiting`() {
-        assertNull("空表不应有候选", pendingArgsCandidate(emptyMap()))
-        assertNull("已带参数的调用不再是候选", pendingArgsCandidate(mapOf(0 to namedWithArgs())))
-        assertNull("只有无名调用时不归位（名字还没到）", pendingArgsCandidate(mapOf(1 to anonymousWithArgs("""{"a":1}"""))))
+        assertNull("Las mesas vacías no deberían tener candidatos.", pendingArgsCandidate(emptyMap()))
+        assertNull("Las llamadas con parámetros ya no son candidatas", pendingArgsCandidate(mapOf(0 to namedWithArgs())))
+        assertNull("Solo cuando lo llaman sin nombre no regresa (aún no llega el nombre)", pendingArgsCandidate(mapOf(1 to anonymousWithArgs("""{"a":1}"""))))
     }
 
     @Test
     fun `two waiting calls are ambiguous and never guessed`() {
         val map = mapOf(0 to namedPending(), 1 to namedPending())
-        assertNull("并行调用都在等参数时必须放弃归位", pendingArgsCandidate(map))
+        assertNull("Las llamadas paralelas deben abandonarse y regresar cuando se esperan parámetros.", pendingArgsCandidate(map))
     }
 
     @Test
     fun `candidate disappears once delta was emitted`() {
         val emitted = namedPending().apply { hasEmitted = true }
-        assertNull("已发出 ToolCallDelta 后参数已定型，不能再追加", pendingArgsCandidate(mapOf(0 to emitted)))
+        assertNull("Una vez emitido ToolCallDelta, los parámetros se han finalizado y no se pueden agregar.", pendingArgsCandidate(mapOf(0 to emitted)))
     }
 
     @Test
     fun `blank function name is a continuation rather than a new call`() {
         assertEquals(
-            "只有非空 id 或函数名才是新工具调用；name=\"\" 是中转站续片",
+            "Sólo los identificadores o nombres de funciones que no están vacíos son llamadas a nuevas herramientas;name=\"\" Es la secuela de The Transfer Station.",
             false,
             isNewToolCall(id = null, name = ""),
         )
@@ -89,7 +89,7 @@ class ToolCallContinuationCandidateTest {
             args.append("""{"category":"second""")
         }
         assertEquals(
-            "续片索引被中转站改写时，应沿用最近一个仍未闭合的已命名调用",
+            "Cuando la estación de transferencia reescribe el índice de continuación, se debe utilizar la llamada nombrada más reciente que aún no se ha cerrado.",
             1,
             continuationTarget(
                 accMap = mapOf(0 to first, 1 to second),
@@ -133,26 +133,26 @@ class ToolCallContinuationCandidateTest {
 
     @Test
     fun `fragments merge into a legal json object`() {
-        // 续片归位后由累积器拼装；这条锁定"拼出来**能解析成 JSON** 且字段完整"，
-        // 即日志里那三段 {"limit": 15, " / query": "晏临 / 来"} 的等价输入。
-        // 注意只断言语义（解析后的字段），不断言字符串形状 —— 累积器保留原始空白是正常的。
-        val merged = mergeFragments(listOf("""{"limit": 15, """, """"query": "晏临""", """来"}"""))
+        // La secuela es ensamblada por el acumulador después de ser devuelta a su posición; esta línea está bloqueada"deletrealo**se puede analizar en JSON** Y los campos están completos.",
+        // Es decir, los tres párrafos del diario. {"limit": 15, " / query": "Yan Lin/Lai"} entrada equivalente.
+        // Tenga en cuenta que sólo se afirma la semántica (campos analizados), no la forma de la cadena. —— Es normal que el acumulador conserve el espacio en blanco original.
+        val merged = mergeFragments(listOf("""{"limit": 15, """, """"query": "Yanlin""", """ven"}"""))
         val parsed = Json.parseToJsonElement(merged).jsonObject
         assertEquals("15", parsed["limit"].toString())
-        assertEquals("\"晏临来\"", parsed["query"].toString())
+        assertEquals("\"Yan Linlai\"", parsed["query"].toString())
     }
 
     @Test
     fun `fragments arriving as whole objects merge without duplication`() {
-        // 另一种已知形态：模型把参数拆成多个完整 JSON 对象分片。
-        val merged = mergeFragments(listOf("""{"limit":20}""", """{"query":"天气"}"""))
+        // Otra forma conocida: el modelo divide los parámetros en múltiples fragmentos de objetos JSON completos.
+        val merged = mergeFragments(listOf("""{"limit":20}""", """{"query":"clima"}"""))
         val parsed = Json.parseToJsonElement(merged).jsonObject
         assertEquals("20", parsed["limit"].toString())
-        assertEquals("\"天气\"", parsed["query"].toString())
+        assertEquals("\"clima\"", parsed["query"].toString())
     }
 }
 
-/** 用真实累积器验证续片拼接。 */
+/** Verificación de empalmes de continuación con acumuladores reales. */
 private fun mergeFragments(fragments: List<String>): String {
     val acc = ToolCallArgsAccumulator()
     fragments.forEach { acc.append(it) }

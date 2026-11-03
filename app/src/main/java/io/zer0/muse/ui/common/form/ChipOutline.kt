@@ -10,13 +10,13 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * 给选择胶囊补一条细描边。
+ * Dale un trazo fino a la cápsula de selección.
  *
- * 白底容器（弹窗、卡片）里，未选中的 [MuseChip] 与背景同为白色，几乎看不出
- * 可点击边界。这里用 Modifier 扩展补描边，不改 MuseChip 的参数列表
- * ——它已有 6 个参数，再加会超出静态检查阈值，也会影响既有调用方。
+ * En un contenedor con fondo blanco (ventana emergente, tarjeta), sin seleccionar [MuseChip] Igual que el fondo, casi invisible.
+ * Bordes en los que se puede hacer clic. Aquí, Modifier se usa para expandir el trazo sin cambiar la lista de parámetros de MuseChip.
+ * ——Ya tiene 6 parámetros, que excederían el umbral de verificación estática y afectarían a las personas que llaman.
  *
- * 用法：`MuseChip(..., modifier = Modifier.chipOutline(selected = selected))`
+ * Uso:`MuseChip(..., modifier = Modifier.chipOutline(selected = selected))`
  */
 @Composable
 fun Modifier.chipOutline(selected: Boolean): Modifier =

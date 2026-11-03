@@ -1,24 +1,24 @@
 package io.zer0.memory.compile
 
 /**
- * 编译摘要里命中的一行。
+ * Una línea de éxito en el resumen de la compilación.
  *
- * @param sectionKey 命中所在的段(facts / today / week / longterm)
- * @param text 命中行的原文(已去掉首尾空白,过长时截断)
+ * @param sectionKey El segmento donde se encuentra el golpe.(facts / today / week / longterm)
+ * @param text El texto original de la línea de éxito.(Se han eliminado los espacios en blanco iniciales y finales.,Truncar si es demasiado largo)
  */
 data class CompiledSectionHit(
     val sectionKey: String,
     val text: String,
 )
 
-/** 单条命中最多带多少字:一段散文命中不该把整段搬进工具结果。 */
+/** ¿Cuántos personajes se pueden incluir en un solo golpe?:Un párrafo de prosa no debe mover el párrafo completo al resultado de la herramienta. */
 internal const val MAX_COMPILED_HIT_CHARS = 200
 
 /**
- * 把查询串拆成用于子串扫描的词。
+ * Divida la cadena de consulta en palabras para escanear subcadenas.
  *
- * 只按“字母/数字连续段”切,不做分词:拆出来的词直接拿去 contains,
- * 切得比检索词更碎反而会放大误命中。重复词只留一个。
+ * Sólo presione“letras/Segmento continuo de números.”cortar,sin participio:Tome las palabras eliminadas directamente contains,
+ * Cortarlo en pedazos más pequeños que los términos de búsqueda puede amplificar los resultados falsos. Sólo queda una palabra repetida.
  */
 internal fun compiledSearchTerms(query: String): List<String> {
     if (query.isBlank()) return emptyList()
@@ -37,15 +37,15 @@ internal fun compiledSearchTerms(query: String): List<String> {
 }
 
 /**
- * 在已编译摘要的分段文本里做子串扫描。
+ * Realice un escaneo de subcadenas dentro del texto segmentado del resumen compilado.
  *
- * 一行包含任一查询词即算候选,按命中词数降序排列(同数保持原文顺序),
- * 同一行文字只出现一次。这是 facts 表之外的补位:摘要段是 LLM 归纳出的散文,
- * 原文常常根本不在 facts 里,只能靠文本比对把它们捞回来。
+ * Una fila que contiene cualquier término de consulta se considera candidata.,Ordenar por número de palabras clave en orden descendente(Mantener el orden del texto original si el número es el mismo),
+ * La misma línea de texto aparece sólo una vez. Este es un complemento fuera de la tabla de hechos.:El párrafo resumen es la prosa resumida por LLM.,
+ * El texto original a menudo no se encuentra en absoluto en los hechos.,Sólo se pueden recuperar mediante comparación de texto.
  *
- * @param sections 段 key 与段全文,按注入顺序给
- * @param query 用户查询串
- * @param limit 最多返回几条
+ * @param sections Clave de sección y texto completo de la sección,Administrar en orden de inyección
+ * @param query Cadena de consulta del usuario
+ * @param limit Número máximo de artículos devueltos
  */
 internal fun scanCompiledSections(
     sections: List<Pair<String, String>>,

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-check_touch_target.py — 触摸目标检查。
+check_touch_target.py — Toca el objetivo para comprobarlo.
 
-粗略扫描 IconButton / clickable / combinedClickable 上被显式压到 48dp 以下
-的 Modifier.size(...)。IconButton 只检查按钮自身的 modifier（进入 { 之前），
-避免把内部图标尺寸误判为触摸目标。
+escaneo aproximado IconButton / clickable / combinedClickable se presiona explícitamente por debajo de 48 dp
+de Modifier.size(...).IconButton Solo marque el modificador del botón en sí (ingrese { antes),
+Evite malinterpretar los tamaños de los íconos internos como objetivos táctiles.
 
-Baseline 机制：存量放过、新增拦截、只降不升。
+Baseline Mecanismo: abandonar las existencias existentes, agregar nuevas intercepciones, solo disminuir pero no aumentar.
 
-用法：
+Uso:
   py -3 ci/script/check_touch_target.py
   py -3 ci/script/check_touch_target.py --update-baseline
 """
@@ -83,11 +83,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# touch_target baseline — 小触摸目标存量清单",
-        "# 格式: <file>: <违规数>;新增或上升都会失败,只允许下降",
-        "# 清理存量后运行: py -3 ci/script/check_touch_target.py --update-baseline",
+        "# touch_target baseline — Lista de inventario de objetivos táctiles pequeños",
+        "# Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender",
+        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_touch_target.py --update-baseline",
         "#",
-        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
+        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
     ]
     for file, hits in sorted(violations.items()):
         lines.append(f"{file}: {len(hits)}")
@@ -95,7 +95,7 @@ def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="触摸目标检查")
+    parser = argparse.ArgumentParser(description="Verificación de objetivo táctil")
     parser.add_argument("--baseline", type=Path, default=BASELINE_PATH)
     parser.add_argument("--update-baseline", action="store_true")
     args = parser.parse_args()
@@ -105,11 +105,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline 已更新: {args.baseline}")
-        print(f"  共 {total} 处,分布 {len(violations)} 个文件")
+        print(f"baseline actualizado: {args.baseline}")
+        print(f"  total {total} en,Distribución {len(violations)} archivos")
         return 0
 
-    print(f"[touch-target] 扫描 ui/ 目录: {total} 处小触摸目标,分布 {len(violations)} 个文件")
+    print(f"[touch-target] Escanee el directorio ui/: {total} pequeño objetivo táctil,Distribución {len(violations)} archivos")
 
     if not require_baseline(args.baseline, "touch-target"):
         return 2
@@ -121,26 +121,26 @@ def main() -> int:
         current = len(hits)
         allowed = baseline.get(file, 0)
         if current > allowed:
-            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {current - allowed})")
+            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {current - allowed})")
         elif current < allowed:
             improved.append(f"  {file}: {allowed} → {current}")
     cleaned = [f for f in baseline if f not in violations]
     for f in cleaned:
-        improved.append(f"  {f}: 已清零")
+        improved.append(f"  {f}: Borrado")
 
     if improved:
-        print("[touch-target] 有改善,建议 --update-baseline 收紧:")
+        print("[touch-target] hay mejora,Se recomienda ajustar --update-baseline:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[touch-target] FAILED — 新增小触摸目标:")
+        print("[touch-target] FAILED — Se agregó un pequeño objetivo táctil.:")
         for line in failures:
             print(line)
-        print("修复方式: IconButton/clickable 使用 Modifier.size(48.dp) 或 minimumInteractiveComponentSize")
+        print("como solucionarlo: IconButton/clickable uso Modifier.size(48.dp) o minimumInteractiveComponentSize")
         return 1
 
-    print(f"[touch-target] PASS — 无新增小触摸目标 (存量 {total} 处,按 baseline 豁免)")
+    print(f"[touch-target] PASS — No hay nuevos objetivos táctiles pequeños (Valores {total} en,Exento por línea de base)")
     return 0
 
 

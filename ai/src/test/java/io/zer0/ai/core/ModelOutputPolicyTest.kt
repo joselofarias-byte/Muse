@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 模型能力上限与本次请求预算的归一化测试。 */
+/** Prueba normalizada del límite superior de capacidad del modelo y el presupuesto de esta solicitud. */
 class ModelOutputPolicyTest {
 
     private fun model(maxOutputTokens: Int? = null) = Model(
@@ -80,8 +80,8 @@ class ModelOutputPolicyTest {
 
     @Test
     fun `no declared limit and no request budget never inflates to the whole context window`() {
-        // 回归:agnes-2.5-flash 类模型只声明 contextWindow 不声明 maxOutputTokens。
-        // 旧实现会把 available(≈512000)当成输出预算发出,max_tokens 超上游上限被 400 拒。
+        // Regresar:agnes-2.5-flash El modelo de clase solo declara contextWindow y no declara maxOutputTokens.
+        // La antigua implementación available(≈512000)Emitido como presupuesto de resultados,max_tokens 400 rechazaron exceder el límite ascendente.
         val target = model().copy(contextWindow = 512_000)
 
         assertEquals(null, ModelOutputPolicy.resolveForContext(null, target, inputTokens = 143))
@@ -108,7 +108,7 @@ class ModelOutputPolicyTest {
     fun `input token estimate includes reasoning tool calls and images`() {
         val message = UIMessage(
             role = MessageRole.USER,
-            content = "你".repeat(10) + "a".repeat(40),
+            content = "tu".repeat(10) + "a".repeat(40),
             reasoning = "r".repeat(20),
             toolCalls = listOf(ToolCall("call-1", "search", "{\"q\":\"Muse\"}")),
             imageBase64List = listOf("image"),

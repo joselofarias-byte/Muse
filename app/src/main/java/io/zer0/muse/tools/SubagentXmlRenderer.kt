@@ -1,35 +1,35 @@
 package io.zer0.muse.tools
 
 /**
- * v1.0.52 P2-1: Passive Subagent XML 协议渲染器。
+ * v1.0.52 P2-1: Passive Subagent XML Representador de protocolo.
  *
- * 把子 agent 执行过程渲染为三阶段 XML,让主 agent 能清晰看到:
- *  1. <subagent_start/>    — 子 agent 启动(任务描述 + maxToolCalls 配额)
- *  2. <subagent_progress/> — 每轮工具调用进度(轮次/工具名/参数/结果预览)
- *  3. <subagent_result>    — 最终结果(成功/失败 + 总轮次 + 总工具调用数 + 总结文本)
+ * Represente el proceso de ejecución del subagente en tres etapas XML,Deje que el agente principal vea claramente:
+ *  1. <subagent_start/>    — Comienza el subagente(Descripción de la tarea + cuota maxToolCalls)
+ *  2. <subagent_progress/> — Progreso de cada ronda de llamadas de herramientas(rondas/Nombre de la herramienta/parámetros/Vista previa de resultados)
+ *  3. <subagent_result>    — resultado final(éxito/Fallo + rondas totales + llamadas totales a herramientas + texto resumido)
  *
- * 设计原则:
- *  - XML 标签结构化,便于主 agent 解析和理解子 agent 进度
- *  - 最终结果与工具结果完整返回;大 XML 由外层工具输出文件分页处理
- *  - 失败时仍返回可用信息(已完成的轮次 + 错误原因),让主 agent 决策重试或换路径
- *  - 所有用户可控文本(task/args/result)均做 XML 转义,防止注入
+ * principios de diseño:
+ *  - XML Estructuración de etiquetas,Facilita que el agente principal analice y comprenda el progreso del subagente
+ *  - Los resultados finales y los resultados de las herramientas se devuelven en su totalidad.;XML grande está paginado por el archivo de salida de la herramienta externa
+ *  - Aún devuelve información utilizable en caso de falla(Rondas completadas + motivo del error),Deje que el agente principal decida volver a intentarlo o cambiar de ruta.
+ *  - Todo el texto controlable por el usuario.(task/args/result)Todos son XML escapados,Prevenir la inyección
  *
- * 与现有 [SubagentTool] 的区别:
- *  - [SubagentTool] 是非阻塞异步模式(立即返回 taskId,通过 DeferredResultStore 回灌),
- *    其进度通过 TaskState.progress 字符串展示,无固定协议
- *  - 本渲染器服务于 [SubagentRunner] 的同步阻塞模式,主 agent 等待子 agent 完成后
- *    一次性收到完整 XML(含所有进度),协议化便于主 agent 后续解析
+ * con existente [SubagentTool] la diferencia:
+ *  - [SubagentTool] Es el modo asíncrono sin bloqueo.(Regresar inmediatamente taskId,Comentarios a través de DeferredResultStore),
+ *    Su progreso se muestra a través de la cadena TaskState.progress,Sin acuerdo fijo
+ *  - Este renderizador sirve [SubagentRunner] modo de bloqueo sincrónico,El agente principal espera a que complete el subagente.
+ *    Recíbelo todo de una vez XML(Incluye todos los avances.),La protocolización facilita el análisis posterior por parte del agente principal
  */
 object SubagentXmlRenderer {
 
-    /** 工具调用参数的最大字符数(超出截断)。 */
+    /** Número máximo de caracteres para argumentos de llamada de herramienta(más allá del truncamiento). */
     private const val ARGS_PREVIEW_CHARS = 500
 
     /**
-     * 渲染启动阶段 XML。
+     * Renderizar XML de la fase de inicio.
      *
-     * @param task 委托任务描述
-     * @param maxToolCalls 工具调用配额上限
+     * @param task Descripción de la tarea del delegado
+     * @param maxToolCalls Límite de cuota de llamadas de herramientas
      */
     fun renderStart(task: String, maxToolCalls: Int): String {
         val escapedTask = escapeXml(task)
@@ -37,14 +37,14 @@ object SubagentXmlRenderer {
     }
 
     /**
-     * 渲染单轮工具调用进度 XML。
+     * Renderice un XML de progreso de llamada de herramienta de una sola ronda.
      *
-     * @param round 当前轮次(从 1 开始)
-     * @param maxToolCalls 工具调用配额上限
-     * @param toolName 工具名
-     * @param argsJson 工具参数 JSON 字符串
-     * @param result 工具执行结果
-     * @param success 工具执行是否成功
+     * @param round ronda actual(empezar desde 1)
+     * @param maxToolCalls Límite de cuota de llamadas de herramientas
+     * @param toolName Nombre de la herramienta
+     * @param argsJson Cadena JSON del parámetro de herramienta
+     * @param result Resultados de ejecución de herramientas
+     * @param success Si la ejecución de la herramienta fue exitosa
      */
     fun renderProgress(round: Int, maxToolCalls: Int, toolName: String, argsJson: String, result: String, success: Boolean): String {
         val escapedArgs = escapeXml(truncate(argsJson, ARGS_PREVIEW_CHARS))
@@ -56,14 +56,14 @@ object SubagentXmlRenderer {
     }
 
     /**
-     * 渲染最终结果 XML。
+     * Renderice el resultado final XML.
      *
-     * @param success 子 agent 整体是否成功
-     * @param rounds 总轮次
-     * @param toolCalls 总工具调用次数
-     * @param summary 最终总结文本(子 agent 最后一次非工具调用的输出)
-     * @param error 失败原因(success=false 时非空)
-     * @param threadId v1.0.53: 线程 id(非空时作为属性输出,供主 agent 续接)
+     * @param success Si el subagente en su conjunto tiene éxito
+     * @param rounds rondas totales
+     * @param toolCalls Llamadas totales a herramientas
+     * @param summary texto resumen final(Salida de la última invocación del agente secundario que no fue una herramienta)
+     * @param error Razón del fracaso(success=false el tiempo no está vacío)
+     * @param threadId v1.0.53: hilo id(Cuando no está vacío, se genera como un atributo.,El agente proveedor continúa la conexión)
      */
     fun renderResult(
         success: Boolean,
@@ -77,14 +77,14 @@ object SubagentXmlRenderer {
         val body = if (success) {
             escapeXml(summary)
         } else {
-            val errText = error?.takeIf { it.isNotBlank() } ?: "未知错误"
+            val errText = error?.takeIf { it.isNotBlank() } ?: "error desconocido"
             "[FAILED] ${escapeXml(errText)}" +
                 if (summary.isNotBlank()) "\n[PARTIAL] ${escapeXml(summary)}" else ""
         }
         return buildString {
             append("<subagent_result success=\"$successAttr\" ")
             append("rounds=\"$rounds\" tool_calls=\"$toolCalls\"")
-            // v1.0.53: 续接凭证 — 主 agent 拿到后可在下次调用时传入 thread_id 续接
+            // v1.0.53: Renovar bono — Una vez que el agente principal lo obtiene, puede pasar thread_id durante la siguiente llamada para continuar la conexión.
             if (!threadId.isNullOrBlank()) {
                 append(" thread_id=\"").append(escapeXml(threadId)).append("\"")
             }
@@ -97,16 +97,16 @@ object SubagentXmlRenderer {
     }
 
     /**
-     * 渲染达到 maxToolCalls 上限的截断提示(作为结果的一部分)。
+     * Representar un mensaje truncado cuando se alcanza el límite de maxToolCalls(como parte del resultado).
      *
-     * 当子 agent 因达到工具调用配额而停止时,在总结前插入此提示,
-     * 让主 agent 知道子 agent 是被配额截断而非自然完成。
+     * Cuando un agente secundario se detiene debido a que alcanzó la cuota de llamadas de herramientas,Inserte este consejo antes del resumen,
+     * Informe al agente maestro que el agente secundario se trunca por cuota en lugar de completarse de forma natural.
      */
     fun renderBudgetExhausted(maxToolCalls: Int): String {
-        return "[NOTE] 子 agent 已达到工具调用配额上限($maxToolCalls),基于已收集信息输出总结。"
+        return "[NOTE] El subagente ha alcanzado el límite de cuota de llamadas de herramienta($maxToolCalls),Genera un resumen basado en la información recopilada."
     }
 
-    /** XML 特殊字符转义。 */
+    /** XML Carácter especial que se escapa. */
     private fun escapeXml(text: String): String {
         if (text.isEmpty()) return ""
         return buildString(text.length + 16) {
@@ -126,7 +126,7 @@ object SubagentXmlRenderer {
         }
     }
 
-    /** 截断到最大长度,超出时追加截断标记。 */
+    /** Truncar a la longitud máxima,Agregue una marca de truncamiento cuando se exceda. */
     private fun truncate(text: String, maxChars: Int): String {
         if (text.length <= maxChars) return text
         return text.take(maxChars) + "...[truncated ${text.length - maxChars} chars]"

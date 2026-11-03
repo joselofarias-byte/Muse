@@ -66,14 +66,14 @@ private val BottomSheetSurfaceShape = RoundedCornerShape(
     topEnd = MuseCornerRadius.SHEET.dp,
 )
 
-/** 计算包含底部导航安全区后的面板最大业务高度。 */
+/** Calcule la altura máxima de servicio del panel después de incluir el área segura de navegación inferior. */
 internal fun calculateBottomSheetHeight(
     maxHeight: androidx.compose.ui.unit.Dp,
     fraction: Float,
     bottomInset: androidx.compose.ui.unit.Dp,
 ): androidx.compose.ui.unit.Dp = ((maxHeight - bottomInset).coerceAtLeast(0.dp) * fraction.coerceIn(0f, 1f)).coerceAtLeast(0.dp)
 
-/** 保留旧 Popup 几何回归测试；当前面板不读取跨窗口坐标。 */
+/** Se conserva la antigua prueba de regresión de geometría emergente; El panel actual no lee las coordenadas entre ventanas. */
 internal fun calculateBottomPopupPosition(windowSize: IntSize, popupContentSize: IntSize, bottomInsetPx: Int, gapPx: Int): IntOffset {
     val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
     val x = ((windowSize.width - popupContentSize.width) / 2).coerceIn(0, maxX)
@@ -82,11 +82,11 @@ internal fun calculateBottomPopupPosition(windowSize: IntSize, popupContentSize:
 }
 
 /**
- * 全项目底部面板入口。
+ * Entrada completa al panel inferior del proyecto.
  *
- * Dialog 内统一测量安全区和底部位置，避免 Popup 的宿主/弹层坐标系差异。
- * 遮罩单独裁掉导航栏；面板底色铺至屏幕底，内容留出手势区和键盘。
- * Material3 的内置全屏 scrim 无法单独排除导航栏，因此在这里使用受控外壳。
+ * Dialog Mida la zona segura y la posición inferior de manera uniforme para evitar hosts emergentes/Diferencias en sistemas de coordenadas de capas elásticas.
+ * La máscara corta únicamente la barra de navegación; el color de fondo del panel se extiende hasta la parte inferior de la pantalla, dejando el área de gestos y el teclado para el contenido.
+ * Material3 El scrim de pantalla completa incorporado no puede excluir la barra de navegación por sí sola, por lo que aquí se utiliza un shell controlado.
  */
 @Composable
 fun MuseBottomSheet(
@@ -178,7 +178,7 @@ fun MuseBottomSheet(
     }
 }
 
-/** 顶部把手保留 32dp 交互带，支持向下滑动关闭。 */
+/** El asa superior retiene la banda interactiva de 32 dp y permite deslizarla hacia abajo para cerrarla. */
 @Composable
 fun SheetHandle() {
     Box(

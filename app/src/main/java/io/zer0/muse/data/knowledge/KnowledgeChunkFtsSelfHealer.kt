@@ -1,18 +1,18 @@
 package io.zer0.muse.data.knowledge
 
 /**
- * R-DB-02: knowledge_chunks_fts 自愈修复器注册点。
+ * R-DB-02: knowledge_chunks_fts Punto de registro del fijador autorreparable.
  *
- * MuseDb 建库完成后注入 repairer;DAO 单条写操作捕获 no such table 后调用。
- * 修复动作必须走 raw SQL(DROP 影子表 + CREATE VIRTUAL TABLE),不能回调 FTS DAO,
- * 避免修复过程中再次触发自愈导致递归。
+ * MuseDb Inyectar después de construir la base de datos repairer;DAO Se llama después de una única operación de escritura que no captura dicha tabla.
+ * Se deben tomar medidas de reparación. raw SQL(DROP mesa de sombra + CREATE VIRTUAL TABLE),No puedo volver a llamar FTS DAO,
+ * Evite activar nuevamente la autocuración durante el proceso de reparación y provocar recurrencia.
  */
 object KnowledgeChunkFtsSelfHealer {
 
     @Volatile
     private var repairer: (suspend () -> Unit)? = null
 
-    /** 由 [io.zer0.muse.data.session.MuseDb.get] 在实例构建完成后注册。 */
+    /** por [io.zer0.muse.data.session.MuseDb.get] Regístrese después de crear la instancia. */
     fun install(repairer: suspend () -> Unit) {
         this.repairer = repairer
     }

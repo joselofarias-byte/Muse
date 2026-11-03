@@ -18,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 自动化只读命令：真 Room + 真 DAO，验「启用与停用的任务都在」「停用任务不给下次时间」。
+ * Comando automatizado de solo lectura: True Room + True DAO, verifique que "tanto las tareas habilitadas como las deshabilitadas estén presentes" y "las tareas deshabilitadas no se proporcionarán la próxima vez".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -75,16 +75,16 @@ class HostTaskCatalogTest {
     fun `tasks list keeps disabled tasks and drops their next run time`() = runTest {
         seedTask(
             id = "task-on",
-            name = "晨间简报",
+            name = "sesión informativa matutina",
             cron = "0  9 * * *",
             enabled = true,
             nextRunAt = 5_000L,
             lastRunAt = 4_000L,
         )
-        // 停用任务在库里还留着停用前的 next_run_at，回执必须把它按掉。
+        // La tarea desactivada aún conserva next_run_at antes de la desactivación en la biblioteca y el recibo debe hacer clic en ella.
         seedTask(
             id = "task-off",
-            name = "周报",
+            name = "informe semanal",
             cron = "0 20 * * 5",
             enabled = false,
             nextRunAt = 9_000L,
@@ -98,15 +98,15 @@ class HostTaskCatalogTest {
         assertEquals(2, event.tasks.size)
 
         val enabledTask = event.tasks.first { it.id == "task-on" }
-        assertEquals("晨间简报", enabledTask.name)
-        // cron 原样下发，不做归一（连双空格一起留着）。
+        assertEquals("sesión informativa matutina", enabledTask.name)
+        // cron Envíalo como está sin normalización (mantén los espacios dobles juntos).
         assertEquals("0  9 * * *", enabledTask.cron)
         assertEquals(true, enabledTask.enabled)
         assertEquals(5_000L, enabledTask.nextRunAt)
         assertEquals(4_000L, enabledTask.lastRunAt)
 
         val disabledTask = event.tasks.first { it.id == "task-off" }
-        assertEquals("周报", disabledTask.name)
+        assertEquals("informe semanal", disabledTask.name)
         assertEquals("0 20 * * 5", disabledTask.cron)
         assertEquals(false, disabledTask.enabled)
         assertNull(disabledTask.nextRunAt)
@@ -116,7 +116,7 @@ class HostTaskCatalogTest {
 
     @Test
     fun `tasks list reports the latest execution status as last result`() = runTest {
-        seedTask(id = "task", name = "巡检", cron = "*/30 * * * *", enabled = true, nextRunAt = 7_000L, lastRunAt = 6_000L)
+        seedTask(id = "task", name = "Inspección", cron = "*/30 * * * *", enabled = true, nextRunAt = 7_000L, lastRunAt = 6_000L)
         seedExecution(id = "exec-old", taskId = "task", executedAt = 1_000L, status = "success")
         seedExecution(id = "exec-new", taskId = "task", executedAt = 3_000L, status = "failed")
 

@@ -1,39 +1,39 @@
 /**
- * Muse 插件：URL 工具箱
+ * Muse Complemento:URL caja de herramientas
  *
- * 运行契约（宿主 WebViewSkillEngine / JsSandbox）：
- *  - 宿主把本文件整体 eval 进 WebView 的 V8，再执行
- *    `JSON.stringify(<functionName>.apply(null, [参数对象]))`；
- *  - 每个工具 = 一个顶层函数，只接收一个参数对象，返回普通对象（不要自己 JSON.stringify）；
- *  - 失败返回 { error: "中文原因" }，任何情况下都不向外抛异常。
+ * Ejecute el contrato (alojado por WebViewSkillEngine/JsSandbox):
+ *  - El host evalúa el archivo completo en el V8 de WebView y luego lo ejecuta.
+ *    `JSON.stringify(<functionName>.apply(null, [objeto de parámetro]))`;
+ *  - cada herramienta = Una función de nivel superior que solo recibe un objeto de parámetro y devuelve un objeto normal (no utilice JSON.stringify usted mismo);
+ *  - Retorno del fracaso { error: "razón china" }, no se lanzará ninguna excepción bajo ninguna circunstancia.
  *
- * 实现说明：
- *  - 不依赖 URL / URLSearchParams 构造函数，改为手写解析，行为可预测；
- *  - 只做纯本地字符串计算：不联网、不读写文件。
+ * Instrucciones de implementación:
+ *  - No se basa en el constructor URL/URLSearchParams, sino que utiliza análisis escrito a mano, con un comportamiento predecible;
+ *  - Sólo se realizan cálculos de cadenas locales puras: sin conexión a Internet, sin lectura ni escritura de archivos.
  */
 
 var URL_MAX_LENGTH = 20000;
-/** decodeURI 语义下的保留字符：整体解码时保持其百分号编码不还原。 */
+/** decodeURI Caracteres reservados según la semántica: mantienen su porcentaje de codificación y no lo restauran al decodificar en su conjunto. */
 var URL_RESERVED_CHARS = "!#$&'()*+,/:;=?@[]";
-/** 路径允许直接出现的字符（RFC 3986 pchar + 斜杠）。 */
+/** Las rutas permiten personajes que aparecen directamente (RFC 3986 pchar + barra diagonal). */
 var URL_PATH_KEEP = /[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]/;
-/** 查询串文本允许直接出现的字符（保留 & = + ? / 等分隔符）。 */
+/** El texto de la cadena de consulta permite caracteres que aparecen directamente (reservados & = + ? / separador). */
 var URL_QUERY_KEEP = /[A-Za-z0-9\-._~!$&'()*+,;=:@\/?%]/;
-/** userinfo 允许直接出现的字符（@ 会被编码，避免破坏结构）。 */
+/** userinfo Caracteres que aparecen directamente (@ estará codificado para evitar romper la estructura). */
 var URL_USERINFO_KEEP = /[A-Za-z0-9\-._~!$&'()*+,;=:%]/;
 
-/** 参数对象兜底。 */
+/** El objeto de parámetro cuenta la historia. */
 function urlArgsObject(args) {
     return args !== null && typeof args === "object" && !Array.isArray(args) ? args : {};
 }
 
-/** 异常统一转文本。 */
+/** Las excepciones se convierten uniformemente en texto. */
 function urlMessage(e) {
     if (e && e.message) return String(e.message);
     return String(e);
 }
 
-/** 宽松布尔读取。 */
+/** Lectura booleana relajada. */
 function urlBool(value, def) {
     if (value === undefined || value === null) return def;
     if (typeof value === "string") {
@@ -44,21 +44,21 @@ function urlBool(value, def) {
     return !!value;
 }
 
-/** 校验 URL 文本输入（非空、长度、空白字符）。 */
+/** Valide la entrada de texto de la URL (no caracteres vacíos, de longitud ni de espacios en blanco). */
 function urlCheckInput(value, label) {
-    if (typeof value !== "string") return { error: label + " 必须是字符串" };
+    if (typeof value !== "string") return { error: label + " debe ser una cuerda" };
     var text = value.trim();
-    if (text === "") return { error: label + " 不能为空" };
+    if (text === "") return { error: label + " no puede estar vacío" };
     if (text.length > URL_MAX_LENGTH) {
-        return { error: label + " 过长（上限 " + URL_MAX_LENGTH + " 字符，当前 " + text.length + "）" };
+        return { error: label + " Demasiado largo (límite superior " + URL_MAX_LENGTH + " personaje, actual " + text.length + ")" };
     }
     if (/\s/.test(text)) {
-        return { error: label + " 不能包含空白字符（空格请写成 %20）" };
+        return { error: label + " No puede contener espacios en blanco (escriba %20 para espacios)" };
     }
     return { value: text };
 }
 
-/** 安全的百分号解码：失败返回 null。 */
+/** Decodificación segura de signos de porcentaje: devuelve nulo en caso de error. */
 function urlTryDecode(value) {
     try {
         return decodeURIComponent(value);
@@ -67,7 +67,7 @@ function urlTryDecode(value) {
     }
 }
 
-/** 单字符 encodeURIComponent：孤立代理字符不会抛异常。 */
+/** EncodeURIComponent de un solo carácter: los caracteres sustitutos aislados no generarán una excepción. */
 function urlEncodeChar(ch) {
     try {
         return encodeURIComponent(ch);
@@ -76,7 +76,7 @@ function urlEncodeChar(ch) {
     }
 }
 
-/** 安全的整体 encodeURIComponent。 */
+/** EncodeURIComponent general seguro. */
 function urlEncodeComponent(value) {
     try {
         return encodeURIComponent(String(value));
@@ -86,8 +86,8 @@ function urlEncodeComponent(value) {
 }
 
 /**
- * 逐字符百分号编码：keepRe 命中的字符原样保留，已合法的 %XX 不二次编码，
- * 代理对（emoji）整体编码，非法孤立代理字符丢弃。
+ * Codificación porcentual carácter por carácter:keepRe El carácter de hit se conserva tal como está y el %XX legal no se vuelve a codificar.
+ * Par de agentes (emoji) se codifica en su totalidad y los caracteres sustitutos huérfanos ilegales se descartan.
  */
 function urlEncodeKeep(value, keepRe) {
     var text = String(value);
@@ -115,31 +115,31 @@ function urlEncodeKeep(value, keepRe) {
     return out;
 }
 
-/** 解码并记录警告；解码失败时按原文返回。 */
+/** Decodificar y registrar advertencias; devolver el texto original si falla la decodificación. */
 function urlDecodeWithWarning(value, warnings, label) {
     var decoded = urlTryDecode(value);
     if (decoded === null) {
-        if (warnings) warnings.push(label + " 的百分号编码非法，已按原文返回");
+        if (warnings) warnings.push(label + " La codificación porcentual es ilegal y se ha devuelto el texto original.");
         return value;
     }
     return decoded;
 }
 
-/** 查询串里的单个片段解码：+ 视为空格（表单语义），非法编码按原文返回。 */
+/** Decodifica un único fragmento en la cadena de consulta:+ Si se trata como un espacio (semántica del formulario), la codificación ilegal se devolverá como el texto original. */
 function urlDecodeQueryPart(value, warnings, label) {
     var text = String(value);
     var plus = text.replace(/\+/g, " ");
     var decoded = urlTryDecode(plus);
     if (decoded === null) {
-        if (warnings) warnings.push(label + "的百分号编码非法，已按原文返回");
+        if (warnings) warnings.push(label + "La codificación porcentual es ilegal y se ha devuelto el texto original.");
         return text;
     }
     return decoded;
 }
 
 /**
- * 整体查询串解码（component=false 语义）：还原百分号编码，
- * 但保留 ! # $ & ' ( ) * + , / : ; = ? @ [ ] 这些分隔字符的编码形态（同 decodeURI）。
+ * Decodificación general de cadenas de consulta (component=false Semántica): restaurar el porcentaje de codificación,
+ * pero sigue ! # $ & ' ( ) * + , / : ; = ? @ [ ] La forma de codificación de estos caracteres delimitadores (igual que decodeURI).
  */
 function urlDecodeWhole(text) {
     var input = String(text).replace(/\u0001/g, "");
@@ -162,10 +162,10 @@ function urlDecodeWhole(text) {
     }
 }
 
-/** URL 结构切分：protocol / authority / path / query / fragment。 */
+/** URL Segmentación estructural:protocol / authority / path / query / fragment. */
 function urlSplitParts(url) {
     var m = /^(?:([A-Za-z][A-Za-z0-9+.\-]*):)?(?:\/\/([^\/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#([\s\S]*))?$/.exec(url);
-    if (m === null) return { error: "URL 结构无法解析" };
+    if (m === null) return { error: "URL La estructura no se puede analizar" };
     return {
         protocol: m[1] === undefined ? null : m[1].toLowerCase(),
         hasAuthority: m[2] !== undefined,
@@ -176,24 +176,24 @@ function urlSplitParts(url) {
     };
 }
 
-/** 主机名字符合法性（域名、IPv4、方括号 IPv6、IDN 均放行）。 */
+/** Legalidad de los caracteres del nombre de host (nombre de dominio,IPv4, corchetes IPv6,IDN son liberados). */
 function urlCheckHostname(hostname) {
-    if (hostname.length === 0) return "URL 缺少主机名";
-    if (hostname.length > 253) return "主机名过长";
-    if (/[\s\/?#@\\<>"{}|^`]/.test(hostname)) return "主机名含非法字符: " + hostname;
+    if (hostname.length === 0) return "URL Falta el nombre de host";
+    if (hostname.length > 253) return "El nombre del host es demasiado largo";
+    if (/[\s\/?#@\\<>"{}|^`]/.test(hostname)) return "El nombre del host contiene caracteres ilegales: " + hostname;
     return null;
 }
 
-/** 端口合法性校验。 */
+/** Verificación de validez del puerto. */
 function urlCheckPort(port) {
     if (port === null || port === undefined || port === "") return null;
-    if (!/^\d{1,5}$/.test(port)) return "端口必须是数字: " + port;
+    if (!/^\d{1,5}$/.test(port)) return "El puerto debe ser numérico.: " + port;
     var num = parseInt(port, 10);
-    if (num < 1 || num > 65535) return "端口必须在 1-65535 之间: " + port;
+    if (num < 1 || num > 65535) return "El puerto debe estar entre 1-65535: " + port;
     return null;
 }
 
-/** 拆分 authority 为 userinfo / hostname / port。 */
+/** Dividir la autoridad en userinfo / hostname / port. */
 function urlSplitAuthority(authority) {
     var userinfo = null;
     var hostport = authority;
@@ -201,17 +201,17 @@ function urlSplitAuthority(authority) {
     if (at >= 0) {
         userinfo = authority.substring(0, at);
         hostport = authority.substring(at + 1);
-        if (/[\s\/?#]/.test(userinfo)) return { error: "URL 的 userinfo 含非法字符" };
+        if (/[\s\/?#]/.test(userinfo)) return { error: "URL La información del usuario contiene caracteres ilegales." };
     }
     var hostname = hostport;
     var port = null;
     if (hostport.charAt(0) === "[") {
         var close = hostport.indexOf("]");
-        if (close < 0) return { error: "IPv6 主机缺少 ]" };
+        if (close < 0) return { error: "IPv6 Falta el anfitrión ]" };
         hostname = hostport.substring(0, close + 1);
         var rest = hostport.substring(close + 1);
         if (rest !== "") {
-            if (rest.charAt(0) !== ":") return { error: "IPv6 主机后含非法字符: " + rest };
+            if (rest.charAt(0) !== ":") return { error: "IPv6 Personajes ilegales después del anfitrión.: " + rest };
             port = rest.substring(1);
         }
     } else {
@@ -232,7 +232,7 @@ function urlSplitAuthority(authority) {
     };
 }
 
-/** 解析查询串：返回 params（同名参数为数组）、keys（首次出现顺序）与顺序保留的 pairs。 */
+/** Analizar la cadena de consulta: devolver parámetros (los parámetros con el mismo nombre son matrices),keys(orden de primera aparición) y pares que conservan el orden. */
 function urlParseQueryPairs(query) {
     var params = {};
     var keys = [];
@@ -248,11 +248,11 @@ function urlParseQueryPairs(query) {
         var eq = segment.indexOf("=");
         var rawKey = eq >= 0 ? segment.substring(0, eq) : segment;
         var rawValue = eq >= 0 ? segment.substring(eq + 1) : "";
-        var key = urlDecodeQueryPart(rawKey, warnings, "参数名");
-        var value = urlDecodeQueryPart(rawValue, warnings, "参数值");
+        var key = urlDecodeQueryPart(rawKey, warnings, "Nombre del parámetro");
+        var value = urlDecodeQueryPart(rawValue, warnings, "Valor del parámetro");
         if (key === "") continue;
         if (key === "__proto__") {
-            warnings.push("已跳过非法参数名 __proto__");
+            warnings.push("Se omitieron nombres de parámetros ilegales __proto__");
             continue;
         }
         pairs.push({ key: key, value: value });
@@ -268,11 +268,11 @@ function urlParseQueryPairs(query) {
     return { params: params, keys: keys, pairs: pairs, warnings: warnings };
 }
 
-/** 参数值转文本（对象/数组按 JSON 文本，null/undefined 记空串）。 */
+/** Valor del parámetro a texto (objeto/matriz por texto JSON,null/undefined Recuerde la cadena vacía). */
 function urlParamValue(value, warnings) {
     if (value === undefined || value === null) return "";
     if (typeof value === "object") {
-        if (warnings) warnings.push("参数值含对象或数组，已按 JSON 文本编码");
+        if (warnings) warnings.push("El valor del parámetro contiene un objeto o una matriz, codificado como texto JSON");
         try {
             return JSON.stringify(value);
         } catch (e) {
@@ -282,14 +282,14 @@ function urlParamValue(value, warnings) {
     return String(value);
 }
 
-/** 参数对象序列化为查询串（键值均做百分号编码，同名多值用数组）。 */
+/** El objeto de parámetro se serializa en una cadena de consulta (todos los valores clave están codificados en porcentaje y varios valores con el mismo nombre son matrices). */
 function urlSerializeParams(params, warnings) {
     var keys = Object.keys(params);
     var parts = [];
     for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
         if (key === "__proto__") {
-            if (warnings) warnings.push("已跳过非法参数名 __proto__");
+            if (warnings) warnings.push("Se omitieron nombres de parámetros ilegales __proto__");
             continue;
         }
         var value = params[key];
@@ -308,7 +308,7 @@ function urlSerializeParams(params, warnings) {
     return parts.join("&");
 }
 
-/** pairs 序列化为查询串。 */
+/** pairs Serializado en cadena de consulta. */
 function urlSerializePairs(pairs) {
     var parts = [];
     for (var i = 0; i < pairs.length; i++) {
@@ -317,7 +317,7 @@ function urlSerializePairs(pairs) {
     return parts.join("&");
 }
 
-/** pairs 还原成 params 形态（同名参数为数组）。 */
+/** pairs Restaurar al formato de parámetros (los parámetros con el mismo nombre son matrices). */
 function urlPairsToParams(pairs) {
     var params = {};
     var keys = [];
@@ -336,7 +336,7 @@ function urlPairsToParams(pairs) {
     return { params: params, keys: keys };
 }
 
-/** 用新的查询串重建完整 URL（保留原片段，去掉旧查询串）。 */
+/** Reconstruya la URL completa con la nueva cadena de consulta (conserve el fragmento original y elimine la cadena de consulta anterior). */
 function urlRebuildQuery(base, query) {
     var hashIndex = base.indexOf("#");
     var fragment = hashIndex >= 0 ? base.substring(hashIndex) : "";
@@ -346,7 +346,7 @@ function urlRebuildQuery(base, query) {
     return head + (query !== "" ? "?" + query : "") + fragment;
 }
 
-/** 工具 url_parse：把 URL 拆成部件并展开查询参数。 */
+/** Herramienta url_parse: divide la URL en componentes y expande los parámetros de consulta. */
 function urlParse(args) {
     args = urlArgsObject(args);
     var inputCheck = urlCheckInput(args.url, "url");
@@ -355,7 +355,7 @@ function urlParse(args) {
     var parts = urlSplitParts(url);
     if (parts.error) return parts;
     if (parts.protocol === null && !parts.hasAuthority && url.indexOf("://") >= 0) {
-        return { error: "URL 协议格式非法（协议需以字母开头，只能含字母、数字、+、-、.）" };
+        return { error: "URL El formato del acuerdo es ilegal (el acuerdo debe comenzar con una letra y solo puede contener letras, números,+,-,.)" };
     }
     var warnings = [];
     var userinfo = null;
@@ -403,13 +403,13 @@ function urlParse(args) {
             relative: parts.protocol === null
         },
         warnings: warnings,
-        note: "protocol 不含冒号；host 为 hostname[:port]；pathDecoded 为解码后的路径；" +
-            "query 不含 ?；fragment 不含 #；params 中同名参数为数组；" +
-            "relative 为 true 表示输入没写协议（按相对引用解析）。"
+        note: "protocol sin dos puntos;host para hostname[:port];pathDecoded es el camino decodificado;" +
+            "query no contiene ?;fragment No contiene #;params El parámetro con el mismo nombre es una matriz;" +
+            "relative Si es verdadero, la entrada no tiene un protocolo escrito (resuelto por referencia relativa)."
     };
 }
 
-/** 工具 url_build：从部件对象拼装 URL，与 url_parse 输出兼容。 */
+/** Herramienta url_build: ensambla URL a partir de objetos de widget, compatible con la salida url_parse. */
 function urlBuild(args) {
     args = urlArgsObject(args);
     var warnings = [];
@@ -417,7 +417,7 @@ function urlBuild(args) {
     if (args.protocol !== undefined && args.protocol !== null && String(args.protocol).trim() !== "") {
         protocol = String(args.protocol).trim().replace(/:\/\/$/, "").replace(/:$/, "");
         if (!/^[A-Za-z][A-Za-z0-9+.\-]*$/.test(protocol)) {
-            return { error: "protocol 非法: " + args.protocol };
+            return { error: "protocol ilegal: " + args.protocol };
         }
         protocol = protocol.toLowerCase();
     }
@@ -430,7 +430,7 @@ function urlBuild(args) {
     }
     if (args.host !== undefined && args.host !== null && String(args.host).trim() !== "") {
         var parsedHost = urlSplitAuthority(String(args.host).trim());
-        if (parsedHost.error) return { error: "host 非法: " + parsedHost.error };
+        if (parsedHost.error) return { error: "host ilegal: " + parsedHost.error };
         if (hostname === null) hostname = parsedHost.hostname;
         if (parsedHost.port !== null) port = parsedHost.port;
     }
@@ -442,15 +442,15 @@ function urlBuild(args) {
     }
     var userinfo = null;
     if (args.userinfo !== undefined && args.userinfo !== null && String(args.userinfo) !== "") {
-        if (hostname === null) return { error: "提供 userinfo 时必须同时提供 host 或 hostname" };
+        if (hostname === null) return { error: "Al proporcionar información de usuario, también debe proporcionar host o hostname" };
         userinfo = urlEncodeKeep(String(args.userinfo), URL_USERINFO_KEEP);
     } else if (args.username !== undefined && args.username !== null && String(args.username) !== "") {
-        if (hostname === null) return { error: "提供 username 时必须同时提供 host 或 hostname" };
+        if (hostname === null) return { error: "El nombre de usuario debe proporcionarse junto con el host o hostname" };
         var user = urlEncodeComponent(String(args.username));
         var pass = args.password === undefined || args.password === null ? null : String(args.password);
         userinfo = pass === null ? user : user + ":" + urlEncodeComponent(pass);
     } else if (args.password !== undefined && args.password !== null && String(args.password) !== "") {
-        return { error: "只提供 password 无效，请同时提供 username" };
+        return { error: "Proporcionar solo la contraseña no es válido; indíquela al mismo tiempo username" };
     }
     var rawPath = "";
     if (args.path !== undefined && args.path !== null) rawPath = String(args.path);
@@ -460,12 +460,12 @@ function urlBuild(args) {
     var query = null;
     if (args.params !== undefined && args.params !== null) {
         if (typeof args.params !== "object" || Array.isArray(args.params)) {
-            return { error: "params 必须是对象（值可以是字符串、数字、数组、true/false 或 null）" };
+            return { error: "params Debe ser un objeto (el valor puede ser una cadena, un número, una matriz,true/false o nulo)" };
         }
         query = urlSerializeParams(args.params, warnings);
     } else if (args.query !== undefined && args.query !== null) {
         if (typeof args.query === "object") {
-            if (Array.isArray(args.query)) return { error: "query 不能是数组；对象形式的参数请用 params" };
+            if (Array.isArray(args.query)) return { error: "query No puede ser una matriz; utilice parámetros de forma de objeto. params" };
             query = urlSerializeParams(args.query, warnings);
         } else {
             var rawQuery = String(args.query).replace(/^\?/, "");
@@ -477,10 +477,10 @@ function urlBuild(args) {
         fragment = urlEncodeKeep(String(args.fragment).replace(/^#/, ""), URL_QUERY_KEEP);
     }
     if (protocol === null && hostname === null && path === "" && query === null && fragment === null) {
-        return { error: "没有任何可拼装的部件（至少提供 protocol、host/hostname 或 path）" };
+        return { error: "No hay componentes que se puedan ensamblar (al menos protocolo,host/hostname o camino)" };
     }
     if (protocol !== null && hostname === null && path === "") {
-        return { error: "只有 protocol 无法构成 URL，请同时提供 host/hostname 或 path" };
+        return { error: "Solo el protocolo no puede formar una URL; proporcione también el host/nombre de host o path" };
     }
     var prefix = "";
     if (hostname !== null) {
@@ -493,18 +493,18 @@ function urlBuild(args) {
     if (query !== null && query !== "") url += "?" + query;
     if (fragment !== null) url += "#" + fragment;
     if (url.length > URL_MAX_LENGTH) {
-        return { error: "拼装结果过长（上限 " + URL_MAX_LENGTH + " 字符）" };
+        return { error: "El resultado del ensamblaje es demasiado largo (el límite superior " + URL_MAX_LENGTH + " personajes)" };
     }
     return {
         result: url,
         query: query === null ? "" : query,
         warnings: warnings,
-        note: "hostname 与 host 同时给出时以 hostname 为准；params 优先于 query；" +
-            "path 中的空格等非法字符会自动百分号编码，已合法的 %XX 不会被二次编码。"
+        note: "hostname Cuando se proporciona junto con el host, prevalecerá el nombre del host;params tiene prioridad sobre la consulta;" +
+            "path Los caracteres ilegales, como los espacios, se codificarán automáticamente en porcentaje y el %XX legal no se volverá a codificar."
     };
 }
 
-/** encode / decode 模式实现：component=true 按单个值处理，false 按整体查询串处理。 */
+/** encode / decode Implementación del patrón:component=true Procesado como un valor único,false Procesado como una cadena de consulta completa. */
 function urlQueryCodec(args, mode, base, baseInfo, explicitQuery) {
     var component = urlBool(args.component, true);
     var input = null;
@@ -521,20 +521,20 @@ function urlQueryCodec(args, mode, base, baseInfo, explicitQuery) {
         input = baseInfo.query === null ? "" : baseInfo.query;
         fromBase = true;
     }
-    if (input === null) return { error: mode + " 需要提供 text（也接受 value、query 或 base 中的查询串）" };
+    if (input === null) return { error: mode + " Se requiere texto (también acepta valor,query o cadena de consulta en base)" };
     if (input.length > URL_MAX_LENGTH) {
-        return { error: "text 过长（上限 " + URL_MAX_LENGTH + " 字符，当前 " + input.length + "）" };
+        return { error: "text Demasiado largo (límite superior " + URL_MAX_LENGTH + " personaje, actual " + input.length + ")" };
     }
     var output;
     if (mode === "encode") {
         output = component ? urlEncodeComponent(input) : urlEncodeKeep(input, URL_QUERY_KEEP);
     } else if (component) {
         var decodedComponent = urlTryDecode(String(input).replace(/\+/g, " "));
-        if (decodedComponent === null) return { error: "解码失败：文本包含非法的百分号编码" };
+        if (decodedComponent === null) return { error: "Error de decodificación: el texto contiene un porcentaje de codificación ilegal" };
         output = decodedComponent;
     } else {
         var decodedWhole = urlDecodeWhole(input);
-        if (decodedWhole === null) return { error: "解码失败：文本包含非法的百分号编码" };
+        if (decodedWhole === null) return { error: "Error de decodificación: el texto contiene un porcentaje de codificación ilegal" };
         output = decodedWhole;
     }
     var response = {
@@ -544,13 +544,13 @@ function urlQueryCodec(args, mode, base, baseInfo, explicitQuery) {
         query: null,
         url: null,
         note: component
-            ? "component=true 按单个值处理：编码用 encodeURIComponent，解码把 + 视为空格。"
-            : "component=false 按整体查询串处理：保留 = & + ? 等分隔符，不把 + 当空格。"
+            ? "component=true Manejado como un valor único: se usa encodeURIComponent y la decodificación trata + como un espacio."
+            : "component=false Procesado como una cadena de consulta completa: retenido = & + ? delimitador, no trate + como un espacio."
     };
     if (fromBase || (explicitQuery !== null && base !== null)) {
         response.query = output;
         if (/\s/.test(output)) {
-            response.warnings = ["结果含空白字符，未回写进 URL（请先 encode）"];
+            response.warnings = ["El resultado contiene caracteres en blanco y no se vuelve a escribir en la URL (codifique primero)"];
         } else {
             response.url = urlRebuildQuery(base, output);
         }
@@ -558,24 +558,24 @@ function urlQueryCodec(args, mode, base, baseInfo, explicitQuery) {
     return response;
 }
 
-/** 工具 query_tool：查询参数解析、增改、删除与 URL 编解码。 */
+/** Herramienta query_tool: análisis, adición, modificación, eliminación y codificación y decodificación de parámetros de consulta. */
 function queryTool(args) {
     args = urlArgsObject(args);
     var mode = typeof args.mode === "string" ? args.mode.replace(/\s+/g, "").toLowerCase() : "";
-    if (mode === "") return { error: "mode 不能为空（parse/set/remove/encode/decode）" };
+    if (mode === "") return { error: "mode no puede estar vacío (parse/set/remove/encode/decode)" };
     if (mode !== "parse" && mode !== "set" && mode !== "remove" && mode !== "encode" && mode !== "decode") {
-        return { error: "不支持的 mode: " + args.mode + "（可选 parse/set/remove/encode/decode）" };
+        return { error: "No compatible mode: " + args.mode + "(opcional analizar/configurar/eliminar/codificar/decodificar)" };
     }
     var base = null;
     var baseInfo = null;
     if (args.base !== undefined && args.base !== null) {
-        if (typeof args.base !== "string") return { error: "base 必须是字符串（完整 URL）" };
+        if (typeof args.base !== "string") return { error: "base Debe ser una cadena (URL completa)" };
         if (args.base.trim() !== "") {
             var baseCheck = urlCheckInput(args.base, "base");
             if (baseCheck.error) return baseCheck;
             base = baseCheck.value;
             var parsedBase = urlParse({ url: base });
-            if (parsedBase.error) return { error: "base 解析失败: " + parsedBase.error };
+            if (parsedBase.error) return { error: "base El análisis falló: " + parsedBase.error };
             baseInfo = parsedBase.result;
         }
     }
@@ -583,7 +583,7 @@ function queryTool(args) {
     if (args.query !== undefined && args.query !== null) {
         if (typeof args.query === "string") explicitQuery = args.query.replace(/^\?/, "");
         else if (!(typeof args.query === "object" && !Array.isArray(args.query) && mode === "set")) {
-            return { error: "query 必须是字符串（查询串），或 set 模式下的参数对象" };
+            return { error: "query Debe ser una cadena (cadena de consulta) o un objeto de parámetro en modo establecido" };
         }
     }
     if (mode === "encode" || mode === "decode") {
@@ -595,10 +595,10 @@ function queryTool(args) {
     } else if (baseInfo !== null) {
         query = baseInfo.query === null ? "" : baseInfo.query;
     } else {
-        return { error: mode + " 需要提供 query（查询字符串）或 base（完整 URL）" };
+        return { error: mode + " Requiere consulta (cadena de consulta) o base (URL completa)" };
     }
     if (query.length > URL_MAX_LENGTH) {
-        return { error: "query 过长（上限 " + URL_MAX_LENGTH + " 字符）" };
+        return { error: "query Demasiado largo (límite superior " + URL_MAX_LENGTH + " personajes)" };
     }
     var parsedQuery = urlParseQueryPairs(query);
     if (mode === "parse") {
@@ -615,7 +615,7 @@ function queryTool(args) {
             count: parsedQuery.keys.length,
             pairCount: pairs.length,
             warnings: parsedQuery.warnings,
-            note: "result 为键值对象（同名参数为数组）；pairs 保留原始顺序与重复项。"
+            note: "result Es un objeto clave-valor (el parámetro con el mismo nombre es una matriz);pairs Mantener el orden original con duplicados."
         };
     }
     var updates = args.params;
@@ -625,16 +625,16 @@ function queryTool(args) {
     var resultPairs = [];
     if (mode === "set") {
         if (updates === undefined || updates === null) {
-            return { error: "set 需要提供 params 对象（键为参数名，值为新值；null 表示删除，数组表示多值）" };
+            return { error: "set Es necesario proporcionar un objeto de parámetros (la clave es el nombre del parámetro y el valor es el nuevo valor;null Representa eliminación, la matriz representa valores múltiples)" };
         }
-        if (typeof updates !== "object" || Array.isArray(updates)) return { error: "params 必须是对象" };
+        if (typeof updates !== "object" || Array.isArray(updates)) return { error: "params debe ser un objeto" };
         var updateKeys = Object.keys(updates);
-        if (updateKeys.length === 0) return { error: "params 不能为空对象" };
+        if (updateKeys.length === 0) return { error: "params No puede ser un objeto nulo" };
         var pending = {};
         var pendingOrder = [];
         for (var u = 0; u < updateKeys.length; u++) {
             var key = updateKeys[u];
-            if (key === "__proto__") return { error: "参数名 __proto__ 不合法" };
+            if (key === "__proto__") return { error: "El nombre del parámetro __proto__ es ilegal" };
             var value = updates[key];
             var list = [];
             if (value === null || value === undefined) {
@@ -643,12 +643,12 @@ function queryTool(args) {
                 for (var v = 0; v < value.length; v++) {
                     var item = value[v];
                     if (item !== null && typeof item === "object") {
-                        return { error: "params." + key + " 的数组元素不能是对象" };
+                        return { error: "params." + key + " Los elementos de la matriz no pueden ser objetos." };
                     }
                     list.push(item === null || item === undefined ? "" : String(item));
                 }
             } else if (typeof value === "object") {
-                return { error: "params." + key + " 的值不能是对象，请先转成字符串" };
+                return { error: "params." + key + " El valor no puede ser un objeto; primero conviértalo en una cadena." };
             } else {
                 list.push(String(value));
             }
@@ -685,11 +685,11 @@ function queryTool(args) {
                 if (args.keys !== "") removeKeys.push(args.keys);
             } else if (Array.isArray(args.keys)) {
                 for (var k = 0; k < args.keys.length; k++) {
-                    if (typeof args.keys[k] !== "string") return { error: "keys 必须是字符串数组" };
+                    if (typeof args.keys[k] !== "string") return { error: "keys Debe ser una matriz de cadenas" };
                     if (args.keys[k] !== "") removeKeys.push(args.keys[k]);
                 }
             } else {
-                return { error: "keys 必须是字符串或字符串数组" };
+                return { error: "keys Debe ser una cadena o una serie de cadenas." };
             }
         } else if (updates !== undefined && updates !== null && typeof updates === "object" && !Array.isArray(updates)) {
             var objectKeys = Object.keys(updates);
@@ -699,10 +699,10 @@ function queryTool(args) {
             if (typeof single === "string" && single !== "") {
                 removeKeys.push(single);
             } else {
-                return { error: "remove 需要提供 keys（要删除的参数名数组）或 params（取其键）或 key" };
+                return { error: "remove Debe proporcionar claves (matriz de nombres de parámetros que se eliminarán) o parámetros (cualquiera que sea la clave) o key" };
             }
         }
-        if (removeKeys.length === 0) return { error: "remove 没有给出任何要删除的参数名" };
+        if (removeKeys.length === 0) return { error: "remove No se dieron nombres de parámetros para eliminar" };
         var removeMap = {};
         for (var r = 0; r < removeKeys.length; r++) removeMap[removeKeys[r]] = true;
         for (var s = 0; s < parsedQuery.pairs.length; s++) {
@@ -722,6 +722,6 @@ function queryTool(args) {
         pairCount: resultPairs.length,
         changed: serialized !== before,
         warnings: parsedQuery.warnings,
-        note: "query 不含 ?；同名参数按原顺序保留；set 时 null 值表示删除该参数。"
+        note: "query no contiene ?;Los parámetros con el mismo nombre se conservan en su orden original;set Un valor nulo indica que el parámetro se elimina."
     };
 }

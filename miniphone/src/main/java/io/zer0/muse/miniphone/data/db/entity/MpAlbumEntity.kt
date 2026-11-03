@@ -6,9 +6,9 @@ import androidx.room.PrimaryKey
 import io.zer0.muse.miniphone.data.db.MpAlbumSource
 
 /**
- * 相册里的一张图。
+ * Una imagen de un álbum de fotos.
  *
- * [hidden] 为隐藏(不上墙), [favorite] 为收藏。
+ * [hidden] esconderse(no en la pared), [favorite] para colección.
  */
 @Entity(
     tableName = "mp_album",

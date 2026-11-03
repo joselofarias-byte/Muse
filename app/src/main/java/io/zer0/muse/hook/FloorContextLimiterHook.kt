@@ -6,20 +6,20 @@ import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 /**
- * P1-4: 楼层式上下文限制 Hook。
+ * P1-4: Gancho de contexto limitado estilo piso.
  *
- * 以 USER 消息为"楼层",保留最近 N 层(完整 USER + ASSISTANT + TOOL 链),
- * 避免截断到对话中间导致上下文不完整。
+ * Tome el mensaje de USUARIO como"piso",Mantener los niveles N más recientes(completo USER + ASSISTANT + TOOL cadena),
+ * Evite interrumpir una conversación en medio y dejar el contexto incompleto.
  *
- * 与基于 token 数的压缩(ConversationCompressor)的区别:
- *  - 压缩: 把旧消息总结为摘要,减少 token 占用
- *  - 楼层限制: 直接截断超出楼层限制的旧消息,保证每层完整
+ * Compresión basada en el número de token(ConversationCompressor)la diferencia:
+ *  - Compresión: Resumir noticias antiguas en resúmenes,Reducir el uso de tokens
+ *  - Restricciones de piso: Truncar directamente los mensajes antiguos que excedan los límites mínimos,Asegúrese de que cada capa esté completa
  *
- * 执行顺序: 楼层限制在压缩之后执行,作为最终截断兜底。
+ * Orden de ejecución: Las restricciones del piso se aplican después de la compresión.,Como corte final.
  *
- * 配置:
- *  - floorLimiterEnabled: 开关(默认 false)
- *  - floorLimit: 楼层数(8/16/32,默认 16)
+ * Configuración:
+ *  - floorLimiterEnabled: cambiar(Predeterminado false)
+ *  - floorLimit: Número de pisos(8/16/32,Predeterminado 16)
  */
 class FloorContextLimiterHook(
     private val settings: SettingsRepository,
@@ -30,7 +30,7 @@ class FloorContextLimiterHook(
     }
 
     override val id: String = "floor_context_limiter"
-    override val priority: Int = 30 // 低优先级,在其他 PromptFinalizeHook 之后执行
+    override val priority: Int = 30 // baja prioridad,Ejecutado después de otro PromptFinalizeHook
 
     override suspend fun beforeFinalizePrompt(event: PromptFinalizeEvent): PromptFinalizeResult {
         val enabled = runCatching { settings.floorLimiterEnabledFlow.first() }.getOrDefault(false)
@@ -40,15 +40,15 @@ class FloorContextLimiterHook(
         if (floorLimit <= 0) return PromptFinalizeResult(event.preparedHistory)
 
         val history = event.preparedHistory
-        // 分离 SYSTEM 和非 SYSTEM 消息
+        // Separe los mensajes del SISTEMA y los que no son del SISTEMA
         val systemMsgs = history.filter { it.role == MessageRole.SYSTEM }
         val nonSystemMsgs = history.filter { it.role != MessageRole.SYSTEM }
 
-        // 统计 USER 楼层
+        // Estadísticas piso USUARIO
         val userCount = nonSystemMsgs.count { it.role == MessageRole.USER }
         if (userCount <= floorLimit) return PromptFinalizeResult(event.preparedHistory)
 
-        // 从末尾倒数 floorLimit 个 USER,保留从该位置到末尾的所有消息
+        // Cuenta regresiva FloorLimit desde el final USER,Mantener todos los mensajes desde esta posición hasta el final.
         var keepFromIndex = 0
         var countedUsers = 0
         for (i in nonSystemMsgs.indices.reversed()) {
@@ -63,7 +63,7 @@ class FloorContextLimiterHook(
         val trimmed = systemMsgs + nonSystemMsgs.drop(keepFromIndex)
         val removedCount = history.size - trimmed.size
         if (removedCount > 0) {
-            Logger.i(TAG, "楼层限制: 保留最近 $floorLimit 层 USER 消息,截断 $removedCount 条旧消息")
+            Logger.i(TAG, "Restricciones de piso: mantener reciente $floorLimit Mensaje de USUARIO de capa,Truncar $removedCount mensaje antiguo")
         }
         return PromptFinalizeResult(trimmed)
     }

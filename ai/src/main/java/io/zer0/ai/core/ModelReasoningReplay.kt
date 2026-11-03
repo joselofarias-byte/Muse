@@ -1,30 +1,30 @@
 package io.zer0.ai.core
 
 /**
- * v2.5.3 (P2-1): 推理回放策略的「模型级声明」。
+ * v2.5.3 (P2-1): "Declaración a nivel de modelo" de la estrategia de reproducción de inferencia.
  *
- * 背景：2026 年中起，Kimi K3 / GLM 4.7+ / DeepSeek v4 等一批「保留思考」模型陆续上线，
- * 它们要求历史 assistant 消息必须原样回传 reasoning，否则静默降质，甚至直接 400。
+ * Antecedentes:2026 Desde mediados de año,Kimi K3 / GLM 4.7+ / DeepSeek v4 A la espera de que se lance uno tras otro un lote de modelos de "Pensamiento Reservado".
+ * Requieren que los mensajes históricos del asistente vuelvan a razonarse tal como están; de lo contrario, se degradarán silenciosamente o incluso recibirán directamente un error 400.
  *
- * 现状问题：回放契约此前只挂在 [ProviderCompat]（按 baseUrl host 猜），
- * 同一个模型在不同 host 下（官方直连 vs 聚合站/中转）会得出不同结论，
- * 且新增模型时容易漏配。这里把「回放策略」提升为一等公民的**模型级声明**：
- * 先按模型 id 声明，ProviderCompat 的 host 值作为兜底覆盖。
+ * Problema de situación actual: el contrato de repetición anteriormente solo estaba disponible en [ProviderCompat](supongo basado en el host baseUrl),
+ * El mismo modelo en diferentes hosts (conexión directa oficial versus sitio de agregación)/tránsito) sacará conclusiones diferentes,
+ * Y es fácil pasar por alto la configuración al agregar nuevos modelos. Aquí la "estrategia de repetición" se promociona a un ciudadano de primera.**Declaración a nivel de modelo**:
+ * Primero declare por identificación del modelo,ProviderCompat El valor del host actúa como una anulación.
  *
- * 与 [ReasoningCarrier] / [ReasoningReplayPolicy] 的关系：
- *  - 本对象描述「该模型需要怎么回放」的声明；
- *  - ProviderCompat.reasoningReplayContract 描述「当前这条链路实际能怎么回放」；
- *  - 解析顺序：ProviderCompat 显式声明 > 模型级声明 > 默认（不回放）。
+ * con [ReasoningCarrier] / [ReasoningReplayPolicy] relación:
+ *  - Este objeto describe la declaración "cómo se debe reproducir este modelo";
+ *  - ProviderCompat.reasoningReplayContract Describir "cómo se puede reproducir realmente el enlace actual";
+ *  - Orden de análisis:ProviderCompat declaración explícita > Declaración a nivel de modelo > Predeterminado (sin reproducción).
  */
 
 /**
- * v2.5.3: 模型级回放声明。
+ * v2.5.3: Declaración de reproducción a nivel de modelo.
  *
- * @param carrier 回放载体（wire 字段位置），见 [ReasoningCarrier]
- * @param policy 回放策略，见 [ReasoningReplayPolicy]
- * @param requiresNonEmptyReasoning 是否要求「即使没有思考内容也必须发字段」。
- *   部分协议（Kimi/DeepSeek 思考模式）在带 tools 的请求里，历史 assistant 消息缺该字段会直接 400，
- *   因此需要发空串占位；其余协议缺字段即省略。
+ * @param carrier portador de reproducción (wire posición de campo), ver [ReasoningCarrier]
+ * @param policy Estrategia de repetición, ver [ReasoningReplayPolicy]
+ * @param requiresNonEmptyReasoning ¿Se requiere que "los campos se publiquen incluso si no hay contenido pensado?"
+ *   parte del acuerdo (Kimi/DeepSeek Modo de pensamiento) En la solicitud con herramientas, si el mensaje del asistente histórico carece de este campo, responderá directamente a 400.
+ *   Por lo tanto, es necesario enviar un marcador de posición de cadena vacío; se omiten otros campos faltantes del protocolo.
  */
 data class ModelReasoningDeclaration(
     val carrier: ReasoningCarrier,
@@ -33,16 +33,16 @@ data class ModelReasoningDeclaration(
 )
 
 /**
- * v2.5.3 (P2-1): 按模型 id 推断推理回放声明。
+ * v2.5.3 (P2-1): Inferir declaración de reproducción de inferencia por identificación del modelo.
  *
- * 规则：新系「保留思考」模型默认全量回放，
- * 仅工具轮回放的按协议区分，老模型/未知模型不声明（走 ProviderCompat 或默认不回放）。
+ * Reglas: La nueva serie de modelos "Pensamientos reservados" se reproducirá completa de forma predeterminada.
+ * Sólo la reproducción de la rueda de herramientas se diferencia por protocolo, modelo antiguo/Los modelos desconocidos no se declaran (use ProviderCompat o no reproduzca de forma predeterminada).
  *
- * 重要：本解析器**只声明策略，不注入任何厂商扩展字段**，因此对未知中转站是安全的
- * （不像 thinkingFormat 注入会触发 400）。
+ * IMPORTANTE: este analizador**Declare únicamente la estrategia y no inyecte ningún campo de extensión del proveedor.**, por lo que es seguro para puntos de tránsito desconocidos.
+ * (A diferencia de pensar en la inyección de formato que activa un 400).
  */
 object ModelReasoningReplayResolver {
-    /** 模型 id 归一化：去聚合站/厂商前缀，转小写。 */
+    /** Normalización de identificación del modelo: estación de desagregación/Prefijo del fabricante, convertido a minúsculas. */
     private fun normalize(modelId: String): String {
         val raw = modelId.trim().lowercase()
         val prefixes =
@@ -52,12 +52,12 @@ object ModelReasoningReplayResolver {
                 "moonshotai/", "google/", "vertex/",
             )
         val stripped = prefixes.firstOrNull { raw.startsWith(it) }?.let(raw::removePrefix) ?: raw
-        // 剥离聚合前缀后可能仍带厂商段(如 "deepseek/deepseek-v4")，统一取最后一段。
+        // Después de eliminar el prefijo de agregación, es posible que el segmento de proveedor aún esté presente.(Como por ejemplo "deepseek/deepseek-v4"), tome el último párrafo de manera uniforme.
         return stripped.substringAfterLast('/').takeIf { it.isNotBlank() } ?: stripped
     }
 
     /**
-     * 推断模型级回放声明；无声明时返回 null（由 ProviderCompat 或默认行为接管）。
+     * Infiere declaraciones de reproducción a nivel de modelo; devuelve nulo si no hay ninguno (providerCompat o el comportamiento predeterminado toma el control).
      */
     fun declare(modelId: String?): ModelReasoningDeclaration? {
         val normalized = modelId?.let(::normalize)
@@ -75,7 +75,7 @@ object ModelReasoningReplayResolver {
             ReasoningFamily.NONE -> null
         }
 
-    /** 回放家族：把“模型名 → 声明”从一堆谓词收敛成单次匹配。 */
+    /** Familia de reproducción: poner“Nombre del modelo → Declaración”Convergencia de un conjunto de predicados a una sola coincidencia. */
     private enum class ReasoningFamily {
         OPENAI_RESPONSES,
         ANTHROPIC,
@@ -91,7 +91,7 @@ object ModelReasoningReplayResolver {
         return contentFamily(id)
     }
 
-    /** 有专属载体的厂商（Responses/Anthropic/Gemini/OpenRouter）。 */
+    /** Fabricantes con transportistas exclusivos (Responses/Anthropic/Gemini/OpenRouter). */
     private fun carrierOnlyFamily(id: String): ReasoningFamily? =
         when {
             id.startsWith("o1") || id.startsWith("o3") || id.startsWith("o4") || id.startsWith("gpt-5") ->
@@ -102,7 +102,7 @@ object ModelReasoningReplayResolver {
             else -> null
         }
 
-    /** reasoning_content 载体的思考系模型，按字段是否可省分两组。 */
+    /** reasoning_content El modelo del sistema de pensamiento del transportista se puede dividir en dos grupos según si los campos se pueden guardar. */
     private fun contentFamily(id: String): ReasoningFamily =
         when {
             STRICT_CONTENT_PREFIXES.any { id.startsWith(it) } || (id.contains("deepseek") && id.contains("reason")) ->
@@ -128,11 +128,11 @@ object ModelReasoningReplayResolver {
         )
 }
 
-/** 字段不能省的思考系前缀（缺字段上游直接 400）。 */
+/** Si el campo no se puede omitir, se debe considerar el prefijo (el ascendente del campo faltante es directamente 400). */
 private val STRICT_CONTENT_PREFIXES =
     listOf("deepseek-v4", "deepseek-v3", "deepseek-r1", "deepseek-reasoner", "kimi-k", "kimi-thinking", "glm-z1", "glm-5")
 
-/** 字段可省的思考系前缀（内容为空时省略字段，节省 token）。 */
+/** Piense en el prefijo cuando se puede omitir el campo (omita el campo cuando el contenido esté vacío para guardar tokens). */
 private val LENIENT_CONTENT_PREFIXES =
     listOf("qwen3", "qwq-", "qwen-vl", "mimo", "longcat")
 

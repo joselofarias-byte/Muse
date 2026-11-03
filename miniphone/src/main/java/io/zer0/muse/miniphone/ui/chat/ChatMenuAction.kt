@@ -8,27 +8,27 @@ import androidx.compose.ui.window.PopupPositionProvider
 import io.zer0.muse.miniphone.data.db.MpMessageType
 
 /**
- * 长按一条消息能做的事。
+ * Qué puedes hacer manteniendo presionado un mensaje.
  *
- * 取值只描述「操作」,[label] 是菜单里那一行字 —— 判定规则集中在 [chatMenuActionsFor],
- * 界面只管把返回的项按顺序画出来。
+ * El valor sólo describe la "operación",[label] Es esa línea en el menú. —— Las reglas de decisión se centran en [chatMenuActionsFor],
+ * La interfaz solo dibuja en orden los artículos devueltos.
  */
 internal enum class ChatMenuAction(
     val label: String,
 ) {
-    COPY("复制"),
-    DELETE("删除"),
-    RESEND("重发"),
+    COPY("Copiar"),
+    DELETE("Eliminar"),
+    RESEND("Reenviar"),
 }
 
 /**
- * 某条消息的长按菜单项,顺序即展示顺序。
+ * Mantenga presionado el elemento del menú para ver un mensaje.,El orden es el orden de presentación.
  *
- * - 复制:只有文本有可复制的正文,图片与语音的正文只是预览文案
- * - 删除:每一方发的消息都能删
- * - 重发:只有自己发出的文本,重发走的是「再要一次回复」那条链
+ * - Copiar:Sólo el texto tiene cuerpo copiable.,El texto de la imagen y la voz es solo la copia de vista previa.
+ * - Eliminar:Los mensajes enviados por cada parte se pueden eliminar
+ * - Reenviar:Sólo mensajes de texto enviados por ti mismo,El reenvío toma el enlace "solicitar una respuesta más".
  *
- * 系统提示不是任何一方说的话,整套菜单都不给它。
+ * El aviso del sistema no es lo que dijo ninguna de las partes.,El menú completo no lo delata.
  */
 internal fun chatMenuActionsFor(message: ChatMessageUi): List<ChatMenuAction> {
     if (message.isSystem) return emptyList()
@@ -40,9 +40,9 @@ internal fun chatMenuActionsFor(message: ChatMessageUi): List<ChatMenuAction> {
 }
 
 /**
- * 菜单落点:贴着消息那一行的上方,左右与消息所在一侧对齐。
+ * Ubicación del menú:Sobre la línea con el mensaje.,Alinee a izquierda y derecha con el lado donde está el mensaje.
  *
- * 上方空间不足时翻到行下方;两侧都夹进页边距内,不会贴着屏幕边缘。
+ * Si no hay suficiente espacio arriba, desplácese hasta el final de la fila.;Escondido en los márgenes de ambos lados,No se pegará al borde de la pantalla.
  */
 internal class ChatMenuPositionProvider(
     private val alignEnd: Boolean,

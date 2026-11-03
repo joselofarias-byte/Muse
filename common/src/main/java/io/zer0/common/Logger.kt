@@ -10,15 +10,15 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 全局日志门面,默认 tag 为 `Muse`。
+ * Fachada de troncos global,La etiqueta predeterminada es `Muse`.
  *
- * Phase 11.3 增强:文件日志能力(便于真机验证后回捞)
- *  - [initFileLog]:在 Application onCreate 调用一次,开启文件日志
- *  - 日志文件:app cacheDir/logs/muse.log(单文件,rolling 100KB)
- *  - 等级:W/E 自动写文件;I/D 可选(由 [fileLogLevel] 控制)
- *  - 线程安全:PrintWriter synchronized
+ * Phase 11.3 mejorar:Capacidad de registro de archivos(Conveniente para la recuperación después de una verificación mecánica real)
+ *  - [initFileLog]:Llamado una vez en la aplicación onCreate,Habilitar el registro de archivos
+ *  - archivo de registro:app cacheDir/logs/muse.log(archivo único,rolling 100KB)
+ *  - nivel:W/E Escribir archivos automáticamente;I/D Opcional(por [fileLogLevel] controlar)
+ *  - Seguridad del hilo:PrintWriter synchronized
  *
- * release 构建可把 [enabled] 置为 false 关闭全部日志(Logcat + 文件)。
+ * release Construible [enabled] Establecer en falso para cerrar todos los registros(Logcat + Archivo).
  */
 object Logger {
     private const val DEFAULT_TAG = "Muse"
@@ -28,11 +28,11 @@ object Logger {
     @Volatile
     var enabled: Boolean = true
 
-    /** 文件日志等级:低于此等级的 I/D 日志不写文件(W/E 总是写)。 */
+    /** Nivel de registro de archivos:Los registros de I/D por debajo de este nivel no escriben archivos.(W/E siempre escribe). */
     @Volatile
     var fileLogLevel: Level = Level.DEBUG
 
-    /** 文件日志启用状态(由 [initFileLog] 设置)。 */
+    /** Estado de registro de archivos habilitado(por [initFileLog] ajustes). */
     @Volatile
     private var fileLogEnabled: Boolean = false
 
@@ -46,54 +46,54 @@ object Logger {
     private val lock = Any()
 
     /**
-     * 常驻的文件写入句柄 + 已写字节数（2026-11-01 性能整改）。
+     * Identificador de escritura del archivo residente + número de bytes escritos (2026-11-01 mejoras de rendimiento).
      *
-     * 旧实现每行 `file.appendText(line)` = open + write + close 三次系统调用；
-     * 实测单条日志（含 PII 脱敏）约 **0.25ms**（JVM），一次普通对话回合几十条日志就是十几毫秒，
-     * 而且这部分开销落在写日志的线程上（可能是主线程）。
+     * Implementación anterior por fila `file.appendText(line)` = open + write + close Tres llamadas al sistema;
+     * El registro único medido (incluida la desensibilización de PII) es aproximadamente **0.25ms**(JVM), docenas de registros en una ronda de conversación normal tardan más de diez milisegundos,
+     * Y este costo recae en el hilo que escribe el registro (probablemente el hilo principal).
      *
-     * 现在句柄常驻、每行 flush：省掉 open/close，但**不改变持久化时机** ——
-     * 每行仍立刻落盘，崩溃不会丢日志，多进程追加的安全性也维持原样（仍是 O_APPEND 追加）。
-     * 字节数自己记账，避免每行再 stat 一次文件大小。
+     * Ahora el identificador es residente, varado por línea: se omite abrir/cerrar, pero**No cambia el tiempo de persistencia** ——
+     * Cada fila aún se escribe en el disco inmediatamente, los registros no se perderán en caso de falla y la seguridad de los anexos multiproceso sigue siendo la misma (el anexo O_APPEND todavía se usa).
+     * El número de bytes se contabiliza por sí solo, evitando la necesidad de volver a establecer el tamaño del archivo para cada línea.
      */
     private var fileWriter: java.io.Writer? = null
     private var writtenBytes: Long = 0L
 
-    /** 日志等级枚举(用于 [fileLogLevel] 阈值控制)。 */
+    /** Enumeración a nivel de registro(usado para [fileLogLevel] control de umbral). */
     enum class Level { DEBUG, INFO, WARN, ERROR }
 
     /**
-     * 调试日志 sink 钩子 — app 模块的 DebugLogStore 通过设置此变量接收所有日志。
+     * Gancho de fregadero de registro de depuración — app El DebugLogStore del módulo recibe todos los registros configurando esta variable.
      *
-     * 设计动机:common 模块不能反向依赖 app 模块,但 Logger 需要把每条日志
-     * 同步推送到 DebugLogStore 供 DebugScreen 展示。通过 var 回调解耦:
-     *  - app 启动时 `Logger.sink = { level, tag, msg, t -> DebugLogStore.log(...) }`
-     *  - Logger 在 d/i/w/e 内部统一调用 [dispatchToSink]
-     *  - 默认 null(不推送),release 构建可不设置以避免内存占用
+     * motivación de diseño:common Los módulos no pueden depender del módulo de la aplicación a la inversa,Pero Logger necesita agregar cada registro.
+     * Empuje sincrónicamente a DebugLogStore para mostrar DebugScreen. Acoplamiento mediante devoluciones de llamada var:
+     *  - app Al iniciar `Logger.sink = { level, tag, msg, t -> DebugLogStore.log(...) }`
+     *  - Logger Llamado uniformemente dentro de d/i/w/e [dispatchToSink]
+     *  - Predeterminado null(no empujes),release La compilación se puede configurar sin configuración para evitar el uso de memoria.
      *
-     * 参数顺序与 [DebugLogStore.log] 对齐:level(字符串大写) / tag / message / throwable。
+     * Orden de los parámetros y [DebugLogStore.log] Alineación:level(Capitalización de cadenas) / tag / message / throwable.
      */
     @Volatile
     var sink: ((String, String, String, Throwable?) -> Unit)? = null
 
-    /** 把日志推送到 sink(若已注册)。内部统一入口,避免 d/i/w/e 各处重复判空。 */
+    /** Empuje el registro para sink(Si ya está registrado). Entrada interna unificada,Evite duplicar d/i/w/e en todas partes. */
     private fun dispatchToSink(level: Level, tag: String, msg: String, t: Throwable?) {
         val sinkRef = sink ?: return
         try {
-            // level.name 直接得到 "DEBUG" / "INFO" / "WARN" / "ERROR",与 DebugLogStore 常量对齐
+            // level.name llegar directamente "DEBUG" / "INFO" / "WARN" / "ERROR",Alineado con la constante DebugLogStore
             sinkRef.invoke(level.name, tag, msg, t)
         } catch (_: Throwable) {
-            // sink 失败不能影响主流程(DebugLogStore 自身 bug 不应拖垮 Logger)
+            // sink El fallo no puede afectar el proceso principal.(DebugLogStore Tus propios errores no deberían deprimirte Logger)
         }
     }
 
     /**
-     * Phase 11.3: 初始化文件日志。
+     * Phase 11.3: Inicialice el registro del archivo.
      *
-     * 在 Application.onCreate 调用一次。日志写到 `cacheDir/logs/muse.log`,
-     * 超过 100KB 自动 rolling(旧文件改名为 muse.log.1,新日志继续写 muse.log)。
+     * Llamado una vez en Application.onCreate. El registro escribe `cacheDir/logs/muse.log`,
+     * Más de 100 KB automático rolling(Cambiar el nombre del archivo antiguo muse.log.1,Continuar escribiendo un nuevo diario. muse.log).
      *
-     * @param context Application/Context(用 cacheDir,卸载自动清理)
+     * @param context Application/Context(usar cacheDir,Desinstalar la limpieza automática)
      */
     fun initFileLog(context: Context) {
         synchronized(lock) {
@@ -106,64 +106,64 @@ object Logger {
     }
 
     /**
-     * Phase 11.3: 导出日志文件(用于真机验证后回捞)。
-     * @return 日志文件 File;未启用文件日志返回 null
+     * Phase 11.3: Exportar archivo de registro(Se utiliza para la recuperación después de la verificación de una máquina real.).
+     * @return archivo de registro File;La devolución del registro de archivos no está habilitada null
      */
     fun getLogFile(): File? = logFile?.takeIf { it.exists() }
 
-    // M5: PII 过滤正则(缓存到 object 级 val,避免每次调用重新编译)
-    // H-SEC-2: 扩展覆盖身份证号、银行卡号、IPv4 地址,与 app.privacy.PiiGuard 对齐
+    // M5: PII Filtrar regular(Caché a nivel de objeto val,Evite volver a compilar en cada llamada)
+    // H-SEC-2: Cobertura ampliada de número de identificación, número de tarjeta bancaria,IPv4 dirección,Alineado con app.privacy.PiiGuard
     private val PHONE_REGEX = Regex("""\b1[3-9]\d{9}\b""")
     private val EMAIL_REGEX = Regex("""\b[\w.-]+@[\w.-]+\.\w+\b""")
 
-    // 18位身份证(含15位兼容): 地区码+生日+顺序码+校验位
+    // 18tarjeta de identificación(Contiene15Compatible con bits): código de área+cumpleaños+código de secuencia+dígito de control
     private val ID_CARD_REGEX = Regex("""\b[1-9]\d{5}(?:18|19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b""")
 
-    // 银行卡号: 16-19位连续数字,或 4-4-4-4 分隔格式
+    // número de tarjeta bancaria: 16-19dígitos consecutivos,o formato delimitado 4-4-4-4
     private val BANK_CARD_REGEX = Regex("""\b\d{16,19}\b|\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4,7}\b""")
 
-    // IPv4 地址
+    // IPv4 dirección
     private val IPV4_REGEX = Regex("""\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b""")
 
-    // v1.114 安全修复:原 CREDENTIAL_REGEX (?i)(token|password|apikey|api_key|secret)\s*[=:]\s*\S+
-    // 关键词不全且要求 [=:] 后紧跟非空白,导致以下常见凭据格式漏匹配:
-    //   - "Authorization: Bearer xxx"(authorization 不在关键词列表)
-    //   - "x-api-key: sk-xxx"(x-api-key 不在列表)
-    //   - JSON "access_token":"xxx"(access_token 不在列表,冒号在引号内)
-    //   - URL ?key=xxx(key 不在列表)
-    // 拆分为三组正则分别覆盖不同格式,新增关键词:authorization, bearer, x-api-key, key,
+    // v1.114 Correcciones de seguridad:Originales CREDENTIAL_REGEX (?i)(token|password|apikey|api_key|secret)\s*[=:]\s*\S+
+    // Las palabras clave están incompletas y son obligatorias. [=:] seguido de no en blanco,Como resultado, faltan coincidencias en los siguientes formatos de credenciales comunes:
+    //   - "Authorization: Bearer xxx"(authorization No en la lista de palabras clave)
+    //   - "x-api-key: sk-xxx"(x-api-key no en la lista)
+    //   - JSON "access_token":"xxx"(access_token no en la lista,dos puntos entre comillas)
+    //   - URL ?key=xxx(key no en la lista)
+    // Dividido en tres grupos de expresiones regulares que cubren diferentes formatos.,Agregar palabras clave:authorization, bearer, x-api-key, key,
     //   access_token, refresh_token, client_id, client_secret
-    // 1) HEADER_CRED_REGEX:HTTP header 格式(authorization/bearer/x-api-key),分隔符为冒号或空格,
-    //    值部分用 [^\n,;]+ 匹配到行尾/逗号/分号,确保 "Bearer xxx" 中的 token 也被一并脱敏
-    // 2) KV_CRED_REGEX:key=value 格式(token/password/secret/apikey/api_key/access_token/
-    //    refresh_token/client_secret/client_id),分隔符 [=:] 兼容 JSON 中的冒号
-    // 3) URL_QUERY_CRED_REGEX:URL query 参数 ?key=xxx / &api_key=xxx,保留前导 ?/& 符号
+    // 1) HEADER_CRED_REGEX:HTTP header Formato(authorization/bearer/x-api-key),El delimitador son dos puntos o un espacio.,
+    //    Usado para pieza de valor [^\n,;]+ Coincidir con el final de la línea/coma/punto y coma,asegurar "Bearer xxx" Las fichas también están insensibilizadas.
+    // 2) KV_CRED_REGEX:key=value Formato(token/password/secret/apikey/api_key/access_token/
+    //    refresh_token/client_secret/client_id),delimitador [=:] Compatible con dos puntos en JSON
+    // 3) URL_QUERY_CRED_REGEX:URL query parámetros ?key=xxx / &api_key=xxx,sigue liderando ?/& símbolo
     private val HEADER_CRED_REGEX = Regex("""(?i)\b(authorization|bearer|x-api-key)\s*[:\s]\s*[^\n,;]+""")
     private val KV_CRED_REGEX =
         Regex("""(?i)(token|password|secret|apikey|api_key|access_token|refresh_token|client_secret|client_id)\s*[=:]\s*\S+""")
     private val URL_QUERY_CRED_REGEX = Regex("""(?i)([?&])(key|token|api_key|apikey)=\S+""")
 
     /**
-     * M5: 过滤日志中的 PII(手机号/邮箱/身份证/银行卡/IP/凭据),避免敏感信息输出到 Logcat 或日志文件。
-     * - 手机号(11 位,1 开头)→ [手机号]
-     * - 邮箱 → [邮箱]
-     * - H-SEC-2: 身份证号(18位)→ [身份证],银行卡号(16-19位)→ [银行卡],IPv4→ [IP]
-     * - 凭据(authorization/bearer/x-api-key/token/password/secret/apikey/api_key/
-     *   access_token/refresh_token/client_id/client_secret/key = xxx)→ key=[已脱敏]
+     * M5: Filtrar los registros PII(Número de teléfono celular/Correo electrónico/tarjeta de identificación/tarjeta bancaria/IP/Credenciales),Evite enviar información confidencial a Logcat o archivos de registro.
+     * - Número de teléfono celular(11 poco,1 comienzo)→ [Número de teléfono celular]
+     * - Correo electrónico → [Correo electrónico]
+     * - H-SEC-2: número de identificación(18poco)→ [tarjeta de identificación],número de tarjeta bancaria(16-19poco)→ [tarjeta bancaria],IPv4→ [IP]
+     * - Credenciales(authorization/bearer/x-api-key/token/password/secret/apikey/api_key/
+     *   access_token/refresh_token/client_id/client_secret/key = xxx)→ key=[Insensibilizado]
      *
-     * v1.114: 拆分为 header / key=value / URL query 三组正则,详见上方注释。
+     * v1.114: dividir en header / key=value / URL query Tres conjuntos de reglas,Consulte las notas anteriores para obtener más detalles.
      */
     private fun sanitizePii(msg: String): String {
         return msg
-            .replace(PHONE_REGEX, "[手机号]")
-            .replace(EMAIL_REGEX, "[邮箱]")
-            .replace(ID_CARD_REGEX, "[身份证]")
-            .replace(BANK_CARD_REGEX, "[银行卡]")
+            .replace(PHONE_REGEX, "[Número de teléfono celular]")
+            .replace(EMAIL_REGEX, "[Correo electrónico]")
+            .replace(ID_CARD_REGEX, "[tarjeta de identificación]")
+            .replace(BANK_CARD_REGEX, "[tarjeta bancaria]")
             .replace(IPV4_REGEX, "[IP]")
-            // v1.114: 三组凭据正则分别替换,保留 key 名便于排查
-            .replace(HEADER_CRED_REGEX, "$1: [已脱敏]")
-            .replace(KV_CRED_REGEX, "$1=[已脱敏]")
-            .replace(URL_QUERY_CRED_REGEX, "$1$2=[已脱敏]")
+            // v1.114: Los tres conjuntos de expresiones regulares de credenciales se reemplazan por separado.,Mantenga el nombre de la clave para solucionar problemas fácilmente
+            .replace(HEADER_CRED_REGEX, "$1: [Insensibilizado]")
+            .replace(KV_CRED_REGEX, "$1=[Insensibilizado]")
+            .replace(URL_QUERY_CRED_REGEX, "$1$2=[Insensibilizado]")
     }
 
     fun d(tag: String = DEFAULT_TAG, msg: String) {
@@ -202,7 +202,7 @@ object Logger {
         }
     }
 
-    /** 把 throwable 转成 stack trace 字符串(便于写日志文件)。 */
+    /** Convertir arrojable en cadena de seguimiento de pila(Facilita la escritura de archivos de registro.). */
     fun stackTraceToString(t: Throwable): String {
         val sw = StringWriter()
         PrintWriter(sw).use { pw ->
@@ -211,18 +211,18 @@ object Logger {
         return sw.toString()
     }
 
-    /** 等级阈值判断 + 文件写入(带 rolling)。 */
+    /** Juicio de umbral de nivel + escritura de archivos(traer rolling). */
     private fun maybeWriteFile(level: Level, tag: String, msg: String, t: Throwable?) {
         if (!fileLogEnabled) return
-        // I/D 受 fileLogLevel 控制;W/E 总是写
+        // I/D Controlado por fileLogLevel;W/E siempre escribe
         if (level.ordinal < fileLogLevel.ordinal && level != Level.WARN && level != Level.ERROR) {
             return
         }
         synchronized(lock) {
             val file = logFile ?: return
             try {
-                // Rolling:超 1MB 备份为 .1,新建空文件。轮转前必须先关句柄，
-                // 否则重命名后句柄仍指向被改名的那份文件，新日志会写进备份。
+                // Rolling:Más de 1 MB de copia de seguridad es .1,Crea un nuevo archivo vacío. El mango debe estar cerrado antes de girar.
+                // De lo contrario, el identificador seguirá apuntando al archivo renombrado después de cambiarlo y el nuevo registro se escribirá en la copia de seguridad.
                 if (writtenBytes > MAX_LOG_FILE_BYTES || fileWriter == null) {
                     if (writtenBytes > MAX_LOG_FILE_BYTES) {
                         closeWriterLocked()
@@ -242,24 +242,24 @@ object Logger {
                 val sink = writerLocked(file)
                 val body = "$timestamp $levelStr/$tag: $msg\n"
                 sink.append(body)
-                // 按"字符数 × 2"估算字节数：中文日志一行 3 字节/字符，只数字符会让 1MB 上限实际放大到 3MB。
-                // 乘 2 是 BMP 字符（3 字节）与代理对（4 字节/2 字符）的折中估计 —— 偏保守，宁可早轮转。
+                // prensa"Número de caracteres × 2"Número estimado de bytes: 3 bytes por línea de registro chino/Caracteres, solo los caracteres numéricos ampliarán el límite de 1 MB a 3 MB.
+                // Multiplicado por 2 es el carácter BMP (3 bytes) con pares sustitutos (4 bytes/2 personajes) —— Soy conservador y prefiero rotar temprano.
                 writtenBytes += body.length * 2L
                 if (t != null) {
                     val trace = stackTraceToString(t) + "\n"
                     sink.append(trace)
                     writtenBytes += trace.length * 2L
                 }
-                // 每行都刷盘：持久化时机与旧实现一致。
+                // Vaciar cada fila: el tiempo de persistencia es consistente con la implementación anterior.
                 sink.flush()
             } catch (_: Throwable) {
-                // 日志失败不能影响主流程（句柄可能在异常中作废，下次写入会重建）
+                // La falla del registro no puede afectar el proceso principal (el identificador puede invalidarse en una excepción y se reconstruirá la próxima vez que se escriba)
                 closeWriterLocked()
             }
         }
     }
 
-    /** 取常驻句柄；文件被外部删除/轮转后自动重建。 */
+    /** Obtenga el identificador de residente; el archivo se elimina externamente/Reconstruir automáticamente después de la rotación. */
     private fun writerLocked(file: File): java.io.Writer {
         fileWriter?.let { return it }
         val created = java.io.BufferedWriter(java.io.FileWriter(file, true), 8 * 1024)
@@ -268,7 +268,7 @@ object Logger {
         return created
     }
 
-    /** 关闭并丢弃句柄。 */
+    /** Cierre y deseche el mango. */
     private fun closeWriterLocked() {
         runCatching { fileWriter?.close() }
         fileWriter = null

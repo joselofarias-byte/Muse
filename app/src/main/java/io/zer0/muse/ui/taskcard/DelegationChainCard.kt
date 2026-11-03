@@ -57,21 +57,21 @@ import io.zer0.muse.ui.theme.tiny
 import org.koin.compose.koinInject
 
 /**
- * v1.201: 委派链路卡片。
+ * v1.201: Tarjetas de enlace de delegado.
  *
- * 可视化展示一次主助手 → 子助手 → 子子助手 的委派链路,
- * 含节点状态(RUNNING/COMPLETED/FAILED/TIMEOUT/CANCELLED/PAUSED)、
- * 失败原因下钻、子节点树形结构与点击查看详情。
+ * Muestre visualmente el asistente principal una vez → sub-asistente → Enlace de delegación de Zizi Assistant,
+ * Contiene el estado del nodo(RUNNING/COMPLETED/FAILED/TIMEOUT/CANCELLED/PAUSED),
+ * Profundice en el motivo del error, la estructura del árbol de subnodos y haga clic para ver los detalles.
  *
- * @param roots 顶级委派节点列表(parentRequestId == null)
- * @param modifier 外部修饰
+ * @param roots Lista de nodos de delegación de nivel superior(parentRequestId == null)
+ * @param modifier Modificación externa
  */
 @Composable
 fun DelegationChainCard(roots: List<DelegationChainTracker.ChainNode>, modifier: Modifier = Modifier) {
     val assistantRepository: AssistantRepository = koinInject()
     val assistants by assistantRepository.observeAll.collectAsStateWithLifecycle(initialValue = emptyList())
     val assistantById = remember(assistants) { assistants.associateBy { it.id } }
-    // 空链路:显示提示文案,不渲染卡片容器(避免空卡噪声)
+    // enlace vacío:Mostrar copia inmediata,No renderizar el contenedor de la tarjeta(Evite el ruido de la tarjeta vacía)
     if (roots.isEmpty()) {
         Surface(
             modifier = modifier
@@ -105,7 +105,7 @@ fun DelegationChainCard(roots: List<DelegationChainTracker.ChainNode>, modifier:
             modifier = Modifier.padding(MusePaddings.cardInner),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // ── 标题行:图标 + 标题 + 节点总数 ──
+            // ── línea de título:Icono + título + número total de nodos ──
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.iconPadding),
@@ -138,7 +138,7 @@ fun DelegationChainCard(roots: List<DelegationChainTracker.ChainNode>, modifier:
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // ── 链路根节点列表 ──
+            // ── Vincular la lista de nodos raíz ──
             roots.forEach { node ->
                 key(node.requestId) {
                     ChainNodeView(node = node, depth = 0, assistantById = assistantById)
@@ -149,9 +149,9 @@ fun DelegationChainCard(roots: List<DelegationChainTracker.ChainNode>, modifier:
 }
 
 /**
- * 单个链路节点渲染:状态圆点 → 目标徽章 → 任务摘要 → 耗时,
- * 失败节点额外展示错误消息预览;PAUSED 节点展示"等待确认";
- * 有 subNodes 时用 Box 缩进 + Canvas 竖线递归渲染。
+ * Representación de nodo de enlace único:punto de estado → insignia de objetivo → Resumen de tareas → Consume mucho tiempo,
+ * Los nodos fallidos también muestran vistas previas de mensajes de error;PAUSED Visualización de nodos"Esperando confirmación";
+ * Cuando hay subnodos, use sangría de cuadro + barra vertical de lienzo para renderizar de forma recursiva.
  */
 @Composable
 private fun ChainNodeView(
@@ -176,10 +176,10 @@ private fun ChainNodeView(
                 .clickable { showDetail = true }
                 .padding(vertical = 4.dp),
         ) {
-            // 状态圆点(RUNNING 脉冲 / 其它状态实心圆)
+            // punto de estado(RUNNING Pulso/otro estado círculo sólido)
             StatusDot(status = node.status)
 
-            // B8-04: 节点显示对应助手头像,团队/未知节点回退为树形图标
+            // B8-04: El nodo muestra el avatar del asistente correspondiente.,equipo/Los nodos desconocidos recurren a los iconos del árbol
             val assistant = node.targetId.let { assistantById[it] }
             if (assistant != null) {
                 AssistantAvatar(assistant = assistant, avatarSize = 24.dp)
@@ -192,10 +192,10 @@ private fun ChainNodeView(
                 )
             }
 
-            // 目标徽章(类型 + 名称)
+            // insignia de objetivo(tipo + nombre)
             TargetBadge(targetType = node.targetType, targetName = node.targetName)
 
-            // 任务摘要(前 80 字)
+            // Resumen de tareas(primeras 80 palabras)
             Text(
                 text = node.task.take(80),
                 style = MaterialTheme.typography.bodySmall,
@@ -205,14 +205,14 @@ private fun ChainNodeView(
                 modifier = Modifier.weight(1f),
             )
 
-            // 耗时
+            // Consume mucho tiempo
             Text(
                 text = formatNodeDuration(node),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // B8-04: 子节点折叠/展开
+            // B8-04: Colapso del nodo secundario/Expandir
             if (node.subNodes.isNotEmpty()) {
                 MuseTactileButton(
                     icon = if (expanded) MuseIcons.chevronDown else MuseIcons.chevronRight,
@@ -225,7 +225,7 @@ private fun ChainNodeView(
             }
         }
 
-        // 失败节点:错误图标 + 错误预览(单行省略)
+        // nodo fallido:Icono de error + vista previa del error(línea única omitida)
         if (node.status == DelegationNodeStatus.FAILED && !node.errorMessage.isNullOrBlank()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -250,7 +250,7 @@ private fun ChainNodeView(
             }
         }
 
-        // 暂停节点:等待确认文字
+        // Nodo de pausa:Espere el texto de confirmación
         if (node.status == DelegationNodeStatus.PAUSED) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -274,7 +274,7 @@ private fun ChainNodeView(
             }
         }
 
-        // 子节点:Box 缩进 + Canvas 画竖线 + 递归渲染
+        // nodo hijo:Box Sangría + Lienzo dibuja líneas verticales + renderizado recursivo
         if (node.subNodes.isNotEmpty() && expanded) {
             Row(
                 modifier = Modifier
@@ -317,13 +317,13 @@ private fun ChainNodeView(
         }
     }
 
-    // 详情弹窗(点击节点触发)
+    // Ventana emergente de detalles(Haga clic en el nodo para activar)
     if (showDetail) {
         NodeDetailDialog(node = node, onDismiss = { showDetail = false })
     }
 }
 
-/** 状态圆点:RUNNING 用脉冲动画,其余为实心圆。 */
+/** punto de estado:RUNNING Usar animación de pulso,El resto son círculos rellenos. */
 @Composable
 private fun StatusDot(status: DelegationNodeStatus) {
     val color = when (status) {
@@ -336,7 +336,7 @@ private fun StatusDot(status: DelegationNodeStatus) {
     }
 
     if (status == DelegationNodeStatus.RUNNING) {
-        // 脉冲动画:alpha 0.3f → 1f 来回
+        // animación de pulso:alpha 0.3f → 1f ida y vuelta
         val alpha = if (MuseMotion.isReducedMotion()) {
             0.65f
         } else {
@@ -368,7 +368,7 @@ private fun StatusDot(status: DelegationNodeStatus) {
     }
 }
 
-/** 目标徽章:展示 targetType + targetName,类似文件树里的文件夹标签。 */
+/** insignia de objetivo:mostrar targetType + targetName,Similar a las etiquetas de carpetas en el árbol de archivos. */
 @Composable
 private fun TargetBadge(targetType: String, targetName: String) {
     val bg = if (targetType == "team") {
@@ -399,7 +399,7 @@ private fun TargetBadge(targetType: String, targetName: String) {
     }
 }
 
-/** 节点详情弹窗:展示完整任务 / 结果 / 错误 / 耗时。 */
+/** Ventana emergente de detalles del nodo:Muestra tareas completas/resultados/errores/tiempo necesario. */
 @Composable
 private fun NodeDetailDialog(node: DelegationChainTracker.ChainNode, onDismiss: () -> Unit) {
     MuseDialog(
@@ -408,7 +408,7 @@ private fun NodeDetailDialog(node: DelegationChainTracker.ChainNode, onDismiss: 
         onConfirm = onDismiss,
         dismissText = null,
         content = {
-            // v1.0.7 修复崩溃:MuseDialog 的 content 区已自带 verticalScroll,嵌套会崩溃
+            // v1.0.7 arreglar falla:MuseDialog El área de contenido viene con verticalScroll,El anidamiento fallará
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -443,7 +443,7 @@ private fun NodeDetailDialog(node: DelegationChainTracker.ChainNode, onDismiss: 
     )
 }
 
-/** 详情弹窗内的"标签:值"行。 */
+/** Detalles en la ventana emergente"etiqueta:valor"DE ACUERDO. */
 @Composable
 private fun DetailRow(label: String, value: String, isError: Boolean = false) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -465,17 +465,17 @@ private fun DetailRow(label: String, value: String, isError: Boolean = false) {
     }
 }
 
-/** 统计节点总数(含子节点)。 */
+/** Número total de nodos estadísticos(Contiene nodos secundarios). */
 private fun countNodes(roots: List<DelegationChainTracker.ChainNode>): Int {
     return roots.sumOf { 1 + countNodes(it.subNodes) }
 }
 
 /**
- * 格式化节点耗时。
- * - RUNNING → "执行中..."
- * - 已完成 → "1.2s" / "2m 30s" / "150ms"
+ * Formatear nodos lleva tiempo.
+ * - RUNNING → "ejecutando..."
+ * - Completado → "1.2s" / "2m 30s" / "150ms"
  *
- * 作为 @Composable 才能调用 [stringResource] 拉取"执行中..."文案。
+ * Se puede llamar como @Composable [stringResource] tirar"ejecutando..."Redacción publicitaria.
  */
 @Composable
 private fun formatNodeDuration(node: DelegationChainTracker.ChainNode): String {

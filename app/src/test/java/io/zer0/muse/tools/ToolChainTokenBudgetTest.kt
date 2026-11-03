@@ -5,10 +5,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 工具链"本地重建"保留条数的判定测试。
+ * cadena de herramientas"reconstrucción local"Prueba de juicio para el número de elementos retenidos.
  *
- * 背景：工具链不能因为应用自定条数上限静默丢掉用户 API 的历史结果。
- * 已知模型窗口时按 token 预算收紧；窗口未知时保留完整工具链。
+ * Antecedentes: la cadena de herramientas no puede descartar silenciosamente los resultados históricos de las API de usuario debido a la aplicación de un límite superior personalizado.
+ * Cuando se conoce la ventana del modelo, el presupuesto se ajusta simbólicamente; cuando se desconoce la ventana, se conserva la cadena de herramientas completa.
  */
 class ToolChainTokenBudgetTest {
 
@@ -34,7 +34,7 @@ class ToolChainTokenBudgetTest {
 
     @Test
     fun `chain under half the budget keeps the complete tail`() {
-        // 预算 100K，工具链只用了 40K（< 50K）→ 不因 token 收紧
+        // El presupuesto es de 100K y la cadena de herramientas solo usa 40K (< 50K)→ Sin ajuste debido al token
         assertEquals(
             100,
             toolChainTailToKeep(chainSize = 100, chainTokens = 40_000, budgetTokens = 100_000),
@@ -43,32 +43,32 @@ class ToolChainTokenBudgetTest {
 
     @Test
     fun `oversized chain is tightened by the token budget`() {
-        // 预算 100K → 尾部预算 50K → 每条按 50 token 计，最多留 1000 条；
-        // 链条本身只有 400 条，因此仍全留（条数上限 200? 见断言：取两者较小）
+        // presupuesto 100K → presupuesto de cola 50K → Cada entrada se calcula en 50 tokens y se puede reservar un máximo de 1000 entradas;
+        // La cadena en sí sólo tiene 400, por lo que quedan todos (el número máximo de 200? Ver Aseveración: lo que sea menor)
         val kept = toolChainTailToKeep(chainSize = 400, chainTokens = 90_000, budgetTokens = 100_000)
-        assertTrue("应不超过现有链长", kept <= 400)
-        assertTrue("应至少保留一条", kept >= 1)
+        assertTrue("No debe exceder la longitud de la cadena existente.", kept <= 400)
+        assertTrue("Se debe conservar al menos uno.", kept >= 1)
     }
 
     @Test
     fun `very large single result still keeps one message`() {
-        // 单条结果就吃掉整窗：宁可只留 1 条，也不能返回 0 ——
-        // 全丢会让模型完全看不到"刚才那次调用发生了什么"
+        // Un solo resultado consumirá toda la ventana: prefiero conservar solo 1 resultado que devolverlo. 0 ——
+        // Perderlos todos hará que el modelo sea completamente invisible."¿Qué pasó en esa llamada de hace un momento?"
         val kept = toolChainTailToKeep(chainSize = 3, chainTokens = 500_000, budgetTokens = 100_000)
         assertEquals(1, kept)
     }
 
     @Test
     fun `tighter budget keeps fewer messages than the complete chain`() {
-        // 链条 1000 条、共 60K token → 平均 60 token/条。
-        // 预算充足时完整保留；
-        // 预算很紧时（尾部预算 600 token）只能留 10 条 —— 必须低于完整链条，
-        // 否则说明 token 判定没有生效。
+        // 1000 cadenas, en total 60K token → Promedio de 60 fichas/artículo.
+        // Mantenerlo intacto cuando el presupuesto sea suficiente;
+        // Cuando el presupuesto es muy ajustado (el presupuesto final es de 600 fichas), sólo pueden quedar 10 artículos. —— Debe estar debajo de la cadena completa,
+        // De lo contrario, significa que el juicio simbólico no es efectivo.
         val roomy = toolChainTailToKeep(chainSize = 1_000, chainTokens = 60_000, budgetTokens = 200_000)
         val tight = toolChainTailToKeep(chainSize = 1_000, chainTokens = 60_000, budgetTokens = 1_200)
-        assertEquals("预算充足时保留完整链条", 1_000, roomy)
-        assertTrue("预算收紧后应少于完整链条，实际 $tight", tight < roomy)
-        assertEquals("尾部预算 600 / 每条 60 → 10 条", 10, tight)
+        assertEquals("Mantener la cadena completa cuando el presupuesto sea suficiente", 1_000, roomy)
+        assertTrue("Una vez ajustado el presupuesto, debería ser menor que la cadena completa. De hecho, $tight", tight < roomy)
+        assertEquals("Presupuesto de cola 600/cada uno 60 → 10 Artículo", 10, tight)
     }
 
     @Test
@@ -76,7 +76,7 @@ class ToolChainTokenBudgetTest {
         listOf(1, 5, 30, 31, 100).forEach { size ->
             listOf(0, 1_000, 100_000).forEach { budget ->
                 val kept = toolChainTailToKeep(size, chainTokens = 10_000, budgetTokens = budget)
-                assertTrue("保留条数不得超过链长（size=$size budget=$budget）", kept <= size)
+                assertTrue("El número de artículos retenidos no excederá la longitud de la cadena (size=$size budget=$budget)", kept <= size)
             }
         }
     }

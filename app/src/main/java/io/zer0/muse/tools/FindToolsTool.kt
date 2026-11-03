@@ -1,19 +1,19 @@
 package io.zer0.muse.tools
 
 /**
- * v2.x 工具瘦身阶段3:find_tools 元工具 — 工具库检索 + 能力总览。
+ * v2.x Etapa de adelgazamiento de herramientas.3:find_tools Metaherramientas — Búsqueda de biblioteca de herramientas + descripción general de capacidades.
  *
- * 默认分层收窄后,模型每轮只看到 CORE/STANDARD + 命中族 + 会话粘性工具;
- * 需要其他能力时,用本工具按关键词检索**全部已注册工具**(名称+描述),
- * 命中结果写入 [SessionToolLoadRegistry],后续轮次即可直接调用。
+ * Después de reducir las capas predeterminadas,El modelo solo ve NÚCLEO/ESTÁNDAR + familia de impactos + herramienta de permanencia en la sesión en cada ronda;
+ * Cuando se necesitan otras habilidades,Utilice esta herramienta para buscar por palabra clave**Todas las herramientas registradas**(Nombre+Descripción),
+ * Hit escritura de resultados [SessionToolLoadRegistry],Las rondas siguientes se pueden convocar directamente.
  *
- * v2.2.1: 新增"能力总览"模式 —— 空关键词返回全部工具的分组清单(不装载),
- * 让模型能事无巨细地回答"你/这个平台能做什么"。
+ * v2.2.1: Nuevo"Descripción general de capacidades"modo —— La palabra clave vacía devuelve una lista agrupada de todas las herramientas(No cargando),
+ * Deja que el modelo responda todo en detalle."tu/¿Qué puede hacer esta plataforma?".
  *
- * 只读检索:不执行任何工具、不改权限;装载只是让工具"可见",审批照旧。
+ * Búsqueda de solo lectura:No ejecute ninguna herramienta ni cambie permisos;La carga solo permite que las herramientas"visible",La aprobación sigue siendo la misma.
  */
 object FindToolsTool {
-    /** 工具名常量(供白名单特例等引用)。 */
+    /** Constante de nombre de herramienta(Para referencia en casos especiales de la lista blanca, etc.). */
     const val TOOL_NAME = "find_tools"
 
     private const val MAX_RESULTS = 8
@@ -40,15 +40,15 @@ object FindToolsTool {
     )
 
     /**
-     * 纯函数检索:按名称/描述关键词匹配,名称命中权重更高;名称命中优先排序。
+     * Búsqueda de funciones puras:por nombre/Descripción de concordancia de palabras clave,Las visitas a nombres tienen mayor peso;Se priorizan las visitas a los nombres.
      *
-     * 关键词按空白/中英文逗号/分号拆分,长度 ≥2 的词参与匹配;整串均为单字符时用整串兜底。
+     * Pulsar palabra clave en blanco/comas chinas e inglesas/división de punto y coma,longitud ≥2 las palabras participan en el emparejamiento;Cuando toda la cadena sea de un solo carácter, utilice la cadena completa.
      */
     fun search(query: String, tools: List<ToolRegistry.ToolDef>, excludeName: String = TOOL_NAME): List<ToolRegistry.ToolDef> {
         val raw = query.trim().lowercase()
         if (raw.isEmpty()) return emptyList()
         val terms =
-            raw.split(Regex("[\\s,，、;；]+"))
+            raw.split(Regex("[\\s,,,;;]+"))
                 .filter { it.length >= 2 }
                 .ifEmpty { listOf(raw) }
         return tools
@@ -72,12 +72,12 @@ object FindToolsTool {
     }
 
     /**
-     * v2.2.1: 纯函数 —— 渲染全部工具的分组清单(能力总览)。
+     * v2.2.1: función pura —— Representar una lista agrupada de todas las herramientas.(Descripción general de capacidades).
      *
-     * 清单只是"目录",不装载任何工具;模型看到目标后用关键词再查一次才装载,
-     * 避免一次总览把所有工具面重新撑回全量。
+     * La lista es solo"Directorio",No hay herramientas cargadas;Después de que el modelo vea el objetivo, verifíquelo nuevamente usando palabras clave antes de cargarlo.,
+     * Evite restaurar todas las superficies de la herramienta a su capacidad total de un solo vistazo.
      *
-     * v2.x: 需额外授权的工具名带 * 标记;传入 [status] 时附运行通道状态行。
+     * v2.x: Bandas de nombres de herramientas que requieren autorización adicional * marca;entrante [status] Adjunto está la línea de estado del canal en ejecución.
      */
     fun fullList(tools: List<ToolRegistry.ToolDef>, excludeName: String = TOOL_NAME, status: ToolPermissionStatus? = null): String {
         val visible = tools.filter { it.name != excludeName }
@@ -96,11 +96,11 @@ object FindToolsTool {
         }
         val sections =
             listOf(
-                ToolCategory.CORE to "core 核心",
-                ToolCategory.STANDARD to "standard 常用",
-                ToolCategory.OPTIONAL to "optional 可选",
-                ToolCategory.GLOBAL to "global 高级(需授权/审批)",
-                null to "extension 扩展(插件/MCP/技能)",
+                ToolCategory.CORE to "core núcleo",
+                ToolCategory.STANDARD to "standard de uso común",
+                ToolCategory.OPTIONAL to "optional Opcional",
+                ToolCategory.GLOBAL to "global Avanzado(Se requiere autorización/Aprobación)",
+                null to "extension Expandir(complemento/MCP/Habilidades)",
             )
         sections.forEach { (category, label) ->
             val items = grouped[category].orEmpty().sortedBy { it.name }
@@ -121,18 +121,18 @@ object FindToolsTool {
         }
         sb.appendLine()
         sb.appendLine(
-            "以上为完整目录。要使用其中某个工具:用它的名称或关键词再次调用 find_tools," +
-                "命中的工具从下一轮起可直接调用。应用层面的功能总览可用 knowledge_search(include_internal=true) 查询。",
+            "Lo anterior es el índice completo. Para utilizar una de estas herramientas:Llámalo nuevamente con su nombre o palabra clave find_tools," +
+                "La herramienta de golpe se puede invocar directamente desde la siguiente ronda. Está disponible una descripción general de las funciones a nivel de aplicación knowledge_search(include_internal=true) Consulta.",
         )
         return sb.toString().trimEnd()
     }
 
-    /** 需额外授权的工具名加 * 标记(与 fullList 图例对应)。 */
+    /** Se agregan nombres de herramientas que requieren autorización adicional. * marca(Corresponde a la leyenda de la Lista completa). */
     private fun markName(name: String): String = if (ToolCategories.permissionOf(name).isEmpty()) name else "$name*"
 
     private fun readyLabel(ready: Boolean): String = if (ready) "READY" else "NOT READY"
 
-    /** 检索结果里的权限注记(含当前就绪状态,便于提前判断)。 */
+    /** Notas de permiso en los resultados de búsqueda(Contiene el estado de preparación actual,Fácil de juzgar de antemano). */
     private fun permissionHint(name: String, status: ToolPermissionStatus?): String {
         val required = ToolCategories.permissionOf(name)
         if (required.isEmpty()) return ""
@@ -145,21 +145,21 @@ object FindToolsTool {
     }
 
     /**
-     * 执行:空 query = 能力总览(只读,不装载);有关键词 = 检索并装载(命中后下一轮起可用)。
+     * ejecutar:vacío query = Descripción general de capacidades(solo lectura,No cargando);hay palabras clave = recuperar y cargar(Disponible a partir de la siguiente ronda después del golpe.).
      *
-     * v2.6.1: 检索目录收窄到“当前助手工具配置内”的工具。此前搜全量注册表，
-     * 命中一个白名单外的工具后会承诺"available from your next call"，但它在
-     * resolveToolsAndModel 的白名单过滤阶段就被裁掉，下一轮只会得到
-     * `tool 'X' is not exposed in this turn` —— 空头支票。现在只装载真正能进 schema 的工具，
-     * 命中不了的工具如实告知原因。
+     * v2.6.1: El directorio de búsqueda se limita a“Dentro de la configuración actual de la herramienta asistente”herramientas. Anteriormente, busqué en todos los formularios de registro.
+     * Se comprometerá después de acceder a una herramienta fuera de la lista blanca."available from your next call", pero está en
+     * resolveToolsAndModel se cortará en la etapa de filtrado de la lista blanca y solo obtendrá
+     * `tool 'X' is not exposed in this turn` —— Cheque en blanco. Ahora sólo se cargan las herramientas que realmente pueden ingresar al esquema.
+     * Si la herramienta no logra acertar, diga la verdad con sinceridad por qué.
      */
     suspend fun execute(args: Map<String, String>, toolRegistry: ToolRegistry, executionContext: ToolExecutionContext): String {
         val query = args["query"]?.trim().orEmpty()
-        // 可检索目录 = 本地注册工具 + 当前会话技能(按 sessionId 取,防跨会话污染)。
+        // Catálogo con capacidad de búsqueda = Herramientas de registro locales + habilidades de sesión actual(Obtener por ID de sesión,Prevenir la contaminación entre sesiones).
         val sessionSkills = toolRegistry.searchableSkills(executionContext.sessionId)
         val allRegistered = toolRegistry.listTools() + sessionSkills
         val status = toolRegistry.permissionStatusProvider?.invoke()
-        // v2.6.1: 收窄到助手实际可见集(未登记 = 不作限制,兼容旧调用点)。
+        // v2.6.1: Limitar al conjunto realmente visible para el asistente(No registrado = Sin restricciones,Compatible con sitios de llamadas antiguos).
         val visibleNames = toolRegistry.visibleTools(executionContext.sessionId)
         val searchable = ToolSchemaRules.visibleSubset(allRegistered, visibleNames)
         if (query.isEmpty()) {
@@ -167,8 +167,8 @@ object FindToolsTool {
         }
         val matches = search(query, searchable)
         if (matches.isEmpty()) {
-            // 区分“根本不存在”与“存在但不在本助手工具配置内”，后者给出可操作的指引，
-            // 不再用"No tools matched"掩盖真实原因。
+            // distinguir“No existe en absoluto”con“Existe pero no está dentro de la configuración de esta herramienta asistente.”, este último proporciona orientación práctica,
+            // ya no se usa"No tools matched"Oculta la verdadera razón.
             val blockedByAssistant =
                 if (visibleNames == null) {
                     emptyList()

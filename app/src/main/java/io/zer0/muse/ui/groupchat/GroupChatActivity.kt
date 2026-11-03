@@ -6,36 +6,36 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * 群聊成员活动状态(五态模型)。
+ * Estado de actividad de los miembros del chat grupal(modelo de cinco estados).
  *
- * 用于 UI 实时展示每个 Agent 在群聊轮转中的当前阶段,让用户感知"谁在看消息/谁在回复/谁跳过了"。
- * 状态由 [GroupChatActivityHub] 统一管理,GroupChatScheduler 在轮转各阶段 upsert,
- * UI 通过 [GroupChatActivityHub.activities] StateFlow 响应式订阅。
+ * Se utiliza para que la interfaz de usuario muestre la etapa actual de cada agente en la rotación del chat grupal en tiempo real.,Permitir que los usuarios perciban"¿Quién está leyendo las noticias?/quien esta respondiendo/quien saltó".
+ * El estado consiste en [GroupChatActivityHub] Gestión unificada,GroupChatScheduler En cada etapa de rotación upsert,
+ * UI Pase [GroupChatActivityHub.activities] StateFlow Suscripción responsiva.
  */
 enum class AgentActivityStatus {
-    /** 空闲(默认/最终回退状态,UI 不展示)。 */
+    /** gratis(Predeterminado/Estado de reserva final,UI no mostrar). */
     IDLE,
 
-    /** 正在看消息(invokeAgent 开始,尚未流式输出)。 */
+    /** leyendo las noticias(invokeAgent empezar,Aún no transmitido). */
     VIEWING,
 
-    /** 正在回复(LLM 流式输出中)。 */
+    /** Respondiendo(LLM Salida de transmisión). */
     REPLYING,
 
-    /** 选择不回复(返回 [PASS_MARKER] 标记,详见 GroupChatScheduler)。 */
+    /** Elige no responder(Regresar [PASS_MARKER] marca,Ver detalles GroupChatScheduler). */
     NO_REPLY,
 
-    /** 出错(LLM 调用失败/超时)。 */
+    /** error(LLM llamada fallida/tiempo de espera). */
     ERROR,
 }
 
 /**
- * 单个 Agent 的活动状态记录。
+ * Registro del estado de actividad de un único Agente.
  *
- * @property assistantId 助手 id
- * @property assistantName 助手显示名(UI chip 展示)
- * @property status 当前活动状态
- * @property updatedAt 状态更新时间戳(UI 可用于过期判断)
+ * @property assistantId asistente id
+ * @property assistantName Nombre para mostrar del asistente(UI chip mostrar)
+ * @property status Estado de actividad actual
+ * @property updatedAt Marca de tiempo de actualización de estado(UI Se puede utilizar para determinar el vencimiento.)
  */
 data class AgentActivity(
     val assistantId: String,
@@ -45,17 +45,17 @@ data class AgentActivity(
 )
 
 /**
- * 群聊活动状态管理器。
+ * Administrador de estado de actividad de chat grupal.
  *
- * 内存广播层 — GroupChatScheduler 在轮转各阶段 upsert 状态,
- * UI 通过 [activities] StateFlow 响应式订阅展示。
+ * capa de transmisión de memoria — GroupChatScheduler Estado de actualización en cada etapa de rotación.,
+ * UI Pase [activities] StateFlow Pantalla de suscripción responsiva.
  *
- * 实现取舍:
- *  - 只管理群聊维度(groupChatId → List<AgentActivity>),不涉单聊会话
- *  - 不做持久化背书(进程重启即清空,历史由消息表保留)
- *  - 状态机保持简单:仅五态枚举,不含工作流字段(kind/summary/parentTaskId 等)
+ * Realizar compensaciones:
+ *  - Administrar solo dimensiones de chat grupal(groupChatId → List<AgentActivity>),No participar en sesiones de chat individuales.
+ *  - Sin respaldo de persistencia(Se borra cuando se reinicia el proceso.,El historial se conserva en la tabla de mensajes.)
+ *  - Las máquinas de estado se mantienen simples:Solo enumeración de cinco estados,No contiene campos de flujo de trabajo(kind/summary/parentTaskId espera)
  *
- * 线程安全:[MutableStateFlow] 的 value 写入是原子的,updateStatus 可在任意线程调用。
+ * Seguridad del hilo:[MutableStateFlow] La escritura de valores es atómica.,updateStatus Se puede llamar desde cualquier hilo.
  */
 class GroupChatActivityHub {
 
@@ -63,18 +63,18 @@ class GroupChatActivityHub {
     val activities: StateFlow<Map<String, List<AgentActivity>>> = _activities.asStateFlow()
 
     /**
-     * 更新指定群聊中指定 Agent 的活动状态。
+     * Actualice el estado de actividad del Agente especificado en el chat grupal especificado.
      *
-     * 同一 agent 的旧状态会被覆盖;若 agent 不在列表中则追加。
+     * Se sobrescribirán los estados antiguos del mismo agente.;Si el agente no está en la lista, se adjunta.
      *
-     * @param groupChatId 群聊 id
-     * @param assistantId 助手 id
-     * @param assistantName 助手显示名
-     * @param status 新状态
+     * @param groupChatId chat grupal id
+     * @param assistantId asistente id
+     * @param assistantName Nombre para mostrar del asistente
+     * @param status nuevo estado
      */
     fun updateStatus(groupChatId: String, assistantId: String, assistantName: String, status: AgentActivityStatus) {
-        // 审计修复 (3.5): 用 MutableStateFlow.update 原子完成读-改-写,
-        // 避免并发调用时各自基于旧快照 toMutableMap() 操作后互相覆盖。
+        // Reparación de auditoría (3.5): Utilice MutableStateFlow.update para completar la lectura de forma atómica-cambiar-escribir,
+        // Evite llamadas simultáneas basadas en instantáneas antiguas toMutableMap() Cubrirse unos a otros después de la operación.
         _activities.update { current ->
             val list = current[groupChatId]?.toMutableList() ?: mutableListOf()
             val idx = list.indexOfFirst { it.assistantId == assistantId }
@@ -85,38 +85,38 @@ class GroupChatActivityHub {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // v1.x: 群聊流式输出内容广播(生成中实时推给 UI,落库后清空)
+    // v1.x: Transmisión de contenido de salida de transmisión de chat grupal(Empujado en tiempo real durante la generación. UI,Vaciar después del almacenamiento)
     // ══════════════════════════════════════════════════════════════════
 
     private val _streamingContent = MutableStateFlow<Map<String, String>>(emptyMap())
 
-    /** chatId → 正在流式生成的助手回复内容(空 map 表示无流式输出)。 */
+    /** chatId → Contenido de respuesta del asistente generado por streaming(Un mapa vacío significa que no hay salida de streaming). */
     val streamingContent: StateFlow<Map<String, String>> = _streamingContent.asStateFlow()
 
-    /** 更新某个群聊的流式输出内容。 */
+    /** Actualiza la salida de transmisión de un chat grupal. */
     fun updateStreamingContent(chatId: String, content: String) {
         _streamingContent.update { it + (chatId to content) }
     }
 
-    /** 群聊流式输出结束(落库后调用,清除 UI 临时内容)。 */
+    /** Finaliza la salida de transmisión del chat grupal(Llamado después de abandonar la biblioteca.,Borrar contenido temporal de la interfaz de usuario). */
     fun clearStreamingContent(chatId: String) {
         _streamingContent.update { it - chatId }
     }
 
     /**
-     * 取指定群聊的活动列表。
+     * Obtenga la lista de actividades del chat grupal especificado.
      *
-     * 推荐 UI 直接订阅 [activities] 而非调用本方法(响应式优于查询式)。
+     * Recomendar UI para suscribirse directamente [activities] En lugar de llamar a este método(La capacidad de respuesta es mejor que la consulta).
      */
     fun getActivities(groupChatId: String): List<AgentActivity> {
         return _activities.value[groupChatId] ?: emptyList()
     }
 
     /**
-     * 清空指定群聊的全部活动状态(群聊删除/退出时调用)。
+     * Borrar todo el estado de actividad del chat grupal especificado(Eliminar chat grupal/Llamado al salir).
      */
     fun clear(groupChatId: String) {
-        // 审计修复 (3.5): update 原子移除,避免与 updateStatus 并发时丢失更新。
+        // Reparación de auditoría (3.5): update eliminación atómica,Evite perder actualizaciones cuando coincida con updateStatus.
         _activities.update { it - groupChatId }
     }
 }

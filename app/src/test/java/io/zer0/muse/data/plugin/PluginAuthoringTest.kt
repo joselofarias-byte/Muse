@@ -20,14 +20,14 @@ import java.io.File
 import java.util.Base64
 
 /**
- * 助手自写插件（未签名草稿 → 本机作者签名 → 启用）的安全边界测试。
+ * Complemento de autoescritura del asistente (borrador sin firmar) → Firma del autor nativo → prueba de límites de seguridad habilitada).
  *
- * 锁定四类回归：
- *  1. 草稿永远不可执行：禁用、未确认，loadVerifiedPlugin/loadVerifiedFunction 均为 null；
- *  2. 非法输入在写盘前被拒，不留下注册表或插件目录半成品；
- *  3. 签名启用后必须 VALID_TRUSTED/启用/可加载，且发行者指纹等于本机作者公钥指纹；
- *  4. 草稿被改动后拒绝签名；本机作者密钥只生成一次、指纹稳定；
- *     未签名草稿无论调用顺序如何都不能被执行。
+ * Bloquee cuatro tipos de regresión:
+ *  1. Los borradores nunca son ejecutables: deshabilitados, no confirmados,loadVerifiedPlugin/loadVerifiedFunction Todos son nulos;
+ *  2. La entrada ilegal se rechaza antes de escribir en el disco, sin dejar ningún registro semiacabado ni directorio de complementos;
+ *  3. La firma debe ser VALID_TRUSTED/habilitada después de habilitarla/Cargable, y la huella digital del emisor es igual a la huella digital de la clave pública del autor local;
+ *  4. Negarse a firmar después de que el proyecto haya sido modificado; la clave del autor local solo se genera una vez y la huella digital es estable;
+ *     Los borradores sin firmar no se pueden ejecutar independientemente del orden en que se soliciten.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -50,50 +50,50 @@ class PluginAuthoringTest {
         assertFalse(draft.installationConfirmed)
         assertEquals(PluginSecurityGate.SignatureStatus.UNSIGNED, draft.signatureStatus)
         assertEquals("", draft.publisherId)
-        // 草稿落盘了，但执行视图与入口代码一律不可用。
+        // El borrador está en el mercado, pero la vista de ejecución y el código de entrada no están disponibles.
         assertTrue(File(context.filesDir, "plugins/${request.id}/main.js").isFile)
         assertNull(env.manager.loadVerifiedPlugin(request.id))
         assertNull(env.manager.loadVerifiedFunction(request.id, "hello"))
         assertNull(env.manager.loadEntryCode(request.id))
-        // 未签名的草稿不写信任根，manifest 里也不能出现签名 envelope。
+        // Los borradores sin firmar no escriben la raíz de la confianza,manifest En él tampoco puede aparecer el sobre de firma.
         assertTrue(env.trustStore.list().isEmpty())
         val manifestText = File(context.filesDir, "plugins/${request.id}/manifest.json").readText()
-        assertFalse("草稿 manifest 不能带签名", manifestText.contains("\"signature\""))
+        assertFalse("No se puede firmar el borrador del manifiesto", manifestText.contains("\"signature\""))
     }
 
     @Test
     fun invalidRequestsAreRejectedWithoutPartialState() = runBlocking {
         val env = env()
         val cases = listOf(
-            "id 非法" to request(id = "Bad_Id"),
-            "名称空" to request(name = "  "),
-            "版本非法" to request(version = "1.0"),
-            "代码空" to request(code = "   "),
-            "代码超限" to request(code = "var x = 1;" + "a".repeat(PluginAuthoringRules.MAX_CODE_BYTES)),
-            "函数不存在" to request(
+            "id ilegal" to request(id = "Bad_Id"),
+            "El nombre está vacío." to request(name = "  "),
+            "Versión ilegal" to request(version = "1.0"),
+            "código vacío" to request(code = "   "),
+            "El código excede el límite" to request(code = "var x = 1;" + "a".repeat(PluginAuthoringRules.MAX_CODE_BYTES)),
+            "la función no existe" to request(
                 code = "var x = 1;",
                 tools = listOf(tool(functionName = "missingFunction")),
             ),
-            "工具名为空" to request(tools = emptyList()),
-            "工具名非法" to request(tools = listOf(tool(name = "bad tool!"))),
-            "函数名非法" to request(tools = listOf(tool(functionName = "1bad"))),
-            "工具名重复" to request(
+            "El nombre de la herramienta está vacío" to request(tools = emptyList()),
+            "El nombre de la herramienta es ilegal." to request(tools = listOf(tool(name = "bad tool!"))),
+            "Nombre de función ilegal" to request(tools = listOf(tool(functionName = "1bad"))),
+            "Nombre de herramienta duplicado" to request(
                 tools = listOf(tool(name = "hello", functionName = "hello"), tool(name = "hello", functionName = "hello")),
             ),
-            // v2.x（沙盒放开）：能力不再按白名单拒绝，改为校验名格式非法。
-            "能力名格式非法" to request(capabilities = listOf("Bad Cap!")),
+            // v2.x(Versión Sandbox): la habilidad ya no se rechazará según la lista blanca y se cambiará para verificar que el formato del nombre sea ilegal.
+            "El formato del nombre de la habilidad es ilegal." to request(capabilities = listOf("Bad Cap!")),
         )
 
         cases.forEach { (label, request) ->
             val result = env.manager.createAuthoredDraft(request)
-            assertTrue("$label 必须失败", result.isFailure)
+            assertTrue("$label debe fallar", result.isFailure)
             assertTrue(
-                "$label 必须给出可读原因",
+                "$label Se debe dar una razón legible por humanos",
                 result.exceptionOrNull()?.message?.isNotBlank() == true,
             )
-            assertNull("$label 不应留下注册表条目", env.manager.findPlugin(request.id))
+            assertNull("$label No se deben dejar entradas de registro.", env.manager.findPlugin(request.id))
             assertFalse(
-                "$label 不应留下插件目录",
+                "$label No debe quedar ningún directorio de complementos",
                 File(context.filesDir, "plugins/${request.id}").exists(),
             )
         }
@@ -121,7 +121,7 @@ class PluginAuthoringTest {
         assertNotNull(env.manager.loadVerifiedFunction(created.id, "hello"))
         assertNull(env.manager.loadVerifiedFunction(created.id, "removedFunction"))
 
-        // 用户确认即代表信任本机作者公钥：信任根里必须是同一把公钥。
+        // La confirmación del usuario significa confiar en la clave pública del autor local: la raíz de confianza debe ser la misma clave pública.
         val trusted = requireNotNull(env.trustStore.find(authorId))
         assertEquals(env.keyStore.publicKeyBase64().getOrThrow(), trusted.publicKey)
     }
@@ -137,13 +137,13 @@ class PluginAuthoringTest {
 
         assertTrue(result.isFailure)
         val reason = result.exceptionOrNull()?.message.orEmpty()
-        assertTrue("原因应指出内容被改动: $reason", reason.contains("修改") || reason.contains("摘要"))
+        assertTrue("El motivo debe indicar que el contenido ha sido modificado.: $reason", reason.contains("Modificar") || reason.contains("Resumen"))
         val plugin = requireNotNull(env.manager.findPlugin("assistant-tool"))
         assertEquals(PluginSecurityGate.SignatureStatus.UNSIGNED, plugin.signatureStatus)
         assertFalse(plugin.installationConfirmed)
         assertFalse(plugin.enabled)
         assertNull(env.manager.loadVerifiedPlugin("assistant-tool"))
-        // 签名在复核之后发生；失败路径不得写信任根。
+        // La firma se produce después de la revisión; la ruta fallida no debe escribir en la raíz de confianza.
         assertTrue(env.trustStore.list().isEmpty())
     }
 
@@ -184,7 +184,7 @@ class PluginAuthoringTest {
         val env = env()
         env.manager.createAuthoredDraft(request()).getOrThrow()
 
-        // 直接加载、启用、确认、再次加载：任何顺序都不能产出可执行视图。
+        // Carga directa, habilitación, confirmación, carga nuevamente: no se puede producir ninguna vista ejecutable en ningún orden.
         assertNull(env.manager.loadEntryCode("assistant-tool"))
         env.manager.setEnabled("assistant-tool", true)
         assertFalse(requireNotNull(env.manager.findPlugin("assistant-tool")).enabled)
@@ -201,7 +201,7 @@ class PluginAuthoringTest {
         assertTrue(env.trustStore.list().isEmpty())
     }
 
-    // ── 测试脚手架 ──────────────────────────────────────────────────────────
+    // ── Andamio de prueba ──────────────────────────────────────────────────────────
 
     private data class Env(
         val manager: PluginManager,
@@ -231,8 +231,8 @@ class PluginAuthoringTest {
 
     private fun request(
         id: String = "assistant-tool",
-        name: String = "助手工具",
-        description: String = "由助手起草的示例插件",
+        name: String = "herramienta asistente",
+        description: String = "Complemento de ejemplo redactado por un asistente",
         version: String = "1.0.0",
         code: String = DEFAULT_CODE,
         tools: List<ToolDeclaration> = listOf(tool()),
@@ -249,7 +249,7 @@ class PluginAuthoringTest {
 
     private fun tool(name: String = "hello", functionName: String = "hello"): ToolDeclaration = ToolDeclaration(
         name = name,
-        description = "示例工具",
+        description = "Herramientas de muestra",
         parametersJson = "{}",
         requiredJson = "[]",
         functionName = functionName,

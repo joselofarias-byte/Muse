@@ -19,5 +19,5 @@ internal fun persistKnowledgeUriReadPermission(context: Context, uri: Uri): Bool
     true
 }.onFailure {
     // Some providers do not expose persistable grants; the current import can still proceed.
-    Logger.w("KnowledgeUriAccess", "无法持久化文档读取权限: $uri", it)
+    Logger.w("KnowledgeUriAccess", "No se pueden conservar los permisos de lectura de documentos: $uri", it)
 }.getOrDefault(false)

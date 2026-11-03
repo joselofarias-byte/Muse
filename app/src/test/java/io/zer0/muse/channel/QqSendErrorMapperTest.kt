@@ -7,79 +7,79 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * QQ 发送失败的可读化。
+ * QQ Fallo de transmisión legible.
  *
- * 这些错误码决定了用户该怎么处置：
- * 「被动回复超时」下一次就可能成功，「机器人不在群里」不改配置永远失败。
- * 两者糊成同一句话，用户就只能一直猜。
+ * Estos códigos de error determinan lo que debe hacer el usuario:
+ * El "tiempo de espera de respuesta pasiva" puede tener éxito la próxima vez, pero "el robot no está en el grupo" siempre fallará sin cambiar la configuración.
+ * Si los dos se mezclan en la misma oración, el usuario sólo podrá seguir adivinando.
  */
 class QqSendErrorMapperTest {
 
     @Test
-    fun `从 HTTP 前缀的错误体里抠出错误码`() {
-        val raw = """HTTP 400: {"message":"主动消息失败, 无权限","code":40034102}"""
+    fun `Extraiga el código de error del cuerpo del error del prefijo HTTP`() {
+        val raw = """HTTP 400: {"message":"Error en el mensaje no solicitado, Sin permiso","code":40034102}"""
         assertEquals(40034102, QqSendErrorMapper.extractCode(raw))
     }
 
     @Test
-    fun `纯 JSON 错误体也能抠出错误码`() {
-        // 不带 "HTTP xxx:" 前缀时，不能按冒号切——那会把 JSON 本身切碎
-        val raw = """{"code":40034128,"message":"被动回复已超时"}"""
+    fun `Los códigos de error también se pueden extraer de cuerpos de error JSON puros`() {
+        // sin "HTTP xxx:" Al prefijar, no puede presionar dos puntos para cortar——Eso destruiría el propio JSON.
+        val raw = """{"code":40034128,"message":"La respuesta pasiva ha expirado"}"""
         assertEquals(40034128, QqSendErrorMapper.extractCode(raw))
     }
 
     @Test
-    fun `err_code 字段兼容`() {
+    fun `err_code Compatible con el campo`() {
         val raw = """HTTP 400: {"err_code":40034101}"""
         assertEquals(40034101, QqSendErrorMapper.extractCode(raw))
     }
 
     @Test
-    fun `无错误码时返回 null`() {
+    fun `Devolver si no hay código de error null`() {
         assertNull(QqSendErrorMapper.extractCode("HTTP 500: gateway timeout"))
         assertNull(QqSendErrorMapper.extractCode(null))
         assertNull(QqSendErrorMapper.extractCode(""))
     }
 
     @Test
-    fun `被动回复超时说清是太晚了`() {
+    fun `El tiempo de espera de respuesta pasiva significa que es demasiado tarde`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034128}", isGroup = true)
-        assertTrue(text.contains("5 分钟"))
+        assertTrue(text.contains("5 minutos"))
     }
 
     @Test
-    fun `不在群里时提示先拉群`() {
+    fun `Si no está en el grupo, se le pedirá que se una primero al grupo.`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034101}", isGroup = true)
-        assertTrue(text.contains("拉进群"))
+        assertTrue(text.contains("Únete al grupo"))
     }
 
     @Test
-    fun `无主动消息权限时说明群聊不支持主动推送`() {
+    fun `Si no hay permiso de mensaje activo, significa que el chat grupal no admite el envío activo.`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034102}", isGroup = true)
-        assertTrue(text.contains("主动"))
+        assertTrue(text.contains("Toma la iniciativa"))
     }
 
     @Test
-    fun `未知错误码原样透传而不是编造含义`() {
+    fun `Transmita códigos de error desconocidos tal como están en lugar de inventar significados`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":999999,\"message\":\"weird\"}", isGroup = false)
         assertTrue(text.contains("999999") || text.contains("weird"))
     }
 
     @Test
-    fun `配置类错误标记为永久失败`() {
+    fun `Los errores de clase de configuración se marcan como fallas permanentes`() {
         assertTrue(QqSendErrorMapper.isPermanent("HTTP 400: {\"code\":40034101}"))
         assertTrue(QqSendErrorMapper.isPermanent("HTTP 400: {\"code\":40034102}"))
     }
 
     @Test
-    fun `被动窗口过期对这条消息同样是永久失败`() {
-        // 时间只会更晚，重试这条消息没有任何胜算 —— 与「配置类永久」不同的是
-        // 下一条新消息仍然能正常回复，所以只收当前入站，不把渠道判死。
+    fun `La caducidad de la ventana pasiva también falla permanentemente para este mensaje`() {
+        // El tiempo solo pasará más tarde y no habrá posibilidad de ganar si intentas este mensaje nuevamente. —— Lo que se diferencia de la "clase de configuración permanente" es que
+        // El siguiente mensaje nuevo aún se puede responder normalmente, por lo que solo se acepta el mensaje entrante actual y el canal no está condenado a muerte.
         assertTrue(QqSendErrorMapper.isPermanent("HTTP 400: {\"code\":40034128}"))
     }
 
     @Test
-    fun `无错误码与频控类错误仍可重试`() {
+    fun `Aún puedes intentarlo nuevamente si no hay códigos de error o errores de control de frecuencia.`() {
         assertFalse(QqSendErrorMapper.isPermanent(null))
         assertFalse(QqSendErrorMapper.isPermanent("HTTP 500: gateway timeout"))
         assertFalse(QqSendErrorMapper.isPermanent("HTTP 400: {\"code\":40034105}"))

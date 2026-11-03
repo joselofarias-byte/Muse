@@ -8,19 +8,19 @@ import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 异步委派任务结果回灌 — 非阻塞委派的核心基础设施。
+ * Comentarios asincrónicos sobre los resultados de las tareas delegadas — Infraestructura central para la delegación sin bloqueo.
  *
- * 设计:
- *  - 主 agent 调 subagent 立即返回 taskId,不阻塞主对话
- *  - 子任务完成后通过 [resolve] 回灌结果
- *  - ChatViewModel 订阅 [completedTasks] 获取已完成任务,作为 interlude 注入主对话
+ * diseño:
+ *  - El agente principal llama al subagente y regresa inmediatamente. taskId,No bloquea la conversación principal.
+ *  - Aprobado después de completar la subtarea [resolve] Resultados de recarga
+ *  - ChatViewModel Suscríbete [completedTasks] Obtener tareas completadas,Inyectar en la conversación principal como interludio
  *
- * 审查修复 (2.0):
- *  - B-33: 全部读-改-写改为 StateFlow.update CAS 变换内完成,多子任务并发
- *    resolve/fail 不再互相覆盖丢失条目。
- *  - A-15: resolve/fail 对已 ABORTED 任务拒绝回灌(中止后后台完成的结果不得注入
- *    主对话);abort 同时取消 [attachJob] 登记的后台任务,停止/切会话后不再有
- *    幽灵结果在后台继续跑。
+ * Revisión de corrección (2.0):
+ *  - B-33: Leer todo-cambiar-Escriba en StateFlow.update y complete dentro de la transformación CAS,Múltiples subtareas simultáneamente
+ *    resolve/fail Ya no se sobrescriben las entradas faltantes entre sí.
+ *  - A-15: resolve/fail Rechazar comentarios sobre tareas ABORTADAS(Los resultados de la finalización en segundo plano después del aborto no se deben inyectar.
+ *    dialogo principal);abort Cancelar simultáneamente [attachJob] Tareas en segundo plano registradas,detenerse/No más después de cambiar de sesión
+ *    El fantasma acabó corriendo de fondo.
  */
 class DeferredResultStore {
     enum class TaskStatus { PENDING, RESOLVED, FAILED, ABORTED }
@@ -41,20 +41,20 @@ class DeferredResultStore {
     private val _tasks = MutableStateFlow<Map<String, DeferredTask>>(emptyMap())
     val tasks: StateFlow<Map<String, DeferredTask>> = _tasks.asStateFlow()
 
-    /** 已完成待回灌的任务(parentSessionId -> 待回灌结果列表)。 */
+    /** Tareas completadas que se reintroducirán(parentSessionId -> Lista de resultados a rellenar). */
     private val _completedTasks = MutableStateFlow<Map<String, List<DeferredTask>>>(emptyMap())
     val completedTasks: StateFlow<Map<String, List<DeferredTask>>> = _completedTasks.asStateFlow()
 
-    /** A-15: 任务 → 后台 Job 登记(abort 时取消,防幽灵任务继续跑)。 */
+    /** A-15: Tarea → Registro de trabajos de backend(abort Cancelar cuando,La misión anti-fantasmas continúa). */
     private val jobs = ConcurrentHashMap<String, Job>()
 
     /**
-     * [attachJob] 与 [abort] 共用这把锁,避免“先 abort 后 attach”留下无法取消的幽灵 Job。
-     * StateFlow 本身保证快照更新的原子性,锁保证任务终态检查与 Job 登记不可被打断。
+     * [attachJob] con [abort] comparte este candado,evitar“abortar primero y luego attach”Dejando un trabajo fantasma que no se puede cancelar.
+     * StateFlow Él mismo garantiza la atomicidad de las actualizaciones de instantáneas.,El bloqueo garantiza que la verificación del estado final de la tarea y el registro del trabajo no puedan interrumpirse.
      */
     private val jobLock = Any()
 
-    /** A-15: 登记后台任务 Job,供 [abort] 取消。 */
+    /** A-15: Registrar tareas en segundo plano Job,suministro [abort] Cancelar. */
     fun attachJob(taskId: String, job: Job) {
         val cancelImmediately = synchronized(jobLock) {
             when (_tasks.value[taskId]?.status) {
@@ -68,15 +68,15 @@ class DeferredResultStore {
             }
         }
         if (cancelImmediately) {
-            // 任务已终止,不能让迟到的 Job 继续执行真实 child。
+            // Tarea terminada,No se puede permitir que un Job tardío continúe ejecutando al niño real.
             job.cancel()
             return
         }
-        // 外部 scope 取消时也要清掉登记,避免任务完成前 jobs 永久持有 Job。
+        // El registro también deberá liquidarse cuando se cancele el ámbito externo.,Evite trabajos que mantengan el trabajo permanentemente hasta que se complete la tarea.
         job.invokeOnCompletion { jobs.remove(taskId, job) }
     }
 
-    /** 注册延迟任务。 */
+    /** Registrar tareas diferidas. */
     fun defer(taskId: String, parentSessionId: String, threadId: String?, label: String?, taskSummary: String) {
         val task = DeferredTask(taskId, parentSessionId, threadId, label, taskSummary, TaskStatus.PENDING)
         synchronized(jobLock) {
@@ -84,7 +84,7 @@ class DeferredResultStore {
         }
     }
 
-    /** 标记任务完成(成功)。 */
+    /** Marcar tarea completa(éxito). */
     fun resolve(taskId: String, result: String) {
         synchronized(jobLock) {
             val completed = markCompleted(taskId) { it.copy(status = TaskStatus.RESOLVED, result = result) }
@@ -92,7 +92,7 @@ class DeferredResultStore {
         }
     }
 
-    /** 标记任务失败。 */
+    /** La tarea de marcar falló. */
     fun fail(taskId: String, error: String) {
         synchronized(jobLock) {
             val completed = markCompleted(taskId) { it.copy(status = TaskStatus.FAILED, error = error) }
@@ -101,8 +101,8 @@ class DeferredResultStore {
     }
 
     /**
-     * A-15: 在 CAS 变换内完成"读任务 → 校验非 ABORTED → 标记完成"。
-     * 已中止任务直接拒绝回灌(返回 null),后台在取消传播前完成的旧结果不会进入待回灌队列。
+     * A-15: Hecho dentro de una transformación CAS"leer tarea → verificar no ABORTED → Marcar completo".
+     * La tarea ha sido abortada y la retroalimentación se rechaza directamente.(Regresar null),Los resultados antiguos completados en segundo plano antes de que se cancelara la propagación no entrarán en la cola para rellenarse.
      */
     private fun markCompleted(taskId: String, transform: (DeferredTask) -> DeferredTask): DeferredTask? {
         var completed: DeferredTask? = null
@@ -121,7 +121,7 @@ class DeferredResultStore {
         return completed
     }
 
-    /** B-33: 待回灌队列追加在 CAS 变换内完成。 */
+    /** B-33: La adición a la cola para rellenar se completa dentro de la transformación CAS. */
     private fun enqueueCompleted(completed: DeferredTask) {
         _completedTasks.update { map ->
             val list = map[completed.parentSessionId]?.toMutableList() ?: mutableListOf()
@@ -130,7 +130,7 @@ class DeferredResultStore {
         }
     }
 
-    /** 中止任务:A-15 同时取消后台 Job。 */
+    /** Abortar tarea:A-15 Cancele también el trabajo en segundo plano. */
     fun abort(taskId: String) {
         val job = synchronized(jobLock) {
             val task = _tasks.value[taskId]
@@ -158,7 +158,7 @@ class DeferredResultStore {
         job?.cancel()
     }
 
-    /** 消费并清除指定会话的待回灌任务(回灌后调用)。 */
+    /** Consumir y borrar tareas pendientes para la sesión especificada(Llamado después de recargar). */
     fun consumeCompleted(sessionId: String): List<DeferredTask> {
         var result: List<DeferredTask> = emptyList()
         _completedTasks.update { map ->
@@ -169,26 +169,26 @@ class DeferredResultStore {
     }
 
     /**
-     * A-10: 消费并清除“未归属”的待回灌任务 —— 即存入空串父会话 id 下的结果。
+     * A-10: consumir y aclarar“No adquirido”tareas a reinyectar —— Es decir, el resultado se almacena en la identificación de la sesión principal de cadena vacía.
      *
-     * 业务原因:subagent_task 依赖 LLM 传 parent_session_id 来归属结果,但 LLM 可能省略该参数,
-     * 此时 [defer] 以空串作 key 存入,而 [consumeCompleted] 按真实 session id 精确匹配,
-     * 空串结果永远匹配不上,会被 [cleanupCompleted] 在 30 分钟后清掉,用户看不到结果。
+     * razones comerciales:subagent_task Confíe en LLM para pasar parent_session_id para atribuir resultados,Pero LLM puede omitir este parámetro.,
+     * En este momento [defer] Utilice una cadena vacía como clave para guardar,y [consumeCompleted] Coincidencia exacta basada en la identificación de la sesión real,
+     * Los resultados de cadenas vacías nunca coincidirán,será [cleanupCompleted] Limpiar después de 30 minutos,Los usuarios no pueden ver los resultados.
      *
-     * ChatViewModel 消费当前会话结果后,再调用本方法兜底拉取这些未归属结果,
-     * 注入当前活跃会话(降级行为,须由调用方记录 ERROR 日志说明原因)。
+     * ChatViewModel Después de consumir los resultados de la sesión actual,Luego llame a este método para recuperar estos resultados no atribuidos.,
+     * Inyectar la sesión actualmente activa(Comportamiento degradado,La persona que llama debe registrar el registro de ERRORES para explicar el motivo.).
      */
     fun consumeUnowned(): List<DeferredTask> {
         return consumeCompleted("")
     }
 
-    /** 获取任务状态。 */
+    /** Obtener el estado de la tarea. */
     fun getTask(taskId: String): DeferredTask? = _tasks.value[taskId]
 
-    /** 列出待处理任务。 */
+    /** Listar tareas pendientes. */
     fun listPendingTasks(): List<DeferredTask> = _tasks.value.values.filter { it.status == TaskStatus.PENDING }
 
-    /** 清理已完成任务(定期调用避免内存泄漏)。 */
+    /** Limpiar tareas completadas(Llame periódicamente para evitar pérdidas de memoria.). */
     fun cleanupCompleted(maxAgeMs: Long = 30 * 60 * 1000L) {
         val now = System.currentTimeMillis()
         _tasks.update { map ->

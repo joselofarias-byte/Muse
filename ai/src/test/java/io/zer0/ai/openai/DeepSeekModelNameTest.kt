@@ -4,9 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * v1.0.74: DeepSeek 官方 API 模型名归一化测试。
- * listModels 返回带日期/大小写变体(如 DeepSeek-V4-Flash-0731),但 /chat/completions
- * 只接受规范名(deepseek-v4-pro / deepseek-v4-flash),直接发原 id 会 400(真实用户实测)。
+ * v1.0.74: DeepSeek Prueba oficial de normalización del nombre del modelo API.
+ * listModels Regreso con fecha/Variaciones de casos(Como por ejemplo DeepSeek-V4-Flash-0731),pero /chat/completions
+ * Sólo se aceptan nombres canónicos(deepseek-v4-pro / deepseek-v4-flash),Enviar la identificación original directamente 400(Pruebas de usuarios reales).
  */
 class DeepSeekModelNameTest {
 
@@ -51,11 +51,11 @@ class DeepSeekModelNameTest {
 
     @Test
     fun `third party baseUrl not normalized`() {
-        // 中转站可能有自定义命名,不做归一化(避免破坏自定义模型)
+        // Las estaciones de tránsito pueden tener nombres personalizados,Sin normalización(Evite romper modelos personalizados)
         assertEquals("DeepSeek-V4-Flash-0731", normalizeDeepSeekModelId("DeepSeek-V4-Flash-0731", thirdPartyBase))
     }
 
-    // ── v2.6.1: 中转站前导分组标签剥离 ────────────────────────────
+    // ── v2.6.1: Eliminación de etiquetas de paquetes principales de estaciones de retransmisión ────────────────────────────
 
     @Test
     fun `channel group label stripped`() {
@@ -74,19 +74,19 @@ class DeepSeekModelNameTest {
 
     @Test
     fun `provider slash prefix preserved`() {
-        // 斜杠前缀是中转站路由必需,不是分组标签 —— 不能被误剥。
+        // El prefijo de barra diagonal es necesario para la ruta de tránsito,No es una etiqueta de grupo —— No se puede despojar por error.
         assertEquals("openai/gpt-4o", stripChannelGroupLabelsImpl("openai/gpt-4o"))
     }
 
     @Test
     fun `pure label without model name falls back`() {
-        // 纯标签(无真实模型名)不应剥成空串,回退原值避免发空 model。
+        // etiqueta pura(Sin nombre de modelo real)No se debe pelar en hilos vacíos.,Vuelva al valor original para evitar vaciar el modelo.
         assertEquals("[ais]", stripChannelGroupLabelsImpl("[ais]"))
     }
 
     @Test
     fun `brackets inside model name are not touched`() {
-        // 模型名中间的方括号不属于前导标签,不剥离。
+        // Los corchetes en medio del nombre del modelo no son etiquetas iniciales.,Sin pelar.
         assertEquals("model[1]", stripChannelGroupLabelsImpl("model[1]"))
     }
 }

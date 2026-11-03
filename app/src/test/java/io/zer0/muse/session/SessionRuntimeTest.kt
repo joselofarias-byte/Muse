@@ -17,18 +17,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * M1.7: 会话运行时 turn 检查点状态机测试。
+ * M1.7: Active la prueba de la máquina de estado del punto de control mientras se ejecuta la sesión.
  *
- * 覆盖验收要求:
- * - 同一会话多次进入复用同一运行时(ConversationSessionManager.getOrCreateRuntime)。
- * - turn 检查点按 GENERATING -> WAITING_TOOL/WAITING_APPROVAL -> GENERATING -> 终态迁移。
- * - 终态后不允许继续迁移;新 turn 重新开启。
- * - 引用计数归零且无生成任务时 idle 清理;有生成任务时不清理。
+ * Requisitos de aceptación de la cubierta:
+ * - Al ingresar a la misma sesión varias veces se reutiliza el mismo tiempo de ejecución(ConversationSessionManager.getOrCreateRuntime).
+ * - turn Verificar clic GENERATING -> WAITING_TOOL/WAITING_APPROVAL -> GENERATING -> Migración estatal final.
+ * - No se permite ninguna migración adicional después del estado final.;Se reabre nuevo turno.
+ * - limpieza inactiva cuando el recuento de referencias llega a cero y no se generan tareas;No limpiar cuando haya tareas generadas.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionRuntimeTest {
 
-    // ── SessionRuntime 状态机 ─────────────────────────────────────────
+    // ── SessionRuntime máquina de estados ─────────────────────────────────────────
 
     @Test
     fun `beginTurn enters generating and records turn id`() {
@@ -65,7 +65,7 @@ class SessionRuntimeTest {
         runtime.beginTurn("t1")
         runtime.markFinished(TurnPhase.COMPLETED, "t1")
         assertEquals(TurnPhase.COMPLETED, runtime.phase.value)
-        // 终态后中间态/终态迁移都必须被忽略
+        // estado intermedio después del estado final/Las transiciones de estado finales deben ignorarse
         runtime.markWaitingTool("t1")
         runtime.markFinished(TurnPhase.FAILED, "t1")
         runtime.markFinished(TurnPhase.CANCELLED, "t1")
@@ -81,7 +81,7 @@ class SessionRuntimeTest {
         runtime.beginTurn("t2")
         assertEquals("t2", runtime.currentTurnId.get())
         assertEquals(TurnPhase.GENERATING, runtime.phase.value)
-        // 新 turn 的取消标志被清除
+        // Se borra la bandera de cancelación del nuevo turno.
         assertFalse(runtime.cancelRequested)
     }
 
@@ -109,7 +109,7 @@ class SessionRuntimeTest {
     fun `null or matching turn id transitions are accepted`() {
         val runtime = SessionRuntime("s1")
         runtime.beginTurn("t1")
-        // null = 调用方不知道 turn id(如审批入口),放行
+        // null = La persona que llama no sabe turn id(Como entrada de aprobación.),liberar
         runtime.markWaitingApproval(null)
         assertEquals(TurnPhase.WAITING_APPROVAL, runtime.phase.value)
         runtime.markResumed(null)
@@ -132,7 +132,7 @@ class SessionRuntimeTest {
         assertEquals("t1", runtime.currentTurnId.get())
     }
 
-    // ── ConversationSessionManager 运行时复用与 idle 清理 ─────────────
+    // ── ConversationSessionManager Reutilización del tiempo de ejecución y limpieza inactiva ─────────────
 
     @Test
     fun `same session reuses same runtime instance across acquire and release`() = runTest {
@@ -142,9 +142,9 @@ class SessionRuntimeTest {
         manager.release("s1")
         manager.acquire("s1")
         val second = manager.getOrCreateRuntime("s1")
-        // 同一 sessionId 多次进入必须复用同一运行时实例
+        // Varias entradas con el mismo ID de sesión deben reutilizar la misma instancia de tiempo de ejecución.
         assertEquals(first, second)
-        // release 再 acquire 后引用计数回到 1
+        // release Después de la adquisición, el recuento de referencias vuelve a 1
         assertEquals(1, manager.getOrCreateRuntime("s1").refCount.get())
     }
 
@@ -154,7 +154,7 @@ class SessionRuntimeTest {
         assertNull(manager.runtime("group:chat-1"))
         val job = launch { delay(10_000) }
         manager.setGenerationJob("group:chat-1", job)
-        // 群聊生成 id 未走 acquire 路径,也必须进入运行时管理
+        // La identificación generada por el chat grupal no tomó la ruta de adquisición.,También debes ingresar a la gestión del tiempo de ejecución.
         assertTrue(manager.runtime("group:chat-1") != null)
         assertEquals(job, manager.runtime("group:chat-1")?.generationJob)
         job.cancelAndJoin()
@@ -175,8 +175,8 @@ class SessionRuntimeTest {
     @Test
     fun `late completion of replaced job does not clear the new job`() = runTest {
         val manager = ConversationSessionManager(backgroundScope)
-        // 旧任务用 NonCancellable 收尾模拟真实场景(中断路径的持久化拖慢 completion),
-        // 使其完成回调晚于新 job 的登记执行。
+        // Utilice NonCancellable para finalizar tareas antiguas y simular escenarios reales(La persistencia de las rutas de interrupción se ralentiza completion),
+        // Haga que la devolución de llamada de finalización se ejecute después del registro del nuevo trabajo.
         val oldJob = launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 delay(10_000)
@@ -186,13 +186,13 @@ class SessionRuntimeTest {
         }
         manager.setGenerationJob("s1", oldJob)
         val newJob = launch(start = CoroutineStart.UNDISPATCHED) { delay(60_000) }
-        // setGenerationJob 取消旧任务;旧任务进入 cancelling,尚未完成
+        // setGenerationJob Cancelar tareas antiguas;Entran tareas antiguas cancelling,Aún no completado
         manager.setGenerationJob("s1", newJob)
-        // 推进虚拟时间:旧任务 finally 完成,晚到的 invokeOnCompletion 触发
+        // Avanzando el tiempo virtual:Antigua tarea finalmente completada,Desencadenantes tardíos de invokeOnCompletion
         advanceTimeBy(10_200)
-        // 旧回调不得清空新 job 引用(否则 cancelGeneration 失效、idle reaper 误清理)
+        // La devolución de llamada anterior no debe borrar la nueva referencia de trabajo.(De lo contrario, cancelGeneration no es válido,idle reaper Limpiar por error)
         assertTrue(manager.runtime("s1")?.generationJob === newJob)
-        // 运行时不得被 idle 清理(新任务仍在挂)
+        // No debe borrarse al estar inactivo cuando se ejecuta(Aún quedan nuevas tareas pendientes)
         advanceTimeBy(10_000)
         assertTrue(manager.runtime("s1") != null)
         newJob.cancelAndJoin()
@@ -204,7 +204,7 @@ class SessionRuntimeTest {
         val manager = ConversationSessionManager(backgroundScope)
         manager.acquire("s1")
         manager.release("s1")
-        // 虚拟时间推进超过 idle 超时(5s)+ 余量
+        // El tiempo virtual avanza más allá del tiempo de inactividad(5s)+ margen
         advanceTimeBy(10_000)
         assertNull(manager.runtime("s1"))
     }
@@ -217,10 +217,10 @@ class SessionRuntimeTest {
         val job = launch { delay(60_000) }
         manager.setGenerationJob("s1", job)
         advanceTimeBy(10_000)
-        // 有生成任务时不得清理
+        // No limpiar cuando haya tareas de generación.
         assertTrue(manager.runtime("s1") != null)
         job.cancelAndJoin()
-        // job 完成后触发 idle 调度,再推进虚拟时间即可清理
+        // job Activar la programación inactiva después de la finalización,Luego adelanta el tiempo virtual para limpiar.
         advanceTimeBy(10_000)
         assertNull(manager.runtime("s1"))
     }

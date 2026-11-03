@@ -14,10 +14,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 桌面小组件「按所选助手取最近回复」的查询测试。
+ * Prueba de consulta del widget de escritorio "Haga clic en el asistente seleccionado para obtener la última respuesta".
  *
- * 修复前小组件取全局最近一条 assistant 消息,用户选的助手对显示内容零影响;
- * 这里钉住三件事:只看所选助手、排除小手机私信、忽略已删除会话/消息。
+ * Antes de reparar, el widget recupera globalmente el último mensaje del asistente.,El asistente seleccionado por el usuario no tiene impacto en el contenido mostrado;
+ * Tres cosas para concretar aquí:Vea solo los asistentes seleccionados, excluya los mensajes privados de teléfonos celulares pequeños e ignore las conversaciones eliminadas/mensaje.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -69,7 +69,7 @@ class MessageDaoWidgetAssistantQueryTest {
         session("s-b", "assistant-b")
         assistantMessage("m-a1", "s-a", "a-old", createdAt = 1_000L)
         assistantMessage("m-a2", "s-a", "a-new", createdAt = 2_000L)
-        // b 的回复更晚,但用户选的是 a
+        // b la respuesta es mas tarde,Pero el usuario eligió a
         assistantMessage("m-b1", "s-b", "b-newest", createdAt = 9_000L)
 
         val msg = database.messageDao().getLastAssistantMessageForAssistant("assistant-a")

@@ -17,19 +17,19 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /**
- * memory 模块的 Koin 装配。
+ * memory Montaje de módulos Koin.
  *
- * 依赖关系:
- *  - Room: MemoryDb(摘要/状态/编译产物) + FactDb(FTS5 元事实)
- *  - [io.zer0.memory.llm.MemoryLlmClient] 由 app 模块提供实现(委托给 ChatService)
- *  - [CoroutineScope] 由 app 模块提供(application scope,ticker 后台任务用)
+ * Dependencias:
+ *  - Room: MemoryDb(Resumen/Estado/compilar producto) + FactDb(FTS5 metahechos)
+ *  - [io.zer0.memory.llm.MemoryLlmClient] Implementado por el módulo de la aplicación.(confiado a ChatService)
+ *  - [CoroutineScope] Proporcionado por el módulo de la aplicación.(application scope,ticker Para tareas en segundo plano)
  *
- * 注意: [MemoryTicker] 由 app 模块注册(需要读 SettingsRepository 的 memory 开关),
- * 这里只注册数据层 + 核心服务。
+ * Nota: [MemoryTicker] Registrado por módulo de aplicación(Necesita leer el interruptor de memoria de SettingsRepository),
+ * Aquí solo se registran la capa de datos + los servicios principales.
  */
 val memoryModule: Module = module {
 
-    // ── Room 数据库 ──
+    // ── Room base de datos ──
     single {
         val context = androidContext()
         MemoryDbDowngradeGuard.archiveIfNewer(
@@ -38,31 +38,31 @@ val memoryModule: Module = module {
             currentVersion = MEMORY_DB_VERSION,
         )
         Room.databaseBuilder(context, MemoryDb::class.java, MEMORY_DB_NAME)
-            // v2: session summary 增加 space_id，只做加法迁移，保留旧数据。
-            // v2.x: 新增 context_checkpoints（会话压缩检查点），同样是纯增表。
+            // v2: session summary Aumente space_id, realice solo migración aditiva y conserve los datos antiguos.
+            // v2.x: Se agregaron context_checkpoints (punto de control de compresión de sesión), que también es una tabla puramente incremental.
             .addMigrations(
                 io.zer0.memory.summary.MemoryDb.MIGRATION_1_2,
                 io.zer0.memory.summary.MemoryDb.MIGRATION_2_3,
                 io.zer0.memory.summary.MemoryDb.MIGRATION_3_4,
                 io.zer0.memory.summary.MemoryDb.MIGRATION_4_5,
             )
-            // 仅允许降级时重建；打开前 guard 已归档更高版本库及 WAL sidecars。
+            // La reconstrucción sólo está permitida al bajar de categoría; abriendo repositorios superiores de archivos de preguardia y sidecars WAL.
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
     }
     // Explicit recovery entry for rows preserved in a newer-version archive after downgrade.
     single { MemoryDbArchiveRecovery(androidContext(), get()) }
 
-    // 会话上下文检查点的读取与有效性判定（供上下文组装方注入）
+    // Lectura y determinación de validez de los puntos de control del contexto de la sesión (para inyección por parte del ensamblador de contexto)
     single { io.zer0.memory.summary.ContextCheckpointReader(get()) }
 
-    // v0.22: per-assistant facts.db 提供者(按 assistantId 创建/缓存独立 FactDb)
-    // v12: 透传 LLM 去重判定器(同实体模糊候选交给大模型判断)
-    // 注意: 不注入 FactRevisionDao(内部从 db 取),避免 Koin 循环依赖
+    // v0.22: per-assistant facts.db proveedor(Crear por ID de asistente/Caché independiente FactDb)
+    // v12: Determinador de deduplicación transparente de LLM(Los candidatos difusos de la misma entidad se entregan al modelo grande para su evaluación.)
+    // Nota: No inyectado FactRevisionDao(Obtenido internamente de db),Evite las dependencias circulares de Koin
     single { io.zer0.memory.fact.FactDbProvider(androidContext(), get<io.zer0.memory.fact.FactDedupJudge>()) }
 
-    // v1.78 (M12): 全局 FactDb 复用 FactDbProvider 的 "default" 实例
-    // 避免 FactDb.create 与 FactDbProvider 各建一个 Room 实例指向同一 facts.db 文件
+    // v1.78 (M12): Global FactDb reutiliza FactDbProvider "default" Ejemplo
+    // Evite que FactDb.create y FactDbProvider creen cada uno una instancia de Room que apunte al mismo archivo Facts.db
     single {
         get<io.zer0.memory.fact.FactDbProvider>().getFactDb("default")
     }
@@ -74,20 +74,20 @@ val memoryModule: Module = module {
     single { get<MemoryDb>().compiledSectionDao() }
     single { get<MemoryDb>().scopedCompiledSectionDao() }
     single { get<FactDb>().factDao() }
-    // v13 (T4-1): 事实修订记录 DAO
+    // v13 (T4-1): expediente de revisión de hechos DAO
     single { get<FactDb>().factRevisionDao() }
-    // v1.0.52 P2-2: 多 Space 隔离 DAO
+    // v1.0.52 P2-2: Aislamiento de múltiples espacios DAO
     single { get<FactDb>().memorySpaceDao() }
-    // v1.0.52 P2-3: 记忆知识图谱边 DAO
+    // v1.0.52 P2-3: Borde del gráfico de conocimiento de la memoria DAO
     single { get<FactDb>().memoryLinkDao() }
 
-    // ── 核心服务 ──
+    // ── Servicios básicos ──
     single { SessionSummaryManager(get(), get()) } // dao + llmClient
-    // v6: 记忆编译产物同时输出到文件系统(memory.md + daily/)
-    // 审查修复 (2.0 C-03): 移除下方重复注册(同 key 单例,后者恒覆盖前者,属死装配)
+    // v6: Los productos de compilación de memoria se envían al sistema de archivos al mismo tiempo.(memory.md + daily/)
+    // Revisión de corrección (2.0 C-03): Eliminar el registro duplicado a continuación(Igual que el singleton clave,Este último siempre cubre al primero.,asamblea muerta)
     single { io.zer0.memory.compile.MemoryFileWriter(androidContext().filesDir) }
     // S-04/v15: MemoryCompiler resolves per-assistant FactStore tombstones; the shared JSON file is legacy read-only.
-    // v12: 注入 LLM 去重判定器(由 app 模块提供实现,默认 Noop 不调 LLM)
+    // v12: Inyectar determinante de deduplicación LLM(Implementado por el módulo de la aplicación.,Noop no está sintonizado por defecto LLM)
     single {
         MemoryCompiler(
             sectionDao = get(),
@@ -112,14 +112,14 @@ val memoryModule: Module = module {
     }
     single { DeepMemoryProcessor(get<io.zer0.memory.fact.FactDbProvider>(), get()) } // factDbProvider + llmClient
 
-    // v2.6.2（用户反馈）: 通知 → 记忆 梳理器（大工具模型梳理/整合/去重后落库）。
+    // v2.6.2(comentarios de los usuarios): Notificación → Memory Carder (cardado de modelos de gran herramienta/integrar/Elimine los duplicados y luego suéltelos en la biblioteca).
     single { io.zer0.memory.ai.NotificationMemoryDigest(get(), get()) } // factDbProvider + llmClient
 
-    // v2.6.2（用户反馈）: 记忆星座补边构建器（实体键/同会话/同分类/语义近邻）
-    single { io.zer0.memory.ai.MemoryEdgeBuilder(get(), get()) } // memoryLinkDao + llmClient（LLM 深化用）
+    // v2.6.2(comentarios de los usuarios): Constructor de complementos de constelaciones de memoria (clave de entidad)/Misma sesión/Misma categoria/vecino semántico)
+    single { io.zer0.memory.ai.MemoryEdgeBuilder(get(), get()) } // memoryLinkDao + llmClient(LLM para profundizar)
 
-    // v12 (T3-1): 记忆反思任务 — 每日整理(回填实体键/合并重复/矛盾检测/晋升)
-    // P2-32: 注入矛盾清单落库(不再只打日志,记忆中心可读可清)
+    // v12 (T3-1): tarea de reflexión de la memoria — Clasificación diaria(Rellenar claves de entidad/fusionar duplicados/Detección de contradicciones/promoción)
+    // P2-32: Inyectar la lista de conflictos en la base de datos.(No más simplemente iniciar sesión,El centro de memoria se puede leer y borrar.)
     single {
         io.zer0.memory.reflection.MemoryContradictionStore(
             java.io.File(androidContext().filesDir, "memory_contradictions.json"),
@@ -132,8 +132,8 @@ val memoryModule: Module = module {
                 get<io.zer0.memory.reflection.MemoryContradictionStore>()
                     .save(scope, spaceId, pairs.map { it.first.fact to it.second.fact })
             },
-            // v2.6.2（记忆审计）: 按 scope 解析对应助手的 FactStore（scope=="main" → 默认库），
-            // 否则子助手/其它 Space 的反思会落到默认库。
+            // v2.6.2(auditoría de memoria): Analizar el FactStore del asistente correspondiente por alcance (scope=="main" → biblioteca predeterminada),
+            // De lo contrario, subayudante/El reflejo de otros espacios caerá en la biblioteca predeterminada.
             storeResolver = { scope, _ ->
                 val provider = get<io.zer0.memory.fact.FactDbProvider>()
                 val assistantId = scope.takeIf { it.isNotBlank() && it != "main" } ?: "default"
@@ -142,10 +142,10 @@ val memoryModule: Module = module {
         )
     }
 
-    // v1.0.52 P2-2: 记忆空间仓库(Space CRUD + 事实迁移)
+    // v1.0.52 P2-2: almacén de espacio de memoria(Space CRUD + migración de hecho)
     single { io.zer0.memory.space.MemorySpaceRepository(get(), get()) }
 
-    // 置顶记忆存储
+    // Almacenamiento de memoria de pines
     single { io.zer0.memory.pin.PinnedMemoryStore(java.io.File(androidContext().filesDir, "pinned_memory")) }
 }
 

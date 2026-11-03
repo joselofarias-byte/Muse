@@ -14,13 +14,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v1.0.92: LLM 记忆整合器 (LlmFactConsolidator) 测试。
+ * v1.0.92: LLM Consolidador de memoria (LlmFactConsolidator) prueba.
  *
- * 覆盖:
- *  - 相似簇被合并成一条(keeper 保留、其余删除);
- *  - 模型显式 __SKIP__ → 不合并;
- *  - 模型疑似原样输出(残留编号)→ 不合并;
- *  - 模型异常 → 静默降级,数据不变。
+ * Portada:
+ *  - Clústeres similares se fusionan en uno(keeper Mantener, borrar el resto);
+ *  - modelo explícito __SKIP__ → no fusionar;
+ *  - Se sospecha que el modelo se genera tal cual(número de residuo)→ no fusionar;
+ *  - anomalía del modelo → Rebaja silenciosa,Los datos se mantienen sin cambios.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -45,7 +45,7 @@ class LlmFactConsolidatorTest {
         db.close()
     }
 
-    /** 可控 fake LLM — 记录调用次数,按预设返回。 */
+    /** controlable fake LLM — Registrar el número de llamadas,Volver por defecto. */
     private class FakeLlm(private val response: String) : MemoryLlmClient {
         var calls = 0
         override suspend fun callText(
@@ -62,23 +62,23 @@ class LlmFactConsolidatorTest {
     }
 
     private suspend fun seedSimilarPair() {
-        // 用"前缀包含"型相似对,保证进入 findSimilarGroups 的聚簇(算法层可判),
-        // 测试聚焦整合器行为本身,不依赖 bigram 阈值的边缘值。
-        store.add(FactStore.Fact(fact = "用户喜欢吃苹果"))
-        store.add(FactStore.Fact(fact = "用户喜欢吃苹果和香蕉"))
+        // usar"el prefijo contiene"pares similares,Garantizado para ingresar al grupo de findSimilarGroups(La capa de algoritmo puede determinar),
+        // Las pruebas se centran en el comportamiento del integrador en sí.,Valores marginales que no dependen de umbrales de bigram.
+        store.add(FactStore.Fact(fact = "A los usuarios les gusta comer manzanas"))
+        store.add(FactStore.Fact(fact = "A los usuarios les gusta comer manzanas y plátanos."))
     }
 
     @Test
     fun mergesSimilarGroupIntoOneFact() = runTest {
         seedSimilarPair()
-        val llm = FakeLlm("用户喜欢吃苹果和香蕉")
+        val llm = FakeLlm("A los usuarios les gusta comer manzanas y plátanos.")
         val consolidator = LlmFactConsolidator(llm)
 
         val merged = consolidator.consolidate(store, "main", "default")
 
         assertEquals(1, merged)
-        assertEquals("应只剩一条", 1, store.getByScopeAndSpace("main", "default").size)
-        assertEquals("用户喜欢吃苹果和香蕉", store.getByScopeAndSpace("main", "default").first().fact)
+        assertEquals("Sólo debería quedar uno", 1, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("A los usuarios les gusta comer manzanas y plátanos.", store.getByScopeAndSpace("main", "default").first().fact)
     }
 
     @Test
@@ -90,13 +90,13 @@ class LlmFactConsolidatorTest {
         val merged = consolidator.consolidate(store, "main", "default")
 
         assertEquals(0, merged)
-        assertEquals("数据保持不变", 2, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("los datos permanecen sin cambios", 2, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
     fun numberedRawOutputMeansNoMerge() = runTest {
         seedSimilarPair()
-        val llm = FakeLlm("1. 用户喜欢吃苹果\n2. 用户喜欢吃苹果和香蕉")
+        val llm = FakeLlm("1. A los usuarios les gusta comer manzanas\n2. A los usuarios les gusta comer manzanas y plátanos.")
         val consolidator = LlmFactConsolidator(llm)
 
         val merged = consolidator.consolidate(store, "main", "default")
@@ -107,37 +107,37 @@ class LlmFactConsolidatorTest {
 
     @Test
     fun `mergeIntoKeeper is atomic and cleans derived rows`() = runTest {
-        // v2.6.2（记忆审计）: keeper 更新 + 成员删除在同一事务；成员删除时同步清 FTS/links/revisions。
-        val id1 = store.add(FactStore.Fact(fact = "用户喜欢吃苹果"))
-        val id2 = store.add(FactStore.Fact(fact = "用户喜欢吃苹果和香蕉"))
+        // v2.6.2(auditoría de memoria): keeper Las actualizaciones + eliminaciones de miembros están en la misma transacción; FTS/enlaces/revisiones se borran sincrónicamente cuando se eliminan miembros.
+        val id1 = store.add(FactStore.Fact(fact = "A los usuarios les gusta comer manzanas"))
+        val id2 = store.add(FactStore.Fact(fact = "A los usuarios les gusta comer manzanas y plátanos."))
         val idMissing = 999_999L
 
         val removed = store.mergeIntoKeeper(
             keeperId = id1,
-            mergedContent = "用户喜欢吃苹果和香蕉",
+            mergedContent = "A los usuarios les gusta comer manzanas y plátanos.",
             removableIds = listOf(id2, idMissing),
             scope = "main",
             spaceId = "default",
         )
 
-        assertEquals("只删除存在的成员", 1, removed)
-        assertEquals("keeper 保留且内容已更新", 1, store.getByScopeAndSpace("main", "default").size)
-        assertEquals("用户喜欢吃苹果和香蕉", store.getByScopeAndSpace("main", "default").first().fact)
+        assertEquals("Eliminar solo los miembros existentes", 1, removed)
+        assertEquals("keeper Reservado y contenido actualizado", 1, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("A los usuarios les gusta comer manzanas y plátanos.", store.getByScopeAndSpace("main", "default").first().fact)
     }
 
     @Test
     fun `mergeIntoKeeper does nothing when keeper ownership mismatches`() = runTest {
-        val id1 = store.add(FactStore.Fact(fact = "甲的记忆"))
-        val id2 = store.add(FactStore.Fact(fact = "乙的记忆"))
+        val id1 = store.add(FactStore.Fact(fact = "la memoria de a"))
+        val id2 = store.add(FactStore.Fact(fact = "la memoria de b"))
         val removed = store.mergeIntoKeeper(
             keeperId = id1,
-            mergedContent = "合并后的内容",
+            mergedContent = "Contenido fusionado",
             removableIds = listOf(id2),
             scope = "other_scope",
             spaceId = "default",
         )
-        assertEquals("归属不符时不改动", -1, removed)
-        assertEquals("两条原事实均保留", 2, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("No se realizarán cambios si la atribución no coincide", -1, removed)
+        assertEquals("Se conservan ambos hechos originales.", 2, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
@@ -158,6 +158,6 @@ class LlmFactConsolidatorTest {
         val merged = consolidator.consolidate(store, "main", "default")
 
         assertEquals(0, merged)
-        assertEquals("失败时数据不变", 2, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("Los datos permanecen sin cambios en caso de falla", 2, store.getByScopeAndSpace("main", "default").size)
     }
 }

@@ -1,14 +1,14 @@
 package io.zer0.ai.core
 
 /**
- * 协议注册表(`api` 字符串 → 实现映射)。
+ * Registro de protocolo(`api` cuerda → Implementar mapeo).
  *
- * 把"走哪套协议"从枚举硬分支收敛成 **字符串 + 映射**:将来接新协议
- * (Responses / 各家私有)只需加一个键,不必改枚举与所有 `when` 分支。
- * [ProviderType] 保留为兼容层,由这里与协议字符串互转。
+ * poner"¿Qué acuerdo adoptar?"Convergiendo de la rama dura de enumeración a **cadena + mapa**:Aceptará nuevos acuerdos en el futuro.
+ * (Responses / Propiedad privada de cada empresa.)Solo agrega una clave,No es necesario cambiar las enumeraciones y todo `when` rama.
+ * [ProviderType] Mantener como capa de compatibilidad,Convierta desde y hacia la cadena de protocolo aquí.
  *
- * 已知协议(与上游目录一致):
- *  - `openai-completions` → [ProviderType.OPENAI](兼容所有 OpenAI 风格的直连/中转)
+ * protocolos conocidos(Igual que el directorio ascendente):
+ *  - `openai-completions` → [ProviderType.OPENAI](Compatible con todos los tipos de conexión directa de OpenAI/tránsito)
  *  - `openai-responses`   → [ProviderType.OPENAI_RESPONSES]
  *  - `anthropic-messages` → [ProviderType.ANTHROPIC]
  *  - `gemini`             → [ProviderType.GEMINI]
@@ -20,10 +20,10 @@ object ProviderApiRegistry {
     const val ANTHROPIC_MESSAGES = "anthropic-messages"
     const val GEMINI = "gemini"
 
-    /** 全部已知协议字符串。 */
+    /** Todas las cadenas de protocolo conocidas. */
     val known: Set<String> = setOf(OPENAI_COMPLETIONS, OPENAI_RESPONSES, ANTHROPIC_MESSAGES, GEMINI)
 
-    /** 协议字符串 → 兼容层 [ProviderType];未识别返回 null。 */
+    /** cadena de protocolo → Capa de compatibilidad [ProviderType];Devuelve nulo si no se reconoce. */
     fun typeOf(api: String): ProviderType? = when (api.trim().lowercase()) {
         OPENAI_COMPLETIONS -> ProviderType.OPENAI
         OPENAI_RESPONSES -> ProviderType.OPENAI_RESPONSES
@@ -32,7 +32,7 @@ object ProviderApiRegistry {
         else -> null
     }
 
-    /** [ProviderType] → 协议字符串。 */
+    /** [ProviderType] → Cadena de protocolo. */
     fun apiOf(type: ProviderType): String = when (type) {
         ProviderType.OPENAI -> OPENAI_COMPLETIONS
         ProviderType.OPENAI_RESPONSES -> OPENAI_RESPONSES

@@ -77,7 +77,7 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
     SectionLabel(stringResource(R.string.settings_web_search_section))
     SettingsGroup(modifier = Modifier.padding(top = 8.dp)) {
         SettingsSwitchRow(
-            // v2.x: 联网搜索图标修正为 globe(原 languages 是翻译语义)
+            // v2.x: El icono de búsqueda en Internet se ha corregido para globe(Los idiomas originales son semántica de traducción.)
             icon = MuseIcons.globe,
             title = stringResource(R.string.settings_web_search_enable),
             subtitle = stringResource(R.string.settings_web_search_enable_subtitle),
@@ -99,8 +99,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         )
     }
 
-    // ST-10 (A11Y-03): 分区间距由固定高度改为 heightIn(min = …) — 纯间距不裁剪文本,
-    // 但保证字号放大 1.3x 时不会被写死的高度限制。
+    // ST-10 (A11Y-03): El espacio entre particiones cambió de altura fija a heightIn(min = …) — El espaciado puro no recorta el texto,
+    // Sin embargo, existe un límite de altura para garantizar que el tamaño de fuente no se sobrescriba cuando el tamaño de fuente se amplíe 1,3x.
     Spacer(Modifier.heightIn(min = 12.dp))
     SectionLabel(stringResource(R.string.settings_web_search_mode))
     SettingsGroup {
@@ -111,15 +111,15 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(10.dp))
-            // 必须用会换行的 FlowRow:四个模式标签在窄屏一行放不下,Row 会把最后一个
-            // chip 压成竖排文字甚至挤出屏幕(用户实测截图)。
-            // ST-07: FilterChip(M3) → 项目自有 MuseChip(已支持 selected/Role/48dp 触控)
+            // Debe utilizar FlowRow, que puede ajustar líneas: cuatro etiquetas de modo no pueden caber en una línea en una pantalla estrecha.,Row Pondré el último
+            // chip Presiónelo en texto vertical o incluso exprímalo fuera de la pantalla.(Capturas de pantalla de prueba reales del usuario).
+            // ST-07: FilterChip(M3) → Propiedad del proyecto MuseChip(Se ha admitido el toque seleccionado/rol/48dp)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // v2.x: 原「关闭」chip 已删 — 与上方总开关控同一状态,开关是唯一关闭入口。
+                // v2.x: Originalmente "cerrado"chip Eliminado — El mismo estado que el control del interruptor principal superior.,El interruptor es el único que cierra la entrada.
                 MuseChip(
                     selected = webSearchConfig.mode == WebSearchMode.AUTO && webSearchConfig.enabled,
                     onClick = {
@@ -174,7 +174,7 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(MusePaddings.cardInner),
         )
-        // v2.3.1: 路径名走字符串资源(与 Bing HTTP 行一致),不再把中文标签硬编码在 UI 层
+        // v2.3.1: El nombre de ruta toma un recurso de cadena(Consistente con la línea HTTP de Bing),No más etiquetas chinas codificadas en la capa de la interfaz de usuario
         PathRow(MuseIcons.brandBing, "Bing HTTP", stringResource(R.string.settings_web_search_provider_status_bing), true)
         HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
         PathRow(
@@ -198,8 +198,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         Column(Modifier.padding(MusePaddings.cardInner)) {
             Text(stringResource(R.string.settings_web_search_budget), style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.heightIn(min = 8.dp))
-            // ST-07: 数值 chip 也用 FlowRow — MuseChip 触控目标 48dp、内边距更大,
-            // 窄屏 + 大字号下 4 个 chip 一行放不下,Row 会挤压(MuseChip 最小宽度不可压)。
+            // ST-07: También se utilizan chips numéricos. FlowRow — MuseChip Objetivo táctil 48 dp, relleno más grande,
+            // Pantalla estrecha + tamaño de fuente grande, no caben 4 chips en una línea,Row apretará(MuseChip El ancho mínimo no es comprimible.).
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -257,14 +257,14 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
             )
         } else {
             Column(Modifier.padding(MusePaddings.cardInner)) {
-                Text("查询：${response.normalizedQuery}", style = MaterialTheme.typography.bodySmall)
+                Text("Consulta:${response.normalizedQuery}", style = MaterialTheme.typography.bodySmall)
                 Text(
-                    "状态：${response.status}   来源：${response.provider ?: "未知"}",
+                    "Estado:${response.status}   Fuente:${response.provider ?: "desconocido"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "结果：${response.results.size} 条",
+                    "Resultado:${response.results.size} Artículo",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -325,8 +325,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         )
     }
 
-    // 多引擎 API Key:所有需要 key 的搜索引擎各配各的(底层写入 apiKeys 映射;
-    // Auto 模式按顺序回退)。此前 UI 只显示“当前选中引擎”的输入框,让人误以为只能配一个。
+    // Clave API multimotor: todos los motores de búsqueda que requieren una clave tienen sus propias claves.(Mapeo de apiKeys de escritura subyacente;
+    // Auto Los modos retroceden en secuencia). Anteriormente, la interfaz de usuario solo se mostraba“Motor seleccionado actualmente”cuadro de entrada,Hace que la gente piense erróneamente que sólo pueden igualar uno.
     SettingsGroup(modifier = Modifier.padding(top = 8.dp)) {
         Column(Modifier.padding(MusePaddings.cardInner)) {
             Text(
@@ -341,8 +341,8 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
                 modifier = Modifier.padding(top = 2.dp),
             )
             WebSearchConfig.PROVIDERS_NEEDING_API_KEY
-                // v2.x: 去重 — 自定义 API 不参与 Auto 回退链,其 Key 与接口地址在下方「当前引擎」组统一配置;
-                // 此处排除两种写法,同一 Key 不再出现两个输入入口。
+                // v2.x: Eliminar duplicados — La API personalizada no participa en la cadena de respaldo automático,Su clave y dirección de interfaz se configuran de manera uniforme en el grupo "Motor actual" a continuación.;
+                // Aquí se excluyen dos formas de escritura.,Ya no hay dos entradas de entrada para la misma clave.
                 .filter { it !in WebSearchConfig.CUSTOM_PROVIDER_NAMES }
                 .forEach { provider ->
                     var keyDraft by remember(provider, webSearchConfig.apiKeys[provider]) {
@@ -368,15 +368,15 @@ internal fun WebSearchSection(webSearchConfig: WebSearchConfig, settings: Settin
         }
     }
 
-    // v2.6.10: 自定义搜索引擎 —— 用户自己的检索服务，接进 Auto 链路最前面。
+    // v2.6.10: motor de búsqueda personalizado —— El servicio de búsqueda propio del usuario está conectado al frente del enlace Auto.
     CustomSearchEnginesSection(
         webSearchConfig = webSearchConfig,
         settings = settings,
     )
 
     val needsApiConfig = webSearchConfig.providerName in WebSearchConfig.PROVIDERS_NEEDING_API_KEY
-    // v2.x: 去重 — 需 Key 的引擎中,只有「自定义 API」(不在 Auto 回退链)在本组就近配置 Key;
-    // 其余引擎的 Key 统一在上方「多引擎 API Key」列表编辑,本组仅保留接口地址与测试。
+    // v2.x: Eliminar duplicados — En el motor que requiere llave,Sólo "API personalizada"(No en la cadena de reserva automática)Configurar cerca en este grupo Key;
+    // Las claves de otros motores están unificadas en la lista anterior "Clave API multimotor" para su edición.,Este grupo solo reserva direcciones y pruebas de interfaz.
     val isCustomApi = webSearchConfig.providerName.equals("Custom API", ignoreCase = true) ||
         webSearchConfig.providerName == WebSearchConfig.CUSTOM_PROVIDER_NAME
     if (needsApiConfig) {
@@ -519,10 +519,10 @@ private fun SavePill(text: String, onClick: () -> Unit) {
 }
 
 /**
- * 测试搜索的结果文案。
+ * Pruebe la copia del resultado para su búsqueda.
  *
- * 抽出来是因为内联写法需要两层嵌套 getString，单行接近 200 字符：
- * 既过不了行宽检查，也看不出「成功时带前三条标题」这层意图。
+ * Se extrae porque el método de escritura en línea requiere dos niveles de getString anidado y una sola línea tiene cerca de 200 caracteres:
+ * No puede pasar la verificación del ancho de línea y no se puede ver la intención de "agregar los primeros tres títulos cuando sea exitoso".
  */
 private fun formatTestResult(context: android.content.Context, results: List<io.zer0.muse.web.WebSearchResult>): String {
     if (results.isEmpty()) {

@@ -8,7 +8,7 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 群聊消息计数投影(按 chatId 分组,用于 Top N 活跃群聊)。
+ * Proyección del recuento de mensajes de chat grupal(Grupo por ID de chat,Se utiliza para los N chats grupales más activos).
  */
 data class GroupChatMessageCount(
     val chatId: String,
@@ -16,31 +16,31 @@ data class GroupChatMessageCount(
 )
 
 /**
- * 群聊消息数据访问对象。
+ * Objeto de acceso a datos de mensajes de chat grupal.
  *
- * 负责消息实体的 CRUD + Flow 观察,以及按 chatId 分组统计(Top N 活跃群聊)。
+ * Responsable de CRUD + Observación de flujo de entidades de mensajes.,Y estadísticas de grupo por chatId(Top N Chat grupal activo).
  */
 @Dao
 interface GroupChatMessageDao {
 
     /**
-     * 观察指定群聊的消息(按 timestamp 升序,聊天界面用)。
-     * M4: 暂用 LIMIT 200 上限,后续可改 PagingSource。
-     * M8: 用 id 作为次级排序 key,避免同毫秒碰撞。
+     * Observar los mensajes del chat grupal especificado.(Ordenar por marca de tiempo ascendente,Para interfaz de chat).
+     * M4: Utilice temporalmente el límite superior LIMIT 200,PagingSource se puede cambiar más tarde.
+     * M8: Usar id como clasificación secundaria key,Evite colisiones con milisegundos.
      *
-     * v1.53-GC: 全量观察长群聊有 OOM 风险(图片 base64 直存 DB),新代码改用
-     * [observeRecentMessages] + [getOlderMessages] 分页加载。本方法保留向后兼容,
-     * 已在 Repository 层标注 @Deprecated。
+     * v1.53-GC: Existe riesgo de OOM al observar completamente chats grupales largos(Almacenamiento directo de imágenes base64 DB),Utilice un nuevo código en su lugar
+     * [observeRecentMessages] + [getOlderMessages] Cargando en páginas. Este método conserva la compatibilidad con versiones anteriores.,
+     * La capa del Repositorio ha sido anotada con @Deprecated.
      */
     @Query("SELECT * FROM group_chat_messages WHERE chatId = :chatId ORDER BY timestamp ASC, id ASC LIMIT 200")
     fun observeMessages(chatId: String): Flow<List<GroupChatMessageEntity>>
 
     /**
-     * v1.53-GC: 观察指定群聊最近 limit 条消息(按 timestamp 升序),分页首屏 Flow 实时更新用。
+     * v1.53-GC: Observe los últimos mensajes límite en el chat grupal especificado(Ordenar por marca de tiempo ascendente),Flow se utiliza para actualizaciones en tiempo real de la pantalla de inicio de paginación.
      *
-     * 子查询先按 DESC 取最近 limit 条,外层再按 ASC 排序,保证返回「最近 limit 条」且按时间正序。
-     * 用于替代全量 [observeMessages]:聊天界面首屏只观察最近一页,新消息到达时 Flow 自动重发,
-     * ViewModel 据此增量追加到已加载列表。M8: 用 id 作次级排序 key,避免同毫秒碰撞。
+     * Subconsulta primero presione DESC para obtener la barra de límite más cercana,La capa exterior está ordenada por ASC.,Se garantiza que devolverá los "elementos límite más recientes" en orden cronológico.
+     * Se utiliza para reemplazar la cantidad total. [observeMessages]:Sólo la página más reciente es visible en la primera pantalla de la interfaz de chat.,Flow se reenvía automáticamente cuando llegan nuevos mensajes,
+     * ViewModel Agregue incrementalmente a la lista cargada en consecuencia.M8: Utilice id para clasificación secundaria key,Evite colisiones con milisegundos.
      */
     @Query(
         "SELECT * FROM (SELECT * FROM group_chat_messages WHERE chatId = :chatId ORDER BY timestamp DESC, id DESC LIMIT :limit) ORDER BY timestamp ASC, id ASC",
@@ -48,58 +48,58 @@ interface GroupChatMessageDao {
     fun observeRecentMessages(chatId: String, limit: Int): Flow<List<GroupChatMessageEntity>>
 
     /**
-     * v1.53-GC: 窗口加载 — 取早于锚点(timestamp, id)的前 limit 条消息(降序)。
+     * v1.53-GC: carga de ventana — Tomar antes del punto de anclaje(timestamp, id)mensajes de primer límite(orden descendente).
      *
-     * 用于上滑加载更多:以当前列表最早一条消息的 (timestamp, id) 为双锚点,取更早的历史。
-     * 双锚点(timestamp + id)避免同毫秒消息被漏取或重复。返回顺序为降序(最新在前),
-     * 调用方(Repository)需自行 reversed() 转为升序后前置拼接。
+     * Solía deslizarse hacia arriba para cargar más.:El primer mensaje de la lista actual (timestamp, id) para puntos de anclaje dobles,Tomemos como ejemplo la historia anterior.
+     * doble punto de anclaje(timestamp + id)Evite que se pierdan o dupliquen mensajes del mismo milisegundo. El orden de devolución es descendente.(último primero),
+     * llamador(Repository)Necesitas hacerlo tu mismo reversed() Convierta al orden ascendente y luego empalme hacia adelante.
      */
     @Query(
         "SELECT * FROM group_chat_messages WHERE chatId = :chatId AND (timestamp < :beforeTimestamp OR (timestamp = :beforeTimestamp AND id < :beforeId)) ORDER BY timestamp DESC, id DESC LIMIT :limit",
     )
     suspend fun getOlderMessages(chatId: String, beforeTimestamp: Long, beforeId: String, limit: Int): List<GroupChatMessageEntity>
 
-    /** 插入或更新消息(冲突时替换)。 */
+    /** Insertar o actualizar mensaje(Reemplazar en caso de conflicto). */
     @Upsert
     suspend fun upsert(message: GroupChatMessageEntity)
 
-    /** 批量插入消息。 */
+    /** Insertar mensajes en lotes. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<GroupChatMessageEntity>)
 
-    /** 按 id 删除单条消息。 */
+    /** Eliminar un solo mensaje por id. */
     @Query("DELETE FROM group_chat_messages WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    // ── 审计修复 (5.3): 删除后重算冗余字段用的查询 ──
+    // ── Reparación de auditoría (5.3): Consulta para volver a calcular campos redundantes después de la eliminación ──
 
-    /** 按 id 取单条消息。 */
+    /** Recibe un solo mensaje por id. */
     @Query("SELECT * FROM group_chat_messages WHERE id = :id")
     suspend fun getById(id: String): GroupChatMessageEntity?
 
-    /** 取某群聊最新一条消息。 */
+    /** Recibe el último mensaje de un chat grupal. */
     @Query("SELECT * FROM group_chat_messages WHERE chatId = :chatId ORDER BY timestamp DESC, id DESC LIMIT 1")
     suspend fun getLatest(chatId: String): GroupChatMessageEntity?
 
-    /** 某群聊的消息总数。 */
+    /** El número total de mensajes en un chat grupal. */
     @Query("SELECT COUNT(*) FROM group_chat_messages WHERE chatId = :chatId")
     suspend fun countByChat(chatId: String): Int
 
-    /** 删除指定群聊的全部消息(群聊删除时级联调用)。 */
+    /** Eliminar todos los mensajes en el chat grupal especificado(Llamada en cascada cuando se elimina el chat grupal). */
     @Query("DELETE FROM group_chat_messages WHERE chatId = :chatId")
     suspend fun deleteByChat(chatId: String)
 
-    /** 取指定群聊的最近 N 条消息(按 timestamp 降序取再反转,供 Agent 工具读取上下文)。M8: 用 id 作次级排序 key。 */
+    /** Obtenga los últimos N mensajes del chat grupal especificado(Tome la marca de tiempo en orden descendente y revierta,Para que la herramienta Agente lea el contexto).M8: Utilice id como clave de clasificación secundaria. */
     @Query("SELECT * FROM group_chat_messages WHERE chatId = :chatId ORDER BY timestamp DESC, id DESC LIMIT :limit")
     suspend fun getRecentMessages(chatId: String, limit: Int): List<GroupChatMessageEntity>
 
-    /** v1.0.72: 群聊内搜索消息(关键词 LIKE 匹配正文,按时间倒序)。 */
+    /** v1.0.72: Buscar mensajes en el chat grupal(Palabra clave COMO texto coincidente,en orden cronológico inverso). */
     @Query(
         "SELECT * FROM group_chat_messages WHERE chatId = :chatId AND body LIKE '%' || :query || '%' ORDER BY timestamp DESC, id DESC LIMIT :limit",
     )
     suspend fun searchMessages(chatId: String, query: String, limit: Int = 100): List<GroupChatMessageEntity>
 
-    /** 按 chatId 分组统计消息数,取 Top N 活跃群聊(降序)。 */
+    /** Cuente la cantidad de mensajes agrupados por chatId,Obtenga los N mejores chats grupales activos(orden descendente). */
     @Query("SELECT chatId, COUNT(*) as cnt FROM group_chat_messages GROUP BY chatId ORDER BY cnt DESC LIMIT :limit")
     fun observeTopActiveChats(limit: Int): Flow<List<GroupChatMessageCount>>
 

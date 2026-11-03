@@ -1,23 +1,23 @@
 package io.zer0.common
 
 /**
- * B-7: 进程级写入门控 — 备份恢复(文件级替换 DB)期间暂停高频后台写入。
+ * B-7: Control de escritura a nivel de proceso — Copia de seguridad y restauración(Reemplazo de nivel de archivo DB)Durante este período se suspende la escritura en segundo plano de alta frecuencia.
  *
- * 背景: restoreFromAutoBackup 会 close 三个 Room 单例并用快照替换库文件,
- * 期间 MemoryTicker / ScheduledTaskRunner / 自动备份等协程若继续写库,
- * 会产生在途写丢失或新库 WAL 与已删附属文件不一致。
+ * fondo: restoreFromAutoBackup Cerrará los tres singletons de Room y reemplazará los archivos de la biblioteca con instantáneas.,
+ * Durante este período, si MemoryTicker/SchedledTaskRunner/copia de seguridad automática y otras corrutinas continúan escribiendo la biblioteca,
+ * Puede ocurrir una pérdida por escritura en tránsito o la nueva WAL de la biblioteca puede ser inconsistente con los archivos adjuntos eliminados.
  *
- * 用法: 恢复流程开始时 [begin] 并将 [restoring] 置位,结束后 [end] 复位;
- * 各高频写入入口(记忆 tick、任务轮询、自动备份)在写库前检查 [restoring],
- * 为 true 时跳过本次写并记日志。仅影响"跳过一次写入",不阻塞 UI。
+ * Uso: Cuando comienza el proceso de recuperación. [begin] y lo hará [restoring] conjunto,despues del final [end] restablecer;
+ * Cada entrada de escritura de alta frecuencia(Marca de memoria, sondeo de tareas, copia de seguridad automática)Verifique antes de escribir la biblioteca. [restoring],
+ * Cuando es verdadero, esta escritura se omite y se registra. Sólo afecta"Saltar una escritura",No bloquea la interfaz de usuario.
  */
 object ProcessWriteGate {
-    /** 是否正处于数据库文件级替换窗口(备份恢复)。进程内全局可见。 */
+    /** Si se encuentra en la ventana de reemplazo a nivel de archivo de la base de datos(Copia de seguridad y restauración). Visible globalmente dentro del proceso. */
     @Volatile
     var restoring: Boolean = false
         private set
 
-    /** 进入恢复窗口。返回 true 表示成功进入(即此前未处于恢复中)。 */
+    /** Ingrese a la ventana de recuperación. Devuelve verdadero para indicar una entrada exitosa(es decir, no previamente en recuperación). */
     fun begin(): Boolean {
         return synchronized(this) {
             if (restoring) {
@@ -29,7 +29,7 @@ object ProcessWriteGate {
         }
     }
 
-    /** 退出恢复窗口。 */
+    /** Salga de la ventana de recuperación. */
     fun end() {
         synchronized(this) {
             restoring = false

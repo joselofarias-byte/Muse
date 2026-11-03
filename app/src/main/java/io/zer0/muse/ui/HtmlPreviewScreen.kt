@@ -36,52 +36,52 @@ import io.zer0.muse.ui.common.media.LifecycleAwareWebViewFactory
 import io.zer0.muse.ui.common.navigation.MuseTopBar
 
 /**
- * HTML 全屏预览页 — 在 WebView 中渲染 LLM 输出的 HTML / SVG 代码。
+ * HTML Página de vista previa en pantalla completa — Represente el código HTML/SVG de la salida de LLM en un WebView.
  *
- * 基于 WebView 的全屏预览实现:
- *  - 顶部 MuseTopBar 标题"HTML 预览" + 返回按钮 + "在浏览器中打开" + "复制源码"
- *  - 中间 WebView 加载 html(loadDataWithBaseURL)
- *  - 启用 JavaScript 与 DOM storage,支持缩放
- *  - 设置 WebViewClient 防止外部链接跳转(仅放行 about:blank)
+ * Implementación de vista previa de pantalla completa basada en WebView:
+ *  - Título superior de MuseTopBar"HTML Vista previa" + botón de retroceso + "Abrir en el navegador" + "Copiar código fuente"
+ *  - Carga intermedia de WebView html(loadDataWithBaseURL)
+ *  - Habilite JavaScript con DOM storage,Zoom de soporte
+ *  - Configure WebViewClient para evitar que salten enlaces externos(Solo lanzamiento about:blank)
  *
- * 安全说明:
- *  - HTML 内容来自 LLM 输出,理论上可能含恶意脚本;此处仅在本地 WebView 渲染,
- *    不暴露任何宿主接口(addJavascriptInterface),且拦截外部导航;
- *  - 复用 [RichContentWebViewClient] 的拦截策略(只放行 about:blank),
- *    避免点击 <a> 跳出预览页;
- *  - 与 RichContentCard 不同,本页启用 JS(用户主动点击"预览"才进入,
- *    适合交互式 HTML demo / 邮件模板 / SVG 动画)。
+ * Instrucciones de seguridad:
+ *  - HTML Contenido de la salida de LLM,En teoría puede contener scripts maliciosos.;Esto sólo se representa en WebView local.,
+ *    No expone ninguna interfaz de host(addJavascriptInterface),E interceptar la navegación externa.;
+ *  - Reutilizar [RichContentWebViewClient] estrategia de interceptación(solo lanzamiento about:blank),
+ *    evitar clics <a> Salir de la página de vista previa;
+ *  - A diferencia de RichContentCard,Esta página está habilitada. JS(El usuario hace clic activamente"Vista previa"Recién ingresado,
+ *    Adecuado para demostración HTML interactiva/plantilla de correo electrónico/animación SVG).
  *
- * @param html 待渲染的 HTML 源码(SVG 已由调用方包装为完整 HTML)
- * @param onBack 返回回调
+ * @param html Código fuente HTML a renderizar(SVG ha sido envuelto como completo por la persona que llama HTML)
+ * @param onBack devolución de llamada
  */
 @Composable
 fun HtmlPreviewScreen(
     html: String,
     onBack: () -> Unit,
-    /** v2.0.1: 可选标题（产物标题传入时顶栏显示它；为空回退「HTML 预览」）。 */
+    /** v2.0.1: Título opcional (cuando se pasa el título del producto, se mostrará en la barra superior; si está vacío, volverá a \"HTML Vista previa\"). */
     title: String? = null,
 ) {
     val context = LocalContext.current
-    // 缓存 WebView 引用,DisposableEffect 中释放,避免泄漏
+    // Almacenamiento en caché de referencias de WebView,DisposableEffect liberación media,evitar fugas
     val webViewRef = remember { arrayOfNulls<WebView>(1) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // v1.88 修复: WebView 自身已实现生命周期感知(LifecycleAwareWebView),
-    // ON_PAUSE/ON_RESUME/ON_DESTROY 由 WebView 内部自动处理(含 pauseTimers/resumeTimers)。
-    // 此处仅保留离开组合时的兜底销毁与 DOM storage 清理逻辑。
+    // v1.88 Reparación: WebView Ha logrado la conciencia del ciclo de vida.(LifecycleAwareWebView),
+    // ON_PAUSE/ON_RESUME/ON_DESTROY Manejado automáticamente internamente por WebView(Contiene pauseTimers/resumeTimers).
+    // Aquí solo se conservan la lógica de destrucción ascendente y de limpieza del almacenamiento DOM al salir de la combinación.
     DisposableEffect(lifecycleOwner) {
         onDispose {
-            // 兜底释放:离开组合时销毁 WebView(宿主未销毁的场景,如导航返回)
+            // Liberación desde abajo:Destruido al salir de la combinación. WebView(Escenas donde el anfitrión no es destruido.,Si la navegación regresa)
             webViewRef[0]?.also {
-                // 注销生命周期观察者,避免后续 ON_DESTROY 重复 destroy 已销毁实例
+                // Dar de baja al observador del ciclo de vida,Evite la posterior destrucción repetida de ON_DESTROY de instancias ya destruidas
                 if (it is LifecycleAwareWebView) {
                     lifecycleOwner.lifecycle.removeObserver(it)
                 }
                 it.destroy()
                 webViewRef[0] = null
             }
-            // 清理 DOM storage,避免 SVG/HTML demo 累积残留
+            // limpiar DOM storage,Evite los residuos de acumulación de demostraciones SVG/HTML
             WebStorage.getInstance().deleteAllData()
         }
     }
@@ -95,25 +95,25 @@ fun HtmlPreviewScreen(
                 title = title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.html_preview_title),
                 onBack = onBack,
                 actions = {
-                    // v2.0.1: 刷新（浏览器同款操作）
+                    // v2.0.1: Actualizar (misma operación que el navegador)
                     MuseTactileButton(
                         icon = MuseIcons.refresh,
                         contentDescription = stringResource(R.string.browser_refresh),
                         onClick = { runCatching { webViewRef[0]?.reload() } },
                     )
-                    // 在浏览器中打开:把 HTML 编码为 data URL,用 ACTION_VIEW 交给系统浏览器
+                    // Abrir en el navegador:Codificar HTML como data URL,Utilice ACTION_VIEW para entregarlo al navegador del sistema.
                     MuseTactileButton(
                         icon = MuseIcons.browser,
                         contentDescription = stringResource(R.string.html_preview_open_in_browser_cd),
                         onClick = { openInExternalBrowser(context, html) },
                     )
-                    // v1.0.47 P8-2: 下载产物 — 保存到 Downloads 目录
+                    // v1.0.47 P8-2: Descargar producto — Guardar en el directorio de Descargas
                     MuseTactileButton(
                         icon = MuseIcons.download,
                         contentDescription = stringResource(R.string.html_preview_download_cd),
                         onClick = { downloadHtml(context, html) },
                     )
-                    // 复制源码:写入剪贴板 + Toast 反馈
+                    // Copiar código fuente:Escribir en el portapapeles + brindar comentarios
                     MuseTactileButton(
                         icon = MuseIcons.copy,
                         contentDescription = stringResource(R.string.html_preview_copy_source_cd),
@@ -121,7 +121,7 @@ fun HtmlPreviewScreen(
                     )
                 },
             )
-            // WebView 容器:占满剩余空间,设背景色避免白闪
+            // WebView recipiente:Ocupar el espacio restante,Establece el color de fondo para evitar el destello blanco
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -129,39 +129,39 @@ fun HtmlPreviewScreen(
             ) {
                 AndroidView(
                     factory = { ctx ->
-                        // v1.88 修复: 改用 LifecycleAwareWebViewFactory.create,
-                        // 自动绑定到 lifecycleOwner,后台时暂停 JS 定时器/动画。
+                        // v1.88 Reparación: Usar en su lugar LifecycleAwareWebViewFactory.create,
+                        // vinculado automáticamente a lifecycleOwner,Pausar el temporizador JS en segundo plano/animación.
                         LifecycleAwareWebViewFactory.create(ctx, lifecycleOwner).apply {
-                            // 启用 JavaScript(HTML demo / 交互式模板需要)
+                            // habilitar JavaScript(HTML demo / Las plantillas interactivas requieren)
                             settings.javaScriptEnabled = true
-                            // 启用 DOM storage(localStorage / sessionStorage)
+                            // habilitar DOM storage(localStorage / sessionStorage)
                             settings.domStorageEnabled = true
-                            // 启用缩放(内置缩放控件 + 双指)
+                            // Habilitar zoom(Controles de zoom integrados + dos dedos)
                             settings.setSupportZoom(true)
                             settings.builtInZoomControls = true
-                            // 隐藏缩放按钮(保留双指缩放手势),避免 UI 干扰
+                            // Ocultar botón de zoom(Mantenga los gestos de pellizcar para hacer zoom),Evite las distracciones de la interfaz de usuario
                             settings.displayZoomControls = false
-                            // 允许视口 meta 标签生效(响应式 HTML)
+                            // Permitir que las metaetiquetas de la ventana gráfica surtan efecto(Responsivo HTML)
                             settings.useWideViewPort = true
                             settings.loadWithOverviewMode = true
-                            // 安全:禁用文件/内容访问,防止 file:// 跨域读取
+                            // seguro:Deshabilitar archivos/Acceso al contenido,Evitar lecturas entre dominios file://
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
-                            // 需用户手势播放媒体
+                            // Requiere gestos del usuario para reproducir medios
                             settings.mediaPlaybackRequiresUserGesture = true
-                            // 背景色透明,与 Compose Surface 融合
+                            // color de fondo transparente,Integrar con Compose Surface
                             setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                            // 拦截所有外部导航(只放行 about:blank / data:),防止 <a> 跳转
+                            // Interceptar toda la navegación externa(solo lanzamiento about:blank / data:),prevenir <a> saltar
                             webViewClient = object : WebViewClient() {
                                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                     val url = request?.url ?: return true
                                     val scheme = url.scheme?.lowercase() ?: return true
-                                    // 仅允许 about: 和 data: 协议,其余一律拦截
+                                    // Sólo sobre: y datos: se permiten protocolos,Todos los demás serán interceptados.
                                     return scheme != "about" && scheme != "data"
                                 }
                             }
                             webViewRef[0] = this
-                            // 用 loadDataWithBaseURL 加载,base URL 为 about:blank 避免相对路径越权
+                            // Cargar con loadDataWithBaseURL,base URL Evite la anulación de ruta relativa para about:blank
                             loadDataWithBaseURL(
                                 "about:blank",
                                 html,
@@ -179,10 +179,10 @@ fun HtmlPreviewScreen(
 }
 
 /**
- * 把 HTML 源码编码为 data URL,用 ACTION_VIEW 交给系统浏览器打开。
+ * Codifique el código fuente HTML en data URL,Utilice ACTION_VIEW para abrirlo en el navegador del sistema.
  *
- * 用 [android.util.Base64] 编码避免特殊字符破坏 data URL 解析;
- * 部分浏览器对 data: URL 有长度限制(Chrome ~2MB),超长时降级为 Toast 提示。
+ * usar [android.util.Base64] Codificación para evitar caracteres especiales que rompan el análisis de URL de datos;
+ * Algunos navegadores tienen restricciones de longitud de datos: URL(Chrome ~2MB),Se reduce a un mensaje Toast si es demasiado largo.
  */
 private fun openInExternalBrowser(context: Context, html: String) {
     runCatching {
@@ -202,7 +202,7 @@ private fun openInExternalBrowser(context: Context, html: String) {
 }
 
 /**
- * 复制 HTML 源码到剪贴板,Toast 反馈。
+ * Copie el código fuente HTML al portapapeles,Toast comentario.
  */
 private fun copyHtmlToClipboard(context: Context, html: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -211,12 +211,12 @@ private fun copyHtmlToClipboard(context: Context, html: String) {
 }
 
 /**
- * v1.0.47 P8-2: 下载 HTML 到 Downloads 目录。
+ * v1.0.47 P8-2: Descargue el HTML en el directorio de Descargas.
  *
- * Android 10+(API 29+)用 MediaStore.Downloads,自动添加到系统下载列表;
- * 旧版本直接写入 Environment.DIRECTORY_DOWNLOADS 公共目录。
+ * Android 10+(API 29+)usar MediaStore.Downloads,Agregado automáticamente a la lista de descargas del sistema;
+ * Las versiones anteriores escriben directamente en el directorio público Environment.DIRECTORY_DOWNLOADS.
  *
- * 文件名格式:muse_artifact_{时间戳}.html
+ * formato de nombre de archivo:muse_artifact_{Marca de tiempo}.html
  */
 private fun downloadHtml(context: Context, html: String) {
     val fileName = "muse_artifact_${System.currentTimeMillis()}.html"
@@ -232,14 +232,14 @@ private fun downloadHtml(context: Context, html: String) {
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: error("MediaStore 插入失败")
+                ?: error("MediaStore Error de inserción")
             resolver.openOutputStream(uri)?.use { it.write(bytes) }
-                ?: error("无法打开输出流")
+                ?: error("No se puede abrir el flujo de salida")
             values.clear()
             values.put(MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
         } else {
-            // Android 9 及以下:直接写公共 Downloads 目录
+            // Android 9 y abajo:Escribe directamente en el directorio público de Descargas.
             @Suppress("DEPRECATION")
             val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             if (!dir.exists()) dir.mkdirs()

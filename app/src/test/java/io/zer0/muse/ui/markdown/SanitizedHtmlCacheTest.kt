@@ -8,10 +8,10 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 清洗结果缓存。
+ * Limpiar caché de resultados.
  *
- * 锁两件事：同一份内容第二次进来必须命中原对象（否则等于没缓存），
- * 以及条目上限有效（缓存不能变成无界内存增长）。
+ * Bloquee dos cosas: el mismo contenido debe llegar al objeto original la segunda vez que ingresa (de lo contrario, significa que no hay caché),
+ * Y el límite de entrada está vigente (el caché no puede crecer hasta convertirse en memoria ilimitada).
  */
 class SanitizedHtmlCacheTest {
 
@@ -25,7 +25,7 @@ class SanitizedHtmlCacheTest {
         val code = "<div onclick=\"go()\">hello</div>"
         val first = SanitizedHtmlCache.get(code)
         val second = SanitizedHtmlCache.get(code)
-        assertSame("同一份内容必须命中缓存", first, second)
+        assertSame("El mismo contenido debe llegar al caché.", first, second)
         assertEquals(1, SanitizedHtmlCache.size())
     }
 
@@ -43,7 +43,7 @@ class SanitizedHtmlCacheTest {
             SanitizedHtmlCache.get("<div id=\"n$index\">x</div>")
         }
         assertTrue(
-            "缓存条目必须被上限压住，实际 ${SanitizedHtmlCache.size()}",
+            "En la práctica, las entradas de caché deben tener un límite ${SanitizedHtmlCache.size()}",
             SanitizedHtmlCache.size() <= 12,
         )
     }
@@ -53,8 +53,8 @@ class SanitizedHtmlCacheTest {
         val code = "<iframe src=\"https://evil\"></iframe><form action=\"/x\"></form><div>ok</div>"
         val cached = SanitizedHtmlCache.get(code)
         assertEquals(sanitizeHtml(code), cached)
-        assertTrue("iframe 必须被清掉", !cached.contains("iframe"))
-        assertTrue("form 必须被清掉", !cached.contains("<form"))
+        assertTrue("iframe debe ser aclarado", !cached.contains("iframe"))
+        assertTrue("form debe ser aclarado", !cached.contains("<form"))
     }
 
     @Test

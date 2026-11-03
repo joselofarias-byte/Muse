@@ -5,10 +5,10 @@ import androidx.compose.runtime.Immutable
 import io.zer0.muse.ui.theme.presets.*
 
 /**
- * 预设主题注册入口。
+ * Portal de registro de temas predeterminado.
  *
- * 每套主题已拆到 [io.zer0.muse.ui.theme.presets] 包下独立文件，
- * 这里保留类型定义、查找函数与注册表，外部引用路径不变。
+ * Cada conjunto de temas ha sido desmantelado. [io.zer0.muse.ui.theme.presets] Empaquetar archivos separados,
+ * La definición de tipo, la función de búsqueda y el registro se conservan aquí, y la ruta de referencia externa permanece sin cambios.
  */
 @Immutable
 data class PresetTheme(
@@ -19,7 +19,7 @@ data class PresetTheme(
 )
 
 /**
- * 按 id 查找预设主题，找不到则回退到默认（warm_paper）。
+ * Busque el tema preestablecido por ID; si no lo encuentra, recurra al predeterminado (warm_paper).
  */
 fun findPresetTheme(id: String): PresetTheme = PresetThemes.firstOrNull { it.id == id } ?: WarmPaperTheme
 

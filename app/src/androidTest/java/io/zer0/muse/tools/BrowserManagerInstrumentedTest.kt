@@ -23,14 +23,14 @@ class BrowserManagerInstrumentedTest {
         try {
             withTimeout(30_000) {
                 val blank = manager.navigate("about:blank")
-                assertTrue("about:blank 导航失败: ${blank.exceptionOrNull()}", blank.isSuccess)
+                assertTrue("about:blank Error de navegación: ${blank.exceptionOrNull()}", blank.isSuccess)
 
                 val js = manager.evaluateJs("1+1")
-                assertTrue("evaluateJs 失败: ${js.exceptionOrNull()}", js.isSuccess)
+                assertTrue("evaluateJs falló: ${js.exceptionOrNull()}", js.isSuccess)
                 assertEquals("2", js.getOrNull())
 
                 val web = manager.navigate("file:///android_asset/test_browser_page.html")
-                assertTrue("本地测试页导航失败: ${web.exceptionOrNull()}", web.isSuccess)
+                assertTrue("Error en la navegación de la página de prueba local: ${web.exceptionOrNull()}", web.isSuccess)
 
                 var html = ""
                 repeat(25) {
@@ -38,7 +38,7 @@ class BrowserManagerInstrumentedTest {
                     if (html.contains("Muse Local Test")) return@repeat
                     delay(200)
                 }
-                assertTrue("本地测试页 HTML 缺失: $html", html.contains("Muse Local Test"))
+                assertTrue("Falta el HTML de la página de prueba local: $html", html.contains("Muse Local Test"))
             }
         } finally {
             manager.close()
@@ -54,16 +54,16 @@ class BrowserManagerInstrumentedTest {
                 val initialized = withContext(Dispatchers.Main) {
                     runCatching { manager.initialize() }
                 }
-                assertTrue("显式初始化失败: ${initialized.exceptionOrNull()}", initialized.isSuccess)
+                assertTrue("La inicialización explícita falló: ${initialized.exceptionOrNull()}", initialized.isSuccess)
 
                 val shown = manager.showBlankPageIfNeeded()
-                assertTrue("空白页显示失败: ${shown.exceptionOrNull()}", shown.isSuccess)
+                assertTrue("Error al mostrar la página en blanco: ${shown.exceptionOrNull()}", shown.isSuccess)
                 assertEquals("about:blank", manager.currentUrl.value)
-                assertTrue("空白页应激活浏览器", manager.isActive.value)
+                assertTrue("Una página en blanco debería activar el navegador.", manager.isActive.value)
 
-                // 已有页面时重复调用不应重新导航或改变当前状态。
+                // Las llamadas repetidas cuando ya existe una página no deberían redirigir la navegación ni cambiar el estado actual.
                 val repeated = manager.showBlankPageIfNeeded()
-                assertTrue("重复显示空白页失败: ${repeated.exceptionOrNull()}", repeated.isSuccess)
+                assertTrue("No se pudo mostrar la página en blanco repetidamente: ${repeated.exceptionOrNull()}", repeated.isSuccess)
                 assertEquals("about:blank", manager.currentUrl.value)
             }
         } finally {
@@ -84,14 +84,14 @@ class BrowserManagerInstrumentedTest {
             "browser_scroll_bottom",
             "browser_get_html",
         )) {
-            assertTrue("ToolRegistry 缺少 $name", name in names)
+            assertTrue("ToolRegistry desaparecido $name", name in names)
         }
 
         val nav = registry.executeFromJson(
             "browser_navigate",
             """{"url": "file:///android_asset/test_browser_page.html"}""",
         )
-        assertTrue("browser_navigate 结果异常: $nav", nav.contains("\"success\":true"))
+        assertTrue("browser_navigate Resultados anormales: $nav", nav.contains("\"success\":true"))
 
         var htmlResult = ""
         repeat(25) {
@@ -99,6 +99,6 @@ class BrowserManagerInstrumentedTest {
             if (htmlResult.contains("Muse Local Test")) return@repeat
             delay(200)
         }
-        assertTrue("browser_get_html 结果异常: $htmlResult", htmlResult.contains("Muse Local Test"))
+        assertTrue("browser_get_html Resultados anormales: $htmlResult", htmlResult.contains("Muse Local Test"))
     }
 }

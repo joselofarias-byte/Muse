@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- P3-3: Página de guía de permisos -->
+    <string name="permission_wizard_title">Asistente de configuración de permisos</string>
+    <string name="permission_wizard_desc">Muse Las capacidades de automatización de la interfaz de usuario se basan en el modelo de permisos de tres canales. Siga los pasos a continuación para habilitarlos uno por uno. Cuanto mayor sea el nivel, más operaciones podrás realizar.UI La operación sólo requiere "Servicios de Accesibilidad";Shell El comando requiere Shizuku o Root.</string>
+    <string name="permission_current_level">Nivel de permiso actual</string>
+    <string name="permission_level_none">No autorizado (no se puede realizar la automatización de la interfaz de usuario)</string>
+    <string name="permission_level_accessibility">La accesibilidad está habilitada (UI operación está disponible)</string>
+    <string name="permission_level_shizuku">Shizuku Autorizado (UI + Shell comando disponible)</string>
+    <string name="permission_level_root">Root Autorizado (todas las capacidades disponibles)</string>
+
+    <!-- Servicios de accesibilidad -->
+    <string name="accessibility_section_title">Servicios de accesibilidad</string>
+    <string name="accessibility_status_enabled">Los servicios de accesibilidad están habilitados para las operaciones de la interfaz de usuario (haga clic en/Deslizar/entrada/captura de pantalla/Leer árbol de UI)</string>
+    <string name="accessibility_status_disabled">No habilitado. Necesidad de autorizar en la configuración del sistema"Muse UI Servicios de automatización</string>
+    <string name="accessibility_enable_btn">Vaya a la configuración del sistema para habilitar</string>
+
+    <!-- Shizuku -->
+    <string name="shizuku_section_title">Shizuku(Recomendado)</string>
+    <string name="shizuku_status_authorized">Autorizado para su uso por Muse Shizuku</string>
+    <string name="shizuku_install_btn">Descargar e instalar Shizuku</string>
+    <string name="shizuku_authorize_btn">Autorizar Muse</string>
+
+    <!-- Root -->
+    <string name="root_section_title">Root Permisos</string>
+    <string name="root_status_available">Root Autorizado (canal de degradación, el comando su se puede ejecutar directamente)</string>
+    <string name="root_status_unavailable">No root ni autorizado (Shizuku Use Root para bajar de categoría cuando no esté disponible)</string>
+</resources>

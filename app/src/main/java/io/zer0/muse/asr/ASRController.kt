@@ -3,36 +3,36 @@ package io.zer0.muse.asr
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * 流式 ASR Controller 接口。
+ * Interfaz del controlador Streaming ASR.
  *
- * 与旧版 [AsrClient] 的区别:
- * - 旧版: recognize(pcmBytes) 一次性识别,录完才出结果
- * - 新版: start(onTranscriptChange) 流式识别,边录边传边回调
+ * con versión antigua [AsrClient] la diferencia:
+ * - versión antigua: recognize(pcmBytes) identificación única,Los resultados se publicarán después de la grabación.
+ * - nueva versión: start(onTranscriptChange) Reconocimiento de transmisión,Graba, transmite y vuelve a llamar al mismo tiempo
  *
- * Controller 内部负责:
- * - 录音采集(AudioRecord + VOICE_COMMUNICATION)
- * - 音频上传(WebSocket / HTTP)
- * - 状态管理(StateFlow<ASRState>)
- * - 结果回调(onTranscriptChange)
+ * Controller Responsable internamente:
+ * - Colección de grabaciones(AudioRecord + VOICE_COMMUNICATION)
+ * - Carga de audio(WebSocket / HTTP)
+ * - Gestión de estado(StateFlow<ASRState>)
+ * - devolución de llamada de resultado(onTranscriptChange)
  *
- * 生命周期:
- * - start(): 开始录音+上传,状态 Idle→Connecting→Listening
- * - stop(): 停止录音,等待最后结果,状态 Listening→Stopping→Idle
- * - dispose(): 释放所有资源(协程 scope / WebSocket / AudioRecord)
+ * ciclo de vida:
+ * - start(): Empezar a grabar+subir,Estado Idle→Connecting→Listening
+ * - stop(): dejar de grabar,Esperando el resultado final,Estado Listening→Stopping→Idle
+ * - dispose(): Liberar todos los recursos(corrutina scope / WebSocket / AudioRecord)
  */
 interface ASRController {
-    /** 当前状态(可观察)。 */
+    /** Estado actual(observable). */
     val state: StateFlow<ASRState>
 
     /**
-     * 开始录音+识别。
-     * @param onTranscriptChange 识别文本变化回调(主线程),每次有新结果(中间或最终)都回调
+     * Empezar a grabar+Identificar.
+     * @param onTranscriptChange Identificar devoluciones de llamada de cambio de texto(hilo principal),Nuevos resultados cada vez(intermedio o final)Todas las devoluciones de llamada
      */
     fun start(onTranscriptChange: ((String) -> Unit)? = null)
 
-    /** 停止录音,等待最后一段结果返回后切回 Idle。 */
+    /** dejar de grabar,Espere a que regrese el último resultado y luego vuelva a estar inactivo. */
     fun stop()
 
-    /** 释放所有资源(协程 scope / WebSocket / AudioRecord),不可再 start。 */
+    /** Liberar todos los recursos(corrutina scope / WebSocket / AudioRecord),Ya no se puede iniciar. */
     fun dispose()
 }

@@ -1,20 +1,20 @@
 package io.zer0.muse.automation.executors
 
 /**
- * Muse 无障碍服务的主 App 组件。
+ * Muse El componente principal de la aplicación para servicios de accesibilidad.
  *
- * 组件名保持在 [io.zer0.muse.automation.executors.MuseAccessibilityService],
- * 这样已经在系统设置中开启过旧版本服务的用户可以继续沿用同一个授权项。
- * 具体读屏、手势和输入实现统一继承自 :accessibility 模块,避免主 App 与库模块
- * 各注册一份服务导致“系统已开启但应用检查的是另一份实例”。
+ * El nombre del componente permanece en [io.zer0.muse.automation.executors.MuseAccessibilityService],
+ * De esta forma, los usuarios que hayan activado la versión anterior del servicio en la configuración del sistema pueden seguir utilizando el mismo elemento de autorización.
+ * La implementación específica de lectura de pantalla, gestos y entradas están unificadas y heredadas del módulo :accessibility,Evite los módulos principales de aplicaciones y bibliotecas
+ * Registrar un servicio cada uno da como resultado“El sistema está encendido pero la aplicación está comprobando una instancia diferente.”.
  */
 class MuseAccessibilityService : io.zer0.muse.accessibility.MuseAccessibilityService() {
     companion object {
-        /** 当前主 App 无障碍服务实例;基类实例由系统生命周期负责维护。 */
+        /** Instancia principal actual del servicio de accesibilidad de aplicaciones;Las instancias de clase base se mantienen durante el ciclo de vida del sistema. */
         val instance: MuseAccessibilityService?
             get() = io.zer0.muse.accessibility.MuseAccessibilityService.instance as? MuseAccessibilityService
 
-        /** 服务是否已经完成系统连接。 */
+        /** Si el servicio ha completado la conexión del sistema. */
         fun isConnected(): Boolean = instance != null
     }
 }

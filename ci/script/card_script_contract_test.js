@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
- * card_script_contract_test.js — 卡片脚本「数据订阅」契约测试。
+ * card_script_contract_test.js — Prueba de contrato de script de tarjeta "suscripción de datos".
  *
- * ## 为什么需要它
+ * ## por qué es necesario
  *
- * 卡片脚本是注入到 WebView 里的一段 JS 字符串（`CardScript.FACADE_JS`）。它决定
- * 卡片绑定数据的刷新方式：宿主能推送时走事件（变化才触发），不能推送时才退回
- * 800ms 轮询。这段逻辑没有任何 Kotlin 单测能覆盖 —— 编译通过不代表行为对，
- * 而它一旦退化成「无论如何都开轮询」，每张卡片都会常驻一个定时器。
+ * El script de la tarjeta es una cadena JS inyectada en WebView (`CardScript.FACADE_JS`). decide
+ * Método de actualización de los datos de vinculación de la tarjeta: el evento se activará cuando el host pueda enviarlo (se activará solo cuando se produzca el cambio) y se devolverá cuando no se pueda enviar.
+ * 800ms Encuesta. Esta lógica no puede ser cubierta por ninguna prueba única de Kotlin. —— El pase de compilación no significa que el comportamiento sea correcto.
+ * Y una vez que degenere en "encuesta pase lo que pase", cada tarjeta tendrá un temporizador permanente.
  *
- * 这里把 Kotlin 里的那段 JS 抽出来，在 Node 的 vm 沙箱里跑两种模式，断言：
- *   1. 推送模式：不创建任何 interval，只在数据变化时回调，重复通知不重复回调；
- *   2. 轮询模式：创建 800ms interval，且只在值变化时回调；
- *   3. 取消订阅后不再回调。
+ * Aquí, extraiga el JS en Kotlin, ejecute dos modos en el entorno limitado de vm de Node y afirme:
+ *   1. Modo push: no crea ningún intervalo, solo devuelve la llamada cuando cambian los datos, las notificaciones repetidas no repiten las devoluciones de llamada;
+ *   2. Modo de sondeo: cree un intervalo de 800 ms y devuelva la llamada solo cuando el valor cambie;
+ *   3. No habrá devolución de llamada después de cancelar la suscripción.
  *
- * ## 用法（未接入 CI lanes，手动执行）
+ * ## Uso (no conectado a carriles CI, ejecución manual)
  *
  *     node ci/script/card_script_contract_test.js
  *
- * 退出码 0 = 全部通过。失败时打印具体断言。
+ * código de salida 0 = Todo pasó. Imprima afirmaciones específicas sobre el fracaso.
  */
 
 'use strict';
@@ -36,7 +36,7 @@ const SCRIPT_KT = path.join(
 function extractFacadeJs() {
   const source = fs.readFileSync(SCRIPT_KT, 'utf8');
   const match = source.match(/private const val FACADE_JS: String = """([\s\S]*?)"""/);
-  if (!match) throw new Error('CardScript.kt 里找不到 FACADE_JS');
+  if (!match) throw new Error('CardScript.kt no puedo encontrarlo FACADE_JS');
   return match[1];
 }
 
@@ -96,59 +96,59 @@ function check(name, condition, detail) {
   }
 }
 
-// ---------- 1. 推送模式 ----------
+// ---------- 1. modo de empuje ----------
 {
   console.log('[push mode]');
   const { sandbox, state, intervals, timeouts } = makeSandbox(true, 'A');
   const seen = [];
   const unsubscribe = sandbox.window.muse.data.onChange((value) => seen.push(value));
 
-  check('不创建 800ms 轮询', intervals.length === 0, `实际创建 ${intervals.length} 个`);
-  check('订阅时补读一次（异步）', timeouts.length === 1);
+  check('No crea una encuesta de 800 ms', intervals.length === 0, `realmente creado ${intervals.length} un`);
+  check('Leer una vez al suscribirse (asincrónico)', timeouts.length === 1);
   timeouts[0]();
-  check('补读拿到当前值', seen.length === 1 && seen[0] === 'A', JSON.stringify(seen));
+  check('Lectura complementaria para obtener el valor actual.', seen.length === 1 && seen[0] === 'A', JSON.stringify(seen));
 
   state.data = 'B';
   sandbox.window.__museDataEvent();
-  check('数据变化后回调新值', seen.length === 2 && seen[1] === 'B', JSON.stringify(seen));
+  check('Devolución de llamada nuevo valor después de cambios de datos', seen.length === 2 && seen[1] === 'B', JSON.stringify(seen));
 
   sandbox.window.__museDataEvent();
-  check('值未变时不重复回调', seen.length === 2, JSON.stringify(seen));
+  check('No repita la devolución de llamada cuando el valor no haya cambiado', seen.length === 2, JSON.stringify(seen));
 
   state.data = 'C';
   sandbox.window.__museDataEvent();
-  check('再次变化仍然回调', seen.length === 3 && seen[2] === 'C', JSON.stringify(seen));
+  check('Cambiar de nuevo y seguir llamando', seen.length === 3 && seen[2] === 'C', JSON.stringify(seen));
 
   unsubscribe();
   state.data = 'D';
   sandbox.window.__museDataEvent();
-  check('取消订阅后不再回调', seen.length === 3, JSON.stringify(seen));
+  check('No hay devolución de llamada después de cancelar la suscripción', seen.length === 3, JSON.stringify(seen));
 }
 
-// ---------- 2. 轮询模式（无推送能力时的降级） ----------
+// ---------- 2. Modo de sondeo (bajar de categoría cuando no hay capacidad de envío) ----------
 {
   console.log('[poll mode]');
   const { sandbox, state, intervals } = makeSandbox(false, 'A');
   const seen = [];
   const unsubscribe = sandbox.window.muse.data.onChange((value) => seen.push(value));
 
-  check('创建 800ms 轮询', intervals.length === 1 && intervals[0].ms === 800, JSON.stringify(intervals.map((i) => i.ms)));
+  check('Crear encuesta de 800 ms', intervals.length === 1 && intervals[0].ms === 800, JSON.stringify(intervals.map((i) => i.ms)));
 
   intervals[0].fn();
-  check('首次轮询拿到当前值', seen.length === 1 && seen[0] === 'A', JSON.stringify(seen));
+  check('Obtener el valor actual en la primera encuesta.', seen.length === 1 && seen[0] === 'A', JSON.stringify(seen));
 
   intervals[0].fn();
-  check('值未变时不重复回调', seen.length === 1, JSON.stringify(seen));
+  check('No repita la devolución de llamada cuando el valor no haya cambiado', seen.length === 1, JSON.stringify(seen));
 
   state.data = 'B';
   intervals[0].fn();
-  check('值变化后回调', seen.length === 2 && seen[1] === 'B', JSON.stringify(seen));
+  check('Devolución de llamada después de cambios de valor', seen.length === 2 && seen[1] === 'B', JSON.stringify(seen));
 
   unsubscribe();
-  check('取消订阅不抛异常', true);
+  check('Darse de baja sin lanzar una excepción', true);
 }
 
-// ---------- 3. 桥不可用时不抛 ----------
+// ---------- 3. No tirar cuando el puente no esté disponible. ----------
 {
   console.log('[no bridge]');
   const sandbox = {
@@ -175,13 +175,13 @@ function check(name, condition, detail) {
     threw = true;
     console.log(`    ${error.message}`);
   }
-  check('无桥页面不抛异常', !threw);
-  check('无桥时能力标为 requires_host', sandbox.window.muse.capabilities().emit === 'requires_host');
+  check('Las páginas sin puente no generan excepciones', !threw);
+  check('La capacidad sin puente está marcada como requires_host', sandbox.window.muse.capabilities().emit === 'requires_host');
 }
 
 console.log('');
 if (failures.length > 0) {
-  console.error(`FAILED: ${failures.length} 项`);
+  console.error(`FAILED: ${failures.length} artículo`);
   process.exit(1);
 }
 console.log('card script contract: PASS');

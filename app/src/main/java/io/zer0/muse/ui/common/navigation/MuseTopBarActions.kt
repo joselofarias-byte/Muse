@@ -28,14 +28,14 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 聊天类页面顶栏的统一图标按钮：**裸图标**（无容器底色）+ 48dp 触控区 + 24dp 图标。
+ * Botón de icono unificado en la barra superior de la página de chat:**icono desnudo**(Sin color de fondo del contenedor)+ 48dp Área táctil + ícono 24dp.
  *
- * 为什么不做成圆底胶囊：应用里其它页面的顶栏（`MuseTopBar`，全部设置页）一直是裸图标，
- * 聊天页原先的三颗灰色圆块既与全局语言不一致，又让返回/标题/更多看起来同样重、没有层级。
- * 顶栏是对齐到系统设置页的极简语言，不做悬浮岛。
+ * ¿Por qué no convertirla en una cápsula de fondo redondo: la barra superior de otras páginas de la aplicación (`MuseTopBar`, todas las páginas de configuración) son siempre íconos desnudos,
+ * Los tres círculos grises originales en la página de chat no coinciden con el idioma global y dificultan el regreso./Título/Más lucen igualmente pesados ​​y sin capas.
+ * La barra superior es un lenguaje minimalista alineado con la página de configuración del sistema, sin isla flotante.
  *
- * 裸图标压在滚动内容上时的可读性由调用方的顶栏渐变底保证（见 `ChatTopBarScrim`），
- * 不要在按钮自己身上加阴影或毛玻璃。
+ * La legibilidad de los íconos desnudos cuando se presionan contra el contenido que se desplaza está garantizada por la parte inferior degradada de la barra superior de la persona que llama (consulte `ChatTopBarScrim`),
+ * No agregues sombras ni glaseado al botón.
  */
 @Suppress("FunctionNaming", "LongParameterList")
 @Composable
@@ -45,26 +45,26 @@ internal fun MuseTopBarIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    /** 展开态等需要强调时用主色；默认(Color.Unspecified)跟随当前内容色。 */
+    /** Utilice el color principal cuando sea necesario enfatizar el estado expandido; predeterminado(Color.Unspecified)Siga el color del contenido actual. */
     tint: Color = Color.Unspecified,
     /**
-     * [solid] 为 true 时渲染实心圆形底（主题主色容器）+ 反相图标，
-     * 让全部可点按钮口径一致；列表行内联小操作用 false 保持裸图标，避免每行两个圆块。
+     * [solid] Cuando es verdadero, representa un fondo circular sólido (contenedor de color principal del tema)+ icono de inversión,
+     * Haga que todos los botones en los que se puede hacer clic tengan el mismo calibre; use false para operaciones pequeñas en línea en filas de la lista para mantener los íconos desnudos y evitar dos círculos por fila.
      *
-     * 容器取 tonal（primaryContainer）而非高饱和主色：顶栏是导航镀铬层，
-     * 一屏里可能同时出现返回/菜单/更多三颗圆标，高饱和会盖过页面内容。
+     * El contenedor toma tonal(primaryContainer) en lugar de un color principal muy saturado: la barra superior es la capa cromada de navegación,
+     * El retorno puede aparecer simultáneamente en una pantalla/menú/Más tres rondas, la alta saturación abrumará el contenido de la página.
      */
     solid: Boolean = true,
-    /** v2.6: 玻璃岛模式 —— true 时按钮壳改用玻璃(backdrop/liquid 真玻璃或降级假玻璃),实色容器退居基调色。 */
+    /** v2.6: patrón de isla de cristal —— true La carcasa del botón está hecha de vidrio.(backdrop/liquid Vidrio real o vidrio falso degradado),Los contenedores de colores sólidos pasan a un segundo plano frente a los colores base. */
     glassActive: Boolean = false,
     glassConfig: io.zer0.muse.ui.theme.LiquidGlassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(),
 ) {
     val useGlass = glassActive && glassConfig.enabled && solid
-    // v2.6: 未显式指定 tint 时跟随当前内容色(LocalContentColor),
-    // 使玻璃岛内的图标自动适配背景明暗(GlassIsland 已注入对比色)。
+    // v2.6: Sigue el color del contenido actual cuando el tinte no se especifica explícitamente.(LocalContentColor),
+    // Haz que los íconos en la isla de cristal se adapten automáticamente al fondo claro y oscuro(GlassIsland Infundido con color contrastante).
     val resolvedTint = if (tint == Color.Unspecified) androidx.compose.material3.LocalContentColor.current else tint
     if (useGlass) {
-        // 玻璃模式:外壳交给 GlassIsland(圆形岛),图标居中,不画实色容器。
+        // patrón de vidrio:cáscara entregada GlassIsland(isla redonda),Icono central,No dibujes contenedores de colores sólidos.
         io.zer0.muse.ui.theme.GlassIsland(
             config = glassConfig,
             shape = androidx.compose.foundation.shape.CircleShape,
@@ -98,10 +98,10 @@ internal fun MuseTopBarIconButton(
 }
 
 /**
- * 顶栏右侧统一的「更多」入口：一颗裸图标 + 右上角浮层菜单（页面右上角三点位置）。
+ * La entrada unificada "Más" en el lado derecho de la barra superior: un ícono desnudo + un menú flotante en la esquina superior derecha (la posición de las tres en punto en la esquina superior derecha de la página).
  *
- * 页面把自己的操作作为 [items] 传进来即可，菜单外观、动画与「点完自动收起」全部一致。
- * 展开时按钮显示主题色图标，让浮层与来源按钮的归属关系看得出来。
+ * La página trata sus acciones como [items] Simplemente páselo y la apariencia del menú y la animación serán consistentes con "Contraer automáticamente después de hacer clic".
+ * Cuando se expande, el botón muestra el icono de color del tema, de modo que se puede ver la relación de propiedad entre la capa flotante y el botón de origen.
  */
 @Composable
 internal fun MuseTopBarMenu(
@@ -128,7 +128,7 @@ internal fun MuseTopBarMenu(
             )
         }
         if (expanded) {
-            // v1.0.90: 保留顶栏右上角的浮层菜单（曾短暂改成底部面板，按反馈改回）。
+            // v1.0.90: Mantenga el menú flotante en la esquina superior derecha de la barra superior (se cambió brevemente al panel inferior y se volvió a cambiar según los comentarios).
             MuseFloatingActionMenu(
                 items = items.map { item ->
                     item.copy(
@@ -145,9 +145,9 @@ internal fun MuseTopBarMenu(
 }
 
 /**
- * 聊天页顶栏的渐变底：内容会从顶栏下面滚过，裸图标需要一个极浅的从上到下淡出来保证可读性。
+ * Fondo degradado de la barra superior de la página de chat: el contenido se desplazará debajo de la barra superior y el ícono desnudo necesita un desvanecimiento muy superficial de arriba a abajo para garantizar la legibilidad.
  *
- * 只用背景色到透明的三段渐变，不加阴影、不做毛玻璃——符合「层次靠背景色差」的规范。
+ * Utilice únicamente un degradado de tres etapas desde el color de fondo hasta el transparente, sin sombras ni vidrio esmerilado.——Cumple con el estándar de "la gradación depende de la diferencia de color del fondo".
  */
 @Suppress("FunctionNaming")
 @Composable
@@ -157,13 +157,13 @@ internal fun ChatTopBarScrim(
     glassConfig: io.zer0.muse.ui.theme.LiquidGlassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(),
 ) {
     val background = MaterialTheme.colorScheme.background
-    // v2.6.4: 顶栏「大岛」形状统一 —— 不论玻璃开关，都是同一条居中大岛胶囊；
-    // 只有填充材质随开关变（开启=玻璃引擎，关闭=实色）。
-    // 原逻辑关闭时画全宽渐变条，形状与玻璃态不一致（用户反馈“不统一”）。
-    // v2.6.10: 保留 statusBarsPadding 避开状态栏，但去掉那层 4dp vertical padding。
-    // 父 Box 的高度已由内容行（同样带 statusBarsPadding）决定，垂直 padding 再缩一圈
-    // 会让玻璃比按钮行上下各少 4dp，左右按钮露出遮罩外；
-    // 而完全去掉 insets 又会让玻璃吞掉状态栏，顶栏胶囊异常变高。
+    // v2.6.4: La barra superior "Big Island" tiene una forma unificada. —— Independientemente del interruptor de cristal, se trata de la misma cápsula central de Oshima;
+    // Sólo el material de relleno cambia con el interruptor (en=motor de vidrio, cerrado=color sólido).
+    // Cuando se desactiva la lógica original, se dibuja una barra de degradado de ancho completo y la forma no coincide con el estado del vidrio (comentarios de los usuarios“No unificado”).
+    // v2.6.10: Mantenga statusBarsPadding para evitar la barra de estado, pero elimine la capa de relleno vertical de 4dp.
+    // La altura del cuadro principal ha sido determinada por la fila de contenido (también con statusBarsPadding) y el relleno vertical se reduce en un círculo.
+    // Esto hará que el cristal sea 4dp más pequeño que la parte superior e inferior de la fila de botones, y los botones izquierdo y derecho quedarán expuestos fuera de la máscara;
+    // Y eliminar completamente las inserciones hará que el vaso se trague la barra de estado y la cápsula de la barra superior se volverá anormalmente alta.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -179,7 +179,7 @@ internal fun ChatTopBarScrim(
                         waterState = io.zer0.muse.ui.theme.LocalWaterGlassState.current,
                     )
                 } else {
-                    // 玻璃关闭：同形实色大岛（比中岛胶囊略深一档，让中岛能嵌出来）。
+                    // Cierre de cristal: Isla grande de la misma forma y color sólido (un poco más profunda que la cápsula de Nakajima, lo que permite incrustar el Nakajima).
                     Modifier
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)

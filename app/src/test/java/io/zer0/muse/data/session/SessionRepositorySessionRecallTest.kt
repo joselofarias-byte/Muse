@@ -52,24 +52,24 @@ class SessionRepositorySessionRecallTest {
             MessageSearchJoin(
                 messageId = "m1",
                 sessionId = "session-a",
-                content = "历史原文细节",
+                content = "Detalles del texto histórico",
                 role = "USER",
                 createdAt = 1L,
-                sessionTitle = "会话 A",
+                sessionTitle = "sesión A",
             ),
         )
 
-        val results = repository.searchMessagesInSession("session-a", "历史", limit = 3)
+        val results = repository.searchMessagesInSession("session-a", "historia", limit = 3)
 
         assertEquals(1, results.size)
         assertEquals("session-a", results.single().sessionId)
-        assertEquals("历史原文细节", results.single().content)
+        assertEquals("Detalles del texto histórico", results.single().content)
         coVerify(exactly = 1) { ftsDao.searchFtsInSession(any(), "session-a", 3) }
     }
 
     @Test
     fun `blank or invalid session recall does not query storage`() = runTest {
-        assertTrue(repository.searchMessagesInSession("", "历史").isEmpty())
+        assertTrue(repository.searchMessagesInSession("", "historia").isEmpty())
         assertTrue(repository.searchMessagesInSession("session-a", " ").isEmpty())
         coVerify(exactly = 0) { ftsDao.searchFtsInSession(any(), any(), any()) }
     }

@@ -4,16 +4,16 @@ import io.zer0.common.Logger
 import io.zer0.muse.tools.defaultTool.UIToolsRegistrar
 
 /**
- * 工具注册器启动引导。
+ * Tool Registrar comienza a iniciarse.
  *
- * 各工具注册器在 Koin 中均为懒加载 single，只有被实例化时才会执行
- * `init { registerAll() }` 并把工具写入 [ToolRegistry]。
- * 本类在 App 启动时被注入一次，强制把所有注册器实例化，
- * 避免工具管理页只显示 ToolRegistry 内置的少量工具。
+ * Cada registro de herramienta es un único de carga diferida en Koin y solo se ejecutará cuando se cree una instancia.
+ * `init { registerAll() }` y escribe la herramienta [ToolRegistry].
+ * Esta clase se inyecta una vez cuando se inicia la aplicación, lo que obliga a crear instancias de todos los registros.
+ * Evite que la página de administración de herramientas muestre solo una pequeña cantidad de herramientas integradas en ToolRegistry.
  *
- * 参数数量与「未使用」豁免：本类是纯依赖注入聚合点 —— 每个构造参数存在的唯一目的
- * 就是触发对应 Registrar 的 init 注册副作用，类本身不引用它们。LongParameterList /
- * UnusedPrivateProperty 属设计如此，故在类级显式豁免（未来新增注册器无需刷新基线）。
+ * Número de parámetros y exención "no utilizada": esta clase es un punto de agregación de inyección de dependencia pura —— Cada parámetro de construcción existe con el único propósito de
+ * Es para activar el efecto secundario de registro inicial del Registrador correspondiente, y la clase en sí no hace referencia a ellos.LongParameterList /
+ * UnusedPrivateProperty Esto es así por diseño, por lo que está explícitamente exento a nivel de clase (los nuevos registros en el futuro no necesitan actualizar la línea base).
  */
 @Suppress("LongParameterList", "UnusedPrivateProperty")
 class ToolRegistrarBootstrapper(
@@ -39,38 +39,38 @@ class ToolRegistrarBootstrapper(
     pdfVisionToolsRegistrar: PdfVisionToolsRegistrar,
     shellSandboxToolRegistrar: ShellSandboxToolRegistrar,
     uiToolsRegistrar: UIToolsRegistrar,
-    // P2-23: 媒体生成工具(图片/视频/二维码),原本由 ChatViewModel 在聊天页注册
+    // P2-23: herramientas de generación de medios(fotos/vídeo/código qr),Registrado originalmente en la página de chat por ChatViewModel
     mediaGenToolsRegistrar: MediaGenToolsRegistrar,
-    // v1.0.92: 消息渠道工具(外部 IM 发送)
+    // v1.0.92: Herramientas del canal de mensajes(Envío de mensajería instantánea externa)
     channelToolsRegistrar: ChannelToolsRegistrar,
-    // v2.0: OAuth 连接器工具(connector_list / call_connector)
+    // v2.0: OAuth herramienta conectora(connector_list / call_connector)
     connectorToolsRegistrar: ConnectorToolsRegistrar,
-    // v2.0.1: 插件市场工具(检索 / 审批安装)
+    // v2.0.1: Herramienta de mercado de complementos(Instalación de recuperación/aprobación)
     pluginMarketToolsRegistrar: PluginMarketToolsRegistrar,
-    // v2.x 扩展运行时(P0):内置 Node 沙盒自检(只读)
+    // v2.x Tiempo de ejecución extendido(P0):Autoprueba integrada de la zona de pruebas de Node(solo lectura)
     runtimeSelfCheckToolRegistrar: RuntimeSelfCheckToolRegistrar,
-    // v2.7 扩展运行时(Python):Python 脚本执行
+    // v2.7 Tiempo de ejecución extendido(Python):Python Ejecución de script
     pythonScriptToolRegistrar: PythonScriptToolRegistrar,
-    // v2.6.2: 知识库管理（删文档/删库/建库/列清单）
+    // v2.6.2: Gestión de la base de conocimientos (eliminar documentos/Eliminar base de datos/Construir una base de datos/hacer una lista)
     knowledgeManageToolsRegistrar: KnowledgeManageToolsRegistrar,
-    // v2.6.2: 知识库全文读取
+    // v2.6.2: Lea el texto completo de la base de conocimientos.
     knowledgeReadToolRegistrar: KnowledgeReadToolRegistrar,
-    // v2.6.2: 会话管理（删/改标题/移文件夹/归档）
+    // v2.6.2: Gestión de sesiones (eliminar/Cambiar título/Mover carpeta/Archivo)
     sessionManageToolsRegistrar: SessionManageToolsRegistrar,
-    // v2.6.2: 技能管理（列表/启停/删除）
+    // v2.6.2: Gestión de Habilidades (lista/Iniciar y detener/eliminar)
     skillManageToolsRegistrar: SkillManageToolsRegistrar,
-    // v2.6.2: 助手自管理（限权）
+    // v2.6.2: Autogestión del asistente (permisos limitados)
     assistantManageToolsRegistrar: AssistantManageToolsRegistrar,
 ) {
     init {
-        // 计数走统一入口（[ToolRegistry.countTools]），避免各处自算一套
+        // El conteo toma la entrada unificada ([ToolRegistry.countTools]), para evitar calcular lo mismo en todas partes
         val registered = toolRegistry.countTools(sessionId = null).registeredTotal
         Logger.i(
             "ToolRegistrarBootstrapper",
-            "工具注册器全部初始化完成，本地注册工具数=$registered（启动时刻；MCP、插件与会话技能尚未登记）",
+            "El registro de herramientas está todo inicializado y el número de herramientas registradas localmente=$registered(hora de inicio;MCP, los complementos y las habilidades de sesión aún no se han registrado)",
         )
-        // 分类覆盖校验必须放在这里 —— 所有 Registrar 的 init 已执行完,
-        // 此刻 toolRegistry 才持有全部内置工具(详见 ToolRegistry.assertBuiltInCategoryCoverage)。
+        // La verificación de cobertura de clasificación debe realizarse aquí. —— Se ha ejecutado todo el inicio del registrador.,
+        // En este momento, toolRegistry solo contiene todas las herramientas integradas.(Ver detalles ToolRegistry.assertBuiltInCategoryCoverage).
         toolRegistry.assertBuiltInCategoryCoverage()
     }
 }

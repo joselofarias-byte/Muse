@@ -14,8 +14,8 @@ class BackupFileStoreCoverageTest {
 
     @Test
     fun `backup file store allowlist includes card data`() {
-        // v4.1: CardDataStore 的 filesDir/card_data.json 此前漏在白名单外,
-        // 卡片数据(show_card/update_card_data 写入)不进备份。
+        // v4.1: CardDataStore filesDir/card_data.json fue excluido previamente de la lista blanca,
+        // datos de la tarjeta(show_card/update_card_data escribir)Sin respaldo.
         assertTrue("card_data.json" in BackupService.backupFileStorePaths)
     }
 

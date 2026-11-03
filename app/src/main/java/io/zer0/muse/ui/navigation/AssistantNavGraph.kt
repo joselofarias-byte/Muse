@@ -33,25 +33,25 @@ import io.zer0.muse.ui.common.media.rememberWindowWidthClass
 import io.zer0.muse.ui.common.state.MuseEmptyState
 
 /**
- * 助手域 NavGraph — 包含助手管理、助手详情及 5 个子页、收藏夹、世界书、
- * 快捷消息、Prompt 注入、Skills、记忆共 13 个 composable。
+ * Campo de ayuda NavGraph — Contiene gestión de asistente, detalles del asistente y 5 subpáginas, favoritos, libro mundial,
+ * mensaje rápido,Prompt inyección,Skills, un total de 13 recuerdos componibles.
  *
- * 从 MainActivity 抽取以解决后者过载问题(原 1804 行 → 目标 ≤ 800 行)。
- * 所有 composable 统一使用 [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] 过渡。
- * ASSISTANTS 页在 Expanded 模式下使用双列布局(左列表 + 右详情)。
+ * Extracto de MainActivity para resolver el último problema de sobrecarga(Línea original 1804 → objetivo ≤ 800 OK).
+ * Todos los componibles se utilizan de manera uniforme. [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] Transición.
+ * ASSISTANTS La página utiliza un diseño de dos columnas en modo ampliado(Lista izquierda + detalles derecha).
  */
 fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedViewModel: ChatViewModel) {
     composable<AssistantsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
     ) {
-        // P1-4 平板适配:Expanded 模式下双列布局(左 AssistantScreen 40% + 右 AssistantDetailPage 60%)
+        // P1-4 Adaptación de tableta:Expanded Diseño de doble columna en modo(Asistente izquierdoPantalla 40% + Derecha AssistantDetailPage 60%)
         val widthClass = rememberWindowWidthClass()
         if (widthClass == WindowWidthClass.Expanded) {
-            // 跟踪当前选中的助手 ID(rememberSaveable 保证旋转/配置变更后保留)
+            // Realizar un seguimiento del asistente seleccionado actualmente ID(rememberSaveable Rotación garantizada/Conservar después de cambios de configuración)
             var selectedAssistantId by rememberSaveable { mutableStateOf<String?>(null) }
             Row(modifier = Modifier.fillMaxSize()) {
-                // 左列:助手列表(onBack 仍可返回上级;onOpenDetail 切换右栏)
+                // columna izquierda:lista de asistentes(onBack Aún puedes volver al nivel anterior.;onOpenDetail Cambiar columna derecha)
                 Box(modifier = Modifier.weight(0.4f).fillMaxSize()) {
                     AssistantScreen(
                         viewModel = sharedViewModel,
@@ -59,7 +59,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
                         onOpenDetail = { id -> selectedAssistantId = id },
                     )
                 }
-                // 右列:助手详情页(无选中时显示空状态)
+                // columna derecha:Página de detalles del asistente(Mostrar estado vacío cuando no se selecciona ninguna selección)
                 Box(modifier = Modifier.weight(0.6f).fillMaxSize()) {
                     val currentId = selectedAssistantId
                     if (currentId != null) {
@@ -73,7 +73,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
                             onOpenAdvanced = { navController.navigate(AssistantAdvancedRoute(currentId)) },
                         )
                     } else {
-                        // P1-4: 未选中助手时的占位空状态(右侧详情区空提示)
+                        // P1-4: Estado vacío del marcador de posición cuando el asistente no está seleccionado(Mensaje vacío en el área de detalles a la derecha)
                         MuseEmptyState(
                             icon = MuseIcons.user,
                             title = stringResource(R.string.assistant_detail_title_default),
@@ -90,7 +90,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             )
         }
     }
-    // v0.37: 助手详情聚合页(头部 + 5 个子页入口)
+    // v0.37: Página de agregación de detalles del asistente(Encabezado + 5 entradas de subpágina)
     composable<AssistantDetailRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -106,7 +106,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onOpenAdvanced = { navController.navigate(AssistantAdvancedRoute(assistantId)) },
         )
     }
-    // v0.37: 助手基础子页
+    // v0.37: Subpágina Conceptos básicos del Asistente
     composable<AssistantBasicRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -117,7 +117,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.37: 助手提示词子页
+    // v0.37: Subpágina de palabras de aviso del asistente
     composable<AssistantPromptRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -128,7 +128,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.37: 助手扩展子页
+    // v0.37: Subpágina de extensión auxiliar
     composable<AssistantExtensionsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -139,7 +139,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.37: 助手记忆子页
+    // v0.37: Subpágina de memoria del asistente
     composable<AssistantMemoryRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -150,7 +150,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.37: 助手高级子页
+    // v0.37: Subpágina avanzada del asistente
     composable<AssistantAdvancedRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -192,7 +192,7 @@ fun NavGraphBuilder.assistantNavGraph(navController: NavHostController, sharedVi
             onBack = { navController.popBackStack() },
         )
     }
-    // P1-2: Worldbook 动态世界书(独立 ViewModel,不依赖 ChatViewModel)
+    // P1-2: Worldbook Libro del mundo dinámico(independiente ViewModel,no depende de ChatViewModel)
     composable<WorldbookRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },

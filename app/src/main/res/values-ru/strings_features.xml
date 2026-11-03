@@ -118,7 +118,7 @@
     <string name="schedule_show_advanced">Показать расширенную автоматизацию</string>
     <string name="schedule_hide_advanced">Скрыть расширенную автоматизацию</string>
 
-    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -276,7 +276,7 @@
     <string name="knowledge_doc_chunks">· %1$d куски</string>
     <string name="knowledge_doc_not_indexed">· Не индексируется</string>
 
-    <!-- 前端修复 (i18n-7): PDF metadata card -->
+    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">По времени обновления</string>
@@ -476,13 +476,13 @@
     <string name="groupchat_tool_context">Контекст группы</string>
     <string name="groupchat_tool_mention">@Упомянуть</string>
 
-    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: 写作群聊快速创建入口 -->
-    <!-- v2.x: 群聊归档 -->
+    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
+    <!-- v2.x: Archivo de chat grupal -->
     <string name="groupchat_archive">Архивировать</string>
     <string name="groupchat_unarchive">Разархивировать</string>
 
@@ -592,7 +592,7 @@
     <string name="muse_plugins_empty_hint">Нет внешних плагинов. Нажмите +, чтобы импортировать пакет .muse-plugin или ZIP.</string>
     <string name="muse_plugins_imported">Пакет плагина установлен</string>
     <string name="muse_plugins_manage">Плагины</string>
-    <!-- ===== Phase 5: 插件市场(签名目录浏览 + 一键安装) ===== -->
+    <!-- ===== Phase 5: mercado de complementos(Exploración del directorio de firmas + instalación con un clic) ===== -->
     <string name="muse_plugins_market_title">Магазин плагинов</string>
     <string name="muse_plugins_tab_installed">Установленные</string>
     <string name="muse_plugins_market_not_configured">Каталог не настроен</string>
@@ -774,7 +774,7 @@
     <string name="wake_diagnostics_refresh">Обновить</string>
     <string name="wake_diagnostics_copy">Скопировать снимок</string>
     <string name="wake_diagnostics_copied">Снимок скопирован</string>
-    <string name="wake_diagnostics_hint">Если задача «запускалась, но с ошибкой», смотрите failed／skipped／missed в истории задач. «Ни разу не запускалась» обычно означает: не зарегистрирована, ограничена системой или выключен общий переключатель — всё это видно здесь.</string>
+    <string name="wake_diagnostics_hint">Если задача «запускалась, но с ошибкой», смотрите failed/skipped/missed в истории задач. «Ни разу не запускалась» обычно означает: не зарегистрирована, ограничена системой или выключен общий переключатель — всё это видно здесь.</string>
     <string name="wake_diagnostics_total_control">Общий переключатель фоновых задач: %1$s</string>
     <string name="wake_diagnostics_total_control_on">включён</string>
     <string name="wake_diagnostics_total_control_off">выключен (пробуждения идут, но исполнители сразу выходят)</string>

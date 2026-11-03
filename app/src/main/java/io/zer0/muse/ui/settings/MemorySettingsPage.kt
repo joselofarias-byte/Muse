@@ -35,43 +35,43 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v0.32: 记忆系统高级配置页。
+ * v0.32: Página de configuración avanzada del sistema de memoria.
  *
- * 把 MemoryTicker 的硬编码阈值提升为可配置:
- *  - token 预算(影响注入到 system prompt 的记忆量)
- *  - 衰减系数 λ(控制遗忘速度)
- *  - 命中加成(常提起的记忆不易消失)
- *  - 编译阈值(低于此分的记忆不进入 memory.md)
- *  - 遗忘倍率(1.0 正常 / 2.0 忘得快一倍)
+ * Aumentar el umbral codificado de MemoryTicker a configurable:
+ *  - token presupuesto(Afecta la cantidad de memoria inyectada en el indicador del sistema.)
+ *  - Coeficiente de atenuación λ(Controla la velocidad del olvido)
+ *  - Bonificación de golpe(Los recuerdos que se mencionan a menudo no son fáciles de desaparecer.)
+ *  - umbral de compilación(No se ingresarán memorias con puntuaciones inferiores a esta. memory.md)
+ *  - factor de olvido(1.0 Normal / 2.0 Olvídate el doble de rápido)
  *
- * v1.0.51: 经验库开关移至聊天设置页;通知策略移至聊天设置页。
- * v2.x: 保持唤醒/开机自启移至 Agent 页「后台与可靠性」组。
+ * v1.0.51: El interruptor de la biblioteca de experiencias se mueve a la página de configuración del chat.;La política de notificación se movió a la página de configuración del chat.
+ * v2.x: mantente despierto/Vaya al grupo "Backend y confiabilidad" en la página del Agente después del inicio.
  */
 @Composable
 fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
     val settings: SettingsRepository = koinInject()
     val memoryConfig by settings.memoryConfigFlow.collectAsStateWithLifecycle(initialValue = MemoryConfig())
-    // v2.x: 长期记忆总开关自助手资源页归位(记忆功能总控)
+    // v2.x: Página de recursos de autoayuda para el interruptor maestro de memoria a largo plazo Volver a inicio(Control maestro de la función de memoria)
     val memoryEnabled by settings.memoryEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
-    // v2.x: 保持唤醒/开机自启已挪至 Agent 页「后台与可靠性」组;自定义压缩提示词已挪至辅助模型页。
+    // v2.x: mantente despierto/El inicio automático se ha movido al grupo "Backend y confiabilidad" en la página del Agente;Las palabras de indicación de compresión personalizadas se han movido a la página del modelo auxiliar.
     val scope = rememberCoroutineScope()
-    // 经验库开关：记忆系统的组成部分，从聊天页归位而来。
+    // Cambio de biblioteca de experiencias: un componente del sistema de memoria, devuelto desde la página de chat.
     val experienceEnabled by settings.experienceEnabledFlow
         .collectAsStateWithLifecycle(initialValue = false)
-    // 楼层式上下文限制：上下文里保留最近多少轮（自聊天页归位）
+    // Límite de contexto basado en piso: cuántas rondas recientes se retienen en el contexto (devuelto desde la página de chat)
     val floorLimiterEnabled by settings.floorLimiterEnabledFlow
         .collectAsStateWithLifecycle(initialValue = false)
     val floorLimit by settings.floorLimitFlow.collectAsStateWithLifecycle(initialValue = 16)
 
-    // v1.78 (#19): 滑块防抖 — 拖动时只更新 localConfig,停止 400ms 后才持久化到 DataStore
+    // v1.78 (#19): Control deslizante antivibración — Solo se actualiza al arrastrar localConfig,Deténgase durante 400 ms antes de continuar DataStore
     //
-    // 这里不能用 remember(memoryConfig) 做 key：那样每次保存回流都会重建 localConfig，
-    // 把正在进行的拖动拽回上一次保存的值（慢拖必现，表现为「滑条拖一次就动不了」）。
-    // 改成常驻本地状态 + 脏标记：本地有未保存改动时不接受外部同步。
+    // No disponible aquí remember(memoryConfig) Crear clave: Luego, localConfig se reconstruirá cada vez que guarde y redistribuya.
+    // Arrastre el arrastre en curso hasta el último valor guardado (un arrastre lento hará que aparezca, ya que "el control deslizante no se puede mover después de arrastrarlo una vez").
+    // Cambio al estado local residente + marca sucia: la sincronización externa no se aceptará cuando haya cambios locales no guardados.
     var localConfig by remember { mutableStateOf(memoryConfig) }
     var localConfigDirty by remember { mutableStateOf(false) }
 
-    // 只有本地没有待保存改动时，才接受外部配置变更（首帧加载、别处修改）。
+    // Los cambios de configuración externos (carga del primer cuadro, modificación en otro lugar) solo se aceptarán si no hay cambios locales para guardar.
     LaunchedEffect(memoryConfig) {
         if (!localConfigDirty) localConfig = memoryConfig
     }
@@ -79,11 +79,11 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
     LaunchedEffect(localConfig) {
         if (!localConfigDirty) return@LaunchedEffect
         delay(400)
-        // v1.78 (H7): 保存前校验,拒绝 compileThreshold >= baseImportance 等危险配置
+        // v1.78 (H7): Verificar antes de guardar,rechazar compileThreshold >= baseImportance Otras configuraciones peligrosas
         val err = MemoryConfig.validate(localConfig)
         if (err != null) {
             io.zer0.muse.ui.common.feedback.MuseToast.show(err)
-            localConfig = memoryConfig // 回退到上次合法值
+            localConfig = memoryConfig // Retroceder al último valor legal
             localConfigDirty = false
         } else {
             settings.saveMemoryConfig(localConfig)
@@ -92,23 +92,23 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
     }
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_memory_page_title), onBack = onBack) {
-        // ── 0. 记忆空间管理(P2-2) ──
+        // ── 0. gestión del espacio de memoria(P2-2) ──
         item { SectionLabel(stringResource(R.string.memory_space_entry)) }
         item {
             SettingsGroup {
                 SettingsItemRow(
                     icon = null,
                     title = stringResource(R.string.memory_space_manage_title),
-                    subtitle = "管理工作 / 生活 / 学习等多个记忆空间,切换时互不干扰",
+                    subtitle = "Administre múltiples espacios de memoria como trabajo/vida/estudio,Sin interferencias entre sí al cambiar",
                     onClick = onOpenMemorySpace,
                 )
             }
         }
-        // ── 1. 记忆系统 ──
+        // ── 1. sistema de memoria ──
         item { SectionLabel(stringResource(R.string.settings_memory_system_section)) }
         item {
             SettingsGroup {
-                // v2.x: 长期记忆总开关自助手资源页归位
+                // v2.x: Página de recursos de autoayuda para el interruptor maestro de memoria a largo plazo Volver a inicio
                 SettingsSwitchRow(
                     icon = MuseIcons.atom,
                     title = stringResource(R.string.settings_assistant_memory_enable),
@@ -170,7 +170,7 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
                     icon = MuseIcons.bolt,
                     iconContentDescription = stringResource(R.string.settings_memory_hit_bonus),
                     title = stringResource(R.string.settings_memory_hit_bonus),
-                    // v7: hitBonus 已接入 factScore / cutoffDays / applyDecay
+                    // v7: hitBonus Ya conectado factScore / cutoffDays / applyDecay
                     subtitle = stringResource(R.string.settings_memory_hit_bonus_subtitle),
                     value = localConfig.hitBonus,
                     valueRange = 0f..15f,
@@ -212,7 +212,7 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
                     },
                 )
                 SettingsGroupDivider()
-                // v1.78 (#21): 恢复默认按钮
+                // v1.78 (#21): Restaurar botón predeterminado
                 SettingsActionRow(
                     title = stringResource(R.string.settings_memory_restore_default),
                     subtitle = stringResource(R.string.settings_memory_restore_default_subtitle),
@@ -220,7 +220,7 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
                 )
             }
         }
-        // ── 上下文窗口 ──
+        // ── ventana contextual ──
         item { SectionLabel(stringResource(R.string.settings_screen_group_context_window)) }
         item {
             SettingsGroup {
@@ -268,7 +268,7 @@ fun MemorySettingsPage(onBack: () -> Unit, onOpenMemorySpace: () -> Unit = {}) {
 }
 
 /**
- * v1.78 (#21): 可点击的操作行(如"恢复默认")。
+ * v1.78 (#21): Fila de acción en la que se puede hacer clic(Como por ejemplo"Restaurar valor predeterminado").
  */
 @Composable
 private fun SettingsActionRow(title: String, subtitle: String, onClick: () -> Unit) {

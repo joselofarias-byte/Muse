@@ -5,35 +5,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x: 表情包标记解析器单测 — 完整标记/多标记/流式半截/代码围栏/容错。
+ * v2.x: Prueba única del analizador de etiquetas de emoticones — marcado completo/múltiples etiquetas/transmisión de la mitad/valla de código/Tolerancia a fallos.
  */
 class StickerMarkupTest {
     // ── findMarkers ─────────────────────────────────────────────────────
 
     @Test
     fun `finds single complete marker`() {
-        val markers = StickerMarkup.findMarkers("今天太好了 [[sticker:开心]]")
+        val markers = StickerMarkup.findMarkers("hoy es tan bueno [[sticker:feliz]]")
         assertEquals(1, markers.size)
-        assertEquals("开心", markers[0].category)
+        assertEquals("feliz", markers[0].category)
     }
 
     @Test
     fun `finds multiple markers in order`() {
-        val markers = StickerMarkup.findMarkers("a [[sticker:开心]] b [[sticker:无语]] c")
-        assertEquals(listOf("开心", "无语"), markers.map { it.category })
+        val markers = StickerMarkup.findMarkers("a [[sticker:feliz]] b [[sticker:Sin palabras]] c")
+        assertEquals(listOf("feliz", "Sin palabras"), markers.map { it.category })
     }
 
     @Test
     fun `case insensitive and spaces trimmed`() {
-        val markers = StickerMarkup.findMarkers("[[STICKER: 开心 ]]")
-        assertEquals("开心", markers.single().category)
+        val markers = StickerMarkup.findMarkers("[[STICKER: feliz ]]")
+        assertEquals("feliz", markers.single().category)
     }
 
     @Test
     fun `skips markers inside code fence`() {
-        val text = "```\n[[sticker:开心]]\n```\n[[sticker:无语]]"
+        val text = "```\n[[sticker:feliz]]\n```\n[[sticker:Sin palabras]]"
         val markers = StickerMarkup.findMarkers(text)
-        assertEquals(listOf("无语"), markers.map { it.category })
+        assertEquals(listOf("Sin palabras"), markers.map { it.category })
     }
 
     @Test
@@ -43,85 +43,85 @@ class StickerMarkupTest {
 
     @Test
     fun `marker positions are correct`() {
-        val text = "你好 [[sticker:开心]] 结束"
+        val text = "Hola [[sticker:feliz]] fin"
         val marker = StickerMarkup.findMarkers(text).single()
-        assertEquals(text.substring(marker.start, marker.end), "[[sticker:开心]]")
+        assertEquals(text.substring(marker.start, marker.end), "[[sticker:feliz]]")
     }
 
     // ── findOpenMarkerStart ─────────────────────────────────────────────
 
     @Test
     fun `detects unclosed marker while streaming`() {
-        assertTrue(StickerMarkup.findOpenMarkerStart("好的 [[sticker:开") >= 0)
-        assertTrue(StickerMarkup.findOpenMarkerStart("好的 [[st") >= 0)
-        assertTrue(StickerMarkup.findOpenMarkerStart("好的 [[") >= 0)
-        assertTrue(StickerMarkup.findOpenMarkerStart("好的 [[sticker:") >= 0)
+        assertTrue(StickerMarkup.findOpenMarkerStart("OK [[sticker:abierto") >= 0)
+        assertTrue(StickerMarkup.findOpenMarkerStart("OK [[st") >= 0)
+        assertTrue(StickerMarkup.findOpenMarkerStart("OK [[") >= 0)
+        assertTrue(StickerMarkup.findOpenMarkerStart("OK [[sticker:") >= 0)
     }
 
     @Test
     fun `closed marker is not reported open`() {
-        assertEquals(-1, StickerMarkup.findOpenMarkerStart("好的 [[sticker:开心]] 嗯"))
+        assertEquals(-1, StickerMarkup.findOpenMarkerStart("OK [[sticker:feliz]] si"))
     }
 
     @Test
     fun `unrelated double bracket is not swallowed`() {
-        assertEquals(-1, StickerMarkup.findOpenMarkerStart("看这个 [[foo"))
-        assertEquals(-1, StickerMarkup.findOpenMarkerStart("普通文本没有括号"))
+        assertEquals(-1, StickerMarkup.findOpenMarkerStart("mira esto [[foo"))
+        assertEquals(-1, StickerMarkup.findOpenMarkerStart("Texto normal sin corchetes"))
     }
 
     // ── split ───────────────────────────────────────────────────────────
 
     @Test
     fun `split returns single text segment when no marker`() {
-        val segs = StickerMarkup.split("普通回复")
+        val segs = StickerMarkup.split("respuesta normal")
         assertEquals(1, segs.size)
         assertTrue(segs[0] is StickerMarkup.Segment.Text)
     }
 
     @Test
     fun `split produces text and sticker segments`() {
-        val segs = StickerMarkup.split("今天太好了 [[sticker:开心]]")
+        val segs = StickerMarkup.split("hoy es tan bueno [[sticker:feliz]]")
         assertEquals(2, segs.size)
-        assertEquals("今天太好了", (segs[0] as StickerMarkup.Segment.Text).text)
-        assertEquals("开心", (segs[1] as StickerMarkup.Segment.Sticker).category)
+        assertEquals("hoy es tan bueno", (segs[0] as StickerMarkup.Segment.Text).text)
+        assertEquals("feliz", (segs[1] as StickerMarkup.Segment.Sticker).category)
     }
 
     @Test
     fun `split swallows unclosed marker tail`() {
-        val segs = StickerMarkup.split("好的 [[sticker:开")
+        val segs = StickerMarkup.split("OK [[sticker:abierto")
         assertEquals(1, segs.size)
-        assertEquals("好的", (segs[0] as StickerMarkup.Segment.Text).text)
+        assertEquals("OK", (segs[0] as StickerMarkup.Segment.Text).text)
     }
 
     @Test
     fun `split handles marker in the middle`() {
-        val segs = StickerMarkup.split("前 [[sticker:无语]] 后")
+        val segs = StickerMarkup.split("antes [[sticker:Sin palabras]] después")
         assertEquals(3, segs.size)
-        assertEquals("前", (segs[0] as StickerMarkup.Segment.Text).text)
-        assertEquals("无语", (segs[1] as StickerMarkup.Segment.Sticker).category)
-        assertEquals("后", (segs[2] as StickerMarkup.Segment.Text).text)
+        assertEquals("antes", (segs[0] as StickerMarkup.Segment.Text).text)
+        assertEquals("Sin palabras", (segs[1] as StickerMarkup.Segment.Sticker).category)
+        assertEquals("después", (segs[2] as StickerMarkup.Segment.Text).text)
     }
 
     @Test
     fun `split handles adjacent markers`() {
-        val segs = StickerMarkup.split("[[sticker:开心]][[sticker:无语]]")
+        val segs = StickerMarkup.split("[[sticker:feliz]][[sticker:Sin palabras]]")
         assertEquals(2, segs.size)
-        assertEquals("开心", (segs[0] as StickerMarkup.Segment.Sticker).category)
-        assertEquals("无语", (segs[1] as StickerMarkup.Segment.Sticker).category)
+        assertEquals("feliz", (segs[0] as StickerMarkup.Segment.Sticker).category)
+        assertEquals("Sin palabras", (segs[1] as StickerMarkup.Segment.Sticker).category)
     }
 
     @Test
     fun `split drops marker-only blank text segments`() {
-        val segs = StickerMarkup.split("[[sticker:开心]]")
+        val segs = StickerMarkup.split("[[sticker:feliz]]")
         assertEquals(1, segs.size)
         assertTrue(segs[0] is StickerMarkup.Segment.Sticker)
     }
 
     @Test
     fun `split keeps paragraph text around marker`() {
-        val segs = StickerMarkup.split("第一段。\n\n[[sticker:开心]]\n\n第二段。")
+        val segs = StickerMarkup.split("Primer párrafo.\n\n[[sticker:feliz]]\n\nSegundo párrafo.")
         assertEquals(3, segs.size)
-        assertEquals("第一段。", (segs[0] as StickerMarkup.Segment.Text).text)
-        assertEquals("第二段。", (segs[2] as StickerMarkup.Segment.Text).text)
+        assertEquals("Primer párrafo.", (segs[0] as StickerMarkup.Segment.Text).text)
+        assertEquals("Segundo párrafo.", (segs[2] as StickerMarkup.Segment.Text).text)
     }
 }

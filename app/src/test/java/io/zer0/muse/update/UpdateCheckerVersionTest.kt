@@ -6,19 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.0.72: 更新检查核心逻辑测试。
+ * v1.0.72: Se actualizaron las pruebas de lógica central de verificación.
  *
- * 覆盖:
- *  - 语义版本比较(带 v 前缀/多段版本/长度不等)
- *  - ReleaseInfo 序列化往返(UI Banner 缓存依赖)
- *  - 下载 URL 信任校验 + 官网下载页常量(下载/更新出口迁移)
- *  - "升级到同版本后不再提示"的判定逻辑(compareVersions >= 0 即不提示)
+ * Portada:
+ *  - Comparación de versiones semánticas(con el prefijo v/versión multisegmento/longitudes variables)
+ *  - ReleaseInfo serialización ida y vuelta(UI Banner dependencia de caché)
+ *  - Verificación de confianza de URL de descarga + constantes de la página de descarga del sitio web oficial(Descargar/Actualizar migración de exportación)
+ *  - "No más mensajes después de actualizar a la misma versión"lógica de decisión(compareVersions >= 0 Es decir, sin aviso)
  *
- * 注意:不依赖网络,纯逻辑测试,CI 可稳定运行。
+ * Nota:No depende de Internet,Prueba de lógica pura,CI Puede funcionar de forma estable.
  */
 class UpdateCheckerVersionTest {
 
-    // ── 版本比较(UpdateChecker.compareVersions) ──
+    // ── Comparación de versiones(UpdateChecker.compareVersions) ──
 
     @Test
     fun `current older than latest returns negative`() {
@@ -43,7 +43,7 @@ class UpdateCheckerVersionTest {
 
     @Test
     fun `unequal length versions compare by missing segments as zero`() {
-        // "1.0" 视为 [1,0],与 "1.0.1"([1,0,1]) 比较 → 1.0 < 1.0.1
+        // "1.0" considerado como [1,0],con "1.0.1"([1,0,1]) comparar → 1.0 < 1.0.1
         assertTrue(UpdateChecker.compareVersions("1.0", "1.0.1") < 0)
         // "1.0.1" > "1.0"
         assertTrue(UpdateChecker.compareVersions("1.0.1", "1.0") > 0)
@@ -51,21 +51,21 @@ class UpdateCheckerVersionTest {
 
     @Test
     fun `non numeric segments are ignored`() {
-        // "1.0.70-beta" split('.') → ["1","0","70-beta"],非数字整段忽略 → [1,0]
-        // 与 [1,0,70] 比较:缺段按 0 → 1.0.70-beta < v1.0.70
+        // "1.0.70-beta" split('.') → ["1","0","70-beta"],Ignorar párrafos enteros no numéricos → [1,0]
+        // con [1,0,70] comparar:Botón de segmento faltante 0 → 1.0.70-beta < v1.0.70
         assertTrue(UpdateChecker.compareVersions("1.0.70-beta", "v1.0.70") < 0)
-        // 纯数字段仍正常比较
+        // Los campos numéricos puros aún se comparan normalmente
         assertTrue(UpdateChecker.compareVersions("1.0.70", "1.0.71") < 0)
     }
 
-    // ── ReleaseInfo 序列化往返(UI Banner 缓存) ──
+    // ── ReleaseInfo serialización ida y vuelta(UI Banner caché) ──
 
     @Test
     fun `release info round trips through json`() {
         val release = UpdateChecker.ReleaseInfo(
             tagName = "v1.0.72",
             name = "v1.0.72",
-            body = "修复更新检查",
+            body = "Corregir verificación de actualización",
             htmlUrl = "https://github.com/Zer0Qing/Muse/releases/tag/v1.0.72",
             publishedAt = 1_770_000_000_000L,
             apkAssets = listOf(
@@ -108,11 +108,11 @@ class UpdateCheckerVersionTest {
         assertTrue(!UpdateChecker.isTrustedApkAsset(wrongHash))
     }
 
-    // ── Banner 显示判定(升级到同版本后不再提示) ──
+    // ── Banner mostrar juicio(No más mensajes después de actualizar a la misma versión) ──
 
     @Test
     fun `official download page constant points to museai ltd https`() {
-        // 下载/更新出口统一指向官网下载页:必须是 museai.ltd 域名的 HTTPS 地址
+        // Descargar/Actualice las exportaciones para que apunten a la página de descarga del sitio web oficial:Debe ser la dirección HTTPS del nombre de dominio museai.ltd
         val url = UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE
         assertTrue(url.startsWith("https://museai.ltd/"))
         assertTrue(url.endsWith("/"))
@@ -120,7 +120,7 @@ class UpdateCheckerVersionTest {
 
     @Test
     fun `untrusted download url is rejected`() {
-        // 资产解析层的信任校验仍然拒绝非 GitHub 官方 HTTPS 地址
+        // La verificación de confianza de la capa de resolución de activos aún rechaza direcciones HTTPS oficiales que no son de GitHub.
         assertTrue(!UpdateChecker.isTrustedDownloadUrl("https://example.com/malicious.apk"))
         assertTrue(!UpdateChecker.isTrustedDownloadUrl("http://github.com/app.apk"))
         assertTrue(UpdateChecker.isTrustedDownloadUrl("https://github.com/Zer0Qing/Muse/releases/download/v1/a.apk"))
@@ -128,17 +128,17 @@ class UpdateCheckerVersionTest {
 
     @Test
     fun `banner should not show when current equals cached latest`() {
-        // HomeScreen 判定:compareVersions(current, cached.tagName) < 0 才显示 Banner
+        // HomeScreen juicio:compareVersions(current, cached.tagName) < 0 solo mostrar Banner
         val current = "1.0.71"
         val cached = "v1.0.71"
-        assertTrue("升级到同版本后不应显示 Banner", UpdateChecker.compareVersions(current, cached) >= 0)
+        assertTrue("No debería mostrarse después de actualizar a la misma versión. Banner", UpdateChecker.compareVersions(current, cached) >= 0)
     }
 
     @Test
     fun `banner should show when current older than cached`() {
         val current = "1.0.70"
         val cached = "v1.0.71"
-        assertTrue("存在新版本时应显示 Banner", UpdateChecker.compareVersions(current, cached) < 0)
+        assertTrue("Debe mostrarse cuando existe una nueva versión. Banner", UpdateChecker.compareVersions(current, cached) < 0)
     }
 
     @Test

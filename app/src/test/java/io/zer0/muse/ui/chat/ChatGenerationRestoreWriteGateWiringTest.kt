@@ -19,7 +19,7 @@ class ChatGenerationRestoreWriteGateWiringTest {
     fun `queued sends and outbox recovery yield while backup restore is active`() {
         val text = source()
         val enqueueBody = text.substringAfter("fun enqueueSend(")
-            .substringBefore("/** 队列消费失败")
+            .substringBefore("/** Error en el consumo de cola")
         val consumeBody = text.substringAfter("suspend fun consumeSendRequest")
             .substringBefore("/**")
         val requeueBody = text.substringAfter("suspend fun requeueOutboxForSession")

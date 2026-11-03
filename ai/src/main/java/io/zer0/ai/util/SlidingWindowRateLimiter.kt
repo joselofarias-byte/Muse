@@ -3,28 +3,28 @@ package io.zer0.ai.util
 import kotlinx.coroutines.delay
 
 /**
- * P1-3: 滑动窗口限流器。
+ * P1-3: Limitador de ventana corredera.
  *
- * 在 [windowMs] 时间窗口内最多允许 [maxRequests] 次请求。
- * [acquire] 在超限时挂起等待直到窗口滑出空位,而非直接拒绝 ——
- * 对用户对话路径更友好(用户多等几秒,而不是看到"限流"错误)。
+ * en [windowMs] Máximo permitido dentro de la ventana de tiempo [maxRequests] solicitudes.
+ * [acquire] Cuelgue y espere hasta que la ventana se abra cuando se exceda el límite,en lugar de rechazarlo directamente ——
+ * Rutas de conversación más amigables para los usuarios(El usuario espera unos segundos más.,en lugar de ver"Limitación de corriente"error).
  *
- * 实现:用 [ArrayDeque] 记录窗口内每次请求的时间戳。
- *  - acquire 时先清理过期时间戳(早于 now - windowMs)
- *  - 若队列长度 < [maxRequests],追加当前时间戳并返回
- *  - 否则计算最早时间戳滑出窗口所需等待时长,[delay] 后重试
+ * darse cuenta:usar [ArrayDeque] Registre la marca de tiempo de cada solicitud dentro de la ventana.
+ *  - acquire Primero limpie la marca de tiempo vencida(antes que now - windowMs)
+ *  - Si la longitud de la cola < [maxRequests],Agregar la marca de tiempo actual y regresar
+ *  - De lo contrario, calcule el tiempo de espera necesario para que la marca de tiempo más temprana salga de la ventana.,[delay] Vuelve a intentarlo más tarde
  *
- * 线程安全:所有读写都在 [lock] 同步块内,ArrayDeque 操作极快(微秒级),
- * 锁竞争可忽略。适合 RPM 量级(每秒数十次 acquire)的场景。
+ * Seguridad del hilo:Toda la lectura y escritura están en [lock] dentro del bloque de sincronización,ArrayDeque Operación extremadamente rápida(Nivel de microsegundo),
+ * La contención de bloqueo se puede ignorar. Adecuado para niveles de RPM(docenas de veces por segundo acquire)escena.
  *
- * 与 [io.zer0.ai.util.KeyRoulette] 的关系:
- *  - KeyRoulette 是"反应式"策略:429 返回后切换到下一个 key
- *  - SlidingWindowRateLimiter 是"主动式"策略:请求发出前控制速率
- *  - 两者互补,可叠加使用
+ * con [io.zer0.ai.util.KeyRoulette] relación:
+ *  - KeyRoulette si"Reacción"Estrategia:429 Cambiar al siguiente después de regresar key
+ *  - SlidingWindowRateLimiter si"Activo"Estrategia:Control de tarifas antes de emitir la solicitud.
+ *  - Los dos se complementan,Se puede utilizar en combinación
  *
- * @param maxRequests 窗口内最大请求数,必须 > 0
- * @param windowMs 窗口大小(毫秒),默认 60 秒(RPM)
- * @param clock 时钟源,可注入用于测试
+ * @param maxRequests Número máximo de solicitudes dentro de la ventana,debe > 0
+ * @param windowMs tamaño de ventana(milisegundos),Predeterminado 60 segundos(RPM)
+ * @param clock fuente de reloj,Inyectable para pruebas
  */
 class SlidingWindowRateLimiter(
     private val maxRequests: Int,
@@ -36,31 +36,31 @@ class SlidingWindowRateLimiter(
         require(windowMs > 0) { "windowMs must be > 0, got $windowMs" }
     }
 
-    /** 窗口内请求时间戳(单调递增,头部最旧)。 */
+    /** Solicitar marca de tiempo dentro de la ventana(monótonamente creciente,La cabeza es la más antigua.). */
     private val timestamps = ArrayDeque<Long>()
     private val lock = Any()
 
     /**
-     * 获取一个请求许可。超限时挂起等待直到有空位。
+     * Obtenga un permiso de solicitud. Cuando se exceda el límite, espere hasta que haya espacio disponible.
      *
-     * 取消语义:在 [delay] 等待期间若协程被取消,会正常传播 CancellationException,
-     * 不会消费许可(本次 acquire 未成功追加时间戳)。
+     * Semántica de cancelación:en [delay] Si la corrutina se cancela durante el período de espera,se extenderá normalmente CancellationException,
+     * No consumirá licencia(La marca de tiempo no se agregó correctamente a esta adquisición.).
      */
     suspend fun acquire() {
         while (true) {
             val waitMs = synchronized(lock) {
                 val now = clock()
                 val cutoff = now - windowMs
-                // 清理过期时间戳(头部最旧)
+                // Limpiar marcas de tiempo caducadas(La cabeza es la más antigua.)
                 while (timestamps.isNotEmpty() && timestamps.first() <= cutoff) {
                     timestamps.removeFirst()
                 }
                 if (timestamps.size < maxRequests) {
-                    // 有空位,追加并返回哨兵值表示已获取
+                    // hay espacio,Agregar y devolver el valor centinela para indicar que se ha obtenido
                     timestamps.addLast(now)
                     ACQUIRED
                 } else {
-                    // 超限,计算最早时间戳滑出窗口的等待时长
+                    // por encima del límite,Calcule el tiempo de espera para que la primera marca de tiempo salga de la ventana
                     val oldest = timestamps.first()
                     (oldest + windowMs - now).coerceAtLeast(1L)
                 }
@@ -70,7 +70,7 @@ class SlidingWindowRateLimiter(
         }
     }
 
-    /** 当前窗口内已记录的请求数(主要用于测试与监控)。 */
+    /** El número de solicitudes registradas en la ventana actual.(Se utiliza principalmente para pruebas y monitoreo.). */
     fun currentCount(): Int = synchronized(lock) {
         val now = clock()
         val cutoff = now - windowMs
@@ -81,7 +81,7 @@ class SlidingWindowRateLimiter(
     }
 
     private companion object {
-        /** acquire 成功时返回的哨兵值(负数不可能作为等待时长)。 */
+        /** acquire Valor centinela devuelto en caso de éxito(Los números negativos no se pueden utilizar como tiempos de espera.). */
         const val ACQUIRED = -1L
     }
 }

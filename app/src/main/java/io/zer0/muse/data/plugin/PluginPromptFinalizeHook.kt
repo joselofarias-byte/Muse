@@ -21,21 +21,21 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * v2.x（插件 Hook 体系 MVP）：把插件的 JS 函数接入「提示词定稿」Hook 点。
+ * v2.x(MVP del sistema Plug-in Hook): conecte la función JS del complemento a la "finalización rápida de palabras"Hook punto.
  *
- * 插件侧约定（main.js）：
+ * Convención del lado del complemento (main.js):
  * ```js
  * function onPromptFinalize(event) {
  *   // event = { preparedHistory: [ {role, content}, ... ] }
- *   // 返回 { preparedHistory: [...] }（可增删改条目）
+ *   // Regresar { preparedHistory: [...] }(Los elementos se pueden agregar, eliminar o modificar)
  *   return event;
  * }
  * ```
  *
- * 设计：
- *  - 每次调用都跑一次 JS（插件函数可能是动态的）；超时沿用引擎默认（10s）。
- *  - 失败/返回不合法时**保留原历史**（fail-open），不阻断生成。
- *  - role 只接受 user/assistant/system/tool；未知 role 的条目按 assistant 处理。
+ * Diseño:
+ *  - JS se ejecuta cada vez que se llama (la función del complemento puede ser dinámica); el valor predeterminado del motor se utiliza para el tiempo de espera (10s).
+ *  - falló/Cuando regresar es ilegal**Preservar la historia original.**(fail-open), no bloquea la generación.
+ *  - role Sólo se acepta usuario/asistente/sistema/herramienta; Las entradas con roles desconocidos se procesan como asistente.
  */
 internal class PluginPromptFinalizeHook(
     private val context: android.content.Context,
@@ -55,33 +55,33 @@ internal class PluginPromptFinalizeHook(
             runCatching { invokeHook(event) }
                 .getOrElse { e ->
                     if (e is CancellationException) throw e
-                    Logger.w(TAG, "插件 prompt_finalize 执行失败(保留原历史): ${e.message}")
+                    Logger.w(TAG, "La ejecución del complemento Prompt_finalize falló(Preservar la historia original.): ${e.message}")
                     return fallback(event)
                 }
         if (result is SkillEngineResult.Error) {
-            Logger.w(TAG, "插件 prompt_finalize 出错(保留原历史): ${result.message}")
+            Logger.w(TAG, "Error de finalización de solicitud del complemento(Preservar la historia original.): ${result.message}")
             return fallback(event)
         }
         val raw = (result as SkillEngineResult.Success).valueJson
         val parsed = parseHistory(raw)
             ?: run {
-                Logger.d(TAG, "插件 prompt_finalize 无有效返回(保留原历史)")
+                Logger.d(TAG, "El complemento Prompt_finalize no tiene retorno válido(Preservar la historia original.)")
                 return fallback(event)
             }
         if (parsed.isEmpty()) {
-            Logger.w(TAG, "插件 prompt_finalize 返回空历史(保留原历史,防空上下文)")
+            Logger.w(TAG, "El complemento Prompt_finalize devuelve un historial vacío(Preservar la historia original.,contexto de defensa aérea)")
             return fallback(event)
         }
-        Logger.d(TAG, "插件 prompt_finalize 应用: ${event.preparedHistory.size} → ${parsed.size} 条")
+        Logger.d(TAG, "Complemento de la aplicación Prompt_finalize: ${event.preparedHistory.size} → ${parsed.size} Artículo")
         return PromptFinalizeResult(parsed)
     }
 
     /**
-     * 按运行时调一次 Hook。
+     * Llame al Hook una vez en tiempo de ejecución.
      *
-     * JS 保持原有的「内联事件再调」写法：`buildCallScript` 把事件拼进脚本，
-     * 不经过参数序列化，避开了早前引擎对复杂对象参数的兼容问题。
-     * Python 没有那段历史包袱，直接按参数数组传。
+     * JS Mantenga el método de escritura original de "resintonización de eventos en línea":`buildCallScript` Deletrea eventos en guiones,
+     * Sin serialización de parámetros, se evitan los problemas de compatibilidad de parámetros de objetos complejos con motores anteriores.
+     * Python No hay equipaje histórico y se pasa directamente como una matriz de parámetros.
      */
     private suspend fun invokeHook(event: PromptFinalizeEvent): SkillEngineResult =
         if (PluginFunctionInvoker.isPython(manifest)) {
@@ -100,7 +100,7 @@ internal class PluginPromptFinalizeHook(
             )
         }
 
-    /** Python 版入参：`[{"preparedHistory": [{"role":..., "content":...}]}]`。 */
+    /** Python Parámetros de entrada de la versión:`[{"preparedHistory": [{"role":..., "content":...}]}]`. */
     private fun buildPythonArgs(event: PromptFinalizeEvent): String {
         val history = buildJsonArray {
             event.preparedHistory.forEach { msg ->
@@ -117,7 +117,7 @@ internal class PluginPromptFinalizeHook(
         }.toString()
     }
 
-    /** 拼一次 JS 调用：加载入口代码 → 注入事件 → 调 onPromptFinalize → 序列化返回。 */
+    /** Realizar una llamada JS: cargar el código de entrada → evento de inyección → sintonizar onPromptFinalize → Devolución serializada. */
     private fun buildCallScript(event: PromptFinalizeEvent): String {
         val historyJson = event.preparedHistory.joinToString(",") { msg ->
             val contentJson = AppJson.encodeToString(JsonPrimitive.serializer(), JsonPrimitive(msg.content))
@@ -134,7 +134,7 @@ internal class PluginPromptFinalizeHook(
         }
     }
 
-    /** 解析插件返回的历史数组；结构不合法返回 null（调用方保留原历史）。 */
+    /** Analizar la matriz de historial devuelta por el complemento; si la estructura es ilegal, se devuelve nulo (la persona que llama conserva el historial original). */
     private fun parseHistory(raw: String?): List<UIMessage>? {
         val out = runCatching { AppJson.parseToJsonElement(raw ?: "null") }.getOrNull()
         val arr = (out as? JsonObject)?.get("preparedHistory") as? JsonArray
@@ -168,7 +168,7 @@ internal class PluginPromptFinalizeHook(
     private companion object {
         const val TAG = "PluginHook"
 
-        /** 插件入口需要导出的 hook 函数名。 */
+        /** El nombre de la función de enlace debe exportarse mediante la entrada del complemento. */
         const val HOOK_FUNCTION_NAME = "onPromptFinalize"
     }
 }

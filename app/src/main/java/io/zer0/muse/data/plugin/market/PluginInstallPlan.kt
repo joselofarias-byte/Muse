@@ -50,34 +50,34 @@ class PluginInstallCoordinator(
             signed = signedCatalog,
             trustedKeys = trustRootKeys,
             nowEpochMs = nowEpochMs,
-            // 已接受 sequence 按目录 id 记录，切换目录时不会互相把对方判成回退。
+            // La secuencia aceptada se registra según la identificación del directorio. Al cambiar de directorio, cada uno de ellos no se considerará una reversión.
             lastAcceptedSequence = lastAcceptedSequence(signedCatalog.payload.catalogId),
         )
         if (!verification.valid) {
-            return InstallPlanResult.Rejected(verification.reason ?: "目录校验失败")
+            return InstallPlanResult.Rejected(verification.reason ?: "Error en la verificación del directorio")
         }
         val entry = signedCatalog.payload.entries.firstOrNull { it.id == entryId }
-            ?: return InstallPlanResult.Rejected("目录中不存在插件: $entryId")
-        if (!stagedFile.isFile) return InstallPlanResult.Rejected("插件包不存在")
+            ?: return InstallPlanResult.Rejected("El complemento no existe en el directorio.: $entryId")
+        if (!stagedFile.isFile) return InstallPlanResult.Rejected("El paquete de complementos no existe")
         if (!artifactSha256.equals(entry.artifactSha256, ignoreCase = true)) {
-            return InstallPlanResult.Rejected("插件包摘要与目录不一致")
+            return InstallPlanResult.Rejected("El resumen del paquete de complementos no coincide con el directorio")
         }
         if (!reviewedPackage.contentSha256.equals(entry.manifestSha256, ignoreCase = true)) {
-            return InstallPlanResult.Rejected("插件内容摘要与目录不一致")
+            return InstallPlanResult.Rejected("El resumen del contenido del complemento no coincide con la tabla de contenido.")
         }
         if (reviewedPackage.preview.id != entry.id) {
-            return InstallPlanResult.Rejected("插件 id 与目录不一致")
+            return InstallPlanResult.Rejected("La identificación del complemento no coincide con el directorio")
         }
         if (reviewedPackage.preview.version != entry.version) {
-            return InstallPlanResult.Rejected("插件版本与目录不一致")
+            return InstallPlanResult.Rejected("La versión del complemento no coincide con el directorio.")
         }
-        // 目录声明的发行者身份必须与包内签名解析出的身份一致：目录里的这两个字段会展示给用户，
-        // 若允许它们和真实签名不一致，卡片上的发行者就是可伪造的展示信息。
+        // La identidad del editor declarada por el directorio debe ser coherente con la identidad resuelta por la firma en el paquete: estos dos campos en el directorio se mostrarán al usuario,
+        // El emisor de la tarjeta muestra información que puede falsificarse si se permite que no coincida con la firma real.
         if (reviewedPackage.preview.publisherId != entry.publisherId) {
-            return InstallPlanResult.Rejected("插件发行者与目录不一致")
+            return InstallPlanResult.Rejected("El editor del complemento no coincide con el directorio.")
         }
         if (!reviewedPackage.preview.publisherKeyFingerprint.equals(entry.publisherKeyFingerprint, ignoreCase = true)) {
-            return InstallPlanResult.Rejected("插件发行者公钥与目录不一致")
+            return InstallPlanResult.Rejected("La clave pública del editor del complemento no coincide con el directorio")
         }
         return InstallPlanResult.Ready(
             PluginInstallPlan(

@@ -5,42 +5,42 @@ import io.zer0.common.Logger
 import java.util.LinkedHashMap
 
 /**
- * 会话消息内存 LRU 缓存。
+ * Caché LRU en memoria de mensajes de sesión.
  *
- * 背景:v1.93 把 [ChatViewModel] 改为 Koin single 单例后,会话消息列表永不释放,
- * 长时间使用会累积较高内存占用。本缓存以 LRU(最近最少使用)策略保留最近 N 个会话
- * 的消息内存副本,超出上限后自动驱逐最久未访问的会话,被驱逐的会话再次切换进入时
- * 从 DB 重新加载。
+ * fondo:v1.93 poner [ChatViewModel] Después de cambiar a Koin singleton,La lista de mensajes de la sesión nunca se publica,
+ * El uso prolongado acumulará un alto uso de memoria. Este caché comienza con LRU(Usado menos recientemente)La política mantiene las últimas N sesiones.
+ * una copia de memoria del mensaje,Una vez superado el límite superior, la sesión a la que no se haya accedido durante más tiempo será desalojada automáticamente.,Cuando la sesión expulsada se vuelve a conectar
+ * Recargar desde la base de datos.
  *
- * 设计要点:
- * - 基于 [LinkedHashMap](accessOrder = true) + [removeEldestEntry] 实现访问序 LRU:
- *   每次 [get]/[put] 命中的条目会被移到链表尾部,链表头部即为最久未访问的条目(eldest)。
- * - 通过 [Synchronized] 保证线程安全:消息列表在流式输出、切页、加载更多等多线程
- *   并发场景下会被读写,必须加锁。
- * - [evictListener]:条目被驱逐时回调,默认记录 [Logger.d] 便于调试与性能追踪。
+ * Puntos de diseño:
+ * - Basado en [LinkedHashMap](accessOrder = true) + [removeEldestEntry] implementar secuencia de acceso LRU:
+ *   cada vez [get]/[put] El elemento visitado se moverá al final de la lista vinculada.,El encabezado de la lista vinculada es el elemento al que no se ha accedido durante más tiempo.(eldest).
+ * - Pase [Synchronized] Garantizar la seguridad del hilo:La lista de mensajes tiene múltiples subprocesos en la salida de transmisión, el corte de páginas, la carga de más, etc.
+ *   Se leerá y escribirá en escenarios concurrentes.,Debe estar cerrado.
+ * - [evictListener]:Devolución de llamada cuando se desaloja una entrada,Registro predeterminado [Logger.d] Facilita la depuración y el seguimiento del rendimiento.
  *
- * 数据安全性:缓存的是会话消息列表的内存快照(引用),流式输出已同步落库
- * (见 [ChatViewModel] 内 sessionRepository.appendMessage/upsertMessage 调用),
- * 因此即便缓存条目被驱逐或失效,数据也不会丢失,只是下次进入时多一次 DB 查询。
+ * Seguridad de datos:Lo que se almacena en caché es una instantánea de la memoria de la lista de mensajes de la sesión.(Cotización),La salida de streaming se ha sincronizado y colocado en la biblioteca.
+ * (ver [ChatViewModel] dentro sessionRepository.appendMessage/upsertMessage llamar),
+ * Entonces, incluso si la entrada de caché es desalojada o invalidada,Los datos no se perderán,Solo una consulta más a la base de datos la próxima vez que ingrese.
  *
- * 注:存储的是 [List] 引用而非拷贝,依赖 [ChatViewModel] 内对 messages 的
- * "复制即更新"模式(每次修改都通过 _state.update { it.copy(messages = ...) } 产生新列表),
- * 不会就地修改已缓存的列表,因此引用共享是安全的。
+ * Nota:Lo que se almacena es [List] citar en lugar de copiar,depender de [ChatViewModel] interno a los mensajes
+ * "Copiar para actualizar"modo(Cada modificación pasa _state.update { it.copy(messages = ...) } generar nueva lista),
+ * Las listas almacenadas en caché no se modifican in situ,Por lo tanto, compartir referencias es seguro.
  */
 class SessionMemoryCache(
     /**
-     * v2.x: 缓存上限提供者 — 每次驱逐判断时实时读取(支持设置热更新,
-     * 入口见聊天设置→高级"会话缓存上限"),默认 [MAX_CACHE_SIZE]。
+     * v2.x: proveedor de límite de caché — Leer en tiempo real cada vez que se juzga un desalojo(Soporte para configuración de actualización en caliente,
+     * Ver la configuración del chat para la entrada.→Avanzado"Límite de caché de sesión"),Predeterminado [MAX_CACHE_SIZE].
      */
     private val maxSizeProvider: () -> Int = { MAX_CACHE_SIZE },
 ) {
     companion object {
         /**
-         * 默认 LRU 缓存上限(保留最近 5 个会话的消息内存副本)。
+         * Límite de caché LRU predeterminado(Mantiene una copia de memoria de los mensajes de las últimas 5 sesiones.).
          *
-         * v2.x: 已接入设置热更新 — 用户可在 聊天设置→高级 调整(3/5/8/12),
-         * 上限经 [io.zer0.muse.data.SettingsRepository.sessionCacheSizeFlow] 实时读取;
-         * 本常量仅作为默认值/兜底。
+         * v2.x: Actualización en caliente de la configuración accedida — Los usuarios pueden chatear con la configuración.→Ajustes avanzados(3/5/8/12),
+         * límite superior [io.zer0.muse.data.SettingsRepository.sessionCacheSizeFlow] Leer en tiempo real;
+         * Esta constante solo se utiliza como valor predeterminado/Llega al fondo de esto.
          */
         const val MAX_CACHE_SIZE = 5
 
@@ -48,14 +48,14 @@ class SessionMemoryCache(
     }
 
     /**
-     * 访问序 LRU 底层 Map。
+     * Orden de acceso al mapa subyacente LRU.
      *
-     * accessOrder = true 时,[get] 与 [put] 会把命中条目移到链表尾部,
-     * [removeEldestEntry] 在 [put] 后触发,返回 true 则驱逐链表头部(最久未访问)条目。
+     * accessOrder = true tiempo,[get] con [put] Moverá la entrada de hit al final de la lista vinculada.,
+     * [removeEldestEntry] en [put] publicar disparador,Devuelve verdadero para desalojar al jefe de la lista vinculada(Visitado más largo)entrada.
      */
     private val cache = object : LinkedHashMap<String, List<UIMessage>>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: Map.Entry<String, List<UIMessage>>): Boolean {
-            // 注意:此处 size 是插入新条目后的容量,超过 maxSize 才驱逐
+            // Nota:Aquí el tamaño es la capacidad después de insertar nuevas entradas.,Exceder el tamaño máximo antes del desalojo
             val shouldEvict = size > maxSizeProvider().coerceAtLeast(1)
             if (shouldEvict) {
                 evictListener?.invoke(eldest.key, eldest.value)
@@ -65,26 +65,26 @@ class SessionMemoryCache(
     }
 
     /**
-     * 条目被驱逐时的回调(在 [put] 触发 [removeEldestEntry] 时同步调用)。
+     * Devolución de llamada cuando se desaloja una entrada(en [put] gatillo [removeEldestEntry] llamada sincrónica).
      *
-     * 默认实现记录 [Logger.d]。注意:回调在 [Synchronized] 锁内执行,
-     * 实现内请勿再回调本缓存的同步方法(JVM synchronized 可重入,但为清晰起见避免嵌套)。
+     * Registro de implementación predeterminado [Logger.d]. Nota:Devolución de llamada al [Synchronized] ejecutar dentro del bloqueo,
+     * No vuelva a llamar el método de sincronización de este caché dentro de la implementación.(JVM synchronized reentrante,Pero evite anidar para mayor claridad.).
      */
     var evictListener: ((sessionId: String, messages: List<UIMessage>) -> Unit)? = null
 
     init {
-        // 默认驱逐监听器:记录被驱逐会话的 id 与消息数,便于调试内存治理效果。
-        // 注:removeEldestEntry 触发时 eldest 尚未真正移除,故 cache.size 含被驱逐条目,
-        // 驱逐后实际大小为 size - 1。
+        // Oyente de desalojo predeterminado:Registre la identificación y la cantidad de mensajes de la sesión desalojada,Conveniente para depurar efectos de administración de memoria.
+        // Nota:removeEldestEntry el mayor en realidad no ha sido eliminado cuando se activó,Por lo tanto, cache.size contiene entradas desalojadas.,
+        // El tamaño real después del desalojo es el tamaño - 1.
         evictListener = { sessionId, messages ->
-            Logger.d(TAG, "LRU 驱逐会话: id=$sessionId, 消息数=${messages.size}, 驱逐后缓存大小=${cache.size - 1}")
+            Logger.d(TAG, "LRU sesión de desalojo: id=$sessionId, Número de mensajes=${messages.size}, Tamaño de caché después del desalojo=${cache.size - 1}")
         }
     }
 
     /**
-     * 写入或更新会话消息快照。
+     * Escribir o actualizar la instantánea del mensaje de sesión.
      *
-     * 已存在则刷新值并提升为最近访问;新条目若导致超限则驱逐最久未访问的条目。
+     * Si ya existe, actualice el valor y promuévalo al valor accedido más recientemente.;Si una nueva entrada provoca que se supere el límite, se desalojará la entrada que lleve más tiempo sin visitarse.
      */
     @Synchronized
     fun put(sessionId: String, messages: List<UIMessage>) {
@@ -92,21 +92,21 @@ class SessionMemoryCache(
     }
 
     /**
-     * 读取会话消息快照。命中则提升为最近访问(LRU 语义),未命中返回 null。
+     * Leer la instantánea del mensaje de la sesión. Las visitas se promocionan a visitas recientes.(LRU Semántica),Devuelve nulo en caso de error.
      */
     @Synchronized
     fun get(sessionId: String): List<UIMessage>? = cache[sessionId]
 
     /**
-     * 判断是否缓存了指定会话。
+     * Determine si la sesión especificada está almacenada en caché.
      *
-     * 注意:[containsKey] 不会改变访问序(不提升为最近访问),仅作存在性判断。
+     * Nota:[containsKey] no cambia el orden de acceso(No promocionado a visitado recientemente),Sólo se hacen juicios existenciales.
      */
     @Synchronized
     fun contains(sessionId: String): Boolean = cache.containsKey(sessionId)
 
     /**
-     * 移除指定会话的缓存条目(会话被删除/归档时调用)。
+     * Elimina las entradas de caché para una sesión específica(Sesión eliminada/Llamado al archivar).
      */
     @Synchronized
     fun remove(sessionId: String) {
@@ -114,7 +114,7 @@ class SessionMemoryCache(
     }
 
     /**
-     * 清空全部缓存条目。
+     * Borre todas las entradas de caché.
      */
     @Synchronized
     fun clear() {
@@ -122,7 +122,7 @@ class SessionMemoryCache(
     }
 
     /**
-     * 当前缓存条目数(调试/监控用)。
+     * Número actual de entradas de caché(Depuración/Para monitoreo).
      */
     @Synchronized
     fun size(): Int = cache.size

@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""Muse 插件市场离线签名工具。
+"""Muse Herramienta de firma fuera de línea del mercado de complementos.
 
-与 App 侧算法逐字对齐（app/src/main/java/io/zer0/muse/data/plugin/...）：
+Alineado textualmente con el algoritmo del lado de la aplicación (app/src/main/java/io/zer0/muse/data/plugin/...):
 
-  * 规范化 JSON  = AppJson（紧凑、无空格、字段按声明顺序、含默认值、中文原样 UTF-8；
-    可选字段 contributes/uiPanel/toolCards 在默认值时不参与序列化，与 App 端逐字一致）
+  * estandarizar JSON  = AppJson(Compacto, sin espacios, campos en orden de declaración, incluidos los valores predeterminados, UTF-8 original chino;
+    El campo opcional contribuye/uiPanel/toolCards no participa en la serialización cuando se usa el valor predeterminado, lo cual es consistente con el lado de la aplicación palabra por palabra)
   * manifestSha256 = PluginSecurityGate.contentSha256
-      digest = SHA-256，对每个部分依次：
-          path.utf8 | 0x00 | len(bytes) 十进制 ASCII | 0x00 | bytes | 0x00
-      顺序：("manifest.json", 含签名的 manifest 规范 JSON) → (entry, 入口源码) → 其余文件按路径升序
-  * 发行者签名输入 = PluginSecurityGate.signaturePayload
-      同样的边界编码，但每部分先各自取 SHA-256 摘要，再把 32 字节摘要串接
-      manifest 使用把 signature 值置空后的规范 JSON
-  * 目录签名输入 = PluginCatalogVerifier.canonicalPayload（PluginCatalog 的规范 JSON）
-  * 算法 SHA256withECDSA（P-256），公钥 X.509 SubjectPublicKeyInfo，
-    公钥与签名一律标准 Base64 单行（App 会强制规范化比较）
+      digest = SHA-256, para cada parte por turno:
+          path.utf8 | 0x00 | len(bytes) decimales ASCII | 0x00 | bytes | 0x00
+      Orden:("manifest.json", Especificación del manifiesto firmado JSON) → (entry, Código fuente de entrada) → Los archivos restantes están ordenados en orden ascendente por ruta.
+  * Entrada de firma del emisor = PluginSecurityGate.signaturePayload
+      La misma codificación de límites, pero cada parte primero obtiene su resumen SHA-256 y luego concatena los resúmenes de 32 bytes.
+      manifest Utilice la especificación con el valor de la firma vacío JSON
+  * Entrada de firma de directorio = PluginCatalogVerifier.canonicalPayload(PluginCatalog JSON canónico)
+  * Algoritmo SHA256conECDSA(P-256), clave pública X.509 SubjectPublicKeyInfo,
+    Las claves públicas y las firmas son todas líneas individuales estándar Base64 (App Forzará una comparación normalizada)
 
-私钥永不离开本机：脚本只读取本地私钥文件，输出产物与公钥信息。
+La clave privada nunca sale de la máquina local: el script solo lee el archivo de clave privada local y genera la información del producto y de la clave pública.
 
-用法：
+Uso:
   python sign.py keygen   --key FILE
   python sign.py pack     --src DIR --key FILE --publisher-id ID --out-dir DIR [--base-url URL]
   python sign.py catalog  --packages-dir DIR --key FILE --key-id ID --base-url URL
@@ -47,22 +47,22 @@ MANIFEST_ORDER = [
     "id", "name", "version", "description", "author", "minAppVersion",
     "entry", "kind", "trust", "hidden", "capabilities", "permissions",
     "activationEvents", "hooks", "enabled", "tools", "signature",
-    # ── 可选字段：默认值不参与序列化（与 App 端 PluginManifest 逐字对齐）──
-    #  · contributes / uiPanel：App 侧 explicitNulls=false，值为 null 时不输出；
-    #  · hooks：App 侧 @EncodeDefault(NEVER)，空列表不输出；
-    #  · toolCards：App 侧 @EncodeDefault(NEVER)，空对象不输出。
-    # 漏跳任何一个，App 验签都会因字节序列不同而失败（v2.0.0 市场事故根因）。
-    # hooks 的存放位置由上面那一行决定（须在 enabled 之前），此处不重复列出。
+    # ── Campos opcionales: el valor predeterminado no participa en la serialización (alineado textualmente con el PluginManifest del lado de la aplicación)──
+    #  · contributes / uiPanel:App lado explicitNulls=false, no hay salida cuando el valor es nulo;
+    #  · hooks:App lado @EncodeDefault(NEVER), la lista vacía no se genera;
+    #  · toolCards:App lado @EncodeDefault(NEVER), los objetos vacíos no se generan.
+    # Extraño a cualquiera,App La verificación de firma fallará debido a diferentes secuencias de bytes (v2.0.0 Causas de accidentes de mercado).
+    # hooks La ubicación de almacenamiento está determinada por la línea anterior (debe estar habilitada antes) y no aparecerá repetidamente aquí.
     "contributes", "uiPanel", "toolCards",
 ]
 
-# 缺失时允许直接跳过的可选字段（不要求出现在 manifest 里，也不填默认值）。
+# Campos opcionales que se pueden omitir si faltan (no es necesario que aparezcan en el manifiesto ni se completen con valores predeterminados).
 OPTIONAL_MANIFEST_FIELDS = ("contributes", "uiPanel", "hooks", "toolCards")
 
-# 作者可写入 manifest、但不进入签名载荷的字段。
-# App 端 PluginManifest.runtime 带 @EncodeDefault(NEVER) 且不在
-# SIGNED_TOP_LEVEL_FIELDS 里，任何取值都不会出现在签名 JSON 中；
-# 这里识别它只为校验入口扩展名与收集包内文件，序列化时丢弃。
+# El autor puede escribir en el manifiesto, pero no en los campos de la carga firmada.
+# App lado PluginManifest.runtime con @EncodeDefault(NEVER) y no aquí
+# SIGNED_TOP_LEVEL_FIELDS Aquí, ningún valor aparecerá en el JSON firmado;
+# Se identifica aquí solo para verificar la extensión de entrada y los archivos en el paquete de recopilación, y se descarta durante la serialización.
 UNSIGNED_MANIFEST_FIELDS = ("runtime",)
 RUNTIME_JS = "js"
 RUNTIME_PYTHON = "python"
@@ -102,9 +102,9 @@ TOOL_NAME_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 FUNCTION_NAME_REGEX = re.compile(r"^[a-zA-Z_$][a-zA-Z0-9_$]{0,63}$")
 VERSION_REGEX = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 SHA256_REGEX = re.compile(r"^[0-9a-f]{64}$")
-# 外部插件允许声明的能力名。App 安装侧已改为开放声明（仅用于安装预览展示，
-# 不再是拒绝条件），这里同步放宽到 App 清单文档列出的集合，
-# 避免作者声明 network 等常用能力时被签名工具单方面拒绝。
+# Los complementos externos permiten nombres de capacidades declaradas.App El lado de instalación se ha cambiado a declaración abierta (solo para visualización de vista previa de instalación,
+# ya no es una condición de rechazo), aquí la sincronización se relaja con la colección enumerada en el documento de manifiesto de la aplicación,
+# Esto evita que la herramienta de firma rechace unilateralmente a los autores cuando declaran capacidades de uso común, como la red.
 ALLOWED_CAPABILITIES = {
     "resource.read", "resource.write", "network",
     "storage.read", "storage.write", "clipboard.read", "clipboard.write",
@@ -125,11 +125,11 @@ def openssl_binary() -> str:
     configured = os.environ.get("MUSE_OPENSSL", "").strip()
     if configured:
         if not os.path.isfile(configured):
-            fail(f"MUSE_OPENSSL 指向的文件不存在: {configured}")
+            fail(f"MUSE_OPENSSL El archivo señalado no existe: {configured}")
         return configured
     found = shutil.which("openssl")
     if not found:
-        fail("找不到 openssl，可设置环境变量 MUSE_OPENSSL 指向可执行文件")
+        fail("No se puede encontrar openssl, configure la variable de entorno MUSE_OPENSSL para que apunte al archivo ejecutable")
     return found
 
 
@@ -141,14 +141,14 @@ def openssl(args, stdin_bytes: bytes = None) -> bytes:
         stderr=subprocess.PIPE,
     )
     if result.returncode != 0:
-        fail(f"openssl {' '.join(args)} 失败: {result.stderr.decode('utf-8', 'replace').strip()}")
+        fail(f"openssl {' '.join(args)} falló: {result.stderr.decode('utf-8', 'replace').strip()}")
     return result.stdout
 
 
-# ─────────────────────────── 规范化与摘要（与 App 对齐） ───────────────────────────
+# ─────────────────────────── Normalización y resumen (alineado con aplicaciones) ───────────────────────────
 
 def canonical_bytes(payload) -> bytes:
-    """AppJson.encodeToString：紧凑、含默认值、非 ASCII 原样输出。"""
+    """AppJson.encodeToString: Compacto, con valores predeterminados, salida no ASCII tal como está."""
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
@@ -183,11 +183,11 @@ def decode_b64_strict(text: str) -> bytes:
     return base64.b64decode(text, validate=True)
 
 
-# ─────────────────────────── 密钥 ───────────────────────────
+# ─────────────────────────── clave ───────────────────────────
 
 def generate_key(key_path: Path) -> None:
     if key_path.exists():
-        fail(f"私钥已存在，不覆盖: {key_path}")
+        fail(f"La clave privada ya existe y no se sobrescribirá.: {key_path}")
     key_path.parent.mkdir(parents=True, exist_ok=True)
     key_path.write_bytes(openssl(["ecparam", "-name", CURVE, "-genkey", "-noout"]))
     try:
@@ -216,7 +216,7 @@ def sign_bytes(key_path: Path, payload: bytes) -> bytes:
         ])
         signature = signature_file.read_bytes()
     if len(signature) > MAX_SIGNATURE_BYTES:
-        fail(f"签名长度异常({len(signature)} 字节)")
+        fail(f"Longitud de la firma anormal({len(signature)} bytes)")
     return signature
 
 
@@ -234,16 +234,16 @@ def verify_signature(key_path: Path, payload: bytes, signature: bytes) -> None:
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         if result.returncode != 0:
-            fail("本地自校验失败：签名无法被对应公钥验证")
+            fail("Falló la autoverificación local: la firma no puede ser verificada por la clave pública correspondiente")
 
 
-# ─────────────────────────── manifest 规范化 ───────────────────────────
+# ─────────────────────────── manifest estandarizar ───────────────────────────
 
 def ordered(source: dict, order, defaults=None, label: str = "", optional=(), allowed_extra=()) -> dict:
     defaults = defaults or {}
     unknown = [key for key in source if key not in order and key not in allowed_extra]
     if unknown:
-        fail(f"{label} 含未知字段 {unknown}；为避免与 App 序列化不一致，必须删除或改名")
+        fail(f"{label} Contiene campos desconocidos {unknown};Para evitar inconsistencias con la serialización de la aplicación, se debe eliminar o cambiar el nombre.")
     result = {}
     for key in order:
         if key in source:
@@ -255,7 +255,7 @@ def ordered(source: dict, order, defaults=None, label: str = "", optional=(), al
         if key not in result and key not in defaults and key not in optional
     ]
     if missing:
-        fail(f"{label} 缺少必填字段 {missing}")
+        fail(f"{label} Faltan campos obligatorios {missing}")
     return result
 
 
@@ -277,12 +277,12 @@ def normalize_manifest(raw: dict, with_signature: bool) -> dict:
     return manifest
 
 
-# ─────────────── 可选字段与 App 序列化对齐 ───────────────
-# App 端（kotlinx.serialization，AppJson: encodeDefaults=true / explicitNulls=false）：
-#   · contributes / uiPanel 为 null 时不输出；
-#   · toolCards 为空对象时不输出（@EncodeDefault(NEVER)）；
-#   · contributes 非空时输出全部默认字段（configuration / ConfigItem / SelectOption）。
-# 本段逻辑必须与上述行为逐字一致，否则签名包无法通过 App 验签。
+# ─────────────── Campos opcionales alineados con la serialización de la aplicación. ───────────────
+# App final (kotlinx.serialization,AppJson: encodeDefaults=true / explicitNulls=false):
+#   · contributes / uiPanel No hay salida cuando es nulo;
+#   · toolCards No hay salida cuando es un objeto vacío (@EncodeDefault(NEVER));
+#   · contributes Muestra todos los campos predeterminados cuando no están vacíos (configuration / ConfigItem / SelectOption).
+# La lógica de esta sección debe ser coherente palabra por palabra con el comportamiento anterior; de lo contrario, el paquete de firma no puede pasar la verificación de firma de la aplicación.
 
 CONFIG_ITEM_ORDER = ["key", "type", "defaultVal", "description", "options"]
 SELECT_OPTION_ORDER = ["value", "label"]
@@ -290,23 +290,23 @@ SELECT_OPTION_ORDER = ["value", "label"]
 
 def normalize_select_option(source: dict, label: str) -> dict:
     if not isinstance(source, dict) or "value" not in source:
-        fail(f"{label} 缺少 value")
+        fail(f"{label} desaparecido value")
     unknown = [key for key in source if key not in SELECT_OPTION_ORDER]
     if unknown:
-        fail(f"{label} 含未知字段 {unknown}；为避免与 App 序列化不一致，必须删除或改名")
+        fail(f"{label} Contiene campos desconocidos {unknown};Para evitar inconsistencias con la serialización de la aplicación, se debe eliminar o cambiar el nombre.")
     value = source["value"]
-    # SelectOption.label 的默认值是 value 本身
+    # SelectOption.label El valor predeterminado es el valor mismo.
     return {"value": value, "label": source.get("label", value)}
 
 
 def normalize_config_item(source: dict, label: str) -> dict:
     if not isinstance(source, dict) or "key" not in source:
-        fail(f"{label} 缺少 key")
+        fail(f"{label} desaparecido key")
     unknown = [key for key in source if key not in CONFIG_ITEM_ORDER]
     if unknown:
-        fail(f"{label} 含未知字段 {unknown}；为避免与 App 序列化不一致，必须删除或改名")
+        fail(f"{label} Contiene campos desconocidos {unknown};Para evitar inconsistencias con la serialización de la aplicación, se debe eliminar o cambiar el nombre.")
     result = {"key": source["key"], "type": source.get("type", "string")}
-    # defaultVal 是 JsonElement?：null 时 App 不输出该键
+    # defaultVal si JsonElement?:null La aplicación no genera la clave cuando
     if source.get("defaultVal") is not None:
         result["defaultVal"] = source["defaultVal"]
     result["description"] = source.get("description", "")
@@ -320,10 +320,10 @@ def normalize_config_item(source: dict, label: str) -> dict:
 
 def normalize_contributes(source: dict, label: str) -> dict:
     if not isinstance(source, dict):
-        fail(f"{label} 必须是对象")
+        fail(f"{label} debe ser un objeto")
     unknown = [key for key in source if key != "configuration"]
     if unknown:
-        fail(f"{label} 含未知字段 {unknown}；为避免与 App 序列化不一致，必须删除或改名")
+        fail(f"{label} Contiene campos desconocidos {unknown};Para evitar inconsistencias con la serialización de la aplicación, se debe eliminar o cambiar el nombre.")
     configuration = source.get("configuration", [])
     return {
         "configuration": [
@@ -334,7 +334,7 @@ def normalize_contributes(source: dict, label: str) -> dict:
 
 
 def finalize_optional_fields(manifest: dict) -> None:
-    """让可选字段的空值与 App 序列化行为一致（默认值不进入 JSON 字节序列）。"""
+    """Haga que los valores nulos para los campos opcionales sean coherentes con el comportamiento de serialización de la aplicación (los valores predeterminados no van en secuencias de bytes JSON)."""
     contributes = manifest.get("contributes")
     if contributes is None:
         manifest.pop("contributes", None)
@@ -344,67 +344,67 @@ def finalize_optional_fields(manifest: dict) -> None:
         manifest.pop("uiPanel", None)
     if manifest.get("toolCards") is None or manifest.get("toolCards") == {}:
         manifest.pop("toolCards", None)
-    # hooks 带 @EncodeDefault(NEVER)：空列表同样不进入字节序列。
-    # 漏掉这一步会让 manifest.json 多出 "hooks":[]，与 App 序列化结果不一致，
-    # 所有签名包都会被判“发行者签名与插件内容不匹配”。
+    # hooks traer @EncodeDefault(NEVER): Una lista vacía tampoco ingresa a la secuencia de bytes.
+    # Omitir este paso hará que manifest.json sea adicional "hooks":[], inconsistente con el resultado de la serialización de la aplicación,
+    # Todos los paquetes firmados serán juzgados.“La firma del editor no coincide con el contenido del complemento”.
     if not manifest.get("hooks"):
         manifest.pop("hooks", None)
 
 
 def declared_runtime(raw: dict) -> str:
-    """读取作者声明的运行时；缺省按 App 端默认值 js。
+    """Leer el tiempo de ejecución declarado por el autor; el valor predeterminado es js, el valor predeterminado en el lado de la aplicación.
 
-    该字段不参与签名载荷，只影响入口扩展名校验与包内文件收集。
+    Este campo no participa en la carga útil de la firma y solo afecta la verificación de la extensión de entrada y la recopilación de archivos dentro del paquete.
     """
     value = raw.get("runtime", RUNTIME_JS)
     if value not in KNOWN_RUNTIMES:
-        fail(f"不支持的 runtime: {value}（可用：{', '.join(KNOWN_RUNTIMES)}）")
+        fail(f"No compatible runtime: {value}(Disponible:{', '.join(KNOWN_RUNTIMES)})")
     return value
 
 
 def validate_manifest(manifest: dict, runtime: str = RUNTIME_JS) -> None:
     if not PLUGIN_ID_REGEX.match(manifest["id"]):
-        fail(f"插件 id 非法: {manifest['id']}")
+        fail(f"La identificación del complemento es ilegal: {manifest['id']}")
     if not manifest["name"]:
-        fail("manifest 缺少 name")
+        fail("manifest desaparecido name")
     if manifest["trust"] != "sandboxed":
-        fail("外部插件 trust 必须是 sandboxed")
+        fail("La confianza del complemento externo debe ser sandboxed")
     is_skin = manifest["kind"] == UI_SKIN_KIND
     if is_skin:
         if runtime != RUNTIME_JS:
-            fail("ui-skin 插件只支持 js 运行时")
+            fail("ui-skin El complemento solo admite el tiempo de ejecución js")
         if manifest["tools"]:
-            fail("ui-skin 插件不得声明工具")
+            fail("ui-skin Los complementos no deben declarar herramientas")
         if "ui.skin" not in manifest["capabilities"]:
-            fail("ui-skin 插件必须在 capabilities 中声明 ui.skin")
+            fail("ui-skin Los complementos deben declararse en capacidades ui.skin")
     else:
         if not manifest["tools"]:
-            fail("插件必须声明至少一个工具")
+            fail("Los complementos deben declarar al menos una herramienta")
         expected_suffix = ".py" if runtime == RUNTIME_PYTHON else ".js"
         if not manifest["entry"].lower().endswith(expected_suffix):
-            fail(f"runtime={runtime} 的入口必须是 {expected_suffix} 文件: {manifest['entry']}")
+            fail(f"runtime={runtime} La entrada debe ser {expected_suffix} Archivo: {manifest['entry']}")
     for capability in manifest["capabilities"] + manifest["permissions"]:
         if capability not in ALLOWED_CAPABILITIES:
-            fail(f"能力不在白名单内: {capability}")
+            fail(f"La capacidad no está en la lista blanca: {capability}")
     for tool in manifest["tools"]:
         if not TOOL_NAME_REGEX.match(tool["name"]) or not FUNCTION_NAME_REGEX.match(tool["functionName"]):
-            fail(f"工具名或函数名非法: {tool['name']}/{tool['functionName']}")
+            fail(f"El nombre de la herramienta o el nombre de la función es ilegal: {tool['name']}/{tool['functionName']}")
 
 
-# ─────────────────────────── 打包 ───────────────────────────
+# ─────────────────────────── paquete ───────────────────────────
 
 def collect_files(src: Path, manifest: dict) -> tuple:
-    """返回 (entry_path, entry_bytes, extras{path: bytes})；只收集 loader 支持的扩展名。"""
+    """Regresar (entry_path, entry_bytes, extras{path: bytes});Recopile únicamente extensiones admitidas por el cargador."""
     entry_name = manifest["entry"].replace("\\", "/")
     is_skin = manifest["kind"] == UI_SKIN_KIND
     entry_path = src / entry_name
     if is_skin:
-        # 皮肤包没有 JS 入口：App 载入 zip 时把 entryCode 固定为空串，
-        # 但仍会用 manifest.entry 这个名字参与内容摘要，签名必须与之一致。
+        # El paquete skin no tiene entrada JS:App Al cargar zip, corrija el código de entrada en una cadena vacía.
+        # Sin embargo, el nombre manifest.entry seguirá utilizándose para participar en el resumen de contenido y la firma debe ser coherente con él.
         entry_bytes = b""
     else:
         if not entry_path.is_file():
-            fail(f"找不到入口文件: {entry_path}")
+            fail(f"Archivo de entrada no encontrado: {entry_path}")
         entry_bytes = entry_path.read_bytes()
 
     extras = {}
@@ -417,24 +417,24 @@ def collect_files(src: Path, manifest: dict) -> tuple:
         if not is_skin and relative == entry_name:
             continue
         if not relative.endswith(LOADED_EXTENSIONS):
-            print(f"  提示：跳过不被加载的文件 {relative}")
+            print(f"  Consejo: omita archivos que no estén cargados {relative}")
             continue
         if ".." in relative or relative.startswith("/"):
-            fail(f"非法路径: {relative}")
+            fail(f"camino ilegal: {relative}")
         if not relative.isascii():
-            fail(f"包内路径必须为 ASCII（排序规则需与 App 逐字节一致）: {relative}")
+            fail(f"La ruta dentro del paquete debe ser ASCII (las reglas de clasificación deben ser coherentes con la aplicación byte a byte): {relative}")
         extras[relative] = path.read_bytes()
     if is_skin:
         if UI_SKIN_ENTRY not in extras:
-            fail(f"ui-skin 插件缺少 {UI_SKIN_ENTRY}")
+            fail(f"ui-skin Falta el complemento {UI_SKIN_ENTRY}")
         for name in extras:
             if name.lower().endswith((".js", ".py")):
-                fail(f"ui-skin 插件不得包含脚本: {name}")
+                fail(f"ui-skin Los complementos no deben contener scripts: {name}")
         validate_skin_json(extras[UI_SKIN_ENTRY])
     return entry_name, entry_bytes, extras
 
 
-# ─────────────── 皮肤包校验（与宿主 BubbleSkinValidator 同口径） ───────────────
+# ─────────────── Verificación del paquete de skin (mismo calibre que el host BubbleSkinValidator) ───────────────
 
 BUBBLE_ROLES = ("USER", "ASSISTANT", "GROUP_ASSISTANT", "SYSTEM", "TOOL")
 MIN_CONTRAST_RATIO = 4.5
@@ -459,26 +459,26 @@ def contrast_ratio(foreground: int, background: int) -> float:
 
 
 def validate_skin_json(raw: bytes) -> None:
-    """发布前按宿主规则自检皮肤，避免上架后静默回退成内置气泡。"""
+    """Verifique usted mismo la máscara de acuerdo con las reglas del anfitrión antes de publicarla para evitar volver a caer silenciosamente en la burbuja incorporada después de colocarla en los estantes."""
     try:
         skin = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        fail(f"{UI_SKIN_ENTRY} 不是合法 JSON: {error}")
+        fail(f"{UI_SKIN_ENTRY} No legal JSON: {error}")
 
     if skin.get("schemaVersion", 1) != 1:
-        fail(f"{UI_SKIN_ENTRY} schemaVersion 必须为 1")
+        fail(f"{UI_SKIN_ENTRY} schemaVersion debe ser 1")
     if not SKIN_ID_REGEX.match(str(skin.get("id", ""))):
-        fail(f"{UI_SKIN_ENTRY} 皮肤 id 非法: {skin.get('id')!r}")
+        fail(f"{UI_SKIN_ENTRY} identificación de piel ilegal: {skin.get('id')!r}")
     if not str(skin.get("name", "")).strip():
-        fail(f"{UI_SKIN_ENTRY} 缺少皮肤名称")
+        fail(f"{UI_SKIN_ENTRY} Falta el nombre de la piel")
 
     for mode in ("light", "dark"):
         roles = skin.get(mode) or {}
         if not isinstance(roles, dict) or not roles:
-            fail(f"{UI_SKIN_ENTRY} 缺少 {mode} 配色")
+            fail(f"{UI_SKIN_ENTRY} desaparecido {mode} combinación de colores")
         for role, style in roles.items():
             if role not in BUBBLE_ROLES:
-                fail(f"{UI_SKIN_ENTRY} 未知角色 {role}（可用：{', '.join(BUBBLE_ROLES)}）")
+                fail(f"{UI_SKIN_ENTRY} papel desconocido {role}(Disponible:{', '.join(BUBBLE_ROLES)})")
             for field, minimum, maximum in (
                 ("radiusDp", 0.0, 40.0),
                 ("paddingHorizontalDp", 0.0, 48.0),
@@ -488,20 +488,20 @@ def validate_skin_json(raw: bytes) -> None:
                 ("outlineWidthDp", 0.0, 8.0),
             ):
                 if field in style and not (minimum <= float(style[field]) <= maximum):
-                    fail(f"{UI_SKIN_ENTRY} {mode}/{role} 的 {field} 超出 {minimum}~{maximum}")
+                    fail(f"{UI_SKIN_ENTRY} {mode}/{role} de {field} más allá {minimum}~{maximum}")
             surface = int(style.get("surfaceArgb", 0))
             content = int(style.get("contentArgb", 0))
             ratio = contrast_ratio(content, surface)
             if ratio < MIN_CONTRAST_RATIO:
                 fail(
-                    f"{UI_SKIN_ENTRY} {mode}/{role} 正文与底色对比度不足: "
+                    f"{UI_SKIN_ENTRY} {mode}/{role} Contraste insuficiente entre el texto y el fondo.: "
                     f"{ratio:.2f} < {MIN_CONTRAST_RATIO}",
                 )
 
 
 
-# 入口里出现这些片段通常意味着插件试图绕过沙盒或做危险动作；沙盒本身会拦截，
-# 但发布前提示出来，避免把明显可疑的代码送上市场。
+# La aparición de estos fragmentos en la entrada generalmente significa que el complemento está intentando eludir la zona de pruebas o realizar acciones peligrosas; la propia caja de arena lo interceptará,
+# Pero infórmelo antes del lanzamiento para evitar enviar código obviamente sospechoso al mercado.
 SUSPICIOUS_SNIPPETS = (
     "eval(", "new Function", "XMLHttpRequest", "fetch(", "document.", "window.",
     "localStorage", "importScripts", "require(",
@@ -509,26 +509,26 @@ SUSPICIOUS_SNIPPETS = (
 
 
 def check_entry_code(manifest: dict, entry_bytes: bytes, runtime: str = RUNTIME_JS) -> None:
-    """校验 manifest 声明的函数确实存在于入口文件，并对可疑片段给出警告。"""
+    """Verifique que las funciones declaradas en el manifiesto realmente existan en el archivo de entrada y brinde advertencias sobre fragmentos sospechosos."""
     if entry_bytes.startswith(b"\xef\xbb\xbf"):
-        print("  警告：入口文件带 UTF-8 BOM，建议去掉（App 会按 UTF-8 解码）")
+        print("  Advertencia: el archivo de entrada contiene una lista de materiales UTF-8; se recomienda eliminarlo (App se decodificará como UTF-8)")
     try:
         text = entry_bytes.decode("utf-8")
     except UnicodeDecodeError as error:
-        fail(f"入口文件不是合法 UTF-8: {error}")
+        fail(f"El expediente de entrada no es legal. UTF-8: {error}")
 
     declaration = r"def\s+" if runtime == RUNTIME_PYTHON else r"function\s+"
     for tool in manifest["tools"]:
         function_name = tool["functionName"]
         pattern = re.compile(r"(^|\n)[ \t]*" + declaration + re.escape(function_name) + r"\s*\(")
         if not pattern.search(text):
-            fail(f"入口未定义工具函数 {function_name}（manifest 工具 {tool['name']}）")
+            fail(f"Función de utilidad indefinida de entrada {function_name}(manifest Herramientas {tool['name']})")
 
-    # 可疑片段表是按 JS 写法列的，Python 入口不套用，避免误报。
+    # La tabla de fragmentos sospechosos se enumera según el método de escritura JS.Python No se aplica la entrada para evitar falsos positivos.
     if runtime == RUNTIME_JS:
         for snippet in SUSPICIOUS_SNIPPETS:
             if snippet in text:
-                print(f"  警告：入口包含可疑片段 {snippet!r}，请确认是必要且安全的")
+                print(f"  Advertencia: la entrada contiene fragmentos sospechosos {snippet!r}, confirme que es necesario y seguro")
 
 
 
@@ -547,11 +547,11 @@ def command_pack(args) -> None:
     src = Path(args.src)
     key_path = Path(args.key)
     if not src.is_dir():
-        fail(f"插件源码目录不存在: {src}")
+        fail(f"El directorio del código fuente del complemento no existe: {src}")
     if not key_path.is_file():
-        fail(f"私钥不存在: {key_path}")
+        fail(f"La clave privada no existe: {key_path}")
     if not PUBLISHER_ID_REGEX.match(args.publisher_id):
-        fail(f"发行者 ID 非法: {args.publisher_id}")
+        fail(f"ID de emisor ilegal: {args.publisher_id}")
 
     raw = json.loads((src / "manifest.json").read_text(encoding="utf-8"))
     runtime = declared_runtime(raw)
@@ -587,7 +587,7 @@ def command_pack(args) -> None:
     is_skin = manifest["kind"] == UI_SKIN_KIND
     with zipfile.ZipFile(artifact_path, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("manifest.json", manifest_json_bytes)
-        # 皮肤包不得包含任何 .js：入口只以「manifest.entry + 空内容」参与摘要，不写进 zip。
+        # Los paquetes de skins no deben contener ningún .js: la entrada solo termina con "manifest.entry + El "contenido vacío" participa en el resumen y no se escribe en el zip.
         if not is_skin:
             archive.writestr(entry_name, entry_bytes)
         for path in sorted(extras):
@@ -611,22 +611,22 @@ def command_pack(args) -> None:
     metadata_path = out_dir / f"{manifest['id']}-{manifest['version']}.json"
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"已签名插件包: {artifact_path}")
-    print(f"  id={manifest['id']} version={manifest['version']} 工具 {len(manifest['tools'])} 个")
+    print(f"Paquete de complementos firmado: {artifact_path}")
+    print(f"  id={manifest['id']} version={manifest['version']} Herramientas {len(manifest['tools'])} un")
     print(f"  artifactBytes={len(archive_bytes)} artifactSha256={metadata['entry']['artifactSha256']}")
     print(f"  manifestSha256={manifest_sha256}")
     print(f"  publisher={args.publisher_id} keyFingerprint={publisher['fingerprint']}")
-    print(f"  元数据: {metadata_path}")
+    print(f"  Metadatos: {metadata_path}")
 
 
-# ─────────────────────────── 目录 ───────────────────────────
+# ─────────────────────────── Directorio ───────────────────────────
 
 def package_parts_from_zip(archive_path: Path) -> list:
-    """按 PluginPackageLoader 规则复算包内各部分，用于独立验证 manifestSha256。"""
+    """Vuelva a calcular cada parte del paquete de acuerdo con las reglas de PluginPackageLoader para una verificación independiente de manifestSha256."""
     with zipfile.ZipFile(archive_path) as archive:
         names = [info.filename for info in archive.infolist() if not info.is_dir()]
         if "manifest.json" not in names:
-            fail(f"{archive_path.name} 缺少 manifest.json")
+            fail(f"{archive_path.name} desaparecido manifest.json")
         manifest_bytes = archive.read("manifest.json")
         manifest = json.loads(manifest_bytes.decode("utf-8"))
         entry_name = manifest.get("entry", "main.js")
@@ -634,10 +634,10 @@ def package_parts_from_zip(archive_path: Path) -> list:
         if entry_name in names:
             entry_bytes = archive.read(entry_name)
         elif is_skin:
-            # 皮肤包没有 JS 入口：宿主以「入口名 + 空内容」参与摘要。
+            # El paquete skin no tiene una entrada JS: el host participa en el resumen con "nombre de entrada + contenido vacío".
             entry_bytes = b""
         else:
-            fail(f"{archive_path.name} 缺少入口文件 {entry_name}")
+            fail(f"{archive_path.name} Falta el archivo de entrada {entry_name}")
         parts = [("manifest.json", manifest_bytes), (entry_name, entry_bytes)]
         for name in sorted(names):
             if name in ("manifest.json", entry_name):
@@ -652,47 +652,47 @@ def command_catalog(args) -> None:
     packages_dir = Path(args.packages_dir)
     key_path = Path(args.key)
     if not packages_dir.is_dir():
-        fail(f"包目录不存在: {packages_dir}")
+        fail(f"El directorio del paquete no existe: {packages_dir}")
     if not key_path.is_file():
-        fail(f"私钥不存在: {key_path}")
+        fail(f"La clave privada no existe: {key_path}")
 
     base_url = args.base_url.rstrip("/")
     entries = []
-    # 只读取与插件包同名的元数据：目录里可能同时存在 signed-catalog.json / public-keys.json
-    # 等其它 JSON，按名字匹配可以避免把它们当成插件元数据。
+    # Lea solo metadatos con el mismo nombre que el paquete del complemento: ambos pueden existir en el directorio signed-catalog.json / public-keys.json
+    # y otros JSON, compararlos por nombre evita tratarlos como metadatos de complementos.
     metadata_paths = []
     for artifact_path in sorted(packages_dir.glob("*.muse-plugin")):
         metadata_path = artifact_path.with_suffix(".json")
         if not metadata_path.is_file():
-            fail(f"缺少 {artifact_path.name} 的元数据，请重新执行 pack")
+            fail(f"desaparecido {artifact_path.name} metadatos, vuelva a ejecutar pack")
         metadata_paths.append(metadata_path)
     if not metadata_paths:
-        fail(f"{packages_dir} 中没有已签名的插件包，请先执行 pack")
+        fail(f"{packages_dir} No hay ningún paquete de complemento firmado, ejecútelo primero pack")
 
     for metadata_path in metadata_paths:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         source = dict(metadata["entry"])
         artifact_name = source.pop("artifactFile", None)
         if not artifact_name:
-            fail(f"{metadata_path.name} 缺少 artifactFile")
+            fail(f"{metadata_path.name} desaparecido artifactFile")
         artifact_path = packages_dir / artifact_name
         if not artifact_path.is_file():
-            fail(f"缺少插件包文件: {artifact_path}")
+            fail(f"Falta el archivo del paquete de complementos: {artifact_path}")
         source["artifactUrl"] = base_url + "/" + artifact_path.name
         entry = ordered(source, ENTRY_ORDER, {}, f"entry({metadata_path.name})")
 
-        # 独立复算：字节数、包摘要、内容摘要都必须与 pack 阶段记录的值一致。
+        # Recálculo independiente: el número de bytes, el resumen del paquete y el resumen del contenido deben ser coherentes con los valores registrados en la fase de empaquetado.
         archive_bytes = artifact_path.read_bytes()
         if len(archive_bytes) != entry["artifactBytes"]:
-            fail(f"{entry['id']} 记录大小与实际不符")
+            fail(f"{entry['id']} El tamaño del registro no coincide con el tamaño real.")
         if sha256_hex(archive_bytes) != entry["artifactSha256"]:
-            fail(f"{entry['id']} 记录包摘要与实际不符")
+            fail(f"{entry['id']} El resumen del paquete de registro no coincide con el real")
         if content_sha256(package_parts_from_zip(artifact_path)) != entry["manifestSha256"]:
-            fail(f"{entry['id']} 记录内容摘要与包内实际内容不符")
+            fail(f"{entry['id']} El resumen del contenido del registro no coincide con el contenido real del paquete.")
         entries.append(entry)
 
     if not entries:
-        fail(f"{packages_dir} 中没有已签名的插件包元数据，请先执行 pack")
+        fail(f"{packages_dir} No hay metadatos del paquete de complementos firmados, ejecútelo primero pack")
 
     sequence = args.sequence if args.sequence is not None else int(time.time())
     now_ms = int(time.time() * 1000)
@@ -707,13 +707,13 @@ def command_catalog(args) -> None:
     payload = ordered(payload, CATALOG_ORDER, {}, "catalog")
     for entry in payload["entries"]:
         if not PLUGIN_ID_REGEX.match(entry["id"]):
-            fail(f"目录条目 id 非法: {entry['id']}")
+            fail(f"La identificación de entrada del directorio es ilegal: {entry['id']}")
         if not VERSION_REGEX.match(entry["version"]):
-            fail(f"目录条目版本非法: {entry['version']}")
+            fail(f"La versión de entrada al directorio es ilegal: {entry['version']}")
         if not SHA256_REGEX.match(entry["artifactSha256"]) or not SHA256_REGEX.match(entry["manifestSha256"]):
-            fail(f"目录条目摘要格式非法: {entry['id']}")
+            fail(f"El formato de resumen de entrada del directorio es ilegal: {entry['id']}")
         if not str(entry["artifactUrl"]).startswith("https://"):
-            fail(f"目录条目下载地址必须是 https: {entry['artifactUrl']}")
+            fail(f"La dirección de descarga de la entrada del directorio debe ser https: {entry['artifactUrl']}")
 
     payload_bytes = canonical_bytes(payload)
     signature = sign_bytes(key_path, payload_bytes)
@@ -742,49 +742,49 @@ def command_catalog(args) -> None:
         "baseUrl": args.base_url.rstrip("/"),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"已签名目录: {out_path}")
-    print(f"  catalogId={payload['catalogId']} sequence={sequence} 条目 {len(entries)} 个")
-    print(f"  有效期至 {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(payload['expiresAtEpochMs'] / 1000))}")
+    print(f"Directorio firmado: {out_path}")
+    print(f"  catalogId={payload['catalogId']} sequence={sequence} entrada {len(entries)} un")
+    print(f"  Válido hasta {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(payload['expiresAtEpochMs'] / 1000))}")
     print(f"  keyId={args.key_id}")
-    print(f"  信任根公钥(Base64): {root['publicKey']}")
-    print(f"  信任根指纹: {root['fingerprint']}")
-    print(f"  公钥信息: {keys_path}")
+    print(f"  Confiar en la clave pública raíz(Base64): {root['publicKey']}")
+    print(f"  raíz de la huella digital de confianza: {root['fingerprint']}")
+    print(f"  Información de clave pública: {keys_path}")
 
 
 def command_keygen(args) -> None:
     key_path = Path(args.key)
     generate_key(key_path)
     info = public_key_info(key_path)
-    print(f"已生成 P-256 私钥: {key_path}")
-    print(f"  公钥(X.509 SPKI, Base64): {info['publicKey']}")
-    print(f"  指纹(SHA-256): {info['fingerprint']}")
-    print("  请妥善备份私钥；一旦丢失，已发布目录与用户信任根都无法继续更新。")
+    print(f"Clave privada P-256 generada: {key_path}")
+    print(f"  clave pública(X.509 SPKI, Base64): {info['publicKey']}")
+    print(f"  huella digital(SHA-256): {info['fingerprint']}")
+    print("  Haga una copia de seguridad de la clave privada correctamente; una vez perdido, el directorio publicado y la raíz de confianza del usuario no se pueden actualizar.")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Muse 插件市场离线签名工具")
+    parser = argparse.ArgumentParser(description="Muse Herramienta de firma fuera de línea del mercado de complementos")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    keygen = sub.add_parser("keygen", help="生成 P-256 私钥")
-    keygen.add_argument("--key", required=True, help="私钥输出路径")
+    keygen = sub.add_parser("keygen", help="Generar clave privada P-256")
+    keygen.add_argument("--key", required=True, help="Ruta de salida de clave privada")
     keygen.set_defaults(func=command_keygen)
 
-    pack = sub.add_parser("pack", help="把插件源码目录打成签名后的 .muse-plugin")
-    pack.add_argument("--src", required=True, help="插件源码目录（含 manifest.json）")
-    pack.add_argument("--key", required=True, help="发行者私钥路径")
-    pack.add_argument("--publisher-id", required=True, help="发行者 ID")
-    pack.add_argument("--out-dir", required=True, help="产物输出目录")
+    pack = sub.add_parser("pack", help="Hacer que el directorio del código fuente del complemento esté firmado .muse-plugin")
+    pack.add_argument("--src", required=True, help="Directorio de código fuente del complemento (incluido manifest.json)")
+    pack.add_argument("--key", required=True, help="Ruta de la clave privada del emisor")
+    pack.add_argument("--publisher-id", required=True, help="Emisor ID")
+    pack.add_argument("--out-dir", required=True, help="Directorio de salida del producto")
     pack.set_defaults(func=command_pack)
 
-    catalog = sub.add_parser("catalog", help="用已签名的包生成签名目录")
-    catalog.add_argument("--packages-dir", required=True, help="pack 的产物目录")
-    catalog.add_argument("--key", required=True, help="目录根私钥路径")
-    catalog.add_argument("--key-id", required=True, help="目录信任根 keyId")
-    catalog.add_argument("--base-url", required=True, help="插件包对外基础地址（https）")
-    catalog.add_argument("--catalog-id", default="muse-official", help="目录标识")
-    catalog.add_argument("--out", required=True, help="签名目录输出路径")
-    catalog.add_argument("--sequence", type=int, default=None, help="目录序号（默认取当前 Unix 秒）")
-    catalog.add_argument("--days", type=float, default=30, help="有效期天数")
+    catalog = sub.add_parser("catalog", help="Generar directorio de firmas con paquetes firmados")
+    catalog.add_argument("--packages-dir", required=True, help="pack catalogo de productos")
+    catalog.add_argument("--key", required=True, help="Ruta de la clave privada raíz del directorio")
+    catalog.add_argument("--key-id", required=True, help="directorio raíz de confianza keyId")
+    catalog.add_argument("--base-url", required=True, help="Dirección base externa del paquete de complemento (https)")
+    catalog.add_argument("--catalog-id", default="muse-official", help="ID de directorio")
+    catalog.add_argument("--out", required=True, help="Ruta de salida del directorio de firmas")
+    catalog.add_argument("--sequence", type=int, default=None, help="Número de serie del directorio (el valor predeterminado es el segundo actual de Unix)")
+    catalog.add_argument("--days", type=float, default=30, help="Días de validez")
     catalog.set_defaults(func=command_catalog)
 
     return parser

@@ -8,16 +8,16 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
- * 会话待办的持久化仓储。
+ * Almacenamiento persistente de las tareas pendientes de la sesión.
  *
- * 在 `TodoTool` 与 Room 之间做三件事：序列化清单、维护 `hasOpenItems`、
- * 把「还有事没做完的会话」查出来给上层做跨会话提醒。
+ * en `TodoTool` Haga tres cosas con Room: lista de serialización, mantenimiento `hasOpenItems`,
+ * Consulte las "conversaciones que tienen asuntos pendientes" y proporcione recordatorios entre sesiones a la capa superior.
  */
 class SessionTodoRepository(
     private val dao: SessionTodoDao,
 ) {
 
-    /** 写入某会话的完整清单（替换语义，与 todo_write 一致）。 */
+    /** Escribe la lista completa de una sesión (semántica de reemplazo, consistente con todo_write). */
     suspend fun save(sessionId: String, list: TodoTool.TodoList) {
         if (sessionId.isBlank()) return
         val now = System.currentTimeMillis()
@@ -33,33 +33,33 @@ class SessionTodoRepository(
         dao.upsert(entity)
     }
 
-    /** 读取某会话的清单；无记录或解析失败返回空清单。 */
+    /** Leer la lista de una sesión; si no hay ningún registro o el análisis falla, se devuelve una lista vacía. */
     suspend fun load(sessionId: String): TodoTool.TodoList {
         val row = dao.getBySession(sessionId) ?: return TodoTool.TodoList()
         return decode(row.todosJson)
     }
 
-    /** 订阅某会话的清单。 */
+    /** Suscríbete a la lista de una sesión. */
     fun observe(sessionId: String): Flow<TodoTool.TodoList> = dao.observeBySession(sessionId).map { row ->
         row?.let { decode(it.todosJson) } ?: TodoTool.TodoList()
     }
 
-    /** 还有未完成项的会话（跨会话台账）。 */
+    /** Sesiones con partidas pendientes (libro mayor de sesiones cruzadas). */
     suspend fun sessionsWithOpenItems(): List<SessionTodoEntity> = dao.getSessionsWithOpenItems()
 
-    /** 还有未完成项的会话数，用于开场提示。 */
+    /** También hay un recuento de sesiones de elementos sin terminar para el mensaje de apertura. */
     suspend fun countSessionsWithOpenItems(): Int = dao.countSessionsWithOpenItems()
 
-    /** 会话删除时清掉它的待办。 */
+    /** Cuando se elimina una sesión, se elimina su acumulación. */
     suspend fun delete(sessionId: String) {
         dao.deleteBySession(sessionId)
     }
 
     /**
-     * 是否还有未完成项。
+     * ¿Hay elementos sin terminar?
      *
-     * 只认 pending / in_progress；未知状态按「未完成」处理 ——
-     * 宁可多提醒一次，也不要把没做完的事静默标成做完了。
+     * Sólo se reconoce pendiente/en_progreso; el estado desconocido se trata como "Sin terminar" ——
+     * Es mejor que te lo recuerden una vez más que marcar en silencio las cosas inacabadas como hechas.
      */
     private fun hasOpenItems(list: TodoTool.TodoList): Boolean = list.todos.any { it.status != "completed" }
 
@@ -68,9 +68,9 @@ class SessionTodoRepository(
         return runCatching {
             AppJson.decodeFromString(TodoTool.TodoList.serializer(), json)
         }.onFailure {
-            // 解析失败不能当成「没有待办」静默吞掉：记日志，返回空清单但不删库，
-            // 下次写入会覆盖。
-            Logger.w("SessionTodoRepo", "待办 JSON 解析失败，保留原记录: ${it.message}")
+            // El error de análisis no se puede tratar como "sin tareas pendientes" y tragarlo en silencio: registrar, devolver una lista vacía pero no eliminar la biblioteca.
+            // La siguiente escritura lo sobrescribirá.
+            Logger.w("SessionTodoRepo", "Error en el análisis JSON de tareas pendientes, se conserva el registro original: ${it.message}")
         }.getOrDefault(TodoTool.TodoList())
     }
 }

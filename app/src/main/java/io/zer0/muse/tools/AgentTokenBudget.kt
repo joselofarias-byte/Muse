@@ -3,50 +3,50 @@ package io.zer0.muse.tools
 import io.zer0.ai.core.UsageTokens
 
 /**
- * v1.0.53 Phase 3: 子 agent token 预算账本。
+ * v1.0.53 Phase 3: Libro mayor de presupuesto de tokens de subagente.
  *
- * 累加来源:[ChatService.completeText] 返回的 [io.zer0.ai.core.ChatCompletion.usageTokens]。
- *  - usageTokens 为 null 时(Provider 未返回 usage)跳过累加,不误判耗尽
- *  - total = promptTokens + completionTokens(已含 reasoning tokens,不重复加)
+ * fuente de acumulación:[ChatService.completeText] regresó [io.zer0.ai.core.ChatCompletion.usageTokens].
+ *  - usageTokens cuando es nulo(Provider No devuelto usage)Saltar acumulación,No juzgues mal el agotamiento
+ *  - total = promptTokens + completionTokens(Incluido reasoning tokens,No agregue repetidamente)
  *
- * 使用场景:
- *  - [SubagentRunner] 每轮 completeText 后 accumulate,耗尽则强制结束工具循环进入总结
- *  - [SkillExecutor.delegateAgent] 路径 A(子助手委派)跨递归累加(通过 ThreadLocal 传递 budget 实例)
- *  - [WorkflowOrchestrator] 框架级硬上限检查点
+ * Escenarios de uso:
+ *  - [SubagentRunner] Después de cada ronda de texto completo accumulate,Cuando se agota, el ciclo de la herramienta se fuerza a finalizar y el ciclo de la herramienta ingresa al resumen.
+ *  - [SkillExecutor.delegateAgent] camino A(Delegación Subasistente)Acumular entre recursiones(Pasar instancia de presupuesto a través de ThreadLocal)
+ *  - [WorkflowOrchestrator] Puntos de control de límite máximo a nivel de marco
  *
- * 线程安全:本类不做同步 — 设计为单协程内顺序使用。
- * 跨协程共享需调用方自行包裹同步(如 nonBlocking 后台协程各自创建独立 budget)。
+ * Seguridad del hilo:Esta clase no se sincroniza — Diseñado para uso secuencial dentro de una sola rutina.
+ * El uso compartido entre rutinas requiere que la persona que llama se empaquete y sincronice por sí misma(Por ejemplo, las corrutinas en segundo plano sin bloqueo crean budget).
  *
- * @param limitTokens 预算上限(prompt + completion 合计)。null 表示不限制(由工厂方法 [of] 处理)。
+ * @param limitTokens límite presupuestario(prompt + completion total).null No indica ninguna restricción(por método de fábrica [of] Proceso).
  */
 class AgentTokenBudget private constructor(
     private val limitTokens: Int,
 ) {
     companion object {
-        /** 子 agent 默认 token 预算(60k,对齐文档 6.4 默认值)。 */
+        /** Presupuesto de token predeterminado del subagente(60k,Alinear documento 6.4 Predeterminado). */
         const val DEFAULT_SUBAGENT_BUDGET = 60_000
 
         /**
-         * 创建预算实例。
-         * @param limitTokens 上限;null 时返回 null(表示不限制)。
+         * Cree una instancia de presupuesto.
+         * @param limitTokens límite superior;null regresar cuando null(No indica ninguna restricción).
          */
         fun of(limitTokens: Int?): AgentTokenBudget? = limitTokens?.takeIf { it > 0 }?.let { AgentTokenBudget(it) }
     }
 
     private var spent = 0
 
-    /** 剩余预算(永不小于 0)。 */
+    /** presupuesto restante(nunca menos que 0). */
     val remaining: Int get() = (limitTokens - spent).coerceAtLeast(0)
 
-    /** 预算是否已耗尽。 */
+    /** ¿Se ha agotado el presupuesto? */
     val isExhausted: Boolean get() = spent >= limitTokens
 
-    /** 已消耗 token 数(诊断用)。 */
+    /** Número de tokens consumidos(para diagnóstico). */
     val spentTokens: Int get() = spent
 
     /**
-     * 尝试预扣一笔 token(用于节点启动前的硬上限检查)。
-     * @return false 表示预扣后超限,拒绝本次调用;true 表示预扣成功。
+     * Intenta retener una suma token(Se utiliza para comprobaciones de límite máximo antes del inicio del nodo.).
+     * @return false Indica exceder el límite después de la retención,Rechazar esta llamada;true Indica que la retención fue exitosa.
      */
     fun trySpend(tokens: Int): Boolean {
         if (tokens <= 0) return true
@@ -56,10 +56,10 @@ class AgentTokenBudget private constructor(
     }
 
     /**
-     * 从 [ChatCompletion.usageTokens] 累加实际消耗。
-     * - usage 为 null 时(Provider 未返回)跳过累加,仅返回当前是否已耗尽。
+     * de [ChatCompletion.usageTokens] Acumular consumo real.
+     * - usage cuando es nulo(Provider No devuelto)Saltar acumulación,Solo devuelve si está agotado actualmente.
      *
-     * @return true 表示累加后仍有剩余;false 表示累加后已耗尽(调用方应进入总结路径)。
+     * @return true Indica que todavía queda algo después de la acumulación.;false Indica que se ha agotado tras la acumulación.(La persona que llama debe ingresar la ruta de resumen.).
      */
     fun accumulate(usage: UsageTokens?): Boolean {
         if (usage == null) return !isExhausted

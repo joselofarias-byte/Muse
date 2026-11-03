@@ -3,58 +3,58 @@ package io.zer0.muse.proactive
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 主动消息巡检的进程内单飞闸。
+ * Puerta volante única en proceso para inspección activa de mensajes.
  *
- * 巡检有四路触发源（进程内定时、WorkManager、回前台、设置页手动），
- * 它们各自独立发起、互不知情。没有一道共享的闸时，两路可以同时进入巡检，
- * 各自读到同一份「上次发送时间」，于是各自认为「距上一条已经够久了」，
- * 最后在同一时间窗里落库两条内容高度相似的消息。
+ * Hay cuatro fuentes desencadenantes para la inspección (cronometraje durante el proceso,WorkManager, volver a la recepción, página de configuración manualmente),
+ * Fueron iniciados de forma independiente y sin conocimiento mutuo. Cuando no hay una puerta compartida, ambas vías pueden entrar para inspección al mismo tiempo.
+ * Cada uno leyó la misma "hora del último envío", por lo que cada uno pensó "ya ha pasado suficiente tiempo desde el último".
+ * Finalmente, se registraron dos mensajes con contenido muy similar en la misma ventana de tiempo.
  *
- * 这里管两件事：
+ * Aquí se cuidan dos cosas:
  *
- *  1. **在跑标记**：同一时刻只允许一轮巡检在跑。后到的触发不排队，
- *     直接拿到 null 走人 —— 排队没有意义，前一轮跑完就会重新判定时机，
- *     等待者醒来只会得到「刚说过话」的结论。
+ *  1. **marca de carrera**: Sólo se permite ejecutar una ronda de inspección al mismo tiempo. Los desencadenantes que llegan más tarde no se ponen en cola.
+ *     Simplemente conviértete en nulo y vete. —— No tiene sentido hacer cola. El cronometraje se volverá a juzgar después de la ronda anterior.
+ *     Aquellos que esperan sólo obtendrán la conclusión "recién dicha" cuando se despierten.
  *
- *  2. **尝试记录**：本轮真正开始生成时登记一笔开跑时间，并且跨轮保留。
- *     结果账要等消息落库才写，而生成最长几十秒；这段时间里只看结果账的话，
- *     正在生成的那一轮在数据层等于不存在。开跑时间补上这段空窗。
+ *  2. **intenta grabar**: registre una hora de inicio en la que esta ronda realmente comience a generarse y manténgala en todas las rondas.
+ *     La cuenta de resultados tiene que esperar a que se guarde el mensaje antes de escribirlo, y la generación puede tardar hasta decenas de segundos; si solo lees la cuenta de resultados durante este tiempo,
+ *     La ronda que se genera no existe en la capa de datos. La hora de inicio compensará esta brecha.
  *
- * 登记放在「进入生成」而不是「进入巡检」：被免打扰、额度、开关拦下的轮次
- * 什么都没做，不该在账上留下痕迹去压制后面的正常巡检。
+ * El registro se realiza en "Ingresar a Generación" en lugar de "Ingresar a Inspección": Rondas bloqueadas por No Molestar, Cuota y Cambio
+ * No se hizo nada y no debería quedar ningún rastro en la cuenta que pudiera suprimir las inspecciones normales posteriores.
  *
- * 同理，一轮结束时若什么都没发出去（模型说没什么可接的、生成失败、落库失败），
- * 这笔尝试会被回滚 —— 它没有产生消息，没有重复可言，也不该改变复查节奏。
+ * De la misma manera, si no se envía nada al final de una ronda (el modelo dice que no hay nada que recibir, la generación falla y el drop-in falla),
+ * Este intento será revertido. —— No genera noticias, no crea duplicaciones y no debe cambiar la cadencia de revisión.
  */
 class ProactiveCycleGuard {
 
     /**
-     * 一轮巡检的进入凭据。
+     * Credenciales de ingreso para una ronda de inspección.
      *
-     * [previousAttemptAt] 是本轮**之前**那次生成尝试的时间：判定时机时需要知道
-     * 「上一轮什么时候跑的」，但不能把本轮自己刚写下的时间当成上一轮，
-     * 否则每一轮都会拦住自己。它同时也是回滚的落点。
+     * [previousAttemptAt] es este ciclo**antes**El momento de ese intento de generación: es necesario saberlo al juzgar el momento
+     * "¿Cuándo corriste en la última ronda?" Pero no puedes considerar el tiempo que acabas de anotar en esta ronda como la ronda anterior.
+     * De lo contrario, te bloquearás en cada ronda. También es el punto de aterrizaje para la reversión.
      */
     data class Entry(
-        /** 本轮进入巡检的时间戳。 */
+        /** La marca de tiempo de esta ronda de inspección. */
         val enteredAt: Long,
-        /** 本轮之前那次生成尝试的时间戳，0 表示还没有过。 */
+        /** La marca de tiempo del intento de generación antes de esta ronda,0 Dijo que aún no ha sucedido. */
         val previousAttemptAt: Long,
     )
 
     private val inFlight = AtomicBoolean(false)
 
-    /** 最近一次真正进入生成的时间，跨轮保留。 */
+    /** La hora de la última entrada real de generación, que se conserva a lo largo de las rondas. */
     @Volatile
     private var attemptAt = 0L
 
-    /** 此刻是否已经有一轮巡检在跑。 */
+    /** ¿Se está realizando ya una ronda de inspecciones en este momento? */
     val isInFlight: Boolean get() = inFlight.get()
 
     /**
-     * 尝试进入一轮巡检。
+     * Intente ingresar a una ronda de inspección.
      *
-     * @return 拿到凭据表示可以跑；null 表示已经有一轮在跑，本次触发应当跳过。
+     * @return Obtener las credenciales significa que puede ejecutar;null Indica que ya hay una ronda en ejecución y este activador debe omitirse.
      */
     fun tryEnter(now: Long): Entry? {
         if (!inFlight.compareAndSet(false, true)) return null
@@ -62,24 +62,24 @@ class ProactiveCycleGuard {
     }
 
     /**
-     * 登记一次生成尝试。
+     * Registre un intento de compilación.
      *
-     * 由本轮在真正调用模型之前调一次。写入之后到本轮结束之前，
-     * 这笔记录都有效 —— 期间若还有巡检进来（跨进程的 Worker 绕过了单飞闸
-     * 时就是这种情况），它会看到「刚刚试过」，而不是看到一张空账。
+     * Esta ronda lo llama una vez antes de llamar al modelo. Después de escribir y antes del final de esta ronda,
+     * Este registro es válido. —— Si llegan inspecciones durante este período (el trabajador de procesos cruzados pasa por alto la puerta volante única)
+     * (como fue el caso), verá "Recién probado" en lugar de ver una cuenta vacía.
      */
     fun markAttempt(now: Long) {
         attemptAt = now
     }
 
     /**
-     * 退出一轮巡检。
+     * Salir de una ronda de inspección.
      *
-     * 只清在跑标记。「这一轮还在跑」和「这一轮试过了」是两件事，
-     * 混在一起会让刚跑完的那一轮立刻失去痕迹。
+     * Simplemente borre la marca de carrera. "Todavía está en marcha en esta ronda" y "Se ha probado en esta ronda" son dos cosas diferentes.
+     * Mezclarlo hará que la carrera pierda inmediatamente su rastro.
      *
-     * @param sent 本轮是否真的发出了一条消息。没发出去就把尝试回滚到
-     *             [Entry.previousAttemptAt]，让下一次复查的节奏与改动前一致。
+     * @param sent Si esta ronda realmente envió un mensaje. Antes de enviar, intente retroceder a
+     *             [Entry.previousAttemptAt], para que el ritmo de la próxima revisión sea el mismo que antes del cambio.
      */
     fun leave(entry: Entry, sent: Boolean) {
         if (!sent) attemptAt = entry.previousAttemptAt

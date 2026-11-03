@@ -6,14 +6,14 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * D3-P1: 记忆管线运行日志(JSONL)。
+ * D3-P1: Registro de operaciones de canalización de memoria(JSONL).
  *
- * 轻量、文件形式、不动 DB schema:
- *  - 每步运行追加一行 JSON 到 [file](默认 `filesDir/memory/pipeline_log.jsonl`)
- *  - 文件超过 [maxBytes] 时滚动到 `.1`(只保留一份历史,总量有界)
- *  - 所有 IO 失败只记日志、绝不上抛 —— 观测不能拖垮管线
+ * Ligero, formato de archivo, inamovible. DB schema:
+ *  - Cada paso de la ejecución agrega una línea de JSON a [file](Predeterminado `filesDir/memory/pipeline_log.jsonl`)
+ *  - El archivo excede [maxBytes] desplácese hasta `.1`(Guarde solo una copia del historial.,El importe total está limitado)
+ *  - Todas las fallas de IO solo se registran y nunca se descartan. —— La observación no puede derribar el oleoducto
  *
- * 线程安全:写入路径用 [lock] 串行化(append 与 rotate 是读-改-写整体)。
+ * Seguridad del hilo:Usar para escribir ruta [lock] serialización(append con rotar se lee-cambiar-escribe todo).
  */
 class PipelineLog(
     private val file: File,
@@ -28,11 +28,11 @@ class PipelineLog(
     private val lock = Any()
 
     init {
-        // 父目录不存在时补齐,失败不致命
+        // Completar si el directorio principal no existe,El fracaso no es fatal
         runCatching { file.parentFile?.mkdirs() }
     }
 
-    /** 追加一条运行记录。永不抛异常。 */
+    /** Agregue un registro en ejecución. Nunca lances una excepción. */
     fun append(record: PipelineLogRecord) {
         val line = runCatching { json.encodeToString(PipelineLogRecord.serializer(), record) }.getOrNull() ?: return
         synchronized(lock) {
@@ -40,13 +40,13 @@ class PipelineLog(
                 rotateIfNeeded()
                 file.appendText(line + "\n")
             }.onFailure {
-                // 观测失败不影响管线
-                Logger.w(TAG, "pipeline_log 写入失败: ${it.message}")
+                // La falla de observación no afecta el ducto
+                Logger.w(TAG, "pipeline_log Error de escritura: ${it.message}")
             }
         }
     }
 
-    /** 从 [MemoryStepRunner.StepResult] 构造并追加记录(便捷入口)。 */
+    /** de [MemoryStepRunner.StepResult] Construir y agregar registros(Entrada conveniente). */
     fun appendStep(
         stage: MemoryStage,
         step: String,
@@ -80,7 +80,7 @@ class PipelineLog(
         )
     }
 
-    /** 当前日志文件路径(测试/诊断用)。 */
+    /** Ruta del archivo de registro actual(prueba/para diagnóstico). */
     val path: String get() = file.absolutePath
 
     private fun rotateIfNeeded() {
@@ -88,8 +88,8 @@ class PipelineLog(
         val rotated = File(file.parentFile, file.name + ROTATED_SUFFIX)
         runCatching { if (rotated.exists()) rotated.delete() }
         if (!file.renameTo(rotated)) {
-            // rename 失败:截断当前文件保底,避免无限增长
-            Logger.w(TAG, "pipeline_log 滚动失败,截断当前文件")
+            // rename falló:Truncar el archivo actual,evitar el crecimiento infinito
+            Logger.w(TAG, "pipeline_log desplazamiento fallido,Truncar el archivo actual")
             file.writeText("")
         }
     }
@@ -101,12 +101,12 @@ class PipelineLog(
         private const val ROTATED_SUFFIX = ".1"
         private const val MAX_ERROR_MSG_CHARS = 300
 
-        /** 默认上限 512KB,超出滚动为 `.1`,总量约 1MB 有界。 */
+        /** Límite superior predeterminado 512KB,más allá de desplazarse como `.1`,El tamaño total es de aproximadamente 1 MB delimitado. */
         const val DEFAULT_MAX_BYTES: Long = 512L * 1024
 
         /**
-         * 在给定目录下创建日志(自动补 `memory/` 子目录)。
-         * @param memoryDir 记忆目录(如 `filesDir/memory`)
+         * Cree un registro en el directorio indicado(llenar automáticamente `memory/` subdirectorio).
+         * @param memoryDir directorio de memoria(Como por ejemplo `filesDir/memory`)
          */
         fun create(memoryDir: File, maxBytes: Long = DEFAULT_MAX_BYTES): PipelineLog =
             PipelineLog(File(memoryDir, "pipeline_log.jsonl"), maxBytes)
@@ -114,36 +114,36 @@ class PipelineLog(
 }
 
 /**
- * 一条管线运行记录。字段尽量扁平,便于后续用脚本聚合(按 stage/step/failureKind)。
+ * Un registro de operación del oleoducto. Mantenga los campos lo más planos posible,Conveniente para la posterior agregación de scripts(prensa stage/step/failureKind).
  */
 @Serializable
 data class PipelineLogRecord(
-    /** 毫秒时间戳。 */
+    /** Marca de tiempo de milisegundos. */
     val ts: Long,
-    /** [MemoryStage] 名称。 */
+    /** [MemoryStage] Nombre. */
     val stage: String,
-    /** 步骤键(与 MemoryTicker.STEP_KEYS 对齐,如 compileFacts)。 */
+    /** clave de paso(Alineado con MemoryTicker.STEP_KEYS,Como por ejemplo compileFacts). */
     val step: String,
-    /** 触发来源:threshold / session_end / manual / backfill / daily / force / turn。 */
+    /** fuente de disparo:threshold / session_end / manual / backfill / daily / force / turn. */
     val trigger: String,
-    /** 是否成功。 */
+    /** Si tiene éxito o no. */
     val ok: Boolean,
-    /** 耗时(毫秒)。 */
+    /** Consume mucho tiempo(milisegundos). */
     val durationMs: Long,
-    /** [FailureKind] 名称;仅失败时非空。 */
+    /** [FailureKind] Nombre;Solo no vacío en caso de falla. */
     val failureKind: String? = null,
-    /** 异常简单类名。 */
+    /** Nombre de clase extraordinariamente simple. */
     val errorType: String? = null,
-    /** 异常消息(截断到 300 字)。 */
+    /** Mensaje de excepción(Truncado a 300 palabras). */
     val errorMsg: String? = null,
-    /** 记忆作用域。 */
+    /** alcance de la memoria. */
     val scope: String? = null,
-    /** 记忆空间。 */
+    /** espacio de memoria. */
     val spaceId: String? = null,
-    /** 步骤附加说明(如 rollingSummary 的 changed/unchanged)。 */
+    /** Instrucciones adicionales para los pasos(Como RollingSummary's changed/unchanged). */
     val detail: String? = null,
-    /** 该步骤累计运行次数(含本次)。 */
+    /** El número acumulado de ejecuciones de este paso.(Incluyendo esta vez). */
     val total: Int? = null,
-    /** 该步骤累计失败次数(含本次)。 */
+    /** El número acumulado de errores de este paso.(Incluyendo esta vez). */
     val failures: Int? = null,
 )

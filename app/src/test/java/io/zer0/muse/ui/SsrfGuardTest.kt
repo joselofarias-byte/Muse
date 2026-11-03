@@ -26,7 +26,7 @@ class SsrfGuardTest {
         assertFalse(SsrfGuard.isBlocked("http://8.8.8.8/"))
     }
 
-    // ── G4 补充:IPv4-mapped / ULA / 十六进制 IP ─────────────────────────────
+    // ── G4 suplemento:IPv4-mapped / ULA / hexadecimal IP ─────────────────────────────
 
     @Test
     fun blocksIpv4MappedPrivateAddresses() {
@@ -45,7 +45,7 @@ class SsrfGuardTest {
 
     @Test
     fun blocksUlaFec0AndFc00() {
-        // fc00::/7 ULA(Java isSiteLocalAddress 只覆盖 fec0::/10,不覆盖 fc00::/7)
+        // fc00::/7 ULA(Java isSiteLocalAddress solo cubrir fec0::/10,No cubierto fc00::/7)
         assertTrue(SsrfGuard.isBlocked("http://[fc00::1]/"))
         assertTrue(SsrfGuard.isBlocked("http://[fd12:3456::1]/"))
         assertTrue(SsrfGuard.isBlocked("http://[fec0::1]/"))
@@ -67,11 +67,11 @@ class SsrfGuardTest {
 
     @Test
     fun blocksHexIntegerIpAndDecimalIntegerIp() {
-        // Java InetAddress 不解析十六进制 IP(0x7f000001)→ 解析失败,保守拒绝
+        // Java InetAddress No analizar hexadecimal IP(0x7f000001)→ El análisis falló,rechazo conservador
         assertTrue(SsrfGuard.isBlocked("http://0x7f000001/"))
-        // 整数 IP 字面量被 InetAddress 解析为 127.0.0.1(十进制点分十进制等价 2130706433)
+        // InetAddress analiza el literal IP entero como 127.0.0.1(Equivalente decimal con puntos 2130706433)
         assertTrue(SsrfGuard.isBlocked("http://2130706433/"))
-        // 注意:Java 不把 "0177.0.0.1" 当八进制,它解析为 177.0.0.1(公网),放行
+        // Nota:Java No "0177.0.0.1" cuando octal,se resuelve 177.0.0.1(Red pública),liberar
         assertFalse(SsrfGuard.isBlocked("http://0177.0.0.1/"))
     }
 
@@ -95,9 +95,9 @@ class SsrfGuardTest {
 
     @Test
     fun blocksLocalhostHostnameVariants() {
-        // localhost 解析为 127.0.0.1 / ::1 → 拒绝
+        // localhost analizado como 127.0.0.1 / ::1 → rechazar
         assertTrue(SsrfGuard.isBlocked("http://localhost/"))
-        // 子域名 *.localhost 无法解析(或解析为 127.0.0.1,取决于系统)→ 保守拒绝
+        // subdominio *.localhost No se puede analizar(o resolver 127.0.0.1,Depende del sistema)→ rechazo conservador
         assertTrue(SsrfGuard.isBlocked("http://svc.localhost/"))
         assertTrue(SsrfGuard.isBlocked("http://[::1]/"))
     }
@@ -105,10 +105,10 @@ class SsrfGuardTest {
     @Test
     fun refImageUrlValidatorAllowsDataAndFileSchemes() {
         val validator: RefImageUrlValidator = SsrfGuard.refImageUrlValidator
-        // data:/file: 恒放行(无需网络)
+        // data:/file: Liberación constante(No se requiere internet)
         assertTrue(validator.isAllowed("data:image/png;base64,AAA="))
         assertTrue(validator.isAllowed("file:///storage/emulated/0/Pic/1.png"))
-        // http(s) 经 isBlocked 判定
+        // http(s) Determinado por isBlocked
         assertFalse(validator.isAllowed("http://127.0.0.1/x.png"))
         assertFalse(validator.isAllowed("http://169.254.169.254/latest/meta-data/"))
         assertFalse(validator.isAllowed("http://[::ffff:192.168.1.1]/"))

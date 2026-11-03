@@ -5,44 +5,44 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * v1.x: 语音对话模式(录音 → 识别 → 思考 → 播报循环)的共享状态容器。
+ * v1.x: Modo de conversación de voz(Grabación → identificar → pensar → bucle de transmisión)contenedor de estado compartido.
  *
- * 承载状态/转写/AI 回复三个 StateFlow 与循环观察协程引用。ChatViewModel 通过
- * getter/setter 委托到本容器,保持既有 `_voiceConversationState.xxx` 等引用不变,
- * 为把 startVoiceConversation/stopVoiceConversation 等整簇迁入 ChatMediaController 铺路。
+ * Estado del rodamiento/Transcribir/AI Responda tres referencias de rutinas de observación de bucles y StateFlow.ChatViewModel Pase
+ * getter/setter Delegar en este contenedor,Mantén lo que tienes `_voiceConversationState.xxx` Espere a que la referencia permanezca sin cambios.,
+ * para el mango startVoiceConversation/stopVoiceConversation Esperando a que todo el clúster se traslade a ChatMediaController para allanar el camino.
  */
 internal class ChatVoiceState {
     val state = MutableStateFlow(VoiceConversationState.IDLE)
 
     /**
-     * 本轮累积识别文本(本轮 = 从用户开始录音到点「结束」之间)。
+     * Texto de reconocimiento acumulado en esta ronda(esta ronda = Desde que el usuario comienza a grabar hasta que hace clic en "Finalizar").
      *
-     * ASR 会话可能因服务端静音收尾/断线而中途结束,结束前已识别的文字不能丢:每次回调都并入
-     * 这里,重开录音后继续累积,用户点「结束」时整段提交。UI 也直接展示这段文本。
+     * ASR La sesión puede finalizar debido al silencio del servidor./desconectado y terminado a mitad de camino,El texto reconocido antes del final no se puede perder:Incorporado en cada devolución de llamada
+     * aquí,La acumulación continuará después de reiniciar la grabación.,La sección completa se envía cuando el usuario hace clic en "Finalizar".UI También muestra este texto directamente.
      */
     val transcript = MutableStateFlow("")
 
     val aiReply = MutableStateFlow("")
 
-    /** 轻提示(如「没听清,再说一次」)：只在 LISTENING 且未在录音时展示，录音起来后清除。 */
+    /** recordatorio de luz(Como \"no escuché claramente,Dilo de nuevo\"): Sólo en ESCUCHA y no se muestra durante la grabación. Borrado después de la grabación. */
     val hint = MutableStateFlow<String?>(null)
 
     @Volatile
     var job: Job? = null
 
-    /** 并入一次 ASR 回调文本(整段或增量,按 [mergeTranscript] 去重)。 */
+    /** Incorporar un texto de devolución de llamada ASR(Segmento completo o incremento,prensa [mergeTranscript] Eliminar duplicados). */
     fun accumulateTranscript(incoming: String) {
         transcript.value = mergeTranscript(transcript.value, incoming)
     }
 
     /**
-     * 点「结束」时的提交文本:本轮累积 + ASR 收尾状态里携带的末段文本(重叠部分去重)。
+     * Texto de envío al hacer clic en "Finalizar":La acumulación de esta ronda + el texto final llevado en el estado final de ASR(Deduplicación de partes superpuestas).
      *
-     * 收尾文本可能与已并入的内容重复(回调与状态更新是同一次识别的两个通道),合并规则保证幂等。
+     * El texto de cierre puede duplicar el contenido que ya se ha incorporado.(Las devoluciones de llamada y las actualizaciones de estado son dos canales reconocidos al mismo tiempo.),Se garantiza que las reglas de fusión serán idempotentes.
      */
     fun commitText(asrSessionFinal: String): String = mergeTranscript(transcript.value, asrSessionFinal)
 
-    /** 清空本轮累积:提交成功、用户取消、退出语音对话时调用。 */
+    /** Limpia la acumulación de esta ronda.:Se llama cuando el envío es exitoso, el usuario cancela o sale de la conversación de voz. */
     fun clearTranscript() {
         transcript.value = ""
     }

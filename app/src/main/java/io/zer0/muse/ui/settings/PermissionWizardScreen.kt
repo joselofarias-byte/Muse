@@ -54,14 +54,14 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * P3-3: 权限引导页 — 三通道(无障碍/Shizuku/Root)权限配置向导。
+ * P3-3: Página de guía de permisos — tres canales(Accesibilidad/Shizuku/Root)Asistente de configuración de permisos.
  *
- * 引导用户逐步启用 UI 自动化能力:
- *  1. 无障碍服务(ACCESSIBILITY):基础通道,UI 操作必需
- *  2. Shizuku(SHIZUKU):shell 权限执行命令,无需 root(推荐)
- *  3. Root(ROOT):降级通道,需 root 设备
+ * Guíe a los usuarios paso a paso para habilitar las capacidades de automatización de la interfaz de usuario.:
+ *  1. Servicios de accesibilidad(ACCESSIBILITY):canal básico,UI Requerido para la operación
+ *  2. Shizuku(SHIZUKU):shell Permiso para ejecutar comandos.,No es necesario root(Recomendado)
+ *  3. Root(ROOT):canal de degradación,Requiere dispositivo rooteado
  *
- * 页面展示当前权限等级 + 各通道状态 + 操作按钮(启用/安装/授权)。
+ * La página muestra el nivel de permiso actual + estado de cada canal + botones de operación(habilitar/Instalación/Autorizar).
  */
 @Composable
 fun PermissionWizardScreen(onBack: () -> Unit) {
@@ -69,14 +69,14 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
     val shizukuInstaller: ShizukuInstaller = koinInject()
     val shizukuAuthorizer: ShizukuAuthorizer = koinInject()
     val rootAuthorizer: RootAuthorizer = koinInject()
-    // v2.x: Root 授权请求(自「UI 自动化」页迁移 — 该页权限卡已收敛到本向导)
+    // v2.x: Root Solicitud de autorización(Desde "UI Migración de páginas automatizada — La tarjeta de permiso de esta página ha convergido en este asistente.)
     val automationManager = remember { AutomationInitializer.manager }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 各通道状态
+    // Estado de cada canal
     var a11yEnabled by remember { mutableStateOf(false) }
     var shizukuInstalled by remember { mutableStateOf(false) }
     var shizukuAvailable by remember { mutableStateOf(false) }
@@ -85,10 +85,10 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
     var rootRequesting by remember { mutableStateOf(false) }
     var suiAvailable by remember { mutableStateOf(false) }
 
-    // v2.2.1: Termux 扩展通道(可选;不参与"三通道权限等级"判定)
+    // v2.2.1: Termux Canal de expansión(Opcional;No participar"Tres niveles de autoridad de canal"juicio)
     val termuxChannel = remember { io.zer0.muse.terminal.TermuxChannel.get(context) }
-    // v2.6.7 修复: Termux 的 RUN_COMMAND 是 dangerous 运行时权限，
-    // 必须由系统弹框授予（设置页里没有这个开关）。
+    // v2.6.7 Reparación: Termux RUN_COMMAND es un permiso de ejecución peligroso,
+    // Debe ser otorgado mediante el cuadro emergente del sistema (no existe tal cambio en la página de configuración).
     val termuxPermissionLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
             contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
@@ -107,21 +107,21 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
     var termuxPermitted by remember { mutableStateOf(false) }
     var termuxProbe by remember { mutableStateOf<Boolean?>(null) }
 
-    // v2.2.1: 无障碍独立 Provider(可选增强;不参与"三通道权限等级"判定)
+    // v2.2.1: Accesible e independiente Provider(Mejoras opcionales;No participar"Tres niveles de autoridad de canal"juicio)
     var providerInstalled by remember { mutableStateOf(false) }
     var providerBundled by remember { mutableStateOf(false) }
 
-    // 刷新状态
+    // estado de actualización
     suspend fun refresh() {
         try {
             a11yEnabled = a11yInstaller.isEnabled()
             shizukuInstalled = shizukuInstaller.isInstalled()
             shizukuAvailable = shizukuAuthorizer.isAvailable()
-            // 授权位为 true 仍可能无法绑定 UserService；这里展示实际可用状态。
+            // Si el bit de autorización es verdadero, aún puede ser imposible vincular UserService; El estado disponible real se muestra aquí.
             shizukuAuthorized = shizukuAuthorizer.checkReady()
             rootAvailable = rootAuthorizer.checkPermission()
             suiAvailable = shizukuAuthorizer.isSuiBackendAvailable()
-            // v2.2.1: Termux 通道静态检测 + 已就绪时轻量探测(验证 allow-external-apps)
+            // v2.2.1: Termux Detección estática de canal + detección ligera cuando esté listo(verificar allow-external-apps)
             termuxInstalled = termuxChannel.isInstalled()
             termuxPermitted = termuxChannel.hasPermission()
             termuxProbe =
@@ -130,15 +130,15 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 } else {
                     null
                 }
-            // v2.2.1: 独立 Provider 静态检测(装没装;APK 是否随包附带决定是否展示安装入口)
+            // v2.2.1: Detección estática de proveedor independiente(pretender o no;APK Si viene con el paquete determina si se mostrará la entrada de instalación)
             providerInstalled = a11yInstaller.isProviderInstalled()
             providerBundled = a11yInstaller.isProviderApkBundled()
         } catch (e: CancellationException) {
             throw e
         } catch (e: SecurityException) {
-            Logger.w("PermissionWizard", "刷新权限状态被系统拒绝: ${e.message}", e)
+            Logger.w("PermissionWizard", "El sistema denegó el estado del permiso de actualización: ${e.message}", e)
         } catch (e: IllegalStateException) {
-            Logger.w("PermissionWizard", "刷新权限状态失败: ${e.message}", e)
+            Logger.w("PermissionWizard", "No se pudo actualizar el estado del permiso: ${e.message}", e)
         }
     }
 
@@ -161,7 +161,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
 
     MusePageScaffold(
         topBar = {
-            // ST-08: 统一 MuseTopBar 视觉(此前用 Material TopAppBar + 文字箭头,与全站风格脱节)
+            // ST-08: Visual unificado MuseTopBar(Material utilizado anteriormente TopAppBar + flecha de texto,Fuera de contacto con el estilo general del sitio)
             MuseTopBar(
                 title = stringResource(R.string.permission_wizard_title),
                 onBack = onBack,
@@ -177,8 +177,8 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // 当前权限等级总览
-            // ST-08b: M3 Card → 项目自有 MuseSurface(与全站卡片视觉统一)
+            // Descripción general de los niveles de permisos actuales
+            // ST-08b: M3 Card → Propiedad del proyecto MuseSurface(Visualmente unificado con todas las tarjetas del sitio.)
             MuseSurface(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -203,7 +203,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 }
             }
 
-            // 通道 1: 无障碍服务
+            // Canal 1: Servicios de Accesibilidad
             ChannelCard(
                 title = stringResource(R.string.accessibility_section_title),
                 enabled = a11yEnabled,
@@ -216,7 +216,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 onRefresh = { refreshAsync() },
             )
 
-            // 通道 1.5(v2.2.1): 无障碍独立 Provider — 可选增强:主应用更新不打断无障碍授权
+            // canal 1.5(v2.2.1): Accesible e independiente Provider — Mejoras opcionales:Las actualizaciones principales de la aplicación no interrumpen la autorización de accesibilidad
             if (providerBundled || providerInstalled) {
                 A11yProviderCard(
                     installed = providerInstalled,
@@ -232,7 +232,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 )
             }
 
-            // 通道 2: Shizuku
+            // canal 2: Shizuku
             ShizukuChannelCard(
                 installed = shizukuInstalled,
                 available = shizukuAvailable,
@@ -245,13 +245,13 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                     }
                 },
                 onStartService = {
-                    // 引导用户打开 Shizuku 应用启动服务(无法直接拉起)
+                    // Guíe al usuario para que abra la aplicación Shizuku para iniciar el servicio.(No se puede levantar directamente)
                     shizukuInstaller.openDownloadPage()
                 },
                 onRefresh = { refreshAsync() },
             )
 
-            // 通道 3: Root — 未授权时主行为是发起 su 授权请求(Magisk/KernelSU 弹窗)
+            // canal 3: Root — Cuando no está autorizado, el comportamiento principal es iniciar una solicitud de autorización.(Magisk/KernelSU ventana emergente)
             ChannelCard(
                 title = stringResource(R.string.root_section_title),
                 enabled = rootAvailable,
@@ -284,7 +284,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 onRefresh = { refreshAsync() },
             )
 
-            // 通道 4(v2.2.1): Termux 扩展通道 — 完整 Linux 环境命令执行(可选)
+            // canal 4(v2.2.1): Termux Canal de expansión — Ejecución completa de comandos del entorno Linux(Opcional)
             TermuxChannelCard(
                 installed = termuxInstalled,
                 permitted = termuxPermitted,
@@ -300,32 +300,32 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                     }
                 },
                 onGrant = {
-                    // v2.6.7 修复（用户反馈：Termux 永远授不上权限）:
-                    // `com.termux.permission.RUN_COMMAND` 是 Termux 自己声明的
-                    // `dangerous` 运行时权限（Termux 官方安全公告原文:
-                    // "a `dangerous` runtime permission, to be granted to the calling app"）。
+                    // v2.6.7 Arreglar (comentarios de los usuarios:Termux Nunca se concederán permisos):
+                    // `com.termux.permission.RUN_COMMAND` Fue declarado por el propio Termux
+                    // `dangerous` Permisos de tiempo de ejecución (Termux Texto original del aviso de seguridad oficial.:
+                    // "a `dangerous` runtime permission, to be granted to the calling app").
                     //
-                    // 这类权限只能由系统弹框授予，或 `adb shell pm grant`，
-                    // **不会**出现在设置页的权限列表里。旧实现只跳
-                    // ACTION_APPLICATION_DETAILS_SETTINGS，于是:
-                    //   跳过去 → 那里没有这个开关 → 回来 hasPermission() 仍 false → 永远卡住。
-                    // 多数 ROM 都没有「附加权限」二级页，文案里的入口实际不存在。
+                    // Este tipo de permiso solo se puede otorgar mediante el cuadro emergente del sistema, o `adb shell pm grant`,
+                    // **No**Aparece en la lista de permisos en la página de configuración. La antigua implementación sólo saltó
+                    // ACTION_APPLICATION_DETAILS_SETTINGS, entonces:
+                    //   saltar sobre → No existe tal interruptor ahí → volver hasPermission() todavía false → Siempre estancado.
+                    // La mayoría de las ROM no tienen la página secundaria "Permisos adicionales" y la entrada en la copia en realidad no existe.
                     //
-                    // 正确做法:直接在 Muse 侧发起运行时请求，让系统弹授权框。
-                    // Termux 未安装 / 未声明该权限时，系统会直接回调拒绝，
-                    // 此时再回落成 adb 引导（下面 tryStart 那段保留）。
+                    // Enfoque correcto:Inicie directamente una solicitud de tiempo de ejecución en el lado de Muse y deje que el sistema muestre el cuadro de autorización.
+                    // Termux Cuando el permiso no está instalado/declarado, el sistema volverá a llamar directamente para denegarlo.
+                    // En este momento, volverá a adb boot (conserve la sección tryStart a continuación).
                     val activity = context.findActivity()
-                    // launcher 始终已注册（Compose 组合期创建），有 Activity 就发请求。
-                    // 未装 Termux 时系统会直接回调拒绝，由 denied 提示引导用户先装。
+                    // launcher Siempre registrado (Compose Creado durante el período de combinación), envíe una solicitud cuando haya Actividad.
+                    // Cuando Termux no está instalado, el sistema volverá a llamar directamente para rechazarlo y el mensaje de denegación guiará al usuario para que lo instale primero.
                     if (activity != null) {
                         termuxPermissionLauncher.launch(io.zer0.muse.terminal.TermuxChannel.PERMISSION)
                         return@TermuxChannelCard
                     }
-                    // 回落: 无法发起运行时请求时，给可自查的 adb 命令而不是指错路。
+                    // retroceder: Cuando no pueda iniciar una solicitud de tiempo de ejecución, proporcione un comando adb autocomprobable en lugar de apuntar en la dirección incorrecta.
                     val pkg = io.zer0.muse.terminal.TermuxChannel.PKG
                     val pkgUri = android.net.Uri.fromParts("package", pkg, null)
 
-                    // ① 部分 ROM(ColorOS/MIUI/EMUI)支持直接开应用详情并定位到权限页
+                    // ① parte ROM(ColorOS/MIUI/EMUI)Admite abrir directamente los detalles de la aplicación y ubicarla en la página de permisos
                     fun tryStart(action: String, uri: android.net.Uri?): Boolean = runCatching {
                         val i = if (uri != null) {
                             android.content.Intent(action, uri)
@@ -348,7 +348,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                             )
                             .show()
                     } else {
-                        // 跳转成功也要给逐步指引 —— 应用信息首屏看不到这个开关。
+                        // Incluso si el salto es exitoso, se deben dar instrucciones paso a paso. —— Este interruptor no es visible en la primera pantalla de información de la aplicación.
                         android.widget.Toast
                             .makeText(
                                 context,
@@ -367,7 +367,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 onRefresh = { refreshAsync() },
             )
 
-            // Sui 后端兼容提示
+            // Sui Consejos de compatibilidad de backend
             if (suiAvailable) {
                 MuseSurface(
                     modifier = Modifier.fillMaxWidth(),
@@ -392,7 +392,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                 }
             }
 
-            // 全局动作常量说明
+            // Descripción de la constante de acción global
             MuseSurface(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -431,7 +431,7 @@ private fun ChannelCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: Row 内标题取宽 + 限行，防放大字号下被右侧状态图标挤成一列
+                    // LAYOUT-01: Row Haga que el título interior sea más ancho + limite la línea para evitar que el ícono de estado a la derecha la comprima en una columna cuando se amplía el tamaño de fuente.
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -455,11 +455,11 @@ private fun ChannelCard(
             )
             if (actionText.isNotBlank()) {
                 Spacer(Modifier.height(12.dp))
-                // ST-08b: M3 Button → MuseCapsuleButton(主样式)
+                // ST-08b: M3 Button → MuseCapsuleButton(estilo principal)
                 MuseCapsuleButton(text = actionText, onClick = onAction)
             }
             Spacer(Modifier.height(8.dp))
-            // ST-08b: M3 OutlinedButton → MuseCapsuleButton(次样式)
+            // ST-08b: M3 OutlinedButton → MuseCapsuleButton(estilo secundario)
             MuseCapsuleButton(
                 text = stringResource(R.string.permission_refresh_status),
                 onClick = onRefresh,
@@ -489,7 +489,7 @@ private fun ShizukuChannelCard(
                     text = stringResource(R.string.shizuku_section_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
+                    // LAYOUT-01: Limitado a 1 línea (ver PROJECT_GUIDE §5)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -502,7 +502,7 @@ private fun ShizukuChannelCard(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            // 分步状态展示
+            // Visualización de estado paso a paso
             StatusLine(
                 done = installed,
                 text = if (installed) {
@@ -529,7 +529,7 @@ private fun ShizukuChannelCard(
             )
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // ST-08b: 三个动作按钮 M3 Button → MuseCapsuleButton(fillWidth = false 保持并排)
+                // ST-08b: tres botones de acción M3 Button → MuseCapsuleButton(fillWidth = false mantenerse al lado del otro)
                 if (!installed) {
                     MuseCapsuleButton(
                         text = stringResource(R.string.shizuku_install_btn),
@@ -580,7 +580,7 @@ private fun TermuxChannelCard(
                     text = stringResource(R.string.permission_termux_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
+                    // LAYOUT-01: Limitado a 1 línea (ver PROJECT_GUIDE §5)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -622,10 +622,10 @@ private fun TermuxChannelCard(
             )
             if (installed && permitted && probeOk != true) {
                 Spacer(Modifier.height(8.dp))
-                // issue #3.4: 用户反映「手册里追加的允许外部调用指令也无效」。
-                // 根因是只写 termux.properties 不会生效,必须 termux-reload-settings
-                // (旧文案只写了「重启 Termux」,部分 ROM/后台场景下重启不生效)。
-                // 这里给出完整两步命令,并支持点一下复制,避免手敲出错。
+                // issue #3.4: Los usuarios informaron que "las instrucciones agregadas en el manual para permitir llamadas externas tampoco son válidas".
+                // La causa principal es que simplemente escribir termux.properties no tendrá efecto.,debe termux-reload-settings
+                // (La copia antigua solo decía "Reiniciar Termux",El reinicio no tiene efecto en algunos escenarios de ROM/en segundo plano).
+                // Aquí está el comando completo de dos pasos.,Y admite copia con un solo clic,Evite errores al escribir a mano.
                 val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
                 val termuxCmd = "echo 'allow-external-apps = true' >> ~/.termux/termux.properties && termux-reload-settings"
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -636,8 +636,8 @@ private fun TermuxChannelCard(
                     )
                     Spacer(Modifier.height(6.dp))
                     val toastCtx = androidx.compose.ui.platform.LocalContext.current
-                    // lint LocalContextGetResourceValueCall: 资源取值必须在组合期完成,
-                    // 不能在点击回调里调 getString。这里文案无占位符,用无参 stringResource。
+                    // lint LocalContextGetResourceValueCall: El valor del recurso debe completarse durante el período de combinación.,
+                    // No se puede llamar a GetString en la devolución de llamada de clic. No hay ningún marcador de posición para la copia aquí.,Utilice stringResource sin parámetros.
                     val copyDoneText = stringResource(R.string.permission_termux_copy_cmd_done)
                     MuseCapsuleButton(
                         text = stringResource(R.string.permission_termux_copy_cmd),
@@ -706,11 +706,11 @@ private fun A11yProviderCard(installed: Boolean, bundled: Boolean, onInstall: ()
                     text = stringResource(R.string.permission_a11y_provider_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 限 1 行（见 PROJECT_GUIDE §5）
+                    // LAYOUT-01: Limitado a 1 línea (ver PROJECT_GUIDE §5)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // 可选增强:未安装时用中性色,避免与"未授权的必需通道"混淆
+                // Mejoras opcionales:Utilice colores neutros cuando no esté instalado.,evitar con"Canal requerido no autorizado"confundir
                 Icon(
                     imageVector = if (installed) MuseIcons.circleCheck else MuseIcons.alertTriangle,
                     contentDescription = null,
@@ -765,7 +765,7 @@ private fun StatusLine(done: Boolean, text: String) {
         Icon(
             imageVector = if (done) MuseIcons.circleCheck else MuseIcons.alertTriangle,
             contentDescription = null,
-            // ST-06: 未授权与已授权用不同色区分(此前未授权为灰色 outline,与已授权区分不足)
+            // ST-06: Los no autorizados y los autorizados se distinguen por diferentes colores.(Anteriormente no autorizado está atenuado outline,Distinción insuficiente de lo autorizado)
             tint = if (done) MaterialTheme.statusColors.success else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(16.dp),
         )
@@ -786,10 +786,10 @@ private fun StatusLine(done: Boolean, text: String) {
 private fun buildGlobalActionsHelp(context: Context): String = context.getString(R.string.permission_action_id_help)
 
 /**
- * v2.6.7: 从 Context 向上找 Activity。
+ * v2.6.7: Busque Actividad desde Contexto.
  *
- * 运行时权限请求必须从 Activity 发起（ContextWrapper 链上不一定直挂 Activity）。
- * 找不到时返回 null，由调用方回落到手动引导，不抛异常。
+ * Las solicitudes de permiso de tiempo de ejecución deben iniciarse desde la Actividad (ContextWrapper La actividad no podrá estar directamente vinculada a la cadena).
+ * Si no se puede encontrar, se devuelve null y la persona que llama recurre a la guía manual sin generar una excepción.
  */
 private fun Context.findActivity(): android.app.Activity? {
     var ctx: Context? = this

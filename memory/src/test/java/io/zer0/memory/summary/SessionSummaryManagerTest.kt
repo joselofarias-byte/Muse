@@ -18,10 +18,10 @@ class SessionSummaryManagerTest {
         val dao = EmptySessionSummaryDao()
         val llmClient = CapturingMemoryLlmClient(
             response = """
-            ### 重要事实
-            - 无
-            ### 事情经过
-            - 助手承诺继续跟进。
+            ### hechos importantes
+            - Ninguno
+            ### que paso
+            - Los asistentes prometieron hacer un seguimiento.
             """.trimIndent(),
         )
 
@@ -31,35 +31,35 @@ class SessionSummaryManagerTest {
             messages = listOf(
                 UIMessage(
                     role = MessageRole.ASSISTANT,
-                    content = "我会继续跟进这件事。",
-                    mood = "Vibe: 有些担心\nSparks: 暂时想到的联想\nReflections: 还需要核对\nWill: 继续检查",
+                    content = "Continuaré dando seguimiento a este asunto.",
+                    mood = "Vibe: un poco preocupado\nSparks: Asociaciones temporales que me vienen a la mente\nReflections: Todavía necesito comprobar\nWill: Sigue comprobando",
                     createdAt = 1_798_914_240_000L,
                 ),
             ),
             model = null,
         )
 
-        assertTrue(llmClient.userContent.contains("助手当时表达的感受"))
-        assertTrue(llmClient.userContent.contains("Vibe: 有些担心"))
+        assertTrue(llmClient.userContent.contains("Los sentimientos expresados por el asistente en ese momento."))
+        assertTrue(llmClient.userContent.contains("Vibe: un poco preocupado"))
         assertFalse(llmClient.userContent.contains("Sparks:"))
         assertFalse(llmClient.userContent.contains("Reflections:"))
         assertFalse(llmClient.userContent.contains("Will:"))
-        assertTrue(llmClient.userContent.contains("我会继续跟进这件事。"))
+        assertTrue(llmClient.userContent.contains("Continuaré dando seguimiento a este asunto."))
     }
 
     @Test
     fun concurrentRollingSummaryForSameSessionSerializesCriticalSection() = runTest {
-        // v2.6.2（记忆审计）: 同一 session 的两次 rollingSummary 并发时，
-        // createRollingSummaryDraft（含 LLM 调用与写入）必须在锁内串行，不得交叠。
-        // 否则两次调用会基于同一份旧快照各自生成摘要，后写覆盖前写。
+        // v2.6.2(auditoría de memoria): Cuando dos operaciones de resumen continuo de la misma sesión son simultáneas,
+        // createRollingSummaryDraft(incluidas las llamadas y escrituras de LLM) deben serializarse dentro del bloqueo y no deben superponerse.
+        // De lo contrario, las dos llamadas generarán resúmenes basados ​​en la misma instantánea anterior y la escritura posterior sobrescribirá la escritura anterior.
         val dao = InMemorySessionSummaryDao()
         val llm = ConcurrencyProbeLlmClient()
         val manager = SessionSummaryManager(dao, llm)
 
-        val older = listOf(UIMessage(role = MessageRole.USER, content = "第一条", createdAt = 1L))
+        val older = listOf(UIMessage(role = MessageRole.USER, content = "Artículo 1", createdAt = 1L))
         val newer = listOf(
-            UIMessage(role = MessageRole.USER, content = "第一条", createdAt = 1L),
-            UIMessage(role = MessageRole.USER, content = "第二条", createdAt = 2L),
+            UIMessage(role = MessageRole.USER, content = "Artículo 1", createdAt = 1L),
+            UIMessage(role = MessageRole.USER, content = "Artículo 2", createdAt = 2L),
         )
 
         val a = async { manager.rollingSummary("s1", older, null) }
@@ -67,7 +67,7 @@ class SessionSummaryManagerTest {
         a.await()
         b.await()
 
-        assertTrue("同一 session 的临界区不得交叠", llm.maxConcurrent <= 1)
+        assertTrue("Las secciones críticas de una misma sesión no deben superponerse", llm.maxConcurrent <= 1)
     }
 }
 
@@ -86,7 +86,7 @@ private class EmptySessionSummaryDao : SessionSummaryDao {
     override suspend fun markProcessed(sessionId: String, now: String) = Unit
     override suspend fun deleteAll() = Unit
     override suspend fun deleteById(sessionId: String) = Unit
-    // 助手被删除时要清掉它名下的摘要；空数据 fake 里没有可删的行。
+    // Cuando se elimina el asistente, se debe borrar el resumen bajo su nombre; no hay filas en los datos falsos vacíos que puedan eliminarse.
     override suspend fun deleteByAssistant(assistantId: String): Int = 0
 }
 
@@ -109,7 +109,7 @@ private class CapturingMemoryLlmClient(
     }
 }
 
-/** v2.6.2: 可读写的内存 DAO，用于验证并发写入后的最终状态。 */
+/** v2.6.2: Una memoria DAO de lectura y escritura utilizada para verificar el estado final después de escrituras simultáneas. */
 private class InMemorySessionSummaryDao : SessionSummaryDao {
     private val rows = mutableMapOf<String, SessionSummaryEntity>()
 
@@ -148,7 +148,7 @@ private class InMemorySessionSummaryDao : SessionSummaryDao {
     }
 }
 
-/** v2.6.2: 探测同一 session 临界区内 LLM 调用是否交叠。 */
+/** v2.6.2: Detecta si las llamadas de LLM se superponen en la sección crítica de una misma sesión. */
 private class ConcurrencyProbeLlmClient : MemoryLlmClient {
     private var concurrent = 0
     var maxConcurrent = 0
@@ -164,9 +164,9 @@ private class ConcurrencyProbeLlmClient : MemoryLlmClient {
     ): String {
         concurrent++
         maxConcurrent = maxOf(maxConcurrent, concurrent)
-        // 固定窗口:无锁时第二个同 session 调用会在此窗口内进入,从而暴露交叠。
+        // ventana fija:Cuando no exista bloqueo, dentro de esta ventana entrará la segunda llamada a la misma sesión.,Exponiendo así la superposición.
         delay(200)
         concurrent--
-        return "### 重要事实\n- 事实\n### 事情经过\n- 经过"
+        return "### hechos importantes\n- hechos\n### que paso\n- pasó"
     }
 }

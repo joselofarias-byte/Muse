@@ -39,11 +39,11 @@ data class ConversationExportDocument(
 )
 
 /**
- * 对话导出格式枚举(扩展版,在原 Markdown 基础上新增 HTML / PDF)。
+ * Enumeración del formato de exportación de conversación(Versión extendida,Recién agregado basado en el Markdown original HTML / PDF).
  *
- * - [MARKDOWN]:Markdown 纯文本(便于复制粘贴到笔记软件)
- * - [HTML]:单文件 HTML,内联 CSS + base64 图片,可直接用浏览器打开分享
- * - [PDF]:PDF 文档,Android 原生 [PdfDocument] 渲染,A4 分页
+ * - [MARKDOWN]:Markdown texto plano(Fácil de copiar y pegar en software para tomar notas)
+ * - [HTML]:archivo único HTML,Imágenes CSS + base64 en línea,Puedes abrir y compartir directamente con tu navegador.
+ * - [PDF]:PDF Documentación,Android Nativo [PdfDocument] renderizado,A4 Paginación
  */
 enum class ExportFormat {
     MARKDOWN,
@@ -52,24 +52,24 @@ enum class ExportFormat {
 }
 
 /**
- * 对话导出器:负责把一组 [UIMessage] 渲染为 Markdown / HTML / PDF。
+ * Exportador de conversaciones:Responsable de un grupo [UIMessage] Representado como Markdown / HTML / PDF.
  *
- * 设计要点:
- *  - 纯函数式 + 只接收 messages + chatTitle,不依赖 ViewModel / 数据库
- *    (调用方负责加载完整消息列表,见 ChatViewModel 中的包装方法)
- *  - Markdown 导出复用现有 [ChatExportCoordinator] 的格式约定(角色加粗 + 空行分隔)
- *  - HTML 生成单文件,内联 CSS(聊天气泡风格,适配深浅色),图片用 base64 内联,
- *    代码块用纯 <pre><code>(C-28: 移除 highlight.js CDN,详见 exportToHtml)
- *  - PDF 用 [PdfDocument] + [Canvas.drawText],A4 分页,页眉(标题 + 日期)+ 页脚(页码)
+ * Puntos de diseño:
+ *  - Puramente funcional + solo recibe messages + chatTitle,No depende de ViewModel/base de datos
+ *    (La persona que llama es responsable de cargar la lista completa de mensajes.,Ver métodos contenedores en ChatViewModel)
+ *  - Markdown Exportar para reutilizar lo existente [ChatExportCoordinator] convención de formato(Carácter negrita + separación de línea en blanco)
+ *  - HTML Generar un solo archivo,en línea CSS(estilo de burbuja de chat,Adecuado para colores oscuros y claros.),Las imágenes están insertadas usando base64.,
+ *    Los bloques de código usan puro <pre><code>(C-28: Quitar highlight.js CDN,Ver detalles exportToHtml)
+ *  - PDF usar [PdfDocument] + [Canvas.drawText],A4 Paginación,encabezamiento(título + fecha)+ Pie de página(Número de página)
  *
- * ── C-24 导出文案按 locale ──────────────────────────────────────────────
- * 角色标签、"导出时间 / 思考过程"、lang 属性等 UI 硬编码中文此前对所有用户输出中文。
- * 现各导出函数新增 [java.util.Locale] 参数(zh → 中文,其余 → 英文),由调用方传入
- * 当前 locale;调用方取不到时用 [java.util.Locale.getDefault] 兜底(导出是文件内容而非
- * UI 资源,按"双语 when 映射 + 注释说明"处理,不引入 strings 资源)。
+ * ── C-24 Botón exportar copia locale ──────────────────────────────────────────────
+ * etiqueta de rol,"Exportar tiempo/proceso de pensamiento",lang Las propiedades y otras interfaces de usuario en chino codificadas anteriormente se enviaban en chino a todos los usuarios.
+ * Ahora se agrega cada función de exportación. [java.util.Locale] parámetros(zh → chino,el resto → ingles),Pasado por la persona que llama
+ * actual locale;Se utiliza cuando la persona que llama no puede entenderlo. [java.util.Locale.getDefault] Ten todo en cuenta(La exportación es el contenido del archivo en lugar de
+ * UI Recursos,prensa"Bilingüe al mapear + descripción de anotaciones"Proceso,No introducir recursos de cadenas.).
  * ────────────────────────────────────────────────────────────────────────
  *
- * 注:本类不持有状态,所有方法均可安全在 IO 线程调用。
+ * Nota:Esta clase no tiene estatus.,Es seguro llamar a todos los métodos desde el subproceso IO.
  */
 object ConversationExporter {
 
@@ -78,63 +78,63 @@ object ConversationExporter {
         encodeDefaults = true
     }
 
-    /** A4 宽度(PostScript points,1pt = 1/72 inch)。 */
+    /** A4 Ancho(PostScript points,1pt = 1/72 inch). */
     private const val PAGE_WIDTH = 595
 
-    /** A4 高度(PostScript points)。 */
+    /** A4 altura(PostScript points). */
     private const val PAGE_HEIGHT = 842
 
-    /** 页面四周边距(pt)。 */
+    /** Márgenes de página alrededor(pt). */
     private const val PAGE_MARGIN = 36f
 
-    /** PDF 字号:标题(pt)。 */
+    /** PDF Tamaño de fuente:Título(pt). */
     private const val SIZE_TITLE = 16f
 
-    /** PDF 字号:正文(pt)。 */
+    /** PDF Tamaño de fuente:Texto(pt). */
     private const val SIZE_BODY = 12f
 
-    /** PDF 字号:时间/页脚(pt)。 */
+    /** PDF Tamaño de fuente:tiempo/Pie de página(pt). */
     private const val SIZE_META = 10f
 
-    /** PDF 每页大约保留的行数(用于分页估算,实际以 Y 坐标判断为准)。 */
+    /** PDF Número aproximado de filas a mantener por página(para paginar estimaciones,El juicio real se basa en la coordenada Y.). */
     private const val APPROX_LINES_PER_PAGE = 50
 
     /**
-     * 导出为 Markdown 文本。
+     * Exportar como texto Markdown.
      *
-     * 复用现有 [io.zer0.muse.ui.chat.ChatExportCoordinator.exportSessionAsMarkdown] 的格式约定:
-     *  - 顶部 # 标题 + 空行
-     *  - 每条消息:**角色**: 内容 + 空行
-     *  - 思考过程(若有)以 ### 思考过程 单独成段
+     * Reutilizar existente [io.zer0.muse.ui.chat.ChatExportCoordinator.exportSessionAsMarkdown] convención de formato:
+     *  - Título superior # + línea en blanco
+     *  - por mensaje:**papel**: Contenido + línea en blanco
+     *  - proceso de pensamiento(Si es así)Utilice el proceso de pensamiento ### para formar párrafos separados
      *
-     * @param messages 完整消息列表(按时间顺序)
-     * @param chatTitle 会话标题
-     * @param locale C-24: 导出文案语言(zh → 中文,其余 → 英文)。取不到时由调用方传
-     *  [java.util.Locale.getDefault] 兜底。
-     * @return Markdown 字符串
+     * @param messages Lista completa de mensajes(en orden cronológico)
+     * @param chatTitle Título de la sesión
+     * @param locale C-24: Exportar idioma de copia(zh → chino,el resto → ingles). Pasado por la persona que llama si no se puede obtener.
+     *  [java.util.Locale.getDefault] Llega al fondo de esto.
+     * @return Markdown cuerda
      */
     fun exportToMarkdown(messages: List<UIMessage>, chatTitle: String, locale: Locale = Locale.getDefault()): String {
         val sb = StringBuilder()
         sb.append("# ").append(chatTitle).append("\n\n")
-        sb.append("> ").append(localized(locale, "导出时间", "Exported at")).append(": ")
+        sb.append("> ").append(localized(locale, "tiempo de exportación", "Exported at")).append(": ")
             .append(SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, locale).format(Date()))
             .append("  \n\n")
 
         messages.forEach { msg ->
             val role = roleLabel(msg.role, locale)
-            // 审计修复 (日志分析): 空回复消息(工具失败终止等)导出时标注,不再输出空行。
-            // 用户分享对话时看到的"对话是空的"就是这些 content="" 的助手消息堆出来的。
+            // Reparación de auditoría (Análisis de registros): Mensaje de respuesta vacío(La herramienta no pudo finalizar, etc.)Anotar al exportar,No se generan más líneas en blanco.
+            // Qué ven los usuarios cuando comparten una conversación"el dialogo esta vacio"eso es todo content="" Los mensajes del asistente se acumulan.
             val content = exportBody(msg).ifBlank {
                 if (!msg.reasoning.isNullOrBlank()) {
-                    localized(locale, "(无正文,含思考过程)", "(No body, includes thinking)")
+                    localized(locale, "(Sin texto,Contiene proceso de pensamiento.)", "(No body, includes thinking)")
                 } else {
-                    localized(locale, "(空回复)", "(Empty reply)")
+                    localized(locale, "(respuesta vacía)", "(Empty reply)")
                 }
             }
             sb.append("**").append(role).append("**: ").append(content).append("\n\n")
-            // 思考过程(若有)
+            // proceso de pensamiento(Si es así)
             if (!msg.reasoning.isNullOrBlank()) {
-                sb.append("### ").append(localized(locale, "思考过程", "Thinking")).append("\n\n")
+                sb.append("### ").append(localized(locale, "proceso de pensamiento", "Thinking")).append("\n\n")
                     .append(msg.reasoning).append("\n\n")
             }
         }
@@ -142,10 +142,10 @@ object ConversationExporter {
     }
 
     /**
-     * 导出单个会话的完整消息历史为独立 JSON。
+     * Exporte el historial completo de mensajes de una sola conversación como JSON independiente.
      *
-     * 与应用全量备份不同，这个文件只描述一个会话，适合用户选择性留存或分享；
-     * 调用方负责从数据库读取不受首屏分页限制的完整消息列表。
+     * A diferencia de la copia de seguridad completa de la aplicación, este archivo solo describe una sesión y es adecuado para que los usuarios lo retengan o lo compartan de forma selectiva;
+     * La persona que llama es responsable de leer la lista completa de mensajes de la base de datos que no está restringida por la paginación de la primera pantalla.
      */
     fun exportToJson(sessionId: String, messages: List<UIMessage>, chatTitle: String, locale: Locale = Locale.getDefault()): String {
         val document =
@@ -168,42 +168,42 @@ object ConversationExporter {
     }
 
     /**
-     * 导出为单文件 HTML(内联 CSS + base64 图片,无任何外链)。
+     * Exportar como un solo archivo HTML(Imágenes CSS + base64 en línea,Sin enlaces externos).
      *
-     * 样式特征:
-     *  - 聊天气泡风格(用户右对齐蓝色气泡,助手左对齐灰色气泡)
-     *  - 通过 @media (prefers-color-scheme) 适配深浅色
-     *  - 代码块用 <pre><code> 包裹纯等宽字体
-     *  - 图片:本地 base64 以 data URI 内联;远程 URL 降级为文本链接(见下)
+     * características de estilo:
+     *  - estilo de burbuja de chat(La derecha del usuario alinea la burbuja azul,Asistente de alineación izquierda burbuja gris)
+     *  - Pase @media (prefers-color-scheme) Adecuado para colores oscuros y claros.
+     *  - Para bloques de código <pre><code> Envolver fuente monoespaciada simple
+     *  - fotos:Base64 local en línea con URI de datos;URL remota degradada a enlace de texto(Ver abajo)
      *
-     * C-28(隐私):已移除 highlight.js CDN(<link rel=stylesheet> + <script src> +
-     * 初始化脚本)。原实现引用 cdn.jsdelivr.net,接收方打开 HTML 即外联脚本,泄露
-     * 查看者 IP,且消息里的签名远程图片 <img src> 也会随打开触发外提请。故:
-     *  ① 语法高亮:删除 CDN,代码块保留纯 <pre><code> 等宽样式(可读性达标,零外联);
-     *  ② 远程图片:本导出器为纯函数,拿不到本地文件/cache 字节,无法 base64 内联,
-     *     故把 <img src="..."> 降级为文本链接(<a> + rel="noopener noreferrer"),
-     *     仅在查看者主动点击时才发起请求,不再打开即外联。
+     * C-28(Privacidad):Eliminado highlight.js CDN(<link rel=stylesheet> + <script src> +
+     * script de inicialización). Referencia de implementación original cdn.jsdelivr.net,El receptor abre el HTML o el script externo.,fuga
+     * Visor IP,Y la imagen remota de la firma en el mensaje. <img src> También se activará cuando se abra. Por lo tanto:
+     *  ① resaltado de sintaxis:Eliminar CDN,Los bloques de código siguen siendo puros <pre><code> estilo monoespaciado(La legibilidad cumple con los estándares,Alcance cero);
+     *  ② imagen remota:Este exportador es una función pura.,No puedo obtener archivos locales/cache bytes,No se puede usar base64 en línea,
+     *     Por lo tanto <img src="..."> Bajar a enlace de texto(<a> + rel="noopener noreferrer"),
+     *     Solo inicie solicitudes cuando el espectador haga clic activamente,Ya no está abierto, es decir, de extensión.
      *
-     * @param messages 完整消息列表
-     * @param chatTitle 会话标题
-     * @param locale C-24: 导出文案语言(zh → 中文,其余 → 英文)。取不到时用
-     *  [java.util.Locale.getDefault] 兜底。
-     * @return 完整 HTML 字符串(含 <!DOCTYPE html> 头)
+     * @param messages Lista completa de mensajes
+     * @param chatTitle Título de la sesión
+     * @param locale C-24: Exportar idioma de copia(zh → chino,el resto → ingles). Usar cuando no esté disponible
+     *  [java.util.Locale.getDefault] Llega al fondo de esto.
+     * @return Cadena HTML completa(Contiene <!DOCTYPE html> cabeza)
      */
     fun exportToHtml(messages: List<UIMessage>, chatTitle: String, locale: Locale = Locale.getDefault()): String {
         val sb = StringBuilder()
-        // C-24: lang 属性按 locale 输出(zh → zh-CN,其余 → en),供阅读器/翻译器识别语言。
-        val htmlLang = if (locale.language.lowercase().startsWith("zh")) "zh-CN" else "en"
+        // C-24: lang Las propiedades se generan por configuración regional.(zh → zh-CN,el resto → en),para lectores/El traductor identifica el idioma.
+        val htmlLang = if (locale.language.lowercase().let { it.startsWith("es") || it.startsWith("zh") }) "es" else "en"
         sb.append("<!DOCTYPE html><html lang=\"").append(htmlLang).append("\"><head><meta charset=\"UTF-8\">")
         sb.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
         sb.append("<title>").append(escapeHtml(chatTitle)).append("</title>")
-        // C-28: 不再引入 highlight.js CDN(见函数 KDoc),代码块退化为纯 <pre><code> 等宽样式。
+        // C-28: ya no se presenta highlight.js CDN(Ver función KDoc),El bloque de código degenera en puro. <pre><code> Estilo monoancho.
         sb.append("<style>").append(CSS).append("</style></head><body>")
 
-        // 顶部标题区
+        // Área de título superior
         sb.append("<header class=\"chat-header\">")
         sb.append("<h1>").append(escapeHtml(chatTitle)).append("</h1>")
-        sb.append("<p class=\"meta\">").append(localized(locale, "导出时间", "Exported at")).append(": ")
+        sb.append("<p class=\"meta\">").append(localized(locale, "tiempo de exportación", "Exported at")).append(": ")
             .append(
                 escapeHtml(
                     SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, locale).format(Date()),
@@ -211,46 +211,46 @@ object ConversationExporter {
             )
             .append("</p></header>")
 
-        // 消息列表
+        // Lista de mensajes
         sb.append("<main class=\"chat-list\">")
         messages.forEach { msg ->
             val isUser = msg.role == MessageRole.USER
             val bubbleClass = if (isUser) "bubble user" else "bubble assistant"
             sb.append("<div class=\"").append(bubbleClass).append("\">")
-            // 角色标签
+            // etiqueta de rol
             sb.append("<div class=\"role\">").append(escapeHtml(roleLabel(msg.role, locale))).append("</div>")
-            // 消息正文(渲染为段落 + 代码块)
+            // Texto del mensaje(Representar como párrafo + bloque de código)
             sb.append("<div class=\"content\">").append(renderContentHtml(exportBody(msg))).append("</div>")
-            // 内联图片(USER 上传的本地图片 / ASSISTANT 生成的图片)— base64 data URI,零外联
+            // Imágenes en línea(USER Imágenes locales cargadas/imágenes generadas por el ASISTENTE)— base64 data URI,Alcance cero
             if (msg.imageBase64List.isNotEmpty()) {
                 msg.imageBase64List.forEach { b64 ->
                     sb.append("<img class=\"inline-img\" alt=\"image\" src=\"data:image/jpeg;base64,")
                         .append(b64).append("\" />")
                 }
             }
-            // C-28: 远程图片 URL — 本纯函数拿不到本地/cache 字节,无法 base64 内联,
-            // 降级为文本链接(仅主动点击才请求,不再打开即外联;rel 防 opener 反向定位)。
+            // C-28: imagen remota URL — Las funciones primitivas no pueden volverse locales./cache bytes,No se puede usar base64 en línea,
+            // Bajar a enlace de texto(Solicitar solo para clics activos,No vuelvas a abrir el enlace;rel Posicionamiento inverso del antiabridor).
             if (msg.imageUrls.isNotEmpty()) {
                 sb.append("<div class=\"remote-links\">")
                 msg.imageUrls.forEach { url ->
                     sb.append("<a class=\"remote-link\" href=\"")
                         .append(escapeAttr(url))
                         .append("\" target=\"_blank\" rel=\"noopener noreferrer\">")
-                        .append(escapeHtml(localized(locale, "查看图片", "View image")))
+                        .append(escapeHtml(localized(locale, "Ver fotos", "View image")))
                         .append("</a>")
                 }
                 sb.append("</div>")
             }
-            // 思考过程(折叠)
+            // proceso de pensamiento(doblar)
             val reasoningText = msg.reasoning
             if (!reasoningText.isNullOrBlank()) {
                 sb.append("<details class=\"reasoning\"><summary>")
-                    .append(escapeHtml(localized(locale, "思考过程", "Thinking")))
+                    .append(escapeHtml(localized(locale, "proceso de pensamiento", "Thinking")))
                     .append("</summary><div class=\"content\">")
                     .append(renderContentHtml(reasoningText))
                     .append("</div></details>")
             }
-            // 时间戳
+            // Marca de tiempo
             if (msg.createdAt > 0) {
                 sb.append("<div class=\"time\">")
                     .append(
@@ -268,26 +268,26 @@ object ConversationExporter {
     }
 
     /**
-     * 导出为 PDF 文件。
+     * Exportar a archivo PDF.
      *
-     * 渲染策略:
-     *  - 使用 [PdfDocument] 起始页,A4 尺寸(595 x 842 pt)
-     *  - 每页绘制页眉(标题 + 日期)与页脚(页码)
-     *  - 消息以"角色标签 + 正文 + 时间"块为单位顺序排版
-     *  - 正文用 [StaticLayout] 自动换行;当 Y 坐标超过页底时新建一页
-     *  - 每页约 50 行(由 [APPROX_LINES_PER_PAGE] 估算,实际以坐标判断)
+     * estrategia de renderizado:
+     *  - uso [PdfDocument] pagina de inicio,A4 Tamaño(595 x 842 pt)
+     *  - Dibujar encabezado en cada página.(título + fecha)con pie de página(Número de página)
+     *  - El mensaje comienza con"Etiqueta de rol + texto + hora"Composición tipográfica de bloques en orden unitario
+     *  - Para el texto principal [StaticLayout] Ajuste automático de línea;Cree una nueva página cuando la coordenada Y exceda la parte inferior de la página
+     *  - Aproximadamente 50 líneas por página.(por [APPROX_LINES_PER_PAGE] estimación,En realidad juzgue por coordenadas.)
      *
-     * @param context Android Context(用于读取 cacheDir)
-     * @param messages 完整消息列表
-     * @param chatTitle 会话标题
-     * @param locale C-24: 导出文案语言(zh → 中文,其余 → 英文)。取不到时用
-     *  [java.util.Locale.getDefault] 兜底。
-     * @return 已写入的 PDF 文件(位于 cacheDir/export/)
+     * @param context Android Context(para leer cacheDir)
+     * @param messages Lista completa de mensajes
+     * @param chatTitle Título de la sesión
+     * @param locale C-24: Exportar idioma de copia(zh → chino,el resto → ingles). Usar cuando no esté disponible
+     *  [java.util.Locale.getDefault] Llega al fondo de esto.
+     * @return Archivo PDF escrito(ubicado en cacheDir/export/)
      */
     fun exportToPdf(context: Context, messages: List<UIMessage>, chatTitle: String, locale: Locale = Locale.getDefault()): File {
         val pdf = PdfDocument()
 
-        // 共用画笔
+        // Pinceles compartidos
         val bodyPaint = TextPaint().apply {
             color = 0xFF222222.toInt()
             textSize = SIZE_BODY
@@ -306,14 +306,14 @@ object ConversationExporter {
             typeface = Typeface.DEFAULT
             isAntiAlias = true
         }
-        // 页眉中的会话标题用 16pt 加粗(符合"标题 16sp"规格)
+        // Título de la sesión en encabezado en negrita con 16 puntos(conformarse a"Título 16sp"Especificaciones)
         val titlePaint = TextPaint().apply {
             color = 0xFF1A1A1A.toInt()
             textSize = SIZE_TITLE
             typeface = Typeface.DEFAULT_BOLD
             isAntiAlias = true
         }
-        // 页眉/页脚的次要信息(日期、页码)用 10pt
+        // encabezamiento/Información secundaria del pie de página(fecha, número de página)usar 10pt
         val headerPaint = TextPaint().apply {
             color = 0xFF555555.toInt()
             textSize = SIZE_META
@@ -324,11 +324,11 @@ object ConversationExporter {
         val contentWidth = PAGE_WIDTH - PAGE_MARGIN * 2
         val exportTime = SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, locale).format(Date())
 
-        // 正文区域上下界(留出页眉页脚空间)
+        // Límites superior e inferior del área de texto(Dejar espacio para encabezado y pie de página)
         val topY = PAGE_MARGIN + 24f
         val bottomLimit = PAGE_HEIGHT - PAGE_MARGIN - 18f
 
-        // 开启第一页 + 绘制页眉
+        // Abra la primera página + dibuje el encabezado
         var pageIndex = 1
         var page = pdf.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageIndex).create())
         var canvas = page.canvas
@@ -337,7 +337,7 @@ object ConversationExporter {
         var y = topY
 
         for (msg in messages) {
-            // 角色标签:放不下则换页
+            // etiqueta de rol:Si no cabe, cambia de página.
             if (y + SIZE_BODY * 1.6f > bottomLimit) {
                 val (np, nc) = turnPage(pdf, page, pageIndex, chatTitle, exportTime, titlePaint, headerPaint, metaPaint)
                 pageIndex++
@@ -348,7 +348,7 @@ object ConversationExporter {
             canvas.drawText(roleLabel(msg.role, locale), PAGE_MARGIN, y + SIZE_BODY, rolePaint)
             y += SIZE_BODY * 1.6f
 
-            // 正文:用 StaticLayout 算出换行后的所有行,逐行绘制并按需换页
+            // Texto:Utilice StaticLayout para contar todas las líneas después de los saltos de línea,Dibuje línea por línea y salte de página según sea necesario
             val bodyText = exportBody(msg)
             val layout = StaticLayout.Builder.obtain(
                 bodyText,
@@ -360,7 +360,7 @@ object ConversationExporter {
 
             val lineHeight = if (layout.lineCount > 0) layout.getLineBottom(0) - layout.getLineTop(0) else SIZE_BODY * 1.2f
             for (i in 0 until layout.lineCount) {
-                // 当前页放不下此行 → 换页
+                // Esta línea no cabe en la página actual. → cambio de pagina
                 if (y + lineHeight.toFloat() > bottomLimit) {
                     val (np, nc) = turnPage(pdf, page, pageIndex, chatTitle, exportTime, titlePaint, headerPaint, metaPaint)
                     pageIndex++
@@ -372,12 +372,12 @@ object ConversationExporter {
                     layout.getLineStart(i),
                     layout.getLineEnd(i),
                 ).toString()
-                // drawText 的 y 参数是基线位置 = 顶部 + ascent 的绝对值
+                // drawText El parámetro y es la posición de referencia. = valor absoluto de cima + ascenso
                 canvas.drawText(lineText, PAGE_MARGIN, y - bodyPaint.fontMetrics.ascent, bodyPaint)
                 y += lineHeight.toFloat()
             }
 
-            // 时间戳
+            // Marca de tiempo
             if (msg.createdAt > 0) {
                 if (y + SIZE_META * 1.8f > bottomLimit) {
                     val (np, nc) = turnPage(pdf, page, pageIndex, chatTitle, exportTime, titlePaint, headerPaint, metaPaint)
@@ -392,13 +392,13 @@ object ConversationExporter {
                 y += SIZE_META * 1.8f
             }
 
-            // 消息间隔
+            // intervalo de mensaje
             y += SIZE_BODY * 0.5f
         }
 
         pdf.finishPage(page)
 
-        // 输出到 cacheDir/export/
+        // Salida a cacheDir/export/
         val exportDir = File(context.cacheDir, "export").apply { mkdirs() }
         val safeName = sanitizeFileName(chatTitle) + "-" +
             SimpleDateFormat(MuseDateFormats.FILE_TIMESTAMP, Locale.US).format(Date()) + ".pdf"
@@ -409,10 +409,10 @@ object ConversationExporter {
     }
 
     /**
-     * 结束当前页 + 开启新页 + 绘制新页的页眉页脚,返回新 (Page, Canvas)。
+     * Finalizar la página actual + abrir una página nueva + dibujar el encabezado y pie de página de la página nueva,volver nuevo (Page, Canvas).
      *
-     * PdfDocument 规则:必须先 finishPage 上一页才能 startPage 新页;
-     * 页眉/页脚在新页开启后立即绘制(每页都带页眉页脚)。
+     * PdfDocument reglas:Primero debe finalizar la página anterior antes de poder iniciar la página nueva.;
+     * encabezamiento/El pie de página se dibuja inmediatamente después de abrir la nueva página.(Cada página tiene un encabezado y pie de página.).
      */
     private fun turnPage(
         pdf: PdfDocument,
@@ -435,35 +435,35 @@ object ConversationExporter {
         return newPage to newCanvas
     }
 
-    // ===== 私有辅助方法 =====
+    // ===== Método de ayuda privada =====
 
-    /** C-24: 角色标签按 locale 输出(zh → 中文,其余 → 英文)。 */
+    /** C-24: Las etiquetas de roles se generan por configuración regional(zh → chino,el resto → ingles). */
     private fun roleLabel(role: MessageRole, locale: Locale): String = when (role) {
-        MessageRole.USER -> localized(locale, "用户", "User")
-        MessageRole.ASSISTANT -> localized(locale, "助手", "Assistant")
-        MessageRole.SYSTEM -> localized(locale, "系统", "System")
-        MessageRole.TOOL -> localized(locale, "工具", "Tool")
+        MessageRole.USER -> localized(locale, "Usuario", "User")
+        MessageRole.ASSISTANT -> localized(locale, "asistente", "Assistant")
+        MessageRole.SYSTEM -> localized(locale, "sistema", "System")
+        MessageRole.TOOL -> localized(locale, "Herramientas", "Tool")
     }
 
     /**
-     * C-24: 导出文案双语映射。中文 locale 输出 [zh],其余 locale 输出 [en]。
+     * C-24: Exportación de copywriting mapeo bilingüe. Salida local china [zh],Resto de la salida local [en].
      *
-     * 导出产物是文件内容而非 UI 字符串资源,按双语 when 映射就地处理即可(不引入
-     * strings 资源,避免为文件输出维护一套 Android 资源)。
+     * El producto exportado es el contenido del archivo en lugar del recurso de cadena de la interfaz de usuario.,Simplemente procéselo en el lugar de acuerdo con el bilingüe al realizar el mapeo.(No introducido
+     * strings Recursos,Evite mantener un conjunto de recursos de Android para la salida de archivos).
      */
-    private fun localized(locale: Locale, zh: String, en: String): String = if (locale.language.lowercase().startsWith("zh")) zh else en
+    private fun localized(locale: Locale, zh: String, en: String): String = if (locale.language.lowercase().let { it.startsWith("es") || it.startsWith("zh") }) zh else en
 
     /**
-     * 绘制页眉(标题 + 日期 + 分隔线)。
+     * Dibujar encabezado(título + fecha + separador).
      *
-     * @param titlePaint 会话标题画笔(16pt 加粗)
-     * @param timePaint 日期/分隔线画笔(10pt)
+     * @param titlePaint Pincel de título de sesión(16pt Negrita)
+     * @param timePaint Fecha/cepillo divisor(10pt)
      */
     private fun drawHeader(canvas: Canvas, title: String, exportTime: String, titlePaint: Paint, timePaint: Paint) {
-        // 顶部标题(16pt 加粗,超过 40 字截断)
+        // título superior(16pt Negrita,Truncado más allá de 40 caracteres)
         val titleText = if (title.length > 40) title.take(40) + "…" else title
         canvas.drawText(titleText, PAGE_MARGIN, PAGE_MARGIN + SIZE_TITLE, titlePaint)
-        // 右侧导出日期(10pt)
+        // Fecha de exportación a la derecha(10pt)
         val timeWidth = timePaint.measureText(exportTime)
         canvas.drawText(
             exportTime,
@@ -471,7 +471,7 @@ object ConversationExporter {
             PAGE_MARGIN + SIZE_META,
             timePaint,
         )
-        // 标题下分隔线
+        // Línea separadora bajo el título
         canvas.drawLine(
             PAGE_MARGIN,
             PAGE_MARGIN + SIZE_TITLE + 4f,
@@ -481,7 +481,7 @@ object ConversationExporter {
         )
     }
 
-    /** 绘制页脚页码。 */
+    /** Dibuja los números de página del pie de página. */
     private fun drawFooter(canvas: Canvas, pageIndex: Int, paint: Paint) {
         val text = "$pageIndex"
         val width = paint.measureText(text)
@@ -494,42 +494,42 @@ object ConversationExporter {
     }
 
     /**
-     * v2.6.8: 导出正文 —— 统一走 [InternalMarkupSanitizer.exportContent]。
+     * v2.6.8: Exportar texto —— ir juntos [InternalMarkupSanitizer.exportContent].
      *
-     * 导出是用户会拿给外部看的东西，卡片状态 JSON 漏进去等于把机器字段当内容发出去。
-     * 这里集中一处，Markdown / JSON / HTML / PDF 四条路径都不会漏。
+     * Exportar es algo que los usuarios mostrarán al mundo exterior. Filtrar el JSON del estado de la tarjeta equivale a enviar los campos de la máquina como contenido.
+     * Reunidos en un solo lugar aquí,Markdown / JSON / HTML / PDF Los cuatro caminos son imperdibles.
      */
     private fun exportBody(msg: UIMessage): String = InternalMarkupSanitizer.exportContent(msg.content)
 
-    /** 把消息正文渲染为 HTML 段落 + 代码块。 */
+    /** Representa el cuerpo del mensaje como párrafo HTML + bloque de código. */
     private fun renderContentHtml(content: String): String {
         if (content.isBlank()) return ""
         val sb = StringBuilder()
-        // 拆分代码块(```...```)
+        // Bloques de código divididos(```...```)
         val codeBlockRegex = Regex("""```(\w*)\n?([\s\S]*?)```""")
         var lastEnd = 0
         codeBlockRegex.findAll(content).forEach { match ->
-            // 代码块前的普通文本
+            // Texto sin formato antes del bloque de código
             if (match.range.first > lastEnd) {
                 val plain = content.substring(lastEnd, match.range.first)
                 sb.append(plainToParagraphs(plain))
             }
             val lang = match.groupValues[1]
             val code = match.groupValues[2]
-            // C-09: lang 注入 HTML 属性,需做属性转义(>,",' 等),防止代码块语言标识被
-            // 用于逃逸属性/闭合 <pre> 标签。虽然正则 `(\w*)` 已限单词字符,仍转义防御。
+            // C-09: lang Inyectar atributos HTML,Se requiere escape de atributos(>,",' espera),Evitar que se muestren indicadores de idioma de bloque de código.
+            // Utilizado para propiedades de escape./cerrado <pre> etiqueta. aunque regular `(\w*)` Caracteres de palabras limitados,Todavía escapa a la defensa.
             val langClass = if (lang.isNotBlank()) " class=\"language-${escapeHtmlAttr(lang)}\"" else ""
             sb.append("<pre><code$langClass>").append(escapeHtml(code)).append("</code></pre>")
             lastEnd = match.range.last + 1
         }
-        // 末尾剩余普通文本
+        // Texto normal restante al final
         if (lastEnd < content.length) {
             sb.append(plainToParagraphs(content.substring(lastEnd)))
         }
         return sb.toString()
     }
 
-    /** 把普通文本按空行分段,每段包一个 <p>。 */
+    /** Dividir texto normal en líneas en blanco,Empaque uno para cada segmento <p>. */
     private fun plainToParagraphs(text: String): String {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return ""
@@ -539,15 +539,15 @@ object ConversationExporter {
         }
     }
 
-    /** 转义 HTML 文本内容(& < >)。 */
+    /** Escapar del contenido de texto HTML(& < >). */
     private fun escapeHtml(s: String): String = s.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
     /**
-     * C-09: 转义 HTML 双引号属性值(& < > " + ')。
-     * 文本内容用 [escapeHtml] 即可,但注入到 `class="..."` 属性时还须转义引号,
-     * 防止属性值逃逸闭合标签(attribute-context 转义)。
+     * C-09: Escapar de valores de atributos de comillas dobles HTML(& < > " + ').
+     * Para contenido de texto [escapeHtml] Eso es todo,pero inyectado en `class="..."` Los atributos también deben ir entre comillas.,
+     * Evitar que los valores de los atributos escapen de las etiquetas de cierre(attribute-context escapar).
      */
     private fun escapeHtmlAttr(s: String): String = s.replace("&", "&amp;")
         .replace("<", "&lt;")
@@ -555,13 +555,13 @@ object ConversationExporter {
         .replace("\"", "&quot;")
         .replace("'", "&#39;")
 
-    /** 转义 HTML 属性值(额外转义引号)。 */
+    /** Escapar de los valores de los atributos HTML(Citas escapadas adicionales). */
     private fun escapeAttr(s: String): String = escapeHtml(s).replace("\"", "&quot;")
 
-    /** 把会话标题转为安全文件名。 */
+    /** Convierta títulos de sesiones en nombres de archivos seguros. */
     private fun sanitizeFileName(name: String): String = name.replace(Regex("""[\\/:*?"<>|\n\r\t]"""), "_").take(40).ifBlank { "muse" }
 
-    /** HTML 内联 CSS(聊天气泡风格 + 深浅色适配)。 */
+    /** HTML en línea CSS(Estilo de burbuja de chat + adaptación de colores claros y oscuros). */
     private val CSS = """
         :root {
             color-scheme: light dark;

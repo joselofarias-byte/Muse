@@ -4,9 +4,9 @@ import { navigatorLanguages, resolveLocale, type Locale } from "../i18n/locale.j
 import type { HostSettingsState } from "./useHostConnection.js";
 
 /**
- * 界面语言：来自 `settings.snapshot.values` 里键含 `language` 的那一项（Host 下发
- * system/zh/en/ja/ko/ru）；没有就退回 `display.language`，再没有按浏览器语言。
- * `system` 的解析规则在 i18n/locale.ts（纯函数，可断言）。
+ * Idioma de la interfaz: desde `settings.snapshot.values` La clave contiene `language` Ese artículo (Host Problema
+ * system/zh/en/ja/ko/ru); si no, regresa `display.language`, ya no presione el idioma del navegador.
+ * `system` Las reglas de análisis están en i18n/locale.ts (función pura, afirmable).
  */
 export function readLanguage(settings: HostSettingsState): unknown {
   const values = settings.snapshot?.values;

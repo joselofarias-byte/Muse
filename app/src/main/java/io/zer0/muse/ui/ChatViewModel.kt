@@ -83,7 +83,7 @@ import io.zer0.muse.ui.chat.ChatGenerationController
 import io.zer0.muse.ui.chat.GenerationDeps
 import io.zer0.muse.ui.chat.ChatInputController
 import io.zer0.muse.ui.chat.ChatMediaController
-// P2-23: 媒体生成工具的会话投递宿主(工具本体已迁至 io.zer0.muse.tools.MediaGenToolsImpl)
+// P2-23: Host de entrega de sesiones para herramientas de generación de medios(El cuerpo de la herramienta se ha movido a io.zer0.muse.tools.MediaGenToolsImpl)
 import io.zer0.muse.ui.chat.ChatMediaGenHost
 import io.zer0.muse.ui.chat.ChatMessageController
 import io.zer0.muse.ui.chat.ChatSessionController
@@ -144,13 +144,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * v0.49: 聊天错误信息(支持多错误并存)。
+ * v0.49: Mensaje de error de chat(Soporta la coexistencia de múltiples errores.).
  *
- * @param id 错误唯一 id(用于 dismiss)
- * @param type 错误类型
- * @param message 错误消息
- * @param timestamp 发生时间
- * @param isRecoverable 是否可恢复(如网络错误可重试,API key 错误需用户处理)
+ * @param id El único error id(usado para dismiss)
+ * @param type Tipo de error
+ * @param message mensaje de error
+ * @param timestamp tiempo de ocurrencia
+ * @param isRecoverable ¿Es recuperable?(Si hay un error de red, puedes intentarlo nuevamente.,API key Los errores requieren manejo por parte del usuario)
  */
 data class ChatError(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -160,142 +160,142 @@ data class ChatError(
     val isRecoverable: Boolean = true,
 )
 
-/** v0.49: 错误类型枚举,用于分类展示与处理策略。 */
+/** v0.49: Enumeración de tipo de error,Se utiliza para visualización de clasificación y estrategias de procesamiento. */
 enum class ChatErrorType {
-    NETWORK, // 网络错误
-    API_KEY, // API key 无效
-    RATE_LIMIT, // 限流
-    MODEL_ERROR, // 模型返回错误
-    TOOL_ERROR, // 工具执行错误
-    UNKNOWN, // 未知错误
+    NETWORK, // error de red
+    API_KEY, // API key Inválido
+    RATE_LIMIT, // Limitación de corriente
+    MODEL_ERROR, // El modelo devuelve error
+    TOOL_ERROR, // Error de ejecución de herramienta
+    UNKNOWN, // error desconocido
 }
 
 /**
- * 聊天页状态。
+ * Estado de la página de chat.
  *
- * # v1.0.20: 字段分组说明(渐进式拆分,控制风险)
+ * # v1.0.20: Descripción de agrupación de campos(división progresiva,Controlar riesgos)
  *
- * 当前 [ChatUiState] 含数十个字段,任一变化都触发 state 新值,引发意外重组。
- * 完整拆分(把字段挪到子状态 data class)改动面极大,所有访问点都要改,风险高。
- * 故采用渐进式:保持顶层结构不变,按变化频率分组注释,UI 层用 derivedStateOf 收窄重组范围。
+ * actual [ChatUiState] Contiene docenas de campos.,Cualquier cambio desencadena un nuevo valor de estado.,Provocando una reorganización inesperada.
+ * división completa(Mover campos a subestados data class)Grandes cambios,Es necesario cambiar todos los puntos de acceso.,El riesgo es alto.
+ * Por lo tanto, el progresivo:Mantener la estructura de nivel superior sin cambios,Comentarios grupales por frecuencia de cambio.,UI Las capas utilizan deriveStateOf para limitar el alcance de la reorganización.
  *
- * ## 高频变化字段(UI 重组敏感,建议用 derivedStateOf 包裹读取)
- *  - [input]:用户每次按键都变化
- *  - [isStreaming]:流式开始/结束变化
- *  - [isWaitingFirstToken]:首 token 到达前后变化
- *  - [visionProgress]:视觉分析每完成一张图变化
- *  - [isOcrProcessing] / [toolProgressMessage]:短暂等待阶段变化
- *  - [isSpeaking] / [speakingMessageId]:TTS 朗读状态变化
- *  - [asrState]:ASR 流式状态变化
- *  - [messages]:流式过程中每个 delta 都更新(已被 StreamController 节流)
+ * ## Campos muy cambiantes(UI Sensible a la recombinación,Se recomienda utilizar deriveStateOf para ajustar la lectura.)
+ *  - [input]:Cambia cada vez que el usuario presiona una tecla
+ *  - [isStreaming]:Comienza la transmisión/cambio final
+ *  - [isWaitingFirstToken]:Cambios antes y después de la llegada del primer token
+ *  - [visionProgress]:El análisis visual cambia cada vez que se completa una imagen.
+ *  - [isOcrProcessing] / [toolProgressMessage]:Espere brevemente el cambio de fase.
+ *  - [isSpeaking] / [speakingMessageId]:TTS Leer en voz alta los cambios de estado
+ *  - [asrState]:ASR Cambios de estado de transmisión
+ *  - [messages]:Cada delta se actualiza durante la transmisión.(Estrangulado por StreamController)
  *
- * ## 低频变化字段(配置/会话/列表等,重组影响小)
- *  - [sessions] / [archivedSessions] / [folders]:会话列表变化
- *  - [assistants] / [currentAssistant]:助手配置变化
- *  - [providers] / [activeProviderId] / [selectedModelId]:Provider 配置变化
- *  - [chatPreferences] / [mediaConfig] / [webSearchConfig]:设置变化
- *  - [favoriteMessages] / [quickMessages] / [lorebooks]:列表数据变化
+ * ## campo cambiante de baja frecuencia(Configuración/sesión/Lista, etc.,La reestructuración tiene poco impacto)
+ *  - [sessions] / [archivedSessions] / [folders]:Cambios en la lista de conversaciones
+ *  - [assistants] / [currentAssistant]:Cambios en la configuración del asistente
+ *  - [providers] / [activeProviderId] / [selectedModelId]:Provider Cambios de configuración
+ *  - [chatPreferences] / [mediaConfig] / [webSearchConfig]:Cambios de configuración
+ *  - [favoriteMessages] / [quickMessages] / [lorebooks]:Listar cambios de datos
  *
- * ## 派生/瞬态字段(由其他字段推导,不直接驱动重组)
- *  - [isConfigured]:由 providers 派生
- *  - [error]:由 errors.firstOrNull() 派生
- *  - [toast]:一次性 Toast,UI 消费后清空
+ * ## derivado/Campos transitorios(Derivado de otros campos,No impulsa directamente la reorganización)
+ *  - [isConfigured]:Derivado de proveedores
+ *  - [error]:por errors.firstOrNull() derivado
+ *  - [toast]:Desechable Toast,UI Vacío después del consumo
  *
- * 后续完整拆分路线图(本次不做,标注 TODO):
- *  - TODO(state-split): 把高频字段抽到 `ChatUIState`(input/isStreaming/isWaitingFirstToken/visionProgress)
- *  - TODO(state-split): 把工具相关抽到 `ToolsState`(toolCallHistory/pendingToolApprovals/taskCards)
- *  - TODO(state-split): 把 Agent 相关抽到 `ChatAgentState`(isAgentMode/agentSessionId/delegationChain)
+ * Seguimiento de la hoja de ruta dividida completa(No lo haré esta vez,marca TODO):
+ *  - TODO(state-split): Extraer campos de alta frecuencia `ChatUIState`(input/isStreaming/isWaitingFirstToken/visionProgress)
+ *  - TODO(state-split): Extraer herramientas relacionadas con `ToolsState`(toolCallHistory/pendingToolApprovals/taskCards)
+ *  - TODO(state-split): Extraer información relacionada con el agente `ChatAgentState`(isAgentMode/agentSessionId/delegationChain)
  *
- * @param messages 完整消息列表(含占位的 assistant 流式消息)
- * @param input 当前输入框文本
- * @param isStreaming 是否正在流式输出
- * @param errors v0.49: 错误信息列表(支持多错误并存),空表示无错误
- * @param isConfigured 是否已配置 Provider(决定显示"去设置"引导)
- * @param currentSessionId 当前会话 id(null 表示未初始化)
- * @param sessions 全部会话列表(侧栏用,按 updatedAt 降序)
- * @param isDrawerOpen 侧栏是否展开
- * @param searchQuery 搜索框文本
- * @param searchResults 搜索结果列表(空列表表示无搜索或无结果)
- * @param isSearching 是否正在搜索
- * @param isDrawMode 绘图模式(P5-G):开启后 send 调用 ImageService 而非 ChatService
- * @param isGeneratingImage 是否正在生成图片(P5-G)
- * @param isTranslating 是否正在翻译(P5-F)
- * @param translatingMessageId 正在翻译的消息 id(null 表示无)
- * @param assistants 全部 Assistant 列表(Phase 8.2 侧栏选择器用)
- * @param currentAssistant 当前会话绑定的 Assistant(Phase 8.2,影响 systemPrompt/模型/工具/记忆)
- * @param favoriteMessages 跨会话收藏的消息列表(Phase 8.3,收藏面板用)
+ * @param messages Lista completa de mensajes(mensaje de transmisión del asistente con marcador de posición)
+ * @param input Texto del cuadro de entrada actual
+ * @param isStreaming Si la salida es streaming
+ * @param errors v0.49: Lista de mensajes de error(Soporta la coexistencia de múltiples errores.),Vacío significa que no hay error
+ * @param isConfigured ¿Se ha configurado? Provider(decide mostrar"Ir a configuración"guía)
+ * @param currentSessionId sesión actual id(null Indica no inicializado)
+ * @param sessions Lista de todas las conversaciones(Para barra lateral,Orden descendente por actualizadoEn)
+ * @param isDrawerOpen Si la barra lateral está expandida
+ * @param searchQuery texto del cuadro de búsqueda
+ * @param searchResults Lista de resultados de búsqueda(Una lista vacía significa que no hay búsqueda o no hay resultados.)
+ * @param isSearching estas buscando
+ * @param isDrawMode modo de dibujo(P5-G):Después de habilitar, envíe llamadas ImageService en lugar de ChatService
+ * @param isGeneratingImage Si se están generando imágenes(P5-G)
+ * @param isTranslating ¿Se está traduciendo?(P5-F)
+ * @param translatingMessageId Mensaje en traducción id(null significa ninguno)
+ * @param assistants Lista de todos los asistentes(Phase 8.2 Para selector de barra lateral)
+ * @param currentAssistant Vinculado a la sesión actual Assistant(Phase 8.2,Afecta al sistemaIndicación/modelo/Herramientas/memoria)
+ * @param favoriteMessages Lista de mensajes favoritos entre sesiones(Phase 8.3,Para panel de colección)
  */
 
 /**
- * F-10: 流式生成阶段状态机(单一状态源)。
+ * F-10: Máquina de estado de fase de generación de streaming(fuente estatal única).
  *
- *  - [IDLE]: 无生成;
- *  - [CONNECTING]: 已发送,等待首个 token;
- *  - [STREAMING]: 正文流式输出中;
- *  - [TOOLING]: 工具调用执行阶段;
- *  - [INTERRUPTED]: 被用户停止/会话切换中断,内容保留;
- *  - [FINISHED]: 正常完成;
- *  - [FAILED]: 出错终止。
+ *  - [IDLE]: ninguna generación;
+ *  - [CONNECTING]: Enviado,Esperando el primero token;
+ *  - [STREAMING]: Salida de transmisión de texto;
+ *  - [TOOLING]: Fase de ejecución de llamada de herramienta;
+ *  - [INTERRUPTED]: Detenido por el usuario/Cambio de sesión interrumpido,Contenido reservado;
+ *  - [FINISHED]: Completado normalmente;
+ *  - [FAILED]: Terminar en caso de error.
  *
- * UI/通知/统计统一从 [ChatStreamState.phase] 派生, 不各自判断分散布尔。
+ * UI/Notificación/Las estadísticas están unificadas de [ChatStreamState.phase] derivado, No juzgues los valores booleanos dispersos individualmente.
  */
 enum class ChatStreamPhase { IDLE, CONNECTING, STREAMING, TOOLING, INTERRUPTED, FINISHED, FAILED }
 
 data class ChatStreamState(
-    /** F-10: 生成阶段(单一状态源;isStreaming 等布尔保持兼容派生)。 */
+    /** F-10: fase de generación(fuente estatal única;isStreaming etc. Bool sigue siendo compatible con derivados). */
     val phase: ChatStreamPhase = ChatStreamPhase.IDLE,
     val isStreaming: Boolean = false,
     /**
-     * v1.0.3: 流式启动后是否仍在等待首个 token(含 ContentDelta / ReasoningDelta)。
+     * v1.0.3: ¿El streaming sigue esperando el primero? token(Contiene ContentDelta / ReasoningDelta).
      *
-     * - true: 处于"思考中"阶段,UI 显示 ThinkingBubble 骨架屏 + "思考中"文字
-     * - false: 已收到首 token,进入"正在写"阶段,UI 显示 StreamingCursor 光标 + 流式文本
+     * - true: en"Pensando"escenario,UI Mostrar la pantalla esqueleto de ThinkingBubble + "Pensando"texto
+     * - false: Recibido primero token,entrar"escribiendo"escenario,UI Mostrar cursor StreamingCursor + texto de transmisión
      *
-     * 与 [isStreaming] 的关系:
-     *  - 发送时:isStreaming=true, isWaitingFirstToken=true
-     *  - 首 token 到达:isStreaming=true, isWaitingFirstToken=false
-     *  - 流式结束/出错/停止:isStreaming=false, isWaitingFirstToken=false
+     * con [isStreaming] relación:
+     *  - Al enviar:isStreaming=true, isWaitingFirstToken=true
+     *  - Llega la primera ficha:isStreaming=true, isWaitingFirstToken=false
+     *  - Fin de la transmisión/error/detenerse:isStreaming=false, isWaitingFirstToken=false
      *
-     * 区分两阶段的好处:
-     *  1. 首 token 到达后立即让 ThinkingBubble 消失,避免"loading → 突然大量文字"的视觉断层
-     *  2. UI 可以分别给两阶段不同的视觉反馈(骨架屏 vs 流式光标)
-     *  3. reasoning-only 阶段(模型只输出思考链,content 仍空)不会被误判为"还在等待"
+     * Los beneficios de distinguir las dos etapas:
+     *  1. Haz que ThinkingBubble desaparezca inmediatamente después de que llegue el primer token,evitar"loading → de repente mucho texto"falla visual
+     *  2. UI Se pueden dar diferentes comentarios visuales a las dos etapas respectivamente.(Pantalla esqueleto vs cursor de transmisión)
+     *  3. reasoning-only escenario(El modelo solo genera la cadena de pensamiento.,content Todavía vacío)no será mal juzgado como"todavía esperando"
      */
     val isWaitingFirstToken: Boolean = false,
     /**
-     * v1.0.4: 视觉辅助分析进度(null=未在分析)。
+     * v1.0.4: Ayudas visuales para analizar el progreso.(null=No analizando).
      *
-     * 当纯文本模型需要通过视觉辅助分析图片时,UI 可据此显示"正在分析图片 2/4…"。
-     * 与 [isWaitingFirstToken] 配合:视觉分析期间 ThinkingBubble 显示视觉进度文字。
+     * Cuando un modelo de solo texto necesita analizar imágenes con ayudas visuales,UI se puede mostrar en consecuencia"Analizando imágenes 2/4…".
+     * con [isWaitingFirstToken] cooperar:ThinkingBubble muestra texto de progreso visual durante el análisis visual.
      */
     val visionProgress: io.zer0.muse.vision.VisionProgress? = null,
     /**
-     * v1.138: 已视觉辅助处理过的用户消息 ID 集合。
+     * v1.138: Una colección de ID de mensajes de usuario con ayuda visual.
      *
-     * 当主模型不支持视觉、通过 VisionBridge 分析图片后,将用户消息 ID 加入此集合。
-     * UI 层据此在图片下方显示"辅助视觉 · 已分析"标签,让用户知道图片经过了视觉辅助处理。
+     * Cuando el modelo principal no admite visión, después de analizar la imagen a través de VisionBridge,Agregue ID de mensajes de usuario a esta colección.
+     * UI La capa se muestra debajo de la imagen en consecuencia."visión de asistencia · Analizado"etiqueta,Informe a los usuarios que la imagen ha sido mejorada visualmente.
      */
     val visionAssistedMessageIds: Set<String> = emptySet(),
     /**
-     * v1.0.4 (P0): OCR 识别进度标志。
+     * v1.0.4 (P0): OCR Identificar señales de progreso.
      *
-     * 用户从相册选图并以 OCR 模式识别文字时,识别期间(1-3s)设置 true,
-     * ThinkingBubble 显示"正在识别图片文字…"。
+     * Cuando el usuario selecciona una imagen del álbum de fotos y reconoce el texto en modo OCR,período de identificación(1-3s)ajustes true,
+     * ThinkingBubble mostrar"Reconocer texto de imagen…".
      */
     val isOcrProcessing: Boolean = false,
     /**
-     * v1.0.4 (P0): 工具调用恢复时的进度文本(断点续传路径用)。
+     * v1.0.4 (P0): Texto de progreso cuando se reanudan las llamadas a herramientas(Se utiliza para reanudar la ruta de transmisión después del punto de interrupción.).
      *
-     * 当用户进入有未完成工具调用的会话并点击恢复时,ThinkingBubble 显示此文本。
-     * 流式工具调用路径已通过 TaskCard 显示进度,无需此字段。
+     * Cuando un usuario ingresa a una sesión con una llamada de herramienta pendiente y hace clic en Reanudar,ThinkingBubble Mostrar este texto.
+     * La ruta de llamada de la herramienta de transmisión muestra el progreso a través de TaskCard,Este campo no es obligatorio.
      */
     val toolProgressMessage: String? = null,
     /**
-     * 断点续传:当前会话未完成的工具调用数量。
+     * Reanudar la carga desde el punto de interrupción:El número de llamadas de herramientas pendientes para la sesión actual.
      *
-     * 大于 0 时 ChatScreen 顶部展示恢复 Banner(恢复执行 / 丢弃)。
-     * 由 [ChatViewModel.switchSession] / [ChatViewModel.resumePendingToolCalls] /
-     * [ChatViewModel.discardPendingToolCalls] 维护。
+     * La visualización superior de ChatScreen se reanuda cuando es mayor que 0 Banner(Reanudar ejecución/descartar).
+     * por [ChatViewModel.switchSession] / [ChatViewModel.resumePendingToolCalls] /
+     * [ChatViewModel.discardPendingToolCalls] Mantenimiento.
      */
     val pendingToolCallCount: Int = 0,
 )
@@ -308,109 +308,109 @@ data class ChatToolsState(
     val pendingToolApprovals: List<PendingToolApproval> = emptyList(),
 )
 
-/** v1.205 B2: 待发送队列条目(入队时快照文本与图片,单独发送时恢复)。 */
+/** v1.205 B2: entrada de cola para ser enviada(Instantánea de texto e imagen al unirse al equipo.,Restaurar al enviar solo). */
 data class PendingMessage(
     val text: String,
     val images: List<String> = emptyList(),
     /**
-     * 入队时所在的会话 id。
+     * El ID de sesión al unirse a la cola.
      *
-     * 插话通道靠它判定「这条排队消息属于哪一段对话」:取走一条属于别的会话的消息,
-     * 就是在那段对话里塞进用户没说过的话,而它会成为模型后续推理的依据。
-     * null 表示入队时拿不到会话(旧数据/无会话),按最保守方式处理 —— 不参与插话。
+     * El canal de interrupción depende de él para determinar "a qué conversación pertenece este mensaje en cola".:Recuperar un mensaje perteneciente a otra conversación,
+     * Simplemente inserte palabras que el usuario no dijo en esa conversación.,Y se convertirá en la base para el razonamiento posterior del modelo.
+     * null Indica que no se puede obtener la sesión al unirse a la cola.(datos antiguos/Sin sesión),Trátelo de la forma más conservadora. —— No participes en interjecciones.
      */
     val sessionId: String? = null,
 )
 
 /**
- * 从待发送队列里挑出可以作为插话注入下一轮的条目。
+ * Seleccione elementos de la cola para enviar que se puedan inyectar en la siguiente ronda como inserciones.
  *
- * 只认「本轮会话 + 纯文本」的条目:
- *  - [PendingMessage.sessionId] 与本轮会话不一致 → 属于别的会话,取走就是跨会话污染;
- *  - [PendingMessage.sessionId] 为 null(旧数据/入队时无会话) → 无法确认归属,留在队列里走原有发送路径;
- *  - 带图片 → 要过发送管道的媒体落盘与挂载链路,这里二次实现会丢附件。
+ * Sólo reconocer entradas para "esta sesión + texto sin formato":
+ *  - [PendingMessage.sessionId] Inconsistente con esta sesión → Pertenece a otra conversación,Quitar es la contaminación entre sesiones.;
+ *  - [PendingMessage.sessionId] para null(datos antiguos/Sin sesión al unirse a la cola) → No se puede confirmar la propiedad,Permanezca en la cola y tome la ruta de envío original;
+ *  - Con fotos → Enlaces de colocación y montaje de medios a través del canal de envío,La segunda implementación aquí perderá los archivos adjuntos.
  *
- * 宁可漏取:漏取的后果是消息晚一步发出,错取的后果是对话里出现用户没说过的话。
+ * Preferiría perderme:La consecuencia de la omisión es que el mensaje se envía más tarde.,La consecuencia de una selección incorrecta es que en la conversación aparecen palabras que el usuario no dijo.
  */
 internal fun selectSteeringMessages(queue: List<PendingMessage>, sessionId: String): List<PendingMessage> =
     queue.filter { it.sessionId == sessionId && it.images.isEmpty() && it.text.isNotBlank() }
 
 data class ChatInputState(
     val input: String = "",
-    /** Phase 8.6: 待发送的本地图片 base64 列表(无 data: 前缀)。 */
+    /** Phase 8.6: Lista Base64 de imágenes locales a enviar(Ninguno dato: prefijo). */
     val pendingImages: List<String> = emptyList(),
-    /** v1.136 T10: 待发送的文档列表(已解析为纯文本,发送时合并到消息内容)。 */
+    /** v1.136 T10: Lista de documentos a enviar(Analizado como texto sin formato,Combinar con el contenido del mensaje al enviar). */
     val pendingDocuments: List<io.zer0.muse.ui.chat.PendingDocument> = emptyList(),
-    /** v1.91: ASR 状态机(流式模式)。 */
+    /** v1.91: ASR máquina de estados(modo de transmisión). */
     val asrState: ASRState = ASRState(),
-    /** 引用回复:当前正在回复的目标消息(仅 UI 层,发送后清空)。 */
+    /** Cotización Responder:El mensaje de destino al que se está respondiendo actualmente(Solo capa de interfaz de usuario,Borrar después de enviar). */
     val replyingTo: UIMessage? = null,
-    /** v1.57: 引用回复的自定义引用文本(用户可在引用卡片编辑裁剪,null 时用 replyingTo.content)。 */
+    /** v1.57: Texto de cotización personalizado para respuestas a cotizaciones(Los usuarios pueden editar y recortar la tarjeta de referencia.,null Usado cuando replyingTo.content). */
     val replyQuoteOverride: String? = null,
     /**
-     * v1.0.47 P5: 输入历史(本会话内已发送的消息文本,用于输入框上箭头回调)。
+     * v1.0.47 P5: Entrar en la historia(Texto de los mensajes enviados en esta conversación,Se utiliza para la devolución de llamada de flecha en el cuadro de entrada.).
      *
-     * 最近 N 条(默认 50),上箭头按时间倒序遍历,下箭头正向遍历。
-     * 仅存内存,不持久化(会话结束清空)。
+     * Últimos N artículos(Predeterminado 50),La flecha hacia arriba recorre en orden cronológico inverso.,La flecha hacia abajo avanza.
+     * solo memoria,No persistente(Vacío después de terminar la sesión).
      */
     val inputHistory: List<String> = emptyList(),
-    /** v1.0.47 P5: 输入历史导航索引(null=不在历史导航中,0=最近一条)。 */
+    /** v1.0.47 P5: Ingresar índice histórico de navegación(null=No en la navegación del historial.,0=último). */
     val inputHistoryIndex: Int? = null,
-    /** 功能2: 当前输入是否为从 DataStore 恢复的草稿。 */
+    /** Función2: Si la entrada actual es un borrador restaurado desde DataStore. */
     val hasDraft: Boolean = false,
-    /** v1.205 B2: 待发送消息队列(生成期间排队,逐条预览/编辑/删除/单独发送)。 */
+    /** v1.205 B2: Cola de mensajes a enviar(En cola durante la compilación,Vista previa artículo por artículo/Editar/Eliminar/Enviar por separado). */
     val sendQueue: List<PendingMessage> = emptyList(),
 )
 
 data class ChatSessionState(
     val currentSessionId: String? = null,
     val sessions: List<SessionEntity> = emptyList(),
-    /** v1.72: 会话列表首次加载标志(避免闪空状态,DB 首次 emit 前显示 loading) */
+    /** v1.72: Primera bandera de carga de la lista de sesiones(Evite el estado flash,DB Mostrado antes de la primera emisión loading) */
     val isSessionsLoading: Boolean = true,
-    /** v1.0.62: 会话列表加载失败信息(null=正常)。 */
+    /** v1.0.62: Información de error de carga de la lista de sesiones(null=normales). */
     val sessionsError: String? = null,
-    /** v0.45: 已归档会话列表(归档 FilterCard 用)。 */
+    /** v0.45: Lista de conversaciones archivadas(Uso de Archive FilterCard). */
     val archivedSessions: List<SessionEntity> = emptyList(),
-    /** ST-01: 归档会话列表加载失败信息(null=正常)。 */
+    /** ST-01: Archivar lista de sesiones cargando información de error(null=normales). */
     val archivedSessionsError: String? = null,
-    /** Phase 9.1 (M13): 全部文件夹(Drawer 按 folderId 分组渲染会话)。 */
+    /** Phase 9.1 (M13): Todas las carpetas(Drawer Sesiones de renderizado grupal por ID de carpeta). */
     val folders: List<io.zer0.muse.data.session.FolderEntity> = emptyList(),
 )
 
 data class ChatAgentState(
-    /** v1.28: 是否为 Agent Tab 模式(决定 send 用 agentSessionId 还是 currentSessionId)。 */
+    /** v1.28: Ya sea en modo pestaña Agente(Decida si utilizará agentSessionId o currentSessionId). */
     val isAgentMode: Boolean = false,
-    /** v1.28: Agent Tab 专用会话 id(独立于任务的 currentSessionId)。 */
+    /** v1.28: Agent Tab sesión privada id(tarea independiente currentSessionId). */
     val agentSessionId: String? = null,
     val assistants: List<AssistantEntity> = emptyList(),
-    /** v1.72: 助手列表首次加载标志(避免闪空状态) */
+    /** v1.72: Lista de asistentes primera bandera de carga(Evite el estado flash) */
     val isAssistantsLoading: Boolean = true,
     val currentAssistant: AssistantEntity? = null,
-    /** v1.201: 委派链路根节点(空列表表示无委派)。 */
+    /** v1.201: Nodo raíz de enlace delegado(Una lista vacía significa que no hay delegación). */
     val delegationChain: List<io.zer0.muse.tools.DelegationChainTracker.ChainNode> = emptyList(),
-    /** v1.201: 当前活跃的委派暂停请求(null 表示无待确认)。 */
+    /** v1.201: Solicitudes de pausa de delegación actualmente activas(null Indica que aún no hay confirmación). */
     val activePauseRequest: io.zer0.muse.tools.DelegationPauseManager.PauseRequest? = null,
-    /** v1.202: 当前会话活跃的后台子 agent 线程(SubagentTaskListCard 渲染用,空列表表示无)。 */
+    /** v1.202: El hilo del subagente en segundo plano activo en la sesión actual(SubagentTaskListCard Para renderizar,Una lista vacía significa ninguna). */
     val activeSubagentThreads: List<io.zer0.muse.data.subagent.SubagentThreadStore.ThreadEntry> = emptyList(),
-    /** v1.202: 当前会话待处理(PENDING)的后台子 agent 任务(SubagentTaskListCard 渲染用)。 */
+    /** v1.202: Sesión actual pendiente(PENDING)tareas de subagente en segundo plano(SubagentTaskListCard Para renderizar). */
     val pendingSubagentTasks: List<io.zer0.muse.tools.DeferredResultStore.DeferredTask> = emptyList(),
-    // ── P6: Agent Mode 增强 ──────────────────────────────────────────
-    /** v1.0.47 P6-2: 当前模型是否为弱工具调用模型(Agent Mode 下显示降级提示)。 */
+    // ── P6: Agent Mode mejorar ──────────────────────────────────────────
+    /** v1.0.47 P6-2: Si el modelo actual es un modelo de llamada de herramienta débil(Agent Mode A continuación se muestra un mensaje de degradación). */
     val isWeakToolModel: Boolean = false,
-    /** v1.0.47 P6-2: 弱工具模型降级提示文案(null = 非弱工具模型,不显示)。 */
+    /** v1.0.47 P6-2: Copia del mensaje de degradación del modelo de herramienta débil(null = modelo de herramienta no débil,no mostrar). */
     val weakToolHint: String? = null,
-    /** v1.0.47 P6-3: 会话锁定(Agent Mode ON 时锁定,禁止切换助手/清空消息)。 */
+    /** v1.0.47 P6-3: bloqueo de sesión(Agent Mode ON bloqueo de tiempo,Deshabilitar el asistente de conmutación/Borrar mensajes). */
     val isSessionLocked: Boolean = false,
-    /** v1.0.47 P6-4: Agent Mode 提示卡片文案(null = 不显示卡片)。 */
+    /** v1.0.47 P6-4: Agent Mode Copia de la tarjeta de propinas(null = No mostrar tarjeta). */
     val agentModeHint: String? = null,
 )
 
 /**
- * 聊天页 UI 状态。
+ * Estado de la interfaz de usuario de la página de chat.
  *
- * ⚠️ [asrConfig] 可能已被供应商配置覆盖:开启「跟随供应商配置」时,baseUrl / apiKey / model
- * 来自 [io.zer0.muse.data.SpeechProviderResolver] 的解析结果(见本类订阅 combine 的收集块)。
- * **禁止把它直接传给 `saveAsrConfig` 落盘**;落盘必须取 `settings.asrConfigFlow` 的原始值。
+ * ⚠️ [asrConfig] Puede haber sido anulado por la configuración del proveedor:Cuando está activado "Seguir la configuración del proveedor",baseUrl / apiKey / model
+ * de [io.zer0.muse.data.SpeechProviderResolver] El resultado del análisis de(Vea el bloque de colección de esta clase para suscribirse para combinar).
+ * **Está prohibido pasarlo directamente a `saveAsrConfig` Realizar el pedido**;Se debe tomar la colocación `settings.asrConfigFlow` el valor original.
  */
 class ChatUiState(
     val streamState: ChatStreamState = ChatStreamState(),
@@ -418,25 +418,25 @@ class ChatUiState(
     val sessionState: ChatSessionState = ChatSessionState(),
     val agentState: ChatAgentState = ChatAgentState(),
     val toolsState: ChatToolsState = ChatToolsState(),
-    /** B7-01: 消息多选模式。 */
+    /** B7-01: Modo de selección múltiple de mensajes. */
     val selectionMode: Boolean = false,
-    /** B7-01: 已选消息 id 集合。 */
+    /** B7-01: Una colección de identificadores de mensajes seleccionados. */
     val selectedMessageIds: Set<String> = emptySet(),
-    /** v1.137 B2: 会话切换中标志 — true 时 UI 保持上一帧消息(不显示空列表),消除切换闪烁。 */
+    /** v1.137 B2: Bandera de cambio de sesión — true Cuando la interfaz de usuario mantiene el mensaje del marco anterior(No mostrar lista vacía),Elimina el parpadeo de conmutación. */
     val isSwitchingSession: Boolean = false,
     val errors: List<ChatError> = emptyList(),
     val isConfigured: Boolean = false,
-    /** 是否正在拉取上游模型列表(底部模型切换面板用)。 */
+    /** Si se está retirando la lista de modelos ascendentes(Se utiliza el panel de conmutación del modelo inferior.). */
     val isFetchingModels: Boolean = false,
-    /** 拉取上游模型错误信息。 */
+    /** Extraiga información de error del modelo ascendente. */
     val fetchModelsError: String? = null,
     /**
-     * v1.93+: 本次 switchSession 是否命中内存 LRU 缓存(调试用)。
+     * v1.93+: Si esta switchSession llega a la memoria caché LRU(para depurar).
      *
-     * - true: 命中 [SessionMemoryCache],跳过了 DB 查询,直接复用内存消息快照
-     * - false: 未命中(或后台正在生成需走 DB),从 DB 分页加载
+     * - true: golpear [SessionMemoryCache],Consulta de base de datos omitida,Reutilizar directamente instantáneas de mensajes de memoria
+     * - false: señorita(O el fondo está generando la necesidad de ir DB),Carga de paginación desde DB
      *
-     * 仅用于性能追踪与调试,不影响业务逻辑。
+     * Solo para seguimiento y depuración del rendimiento,No afecta la lógica empresarial.
      */
     val memoryCacheHit: Boolean = false,
     val isDrawerOpen: Boolean = false,
@@ -444,233 +444,233 @@ class ChatUiState(
     val searchResults: List<SearchResult> = emptyList(),
     val isSearching: Boolean = false,
     /**
-     * v2.x: 搜索页 Tab 当前选中索引(0=会话, 1=消息内容)。
+     * v2.x: Página de búsqueda Pestaña índice actualmente seleccionado(0=sesión, 1=Contenido del mensaje).
      *
-     * Tab=0 沿用原有"会话标题/预览匹配 + 设置项匹配"逻辑(展示 [searchResults] + matchedSessions);
-     * Tab=1 展示 [messageResults](消息内容搜索,FTS4 snippet + 点击跳转传 messageId)。
-     * U-19: 默认进入消息内容 Tab(全文搜索会话+消息),会话 Tab 仍可手动切换。
+     * Tab=0 Usa el original"Título de la sesión/Vista previa de coincidencia + configuración de coincidencia de elementos"lógica(mostrar [searchResults] + matchedSessions);
+     * Tab=1 mostrar [messageResults](Búsqueda de contenido de mensajes,FTS4 snippet + Haga clic para saltar a transferir messageId).
+     * U-19: Ingrese el contenido del mensaje de forma predeterminada Tab(Sesión de búsqueda de texto completo+noticias),Las pestañas de sesión aún se pueden cambiar manualmente.
      */
     val searchTab: Int = 1,
-    /** v2.x: 消息内容搜索结果(仅在 searchTab=1 时展示,由 FTS4 + snippet 生成)。 */
+    /** v2.x: Resultados de búsqueda de contenido de mensajes(solo en searchTab=1 visualización de la hora,Generado por FTS4 + fragmento). */
     val messageResults: List<SearchResult> = emptyList(),
-    /** v2.x: 是否正在执行消息内容搜索(独立于 [isSearching],避免两个 Tab 互相干扰)。 */
+    /** v2.x: Si se está realizando una búsqueda del contenido del mensaje(independiente de [isSearching],Evite que dos pestañas interfieran entre sí). */
     val isSearchingMessages: Boolean = false,
-    /** v1.0.62: 搜索失败信息(null=正常),会话/消息内容 Tab 共用。 */
+    /** v1.0.62: Búsqueda de información fallida(null=normales),sesión/Contenido del mensaje Compartir pestañas. */
     val searchError: String? = null,
     /**
-     * v2.x: 从搜索结果点击消息跳转时,目标消息 id。
+     * v2.x: Al hacer clic en el mensaje para saltar de los resultados de búsqueda,ID del mensaje de destino.
      *
-     * ChatScreen 进入会话后会读取此字段滚动到该消息并触发高亮,完成后由
-     * [ChatViewModel.consumeTargetMessage] 清空(避免重复触发)。
+     * ChatScreen Después de ingresar a la sesión, se leerá este campo. Desplácese hasta el mensaje y active el resaltado.,Al finalizar por
+     * [ChatViewModel.consumeTargetMessage] Borrar(Evite los desencadenantes repetidos).
      */
     val targetMessageId: String? = null,
     /**
-     * v2.x: 搜索高亮关键词(从搜索结果跳转时携带,用于 MessageBubble 内文本高亮)。
+     * v2.x: Buscar palabras clave resaltadas(Llevar al saltar de los resultados de búsqueda,Se utiliza para resaltar texto dentro de MessageBubble).
      *
-     * 仅当 [highlightedMessageId] 非空时有效;高亮结束后清空。
+     * solo si [highlightedMessageId] Válido cuando no está vacío;Se borra una vez finalizado el resaltado.
      */
     val searchHighlightQuery: String? = null,
     /**
-     * v2.x: 当前正在短暂高亮的消息 id(从搜索结果跳转滚动定位后设置,几秒后清空)。
+     * v2.x: El mensaje actualmente resaltado brevemente id(Establecer después de saltar de los resultados de búsqueda al posicionamiento de desplazamiento,Borrar después de unos segundos.).
      *
-     * ChatScreen 据此为对应 MessageBubble 传 highlightText,实现"进入会话高亮目标消息"。
+     * ChatScreen De acuerdo con esto, la MessageBubble correspondiente highlightText,darse cuenta"Ingrese a la conversación y resalte el mensaje de destino.".
      */
     val highlightedMessageId: String? = null,
     val isDrawMode: Boolean = false,
-    /** v0.34: 当前绘图参数(可临时覆盖设置中的默认值)。 */
+    /** v0.34: Parámetros de dibujo actuales(Capacidad de anular temporalmente los valores predeterminados en la configuración). */
     val imageGenParams: io.zer0.ai.image.ImageGenParams = io.zer0.ai.image.ImageGenParams(),
     val isGeneratingImage: Boolean = false,
     /**
-     * v1.0.4 (P1): 视频生成中标志。
+     * v1.0.4 (P1): Bandera de generación de vídeo.
      *
-     * LLM 调用 generate_video 工具时设为 true,完成/失败/取消时设为 false。
-     * ChatScreen 显示 VideoGenerationPlaceholder 占位卡片,与 ImageGenerationPlaceholder 对称。
-     * 注:execGenerateVideo 还会通过 updateAssistant(content="正在生成视频...") 在助手消息气泡
-     * 内同步进度,本字段是补充占位卡片反馈,不是替代。
+     * LLM Establecer al llamar a la herramienta generate_video true,Completo/falló/Establecer en falso al cancelar.
+     * ChatScreen Mostrar tarjeta de marcador de posición VideoGenerationPlaceholder,Simétrico a ImageGenerationPlaceholder.
+     * Nota:execGenerateVideo pasará updateAssistant(content="Generando vídeo...") Burbuja de mensaje en el Asistente
+     * Progreso de la sincronización interna,Este campo es una tarjeta de marcador de posición complementaria para comentarios.,No es un reemplazo.
      */
     val isGeneratingVideo: Boolean = false,
     val isTranslating: Boolean = false,
     val translatingMessageId: Uuid? = null,
     val favoriteMessages: List<UIMessage> = emptyList(),
-    /** v1.77: 收藏列表首次加载标志(避免闪空状态) */
+    /** v1.77: Lista de colección primera bandera de carga(Evite el estado flash) */
     val isFavoritesLoading: Boolean = true,
-    /** ST-01: 收藏列表加载失败信息(null=正常)。 */
+    /** ST-01: Mensaje de error al cargar la lista de colecciones(null=normales). */
     val favoritesError: String? = null,
     /**
-     * v1.104 U7: 已命名的收藏分组标签列表(去重升序,不含 NULL 未分组)。
+     * v1.104 U7: Lista de etiquetas de grupos de colecciones con nombre(Eliminar duplicados en orden ascendente,Sin NULL Desagrupado).
      *
-     * 由 DAO observeAllFavoriteTags 聚合,UI 据此渲染顶部 FilterChip 行。
+     * Agregado por DAO observeAllFavoriteTags,UI Representa la fila superior de FilterChip en consecuencia.
      */
     val favoriteTags: List<String> = emptyList(),
     /**
-     * v1.104 U7: 当前选中的分组筛选条件。
+     * v1.104 U7: La condición de filtro de agrupación seleccionada actualmente.
      *
-     *  - null = 显示全部收藏
-     *  - 非空字符串 = 仅显示该 tag 下的收藏
-     *  - 特殊值 [FAVORITE_TAG_UNGROUPED] = 仅显示未分组(favoriteTag=null)的收藏
+     *  - null = Mostrar todas las colecciones
+     *  - cadena no vacía = Mostrar solo colecciones bajo esta etiqueta
+     *  - valor especial [FAVORITE_TAG_UNGROUPED] = Mostrar solo desagrupados(favoriteTag=null)colección
      *
-     * FavoritesScreen 在本地对 favoriteMessages 做过滤,不在 ViewModel 预过滤,
-     * 保证 favoriteMessages 始终是全量(便于"全部"chip 显示总数)。
+     * FavoritesScreen Filtrar mensajes favoritos localmente,No prefiltrado en ViewModel,
+     * Asegúrese de que los mensajes favoritos estén siempre llenos(Conveniente"Todos"chip Mostrar total).
      */
     val favoriteTagFilter: String? = null,
-    /** Phase 8.4: 是否启用联网搜索(InputBar 上的开关,运行时切换)。 */
+    /** Phase 8.4: Si se debe habilitar la búsqueda en Internet(InputBar encender,Cambio de tiempo de ejecución). */
     val webSearchEnabled: Boolean = false,
     /**
-     * v0.45: 当前上下文 token 占用估算(含 system prompt + 全部消息文本)。
+     * v0.45: Estimación de ocupación de tokens en el contexto actual(Contiene un mensaje del sistema + todo el texto del mensaje).
      *
-     * 由 [ChatViewModel.updateContextTokenCount] 实时更新,UI 据此渲染占用圆环。
-     * 流式过程中每 50 字符更新一次(避免过于频繁),非流式时立即更新。
+     * por [ChatViewModel.updateContextTokenCount] actualizaciones en tiempo real,UI Representa el anillo de ocupación en consecuencia.
+     * Actualizado cada 50 caracteres durante la transmisión(evitar con demasiada frecuencia),Actualice inmediatamente cuando no esté transmitiendo.
      */
     val contextTokenCount: Int = 0,
     /**
-     * v0.45: 当前模型的上下文窗口大小(token 数)。
+     * v0.45: El tamaño de la ventana de contexto del modelo actual.(token numero).
      *
-     * 0 表示未知(模型未声明 contextWindow),UI 不显示占用圆环。
-     * 切换会话 / 选择模型时由 [ChatViewModel.refreshContextMaxTokens] 刷新。
+     * 0 Indica desconocido(Modelo no declarado contextWindow),UI Los anillos de ocupación no se muestran.
+     * Al cambiar de sesión/seleccionar un modelo [ChatViewModel.refreshContextMaxTokens] Refrescar.
      */
     val contextMaxTokens: Int = 0,
     /**
-     * v2.x: 上下文检查点的边界消息 id（null = 本会话还没有检查点）。
+     * v2.x: ID de mensaje de límite del punto de control de contexto (null = Aún no hay puntos de control para esta sesión).
      *
-     * 界面据此在对话流里画一条"上下文已压缩"分隔线，并把该消息及更早的老消息默认收起。
-     * 这是**仅界面**的展示锚点：发给模型的历史由 [io.zer0.muse.transformer.ContextCheckpointMerge]
-     * 在组装阶段过滤，两者不共用同一份数据，避免互相污染。
+     * En consecuencia, la interfaz traza una línea en el flujo de la conversación."El contexto está comprimido."Línea de separación y ocultar este mensaje y los mensajes más antiguos de forma predeterminada.
+     * esto es**Solo interfaz**Ancla de presentación: La historia del modelo emitido por [io.zer0.muse.transformer.ContextCheckpointMerge]
+     * El filtrado se realiza durante la etapa de ensamblaje para que los dos no compartan los mismos datos para evitar la contaminación mutua.
      */
     val contextCheckpointBoundaryId: String? = null,
-    /** v2.x: 累计并入摘要的消息条数（0 = 未知/旧检查点，分隔线不显示条数）。 */
+    /** v2.x: El número acumulado de mensajes incorporados al resumen (0 = desconocido/Para los puntos de control antiguos, la línea divisoria no muestra el número de líneas). */
     val contextCheckpointTotalCovered: Int = 0,
     /**
-     * v1.0.47: Token 估算开关(默认关闭)。
+     * v1.0.47: Token Cambio de estimación(Desactivado de forma predeterminada).
      *
-     * 用户在设置页显式开启后,输入框显示当前输入 token 估算,
-     * AI 消息底部显示 completionTokens,顶部栏显示上下文占用。
-     * 关闭时不做任何 token 计算,避免 BPE 编码性能开销。
+     * Después de que el usuario abre explícitamente la página de configuración,El cuadro de entrada muestra la estimación del token de entrada actual.,
+     * AI Se muestra en la parte inferior del mensaje. completionTokens,La barra superior muestra la ocupación del contexto.
+     * No se realiza ningún cálculo de token al cerrar,Evite la sobrecarga de rendimiento de codificación BPE.
      */
     val tokenEstimateEnabled: Boolean = false,
-    /** v1.0.47 P5-2: 长文本粘贴转文件开关(默认开启)。 */
+    /** v1.0.47 P5-2: Cambio de pegado de texto largo a archivo(Habilitado por defecto). */
     val pasteAsFileEnabled: Boolean = true,
-    /** v1.0.47 P5-2: 长文本粘贴转文件阈值(字符数)。 */
+    /** v1.0.47 P5-2: Umbral para pegar y convertir texto largo en archivos(Número de caracteres). */
     val pasteAsFileThreshold: Int = 2000,
-    /** v1.0.47 P5-3: Token 计数菜单是否展开。仅 tokenEstimateEnabled=true 时可触发。 */
+    /** v1.0.47 P5-3: Token Si se expande el menú de conteo. solo tokenEstimateEnabled=true se puede activar cuando. */
     val tokenCountVisible: Boolean = false,
-    /** v1.0.47 P5-3: Token 计数快照(打开菜单时计算一次,避免每次按键重算 BPE)。 */
+    /** v1.0.47 P5-3: Token contar instantánea(Calculado una vez cuando se abre el menú.,Evite volver a calcular cada pulsación de tecla BPE). */
     val tokenSnapshot: TokenCountSnapshot? = null,
-    // v0.45: 是否正在执行"更新记忆并压缩"。
-    // 手动压缩按钮点击后置 true,完成后置 false。UI 据此显示转圈 + 禁用按钮。
-    /** v0.39: 深度思考开关(聊天时临时启用 HIGH 推理,覆盖助手默认 reasoningLevel)。 */
+    // v0.45: ¿Se está ejecutando?"Actualizar memoria y comprimir".
+    // Botón de compresión manual, haga clic en publicar true,Establecer falso después de completar.UI Esto muestra el círculo + botón de desactivar.
+    /** v0.39: interruptor de pensamiento profundo(Habilite temporalmente la inferencia ALTA mientras chatea,Anular el valor predeterminado del asistente reasoningLevel). */
     val deepThinkingEnabled: Boolean = false,
     /**
-     * v1.0.47 P5-6: 深度思考级别(仅在 [deepThinkingEnabled]=true 时生效)。
+     * v1.0.47 P5-6: nivel de pensamiento profundo(solo en [deepThinkingEnabled]=true eficaz cuando).
      *
-     * 默认 HIGH(向后兼容 v0.39 行为)。用户可点击输入栏级别胶囊在
-     * LOW → MEDIUM → HIGH → XHIGH 之间循环。
-     * 不支持推理的模型在 [ChatStreamCoordinator] 内自动降级为 AUTO,不会报错。
+     * Predeterminado HIGH(Compatible con versiones anteriores con el comportamiento v0.39). El usuario puede hacer clic en la cápsula de nivel de campo de entrada en
+     * LOW → MEDIUM → HIGH → XHIGH ciclo entre.
+     * Los modelos que no soportan la inferencia son [ChatStreamCoordinator] automáticamente degradado a AUTO,No se informará ningún error.
      */
     val deepThinkingLevel: ReasoningLevel = ReasoningLevel.HIGH,
-    /** Phase 8.4: Web 搜索配置(用于 Settings 页编辑)。 */
+    /** Phase 8.4: Web Configuración de búsqueda(Se utiliza para editar la página de configuración). */
     val webSearchConfig: WebSearchConfig = WebSearchConfig(),
-    /** Phase 8.5: 当前会话绑定的快捷消息列表(InputBar 上方 chip 行用)。 */
+    /** Phase 8.5: Lista de mensajes de acceso directo vinculados a la sesión actual(InputBar Se utiliza la línea de chip superior.). */
     val quickMessages: List<QuickMessageEntity> = emptyList(),
-    /** Phase 8.5: 当前激活的模式(用于 PromptInjection,default 表示无注入)。 */
+    /** Phase 8.5: Modo actualmente activo(usado para PromptInjection,default Indica que no hay inyección). */
     val currentMode: String = "default",
-    /** Phase 8.5: 全部 Lorebook 条目(管理页用)。 */
+    /** Phase 8.5: Todas las entradas del libro de historia(Para la página de gestión). */
     val lorebooks: List<LorebookEntity> = emptyList(),
-    /** ST-01: 世界书列表加载失败信息(null=正常)。 */
+    /** ST-01: Mensaje de error al cargar la lista mundial de libros(null=normales). */
     val lorebooksError: String? = null,
-    /** Phase 8.5: 全部 PromptInjection 条目(管理页用)。 */
+    /** Phase 8.5: Todas las entradas de PromptInjection(Para la página de gestión). */
     val promptInjections: List<PromptInjectionEntity> = emptyList(),
-    /** Phase 8.5: 全部 QuickMessage 条目(管理页用,含 global + 各 Assistant 绑定的)。 */
+    /** Phase 8.5: Todas las entradas de QuickMessage(Para la página de gestión,Contiene enlace global + cada asistente). */
     val allQuickMessages: List<QuickMessageEntity> = emptyList(),
-    /** v1.58: Prompt 模板列表(预置场景提示词,从 plus 菜单进入模板库选择)。 */
+    /** v1.58: Prompt Lista de plantillas(Palabras de indicación de escena preestablecidas,Ingrese a la selección de la biblioteca de plantillas desde el menú más). */
     val promptTemplates: List<io.zer0.muse.data.prompttemplate.PromptTemplate> = emptyList(),
-    /** Phase 8.7: TTS 是否正在朗读(用于 InputBar 禁用/MessageBubble 高亮)。 */
+    /** Phase 8.7: TTS ¿Estás leyendo en voz alta?(para InputBar deshabilitado/MessageBubble Resaltar). */
     val isSpeaking: Boolean = false,
-    /** Phase 8.7: 正在朗读的消息 id(null 表示无)。 */
+    /** Phase 8.7: Mensaje leído en voz alta id(null significa ninguno). */
     val speakingMessageId: Uuid? = null,
-    // Phase 8.8: 任务卡映射(assistant 消息 id → TaskCardData),工具调用计划展示。
-    /** v1.55: Agent 工作流计划映射(planId → AgentPlan),结构化任务规划展示。 */
+    // Phase 8.8: Mapeo de tarjetas de tareas(assistant noticias id → TaskCardData),Visualización del plan de llamadas de herramientas.
+    /** v1.55: Agent Mapeo del plan de flujo de trabajo(planId → AgentPlan),Presentación estructurada de planificación de tareas. */
     val agentPlans: Map<String, io.zer0.muse.ui.taskcard.AgentPlan> = emptyMap(),
-    /** Phase 9.3 (M2): ASR 配置(provider/apiKey/model)。 */
+    /** Phase 9.3 (M2): ASR Configuración(provider/apiKey/model). */
     val asrConfig: io.zer0.muse.asr.AsrConfig = io.zer0.muse.asr.AsrConfig(),
-    /** 阶段 5: 全部已配置 Provider(底部模型切换面板用)。 */
+    /** Etapa 5: Todo configurado Provider(Se utiliza el panel de conmutación del modelo inferior.). */
     val providers: List<io.zer0.ai.core.ProviderConfig> = emptyList(),
-    /** 阶段 5: 当前激活 Provider id。 */
+    /** Fase 5: Identificación del proveedor actualmente activado. */
     val activeProviderId: String? = null,
-    /** 阶段 5: 当前选中模型 id(null 表示回退到激活 Provider 的首个模型)。 */
+    /** Etapa 5: modelo actualmente seleccionado id(null Representa un respaldo al primer modelo que activó el Proveedor.). */
     val selectedModelId: String? = null,
-    /** v1.60-A: 工具模型 id(工具调用轮次使用,null 表示沿用主对话模型)。 */
+    /** v1.60-A: modelo de herramienta id(Uso de la ronda de llamadas de herramientas,null Indica que el modelo de diálogo principal se hereda.). */
     val toolModelId: String? = null,
-    /** v0.31: 聊天行为偏好(从设置读取,UI 据此控制渲染与交互)。 */
+    /** v0.31: Preferencias de comportamiento en el chat(Leer desde la configuración,UI Controle el renderizado y la interacción en consecuencia). */
     val chatPreferences: io.zer0.muse.data.ChatPreferences = io.zer0.muse.data.ChatPreferences(),
-    /** v0.32: 分享模板(从设置读取,exportSessionAsMarkdown 据此过滤内容)。 */
+    /** v0.32: Compartir plantilla(Leer desde la configuración,exportSessionAsMarkdown Filtrar contenido según esto). */
     val shareTemplate: io.zer0.muse.data.ShareTemplateConfig = io.zer0.muse.data.ShareTemplateConfig(),
-    /** v0.33: 媒体配置(从设置读取,录音/TTS 据此控制采样率/语速/音高/语言/输出方式)。 */
+    /** v0.33: configuración de medios(Leer desde la configuración,Grabación/TTS Controle la frecuencia de muestreo en consecuencia/velocidad al hablar/tono/Idioma/Modo de salida). */
     val mediaConfig: io.zer0.muse.data.MediaConfig = io.zer0.muse.data.MediaConfig(),
     /**
-     * v2.3: 流式结束后填充的本次回复性能摘要,UI 可以在 MessageBubble 底部显示。
+     * v2.3: Resumen de rendimiento de esta respuesta completado después de que finaliza la transmisión,UI Se puede mostrar en la parte inferior de MessageBubble.
      *
-     * 格式:"模型:xxx | 耗时:xxms | TTFT:xxms | 速率:xx tok/s | 字符:xx | 工具调用:N | 轮次:N"。
-     * 仅 debugMode=true 时填充,否则为 null。每次 launchStream 启动时重置。
+     * Formato:"modelo:xxx | Consume mucho tiempo:xxms | TTFT:xxms | tarifa:xx tok/s | personaje:xx | llamada de herramienta:N | rondas:N".
+     * solo debugMode=true llenar cuando,En caso contrario nulo. Restablecer cada vez que se inicia launchStream.
      */
     val debugInfo: String? = null,
     /**
-     * v0.51: 一次性 Toast 提示(模型切换等场景)。
+     * v0.51: Recordatorio de brindis único(Escenarios como el cambio de modelo.).
      *
-     * 用 Toast 而非 Snackbar:Snackbar 通道已被 [errors] 占用,模型切换提示不应被错误
-     * 消息挤掉,所以走独立 Toast 通道。UI 用 LaunchedEffect 观察本字段,非空时弹 Toast
-     * 并立即调 [ChatViewModel.clearToast] 清空(避免重组时重复弹)。
+     * Utilice Toast en lugar de Snackbar: el canal Snackbar ha sido [errors] ocupar,Las indicaciones de cambio de modelo no deben ser incorrectas.
+     * Noticias exprimidas,Así que tome el pasillo independiente de Toast.UI Utilice LaunchedEffect para observar este campo,bomba no vacía Toast
+     * y ajustar inmediatamente [ChatViewModel.clearToast] Borrar(Evite repetidos bombardeos durante la reorganización.).
      */
     val toast: String? = null,
-    /** v1.25: 多 Agent 协作配置(团队列表与总开关)。 */
+    /** v1.25: Configuración de colaboración multiagente(Lista de equipos y cambio maestro). */
     val multiAgentConfig: MultiAgentConfig = MultiAgentConfig(),
-    /** v1.43: 当前选中的产物卡片(用于 ArtifactViewerDialog 弹窗)。 */
+    /** v1.43: La tarjeta de producto seleccionada actualmente(Se utiliza para la ventana emergente ArtifactViewerDialog). */
     val selectedArtifact: io.zer0.muse.data.artifact.ArtifactEntity? = null,
-    /** v1.45: 列表滚动位置缓存(切页/后台后恢复,避免回到顶端)。 */
+    /** v1.45: Lista de caché de posición de desplazamiento(Cortar páginas/Reanudar después del fondo,evitar volver al principio). */
     val listFirstVisibleItemIndex: Int = 0,
     val listFirstVisibleItemScrollOffset: Int = 0,
     /**
-     * v2.2.1: Agent 页面(agent 模式)独立的滚动位置缓存。
+     * v2.2.1: Agent Página(agent modo)Caché de posición de desplazamiento independiente.
      *
-     * 普通会话维持"跟随最后一条消息";Agent 页面返回时恢复用户离开前停留的位置。
-     * agentListFirstVisibleItemIndex < 0 表示"未记录",进入时回落到列表底部。
+     * Mantenimiento normal de la sesión."seguir el último mensaje";Agent Cuando la página regrese, restablezca la posición donde dejó el usuario antes de irse.
+     * agentListFirstVisibleItemIndex < 0 expresar"No registrado",Vuelva al final de la lista al ingresar.
      */
     val agentListFirstVisibleItemIndex: Int = -1,
     val agentListFirstVisibleItemScrollOffset: Int = 0,
-    /** v2.2.1: agent 滚动缓存归属的会话 id(会话变化时缓存失效,回落到列表底部)。 */
+    /** v2.2.1: agent Sesiones de propiedad de caché rodante id(Invalidación de caché cuando cambia de sesión,Volver al final de la lista). */
     val agentScrollOwnerSessionId: String? = null,
-    /** v1.45: 消息级展开状态缓存(mood/reasoning 折叠状态不因切页丢失)。 */
+    /** v1.45: Caché de estado de expansión a nivel de mensaje(mood/reasoning El estado plegado no se pierde debido al corte de página.). */
     val messageExpandedStates: Map<String, MessageExpandedState> = emptyMap(),
-    /** v1.53-A1: 是否还有更早的历史消息可加载(上滑加载更多用)。 */
+    /** v1.53-A1: ¿Hay algún mensaje histórico anterior que se pueda cargar?(Desliza hacia arriba para cargar más). */
     val hasMoreHistory: Boolean = false,
-    /** v1.53-A1: 是否正在加载更多历史消息(防止重复触发)。 */
+    /** v1.53-A1: Está cargando más mensajes históricos.(Prevenir disparos repetidos). */
     val isLoadingMore: Boolean = false,
     /**
-     * v1.53-A1: 最近一次"加载更多"插入的历史条数。
+     * v1.53-A1: más reciente"cargar más"El número de elementos del historial insertados.
      *
-     * UI 监听该字段变化(>0)后,通过 [listState.scrollToItem] 跳过新插入的条数,
-     * 保持用户视觉位置不跳动(原来在顶部的消息现在在该 index),然后调
-     * [ChatViewModel.clearHistoryLoadCount] 清空。
+     * UI Monitorear los cambios en este campo.(>0)después,Pase [listState.scrollToItem] Omitir la cantidad de elementos recién insertados,
+     * Evita que la posición visual del usuario salte(El mensaje que estaba en la parte superior ahora está en la parte superior. index),Luego ajuste
+     * [ChatViewModel.clearHistoryLoadCount] Vacío.
      */
     val lastHistoryLoadCount: Int = 0,
-    // v1.94: 当前会话的工具调用记录(用于 InputBar 动态胶囊展示)。
-    /** v2.3: 任务模型路由开关(开启后根据输入内容自动推荐模型)。 */
+    // v1.94: Registro de llamadas de herramientas para la sesión actual(Se utiliza para la visualización de cápsulas dinámicas de InputBar).
+    /** v2.3: Conmutador de enrutamiento del modelo de tarea(Cuando está habilitado, los modelos se recomiendan automáticamente según el contenido de entrada.). */
     val taskRoutingEnabled: Boolean = false,
-    // 待审批的工具调用列表(ToolApprovalCard 用)。
-    /** P3: 当前会话的工具权限模式(TRUSTED/ASK/STRICT),默认 ASK。 */
+    // Lista de convocatorias de herramientas pendientes de aprobación(ToolApprovalCard usar).
+    /** P3: Modo de permiso de herramienta para la sesión actual(TRUSTED/ASK/STRICT),PREGUNTAR por defecto. */
     val sessionPermissionMode: SessionPermissionMode = SessionPermissionMode.ASK,
     /**
-     * v1.0.16: 本次应用开启期间批准全部工具调用(内存态,不持久化)。
+     * v1.0.16: Aprobar todas las llamadas a herramientas durante la apertura de esta aplicación(estado de memoria,No persistente).
      *
-     * 用户在 ToolApprovalCard 勾选"本次开启期间批准全部工具"后置 true,
-     * 之后所有工具调用直接 Auto 执行,不再弹审批卡片。
-     * 应用冷启动后 ChatUiState 重建,自动回到 false。
+     * El usuario comprueba la ToolApprovalCard"Aprobar todas las herramientas durante esta apertura"trasero true,
+     * Todas las llamadas a herramientas posteriores se ejecutan directamente en Auto,No más tarjetas de aprobación.
+     * Reconstrucción de ChatUiState después del inicio en frío de la aplicación,Devuelve falso automáticamente.
      */
     val appRunAllowAllTools: Boolean = false,
     /**
-     * F-4: /pin 置顶的消息文本(内存态,不持久化)。
+     * F-4: /pin Texto del mensaje fijado(estado de memoria,No persistente).
      *
-     * null = 未置顶。值为最后一条用户消息的正文,渲染为消息列表顶部的置顶横幅;
-     * /pin 再次置顶同一条消息时清空(取消置顶)。切换会话后由 switchSession 清空。
+     * null = No fijado. El valor es el texto del último mensaje del usuario.,Representado como un banner adhesivo en la parte superior de la lista de mensajes.;
+     * /pin Borrar al volver a fijar el mismo mensaje(Desanclar). Borrado por switchSession después de cambiar de sesión.
      */
     val pinnedMessageContent: String? = null,
 ) {
@@ -717,7 +717,7 @@ class ChatUiState(
     val isSessionLocked: Boolean get() = agentState.isSessionLocked
     val agentModeHint: String? get() = agentState.agentModeHint
 
-    /** v0.49: 向后兼容 — 现有读 state.error 的地方取第一条错误消息。 */
+    /** v0.49: compatible con versiones anteriores — El primer mensaje de error se obtiene desde donde se lee actualmente state.error. */
     val error: String? get() = errors.firstOrNull()?.message
 
     fun copy(
@@ -998,94 +998,94 @@ data class ToolCallRecord(
     val terminationReason: String? = null,
 )
 
-/** 待审批的工具调用(ToolApprovalCard 用)。 */
+/** Llamadas de herramientas pendientes de aprobación(ToolApprovalCard usar). */
 
 data class PendingToolApproval(
     val toolCallId: String,
     val toolName: String,
     val argumentsPreview: String,
-    /** 完整参数（已解析），供审批卡片展开查看，不截断。 */
+    /** Parámetros completos (analizados) para que la tarjeta de aprobación se expanda y se vea sin truncarla. */
     val argumentsFull: Map<String, Any?> = emptyMap(),
     val alwaysAllow: Boolean = false,
-    /** v1.0.16: 本次开启期间批准全部工具(内存态,不持久化) */
+    /** v1.0.16: Aprobar todas las herramientas durante esta apertura(estado de memoria,No persistente) */
     val appRunAllowAll: Boolean = false,
     /**
-     * v1.x: 用户在审批卡片中选择的参考图(data URI 格式,如 "data:image/jpeg;base64,...")。
+     * v1.x: La imagen de referencia seleccionada por el usuario en la tarjeta de aprobación.(data URI Formato,Como por ejemplo "data:image/jpeg;base64,...").
      *
-     * 仅对 generate_image 等支持参考图的工具有效;批准后通过
-     * [ToolApprovalState.Approved.argOverrides] 注入工具执行参数(reference_image 键)。
-     * LLM 自身无法访问用户本地相册,故本字段是图生图参考图的主要来源。
+     * Solo válido para herramientas que admiten imágenes de referencia como generate_image;Pasar después de la aprobación
+     * [ToolApprovalState.Approved.argOverrides] Parámetros de ejecución de la herramienta de inyección(reference_image clave).
+     * LLM No se puede acceder al álbum de fotos local del usuario,Por lo tanto, este campo es la principal fuente de imágenes de referencia para realizar dibujos.
      */
     val referenceImageOverride: String? = null,
 )
 
 /**
- * v1.45: 单条消息的 UI 展开状态缓存。
+ * v1.45: Caché de estado de expansión de la interfaz de usuario para un solo mensaje.
  *
- * 用 null 表示"尚未被用户手动切换过,使用 chatPreferences 中的默认值"。
+ * Representado por nulo"No ha sido cambiado manualmente por el usuario,Utilice valores predeterminados de chatPreferences".
  */
 data class MessageExpandedState(
     val isMoodExpanded: Boolean? = null,
     val isReasoningExpanded: Boolean? = null,
     val isReflectionExpanded: Boolean? = null,
-    /** v2.4.6: 译文块展开状态。 */
+    /** v2.4.6: Estado expandido del bloque de traducción. */
     val isTranslationExpanded: Boolean? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 /**
- * 聊天页 ViewModel — 整个 App 的核心业务中枢。
+ * pagina de chat ViewModel — El centro comercial principal de toda la aplicación.
  *
- * 职责:
- *  - 会话/消息的加载、发送、流式接收、停止、重试、编辑、删除
- *  - 多模态:文本 + 图片(用户拍照/相册 + AI 生成图)+ 附件(文档 OCR 解析)
- *  - 工具调用:Skill 系统(9 个内置实现 + 用户导入 .skill.json)+ MCP 动态工具
- *  - 上下文管道:6 步 Transformer 顺序处理(Memory → Time → Lorebook → PromptInjection → Template → ThinkTag/MoodTag → 压缩)
- *  - 系统提示组装:SystemPromptAssembler 把 Assistant 配置 + 用户画像 + 记忆组合成最终 system prompt
- *  - Web 搜索:深思考开关开启时,LLM 自主决定何时调用 web_search/web_fetch
- *  - 深思考:开关切换 ReasoningLevel.HIGH(8000 tokens 预算)
- *  - TTS:流式生成完成后可触发系统 TTS 播报
- *  - 通知:流式启动/进度/完成/错误/停止处调用 MuseNotificationManager
+ * Responsabilidades:
+ *  - sesión/Carga, envío, recepción de streaming, detención, reintento, edición y eliminación de mensajes
+ *  - multimodal:texto + imagen(El usuario toma fotos/Álbum de fotos + imagen generada por IA)+ Accesorios(Análisis de documentos OCR)
+ *  - llamada de herramienta:Skill sistema(9 implementación incorporada + importación de usuarios .skill.json)+ MCP herramientas dinámicas
+ *  - tubería de contexto:6 Procesamiento secuencial del transformador de paso(Memory → Time → Lorebook → PromptInjection → Template → ThinkTag/MoodTag → Compresión)
+ *  - Montaje de indicaciones del sistema:SystemPromptAssembler Combine la configuración del Asistente + retrato de usuario + memoria en la final system prompt
+ *  - Web Buscar:Cuando se activa el interruptor del pensamiento profundo,LLM Decide de forma independiente cuándo llamar web_search/web_fetch
+ *  - Piensa profundamente:interruptor de conmutación ReasoningLevel.HIGH(8000 tokens presupuesto)
+ *  - TTS:Una vez completada la generación de la transmisión, se puede activar el informe TTS del sistema.
+ *  - Notificación:Inicio de transmisión/Progreso/Completo/error/llamar a la parada MuseNotificationManager
  *
- * 状态管理:单一 [state] StateFlow,UI 通过 collectAsStateWithLifecycle 订阅。
- * 协程:所有网络/DB 操作用 viewModelScope,工具调用有 2 分钟超时([TOOL_TIMEOUT_MS])。
+ * Gestión de estado:soltero [state] StateFlow,UI Suscríbase a través de CollectAsStateWithLifecycle.
+ * corrutina:Todas las redes/DB Para operación viewModelScope,Las llamadas a herramientas tienen un tiempo de espera de 2 minutos([TOOL_TIMEOUT_MS]).
  */
-// i18n 后续提取路线图(整体迁移时统一处理,本处暂缓)— 本 ViewModel 已注入
-// appContext(见下方构造函数),后续可用 appContext.getString(R.string.xxx) 或
-// ErrorMessage.toLocalizedString(appContext) 替换以下区域的中文字符串:
+// i18n Hoja de ruta de extracción posterior(Procesamiento unificado durante la migración general,Este departamento suspende)— Este ViewModel ha sido inyectado.
+// appContext(Ver constructor abajo),Disponible más tarde appContext.getString(R.string.xxx) o
+// ErrorMessage.toLocalizedString(appContext) Reemplace la cadena china en las siguientes áreas:
 // MuseToast.show / reportError / addError / errors.emit / toast /
-// fetchModelsError / 各 ChatError.message / 通知文本 / 步骤进度文案 / 导出 markdown 标签等。
-// Logger 日志/TAG/LLM 提示词不提取。
-// @REFACTOR: 建议拆分的子组件
-//   - ChatSessionManager: 会话创建/切换/归档逻辑
-//   - ChatStreamOrchestrator: 流式请求/重连/超时
-//   - ChatToolDispatcher: ToolCall 路由与执行
-//   - ChatContextController: 上下文管理与压缩
-//   - ChatAudioController: TTS/ASR 状态管理
-//   - ChatErrorHandler: 错误分类与用户提示
+// fetchModelsError / Cada ChatError.message/texto de notificación/copia de progreso de paso/etiqueta de descuento de exportación, etc.
+// Logger Iniciar sesión/TAG/LLM Las palabras rápidas no se extraen.
+// @REFACTOR: Subcomponentes recomendados para dividir
+//   - ChatSessionManager: creación de sesión/cambiar/Lógica de archivo
+//   - ChatStreamOrchestrator: Solicitudes de transmisión/Reconectar/tiempo de espera
+//   - ChatToolDispatcher: ToolCall enrutamiento y ejecución
+//   - ChatContextController: Gestión y compresión del contexto.
+//   - ChatAudioController: TTS/ASR Gestión de estado
+//   - ChatErrorHandler: Clasificación de errores y mensajes de usuario
 
 /**
- * v1.131: 剥离 @文档名 标记的正则 — 文件级常量,避免每次 [buildWebSearchQuery] 调用都新建。
+ * v1.131: Elimina la expresión regular de la etiqueta de nombre @document — Constantes de nivel de archivo,evitar cada vez [buildWebSearchQuery] Todas las llamadas son de nueva creación.
  *
- * 用于在 web 搜索前清理 user query 中的 @mention(知识库引用语义),
- * 防止其污染搜索关键词。
+ * Se utiliza para limpiar las consultas de los usuarios antes de las búsquedas web. @mention(Semántica de referencia de la base de conocimientos.),
+ * Evite que contamine las palabras clave de búsqueda.
  */
 private val KNOWLEDGE_MENTION_REGEX = Regex("@[^\\s@]+")
 
 
-/** R-TEST-06: 发送守卫纯逻辑（防空消息/流式中/Agent 会话创建重入）。 */
+/** R-TEST-06: Enviar guardia pura lógica (mensaje de defensa aérea/Transmisión/Agent Reentrada de creación de sesión). */
 internal fun canStartGeneration(text: String, images: List<String>, isStreaming: Boolean, isCreatingAgentSession: Boolean): Boolean =
     (text.isNotBlank() || images.isNotEmpty()) && !isStreaming && !isCreatingAgentSession
 
-/** R-TEST-06: 发送前合并待发送文档内容与用户输入(文档文本 + 用户输入)。 */
+/** R-TEST-06: Fusionar el contenido del documento que se enviará con la entrada del usuario antes de enviarlo(Texto del documento + entrada del usuario). */
 internal fun buildSendText(
     rawText: String,
     documentContents: List<String>,
     budget: io.zer0.muse.context.ContextBudget = io.zer0.muse.context.ContextBudget(),
 ): String {
     val docText = documentContents.joinToString("\n\n---\n\n")
-    // M4.3: 附件正文受统一 ContextBudget 上限约束(保留头部,截断可诊断);
-    // 用户输入在拼接顺序的最后,不会被附件截断吞掉。
+    // M4.3: El texto adjunto está sujeto al límite superior unificado de ContextBudget.(mantener el encabezado,El truncamiento es diagnóstico);
+    // La entrada del usuario está al final de la secuencia de empalme.,No será truncado ni absorbido por archivos adjuntos.
     val clampedDoc = budget.clampText(io.zer0.muse.context.ContextSection.ATTACHMENT_TEXT, docText)
     return when {
         documentContents.isEmpty() -> rawText
@@ -1094,22 +1094,22 @@ internal fun buildSendText(
     }
 }
 
-/** R-TEST-06: 仅当非流式、最后一条为带 [已中断] 标记的助手消息时才允许续写。 */
+/** R-TEST-06: Sólo si no es streaming, el último es con [interrumpido] La continuación solo está permitida si el mensaje del asistente marcado está marcado. */
 internal fun canContinueGeneration(isStreaming: Boolean, lastMessage: UIMessage?): Boolean = !isStreaming && lastMessage != null &&
     lastMessage.role == MessageRole.ASSISTANT &&
-    lastMessage.content.contains("[已中断]")
+    lastMessage.content.contains("[interrumpido]")
 
-/** R-TEST-06: 去掉 [已中断] 尾部标记,保留断点前内容。 */
-internal fun resumeFromInterrupted(content: String): String = content.removeSuffix("\n\n[已中断]").removeSuffix("[已中断]")
+/** R-TEST-06: eliminar [interrumpido] marca de cola,Mantenga el contenido antes del punto de interrupción. */
+internal fun resumeFromInterrupted(content: String): String = content.removeSuffix("\n\n[interrumpido]").removeSuffix("[interrumpido]")
 
 /**
- * C-11: 计算 [a] 与 [b] 的最长公共前缀长度(按 Unicode 代码单位)。
+ * C-11: calcular [a] con [b] La longitud de prefijo común más larga de(Por unidad de código Unicode).
  *
- * 纯函数,供断点续传去重(duplicateRemaining)使用:当 provider 改写/补全返回内容时,
- * 返回内容与已显示内容前缀并非逐字一致(原精确 startsWith 匹配会整体漏去重,
- * 导致重复/跳变)。以 LCP 判定重叠量,仅跳过重叠部分,保留改写后的新内容。
+ * función pura,Proporciona transmisión reanudable para eliminar duplicados(duplicateRemaining)uso:Cuando el proveedor anula/Al completar el contenido devuelto,
+ * El contenido devuelto no coincide palabra por palabra con el prefijo del contenido mostrado.(La coincidencia original exacta de startWith perderá los duplicados por completo.,
+ * conducir a la duplicación/saltar). Utilice LCP para determinar la cantidad de superposición,Saltar sólo las partes superpuestas,Conserve el nuevo contenido después de reescribirlo.
  *
- * 例:longestCommonPrefix("今天天气很好", "今天天下雨") == 3(跳过"今天天")。
+ * Ejemplo:longestCommonPrefix("El clima esta muy bueno hoy", "esta lloviendo hoy") == 3(saltar"hoy dia").
  */
 internal fun longestCommonPrefix(a: String, b: String): Int {
     val max = minOf(a.length, b.length)
@@ -1119,14 +1119,14 @@ internal fun longestCommonPrefix(a: String, b: String): Int {
 }
 
 /**
- * 续传去重的保守裁剪策略。
+ * Estrategia de poda conservadora para la transmisión continua de duplicados.
  *
- * 只有两种情况可以证明 delta 是重放内容：
- * 1. 整个 delta 都是旧前缀；
- * 2. delta 覆盖了剩余旧前缀，后面才是新内容。
+ * Solo hay dos casos en los que delta es contenido de repetición:
+ * 1. Todo el delta es un prefijo antiguo;
+ * 2. delta Se tratan los prefijos antiguos restantes, seguidos del contenido nuevo.
  *
- * 若 delta 在旧前缀中途分叉，公共前缀可能只是新内容的巧合开头；
- * 此时返回 0，保留整段 delta，避免把用户真正的新首字吞掉。
+ * Si delta se bifurca a mitad del prefijo antiguo, el prefijo común puede ser simplemente un comienzo coincidente del nuevo contenido;
+ * En este momento, se devuelve 0 y se retiene todo el delta para evitar tragarse la nueva primera letra real del usuario.
  */
 internal fun resumeOverlapToDrop(duplicateRemaining: String, delta: String): Int {
     if (duplicateRemaining.isEmpty() || delta.isEmpty()) return 0
@@ -1138,15 +1138,15 @@ internal fun resumeOverlapToDrop(duplicateRemaining: String, delta: String): Int
 }
 
 /**
- * v2.0: 续传时判定 provider 是否“从头重写” — 原文已被大面积消费(重叠量 >= 原文一半且至少 6 字符)
- * 后出现分叉,说明新一轮是重新生成的完整回复,应用新文替换旧内容而不是追加,避免重复拼接。
+ * v2.0: Determinar si el proveedor es“reescribir desde cero” — El texto original ha sido ampliamente consumido.(Cantidad de superposición >= La mitad del texto original y al menos 6 caracteres.)
+ * puntas abiertas,Respuesta completa indicando que la nueva ronda es una regeneración.,Aplicar texto nuevo para reemplazar contenido antiguo en lugar de agregarlo,Evite empalmes repetidos.
  */
 internal fun shouldReplaceOnResumeRewrite(duplicateTotal: Int, consumedChars: Int, minOverlap: Int = 6): Boolean =
     duplicateTotal > 0 && consumedChars >= maxOf(minOverlap, duplicateTotal / 2)
 
 /**
- * v2.0: Done 阶段兑底 — 新一轮尝试的文本把原文开头片段写回来了时,
- * 同样视为“从头重写”,应替换旧内容(旧文+新文重复拼接的最后一层保护)。
+ * v2.0: Done fondo del escenario — Cuando se hizo una nueva ronda de intentos de texto para volver a escribir el fragmento inicial del texto original,,
+ * También considerado como“reescribir desde cero”,El contenido antiguo debe ser reemplazado.(artículo antiguo+La capa final de protección para empalmes repetidos de artículos nuevos.).
  */
 internal fun shouldReplaceOnResumeSupersede(original: String?, attemptText: String?, currentContent: String): Boolean {
     if (original.isNullOrEmpty() || attemptText.isNullOrEmpty()) return false
@@ -1156,19 +1156,19 @@ internal fun shouldReplaceOnResumeSupersede(original: String?, attemptText: Stri
     return !currentContent.contentEquals(attemptText)
 }
 
-/** [shouldReplaceOnResumeSupersede] 比对的原文头部片段长度。 */
+/** [shouldReplaceOnResumeSupersede] La longitud del fragmento de encabezado original comparado. */
 private const val SUPERSEDE_HEAD_CHARS = 6
 
 /**
- * C-12: 判定某轮是否可用 [toolModel] 作为请求模型。
+ * C-12: Determinar si hay una ronda disponible [toolModel] como modelo de solicitud.
  *
- * 工具轮(上一轮结果含 toolCalls)默认走 toolModel;但当本轮历史仍含图片、
- * 而 [toolModel] 不支持视觉输入时,继续把图发给不支持视觉的模型会导致 HTTP 400,
- * 此时应回退主模型(其视觉能力已在 prepareVisionContext 判定/降级)。
- * 未配置 toolModel 或历史无图时返回 true,保持默认行为。
+ * rueda de herramientas(Los resultados de la ronda anterior incluyen toolCalls)Ir por defecto toolModel;Pero cuando esta ronda de la historia todavía contiene imágenes,
+ * y [toolModel] Cuando la entrada visual no es compatible,Continuar enviando imágenes a modelos que no admiten la visión resultará en HTTP 400,
+ * En este punto, el modelo principal debe retroceder.(Sus capacidades visuales se han determinado en prepareVisionContext./Rebajar).
+ * Devuelto cuando el modelo de herramienta no está configurado o el historial no tiene imagen true,Mantenga el comportamiento predeterminado.
  *
- * @param history 本轮将要发送的对话历史
- * @param toolModel 用户配置的工具模型(已增强识别能力)
+ * @param history El historial de conversaciones que se enviará en esta ronda.
+ * @param toolModel Modelo de herramienta configurable por el usuario(Se han mejorado las capacidades de reconocimiento.)
  */
 internal fun canUseToolModelForRound(history: List<UIMessage>, toolModel: Model): Boolean {
     if (toolModel.supportsVisionInput()) return true
@@ -1176,7 +1176,7 @@ internal fun canUseToolModelForRound(history: List<UIMessage>, toolModel: Model)
     return !hasImages
 }
 
-/** R-TEST-06: 重生成仅当非流式、有会话且当前用户变体可选时可用。 */
+/** R-TEST-06: La regeneración solo está disponible cuando no hay transmisión, con una sesión y la variante de usuario actual es seleccionable. */
 internal fun canRegenerate(isStreaming: Boolean, hasSession: Boolean, hasSelectedUserVariant: Boolean): Boolean =
     !isStreaming && hasSession && hasSelectedUserVariant
 
@@ -1194,14 +1194,14 @@ internal fun buildTranslationSourceText(message: UIMessage): String {
 
 internal fun effectiveChatSessionId(state: ChatUiState): String? = if (state.isAgentMode) state.agentSessionId else state.currentSessionId
 
-// 渐进式拆分阶段仍需平铺注入依赖；保持 Koin 参数顺序稳定，避免大范围行为变更。
+// La fase de división progresiva todavía requiere una inyección plana de dependencias; Mantenga estable el orden de los parámetros de Koin para evitar cambios de comportamiento a gran escala.
 @Suppress("LongParameterList")
 class ChatViewModel(
     private val chatService: ChatService,
     private val settings: SettingsRepository,
     private val memoryTicker: MemoryTicker,
     private val sessionRepository: SessionRepository,
-    // v2.x: 会话检查点读取器 —— 上下文组装时据此把"已压缩边界之前"的内容换成摘要
+    // v2.x: Lector de punto de control de sesión —— Al armar el contexto, el"Antes de los límites comprimidos"contenido en un resumen
     private val checkpointReader: io.zer0.memory.summary.ContextCheckpointReader,
     private val imageService: ImageService,
     private val videoGenerationService: io.zer0.ai.video.VideoGenerationService,
@@ -1216,174 +1216,174 @@ class ChatViewModel(
     private val ttsManager: TtsManager,
     private val skillRepository: io.zer0.muse.data.skill.SkillRepository,
     private val skillExecutor: io.zer0.muse.tools.SkillExecutor,
-    // v1.201: 委派暂停管理器 + 链路追踪器(与 SkillExecutor 共享同一 Koin single 实例)
+    // v1.201: Administrador de pausas delegado + rastreador de enlaces(Comparte la misma instancia única de Koin con SkillExecutor)
     private val delegationPauseManager: io.zer0.muse.tools.DelegationPauseManager,
     private val delegationChainTracker: io.zer0.muse.tools.DelegationChainTracker,
     private val agentRouter: AgentRouter,
     private val folderRepository: io.zer0.muse.data.session.FolderRepository,
     private val notificationManager: MuseNotificationManager,
-    // v0.30-a: 系统提示组装器(6 步工作流第 1 步)
+    // v0.30-a: Ensamblador de avisos del sistema(6 paso flujo de trabajo paso 1)
     private val systemPromptAssembler: io.zer0.muse.transformer.SystemPromptAssembler,
-    // v1.43: 应用级生成管理器(切页/后台保持生成)
+    // v1.43: Administrador de compilación a nivel de aplicación(Cortar páginas/Sigue generando en segundo plano)
     private val chatGenerationManager: ChatGenerationManager,
-    // v1.43: 产物仓库(会话内嵌产物卡片)
+    // v1.43: Almacén de productos(Tarjetas de productos durante la sesión)
     private val artifactRepository: ArtifactRepository,
-    // v1.43: 应用 Context,用于启动前台服务
+    // v1.43: Solicitud Context,Se utiliza para iniciar el servicio en primer plano.
     private val appContext: Context,
-    // v1.54: RAG 服务(知识库自动注入)
+    // v1.54: RAG servicio(Base de conocimientos inyección automática)
     private val ragService: io.zer0.muse.rag.RagService,
-    // v1.25: 视觉辅助桥接器(让纯文本模型通过视觉模型"看到"图片)
+    // v1.25: Puente de asistencia visual(Pasar un modelo de texto plano a través de un modelo visual"ver"fotos)
     private val visionBridge: io.zer0.muse.vision.VisionBridge,
-    // P2-4: 审计日志记录器(在消息发送入口记录用户发消息事件)
+    // P2-4: Registrador de auditoría(Registre eventos de mensajes de usuario en el portal de envío de mensajes)
     private val auditLogger: AuditLogger,
-    // P3: 会话级工具权限模式持久化
+    // P3: Persistencia del modo de permiso de herramienta a nivel de sesión
     private val sessionPermissionStore: SessionPermissionStore,
-    // v1.0.15: 网络状态监听器(StreamInterrupted 后等待网络恢复自动重连)
+    // v1.0.15: Oyente de estado de red(StreamInterrupted Luego espere a que la red se recupere y se vuelva a conectar automáticamente.)
     private val networkMonitor: NetworkMonitor,
-    // v2.1: 用户活跃度画像,用户发消息时记录活动 + 更新对话结束类型,驱动自适应主动消息调度
+    // v2.1: Retrato de actividad del usuario,Registrar la actividad cuando el usuario envía un mensaje + actualizar el tipo de finalización de la conversación,Impulsar la programación de mensajes proactiva y adaptativa
     private val activityProfile: UserActivityProfile,
-    // v1.202: 异步委派结果回灌(订阅 completedTasks,把后台完成的子 agent 结果作为 interlude 注入主对话)
+    // v1.202: Comentarios sobre los resultados de la delegación asincrónica(Suscríbete completedTasks,Inyecte los resultados del subagente de la finalización en segundo plano en la conversación principal como interludio)
     private val deferredResultStore: io.zer0.muse.tools.DeferredResultStore,
-    // v1.202: 子 agent 线程管理器(暴露活跃子 agent 线程给 UI 展示)
+    // v1.202: Administrador de hilos de subagente(Exponer subprocesos de agentes secundarios activos a la visualización de la interfaz de usuario)
     private val subagentThreadStore: io.zer0.muse.data.subagent.SubagentThreadStore,
-    // v1.x: 会话级资源管理器(引用计数 + idle 清理)
+    // v1.x: Administrador de recursos a nivel de sesión(Recuento de referencias + limpieza inactiva)
     private val sessionManager: io.zer0.muse.session.ConversationSessionManager,
-    // P1-1: Hook 注册表(注入 ToolOrchestrator + 消息处理 Hook)
+    // P1-1: Hook Registro(Inject ToolOrchestrator + procesamiento de mensajes Hook)
     private val hookRegistry: io.zer0.muse.hook.HookRegistry? = null,
-    // v1.0.52 P2-3: AI 记忆自动保存(对话中实时提取实体/关系/合并/分类)
+    // v1.0.52 P2-3: AI Memoria guardada automáticamente(Extraiga entidades en tiempo real durante las conversaciones./relación/fusionar/Clasificación)
     private val memoryAutoSaveScheduler: io.zer0.memory.ai.MemoryAutoSaveScheduler? = null,
-    // B0-08: 里程碑检查器(生成结束后检查是否触发里程碑)
+    // B0-08: Comprobador de hitos(Una vez finalizada la compilación, verifique si se activa el hito.)
     private val milestoneChecker: MilestoneChecker? = null,
-    // B2-04: 统一由 Koin 注入 ToolOrchestrator(主会话/子代理共享审批链路)
+    // B2-04: La unidad es inyectada por Koin ToolOrchestrator(sesión principal/Enlace de aprobación compartido del subagente)
     private val toolOrchestrator: io.zer0.muse.tools.ToolOrchestrator,
-    // B2-04: 子代理审批路由(注册本实例为 delegate,子代理需审批时弹主会话审批卡)
+    // B2-04: Enrutamiento de aprobación de subagente(Registra esta instancia como delegate,Cuando el subagente necesita aprobación, aparece la tarjeta de aprobación de la sesión principal)
     private val toolApprovalRouter: io.zer0.muse.tools.ToolApprovalRouter,
-    /** P0 对话树选择快照存储(可为 null,测试环境不注入)。 */
+    /** P0 Árbol de diálogo para seleccionar almacenamiento de instantáneas(puede ser null,El entorno de prueba no inyecta). */
     private val treeSnapshotStore: ConversationTreeSnapshotStore? = null,
-    // v1.x: 会话级浏览器实例注册表(每个会话独立 WebView,删除会话时释放)
+    // v1.x: Registro de instancias de navegador a nivel de sesión(Independiente por sesión WebView,Liberado cuando se elimina la sesión)
     private val browserManagerRegistry: io.zer0.muse.tools.BrowserManagerRegistry? = null,
-    // v1.x: 工具配置存储(审批策略持久化) — Koin 注入单例,
-    // 消除直接 new 导致的 DataStore 同文件多实例崩溃
+    // v1.x: Almacenamiento de configuración de herramientas(Persistencia de la política de aprobación) — Koin Inyectar un singleton,
+    // Elimine el bloqueo de múltiples instancias de DataStore con el mismo archivo causado por nueva directa
     private val toolConfigStore: io.zer0.muse.tools.ToolConfigStore? = null,
-    /** MCP 注册表,用于在首条消息前等待助手绑定的 server 完成 tools/list。 */
+    /** MCP Registro,Se utiliza para esperar a que el servidor vinculado al asistente complete las herramientas/lista antes del primer mensaje. */
     private val mcpRegistry: io.zer0.muse.mcp.McpRegistry? = null,
-    /** 统一生成/工具执行资源注册表,用于按 session 取消和 late-result 诊断。 */
+    /** Generación unificada/Registro de recursos de ejecución de herramientas,Se utiliza para cancelación por sesión y diagnóstico de resultados tardíos. */
     private val executionRegistry: io.zer0.muse.session.SessionExecutionRegistry? = null,
     /**
-     * P2-23: 媒体生成工具实现(Koin single,与 ToolRegistrarBootstrapper 注册工具的是同一实例)。
+     * P2-23: Implementación de herramienta de generación de medios.(Koin single,Es la misma instancia que registra la herramienta con ToolRegistrarBootstrapper.).
      *
-     * 工具本体已在 App 启动时注册进 [ToolRegistry],本类只负责在初始化时安装会话投递宿主
-     * ([ChatMediaGenHost]),让 generate_image / generate_video / generate_qr_code 的结果
-     * 能写回"当前正在生成的助手消息"。测试环境不注入时为 null(宿主不安装,工具退化为
-     * 返回文件路径/URL)。
+     * La herramienta en sí se registró cuando se inició la aplicación. [ToolRegistry],Esta clase solo es responsable de instalar el host de entrega de sesiones durante la inicialización.
+     * ([ChatMediaGenHost]),dejar generate_image / generate_video / generate_qr_code el resultado
+     * puede volver a escribir"Mensaje del asistente que se está generando actualmente". Cuando el entorno de prueba no se inyecta, es null(El host no se instala,Las herramientas degeneran en
+     * Ruta del archivo de retorno/URL).
      */
     private val mediaGenTools: io.zer0.muse.tools.MediaGenToolsImpl? = null,
-    // v2.x: 委员会 — 从主对话随时召唤临时群聊讨论并把结论回灌(与群聊页共享同一调度器实例)
+    // v2.x: comité — Convoca un chat grupal temporal en cualquier momento desde la conversación principal para discutir y retroalimentar las conclusiones.(Comparta la misma instancia del programador con la página de chat grupal)
     private val groupChatScheduler: io.zer0.muse.schedule.GroupChatScheduler? = null,
     private val groupChatRepository: io.zer0.muse.data.groupchat.GroupChatRepository? = null,
     private val conversationSummaryManager: SessionSummaryManager? = null,
     /**
-     * v2.6.7: 关系仓库 —— 用户发消息时记录一次真实互动。
+     * v2.6.7: almacén de relaciones —— Graba una interacción real cuando un usuario envía un mensaje.
      *
-     * 之前 recordInteraction 只在小手机“AI 主动发私信”时调用一次，
-     * 用户在正常聊天里说的每句话都不更新亲密度与最后互动时间，
-     * 导致关系系统只在朋友圈那条路上活着。
+     * Anteriormente, recordInteraction solo estaba disponible en teléfonos pequeños.“AI Enviar mensajes privados de forma proactiva”Llamado una vez,
+     * Cada frase que dice el usuario en un chat normal no actualiza el nivel de intimidad ni el tiempo de la última interacción.
+     * Como resultado, el sistema de relaciones sólo vive en el círculo de amigos.
      *
-     * 放在参数表末尾（而非 activityProfile 旁边）：Koin 装配用位置传参，
-     * 中间插参数会让后续几十个 get() 整体错位。
+     * Al final de la lista de parámetros (no junto a ActivityProfile):Koin El ensamblaje utiliza parámetros posicionales para pasar,
+     * Insertar parámetros en el medio generará docenas de cambios posteriores. get() Desalineación general.
      */
     private val relationshipRepository: io.zer0.muse.data.relationship.AssistantRelationshipRepository? = null,
 ) : ViewModel(), ChatStateAccessor, io.zer0.muse.tools.ToolApprovalBridge {
-    // v1.0.54: autoSave 去重状态(30 秒内同会话只跑一次,防堆积)
-    // v1.0.54: autoSave 去重状态(30 秒内同会话只跑一次,防堆积)
+    // v1.0.54: autoSave Estado de deduplicación(30 Ejecute solo la misma sesión una vez por segundo,Antiacumulación)
+    // v1.0.54: autoSave Estado de deduplicación(30 Ejecute solo la misma sesión una vez por segundo,Antiacumulación)
     private var lastAutoSaveSessionId: String? = null
     private var lastAutoSaveAt: Long = 0L
 
-    /** 新旧链路适配层；默认仅在显式打开 shadow 开关时写入事件。 */
+    /** Capas de adaptación de enlaces nuevas y antiguas; De forma predeterminada, los eventos solo se escriben cuando el interruptor de sombra está activado explícitamente. */
     private val conversationService = ConversationService(sessionRepository)
     private val messageCommit = MessageCommit(sessionRepository)
 
     /**
-     * 记录不影响用户行为的 shadow 事件。
-     * CancellationException 必须继续上抛，避免诊断写入吞掉用户停止生成。
+     * Registre eventos ocultos que no afecten el comportamiento del usuario.
+     * CancellationException Se debe seguir lanzando para evitar que las escrituras de diagnóstico absorban la generación de paradas del usuario.
      */
     private suspend fun recordConversationShadow(event: ConversationEventDraft) = generationController.recordConversationShadow(event)
 
     companion object {
         /**
-         * v2.5.7: 模型未声明上下文窗口时的兜底值（token）。
+         * v2.5.7: El valor final cuando el modelo no declara una ventana de contexto (token).
          *
-         * 原为 32768，但对中转/随机路由模型（contextWindow=null）太小，
-         * 而真实历史 + system + 工具定义常远超 32K，导致误判超限。提到 128K（现代模型常见下限）。
+         * Originalmente 32768, pero para tránsito./Modelo de enrutamiento aleatorio (contextWindow=null) es demasiado pequeño,
+         * Sin embargo, la definición real de historial + sistema + herramienta a menudo excede con creces los 32K, lo que lleva a un error de cálculo al exceder el límite. Se menciona 128K (un límite inferior común para los modelos modernos).
          */
         private const val DEFAULT_CONTEXT_WINDOW_FALLBACK = 131_072
 
-        /** v0.47: 工具调用超时阈值(2 分钟),超时则终止,避免阻塞流式输出。 */
+        /** v0.47: Umbral de tiempo de espera de llamada de herramienta(2 minutos),Terminar después del tiempo de espera,Evite bloquear la salida de streaming. */
 
-        /** 审批卡不能无限期阻塞后台生成；超时按拒绝处理。 */
+        /** La tarjeta de aprobación no puede bloquear la generación en segundo plano indefinidamente; si caduca, se procesará como rechazado. */
 
-        /** v2.x 工具瘦身阶段1:粘性工具扫描的历史消息上限(从后往前)。 */
+        /** v2.x Etapa de adelgazamiento de herramientas.1:El límite superior de mensajes históricos escaneados por herramientas adhesivas(de atrás hacia adelante). */
         private const val STICKY_HISTORY_SCAN_MESSAGES = 50
 
-        /** v1.53-A1: 消息分页页大小(初始加载 + 上滑加载更多的窗口大小)。 */
+        /** v1.53-A1: Tamaño de página de paginación de mensajes(Carga inicial + deslizar hacia arriba para cargar más tamaños de ventana). */
         private const val MESSAGE_PAGE_SIZE = 50
 
         /**
-         * v2.5.3 (P3-3): 流式期间落盘节流阀值。
+         * v2.5.3 (P3-3): El umbral de estrangulamiento de la placa durante el modo de flujo.
          *
-         * 每个生成流对应一个会话，因此这两项即“按 session 批量 flush”的粒度：
-         * 累计新增内容少于 [PERSIST_CHAR_THRESHOLD] 字符、且距上次落盘不足
-         * [PERSIST_TIME_THRESHOLD_MS] 时跳过写盘，避免逐 chunk 放大写盘量。
+         * Cada flujo generado corresponde a una sesión, por lo que estos dos elementos son“Lote por sesión flush”Granularidad:
+         * El nuevo contenido acumulado es inferior a [PERSIST_CHAR_THRESHOLD] personajes, y no es suficiente desde la última colocación.
+         * [PERSIST_TIME_THRESHOLD_MS] La escritura en disco se omite para evitar amplificar el volumen de escritura en disco fragmento a fragmento.
          */
 
-        /** 自动压缩安全尾部：系统保留最近少量消息和完整工具轮次,用户无需选择条数。 */
+        /** Comprime automáticamente la cola de seguridad: el sistema retiene una pequeña cantidad de mensajes recientes y rondas completas de herramientas,Los usuarios no necesitan seleccionar la cantidad de elementos. */
 
-        /** v1.79 (L-CV1): 工具轮次上限读取失败时的回退值(正常路径由设置决定,0=无限制)。 */
+        /** v1.79 (L-CV1): Valor de reserva cuando falla la lectura del límite superior de ronda de herramienta(La ruta normal está determinada por la configuración.,0=Ilimitado). */
 
         /**
-         * v1.134 P1-1: 流式自动重试最大次数(NETWORK/RATE_LIMIT 错误)。
-         * v1.0.16: 从 2 提到 3,退避 3s/10s/30s,覆盖典型切后台时长(5-15s)。
+         * v1.134 P1-1: Número máximo de reintentos automáticos de transmisión(NETWORK/RATE_LIMIT error).
+         * v1.0.16: mencionado de 2 3,retirarse 3s/10s/30s,Cubre la duración típica de conmutación en segundo plano(5-15s).
          */
 
         /**
-         * v1.0.17: StreamInterrupted 智能续传等待网络恢复的超时时间(毫秒)。
+         * v1.0.17: StreamInterrupted Tiempo de espera para el currículum inteligente para esperar la recuperación de la red(milisegundos).
          *
-         * 网络中断后轮询 [NetworkMonitor.isOnline],最多等待 30s;
-         * 超时未恢复则降级为手动重试(保留部分内容 + isRecoverable)。
-         * 30s 覆盖典型切后台 / 网络切换时长(5-15s),避免无限等待。
+         * Encuesta después de un corte de red [NetworkMonitor.isOnline],la mayoría espera 30s;
+         * Si el tiempo de espera no se recupera, se reducirá a reintento manual.(Mantenga algo de contenido + isRecoverable).
+         * 30s Cubre la duración típica de conmutación en segundo plano/conmutación de red(5-15s),Evite esperar indefinidamente.
          */
 
-        /** v1.0.17: 等待网络恢复时的轮询间隔(毫秒)。 */
+        /** v1.0.17: Intervalo de sondeo mientras se espera la recuperación de la red(milisegundos). */
         private const val NETWORK_POLL_INTERVAL_MS = 2_000L
 
-        /** v1.200: 自动路由置信度阈值，低于此值仍走当前助手。 */
+        /** v1.200: Umbral de confianza del enrutamiento automático. Si el valor es inferior a este valor, se seguirá utilizando el asistente actual. */
         private const val AUTO_ROUTE_CONFIDENCE_THRESHOLD = 0.55f
-        // v1.80 (L-CV1): 流式/绘图/压缩相关魔法数字提取为常量
+        // v1.80 (L-CV1): transmisión/Dibujo/Números mágicos relacionados con la compresión extraídos como constantes
         /**
-         * 自动压缩的兜底触发比例（窗口未知或极小时的退化口径）。
+         * Relación de disparo inferior para compresión automática (calibre de degradación con ventana desconocida o extremadamente pequeña).
          *
-         * v2.x: 主口径改为"按窗口比例预留"（见 [shouldAutoCompress]，与
-         * [AUTO_COMPRESS_MIN_RESERVE_TOKENS] / [AUTO_COMPRESS_RESERVE_RATIO] 配套）。
-         * 固定 80% 对 200K 以上窗口的模型触发过晚：等占用到 80% 时，一轮工具循环
-         * 就可能在生成中途把窗口撞爆。
+         * v2.x: El calibre principal se cambia a"Reservado según proporción de ventana."(Ver [shouldAutoCompress], con
+         * [AUTO_COMPRESS_MIN_RESERVE_TOKENS] / [AUTO_COMPRESS_RESERVE_RATIO] coincidencia).
+         * Se corrigieron los activadores del 80% demasiado tarde para modelos con ventanas superiores a 200K: cuando el 80% está ocupado, un ciclo de herramienta
+         * Es posible bloquear la ventana durante la generación.
          */
         private const val AUTO_COMPRESS_TOKEN_RATIO = 0.8f
 
-        /** 自动压缩预留量的下限：窗口再小也要留出这么多 token 给输出与后续工具结果。 */
+        /** El límite inferior de la reserva de compresión automática: no importa cuán pequeña sea la ventana, se deben reservar tantos tokens para la salida y los resultados posteriores de la herramienta. */
         private const val AUTO_COMPRESS_MIN_RESERVE_TOKENS = 16_384
 
-        /** 自动压缩预留量占窗口的比例（大窗口下按比例留，避免固定值相对窗口太小）。 */
+        /** Comprime automáticamente la cantidad reservada como una proporción de la ventana (reserva proporcionalmente en ventanas grandes para evitar un valor fijo que sea demasiado pequeño en relación con la ventana). */
         private const val AUTO_COMPRESS_RESERVE_RATIO = 0.1
 
         /**
-         * 是否需要触发自动压缩（纯函数，便于单测锁定口径）。
+         * Si es necesario activar la compresión automática (función pura, conveniente para una sola prueba para bloquear el calibre).
          *
-         * 口径 = "占用越过 窗口 − 预留量"，预留量取 `max(16K, 10% 窗口)`：
-         *  - 窗口 ≤ 0（未知）或占用 ≤ 0（还没算出来）→ 不触发；
-         *  - 窗口小到连预留量都装不下（≤ 预留量）→ 退回固定 80% 比例，避免永远触发或永不触发。
+         * Calibre = "Ocupar al otro lado de la ventana − Monto reservado", se toma el importe reservado `max(16K, 10% ventana)`:
+         *  - ventana ≤ 0(desconocido) u ocupado ≤ 0(Aún no calculado)→ No activado;
+         *  - La ventana es tan pequeña que ni siquiera cabe en la cantidad reservada (≤ Monto reservado)→ Vuelva a una proporción fija del 80% para evitar que se active para siempre o nunca.
          *
-         * 为什么不用固定 80%：200K 窗口下 80% 意味着已经塞进 160K，留给"本轮输出 + 后续工具结果"
-         * 的空间只剩 40K，一轮工具循环就可能在中途撞爆窗口 —— 而中途没有压缩机会。
+         * ¿Por qué no arreglar el 80%?200K Una ventana inferior al 80% significa que se han saturado 160K, lo que deja"Resultado de esta ronda + resultados de herramientas posteriores"
+         * Solo quedan 40K de espacio y un ciclo de herramienta puede bloquear la ventana a mitad de camino. —— Y no hay posibilidad de compresor en el medio.
          */
         internal fun shouldAutoCompress(currentTokens: Int, maxTokens: Int): Boolean {
             if (maxTokens <= 0 || currentTokens <= 0) return false
@@ -1396,9 +1396,9 @@ class ChatViewModel(
         }
 
         /**
-         * v0.49 错误分类（纯函数，B4 补测提为 internal）。
-         * 优先走类型路径 (Provider 已抛 ProviderException)，否则字符串推断
-         * （inferFromMessage，Deprecated 兼容路径），都不命中 → UNKNOWN。
+         * v0.49 clasificación de errores (función pura,B4 La prueba complementaria se denomina interna).
+         * Priorizar la ruta de tipo (Provider arrojado ProviderException), de lo contrario inferencia de cadenas
+         * (inferFromMessage,Deprecated Ruta de compatibilidad), ninguno de ellos acertó → UNKNOWN.
          */
         internal fun classifyErrorTypeStatic(message: String, throwable: Throwable? = null): ChatErrorType {
             val providerError =
@@ -1407,11 +1407,11 @@ class ChatViewModel(
             return when (providerError) {
                 is ProviderError.Network -> ChatErrorType.NETWORK
                 is ProviderError.RateLimit -> ChatErrorType.RATE_LIMIT
-                // v1.0.1 (P4): 5xx 纳入 NETWORK(可重试),原落入 UNKNOWN 不重试
+                // v1.0.1 (P4): 5xx incorporar NETWORK(Se puede volver a intentar),El original cae en DESCONOCIDO sin volver a intentarlo
                 is ProviderError.ServerError -> ChatErrorType.NETWORK
                 is ProviderError.AuthError -> ChatErrorType.API_KEY
-                // v2.6.8: 余额不足归到 API_KEY（凭证层面的问题，不是参数），
-                // 避免被当成 InvalidRequest 引导用户去调参数。
+                // v2.6.8: Los saldos insuficientes se atribuyen a API_KEY (un problema a nivel de credencial, no un parámetro),
+                // Evite ser considerado una Solicitud Inválida y guiar a los usuarios para que ajusten los parámetros.
                 is ProviderError.InsufficientQuota -> ChatErrorType.API_KEY
                 is ProviderError.InvalidRequest -> ChatErrorType.UNKNOWN
                 is ProviderError.Cancelled -> ChatErrorType.UNKNOWN
@@ -1421,10 +1421,10 @@ class ChatViewModel(
         }
 
         /**
-         * v2.x: 数出"本次新并入摘要"的消息条数（纯函数，B3 补测提为 internal）。
+         * v2.x: contar"Resumen de esta nueva fusión"El número de mensajes (función pura,B3 La prueba complementaria se denomina interna).
          *
-         * 用**有序的消息列表**来数（而不是对覆盖 id 集合排序）：消息 id 是随机 UUID，
-         * 集合本身无序，任何基于 id 比较的推断都会在真实数据上算错。
+         * usar**Lista de mensajes ordenados**Para contar (en lugar de ordenar el conjunto de ID de anulación): la ID del mensaje es un UUID aleatorio,
+         * La colección en sí está desordenada y cualquier inferencia basada en comparaciones de identificación se calculará mal con los datos reales.
          */
         internal fun newlyCoveredCountStatic(messages: List<UIMessage>, coveredIds: Set<String>, previousBoundaryId: String?): Int {
             if (coveredIds.isEmpty()) return 0
@@ -1437,36 +1437,36 @@ class ChatViewModel(
                 }
             return messages.drop(startIndex).count { it.id.toString() in coveredIds }
         }
-        // v1.105 阶段 4: IMAGE_SCALE_TARGET / IMAGE_JPEG_QUALITY / DOC_MAX_CHARS 已下沉到对应 Coordinator
+        // v1.105 escenario 4: IMAGE_SCALE_TARGET / IMAGE_JPEG_QUALITY / DOC_MAX_CHARS Se ha hundido al correspondiente Coordinator
         /**
-         * v1.0.3: 流式 UI 更新字符阈值(节流)。
+         * v1.0.3: Umbral de caracteres de actualización de la interfaz de usuario de streaming(acelerador).
          *
-         * 从 40 降到 12,让内容更平滑地流入,避免"一段一段"的视觉断层。
-         * 首 token 会绕过此阈值立即刷新(见 [launchStream] 内 isFirstToken 分支)。
+         * de 40 a 12,Permitir que el contenido fluya más fluidamente,evitar"párrafo por párrafo"falla visual.
+         * El primer token se actualizará inmediatamente, superando este umbral.(ver [launchStream] Dentro de la rama isFirstToken).
          */
 
         /**
-         * v1.0.3: 流式 UI 更新时间阈值(毫秒,节流)。
+         * v1.0.3: Umbral de tiempo de actualización de la interfaz de usuario de streaming(milisegundos,acelerador).
          *
-         * 从 80ms 降到 50ms,配合更小的字符阈值让流式更连贯。
-         * 50ms ≈ 20fps,人眼感知为"连续流动"而非"一段一段"。
+         * de 80ms a 50ms,Combinado con un umbral de caracteres más pequeño para que la transmisión sea más coherente.
+         * 50ms ≈ 20fps,El ojo humano percibe"flujo continuo"en vez de"párrafo por párrafo".
          */
-        // v1.0.4: 流式 UI 自适应切片(50ms 节流 + 自适应切片)。
-        // 把"字符数 OR 时间"双条件改为"固定 50ms 节流 + 自适应切片大小":
-        // - delta 先累积到 pendingBuilder,50ms 定时器触发时按切片大小取前 N 个字符输出
-        // - 切片大小根据流式速率(最近 10 个 chunk 间隔滑动平均)动态调整:
-        //   慢速流(Reasoning)间隔大 → rate 小 → 切片小(细粒度,2-40)
-        //   快速流(纯文本)间隔小 → rate 大 → 切片大(批量,40-240)
-        /** 固定节流间隔(毫秒),时间到就触发一次切片输出。 */
+        // v1.0.4: Transmisión de corte adaptativo de la interfaz de usuario(50ms Aceleración + corte adaptativo).
+        // poner"Número de caracteres O tiempo"El bicondicional se cambia a"Aceleración fija de 50 ms + tamaño de corte adaptable":
+        // - delta Acumular primero pendingBuilder,50ms Cuando se activa el temporizador, los primeros N caracteres se toman y se emiten de acuerdo con el tamaño del segmento.
+        // - El tamaño del segmento se basa en la velocidad de transmisión(Media celular de los últimos 10 intervalos de fragmentos)Ajuste dinámico:
+        //   flujo lento(Reasoning)Grandes intervalos → rate pequeño → rebanada pequeña(de grano fino,2-40)
+        //   flujo rápido(texto plano)Pequeños intervalos → rate grande → rebanada grande(lote,40-240)
+        /** Intervalo de aceleración fijo(milisegundos),Cuando se acaba el tiempo, se activa una salida de segmento. */
 
         private const val STREAM_THROTTLE_MS = 50L
 
         /**
-         * v2.0: 长正文流式节拍自适应。
+         * v2.0: La transmisión de textos largos supera a la adaptativa.
          *
-         * 文本越长,Markdown 块解析/重排与气泡重组成本越高。短文本保持 50ms 的
-         * "打字机"节拍;超过阈值后放宽刷新间隔,配合更大的切片(见 [computeAdaptiveSlice] 的
-         * flushScale),减少长回复时的重绘次数,同时保持逐字流入的观感。
+         * Cuanto más largo sea el texto,Markdown análisis de bloques/El costo de la reorganización y la reorganización de la burbuja es mayor. El texto corto permanece 50 ms.
+         * "máquina de escribir"vencer;Relajar el intervalo de actualización después de exceder el umbral,Se adapta a rebanadas más grandes(ver [computeAdaptiveSlice] de
+         * flushScale),Reducir el número de redibujos durante respuestas largas,Al mismo tiempo, mantenga la apariencia del flujo palabra por palabra.
          */
         fun streamFlushIntervalMs(builderLength: Int): Long = when {
             builderLength < 2_000 -> STREAM_THROTTLE_MS
@@ -1474,140 +1474,140 @@ class ChatViewModel(
             else -> 130L
         }
 
-        /** 自适应切片下限:慢速流也至少输出 2 字符,避免空刷新。 */
+        /** Límite inferior de corte adaptativo:Las transmisiones lentas también generan al menos 2 caracteres,Evite las actualizaciones vacías. */
 
-        /** 自适应切片基准:rate=1.0 时的切片大小,对应 avgInterval≈50ms 的中速流。 */
+        /** Punto de referencia de corte adaptativo:rate=1.0 tamaño de la rebanada cuando,corresponder avgInterval≈50ms flujo de velocidad media. */
 
-        /** 自适应切片上限:快速流单次最多输出 420 字符(长文本节拍变慢后同步放大)。 */
+        /** Límite superior de corte adaptativo:La transmisión rápida puede generar hasta 420 caracteres a la vez(Los ritmos de texto largos se ralentizan y sincronizan para acercar). */
 
-        /** chunk 间隔滑动窗口大小(最近 N 个 chunk 的间隔用于计算平均速率)。 */
-        // v1.117: 删除 6 个孤儿常量(STREAM_NOTIF_*/STREAM_TOKEN_*/STREAM_PERSIST_*),
-        // 实际节流逻辑在 launchStream 内用字面量实现,这些常量从未被引用。
+        /** chunk tamaño de ventana corrediza de intervalo(El intervalo de los últimos N fragmentos se utiliza para calcular la tasa promedio.). */
+        // v1.117: Se eliminaron 6 constantes huérfanas.(STREAM_NOTIF_*/STREAM_TOKEN_*/STREAM_PERSIST_*),
+        // La lógica de limitación real se implementa utilizando literales dentro de launchStream.,Nunca se hace referencia a estas constantes.
 
-        // v1.116 (C1-2): 工具调用循环内 conversationHistory 的工具链部分最大消息条数。
-        // 超过时丢弃较早的工具调用轮次(保留初始上下文 + 最近工具链)。
+        // v1.116 (C1-2): El número máximo de mensajes en la parte de la cadena de herramientas del historial de conversaciones dentro del bucle de llamada de la herramienta.
+        // Descartar rondas de llamadas de herramientas anteriores cuando se excedan(Mantener contexto inicial + cadena de herramientas reciente).
 
-        // P0-6: 断点恢复时审批卡展示的工具参数预览最大字符数。
-        private const val MAX_TOOL_APPROVAL_ARGS_CHARS = 20_000 // v2.0.1: 500→20000，审批卡需完整 JSON 生成人话摘要
+        // P0-6: El número máximo de caracteres para la vista previa del parámetro de herramienta que se muestra en la tarjeta de aprobación durante la recuperación del punto de interrupción.
+        private const val MAX_TOOL_APPROVAL_ARGS_CHARS = 20_000 // v2.0.1: 500→20000, la tarjeta de aprobación requiere un JSON completo para generar un resumen humano
 
-        // v1.116: 表情包相关工具 ID 集合,用于概率控制时过滤
+        // v1.116: Colección de ID de herramientas relacionadas con emoticones,Filtrado para control probabilístico
         private val STICKER_TOOL_IDS = setOf("list_stickers", "send_sticker")
 
         /**
-         * v1.104 U7: [favoriteTagFilter] 的特殊值,表示"仅显示未分组"。
+         * v1.104 U7: [favoriteTagFilter] valor especial de,expresar"Mostrar solo desagrupados".
          *
-         * 用一个不会与用户自定义标签冲突的内部字符串。
-         * FavoritesScreen 顶部 FilterChip "未分组" 选中时调 setFavoriteTagFilter(FAVORITE_TAG_UNGROUPED)。
+         * Utilice una cadena interna que no entre en conflicto con las etiquetas definidas por el usuario.
+         * FavoritesScreen arriba FilterChip "No agrupado" Tono cuando se selecciona setFavoriteTagFilter(FAVORITE_TAG_UNGROUPED).
          */
         const val FAVORITE_TAG_UNGROUPED = "__ungrouped__"
 
-        // 历史遗留的预设分组内部 token(v2.0 落库的存量值,只读不写)
+        // Dentro del grupo de incumplimiento histórico token(v2.0 El valor de las acciones cayó al inventario,Solo leer pero no escribir)
         const val FAVORITE_GROUP_INSPIRATION = "__group_inspiration__"
         const val FAVORITE_GROUP_CODE = "__group_code__"
         const val FAVORITE_GROUP_LEARNING = "__group_learning__"
         const val FAVORITE_GROUP_CUSTOM = "__group_custom__"
     }
 
-    // ── v2.x 重构 S1: 暴露给 ChatToolLoopRunner 的成员(原 runToolLoop 直接引用)──
-    /** 用户在本进程内亲手关掉的子 agent 线程。只影响显示，不改数据。 */
+    // ── v2.x Refactor S1: expuesto a miembros de ChatToolLoopRunner(Referencia directa al runToolLoop original)──
+    /** El subproceso del subagente que el usuario cierra manualmente dentro de este proceso. Sólo afecta a la visualización y no cambia los datos. */
     private val closedSubagentThreads: MutableSet<String> =
         java.util.Collections.synchronizedSet(mutableSetOf())
 
     private val stateStore = ChatStateStore()
     private val _state get() = stateStore.state
 
-    // v1.100: StateFlow 本身已是 conflated(只保留最新值),流式高频更新时
-    // collectAsStateWithLifecycle 只会拿到最新值。实际瓶颈在重组范围(P1-P3 已
-    // 通过 @Immutable + derivedStateOf 收窄),无需额外 sample。
+    // v1.100: StateFlow ya mismo conflated(Mantenga solo el último valor),Al transmitir actualizaciones de alta frecuencia
+    // collectAsStateWithLifecycle Sólo se obtendrá el último valor. El verdadero obstáculo reside en el alcance de la reorganización.(P1-P3 Ya
+    // Reducido por @Immutable + deriveStateOf),No se requieren muestras adicionales.
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
-    /** B2-01: 消息列表独立 StateFlow,不再放进 ChatUiState。 */
+    /** B2-01: Lista de mensajes independiente StateFlow,Ya no se incluye en ChatUiState. */
     private val _messages get() = stateStore.messages
     val messages: StateFlow<List<UIMessage>> = _messages.asStateFlow()
 
     /**
-     * §11-4: 收藏列表里属于"旧版本"的消息 id 集合。
+     * §11-4: Pertenece a la lista de favoritos"versión antigua"Una colección de identificadores de mensajes.
      *
-     * 重新生成只新建变体行,旧行的收藏位不动,所以收藏夹可能留着第 1 版,
-     * 而会话里展示的是第 3 版。这里存"比组内最新版旧"的 id,卡片上标一行提示。
+     * Regenerar solo filas de variantes nuevas,La ubicación de recopilación de la fila anterior no se mueve.,Así que quizás mantengas la versión 1 en tus favoritos.,
+     * La sesión muestra la versión 3. Guardar aquí"Más antiguo que la última versión del grupo."de id,Una línea de recordatorio está marcada en la tarjeta.
      *
-     * 单独开一条 Flow 而不放进 [ChatUiState]:那个 data class 已经 124 个参数,
-     * 再增一个会把 detekt 的签名基线整条打废(基线按签名全文匹配,不是按行号)。
-     * 这个值只被收藏页读,与聊天主链路的任何渲染无关,正好适合独立流。
+     * Abrir un Flow separado sin colocarlo [ChatUiState]:Esa clase de datos ya tiene 124 parámetros.,
+     * Agregar otro destruirá toda la línea base de firmas de detekt.(Coincidencia básica de texto completo por firma,No por número de línea).
+     * Este valor solo lo lee la página de colección.,No relacionado con ninguna representación del enlace de chat principal.,Perfecto para una transmisión independiente.
      */
     private val _staleFavoriteIds = MutableStateFlow<Set<Uuid>>(emptySet())
     val staleFavoriteIds: StateFlow<Set<Uuid>> = _staleFavoriteIds.asStateFlow()
 
-    // v1.93+: 会话消息内存 LRU 缓存。
-    // ChatViewModel 改为 Koin single 后会话消息列表永不释放,长时间使用内存累积明显。
-    // 此处以 LRU 策略保留最近 SessionMemoryCache.MAX_CACHE_SIZE 个会话的内存副本,
-    // 超出后自动驱逐最久未访问的会话,切回时从 DB 重新加载。
-    // 注:无外部依赖,直接实例化,不走 Koin(避免改动 single{} 注册的位置参数列表)。
-    // v2.x: 上限热读设置(聊天设置→高级,默认 5)
+    // v1.93+: Caché LRU en memoria de mensajes de sesión.
+    // ChatViewModel Después de cambiar a Koin single, la lista de mensajes de la sesión nunca se publicará.,La acumulación de memoria es evidente después de un uso prolongado.
+    // Aquí se mantiene una copia en memoria de las sesiones SessionMemoryCache.MAX_CACHE_SIZE más recientes en la política LRU,
+    // Desalojar automáticamente las sesiones a las que no se ha accedido durante más tiempo después de exceder el límite,Vuelva a cargar desde la base de datos al volver a cambiar.
+    // Nota:Sin dependencias externas,Creación de instancias directas,no irse Koin(evitar cambios single{} Lista de parámetros posicionales registrados).
+    // v2.x: Configuración de lectura en caliente del límite superior(Configuración de chat→Avanzado,Predeterminado 5)
     private val sessionMemoryCache = SessionMemoryCache { settings.sessionCacheSizeCache }
 
-    // ── 语音对话模式(录音 → 识别 → 思考 → 播报循环)──────────
-    // 状态机:IDLE → LISTENING → THINKING → SPEAKING → LISTENING(循环)
-    // IDLE:等待用户点击主按钮
-    // LISTENING:ASR 录音中,实时回调写入 transcript
-    // THINKING:用户消息已发送,等待 AI 流式回复完成
-    // SPEAKING:TTS 朗读 AI 回复,朗读完恢复 LISTENING(连续对话)
+    // ── Modo de conversación de voz(Grabación → identificar → pensar → bucle de transmisión)──────────
+    // máquina de estados:IDLE → LISTENING → THINKING → SPEAKING → LISTENING(bucle)
+    // IDLE:Espere a que el usuario haga clic en el botón principal.
+    // LISTENING:ASR Grabación,Escritura de devolución de llamada en tiempo real transcript
+    // THINKING:Mensaje de usuario enviado,Espere a que se complete la respuesta de transmisión de IA
+    // SPEAKING:TTS Leer las respuestas de la IA en voz alta,Reanudar después de leer en voz alta LISTENING(dialogo continuo)
     private val voiceState = ChatVoiceState()
     private val _voiceConversationState get() = voiceState.state
     val voiceConversationState: StateFlow<VoiceConversationState> = _voiceConversationState.asStateFlow()
 
     /**
-     * 语音对话模式的本轮累积识别文本(从开始录音到点「结束」之间,跨多个 ASR 会话累积)。
-     * UI 据此显示转写,点「结束」时整段提交。
+     * Texto de reconocimiento acumulado para esta ronda del modo de diálogo de voz(Desde el inicio de la grabación hasta el punto "Fin",Acumulativo en múltiples sesiones de ASR).
+     * UI Mostrar la transcripción en consecuencia,Envíe la sección completa cuando haga clic en "Finalizar".
      */
     private val _voiceConversationTranscript get() = voiceState.transcript
     val voiceConversationTranscript: StateFlow<String> = _voiceConversationTranscript.asStateFlow()
 
-    /** 语音对话模式当前 AI 回复文本(SPEAKING 时填充,UI 据此显示朗读内容)。 */
+    /** Modo de conversación de voz texto de respuesta AI actual(SPEAKING llenar cuando,UI Mostrar el contenido de lectura en consecuencia). */
     private val _voiceConversationAiReply get() = voiceState.aiReply
     val voiceConversationAiReply: StateFlow<String> = _voiceConversationAiReply.asStateFlow()
 
-    /** 语音对话轻提示(如「没听清，再说一次」)；录音重新开始时清空。 */
+    /** Avisos luminosos de conversación por voz(Como \"No te escuché claramente, por favor dilo de nuevo\".);Se borra cuando se reinicia la grabación. */
     val voiceConversationHint: StateFlow<String?> = voiceState.hint.asStateFlow()
 
-    /** TTS 播放状态(透传 TtsManager.playbackState,供语音对话 UI 显示进度)。 */
+    /** TTS Estado de juego(paso a través TtsManager.playbackState,Para que la interfaz de usuario del diálogo de voz muestre el progreso). */
     val ttsPlaybackStateFlow: StateFlow<PlaybackState> get() = ttsManager.playbackState
 
-    /** 语音对话循环观察协程(已迁至 ChatMediaController)。 */
+    /** Corrutina de observación del bucle de diálogo de voz(Se mudó a ChatMediaController). */
 
-    // 消息分支管理器
-    // P0 对话树: 两级结构(用户提问组 → 助手回复组)的事实源,
-    // _messages 在流式期间保持扁平列表,稳定点(发送/重试/编辑/切会话/流结束)重建树并同步显示。
+    // Gerente de sucursal de mensajes
+    // P0 árbol de diálogo: estructura de dos niveles(Grupo de preguntas de usuario → Grupo de respuesta del asistente)fuente de hecho,
+    // _messages Mantenga la lista plana durante la transmisión,punto estable(enviar/Inténtalo de nuevo/Editar/Cambiar de sesión/final de la corriente)Reconstruya el árbol y muéstrelo simultáneamente.
     private val _conversationTree get() = stateStore.conversationTree
     val conversationTree: StateFlow<ConversationTree> = _conversationTree.asStateFlow()
 
-    // P0 对话树: 树重建/分支切换已迁出到 ChatMessageController(treeSessionId),此处 _conversationTree 仍在宿主共享。
-    // P0 对话树: 待编辑的用户消息 id(用户点击编辑后回填输入框,发送时应用为新的用户变体)
-    // v1.0.30: 回话跟踪 — onAppForeground 用
+    // P0 árbol de diálogo: reconstrucción de árboles/El cambio de sucursal se ha trasladado a ChatMessageController(treeSessionId),Aquí _conversationTree todavía lo comparte el anfitrión.
+    // P0 árbol de diálogo: Mensaje de usuario para editar id(Rellene el cuadro de entrada después de que el usuario haga clic en editar,Aplicar como nueva variante de usuario al enviar)
+    // v1.0.30: seguimiento de devolución de llamada — onAppForeground usar
     @Volatile private var lastSessionSwitchAt: Long = 0L
 
     @Volatile private var lastSessionSwitchIdValue: String? = null
-    // 工具配置存储(审批策略持久化) — 见构造参数 toolConfigStore
+    // Almacenamiento de configuración de herramientas(Persistencia de la política de aprobación) — Ver parámetros de construcción toolConfigStore
 
-    // v1.135: 当前工具调用轮次对应的助手消息 id(收口到 ChatGenerationState)
+    // v1.135: Mensaje del asistente correspondiente a la ronda de llamada de herramienta actual id(Recibido ChatGenerationState)
     private var toolAssistantId
         get() = generationState.toolAssistantId
         set(value) {
             generationState.toolAssistantId = value
         }
 
-    // 审计修复 (S-01): toolAssistantId 对应的生成会话 id(收口到 ChatGenerationState)。
+    // Reparación de auditoría (S-01): toolAssistantId Sesión de generación correspondiente id(Recibido ChatGenerationState).
     private var activeToolSessionId
         get() = generationState.activeToolSessionId
         set(value) {
             generationState.activeToolSessionId = value
         }
 
-    // 审计修复 (A-13): 生成代际令牌 — 每次 runToolLoop 启动/结束自增。
-    // exec* 工具执行(图片生成可达数十秒)期间若用户发送新消息/切会话,全局
-    // toolAssistantId 会被新一轮生成覆盖,旧工具结果会写进错误消息(跨会话媒体污染)。
-    // exec* 入口捕获当前令牌,写媒体前校验令牌未变且目标会话仍是当前显示会话。
-    // 生成/发送共享状态容器(见 ChatGenerationState)
+    // Reparación de auditoría (A-13): Generar token generacional — Cada vez que se inicia runToolLoop/Finalizar el incremento automático.
+    // exec* ejecución de herramientas(La generación de imágenes puede tardar decenas de segundos)Durante este período, si el usuario envía un nuevo mensaje/Cambiar de sesión,situación general
+    // toolAssistantId será sobrescrito por una nueva ronda de generación,Los resultados de herramientas antiguas se escriben en mensajes de error(Contaminación de medios entre sesiones).
+    // exec* La entrada captura el token actual.,Antes de escribir medios, verifique que el token no haya cambiado y que la sesión de destino siga siendo la sesión de visualización actual.
+    // generar/Enviar contenedor de estado compartido(ver ChatGenerationState)
     private val generationState = ChatGenerationState()
     private var toolGenerationToken
         get() = generationState.toolGenerationToken
@@ -1615,24 +1615,24 @@ class ChatViewModel(
             generationState.toolGenerationToken = value
         }
 
-    /** 原子递增代际令牌；并发递增也不会丢更新。 */
+    /** Incrementar atómicamente los tokens generacionales; los incrementos simultáneos no perderán las actualizaciones. */
     private fun nextToolGenerationToken(): Long = generationState.nextToolGenerationToken()
 
-    // 审查修复 (2.0 C-17): 本代生成中已附加媒体的工具轮消息 id(并发安全)。
-    // exec* 成功附加媒体后登记;runToolLoop 收尾对全部登记消息做一次兜底落盘,
-    // 缩小"内存已写媒体 → 立即落盘"之间进程被杀/落盘失败的丢失窗口。
+    // Revisión de corrección (2.0 C-17): Mensaje de la rueda de herramientas para los medios adjuntos en esta generación id(Seguridad de concurrencia).
+    // exec* Regístrese después de adjuntar medios exitosamente;runToolLoop Finalmente, realice una colocación integral de toda la información registrada.,
+    // alejar"La memoria tiene medios escritos. → Realizar pedido ahora"El proceso fue asesinado entre/Ventana perdida por colocación fallida.
     private val toolMediaMessages: MutableSet<Uuid> get() = generationState.toolMediaMessages
 
-    // B-24: 流式生成序号 — 每次 launchStream 自增并写入 StreamRunState.generationSerial。
-    // 收尾/错误路径清零 isStreaming 前校验"自己仍是最新生成",防止快速连发时
-    // gen-1 收尾把 gen-2 的流式状态清掉(UI 表现为"还在生成却显示已停止")。
+    // B-24: Número de secuencia de generación de streaming — Cada vez que launchStream se incrementa y se escribe en StreamRunState.generaciónSerial.
+    // Refinamiento/Verifique la ruta del error antes de borrar isStreaming"Sigue siendo la última generación.",Evitar ráfagas rápidas de fuego.
+    // gen-1 Finalmente, borre el estado de transmisión de gen-2(UI Se muestra como"Todavía se está generando pero se nota que se ha detenido.").
     private var streamGenerationSerial
         get() = generationState.streamGenerationSerial
         set(value) {
             generationState.streamGenerationSerial = value
         }
 
-    /** 全局默认与会话覆盖分开保存；聊天页切换只改当前 session 的覆盖，不反写全局设置。 */
+    /** Los valores predeterminados globales y las anulaciones de sesión se guardan por separado; El cambio de página de chat solo cambia la superposición de la sesión actual y no sobrescribe la configuración global. */
     private var globalSelectedModelId
         get() = generationState.globalSelectedModelId
         set(value) {
@@ -1657,14 +1657,14 @@ class ChatViewModel(
     private fun displayedSessionId(state: ChatUiState = _state.value): String? = effectiveChatSessionId(state)
 
     /**
-     * v2.5.3 (P3-2): 会话级配置快照的惰性内存缓存。
+     * v2.5.3 (P3-2): Almacenamiento en caché diferido en memoria de instantáneas de configuración a nivel de sesión.
      *
-     * 会话首次加载/生成时从 DB 读出快照放入此 map，供 [selectedModelForSession] /
-     * [activeProviderForSession] 在没有显式 override 时回退到“当时配置”。
+     * Primera carga de sesión/Al generar, la instantánea se lee desde la base de datos y se coloca en este mapa para [selectedModelForSession] /
+     * [activeProviderForSession] Recurrir a“Configuración en ese momento”.
      */
     private val sessionConfigSnapshots = java.util.concurrent.ConcurrentHashMap<String, io.zer0.muse.data.session.SessionConfigSnapshot>()
 
-    /** v2.5.3 (P3-2): 预加载会话快照入内存（会话切换/首次生成时调用）。 */
+    /** v2.5.3 (P3-2): Precargar la instantánea de la sesión en la memoria (cambio de sesión)./Se llama cuando se genera por primera vez). */
     internal fun cacheSessionConfigSnapshot(sessionId: String, snapshot: io.zer0.muse.data.session.SessionConfigSnapshot?) {
         if (snapshot == null) sessionConfigSnapshots.remove(sessionId) else sessionConfigSnapshots[sessionId] = snapshot
     }
@@ -1676,19 +1676,19 @@ class ChatViewModel(
         sessionId?.let { sessionProviderOverrides[it] ?: sessionConfigSnapshots[it]?.providerId } ?: globalActiveProviderId
 
     /**
-     * A-13: 校验本轮工具生成仍是"当前活跃生成"(代际令牌未变)。
+     * A-13: Verifique que esta ronda de generación de herramientas aún esté"Generación actualmente activa"(Tokens generacionales sin cambios).
      *
-     * 审查修复 (2.0 A-04): 原实现把"令牌未变"与"目标会话仍是显示会话"耦合在一起,
-     * 用户切会话(非新生成)时令牌未变但显示焦点已离开,exec* 直接早退导致已完成的
-     * 媒体既不显示也不落库。现拆分为两个方法:
-     * - [isCurrentToolGeneration]: 仅校验代际(新一轮生成才使旧结果失效);
-     * - [isToolSessionDisplayed]: 仅校验显示焦点(决定媒体走 UI 合并还是直接落库)。
+     * Revisión de corrección (2.0 A-04): Implementación original"Token sin cambios"con"La sesión de destino sigue siendo la sesión de visualización."acoplados juntos,
+     * El usuario cambia de sesión(No recién generado)El token permanece sin cambios pero el foco de visualización ha desaparecido.,exec* Dejar directamente los primeros resultados como completados.
+     * Los medios no se muestran ni se almacenan. Ahora dividido en dos métodos.:
+     * - [isCurrentToolGeneration]: Solo verificar generación(Una nueva ronda de generación invalidará los resultados anteriores.);
+     * - [isToolSessionDisplayed]: Verificar solo el enfoque de visualización(Decida si los medios se fusionarán a través de la interfaz de usuario o se colocarán directamente en la biblioteca.).
      *
-     * @param capturedToken exec* 入口捕获的 [toolGenerationToken]
+     * @param capturedToken exec* Capturado en la entrada [toolGenerationToken]
      */
     private fun isCurrentToolGeneration(capturedToken: Long): Boolean = capturedToken == toolGenerationToken
 
-    /** 审查修复 (2.0 A-04): 当前显示会话是否仍是工具生成的目标会话。 */
+    /** Revisión de corrección (2.0 A-04): Si la sesión que se muestra actualmente sigue siendo la sesión de destino generada por la herramienta. */
     private fun isToolSessionDisplayed(): Boolean {
         val active = activeToolSessionId ?: return false
         val displayed = if (_state.value.isAgentMode) _state.value.agentSessionId else _state.value.currentSessionId
@@ -1696,49 +1696,49 @@ class ChatViewModel(
     }
 
     /**
-     * B-24: 仅在"自己仍是最新生成"时清零流式状态。
+     * B-24: solo en"Sigue siendo la última generación."Borre el estado de la transmisión.
      *
-     * 快速连发/切会话后,旧生成的收尾(finalizeResponse/错误路径)不得清掉
-     * 新生成的 isStreaming/isWaitingFirstToken — 否则 UI 显示"已停止"但后台仍在生成。
+     * explosión rápida/Después de cambiar de sesión,El fin de la vieja generación(finalizeResponse/camino equivocado)No se permite borrar
+     * recién generado isStreaming/isWaitingFirstToken — De lo contrario, la interfaz de usuario muestra"Detenido"Pero el trasfondo todavía se genera.
      *
-     * @return 是否执行了清零
+     * @return Si se realiza la limpieza
      */
     private fun clearStreamingStateIfLatest(
         state: StreamRunState,
-        // F-10: 结束时的最终阶段(正常完成=FINISHED/出错=FAILED/中断=INTERRUPTED)
+        // F-10: etapa final al final(Completado normalmente=FINISHED/error=FAILED/interrumpir=INTERRUPTED)
         finalPhase: ChatStreamPhase = ChatStreamPhase.IDLE,
     ): Boolean = generationController.clearStreamingStateIfLatest(state, finalPhase)
 
-    /** 发送请求落库失败时移除当前页的乐观 user/assistant 消息。 */
-    // v5: 消息发送队列 + outbox 恢复去重集(收口到 ChatGenerationState)
+    /** Envíe un mensaje optimista al usuario/asistente para eliminar la página actual cuando la solicitud falle. */
+    // v5: Cola de envío de mensajes + deduplicación de recuperación de bandeja de salida(Recibido ChatGenerationState)
     private val sendChannel get() = generationState.sendChannel
     private val outboxRecoveryQueuedIds get() = generationState.outboxRecoveryQueuedIds
 
-    // Phase 8.5: 复用的 Json 实例(避免每次解析都新建)。
+    // Phase 8.5: Instancia Json reutilizable(Evite crear otros nuevos cada vez que analice).
     private val idListJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-    // v5: 乐观更新 — 用户消息立即显示到 UI,不等待 DB 写入(迁至 ChatGenerationController)
+    // v5: Actualización optimista — Los mensajes de usuario se muestran inmediatamente a UI,No espere a que se escriba la base de datos(mudarse a ChatGenerationController)
     private fun enqueueSend(text: String, images: List<String>, sessionId: String) {
         generationController.enqueueSend(text, images, sessionId)
-        // 已发出去的内容不再是草稿，清空该会话的草稿，
-        // 避免下次切回来还看到已经发送过的文字。
+        // El contenido que se ha enviado ya no es un borrador. Borra el borrador de la conversación.
+        // Esto evita que veas el texto que ya has enviado la próxima vez que vuelvas a cambiar.
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { sessionRepository.saveInputDraft(sessionId, "") }
-                .onFailure { Logger.w("ChatVM", "清空输入草稿失败: ${it.message}") }
+                .onFailure { Logger.w("ChatVM", "No se pudo borrar el borrador de entrada: ${it.message}") }
         }
-        // v2.6.7: 记录一次真实互动（亲密度 + 最后互动时间）。
-        // 之前只有小手机主动私信会调 recordInteraction，用户在正常对话里
-        // 说再多话关系也不动，关系系统实际只活了一半。
+        // v2.6.7: Graba una interacción real (intimidad + hora de la última interacción).
+        // En el pasado, sólo los teléfonos celulares pequeños llamaban a recordInteraction a través de mensajes privados activos. Los usuarios
+        // Por mucho que hablemos, la relación no avanzará. De hecho, el sistema de relaciones sólo está vivo a medias.
         val assistantId = snapshot.currentAssistant?.id
         if (relationshipRepository != null && !assistantId.isNullOrBlank()) {
             viewModelScope.launch(Dispatchers.IO) {
                 runCatching { relationshipRepository.recordInteraction(assistantId) }
-                    .onFailure { Logger.w("ChatVM", "记录关系互动失败: ${it.message}") }
+                    .onFailure { Logger.w("ChatVM", "Error en la interacción de la relación de registro: ${it.message}") }
             }
         }
     }
 
-    // v1.105 拆分: ChatStateAccessor 实现 — 供各 Coordinator 读写 state
+    // v1.105 dividir: ChatStateAccessor darse cuenta — Para que cada Coordinador lea y escriba state
     override val snapshot: ChatUiState get() = _state.value
 
     override fun update(transform: (ChatUiState) -> ChatUiState) = _state.update(transform)
@@ -1749,7 +1749,7 @@ class ChatViewModel(
 
     override val coroutineScope: kotlinx.coroutines.CoroutineScope get() = viewModelScope
 
-    // v1.105 阶段 1 拆分: 各职责域 Coordinator(无 state,持有依赖,通过 accessor 读写)
+    // v1.105 División de la fase 1: Áreas de responsabilidad Coordinator(Ninguno state,mantener la dependencia,Leer y escribir a través del descriptor de acceso)
     private val imageGenCoordinator =
         ImageGenCoordinator(
             accessor = this,
@@ -1775,7 +1775,7 @@ class ChatViewModel(
             context = appContext,
         )
 
-    // v1.x: 输入/草稿/待发送队列/输入历史 Controller
+    // v1.x: entrada/borrador/Cola para enviar/Entrar en la historia Controller
     private val inputController =
         ChatInputController(
             accessor = this,
@@ -1783,7 +1783,7 @@ class ChatViewModel(
             onEnqueueSend = { text, images, sid -> enqueueSend(text, images, sid) },
         )
 
-    // v1.x: 消息加载 Controller(初始分页/加载更多/计划恢复)
+    // v1.x: Cargando mensajes Controller(paginación inicial/cargar más/planificar la recuperación)
     private val messageController =
         ChatMessageController(
             accessor = this,
@@ -1794,24 +1794,24 @@ class ChatViewModel(
             messagePageSize = MESSAGE_PAGE_SIZE,
         )
             .apply {
-                // v2.6.7 修复（杀后台后回不到原位置）: 把滚动位置随会话 id 落盘，
-                // 进程被杀后重建时 CherSessionController 会读回该位置。
+                // v2.6.7 Solución (no se puede volver a la posición original después de eliminar el fondo): Establezca la posición de desplazamiento con la identificación de la sesión,
+                // CherSessionController volverá a leer esta ubicación cuando el proceso finalice y se reconstruya.
                 scrollPersister =
                     ChatMessageController.ScrollPositionPersister { sid, index, offset ->
                         resultOf { settings.saveChatScrollPosition(sid, index, offset) }
-                            .onError { msg, _ -> Logger.w("ChatVM", "saveChatScrollPosition 失败: $msg") }
+                            .onError { msg, _ -> Logger.w("ChatVM", "saveChatScrollPosition falló: $msg") }
                     }
             }
 
     /**
-     * 切换序号守卫。
+     * Cambie la protección del número de serie.
      *
-     * 只排本界面内连续发起的切换；写成实例字段而不是全局单例，
-     * 否则一个界面实例的迟到切换会把另一个实例的切换判成过期。
+     * Sólo se organizan los interruptores iniciados continuamente dentro de esta interfaz; escritos como campos de instancia en lugar de singletons globales.
+     * De lo contrario, el cambio tardío de una instancia de interfaz considerará que el cambio de otra instancia ha caducado.
      */
     private val switchGuard = io.zer0.muse.ui.chat.SessionSwitchGuard()
 
-    // v1.x: 会话 CRUD Controller(rename/archive/delete/ignore-memory/fork)
+    // v1.x: sesión CRUD Controller(rename/archive/delete/ignore-memory/fork)
     private val sessionController =
         ChatSessionController(
             accessor = this,
@@ -1827,7 +1827,7 @@ class ChatViewModel(
                 override fun onForkError(throwable: Throwable) =
                     reportError(appContext.getString(R.string.err_chat_fork_failed, throwable.message ?: ""))
 
-                // P0-5: 删除/归档会话时停止在途生成 + 写抑制(委托生成控制器,防"复活")
+                // P0-5: Eliminar/Detener la generación en curso + supresión de escritura al archivar sesiones(Controlador de generación de delegados,protegerse contra"resurrección")
                 override fun stopGenerationForSession(sessionId: String?) = generationController.stopGenerationForSession(sessionId)
 
                 override fun suppressSessionWrites(sessionId: String?) = generationController.suppressSessionWrites(sessionId)
@@ -1861,7 +1861,7 @@ class ChatViewModel(
                 onSessionSwitched = { sid ->
                     lastSessionSwitchAt = System.currentTimeMillis()
                     lastSessionSwitchIdValue = sid
-                    // v2.5.3 (P3-2): 切换会话时预加载配置快照，使旧会话回退到“当时配置”。
+                    // v2.5.3 (P3-2): Precargue la instantánea de configuración al cambiar de sesión, lo que permitirá que las sesiones antiguas vuelvan a“Configuración en ese momento”.
                     viewModelScope.launch {
                         val snapshot = sessionRepository.getConfigSnapshot(sid)
                         cacheSessionConfigSnapshot(sid, snapshot)
@@ -1872,7 +1872,7 @@ class ChatViewModel(
             switchGuard = switchGuard,
         )
 
-    // v1.x: 聊天级设置 Controller(侧栏/绘图/工具模型/toast)
+    // v1.x: Configuración del nivel de chat Controller(barra lateral/Dibujo/modelo de herramienta/toast)
     private val settingsController =
         ChatSettingsController(
             accessor = this,
@@ -1900,14 +1900,14 @@ class ChatViewModel(
             },
         )
 
-    // 工具审批回调结果存储(toolCallId → Deferred result),与 toolController/审批生命周期共享
+    // Almacenamiento de resultados de devolución de llamada de aprobación de herramienta(toolCallId → Deferred result),Compartido con herramientaControlador/Ciclo de vida de aprobación
     private val toolApprovalResults =
         java.util.concurrent.ConcurrentHashMap<
             String,
             kotlinx.coroutines.CompletableDeferred<ToolApprovalState>,
             >()
 
-    // v1.x: 工具审批/权限 Controller(参考图/始终允许/本次运行放行/会话权限模式)
+    // v1.x: Aprobación de herramienta/Permisos Controller(Imagen de referencia/siempre permitido/Publicado para esta ejecución/modo de permiso de sesión)
     private val toolController =
         ChatToolController(
             accessor = this,
@@ -1916,8 +1916,8 @@ class ChatViewModel(
             toolConfigStore = toolConfigStore,
         )
 
-    // v1.x: 媒体/产物 Controller(artifact 选中/关闭/观察)
-    // v1.x: system prompt / 上下文 token 缓存容器(buildSystemPromptForStream 迁移前移)
+    // v1.x: medios de comunicación/producto Controller(artifact seleccionado/cerrar/observar)
+    // v1.x: system prompt / Contenedor de caché de token de contexto(buildSystemPromptForStream Migrar hacia adelante)
     private val systemPromptCache = SystemPromptCache()
     private val mediaController =
         ChatMediaController(
@@ -1941,7 +1941,7 @@ class ChatViewModel(
             settings = settings,
         )
 
-    // v1.105 阶段 2 拆分: 杂项 Coordinator(文件夹 / 搜索 / 收藏 / 管理页 CRUD)
+    // v1.105 División de la fase 2: Varios Coordinator(Carpeta / Buscar / Favoritos / Administrar página CRUD)
     private val miscCoordinator =
         ChatMiscCoordinator(
             accessor = this,
@@ -1954,14 +1954,14 @@ class ChatViewModel(
             appContext = appContext,
         )
 
-    // v0.45: 提取为字段,manualCompress 直接调用 transform 做手动压缩
-    // v1.0.17: 注入 ConversationCompressor,启用分块并行 + 独立便宜模型
+    // v0.45: Extraer como campo,manualCompress Llame a transform directamente para compresión manual
+    // v1.0.17: inyectar ConversationCompressor,Habilitar paralelismo fragmentado + modelo económico independiente
     private val conversationCompressor = io.zer0.muse.transformer.ConversationCompressor(chatService, settings)
     private val contextCompressTransformer = ContextCompressTransformer(chatService, conversationCompressor)
 
     private val transformerPipeline: TransformerPipeline by lazy { buildTransformerPipeline() }
 
-    // v1.105 阶段 3 拆分: 流式辅助 Coordinator(detach / updateAssistant / 持久化 / 标签提取)
+    // v1.105 División de la fase 3: Asistente de transmisión Coordinator(detach / updateAssistant / Persistencia/extracción de etiquetas)
     private val streamCoordinator =
         ChatStreamCoordinator(
             accessor = this,
@@ -1983,7 +1983,7 @@ class ChatViewModel(
             toolConfigStore = toolConfigStore,
         )
 
-    // v1.x: 生成控制 Controller(stop/launchStream/send/continue/retry)
+    // v1.x: Control de construcción Controller(stop/launchStream/send/continue/retry)
     private val generationController =
         ChatGenerationController(
             deps =
@@ -2020,10 +2020,10 @@ class ChatViewModel(
                 maybeAutoRoute = { text, assistantMessageId, sid ->
                     maybeAutoRoute(text, assistantMessageId, sid)
                 },
-                // v2.6.9: 主动消息反馈闭环 —— 用户一开口就告诉调度器，
-                // 用于判断「这次回复是不是在回应某条主动消息」并回补额度。
-                // 用 Koin 按需解析而不是构造参数：避免 ChatViewModel 与调度器互引，
-                // 也避免未装配时不建。
+                // v2.6.9: Bucle cerrado de retroalimentación de mensaje activo —— El usuario le dice al planificador tan pronto como abre la boca,
+                // Se utiliza para determinar "si esta respuesta es una respuesta a un mensaje activo" y para reponer la cuota.
+                // Utilice Koin para analizar bajo demanda en lugar de construir parámetros: evite la referencia mutua entre ChatViewModel y el programador.
+                // También evite no construir cuando no esté ensamblado.
                 onUserSpoke = { sid ->
                     viewModelScope.launch {
                         runCatching {
@@ -2031,7 +2031,7 @@ class ChatViewModel(
                                 .get<io.zer0.muse.proactive.ProactiveScheduler>()
                                 .onUserSpoke(sid)
                         }.onFailure { e ->
-                            io.zer0.common.Logger.w("ChatViewModel", "主动消息反馈记录失败: ${e.message}")
+                            io.zer0.common.Logger.w("ChatViewModel", "Falló la grabación de comentarios de mensajes activos: ${e.message}")
                         }
                     }
                 },
@@ -2051,7 +2051,7 @@ class ChatViewModel(
             executionRegistry = executionRegistry,
         )
 
-    // v1.134 P1-5: 任务卡 Coordinator(任务卡阶段/步骤/展开/重试/工具结果判定)
+    // v1.134 P1-5: tarjeta de tarea Coordinator(etapa de la tarjeta de tarea/pasos/Expandir/Inténtalo de nuevo/Juicio del resultado de la herramienta)
     private val taskCardCoordinator =
         ChatTaskCardCoordinator(
             accessor = this,
@@ -2060,14 +2060,14 @@ class ChatViewModel(
     private val routeGuard = io.zer0.muse.tools.ToolRouteExecutionGuard(toolRegistry)
 
     /**
-     * v2.x 重构 S1: 工具循环体(runToolLoop + 内嵌 ToolLoopHost,原 1392 行)。
-     * 本类自身作为 [ChatToolLoopHostBridge] 实现注入 —— 纯抽取,行为不变。
+     * v2.x Refactor S1: cuerpo del bucle de herramienta(runToolLoop + Incorporado ToolLoopHost,Línea original 1392).
+     * Esta clase en sí misma actúa como [ChatToolLoopHostBridge] Implementar inyección —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     /**
-     * v2.x 重构 S1: 工具循环体的宿主桥实现。
+     * v2.x Refactor S1: implementación del puente de host del cuerpo del bucle de herramientas.
      *
-     * runner 在 ui.chat 包内,读不到本类的 private 成员,这里用匿名对象把
-     * 原 runToolLoop 直接引用的成员转发给它 —— 全部是**直接转发**,无逻辑。
+     * runner Dentro del paquete ui.chat,No se pueden leer miembros privados de esta clase,Utilice objetos anónimos aquí
+     * Los miembros a los que hace referencia directamente el runToolLoop original se le reenvían. —— todos**Reenviar directamente**,Sin lógica.
      */
     @Suppress("TooManyFunctions", "LongParameterList")
     private val toolLoopHostBridge = object : io.zer0.muse.ui.chat.ChatToolLoopHostBridge {
@@ -2077,7 +2077,7 @@ class ChatViewModel(
         override val settings get() = this@ChatViewModel.settings
         override val sessionRepository get() = this@ChatViewModel.sessionRepository
         override val chatService get() = this@ChatViewModel.chatService
-        // 上下文溢出恢复：压一轮历史再重发（详见 ChatToolLoopRunner 的 recovery 分支）
+        // Recuperación de desbordamiento de contexto: comprima una ronda del historial y luego reenvíe (consulte la rama de recuperación de ChatToolLoopRunner para obtener más detalles)
         override val contextCompressTransformer get() = this@ChatViewModel.contextCompressTransformer
         override val sessionManager get() = this@ChatViewModel.sessionManager
         override val notificationManager get() = this@ChatViewModel.notificationManager
@@ -2171,8 +2171,8 @@ class ChatViewModel(
     private val toolLoopRunner = io.zer0.muse.ui.chat.ChatToolLoopRunner(host = toolLoopHostBridge)
 
     /**
-     * v2.x 重构 S2: 压缩编排的宿主桥实现 —— 把 VM 的私有成员转发给
-     * ChatCompressionCoordinator,全部直接转发,无逻辑。
+     * v2.x Refactorización S2: implementación de puente de host para orquestación de compresión —— Reenviar los miembros privados de la VM a
+     * ChatCompressionCoordinator,Reenviar todo directamente,Sin lógica.
      */
     @Suppress("TooManyFunctions")
     private val compressionHostBridge = object : io.zer0.muse.ui.chat.ChatCompressionHostBridge {
@@ -2207,10 +2207,10 @@ class ChatViewModel(
 
     private val compressionCoordinator = io.zer0.muse.ui.chat.ChatCompressionCoordinator(host = compressionHostBridge)
     /**
-     * v2.x 重构 S4: 工具审批的宿主桥实现 —— 转发 VM 的私有成员,无逻辑。
+     * v2.x Refactorización S4: Implementación de Host Bridge para la aprobación de herramientas —— Reenviar miembros privados de VM,Sin lógica.
      */
     /**
-     * v2.x 重构 S4/S5: 工具审批与恢复的宿主桥实现 —— 转发 VM 的私有成员,无逻辑。
+     * v2.x Refactor S4/S5: implementación del puente de host para la aprobación y recuperación de herramientas —— Reenviar miembros privados de VM,Sin lógica.
      */
     private val toolApprovalHostBridge = object : io.zer0.muse.ui.chat.ChatToolApprovalHostBridge {
         override val stateStore get() = this@ChatViewModel.stateStore
@@ -2248,10 +2248,10 @@ class ChatViewModel(
     private val toolResumeCoordinator = io.zer0.muse.ui.chat.ChatToolResumeCoordinator(host = toolApprovalHostBridge)
 
     /**
-     * Transformer 管道。会话摘要在上下文压缩后加入,不会被二次压缩或写入历史消息。
-     * - TemplateTransformer 接管 Assistant.messageTemplate 的 {{var}} 替换
-     * - Assistant 配置通过 [TransformContext.extras] 注入,各 Transformer 自行读取
-     * - Phase 8.5: LorebookTransformer(关键词触发) + PromptInjectionTransformer(模式开关)
+     * Transformer Tubería. El resumen de la sesión se agrega después de la compresión del contexto.,No se comprimirá dos veces ni se escribirá en mensajes históricos.
+     * - TemplateTransformer Asumir el control de Assistant.messageTemplate {{var}} reemplazar
+     * - Assistant Configuración aprobada [TransformContext.extras] inyectar,Cada Transformer lo lee solo
+     * - Phase 8.5: LorebookTransformer(activador de palabra clave) + PromptInjectionTransformer(interruptor de modo)
      */
     private fun buildTransformerPipeline(): TransformerPipeline {
         val builder = TransformerPipeline.Builder()
@@ -2268,29 +2268,29 @@ class ChatViewModel(
         return builder.build()
     }
 
-    /** Phase 8.5 修复: 首次会话初始化标记,防止 observeSessions 竞态重复创建会话。 */
+    /** Phase 8.5 Reparación: Token de inicialización de la primera sesión,Evite que la condición de carrera de observeSessions cree sesiones repetidamente. */
     @Volatile
     private var initializing: Boolean = false
 
-    /** 当前图片生成任务(P5-G)。 */
+    /** Tarea de generación de imágenes actual(P5-G). */
     private var imageJob: Job? = null
 
-    /** 当前翻译任务(P5-F)。 */
+    /** Tareas de traducción actuales(P5-F). */
     private var translateJob: Job? = null
 
     init {
-        // 上下文占用供 get_token_usage 自查：工具层看不到 ChatUiState，
-        // 这里把读取入口绑到本 ViewModel 的实时 state（进程级单例，绑定一次即可）。
+        // El contexto está ocupado para la autoinspección get_token_usage: la capa de herramientas no puede ver ChatUiState.
+        // Aquí, la entrada leída está vinculada al estado en tiempo real de este ViewModel (un singleton a nivel de proceso, solo vincúlelo una vez).
         io.zer0.muse.ui.chat.ContextOccupancyProbe.bind {
             val snapshot = _state.value
             snapshot.contextTokenCount to snapshot.contextMaxTokens
         }
-        // B2-04: 子代理遇到需审批工具时,复用主会话的审批卡
+        // B2-04: Cuando un subagente encuentra una herramienta que requiere aprobación,Reutilizar tarjetas de aprobación de la sesión principal
         toolApprovalRouter.delegate = this
-        // 监听配置变化,刷新 isConfigured 标志
-        // v1.22: 本地不再硬编码模型列表,isConfigured 只要有激活 Provider 即为 true。
-        // 若激活 Provider 没有模型,自动触发上游 /models 拉取。
-        // 真正缺凭证时由 chatService 发送抛错,通过 state.error 提示用户。
+        // Escuche los cambios de configuración,Actualizar el indicador isConfigured
+        // v1.22: No más listas de modelos codificadas localmente,isConfigured Esto es cierto siempre que el Proveedor esté activado.
+        // Si el Proveedor está activado y no hay modelo,Activa automáticamente extracciones desde modelos/upstream.
+        // Cuando realmente faltan las credenciales, chatService enviará un error.,Avisar al usuario a través de state.error.
         viewModelScope.launch {
             settings.providerConfigFlow.collect { config ->
                 _state.update {
@@ -2298,13 +2298,13 @@ class ChatViewModel(
                         isConfigured = config != null,
                     )
                 }
-                // 自动拉取:激活 Provider 已配置 apiKey 但 models 为空
+                // Tirar automáticamente:Active el proveedor con apiKey configurado pero los modelos están vacíos
                 if (config != null && config.models.isEmpty() && config.apiKey.isNotBlank()) {
                     refreshModels(config.id)
                 }
             }
         }
-        // 阶段 5: 观察全部 Provider / 激活 Provider / 选中模型(底部切换面板用)
+        // Etapa 5: Observar a todos los proveedores/Activar proveedores/Seleccionar modelos(Para panel de conmutación inferior)
         viewModelScope.launch {
             settings.providersFlow.collect { providers ->
                 _state.update { it.copy(providers = providers) }
@@ -2342,19 +2342,19 @@ class ChatViewModel(
                 }
             }
         }
-        // v1.60-A: 收集工具模型 id(工具调用轮次使用)
+        // v1.60-A: modelo de herramienta de recolección id(Uso de la ronda de llamadas de herramientas)
         viewModelScope.launch {
             settings.toolModelIdFlow.collect { modelId ->
                 _state.update { it.copy(toolModelId = modelId) }
             }
         }
-        // v1.0.47: Token 估算开关
+        // v1.0.47: Token Cambio de estimación
         viewModelScope.launch {
             settings.tokenEstimateEnabledFlow.collect { enabled ->
                 _state.update { it.copy(tokenEstimateEnabled = enabled) }
             }
         }
-        // v1.0.47 P5-2: 长文本粘贴转文件开关 + 阈值
+        // v1.0.47 P5-2: Pegar texto largo en archivo cambiar + umbral
         viewModelScope.launch {
             settings.pasteAsFileEnabledFlow.collect { enabled ->
                 _state.update { it.copy(pasteAsFileEnabled = enabled) }
@@ -2365,17 +2365,17 @@ class ChatViewModel(
                 _state.update { it.copy(pasteAsFileThreshold = threshold) }
             }
         }
-        // 观察会话列表(侧栏用)
+        // Ver lista de sesiones(Para barra lateral)
         viewModelScope.launch {
             try {
                 sessionRepository.observeSessions().collect { sessions ->
                     _state.update { it.copy(sessions = sessions, isSessionsLoading = false, sessionsError = null) }
-                    // 首次加载:无会话则新建,有则切换到最近一个
-                    // Phase 8.5 修复: 用 initializing flag 防止 observeSessions 在 createNewSession
-                    // 异步设置 currentSessionId 前再次发射时重复创建多个会话
+                    // primera carga:Si no hay sesión, crea una nueva.,Si lo hay, cambie al más reciente.
+                    // Phase 8.5 Reparación: Utilice el indicador de inicialización para evitar que observeSessions createNewSession
+                    // Configure de forma asincrónica currentSessionId antes de volver a emitir para crear repetidamente varias sesiones
                     if (_state.value.currentSessionId == null && !initializing) {
                         initializing = true
-                        // R-UI-02: 进程恢复优先还原用户离开时查看的会话,而非最近活跃会话。
+                        // R-UI-02: La recuperación de procesos prioriza la restauración de sesiones que el usuario estaba viendo mientras estaba fuera,en lugar de la sesión activa más reciente.
                         val viewedId = resultOf { settings.getViewedSessionId() }.getOrNull()
                         val target = sessions.firstOrNull { it.id == viewedId } ?: sessions.firstOrNull()
                         if (target != null) {
@@ -2386,8 +2386,8 @@ class ChatViewModel(
                     }
                 }
             } catch (t: Throwable) {
-                // v1.x: 协程取消必须重抛,不能当成"加载失败"展示(否则显示
-                // "请求失败: Job was cancelled"且协程死亡后错误永远挂着)
+                // v1.x: La cancelación de la rutina debe volver a lanzarse,no puede ser considerado como"Error al cargar"mostrar(De lo contrario mostrar
+                // "Solicitud fallida: Job was cancelled"Y el error siempre se bloqueará después de que muera la rutina.)
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Logger.e("ChatVM", "observeSessions failed", t)
                 _state.update {
@@ -2402,9 +2402,9 @@ class ChatViewModel(
                 }
             }
         }
-        // v0.45: 观察已归档会话(归档 FilterCard 用)
+        // v0.45: Observar conversaciones archivadas(Uso de Archive FilterCard)
         loadArchivedSessions()
-        // Phase 8.2: 观察 Assistant 列表(侧栏选择器用)
+        // Phase 8.2: Mira la lista de asistentes(Para selector de barra lateral)
         viewModelScope.launch {
             assistantRepository.observeAll.collect { list ->
                 _state.update { state ->
@@ -2416,34 +2416,34 @@ class ChatViewModel(
                     state.copy(
                         assistants = list,
                         isAssistantsLoading = false,
-                        // 助手详情页直接写 Room 后,同步刷新当前聊天快照;
-                        // 否则 prompt、工具、Skill、KB、模型等改动要切换会话后才生效。
+                        // Escriba Room directamente después de la página de detalles del asistente,Actualizar sincrónicamente la instantánea del chat actual;
+                        // De lo contrario, herramienta,Skill,KB, modelo y otros cambios solo tendrán efecto después de cambiar de sesión.
                         currentAssistant = refreshedCurrent,
                     )
                 }
             }
         }
-        // Phase 8.3: 观察跨会话收藏消息(收藏面板用)
+        // Phase 8.3: Observe los mensajes favoritos en todas las sesiones(Para panel de colección)
         loadFavorites()
-        // v1.104 U7: 观察已命名的收藏分组标签(供 FavoritesScreen 顶部 FilterChip 渲染)
+        // v1.104 U7: Observe las etiquetas del grupo de colección con nombre(Para la representación de FilterChip en la parte superior de la pantalla Favoritos)
         viewModelScope.launch {
             sessionRepository.observeAllFavoriteTags().collect { tags ->
                 _state.update { it.copy(favoriteTags = tags) }
             }
         }
-        // Phase 8.4: 观察 Web 搜索配置(同步 webSearchEnabled / webSearchConfig)
+        // Phase 8.4: Observar la configuración de búsqueda web(sincronizar webSearchEnabled / webSearchConfig)
         viewModelScope.launch {
             settings.webSearchConfigFlow.collect { cfg ->
                 _state.update {
                     it.copy(
                         webSearchConfig = cfg,
-                        // 本地模式由 web_search 工具处理；原生模式由 Provider 原生工具处理，两者互斥。
+                        // El modo local lo maneja la herramienta web_search; el modo nativo lo maneja la herramienta nativa del proveedor y los dos son mutuamente excluyentes.
                         webSearchEnabled = cfg.enabled && cfg.mode != io.zer0.muse.web.WebSearchMode.OFF,
                     )
                 }
             }
         }
-        // v0.34: 观察图片生成默认参数配置
+        // v0.34: Observe la configuración de parámetros predeterminados de generación de imágenes
         viewModelScope.launch {
             settings.imageGenConfigFlow.collect { cfg ->
                 _state.update {
@@ -2461,8 +2461,8 @@ class ChatViewModel(
                 }
             }
         }
-        // Phase 8.5: 观察当前 Assistant 绑定的快捷消息
-        // 用 flatMapLatest 在 currentAssistant 变化时自动切到新 Assistant 的快捷消息流
+        // Phase 8.5: Observe los mensajes de acceso directo vinculados al Asistente actual
+        // Utilice flatMapLatest para cambiar automáticamente al flujo de mensajes de acceso directo del nuevo Asistente cuando cambie el Asistente actual.
         viewModelScope.launch {
             _state
                 .map { it.currentAssistant }
@@ -2476,33 +2476,33 @@ class ChatViewModel(
                     _state.update { it.copy(quickMessages = list) }
                 }
         }
-        // v1.97 (P1-1): Lorebook / PromptInjection / allQuickMessages 改为懒加载
+        // v1.97 (P1-1): Lorebook / PromptInjection / allQuickMessages Cambiar a carga diferida
         // (refreshLorebooks / refreshPromptInjections / refreshAllQuickMessages),
-        // 由 LorebookScreen / PromptInjectionScreen / QuickMessageScreen 进入时触发。
-        // 这三项只在管理页使用,不在聊天主流程读取,无需常驻 Flow 收集器。
-        // AssistantDetailPages 已用 rememberFlowList 独立收集,不依赖 ChatViewModel state。
+        // por LorebookScreen / PromptInjectionScreen / QuickMessageScreen Se activa al entrar.
+        // Estos tres elementos solo se utilizan en la página de administración.,No leído en el proceso de chat principal.,No se requiere recolector de flujo residente.
+        // AssistantDetailPages Recopilado de forma independiente mediante RememberFlowList,No depende del estado de ChatViewModel.
 
-        // v1.58: 订阅 Prompt 模板列表
+        // v1.58: Suscríbete a la lista de plantillas de mensajes
         viewModelScope.launch {
             settings.promptTemplatesFlow.collect { templates ->
                 _state.update { it.copy(promptTemplates = templates) }
             }
         }
-        // Phase 9.1 (M13): 观察文件夹列表(Drawer 分组渲染用)
+        // Phase 9.1 (M13): Lista de carpetas vigiladas(Drawer Para renderizado grupal)
         viewModelScope.launch {
             folderRepository.observeAll().collect { folders ->
                 _state.update { it.copy(folders = folders) }
             }
         }
-        // Phase 9.3 (M2): 观察 ASR 配置(SYSTEM/DashScope/Step)
-        // 跟随供应商开启时在状态里落解析后的连接参数,是否可用校验与建连都读这一份
+        // Phase 9.3 (M2): Observar la configuración de ASR(SYSTEM/DashScope/Step)
+        // Cuando el proveedor está activado, los parámetros de conexión analizados desaparecen del estado.,¿Es posible comprobarlo y construirlo? lee este
         viewModelScope.launch {
             combine(settings.asrConfigFlow, settings.providersFlow) { cfg, providers ->
                 val resolved = SpeechProviderResolver.resolveAsr(cfg, providers)
                 if (resolved.isProviderFallback) {
                     Logger.w(
                         "ChatViewModel",
-                        "ASR 跟随供应商配置失败,回退手动配置: ${resolved.fallbackReason}" +
+                        "ASR Error al seguir la configuración del proveedor,Volver a la configuración manual: ${resolved.fallbackReason}" +
                             "(providerId=${cfg.providerId}, modelId=${cfg.modelId})",
                     )
                 }
@@ -2511,29 +2511,29 @@ class ChatViewModel(
                 _state.update { it.copy(asrConfig = cfg) }
             }
         }
-        // v0.31: 订阅聊天行为偏好(MessageBubble/ChatScreen/InputBar 据此控制渲染与交互)
+        // v0.31: Suscríbete a las preferencias de comportamiento del chat(MessageBubble/ChatScreen/InputBar Controle el renderizado y la interacción en consecuencia)
         viewModelScope.launch {
             settings.chatPreferencesFlow.collect { prefs ->
                 _state.update { it.copy(chatPreferences = prefs) }
             }
         }
-        // v1.97 (P1-1): shareTemplate 改为 exportSessionAsMarkdown 内 first() 加载,
-        // 不再常驻 Flow 收集器(只在导出时用一次)。
-        // v0.33: 订阅媒体配置(TTS / 录音采样率等)
+        // v1.97 (P1-1): shareTemplate Cambiado para exportSessionAsMarkdown first() Cargar,
+        // Colector de flujo que ya no es residente(Solo se usó una vez durante la exportación.).
+        // v0.33: Configuración de medios de suscripción(TTS / Frecuencia de muestreo de grabación, etc.)
         viewModelScope.launch {
             settings.mediaConfigFlow.collect { cfg ->
                 _state.update { it.copy(mediaConfig = cfg) }
             }
         }
-        // v1.25: 订阅多 Agent 协作配置(团队列表与总开关)
+        // v1.25: Suscripción a configuración de colaboración multiagente(Lista de equipos y cambio maestro)
         viewModelScope.launch {
             settings.multiAgentConfigFlow.collect { cfg ->
                 _state.update { it.copy(multiAgentConfig = cfg) }
             }
         }
-        // v1.43: 监听应用级生成状态。切页后新 ViewModel 创建时,若同一会话仍在后台生成,
-        // 自动把 isStreaming 置 true,UI 会显示停止按钮并继续观察消息流。
-        // 使用按 sessionId 的完整快照,避免另一个会话成为“最近任务”后遮蔽当前会话状态。
+        // v1.43: Supervise el estado de compilación a nivel de aplicación. Cuando se crea un nuevo ViewModel después de un corte de página,Si todavía se genera la misma sesión en segundo plano,
+        // Establecer automáticamente isStreaming true,UI Aparece un botón Detener y continúa observando el flujo de mensajes.
+        // Usar instantánea completa por sessionId,evitar que otra sesión se convierta“tareas recientes”Después de enmascarar el estado de la sesión actual.
         viewModelScope.launch {
             chatGenerationManager.activeGenerations.collect { generations ->
                 val state = _state.value
@@ -2551,7 +2551,7 @@ class ChatViewModel(
                 }
             }
         }
-        // v1.0.4: 收集视觉辅助分析进度,驱动 UI 显示"正在分析图片 2/4…"
+        // v1.0.4: Recopilar ayudas visuales para analizar el progreso.,Pantalla de interfaz de usuario del controlador"Analizando imágenes 2/4…"
         viewModelScope.launch {
             visionBridge.progressFlow.collect { progress ->
                 _state.update {
@@ -2559,8 +2559,8 @@ class ChatViewModel(
                 }
             }
         }
-        // Phase 8.7: 注册 TTS 状态回调,驱动 isSpeaking / speakingMessageId
-        // 回调来自后台线程(UtteranceProgressListener),用 update 保证线程安全
+        // Phase 8.7: Registrar devolución de llamada de estado TTS,conducir isSpeaking / speakingMessageId
+        // La devolución de llamada proviene del hilo en segundo plano.(UtteranceProgressListener),Utilice la actualización para garantizar la seguridad del hilo
         ttsManager.onStateChange = { utteranceId, isSpeaking ->
             _state.update {
                 it.copy(
@@ -2572,32 +2572,32 @@ class ChatViewModel(
                 )
             }
         }
-        // v2.3: 订阅任务模型路由配置
+        // v2.3: Configuración de enrutamiento del modelo de tarea de suscripción
         viewModelScope.launch {
             settings.taskRoutingConfigFlow.collect { config ->
                 _state.update { it.copy(taskRoutingEnabled = config.enabled) }
             }
         }
-        // Phase 10.3: 启动时检查 FTS 索引一致性,不一致则后台 rebuild
-        // - v8→v9 迁移后 messages_fts 为空,首次启动会全量索引历史消息
-        // - ngram 转换是 CPU 密集,放 IO 线程;不阻塞 UI(万级消息约数百毫秒)
-        // - 失败静默(只记日志),不影响主流程
+        // Phase 10.3: Verifique la coherencia del índice FTS al iniciar,Si es inconsistente, el fondo rebuild
+        // - v8→v9 message_fts está vacío después de la migración,El primer inicio indexará completamente los mensajes históricos.
+        // - ngram La conversión consume mucha CPU,Poner hilo IO;No bloquear UI(Los mensajes de nivel 10.000 tardan cientos de milisegundos)
+        // - Silencio ante el fracaso(Sólo mantén un registro),No afecta el proceso principal.
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                // H-01 修复: ensureFtsIndexConsistent 是 suspend,改用 resultOf 避免吞没 CancellationException
+                // H-01 Reparación: ensureFtsIndexConsistent si suspend,Utilice resultOf en su lugar para evitar engullir CancellationException
                 resultOf { sessionRepository.ensureFtsIndexConsistent() }
                     .onError { msg, t -> Logger.w("ChatVM", "FTS ensureFtsIndexConsistent failed: $msg") }
             }
         }
-        // v5: 消息发送队列消费者 — 串行处理,支持自动重试
-        // v1.136 修复:Agent 模式与任务模式会话完全隔离,消费者按 isAgentMode 取当前会话 id,
-        // 避免 Agent 页面的消息因 currentSessionId 指向任务会话而被跳过(导致只显示输入中动画)。
-        // 审计修复 (用户反馈): 消费者协程必须永不死亡。原实现 for 循环无外层 try/catch,
-        // 任一轮处理抛未捕获异常(非 Exception 类型,或 launchStream/_state.update 抛出)
-        // 都会杀死消费者 → sendChannel 再无消费者 → capacity=8 很快满 →
-        // 所有发送报"队列已满"、消息发不出去(用户以为连不上)、切会话逻辑也卡死。
-        // 修复: 外层 while 包 try/catch,异常时记录并重启消费(协程不退出);
-        // 每轮处理再包 try/catch,单条消息失败不杀循环。
+        // v5: Consumidor de cola de envío de mensajes — procesamiento en serie,Admite reintento automático
+        // v1.136 Reparación:Agent El modo está completamente aislado de las sesiones del modo tarea.,El consumidor obtiene la sesión actual mediante isAgentMode id,
+        // Evitar que se omitan mensajes en la página del Agente porque currentSessionId apunta a la sesión de la tarea(Hace que solo se muestre la animación de entrada.).
+        // Reparación de auditoría (Comentarios de los usuarios): Las rutinas de consumo nunca deben morir. La implementación original del bucle for no tiene capa exterior try/catch,
+        // Cualquier ronda de procesamiento genera una excepción no detectada.(Tipo sin excepción,o lanzamientos launchStream/_state.update)
+        // matará a los consumidores → sendChannel no más consumidores → capacity=8 Lleno pronto →
+        // Todos los despachos"La cola está llena", el mensaje no se puede enviar(Los usuarios piensan que no pueden conectarse), la lógica de la conversación también está estancada.
+        // Reparación: paquete exterior mientras try/catch,Registrar y reiniciar el consumo cuando se produzca una excepción.(La corrutina no sale.);
+        // Reenvasado después de cada ronda de procesamiento. try/catch,Si falla un solo mensaje, el bucle no se cerrará.
         viewModelScope.launch {
             while (isActive) {
                 try {
@@ -2607,9 +2607,9 @@ class ChatViewModel(
                         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                             throw e
                         } catch (e: Exception) {
-                            // 单条消息处理失败:回滚乐观更新 + 删除 outbox,继续下一轮。
-                            // 不回滚会出现“当前页看得到、重进后消失”的幽灵消息。
-                            Logger.e("ChatVM", "消费发送请求失败(msg=${req.userMessage.content.take(30)}): ${e.message}", e)
+                            // Error al procesar un solo mensaje:Revertir actualización optimista + eliminar outbox,Continúe con la siguiente ronda.
+                            // Aparecerá si no retrocedes.“La página actual se puede ver y desaparecerá después de volver a ingresar.”noticias de fantasmas.
+                            Logger.e("ChatVM", "Error en la solicitud de envío del consumidor(msg=${req.userMessage.content.take(30)}): ${e.message}", e)
                             generationController.rollbackOptimisticSend(req)
                             runCatching { sessionRepository.deleteOutbox(req.outboxId) }
                             _state.update { it.copy(isStreaming = false, isWaitingFirstToken = false) }
@@ -2618,39 +2618,39 @@ class ChatViewModel(
                 } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                     throw e
                 } catch (e: Throwable) {
-                    // 消费者被非预期异常打断:记录后继续消费(循环重启)
-                    Logger.e("ChatVM", "发送队列消费者异常,重启消费: ${e.message}", e)
+                    // El consumidor fue interrumpido por una excepción inesperada.:Continuar consumiendo después de grabar(reinicio del ciclo)
+                    Logger.e("ChatVM", "Enviar excepción de consumidor de cola,Reiniciar consumo: ${e.message}", e)
                 }
             }
         }
 
-        // P2-23: 媒体生成工具(generate_image / generate_video / generate_qr_code)已在 App 启动时
-        // 由 MediaGenToolsRegistrar 注册进 ToolRegistry(定时任务/群聊/子代理同样可调用),
-        // 不再需要在这里注册。此处只安装"结果投递宿主" —— 把生成结果写回当前助手消息,
-        // 等价于原 registerMediaTools() 之后 execGenerateImage/Video/QrCode 里与 UI 耦合的部分。
-        // 每个 provider/回调与旧实现的对应关系见 ChatMediaGenHost 各构造参数注释。
+        // P2-23: herramientas de generación de medios(generate_image / generate_video / generate_qr_code)Ya en el inicio de la aplicación
+        // Registrado por MediaGenToolsRegistrar ToolRegistry(tareas programadas/chat grupal/Los subagentes también pueden ser llamados),
+        // Ya no es necesario registrarse aquí. Instalar solo aquí"Anfitrión de entrega de resultados" —— Escribe los resultados generados en el mensaje actual del asistente.,
+        // Equivalente al original registerMediaTools() Luego, la parte junto con la interfaz de usuario en execGenerateImage/Video/QrCode.
+        // La relación correspondiente entre cada proveedor/devolución de llamada y la implementación anterior se puede encontrar en los comentarios de cada parámetro de construcción de ChatMediaGenHost.
         mediaGenTools?.installHost(
             ChatMediaGenHost(
                 accessor = this,
                 sessionRepository = sessionRepository,
                 streamCoordinator = streamCoordinator,
                 appContext = appContext,
-                // 旧 exec* 锚定的 toolAssistantId(生成开始前确定目标助手消息;每轮 streamRound 同步更新)
+                // viejo exec* anclado toolAssistantId(Determine el mensaje de ayuda de destino antes de que comience la compilación;Cada ronda de streamRound se actualiza sincrónicamente)
                 toolAssistantIdProvider = { toolAssistantId },
-                // 旧 exec* 的 activeToolSessionId ?: currentSessionIdForApproval():
-                // 既用于 isToolSessionDisplayed() 判断显示焦点,也用于媒体落库的会话 id
+                // viejo exec* de activeToolSessionId ?: currentSessionIdForApproval():
+                // tanto para isToolSessionDisplayed() Determinar el foco de visualización,También se utiliza para sesiones sin cita previa de medios. id
                 toolSessionIdProvider = { activeToolSessionId ?: currentSessionIdForApproval() },
-                // 旧 exec* 入口捕获、写媒体前校验的 toolGenerationToken(A-13 代际令牌)
+                // viejo exec* Captura de entrada y verificación antes de escribir en soportes. toolGenerationToken(A-13 token intergeneracional)
                 generationTokenProvider = { toolGenerationToken },
-                // 旧 exec* 里的 updateAssistant(assistantId, content, isStreaming = true)
+                // viejo exec* adentro updateAssistant(assistantId, content, isStreaming = true)
                 updateAssistant = { id, content -> updateAssistant(id, content, isStreaming = true) },
-                // 旧 exec* 的 persistToolMessageMedia(S-01: 含媒体消息立即落盘)
+                // viejo exec* de persistToolMessageMedia(S-01: Colocación inmediata con información de los medios.)
                 persistMediaMessage = { sessionId, id -> persistToolMessageMedia(sessionId, id) },
-                // 旧 exec* 的 toolMediaMessages.add(C-17: 登记本代媒体消息供收尾兜底落盘)
+                // viejo exec* de toolMediaMessages.add(C-17: Registrar las noticias mediáticas de esta generación para su liquidación definitiva.)
                 registerMediaMessage = { id -> toolMediaMessages.add(id) },
             ),
         )
-        // v1.201: 订阅委派链路 + 暂停请求,同步到 UiState
+        // v1.201: Suscríbete al enlace de delegación + solicitud de pausa,Sincronizar con UiState
         viewModelScope.launch {
             delegationChainTracker.chains.collect { all ->
                 val roots =
@@ -2666,55 +2666,55 @@ class ChatViewModel(
             }
         }
 
-        // v1.202: 订阅非阻塞委派结果回灌 —— 后台子 agent 完成后,把结果作为 interlude
-        // 消息追加到当前会话,让用户看到子 agent 的工作产出。
-        // 注意:consumeCompleted 会消费并清除,所以每次 emit 都要拉取当前会话的待回灌列表。
+        // v1.202: Suscribirse al flujo de retorno de resultados de delegación sin bloqueo —— Una vez completado el subagente en segundo plano,tratar el resultado como interlude
+        // Agregar mensaje a la sesión actual,Permita que los usuarios vean el resultado del trabajo de los subagentes.
+        // Nota:consumeCompleted Consumirá y aclarará,Por lo tanto, cada emisión debe extraer la lista de recargas pendientes para la sesión actual.
         viewModelScope.launch {
             deferredResultStore.completedTasks.collect { _ ->
                 val sessionId = currentSessionIdForApproval() ?: return@collect
                 val tasks = deferredResultStore.consumeCompleted(sessionId)
                 if (tasks.isEmpty()) return@collect
-                // 把每个完成的子 agent 结果作为一条 ASSISTANT interlude 消息追加到当前会话
+                // Adjunte cada resultado de subagente completado a la sesión actual como un mensaje intermedio de ASISTENTE
                 val interludes =
                     tasks.map { task ->
                         val prefix = task.label?.let { "[$it] " } ?: ""
                         val content =
                             if (task.status == io.zer0.muse.tools.DeferredResultStore.TaskStatus.RESOLVED) {
-                                "${prefix}子 agent 已完成任务:\n${task.result}"
+                                "${prefix}El subagente ha completado la tarea.:\n${task.result}"
                             } else {
-                                "${prefix}子 agent 任务失败: ${task.error}"
+                                "${prefix}Error en la tarea del subagente: ${task.error}"
                             }
                         UIMessage(role = MessageRole.ASSISTANT, content = content)
                     }
                 updateMessages { it + interludes }
-                // 同步持久化到 DB,确保切页/重启后仍可恢复
+                // Sincronizar la persistencia con DB,Asegúrate de cortar las páginas./Aún se puede restaurar después de reiniciar
                 for (msg in interludes) {
                     try {
                         sessionRepository.appendMessage(sessionId, msg)
                     } catch (e: Exception) {
-                        Logger.w("ChatVM", "interlude appendMessage 失败", e)
+                        Logger.w("ChatVM", "interlude appendMessage falló", e)
                     }
                 }
-                // A-10: 消费未归属子任务结果并降级注入当前活跃会话。
-                // 业务原因:subagent_task 可由 LLM 省略 parent_session_id,导致结果以空串 key 存入
-                // DeferredResultStore,无法被上方按 session id 的 consumeCompleted 命中而静默丢失。
-                // 此处主动拉取未归属结果,降级注入当前会话保证用户可见结果;
-                // 降级必须记 ERROR 日志说明根因(LLM 未传 parent_session_id),便于后续定位。
+                // A-10: Consume los resultados de subtareas sin propietario y los degrada a la sesión activa actual.
+                // razones comerciales:subagent_task Puede ser omitido por LLM parent_session_id,Hace que el resultado se almacene con una clave de cadena vacía
+                // DeferredResultStore,No puede ser alcanzado por consumaCompleted por el ID de sesión anterior y se pierde silenciosamente.
+                // Obtenga activamente resultados no atribuidos aquí,Degradar la inyección en la sesión actual para garantizar que los resultados sean visibles para el usuario;
+                // Las degradaciones deben registrar registros de ERRORES para indicar la causa raíz.(LLM No transmitido parent_session_id),Facilitar el posicionamiento posterior.
                 val unowned = deferredResultStore.consumeUnowned()
                 if (unowned.isNotEmpty()) {
                     Logger.e(
                         "ChatVM",
-                        "A-10: 检测到 ${unowned.size} 个未归属子任务结果(parent_session_id 缺失)," +
-                            "降级注入当前会话 sessionId=$sessionId,请排查 subagent_task 调用是否遗漏 parent_session_id 参数",
+                        "A-10: detectado ${unowned.size} resultados de subtarea sin dueño(parent_session_id desaparecido)," +
+                            "Inyección de degradación en la sesión actual sessionId=$sessionId,Compruebe si falta el parámetro parent_session_id en la llamada subagent_task",
                     )
                     val unownedInterludes =
                         unowned.map { task ->
                             val prefix = task.label?.let { "[$it] " } ?: ""
                             val content =
                                 if (task.status == io.zer0.muse.tools.DeferredResultStore.TaskStatus.RESOLVED) {
-                                    "${prefix}子 agent 已完成任务:\n${task.result}"
+                                    "${prefix}El subagente ha completado la tarea.:\n${task.result}"
                                 } else {
-                                    "${prefix}子 agent 任务失败: ${task.error}"
+                                    "${prefix}Error en la tarea del subagente: ${task.error}"
                                 }
                             UIMessage(role = MessageRole.ASSISTANT, content = content)
                         }
@@ -2723,16 +2723,16 @@ class ChatViewModel(
                         try {
                             sessionRepository.appendMessage(sessionId, msg)
                         } catch (e: Exception) {
-                            Logger.w("ChatVM", "interlude(unowned) appendMessage 失败", e)
+                            Logger.w("ChatVM", "interlude(unowned) appendMessage falló", e)
                         }
                     }
                 }
             }
         }
 
-        // v1.202: 订阅活跃子 agent 线程 + 待处理任务,同步到 UiState 供 SubagentTaskListCard 渲染
-        // listActiveThreads 是普通 List(非 Flow),通过 deferredResultStore.tasks 的 StateFlow emit
-        // 间接触发重组(任务状态变化时一并刷新线程列表快照)
+        // v1.202: Suscríbase a hilos activos de agentes secundarios + tareas pendientes,Sincronizado con UiState para la representación SubagentTaskListCard
+        // listActiveThreads es normal List(no Flow),a través de deferredResultStore.tasks StateFlow emit
+        // Impulsar indirectamente la reorganización(Actualizar la instantánea de la lista de subprocesos cuando cambia el estado de la tarea)
         viewModelScope.launch {
             deferredResultStore.tasks.collect { tasksMap ->
                 val sid = currentSessionIdForApproval()
@@ -2753,27 +2753,27 @@ class ChatViewModel(
             }
         }
 
-        // v1.0.15: 恢复未完成的 outbox 消息(进程被杀后重启时)
-        // 扫描 outbox 表,确保用户消息已持久化到 messages 表,然后删除 outbox 记录。
-        // 用户打开对应会话时可看到消息并手动重发。
+        // v1.0.15: Recuperar mensajes de la bandeja de salida no terminados(Cuando un proceso se reinicia después de ser eliminado)
+        // Escanear tabla de bandeja de salida,Asegúrese de que los mensajes de los usuarios persistan en la tabla de mensajes.,Luego elimine el registro de la bandeja de salida.
+        // Los usuarios pueden ver el mensaje y reenviarlo manualmente cuando abren la sesión correspondiente.
         viewModelScope.launch {
             val pending = resultOf { sessionRepository.getPendingOutbox() }.getOrNull()
             if (pending.isNullOrEmpty()) return@launch
-            Logger.i("ChatVM", "outbox 恢复: ${pending.size} 条未完成消息")
+            Logger.i("ChatVM", "outbox restaurar: ${pending.size} mensajes sin terminar")
             for (req in pending) {
-                // 检查用户消息是否已持久化(消费端可能已 appendMessage 但进程在 launchStream 前被杀)
+                // Compruebe si el mensaje del usuario ha persistido(Es posible que el consumidor tenga appendMessage pero el proceso finalizó antes de launchStream)
                 val alreadySaved =
                     resultOf { sessionRepository.messageExists(req.sessionId, req.userMessageId) }
                         .getOrNull() ?: false
-                // 若 checkpoint 已存在，说明生成已经真正启动过；不要把残留 outbox 再次投递，
-                // 否则会与 checkpoint 恢复路径并行生成同一条 assistant 回复。
+                // Si el punto de control ya existe, significa que la generación realmente se ha iniciado; no vuelva a entregar la bandeja de salida restante.
+                // De lo contrario, se generará la misma respuesta del asistente en paralelo con la ruta de recuperación del punto de control.
                 val checkpointExists =
                     resultOf { sessionRepository.hasGenerationCheckpointForUserMessage(req.userMessageId) }
                         .getOrNull() ?: false
                 if (checkpointExists) {
-                    Logger.i("ChatVM", "outbox ${req.id} 已有 generation checkpoint，跳过重复恢复")
+                    Logger.i("ChatVM", "outbox ${req.id} Ya existe un punto de control de generación, omita la recuperación repetida")
                     resultOf { sessionRepository.deleteOutbox(req.id) }
-                        .onError { msg, _ -> Logger.w("ChatVM", "清理 checkpoint 对应 outbox 失败: $msg") }
+                        .onError { msg, _ -> Logger.w("ChatVM", "No se pudo borrar el punto de control correspondiente a la bandeja de salida: $msg") }
                     continue
                 }
                 val images =
@@ -2782,7 +2782,7 @@ class ChatViewModel(
                     }.getOrDefault(emptyList())
                 val userMsgId =
                     runCatching { Uuid.parse(req.userMessageId) }.getOrElse {
-                        Logger.w("ChatVM", "outbox userMessageId 非 UUID,回退随机 id: ${req.userMessageId}")
+                        Logger.w("ChatVM", "outbox userMessageId no UUID,Repliegue aleatorio id: ${req.userMessageId}")
                         Uuid.random()
                     }
                 val userMessage =
@@ -2795,15 +2795,15 @@ class ChatViewModel(
                     )
                 if (!alreadySaved) {
                     resultOf {
-                        // 复用 outbox 的 userMessageId + createdAt，避免恢复后排序漂移。
+                        // Reutilice userMessageId + createAt de la bandeja de salida para evitar cambios en la clasificación después de la recuperación.
                         sessionRepository.appendMessage(req.sessionId, userMessage)
                     }.onError { msg, t ->
-                        Logger.w("ChatVM", "outbox 恢复 appendMessage 失败: $msg", t)
+                        Logger.w("ChatVM", "outbox No se pudo restaurar appendMessage: $msg", t)
                     }
                 }
-                // 用户消息已存在时不能直接删除：进程可能死在 appendMessage 与 launchStream 之间。
-                // 重新投递同一条请求，由消费端启动生成成功后按原 outboxId 删除。
-                // outbox 不保存路由字段，恢复时按最新任务路由配置重新判定一次。
+                // Los mensajes de usuario no se pueden eliminar directamente cuando ya existen: el proceso puede morir entre appendMessage y launchStream.
+                // Vuelva a enviar la misma solicitud y elimínela según el outboxId original después de que el consumidor la haya iniciado y generado correctamente.
+                // outbox El campo de enrutamiento no se guarda y se volverá a determinar según la configuración de enrutamiento de tareas más reciente durante la recuperación.
                 val recoveredFallbackModel = sessionModelOverrides[req.sessionId] ?: globalSelectedModelId
                 val recoveredFallbackProvider = sessionProviderOverrides[req.sessionId] ?: globalActiveProviderId
                 val recoveredRoute =
@@ -2825,27 +2825,27 @@ class ChatViewModel(
                         ),
                     )
                 if (retry.isFailure) {
-                    Logger.w("ChatVM", "outbox 恢复重新入队失败: ${req.id}")
+                    Logger.w("ChatVM", "outbox Error al volver a poner en cola la recuperación: ${req.id}")
                 }
             }
         }
     }
 
-    /** v1.201: 用户提交委派暂停决策。 */
+    /** v1.201: El usuario presenta la decisión de suspensión delegada. */
     fun submitPauseDecision(requestId: String, response: io.zer0.muse.tools.DelegationPauseManager.PauseResponse) {
         delegationPauseManager.submitDecision(requestId, response)
     }
 
-    /** v1.201: 用户取消进行中的委派。 */
+    /** v1.201: El usuario cancela una delegación en curso. */
     fun cancelDelegation(requestId: String) {
         delegationPauseManager.cancelDelegation(requestId)
     }
 
     /**
-     * v1.202: 取消后台子 agent 任务。
+     * v1.202: Cancelar tareas de subagente en segundo plano.
      *
-     * 通过 [DeferredResultStore.abort] 把任务标记为 ABORTED,
-     * 后台 SkillExecutor 检查到状态变化后会停止推进。
+     * Pase [DeferredResultStore.abort] Marcar la tarea como ABORTED,
+     * El SkillExecutor en segundo plano dejará de avanzar después de detectar el cambio de estado.
      */
     fun cancelSubagentTask(taskId: String) {
         viewModelScope.launch {
@@ -2854,22 +2854,22 @@ class ChatViewModel(
     }
 
     /**
-     * 关掉一个后台子 agent 线程。
+     * Cierre un hilo de agente secundario en segundo plano.
      *
-     * 和 [cancelSubagentTask] 不是一回事：那个中止的是「还没出结果的延迟任务」，
-     * 这个了结的是「已经跑完但线程还开着」的会话。后者原来在界面上没有任何出口，
-     * 线程一旦没收尾就会一直挂在任务卡里，用户只能看着它。
+     * y [cancelSubagentTask] No es lo mismo: la que se abortó era una “tarea retrasada que aún no ha dado resultados”.
+     * Esto finaliza la sesión que "ha terminado de ejecutarse pero el hilo aún está abierto". Este último originalmente no tenía ninguna salida en la interfaz,
+     * Una vez que el hilo no esté terminado, siempre quedará colgado en la tarjeta de tareas y el usuario solo podrá mirarlo.
      *
-     * 关闭后主动把它从状态里摘掉：线程列表只在 deferredResultStore 的任务变化时重算，
-     * 关线程本身不产生任务事件，不摘的话卡片要等下一次别的事件才会消失。
+     * Elimínelo activamente del estado después del cierre: la lista de subprocesos solo se recalcula cuando cambia la tarea de deferredResultStore.
+     * El hilo de cierre en sí no genera eventos de tarea. Si no la recoges, la tarjeta no desaparecerá hasta el siguiente evento.
      */
     fun closeSubagentThread(threadId: String) {
         viewModelScope.launch {
-            // 先记账再落库：界面上这个线程已经结束了，后面的刷新不该再把它带回来。
+            // Cuenta primero y luego colóquelo en la base de datos: este hilo en la interfaz ha finalizado y las actualizaciones posteriores no deberían devolverlo.
             closedSubagentThreads.add(threadId)
             runCatching { subagentThreadStore.close(threadId) }
                 .onFailure { e ->
-                    io.zer0.common.Logger.w("ChatVM", "关闭子 agent 线程失败: ${e.message}")
+                    io.zer0.common.Logger.w("ChatVM", "No se pudo cerrar el hilo del agente secundario: ${e.message}")
                 }
             _state.update { st ->
                 st.copy(
@@ -2881,65 +2881,65 @@ class ChatViewModel(
     }
 
     /**
-     * 审计修复 (用户反馈): 发送队列单条消息消费逻辑。
-     * 从原消费者循环体内抽出,由外层永不死亡的 while 循环逐条调用。
-     * 逻辑与原实现完全一致:会话切换跳过 + appendMessage 自动重试 + launchStream。
+     * Reparación de auditoría (Comentarios de los usuarios): Lógica de consumo de mensaje único en cola de envío.
+     * Extraído de la circulación del consumidor original.,Llamados uno por uno por el bucle while externo nunca muerto.
+     * La lógica es completamente consistente con la implementación original.:Omisión de cambio de sesión + reintento automático de appendMessage + launchStream.
      */
     fun updateInput(text: String) = inputController.updateInput(text)
 
     /**
-     * v1.205 B2: 把当前输入加入待发送队列(生成期间排队,不打断当前生成)。
+     * v1.205 B2: Agregue la entrada actual a la cola para enviar(En cola durante la compilación,No interrumpas la generación actual.).
      *
-     * 入队后清空输入框与待发图片;队列满([MAX_PENDING_SEND_QUEUE])时静默忽略。
+     * Después de unirse al equipo, borre el cuadro de entrada y la imagen que se enviará.;cola llena([MAX_PENDING_SEND_QUEUE])Ignorado en silencio.
      */
     fun enqueuePendingSend() = inputController.enqueuePendingSend()
 
-    /** v1.205 B2: 移除队列中第 [index] 条。 */
+    /** v1.205 B2: Eliminar el artículo de la cola [index] artículo. */
     fun removePendingSend(index: Int) = inputController.removePendingSend(index)
 
     /**
-     * v1.205 B2: 单独发送队列中第 [index] 条。
+     * v1.205 B2: Envía el primero en la cola por separado. [index] artículo.
      *
-     * 先出队再入发送管道,避免重入导致重复发送。
+     * Primero retire la cola y luego ingrese a la canalización de envío.,Evite el reingreso que resulte en envíos repetidos.
      */
     fun sendPendingSend(index: Int) = inputController.sendPendingSend(index)
 
-    /** v1.205 B2: 把队列中第 [index] 条回填到输入框(编辑后重新入队/发送),并出队。 */
+    /** v1.205 B2: Pon el primero en la cola. [index] Complete el cuadro de entrada(Poner en cola después de editar/enviar),Y sal del equipo. */
     fun editPendingSend(index: Int) = inputController.editPendingSend(index)
 
-    /** v1.205 B2: 清空整个待发送队列。 */
+    /** v1.205 B2: Borre toda la cola de envíos. */
     fun clearPendingQueue() = inputController.clearPendingQueue()
 
     /**
-     * v1.0.47 P5: 输入框上/下箭头回调,遍历本会话输入历史。
+     * v1.0.47 P5: en el cuadro de entrada/Devolución de llamada de flecha hacia abajo,Recorra el historial de entrada de esta sesión.
      *
-     * 约定:[ChatUiState.inputHistory] 按"新→旧"顺序存储(index 0 = 最近一条)。
-     * - direction < 0(上箭头):向更旧的历史移动
-     *   - 当前未在导航中(index==null):跳到 index 0(最近一条)
-     *   - 当前在 index i:跳到 i+1(更旧);已到末尾则不动
-     * - direction > 0(下箭头):向更新的历史移动
-     *   - 当前在 index 0:退出导航,清空输入
-     *   - 当前在 index i>0:跳到 i-1
-     *   - 未在导航中:不动
-     * - direction == 0:无操作
-     * - 历史为空时直接返回
+     * Acuerdo:[ChatUiState.inputHistory] prensa"nuevo→viejo"almacenamiento secuencial(index 0 = último).
+     * - direction < 0(flecha arriba):pasando a una historia más antigua
+     *   - Actualmente no estoy navegando(index==null):saltar a index 0(último)
+     *   - Actualmente en el índice i: saltar a i+1(mayor);No se moverá cuando llegue al final.
+     * - direction > 0(flecha hacia abajo):Mover al historial actualizado
+     *   - Actualmente en el índice 0: Salir de la navegación,Borrar entrada
+     *   - actualmente en index i>0:saltar a i-1
+     *   - No en navegación:sin moverse
+     * - direction == 0:Ninguna acción
+     * - Regresar directamente cuando el historial esté vacío.
      *
-     * 用户手动编辑输入(见 [updateInput])会重置 [ChatUiState.inputHistoryIndex] 为 null,
-     * 再次按上箭头会从最近一条开始。
+     * Entrada de edición del manual del usuario(ver [updateInput])se restablecerá [ChatUiState.inputHistoryIndex] para null,
+     * Al presionar nuevamente la flecha hacia arriba se comenzará desde el más reciente.
      */
     fun navigateInputHistory(direction: Int) = inputController.navigateInputHistory(direction)
 
     /**
-     * v1.0.47 P5-3: 打开 Token 计数菜单。
+     * v1.0.47 P5-3: Abra el menú Conteo de tokens.
      *
-     * 仅在 [ChatUiState.tokenEstimateEnabled] 开启时由 UI 调用。
-     * 计算一次性快照(当前输入 + 历史消息 + 模型上下文窗口),存入 state 供菜单展示,
-     * 避免每次按键都做 BPE 编码(性能开销大)。
+     * solo en [ChatUiState.tokenEstimateEnabled] Lo llama la interfaz de usuario cuando está habilitado.
+     * Calcular una instantánea única(Entrada actual + mensajes históricos + ventana de contexto del modelo),Almacenar en estado para visualización del menú,
+     * Evite la codificación BPE cada vez que presione una tecla(Gastos generales de alto rendimiento).
      *
-     * BPE 编码是 CPU 密集型操作,在 Dispatchers.Default 上执行;
-     * [settings.getSelectedModel] 是 suspend,需在协程中调用。
-     * 历史消息 token 数复用 [TokenEstimator.estimate] 的 messages 重载,
-     * 已计入 reasoning/mood/reflection/toolCalls.arguments 与每条 4 token 固定开销。
+     * BPE La codificación consume mucha CPU,Ejecutar en Dispatchers.Default;
+     * [settings.getSelectedModel] si suspend,Es necesario llamarlo en la corrutina.
+     * Reutilización del número de token de mensaje histórico [TokenEstimator.estimate] Los mensajes se sobrecargan,
+     * Ya incluido reasoning/mood/reflection/toolCalls.arguments Con gastos generales fijos de 4 fichas por artículo.
      */
     fun showTokenCountMenu() {
         val input = _state.value.input
@@ -2949,7 +2949,7 @@ class ChatViewModel(
             val historyTokens = TokenEstimator.estimate(messages)
             val model = resultOf { settings.getSelectedModel() }.getOrNull()
             val contextWindow = model?.contextWindow?.takeIf { it > 0 }
-            // v2.5.3 (P4-3): 按当前模型定价粗估本会话历史成本（未知单价则 known=false，不展示）。
+            // v2.5.3 (P4-3): Calcule aproximadamente el costo histórico de esta sesión basándose en el precio del modelo actual (si se desconoce el precio unitario). known=false, no mostrado).
             val cost =
                 model?.let { m ->
                     io.zer0.ai.core.TokenCostCalculator.costFor(
@@ -2969,19 +2969,19 @@ class ChatViewModel(
         }
     }
 
-    /** v1.0.47 P5-3: 关闭 Token 计数菜单。 */
+    /** v1.0.47 P5-3: Cierre el menú Conteo de tokens. */
     fun dismissTokenCountMenu() {
         _state.update { it.copy(tokenCountVisible = false) }
     }
 
     /**
-     * v2.x: 委员会 — 从主对话随时召唤一组助手开临时群聊讨论,结论自动回灌本条会话。
+     * v2.x: comité — Convoca a un grupo de asistentes en cualquier momento desde la conversación principal para iniciar una discusión de chat grupal temporal,La conclusión retroalimenta automáticamente esta conversación.
      *
-     * 流程:创建临时群聊 → 以议题触发轮转 → 自动总结 → 通过 DeferredResultStore
-     * 把结论作为 interlude 注入当前会话(用户可在群聊页查看完整讨论过程)。
+     * proceso:Crear un chat grupal temporal → Rotación del disparador por problema → Resumen automático → Pase DeferredResultStore
+     * Inyectar la conclusión en la sesión actual como un interludio.(Los usuarios pueden ver el proceso de discusión completo en la página de chat grupal.).
      *
-     * @param memberIds 参与讨论的助手 id(≥2)
-     * @param topic 讨论议题
+     * @param memberIds asistente de discusión id(≥2)
+     * @param topic temas de discusión
      */
     fun launchCommittee(memberIds: List<String>, topic: String) {
         val scheduler = groupChatScheduler ?: return
@@ -2990,80 +2990,80 @@ class ChatViewModel(
         if (memberIds.size < 2 || topic.isBlank()) return
         val taskId = "committee-" + java.util.UUID.randomUUID().toString()
         val chatName =
-            "委员会 · " +
+            "comité · " +
                 java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
                     .format(java.util.Date())
-        deferredResultStore.defer(taskId, sessionId, null, "委员会", topic.take(60))
+        deferredResultStore.defer(taskId, sessionId, null, "comité", topic.take(60))
         viewModelScope.launch {
             try {
                 val committeeChatId = repository.createChat(chatName, memberIds)
-                // 1. 触发轮转讨论
+                // 1. Activar la rotación de la discusión
                 scheduler.launchRoundRobin(committeeChatId, topic, emptyList())
                 var waited = 0
                 while (scheduler.hasActiveGeneration(committeeChatId) && waited < 1800) {
                     delay(1000)
                     waited++
                 }
-                // 2. 自动总结
+                // 2. Resumen automático
                 scheduler.launchSummary(committeeChatId)
                 waited = 0
                 while (scheduler.hasActiveGeneration(committeeChatId) && waited < 300) {
                     delay(1000)
                     waited++
                 }
-                // 3. 取总结并回灌主对话
+                // 3. Obtenga un resumen y retroalimente la conversación principal
                 val recent = repository.getRecentMessages(committeeChatId, 10)
                 val summary = recent.lastOrNull { it.messageType == "summary" }?.body
                 if (summary != null) {
-                    deferredResultStore.resolve(taskId, "【委员会结论 · $chatName】\n$summary")
+                    deferredResultStore.resolve(taskId, "[Conclusión del Comité · $chatName】\n$summary")
                 } else {
-                    deferredResultStore.resolve(taskId, "【委员会】讨论已完成(群聊「$chatName」),未生成总结。议题:$topic")
+                    deferredResultStore.resolve(taskId, "[Comité] Se ha completado el debate(Chat grupal \"$chatName\"),No se genera ningún resumen. Problema:$topic")
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Logger.e("ChatVM", "委员会执行失败", e)
-                deferredResultStore.fail(taskId, e.message ?: "执行失败")
+                Logger.e("ChatVM", "La ejecución del comité falló", e)
+                deferredResultStore.fail(taskId, e.message ?: "La ejecución falló")
             }
         }
     }
 
-    /** 清空全部错误(向后兼容入口,UI"关闭"按钮调用)。 */
+    /** Borrar todos los errores(portal de compatibilidad con versiones anteriores,UI"cerrar"llamada de botón). */
     fun clearError() {
         clearErrors()
     }
 
-    /** P5-D/E: UI 层报告错误(语音失败、文件解析失败等)。走 addError,可恢复类会自动消失。 */
+    /** P5-D/E: UI Error de informe de capa(Fallo de voz, fallo de análisis de archivos, etc.). ir addError,Las clases recuperables desaparecerán automáticamente. */
     fun reportError(msg: String) {
         addError(ChatErrorType.UNKNOWN, msg)
     }
 
-    // ── v0.49: 多错误管理 ──────────────────────────────────────────────────
+    // ── v0.49: Gestión de errores múltiples ──────────────────────────────────────────────────
 
     /**
-     * v2.6.8: 应用是否处于前台(驱动错误横幅的“可见后才计时”)。
+     * v2.6.8: Si la aplicación está en primer plano(pancarta de error del controlador“Tiempo después de visible”).
      *
-     * 由 MuseApp 的 ProcessLifecycleOwner 观察者通过 [onAppBackground] / [onAppForeground]
-     * 维护。默认 true —— 进程活着且没人通知过退后台时,假定用户在看着。
+     * Aprobado por el observador ProcessLifecycleOwner de MuseApp [onAppBackground] / [onAppForeground]
+     * Mantenimiento. Predeterminado true —— Cuando el proceso está vivo y nadie le ha notificado que salga del fondo,Supongamos que el usuario está mirando.
      *
-     * 为什么计时需要它:切后台后“自动消失”等于用户根本没看到就被清掉。
+     * ¿Por qué es necesario para cronometrar?:Después de cambiar al fondo“desaparecer automáticamente”Significa que el usuario queda limpio sin siquiera verlo.
      */
     private val appForegroundFlow = MutableStateFlow(true)
 
     /**
-     * 追加一条错误到 [ChatUiState.errors]。
+     * Agregar un error a [ChatUiState.errors].
      *
-     * 自动消失规则(v2.6.8 重写,原为固定 5 秒):
-     *  1. 只对 [shouldAutoDismissError] 为 true 的错误计时 —— 可恢复 **且**
-     *     不属于工具/模型/凭证这类需要用户决策的类别;
-     *  2. 计时从“错误真的显示在顶部”那一刻开始,而不是从 addError 那一刻:
-     *     监听 [ChatUiState] + 前台标记,等 [resolveErrorVisibility] 返回 VISIBLE 才跑表。
-     *     这样压缩 Banner 占位的时间、切后台的时间都不占用阅读窗口;
-     *  3. 读秒期间一旦不可见(退后台等)则暂停,回来继续用剩下的窗口;
-     *  4. 最多等 [ERROR_VISIBLE_WAIT_MS] 仍未可见则放弃本次自动消失(留给用户手动关)。
+     * Reglas de desaparición automática(v2.6.8 reescribir,Se fijó en 5 segundos.):
+     *  1. lo único correcto [shouldAutoDismissError] Errores de tiempo para verdadero —— Recuperable **y**
+     *     No es una herramienta/modelo/Categorías como credenciales que requieren la toma de decisiones del usuario;
+     *  2. Tiempo desde“El error realmente aparece en la parte superior.”a partir de ese momento,en lugar de desde el momento addError:
+     *     monitorear [ChatUiState] + marca de primer plano,espera [resolveErrorVisibility] El cronómetro vuelve VISIBLE.
+     *     De esta forma, el tiempo que ocupa Banner y el tiempo dedicado a pasar a segundo plano se comprimen sin ocupar la ventana de lectura.;
+     *  3. Una vez invisible durante la cuenta regresiva(salir y esperar)luego pausa,Vuelve y continúa usando las ventanas restantes.;
+     *  4. Espera como mucho [ERROR_VISIBLE_WAIT_MS] Si aún no es visible, desiste y desaparece automáticamente.(Deje que el usuario apague manualmente).
      *
-     * 旧实现直接 `delay(5000); dismissError(...)`,叠加“压缩 Banner 优先于错误”的
-     * 旧策略后,压缩超过 5 秒时这条错误一次都不会出现在屏幕上。
+     * La antigua implementación directamente `delay(5000); dismissError(...)`,Superposición“El banner de compresión prioriza los errores”de
+     * después de la vieja estrategia,Este error no aparecerá en la pantalla ni una sola vez al comprimir durante más de 5 segundos.
      */
     private fun addError(type: ChatErrorType, message: String, isRecoverable: Boolean = true) {
         val error = ChatError(type = type, message = message, isRecoverable = isRecoverable)
@@ -3074,9 +3074,9 @@ class ChatViewModel(
     }
 
     /**
-     * 某条错误当前的可见性流(状态 + 前台标记的合成)。
+     * El flujo de visibilidad actual de un error.(Síntesis de estado + marca de primer plano).
      *
-     * 可见性判定完全交给 [resolveErrorVisibility] —— 与 UI 用的是同一份优先级规则。
+     * La determinación de la visibilidad se deja enteramente a [resolveErrorVisibility] —— Se utilizan las mismas reglas de prioridad que la interfaz de usuario.
      */
     private fun errorVisibilityFlow(errorId: String): Flow<ErrorVisibility> = combine(_state, appForegroundFlow) { state, foreground ->
         resolveErrorVisibility(
@@ -3089,11 +3089,11 @@ class ChatViewModel(
     }.distinctUntilChanged()
 
     /**
-     * 为一条错误安排“可见后计时”的自动消失(规则见 [addError])。
+     * Organizar un error“Tiempo después de la visibilidad”desaparecer automáticamente(ver las reglas [addError]).
      *
-     * 外层等“可见”,内层读秒;读秒期间一旦不可见就回到外层重新等。
-     * 不用固定 `delay(15_000)` 一刀切,是因为被压缩 Banner 或后台打断的那段
-     * 时间用户看不到字,不应该算进阅读窗口。
+     * Capa exterior, etc.“visible”,Cuenta atrás de la capa interior;Una vez que se vuelva invisible durante la cuenta regresiva, regrese a la capa exterior y espere nuevamente.
+     * No hay necesidad de arreglar `delay(15_000)` Talla única,Es debido a la sección interrumpida por un banner o fondo comprimido.
+     * Los usuarios del tiempo no pueden ver las palabras.,No debe contarse en la ventana de lectura.
      */
     private fun scheduleAutoDismiss(errorId: String) {
         viewModelScope.launch {
@@ -3102,21 +3102,21 @@ class ChatViewModel(
                     errorVisibilityFlow(errorId).first { it != ErrorVisibility.PENDING }
                 }
                 when (firstSeen) {
-                    // 等到窗口耗尽仍不可见:不自作主张清掉,让用户自己关。
+                    // Espere hasta que la ventana se agote y seguirá siendo invisible.:No lo borres por iniciativa propia,Deje que los usuarios lo apaguen ellos mismos.
                     null -> {
-                        Logger.w("ChatVM", "错误 ${ERROR_VISIBLE_WAIT_MS}ms 内未可见,放弃自动消失 id=$errorId")
+                        Logger.w("ChatVM", "error ${ERROR_VISIBLE_WAIT_MS}ms no visible,Ríndete y desaparece automáticamente. id=$errorId")
                         return@launch
                     }
-                    // 错误已被用户关掉 / 被 clearErrors 清空。
+                    // El error ha sido desactivado por el usuario/borrado mediante clearErrors.
                     ErrorVisibility.GONE -> return@launch
                     else -> Unit
                 }
-                // 已可见:读满一个阅读窗口;中途不可见则回到外层重等(不消耗窗口)。
+                // Ya visible:Leer una ventana de lectura completa;Si no es visible en el medio, regresa a la capa exterior y espera nuevamente.(No consume windows).
                 val interrupted = withTimeoutOrNull(ERROR_AUTO_DISMISS_MS) {
                     errorVisibilityFlow(errorId).first { it != ErrorVisibility.VISIBLE }
                 }
                 when (interrupted) {
-                    // 整段窗口内持续可见 → 到点自动消失。
+                    // Continuamente visible en toda la ventana. → Desaparecerá automáticamente cuando llegue el momento.
                     null -> {
                         dismissError(errorId)
                         return@launch
@@ -3128,46 +3128,46 @@ class ChatViewModel(
         }
     }
 
-    /** v0.49: 移除指定 id 的错误(用户手动 dismiss)。 */
+    /** v0.49: Eliminar el error con la identificación especificada.(manual de usuario dismiss). */
     fun dismissError(errorId: String) {
         _state.update { it.copy(errors = it.errors.filter { er -> er.id != errorId }) }
     }
 
-    /** v0.49: 清空全部错误。 */
+    /** v0.49: Borre todos los errores. */
     fun clearErrors() {
         _state.update { it.copy(errors = emptyList()) }
     }
 
     /**
-     * v0.49: 根据异常消息分类错误类型(用于 launchStream 主要 catch 块)。
+     * v0.49: Clasificar tipos de error según mensajes de excepción(Bloque de captura principal para launchStream).
      *
-     * v1.0.1 (P4): 改用 [ProviderError] 类型分类,替代原字符串 contains 匹配。
-     * v1.0.27 Phase 5-B: 优先走类型路径 `(throwable as? ProviderException)?.providerError`,
-     * 兜底才用 [inferFromMessage] 字符串推断 (向后兼容)。
+     * v1.0.1 (P4): Usar en su lugar [ProviderError] Clasificación de tipo,Reemplaza la cadena original con una coincidencia que contiene.
+     * v1.0.27 Phase 5-B: Priorizar la ruta de tipo `(throwable as? ProviderException)?.providerError`,
+     * Úselo solo como encubrimiento. [inferFromMessage] Inferencia de cadenas (compatible con versiones anteriores).
      *
-     *  - ProviderError.Network → NETWORK(IOException / timeout / 连接断开)
+     *  - ProviderError.Network → NETWORK(IOException / timeout / Conexión perdida)
      *  - ProviderError.RateLimit → RATE_LIMIT(429 / RESOURCE_EXHAUSTED)
-     *  - ProviderError.ServerError → NETWORK(5xx / 529 overloaded,可重试)
+     *  - ProviderError.ServerError → NETWORK(5xx / 529 overloaded,Se puede volver a intentar)
      *  - ProviderError.AuthError → API_KEY(401 / 403)
-     *  - 其余 → UNKNOWN
+     *  - el resto → UNKNOWN
      */
     private fun classifyErrorType(message: String, throwable: Throwable?): ChatErrorType = classifyErrorTypeStatic(message, throwable)
 
     /**
-     * v1.0.17: 等待网络恢复(StreamInterrupted 智能续传用)。
+     * v1.0.17: Espere a que se recupere la red(StreamInterrupted Para una reanudación inteligente de la transferencia).
      *
-     * 优先使用 [NetworkMonitor.isOnline] StateFlow(实时反映网络状态);
-     * 若 [NetworkMonitor] 不可用则回退到 [isNetworkAvailable] 同步轮询 ConnectivityManager。
+     * uso prioritario [NetworkMonitor.isOnline] StateFlow(Reflejo en tiempo real del estado de la red.);
+     * si [NetworkMonitor] Si no está disponible, recurra a [isNetworkAvailable] Sondee ConnectivityManager de forma sincrónica.
      *
-     * @param timeoutMs 最大等待时间(毫秒),超时返回 false
-     * @return true 表示网络已恢复;false 表示超时未恢复
+     * @param timeoutMs tiempo máximo de espera(milisegundos),Regreso del tiempo de espera false
+     * @return true Indica que la red ha sido restaurada.;false Indica tiempo de espera y no hay recuperación.
      */
     private suspend fun waitForNetworkRecovery(timeoutMs: Long): Boolean {
-        // 当前已在线则立即返回(避免无谓等待)
+        // Si actualmente estás en línea, regresa inmediatamente(Evite esperas innecesarias)
         if (networkMonitor.isOnline.value) return true
-        // withTimeoutOrNull 超时返回 null → false;轮询期间任一来源显示在线即返回 true
+        // withTimeoutOrNull Regreso del tiempo de espera null → false;Devuelve cuando cualquier fuente aparece en línea durante la encuesta true
         return kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
-            // 轮询网络状态(每 NETWORK_POLL_INTERVAL_MS 检查一次),兼容 NetworkMonitor callback 未触发的场景
+            // Estado de la red de encuestas(Verifique cada NETWORK_POLL_INTERVAL_MS),Compatible con escenarios donde no se activa la devolución de llamada de NetworkMonitor
             while (!networkMonitor.isOnline.value && !isNetworkAvailable()) {
                 kotlinx.coroutines.delay(NETWORK_POLL_INTERVAL_MS)
             }
@@ -3176,10 +3176,10 @@ class ChatViewModel(
     }
 
     /**
-     * v1.0.17: 同步检查网络是否可用(回退方案,当 [NetworkMonitor] 不可用时使用)。
+     * v1.0.17: Verifique sincrónicamente si la red está disponible(Plan alternativo,cuando [NetworkMonitor] Usar cuando no esté disponible).
      *
-     * 基于 ConnectivityManager.activeNetwork + NET_CAPABILITY_INTERNET 判断,
-     * 与 [NetworkMonitor] 的 checkOnline 逻辑一致(但不要求 VALIDATED,更宽松)。
+     * Juicio basado en ConnectivityManager.activeNetwork + NET_CAPABILITY_INTERNET,
+     * con [NetworkMonitor] La lógica de checkOnline es consistente con(pero no requerido VALIDATED,más flojo).
      */
     private fun isNetworkAvailable(): Boolean {
         return try {
@@ -3196,12 +3196,12 @@ class ChatViewModel(
     }
 
     /**
-     * 任务 3: 统一网络错误提示文案。
-     * 按异常消息关键词分类,给用户更友好的中文提示。
+     * Tarea 3: Unificar la redacción de mensajes de error de red.
+     * Clasificación por palabras clave de mensajes de excepción,Ofrezca a los usuarios indicaciones en chino más amigables.
      */
     private fun classifyNetworkError(e: Throwable): String = ErrorMessages.classifyNetworkError(appContext, e)
 
-    // ── v0.45: 上下文 token 占用估算 ──────────────────────────────────────
+    // ── v0.45: Estimación de ocupación del token de contexto ──────────────────────────────────────
 
     private var cachedSystemPrompt
         get() = systemPromptCache.cachedSystemPrompt
@@ -3220,27 +3220,27 @@ class ChatViewModel(
         }
 
     /**
-     * v0.45: 刷新上下文信息(切换会话/发送/停止/压缩后调用)。
+     * v0.45: Actualizar información contextual(Cambiar de sesión/enviar/detenerse/Llamado después de la compresión.).
      *
-     * 1. 读取当前选中模型的 contextWindow → 写入 contextMaxTokens
-     * 2. 重建 system prompt 并缓存(SystemPromptAssembler.build)
-     * 3. 立即更新 token 计数
+     * 1. Leer el modelo seleccionado actualmente contextWindow → escribir contextMaxTokens
+     * 2. Reconstruir el mensaje del sistema y el caché(SystemPromptAssembler.build)
+     * 3. Actualizar el recuento de tokens ahora
      *
-     * 这是 suspend 方法,在 viewModelScope.launch 中调用。
+     * Este es el método de suspensión.,Llamado en viewModelScope.launch.
      */
     private suspend fun refreshContextInfo() {
-        // 1. 加载模型的 contextWindow
+        // 1. Cargando el modelo contextWindow
         val model = resultOf { settings.getSelectedModel() }.getOrNull()
-        // 模型未声明 contextWindow 时,用 ModelContextWindowRegistry 按 id 前缀兜底。
-        // v2.5.7 修复: 原兜底 32768 太小 —— 中转/随机路由模型（如 auto）contextWindow=null
-        // 时被当成 32K，而真实历史+system+工具定义远超 32K，导致“永远超限、压缩也没用”。
-        // 现代模型普遍 128K+，兜底提到 128K；真超限时由 provider 自行拒绝（见硬拦截策略）。
+        // Cuando el modelo no declara contextWindow,Utilice ModelContextWindowRegistry para averiguarlo por prefijo de identificación.
+        // v2.5.7 Reparación: Fondo de bolsillo original 32768 demasiado pequeño —— tránsito/Modelo de enrutamiento aleatorio (como automático)contextWindow=null
+        // fue considerado como 32K, pero la historia real+system+Las definiciones de herramientas superan con creces los 32 000, lo que da como resultado“Siempre está por encima del límite y la compresión es inútil.”.
+        // Los modelos modernos son generalmente de 128K+, y 128K se menciona en detalle; si realmente excede el límite, el proveedor lo rechazará (ver estrategia de interceptación dura).
         val maxTokens =
             model?.contextWindow
                 ?: ModelContextWindowRegistry.lookup(model?.id ?: "")
                 ?: DEFAULT_CONTEXT_WINDOW_FALLBACK
-        // 2. 重建 system prompt(6 步工作流第 1 步,含人格/记忆/工具等)
-        // 拆分为静态快照 + 动态时间,静态部分在同一会话内复用。
+        // 2. reconstruir system prompt(6 paso flujo de trabajo paso 1,Contiene personalidad/memoria/Herramientas, etc.)
+        // Dividir en instantánea estática + tiempo dinámico,Las partes estáticas se reutilizan dentro de la misma sesión.
         val assistant =
             _state.value.currentAssistant
                 ?: assistantRepository.getById("default")
@@ -3248,7 +3248,7 @@ class ChatViewModel(
         val useGlobalMemory = assistant?.useGlobalMemory ?: false
         val timeReminderEnabled = assistant?.enableTimeReminder ?: true
         val effectiveMemoryEnabled = memoryEnabled && settings.isMemoryEnabled()
-        // v1.0.72: 本会话不参考记忆标志
+        // v1.0.72: Esta sesión no se refiere a indicadores de memoria.
         val state = _state.value
         val effSessionId = if (state.isAgentMode) state.agentSessionId else state.currentSessionId
         val sessionIgnoreMemory =
@@ -3256,7 +3256,7 @@ class ChatViewModel(
                 .firstOrNull { it.id == effSessionId }?.ignoreMemory ?: false
         val memoryScope = assistant?.id?.takeIf { it.isNotBlank() && it != "default" } ?: "main"
         val memorySpaceId = settings.currentSpaceIdFlow.firstOrNull().orEmpty().ifBlank { "default" }
-        // 2.1 重建并缓存静态快照
+        // 2.1 Reconstruir y almacenar en caché instantáneas estáticas
         val staticSnapshot =
             resultOf {
                 systemPromptAssembler.buildStaticSnapshot(
@@ -3266,7 +3266,7 @@ class ChatViewModel(
                     useGlobalMemory = useGlobalMemory,
                     memoryScope = memoryScope,
                     memorySpaceId = memorySpaceId,
-                    // 跨会话衔接需要知道当前会话，才能排除它、取「上一条」。
+                    // La conexión entre sesiones requiere conocer la sesión actual para poder excluirla y tomar la "anterior".
                     sessionId = effSessionId,
                 )
             }.getOrNull() ?: ""
@@ -3279,9 +3279,9 @@ class ChatViewModel(
             memorySpaceId = memorySpaceId,
             sessionId = effSessionId,
         )
-        // 2.2 组合完整 system prompt(静态快照 + 当前时间 + 表情包指南)
+        // 2.2 combinación completa system prompt(Instantánea estática + hora actual + guía de emoticonos)
         val dynamicSection = if (timeReminderEnabled) systemPromptAssembler.buildDynamicSection() else ""
-        // v2.x: 表情包使用指南(动态读取;库为空/开关关闭时为空串)
+        // v2.x: Guía de uso de emoticonos(lectura dinámica;La biblioteca esta vacia/Cadena vacía cuando el interruptor está apagado)
         val stickerGuide = resultOf { systemPromptAssembler.buildStickerGuideSection() }.getOrNull().orEmpty()
         cachedSystemPrompt =
             buildString {
@@ -3295,15 +3295,15 @@ class ChatViewModel(
                     append(stickerGuide)
                 }
             }
-        // 3. 更新 state(contextMaxTokens + contextTokenCount)
-        // v1.97 性能修复: TokenEstimator.estimate 是 CPU 密集操作(jtokkit BPE 编码),
-        // 对长历史消息列表(200 条 × 几百字符)单次可达 50-200ms。
-        // 原先在主线程同步执行,流式期间每秒叠加一次,直接造成卡顿。
-        // 现移到 Dispatchers.Default 后台线程执行,结果回主线程写 state。
+        // 3. actualizar state(contextMaxTokens + contextTokenCount)
+        // v1.97 Correcciones de rendimiento: TokenEstimator.estimate Es una operación intensiva de CPU(jtokkit BPE codificación),
+        // lista de mensajes de larga historia(200 Artículo × varios cientos de caracteres)Una sola vez puede alcanzar entre 50 y 200 ms.
+        // Originalmente ejecutado sincrónicamente en el hilo principal,Apilado una vez por segundo durante la transmisión,Causando directamente retraso.
+        // Ahora trasladado a Dispatchers. Ejecución predeterminada del subproceso en segundo plano.,El resultado se vuelve a escribir en el hilo principal para indicarlo.
         val msgsSnapshot = _messages.value
         val sysPromptSnapshot = cachedSystemPrompt
-        // v2.x: 占用口径与流式刷新路径同源（provider 实测优先 + 尾部估算，见 [ContextTokenUsage]），
-        // 否则切会话/压缩后写回的是纯估算，会把刚采到的真实水位冲掉。
+        // v2.x: El calibre ocupado tiene el mismo origen que la ruta de actualización de la transmisión (provider Medición real primero + estimación de cola, ver [ContextTokenUsage]),
+        // De lo contrario, cambie de sesión/Lo que se escribe después de la compresión es una estimación pura, que eliminará el nivel real del agua recién recolectada.
         val tokenCount =
             withContext(Dispatchers.Default) {
                 ContextTokenUsage.estimate(msgsSnapshot, sysPromptSnapshot)
@@ -3317,23 +3317,23 @@ class ChatViewModel(
     }
 
     /**
-     * v2.x: 当前会话检查点覆盖的消息 id 缓存。
+     * v2.x: Caché de identificadores de mensajes cubiertos por el punto de control de la sesión actual.
      *
-     * 供占用率估算排除"已压缩、不会再发给模型"的消息。用缓存而不是每次查库，是因为
-     * 流式过程中占用率会按节流频繁刷新（见 updateContextTokenCount 的调用点）。
+     * Exclusiones para estimaciones de ocupación"Comprimido y no se enviará nuevamente al modelo."noticias. La razón para usar caché en lugar de verificar la base de datos cada vez es porque
+     * Durante el proceso de transmisión, la tasa de ocupación se actualizará con frecuencia de acuerdo con la limitación (consulte el punto de llamada de updateContextTokenCount).
      */
     @Volatile
     private var checkpointCoveredIds: Set<String> = emptySet()
 
-    /** 上面那份缓存属于哪个会话（切会话后立刻失效，避免把 A 会话的覆盖集合用到 B 会话）。 */
+    /** ¿A qué sesión pertenece el caché anterior (dejará de ser válido inmediatamente después de cambiar la sesión para evitar usar el conjunto de cobertura de la sesión A a la sesión B)? */
     @Volatile
     private var checkpointCoveredSessionId: String? = null
 
     /**
-     * 确保覆盖集合与当前显示的会话一致；不一致就重新读一次检查点。
+     * Asegúrese de que el conjunto de cobertura sea coherente con la sesión mostrada actualmente; si no, vuelva a leer el punto de control.
      *
-     * 用"惰性自愈"而不是在每个切会话/写检查点的位置都埋一次调用：只要状态对不上，
-     * 下一次算占用率时就会自动纠正，不会出现"改了十个地方漏了一个"的长期漂移。
+     * usar"Autocuración perezosa"en lugar de en cada sesión de corte/Una llamada queda oculta dondequiera que esté escrito el punto de control: siempre que el estado no coincida,
+     * La próxima vez que se calcule la ocupación, se corregirá automáticamente y no aparecerá."Cambié diez lugares y me perdí uno."deriva a largo plazo.
      */
     private suspend fun ensureCheckpointCoveredIds(sessionId: String) {
         if (checkpointCoveredSessionId == sessionId) return
@@ -3341,7 +3341,7 @@ class ChatViewModel(
         refreshCheckpointCoveredIds(sessionId)
     }
 
-    /** 重新读取当前会话的检查点并刷新覆盖集合（写检查点后 / 切换会话后调用）。 */
+    /** Vuelva a leer el punto de control de la sesión actual y actualice la colección de cobertura (llamada después de escribir un punto de control/sesión de cambio). */
     private suspend fun refreshCheckpointCoveredIds(sessionId: String) {
         checkpointCoveredIds =
             try {
@@ -3368,7 +3368,7 @@ class ChatViewModel(
                         }
                         ids
                     }
-                // 同步界面锚点：分隔线位置 + 累计条数（无检查点时清空，避免残留上一会话的分隔线）
+                // Punto de anclaje de la interfaz de sincronización: posición de la línea de separación + número acumulado de elementos (se borra cuando no hay ningún punto de control para evitar líneas de separación restantes de la sesión anterior)
                 val boundaryId = checkpoint?.lastCoveredMessageId?.takeIf { it.isNotBlank() }
                 _state.update {
                     it.copy(
@@ -3386,14 +3386,14 @@ class ChatViewModel(
     }
 
     /**
-     * v0.45: 快速更新 token 计数(流式过程中每 200 字符或 1000ms 调用)。
+     * v0.45: Actualizar rápidamente el recuento de tokens(Llamado cada 200 caracteres o 1000 ms durante la transmisión).
      *
-     * 使用 [cachedSystemPrompt] 避免每次都重建 system prompt(IO 密集)。
-     * 非流式场景应调用 [refreshContextInfo](会重建 system prompt + 加载 contextWindow)。
+     * uso [cachedSystemPrompt] Evite reconstruir cada vez system prompt(IO Denso).
+     * Los escenarios sin transmisión deben llamar [refreshContextInfo](Reconstruirá el mensaje del sistema + cargará contextWindow).
      *
-     * v1.97 性能修复: 改为 suspend,TokenEstimator.estimate(jtokkit BPE 编码,CPU 密集)
-     * 移到 Dispatchers.Default 执行。原先在主线程同步,长历史下单次 50-200ms,
-     * 流式期间每秒叠加一次,是卡顿的主要根因。
+     * v1.97 Correcciones de rendimiento: Cambiar a suspend,TokenEstimator.estimate(jtokkit BPE codificación,CPU Denso)
+     * Se movió la ejecución a Dispatchers.Default. Originalmente sincronizado en el hilo principal.,Larga historia de realización de pedidos. 50-200ms,
+     * Apilado una vez por segundo durante la transmisión,Es la principal causa del retraso.
      */
     private suspend fun updateContextTokenCount() {
         displayedSessionId()?.let { ensureCheckpointCoveredIds(it) }
@@ -3401,25 +3401,25 @@ class ChatViewModel(
     }
 
     /**
-     * 退出对话时触发 AI 摘要命名。
-     * 仅当标题仍为默认值"新会话"且有至少一轮完整对话时触发。
+     * Los nombres de resumen de IA se activan al salir de una conversación.
+     * Sólo si el título sigue siendo el predeterminado"nueva sesión"Se activa cuando hay al menos una ronda completa de diálogo.
      */
     fun autoTitleOnExit(sessionId: String) {
         autoTitleSession(sessionId)
     }
 
     /**
-     * 功能2: 对话自动命名。
+     * Función2: Las conversaciones reciben nombre automáticamente.
      *
-     * 流式完成后,若会话标题为默认值(如"新会话"或空),调用 LLM 用 6 字以内概括对话。
-     * 只在至少有一条 user 消息时触发,避免空对话生成无意义标题。
+     * Una vez completada la transmisión,Si el título de la sesión es el valor predeterminado(Como por ejemplo"nueva sesión"o vacío),Llame a LLM para resumir la conversación en 6 palabras o menos.
+     * Solo se activa cuando hay al menos un mensaje de usuario,Evite diálogos vacíos que generen títulos sin sentido.
      */
     private fun autoTitleSession(sessionId: String) {
         val state = _state.value
         val title = state.sessions.firstOrNull { it.id == sessionId }?.title ?: return
         val defaultTitle = appContext.getString(R.string.session_repo_default_title)
-        // v2.5.2 fix: 历史遗留的无意义标题（"..." 等字面量）也算未命名，
-        // 允许下次退出时重新自动命名，否则旧会话永远顶着省略号。
+        // v2.5.2 fix: Títulos sin sentido que quedan de la historia ("..." etc. literales) también se consideran sin nombre,
+        // Permita el cambio de nombre automático al salir la próxima vez; de lo contrario, la sesión anterior siempre tendrá puntos suspensivos.
         val titleIsMeaningless = io.zer0.muse.data.session.isMeaninglessSessionTitle(title)
         if (title.isNotBlank() && title != defaultTitle && !titleIsMeaningless) return
         val messages = _messages.value.filter { it.role == MessageRole.USER || it.role == MessageRole.ASSISTANT }
@@ -3430,7 +3430,7 @@ class ChatViewModel(
             }
         if (preview.isBlank()) return
         viewModelScope.launch(AppDispatchers.io) {
-            // v1.0.52: 读取用户自定义对话命名 prompt(null/空串表示用默认)
+            // v1.0.52: Leer nombres de conversaciones definidos por el usuario prompt(null/Una cadena vacía indica el valor predeterminado)
             val customTitlePrompt =
                 resultOf { settings.customTitlePromptFlow.first() }
                     .getOrNull()
@@ -3439,12 +3439,12 @@ class ChatViewModel(
                 if (customTitlePrompt != null) {
                     "$customTitlePrompt\n\n$preview"
                 } else {
-                    "请用4到8个字概括以下对话的主题,直接输出标题文字,不要加引号或其他标点:\n\n$preview"
+                    "Por favor use4llegar8Resume el tema de la siguiente conversación en una palabra.,Salida directa del texto del título,No utilice comillas ni otros signos de puntuación.:\n\n$preview"
                 }
             resultOf {
                 val completion =
                     retryOnNetworkError {
-                        // v2.x: 标题生成优先走辅助模型路由「小工具」档(留空回退主对话模型)
+                        // v2.x: La generación de títulos da prioridad al archivo "gadget" de enrutamiento del modelo auxiliar(Déjelo en blanco para regresar al modelo de diálogo principal.)
                         val routed =
                             runCatching {
                                 io.zer0.muse.data.routing.UtilityModelRouter(settings)
@@ -3456,15 +3456,15 @@ class ChatViewModel(
                             providerConfig = routed?.first,
                         )
                     }
-                // v1.0.74 fix: 先剥离 <think> 推理标签再清洗。
-                // 此前直接 trim+去引号+take(20),模型带思考输出(如中转站 R1)
-                // 时标题会截进 `<think>...` 内容,用户看到的标题以 think 开头。
+                // v1.0.74 fix: Pelar primero <think> Luego se limpian las etiquetas de inferencia.
+                // Anteriormente, recortar+eliminar comillas directamente+take(20),Modelo con salida de pensamiento(como estación de transferencia R1)
+                // El título será cortado `<think>...` contenido,El título que ven los usuarios comienza con pensar.
                 val cleaned = io.zer0.muse.transformer.stripThinkTags(completion.text)
                 cleaned.removeSurrounding("\"").removeSurrounding("'").take(20)
             }.onSuccess { newTitle ->
-                // v2.5.2 fix: 拦截无意义标题 —— 中转站/小模型偶尔偷懒输出 "..." / "." /
-                // "。。。" 等字面量（用户实测多个会话标题全变成省略号，导出列表无法辨认），
-                // 此类标题不写入，会话保持默认名，下次退出时重新自动命名。
+                // v2.5.2 fix: Bloquear títulos sin sentido —— estación de transferencia/Los modelos pequeños ocasionalmente son flojos a la hora de generar "..." / "." /
+                // ". . ." etc. (Los usuarios midieron que todos los títulos de las sesiones se convirtieron en elipses y la lista exportada era irreconocible),
+                // Este tipo de título no se escribe, la sesión conserva el nombre predeterminado y se le cambiará el nombre automáticamente la próxima vez que salga.
                 val meaningless = io.zer0.muse.data.session.isMeaninglessSessionTitle(newTitle)
                 if (!meaningless) {
                     sessionRepository.renameSession(sessionId, newTitle)
@@ -3474,51 +3474,51 @@ class ChatViewModel(
     }
 
     /**
-     * v1.42: 自动上下文压缩触发器。
+     * v1.42: Activador automático de compresión de contexto.
      *
-     * 当 token 占用超过 80% 时,在后台 IO 线程压缩历史,不阻塞 UI。
-     * 只压缩内存中的 messages,不持久化到 DB(DB 保留完整历史)。
+     * Cuando el token está ocupado más del 80%,Historial de compresión en subprocesos IO en segundo plano,No bloquea la interfaz de usuario.
+     * Sólo comprimir en memoria messages,no persistió en DB(DB Mantener el historial completo).
      */
     /**
-     * v2.x 重构 S2: 自动压缩链已提取到 [io.zer0.muse.ui.chat.ChatCompressionCoordinator]。
-     * 原实现(3175-3433)原样搬入新类,此处保留委托 —— 纯抽取,行为不变。
+     * v2.x Refactor S2: La cadena de compresión automática se ha extraído para [io.zer0.muse.ui.chat.ChatCompressionCoordinator].
+     * Implementación original(3175-3433)Mover la nueva clase tal cual,Reserva delegación aquí —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     private fun triggerAutoCompress(sessionId: String) = compressionCoordinator.triggerAutoCompress(sessionId)
 
     /**
-     * v2.x 重构 S2: 手动压缩链已提取到 [io.zer0.muse.ui.chat.ChatCompressionCoordinator]。
-     * 原实现(3435-3607)原样搬入新类,此处保留委托 —— 纯抽取,行为不变。
+     * v2.x Refactor S2: La cadena de compresión manual se ha extraído para [io.zer0.muse.ui.chat.ChatCompressionCoordinator].
+     * Implementación original(3435-3607)Mover la nueva clase tal cual,Reserva delegación aquí —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     fun manualCompress(updateMemoryFirst: Boolean = true) = compressionCoordinator.manualCompress(updateMemoryFirst)
 
     /**
-     * v1.97: 执行斜杠命令。
+     * v1.97: Ejecute el comando de barra diagonal.
      *
-     * 解析输入文本,若为斜杠命令则执行对应操作并返回 true(表示已处理,不应发送给 LLM)。
-     * 非 / 开头或未知命令返回 false。
+     * Analizar texto de entrada,Si es un comando de barra diagonal, realice la operación correspondiente y regrese true(Indica que ha sido procesado.,no debe ser enviado a LLM).
+     * Devuelve falso si el comando no comienza con / o es desconocido.
      *
-     * @return true 表示已作为斜杠命令执行(不应发送),false 表示不是斜杠命令
+     * @return true Indica que se ha ejecutado como un comando de barra diagonal.(no debe ser enviado),false No indica un comando de barra diagonal
      */
     fun executeSlashCommand(text: String): Boolean {
         val cmd = SlashCommand.parse(text) ?: return false
         val sessionId = displayedSessionId()
         when (cmd) {
             SlashCommand.NEW -> {
-                // 新建会话 — 复用现有 createNewSession(内部会创建 DB 会话并切换状态)
+                // Nueva sesión — Reutilizar existente createNewSession(Internamente se crea una sesión de base de datos y se cambia el estado.)
                 MuseToast.show(appContext.getString(R.string.slash_command_new_done))
                 createNewSession()
             }
             SlashCommand.COMPACT -> {
-                // 压缩会话历史 — 纯压缩,不先更新记忆
-                // F-5: 两段式过程态反馈 — 开始前提示"正在压缩…",manualCompress 完成时再提示结果
+                // Comprimir el historial de sesiones — compresión pura,sin actualizar la memoria primero
+                // F-5: Retroalimentación del estado del proceso en dos etapas — Consejos antes de empezar"comprimiendo…",manualCompress Solicitar el resultado cuando se complete
                 MuseToast.show(appContext.getString(R.string.slash_command_compact_starting))
                 manualCompress(updateMemoryFirst = false)
             }
             SlashCommand.RESET -> {
-                // 审计修复 (2.5): 流式中禁止 reset — 清空后 updateAssistant 全跳过,
-                // 流式内容不落盘,已持久化用户消息与丢失回复造成对话断裂。
+                // Reparación de auditoría (2.5): Deshabilitado durante la transmisión reset — Después de borrar, updateAssistant se omite por completo.,
+                // El contenido en streaming no cae al disco,Los mensajes de usuario persistentes y las respuestas faltantes hacen que la conversación se interrumpa.
                 if (_state.value.isStreaming) {
-                    // B-31: 拒绝时提示独立文案,不再误报"已重置"
+                    // B-31: Solicitar redacción independiente cuando se rechace,No más falsos positivos"Reiniciar"
                     MuseToast.show(appContext.getString(R.string.slash_command_reset_busy))
                     return true
                 }
@@ -3527,34 +3527,34 @@ class ChatViewModel(
                         MuseToast.show(appContext.getString(R.string.slash_command_unknown, text))
                         return true
                     }
-                // F-5: 重置是异步删库,开始时给过程态反馈
+                // F-5: Restablecer es una eliminación asincrónica de la base de datos.,Dar retroalimentación del proceso al principio.
                 MuseToast.show(appContext.getString(R.string.slash_command_reset_starting))
                 viewModelScope.launch(AppDispatchers.io) {
-                    // F-4: /reset 真正重置对话 — 删除当前会话全部消息
-                    // (truncateFrom(fromCreatedAt=0) 删除 createdAt>=0 的全部消息,含 FTS 索引同步);
-                    // 旧实现只清内存不删 DB,刷新后从 DB 重载导致"重置无效"。
+                    // F-4: /reset Realmente restablecer la conversación — Eliminar todos los mensajes de la conversación actual
+                    // (truncateFrom(fromCreatedAt=0) Eliminar createdAt>=0 todas las noticias de,Con sincronización de índice FTS);
+                    // La implementación anterior solo borra la memoria sin eliminarla. DB,La recarga desde la base de datos después de la actualización da como resultado"El reinicio no tiene ningún efecto".
                     resultOf { sessionRepository.truncateFrom(sid, 0) }.onError { msg, t ->
                         Logger.w("ChatVM", "reset session messages failed: $msg", t)
                     }
-                    // 清空内存 + 失效缓存(避免切回命中旧快照)
+                    // Borrar memoria + invalidar caché(Evite retroceder y acceder a instantáneas antiguas)
                     _messages.value = emptyList()
                     sessionMemoryCache.remove(sid)
-                    // 重置后刷新上下文统计(token 归零)
+                    // Actualizar las estadísticas de contexto después del reinicio(token volver a cero)
                     refreshContextInfo()
                     MuseToast.show(appContext.getString(R.string.slash_command_reset_cleared))
                 }
             }
             SlashCommand.PIN -> {
-                // F-4: /pin 改为置顶"当前(最后一条)用户消息",而非置顶会话。
-                // 会话级置顶保留 togglePinned(setSessionPinned),由 UI 会话列表长按触发;
-                // /pin 命令语义对齐文档:置顶消息,消息级文本存内存态 pinnedMessageContent,
-                // 由 ChatScreen 渲染为消息列表顶部置顶横幅。
+                // F-4: /pin Cambiar a pin"actual(último artículo)Mensajes de usuario",en lugar de conversaciones fijadas.
+                // Retención fijada a nivel de sesión togglePinned(setSessionPinned),Activado por una pulsación larga en la lista de sesiones de UI;
+                // /pin Semántica de comandos para alinear documentos.:Mensaje fijado,Estado de almacenamiento de texto a nivel de mensaje pinnedMessageContent,
+                // ChatScreen lo presenta como un banner adhesivo en la parte superior de la lista de mensajes.
                 val latestUser = _messages.value.lastOrNull { it.role == MessageRole.USER }
                 if (latestUser == null) {
                     MuseToast.show(appContext.getString(R.string.slash_command_unknown, text))
                     return true
                 }
-                // 再次 /pin 同一条消息 = 取消置顶
+                // /fijar el mismo mensaje otra vez = Desanclar
                 val currentlyPinned = _state.value.pinnedMessageContent == latestUser.content
                 _state.update {
                     it.copy(pinnedMessageContent = if (currentlyPinned) null else latestUser.content)
@@ -3562,7 +3562,7 @@ class ChatViewModel(
                 MuseToast.show(appContext.getString(R.string.slash_command_pin_message_done))
             }
             SlashCommand.ARCHIVE -> {
-                // 归档当前会话 — 复用现有 setSessionArchived(内部会切换到剩余会话)
+                // Archivar la sesión actual — Reutilizar existente setSessionArchived(Cambia internamente a la sesión restante)
                 val id =
                     sessionId ?: run {
                         MuseToast.show(appContext.getString(R.string.slash_command_unknown, text))
@@ -3572,26 +3572,26 @@ class ChatViewModel(
                 MuseToast.show(appContext.getString(R.string.slash_command_archive_done))
             }
         }
-        // 清空输入框
+        // Borrar cuadro de entrada
         _state.update { it.copy(input = "") }
         return true
     }
 
     /**
-     * F-4: 取消(/pin 置顶的消息横幅)。消息级置顶为内存态,切换会话时已由 switchSession 清空。
+     * F-4: Cancelar(/pin Banner de mensaje superior). El nivel del mensaje se mueve al estado de memoria.,Borrado por switchSession al cambiar de sesión.
      */
     fun clearPinnedMessage() {
         _state.update { it.copy(pinnedMessageContent = null) }
     }
 
     /**
-     * F-2: 把一段文本作为用户消息转发追加到指定会话。
+     * F-2: Agrega un fragmento de texto a la conversación especificada como reenvío de un mensaje de usuario.
      *
-     * 由消息长按菜单"转发到会话"调用:选目标会话后,将该消息文本(用户消息原文 / 助手消息
-     * 转纯文本)作为一条新的 USER 消息追加到目标会话。[sessionRepository.appendMessage] 会同步
-     * 更新目标会话的 updatedAt / 预览 / FTS 索引。
+     * Menú de pulsación larga desde mensajes"Adelante a la conversación"llamar:Después de seleccionar la sesión de destino,Cambiar el texto del mensaje(Mensaje de usuario original/mensaje del asistente
+     * Convertir a texto sin formato)Se adjunta como un nuevo mensaje de USUARIO a la sesión de destino.[sessionRepository.appendMessage] Estará sincronizado
+     * Actualiza el índice updateAt/view/FTS de la sesión de destino.
      *
-     * @return true 表示追加成功,false 表示目标会话不存在或写入失败。
+     * @return true Indica una adición exitosa,false Indica que la sesión de destino no existe o que la escritura falló.
      */
     suspend fun forwardMessageToSession(targetSessionId: String, text: String): Boolean {
         val target = resultOf { sessionRepository.getSessionById(targetSessionId) }.getOrNull()
@@ -3608,114 +3608,114 @@ class ChatViewModel(
             .isSuccess
     }
 
-    /** 切换侧栏开合。 */
+    /** Alternar apertura y cierre de la barra lateral. */
     fun toggleDrawer(open: Boolean) = settingsController.toggleDrawer(open)
 
-    /** P5-G: 切换绘图模式。开启后输入栏 placeholder 变化,send 走 ImageService。 */
+    /** P5-G: Cambia el modo de dibujo. El marcador de posición del campo de entrada cambia después de abrirlo,send Vaya a ImageService. */
     fun toggleDrawMode() = settingsController.toggleDrawMode()
 
-    /** v0.34: 更新当前绘图参数(可临时覆盖设置默认值)。 */
+    /** v0.34: Actualizar los parámetros de dibujo actuales(Puede anular temporalmente los valores predeterminados de configuración). */
     fun updateImageGenParams(params: io.zer0.ai.image.ImageGenParams) = settingsController.updateImageGenParams(params)
 
     /**
-     * 阶段 5: 切换激活 Provider(底部模型切换面板调用)。
+     * Etapa 5: activación del interruptor Provider(Llamada al panel de conmutación del modelo inferior).
      *
-     * v1.0.28 修复: 之前注释说"内部会清空 selectedModelId"但实际未清空,
-     * 导致用户从 A Provider 切到 B Provider 后,旧 selectedModelId 仍指向 A 的模型,
-     * resolveToolsAndModel 跨 Provider 查找命中 A 的模型 → 请求误发到 A。
-     * 现显式调用 saveSelectedModel(null) 清空,对齐注释承诺。
+     * v1.0.28 Reparación: Anotado antes"El interior será limpiado selectedModelId"Pero en realidad no está claro.,
+     * Hace que el usuario cambie del Proveedor A al Proveedor B,El antiguo selectedModelId todavía apunta al modelo de A.,
+     * resolveToolsAndModel Encuentre modelos que lleguen a A en todos los proveedores → La solicitud fue enviada a A por error.
+     * Llamada explícita ahora saveSelectedModel(null) Borrar,Promesas de anotación de alineación.
      *
-     * v1.22: 若目标 Provider 尚未拉取到模型,自动触发 /models 拉取。
+     * v1.22: Si el proveedor de destino aún no ha retirado el modelo,Disparador automático/modelos tiran.
      */
     fun setActiveProvider(providerId: String) = settingsController.setActiveProvider(providerId)
 
     /**
-     * v1.22: 手动/自动拉取指定 Provider 的上游模型列表。
-     * 拉取成功后更新 ProviderConfig.models 并持久化,失败则写入 fetchModelsError。
+     * v1.22: manuales/Extrae automáticamente la lista de modelos ascendentes del proveedor especificado.
+     * Después de que la extracción sea exitosa, actualice ProviderConfig.models y consérvelo.,En caso de error, se escribe fetchModelsError.
      *
-     * v1.132: 拉取成功后同步写入 [ModelListCache],让 ProviderSection 编辑页能复用结果(5 分钟内)。
+     * v1.132: Escribir sincrónicamente después de una extracción exitosa [ModelListCache],Permitir que la página de edición ProviderSection reutilice los resultados(5 en minutos).
      */
     fun refreshModels(providerId: String) = settingsController.refreshModels(providerId)
 
     /**
-     * 阶段 5: 选择当前 Provider 下的具体模型(底部模型切换面板调用)。
-     * 传 null 清空选择,回退到 Provider 的首个模型。
+     * Etapa 5: seleccione el modelo específico del proveedor actual(Llamada al panel de conmutación del modelo inferior).
+     * Pase nulo para borrar la selección,Recurrir al primer modelo del proveedor.
      *
-     * v0.51: 切换非空模型后,弹 Toast 提示"已切换模型,新消息将使用新模型生成(历史消息不变)"。
-     * 走独立 toast 字段(非 Snackbar),避免被错误消息挤掉。
+     * v0.51: Después de cambiar a un modelo no vacío,Reproducir mensaje de brindis"Modelo cambiado,Se generarán nuevos mensajes utilizando el nuevo modelo.(La información histórica se mantiene sin cambios.)".
+     * Ir al campo de brindis independiente(no Snackbar),Evite verse abrumado por mensajes de error.
      */
     fun setSelectedModel(modelId: String?) = settingsController.setSelectedModel(modelId)
 
-    /** v1.60-A: 设置工具模型(null 清除,沿用主对话模型)。 */
+    /** v1.60-A: Configurar modelo de herramienta(null Borrar,Heredar el modelo de diálogo principal.). */
     fun setToolModel(modelId: String?) = settingsController.setToolModel(modelId)
 
     /**
-     * v0.51: 清空一次性 toast(Toast 弹出后由 UI 立即调用,避免重组时重复弹)。
+     * v0.51: Limpiar una vez toast(Toast Llamado por la interfaz de usuario inmediatamente después de aparecer,Evite repetidos bombardeos durante la reorganización.).
      */
     fun clearToast() = settingsController.clearToast()
 
     /**
-     * v1.0.72: 设置当前会话"不参考记忆"标志(空白对话页选项)。
-     * 持久化到会话,切换会话/重启保持;开启后 system prompt 跳过记忆注入。
+     * v1.0.72: Establecer sesión actual"Sin referencia a la memoria"logotipo(Opción de página de conversación en blanco).
+     * persistir en la sesión,Cambiar de sesión/Reiniciar espera;Cuando está habilitado, el mensaje del sistema omite la inyección de memoria.
      */
     fun setSessionIgnoreMemory(ignore: Boolean) = sessionController.setSessionIgnoreMemory(ignore)
 
-    /** 设置/取消引用回复目标。 */
+    /** ajustes/Eliminar la referencia al destino de respuesta. */
     fun setReplyingTo(message: UIMessage?) {
-        // v1.0.72: 加日志排查"叉不掉引用"问题(点击 X 后引用块是否收到清除事件)
-        Logger.i("ChatVM", "setReplyingTo: ${if (message == null) "null(清除引用)" else message.id}")
+        // v1.0.72: Agregar registro para solucionar problemas"No se puede eliminar la referencia."pregunta(Si el bloque de referencia recibe un evento claro después de hacer clic en X)
+        Logger.i("ChatVM", "setReplyingTo: ${if (message == null) "null(referencia clara)" else message.id}")
         _state.update { it.copy(replyingTo = message, replyQuoteOverride = null) }
     }
 
-    /** v1.57: 设置自定义引用文本(用于引用卡片编辑裁剪,精准引用部分内容)。 */
+    /** v1.57: Establecer texto de cotización personalizado(Se utiliza para editar y recortar tarjetas de referencia.,Cite con precisión parte del contenido.). */
     fun setReplyQuoteOverride(text: String?) {
         _state.update { it.copy(replyQuoteOverride = text?.takeIf { it.isNotBlank() }) }
     }
 
     /**
-     * v1.58: 从指定消息处分叉对话 — 创建新会话并复制到该消息为止的历史,然后切换过去。
-     * 用户可在新会话中探索不同方向,不影响原对话。
+     * v1.58: Bifurca la conversación del mensaje especificado — Crea una nueva sesión y copia el historial hasta ese mensaje,Luego cambia.
+     * Los usuarios pueden explorar diferentes direcciones en una nueva sesión.,No afecta la conversación original.
      */
     fun forkSessionFromMessage(messageId: kotlin.uuid.Uuid) = sessionController.forkSessionFromMessage(messageId)
 
-    /** 新建会话。[assistantIdOverride] 非空时以指定助手创建(伙伴横排快捷开聊)。 */
+    /** Crea una nueva sesión.[assistantIdOverride] Creado con el asistente especificado cuando no está vacío(Chatea rápidamente con socios horizontalmente). */
     fun createNewSession(onReady: (() -> Unit)? = null, assistantIdOverride: String? = null) =
         sessionController.createNewSession(onReady, assistantIdOverride)
 
     /**
-     * v1.97 gap8: 将文本发送到新会话。
+     * v1.97 gap8: Enviar texto a una nueva conversación.
      *
-     * 原子地创建新会话、填充输入并触发发送,避免调用方在异步 createNewSession
-     * 完成前调用 send() 导致消息丢失。
+     * Cree atómicamente una nueva sesión, complete la entrada y active un envío,Evite que la persona que llama sea asincrónica createNewSession
+     * Llamado antes de finalizar send() lo que resulta en la pérdida del mensaje.
      */
     fun sendToNewChat(text: String, onReady: (() -> Unit)? = null) = sessionController.sendToNewChat(text, onReady)
 
     /**
-     * v1.24: Agent 重启上下文 — 保留当前助手,新建一个空会话,
-     * 让长期陪伴的 Agent 从零开始继续对话,同时 Toast 提示用户。
+     * v1.24: Agent reiniciar contexto — Mantener asistente actual,Crear una nueva sesión vacía,
+     * Deje que el Agente a largo plazo continúe la conversación desde cero,Al mismo tiempo, Toast avisa al usuario.
      */
     fun restartContext() = sessionController.restartContext()
 
-    /** 切换到指定会话。 */
+    /** Cambie a la sesión especificada. */
     fun switchSession(sessionId: String) = sessionController.switchSession(sessionId)
 
-    /** 切回会话时重新投递仍未启动生成的 outbox 请求。 */
+    /** La reenvío de la solicitud de la bandeja de salida generada al volver a la sesión aún no ha comenzado. */
     private suspend fun requeueOutboxForSession(sessionId: String) = generationController.requeueOutboxForSession(sessionId)
 
     /**
-     * v1.28: 设置 Agent Tab 模式。
+     * v1.28: Establezca el modo de pestaña Agente.
      *
-     * Agent Tab 进入时调用:恢复或创建独立的 Agent 会话,不依赖任务的 currentSessionId。
-     * 退出 Agent Tab 时(isAgentMode=false)恢复任务会话的消息。
+     * Agent Tab Llamado al entrar:Reanudar o crear una sesión de Agente independiente,No depende del currentSessionId de la tarea.
+     * Al salir de la pestaña Agente(isAgentMode=false)Mensaje para reanudar la sesión de tareas.
      */
     @Suppress("LongMethod")
     fun setAgentMode(enabled: Boolean, requestedSessionId: String? = null) = sessionController.setAgentMode(enabled, requestedSessionId)
 
     /**
-     * 打开通知指定的会话。
+     * Abre una notificación para la sesión especificada.
      *
-     * 普通会话属于任务 Tab;Agent 会话不在任务列表中,必须切换到 Agent Tab
-     * 并使用通知携带的精确会话 id,不能按默认助手重新猜测。
+     * Las conversaciones normales pertenecen a tareas. Tab;Agent La sesión no está en la lista de tareas.,Debe cambiar a Agent Tab
+     * y utilizar la sesión precisa llevada por la notificación id,No se puede volver a adivinar con el asistente predeterminado.
      */
     fun openSessionFromNotification(sessionId: String) {
         viewModelScope.launch {
@@ -3732,61 +3732,61 @@ class ChatViewModel(
                     }
                 }
             if (ready == null) {
-                Logger.w("ChatVM", "等待通知目标会话初始化超时,仍尝试打开: $sessionId")
+                Logger.w("ChatVM", "Esperando el tiempo de espera de inicialización de la sesión de destino de notificación,Aún intento abrir: $sessionId")
             }
             switchSession(sessionId)
         }
     }
 
     /**
-     * v1.0.47 P6-4: 关闭 Agent Mode 提示卡片(用户点击"知道了"后调用)。
+     * v1.0.47 P6-4: Cerrar tarjeta de aviso del modo agente(Clics del usuario"Lo tengo"llamar después).
      */
     fun dismissAgentModeHint() {
         _state.update { it.copy(agentModeHint = null) }
     }
 
     /**
-     * v1.0.47 P6-2: 关闭弱工具模型提示(用户点击关闭后调用)。
+     * v1.0.47 P6-2: Desactivar sugerencias de modelos de herramientas débiles(Se llama después de que el usuario hace clic en cerrar.).
      */
     fun dismissWeakToolHint() {
         _state.update { it.copy(weakToolHint = null) }
     }
 
     /**
-     * v1.53-A1: 上滑加载更多历史消息。
+     * v1.53-A1: Desliza hacia arriba para cargar más noticias históricas.
      *
-     * 取当前 messages 列表最早一条消息的 createdAt 作为锚点,从 DB 取早于该时间点的
-     * MESSAGE_PAGE_SIZE 条消息,前置插入到 messages。
+     * Tome el mensaje creado en el más antiguo de la lista de mensajes actual como punto de anclaje,Obtener datos anteriores a este momento de la base de datos
+     * MESSAGE_PAGE_SIZE mensajes,Prefijado a los mensajes.
      *
-     * - 流式期间禁用(isStreaming=true 时不加载,避免列表抖动干扰流式输出)
-     * - isLoadingMore=true 时跳过(防止重复触发)
-     * - hasMoreHistory=false 时跳过(已加载完)
-     * - 加载完成后设置 [ChatUiState.lastHistoryLoadCount],UI 监听后调整滚动位置保持视觉位置
+     * - Deshabilitado durante la transmisión(isStreaming=true no cargando,Evite la fluctuación de la lista que interfiere con la salida de streaming)
+     * - isLoadingMore=true salto de tiempo(Prevenir disparos repetidos)
+     * - hasMoreHistory=false salto de tiempo(cargado)
+     * - Establecer después de que se complete la carga [ChatUiState.lastHistoryLoadCount],UI Ajuste la posición de desplazamiento después de escuchar para mantener la posición visual
      */
     fun loadMoreHistory() = messageController.loadMoreHistory()
 
     /**
-     * v1.53-A1: 清空 [ChatUiState.lastHistoryLoadCount]。
+     * v1.53-A1: Borrar [ChatUiState.lastHistoryLoadCount].
      *
-     * UI 在 [ChatScreen] 监听 lastHistoryLoadCount 变化(>0)后,调
-     * [androidx.compose.foundation.lazy.LazyListState.scrollToItem] 跳过新插入的条数,
-     * 保持视觉位置不跳动,然后调本方法清空(避免重组时重复跳转)。
+     * UI en [ChatScreen] Supervisar los cambios de lastHistoryLoadCount(>0)después,sintonizar
+     * [androidx.compose.foundation.lazy.LazyListState.scrollToItem] Omitir la cantidad de elementos recién insertados,
+     * Evita que la posición visual salte.,Luego llame a este método para borrarlo.(Evite saltos repetidos durante la reorganización).
      */
     fun clearHistoryLoadCount() = messageController.clearHistoryLoadCount()
 
-    /** v1.28: 获取当前助手 id(用于创建 Agent 会话)。 */
+    /** v1.28: Obtener el asistente actual id(Se utiliza para crear sesiones de agente). */
     private fun currentAssistantId(): String = _state.value.currentAssistant?.id ?: "default"
 
-    /** 软删除会话。删除当前会话时自动切换到剩余的第一个;无剩余会话时清空状态,不创建新会话。 */
+    /** Sesión de eliminación temporal. Cambiar automáticamente al primero restante al eliminar la sesión actual;Borrar estado cuando no quedan sesiones,No se crea ninguna nueva sesión. */
     fun deleteSession(sessionId: String) = sessionController.deleteSession(sessionId)
 
-    /** 重命名会话。 */
+    /** Cambie el nombre de la sesión. */
     fun renameSession(sessionId: String, title: String) = sessionController.renameSession(sessionId, title)
 
-    /** v0.45: 切换会话归档状态。归档当前会话时切换到剩余首个会话;无剩余会话时清空状态,不创建新会话。 */
+    /** v0.45: Alternar el estado de archivo de la sesión. Cambiar a la primera sesión restante al archivar la sesión actual;Borrar estado cuando no quedan sesiones,No se crea ninguna nueva sesión. */
     fun setSessionArchived(sessionId: String, archived: Boolean) = sessionController.setSessionArchived(sessionId, archived)
 
-    /** 重新加载会话列表(会话列表错误态重试)。 */
+    /** Recargar lista de sesiones(Reintento del estado de error de la lista de sesiones). */
     fun retryLoadSessions() {
         viewModelScope.launch {
             _state.update { it.copy(isSessionsLoading = true, sessionsError = null) }
@@ -3804,7 +3804,7 @@ class ChatViewModel(
                 }
             } catch (t: Throwable) {
                 Logger.e("ChatVM", "retryLoadSessions failed", t)
-                // v1.x: 协程取消必须重抛,不能显示为"请求失败: Job was cancelled"
+                // v1.x: La cancelación de la rutina debe volver a lanzarse,no se puede mostrar como"Solicitud fallida: Job was cancelled"
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 _state.update {
                     it.copy(
@@ -3820,42 +3820,42 @@ class ChatViewModel(
         }
     }
 
-    /** 更新搜索框文本。空文本时清空结果。 */
+    /** Actualizar el texto del cuadro de búsqueda. Resultados vacíos cuando el texto está vacío. */
     fun updateSearchQuery(query: String) = miscCoordinator.updateSearchQuery(query)
 
-    /** 执行搜索。空查询忽略。 */
+    /** Realizar una búsqueda. Las consultas vacías se ignoran. */
     fun search() = miscCoordinator.search()
 
-    /** 清空搜索(返回会话列表)。 */
+    /** Borrar búsqueda(Volver a la lista de sesiones). */
     fun clearSearch() = miscCoordinator.clearSearch()
 
-    // ── v2.x: 消息内容搜索(Tab=1)+ 跳转滚动高亮 ──
+    // ── v2.x: Búsqueda de contenido de mensajes(Tab=1)+ Saltar desplazamiento resaltado ──
 
-    /** v2.x: 切换搜索页 Tab(0=会话, 1=消息内容)。 */
+    /** v2.x: Cambiar página de búsqueda Tab(0=sesión, 1=Contenido del mensaje). */
     fun switchSearchTab(tab: Int) = miscCoordinator.switchSearchTab(tab)
 
-    /** v2.x: 执行消息内容搜索(FTS4 + snippet,失败回退 LIKE)。 */
+    /** v2.x: Realizar búsqueda de contenido de mensajes(FTS4 + snippet,Repliegue ante el fracaso LIKE). */
     fun searchMessageContent() = miscCoordinator.searchMessageContent()
 
     /**
-     * v2.x: 设置目标消息(从搜索结果点击跳转用)。
+     * v2.x: Establecer mensaje de destino(Haga clic para saltar desde los resultados de búsqueda).
      *
-     * 由 SearchScreen 点击消息项时调用,MainActivity 注入的跳转逻辑会先 switchSession,
-     * 再调用本方法设置 targetMessageId / highlightedMessageId / searchHighlightQuery。
+     * Lo llama SearchScreen cuando se hace clic en un elemento de mensaje,MainActivity La lógica de salto inyectada primero switchSession,
+     * Llame a este método nuevamente para configurar targetMessageId / highlightedMessageId / searchHighlightQuery.
      */
     fun setTargetMessage(messageId: String?, query: String?) = miscCoordinator.setTargetMessage(messageId, query)
 
     /**
-     * v2.x: 从搜索结果打开消息 — 先切换会话,等切换落地后再设置定位目标。
+     * v2.x: Abrir mensaje desde los resultados de búsqueda — Cambiar de sesión primero,Espere hasta que se implemente el interruptor antes de configurar el objetivo de posicionamiento.
      *
-     * 修复竞态: 此前 switchSession(异步) + setTargetMessage(立即) 并行,
-     * ChatScreen 在旧会话里等目标消息 5 秒超时后清空 targetMessageId,
-     * 等会话真正切过去时定位目标已丢,表现为"点击结果只回首页不定位"。
+     * Corregir condición de carrera: anteriormente switchSession(asincrónico) + setTargetMessage(inmediatamente) paralelo,
+     * ChatScreen Espere el mensaje de destino en la sesión anterior y bórrelo después de un tiempo de espera de 5 segundos. targetMessageId,
+     * Cuando realmente se cambia la sesión, el objetivo de posicionamiento se ha perdido.,Se muestra como"Al hacer clic en los resultados solo se regresa a la página de inicio sin posicionar.".
      */
     fun openMessageFromSearch(sessionId: String, messageId: String, query: String) {
         switchSession(sessionId)
         viewModelScope.launch {
-            // 等待 switchSession 落地(currentSessionId 变为目标会话),超时 5s 放弃定位
+            // Espere a que switchSession aterrice(currentSessionId convertirse en sesión objetivo),Tiempo de espera de 5 segundos y abandono del posicionamiento.
             val switched =
                 withTimeoutOrNull(5000L) {
                     _state.filter { it.currentSessionId == sessionId }.first()
@@ -3864,25 +3864,25 @@ class ChatViewModel(
             if (switched) {
                 setTargetMessage(messageId, query)
             } else {
-                Logger.w("ChatVM", "openMessageFromSearch 等待会话切换超时: $sessionId")
+                Logger.w("ChatVM", "openMessageFromSearch Tiempo de espera de espera para el cambio de sesión: $sessionId")
             }
         }
     }
 
-    /** v2.x: 消费目标消息 id(滚动定位完成后调用,避免重复触发)。 */
+    /** v2.x: Consumir mensajes objetivo id(Se llama después de completar el posicionamiento del desplazamiento.,Evite los desencadenantes repetidos). */
     fun consumeTargetMessage() = miscCoordinator.consumeTargetMessage()
 
-    /** v2.x: 清空高亮消息 id(高亮窗口期结束后调用,停止高亮)。 */
+    /** v2.x: Borrar mensajes resaltados id(Se llama después de que finaliza el período de la ventana resaltada.,dejar de resaltar). */
     fun clearHighlightedMessage() = miscCoordinator.clearHighlightedMessage()
 
     /**
-     * 发送当前输入。空文本(且无图片)或正在流式时忽略。
-     * P5-G: 若 isDrawMode,走 [generateImage] 而非流式聊天。
-     * Phase 8.6: 支持多模态 — 若 pendingImages 非空,把 base64 列表附在 USER 消息上。
-     * v1.28: Agent 模式用 agentSessionId,无会话时自动创建(Agent 日常聊天不依赖任务)。
+     * Enviar la entrada actual. texto vacío(y sin fotos)O ignorado durante la transmisión.
+     * P5-G: si isDrawMode,ir [generateImage] En lugar de transmitir chat.
+     * Phase 8.6: Soporte multimodal — Si las imágenes pendientes no están vacías,Adjunte la lista base64 al mensaje de USUARIO.
+     * v1.28: Agent Para el modo agentSessionId,Creado automáticamente cuando no hay sesión(Agent El chat diario no depende de tareas.).
      */
 
-    /** v1.0.92: 卡片回传 — 卡片脚本请求的文本作为用户消息发送。 */
+    /** v1.0.92: devolución de tarjeta — El texto solicitado por el script de la tarjeta se envía como mensaje de usuario. */
     fun sendFromCard(text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
@@ -3891,16 +3891,16 @@ class ChatViewModel(
     }
 
     /**
-     * v2.6.7: 卡片回传（带结构化状态）—— 闭环的关键一步。
+     * v2.6.7: Devolución de tarjeta (con estado estructurado)—— Un paso crucial para cerrar el círculo.
      *
-     * 与 [sendFromCard] 的区别：卡片不再只把操作压成一句话，而是额外把内部状态
-     * （拖动后的数值、选中的条目、计算结果）以 JSON 形式一并交回。宿主把它作为
-     * 不可见的 `<card_state>` 尾巴附在用户消息末尾：
-     *  - 模型读得到 → 下一轮能接着用这份状态，不用用户重述；
-     *  - 气泡不显示 → [stripCardStateFromMessage] 在渲染层剔掉，不污染对话。
+     * con [sendFromCard] La diferencia: la tarjeta ya no sólo comprime la operación en una frase, sino que además comprime el estado interno.
+     * (El valor arrastrado, el elemento seleccionado, el resultado del cálculo) se devuelven juntos en formato JSON. El anfitrión lo trata como
+     * invisibles `<card_state>` La cola se añade al final del mensaje del usuario:
+     *  - El modelo puede leer. → Este estado podrá ser utilizado en la siguiente ronda sin que el usuario tenga que repetirlo;
+     *  - Las burbujas no se muestran → [stripCardStateFromMessage] Recórtalo en la capa de renderizado sin contaminar el diálogo.
      *
-     * 不新建消息表列的原因：消息表已是 DB 116，为一句话的元数据再升一版迁移，
-     * 风险与收益不成比例；文本尾巴天然跟着消息一起备份、导出、参与上下文裁剪。
+     * El motivo para no crear una nueva columna de la tabla de mensajes: la tabla de mensajes ya es DB 116 y los metadatos de una oración se migran a otra versión.
+     * Los riesgos no guardan proporción con los beneficios; Naturalmente, la cola del texto se respalda, se exporta y se involucra en la adaptación contextual junto con el mensaje.
      */
     fun sendFromCard(text: String, cardId: String?, data: String?) {
         val trimmed = text.trim()
@@ -3919,15 +3919,15 @@ class ChatViewModel(
         enqueueSend(body, emptyList(), sid)
     }
 
-    /** 卡片回传 — 富内容卡片保存为工件(保存后按消息关联展示在消息下方)。 */
+    /** devolución de tarjeta — Tarjetas de contenido enriquecido guardadas como artefactos(Después de guardar, se mostrará debajo del mensaje según la asociación del mensaje.). */
     fun saveCardAsArtifact(messageId: String, language: String, content: String) {
         val sid = displayedSessionId(snapshot) ?: return
         viewModelScope.launch {
             resultOf {
                 artifactRepository.upsert(
                     ArtifactEntity(
-                        // 幂等 id：同一张卡（同一 messageId + 同一语言）连点两次是覆盖同一行，
-                        // 而不是每次多存一份。用时间戳做主键会让“保存”变成“不断新增”。
+                        // ID idempotente: al hacer clic dos veces en la misma tarjeta (mismo ID de mensaje + mismo idioma) se cubrirá la misma línea.
+                        // En lugar de guardar una copia más cada vez. Usar la marca de tiempo como clave principal hará“guardar”convertirse en“Agregando constantemente nuevos”.
                         id = "card_${messageId}_${language.lowercase()}",
                         sessionId = sid,
                         messageId = messageId,
@@ -3938,18 +3938,18 @@ class ChatViewModel(
                         updatedAt = System.currentTimeMillis(),
                     ),
                 )
-            }.onError { msg, _ -> Logger.w("ChatVM", "卡片保存工件失败: $msg") }
+            }.onError { msg, _ -> Logger.w("ChatVM", "Error al guardar la tarjeta: $msg") }
         }
     }
 
     /**
-     * v2.6.13: 卡片收藏 —— 把卡片收进收藏夹。
+     * v2.6.13: colección de tarjetas —— Añade la tarjeta a tus favoritos.
      *
-     * 卡片不是消息，而收藏页只读 messages 表；所以这里在「卡片收藏专用会话」里落一条
-     * favorite=true 的消息（正文是围栏包住的卡片源码）。专用会话已归档，不进任务列表，
-     * 也不会把卡片源码带进任何对话上下文。
+     * Las tarjetas no son mensajes y la página de colección solo lee la tabla de mensajes; Así que aquí hay una línea en la "Sesión dedicada a la colección de tarjetas".
+     * favorite=true mensaje (el texto es el código fuente de la tarjeta encerrada por la valla). La sesión privada ha sido archivada y no se incluirá en la lista de tareas.
+     * Tampoco incluye el código fuente de la tarjeta en ningún contexto de conversación.
      *
-     * @param cardId 卡片身份（聊天场景为消息 id），用于判重
+     * @param cardId Identidad de la tarjeta (identificación del mensaje en el escenario del chat), utilizada para determinar la autenticidad
      */
     fun favoriteCard(cardId: String, language: String, content: String) {
         if (content.isBlank()) return
@@ -3957,10 +3957,10 @@ class ChatViewModel(
             resultOf {
                 sessionRepository.favoriteCard(cardId = cardId, language = language, content = content)
             }.onSuccess {
-                // 重复收藏也提示已收藏：用户要的是“这件事成了”，而不是区分首次与重复。
+                // Las colecciones duplicadas también indican que han sido recopiladas: lo que el usuario quiere es“esta hecho”, en lugar de distinguir entre primera vez y repetición.
                 MuseToast.show(appContext.getString(R.string.card_favorite_done))
             }.onError { msg, _ ->
-                Logger.w("ChatVM", "卡片收藏失败: $msg")
+                Logger.w("ChatVM", "Error al recoger la tarjeta: $msg")
                 MuseToast.show(appContext.getString(R.string.card_favorite_failed, msg))
             }
         }
@@ -3968,17 +3968,17 @@ class ChatViewModel(
 
     fun send() = generationController.send()
 
-    /** v1.28: send 的内部实现(发消息 + 启动流式)。 */
+    /** v1.28: send implementación interna de(Enviar mensaje + iniciar transmisión). */
 
     /**
-     * v1.200: 尝试根据用户消息自动路由到更合适 Agent/团队。
-     * 返回 true 表示已路由并填充 assistant 占位消息，调用方应跳过 launchStream。
+     * v1.200: Intente enrutar automáticamente los mensajes de los usuarios a agentes/equipos más apropiados.
+     * Devolver verdadero indica que el mensaje del marcador de posición del asistente se ha enrutado y completado y la persona que llama debe omitir launchStream.
      */
     private suspend fun maybeAutoRoute(text: String, assistantMessageId: Uuid, sessionId: String): Boolean {
         if (!settings.multiAgentConfigCache.autoRoutingEnabled) return false
         val currentId = currentAssistantId()
-        // v2.x: LLM 语义路由开关开启时走 routeWithLlm,否则走规则路由。
-        // routeWithLlm 内部会在 chatService 未注入或异常时自动降级到规则路由。
+        // v2.x: LLM Ir cuando el interruptor de enrutamiento semántico esté activado routeWithLlm,De lo contrario, siga la ruta de reglas.
+        // routeWithLlm Internamente, bajará automáticamente al enrutamiento de reglas cuando el chatService no se inyecta o es anormal.
         val config = settings.multiAgentConfigCache
         val route =
             if (config.llmRoutingEnabled) {
@@ -4010,12 +4010,12 @@ class ChatViewModel(
                 timeoutSec = 120,
             )
 
-        // v1.202: 流式呈现 — 先显示"正在委派给 ${name}..."让用户感知中间过程,
-        // 而非阻塞调用结束后一次性出现结果。isStreaming=true 让 MessageBubble 显示流式光标。
+        // v1.202: Presentación en streaming — mostrar primero"Delegar a ${name}..."Permitir que los usuarios perciban el proceso intermedio.,
+        // En cambio, el resultado aparece una vez después de que finaliza la llamada sin bloqueo.isStreaming=true Deje que MessageBubble muestre un cursor de transmisión.
         val routeTargetName = route.targetName ?: route.targetId
         val pendingText =
             appContext.getString(R.string.chat_auto_route_prefix, routeTargetName) +
-                "\n\n正在委派给 $routeTargetName ..."
+                "\n\nDelegar a $routeTargetName ..."
         updateAssistant(assistantMessageId, pendingText, "", null, null, null, true)
 
         val result = skillExecutor.delegateAgent(request)
@@ -4032,7 +4032,7 @@ class ChatViewModel(
 
         updateAssistant(assistantMessageId, output, "", null, null, null, false)
         _state.update { it.copy(isStreaming = false) }
-        // B-1: 会话已删除则跳过落盘,防止删后"复活"。
+        // B-1: Si la sesión se ha eliminado, se omitirá la ubicación.,Prevenir la eliminación"resurrección".
         if (!generationController.isSessionWritesSuppressed(sessionId)) {
             persistCurrentAssistant(sessionId, assistantMessageId)
         }
@@ -4040,40 +4040,40 @@ class ChatViewModel(
     }
 
     /**
-     * Phase 8.6: 添加待发送图片(从 URI 读取,转 base64)。
-     * @param uri 图片 URI(相册/相机/SAF)
-     * @param context 用于 ContentResolver
-     * @param asOcr 是否走 OCR 识别(若为 true,识别结果追加到输入框;否则作为视觉输入)
+     * Phase 8.6: Añadir fotos para enviar(Leer desde URI,girar base64).
+     * @param uri fotos URI(álbum de fotos/cámara/SAF)
+     * @param context usado para ContentResolver
+     * @param asOcr Si se debe utilizar el reconocimiento OCR(Si true,Los resultados del reconocimiento se adjuntan al cuadro de entrada.;De lo contrario, como entrada visual)
      *
-     * v1.105: 委托至 [ImageGenCoordinator.pickImage]。
+     * v1.105: Delegar a [ImageGenCoordinator.pickImage].
      */
     fun pickImage(uri: Uri, context: Context, asOcr: Boolean) {
         imageGenCoordinator.pickImage(uri, context, asOcr, ::reportError, ::addError)
     }
 
     /**
-     * v1.135: 选取视频并提取关键帧加入待发送图片。
-     * 当前降级为图片发送,视觉模型可通过关键帧理解视频内容。
+     * v1.135: Seleccione un video y extraiga fotogramas clave para agregarlos a la imagen que se enviará.
+     * Actualmente degradado a envío de imágenes,Los modelos de visión comprenden el contenido del vídeo a través de fotogramas clave.
      */
     fun pickVideo(uri: Uri, context: Context) {
         imageGenCoordinator.pickVideo(uri, context, ::reportError)
     }
 
-    /** Phase 8.6: 移除指定索引的待发送图片。v1.105: 委托至 [ImageGenCoordinator]。 */
+    /** Phase 8.6: Elimina la imagen que se enviará en el índice especificado.v1.105: Delegar a [ImageGenCoordinator]. */
     fun removePendingImage(index: Int) {
         imageGenCoordinator.removePendingImage(index)
     }
 
     /**
-     * P5-G + Phase 10.2: 生成图片。
+     * P5-G + Phase 10.2: Genera imágenes.
      *
-     * 按 Provider 类型分支:
-     *  - OpenAI 兼容: 走 ImageService(独立 /images/generations 端点,返回 URL)
-     *  - Gemini:      走 streamChat 多模态路径(responseModalities 含 image,收集 ImageDelta base64)
-     *  - Anthropic:   不支持(Claude 无原生图像生成能力)
+     * Sucursal por tipo de proveedor:
+     *  - OpenAI compatibles: ir ImageService(Punto final independiente /images/generaciones,Regresar URL)
+     *  - Gemini:      Tome el camino multimodal de StreamChat(responseModalities Contiene image,recoger ImageDelta base64)
+     *  - Anthropic:   No compatible(Claude Sin capacidades de generación de imágenes nativas)
      *
-     * Gemini 绘图结果以 data URI 存入 imageUrls(便于 MessageBubble 用 AsyncImage 渲染),
-     * 同时存入 imageBase64List(多模态输入回传)。
+     * Gemini Los resultados del dibujo se almacenan como URI de datos. imageUrls(Conveniente para que MessageBubble se represente usando AsyncImage),
+     * Depositar simultáneamente imageBase64List(Devolución de llamada de entrada multimodal).
      */
     private fun generateImage(prompt: String, sessionId: String) {
         imageGenCoordinator.generateImage(
@@ -4086,16 +4086,16 @@ class ChatViewModel(
     }
 
     /**
-     * P5-E: 选取文档后解析文本,追加到输入框(以分隔符隔开)。
-     * 支持 TXT / Markdown / PDF(原生 PdfRenderer)。
+     * P5-E: Analizar texto después de seleccionar el documento,Agregar al cuadro de entrada(separados por delimitador).
+     * apoyo TXT / Markdown / PDF(Nativo PdfRenderer).
      *
-     * v1.105: 委托至 [ChatDocumentCoordinator.pickDocument]。
+     * v1.105: Delegar a [ChatDocumentCoordinator.pickDocument].
      */
     fun pickDocument(uri: Uri, context: Context) {
         documentCoordinator.pickDocument(uri, context, ::reportError)
     }
 
-    /** v1.136 T10: 移除待发送文档(用户在 InputBar 芯片上点击移除)。 */
+    /** v1.136 T10: Eliminar documentos pendientes(El usuario hace clic en Eliminar en el chip InputBar.). */
     fun removePendingDocument(index: Int) {
         val docs = _state.value.pendingDocuments.toMutableList()
         if (index in docs.indices) {
@@ -4105,27 +4105,27 @@ class ChatViewModel(
     }
 
     /**
-     * v1.0.47 P5-2: 把大段粘贴文本作为 txt 附件加入 [ChatUiState.pendingDocuments]。
+     * v1.0.47 P5-2: Agregue grandes secciones de texto pegado como archivos adjuntos de texto [ChatUiState.pendingDocuments].
      *
-     * v2.6.13: 委托到 [ChatDocumentCoordinator.addPastedText] —— 粘贴的长文与上传的
-     * 文件走同一条通道：原件落工作区，消息里只留一行引用，正文不再塞进本轮上下文。
-     * 不清空输入框(保留用户已输入的其他内容)。
+     * v2.6.13: confiado a [ChatDocumentCoordinator.addPastedText] —— Texto largo pegado y subido.
+     * Los archivos pasan por el mismo canal: el archivo original se coloca en el espacio de trabajo, solo se deja una cita en el mensaje y el texto ya no se inserta en el contexto de esta ronda.
+     * No borre el cuadro de entrada(Preservar otro contenido que el usuario haya ingresado).
      */
     fun addPastedTextAsDocument(text: String) {
         documentCoordinator.addPastedText(text, appContext, ::reportError)
     }
 
     /**
-     * P5-F / P6-B3: 翻译指定消息到目标语言。
+     * P5-F / P6-B3: Traducir el mensaje especificado al idioma de destino.
      *
-     * v1.0.30 gap4.9: prompt 构建策略与 [TranslateViewModel.buildTranslationPrompt] 统一,
-     * 支持可选 style 参数(默认"通用"),并对结果统一调用 stripThinkTags 处理。
+     * v1.0.30 gap4.9: prompt Construir estrategia y [TranslateViewModel.buildTranslationPrompt] unificar,
+     * Admite parámetro de estilo opcional(Predeterminado"Universales"),Y llame uniformemente a stripThinkTags para procesar los resultados.
      *
-     * @param targetLanguage 目标语言中文名(如"中文"/"English"/"日本語"),默认"中文"兼容旧调用
-     * @param style 翻译风格(默认"通用",与 TranslateViewModel.TRANSLATION_STYLES 对齐)
-     * 翻译结果作为新的 ASSISTANT 消息追加("翻译(目标语言):\n\n...")。
+     * @param targetLanguage Idioma de destino Nombre chino(Como por ejemplo"chino"/"English"/"日本語"),Predeterminado"chino"Compatible con llamadas antiguas
+     * @param style estilo de traducción(Predeterminado"Universales",Alineado con TranslateViewModel.TRANSLATION_STYLES)
+     * El resultado de la traducción se adjunta como un nuevo mensaje de ASISTENTE.("Traducción(idioma de destino):\n\n...").
      */
-    fun translateMessage(messageId: Uuid, targetLanguage: String = "中文", style: String = "通用") {
+    fun translateMessage(messageId: Uuid, targetLanguage: String = "chino", style: String = "Universales") {
         if (_state.value.isStreaming || _state.value.isTranslating) return
         val target =
             _messages.value.firstOrNull { it.id == messageId }
@@ -4143,7 +4143,7 @@ class ChatViewModel(
         translateJob =
             viewModelScope.launch(AppDispatchers.io) {
                 try {
-                    // v1.0.30 gap4.9: 统一使用 TranslateViewModel.buildTranslationPrompt,与独立翻译页保持一致
+                    // v1.0.30 gap4.9: Usar uniformemente TranslateViewModel.buildTranslationPrompt,Consistente con páginas de traducción independientes.
                     val prompt =
                         io.zer0.muse.ui.translate.TranslateViewModel.buildTranslationPrompt(
                             text = sourceText,
@@ -4154,8 +4154,8 @@ class ChatViewModel(
                     val messages = listOf(UIMessage(role = MessageRole.USER, content = prompt))
                     val sessionId = displayedSessionId() ?: return@launch
 
-                    // v2.4.6: 译文不再另开一条助手消息,而是挂到源消息的 translations 上。
-                    // 用空串占位表示"翻译中",流式增量直接更新源消息(UI 以可展开块展示)。
+                    // v2.4.6: La traducción ya no abrirá otro mensaje del asistente,En cambio, depende de las traducciones del mensaje fuente.
+                    // Representado por un marcador de posición de cadena vacía"Traduciendo",Transmisión de actualizaciones incrementales directamente a los mensajes de origen(UI Presentado en bloques ampliables.).
                     fun applyTranslation(text: String) {
                         updateMessages { list ->
                             list.map { m ->
@@ -4187,7 +4187,7 @@ class ChatViewModel(
                             }
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
-                        // 取消时保留已收集的部分结果
+                        // Conservar algunos resultados recopilados al cancelar
                         throw e
                     }
 
@@ -4198,8 +4198,8 @@ class ChatViewModel(
                             null
                         }
                     if (failure != null) {
-                        // v2.4.6: 中断/失败时保留已显示的非空部分译文(用户已看到的内容不丢),
-                        // 仅清掉"翻译中"的空占位。
+                        // v2.4.6: interrumpir/Mantener la traducción parcial no vacía que se muestra en caso de error(No se pierde el contenido que el usuario ya ha visto),
+                        // solo claro"Traduciendo"marcador de posición vacío.
                         val partial = sb.toString().trim()
                         updateMessages { list ->
                             list.map { m ->
@@ -4229,7 +4229,7 @@ class ChatViewModel(
 
                     val translated = io.zer0.muse.transformer.stripThinkTags(sb.toString()).trim()
                     if (translated.isEmpty()) {
-                        // 清掉空占位,改为错误提示
+                        // Limpiar el espacio vacío,Cambiar al mensaje de error
                         updateMessages { list ->
                             list.map { m ->
                                 if (m.id == target.id) m.copy(translations = m.translations - targetLanguage) else m
@@ -4253,7 +4253,7 @@ class ChatViewModel(
                         }
                         return@launch
                     }
-                    // v2.4.6: 落到源消息的 translations(清洗后的最终文本)并持久化源消息
+                    // v2.4.6: cayendo a la fuente translations(Texto final limpio)Y persistir el mensaje fuente
                     applyTranslation(translated)
                     _state.update {
                         it.copy(
@@ -4265,13 +4265,13 @@ class ChatViewModel(
                     if (persistedSource != null) {
                         sessionRepository.upsertMessage(sessionId, persistedSource)
                     }
-                    // v1.0.88 (S-4): 译文落盘后失效缓存 — 否则切走再切回命中旧快照
+                    // v1.0.88 (S-4): Almacenamiento en caché no válido después de que la traducción se coloque en el disco — De lo contrario, cambie y vuelva a acceder a la instantánea anterior.
                     sessionMemoryCache.remove(sessionId)
                 } catch (e: kotlinx.coroutines.CancellationException) {
-                    // v1.80 (H-CVM1): 协程取消必须重抛,避免破坏 stop()/switchSession() 语义
+                    // v1.80 (H-CVM1): La cancelación de la rutina debe volver a lanzarse,evitar la destrucción stop()/switchSession() Semántica
                     throw e
                 } catch (t: Exception) {
-                    // v1.80 (L-CVM3): catch Throwable 改为 catch Exception,避免捕获 OOM/StackOverflow 等 Error
+                    // v1.80 (L-CVM3): catch Throwable Cambiar a catch Exception,Evite capturar OOM/StackOverflow, etc. Error
                     Logger.e("ChatVM", "translate failed", t)
                     _state.update {
                         it.copy(
@@ -4295,8 +4295,8 @@ class ChatViewModel(
     }
 
     /**
-     * 应用用户编辑（P0 对话树）：把修改后的文本保存为新用户变体，
-     * 保留旧提问/旧助手回复，新建用户版本并启动新回复流。
+     * Aplicar edición de usuario (P0 Árbol de diálogo): guarda el texto modificado como una nueva variante de usuario,
+     * Mantener viejas preguntas/Responda desde el asistente anterior, cree una nueva versión de usuario e inicie un nuevo flujo de respuesta.
      */
     fun applyUserEdit(messageId: String, newContent: String) {
         if (_state.value.isStreaming) return
@@ -4310,8 +4310,8 @@ class ChatViewModel(
                 ?: return
         val edit = tree.editUserMessage(target.id, newContent) ?: return
         _conversationTree.value = edit.tree
-        // 列表是 ConversationTree 的投影，此处必须整体替换；改成合并式会造出树中不存在的消息，
-        // 被 mergeRebuildMessages 当分支补回，撕裂变体结构。
+        // La lista es la proyección de ConversationTree y debe reemplazarse en su totalidad aquí; cambiar para fusionar creará mensajes que no existen en el árbol.
+        // Utilizado por mergeRebuildMessages cuando se reconstruyen ramas, desgarrando estructuras variantes.
         _messages.value = edit.tree.displayMessages
         _state.update {
             it.copy(
@@ -4324,7 +4324,7 @@ class ChatViewModel(
         }
         sessionMemoryCache.remove(sessionId)
         edit.newAssistantPlaceholder?.let { placeholder ->
-            // 分支消息必须先落库成功，再启动流，避免 turn commit 先于 parent/user variant 写入。
+            // Los mensajes de rama se deben colocar correctamente en la biblioteca antes de iniciar la transmisión para evitar que la confirmación de turno se escriba antes que la variante principal/usuario.
             viewModelScope.launch {
                 val persisted =
                     withContext(Dispatchers.IO) {
@@ -4350,146 +4350,146 @@ class ChatViewModel(
     fun editAssistantMessage(messageId: Uuid, newContent: String) = messageController.editAssistantMessage(messageId, newContent)
 
     /**
-     * B7-04: 流式打断后继续生成。
+     * B7-04: La generación continúa después de la interrupción del streaming.
      *
-     * 复用最后一条带 [已中断] 标记的 assistant 消息,去掉标记后以
-     * resumeFromText 方式从断点续写,不新增消息。
+     * Reutilizar la última tira [interrumpido] Mensajes del asistente etiquetados,Después de quitar la marca, use
+     * resumeFromText Cómo reanudar la escritura desde el punto de interrupción,No se agregarán nuevos mensajes.
      */
     fun continueGeneration() = generationController.continueGeneration()
     /**
-     * 重生成最后一条 assistant 回复: 保留旧回复作为分支,创建新分支并重新请求。
-     * 仅当最后一条是 assistant 且非流式时可用。
+     * Regenerar la última respuesta del asistente: Mantener las respuestas antiguas como ramas,Crea una nueva sucursal y vuelve a solicitar.
+     * Sólo disponible si el último es asistente y no streaming.
      */
 
     /**
-     * 重生成当前用户变体下的最后一条 assistant 回复（P0 对话树）。
-     * 保留旧回复为助手变体,在当前用户变体下新建助手变体并重新请求。
+     * Regenerar la última respuesta del asistente bajo la variante de usuario actual (P0 árbol de diálogo).
+     * Mantener respuestas antiguas como variantes del asistente,Cree una nueva variante de asistente bajo la variante de usuario actual y solicítela nuevamente.
      */
     fun regenerateLastAssistant() = generationController.regenerateLastAssistant()
 
     /**
-     * 切换消息分支:用户通过 BranchSelector 左右箭头切换同一位置的多版本 assistant 回复。
+     * Cambiar rama de mensaje:El usuario utiliza las flechas izquierda y derecha de BranchSelector para cambiar entre varias versiones de respuestas del asistente en la misma ubicación.
      */
 
     /**
-     * 切换用户提问变体（P0 对话树）。
+     * Cambiar variaciones de preguntas de usuario (P0 árbol de diálogo).
      */
     fun selectUserVariant(userGroupId: String, variantIndex: Int) = messageController.selectUserVariant(userGroupId, variantIndex)
 
     /**
-     * 切换助手回复变体（P0 对话树）：作用域仅限当前用户变体下的指定助手组。
+     * Alternar variante de respuesta del asistente (P0 Árbol de diálogo): con alcance únicamente al grupo de asistentes especificado en la variante de usuario actual.
      */
     fun selectAssistantVariant(userGroupId: String, assistantGroupId: String, index: Int) =
         messageController.selectAssistantVariant(userGroupId, assistantGroupId, index)
 
     /**
-     * 审批工具调用:用户批准待审批的工具调用。
+     * Llamada a la herramienta de aprobación:El usuario aprueba las llamadas de herramientas pendientes.
      */
     fun approveToolCall(toolCallId: String) = toolController.approveToolCall(toolCallId)
 
     /**
-     * F-37: 批准工具调用并注入由调用方(如 Host 网关)提供的任意参数覆盖映射。
-     * 用于 web 审批 answered:用户在网页填写参数后,覆盖值透传于此并经
-     * [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides] 合并进工具参数。
+     * F-37: Las herramientas de aprobación son llamadas e inyectadas por la persona que llama(Como la puerta de enlace del host)Cualquier parámetro proporcionado anula la asignación.
+     * Se utiliza para la aprobación web respondida: después de que el usuario completa los parámetros en la página web,El valor de cobertura se pasa aquí de forma transparente y se pasa a través de
+     * [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides] Combinado con los parámetros de la herramienta.
      */
     fun approveToolCallWithOverrides(toolCallId: String, argOverrides: Map<String, String>) =
         toolController.approveToolCallWithOverrides(toolCallId, argOverrides)
 
     /**
-     * v1.x: 设置待审批工具调用的参考图覆盖值。
+     * v1.x: Establezca el valor de cobertura del mapa de referencia para que se aprueben las llamadas de herramientas.
      *
-     * 由 ToolApprovalCard 中的"选择图片"按钮触发:用户从相册选择图片后,
-     * UI 把图片转为 data URI 传到这里存入 [PendingToolApproval.referenceImageOverride],
-     * 批准时由 [approveToolCall] 注入 argOverrides。
+     * Por ToolApprovalCard en"Seleccionar imagen"disparador de botón:Después de que el usuario selecciona una imagen del álbum,
+     * UI Convierta la imagen en URI de datos y envíela aquí para guardarla. [PendingToolApproval.referenceImageOverride],
+     * Aprobado por [approveToolCall] Inyecte argOverrides.
      *
-     * @param dataUri 形如 "data:image/jpeg;base64,...";传 null 清除已选图片
+     * @param dataUri en forma de "data:image/jpeg;base64,...";Pase nulo para borrar las imágenes seleccionadas
      */
     fun setToolApprovalReferenceImage(toolCallId: String, dataUri: String?) =
         toolController.setToolApprovalReferenceImage(toolCallId, dataUri)
 
     /**
-     * 更新待审批工具调用的"始终允许"勾选状态。
+     * Actualizar la herramienta solicitada para aprobación"siempre permitido"Consultar estado.
      */
     fun setToolApprovalAlwaysAllow(toolCallId: String, alwaysAllow: Boolean) =
         toolController.setToolApprovalAlwaysAllow(toolCallId, alwaysAllow)
 
     /**
-     * v1.0.16: 更新待审批工具调用的"本次开启期间批准全部"勾选状态。
-     * F-AUDIT: 此前只写 PendingToolApproval.appRunAllowAll(无人读取),按钮形同虚设;
-     * 现在同时写 appRunAllowAllTools,让 resolve() 真正读到"本次运行全部放行"。
+     * v1.0.16: Actualizar la herramienta solicitada para aprobación"Aprobar todo durante este período de apertura"Consultar estado.
+     * F-AUDIT: Antes solo escribía PendingToolApproval.appRunAllowAll(nadie lee),Los botones son inútiles;
+     * Ahora escribe al mismo tiempo. appRunAllowAllTools,dejar resolve() realmente leo"Todos están liberados para esta carrera.".
      */
     fun setToolApprovalAppRunAllowAll(toolCallId: String, allowAll: Boolean) =
         toolController.setToolApprovalAppRunAllowAll(toolCallId, allowAll)
 
     /**
-     * 拒绝工具调用:用户拒绝待审批的工具调用。
+     * Denegar llamada a herramienta:El usuario rechaza la llamada de la herramienta pendiente de aprobación.
      */
     fun denyToolCall(toolCallId: String, reason: String) = toolController.denyToolCall(toolCallId, reason)
 
     /**
-     * P3: 设置当前会话的工具权限模式。
+     * P3: Establece el modo de permiso de la herramienta para la sesión actual.
      */
     fun setSessionPermissionMode(mode: SessionPermissionMode) = toolController.setSessionPermissionMode(mode)
 
     /**
-     * v1.x: 获取当前用于工具审批的会话 id(Agent 模式取 agentSessionId,否则取 currentSessionId)。
+     * v1.x: Obtener la sesión actual utilizada para la aprobación de herramientas id(Agent modo tomar agentSessionId,De lo contrario toma currentSessionId).
      *
-     * 用于会话级临时允许缓存的键,与 [setSessionPermissionMode] 的会话判定逻辑保持一致。
+     * Clave utilizada para el almacenamiento en caché temporal a nivel de sesión,con [setSessionPermissionMode] La lógica de decisión de la sesión sigue siendo coherente.
      */
     private fun currentSessionIdForApproval(): String? {
         return if (_state.value.isAgentMode) _state.value.agentSessionId else _state.value.currentSessionId
     }
 
     /**
-     * v1.x: 持久化单工具策略(由审批卡片"始终允许"按钮触发)。
+     * v1.x: Estrategia persistente de una sola herramienta(por tarjeta de aprobación"siempre permitido"disparador de botón).
      *
-     * 与本次批准解耦:按钮点击时先持久化策略,再走 onApprove 处理本次调用。
+     * Desvinculado de esta aprobación:La estrategia de persistencia primero cuando se hace clic en el botón,Luego vaya a onApprove para manejar esta llamada.
      */
     fun persistToolPolicy(toolCallId: String, policy: ToolApprovalPolicy) = toolController.persistToolPolicy(toolCallId, policy)
 
     /**
-     * v1.x: 把工具加入当前会话的临时允许集合(本会话不再问)。
+     * v1.x: Agregue la herramienta al conjunto temporal permitido para la sesión actual(No vuelvas a preguntar en esta conversación.).
      *
-     * 由 ToolApprovalCard 中的"本会话允许"按钮触发:
-     *  1. 把工具名加入 [SessionPermissionStore] 的会话级缓存(仅内存,不持久化)
-     *  2. 后续本会话内该工具调用直接 Auto 执行,不再弹审批卡片
-     *  3. 切换会话/新建会话时由 [switchSession] / [createNewSession] 清理旧会话缓存
+     * Por ToolApprovalCard en"Esta sesión permite"disparador de botón:
+     *  1. Agregar nombre de herramienta [SessionPermissionStore] caché a nivel de sesión(solo memoria,No persistente)
+     *  2. En sesiones posteriores, la herramienta llama a Auto y lo ejecuta directamente.,No más aparecer la tarjeta de aprobación
+     *  3. Cambiar de sesión/Al crear una nueva sesión por [switchSession] / [createNewSession] Limpiar caché de sesión anterior
      *
-     * 注意:本方法仅更新缓存,不处理当前待审批项 —— 当前调用仍由 [approveToolCall]
-     * 通过 onApprove 回调处理(与"始终允许"按钮的模式一致:onPersistPolicy + onApprove)。
+     * Nota:Este método solo actualiza el caché.,No procesar elementos pendientes de aprobación actuales —— La convocatoria actual todavía la realiza [approveToolCall]
+     * Manejado a través de devolución de llamada onApprove(con"siempre permitido"Los botones tienen el mismo patrón.:onPersistPolicy + onApprove).
      *
-     * @param toolCallId 待审批工具调用 id
+     * @param toolCallId Llamada de herramienta pendiente de aprobación id
      */
     fun allowToolForSession(toolCallId: String) = toolController.allowToolForSession(toolCallId)
 
-    /** 待审批调用所属会话,避免切换会话后审批结果串到当前会话。 */
+    /** La sesión a la que pertenece la convocatoria a aprobar,Evite que los resultados de la aprobación se transfieran a la sesión actual después de cambiar de sesión. */
     private val toolApprovalSessions = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /** 后台等待中的审批记录,回到对应会话时恢复 UI 卡片。 */
+    /** Registros de aprobación esperando en segundo plano,Restaurar tarjetas UI al regresar a la sesión correspondiente. */
     private val pendingToolApprovalRecords = java.util.concurrent.ConcurrentHashMap<String, PendingToolApproval>()
 
     /**
-     * CHAT-08: 审批超时是否暂停(用户折叠阅读「N 项待审批」期间为 true)。
-     * 暂停时 [requestToolApprovalForSession] 的 30s 倒计时冻结,避免审批在用户阅读时被自动拒绝。
+     * CHAT-08: Si el tiempo de espera de aprobación está suspendido(El usuario se dobla para leer "N El período para el "Artículo Pendiente de Aprobación" es true).
+     * Mientras está en pausa [requestToolApprovalForSession] Congelación de la cuenta regresiva de los 30,Evite que las aprobaciones sean rechazadas automáticamente cuando los usuarios las lean.
      */
     @Volatile
     private var approvalTimeoutPaused = false
 
     /**
-     * CHAT-08: 由 UI 调用 — 折叠审批卡阅读期间暂停/恢复审批超时。
+     * CHAT-08: Llamado por la interfaz de usuario — Pausa durante la lectura de la tarjeta de aprobación doblada/Tiempo de espera de aprobación de recuperación.
      */
     fun setApprovalTimeoutPaused(paused: Boolean) {
         approvalTimeoutPaused = paused
     }
 
-    /** 取消所有待审批的工具调用(应用级停止或测试清理使用)。 */
+    /** Cancelar todas las llamadas de herramientas pendientes(Detención a nivel de aplicación o uso de limpieza de prueba). */
     private fun cancelAllPendingApprovals() {
         _state.update { it.copy(pendingToolApprovals = emptyList()) }
         for ((toolCallId, deferred) in toolApprovalResults) {
             deferred.complete(ToolApprovalState.Denied("Generation stopped"))
             viewModelScope.launch {
                 resultOf { PendingToolCallStore.updateState(toolCallId, "ABORTED", "generation_stopped") }
-                    .onError { msg, _ -> Logger.w("ChatVM", "审批取消状态落盘失败: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "El estado de cancelación de aprobación no pudo realizar el pedido: $msg") }
             }
             toolApprovalSessions.remove(toolCallId)
             pendingToolApprovalRecords.remove(toolCallId)
@@ -4516,7 +4516,7 @@ class ChatViewModel(
             toolApprovalResults.remove(toolCallId)?.complete(ToolApprovalState.Denied("Generation stopped"))
             viewModelScope.launch {
                 resultOf { PendingToolCallStore.updateState(toolCallId, "ABORTED", "generation_stopped") }
-                    .onError { msg, _ -> Logger.w("ChatVM", "审批取消状态落盘失败: $msg") }
+                    .onError { msg, _ -> Logger.w("ChatVM", "El estado de cancelación de aprobación no pudo realizar el pedido: $msg") }
             }
             toolApprovalSessions.remove(toolCallId)
             pendingToolApprovalRecords.remove(toolCallId)
@@ -4533,13 +4533,13 @@ class ChatViewModel(
     }
 
     /**
-     * 请求用户审批工具调用,挂起直到用户做出决定。
+     * Solicitar llamada a la herramienta de aprobación del usuario,Cuelgue hasta que el usuario tome una decisión.
      *
-     * P3: 综合三要素决定审批状态:
-     *  - 单工具持久化策略([ToolConfigStore])
-     *  - 当前会话权限模式([SessionPermissionMode])
-     *  - 工具自身风险等级([ToolRiskLevel])
-     * 最终由 [ToolPermissionResolver] 统一解析。
+     * P3: Tres factores integrales determinan el estado de aprobación:
+     *  - Estrategia de persistencia de una sola herramienta([ToolConfigStore])
+     *  - Modo de permiso de sesión actual([SessionPermissionMode])
+     *  - Nivel de riesgo propio de la herramienta([ToolRiskLevel])
+     * en última instancia por [ToolPermissionResolver] Análisis unificado.
      */
     override suspend fun requestToolApproval(
         toolName: String,
@@ -4554,8 +4554,8 @@ class ChatViewModel(
     }
 
     /**
-     * v2.x 重构 S4: 工具审批已提取到 [io.zer0.muse.ui.chat.ChatToolApprovalCoordinator]。
-     * 原实现(4218-4331)原样搬入新类,此处保留委托 —— 纯抽取,行为不变。
+     * v2.x Refactor S4: Aprobación de herramienta extraída a [io.zer0.muse.ui.chat.ChatToolApprovalCoordinator].
+     * Implementación original(4218-4331)Mover la nueva clase tal cual,Reserva delegación aquí —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     private suspend fun requestToolApprovalForSession(
         sessionId: String,
@@ -4572,97 +4572,97 @@ class ChatViewModel(
     )
 
     /**
-     * v0.29 P0-3: 导出当前会话为 Markdown 文本(用于分享/导出)。
+     * v0.29 P0-3: Exportar la sesión actual como texto Markdown(para compartir/Exportar).
      *
-     * v1.105: 委托至 [ChatExportCoordinator.exportSessionAsMarkdown]。
+     * v1.105: Delegar a [ChatExportCoordinator.exportSessionAsMarkdown].
      */
     suspend fun exportSessionAsMarkdown(): String {
         return exportCoordinator.exportSessionAsMarkdown()
     }
 
-    /** 功能4: 导出当前会话为 JSON。 */
+    /** Función4: Exporte la sesión actual como JSON. */
     suspend fun exportSessionAsJson(): String {
         return exportCoordinator.exportSessionAsJson()
     }
 
-    /** 功能4: 导出当前会话为纯文本。 */
+    /** Función4: Exporte la sesión actual como texto sin formato. */
     suspend fun exportSessionAsPlainText(): String {
         return exportCoordinator.exportSessionAsPlainText()
     }
 
-    /** 功能4: 统一导出入口。 */
+    /** Función4: Entrada de exportación unificada. */
     suspend fun exportSession(format: io.zer0.muse.ui.chat.ExportFormat): Pair<String, String> {
         return exportCoordinator.exportSession(format)
     }
 
     /**
-     * 导出当前会话为单文件 HTML(内联 CSS + base64 图片 + highlight.js CDN)。
+     * Exportar la sesión actual a un solo archivo HTML(Imágenes CSS + base64 en línea + highlight.js CDN).
      *
-     * 委托至 [ChatExportCoordinator.exportSessionAsHtml]。
+     * Delegar a [ChatExportCoordinator.exportSessionAsHtml].
      */
     suspend fun exportSessionAsHtml(): String {
         return exportCoordinator.exportSessionAsHtml()
     }
 
     /**
-     * 导出当前会话为 PDF 文件(Android 原生 PdfDocument,A4 分页)。
+     * Exportar la sesión actual a un archivo PDF(Android Nativo PdfDocument,A4 Paginación).
      *
-     * 委托至 [ChatExportCoordinator.exportSessionAsPdf]。
-     * 返回的文件位于 cacheDir/export/,通过 FileProvider 暴露给分享 Intent。
+     * Delegar a [ChatExportCoordinator.exportSessionAsPdf].
+     * El archivo devuelto se encuentra en cacheDir/export/,Expuesto a intenciones de compartir a través de FileProvider.
      *
-     * @param context Android Context(用于读取 cacheDir)
+     * @param context Android Context(para leer cacheDir)
      */
     suspend fun exportSessionAsPdf(context: android.content.Context): java.io.File {
         return exportCoordinator.exportSessionAsPdf(context)
     }
 
     /**
-     * 启动流式请求。history 取当前 messages 去掉占位 assistant。
-     * memory 注入 + ticker 通知在此统一处理,供 send / regenerate 复用。
+     * Inicie una solicitud de transmisión.history Obtenga los mensajes actuales y elimine el asistente de marcador de posición.
+     * memory Las notificaciones de inyección + ticker se manejan de manera uniforme aquí,Para reutilización mediante envío/regeneración.
      *
-     * Phase 7: 接入 function calling tool-call 循环 —
-     *  1. 发送 messages + tools 给 LLM
-     *  2. 收集 ContentDelta / ReasoningDelta / ToolCallDelta
-     *  3. 流结束时若累积了 toolCalls,执行工具 → 回填 TOOL 消息 → 再次请求(最多 25 轮防死循环,v1.52 由 5 提升)
-     *  4. 无 toolCalls 则正常结束
+     * Phase 7: Acceda a la función que llama al bucle de llamada de herramienta —
+     *  1. Enviar mensajes + herramientas a LLM
+     *  2. recoger ContentDelta / ReasoningDelta / ToolCallDelta
+     *  3. Si se acumula al final del flujo toolCalls,herramienta de ejecución → Mensaje de HERRAMIENTA de reposición → Solicitar nuevamente(Hasta 25 rondas de bucle anti-muerte.,v1.52 Promovido de 5)
+     *  4. Si no hay llamadas a herramientas, finalizará normalmente.
      *
-     * Phase 8.2: 接入 Assistant 配置 —
-     *  - 注入 systemPrompt 作为 SYSTEM 消息(放最前)
-     *  - 注入 presetMessages(预设对话,放 SYSTEM 之后、用户消息之前)
-     *  - 按 [AssistantEntity.contextMessageSize] 截断历史(取最近 N 条)
-     *  - 用 Assistant.temperature / maxTokens / reasoningLevel 透传给 ChatService
-     *  - 按 Assistant.memoryEnabled / enableTimeReminder 控制 Transformer 管道开关
-     *  - 通过 TemplateTransformer 处理 Assistant.messageTemplate 的 {{var}} 变量
+     * Phase 8.2: Configuración del asistente de acceso —
+     *  - Inyectar systemPrompt como mensaje de SISTEMA(poner primero)
+     *  - inyectar presetMessages(Diálogo predeterminado,Poner después del SISTEMA y antes del mensaje del usuario)
+     *  - prensa [AssistantEntity.contextMessageSize] Truncar historial(Obtenga los N elementos más recientes)
+     *  - usar Assistant.temperature / maxTokens / reasoningLevel pasar por ChatService
+     *  - Presione Assistant.memoryEnabled / enableTimeReminder para controlar el interruptor de tubería del transformador
+     *  - Manejar Assistant.messageTemplate a través de TemplateTransformer {{var}} variable
      */
     private fun launchStream(assistantId: Uuid, sessionId: String, isNewBranch: Boolean = false, continueFrom: UIMessage? = null) =
         generationController.launchStream(assistantId, sessionId, isNewBranch, continueFrom)
 
-    // v1.0.27 Phase 4-A.1: StreamRunState 抽到 chat/StreamRunState.kt (internal class)
-    // 由 ChatStreamCoordinator 与本类共享,catch 块仍可访问 state.builder / state.unmaskPii
+    // v1.0.27 Phase 4-A.1: StreamRunState dibujado chat/StreamRunState.kt (internal class)
+    // Compartido por ChatStreamCoordinator con esta clase,catch El bloque todavía es accesible. state.builder / state.unmaskPii
 
-    // ===== Phase A: 历史准备 =====
-    // v1.0.27 Phase 4-A.2: prepareHistory 抽到 ChatStreamCoordinator
+    // ===== Phase A: preparación de historia =====
+    // v1.0.27 Phase 4-A.2: prepareHistory dibujado ChatStreamCoordinator
 
-    // ===== Phase B: system prompt 组装 + prefix 消息(含 RAG 注入)=====
+    // ===== Phase B: system prompt mensaje ensamblado + prefijo(Con inyección RAG)=====
     private suspend fun buildSystemPromptForStream(state: StreamRunState) = generationController.buildSystemPromptForStream(state)
 
-    // ===== Phase C+D: Transformer 管道 =====
-    // v1.0.27 Phase 4-A.2: applyTransformers 抽到 ChatStreamCoordinator
+    // ===== Phase C+D: Transformer tubo =====
+    // v1.0.27 Phase 4-A.2: applyTransformers dibujado ChatStreamCoordinator
 
-    // ===== Phase E: 工具定义 + 模型解析 =====
-    // v1.0.27 Phase 4-A.2: resolveToolsAndModel 抽到 ChatStreamCoordinator
+    // ===== Phase E: Definición de herramientas + análisis de modelos. =====
+    // v1.0.27 Phase 4-A.2: resolveToolsAndModel dibujado ChatStreamCoordinator
 
-    // ===== Phase F: PII Guard 遮蔽 =====
-    // v1.0.27 Phase 4-A.2: applyPiiGuard 抽到 ChatStreamCoordinator
+    // ===== Phase F: PII Guard cubrir =====
+    // v1.0.27 Phase 4-A.2: applyPiiGuard dibujado ChatStreamCoordinator
 
-    // ===== Phase G: 视觉辅助 =====
-    // v1.0.27 Phase 4-A.2: prepareVisionContext 抽到 ChatStreamCoordinator
+    // ===== Phase G: ayuda visual =====
+    // v1.0.27 Phase 4-A.2: prepareVisionContext dibujado ChatStreamCoordinator
 
     /**
-     * v2.x 工具瘦身阶段1:从会话历史收集"用过的工具"粘性集合。
+     * v2.x Etapa de adelgazamiento de herramientas.1:Recopilado del historial de sesiones"herramientas utilizadas"Colección pegajosa.
      *
-     * ASSISTANT 消息的 [UIMessage.toolCalls] 即本会话真实(或曾尝试)调用的工具;
-     * 只扫最近 [STICKY_HISTORY_SCAN_MESSAGES] 条,长会话不做全量扫描。
+     * ASSISTANT noticias [UIMessage.toolCalls] Es decir, esta conversación es real.(o probado)Herramientas llamadas;
+     * Escanee solo el más reciente [STICKY_HISTORY_SCAN_MESSAGES] Artículo,No se realizan exploraciones completas durante sesiones largas.
      */
     private fun collectStickyToolNames(history: List<UIMessage>): Set<String> {
         val names = mutableSetOf<String>()
@@ -4672,41 +4672,41 @@ class ChatViewModel(
         return names
     }
 
-    // ===== Phase H: 工具调用循环(含流式 streamRound)=====
-    // 返回 true 表示成功完成(可继续 finalizeResponse),false 表示已处理错误并应跳过 finalize。
+    // ===== Phase H: Bucle de llamada de herramienta(Contiene transmisión streamRound)=====
+    // Devuelve verdadero para indicar una finalización exitosa(puede continuar finalizeResponse),false Indica que el error se ha solucionado y se debe omitir la finalización.
     /**
-     * v2.x 重构 S1: 工具循环体已整体提取到 [io.zer0.muse.ui.chat.ChatToolLoopRunner]。
+     * v2.x Refactorización S1: el cuerpo del bucle de la herramienta se ha extraído en su totalidad [io.zer0.muse.ui.chat.ChatToolLoopRunner].
      *
-     * 原实现(L4746-L6137,1392 行,含内嵌 object : ToolLoopHost)原样搬入新类,
-     * 此处保留一行委托 —— 纯抽取,行为不变。
+     * Implementación original(L4746-L6137,1392 OK,Contiene incrustado object : ToolLoopHost)Mover la nueva clase tal cual,
+     * Deja aquí una línea de delegación —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     private suspend fun runToolLoop(state: StreamRunState): Boolean = toolLoopRunner.run(state)
 
-    // ===== Phase I: 收尾(状态清理 / debugInfo / 通知 / memory ticker)=====
+    // ===== Phase I: Refinamiento(Limpieza de estado/información de depuración/notificación / memory ticker)=====
     private suspend fun finalizeResponse(state: StreamRunState) = generationController.finalizeResponse(state)
 
     /**
-     * v1.97: 切页/切会话/切 Tab 时脱离流式 UI,不停止后台生成。
+     * v1.97: Cortar páginas/Cambiar de sesión/Salga de la transmisión al cambiar de pestaña UI,No detiene la generación de fondo.
      *
-     * 与 [stop] 的区别:
-     * - stop():用户主动停止,取消 SSE 连接 + 生成协程
-     * - detachStreaming():切页触发,生成闭包继续在 appScope 运行
-     *   - updateAssistant 因 index==-1 静默跳过(不更新错误会话的 messages)
-     *   - persistCurrentAssistant 用 builder 内容直接落盘(不依赖 _messages.value)
-     *   - 通知仍正常更新(notificationManager 不依赖 _state)
-     *   - 切回原会话时从 DB 加载最新内容(含中间落盘)+ 恢复 isStreaming
+     * con [stop] la diferencia:
+     * - stop():El usuario se detiene activamente,Cancelar conexión SSE + generar corrutina
+     * - detachStreaming():Gatillo de corte de página,El cierre generado continúa ejecutándose en appScope
+     *   - updateAssistant porque index==-1 Saltar en silencio(No actualizar la sesión de error messages)
+     *   - persistCurrentAssistant Utilice contenido de creación para colocarlo directamente en el mercado(no depende de _messages.value)
+     *   - Las notificaciones siguen actualizándose normalmente.(notificationManager no depende de _state)
+     *   - Cargue el contenido más reciente de la base de datos al volver a la sesión original(Incluye placa de caída intermedia)+ restaurar isStreaming
      */
     private fun detachStreaming() = streamCoordinator.detachStreaming()
 
-    /** 用户点"停止"。 */
+    /** punto de usuario"detenerse". */
     fun stop() = generationController.stop()
 
     /**
-     * A8 流式插话:打断当前生成并立即用输入框内容重定向生成。
+     * A8 interjección de transmisión:Interrumpe la generación actual e inmediatamente redirige la generación con el contenido del cuadro de entrada.
      *
-     * stop() 同步清 isStreaming(见上),随后 send() 的 canStartGeneration 检查
-     * (text 非空 && !isStreaming)即可通过;打断前已生成的内容由流式
-     * catch(CancellationException) 块以 [已中断] 标记持久化保留。
+     * stop() Limpieza sincrónica isStreaming(Ver arriba),posteriormente send() La verificación canStartGeneration
+     * (text No vacío && !isStreaming)puedes pasar;El contenido generado antes de la interrupción lo proporciona el streaming.
+     * catch(CancellationException) bloquear con [interrumpido] Marca la persistencia.
      */
     fun interject() {
         stop()
@@ -4714,44 +4714,44 @@ class ChatViewModel(
     }
 
     /**
-     * 断点续传:恢复指定会话的未完成工具调用。
+     * Reanudar la carga desde el punto de interrupción:Reanuda las llamadas de herramientas pendientes para la sesión especificada.
      *
-     * 触发场景:用户在上次对话中手动停止流式 / App 崩溃 / 进程被杀,
-     * 导致 LLM 已决策的 tool_calls 未执行完毕。下次进入此会话时由 Banner 提示,
-     * 用户点"恢复执行"按钮触发本函数。
+     * escena desencadenante:El usuario detuvo manualmente la transmisión durante la última sesión/la aplicación falló/el proceso finalizó,
+     * Como resultado, las llamadas a herramientas decididas por LLM no se han ejecutado. Aviso mediante banner la próxima vez que ingrese a esta sesión,
+     * punto de usuario"Reanudar la ejecución"El botón activa esta función.
      *
-     * 执行流程:
-     *  1. 从 [PendingToolCallStore] 取该会话的全部 pending(按 createdAt 升序)
-     *  2. 依次执行(skill 走 SkillExecutor,本地工具走 ToolRegistry)
-     *     - 复用 [TOOL_TIMEOUT_MS] 超时;完整工具结果会持久化,长结果按上下文预算处理
-     *  3. 每个工具结果构造为 TOOL 消息(保留原始 [PendingToolCallStore.PendingToolCall.toolCallId],
-     *     让 LLM 能对应上),持久化到 DB 并追加到 [_messages.value]
-     *  4. 全部执行完成后,从 PendingToolCallStore 清理本会话的 pending 记录
-     *  5. 追加一个空的 ASSISTANT 占位消息,调 [launchStream] 让 LLM 基于工具结果继续回复
+     * Proceso de ejecución:
+     *  1. de [PendingToolCallStore] Obtener toda la sesión pending(Ordenar por creadoEn ascendente)
+     *  2. Ejecutar en secuencia(skill ir SkillExecutor,Las herramientas locales van ToolRegistry)
+     *     - Reutilizar [TOOL_TIMEOUT_MS] tiempo de espera;Los resultados completos de la herramienta se conservan.,Los resultados a largo plazo se manejan mediante el presupuesto contextual.
+     *  3. Cada resultado de herramienta se construye como un mensaje de HERRAMIENTA.(mantener original [PendingToolCallStore.PendingToolCall.toolCallId],
+     *     Deje que LLM pueda hacer frente a),Persistir en la base de datos y agregar a [_messages.value]
+     *  4. Después de completar toda la ejecución,Borrar los registros pendientes de esta sesión de PendingToolCallStore
+     *  5. Agregar un mensaje de marcador de posición de ASISTENTE vacío,sintonizar [launchStream] Deje que LLM continúe respondiendo según los resultados de la herramienta
      *
-     * 失败容忍:单个工具执行失败不影响其他工具,失败结果仍构造为 TOOL 消息回填给 LLM,
-     * 让 LLM 自行决定是否重试或换方案(与正常流式工具调用一致)。
+     * tolerancia al fallo:No ejecutar una sola herramienta no afecta a otras herramientas,El resultado del error todavía se construye como un mensaje de HERRAMIENTA que se repone en LLM,
+     * Deje que LLM decida si volver a intentarlo o cambiar de plan(Consistente con las llamadas normales a herramientas de transmisión).
      *
-     * @param chatId 会话 id(应等于 [_state.value.currentSessionId])
+     * @param chatId sesión id(debe ser igual a [_state.value.currentSessionId])
      */
 
     /**
-     * P0-6: 断点恢复前对单个待恢复工具调用重跑审批。
+     * P0-6: Antes de la recuperación del punto de interrupción, solicite la aprobación de nueva ejecución para recuperar una única herramienta.
      *
-     * 背景:持久化时"保存后、写审批态前"被杀的调用,其 [PendingToolCallStore.PendingToolCall.executionState]
-     * 仍是默认 EXECUTING(而非 APPROVAL_PENDING),旧实现恢复时直接执行 → 高危工具绕过审批。
-     * 这里重跑 [ToolPermissionResolver](会话模式 + 参数化策略 + 风险等级),语义与在线调用一致:
-     *  - 判 Pending → 重新走审批卡(await 用户决策)
-     *  - 判 Denied → 直接丢弃并记录
-     *  - 判 Auto/Approved → 放行执行
+     * fondo:Al persistir"Después de guardar y antes de escribir el estado de aprobación"llamada muerta,es [PendingToolCallStore.PendingToolCall.executionState]
+     * Sigue siendo el predeterminado EXECUTING(en vez de APPROVAL_PENDING),Ejecutar directamente cuando se restablezca la implementación anterior. → Las herramientas de alto riesgo pasan por alto la aprobación.
+     * Vuelva a ejecutar aquí [ToolPermissionResolver](Modo de sesión + estrategia parametrizada + nivel de riesgo),La semántica es consistente con las llamadas en línea.:
+     *  - juez Pending → Solicite la tarjeta de aprobación nuevamente(await decisión del usuario)
+     *  - juez Denied → Descartar directamente y registrar
+     *  - juez Auto/Approved → Liberación para ejecución
      *
-     * @return null 表示放行执行;非 null 为"不允许执行"的终态(Denied/Answered),调用方丢弃记录并跳过
+     * @return null Indica liberación para ejecución.;No nulo es"Ejecución no permitida"estado final(Denied/Answered),La persona que llama descarta el registro y se salta
      */
     private suspend fun recheckApprovalForResume(chatId: String, pending: PendingToolCallStore.PendingToolCall): ToolApprovalState? {
         val args = parseToolArgs(pending.arguments)
-        // P0-6: 风险取 ToolPermissionResolver.riskLevelFor(显式表 + 前缀推断的单一真源,
-        // P0-3),不取注册台账值 —— 注册值与显式表脱节时(如 TRUSTED 模式下 HIGH 工具注册为
-        // NORMAL)仍会走 Auto,恢复重审形同虚设。
+        // P0-6: tomar riesgos ToolPermissionResolver.riskLevelFor(Tabla explícita + fuente única de verdad para la inferencia de prefijos,
+        // P0-3),No tome el valor de la cuenta registrada —— Cuando los valores registrados están desconectados de tablas explícitas(Por ejemplo, en el modo CONFIANZA, la herramienta ALTA se registra como
+        // NORMAL)todavía irá Auto,La reanudación del nuevo juicio fue en vano.
         val risk = ToolPermissionResolver.riskLevelFor(pending.toolName)
         val perToolPolicy = toolConfigStore?.getConfiguredPolicy(pending.toolName)
         val displayedSessionId = currentSessionIdForApproval()
@@ -4764,7 +4764,7 @@ class ChatViewModel(
         val resolved = ToolPermissionResolver.resolve(pending.toolName, risk, mode, perToolPolicy, args)
         return when (resolved) {
             is ToolApprovalState.Pending -> {
-                // P0-6: 重新走审批卡 — 复用在线审批链路(await 用户决策)
+                // P0-6: Solicite la tarjeta de aprobación nuevamente — Reutilizar el enlace de aprobación en línea(await decisión del usuario)
                 requestToolApprovalForSession(
                     sessionId = chatId,
                     toolName = pending.toolName,
@@ -4778,7 +4778,7 @@ class ChatViewModel(
         }
     }
 
-    /** P0-6: 解析工具参数 JSON 为 Map<String, String>(参数化策略只读字符串值)。 */
+    /** P0-6: El parámetro de la herramienta de análisis JSON es Map<String, String>(Valor de cadena de solo lectura de estrategia parametrizada). */
     private fun parseToolArgs(arguments: String): Map<String, Any?> = runCatching {
         val element = io.zer0.common.AppJson.parseToJsonElement(arguments)
         (element as? JsonObject)?.mapValues { (_, value) ->
@@ -4787,25 +4787,25 @@ class ChatViewModel(
     }.getOrNull() ?: emptyMap()
 
     /**
-     * v2.x 重构 S5: 待恢复工具调用已提取到 [io.zer0.muse.ui.chat.ChatToolResumeCoordinator]。
-     * 原实现(4467-4657)原样搬入新类,此处保留委托 —— 纯抽取,行为不变。
+     * v2.x Refactor S5: las llamadas a herramientas que se restaurarán se han extraído a [io.zer0.muse.ui.chat.ChatToolResumeCoordinator].
+     * Implementación original(4467-4657)Mover la nueva clase tal cual,Reserva delegación aquí —— extracción pura,El comportamiento se mantiene sin cambios.
      */
     fun resumePendingToolCalls(chatId: String) = toolResumeCoordinator.resumePendingToolCalls(chatId)
 
     /**
-     * 断点续传:丢弃指定会话的全部未完成工具调用。
+     * Reanudar la carga desde el punto de interrupción:Descarta todas las llamadas a herramientas pendientes para la sesión especificada.
      *
-     * 用户在 Banner 上点"丢弃"按钮时触发。清理 PendingToolCallStore 中该会话的记录,
-     * 不执行任何工具,Banner 隐藏。已持久化的 ASSISTANT tool_calls 消息保留在 DB 中
-     * (作为对话历史的一部分),LLM 下次回复时可能看到自己曾发出 tool_calls 但无对应
-     * TOOL 响应 — 这是用户主动丢弃的预期行为,LLM 通常会自行换方案继续。
+     * El usuario hace clic en el banner"descartar"Se activa cuando se presiona el botón. Borrar los registros de sesión en PendingToolCallStore,
+     * No se ejecutan herramientas,Banner Oculto. Los mensajes persistentes de ASSISTANT tool_calls permanecen en la base de datos
+     * (como parte de una historia conversacional),LLM La próxima vez que responda, es posible que vea que ha emitido herramientas_calls pero no hay respuesta.
+     * TOOL respuesta — Este es el comportamiento esperado del descarte iniciado por el usuario.,LLM Normalmente cambiaré mi plan y continuaré.
      *
-     * @param chatId 会话 id(应等于 [_state.value.currentSessionId])
+     * @param chatId sesión id(debe ser igual a [_state.value.currentSessionId])
      */
     fun discardPendingToolCalls(chatId: String) {
         viewModelScope.launch {
             resultOf { PendingToolCallStore.clearForChat(chatId) }
-                .onError { msg, t -> Logger.w("ChatVM", "discardPendingToolCalls 失败: $msg", t) }
+                .onError { msg, t -> Logger.w("ChatVM", "discardPendingToolCalls falló: $msg", t) }
             _state.update { it.copy(pendingToolCallCount = 0) }
         }
     }
@@ -4816,46 +4816,46 @@ class ChatViewModel(
     }
 
     /**
-     * 释放 TTS/ASR 等资源。
+     * Liberar recursos como TTS/ASR.
      *
-     * v1.92: ChatViewModel 改为 single{} 后 onCleared 永不调用,
-     * 由 MuseApp 的 ProcessLifecycleOwner ON_STOP 观察者显式调用。
+     * v1.92: ChatViewModel Cambiar a single{} después de onCleared nunca se llama,
+     * Llamado explícitamente por el observador ON_STOP de ProcessLifecycleOwner de MuseApp.
      */
     fun release() {
         releaseInternal(notifySessionEnd = true)
     }
 
     /**
-     * 应用切后台时释放语音资源，但不把当前会话当作结束会话通知记忆 LLM。
-     * 进程回到前台后仍可能继续生成，后台生命周期不应重复排队 completeText。
+     * Los recursos de voz se liberan cuando la aplicación cambia a segundo plano, pero la sesión actual no se trata como la memoria de notificación de fin de sesión LLM.
+     * Es posible que el proceso aún continúe generándose después de regresar al primer plano, y el ciclo de vida en segundo plano no debe poner en cola completeText repetidamente.
      */
     fun releaseForBackground() {
         releaseInternal(notifySessionEnd = false)
     }
 
     private fun releaseInternal(notifySessionEnd: Boolean) {
-        // 语音对话模式:取消循环协程并释放 ASR/TTS 资源(避免后台继续录音/朗读)
+        // Modo de conversación de voz:Cancelar la rutina de bucle y liberar recursos ASR/TTS(Evite grabar en segundo plano/leer en voz alta)
         stopVoiceConversation()
-        // Phase 8.7: ViewModel 销毁时停止 TTS(避免页面退出后继续朗读)
+        // Phase 8.7: ViewModel Deja de destruir TTS(Evite continuar leyendo en voz alta después de salir de la página.)
         stopTts()
-        // v1.53: 清除 TTS 状态回调,避免单例 TtsManager 持有已销毁 ViewModel 的回调导致内存泄漏
+        // v1.53: Borrar devolución de llamada de estado TTS,Evite las pérdidas de memoria causadas por el hecho de que TtsManager singleton retenga devoluciones de llamadas de ViewModels destruidos.
         ttsManager.onStateChange = null
         if (notifySessionEnd) notifySessionEndForCurrent()
-        // v1.91: 释放流式 ASR Controller(AudioRecord / WebSocket / 协程 scope)
-        // v1.105: 委托至 ChatAudioCoordinator
+        // v1.91: lanzamiento de transmisión ASR Controller(AudioRecord / WebSocket / corrutina scope)
+        // v1.105: Delegar a ChatAudioCoordinator
         audioCoordinator.disposeAsr()
-        // v1.x: 释放当前会话的引用计数(与 switchSession / createNewSession 中的 acquire 配对)
+        // v1.x: Liberar el recuento de referencias de la sesión actual.(Emparejado con adquirir en switchSession/createNewSession)
         currentSessionIdForApproval()?.let { sessionManager.release(it) }
     }
 
     /**
-     * v1.0.29: 应用切到后台时调用。
+     * v1.0.29: Se llama cuando la aplicación cambia a segundo plano.
      *
-     * 如果当前有正在进行的流式生成,启动前台服务通知(让用户知道后台生成进度,
-     * 同时保持进程前台优先级防止被系统回收)。前台时不显示通知(避免"正在生成"打扰)。
+     * Si actualmente hay una compilación de transmisión en progreso,Iniciar notificación de servicio en primer plano(Informar a los usuarios del progreso de la generación de fondo.,
+     * Al mismo tiempo, mantenga la prioridad de primer plano del proceso para evitar que el sistema lo recicle.). No mostrar notificaciones cuando esté en primer plano(evitar"generando"molestar).
      */
     fun onAppBackground() {
-        // v2.6.8: 退后台后错误横幅不在用户眼前,自动消失读秒必须挂起(见 [scheduleAutoDismiss])。
+        // v2.6.8: El banner de error no aparece frente al usuario después de salir del fondo,Se debe suspender la cuenta atrás de desaparición automática.(ver [scheduleAutoDismiss]).
         appForegroundFlow.value = false
         val activeGenerations = chatGenerationManager.activeGenerations.value
         if (activeGenerations.isNotEmpty()) {
@@ -4866,22 +4866,22 @@ class ChatViewModel(
                     "latestSession=${latest?.sessionTitle ?: "unknown"}",
             )
             runCatching { ChatGenerationService.start(appContext) }
-                .onFailure { Logger.w("ChatViewModel", "前台服务启动失败,切后台可能被回收", it) }
+                .onFailure { Logger.w("ChatViewModel", "El servicio en primer plano no pudo iniciarse,El fondo cortado se puede reciclar.", it) }
         }
     }
 
     /**
-     * 应用切回前台时调用。
+     * Se llama cuando la aplicación vuelve al primer plano.
      *
-     * 仍有生成任务时不能停止前台服务；服务是后台生成的保活身份，
-     * 只会在全部任务结束后由 ChatGenerationService 自行退出。
+     * El servicio en primer plano no se puede detener cuando todavía hay tareas generadas; el servicio es una identidad de mantenimiento generada en segundo plano.
+     * ChatGenerationService solo se cerrará solo después de que se hayan completado todas las tareas.
      */
     fun onAppForeground() {
-        // v2.6.8: 回前台后错误重新可见,挂起的自动消失读秒继续。
+        // v2.6.8: El error vuelve a ser visible después de regresar a la recepción.,Continúa la cuenta atrás pendiente de desaparición automática.
         appForegroundFlow.value = true
         if (chatGenerationManager.activeGenerations.value.isEmpty()) {
             runCatching { notificationManager.updateLiveProgress("", 0, false) }
-                .onFailure { Logger.w("ChatVM", "清理进度通知失败: ${it.message}") }
+                .onFailure { Logger.w("ChatVM", "Error en la notificación del progreso de la limpieza: ${it.message}") }
         } else {
             Logger.i(
                 "ChatViewModel",
@@ -4891,7 +4891,7 @@ class ChatViewModel(
         refreshDisplayedSessionFromDatabase()
     }
 
-    /** 从 Room 刷新当前查看会话，不修改导航焦点，也不取消后台生成。 */
+    /** Actualiza la sesión de visualización actual desde Room sin modificar el enfoque de navegación ni cancelar la creación de fondo. */
     private fun refreshDisplayedSessionFromDatabase() {
         val sessionId = displayedSessionId() ?: return
         val switchToken = switchGuard.begin()
@@ -4900,7 +4900,7 @@ class ChatViewModel(
             val loaded =
                 runCatching {
                     withContext(Dispatchers.IO) { messageController.loadMessagesPaged(sessionId) }
-                }.onFailure { Logger.w("ChatVM", "前台刷新会话失败: ${it.message}") }.getOrNull() ?: return@launch
+                }.onFailure { Logger.w("ChatVM", "No se pudo actualizar la sesión en primer plano: ${it.message}") }.getOrNull() ?: return@launch
             if (switchGuard.isStale(switchToken) || displayedSessionId() != sessionId) {
                 return@launch
             }
@@ -4942,34 +4942,34 @@ class ChatViewModel(
     }
 
     /**
-     * 通知 ticker 当前 session 结束(fire-and-forget)。
+     * Notificar al ticker que la sesión actual finaliza(fire-and-forget).
      *
-     * Phase 8.5 修复: 原实现用 `runBlocking { settings.getSelectedModel() }` 在主线程阻塞,
-     * onCleared / createNewSession / switchSession 调用时会 ANR。
-     * 改为:model 传 null(MemoryTicker 内部 launchTracked 异步执行,能处理 null model
-     * 的降级场景),完全去掉 runBlocking。
+     * Phase 8.5 Reparación: Implementación original `runBlocking { settings.getSelectedModel() }` Bloquear en el hilo principal,
+     * onCleared / createNewSession / switchSession ANR ocurre cuando se llama.
+     * Cambiar a:model pasar null(MemoryTicker LaunchTracked interno se ejecuta de forma asincrónica,puede manejar null model
+     * escenario de degradación),Elimine runBlocking por completo.
      */
     private fun notifySessionEndForCurrent() {
-        // v1.0.52 P2-3: 会话结束/切换前触发 AI 记忆自动保存(非阻塞,后台执行)
+        // v1.0.52 P2-3: sesión terminada/Activar el guardado automático de memoria AI antes de cambiar(sin bloqueo,ejecución en segundo plano)
         triggerMemoryAutoSaveIfNeeded()
         streamCoordinator.notifySessionEndForCurrent()
     }
 
     /**
-     * v1.0.52 P2-3: 触发 AI 记忆自动保存(会话结束/切换时)。
+     * v1.0.52 P2-3: Activar el guardado automático de memoria AI(sesión terminada/Al cambiar).
      *
-     * 把当前会话的对话历史交给 [MemoryAutoSaveScheduler],由其在后台 scope 中
-     * 调 LLM 提取实体/关系/合并/分类,非阻塞,不影响 UI。
+     * Entregar el historial de conversaciones de la sesión actual a [MemoryAutoSaveScheduler],Por él en el ámbito de fondo
+     * Llame a LLM para extraer entidades/relación/fusionar/Clasificación,sin bloqueo,No afecta la interfaz de usuario.
      *
-     * 仅在 [memoryAutoSaveScheduler] 非空时触发;
-     * 历史为空或过短(<2 条)时跳过。
+     * solo en [memoryAutoSaveScheduler] Activado cuando no está vacío;
+     * La historia está vacía o es demasiado corta.(<2 Artículo)salto de tiempo.
      */
     private fun triggerMemoryAutoSaveIfNeeded() {
         val scheduler = memoryAutoSaveScheduler ?: return
         val sessionId = displayedSessionId() ?: return
-        // v1.0.54: 30 秒内同会话去重 — 切 Tab/切会话/重启上下文会反复触发
-        //   notifySessionEndForCurrent,每次排队一个 autoSave;网络慢时堆积十几次,
-        //   用户感知"回复后一直不停下"(后台持续调用 completeText)。
+        // v1.0.54: 30 Deduplica la misma sesión en segundos — Cambiar pestaña/Cambiar sesión/Reiniciar el contexto se activará repetidamente
+        //   notifySessionEndForCurrent,Haga cola uno a la vez autoSave;Se acumula más de diez veces cuando la red está lenta.,
+        //   Percepción del usuario"No se detuvo después de responder."(Llamadas continuas en segundo plano. completeText).
         val now = System.currentTimeMillis()
         if (sessionId == lastAutoSaveSessionId && now - lastAutoSaveAt < 30_000L) return
         lastAutoSaveSessionId = sessionId
@@ -4978,12 +4978,12 @@ class ChatViewModel(
         if (uiHistory.size < 2) return
         val assistantId = _state.value.currentAssistant?.id ?: "default"
         val scope = if (assistantId == "default") "main" else assistantId
-        val locale = "zh-CN"
-        // 在排队前捕获当前空间，不能把后台提取永远写入 default；
-        // 之后用户切换空间也不会改变这次 session 的归属。
+        val locale = "es"
+        // Capture el espacio actual antes de hacer cola y no podrá escribir la extracción en segundo plano de forma predeterminada para siempre;
+        // Después de que el usuario cambie de espacio, la propiedad de esta sesión no cambiará.
         viewModelScope.launch(Dispatchers.IO) {
-            // 记忆提取不能受聊天页首屏分页限制;优先读取完整持久历史,
-            // 再补上尚未落库的 UI 消息(例如切换/进程边界上的最后一轮)。
+            // La recuperación de memoria no puede restringirse mediante la paginación en la pantalla de inicio de la página de chat.;Lea primero el historial persistente completo,
+            // Luego agregue los mensajes de la interfaz de usuario que aún no se han incluido en la biblioteca.(Por ejemplo cambiar/última ronda sobre el límite del proceso).
             val dbHistory =
                 if (settings.memoryConfigCache.conversationRecallEnabled) {
                     resultOf { sessionRepository.getAllMessagesForWarmup(sessionId) }
@@ -5001,7 +5001,7 @@ class ChatViewModel(
             }
             if (history.size < 2) return@launch
             val spaceId = settings.currentSpaceIdFlow.firstOrNull().orEmpty().ifBlank { "default" }
-            // model 传 null,MemoryLlmClient 实现侧用 Provider 配置的默认模型
+            // model pasar null,MemoryLlmClient Implementar el modelo predeterminado configurado usando el Proveedor
             scheduler.scheduleAutoSave(
                 sessionId = sessionId,
                 history = history,
@@ -5015,13 +5015,13 @@ class ChatViewModel(
     }
 
     /**
-     * v1.80 (M-CVM2): 标记当前 assistant 消息为 [已中断] 并把部分回复落盘。
+     * v1.80 (M-CVM2): Marcar el mensaje actual del asistente como [interrumpido] Y poner parte de la respuesta en el mercado.
      *
-     * 在流式被取消(用户点停止/切会话)或异常中断时调用,确保已接收的内容不随 ViewModel 销毁丢失。
-     * 持久化用 [NonCancellable] 包裹,保证协程被取消时仍能完成 DB 写入
-     * (否则 suspend 调用在已取消协程中会立即抛 CancellationException,落盘失败)。
+     * Cancelado durante la transmisión(El usuario hace clic en detener/Cambiar de sesión)O llamado cuando una excepción interrumpe,Asegúrese de que el contenido recibido no se pierda cuando se destruya ViewModel.
+     * Por la perseverancia [NonCancellable] paquete,Asegúrese de que la escritura de la base de datos aún pueda completarse cuando se cancele la rutina
+     * (De lo contrario, la llamada de suspensión en la rutina cancelada arrojará inmediatamente CancellationException,Colocación fallida).
      */
-    // A-12/A-14: 透传 expectedAssistantId — [已中断] 只允许标记本轮生成消息
+    // A-12/A-14: paso a través expectedAssistantId — [interrumpido] Sólo se permite marcar mensajes generados en esta ronda.
     private suspend fun persistInterruptedAssistant(
         sessionId: String,
         partialMsg: UIMessage? = null,
@@ -5030,13 +5030,13 @@ class ChatViewModel(
     ) = streamCoordinator.persistInterruptedAssistant(sessionId, partialMsg, expectedAssistantId, durationMs)
 
     /**
-     * v1.43: 周期性落盘 — 把当前 assistant 消息的流中进度持久化到数据库,
-     * 让切页/后台后的新 ViewModel 能从 DB 恢复最新内容。
-     * 不提取产物(产物只在流式结束后提取),也不附加 citation(流式中 pending)。
+     * v1.43: Colocación periódica — Conservar el progreso del flujo de mensajes del asistente actual en la base de datos,
+     * cortemos paginas/El nuevo ViewModel detrás de escena puede restaurar el contenido más reciente de la base de datos.
+     * Sin extracción de producto(Los productos solo se extraen después de que se completa el flujo.),Ni adjunto citation(Transmisión pending).
      *
-     * v1.97 (P1-2): 周期性落盘用 skipFts=true 跳过 FTS 重建(toNgram 对长文本开销大)。
-     * 流式结束后最终落盘(直接 upsertMessage)会同步 FTS;中断走 persistInterruptedAssistant 也同步。
-     * 若 app 崩溃导致 FTS 漂移,下次启动 ensureFtsIndexConsistent 会自动 rebuild。
+     * v1.97 (P1-2): Para colocación periódica skipFts=true Saltar la reconstrucción de FTS(toNgram Caro para textos largos).
+     * Ubicación final después de que finalice la transmisión(directo upsertMessage)Estará sincronizado FTS;Las interrupciones van a persistInterruptedAssistant y también se sincronizan.
+     * Si la aplicación falla y el FTS se desvía,sureFtsIndexConsistent se reconstruirá automáticamente la próxima vez que se inicie.
      */
     private suspend fun persistCurrentAssistant(sessionId: String, assistantId: Uuid, msg: UIMessage? = null) =
         streamCoordinator.persistCurrentAssistant(sessionId, assistantId, msg, ::addError)
@@ -5052,22 +5052,22 @@ class ChatViewModel(
     ) = streamCoordinator.updateAssistant(id, content, reasoning, imageBase64List, imageUrls, videoFileUri, isStreaming)
 
     /**
-     * B10: 流式 ThinkTag 实时剥离(轻量纯函数路径)。
+     * B10: Transmisión de desmontaje en tiempo real de ThinkTag(Ruta de función pura y ligera).
      *
-     * 只有缓冲内容含 `<think>` 标记时才做视觉转换,其余情况直接走原始
-     * [updateAssistant] 快速路径 —— 不含标签的普通流式路径零行为变化。
+     * Sólo el contenido del buffer contiene `<think>` La transformación visual se realiza sólo cuando se marca,En otros casos, simplemente vaya al original.
+     * [updateAssistant] camino rápido —— Cero cambios de comportamiento en las rutas de transmisión normales sin etiquetas.
      *
-     * 性能契约(替代原 applyVisualTransform 全管道调用):
-     *  - 短路: 先做一次 O(n) 的 `contains("<think>")`,绝大多数 chunk 不含标签,
-     *    直接命中快速路径,不触达任何转换逻辑。
-     *  - 轻量: 命中时调用 [splitThinkTagsForStreaming] 纯函数(单趟正则 + 单趟字符串拼接),
-     *    不再跑 transformerPipeline.applyVisualTransform(那会遍历全部 Transformer
-     *    并为每次节流 flush 构造临时消息列表)。
-     *  - 触发频率: 每次节流 UI flush 一次(默认 50ms,长文本按 streamFlushIntervalMs 自适应放大),
-     *    且仅在内容含 `<think>` 期间;一次生成通常只在开头 think 段落命中。
+     * contrato de desempeño(Reemplace la llamada de canalización completa de applyVisualTransform original):
+     *  - cortocircuito: hazlo una vez primero O(n) de `contains("<think>")`,La mayoría de los fragmentos no contienen etiquetas.,
+     *    Camino rápido de golpe directo,No toca ninguna lógica de conversión.
+     *  - ligero: Llamado por golpe [splitThinkTagsForStreaming] función pura(Concatenación de cadenas de un solo paso regular + de un solo paso),
+     *    No más correr transformerPipeline.applyVisualTransform(Eso pasará por todo Transformer
+     *    Y construya una lista de mensajes temporales para cada descarga de limitación.).
+     *  - Frecuencia de disparo: Acelere la descarga de la interfaz de usuario una vez cada vez(Predeterminado 50ms,El texto largo se amplía de forma adaptativa según streamFlushIntervalMs),
+     *    y sólo si el contenido contiene `<think>` período;Por lo general, una compilación solo aparece al comienzo del párrafo de reflexión.
      *
-     * 说明: 流式视觉转换当前唯一实现是 ThinkTag 剥离;若将来新增 visualTransform 钩子,
-     * 需评估是否并入本轻量路径(而非无条件回退全管道)。
+     * Descripción: La única implementación actual de la transformación visual en streaming es la eliminación de ThinkTag.;Si el gancho visualTransform se agrega en el futuro,
+     * Necesidad de evaluar si incorporar este camino ligero(En lugar de hacer retroceder incondicionalmente todo el oleoducto).
      */
     private suspend fun updateAssistantWithVisualTransform(assistantId: Uuid, content: String, reasoning: String?, isStreaming: Boolean) {
         val (visualReasoning, visualContent) =
@@ -5079,96 +5079,96 @@ class ChatViewModel(
         updateAssistant(assistantId, visualContent, visualReasoning, isStreaming = isStreaming)
     }
 
-    // ── v1.135 / P2-23: 媒体工具结果落盘(工具本体已迁至 MediaGenToolsImpl) ──────
+    // ── v1.135 / P2-23: Ubicación de los resultados de la herramienta multimedia(El cuerpo de la herramienta se ha movido a MediaGenToolsImpl) ──────
 
     /**
-     * 审计修复 (S-01): 工具执行成功后把含媒体的消息立即落盘。
+     * Reparación de auditoría (S-01): Una vez que la herramienta se ejecute con éxito, el mensaje que contiene los medios se colocará inmediatamente en el mercado.
      *
-     * 工具实现见 [io.zer0.muse.tools.MediaGenToolsImpl](App 启动时注册),本方法由
-     * [ChatMediaGenHost] 的 persistMediaMessage 回调在"当前会话仍显示中"时调用。
+     * Ver implementación de herramientas [io.zer0.muse.tools.MediaGenToolsImpl](App Regístrate al inicio),Este método consiste en
+     * [ChatMediaGenHost] La devolución de llamada persistMediaMessage está en"La sesión actual todavía se muestra."cuando lo llaman.
      *
-     * 背景: 多轮 Agent Loop 中,工具轮消息 A1 在工具执行前已被
-     * ToolOrchestrator.persistAssistantToolMsg 落盘(无媒体字段),此后没有任何代码
-     * 重新 upsert A1 — 媒体只存在于内存 _messages,重启/切页后图片视频全部丢失。
-     * 收尾合并只处理 finalAssistantMessage(A2),对 A1 是 no-op。
+     * fondo: Durante múltiples rondas de Agent Loop,El mensaje A1 de la rueda de herramientas se bloqueó antes de la ejecución de la herramienta
+     * ToolOrchestrator.persistAssistantToolMsg Realizar el pedido(Sin campo multimedia),no hay código después de esto
+     * re upsert A1 — Los medios solo existen en la memoria. _messages,Reiniciar/Después de cortar la página, se pierden todas las imágenes y vídeos.
+     * Cerrar identificadores de solo combinación finalAssistantMessage(A2),No es operativo para A1.
      *
-     * 落盘对象取 _messages 中该 id 的当前消息(含 updateAssistant 写入的媒体),
-     * 用 NonCancellable 包裹保证取消时也能完成写入。
+     * El objeto de ubicación toma el mensaje actual de la identificación en _messages(Contiene medios escritos por updateAssistant),
+     * Envolverlo en NonCancellable garantiza que la escritura se pueda completar incluso cuando se cancele.
      */
     private suspend fun persistToolMessageMedia(sessionId: String?, assistantId: Uuid) {
         if (sessionId.isNullOrBlank()) return
         val msg = _messages.value.firstOrNull { it.id == assistantId } ?: return
-        // 语音消息只有 voiceUri 一个媒体字段，同样需要立即落盘：新起的语音消息（同一回合
-        // 第二条及以后）除此之外没有别的落盘时机，跳过会让整条消息在重启/切页后消失。
+        // Los mensajes de voz tienen solo un campo multimedia, voiceUri, que también debe colocarse inmediatamente: nuevos mensajes de voz (misma ronda
+        // Artículo 2 y posteriores) No hay otra oportunidad de realizar pedidos. Saltarlo hará que se reinicie todo el mensaje./Desaparece después de cortar la página.
         if (msg.imageUrls.isEmpty() && msg.imageBase64List.isEmpty() &&
             msg.videoFileUri == null && msg.voiceUri == null
         ) {
             return
         }
         withContext(Dispatchers.IO + NonCancellable) {
-            // B-1: 会话已删除则跳过媒体消息落盘,防止删后"复活"。
+            // B-1: Si la sesión se ha eliminado, se omitirá la colocación de mensajes multimedia.,Prevenir la eliminación"resurrección".
             if (generationController.isSessionWritesSuppressed(sessionId).not()) {
                 runCatching { sessionRepository.upsertMessage(sessionId, msg) }
-                    .onFailure { Logger.e("ChatVM", "媒体消息落盘失败 | session=$sessionId | id=$assistantId", it) }
+                    .onFailure { Logger.e("ChatVM", "La colocación de noticias en los medios falló | session=$sessionId | id=$assistantId", it) }
             }
         }
     }
 
-    // ── Phase 10.1: 任务卡完整调度(v1.134 P1-5 转发到 taskCardCoordinator) ────
+    // ── Phase 10.1: Programación completa de tarjetas de tareas.(v1.134 P1-5 adelante a taskCardCoordinator) ────
 
-    /** 判断工具执行结果是否成功(转发到 taskCardCoordinator)。 */
+    /** Determinar si el resultado de la ejecución de la herramienta es exitoso(adelante a taskCardCoordinator). */
     private fun isToolResultSuccess(result: String): Boolean = taskCardCoordinator.isToolResultSuccess(result)
 
-    /** 更新任务卡阶段(转发到 taskCardCoordinator)。 */
+    /** Actualizar etapa de tarjeta de tarea(adelante a taskCardCoordinator). */
     private fun updateTaskCardPhase(taskCardId: String, phase: io.zer0.muse.ui.taskcard.TaskCardPhase) =
         taskCardCoordinator.updateTaskCardPhase(taskCardId, phase)
 
-    /** 精准更新单个 TaskStep(转发到 taskCardCoordinator)。 */
+    /** Actualizar con precisión un solo TaskStep(adelante a taskCardCoordinator). */
     private fun updateTaskCardStep(
         taskCardId: String,
         stepIndex: Int,
         transform: (io.zer0.muse.ui.taskcard.TaskStep) -> io.zer0.muse.ui.taskcard.TaskStep,
     ) = taskCardCoordinator.updateTaskCardStep(taskCardId, stepIndex, transform)
 
-    /** 切换任务卡展开 / 折叠状态(转发到 taskCardCoordinator)。 */
+    /** Alternar estado expandido/contraído de la tarjeta de tareas(adelante a taskCardCoordinator). */
     fun toggleTaskCardExpand(taskCardId: String) = taskCardCoordinator.toggleTaskCardExpand(taskCardId)
 
-    /** 切换任务卡中单个尚未开始工具步骤的暂停意图。 */
+    /** Alterna la intención de pausa de un solo paso de herramienta en la tarjeta de tarea que aún no se ha iniciado. */
     fun toggleTaskStepPause(taskCardId: String, stepId: String) = taskCardCoordinator.toggleTaskStepPause(taskCardId, stepId)
 
-    /** 切换任务卡中所有尚未开始工具步骤的暂停意图。 */
+    /** Alterna la intención de pausa de todos los pasos de la herramienta en la tarjeta de tareas que aún no se han iniciado. */
     fun toggleTaskCardPause(taskCardId: String) = taskCardCoordinator.toggleTaskCardPause(taskCardId)
 
     /**
-     * 重试任务卡中失败的步骤(转发到 taskCardCoordinator)。
+     * Reintentar pasos fallidos en una tarjeta de tarea(adelante a taskCardCoordinator).
      *
-     * - stepId = "ALL_FAILED":重试全部失败步骤
-     * - stepId = 具体 step id:重试单个失败步骤
+     * - stepId = "ALL_FAILED":Reintentar todos los pasos fallidos
+     * - stepId = ID de paso específico: reintente un único paso fallido
      *
-     * 注意:重试仅更新 UI 状态(FAILED → RUNNING → SUCCESS/FAILED),
-     * 不重新请求 LLM(工具参数已在步骤中保留)。
-     * 若需要让 LLM 基于新结果继续,用户应手动重生成。
+     * Nota:Reintentar solo actualiza el estado de la interfaz de usuario(FAILED → RUNNING → SUCCESS/FAILED),
+     * No volver a solicitar LLM(Los parámetros de la herramienta se conservan en pasos.).
+     * Si necesita dejar que LLM continúe en función de nuevos resultados,Los usuarios deben regenerar manualmente.
      */
     fun retryFailedStep(taskCardId: String, stepId: String) = taskCardCoordinator.retryFailedStep(taskCardId, stepId)
 
-    // ── Phase 8.2: Assistant 多人格管理 ─────────────────────────────────────
+    // ── Phase 8.2: Assistant Manejo de personalidad múltiple ─────────────────────────────────────
 
     /**
-     * v1.0.54: Agent Tab 切换助手 = 切换该助手的 Agent 对话房间。
+     * v1.0.54: Agent Tab Asistente de cambio = Alterna la sala de conversación del Agente del asistente.
      *
-     * 设计约束(吸取 8-01 污染教训):
-     * - 仅 Agent 模式(isAgentMode=true)有效;任务 Tab 请用 [setSessionAssistant]
-     * - 只操作 agentSessionId,绝不碰 currentSessionId(任务会话完全隔离)
-     * - 不走 switchSession(绕开其缓存 put/get 与 currentSessionId 更新),
-     *   直接 loadMessagesPaged 查 DB,天然避免缓存键污染/空缓存自命中
-     * - 切换前停止全部后台生成(旧会话的 Agent Loop 不得继续跑)
+     * restricciones de diseño(Aprenda las lecciones de la contaminación 8-01):
+     * - Solo modo agente(isAgentMode=true)válido;Utilice la pestaña Tarea [setSessionAssistant]
+     * - solo operar agentSessionId,Nunca toques currentSessionId(Las sesiones de tareas están completamente aisladas.)
+     * - no irse switchSession(Omita las actualizaciones de caché put/get y currentSessionId),
+     *   Verifique directamente loadMessagesPagged DB,Evite naturalmente la contaminación de la clave de caché/Auto-golpe de caché vacío
+     * - Detenga toda generación de fondo antes de cambiar(El bucle de agente de la sesión anterior no debe seguir ejecutándose.)
      */
     fun switchAgentAssistant(assistantId: String) {
         if (!_state.value.isAgentMode) return
         val targetId = assistantId.ifBlank { "default" }
-        // v2.x: 切换序号 — 过期(被更新的切换取代)的异步加载结果在提交前丢弃,防止串会话
+        // v2.x: número de serie del interruptor — Caducado(Reemplazado por una palanca más nueva)Los resultados de la carga asincrónica se descartan antes del envío.,Evitar conversaciones cruzadas en la sesión
         val switchToken = switchGuard.begin()
-        // 停止所有后台生成 + 脱离 UI 流式 + 停 TTS/ASR,与 switchSession 一致
+        // Detener toda generación de fondo + separarse de la transmisión de UI + detener TTS/ASR,Consistente con switchSession
         chatGenerationManager.stop()
         runCatching { io.zer0.muse.schedule.ChatGenerationService.stop(appContext) }
         if (_state.value.isStreaming) detachStreaming()
@@ -5176,40 +5176,40 @@ class ChatViewModel(
         disposeAsr()
         notifySessionEndForCurrent()
         viewModelScope.launch {
-            // 取 2 条并排除当前会话:命中历史房间则恢复,否则新建
+            // Tome 2 elementos y excluya la sesión actual:Golpear la sala histórica restaura,De lo contrario crear nuevo
             val recent = sessionRepository.getRecentAgentByAssistant(targetId, 2)
             val current = _state.value.agentSessionId
             val target = recent.firstOrNull { it.id != current }
             val sessionId = target?.id ?: sessionRepository.createAgentSession(assistantId = targetId)
             if (target != null) {
-                io.zer0.common.Logger.i("ChatVM", "switchAgentAssistant: 命中历史房间 ${target.id}(assistant=$targetId)")
+                io.zer0.common.Logger.i("ChatVM", "switchAgentAssistant: sala de historia de éxitos ${target.id}(assistant=$targetId)")
             } else {
-                io.zer0.common.Logger.i("ChatVM", "switchAgentAssistant: 新建房间 $sessionId(assistant=$targetId)")
+                io.zer0.common.Logger.i("ChatVM", "switchAgentAssistant: Crear nueva habitación $sessionId(assistant=$targetId)")
             }
-            // v1.0.54: 同步"默认 Agent 助手"偏好 — 退出再进入 Agent Tab 时保持该助手
-            //   (setAgentMode(true) 按此偏好恢复房间),设置页入口看到的值也一致
+            // v1.0.54: sincronizar"Asistente de agente predeterminado"Preferencia — Mantenga al asistente al salir y volver a ingresar a la pestaña Agente
+            //   (setAgentMode(true) Haga clic en esta preferencia para restaurar la habitación),Los valores que se ven en la entrada de la página de configuración también son consistentes.
             runCatching {
                 val cfg = settings.proactiveMessageConfigFlow.first()
                 if (cfg.agentId != targetId) {
                     settings.saveProactiveMessageConfig(cfg.copy(agentId = targetId))
                 }
             }
-            // 切换会话引用计数(与 setAgentMode 一致)
-            // v2.6.0 (AUD-UI-F4): 旧会话引用在**读取后立即快照并释放**,避免
-            // “读旧值”与“释放”之间被另一次切换插入 —— 原实现两行紧邻但都在
-            // 协程内,快速 A→B 连续切换时 B 可能 release 掉 A 刚 acquire 的新会话,
-            // 引用计数被多减,5s idle reaper 会把仍在使用的会话资源清掉。
+            // Alternar recuento de referencias de sesiones(Consistente con setAgentMode)
+            // v2.6.0 (AUD-UI-F4): La antigua referencia de sesión está en**Instantánea y publicación inmediatamente después de la lectura.**,evitar
+            // “leer valor antiguo”con“liberar”insertado por otro interruptor —— En la implementación original, las dos filas son inmediatamente adyacentes pero ambas están en
+            // Dentro de la corrutina,rapido A→B Durante el cambio continuo, B puede liberar la nueva sesión que A acaba de adquirir.,
+            // El recuento de referencia se redujo demasiado,5s idle reaper Se borrarán los recursos de sesión que aún estén en uso.
             val previousAgentSessionId = _state.value.agentSessionId
             sessionManager.acquire(sessionId)
             if (previousAgentSessionId != null && previousAgentSessionId != sessionId) {
                 sessionManager.release(previousAgentSessionId)
             }
-            // 预加载消息(直接查 DB,不读缓存),一次性更新状态
+            // Precargar mensajes(Comprobar directamente DB,No leer caché),Actualización de estado única
             val (messages, hasMore) = messageController.loadMessagesPaged(sessionId)
             if (switchGuard.isStale(switchToken)) {
-                // 已被更新的切换取代:释放本次 acquire,丢弃加载结果
+                // Reemplazado por alternancia actualizada:Suelta esta vez acquire,Descartar resultados de carga
                 sessionManager.release(sessionId)
-                Logger.i("ChatVM", "switchAgentAssistant 结果过期,丢弃: $sessionId")
+                Logger.i("ChatVM", "switchAgentAssistant Resultados caducados,descartar: $sessionId")
                 return@launch
             }
             val permissionMode =
@@ -5224,10 +5224,10 @@ class ChatViewModel(
                 messageController.restoreAgentPlansForSession(
                     sessionId,
                     messages,
-                    // 切换助手已停止生成，旧计划应收尾，不要留下转圈卡。
+                    // El asistente de cambio ha dejado de generarse y el plan anterior debería finalizarse sin dejar ninguna tarjeta girando.
                     settleUnfinished = true,
                 )
-            // 跨会话装载，新旧列表无可合并关系，禁止改成合并式；已有 SessionSwitchGuard 双检。
+            // Carga entre sesiones, no existe una relación de fusión entre las listas antigua y nueva, y está prohibido cambiar a fusión; ya existe una doble verificación de SessionSwitchGuard.
             _messages.value = messages
             _state.update {
                 it.copy(
@@ -5238,7 +5238,7 @@ class ChatViewModel(
                     isLoadingMore = false,
                     lastHistoryLoadCount = 0,
                     isStreaming = false,
-                    // v1.0.72 fix: 切换助手清空引用(防跨会话污染)
+                    // v1.0.72 fix: El asistente de cambio borra las referencias(Prevenir la contaminación entre sesiones)
                     replyingTo = null,
                     replyQuoteOverride = null,
                     taskCards = emptyMap(),
@@ -5256,10 +5256,10 @@ class ChatViewModel(
     }
 
     /**
-     * 切换当前会话绑定的 Assistant。
-     * - 持久化到 sessions.assistantId
-     * - 更新 currentAssistant 状态(影响下一次 launchStream)
-     * - 不重新发消息(避免误触发);用户可手动重生成
+     * Cambie el Asistente vinculado a la sesión actual.
+     * - persistir en sessions.assistantId
+     * - Actualizar el estado actual del Asistente(impacto la próxima vez launchStream)
+     * - No reenviar mensaje(Evite desencadenantes falsos);Los usuarios pueden regenerar manualmente
      */
     fun setSessionAssistant(assistantId: String) {
         val sessionId = displayedSessionId() ?: return
@@ -5272,7 +5272,7 @@ class ChatViewModel(
         }
     }
 
-    /** 新增 Assistant。返回新 id。 */
+    /** Asistente agregado. Devuelve la nueva identificación. */
     fun createAssistant(name: String, callback: (String) -> Unit = {}) {
         viewModelScope.launch {
             val id = "assistant-" + System.currentTimeMillis()
@@ -5280,9 +5280,9 @@ class ChatViewModel(
             assistantRepository.upsert(
                 AssistantEntity(
                     id = id,
-                    name = name.ifBlank { "新助手" },
+                    name = name.ifBlank { "nuevo asistente" },
                     avatarEmoji = "",
-                    // v1.0.51: 新建助手预填默认 prompt(从 assets 加载,带 locale 回落)
+                    // v1.0.51: Nuevo asistente precarga predeterminado prompt(Carga desde activos,respaldo con la configuración regional)
                     systemPrompt = assistantRepository.loadDefaultPrompt(),
                     createdAt = now,
                     updatedAt = now,
@@ -5292,14 +5292,14 @@ class ChatViewModel(
         }
     }
 
-    /** 更新 Assistant 字段(任意 subset)。 */
+    /** Campo Asistente de actualización(arbitrario subset). */
     fun saveAssistant(assistant: AssistantEntity) {
         val now = System.currentTimeMillis()
         val saved = assistant.copy(updatedAt = now)
         viewModelScope.launch {
             resultOf { assistantRepository.upsert(saved) }
                 .onSuccess {
-                    // Phase 8.5 修复: 用含新 updatedAt 的 saved 刷新 currentAssistant,避免 UI 拿到旧对象
+                    // Phase 8.5 Reparación: Actualizar con guardado con nuevo actualizadoEn currentAssistant,Evite que la interfaz de usuario obtenga objetos antiguos
                     if (_state.value.currentAssistant?.id == assistant.id) {
                         _state.update { it.copy(currentAssistant = saved) }
                     }
@@ -5312,14 +5312,14 @@ class ChatViewModel(
     }
 
     /**
-     * v2.x（用户反馈）: 删除 Assistant —— 默认助手也可删（条件保护）。
+     * v2.x(comentarios de los usuarios): Eliminar Assistant —— El asistente predeterminado también se puede eliminar (protección condicional).
      *
-     * 规则:
-     *  - 至少保留 2 个助手才允许删除（删默认后必须有接替者）;
-     *  - 不允许删当前会话绑定的助手（原保护保留）;
-     *  - 删除的是默认助手（id=default 或默认指针指向的）时，
-     *    自动把默认指针切到另一个助手。
-     * @param onDeleteDefaultBlocked 删除被拒绝（只剩一个助手）时的回调，用于 UI 提示。
+     * reglas:
+     *  - Se permite eliminar al menos 2 asistentes (debe haber un reemplazo después de eliminar el predeterminado);
+     *  - No está permitido eliminar el asistente vinculado a la sesión actual (se conserva la protección original);
+     *  - Lo que se elimina es el asistente predeterminado (id=default o el puntero predeterminado apunta a),
+     *    Cambia automáticamente el puntero predeterminado a otro asistente.
+     * @param onDeleteDefaultBlocked Devolución de llamada cuando se rechaza la eliminación (solo queda un asistente), utilizada para indicaciones de la interfaz de usuario.
      */
     fun deleteAssistant(id: String, onDeleteDefaultBlocked: ((String) -> Unit)? = null) {
         if (_state.value.currentAssistant?.id == id) return
@@ -5330,7 +5330,7 @@ class ChatViewModel(
                 return@launch
             }
             val defaultId = settings.getDefaultAssistantId()
-            // 删除的是默认助手 → 先把指针切到另一个助手（保证任意时刻都有默认助手）
+            // Lo que se elimina es el asistente predeterminado → Primero, cambie el puntero a otro asistente (para asegurarse de que haya un asistente predeterminado en cualquier momento)
             if (id == defaultId || id == "default") {
                 val successor = assistants.firstOrNull { it.id != id }
                 if (successor == null) {
@@ -5338,7 +5338,7 @@ class ChatViewModel(
                     return@launch
                 }
                 settings.saveDefaultAssistantId(successor.id)
-                Logger.i("ChatVM", "deleteAssistant: 默认助手 $id 将被删除，默认指针切至 ${successor.id}")
+                Logger.i("ChatVM", "deleteAssistant: Asistente predeterminado $id se eliminará y el puntero predeterminado cortará a ${successor.id}")
             }
             resultOf { assistantRepository.delete(id) }
                 .onError { msg, t ->
@@ -5349,26 +5349,26 @@ class ChatViewModel(
     }
 
     /**
-     * Phase 8.3: 切换消息收藏状态。
-     * - 同步 DB(乐观先改 UI 列表,DB 失败回滚)
-     * - 同时更新 messages(当前会话)与 favoriteMessages(跨会话列表)两个 state 字段
+     * Phase 8.3: Cambiar el estado de la recopilación de mensajes.
+     * - sincronizar DB(Sea optimista y cambie primero la lista de UI,DB Revertir en caso de falla)
+     * - Actualizar simultáneamente messages(sesión actual)con favoriteMessages(Lista de sesiones cruzadas)Dos campos estatales
      *
-     * Phase 8.5 修复: 原实现只在 `messages`(当前会话)里找 target,跨会话取消收藏
-     * (FavoritesScreen 点掉非当前会话的收藏)会因 target==null 直接 return,完全失效。
-     * 改为:先查 currentSession messages,找不到再查 favoriteMessages(跨会话收藏列表)。
+     * Phase 8.5 Reparación: La implementación original está solo en `messages`(sesión actual)Encuentra aquí target,Desfavoritos entre sesiones
+     * (FavoritesScreen Haga clic para eliminar colecciones que no están en la sesión actual)debido a target==null directo return,Completamente ineficaz.
+     * Cambiar a:comprobar primero currentSession messages,No lo encuentro, compruébalo de nuevo. favoriteMessages(Lista de favoritos entre sesiones).
      */
     fun toggleFavorite(messageId: Uuid) {
-        // v1.0.88 (S-4): 收藏变更同步失效内存缓存 — 否则会话缓存里消息的
-        // favorite 状态陈旧(气泡收藏图标与收藏面板不一致)。
+        // v1.0.88 (S-4): Caché de memoria de invalidación de sincronización de cambios de colección — De lo contrario, el mensaje en la caché de la sesión
+        // favorite Estado obsoleto(El icono de colección de burbujas no coincide con el panel de colección.).
         displayedSessionId()?.let { sessionMemoryCache.remove(it) }
         miscCoordinator.toggleFavorite(messageId)
     }
 
     /**
-     * 把收藏状态改成指定值（外部入口用：网页端长按菜单）。
+     * Cambie el estado de la colección al valor especificado (para entrada externa: mantenga presionado el menú en la página web).
      *
-     * 与 [toggleFavorite] 共用同一套乐观更新与回滚，区别只是目标状态由调用方给定，
-     * 重复设置到同一状态不会翻转。
+     * con [toggleFavorite] Comparten el mismo conjunto de actualizaciones y reversiones optimistas, la única diferencia es que el estado objetivo lo proporciona la persona que llama.
+     * Establecer repetidamente el mismo estado no cambiará.
      */
     fun setMessageFavorite(messageId: Uuid, favorite: Boolean) {
         displayedSessionId()?.let { sessionMemoryCache.remove(it) }
@@ -5376,11 +5376,11 @@ class ChatViewModel(
     }
 
     /**
-     * 删除一批消息（外部入口用：网页端多选删除）。
+     * Eliminar un lote de mensajes (para portal externo: eliminación mediante selección múltiple en la página web).
      *
-     * 与 [deleteMessage] 的区别：不停掉该会话的在途生成、不抑制后续落盘 ——
-     * 外部删的是历史消息，不该顺手把手机端正在跑的回复掐了。逐条走
-     * [ChatMiscCoordinator.deleteMessage]，消息列表、对话树与 DB 三处保持一致。
+     * con [deleteMessage] La diferencia: no detiene la generación en curso de la sesión y no inhibe la colocación posterior. ——
+     * Lo que se borra externamente son mensajes históricos. No debes borrar accidentalmente las respuestas que se están ejecutando en el teléfono celular. Ir paso a paso
+     * [ChatMiscCoordinator.deleteMessage], la lista de mensajes, el árbol de diálogo y la base de datos son consistentes.
      */
     fun deleteMessages(messageIds: List<Uuid>) {
         if (messageIds.isEmpty()) return
@@ -5391,12 +5391,12 @@ class ChatViewModel(
         }
     }
 
-    /** 功能1: 设置消息表情回应(null = 取消)。 */
+    /** Función1: Establecer respuesta de emoticón de mensaje(null = Cancelar). */
     fun setReaction(messageId: Uuid, reaction: String?) {
         val messageIdStr = messageId.toString()
         viewModelScope.launch {
             sessionRepository.setMessageReaction(messageIdStr, reaction?.takeIf { it.isNotEmpty() })
-            // 乐观更新 UI
+            // Actualización optimista UI
             updateMessages { list ->
                 list.map { msg ->
                     if (msg.id == messageId) msg.copy(reaction = reaction?.takeIf { it.isNotEmpty() }) else msg
@@ -5406,43 +5406,43 @@ class ChatViewModel(
     }
 
     /**
-     * v1.104 U7: 设置收藏分组标签(null = 移到未分组)。
+     * v1.104 U7: Establecer etiquetas de grupos favoritos(null = Mover a desagrupado).
      *
-     * 乐观更新 favoriteMessages(立即改 tag,UI 立即响应);
-     * favoriteTags 列表由 DAO Flow 自动重新发射,无需手动维护。
-     * DB 写失败时回滚 favoriteMessages 中的 tag 字段。
+     * Actualización optimista favoriteMessages(Cambiar ahora tag,UI Responder inmediatamente);
+     * favoriteTags La lista es reemitida automáticamente por DAO Flow,No requiere mantenimiento manual.
+     * DB Revertir el campo de etiqueta en mensajes favoritos cuando falla la escritura.
      */
     fun setMessageFavoriteTag(messageId: Uuid, tag: String?) = miscCoordinator.setMessageFavoriteTag(messageId, tag)
 
     /**
-     * v1.104 U7: 设置当前收藏夹的分组筛选条件。
+     * v1.104 U7: Establezca las condiciones del filtro de agrupación para los favoritos actuales.
      *
-     *  - null = 显示全部
-     *  - 非空字符串 = 仅显示该 tag
-     *  - [FAVORITE_TAG_UNGROUPED] = 仅显示未分组
+     *  - null = Mostrar todo
+     *  - cadena no vacía = Mostrar solo esto tag
+     *  - [FAVORITE_TAG_UNGROUPED] = Mostrar solo desagrupados
      *
-     * FavoritesScreen 顶部 FilterChip 点击时调用。
+     * FavoritesScreen El FilterChip superior se llama cuando se hace clic.
      */
     fun setFavoriteTagFilter(tag: String?) = miscCoordinator.setFavoriteTagFilter(tag)
 
     /**
-     * v1.48: 删除单条消息(长按菜单"删除消息")。
+     * v1.48: Eliminar un solo mensaje(Menú de pulsación larga"Eliminar mensaje").
      *
-     * 乐观更新 UI,失败时回滚并提示。
+     * Actualización optimista UI,Revertir y avisar en caso de error.
      */
     fun deleteMessage(messageId: Uuid) {
-        // v1.0.85 (T-2): 删除消息同步失效会话内存缓存 — 否则切走再切回时命中
-        // 删除前的旧快照,已删消息"复活"(用户反馈:删了重进还在)。
+        // v1.0.85 (T-2): Eliminar sincronización de mensajes caché de memoria de sesión no válida — De lo contrario, aparecerá cuando te alejes y luego vuelvas a cambiar.
+        // Instantánea antigua antes de la eliminación,mensaje eliminado"resurrección"(Comentarios de los usuarios:Eliminado y reingresado y todavía está ahí.).
         val sessionId =
             displayedSessionId()
         sessionId?.let { sessionMemoryCache.remove(it) }
-        // B-1: 删除前停止该会话在途生成并禁止后续落盘,防止已删消息被流式"复活"。
+        // B-1: Detenga la generación de la sesión en tránsito antes de eliminarla y prohíba su colocación posterior.,Evitar que se transmitan mensajes eliminados"resurrección".
         generationController.stopGenerationForSession(sessionId)
         generationController.suppressSessionWrites(sessionId)
         miscCoordinator.deleteMessage(messageId)
-        // v1.0.80 (T-4): 同步对话树 — 删除后若树仍保留被删消息,切回会话时
-        // rebuildConversationTree 会用 mergeRebuildMessages 把旧树消息合并回来,
-        // 再经 healBranchCounts 写回 DB,导致已删消息"复活"且旧消息时序错乱。
+        // v1.0.80 (T-4): Árbol de conversación sincronizado — Ruoshu aún conserva los mensajes eliminados después de la eliminación,Al volver a la sesión
+        // rebuildConversationTree Utilizará mergeRebuildMessages para fusionar mensajes de árbol antiguos,
+        // Luego escribe a través de healBranchCounts DB,resultando en mensajes eliminados"resurrección"Y la sincronización de los mensajes antiguos no funciona.
         _conversationTree.value = _conversationTree.value.removeMessage(messageId)
         val tree = _conversationTree.value
         val sid = sessionId
@@ -5452,25 +5452,25 @@ class ChatViewModel(
     }
 
     /**
-     * U-16: 删除目标消息及其后全部消息(截断语义)。
-     * 文档 §4 承诺"只删这条,或连同后续一起删"。数据层走 sessionRepository.truncateFrom,
-     * UI 层由 [ChatMiscCoordinator.deleteMessagesFrom] 乐观更新并于失败回滚。
+     * U-16: Eliminar el mensaje de destino y todos los mensajes posteriores(semántica de truncamiento).
+     * Documentación §4 Compromiso"Solo borra este,O eliminarlo junto con el seguimiento.". La capa de datos va sessionRepository.truncateFrom,
+     * UI capa consiste en [ChatMiscCoordinator.deleteMessagesFrom] Actualice y revierta de manera optimista en caso de falla.
      */
     fun deleteMessageWithFollowing(messageId: Uuid) {
         val sessionId =
             displayedSessionId() ?: return
         sessionMemoryCache.remove(sessionId)
-        // B-1: 删除前停止该会话在途生成并禁止后续落盘,防止已删消息被流式"复活"。
+        // B-1: Detenga la generación de la sesión en tránsito antes de eliminarla y prohíba su colocación posterior.,Evitar que se transmitan mensajes eliminados"resurrección".
         generationController.stopGenerationForSession(sessionId)
         generationController.suppressSessionWrites(sessionId)
         miscCoordinator.deleteMessagesFrom(messageId, sessionId)
-        // 同步对话树:移除该消息节点(后续节点由 DB 截断,切回时 rebuild 纠正)
+        // Árbol de conversación sincronizado:Eliminar el nodo de mensaje(Los nodos posteriores son truncados por DB,Reconstrucción correcta al volver a cambiar)
         _conversationTree.value = _conversationTree.value.removeMessage(messageId)
         val tree = _conversationTree.value
         viewModelScope.launch(Dispatchers.IO) { treeSnapshotStore?.save(sessionId, tree) }
     }
 
-    // ── B7-01: 消息多选批量操作 ──────────────────────────────────────────
+    // ── B7-01: Operación por lotes de selección múltiple de mensajes ──────────────────────────────────────────
 
     fun setSelectionMode(enabled: Boolean) {
         _state.update {
@@ -5499,11 +5499,11 @@ class ChatViewModel(
         _state.update { it.copy(selectedMessageIds = ids.toSet()) }
     }
 
-    /** B7-03: 滚动到底部时标记当前会话已读。 */
+    /** B7-03: Marque la conversación actual como leída cuando se desplace hacia abajo. */
     fun markSessionRead() {
         val sessionId = displayedSessionId() ?: return
-        // 新会话消息可能尚未加载（_messages 为空），此时也必须按 messageCount 标记已读，
-        // 否则 lastReadCount 一直为 0，messageCount - lastReadCount > 0，新会话永远显示“未读 1”。
+        // Es posible que los mensajes de nueva sesión aún no se hayan cargado (_messages está vacío), también debes marcarlo como leído por messageCount en este momento.
+        // De lo contrario, lastReadCount es siempre 0,messageCount - lastReadCount > 0, siempre se muestran nuevas sesiones“no leído 1”.
         viewModelScope.launch {
             val session = _state.value.sessions.find { it.id == sessionId }
             val last = _messages.value.lastOrNull()
@@ -5522,20 +5522,20 @@ class ChatViewModel(
     }
 
     /**
-     * v2.6.9（用户反馈）: 批量收藏选中的消息。
+     * v2.6.9(comentarios de los usuarios): Colección de mensajes seleccionados en lotes.
      *
-     * 用户原话：“那个选择对话我本来以为就是收藏，没想到居然是长按复制”。
-     * 多选条以前只有全选/复制/删除/导出，确实没有收藏。
+     * Palabras originales del usuario:“Originalmente pensé que el diálogo de selección era para colección, pero no esperaba que en realidad fuera una pulsación larga para copiar.”.
+     * La barra de selección múltiple utilizada para seleccionar solo todos/Copiar/Eliminar/Exportado, de hecho no hay colección.
      *
-     * P3-10: 写库收敛到 [ChatMiscCoordinator.favoriteMessages]（与单条 toggle
-     * 同一套乐观更新 + 失败回滚），这里只负责选中态清理与结果反馈。
+     * P3-10: La biblioteca de escritura converge a [ChatMiscCoordinator.favoriteMessages](Con solo toggle
+     * El mismo conjunto de actualizaciones optimistas + reversión de fallas), aquí solo es responsable de la limpieza del estado seleccionado y la retroalimentación de los resultados.
      */
     fun favoriteSelectedMessages() {
         val ids = _state.value.selectedMessageIds
         if (ids.isEmpty()) return
         _state.update { it.copy(selectionMode = false, selectedMessageIds = emptySet()) }
         val uuids = ids.mapNotNull { id -> runCatching { Uuid.parse(id) }.getOrNull() }
-        // 收藏影响气泡星标与会话缓存，与 toggleFavorite 一致地让缓存失效。
+        // Los favoritos afectan la estrella de la burbuja y el caché de la sesión, invalidando el caché consistente con toggleFavorite.
         displayedSessionId()?.let { sessionMemoryCache.remove(it) }
         viewModelScope.launch {
             val added = miscCoordinator.favoriteMessages(uuids)
@@ -5543,99 +5543,99 @@ class ChatViewModel(
         }
     }
 
-    // ── Phase 9.1 (M13): 文件夹分组 CRUD ──────────────────────────────────
+    // ── Phase 9.1 (M13): Agrupación de carpetas CRUD ──────────────────────────────────
 
-    /** 新建文件夹。 */
+    /** Crea una nueva carpeta. */
     fun createFolder(name: String) = miscCoordinator.createFolder(name, ::reportError)
 
-    /** 重命名文件夹。 */
+    /** Cambie el nombre de la carpeta. */
     fun renameFolder(id: String, name: String) = miscCoordinator.renameFolder(id, name, ::reportError)
 
-    /** 删除文件夹(关联会话移到未分组)。 */
+    /** eliminar carpeta(Las conversaciones relacionadas se movieron a desagrupadas). */
     fun deleteFolder(id: String) = miscCoordinator.deleteFolder(id, ::reportError)
 
-    /** 切换文件夹展开/折叠状态。 */
+    /** Cambiar expansión de carpeta/estado plegado. */
     fun toggleFolderExpanded(id: String, expanded: Boolean) = miscCoordinator.toggleFolderExpanded(id, expanded)
 
-    /** 移动会话到文件夹(folderId=null = 移到未分组)。 */
+    /** Mover sesión a la carpeta(folderId=null = Mover a desagrupado). */
     fun moveSessionToFolder(sessionId: String, folderId: String?) = miscCoordinator.moveSessionToFolder(sessionId, folderId, ::reportError)
 
-    /** P0-1 修复: 切换会话置顶状态。 */
+    /** P0-1 Reparación: Alternar estado superior de la conversación. */
     fun togglePinned(sessionId: String) = miscCoordinator.togglePinned(sessionId, ::reportError)
 
-    /** B7-05: 持久化置顶会话拖拽后的新顺序。 */
+    /** B7-05: El nuevo orden después de arrastrar la sesión fijada persistente. */
     fun reorderPinnedSessions(ids: List<String>) = miscCoordinator.reorderPinnedSessions(ids, ::reportError)
 
     /**
-     * Phase 8.4: 切换联网搜索开关(InputBar 上的图标按钮)。
-     * 仅改 UI 即时反馈 + 持久化到 settings(下次启动恢复)。
+     * Phase 8.4: Alternar interruptor de búsqueda de red(InputBar botón icono).
+     * Cambie solo la interfaz de usuario para obtener comentarios inmediatos + persistencia en settings(Iniciar la recuperación la próxima vez).
      */
     fun toggleWebSearch() = settingsController.toggleWebSearch()
 
-    /** v0.39: 切换深度思考开关(仅运行时状态,不持久化,下次进入会话恢复助手默认)。 */
+    /** v0.39: Alternar el interruptor de pensamiento profundo(Solo estado de tiempo de ejecución,No persistente,La próxima vez que ingrese al asistente de restauración de sesión predeterminado). */
     fun toggleDeepThinking() = settingsController.toggleDeepThinking()
 
     /**
-     * v1.0.47 P5-6: 循环深度思考级别(LOW → MEDIUM → HIGH → XHIGH → LOW)。
+     * v1.0.47 P5-6: Nivel circular de pensamiento profundo(LOW → MEDIUM → HIGH → XHIGH → LOW).
      *
-     * 仅在 [ChatUiState.deepThinkingEnabled]=true 时由 UI 级别胶囊调用。
-     * 不含 OFF/OFF 由 toggleDeepThinking 负责;此处只调档位。
+     * solo en [ChatUiState.deepThinkingEnabled]=true Cuando lo llama la cápsula de nivel de UI.
+     * Excluyendo APAGADO/APAGADO mediante toggleDeepThinking;Aquí sólo se ajustan las marchas.
      */
     fun cycleDeepThinkingLevel() = settingsController.cycleDeepThinkingLevel()
 
-    /** v1.43: 选中产物卡片,打开 ArtifactViewerDialog。 */
+    /** v1.43: Seleccionar tarjeta de producto,Abra ArtifactViewerDialog. */
     fun selectArtifact(artifact: io.zer0.muse.data.artifact.ArtifactEntity) = mediaController.selectArtifact(artifact)
 
-    /** v1.43: 关闭产物卡片查看弹窗。 */
+    /** v1.43: Cierre la ventana emergente de vista de tarjeta de producto. */
     fun dismissArtifactViewer() = mediaController.dismissArtifactViewer()
 
-    /** v1.43: 观察某条消息关联的产物卡片列表。 */
+    /** v1.43: Ver la lista de tarjetas de productos asociadas con un mensaje. */
     fun observeArtifactsByMessage(messageId: String): kotlinx.coroutines.flow.Flow<List<io.zer0.muse.data.artifact.ArtifactEntity>> =
         mediaController.observeArtifactsByMessage(messageId)
 
-    /** v1.45: 缓存列表滚动位置,切页/后台后恢复。 */
+    /** v1.45: Posición de desplazamiento de la lista de caché,Cortar páginas/Reanudar después de la preparación de antecedentes. */
     fun onListScrollPositionChanged(index: Int, offset: Int) = messageController.onListScrollPositionChanged(index, offset)
 
     /**
-     * v2.6.7: 从聊天页横幅一键恢复工具执行。
+     * v2.6.7: Ejecución de la herramienta de recuperación con un solo clic desde el banner de la página de chat.
      *
-     * 用户打开「暂停工具执行」后，每个工具都只会回「已暂停、本轮未执行真实操作」，
-     * 看上去很像联网/工具坏了。横幅给一个一键关掉的出口，不必再去翻设置。
+     * Después de que el usuario activa "Pausar la ejecución de la herramienta", cada herramienta solo devolverá "Pausado, no se realizó ninguna operación real en esta ronda".
+     * Se parece mucho a Internet/La herramienta está rota. Banner proporciona una salida que se puede cerrar con un clic, por lo que no es necesario volver a realizar la configuración.
      */
     fun resumeToolExecution() {
         viewModelScope.launch {
             resultOf { settings.updateChatPreferences { it.copy(pauseToolExecution = false) } }
-                .onError { msg, _ -> Logger.w("ChatVM", "resumeToolExecution 失败: $msg") }
+                .onError { msg, _ -> Logger.w("ChatVM", "resumeToolExecution falló: $msg") }
         }
     }
 
-    /** v1.45: 切换指定消息 mood 块的展开/折叠状态。 */
+    /** v1.45: Alterna la expansión del bloque de estado de ánimo del mensaje especificado/estado plegado. */
     fun toggleMessageMoodExpanded(messageId: String) = messageController.toggleMessageMoodExpanded(messageId)
 
-    /** v1.45: 切换指定消息 reasoning 块的展开/折叠状态。 */
+    /** v1.45: Alternar la expansión del bloque de razonamiento para el mensaje especificado/estado plegado. */
     fun toggleMessageReasoningExpanded(messageId: String) = messageController.toggleMessageReasoningExpanded(messageId)
 
-    /** v1.64: 切换指定消息 reflection 块的展开/折叠状态。 */
+    /** v1.64: Alterna la expansión del bloque de reflexión del mensaje especificado/estado plegado. */
     fun toggleMessageReflectionExpanded(messageId: String) = messageController.toggleMessageReflectionExpanded(messageId)
 
-    /** v2.4.6: 切换指定消息译文块的展开/折叠状态。 */
+    /** v2.4.6: Alterna la expansión del bloque de traducción de mensajes especificado/estado plegado. */
     fun toggleMessageTranslationExpanded(messageId: String) = messageController.toggleMessageTranslationExpanded(messageId)
 
     /**
-     * Phase 8.7: 切换消息朗读状态。
-     * - 当前正在朗读这条消息 → 停止
-     * - 当前正在朗读其他消息或未朗读 → 开始朗读这条
+     * Phase 8.7: Cambia el estado de lectura del mensaje.
+     * - Actualmente leyendo este mensaje → detenerse
+     * - Actualmente se está leyendo otro mensaje o no se está leyendo en voz alta → Empieza a leer esto en voz alta.
      *
-     * @param messageId 消息 id
-     * @param content 待朗读的文本(含 Markdown 会被 TtsManager 自动剥离)
+     * @param messageId noticias id
+     * @param content Texto para leer en voz alta(TtsManager eliminará automáticamente el contenido que contenga Markdown)
      *
-     * v1.105: 委托至 [ChatAudioCoordinator.toggleTts]。
+     * v1.105: Delegar a [ChatAudioCoordinator.toggleTts].
      */
     fun toggleTts(messageId: Uuid, content: String) {
-        // v1.0.4 (P2): TTS 未就绪时给即时反馈(原仅静默返回 false,用户感觉"点击没反应")
-        // 仅当当前消息未在播放时检查(speakingMessageId == messageId 时是停止操作,无需就绪)
+        // v1.0.4 (P2): TTS Brinde comentarios inmediatos cuando no esté listo(Originalmente solo regresó en silencio. false,sentimiento del usuario"No hay respuesta al hacer clic")
+        // Solo se marca si el mensaje actual no se reproduce(speakingMessageId == messageId Es hora de detener la operación.,No hay necesidad de estar listo)
         if (_state.value.speakingMessageId != messageId && !ttsManager.isReady.value) {
-            // 区分「还在初始化」与「初始化已失败」：后者不该一直让用户“稍后重试”
+            // Distinga entre "todavía inicializándose" y "inicialización fallida": este último no debería mantener al usuario“Vuelve a intentarlo más tarde”
             MuseToast.show(
                 appContext.getString(
                     if (ttsManager.initFailedState.value) {
@@ -5650,143 +5650,143 @@ class ChatViewModel(
         audioCoordinator.toggleTts(messageId, content, ::reportError)
     }
 
-    /** Phase 8.7: 停止当前朗读(切换会话/退出页面时调用)。v1.105: 委托至 [ChatAudioCoordinator]。 */
+    /** Phase 8.7: Detener la lectura actual(Cambiar de sesión/Llamado al salir de la página.).v1.105: Delegar a [ChatAudioCoordinator]. */
     fun stopTts() {
         audioCoordinator.stopTts()
     }
 
-    // ── v1.91: 流式 ASR(v1.105 委托至 ChatAudioCoordinator)─────────────
+    // ── v1.91: transmisión ASR(v1.105 Delegar a ChatAudioCoordinator)─────────────
 
-    /** v1.91: 开始流式录音识别。v1.105: 委托至 [ChatAudioCoordinator]。 */
+    /** v1.91: Inicie el reconocimiento de grabación en streaming.v1.105: Delegar a [ChatAudioCoordinator]. */
     fun startStreamingAsr() {
         audioCoordinator.startStreamingAsr()
     }
 
-    /** v1.91: 停止流式录音,等待最后结果。v1.105: 委托至 [ChatAudioCoordinator]。 */
+    /** v1.91: Detener la grabación en streaming,A la espera de resultados finales.v1.105: Delegar a [ChatAudioCoordinator]. */
     fun stopStreamingAsr() {
         audioCoordinator.stopStreamingAsr()
     }
 
-    /** v1.91: 取消流式录音(恢复原始输入框文本)。v1.105: 委托至 [ChatAudioCoordinator]。 */
+    /** v1.91: Cancelar grabación de transmisión(Restaurar el texto del cuadro de entrada original).v1.105: Delegar a [ChatAudioCoordinator]. */
     fun cancelStreamingAsr() {
         audioCoordinator.cancelStreamingAsr()
     }
 
-    /** v1.91: 释放 ASR Controller(会话切换/ViewModel 销毁时)。v1.105: 委托至 [ChatAudioCoordinator]。 */
+    /** v1.91: liberar ASR Controller(Cambio de sesión/ViewModel cuando destruido).v1.105: Delegar a [ChatAudioCoordinator]. */
     fun disposeAsr() {
         audioCoordinator.disposeAsr()
     }
 
     /**
-     * Phase 9.3 (M2): 保存 ASR 配置。v1.105: 委托至 [ChatAudioCoordinator]。
+     * Phase 9.3 (M2): Guarde la configuración de ASR.v1.105: Delegar a [ChatAudioCoordinator].
      *
-     * ⚠️ 入参必须是用户编辑后的原始配置(来自 `settings.asrConfigFlow` 或设置页).
-     * **不得传入 `state.asrConfig`** —— 那个副本可能已被供应商配置覆盖(跟随供应商时
-     * baseUrl/apiKey/model 取供应商值),落盘会把供应商密钥写进 `asr_config_json`。
+     * ⚠️ Los parámetros de entrada deben ser la configuración original editada por el usuario.(de `settings.asrConfigFlow` o página de configuración).
+     * **No se permite pasar `state.asrConfig`** —— Es posible que la configuración del proveedor haya sobrescrito esa copia.(Al seguir a un proveedor
+     * baseUrl/apiKey/model Obtenga valor de proveedor),La clave del proveedor se escribirá en el disco cuando se coloque. `asr_config_json`.
      */
     fun saveAsrConfig(config: io.zer0.muse.asr.AsrConfig) {
         audioCoordinator.saveAsrConfig(config)
     }
 
     /**
-     * Phase 9.3 (M2): 判断当前是否应走 API 录音路径(而非系统 Intent)。
-     * v1.105: 委托至 [ChatAudioCoordinator]。
+     * Phase 9.3 (M2): Determinar si la ruta de grabación API se debe tomar actualmente(en lugar de sistema Intent).
+     * v1.105: Delegar a [ChatAudioCoordinator].
      */
     fun shouldUseApiRecording(): Boolean {
         return audioCoordinator.shouldUseApiRecording()
     }
 
-    // ── 语音对话模式(完整 ASR + AI + TTS 循环)──────────────────────────────
+    // ── Modo de conversación de voz(completo ASR + AI + TTS bucle)──────────────────────────────
 
     /**
-     * 进入语音对话模式:开始首轮 LISTENING 并启动状态机循环观察。
+     * Ingrese al modo de conversación de voz:Inicie la primera ronda de ESCUCHA y comience la observación del bucle de la máquina de estados.
      *
-     * 前置条件:
-     *  - RECORD_AUDIO 权限已授予(UI 层负责检查/申请)
-     *  - ASR API 已配置([shouldUseApiRecording] 返回 true),否则报错退出
+     * Condiciones previas:
+     *  - RECORD_AUDIO Permiso concedido(UI Responsable de comprobar/Aplicar)
+     *  - ASR API configurado([shouldUseApiRecording] Regresar true),De lo contrario, salga con un error.
      *
-     * 状态流转:IDLE → LISTENING(启动 ASR)→ 用户点「结束」→ THINKING →
-     * SPEAKING(TTS 朗读)→ LISTENING(连续对话)→ ...
+     * Flujo de estado:IDLE → LISTENING(empezar ASR)→ El usuario hace clic en "Finalizar"→ THINKING →
+     * SPEAKING(TTS leer en voz alta)→ LISTENING(dialogo continuo)→ ...
      *
-     * 本段输入何时结束由用户决定:ASR 不会把“录音结束”自动当成提交信号。
+     * Cuando termina el ingreso de esta sección lo decide el usuario:ASR no lo hará“Finaliza la grabación”Considerado automáticamente como una señal de envío.
      */
     fun startVoiceConversation() = mediaController.startVoiceConversation()
 
     /**
-     * 退出语音对话模式:停止 ASR/TTS,取消循环观察协程,状态归零。
+     * Salir del modo de conversación de voz:detenerse ASR/TTS,Cancelar la rutina de observación del bucle.,El estado se pone a cero.
      *
-     * 调用时机:用户点击关闭按钮(X)、页面退出、ViewModel 销毁。
+     * tiempo de llamada:El usuario hace clic en el botón cerrar(X), salida de página,ViewModel Destruir.
      */
     fun stopVoiceConversation() = mediaController.stopVoiceConversation()
 
     /**
-     * 中断当前语音对话状态(用户点击主按钮)。
+     * Interrumpir el estado actual de la conversación de voz.(El usuario hace clic en el botón principal.).
      *
-     * 行为:
-     *  - LISTENING:停止 ASR,丢弃当前转写
-     *  - THINKING:停止 ASR + 停止 AI 生成
-     *  - SPEAKING:停止 TTS 朗读
-     *  - IDLE:无操作
+     * comportamiento:
+     *  - LISTENING:detenerse ASR,Descartar la transcripción actual
+     *  - THINKING:Detener ASR + Detener la generación de IA
+     *  - SPEAKING:Detener la lectura TTS
+     *  - IDLE:Ninguna acción
      *
-     * 中断后状态回到 IDLE,等待用户再次点击主按钮开始新一轮对话。
+     * Volver al estado después de la interrupción IDLE,Espere a que el usuario vuelva a hacer clic en el botón principal para iniciar una nueva conversación.
      */
     fun interruptVoiceConversation() = mediaController.interruptVoiceConversation()
 
     /**
-     * 语音对话主按钮(非按住式 toggle)：
-     *  - IDLE：开始一轮对话
-     *  - LISTENING 且正在录音：结束本段输入并提交
-     *  - LISTENING 但未在录音：重新开始录音
-     *  - THINKING / SPEAKING：中断当前回复
+     * Botón principal de conversación de voz(Sin presionar y mantener presionado toggle):
+     *  - IDLE: iniciar una conversación
+     *  - LISTENING Y grabación: finalice la entrada de este párrafo y envíela.
+     *  - LISTENING Pero no grabando: reiniciar la grabación
+     *  - THINKING / SPEAKING: Interrumpir la respuesta actual
      */
     fun toggleVoiceConversation() = mediaController.toggleVoiceConversation()
 
     /**
-     * 启动一轮 ASR 录音,识别文本通过回调写入 [_voiceConversationTranscript]。
+     * Iniciar una ronda de grabación ASR,Reconocer texto escrito mediante devolución de llamada [_voiceConversationTranscript].
      *
-     * 注意:不写入输入框字段(语音对话模式不走 InputBar 文本流),
-     * 与 [io.zer0.muse.ui.chat.ChatAudioCoordinator.startStreamingAsr] 区分。
+     * Nota:No escriba en los campos del cuadro de entrada(El modo de diálogo de voz no utiliza el flujo de texto de la barra de entrada),
+     * con [io.zer0.muse.ui.chat.ChatAudioCoordinator.startStreamingAsr] Distinguir.
      */
-    /** 语音对话循环观察协程已迁至 ChatMediaController。 */
+    /** La rutina de observación del bucle de conversación de voz se ha trasladado a ChatMediaController. */
 
     /**
-     * 启动状态机循环观察协程:监听 ASR/流式/TTS 状态切换,自动驱动状态机循环。
+     * Inicie la rutina de observación del bucle de la máquina de estados:Monitorear ASR/Transmisión/TTS Cambio de estado,Controla automáticamente los bucles de la máquina de estados.
      *
-     * 三个观察点(单一 collect,内部分支处理):
-     *  1. LISTENING 期间 ASR isRecording 由 true → false：仅当用户已显式结束本段输入(已先置
-     *     pendingCommit)时取本轮累积文本提交 → THINKING；否则(Error / 服务端收尾 / 空文本)
-     *     不发消息，已累积文本保留，回到 LISTENING 重新收音（累积为空才给「再说一次」轻提示）
-     *  2. THINKING 状态下 isStreaming 由 true → false：AI 回复完成，取最后一条 assistant 消息调 TTS → SPEAKING
-     *  3. SPEAKING 状态下 isSpeaking 由 true → false：TTS 朗读完成，恢复录音 → LISTENING(连续对话)
+     * tres puntos de observación(soltero collect,Procesamiento interno de sucursales):
+     *  1. LISTENING El período ASR es Registrado por true → false: Sólo cuando el usuario haya terminado explícitamente de ingresar este párrafo(Ya colocado
+     *     pendingCommit)Obtenga el envío de texto acumulado de esta ronda → THINKING;de lo contrario(Error / Cierre del lado del servidor/texto vacío)
+     *     No envíe el mensaje, conserve el texto acumulado, vuelva a ESCUCHAR y escuche nuevamente (el mensaje luminoso "Dilo de nuevo" se dará cuando la acumulación esté vacía)
+     *  2. THINKING El estado isStreaming está dado por true → false:AI Una vez completada la respuesta, tome el último mensaje del asistente y llámelo TTS → SPEAKING
+     *  3. SPEAKING el estado esHablando por true → false:TTS Leer en voz alta, reanudar la grabación → LISTENING(dialogo continuo)
      *
-     * THINKING / SPEAKING 期间麦克风保持关闭(TTS 不自录)，只在回到 LISTENING 时重开。
+     * THINKING / SPEAKING El micrófono permanece apagado durante(TTS Sin autograbación), solo se vuelve a abrir al volver a ESCUCHAR.
      *
-     * 协程在 [stopVoiceConversation] / [interruptVoiceConversation] 时被 cancel。
+     * La corrutina está en [stopVoiceConversation] / [interruptVoiceConversation] fue cancelado.
      */
-    /** 语音对话状态机循环观察协程已迁至 ChatMediaController。 */
+    /** La rutina de observación del bucle de la máquina de estado del diálogo de voz se ha trasladado a ChatMediaController. */
 
-    /** 查询系统 TTS 可用声音列表(切换语音 Bottom Sheet 用)。 */
+    /** Sistema de consulta TTS lista de sonidos disponibles(Cambiar voz para la hoja inferior). */
     fun getAvailableTtsVoices(): List<android.speech.tts.Voice> = mediaController.getAvailableTtsVoices()
 
-    /** 当前生效的 TTS 声音名称(用于切换语音 Sheet 标记选中项)。 */
+    /** Nombre del sonido TTS actualmente efectivo(Se utiliza para alternar la selección de marcas de hoja de voz.). */
     fun currentTtsVoiceName(): String = mediaController.currentTtsVoiceName()
 
     /**
-     * 切换 TTS 声音:立即应用到 TtsManager,并持久化到 Settings(下次启动仍生效)。
+     * Cambiar sonido TTS:Aplicar inmediatamente a TtsManager,y persistir en Settings(Seguirá surtiendo efecto la próxima vez que lo inicies.).
      *
-     * @param voiceName 系统 TTS Voice 的 name(来自 [getAvailableTtsVoices])
+     * @param voiceName Sistema TTS Voz name(de [getAvailableTtsVoices])
      */
     fun setTtsVoice(voiceName: String) = mediaController.setTtsVoice(voiceName)
 
     /**
-     * Phase 8.4: 保存 Web 搜索配置(Settings 页编辑后调用)。
-     * Phase 8.5 修复:同步调用 CompositeWebSearchService.updateConfig 使运行时切换立即生效。
+     * Phase 8.4: Guardar configuración de búsqueda web(Settings Llamado después de editar la página.).
+     * Phase 8.5 Reparación:Llame a CompositeWebSearchService.updateConfig sincrónicamente para que el cambio de tiempo de ejecución entre en vigor de inmediato.
      */
     fun saveWebSearchConfig(config: WebSearchConfig) {
         viewModelScope.launch {
-            // v1.117: 改用 resultOf 避免吞 CancellationException(saveWebSearchConfig 是 suspend)
+            // v1.117: Utilice resultOf en su lugar para evitar tragar CancellationException(saveWebSearchConfig si suspend)
             resultOf { settings.saveWebSearchConfig(config) }
-            // 同步刷新运行时 service,避免下次 search 仍用启动时旧 config
+            // Tiempo de ejecución de actualización sincrónica service,Evite utilizar el antiguo método de búsqueda al inicio la próxima vez config
             (webSearchService as? io.zer0.muse.web.CompositeWebSearchService)?.updateConfig(config)
         }
     }
@@ -5794,21 +5794,21 @@ class ChatViewModel(
     // ── Phase 8.5: QuickMessages / Lorebook / PromptInjection ────────────
 
     /**
-     * Phase 8.5: 切换当前模式(用于 PromptInjection)。
-     * "default" 表示无注入;其他模式触发对应 PromptInjection 条目。
+     * Phase 8.5: Cambiar el modo actual(usado para PromptInjection).
+     * "default" Indica que no hay inyección;Otros modos activan las entradas PromptInjection correspondientes.
      */
     fun setMode(mode: String) {
-        // v1.80 (M-CVM5): 原子更新
+        // v1.80 (M-CVM5): Actualizaciones atómicas
         _state.update { it.copy(currentMode = mode) }
     }
 
-    /** Phase 8.5: 取当前可用的模式列表(预置 + 数据库中已有的)。 */
+    /** Phase 8.5: Obtenga la lista de modos disponibles actualmente(Preestablecido + existente en la base de datos). */
     fun getAvailableModes(): List<Pair<String, String>> = promptInjectionRepository.presetModes
 
     /**
-     * Phase 8.5: 插入快捷消息到输入框。
-     * 支持 {{input}} / {{clipboard}} / {{date}} 模板变量替换。
-     * 若模板包含 {{input}},替换为当前输入框内容;否则追加到输入框末尾。
+     * Phase 8.5: Inserte un mensaje rápido en el cuadro de entrada.
+     * apoyo {{input}} / {{clipboard}} / {{date}} Sustitución de variables de plantilla.
+     * Si la plantilla contiene {{input}},Reemplazar con el contenido del cuadro de entrada actual;De lo contrario, añádalo al final del cuadro de entrada.
      */
     fun insertQuickMessage(quickMessage: QuickMessageEntity, clipboardText: String = "") {
         val currentInput = _state.value.input
@@ -5818,7 +5818,7 @@ class ChatViewModel(
                 currentInput = currentInput,
                 clipboard = clipboardText,
             )
-        // 若模板原文包含 {{input}},rendered 已替换;否则把渲染结果作为新输入
+        // Si el texto de la plantilla original contiene {{input}},rendered reemplazado;De lo contrario, utilice el resultado de la renderización como nueva entrada.
         val newInput =
             if (quickMessage.content.contains("{{input}}")) {
                 rendered
@@ -5827,11 +5827,11 @@ class ChatViewModel(
             } else {
                 "$currentInput\n\n$rendered"
             }
-        // v1.80 (M-CVM5): 原子更新
+        // v1.80 (M-CVM5): Actualizaciones atómicas
         _state.update { it.copy(input = newInput) }
     }
 
-    /** v1.58: 插入 Prompt 模板内容到输入框(若输入框已有内容则追加)。 */
+    /** v1.58: Inserte el contenido de la plantilla de solicitud en el cuadro de entrada(Si el cuadro de entrada ya contiene contenido, añádelo). */
     fun insertPromptTemplate(template: io.zer0.muse.data.prompttemplate.PromptTemplate) {
         val currentInput = _state.value.input
         val newInput =
@@ -5840,38 +5840,38 @@ class ChatViewModel(
             } else {
                 "$currentInput\n\n${template.content}"
             }
-        // v1.80 (M-CVM5): 原子更新
+        // v1.80 (M-CVM5): Actualizaciones atómicas
         _state.update { it.copy(input = newInput) }
     }
 
-    /** Phase 8.5: 解析 Assistant.quickMessageIdsJson / lorebookIdsJson / modeInjectionIdsJson。 */
+    /** Phase 8.5: analizar Assistant.quickMessageIdsJson / lorebookIdsJson / modeInjectionIdsJson. */
     private fun parseIdList(json: String): List<String> = runCatching { idListJson.decodeFromString<List<String>>(json) }
         .getOrDefault(emptyList())
 
-    // ── Phase 8.5: Lorebook / PromptInjection / QuickMessage CRUD(管理页用) ──
+    // ── Phase 8.5: Lorebook / PromptInjection / QuickMessage CRUD(Para la página de gestión) ──
 
     /**
-     * v1.97 (P1-1): 懒加载全部 Lorebook 条目(管理页进入时调用)。
-     * 替代原 init 中的常驻 Flow 收集器,减少聊天主流程的无谓 DB 观察开销。
+     * v1.97 (P1-1): Carga diferida de todas las entradas del Lorebook(Se llama cuando se ingresa a la página de administración.).
+     * Reemplace el colector de flujo residente en el inicio original,Reduzca la sobrecarga innecesaria de observación de la base de datos del proceso de chat principal.
      */
     fun refreshLorebooks() = miscCoordinator.refreshLorebooks()
 
-    /** ST-01: 收藏列表加载失败后的重试入口。 */
+    /** ST-01: Vuelva a intentar la entrada después de no poder cargar la lista de favoritos. */
     fun retryLoadFavorites() = loadFavorites()
 
-    /** ST-01: 归档会话列表加载失败后的重试入口。 */
+    /** ST-01: Reintente la entrada después de una carga fallida de la lista de sesiones de archivo. */
     fun retryLoadArchivedSessions() = loadArchivedSessions()
 
-    /** ST-01: 世界书列表加载失败后的重试入口。 */
+    /** ST-01: Vuelva a intentar la entrada después de que la lista mundial de libros no se cargue. */
     fun retryLoadLorebooks() = miscCoordinator.refreshLorebooks()
 
-    /** ST-01: 观察跨会话收藏消息,失败时记录 [favoritesError] 供收藏页错误态展示。 */
+    /** ST-01: Observe los mensajes favoritos en todas las sesiones,Error al iniciar sesión [favoritesError] Para mostrar el estado de error de la página de colección. */
     private fun loadFavorites() {
         viewModelScope.launch {
             try {
                 sessionRepository.observeAllFavorites().collect { favs ->
                     _state.update { it.copy(favoriteMessages = favs, isFavoritesLoading = false, favoritesError = null) }
-                    // §11-4: 标注旧版本收藏(重新生成后收藏指向旧行)。查询失败不能拖垮列表展示。
+                    // §11-4: Marcar versión antigua como favorita(La colección apunta a la antigua fila después de la regeneración.). El error de consulta no puede hacer que se muestre la lista.
                     _staleFavoriteIds.value = runCatching { sessionRepository.staleFavoriteIds(favs) }
                         .getOrDefault(emptySet())
                 }
@@ -5888,7 +5888,7 @@ class ChatViewModel(
         }
     }
 
-    /** ST-01: 观察已归档会话,失败时记录 [archivedSessionsError] 供归档页错误态展示。 */
+    /** ST-01: Observar conversaciones archivadas,Error al iniciar sesión [archivedSessionsError] Para visualización de errores en la página de archivo. */
     private fun loadArchivedSessions() {
         viewModelScope.launch {
             try {
@@ -5903,32 +5903,32 @@ class ChatViewModel(
         }
     }
 
-    /** Lorebook: 新增或更新。 */
+    /** Lorebook: Nuevo o actualizado. */
     fun saveLorebook(entity: LorebookEntity) = miscCoordinator.saveLorebook(entity)
 
-    /** Lorebook: 删除。 */
+    /** Lorebook: borrar. */
     fun deleteLorebook(id: String) = miscCoordinator.deleteLorebook(id)
 
     /**
-     * v1.97 (P1-1): 懒加载全部 PromptInjection 条目(管理页进入时调用)。
+     * v1.97 (P1-1): Carga diferida de todas las entradas de PromptInjection(Se llama cuando se ingresa a la página de administración.).
      */
     fun refreshPromptInjections() = miscCoordinator.refreshPromptInjections()
 
-    /** PromptInjection: 新增或更新。 */
+    /** PromptInjection: Nuevo o actualizado. */
     fun savePromptInjection(entity: PromptInjectionEntity) = miscCoordinator.savePromptInjection(entity)
 
-    /** PromptInjection: 删除。 */
+    /** PromptInjection: borrar. */
     fun deletePromptInjection(id: String) = miscCoordinator.deletePromptInjection(id)
 
     /**
-     * v1.97 (P1-1): 懒加载全部 QuickMessage 条目(管理页进入时调用)。
+     * v1.97 (P1-1): Carga diferida de todas las entradas de QuickMessage(Se llama cuando se ingresa a la página de administración.).
      */
     fun refreshAllQuickMessages() = miscCoordinator.refreshAllQuickMessages()
 
-    /** QuickMessage: 新增或更新。 */
+    /** QuickMessage: Nuevo o actualizado. */
     fun saveQuickMessage(entity: QuickMessageEntity) = miscCoordinator.saveQuickMessage(entity)
 
-    /** QuickMessage: 删除。 */
+    /** QuickMessage: borrar. */
     fun deleteQuickMessage(id: String) = miscCoordinator.deleteQuickMessage(id)
     private suspend fun persistCheckpointAndReleaseOutbox(
         state: StreamRunState,
@@ -5958,7 +5958,7 @@ class ChatViewModel(
                     createdAt = createdAt,
                 )
             }
-        }.onError { msg, _ -> Logger.w("ChatVM", "generation checkpoint 写入失败: $msg") }.isSuccess
+        }.onError { msg, _ -> Logger.w("ChatVM", "generation checkpoint Error de escritura: $msg") }.isSuccess
         if (checkpointPersisted && pendingOutboxId != null) {
             state.outboxId = null
         }

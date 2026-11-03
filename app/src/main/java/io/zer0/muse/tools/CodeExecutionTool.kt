@@ -11,49 +11,49 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * 代码执行工具(execute_javascript)。
+ * herramienta de ejecución de código(execute_javascript).
  *
- * 让 AI Agent 能在沙盒中执行 JavaScript 代码:数学计算、数据处理、简单算法等,
- * 扩展 Agent 能力。底层委托 [JsSandbox](WebView evaluateJavascript),不新增依赖。
+ * Habilite a los agentes de IA para ejecutar código JavaScript en una zona de pruebas:Cálculos matemáticos, procesamiento de datos, algoritmos simples, etc.,
+ * Amplíe las capacidades del agente. delegación subyacente [JsSandbox](WebView evaluateJavascript),No se agregan nuevas dependencias.
  *
- * 输入参数:
- *  - code: 必填,JS 代码字符串
- *  - timeout_ms: 可选,超时毫秒数,默认 10000(10 秒)
+ * parámetros de entrada:
+ *  - code: Requerido,JS cadena de código
+ *  - timeout_ms: Opcional,Tiempo de espera en milisegundos,Predeterminado 10000(10 segundos)
  *
- * 返回结构(JSON):
- *  - result: 执行返回值(JSON 字符串形式)
- *  - logs: console.log/warn/error 收集到的日志数组
- *  - error: 错误信息(超时/JS 异常);执行成功时为 null
+ * Estructura de devolución(JSON):
+ *  - result: Valor de retorno de ejecución(JSON forma de cadena)
+ *  - logs: console.log/warn/error Matriz de registros recopilados
+ *  - error: mensaje de error(tiempo de espera/JS anormal);Cuando la ejecución es exitosa, es null
  *
- * 桥接说明:
- *  - [execute] 是 suspend 函数(任务要求接口),供 SkillExecutor 等协程调用方直接调用
- *  - [executeFromArgs] 是同步函数,适配 ToolRegistry 的 ToolFn 签名 `(Map<String,String>) -> String`,
- *    内部用 runBlocking 桥接到 suspend — 因 [ToolRouteExecutionGuard.executeFromJson]
- *    在 IO 协程中调用,阻塞 IO 线程
- *    等待主线程 WebView 回调,主线程未被阻塞,无死锁风险
+ * Instrucciones de puente:
+ *  - [execute] es una función de suspensión(Interfaz de requisitos de tarea),Para llamadas directas de llamadores de rutina como SkillExecutor
+ *  - [executeFromArgs] es una función sincrónica,Adaptar la firma ToolFn de ToolRegistry `(Map<String,String>) -> String`,
+ *    RunBlocking utilizado internamente para establecer un puente suspend — porque [ToolRouteExecutionGuard.executeFromJson]
+ *    Llamado en rutina IO,Bloquear hilo IO
+ *    Espere la devolución de llamada de WebView del hilo principal,El hilo principal no está bloqueado.,Sin riesgo de estancamiento
  */
 object CodeExecutionTool {
 
-    /** 工具名(注册到 ToolRegistry 的 id)。 */
+    /** Nombre de la herramienta(Registrado en ToolRegistry id). */
     const val TOOL_NAME = "execute_javascript"
 
-    /** 默认超时毫秒数。 */
+    /** Tiempo de espera predeterminado en milisegundos. */
     private const val DEFAULT_TIMEOUT_MS = 10000L
 
     /**
-     * 工具定义(注册到 ToolRegistry)。
+     * Definición de herramienta(Regístrese para ToolRegistry).
      */
     fun toolDef() = ToolRegistry.ToolDef(
         name = TOOL_NAME,
         description =
-            "执行 JavaScript 代码并返回结果。可用 Math/JSON/Array 等标准库;" +
-                "脚本可以 return Promise,工具会等它完成再返回真实结果。" +
-                "网络:fetch/XHR 由宿主原生发起(不是浏览器请求),因此**不受 CORS 限制**," +
-                "http/https 都可以访问;每次外发都会记审计日志。" +
-                "不能跳转页面或读取本地文件。超时 10 秒。",
+            "Ejecute código JavaScript y devuelva resultados. Bibliotecas estándar disponibles como Math/JSON/Array;" +
+                "El guión puede return Promise,La herramienta esperará a que se complete antes de devolver el resultado real." +
+                "red:fetch/XHR Iniciado de forma nativa por el anfitrión(No es una solicitud del navegador),Por lo tanto**No restringido por CORS**," +
+                "http/https todos pueden acceder;Se registrarán registros de auditoría para cada transacción saliente." +
+                "No se puede saltar a páginas ni leer archivos locales. El tiempo de espera es de 10 segundos.",
         parameters = mapOf(
-            "code" to "必填,要执行的 JavaScript 代码(如 '1+2*3' / 'Math.max(1,2,3)' / 'JSON.stringify([1,2,3])')",
-            "timeout_ms" to "可选,超时毫秒数,默认 10000(10 秒)",
+            "code" to "Requerido,Código JavaScript para ejecutar(Como por ejemplo '1+2*3' / 'Math.max(1,2,3)' / 'JSON.stringify([1,2,3])')",
+            "timeout_ms" to "Opcional,Tiempo de espera en milisegundos,Predeterminado 10000(10 segundos)",
         ),
         required = setOf("code"),
         category = "built-in",
@@ -62,40 +62,40 @@ object CodeExecutionTool {
     )
 
     /**
-     * 执行 JavaScript 代码(suspend 接口,供 SkillExecutor 等协程调用)。
+     * Ejecutar código JavaScript(suspend interfaz,Llamado por corrutinas como SkillExecutor).
      *
-     * @param input 包含 code / timeout_ms 的 JSON 对象
-     * @return JSON 对象,包含 result / logs / error 字段
+     * @param input Objeto JSON que contiene código/timeout_ms
+     * @return JSON objeto,contiene result / logs / error campo
      */
     suspend fun execute(input: JsonObject): JsonObject {
-        // 解析必填 code 参数
+        // Analizar el parámetro de código requerido
         val codeElement = input["code"]
         val code = (codeElement as? JsonPrimitive)?.content
             ?: return buildResult(
                 result = null,
                 logs = emptyList(),
-                error = "参数 code 缺失或非字符串",
+                error = "Falta el código de parámetro o no es una cadena",
             )
         if (code.isBlank()) {
             return buildResult(
                 result = null,
                 logs = emptyList(),
-                error = "参数 code 不能为空",
+                error = "El código de parámetro no puede estar vacío",
             )
         }
 
-        // 解析可选 timeout_ms 参数
+        // Analizar el parámetro opcional timeout_ms
         val timeoutMs = (input["timeout_ms"] as? JsonPrimitive)?.content?.toLongOrNull()
             ?: DEFAULT_TIMEOUT_MS
         if (timeoutMs <= 0 || timeoutMs > 60_000L) {
             return buildResult(
                 result = null,
                 logs = emptyList(),
-                error = "参数 timeout_ms 须在 1..60000 范围内",
+                error = "El parámetro timeout_ms debe estar en el rango de 1..60000",
             )
         }
 
-        // 调用 JsSandbox 执行
+        // Llame a JsSandbox para ejecutar
         val result = JsSandbox.execute(code, timeoutMs)
         return result.fold(
             onSuccess = { jsResult ->
@@ -106,14 +106,14 @@ object CodeExecutionTool {
                 )
             },
             onFailure = { e ->
-                Logger.e("CodeExecutionTool", "JsSandbox 执行失败: ${e.message}", e)
-                // 环境不可用与代码写错要分开报：前者重试一万次也不会好，
-                // 旧文案把内部类名透给模型，会被当成参数错而白白重试。
+                Logger.e("CodeExecutionTool", "JsSandbox La ejecución falló: ${e.message}", e)
+                // La falta de disponibilidad del entorno y los errores de escritura de código deben informarse por separado: lo primero no funcionará incluso si lo intenta nuevamente 10,000 veces.
+                // Si la copia anterior revela el nombre de la clase interna al modelo, se considerará un error de parámetro y el reintento será en vano.
                 val msg = if (e is JsSandbox.JsSandboxUnavailableException) {
-                    "JS 执行环堷不可用（环境自检未通过：${e.message}）。这不是代码写法的问题，重试同一段代码不会成功；" +
-                        "请改用 execute_node_script，或告知用户本机 JS 沙盒暂时不可用。"
+                    "JS El entorno de ejecución no está disponible (la autoprueba del entorno falló:${e.message}). Esto no es un problema con la forma en que está escrito el código. Intentar el mismo fragmento de código nuevamente no tendrá éxito;" +
+                        "Utilice enable_node_script en su lugar o informe al usuario que el entorno limitado de JS nativo no está disponible temporalmente."
                 } else {
-                    e.message ?: "未知执行错误"
+                    e.message ?: "Error de ejecución desconocido"
                 }
                 buildResult(
                     result = null,
@@ -125,20 +125,20 @@ object CodeExecutionTool {
     }
 
     /**
-     * 同步桥接:适配 ToolRegistry 的 ToolFn 签名。
+     * Puente sincrónico:Adapte la firma ToolFn de ToolRegistry.
      *
-     * 内部用 [runBlocking] 调用 suspend [execute]:
-     *  - [ToolRouteExecutionGuard.executeFromJson] 在 IO 协程中调用,
-     *    当前线程为 IO 线程,阻塞等待主线程 WebView 回调时主线程空闲,无死锁风险
-     *  - 必须先调 [JsSandbox.init] 注入 Application Context(幂等)
+     * Para uso interno [runBlocking] llamar suspend [execute]:
+     *  - [ToolRouteExecutionGuard.executeFromJson] Llamado en rutina IO,
+     *    El hilo actual es un hilo IO,El hilo principal está inactivo cuando se bloquea esperando la devolución de llamada de WebView del hilo principal,Sin riesgo de estancamiento
+     *  - Primero se debe ajustar [JsSandbox.init] inyectar Application Context(idempotente)
      *
-     * @param args 参数 map(code / timeout_ms)
-     * @param context 用于初始化 JsSandbox
-     * @return JSON 字符串,结构同 [execute] 的 JsonObject 序列化结果
+     * @param args parámetros map(code / timeout_ms)
+     * @param context para inicialización JsSandbox
+     * @return JSON cuerda,Misma estructura [execute] El resultado de la serialización de JsonObject
      */
     fun executeFromArgs(args: Map<String, String>, context: Context): String {
         JsSandbox.init(context)
-        // 把 Map<String, String> 转为 JsonObject 后委托给 suspend execute
+        // poner Map<String, String> Convierta a JsonObject y luego delega en suspend execute
         val input = buildJsonObject {
             args["code"]?.let { put("code", it) }
             args["timeout_ms"]?.let { put("timeout_ms", it) }
@@ -150,29 +150,29 @@ object CodeExecutionTool {
     }
 
     /**
-     * 构造执行结果 JsonObject。
+     * Resultado de la ejecución de la construcción JsonObject.
      *
-     * 字段约定(任务要求):
-     *  - result: string — 执行返回值(JSON 字符串形式,null 表示无返回值)
-     *  - logs: array — console 日志数组,每项为字符串
-     *  - error: string? — 错误信息,执行成功时为 null
+     * convención de campo(Requisitos de la misión):
+     *  - result: string — Valor de retorno de ejecución(JSON forma de cadena,null Indica que no hay valor de retorno)
+     *  - logs: array — console matriz de registro,Cada elemento es una cadena.
+     *  - error: string? — mensaje de error,Cuando la ejecución es exitosa, es null
      */
     private fun buildResult(result: Any?, logs: List<String>, error: String?): JsonObject = buildJsonObject {
-        // result 始终为 string(任务要求);无返回值时用空字符串
+        // result siempre string(Requisitos de la misión);Utilice una cadena vacía cuando no haya valor de retorno
         val resultStr = when (result) {
             null -> ""
             is String -> result
             else -> result.toString()
         }
         put("result", resultStr)
-        // logs 数组
+        // logs matriz
         put(
             "logs",
             buildJsonArray {
                 logs.forEach { add(JsonPrimitive(it)) }
             },
         )
-        // error 可为 null
+        // error puede ser null
         if (error != null) {
             put("error", error)
         } else {

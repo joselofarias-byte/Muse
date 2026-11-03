@@ -1,19 +1,19 @@
-Muse v2.5.2 (versionCode 252) 发布校验记录
+Muse v2.5.2 (versionCode 252) Liberar registros de verificación
 ------------------------------------------------
 
 sourceCommit: 98fa5eb0
-versionName/versionCode: 2.5.2 / 252（显式注入）
-数据库版本: 109（与 2.5.0/2.5.1 相同，无迁移）
+versionName/versionCode: 2.5.2 / 252(inyección explícita)
+Versión de la base de datos: 109(Igual que 2.5.0/2.5.1, sin migración)
 
-门禁
+control de acceso
 ----
 - :app:compileDebugKotlin          PASS
 - :app:detekt                      PASS
-- :app:ktlintKotlinSourceCheck     PASS（基线重建）
-- :app:testDebugUnitTest           PASS（全量 3m31s）
-- ci lanes（含本地化严格校验）      PASS
+- :app:ktlintKotlinSourceCheck     PASS(reconstrucción inicial)
+- :app:testDebugUnitTest           PASS(Volumen completo 3m31s)
+- ci lanes(Incluida una estricta verificación de localización)      PASS
 
-分发 (E:\1Project\Muse\releases\v2.5.2\)
+Distribuir (E:\1Project\Muse\releases\v2.5.2\)
 -----------------------
 Muse_v2.5.2_arm64-v8a.apk
   size=85643974
@@ -25,8 +25,8 @@ Muse_v2.5.2_universal.apk
   size=160830835
   sha256=35098da788b2f467a1472822f65a928cc2a89a3cd1ecff608f0aaf527db6ff71
 
-说明
+Descripción
 ----
-液态玻璃重设计：补齐边缘三要素（高光边/暗边/光扫）、双风格视觉区分、
-顶栏改独立岛、气泡改假玻璃。默认仍关闭（设置 → 外观可开启）。
-本包仅本地构建，未发布 GitHub Release（待用户真机确认观感）。
+Rediseño de vidrio líquido: complementa los tres elementos del borde (borde de alto brillo/borde oscuro/Escaneo de luz), distinción visual de estilo dual,
+La barra superior se cambia a una isla independiente y las burbujas se cambian a vidrio falso. Aún está desactivado de forma predeterminada (configuración → La apariencia se puede activar).
+Este paquete solo se creó localmente y no se lanzó en GitHub Release (lo confirmarán los usuarios en máquinas reales).

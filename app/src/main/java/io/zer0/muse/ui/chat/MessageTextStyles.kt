@@ -11,13 +11,13 @@ import androidx.compose.ui.unit.sp
 import io.zer0.muse.ui.theme.MoodSkinColors
 
 /**
- * 消息文本样式辅助函数。
+ * Función auxiliar de estilo de texto de mensaje.
  *
- * 从 MessageBubble.kt 拆出，集中处理 mood 内联特效与搜索高亮，
- * 避免继续膨胀消息气泡单体文件。
+ * Separado de MessageBubble.kt, céntrese en los efectos especiales en línea del estado de ánimo y el resaltado de búsqueda.
+ * Evite seguir inflando la burbuja del mensaje en una sola fila.
  */
 
-/** B6-02: 把 [glow]/[big]/[shake] 等内联特效转成 AnnotatedString 样式。 */
+/** B6-02: poner [glow]/[big]/[shake] Espere a que los efectos en línea se conviertan al estilo AnnotatedString. */
 internal fun buildMoodSkinAnnotated(text: String): AnnotatedString {
     val regex = Regex("""\[(glow|big|huge|whisper|red|shake|blur|glitch)\]([\s\S]*?)\[/\1\]""", RegexOption.IGNORE_CASE)
     val matches = regex.findAll(text).toList()
@@ -35,7 +35,7 @@ internal fun buildMoodSkinAnnotated(text: String): AnnotatedString {
     }
 }
 
-// 情绪特效使用固定字号，属装饰性内联样式，不进入正文排版层级
+// Los efectos especiales emocionales utilizan tamaños de fuente fijos, son estilos decorativos en línea y no ingresan al nivel de diseño del texto.
 private fun moodSkinEffectStyle(effect: String): SpanStyle = when (effect) {
     "glow" -> SpanStyle(color = MoodSkinColors.glow, fontWeight = FontWeight.SemiBold)
     "big" -> SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold) // mood effect
@@ -48,7 +48,7 @@ private fun moodSkinEffectStyle(effect: String): SpanStyle = when (effect) {
     else -> SpanStyle()
 }
 
-/** 功能1: 构建带高亮的 AnnotatedString。 */
+/** Función1: Construye una AnnotatedString con resaltado. */
 @Composable
 internal fun buildHighlightedText(text: String, query: String): AnnotatedString {
     val highlightColor = MaterialTheme.colorScheme.primaryContainer

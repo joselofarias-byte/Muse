@@ -10,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: Provider 插件 DTO 与转换纯逻辑测试。
+ * R-TEST-20: Provider Complemento de DTO y pruebas de lógica pura de conversión.
  */
 class ProviderPluginRegistryTest {
 

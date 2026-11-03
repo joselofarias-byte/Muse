@@ -33,30 +33,30 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v1.0.18: OpenAI 兼容图片生成 Provider。
+ * v1.0.18: OpenAI Compatible con proveedor de generación de imágenes.
  *
- * 兼容 OpenAI 官方及所有 OpenAI 兼容中转站的绘图接口。从原 ImageService 抽离,
- * 保留成熟的参数校验、重试、错误解析与参考图(multipart)逻辑。
+ * Compatible con OpenAI oficial y todas las interfaces de dibujo de estaciones de transferencia compatibles con OpenAI. Separado del ImageService original,
+ * Conservar verificación de parámetros maduros, reintentos, análisis de errores y diagramas de referencia.(multipart)lógica.
  *
- * 端点:
- *  - 文生图: POST {baseUrl}/images/generations
- *  - 图生图: POST {baseUrl}/images/edits(gpt-image 系列 / dall-e-2)
+ * punto final:
+ *  - Cuadro vicenciano: POST {baseUrl}/images/generations
+ *  - Tu Sheng Tu: POST {baseUrl}/images/edits(gpt-image Serie / dall-e-2)
  *
- * 模型行为差异:
- *  - DALL-E 3: 固定尺寸 1024x1024 / 1792x1024 / 1024x1792,不支持参考图;
- *  - DALL-E 2: 支持参考图(/images/edits),n 可达 10;
- *  - gpt-image-1: 支持参考图(/images/edits),不支持 response_format 参数。
+ * Diferencias de comportamiento del modelo:
+ *  - DALL-E 3: tamaño fijo 1024x1024 / 1792x1024 / 1024x1792,No se admiten imágenes de referencia.;
+ *  - DALL-E 2: Imágenes de referencia de soporte(/images/edits),n Accesible 10;
+ *  - gpt-image-1: Imágenes de referencia de soporte(/images/edits),El parámetro Response_Format no es compatible.
  *
- * 路径来源: ProviderSpecificConfig.OpenAI.imagesPath(默认 /images/generations),
- * edits 路径把末尾 generations 段替换为 edits(对齐旧 ImageService 实现)。
+ * fuente de ruta: ProviderSpecificConfig.OpenAI.imagesPath(Predeterminado /images/generations),
+ * edits Path reemplaza el segmento de últimas generaciones con edits(Alinear la implementación antigua de ImageService).
  */
 class OpenAIImageProvider(
     private val client: OkHttpClient,
     private val keyRotationFactory: (ProviderConfig) -> ProviderKeyRotation = { ProviderKeyRotation(it) },
     /**
-     * G4: http(s) 参考图下载前的 SSRF 预校验器(返回 true 表示放行,false 拒绝该 URL)。
-     * 与 [AgnesImageProvider] 相同:由 app 层 Koin 装配注入(SsrfBridgeModule),
-     * null 时回退旧行为(http(s) 直接下载、无校验)。
+     * G4: http(s) Verificador previo de la SSRF antes de descargar la imagen de referencia(Devuelve verdadero para indicar lanzamiento,false rechazar el URL).
+     * con [AgnesImageProvider] Lo mismo:Inyectado por el ensamblaje Koin de la capa de aplicación(SsrfBridgeModule),
+     * null revertir el viejo comportamiento(http(s) Descarga directa, sin verificación).
      */
     private val referenceImageUrlValidator: RefImageUrlValidator? = null,
 ) : ImageProvider {
@@ -79,14 +79,14 @@ class OpenAIImageProvider(
             ?: ImageModelCatalog.DEFAULT_MODEL_ID
         val model = ImageModelCatalog.resolveById(effectiveModelId)
 
-        // 参数校验(复用旧 ImageService.validateParams 逻辑)
+        // Verificación de parámetros(Reutilizar la antigua lógica ImageService.validateParams)
         val validated = validateParams(request, effectiveModelId, model)
         val hasReference = validated.referenceImages.isNotEmpty()
         if (hasReference && model != null && !model.supportsReferenceImage) {
             error(ErrorCode.IMAGE_UNSUPPORTED_MODEL.toMessage(effectiveModelId))
         }
 
-        // 端点路径:优先 ProviderSpecificConfig.OpenAI.imagesPath
+        // ruta del punto final:Prioridad ProviderSpecificConfig.OpenAI.imagesPath
         val generationsPath = specific.imagesPath.trim().trim('/').ifBlank { "images/generations" }
         val editsPath = if (generationsPath.endsWith("generations")) {
             generationsPath.removeSuffix("generations").trimEnd('/') + "/edits"
@@ -99,10 +99,10 @@ class OpenAIImageProvider(
 
         Logger.i(TAG, "submit: model=$effectiveModelId size=${validated.size} n=${validated.n} ref=$hasReference")
 
-        // T1.2: 多 Key 轮换 — 用 effective key 构造 header;429 时切下一个 key 重试
+        // T1.2: Rotación de múltiples claves — Construido con clave efectiva header;429 Corta la siguiente clave y vuelve a intentarlo.
         val keyRotation = keyRotationFactory(config)
         val initialKey = keyRotation.effectiveApiKey()
-        // 参考图字节解析(仅 hasReference 时执行,与原有 buildEditsRequest 行为一致)
+        // Análisis de bytes de imagen de referencia.(Sólo se ejecuta cuando tiene Referencia,Consistente con el comportamiento original de buildEditsRequest)
         val editsRequest: Request? = if (hasReference) {
             buildEditsRequest(url, initialKey, validated, model)
         } else {
@@ -112,9 +112,9 @@ class OpenAIImageProvider(
 
         try {
             var resp = execWithRetry(initialRequest)
-            // T1.2: 429 限流时切到下一个 key 重试一次(仅多 key 场景)
+            // T1.2: 429 Cuando la corriente sea limitada, cambie a la siguiente tecla e inténtelo de nuevo.(Solo escenarios de múltiples claves)
             if (resp.code == 429 && keyRotation.switchToNextKey()) {
-                Logger.i(TAG, "openai image 429, 切换到下一个 key 重试")
+                Logger.i(TAG, "openai image 429, Cambie a la siguiente clave e inténtelo de nuevo")
                 resp.close()
                 val retryKey = keyRotation.effectiveApiKey()
                 val retryRequest = if (hasReference) {
@@ -150,7 +150,7 @@ class OpenAIImageProvider(
                 if (declaredLen > MAX_RESPONSE_BODY_BYTES) {
                     error(ErrorCode.IMAGE_RESPONSE_TOO_LARGE.toMessage(declaredLen / 1024 / 1024))
                 }
-                // B-03: chunked/未声明长度时 contentLength 检查不生效,用流式限长读取兜底
+                // B-03: chunked/La verificación de contentLength no surte efecto cuando no se declara la longitud,Utilice el límite de duración de la transmisión para leer el resultado final
                 val (respBody, overLimit) = ProviderHttpSupport.readBodyCappedStreaming(r, MAX_RESPONSE_BODY_BYTES.toInt())
                 if (overLimit) {
                     error(ErrorCode.IMAGE_RESPONSE_TOO_LARGE.toMessage(MAX_RESPONSE_BODY_BYTES / 1024 / 1024))
@@ -163,19 +163,19 @@ class OpenAIImageProvider(
                 val mime = model?.outputMime ?: "image/png"
                 val images = data.mapNotNull { item ->
                     val obj = item.jsonObject
-                    // B-01 (生图链路): 只接受字符串标量 — JSON null / 数字 / 布尔
-                    // (JsonPrimitive.content 对非字符串原样返回,如 "123"/"true")一律过滤,
-                    // 否则拼出 "data:image/png;base64,123" 假图;字面量 "null" 字符串也过滤。
+                    // B-01 (Enlace de imagen sin formato): Sólo acepta cadenas escalares — JSON null / Número/Booleano
+                    // (JsonPrimitive.content Devuelve no cadenas tal como están,Como por ejemplo "123"/"true")Siempre filtrar,
+                    // De lo contrario, deletrea "data:image/png;base64,123" foto falsa;literal "null" Las cadenas también se filtran.
                     val b64 = (obj["b64_json"] as? JsonPrimitive)
                         ?.takeIf { it.isString }
                         ?.content?.takeIf { it.isNotBlank() && it != "null" }
-                    // B-01: url 必须是 http(s) 或 data:image/ 前缀
+                    // B-01: url debe ser http(s) o datos:imagen/prefijo
                     val url = (obj["url"] as? JsonPrimitive)
                         ?.takeIf { it.isString }
                         ?.content?.takeIf { it.startsWith("http") || it.startsWith("data:image/") }
                     if (b64 == null && url == null) null else GeneratedImage(base64 = b64, url = url)
                 }
-                // 保留 mime 在 base64 字段中,由 ImageService 拼 data URI 时剥离
+                // Mantener mimo en el campo base64,Eliminado al deletrear el URI de datos por ImageService
                 val withMime = images.map { img ->
                     if (img.base64 != null) img.copy(base64 = "$mime|${img.base64}") else img
                 }
@@ -192,13 +192,13 @@ class OpenAIImageProvider(
     }
 
     override suspend fun poll(taskId: String): ImagePollResult {
-        // OpenAI 图片生成同步返回,不支持异步任务
-        error("OpenAI 图片生成不支持异步任务: $taskId")
+        // OpenAI Generación y retorno de imágenes sincrónicamente.,No se admiten tareas asincrónicas
+        error("OpenAI La generación de imágenes no admite tareas asincrónicas.: $taskId")
     }
 
     /**
-     * 参数校验(迁移自旧 ImageService.validateParams)。
-     * 把 [ImageGenRequest] 规范化为带模型能力约束的 [ValidatedParams]。
+     * Verificación de parámetros(Migrado de viejo ImageService.validateParams).
+     * poner [ImageGenRequest] Normalizado para modelar restricciones de capacidad. [ValidatedParams].
      */
     private fun validateParams(request: ImageGenRequest, modelId: String, model: ImageModel?): ValidatedParams {
         if (model == null) {
@@ -284,8 +284,8 @@ class OpenAIImageProvider(
     }
 
     /**
-     * 把参考图 URI 解析为字节数组(迁移自旧 ImageService.resolveImageBytes)。
-     * 支持 http/https URL、data URI、本地 file URI。content:// 由 app 层提前转 data URI。
+     * Analizar el URI de la imagen de referencia en una matriz de bytes(Migrado de viejo ImageService.resolveImageBytes).
+     * Admite URL http/https,data URI, URI del archivo local.content:// Convierta el URI de datos por adelantado desde la capa de aplicación.
      */
     private suspend fun resolveImageBytes(uri: String): ByteArray? {
         return when {
@@ -300,8 +300,8 @@ class OpenAIImageProvider(
                 error(ErrorCode.IMAGE_INVALID_URI.toMessage("content_uri"))
             }
             uri.startsWith("http") -> {
-                // G4: 注入校验器非空时先过 SSRF 校验(内网/保留地址 → 拒绝);
-                // 未注入(null)时回退旧行为直接下载。
+                // G4: Si el verificador de inyección no está vacío, primero pasará la verificación SSRF.(Intranet/dirección reservada → rechazar);
+                // No inyectado(null)Vuelva al comportamiento anterior al descargar directamente.
                 val validator = referenceImageUrlValidator
                 if (validator != null && !validator.isAllowed(uri)) {
                     error(ErrorCode.IMAGE_INVALID_URI.toMessage("ssrf_blocked"))
@@ -324,8 +324,8 @@ class OpenAIImageProvider(
                 }
             }
             else -> {
-                // 审计修复 (6.4): file 分支补大小限制(其他分支都有 MAX_REF_IMAGE_BYTES 检查,
-                // 唯独此处直接 readBytes,超大本地文件 OOM)。
+                // Reparación de auditoría (6.4): file Límite de tamaño del complemento de rama(Otras sucursales tienen comprobaciones MAX_REF_IMAGE_BYTES,
+                // Solo aqui esta el directo readBytes,Archivos locales muy grandes OOM).
                 val file = java.io.File(uri.removePrefix("file:"))
                 if (!file.exists()) return null
                 if (file.length() > MAX_REF_IMAGE_BYTES) {
@@ -336,7 +336,7 @@ class OpenAIImageProvider(
         }
     }
 
-    /** 从字节头推断图片 MIME 类型(迁移自旧 ImageService.inferImageMime)。 */
+    /** Inferir el tipo MIME de la imagen a partir del encabezado del byte(Migrado de viejo ImageService.inferImageMime). */
     private fun inferImageMime(bytes: ByteArray): String {
         if (bytes.size < 4) return "image/png"
         return when {
@@ -354,7 +354,7 @@ class OpenAIImageProvider(
         }
     }
 
-    /** 尝试解析 OpenAI 错误结构 {"error":{"message","code","type"}}。 */
+    /** Intente analizar la estructura de error de OpenAI {"error":{"message","code","type"}}. */
     private fun parseOpenAiError(body: String): String? {
         if (body.isBlank()) return null
         return resultOf {
@@ -379,10 +379,10 @@ class OpenAIImageProvider(
     }
 
     /**
-     * 对 429 做有限重试(1 次,迁移自旧 ImageService.execWithRetry)。
-     * 图片生成按次计费,C-02: 仅对确定未产生收费的失败(429 限流)重试;
-     * SocketTimeoutException(readTimeout)不再重试 — 请求可能已被服务端接收并生成
-     * (响应超时),重试会重复扣费。
+     * Haga un reintento limitado en 429(1 veces,Migrado de viejo ImageService.execWithRetry).
+     * Pago por visión de generación de imágenes,C-02: Sólo para fallas en las que se determina que no se incurrió en cargos(429 Limitación de corriente)Inténtalo de nuevo;
+     * SocketTimeoutException(readTimeout)no lo intentes de nuevo — La solicitud puede haber sido recibida y generada por el servidor.
+     * (Tiempo de espera de respuesta),El reintento resultará en deducciones repetidas.
      */
     private suspend fun execWithRetry(request: Request): Response {
         val resp = exec(request)
@@ -393,7 +393,7 @@ class OpenAIImageProvider(
         return exec(request)
     }
 
-    /** 校验后的参数集合(内部传递用)。 */
+    /** Conjunto de parámetros verificado(Para transmisión interna). */
     private data class ValidatedParams(
         val prompt: String,
         val model: String,
@@ -408,7 +408,7 @@ class OpenAIImageProvider(
     companion object {
         private const val TAG = "OpenAIImageProvider"
 
-        /** R-TEST-20: 文生图请求体构造纯函数。 */
+        /** R-TEST-20: Vincent gráfico solicita función pura del constructor del cuerpo. */
         @Suppress("LongParameterList")
         internal fun buildGenerationsBody(
             prompt: String,
@@ -428,13 +428,13 @@ class OpenAIImageProvider(
             if (responseFormat.isNotBlank()) put("response_format", responseFormat)
         }.toString()
 
-        /** Provider 唯一标识。 */
+        /** Provider Identificador único. */
         const val PROVIDER_ID = "openai"
 
-        /** 参考图大小上限 10MB。 */
+        /** El tamaño máximo de imagen de referencia es de 10 MB. */
         private const val MAX_REF_IMAGE_BYTES = 10L * 1024 * 1024
 
-        /** 成功响应体大小上限 20MB(防止 b64_json 多图峰值内存)。 */
+        /** Tamaño máximo del cuerpo de respuesta exitosa 20MB(Evitar picos de memoria de múltiples imágenes b64_json). */
         private const val MAX_RESPONSE_BODY_BYTES = 20L * 1024 * 1024
     }
 }

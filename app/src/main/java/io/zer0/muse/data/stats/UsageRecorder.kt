@@ -3,24 +3,24 @@ package io.zer0.muse.data.stats
 import io.zer0.common.Logger
 
 /**
- * 用量流水写入器。
+ * Escritor de flujo de uso.
  *
- * 单一入口，保证每次模型请求的记录口径一致；调用方无需关心去重与异常。
- * 写入失败只记日志、不向上抛——统计是旁路能力，绝不能因为它中断对话。
+ * Una sola entrada garantiza que el calibre del registro de cada solicitud de modelo sea consistente; la persona que llama no necesita preocuparse por la deduplicación y las excepciones.
+ * Si la escritura falla, solo se registrará y no se enviará hacia arriba.——Las estadísticas son una capacidad de omisión y nunca deben usarse para interrumpir una conversación.
  */
 class UsageRecorder(private val dao: UsageRecordDao) {
 
     /**
-     * 记录一次请求。
+     * Registre una solicitud.
      *
-     * @param source 来源，见 [UsageSource]
-     * @param promptTokens 输入 token
-     * @param completionTokens 输出 token（已含 reasoning，避免重复计）
-     * @param reasoningTokens 推理 token（仅展示）
-     * @param cachedTokens 缓存**读取** token（仅展示）
-     * @param cacheWriteTokens 缓存**写入** token（仅展示;与读取分列，两者单价不同）
-     * @param firstTokenMs 首字延迟；0 表示未记录（非流式）
-     * @param durationMs 总耗时；0 表示未记录
+     * @param source fuente, ver [UsageSource]
+     * @param promptTokens entrada token
+     * @param completionTokens Token de salida (ya incluye razonamiento para evitar el doble conteo)
+     * @param reasoningTokens Token de razonamiento (solo visualización)
+     * @param cachedTokens caché**leer** token(solo visualización)
+     * @param cacheWriteTokens caché**escribir** token(mostrar sólo;En comparación con las columnas de lectura, el precio unitario de las dos es diferente)
+     * @param firstTokenMs Retraso de la primera palabra;0 Indica no grabado (sin transmisión)
+     * @param durationMs Tiempo total empleado;0 significa no registrado
      */
     suspend fun record(
         source: String,
@@ -34,7 +34,7 @@ class UsageRecorder(private val dao: UsageRecordDao) {
         firstTokenMs: Long = 0,
         durationMs: Long = 0,
     ) {
-        // 全零记录没有统计价值，只会在表里堆垃圾（如本地工具轮、缓存命中回放）。
+        // Los registros totalmente cero no tienen valor estadístico y solo acumularán basura en la tabla (como ruedas de herramientas locales y reproducción de visitas de caché).
         if (promptTokens == 0 && completionTokens == 0) return
         runCatching {
             dao.insert(
@@ -53,19 +53,19 @@ class UsageRecorder(private val dao: UsageRecordDao) {
                 ),
             )
         }.onFailure {
-            Logger.w("UsageRecorder", "写入用量记录失败(source=$source): ${it.message}")
+            Logger.w("UsageRecorder", "No se pudo escribir el registro de uso(source=$source): ${it.message}")
         }
     }
 
     /**
-     * 清理过期记录。
+     * Limpiar registros caducados.
      *
-     * 用量表只增不减，长期使用会持续增长；保留 [retentionDays] 天足够看趋势。
+     * La escala de uso sólo aumenta, no disminuye, y seguirá creciendo con el uso a largo plazo; retener [retentionDays] Los días son suficientes para ver tendencias.
      */
     suspend fun pruneOlderThan(retentionDays: Int = 180) {
         if (retentionDays <= 0) return
         val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
         runCatching { dao.deleteBefore(cutoff) }
-            .onFailure { Logger.w("UsageRecorder", "清理用量记录失败: ${it.message}") }
+            .onFailure { Logger.w("UsageRecorder", "No se pudieron borrar los registros de uso: ${it.message}") }
     }
 }

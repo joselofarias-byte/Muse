@@ -18,17 +18,17 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * P2-33: SSRF 冷域名解析不再阻塞主线程(WebView 回调路径)。
+ * P2-33: SSRF La resolución de nombres de dominio en frío ya no bloquea el hilo principal(WebView ruta de devolución de llamada).
  *
- * 通过 [SsrfGuard.setResolverForTest] 注入「慢解析器」替身,确定性验证:
- *  - 解析发生在 Dispatchers.IO 工作线程,绝不在调用线程(主线程)上执行 DNS;
- *  - 首次解析的结果写入缓存,后续 [WebViewSsrfGate.isBlockedNow] / [WebViewSsrfGate.isBlockedBlocking]
- *    调用都不再触发 DNS;
- *  - 缓存未命中时主线程路径 fail-closed 立即拦截(而不是同步等待 DNS),预热完成后可重试放行。
+ * Pase [SsrfGuard.setResolverForTest] Inyectar sustituto de "analizador lento",Verificación determinista:
+ *  - El análisis se produce en el hilo de trabajo de Dispatchers.IO,Nunca en el hilo de llamadas.(hilo principal)ejecutar en DNS;
+ *  - El primer resultado analizado se escribe en la memoria caché.,Seguimiento [WebViewSsrfGate.isBlockedNow] / [WebViewSsrfGate.isBlockedBlocking]
+ *    Las llamadas ya no se activan DNS;
+ *  - Cuando falla el caché, la ruta del hilo principal cerrada por error se intercepta inmediatamente.(En lugar de esperar sincrónicamente DNS),La liberación se puede volver a intentar una vez completado el precalentamiento.
  */
 class WebViewSsrfGateTest {
 
-    /** 慢解析器替身:记录调用次数与解析线程,并放大延迟以模拟冷域名 DNS。 */
+    /** Suplente de analizador lento:Registrar el número de llamadas y analizar hilos.,y amplificar la latencia para simular DNS de dominio frío. */
     private class SlowResolver(
         private val delayMs: Long,
         private val addresses: Array<InetAddress>,
@@ -44,7 +44,7 @@ class WebViewSsrfGateTest {
                 try {
                     Thread.sleep(10)
                 } catch (_: InterruptedException) {
-                    // 解析替身不响应中断:模拟真实 DNS 不可取消
+                    // El análisis doble no responde a las interrupciones.:Simula DNS real y no se puede cancelar.
                 }
             }
             return addresses
@@ -64,7 +64,7 @@ class WebViewSsrfGateTest {
         resolveBlocking = SsrfGuard::isBlocked,
     )
 
-    /** 字面量 IP 不触发真实 DNS,保证单测离线可重复。 */
+    /** La IP literal no se activa como verdadera DNS,Asegúrese de que una sola prueba se pueda repetir sin conexión. */
     private fun publicAddresses(): Array<InetAddress> = arrayOf(InetAddress.getByName("8.8.8.8"))
 
     private fun privateAddresses(): Array<InetAddress> = arrayOf(InetAddress.getByName("127.0.0.1"))
@@ -78,11 +78,11 @@ class WebViewSsrfGateTest {
         val callerThread = Thread.currentThread().name
         val blocked = gate.isBlockedAsync("http://cold-ssrf-a.example/")
 
-        assertFalse("公网地址应放行", blocked)
+        assertFalse("Las direcciones de redes públicas deben publicarse", blocked)
         assertEquals(1, resolver.calls.get())
-        assertNotEquals("解析绝不能发生在调用线程(主线程)上", callerThread, resolver.resolveThreads.single())
+        assertNotEquals("El análisis nunca debe ocurrir en el hilo de llamada(hilo principal)en", callerThread, resolver.resolveThreads.single())
         assertTrue(
-            "解析应落在 Dispatchers.IO 工作线程,实际=${resolver.resolveThreads.single()}",
+            "El análisis debería recaer en el subproceso de trabajo de Dispatchers.IO,real=${resolver.resolveThreads.single()}",
             resolver.resolveThreads.single().startsWith("DefaultDispatcher-worker"),
         )
     }
@@ -95,14 +95,14 @@ class WebViewSsrfGateTest {
         val url = "http://cold-ssrf-b.example/"
 
         assertFalse(gate.isBlockedAsync(url))
-        // 首次解析已进缓存 → 主线程只读缓存即可判定
+        // El primer análisis ha sido almacenado en caché. → El caché de solo lectura del hilo principal se puede utilizar para determinar
         assertEquals(false, SsrfGuard.cachedVerdictOrNull(url))
         val startedAt = System.nanoTime()
         assertFalse(gate.isBlockedNow(url))
         val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
-        assertTrue("缓存命中不应阻塞调用线程(实测 ${elapsedMs}ms)", elapsedMs < 100)
+        assertTrue("Los aciertos de caché no deberían bloquear el hilo de llamada(Medición real ${elapsedMs}ms)", elapsedMs < 100)
         assertFalse(gate.isBlockedBlocking(url))
-        assertEquals("同一主机只解析一次(首次解析也被缓存覆盖)", 1, resolver.calls.get())
+        assertEquals("El mismo host sólo se resuelve una vez(El caché también sobrescribe el primer análisis.)", 1, resolver.calls.get())
     }
 
     @Test
@@ -117,15 +117,15 @@ class WebViewSsrfGateTest {
         val blocked = gate.isBlockedNow(url) { retried.set(true) }
         val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
 
-        assertTrue("冷主机必须 fail-closed", blocked)
-        assertTrue("主线程路径不得等待 DNS(实测 ${elapsedMs}ms)", elapsedMs < 100)
-        assertFalse("预热未完成前不重试", retried.get())
+        assertTrue("El anfitrión frío debe fail-closed", blocked)
+        assertTrue("La ruta del hilo principal no debe esperar DNS(Medición real ${elapsedMs}ms)", elapsedMs < 100)
+        assertFalse("No lo vuelva a intentar antes de que se complete el precalentamiento.", retried.get())
 
         withTimeout(5_000) {
             while (!retried.get()) delay(10)
         }
         assertEquals(1, resolver.calls.get())
-        // 预热完成 → 同一主机后续判定直接命中缓存,不再拦截
+        // Precalentamiento completado → Los juicios posteriores del mismo host impactan directamente en el caché.,No más intercepciones
         assertFalse(gate.isBlockedNow(url))
     }
 
@@ -136,7 +136,7 @@ class WebViewSsrfGateTest {
         val gate = gate()
         val url = "http://cold-ssrf-d.example/"
 
-        assertTrue("内网地址必须拦截", gate.isBlockedAsync(url))
+        assertTrue("Las direcciones de intranet deben estar bloqueadas", gate.isBlockedAsync(url))
         assertEquals(true, SsrfGuard.cachedVerdictOrNull(url))
         assertTrue(gate.isBlockedNow(url))
         assertTrue(gate.isBlockedBlocking(url))
@@ -150,10 +150,10 @@ class WebViewSsrfGateTest {
         val gate = gate()
         val url = "http://cold-ssrf-e.example/"
 
-        // shouldInterceptRequest 在 WebView 后台线程回调 → 允许同步解析并写缓存
+        // shouldInterceptRequest Devolución de llamada en el hilo de fondo de WebView → Permite el análisis y la escritura sincrónicos en la caché.
         assertFalse(gate.isBlockedBlocking(url))
         assertEquals(1, resolver.calls.get())
-        // 主线程回调(重定向/onPageStarted)随后直接命中缓存
+        // Devolución de llamada del hilo principal(Redirigir/onPageStarted)Luego presione directamente el caché
         assertFalse(gate.isBlockedNow(url))
         assertEquals(1, resolver.calls.get())
     }

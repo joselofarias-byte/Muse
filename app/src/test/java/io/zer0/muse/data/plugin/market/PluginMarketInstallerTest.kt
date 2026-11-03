@@ -35,7 +35,7 @@ class PluginMarketInstallerTest {
             .confirmAndInstall(plan, trustPublisher = false)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("过期"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("Caducado"))
         coVerify(exactly = 0) { manager.installConfirmedFromFile(any(), any(), any()) }
     }
 
@@ -50,7 +50,7 @@ class PluginMarketInstallerTest {
             .confirmAndInstall(plan, trustPublisher = false)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("变化"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("cambiar"))
         coVerify(exactly = 0) { manager.installConfirmedFromFile(any(), any(), any()) }
     }
 
@@ -64,7 +64,7 @@ class PluginMarketInstallerTest {
             .confirmAndInstall(plan, trustPublisher = false)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("不存在"))
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("no existe"))
     }
 
     @Test

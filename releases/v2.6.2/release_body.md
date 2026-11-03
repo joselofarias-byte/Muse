@@ -1,49 +1,49 @@
 # Muse v2.6.2
 
-> 本版覆盖自 v2.6.1 发布以来的全部改动，以"助手能力补齐"、"记忆可靠性"与"个性化"为主。
+> Esta versión cubre todos los cambios desde el lanzamiento de v2.6.1 a"Complementar las habilidades del asistente","confiabilidad de la memoria"con"personalización"Caballero.
 
-## 新功能
+## nuevas características
 
-- **每个对话单独设背景**：聊天背景支持三层——会话级、助手级、全局默认。优先级依次回落，给不同用途的助手各设一张，互不干扰；单个对话还能再覆盖。图片统一压缩落盘，不会撑大设置文件。
-- **背景跟随明暗自动切换**：新增「深色模式背景」。开了明暗自动切换后，浅色用一张、深色自动换成另一张；不设则沿用主背景。
-- **助手人格可编辑**：助手详情 → 提示词页新增「人格定义」，独立于完整自定义提示词。轻量定制（你是谁、怎么说话）用前者，完全接管用后者。
-- **自定义思考过程**：同一页新增「自定义思考过程」，用来强约束思考链构成，例如"先复述问题 → 列 2-3 个假设 → 逐个排除 → 再给结论"。留空则按默认方式思考。
-- **助手能翻看其他会话**：新增 `session_read`，助手可按会话 id 读取该会话最近的消息（默认 20 条，单条与总量都有上限），配合会话列表就能回顾你以前聊过什么。
-- **通知 → 记忆**：通知可以自动梳理成记忆（默认关闭，需在通知页手动开启），梳理时会去重整合；开启后助手能在主动消息里提起通知里的事。
-- **记忆星座**：新增知识图谱视图，支持自动补边（同实体、同会话、同分类、语义近邻）与手动连线；置顶、确认关系都能在图上直接操作。
-- **助手能管知识库了**：列出文档、删除文档、创建知识库、删除知识库（连带清理分块与向量索引）。默认知识库与内部文档受保护；破坏性操作逐条审批。
-- **助手能管会话了**：列出会话、改标题、移到文件夹、归档/取消归档、删除会话。删除不可撤销，逐条审批。
-- **知识库全文阅读**：新增 `knowledge_read_doc`，按文档 id 读全文，超长自动分段（每次 3 万字符，末尾给出继续读取的偏移量）。
-- **技能与助手自管理**：助手可列出/启用/停用/删除技能，也可创建助手、改人设、删助手。只开放安全子集——工具/技能/MCP 绑定、模型与供应商仍只在设置页手动配置。
-- **中转站请求头自动注入**：按域名声明式匹配必需请求头（首批 OpenCode Go → `x-opencode-session`），值按会话派生且稳定；你自己的同名自定义头永远优先。
-- **OpenAI 型供应商开放自定义请求头/请求体**：预设的 OpenAI 型供应商（含各中转站）也能填写，不再只有"自定义"类型有入口。
-- **主动消息「极多」档 + AI 自主调度**：新增极多档（30 分钟间隔、每日上限 50 条），并支持由 AI 自己决定下次联系间隔（10 分钟~24 小时）。
-- **自带助手也可删除**：对所有助手一致开放（自动切换默认指针，且至少保留一个）。
+- **Fondo separado para cada conversación**:El fondo del chat admite tres capas——Nivel de sesión, nivel de asistente, valor predeterminado global. Las prioridades se reducen en orden y se proporciona un asistente para diferentes propósitos sin interferir entre sí; una sola conversación se puede anular nuevamente. Las imágenes se comprimen y descargan al disco de forma unificada y el archivo de configuración no se ampliará.
+- **El fondo cambia automáticamente entre claro y oscuro.**: Se agregó "Fondo en modo oscuro". Después de activar el cambio automático de claro y oscuro, se utilizará un color claro y el color oscuro se cambiará automáticamente a otro; si no está configurado, se utilizará el fondo principal.
+- **La personalidad del asistente es editable**:Detalles del asistente → Se ha agregado una nueva "Definición de personalidad" a la página de palabras de aviso, que es independiente de la palabra de aviso personalizada completa. Utilice el primero para una personalización ligera (quién es usted, cómo habla) y el segundo para una adquisición completa.
+- **Proceso de pensamiento personalizado**: Se agregó "Proceso de pensamiento personalizado" en la misma página para restringir fuertemente la composición de la cadena de pensamiento, por ejemplo."Reformulemos la pregunta primero. → Enumere 2-3 hipótesis → Excluir uno por uno → dar una conclusión". Déjelo en blanco para pensar de la forma predeterminada.
+- **El asistente puede explorar otras conversaciones**: Nuevo `session_read`, el asistente puede leer los últimos mensajes de la conversación según el ID de la conversación (el valor predeterminado es 20, hay límites superiores para un solo mensaje y el número total) y, con la lista de conversaciones, puede revisar lo que ha hablado antes.
+- **Notificación → memoria**: Las notificaciones se pueden ordenar automáticamente en memorias (desactivadas de forma predeterminada, deben activarse manualmente en la página de notificaciones) y se desintegrarán durante la clasificación; Después de encenderlo, el asistente puede mencionar cosas en las notificaciones de los mensajes activos.
+- **constelación de memoria**: Se agrega una nueva vista de gráfico de conocimiento, que admite el llenado automático de bordes (misma entidad, misma sesión, misma categoría, vecino semántico) y conexión manual; La fijación y confirmación de relaciones se pueden operar directamente en el gráfico.
+- **El asistente ahora puede gestionar la base de conocimientos.**: enumerar documentos, eliminar documentos, crear una base de conocimientos, eliminar una base de conocimientos (junto con la limpieza de fragmentos e índices vectoriales). La base de conocimientos y los documentos internos están protegidos de forma predeterminada; Las operaciones destructivas se aprueban artículo por artículo.
+- **El asistente ahora puede gestionar conversaciones**: enumerar conversaciones, cambiar título, mover a carpeta, archivar/Desarchivar y eliminar conversaciones. La eliminación es irrevocable y será revisada y aprobada punto por punto.
+- **Lea el texto completo de la base de conocimientos.**: Nuevo `knowledge_read_doc`, lea el texto completo según el ID del documento y segmente automáticamente el texto superlargo (30.000 caracteres cada vez, el desplazamiento para continuar leyendo se proporciona al final).
+- **Autogestión de habilidades y asistentes.**: El asistente puede enumerar/habilitar/desactivar/Para eliminar habilidades, también puedes crear asistentes, cambiar el perfil y eliminar asistentes. Solo abre el subconjunto seguro——Herramientas/Habilidades/MCP Las fijaciones, modelos y proveedores todavía solo se configuran manualmente en la página de configuración.
+- **Inyección automática del cabezal de solicitud de la estación de transferencia**: haga coincidir declarativamente los encabezados de solicitud requeridos por nombre de dominio (el primer lote OpenCode Go → `x-opencode-session`), el valor se deriva por sesión y es estable; su propio encabezado personalizado con el mismo nombre siempre tiene prioridad.
+- **OpenAI El proveedor de tipos abre encabezados de solicitud personalizados/Cuerpo de la solicitud**: Los proveedores predeterminados de OpenAI (incluidas las estaciones de transferencia) también se pueden completar, ya no solo"Personalizar"Los tipos tienen entradas.
+- **"Muchos" mensajes activos + programación autónoma de IA**: Se agregaron muchos archivos nuevos (30 intervalo de minutos, límite superior diario de 50 mensajes), y admite que la IA determine el siguiente intervalo de contacto (10 minutos~24 horas).
+- **El asistente integrado también se puede eliminar**: Abierto a todos los asistentes de manera uniforme (cambia automáticamente el puntero predeterminado y conserva al menos uno).
 
-## 重要修复
+## Correcciones importantes
 
-- **明暗主题不随系统即时切换**：此前只有在对应主题下启动应用才生效——因为配置变更不重建 Activity 时，读取的仍是缓存的旧系统配置。现在改为显式监听系统深浅色变化，运行中切换立刻生效。
-- **收藏夹点不开原文**：卡片点击此前被"分组选择"占用，且预览只截 280 字。现在点击直接打开全屏可滚动原文，分组挪到卡片内按钮。
-- **工具成败误判**：此前按中文前缀猜成败，读到以"错误/失败"开头的正常文档会被判失败并触发无谓重试。现在结构化失败信号优先，长正文不再误判。
-- **高危工具重试绕过审批**：失败步骤点"重试"会直接重发，绕过权限与审批——发短信、删数据这类操作可能重复执行。现在高危工具不再自动重试，提示重新发起。
-- **工具参数解析两套并存**：hook 与参数化审批看到的参数和执行时不一致，畸形 JSON 时甚至会让 `file://` 这类拦截失效。现在统一同源解析并保留类型。
-- **记忆数据丢失风险**：修复 LLM 合并"先删后写"导致的不可逆丢失（改为单事务原子合并）、摘要并发覆盖、深度处理重复抽取、每日进度只存单行导致切换空间后当天不编译等问题。
-- **记忆跨空间串库**：编译读写统一 target，修复子助手/其他空间的编译产物写错槽位、反思路由到默认库、星座置顶改错库等一串问题。
-- **Codex 登录后所有请求 403**：修复账号 ID 的 JWT 解析路径错误（在 URL 命名空间下而非顶层）、base64url 缺 padding、以及登录回调解析失败时连 token 都不保存的三处叠加问题。老用户无需重新登录，启动时会自动自愈。
-- **Codex 请求再补两处适配**：账号 ID 解析增加 access_token 回退，并补齐 Responses 协议要求的 `OpenAI-Beta` 头。
-- **Web 服务启动崩溃**：修复 Ktor 3.x 下稳定抛 `Array has more than one element` 的问题。
-- **禁用工具仍被反复调用**：被禁用的工具直接从模型可见的 schema 中剔除，不再"调用→被拒→继续调用"死循环。
-- **自定义助手收不到主动消息**：强制按助手定位会话，修复生成与写入路由错配。
-- **「全天允许」夜间仍不发**：开启后真正跳过内置安静时段检查。
-- **应用控制与 MCP 工具登记遗漏**：补齐分类登记与内置白名单，修复默认助手看不到应用控制工具、部分 MCP 工具每轮恒发的问题。
-- **测试连接丢配置**：复用统一配置构建，不再丢 Responses 协议开关与自定义请求头。
-- **主动消息把 502 报成超时**：调用失败一律记成「调用超时(60s)」，实际 HTTP 502 是 100ms 就返回的，排查方向被带偏。现在区分真超时与调用失败并带上状态码。
-- **主动消息退避能涨到 32 小时**：连续失败 6 次后停止 32 小时，连测试发送都被挡住。现在上游故障（5xx / 网络不可达）封顶 8 小时，配置类错误才走完整指数退避。
+- **Los temas claros y oscuros no cambian instantáneamente con el sistema**: Anteriormente, solo entraba en vigor cuando la aplicación se iniciaba bajo el tema correspondiente.——Debido a que los cambios de configuración no reconstruyen la actividad, la configuración anterior del sistema almacenada en caché aún se lee. Ahora se ha cambiado para monitorear explícitamente los cambios de color claro y oscuro del sistema, y el cambio entra en vigor inmediatamente durante la operación.
+- **El texto original no se puede abrir al hacer clic en favoritos**: Se hizo clic en la tarjeta antes"Selección de grupo"ocupado y la vista previa está limitada a 280 caracteres. Ahora haga clic en el botón para abrir directamente la pantalla completa, desplazarse por el texto original y mover la agrupación a la tarjeta.
+- **Juicio erróneo sobre el éxito o el fracaso de la herramienta.**: Anteriormente, adivina el éxito o el fracaso según el prefijo chino, lee después"error/falló"Un documento normal al principio se considerará fallido y provocará reintentos innecesarios. Ahora la señal de falla estructural tiene prioridad y los textos largos ya no se juzgan mal.
+- **Las herramientas de alto riesgo vuelven a intentar eludir la aprobación**:Punto de paso fallido"Inténtalo de nuevo"Se reenviará directamente, sin pasar por permisos y aprobación.——Es posible que operaciones como enviar mensajes de texto y eliminar datos se realicen repetidamente. Ahora las herramientas de alto riesgo ya no reintentan automáticamente, lo que solicita que se reinicien.
+- **Coexisten dos conjuntos de análisis de parámetros de herramientas**:hook Los parámetros vistos en la aprobación parametrizada son inconsistentes con los de la ejecución. JSON mal formado puede incluso causar `file://` Este tipo de interceptación falla. La misma resolución de origen ahora está unificada y se conservan los tipos.
+- **Riesgo de pérdida de datos de la memoria**: Arreglar la fusión de LLM"Borrar primero y luego escribir."Los problemas resultantes incluyen pérdida irreversible (cambiada a fusión atómica de transacción única), cobertura concurrente resumida, extracción repetida para procesamiento en profundidad y progreso diario que solo guarda una fila, lo que resulta en que no se realice ninguna compilación el mismo día después de cambiar de espacio.
+- **Biblioteca de cadenas de memoria entre espacios**: Compilar objetivo unificado de lectura y escritura, subasistente de reparación/Hay una serie de problemas, como ranuras incorrectas para productos compilados en otros espacios, enrutamiento de reflexión a la biblioteca predeterminada y corrección de constelaciones en la biblioteca incorrecta.
+- **Codex Todas las solicitudes después de iniciar sesión 403**: Se corrigió el error de ruta de análisis JWT para el ID de la cuenta (en el espacio de nombres de la URL en lugar de en el nivel superior).base64url Hay tres problemas superpuestos: falta de relleno y ni siquiera se guarda el token cuando falla el análisis de la devolución de llamada de inicio de sesión. Los usuarios antiguos no necesitan iniciar sesión nuevamente y se reparará automáticamente al iniciarse.
+- **Codex Por favor agregue dos adaptaciones más.**: El análisis de ID de cuenta agrega un respaldo de access_token y completa los requisitos del protocolo de Respuestas `OpenAI-Beta` cabeza.
+- **Web Fallo en el inicio del servicio**: Se solucionó el problema de estabilidad en Ktor 3.x `Array has more than one element` problema.
+- **La herramienta deshabilitada todavía se llama repetidamente**: Las herramientas deshabilitadas se eliminan directamente del esquema visible para el modelo y ya no"llamar→rechazado→continuar llamando"Bucle infinito.
+- **El asistente personalizado no puede recibir mensajes activos**: Fuerce la ubicación de la sesión por parte del asistente y corrija la discrepancia entre las rutas generadas y escritas.
+- **"Permitir todo el día" aún no se emite por la noche**: Cuando está habilitado, en realidad omite la verificación del período de silencio incorporado.
+- **Falta el control de aplicaciones y el registro de la herramienta MCP**: Complete el registro de categoría y la lista blanca incorporada, y solucione el problema de que el asistente predeterminado no puede ver las herramientas de control de aplicaciones y algunas herramientas MCP en cada ronda.
+- **Configuración de pérdida de conexión de prueba**: Reutilice la configuración y compilación unificadas y ya no pierda el cambio de protocolo de Respuestas ni los encabezados de solicitud personalizados.
+- **Los mensajes activos informan 502 como tiempo de espera**: La falla de llamada siempre se registrará como "tiempo de espera de llamada"(60s)", el HTTP 502 real se devuelve dentro de 100 ms y la dirección de la investigación está sesgada. Ahora diferencie entre el tiempo de espera verdadero y el error de llamada con el código de estado.
+- **El retiro de mensajes activos se puede aumentar a 32 horas**: Se detiene durante 32 horas después de 6 fallas consecutivas, e incluso se bloquea el envío de prueba. Ahora el flujo ascendente falla (5xx / (red inalcanzable) tiene un límite de 8 horas y solo se produce un retroceso exponencial completo por errores de configuración.
 
-## 说明
+## Descripción
 
-- 本版以能力补齐、可靠性修复与个性化为主，建议升级。
-- 本版包含数据库升级（v110 → v111，新增助手人格与思考链字段），首次启动会自动迁移。
+- Esta versión se centra en la mejora de capacidades, reparaciones de confiabilidad y personalización. Se recomienda actualizar.
+- Esta versión incluye actualizaciones de la base de datos (v110 → v111, nueva personalidad del asistente y campos de cadena de pensamiento), que se migrarán automáticamente cuando se inicie por primera vez.
 
 ---
 

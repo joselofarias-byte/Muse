@@ -26,15 +26,15 @@ import kotlin.math.max
 import kotlin.uuid.Uuid
 
 /**
- * Phase 3: 只读工具有限并发测试。
+ * Phase 3: Herramienta de solo lectura para pruebas de simultaneidad limitada.
  *
- * 覆盖:
- *  - 开关默认关闭 → 与既有 B-38 串行行为一致;
- *  - 开关开启 → 只读工具按上限并发执行,结果按原始 tool-call 顺序回填;
- *  - 混合轮(含写入/副作用工具)→ 整轮串行;
- *  - 工具执行类别白名单保守(未知工具一律串行)。
+ * Portada:
+ *  - El interruptor está apagado de forma predeterminada → Consistente con el comportamiento serial B-38 existente;
+ *  - encender → Las herramientas de solo lectura se ejecutan simultáneamente según el límite superior,Los resultados se completan en el orden original de llamada a la herramienta;
+ *  - rueda mezcladora(incluyendo escritura/herramienta de efectos secundarios)→ serie redonda completa;
+ *  - Categoría de ejecución de herramientas Lista blanca Conservadora(Las herramientas desconocidas siempre están serializadas.).
  *
- * 运行: ./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorReadOnlyParallelTest*"
+ * correr: ./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorReadOnlyParallelTest*"
  */
 class ToolOrchestratorReadOnlyParallelTest {
 
@@ -67,7 +67,7 @@ class ToolOrchestratorReadOnlyParallelTest {
         coordinator = mockk(relaxed = true)
         every { coordinator.isToolResultSuccess(any()) } answers {
             val result = firstArg<String>()
-            !result.contains("error") && !result.startsWith("[超时]")
+            !result.contains("error") && !result.startsWith("[tiempo de espera]")
         }
         every {
             coordinator.markTaskStepRunningIfNotPaused(any(), any(), any(), any())
@@ -167,7 +167,7 @@ class ToolOrchestratorReadOnlyParallelTest {
 
         assertTrue(result.success)
         assertEquals(3, result.totalToolCallCount)
-        assertEquals("开关默认关闭时必须保持串行,实际最大并发=${maxActive.get()}", 1, maxActive.get())
+        assertEquals("El interruptor debe mantener el número de serie cuando está apagado de forma predeterminada.,simultaneidad máxima real=${maxActive.get()}", 1, maxActive.get())
     }
 
     @Test
@@ -182,10 +182,10 @@ class ToolOrchestratorReadOnlyParallelTest {
         assertTrue(result.success)
         assertEquals(4, result.totalToolCallCount)
         assertEquals(4, history.count { it.role == MessageRole.TOOL })
-        assertTrue("只读工具应并发执行(最大并发=${maxActive.get()})", maxActive.get() >= 2)
+        assertTrue("Las herramientas de solo lectura deben ejecutarse simultáneamente(Simultaneidad máxima=${maxActive.get()})", maxActive.get() >= 2)
         assertTrue(
-            "并发必须受 READ_ONLY_TOOL_MAX_PARALLELISM=$READ_ONLY_TOOL_MAX_PARALLELISM 限制," +
-                "实际最大并发=${maxActive.get()}",
+            "La concurrencia debe estar sujeta a READ_ONLY_TOOL_MAX_PARALLELISM=$READ_ONLY_TOOL_MAX_PARALLELISM Límite," +
+                "simultaneidad máxima real=${maxActive.get()}",
             maxActive.get() <= READ_ONLY_TOOL_MAX_PARALLELISM,
         )
     }
@@ -206,7 +206,7 @@ class ToolOrchestratorReadOnlyParallelTest {
                 ),
             ),
         )
-        // 第一个调用最慢,完成顺序与回填顺序相反
+        // La primera llamada es la más lenta.,El orden de finalización es opuesto al orden de reposición
         coEvery { registry.executeFromJson("get_current_time", any()) } coAnswers {
             delay(250)
             "slow"
@@ -257,12 +257,12 @@ class ToolOrchestratorReadOnlyParallelTest {
 
         assertTrue(result.success)
         assertEquals(3, result.totalToolCallCount)
-        assertEquals("混合轮含写入工具时必须整轮串行,实际最大并发=${maxActive.get()}", 1, maxActive.get())
+        assertEquals("Cuando la rueda mixta contenga una herramienta de escritura, ésta deberá estar serializada en toda la rueda.,simultaneidad máxima real=${maxActive.get()}", 1, maxActive.get())
     }
 
     @Test
     fun `skill routed read-only names stay sequential`() = runBlocking {
-        // read_file 同名 skill:白名单命中但路由到 skill,必须串行(未知实现不并发)
+        // read_file Habilidad con el mismo nombre: acertada en la lista blanca pero dirigida a skill,debe ser serial(La implementación desconocida no es concurrente)
         val host = FakeToolLoopHost(
             ArrayDeque(
                 listOf(
@@ -303,7 +303,7 @@ class ToolOrchestratorReadOnlyParallelTest {
 
         assertTrue(result.success)
         assertEquals(2, result.totalToolCallCount)
-        assertEquals("skill 路由的调用必须串行,实际最大并发=${maxActive.get()}", 1, maxActive.get())
+        assertEquals("skill Las llamadas de ruta deben ser en serie,simultaneidad máxima real=${maxActive.get()}", 1, maxActive.get())
     }
 
     @Test

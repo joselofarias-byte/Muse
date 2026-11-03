@@ -21,7 +21,7 @@ class SecuritySettingsStoreTest {
     @Test
     fun securitySettings_defaultsThenSaveUpdates() = runBlocking {
         val store = store()
-        // 先读默认值，再写入，避免测试间 DataStore 文件状态互相污染。
+        // Lea primero el valor predeterminado y luego escríbalo para evitar la contaminación mutua de los estados del archivo DataStore entre pruebas.
         assertEquals(false, store.keepAwakeFlow.first())
         assertEquals(false, store.autoLaunchFlow.first())
         assertEquals(true, store.anrDetectionFlow.first())

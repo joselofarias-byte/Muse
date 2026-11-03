@@ -33,11 +33,11 @@ import io.zer0.muse.R
 import io.zer0.muse.intent.ShareIntentHandler
 
 /**
- * 桌面快捷小部件(增强版)。
+ * Widget de acceso directo en el escritorio(Versión mejorada).
  *
- * 主题色跟随 App 主色调(紫色)。支持多种桌面尺寸。
+ * El color del tema sigue el color principal de la aplicación.(morado). Admite múltiples tamaños de escritorio.
  *
- * 「新对话」入口带上用户在配置页选的助手;此前这个选择存了却没有任何读者。
+ * La entrada "Nueva Conversación" trae el asistente seleccionado por el usuario en la página de configuración.;Anteriormente esta selección se guardaba sin ningún lector.
  */
 class MuseQuickWidget : GlanceAppWidget() {
 

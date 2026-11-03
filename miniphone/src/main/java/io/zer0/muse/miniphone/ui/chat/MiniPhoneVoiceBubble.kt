@@ -41,18 +41,18 @@ import org.koin.compose.koinInject
 import java.io.File
 
 /**
- * 语音消息条:胶囊 + 播放键 + 波形 + 时长。
+ * tira de mensajes de voz:Cápsula + botón de reproducción + forma de onda + duración.
  *
- * 布局是固定的三段:左侧播放/暂停,中间一排竖条,右侧总时长(播放中换成已播时长)。
- * 播放权不归气泡自己 —— 点按只是向 [MiniPhoneVoicePlaybackController] 要,所以同一时刻
- * 只有一条在播,换个会话或退到后台也不会留下半截声音。
+ * El diseño se fija en tres secciones.:jugar a la izquierda/pausa,Una fila de barras verticales en el medio.,Duración total a la derecha(Cambiar a la duración reproducida durante la reproducción).
+ * El derecho de reproducción no pertenece a Bubble. —— Haga clic sólo para [MiniPhoneVoicePlaybackController] querer,Entonces en el mismo momento
+ * solo uno esta jugando,Incluso si cambias de sesión o te retiras a un segundo plano, ningún sonido quedará atrás.
  *
- * 时长未知(<= 0)时右侧写 `--:--` 而不是 `0:00`:后者会被读成「零秒语音」。
- * 音频文件已被清掉时退化成一条静态说明,不弹播放器也不崩。
+ * Duración desconocida(<= 0)Cuando se escribe a la derecha `--:--` en lugar de `0:00`:Este último se leerá como "discurso de cero segundos".
+ * Reducido a una nota estática cuando el archivo de audio se ha borrado,El reproductor no falla incluso si no lo juego.
  *
- * @param message 语音消息;用 [ChatMessageUi.mediaUri] 定位音频,用 [ChatMessageUi.id] 做测试标签
- * @param controller 模块内的单例播放控制器
- * @param onLongPress 长按弹操作菜单
+ * @param message mensaje de voz;usar [ChatMessageUi.mediaUri] Audio de posición,usar [ChatMessageUi.id] hacer etiquetas de prueba
+ * @param controller Controlador de reproducción Singleton dentro del módulo
+ * @param onLongPress Mantenga presionado para que aparezca el menú de operación.
  */
 @Composable
 internal fun ChatVoiceBubble(
@@ -77,7 +77,7 @@ internal fun ChatVoiceBubble(
     val progress = if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val timeText = formatVoiceDuration(if (playing) positionMs else durationMs)
 
-    // 离开页面(ON_STOP)或气泡被销毁(切会话、换页)时停掉正在播的这一条
+    // Salir de la página(ON_STOP)o la burbuja se destruye(Cambiar de sesión, cambiar de página)detener el actual
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, uri) {
         val observer = LifecycleEventObserver { _, event ->
@@ -142,7 +142,7 @@ internal fun ChatVoiceBubble(
     }
 }
 
-/** 音频已经不在:同一个胶囊形状,只留图标与一句说明 —— 播放不了,但仍可长按删除。 */
+/** El audio ya no esta:misma forma de cápsula,Deja solo el ícono y una descripción. —— no puedo jugar,Pero aún puedes mantener presionado para eliminar. */
 @Composable
 private fun VoiceUnavailableBubble(message: ChatMessageUi, width: Dp, onLongPress: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -180,9 +180,9 @@ private fun VoiceUnavailableBubble(message: ChatMessageUi, width: Dp, onLongPres
 }
 
 /**
- * 一排定宽圆头竖条,波峰高度由 [seed] 决定 —— 同一条语音每次绘制都长一样,重组不会跳。
+ * Una fila de barras verticales con cabezas redondeadas de ancho fijo.,La altura de la cresta de la ola está dada por [seed] decidir —— El mismo sonido de voz se ve igual cada vez que se dibuja.,La reorganización no saltará.
  *
- * 已播的那一段换强调色:语音条里没有时间刻度,进度只能靠这一截颜色读出来。
+ * Cambie el color de énfasis al segmento que ya se ha reproducido:No hay escala de tiempo en la barra de voz.,El progreso sólo se puede leer con este color.
  */
 @Composable
 private fun VoiceWaveform(progress: Float, seed: Int, activeColor: Color, inactiveColor: Color, modifier: Modifier = Modifier) {
@@ -204,7 +204,7 @@ private fun VoiceWaveform(progress: Float, seed: Int, activeColor: Color, inacti
     }
 }
 
-/** 由种子摊出稳定的波峰比例(0.25–1.0):线性同余取低位,纯算术、无随机源。 */
+/** Proporción de pico estable distribuida por semillas(0.25–1.0):La congruencia lineal toma el orden inferior.,Aritmética pura, sin fuentes aleatorias. */
 private fun wavePeaks(seed: Int, count: Int): List<Float> {
     var state = seed.toLong() * 2654435761L + 0x9E3779B9L
     return List(count) {
@@ -215,10 +215,10 @@ private fun wavePeaks(seed: Int, count: Int): List<Float> {
 }
 
 /**
- * 语音条宽度:按时长分三档,不做匀速映射。
+ * Ancho de la barra de voz:Dividido en tres niveles según la duración.,No se realiza ningún mapeo uniforme.
  *
- * 语音时长分布极不均(大多 3–10 秒),匀速映射会让绝大多数语音挤在最窄的一端看不出差别,
- * 超长语音又会一路撑到占满整行。分档后短、中、长各有稳定宽度,最长一档也明显窄于气泡可用宽度。
+ * La distribución de la duración del habla es extremadamente desigual.(Mayormente 3–10 segundos),El mapeo uniforme hará que la mayoría de las voces queden apretujadas en el extremo más estrecho, sin diferencias visibles.,
+ * La voz extremadamente larga continuará hasta llenar toda la línea. Después de la agrupación, los anchos cortos, medianos y largos tienen estables.,El engranaje más largo también es significativamente más estrecho que el ancho disponible de la burbuja.
  */
 internal fun voiceBubbleWidth(durationMs: Long): Dp = when {
     durationMs <= SHORT_VOICE_MS -> ShortVoiceWidth
@@ -227,9 +227,9 @@ internal fun voiceBubbleWidth(durationMs: Long): Dp = when {
 }
 
 /**
- * 时长文案:毫秒 → `M:SS`(超过一小时 `H:MM:SS`)。
+ * Redacción de duración:milisegundos → `M:SS`(más de una hora `H:MM:SS`).
  *
- * 时长未知(<= 0)给 `--:--`:它不是零秒语音,是「没探测出来」。
+ * Duración desconocida(<= 0)dar `--:--`:No es una voz de cero segundos.,Es "no detectado".
  */
 internal fun formatVoiceDuration(durationMs: Long): String {
     if (durationMs <= 0L) return UNKNOWN_DURATION
@@ -245,13 +245,13 @@ internal fun formatVoiceDuration(durationMs: Long): String {
 }
 
 /**
- * 语音引用 → 本地文件。
+ * citas de discursos → archivo local.
  *
- * 宿主存的是 `file://` 加绝对路径;`content://` 之类的引用本模块播不了(播放器只接文件),
- * 文件已不在也返回 null,由气泡退化成静态说明。
+ * Las tiendas anfitrionas `file://` Agregar ruta absoluta;`content://` Referencias como esta no se pueden reproducir en este módulo.(El reproductor solo acepta archivos.),
+ * Regresar incluso si el archivo ya no existe null,Degenerar de burbujas a instrucciones estáticas.
  *
- * 路径里带反斜杠或空格时 [Uri] 解不出 path(反斜杠不是分隔符,前一段会被当成 authority),
- * 这时直接除掉前缀当路径用 —— 判断依据是解出来的 path 必顶以 `/` 开头。
+ * Cuando hay barras invertidas o espacios en la ruta [Uri] No puedo entenderlo path(La barra invertida no es un separador,El párrafo anterior se considerará authority),
+ * En este momento, elimine directamente el prefijo y utilícelo como ruta. —— La base para el juicio es que el camino resuelto debe ser coronado por `/` Comienzo.
  */
 private fun localAudioFileOf(uri: String): File? {
     val raw = uri.trim()
@@ -274,17 +274,17 @@ private val ShortVoiceWidth = 140.dp
 private val MediumVoiceWidth = 184.dp
 private val LongVoiceWidth = 228.dp
 
-/** 波形柱数:18 根刚好铺满最窄一档,再密就看不出波形了。 */
+/** Número de barras de la forma de onda.:18 Las raíces sólo cubren el nivel más estrecho.,No importa cuán densa sea, la forma de onda ya no será visible. */
 private const val VOICE_WAVE_BAR_COUNT: Int = 18
 
 private const val INACTIVE_BAR_ALPHA: Float = 0.28f
 
-/** 分档边界:15 秒以内算短、1 分钟以内算中。 */
+/** límite del contenedor:15 Menos de segundos se consideran cortos,1 Cuente en minutos. */
 private const val SHORT_VOICE_MS: Long = 15_000L
 private const val MEDIUM_VOICE_MS: Long = 60_000L
 
-internal const val VOICE_UNAVAILABLE_TEXT: String = "语音无法播放"
+internal const val VOICE_UNAVAILABLE_TEXT: String = "No se puede reproducir la voz"
 private const val UNKNOWN_DURATION: String = "--:--"
-private const val VOICE_PLAY_LABEL: String = "播放语音"
-private const val VOICE_PAUSE_LABEL: String = "暂停语音"
+private const val VOICE_PLAY_LABEL: String = "reproducir voz"
+private const val VOICE_PAUSE_LABEL: String = "pausar el discurso"
 private const val FILE_PREFIX: String = "file://"

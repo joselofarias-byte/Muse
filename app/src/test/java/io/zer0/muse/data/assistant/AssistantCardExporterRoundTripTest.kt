@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * R-TEST-16: 助手角色卡导出/导入往返。
+ * R-TEST-16: Exportación de tarjeta de rol de asistente/Importación ida y vuelta.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -35,8 +35,8 @@ class AssistantCardExporterRoundTripTest {
 
         val source = AssistantEntity(
             id = "orig-id",
-            name = "导出助手",
-            systemPrompt = "角色设定",
+            name = "Asistente de Exportación",
+            systemPrompt = "Configuración de personajes",
             toolIdsJson = """["web_search"]""",
             customHeadersJson = """{"X-Test":"1"}""",
         )
@@ -48,8 +48,8 @@ class AssistantCardExporterRoundTripTest {
         imported!!
         assertNotEquals("orig-id", imported.id)
         assertTrue(imported.id.isNotBlank())
-        assertEquals("导出助手", imported.name)
-        assertEquals("角色设定", imported.systemPrompt)
+        assertEquals("Asistente de Exportación", imported.name)
+        assertEquals("Configuración de personajes", imported.systemPrompt)
         assertEquals("""["web_search"]""", imported.toolIdsJson)
         assertEquals("""{"X-Test":"1"}""", imported.customHeadersJson)
         coVerify(exactly = 1) { repository.upsert(imported) }

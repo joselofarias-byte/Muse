@@ -3,20 +3,20 @@ package io.zer0.muse.data
 import kotlinx.serialization.Serializable
 
 /**
- * 主题定时切换配置。
+ * Configuración de conmutación programada de tema.
  *
- * 在指定时间自动切换亮色/深色模式。
+ * Cambia automáticamente los colores brillantes en momentos específicos/Modo oscuro.
  */
 @Serializable
 data class ThemeScheduleConfig(
-    /** 总开关。 */
+    /** Interruptor maestro. */
     val enabled: Boolean = false,
-    /** 起床时间(小时,0-23)。到此后切换为浅色模式(或跟随系统)。 */
+    /** hora de despertar(horas,0-23). Después de eso, cambie al modo de luz.(o seguir el sistema). */
     val wakeUpHour: Int = 7,
-    /** 起床时间(分钟,0-59)。 */
+    /** hora de despertar(minutos,0-59). */
     val wakeUpMinute: Int = 0,
-    /** 睡觉时间(小时,0-23)。到此后切换为深色模式。 */
+    /** hora de dormir(horas,0-23). Después de eso, cambie al modo oscuro. */
     val sleepHour: Int = 22,
-    /** 睡觉时间(分钟,0-59)。 */
+    /** hora de dormir(minutos,0-59). */
     val sleepMinute: Int = 0,
 )

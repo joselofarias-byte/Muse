@@ -14,16 +14,16 @@ import kotlinx.coroutines.sync.withLock
  * Startup kicks this off in the application scope, but the search tool can also
  * await the same idempotent operation so the first user request cannot race it.
  *
- * v2.4.x: 除 seed 元数据外，另提供 [ensureIndexed] 为内部文档补建向量索引。
- * 此前 devdoc 只写 knowledge_docs、不建 chunk，`knowledge_search(include_internal=true)`
- * 的向量优先路径对内置文档实际失效，只能退到关键词 LIKE。
+ * v2.4.x: Además de los metadatos iniciales, se necesitan más [ensureIndexed] Complemento de indexación vectorial para documentos internos.
+ * Anteriormente, devdoc solo escribía Knowledge_docs y no creaba fragmentos.`knowledge_search(include_internal=true)`
+ * La ruta de prioridad del vector en realidad no es válida para los documentos integrados y solo puede recurrir a la palabra clave LIKE.
  */
 class BuiltInKnowledgeDocSeeder(
     private val context: Context,
     private val dao: KnowledgeDocDao,
-    /** v2.4.x: 内部文档建索引用（可选；缺省时只 seed 不建索引）。 */
+    /** v2.4.x: Uso de indexación de documentos internos (opcional; el valor predeterminado es solo inicial y sin indexación). */
     private val ragService: RagService? = null,
-    /** v2.4.x: 取当前 RAG 配置（返回 null 表示暂不可用，跳过索引）。 */
+    /** v2.4.x: Obtenga la configuración RAG actual (devolver nulo significa que aún no está disponible, omita el índice). */
     private val ragConfigProvider: (suspend () -> RagConfig?)? = null,
 ) {
     private val seedMutex = Mutex()
@@ -32,7 +32,7 @@ class BuiltInKnowledgeDocSeeder(
     private var indexed = false
 
     /**
-     * 幂等 seed：内容未变且已索引的文档直接跳过，避免每次启动重写并丢索引元数据。
+     * Semilla idempotente: los documentos cuyo contenido no ha cambiado y han sido indexados se omiten directamente para evitar reescribir y perder metadatos del índice cada vez.
      */
     suspend fun ensureSeeded() = seedMutex.withLock {
         if (seeded) return@withLock
@@ -41,7 +41,7 @@ class BuiltInKnowledgeDocSeeder(
                 ?.filter { it.endsWith(".md", ignoreCase = true) }
                 .orEmpty()
         if (names.isEmpty()) {
-            Logger.w(TAG, "内置功能文档目录为空，跳过 seed")
+            Logger.w(TAG, "El directorio de documentación de la función incorporada está vacío, omita seed")
             return@withLock
         }
         val existing = resultOf { dao.getInternalDocs() }.getOrNull().orEmpty().associateBy { it.id }
@@ -56,7 +56,7 @@ class BuiltInKnowledgeDocSeeder(
                 val id = "devdoc-" + name.substringBeforeLast(".")
                 val hash = RagService.computeContentHash(content)
                 val previous = existing[id]
-                // 内容未变且已有索引：保持现状（不重写，保住 chunk_count / embedding_model）
+                // El contenido no ha cambiado y hay un índice: mantenga el status quo (sin reescribir, mantenga chunk_count/embedding_model)
                 if (previous == null || previous.contentHash != hash || previous.chunkCount <= 0) {
                     val title =
                         content.lineSequence()
@@ -84,18 +84,18 @@ class BuiltInKnowledgeDocSeeder(
             }
             seedResult.onError { msg, error ->
                 failed = true
-                Logger.w(TAG, "seed 内置功能文档失败: $name: $msg", error)
+                Logger.w(TAG, "seed Error en la documentación de la función integrada: $name: $msg", error)
             }
         }
         if (!failed) seeded = true
     }
 
     /**
-     * v2.4.x: 为内部文档补建向量索引（增量、幂等、失败静默）。
+     * v2.4.x: Indexación vectorial complementaria para documentos internos (incremental, idempotente, silenciosa en caso de fallo).
      *
-     * - 只处理未索引（chunkCount <= 0）或内容哈希不一致的文档；
-     * - embedding 不可用/失败时保留关键词 LIKE 兜底，不影响检索可用性；
-     * - 由启动流程后台调用，不阻塞 [ensureSeeded] 的等待方。
+     * - Solo maneja los no indexados (chunkCount <= 0) o documentos con hashes de contenido inconsistentes;
+     * - embedding No disponible/En caso de error, la palabra clave LIKE se conserva y no afecta la usabilidad de la recuperación;
+     * - Llamado por el proceso de inicio en segundo plano sin bloquear [ensureSeeded] grupo de espera.
      */
     suspend fun ensureIndexed() = indexMutex.withLock {
         if (indexed) return@withLock
@@ -111,7 +111,7 @@ class BuiltInKnowledgeDocSeeder(
         var failed = false
         var embeddingUnusable = false
         pending.forEach { doc ->
-            // 一旦确认 embedding 本身不可用（配置性错误），后续文档不必再撞同一堵墙。
+            // Una vez que se confirma que la inserción en sí no está disponible (un error de configuración), la documentación posterior no tiene por qué chocar contra la misma pared.
             if (embeddingUnusable) return@forEach
             val chunks =
                 resultOf { rag.indexDocument(doc.id, doc.content, config) }
@@ -121,13 +121,13 @@ class BuiltInKnowledgeDocSeeder(
                             embeddingUnusable = true
                             Logger.w(
                                 TAG,
-                                "内部文档索引中止：embedding 当前不可用($msg)。" +
-                                    "请检查 RAG 设置里的 embedding 来源——若选了「云端」，" +
-                                    "需要指定一个真正提供 embeddings 接口的供应商；" +
-                                    "当前回落到的对话模型供应商通常没有这个端点。",
+                                "Indexación interna de documentos cancelada:embedding Actualmente no disponible($msg)." +
+                                    "Verifique la fuente de inserción en la configuración de RAG——Si se selecciona \"Nube\"," +
+                                    "Debe especificar un proveedor que realmente proporcione la interfaz de incorporación;" +
+                                    "Los proveedores actuales de modelos de conversación alternativos generalmente no tienen este punto final.",
                             )
                         } else {
-                            Logger.w(TAG, "内部文档索引失败: ${doc.id}: $msg", error)
+                            Logger.w(TAG, "Error en el índice del documento interno: ${doc.id}: $msg", error)
                         }
                     }
                     .getOrNull()
@@ -142,17 +142,17 @@ class BuiltInKnowledgeDocSeeder(
                 )
             } else if (chunks != null) {
                 failed = true
-                Logger.w(TAG, "内部文档分块为空: ${doc.id}")
+                Logger.w(TAG, "El bloque de documentos interno está vacío: ${doc.id}")
             }
         }
         if (!failed) indexed = true
     }
 
     /**
-     * 判断失败是否属于「embedding 配置不可用」。
+     * Determinar si la falla pertenece a "embedding La configuración no está disponible".
      *
-     * 只看服务端明确拒绝的情况（404 / 模型不存在 / 端点不存在）；
-     * 网络超时、5xx 这类临时故障不在此列，仍应按文档逐个重试。
+     * Mire sólo los casos en los que el servidor se niega explícitamente (404 / El modelo no existe/el punto final no existe);
+     * tiempo de espera de la red,5xx Este tipo de error temporal no está incluido en esta lista y aun así deberías volver a intentarlo documento por documento.
      */
     private fun looksLikeEmbeddingConfigError(message: String): Boolean {
         val m = message.lowercase()
@@ -164,11 +164,11 @@ class BuiltInKnowledgeDocSeeder(
     }
 
     /**
-     * 单文档是否需要（重新）索引。
+     * Si es necesario (re)indexar un solo documento.
      *
-     * v2.6.0 (AUD-RAG-F1): 必须比对 embedding 模型指纹 —— 此前只看
-     * chunkCount/contentHash，换 embedding 模型（尤其同维度）后新旧向量
-     * 混存在同一文档下，检索质量静默劣化。
+     * v2.6.0 (AUD-RAG-F1): Se deben comparar las huellas dactilares del modelo incrustado —— Antes solo miraba
+     * chunkCount/contentHash, los vectores nuevos y antiguos después de cambiar el modelo de incrustación (especialmente la misma dimensión)
+     * Si se mezclan en el mismo documento, la calidad de la recuperación se deteriorará silenciosamente.
      */
     private fun needsIndexing(doc: KnowledgeDocEntity, config: RagConfig): Boolean {
         val fingerprintMatches =

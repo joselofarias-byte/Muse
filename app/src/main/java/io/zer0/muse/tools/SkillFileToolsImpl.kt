@@ -16,19 +16,19 @@ import okhttp3.Request
 import java.io.File
 
 /**
- * P1-3b 拆域：Skill 文件/公共目录工具实现（从 SkillExecutor.kt 迁移）。
- * 由 SkillExecutor 委托调用。
+ * P1-3b Deslocalización:Skill Archivo/Implementación de herramienta de catálogo público (migrada desde SkillExecutor.kt).
+ * Llamado por el delegado de SkillExecutor.
  */
 class SkillFileToolsImpl(private val context: Context, private val client: OkHttpClient) {
 
-    /** 读取应用沙盒内文件(限定 filesDir / cacheDir 子路径)。 */
+    /** Leer archivos en el entorno limitado de la aplicación(Calificar subrutas filesDir / cacheDir). */
     fun execReadFile(args: Map<String, String>): String {
         val path = args["path"] ?: return context.getString(R.string.skill_missing_param_path)
         val file = resolveSandboxFile(path) ?: return context.getString(R.string.skill_path_violation, path)
         if (!file.exists()) return context.getString(R.string.skill_file_not_found, path)
-        // v1.52: 二进制文件检测 — 读取前 1024 字节,若含 NUL 字节或 UTF-8 替换字符占比过高则判定为二进制
-        // v1.52 修订: 空文件直接返回空串;使用实际读入字节数判断,避免 read 未读满导致尾部 NUL 误判
-        // 探测只读文件头;后续按需走全文读取或有界字符分页。
+        // v1.52: Detección de archivos binarios — Leer los primeros 1024 bytes,Si contiene bytes NUL o una alta proporción de caracteres de reemplazo UTF-8, se considerará binario.
+        // v1.52 revisión: Los archivos vacíos devuelven directamente cadenas vacías;Utilice el número real de bytes leídos para determinar,Evite errores de cálculo del NUL final causado por una lectura incompleta
+        // Detectar encabezados de archivos de solo lectura;Según sea necesario, se puede realizar una lectura posterior del texto completo o una paginación de caracteres delimitados.
         if (file.length() == 0L) return ""
         val readLen = minOf(1024L, file.length()).toInt()
         val headBytes = ByteArray(readLen)
@@ -44,12 +44,12 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
                 return context.getString(R.string.skill_binary_file_utf8, path)
             }
         }
-        // offset/length: 分段读取(起始行号 + 读取行数,默认 0=全部)
+        // offset/length: Lectura segmentada(Número de línea inicial + número de líneas leídas,Predeterminado 0=Todos)
         val offset = args["offset"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
         val length = args["length"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
         val offsetChars = args["offset_chars"]?.toIntOrNull()?.coerceAtLeast(0)
         val requestedLengthChars = args["length_chars"]?.toIntOrNull()?.coerceAtLeast(0)
-        // encoding: 默认 utf-8(当前仅支持 utf-8/utf-16,其它回退 utf-8)
+        // encoding: Predeterminado utf-8(Actualmente solo admite utf-8/utf-16,Otras alternativas utf-8)
         val encoding = args["encoding"]?.takeIf { it.isNotBlank() } ?: "utf-8"
         val charset = when (encoding.lowercase()) {
             "utf-16", "utf-16le" -> Charsets.UTF_16
@@ -88,18 +88,18 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         requestedLength = requestedLength,
     )
 
-    /** 写入应用沙盒内文件。 */
+    /** Escriba archivos en el entorno limitado de la aplicación. */
     fun execWriteFile(args: Map<String, String>): String {
         val path = args["path"] ?: return context.getString(R.string.skill_missing_param_path)
         val content = args["content"] ?: return context.getString(R.string.skill_missing_param_content)
         val append = args["append"]?.toBoolean() ?: false
-        // create_dirs: 默认 true,自动创建父目录
+        // create_dirs: Predeterminado true,Crear directorios principales automáticamente
         val createDirs = args["create_dirs"]?.toBoolean() ?: true
         val file = resolveSandboxFile(path) ?: return context.getString(R.string.skill_path_violation, path)
         if (createDirs) {
             file.parentFile?.mkdirs()
         } else {
-            // 不自动建目录时,父目录不存在则报错
+            // Cuando el directorio no se crea automáticamente,Si el directorio principal no existe, se informará un error.
             val parent = file.parentFile
             if (parent != null && !parent.exists()) {
                 return context.getString(R.string.skill_parent_dir_not_exist, parent.absolutePath)
@@ -107,9 +107,9 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
         val isOverwrite = file.exists() && !append
         if (append) file.appendText(content) else file.writeText(content)
-        // v1.28: 返回绝对路径,让 MessageBubble 的 extractFilePaths 能匹配并渲染附件芯片
+        // v1.28: Devolver ruta absoluta,Habilite extractFilePaths de MessageBubble para hacer coincidir y representar chips adjuntos
         val timestamp = System.currentTimeMillis()
-        // v1.47: 返回内容预览(前 200 字符),让调用方能核对写入结果,而非只看到字节数盲信工具
+        // v1.47: Volver a la vista previa del contenido(primeros 200 caracteres),Permitir que la persona que llama verifique los resultados de escritura,En lugar de simplemente ver la herramienta de fe ciega para contar bytes
         val previewLimit = 200
         val preview = if (content.length <= previewLimit) {
             content
@@ -127,19 +127,19 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
     }
 
     /**
-     * SSRF 防护:校验 URL 是否指向公网地址。
+     * SSRF protección:Verifique si la URL apunta a la dirección de la red pública.
      *
-     * 拒绝以下地址:
-     *  - 主机名为 localhost
-     *  - 回环地址 127.0.0.0/8、::1
-     *  - 私网 10.0.0.0/8、172.16.0.0/12、192.168.0.0/16、IPv6 fc00::/7
-     *  - 链路本地 169.254.0.0/16
-     *  - 未指定地址、组播地址
+     * Rechazar las siguientes direcciones:
+     *  - nombre de host localhost
+     *  - Dirección de bucle invertido 127.0.0.0/8,::1
+     *  - Red privada 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,IPv6 fc00::/7
+     *  - enlace local 169.254.0.0/16
+     *  - Dirección no especificada, dirección de multidifusión
      *
-     * 同时用 [java.net.InetAddress.getAllByName] 解析 DNS 后二次校验 IP,
-     * 防止 DNS rebinding 攻击(域名解析得到的实际 IP 仍指向内网)。
+     * Usar al mismo tiempo [java.net.InetAddress.getAllByName] Verificación secundaria después de la resolución DNS IP,
+     * Prevenir ataques de revinculación de DNS(La IP real obtenida mediante la resolución de nombres de dominio todavía apunta a la intranet).
      *
-     * @return true 表示安全(可继续请求);false 表示指向内网,调用方应拒绝
+     * @return true Indica seguridad(Puedes seguir solicitando);false Indica que apunta a la intranet.,La persona que llama debe rechazar
      */
     fun validatePublicUrl(url: String): Boolean {
         val uri = try {
@@ -149,7 +149,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
         val host = uri.host?.lowercase() ?: return false
         if (host == "localhost") return false
-        // 解析 DNS 后二次校验 IP(防 DNS rebinding):只要任一解析结果指向内网就拒绝
+        // Verificación secundaria después de la resolución DNS IP(protegerse contra DNS rebinding):Siempre que algún resultado del análisis apunte a la intranet, será rechazado.
         val addresses = try {
             java.net.InetAddress.getAllByName(host)
         } catch (e: Exception) {
@@ -159,37 +159,37 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
     }
 
     /**
-     * B-32: 单次解析 + 校验公网,返回冻结的 IP 列表(供 OkHttp dns 复用使连接不再二次解析)。
+     * B-32: Análisis único + verificación de red pública.,Devolver la lista de IP congeladas(Para la reutilización de OkHttp dns, de modo que ya no sea necesario analizar la conexión dos veces.).
      *
-     * 与 [validatePublicUrl] 的区别:这里只解析一次并把结果显式返回,调用方把该结果直接作为
-     * 连接目标(hostOverride),连接阶段不再重新解析域名,从而关闭「先解析校验再连接」的 TOCTOU 窗口;
-     * 任一解析结果指向内网/回环/链路本地/IPv6 ULA → 抛 IOException(吃掉了布尔语义)。
+     * con [validatePublicUrl] la diferencia:Sólo se analiza una vez y el resultado se devuelve explícitamente.,La persona que llama toma el resultado directamente como
+     * objetivo de conexión(hostOverride),El nombre de dominio ya no se volverá a resolver durante la fase de conexión.,Cerrando así la ventana TOCTOU de "analizar y verificar primero y luego conectar";
+     * Cualquier resultado del análisis apunta a la intranet./bucle invertido/enlace local/IPv6 ULA → tirar IOException(Semántica booleana comida).
      *
-     * @param url 需含 http(s) scheme 且主机合法
-     * @return 全部公网的解析结果列表(连接与校验共用同一份)
+     * @param url Requerido http(s) scheme Y el anfitrión es legal.
+     * @return Lista de resultados de análisis para todas las redes públicas.(La conexión y la verificación comparten lo mismo)
      */
     @Throws(java.io.IOException::class)
     private fun resolvePublicPinned(url: String): List<java.net.InetAddress> {
         val uri = try {
             java.net.URI(url)
         } catch (e: Exception) {
-            throw java.io.IOException("URL 非法: $url")
+            throw java.io.IOException("URL ilegal: $url")
         }
-        val host = uri.host?.lowercase() ?: throw java.io.IOException("下载目标缺少主机名: $url")
+        val host = uri.host?.lowercase() ?: throw java.io.IOException("Al destino de descarga le falta el nombre de host: $url")
         val addresses = try {
             java.net.InetAddress.getAllByName(host)
         } catch (e: Exception) {
-            throw java.io.IOException("DNS 解析失败: $host")
+            throw java.io.IOException("DNS El análisis falló: $host")
         }
         if (addresses.any { isPrivateAddress(it) }) {
-            throw java.io.IOException("下载目标指向内网地址,已拒绝: $url")
+            throw java.io.IOException("El destino de descarga apunta a la dirección de intranet.,Rechazado: $url")
         }
         return addresses.toList()
     }
 
     /**
-     * 判断 IP 是否内网/回环/链路本地/组播/IPv6 ULA(fc00::/7)。IPv4 私网网段由
-     * InetAddress 内置方法覆盖,IPv6 还需单独判 ULA(InetAddress.isSiteLocalAddress 对 IPv6 返回 false)。
+     * Determinar si la IP está en la red interna/bucle invertido/enlace local/multidifusión/IPv6 ULA(fc00::/7).IPv4 El segmento de red privada está formado por
+     * InetAddress Anulación de método incorporado,IPv6 Hay que juzgarlo por separado. ULA(InetAddress.isSiteLocalAddress Devoluciones para IPv6 false).
      */
     private fun isPrivateAddress(addr: java.net.InetAddress): Boolean {
         if (addr.isLoopbackAddress || addr.isAnyLocalAddress ||
@@ -200,13 +200,13 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
         if (addr is java.net.Inet6Address) {
             val bytes = addr.address
-            // fc00::/7 的前 7 位是 1111110,即首字节范围 0xfc..0xfd
+            // fc00::/7 Los 7 primeros son 1111110,Es decir, el primer rango de bytes. 0xfc..0xfd
             if ((bytes[0].toInt() and 0xFE) == 0xFC) return true
         }
         return false
     }
 
-    /** HTTP GET 请求。失败时(404/超时/连接失败)降级到搜索摘要;401/403 等业务错误不降级。 */
+    /** HTTP GET pedido. en el fracaso(404/tiempo de espera/La conexión falló)Bajar a fragmentos de búsqueda;401/403 Espere errores comerciales y no baje de categoría. */
     fun resolveSandboxFile(path: String): File? {
         val filesDir = context.filesDir.canonicalPath
         val cacheDir = context.cacheDir.canonicalPath
@@ -218,7 +218,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         return if (inside(filesDir) || inside(cacheDir)) target else null
     }
 
-    // H-SE1: 改用 resultOf{}(正确重抛 CancellationException)
+    // H-SE1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
     fun execListDir(args: Map<String, String>): String {
         val path = args["path"] ?: return context.getString(R.string.skill_missing_param_path)
         val dir = resolveSandboxFile(path) ?: return context.getString(R.string.skill_path_violation, path)
@@ -233,9 +233,9 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
     }
 
-    /** delete_file — 删除文件或空目录(沙盒内)。支持单个 path 或批量 paths。 */
+    /** delete_file — Eliminar archivos o directorios vacíos(dentro de la caja de arena). Admite rutas únicas o por lotes. */
     fun execDeleteFile(args: Map<String, String>): String {
-        // v1.47: 支持 paths 批量删除(逗号或换行分隔),兼容旧的单 path 参数
+        // v1.47: Admite la eliminación por lotes de rutas(Separados por coma o nueva línea),Compatible con el antiguo parámetro de ruta única
         val paths = args["paths"]?.takeIf { it.isNotBlank() }
             ?.split(",", "\n")
             ?.map { it.trim() }
@@ -248,33 +248,33 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
             val ok = file.delete()
             if (ok) context.getString(R.string.skill_delete_success, p) else context.getString(R.string.skill_delete_failed, p)
         }
-        val okCount = results.count { it.startsWith("[成功]") }
+        val okCount = results.count { it.startsWith("[éxito]") }
         return context.getString(R.string.skill_batch_delete_result, okCount, paths.size) + results.joinToString("\n")
     }
 
-    /** file_exists — 判断文件是否存在(沙盒内)。 */
+    /** file_exists — Determinar si el archivo existe(dentro de la caja de arena). */
     fun execFileExists(args: Map<String, String>): String {
         val path = args["path"] ?: return context.getString(R.string.skill_missing_param_path)
         val file = resolveSandboxFile(path) ?: return context.getString(R.string.skill_path_violation, path)
         return if (file.exists()) "exists" else "not_exists"
     }
 
-    // ── 公共目录与文件传输 ──────────────────────────────────────────────
+    // ── Directorio público y transferencia de archivos ──────────────────────────────────────────────
 
-    /** file_download — 从 URL 下载文件到应用沙盒(限定 filesDir 下)。 */
+    /** file_download — Descargue el archivo desde la URL a la aplicación Sandbox(Calificar en filesDir). */
     suspend fun execFileDownload(args: Map<String, String>): String {
         val url = args["url"] ?: return "error: missing url"
-        // H-SE4: 校验 url scheme,防止 SSRF/本地文件读取(file:// 协议)
+        // H-SE4: verificar url scheme,Evitar la lectura de archivos SSRF/locales(file:// Acuerdo)
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             return context.getString(R.string.skill_url_invalid_scheme_err)
         }
-        // A-08: 落地前校验主机 + 逐跳重定向防护(防公网 URL 30x 跳到内网)。
-        // 初始 URL 与重定向目标都由 downloadWithHopGuard 逐跳校验并用单次解析结果冻结连接目标,
-        // 这里不再单独预解析一次(否则与 downloadWithHopGuard 内解析构成 TOCTOU 二次解析窗口)。
+        // A-08: Verifique el host antes de aterrizar + protección de redirección salto a salto(URL de red antipública 30x Saltar a la intranet).
+        // Tanto la URL inicial como el destino de redireccionamiento se verifican paso a paso mediante downloadWithHopGuard y el destino de la conexión se congela con un único resultado de análisis.,
+        // No es necesario analizarlo previamente por separado aquí.(De lo contrario, se combinará con downloadWithHopGuard para formar la ventana de análisis secundaria de TOCTOU.).
         val path = args["path"] ?: return "error: missing path"
-        // H-SE3: 改用 resolveSandboxFile 校验路径,防止路径穿越(如 path="../../databases/main.db")
+        // H-SE3: Utilice resolveSandboxFile para verificar la ruta en su lugar.,Evitar el cruce de caminos(Como por ejemplo path="../../databases/main.db")
         val file = resolveSandboxFile(path) ?: return context.getString(R.string.skill_path_violation_err)
-        // M-SE8: timeout 限制在 1..300 秒,防止无上限阻塞
+        // M-SE8: timeout Limitado a 1..300 segundos,Evitar el bloqueo ilimitado
         val timeoutSec = args["timeout"]?.toIntOrNull()?.coerceIn(1, 300) ?: 60
 
         file.parentFile?.mkdirs()
@@ -301,30 +301,30 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
     }
 
     /**
-     * A-08: 带 SSRF 逐跳防护的下载请求执行。关闭自动跟随重定向(client 默认 followRedirects=true),
-     * 手动跟随 30x,每一跳都重新过 [validatePublicUrl] — 防止初始公网 URL 30x 重定向到内网地址
-     * (与 http_get / web_fetch 的方案一致)。跳数上限防无限重定向环。
+     * A-08: Ejecución de solicitud de descarga con protección salto a salto SSRF. Desactivar redireccionamientos de seguimiento automático(client Predeterminado followRedirects=true),
+     * Seguir manualmente 30x,Repite cada salto [validatePublicUrl] — Evite que la URL pública inicial sea redirigida 30 veces a la dirección de intranet
+     * (Mismo esquema que http_get/web_fetch). El límite de recuento de saltos evita bucles de redireccionamiento infinitos.
      *
-     * @param url 初始 URL(已通过 scheme + validatePublicUrl 校验)
-     * @return 最终命中的响应;调用方负责 use/close
+     * @param url inicial URL(Esquema aprobado + verificación validarPublicUrl)
+     * @return respuesta de golpe final;La persona que llama es responsable. use/close
      */
     private fun downloadWithHopGuard(url: String): okhttp3.Response {
         var redirects = 0
         var currentUrl = url
-        // B-32: host → 冻结的公网 IP 列表;同一 host 只解析校验一次并复用为连接目标(hostOverride),
-        // 连接阶段不再重新解析域名,杜绝「先解析校验再连接」的 TOCTOU 窗口(DNS rebinding 攻击失效)。
+        // B-32: host → Lista de IP públicas congeladas;El mismo host solo analiza la verificación una vez y la reutiliza como destino de la conexión.(hostOverride),
+        // El nombre de dominio ya no se volverá a resolver durante la fase de conexión.,Eliminar las ventanas TOCTOU que "analizan y verifican primero y luego se conectan"(DNS rebinding El ataque falló).
         val pinnedResolutions = HashMap<String, List<java.net.InetAddress>>()
         while (true) {
             val host = java.net.URI(currentUrl).host
-                ?: throw java.io.IOException("下载目标缺少主机名: $currentUrl")
+                ?: throw java.io.IOException("Al destino de descarga le falta el nombre de host: $currentUrl")
             val pinned = pinnedResolutions.getOrPut(host) { resolvePublicPinned(currentUrl) }
-            // 每跳新建 followRedirects=false 且 DNS 固定到单次解析结果的 client,复用共享连接池与超时配置
+            // Nuevo para cada salto followRedirects=false Y el DNS se fija al resultado de una única resolución. client,Reutilizar el grupo de conexiones compartidas y la configuración del tiempo de espera
             val hopClient = client.newBuilder()
                 .followRedirects(false)
                 .dns(Dns { _ -> pinned })
                 .build()
             val resp = hopClient.newCall(Request.Builder().url(currentUrl).get().build()).execute()
-            // location 为局部 val,下方 if 早退后 Kotlin 可智能转为非空
+            // location para locales val,Kotlin puede convertir inteligentemente el siguiente if a no vacío después de salir temprano.
             val location = resp.header("Location")
             if (resp.code !in 300..399 || location == null) {
                 return resp
@@ -332,13 +332,13 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
             resp.close()
             redirects++
             if (redirects > MAX_DOWNLOAD_REDIRECTS) {
-                throw java.io.IOException("重定向次数超过上限($MAX_DOWNLOAD_REDIRECTS),已终止")
+                throw java.io.IOException("El número de redirecciones supera el límite superior.($MAX_DOWNLOAD_REDIRECTS),terminado")
             }
-            // 相对 Location 按当前 URL 解析(java.net.URL 兼容 OkHttp URL 的 resolve 语义)
+            // Ubicación relativa analizada por la URL actual(java.net.URL Compatible con la semántica de resolución de URL de OkHttp)
             currentUrl = try {
                 java.net.URL(currentUrl).toURI().resolve(location).toString()
             } catch (e: Exception) {
-                throw java.io.IOException("重定向 Location 无法解析: $location")
+                throw java.io.IOException("La ubicación de redireccionamiento no se puede resolver: $location")
             }
         }
     }
@@ -346,15 +346,15 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
     companion object {
         private const val MAX_READ_FILE_CHARS = 1_000_000L
 
-        /** 手动跟随下载重定向的最大跳数(防无限重定向环)。 */
+        /** Número máximo de saltos para seguir las redirecciones de descarga manualmente(Bucle de redireccionamiento anti-infinito). */
         private const val MAX_DOWNLOAD_REDIRECTS = 10
     }
 
-    /** read_public_file — 通过 SAF 读取用户分享/打开方式传入的文件 URI。 */
+    /** read_public_file — Leer recursos compartidos de usuarios a través de SAF/Abra el URI del archivo pasado. */
     suspend fun execReadPublicFile(args: Map<String, String>): String {
         val uriStr = args["uri"] ?: return "error: missing uri"
         val encoding = args["encoding"]?.takeIf { it.isNotBlank() } ?: "utf-8"
-        // L-SE14: 单独校验 charset,给出明确提示而非笼统的"读取失败"
+        // L-SE14: Verificación individual charset,Dar sugerencias claras en lugar de generales."Error de lectura"
         val cs = try {
             java.nio.charset.Charset.forName(encoding)
         } catch (e: java.nio.charset.UnsupportedCharsetException) {
@@ -365,9 +365,9 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
 
         return try {
             val uri = Uri.parse(uriStr)
-            // 审计修复 (1.3): 只允许 content:// scheme。原实现接受 file://,
-            // LLM 可读应用私有目录任意文件(数据库、shared_prefs 等)。
-            // read_public_file 语义是 SAF 分享文件,content:// 是标准通道。
+            // Reparación de auditoría (1.3): Sólo se permite el esquema content://. La implementación original acepta file://,
+            // LLM Legible cualquier archivo en el directorio privado de la aplicación.(base de datos,shared_prefs espera).
+            // read_public_file La semántica son archivos compartidos SAF.,content:// Es un canal estándar.
             val scheme = uri.scheme?.lowercase()
             if (scheme != "content") {
                 return "error: unsupported uri scheme '$scheme', only content:// is allowed"
@@ -394,25 +394,25 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
     }
 
-    /** save_to_downloads — 保存文本或本地文件到 Download 目录(Android 10+ 用 MediaStore)。 */
+    /** save_to_downloads — Guarde texto o archivos locales en el directorio de descargas(Android 10+ usar MediaStore). */
     suspend fun execSaveToDownloads(args: Map<String, String>): String {
         val filenameArg = args["filename"] ?: return "error: missing filename"
-        // B-20: 文件名 sanitize — 原始 filename 可含 "../" 等路径片段逃逸 Download 目录。
-        // 复用 FileTools.create_download 的同一规则:仅保留字母数字下划线点连字符,
-        // 其余替换为 "_",彻底消除分隔符/相对段导致的路径逃逸。空结果回退带时间戳默认名。
+        // B-20: nombre de archivo sanitize — El nombre del archivo original puede contener "../" Escapar de los fragmentos de ruta del directorio de descarga.
+        // Reutilice la misma regla de FileTools.create_download:Mantenga solo guiones alfanuméricos de punto y guión bajo,
+        // Reemplace el resto con "_",Eliminar los separadores por completo/Escape de ruta causado por segmentos relativos. Los resultados vacíos vuelven al nombre predeterminado con marca de tiempo.
         val filename = filenameArg.replace(Regex("[^A-Za-z0-9._-]"), "_")
             .takeIf { it.isNotBlank() } ?: "download_${System.currentTimeMillis()}.txt"
         val mimeType = args["mime_type"] ?: "text/plain"
-        // v1.47: 支持 file_path 参数 — 直接从沙盒读取文件转存到 Download,无需先 read_file 再写文本
+        // v1.47: Admite el parámetro file_path — Lea archivos directamente desde la zona de pruebas y transfiéralos a Download,No es necesario leer_archivo antes de escribir texto
         val filePath = args["file_path"]?.takeIf { it.isNotBlank() }
         val content = args["content"]
 
-        // content 与 file_path 二选一
+        // content Alternativa a file_path
         if (content == null && filePath == null) {
             return context.getString(R.string.skill_missing_content_or_filepath)
         }
 
-        // 如果传了 file_path,读取本地文件字节(支持二进制,不强制文本)
+        // si pasa file_path,Leer bytes de archivos locales(Soporte binario,Sin texto obligatorio)
         val srcFile = filePath?.let { resolveSandboxFile(it) }
         if (filePath != null) {
             if (srcFile == null) return context.getString(R.string.skill_path_violation_err)
@@ -421,7 +421,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
 
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+ 用 MediaStore
+                // Android 10+ usar MediaStore
                 val resolver = context.contentResolver
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
@@ -435,7 +435,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
                     if (srcFile != null) {
                         srcFile.inputStream().use { it.copyTo(output) }
                     } else {
-                        // v1.74: 逻辑保证 filePath==null 时 content 非空(顶部已校验二选一),用 ?: "" 防御性降级
+                        // v1.74: garantía lógica filePath==null cuando el contenido no está vacío(La cima ha sido verificada. Elige uno de los dos.),usar ?: "" degradación defensiva
                         output.write((content ?: "").toByteArray())
                     }
                 } ?: return "error: cannot open output stream"
@@ -446,8 +446,8 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
                     context.getString(R.string.skill_saved_to_download, filename)
                 }
             } else {
-                // Android 9 以下直接写公共 Download 目录
-                // M-SE9: API < 29 需检查 WRITE_EXTERNAL_STORAGE 权限
+                // Android 9 Lo siguiente escribe directamente el directorio de descarga público.
+                // M-SE9: API < 29 Es necesario verificar el permiso WRITE_EXTERNAL_STORAGE
                 val hasWritePerm = androidx.core.content.ContextCompat.checkSelfPermission(
                     context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -459,7 +459,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
                 if (srcFile != null) {
                     srcFile.copyTo(file, overwrite = true)
                 } else {
-                    // v1.74: 逻辑保证 filePath==null 时 content 非空(顶部已校验二选一),用 ?: "" 防御性降级
+                    // v1.74: garantía lógica filePath==null cuando el contenido no está vacío(La cima ha sido verificada. Elige uno de los dos.),usar ?: "" degradación defensiva
                     file.writeText(content ?: "")
                 }
                 context.getString(R.string.skill_saved_to_path, file.absolutePath)
@@ -471,13 +471,13 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
     }
 
-    /** list_public_files — 列出指定公共目录的文件(MediaStore 查询)。 */
+    /** list_public_files — Listar archivos en un directorio público específico(MediaStore Consulta). */
     suspend fun execListPublicFiles(args: Map<String, String>): String {
         val directory = args["directory"] ?: "Downloads"
         val limit = args["limit"]?.toIntOrNull() ?: 50
 
         return try {
-            // v1.29: directory="all" 时遍历所有公共目录并合并结果
+            // v1.29: directory="all" mientras recorre todos los directorios públicos y fusiona los resultados
             if (directory.equals("all", ignoreCase = true)) {
                 val allDirs = listOf("Downloads", "Documents", "Pictures", "Music", "Movies")
                 val merged = StringBuilder()
@@ -496,7 +496,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         }
     }
 
-    /** 查询单个公共目录的文件列表(MediaStore)。v1.47: 输出含 content:// URI,可直接喂给 read_public_file。 */
+    /** Consultar la lista de archivos de un único directorio público.(MediaStore).v1.47: La salida contiene content:// URI,Se puede enviar directamente a read_public_file. */
     fun queryPublicDir(directory: String, limit: Int): String {
         val collection = when (directory.lowercase()) {
             "downloads" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -513,15 +513,15 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
             }
             else -> MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         }
-        // v1.47: 多查 _ID 列,用于拼出 content:// URI,让 list → read 能力对称
+        // v1.47: Verifique varias columnas _ID,solía deletrear content:// URI,dejar list → read simetría de habilidad
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DATE_MODIFIED,
         )
-        // M-SE7: 用 selectionArgs 参数化绑定 directory,避免 SQL 注入;
-        // 转义 LIKE 通配符(% _ \)并加 ESCAPE '\' 子句
+        // M-SE7: Enlace parametrizado con SelectionArgs directory,Evite la inyección SQL;
+        // Escapar del carácter comodín LIKE(% _ \)y agregar ESCAPE '\' cláusula
         val escapedDir = directory.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? ESCAPE '\\'"
@@ -533,7 +533,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
         } else {
             null
         }
-        // v1.109 修复: LIMIT 加上限 200,防止 LLM 传超大值导致资源耗尽
+        // v1.109 Reparación: LIMIT Agregar límite superior 200,Evite que LLM transmita valores extremadamente grandes y provoque el agotamiento de los recursos
         val safeLimit = limit.coerceIn(1, 200)
         // MediaStore providers do not consistently accept SQL LIMIT tokens in sortOrder
         // (some return "Invalid token LIMIT"). Use structured query arguments instead.
@@ -560,7 +560,7 @@ class SkillFileToolsImpl(private val context: Context, private val client: OkHtt
                 val name = it.getString(1) ?: "?"
                 val size = it.getLong(2)
                 val uri = android.content.ContentUris.withAppendedId(collection, id)
-                // 格式: 文件名 (大小B) | uri=content://...
+                // Formato: nombre de archivo (tamañoB) | uri=content://...
                 results.add("$name (${size}B) | uri=$uri")
             }
             if (results.isEmpty()) context.getString(R.string.skill_dir_empty) else results.joinToString("\n")

@@ -9,15 +9,15 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * v1.120: 云备份 AES-256-GCM 加解密。
+ * v1.120: Copia de seguridad en la nube Cifrado y descifrado AES-256-GCM.
  *
- * 密钥派生:PBKDF2-HMAC-SHA256(password, salt, iterations=100000, keyLen=256bit)
- * 加密算法:AES-256-GCM(12B IV + 128bit authTag)
+ * derivación de claves:PBKDF2-HMAC-SHA256(password, salt, iterations=100000, keyLen=256bit)
+ * algoritmo de cifrado:AES-256-GCM(12B IV + 128bit authTag)
  *
- * 文件格式:[magic(4B "MENC")] [version(1B)] [salt(16B)] [iv(12B)] [ciphertext+authTag]
+ * Formato de archivo:[magic(4B "MENC")] [version(1B)] [salt(16B)] [iv(12B)] [ciphertext+authTag]
  *
- * 跨设备:用户在新设备输入相同 backupPassword 即可解密(salt 随密文一起存储)。
- * 兼容性:importFromCloud 检测 magic header,无 magic 视为旧版明文备份,原样处理。
+ * En todos los dispositivos:El usuario ingresa la misma contraseña de respaldo en el nuevo dispositivo para descifrarlo.(salt Almacenado con texto cifrado).
+ * Compatibilidad:importFromCloud Detección magic header,No hay magia considerada como copia de seguridad antigua de texto plano,Procese como está.
  */
 object BackupCrypto {
     private const val MAGIC = "MENC"
@@ -26,11 +26,11 @@ object BackupCrypto {
     private const val IV_LENGTH = 12
     private const val GCM_TAG_LENGTH_BITS = 128
 
-    /** H-SEC-5: NIST SP 800-132 推荐最小 210,000 次(SHA-256)。提升抗暴力破解强度。 */
+    /** H-SEC-5: NIST SP 800-132 Mínimo recomendado 210,000 veces(SHA-256). Mejore la resistencia contra el agrietamiento por fuerza bruta. */
     private const val PBKDF2_ITERATIONS = 210_000
     private const val KEY_LENGTH_BITS = 256
 
-    /** 加密,返回带 magic header 的完整字节流。password 为空时抛 IllegalArgumentException。 */
+    /** Cifrado,Devuelve el flujo de bytes completo con un encabezado mágico.password Lanza IllegalArgumentException cuando está vacío. */
     fun encrypt(plaintext: ByteArray, password: String): ByteArray {
         require(password.isNotEmpty()) { "backupPassword must not be empty" }
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
@@ -39,7 +39,7 @@ object BackupCrypto {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
         val ciphertext = cipher.doFinal(plaintext)
-        // 拼装: magic(4) + version(1) + salt(16) + iv(12) + ciphertext
+        // montar: magic(4) + version(1) + salt(16) + iv(12) + ciphertext
         return ByteArray(MAGIC.length + 1 + SALT_LENGTH + IV_LENGTH + ciphertext.size).also { out ->
             var offset = 0
             MAGIC.toByteArray(Charsets.US_ASCII).copyInto(out, offset)
@@ -54,7 +54,7 @@ object BackupCrypto {
         }
     }
 
-    /** 解密。data 须为 [encrypt] 输出格式。password 错误或数据损坏抛异常。 */
+    /** Descifrar.data debe ser [encrypt] Formato de salida.password Se lanza una excepción en caso de error o corrupción de datos. */
     fun decrypt(data: ByteArray, password: String): ByteArray {
         require(password.isNotEmpty()) { "backupPassword must not be empty" }
         require(data.size > MAGIC.length + 1 + SALT_LENGTH + IV_LENGTH) { "encrypted data too short" }
@@ -74,7 +74,7 @@ object BackupCrypto {
         return cipher.doFinal(ciphertext)
     }
 
-    /** 判断字节流是否为本工具加密的格式(用于 importFromCloud 兼容旧明文备份)。 */
+    /** Determine si el flujo de bytes está en el formato cifrado por esta herramienta(Utilizado por importFromCloud para ser compatible con copias de seguridad antiguas de texto sin formato). */
     fun isEncrypted(data: ByteArray): Boolean {
         if (data.size <= MAGIC.length) return false
         val magic = runCatching { String(data, 0, MAGIC.length, Charsets.US_ASCII) }.getOrNull()
@@ -84,7 +84,7 @@ object BackupCrypto {
     private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
         val spec = PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_LENGTH_BITS)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        // H-SEC-6: 生成密钥后立即复制并清零敏感字节,防止原始 secret 残留在堆中
+        // H-SEC-6: Copie y borre bytes confidenciales inmediatamente después de generar la clave,Evitar que el secreto original permanezca en el montón
         val rawSecret = factory.generateSecret(spec).encoded
         val keyBytes = rawSecret.copyOf(rawSecret.size)
         Arrays.fill(rawSecret, 0.toByte())

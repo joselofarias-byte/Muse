@@ -7,20 +7,20 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import io.zer0.muse.ui.theme.MuseTheme
 
 /**
- * 开发预览用的独立 Activity。
+ * Una actividad separada para la vista previa del desarrollo.
  *
- * 存在的唯一目的：在没有配置供应商、也没有真实会话的情况下，
- * 也能看到消息气泡的实际排版（MOOD 分节、思考卡摘要行等）。
+ * El único propósito de la existencia: cuando no hay un proveedor de configuración ni una sesión real,
+ * También puede ver el diseño real de la burbuja del mensaje (MOOD Secciones, líneas de resumen de tarjetas de pensamiento, etc.).
  *
- * 独立成 Activity 而不是挂在主入口里，是为了让 [io.zer0.muse.MainActivity]
- * 的启动流程完全不受影响 —— 预览代码不进主链路，也不会增加主入口的分支。
+ * Convertido independientemente en una Actividad en lugar de colgarlo en la entrada principal, es para permitir [io.zer0.muse.MainActivity]
+ * El proceso de inicio no se ve afectado en absoluto. —— El código de vista previa no ingresa al enlace principal ni agrega ramas a la entrada principal.
  *
- * 用法：
+ * Uso:
  * ```
  * adb shell am start -n io.zer0.muse/.ui.devpreview.DevPreviewActivity
  * ```
  *
- * 未在桌面注册，正常使用不会看到入口。
+ * No está registrado en el escritorio y no verá la entrada durante el uso normal.
  */
 class DevPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

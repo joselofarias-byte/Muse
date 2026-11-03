@@ -13,15 +13,15 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * 置顶记忆存储。
+ * Almacenamiento de memoria de pines.
  *
- * 用户主动要求 AI 记住的内容，始终保留在 system prompt 中。
- * 双格式存储：
- *  - JSON 文件（结构化，程序读写）
- *  - Markdown 文件（人类可读，调试/导出）
+ * El contenido que el usuario pide activamente a la IA que recuerde siempre se conserva en el mensaje del sistema.
+ * Almacenamiento de doble formato:
+ *  - JSON Archivo (lectura y escritura estructurada y programática)
+ *  - Markdown Archivo (legible por humanos, depuración)/exportar)
  *
- * 去重：相同内容不重复添加。
- * 双文件合并：按 id 合并，以 updatedAt 较新的条目为准。
+ * Deduplicación: No se agregará el mismo contenido repetidamente.
+ * Combinación de archivos dobles: combine por ID y prevalecerá la entrada más reciente en UpdatedAt.
  */
 class PinnedMemoryStore(
     private val storageDir: File,
@@ -41,9 +41,9 @@ class PinnedMemoryStore(
     private val jsonFile = File(storageDir, JSON_FILE)
     private val mdFile = File(storageDir, MD_FILE)
 
-    // 审查修复 (2.0 C-04): mtime 缓存 — 文件未变化时复用内存结果。
-    // SystemPromptAssembler 每次组装 system prompt 都调用 renderForPrompt,
-    // 无缓存时每次读双文件(JSON + Markdown 合并),高频对话下无谓磁盘 I/O。
+    // Revisión de corrección (2.0 C-04): mtime caché — Reutilice los resultados de la memoria cuando el archivo no haya cambiado.
+    // SystemPromptAssembler Se llama cada vez que se ensambla el indicador del sistema. renderForPrompt,
+    // Leer archivos dobles cada vez sin caché(JSON + Markdown fusionar),E/S de disco innecesarias durante conversaciones de alta frecuencia.
     @Volatile
     private var cacheJsonMtime: Long = -1L
 
@@ -54,10 +54,10 @@ class PinnedMemoryStore(
     private var cachedEntries: List<PinnedEntry>? = null
 
     /**
-     * 审查修复 (B-20): 进程级写锁 — add/removeById/removeByKeyword/removeByContent/
-     * removeByContentFlexible/replace 的 loadEntries+writeBoth 都是读-改-写,并发调用
-     * 会以对方的旧快照覆盖(丢失更新)。所有写方法整体持锁,保证 loadEntries+writeBoth 原子。
-     * (与 FactStore 墓碑的锁模式一致,但为实例级;PinnedMemoryStore 无多实例共享文件场景。)
+     * Revisión de corrección (B-20): Bloqueo de escritura a nivel de proceso — add/removeById/removeByKeyword/removeByContent/
+     * removeByContentFlexible/replace LoadEntries+writeAmbos son leídos-cambiar-escribir,Llamadas simultáneas
+     * Se sobrescribirá con la instantánea anterior de la otra parte.(Actualizaciones faltantes). Todos los métodos de escritura mantienen el bloqueo en su totalidad.,Se garantiza que LoadEntries+writeBoth será atómico.
+     * (Consistente con el modo de bloqueo de lápida de FactStore,pero por ejemplo nivel;PinnedMemoryStore No existe ningún escenario en el que varias instancias compartan archivos.)
      */
     private val writeLock = Mutex()
 
@@ -67,23 +67,23 @@ class PinnedMemoryStore(
         val content: String,
         val createdAt: String,
         val updatedAt: String,
-        /** null 表示旧版/显式全局置顶;非 null 表示助手私有置顶。 */
+        /** null Indica una versión antigua/Pin global explícito;No nulo significa que el asistente está fijado de forma privada. */
         val assistantId: String? = null,
     )
 
-    /** 加载全部置顶记忆（JSON 与 Markdown 合并，较新者优先）。 */
+    /** Cargar todos los recuerdos anclados (JSON Fusionado con Markdown, lo más nuevo tiene prioridad). */
     suspend fun getAll(): List<PinnedEntry> = withContext(Dispatchers.IO) {
         loadEntries()
     }
 
-    /** 添加一条置顶记忆。相同内容去重。返回 entry id。 */
+    /** Añade un recuerdo fijado. Elimina la duplicación de contenido idéntico. ID de entrada de devolución. */
     suspend fun add(content: String, assistantId: String? = null): String = withContext(Dispatchers.IO) {
         writeLock.withLock {
             val trimmed = content.trim()
             if (trimmed.isEmpty()) return@withLock ""
             val scopedAssistantId = assistantId?.trim()?.takeIf { it.isNotEmpty() }
             val existing = loadEntries()
-            // 去重
+            // Eliminar duplicados
             if (existing.any { it.content == trimmed && it.assistantId == scopedAssistantId }) {
                 Logger.d(TAG, "pinned memory dedup: already exists")
                 return@withLock existing.first { it.content == trimmed && it.assistantId == scopedAssistantId }.id
@@ -102,7 +102,7 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 按 id 删除。返回是否成功。 */
+    /** Eliminar por identificación. Devuelve si tuvo éxito. */
     suspend fun removeById(id: String): Boolean = withContext(Dispatchers.IO) {
         writeLock.withLock {
             val existing = loadEntries()
@@ -114,7 +114,7 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 按关键词删除（内容包含关键词的第一条）。返回是否成功。 */
+    /** Eliminar por palabra clave (el primer elemento cuyo contenido contiene la palabra clave). Devuelve si tuvo éxito. */
     suspend fun removeByKeyword(keyword: String): Boolean = withContext(Dispatchers.IO) {
         writeLock.withLock {
             val existing = loadEntries()
@@ -128,10 +128,10 @@ class PinnedMemoryStore(
     }
 
     /**
-     * F-8: 按内容精确删除（去除首尾空白后完全相等的第一条）。
+     * F-8: Elimine exactamente según el contenido (el primer elemento idéntico después de eliminar los espacios en blanco iniciales y finales).
      *
-     * 与 [removeByKeyword]（包含式匹配）语义不同，用于记忆页 UI 取消置顶时
-     * 精确移除对应内容，避免误删包含该文本的其他置顶条目。
+     * con [removeByKeyword](Coincidencia inclusiva) tiene una semántica diferente y se utiliza cuando la interfaz de usuario de la página de memoria no está fijada.
+     * Elimine el contenido correspondiente con precisión para evitar eliminar accidentalmente otros elementos fijados que contengan este texto.
      */
     suspend fun removeByContent(content: String): Boolean = withContext(Dispatchers.IO) {
         writeLock.withLock {
@@ -142,10 +142,10 @@ class PinnedMemoryStore(
     }
 
     /**
-     * 审查修复 (B-18): 保守取消置顶 — 优先精确匹配,精确匹配失败时退化为包含匹配
-     * (含 ignoreCase),供 facet 内容被改写过(PinnedMemoryStore 无改写,但外部注入侧
-     * 措辞可能变化)的残留清理兜底。绝不跨条目误删回去按原内容首条。
-     * 返回是否删除成功。
+     * Revisión de corrección (B-18): Desenganchado conservadoramente — Priorizar coincidencias exactas,Degenera en coincidencia de inclusión cuando falla la coincidencia exacta
+     * (Contiene ignoreCase),Siempre que el contenido de la faceta haya sido reescrito(PinnedMemoryStore Sin reescritura,Pero el lado de la inyección externa
+     * la redacción puede cambiar)Limpia los residuos restantes. Nunca elimines un elemento por error y devuélvelo al primer elemento con el contenido original.
+     * Devuelve si la eliminación fue exitosa.
      */
     suspend fun removeByContentFlexible(content: String): Boolean = withContext(Dispatchers.IO) {
         writeLock.withLock {
@@ -160,7 +160,7 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 替换指定 id 的内容。返回是否成功。 */
+    /** Reemplaza el contenido de la identificación especificada. Devuelve si tuvo éxito. */
     suspend fun replace(id: String, newContent: String): Boolean = withContext(Dispatchers.IO) {
         writeLock.withLock {
             val trimmed = newContent.trim()
@@ -176,17 +176,17 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 生成注入 system prompt 的文本（所有置顶记忆拼接）。 */
+    /** Genera texto inyectado en el indicador del sistema (todas las memorias fijadas unidas). */
     suspend fun renderForPrompt(): String = withContext(Dispatchers.IO) {
         renderEntries(loadEntries())
     }
 
-    /** 生成指定助手可见的置顶记忆;旧条目只有在显式允许全局时才返回。 */
+    /** Generar una memoria adhesiva visible para el asistente especificado;Las entradas antiguas solo se devuelven si lo global está permitido explícitamente. */
     suspend fun renderForAssistant(assistantId: String, includeGlobal: Boolean): String = withContext(Dispatchers.IO) {
         renderEntries(getForAssistant(assistantId, includeGlobal))
     }
 
-    /** 查询指定助手可见的置顶记忆。 */
+    /** Consulta la memoria adhesiva visible para el asistente especificado. */
     suspend fun getForAssistant(assistantId: String, includeGlobal: Boolean): List<PinnedEntry> = withContext(Dispatchers.IO) {
         val normalized = assistantId.trim()
         loadEntries().filter { entry ->
@@ -194,7 +194,7 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 在助手 scope 内按内容取消置顶,避免同名记忆误删其他助手的数据。 */
+    /** Presione el contenido en el alcance del asistente para desanclarlo.,Evita que la memoria del mismo nombre borre accidentalmente los datos de otros asistentes. */
     suspend fun removeByIdForAssistant(
         id: String,
         assistantId: String,
@@ -212,7 +212,7 @@ class PinnedMemoryStore(
         }
     }
 
-    /** 在助手 scope 内按内容取消置顶,避免同名记忆误删其他助手的数据。 */
+    /** Presione el contenido en el alcance del asistente para desanclarlo.,Evita que la memoria del mismo nombre borre accidentalmente los datos de otros asistentes. */
     suspend fun removeByContentFlexibleForAssistant(
         content: String,
         assistantId: String,
@@ -237,18 +237,18 @@ class PinnedMemoryStore(
     private fun renderEntries(entries: List<PinnedEntry>): String {
         if (entries.isEmpty()) return ""
         return buildString {
-            appendLine("## Pinned Memories (用户要求始终记住的内容)")
+            appendLine("## Pinned Memories (Lo que los usuarios piden para recordar siempre)")
             for (e in entries) {
                 appendLine("- ${e.content}")
             }
         }.trimEnd()
     }
 
-    // ─── 内部 I/O ───
+    // ─── interno I/O ───
 
     /**
-     * 审查修复 (B-20): 调用方必须已持有 [writeLock] 的按 id 删除。
-     * removeByContent 已在 withLock 内,不能再次 removeById(会重复拿锁死锁)。
+     * Revisión de corrección (B-20): La persona que llama ya debe tener en espera [writeLock] Eliminar por identificación.
+     * removeByContent Ya dentro de withLock,no otra vez removeById(Tomará repetidamente el punto muerto de bloqueo).
      */
     private fun removeByIdLocked(id: String): Boolean {
         val existing = loadEntries()
@@ -260,7 +260,7 @@ class PinnedMemoryStore(
     }
 
     private fun loadEntries(): List<PinnedEntry> {
-        // C-04: mtime 未变 → 直接返回缓存
+        // C-04: mtime sin cambios → Volver directamente al caché
         val jsonMtime = if (jsonFile.exists()) jsonFile.lastModified() else -1L
         val mdMtime = if (mdFile.exists()) mdFile.lastModified() else -1L
         val cached = cachedEntries
@@ -372,11 +372,11 @@ class PinnedMemoryStore(
     }
 
     private fun writeBoth(entries: List<PinnedEntry>) {
-        // C-04: 写入后显式失效缓存(同毫秒写入可能 mtime 不变,不能只靠 mtime)
+        // C-04: Invalidar explícitamente el caché después de escribir(Escribir en el mismo milisegundo puede mantener el tiempo sin cambios,no puede confiar únicamente en mtime)
         cachedEntries = null
         storageDir.mkdirs()
-        // 审查修复 (B-20): 临时文件 + rename 原子替换,避免进程被杀/写一半留下半截文件
-        // (JSON 解析失败;与 FactStore 墓碑写入模式一致)。
+        // Revisión de corrección (B-20): Archivo temporal + cambiar el nombre del reemplazo atómico,Evite que el proceso sea eliminado/Escribe la mitad y deja la mitad del archivo.
+        // (JSON El análisis falló;Consistente con el modo de escritura de lápida de FactStore).
         writeAtomic(jsonFile, json.encodeToString(ListSerializer(PinnedEntry.serializer()), entries))
         // Markdown
         val md = buildString {
@@ -394,7 +394,7 @@ class PinnedMemoryStore(
         writeAtomic(mdFile, md)
     }
 
-    /** 写入目标文件;先写临时文件再 rename 原子替换,rename 失败时回退直写(尽力而为)。 */
+    /** Escribir en el archivo de destino;Escriba primero el archivo temporal y luego cambie el nombre del reemplazo atómico,rename Recurrir a la escritura directa en caso de error(haz tu mejor esfuerzo). */
     private fun writeAtomic(file: File, content: String) {
         val tmp = File(file.parentFile, file.name + ".tmp")
         tmp.writeText(content)

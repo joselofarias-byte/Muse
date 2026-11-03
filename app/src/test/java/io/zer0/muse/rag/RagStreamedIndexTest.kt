@@ -18,11 +18,11 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /**
- * v2.x: 流式索引([RagService.indexDocumentStreamed])单测 — 大文件导入链路回归防线。
+ * v2.x: índice de transmisión([RagService.indexDocumentStreamed])prueba única — Los enlaces de importación de archivos grandes vuelven a la línea de defensa.
  *
- * 背景:知识库导入从「全文读入内存 + 全量分块」改为「滑窗流式摄取」,支持任意大小文件。
- * 这里钉住关键语义:内容完整(不再有 500K 字符截断)、分批嵌入写入、
- * 重导清理旧块、空流 / 维度不匹配时不破坏既有数据。
+ * fondo:La importación de la base de conocimientos cambió de "lectura de texto completo en la memoria + fragmentación completa" a "ingesta de transmisión por ventana deslizante",Admite archivos de cualquier tamaño.
+ * Fije la semántica clave aquí:Contenido completo(No más truncamientos de 500.000 caracteres), escritura incrustada en lotes,
+ * La redirección limpia bloques antiguos, secuencias vacías y no destruye los datos existentes cuando las dimensiones no coinciden.
  */
 class RagStreamedIndexTest {
 
@@ -161,8 +161,8 @@ class RagStreamedIndexTest {
         val provider = FakeEmbeddingProvider()
         val service = buildService(chunkDao, docDao, ftsDao, provider)
 
-        // 300 段,每段 ~200 字符 → ~64K 字符;windowChars=2048 → 多窗;chunkSize=300 → 多块多批
-        val segments = (0 until 300).map { i -> "SEG%03d ".format(i) + "文字内容".repeat(48) }
+        // 300 segmento,cada párrafo ~200 personaje → ~64K personaje;windowChars=2048 → múltiples ventanas;chunkSize=300 → Múltiples bloques y múltiples lotes
+        val segments = (0 until 300).map { i -> "SEG%03d ".format(i) + "Contenido del texto".repeat(48) }
         val fullText = segments.joinToString("\n\n")
         val pieces = fullText.chunked(4096)
         val progress = mutableListOf<Int>()
@@ -174,13 +174,13 @@ class RagStreamedIndexTest {
             onProgress = { progress.add(it) },
         )
 
-        assertTrue("应产出多个块,实际 $count", count > 50)
-        assertTrue("应分批嵌入(批数=${provider.batches.size})", provider.batches.size >= 2)
-        assertEquals("进度应递增到底", count, progress.last())
-        assertEquals("进度应非递减", progress.sorted(), progress)
+        assertTrue("Se deben producir múltiples trozos.,real $count", count > 50)
+        assertTrue("Debe integrarse en lotes(número de lote=${provider.batches.size})", provider.batches.size >= 2)
+        assertEquals("El progreso debe incrementarse hasta el final.", count, progress.last())
+        assertEquals("El progreso no debe ser decreciente.", progress.sorted(), progress)
         val all = provider.batches.flatten().joinToString("\n")
         for (tag in listOf("SEG000", "SEG150", "SEG299")) {
-            assertTrue("缺少段落 $tag", all.contains(tag))
+            assertTrue("Párrafo faltante $tag", all.contains(tag))
         }
     }
 
@@ -193,10 +193,10 @@ class RagStreamedIndexTest {
         val provider = FakeEmbeddingProvider()
         val service = buildService(chunkDao, docDao, ftsDao, provider)
 
-        // 600K+ 字符(超过旧 500K 截断线),头部与尾部各有哨兵标记
+        // 600K+ personaje(Más allá de la antigua línea de corte de 500K),Marcas centinela en la cabeza y la cola.
         val head = "HEAD-MARK "
         val tail = " TAIL-MARK"
-        val body = "长文本填充".repeat(120_000)
+        val body = "relleno de texto largo".repeat(120_000)
         val fullText = head + body + tail
         val pieces = fullText.chunked(8192)
         val count = service.indexDocumentStreamed(
@@ -206,10 +206,10 @@ class RagStreamedIndexTest {
             windowChars = 8192,
         )
 
-        assertTrue("大文件应产出较多块,实际 $count", count > 100)
+        assertTrue("Los archivos grandes deberían producir más bloques,real $count", count > 100)
         val all = provider.batches.flatten().joinToString("\n")
-        assertTrue("头部内容缺失", all.contains("HEAD-MARK"))
-        assertTrue("尾部内容缺失(旧实现 500K 截断会丢尾部)", all.contains("TAIL-MARK"))
+        assertTrue("Falta el contenido del encabezado", all.contains("HEAD-MARK"))
+        assertTrue("Falta el contenido de la cola(El truncamiento de 500K de la implementación anterior perderá cola)", all.contains("TAIL-MARK"))
     }
 
     @Test
@@ -223,7 +223,7 @@ class RagStreamedIndexTest {
 
         service.indexDocumentStreamed(
             docId = "doc-same",
-            textPieces = flowOf("这是一个需要重新索引的测试文档,内容足够产生至少一个分块。"),
+            textPieces = flowOf("Este es un documento de prueba que necesita ser reindexado.,El contenido es suficiente para generar al menos un fragmento."),
             ragConfig = RagConfig(chunkSize = 100, chunkOverlap = 10),
             windowChars = 1024,
         )
@@ -259,7 +259,7 @@ class RagStreamedIndexTest {
         val chunkDao = mockk<KnowledgeChunkDao>(relaxed = true)
         val docDao = mockk<KnowledgeDocDao>(relaxed = true)
         val ftsDao = mockk<KnowledgeChunkFtsDao>(relaxed = true)
-        // 库中已有 16 维 chunk,新 provider 输出 8 维 → 必须中止且不清理旧块
+        // Ya hay 16 dimensiones en la biblioteca. chunk,El nuevo proveedor genera 8 dimensiones → Debe cancelar sin limpiar bloques viejos
         coEvery { chunkDao.getFirstIndexedEmbeddingDim() } returns 16
         val provider = FakeEmbeddingProvider(dim = 8)
         val service = buildService(chunkDao, docDao, ftsDao, provider)
@@ -267,13 +267,13 @@ class RagStreamedIndexTest {
         try {
             service.indexDocumentStreamed(
                 docId = "doc-dim",
-                textPieces = flowOf("维度不匹配时不应写入任何数据。"),
+                textPieces = flowOf("No se deben escribir datos cuando las dimensiones no coincidan."),
                 ragConfig = RagConfig(chunkSize = 100, chunkOverlap = 10),
                 windowChars = 1024,
             )
-            fail("应抛出维度不匹配异常")
+            fail("Se debe generar una excepción de discrepancia de dimensiones")
         } catch (e: IllegalStateException) {
-            assertTrue("异常信息应说明维度不匹配: ${e.message}", e.message.orEmpty().contains("dimension mismatch"))
+            assertTrue("La información de excepción debe indicar una discrepancia de dimensiones: ${e.message}", e.message.orEmpty().contains("dimension mismatch"))
         }
         coVerify(exactly = 0) { chunkDao.deleteByDoc("doc-dim") }
         coVerify(exactly = 0) { chunkDao.insertAll(any()) }
@@ -285,8 +285,8 @@ class RagStreamedIndexTest {
         try {
             fixture.service.indexDocument("new-doc", "new document content", fixture.config)
             val beforeFullReindex = fixture.service.retrieve("query", 1, 0.1f, fixture.config)
-            assertTrue("指纹失配后不得用旧数据库向量与新模型分数混合", beforeFullReindex.isEmpty())
-            assertEquals("指纹失配期间必须禁用所有向量检索", 0, fixture.pageReads.count)
+            assertTrue("No mezcle vectores de bases de datos antiguas con puntuaciones de modelos nuevos después de que las huellas dactilares no coincidan", beforeFullReindex.isEmpty())
+            assertEquals("Toda la recuperación de vectores debe desactivarse durante la discrepancia de huellas dactilares.", 0, fixture.pageReads.count)
             fixture.service.saveVectorIndex()
             assertThrows(HnswEmbeddingFingerprintMismatchException::class.java) {
                 HnswVectorIndex().load(
@@ -296,12 +296,12 @@ class RagStreamedIndexTest {
             }
 
             val failures = fixture.service.reindexAllInKbs(listOf("default"), fixture.config)
-            assertTrue("全 KB 重建应成功: $failures", failures.isEmpty())
+            assertTrue("La reconstrucción completa de KB debería realizarse correctamente: $failures", failures.isEmpty())
             fixture.pageReads.count = 0
             val afterFullReindex = fixture.service.retrieve("query", 3, 0.1f, fixture.config)
-            assertEquals("完整重建后最近邻仍应正确", "chunk-old-doc-0", afterFullReindex.first().chunkId)
+            assertEquals("El vecino más cercano debería seguir siendo correcto después de una reconstrucción completa", "chunk-old-doc-0", afterFullReindex.first().chunkId)
             assertEquals(setOf("chunk-old-doc-0", "chunk-new-doc-0"), afterFullReindex.map { it.chunkId }.toSet())
-            assertEquals("完整重建后的 HNSW 检索不应回退扫描向量表", 0, fixture.pageReads.count)
+            assertEquals("La recuperación de HNSW después de la reconstrucción completa no debería revertir la tabla de vectores de escaneo", 0, fixture.pageReads.count)
         } finally {
             fixture.tempDir.listFiles()?.forEach { it.delete() }
             fixture.tempDir.delete()
@@ -316,11 +316,11 @@ class RagStreamedIndexTest {
         try {
             val failures = fixture.service.reindexAllInKbs(listOf("default"), fixture.config)
 
-            assertTrue("全库维度切换重建应成功: $failures", failures.isEmpty())
+            assertTrue("El cambio y la reconstrucción completos de las dimensiones de la base de datos deberían tener éxito: $failures", failures.isEmpty())
             fixture.pageReads.count = 0
             val results = fixture.service.retrieve("query", 3, 0.1f, fixture.config)
             assertEquals(setOf("chunk-old-doc-0", "chunk-new-doc-0"), results.map { it.chunkId }.toSet())
-            assertEquals("完成全库维度切换重建后应重新启用 HNSW", 0, fixture.pageReads.count)
+            assertEquals("Debe volver a habilitarse después de completar el cambio y la reconstrucción completos de la dimensión de la base de datos. HNSW", 0, fixture.pageReads.count)
         } finally {
             fixture.tempDir.listFiles()?.forEach { it.delete() }
             fixture.tempDir.delete()
@@ -336,9 +336,9 @@ class RagStreamedIndexTest {
         val provider = FakeEmbeddingProvider()
         val service = buildService(chunkDao, docDao, ftsDao, provider)
 
-        // markdownAware=true(默认)+ 无 Markdown 结构的长文本:TextChunker 会合并成巨块,
-        // 流式摄取的保底二次切分应将其切到 targetSize 量级,避免巨块进入 embedding/检索
-        val body = "纯段落长文本".repeat(20_000) // 120K 字符,无换行无标点
+        // markdownAware=true(Predeterminado)+ Texto largo sin estructura Markdown:TextChunker fusionarse en trozos enormes,
+        // La segmentación secundaria garantizada de la ingestión de streaming debe reducirse al nivel targetSize,Evite que grandes trozos entren en incrustación/recuperación
+        val body = "Texto largo de párrafo puro".repeat(20_000) // 120K personaje,Sin saltos de línea, sin puntuación
         val chunkSize = 500
         val count = service.indexDocumentStreamed(
             docId = "doc-plain",
@@ -347,9 +347,9 @@ class RagStreamedIndexTest {
             windowChars = 8192,
         )
 
-        assertTrue("应产出多个块,实际 $count", count > 50)
+        assertTrue("Se deben producir múltiples trozos.,real $count", count > 50)
         val maxLen = provider.batches.flatten().maxOf { it.length }
-        assertTrue("块长应被保底切分到 ${chunkSize * 2} 以内,实际最大 $maxLen", maxLen <= chunkSize * 2)
+        assertTrue("La longitud del bloque debe cortarse en ${chunkSize * 2} dentro,Máximo real $maxLen", maxLen <= chunkSize * 2)
     }
 
     @Test
@@ -361,9 +361,9 @@ class RagStreamedIndexTest {
         val provider = FakeEmbeddingProvider()
         val service = buildService(chunkDao, docDao, ftsDao, provider)
 
-        // 大代码块(超过 2×chunkSize)应被整体保留,不受保底切分影响
+        // bloque de código grande(exceder 2×chunkSize)debe conservarse en su totalidad,No afectado por la división garantizada
         val codeBlock = "```\n" + "val line = 1\n".repeat(300) + "```"
-        val text = "说明文字。\n\n$codeBlock\n\n结尾。"
+        val text = "Texto de descripción.\n\n$codeBlock\n\nEl fin."
         val count = service.indexDocumentStreamed(
             docId = "doc-code",
             textPieces = flowOf(text),
@@ -371,9 +371,9 @@ class RagStreamedIndexTest {
             windowChars = 4096,
         )
 
-        assertTrue("应至少产出一个块", count >= 1)
+        assertTrue("Debe producir al menos un bloque.", count >= 1)
         val codeChunk = provider.batches.flatten().firstOrNull { it.contains("```") }
-        assertTrue("应存在代码块", codeChunk != null)
-        assertTrue("代码块应整体保留(不超长硬切),实际长度 ${codeChunk!!.length}", codeChunk.length > 200 * 2)
+        assertTrue("El bloque de código debería existir.", codeChunk != null)
+        assertTrue("Los bloques de código deben conservarse en su totalidad.(No demasiado largo y difícil de cortar.),longitud real ${codeChunk!!.length}", codeChunk.length > 200 * 2)
     }
 }

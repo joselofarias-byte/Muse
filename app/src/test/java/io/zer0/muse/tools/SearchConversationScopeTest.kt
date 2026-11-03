@@ -11,13 +11,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 跨会话原文检索的测试 —— 重点在**隐私边界**。
+ * Prueba de recuperación de texto original entre sesiones —— El punto es**límite de privacidad**.
  *
- * 助手自审第 6 条要「能想起别处聊过的事」。技术上只需去掉 sessionId 过滤，
- * 但那样 A 角色就能读到用户和 B 角色的对话。所以实现为**按助手隔离**：
- * 只搜同一助手的其他会话。
+ * Ítem ​​6 de la Autoevaluación del Asistente: "Ser capaz de recordar cosas discutidas en otros lugares". Técnicamente simplemente elimine el filtro sessionId,
+ * Pero entonces el personaje A puede leer la conversación entre el usuario y el personaje B. Entonces se implementa como**Aislar por asistente**:
+ * Busca solo otras conversaciones con el mismo asistente.
  *
- * 这个测试的第一要务不是「能搜到」，而是「搜不到不该搜的」。
+ * La primera prioridad de esta prueba no es "puedo buscar", sino "no puedo encontrar lo que no debería buscarse".
  */
 class SearchConversationScopeTest {
 
@@ -45,70 +45,70 @@ class SearchConversationScopeTest {
 
     @Test
     fun `default scope searches only the current session`() = runBlocking {
-        coEvery { repo.searchMessagesInSession("s1", "音乐", 8) } returns listOf(result("s1", "聊过播放器"))
-        coEvery { repo.searchMessages("音乐") } returns listOf(result("s2", "别处的音乐"))
+        coEvery { repo.searchMessagesInSession("s1", "musica", 8) } returns listOf(result("s1", "Charló sobre el jugador."))
+        coEvery { repo.searchMessages("musica") } returns listOf(result("s2", "música en otros lugares"))
 
         val out =
             SearchConversationTool.execute(
-                args = mapOf("query" to "音乐"),
+                args = mapOf("query" to "musica"),
                 sessionRepository = repo,
                 enabled = true,
                 context = context("s1"),
             )
 
-        assertTrue(out.contains("聊过播放器"))
-        assertFalse("默认不该跨会话", out.contains("别处的音乐"))
+        assertTrue(out.contains("Charló sobre el jugador."))
+        assertFalse("No debería abarcar sesiones de forma predeterminada", out.contains("música en otros lugares"))
     }
 
     @Test
     fun `assistant scope includes the same assistant's other sessions`() = runBlocking {
         coEvery { repo.getSessionById("s1") } returns session("s1", "assistant-a")
-        coEvery { repo.getSessionById("s2") } returns session("s2", "assistant-a", "上周的会话")
-        // v2.6.7 fix (AUDIT F16): 跨会话过滤改为一次性取同助手会话 id 集。
+        coEvery { repo.getSessionById("s2") } returns session("s2", "assistant-a", "sesión de la semana pasada")
+        // v2.6.7 fix (AUDIT F16): El filtrado entre sesiones se cambia para recuperar el mismo conjunto de identificadores de sesión del asistente a la vez.
         coEvery { repo.sessionsOfAssistant("assistant-a") } returns listOf("s1", "s2")
-        coEvery { repo.searchMessages("音乐") } returns listOf(
-            result("s1", "本会话内容"),
-            result("s2", "上周聊过的内容"),
+        coEvery { repo.searchMessages("musica") } returns listOf(
+            result("s1", "Contenido de esta conversación"),
+            result("s2", "De lo que hablamos la semana pasada"),
         )
 
         val out =
             SearchConversationTool.execute(
-                args = mapOf("query" to "音乐", "scope" to "assistant"),
+                args = mapOf("query" to "musica", "scope" to "assistant"),
                 sessionRepository = repo,
                 enabled = true,
                 context = context("s1"),
             )
 
-        assertTrue(out.contains("上周聊过的内容"))
-        assertTrue("跨会话要标出来源", out.contains("来自") || out.contains("from"))
+        assertTrue(out.contains("De lo que hablamos la semana pasada"))
+        assertTrue("Marcar la fuente entre sesiones", out.contains("de") || out.contains("from"))
     }
 
     @Test
     fun `assistant scope never leaks another assistant's conversations`() = runBlocking {
         coEvery { repo.getSessionById("s1") } returns session("s1", "assistant-a")
         coEvery { repo.getSessionById("s3") } returns session("s3", "assistant-b")
-        // s2 属于同助手，s3 属于另一个助手。
+        // s2 Pertenece al mismo asistente,s3 Pertenece a otro asistente.
         coEvery { repo.sessionsOfAssistant("assistant-a") } returns listOf("s1", "s2")
-        coEvery { repo.searchMessages("秘密") } returns listOf(
-            result("s2", "同助手的内容"),
-            result("s3", "别的角色的私密对话"),
+        coEvery { repo.searchMessages("secreto") } returns listOf(
+            result("s2", "Contenidos con el asistente."),
+            result("s3", "Conversaciones privadas con otros personajes."),
         )
 
         val out =
             SearchConversationTool.execute(
-                args = mapOf("query" to "秘密", "scope" to "assistant"),
+                args = mapOf("query" to "secreto", "scope" to "assistant"),
                 sessionRepository = repo,
                 enabled = true,
                 context = context("s1"),
             )
 
-        assertTrue(out.contains("同助手的内容"))
-        assertFalse("绝不能读到别的助手和用户的对话", out.contains("别的角色的私密对话"))
+        assertTrue(out.contains("Contenidos con el asistente."))
+        assertFalse("Nunca leas conversaciones entre otros asistentes y usuarios", out.contains("Conversaciones privadas con otros personajes."))
     }
 
     @Test
     fun `unknown scope falls back to current session`() = runBlocking {
-        coEvery { repo.searchMessagesInSession("s1", "x", 8) } returns listOf(result("s1", "本会话"))
+        coEvery { repo.searchMessagesInSession("s1", "x", 8) } returns listOf(result("s1", "esta sesión"))
 
         val out =
             SearchConversationTool.execute(
@@ -118,7 +118,7 @@ class SearchConversationScopeTest {
                 context = context("s1"),
             )
 
-        assertTrue(out.contains("本会话"))
+        assertTrue(out.contains("esta sesión"))
     }
 
     @Test
@@ -149,11 +149,11 @@ class SearchConversationScopeTest {
 
     @Test
     fun `no match reports it plainly`() = runBlocking {
-        coEvery { repo.searchMessagesInSession("s1", "无", 8) } returns emptyList()
+        coEvery { repo.searchMessagesInSession("s1", "Ninguno", 8) } returns emptyList()
 
         val out =
             SearchConversationTool.execute(
-                args = mapOf("query" to "无"),
+                args = mapOf("query" to "Ninguno"),
                 sessionRepository = repo,
                 enabled = true,
                 context = context("s1"),

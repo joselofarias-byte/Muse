@@ -18,7 +18,7 @@ class ChatGenerationManagerTest {
         manager.launchGeneration(
             sessionId = "session-1",
             assistantId = "assistant-1",
-            sessionTitle = "后台测试",
+            sessionTitle = "pruebas de fondo",
         ) {
             gate.await()
         }
@@ -40,7 +40,7 @@ class ChatGenerationManagerTest {
         manager.launchGeneration(
             sessionId = "session-1",
             assistantId = "assistant-1",
-            sessionTitle = "统一代际",
+            sessionTitle = "Unificar generaciones",
             generationId = "trace-generation-1",
         ) { gate.await() }
 
@@ -54,10 +54,10 @@ class ChatGenerationManagerTest {
         val manager = ChatGenerationManager(backgroundScope, ConversationSessionManager(backgroundScope))
         val gate = CompletableDeferred<Unit>()
 
-        manager.launchGeneration("session-1", "assistant-1", "测试") { gate.await() }
+        manager.launchGeneration("session-1", "assistant-1", "prueba") { gate.await() }
         manager.touch("session-1")
         val generationId = manager.activeGenerations.value.getValue("session-1").generationId
-        manager.updateSessionTitle("session-1", "展示快照")
+        manager.updateSessionTitle("session-1", "Mostrar instantánea")
         assertEquals(generationId, manager.activeGenerations.value.getValue("session-1").generationId)
         assertTrue(manager.activeGenerations.value.containsKey("session-1"))
 
@@ -72,8 +72,8 @@ class ChatGenerationManagerTest {
         val firstGate = CompletableDeferred<Unit>()
         val secondGate = CompletableDeferred<Unit>()
 
-        manager.launchGeneration("session-1", "assistant-1", "第一条") { firstGate.await() }
-        manager.launchGeneration("session-2", "assistant-2", "第二条") { secondGate.await() }
+        manager.launchGeneration("session-1", "assistant-1", "Artículo 1") { firstGate.await() }
+        manager.launchGeneration("session-2", "assistant-2", "Artículo 2") { secondGate.await() }
         runCurrent()
 
         assertEquals(setOf("session-1", "session-2"), manager.activeGenerations.value.keys)
@@ -95,7 +95,7 @@ class ChatGenerationManagerTest {
         val oldFinally = CompletableDeferred<Unit>()
         val newStarted = CompletableDeferred<Unit>()
 
-        manager.launchGeneration("session-1", "assistant-old", "旧") {
+        manager.launchGeneration("session-1", "assistant-old", "viejo") {
             try {
                 kotlinx.coroutines.awaitCancellation()
             } finally {
@@ -104,7 +104,7 @@ class ChatGenerationManagerTest {
         }
         runCurrent()
 
-        manager.launchGeneration("session-1", "assistant-new", "新") {
+        manager.launchGeneration("session-1", "assistant-new", "nuevo") {
             newStarted.complete(Unit)
         }
         runCurrent()
@@ -120,8 +120,8 @@ class ChatGenerationManagerTest {
         val firstGate = CompletableDeferred<Unit>()
         val secondGate = CompletableDeferred<Unit>()
 
-        manager.launchGeneration("session-1", "assistant-1", "第一条") { firstGate.await() }
-        manager.launchGeneration("session-2", "assistant-2", "第二条") { secondGate.await() }
+        manager.launchGeneration("session-1", "assistant-1", "Artículo 1") { firstGate.await() }
+        manager.launchGeneration("session-2", "assistant-2", "Artículo 2") { secondGate.await() }
         runCurrent()
 
         val firstBefore = manager.activeGenerations.value.getValue("session-1").lastUpdatedAt

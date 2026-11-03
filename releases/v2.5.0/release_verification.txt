@@ -1,21 +1,21 @@
-Muse v2.5.0 (versionCode 250) 发布校验记录
+Muse v2.5.0 (versionCode 250) Liberar registros de verificación
 ------------------------------------------------
 
-构建时间: 2026-10-07 (本地)
+tiempo de construcción: 2026-10-07 (locales)
 sourceCommit: 2947f183
-versionName/versionCode: 2.5.0 / 250（显式注入 -PversionName -PversionCode）
-数据库版本: 109（MIGRATION_107_108 知识库文件夹表; 108→109 会话树快照相关）
+versionName/versionCode: 2.5.0 / 250(Inyección explícita -PversionName -PversionCode)
+Versión de la base de datos: 109(MIGRATION_107_108 Tabla de carpetas de la base de conocimientos; 108→109 Instantánea del árbol de sesión relacionada)
 
-门禁
+control de acceso
 ----
 - :app:compileDebugKotlin          PASS
 - :app:detekt                      PASS
-- :app:ktlintKotlinSourceCheck     PASS（基线按当前源码重建）
-- :app:testDebugUnitTest           PASS（全量, 4m26s）
-- ci lanes（icon-cd/touch-target/horizontal-inset/row-text-width/hardcoded-cjk/localizations）PASS
-  - values-en 严格校验 0 缺失; 其余语言为既有 WARN（channel/groupchat 等存量缺失）
+- :app:ktlintKotlinSourceCheck     PASS(La línea de base se reconstruye según el código fuente actual)
+- :app:testDebugUnitTest           PASS(Cantidad total, 4m26s)
+- ci lanes(icon-cd/touch-target/horizontal-inset/row-text-width/hardcoded-cjk/localizations)PASS
+  - values-en Falta validación estricta 0; Los idiomas restantes ya existen. ADVERTENCIA (channel/groupchat Esperando stock faltante)
 
-分发 (releases/v2.5.0/)  — 终版（玻璃默认关闭+设置项隐藏 / 会话检索默认开启 / 全部实测修复）
+Distribuir (releases/v2.5.0/)  — Versión final (el vidrio está apagado por defecto)+Los elementos de configuración están ocultos/la recuperación de sesiones está habilitada de forma predeterminada/todas las reparaciones medidas)
 -----------------------
 Muse_v2.5.0_arm64-v8a.apk
   size=85640186
@@ -27,15 +27,15 @@ Muse_v2.5.0_universal.apk
   size=160827047
   sha256=08d6dfc9ffba8f19b5f7dfa30b87c3ba4a02544a25d6024db2e7285895194ecc
 
-签名
+firma
 ----
-keystore.properties 存在, assembleRelease 未回退 debug 签名（构建脚本硬约束通过）。
+keystore.properties existir, assembleRelease Las firmas de depuración no se revierten (se superan las restricciones estrictas del script de compilación).
 
-发布说明
+Notas de la versión
 --------
-releases/v2.5.0/release_body.md（中文主体 + English 对照, 覆盖 v2.4.2→v2.5.0 全部累积变更）
+releases/v2.5.0/release_body.md(Asunto chino + comparación en inglés, Portada v2.4.2→v2.5.0 Todos los cambios acumulativos)
 
-升级注意
+Nota sobre la actualización
 --------
-- DB 107→108→109 自动迁移, 仅新建表/字段, 不动既有数据。
-- 2.4.x 用户直接覆盖安装即可。
+- DB 107→108→109 Migración automática, Crear solo tablas nuevas/campo, Los datos existentes no se mueven.
+- 2.4.x Los usuarios pueden sobrescribirlo e instalarlo directamente.

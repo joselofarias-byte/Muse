@@ -4,7 +4,7 @@ import io.zer0.ai.core.ProviderConfig
 import io.zer0.muse.data.routing.UtilityModelBinding
 import io.zer0.muse.rag.RagConfig
 
-/** Provider 删除时需要同步清理的全局和会话级引用。 */
+/** Provider Referencias globales y a nivel de sesión que deben limpiarse sincrónicamente cuando se eliminan. */
 internal data class ProviderReferenceCleanup(
     val providers: List<ProviderConfig>,
     val activeProviderId: String?,
@@ -25,11 +25,11 @@ internal data class ProviderReferenceCleanup(
 )
 
 /**
- * 计算删除 Provider 后的引用状态。
+ * Calcule el estado de referencia después de eliminar el Proveedor.
  *
- * 只清理确定属于被删 Provider 的引用；当同名模型仍存在于其他 Provider 时，
- * 保留模型 ID，避免把一个本来仍可用的全局选择误删。会话 Provider 覆盖被删时，
- * 对应的会话模型覆盖也一并移除，防止形成半套覆盖配置。
+ * Limpiar únicamente las referencias que se determine que pertenecen al Proveedor eliminado; cuando el modelo con el mismo nombre todavía existe en otros Proveedores,
+ * Conserve la ID del modelo para evitar eliminar accidentalmente una selección global que todavía está disponible. Cuando se elimina la anulación del proveedor de sesión,
+ * La superposición del modelo de sesión correspondiente también se elimina para evitar la formación de una configuración de superposición de medio conjunto.
  */
 @Suppress("LongParameterList")
 internal fun cleanupProviderReferences(
@@ -68,8 +68,8 @@ internal fun cleanupProviderReferences(
     val visionProvider = if (visionProviderId == deletedProviderId) null else visionProviderId
     val visionModel = if (visionProviderId == deletedProviderId) null else cleanModel(visionModelId)
 
-    // v2.x: 辅助模型绑定带 providerId — 被删 Provider 的绑定直接置空(不做跨渠道保留:
-    // 绑定的语义就是"精确命中该渠道的该模型",渠道没了即失效)。
+    // v2.x: Correa de sujeción modelo auxiliar providerId — El enlace del proveedor eliminado se deja directamente en blanco.(Sin retención entre canales:
+    // La semántica de la vinculación es"Ese modelo llega a ese canal exactamente.",Si el canal desaparece, dejará de ser válido.).
     fun cleanBinding(binding: UtilityModelBinding?): UtilityModelBinding? =
         if (binding != null && binding.providerId == deletedProviderId) null else binding
 
@@ -100,7 +100,7 @@ internal fun cleanupProviderReferences(
         taskRoutingConfig.analysisProviderId.orEmpty(),
         taskRoutingConfig.analysisModelId.orEmpty(),
     )
-    // RAG 云端 embedding:Provider 没了就清空,否则 cloudProviderId 会永久悬空
+    // RAG Integración en la nube: el proveedor se borrará si desaparece.,De lo contrario, cloudProviderId quedará permanentemente vacante.
     val (ragProvider, ragModel) = cleanProviderModel(ragConfig.cloudProviderId, ragConfig.cloudModel)
 
     return ProviderReferenceCleanup(
@@ -135,9 +135,9 @@ internal fun cleanupProviderReferences(
 }
 
 /**
- * 会引用具体模型 ID 的配置集合 —— 删除单个模型时需要清理的部分。
+ * Una colección de configuración que hace referencia a un ID de modelo específico —— Secciones que deben limpiarse al eliminar un solo modelo.
  *
- * 与 [ProviderReferenceCleanup] 互补:那个管「整个 Provider 没了」,这个管「Provider 还在但某个模型没了」。
+ * con [ProviderReferenceCleanup] complementario:El responsable de "todo el Proveedor se ha ido",Este tubo "Provider Todavía está ahí, pero cierto modelo ya no existe”.
  */
 internal data class ModelReferences(
     val imageGenConfig: ImageGenConfig = ImageGenConfig(),
@@ -150,14 +150,14 @@ internal data class ModelReferences(
 )
 
 /**
- * 计算从某个 Provider 删除模型后的引用状态。
+ * Calcula el estado de referencia después de eliminar un modelo de un proveedor.
  *
- * 处理原则:
- *  - 模型 ID 类字段(图片/视频/任务路由/RAG cloudModel/视觉)指向被删模型时**置空**,
- *    交给各运行时自带的兜底选默认模型 —— 不自动改指同 Provider 的其他模型,
- *    避免把用户没选过的模型静默绑上去。
- *  - 辅助模型绑定带 providerId,语义是「精确命中该渠道的该模型」,命中被删模型时整体置空。
- *  - 同名模型仍存在于其他 Provider 时保留原值(中转站与官方共用模型 ID 很常见)。
+ * Principios de procesamiento:
+ *  - Campo de clase de ID de modelo(fotos/vídeo/Enrutamiento de tareas/RAG cloudModel/Visión)Al señalar el modelo eliminado**dejar en blanco**,
+ *    Déjelo en el modelo predeterminado que viene con cada tiempo de ejecución. —— No volver a consultar automáticamente otros modelos con el mismo Proveedor,
+ *    Evite vincular silenciosamente modelos que no hayan sido seleccionados por el usuario.
+ *  - Correa de sujeción modelo auxiliar providerId,La semántica es "acertar con precisión en el modelo de este canal".,Cuando se accede a un modelo eliminado, todo el campo se deja en blanco.
+ *  - El valor original se conserva cuando el modelo con el mismo nombre todavía existe en otros proveedores.(Es común que los sitios de tránsito compartan identificaciones de modelos con el funcionario.).
  */
 internal fun cleanupRemovedModelReferences(
     providerId: String,

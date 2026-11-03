@@ -25,15 +25,15 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.pill
 
 /**
- * v2.0.1: 设置页搜索栏。
+ * v2.0.1: Establecer barra de búsqueda de página.
  *
- * - 胶囊形、左侧放大镜、无语音输入；点击进入搜索态（由调用方处理）；
- * - [glass] 模式：只在胶囊形状内部做背景模糊（backdrop blur，轻模糊、可透视下方内容），
- *   用于吸顶悬浮态——由页面把内容层标记为 `Modifier.hazeSource(state)` 后传入 [hazeState]；
- *   API 31+ 为真实高斯模糊，低版本自动降级为半透明 scrim（Haze 内建行为）；
- * - 非玻璃模式：实色浅面胶囊（surface 白），用于随内容滚动的常态。
+ * - Forma de cápsula, lupa a la izquierda, sin entrada de voz; haga clic para ingresar al estado de búsqueda (procesado por la persona que llama);
+ * - [glass] Modo: el fondo solo se desenfoca dentro de la forma de la cápsula (backdrop blur, ligeramente borroso, lo que permite ver el contenido siguiente),
+ *   Para estado suspendido del techo——La capa de contenido está marcada por la página como `Modifier.hazeSource(state)` pasó más tarde [hazeState];
+ *   API 31+ Para un desenfoque gaussiano real, las versiones inferiores automáticamente degradan a malla semitransparente (Haze comportamiento incorporado);
+ * - Modo sin vidrio: cápsula de superficie ligera de color sólido (surface blanco), utilizado para el desplazamiento normal del contenido.
  *
- * 注：模糊范围仅限胶囊本体——胶囊之外不做任何遮罩。
+ * Nota: el rango de desenfoque se limita al cuerpo de la cápsula.——No se realiza ningún enmascaramiento fuera de la cápsula.
  */
 @Composable
 fun MuseSearchBar(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, glass: Boolean = false, hazeState: HazeState? = null) {
@@ -47,9 +47,9 @@ fun MuseSearchBar(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         base.hazeEffect(
             state = hazeState,
             style = HazeStyle(
-                // 底色需要接近实色：合计 0.59 时下方滚动文字仍有四成透出，
-                // 吸顶状态下会看到「玻璃里糊着一层字」。提高到 0.86 / 0.12 后
-                // 保留模糊质感，但不再透出可辨认的文字。
+                // El color de fondo debe ser cercano al color sólido: cuando el total es 0,59, el 40% del texto que se desplaza a continuación aún es visible.
+                // En el estado montado en el techo, verá "una capa de palabras pegadas en el cristal". Después de mejorar a 0,86/0,12
+                // La textura borrosa se conserva, pero el texto legible ya no se ve.
                 backgroundColor = surfaceColor.copy(alpha = 0.86f),
                 tint = HazeTint(surfaceColor.copy(alpha = 0.12f)),
                 blurRadius = 16.dp,
@@ -61,8 +61,8 @@ fun MuseSearchBar(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
     }
     Box(
         modifier = surfaceModifier.clickable(onClick = onClick),
-        // v2.0.1 fix: 内容必须显式垂直居中——Box 默认 TopStart，Row 仅 fillMaxWidth 时
-        // 图标与文字会贴到胶囊顶部（搜索栏文字位置上偏的缺陷）。
+        // v2.0.1 fix: El contenido debe estar explícitamente centrado verticalmente.——Box Inicio superior predeterminado,Row Sólo cuando fillMaxWidth
+        // El ícono y el texto se pegarán en la parte superior de la cápsula (un defecto en la posición hacia arriba del texto de la barra de búsqueda).
         contentAlignment = Alignment.Center,
     ) {
         Row(

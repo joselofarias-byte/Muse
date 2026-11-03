@@ -17,9 +17,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * search_memory 的编译摘要回落。
+ * search_memory El resumen de la compilación retrocede.
  *
- * 覆盖：facts 表全空时回落并标注来源、facts 有命中时不回落、没有回落入口时保持原有空结果文案。
+ * Cobertura:facts Cuando la tabla esté completamente vacía, retrocederá y marcará la fuente.facts No habrá respaldo cuando haya un acierto, y la copia del resultado vacío original se mantendrá cuando no haya una entrada de respaldo.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,43 +49,43 @@ class SearchMemoryToolCompiledFallbackTest {
         var seenScope: String? = null
         var seenSpace: String? = null
         val result = SearchMemoryTool.execute(
-            mapOf("query" to "子奇 徒步"),
+            mapOf("query" to "Senderismo Ziqi"),
             store,
             context(),
             SearchMemoryTool.CompiledSummarySearch { _, scope, spaceId, _ ->
                 seenScope = scope
                 seenSpace = spaceId
-                listOf(CompiledSectionHit("today", "子奇今天去山里徒步了"))
+                listOf(CompiledSectionHit("today", "Ziqi fue de excursión a las montañas hoy."))
             },
         )
 
         assertEquals("main", seenScope)
         assertEquals("default", seenSpace)
-        assertTrue("结果应标出来源是编译摘要: $result", result.contains("编译摘要"))
-        assertTrue("结果应带上摘要原文: $result", result.contains("子奇今天去山里徒步了"))
+        assertTrue("Los resultados deben indicar que la fuente es un resumen compilado.: $result", result.contains("compilar resumen"))
+        assertTrue("Los resultados deben ir acompañados del resumen original.: $result", result.contains("Ziqi fue de excursión a las montañas hoy."))
     }
 
     @Test
     fun `fact hits keep the compiled summary out of the result`() = runBlocking {
-        store.add(FactStore.Fact(fact = "子奇喜欢徒步"), "main", "default")
+        store.add(FactStore.Fact(fact = "A Ziqi le gusta el senderismo"), "main", "default")
 
         val result = SearchMemoryTool.execute(
-            mapOf("query" to "子奇"),
+            mapOf("query" to "Ziqi"),
             store,
             context(),
             SearchMemoryTool.CompiledSummarySearch { _, _, _, _ ->
-                listOf(CompiledSectionHit("today", "不应出现的摘要段落"))
+                listOf(CompiledSectionHit("today", "Párrafo resumen que no debería aparecer"))
             },
         )
 
-        assertTrue("应返回事实条目: $result", result.contains("Found 1 memory fact"))
-        assertFalse("事实命中时不该回落摘要: $result", result.contains("编译摘要"))
-        assertFalse(result.contains("不应出现的摘要段落"))
+        assertTrue("Las entradas de hechos deben devolverse: $result", result.contains("Found 1 memory fact"))
+        assertFalse("El resumen no debe retroceder cuando los hechos llegan: $result", result.contains("compilar resumen"))
+        assertFalse(result.contains("Párrafo resumen que no debería aparecer"))
     }
 
     @Test
     fun `without a summary reader the empty answer stays unchanged`() = runBlocking {
-        val result = SearchMemoryTool.execute(mapOf("query" to "子奇 徒步"), store, context())
+        val result = SearchMemoryTool.execute(mapOf("query" to "Senderismo Ziqi"), store, context())
 
         assertEquals("No matching memories found.", result)
     }

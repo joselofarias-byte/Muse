@@ -1,7 +1,7 @@
 name: CI
 
-# CI 只允许可复现的入口：质量门禁、单测/调试包、tag 正式构建与 Release。
-# 所有 run 步骤使用 PowerShell 7，避免 Windows 本地与 CI shell 语义不一致。
+# CI Sólo se permiten entradas reproducibles: control de acceso de calidad, prueba única/paquete de depuración,tag Construcción y lanzamiento oficiales.
+# Todos los pasos de ejecución utilizan PowerShell 7 para evitar inconsistencias entre la semántica del shell CI y nativa de Windows.
 defaults:
   run:
     shell: pwsh
@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
-  # v2.1.0: 自动触发已全关 — 质量门禁与发版改为本地全量(ci/run_ci_checks.ps1 + ci/script/)。
-  # push / pull_request / schedule / tag 均不再自动触发; 需要远端验证时在 Actions 页手动 Run workflow。
+  # v2.1.0: El disparador automático está desactivado — El control de acceso de calidad y la distribución cambiaron a cantidad total local.(ci/run_ci_checks.ps1 + ci/script/).
+  # push / pull_request / schedule / tag ya no se activan automáticamente; Cuando se requiera autenticación remota, ejecute manualmente el flujo de trabajo en la página Acciones.
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    # v2.1.0: 45→75 — v2.0.0 发布时 main+tag 双推并发、全量构建叠加,曾撞 45 分钟上限被取消。
+    # v2.1.0: 45→75 — v2.0.0 Al publicar, simultaneidad de doble inserción principal+etiqueta, superposición de compilación completa,Se levantó el límite de 45 minutos.
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
@@ -39,7 +39,7 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           # The legacy `tools` SDK package was removed from current runners.
-          # v2.2.x: 终端 PTY 原生库构建需 NDK + CMake(自写 forkpty JNI)
+          # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake(autoescrito forkpty JNI)
           packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -47,8 +47,8 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      # P4-9: 消费 pr_check 的 lanes 输出 — 纯文档/其他 PR 不再触发 Android 全量构建。
-      # push/tag/schedule 因无法对比 PR base,一律 full。
+      # P4-9: Consume la salida de carriles de pr_check — Documentación pura/Otros RP ya no activan compilaciones completas de Android.
+      # push/tag/schedule Porque es imposible comparar PR base,Siempre lleno.
       - name: Compute affected lanes (PR path filtering)
         id: lanes
         shell: bash
@@ -82,10 +82,10 @@ jobs:
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
           bash tools/python-pack/build-python-pack.sh both
-          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack 产出缺失: libmuse_node.so' }
-          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack 产出缺失: libpython3.14.so' }
-          if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack 产出缺失: muse-runtime-assets.zip' }
-          if (-not (Test-Path 'app/src/main/assets/muse-python-assets.zip')) { throw 'python-pack 产出缺失: muse-python-assets.zip' }
+          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack Salida faltante: libmuse_node.so' }
+          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack Salida faltante: libpython3.14.so' }
+          if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack Salida faltante: muse-runtime-assets.zip' }
+          if (-not (Test-Path 'app/src/main/assets/muse-python-assets.zip')) { throw 'python-pack Salida faltante: muse-python-assets.zip' }
       - name: Grant execute permission for gradlew
         run: |
           $path = (Resolve-Path './gradlew').Path
@@ -110,8 +110,8 @@ jobs:
         run: ./ci/run_ci_checks.ps1 -Lane lanes -ChangedScopes "$env:PR_CHECK_SCOPES"
       - name: Static checks
         if: steps.lanes.outputs.run_full == 'true'
-        # Detekt baseline 由本地 :module:detektBaseline 更新并提交；CI 不自动改仓库。
-        # 这样新增问题会失败，历史问题仍由对应模块 baseline 明确记录。
+        # Detekt baseline Actualizado y confirmado por local :module:detektBaseline;CI No cambie automáticamente el almacén.
+        # De esta manera, los nuevos problemas fallarán y los problemas históricos aún se registrarán claramente en la línea base del módulo correspondiente.
         run: ./ci/run_ci_checks.ps1 -Lane static
       - name: Unit tests (app/memory/ai)
         if: steps.lanes.outputs.run_full == 'true'
@@ -129,10 +129,10 @@ jobs:
       - name: Migration coverage check
         if: steps.lanes.outputs.run_full == 'true'
         run: python3 ci/script/check_migration_coverage.py
-      # CMP-11 / I18N-02 护栏: 纯脚本秒级检查,无条件执行(不受 run_full 路由影响,
-      # doc-only PR 也拦截)。static lane(ci/run_ci_checks.ps1)会再跑同一对脚本,
-      # 保证 `run_ci_checks.ps1 -Lane static` 本地复现与 CI 一致;这里显式列出
-      # 是为了 CI 页面能直接定位失败项。
+      # CMP-11 / I18N-02 barandilla: Inspección de segundo nivel de guión puro,Ejecutar incondicionalmente(No afectado por la ruta run_full,
+      # doc-only PR también interceptar).static lane(ci/run_ci_checks.ps1)Ejecutará el mismo par de scripts nuevamente.,
+      # garantia `run_ci_checks.ps1 -Lane static` La reproducción local es consistente con CI.;listado explícitamente aquí
+      # Esto es para que la página de CI pueda localizar directamente los elementos fallidos.
       - name: Component convergence guard (CMP-11)
         run: python3 ci/script/check_component_convergence.py
       - name: Translation residue guard (I18N-02)
@@ -162,8 +162,8 @@ jobs:
           if-no-files-found: ignore
 
   android-test:
-    # P4-3: instrumented 测试此前只在手动 workflow_dispatch 跑,nightly 从不执行。
-    # 现在 schedule(与上方 nightly cron 同频)也触发 emulator smoke,手动仍可触发。
+    # P4-3: instrumented Anteriormente, la prueba solo se ejecutaba manualmente con flujo de trabajo_dispatch.,nightly Nunca ejecutado.
+    # ahora schedule(Misma frecuencia que el cron nocturno anterior)también desencadenar emulator smoke,Todavía se puede activar manualmente.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
@@ -179,7 +179,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          # v2.2.x: 终端 PTY 原生库构建需 NDK + CMake
+          # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake
           packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Grant execute permission for gradlew
         run: |
@@ -234,7 +234,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          # v2.2.x: 终端 PTY 原生库构建需 NDK + CMake
+          # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake
           packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -252,10 +252,10 @@ jobs:
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
           bash tools/python-pack/build-python-pack.sh both
-          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack 产出缺失: libmuse_node.so' }
-          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack 产出缺失: libpython3.14.so' }
-          if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack 产出缺失: muse-runtime-assets.zip' }
-          if (-not (Test-Path 'app/src/main/assets/muse-python-assets.zip')) { throw 'python-pack 产出缺失: muse-python-assets.zip' }
+          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack Salida faltante: libmuse_node.so' }
+          if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack Salida faltante: libpython3.14.so' }
+          if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack Salida faltante: muse-runtime-assets.zip' }
+          if (-not (Test-Path 'app/src/main/assets/muse-python-assets.zip')) { throw 'python-pack Salida faltante: muse-python-assets.zip' }
       - name: Grant execute permission for gradlew
         run: |
           $path = (Resolve-Path './gradlew').Path

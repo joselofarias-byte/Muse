@@ -1,6 +1,6 @@
 /**
- * Muse 组件基元（Web 版，规格对齐 Compose 端 UI Kit）。
- * 样式统一在 `primitives.css`，取值全部来自 `src/design/tokens.json`。
+ * Muse componente primitivo (Web versión, especificaciones alineadas con el kit de interfaz de usuario del lado de redacción).
+ * El estilo se unifica en `primitives.css`, todos los valores provienen de `src/design/tokens.json`.
  */
 export { Screen, type ScreenProps } from "./Screen.js";
 export { TopBar, type TopBarProps } from "./TopBar.js";

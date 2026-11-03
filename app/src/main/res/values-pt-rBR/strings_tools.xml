@@ -69,7 +69,7 @@
     <string name="tools_empty_title">Nenhuma ferramenta registrada</string>
     <string name="tools_empty_subtitle">Verifique as configurações de plugins ou MCP e abra esta página novamente.</string>
 
-    <!-- I18N-01 batch2: ToolCallVisuals 摘要/标签 -->
+    <!-- I18N-01 batch2: ToolCallVisuals Resumen/etiqueta -->
     <string name="tool_summary_add_calendar_event">Adicionou um evento de calendário</string>
     <string name="tool_summary_add_contact">Adicionou um contato</string>
     <string name="tool_summary_calculator">Calculou</string>

@@ -1,11 +1,11 @@
-v2.5.8 构建校验记录（测试构建，2026-10-10）
+v2.5.8 Registros de verificación de compilación (construcción de prueba,2026-10-10)
 
-构建命令：
+Comando de compilación:
   gradlew :app:assembleRelease -PversionName=2.5.8 -PversionCode=258
 
-源码基线：d41d7ed1（含 v2.5.8 之后全部改动）
+Línea base del código fuente:d41d7ed1(Incluidos todos los cambios posteriores a v2.5.8)
 
-产物与校验：
+Producto y verificación:
   1. Muse_v2.5.8_arm64-v8a.apk
      85893066 bytes
      sha256 a389b4b582dc2891f03b6624511f18b3341b504e41316443196fa85f29ef6e00
@@ -15,28 +15,28 @@ v2.5.8 构建校验记录（测试构建，2026-10-10）
   3. Muse_v2.5.8_universal.apk
      161079927 bytes
      sha256 36a300b7703055290b6f8d02a295578142467f3dace27026df682e84f494f02f
-  （附带 app-x86_64-release.apk 供模拟器，未纳入发布清单）
+  (App-x86_64-release.apk está incluido para el simulador y no está incluido en la lista de lanzamientos)
 
-版本校验（aapt dump badging）：
+Verificación de versión (aapt dump badging):
   package name = io.zer0.muse
-  versionCode  = 258      ✓ 与 -PversionCode 一致
-  versionName  = 2.5.8    ✓ 与 -PversionName 一致
+  versionCode  = 258      ✓ Consistente con -PversionCode
+  versionName  = 2.5.8    ✓ Igual que -PversionName
 
-门禁（构建前）：
+Control de acceso (antes de la compilación):
   :app:ktlintKotlinSourceCheck  PASS
   :app:detekt                   PASS
-  :app:testDebugUnitTest        PASS（2197+ 用例）
-  :app:assembleRelease          PASS（build=0）
+  :app:testDebugUnitTest        PASS(2197+ caso de uso)
+  :app:assembleRelease          PASS(build=0)
 
-数据库：DB 版本 110（自 v2.5.4 未变，直接升级不丢数据）
+Base de datos:DB Versión 110 (sin cambios desde v2.5.4, actualice directamente sin perder datos)
 
-本包相对 v2.5.8 原材料的增量（供验收对照）：
-  - A2A 1.0 标准协议端点、Tasker 广播联动、插件 Hook 体系 MVP
-  - 插件沙盒放开（fetch/XHR/WebSocket）
-  - 技术债 A：诊断日志导出（设置 → 关于 → 导出诊断信息）
-  - 技术债 C：签名 payload 白名单化
-  - 技术债 E：子代理超时 120s→240s、timeout_ms 可配、超时附进展信息
-  - ChatViewModel 拆分 S1-S5（纯抽取，含流式/压缩/审批/恢复链路）
+El incremento de este paquete en relación con las materias primas v2.5.8 (para comparación de aceptación):
+  - A2A 1.0 Puntos finales de protocolo estándar,Tasker Enlace de transmisión, sistema de gancho enchufable MVP
+  - Se lanzó la zona de pruebas del complemento (fetch/XHR/WebSocket)
+  - Deuda técnica A: Exportación del registro de diagnóstico (configuración → Acerca de → Exportar información de diagnóstico)
+  - Deuda técnica C: Lista blanca de carga útil de firmas
+  - Deuda Técnica E: Tiempo de espera del subagente 120s→240s,timeout_ms Configurable, tiempo de espera con información de progreso.
+  - ChatViewModel Split S1-S5 (extracción pura, incluida la transmisión)/Compresión/Aprobación/restaurar enlace)
 
-真机验收重点（本次动了生成主链路）：
-  普通对话 / 带工具调用 / 断网续传 / 中途停止 / 手动压缩 / 审批弹卡
+Puntos clave para la aceptación real de la máquina (esta vez se genera el enlace principal):
+  Conversación ordinaria / Con llamada de herramienta / Reanudación de la descarga después de la desconexión / Parada a mitad de camino / Compresión manual / Tarjeta de aprobación

@@ -77,7 +77,7 @@
 <string name="voice_recognizing">Recognizing…</string>
 <!-- Task 1: ASR reconnecting status (WebSocket dropped, exponential backoff reconnect, audio buffered meanwhile) -->
 <string name="voice_reconnecting">Network error, reconnecting…</string>
-<!-- 前端修复 (i18n-6): stop button a11y label on voice message bar -->
+<!-- Correcciones en la interfaz (i18n-6): stop button a11y label on voice message bar -->
 <string name="voice_stop_recording">Stop recording</string>
     <string name="voice_conversation_cd_idle">Tap to start conversation</string>
     <string name="voice_conversation_cd_listening">Recording, tap to finish and send</string>
@@ -215,7 +215,7 @@
     <string name="action_retry">Retry</string>
     <string name="common_load_failed">Failed to load</string>
     <string name="action_undo">Undo</string>
-    <!-- v1.0.75: AI 朋友圈互动 -->
+    <!-- v1.0.75: AI Interacción en momentos -->
     <string name="moment_sender_user">Me</string>
     <string name="moment_banner_liked_by">%1$s liked your post</string>
     <string name="moment_banner_commented_by">%1$s commented on your post</string>

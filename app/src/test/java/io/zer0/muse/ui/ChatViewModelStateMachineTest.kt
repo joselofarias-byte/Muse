@@ -8,8 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-06: ChatViewModel 发送/继续/重生成状态机纯函数测试。
- * 多版本切换由 ConversationTreeTest 覆盖(selectUserVariant/selectAssistantVariant)。
+ * R-TEST-06: ChatViewModel enviar/continuar/Regenerar pruebas de función pura de máquinas de estados.
+ * El cambio de versiones múltiples está cubierto por ConversationTreeTest(selectUserVariant/selectAssistantVariant).
  */
 class ChatViewModelStateMachineTest {
 
@@ -31,19 +31,19 @@ class ChatViewModelStateMachineTest {
 
     @Test
     fun `canContinueGeneration allows interrupted assistant message`() {
-        val last = UIMessage(role = MessageRole.ASSISTANT, content = "partial\n\n[已中断]")
+        val last = UIMessage(role = MessageRole.ASSISTANT, content = "partial\n\n[interrumpido]")
         assertTrue(canContinueGeneration(isStreaming = false, lastMessage = last))
     }
 
     @Test
     fun `canContinueGeneration blocks streaming and non assistant`() {
-        val interrupted = UIMessage(role = MessageRole.ASSISTANT, content = "x[已中断]")
+        val interrupted = UIMessage(role = MessageRole.ASSISTANT, content = "x[interrumpido]")
         assertFalse(canContinueGeneration(isStreaming = true, lastMessage = interrupted))
         assertFalse(canContinueGeneration(isStreaming = false, lastMessage = null))
         assertFalse(
             canContinueGeneration(
                 isStreaming = false,
-                lastMessage = UIMessage(role = MessageRole.USER, content = "x[已中断]"),
+                lastMessage = UIMessage(role = MessageRole.USER, content = "x[interrumpido]"),
             ),
         )
         assertFalse(
@@ -56,8 +56,8 @@ class ChatViewModelStateMachineTest {
 
     @Test
     fun `resumeFromInterrupted strips both marker forms`() {
-        assertEquals("partial", resumeFromInterrupted("partial\n\n[已中断]"))
-        assertEquals("partial", resumeFromInterrupted("partial[已中断]"))
+        assertEquals("partial", resumeFromInterrupted("partial\n\n[interrumpido]"))
+        assertEquals("partial", resumeFromInterrupted("partial[interrumpido]"))
         assertEquals("plain", resumeFromInterrupted("plain"))
     }
 
@@ -88,6 +88,6 @@ class ChatViewModelStateMachineTest {
             reasoning = "thinking",
         )
 
-        assertEquals("正文:\nanswer\n\n思考过程:\nthinking", buildTranslationSourceText(message))
+        assertEquals("Texto:\nanswer\n\nproceso de pensamiento:\nthinking", buildTranslationSourceText(message))
     }
 }

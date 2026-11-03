@@ -7,7 +7,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.107 统计缓存 DAO。
+ * v1.107 Caché de estadísticas DAO.
  */
 @Dao
 interface StatsCacheDao {

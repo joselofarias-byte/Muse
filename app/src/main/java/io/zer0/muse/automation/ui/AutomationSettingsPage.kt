@@ -42,21 +42,21 @@ import io.zer0.muse.ui.settings.SettingsSubPageScaffold
 import kotlinx.coroutines.launch
 
 /**
- * UI 自动化设置页。
+ * UI Página de configuración de automatización.
  *
- * v2.x: 三通道权限配置已收敛到「权限配置向导」页(消除两页逐层重复);
- * 本页保留:功能说明、向导入口、动作编排、屏幕读取测试与开发者诊断。
+ * v2.x: La configuración de permisos de tres canales ha convergido en la página "Asistente de configuración de permisos"(Elimine la duplicación capa por capa entre dos páginas);
+ * Esta pagina esta reservada:Descripción de funciones, entrada del asistente, disposición de acciones, prueba de lectura de pantalla y diagnóstico del desarrollador.
  */
 @Suppress("LongMethod", "FunctionNaming")
 @Composable
 fun AutomationSettingsPage(
     manager: AutomationManager,
     onBack: () -> Unit = {},
-    /** v1.xxx: F-24 编排入口 — 跳到定时任务页编排自动化动作。 */
+    /** v1.xxx: F-24 Entrada de arreglo — Vaya a la página de tareas programadas para programar acciones automatizadas. */
     onOpenScheduledTasks: () -> Unit = {},
-    /** v2.x: 权限配置向导入口。 */
+    /** v2.x: Entrada al asistente de configuración de permisos. */
     onOpenPermissionWizard: () -> Unit = {},
-    /** Tasker/外部自动化开关；可选以保持 Robolectric 页面测试不依赖 Koin。 */
+    /** Tasker/Interruptor de automatización externo; Opcional para mantener las pruebas de la página Robolectric sin Koin. */
     settings: SettingsRepository? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -70,7 +70,7 @@ fun AutomationSettingsPage(
         title = stringResource(R.string.automation_settings_title),
         onBack = onBack,
     ) {
-        // 顶部说明卡
+        // Tarjeta de instrucciones superior
         item(key = "intro") {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -96,7 +96,7 @@ fun AutomationSettingsPage(
             }
         }
 
-        // v2.x: 三通道权限配置已收敛到「权限配置向导」(消除两页逐层重复)
+        // v2.x: La configuración de permisos de tres canales ha convergido en el "Asistente de configuración de permisos"(Elimine la duplicación capa por capa entre dos páginas)
         item(key = "permissions-entry") {
             SettingsGroup {
                 SettingsItemRow(
@@ -130,7 +130,7 @@ fun AutomationSettingsPage(
             }
         }
 
-        // v1.xxx: F-24 自动化动作如何编排 — 说明 + 一键跳转到定时任务页
+        // v1.xxx: F-24 Cómo orquestar acciones automatizadas — Descripción + Ir a la página de tareas programadas con un clic
         item(key = "orchestration") {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -168,7 +168,7 @@ fun AutomationSettingsPage(
             }
         }
 
-        // 测试按钮
+        // botón de prueba
         item(key = "test") {
             MuseCapsuleButton(
                 text = if (testing) {
@@ -191,7 +191,7 @@ fun AutomationSettingsPage(
                                 )
                             } else {
                                 val unknown = context.getString(R.string.automation_test_unknown)
-                                // ST-04: 包名与数据来源属开发者诊断信息,收进 devInfo 折叠区
+                                // ST-04: Los nombres de los paquetes y las fuentes de datos son información de diagnóstico del desarrollador.,Doblar en el área de plegado devInfo
                                 ScreenTestResult(
                                     message = buildString {
                                         appendLine(
@@ -245,7 +245,7 @@ fun AutomationSettingsPage(
             )
         }
 
-        // 测试结果
+        // Resultados de la prueba
         testResult?.let { result ->
             item(key = "test-result") {
                 Surface(
@@ -262,7 +262,7 @@ fun AutomationSettingsPage(
                             text = result.message,
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        // ST-04: 开发者诊断信息默认折叠,展开显示包名与数据来源
+                        // ST-04: La información de diagnóstico del desarrollador está colapsada de forma predeterminada,Expandir para mostrar el nombre del paquete y la fuente de datos
                         result.devInfo?.let { devInfo ->
                             var showDevInfo by remember { mutableStateOf(false) }
                             Spacer(Modifier.height(6.dp))
@@ -308,8 +308,8 @@ fun AutomationSettingsPage(
 }
 
 /**
- * 一次屏幕读取自测的结果:用户可见文案 + 是否成功(决定提示卡配色)。
- * devInfo 为开发者诊断信息(包名/数据来源),ST-04 起默认折叠展示。
+ * Lectura de pantalla única de los resultados de la autoprueba:Copia visible del usuario + éxito(Decidir el color de la tarjeta de referencia).
+ * devInfo Información de diagnóstico para desarrolladores(nombre del paquete/fuente de datos),ST-04 La visualización se contrajo de forma predeterminada.
  */
 private data class ScreenTestResult(
     val message: String,

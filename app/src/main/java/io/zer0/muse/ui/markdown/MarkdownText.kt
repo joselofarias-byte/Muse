@@ -82,50 +82,50 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 
-// L-MD15 修复: 行号 gutter 宽度计算常量(原先 10dp/16dp 硬编码在 CodeBlockView 内)
-// 每位数字宽度 10dp,最小宽度 16dp(1 位数也保留对齐空间)
+// L-MD15 Reparación: Constante de cálculo del ancho del canal del número de línea(Originalmente, 10dp/16dp estaba codificado en CodeBlockView)
+// ancho por dígito 10dp,ancho mínimo 16dp(1 El número de bits también preserva el espacio de alineación.)
 private const val GUTTER_CHAR_WIDTH_DP = 10
 private const val GUTTER_MIN_WIDTH_DP = 16
 
-// L2 修复: 行内格式正则提升为文件级 private val,避免每次 parseInline 调用重新编译
-// 主正则: 链接 [text](url) 优先,其后才是 `code` / **bold** / *italic*
+// L2 Reparación: La regularidad del formato en línea se promueve al nivel de archivo private val,Evite volver a compilar cada vez que se llame a parseInline
+// regla principal: enlace [text](url) Prioridad,y luego `code` / **bold** / *italic*
 private val INLINE_REGEX = Regex(
     """\[(.+?)]\((.+?)\)|`(.+?)`|\*\*(.+?)\*\*|\*(.+?)\*""",
 )
 
-// L2 修复: [N] 引用编号正则 — 仅当 N 为正整数且非 [text](url) 形式
+// L2 Reparación: [N] Reglas de numeración de referencias — Sólo si N es un número entero positivo y no [text](url) forma
 private val CITATION_REGEX = Regex("""\[(\d+)]""")
 
-// v1.97: 纯文本 URL 自动识别(linkify 式自动链接)
-// 匹配 http/https 开头的 URL,到空白/引号/括号/中文标点结束
-// 尾部中文标点(。、,;!?」』)由二次清理排除
-// v1.97 阶段二: internal 供单元测试覆盖边界用例(URL_AUTOLINK_REGEX 边界测试)
-// v1.97 阶段二修正: 字符类移除 `:` 和 `?` — 这两个字符在 URL 主体中合法(端口 :8080 / query ?q=1),
-// 排除会导致 URL 被截断。ASCII 句点 `.` 同理不排除(URL 内合法,如 example.com),句末标点
-// 由调用处二次清理(此处保持简单字符类)。
-// 注: `!` 保留排除(中文全角感叹号 ! 后接中文文本时不应纳入 URL)。
-internal val URL_AUTOLINK_REGEX = Regex("""https?://[^\s<>"'`)\]】」』。、,;!]+""")
+// v1.97: Reconocimiento automático de URL en texto plano(linkify enlace automático)
+// Coincide con aquellos que comienzan con http/https URL,dejar en blanco/comillas/paréntesis/Termina la puntuación china
+// Puntuación china al final.(. ,,;!?』』)Excluido por limpieza secundaria
+// v1.97 Etapa 2: internal Para pruebas unitarias para cubrir casos extremos(URL_AUTOLINK_REGEX prueba de límites)
+// v1.97 Corrección de la fase 2: Eliminación de clase de personaje `:` y `?` — Estos dos caracteres son legales en el cuerpo de la URL.(puerto :8080 / query ?q=1),
+// Las exclusiones pueden provocar que las URL se trunquen.ASCII período `.` Del mismo modo, no se excluye(URL legal dentro,Como por ejemplo example.com),Puntuación al final de la oración
+// Limpiado dos veces por el sitio de llamadas(Mantén las clases de personajes simples aquí.).
+// Nota: `!` Mantener exclusiones(Signo de exclamación chino de ancho completo ! No debe incluirse cuando va seguido de texto en chino. URL).
+internal val URL_AUTOLINK_REGEX = Regex("""https?://[^\s<>"'`)\]]』』. ,,;!]+""")
 
 /**
- * 轻量 Markdown 渲染组件(自实现,不引入第三方库)。
+ * Componente de renderizado Markdown ligero(autoimplementable,No se introducen bibliotecas de terceros.).
  *
- * 支持:
- *  - 围栏代码块 ```(等宽字体 + 暖纸深色背景 + 横向滚动 + 行号 + 复制按钮 + 长代码折叠)
- *  - 标题 #/##/###(层级字号)
- *  - 行内代码 `...`(等宽 + 浅背景)
- *  - 粗体 **...** / 斜体 *...*
- *  - 链接 [...](...)(secondary 色 + 下划线)
- *  - 有序/无序列表(缩进 + 符号)
- *  - 引用 >(左侧色条)
- *  - 水平线 ---
+ * apoyo:
+ *  - bloque de código de cerca ```(Fuente monoespaciada + fondo oscuro de papel cálido + desplazamiento horizontal + números de línea + botón copiar + plegado de código largo)
+ *  - Título #/##/###(Tamaño de fuente jerárquico)
+ *  - código en línea `...`(Monoancho + fondo claro)
+ *  - Negrita **...** / cursiva *...*
+ *  - enlace [...](...)(secondary color + subrayado)
+ *  - ordenado/lista desordenada(sangría + signo)
+ *  - Cotización >(barra de color izquierda)
+ *  - linea horizontal ---
  *
- * 不支持: 脚注/图片(表格已支持 — 见 TableView)。
- * v1.0.74 fix (前端审计 7): 原注释称"不支持表格"但文件内已有 TableView 渲染,注释修正。
+ * No compatible: Nota al pie/fotos(La mesa es compatible — ver TableView).
+ * v1.0.74 fix (Auditoría inicial 7): La anotación original decía"Las tablas no son compatibles"Pero ya hay renderizado de TableView en el archivo.,Comentarios arreglados.
  *
- * Phase 8.3 增强:
- *  - 代码块行号(左侧 gutter,等宽对齐)
- *  - 代码块复制按钮(右上角,Toast 反馈)
- *  - 代码块自动折叠(>30 行默认折叠,显示前 10 行 + "展开 N 行")
+ * Phase 8.3 mejorar:
+ *  - número de línea del bloque de código(lado izquierdo gutter,Alinear para igual ancho)
+ *  - Botón de copia de bloque de código(esquina superior derecha,Toast retroalimentación)
+ *  - Doblar bloques de código automáticamente(>30 Las filas están contraídas de forma predeterminada.,Mostrar las primeras 10 filas + "Expandir N líneas")
  */
 @Composable
 fun MarkdownText(
@@ -135,61 +135,61 @@ fun MarkdownText(
     color: Color = MaterialTheme.colorScheme.onBackground,
     citationUrls: List<String> = emptyList(),
     /**
-     * v1.42: 流式消息标记。
-     * 为 true 时跳过链接点击检测(pointerInput)与复杂布局优化,降低重组开销。
+     * v1.42: Etiqueta de mensaje de transmisión.
+     * Omitir la detección de clic en el enlace cuando sea verdadero(pointerInput)Optimice con diseños complejos,Reducir los gastos generales de reorganización.
      *
-     * v1.97 (P2): 流式时额外启用两项优化:
-     *  1. 块数超过 [STREAMING_BLOCK_CAP] 时只渲染最后 [STREAMING_BLOCK_CAP] 个块,
-     *     顶部用 "…" 占位(避免超长消息全量组合,Compose 重组成本随块数线性增长)。
-     *  2. CodeBlock / Formula / Table / RichContentCard 降级为纯文本预览,
-     *     跳过语法高亮 / LaTeX 渲染 / 表格布局 / SVG-HTML 渲染等重布局;
-     *     流式结束后(isStreaming=false)恢复完整渲染。
+     * v1.97 (P2): Habilite dos optimizaciones adicionales al transmitir:
+     *  1. El número de bloques excede [STREAMING_BLOCK_CAP] solo renderiza el ultimo [STREAMING_BLOCK_CAP] bloques,
+     *     para arriba "…" Marcador de posición(Evite la combinación completa de mensajes extremadamente largos,Compose El costo de reorganización aumenta linealmente con el número de bloques.).
+     *  2. CodeBlock / Formula / Table / RichContentCard Bajar a vista previa de solo texto,
+     *     Omitir resaltado de sintaxis/renderizado LaTeX/diseño de tabla/renderizado SVG-HTML y otros diseños de peso;
+     *     Después de la transmisión(isStreaming=false)Reanudar el renderizado completo.
      */
     isStreaming: Boolean = false,
     /**
-     * v1.0.63: 消息多选模式时禁用链接点击检测,让点击整条消息都能进入选择。
+     * v1.0.63: Deshabilitar la detección de clics en enlaces cuando esté en el modo de selección múltiple de mensajes,Permite pulsar sobre el mensaje completo para acceder a la selección.
      */
     disableLinks: Boolean = false,
     /**
-     * v1.0.72: 长按非链接区域时的回调(气泡长按菜单)。
+     * v1.0.72: Devolución de llamada al presionar prolongadamente el área sin enlace(Menú de burbuja de pulsación larga).
      *
-     * MarkdownText 的 pointerInput 会消费所有长按事件(即使非链接区域),
-     * 导致外层气泡的 combinedClickable onLongClick 收不到手势 → 长按消息弹不出菜单。
-     * 传入此回调后,长按非链接区域会调用它而不是被静默吞掉。
+     * MarkdownText El pointerInput consumirá todos los eventos de pulsación larga.(Incluso áreas no vinculadas),
+     * Como resultado, el Clickable onLongClick combinado de la burbuja exterior no puede recibir el gesto. → Al presionar prolongadamente el mensaje no aparece el menú.
+     * Después de pasar esta devolución de llamada,Al presionar prolongadamente un área no vinculada, se invocará en lugar de ser tragada silenciosamente.
      */
     onLongPressOutside: (() -> Unit)? = null,
     /**
-     * HTML/SVG 代码块全屏预览回调。
-     * 当用户点击 HTML/SVG 代码块右上角的"预览"图标时触发,
-     * 参数为完整 HTML 源码(SVG 已包装为完整 HTML)。
-     * 由 [MessageBubble] / [ChatScreen] 注入导航逻辑,跳转到 [HtmlPreviewScreen]。
+     * HTML/SVG Bloqueo de código de devolución de llamada de vista previa de pantalla completa.
+     * Cuando el usuario hace clic en la esquina superior derecha del bloque de código HTML/SVG"Vista previa"Se activa cuando el ícono,
+     * El parámetro es el código fuente HTML completo.(SVG Empaquetado para estar completo HTML).
+     * por [MessageBubble] / [ChatScreen] Inyectar lógica de navegación,saltar a [HtmlPreviewScreen].
      */
     onHtmlPreview: (String) -> Unit = {},
     /**
-     * v1.0.92: 卡片回传动作回调(聊天场景注入;null 时卡片为纯渲染无脚本)。
+     * v1.0.92: Devolución de llamada de acción de devolución de tarjeta(Inyección de escena de chat;null Cuando la tarjeta se renderiza exclusivamente sin scripts).
      */
     onCardAction: ((CardAction) -> Unit)? = null,
     /**
-     * v2.6.13: 卡片身份（聊天场景传消息 id）。
+     * v2.6.13: Identidad de la tarjeta (id del mensaje en el escenario de chat).
      *
-     * 漏传的直接后果：正文里的 ```html / ```svg 卡片读不到 `window.muse.cardId`，
-     * 于是 `getData()` 拿不到自己绑定的数据，`send()` 回传时也不带来源 ——
-     * 表现为「卡片能渲染但交互是死的」，而且不报错。
+     * Consecuencias directas de la transmisión perdida: en el texto ```html / ```svg La tarjeta no se puede leer `window.muse.cardId`,
+     * entonces `getData()` No puedo obtener los datos que enlacé.`send()` No hay fuente al regresar. ——
+     * El rendimiento es "la tarjeta se puede procesar pero la interacción está muerta" y no se informa ningún error.
      */
     cardId: String? = null,
     /**
-     * v1.0.53: 是否渲染 frontmatter 封面(默认 false;文档详情页传 true)。
-     * 聊天消息场景不渲染封面,保持现状。
+     * v1.0.53: Si se debe renderizar la portada(Predeterminado false;Página de detalles del documento true).
+     * La escena del mensaje de chat no muestra la portada.,Mantener el status quo.
      */
     renderCover: Boolean = false,
     /**
-     * v1.0.53: 封面图片解析器(默认按 filesDir 相对路径解析;测试可注入)。
-     * 返回 null 表示解析失败,降级为纯正文渲染。
+     * v1.0.53: Analizador de imágenes de portada(De forma predeterminada, la ruta relativa a filesDir se utiliza para analizar;Se pueden inyectar pruebas).
+     * Devuelve nulo para indicar un error de análisis,Baje a renderizado de solo texto.
      */
     coverResolver: ((String) -> File?)? = null,
 ) {
-    // v1.0.53: frontmatter 封面 — renderCover=true 且有 cover 字段时,
-    // 正文用 strip 后的文本解析,封面区渲染在正文上方。
+    // v1.0.53: frontmatter cubrir — renderCover=true Y cuando hay un campo de cobertura,
+    // Análisis de texto después de eliminar el texto.,El área de la portada se representa encima del texto principal.
     val coverFrontmatter = if (renderCover) FrontmatterParser.parse(text) else null
     val bodyText = if (coverFrontmatter != null) FrontmatterParser.strip(text) else text
     val coverFile: File? = if (coverFrontmatter?.cover != null) {
@@ -198,51 +198,51 @@ fun MarkdownText(
         null
     }
 
-    // v1.101 (P9): 流式时把 parseMarkdown 移到后台线程,避免主线程高频正则解析。
-    // 流式每 80ms 更新一次文本,原 remember(text) 会在主线程对全量文本(随消息增长
-    // 可达数千字符)反复正则扫描,是流式卡顿的主要剩余瓶颈。
-    // 用 produceState 在 Dispatchers.Default 解析:text 变化时取消旧协程、重启新协程,
-    // value 保留上一次解析结果(流式时视觉上本就有 ~80ms 延迟,滞后一帧可接受)。
-    // 非流式(历史消息)保持 remember(text) 同步解析,避免滚动入屏时闪空。
+    // v1.101 (P9): Mueva parseMarkdown al hilo de fondo durante la transmisión,Evite el análisis regular de alta frecuencia en el hilo principal.
+    // La transmisión de texto actualiza cada 80 ms,Originales remember(text) Todo el texto será procesado en el hilo principal.(crecer con mensajes
+    // Hasta miles de caracteres)Escaneo regular repetido,Es el principal cuello de botella restante del retraso en la transmisión.
+    // Utilice produceState para resolver en Dispatchers.Default:text Cuando se produzcan cambios, cancele la rutina anterior y reinicie la nueva rutina.,
+    // value Mantener el último resultado del análisis(Visualmente durante la transmisión ~80ms retraso,Un retraso de cuadro es aceptable).
+    // sin transmisión(noticias historicas)mantener remember(text) Análisis sincrónico,Evite parpadear al desplazarse por la pantalla.
     //
-    // A3 (v1.x): 流式路径改用 [IncrementalMarkdownParser]——只重扫追加的尾部,
-    // 已稳定的头部块保持同一实例,Compose 重组时跳过这些块的重新组合;
-    // 解析器实例以 remember 持有(无 key),消息完成/编辑后复用同一缓存,
-    // 内容非纯追加时解析器内部自动回退全量。
+    // A3 (v1.x): Ruta de transmisión utilizada en su lugar [IncrementalMarkdownParser]——Vuelva a escanear solo la cola adjunta,
+    // El bloque de cabecera estabilizado sigue siendo la misma instancia.,Compose Omita el reensamblaje de estos bloques durante el reensamblaje.;
+    // La instancia del analizador está mantenida por recordar(Ninguno key),mensaje completo/Reutilizar el mismo caché después de editar,
+    // Cuando el contenido no es puramente adjunto, el analizador revierte automáticamente la cantidad total internamente.
     val allBlocks: List<MarkdownBlock> = if (isStreaming) {
         val parser = remember { IncrementalMarkdownParser() }
         val streamed by produceState<List<MarkdownBlock>>(emptyList(), bodyText) {
-            // v1.0.92: 50ms → 16ms(一帧) — 流式内容延迟出现是"卡顿+闪现"感的来源之一;
-            // chunk 间隔(~50ms)本身已提供自然降频,此延迟仅用于让快速连续变更合并到一帧。
+            // v1.0.92: 50ms → 16ms(un cuadro) — Se producen retrasos en la transmisión de contenido"catón+destello"Una de las fuentes del sentimiento.;
+            // chunk intervalo(~50ms)Ya proporciona reducción de frecuencia natural.,Este retraso sólo se utiliza para permitir que una rápida sucesión de cambios se fusione en un fotograma.
             delay(16)
             val parsed = withContext(Dispatchers.Default) { parser.parse(bodyText) }
             value = parsed
         }
         streamed
     } else {
-        // 非流式(历史消息):同步解析 + 进程级 LRU 命中。
-        // 滚动卡顿的根因是 LazyColumn 滚出即销毁 composition,remember 随之失效,
-        // 滚回来时全量重算;解析结果落到 [MarkdownParseCache] 后,滚出再滚回直接命中。
-        // 首帧仍走同步解析,不改成 Dispatchers.Default:无缓存时先出一帧空的,再切到
-        // 真实内容,本身就是一次高度跳变(滚动中比省下一次解析更刺眼)。
-        // key 的 id 部分用 [cardId]:聊天场景它就是消息 id(msg.id.toString()),
-        // 没传 cardId 的场景(文档预览等)退化成纯内容 hash。
+        // sin transmisión(noticias historicas):Análisis sincrónico + aciertos de LRU a nivel de proceso.
+        // La causa principal del retraso en el desplazamiento es que LazyColumn se destruye cuando se implementa. composition,remember luego invalidado,
+        // El importe total se volverá a calcular al retroceder.;El resultado del análisis cae en [MarkdownParseCache] después,Desplácese hacia afuera y hacia atrás para un golpe directo.
+        // El primer fotograma todavía se analiza sincrónicamente.,No cambie a Dispatchers. Predeterminado: cuando no hay caché, primero se generará un marco vacío.,Cortar a
+        // contenido real,Es un salto de altura en sí mismo.(Desplazarse es más deslumbrante que guardar un análisis).
+        // key La parte de identificación de [cardId]:La escena del chat es el mensaje. id(msg.id.toString()),
+        // Escenario donde no se pasa cardId(Vista previa del documento, etc.)Degenera en un hash de contenido puro.
         val cacheKey = remember(cardId, bodyText) { MarkdownParseCache.keyOf(cardId, bodyText) }
         remember(cacheKey) { MarkdownParseCache.getOrParse(cardId, bodyText) }
     }
-    // v1.97 (P2): 流式 + 块数超阈值时只渲染尾部,降低 Compose 重组成本
+    // v1.97 (P2): Streaming + solo representa la cola cuando el número de bloques excede el umbral,Reducir los costos de reorganización de Compose
     val truncated = isStreaming && allBlocks.size > STREAMING_BLOCK_CAP
     val blocks = if (truncated) allBlocks.takeLast(STREAMING_BLOCK_CAP) else allBlocks
-    // 行内格式需要的主题色(@Composable 上下文读取,传给非 Composable 的 parseInline)
-    // v1.97: URL 高亮色从 secondary 改为 primary(主题色),让链接更醒目
+    // El color del tema requerido para el formato en línea(@Composable lectura de contexto,Pasado a no componible parseInline)
+    // v1.97: URL El color de resaltado cambió de secundario a primary(color del tema),Hacer que los enlaces sean más visibles
     val linkColor = MaterialTheme.colorScheme.primary
     val codeBgColor = MaterialTheme.colorScheme.surfaceVariant
     val quoteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-    // Phase 8.4: 引用编号 [N] 颜色(用 secondary 突出,与超链接一致)
+    // Phase 8.4: Número de referencia [N] color(Usar secundario para resaltar,Consistente con hipervínculos)
     val citationColor = MaterialTheme.colorScheme.secondary
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // v1.0.53: 封面区 — 16:5 横幅 + 底部渐变遮罩叠标题(仅文档场景)
+        // v1.0.53: área de cobertura — 16:5 Banner + título de pila de máscara de degradado inferior(Solo escenario de documentación)
         if (coverFile != null && coverFile.exists()) {
             Box(
                 modifier = Modifier
@@ -252,11 +252,11 @@ fun MarkdownText(
             ) {
                 AsyncImage(
                     model = coverFile,
-                    contentDescription = coverFrontmatter?.title ?: "封面",
+                    contentDescription = coverFrontmatter?.title ?: "cubrir",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-                // 底部渐变遮罩 + 标题
+                // Máscara de degradado inferior + título
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -271,7 +271,7 @@ fun MarkdownText(
                 ) {
                     if (!coverFrontmatter?.title.isNullOrBlank()) {
                         Text(
-                            // v1.0.74 fix (前端审计 7): 上层已判空,消除双重非空断言
+                            // v1.0.74 fix (Auditoría inicial 7): El nivel superior se ha considerado vacío.,Eliminar la doble afirmación no nula
                             text = coverFrontmatter?.title.orEmpty(),
                             style = MaterialTheme.typography.titleLarge,
                             color = Color.White,
@@ -284,7 +284,7 @@ fun MarkdownText(
             }
             Spacer(Modifier.height(16.dp))
         }
-        // v1.97 (P2): 截断时顶部显示省略占位,提示用户上方内容已折叠(流式结束后恢复)
+        // v1.97 (P2): Al truncar, el marcador de posición se omite en la parte superior de la pantalla.,Indica al usuario que el contenido anterior se ha contraído(Reanudar después de que finalice la transmisión)
         if (truncated) {
             Text(
                 text = "…",
@@ -294,12 +294,12 @@ fun MarkdownText(
             )
             Spacer(Modifier.height(4.dp))
         }
-        // L-MD16 说明: 此处用 forEachIndexed 而非 LazyColumn 渲染所有块。
-        // 原因: MarkdownText 用于单条消息气泡内,单条消息的块数通常很少(几段文字 + 少量代码块),
-        // 用普通 Column 的开销可接受。若改用 LazyColumn,会破坏气泡内嵌布局(高度自适应),
-        // 且 LazyColumn 不能嵌套在非固定高度的父容器中(消息流本身已是 LazyColumn)。
-        // v2.x 长文排版校准: 空行块不再各自渲染 Spacer,而是收敛成"它前面是否有段落空行"
-        // 的一个布尔,由 [markdownBlockGap] 统一决定相邻块之间的垂直节奏(段落/区块/标题各档)。
+        // L-MD16 Descripción: Aquí todos los bloques se representan usando forEachIndexed en lugar de LazyColumn.
+        // Razón: MarkdownText Usado dentro de una sola burbuja de mensaje,El número de bloques en un solo mensaje suele ser muy pequeño(Algunos párrafos de texto + algunos bloques de código),
+        // La sobrecarga de utilizar una columna simple es aceptable. si usas LazyColumn,Destruirá el diseño en línea de la burbuja(Altamente adaptativo),
+        // Y LazyColumn no se puede anidar en un contenedor principal de altura no fija(El flujo de mensajes en sí es LazyColumn).
+        // v2.x Calibración de formato de texto largo: Los bloques de líneas en blanco ya no se muestran individualmente Spacer,Más bien, converge en"¿Hay una línea de párrafo en blanco antes?"
+        // un booleano,por [markdownBlockGap] Determina uniformemente el ritmo vertical entre bloques adyacentes.(párrafo/bloquear/Archivos de título).
         val renderedBlocks = remember(blocks) {
             val visible = ArrayList<Pair<MarkdownBlock, Boolean>>(blocks.size)
             var blankSeen = false
@@ -318,14 +318,14 @@ fun MarkdownText(
             if (gap > 0.dp) Spacer(Modifier.height(gap))
             when (block) {
                 is MarkdownBlock.Paragraph -> {
-                    // Phase 8.5 修复: parseInline 用 remember 缓存,避免每次重组重新解析行内格式。
-                    // 键包含 text + 所有颜色 + citationUrls,任一变化才重新解析。
+                    // Phase 8.5 Reparación: parseInline Almacenamiento en caché con recordar,Evite volver a analizar el formato en línea cada vez que reorganice.
+                    // La clave contiene texto + todos los colores. + citationUrls,Cualquier cambio se volverá a analizar.
                     val annotated = remember(block.text, color, linkColor, codeBgColor, citationUrls, citationColor) {
                         parseInline(block.text, color, linkColor, codeBgColor, citationUrls, citationColor)
                     }
                     if (isStreaming || disableLinks) {
-                        // v1.42: 流式中直接用 Text 渲染,避免 LinkableText 的 pointerInput 随内容变化反复重建。
-                        // v1.0.63: 多选模式下同样用 Text,保证点击消息本体可选中。
+                        // v1.42: Utilice directamente la representación de texto en streaming,Evite que el pointerInput de LinkableText se reconstruya repetidamente a medida que cambia el contenido.
+                        // v1.0.63: También se utiliza en modo de selección múltiple Text,Asegúrese de hacer clic en el cuerpo del mensaje para seleccionarlo.
                         Text(
                             text = annotated,
                             style = style,
@@ -343,8 +343,8 @@ fun MarkdownText(
                 }
 
                 is MarkdownBlock.Heading -> {
-                    // v2.x: 层级拉出清晰的 24 / 20 / 17 阶梯(此前 h1 与 h2 同为 20sp,层级塌陷);
-                    // 上下留白交给 [markdownBlockGap](上大下小,标题贴近所引导的正文)。
+                    // v2.x: Capa extraíble transparente 24 / 20 / 17 escalera(Anteriormente h1 y h2 eran ambos 20sp,Colapso de jerarquía);
+                    // Deje la parte superior e inferior en blanco para [markdownBlockGap](Grande arriba y pequeño abajo,El título está cerca del texto principal.).
                     val headingStyle = when (block.level) {
                         1 -> MaterialTheme.typography.headlineLarge
                         2 -> MaterialTheme.typography.headlineSmall
@@ -355,7 +355,7 @@ fun MarkdownText(
                     val annotated = remember(block.text, color, linkColor, codeBgColor, citationUrls, citationColor) {
                         parseInline(block.text, color, linkColor, codeBgColor, citationUrls, citationColor)
                     }
-                    // v2.x: 显式取主题正文墨色(此前未传 color,依赖 LocalContentColor 兜底)
+                    // v2.x: Obtener explícitamente el color del texto del tema(No publicado antes color,Confíe en LocalContentColor para llegar al fondo de las cosas)
                     val headingColor = MaterialTheme.colorScheme.onSurface
                     if (disableLinks) {
                         Text(
@@ -377,9 +377,9 @@ fun MarkdownText(
 
                 is MarkdownBlock.CodeBlock -> {
                     val richLang = block.language?.lowercase()?.trim().orEmpty()
-                    // v2.6.6: 生成式卡片渐进渲染 —— 流式期间也让 svg/html/chart 卡片出现，
-                    // 而不是降级为纯文本（对齐 Intelligent UI 的“边生成边渲染”）。
-                    // 内容太短时不渲染（避免半句 HTML 闪一下）；卡片内部按长度节流重绘。
+                    // v2.6.6: Representación progresiva de tarjeta generativa. —— También haga que la tarjeta svg/html/chart aparezca durante la transmisión,
+                    // En lugar de cambiar a texto plano (IU inteligentes alineadas“Renderizar mientras se genera”).
+                    // Cuando el contenido es demasiado corto, no se representará (para evitar que el HTML de media frase parpadee); el interior de la tarjeta se volverá a dibujar según la longitud.
                     val canProgressiveCard =
                         richLang in setOf("svg", "html", "chart") &&
                             block.code.length >= ProgressiveCard.MIN_CHARS
@@ -393,12 +393,12 @@ fun MarkdownText(
                             progressive = isStreaming,
                         )
                     } else if (isStreaming) {
-                        // v1.97 (P2): 非卡片代码块流式期间降级为纯文本预览
+                        // v1.97 (P2): Bloques de código que no son de tarjetas degradados a vista previa de solo texto durante la transmisión
                         StreamingCodePreview(block, style, codeBgColor)
                     } else {
-                        // v0.48: 富媒体代码块(svg/html/chart)用 RichContentCard 渲染,其余走 CodeBlockView
+                        // v0.48: Bloque de código de medios enriquecidos(svg/html/chart)Renderizar con RichContentCard,el resto se va CodeBlockView
                         when {
-                            // ChartRenderer: mermaid / plantuml 用独立渲染器(WebView + Coil,含高度自适应与失败回退)
+                            // ChartRenderer: mermaid / plantuml Usar renderizador independiente(WebView + Coil,Contiene alta adaptabilidad y respaldo ante fallos.)
                             isMermaidCodeBlock(block.language, block.code) -> MermaidBlock(code = block.code)
                             isPlantUmlCodeBlock(block.language, block.code) -> PlantUmlBlock(code = block.code)
                             richLang in setOf("svg", "html", "chart") ->
@@ -427,8 +427,8 @@ fun MarkdownText(
                     citationColor,
                 )
 
-                // Phase 8.6: LaTeX 公式块(JLatexMath 渲染)
-                // v1.97 (P2): 流式期间降级为纯文本,跳过 JLatexMath 渲染(重布局)
+                // Phase 8.6: LaTeX bloque de fórmulas(JLatexMath renderizado)
+                // v1.97 (P2): Cambiar a texto sin formato durante la transmisión,Saltar renderizado JLatexMath(Retransmisión)
                 is MarkdownBlock.Formula -> {
                     if (isStreaming) {
                         Text(
@@ -442,8 +442,8 @@ fun MarkdownText(
                     }
                 }
 
-                // v1.97: Markdown 表格
-                // v1.97 (P2): 流式期间降级为纯文本预览,跳过 TableView 布局
+                // v1.97: Markdown mesa
+                // v1.97 (P2): Bajar a vista previa de solo texto durante la transmisión,Saltar diseño TableView
                 is MarkdownBlock.Table -> {
                     if (isStreaming) {
                         val plain = buildString {
@@ -462,15 +462,15 @@ fun MarkdownText(
                 }
 
                 MarkdownBlock.Divider -> {
-                    // v2.x: 线色与线宽对齐 MuseDivider(设置页同款发丝线),上下节奏由块间距函数给。
+                    // v2.x: Alinear el color y el ancho de la línea MuseDivider(Página de configuración del mismo estilo de línea de cabello),El ritmo de subida y bajada viene dado por la función de espaciado de bloques.
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.13f),
                         thickness = MusePaddings.dividerThickness,
                     )
                 }
 
-                // 空行块已在 renderedBlocks 阶段合并(只贡献"前一块与当前块之间是否有空行"),
-                // 这里保留分支仅为满足 sealed when 的穷尽性,不会真正渲染。
+                // Los bloques de líneas vacías se han fusionado en la etapa renderedBlocks.(sólo contribuir"¿Hay una línea en blanco entre el bloque anterior y el bloque actual?"),
+                // Las sucursales se reservan aquí sólo para satisfacer la exhaustividad del sellado cuando,En realidad, no se renderiza.
                 MarkdownBlock.Blank -> Unit
             }
         }
@@ -478,8 +478,8 @@ fun MarkdownText(
 }
 
 /**
- * v2.x 长文排版: 是否为"结构块" —— 与正文拉开对比的独立区块
- * (代码 / 表格 / 引用 / 公式 / 分隔线)。
+ * v2.x Formato de texto largo: ¿Es"bloque estructural" —— Un bloque separado que contrasta con el texto principal.
+ * (Código/Tabla/Referencia/Fórmula/Separador).
  */
 private fun isStructuralBlock(block: MarkdownBlock): Boolean = when (block) {
     is MarkdownBlock.CodeBlock,
@@ -492,16 +492,16 @@ private fun isStructuralBlock(block: MarkdownBlock): Boolean = when (block) {
 }
 
 /**
- * v2.x 长文排版: 相邻可见块之间的垂直节奏(Dp)。
+ * v2.x Formato de texto largo: Ritmo vertical entre bloques visibles adyacentes.(Dp).
  *
- * 纯函数,便于单测覆盖。规则优先级(上→下):
- *  1. 首块不留白;
- *  2. 当前块是标题 → [MuseMarkdownRhythm.headingSpaceAbove];
- *  3. 前一块是标题 → [MuseMarkdownRhythm.headingSpaceBelow](上大下小,标题贴近正文);
- *  4. 相邻列表项 → [MuseMarkdownRhythm.listItemGap](即便原文条间夹空行也保持紧凑);
- *  5. 任一侧是结构块 → [MuseMarkdownRhythm.blockGap];
- *  6. 原文有空行 → [MuseMarkdownRhythm.paragraphGap];
- *  7. 同段落的软换行 → 0。
+ * función pura,Facilita la cobertura de una sola prueba. Prioridad de regla(en→abajo):
+ *  1. Deja el primer bloque en blanco;
+ *  2. El bloque actual es el título. → [MuseMarkdownRhythm.headingSpaceAbove];
+ *  3. El bloque anterior es el título. → [MuseMarkdownRhythm.headingSpaceBelow](Grande arriba y pequeño abajo,Título cerca del texto);
+ *  4. elementos de lista adyacentes → [MuseMarkdownRhythm.listItemGap](Incluso si hay líneas en blanco entre el texto original, permanecerá compacto.);
+ *  5. Cada lado es un bloque estructural. → [MuseMarkdownRhythm.blockGap];
+ *  6. El texto original tiene líneas en blanco. → [MuseMarkdownRhythm.paragraphGap];
+ *  7. Saltos de línea suaves en el mismo párrafo → 0.
  */
 internal fun markdownBlockGap(prev: MarkdownBlock?, current: MarkdownBlock, blankBetween: Boolean): Dp = when {
     prev == null -> 0.dp
@@ -514,14 +514,14 @@ internal fun markdownBlockGap(prev: MarkdownBlock?, current: MarkdownBlock, blan
 }
 
 /**
- * v1.97 (P2): 流式期间代码块的轻量预览 — 纯等宽文本 + 暖纸深色背景,无行号/复制/折叠/高亮。
- * 流式结束后由 [CodeBlockView] 接管完整渲染。
+ * v1.97 (P2): Vista previa ligera de bloques de código durante la transmisión — Texto puro monoespaciado + fondo oscuro de papel cálido,Sin número de línea/Copiar/doblar/Destacar.
+ * Una vez finalizado el flujo, el [CodeBlockView] Hazte cargo del renderizado completo.
  */
 @Composable
 private fun StreamingCodePreview(block: MarkdownBlock.CodeBlock, style: TextStyle, codeBgColor: Color) {
     Surface(
         color = codeBgColor,
-        // v2.x: 代码块圆角对齐设计稿"代码块=12dp"档(原 8dp 与行内代码同级,块感不足)
+        // v2.x: Borrador de diseño de alineación de esquinas redondeadas de bloque de código"bloque de código=12dp"archivo(El 8dp original está al mismo nivel que el código en línea.,No hay suficiente bloqueo)
         shape = MuseShapes.medium,
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -537,25 +537,25 @@ private fun StreamingCodePreview(block: MarkdownBlock.CodeBlock, style: TextStyl
 }
 
 /**
- * v1.97 (P2): 流式期间 MarkdownText 渲染的块数上限。
- * 超过此值时只渲染最后 [STREAMING_BLOCK_CAP] 个块,顶部用 "…" 占位。
- * 选 30: 普通长回复(几千字)通常 10-25 块,30 足以覆盖;
- *        超长回复(万字级)截断后仍能看到最新内容,流式结束后恢复全量。
+ * v1.97 (P2): La cantidad máxima de fragmentos de MarkdownText que se procesarán durante la transmisión.
+ * Cuando se excede este valor, sólo el último [STREAMING_BLOCK_CAP] bloques,para arriba "…" Marcador de posición.
+ * Opción 30: respuesta larga normal(Miles de palabras)Generalmente entre 10 y 25 yuanes,30 suficiente para cubrir;
+ *        respuesta muy larga(Nivel de 10.000 palabras.)Aún puedes ver el contenido más reciente después del truncamiento.,El volumen total se restablece una vez finalizado el flujo.
  */
 private const val STREAMING_BLOCK_CAP = 30
 
-// 流式渐进卡片的最小代码长度与档位口径统一由 [ProgressiveCard] 提供：
-// 低于它不渲染卡片（避免半句 HTML 闪一下又重绘），达到后按几何档位逐步呈现。
+// La longitud mínima del código y el calibre del equipo de las tarjetas progresivas de transmisión están unificados por [ProgressiveCard] Proporcionado por:
+// No representa la tarjeta cuando está por debajo de ella (para evitar que el HTML de media oración parpadee y se vuelva a dibujar), y cuando llega a ella, se representa gradualmente de acuerdo con el engranaje geométrico.
 
 /**
- * Phase 8.3: 支持链接点击的行内格式化 Text。
+ * Phase 8.3: Admite el formato en línea de texto al hacer clic en enlaces.
  *
- * - 渲染 [parseInline] 产出的 AnnotatedString(含 URL tag 注解)
- * - 点击链接区域 → 弹出二次确认对话框 → 用户确认后 Intent.ACTION_VIEW 打开外链
- * - 普通区域点击无响应(不干扰列表/卡片选中)
+ * - renderizado [parseInline] Salida AnnotatedString(Contiene anotaciones de etiquetas URL)
+ * - Haga clic en el área del enlace → Aparece un cuadro de diálogo de confirmación secundario → Después de que el usuario confirma, Intent.ACTION_VIEW abre el enlace externo.
+ * - No hay respuesta al hacer clic en el área normal(No interfieras con la lista./Tarjeta seleccionada)
  *
- * v1.97: URL 点击增加二级确认(MuseDialog),避免误触打开外部链接。
- *        对话框提供"打开"和"复制链接"两个操作。
+ * v1.97: URL Haga clic para agregar confirmación secundaria(MuseDialog),Evite abrir accidentalmente enlaces externos.
+ *        El cuadro de diálogo proporciona"abierto"y"Copiar enlace"Dos operaciones.
  */
 @Composable
 private fun LinkableText(
@@ -563,17 +563,17 @@ private fun LinkableText(
     style: TextStyle,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
-    /** v1.0.72: 长按非链接区域回调(气泡长按菜单用)。 */
+    /** v1.0.72: Devolución de llamada del área sin vínculo con pulsación larga(Se utiliza el menú de pulsación larga de burbuja). */
     onLongPressOutside: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    // v1.97: 待确认的 URL(null 表示无待确认链接)
+    // v1.97: Por confirmar URL(null Indica que no hay ningún enlace por confirmar.)
     var pendingUrl by remember { mutableStateOf<String?>(null) }
-    // v1.97: 本会话是否已选择"不再确认"(长按或勾选后置 true,本会话内点击直接打开)
+    // v1.97: ¿Está seleccionada esta sesión?"No más confirmación"(Mantenga presionado o verifique el botón Atrás true,Haga clic para abrir directamente en esta sesión)
     var skipConfirm by remember { mutableStateOf(false) }
 
-    // v1.97: 打开 URL 的公共逻辑(确认后或跳过确认时调用)
+    // v1.97: Abrir la lógica pública de la URL(Llamado después de la confirmación o cuando se omite la confirmación.)
     val openUrl: (String) -> Unit = { url ->
         resultOf {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -591,14 +591,14 @@ private fun LinkableText(
         onTextLayout = { layoutResult = it },
         modifier = modifier.pointerInput(annotatedText) {
             detectTapGestures(
-                // v1.97: 长按直接打开(跳过确认,同时自动开启"本会话不再确认")
+                // v1.97: Mantenga pulsado para abrir directamente(Saltar confirmación,Se enciende automáticamente al mismo tiempo."Esta sesión ya no está confirmada.")
                 onLongPress = { offset ->
                     val layout = layoutResult ?: return@detectTapGestures
                     val pos = layout.getOffsetForPosition(offset)
                     val url = annotatedText.getStringAnnotations("URL", pos, pos)
                         .firstOrNull()?.item
                     if (url == null) {
-                        // v1.0.72: 长按非链接区域 → 透传给气泡长按菜单
+                        // v1.0.72: Pulsación larga en el área sin enlace → Menú de pulsación larga transparente para hacer burbujas
                         onLongPressOutside?.invoke()
                         return@detectTapGestures
                     }
@@ -609,7 +609,7 @@ private fun LinkableText(
                     skipConfirm = true
                     openUrl(url)
                 },
-                // v1.97: 单击 — 若已选"不再确认"则直接打开,否则弹确认对话框
+                // v1.97: haga clic — Si es seleccionado"No más confirmación"luego abre directamente,De lo contrario, aparece un cuadro de diálogo de confirmación.
                 onTap = { offset ->
                     val layout = layoutResult ?: return@detectTapGestures
                     val pos = layout.getOffsetForPosition(offset)
@@ -629,7 +629,7 @@ private fun LinkableText(
         },
     )
 
-    // v1.97: URL 点击二级确认对话框(含"本会话不再确认"选项)
+    // v1.97: URL Haga clic en el cuadro de diálogo de confirmación secundario.(Contiene"Esta sesión ya no está confirmada."Opciones)
     pendingUrl?.let { url ->
         io.zer0.muse.ui.common.feedback.MuseDialog(
             onDismissRequest = { pendingUrl = null },
@@ -667,7 +667,7 @@ private fun LinkableText(
             },
             dismissText = context.getString(R.string.markdown_open_link_confirm_copy),
             onDismiss = {
-                // v1.97: "复制链接"按钮 — 复制 URL 到剪贴板
+                // v1.97: "Copiar enlace"botón — Copiar URL al portapapeles
                 pendingUrl = null
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("url", url))
@@ -678,12 +678,12 @@ private fun LinkableText(
 }
 
 /**
- * 代码块视图: 等宽字体 + 暖纸深色背景 + 横向滚动 + 行号 + 复制 + 折叠。
+ * vista de bloque de código: Fuente monoespaciada + fondo oscuro de papel cálido + desplazamiento horizontal + números de línea + copiar + doblar.
  *
- * Phase 8.3 增强:
- *  - 行号: 左侧 gutter 等宽对齐(右对齐数字)
- *  - 复制按钮: 右上角 ContentCopy 图标,Toast "已复制 N 行代码"
- *  - 自动折叠: 超过 30 行的代码块默认折叠(显示前 10 行),底部"展开 N 行"按钮
+ * Phase 8.3 mejorar:
+ *  - Número de línea: Alineación de igual ancho del canal izquierdo(Alinear números a la derecha)
+ *  - botón copiar: Icono de ContentCopy en la esquina superior derecha,Toast "N líneas de código copiadas"
+ *  - plegado automático: Los bloques de código de más de 30 líneas están contraídos de forma predeterminada(Mostrar las primeras 10 filas),abajo"Expandir N líneas"botón
  */
 @Composable
 private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
@@ -692,15 +692,15 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
     val lineCount = codeLines.size
     val autoCollapseThreshold = 30
     val previewLineCount = 10
-    // 默认折叠状态: 超过阈值则默认折叠;rememberSaveable 保证滚动/重组后状态保留
+    // Estado plegado predeterminado: Si supera el umbral, se contraerá de forma predeterminada.;rememberSaveable Desplazamiento garantizado/Estado conservado después de la reorganización
     var expanded by rememberSaveable(block.code) {
         mutableStateOf(lineCount <= autoCollapseThreshold)
     }
     val displayedLines = if (expanded) codeLines else codeLines.take(previewLineCount)
     val hiddenCount = lineCount - previewLineCount
 
-    // v2.x: 代码块上下留白交给 markdownBlockGap,块内不再自带 Spacer;
-    // 圆角升到 MuseShapes.medium(12dp,设计稿"代码块"档),内边距走阅读节奏令牌。
+    // v2.x: Deje la parte superior e inferior del bloque de código en blanco. markdownBlockGap,Ya no está incluido en el bloque. Spacer;
+    // esquinas redondeadas elevadas a MuseShapes.medium(12dp,Borrador de diseño"bloque de código"archivo),Los márgenes interiores caminan leyendo fichas de ritmo.
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MuseShapes.medium,
@@ -708,7 +708,7 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(MuseMarkdownRhythm.blockInner)) {
-            // 顶部行: language 标签 + 复制按钮 + 行数
+            // fila superior: language Etiqueta + botón copiar + número de filas
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -734,8 +734,8 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                 MuseTactileButton(
                     icon = MuseIcons.copy,
                     onClick = {
-                        // L6 已知限制: 复制代码未标注敏感(如含密钥的代码块),统一以纯文本写入剪贴板;
-                        // 后续可结合内容检测判断是否敏感,暂不实现(工作量较大)。
+                        // L6 Limitaciones conocidas: El código copiado no está marcado como confidencial.(como un bloque de código que contiene una clave),Escriba texto sin formato en el portapapeles de manera uniforme;
+                        // La detección de contenido posterior se puede combinar para determinar si es sensible.,Aún no implementado(Gran carga de trabajo).
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("code", block.code))
                         MuseToast.show(context.getString(R.string.markdown_copied_lines, lineCount))
@@ -746,16 +746,16 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                 )
             }
             Spacer(Modifier.height(MusePaddings.labelVerticalGap))
-            // 代码内容: 行号 + 代码
-            // Phase 10.5: 行号右对齐 + 固定宽度(按总行数位数计算),1/10/100 对齐美观
-            // L-MD15 修复: gutter 宽度用文件级常量计算(原先 10/16 硬编码)
+            // Contenido del código: Número de línea + código
+            // Phase 10.5: Números de línea alineados a la derecha + ancho fijo(Calculado por dígitos totales de fila),1/10/100 Bellamente alineado
+            // L-MD15 Reparación: gutter El ancho se calcula utilizando constantes a nivel de archivo.(Originalmente codificado en 10/16)
             val gutterWidth = (lineCount.toString().length * GUTTER_CHAR_WIDTH_DP).coerceAtLeast(GUTTER_MIN_WIDTH_DP).dp
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
             ) {
-                // 行号 gutter(右对齐,等宽字体保证数字对齐)
+                // Número de línea gutter(Alinear a la derecha,Las fuentes monoespaciadas garantizan la alineación de los números)
                 Column(modifier = Modifier.width(gutterWidth).padding(end = 8.dp)) {
                     displayedLines.forEachIndexed { idx, _ ->
                         Text(
@@ -769,18 +769,18 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                         )
                     }
                 }
-                // 代码内容
-                // v1.48: 折叠时叠加渐变遮罩,符合"折叠带渐变遮罩"约束
+                // Contenido del código
+                // v1.48: Superponer máscara de degradado cuando está plegada,conformarse a"Doblar con máscara degradada"restricción
                 Box {
                     Column {
-                        // H-MD1 修复: 用 key() 标识每行,避免折叠/展开切换时
-                        // forEachIndexed 位置记忆错乱导致 CodeHighlighter 缓存失效。
-                        // 以原始 line 内容为 key(不含折叠时追加的 // … 后缀),
-                        // Compose 能跨重组匹配同一行的高亮缓存。
+                        // H-MD1 Reparación: usar key() identificar cada línea,evitar doblar/Al cambiar para expandir
+                        // forEachIndexed La ubicación de memoria incorrecta provoca una falla en la caché de CodeHighlighter.
+                        // Tome el contenido de la línea original como key(Excluidos los añadidos al plegar // … sufijo),
+                        // Compose Resalte el caché que puede coincidir con la misma línea en todas las reorganizaciones.
                         displayedLines.forEachIndexed { idx, line ->
                             key(line, idx) {
                                 val displayLine = if (!expanded && idx == previewLineCount - 1 && hiddenCount > 0) {
-                                    // 折叠时最后一行显示省略号提示
+                                    // Al plegar, la última línea muestra un mensaje de puntos suspensivos
                                     "$line  // …"
                                 } else {
                                     line
@@ -795,7 +795,7 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                             }
                         }
                     }
-                    // 折叠时在底部叠加从透明到背景色的渐变,营造"未完待续"的视觉提示
+                    // Superponga un degradado de transparente a color de fondo en la parte inferior cuando esté plegado,crear"Continuará"señales visuales
                     if (!expanded && hiddenCount > 0) {
                         val bgColor = MaterialTheme.colorScheme.surfaceVariant
                         Box(
@@ -811,7 +811,7 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                     }
                 }
             }
-            // 折叠/展开按钮(仅当超过阈值时显示)
+            // doblar/Botón expandir(Se muestra solo cuando se excede el umbral)
             if (lineCount > autoCollapseThreshold) {
                 Spacer(Modifier.height(4.dp))
                 Surface(
@@ -819,8 +819,8 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
                     shape = MuseShapes.extraSmall,
                     modifier = Modifier
                         .fillMaxWidth()
-                        // H-MD6 修复: clickable 加 role=Role.Button 无障碍语义;
-                        // heightIn(min=48.dp) 保证触摸目标≥48dp(原先 vertical=6.dp 仅约 28dp)
+                        // H-MD6 Reparación: clickable agregar role=Role.Button semántica de accesibilidad;
+                        // heightIn(min=48.dp) Objetivo táctil garantizado≥48dp(Originalmente vertical=6.dp solo sobre 28dp)
                         .heightIn(min = 48.dp)
                         .clickable(
                             role = Role.Button,
@@ -866,7 +866,7 @@ private fun CodeBlockView(block: MarkdownBlock.CodeBlock) {
     }
 }
 
-/** 列表项视图: 缩进 + 符号(• 或 1.)。 */
+/** vista de elementos de lista: sangría + signo(• o 1.). */
 @Composable
 private fun ListItemView(
     block: MarkdownBlock.ListItem,
@@ -878,7 +878,7 @@ private fun ListItemView(
     citationColor: Color = linkColor,
 ) {
     val marker = if (block.ordered) "${block.index}." else "•"
-    // Phase 8.5 修复: parseInline 用 remember 缓存,与 Paragraph/Heading 路径保持一致
+    // Phase 8.5 Reparación: parseInline Almacenamiento en caché con recordar,Mantenga la coherencia con la ruta del párrafo/título
     val annotated = remember(block.text, baseColor, linkColor, codeBgColor, citationUrls, citationColor) {
         parseInline(block.text, baseColor, linkColor, codeBgColor, citationUrls, citationColor)
     }
@@ -897,7 +897,7 @@ private fun ListItemView(
     }
 }
 
-/** 引用块视图: 左侧色条 + 浅背景。 */
+/** Vista de bloque de cotización: Barra de color izquierda + fondo claro. */
 @Composable
 private fun QuoteView(
     block: MarkdownBlock.Quote,
@@ -909,14 +909,14 @@ private fun QuoteView(
     citationUrls: List<String> = emptyList(),
     citationColor: Color = linkColor,
 ) {
-    // Phase 8.5 修复: parseInline 用 remember 缓存,与 Paragraph/Heading 路径保持一致
+    // Phase 8.5 Reparación: parseInline Almacenamiento en caché con recordar,Mantenga la coherencia con la ruta del párrafo/título
     val annotated = remember(block.text, baseColor, linkColor, codeBgColor, citationUrls, citationColor) {
         parseInline(block.text, baseColor, linkColor, codeBgColor, citationUrls, citationColor)
     }
-    // v2.x 长文排版:
-    //  - 语义色改为中性 outline —— primary 是"挣来的"交互色,引用只是旁证,不该抢品牌绿;
-    //  - 色条高度改为跟随整段文字(原固定 20dp,多行引用只有首行有竖条);
-    //  - 上下留白交给 markdownBlockGap,内部仅保留色条与文字的紧凑间距。
+    // v2.x Formato de texto largo:
+    //  - El color semántico cambió a neutro. outline —— primary si"ganado"color interactivo,Las citas son sólo evidencia circunstancial.,No deberías agarrar la marca verde;
+    //  - La altura de la barra de colores cambia para seguir todo el texto.(fijo original 20dp,Sólo la primera línea de una cita de varias líneas tiene una barra vertical.);
+    //  - Deje la parte superior e inferior en blanco para markdownBlockGap,En el interior sólo se conserva el estrecho espacio entre la barra de color y el texto.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -940,16 +940,16 @@ private fun QuoteView(
 }
 
 /**
- * 行内格式解析: 粗体 **...** / 斜体 *...* / 行内代码 `...` / 链接 [...](...) /
- * 引用编号 [N](Phase 8.4 UrlCitation)。
+ * Análisis de formato en línea: Negrita **...** / cursiva *...* / código en línea `...` / enlace [...](...) /
+ * Número de referencia [N](Phase 8.4 UrlCitation).
  *
- * 颜色由调用方传入(buildAnnotatedString 内部非 @Composable,无法读 MaterialTheme)。
- * 解析顺序: 链接 [text](url) > 引用编号 [N] > 行内代码 > 粗体 > 斜体(正则 alternation 一次扫描)。
- * 嵌套语法(如 **`code`**)未完全支持,常见用法覆盖即可。
+ * El color lo pasa la persona que llama.(buildAnnotatedString interno no @Composable,No puedo leer MaterialTheme).
+ * orden de análisis: enlace [text](url) > Número de referencia [N] > código en línea > Negrita > cursiva(Alternancia regular de una exploración).
+ * Sintaxis anidada(Como por ejemplo **`code`**)No totalmente compatible,Se puede cubrir el uso común.
  *
- * Phase 8.4 UrlCitation: 当 [citationUrls] 非空时,文本中的 [N](N 为正整数)会被
- * 渲染为 secondary 色可点击注解,点击跳转到 citationUrls[N-1]。注意 [text](url)
- * 形式的标准 markdown 链接优先匹配,避免误把链接文本里的数字当引用。
+ * Phase 8.4 UrlCitation: cuando [citationUrls] tiempo no vacío,en texto [N](N es un entero positivo)será
+ * Representado como anotación en la que se puede hacer clic en color secundario,Haga clic para saltar a citationUrls[N-1]. Nota [text](url)
+ * Los enlaces de rebajas estándar del formulario coinciden primero,Evite confundir los números en el texto del enlace con comillas.
  */
 fun parseInline(
     text: String,
@@ -959,11 +959,11 @@ fun parseInline(
     citationUrls: List<String> = emptyList(),
     citationColor: Color = linkColor,
 ): AnnotatedString = buildAnnotatedString {
-    // L2 修复: 正则已提升为文件级 private val(INLINE_REGEX / CITATION_REGEX),此处直接引用
-    // Phase 8.4: 单独走 [N] 引用扫描(在主正则之后),避免与 [text](url) 冲突
+    // L2 Reparación: La expresión regular ha sido promovida al nivel de archivo. private val(INLINE_REGEX / CITATION_REGEX),Cotización directa aquí
+    // Phase 8.4: caminar solo [N] escaneo de citas(después del regular principal),evitar con [text](url) conflicto
     var lastEnd = 0
     INLINE_REGEX.findAll(text).forEach { match ->
-        // 输出匹配前的普通文本(可能含 [N] 引用或纯文本 URL)
+        // Muestra el texto sin formato antes del partido.(puede contener [N] cita o texto plano URL)
         if (match.range.first > lastEnd) {
             appendSegmentWithCitations(
                 text.substring(lastEnd, match.range.first),
@@ -975,7 +975,7 @@ fun parseInline(
             )
         }
         when {
-            // 链接 [text](url) — group 1=text, 2=url
+            // enlace [text](url) — group 1=text, 2=url
             match.groupValues[1].isNotEmpty() -> {
                 val linkText = match.groupValues[1]
                 val url = match.groupValues[2]
@@ -990,7 +990,7 @@ fun parseInline(
                 }
                 pop()
             }
-            // 行内代码 `...` — group 3
+            // código en línea `...` — group 3
             match.groupValues[3].isNotEmpty() -> {
                 withStyle(
                     SpanStyle(
@@ -1001,13 +1001,13 @@ fun parseInline(
                     append(match.groupValues[3])
                 }
             }
-            // 粗体 **...** — group 4
+            // Negrita **...** — group 4
             match.groupValues[4].isNotEmpty() -> {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(match.groupValues[4])
                 }
             }
-            // 斜体 *...* — group 5
+            // cursiva *...* — group 5
             match.groupValues[5].isNotEmpty() -> {
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
                     append(match.groupValues[5])
@@ -1016,7 +1016,7 @@ fun parseInline(
         }
         lastEnd = match.range.last + 1
     }
-    // 输出末尾剩余文本(可能含 [N] 引用或纯文本 URL)
+    // Imprima el texto restante al final.(puede contener [N] cita o texto plano URL)
     if (lastEnd < text.length) {
         appendSegmentWithCitations(
             text.substring(lastEnd),
@@ -1030,16 +1030,16 @@ fun parseInline(
 }
 
 /**
- * Phase 8.4: 把一段普通文本中的 [N] 引用编号渲染为可点击 URL 注解。
- * 仅当 N 在 citationUrls 范围内时才注解,其他 [N] 当普通文本输出。
+ * Phase 8.4: en un fragmento de texto ordinario [N] Los números de referencia se representan como anotaciones de URL en las que se puede hacer clic.
+ * Anotado solo si N está dentro del rango de citationUrls,Otros [N] Cuando se muestra como texto normal.
  *
- * v1.97: 增加纯文本 URL 自动识别(linkify 式自动链接)。
- * 普通文本中的 http/https URL 会被自动渲染为 primary 色可点击链接。
- * URL 优先于 [N] 引用扫描,避免 URL 内的 [数字] 被误匹配。
+ * v1.97: Agregar identificación automática de URL de texto sin formato(linkify enlace automático).
+ * Las URL http/https en texto normal se representarán automáticamente como enlaces en los que se puede hacer clic con el color primario.
+ * URL tener prioridad sobre [N] escaneo de citas,Evitar dentro de la URL [numeros] No coinciden.
  *
- * Phase 8.5 清理: 移除未使用的 mainRanges / segmentOffset 参数(原设计用于防止
- * [N] 引用扫描误入 [text](url) 内部,但 citationRegex 只匹配纯数字 [N],
- * 与 [text](url) 的 [非空文本](...) 结构天然不重叠,无需此保护)。
+ * Phase 8.5 limpiar: Eliminar los parámetros mainRanges/segmentOffset no utilizados(Originalmente diseñado para prevenir
+ * [N] Error de escaneo de referencia [text](url) interno,Pero citationRegex solo coincide con números puros [N],
+ * con [text](url) de [texto no vacío](...) Las estructuras naturalmente no se superponen,No es necesaria esta protección).
  */
 private fun AnnotatedString.Builder.appendSegmentWithCitations(
     segment: String,
@@ -1053,10 +1053,10 @@ private fun AnnotatedString.Builder.appendSegmentWithCitations(
         append(segment)
         return
     }
-    // v1.97: 先扫描纯文本 URL,把文本切成 URL 段和普通段
+    // v1.97: Escanee primero el texto sin formato URL,Dividir el texto en segmentos de URL y segmentos normales
     var urlLast = 0
     URL_AUTOLINK_REGEX.findAll(segment).forEach { urlMatch ->
-        // URL 之前的普通文本走 [N] 引用扫描
+        // URL Texto normal antes de ir [N] escaneo de citas
         if (urlMatch.range.first > urlLast) {
             appendCitationOnly(
                 segment.substring(urlLast, urlMatch.range.first),
@@ -1065,7 +1065,7 @@ private fun AnnotatedString.Builder.appendSegmentWithCitations(
                 citationRegex,
             )
         }
-        // URL 本身渲染为 primary 色可点击链接
+        // URL Se representa como un enlace de color primario en el que se puede hacer clic.
         val url = urlMatch.value
         pushStringAnnotation(tag = "URL", annotation = url)
         withStyle(
@@ -1079,7 +1079,7 @@ private fun AnnotatedString.Builder.appendSegmentWithCitations(
         pop()
         urlLast = urlMatch.range.last + 1
     }
-    // URL 之后的剩余文本走 [N] 引用扫描
+    // URL Después de que el texto restante vaya [N] escaneo de citas
     if (urlLast < segment.length) {
         appendCitationOnly(
             segment.substring(urlLast),
@@ -1091,8 +1091,8 @@ private fun AnnotatedString.Builder.appendSegmentWithCitations(
 }
 
 /**
- * v1.97: 把一段纯文本中的 [N] 引用编号渲染为可点击 URL 注解(不含 URL 自动识别)。
- * 从 appendSegmentWithCitations 抽出,供 URL 分段后的普通文本复用。
+ * v1.97: Ponga un fragmento de texto plano en [N] Números de referencia representados como anotaciones de URL en las que se puede hacer clic(No incluye identificación automática de URL).
+ * Extraído de appendSegmentWithCitations,Para reutilizar texto normal después de la fragmentación de URL.
  */
 private fun AnnotatedString.Builder.appendCitationOnly(
     text: String,
@@ -1133,26 +1133,26 @@ private fun AnnotatedString.Builder.appendCitationOnly(
 }
 
 /**
- * v1.97: Markdown 表格渲染。
- * 表头行用 primary 半透明背景,数据行用 onSurfaceVariant 色,等宽列布局。
+ * v1.97: Markdown Representación de mesa.
+ * Utilice un fondo semitransparente principal para la fila del encabezado,Las filas de datos se colorean usando onSurfaceVariant,Diseño de columnas de igual ancho.
  */
 @Composable
 private fun TableView(table: MarkdownBlock.Table) {
     val headerColor = MaterialTheme.colorScheme.onSurface
     val cellColor = MaterialTheme.colorScheme.onSurfaceVariant
-    // v2.x: 行线对齐 MuseDivider 线色(onSurface@13%),与设置页发丝线同一套语言
+    // v2.x: Alineación de líneas de fila Color de línea MuseDivider(onSurface@13%),Mismo idioma que la página de configuración.
     val rowLineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.13f)
     val headerBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
 
-    // v2.x 长文排版: 表格作为独立内容块 —— 圆角容器 + 与代码块同源的浅面,
-    // 让它在双平面底上"自成一块",与正文拉开对比;表格上下留白走 markdownBlockGap。
+    // v2.x Formato de texto largo: Tabla como bloque de contenido independiente —— Contenedor redondeado + superficie poco profunda con el mismo origen que el bloque de código,
+    // Que sea en una base biplano."autónomo",Contraste con el texto;Deje la parte superior e inferior de la tabla en blanco y use markdownBlockGap.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MuseShapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // 表头行
+        // fila de encabezado
         Row(modifier = Modifier.fillMaxWidth()) {
             table.headers.forEach { header ->
                 Text(
@@ -1169,7 +1169,7 @@ private fun TableView(table: MarkdownBlock.Table) {
             }
         }
         HorizontalDivider(color = rowLineColor, thickness = MusePaddings.dividerThickness)
-        // 数据行
+        // fila de datos
         table.rows.forEachIndexed { rowIndex, row ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 row.forEach { cell ->
@@ -1184,7 +1184,7 @@ private fun TableView(table: MarkdownBlock.Table) {
                     )
                 }
             }
-            // 末行下不再补一条悬空的分隔线
+            // Ya no hay una línea divisoria colgante debajo de la última línea.
             if (rowIndex < table.rows.lastIndex) {
                 HorizontalDivider(color = rowLineColor.copy(alpha = 0.5f), thickness = MusePaddings.dividerThickness)
             }
@@ -1193,13 +1193,13 @@ private fun TableView(table: MarkdownBlock.Table) {
 }
 
 /**
- * v1.0.53: 解析 cover 字段为本地文件。
+ * v1.0.53: Analice el campo de portada en un archivo local.
  *
- * 规则:
+ * reglas:
  *  - "covers/xxx.jpg" → filesDir/covers/xxx.jpg
- *  - "file:///path/xxx.jpg" → 直接解析路径
- *  - 其他 → filesDir/xxx
- *  - 注入 [resolver] 时优先使用(测试/自定义存储)
+ *  - "file:///path/xxx.jpg" → Analizar directamente la ruta
+ *  - Otros → filesDir/xxx
+ *  - inyectar [resolver] prioridad al usar(prueba/Almacenamiento personalizado)
  */
 @Composable
 private fun resolveCoverFile(cover: String, resolver: ((String) -> File?)?): File? {

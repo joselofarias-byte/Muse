@@ -16,31 +16,31 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 
 /**
- * 插件市场设置：目录 URL 与目录信任根公钥。
+ * Configuración del mercado de complementos: URL del directorio y clave pública raíz de confianza del directorio.
  *
- * 默认值来自安装包内置的官方目录 [PluginMarketDefaults]，因此市场开箱即用、无需配置；
- * 用户仍可覆盖目录地址（测试目录或应急切换），但**内置信任根始终参与验签且不可移除**，
- * 避免误配置让官方目录失效。未配置任何信任根时目录校验直接拒绝，不会退化为「信任任何目录」。
- * 信任根公钥只能由应用内置或用户显式配置，绝不从目录内容中读取。
+ * El valor predeterminado proviene del directorio oficial integrado en el paquete de instalación. [PluginMarketDefaults], por lo que el mercado funciona de inmediato y no requiere configuración;
+ * El usuario aún puede anular la dirección del directorio (directorio de prueba o interruptor de emergencia), pero**La raíz de confianza incorporada siempre participa en la verificación de firmas y no se puede eliminar**,
+ * Evite malas configuraciones que invaliden el catálogo oficial. Cuando no se configura una raíz de confianza, la verificación del directorio se rechaza directamente y no degenerará en "confiar en ningún directorio".
+ * La raíz de la clave pública de confianza solo puede ser configurada internamente por la aplicación o explícitamente por el usuario, y nunca se lee del contenido del directorio.
  */
-/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
+/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class PluginMarketSettings(private val context: Context) {
 
     private val store get() = context.museSettingsDataStore
 
-    /** 生效的目录 URL：用户覆盖优先，否则使用内置官方目录。 */
+    /** URL del directorio efectivo: la anulación del usuario tiene prioridad; de lo contrario, se utiliza el directorio oficial integrado. */
     val catalogUrlFlow: Flow<String> = store.data.mapDistinct { prefs ->
         prefs[KEY_CATALOG_URL]?.trim()?.takeIf { it.isNotEmpty() } ?: PluginMarketDefaults.CATALOG_URL
     }
 
-    /** 用户显式配置的目录覆盖值；空表示正在使用内置官方目录。 */
+    /** Valor de anulación de directorio configurado explícitamente por el usuario; vacío significa que se está utilizando el directorio oficial incorporado. */
     val catalogUrlOverrideFlow: Flow<String> = store.data.mapDistinct { prefs ->
         prefs[KEY_CATALOG_URL].orEmpty().trim()
     }
 
-    /** 生效的目录信任根：内置官方信任根 + 用户追加的信任根，内置项不可被覆盖或移除。 */
+    /** Raíz de confianza de directorio efectiva: raíz de confianza oficial incorporada + raíz de confianza agregada por el usuario. Los elementos integrados no se pueden sobrescribir ni eliminar. */
     val catalogRootKeysFlow: Flow<Map<String, String>> = store.data.mapDistinct { prefs ->
         effectiveRootKeys(decodeRootKeys(prefs[KEY_CATALOG_ROOT_KEYS]))
     }
@@ -58,24 +58,24 @@ class PluginMarketSettings(private val context: Context) {
         }
     }
 
-    /** 清除用户覆盖，回到内置官方目录。 */
+    /** Borre las anulaciones de usuario y regrese al directorio oficial integrado. */
     suspend fun resetCatalogUrl() = saveCatalogUrl("")
 
     /**
-     * 保存/更新一个目录信任根公钥。
+     * guardar/Actualice una clave pública raíz de confianza del directorio.
      *
-     * 公钥在写入前先规范化校验；非法输入返回 failure 且不修改设置。
-     * keyId 与内置官方信任根同名时拒绝写入，防止覆盖内置信任根。
+     * La clave pública está estandarizada y verificada antes de escribirla; la entrada ilegal devuelve un error y no modifica la configuración.
+     * keyId Deniegue la escritura si tiene el mismo nombre que la raíz de confianza oficial incorporada para evitar sobrescribir la raíz de confianza incorporada.
      */
     suspend fun saveCatalogRootKey(keyId: String, publicKeyBase64: String): Result<String> {
         val id = keyId.trim()
-        if (id.isEmpty()) return Result.failure(IllegalArgumentException("keyId 不能为空"))
+        if (id.isEmpty()) return Result.failure(IllegalArgumentException("keyId no puede estar vacío"))
         if (id in PluginMarketDefaults.catalogRootKeys) {
-            return Result.failure(IllegalArgumentException("不能覆盖内置的官方目录信任根"))
+            return Result.failure(IllegalArgumentException("No se puede anular la raíz de confianza del directorio oficial integrado"))
         }
         val normalized = PluginSecurityGate.canonicalPublicKey(publicKeyBase64.trim())
-            .getOrElse { return Result.failure(IllegalArgumentException("公钥不是合法的 Base64 X.509 公钥")) }
-        // 只持久化用户自己追加的信任根：内置项始终由安装包提供，不写进设置。
+            .getOrElse { return Result.failure(IllegalArgumentException("La clave pública no es una clave pública Base64 X.509 válida")) }
+        // Solo se conserva la raíz de confianza agregada por el usuario: los elementos integrados siempre los proporciona el paquete de instalación y no están escritos en la configuración.
         val next = userRootKeys() + (id to normalized)
         store.edit { prefs ->
             prefs[KEY_CATALOG_ROOT_KEYS] = encodeRootKeys(next)
@@ -83,7 +83,7 @@ class PluginMarketSettings(private val context: Context) {
         return Result.success(normalized)
     }
 
-    /** 移除一个用户追加的目录信任根；内置官方信任根不可移除。 */
+    /** Elimina una raíz de directorio de confianza agregada por el usuario; la raíz de confianza oficial incorporada no se puede eliminar. */
     suspend fun removeCatalogRootKey(keyId: String) {
         val id = keyId.trim()
         if (id in PluginMarketDefaults.catalogRootKeys) return
@@ -93,10 +93,10 @@ class PluginMarketSettings(private val context: Context) {
         }
     }
 
-    /** 用户显式追加的信任根（不含内置项）。 */
+    /** Raíces de confianza agregadas explícitamente por el usuario (excluyendo las integradas). */
     private suspend fun userRootKeys(): Map<String, String> = decodeRootKeys(store.data.first()[KEY_CATALOG_ROOT_KEYS])
 
-    /** 生效信任根 = 用户追加项与内置项合并；同名时以内置项为准。 */
+    /** raíz efectiva de confianza = Los elementos agregados por el usuario se combinan con elementos integrados; si tienen la misma denominación, prevalecerán los elementos incorporados. */
     private fun effectiveRootKeys(configured: Map<String, String>): Map<String, String> = configured + PluginMarketDefaults.catalogRootKeys
 
     private fun decodeRootKeys(raw: String?): Map<String, String> {
@@ -106,7 +106,7 @@ class PluginMarketSettings(private val context: Context) {
                 .filterKeys { it.isNotBlank() }
                 .filterValues { it.isNotBlank() }
         }.getOrElse { error ->
-            Logger.w(TAG, "目录信任根解析失败，按未配置处理", error)
+            Logger.w(TAG, "La resolución de la raíz de confianza del directorio falló y se maneja como no configurada.", error)
             emptyMap()
         }
     }

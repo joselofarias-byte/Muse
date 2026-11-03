@@ -14,16 +14,16 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * 会话与挂载的绑定关系。
+ * La relación vinculante entre sesiones y montajes.
  *
- * 不同会话该看到哪几块目录，是使用习惯问题而不是权限问题：写代码的会话不该
- * 顺手把写小说的目录搜进上下文。没登记的会话不做限制，全部挂载可用。
+ * Qué directorios deberían verse en diferentes sesiones es una cuestión de hábitos de uso más que de permisos: las sesiones que escriben código no deberían
+ * Busque cómodamente en el directorio para escribir novelas en el contexto. Las sesiones no registradas no están restringidas y todos los soportes están disponibles.
  *
- * @param context 应用 Context，用于定位 filesDir
+ * @param context Contexto de aplicación, utilizado para posicionamiento. filesDir
  */
 class WorkspaceSessionBindingStore(private val context: Context) {
 
-    /** 绑定表文件：会话 id → 允许的挂载 id 列表。 */
+    /** Archivo de tabla vinculante: sesión id → Lista de ID de montaje permitidos. */
     private val storeFile: File = File(context.filesDir, "workspace_session_mounts.json")
 
     private val mutex = Mutex()
@@ -33,10 +33,10 @@ class WorkspaceSessionBindingStore(private val context: Context) {
     private val serializer = MapSerializer(String.serializer(), ListSerializer(String.serializer()))
 
     /**
-     * 某个会话可用的挂载标识。
+     * El ID de montaje disponible para una sesión.
      *
-     * @param sessionId 会话 id；为空表示没有会话上下文（例如后台定时任务）
-     * @return 允许的挂载集合；null 表示不限制
+     * @param sessionId Identificación de sesión; vacío significa que no hay contexto de sesión (como tareas programadas en segundo plano)
+     * @return El conjunto de montajes permitidos;null No indica ninguna restricción
      */
     suspend fun allowedMountIds(sessionId: String?): Set<String>? {
         if (sessionId.isNullOrBlank()) return null
@@ -45,9 +45,9 @@ class WorkspaceSessionBindingStore(private val context: Context) {
     }
 
     /**
-     * 设置某个会话可用的挂载。
+     * Establece las monturas disponibles para una sesión.
      *
-     * @param ids 为空集合时表示清除绑定，回到不限制
+     * @param ids Cuando el conjunto está vacío, significa borrar el enlace y volver a ilimitado.
      */
     suspend fun setAllowed(sessionId: String, ids: Set<String>): Unit = withContext(Dispatchers.IO) {
         if (sessionId.isBlank()) return@withContext
@@ -58,10 +58,10 @@ class WorkspaceSessionBindingStore(private val context: Context) {
         }
     }
 
-    /** 清除某个会话的绑定。 */
+    /** Borrar enlaces para una sesión. */
     suspend fun clear(sessionId: String): Unit = setAllowed(sessionId, emptySet())
 
-    /** 把挂载从所有会话的绑定里摘掉，避免删挂载后留下悬空 id。 */
+    /** Retire la montura de los enlaces de todas las sesiones para evitar dejar ID pendientes después de eliminar la montura. */
     suspend fun forgetMount(mountId: String): Unit = withContext(Dispatchers.IO) {
         mutex.withLock {
             val table = read()
@@ -83,7 +83,7 @@ class WorkspaceSessionBindingStore(private val context: Context) {
         val table: Map<String, List<String>> = resultOf {
             val text = storeFile.readText(Charsets.UTF_8)
             if (text.isBlank()) emptyMap() else json.decodeFromString(serializer, text)
-        }.onError { message, _ -> Logger.w(TAG, "读取会话绑定失败: $message") }
+        }.onError { message, _ -> Logger.w(TAG, "No se pudo leer el enlace de sesión: $message") }
             .getOrNull() ?: return emptyMap()
         return table
     }
@@ -96,7 +96,7 @@ class WorkspaceSessionBindingStore(private val context: Context) {
                 storeFile.writeText(json.encodeToString(serializer, table), Charsets.UTF_8)
                 temp.delete()
             }
-        }.onError { message, _ -> Logger.w(TAG, "写入会话绑定失败: $message") }
+        }.onError { message, _ -> Logger.w(TAG, "Error en el enlace de la sesión de escritura: $message") }
     }
 
     companion object {

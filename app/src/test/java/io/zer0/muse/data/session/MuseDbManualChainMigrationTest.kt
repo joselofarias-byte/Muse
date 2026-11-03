@@ -10,17 +10,17 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 审查修复 (2.0 B-27): 早期迁移链 22..54 的手动逐步覆盖。
+ * Revisión de corrección (2.0 B-27): Manual de cobertura paso a paso de la cadena de migración temprana 22..54.
  *
- * Room 校验路径(RoomOpenHelper.onValidateSchema)在 Robolectric 下存在双连接伪影:
- * 迁移事务内新建的索引对校验连接不可见,导致 22..54 起点在 Robolectric 下误报
- * "Migration didn't properly handle: scheduled_tasks"(55+ 起点索引为快照预建,
- * 不受影响;真机单连接无此问题)。本测试用原生 SupportSQLiteOpenHelper 手动逐步
- * 执行与 Room 完全相同的迁移链(含 75_76/76_77/88_89 函数迁移),断言迁移后:
- *  - messages 含当前全部关键列(parentGroupId / videoFileUri / moodSkin 等);
- *  - messages.imageUrlsJson 具备 DEFAULT '[]'(29_30/88_89 修复目标);
- *  - scheduled_tasks 索引 index_scheduled_tasks_enabled_next_run_at 存在(88_89 修复目标);
- *  - 历史遗留行数据保留。
+ * Room Ruta de verificación(RoomOpenHelper.onValidateSchema)Artefactos de doble conectividad bajo Robolectric:
+ * El índice recién creado dentro de la transacción de migración no es visible para la conexión de verificación,Provocó que 22..54 puntos de partida fueran falsos positivos bajo Robolectric
+ * "Migration didn't properly handle: scheduled_tasks"(55+ El índice del punto de partida está prediseñado para la instantánea.,
+ * no afectado;La conexión única de la máquina real no tiene este problema). Esta prueba utiliza SupportSQLiteOpenHelper nativo para realizar manualmente paso a paso
+ * Ejecute exactamente la misma cadena de migración que Room(Contiene la migración de funciones 75_76/76_77/88_89),Después de la migración de aserción:
+ *  - messages Contiene todas las columnas clave actuales(parentGroupId / videoFileUri / moodSkin espera);
+ *  - messages.imageUrlsJson tener DEFAULT '[]'(29_30/88_89 Objetivo de reparación);
+ *  - scheduled_tasks índice index_scheduled_tasks_enabled_next_run_at existir(88_89 Objetivo de reparación);
+ *  - Se conservan los datos históricos de las filas.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -39,11 +39,11 @@ class MuseDbManualChainMigrationTest {
     }
 
     /**
-     * 逐步执行完整迁移链并断言终态。
+     * Recorra la cadena de migración completa y afirme el estado final.
      *
-     * 函数较长/复杂度高是测试场景使然:需要线性复刻 Room 迁移调度
-     * (含 75_76/76_77/88_89 函数迁移与事务包装),并对每个起点版本断言
-     * 列/索引/默认值/数据保留四类终态;拆分反而引入间接层,故整体豁免。
+     * la función es más larga/La alta complejidad se debe al escenario de prueba.:Necesidad de replicar linealmente el cronograma de migración de Room
+     * (Contiene migración de funciones 75_76/76_77/88_89 y paquete de transacciones),y afirmar para cada versión de punto de partida
+     * columna/índice/Valor predeterminado/Retención de datos en cuatro estados finales;En su lugar, la división introduce una capa de indirección,Por tanto, queda exento en su conjunto.
      */
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     private fun migrateChainManually(fromVersion: Int) {
@@ -80,9 +80,9 @@ class MuseDbManualChainMigrationTest {
                 .build(),
         )
         val db = helper.writableDatabase
-        // 插入一条历史消息,验证数据跨迁移保留。
-        // 早期快照(22-54)的 messages 表存在 NOT NULL 且无默认值的列(如 imageUrlsJson),
-        // 按 PRAGMA 动态补齐,避免约束违反。
+        // Insertar un mensaje histórico,Verifique que los datos se conserven en todas las migraciones.
+        // instantánea temprana(22-54)La tabla de mensajes tiene una columna que NO es NULA y no tiene ningún valor predeterminado.(Como por ejemplo imageUrlsJson),
+        // Finalización dinámica por PRAGMA,Evite violaciones de restricciones.
         val provided = setOf("id", "sessionId", "role", "content", "createdAt")
         val requiredNotNull = mutableListOf<Pair<String, String>>()
         db.query("PRAGMA table_info(messages)").use { c ->
@@ -97,16 +97,16 @@ class MuseDbManualChainMigrationTest {
         }
         db.execSQL(
             "INSERT INTO sessions (id, title, createdAt, updatedAt, lastMessagePreview, assistantId) " +
-                "VALUES ('legacy-session', '迁移测试', 1, 1, '', 'default')",
+                "VALUES ('legacy-session', 'Pruebas de migración', 1, 1, '', 'default')",
         )
         val extraCols = requiredNotNull.joinToString("") { ", " + it.first }
         val extraVals = requiredNotNull.joinToString("") { ", " + it.second }
         db.execSQL(
             "INSERT INTO messages (id, sessionId, role, content, createdAt$extraCols) " +
-                "VALUES ('legacy-msg', 'legacy-session', 'ASSISTANT', '迁移前的历史消息', 1$extraVals)",
+                "VALUES ('legacy-msg', 'legacy-session', 'ASSISTANT', 'Mensajes históricos antes de la migración', 1$extraVals)",
         )
 
-        // 收集与 Room 完全一致的迁移链(常量 + 函数附加)
+        // Recoge una cadena de migración que sea exactamente igual a Room(constante + función anexar)
         val migrations = MuseDb::class.java.declaredFields
             .filter { it.name.startsWith("MIGRATION_") }
             .mapNotNull { f ->
@@ -143,24 +143,24 @@ class MuseDbManualChainMigrationTest {
         }
         db.execSQL("PRAGMA foreign_keys=ON")
 
-        // ── 断言: 迁移后状态与当前 Entity 一致 ──
+        // ── afirmar: El estado post-migración es consistente con la Entidad actual ──
         val msgColumns = mutableSetOf<String>()
         db.query("PRAGMA table_info(messages)").use { c ->
             while (c.moveToNext()) msgColumns.add(c.getString(1))
         }
-        assertTrue("v$fromVersion 迁移后应有 parentGroupId 列", "parentGroupId" in msgColumns)
-        assertTrue("v$fromVersion 迁移后应有 videoFileUri 列", "videoFileUri" in msgColumns)
-        assertTrue("v$fromVersion 迁移后应有 moodSkin 列", "moodSkin" in msgColumns)
-        assertTrue("v$fromVersion 迁移后应有 toolCallInfoJson 列", "toolCallInfoJson" in msgColumns)
-        // v92: seq 列必须存在(迁移 ADD COLUMN + 回填)
-        assertTrue("v$fromVersion 迁移后应有 seq 列", "seq" in msgColumns)
-        // v92: seq 索引名必须与注解一致(idx_messages_sessionId_seq)—
-        // 真机 Room schema 校验索引名,不一致直接崩(Migration didn't properly handle: messages)
+        assertTrue("v$fromVersion Debería haber una columna parentGroupId después de la migración", "parentGroupId" in msgColumns)
+        assertTrue("v$fromVersion Debería haber una columna videoFileUri después de la migración", "videoFileUri" in msgColumns)
+        assertTrue("v$fromVersion Debería haber una columna moodSkin después de la migración.", "moodSkin" in msgColumns)
+        assertTrue("v$fromVersion Debería haber una columna toolCallInfoJson después de la migración", "toolCallInfoJson" in msgColumns)
+        // v92: seq La columna debe existir(Migrar AÑADIR COLUMNA + relleno)
+        assertTrue("v$fromVersion Debería haber una columna secundaria después de la migración.", "seq" in msgColumns)
+        // v92: seq El nombre del índice debe ser coherente con la anotación.(idx_messages_sessionId_seq)—
+        // Nombre del índice de verificación del esquema de la sala de máquinas real,La inconsistencia conducirá al colapso(Migration didn't properly handle: messages)
         val messageIndexes = mutableListOf<String>()
         db.query("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='messages'").use { c ->
             while (c.moveToNext()) messageIndexes.add(c.getString(0))
         }
-        assertTrue("v$fromVersion 迁移后应有 idx_messages_sessionId_seq 索引", "idx_messages_sessionId_seq" in messageIndexes)
+        assertTrue("v$fromVersion Debería haber un índice idx_messages_sessionId_seq después de la migración", "idx_messages_sessionId_seq" in messageIndexes)
 
         var imageUrlsDefault = ""
         db.query("PRAGMA table_info(messages)").use { c ->
@@ -168,14 +168,14 @@ class MuseDbManualChainMigrationTest {
                 if (c.getString(1) == "imageUrlsJson") imageUrlsDefault = c.getString(4)?.trim('\'') ?: ""
             }
         }
-        assertEquals("v$fromVersion 迁移后 imageUrlsJson 应有 DEFAULT '[]'(B-27 漂移修复)", "[]", imageUrlsDefault)
+        assertEquals("v$fromVersion Después de la migración, imageUrlsJson debería tener DEFAULT '[]'(B-27 Corrección de deriva)", "[]", imageUrlsDefault)
 
         val scheduledIndexes = mutableListOf<String>()
         db.query("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='scheduled_tasks'").use { c ->
             while (c.moveToNext()) scheduledIndexes.add(c.getString(0))
         }
         assertTrue(
-            "v$fromVersion 迁移后 scheduled_tasks 应有 getDueTasks 索引(B-27 修复)",
+            "v$fromVersion Después de la migración, getDueTasks debe indexar las tareas programadas.(B-27 Reparación)",
             "index_scheduled_tasks_enabled_next_run_at" in scheduledIndexes,
         )
 
@@ -190,12 +190,12 @@ class MuseDbManualChainMigrationTest {
             "index_messages_sessionId_createdAt_role",
         )
         assertTrue(
-            "v$fromVersion 迁移后 messages 应保留 4 个业务索引",
+            "v$fromVersion Después de la migración, los mensajes deben conservar 4 índices comerciales.",
             msgIndexes.containsAll(expectedMsgIndexes),
         )
 
         db.query("SELECT COUNT(*) FROM messages WHERE id='legacy-msg'").use { c ->
-            assertTrue("v$fromVersion 迁移后历史消息应保留", c.moveToFirst() && c.getInt(0) == 1)
+            assertTrue("v$fromVersion Los mensajes históricos deben conservarse después de la migración", c.moveToFirst() && c.getInt(0) == 1)
         }
         helper.close()
         dbFile.delete()

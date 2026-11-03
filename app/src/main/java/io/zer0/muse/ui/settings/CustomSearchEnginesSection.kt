@@ -37,10 +37,10 @@ import io.zer0.muse.web.WebSearchConfig
 import kotlinx.coroutines.launch
 
 /**
- * 自定义搜索引擎设置块。
+ * Bloque de configuración de motor de búsqueda personalizado.
  *
- * 数据层是 [WebSearchConfig.customEngines]，这里只负责增删改与启停。
- * Auto 模式会把启用的引擎排在链路最前面（见 CompositeWebSearchService.buildProviderChain）。
+ * La capa de datos es [WebSearchConfig.customEngines]Aquí solo es responsable de agregar, eliminar, modificar e iniciar y detener.
+ * Auto El modo coloca los motores habilitados primero en el enlace (consulte CompositeWebSearchService.buildProviderChain).
  */
 @Composable
 internal fun CustomSearchEnginesSection(webSearchConfig: WebSearchConfig, settings: SettingsRepository) {
@@ -106,7 +106,7 @@ internal fun CustomSearchEnginesSection(webSearchConfig: WebSearchConfig, settin
                     }
                 scope.launch {
                     settings.saveWebSearchConfig(webSearchConfig.copy(customEngines = updated))
-                    MuseToast.show("已保存")
+                    MuseToast.show("salvado")
                 }
                 editing = null
             },
@@ -114,7 +114,7 @@ internal fun CustomSearchEnginesSection(webSearchConfig: WebSearchConfig, settin
     }
 }
 
-/** 新引擎的默认值：给一份可直接改的 POST 模板。 */
+/** El valor predeterminado del nuevo motor: proporcione una plantilla POST que se pueda modificar directamente. */
 private fun newEngine(): CustomSearchEngine = CustomSearchEngine(
     id = "custom_" + System.currentTimeMillis(),
     name = "",
@@ -125,7 +125,7 @@ private fun newEngine(): CustomSearchEngine = CustomSearchEngine(
 )
 
 /**
- * 编辑弹窗。字段不多，一屏放得下，不做多级页面。
+ * Editar ventana emergente. No hay muchos campos, caben en una pantalla y no hay páginas de varios niveles.
  */
 @Composable
 private fun CustomEngineEditor(initial: CustomSearchEngine, onDismiss: () -> Unit, onSave: (CustomSearchEngine) -> Unit) {
@@ -158,7 +158,7 @@ private fun CustomEngineEditor(initial: CustomSearchEngine, onDismiss: () -> Uni
         confirmText = stringResource(R.string.action_save),
         onConfirm = {
             if (endpoint.isBlank()) {
-                MuseToast.show("请求地址不能为空")
+                MuseToast.show("La dirección de solicitud no puede estar vacía.")
             } else {
                 onSave(
                     initial.copy(
@@ -177,7 +177,7 @@ private fun CustomEngineEditor(initial: CustomSearchEngine, onDismiss: () -> Uni
     )
 }
 
-/** 列表里的一行自定义引擎。 */
+/** Una fila de motores personalizados en la lista. */
 @Composable
 private fun CustomEngineRow(engine: CustomSearchEngine, enabled: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
@@ -208,7 +208,7 @@ private fun CustomEngineRow(engine: CustomSearchEngine, enabled: Boolean, onTogg
     }
 }
 
-/** 编辑弹窗里的单个输入项。 */
+/** Edite un único elemento de entrada en la ventana emergente. */
 @Composable
 private fun EngineTextField(value: String, onValueChange: (String) -> Unit, labelRes: Int) {
     MuseTextField(
@@ -220,7 +220,7 @@ private fun EngineTextField(value: String, onValueChange: (String) -> Unit, labe
     )
 }
 
-/** 编辑弹窗的输入区，单独成函以压住两个函数的长度。 */
+/** Edite el área de entrada de la ventana emergente y forme una función separada para suprimir la longitud de las dos funciones. */
 @Composable
 @Suppress("LongParameterList")
 private fun CustomEngineFields(
@@ -273,7 +273,7 @@ private fun CustomEngineFields(
     }
 }
 
-/** GET / POST 二选一。 */
+/** GET / POST Elige uno de los dos. */
 @Composable
 private fun MethodPicker(method: String, onMethodChange: (String) -> Unit) {
     Row(

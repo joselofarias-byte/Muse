@@ -3,10 +3,10 @@ package io.zer0.muse.web
 import io.zer0.muse.feature.FeatureFlags
 
 /**
- * 设置键名常量。
+ * Establecer la constante del nombre de la clave.
  *
- * 键名同时是 settings.snapshot 里 [HostSettingsEntry.toggleKey] / [HostSettingToggle.key] 的取值；
- * 可写键集合不在这里，而是由 [HostSettingDefinitions] 按同一份定义派生（值项与白名单同源）。
+ * El nombre de la clave también está en settings.snapshot [HostSettingsEntry.toggleKey] / [HostSettingToggle.key] valor;
+ * El conjunto de claves grabables no está aquí, pero está representado por [HostSettingDefinitions] Derivado de la misma definición (el elemento de valor tiene el mismo origen que la lista blanca).
  */
 internal object HostSettingKeys {
     const val PII_GUARD = "piiGuardEnabled"
@@ -22,7 +22,7 @@ internal object HostSettingKeys {
     const val CHAT_ENTER_TO_SEND = "chatPreferences.enterToSend"
     const val CHAT_STREAM_RESPONSE = "chatPreferences.streamResponse"
 
-    /** 常用开关:设置主页「常用开关」区读取的键,顺序即展示顺序。 */
+    /** Interruptores de uso común:Configure las claves leídas en el área \"Interruptores de uso común\" de la página de inicio,El orden es el orden de presentación. */
     val readable: List<String> = listOf(
         PII_GUARD,
         PROACTIVE_MESSAGE,
@@ -40,16 +40,16 @@ internal object HostSettingKeys {
 }
 
 /**
- * 设置清单的分组与入口（协议侧）。
+ * Establezca la agrupación y la entrada de la lista (lado del protocolo).
  *
- * 界面与搜索索引的顺序、标题都来自 [io.zer0.muse.ui.settings.SettingsCatalog]；
- * 本对象是同一份结构给 Web 端用的投影。两者的一致性由 `HostSettingsCatalogTest`
- * 逐组逐项比对 —— 任一侧改了分组、顺序或条目，测试即失败，Web 端不必（也不能）
- * 自己维护一份会与 App 漂移的清单。
+ * El orden y el título de la interfaz y el índice de búsqueda provienen de [io.zer0.muse.ui.settings.SettingsCatalog];
+ * Este objeto es una proyección de la misma estructura para uso web. La coherencia entre ambos está determinada por `HostSettingsCatalogTest`
+ * Comparación grupo por artículo —— Si se cambia la agrupación, el orden o las entradas en cualquiera de los lados, la prueba fallará.Web No tienes que (y no puedes)
+ * Mantenga su propia lista de cosas que cambian con su aplicación.
  */
 internal object HostSettingsCatalog {
 
-    /** 分组 key 是分组标题的字符串资源名,按界面从上到下排列。 */
+    /** La clave del grupo es el nombre del recurso de cadena del título del grupo.,Organizado por interfaz de arriba a abajo. */
     val groups: List<HostSettingsGroup> = listOf(
         group(
             "settings_group_assistants",
@@ -99,7 +99,7 @@ internal object HostSettingsCatalog {
             link("channel", "channel_page_title", "settings_screen_desc_channel", "wifi"),
             link("web_access", "settings_screen_web_access", "settings_screen_web_access_desc", "router"),
             link("mcp", "settings_screen_mcp", "settings_screen_mcp_desc", "plug"),
-            // 代理条目的说明由运行时拼(未启用 / type host:port),没有固定资源。
+            // La descripción de la entrada del agente la escribe el tiempo de ejecución.(No habilitado / type host:port),No hay recursos fijos.
             link("proxy", "proxy_title", null, "proxy"),
         ),
         group(
@@ -161,7 +161,7 @@ internal object HostSettingsCatalog {
         ),
     )
 
-    /** 全部入口的扁平视图,顺序与界面渲染一致。 */
+    /** Vista plana de todas las entradas.,El orden es coherente con la representación de la interfaz. */
     val entries: List<HostSettingsEntry> = groups.flatMap { it.entries }
 
     private fun group(key: String, vararg entries: HostSettingsEntry): HostSettingsGroup =

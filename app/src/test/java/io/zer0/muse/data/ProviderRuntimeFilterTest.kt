@@ -19,15 +19,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 运行时读路径上的供应商/模型清理与停用过滤。
+ * Proveedor en la ruta de lectura en tiempo de ejecución/Limpieza de modelos y filtrado de desactivación.
  *
- * 覆盖:
- *  - 停用供应商不参与 `get()` 的选择;全部停用时返回 null(不硬取第一个)
- *  - 删供应商后 RAG 的云端 embedding 引用被清(不再永久悬空)
- *  - 删单个模型后,指向它的 imageGenConfig / ragConfig / 辅助模型绑定被清
+ * Portada:
+ *  - Proveedores desactivados no participan `get()` elección;Volver cuando todos estén desactivados null(No tomes el primero)
+ *  - Después de eliminar al proveedor, se borró la referencia de incrustación en la nube de RAG.(Ya no se deja colgado permanentemente)
+ *  - Después de eliminar un solo modelo,El enlace imageGenConfig / ragConfig / modelo auxiliar que apunta a él se borra
  *
- * 注:同一测试类的多个用例共享 DataStore 文件,每个用例使用各自的 provider id 前缀,
- * 并把被断言的全局配置写成该用例自己的基线,避免互相污染。
+ * Nota:Varios casos de prueba de la misma clase de prueba comparten archivos de DataStore,Cada caso de uso utiliza su propio prefijo de identificación de proveedor.,
+ * Y escriba la configuración global afirmada como la línea base propia del caso de uso.,Evite la contaminación mutua.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = SettingsRepositoryTestApplication::class)
@@ -37,7 +37,7 @@ class ProviderRuntimeFilterTest {
 
     private fun newRepository(): SettingsRepository = SettingsRepository(context, mockk(relaxed = true))
 
-    // ── enabled 过滤 ────────────────────────────────────────
+    // ── enabled filtrar ────────────────────────────────────────
 
     @Test
     fun get_skipsDisabledActiveProviderAndUsesEnabledOne() = runBlocking {
@@ -48,8 +48,8 @@ class ProviderRuntimeFilterTest {
 
         val active = repo.get()
         assertNotNull(active)
-        assertTrue("停用的激活供应商必须被跳过", active!!.enabled)
-        assertNull("停用供应商不得被按 id 取到", repo.getProviderById("skip-disabled"))
+        assertTrue("Se deben omitir los proveedores de activación desactivados", active!!.enabled)
+        assertNull("Los proveedores desactivados no deben recuperarse por identificación", repo.getProviderById("skip-disabled"))
         assertNotNull(repo.getProviderById("skip-enabled"))
     }
 
@@ -59,26 +59,26 @@ class ProviderRuntimeFilterTest {
         repo.addProvider(provider(id = "alloff-1", enabled = false, modelIds = listOf("alloff-m1")))
         repo.addProvider(provider(id = "alloff-2", enabled = false, modelIds = listOf("alloff-m2")))
         repo.setActiveProvider("alloff-1")
-        // 仓库初始化会异步注入免费供应商,这里把它也停用,确保断言的是「全部停用」这个前提
+        // La inicialización del repositorio inyectará proveedores gratuitos de forma asincrónica,Desactívalo aquí también,Asegúrese de hacer valer la premisa de "deshabilitar todo"
         disableEveryProvider(repo)
 
-        assertNull("全部停用时返回 null,不能硬取第一个", repo.get())
+        assertNull("Volver cuando todos estén desactivados null,No puedes simplemente tomar el primero.", repo.get())
         assertNull(repo.providerConfigFlow.first())
     }
 
     @Test
     fun get_resolvesProviderWithDefaultConfiguration() = runBlocking {
-        // 默认配置(没设激活项)下主对话仍必须取得到供应商
+        // Configuración predeterminada(No hay activación establecida)El próximo diálogo con el propietario aún debe obtenerse del proveedor.
         val repo = newRepository()
         repo.addProvider(provider(id = "only-enabled", enabled = true, modelIds = listOf("only-model")))
         repo.setActiveProvider("only-enabled")
 
         val active = repo.get()
-        assertNotNull("默认配置必须能取到供应商", active)
+        assertNotNull("La configuración predeterminada debe poder obtener el proveedor.", active)
         assertEquals("only-enabled", active?.id)
     }
 
-    // ── 删供应商后 RAG 引用清理 ────────────────────────────
+    // ── Limpieza de referencia RAG después de eliminar el proveedor ────────────────────────────
 
     @Test
     fun deleteProvider_clearsRagEmbeddingReference() = runBlocking {
@@ -96,11 +96,11 @@ class ProviderRuntimeFilterTest {
         repo.deleteProvider("del-emb")
 
         val rag = repo.getRagConfig()
-        assertEquals("删供应商后 cloudProviderId 必须清空", "", rag.cloudProviderId)
-        assertEquals("随供应商生效的模型名也要一并清空", "", rag.cloudModel)
+        assertEquals("cloudProviderId debe borrarse después de eliminar el proveedor", "", rag.cloudProviderId)
+        assertEquals("También se debe borrar el nombre del modelo que entra en vigor con el proveedor.", "", rag.cloudModel)
     }
 
-    // ── 删单个模型 ─────────────────────────────────────────
+    // ── Eliminar un solo modelo ─────────────────────────────────────────
 
     @Test
     fun updateProvider_clearsReferencesToRemovedModel() = runBlocking {
@@ -126,10 +126,10 @@ class ProviderRuntimeFilterTest {
 
         repo.updateProvider(provider(id = "upd-model", enabled = true, modelIds = listOf("upd-text")))
 
-        assertEquals("图片模型被删后 modelId 必须清空", "", repo.imageGenConfigFlow.first().modelId)
+        assertEquals("Una vez eliminado el modelo de imagen, se debe borrar el ID del modelo.", "", repo.imageGenConfigFlow.first().modelId)
         assertEquals("upd-model", repo.imageGenConfigFlow.first().providerId)
-        assertNull("辅助模型绑定指向被删模型时必须置空", repo.utilityModelBindingFlow.first())
-        assertEquals("RAG 的云端 embedding 模型被删后必须清空", "", repo.getRagConfig().cloudModel)
+        assertNull("El enlace del modelo auxiliar debe dejarse en blanco al apuntar al modelo eliminado.", repo.utilityModelBindingFlow.first())
+        assertEquals("RAG El modelo de incrustación en la nube debe borrarse después de eliminarse.", "", repo.getRagConfig().cloudModel)
     }
 
     @Test
@@ -139,11 +139,11 @@ class ProviderRuntimeFilterTest {
         repo.addProvider(provider(id = "shared-other", enabled = true, modelIds = listOf("shared-model")))
         repo.saveImageGenConfig(ImageGenConfig(providerId = "shared-keep", modelId = "shared-model"))
 
-        // shared-keep 删掉 shared-model,但 shared-other 仍提供同名模型
+        // shared-keep eliminar shared-model,Pero el otro compartido todavía proporciona un modelo con el mismo nombre.
         repo.updateProvider(provider(id = "shared-keep", enabled = true, modelIds = listOf("keep-other")))
 
         assertEquals(
-            "同名模型仍存在于其他供应商时保留选择,不要误删",
+            "Conservar la selección cuando todavía exista un modelo con el mismo nombre de otros proveedores,No borrar por error",
             "shared-model",
             repo.imageGenConfigFlow.first().modelId,
         )
@@ -156,13 +156,13 @@ class ProviderRuntimeFilterTest {
     ): ProviderConfig = ProviderConfig(
         id = id,
         displayName = id,
-        // 测试不需要真 key:空 apiKey 跳过 Keystore 加解密(Robolectric 无 AndroidKeyStore)
+        // La prueba no requiere una clave real: la apiKey vacía omite el cifrado y descifrado del almacén de claves(Robolectric Ninguno AndroidKeyStore)
         apiKey = "",
         enabled = enabled,
         models = modelIds.map { Model(id = it, providerId = id) },
     )
 
-    /** 把当前列表里所有启用的供应商都停用(含初始化时异步注入的内置供应商)。 */
+    /** Desactivar todos los proveedores habilitados en la lista actual(Proveedor integrado con inyección asincrónica en la inicialización). */
     private suspend fun disableEveryProvider(repo: SettingsRepository) {
         repeat(5) {
             repo.providersFlow.first()

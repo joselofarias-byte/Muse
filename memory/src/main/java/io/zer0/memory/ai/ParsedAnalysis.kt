@@ -3,63 +3,63 @@ package io.zer0.memory.ai
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.52 P2-3: AI 记忆分析结果。
+ * v1.0.52 P2-3: AI Resultados del análisis de la memoria.
  *
- * 由 [MemoryExtractPrompt] 驱动 LLM 输出,经 [MemoryAutoSaveScheduler.extractEntities]
- * 解析为该结构,再由 applyAnalysis 落库(创建/更新/合并事实 + 建立知识图谱边)。
+ * por [MemoryExtractPrompt] Impulsar la salida LLM,por [MemoryAutoSaveScheduler.extractEntities]
+ * analizado en esta estructura,Luego applyAnalysis elimina la biblioteca.(crear/actualizar/Fusionar hechos + crear bordes de gráficos de conocimiento).
  *
- * 设计原则:
- *  - mainProblem: 本次对话的主问题(可选,用于摘要标题)
- *  - extractedEntities: 新提取的实体(写入 facts 表)
- *  - links: 实体间关系(写入 memory_links 表,知识图谱边)
- *  - updatedEntities: 对已有事实的更新(按 title 匹配)
- *  - mergedEntities: 相似记忆合并指令(去重)
- *  - profileMarkdown: 用户画像 Markdown 更新(可选,覆盖式更新)
+ * principios de diseño:
+ *  - mainProblem: La pregunta principal de esta conversación.(Opcional,para título abstracto)
+ *  - extractedEntities: Entidades recién extraídas(Escribir en la tabla de hechos)
+ *  - links: relación entre entidades(Escribir en la tabla Memory_links,Borde del gráfico de conocimiento)
+ *  - updatedEntities: Actualizaciones de hechos existentes(Coincidencia por título)
+ *  - mergedEntities: Instrucciones de fusión de memoria similares(Eliminar duplicados)
+ *  - profileMarkdown: Actualización de Markdown del retrato del usuario(Opcional,actualización de superposición)
  *
- * 所有字段均可空/空列表,LLM 可只输出部分(如仅提取实体不合并)。
+ * Todos los campos pueden estar vacíos/lista vacía,LLM Solo se puede generar una parte(Si solo se extraen entidades sin fusionar).
  */
 @Serializable
 data class ParsedAnalysis(
-    /** 本次对话的主问题(一句话总结,用于会话标题/摘要)。 */
+    /** La pregunta principal de esta conversación.(resumen de una frase,para el título de la sesión/Resumen). */
     val mainProblem: ParsedEntity? = null,
-    /** 新提取的实体列表(将作为新事实写入)。 */
+    /** Lista de entidades recién extraídas(se escribirá como un hecho nuevo). */
     val extractedEntities: List<ParsedEntity> = emptyList(),
-    /** 实体间关系(知识图谱边)。 */
+    /** relación entre entidades(Borde del gráfico de conocimiento). */
     val links: List<ParsedLink> = emptyList(),
-    /** 对已有事实的更新(按 title 模糊匹配目标事实)。 */
+    /** Actualizaciones de hechos existentes(Datos de objetivos de coincidencia aproximada por título). */
     val updatedEntities: List<ParsedUpdate> = emptyList(),
-    /** 相似记忆合并指令(将多个相似事实合并为一条)。 */
+    /** Instrucciones de fusión de memoria similares(Combine varios hechos similares en uno). */
     val mergedEntities: List<ParsedMerge> = emptyList(),
-    /** 用户画像 Markdown 更新(可选,覆盖式更新)。 */
+    /** Actualización de Markdown del retrato del usuario(Opcional,actualización de superposición). */
     val profileMarkdown: String? = null,
 )
 
-/** 用户事实库只接受明确归属于 USER 的条目,避免主客体错位污染画像。 */
+/** La base de datos de usuarios solo acepta entradas explícitamente atribuidas al USUARIO,Evite que la desalineación del sujeto y el objeto contamine la imagen. */
 internal fun ParsedAnalysis.userFactsOnly(): List<ParsedEntity> =
     extractedEntities.filter { it.speaker.equals("USER", ignoreCase = true) }
 
 /**
- * 提取的实体(原子事实)。
+ * Entidades extraídas(hechos atómicos).
  *
- * 与 [io.zer0.memory.fact.FactStore.Fact] 的映射:
- *  - title → 用于匹配/去重/展示标题
- *  - content → fact 正文
+ * con [io.zer0.memory.fact.FactStore.Fact] mapeo:
+ *  - title → para hacer coincidir/Eliminar duplicados/mostrar título
+ *  - content → fact Texto
  *  - credibility → confidence(0.0~1.0)
- *  - importance → importance(0/1/2,由 Float 映射: <0.4→0, <0.7→1, else 2)
- *  - folderPath → category(如 "preference"/"identity"/"event"...)
+ *  - importance → importance(0/1/2,mapeado por flotador: <0.4→0, <0.7→1, else 2)
+ *  - folderPath → category(Como por ejemplo "preference"/"identity"/"event"...)
  *  - tags → tags
- *  - entityKey → 实体归一化键(v12,同一实体不同写法的规范名,如"张三")
+ *  - entityKey → Clave de normalización de entidad(v12,Nombres canónicos escritos de diferentes formas para una misma entidad,Como por ejemplo"Zhang San")
  */
 @Serializable
 data class ParsedEntity(
-    // LLM 有时会把可选字段显式输出为 null；给非空字段默认值，配合
-    // MemoryAutoSaveScheduler 的 coerceInputValues 让单条坏字段不拖垮整次提取。
+    // LLM A veces, los campos opcionales se muestran explícitamente como nulos; los campos no nulos reciben valores predeterminados para que coincidan
+    // MemoryAutoSaveScheduler Los coerceInputValues ​​permiten que un solo campo incorrecto no destruya toda la recuperación.
     val title: String = "",
     val content: String = "",
     /**
-     * 事实说话者: USER 才能进入用户事实库; ASSISTANT/OTHER 保留为非用户信息。
+     * orador de hecho: USER para ingresar a la base de datos de datos del usuario; ASSISTANT/OTHER Se conserva como información de no usuario.
      *
-     * 缺省必须 fail-closed：模型漏输出 speaker 时不能把助手自述误记成用户事实。
+     * El valor predeterminado debe ser cerrado a prueba de fallos: cuando el modelo pierde el altavoz de salida, el archivo Léame del asistente no se puede registrar por error como datos del usuario.
      */
     val speaker: String = "OTHER",
     val credibility: Float = 0.5f,
@@ -70,16 +70,16 @@ data class ParsedEntity(
 )
 
 /**
- * 实体间关系(知识图谱边)。
+ * relación entre entidades(Borde del gráfico de conocimiento).
  *
- * linkType 取值:
- *  - causes: A 导致/引起 B
- *  - explains: A 解释/说明 B
- *  - part_of: A 是 B 的一部分
- *  - related_to: 一般关联(默认)
- *  - contradicts: A 与 B 矛盾(用于更新时标记旧事实被推翻)
+ * linkType valor:
+ *  - causes: A causa/causa B
+ *  - explains: A explicar/Descripción B
+ *  - part_of: A es parte de B
+ *  - related_to: asociación general(Predeterminado)
+ *  - contradicts: A Contradictorio con B(Se utiliza al actualizar para marcar hechos antiguos como anulados.)
  *
- * weight 0.0~1.0,表示关系强度(0.5 默认)。
+ * weight 0.0~1.0,Indica fortaleza de la relación(0.5 Predeterminado).
  */
 @Serializable
 data class ParsedLink(
@@ -90,10 +90,10 @@ data class ParsedLink(
 )
 
 /**
- * 对已有事实的更新指令。
+ * Actualizar instrucciones para hechos existentes.
  *
- * 按 matchTitle 模糊匹配已有事实,用 newContent 替换正文,
- * 并可选更新 importance/category/tags。
+ * Coincidencia difusa de hechos existentes por matchTitle,Reemplazar el cuerpo con nuevo contenido,
+ * Y, opcionalmente, actualice importancia/categoría/etiquetas.
  */
 @Serializable
 data class ParsedUpdate(
@@ -105,10 +105,10 @@ data class ParsedUpdate(
 )
 
 /**
- * 相似记忆合并指令。
+ * Instrucciones similares para fusionar memoria.
  *
- * 将 sourceTitles 列出的事实合并为一条,正文取 mergedContent,
- * 保留 mergedTitle 作为新标题,源事实标记为已合并(软删除或硬删除)。
+ * Combine los hechos enumerados en sourceTitles en uno,toma el texto mergedContent,
+ * Mantener el título fusionado como el nuevo título.,Hecho fuente marcado como fusionado(Eliminación temporal o eliminación definitiva).
  */
 @Serializable
 data class ParsedMerge(

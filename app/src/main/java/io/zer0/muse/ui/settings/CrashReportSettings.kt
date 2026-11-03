@@ -46,30 +46,30 @@ import org.koin.compose.koinInject
 import org.koin.core.qualifier.named
 
 /**
- * 崩溃上报页 — 一个按钮，没有需要用户填的东西。
+ * Página de informes de fallos — Un botón sin nada que el usuario pueda completar.
  *
- * ## 这一版改了什么
+ * ## ¿Qué se ha cambiado en esta versión?
  *
- * 旧版让用户选「邮件 / Webhook」，再填收件邮箱或 Webhook URL。这是把开发者的基础设施
- * 配置推给了终端用户：他不知道该填谁，填错就静默失败，而设置页看上去像在要求他做技术决策。
+ * La versión anterior requiere que los usuarios seleccionen "Correo/Webhook" y luego completen la dirección de correo electrónico de recepción o la URL del Webhook. Esta es la infraestructura para desarrolladores.
+ * La configuración se envía al usuario final: no sabe quién completar, falla silenciosamente si comete un error y parece que la página de configuración le pide que tome una decisión técnica.
  *
- * 现在只有三件事：
- *  1. 看有多少条待上报
- *  2. 点「立即上报」→ 直接发到开发者服务器（museai.ltd），一次点击完成
- *  3. 服务器不可达时自动改用邮件，收件人已经填好，用户只需在邮件应用里点发送
+ * Ahora sólo quedan tres cosas:
+ *  1. Vea cuántos artículos están esperando ser reportados
+ *  2. Haga clic en "Reportar ahora"→ Enviar directamente al servidor del desarrollador (museai.ltd), un clic para completar
+ *  3. Cuando no se puede acceder al servidor, se utiliza automáticamente el correo electrónico. Se ha completado el destinatario y el usuario sólo necesita hacer clic en enviar en la aplicación de correo electrónico.
  *
- * ## 隐私边界（没有放宽）
+ * ## Límites de privacidad (sin relajación)
  *
- *  - 上报只发生在用户点按钮时，无任何后台静默上报
- *  - 崩溃堆栈先经 [MuseCrashHandler.redactSensitive] 脱敏（API key / Bearer token 替换为 ***）
- *  - 只收集型号 / 品牌 / Android 版本 / ABI / App 版本 / 时间戳
- *  - 不收集 IMEI / Android ID / MAC / 位置 / 账号
+ *  - Los informes solo se producen cuando el usuario hace clic en el botón y no hay informes silenciosos en segundo plano.
+ *  - Primer paso de la pila de choque [MuseCrashHandler.redactSensitive] Desensibilización (API key / Bearer token Reemplazar con ***)
+ *  - Solo recopile modelo/marca/versión de Android/ABI/versión de la aplicación/marca de tiempo
+ *  - no recoger IMEI / Android ID / MAC / ubicación/cuenta
  */
 @Composable
 fun CrashReportSettingsPage(onBack: () -> Unit) {
     val context = LocalContext.current
     val settings: SettingsRepository = koinInject()
-    // 复用 named("chat") OkHttpClient（上报内部会覆盖超时）
+    // Reutilizar named("chat") OkHttpClient(El tiempo de espera se sobrescribirá internamente)
     val chatClient: OkHttpClient = koinInject<OkHttpClient>(qualifier = named("chat"))
     val scope = rememberCoroutineScope()
 
@@ -84,7 +84,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
     var reporting by remember { mutableStateOf(false) }
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_crash_page_title), onBack = onBack) {
-        // ── 1. 待上报崩溃 + 立即上报 ──
+        // ── 1. Fallo que se informará + informar inmediatamente ──
         item { SectionLabel(stringResource(R.string.settings_crash_pending_section)) }
         item {
             SettingsGroup {
@@ -135,7 +135,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                // 目的地是固定的，写在按钮下面一行就够，不是一个需要用户操作的控件。
+                // El destino es fijo y se puede escribir en una línea debajo del botón. No es un control que requiera operación del usuario.
                 Text(
                     text = stringResource(R.string.settings_crash_target_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -145,7 +145,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // ── 2. 设置(ANR 检测) ──
+        // ── 2. ajustes(ANR Detección) ──
         item { SectionLabel(stringResource(R.string.settings_crash_settings_section)) }
         item {
             SettingsGroup {
@@ -161,7 +161,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
             }
         }
 
-        // ── 3. 隐私说明 ──
+        // ── 3. Declaración de privacidad ──
         item { SectionLabel(stringResource(R.string.settings_crash_privacy_section)) }
         item {
             SettingsGroup {
@@ -186,7 +186,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
         }
     }
 
-    // 上报确认（保留这一步：把内容送出去之前，用户有权知道自己送的是什么）
+    // Confirmación del informe (conserve este paso: antes de enviar el contenido, los usuarios tienen derecho a saber qué están enviando)
     if (showConfirm) {
         MuseDialog(
             onDismissRequest = { showConfirm = false },
@@ -208,8 +208,8 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                         client = chatClient,
                         crashLogs = MuseCrashHandler.getPendingCrashReports(context),
                     )
-                    // 服务端收下了才清队列；退回邮件时用户在邮件应用里是否真发了无从得知，
-                    // 所以保留记录，避免「点了没发出去、下次却再也看不到」。
+                    // El servidor borra la cola sólo después de aceptarla; cuando se devuelve el correo electrónico, es imposible saber si el usuario realmente lo envió en la aplicación de correo.
+                    // Por lo tanto, mantenga registros para evitar "hacer clic pero no enviarlo, pero nunca volver a verlo la próxima vez".
                     if (outcome is SubmitOutcome.Uploaded) {
                         MuseCrashHandler.clearCrashQueue(context)
                     }
@@ -225,7 +225,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                                 context.getString(R.string.settings_crash_done_failed)
                         },
                     )
-                    Logger.i("CrashReportSettings", "上报结果: $outcome, 剩余 $pendingCount 条")
+                    Logger.i("CrashReportSettings", "Informar resultados: $outcome, restante $pendingCount Artículo")
                 }
             },
             dismissText = stringResource(R.string.action_cancel),

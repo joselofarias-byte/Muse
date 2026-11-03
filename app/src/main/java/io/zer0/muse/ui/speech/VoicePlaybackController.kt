@@ -16,10 +16,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * 语音播放状态。
+ * Estado de reproducción de voz.
  *
- * [uri] 是"当前占用播放权"的那条语音；为空即空闲。[positionMs] 只在播放/暂停期间有效，
- * 复位后清 0。
+ * [uri] si"Derechos de reproducción actualmente ocupados"El mensaje de voz; si está vacío, significa que está libre.[positionMs] solo jugando/Válido durante el período de suspensión,
+ * Se borra a 0 después del reinicio.
  */
 data class VoicePlaybackState(
     val uri: String? = null,
@@ -28,35 +28,35 @@ data class VoicePlaybackState(
 )
 
 /**
- * 播放引擎端口。
+ * Puerto del motor de reproducción.
  *
- * 抽出接口是为了让语音条能在预览/Robolectric 里构造：真机走 [MediaPlayerVoiceAudioPlayer]，
- * 测试给假实现即可断言"被调了几次、有没有被停掉"，不必碰真实音频栈。
+ * La interfaz se extrae para que se pueda obtener una vista previa de la barra de voz./Robolectric Estructura interna: máquina real [MediaPlayerVoiceAudioPlayer],
+ * La prueba se puede afirmar dando una implementación falsa."¿Cuántas veces ha sido transferido? ¿Ha sido suspendido?", sin tocar la pila de audio real.
  */
 interface VoiceAudioPlayer {
     /**
-     * 装载并开始播放。
+     * Cargue y comience a jugar.
      *
-     * @param onCompletion 自然播放到结尾（不含 [release] 引起的停止）
-     * @param onError 解码/装载失败
-     * @return 装载是否成功；false 时调用方会复位到空闲态
+     * @param onCompletion Juega naturalmente hasta el final (excluyendo [release] causado por la parada)
+     * @param onError decodificar/Error al cargar
+     * @return Si la carga se realizó correctamente;false La persona que llama se restablecerá al estado inactivo cuando
      */
     fun load(file: File, onCompletion: () -> Unit, onError: (Throwable) -> Unit): Boolean
 
-    /** 从暂停位置继续播放。 */
+    /** Reanude la reproducción desde la posición de pausa. */
     fun start()
 
-    /** 暂停，保留播放位置以便继续。 */
+    /** Pausa, conserva la posición de reproducción para continuar. */
     fun pause()
 
-    /** 当前播放位置（毫秒）。 */
+    /** Posición de reproducción actual (milisegundos). */
     fun positionMs(): Long
 
-    /** 释放底层资源。 */
+    /** Liberar recursos subyacentes. */
     fun release()
 }
 
-/** 基于系统 [MediaPlayer] 的实现（不引入第三方播放器依赖）。 */
+/** basado en el sistema [MediaPlayer] Implementación (sin introducir dependencias de reproductores de terceros). */
 class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
     private var player: MediaPlayer? = null
     private var prepared = false
@@ -77,7 +77,7 @@ class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
                 prepared = true
                 runCatching { ready.start() }
                     .onFailure { e ->
-                        Logger.w(TAG, "语音起播失败: ${e.message}")
+                        Logger.w(TAG, "Error al iniciar por voz: ${e.message}")
                         onError(e)
                     }
             }
@@ -89,7 +89,7 @@ class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
             mp.prepareAsync()
             true
         }.getOrElse { e ->
-            Logger.w(TAG, "语音装载失败: ${e.message}")
+            Logger.w(TAG, "Error al cargar la voz: ${e.message}")
             runCatching { release() }
             onError(e)
             false
@@ -98,13 +98,13 @@ class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
     override fun start() {
         val mp = player ?: return
         if (!prepared) return
-        runCatching { mp.start() }.onFailure { Logger.w(TAG, "语音续播失败: ${it.message}") }
+        runCatching { mp.start() }.onFailure { Logger.w(TAG, "Error en la reproducción de voz: ${it.message}") }
     }
 
     override fun pause() {
         val mp = player ?: return
         if (!prepared) return
-        runCatching { mp.pause() }.onFailure { Logger.w(TAG, "语音暂停失败: ${it.message}") }
+        runCatching { mp.pause() }.onFailure { Logger.w(TAG, "Error en la pausa de voz: ${it.message}") }
     }
 
     override fun positionMs(): Long = runCatching {
@@ -116,7 +116,7 @@ class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
         val mp = player ?: return
         player = null
         prepared = false
-        runCatching { mp.release() }.onFailure { Logger.w(TAG, "语音播放器释放失败: ${it.message}") }
+        runCatching { mp.release() }.onFailure { Logger.w(TAG, "Error al liberar el reproductor de voz: ${it.message}") }
     }
 
     private companion object {
@@ -125,16 +125,16 @@ class MediaPlayerVoiceAudioPlayer : VoiceAudioPlayer {
 }
 
 /**
- * 语音消息共享播放控制器。
+ * Controlador de reproducción para compartir mensajes de voz.
  *
- * 全应用只有一个实例（Koin 单例）：语音条本身不持有播放器，点按只向这里要播放权，
- * 因此"同时只有一条语音在播"是结构保证，而不是各气泡之间互相协调的结果。
+ * Sólo hay una instancia de toda la aplicación (Koin Caso único): La barra de voz en sí no sujeta al reproductor. Haga clic aquí para solicitar únicamente los derechos de reproducción.
+ * Por lo tanto"Sólo suena una voz al mismo tiempo."Es una garantía estructural, no el resultado de la coordinación entre burbujas.
  *
- * - [toggle] 新语音会先停掉上一条再起播；
- * - 自然播完 / 出错 / 主动 [stop] 都会释放播放器并复位到空闲；
- * - 进度靠内部定时采样，气泡只读状态。
+ * - [toggle] La nueva voz detendrá la anterior antes de iniciarla nuevamente;
+ * - Terminó naturalmente / cometió un error / tomó la iniciativa [stop] liberará el reproductor y lo restablecerá al modo inactivo;
+ * - El progreso depende del muestreo de tiempo interno y las burbujas están en un estado de solo lectura.
  *
- * 状态用 Compose 快照状态承载，读取方（气泡）自动重组，无需额外订阅。
+ * El estado lo transmite el estado de la instantánea de redacción y el lector (burbuja) se reorganiza automáticamente sin suscripción adicional.
  */
 class VoicePlaybackController(
     private val playerFactory: () -> VoiceAudioPlayer = { MediaPlayerVoiceAudioPlayer() },
@@ -144,11 +144,11 @@ class VoicePlaybackController(
 
     private var player: VoiceAudioPlayer? = null
 
-    /** 惰性创建：从不播放的进程（含多数单测）不会触碰 Main 调度器。 */
+    /** Creación diferida: los procesos que nunca se ejecutan (incluidas la mayoría de las pruebas individuales) no tocarán el programador principal. */
     private val scope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
     private var ticker: Job? = null
 
-    /** 点按：切换同一条语音的播放/暂停；换一条则停掉上一条再起播。 */
+    /** Hacer clic: cambiar la reproducción de la misma voz/Pausa; cambie uno para detener el anterior y comenzar de nuevo. */
     fun toggle(uri: String, file: File) {
         val current = state
         if (current.uri == uri) {
@@ -159,7 +159,7 @@ class VoicePlaybackController(
         play(uri, file)
     }
 
-    /** 停掉当前语音并释放播放器（切后台/离开页面/换条时调用，可重复调用）。 */
+    /** Detenga la voz actual y suelte el reproductor (pase al fondo/Salir de la página/Se llama al cambiar de barra y se puede llamar repetidamente). */
     fun stop() {
         ticker?.cancel()
         ticker = null
@@ -169,7 +169,7 @@ class VoicePlaybackController(
         if (state != VoicePlaybackState()) state = VoicePlaybackState()
     }
 
-    /** 只有 [uri] 正是当前那条时才停（气泡所在页面退到后台时用，避免误停别人的）。 */
+    /** solo [uri] Detener cuando sea la actual (se utiliza cuando la página donde se encuentra la burbuja retrocede a un segundo plano para evitar detener a otras accidentalmente). */
     fun stopIfActive(uri: String) {
         if (state.uri == uri) stop()
     }
@@ -183,7 +183,7 @@ class VoicePlaybackController(
                 onError = { stop() },
             )
         }.getOrElse { e ->
-            Logger.w(TAG, "语音播放器装载异常: ${e.message}")
+            Logger.w(TAG, "El reproductor de voz se carga de forma anormal: ${e.message}")
             false
         }
         if (!loaded) {
@@ -207,7 +207,7 @@ class VoicePlaybackController(
         val engine = player
         val uri = state.uri
         if (engine == null || uri == null) {
-            // 播放器已被释放（例如中途被别的语音抢走）——按新起播处理
+            // El jugador ha sido liberado (por ejemplo, otra voz se lo arrebató a mitad de camino)——Procesar como nuevo comienzo
             if (uri != null) play(uri, file)
             return
         }
@@ -237,7 +237,7 @@ class VoicePlaybackController(
     private companion object {
         private const val TAG = "VoicePlaybackController"
 
-        /** 进度采样间隔：语音条填充不需要逐帧，10 fps 足够顺滑且省电。 */
+        /** Intervalo de muestreo de progreso: no es necesario que el llenado de la barra de voz sea cuadro por cuadro,10 fps Lo suficientemente suave y energéticamente eficiente. */
         private const val PROGRESS_INTERVAL_MS = 100L
     }
 }

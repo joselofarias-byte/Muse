@@ -3,26 +3,26 @@ package io.zer0.muse.rag
 import java.security.MessageDigest
 
 /**
- * embedding 向量缓存（进程级 LRU）。
+ * embedding Caché vectorial (LRU a nivel de proceso).
  *
- * ## 为什么需要它
+ * ## por qué es necesario
  *
- * 记忆相关性的「向量重排」每轮都要调一次 `provider.embed(query + 所有候选事实)`。
- * 云端源下这是一次 HTTPS 往返，而**候选事实在轮次之间几乎不变** —— 每轮都把它们
- * 重新编码一遍，等于把同样的输入反复上传、让服务端重复算同一批向量。
+ * El "reordenamiento vectorial" de la correlación de la memoria debe ajustarse en cada ronda. `provider.embed(query + todos los datos del candidato)`.
+ * Este es un viaje de ida y vuelta HTTPS bajo el origen de la nube, y**Los datos de los candidatos apenas cambian entre rondas** —— Llévalos en cada ronda
+ * Recodificar equivale a cargar la misma entrada repetidamente y dejar que el servidor calcule repetidamente el mismo lote de vectores.
  *
- * 缓存后典型情况变成：命中 N 条事实向量，只对 query 发一次请求；用户重试/重新生成
- * 同一句话时，连 query 也命中，一次网络调用都不发。
+ * Después del almacenamiento en caché, la situación típica es la siguiente: se alcanzan N vectores de hechos y solo se envía una solicitud a la consulta; el usuario vuelve a intentarlo./regenerar
+ * En la misma oración, se responde incluso a la consulta y no se envía ninguna llamada de red.
  *
- * ## 键与失效
+ * ## Claves e invalidaciones
  *
- * 键 = Provider 指纹 + 文本内容摘要。指纹里包含 apiKey/baseUrl/模型，所以换模型或
- * 换 key 之后旧向量自然不再命中（不会拿另一套模型的向量去算余弦）。
+ * clave = Provider Huella digital + resumen de contenido de texto. La huella digital contiene apiKey/baseUrl/model, así que cambie el modelo o
+ * Después de cambiar la clave, el vector anterior, naturalmente, ya no aparecerá (el vector de otro modelo no se utilizará para calcular el coseno).
  *
- * 用 SHA-256 前 16 字节而不是 `String.hashCode()`：向量算错会导致注入的记忆排序错，
- * 这类错误没有任何报错，只能表现为"AI 好像记错了事"，不值得为省几个字节冒碰撞风险。
+ * Utilice SHA-256 primeros 16 bytes en lugar de `String.hashCode()`: Los errores de cálculo vectorial harán que la memoria inyectada se ordene incorrectamente.
+ * Este tipo de error no reporta ningún error y solo se puede expresar como"AI Parece que recordé algo mal.", no vale la pena arriesgarse a una colisión para guardar unos pocos bytes.
  *
- * 容量按条数封顶，超出即淘汰最久未用的（[LinkedHashMap] 访问序）。
+ * La capacidad está limitada según la cantidad de artículos. Si se supera el aforo, se eliminarán los artículos que lleven más tiempo sin utilizarse ([LinkedHashMap] secuencia de acceso).
  */
 internal class EmbeddingVectorCache(
     private val maxEntries: Int = DEFAULT_MAX_ENTRIES,
@@ -32,11 +32,11 @@ internal class EmbeddingVectorCache(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, FloatArray>): Boolean = size > maxEntries
     }
 
-    /** 命中次数（诊断用）。 */
+    /** Número de aciertos (con fines de diagnóstico). */
     var hits: Int = 0
         private set
 
-    /** 未命中次数（诊断用）。 */
+    /** Número de errores (para fines de diagnóstico). */
     var misses: Int = 0
         private set
 
@@ -52,7 +52,7 @@ internal class EmbeddingVectorCache(
         hit
     }
 
-    /** 只读缓存，不计命中/未命中统计（调用方拿它做"命不命中都合法"的前置判断）。 */
+    /** Caché de solo lectura, las visitas no se cuentan/Miss estadísticas (la persona que llama las usa para"Es legal estés muerto o no."prejuicio). */
     fun peek(key: String): FloatArray? = synchronized(entries) { entries[key] }
 
     fun put(key: String, vector: FloatArray) {

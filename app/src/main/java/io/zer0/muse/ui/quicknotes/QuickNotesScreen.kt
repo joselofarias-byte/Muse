@@ -82,20 +82,20 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.0.19: 快速记录页面按新设计重写。
+ * v1.0.19: La página de registro rápido se ha reescrito con un nuevo diseño.
  *
- * 主要变化:
- *  - 顶部栏改为标题居中 + 两侧操作图标(导出/删除),使用大标题
- *  - 搜索框胶囊化、居中占位符
- *  - 标签筛选使用 MuseChip,选中态为品牌绿
- *  - 历史记录区域显示"历史记录 / 共 N 条"
- *  - 卡片列表重新设计:
- *    - 置顶记录:浅绿背景 + AutoAwesome 图标 + 无底部操作按钮
- *    - 普通记录:白色卡片 + 复制/发送/更多 操作
- *    - 单击卡片可展开/收起正文
- *    - 加密记录显示 Lock 图标 + 占位文案
- *    - 文件夹/提醒使用独立小 chip 展示
- *  - 保留回收站、导入导出、文件夹、提醒、加密、编辑等全部既有能力
+ * Principales cambios:
+ *  - La barra superior cambia al título central + íconos de operación en ambos lados(Exportar/Eliminar),Utilice titulares grandes
+ *  - Cápsula del cuadro de búsqueda, marcador de posición centrado
+ *  - Usar filtro de etiquetas MuseChip,El estado seleccionado es de marca verde.
+ *  - Visualización del área de historial"Registros históricos / N elementos en total"
+ *  - Rediseño de la lista de tarjetas:
+ *    - registro fijado:Fondo verde claro + ícono AutoAwesome + sin botón de acción inferior
+ *    - Registros ordinarios:tarjeta blanca + copia/enviar/Más operaciones
+ *    - Haga clic en la tarjeta para ampliar/Contraer texto
+ *    - Los registros cifrados muestran el icono de candado + copia del marcador de posición
+ *    - carpeta/Recordatorio para usar una pantalla de chip pequeño independiente
+ *  - Conserve todas las capacidades existentes, como papelera de reciclaje, importación y exportación, carpetas, recordatorios, cifrado, edición, etc.
  */
 @Composable
 fun QuickNotesScreen(
@@ -112,8 +112,8 @@ fun QuickNotesScreen(
     val quickCaptureEnabled by settings.quickCaptureEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
     val quickCaptureOverlayEnabled by settings.quickCaptureOverlayEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
     val listState = rememberLazyListState()
-    // 前端修复 (性能-3): 页面级共享时间 ticker — 单协程每 60s 广播一次
-    // 当前时间戳,所有卡片共用;替代原先每张卡片一个 produceState 无限循环。
+    // Correcciones en la interfaz (Rendimiento-3): Tiempo para compartir a nivel de página ticker — Una sola corrutina se transmite cada 60 segundos.
+    // marca de tiempo actual,Común a todas las tarjetas.;Reemplaza el bucle infinito original de un produceState por tarjeta.
     val timeTicker by produceState(initialValue = System.currentTimeMillis()) {
         while (true) {
             delay(60_000)
@@ -123,22 +123,22 @@ fun QuickNotesScreen(
     var editingNote by remember { mutableStateOf<QuickNoteEntity?>(null) }
     var noteToDelete by remember { mutableStateOf<QuickNoteEntity?>(null) }
     var noteForMenu by remember { mutableStateOf<QuickNoteEntity?>(null) }
-    // 前端修复 (持久化-6): 输入草稿改 rememberSaveable,旋转/进程重建不丢已输入内容
+    // Correcciones en la interfaz (persistencia-6): Introducir cambio de borrador rememberSaveable,rotar/El proceso se reconstruye sin perder el contenido de entrada.
     var inputText by rememberSaveable { mutableStateOf("") }
-    // 回收站相关弹窗状态
-    // 前端修复 (持久化-6): 弹窗目标为 QuickNoteEntity 复杂对象,无法直接 saveable,保持 remember
+    // Estado emergente relacionado con la papelera de reciclaje
+    // Correcciones en la interfaz (persistencia-6): El objetivo de la ventana emergente es el objeto complejo QuickNoteEntity.,no puede directamente saveable,mantener remember
     var noteToPermanentDelete by remember { mutableStateOf<QuickNoteEntity?>(null) }
     var showClearTrashConfirm by rememberSaveable { mutableStateOf(false) }
-    // 导出/导入菜单 + 文件夹设置 + 提醒设置 弹窗状态
-    // 前端修复 (持久化-6): Boolean 弹窗态改 rememberSaveable;实体引用保持 remember
+    // Exportar/Menú de importación + configuración de carpeta + estado de la ventana emergente de configuración de recordatorio
+    // Correcciones en la interfaz (persistencia-6): Boolean Cambio de estado de la ventana emergente rememberSaveable;La referencia de la entidad permanece remember
     var showExportMenu by rememberSaveable { mutableStateOf(false) }
     var showQuickCaptureSettings by rememberSaveable { mutableStateOf(false) }
     var noteForFolder by remember { mutableStateOf<QuickNoteEntity?>(null) }
     var noteForReminder by remember { mutableStateOf<QuickNoteEntity?>(null) }
-    // v2.6.7: 待加附件的笔记（选图器异步回调时菜单已关，必须先把目标存下来）
+    // v2.6.7: Notas que se adjuntarán (el menú se cierra cuando se llama al selector de imágenes de forma asincrónica y el objetivo debe guardarse primero)
     var noteForAttach by remember { mutableStateOf<QuickNoteEntity?>(null) }
-    // v2.6.7: 附件选图器。用 PickVisualMedia（系统照片选择器）而不是 OpenDocument，
-    // 避免为了读一张图去申请全库权限。
+    // v2.6.7: Selector de imágenes adjuntas. Utilice PickVisualMedia (selector de fotografías del sistema) en lugar de OpenDocument,
+    // Evite solicitar permisos completos de base de datos solo para leer una imagen.
     val attachImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri: Uri? ->
@@ -172,7 +172,7 @@ fun QuickNotesScreen(
         }
     }
 
-    // 分页 — 列表滚动接近底部时自动加载更多
+    // Paginación — Cargue más automáticamente a medida que la lista se desplaza hacia el final
     val reachedBottom by remember {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -222,7 +222,7 @@ fun QuickNotesScreen(
         onSendToNewChat(text)
     }
 
-    // 导出为 Markdown/JSON — 通过系统分享面板让用户保存或转发
+    // Exportar como Markdown/JSON — Permitir a los usuarios guardar o reenviar a través del panel para compartir del sistema
     fun shareText(text: String, mimeType: String) {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
@@ -269,7 +269,7 @@ fun QuickNotesScreen(
                         tint = MaterialTheme.colorScheme.onSurface,
                         iconSize = MuseIconSizes.icon,
                     )
-                    // 导出/导入入口
+                    // Exportar/Entrada de importación
                     MuseTactileButton(
                         icon = MuseIcons.share,
                         onClick = { showExportMenu = true },
@@ -277,7 +277,7 @@ fun QuickNotesScreen(
                         tint = MaterialTheme.colorScheme.onSurface,
                         iconSize = MuseIconSizes.icon,
                     )
-                    // 回收站入口
+                    // Entrada a la papelera de reciclaje
                     MuseTactileButton(
                         icon = MuseIcons.trash,
                         onClick = { viewModel.toggleTrash(true) },
@@ -312,7 +312,7 @@ fun QuickNotesScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(MusePaddings.sectionGap))
-            // 文件夹筛选条(有文件夹时展示)
+            // Barra de filtro de carpetas(Se muestra cuando hay una carpeta.)
             if (state.folders.isNotEmpty()) {
                 QuickNoteFolderFilterRow(
                     folders = state.folders,
@@ -329,7 +329,7 @@ fun QuickNotesScreen(
                 )
                 Spacer(Modifier.height(MusePaddings.sectionGap))
             }
-            // ST-01: 列表加载失败错误态 + 重试(notes 为空时才显示,避免与已有数据重叠)
+            // ST-01: Estado de error al cargar la lista + intentarlo de nuevo(notes Se muestra cuando está vacío,Evite la superposición con datos existentes)
             if (state.error != null && state.notes.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -365,8 +365,8 @@ fun QuickNotesScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // LAYOUT-01: 标题取剩余宽度 + 限行(仅取宽时剩余宽度仍可能极小),
-                    // 计数是定宽短标注,限 1 行即可。
+                    // LAYOUT-01: El título toma el ancho restante + límite de línea.(Cuando solo se toma el ancho, el ancho restante aún puede ser extremadamente pequeño),
+                    // El recuento es una dimensión corta de ancho fijo.,Límite a 1 línea.
                     Text(
                         text = stringResource(R.string.quick_notes_history),
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -404,7 +404,7 @@ fun QuickNotesScreen(
                             onMore = { noteForMenu = note },
                         )
                     }
-                    // 分页 — 还有更多时显示加载更多提示
+                    // Paginación — Mostrar mensajes de carga de más cuando haya más
                     if (state.hasMore) {
                         item(key = "load_more") {
                             Row(
@@ -453,7 +453,7 @@ fun QuickNotesScreen(
             title = stringResource(R.string.quick_notes_delete_title),
             itemName = note.title,
             onConfirm = {
-                // 改为 soft delete(移入回收站),用户可在回收站恢复或永久删除
+                // Cambiar a soft delete(Mover a la papelera de reciclaje),Los usuarios pueden restaurar o eliminar permanentemente en la Papelera de reciclaje
                 viewModel.delete(note.id)
                 noteToDelete = null
             },
@@ -485,8 +485,8 @@ fun QuickNotesScreen(
                 noteForMenu = null
                 viewModel.setEncrypted(note.id, !note.encrypted)
             },
-            // v2.6.7: 附件读写入口。读侧（卡片显示「N 个附件」）早就在，
-            // 但全仓没人能写进去，addAttachment 一直是零调用。
+            // v2.6.7: Entrada de lectura y escritura de archivos adjuntos. Lado de lectura (la tarjeta muestra "N apego") ha estado allí durante mucho tiempo,
+            // Pero nadie en todo el almacén puede escribirlo.addAttachment No ha habido ninguna llamada.
             attachments = QuickNotesViewModel.parseAttachments(note.attachmentsJson),
             onAttachImage = {
                 noteForMenu = null
@@ -506,7 +506,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 导出/导入菜单
+    // Exportar/Menú de importación
     if (showExportMenu) {
         QuickNoteExportMenu(
             onDismiss = { showExportMenu = false },
@@ -525,7 +525,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 文件夹设置弹窗
+    // Ventana emergente de configuración de carpeta
     noteForFolder?.let { note ->
         QuickNoteFolderDialog(
             folders = state.folders,
@@ -537,7 +537,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 提醒设置弹窗(日期 + 时间选择器)
+    // Ventana emergente de configuración de recordatorio(Selector de fecha y hora)
     noteForReminder?.let { note ->
         QuickNoteReminderDialog(
             currentReminderAt = note.reminderAt,
@@ -553,7 +553,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 回收站面板
+    // Panel de papelera de reciclaje
     if (state.showTrash) {
         QuickNoteTrashDialog(
             items = state.trashItems,
@@ -564,7 +564,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 永久删除单条确认
+    // Eliminar permanentemente una única confirmación
     noteToPermanentDelete?.let { note ->
         MuseDialog(
             onDismissRequest = { noteToPermanentDelete = null },
@@ -585,7 +585,7 @@ fun QuickNotesScreen(
         )
     }
 
-    // 清空回收站确认
+    // Confirmar vaciar la papelera de reciclaje
     if (showClearTrashConfirm) {
         MuseDialog(
             onDismissRequest = { showClearTrashConfirm = false },
@@ -783,8 +783,8 @@ private fun QuickNoteInputCard(value: String, onValueChange: (String) -> Unit, o
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // LAYOUT-01: 提示文案取剩余宽度 —— 否则窄窗口下发送按钮会被长文案挤掉;
-                // 同时限 1 行,防止放大字号下提示逐字换行撑高整行。
+                // LAYOUT-01: La copia inmediata ocupa el ancho restante —— De lo contrario, el botón de enviar quedará desplazado por la copia larga en una ventana estrecha.;
+                // Límite de 1 línea a la vez,Evite aumentar el tamaño de la fuente y solicitar un ajuste de palabras palabra por palabra para aumentar toda la línea.
                 Text(
                     text = stringResource(R.string.quick_notes_tag_hint),
                     style = MaterialTheme.typography.labelSmall,
@@ -866,7 +866,7 @@ private fun QuickNoteTagFilterRow(
 @Composable
 private fun QuickNoteCard(
     note: QuickNoteEntity,
-    /** 前端修复 (性能-3): 页面级共享 ticker 时间戳,用于相对时间刷新。 */
+    /** Correcciones en la interfaz (Rendimiento-3): Marca de tiempo del ticker compartido a nivel de página,Se utiliza para la actualización de tiempo relativo. */
     now: Long,
     initiallyExpanded: Boolean = false,
     onCopy: () -> Unit,
@@ -906,7 +906,7 @@ private fun QuickNoteCard(
         Column(
             modifier = Modifier.padding(MusePaddings.cardInner),
         ) {
-            // 标题行:置顶时左侧显示 AI 星星图标
+            // línea de título:Cuando está fijado, el ícono de la estrella AI se muestra a la izquierda
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
@@ -953,7 +953,7 @@ private fun QuickNoteCard(
                 }
             }
 
-            // 内容区 — 加密时显示占位,Markdown 时用 MarkdownText 渲染
+            // área de contenido — Mostrar marcador de posición durante el cifrado,Markdown Al renderizar con MarkdownText
             if (note.encrypted) {
                 Spacer(Modifier.height(MusePaddings.tightGap))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1009,7 +1009,7 @@ private fun QuickNoteCard(
                 }
             }
 
-            // 附件指示
+            // instrucciones adjuntas
             if (attachments.isNotEmpty()) {
                 Spacer(Modifier.height(MusePaddings.labelVerticalGap))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1028,7 +1028,7 @@ private fun QuickNoteCard(
                 }
             }
 
-            // 标签
+            // etiqueta
             if (note.tags.isNotEmpty()) {
                 Spacer(Modifier.height(MusePaddings.labelVerticalGap))
                 Text(
@@ -1044,7 +1044,7 @@ private fun QuickNoteCard(
                 )
             }
 
-            // 文件夹/提醒 chip
+            // carpeta/recordatorio chip
             val showFolder = note.folder.isNotBlank()
             val showReminder = note.reminderAt > 0
             if (showFolder || showReminder) {
@@ -1077,7 +1077,7 @@ private fun QuickNoteCard(
             )
             Spacer(Modifier.height(MusePaddings.auxGap))
 
-            // 底部:时间 + 操作
+            // abajo:tiempo + acción
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1090,7 +1090,7 @@ private fun QuickNoteCard(
                 Spacer(Modifier.weight(1f))
 
                 if (isPinned) {
-                    // 置顶记录只保留"更多"入口(编辑/删除等)
+                    // Solo se conservan los registros fijados"Más"entrada(Editar/Eliminar etc)
                     MuseTactileButton(
                         icon = MuseIcons.moreVertical,
                         onClick = onMore,

@@ -9,9 +9,9 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * P1-2: Worldbook DAO。
+ * P1-2: Worldbook DAO.
  *
- * 查询排序统一为 priority DESC, name ASC(与 LorebookDao 一致)。
+ * La clasificación de consultas está unificada como priority DESC, name ASC(Consistente con LorebookDao).
  */
 @Dao
 interface WorldBookDao {
@@ -21,11 +21,11 @@ interface WorldBookDao {
     @Query("SELECT * FROM worldbook_entries WHERE enabled = 1 ORDER BY priority DESC, name ASC")
     fun observeEnabled(): Flow<List<WorldBookEntryEntity>>
 
-    /** 取全部启用条目(注入器用,含 alwaysActive 和关键词触发)。 */
+    /** Obtener todas las entradas habilitadas(Para inyector,Contiene siempre activo y activador de palabra clave.). */
     @Query("SELECT * FROM worldbook_entries WHERE enabled = 1 ORDER BY priority DESC, name ASC")
     suspend fun getEnabled(): List<WorldBookEntryEntity>
 
-    /** 取常驻激活条目(alwaysActive=1 且 enabled=1),按 assistantId 过滤(null = 全局)。 */
+    /** Obtenga entrada de activación para residentes(alwaysActive=1 y enabled=1),Filtrar por ID de asistente(null = situación general). */
     @Query(
         """
         SELECT * FROM worldbook_entries

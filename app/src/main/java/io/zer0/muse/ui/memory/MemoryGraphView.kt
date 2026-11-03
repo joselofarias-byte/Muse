@@ -61,14 +61,14 @@ import kotlin.math.hypot
 import kotlin.math.min
 
 /**
- * 记忆星座视图 (v2.0 重设计)。
+ * vista de la constelación de la memoria (v2.0 rediseñar).
  *
- * 视觉结构:
- *  - 按类别聚簇:同主题记忆形成"星座群",簇底一层柔光,簇顶是分类标签;
- *  - 节点 = 光晕 + 实心点 + 描边环,置顶节点外圈带十字星芒;
- *  - 关系边为二次贝塞尔曲线,矛盾关系用红色虚线;
- *  - 首次进入自动取景(整张星座缩放到视口内),手势缩放/拖动,右下角可复位;
- *  - 缩放较小时自动隐藏普通节点标签,只保留重要/置顶/选中节点,避免糊成一团。
+ * estructura visual:
+ *  - agrupar por categoría:Mismo tema formación de la memoria."grupo de constelaciones",Una capa de luz suave en la parte inferior del grupo.,La parte superior del grupo es la etiqueta de clasificación.;
+ *  - nodo = Resplandor + punto sólido + anillo de trazo,El círculo exterior del nodo superior tiene una estrella en forma de cruz.;
+ *  - La arista de relación es una curva de Bézier cuadrática.,Las relaciones conflictivas están representadas por líneas de puntos rojas.;
+ *  - Entrando al encuadre automático por primera vez(Toda la constelación está ampliada en la ventana gráfica.),Zoom de gestos/Arrastrar,La esquina inferior derecha se puede restablecer.;
+ *  - Ocultar automáticamente las etiquetas de los nodos normales al hacer zoom más pequeño,Sólo mantén lo importante/fijar hacia arriba/Seleccionar nodo,Evite ponerse blando.
  */
 @Composable
 fun MemoryGraphView(
@@ -76,13 +76,13 @@ fun MemoryGraphView(
     modifier: Modifier = Modifier,
     onNodeAction: ((MemoryGraphNode, NodeAction) -> Unit)? = null,
     onEdgeAction: ((MemoryGraphEdge, EdgeAction) -> Unit)? = null,
-    /** v2.6.2（用户反馈）: 手动连边回调（源节点, 目标节点, 关系类型）。 */
+    /** v2.6.2(comentarios de los usuarios): Devolución de llamada de conexión de borde manual (nodo de origen, nodo objetivo, tipo de relación). */
     onManualLink: ((MemoryGraphNode, MemoryGraphNode, String) -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val statusColors = MaterialTheme.statusColors
     var selectedNode by remember { mutableStateOf<MemoryGraphNode?>(null) }
-    // v2.6.2: 手动连线状态 —— 点了“手动连线”后进入选目标模式，再点另一个节点弹出关系类型。
+    // v2.6.2: Estado de conexión manual —— ordenado“Conexión manual”Luego ingrese al modo de selección de destino y luego haga clic en otro nodo para que aparezca el tipo de relación.
     var linkSourceNode by remember { mutableStateOf<MemoryGraphNode?>(null) }
     var linkTargetNode by remember { mutableStateOf<MemoryGraphNode?>(null) }
 
@@ -107,7 +107,7 @@ fun MemoryGraphView(
     }
 
     val nodes = state.nodes
-    // v2.x: 动效补齐 — 星座整体入场 fade + scale(仅整体过渡,不做节点级 stagger,绘制层保持原样)。
+    // v2.x: Finalización del efecto de movimiento — Admisión de los signos del zodíaco en su conjunto. fade + scale(Solo transición general,Sin nivel de nodo stagger,La capa de dibujo permanece como está.).
     var entryStarted by remember { mutableStateOf(false) }
     LaunchedEffect(nodes) { entryStarted = true }
     val entryProgress by animateFloatAsState(
@@ -115,7 +115,7 @@ fun MemoryGraphView(
         animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS),
         label = "memoryGraphEntry",
     )
-    // 画布尺寸由最大簇的节点环半径决定,保证节点永远画在画布内。
+    // El tamaño del lienzo está determinado por el radio del anillo de nodos del grupo más grande,Asegúrese de que los nodos siempre estén dibujados dentro del lienzo.
     val sizeDp = remember(nodes) {
         val maxClusterSize = nodes.groupingBy { it.category.lowercase() }.eachCount().values.maxOrNull() ?: 1
         val ring = clusterNodeRing(maxClusterSize)
@@ -131,7 +131,7 @@ fun MemoryGraphView(
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var framed by remember(nodes) { mutableStateOf(false) }
 
-    // 首次进入 / 数据换批:整张星座取景居中。
+    // Entrada por primera vez/cambio de lote de datos:Toda la constelación está centrada.
     LaunchedEffect(viewportSize, sizeDp, framed) {
         if (framed || viewportSize == IntSize.Zero) return@LaunchedEffect
         val canvasPx = with(density) { sizeDp.dp.toPx() }
@@ -162,7 +162,7 @@ fun MemoryGraphView(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(colors.surface)
-            // v2.x: 动效补齐 — 整体入场:淡入 + 轻微放大到位(0.96→1.0)
+            // v2.x: Finalización del efecto de movimiento — Admisión en su conjunto:Fundir + acercar ligeramente(0.96→1.0)
             .graphicsLayer {
                 alpha = entryProgress
                 val entryScale = 0.96f + 0.04f * entryProgress
@@ -174,7 +174,7 @@ fun MemoryGraphView(
                 detectTransformGestures { centroid, panChange, zoomChange, _ ->
                     val newZoom = (zoom * zoomChange).coerceIn(0.35f, 2.5f)
                     val scale = newZoom / zoom
-                    // 以手势中心为锚点缩放,再叠加拖动位移
+                    // Zoom con centro de gestos como punto de anclaje,Luego superponga el desplazamiento de arrastre
                     pan = Offset(
                         centroid.x - (centroid.x - pan.x) * scale + panChange.x,
                         centroid.y - (centroid.y - pan.y) * scale + panChange.y,
@@ -205,7 +205,7 @@ fun MemoryGraphView(
                             val dx = canvasX - cx
                             val dy = canvasY - cy
                             if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-                                // v2.6.2: 选目标模式 —— 再点一个不同节点则弹出关系类型。
+                                // v2.6.2: modo objetivo —— Haga clic en un nodo diferente y aparecerá el tipo de relación.
                                 val src = linkSourceNode
                                 if (src != null && src.factId != hit.factId) {
                                     linkTargetNode = hit
@@ -238,7 +238,7 @@ fun MemoryGraphView(
             val cw = size.width
             val ch = size.height
 
-            // 背景:中心柔光 + 点阵网格,给出"星图"底子
+            // fondo:Luz suave central + cuadrícula de puntos,dado"mapa estelar"fundación
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(colors.primary.copy(alpha = 0.05f), Color.Transparent),
@@ -262,7 +262,7 @@ fun MemoryGraphView(
                 gx += gridStep
             }
 
-            // 簇柔光 + 分类标签
+            // Luz suave en racimo + Categoría Tags
             constellation.clusters.forEach { anchor ->
                 val tone = toneResolver(anchor.category)
                 val clusterCenter = Offset(anchor.x.dp.toPx(), anchor.y.dp.toPx())
@@ -284,13 +284,13 @@ fun MemoryGraphView(
                     background = labelBg.copy(alpha = 0.9f),
                     border = labelBorder,
                     density = density,
-                    fontSize = 10.sp, // 画布内嵌簇标签:固定字号(随图形缩放,不走主题字体)
+                    fontSize = 10.sp, // Etiqueta de grupo en línea de lienzo:Tamaño de fuente fijo(Escala con gráfica,No utilices fuentes temáticas)
                     letterSpacing = 1.5f,
                     maxWidthPx = 180.dp.toPx(),
                 )
             }
 
-            // 关系边:二次贝塞尔,矛盾关系红色虚线
+            // ventaja de la relación:Bézier cuadrático,Relación contradictoria línea punteada roja
             state.edges.forEach { edge ->
                 val a = constellation.nodeCenters[edge.sourceFactId] ?: return@forEach
                 val b = constellation.nodeCenters[edge.targetFactId] ?: return@forEach
@@ -299,7 +299,7 @@ fun MemoryGraphView(
                 val dx = bCenter.x - aCenter.x
                 val dy = bCenter.y - aCenter.y
                 val dist = hypot(dx, dy).coerceAtLeast(0.001f)
-                // 垂直方向偏移,画出轻微弧度,避免多条边完全重叠
+                // desplazamiento vertical,Dibuja un ligero arco,Evite la superposición completa de múltiples bordes
                 val curve = dist * 0.08f
                 val mid = Offset(
                     (aCenter.x + bCenter.x) / 2f - dy / dist * curve,
@@ -329,12 +329,12 @@ fun MemoryGraphView(
                     ),
                 )
                 if (edge.weight >= 0.7f && !isContradiction) {
-                    // 强关系端点小光点,强化"星链"感
+                    // Punto final de relación fuerte pequeño punto de luz,Fortalecer"Enlace estelar"sentido
                     drawCircle(colors.primary.copy(alpha = 0.5f), radius = 2.2.dp.toPx(), center = mid)
                 }
             }
 
-            // 节点
+            // nodo
             nodes.forEach { node ->
                 val center = constellation.nodeCenters[node.factId] ?: return@forEach
                 val nodeCenter = Offset(center.x.dp.toPx(), center.y.dp.toPx())
@@ -342,7 +342,7 @@ fun MemoryGraphView(
                 val isSelected = selectedNode?.factId == node.factId
                 val radius = nodeRadiusDp(node).dp.toPx()
 
-                // 柔光三层,让节点像发光星体而不是"贴上去的圆"
+                // Luz suave tres capas.,Haz que los nodos parezcan estrellas brillantes en lugar de"El círculo adjunto"
                 drawCircle(tone.copy(alpha = 0.09f), radius = radius * 2.2f, center = nodeCenter)
                 drawCircle(tone.copy(alpha = 0.16f), radius = radius * 1.5f, center = nodeCenter)
                 drawCircle(
@@ -357,7 +357,7 @@ fun MemoryGraphView(
                     style = Stroke(width = if (isSelected) 2.dp.toPx() else 0.9.dp.toPx()),
                 )
 
-                // 置顶节点:十字星芒
+                // Nodo superior:estrella cruzada
                 if (node.isPinned) {
                     val beam = radius * 3.1f
                     val beamWidth = 1.3.dp.toPx()
@@ -378,7 +378,7 @@ fun MemoryGraphView(
                     )
                 }
 
-                // 标签:缩放过小时只保留重要 / 置顶 / 选中节点
+                // etiqueta:Si el zoom es demasiado pequeño, solo se conservarán los nodos importantes/superiores/seleccionados.
                 val showLabel = isSelected || node.isPinned || node.importance >= 2 || zoom >= 0.72f
                 if (showLabel) {
                     val labelGap = radius + 10.dp.toPx()
@@ -395,7 +395,7 @@ fun MemoryGraphView(
                         },
                         border = if (isSelected) selectedColor.copy(alpha = 0.45f) else labelBorder,
                         density = density,
-                        fontSize = 11.sp, // 画布内嵌节点标签:固定字号(同上)
+                        fontSize = 11.sp, // Etiqueta de nodo en línea de lienzo:Tamaño de fuente fijo(Igual que arriba)
                         anchorRight = !toRight,
                         maxWidthPx = 168.dp.toPx(),
                     )
@@ -403,7 +403,7 @@ fun MemoryGraphView(
             }
         }
 
-        // 复位按钮
+        // botón de reinicio
         Surface(
             onClick = resetView,
             shape = RoundedCornerShape(12.dp),
@@ -421,7 +421,7 @@ fun MemoryGraphView(
             )
         }
 
-        // 选中节点的操作面板
+        // Panel de operación del nodo seleccionado
         selectedNode?.let { node ->
             val related = state.edges.filter { it.sourceFactId == node.factId || it.targetFactId == node.factId }
             Surface(
@@ -443,7 +443,7 @@ fun MemoryGraphView(
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
-                    // v2.6.2（用户反馈）: 手动连线入口 —— 点一下进入选目标模式。
+                    // v2.6.2(comentarios de los usuarios): Entrada de conexión manual —— Haga clic para ingresar al modo de selección de objetivos.
                     if (onManualLink != null) {
                         if (linkSourceNode == null) {
                             MuseCapsuleButton(
@@ -504,7 +504,7 @@ fun MemoryGraphView(
             }
         }
 
-        // v2.6.2（用户反馈）: 手动连线的关系类型选择弹窗。
+        // v2.6.2(comentarios de los usuarios): Ventana emergente de selección de tipo de relación para conexiones manuales.
         val srcNode = linkSourceNode
         val tgtNode = linkTargetNode
         if (onManualLink != null && srcNode != null && tgtNode != null) {
@@ -539,7 +539,7 @@ fun MemoryGraphView(
     }
 }
 
-/** 节点半径:置顶/高重要度更大,普通节点最小。 */
+/** radio del nodo:fijar hacia arriba/La importancia alta es mayor,Los nodos ordinarios son los más pequeños. */
 private fun nodeRadiusDp(node: MemoryGraphNode): Float = when {
     node.isPinned || node.importance >= 2 -> 15f
     node.importance == 1 -> 12f
@@ -547,9 +547,9 @@ private fun nodeRadiusDp(node: MemoryGraphNode): Float = when {
 }
 
 /**
- * 画一个"胶囊标签":浅底圆角矩形 + 描边 + 单行文字。
+ * dibujar uno"etiqueta de la cápsula":Rectángulo redondeado inferior claro + trazo + una sola línea de texto.
  *
- * @param center 标签锚点中心;anchorRight=true 表示文字贴在锚点左侧(右对齐)
+ * @param center centro de anclaje de etiquetas;anchorRight=true Indica que el texto está adjunto a la izquierda del punto de anclaje.(Alinear a la derecha)
  */
 private fun DrawScope.drawChipLabel(
     text: String,
@@ -569,7 +569,7 @@ private fun DrawScope.drawChipLabel(
         textSize = with(density) { fontSize.toPx() }
         isAntiAlias = true
         textAlign = android.graphics.Paint.Align.LEFT
-        // letterSpacing 单位是 em,这里按字号的倍数换算
+        // letterSpacing La unidad es em,Convierta aquí según múltiplos de tamaño de fuente
         this.letterSpacing = letterSpacing / fontSize.value.coerceAtLeast(1f)
         typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
     }

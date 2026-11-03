@@ -114,7 +114,7 @@ class ChatSessionControllerTest {
     fun `forkSessionFromMessage delegates to repository`() = runTest {
         val repo = mockk<SessionRepository>(relaxed = true)
         coEvery { repo.forkSession("s1", any()) } returns "new1"
-        // 让 switchSession 走"会话不存在"早退路径,避免触碰 settings 的 Flow 空流
+        // Deja ir switchSession"La sesión no existe"camino de salida anticipada,Evite tocar el flujo vacío de configuraciones
         coEvery { repo.getSessionById("new1") } returns null
         controller(this, repo, ChatUiState(sessionState = ChatSessionState(currentSessionId = "s1")))
             .forkSessionFromMessage(Uuid.random())
@@ -138,7 +138,7 @@ class ChatSessionControllerTest {
         coVerify(exactly = 0) { repo.forkSession("task-1", any()) }
     }
 
-    // ── P0-5: 删除/归档会话必须停止在途生成 + 写抑制 ──
+    // ── P0-5: Eliminar/Las sesiones de archivo deben detener la generación en curso + supresión de escritura ──
 
     @Test
     fun `deleteSession stops generation and suppresses writes`() = runTest {
@@ -169,7 +169,7 @@ class ChatSessionControllerTest {
         controller(this, repo, bridge = bridge).setSessionArchived("s1", archived = false)
         advanceUntilIdle()
         coVerify { repo.setArchived("s1", false) }
-        assertTrue("取消归档不应触发写抑制", bridge.suppressedSessions.isEmpty())
-        assertTrue("取消归档不应停止生成", bridge.stoppedSessions.isEmpty())
+        assertTrue("Desarchivar no debería activar la supresión de escritura", bridge.suppressedSessions.isEmpty())
+        assertTrue("Desarchivar no debería detener la compilación", bridge.stoppedSessions.isEmpty())
     }
 }

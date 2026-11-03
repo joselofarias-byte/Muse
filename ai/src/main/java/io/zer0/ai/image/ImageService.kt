@@ -12,21 +12,21 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Phase 5-G / v1.0.18: 图片生成服务。
+ * Phase 5-G / v1.0.18: Servicio de generación de imágenes.
  *
- * v1.0.18 重构:移除硬性的 OPENAI / OPENAI_RESPONSES 类型检查,改为通过
- * [ImageProviderRegistry] 按 [ProviderConfig] 选择合适的 [ImageProvider],
- * 让 Agnes / Gemini / 国产中转站等都能各自走适配器实现。
+ * v1.0.18 Refactorizar:Eliminar la verificación de tipo OPENAI / OPENAI_RESPONSES,pasar en su lugar
+ * [ImageProviderRegistry] prensa [ProviderConfig] Elige el correcto [ImageProvider],
+ * Deje que Agnes / Gemini / estaciones de transferencia domésticas, etc., utilicen sus propios adaptadores.
  *
- * 设计:
- *  - 调用方仍用 [generate] 拿到 `List<String>`(URL 或 data URI),保持向后兼容;
- *  - 内部把 [ImageGenParams] 转为 [ImageGenRequest],委托 [ImageProvider] 完成 HTTP 调用;
- *  - 同步任务(provider.submit 直接返回 images)立即返回;
- *  - 异步任务(provider.submit 返回 taskId)启动轮询,既有 poller:
- *      5s tick、按任务年龄自适应频率(<2min 每 tick / 2-10min 每 3 tick / 10min+ 每 6 tick)、
- *      连续 5 次错误才判定失败。
- *  - 默认模型不再硬编码 dall-e-3,改为从 [ProviderConfig.models] 筛选
- *    outputModalities 含 "image" 的模型;找不到则用 provider 自身默认值。
+ * diseño:
+ *  - La persona que llama todavía usa [generate] conseguir `List<String>`(URL o data URI),Manténgase compatible con versiones anteriores;
+ *  - manija interna [ImageGenParams] convertir a [ImageGenRequest],confiar [ImageProvider] Completar llamada HTTP;
+ *  - Sincronizar tareas(provider.submit Regresar directamente images)Regresar inmediatamente;
+ *  - Tareas asincrónicas(provider.submit Regresar taskId)Empezar a sondear,existente poller:
+ *      5s tick, frecuencia adaptativa según edad de la tarea(<2min Cada tic / 2-10 min Cada 3 tic / 10 min+ Cada 6 tick),
+ *      El fracaso se determina después de 5 errores consecutivos.
+ *  - Los modelos predeterminados ya no están codificados dall-e-3,Cambiar de [ProviderConfig.models] Filtrar
+ *    outputModalities Contiene "image" modelo;Si no se encuentra, se utiliza el valor predeterminado del propio proveedor.
  */
 class ImageService(
     private val configStore: ProviderConfigStore,
@@ -34,14 +34,14 @@ class ImageService(
 ) {
 
     /**
-     * 生成图片。返回图片 URL / data URI 列表(通常 1 张,n=1)。
+     * Genera imágenes. Lista de URL de imagen/URI de datos de retorno(Generalmente 1 hoja,n=1).
      *
-     * 若 [params.referenceImageUri] 非空,则触发图生图路径;
-     * 否则走文生图。具体端点与编码方式由所选 [ImageProvider] 决定。
+     * si [params.referenceImageUri] No vacío,luego active la ruta del gráfico;
+     * De lo contrario, siga el diagrama vicenciano. El punto final específico y el método de codificación se seleccionan mediante [ImageProvider] decisión.
      *
-     * @param prompt 图片描述 / 修改指令
-     * @param params 绘图参数(模型 / 尺寸 / 质量 / 风格 / 数量 / 参考图等)
-     * @param providerConfig 显式指定 Provider;null 时用 configStore 当前激活 Provider
+     * @param prompt Descripción de la imagen/instrucciones de modificación
+     * @param params Parámetros de dibujo(Modelo/tamaño/calidad/estilo/cantidad/dibujos de referencia, etc.)
+     * @param providerConfig Específicamente especificado Provider;null Se utiliza cuando configStore está actualmente activo Provider
      */
     suspend fun generate(prompt: String, params: ImageGenParams = ImageGenParams(), providerConfig: ProviderConfig? = null): List<String> =
         withContext(Dispatchers.IO) {
@@ -51,15 +51,15 @@ class ImageService(
                 error(ErrorCode.IMAGE_API_KEY_MISSING.toMessage())
             }
 
-            // v1.0.18: 通过 Registry 选择 provider,不再硬性要求 OPENAI 类型
+            // v1.0.18: Seleccionar a través del Registro provider,El tipo OPENAI ya no es necesario
             val provider = registry.selectFor(config)
                 ?: error(ErrorCode.IMAGE_UNSUPPORTED_MODEL.toMessage("no_provider_for_${config.id}"))
 
-            // 模型选择优先级:
-            //  1. params.model 显式传入;
-            //  2. ProviderSpecificConfig.OpenAI.imageModel(OpenAI 兼容 provider);
-            //  3. ProviderConfig.models 中首个 outputModalities 含 "image" 的模型;
-            //  4. provider 自身默认值(AgnesImageProvider.DEFAULT_MODEL_ID / ImageModelCatalog.DEFAULT_MODEL_ID)
+            // Prioridad de selección de modelo:
+            //  1. params.model Pasado explícitamente;
+            //  2. ProviderSpecificConfig.OpenAI.imageModel(OpenAI compatibles provider);
+            //  3. ProviderConfig.models La primera salidaModalidades contiene "image" modelo;
+            //  4. provider valor predeterminado propio(AgnesImageProvider.DEFAULT_MODEL_ID / ImageModelCatalog.DEFAULT_MODEL_ID)
             val effectiveModel = resolveModelId(params, config, provider)
 
             Logger.i(
@@ -87,18 +87,18 @@ class ImageService(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: IllegalStateException) {
-                // error() 抛出的业务错误原样传播
+                // error() Los errores comerciales arrojados se propagan sin cambios
                 throw e
             } catch (e: Exception) {
                 Logger.w(TAG, "image submit failed: ${e.message}")
                 error(ErrorCode.IMAGE_GEN_FAILED.toMessage(e.message ?: ""))
             }
 
-            // 同步任务:直接转换 images
+            // Sincronizar tareas:conversión directa images
             val finalImages = if (!result.isAsync || result.taskId == null) {
                 result.images
             } else {
-                // 异步任务:轮询直到终态
+                // Tareas asincrónicas:Encuesta hasta estado final
                 pollUntilDone(provider, result.taskId)
             }
             if (finalImages.isEmpty()) error(ErrorCode.IMAGE_NO_RESULTS.toMessage())
@@ -106,11 +106,11 @@ class ImageService(
         }
 
     /**
-     * 解析最终模型 ID(不再硬编码 dall-e-3)。
+     * Analizar el modelo final ID(No más codificación dall-e-3).
      */
     @Suppress("ReturnCount")
     internal fun resolveModelId(params: ImageGenParams, config: ProviderConfig, provider: ImageProvider): String {
-        // 1. 显式传入
+        // 1. Pasado explícitamente
         params.model.takeIf { it.isNotBlank() }?.let { return it }
 
         // 2. ProviderSpecificConfig.OpenAI.imageModel
@@ -119,10 +119,10 @@ class ImageService(
             specific.imageModel.takeIf { it.isNotBlank() }?.let { return it }
         }
 
-        // 3. ProviderConfig.models 中首个支持图片输出的模型
+        // 3. ProviderConfig.models El primer modelo en China que admite la salida de imágenes.
         config.models.firstOrNull { it.supportsImageOutput() }?.let { return it.id }
 
-        // 4. provider 自身默认值
+        // 4. provider valor predeterminado propio
         return when (provider.providerId) {
             AgnesImageProvider.PROVIDER_ID -> AgnesImageProvider.DEFAULT_MODEL_ID
             GeminiImageProvider.PROVIDER_ID -> GeminiImageProvider.DEFAULT_MODEL_ID
@@ -131,17 +131,17 @@ class ImageService(
     }
 
     /**
-     * 异步任务轮询,既有 poller:
+     * Sondeo de tareas asincrónicas,existente poller:
      *  - 5s tick;
-     *  - 按任务年龄自适应频率(<2min 每 tick / 2-10min 每 3 tick / 10min+ 每 6 tick);
-     *  - 连续 5 次错误才判定失败;
-     *  - 总超时 [POLL_TIMEOUT_MS](10 分钟)。
+     *  - Adaptar la frecuencia según la edad de la tarea.(<2min Cada tic / 2-10 min Cada 3 tic / 10 min+ Cada 6 tick);
+     *  - El fracaso se determina después de 5 errores consecutivos.;
+     *  - tiempo de espera total [POLL_TIMEOUT_MS](10 minutos).
      */
     private suspend fun pollUntilDone(provider: ImageProvider, taskId: String): List<GeneratedImage> {
         val createdAt = System.currentTimeMillis()
         var tick = 0
         var consecutiveErrors = 0
-        // 记录任务失败次数（并发安全）
+        // Registre el número de fallas de tareas (seguridad de concurrencia)
         errorCounts.remove(taskId)
         while (true) {
             val ageMs = System.currentTimeMillis() - createdAt
@@ -164,13 +164,13 @@ class ImageService(
                         error(ErrorCode.IMAGE_GEN_FAILED.toMessage(msg))
                     }
                     PollStatus.PENDING -> {
-                        // 继续轮询
+                        // Continuar encuestando
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: IllegalStateException) {
-                // provider 用 error() 抛出的业务错误,原样传播
+                // provider usar error() Errores comerciales arrojados,difundir como está
                 throw e
             } catch (e: Exception) {
                 consecutiveErrors++
@@ -189,28 +189,28 @@ class ImageService(
     }
 
     /**
-     * 决定当前 tick 是否触发真实查询。
+     * Determine si el tick actual desencadena una consulta real.
      */
     internal fun shouldCheckThisTick(ageMs: Long, tickCount: Int): Boolean {
         return when {
-            ageMs < TWO_MINUTES_MS -> true // < 2 min: 每 tick
-            ageMs < TEN_MINUTES_MS -> tickCount % 3 == 0 // 2-10 min: 每 3 tick
-            else -> tickCount % 6 == 0 // 10 min+: 每 6 tick
+            ageMs < TWO_MINUTES_MS -> true // < 2 min: cada tick
+            ageMs < TEN_MINUTES_MS -> tickCount % 3 == 0 // 2-10 min: cada 3 tick
+            else -> tickCount % 6 == 0 // 10 min+: cada 6 tick
         }
     }
 
     /**
-     * 把 [GeneratedImage] 列表转为 `List<String>`(向后兼容旧调用方)。
+     * poner [GeneratedImage] La lista se convierte en `List<String>`(Compatibilidad con versiones anteriores de personas mayores).
      *
-     *  - base64 优先 → 拼 data URI(若 provider 在 base64 前缀带了 mime,如 "image/png|xxx",则剥离);
-     *  - 否则返回 url;
-     *  - 两者均空则跳过。
+     *  - base64 Prioridad → luchar data URI(Si el proveedor tiene el prefijo base64 mime,Como por ejemplo "image/png|xxx",luego despegar);
+     *  - De lo contrario regresar url;
+     *  - Si ambos están vacíos, omita.
      */
     internal fun convertToOutputStrings(images: List<GeneratedImage>): List<String> {
         return images.mapNotNull { img ->
             when {
                 !img.base64.isNullOrBlank() -> {
-                    // OpenAIImageProvider 会在 base64 前加 "mime|" 前缀携带 mime;此处剥离
+                    // OpenAIImageProvider se agregará antes de base64 "mime|" prefijo llevando mime;Desnúdate aquí
                     val (mime, raw) = if (img.base64.contains("|")) {
                         img.base64.substringBefore("|") to img.base64.substringAfter("|")
                     } else {
@@ -219,7 +219,7 @@ class ImageService(
                     "data:$mime;base64,$raw"
                 }
                 !img.url.isNullOrBlank() -> {
-                    // C-02: url 型结果校验协议前缀,防止畸形响应(裸字符串/相对路径)流入渲染层
+                    // C-02: url escriba el prefijo del protocolo de verificación de resultados,Prevenir respuestas anormales(cuerda desnuda/ruta relativa)Fluir hacia la capa de renderizado
                     val url = img.url
                     if (url.startsWith("http") || url.startsWith("data:image/")) url else null
                 }
@@ -231,49 +231,49 @@ class ImageService(
     companion object {
         private const val TAG = "ImageService"
 
-        /** 轮询 tick 间隔（5 秒）。 */
+        /** Intervalo de tic de sondeo (5 segundos). */
         private const val TICK_MS = 5_000L
 
-        /** 2 分钟。 */
+        /** 2 minutos. */
         private const val TWO_MINUTES_MS = 2L * 60 * 1000
 
-        /** 10 分钟。 */
+        /** 10 minutos. */
         private const val TEN_MINUTES_MS = 10L * 60 * 1000
 
-        /** 轮询总超时(10 分钟,与 TEN_MINUTES_MS 对齐)。 */
+        /** Tiempo de espera total de sondeo(10 minutos,Alineado con TEN_MINUTES_MS). */
         private const val POLL_TIMEOUT_MS = 10L * 60 * 1000
 
-        /** 连续错误上限。 */
+        /** Límite de error continuo. */
         private const val MAX_CONSECUTIVE_ERRORS = 5
 
-        /** taskId → 连续错误计数（并发安全）。 */
+        /** taskId → Recuento continuo de errores (seguridad de concurrencia). */
         private val errorCounts = ConcurrentHashMap<String, Int>()
     }
 }
 
 /**
- * v0.34: 图片生成请求参数(调用方使用)。
+ * v0.34: Parámetros de solicitud de generación de imágenes(La persona que llama usa).
  *
- * v1.0.18: 内部由 [ImageService] 转为 [ImageGenRequest] 后再委托 [ImageProvider]。
- * 保留此数据类是为了向后兼容 [io.zer0.muse.ui.ChatViewModel] /
- * [io.zer0.muse.ui.chat.ImageGenCoordinator] / [io.zer0.muse.tools.SkillExecutor] 等调用方。
+ * v1.0.18: Hecho internamente de [ImageService] convertir a [ImageGenRequest] confiar más tarde [ImageProvider].
+ * Esta clase de datos se conserva por motivos de compatibilidad con versiones anteriores. [io.zer0.muse.ui.ChatViewModel] /
+ * [io.zer0.muse.ui.chat.ImageGenCoordinator] / [io.zer0.muse.tools.SkillExecutor] Espere a la persona que llama.
  */
 data class ImageGenParams(
-    /** 绘图模型 ID,如 dall-e-3 / gpt-image-1 / agnes-image-2.1-flash。 */
+    /** modelo de dibujo ID,Como por ejemplo dall-e-3 / gpt-image-1 / agnes-image-2.1-flash. */
     val model: String = "",
-    /** 图片尺寸,如 1024x1024 / 1792x1024 / 1:1(比例,Agnes 支持)。 */
+    /** Tamaño de imagen,Como por ejemplo 1024x1024 / 1792x1024 / 1:1(proporción,Agnes apoyo). */
     val size: String = "1024x1024",
-    /** 图片质量:standard / hd。 */
+    /** Calidad de imagen:standard / hd. */
     val quality: String = "standard",
-    /** 图片风格:vivid / natural。 */
+    /** Estilo de imagen:vivid / natural. */
     val style: String = "vivid",
-    /** 返回格式:url / b64_json。 */
+    /** Formato de devolución:url / b64_json. */
     val responseFormat: String = "url",
-    /** 生成数量。 */
+    /** Generar cantidad. */
     val n: Int = 1,
     /**
-     * 参考图 URI(http/https/data URI/本地 file)。
-     * 非空时触发图生图路径。
+     * Imagen de referencia URI(http/https/data URI/locales file).
+     * Activa la ruta del gráfico cuando no está vacía.
      */
     val referenceImageUri: String? = null,
 )

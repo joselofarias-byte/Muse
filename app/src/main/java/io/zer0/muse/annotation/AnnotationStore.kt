@@ -12,14 +12,14 @@ import kotlinx.serialization.builtins.ListSerializer
 import java.io.File
 
 /**
- * v1.0.92: 消息批注存储 — 用户对单条消息的纯文本批注。
+ * v1.0.92: Almacenamiento de anotaciones de mensajes — Anotación de texto sin formato de un usuario en un solo mensaje.
  *
- * 全局单例(静态对象):UI 写入与读取;持久化到 filesDir/annotations.json(原子写)。
- * 批注为本地数据,不参与任何上传;批注列表可供后续对话上下文引用(按消息 id 关联)。
+ * Singleton global(objeto estático):UI escribiendo y leyendo;persistir en filesDir/annotations.json(Escritura atómica).
+ * Anotar como datos locales,No involucrado en ninguna carga;Lista de comentarios disponibles para referencia contextual en conversaciones posteriores(Relacionar por ID de mensaje).
  */
 object AnnotationStore {
 
-    /** 单条批注(按消息 id 关联)。 */
+    /** comentario único(Relacionar por ID de mensaje). */
     @Serializable
     data class Annotation(
         val id: String,
@@ -37,7 +37,7 @@ object AnnotationStore {
 
     private var file: File? = null
 
-    /** 绑定应用上下文并恢复历史批注(幂等)。 */
+    /** Vincular el contexto de la aplicación y restaurar anotaciones históricas(idempotente). */
     @Synchronized
     fun attach(context: Context) {
         if (file != null) return
@@ -47,14 +47,14 @@ object AnnotationStore {
             runCatching {
                 AppJson.decodeFromString(ListSerializer(Annotation.serializer()), target.readText())
             }.onSuccess { _all.value = it.take(MAX_ITEMS) }
-                .onFailure { e -> Logger.w(TAG, "批注恢复失败: ${e.message}") }
+                .onFailure { e -> Logger.w(TAG, "Falló la recuperación del comentario: ${e.message}") }
         }
     }
 
-    /** 某条消息的全部批注(按时间升序)。 */
+    /** Todos los comentarios en un mensaje.(orden ascendente por tiempo). */
     fun ofMessage(messageId: String): List<Annotation> = _all.value.filter { it.messageId == messageId }.sortedBy { it.createdAt }
 
-    /** 新增一条批注。 */
+    /** Añade un nuevo comentario. */
     fun add(messageId: String, sessionId: String, text: String) {
         val trimmed = text.trim()
         if (messageId.isBlank() || trimmed.isEmpty()) return
@@ -69,7 +69,7 @@ object AnnotationStore {
         persist(updated)
     }
 
-    /** 删除一条批注。 */
+    /** Eliminar un comentario. */
     fun remove(id: String) {
         val updated = _all.value.filterNot { it.id == id }
         _all.value = updated
@@ -83,6 +83,6 @@ object AnnotationStore {
                 target,
                 AppJson.encodeToString(ListSerializer(Annotation.serializer()), items),
             )
-        }.onFailure { e -> Logger.w(TAG, "批注持久化失败: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "La persistencia de la anotación falló: ${e.message}") }
     }
 }

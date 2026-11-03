@@ -1,13 +1,13 @@
 package io.zer0.muse.web.a2a
 
 /**
- * AUD-20261011-A2A-PROTOCOL: A2A 任务簿(有界、归属可判定)。
+ * AUD-20261011-A2A-PROTOCOL: A2A libro de tareas(Limitada, la pertenencia se puede determinar.).
  *
- * 抽成独立类以便单测,并解决三处缺陷:
- *  - GetTask 需要按 task id 精确回查(不再误用 JSON-RPC 信封 id);
- *  - CancelTask 必须先判定"这个任务是不是本 handler 的、且还在跑",
- *    否则会无视 taskId 直接停掉用户前台正在进行的生成;
- *  - 任务簿必须有界,避免长跑服务无界增长。
+ * Dividir en clases independientes para pruebas individuales,y resolver tres deficiencias:
+ *  - GetTask Necesidad de verificar con precisión por identificación de tarea(No más uso indebido de sobres JSON-RPC id);
+ *  - CancelTask Primero debe determinar"¿Esta tarea es propiedad de este controlador y todavía se está ejecutando?",
+ *    De lo contrario, se ignorará el taskId y se detendrá directamente la generación en curso en primer plano del usuario.;
+ *  - El libro de tareas debe estar encuadernado.,Evitar el crecimiento desmedido de los servicios de larga distancia.
  */
 internal class A2aTaskRegistry(private val maxEntries: Int = DEFAULT_MAX_ENTRIES) {
 
@@ -16,7 +16,7 @@ internal class A2aTaskRegistry(private val maxEntries: Int = DEFAULT_MAX_ENTRIES
     val size: Int
         get() = synchronized(tasks) { tasks.size }
 
-    /** 记录任务快照(同一 id 重复记录为更新,不重复占位)。 */
+    /** Grabar instantánea de la tarea(Se actualizan los registros duplicados con la misma identificación.,Sin ocupación repetida). */
     fun record(task: A2aTask): A2aTask {
         synchronized(tasks) {
             tasks.remove(task.id)
@@ -31,10 +31,10 @@ internal class A2aTaskRegistry(private val maxEntries: Int = DEFAULT_MAX_ENTRIES
 
     fun get(taskId: String): A2aTask? = synchronized(tasks) { tasks[taskId] }
 
-    /** 是否为本次 A2A 会话登记过的任务(用于取消归属校验)。 */
+    /** ¿Hay alguna tarea registrada para esta sesión A2A?(Se utiliza para cancelar la verificación de propiedad.). */
     fun isOwned(taskId: String): Boolean = synchronized(tasks) { tasks.containsKey(taskId) }
 
-    /** 是否可被取消:必须是本 handler 的、且仍处于 working 的任务。 */
+    /** ¿Se puede cancelar?:Debe ser una tarea de este controlador y seguir funcionando. */
     fun isCancelable(taskId: String): Boolean = get(taskId)?.state == A2aTaskState.WORKING
 
     companion object {

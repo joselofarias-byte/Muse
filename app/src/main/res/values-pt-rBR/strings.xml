@@ -77,7 +77,7 @@
 <!-- Task 1: ASR reconnecting status (WebSocket dropped, exponential backoff reconnect, audio buffered meanwhile) -->
 <string name="voice_reconnecting">Erro de rede, reconectando…</string>
 
-<!-- 前端修复 (i18n-6): stop button a11y label on voice message bar -->
+<!-- Correcciones en la interfaz (i18n-6): stop button a11y label on voice message bar -->
 <string name="voice_stop_recording">Stop recording</string>
     <string name="voice_conversation_cd_idle">Toque para iniciar a conversa</string>
     <string name="voice_conversation_cd_listening">Gravando, toque para interromper</string>
@@ -212,7 +212,7 @@
     <string name="chat_delete_selected_title">Excluir mensagens selecionadas</string>
     <string name="chat_delete_selected_message">Tem certeza de que deseja excluir %1$d mensagens selecionadas? Isto não pode ser desfeito.</string>
     <string name="settings_agent_night_patrol_subtitle">Fora do horário permitido: escrever diário/notas noturnas em silêncio, sem notificações</string>
-    <!-- v1.0.75: AI 朋友圈互动 -->
+    <!-- v1.0.75: AI Interacción en momentos -->
     <string name="moment_sender_user">Eu</string>
     <string name="moment_banner_liked_by">%1$s curtiu sua publicação</string>
     <string name="moment_banner_commented_by">%1$s comentou na sua publicação</string>

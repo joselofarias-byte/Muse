@@ -8,13 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x 导入预热:预算截断与简报的单测。
+ * v2.x Importar calentamiento:Prueba única de recortes presupuestarios y sesiones informativas.
  */
 class WarmupHistoryTest {
     private fun msg(i: Int) = UIMessage(role = MessageRole.USER, content = "m$i")
 
     @Test
-    fun `预算内全量保留`() {
+    fun `Mantenga todo dentro del presupuesto`() {
         val history = (1..5).map { msg(it) }
         val result = WarmupHistory.trimToBudget(history, budgetTokens = 1000) { 100 }
         assertFalse(result.truncated)
@@ -23,7 +23,7 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `超预算从最旧截断且保留最新`() {
+    fun `Por encima del presupuesto, truncar desde el más antiguo y mantener el más nuevo`() {
         val history = (1..10).map { msg(it) }
         val result = WarmupHistory.trimToBudget(history, budgetTokens = 350) { 100 }
         assertTrue(result.truncated)
@@ -33,7 +33,7 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `单条超预算至少保留最新一条`() {
+    fun `Si una sola partida excede el presupuesto, se conservará al menos la última partida.`() {
         val history = (1..3).map { msg(it) }
         val result = WarmupHistory.trimToBudget(history, budgetTokens = 50) { 100 }
         assertTrue(result.truncated)
@@ -42,40 +42,40 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `空历史不截断`() {
+    fun `La historia vacía no se trunca`() {
         val result = WarmupHistory.trimToBudget(emptyList(), budgetTokens = 100) { 100 }
         assertFalse(result.truncated)
         assertTrue(result.history.isEmpty())
     }
 
     @Test
-    fun `预算计算与兜底`() {
+    fun `Cálculo de presupuesto y mochilero.`() {
         assertEquals(4800, WarmupHistory.budgetTokensFor(8000))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.budgetTokensFor(0))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.budgetTokensFor(-1))
     }
 
     @Test
-    fun `简报为系统消息且防认领`() {
+    fun `La sesión informativa es un mensaje del sistema y no se puede reclamar.`() {
         val briefing = WarmupHistory.briefingMessage(truncated = true)
         assertEquals(MessageRole.SYSTEM, briefing.role)
-        assertTrue(briefing.content.contains("导入"))
-        assertTrue(briefing.content.contains("最新"))
-        assertTrue(briefing.content.contains("保留最近部分"))
+        assertTrue(briefing.content.contains("importar"))
+        assertTrue(briefing.content.contains("Lo último"))
+        assertTrue(briefing.content.contains("mantener parte reciente"))
 
         val full = WarmupHistory.briefingMessage(truncated = false)
-        assertFalse(full.content.contains("保留最近部分"))
+        assertFalse(full.content.contains("mantener parte reciente"))
     }
 
     @Test
-    fun `压缩字符预算与预热 token 预算同一口径`() {
-        // 压缩预算与预热预算不再同值：压缩还要扣掉输出预留与安全余量，
-        // 否则模型写完一条长回复就把窗口挤爆。预热预算只负责「装载多少历史」。
+    fun `El presupuesto de caracteres de compresión es el mismo que el presupuesto de token de calentamiento.`() {
+        // El presupuesto de compresión y el presupuesto de calentamiento ya no tienen el mismo valor: la compresión también deduce la reserva de salida y el margen de seguridad.
+        // De lo contrario, el modelo llenará la ventana después de escribir una respuesta larga. El presupuesto de calentamiento sólo es responsable de "cuánto historial cargar".
         assertTrue(
-            "压缩预算必须比预热预算更紧",
+            "El presupuesto de compresión debe ser más ajustado que el presupuesto de calentamiento.",
             WarmupHistory.compressCharBudgetFor(8_000) < WarmupHistory.budgetTokensFor(8_000),
         )
-        // 8000 - 4096(输出预留下限) - 1024(安全余量下限) = 2880
+        // 8000 - 4096(Límite inferior de reserva de salida) - 1024(Límite inferior del margen de seguridad) = 2880
         assertEquals(2_880, WarmupHistory.compressCharBudgetFor(8_000))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.compressCharBudgetFor(0))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.compressCharBudgetFor(-5))

@@ -16,13 +16,13 @@ keystore.properties
 .DS_Store
 Thumbs.db
 
-# 项目文档（仅保留首页 README）
+# Documentación del proyecto (solo se conserva el archivo README de la página de inicio)
 /docs/*
 !/docs/README.md
 !/docs/README_EN.md
 !/docs/ENGINEERING_DISCIPLINE.md
-!/docs/后台保活与进程恢复.md
-!/docs/回归资产清单.md
+!/docs/Mantenimiento de antecedentes y recuperación de procesos.md
+!/docs/Lista de activos de devolución.md
 !/docs/tech-debt-plan.md
 !/docs/refactor-plan-chatviewmodel.md
 !/docs/rebuild/
@@ -31,7 +31,7 @@ Thumbs.db
 !/docs/assets/readme/
 !/docs/assets/readme/**
 
-# 贡献/安全/计划文档（项目代码不包含这些）
+# Contribuir/seguro/Documentos de planificación (estos no están incluidos en el código del proyecto)
 CONTRIBUTING.md
 !/CONTRIBUTING.md
 SECURITY.md
@@ -39,7 +39,7 @@ Muse_Product_Enhancement_Plan.md
 _skill_existing.txt
 report_*.txt
 
-# 临时文件
+# archivos temporales
 compile_log2.txt
 __pycache__/
 *.pyc
@@ -51,32 +51,32 @@ build_output*.txt
 build-*.txt
 .tmp/
 
-# 测试数据库产物
+# Producto de base de datos de prueba
 *.db
 *.db-wal
 *.db-shm
 
-# 软著申请材料
-软件著作权申请材料/
+# Materiales de aplicación suaves
+Materiales de aplicación de derechos de autor del software/
 
-# 发布 APK 不入库(仅挂 GitHub Release 附件)
+# El APK publicado no está incluido en la base de datos.(Cuelgue solo archivos adjuntos de versión de GitHub)
 releases/**/*.apk
 
-# F-05: 发布 manifest 为构建产物(每次构建生成,不入库)
+# F-05: Publicar el manifiesto como un producto de compilación.(Cada construcción genera,No almacenado en el almacén.)
 release/
 
-# README 预览产物(gen_preview.py 随时重新生成,不入库)
+# README Vista previa del producto(gen_preview.py Regenerar en cualquier momento,No almacenado en el almacén.)
 docs/assets/readme/preview.html
 docs/assets/readme/preview-*.png
 
-# CMake 构建产物(终端二期原生构建)
+# CMake Construir producto(Terminal Fase 2 Construcción Nativa)
 .cxx/
 **/.cxx/
 
-# P0 内置运行时产物(由 tools/runtime-pack 脚本生成；分发走独立资产渠道,不入库)
+# P0 Productos de tiempo de ejecución integrados(Generado por herramientas/script de paquete de tiempo de ejecución; distribuido a través de canales de activos independientes,No almacenado en el almacén.)
 app/src/main/jniLibs/
 app/src/main/assets/muse-runtime-assets.zip
-# v2.7 内置 Python 运行时产物(由 tools/python-pack 脚本生成；同上不入库)
+# v2.7 Artefactos de tiempo de ejecución de Python integrados(Generado por el script tools/python-pack; Lo mismo que el anterior pero no incluido en la biblioteca.)
 app/src/main/assets/muse-python-assets.zip
-# ktlint 工具在工作目录生成的临时基线（真实基线在 <module>/ktlint-baseline.xml）
+# ktlint La línea base temporal generada por la herramienta en el directorio de trabajo (la línea base real está en <module>/ktlint-baseline.xml)
 app/config/

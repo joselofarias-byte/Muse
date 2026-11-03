@@ -23,10 +23,10 @@ import java.nio.file.Files
 import java.util.UUID
 
 /**
- * `message.delete` / `message.favorite` 落到仓储之后的实际效果。
+ * `message.delete` / `message.favorite` El efecto real después de caer en el almacén.
  *
- * 命令层的测试用假仓库验规则，这里用真 Room + 真 [MessageImageStore] 验“删干净了没”：
- * 消息行消失之外，消息的图片文件（含 Web 端为内联 base64 生成的 `{id}_inline_*`）也要跟着走。
+ * La prueba de la capa de comando utiliza un almacén falso para probar las reglas. Aquí, use true Room + true. [MessageImageStore] prueba“¿Lo has eliminado?”:
+ * Además de que la línea del mensaje desaparezca, el archivo de imagen del mensaje (incluido el generado por el lado web para base64 en línea) `{id}_inline_*`) debería hacer lo mismo.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -40,8 +40,8 @@ class HostMessageWritePersistenceTest {
     @Before
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(context, MuseDb::class.java).build()
-        // messages_fts 不在 Room 的 entities 里（FTS 虚拟表由 MuseDb 的建库回调创建），
-        // 内存库不会跑那些回调，这里按同一份 DDL 补上，否则删除时的 FTS 同步会报 no such table。
+        // messages_fts No en las entidades de Room (FTS La tabla virtual se crea mediante la devolución de llamada de creación de base de datos de MuseDb).
+        // La biblioteca de memoria no ejecutará esas devoluciones de llamada. Se completan con el mismo DDL. De lo contrario, la sincronización FTS durante la eliminación no informará dicha tabla.
         database.openHelper.writableDatabase.execSQL(
             "CREATE VIRTUAL TABLE IF NOT EXISTS `messages_fts` USING FTS4(`message_id` TEXT, `content_ngram` TEXT)",
         )
@@ -61,7 +61,7 @@ class HostMessageWritePersistenceTest {
         messageImageStore = MessageImageStore(imageDir),
     )
 
-    /** 先建会话再塞消息（messages 对 sessions 有外键）。 */
+    /** Primero cree una sesión y luego inserte el mensaje (messages tiene una clave externa para las sesiones). */
     private suspend fun seedSession(sessionId: String = SESSION_ID) {
         val now = 1_000L
         database.sessionDao().insert(
@@ -80,7 +80,7 @@ class HostMessageWritePersistenceTest {
             id = id,
             sessionId = sessionId,
             role = "assistant",
-            content = "内容",
+            content = "contenido",
             createdAt = 2_000L,
         )
         database.messageDao().upsert(entity)
@@ -99,9 +99,9 @@ class HostMessageWritePersistenceTest {
 
         repository().deleteMessage(id)
 
-        assertNull("消息行必须消失", database.messageDao().getByMessageId(id))
-        assertTrue("普通落盘图必须被清理", !plain.exists())
-        assertTrue("内联落盘图（{id}_inline_*）必须被清理", !inline.exists())
+        assertNull("La línea del mensaje debe desaparecer.", database.messageDao().getByMessageId(id))
+        assertTrue("Se deben borrar los cuadros de colocación ordinarios.", !plain.exists())
+        assertTrue("Gráfico de ubicación en línea ({id}_inline_*) debe ser aclarado", !inline.exists())
     }
 
     @Test
@@ -125,7 +125,7 @@ class HostMessageWritePersistenceTest {
 
         repository.setMessageFavorite(id, true)
         assertEquals(true, database.messageDao().getByMessageId(id)?.favorite)
-        // 同一状态再设一次不报错、不翻转。
+        // Si se vuelve a establecer el mismo estado, no se informará ni se invertirá ningún error.
         repository.setMessageFavorite(id, true)
         assertEquals(true, database.messageDao().getByMessageId(id)?.favorite)
 

@@ -35,18 +35,18 @@ import io.zer0.muse.ui.theme.MuseShapes
 import org.koin.compose.koinInject
 
 /**
- * v2.x: 消息流内的表情包卡片 —— 只渲染图片本身(无气泡/无文字/无边框)。
+ * v2.x: Tarjetas de emoticonos en el flujo de noticias. —— Sólo renderiza la imagen en sí.(Sin burbujas de aire/Sin texto/Sin fronteras).
  *
- * 设计要点:
- *  - 分类容错解析:模型写错分类名时降级忽略(整个卡片不渲染,不占位不报错)
- *  - 种子随机:同一 [seed] 稳定选同一张(重进会话/重组不跳变)
- *  - 点击全屏查看(复用 [FullScreenMediaViewer],与设置页预览同一交互)
- *  - 动图(GIF/WebP)由全局 Coil ImageLoader 的 GifDecoder 自动播放
+ * Puntos de diseño:
+ *  - Análisis de tolerancia a fallos de clasificación.:El modelo se degradará y se ignorará si se escribe un nombre de clasificación incorrecto.(No se renderiza toda la tarjeta.,No hay espacio ocupado y no se reporta ningún error)
+ *  - Semilla aleatoria:mismo [seed] Elige el mismo consistentemente(Reingresar a la sesión/La reorganización no salta)
+ *  - Haga clic para ver en pantalla completa(Reutilizar [FullScreenMediaViewer],Misma interacción que la vista previa de la página de configuración)
+ *  - GIF(GIF/WebP)Reproducido automáticamente por el GifDecoder del Coil ImageLoader global
  */
 @Composable
 internal fun StickerMessageCard(category: String, seed: Long, modifier: Modifier = Modifier) {
     val repo: StickerLibraryRepository = koinInject()
-    // 容错解析分类 + 种子选取;分类不存在/为空 → item 为 null → 不渲染
+    // Clasificación de análisis tolerante a fallos + selección de semillas;La categoría no existe/esta vacio → item para null → no renderizar
     val item by
         produceState<StickerItem?>(initialValue = null, category, seed) {
             value =
@@ -67,9 +67,9 @@ internal fun StickerMessageCard(category: String, seed: Long, modifier: Modifier
 
     var previewing by remember { mutableStateOf(false) }
     val painter = rememberAsyncImagePainter(model = file)
-    // v2.2.0: 修复 "Size is unspecified" 崩溃 — 旧注释假设 Unspecified 时宽高为 NaN,
-    // 但部分 Compose 版本的 Size.width 访问器对 Unspecified 直接抛 IllegalStateException。
-    // 用 runCatching + isSpecified 双重防护: 任何异常回退 1f(方形占位), 渲染不再中断。
+    // v2.2.0: Reparación "Size is unspecified" colapsar — El comentario anterior supone que cuando no se especifica, el ancho y el alto son NaN,
+    // Sin embargo, algunas versiones Compose del descriptor de acceso Size.width lanzan directamente IllegalStateException para No especificado.
+    // Utilice runCatching + isSpecified para doble protección: Cualquier excepción de reserva 1f(marcador de posición cuadrado), El renderizado ya no se interrumpe.
     val ratio = runCatching {
         val size = painter.intrinsicSize
         if (size.isSpecified && size.width > 0f && size.height > 0f) {
@@ -103,11 +103,11 @@ internal fun StickerMessageCard(category: String, seed: Long, modifier: Modifier
 }
 
 /**
- * v2.x: 带表情标记的 Markdown 正文。
+ * v2.x: Texto de rebajas con emoticones.
  *
- * 把正文按 `[[sticker:分类名]]` 切成"文本段 + 表情段"逐段渲染;
- * 无标记时直通 [MarkdownText](行为与旧版完全一致,零额外开销);
- * 末尾未闭合标记由 [StickerMarkup.split] 吞掉,流式时不会露出半截文本。
+ * Presiona el texto `[[sticker:Nombre de categoría]]` cortar en"Segmento de texto + segmento de emoticones"Renderizado pieza por pieza;
+ * Paso cuando no está marcado [MarkdownText](El comportamiento es exactamente el mismo que la versión anterior.,Cero gastos generales adicionales);
+ * La marca final sin cerrar viene dada por [StickerMarkup.split] tragar,Ninguna mitad del texto quedará expuesta durante la transmisión.
  */
 @Composable
 internal fun StickerAwareMarkdownBody(
@@ -122,7 +122,7 @@ internal fun StickerAwareMarkdownBody(
     onLongPressOutside: (() -> Unit)? = null,
     onHtmlPreview: (String) -> Unit = {},
     onCardAction: ((CardAction) -> Unit)? = null,
-    /** v2.6.13: 卡片身份（聊天场景传消息 id）；必须直通到每段 MarkdownText。 */
+    /** v2.6.13: Identidad de la tarjeta (identificación del mensaje en la escena del chat); debe pasarse a cada segmento de MarkdownText. */
     cardId: String? = null,
 ) {
     val segments = remember(text) { StickerMarkup.split(text) }

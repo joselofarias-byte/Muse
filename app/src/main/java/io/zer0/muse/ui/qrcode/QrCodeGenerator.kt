@@ -12,39 +12,39 @@ import io.zer0.common.AppJson
 import io.zer0.common.Logger
 
 /**
- * v1.97: 二维码工具 — Provider 配置的二维码生成与解析。
+ * v1.97: herramienta de código QR — Provider Generación y análisis de códigos QR configurados.
  *
- * 格式:
+ * Formato:
  * ```
  * ai-provider:v1:<Base64(JSON(ProviderConfig))>
  * ```
  *
- * 用法:
+ * Uso:
  * ```
- * // 生成二维码
+ * // Generar código QR
  * val bitmap = QrCodeGenerator.generateProviderQr(providerConfig, size = 600)
  *
- * // 解析二维码内容
+ * // Analizar el contenido del código QR
  * val provider = QrCodeGenerator.parseProviderQr(qrContent)
  * ```
  *
- * 安全提示:二维码包含 apiKey 明文,扫描后请仅分享给信任的接收方。
+ * Consejos de seguridad:El código QR contiene texto sin formato apiKey,Después de escanear, compártalo solo con destinatarios confiables.
  */
 object QrCodeGenerator {
 
     private const val TAG = "QrCodeGenerator"
 
-    /** 二维码前缀,标识 Provider 配置版本。 */
+    /** Prefijo del código QR,Identifica la versión de configuración del proveedor. */
     private const val QR_PREFIX = "ai-provider:v1:"
 
-    /** 默认二维码尺寸(像素)。 */
+    /** Tamaño de código QR predeterminado(Píxel). */
     const val DEFAULT_QR_SIZE = 600
 
     /**
-     * 把 ProviderConfig 编码为二维码字符串。
+     * Codifique ProviderConfig en una cadena de código QR.
      *
-     * @param config Provider 配置
-     * @return 形如 "ai-provider:v1:<Base64>" 的字符串
+     * @param config Provider Configuración
+     * @return en forma de "ai-provider:v1:<Base64>" cadena
      */
     fun encodeProvider(config: ProviderConfig): String {
         val json = AppJson.encodeToString(ProviderConfig.serializer(), config)
@@ -53,11 +53,11 @@ object QrCodeGenerator {
     }
 
     /**
-     * 生成 Provider 配置的二维码 Bitmap。
+     * Generar un mapa de bits de código QR de la configuración del proveedor.
      *
-     * @param config Provider 配置
-     * @param size 二维码尺寸(像素,默认 600)
-     * @return Bitmap;失败返回 null
+     * @param config Provider Configuración
+     * @param size Tamaño del código QR(Píxel,Predeterminado 600)
+     * @return Bitmap;Retorno del fracaso null
      */
     fun generateProviderQr(config: ProviderConfig, size: Int = DEFAULT_QR_SIZE): Bitmap? {
         val content = encodeProvider(config)
@@ -65,11 +65,11 @@ object QrCodeGenerator {
     }
 
     /**
-     * 生成任意文本的二维码 Bitmap。
+     * Generar código QR Mapa de bits de texto arbitrario.
      *
-     * @param content 文本内容
-     * @param size 二维码尺寸(像素)
-     * @return Bitmap;失败返回 null
+     * @param content contenido del texto
+     * @param size Tamaño del código QR(Píxel)
+     * @return Bitmap;Retorno del fracaso null
      */
     fun generateQrBitmap(content: String, size: Int): Bitmap? {
         if (content.isEmpty()) return null
@@ -92,24 +92,24 @@ object QrCodeGenerator {
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
                 setPixels(pixels, 0, width, 0, 0, width, height)
             }.also { result ->
-                // 调用方使用完后应 recycle(详见 QrCodeDialogs 中 generateQrBitmap 调用点)
+                // La persona que llama debe recycle(Para obtener más información, consulte el punto de llamada generateQrBitmap en QrCodeDialogs.)
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "生成二维码失败: ${e.message}", e)
+            Logger.e(TAG, "No se pudo generar el código QR: ${e.message}", e)
             null
         }
     }
 
     /**
-     * 解析二维码字符串为 ProviderConfig。
+     * Analice la cadena del código QR en ProviderConfig.
      *
-     * @param content 二维码扫描结果
-     * @return ProviderConfig;格式不匹配或解析失败返回 null
+     * @param content Resultados del escaneo del código QR
+     * @return ProviderConfig;Devuelto si el formato no coincide o falla el análisis null
      */
     fun parseProviderQr(content: String): ProviderConfig? {
         val trimmed = content.trim()
         if (!trimmed.startsWith(QR_PREFIX)) {
-            Logger.w(TAG, "二维码前缀不匹配,期望 '$QR_PREFIX'")
+            Logger.w(TAG, "El prefijo del código QR no coincide,Expectativa '$QR_PREFIX'")
             return null
         }
         val base64 = trimmed.removePrefix(QR_PREFIX)
@@ -117,13 +117,13 @@ object QrCodeGenerator {
             val json = String(Base64.decode(base64, Base64.DEFAULT), Charsets.UTF_8)
             AppJson.decodeFromString(ProviderConfig.serializer(), json)
         } catch (e: Exception) {
-            Logger.w(TAG, "解析 Provider 二维码失败", e)
+            Logger.w(TAG, "No se pudo analizar el código QR del proveedor", e)
             null
         }
     }
 
     /**
-     * 判断字符串是否为 Provider 二维码格式。
+     * Determine si la cadena está en formato de código QR del proveedor.
      */
     fun isProviderQr(content: String): Boolean {
         return content.trim().startsWith(QR_PREFIX)

@@ -3,9 +3,9 @@ package io.zer0.muse.data.experience
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.98: 经验库仓库 — 提供 CRUD + observeAll。
+ * v1.98: Almacén de bases de datos de experiencias — Proporcionar CRUD + observar todo.
  *
- * 注入到 SystemPromptAssembler(经验注入)、MemoryViewModel(UI 展示)、ChatViewModel(手动 CRUD)。
+ * inyectar en SystemPromptAssembler(experimentar la infusión),MemoryViewModel(UI mostrar),ChatViewModel(manuales CRUD).
  */
 class ExperienceRepository(
     private val dao: ExperienceDao,

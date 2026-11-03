@@ -1,9 +1,9 @@
 package io.zer0.muse.miniphone.ui.moments
 
 /**
- * 朋友圈页元素的稳定标签,供自动化测试定位。
+ * Etiquetas estables para elementos de la página del círculo de amigos,Para posicionamiento de prueba automatizado.
  *
- * 与文案分开:改标题、换提示语都不会让测试失效。
+ * separado de la redacción:Cambiar el título o el mensaje no invalidará la prueba.
  */
 internal object MiniPhoneMomentsTags {
     const val ROOT = "mp-moments-root"
@@ -54,7 +54,7 @@ internal object MiniPhoneMomentsTags {
 
     fun replyTime(replyId: String): String = "mp-moment-reply-time-$replyId"
 
-    /** 只有自己写的评论才有的「删除」入口与它的确认框。 */
+    /** Sólo los comentarios escritos por usted mismo tienen una entrada \"eliminar\" y su cuadro de confirmación. */
     const val COMMENT_MENU_ACTION = "mp-moment-comment-menu-delete"
     const val COMMENT_DELETE_DIALOG = "mp-moment-comment-delete-dialog"
     const val COMMENT_DELETE_CONFIRM = "mp-moment-comment-delete-confirm"

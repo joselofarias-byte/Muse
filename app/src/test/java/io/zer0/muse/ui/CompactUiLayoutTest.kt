@@ -132,7 +132,7 @@ class CompactUiLayoutTest {
             }
         }
         compose.onNodeWithText("Sheet body").assertIsDisplayed()
-        // 长内容由同一窗口的有限高度滚动视口处理；测量过程不得出现无限约束崩溃。
+        // El contenido extenso se maneja mediante una ventana gráfica de desplazamiento de altura finita de la misma ventana; el proceso de medición no debe chocar con restricciones infinitas.
         val body = compose.onNodeWithTag("sheet-long-content", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         assertTrue(body.height > 0f)
     }

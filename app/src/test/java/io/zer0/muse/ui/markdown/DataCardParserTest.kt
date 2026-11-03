@@ -7,60 +7,60 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.0.53: DataCardParser 单元测试(指南 Phase 5 验收用例)。
+ * v1.0.53: DataCardParser Pruebas unitarias(Guía de casos de uso de aceptación de la fase 5).
  */
 class DataCardParserTest {
 
     @Test
-    fun `合法 bar 卡片解析成功`() {
+    fun `Tarjeta de registro legal analizada con éxito`() {
         val md = """
-            以下是数据:
+            Los siguientes son los datos:
             ```card
-            {"type":"bar","title":"本周消息量","labels":["一","二","三"],"values":[12,30,18]}
+            {"type":"bar","title":"Volumen de noticias esta semana","labels":["uno","dos","tres"],"values":[12,30,18]}
             ```
         """.trimIndent()
         val card = DataCardParser.parse(md)
         assertTrue(card != null)
         assertEquals("bar", card?.type)
-        assertEquals("本周消息量", card?.title)
+        assertEquals("Volumen de noticias esta semana", card?.title)
         assertEquals(3, card?.labels?.size)
         assertEquals(12f, card?.values?.get(0))
     }
 
     @Test
-    fun `line 与 donut 卡片也支持`() {
+    fun `line También compatible con tarjetas de donas.`() {
         assertTrue(DataCardParser.parseJson("""{"type":"line","labels":["a","b"],"values":[1,2]}""") != null)
         assertTrue(DataCardParser.parseJson("""{"type":"donut","labels":["a","b"],"values":[1,2]}""") != null)
     }
 
     @Test
-    fun `非法 JSON 返回 null`() {
+    fun `Devolución JSON ilegal null`() {
         assertNull(DataCardParser.parseJson("""{invalid json"""))
     }
 
     @Test
-    fun `不支持的图表类型返回 null`() {
+    fun `Se devolvió el tipo de gráfico no admitido null`() {
         assertNull(DataCardParser.parseJson("""{"type":"pie","labels":["a"],"values":[1]}"""))
     }
 
     @Test
-    fun `labels 与 values 数量不一致返回 null`() {
+    fun `labels Devuelve inconsistente con el número de valores. null`() {
         assertNull(DataCardParser.parseJson("""{"type":"bar","labels":["a","b"],"values":[1]}"""))
     }
 
     @Test
-    fun `空值列表返回 null`() {
+    fun `Devuelve una lista de valores vacíos. null`() {
         assertNull(DataCardParser.parseJson("""{"type":"bar","labels":[],"values":[]}"""))
     }
 
     @Test
-    fun `无卡片块返回 null`() {
-        assertNull(DataCardParser.parse("# 普通文档\n没有卡片"))
+    fun `No se devolvió ningún bloque de tarjeta null`() {
+        assertNull(DataCardParser.parse("# documento ordinario\nsin tarjeta"))
     }
 
     @Test
-    fun `containsCardBlock 检测`() {
+    fun `containsCardBlock Detección`() {
         assertTrue(DataCardParser.containsCardBlock("```card\n{}```"))
-        assertFalse(DataCardParser.containsCardBlock("普通文本"))
+        assertFalse(DataCardParser.containsCardBlock("texto normal"))
     }
 }

@@ -7,16 +7,16 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * QuickMessage(快捷消息)实体 — Phase 8.5。
+ * QuickMessage(mensaje rapido)entidad — Phase 8.5.
  *
- * 独立编写实现: 预设消息模板,用户可一键插入输入框。
- * - 全局快捷消息(scope="global"): 所有 Assistant 共享
- * - Assistant 绑定快捷消息(scope="assistant"): 通过 Assistant.quickMessageIdsJson 关联
+ * Escritura e implementación independientes.: Plantilla de mensaje predeterminada,Los usuarios pueden insertar cuadros de entrada con un solo clic.
+ * - Mensaje rápido global(scope="global"): Compartido por todos los asistentes.
+ * - Assistant Vincular mensaje rápido(scope="assistant"): Relevante a través de Assistant.quickMessageIdsJson
  *
- * Phase 8.5 修复: 所有 NOT NULL 字段加 @ColumnInfo(defaultValue=...) 与 MIGRATION_4_5 SQL 对齐。
+ * Phase 8.5 Reparación: Todos los campos NO NULOS más @ColumnInfo(defaultValue=...) Alineado con MIGRATION_4_5 SQL.
  *
- * M-QM1: 加 @Index(scope, assistantId, enabled) 加速 observeForAssistant 查询
- * (WHERE scope='global' OR (scope='assistant' AND assistantId=:id)) AND enabled=1。
+ * M-QM1: agregar @Index(scope, assistantId, enabled) Acelerar las consultas de observeForAssistant
+ * (WHERE scope='global' OR (scope='assistant' AND assistantId=:id)) AND enabled=1.
  */
 @Serializable
 @Entity(

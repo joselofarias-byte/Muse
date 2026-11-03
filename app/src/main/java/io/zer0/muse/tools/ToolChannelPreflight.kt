@@ -1,28 +1,28 @@
 package io.zer0.muse.tools
 
 /**
- * 工具执行前的通道预检。
+ * Verificación previa del canal antes de la ejecución de la herramienta.
  *
- * ## 为什么需要它
+ * ## por qué es necesario
  *
- * 助手自审第 4 条：「无障碍 / Shizuku / Root 三档通道未就绪时，工具是快速失败，
- * 但失败信息和『该怎么开通』之间没衔接。用户看到报错往往不知道下一步去哪开。」
+ * Artículo 4 de autoevaluación del asistente: "Cuando el canal de tercer nivel Accesibilidad/Shizuku/Root no está listo, la herramienta fallará rápidamente.
+ * Pero no existe ninguna conexión entre el mensaje de error y "cómo activar". Cuando los usuarios ven un informe de error, a menudo no saben a dónde ir a continuación. "
  *
- * 现状：`ToolRequirements` 已经声明了每个工具依赖哪条通道，`tool_status` 也会用，
- * 但**执行路径不用**。于是模型照常调用、工具照常失败，返回的是底层报错
- * （「无障碍服务未连接」之类），既不告诉模型该换路，也不告诉用户去哪开。
+ * Estado actual:`ToolRequirements` Se ha declarado de qué canal depende cada herramienta,`tool_status` También lo usaré,
+ * pero**La ruta de ejecución no se utiliza**. Entonces, el modelo se llama como de costumbre, la herramienta falla como de costumbre y se devuelve el error subyacente.
+ * ("Servicio de accesibilidad no conectado", etc.), sin indicarle al modelo que cambie de carretera ni indicarle al usuario adónde ir.
  *
- * 这里把预检做成执行前的一道闸：通道缺失时不执行工具，直接返回带开通路径的结果。
- * 注意预检**不替代**执行时的权限判断（TOCTOU：用户可能在预检之后才撤销授权），
- * 它只是把注定失败的调用提前变成一句可执行的话。
+ * Aquí, la verificación previa se realiza como una puerta antes de la ejecución: la herramienta no se ejecutará cuando falte el canal y el resultado con la ruta abierta se devolverá directamente.
+ * Preste atención a la verificación previa**Sin reemplazo**Juicio de permiso durante la ejecución (TOCTOU: El usuario podrá revocar la autorización después de una verificación previa),
+ * Simplemente convierte una decisión condenada al fracaso en una sentencia ejecutable de antemano.
  */
 object ToolChannelPreflight {
 
     /**
-     * 从 AutomationManager 读出当前就绪的通道。
+     * Lea los canales actualmente listos desde AutomationManager.
      *
-     * 只覆盖三档「设备控制」通道 —— 运行时权限（联系人/短信/定位…）在这里不做探测：
-     * 它们由各工具在执行时自行检查并返回明确错误，预检再加一层反而会重复且容易误判。
+     * Solo cubre tres niveles de canales de "control de dispositivos" —— Permisos de tiempo de ejecución (Contacto/SMS/Posicionamiento…) Aquí no se realiza ningún sondeo:
+     * Cada herramienta los verifica durante la ejecución y se devuelven errores claros. Agregar una capa de verificación previa será repetitivo y propenso a errores de juicio.
      */
     suspend fun channelsOf(automation: io.zer0.muse.automation.core.AutomationManager): Set<ToolRequirements.Channel> {
         val state = automation.refreshPermissions()
@@ -33,20 +33,20 @@ object ToolChannelPreflight {
         }
     }
 
-    /** 预检结论。 */
+    /** Conclusión previa al examen. */
     sealed interface Result {
-        /** 可以执行。 */
+        /** Se puede ejecutar. */
         data object Proceed : Result
 
-        /** 缺通道，不该执行。 */
+        /** Falta el canal y no debe ejecutarse. */
         data class Blocked(val missing: Set<ToolRequirements.Channel>, val message: String) : Result
     }
 
     /**
-     * 预检。
+     * Prevuelo.
      *
-     * @param toolName 工具名
-     * @param availableChannels 当前就绪通道；**null 表示宿主没提供信息，跳过预检**
+     * @param toolName Nombre de la herramienta
+     * @param availableChannels Canal listo actual;**null Indica que el anfitrión no proporciona información y se salta la verificación previa.**
      */
     fun check(toolName: String, availableChannels: Set<ToolRequirements.Channel>?): Result {
         val req = ToolRequirements.of(toolName)
@@ -59,14 +59,14 @@ object ToolChannelPreflight {
     }
 
     /**
-     * v2.6.7 fix (AUDIT F3): 生产路径入口 —— 只对「宿主真会上报」的通道下结论。
+     * v2.6.7 fix (AUDIT F3): Entrada a la ruta de producción —— Saque conclusiones únicamente en el canal donde "el presentador realmente lo informará".
      *
-     * [channelsOf] 只探测无障碍 / Shell / Root 三档。联系人、短信、日历、
-     * 定位、使用情况、通知使用权等从未进入该集合；若把它们当作「缺失」，
-     * 这些工具会在用户已授权的情况下被恒拦，且重试也不会变好。
+     * [channelsOf] Sólo se detectan tres niveles de Accesibilidad/Shell/Root. Contactos, mensajes de texto, calendario,
+     * Los derechos de posicionamiento, uso, uso de notificaciones, etc. nunca han entrado en la colección; si se consideran "desaparecidos",
+     * Estas herramientas siempre estarán bloqueadas si el usuario las ha autorizado y volver a intentarlo no mejorará.
      *
-     * 这些通道的判定交给已有真源：`ToolRegistry.permissionStatusProvider`
-     * 与各工具自己的执行时检查。
+     * La determinación de estos canales se deja a la verdadera fuente existente:`ToolRegistry.permissionStatusProvider`
+     * con las propias comprobaciones del tiempo de ejecución de cada herramienta.
      */
     fun checkPreflightable(toolName: String, availableChannels: Set<ToolRequirements.Channel>?): Result {
         val req = ToolRequirements.of(toolName)
@@ -75,7 +75,7 @@ object ToolChannelPreflight {
         } else {
             val probeableAllOf = req.allOf.filter { it in PREFLIGHT_CHANNELS }.toSet()
             val probeableAnyOf = req.anyOf.filter { it in PREFLIGHT_CHANNELS }.toSet()
-            // 要求里没有任何可探测通道 → 交回工具自身检查（missing 为 null）。
+            // No hay canales detectables en la solicitud. → Devuelva la herramienta para su autoinspección (missing es nulo).
             if (probeableAllOf.isEmpty() && probeableAnyOf.isEmpty()) {
                 null
             } else {
@@ -85,7 +85,7 @@ object ToolChannelPreflight {
         return missing?.let { Result.Blocked(it, buildMessage(toolName, it)) } ?: Result.Proceed
     }
 
-    /** 只对可探测通道算缺失集；满足时返回 null。 */
+    /** Sólo se cuentan los conjuntos faltantes para los canales detectables; Se devuelve null cuando está satisfecho. */
     private fun missingOf(
         probeableAllOf: Set<ToolRequirements.Channel>,
         probeableAnyOf: Set<ToolRequirements.Channel>,
@@ -97,14 +97,14 @@ object ToolChannelPreflight {
         return if (anyUnsatisfied) probeableAnyOf else null
     }
 
-    /** 预检能够下结论的通道 —— 必须与 [channelsOf] 的上报范围保持一致。 */
+    /** Examen previo de canales que pueden sacar conclusiones. —— debe ser con [channelsOf] El alcance de los informes sigue siendo consistente. */
     private val PREFLIGHT_CHANNELS: Set<ToolRequirements.Channel> = setOf(
         ToolRequirements.Channel.ACCESSIBILITY,
         ToolRequirements.Channel.SHELL,
         ToolRequirements.Channel.ROOT,
     )
 
-    /** 缺哪些通道。allOf 缺任一即失败；anyOf 全缺才算失败。 */
+    /** ¿Qué canales faltan?allOf Faltar a cualquiera significa fracaso;anyOf Una falta total se considera un fracaso. */
     private fun missingChannels(
         req: ToolRequirements.Requirement,
         available: Set<ToolRequirements.Channel>,
@@ -116,45 +116,45 @@ object ToolChannelPreflight {
     }
 
     /**
-     * 拼给模型看的失败说明。
+     * La descripción del fallo se muestra al modelo.
      *
-     * 三个要素：缺什么、去哪开、现在能做什么替代。最后一条很关键 ——
-     * 只说「不可用」会让模型反复试，给了替代路径它才知道该怎么继续。
+     * Tres elementos: qué falta, dónde abrirlo y qué se puede reemplazar ahora. El último es crucial. ——
+     * Simplemente decir "no disponible" hace que el modelo lo intente una y otra vez, hasta que sepa cómo proceder cuando se le presente una ruta alternativa.
      */
     private fun buildMessage(toolName: String, missing: Set<ToolRequirements.Channel>): String {
-        val labels = missing.joinToString("、") { it.openHint() }
+        val labels = missing.joinToString(",") { it.openHint() }
         val alternatives = missing.flatMap { it.alternatives() }.distinct()
         return buildString {
-            append("[通道未就绪] 工具 $toolName 依赖的设备通道当前不可用：$labels。")
-            append("本次未执行，重试不会让它变可用。")
+            append("[canal no listo] Herramientas $toolName El canal del dispositivo dependiente no está disponible actualmente:$labels.")
+            append("Esta vez no se ejecutó y al volver a intentarlo no estará disponible.")
             if (alternatives.isNotEmpty()) {
-                append("可以先改用：${alternatives.joinToString("、")}；")
+                append("Primero puedes usar:${alternatives.joinToString(",")};")
             }
-            append("或请用户在设置中开通对应通道后重新调用 tool_status 确认。")
+            append("O pídale al usuario que abra el canal correspondiente en la configuración y llame a tool_status nuevamente para confirmar.")
         }
     }
 
-    /** 通道 → 面向用户的名称 + 开通路径。 */
+    /** canal → Nombre de cara al usuario + ruta de aprovisionamiento. */
     private fun ToolRequirements.Channel.openHint(): String = when (this) {
-        ToolRequirements.Channel.ACCESSIBILITY -> "无障碍服务（设置 → 辅助功能 → 已下载的服务 → Muse）"
-        ToolRequirements.Channel.SHELL -> "Shizuku / ADB 授权（设置 → 高级 → Shizuku）"
-        ToolRequirements.Channel.ROOT -> "Root 权限"
-        ToolRequirements.Channel.USAGE_STATS -> "使用情况访问（设置 → 应用 → 特殊权限）"
-        ToolRequirements.Channel.NOTIFICATION_LISTENER -> "通知使用权（设置 → 通知 → 通知使用权）"
-        ToolRequirements.Channel.CONTACTS -> "联系人权限"
-        ToolRequirements.Channel.SMS -> "短信权限"
-        ToolRequirements.Channel.PHONE_CALL -> "电话权限"
-        ToolRequirements.Channel.CALENDAR -> "日历权限"
-        ToolRequirements.Channel.LOCATION -> "定位权限"
-        ToolRequirements.Channel.RUNTIME -> "运行时权限"
+        ToolRequirements.Channel.ACCESSIBILITY -> "Servicios de accesibilidad (Configuración → Accesibilidad → Servicios descargados → Muse)"
+        ToolRequirements.Channel.SHELL -> "Shizuku / ADB Autorización (configuraciones → Avanzado → Shizuku)"
+        ToolRequirements.Channel.ROOT -> "Root Permisos"
+        ToolRequirements.Channel.USAGE_STATS -> "Acceso de uso (configuraciones → Solicitud → permisos especiales)"
+        ToolRequirements.Channel.NOTIFICATION_LISTENER -> "Acceso a notificaciones (configuraciones → Notificación → Aviso de derechos de uso)"
+        ToolRequirements.Channel.CONTACTS -> "Permisos de contacto"
+        ToolRequirements.Channel.SMS -> "Permisos de SMS"
+        ToolRequirements.Channel.PHONE_CALL -> "Permisos telefónicos"
+        ToolRequirements.Channel.CALENDAR -> "Permisos de calendario"
+        ToolRequirements.Channel.LOCATION -> "Permisos de ubicación"
+        ToolRequirements.Channel.RUNTIME -> "permisos de tiempo de ejecución"
     }
 
-    /** 该通道缺位时模型可用的替代手段（写具体工具名，别说空话）。 */
+    /** Medios alternativos disponibles para el modelo en ausencia de este canal (escriba nombres de herramientas específicos, no se limite a decir palabras vacías). */
     private fun ToolRequirements.Channel.alternatives(): List<String> = when (this) {
-        ToolRequirements.Channel.ACCESSIBILITY -> listOf("ui_screenshot（若 Shell 可用）", "shell 系工具（若已授权）")
-        ToolRequirements.Channel.SHELL -> listOf("无障碍系工具（若已开启）")
-        ToolRequirements.Channel.ROOT -> listOf("Shell / 无障碍系工具（若已就绪）")
-        ToolRequirements.Channel.USAGE_STATS -> listOf("current_status（查看前台应用的应用内替代）")
+        ToolRequirements.Channel.ACCESSIBILITY -> listOf("ui_screenshot(si Shell está disponible)", "shell Herramientas del sistema (si están autorizadas)")
+        ToolRequirements.Channel.SHELL -> listOf("Herramientas de accesibilidad (si están activadas)")
+        ToolRequirements.Channel.ROOT -> listOf("Shell / Herramientas de accesibilidad (si están listas)")
+        ToolRequirements.Channel.USAGE_STATS -> listOf("current_status(Ver reemplazos en aplicaciones para aplicaciones en primer plano)")
         else -> emptyList()
     }
 }

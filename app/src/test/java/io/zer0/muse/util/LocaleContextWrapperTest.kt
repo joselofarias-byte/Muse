@@ -17,23 +17,23 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.7 回归：[LocaleContextWrapper] 必须让非 Activity context 启动 Activity 不崩。
+ * v2.7 Retorno:[LocaleContextWrapper] Es necesario evitar que la Actividad falle cuando se inicia en un contexto que no es de Actividad.
  *
- * ## 复现的崩溃
+ * ## accidente recurrente
  *
- * RuntimeLocaleProvider 用 `applicationContext.createConfigurationContext()` 覆盖
- * Compose 的 LocalContext（为语言热切换）。该 context 非 Activity；Compose 文本选择
- * 菜单的「处理文字」项（ProcessText）从它 `startActivity` 且不带
- * FLAG_ACTIVITY_NEW_TASK → AndroidRuntimeException 崩溃（用户实测）。
+ * RuntimeLocaleProvider usar `applicationContext.createConfigurationContext()` Portada
+ * Compose El LocalContext (para cambio de idioma en caliente). El contexto no está activo;Compose selección de texto
+ * El elemento del menú "Procesando texto" (ProcessText) de eso `startActivity` sin traer
+ * FLAG_ACTIVITY_NEW_TASK → AndroidRuntimeException Crash (probado por usuarios).
  *
- * ## 锁定的行为
+ * ## comportamiento bloqueado
  *
- * 包装后 `startActivity` 会自动补 FLAG_ACTIVITY_NEW_TASK（非 Activity 场景）；
- * Activity 场景保持原样；幂等包装不重复嵌套；resources 仍透传 base。
+ * Después del embalaje `startActivity` FLAG_ACTIVITY_NEW_TASK se agregará automáticamente (escena que no es de actividad);
+ * Activity La escena permanece como está; el empaquetado idempotente no duplica el anidamiento;resources La base todavía se transmite de forma transparente.
  *
- * 注：不用 `Robolectric.buildActivity()`——它会走 Activity 完整生命周期，
- * 在 Windows 上触发 Robolectric 原生 SQLite 库崩溃（与本次逻辑无关）。
- * 这里用「记录式 base」直接观察 wrapper 实际下发的 Intent。
+ * Nota: No requerido `Robolectric.buildActivity()`——Pasará por el ciclo de vida completo de la Actividad,
+ * Provoca un bloqueo en la biblioteca SQLite nativa de Robolectric en Windows (no relacionado con esta lógica).
+ * Aquí, la "base registrada" se utiliza para observar directamente la intención realmente emitida por el contenedor.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -41,7 +41,7 @@ class LocaleContextWrapperTest {
 
     private val appContext: Context get() = ApplicationProvider.getApplicationContext()
 
-    /** 记录型 base context：捕获 wrapper 实际下发的 Intent。 */
+    /** Contexto base registrado: captura la intención realmente enviada por el contenedor. */
     private class RecordingContext(base: Context) : ContextWrapper(base) {
         var captured: Intent? = null
 
@@ -55,10 +55,10 @@ class LocaleContextWrapperTest {
     }
 
     /**
-     * 记录型 Activity base：类型上是 Activity，但捕获而非真正启动。
+     * Base de actividad registrada: escrita como actividad, pero capturada en lugar de iniciada realmente.
      *
-     * 用 mockk 而非 `class X : Activity()`——后者的构造会触发 Activity 初始化，
-     * 在 Robolectric/Windows 上会撞到原生 SQLite 库崩溃（与本次逻辑无关）。
+     * Utilice simulacro en lugar de `class X : Activity()`——La construcción de este último desencadena la inicialización de la actividad.
+     * En Robolectric/Windows, la biblioteca SQLite nativa fallará (no relacionado con esta lógica).
      */
     private fun recordingActivity(): Activity {
         val captured = arrayOfNulls<Intent>(1)
@@ -76,7 +76,7 @@ class LocaleContextWrapperTest {
     private var lastCaptured: Array<Intent?>? = null
 
     @Test
-    fun `非 Activity context 启动 Activity 时补 NEW_TASK`() {
+    fun `Compensación al iniciar una actividad en un contexto que no es de actividad NEW_TASK`() {
         val base = RecordingContext(appContext)
         val wrapped = LocaleContextWrapper.wrap(base)
 
@@ -84,55 +84,55 @@ class LocaleContextWrapperTest {
 
         val flags = base.captured?.flags ?: 0
         assertTrue(
-            "非 Activity context 启动必须带 FLAG_ACTIVITY_NEW_TASK",
+            "El inicio del contexto sin actividad debe traer FLAG_ACTIVITY_NEW_TASK",
             flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0,
         )
     }
 
     @Test
-    fun `已带 NEW_TASK 的 intent 不被改写`() {
+    fun `Los intents con NEW_TASK no se reescribirán`() {
         val base = RecordingContext(appContext)
         val wrapped = LocaleContextWrapper.wrap(base)
 
         wrapped.startActivity(Intent(Intent.ACTION_VIEW).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
         assertEquals(
-            "已带 flag 的 intent 应原样传递",
+            "Los intents marcados deben pasarse tal cual",
             Intent.FLAG_ACTIVITY_NEW_TASK,
             (base.captured?.flags ?: 0) and Intent.FLAG_ACTIVITY_NEW_TASK,
         )
     }
 
     @Test
-    fun `Activity 场景不额外补 flag（保持既有跳转语义）`() {
+    fun `Activity La escena no agrega indicadores adicionales (mantiene la semántica de salto existente)`() {
         val activity = recordingActivity()
         val wrapped = LocaleContextWrapper.wrap(activity)
 
         wrapped.startActivity(Intent(Intent.ACTION_VIEW))
 
         assertEquals(
-            "Activity context 不应被补 NEW_TASK",
+            "Activity context no debe ser compensado NEW_TASK",
             0,
             (lastCaptured?.get(0)?.flags ?: 0) and Intent.FLAG_ACTIVITY_NEW_TASK,
         )
     }
 
     @Test
-    fun `重复包装是幂等的`() {
+    fun `El contenedor repetido es idempotente`() {
         val once = LocaleContextWrapper.wrap(appContext)
         val twice = LocaleContextWrapper.wrap(once)
-        assertTrue("重复 wrap 应返回同一实例", once === twice)
+        assertTrue("El ajuste repetido debería devolver la misma instancia", once === twice)
     }
 
     @Test
-    fun `resources 仍来自被包装的 locale context`() {
-        // 语言能力不受包装影响：getResources 应透传到 base
+    fun `resources Todavía de ser empaquetado locale context`() {
+        // Las capacidades lingüísticas no se ven afectadas por el embalaje:getResources Se debe pasar a base
         val wrapped = LocaleContextWrapper.wrap(appContext)
         assertEquals(
-            "resources 应透传 base 的配置",
+            "resources La configuración de la base debe transmitirse de forma transparente.",
             appContext.resources.configuration.locales,
             wrapped.resources.configuration.locales,
         )
-        assertNotEquals("包装后仍是 ContextWrapper 实例", appContext, wrapped)
+        assertNotEquals("Sigue siendo una instancia de ContextWrapper después de envolver", appContext, wrapped)
     }
 }

@@ -4,50 +4,50 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * 流式推理过程中产生的增量事件。
- * UI 层消费这些事件来更新气泡内容、推理过程、错误提示。
+ * Eventos incrementales generados durante la inferencia de transmisión.
+ * UI La capa consume estos eventos para actualizar el contenido de las burbujas, el proceso de razonamiento y las indicaciones de error.
  */
 sealed class ChatStreamEvent {
     /**
-     * 推理过程增量(o1 / thinking 模型)。
+     * incremento del proceso de razonamiento(o1 / thinking modelo).
      *
-     * v1.80 (M-ANT4): [signature] 携带 Anthropic thinking 块的签名(可选),
-     * 用于多轮 thinking 对话回放(signature_delta 事件发出)。
-     * 非 thinking 模型 / OpenAI 等其他 Provider 该字段为 null。
-     * 消费方(如 ChatViewModel)应将其存入 [UIMessage.thinkingSignature],
-     * 并在下一轮请求时回传给 Anthropic(否则多轮 thinking 会失败)。
+     * v1.80 (M-ANT4): [signature] Llevando la firma del bloque de pensamiento Antrópico(Opcional),
+     * Se utiliza para la reproducción de conversaciones de pensamiento de múltiples rondas.(signature_delta evento emitido).
+     * Para modelos no pensantes/otros proveedores como OpenAI, este campo es nulo.
+     * lado del consumidor(Como por ejemplo ChatViewModel)debe ser depositado [UIMessage.thinkingSignature],
+     * y devolverlo a la siguiente ronda de solicitudes Anthropic(De lo contrario, múltiples rondas de pensamiento fracasarán.).
      */
     data class ReasoningDelta(
         val delta: String,
         val signature: String? = null,
-        /** B5-03: OpenAI Responses reasoning item 的 encrypted_content(回放关键)。 */
+        /** B5-03: OpenAI Responses reasoning item de encrypted_content(Tecla de reproducción). */
         val encryptedContent: String? = null,
     ) : ChatStreamEvent()
 
-    /** 正文增量。 */
+    /** Incremento de texto. */
     data class ContentDelta(val delta: String) : ChatStreamEvent()
 
     /**
-     * Phase 8.6: 图片增量(Gemini 绘图返回的 inlineData)。
+     * Phase 8.6: Incremento de imagen(Gemini Dibujo devuelto inlineData).
      *
-     * @param imageBase64 图片 base64 数据(无 data: 前缀)
-     * @param mimeType MIME 类型,如 "image/png"
+     * @param imageBase64 Datos de imagen base64(Ninguno dato: prefijo)
+     * @param mimeType MIME Tipo,Como por ejemplo "image/png"
      */
     data class ImageDelta(val imageBase64: String, val mimeType: String = "image/png") : ChatStreamEvent()
 
     /**
-     * 工具调用增量(Phase 7 function calling)。
+     * Incremento de llamada de herramienta(Phase 7 function calling).
      *
-     * OpenAI 流式协议中,tool_calls 是数组,每个元素有 index/id/function{name/arguments}。
-     * 同一个 tool_call 可能跨多个 SSE chunk 发送(arguments 分片),需按 index 累积。
+     * OpenAI en protocolo de streaming,tool_calls es una matriz,Cada elemento tiene index/id/function{name/arguments}.
+     * La misma llamada a herramienta se puede enviar a través de múltiples fragmentos de SSE(arguments fragmentación),Debe acumularse según el índice.
      *
-     * @param index 工具调用在数组中的下标(用于累积)
-     * @param id 工具调用 id(首个 chunk 携带,后续片段为 null)
-     * @param name 函数名(首个 chunk 携带,后续片段为 null)
-     * @param argumentsDelta 参数 JSON 增量片段
-     * @param isSnapshot v1.0.81: true 表示 argumentsDelta 是完整参数快照(而非增量),
-     *   消费者应替换而非追加。用于模型把 arguments 拆成多个完整 JSON 对象分片、
-     *   提供方已在源头合并的场景(如 DeepSeek V4)。
+     * @param index El índice de la llamada a la herramienta en la matriz.(por acumulación)
+     * @param id llamada de herramienta id(El primer trozo lleva,Los fragmentos siguientes son null)
+     * @param name nombre de la función(El primer trozo lleva,Los fragmentos siguientes son null)
+     * @param argumentsDelta Parámetro fragmento delta JSON
+     * @param isSnapshot v1.0.81: true Indica que argumentsDelta es una instantánea completa de los parámetros.(en lugar de incremental),
+     *   Los consumidores deberían reemplazar en lugar de agregar. Utilizado por el modelo para dividir argumentos en múltiples fragmentos de objetos JSON completos,
+     *   Escenario en el que el proveedor se ha fusionado en el origen(Como por ejemplo DeepSeek V4).
      */
     data class ToolCallDelta(
         val index: Int,
@@ -57,24 +57,24 @@ sealed class ChatStreamEvent {
         val isSnapshot: Boolean = false,
     ) : ChatStreamEvent()
 
-    /** 一轮正常结束,带可选的停止原因。 */
+    /** Una ronda termina normalmente,Con motivo de parada opcional. */
     data class Done(val finishReason: String? = null) : ChatStreamEvent()
 
-    /** 出错,流被中断。 */
+    /** error,La transmisión fue interrumpida. */
     data class Error(val message: String, val throwable: Throwable? = null) : ChatStreamEvent()
 
     /**
-     * v1.0.15: 流式连接被中断(网络切换/后台 Doze/服务端中途断开),但已收到部分内容。
+     * v1.0.15: Conexión de transmisión interrumpida(conmutación de red/Background Doze/servidor desconectado a mitad de camino),Pero se ha recibido algo de contenido.
      *
-     * 与 [Error] 的区别:
-     *  - [Error]: 还没收到任何内容(anyDeltaSent=false)就失败,UI 应显示错误并允许重试
-     *  - [StreamInterrupted]: 已收到部分内容(anyDeltaSent=true)后连接断开,
-     *    UI 应保留已收内容并提示"网络中断,正在尝试恢复",网络恢复后可自动重连
+     * con [Error] la diferencia:
+     *  - [Error]: Aún no he recibido nada(anyDeltaSent=false)simplemente falla,UI Se deben mostrar los errores y permitir reintentos.
+     *  - [StreamInterrupted]: Parte del contenido ha sido recibido.(anyDeltaSent=true)Después de que se interrumpe la conexión,
+     *    UI El contenido recibido debe conservarse y solicitarse."Corte de red,Tratando de restaurar",Se vuelve a conectar automáticamente después de la recuperación de la red
      *
-     * 消费方(ChatViewModel)应:
-     *  1. 不清空已收的 ContentDelta/ReasoningDelta,保留已生成的部分回复
-     *  2. 显示"网络中断"提示(非致命错误,不弹错误对话框)
-     *  3. 监听 NetworkMonitor,网络恢复后自动重新发起请求续生成
+     * lado del consumidor(ChatViewModel)debería:
+     *  1. No borrar elementos recolectados ContentDelta/ReasoningDelta,Conserva algunas de las respuestas generadas
+     *  2. mostrar"Corte de red"Consejos(error no fatal,No mostrar cuadro de diálogo de error)
+     *  3. monitorear NetworkMonitor,Una vez restaurada la red, la solicitud se reiniciará y generará automáticamente nuevamente.
      */
     data class StreamInterrupted(
         val message: String,
@@ -82,40 +82,40 @@ sealed class ChatStreamEvent {
     ) : ChatStreamEvent()
 
     /**
-     * B3-01: SSE 建立后长时间无首事件,已自动降级为非流式重试。
-     * UI 可据此显示一次性提示。
+     * B3-01: SSE No hay un primer evento durante mucho tiempo después de la creación.,Degradado automáticamente a reintentos sin transmisión.
+     * UI Esto se puede utilizar para mostrar recordatorios únicos.
      */
     data class FallbackNotice(val message: String) : ChatStreamEvent()
 
     /**
-     * A5: 流式过程中的 token 用量(provider 实测值)。
+     * A5: Uso de token durante la transmisión(provider Valor real).
      *
-     * 各 Provider 在流式结束前的 usage 事件里解析并发出:
-     *  - OpenAI Responses: response.completed 事件 / usage 字段(需 stream_options.include_usage)
-     *  - Anthropic: message_delta.usage(输出 token) + message_start.message.usage(输入 token)
-     *  - Gemini: 最后一个 SSE chunk 的 usageMetadata
+     * Cada proveedor analiza y emite el evento de uso antes del final de la transmisión.:
+     *  - OpenAI Responses: response.completed campo de evento/uso(necesidad stream_options.include_usage)
+     *  - Anthropic: message_delta.usage(salida token) + message_start.message.usage(entrada token)
+     *  - Gemini: del último fragmento de SSE usageMetadata
      *
-     * 可能多次发出(如 Anthropic 输入/输出分两次),消费方应取最后一次(总量)。
-     * provider 未返回 usage 时不发该事件(消费方回退本地估算)。
+     * Se puede enviar varias veces(Como el aporte antrópico/La salida se divide en dos),El consumidor debe tomar la última(cantidad total).
+     * provider Este evento no se enviará cuando no se devuelva el uso.(El consumidor vuelve a la estimación local).
      */
     data class UsageDelta(val usage: UsageTokens) : ChatStreamEvent()
 
-    /** Provider 原生搜索返回的引用 URL；顺序与正文引用标记保持稳定。 */
+    /** Provider URL de referencia devueltas por búsquedas nativas; El orden permanece estable con los marcadores de citas en el texto. */
     data class CitationDelta(val urls: List<String>) : ChatStreamEvent()
 }
 
 /**
- * v1.0.7: 聊天请求模式(mode: "chat" | "utility")。
+ * v1.0.7: Modo de solicitud de chat(mode: "chat" | "utility").
  *
- * - [CHAT]:用户对话路径,reasoningLevel 由用户偏好/session 决定,可开可关
- * - [UTILITY]:后台短文本生成路径(memory 摘要 / fact 抽取 / 视觉辅助 / skill 执行 /
- *   上下文压缩 / 主动消息 / 定时任务等),强制 reasoningLevel = OFF
- *   (短输出不需要思考链 + 省 token + 降延迟),且不注入 ProviderPromptPatches
+ * - [CHAT]:Ruta de diálogo del usuario,reasoningLevel por preferencia del usuario/session decidir,Se puede activar o desactivar
+ * - [UTILITY]:Ruta de generación de texto breve de fondo(memory Resumen/extracción de hechos/ayuda visual/ejecución de habilidades /
+ *   Compresión de contexto/mensajes activos/tareas programadas, etc.),fuerza reasoningLevel = OFF
+ *   (La producción corta no requiere pensamiento en cadena + ahorra tokens + reduce la latencia),sin inyectar ProviderPromptPatches
  *
- * 设计原则:
- *  - UTILITY 模式下,Provider 内部把 effectiveReasoningLevel 强制为 OFF,
- *    调用方传入的 reasoningLevel 被覆盖(utility 模式注入 reasoningLevel: "off")
- *  - 各 Provider 在 buildRequestBody 时按 mode 决定是否跳过 thinkingFormat 注入
+ * principios de diseño:
+ *  - UTILITY modo,Provider Fuerza internamente el nivel de razonamiento efectivo a OFF,
+ *    El nivel de razonamiento pasado por la persona que llama se sobrescribe(utility inyección de patrón reasoningLevel: "off")
+ *  - Cada proveedor determina si debe omitir el pensamiento. Inyección de formato según el modo al crearRequestBody
  */
 enum class ChatRequestMode {
     CHAT,
@@ -123,50 +123,50 @@ enum class ChatRequestMode {
 }
 
 /**
- * 一次聊天请求的入参。
+ * Un parámetro de entrada para una solicitud de chat.
  *
- * @param messages 完整对话历史(含 system / user / assistant),由调用方裁剪
- * @param model 目标模型
- * @param temperature 采样温度,null 表示走服务端默认
- * @param maxTokens 输出上限,null 表示走服务端默认
- * @param abortSignal 由调用方持有的取消标志,置 true 后尽快中断流
- * @param tools 可选的工具定义列表(Phase 7 function calling),null 表示不启用工具调用
- * @param toolChoice 工具选择策略("auto" / "required" / "none"),null 表示由 Provider 默认处理
- * @param reasoningLevel 推理等级(Phase 8.1 M11),null 表示用 [ReasoningLevel.DEFAULT]
- *   各 Provider 根据 [Model.supportsReasoning] 和此字段决定是否发 thinking 字段
- *   v1.0.7: 当 [mode]=[ChatRequestMode.UTILITY] 时,此字段被强制覆盖为 OFF
- * @param mode v1.0.7: 请求模式,默认 [ChatRequestMode.CHAT];
- *   UTILITY 模式强制关思考(memory 摘要 / fact 抽取 / 视觉辅助等后台任务)
+ * @param messages Historial completo de conversaciones(Contiene system / user / assistant),recortado por la persona que llama
+ * @param model modelo objetivo
+ * @param temperature Temperatura de muestreo,null Indica que el servidor utiliza de forma predeterminada
+ * @param maxTokens Límite superior de salida,null Indica que el servidor utiliza de forma predeterminada
+ * @param abortSignal Bandera de cancelación en poder de la persona que llama,Interrumpe la transmisión lo antes posible después de establecerla como verdadera.
+ * @param tools Lista opcional de definiciones de herramientas(Phase 7 function calling),null Indica que la llamada a herramientas no está habilitada
+ * @param toolChoice Estrategia de selección de herramientas("auto" / "required" / "none"),null Indica que lo maneja el Proveedor de forma predeterminada.
+ * @param reasoningLevel nivel de razonamiento(Phase 8.1 M11),null para expresar [ReasoningLevel.DEFAULT]
+ *   Cada Proveedor se basa en [Model.supportsReasoning] y este campo determina si se envía el campo de pensamiento
+ *   v1.0.7: cuando [mode]=[ChatRequestMode.UTILITY] tiempo,Este campo se ve obligado a anularse como OFF
+ * @param mode v1.0.7: modo de solicitud,Predeterminado [ChatRequestMode.CHAT];
+ *   UTILITY Patrón de pensamiento forzado(memory Resumen/extracción de hechos/asistencia visual y otras tareas de fondo)
  */
 data class ChatRequest(
     val messages: List<UIMessage>,
     val model: Model,
     val temperature: Float? = null,
-    /** 已按 [ModelOutputPolicy.resolve] 约束到模型能力范围的输出上限。 */
+    /** presionado [ModelOutputPolicy.resolve] Un límite superior de la salida restringido a las capacidades del modelo. */
     val maxTokens: Int? = null,
     val abortSignal: AbortSignal = AbortSignal(),
     val tools: List<ToolDefinition>? = null,
     val toolChoice: String? = null,
-    /** 原生联网搜索：由具体 Provider 使用自己的搜索工具协议实现。 */
+    /** Búsqueda de red nativa: implementada por un Proveedor específico utilizando su propio protocolo de herramienta de búsqueda. */
     val nativeWebSearch: Boolean = false,
     val reasoningLevel: ReasoningLevel = ReasoningLevel.DEFAULT,
     val mode: ChatRequestMode = ChatRequestMode.CHAT,
-    /** 采样核概率,由助手级 topP 配置传入; null 时由 Provider/服务端默认。 */
+    /** Probabilidad del núcleo de muestreo,Pasado por la configuración topP de nivel asistente; null El valor predeterminado lo proporciona el proveedor/servidor. */
     val topP: Float? = null,
     /**
-     * v2.6.2: 当前会话 id。供中转站强制会话头（如 OpenCode Go 的
-     * `x-opencode-session`）按会话派生稳定值；后台任务无会话上下文时可为 null，
-     * 此时由 [RelayRequiredHeaders] 退化为 provider 粒度稳定值。
+     * v2.6.2: Identificación de la sesión actual. Para que las estaciones de retransmisión fuercen los encabezados de sesión (como OpenCode Go)
+     * `x-opencode-session`) obtiene un valor estable por sesión; puede ser nulo cuando la tarea en segundo plano no tiene contexto de sesión,
+     * En este momento por [RelayRequiredHeaders] Degenera en valor estable de granularidad del proveedor.
      */
     val sessionId: String? = null,
 )
 
 /**
- * 工具定义(Provider 无关的中间表示)。
+ * Definición de herramienta(Provider representación intermedia irrelevante).
  *
- * @param name 函数名
- * @param description 描述(LLM 据此决定是否调用)
- * @param parametersJsonSchema 参数的 JSON Schema 字符串(OpenAI 兼容格式)
+ * @param name nombre de la función
+ * @param description Descripción(LLM Decide si llamar basándose en esto)
+ * @param parametersJsonSchema Cadena de esquema JSON para el parámetro(OpenAI Formatos compatibles)
  */
 data class ToolDefinition(
     val name: String,
@@ -174,7 +174,7 @@ data class ToolDefinition(
     val parametersJsonSchema: String,
 )
 
-/** 协作式取消信号。UI 点"停止"时把 [aborted] 置 true。 */
+/** Señales de cancelación colaborativas.UI punto"detenerse"tiempo [aborted] Establecer verdadero. */
 class AbortSignal {
     @Volatile
     var aborted: Boolean = false
@@ -184,14 +184,14 @@ class AbortSignal {
     private val listeners = LinkedHashSet<() -> Unit>()
 
     /**
-     * 当前仍注册的监听器数量，仅供 ai 模块生命周期回归测试断言清理完成。
+     * El número de oyentes que todavía están registrados actualmente, solo para completar la limpieza de aserciones de las pruebas de regresión del ciclo de vida del módulo ai.
      */
     internal val listenerCount: Int
         get() = synchronized(lock) { listeners.size }
 
     /**
-     * 注册一次性取消回调。返回的句柄可在请求完成时关闭，避免持有底层 HTTP 资源。
-     * 若信号已经取消，回调会立即执行且不会被保存。
+     * Registre una devolución de llamada de cancelación única. El identificador devuelto se puede cerrar cuando se completa la solicitud, evitando retener el recurso HTTP subyacente.
+     * Si la señal ha sido cancelada, la devolución de llamada se ejecutará inmediatamente y no se guardará.
      */
     fun addAbortListener(listener: () -> Unit): AutoCloseable {
         var invokeImmediately = false
@@ -215,133 +215,133 @@ class AbortSignal {
 }
 
 /**
- * 非流式调用的结果。memory 模块等后台任务用 [completeText] 拿完整文本,
- * 不需要逐步消费增量事件。
+ * El resultado de una llamada sin transmisión.memory Se utiliza para tareas en segundo plano, como módulos. [completeText] obtener texto completo,
+ * No es necesario consumir eventos incrementales gradualmente.
  *
- * Phase 7: [toolCalls] 用于非流式场景的工具调用结果。
+ * Phase 7: [toolCalls] Resultados de la invocación de herramientas para escenarios sin transmisión.
  *
- * v1.80 (M-OAI8): 新增 [reasoningContent] 字段,承载推理模型的推理内容。
- * 部分推理模型(o1/DeepSeek-R1 等)在非流式响应中可能只返回 reasoning_content
- * 而 content 为空,此时调用方需据此判断响应是否有效,避免误报"空文本"错误。
+ * v1.80 (M-OAI8): Nuevo [reasoningContent] campo,Llevar el contenido de razonamiento del modelo de razonamiento.
+ * modelo de inferencia parcial(o1/DeepSeek-R1 espera)En las respuestas que no son de transmisión solo pueden regresar reasoning_content
+ * Y el contenido está vacío,En este momento, la persona que llama debe juzgar si la respuesta es válida en función de esto.,Evite falsos positivos"texto vacío"Error.
  */
 data class ChatCompletion(
     val text: String,
     val finishReason: String? = null,
     val toolCalls: List<ToolCall>? = null,
     val reasoningContent: String? = null,
-    /** v1.0.53 Phase 3: token 用量(prompt + completion + reasoning 合计)。null 表示上游未返回。 */
+    /** v1.0.53 Phase 3: token Dosis(prompt + completion + reasoning total).null Indica que el flujo ascendente no ha regresado. */
     val usageTokens: UsageTokens? = null,
-    /** B5-03: thinking 签名(Anthropic / OpenAI reasoning item id)。 */
+    /** B5-03: thinking firma(Anthropic / OpenAI reasoning item id). */
     val thinkingSignature: String? = null,
-    /** B5-03: OpenAI Responses reasoning encrypted_content。 */
+    /** B5-03: OpenAI Responses reasoning encrypted_content. */
     val thinkingEncryptedContent: String? = null,
-    /** 原生搜索返回的引用 URL。 */
+    /** URL de referencia devuelta por la búsqueda nativa. */
     val citationUrls: List<String> = emptyList(),
 )
 
 /**
- * v1.0.53 Phase 3: token 用量明细(对齐 OpenAI usage 字段)。
+ * v1.0.53 Phase 3: token Detalles de dosificación(Alinear los campos de uso de OpenAI).
  *
- * Provider 未返回 usage 时为 null,AgentTokenBudget 跳过累加(避免误判耗尽)。
+ * Provider Cuando no se devuelve el uso, es null,AgentTokenBudget Saltar acumulación(Evite juzgar erróneamente el agotamiento).
  *
- * A5: 新增 [cachedTokens] — prompt 缓存 token。仅用于信息展示与成本估算,不计入 [total]
- * (保持既有 budget 语义不变:Anthropic 缓存 token 原本就不参与消耗累加)。
+ * A5: Nuevo [cachedTokens] — prompt token de caché. Sólo para visualización de información y estimación de costos.,No contado [total]
+ * (Mantener sin cambios la semántica del presupuesto existente:Anthropic El token de caché no participa originalmente en la acumulación de consumo.).
  *
- * 缓存读/写拆分:两者单价不同(写入通常更贵),混在一个字段里会让成本估算漏掉写入部分,
- * 因此显式分列缓存读 [cachedTokens] 与缓存写 [cacheWriteTokens]。
+ * lectura de caché/escribe dividir:Los precios unitarios de los dos son diferentes.(Escribir suele ser más caro),Mezclarlo en un campo hará que la estimación del costo omita la parte escrita,
+ * Entonces se lee una memoria caché de columna explícita [cachedTokens] escribir con caché [cacheWriteTokens].
  */
 data class UsageTokens(
     val promptTokens: Int = 0,
     val completionTokens: Int = 0,
-    /** 推理 token(部分模型单独计入,如 OpenAI o1 的 completion_tokens_details.reasoning_tokens)。 */
+    /** razonamiento token(Algunos modelos se incluyen por separado.,Como OpenAI o1 completion_tokens_details.reasoning_tokens). */
     val reasoningTokens: Int = 0,
     /**
-     * prompt 缓存**读取** token。
+     * prompt caché**leer** token.
      *
-     * 字段名沿用拆分前的 [cachedTokens] 以兼容既有调用点与持久化列,语义固定为「读」:
+     * El nombre del campo sigue siendo el mismo que antes de la división. [cachedTokens] ser compatible con los sitios de llamadas existentes y las columnas de persistencia,La semántica está fijada como "leída".:
      *  - OpenAI `prompt_tokens_details.cached_tokens`
      *  - Gemini `usageMetadata.cachedContentTokenCount`
      *  - Anthropic `usage.cache_read_input_tokens`
      *
-     * 仅展示与计价用,不参与 [total]。
+     * Sólo para fines de visualización y fijación de precios.,No participar [total].
      */
     val cachedTokens: Int = 0,
     /**
-     * prompt 缓存**写入** token(Anthropic `usage.cache_creation_input_tokens`)。
+     * prompt caché**escribir** token(Anthropic `usage.cache_creation_input_tokens`).
      *
-     * OpenAI / Gemini 没有独立的缓存写入计费项,恒为 0。
-     * 缓存写入单价通常高于普通输入(Anthropic 5 分钟 TTL 为输入价的 1.25 倍),
-     * 计价时必须单独计入,不能与 [cacheReadTokens] 混算。仅展示与计价用,不参与 [total]。
+     * OpenAI / Gemini Ningún elemento de facturación de escritura en caché independiente,Siempre 0.
+     * El precio unitario de las escrituras en caché suele ser más alto que el de las entradas normales.(Anthropic 5 El TTL por minuto es 1,25 veces el precio de entrada),
+     * debe incluirse por separado al calcular el precio,no se puede utilizar con [cacheReadTokens] Mézclalo. Sólo para fines de visualización y fijación de precios.,No participar [total].
      */
     val cacheWriteTokens: Int = 0,
     /**
-     * [promptTokens] 是否**包含**缓存部分——即该 provider 的 prompt 计价口径。
+     * [promptTokens] Ya sea**contiene**parte de caché——Es decir, el calibre rápido de fijación de precios del proveedor.
      *
-     * 两家协议给的不是同一个东西,拿错会让计价算反:
-     *  - OpenAI / Gemini:`prompt_tokens` / `promptTokenCount` **含**缓存命中部分
-     *    ([cachedTokens] 是其子集)→ 默认 true,计价时要从 prompt 里减掉
-     *  - Anthropic:`input_tokens` **就是**非缓存输入,缓存读/写分列在
-     *    `cache_read_input_tokens` / `cache_creation_input_tokens` → 由 AnthropicProvider 置 false,
-     *    计价时绝不能相减(否则缓存量大时普通输入会被夹到 0,输入费直接漏算)
+     * Los dos acuerdos no prevén lo mismo.,Si se equivoca, el cálculo se revertirá.:
+     *  - OpenAI / Gemini:`prompt_tokens` / `promptTokenCount` **Contiene**Parte de golpe de caché
+     *    ([cachedTokens] es un subconjunto de)→ Predeterminado true,Al calcular el precio, réstalo del aviso.
+     *  - Anthropic:`input_tokens` **Eso es todo**entrada no almacenada en caché,lectura de caché/Escribe los puntos enumerados en
+     *    `cache_read_input_tokens` / `cache_creation_input_tokens` → Establecido por AnthropicProvider false,
+     *    Nunca restes al calcular precios(De lo contrario, la entrada normal se recortará cuando el tamaño de la caché sea grande. 0,La tarifa de entrada se pierde directamente)
      *
-     * 仅影响计价,不改变 [promptTokens] / [total] 本身的取值口径。
+     * Sólo afecta el precio,no cambiar [promptTokens] / [total] Su propio calibre de valor.
      */
     val promptTokensIncludeCache: Boolean = true,
 ) {
-    /** [cachedTokens] 的显式命名视图:缓存读取 token。 */
+    /** [cachedTokens] una vista explícitamente nombrada de:Token de lectura de caché. */
     val cacheReadTokens: Int get() = cachedTokens
 
-    /** 缓存读 + 写合计(拆分前 [cachedTokens] 单个字段承载的就是这个和)。 */
+    /** Caché Lectura + Escritura Total(antes de dividir [cachedTokens] Un solo campo lleva esta suma.). */
     val cachedTokensTotal: Int get() = cachedTokens + cacheWriteTokens
 
-    /** 总消耗 = prompt + completion(已含 reasoning,不重复加)。 */
+    /** consumo total = prompt + completion(Incluido reasoning,No agregue repetidamente). */
     val total: Int get() = promptTokens + completionTokens
 }
 
 /**
- * Provider 抽象。每个具体厂商(OpenAI / Google / Anthropic)实现一份,
- * 负责把统一 [ChatRequest] 翻译成自家 HTTP API 调用并以 [Flow] 形式返回流式事件。
+ * Provider abstracto. cada fabricante específico(OpenAI / Google / Anthropic)darse cuenta de uno,
+ * Responsable de unificar [ChatRequest] Traduzca a su propia llamada API HTTP y finalícela con [Flow] El formulario devuelve eventos de transmisión.
  */
 interface Provider {
     val id: String
     val displayName: String
 
-    /** 流式聊天。返回的 Flow 在收集时执行网络请求,完成或出错时关闭。 */
+    /** Charla en streaming. El flujo devuelto realiza solicitudes de red mientras recopila,Cerrar al finalizar o por error. */
     fun streamChat(request: ChatRequest): Flow<ChatStreamEvent>
 
     /**
-     * 非流式聊天。一次性返回完整结果,适用于 memory 编译、fact 抽取等后台任务。
-     * 默认抛 [UnsupportedOperationException],由具体 Provider 按需实现。
+     * Chat sin transmisión. Devolver resultados completos de una sola vez,Adecuado para compilación de memoria,fact Tareas en segundo plano como la extracción.
+     * Lanzar por defecto [UnsupportedOperationException],Implementado bajo demanda por un Proveedor específico.
      */
     suspend fun completeText(request: ChatRequest): ChatCompletion =
         throw UnsupportedOperationException("$displayName does not implement completeText")
 
     /**
-     * 拉取上游模型列表。
+     * Extraiga la lista de modelos ascendentes.
      *
-     * 各具体 Provider 调用上游 /models 接口返回可用模型,供 UI 编辑页"拉取上游模型"使用。
-     * [config] 由调用方传入(可能含未保存的编辑值),实现按其解析 baseUrl/apiKey。
-     * 默认返回空列表,表示该 Provider 未实现拉取(如自定义中转可走 OpenAI 兼容)。
+     * Cada proveedor específico llama a la interfaz ascendente /models para devolver los modelos disponibles.,Para la página de edición de UI"Tire del modelo aguas arriba"Usar.
+     * [config] Pasado por la persona que llama(Puede contener ediciones no guardadas),La implementación analiza baseUrl/apiKey por él.
+     * Devuelve una lista vacía por defecto,Indica que el proveedor no implementa pull(Si personalizas la transferencia, puedes usar OpenAI compatible).
      */
     suspend fun listModels(config: ProviderConfig): List<Model> = emptyList()
 
     /**
-     * v1.0.8 (7.6): 模型健康检查 — 用真实 LLM 调用验证 apiKey / baseUrl / model 是否可用。
+     * v1.0.8 (7.6): Verificación del estado del modelo — Verificar con una llamada real de LLM apiKey / baseUrl / model está disponible.
      *
-     * 实现:向 [model] 发送一条 "Reply exactly OK." 的 user 消息,
-     *  15s 超时内若拿到非空响应即视为健康(返回 success=true)。
-     *  适用于:
-     *   - 设置页"测试"按钮:用户改完 apiKey/baseUrl 后一键验证连通性
-     *   - 启动时自动检查默认 Provider 是否可用
+     * darse cuenta:hacia [model] Enviar un "Reply exactly OK." mensaje de usuario,
+     *  15s Si obtiene una respuesta que no esté vacía dentro del tiempo de espera, se considera saludable.(Regresar success=true).
+     *  Aplicable a:
+     *   - página de configuración"prueba"botón:Después de que el usuario cambia apiKey/baseUrl, verificación de conectividad con un clic
+     *   - Verifique automáticamente si el proveedor predeterminado está disponible al inicio
      *
-     *  与 [listModels] 的区别:
-     *   - listModels 仅验证 /models 端点(轻量,但不保证 chat 接口可用)
-     *   - healthCheck 验证完整 chat 链路(发真实消息,能检测出 model id 错误 / 余额不足等)
+     *  con [listModels] la diferencia:
+     *   - listModels Validar solo el punto final /models(ligero,Pero no hay garantía de que la interfaz de chat esté disponible.)
+     *   - healthCheck Verificar enlace de chat completo(Enviar noticias reales,Puede detectar errores de identificación del modelo/saldo insuficiente, etc.)
      *
-     *  默认实现走 [completeText],具体 Provider 如需特殊处理可覆盖。
+     *  La implementación predeterminada es [completeText],Se pueden anular proveedores específicos si se requiere un procesamiento especial.
      *
-     * @param model 待测试的模型(必填,决定请求的 model 字段)
-     * @return [HealthCheckResult] 含 success 标志 + 失败时的提示消息
+     * @param model Modelo a probar(Requerido,Determinar los campos modelo de la solicitud.)
+     * @return [HealthCheckResult] Contiene indicador de éxito + mensaje de aviso en caso de error
      */
     suspend fun healthCheck(model: Model): HealthCheckResult {
         return try {
@@ -351,23 +351,23 @@ interface Provider {
                         UIMessage(role = MessageRole.USER, content = "Reply exactly OK."),
                     ),
                     model = model,
-                    // issue #3.2: 从 16 提到 256。
-                    // 原值 16 对思维链模型(DeepSeek Flash / o 系列等)根本不够:
-                    // 额度全被 reasoning 吃掉,content 为空 → 误判 empty response,
-                    // 而实际聊天完全正常。用户看到「几乎所有模型测试都失败」即源于此。
+                    // issue #3.2: De 16 a 256.
+                    // Valor original 16 pares de modelos de cadenas de pensamiento.(DeepSeek Flash / o serie, etc.)No es suficiente en absoluto:
+                    // Todas las cuotas fueron devoradas por el razonamiento,content esta vacio → Error de juicio empty response,
+                    // Y el chat real es completamente normal. Es por eso que los usuarios ven "casi todas las pruebas de modelos fallan".
                     maxTokens = 256,
-                    // 后台任务模式:关思考,降延迟
+                    // Modo de tarea en segundo plano:Guan Si pensando,Reducir la latencia
                     mode = ChatRequestMode.UTILITY,
                 )
                 completeText(request)
             }
             when {
                 result == null -> HealthCheckResult(success = false, message = "timeout (15s)")
-                // issue #3.2: 有工具调用也算链路通 —— 说明模型服务正常响应了。
-                // 旧逻辑还会把「只回 toolCalls 不回正文」判为失败,属误报。
+                // issue #3.2: Las herramientas de llamada también pueden considerarse acceso a enlaces. —— Significa que el servicio modelo respondió normalmente.
+                // La antigua lógica también juzgará como un error "solo devolver llamadas a herramientas pero no el texto".,Es una falsa alarma.
                 !result.toolCalls.isNullOrEmpty() ->
                     HealthCheckResult(success = true, message = result.text.take(80).ifBlank { "tool_calls ok" })
-                // issue #3.2: 正文为空但思考链非空 → 也算通(思维链模型常态)。
+                // issue #3.2: El texto está vacío pero la cadena de pensamiento no está vacía. → tiene sentido(Normalidad del modelo de cadena de pensamiento.).
                 result.text.isBlank() && result.reasoningContent.isNullOrBlank() ->
                     HealthCheckResult(success = false, message = "empty response")
                 result.text.isBlank() ->
@@ -376,45 +376,45 @@ interface Provider {
             }
         } catch (t: Throwable) {
             if (t is kotlinx.coroutines.CancellationException) throw t
-            // issue #3.2: 失败时必须给出可操作原因,不能只丢一句上游原文。
-            // 用户反馈「提示 unexpected 但实际能用」——上游原文对排查毫无帮助。
+            // issue #3.2: Se debe dar una razón procesable por el fracaso.,No se puede perder ni una sola frase del texto original.
+            // Comentarios de los usuarios "Aparece algo inesperado pero realmente funciona"——El artículo original no es útil para solucionar problemas.
             HealthCheckResult(success = false, message = describeHealthCheckFailure(t))
         }
     }
 
-    /** issue #3.2: 把健康检查异常翻译成用户能行动的原因。 */
+    /** issue #3.2: Traduzca las excepciones de los controles de estado en motivos procesables para el usuario. */
     private fun describeHealthCheckFailure(t: Throwable): String {
         val raw = t.message?.take(120).orEmpty()
         val lower = raw.lowercase()
         val hint = when {
             "401" in lower || "unauthorized" in lower || "invalid api key" in lower ->
-                "API Key 无效或已过期"
-            "403" in lower || "forbidden" in lower -> "无访问权限(检查 Key 权限/地区限制)"
+                "API Key Inválido o caducado"
+            "403" in lower || "forbidden" in lower -> "Sin acceso(Verificar permisos clave/Restricciones regionales)"
             "404" in lower || "model not found" in lower || "does not exist" in lower ->
-                "模型不存在或 Base URL 路径错误"
-            "429" in lower || "rate limit" in lower -> "触发限流,稍后重试"
-            "insufficient" in lower || "quota" in lower || "balance" in lower -> "余额或额度不足"
-            "timeout" in lower || "timed out" in lower -> "请求超时(15s),检查网络或 Base URL"
+                "El modelo no existe o la ruta de la URL base es incorrecta"
+            "429" in lower || "rate limit" in lower -> "Límite de corriente del disparador,Vuelve a intentarlo más tarde"
+            "insufficient" in lower || "quota" in lower || "balance" in lower -> "Saldo o cuota insuficiente"
+            "timeout" in lower || "timed out" in lower -> "Solicitar tiempo de espera(15s),Verifique la red o Base URL"
             "connect" in lower || "unable to resolve" in lower || "unknownhost" in lower ->
-                "无法连接(检查网络 / Base URL / 代理)"
-            "unexpected" in lower -> "上游返回了非预期格式(多为中转站兼容性问题,聊天可能仍可用)"
-            raw.isBlank() -> "未知错误(${t::class.simpleName ?: "Throwable"})"
+                "No se puede conectar(Verificar red/URL base/Proxy)"
+            "unexpected" in lower -> "Upstream devolvió un formato inesperado(Principalmente debido a problemas de compatibilidad con la estación de transferencia,Es posible que el chat aún esté disponible)"
+            raw.isBlank() -> "error desconocido(${t::class.simpleName ?: "Throwable"})"
             else -> raw
         }
         return if (raw.isNotBlank() && hint != raw) "$hint — $raw" else hint
     }
 
     companion object {
-        /** 健康检查超时时间(毫秒),15s 兼顾慢网络与用户体验。 */
+        /** Tiempo de espera de control de salud(milisegundos),15s Tenga en cuenta la lentitud de la red y la experiencia del usuario. */
         const val HEALTH_CHECK_TIMEOUT_MS: Long = 15_000L
     }
 }
 
 /**
- * v1.0.8 (7.6): 健康检查结果。
+ * v1.0.8 (7.6): Resultados del control de salud.
  *
- * @param success 是否通过(真实 LLM 调用拿到非空响应)
- * @param message 成功时为模型回复摘要(供 UI 展示);失败时为错误提示
+ * @param success pasar o no(La llamada real de LLM obtiene una respuesta no vacía)
+ * @param message Resumen de respuestas para el modelo sobre el éxito(Para visualización de interfaz de usuario);Mensaje de error cuando falla
  */
 data class HealthCheckResult(
     val success: Boolean,

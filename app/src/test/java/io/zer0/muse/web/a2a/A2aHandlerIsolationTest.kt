@@ -161,9 +161,9 @@ class A2aHandlerIsolationTest {
         pending.join()
 
         assertEquals(A2aTaskState.CANCELED, canceled?.state)
-        assertEquals("未知 taskId 不应被记录或可查询", null, unrelated)
+        assertEquals("El ID de tarea desconocido no debe registrarse ni consultarse", null, unrelated)
         assertEquals(null, a2a.getTask("not-owned"))
-        assertTrue("CancelTask 必须取消自己的请求协程", pending.isCancelled)
+        assertTrue("CancelTask Debes cancelar tu propia rutina de solicitud.", pending.isCancelled)
         assertFalse(a2a.getTask("t-cancel")?.state == A2aTaskState.WORKING)
     }
 }

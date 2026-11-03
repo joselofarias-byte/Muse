@@ -13,10 +13,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * M5.1: 工作区路径边界回归测试。
+ * M5.1: Pruebas de regresión de límites de ruta de trabajo.
  *
- * 覆盖验收:越界路径被拒绝 —— `..` 穿越、绝对路径、越权前缀、
- * 正常相对路径仍可用;所有 IO 走公共 API(与生产路径一致)。
+ * Aceptación de cobertura:Ruta fuera de límites rechazada —— `..` Recorrido, ruta absoluta, anulación de prefijo,
+ * Las rutas relativas normales todavía están disponibles;Todas las IO se hacen públicas API(Consistente con la ruta de producción).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -33,7 +33,7 @@ class WorkspaceBoundaryTest {
     @Test
     fun `normal relative paths work inside the workspace`() = runTest {
         val write = manager.writeFile("docs/notes.txt", "hello boundary")
-        assertTrue("正常写入应成功: $write", write is WorkspaceManager.OpResult.Success)
+        assertTrue("Las escrituras normales deberían tener éxito: $write", write is WorkspaceManager.OpResult.Success)
 
         val read = manager.readFile("docs/notes.txt")
         assertTrue(read is WorkspaceManager.ReadResult.Success)
@@ -79,21 +79,21 @@ class WorkspaceBoundaryTest {
         val read = manager.readFile("a/../../escape.txt")
         assertTrue(read is WorkspaceManager.ReadResult.Error)
 
-        // 不应产生工作区外的文件
+        // No se deben generar archivos fuera del espacio de trabajo
         val escaped = java.io.File(manager.rootDir.parentFile, "escape.txt")
-        assertFalse("越权文件不得存在", escaped.exists())
+        assertFalse("Los documentos ultravioleta no deben existir.", escaped.exists())
     }
 
     @Test
     fun `absolute style paths never escape the root`() = runTest {
-        // 前导 '/' 被 trim 后等价于相对路径,落点必须仍在工作区内(containment 语义)
+        // Preámbulo '/' Después de recortarlo, equivale a una ruta relativa.,El punto de entrega aún debe estar dentro del área de trabajo.(containment Semántica)
         val write = manager.writeFile("/etc/hosts", "contained")
         assertTrue(write is WorkspaceManager.OpResult.Success)
         assertTrue(
-            "落点必须在工作区根内",
+            "El punto de colocación debe estar dentro de la raíz del espacio de trabajo.",
             java.io.File(manager.rootDir, "etc/hosts").exists(),
         )
-        // 带根前缀的完整路径:文件不存在 → 必须返回错误,不得静默成功
+        // Ruta completa con prefijo raíz:El archivo no existe → Debe devolver un error,No debe triunfar en silencio
         val read = manager.readFile("/data/data/io.zer0.muse/files/workspace/docs/missing.txt")
         assertTrue(read is WorkspaceManager.ReadResult.Error)
     }
@@ -103,6 +103,6 @@ class WorkspaceBoundaryTest {
         manager.writeFile("keep/a.txt", "x")
         val delete = manager.delete("../outside-target")
         assertTrue(delete is WorkspaceManager.OpResult.Error)
-        assertTrue("正常文件仍存在", manager.readFile("keep/a.txt") is WorkspaceManager.ReadResult.Success)
+        assertTrue("Los archivos normales todavía existen", manager.readFile("keep/a.txt") is WorkspaceManager.ReadResult.Success)
     }
 }

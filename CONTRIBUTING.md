@@ -1,76 +1,76 @@
-# Muse 贡献指南
+# Muse Guía de contribución
 
-## 欢迎贡献！
+## ¡Bienvenidos aportes!
 
-感谢您对 Muse 的关注！无论是报告 Bug、提交功能建议、改进文档还是提交代码，我们都欢迎。
+¡Gracias por tu interés en Muse! Ya sea para informar errores, enviar sugerencias de funciones, mejorar la documentación o enviar código, lo agradecemos.
 
-## 行为准则
+## código de conducta
 
-本项目采用贡献者契约行为准则。请保持尊重、包容的沟通氛围。
+Este proyecto adopta el Código de conducta del contrato de colaborador. Por favor mantenga una atmósfera de comunicación respetuosa e inclusiva.
 
-## 如何贡献
+## Como contribuir
 
-### 报告 Bug
-1. 在 Issues 搜索是否已有相同报告
-2. 若无，创建新 Issue 并附上：
-   - 设备型号与 Android 版本
-   - 复现步骤（期望行为 vs 实际行为）
-   - 日志截图或 adb logcat 输出
+### informe Bug
+1. Buscar problemas para ver si ya existe el mismo informe
+2. De lo contrario, cree un nuevo problema y adjunte:
+   - Modelo de dispositivo y versión de Android.
+   - Pasos de reproducción (comportamiento deseado versus comportamiento real)
+   - Registrar captura de pantalla o salida de adb logcat
 
-### 提交功能建议
-1. 先搜索 Discussions 确认无人提过
-2. 在 Issue 中清晰描述使用场景和期望结果
+### Enviar una sugerencia de función
+1. Busque primero en Discusiones para asegurarse de que nadie lo haya mencionado.
+2. Describa claramente los escenarios de uso y los resultados esperados en el problema.
 
-### 提交 Pull Request
+### Enviar Pull Request
 
-1. Fork 本仓库并创建您的分支
-2. 遵循现有代码风格（Kotlin 官方风格）
-3. 新功能请包含单元测试
-4. 确保 `./ci/run_ci_checks.ps1 -Lane static` 通过（detekt、ktlint、lint 和覆盖率门禁）
-5. 确保 `./ci/run_ci_checks.ps1 -Lane unit` 全部通过
-6. 更新相关文档（README.md / release_notes.md 等根目录显性文档）
-7. 提交 PR 到 main 分支
+1. Fork Este repositorio y crea tu sucursal.
+2. Siga el estilo de codificación existente (Kotlin estilo oficial)
+3. Incluya pruebas unitarias para nuevas funciones.
+4. asegurar `./ci/run_ci_checks.ps1 -Lane static` por (detekt,ktlint,lint y control de acceso a cobertura)
+5. asegurar `./ci/run_ci_checks.ps1 -Lane unit` Todo pasó
+6. Actualizar la documentación relacionada (README.md / release_notes.md Documentos explícitos como el directorio raíz)
+7. Enviar PR a la sucursal principal
 
-### 本地开发环境
-- Android Studio Ladybug (2024.2+) 或更高
+### entorno de desarrollo local
+- Android Studio Ladybug (2024.2+) o superior
 - JDK 21
 - Android SDK 35
-- Gradle 9.4.1 (wrapper 已包含)
+- Gradle 9.4.1 (wrapper Ya incluido)
 
-### 测试
-- CI 脚本与工程规则：`./ci/run_ci_checks.ps1 -Lane ci-scripts` 与 `./ci/run_ci_checks.ps1 -Lane lanes`
-- 静态检查：`./ci/run_ci_checks.ps1 -Lane static`
-- 模块单元测试：`./ci/run_ci_checks.ps1 -Lane unit`
-- 构建 Debug APK：`./ci/run_ci_checks.ps1 -Lane debug`
-- 构建 Release APK：需显式提供 release 签名和版本参数，见 `README.md` 与 CI 的 tag 流程
+### prueba
+- CI Reglas de scripting e ingeniería:`./ci/run_ci_checks.ps1 -Lane ci-scripts` con `./ci/run_ci_checks.ps1 -Lane lanes`
+- Control estático:`./ci/run_ci_checks.ps1 -Lane static`
+- Pruebas unitarias del módulo:`./ci/run_ci_checks.ps1 -Lane unit`
+- Construya el APK de depuración:`./ci/run_ci_checks.ps1 -Lane debug`
+- Build Release APK: es necesario proporcionar la firma de lanzamiento y los parámetros de versión explícitamente, consulte `README.md` Proceso de etiqueta con CI
 
-> **同一个工作区并行跑构建的坑**：IDE 正在构建、命令行又跑测试，或多人/多 Agent 并行验证时，后启动的构建会清空 `app/build/test-results/testDebugUnitTest/`，表现为 `java.nio.file.NoSuchFileException: …/binary/in-progress-results-*.bin`，并且该目录只剩上一次的旧 XML。这类失败既不算通过也不算失败——测试根本没跑完，不要当成测试挂了去改代码。
+> **Errores de ejecutar compilaciones en paralelo en el mismo espacio de trabajo**:IDE Construir, ejecutar pruebas desde la línea de comandos o varias personas/Cuando se verifican varios agentes en paralelo, se borrarán las compilaciones iniciadas más tarde. `app/build/test-results/testDebugUnitTest/`, expresado como `java.nio.file.NoSuchFileException: …/binary/in-progress-results-*.bin`, y el directorio solo tiene el XML antiguo de la última vez. Este tipo de fracaso no es ni un aprobado ni un fracaso——La prueba no se ha realizado en absoluto. No lo trate como un error de prueba y cambie el código.
 >
-> 判定方法：看结果 XML 的时间戳是否属于本次运行，并核对类数；用 `--tests "<包>.*"` 过滤跑时，结果目录里应当是完整的类集合，被清空的目录给不出完整结果集。确认没有其它构建在跑后重跑即可。
+> Método de determinación: verifique si la marca de tiempo del resultado XML pertenece a esta ejecución y verifique el número de clases; usar `--tests "<paquete>.*"` Cuando se ejecuta el filtrado, el directorio de resultados debe contener un conjunto completo de clases y el directorio borrado no puede proporcionar un conjunto completo de resultados. Solo asegúrese de que no haya otras compilaciones ejecutándose y reejecutándose.
 
-> **`compileDebugKotlin` 误报 `UP-TO-DATE` 的坑（Windows 实测）**：外部进程（编辑器、脚本、另一个 Agent）改写源码后，Gradle 守护进程的 VFS 可能感知不到变更，于是 `:app:compileDebugKotlin` 直接报 `UP-TO-DATE` 并「成功」——这时「编译通过」是假阳性，改动根本没进编译器。已确认 `--stop` 重启守护、`--no-watch-fs` 都不能稳定规避（两者都复现过），也不是偶发。
+> **`compileDebugKotlin` falso positivo `UP-TO-DATE` el hoyo (Windows Medición real)**: Después de que un proceso externo (editor, script, otro agente) reescribe el código fuente,Gradle Es posible que el VFS del demonio no esté al tanto del cambio, por lo que `:app:compileDebugKotlin` Reportar directamente `UP-TO-DATE` y "éxito"——En este momento, "compilación aprobada" es un falso positivo y los cambios no ingresaron al compilador en absoluto. Confirmado `--stop` Reinicie la guardia,`--no-watch-fs` Ninguno de los dos se puede evadir de manera estable (ambos han vuelto a ocurrir), ni es un accidente.
 >
-> 判定方法：看 `app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/` 下对应 class 的时间戳是否晚于最后一次改源码。需要确认「真的编译过」时用 `--rerun`（只强制重跑该任务，依赖仍走增量，代价小）；要排除一切缓存影响再用 `--rerun-tasks`（全量重跑，明显更慢）。
+> Método de juicio: mirar `app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/` Compruebe si la marca de tiempo de la clase correspondiente es posterior al último cambio de código fuente. Úselo cuando necesite confirmar que "realmente fue compilado" `--rerun`(Solo obliga a volver a ejecutar la tarea, las dependencias siguen siendo incrementales y el costo es pequeño); es necesario eliminar todos los efectos de caché antes de usar `--rerun-tasks`(Carrera con todo el peso, significativamente más lenta).
 
-> **PowerShell 会吃掉 `--tests` 的通配符**：在 pwsh 里写 `--tests "*Settings*"`，通配符会被当作路径展开成目录里的 `settings.gradle.kts`，Gradle 收到的是一个不存在的测试过滤器，报 `No tests found for given includes: [settings.gradle.kts]`。这个失败跟测试本身毫无关系，改代码是白改。
+> **PowerShell comerá `--tests` comodín**:Escribe en pwsh `--tests "*Settings*"`, los comodines se tratarán como rutas expandidas en directorios `settings.gradle.kts`,Gradle Lo que se recibió fue un filtro de prueba que no existe. Informe `No tests found for given includes: [settings.gradle.kts]`. Este fallo no tiene nada que ver con la prueba en sí y cambiar el código es una pérdida de tiempo.
 >
-> 规避：改用全限定类名（`--tests "io.zer0.muse.data.SettingsRepositoryTest"`）或包路径（`--tests "io.zer0.muse.data.*"`）；必须用通配符时让命令走 `cmd` 而不是 pwsh。同理，跑完先看结果目录里的 XML 类数，别只看 `BUILD SUCCESSFUL`。
+> Solución alternativa: utilice nombres de clase completos en su lugar (`--tests "io.zer0.muse.data.SettingsRepositoryTest"`) o ruta del paquete (`--tests "io.zer0.muse.data.*"`); suelte el comando cuando se deban usar comodines `cmd` en lugar de pwsh. De la misma manera, después de ejecutar, primero mire la cantidad de clases XML en el directorio de resultados, no solo mire `BUILD SUCCESSFUL`.
 
-> **`kspDebugUnitTestKotlin` 报 `[MissingType]: Element '…' references a type that is not present` 的坑**：根因通常不是代码，而是 `app/build/intermediates/compile_app_classes_jar/…/bundleDebugClassesToCompileJar/classes.jar`（以及同源的 `runtime_app_classes_jar/…/classes.jar`）被写成了残缺版——只剩 R、AIDL、BuildConfig，几十条到几百条，主源码的 Kotlin class 一个都没有。更麻烦的是它会被 Gradle 判定为 `UP-TO-DATE`，所以清 `kspCaches`、清 `generated/ksp` 全都无效。并发构建下两个进程同时清空并重写 `built_in_kotlinc/…/classes` 时最容易踩到。
+> **`kspDebugUnitTestKotlin` periódico `[MissingType]: Element '…' references a type that is not present` pozo**: La causa raíz normalmente no es el código, sino `app/build/intermediates/compile_app_classes_jar/…/bundleDebugClassesToCompileJar/classes.jar`(y homólogo `runtime_app_classes_jar/…/classes.jar`) fue escrito en una versión incompleta——Sólo R,AIDL,BuildConfig, de docenas a cientos de elementos, ninguna de las clases de Kotlin en el código fuente principal. Lo que es más problemático es que Gradle lo juzgará como `UP-TO-DATE`, tan claro `kspCaches`, Qing `generated/ksp` Todo fue en vano. En la construcción concurrente, ambos procesos se borran y reescriben al mismo tiempo. `built_in_kotlinc/…/classes` Es más fácil pisar cuando.
 
-> 判定方法：`bundleDebugClassesToCompileJar/classes.jar` 体积只有 1MB 左右、条目数几百且不含 `io/zer0/muse/` 业务类，即为损坏；对照 `app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes` 下的 class 数是全的。
+> Método de juicio:`bundleDebugClassesToCompileJar/classes.jar` El tamaño es sólo de aproximadamente 1 MB, el número de entradas es de varios cientos y no incluye `io/zer0/muse/` Tipo de negocio significa daño; comparar `app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes` El número de clases a continuación está completo.
 
-> 修复：删掉 `app/build/intermediates/compile_app_classes_jar` 与 `app/build/intermediates/runtime_app_classes_jar` 两个目录，重跑即可，不要动源码。同源症状还有测试阶段抛 `NoClassDefFoundError`（主源码类从同样残缺的 runtime jar 里取不到），修法相同。
+> Solución: eliminar `app/build/intermediates/compile_app_classes_jar` con `app/build/intermediates/runtime_app_classes_jar` Simplemente ejecute los dos directorios nuevamente sin tocar el código fuente. Síntomas del mismo origen y lanzamiento de la fase de prueba. `NoClassDefFoundError`(La clase de código fuente principal no se puede obtener del mismo jar de tiempo de ejecución incompleto), el método de modificación es el mismo.
 
-## 代码规范
+## Especificaciones del código
 
-- 遵循仓库根目录的 AGENTS.md(工程纪律与协作约定以该文件为准)
-- 提交信息使用中文或英文，保持清晰
+- Siguiendo el directorio raíz del repositorio AGENTS.md(Las disciplinas de ingeniería y los acuerdos de colaboración están sujetos a este documento.)
+- Envíe información en chino o inglés y manténgala clara.
 
-## 文档
+## Documentación
 
-对外文档位于仓库根目录（README.md / README_EN.md / release_notes.md / 用户手册.md 等）。修改代码后请同步更新对应的 .md 文件；内部设计文档不随仓库维护。
+Los documentos externos se encuentran en el directorio raíz del almacén (README.md / README_EN.md / release_notes.md / manual-de-usuario.md esperar). Después de modificar el código, actualice el archivo .md correspondiente simultáneamente; Los documentos de diseño interno no se mantienen en el almacén.
 
-## 许可证
+## licencia
 
-通过贡献代码，您同意您的贡献将在 GPL v3 许可下授权。
+Al contribuir con código, usted acepta que su contribución tendrá la licencia GPL v3.

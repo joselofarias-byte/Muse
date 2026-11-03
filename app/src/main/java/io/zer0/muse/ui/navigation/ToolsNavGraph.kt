@@ -14,15 +14,15 @@ import io.zer0.muse.ui.speech.VoiceCloningPage
 import io.zer0.muse.ui.stats.StatsScreen
 
 /**
- * 工具域 NavGraph — 包含 AI 工具管理、浏览器自动化、视频生成、语音克隆、
- * 统计、通知监听、数据管理、知识库共 8 个 composable。
+ * dominio de herramienta NavGraph — Incluye gestión de herramientas de IA, automatización del navegador, generación de vídeo, clonación de voz,
+ * Hay un total de 8 elementos componibles que incluyen estadísticas, monitoreo de notificaciones, administración de datos y base de conocimientos.
  *
- * 从 MainActivity 抽取以解决后者过载问题(原 1804 行 → 目标 ≤ 800 行)。
- * 所有 composable 统一使用 [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] 过渡。
- * STATS 页需要 [ChatViewModel] 以支持点击会话跳转回首页。
+ * Extracto de MainActivity para resolver el último problema de sobrecarga(Línea original 1804 → objetivo ≤ 800 OK).
+ * Todos los componibles se utilizan de manera uniforme. [MuseTransitions.horizontalPushEnter] / [horizontalPushPopExit] Transición.
+ * STATS página requerida [ChatViewModel] Para admitir, haga clic en la sesión para volver a la página de inicio.
  */
 fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewModel: ChatViewModel) {
-    // v1.0.4: AI 工具管理页(展示 ToolRegistry 全部工具 + 详情 + 风险等级)
+    // v1.0.4: AI Página de gestión de herramientas(Mostrar todas las herramientas de ToolRegistry + detalles + nivel de riesgo)
     composable<ToolsScreenRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -31,8 +31,8 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // P2-6: 浏览器自动化演示页 — 全屏 WebView + 顶部地址栏 + 底部操作栏
-    // P2-8: 视频生成页 — 从设置 → 工具 → 视频生成 进入
+    // P2-6: Página de demostración de automatización del navegador — WebView de pantalla completa + barra de direcciones superior + barra de acciones inferior
+    // P2-8: Página de generación de vídeo — desde la configuración → Herramientas → Entrada de generación de vídeo.
     composable<VideoGenerationRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -41,7 +41,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // P2-9: 语音克隆页 — 从设置 → 媒体 → 语音克隆 进入
+    // P2-9: Página de clonación de voz — desde la configuración → medios de comunicación → Clonar voz Ingresar
     composable<VoiceCloningRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -50,7 +50,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // v0.46: 统计页(热力图 + 使用概览,右滑入场)
+    // v0.46: Página de estadísticas(Mapa de calor + descripción general de uso,Desliza hacia la derecha para ingresar)
     composable<StatsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -58,13 +58,13 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
         StatsScreen(
             onBack = { navController.popBackStack() },
             onOpenSession = { sessionId ->
-                // v1.66: 统计页点击会话跳转 — 切换会话后回到首页
+                // v1.66: Salto de sesión de clic en la página de estadísticas — Volver a la página de inicio después de cambiar de sesión
                 sharedViewModel.switchSession(sessionId)
                 navController.popBackStack(HomeRoute, inclusive = false)
             },
         )
     }
-    // v1.0.4: 通知监听页(授权引导 + 最近通知列表)
+    // v1.0.4: Página de escucha de notificaciones(Guía de autorización + lista de notificaciones recientes)
     composable<NotificationListenerRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -73,7 +73,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.0.92: 消息渠道配置页(飞书/QQ 等外部 IM 桥接)
+    // v1.0.92: Página de configuración del canal de mensajes(Feishu/QQ Espere al puente de mensajería instantánea externo)
     composable<ChannelSettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -85,7 +85,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             },
         )
     }
-    // v2.0.1: 渠道对话页(按渠道查看联系人对话与上下文)
+    // v2.0.1: Página de conversación del canal(Ver conversaciones de contacto y contexto por canal)
     composable<ChannelConversationsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -99,7 +99,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             },
         )
     }
-    // v2.6.10: 单个联系人的会话流（气泡）
+    // v2.6.10: Flujo de conversación (burbujas) para un solo contacto
     composable<ChannelChatRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -111,7 +111,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // v1.0.92: OAuth 连接器页(通用 OAuth2 接入)
+    // v1.0.92: OAuth Página del conector(Acceso universal OAuth2)
     composable<ConnectorSettingsRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -120,7 +120,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // v2.0: 数据管理页(从设置进入)
+    // v2.0: Página de gestión de datos(Entrar desde configuración)
     composable<DataManagementRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -129,7 +129,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
             onBack = { navController.popBackStack() },
         )
     }
-    // 知识库(首页大方块入口)
+    // base de conocimientos(Entrada a la casa grande y cuadrada.)
     composable<KnowledgeRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
@@ -140,7 +140,7 @@ fun NavGraphBuilder.toolsNavGraph(navController: NavHostController, sharedViewMo
         )
     }
 
-    // v1.0.53: 封面库管理页(知识库文档详情 → 封面库 / 生成封面)
+    // v1.0.53: Portada de la página de gestión de la biblioteca(Detalles del documento de la base de conocimientos → Biblioteca de portadas/generar portada)
     composable<CoverManagerRoute>(
         enterTransition = { MuseTransitions.horizontalPushEnter() },
         popExitTransition = { MuseTransitions.horizontalPushPopExit() },

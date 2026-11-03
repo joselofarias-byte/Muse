@@ -5,10 +5,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 「非渲染消息」诊断日志的去重。
+ * Deduplicación de registros de diagnóstico de "mensajes no renderizados".
  *
- * 流式输出时可见列表一秒重算好几次,同值重复打日志会把 6 小时的调试日志冲成噪音;
- * 但这条日志本身是查「某条消息为什么不显示」的唯一入口,所以只去重、不删除。
+ * Durante la salida de streaming, la lista visible se recalcula varias veces por segundo.,El registro repetido con el mismo valor convertirá 6 horas de registros de depuración en ruido.;
+ * Pero este registro en sí es la única entrada para comprobar "por qué no se muestra un determinado mensaje".,Por lo tanto, sólo se eliminan los duplicados, no se eliminan.
  */
 class ChatRenderLogGateTest {
 
@@ -34,7 +34,7 @@ class ChatRenderLogGateTest {
         val gate = ChatRenderLogGate()
         assertTrue(gate.shouldLog(hidden = 11, total = 87))
         assertFalse(gate.shouldLog(hidden = 0, total = 87))
-        // 中间归零过,同一对数字再出现算新事件
+        // Volver a cero en el medio,El mismo par de números reaparece en un nuevo evento de cálculo.
         assertTrue(gate.shouldLog(hidden = 11, total = 87))
     }
 }

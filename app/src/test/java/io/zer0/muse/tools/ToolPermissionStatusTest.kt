@@ -4,7 +4,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** v2.x: 工具权限分层 — "任一就绪"语义与权限表覆盖测试。 */
+/** v2.x: Jerarquía de permisos de herramientas — "ya sea listo"Pruebas de cobertura de tablas semánticas y de permisos. */
 class ToolPermissionStatusTest {
     @Test
     fun `empty requirement needs no authorization`() {

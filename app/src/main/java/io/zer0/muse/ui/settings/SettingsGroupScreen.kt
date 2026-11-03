@@ -23,24 +23,24 @@ import io.zer0.muse.ui.common.surface.CardGroup
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-/** 分类页里每一行条目的测试标签与语义锚点。 */
+/** Pruebe etiquetas y anclajes semánticos para cada fila de entradas en la página de categorías. */
 internal const val SETTINGS_ENTRY_ROW_TAG: String = "settings-entry-row"
 
-/** 已解析好文案的条目行（CardGroup 的 DSL 不在组合上下文里，字符串必须先算好）。 */
+/** La línea de entrada de la copia analizada (CardGroup El DSL no está en el contexto de composición, la cadena debe calcularse primero). */
 private data class ResolvedEntryRow(
     val entry: SettingsEntrySpec,
     val title: String,
     val subtitle: String?,
 )
 
-/** 开关条目的当前值与写回回调。 */
+/** El valor actual de la entrada del interruptor y la devolución de llamada de escritura. */
 data class SettingsToggleUiState(val checked: Boolean, val onCheckedChange: (Boolean) -> Unit)
 
 /**
- * 分类页路由入口：把仓库里的实时状态接到纯渲染的 [SettingsGroupScreen] 上。
+ * Entrada de enrutamiento de página de categoría: conecte el estado en tiempo real en el almacén con la representación pura [SettingsGroupScreen] en.
  *
- * 代理条目的说明与 PII 开关的值都来自设置仓库，这两件事留在这里做；
- * 分类页本身只认声明清单 + 已解析好的字符串，方便脱离 DI 渲染与断言。
+ * La descripción de la entrada del proxy y el valor del cambio de PII provienen del repositorio de configuración, y estas dos cosas se dejan aquí;
+ * La página de categorías en sí solo reconoce la lista de declaraciones + la cadena analizada, lo que facilita la separación de la representación DI y las afirmaciones.
  */
 @Composable
 fun SettingsGroupPage(
@@ -79,10 +79,10 @@ fun SettingsGroupPage(
 }
 
 /**
- * 一级分类页：顶栏（返回 + 分类名）+ 该分类的条目卡片。
+ * Página de categoría de primer nivel: barra superior (volver + nombre de categoría)+ Tarjeta de entrada para esta categoría.
  *
- * 条目全部来自 [SettingsCatalog]，这里只负责把声明翻译成行：能点进去的给箭头，
- * 开关条目给开关，页内动作给动作行（执行中显示进度圈）。
+ * Todas las entradas provienen de [SettingsCatalog], aquí solo es responsable de traducir la declaración en líneas: se puede hacer clic en las flechas,
+ * El elemento de cambio se asigna al interruptor y la acción en la página se asigna a la línea de acción (se muestra un círculo de progreso durante la ejecución).
  */
 @Composable
 fun SettingsGroupScreen(
@@ -112,7 +112,7 @@ fun SettingsGroupScreen(
     }
 }
 
-/** 分类页展示条件：编译期闸门开着，且这个入口没有被标为暂不展示。 */
+/** Condiciones de visualización de la página de categoría: la puerta está abierta durante la compilación y esta entrada no está marcada como no mostrada temporalmente. */
 private fun SettingsEntrySpec.isAvailable(): Boolean =
     browseVisible && (id != SettingsEntryId.MINIPHONE || FeatureFlags.MINI_PHONE)
 
@@ -126,7 +126,7 @@ private fun SettingsEntryCard(
     subtitles: Map<SettingsEntryId, String>,
     toggleState: (SettingsToggleKey) -> SettingsToggleUiState,
 ) {
-    // CardGroup 的内容块是普通 DSL，不是组合上下文：标题/说明先在这里解析成字符串。
+    // CardGroup El bloque de contenido es DSL simple, no el contexto compuesto: encabezado/La descripción se analiza primero en una cadena aquí.
     val rows = entries.map { entry ->
         ResolvedEntryRow(
             entry = entry,

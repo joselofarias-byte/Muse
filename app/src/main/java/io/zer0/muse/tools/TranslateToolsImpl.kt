@@ -13,20 +13,20 @@ import io.zer0.muse.ui.translate.TranslateViewModel
 import org.koin.core.context.GlobalContext
 
 /**
- * P1-3b 拆域：翻译工具实现（从 ToolRegistry.kt 原样迁移）。
- * 由 TranslateToolsRegistrar 注册到 ToolRegistry。
+ * P1-3b Cancelación de registro: implementación de la herramienta de traducción (migrada desde ToolRegistry.kt tal como está).
+ * Registrado en ToolRegistry por TranslateToolsRegistrar.
  */
 class TranslateToolsImpl {
 
     suspend fun execTranslate(args: Map<String, String>): String {
         val text = args["text"]?.takeIf { it.isNotBlank() }
-            ?: return "缺少必填参数: text"
+            ?: return "Falta el parámetro requerido: text"
         val targetLanguage = args["target_language"]?.takeIf { it.isNotBlank() }
-            ?: return "缺少必填参数: target_language"
+            ?: return "Falta el parámetro requerido: target_language"
         val sourceLanguage = args["source_language"]?.takeIf { it.isNotBlank() }
-        val style = args["style"]?.takeIf { it.isNotBlank() } ?: "通用"
+        val style = args["style"]?.takeIf { it.isNotBlank() } ?: "Universales"
 
-        // 构建 system prompt(CONS-01: 收敛到 TranslateViewModel.buildTranslationPrompt,消除三套实现漂移)
+        // construir system prompt(CONS-01: converger a TranslateViewModel.buildTranslationPrompt,Elimina tres series para lograr la deriva.)
         val systemPrompt = TranslateViewModel.buildTranslationPrompt(
             text = text,
             targetLanguage = targetLanguage,
@@ -38,35 +38,35 @@ class TranslateToolsImpl {
             UIMessage(role = MessageRole.USER, content = text),
         )
 
-        // ChatService 通过 Koin 获取(Safe Mode 下 Koin 可能未初始化,走 resultOf 兜底)
+        // ChatService Consíguelo a través de Koin(Safe Mode Es posible que el siguiente Koin no se inicialice,Tome resultOf para llegar al fondo de las cosas.)
         val koin = resultOf { GlobalContext.get() }.getOrNull()
-            ?: return "翻译服务不可用(Koin 未初始化)"
+            ?: return "Servicio de traducción no disponible(Koin no inicializado)"
         val chatService = resultOf { koin.get<ChatService>() }.getOrNull()
-            ?: return "翻译服务不可用(ChatService 未注册)"
+            ?: return "Servicio de traducción no disponible(ChatService No registrado)"
 
         return resultOf {
-            // 优先 completeText(一次性返回,速度快)
+            // Prioridad completeText(Devolución única,rapido)
             val translated: String = try {
                 val completion = chatService.completeText(messages = messages)
                 stripThinkTags(completion.text).trim()
             } catch (e: UnsupportedOperationException) {
-                // Provider 未实现 completeText,降级流式
+                // Provider No implementado completeText,degradar la transmisión
                 collectTranslateStream(chatService, messages)
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-                // 审计修复 (3.6): 协程已取消时不再降级到流式,取消信号向上传播
+                // Reparación de auditoría (3.6): Ya no se baja a transmisión cuando se cancela la rutina,Cancelar la propagación de la señal hacia arriba
                 throw e
             } catch (e: Exception) {
-                // 其他错误也降级流式(网络抖动等)
-                Logger.w("ToolRegistry", "translate completeText 失败,降级 streamChat", e)
+                // Otros errores también degradan la transmisión(Fluctuación de la red, etc.)
+                Logger.w("ToolRegistry", "translate completeText falló,Rebajar streamChat", e)
                 collectTranslateStream(chatService, messages)
             }
-            if (translated.isEmpty()) "翻译结果为空,请检查原文或目标语言。" else translated
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "translate 失败: $msg") }
-            .getOrNull() ?: "翻译失败,请稍后重试。"
+            if (translated.isEmpty()) "El resultado de la traducción está vacío.,Por favor verifique el idioma original o de destino." else translated
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "translate falló: $msg") }
+            .getOrNull() ?: "La traducción falló,Inténtelo de nuevo más tarde."
     }
 
-    /** 流式收集翻译结果(completeText 不可用时的降级路径)。 */
-    /** 流式收集翻译结果(completeText 不可用时的降级路径)。 */
+    /** Colección en streaming de resultados de traducción(completeText Ruta de degradación cuando no esté disponible). */
+    /** Colección en streaming de resultados de traducción(completeText Ruta de degradación cuando no esté disponible). */
     suspend fun collectTranslateStream(chatService: ChatService, messages: List<UIMessage>): String {
         val sb = StringBuilder()
         chatService.streamChat(messages = messages).collect { event ->
@@ -76,7 +76,7 @@ class TranslateToolsImpl {
                     providerError = ProviderError.Unknown(displayMessage = event.message),
                     cause = event.throwable,
                 )
-                else -> { /* 忽略 ReasoningDelta / ToolCallDelta / ImageDelta / Done 等 */ }
+                else -> { /* ignorar ReasoningDelta / ToolCallDelta / ImageDelta / Done espera */ }
             }
         }
         return stripThinkTags(sb.toString()).trim()

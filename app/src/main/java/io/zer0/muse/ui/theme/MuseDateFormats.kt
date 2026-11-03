@@ -1,47 +1,47 @@
 package io.zer0.muse.ui.theme
 
 /**
- * v1.75: 集中管理应用内日期时间格式串。
+ * v1.75: Administre de forma centralizada cadenas de formato de fecha y hora dentro de la aplicación.
  *
- * 原先 `"MM-dd HH:mm"`、`"HH:mm"`、`"yyyy-MM-dd HH:mm"` 等格式串散落在 16+ 文件,
- * 修改格式需多处同步易遗漏。集中此处便于统一调整。
+ * Originalmente `"MM-dd HH:mm"`,`"HH:mm"`,`"yyyy-MM-dd HH:mm"` etc. cadenas de formato repartidas en más de 16 archivos,
+ * La modificación del formato requiere sincronización en varios lugares y es fácil pasarla por alto. Centralice aquí para un ajuste unificado.
  *
- * 注:SimpleDateFormat 对象本身仍在各调用处用 remember / 局部变量创建(v1.71 已优化高频重组路径)。
- * 这里只统一格式串字面量。
+ * Nota:SimpleDateFormat El objeto en sí todavía se crea utilizando variables locales/recordadas en cada llamada.(v1.71 Ruta de recombinación de alta frecuencia optimizada).
+ * Aquí solo se unifican los literales de cadena de formato.
  */
 object MuseDateFormats {
-    /** 短时间(时:分),如 "14:30"。 */
+    /** poco tiempo(tiempo:puntos),Como por ejemplo "14:30". */
     const val TIME_SHORT = "HH:mm"
 
     /**
-     * 12 小时制时间(带 AM/PM),如 "2:30 PM"。
-     * L-DF1: "a" 占位符的 AM/PM 文本由调用处 SimpleDateFormat 的 Locale 决定
-     * (Locale.US → "AM/PM",Locale.CHINA → "上午/下午")。如需固定英文显示,
-     * 调用处应显式传 Locale.US 构造 SimpleDateFormat。
+     * 12 hora por hora(traer AM/PM),Como por ejemplo "2:30 PM".
+     * L-DF1: "a" El texto AM/PM del marcador de posición está determinado por la configuración regional del SimpleDateFormat que llama.
+     * (Locale.US → "AM/PM",Locale.CHINA → "mañana/tarde"). Si necesita arreglar la pantalla en inglés,
+     * El sitio que realiza la llamada debe pasar explícitamente Locale.US para construir SimpleDateFormat.
      */
     const val TIME_12H = "h:mm a"
 
-    /** 月-日 时:分,如 "07-11 14:30"。列表项时间显示最常用。 */
+    /** mes-hora del día:puntos,Como por ejemplo "07-11 14:30". La visualización de la hora del elemento de lista es la más utilizada. */
     const val DATE_TIME_SHORT = "MM-dd HH:mm"
 
-    /** 月-日,如 "07-11"。 */
+    /** mes-dia,Como por ejemplo "07-11". */
     const val DATE_SHORT = "MM-dd"
 
-    /** 年-月-日 时:分,如 "2026-07-11 14:30"。详情页/设置页时间显示。 */
+    /** año-mes-hora del día:puntos,Como por ejemplo "2026-07-11 14:30". Página de detalles/Configure la visualización del tiempo de la página. */
     const val DATE_TIME_FULL = "yyyy-MM-dd HH:mm"
 
-    /** 年-月-日 时:分:秒,如 "2026-07-11 14:30:45"。精确时间戳。 */
+    /** año-mes-hora del día:puntos:segundos,Como por ejemplo "2026-07-11 14:30:45". Marca de tiempo precisa. */
     const val DATE_TIME_FULL_SEC = "yyyy-MM-dd HH:mm:ss"
 
-    /** 年-月-日,如 "2026-07-11"。仅日期。 */
+    /** año-mes-dia,Como por ejemplo "2026-07-11". Sólo fecha. */
     const val DATE_ONLY = "yyyy-MM-dd"
 
-    /** 文件名时间戳,如 "20260711-143045"(Locale.US,用于备份/崩溃日志文件名)。 */
+    /** Marca de tiempo del nombre del archivo,Como por ejemplo "20260711-143045"(Locale.US,para respaldo/Nombre del archivo de registro de fallos). */
     const val FILE_TIMESTAMP = "yyyyMMdd-HHmmss"
 
-    /** 中文日期分隔符,如 "07月11日 星期五"(Locale.getDefault,EEEE 为本地化星期)。 */
-    const val DATE_WEEKDAY_CN = "MM月dd日 EEEE"
+    /** Separador de fechas chino,Como por ejemplo "07mes11dia viernes"(Locale.getDefault,EEEE para el día de la semana localizado). */
+    const val DATE_WEEKDAY_CN = "MMmesdddia EEEE"
 
-    /** I18N-06: 迷你手机时间行 — 时间 + 中文月日,如 "14:30  ·  07月11日"。 */
-    const val TIME_WITH_MONTH_DAY = "HH:mm  ·  MM月dd日"
+    /** I18N-06: Línea del tiempo del mini teléfono celular — Hora + mes y día chinos,Como por ejemplo "14:30  ·  07mes11dia". */
+    const val TIME_WITH_MONTH_DAY = "HH:mm  ·  MMmesdddia"
 }

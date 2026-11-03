@@ -5,98 +5,98 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse 形状令牌(对齐前端设计完整方案 §5.1)。
+ * Muse ficha de forma(Solución completa para alinear el diseño frontal §5.1).
  *
- * 圆角体系(从大到小):
- *  - [extraLarge]: 20.dp — 大卡片 / 大型容器
- *  - [large]:     18.dp — 消息气泡主力(大圆角=柔和=情感 App 气质)
- *  - [medium]:     12.dp — 按钮 / 代码块 / 列表项(中等,不太圆也不太方)
- *  - [small]:       8.dp — 行内代码 / 小型标签
- *  - [extraSmall]:  6.dp — 气泡尾巴角(比其他角小,指示消息方向)
+ * sistema de esquinas redondeadas(De grande a pequeño):
+ *  - [extraLarge]: 20.dp — Tarjetas grandes/contenedores grandes
+ *  - [large]:     18.dp — Fuerza principal de la burbuja de mensajes(Grandes esquinas redondeadas=suave=Temperamento de la aplicación de emoción)
+ *  - [medium]:     12.dp — Botón/Bloque de código/Elemento de lista(medio,Ni demasiado redondo ni demasiado cuadrado.)
+ *  - [small]:       8.dp — Código en línea/etiquetas pequeñas
+ *  - [extraSmall]:  6.dp — esquina de la cola de burbuja(más pequeño que otros ángulos,Indicar la dirección del mensaje)
  *
- * 用法:
+ * Uso:
  * ```
  * Card(shape = MuseShapes.medium) { ... }
  * Surface(shape = MuseShapes.large) { ... }
  * ```
  *
- * 气泡尾巴需要非对称圆角,用 [BubbleShape] 而非 RoundedCornerShape.copy。
+ * La cola de burbuja requiere filetes asimétricos,usar [BubbleShape] en lugar de RoundedCornerShape.copy.
  *
- * 注:[MuseShapes] 受限于 [Shapes] 的 5 个固定槽位(extraSmall/small/medium/large/extraLarge),
- * 其余圆角档位(tiny / semiLarge / huge / mega / pill)见下方 [Shapes] 扩展属性。
+ * Nota:[MuseShapes] limitado por [Shapes] 5 ranuras fijas(extraSmall/small/medium/large/extraLarge),
+ * Otras esquinas redondeadas(tiny / semiLarge / huge / mega / pill)Ver abajo [Shapes] Atributos extendidos.
  */
 val MuseShapes: Shapes = Shapes(
-    // L-SH2: 由 MuseCornerRadius 常量驱动,消除数值重复(改动只需改一处)。
-    extraSmall = RoundedCornerShape(MuseCornerRadius.BUBBLE_TAIL.dp), // 气泡尾巴角 / 小标签
-    small = RoundedCornerShape(MuseCornerRadius.SMALL.dp), // 行内代码 / 小型标签
-    medium = RoundedCornerShape(MuseCornerRadius.BUTTON.dp), // 按钮 / 代码块 / 列表项
-    large = RoundedCornerShape(MuseCornerRadius.BUBBLE.dp), // 消息气泡主力
-    extraLarge = RoundedCornerShape(MuseCornerRadius.CARD.dp), // 大卡片 / 大型容器
+    // L-SH2: Impulsado por la constante MuseCornerRadius,Eliminar la duplicación numérica(Sólo se necesita un cambio).
+    extraSmall = RoundedCornerShape(MuseCornerRadius.BUBBLE_TAIL.dp), // Esquina de cola de burbuja/etiqueta pequeña
+    small = RoundedCornerShape(MuseCornerRadius.SMALL.dp), // Código en línea/etiquetas pequeñas
+    medium = RoundedCornerShape(MuseCornerRadius.BUTTON.dp), // Botón/Bloque de código/Elemento de lista
+    large = RoundedCornerShape(MuseCornerRadius.BUBBLE.dp), // Fuerza principal de la burbuja de mensajes
+    extraLarge = RoundedCornerShape(MuseCornerRadius.CARD.dp), // Tarjetas grandes/contenedores grandes
 )
 
 /**
- * Muse 形状令牌扩展(补全 [MuseShapes] 之外的圆角档位)。
+ * Muse Extensión de token de forma(completo [MuseShapes] esquinas redondeadas).
  *
- * [MuseShapes] 是 [Shapes] 实例,只有 5 个固定槽位;全项目其余圆角取值
- * (50/28/24/16/4 等历史裸值)在此统一为令牌,通过 Shapes 扩展属性暴露,
- * 使 `MuseShapes.xxx` 形式与既有 `MuseShapes.medium` 等保持一致。
+ * [MuseShapes] si [Shapes] Ejemplo,Sólo 5 ranuras fijas;Valores para el resto de filetes de todo el proyecto
+ * (50/28/24/16/4 Espere el valor desnudo histórico)Unificado aquí como token,Expuesto a través de propiedades extendidas de Formas,
+ * hacer `MuseShapes.xxx` forma y existencia `MuseShapes.medium` etc. Manténgase constante.
  *
- * 补全档位(从小到大):
- *  - [tiny]:      4.dp  — 标签 / 徽标
- *  - [semiLarge]: 16.dp — 输入框 / 中卡片
- *  - [huge]:      24.dp — 顶圆角 BottomSheet
- *  - [mega]:      28.dp — 特殊大圆角(FAB)
- *  - [pill]:      50%  — 胶囊形(按钮 / 搜索栏)
+ * Engranaje de finalización(desde la infancia hasta la edad adulta):
+ *  - [tiny]:      4.dp  — etiqueta/logotipo
+ *  - [semiLarge]: 16.dp — Cuadro de entrada/tarjeta intermedia
+ *  - [huge]:      24.dp — filete superior BottomSheet
+ *  - [mega]:      28.dp — Esquinas redondeadas grandes especiales(FAB)
+ *  - [pill]:      50%  — forma de cápsula(botón/barra de búsqueda)
  *
- * 用法:
+ * Uso:
  * ```
  * FilledTonalButton(shape = MuseShapes.pill) { ... }
  * Surface(shape = MuseShapes.semiLarge) { ... }
  * ```
  */
-// L-SH1: 以下扩展形状改为顶层 val 缓存,避免每次访问都新建 RoundedCornerShape。
-// L-SH2: 数值统一由 MuseCornerRadius 常量驱动,与 MuseShapes 严格对应。
-// L-8: 这些扩展属性定义在 Shapes 上,但语义上假设接收者为 MuseShapes
-// (数值令牌来自 MuseCornerRadius,与 MuseShapes 的 5 个槽位配套)。其他 Shapes
-// 实例调用这些扩展虽可编译,但取值与 MuseShapes 体系无关,不应混用。
-/** 标签 / 徽标。 */
+// L-SH1: La siguiente forma expandida se cambia al caché val de nivel superior,Evite crear una nueva RoundedCornerShape en cada visita.
+// L-SH2: La unificación numérica está impulsada por la constante MuseCornerRadius,Corresponde estrictamente a MuseShapes.
+// L-8: Estas propiedades extendidas se definen en Formas,Pero semánticamente se supone que el receptor es MuseShapes
+// (Los tokens numéricos provienen de MuseCornerRadius,Viene con 5 ranuras de MuseShapes). Otros Shapes
+// Las llamadas de instancia a estas extensiones se pueden compilar.,Pero el valor no tiene nada que ver con el sistema MuseShapes.,No se debe mezclar.
+/** Etiqueta/logotipo. */
 private val TinyShape = RoundedCornerShape(MuseCornerRadius.TINY.dp)
 val Shapes.tiny: RoundedCornerShape get() = TinyShape
 
-/** 输入框 / 中卡片。 */
+/** Cuadro de entrada/Tarjeta. */
 private val SemiLargeShape = RoundedCornerShape(MuseCornerRadius.SEMI_LARGE.dp)
 val Shapes.semiLarge: RoundedCornerShape get() = SemiLargeShape
 
-/** 顶圆角 BottomSheet。 */
+/** Sábana bajera superior redondeada. */
 private val HugeShape = RoundedCornerShape(MuseCornerRadius.SHEET.dp)
 val Shapes.huge: RoundedCornerShape get() = HugeShape
 
-/** 特殊大圆角(FAB)。 */
+/** Esquinas redondeadas grandes especiales(FAB). */
 private val MegaShape = RoundedCornerShape(MuseCornerRadius.MEGA.dp)
 val Shapes.mega: RoundedCornerShape get() = MegaShape
 
-/** v2.0.1: 大卡片——设置分组 / 面板卡（大圆角档）。 */
+/** v2.0.1: tarjeta grande——Configure tarjetas de agrupación/panel (esquinas grandes y redondeadas). */
 private val LargeCardShape = RoundedCornerShape(MuseCornerRadius.LARGE_CARD.dp)
 val Shapes.largeCard: RoundedCornerShape get() = LargeCardShape
 
-/** 胶囊形:50% 圆角,任意高度下均为完整胶囊(按钮 / 搜索栏)。 */
-// L-9: 显式用 percent 重载,避免误传 .dp 触发 Int→dp 重载产生非预期圆角。
+/** forma de cápsula:50% esquinas redondeadas,Cápsula completa a cualquier altura.(botón/barra de búsqueda). */
+// L-9: Explícitamente sobrecargado con porcentaje,Evite los desencadenantes .dp por falta de comunicación Int→dp La sobrecarga produce esquinas redondeadas inesperadas.
 private val PillShape = RoundedCornerShape(percent = MuseCornerRadius.PILL)
 val Shapes.pill: RoundedCornerShape get() = PillShape
 
 /**
- * v1.48 (h18): 气泡形状令牌(非对称圆角,尾巴角 6dp + 主体 20dp)。
+ * v1.48 (h18): ficha en forma de burbuja(Filete asimétrico,Esquina trasera 6dp + cuerpo 20dp).
  *
- * 落实第 23 行注释承诺,统一单聊与群聊的消息气泡圆角,根除裸值
- * `RoundedCornerShape(20.dp,20.dp,20.dp,6.dp)`(单聊)与
- * `RoundedCornerShape(18.dp,18.dp,4.dp,18.dp)`(群聊)混用。
+ * Cumplir la promesa del comentario de la línea 23,Unifique las esquinas redondeadas de la burbuja de mensajes de chat individual y de chat grupal,erradicar los valores desnudos
+ * `RoundedCornerShape(20.dp,20.dp,20.dp,6.dp)`(charla privada)con
+ * `RoundedCornerShape(18.dp,18.dp,4.dp,18.dp)`(chat grupal)Mézclalo.
  *
- *  - [userBubble]:      (20,20,6,20) — 用户气泡,右下小尾巴
- *  - [assistantBubble]: (20,20,20,6) — AI 气泡,左下小尾巴
+ *  - [userBubble]:      (20,20,6,20) — Burbuja de usuario,cola inferior derecha
+ *  - [assistantBubble]: (20,20,20,6) — AI Burbujas,cola inferior izquierda
  *
- * 数值对应 [MuseCornerRadius.BUBBLE_TAIL] (6) 与 [MuseCornerRadius.CARD] (20)。
+ * Correspondencia numérica [MuseCornerRadius.BUBBLE_TAIL] (6) con [MuseCornerRadius.CARD] (20).
  */
-/** 用户气泡:右下角小圆角模拟尾巴(主体 20dp + 尾巴 6dp)。 */
+/** Burbuja de usuario:La pequeña esquina redondeada en la esquina inferior derecha simula una cola.(Cuerpo 20dp + cola 6dp). */
 private val UserBubbleShape = RoundedCornerShape(
     MuseCornerRadius.CARD.dp,
     MuseCornerRadius.CARD.dp,
@@ -105,7 +105,7 @@ private val UserBubbleShape = RoundedCornerShape(
 )
 val Shapes.userBubble: RoundedCornerShape get() = UserBubbleShape
 
-/** AI 气泡:左下角小圆角模拟尾巴(主体 20dp + 尾巴 6dp)。 */
+/** AI Burbujas:La pequeña esquina redondeada en la esquina inferior izquierda simula la cola.(Cuerpo 20dp + cola 6dp). */
 private val AssistantBubbleShape = RoundedCornerShape(
     MuseCornerRadius.CARD.dp,
     MuseCornerRadius.CARD.dp,
@@ -115,45 +115,45 @@ private val AssistantBubbleShape = RoundedCornerShape(
 val Shapes.assistantBubble: RoundedCornerShape get() = AssistantBubbleShape
 
 /**
- * 便捷常量(直接用于 RoundedCornerShape 场景或代码注释)。
- * 数值与 [MuseShapes] 严格对应,改动需同步。
+ * Constantes de conveniencia(Úselo directamente en escenas RoundedCornerShape o comentarios de código).
+ * numérico y [MuseShapes] Correspondencia estricta,Los cambios deben sincronizarse.
  *
- * CMP-02: 同值别名(MEDIUM / LARGE / EXTRA_LARGE / HUGE)已**删除** —
- * 每个档位只保留一个规范名,避免同一数值两套命名再次分叉。
+ * CMP-02: Alias del mismo valor(MEDIUM / LARGE / EXTRA_LARGE / HUGE)Ya**Eliminar** —
+ * Sólo se reserva un nombre canónico para cada arte.,Evite que dos conjuntos de nombres para el mismo valor se bifurquen nuevamente.
  */
 object MuseCornerRadius {
-    /** 气泡尾巴角(非对称角)。 */
+    /** esquina de la cola de burbuja(ángulo asimétrico). */
     const val BUBBLE_TAIL = 6
 
-    /** 行内代码 / 小型标签。 */
+    /** Código en línea/etiquetas pequeñas. */
     const val SMALL = 8
 
-    /** 按钮 / 代码块 / 列表项。 */
+    /** Botón/bloque de código/elemento de lista. */
     const val BUTTON = 12
 
-    /** 消息气泡主力。 */
+    /** La burbuja del mensaje principal. */
     const val BUBBLE = 18
 
-    /** 卡片 / 大型容器。 */
+    /** Tarjetas/Contenedores Grandes. */
     const val CARD = 20
 
-    /** 底部弹出面板顶部。 */
+    /** Abajo aparece la parte superior del panel. */
     const val SHEET = 24
 
-    // ── 补全令牌(标准化命名,数值与上方对应,改动需同步)──
+    // ── ficha de finalización(denominación estandarizada,El valor numérico corresponde al anterior.,Los cambios deben sincronizarse)──
 
-    /** 标签 / 徽标。 */
+    /** Etiqueta/logotipo. */
     const val TINY = 4
 
-    /** 输入框 / 中卡片。 */
+    /** Cuadro de entrada/Tarjeta. */
     const val SEMI_LARGE = 16
 
-    /** 特殊大圆角(FAB)。 */
+    /** Esquinas redondeadas grandes especiales(FAB). */
     const val MEGA = 28
 
-    /** v2.0.1: 大卡片(设置分组 / 面板卡)。 */
+    /** v2.0.1: tarjeta grande(Configurar tarjetas de grupo/panel). */
     const val LARGE_CARD = 24
 
-    /** 胶囊形(50% 圆角)。 */
+    /** forma de cápsula(50% esquinas redondeadas). */
     const val PILL = 50
 }

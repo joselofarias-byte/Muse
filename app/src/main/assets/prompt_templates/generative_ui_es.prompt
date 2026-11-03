@@ -1,0 +1,46 @@
+interfaz generativa(Úselo cuando la respuesta sea adecuada para expresarse en componentes interactivos.):
+
+excepto palabras,Puedes generar interfaces interactivas directamente en la conversación.——Gráficos, tablas comparativas, diagramas de flujo, tarjetas de indicadores,
+Gadgets con ajuste de parámetros.,Incluso widgets reproducibles. Generado usando la herramienta show_card.
+
+## cuando usar
+
+- categoría de contraste:Comparación horizontal de múltiples opciones.(Teléfono celular, plan, producto, ruta.).
+- clase de datos:Visualización de datos, estadísticas, tendencias, proporciones.
+- proceso/Clase de estructura:Proceso, arquitectura, relaciones, cronogramas, diagramas de desmontaje.
+- Herramientas:Se encuentran disponibles calculadoras, conversores, libros de contabilidad, seguimiento del progreso y otras tareas basadas en parámetros.
+- Enseñanza:Explicaciones de conceptos con ilustraciones, orientación paso a paso y demostraciones prácticas.
+- necesitar"visible"mejor que"leer en voz alta"cualquier escena.
+
+## Cuando no usarlo
+
+- Preguntas y respuestas simples, charla trivial, investigación de hechos——Las respuestas de texto directo son más rápidas.
+- Sólo una o dos oraciones pueden explicar el contenido claramente.——No interactúes por el simple hecho de interactuar.
+- Cuando el usuario quiere explícitamente texto.
+
+Criterios de juicio:Si los componentes interactivos permiten la comprensión o el uso.**significativamente más simple**. Si no,Mantenlo en texto plano.
+
+## como escribir
+
+- escribir solo HTML/SVG **fragmento**,no lo hagas DOCTYPE / <html> / <head> / <body>.
+- Todos los estilos**en línea o escrito en <style> adentro**,No se utilizan recursos externos.(No hacer referencia a CSS/JS/imágenes externas).
+- Utilice variables temáticas para adaptar colores oscuros y claros.:`var(--muse-bg)` `var(--muse-fg)` `var(--muse-muted)`
+  `var(--muse-accent)` `var(--muse-border)` `var(--muse-surface)`;Si la variable no está disponible,
+  usar `prefers-color-scheme` Consultas de los medios.
+- **Prioridad de pantalla estrecha**:Diseño según el ancho vertical de la pantalla del teléfono celular.,Evite anchos de píxeles fijos,Porcentaje de uso/flex/grid.
+- La zona caliente táctil es nada menos que 44px;botón/Se debe poder hacer clic y arrastrar el control deslizante.
+- Las esquinas redondeadas y el espaciado siguen el tema.:esquinas redondeadas 12~20px,Espaciado 8/12/16px.
+- mantenlo simple:Una tarjeta se centra en una cosa.,No llenes toda la página.
+
+## convención de interacción
+
+- El script en la tarjeta se puede llamar `window.muse.send("texto")` Permitir que los usuarios envíen mensajes a la conversación(Debe activarse después de que el usuario haga clic).
+- La tarjeta puede leer los datos vinculados por el host.:`window.muse.getData("cardId")` Devuelve una cadena JSON.
+- Para actualizar los datos de la tarjeta más tarde,llamar update_card_data(cardId, data),Simplemente vuelva a leer el guión de la tarjeta.
+- No permita que las tarjetas envíen mensajes automáticamente,Debe activarse mediante un clic del usuario.
+
+## División del trabajo con artefactos.
+
+- artifact:necesita ser**Ver individualmente/copiar/reutilizar**El bloque de contenidos completo de(Código, documentación, artículos largos.).
+- show_card:estar en**Presentado directamente en la conversación e interactivo.**interfaz.
+- Ambos se pueden usar en una respuesta al mismo tiempo.:Descripción de texto + visualización de tarjeta + artefacto guarda el contenido completo.

@@ -1,359 +1,358 @@
 <p align="center">
-  <img src="assets/readme/banner.png" width="100%" alt="Muse — 跑在你手机里的个人 Agent">
+  <img src="assets/readme/banner.png" width="100%" alt="Muse: no solo conversación, una IA que te conoce de verdad">
 </p>
 
 <p align="center">
-  <b>中文</b> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
+  <b>Español</b> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Zer0Qing/Muse/releases/latest"><img src="https://img.shields.io/github/v/release/Zer0Qing/Muse?style=flat-square&label=release" alt="Latest release"></a>
-  <a href="https://github.com/Zer0Qing/Muse/releases"><img src="https://img.shields.io/github/downloads/Zer0Qing/Muse/total?style=flat-square" alt="Downloads"></a>
-  <a href="https://github.com/Zer0Qing/Muse/stargazers"><img src="https://img.shields.io/github/stars/Zer0Qing/Muse?style=flat-square" alt="Stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square" alt="License: GPL v3"></a>
+  <a href="https://github.com/Zer0Qing/Muse/releases/latest"><img src="https://img.shields.io/github/v/release/Zer0Qing/Muse?style=flat-square&label=release" alt="Última versión"></a>
+  <a href="https://github.com/Zer0Qing/Muse/releases"><img src="https://img.shields.io/github/downloads/Zer0Qing/Muse/total?style=flat-square" alt="Descargas"></a>
+  <a href="https://github.com/Zer0Qing/Muse/stargazers"><img src="https://img.shields.io/github/stars/Zer0Qing/Muse?style=flat-square" alt="Estrellas"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square" alt="Licencia: GPL v3"></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-brightgreen?style=flat-square" alt="Android 8.0+">
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
 </p>
 <p align="center">
-  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQ群-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="QQ群"></a>
-  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/官网-museai.ltd-blueviolet?style=for-the-badge" alt="官网"></a>
-  <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="Download"></a>
+  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQgrupo-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Grupo de QQ"></a>
+  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/Sitio web oficial-museai.ltd-blueviolet?style=for-the-badge" alt="Sitio web"></a>
+  <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="Descargar"></a>
 </p>
 
 <p align="center">
-  <a href="#muse-是什么">Muse 是什么</a> ·
-  <a href="#截图">截图</a> ·
-  <a href="#下载">下载</a> ·
-  <a href="#快速上手">快速上手</a> ·
-  <a href="#功能一览">功能一览</a> ·
-  <a href="用户手册.md">用户手册</a> ·
-  <a href="#开源共创">开源共创</a>
+  <a href="#qué-es-muse">Qué es Muse</a> ·
+  <a href="#capturas-de-pantalla">Capturas de pantalla</a> ·
+  <a href="#descarga">Descarga</a> ·
+  <a href="#primeros-pasos">Primeros pasos</a> ·
+  <a href="#funciones">Funciones</a> ·
+  <a href="manual-de-usuario.md">Manual de usuario</a> ·
+  <a href="#código-abierto">Código abierto</a>
 </p>
 
 ---
 
-## Muse 是什么
+## Qué es Muse
 
-**Muse 是跑在你自己手机上的个人 Agent（personal agent）。**
+**Muse es un agente personal que corre en tu propio teléfono.**
 
-2026 年的个人 Agent 大多生在云上：它们记得你、能替你干活，代价是你的一切都在别人的服务器里，执行发生在你看不见的地方。
+La mayoría de los agentes personales de 2026 viven en la nube. Te recuerdan y te resuelven el trabajo, y el precio es que todo lo tuyo sigue en el servidor de otra persona, ejecutándose fuera de tu vista.
 
-Muse 反过来做。它常驻在你的 Android 手机里，模型随你接（40+ 预置供应商），数据默认全部留在本机；需要动手时，它真的能操作这台设备——读屏、点击、跑命令、读写文件。
+Muse va en la dirección contraria. Vive en tu Android, acepta el modelo que le pongas (más de 40 proveedores predefinidos), deja tus datos en el dispositivo por defecto y, cuando hay algo que hacer, opera el teléfono de verdad: lee la pantalla, toca, ejecuta comandos, lee y escribe archivos.
 
-它做四件事：
+Hace cuatro cosas:
 
-| | 含义 | 在 Muse 里对应什么 |
+| | Significado | Cómo lo hace Muse |
 |---|---|---|
-| **连续** | 换会话、换渠道、换模型，还是同一个它 | 四层记忆 + 五个聊天渠道共用同一个人格 |
-| **主动** | 没人叫它，也会推进该推进的事 | 牵挂账本、定时任务、久未联系时主动来找你 |
-| **能动手** | 不只会说话 | 无障碍 / Shizuku / Root 三层通道，200+ 工具，内置终端与虚拟屏 |
-| **持久** | 关掉重开还在 | 常驻保活、本地数据库、离线运行时 |
+| **Continuo** | Cambia de sesión, de canal o de modelo y sigue siendo el mismo | Memoria en cuatro capas + una sola persona en los cinco canales de chat |
+| **Proactivo** | Avanza lo que hay que avanzar sin que lo llames | Libro de lo que te quiere decir, tareas programadas, escribirte cuando lleva tiempo en silencio |
+| **Capaz** | Hace más que hablar | Capas Accesibilidad / Shizuku / Root, más de 200 herramientas, terminal y pantalla virtual |
+| **Persistente** | Lo cierras y lo abres, y sigue ahí | Servicio en primer plano, base de datos local, runtimes sin conexión |
 
-不用注册，没有账号，卸载即走。
+Sin registro, sin cuenta: lo desinstalas y se va.
 
-## 截图
+## Capturas de pantalla
 
 <p align="center">
-  <img src="screenshots/zh/chat.jpg" width="180" alt="对话：带 Mood 的日常聊天">
-  <img src="screenshots/zh/memory.jpg" width="180" alt="记忆：事实流与时间轴">
-  <img src="screenshots/zh/group-chat.jpg" width="180" alt="群聊：多个助手一起讨论">
-  <img src="screenshots/zh/knowledge.jpg" width="180" alt="知识库：检索设置">
+  <img src="screenshots/en/chat.jpg" width="180" alt="Chat: conversación diaria con una tarjeta de Mood">
+  <img src="screenshots/en/memory.jpg" width="180" alt="Memoria: flujo de hechos y línea de tiempo">
+  <img src="screenshots/en/group-chat.jpg" width="180" alt="Chat grupal: varios asistentes conversando">
+  <img src="screenshots/en/knowledge.jpg" width="180" alt="Base de conocimiento: ajustes de búsqueda">
 </p>
 
 <details>
-<summary><b>更多截图</b>（点击展开）</summary>
+<summary><b>Más capturas</b> (toca para expandir)</summary>
 
 <p align="center">
-  <img src="screenshots/zh/automation.jpg" width="140" alt="UI 自动化与权限向导">
-  <img src="screenshots/zh/plugins.jpg" width="140" alt="插件市场与信任管理">
-  <img src="screenshots/zh/channels.jpg" width="140" alt="消息渠道接入">
+  <img src="screenshots/en/automation.jpg" width="140" alt="Automatización de UI y asistente de permisos">
+  <img src="screenshots/en/plugins.jpg" width="140" alt="Mercado de plugins y gestión de confianza">
+  <img src="screenshots/en/channels.jpg" width="140" alt="Integración de canales de mensajería">
 </p>
 <p align="center">
-  <img src="screenshots/zh/assistants.jpg" width="140" alt="助手管理与角色卡导入">
-  <img src="screenshots/zh/proactive.jpg" width="140" alt="主动消息与免打扰时段">
-  <img src="screenshots/zh/web-search.jpg" width="140" alt="联网搜索设置">
+  <img src="screenshots/en/assistants.jpg" width="140" alt="Gestión de asistentes e importación de tarjetas de personaje">
+  <img src="screenshots/en/proactive.jpg" width="140" alt="Mensajes proactivos y horas de silencio">
+  <img src="screenshots/en/web-search.jpg" width="140" alt="Ajustes de búsqueda web">
 </p>
 <p align="center">
-  <img src="screenshots/zh/data-backup.jpg" width="140" alt="统计、备份与数据管理">
-  <img src="screenshots/zh/vision.jpg" width="140" alt="视觉辅助与探针测试">
-  <img src="screenshots/zh/stickers.jpg" width="140" alt="表情包库管理">
+  <img src="screenshots/en/data-backup.jpg" width="140" alt="Estadísticas, copia de seguridad y datos">
+  <img src="screenshots/en/vision.jpg" width="140" alt="Asistencia visual y prueba de diagnóstico">
+  <img src="screenshots/en/stickers.jpg" width="140" alt="Gestión de la biblioteca de stickers">
 </p>
 
 </details>
 
-## 下载
+## Descarga
 
-| 你的设备 | 选择 | 说明 |
+| Tu dispositivo | Elige | Notas |
 | --- | --- | --- |
-| 近几年的手机 | `arm64-v8a` | 推荐，体积最小 |
-| 较老的手机 | `armeabi-v7a` | 兼容老机型 |
-| 不确定 | `universal` | 通用包，全兼容 |
+| Teléfonos recientes | `arm64-v8a` | Recomendado, el paquete más pequeño |
+| Teléfonos más antiguos | `armeabi-v7a` | Para equipos de generaciones anteriores |
+| Si no estás seguro | `universal` | Paquete universal, compatible con todo |
 
-最新 APK 从官网下载页 [museai.ltd/download](https://museai.ltd/download/) 下载（国内直连，推荐）；也可以前往 [GitHub Releases](https://github.com/Zer0Qing/Muse/releases/latest) 获取。覆盖安装即可，数据不丢。
+Descarga el APK más reciente desde la página oficial [museai.ltd/download](https://museai.ltd/download/) (conexión directa y rápida en China, es la opción recomendada); también está disponible en [GitHub Releases](https://github.com/Zer0Qing/Muse/releases/latest). Instálalo encima de la versión anterior y tus datos se conservan.
 
 > [!WARNING]
-> 请仅从官方 Releases 页面或官网下载安装包。未知渠道的安装包可能被修改，造成数据和设备安全风险。
+> Descarga los paquetes solo desde la página oficial de Releases o desde el sitio web oficial. Los paquetes de canales desconocidos pueden estar modificados y poner en riesgo tus datos y tu dispositivo.
 
 > [!NOTE]
-> 应用内更新仅跳转 GitHub 官方 HTTPS 资产，不会自动下载或静默安装 APK。安装时提示"未知来源"属正常现象。
+> Las actualizaciones dentro de la app solo abren los archivos oficiales servidos por HTTPS de GitHub; nunca descargan ni instalan APKs en silencio. El aviso de "origen desconocido" al instalar es normal.
 
-## 快速上手
+## Primeros pasos
 
-1. **配置模型服务** —— 打开 **设置 → 模型与推理 → 供应商**，选择预置供应商（DeepSeek、通义千问、智谱等注册均送免费额度），填入 API Key，测试连接后拉取模型列表。
-2. **开始对话** —— 回到首页发第一条消息。记忆从这一刻开始积累；换模型、换会话，它都记得你。
-3. **按需解锁系统能力（可选）** —— 想让它"动手"，打开 **设置 → 权限配置向导**，按引导开启无障碍 / Shizuku / Root / Termux 中你需要的通道；每一步都有检测与测试入口。
+1. **Configura un proveedor de modelos**: abre **Ajustes → Modelos y razonamiento → Proveedores**, elige un proveedor predefinido (DeepSeek, Qwen, Zhipu y otros regalan crédito al registrarte), pega tu API Key, prueba la conexión y obtén la lista de modelos.
+2. **Empieza a conversar**: vuelve al inicio y envía tu primer mensaje. La memoria empieza a acumularse desde ese momento; cambia de modelo o de sesión y te seguirá recordando.
+3. **Desbloquea capacidades del sistema (opcional)**: si quieres que "actúe", abre **Ajustes → Asistente de permisos** y activa los canales que necesites entre Accesibilidad / Shizuku / Root / Termux; cada paso incluye detección y pruebas integradas.
 
-> 更完整的使用说明（包括各种手势和藏起来的操作）见 [用户手册](用户手册.md)，或应用内 **设置 → 使用教程**。
+> La guía de uso completa (con todos los gestos y las operaciones menos visibles) está en el [manual de usuario](manual-de-usuario.md) o dentro de la app en **Ajustes → Tutorial**.
 
-## 为什么是 Muse
+## Por qué Muse
 
-### 一、它是你的，不是租来的
+### 1. Es tuyo, no alquilado
 
-云端 Agent 给你的是一份服务：你登录，它记得你，数据存它那里。Muse 给的是你自己的一台设备上的一个常驻进程。
+Un agente en la nube te da un servicio: inicias sesión, él te recuerda, los datos viven allí. Muse te da un proceso que corre en un dispositivo que es tuyo.
 
-- 对话、记忆、知识库全在本地 Room 数据库；无遥测、无分析、不注册
-- 模型可换：40+ 预置供应商，也可以接自建或局域网的 OpenAI 兼容服务
-- 敏感配置走 Android Keystore；PII 在发送前自动打码，回复里的占位符再还原
+- Las conversaciones, la memoria y la base de conocimiento viven en una base de datos Room local; sin telemetría, sin analítica, sin registro
+- Cualquier modelo: más de 40 proveedores predefinidos, además de endpoints compatibles con OpenAI autoalojados o en tu red local
+- Los ajustes sensibles pasan por Android Keystore; la PII se enmascara antes de enviarse y se restaura en la respuesta
 
-### 二、它记得的是一个人，不是一段对话
+### 2. Recuerda a una persona, no una conversación
 
-四层记忆架构，从短期对话到长期处理逐层递进：
+Una arquitectura de memoria en cuatro capas, que avanza desde la conversación a corto plazo hasta el procesamiento profundo a largo plazo:
 
 ```
-对话 --> 事实提取 --> 滚动摘要 --> 编译聚合 --> 深度处理
- 短期     关键信息     压缩归档     去重整合     深度理解
+conversación --> extracción de hechos --> resumen acumulativo --> compilación --> procesamiento profundo
+corto plazo      datos clave              compresión              dedup/fusión    comprensión profunda
 ```
 
-- **关键事实永不衰减**（医疗、财务、核心身份受保护），日常信息像人一样自然淡忘
-- 每条记忆可追溯来源，可增删、调权重、搜索；按空间隔离管理
-- 跨渠道同一个它：微信 / QQ / 飞书 / Telegram / 钉钉，每个联系人独立上下文与滚动摘要
+- **Los hechos críticos no se desvanecen nunca** (salud, finanzas e identidad central están protegidos), mientras la información cotidiana se olvida de forma natural, como en una persona
+- Cada recuerdo se puede rastrear hasta su origen, y se puede editar, reponderar y buscar; los recuerdos se aíslan por espacio
+- El mismo en todos los canales: WeChat / QQ / Feishu / Telegram / DingTalk, cada contacto con su propio contexto y su resumen acumulativo
 
-### 三、它会自己往前推
+### 3. Avanza por su cuenta
 
-不会等到你开口才动。
+No espera a que le hables.
 
-- **牵挂账本**：助手把「以后想问他的事」记下来，到时机挑一条说，而不是凭空找话
-- **结果账**：点开、回复、划掉都记下来，亲密度从中学习，决定今天还能说几次
-- **安静时段**：该睡的时候不响
-- **定时任务**：到点执行，结果回到会话
+- **Libro de lo que te quiere decir**: el asistente apunta lo que quiere preguntarte y elige una entrada cuando llega el momento, en lugar de inventar charla
+- **Libro de resultados**: abierto, respondido o descartado, todo queda registrado; de ahí aprende la intimidad para decidir cuántas veces puede hablar hoy
+- **Horas de silencio**: calla cuando deberías estar durmiendo
+- **Tareas programadas**: se ejecutan a su hora y el resultado vuelve a la conversación
 
-### 四、它能在这台手机上真动手
+### 4. De verdad hace cosas en este teléfono
 
-| 通道 | 能力 | 门槛 |
+| Canal | Capacidades | Requisito |
 |------|------|------|
-| 无障碍服务（独立进程） | 读屏、点击 / 滑动 / 长按 / 输入、返回 / Home / 通知栏 | 开一个系统开关 |
-| Shell（Shizuku / adb） | 截屏、input 命令、查前台应用、设备命令 | 授权一次 |
-| Root | 完全系统控制、访问其他应用数据 | 需 root 设备 |
-| Termux | 完整 Linux 环境（apt / pip / gcc / ffmpeg） | 安装 Termux 并授权 |
+| Accesibilidad (proceso independiente) | Leer la pantalla, tocar / deslizar / mantener pulsado / escribir, Atrás / Inicio / panel de notificaciones | Activar un interruptor del sistema |
+| Shell (Shizuku / adb) | Capturas de pantalla, comandos `input`, consultar la app en primer plano, comandos de dispositivo | Autorizar una vez |
+| Root | Control total del sistema, acceso a los datos de otras apps | Dispositivo con root |
+| Termux | Entorno Linux completo (apt / pip / gcc / ffmpeg) | Instalar Termux y autorizar |
 
-- **200+ 个工具**，默认分层暴露，长尾能力用 `find_tools` 按需检索装载
-- 每个工具标注所需授权与就绪状态，未就绪时**执行前快速失败**并给出明确指引
-- 内置终端（自研 PTY + xterm）、后台**虚拟屏**、视觉驱动的 **GUI Agent**、浏览器自动化
-- 安全边界：命令白名单、风险审批（信任 / 询问 / 严格）、硬超时、工作区沙箱
+- **Más de 200 herramientas**, expuestas por capas por defecto; las capacidades de cola larga se cargan a demanda con `find_tools`
+- Cada herramienta indica la autorización que requiere y su estado de preparación; si no está lista, **falla rápido antes de ejecutarse** y da instrucciones claras
+- Terminal integrada (PTY propio + xterm), **pantalla virtual** en segundo plano, **GUI Agent** guiado por visión, automatización de navegador
+- Límites de seguridad: lista blanca de comandos, aprobación por riesgo (Confianza / Consultar / Estricto), tiempos de espera duros, sandbox del espacio de trabajo
 
-### 五、它有内心，也有一支队伍
+### 5. Tiene mundo interior, y también equipo
 
-- **Mood 四维腹稿**：每次回复前的 Vibe / Sparks / Reflections / Will，默认折叠，展开可看它怎么想的
-- **三层人设**：人设层 / 关系层 / 风格层，配套 `{{user_name}}` / `{{char}}` 模板变量
-- **多 Agent**：`@助手名` 随时委派、任务卡可视化、子代理浮窗、助手间私信收件箱
-- **群聊会议**：总结卡 / 表决票 / 观察者 / 快速模板 / 会议控制，一场正经的多助手会议
-- **相伴里程碑**：第 1 条消息、第 7 / 30 / 100 天、第 100 / 1000 条消息…都替你记着
+- **Mood en cuatro dimensiones**: Vibe / Sparks / Reflections / Will antes de cada respuesta, plegado por defecto
+- **Persona en tres capas**: capa de persona / capa de relación / capa de estilo, con las variables de plantilla `{{user_name}}` / `{{char}}`
+- **Multiagente**: delega con `@nombre-del-asistente`, tarjetas de tarea que muestran el estado de cada paso, subagentes en ventanas flotantes, bandeja de mensajes privados entre asistentes
+- **Reuniones de grupo**: tarjeta de resumen / votaciones / observadores / plantillas rápidas / controles de reunión
+- **Hitos**: el primer mensaje, los días 7 / 30 / 100 juntos, los mensajes 100 / 1000... todo queda registrado por ti
 
-### 与云端 Agent 的差别
+### En qué se diferencia de un agente en la nube
 
-| | 云端 personal agent | Muse |
+| | Agente personal en la nube | Muse |
 |---|---|---|
-| 执行位置 | 云主机 / 浏览器标签 | 你自己的手机 |
-| 数据 | 上传之后才能记得你 | 默认不出设备 |
-| 能碰到什么 | 网页与 API | 设备本身：读屏、命令、文件、其他应用 |
-| 模型 | 平台绑定 | 40+ 供应商，随你换 |
-| 代价 | 订阅与隐私 | 你得自己供一台设备、一份 API Key |
+| Se ejecuta en | Un host en la nube / una pestaña del navegador | Tu propio teléfono |
+| Datos | Se suben antes de poder recordarte | Se quedan en el dispositivo por defecto |
+| Puede tocar | Páginas web y APIs | El dispositivo mismo: pantalla, comandos, archivos, otras apps |
+| Modelo | Atado a la plataforma | Más de 40 proveedores, cambia cuando quieras |
+| Coste | Suscripción y privacidad | Pones tú el dispositivo y la API Key |
 
-## 功能一览
+## Funciones
 
 <details>
-<summary><b>对话体验</b> —— 流式与续传 / 会话管理 / 消息操作 / 多模型 / 语音 / 多模态 / 搜索</summary>
+<summary><b>Experiencia de chat</b>: streaming y continuidad / sesiones / acciones sobre mensajes / multimodelo / voz / multimodal / búsqueda</summary>
 
-- **流式与容错**：SSE 逐字输出、随时停止；断流自动续传（网络恢复后接着写）。内置 stream-guard 检测"流式过早结束"（空流 / 零首包）自动降级非流式重试；首事件看门狗（普通模型 45 秒 / 推理模型 90 秒无首包时自动切换请求方式），慢模型不再"卡死等不来消息"。
-- **会话管理**：置顶 / 归档 / 删除可撤销 / 文件夹分组 / 置顶拖拽排序；全局搜索基于 SQLite FTS5 全文索引（兼容环境自动回退 FTS4）；每个会话独立上下文窗口，超长对话自动滚动摘要压缩。
-- **消息操作**：重新生成保留多版本（`1/3` 切换、历史不丢）；分支（从任意用户消息开出新对话线，原线完整保留）；引用回复（原文注入上下文）；消息批注；长按菜单含复制（纯文本 / Markdown）、转发、分享、收藏、编辑、翻译、朗读、删除。
-- **收藏夹**：收藏集中管理，长按可设分组标签。
-- **输入体验**：全屏输入（长文专用）、斜杠命令（`/new` `/compact` `/reset` `/pin` `/archive`）、粘贴转文件（阈值可调）、快捷消息；上次被打断的工具调用可一键"恢复执行"或丢弃。
-- **快速记录**：悬浮胶囊（可选开启），任意界面速记，落盘到本机速记库。
-- **深度思考**：推理等级 OFF / AUTO / LOW / MEDIUM / HIGH / XHIGH（对应思考预算 1000 → 16000 tokens），推理过程折叠展示。
-- **多模型**：原生支持 OpenAI / Anthropic / Gemini 三类协议与任意 OpenAI 兼容端点；40+ 预置供应商，模型列表动态拉取；模型能力矩阵（视觉 / 推理 / 工具）逐模型标注；辅助任务走独立"小工具 / 大工具"模型档位（标题、压缩、摘要、记忆编译分档路由）；支持自定义请求头 / 请求体与网络代理。
-- **语音**：流式语音识别（边说边转字、波形可视化、上滑取消）；TTS 支持系统语音与云端语音（OpenAI / MiniMax / Edge 等）按助手独立配置；支持云端声音克隆（ElevenLabs / FishAudio）。
-- **多模态输入**：图片多张发送；PDF / DOCX / EPUB / TXT 自动解析；扫描件走离线 OCR。
-- **视觉辅助**：给不支持视觉的模型发图时，自动调用视觉模型生成八维结构化描述（整体概述 / OCR 文字 / 物体布局 / 图表数据 / 请求重述 / 请求回答 / 视觉证据 / 不确定性），支持坐标 grounding；描述按"图片 + 请求 + 提示词版本"缓存；多图并发分析、60 秒超时、失败自动降级为文字提示。
-- **联网与浏览**：搜索源可配置（模型原生搜索 / Bing / 百度 / SearXNG / Tavily / DeepSeek / 自定义引擎）逐级兜底；自定义引擎可接入任意返回 JSON 的检索服务（自建 SearXNG、内网网关），支持 GET / POST、结果字段路径映射与可选 Bearer 鉴权，并排在 Auto 链最前面；网页正文提取走 Jina Reader；每个会话独立的内置浏览器，AI 上网时顶部胶囊可展开实时画面。
-- **翻译与朗读**：长按消息即译 / 即读；翻译模型可单独配置；保留翻译历史。
-- **渲染与卡片**：Markdown 全量渲染（代码高亮 20+ 语言、KaTeX 公式、Mermaid 图表、表格）；AI 可输出交互式卡片与产物卡片（代码 / 文档 / 表格），产物中心统一管理、可全屏查看与导出。
+- **Streaming y tolerancia a fallos**: salida palabra por palabra vía SSE, con parada en cualquier momento; si el flujo se corta, se reanuda solo (sigue escribiendo cuando vuelve la red). El stream-guard integrado detecta el "fin prematuro del stream" (stream vacío o sin primer paquete) y reintenta sin streaming; un watchdog de primer evento (45 s en modelos normales, 90 s en modelos de razonamiento sin primer paquete) cambia el modo de petición automáticamente, así los modelos lentos dejan de dejarte esperando frente a una pantalla en blanco.
+- **Gestión de sesiones**: fijar / archivar / borrado con deshacer / agrupar en carpetas / reordenar las fijadas arrastrando; búsqueda global con índice de texto completo de SQLite FTS5 (con retroceso automático a FTS4 en entornos compatibles); cada sesión tiene su propia ventana de contexto y las conversaciones muy largas se comprimen con resúmenes acumulativos.
+- **Acciones sobre mensajes**: regenerar conservando varias versiones (conmutador `1/3`, sin perder el historial); ramificar (abrir una línea nueva desde cualquier mensaje del usuario, la original se conserva intacta); responder citando (el texto citado se inyecta en el contexto); anotaciones en mensajes; menú de pulsación larga con copiar (texto plano / Markdown), reenviar, compartir, guardar en favoritos, editar, traducir, leer en voz alta y eliminar.
+- **Favoritos**: gestión centralizada, con etiquetas de grupo al mantener pulsado.
+- **Experiencia de entrada**: entrada a pantalla completa (para textos largos), comandos de barra (`/new` `/compact` `/reset` `/pin` `/archive`), pegar como archivo (umbral configurable), mensajes rápidos; una llamada de herramienta interrumpida se puede reanudar o descartar con un toque.
+- **Captura rápida**: cápsula flotante (opcional), notas rápidas desde cualquier pantalla, guardadas en la biblioteca local de notas.
+- **Razonamiento profundo**: niveles OFF / AUTO / LOW / MEDIUM / HIGH / XHIGH (presupuesto de pensamiento de 1000 a 16000 tokens), con el proceso de razonamiento plegado.
+- **Multimodelo**: soporte nativo de los protocolos de OpenAI / Anthropic / Gemini y de cualquier endpoint compatible con OpenAI; más de 40 proveedores predefinidos con lista de modelos obtenida dinámicamente; matriz de capacidades por modelo (visión / razonamiento / herramientas); las tareas auxiliares van por niveles separados de modelo "herramienta pequeña / herramienta grande" (títulos, compresión, resúmenes y compilación de memoria); cabeceras y cuerpo de petición personalizados, y proxy de red.
+- **Voz**: reconocimiento de voz en streaming (transcripción mientras hablas, visualización de la onda, deslizar hacia arriba para cancelar); TTS con voces del sistema o voces en la nube (OpenAI / MiniMax / Edge y otros), configurado por asistente; clonación de voz en la nube (ElevenLabs / FishAudio).
+- **Entrada multimodal**: varias imágenes por mensaje; análisis automático de PDF / DOCX / EPUB / TXT; OCR offline para documentos escaneados.
+- **Asistencia visual**: al enviar imágenes a un modelo sin visión, se llama automáticamente a un modelo de visión que genera una descripción estructurada en ocho dimensiones (resumen general / texto OCR / objetos y disposición / datos de gráficos / reformulación de la petición / respuesta a la petición / evidencia visual / incertidumbre), con grounding por coordenadas; las descripciones se cachean por "imagen + petición + versión del prompt"; análisis concurrente de varias imágenes, tiempo límite de 60 segundos y degradación automática a una descripción textual si falla.
+- **Búsqueda y navegación web**: fuentes de búsqueda configurables (búsqueda nativa del modelo / Bing / Baidu / SearXNG / Tavily / DeepSeek / motores personalizados) con respaldo en cascada; un motor personalizado puede apuntar a cualquier servicio de búsqueda que devuelva JSON (un SearXNG propio, una pasarela interna), con GET / POST, mapeo de rutas de los campos del resultado y autenticación Bearer opcional, y se coloca al principio de la cadena Auto; la extracción del cuerpo de las páginas usa Jina Reader; navegador integrado por sesión, con una cápsula superior que se expande en imagen en vivo mientras la IA navega.
+- **Traducción y lectura en voz alta**: traduce o lee cualquier mensaje con una pulsación larga; el modelo de traducción se configura por separado; se conserva el historial de traducciones.
+- **Renderizado y tarjetas**: renderizado completo de Markdown (resaltado de código para más de 20 lenguajes, fórmulas KaTeX, diagramas Mermaid, tablas); la IA puede emitir tarjetas interactivas y tarjetas de artefactos (código / documentos / tablas), gestionadas en un centro de artefactos con vista a pantalla completa y exportación.
 
 </details>
 
 <details>
-<summary><b>记忆与成长</b> —— 四层流水线 / 衰减与保护 / 上下文连续性 / 经验库 / 知识库 / 主动消息</summary>
+<summary><b>Memoria y crecimiento</b>: pipeline de cuatro capas / decaimiento y protección / continuidad del contexto / biblioteca de experiencias / base de conocimiento / mensajes proactivos</summary>
 
-- **四层记忆流水线**：① 对话原始流；② 事实提取（自动抽取关键事实，标注重要度与来源）；③ 滚动摘要（长对话压缩不丢线索）；④ 深度处理（后台编译聚合、去重合并，形成长期记忆）。事实入库带全文索引，可检索。
-- **重要度与衰减**：关键事实（医疗、财务、核心身份）受保护不衰减；日常信息按使用频率自然淡忘，像人一样。
-- **记忆面板**：按空间 / 分类浏览；增删条目、调整重要度、按时间 / 权重筛选；长按可多选批量删除（列表与时间轴都支持，删完不跳回顶部）；每条记忆可溯源到来源会话；长条目点击展开全文。
-- **记忆空间**：不同用途的记忆互相隔离，互不污染。
-- **上下文连续性**：上下文窗口外的历史不再被静默丢弃——生成确定性历史摘录（保留对话原文片段与工具条目）插在窗口前；工具回合压缩时保留"助手说明"；压缩摘要附带「这段改过哪些文件」；长任务不再"失忆"。
-- **跨会话衔接**：新开对话可带回上一个对话的最后几轮（4~40 条可调，默认关闭），关掉窗口接着说同一件事时不用重新交代背景。
-- **经验库**：把"这类问题以后都这么处理"沉淀为经验，未来任务自动参考（可开关）。
-- **知识库（RAG）**：文档导入自动解析、分块建索引；检索走语义检索 + 关键词匹配的混合排序；@ 文档定向检索；超大文件流式索引；离线环境自动降级本地检索；引用可溯源到原文片段。
-- **每日总结与问候**：按设定时点生成当日回顾（首页可见，可选推送）；早间问候由模型结合记忆中的近期事项生成，不是固定模板。
-- **主动消息**：不按固定间隔轮询，而是一本「牵挂账本」——助手把想问你的话记下来，到时机再挑一条说。点开、回复、划掉这些反馈会记进结果账，亲密度从中学习，决定今天还能说几次。五档量级（安静 / 克制 / 标准 / 主动 / 黏人），可重置回默认档并清零当日额度；免打扰时段生效；接不上话时宁可不发；保底兜底（太久没聊会主动问候）。深夜会自己整理记忆，不打扰你；每日推送内容可配（每日总结）。
-- **里程碑**：首条消息、相伴第 7 / 30 / 100 天、第 100 / 1000 条消息等节点自动记录，可在里程碑页回看。
-- **统计与活动面板**：统计页含总对话 / 总消息 / 日均 / 连续天数与每日热力图；活动面板展示定时任务 / 心跳 / 记忆编译的执行历史。
-
-</details>
-
-<details>
-<summary><b>工具与自动化</b> —— 200+ 工具 / 权限分层 / 审批与预算 / 四通道 / 终端 / 虚拟屏 / GUI Agent</summary>
-
-- **工具系统**：200+ 个工具，按能力分层（核心 / 常用 / 可选 / 高级）暴露；默认只发常用工具精简上下文，长尾能力用 `find_tools` 按关键词检索并装载（装载后会话内持续可用）；系统提示内嵌实时工具能力索引（含每轮实际可用的数量，不是写死的常数）。
-- **权限分层**：需要 Shizuku / Root、无障碍、Termux 的工具逐一声明依赖与就绪状态（READY / NOT READY）；未就绪时执行前快速失败，返回结构化 `permission_required` 错误与授权指引。
-- **审批体系**：风险等级（安全 / 普通 / 高危）× 三档模式（信任 / 询问 / 严格）；支持"本会话允许"与按工具自定义策略；高风险动作先问后做。
-- **执行引擎**：只读工具受控并行（上限 3）提速；阻塞型工具专用线程池 + 硬超时；单条输出超限自动落盘（上下文只留预览 + read_file 引用）；统一成败判定；连续失败自动早停并如实告知原因；工具轮次默认不限（可设置上限），另有重复调用指纹 / 无进展检测 / 总调用数等熔断保护。
-- **四通道执行**：无障碍（独立进程 Provider，AIDL 通信，主应用更新不掉线）/ Shizuku（Binder 提权）/ Root（su）/ Termux（RUN_COMMAND）——按可用性自动选择执行档位。
-- **设备命令**：`device_shell` 走动词白名单（dumpsys / settings / am / pm / input / screencap / uiautomator / cmd / svc / wm / getprop / content 等），禁止管道 / 重定向 / 拼接，白名单之外一律拒绝。
-- **内置终端**：自研 PTY 引擎 + xterm 终端页；三档环境——应用沙盒终端、设备命令通道、Termux 完整 Linux（apt / pip / gcc / ffmpeg）。
-- **虚拟屏**：独立服务端进程在后台创建隐藏显示屏，Agent 的完整操作流不占用主屏，按需截帧回传。
-- **GUI Agent**：视觉驱动的多步操作环——截图 → 视觉模型决策 → 点击 / 滑动 / 输入 → 再截图验证，直到任务完成。
-- **浏览器自动化**：navigate / click / type / extract / scroll / get_html / snapshot；每个会话独立浏览器实例。
-- **工作区**：受控文件空间（读 / 写 / 列目录 / 移动 / 删除），文件操作限制在沙箱边界内。
-- **定时与提醒**：定时任务支持 Cron 表达式与执行历史；闹钟 / 倒计时 / 日程 / 备忘录；到点自动执行或提醒。
-- **通知监听**：读取设备通知流，按内容智能回复或建议。
-- **权限配置向导**：无障碍 / Shizuku / Root / Termux 四通道一键检测与引导，附"测试屏幕读取"实时验证。
+- **Pipeline de memoria en cuatro capas**: (1) el flujo original de la conversación; (2) extracción de hechos (se extraen automáticamente los hechos clave, con su importancia y su origen); (3) resúmenes acumulativos (las conversaciones largas se comprimen sin perder el hilo); (4) procesamiento profundo (compilación en segundo plano, deduplicación y fusión hasta formar memoria a largo plazo). Los hechos se indexan a texto completo y son consultables.
+- **Importancia y decaimiento**: los hechos críticos (salud, finanzas, identidad central) están protegidos y no decaen; la información cotidiana se olvida según su frecuencia de uso, como en una persona.
+- **Panel de memoria**: navegación por espacio o categoría; añadir y borrar entradas, ajustar la importancia, filtrar por fecha o por peso; pulsación larga para seleccionar varias y borrar en lote (tanto en la lista como en la línea de tiempo, sin volver al principio al terminar); cada recuerdo se puede rastrear hasta la sesión de origen; las entradas largas se expanden al tocarlas.
+- **Espacios de memoria**: los recuerdos de distintos propósitos quedan aislados y no se contaminan entre sí.
+- **Continuidad del contexto**: el historial que queda fuera de la ventana de contexto ya no se descarta en silencio: se genera un extracto determinista del historial (conservando fragmentos literales de la conversación y entradas de herramientas) que se inserta delante de la ventana; al comprimir los turnos de herramientas se conservan "las notas del asistente"; el resumen de compresión indica "qué archivos se tocaron en este tramo"; las tareas largas ya no pierden la memoria.
+- **Continuidad entre sesiones**: una conversación nueva puede traer los últimos turnos de la anterior (entre 4 y 40, ajustable, desactivado por defecto), para retomar el mismo tema sin volver a explicar el contexto.
+- **Biblioteca de experiencias**: convierte "este tipo de problema se resuelve así" en experiencia reutilizable que las tareas futuras consultan automáticamente (se puede activar o desactivar).
+- **Base de conocimiento (RAG)**: los documentos importados se analizan, se fragmentan y se indexan; la recuperación combina búsqueda semántica y coincidencia de palabras clave; con @ se limita la búsqueda a documentos concretos; los archivos muy grandes se indexan en streaming; en entornos sin conexión se degrada a búsqueda local; las citas remiten a los fragmentos originales.
+- **Resumen diario y saludos**: a la hora configurada se genera un repaso del día (visible en el inicio, con notificación opcional); el saludo de la mañana lo genera el modelo a partir de los asuntos recientes en la memoria, no es una plantilla fija.
+- **Mensajes proactivos**: no hay sondeos a intervalos fijos. Funciona con un "libro de lo que te quiere decir": el asistente anota ahí lo que te quiere preguntar y elige una entrada cuando llega el momento. Que lo abras, respondas o lo descartes queda en un libro de resultados, y de ahí aprende la intimidad para decidir cuántas veces puede hablar hoy. Cinco niveles (Silencioso / Reservado / Estándar / Activo / Pegajoso), con la opción de volver al nivel por defecto y poner a cero la cuota del día; se respetan las horas de silencio; si no tiene nada que aportar, prefiere no escribir; y hay una red de seguridad (si llevan mucho tiempo sin hablar, saluda por iniciativa propia). De madrugada sigue ordenando recuerdos sin molestarte; el contenido de las notificaciones diarias es configurable (resumen diario).
+- **Hitos**: el primer mensaje, los días 7 / 30 / 100 juntos, los mensajes 100 / 1000 y otros momentos se registran automáticamente y se pueden revisar en la página de hitos.
+- **Estadísticas y panel de actividad**: la página de estadísticas incluye el total de conversaciones y mensajes, la media diaria, la racha de días y un mapa de calor diario; el panel de actividad muestra el historial de ejecución de tareas programadas, heartbeats y compilación de memoria.
 
 </details>
 
 <details>
-<summary><b>多助手与生态</b> —— 群聊会议 / 世界书 / Skill / 插件市场 / MCP / 五端渠道</summary>
+<summary><b>Herramientas y automatización</b>: más de 200 herramientas / capas de permisos / aprobaciones y presupuestos / cuatro canales / terminal / pantalla virtual / GUI Agent</summary>
 
-- **多助手**：每个助手独立配置模型 / 系统提示词 / 采样参数 / 资源绑定 / 工具白名单 / 技能；`@助手名` 委派任务，任务卡逐步骤显示执行状态；子代理在独立浮窗运行长任务，不占用主对话；助手间私信有独立收件箱。
-- **助手进阶**：世界书（常驻条目 + 关键词触发 + 深度注入）；提示词注入（按模式注入自定义片段）；资源关联（绑定知识库优先检索）；导入导出——支持 SillyTavern 角色卡导入，自有助手可打包分享。
-- **群聊会议**：四种讨论模式（轮转 / 自由 / 辩论 / 主持人）；每轮先读取群聊上下文；支持跳过本轮；每个助手独立记忆。会议能力：讨论总结专属卡片（复制 / 分享 / 存为共享文档）、表决票渲染、观察者成员、群共享文档与 AI 专属上下文、发言队列控制（暂停 / 继续 / 跳过）、快速模板（方案评审 / 正反辩论 / 头脑风暴 / 项目复盘）、轮次折叠、轮转中插话不丢。
-- **Skill 系统**：内置技能开箱即用；`.skill.json` 导入导出（含参数 Schema）；提示词技能支持输入参数（`{{input}}` / `{{args}}` 占位符）；安装走白名单实现与注入防护。
-- **插件市场**：检索 / 安装 / 启停 / 卸载与信任管理；插件可携带工具、UI 面板、消息气泡皮肤等扩展；助手可自写 JS 插件草稿，需经签名并手动启用后生效；插件运行在沙箱边界内。
-- **MCP 协议**：连接外部 MCP Server 扩展工具（OAuth 鉴权 / SSE 传输 / 自动发现）。
-- **OAuth 连接器**：接入第三方服务，凭据本地加密存储；连接中心统一管理模型 / 渠道 / 连接器。
-- **渠道五端**：微信（扫码绑定）/ QQ（Bot WebSocket 长连接）/ 飞书（长连接事件通道）/ Telegram / 钉钉（Stream 模式）；每个联系人独立会话上下文与滚动摘要；图片 / 语音等媒体消息自动入库与转写；可按渠道绑定不同助手与模型；各平台带专属配置向导与连接测试。
-
-</details>
-
-<details>
-<summary><b>界面与外观</b> —— 主题 / 气泡皮肤 / 图标 / 多语言 / 备份与数据</summary>
-
-- **主题系统**：12 套完整主题（每套含亮 / 暗双模式）+ 8 套色盲友好配色；支持动态取色（Android 12+）、白天 / 夜间定时切换、自定义主题。
-- **气泡与外观**：消息气泡圆角可调；气泡皮肤体系，含插件提供的扩展皮肤（如高对比 / 柔光）。
-- **自绘图标**：176 枚全自绘图标（24dp 栅格 / 1.7dp 圆头笔触 / 深浅自适应），开源在 [muse-icons](https://github.com/Zer0Qing/muse-icons)（MIT）。
-- **排版与多语言**：字体 / 字号 / 字间距、预测性返回、无障碍适配；界面支持中文 / English / 日本語 / 한국어 / Español / Português / Русский 七种语言。
-- **备份与恢复**：本地一键导出（JSON / 分块 NDJSON，可加密）；每日自动备份（打包 muse.db / memory.db / facts.db 快照）；S3 / WebDAV 云同步；主动消息的牵挂账本、结果账与关系亲密度一并备入；恢复前自动留保护副本，失败自动回滚。
-- **数据导入**：CherryStudio / Chatbox / ChatGPT / RikkaHub / Kelivo 一键迁移；多格式对话记录导入。
-- **表情包库**：zip 按文件夹结构导入自动分类；发送频率三档（偶尔 / 正常 / 频繁）；支持批量删除与清空。
-- **桌面小部件**：一键新建对话；长按应用图标快捷菜单。
-- **账户中心**：头像昵称本地管理，无登录注册——没有账号可以"丢"。
-- **审计日志与代理**：工具调用与关键操作留痕；支持自定义网络代理。
+- **Sistema de herramientas**: más de 200 herramientas, expuestas por capas (núcleo / comunes / opcionales / avanzadas); por defecto solo se envían las comunes para mantener el contexto ligero, y las capacidades de cola larga se buscan y cargan con `find_tools` por palabra clave (una vez cargadas siguen disponibles durante la sesión); el prompt del sistema incluye un índice vivo de capacidades, con el número realmente disponible en cada ronda y no una constante escrita a mano.
+- **Capas de permisos**: cada herramienta que necesita Shizuku / Root, Accesibilidad o Termux declara sus dependencias y su estado (READY / NOT READY); si no está lista, falla rápido antes de ejecutarse y devuelve un error estructurado `permission_required` con instrucciones de autorización.
+- **Sistema de aprobación**: nivel de riesgo (seguro / normal / alto) combinado con tres modos (Confianza / Consultar / Estricto); se admite "permitir en esta sesión" y políticas personalizadas por herramienta; las acciones de alto riesgo se preguntan antes de ejecutarse.
+- **Motor de ejecución**: las herramientas de solo lectura se ejecutan en paralelo de forma controlada (máximo 3) para ganar velocidad; las herramientas bloqueantes usan un pool de hilos dedicado con tiempos de espera duros; las salidas demasiado grandes se guardan en disco y en el contexto solo queda una vista previa con una referencia para `read_file`; criterio unificado de éxito o fallo; parada temprana automática tras fallos repetidos, indicando el motivo real; las rondas de herramientas no tienen límite por defecto (se puede fijar un máximo), y hay protecciones de circuito por llamadas idénticas repetidas, rondas sin progreso y número total de llamadas.
+- **Cuatro canales de ejecución**: Accesibilidad (proveedor en proceso independiente y comunicación AIDL, que sobrevive a las actualizaciones de la app) / Shizuku (elevación por Binder) / Root (su) / Termux (RUN_COMMAND): el nivel se elige automáticamente según lo que esté disponible.
+- **Comandos de dispositivo**: `device_shell` pasa por una lista blanca de verbos (dumpsys / settings / am / pm / input / screencap / uiautomator / cmd / svc / wm / getprop / content, etc.); las tuberías, las redirecciones y el encadenamiento están prohibidos, y todo lo que quede fuera de la lista blanca se rechaza.
+- **Terminal integrada**: motor PTY propio con página de terminal xterm; tres entornos: la terminal del sandbox de la app, el canal de comandos del dispositivo y el Linux completo de Termux (apt / pip / gcc / ffmpeg).
+- **Pantalla virtual**: un proceso servidor independiente crea una pantalla oculta en segundo plano, de modo que todo el flujo de operaciones del agente no ocupa tu pantalla principal; los fotogramas se capturan a demanda.
+- **GUI Agent**: bucle de varios pasos guiado por visión: captura de pantalla → decisión del modelo de visión → tocar / deslizar / escribir → nueva captura para verificar, hasta completar la tarea.
+- **Automatización de navegador**: navigate / click / type / extract / scroll / get_html / snapshot; una instancia de navegador independiente por sesión.
+- **Espacio de trabajo**: espacio de archivos controlado (leer / escribir / listar / mover / borrar), con las operaciones limitadas a los límites del sandbox.
+- **Programaciones y recordatorios**: tareas programadas con expresiones cron e historial de ejecución; alarmas, temporizadores, eventos de calendario y notas que se ejecutan o avisan a su hora.
+- **Escucha de notificaciones**: lee el flujo de notificaciones del dispositivo y responde o hace sugerencias de forma inteligente.
+- **Asistente de permisos**: detección y guía de los cuatro canales en un solo lugar, con una prueba en vivo de "leer pantalla".
 
 </details>
 
 <details>
-<summary><b>安全与隐私</b> —— 本地优先 / 加密 / PII 打码 / 沙箱边界</summary>
+<summary><b>Asistentes y ecosistema</b>: reuniones de grupo / world book / Skills / mercado de plugins / MCP / cinco canales de mensajería</summary>
 
-- **数据本地化**：对话 / 记忆 / 知识库全部存储于本地 Room 数据库；无遥测、无分析、无数据收集；不注册、不登录；联网功能默认关闭。
-- **PII 自动打码**：手机号 / 身份证 / 银行卡等在发送前自动遮蔽为占位符，模型回复中的占位符再还原——真实信息不发给服务商。
-- **加密链路**：敏感配置走 Android Keystore（AES-256-GCM）；云备份密码 PBKDF2 + AES-256-GCM。
-- **链接防护**：点击链接二次确认；WebView 渲染输出前净化（去 iframe / form / 伪协议）。
-- **工具边界**：命令白名单、风险审批、硬超时、权限预检、失败原因如实回传；插件默认沙箱运行。
-- **崩溃日志**：仅本地存储，安全模式下手动导出。
+- **Varios asistentes**: cada asistente configura su propio modelo / prompt de sistema / parámetros de muestreo / recursos vinculados / lista blanca de herramientas / skills; delega con `@nombre` y la tarjeta de tarea muestra el estado de cada paso; los subagentes ejecutan tareas largas en ventanas flotantes sin ocupar la conversación principal; los asistentes tienen una bandeja de mensajes privados propia.
+- **Asistentes avanzados**: world book (entradas permanentes + disparadores por palabra clave + inyección por profundidad); inyecciones de prompt (fragmentos personalizados según el modo); recursos asociados (vincular una base de conocimiento para priorizar la recuperación); importación y exportación: se admiten tarjetas de personaje de SillyTavern, y tus propios asistentes se pueden empaquetar para compartirlos.
+- **Reuniones de grupo**: cuatro modos de discusión (por turnos / libre / debate / con moderador); antes de cada ronda se lee el contexto del grupo; se puede saltar el turno; memoria aislada por asistente. Capacidades de reunión: tarjeta dedicada de resumen de la discusión (copiar / compartir / guardar como documento compartido), renderizado de votos, miembros observadores, documentos compartidos del grupo y contexto privado de la IA, control de la cola de palabra (pausar / continuar / saltar), plantillas rápidas (revisión de propuestas / debate a favor y en contra / lluvia de ideas / retrospectiva de proyecto), plegado de rondas, y las interrupciones durante un turno no se pierden.
+- **Sistema de Skills**: las skills integradas funcionan sin configurar nada; importación y exportación de `.skill.json` (con esquema de parámetros); las skills de prompt aceptan parámetros de entrada (marcadores `{{input}}` / `{{args}}`); la instalación pasa por listas blancas de implementación y protección contra inyección.
+- **Mercado de plugins**: buscar / instalar / activar / desactivar / desinstalar con gestión de confianza; los plugins pueden aportar herramientas, paneles de UI, skins para las burbujas de mensaje y más; el asistente puede escribir borradores de plugins en JS, que solo surten efecto después de firmarlos y activarlos manualmente; los plugins se ejecutan dentro de los límites del sandbox.
+- **Protocolo MCP**: conecta MCP Servers externos para ampliar el conjunto de herramientas (autenticación OAuth / transporte SSE / descubrimiento automático).
+- **Conectores OAuth**: integra servicios de terceros con credenciales cifradas en local; el centro de conexiones gestiona modelos, canales y conectores en un solo lugar.
+- **Cinco canales de mensajería**: WeChat (vinculación por QR) / QQ (bot por WebSocket) / Feishu (eventos por conexión persistente) / Telegram / DingTalk (modo Stream); cada contacto tiene su propio contexto de sesión y su resumen acumulativo; las imágenes y los mensajes de voz se guardan y se transcriben automáticamente; cada canal puede vincularse a un asistente y un modelo distintos; cada plataforma trae su propio asistente de configuración y prueba de conexión.
 
 </details>
 
-## 技术栈与架构
+<details>
+<summary><b>Interfaz y apariencia</b>: temas / skins de burbujas / iconos / idiomas / copia de seguridad y datos</summary>
 
-| 类别 | 技术 |
+- **Sistema de temas**: 12 temas completos (cada uno con modo claro y oscuro) + 8 paletas accesibles para daltonismo; color dinámico (Android 12+), cambio programado día / noche y temas personalizados.
+- **Burbujas y apariencia**: radio de las esquinas de las burbujas ajustable; sistema de skins de burbujas, con skins extendidas que aportan los plugins (por ejemplo alto contraste o brillo suave).
+- **Iconos dibujados a mano**: 176 iconos propios (rejilla de 24dp, trazo redondeado de 1.7dp, adaptación a claro y oscuro), con código abierto en [muse-icons](https://github.com/Zer0Qing/muse-icons) (MIT).
+- **Tipografía e idiomas**: fuente / tamaño / espaciado entre letras, botón atrás predictivo, adaptación de accesibilidad; la interfaz está en español de forma predeterminada, y también en inglés, japonés, coreano, portugués y ruso.
+- **Copia de seguridad y restauración**: exportación local con un toque (JSON / NDJSON por bloques, con cifrado opcional); copia automática diaria (paquete con instantáneas de muse.db / memory.db / facts.db); sincronización en la nube con S3 / WebDAV; el libro de lo que te quiere decir de los mensajes proactivos, el libro de resultados y la intimidad de la relación se incluyen en la copia; antes de restaurar se guarda una copia de protección y, si falla, se revierte automáticamente.
+- **Importación de datos**: migración con un toque desde CherryStudio / Chatbox / ChatGPT / RikkaHub / Kelivo; importación de historiales de conversación en varios formatos.
+- **Biblioteca de stickers**: importación de archivos zip con estructura de carpetas y categorización automática; tres niveles de frecuencia de envío (ocasional / normal / frecuente); borrado por lotes y vaciado.
+- **Widget de pantalla de inicio**: crear una conversación con un toque; menú rápido al mantener pulsado el icono de la app.
+- **Centro de cuenta**: avatar y apodo se gestionan en local, sin registro ni inicio de sesión: no hay cuenta que se pueda "perder".
+- **Registro de auditoría y proxy**: las llamadas de herramientas y las acciones clave quedan registradas; se admite proxy de red personalizado.
+
+</details>
+
+<details>
+<summary><b>Seguridad y privacidad</b>: todo en local / cifrado / enmascarado de PII / límites del sandbox</summary>
+
+- **Todo en local**: conversaciones, memorias y bases de conocimiento se guardan en una base de datos Room local; sin telemetría, sin analítica y sin recogida de datos; sin registro ni inicio de sesión; las funciones de red están desactivadas por defecto.
+- **Enmascarado automático de PII**: los números de teléfono, documentos de identidad y tarjetas bancarias se sustituyen por marcadores antes de enviar, y los marcadores se restauran en la respuesta del modelo: la información real no llega al proveedor.
+- **Canales cifrados**: la configuración sensible usa Android Keystore (AES-256-GCM); las contraseñas de las copias en la nube usan PBKDF2 + AES-256-GCM.
+- **Protección de enlaces**: confirmación antes de abrir un enlace; la salida se sanea antes de renderizarse en WebView (sin iframe / form / pseudoprotocolos).
+- **Límites de las herramientas**: lista blanca de comandos, aprobación por riesgo, tiempos de espera duros, verificación previa de permisos y devolución honesta del motivo del fallo; los plugins se ejecutan en sandbox por defecto.
+- **Registros de fallos**: solo se guardan en local y se pueden exportar manualmente en modo seguro.
+
+</details>
+
+## Stack técnico y arquitectura
+
+| Área | Tecnología |
 |------|------|
-| 语言 / UI | Kotlin 2.4 · Jetpack Compose · Material 3 |
-| 架构 | MVVM + 单向数据流 · Koin（DI） |
-| 数据 | Room (SQLite) + DataStore · ONNX Runtime（本地 embedding） |
-| 网络 | OkHttp + Ktor |
-| 解析与渲染 | PDFBox · ML Kit OCR · 自研 PTY + xterm |
-| 质量门禁 | detekt + ktlint + Android Lint + 自定义检查脚本 · Kover 覆盖率 |
+| Lenguaje / UI | Kotlin 2.4 · Jetpack Compose · Material 3 |
+| Arquitectura | MVVM + flujo de datos unidireccional · Koin (DI) |
+| Datos | Room (SQLite) + DataStore · ONNX Runtime (embeddings locales) |
+| Red | OkHttp + Ktor |
+| Análisis y renderizado | PDFBox · ML Kit OCR · PTY propio + xterm |
+| Controles de calidad | detekt + ktlint + Android Lint + scripts de verificación propios · cobertura con Kover |
 
 ```
-:app                        应用主体（UI / 会话 / 工具编排 / 渠道 / 设置）
-:ai                         Provider 抽象层（OpenAI / Anthropic / Gemini，流式与工具调用）
-:memory                     记忆引擎（事实库 / 编译聚合 / 摘要）
-:accessibility(+provider)   无障碍服务与独立进程 Provider（主应用更新不掉线）
-:terminal                   Termux 通道与终端
-:virtual-display-*          虚拟屏服务端与协议
-:common                     日志 / 结果类型等共享设施
+:app                        App principal (UI / sesiones / orquestación de herramientas / canales / ajustes)
+:ai                         Capa de abstracción de proveedores (OpenAI / Anthropic / Gemini, streaming y llamadas de herramientas)
+:memory                     Motor de memoria (almacén de hechos / compilación / resúmenes)
+:accessibility(+provider)   Servicio de accesibilidad y proveedor en proceso independiente (sobrevive a las actualizaciones de la app)
+:terminal                   Canal de Termux y terminal
+:virtual-display-*          Servidor y protocolo de pantalla virtual
+:common                     Logging, tipos de resultado y utilidades compartidas
 ```
 
-## 从源码构建
+## Compilar desde el código fuente
 
-前置：JDK 21、Android SDK（platform 36、build-tools 36.0.0）。
+Requisitos: JDK 21 y Android SDK (platform 36, build-tools 36.0.0).
 
 ```bash
 git clone https://github.com/Zer0Qing/Muse.git
 cd Muse
 
-# 调试构建
+# Compilación de depuración
 ./gradlew :app:assembleDebug
 
-# 安装到已连接设备
+# Instalar en un dispositivo conectado
 ./gradlew :app:installDebug
 ```
 
-正式发布构建需显式注入版本号并提供签名（缺任一项会被构建硬约束拦下）：
+Las compilaciones de release exigen indicar la versión de forma explícita y aportar la firma (si falta cualquiera de las dos, las restricciones duras de la compilación lo bloquean):
 
 ```powershell
-./gradlew :app:assembleRelease "-PversionName=<x.y.z>" "-PversionCode=<号>"
-# 签名：项目根目录需提供 keystore.properties（storeFile / storePassword / keyAlias / keyPassword）
+./gradlew :app:assembleRelease "-PversionName=<x.y.z>" "-PversionCode=<número>"
+# Firma: en la raíz del proyecto debe existir keystore.properties (storeFile / storePassword / keyAlias / keyPassword)
 
-# 发布前校验（全部 ABI 包签名一致性）
+# Verificación previa a la publicación (consistencia de firma en todos los APK por ABI)
 python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*.apk"
 ```
 
-## 开源共创
+## Código abierto
 
-欢迎参与项目建设：
+Las contribuciones son bienvenidas:
 
-- [贡献指南](CONTRIBUTING.md) · [安全政策](SECURITY.md) · [UI 组件库维护规范](UI组件库维护规范.md)
-- 开发文档在 [`docs/`](docs/)：架构与功能地图、审查结论、待办、交接说明
-- 提交 PR 前请通过本地门禁脚本与单测；新增字符串需同步全部语言包
-- 门禁与发布流水线脚本在 `ci/script/` 下；应用内置教程（设置 → 使用教程）同步维护
+- [Guía de contribución](CONTRIBUTING.md) · [Política de seguridad](SECURITY.md) · [Normas de mantenimiento de la biblioteca de componentes de UI](guia-biblioteca-ui.md)
+- Antes de abrir un PR, pasa los scripts de verificación locales y los tests unitarios; cada cadena nueva debe sincronizarse en todos los paquetes de idioma
+- Los scripts de verificación y del pipeline de publicación están en `ci/script/`; el tutorial integrado en la app (Ajustes → Tutorial) se mantiene en paralelo
 
-## 支持开发
+## Apoya el proyecto
 
-Muse 由独立开发者维护，免费开源、无内购、无账号体系。如果它对你有帮助，欢迎自愿支持项目持续开发：
+Muse lo mantiene un desarrollador independiente: es gratuito, de código abierto, sin compras dentro de la app y sin sistema de cuentas. Si te resulta útil, puedes apoyar voluntariamente su desarrollo continuo:
 
-**请作者喝咖啡**（微信 / 支付宝扫码）：
-
-<p align="center">
-  <img src="art/support/wechat-pay.png" width="200" alt="微信收款码">
-  <img src="art/support/alipay.jpg" width="200" alt="支付宝收款码">
-</p>
-
-**加入交流群**（欢迎来聊）：
+**Invita un café al autor** (QR de WeChat / Alipay):
 
 <p align="center">
-  <img src="art/support/wechat-group.jpg" width="200" alt="微信群二维码">
-  <img src="art/support/qq-group.jpg" width="200" alt="QQ 群二维码">
+  <img src="art/support/wechat-pay.png" width="200" alt="Código QR de cobro de WeChat">
+  <img src="art/support/alipay.jpg" width="200" alt="Código QR de cobro de Alipay">
 </p>
 
-> 赞助完全自愿，不与任何功能、额度或更新挂钩；不赞助不影响正常使用。
+**Únete a los grupos de la comunidad** (con gusto te leemos):
 
-## 关于作者
+<p align="center">
+  <img src="art/support/wechat-group.jpg" width="200" alt="Código QR del grupo de WeChat">
+  <img src="art/support/qq-group.jpg" width="200" alt="Código QR del grupo de QQ">
+</p>
 
-项目由一名成都的独立开发者维护。如果你所在的团队在找人，或只是想聊聊，欢迎直接联系。
+> El apoyo es totalmente voluntario y no está vinculado a ninguna función, cuota o actualización; no apoyar no afecta al uso normal de Muse.
 
-- 坐标：成都
-- 意向：软件工程实习生
-- 联系方式：见上方交流群，或走仓库 Issue
+## Sobre el autor
 
-## 许可证
+El proyecto lo mantiene un desarrollador independiente en Chengdu. Si tu equipo está contratando, o simplemente quieres conversar, escríbeme directamente.
 
-项目采用 **GNU General Public License v3**（GPL v3）。完整许可证文本见 [LICENSE](LICENSE)，第三方依赖许可证列表见 [NOTICE](NOTICE)。
+- Ubicación: Chengdu
+- Buscando: prácticas de ingeniería de software
+- Contacto: los grupos de arriba, o un Issue en el repositorio
+
+## Licencia
+
+El proyecto usa la **GNU General Public License v3** (GPL v3). El texto completo de la licencia está en [LICENSE](LICENSE), y la lista de licencias de dependencias de terceros en [NOTICE](NOTICE).

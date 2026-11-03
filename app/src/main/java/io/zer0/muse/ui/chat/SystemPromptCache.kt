@@ -1,20 +1,20 @@
 package io.zer0.muse.ui.chat
 
 /**
- * v1.x: system prompt / 上下文 token 缓存的共享状态容器。
+ * v1.x: system prompt / Un contenedor de estado compartido para la caché de tokens de contexto.
  *
- * 承载 cachedSystemPrompt(动态 system prompt 文本)、cachedStaticSystemPrompt(静态快照)、
- * cachedStaticSnapshotKey(快照失效 key),供 buildSystemPromptForStream / updateContextTokenCount
- * 及流式路径共享复用。ChatViewModel 通过 getter/setter 委托保持既有引用不变,
- * 为把 buildSystemPromptForStream 迁入 ChatGenerationController 铺路。
+ * oso cachedSystemPrompt(Texto de aviso del sistema dinámico),cachedStaticSystemPrompt(instantánea estática),
+ * cachedStaticSnapshotKey(La instantánea caduca key),suministro buildSystemPromptForStream / updateContextTokenCount
+ * y compartir y reutilizar rutas de streaming.ChatViewModel Mantener las referencias existentes sin cambios mediante la delegación getter/setter,
+ * Allane el camino para mover buildSystemPromptForStream a ChatGenerationController.
  */
 internal class SystemPromptCache {
-    /** v0.45: 缓存的 system prompt 文本(避免流式过程中每 50 字符都重建)。 */
+    /** v0.45: Texto de aviso del sistema en caché(Evite reconstruir cada 50 caracteres durante la transmisión). */
     var cachedSystemPrompt: String = ""
 
-    /** 静态 system prompt 快照(同一会话内连续发消息复用,只追加动态时间 section)。 */
+    /** Instantánea del mensaje del sistema estático(Reutilización continua de mensajes dentro de la misma sesión,Solo agregue tiempo dinámico section). */
     var cachedStaticSystemPrompt: String = ""
 
-    /** 静态快照失效 key(assistant/settings/chatPreferences 变化时触发重建)。 */
+    /** La instantánea estática caduca key(assistant/settings/chatPreferences Activar reconstrucción ante el cambio). */
     var cachedStaticSnapshotKey: String = ""
 }

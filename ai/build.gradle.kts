@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
-    // Phase 2.1: Kover — 插桩本模块字节码,数据上提到 root 聚合报告
+    // Phase 2.1: Kover — Instrumentar el código de bytes de este módulo.,Datos mencionados en el informe de agregación raíz
     alias(libs.plugins.kover)
 }
 
@@ -19,8 +19,8 @@ android {
     defaultConfig {
         minSdk = 26
 
-        // v1.0.18: 注入 SiliconFlow 免费模型 fallback key
-        // 优先级: -P > 环境变量 > local.properties > PLACEHOLDER
+        // v1.0.18: Inyectar modelo libre de SiliconFlow fallback key
+        // prioridad: -P > variables de entorno > local.properties > PLACEHOLDER
         val freeModelKey =
             (project.findProperty("FREE_MODEL_KEY") as String?)
                 ?: System.getenv("FREE_MODEL_KEY")
@@ -43,12 +43,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // v2.1.0: JVM 单测路径会触达 Logger(android.util.Log) — 与 app 模块一致
-    // 让未 mock 的 Android API 返回默认值,而非抛 "not mocked" 异常。
+    // v2.1.0: JVM La ruta de prueba única llegará Logger(android.util.Log) — Igual que el módulo de la aplicación
+    // Permitir que las API de Android no simuladas devuelvan valores predeterminados,en lugar de tirar "not mocked" Anormal.
     testOptions {
         unitTests {
             isReturnDefaultValues = true
-            // Robolectric 4.16+ 在 Java 21 下需要开放 JDK 内部模块(官方 Java 17+ 清单)。
+            // Robolectric 4.16+ En Java 21, es necesario abrir los módulos internos del JDK(Manifiesto oficial de Java 17+).
             all {
                 it.jvmArgs(
                     "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -69,8 +69,8 @@ android {
 dependencies {
     implementation(project(":common"))
 
-    // v1.100: Compose runtime 注解(@Immutable),用于标注 UIMessage/ToolCallInfo 为不可变,
-    // 让 Compose 编译器跳过无效重组。通过 BOM 管理版本,只引入注解依赖。
+    // v1.100: Compose runtime anotación(@Immutable),Se utiliza para marcar UIMessage/ToolCallInfo como inmutable,
+    // Deje que el compilador de Compose omita reorganizaciones no válidas. Administrar versiones a través de BOM,Introduzca solo dependencias de anotaciones.
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)
 
@@ -87,7 +87,7 @@ dependencies {
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
 
-    // 测试
+    // prueba
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)

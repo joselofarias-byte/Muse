@@ -14,15 +14,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * 群成员管理的四个写入口:改名、加人、移出、解散。
+ * Cuatro puntos de entrada para la gestión de miembros del grupo:Cambiar nombre, agregar personas, mudarse, disolverse.
  *
- * 与发消息那条链并列,不混在一起:这里只改「群是谁的、叫什么」,不参与生成与发送。
- * 界面上的群名在写库成功之后才换 —— 写失败时界面不该先变一下再退回来。
+ * yuxtapuesto con la cadena que envió el mensaje,no mezclados:Aquí sólo cambiamos "¿A qué grupo pertenece y cómo se llama?",No involucrado en la generación y envío.
+ * El nombre del grupo en la interfaz se cambiará después de que la base de datos se haya escrito correctamente. —— Cuando falla la escritura, la interfaz no debe cambiar primero y luego regresar.
  *
- * 「默认名」的判定就在这一层:群名没被用户改过(会话行上的 titleCustomized 为 0)时,
- * 加人/移人之后按「现在全部成员」重算;改过的群一个字都不动。
+ * La determinación del "nombre predeterminado" se encuentra en este nivel.:El nombre del grupo no ha sido cambiado por el usuario.(títuloPersonalizado en la línea de sesión es 0)tiempo,
+ * Agregar personas/Después de mover personas, presione "todos los miembros ahora" para volver a calcular;No se tocó ni una sola palabra del grupo modificado.
  *
- * @param characters 宿主给的角色名单;拼默认群名要拿名字
+ * @param characters Lista de personajes dada por el anfitrión.;Para deletrear el nombre del grupo predeterminado, debe usar el nombre
  */
 internal class GroupAdminController(
     private val threadId: String,
@@ -34,7 +34,7 @@ internal class GroupAdminController(
     private val scope: CoroutineScope,
 ) {
 
-    /** 改群名:空名不写,超长截断;写成功后界面上的群名立刻跟着换。 */
+    /** Cambiar nombre de grupo:No escribas un nombre vacío,Truncamiento extralargo;Una vez que la escritura sea exitosa, el nombre del grupo en la interfaz se cambiará inmediatamente. */
     fun renameGroup(title: String) {
         val normalized = normalizeGroupTitle(title)
         if (normalized.isEmpty()) return
@@ -44,7 +44,7 @@ internal class GroupAdminController(
         }
     }
 
-    /** 往群里加人:已经在群里的人自动跳过;默认名跟着新成员重算。 */
+    /** Agregar personas al grupo:Las personas que ya están en el grupo serán omitidas automáticamente.;El nombre predeterminado se recalcula con nuevos miembros. */
     fun addMembers(characterIds: List<String>) {
         val ids = characterIds.map(String::trim).filter(String::isNotEmpty).distinct()
         if (ids.isEmpty()) return
@@ -59,7 +59,7 @@ internal class GroupAdminController(
         }
     }
 
-    /** 把一个人移出群:他说过的话留着;只剩一个人时写入层会拒绝。 */
+    /** Eliminar una persona del grupo:Mantenga lo que dijo;La capa de escritura rechazará cuando solo quede una persona. */
     fun removeMember(characterId: String) {
         scope.launch {
             val thread = groupThread() ?: return@launch
@@ -72,18 +72,18 @@ internal class GroupAdminController(
         }
     }
 
-    /** 解散:会话、成员、消息一起没。界面自己负责退出这一页。 */
+    /** disolver:Las sesiones, los miembros y los mensajes desaparecen juntos. La propia interfaz es responsable de salir de esta página. */
     fun disbandGroup() {
         scope.launch { store.disbandGroup(threadId) }
     }
 
-    /** 私信走到这里一律不处理:这几个动作只对群有意义。 */
+    /** Los mensajes privados que lleguen a este punto no serán procesados.:Estas acciones sólo tienen significado para el grupo. */
     private suspend fun groupThread(): MpThreadEntity? = threadDao.getThread(threadId)?.takeIf { thread -> thread.isGroup }
 
     /**
-     * 群名没被手动改过时,按「现在的成员」拼一个;改过就返回 null(表示别动)。
+     * El nombre del grupo no se ha cambiado manualmente.,Presione "Miembros actuales" para deletrear uno;Volver después de la corrección null(Di no te muevas).
      *
-     * 名字取自宿主名单:角色被删了就退化成占位名,不因此把一个群变成无名群。
+     * Nombre tomado de la lista de hosts:Cuando se elimina un carácter, se convierte en un nombre de marcador de posición.,No convierta un grupo en un grupo anónimo por esto.
      */
     private fun autoTitleOf(thread: MpThreadEntity, memberIds: List<String>): String? {
         if (thread.titleCustomized) return null

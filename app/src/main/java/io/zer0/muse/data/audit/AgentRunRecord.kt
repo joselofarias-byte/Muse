@@ -1,16 +1,16 @@
 package io.zer0.muse.data.audit
 
 /**
- * F-08: Agent Run 统一收据 — 单次工具执行的完整记录。
+ * F-08: Agent Run recibo unificado — Un registro completo de la ejecución de una sola herramienta.
  *
- * 用于把 Agent 循环内的每一次工具执行(父/子 agent 相同)落成结构化记录,
- * 供内存诊断(AuditLogPage 或调试页)与审计日志使用。字段均为摘要/原始值,
- * 不携带敏感参数(argumentsSummary/resultSummary 已截断)。
+ * Se utiliza para ejecutar cada herramienta dentro del bucle del Agente.(padre/Los subagentes son los mismos.)Finalización de registros estructurados.,
+ * para diagnóstico de memoria(AuditLogPage o página de depuración)Se utiliza con registros de auditoría. Todos los campos son abstractos./valor original,
+ * No lleva parámetros sensibles.(argumentsSummary/resultSummary truncado).
  *
- * @param runId 本次工具调用的唯一 id(取 ToolCall.id),子 agent 以此为 parentRunId
- * @param parentRunId 父级 run id(null 表示根会话内的工具调用;delegate_agent/
- *   subagent_task 的子 agent 工具调用携带发起者 runId,形成调用链)
- * @param status 与 [io.zer0.muse.tools.ToolOrchestrator.ToolExecStatus] 一致
+ * @param runId Lo único que llama esta herramienta id(tomar ToolCall.id),El subagente usa esto como parentRunId
+ * @param parentRunId padre run id(null Representa una llamada a una herramienta dentro de la sesión raíz.;delegate_agent/
+ *   subagent_task La llamada a la herramienta subagente lleva al iniciador. runId,formar una cadena de llamadas)
+ * @param status con [io.zer0.muse.tools.ToolOrchestrator.ToolExecStatus] consistente
  */
 data class AgentRunRecord(
     val runId: String,
@@ -22,9 +22,9 @@ data class AgentRunRecord(
     val resultSummary: String = "",
     val status: String,
     val durationMs: Long,
-    /** F-11: 本轮 LLM 可见(暴露)的工具 id 集合(逗号分隔),工具暴露/执行快照证据。 */
+    /** F-11: Esta ronda de LLM es visible(expuesto)Una colección de identificadores de herramientas.(separados por comas),Herramientas expuestas/Realizar evidencia instantánea. */
     val exposedToolIds: String = "",
-    /** F-12: 统一链路 id(源自 StreamRunState.traceId),按 traceId 检索整条 Agent 调用链。 */
+    /** F-12: enlace unificado id(de StreamRunState.traceId),Recupere toda la cadena de llamadas del Agente mediante traceId. */
     val traceId: String = "",
     val timestamp: Long = System.currentTimeMillis(),
 )

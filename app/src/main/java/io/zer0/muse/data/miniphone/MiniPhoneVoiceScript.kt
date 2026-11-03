@@ -4,50 +4,50 @@ import io.zer0.muse.miniphone.api.MpReplyEvent
 import kotlinx.coroutines.flow.FlowCollector
 
 /**
- * 模型输出被切成的一段:要念出来的,还是只当文字发的。
+ * La salida del modelo se corta en un segmento.:Para ser leído,O simplemente envíalo como mensaje de texto.
  *
- * [Speech] 只是「模型要求念这一段」,最终能不能成为 [MpReplyEvent.Voice] 还要看
- * 有没有中文、宿主合成是否成功 —— 两条都可能降级成 [MpReplyEvent.Text]。
+ * [Speech] Es sólo que "el modelo requiere que leas este párrafo".,¿Puede finalmente convertirse [MpReplyEvent.Voice] ¿Quieres ver más?
+ * ¿Está en chino? ¿La síntesis del host es exitosa? —— Ambos pueden ser degradados a [MpReplyEvent.Text].
  */
 internal sealed interface MiniPhoneScriptPart {
     val text: String
 
-    /** `[语音]……[/语音]` 标记内的一段。 */
+    /** `[Voz]……[/Voz]` Un párrafo dentro de la etiqueta. */
     data class Speech(override val text: String) : MiniPhoneScriptPart
 
-    /** 标记之外的一段。 */
+    /** Un párrafo fuera de la marca. */
     data class Plain(override val text: String) : MiniPhoneScriptPart
 }
 
 /**
- * 一轮回复的语音标记切分。
+ * Segmentación de respuestas de una ronda con etiquetas de voz.
  *
- * 约定只有两个标记:`[语音]` 开头、`[/语音]` 结尾。标记内的一段按顺序变成 [MiniPhoneScriptPart.Speech],
- * 标记外的一律是 [MiniPhoneScriptPart.Plain],标记本身不会留在任何一段的正文里。
+ * Se acuerda que solo hay dos marcas.:`[Voz]` comienzo,`[/Voz]` El fin. Un párrafo dentro de una etiqueta se convierte, en secuencia, [MiniPhoneScriptPart.Speech],
+ * Todo lo que está fuera de la marca es siempre [MiniPhoneScriptPart.Plain],El marcado en sí no permanece en el texto de ningún párrafo.
  *
- * 单轮最多 [MAX_VOICE_SEGMENTS] 段语音:模型偶尔会连着标十几段,超出的段降级成文本,
- * 既不让一次回复变成长语音连播,也不吞掉模型本来要说的内容。
+ * La mayoría en una sola ronda [MAX_VOICE_SEGMENTS] segmento de discurso:En ocasiones, el modelo estará marcado con más de diez párrafos seguidos.,Los segmentos excedentes se degradan a texto,
+ * No dejes que una respuesta se convierta en una larga transmisión de voz.,Tampoco se traga lo que se suponía que debía decir el modelo.
  *
- * 没有闭合的标记按普通文字处理(`[语音]` 只被抹掉,内容当文本发):半截标记说明模型没写完,
- * 这时合成出来的多半也是半句话。
+ * Las etiquetas no cerradas se tratan como texto normal.(`[Voz]` sólo para ser borrado,El contenido se envía como texto.):La media marca indica que el modelo no está terminado.,
+ * En este momento, la mayoría de las palabras sintetizadas son solo media oración.
  */
 internal object MiniPhoneScript {
 
-    /** 单轮回复最多合成几段语音。 */
+    /** Una única ronda de respuesta puede sintetizar hasta varios segmentos de discurso. */
     const val MAX_VOICE_SEGMENTS: Int = 5
 
-    private const val OPEN_TAG: String = "[语音]"
-    private const val CLOSE_TAG: String = "[/语音]"
+    private const val OPEN_TAG: String = "[Voz]"
+    private const val CLOSE_TAG: String = "[/Voz]"
 
-    /** 非贪婪匹配成对标记;`[\s\S]` 让段内换行也算内容。 */
-    private val BLOCK: Regex = Regex("""\[语音\]([\s\S]*?)\[/语音\]""")
+    /** Coincidencia no codiciosa de tokens emparejados;`[\s\S]` Deje que los saltos de línea dentro de los párrafos cuenten como contenido. */
+    private val BLOCK: Regex = Regex("""\[Voz\]([\s\S]*?)\[/Voz\]""")
 
     /**
-     * 按标记切段。
+     * Cortar en secciones como se marca.
      *
-     * @param raw 已剥掉 think 标签的模型输出
-     * @param maxVoice 本次最多产出几段 [MiniPhoneScriptPart.Speech]
-     * @return 按出现顺序排好的段落;空白段落不产出,全是空白时返回空列表
+     * @param raw Salida del modelo con etiquetas de pensamiento eliminadas
+     * @param maxVoice ¿Cuántos párrafos se pueden producir como máximo este tiempo? [MiniPhoneScriptPart.Speech]
+     * @return Párrafos ordenados por orden de aparición.;No se producen párrafos en blanco.,Devuelve una lista vacía si todos están en blanco
      */
     fun parse(raw: String, maxVoice: Int = MAX_VOICE_SEGMENTS): List<MiniPhoneScriptPart> {
         if (raw.isBlank()) return emptyList()
@@ -71,14 +71,14 @@ internal object MiniPhoneScript {
         return parts
     }
 
-    /** 标记外的一段:顺手抹掉落单的标记,再按是否空白决定要不要留下。 */
+    /** Un párrafo fuera de la marca.:Borra fácilmente la marca del pedido.,Luego presione si está en blanco para decidir si conservarlo o no. */
     private fun MutableList<MiniPhoneScriptPart>.appendPlain(chunk: String) {
         val text = chunk.replace(OPEN_TAG, "").replace(CLOSE_TAG, "").trim()
         if (text.isNotEmpty()) add(MiniPhoneScriptPart.Plain(text))
     }
 }
 
-/** 汉字区间:基本区、扩展 A、兼容表意、扩展 B 起的大字面。标点不算。 */
+/** intervalo de caracteres chinos:Área básica, extensión A, ideogramas compatibles, caracteres grandes a partir de la extensión B. La puntuación no cuenta. */
 private val ChineseCodeRanges: List<IntRange> = listOf(
     0x4E00..0x9FFF,
     0x3400..0x4DBF,
@@ -87,23 +87,23 @@ private val ChineseCodeRanges: List<IntRange> = listOf(
 )
 
 /**
- * 这段文字里有没有中文。
+ * ¿Hay algo de chino en este texto?
  *
- * 双语角色会把原文和译文一起贴出来:英文那半段没有汉字,交给中文音色念只会得到一个
- * 念歪英文的声音,还白花一次合成额度 —— 所以它是「要不要合成」的判据。
+ * Los caracteres bilingües publicarán el texto original y el texto traducido juntos.:No hay caracteres chinos en la mitad inglesa.,Si se lo das a Chinese Sound Reading, solo obtendrás uno.
+ * El sonido de hablar inglés torcido.,Sigue siendo un desperdicio de una cuota de síntesis. —— Entonces es el criterio de "si sintetizar o no".
  */
 internal fun hasChineseCharacters(text: String): Boolean = text.any { char ->
     ChineseCodeRanges.any { range -> char.code in range }
 }
 
 /**
- * 把一轮回复摊成一串事件:标记外发文本,标记内合成语音,合成不成也发文本。
+ * Distribuya una ronda de respuestas en una serie de eventos.:Marcar texto saliente,Discurso sintetizado dentro de etiquetas,Si la síntesis falla, se enviará el texto.
  *
- * 顺序就是模型输出的顺序 —— 每段语音都等合成结果出来再继续下一段,所以界面收到的
- * 事件次序与模型写下的一致(先说的话先出现),代价是这段语音之后的文本要等它合成完。
+ * El orden es el orden de salida del modelo. —— Cada segmento de voz espera a que salga el resultado de la síntesis antes de continuar con el siguiente segmento.,Entonces la interfaz recibe
+ * La secuencia de eventos es consistente con lo escrito en el modelo.(Lo que se dice primero aparece primero),El precio es que el texto posterior a este discurso tiene que esperar a que sea sintetizado.
  *
- * @param output 已剥掉 think 标签的回复正文
- * @param synthesize 语音合成入口;返回 null 表示这一段合成失败
+ * @param output Responder texto con la etiqueta think eliminada
+ * @param synthesize Portal de síntesis de voz;Devolver nulo indica que la síntesis falló.
  */
 internal suspend fun FlowCollector<MpReplyEvent>.emitVoiceScript(output: String, synthesize: suspend (String) -> Pair<String, Long>?) {
     val parts = MiniPhoneScript.parse(output)
@@ -119,7 +119,7 @@ internal suspend fun FlowCollector<MpReplyEvent>.emitVoiceScript(output: String,
     }
 }
 
-/** 一段标记内的文本:有中文才合成,合成失败或没有中文都退化成文本。 */
+/** texto dentro de una etiqueta:Se puede sintetizar sólo si está en chino.,Si falla la síntesis o no hay chino, se reducirá a texto. */
 private suspend fun speechEvent(text: String, synthesize: suspend (String) -> Pair<String, Long>?): MpReplyEvent {
     if (!hasChineseCharacters(text)) return MpReplyEvent.Text(text)
     val voice = synthesize(text) ?: return MpReplyEvent.Text(text)

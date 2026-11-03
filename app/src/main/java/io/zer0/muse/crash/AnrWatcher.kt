@@ -19,93 +19,93 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * ANR(应用无响应)检测器。
+ * ANR(La aplicación no responde)detector.
  *
- * 检测机制(v2.3.2 起,判定细节见 [AnrDetector]):
- *  - 独立守护线程 "AnrWatcher" 每 [CHECK_INTERVAL_MS] 向主线程 Handler 投递一个 Ping
- *  - Ping 在主线程执行时把 [pongCount] 加一;**判定只看这个计数有没有前进**
- *    (不再用"距上次响应的时间戳"做减法:看门狗线程自身被挂起或饿死时,那种算法会把
- *    那段时间错算成主线程阻塞 —— 这是 2026-09-27~29 五份 anr_*.txt 误报的直接原因)
- *  - 主线程连续 [ANR_TIMEOUT_MS] 未执行 Ping 即判定 ANR
- *  - 本轮实际耗时远超预期间隔时(overshoot > [SUSPEND_TOLERANCE_MS]),说明看门狗自己都没能
- *    按时醒来(进程被冻结/深度 Doze)→ 视为"本轮无法判定",重置基线而不报 ANR
+ * mecanismo de detección(v2.3.2 de,Detalles del fallo ver [AnrDetector]):
+ *  - Hilo de demonio independiente "AnrWatcher" cada [CHECK_INTERVAL_MS] Entregar un controlador al hilo principal Ping
+ *  - Ping Cuando se ejecuta el hilo principal [pongCount] más uno;**El fallo sólo depende de si el recuento ha avanzado.**
+ *    (ya no se usa"marca de tiempo desde la última respuesta"hacer resta:Cuando el hilo guardián se cuelga o muere de hambre,Ese algoritmo
+ *    Ese período de tiempo se calculó mal porque el hilo principal estaba bloqueado. —— esto es 2026-09-27~29 cinco porciones anr_*.txt La causa directa de los falsos positivos.)
+ *  - hilo principal continuo [ANR_TIMEOUT_MS] Sentencia sin ejecutar Ping ANR
+ *  - Cuando el tiempo real necesario para esta ronda excede con creces el intervalo esperado(overshoot > [SUSPEND_TOLERANCE_MS]),Esto demuestra que el propio organismo de control no puede
+ *    despierta a tiempo(El proceso está congelado/Profundidad Doze)→ considerado como"No se puede determinar esta ronda",Restablecer la línea de base sin informar ANR
  *
- * ANR 时采集:
- *  - 全部线程堆栈(主线程 + 所有其他线程)
- *  - 内存状态(Runtime.totalMemory / freeMemory / maxMemory + 堆使用率)
- *  - 最近 Perf 埋点记录([Perf.snapshotRecent])
+ * ANR colección de tiempo:
+ *  - Todas las pilas de hilos(hilo principal + todos los demás hilos)
+ *  - estado de la memoria(Runtime.totalMemory / freeMemory / maxMemory + Uso del montón)
+ *  - Registros enterrados de rendimiento recientes([Perf.snapshotRecent])
  *
- * ANR 日志写入 filesDir/crash/anr_{timestamp}.txt(与 [MuseCrashHandler] 同目录),
- * 并复用 [MuseCrashHandler.redactSensitive] 脱敏堆栈(避免 token/apiKey 泄露);
- * 同时记录到 [AuditLogger](若可用)与 [Logger.e]。
+ * ANR Escritura de registros filesDir/crash/anr_{timestamp}.txt(con [MuseCrashHandler] Mismo directorio),
+ * y reutilizar [MuseCrashHandler.redactSensitive] pila de desensibilización(Evite la fuga de token/apiKey);
+ * grabado al mismo tiempo [AuditLogger](Si está disponible)con [Logger.e].
  *
- * 安全设计(避免自身导致 ANR):
- *  - 独立守护线程,不依赖主线程 Looper,自身不会阻塞主线程
- *  - 主线程 Handler 用**强引用**持有:它只持有 Looper/MessageQueue,不持有 Context/Activity,
- *    不会泄漏;早期版本用 WeakReference 持有会被 GC 回收,导致 post 静默失效、永久误判
- *    (原因与证据见 [mainHandler] 注释)
- *  - 检测线程优先级 [Thread.MIN_PRIORITY],减少对正常调度的影响
- *  - ANR 后由 [AnrDetector] 去重,避免日志风暴
- *  - 循环内全部 try-catch,任何异常都不能让检测线程意外退出
+ * Diseño seguro(evitar autoinfligido ANR):
+ *  - Hilo de demonio independiente,No depende del hilo principal. Looper,No bloquea el hilo principal en sí.
+ *  - Utilizado por el controlador del hilo principal**fuerte referencia**mantener:solo se sostiene Looper/MessageQueue,No retenido Context/Activity,
+ *    no goteará;GC reciclará las versiones anteriores conservadas con WeakReference,Conduciendo a un fracaso silencioso del puesto y a un error de juicio permanente
+ *    (Para razones y evidencia ver [mainHandler] Comentario)
+ *  - Comprobar prioridad del hilo [Thread.MIN_PRIORITY],Reducir el impacto en la programación normal
+ *  - ANR Más tarde por [AnrDetector] Eliminar duplicados,Evite las tormentas de troncos
+ *  - Todo en el bucle try-catch,Cualquier excepción no debe provocar que el hilo de detección se cierre inesperadamente.
  *
- * 可配置开关:[SettingsRepository.anrDetectionCache](默认 true),通过 [SettingsRepository] 同步缓存读取,
- * 支持运行时切换(用户在设置页关闭后,下一个检测周期即停止判定)。
+ * Interruptor configurable:[SettingsRepository.anrDetectionCache](Predeterminado true),Pase [SettingsRepository] Lecturas de caché sincrónicas,
+ * Admite cambio de tiempo de ejecución(Después de que el usuario cierra la página de configuración,El juicio se detendrá en el siguiente ciclo de detección.).
  *
- * @param appContext 应用上下文(用于定位 filesDir/crash)
- * @param settings 设置仓库(读取 anrDetection 开关)
- * @param auditLogger 审计日志记录器(可选,为 null 时跳过审计记录)
+ * @param appContext contexto de aplicación(utilizado para posicionamiento filesDir/crash)
+ * @param settings Configurar almacén(Leer un interruptor de detección)
+ * @param auditLogger Registrador de auditoría(Opcional,Omite registros de auditoría cuando son nulos)
  */
 class AnrWatcher(
     private val appContext: Context,
     private val settings: SettingsRepository,
     private val auditLogger: AuditLogger? = null,
 ) {
-    // 主线程 Handler。
+    // Controlador de hilo principal.
     //
-    // v2.3.2 修复:此前用 WeakReference 持有它,而该 Handler 没有任何强引用
-    // (原注释"主线程 Looper 随进程生命周期,实际不会被回收"混淆了 Looper 与 Handler ——
-    //  进程级的是 Looper,Handler 只是个普通对象),两次 ping 之间消息队列里没有指向它的
-    // Message 时就会被 GC 回收;之后 post 静默失效、响应时间戳永久冻结,每个进程误报一次 ANR。
-    // Handler 只持有 Looper/MessageQueue,不持有 Context/Activity,强引用不会泄漏。
+    // v2.3.2 Reparación:Anteriormente lo tenía con WeakReference,Y el Handler no tiene referencias sólidas.
+    // (Comentario original"El hilo principal Looper cambia con el ciclo de vida del proceso.,En realidad no será reciclado"Confundir a Looper con Handler ——
+    //  El nivel de proceso es Looper,Handler Sólo un objeto ordinario),No hay ningún mensaje que apunte a él en la cola de mensajes entre los dos pings.
+    // Message será reciclado por GC;Luego, la publicación caducará silenciosamente y la marca de tiempo de respuesta se congelará permanentemente.,Un ANR falso positivo por proceso.
+    // Handler sólo espera Looper/MessageQueue,No retenido Context/Activity,Las referencias sólidas no se filtrarán.
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // 主线程已执行的 ping 次数(单调递增)。
-    // v2.3.2: 判定改为"计数有没有前进",不再用"距上次响应的时间戳"做减法 ——
-    // 后者在看门狗线程自身被挂起/饿死时会把那段时间错算成主线程阻塞。
+    // Número de pings realizados por el hilo principal(monótonamente creciente).
+    // v2.3.2: Se cambia la sentencia a"¿Avanza el conteo?",ya no se usa"marca de tiempo desde la última respuesta"hacer resta ——
+    // Este último está suspendido en el propio hilo de vigilancia./Cuando muera de hambre, ese tiempo se calculará mal como el bloqueo del hilo principal.
     private val pongCount = AtomicLong(0)
 
-    // 运行标志(stop 时置 false,通知检测线程退出)
+    // bandera corriendo(stop ajuste de tiempo false,El hilo de detección de notificaciones sale)
     @Volatile
     private var running: Boolean = false
 
-    // 守护线程引用(stop 时 interrupt + join)
+    // referencia del hilo del demonio(stop tiempo interrupt + join)
     private var watcherThread: Thread? = null
 
-    // Ping:投递到主线程,能被执行即说明主线程未阻塞(计数由 [AnrDetector] 比对)
+    // Ping:Publicar en el hilo principal,Si se puede ejecutar, significa que el hilo principal no está bloqueado.(Contado por [AnrDetector] Comparar)
     private val ping = Runnable { pongCount.incrementAndGet() }
 
     /**
-     * 启动 ANR 检测。
+     * Inicie la detección de ANR.
      *
-     * 若 [SettingsRepository.anrDetectionCache] == false 则直接返回不启动。
-     * 守护线程会持续运行直到 [stop] 被调用或进程结束。
+     * si [SettingsRepository.anrDetectionCache] == false Luego vuelve directamente a no arrancar.
+     * El hilo del demonio continuará ejecutándose hasta [stop] se llama o el proceso finaliza.
      */
     fun start() {
         if (!settings.anrDetectionCache) {
-            Logger.i(TAG, "ANR 检测已通过设置关闭,不启动")
+            Logger.i(TAG, "ANR La detección se ha desactivado a través de la configuración,no comienza")
             return
         }
         if (running) return
         running = true
         watcherThread = Thread({ watchLoop() }, THREAD_NAME).apply {
             isDaemon = true
-            priority = Thread.MIN_PRIORITY // 低优先级,减少对正常调度的影响
+            priority = Thread.MIN_PRIORITY // baja prioridad,Reducir el impacto en la programación normal
             start()
         }
-        Logger.i(TAG, "ANR 检测已启动(check=${CHECK_INTERVAL_MS}ms, timeout=${ANR_TIMEOUT_MS}ms)")
+        Logger.i(TAG, "ANR Detección iniciada(check=${CHECK_INTERVAL_MS}ms, timeout=${ANR_TIMEOUT_MS}ms)")
     }
 
-    /** 停止 ANR 检测(中断守护线程)。 */
+    /** Detener la detección de ANR(Interrumpir hilo de demonio). */
     fun stop() {
         running = false
         watcherThread?.let { thread ->
@@ -117,16 +117,16 @@ class AnrWatcher(
             }
         }
         watcherThread = null
-        Logger.i(TAG, "ANR 检测已停止")
+        Logger.i(TAG, "ANR La detección se ha detenido")
     }
 
     /**
-     * 检测循环:每 [CHECK_INTERVAL_MS] 投递 Ping 并按 [AnrDetector] 的结论判定是否 ANR。
+     * ciclo de prueba:cada [CHECK_INTERVAL_MS] Publica un ping y presiona [AnrDetector] La conclusión determina si es ANR.
      *
-     * v2.3.2: 判定输入改为(ticket 计数, 本轮实际耗时),不再用时间戳做减法 ——
-     * 详见 [AnrDetector] 与 [mainHandler] 注释。
+     * v2.3.2: La entrada de juicio se cambia a(ticket contar, El tiempo real necesario para esta ronda.),No más restar marcas de tiempo ——
+     * Ver detalles [AnrDetector] con [mainHandler] Nota.
      *
-     * 循环内全部 try-catch,任何异常都不能让检测线程意外退出(否则 ANR 检测静默失效)。
+     * Todo en el bucle try-catch,Cualquier excepción no debe provocar que el hilo de detección se cierre inesperadamente.(De lo contrario, la detección de ANR falla silenciosamente.).
      */
     private fun watchLoop() {
         val detector =
@@ -137,30 +137,30 @@ class AnrWatcher(
             )
         while (running) {
             try {
-                // 双重检查开关:支持运行时通过设置切换
+                // interruptor de doble control:Admite cambiar de configuración en tiempo de ejecución
                 if (!settings.anrDetectionCache) {
                     Thread.sleep(CHECK_INTERVAL_MS)
                     continue
                 }
-                // 投递 Ping 到主线程(非阻塞,立即返回)。post 失败说明主线程消息队列不可用,
-                // 本轮不做判定(否则会把"ping 根本没投出去"误算成主线程无响应)。
+                // Entregar ping al hilo principal(sin bloqueo,Regresar inmediatamente).post El error indica que la cola de mensajes del hilo principal no está disponible,
+                // No se emitirá ningún juicio en esta ronda.(De lo contrario será"ping No voté en absoluto"Se calculó mal porque el hilo principal no responde).
                 val postedAt = SystemClock.elapsedRealtime()
                 val posted = mainHandler.post(ping)
                 if (!posted) {
-                    Logger.w(TAG, "Ping 投递失败(主线程消息队列不可用),本轮跳过判定")
+                    Logger.w(TAG, "Ping Entrega fallida(La cola de mensajes del hilo principal no está disponible),Saltar el juicio en esta ronda")
                 }
-                // 等待一个检测周期
+                // Espere un ciclo de detección
                 Thread.sleep(CHECK_INTERVAL_MS)
                 if (posted) {
                     handleDecision(detector.onCheck(SystemClock.elapsedRealtime(), postedAt, pongCount.get()))
                 }
             } catch (e: InterruptedException) {
-                // stop() 触发的中断,正常退出循环
+                // stop() interrupción activada,Salir del bucle normalmente
                 Thread.currentThread().interrupt()
                 break
             } catch (t: Throwable) {
-                // 任何异常都不能让检测线程退出(否则 ANR 检测静默失效)
-                Logger.w(TAG, "ANR 检测循环异常: ${t.message}", t)
+                // Cualquier excepción no puede hacer que el hilo de detección salga.(De lo contrario, la detección de ANR falla silenciosamente.)
+                Logger.w(TAG, "ANR Detectar anomalías en el bucle: ${t.message}", t)
                 try {
                     Thread.sleep(CHECK_INTERVAL_MS)
                 } catch (_: InterruptedException) {
@@ -172,11 +172,11 @@ class AnrWatcher(
     }
 
     /**
-     * 处理一轮检测结论(v2.3.2: 从 [watchLoop] 抽出来,避免循环内分支过多触发复杂度门禁)。
+     * Procesar la conclusión de una ronda de pruebas.(v2.3.2: de [watchLoop] Sácalo,Evite demasiadas ramas en el bucle para activar el control de puerta de complejidad).
      *
-     * [AnrDetector.Decision.Blocked] 时按 v1.0.53 的口径决定是否落盘:
-     * App 在后台时主线程被系统冻结/Doze,长时间不响应属正常行为,不记 ANR
-     * (冻结期间"回前台首轮"的误报另由 [AnrDetector] 的挂起判定拦掉)。
+     * [AnrDetector.Decision.Blocked] Determinar si realizar el pedido según el calibre de v1.0.53:
+     * App El sistema congela el hilo principal mientras está en segundo plano./Doze,No responder durante mucho tiempo es un comportamiento normal.,no lo recuerdo ANR
+     * (periodo de congelación"Regreso a la recepción para la primera ronda."Los falsos positivos son causados por [AnrDetector] El fallo de colgar está bloqueado).
      */
     private fun handleDecision(decision: AnrDetector.Decision) {
         when (decision) {
@@ -184,31 +184,31 @@ class AnrWatcher(
                 if (isAppInForeground()) {
                     onAnrDetected(decision.silenceMs)
                 } else {
-                    Logger.d(TAG, "主线程无响应 ${decision.silenceMs}ms(应用在后台,不记 ANR)")
+                    Logger.d(TAG, "El hilo principal no responde ${decision.silenceMs}ms(Aplicación en segundo plano,no lo recuerdo ANR)")
                 }
             }
             AnrDetector.Decision.Suspended -> {
-                Logger.d(TAG, "检测线程本轮被挂起(进程冻结/Doze),已重置 ANR 基线")
+                Logger.d(TAG, "Detectar que el hilo está suspendido en esta ronda.(congelación del proceso/Doze),Restablecimiento de la línea base de ANR")
             }
             AnrDetector.Decision.Suppressed, AnrDetector.Decision.Healthy -> Unit
         }
     }
 
     /**
-     * ANR 检测到时的处理。
+     * ANR Qué hacer cuando lo detectan.
      *
-     * 采集线程堆栈 + 内存 + Perf 记录,写入 anr_{timestamp}.txt,
-     * 并记录到 AuditLogger(若可用)与 Logger.e。
+     * Recopilar pila de subprocesos + memoria + registro de rendimiento,escribir anr_{timestamp}.txt,
+     * y grabado en AuditLogger(Si está disponible)con Logger.e.
      *
-     * @param silenceMs 主线程无响应时长(毫秒)
+     * @param silenceMs Hilo principal sin tiempo de respuesta(milisegundos)
      */
     private fun onAnrDetected(silenceMs: Long) {
         val anrTime = System.currentTimeMillis()
-        Logger.e(TAG, "检测到 ANR! 主线程无响应 ${silenceMs}ms")
-        // 写入 ANR 日志文件(脱敏后落盘,失败不抛出)
+        Logger.e(TAG, "detectado ANR! El hilo principal no responde ${silenceMs}ms")
+        // Escribir en el archivo de registro ANR(Desechar después de la desensibilización,El fracaso no tira)
         resultOf { writeAnrLog(anrTime, silenceMs) }
-            .onError { msg, t -> Logger.e(TAG, "写入 ANR 日志失败: $msg", t) }
-        // 记录到审计日志(若可用,fire-and-forget)
+            .onError { msg, t -> Logger.e(TAG, "Error al escribir en el registro ANR: $msg", t) }
+        // Iniciar sesión en el registro de auditoría(Si está disponible,fire-and-forget)
         resultOf {
             auditLogger?.log(
                 category = "system",
@@ -224,25 +224,25 @@ class AnrWatcher(
     }
 
     /**
-     * 写 ANR 日志到 filesDir/crash/anr_{timestamp}.txt。
+     * Escribe el registro ANR en filesDir/crash/anr_{timestamp}.txt.
      *
-     * 采集内容:
-     *  - 设备信息(Brand/Model/Android/ABI)
-     *  - 内存状态(堆 Used/Free/Total/Max/Usage%)
-     *  - 主线程堆栈(name/id/state + stackTrace)
-     *  - 全部线程堆栈(Thread.getAllStackTraces)
-     *  - 最近 Perf 埋点记录([Perf.snapshotRecent])
+     * Recopilar contenido:
+     *  - Información del dispositivo(Brand/Model/Android/ABI)
+     *  - estado de la memoria(pila Used/Free/Total/Max/Usage%)
+     *  - pila de hilo principal(name/id/state + stackTrace)
+     *  - Todas las pilas de hilos(Thread.getAllStackTraces)
+     *  - Registros enterrados de rendimiento recientes([Perf.snapshotRecent])
      *
-     * 写盘后复用 [MuseCrashHandler.redactSensitive] 脱敏,避免堆栈中 token/apiKey 泄露;
-     * 并清理旧 ANR 日志(保留最近 [MAX_ANR_LOGS] 份)。
+     * Reutilizar después de escribir en el disco [MuseCrashHandler.redactSensitive] Desensibilización,Evite fugas de token/apiKey en la pila;
+     * y limpiar registros ANR antiguos(mantener reciente [MAX_ANR_LOGS] porción).
      *
-     * @param anrTime ANR 发生时间戳
-     * @param silenceMs 主线程无响应时长(毫秒)
+     * @param anrTime ANR Marca de tiempo de ocurrencia
+     * @param silenceMs Hilo principal sin tiempo de respuesta(milisegundos)
      */
     private fun writeAnrLog(anrTime: Long, silenceMs: Long) {
-        // v1.0.53: 优先写 externalFilesDir(/sdcard/Android/data/io.zer0.muse/files/crash/),
-        //   adb 与文件管理器可直接访问;external 不可用时回退私有 filesDir。
-        //   私有目录(/data/user/0/...)在 Android 文件管理器不可见,真机排查困难。
+        // v1.0.53: escribe primero externalFilesDir(/sdcard/Android/data/io.zer0.muse/files/crash/),
+        //   adb Con administrador de archivos directamente accesible;external Recurrir al directorio de archivos privado cuando no esté disponible.
+        //   directorio privado(/data/user/0/...)No visible en el administrador de archivos de Android,Solución de problemas de dificultad en una máquina real.
         val externalCrashDir = appContext.getExternalFilesDir("crash")
         val crashDir = (externalCrashDir ?: File(appContext.filesDir, "crash")).apply { mkdirs() }
         val fmt = SimpleDateFormat(TIME_FMT, Locale.US)
@@ -253,14 +253,14 @@ class AnrWatcher(
         PrintWriter(sw).use { pw ->
             pw.println("===== muse ANR log =====")
             pw.println("Time: ${Date(anrTime)}")
-            pw.println("Silence: ${silenceMs}ms (主线程无响应时长)")
-            // v2.3.2: 记录判定口径,便于事后判断报告可信度(旧报告的 5~133s "Silence" 多为
-            // 进程冻结期间的误报,见 AnrDetector 注释)
+            pw.println("Silence: ${silenceMs}ms (Hilo principal sin tiempo de respuesta)")
+            // v2.3.2: Calibre de juicio récord,Facilitar el juicio posterior sobre la credibilidad del informe.(viejo reportado 5~133s "Silence" Mayormente
+            // Falsos positivos durante la congelación del proceso,Ver la anotación de AnrDetector)
             pw.println(
                 "Detector: ticket(v2.3.2) interval=${CHECK_INTERVAL_MS}ms " +
                     "timeout=${ANR_TIMEOUT_MS}ms suspendTolerance=${SUSPEND_TOLERANCE_MS}ms",
             )
-            pw.println("Note: 冻结/Doze 导致的挂起不计入 Silence;下方栈为判定时刻的采样")
+            pw.println("Note: congelar/Doze Los bloqueos resultantes no se cuentan Silence;La siguiente pila es la muestra en el momento de la decisión.")
             pw.println()
             pw.println("----- Device Info -----")
             pw.println("Brand: ${Build.BRAND}")
@@ -288,7 +288,7 @@ class AnrWatcher(
             pw.println("----- All Threads Stacks -----")
             val allStacks = Thread.getAllStackTraces()
             pw.println("Total threads: ${allStacks.size}")
-            // 按 thread id 倒序排列,输出每个线程的堆栈
+            // Ordenar por ID de hilo en orden descendente,Salida de la pila de cada hilo.
             allStacks.entries.sortedByDescending { it.key.id }.forEach { (thread, stack) ->
                 pw.println()
                 pw.println("Thread: ${thread.name} (id=${thread.id}, state=${thread.state})")
@@ -298,60 +298,60 @@ class AnrWatcher(
             pw.println("----- Recent Perf Records -----")
             val perfRecords = Perf.snapshotRecent()
             if (perfRecords.isEmpty()) {
-                pw.println("(无 Perf 埋点记录)")
+                pw.println("(Sin registro de puntos enterrados de rendimiento)")
             } else {
                 perfRecords.forEach { rec ->
                     pw.println("${rec.name}: ${rec.elapsedMs}ms @ ${Date(rec.timestamp)}")
                 }
             }
         }
-        // 脱敏后写盘(复用 MuseCrashHandler 的脱敏逻辑,避免堆栈中的 token/apiKey 泄露)
+        // Escribir disco después de la desensibilización.(Reutilice la lógica de desensibilización de MuseCrashHandler,Evite fugas de token/apiKey en la pila)
         val redacted = MuseCrashHandler.redactSensitive(sw.toString())
         logFile.writeText(redacted)
 
-        // 清理旧 ANR 日志(保留最近 MAX_ANR_LOGS 份,仅清理 anr_ 前缀,不影响 crash_ 日志)
+        // Limpiar registros ANR antiguos(Conservar las copias MAX_ANR_LOGS más recientes,Limpiar solo el prefijo anr_,No afecta crash_log)
         crashDir.listFiles { f -> f.name.startsWith("anr_") }
             ?.sortedByDescending { it.lastModified() }
             ?.drop(MAX_ANR_LOGS)
             ?.forEach { it.delete() }
 
-        Logger.e(TAG, "ANR 日志已写入: ${logFile.absolutePath}")
+        Logger.e(TAG, "ANR El registro ha sido escrito: ${logFile.absolutePath}")
     }
 
     companion object {
         private const val TAG = "AnrWatcher"
         private const val THREAD_NAME = "AnrWatcher"
 
-        // 检测间隔:主线程 Ping 投递周期(2s)
+        // Intervalo de detección:Hilo principal Ciclo de entrega de ping(2s)
         private const val CHECK_INTERVAL_MS = 2_000L
 
-        // ANR 判定阈值:主线程无响应超过此时长即判定 ANR(5s)
+        // ANR Umbral de decisión:Si el hilo principal no responde durante más tiempo que este tiempo, será juzgado. ANR(5s)
         private const val ANR_TIMEOUT_MS = 5_000L
 
-        // v2.3.2: 挂起容差 — 本轮实际耗时超出检测间隔这么多,即认为看门狗自身被挂起
-        // (进程冻结/深度 Doze),本轮不做判定并重置基线,避免把冻结时长误报成 ANR
+        // v2.3.2: tolerancia de suspensión — El tiempo real consumido en esta ronda excede el intervalo de detección por mucho,Es decir, el propio organismo de control se considera suspendido.
+        // (congelación del proceso/Profundidad Doze),No se emitirá ningún juicio en esta ronda y se restablecerá la línea de base.,Evite informar erróneamente la duración de la congelación, ya que ANR
         private const val SUSPEND_TOLERANCE_MS = 3_000L
 
-        // ANR 日志文件名时间戳格式
+        // ANR Formato de marca de tiempo del nombre del archivo de registro
         private const val TIME_FMT = "yyyyMMdd-HHmmss"
 
-        // 保留最近 ANR 日志份数(与 MuseCrashHandler.MAX_CRASH_LOGS 对齐)
+        // Número de copias recientes del registro ANR que se deben conservar(Alineado con MuseCrashHandler.MAX_CRASH_LOGS)
         private const val MAX_ANR_LOGS = 5
     }
 
     /**
-     * v1.0.53: 判断应用是否在前台(RESUMED)。
+     * v1.0.53: Determinar si la aplicación está en primer plano.(RESUMED).
      *
-     * 后台冻结/Doze 时主线程长时间不响应是系统正常行为,
-     * 此前会误报大量 ANR(最高 741 秒),以此过滤。
-     * ProcessLifecycleOwner 的 state 是 @Volatile 线程安全读。
+     * congelación de fondo/Doze Es un comportamiento normal del sistema si el hilo principal no responde durante mucho tiempo.,
+     * Anteriormente, habría una gran cantidad de falsos positivos. ANR(hasta 741 segundos),Filtra esto.
+     * ProcessLifecycleOwner El estado es @Volatile seguro para subprocesos para lectura.
      */
     private fun isAppInForeground(): Boolean = try {
         androidx.lifecycle.ProcessLifecycleOwner.get()
             .lifecycle.currentState
             .isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
     } catch (t: Throwable) {
-        // 拿不到状态时保守按前台处理(宁可记录,不漏真 ANR)
+        // Si no se puede obtener el estado, será procesado en la recepción.(Preferiría grabar,No hay filtración de la verdad ANR)
         true
     }
 }

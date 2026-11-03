@@ -4,22 +4,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-DATA-B34: 备份导入对账不能只看“解析行数”。
+ * AUD-DATA-B34: La conciliación de importación de respaldo no puede simplemente mirar“Número de líneas analizadas”.
  *
- * B-34 原实现只比对 meta 声明数与解析数；解析通过但缓冲 flush 的 upsert 若丢记录，
- * 对账看不出来 → “导入成功但数据半缺失”。现增加入库后真实行数核对。
+ * B-34 La implementación original solo compara la cantidad de metadeclaraciones y la cantidad de análisis; el análisis pasa, pero si la inserción de la descarga del búfer pierde registros,
+ * No puedo verlo desde la reconciliación. → “Importación exitosa pero faltan datos parcialmente”. Ahora agregue la verificación del número real de filas después del almacenamiento.
  */
 class BackupImportReconcileTest {
 
     private fun source(): String = java.io.File("src/main/java/io/zer0/muse/backup/BackupService.kt").readText()
 
-    /** 取 verifyInsertedCounts 的完整函数体（到同级缩进的收尾括号为止），不靠魔法字符数截断。 */
+    /** Tome el cuerpo completo de la función de verificarInsertedCounts (hasta el paréntesis de cierre de la sangría del mismo nivel), sin truncarlo por el número mágico de caracteres. */
     private fun verifyInsertedCountsBody(): String {
         val src = source()
         val start = src.indexOf("private suspend fun verifyInsertedCounts")
-        require(start >= 0) { "未找到 verifyInsertedCounts" }
+        require(start >= 0) { "no encontrado verifyInsertedCounts" }
         val end = src.indexOf("\n    }", start)
-        require(end > start) { "未找到 verifyInsertedCounts 函数体结尾" }
+        require(end > start) { "No se encontró el final del cuerpo de la función verificarInsertedCounts" }
         return src.substring(start, end)
     }
 
@@ -27,7 +27,7 @@ class BackupImportReconcileTest {
     fun `import reconciles inserted row counts after flush`() {
         val src = source()
         assertTrue(
-            "flush 之后必须调用入库对账",
+            "flush Luego debe llamar a la reconciliación de almacenaje.",
             src.contains("verifyInsertedCounts(expectedCounts, skippedSessionCount = skippedMiniPhoneSessions)"),
         )
     }
@@ -36,12 +36,12 @@ class BackupImportReconcileTest {
     fun `reconcile compares against real table rows`() {
         val body = verifyInsertedCountsBody()
         assertTrue(
-            "对账应读取真实表行数(如 sessionDao().observeAll())",
+            "La conciliación debe leer el número real de filas de la tabla.(Como por ejemplo sessionDao().observeAll())",
             body.contains("db.sessionDao().observeAll().first().size"),
         )
         assertTrue(
-            "入库数不足应触发回滚",
-            body.contains("备份入库数不一致"),
+            "Una cantidad de almacenamiento insuficiente debería provocar una reversión",
+            body.contains("La cantidad de copias de seguridad almacenadas en la base de datos es inconsistente"),
         )
     }
 
@@ -49,8 +49,8 @@ class BackupImportReconcileTest {
     fun `reconcile failure does not block import on counting errors`() {
         val body = verifyInsertedCountsBody()
         assertTrue(
-            "取数失败只记日志,不应阻断导入",
-            body.contains("入库对账取数失败"),
+            "Si no se puede recuperar el número, solo se registrará el registro.,No se deben bloquear las importaciones",
+            body.contains("No se pudo recuperar la conciliación de almacenamiento"),
         )
     }
 }

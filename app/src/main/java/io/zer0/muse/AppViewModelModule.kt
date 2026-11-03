@@ -11,13 +11,13 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
- * P2-3 拆域：ViewModel 注册独立模块，减少 AppKoinModule 单体体积。
+ * P2-3 Deslocalización:ViewModel Registre un módulo independiente para reducir el tamaño de AppKoinModule.
  */
 val appViewModelModule = module {
 
-    // 阶段 6: MemoryViewModel 注入 memory 模块的 3 个核心服务
-    // v0.51: 加 memoryTicker 用于读取 healthFlow 与裁剪后的 compiledMarkdown
-    // v1.98: 加 settings + experienceRepository 用于经验库 CRUD 与开关订阅
+    // Etapa 6: MemoryViewModel inyecta los 3 servicios principales del módulo de memoria
+    // v0.51: Agregue MemoryTicker para leer HealthFlow y recortarlo. compiledMarkdown
+    // v1.98: Agregar configuración + repositorio de experiencias para la biblioteca de experiencias CRUD y cambiar de suscripción
     viewModel {
         MemoryViewModel(
             application = androidContext() as Application,
@@ -33,18 +33,18 @@ val appViewModelModule = module {
             groupChatMemoryRepository = get(),
             groupChatRepository = get(),
             chatService = get(),
-            // F-8: 注入 PinnedMemoryStore,记忆页置顶与 pin_memory 工具共用同一数据源
+            // F-8: inyectar PinnedMemoryStore,La fijación de páginas de memoria y la herramienta pin_memory comparten la misma fuente de datos
             pinnedMemoryStore = get(),
-            // P0-4: 注入 FactDbProvider — 记忆中心按 scope 路由到生产侧分库(facts_<id>.db)
+            // P0-4: inyectar FactDbProvider — El centro de memoria se enruta a la biblioteca sucursal del lado de producción según el alcance.(facts_<id>.db)
             factDbProvider = get(),
-            // P2-32: 矛盾清单存储(每日反思检测 → 记忆中心可读可清)
+            // P2-32: Almacenamiento de lista de contradicciones(Prueba de reflexión diaria → El centro de memoria se puede leer y borrar.)
             contradictionStore = get(),
-            // v1.0.92: LLM 记忆整合器(手动"整理记忆"与每日自动整合共用同一实现)
+            // v1.0.92: LLM Consolidador de memoria(manuales"organizar la memoria"Comparte la misma implementación con integración automática diaria.)
             factConsolidator = get(),
         )
     }
 
-    // v1.0.52 P2-2: 记忆空间管理 ViewModel
+    // v1.0.52 P2-2: gestión del espacio de memoria ViewModel
     viewModel {
         io.zer0.muse.ui.memory.MemorySpaceViewModel(
             application = androidContext() as Application,
@@ -52,14 +52,14 @@ val appViewModelModule = module {
         )
     }
 
-    // 记忆星座 ViewModel(注入 FactStore + MemoryLinkDao)
+    // constelación de memoria ViewModel(inyectar FactStore + MemoryLinkDao)
     viewModel {
         io.zer0.muse.ui.memory.MemoryGraphViewModel(
             application = androidContext() as Application,
             factStore = get(),
             memoryLinkDao = get(),
             factDbProvider = get(),
-            // v2.6.2（用户反馈）: 补边构建器 + 语义向量提供者（手动重建关联用）
+            // v2.6.2(comentarios de los usuarios): Generador de bordes complementario + proveedor de vectores semánticos (para reconstrucción manual de asociaciones)
             edgeBuilder = get(),
             semanticProvider = io.zer0.memory.ai.MemoryEdgeBuilder.SemanticProvider { texts ->
                 val cfg = get<io.zer0.muse.data.SettingsRepository>().getRagConfig()
@@ -68,9 +68,9 @@ val appViewModelModule = module {
         )
     }
 
-    // v0.46: 统计页 ViewModel(注入 MessageDao + SessionDao)
-    // SessionDao.count() 用于总会话数(修复旧版 totalSessions 恒为 0 的 bug)
-    // v0.47: 注入 SettingsRepository + AssistantRepository 用于反查模型/助手显示名
+    // v0.46: Página de estadísticas ViewModel(inyectar MessageDao + SessionDao)
+    // SessionDao.count() para el número total de sesiones(Arreglar la versión anterior donde totalSessions siempre es 0 bug)
+    // v0.47: Inyectar SettingsRepository + AssistantRepository para inspección inversa del modelo/Nombre para mostrar del asistente
     viewModel {
         StatsViewModel(
             application = androidContext() as Application,
@@ -81,9 +81,9 @@ val appViewModelModule = module {
         )
     }
 
-    // v1.97 gap8: 独立翻译 ViewModel(注入 ChatService + TtsManager,复用通用文本补全与朗读能力)
-    // v1.0.17: 注入 TranslateHistoryDao,翻译历史持久化到 Room
-    // v1.0.30 gap4.6: 注入 GlossaryStore,翻译时附加术语表指令
+    // v1.97 gap8: traducción independiente ViewModel(inyectar ChatService + TtsManager,Reutilice las capacidades universales de lectura y finalización de textos)
+    // v1.0.17: inyectar TranslateHistoryDao,El historial de traducción persiste Room
+    // v1.0.30 gap4.6: inyectar GlossaryStore,Agregar directiva de glosario al traducir
     viewModel {
         io.zer0.muse.ui.translate.TranslateViewModel(
             chatService = get(),
@@ -94,10 +94,10 @@ val appViewModelModule = module {
         )
     }
 
-    // Multi-Agent 工作流可视化编排已折叠进团队协作设置,WorkflowEditorViewModel 随不可达页面一并移除
-    // v1.30: 群聊 ViewModel(注入 GroupChatRepository + Scheduler + AssistantRepo + Settings)
-    // H-GC2 修复: 移除 appScope 参数,init 中 Flow 收集器改用 viewModelScope 自动取消
-    // ActivityHub: 注入 GroupChatActivityHub,订阅其 activities 派生当前群聊活动列表到 UI
+    // Multi-Agent La orquestación visual del flujo de trabajo se ha incorporado a la configuración de colaboración en equipo.,WorkflowEditorViewModel Eliminar junto con páginas inalcanzables
+    // v1.30: chat grupal ViewModel(inyectar GroupChatRepository + Scheduler + AssistantRepo + Settings)
+    // H-GC2 Reparación: Eliminar el parámetro appScope,init El recopilador de flujo usa viewModelScope para cancelar automáticamente
+    // ActivityHub: inyectar GroupChatActivityHub,Suscríbase a sus actividades para obtener la lista actual de actividades de chat grupal para UI
     viewModel {
         GroupChatViewModel(
             get(),
@@ -109,9 +109,9 @@ val appViewModelModule = module {
         )
     }
 
-    // v1.0.17: 快速记录 ViewModel(注入 QuickNoteDao,Room 持久化 + 回收站)
-    // v1.0.18: 增加 androidContext()(ReminderStore + AlarmManager 调度提醒)
+    // v1.0.17: registro rápido ViewModel(inyectar QuickNoteDao,Room Persistencia + Papelera de reciclaje)
+    // v1.0.18: aumentar androidContext()(ReminderStore + AlarmManager Recordatorio de programación)
     viewModel { io.zer0.muse.ui.quicknotes.QuickNotesViewModel(get(), androidContext()) }
-    // P1-2: Worldbook 管理 ViewModel
+    // P1-2: Worldbook gestión ViewModel
     viewModel { io.zer0.muse.ui.worldbook.WorldBookViewModel(get(), androidContext()) }
 }

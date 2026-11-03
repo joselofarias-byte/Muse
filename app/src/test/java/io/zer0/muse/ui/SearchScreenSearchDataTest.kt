@@ -10,9 +10,9 @@ class SearchScreenSearchDataTest {
     @Test
     fun `duplicate session ids are collapsed before rendering`() {
         val sessions = listOf(
-            SessionEntity("s_same", "第一条", 1L, 3L, lastMessagePreview = "needle"),
-            SessionEntity("s_same", "重复条", 2L, 4L, lastMessagePreview = "needle"),
-            SessionEntity("s_other", "第二条", 1L, 2L, lastMessagePreview = "needle"),
+            SessionEntity("s_same", "Artículo 1", 1L, 3L, lastMessagePreview = "needle"),
+            SessionEntity("s_same", "Barra de repetición", 2L, 4L, lastMessagePreview = "needle"),
+            SessionEntity("s_other", "Artículo 2", 1L, 2L, lastMessagePreview = "needle"),
         )
 
         val result = filterSearchSessions(sessions, "needle")
@@ -23,9 +23,9 @@ class SearchScreenSearchDataTest {
     @Test
     fun `duplicate message ids are collapsed before rendering`() {
         val results = listOf(
-            SearchResult("m_same", "s1", "会话", "a", "user", 1L),
-            SearchResult("m_same", "s1", "会话", "b", "assistant", 2L),
-            SearchResult("m_other", "s1", "会话", "c", "assistant", 3L),
+            SearchResult("m_same", "s1", "sesión", "a", "user", 1L),
+            SearchResult("m_same", "s1", "sesión", "b", "assistant", 2L),
+            SearchResult("m_other", "s1", "sesión", "c", "assistant", 3L),
         )
 
         val unique = uniqueSearchResults(results)

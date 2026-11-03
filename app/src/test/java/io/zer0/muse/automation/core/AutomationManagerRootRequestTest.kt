@@ -20,10 +20,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * [AutomationManager.requestRoot] 定向测试 —— UI 依赖的返回值与状态刷新路径。
+ * [AutomationManager.requestRoot] prueba de orientación —— UI Valor de retorno dependiente y ruta de actualización de estado.
  *
- * [RootExecutor] 用 mock 注入(见 manager 的可注入构造参数),因此不会真的执行 su:
- * 锁定「无 su / 授权超时」等失败原因能原样返回给页面,且请求后一定重新探测权限状态。
+ * [RootExecutor] Inyectar con simulacro(Ver los parámetros del constructor inyectable del administrador.),Por lo tanto, en realidad no se ejecutará. su:
+ * Los motivos de fallo de bloqueo, como "sin autorización/tiempo de espera de autorización", se pueden devolver a la página tal como está,Y el estado del permiso debe volver a detectarse después de la solicitud.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -34,7 +34,7 @@ class AutomationManagerRootRequestTest {
     private fun shizukuMock(): ShizukuAuthorizer = mockk<ShizukuAuthorizer>().apply {
         coEvery { diagnose() } returns ShizukuAuthorizer.ShizukuStatus(
             ShizukuAuthorizer.ShizukuState.NOT_INSTALLED,
-            "未安装 Shizuku",
+            "No instalado Shizuku",
         )
     }
 
@@ -56,7 +56,7 @@ class AutomationManagerRootRequestTest {
         assertFalse(result.granted)
         assertEquals(RootRequestFailure.NO_SU_BINARY, result.failure)
         assertFalse(manager.permissionState.value.rootEnabled)
-        // 请求之后必须重新探测,而不是沿用旧状态
+        // Debe volver a sondear después de la solicitud,en lugar de utilizar el antiguo estado
         coVerify(exactly = 1) { root.requestRootAccess() }
         coVerify(atLeast = 1) { root.isAvailable() }
     }
@@ -83,14 +83,14 @@ class AutomationManagerRootRequestTest {
         coEvery { root.isAvailable() } returns true
         val manager = manager(root)
 
-        // 请求前:初始状态没有 root
+        // antes de la solicitud:No hay estado inicial root
         assertFalse(manager.permissionState.value.rootEnabled)
 
         val result = manager.requestRoot()
 
         assertTrue(result.granted)
         assertNull(result.failure)
-        // 请求后 manager 自动 refresh,卡片据此变绿
+        // Después de solicitar al administrador automáticamente refresh,La tarjeta se vuelve verde en consecuencia.
         assertTrue(manager.permissionState.value.rootEnabled)
         coVerify(exactly = 1) { root.requestRootAccess() }
     }

@@ -6,7 +6,7 @@ import type { HostMemoryState } from "./useHostConnection.js";
 
 interface MemoryPageProps {
   readonly memory: HostMemoryState;
-  /** 能力位 / 运行时的「不支持」判断结果。 */
+  /** Resultado del juicio de bit de capacidad/tiempo de ejecución \"no compatible\". */
   readonly supported: boolean;
   readonly onRequest: (options?: {
     readonly query?: string | undefined;
@@ -14,15 +14,15 @@ interface MemoryPageProps {
     readonly reset?: boolean | undefined;
   }) => void;
   readonly onBack: () => void;
-  /** 页面顶部额外内容（例如记忆的开关卡片）。 */
+  /** Extras en la parte superior de la página (como tarjetas de cambio de memoria). */
   readonly children?: ReactNode;
 }
 
 /**
- * 记忆页：搜索 + 分页列表。
+ * Página de memoria: búsqueda + lista paginada.
  *
- * 搜索回车触发 `memory.search`，清空回到 `memory.list`；分页游标用上一页最后一条 id。
- * 滚到底自动续（有 IntersectionObserver 时），没有就退化成显式「加载更多」按钮。
+ * Buscar Introducir activador `memory.search`, borrar y volver a `memory.list`;El cursor de paginación utiliza la última identificación de la página anterior.
+ * Continúa automáticamente cuando se desplaza hasta el final (cuando hay un IntersectionObserver); de lo contrario, se degrada a un botón explícito "Cargar más".
  */
 export function MemoryPage({ memory, supported, onRequest, onBack, children }: MemoryPageProps) {
   const { t, locale } = useI18n();
@@ -31,13 +31,13 @@ export function MemoryPage({ memory, supported, onRequest, onBack, children }: M
   const lastId = memory.items.length > 0 ? memory.items[memory.items.length - 1]?.id : undefined;
   const canLoadMore = memory.hasMore && !memory.loading && memory.query === undefined;
 
-  // 首屏拉第一页
+  // Saque la primera página de la primera pantalla
   useEffect(() => {
     if (!supported) return;
     onRequest({ reset: true });
   }, [supported, onRequest]);
 
-  // 滚到底自动续（搜索不分页，只在列表态生效）
+  // Desplácese hasta el final y continúe automáticamente (la búsqueda no pagina, solo tiene efecto en modo lista)
   useEffect(() => {
     if (!supported || !canLoadMore || lastId === undefined) return;
     const element = sentinel.current;

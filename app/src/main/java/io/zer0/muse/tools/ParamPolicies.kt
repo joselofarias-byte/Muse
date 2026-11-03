@@ -3,50 +3,50 @@ package io.zer0.muse.tools
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.0.53: 参数化权限策略注册表。
+ * v1.0.53: Registro de políticas de permisos parametrizados.
  *
- * 静态风险等级无法表达"同一工具不同参数风险不同"的场景,如:
- *  - open_url: http/https 自动放行,file:// 拒绝,未知协议转审批
- *  - execute_javascript: 含危险模式(runtime exec / rm -rf)直接拒绝
+ * Los niveles de riesgo estáticos no se pueden expresar"Diferentes parámetros de la misma herramienta tienen diferentes riesgos"escena,Como por ejemplo:
+ *  - open_url: http/https liberación automática,file:// rechazar,Acuerdo desconocido transferido para su aprobación
+ *  - execute_javascript: Contiene modo peligroso(runtime exec / rm -rf)Rechazar directamente
  *
- * 判定优先级(在 [ToolPermissionResolver.resolve] 内):
- *  1. 用户单工具策略 ALWAYS_DENY(最高优先,不变)
- *  2. 参数化策略(evaluate 返回非 null 时采用)
- *  3. 原静态风险等级逻辑
+ * Determinar prioridad(en [ToolPermissionResolver.resolve] dentro):
+ *  1. Estrategia de herramienta única para el usuario ALWAYS_DENY(máxima prioridad,sin cambios)
+ *  2. estrategia paramétrica(evaluate Se utiliza cuando se devuelve un valor no nulo)
+ *  3. Lógica de nivel de riesgo estático original
  *
- * 策略返回 null 表示"不参与参数级判定",回落静态逻辑。
+ * La estrategia devuelve nulo para indicar"No participa en la determinación del nivel de parámetro.",Recurrir a la lógica estática.
  */
 object ParamPolicies {
 
-    /** 参数化策略:返回 null 表示不拦截,走静态逻辑。 */
+    /** estrategia paramétrica:Devuelve nulo para indicar que no hay intercepción,Utilice lógica estática. */
     fun interface ParamPolicy {
         fun evaluate(args: Map<String, Any?>): ToolApprovalState?
     }
 
     private val registry = ConcurrentHashMap<String, ParamPolicy>()
 
-    /** 注册工具参数策略(重复注册覆盖)。 */
+    /** Registrar estrategia de parámetros de herramienta(Cobertura de registro duplicado). */
     fun register(toolName: String, policy: ParamPolicy) {
         registry[toolName] = policy
     }
 
-    /** 查询策略(未注册返回 null)。 */
+    /** estrategia de consulta(Regreso sin registro null). */
     fun evaluate(toolName: String, args: Map<String, Any?>): ToolApprovalState? = registry[toolName]?.evaluate(args)
 
-    /** 注册内置策略(构造时调用一次)。 */
+    /** Registrar políticas integradas(Llamado una vez durante la construcción.). */
     fun registerBuiltIn() {
-        // open_url:http/https 放行,file:// 拒绝,未知协议转审批
+        // open_url:http/https liberar,file:// rechazar,Acuerdo desconocido transferido para su aprobación
         register("open_url") { args ->
             val url = (args["url"] as? String)?.trim() ?: return@register null
             when {
                 url.startsWith("http://") || url.startsWith("https://") -> ToolApprovalState.Auto
                 url.startsWith("file://") ->
-                    ToolApprovalState.Denied("不允许打开本地文件链接(file://),已拦截")
+                    ToolApprovalState.Denied("No permitir que se abran enlaces de archivos locales(file://),Bloqueado")
                 else -> ToolApprovalState.Pending
             }
         }
 
-        // execute_javascript:危险模式直接拒绝,其余走静态等级
+        // execute_javascript:El modo de peligro rechaza directamente,El resto sigue el nivel estático.
         register("execute_javascript") { args ->
             val code = (args["code"] as? String) ?: return@register null
             val dangerous = listOf(
@@ -57,7 +57,7 @@ object ParamPolicies {
                 "document.cookie",
             ).any { code.contains(it) }
             if (dangerous) {
-                ToolApprovalState.Denied("代码包含危险操作(rm -rf/进程执行/敏感信息外传),已拦截")
+                ToolApprovalState.Denied("El código contiene operaciones peligrosas.(rm -rf/ejecución del proceso/Se filtró información sensible),Bloqueado")
             } else {
                 null
             }

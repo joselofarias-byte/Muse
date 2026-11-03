@@ -51,27 +51,27 @@ import io.zer0.muse.ui.theme.tiny
 import org.koin.compose.koinInject
 
 /**
- * v1.202: 后台子 Agent 任务列表卡片。
+ * v1.202: Tarjeta de lista de tareas de subagente en segundo plano.
  *
- * 展示当前会话中活跃的后台子 agent 线程 + 待处理(PENDING)任务,
- * 让用户感知非阻塞委派的进行中工作,并提供取消入口。
+ * Muestra los subprocesos activos del subagente en segundo plano + el procesamiento pendiente en la sesión actual(PENDING)Tarea,
+ * Informar a los usuarios sobre el trabajo en progreso de la delegación sin bloqueo,Y proporcione una entrada de cancelación.
  *
- * 数据来源:
- *  - [activeThreads]: SubagentThreadStore 中状态为 ACTIVE 的线程(每个线程对应一个可续接的子 agent 会话)
- *  - [pendingTasks]: DeferredResultStore 中状态为 PENDING 的任务(尚未 resolve/fail/abort)
+ * fuente de datos:
+ *  - [activeThreads]: SubagentThreadStore Hilos en estado ACTIVO(Cada hilo corresponde a una sesión de agente secundario reanudable)
+ *  - [pendingTasks]: DeferredResultStore Tareas en estado PENDIENTE(todavía no resolve/fail/abort)
  *
- * 两者通常一一对应(注册线程时同时 defer 一个任务),但分别展示以应对解耦场景
- * (例如线程已结束但任务结果未消费,或任务已 abort 但线程未关闭)。
+ * Generalmente existe una correspondencia uno a uno entre los dos.(Aplazar una tarea al mismo tiempo al registrar un hilo),Pero se muestra por separado para abordar escenarios de desacoplamiento.
+ * (Por ejemplo, el hilo finalizó pero los resultados de la tarea no se han consumido.,O la tarea ha sido abortada pero el hilo no se ha cerrado).
  *
- * UI 行为:
- *  - 默认折叠(避免占用过多视觉空间),点击标题行展开/折叠
- *  - 每个任务一行:状态图标(转圈=运行中 / ✓=完成 / ✗=失败)+ label/taskSummary + threadId(截断)+ 取消按钮
- *  - 空列表(无线程且无待处理任务)时不渲染卡片容器(返回空)
+ * UI comportamiento:
+ *  - Plegado predeterminado(Evite ocupar demasiado espacio visual),Haga clic en la fila del título para expandir/doblar
+ *  - Una línea por tarea:icono de estado(girar en circulos=corriendo / ✓=Completo / ✗=falló)+ label/taskSummary + threadId(Truncar)+ Botón cancelar
+ *  - lista vacía(Sin hilos ni tareas pendientes)El contenedor de la tarjeta no se representa cuando(Volver vacío)
  *
- * @param activeThreads 活跃子 agent 线程列表
- * @param pendingTasks 待处理(PENDING)的延迟任务列表
- * @param onCancel 取消任务的回调,参数为 taskId
- * @param modifier 外部修饰
+ * @param activeThreads Lista de hilos de agentes secundarios activos
+ * @param pendingTasks Pendiente(PENDING)lista de tareas retrasadas
+ * @param onCancel Cancelar devolución de llamada de tarea,Los parámetros son taskId
+ * @param modifier Modificación externa
  */
 @Composable
 fun SubagentTaskListCard(
@@ -81,12 +81,12 @@ fun SubagentTaskListCard(
     onCloseThread: (threadId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    // 空列表时不渲染(避免无意义的空卡片噪声)
+    // No renderizar cuando la lista esté vacía(Evite el ruido sin sentido de la tarjeta vacía)
     if (activeThreads.isEmpty() && pendingTasks.isEmpty()) return
 
     var expanded by remember { mutableStateOf(false) }
     var selectedThread by remember { mutableStateOf<Pair<String, String>?>(null) }
-    // 任务总数:线程数与待处理任务数的较大值(两者通常一致,取较大值兜底解耦场景)
+    // número total de tareas:El mayor entre el número de hilos y el número de tareas pendientes(Ambos suelen estar de acuerdo,Elija un valor mayor para evitar escenarios de desacoplamiento)
     val totalCount = maxOf(activeThreads.size, pendingTasks.size)
 
     Surface(
@@ -109,7 +109,7 @@ fun SubagentTaskListCard(
                 onToggle = { expanded = !expanded },
             )
 
-            // ── 展开态:任务明细列表 ──
+            // ── estado expandido:lista de tareas ──
             AnimatedVisibility(
                 visible = expanded,
                 enter = MuseMotion.expandFadeEnter(),
@@ -118,7 +118,7 @@ fun SubagentTaskListCard(
                 Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap)) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // 渲染待处理任务(PENDING) —— 这些是尚未完成的延迟任务,显示进度 + 取消按钮
+                    // Renderizar tareas pendientes(PENDING) —— Estas son tareas diferidas que aún no se han completado.,Mostrar progreso + botón cancelar
                     pendingTasks.forEach { task ->
                         SubagentTaskRow(
                             label = task.label,
@@ -132,16 +132,16 @@ fun SubagentTaskListCard(
                         )
                     }
 
-                    // 渲染活跃线程中没有对应 PENDING 任务的(理论上少见,兜底展示)
-                    // 通过 taskId 匹配过滤掉已展示的线程
+                    // No hay ninguna tarea PENDIENTE correspondiente en el hilo de renderizado activo.(Teóricamente raro,mostrar todo)
+                    // Filtrar hilos expuestos por coincidencia de taskId
                     OrphanThreadRows(
                         activeThreads = activeThreads,
                         pendingTasks = pendingTasks,
                         onSelect = { thread -> selectedThread = thread.threadId to thread.assistantId },
                         onCloseThread = onCloseThread,
                     )
-                    // 注:此前的 "pendingTasks 与 activeThreads 均为空" 空态分支已被移除 —
-                    // 函数开头两列表均为空时直接 return,该分支恒不可达(死代码)。
+                    // Nota:anterior "pendingTasks y activeThreads están vacíos" Se han eliminado las ramas vacías. —
+                    // Cuando ambas listas al comienzo de la función están vacías, directamente return,Esta sucursal nunca es accesible.(código muerto).
                 }
             }
         }
@@ -271,13 +271,13 @@ internal fun SubagentTaskDetailSheet(threadId: String, assistantId: String, onDi
 }
 
 /**
- * 单个延迟任务行:状态图标 + label/summary + threadId(截断)+ 取消按钮。
+ * única línea de tarea diferida:icono de estado + label/summary + threadId(Truncar)+ Botón Cancelar.
  *
- * 状态映射(与 [StatusIcon] 保持一致):
- *  - PENDING → 脉冲圆点(运行中),显示取消按钮
- *  - RESOLVED → ✓ 完成态图标(已完成的任务不再显示运行中动画)
- *  - FAILED → ✗ 红色
- *  - ABORTED → ✗ 灰色(视为已取消,不显示取消按钮)
+ * mapeo estatal(con [StatusIcon] ser consistente):
+ *  - PENDING → punto de pulso(corriendo),Mostrar botón cancelar
+ *  - RESOLVED → ✓ Icono de estado hecho(Las tareas completadas ya no muestran animaciones en ejecución)
+ *  - FAILED → ✗ rojo
+ *  - ABORTED → ✗ gris(considerado cancelado,No mostrar el botón cancelar)
  */
 @Composable
 private fun SubagentTaskRow(
@@ -298,7 +298,7 @@ private fun SubagentTaskRow(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 2.dp),
     ) {
-        // 助手头像（可用时）；否则显示状态图标
+        // Avatar asistente (cuando esté disponible); de lo contrario, muestra el icono de estado
         if (assistantId != null) {
             val assistantRepository: AssistantRepository = koinInject()
             val assistants by assistantRepository.observeAll.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -348,7 +348,7 @@ private fun SubagentTaskRow(
             }
         }
 
-        // 取消按钮:仅 PENDING 状态可取消(已 resolve/fail/abort 的不再显示)
+        // Botón cancelar:Sólo se puede cancelar el estado PENDIENTE(Aquellos que se han resuelto/fallado/anulado ya no se muestran.)
         if (status == DeferredResultStore.TaskStatus.PENDING) {
             MuseTactileButton(
                 icon = MuseIcons.x,
@@ -363,10 +363,10 @@ private fun SubagentTaskRow(
 }
 
 /**
- * 卡片标题行：助手头像（或机器人图标）+ 标题 + 任务计数 + 展开图标。
+ * Línea de título de la tarjeta: Avatar del asistente (o ícono de bot)+ Título + recuento de tareas + ícono de expandir.
  *
- * 单独成函数是为了让主 composable 保持在能一眼读完的长度 ——
- * 这一行里有三段互不相关的取数逻辑，混在外面会盖掉真正的主线。
+ * El propósito de convertirlo en una función separada es mantener el elemento componible principal en una longitud que se pueda leer de un vistazo. ——
+ * Hay tres piezas de lógica de recuperación de números no relacionadas en esta línea. Mezclarlos cubrirá la línea principal real.
  */
 @Composable
 private fun SubagentCardHeader(
@@ -430,11 +430,11 @@ private fun SubagentCardHeader(
 }
 
 /**
- * 渲染「有活跃线程但没有对应待处理任务」的那些行。
+ * Representa filas que tienen subprocesos activos pero no tienen tareas pendientes.
  *
- * 这类线程通常已经跑完了但没收尾。以前的实现里它们只有点击回调，
- * 没有任何关闭入口，于是会一直挂在任务卡上 —— 抽出来单独成函数，
- * 顺便让主 composable 回到能读的长度。
+ * Este tipo de hilo normalmente ha terminado de ejecutarse pero no ha finalizado. En implementaciones anteriores solo tenían devoluciones de llamada de clic,
+ * No hay entrada cerrada, por lo que siempre estará colgada en la tarjeta de tareas. —— Extraerlo en una función separada,
+ * Por cierto, deja que el elemento componible principal vuelva a la longitud legible.
  */
 @Composable
 private fun OrphanThreadRows(
@@ -457,8 +457,8 @@ private fun OrphanThreadRows(
 }
 
 /**
- * 兜底:活跃线程但无对应 PENDING 任务时，只显示线程基本信息。
- * 这种情况理论上少见(任务与线程通常 1:1)，仅作展示兜底。
+ * Ten todo en cuenta:Cuando hay un hilo activo pero no hay una tarea PENDIENTE correspondiente, solo se muestra la información básica del hilo.
+ * Esta situación es teóricamente rara.(Las tareas y los hilos generalmente 1:1), sólo para visualización.
  */
 @Composable
 private fun SubagentThreadRow(
@@ -506,8 +506,8 @@ private fun SubagentThreadRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // 这类行没有对应任务，取消语义不适用 —— 给的是「了结这个线程」。
-        // 没有它，跑完但没自动收尾的线程会在卡片里一直挂着。
+        // No existe una tarea correspondiente para este tipo de fila y no se aplica la semántica de cancelación. —— El mensaje es "terminar este hilo".
+        // Sin él, los hilos que hayan terminado de ejecutarse pero que no finalicen automáticamente permanecerán colgados en la tarjeta.
         if (onClose != null) {
             IconButton(
                 onClick = onClose,
@@ -515,7 +515,7 @@ private fun SubagentThreadRow(
             ) {
                 Icon(
                     imageVector = MuseIcons.x,
-                    contentDescription = "关闭子任务",
+                    contentDescription = "Cerrar subtarea",
                     tint = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.size(16.dp),
                 )
@@ -525,17 +525,17 @@ private fun SubagentThreadRow(
 }
 
 /**
- * 状态图标:
- *  - PENDING → 转圈(运行中)
- *  - RESOLVED → ✓ 绿色(已完成)
- *  - FAILED → ✗ 红色
- *  - ABORTED → ✗ 灰色(已取消)
+ * icono de estado:
+ *  - PENDING → girar en circulos(corriendo)
+ *  - RESOLVED → ✓ verde(Completado)
+ *  - FAILED → ✗ rojo
+ *  - ABORTED → ✗ gris(Cancelado)
  */
 @Composable
 private fun StatusIcon(status: DeferredResultStore.TaskStatus) {
     when (status) {
         DeferredResultStore.TaskStatus.PENDING -> {
-            // 运行中:用脉冲圆点(与 DelegationChainCard 的 RUNNING 状态视觉一致)
+            // corriendo:Puntos de pulso(Visualmente consistente con el estado RUNNING de DelegationChainCard)
             val alpha = if (MuseMotion.isReducedMotion()) {
                 0.65f
             } else {

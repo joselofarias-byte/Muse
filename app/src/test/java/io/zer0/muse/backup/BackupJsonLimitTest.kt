@@ -6,16 +6,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * B-25: 单 JSON 备份体量上限的纯函数校验。
+ * B-25: Verificación de función pura del límite superior del tamaño de copia de seguridad JSON único.
  *
- * 覆盖 [BackupService.withinSingleJsonLimit](逐行读取累计时防 OOM)
- * 与 [BackupService.singleJsonTooLargeMessage](超限时的明确错误信息)。
+ * Portada [BackupService.withinSingleJsonLimit](Lectura del tiempo acumulado línea por línea OOM)
+ * con [BackupService.singleJsonTooLargeMessage](Borrar mensaje de error cuando se exceda el límite).
  */
 class BackupJsonLimitTest {
 
     @Test
     fun `within limit returns true`() {
-        // 刚好等于上限:视为未超限
+        // Exactamente igual al límite superior:se considera que no excede el límite
         assertTrue(
             BackupService.withinSingleJsonLimit(
                 BackupService.MAX_SINGLE_JSON_BACKUP_BYTES - 1,
@@ -30,7 +30,7 @@ class BackupJsonLimitTest {
         val cap = BackupService.MAX_SINGLE_JSON_BACKUP_BYTES
         assertFalse(BackupService.withinSingleJsonLimit(cap, 1L))
         assertFalse(BackupService.withinSingleJsonLimit(cap + 1, 0L))
-        // 单行本身就超过上限时,即便此前累计为 0 也应判超限
+        // La línea única excede el límite superior,Incluso si la acumulación anterior es 0, se debe considerar que excede el límite.
         assertFalse(BackupService.withinSingleJsonLimit(0L, cap + 1000L))
     }
 
@@ -38,7 +38,7 @@ class BackupJsonLimitTest {
     fun `limit message includes upper bound`() {
         val msg = BackupService.singleJsonTooLargeMessage(70L * 1024 * 1024)
         assertTrue(msg.contains("64MB"))
-        assertTrue(msg.contains("已拒绝导入"))
-        assertEquals("单 JSON 备份体量 70MB 超过上限 64MB,已拒绝导入", msg)
+        assertTrue(msg.contains("Importación rechazada"))
+        assertEquals("El tamaño de la copia de seguridad JSON única de 70 MB supera el límite superior 64MB,Importación rechazada", msg)
     }
 }

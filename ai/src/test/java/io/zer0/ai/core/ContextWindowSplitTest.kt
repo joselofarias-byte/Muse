@@ -5,7 +5,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 纯 Kotlin：上下文窗口切分(工具依赖感知)测试。 */
+/** Pure Kotlin: división de ventana de contexto(conciencia de dependencia de herramientas)prueba. */
 class ContextWindowSplitTest {
     @Test
     fun `no-op when history fits the window`() {
@@ -35,7 +35,7 @@ class ContextWindowSplitTest {
 
         val (dropped, kept) = messages.splitContextWindow(3)
 
-        // takeLast(3) 会从 assistant(tool_call) 切入 → 回退到 u2,保证工具对完整
+        // takeLast(3) seguirá assistant(tool_call) cortar → Recurrir a u2,Asegúrese de que el par de herramientas esté completo
         assertEquals(2, dropped.size)
         assertEquals(MessageRole.USER, kept.first().role)
         assertEquals("u2", kept.first().content)
@@ -54,7 +54,7 @@ class ContextWindowSplitTest {
 
         val (dropped, kept) = messages.splitContextWindow(2)
 
-        // takeLast(2) 会从 assistant(tool_call)+TOOL 的 TOOL 切入 → 回退到工具对起点
+        // takeLast(2) seguirá assistant(tool_call)+TOOL El corte de HERRAMIENTA → Volver al punto de partida del par de herramientas
         assertEquals(0, dropped.size)
         assertEquals(4, kept.size)
     }

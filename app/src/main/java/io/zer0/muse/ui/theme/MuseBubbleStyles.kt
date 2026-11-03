@@ -9,39 +9,39 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * 消息气泡共享样式(决策 D1:单聊向群聊靠齐)。
+ * Estilo de compartir burbujas de mensajes(Decisión D1: Mover el chat único al chat grupal).
  *
- * 单聊 [io.zer0.muse.ui.MessageBubble] 与群聊 GroupChatMessageBubble 共用本组默认值,
- * 消除两处外观漂移(CHAT-01/CHAT-02):
- *  - 用户气泡: surfaceVariant 底 + 右下 6dp 小尾巴,文字 onSurface/bodyMedium
- *  - 助手气泡: surfaceVariant@60% 浅色卡片 + 左下 6dp 小尾巴,文字 onSurface/bodyMedium
- *  - 宽度: 气泡最大 70% 屏宽(与群聊 maxBubbleWidth 口径一致)
+ * charla privada [io.zer0.muse.ui.MessageBubble] Comparta el valor predeterminado de este grupo con el chat grupal GroupChatMessageBubble,
+ * Elimina dos cambios de apariencia(CHAT-01/CHAT-02):
+ *  - Burbuja de usuario: surfaceVariant Abajo + cola inferior derecha 6dp,texto onSurface/bodyMedium
+ *  - Burbuja asistente: surfaceVariant@60% Tarjeta de luz + cola inferior izquierda 6dp,texto onSurface/bodyMedium
+ *  - Ancho: Burbuja máximo 70% del ancho de pantalla(Mismo calibre que el chat grupal maxBubbleWidth)
  *
- * 皮肤(BubbleSkin)存在时仍只覆盖外壳(颜色/圆角/内边距/宽度),默认值统一随本处。
+ * piel(BubbleSkin)Todavía solo cubre el caparazón cuando está presente.(color/esquinas redondeadas/relleno/Ancho),Los valores predeterminados son consistentes con este sitio.
  */
 object MuseBubbleStyles {
-    /** 气泡最大宽度占屏比例(70%,对齐群聊 maxBubbleWidth)。 */
+    /** Relación de pantalla de ancho máximo de burbuja(70%,Alinear el chat grupal maxBubbleWidth). */
     const val MAX_WIDTH_FRACTION = 0.70f
 
     /**
-     * 用户气泡默认底色(无皮肤)。
+     * Color de fondo predeterminado de la burbuja del usuario(sin piel).
      *
-     * v2.0: 从 surfaceVariant(与背景几乎同色,用户反馈"气泡看不见")改为主色浅染,
-     * 亮/暗主题下都能和背景拉开对比;描边由 [userBorderColor] 给边缘。
+     * v2.0: de surfaceVariant(Casi del mismo color que el fondo.,Comentarios de los usuarios"burbujas invisibles")Cambiar al color principal y teñido claro.,
+     * brillante/Se puede contrastar con el fondo bajo temas oscuros.;acariciado por [userBorderColor] Dale ventaja.
      */
     @Composable
     fun userSurfaceColor(): Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
 
-    /** 用户气泡默认描边(无皮肤)— 主色 24%,让气泡边界清晰。 */
+    /** Trazo predeterminado de la burbuja del usuario(sin piel)— color principal 24%,Aclare los límites de las burbujas. */
     @Composable
     fun userBorderColor(): Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
 
     /**
-     * 助手气泡默认底色(无皮肤)— 浅色卡片。
+     * Color de fondo predeterminado de la burbuja del asistente(sin piel)— Tarjeta de color claro.
      *
-     * v2.0: 用 surfaceVariant 向 onSurface 混入 6% —— 纯 surfaceVariant 在部分主题
-     * (如单色主题 #F6F6F8 vs 背景 #FBFBFC)与背景几乎同色,用户反馈"气泡看不见";
-     * 混色后亮/暗主题下都有稳定的可见度。
+     * v2.0: Utilice SurfaceVariant para mezclar onSurface 6% —— Superficie puraVariante en temas parciales
+     * (Como tema monocromático #F6F6F8 vs fondo #FBFBFC)Casi del mismo color que el fondo.,Comentarios de los usuarios"burbujas invisibles";
+     * Brillante después de mezclar el color./Visibilidad estable bajo tema oscuro.
      */
     @Composable
     fun assistantSurfaceColor(): Color = androidx.compose.ui.graphics.lerp(
@@ -50,25 +50,25 @@ object MuseBubbleStyles {
         0.06f,
     )
 
-    /** 助手气泡默认描边(无皮肤)— outlineVariant,给浅色卡片一个清晰边界。 */
+    /** Trazo predeterminado de la burbuja del asistente(sin piel)— outlineVariant,Dale a las tarjetas de colores claros un borde claro. */
     @Composable
     fun assistantBorderColor(): Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.9f)
 
-    /** 用户气泡默认文字色(无皮肤)。 */
+    /** Color de texto predeterminado de la burbuja del usuario(sin piel). */
     @Composable
     fun userContentColor(): Color = MaterialTheme.colorScheme.onSurface
 
-    /** 气泡最大宽度(70% 屏宽,与群聊 maxBubbleWidth 一致)。 */
+    /** ancho máximo de burbuja(70% ancho de pantalla,Consistente con el chat grupal maxBubbleWidth). */
     @Composable
     fun maxBubbleWidth(): Dp = with(LocalConfiguration.current) { (screenWidthDp * MAX_WIDTH_FRACTION).dp }
 
-    /** 用户气泡形状:主体圆角 [radiusDp](null 用 20dp 默认)+ 右下 6dp 尾巴。 */
+    /** Forma de burbuja de usuario:filete de cuerpo [radiusDp](null Usar 20dp predeterminado)+ Cola inferior derecha de 6 dp. */
     fun userBubbleShape(radiusDp: Float? = null): RoundedCornerShape {
         val r = (radiusDp ?: MuseCornerRadius.CARD.toFloat()).dp
         return RoundedCornerShape(r, r, MuseCornerRadius.BUBBLE_TAIL.dp, r)
     }
 
-    /** 助手气泡形状:主体圆角 [radiusDp](null 用 20dp 默认)+ 左下 6dp 尾巴。 */
+    /** Forma de burbuja asistente:filete de cuerpo [radiusDp](null Usar 20dp predeterminado)+ Cola inferior izquierda de 6dp. */
     fun assistantBubbleShape(radiusDp: Float? = null): RoundedCornerShape {
         val r = (radiusDp ?: MuseCornerRadius.CARD.toFloat()).dp
         return RoundedCornerShape(r, r, r, MuseCornerRadius.BUBBLE_TAIL.dp)

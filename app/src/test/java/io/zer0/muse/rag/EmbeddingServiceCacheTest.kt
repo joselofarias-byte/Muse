@@ -17,12 +17,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Embedding Provider 缓存的指纹失效与降级可见性。
+ * Embedding Provider Invalidación de huellas dactilares de caché y visibilidad degradada.
  *
- * 覆盖三件事:
- *  1. 同一配置多次 getProvider 命中同一实例(缓存真的生效)
- *  2. Provider 的 apiKey / baseUrl / 模型 / id 任一变化都重建实例
- *  3. 云端 Provider 不可用时回落本地关键词实现,并留下 warn 日志与 degraded 状态
+ * Cubre tres cosas:
+ *  1. La misma configuración getsProvider llega a la misma instancia varias veces(El almacenamiento en caché realmente funciona)
+ *  2. Provider Cualquier cambio en apiKey/baseUrl/model/id reconstruye la instancia
+ *  3. Recurrir a la implementación de palabras clave locales cuando el proveedor de la nube no esté disponible,Y dejar registro de advertencia y estado degradado
  */
 class EmbeddingServiceCacheTest {
 
@@ -33,7 +33,7 @@ class EmbeddingServiceCacheTest {
         Logger.sink = null
     }
 
-    // ── 指纹 ────────────────────────────────────────────────
+    // ── huella digital ────────────────────────────────────────────────
 
     @Test
     fun sameConfigReusesProviderInstance() = runBlocking {
@@ -44,7 +44,7 @@ class EmbeddingServiceCacheTest {
         val first = service.getProvider(config)
         val second = service.getProvider(config)
 
-        assertSame("配置未变时必须复用同一个 Provider 实例", first, second)
+        assertSame("Se debe reutilizar la misma instancia del Proveedor cuando la configuración permanece sin cambios.", first, second)
         assertEquals("cloud-openai-main", first.id)
     }
 
@@ -57,7 +57,7 @@ class EmbeddingServiceCacheTest {
 
         store.providers = listOf(openAiProvider(apiKey = "sk-rotated-key"))
 
-        assertNotSame("apiKey 变化后必须重建 Provider", first, service.getProvider(config))
+        assertNotSame("apiKey Debe reconstruirse después de los cambios. Provider", first, service.getProvider(config))
     }
 
     @Test
@@ -69,7 +69,7 @@ class EmbeddingServiceCacheTest {
 
         store.providers = listOf(openAiProvider(baseUrl = "https://relay.example.com/v1"))
 
-        assertNotSame("baseUrl 变化后必须重建 Provider", first, service.getProvider(config))
+        assertNotSame("baseUrl Debe reconstruirse después de los cambios. Provider", first, service.getProvider(config))
     }
 
     @Test
@@ -80,7 +80,7 @@ class EmbeddingServiceCacheTest {
 
         val second = service.getProvider(cloudConfig(cloudModel = "text-embedding-3-large"))
 
-        assertNotSame("embedding 模型变化后必须重建 Provider", first, second)
+        assertNotSame("embedding El modelo debe reconstruirse después de los cambios. Provider", first, second)
         assertEquals("text-embedding-3-large", second.modelName)
     }
 
@@ -91,14 +91,14 @@ class EmbeddingServiceCacheTest {
         val config = cloudConfig()
         val first = service.getProvider(config)
 
-        // 配置指纹完全不变,只能靠数据层广播让缓存失效
+        // La huella digital de configuración permanece completamente sin cambios,La caché sólo puede invalidarse mediante la difusión de la capa de datos.
         ProviderConfigChangeBus.notifyChanged()
 
         val second = service.getProvider(config)
-        assertNotSame("配置变更广播后必须重建 Provider", first, second)
+        assertNotSame("Los cambios de configuración deben reconstruirse después de la transmisión. Provider", first, second)
     }
 
-    // ── 降级可见性 ──────────────────────────────────────────
+    // ── Visibilidad de degradación ──────────────────────────────────────────
 
     @Test
     fun danglingCloudProviderIdFallsBackToKeywordAndWarns() = runBlocking {
@@ -111,15 +111,15 @@ class EmbeddingServiceCacheTest {
 
         val provider = service.getProvider(cloudConfig(cloudProviderId = "provider-that-was-deleted"))
 
-        assertTrue("悬空的 cloudProviderId 必须回落本地关键词实现", provider is LocalKeywordEmbeddingProvider)
+        assertTrue("El cloudProviderId pendiente debe recurrir a la implementación de palabras clave locales", provider is LocalKeywordEmbeddingProvider)
         assertTrue(
-            "降级必须留下可追溯的 warn 日志,实际:$warnings",
-            warnings.any { it.contains("provider-that-was-deleted") && it.contains("不存在") },
+            "Las rebajas deben dejar registros de advertencia rastreables,real:$warnings",
+            warnings.any { it.contains("provider-that-was-deleted") && it.contains("no existe") },
         )
         val state = service.activeBackend.value
         assertNotNull(state)
-        assertTrue("activeBackend 必须标记为降级", state!!.degraded)
-        assertTrue("降级原因必须可展示", state.reason.orEmpty().contains("provider-that-was-deleted"))
+        assertTrue("activeBackend Debe estar marcado para bajar de categoría", state!!.degraded)
+        assertTrue("El motivo de la degradación debe poder mostrarse", state.reason.orEmpty().contains("provider-that-was-deleted"))
         assertEquals("local-keyword", state.backendId)
     }
 
@@ -134,8 +134,8 @@ class EmbeddingServiceCacheTest {
 
         val provider = service.getProvider(cloudConfig(cloudProviderId = "openai-main"))
 
-        assertTrue("停用的供应商不得继续用于 embedding", provider is LocalKeywordEmbeddingProvider)
-        assertTrue("停用降级必须有 warn 日志,实际:$warnings", warnings.any { it.contains("已停用") })
+        assertTrue("Los proveedores desactivados ya no podrán utilizarse embedding", provider is LocalKeywordEmbeddingProvider)
+        assertTrue("Debe haber un registro de advertencia para desactivar la degradación,real:$warnings", warnings.any { it.contains("Desactivado") })
     }
 
     @Test
@@ -150,7 +150,7 @@ class EmbeddingServiceCacheTest {
         val provider = service.getProvider(cloudConfig())
 
         assertTrue(provider is LocalKeywordEmbeddingProvider)
-        assertTrue("API Key 为空导致的降级必须有 warn 日志,实际:$warnings", warnings.any { it.contains("API Key 为空") })
+        assertTrue("API Key La degradación provocada por estar vacío debe tener un registro de advertencia.,real:$warnings", warnings.any { it.contains("API Key esta vacio") })
     }
 
     @Test
@@ -163,7 +163,7 @@ class EmbeddingServiceCacheTest {
         assertTrue(provider is LocalKeywordEmbeddingProvider)
         val state = service.activeBackend.value
         assertNotNull(state)
-        assertFalse("用户显式选择本地关键词不算降级", state!!.degraded)
+        assertFalse("La selección explícita de palabras clave locales por parte del usuario no cuenta como degradación", state!!.degraded)
     }
 
     // ── fixtures ────────────────────────────────────────────

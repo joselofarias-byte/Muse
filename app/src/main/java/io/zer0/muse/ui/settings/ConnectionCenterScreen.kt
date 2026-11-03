@@ -37,10 +37,10 @@ import io.zer0.muse.ui.theme.largeCard
 import org.koin.compose.koinInject
 
 /**
- * v2.0.1: 连接中心 — 一页看全"MUSE 连接了什么"（渠道 / MCP / 插件 / 工具权限）。
+ * v2.0.1: centro de conexion — Ver todo en una sola página"MUSE que esta conectado"(Canales/MCP/Complementos/Permisos de herramientas).
  *
- * 每项一张导航卡（实时状态摘要 + 跳转现有设置页），对齐 Meta Muse 的连接管理体验：
- * 连接与授权集中可见，而不散落在各个设置子页里。
+ * Una tarjeta de navegación para cada elemento (resumen de estado en tiempo real + salto a la página de configuración existente), alineando la experiencia de administración de conexiones de Meta Muse:
+ * La conexión y la autorización son visibles en un solo lugar en lugar de estar dispersas en varias subpáginas de configuración.
  */
 @Composable
 fun ConnectionCenterScreen(
@@ -64,9 +64,9 @@ fun ConnectionCenterScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // v2.0.1 fix（真机崩溃）: OPPO 等边到边路径下 Scaffold content 可能收到无限高度约束，
-        // 直接 Column+verticalScroll / Lazy 系会抛 IllegalStateException。
-        // 沿用设置域既有防抖模式：BoxWithConstraints + boundedSettingsScrollHeight 收口有限高度。
+        // v2.0.1 fix(La máquina real falla): OPPO El contenido del andamio puede recibir infinitas restricciones de altura en rutas iguales de borde a borde.
+        // El sistema Direct Column+verticalScroll/Lazy arrojará IllegalStateException.
+        // Herede el modo antivibración existente en el campo de configuración:BoxWithConstraints + boundedSettingsScrollHeight La altura de cierre es limitada.
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -125,7 +125,7 @@ fun ConnectionCenterScreen(
     }
 }
 
-/** v2.0.1: 连接中心导航卡 — 图标 + 标题 + 状态摘要 + 箭头。 */
+/** v2.0.1: Tarjeta de navegación del centro de conexión — Icono + título + resumen de estado + flecha. */
 @Composable
 private fun ConnectionEntryCard(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     MuseSurface(

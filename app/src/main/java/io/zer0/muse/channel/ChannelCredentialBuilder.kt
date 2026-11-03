@@ -1,10 +1,10 @@
 package io.zer0.muse.channel
 
 /**
- * 用设置页当前输入值拼出一个凭证对象，用于校验「能不能保存」。
+ * Utilice el valor de entrada actual en la página de configuración para deletrear un objeto de cupón para verificar "si se puede guardar".
  *
- * 设置页在用户还没点保存时，字段是分散的局部状态，没有完整的 ChannelConfig；
- * 这个函数让校验逻辑仍然由凭证类型自己负责，而不是在 UI 里再写一遍 when。
+ * Cuando el usuario no ha hecho clic en guardar en la página de configuración, los campos están dispersos y parciales, y no hay un ChannelConfig completo;
+ * Esta función permite que la lógica de verificación siga siendo manejada por el propio tipo de credencial, en lugar de tener que escribirla nuevamente en la interfaz de usuario.
  */
 fun ChannelPlatform.buildCredentials(
     appId: String,

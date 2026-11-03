@@ -10,43 +10,43 @@ import kotlinx.serialization.Serializable
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.201: 委派暂停/取消管理器。
+ * v1.201: Delegación suspendida/Cancelar administrador.
  *
- * 管理正在进行的委派任务的暂停、恢复、取消状态。
- * 与 DelegationPausePoint 配合,在关键节点等待用户决策。
+ * Administre el estado de pausa, reanudación y cancelación de tareas delegadas en curso.
+ * Funciona con DelegationPausePoint,Espere las decisiones de los usuarios en los nodos clave.
  */
 class DelegationPauseManager {
 
-    /** 暂停决策类型。 */
+    /** Tipo de decisión de suspensión. */
     enum class PauseDecision {
-        APPROVE, // 批准继续
-        MODIFY, // 修改后继续(携带新输入)
-        REJECT, // 拒绝并终止
-        CANCEL, // 取消整个委派
+        APPROVE, // Aprobado para continuar
+        MODIFY, // Continuar después de la modificación(llevar nueva entrada)
+        REJECT, // rechazar y terminar
+        CANCEL, // Cancelar toda la delegación
     }
 
-    /** awaitPauseDecision 的结构化结束原因。 */
+    /** awaitPauseDecision de razones finales estructuradas. */
     enum class PauseOutcome {
-        /** 用户提交了正常决策。 */
+        /** El usuario envió una decisión normal. */
         DECIDED,
 
-        /** 等待超过策略配置的超时时间。 */
+        /** Esperó más que el tiempo de espera configurado por la política. */
         TIMED_OUT,
 
-        /** 等待因委派取消或管理器清理而结束。 */
+        /** La espera terminó debido a la cancelación de la delegación o la limpieza del gerente. */
         CANCELLED,
         ;
 
         companion object {
-            /** 兼容常见命名的超时别名。 */
+            /** Compatible con alias de tiempo de espera comúnmente nombrados. */
             val TIMEOUT: PauseOutcome get() = TIMED_OUT
 
-            /** 兼容美式拼写的取消别名。 */
+            /** Unaliasing compatible con la ortografía estadounidense. */
             val CANCELED: PauseOutcome get() = CANCELLED
         }
     }
 
-    /** 暂停请求(展示给用户)。 */
+    /** solicitud de pausa(Mostrar al usuario). */
     data class PauseRequest(
         val requestId: String,
         val taskId: String,
@@ -54,14 +54,14 @@ class DelegationPauseManager {
         val taskDescription: String,
         val targetType: String, // "assistant" | "team"
         val targetName: String,
-        val reason: String, // 为什么需要确认
-        val intermediateResult: String? = null, // 中间结果(可选)
+        val reason: String, // ¿Por qué necesito confirmar?
+        val intermediateResult: String? = null, // resultado intermedio(Opcional)
         val options: List<PauseOption> = listOf(PauseOption.APPROVE, PauseOption.REJECT),
-        /** 所属父委派 requestId;根委派为 null。 */
+        /** Propietaria de la delegación de padres requestId;La delegación raíz es nula. */
         val parentRequestId: String? = null,
     )
 
-    /** 暂停选项(用户可选择)。 */
+    /** Opción de pausa(Seleccionable por el usuario). */
     data class PauseOption(
         val id: String,
         val label: String,
@@ -69,58 +69,58 @@ class DelegationPauseManager {
         val isDestructive: Boolean = false,
     ) {
         companion object {
-            val APPROVE = PauseOption("approve", "批准继续", PauseDecision.APPROVE)
-            val REJECT = PauseOption("reject", "拒绝", PauseDecision.REJECT, isDestructive = true)
-            val CANCEL = PauseOption("cancel", "取消委派", PauseDecision.CANCEL, isDestructive = true)
-            val MODIFY = PauseOption("modify", "修改后继续", PauseDecision.MODIFY)
+            val APPROVE = PauseOption("approve", "Aprobado para continuar", PauseDecision.APPROVE)
+            val REJECT = PauseOption("reject", "rechazar", PauseDecision.REJECT, isDestructive = true)
+            val CANCEL = PauseOption("cancel", "Cancelar delegación", PauseDecision.CANCEL, isDestructive = true)
+            val MODIFY = PauseOption("modify", "Continuar después de la modificación", PauseDecision.MODIFY)
         }
     }
 
-    /** 用户的响应。 */
+    /** Respuesta del usuario. */
     data class PauseResponse(
         val decision: PauseDecision,
-        val modifiedInput: String? = null, // MODIFY 时的修改后输入
-        /** 结构化结束原因;旧构造调用默认表示用户提交了决策。 */
+        val modifiedInput: String? = null, // MODIFY entrada modificada
+        /** Razón final estructurada;La antigua llamada al constructor por defecto indicaba que el usuario envió una decisión. */
         val outcome: PauseOutcome = PauseOutcome.DECIDED,
-        /** 超时或取消等非正常结束时的可测试诊断信息。 */
+        /** Información de diagnóstico comprobable sobre finales anormales, como tiempo de espera o cancelación. */
         val reason: String? = null,
     )
 
-    /** 暂停点配置策略。 */
+    /** Estrategia de configuración del punto de pausa. */
     @Serializable
     data class PausePolicy(
-        val pauseBeforeTeam: Boolean = false, // 团队工作流执行前
-        val pauseBeforeEachMember: Boolean = false, // 团队每个成员执行前
-        val pauseOnIntermediateResult: Boolean = false, // 中间结果产出后
-        val pauseOnHighRisk: Boolean = true, // 高风险任务前(默认开启)
-        val autoTimeoutSec: Int = 300, // 暂停等待超时(秒),超时自动拒绝
+        val pauseBeforeTeam: Boolean = false, // Antes de la ejecución del flujo de trabajo del equipo
+        val pauseBeforeEachMember: Boolean = false, // Antes de que cada miembro del equipo ejecute
+        val pauseOnIntermediateResult: Boolean = false, // Después de que se produzcan los resultados intermedios
+        val pauseOnHighRisk: Boolean = true, // Antes de una misión de alto riesgo(Habilitado por defecto)
+        val autoTimeoutSec: Int = 300, // Pausar el tiempo de espera(segundos),Rechazar automáticamente después del tiempo de espera
     )
 
-    /** 当前活跃的暂停请求(requestId -> PauseRequest)。 */
+    /** Solicitudes de pausa actualmente activas(requestId -> PauseRequest). */
     private val _activePauses = MutableStateFlow<Map<String, PauseRequest>>(emptyMap())
     val activePauses: StateFlow<Map<String, PauseRequest>> = _activePauses.asStateFlow()
 
-    /** 等待中的 CompletableDeferred,用于协程挂起等待用户响应。 */
+    /** esperando CompletableDeferred,Se utiliza para suspender la corrutina esperando la respuesta del usuario. */
     private val pendingResponses = ConcurrentHashMap<String, CompletableDeferred<PauseResponse>>()
 
-    /** parentRequestId -> 当前父委派下活跃的暂停 requestId。 */
+    /** parentRequestId -> El ID de solicitud de pausa activa en la delegación principal actual. */
     private val activeRequestIdsByParent = ConcurrentHashMap<String, MutableSet<String>>()
 
-    /** requestId -> parentRequestId,用于 await finally 时精确移除映射。 */
+    /** requestId -> parentRequestId,Elimine exactamente el mapeo cuando se use en espera finalmente. */
     private val parentRequestIdByRequest = ConcurrentHashMap<String, String>()
 
-    /** 已取消的 requestId 集合(用于 cancelDelegation 标记)。 */
+    /** Colección de ID de solicitud cancelados(para cancelar la etiqueta Delegation). */
     private val cancelledRequests = ConcurrentHashMap.newKeySet<String>()
 
-    /** 串行化注册/清理,避免 clearAll 与新暂停请求竞争导致 Deferred 丢失。 */
+    /** Registro serializado/limpiar,Evite que clearAll compita con nuevas solicitudes de pausa y provoque la pérdida del Diferido. */
     private val stateLock = Any()
 
     /**
-     * 在协程中等待用户对暂停点的决策。
-     * 调用方(suspend 函数)会在此挂起,直到用户响应或超时。
+     * Espere la decisión del usuario sobre el punto de pausa en la rutina.
+     * llamador(suspend función)colgará aquí,Hasta que el usuario responda o se agote el tiempo.
      *
-     * 超时返回 [PauseOutcome.TIMED_OUT] + [PauseDecision.REJECT]；外部取消则原样
-     * 重抛 [CancellationException],不把协程取消伪装成用户拒绝。
+     * Regreso del tiempo de espera [PauseOutcome.TIMED_OUT] + [PauseDecision.REJECT];La cancelación externa se mantendrá como está.
+     * Volver a lanzar [CancellationException],No disfrace la cancelación de la rutina como un rechazo del usuario.
      */
     suspend fun awaitPauseDecision(request: PauseRequest, policy: PausePolicy): PauseResponse {
         val deferred = CompletableDeferred<PauseResponse>()
@@ -130,7 +130,7 @@ class DelegationPauseManager {
                 true
             } else {
                 val previous = pendingResponses.putIfAbsent(request.requestId, deferred)
-                require(previous == null) { "暂停请求已在等待中: ${request.requestId}" }
+                require(previous == null) { "La solicitud de pausa está pendiente: ${request.requestId}" }
                 if (parentRequestId != null) {
                     activeRequestIdsByParent.computeIfAbsent(parentRequestId) {
                         ConcurrentHashMap.newKeySet<String>()
@@ -142,7 +142,7 @@ class DelegationPauseManager {
             }
         }
         if (cancelledBeforeRegistration) {
-            return cancelledResponse("委派已取消")
+            return cancelledResponse("Delegación cancelada")
         }
 
         return try {
@@ -152,7 +152,7 @@ class DelegationPauseManager {
             } ?: PauseResponse(
                 decision = PauseDecision.REJECT,
                 outcome = PauseOutcome.TIMED_OUT,
-                reason = "暂停等待超时,自动拒绝",
+                reason = "Pausar el tiempo de espera,Rechazar automáticamente",
             )
         } catch (e: CancellationException) {
             throw e
@@ -161,7 +161,7 @@ class DelegationPauseManager {
         }
     }
 
-    /** 用户提交决策。 */
+    /** El usuario envía decisiones. */
     fun submitDecision(requestId: String, response: PauseResponse) {
         synchronized(stateLock) {
             pendingResponses[requestId]?.complete(response)
@@ -169,39 +169,39 @@ class DelegationPauseManager {
     }
 
     /**
-     * 取消指定委派(用户主动取消)。
+     * Cancelar tarea(El usuario cancela activamente).
      *
-     * [requestId] 可以是暂停 requestId,也可以是父委派 requestId。父委派取消时,
-     * 该父委派下所有当前等待的暂停 Deferred 都会收到 CANCEL。
+     * [requestId] Se puede pausar requestId,También puede ser el ID de solicitud de delegación principal. Cuando se cancela la delegación de padres,
+     * Todos los diferidos actualmente en espera en pausa bajo esta delegación principal recibirán una CANCELACIÓN.
      */
     fun cancelDelegation(requestId: String) {
         synchronized(stateLock) {
             cancelledRequests.add(requestId)
             val requestIds = linkedSetOf(requestId) + collectActiveRequestIds(requestId)
             requestIds.forEach { activeRequestId ->
-                pendingResponses[activeRequestId]?.complete(cancelledResponse("委派已取消"))
+                pendingResponses[activeRequestId]?.complete(cancelledResponse("Delegación cancelada"))
             }
         }
     }
 
-    /** 检查委派是否已被取消。 */
+    /** Comprueba si la delegación ha sido cancelada. */
     fun isCancelled(requestId: String): Boolean = synchronized(stateLock) {
         isCancellationRequested(requestId, parentRequestIdByRequest[requestId])
     }
 
-    /** 清理已结束的取消标记。 */
+    /** Limpiar los marcadores de cancelación completados. */
     fun clearCancellation(requestId: String) {
         synchronized(stateLock) {
             cancelledRequests.remove(requestId)
         }
     }
 
-    /** 清空所有状态(切换会话时调用)。 */
+    /** Borrar todo el estado(Llamado al cambiar de sesión.). */
     fun clearAll() {
         synchronized(stateLock) {
-            // 先唤醒所有等待者,再清理索引;否则清理 pendingResponses 会让协程永久挂起。
+            // Despierta a todos los que esperan primero.,Limpiar el índice nuevamente.;De lo contrario, borrar las respuestas pendientes hará que la rutina se bloquee permanentemente.
             pendingResponses.values.forEach { deferred ->
-                deferred.complete(cancelledResponse("暂停管理器已清理"))
+                deferred.complete(cancelledResponse("Administrador de pausa limpio"))
             }
             _activePauses.value = emptyMap()
             pendingResponses.clear()
@@ -227,7 +227,7 @@ class DelegationPauseManager {
         }
     }
 
-    /** 解析显式父 id;旧调用方未传时 taskId 即父委派 id。 */
+    /** Resolver padre explícito id;Cuando la persona que llama anteriormente no pasa el taskId, es el ID de delegación principal. */
     private fun resolveParentRequestId(request: PauseRequest): String? {
         request.parentRequestId?.takeIf { it.isNotBlank() }?.let { return it }
         val separator = request.taskId.lastIndexOf('/')
@@ -238,7 +238,7 @@ class DelegationPauseManager {
         }
     }
 
-    /** 判断自身或其父委派链是否已被取消。 */
+    /** Determine si él mismo o su cadena de delegación principal ha sido cancelada. */
     private fun isCancellationRequested(requestId: String, parentRequestId: String?): Boolean {
         if (cancelledRequests.contains(requestId)) return true
         var currentParent = parentRequestId
@@ -251,7 +251,7 @@ class DelegationPauseManager {
         }
     }
 
-    /** 收集父委派及所有后代的活跃暂停 requestId。 */
+    /** Recopila los ID de solicitud de pausa activa de la delegación principal y de todos los descendientes. */
     private fun collectActiveRequestIds(parentRequestId: String): Set<String> {
         val result = linkedSetOf<String>()
         val queue = ArrayDeque<String>()

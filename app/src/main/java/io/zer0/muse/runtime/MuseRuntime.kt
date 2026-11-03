@@ -15,75 +15,75 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipInputStream
 
 /**
- * v2.x 扩展运行时（P0 打样）：内置 Node.js 沙盒运行时管理器。
+ * v2.x Tiempo de ejecución extendido (P0 Revisión): Administrador de tiempo de ejecución de sandbox integrado de Node.js.
  *
- * ## 背景
- * Muse 的应用内沙盒（技能脚本 / MCP stdio server / 终端）需要真实运行时
- * （Node.js / npm）才能执行"市面上的"扩展生态。受 Android 10+ W^X 限制
- * （targetSdk 29+ 不可 exec 应用数据目录中的文件），运行时采用如下架构：
+ * ## fondo
+ * Muse Sandbox en la aplicación (script de habilidad / MCP stdio server / Terminal) requiere un tiempo de ejecución real
+ * (Node.js / npm) se puede ejecutar"en el mercado"Ampliar el ecosistema. recibir Android 10+ W^X Límite
+ * (targetSdk 29+ Los archivos en el directorio de datos de la aplicación no se pueden ejecutar) y se utiliza la siguiente arquitectura durante el tiempo de ejecución:
  *
- *  - **可执行部分**（node 主程序 + 依赖共享库）随 APK 发布在 jniLibs
- *    （extractNativeLibs=true，安装时解压到 nativeLibraryDir），
- *    此目录不受 W^X 限制，可直接 exec / dlopen；
- *  - **纯数据部分**（npm 等 JS 文件）打包为 assets/muse-runtime-assets.zip，
- *    首次使用时解压到 filesDir/muse-runtime/；
- *  - 共享库以 lib*.so 命名规范分发（libmuse_node.so / libssl.so / ...），
- *    内部 SONAME/DT_NEEDED 已重写、RPATH=$ORIGIN，自包含加载。
+ *  - **parte ejecutable**(node Programa principal + bibliotecas compartidas dependientes) se lanzan con el APK en jniLibs
+ *    (extractNativeLibs=true, descomprimir en NativeLibraryDir durante la instalación),
+ *    Este directorio no está protegido por W^X Limitación, puede ser directamente exec/dlopen;
+ *  - **Parte de datos puros**(npm Los archivos JS) están empaquetados como activos/muse-runtime-assets.zip,
+ *    Extraer a filesDir/muse-runtime/ cuando se use por primera vez;
+ *  - Biblioteca compartida con lib*.so Distribución de convención de nomenclatura (libmuse_node.so / libssl.so / ...),
+ *    SONAME/DT_NEEDED interno anulado,RPATH=$ORIGIN, carga autónoma.
  *
- * 使用入口：[isReady] 检查 / [ensureData] 解压 / [execNode] 执行。
+ * Utilice la entrada:[isReady] comprobar / [ensureData] Descomprimir / [execNode] Ejecutar.
  */
-@Suppress("TooManyFunctions") // 运行时门面：路径访问器 + 执行入口集合，属设计如此
+@Suppress("TooManyFunctions") // Fachada en tiempo de ejecución: accesor de ruta + conjunto de entradas de ejecución, este es el diseño
 object MuseRuntime {
     private const val TAG = "MuseRuntime"
     private const val OUTPUT_DRAIN_TIMEOUT_MS = 30_000L
 
-    /** 内置 node 二进制（jniLibs 内，命名需符合 lib*.so 规范）。 */
+    /** Binario de nodo incorporado (jniLibs En su interior, el naming debe cumplir con lib*.so especificaciones). */
     const val NODE_LIB_NAME = "libmuse_node.so"
 
-    /** assets 中运行时数据包。 */
+    /** assets paquete de mitad de tiempo de ejecución. */
     private const val ASSETS_ZIP = "muse-runtime-assets.zip"
 
-    /** 传给子进程的 CPU 核数环境变量名（脚本包装层在原生取不到时据此兜底）。 */
+    /** El nombre de la variable de entorno central de la CPU pasada al proceso hijo (la capa de empaquetado del script lo utilizará para proporcionar información cuando no se pueda obtener de forma nativa). */
     const val ENV_CPU_COUNT = "MUSE_CPU_COUNT"
 
-    /** 数据包版本标记（升级 assets 时同步修改，触发重新解压）。 */
+    /** Marca de versión del paquete de datos (modificada sincrónicamente al actualizar los activos, lo que desencadena la redescompresión). */
     const val RUNTIME_DATA_VERSION = "npm-11.21.1"
 
-    // ── 路径 ─────────────────────────────────────────────────────
+    // ── camino ─────────────────────────────────────────────────────
 
-    /** native 库目录（安装后解压出的 .so 所在目录）。 */
+    /** native Directorio de la biblioteca (el directorio donde se encuentra el .so extraído después de la instalación). */
     fun nativeLibDir(ctx: Context): File = File(ctx.applicationInfo.nativeLibraryDir)
 
-    /** 内置 node 可执行文件。 */
+    /** Ejecutable de nodo incorporado. */
     fun nodeBinary(ctx: Context): File = File(nativeLibDir(ctx), NODE_LIB_NAME)
 
-    /** 运行时数据根目录（filesDir/muse-runtime）。 */
+    /** Directorio raíz de datos en tiempo de ejecución (filesDir/muse-runtime). */
     fun runtimeDir(ctx: Context): File = File(ctx.filesDir, "muse-runtime")
 
-    /** npm 数据目录。 */
+    /** npm Directorio de datos. */
     fun npmDir(ctx: Context): File = File(runtimeDir(ctx), "npm")
 
-    /** npm CLI 入口（JS 文件，由 node 执行）。 */
+    /** npm CLI entrada (JS archivo, ejecutado por nodo). */
     fun npmCli(ctx: Context): File = File(npmDir(ctx), "bin/npm-cli.js")
 
-    /** 运行时 HOME 目录（子进程工作目录）。 */
+    /** Directorio INICIO de tiempo de ejecución (directorio de trabajo del proceso secundario). */
     fun homeDir(ctx: Context): File = File(runtimeDir(ctx), "home")
 
-    /** 子进程临时目录（TMPDIR）。 */
+    /** Directorio temporal del proceso hijo (TMPDIR). */
     fun tmpDir(ctx: Context): File = File(runtimeDir(ctx), "tmp")
 
-    /** 运行时 bin 目录（PATH 首位，预留给 symlink/垫片）。 */
+    /** Directorio bin en tiempo de ejecución (PATH Primera posición, reservada para enlace simbólico/shim). */
     fun binDir(ctx: Context): File = File(runtimeDir(ctx), "bin")
 
-    /** 运行时就绪（node 二进制存在且 npm 数据已解压）。 */
+    /** Listo en tiempo de ejecución (node El binario existe y los datos npm están descomprimidos). */
     fun isReady(ctx: Context): Boolean = nodeBinary(ctx).isFile && npmCli(ctx).isFile
 
-    // ── 数据解压 ─────────────────────────────────────────────────
+    // ── Descompresión de datos ─────────────────────────────────────────────────
 
     private const val MARK_FILE = ".runtime-data-version"
 
     /**
-     * 从 assets 解压运行时数据（幂等；版本标记命中时跳过）。
+     * Desempaquete los datos de tiempo de ejecución de los activos (idempotente; omítalo si se alcanza la etiqueta de versión).
      */
     suspend fun ensureData(ctx: Context): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -95,7 +95,7 @@ object MuseRuntime {
                 return@runCatching
             }
 
-            Logger.i(TAG, "解压运行时数据 ($installed -> $RUNTIME_DATA_VERSION)")
+            Logger.i(TAG, "Desempaquetar datos de tiempo de ejecución ($installed -> $RUNTIME_DATA_VERSION)")
             npmDir(ctx).deleteRecursively()
             ctx.assets.open(ASSETS_ZIP).use { raw ->
                 ZipInputStream(raw.buffered()).use { zip ->
@@ -104,7 +104,7 @@ object MuseRuntime {
                         val target = File(rt, entry.name)
                         val rootPath = rt.canonicalPath + File.separator
                         if (!target.canonicalPath.startsWith(rootPath)) {
-                            throw SecurityException("zip 条目越界: ${entry.name}")
+                            throw SecurityException("zip Entrada fuera de límites: ${entry.name}")
                         }
                         if (entry.isDirectory) {
                             target.mkdirs()
@@ -119,15 +119,15 @@ object MuseRuntime {
             }
             mark.writeText(RUNTIME_DATA_VERSION)
             setupBinLinks(ctx)
-            Logger.i(TAG, "运行时数据解压完成")
-        }.onFailure { Logger.w(TAG, "运行时数据解压失败: ${it.message}", it) }
+            Logger.i(TAG, "Descompresión de datos en tiempo de ejecución completada")
+        }.onFailure { Logger.w(TAG, "La descompresión de datos falló durante el tiempo de ejecución: ${it.message}", it) }
     }
 
     /**
-     * P1-B: 准备运行时 bin 入口（symlink: node / npm / npx）。
+     * P1-B: Prepare la entrada del contenedor de tiempo de ejecución (symlink: node / npm / npx).
      *
-     * 供终端与子进程的 PATH 查找使用。npm/npx 目标为 JS 文件（先补可执行位，
-     * 让 shell 的查找判定通过）；实际执行由 exec 垫片按 shebang 重写为 node。
+     * Se utiliza para búsquedas de RUTAS de terminales y procesos secundarios.npm/npx El objetivo es un archivo JS (completa primero el bit ejecutable,
+     * Deje pasar la determinación de búsqueda del shell); la ejecución real es reescrita por el ajuste ejecutivo al nodo por shebang.
      */
     private fun setupBinLinks(ctx: Context) {
         val bin = binDir(ctx).apply { mkdirs() }
@@ -139,28 +139,28 @@ object MuseRuntime {
         fun relink(name: String, target: File) {
             if (!target.isFile) return
             val link = File(bin, name)
-            // lstat 存在（含断链）先删后建，保证指向最新目标
+            // lstat Si existe (incluidos los enlaces rotos), elimínelo primero y luego compílelo para asegurarse de que apunte al objetivo más reciente.
             runCatching { android.system.Os.lstat(link.absolutePath) }
                 .onSuccess { runCatching { link.delete() } }
             runCatching { android.system.Os.symlink(target.absolutePath, link.absolutePath) }
-                .onFailure { Logger.w(TAG, "bin symlink 创建失败($name): ${it.message}") }
+                .onFailure { Logger.w(TAG, "bin symlink La creación falló($name): ${it.message}") }
         }
         relink("node", nodeBinary(ctx))
         relink("npm", File(npmBin, "npm-cli.js"))
         relink("npx", File(npmBin, "npx-cli.js"))
     }
 
-    // ── 子进程环境 ───────────────────────────────────────────────
+    // ── entorno de proceso hijo ───────────────────────────────────────────────
 
     /**
-     * 构造受控子进程环境。
+     * Construir un entorno de subproceso controlado.
      *
-     * 关键变量：
-     *  - HOME/TMPDIR：指向运行时数据目录（Android 无可用默认值）
-     *  - PATH：运行时 bin（预留）+ 系统路径
-     *  - LD_LIBRARY_PATH：native 库目录（双保险；库内 RPATH=$ORIGIN 已覆盖）
-     *  - SHELL：/system/bin/sh（Android 无 /bin/sh）
-     *  - MUSE_CPU_COUNT：Java 侧看到的 CPU 核数（部分设备上 libuv 取不到，交给脚本层兜底）
+     * Variables clave:
+     *  - HOME/TMPDIR: Apunta al directorio de datos en tiempo de ejecución (Android no hay valor predeterminado disponible)
+     *  - PATH: Bandeja de tiempo de ejecución (reservada)+ ruta del sistema
+     *  - LD_LIBRARY_PATH:native Directorio de bibliotecas (doble seguro; biblioteca RPATH=$ORIGIN cubierto)
+     *  - SHELL:/system/bin/sh(Android sin /bin/sh)
+     *  - MUSE_CPU_COUNT:Java La cantidad de núcleos de CPU que se ven en el lateral (libuv no puede obtenerlo en algunos dispositivos, por lo que se deja en la capa de script)
      */
     fun buildEnv(ctx: Context, extra: Map<String, String> = emptyMap()): Map<String, String> {
         listOf(homeDir(ctx), tmpDir(ctx), binDir(ctx)).forEach { it.mkdirs() }
@@ -171,7 +171,7 @@ object MuseRuntime {
             put("LD_LIBRARY_PATH", nativeLibDir(ctx).absolutePath)
             put("SHELL", "/system/bin/sh")
             put("TERM", "xterm-256color")
-            // P1-B: exec 垫片（名称映射 + shebang 解析；文件缺失时自动跳过）
+            // P1-B: exec Shims (asignación de nombres + análisis de shebang; se omite automáticamente si faltan archivos)
             File(nativeLibDir(ctx), "libmuse_exec.so").takeIf { it.isFile }?.let {
                 put("LD_PRELOAD", it.absolutePath)
             }
@@ -183,12 +183,12 @@ object MuseRuntime {
         }
     }
 
-    /** 子进程可用的 CPU 核数；取不到时按 1 处理，避免下游拿到 0 再除零或退化。 */
+    /** La cantidad de núcleos de CPU disponibles para el proceso hijo; si no se puede obtener, se tratará como 1 para evitar que el flujo descendente obtenga 0 y luego se divida por cero o degenere. */
     internal fun childCpuCount(): Int = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
 
-    // ── 子进程执行 ───────────────────────────────────────────────
+    // ── ejecución de proceso hijo ───────────────────────────────────────────────
 
-    /** 子进程执行结果。 */
+    /** El resultado de la ejecución del proceso hijo. */
     data class ExecResult(
         val exitCode: Int,
         val stdout: String,
@@ -199,7 +199,7 @@ object MuseRuntime {
         val captureError: String? = null,
     )
 
-    /** 执行内置 node（args 追加在 node 路径之后）。 */
+    /** Ejecute el nodo incorporado (args Se adjunta después de la ruta del nodo). */
     suspend fun execNode(
         ctx: Context,
         args: List<String>,
@@ -214,7 +214,7 @@ object MuseRuntime {
         env = env,
     )
 
-    /** 通用子进程执行（清空继承环境，使用 [buildEnv] 构造的环境）。 */
+    /** Ejecución de subproceso genérico (entorno de herencia claro, uso [buildEnv] entorno construido). */
     suspend fun exec(
         ctx: Context,
         cmd: List<String>,
@@ -250,12 +250,12 @@ object MuseRuntime {
         if (tOut.isAlive) {
             runCatching { process.inputStream.close() }
             tOut.join(1_000)
-            captureFailure.compareAndSet(null, IOException("stdout 输出流未能完整排空"))
+            captureFailure.compareAndSet(null, IOException("stdout El flujo de salida no se drenó por completo."))
         }
         if (tErr.isAlive) {
             runCatching { process.errorStream.close() }
             tErr.join(1_000)
-            captureFailure.compareAndSet(null, IOException("stderr 输出流未能完整排空"))
+            captureFailure.compareAndSet(null, IOException("stderr El flujo de salida no se drenó por completo."))
         }
 
         val outputFailure = captureFailure.get()
@@ -263,22 +263,22 @@ object MuseRuntime {
             val partialStdout =
                 runCatching {
                     outCapture.finish(
-                        header = "[stdout 输出未能完整接收]",
+                        header = "[stdout Salida no recibida completamente]",
                         emptyMessage = "",
                     )
                 }.getOrElse {
                     outCapture.close()
-                    outCapture.savedFile?.let { "[stdout 部分输出文件: ${it.absolutePath}]" }.orEmpty()
+                    outCapture.savedFile?.let { "[stdout Archivo de salida parcial: ${it.absolutePath}]" }.orEmpty()
                 }
             val partialStderr =
                 runCatching {
                     errCapture.finish(
-                        header = "[stderr 输出未能完整接收]",
+                        header = "[stderr Salida no recibida completamente]",
                         emptyMessage = "",
                     )
                 }.getOrElse {
                     errCapture.close()
-                    errCapture.savedFile?.let { "[stderr 部分输出文件: ${it.absolutePath}]" }.orEmpty()
+                    errCapture.savedFile?.let { "[stderr Archivo de salida parcial: ${it.absolutePath}]" }.orEmpty()
                 }
             return@withContext ExecResult(
                 exitCode = if (finished) runCatching { process.exitValue() }.getOrDefault(-1) else -1,

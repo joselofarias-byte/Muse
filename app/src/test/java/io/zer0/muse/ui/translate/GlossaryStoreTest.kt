@@ -11,7 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * R-TEST-20: 翻译术语表存储测试。
+ * R-TEST-20: Prueba de almacenamiento del glosario de traducción.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -23,15 +23,15 @@ class GlossaryStoreTest {
     @Test
     fun `add and list round trip`() {
         store.clear()
-        store.add("API", "应用程序接口")
-        assertEquals(mapOf("API" to "应用程序接口"), store.list())
+        store.add("API", "API")
+        assertEquals(mapOf("API" to "API"), store.list())
     }
 
     @Test
     fun `add trims keys and values`() {
         store.clear()
-        store.add("  GPU  ", "  图形处理器  ")
-        assertEquals(mapOf("GPU" to "图形处理器"), store.list())
+        store.add("  GPU  ", "  procesador de gráficos  ")
+        assertEquals(mapOf("GPU" to "procesador de gráficos"), store.list())
     }
 
     @Test
@@ -44,7 +44,7 @@ class GlossaryStoreTest {
     @Test
     fun `remove deletes existing entry only`() {
         store.clear()
-        store.add("API", "应用程序接口")
+        store.add("API", "API")
         assertTrue(store.remove("API"))
         assertFalse(store.remove("API"))
         assertTrue(store.isEmpty())
@@ -62,10 +62,10 @@ class GlossaryStoreTest {
     fun `toPromptSnippet formats entries and returns empty for empty glossary`() {
         store.clear()
         assertEquals("", store.toPromptSnippet())
-        store.add("API", "应用程序接口")
-        store.add("GPU", "图形处理器")
+        store.add("API", "API")
+        store.add("GPU", "procesador de gráficos")
         val snippet = store.toPromptSnippet()
-        assertTrue(snippet.contains("API→应用程序接口"))
-        assertTrue(snippet.contains("GPU→图形处理器"))
+        assertTrue(snippet.contains("API→API"))
+        assertTrue(snippet.contains("GPU→procesador de gráficos"))
     }
 }

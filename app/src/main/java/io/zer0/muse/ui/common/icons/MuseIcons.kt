@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.vector.group
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse Icons — 自绘图标集的 Compose ImageVector 版本（静态,非 Composable）。
+ * Muse Icons — Componga la versión ImageVector del conjunto de iconos personalizados (estático,No componible).
  *
- * 由 muse-icons/scripts/to-compose.py 自动生成，勿手改。
- * 源: https://github.com/Zer0Qing/muse-icons
+ * Generado automáticamente por muse-icons/scripts/to-compose.py, no lo modifique manualmente.
+ * fuente: https://github.com/Zer0Qing/muse-icons
  */
 object MuseIcons {
     /** search */

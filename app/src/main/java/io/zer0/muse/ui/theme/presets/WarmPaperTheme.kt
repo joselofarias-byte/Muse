@@ -6,11 +6,11 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 1. 暖纸主题 (默认 - 保留现有 Color.kt 配色)
-// L-10: 浅色 primary(LaurelGreen #2D8C5F)on 白色,对比度接近 WCAG AA 下限(4.5:1)。
-// 这是品牌色权衡:月桂绿是缪斯视觉符号,刻意不加深以保留"墨绿生机"质感;AA 增强级
-// (7:1)会迫使 primary 偏暗、失去品牌识别度。onPrimary 文字始终用白底深色容器兜底,
-// 正文级文字不落在 primary 上,故实际无障碍风险可控。amoled 浅色沿用 warm_paper,同此注。
+// 1. Tema de papel cálido (Predeterminado: mantener los colores existentes de Color.kt)
+// L-10: color claro primary(LaurelGreen #2D8C5F)on blanco,Contraste cercano al límite inferior de WCAG AA(4.5:1).
+// Esta es la compensación del color de la marca:El verde laurel es el símbolo visual de la musa.,Deliberadamente no profundizar para preservar"Vitalidad verde oscuro"textura;AA nivel mejorado
+// (7:1)Obligará a que la primaria sea más oscura y pierda reconocimiento de marca.onPrimary El texto siempre está encerrado en un contenedor oscuro con fondo blanco.,
+// El texto a nivel de texto no cae en primario,Por lo tanto, los riesgos reales de accesibilidad son controlables.amoled Usa colores claros warm_paper,Misma nota.
 // ─────────────────────────────────────────────────────────────────────────────
 val WarmPaperTheme = PresetTheme(
     id = "warm_paper",
@@ -27,12 +27,12 @@ val WarmPaperTheme = PresetTheme(
         onSecondaryContainer = LaurelGreenDark,
         tertiary = LaurelGreen,
         onTertiary = Color.White,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色,
-        // 避免"画图"徽章等 tertiaryContainer 使用点回落默认紫色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar referencia con el color del contenedor principal,
+        // evitar"hacer un dibujo"Las insignias y otros puntos de uso de contenedores terciarios vuelven al color púrpura predeterminado.
         tertiaryContainer = LaurelGreenLightContainer,
         onTertiaryContainer = LaurelGreenDark,
-        // M-2: surface 容器梯度(浅色:surfaceContainerLow=surface 基准,越 high 越暗,
-        // surfaceDim 最暗、surfaceBright 最亮),消除默认紫灰回落。
+        // M-2: surface gradiente de contenedor(color claro:surfaceContainerLow=surface punto de referencia,Cuanto más alto, más oscuro,
+        // surfaceDim más oscuro,surfaceBright más brillante),Elimine la opción predeterminada de color gris púrpura.
         surfaceContainer = Color(0xFFF5F2EE),
         surfaceContainerLow = LightBg,
         surfaceContainerHigh = Color(0xFFEDE9E3),
@@ -56,7 +56,7 @@ val WarmPaperTheme = PresetTheme(
         scrim = Color.Black,
     ),
     darkScheme = darkColorScheme(
-        // v1.0.21: 深色模式 primary 改用 LaurelGreenBright(#4A9F70),OLED 屏幕可见性提升
+        // v1.0.21: Modo oscuro primario en su lugar LaurelGreenBright(#4A9F70),OLED Visibilidad de pantalla mejorada
         primary = LaurelGreenBright,
         onPrimary = Color.White,
         primaryContainer = LaurelGreenDarkContainer,
@@ -68,11 +68,11 @@ val WarmPaperTheme = PresetTheme(
         onSecondaryContainer = LaurelGreenLight,
         tertiary = LaurelGreenBright,
         onTertiary = Color.White,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = LaurelGreenDarkContainer,
         onTertiaryContainer = LaurelGreenLight,
-        // M-2: surface 容器梯度(深色:surfaceContainerLow=surface 基准,越 high 越亮,
-        // surfaceDim 最暗、surfaceBright 最亮)。surface=纯黑,surfaceDim 同为纯黑无法更暗。
+        // M-2: surface gradiente de contenedor(oscuro:surfaceContainerLow=surface punto de referencia,Cuanto más alto, más brillante,
+        // surfaceDim más oscuro,surfaceBright más brillante).surface=negro puro,surfaceDim El mismo negro puro no puede ser más oscuro.
         surfaceContainer = Color(0xFF141416),
         surfaceContainerLow = DarkBg,
         surfaceContainerHigh = Color(0xFF1C1C1E),

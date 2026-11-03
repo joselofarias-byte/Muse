@@ -25,9 +25,9 @@ export interface HostSettingsProps {
   readonly onBack: () => void;
   readonly onRetry: () => void;
   readonly onToggle: (key: string, enabled: boolean) => void;
-  /** 子页的通用写入（boolean / number / enum）。 */
+  /** Escritura genérica de subpáginas (boolean / number / enum). */
   readonly onWrite: (key: string, value: string | number | boolean) => void;
-  /** 助手与角色页 / 记忆页需要的数据与入口。 */
+  /** Datos y entradas necesarios para las páginas de asistente y de personaje/páginas de memoria. */
   readonly assistants: readonly HostAssistantSummary[];
   readonly providers: readonly HostProviderSummary[];
   readonly assistantDetails: Readonly<Record<string, HostAssistantDetail>>;
@@ -42,7 +42,7 @@ export interface HostSettingsProps {
     readonly reset?: boolean | undefined;
   }) => void;
   readonly onStartSession: (assistantId: string) => void;
-  /** 知识库与定时任务（只读页）。 */
+  /** Base de conocimientos y tareas programadas (página de solo lectura). */
   readonly knowledge: HostKnowledgeState;
   readonly knowledgeDocuments: HostKnowledgeDocumentsState;
   readonly tasks: HostTasksState;
@@ -53,25 +53,25 @@ export interface HostSettingsProps {
     readonly reset?: boolean | undefined;
   }) => void;
   readonly onRequestTasks: () => void;
-  /** 系统状态（数据与隐私页 / 平台专有页共用）。 */
+  /** Estado del sistema (datos compartidos con la página de privacidad/página específica de la plataforma). */
   readonly system: HostSystemState;
   readonly onRequestSystemStatus: () => void;
 }
 
-/** 当前打开的子页：目录条目，或搜索结果里的某条值（附带要高亮的那一行）。 */
+/** Subpágina actualmente abierta: entrada de directorio o un valor en los resultados de búsqueda (con la fila a resaltar). */
 type OpenPage =
   | { readonly kind: "entry"; readonly entry: HostSettingsEntry }
   | { readonly kind: "value"; readonly page: SettingsPageSpec; readonly title: string; readonly focusKey: string };
 
 /**
- * 设置主页。
+ * Configura una página de inicio.
  *
- * 分组、顺序、条目和开关状态全部来自 Host 的 `settings.snapshot`，前端不重排、
- * 不过滤、也不补条目；标题/说明/分组标题都是 Host 按当前语言解析好的文本，
- * 本端不保存任何文案（`titleKey` / `key` 只是稳定标识）。
+ * La agrupación, el orden, las entradas y los estados de cambio provienen del servidor `settings.snapshot`, la parte delantera no se reorganiza,
+ * Sin filtrado ni llenado de entradas; título/Descripción/Todos los títulos de los grupos son texto analizado por el Host según el idioma actual.
+ * Este fin no guarda ninguna copia (`titleKey` / `key` Solo logotipo estable).
  *
- * 顶部有一条吸顶搜索框：点开是全屏搜索，结果只用这份快照在本地过滤（不发请求），
- * 点结果直达对应子页；值行还会把它自己那一行高亮出来。
+ * Hay un cuadro de búsqueda de techo en la parte superior: haga clic para abrirlo y buscar en pantalla completa, y los resultados solo se filtrarán localmente usando esta instantánea (no se enviará ninguna solicitud).
+ * Haga clic en el resultado para ir directamente a la subpágina correspondiente; la fila de valor también resaltará su propia fila.
  */
 export function HostSettings({
   settings,
@@ -104,9 +104,9 @@ export function HostSettings({
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const snapshot = settings.snapshot;
-  /** 记忆页是否能拉到数据：能力位缺位时直接给提示（老 Host 先试一次）。 */
+  /** Si los datos se pueden recuperar de la página de memoria: se dará un mensaje directamente cuando falte el bit de capacidad (el antiguo Host lo intentará primero). */
   const supportsMemory = supportsFlag(capabilityFlags, MEMORY_FLAGS) && !memory.unsupported;
-  // 读取很快时不上骨架，避免闪一下。
+  // No utilice el esqueleto cuando lea rápidamente para evitar parpadeos.
   const skeletonDue = useDelayedFlag(settings.loading && snapshot === undefined);
 
   const closeSearch = useCallback(() => {
@@ -114,7 +114,7 @@ export function HostSettings({
     setQuery("");
   }, []);
 
-  // 快捷键：/ 或 Cmd/Ctrl+K 打开搜索。焦点在输入控件里时不抢（/ 是正常字符）。
+  // Teclas de acceso directo:/ o Cmd/Ctrl+K para abrir la búsqueda. No captes el foco cuando esté en el control de entrada (/ son personajes normales).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (snapshot === undefined) return;
@@ -147,7 +147,7 @@ export function HostSettings({
 
   if (openPage !== undefined) {
     const back = () => setOpenPage(undefined);
-    // 「助手与角色」和「记忆」是真实功能页，不是值表单。
+    // "Asistentes y funciones" y "Memoria" son páginas de funciones reales, no formularios de valores.
     if (openPage.kind === "entry" && openPage.entry.id === "assistants") {
       return (
         <AssistantsPage
@@ -255,7 +255,7 @@ export function HostSettings({
         />
       );
     }
-    // 没做过的页面（含只能在手机上操作的能力）全部落到统一占位页。
+    // Las páginas que no se hayan completado (incluida la capacidad de operar solo en teléfonos celulares) se incluirán en la página de marcador de posición unificada.
     return <HostPlaceholder title={openPage.entry.title} description={openPage.entry.desc} onBack={back} />;
   }
 
@@ -267,7 +267,7 @@ export function HostSettings({
         ) : skeletonDue ? (
           <ListSkeleton label={t("settings.loading")} />
         ) : (
-          // 300ms 内先什么都不画（空白比闪一下骨架稳）。
+          // 300ms No dibujes nada al principio (el espacio en blanco es más estable que mostrar el esqueleto).
           <div className="host-loading-quiet" role="status" aria-label={t("settings.loading")} />
         )
       ) : (
@@ -298,10 +298,10 @@ export function HostSettings({
   );
 }
 
-/** PII 守护的开关键（与 Host 的 settings.update 白名单一致）。 */
+/** PII La tecla de encendido/apagado de la guardia (consistente con la lista blanca de configuración y actualización del Host). */
 const PII_GUARD_KEY = "piiGuardEnabled";
 
-/** 从设置快照里读 PII 守护：状态来自条目，可写性来自 writableKeys。 */
+/** Lea el demonio PII desde la instantánea de configuración: estado de las entradas, capacidad de escritura desde writableKeys. */
 function piiGuardState(snapshot: HostSettingsSnapshot | undefined): { readonly checked: boolean; readonly writable: boolean } | undefined {
   if (snapshot === undefined) return undefined;
   for (const group of snapshot.groups) {
@@ -356,9 +356,9 @@ interface SettingsRowProps {
 }
 
 /**
- * 单个设置项。`kind` 决定右侧：link / action → 右箭头并进入子页；
- * switch → MuseSwitch（写入白名单外的键直接禁用，避免点了才被 Host 拒）。
- * 左侧是 iconKey 对应的圆形小图标（与手机同一套图形）。
+ * Elemento de configuración única.`kind` Decidir por el lado derecho:link / action → Flecha hacia la derecha e ingresar a la subpágina;
+ * switch → MuseSwitch(Las claves escritas fuera de la lista blanca se desactivan directamente para evitar que el Host las rechace después de hacer clic en ellas).
+ * A la izquierda está el pequeño icono redondo correspondiente a iconKey (el mismo conjunto de gráficos que el teléfono celular).
  */
 function SettingsRow({ entry, last, writableKeys, onOpen, onToggle }: SettingsRowProps) {
   const title = entry.title;
@@ -390,12 +390,12 @@ function SettingsRow({ entry, last, writableKeys, onOpen, onToggle }: SettingsRo
     );
   }
 
-  // 未知的 kind：降级成一行中性展示（不画箭头、不可点，也不抛错）。
+  // Tipo desconocido: degradado a una línea de visualización neutral (sin flechas dibujadas, sin clics, sin errores).
   if (entry.kind !== "link" && entry.kind !== "action") {
     return <ListRow {...text} />;
   }
 
-  // Host 标了 enabled = false 的入口（如实验功能关闭时的小手机）只展示，不进子页。
+  // Host Oferta enabled = false La entrada (como el pequeño teléfono celular cuando la función experimental está apagada) solo se muestra y no ingresa a la subpágina.
   if (entry.enabled === false) {
     return <ListRow {...text} />;
   }

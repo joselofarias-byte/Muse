@@ -10,9 +10,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v2.6.0: show_card 工具参数解析 —— 内联卡片渲染的入口。
+ * v2.6.0: show_card Análisis de parámetros de herramienta. —— Entrada al renderizado de tarjetas en línea.
  *
- * 覆盖:正常 HTML/SVG、嵌套 data、转义 JSON 字符串、缺 code 回落。
+ * Portada:HTML/SVG normal, datos anidados, cadena JSON escapada, falta código de reserva.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -38,7 +38,7 @@ class ShowCardArgsTest {
 
     @Test
     fun `decodes escaped json string code`() {
-        // 模型常把 HTML 按转义 JSON 字符串传入;JSONObject 解码后应是原文。
+        // Los modelos suelen pasar HTML como cadenas JSON con escape.;JSONObject Debe ser el texto original después de la decodificación.
         val spec = parseShowCardArgs("""{"code":"<div class=\"a\">x</div>"}""")
         assertEquals("<div class=\"a\">x</div>", spec!!.code)
     }
@@ -58,16 +58,16 @@ class ShowCardArgsTest {
         assertNull(parseShowCardArgs("not json"))
     }
 
-    // ── v2.6.7: 流式半成品（刚生成时就要显示卡片）──────────────────────
+    // ── v2.6.7: Streaming de producto semiacabado (la tarjeta se mostrará cuando se acabe de generar)──────────────────────
 
     /**
-     * 实测痛点：工具参数是流式一段段拼的，完整 JSON 要到结束时才成立。
-     * 旧实现在流式期间恒返回 null → 先显示成工具卡，退出重进才变卡片。
-     * 现在应该能从残缺 JSON 里把已到的 code 抽出来，让卡片边流边长。
+     * Puntos débiles medidos: los parámetros de la herramienta se ensamblan pieza por pieza en un formato de transmisión y el JSON completo no se establece hasta el final.
+     * La implementación anterior siempre regresaba durante la transmisión. null → Primero se muestra como una tarjeta de herramientas y luego cambia a una tarjeta después de salir y volver a ingresar.
+     * Ahora debería ser posible extraer el código llegado del JSON incompleto, permitiendo que la tarjeta crezca a medida que fluye.
      */
     @Test
     fun `partial json still yields code for live rendering`() {
-        // 字符串没闭合、外层对象也没闭合
+        // La cadena no está cerrada y el objeto exterior tampoco está cerrado.
         val spec = parseShowCardArgs("""{"title":"t","code":"<div>hello""")
         assertTrue(spec != null)
         assertEquals("<div>hello", spec!!.code)

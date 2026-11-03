@@ -11,13 +11,13 @@ import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
 /**
- * 主动消息通知「这次不用」按钮的接收器。
+ * Un mensaje activo que notifica al receptor sobre el botón "Esta vez no".
  *
- * 只在应用内可达：用 [androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED] 动态注册，
- * 广播由本应用自己的 PendingIntent 发出，别的应用没有理由也不需要叫得动它。
+ * Solo accesible dentro de la aplicación: usar [androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED] registro dinámico,
+ * La transmisión la envía el PendingIntent de la propia aplicación y no hay motivo ni necesidad de que otras aplicaciones la llamen.
  *
- * 动作只做一件事：把这条主动消息在结果账里标成 DISMISSED（用户明确说「这条不该发」），
- * 顺带收起通知。不改设置、不暂停后面的轮次 —— 一条不讨喜不等于让人闭嘴。
+ * La acción solo hace una cosa: marcar este mensaje activo como DESMITIDO en la cuenta de resultados (el usuario dijo explícitamente "este mensaje no debe enviarse"),
+ * Por cierto, guarda las notificaciones. No cambie la configuración ni suspenda rondas posteriores —— Ser poco halagador no significa callarse.
  */
 class ProactiveDismissReceiver : BroadcastReceiver() {
 
@@ -27,20 +27,20 @@ class ProactiveDismissReceiver : BroadcastReceiver() {
             extra = intent.getStringExtra(ProactiveDismissProtocol.EXTRA_OUTCOME_ID),
         ) ?: return
 
-        // 点按钮不会自动收起通知（autoCancel 只管点击通知主体），这里手动收。
+        // Al hacer clic en el botón no se cerrará automáticamente la notificación (autoCancel Simplemente haga clic en el cuerpo de la notificación) y recójalo manualmente aquí.
         val notifId = intent.getIntExtra(ProactiveDismissProtocol.EXTRA_NOTIFICATION_ID, 0)
         if (notifId != 0) {
             resultOf { NotificationManagerCompat.from(context).cancel(notifId) }
-                .onError { msg, _ -> Logger.w(TAG, "收起通知失败: $msg") }
+                .onError { msg, _ -> Logger.w(TAG, "No se pudo cerrar la notificación: $msg") }
         }
 
         val scheduler = resultOf { GlobalContext.get().get<ProactiveScheduler>() }.getOrNull()
         if (scheduler == null) {
-            // 依赖没就绪（进程被重启到一半）时宁可丢这一次表态，也不在主线程上做 I/O。
-            Logger.w(TAG, "收到「这次不用」，但调度器未就绪，本次忽略")
+            // Cuando la dependencia no está lista (el proceso se reinicia a mitad de camino), es mejor perder esta declaración que realizar E/S en el hilo principal.
+            Logger.w(TAG, "Se recibió \"No utilizado esta vez\", pero el programador no está listo, por lo que esta vez se ignorará.")
             return
         }
-        // onReceive 只有十秒左右的返回时限，落库交给应用级 scope，别把广播悬在这里。
+        // onReceive Sólo hay un límite de tiempo de regreso de unos diez segundos. Deje la biblioteca en el ámbito del nivel de aplicación. No cuelgues la retransmisión aquí.
         val scope = resultOf { GlobalContext.get().get<CoroutineScope>() }.getOrNull() ?: return
         scope.launch { scheduler.onProactiveDismissed(outcomeId) }
     }

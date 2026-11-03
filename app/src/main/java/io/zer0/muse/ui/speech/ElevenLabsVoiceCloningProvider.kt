@@ -21,20 +21,20 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * P2-9: ElevenLabs Voice Cloning Provider 实现。
+ * P2-9: ElevenLabs Voice Cloning Provider Darse cuenta.
  *
- * 端点( baseUrl = https://api.elevenlabs.io/v1 ):
- *  - POST   /voices/add          — multipart 上传样本音频 + name,返回 voice_id
- *  - GET    /voices              — 列出所有 voice(含克隆 + 预设)
- *  - DELETE /voices/{voice_id}   — 删除指定 voice
+ * punto final( baseUrl = https://api.elevenlabs.io/v1 ):
+ *  - POST   /voices/add          — multipart Subir audio de muestra + name,Regresar voice_id
+ *  - GET    /voices              — enumerar todo voice(Contiene clon + preset)
+ *  - DELETE /voices/{voice_id}   — eliminar especificado voice
  *
- * 认证:HTTP 头 `xi-api-key: {apiKey}`。
+ * Certificación:HTTP cabeza `xi-api-key: {apiKey}`.
  *
- * [apiKey] 由 UI 层在每次操作前设置(从 MediaConfig.ttsApiKey 透传),
- * 与 [CloudTtsService] 的 ElevenLabs TTS 路径共用同一 API Key。
+ * [apiKey] Establecido por la capa UI antes de cada operación(Paso a través de MediaConfig.ttsApiKey),
+ * con [CloudTtsService] Las rutas TTS de ElevenLabs comparten la misma clave API.
  *
- * 超时:复用注入的 OkHttpClient,但通过 [newBuilder] 强制覆盖为 30s 三项超时,
- * 满足"API 调用必须有超时(30 秒)"约束(克隆上传不应沿用 chat client 5min 读超时)。
+ * tiempo de espera:Reutilización inyectada OkHttpClient,pero a través de [newBuilder] Forzar anulación a tres tiempos de espera de 30 segundos,
+ * satisfacer"API La llamada debe tener un tiempo de espera.(30 segundos)"restricción(La carga del clon no debe heredar el cliente de chat. Tiempo de espera de lectura de 5 minutos.).
  */
 class ElevenLabsVoiceCloningProvider(
     private val client: OkHttpClient,
@@ -43,30 +43,30 @@ class ElevenLabsVoiceCloningProvider(
     companion object {
         private const val TAG = "ElevenLabsVoiceClone"
 
-        /** ElevenLabs Voice Cloning API 基址。 */
+        /** ElevenLabs Voice Cloning API dirección base. */
         private const val BASE_URL = "https://api.elevenlabs.io/v1"
 
-        /** 克隆语音的 mime 类型(ElevenLabs 接受 mp3/wav/m4a 等)。 */
+        /** tipo mimo de discurso clonado(ElevenLabs Acepta mp3/wav/m4a, etc.). */
         private const val SAMPLE_MIME = "audio/mpeg"
 
-        /** 上传样本音频时的文件名(ElevenLabs 仅依赖二进制内容,文件名占位即可)。 */
+        /** Nombre del archivo al cargar audio de muestra(ElevenLabs Confíe únicamente en contenido binario,Simplemente coloque un nombre de archivo). */
         private const val SAMPLE_FILENAME = "sample.mp3"
 
-        /** 强制 30 秒超时(满足任务约束)。 */
+        /** Forzar un tiempo de espera de 30 segundos(cumplir con las limitaciones de la tarea). */
         private const val TIMEOUT_SECONDS = 30L
     }
 
-    /** ElevenLabs provider 唯一标识。 */
+    /** ElevenLabs provider Identificador único. */
     override val providerId: String = "elevenlabs"
 
     /**
-     * ElevenLabs API Key — 由 UI 在调用前设置(从 MediaConfig.ttsApiKey 透传)。
-     * 用 @Volatile 保证跨线程可见性(协程在 IO 调度器上执行)。
+     * ElevenLabs API Key — Establecido por la interfaz de usuario antes de llamar(Paso a través de MediaConfig.ttsApiKey).
+     * Utilice @Volatile para garantizar la visibilidad entre subprocesos(Las corrutinas se ejecutan en el programador IO.).
      */
     @Volatile
     var apiKey: String = ""
 
-    /** 带有 30s 超时的 client(每次调用按需创建,继承基础 client 的代理 / 拦截器配置)。 */
+    /** con tiempo de espera de 30 segundos client(Crear bajo demanda para cada llamada,Heredar la configuración de proxy/interceptor del cliente base). */
     private val timedClient: OkHttpClient by lazy {
         client.newBuilder()
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -76,13 +76,13 @@ class ElevenLabsVoiceCloningProvider(
     }
 
     /**
-     * 创建克隆语音。
+     * Crea una voz clonada.
      *
-     * 请求:multipart/form-data
-     *  - `name`  text 字段
-     *  - `files` audio/mpeg 二进制(由 base64 解码)
+     * Solicitar:multipart/form-data
+     *  - `name`  text campo
+     *  - `files` audio/mpeg binario(Decodificado por base64)
      *
-     * 响应:`{"voice_id": "..."}` — 返回新建 voice id。
+     * respuesta:`{"voice_id": "..."}` — Devuelve la nueva identificación de voz.
      */
     override suspend fun cloneVoice(name: String, sampleAudioBase64: String): Result<String> =
         withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -129,10 +129,10 @@ class ElevenLabsVoiceCloningProvider(
         }
 
     /**
-     * 列出所有 voice,过滤 category == "cloned" 的项(ElevenLabs 同时返回预设 voice)。
+     * enumerar todo voice,filtrar category == "cloned" artículos(ElevenLabs También vuelve al valor predeterminado. voice).
      *
-     * 响应:`{"voices": [{"voice_id": "...", "name": "...", "category": "...", "created_at": "..."}]}`
-     * `created_at` 为 ISO 8601 字符串(如 "2024-01-15T12:34:56.789Z"),解析失败时回退 0L。
+     * respuesta:`{"voices": [{"voice_id": "...", "name": "...", "category": "...", "created_at": "..."}]}`
+     * `created_at` como una cadena ISO 8601(Como por ejemplo "2024-01-15T12:34:56.789Z"),Regrese a 0L cuando falla el análisis.
      */
     override suspend fun listClonedVoices(): Result<List<ClonedVoice>> = withContext(kotlinx.coroutines.Dispatchers.IO) {
         if (apiKey.isBlank()) {
@@ -176,10 +176,10 @@ class ElevenLabsVoiceCloningProvider(
     }
 
     /**
-     * 删除指定 voice。
+     * Elimina la voz especificada.
      *
      * DELETE /voices/{voice_id}
-     * 成功返回 204 No Content(无响应体)。
+     * Regresar exitosamente 204 No Content(cuerpo que no responde).
      */
     override suspend fun deleteVoice(voiceId: String): Result<Unit> = withContext(kotlinx.coroutines.Dispatchers.IO) {
         if (apiKey.isBlank()) {
@@ -205,9 +205,9 @@ class ElevenLabsVoiceCloningProvider(
     }
 
     /**
-     * 解析 ISO 8601 时间字符串为毫秒时间戳。
+     * Analiza una cadena de tiempo ISO 8601 en una marca de tiempo de milisegundos.
      *
-     * ElevenLabs 返回如 "2024-01-15T12:34:56.789Z" 的时间,失败时返回 0L(不阻塞列表渲染)。
+     * ElevenLabs Regresar como "2024-01-15T12:34:56.789Z" tiempo,Retorno del fracaso 0L(No bloquea la representación de la lista).
      */
     private fun parseIso8601ToMillis(input: String?): Long {
         if (input.isNullOrBlank()) return 0L
@@ -224,7 +224,7 @@ class ElevenLabsVoiceCloningProvider(
             try {
                 return sdf.parse(input)?.time ?: continue
             } catch (_: Exception) {
-                // 尝试下一个格式
+                // prueba el siguiente formato
             }
         }
         return 0L

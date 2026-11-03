@@ -3,15 +3,15 @@ import "./primitives.css";
 export interface SwitchProps {
   readonly checked: boolean;
   readonly onChange: (next: boolean) => void;
-  /** 无障碍名称；不传则要求使用方在外部提供文字标签。 */
+  /** Nombre de accesibilidad; omitirlo requiere que el usuario proporcione una etiqueta de texto externa. */
   readonly label?: string;
   readonly disabled?: boolean;
 }
 
 /**
- * 开关。几何与观感对齐 MuseSwitch：轨道 51×31、拇指 27、内缩 2dp（触摸区 48dp），
- * 开启走 primary/onPrimary，关闭走 lerp(surfaceVariant, onSurface, 12%)，
- * 拇指位移与轨道换色同用 tactile(200ms) easeOutCubic。
+ * cambiar. Geometría y alineación de apariencia MuseSwitch: Pistas 51×31, pulgar 27, retraído 2dp (área táctil 48dp),
+ * Activar primario/onPrimary y apagar lerp(surfaceVariant, onSurface, 12%),
+ * El desplazamiento del pulgar y el cambio de color de la pista se utilizan juntos. tactile(200ms) easeOutCubic.
  */
 export function Switch({ checked, onChange, label, disabled = false }: SwitchProps) {
   const classes = ["muse-switch"];

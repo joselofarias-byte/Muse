@@ -8,30 +8,30 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Upsert
 
-/** 一条主动消息的最终去向。 */
+/** El destino final de un mensaje no solicitado. */
 enum class OutcomeState {
-    /** 发出去了，还没有任何反应。 */
+    /** Enviado, aún no hay respuesta. */
     PENDING,
 
-    /** 用户点开了通知。 */
+    /** El usuario hizo clic en la notificación. */
     OPENED,
 
-    /** 用户回复了。最强的正反馈。 */
+    /** El usuario respondió. Los comentarios positivos más fuertes. */
     REPLIED,
 
-    /** 用户把通知划掉了。弱负反馈。 */
+    /** El usuario tachó la notificación. Comentarios negativos débiles. */
     DISMISSED,
 
-    /** 超时无任何动作。 */
+    /** Ninguna acción después del tiempo de espera. */
     EXPIRED,
 }
 
 /**
- * 主动消息的结果账 —— 旧实现完全缺失的一层。
+ * Cuenta de resultados de mensajes activos —— Una capa que faltaba por completo en la implementación anterior.
  *
- * 发完就结束的系统学不到任何东西：它不知道用户是欢迎还是厌烦，
- * 只能靠调参数猜。这张表让「用户点开没有 / 回复没有 / 划掉没有」
- * 成为可学习的信号，驱动关系亲密度与各类型的生成倾向。
+ * Un sistema que envía y finaliza no aprende nada: no sabe si el usuario es acogedor o está aburrido.
+ * Sólo puedes adivinar ajustando los parámetros. Esta tabla permite "a los usuarios hacer clic en ella/responder/tacharla"
+ * Se convierten en señales aprendibles que impulsan la intimidad en las relaciones y varios tipos de tendencias generativas.
  */
 @kotlinx.serialization.Serializable
 @Entity(
@@ -44,19 +44,19 @@ enum class OutcomeState {
 )
 data class ProactiveOutcomeEntity(
     @PrimaryKey val id: String,
-    /** 对应哪条牵挂。可能为空（用户约定类以外的历史数据）。 */
+    /** A qué preocupación corresponde. Puede estar vacío (datos históricos distintos de las clases acordadas por el usuario). */
     @ColumnInfo(defaultValue = "NULL") val thoughtId: String? = null,
-    /** 落库后的消息 id，用于「回复检测」反查。 */
+    /** El ID del mensaje después de descartarse se utiliza para la verificación inversa de \"detección de respuesta\". */
     @ColumnInfo(defaultValue = "NULL") val messageId: String? = null,
     @ColumnInfo(defaultValue = "") val assistantId: String = "",
     @ColumnInfo(defaultValue = "") val sessionId: String = "",
-    /** 记下当时的 kind，供按类型统计反馈。牵挂行被清理后统计还能继续。 */
+    /** Anote el tipo en ese momento para obtener comentarios estadísticos por tipo. Las estadísticas pueden continuar después de borrar las filas en cuestión. */
     @ColumnInfo(defaultValue = "FOLLOW_UP") val kind: String = ThoughtKind.FOLLOW_UP.name,
     @ColumnInfo(defaultValue = "0") val sentAt: Long = 0L,
     @ColumnInfo(defaultValue = "NULL") val openedAt: Long? = null,
     @ColumnInfo(defaultValue = "NULL") val repliedAt: Long? = null,
     @ColumnInfo(defaultValue = "NULL") val dismissedAt: Long? = null,
-    /** [OutcomeState] 的 name。 */
+    /** [OutcomeState] nombre. */
     @ColumnInfo(defaultValue = "PENDING") val state: String = OutcomeState.PENDING.name,
 ) {
     fun stateEnum(): OutcomeState =
@@ -73,10 +73,10 @@ interface ProactiveOutcomeDao {
     suspend fun getById(id: String): ProactiveOutcomeEntity?
 
     /**
-     * 找最近一条还在等反应的消息。
+     * Busque el mensaje más reciente que aún está esperando respuesta.
      *
-     * 用户回复时用它反查「这条回复是在回应哪条主动消息」：
-     * 取该会话内 sentAt 最近且 state 为 PENDING/OPENED 的一条。
+     * Cuando los usuarios respondan, utilícelo para verificar "a qué mensaje activo responde esta respuesta":
+     * Obtenga el sentAt más reciente de la sesión y el estado es PENDIENTE/ABIERTO.
      */
     @Query(
         "SELECT * FROM proactive_outcome WHERE sessionId = :sessionId " +
@@ -84,21 +84,21 @@ interface ProactiveOutcomeDao {
     )
     suspend fun findPendingInSession(sessionId: String): ProactiveOutcomeEntity?
 
-    /** 某助手最近若干条结果，供设置页展示与统计。 */
+    /** Se proporcionan varios resultados recientes de un asistente para visualización y estadísticas en la página de configuración. */
     @Query(
         "SELECT * FROM proactive_outcome WHERE assistantId = :assistantId " +
             "ORDER BY sentAt DESC LIMIT :limit",
     )
     suspend fun getRecent(assistantId: String, limit: Int): List<ProactiveOutcomeEntity>
 
-    /** 统计某个时间点之后各状态的数量，驱动 intimacy 更新。 */
+    /** Cuente el número de cada estado después de un determinado momento para generar actualizaciones de intimidad. */
     @Query(
         "SELECT COUNT(*) FROM proactive_outcome WHERE assistantId = :assistantId " +
             "AND state = :state AND sentAt >= :since",
     )
     suspend fun countStateSince(assistantId: String, state: String, since: Long): Int
 
-    /** 某类型的历史反馈分布，用于「用户对这类从来不感冒」的判定。 */
+    /** Se utiliza un cierto tipo de distribución histórica de comentarios para determinar si \"los usuarios nunca están interesados ​​en este tipo de comentarios\". */
     @Query(
         "SELECT COUNT(*) FROM proactive_outcome WHERE assistantId = :assistantId " +
             "AND kind = :kind AND state = :state",
@@ -106,18 +106,18 @@ interface ProactiveOutcomeDao {
     suspend fun countKindState(assistantId: String, kind: String, state: String): Int
 
     /**
-     * 找出仍然没有反应、而且发出时间已经早于给定时间点的记录。
+     * Encuentre registros que aún no responden y que se enviaron antes de un momento determinado.
      *
-     * 巡检用它把「发出去一天都没人理」的主动消息收尾成 EXPIRED。
-     * 不用一条 UPDATE 直接改状态，是因为收尾同时要按结果调整亲密度，
-     * 而那套判定在 [ProactiveOutcomeRepository.resolve] 里。
+     * La inspección lo utiliza para finalizar mensajes no solicitados que se "envían e ignoran durante un día" en EXPIRED.
+     * No es necesario cambiar directamente el estado con una ACTUALIZACIÓN porque el nivel de intimidad debe ajustarse según el resultado final.
+     * Y ese conjunto de juicios es [ProactiveOutcomeRepository.resolve] adentro.
      */
     @Query(
         "SELECT * FROM proactive_outcome WHERE state = 'PENDING' AND sentAt <= :before",
     )
     suspend fun listPendingBefore(before: Long): List<ProactiveOutcomeEntity>
 
-    /** 把超时未响应的记录收尾。 */
+    /** Finalice los registros cuyo tiempo de espera se agotó y no respondieron. */
     @Query(
         "UPDATE proactive_outcome SET state = 'EXPIRED' " +
             "WHERE state = 'PENDING' AND sentAt <= :before",
@@ -127,40 +127,40 @@ interface ProactiveOutcomeDao {
     @Query("DELETE FROM proactive_outcome WHERE sentAt < :before")
     suspend fun deleteBefore(before: Long): Int
 
-    /** 全量，备份导出用。 */
+    /** Volumen completo, para copia de seguridad y exportación. */
     @Query("SELECT * FROM proactive_outcome")
     suspend fun getAll(): List<ProactiveOutcomeEntity>
 
-    /** 备份恢复前清空。 */
+    /** Borre la copia de seguridad antes de restaurar. */
     @Query("DELETE FROM proactive_outcome")
     suspend fun deleteAll()
 }
 
 /**
- * 关系亲密度 —— 每个助手一份。
+ * relación de intimidad —— Una copia para cada asistente.
  *
- * 这是「越用越懂事」的载体：预算的地板与天花板由用户选的等级决定，
- * 而中间浮动的那一段由这里的学习结果决定。
+ * Este es el mensaje de "cuanto más lo uses, mejor lo entenderás": el límite mínimo y el límite presupuestario están determinados por el grado seleccionado por el usuario.
+ * La sección flotante en el medio está determinada por los resultados del aprendizaje aquí.
  */
 @kotlinx.serialization.Serializable
 @Entity(tableName = "proactive_relation")
 data class ProactiveRelationEntity(
     @PrimaryKey val assistantId: String,
-    /** 0..1，初值 0.15（新用户很保守）。 */
+    /** 0..1, el valor inicial es 0,15 (los nuevos usuarios son muy conservadores). */
     @ColumnInfo(defaultValue = "0.15") val intimacy: Float = 0.15f,
-    /** 冷却截止时间戳。用户说「最近别烦我」时写入。 */
+    /** Marca de tiempo de vencimiento del enfriamiento. Escrito cuando el usuario dice \"No me molestes últimamente\". */
     @ColumnInfo(defaultValue = "0") val cooldownUntil: Long = 0L,
-    /** 用户选的主动等级（[ProactiveIntensity] 的 name）。 */
+    /** El nivel activo seleccionado por el usuario ([ProactiveIntensity] nombre). */
     @ColumnInfo(defaultValue = "STANDARD") val intensity: String = ProactiveIntensity.DEFAULT.name,
-    /** 预算记账所属日期（yyyy-MM-dd），跨日时清零当天计数。 */
+    /** Fecha de contabilidad presupuestaria (yyyy-MM-dd), borre el recuento de días actuales al cruzar días. */
     @ColumnInfo(defaultValue = "") val budgetDate: String = "",
-    /** 当天已消耗条数。 */
+    /** La cantidad de artículos consumidos ese día. */
     @ColumnInfo(defaultValue = "0") val spentToday: Int = 0,
     /**
-     * 当天用户主动互动回补的额度。
+     * La cantidad con la que los usuarios interactúan activamente para reponer la cantidad ese día.
      *
-     * 已不再参与额度计算（每日条数现在完全由 [ProactiveIntensity.cap] 决定），
-     * 列保留仅为旧库结构兼容。
+     * Ya no participa en el cálculo de la cuota (el número diario de barras ahora está enteramente determinado por [ProactiveIntensity.cap] decisión),
+     * Las columnas están reservadas únicamente para compatibilidad con estructuras de bibliotecas más antiguas.
      */
     @ColumnInfo(defaultValue = "0") val earnedToday: Float = 0f,
 ) {

@@ -69,15 +69,15 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 /**
- * v1.0.31: 翻译页按新设计重写。
+ * v1.0.31: La página de traducción ha sido reescrita con un nuevo diseño.
  *
- * 主要变化:
- *  - 顶部栏大标题居中
- *  - 语言选择器改为左右两个大胶囊,小标签 + 大语言名,中间交换按钮
- *  - 原文输入卡片:绿色"源语言"标签 + 字数统计 + 圆角输入区 + 底部操作栏
- *  - 译文结果卡片:绿色"目标语言"标签 + 译文文本 + 复制/朗读/交换/发送到会话
- *  - 翻译历史:标题行带时钟图标与清空按钮,记录项按设计使用"原/译"双行 + 语言流向 chip + 时间 + 收藏星标
- *  - 保留批量翻译、自定义风格、术语表、OCR 拍照翻译等能力,收纳在"更多"菜单中
+ * Principales cambios:
+ *  - Centrar el título de la barra superior
+ *  - El selector de idioma se cambia a dos grandes cápsulas a la izquierda y a la derecha.,Etiqueta pequeña + nombre de idioma grande,botón de intercambio central
+ *  - Tarjeta de entrada de texto original:verde"idioma de origen"Etiqueta + recuento de palabras + área de entrada redondeada + barra de operación inferior
+ *  - Tarjeta de resultados de traducción:verde"idioma de destino"etiqueta + texto de traducción + copiar/leer en voz alta/Intercambio/Enviar a conversación
+ *  - Historial de traducción:Fila de título con icono de reloj y botón de borrar,Los elementos de registro se utilizan según lo diseñado."Originales/traducir"Línea doble + chip de flujo de idioma + hora + estrella favorita
+ *  - Mantenga traducciones por lotes, estilos personalizados, glosarios,OCR Capacidades como fotografía y traducción.,almacenado en"Más"en el menú
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,10 +92,10 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
     var showCustomStyleDialog by remember { mutableStateOf(false) }
     var showGlossaryDialog by remember { mutableStateOf(false) }
     var ocrRecognizing by remember { mutableStateOf(false) }
-    // §11-6: 翻译历史“仅看收藏”筛选。用 rememberSaveable，旋转/切后台回来不丢。
+    // §11-6: Historial de traducción“Ver solo colecciones”Filtrar. Usar recordarGuardar, rotar/Corta el fondo y vuelve sin perderlo.
     var showFavoritesOnly by rememberSaveable { mutableStateOf(false) }
 
-    // 错误消息 → Toast 提示(单次消费,避免重复弹)
+    // mensaje de error → Toast Consejos(Consumo único,Evite los bombardeos repetidos)
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let { msg ->
             MuseToast.show(context.getString(R.string.translate_page_error_failed, msg))
@@ -103,7 +103,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         }
     }
 
-    // OCR 相册选择
+    // OCR Selección de álbum
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
@@ -142,7 +142,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
                 .padding(horizontal = MusePaddings.screen, vertical = MusePaddings.contentGap),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.sectionGap),
         ) {
-            // ── 源/目标语言选择条 ──
+            // ── fuente/Barra de selección de idioma de destino ──
             LanguageSelectorBar(
                 sourceLanguage = state.sourceLanguage,
                 targetLanguage = state.targetLanguage,
@@ -152,7 +152,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
                 enabled = !state.translating,
             )
 
-            // ── 原文输入区 ──
+            // ── Área de entrada de texto original ──
             SourceInputCard(
                 text = state.inputText,
                 translating = state.translating,
@@ -183,11 +183,11 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
                 onBatch = { showBatchDialog = true },
                 onGlossary = { showGlossaryDialog = true },
                 onStyle = { showStyleDialog = true },
-                // v2.6.7: 停止朗读 —— stopSpeaking 之前零调用，长文念起来停不下
+                // v2.6.7: deja de leer —— stopSpeaking Antes no había ninguna llamada y no podía dejar de leer un artículo extenso.
                 onStopSpeaking = { viewModel.stopSpeaking() },
             )
 
-            // ── 译文结果区 ──
+            // ── Área de resultados de traducción ──
             TranslationResultCard(
                 translatedText = state.translatedText,
                 translating = state.translating,
@@ -210,16 +210,16 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
                 },
             )
 
-            // ── 翻译历史区 ──
-            // §11-6: 收藏筛选在本地过，不改 state.history（“全部”还要能回得去），
-            // 与朋友圈 favoritesOnly 同型。
+            // ── Área de historial de traducción ──
+            // §11-6: El filtrado de la colección se realiza localmente y state.history() no se modifica.“Todos”Aún tienes que poder regresar),
+            // Mismo tipo que favoritosSolo en Momentos.
             TranslateHistorySection(
                 history = TranslateViewModel.historyForDisplay(
                     history = state.history,
                     favorites = state.favorites,
                     favoritesOnly = showFavoritesOnly,
                 ),
-                // 开关按完整历史判断是否显示（收藏为空时仍能切回全部）
+                // El interruptor determina si se mostrará en función del historial completo (aún puedes volver a cambiar a todo cuando la colección esté vacía)
                 totalHistoryCount = state.history.size,
                 favoritesOnly = showFavoritesOnly,
                 onFavoritesOnlyChange = { showFavoritesOnly = it },
@@ -246,7 +246,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         }
     }
 
-    // 清空历史二次确认弹窗
+    // Ventana emergente de confirmación secundaria de borrar historial
     if (showClearHistoryDialog) {
         MuseDialog(
             onDismissRequest = { showClearHistoryDialog = false },
@@ -270,7 +270,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         )
     }
 
-    // 翻译风格选择弹窗
+    // Ventana emergente de selección de estilo de traducción
     if (showStyleDialog) {
         StylePickerDialog(
             currentStyle = state.translationStyle,
@@ -287,7 +287,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         )
     }
 
-    // 批量翻译对话框
+    // Cuadro de diálogo de traducción por lotes
     if (showBatchDialog) {
         BatchTranslateDialog(
             translating = state.batchTranslating,
@@ -309,7 +309,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         )
     }
 
-    // 自定义风格管理对话框
+    // Cuadro de diálogo de gestión de estilos personalizados
     if (showCustomStyleDialog) {
         CustomStyleDialog(
             customStyles = state.customStyles,
@@ -330,7 +330,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
         )
     }
 
-    // 术语表管理对话框
+    // Diálogo de gestión del glosario
     if (showGlossaryDialog) {
         GlossaryDialog(
             glossary = state.glossary,
@@ -349,7 +349,7 @@ fun TranslateScreen(onBack: () -> Unit, onSendToNewChat: (String) -> Unit = {}, 
 }
 
 /**
- * 翻译页顶栏 — 大标题居中 + 返回。
+ * Traducir barra superior — Título grande centrado + retorno.
  */
 @Composable
 private fun TranslateTopBar(onBack: () -> Unit) {
@@ -361,7 +361,7 @@ private fun TranslateTopBar(onBack: () -> Unit) {
 }
 
 /**
- * 顶部语言选择条 — 左右两个大胶囊,中间交换按钮。
+ * Barra de selección de idioma superior — Dos cápsulas grandes a izquierda y derecha.,Botón de intercambio en el medio.
  */
 @Composable
 private fun LanguageSelectorBar(
@@ -444,7 +444,7 @@ private fun LanguageSelectorBar(
 }
 
 /**
- * 语言选择胶囊按钮 — 小标签 + 大语言名 + 下拉箭头。
+ * Botón de cápsula de selección de idioma — Etiqueta pequeña + nombre de idioma grande + flecha desplegable.
  */
 @Composable
 private fun LanguageSelectorButton(label: String, value: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -488,7 +488,7 @@ private fun LanguageSelectorButton(label: String, value: String, onClick: () -> 
 }
 
 /**
- * 语言选择弹窗 — 复用 MuseDialog 保持整体风格。
+ * Ventana emergente de selección de idioma — Reutilice MuseDialog para mantener el estilo general.
  */
 @Composable
 private fun LanguagePickerDialog(
@@ -524,8 +524,8 @@ private fun LanguagePickerDialog(
                                 MaterialTheme.colorScheme.onSurface
                             },
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                            // LAYOUT-01: 选项名取剩余宽度 + 限行(语言名可能较长),
-                            // 防止被右侧勾选图标挤成一列。
+                            // LAYOUT-01: El nombre de la opción es el ancho restante + límite de línea.(El nombre del idioma puede ser más largo.),
+                            // Evite que el ícono de verificación a la derecha lo apriete en una columna.
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -550,9 +550,9 @@ private fun LanguagePickerDialog(
 }
 
 /**
- * 原文输入大卡片 — 按设计图展示源语言标签、字数、输入区与底部操作栏。
+ * Tarjeta de entrada de texto original — Muestre la etiqueta del idioma de origen, el recuento de palabras, el área de entrada y la barra de operación inferior de acuerdo con el dibujo de diseño.
  *
- * 批量翻译、术语表、翻译风格、OCR 等高级能力收纳在"更多"菜单中。
+ * Traducción por lotes, glosario, estilo de traducción,OCR Espere a que las habilidades avanzadas se almacenen en"Más"en el menú.
  */
 @Composable
 private fun SourceInputCard(
@@ -569,7 +569,7 @@ private fun SourceInputCard(
     onBatch: () -> Unit,
     onGlossary: () -> Unit,
     onStyle: () -> Unit,
-    /** v2.6.7: 停止朗读（由外层传入，本组件拿不到 viewModel）。 */
+    /** v2.6.7: Deje de leer (pasado desde la capa exterior, este componente no puede obtener el modelo de vista). */
     onStopSpeaking: () -> Unit = {},
 ) {
     var expandedMore by remember { mutableStateOf(false) }
@@ -583,13 +583,13 @@ private fun SourceInputCard(
             modifier = Modifier.padding(MusePaddings.cardInner),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // 标题行：源语言标签 + 字数
+            // Línea de título: etiqueta del idioma de origen + recuento de palabras
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // LAYOUT-01: 标题取剩余宽度 + 限行,字数标注是定宽短文本,限 1 行。
+                // LAYOUT-01: El título toma el ancho restante + límite de línea.,La anotación de recuento de palabras es un texto breve de ancho fijo.,Límite de 1 línea.
                 Text(
                     text = stringResource(R.string.translate_page_source_language),
                     style = MaterialTheme.typography.labelMedium,
@@ -607,7 +607,7 @@ private fun SourceInputCard(
                 )
             }
 
-            // 输入框
+            // Cuadro de entrada
             MuseTextField(
                 value = text,
                 onValueChange = onTextChange,
@@ -618,7 +618,7 @@ private fun SourceInputCard(
                 enabled = !translating,
             )
 
-            // OCR 识别中提示
+            // OCR Aviso de reconocimiento
             AnimatedVisibility(
                 visible = ocrRecognizing,
                 enter = MuseMotion.fadeEnter(),
@@ -644,7 +644,7 @@ private fun SourceInputCard(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
             )
 
-            // 底部工具栏 + 主翻译按钮
+            // Barra de herramientas inferior + botón de traducción principal
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -689,7 +689,7 @@ private fun SourceInputCard(
                         TranslateMoreMenu(
                             expanded = expandedMore,
                             onDismiss = { expandedMore = false },
-                            // v2.6.7: 停止朗读（stopSpeaking 之前零调用）
+                            // v2.6.7: Deja de leer (stopSpeaking llamada nula antes)
                             onStopSpeaking = {
                                 expandedMore = false
                                 onStopSpeaking()
@@ -720,7 +720,7 @@ private fun SourceInputCard(
 }
 
 /**
- * "更多"下拉菜单 — 批量翻译、术语表、翻译风格。
+ * "Más"menú desplegable — Traducción por lotes, glosario, estilo de traducción.
  */
 @Composable
 private fun TranslateMoreMenu(
@@ -729,7 +729,7 @@ private fun TranslateMoreMenu(
     onBatch: () -> Unit,
     onGlossary: () -> Unit,
     onStyle: () -> Unit,
-    /** v2.6.7: 停止正在进行的朗读。 */
+    /** v2.6.7: Detener la lectura en curso. */
     onStopSpeaking: (() -> Unit)? = null,
 ) {
     MuseAnchoredMenu(
@@ -769,7 +769,7 @@ private fun TranslateMoreMenu(
             },
             headlineContent = { Text(stringResource(R.string.translate_page_glossary)) },
         )
-        // v2.6.7: 停止朗读 —— stopSpeaking 之前零调用，念长文时停不下来
+        // v2.6.7: deja de leer —— stopSpeaking No recibí ninguna llamada antes y no podía dejar de leer un artículo extenso.
         if (onStopSpeaking != null) {
             MuseListItem(
                 onClick = onStopSpeaking,
@@ -787,7 +787,7 @@ private fun TranslateMoreMenu(
 }
 
 /**
- * 主翻译按钮 — 胶囊主色按钮。
+ * Botón principal de traducción — Botón de color principal de la cápsula.
  */
 @Composable
 private fun TranslateButton(onClick: () -> Unit, enabled: Boolean) {
@@ -801,7 +801,7 @@ private fun TranslateButton(onClick: () -> Unit, enabled: Boolean) {
 }
 
 /**
- * 译文结果大卡片 — 按设计图展示目标语言标签、译文与操作栏。
+ * Tarjeta de resultados de traducción — Muestre etiquetas, traducciones y barras de acción del idioma de destino según lo diseñado.
  */
 @Composable
 private fun TranslationResultCard(
@@ -892,7 +892,7 @@ private fun TranslationResultCard(
 }
 
 /**
- * "发送到会话" 按钮 — 胶囊形状,主色高亮。
+ * "Enviar a conversación" botón — forma de cápsula,El color principal está resaltado.
  */
 @Composable
 private fun SendToChatButton(onClick: () -> Unit, enabled: Boolean) {
@@ -931,7 +931,7 @@ private fun SendToChatButton(onClick: () -> Unit, enabled: Boolean) {
 }
 
 /**
- * 统一操作图标按钮 — 小号、无边框、禁用状态变灰。
+ * Botón de icono de operación unificada — El tamaño pequeño, sin borde y el estado deshabilitado están atenuados.
  */
 @Composable
 private fun ActionIconButton(
@@ -947,9 +947,9 @@ private fun ActionIconButton(
         tint = if (enabled) {
             MaterialTheme.colorScheme.onSurfaceVariant
         } else {
-            // v1.0.28 修复: outline.copy(alpha=0.5f) 与背景过于接近,
-            // 在浅色主题下看起来像空方框。改用 onSurfaceVariant 并保留 0.5f alpha,
-            // 既表达 disabled 状态,又不会让用户误以为是无用占位。
+            // v1.0.28 Reparación: outline.copy(alpha=0.5f) Demasiado cerca del fondo,
+            // Parecen cajas vacías con un tema claro. Utilice onSurfaceVariant en su lugar y mantenga 0.5f alpha,
+            // Ambos expresan el estado de discapacidad.,No hará que los usuarios piensen erróneamente que es un marcador de posición inútil.
             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         },
         enabled = enabled,
@@ -958,9 +958,9 @@ private fun ActionIconButton(
     )
 }
 
-// ── 剪贴板辅助函数 ──
+// ── Función auxiliar del portapapeles ──
 
-/** 从系统剪贴板读取纯文本(可能为空)。 */
+/** Leer texto sin formato desde el portapapeles del sistema(puede estar vacío). */
 private fun readClipboardText(context: Context): String? {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
     val clip = clipboard?.primaryClip ?: return null
@@ -968,7 +968,7 @@ private fun readClipboardText(context: Context): String? {
     return clip.getItemAt(0).coerceToText(context)?.toString()
 }
 
-/** 将文本写入系统剪贴板。v2.4.6: 改为 internal 供翻译历史项复用。 */
+/** Escribe texto en el portapapeles del sistema.v2.4.6: Se cambió a interno para su reutilización por elementos del historial de traducción. */
 internal fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
     clipboard.setPrimaryClip(ClipData.newPlainText("translation", text))

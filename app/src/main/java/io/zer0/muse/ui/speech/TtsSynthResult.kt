@@ -1,42 +1,42 @@
 package io.zer0.muse.ui.speech
 
 /**
- * 一次语音合成的结果。
+ * El resultado de una síntesis de voz.
  *
- * 只回答两件事：首选引擎成没成、有没有可用的兜底。调用方据此决定对用户怎么说，
- * 不必再从 Boolean 里猜「是 key 没配、音色不对，还是只是网断了」。
+ * Sólo respondo dos cosas: si el motor preferido está listo y si hay alguna garantía disponible. La persona que llama decide qué decirle al usuario en función de esto,
+ * No es necesario adivinar a partir del booleano "si la clave no coincide, el tono es incorrecto o la red simplemente no funciona".
  */
 sealed interface TtsSynthResult {
 
     /**
-     * 首选引擎直接合成成功。
+     * El motor preferido se sintetiza directamente con éxito.
      *
-     * 引擎为云端时即云端成功；引擎就是 system 时即系统 TTS 成功 —— 两者都不算降级，
-     * 所以合成入口里它们落同一个分支，默认行为与改造前一致。
+     * Cuando el motor es la nube, la nube tiene éxito; cuando el motor está en el sistema, el sistema TTS tiene éxito. —— Ninguna de las dos se considera una rebaja;
+     * Por lo tanto, caen en la misma rama en la entrada de síntesis y el comportamiento predeterminado es el mismo que antes de la transformación.
      */
     data object Success : TtsSynthResult
 
     /**
-     * 云端引擎失败，回落到系统 TTS 且合成成功（声音不是用户配的那个）。
+     * El motor de la nube falló y volvió al sistema TTS y la síntesis fue exitosa (el sonido no era el asignado por el usuario).
      *
-     * @param reason 云端没生效的简短原因（解析层的 fallbackReason，或合成失败的简述）
+     * @param reason Una breve razón por la cual la nube no tuvo efecto (la razón alternativa de la capa de análisis o una breve descripción del error de síntesis)
      */
     data class SystemFallback(val reason: String) : TtsSynthResult
 
-    /** 云端与系统 TTS 都没成，没有音频可用。 */
+    /** Ni la nube ni el TTS del sistema funcionan correctamente y no hay audio disponible. */
     data class Failure(val reason: String) : TtsSynthResult
 }
 
 /**
- * 云端分支的结果判定：云成功即成功，否则看系统 TTS 能不能顶上。
+ * Se determina el resultado de la rama de la nube: la nube tiene éxito; de lo contrario, depende de si el sistema TTS se puede mejorar.
  *
- * 抽成纯函数是为了让三条出口（成功 / 回落 / 失败）都能单测覆盖 —— 真起一次
- * 系统 TTS 引擎要等异步回调，测不出「系统可用但合成失败」这种分支。
+ * El propósito de extraer funciones puras es garantizar que las tres salidas (éxito/retroceso/fracaso) puedan cubrirse mediante una única prueba. —— Realmente levántate una vez
+ * El motor TTS del sistema tiene que esperar una devolución de llamada asincrónica y no puede detectar la rama "el sistema está disponible pero falló la síntesis".
  *
- * @param cloudOk 云端合成是否成功
- * @param failureReason 云端没成功时的简短原因，会原样带到 [TtsSynthResult.SystemFallback]
- * @param systemTtsReady 系统 TTS 当前是否就绪
- * @param synthWithSystem 真正去调系统 TTS 合成（仅在云端失败且系统就绪时执行）
+ * @param cloudOk ¿La síntesis en la nube es exitosa?
+ * @param failureReason La breve razón por la que la nube falla será llevada al [TtsSynthResult.SystemFallback]
+ * @param systemTtsReady ¿Está listo el sistema TTS actualmente?
+ * @param synthWithSystem Verdadera desafinación de la síntesis TTS del sistema (solo se ejecuta cuando falla la nube y el sistema está listo)
  */
 internal suspend fun resolveCloudSynthOutcome(
     cloudOk: Boolean,
@@ -45,10 +45,10 @@ internal suspend fun resolveCloudSynthOutcome(
     synthWithSystem: suspend () -> Boolean,
 ): TtsSynthResult {
     if (cloudOk) return TtsSynthResult.Success
-    if (!systemTtsReady) return TtsSynthResult.Failure("$failureReason（系统 TTS 不可用）")
+    if (!systemTtsReady) return TtsSynthResult.Failure("$failureReason(Sistema TTS no disponible)")
     return if (synthWithSystem()) {
         TtsSynthResult.SystemFallback(failureReason)
     } else {
-        TtsSynthResult.Failure("$failureReason（系统 TTS 合成失败）")
+        TtsSynthResult.Failure("$failureReason(La síntesis TTS del sistema falló)")
     }
 }

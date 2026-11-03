@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-test_pr_check.py — pr_check.py 的单元测试。
+test_pr_check.py — pr_check.py pruebas unitarias.
 
-测试作用域分类与 Lane 路由逻辑的正确性。
-运行: py -3 ci/test/test_pr_check.py
+Pruebe la exactitud de la clasificación del alcance y la lógica de enrutamiento de carriles.
+correr: py -3 ci/test/test_pr_check.py
 """
 
 import sys
 import os
 from pathlib import Path
 
-# 将 ci/script 加入 path
+# Agregar ci/script path
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "script"
 sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -18,32 +18,32 @@ from pr_check import classify_file, compute_lanes
 
 
 def test_classify_kotlin_file():
-    """Kotlin 源码应分类为 android_jvm。"""
+    """Kotlin El código fuente debe clasificarse como android_jvm."""
     assert classify_file("app/src/main/java/io/zer0/muse/MainActivity.kt") == "android_jvm"
     assert classify_file("memory/src/main/java/io/zer0/memory/MemoryService.kt") == "android_jvm"
 
 
 def test_classify_java_file():
-    """Java 源码应分类为 android_jvm。"""
+    """Java El código fuente debe clasificarse como android_jvm."""
     assert classify_file("app/src/main/java/io/zer0/muse/Legacy.java") == "android_jvm"
 
 
 def test_classify_localization_file():
-    """values-* 资源文件应分类为 localization。"""
+    """values-* Los archivos de recursos deben clasificarse como localización."""
     assert classify_file("app/src/main/res/values-zh/strings.xml") == "localization"
     assert classify_file("app/src/main/res/values-ja/strings.xml") == "localization"
     assert classify_file("app/src/main/res/values/strings.xml") == "localization"
 
 
 def test_classify_resource_file():
-    """res/ 下的非 values-* 资源应分类为 android_resources。"""
+    """res/ lo siguiente esta mal values-* Los recursos deben clasificarse como android_resources."""
     assert classify_file("app/src/main/res/layout/activity_main.xml") == "android_resources"
     assert classify_file("app/src/main/res/drawable/ic_launcher.png") == "android_resources"
     assert classify_file("app/src/main/res/xml/accessibility_service_config.xml") == "android_resources"
 
 
 def test_classify_build_config():
-    """build.gradle.kts 应分类为 android_full。"""
+    """build.gradle.kts Debe clasificarse como android_full."""
     assert classify_file("app/build.gradle.kts") == "android_full"
     assert classify_file("build.gradle.kts") == "android_full"
     assert classify_file("settings.gradle.kts") == "android_full"
@@ -52,37 +52,37 @@ def test_classify_build_config():
 
 
 def test_classify_manifest():
-    """AndroidManifest.xml 应分类为 android_full。"""
+    """AndroidManifest.xml Debe clasificarse como android_full."""
     assert classify_file("app/src/main/AndroidManifest.xml") == "android_full"
 
 
 def test_classify_script():
-    """ci/ 目录下的脚本应分类为 script。"""
+    """ci/ Los scripts en el directorio deben clasificarse como script."""
     assert classify_file("ci/script/pr_check.py") == "script"
     assert classify_file("ci/script/check_repo_hygiene.py") == "script"
 
 
 def test_classify_docs():
-    """Markdown 文件应分类为 docs。"""
+    """Markdown Los documentos deben clasificarse como documentos."""
     assert classify_file("README.md") == "docs"
     assert classify_file("docs/ACCESSIBILITY.md") == "docs"
     assert classify_file("AGENTS.md") == "docs"
 
 
 def test_classify_config():
-    """配置文件应分类为 config。"""
+    """Los archivos de configuración deben clasificarse como config."""
     assert classify_file(".editorconfig") == "config"
-    assert classify_file("app/src/main/res/values/themes.xml") == "localization"  # values/ 下的 xml 归 localization
+    assert classify_file("app/src/main/res/values/themes.xml") == "localization"  # values/ El xml devuelto bajo localization
 
 
 def test_classify_unknown():
-    """未匹配的文件归为 other。"""
+    """Los archivos no coincidentes se clasifican como otros."""
     assert classify_file("random_file.txt") == "other"
     assert classify_file("data.json") == "other"
 
 
 def test_compute_lanes_empty():
-    """无作用域时只运行 quick_checks。"""
+    """Sólo se ejecuta quick_checks sin alcance."""
     lanes = compute_lanes(set())
     assert lanes["quick_checks"] is True
     assert lanes["localization"] is False
@@ -91,7 +91,7 @@ def test_compute_lanes_empty():
 
 
 def test_compute_lanes_docs_only():
-    """仅文档变更时只运行 quick_checks。"""
+    """Ejecute Quick_checks solo cuando el documento cambie."""
     lanes = compute_lanes({"docs"})
     assert lanes["quick_checks"] is True
     assert lanes["localization"] is False
@@ -100,7 +100,7 @@ def test_compute_lanes_docs_only():
 
 
 def test_compute_lanes_android_full():
-    """android_full 应触发所有 Android 相关 Lane。"""
+    """android_full Se deben activar todos los carriles relacionados con Android."""
     lanes = compute_lanes({"android_full"})
     assert lanes["android_full"] is True
     assert lanes["android_jvm"] is True
@@ -109,7 +109,7 @@ def test_compute_lanes_android_full():
 
 
 def test_compute_lanes_mixed():
-    """混合作用域应正确触发对应 Lane。"""
+    """Los ámbitos mixtos deberían activar correctamente el carril correspondiente."""
     lanes = compute_lanes({"android_jvm", "localization"})
     assert lanes["quick_checks"] is True
     assert lanes["android_jvm"] is True
@@ -119,7 +119,7 @@ def test_compute_lanes_mixed():
 
 
 def test_compute_lanes_script():
-    """script 作用域只触发 script lane。"""
+    """script El alcance solo activa el carril del guión."""
     lanes = compute_lanes({"script"})
     assert lanes["quick_checks"] is True
     assert lanes["script"] is True
@@ -127,7 +127,7 @@ def test_compute_lanes_script():
 
 
 def run_all_tests():
-    """运行所有测试并报告结果。"""
+    """Ejecute todas las pruebas e informe los resultados."""
     tests = [
         test_classify_kotlin_file,
         test_classify_java_file,

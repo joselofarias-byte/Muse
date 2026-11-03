@@ -6,27 +6,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 节奏配置如何真正进入判定。
+ * Cómo la configuración del ritmo realmente entra en el juicio.
  *
- * 这些字段以前只有设置页在写、判定层从不读：用户把间隔调到 1 小时，实际
- * 仍然按写死的 3 小时判定。这里逐条盯着「配置改了，判定结论跟着改」，
- * 顺带盯住当日抖动的确定性 —— 它必须是「同一天固定、跨天变化」，
- * 每次随机会把用户调好的间隔变成一个区间。
+ * En el pasado, estos campos solo los escribía la página de configuración y nunca los leía la capa de juicio: el usuario ajustó el intervalo a 1 hora, pero de hecho
+ * Todavía juzgado según las 3 horas codificadas. Aquí analizamos "la configuración se cambia y la conclusión del juicio se cambia en consecuencia" uno por uno.
+ * Por cierto, esté atento a la certeza del nerviosismo del día. —— Debe "fijarse el mismo día y cambiar entre días",
+ * Cada vez, el intervalo ajustado por el usuario se cambia aleatoriamente a un intervalo.
  */
 class ProactivePacingConfigTest {
 
     private val minute = 60_000L
 
-    /** 2026-10-25 14:00 本地时间（下午，不在默认免打扰时段内）。 */
+    /** 2026-10-25 14:00 Hora local (tarde, fuera del período predeterminado de no molestar). */
     private val baseNow = localMillis(2026, 10, 25, 14, 0)
 
     // ══════════════════════════════════════════════════════════════
-    // 间隔
+    // intervalo
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `配置 60 分钟时间隔真的生效`() {
-        // 不注入抖动，单独验间隔本身
+    fun `El intervalo de tiempo configurado de 60 minutos realmente surte efecto`() {
+        // No se inyecta ninguna fluctuación, simplemente pruebe el intervalo en sí.
         val pacing = pacing(intervalMinutes = 60, randomOffsetMinutes = 0)
         assertEquals(
             ProactiveTimingEngine.Verdict.TOO_SOON,
@@ -39,7 +39,7 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `默认间隔是 240 分钟`() {
+    fun `El intervalo predeterminado es 240 minutos.`() {
         val pacing = ProactiveTimingEngine.Pacing()
         assertEquals(240, ProactiveTimingEngine.effectiveIntervalMinutes(input(0, pacing)))
         assertEquals(
@@ -53,8 +53,8 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `间隔被夹到 30 到 1440 分钟`() {
-        // 老配置里可能存着 15 分钟或好几天，判定层不能让它们生效
+    fun `Los intervalos se limitan a 30 a 1440 minutos.`() {
+        // La configuración anterior puede almacenarse durante 15 minutos o varios días y la capa de decisión no puede hacer que entre en vigor.
         assertEquals(
             ProactiveTimingEngine.MIN_INTERVAL_MINUTES,
             ProactiveTimingEngine.effectiveIntervalMinutes(input(0, pacing(5, 0))),
@@ -66,22 +66,22 @@ class ProactivePacingConfigTest {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 当日抖动
+    // nerviosismo del día
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `同一天同一助手得到同一个偏移`() {
+    fun `El mismo asistente recibe la misma compensación el mismo día.`() {
         val key = ProactiveTimingEngine.dayKey(baseNow)
         val first = ProactiveTimingEngine.dailyOffsetMinutes(key, "a1", 60)
         val second = ProactiveTimingEngine.dailyOffsetMinutes(key, "a1", 60)
 
         assertEquals(first, second)
-        assertTrue("偏移应落在 0..60：$first", first in 0..60)
+        assertTrue("El desplazamiento debe estar entre 0 y 60:$first", first in 0..60)
     }
 
     @Test
-    fun `换一天偏移跟着变`() {
-        // 用固定哈希输入验证：日期是唯一变量
+    fun `Otro día, la compensación cambia en consecuencia.`() {
+        // Validación con entrada hash fija: la fecha es la única variable
         val today = ProactiveTimingEngine.dailyOffsetMinutes("2026-10-25", "default", 60)
         val tomorrow = ProactiveTimingEngine.dailyOffsetMinutes("2026-10-26", "default", 60)
 
@@ -89,19 +89,19 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `偏移上限为 0 时不抖动`() {
+    fun `Sin fluctuaciones cuando el límite superior de compensación es 0`() {
         assertEquals(0, ProactiveTimingEngine.dailyOffsetMinutes("2026-10-25", "default", 0))
     }
 
     @Test
-    fun `抖动参与判定`() {
+    fun `Determinación de la participación de jitter`() {
         val pacing = pacing(intervalMinutes = 60, randomOffsetMinutes = 60, assistantId = "a1")
         val offset = ProactiveTimingEngine.dailyOffsetMinutes(
             ProactiveTimingEngine.dayKey(baseNow),
             "a1",
             60,
         )
-        // 实际间隔 = 60 + 当日偏移：差一分钟仍太近，正好到点才放行
+        // intervalo real = 60 + Desplazamiento del día: un minuto todavía está demasiado cerca, por lo que lo publicaremos cuando sea exactamente a tiempo.
         assertEquals(
             ProactiveTimingEngine.Verdict.TOO_SOON,
             evaluate(minutesSinceLastSent = 59L + offset, pacing = pacing).verdict,
@@ -114,7 +114,7 @@ class ProactivePacingConfigTest {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 构造辅助
+    // Ayuda a la construcción
     // ══════════════════════════════════════════════════════════════
 
     private fun pacing(

@@ -29,53 +29,53 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipInputStream
 
 /**
- * Phase 5-E + Phase 8.6: 文档解析器。
+ * Phase 5-E + Phase 8.6: Analizador de documentos.
  *
- * 支持格式:
- *  - text 子类型(txt/md/csv/json/xml/html/log):直接读纯文本
- *  - application/pdf: 用 PDFBox-Android 提取文本(Phase 8.6 升级,真正文本提取)
- *  - docx(office open xml): 解析 word/document.xml 提取 <w:t> 文本
- *  - pptx: 解析 ppt/slides/slide*.xml 提取 <a:t> 文本
- *  - xlsx: 解析 xl/sharedStrings.xml + xl/worksheets/sheet*.xml 提取单元格文本(v1.133 新增)
- *  - epub: ZIP + OPF spine + XHTML 标签剥离
- *  - 图片(image 子类型): 调用方走 OcrManager,本类不处理
+ * Formatos soportados:
+ *  - text subtipo(txt/md/csv/json/xml/html/log):Leer texto sin formato directamente
+ *  - application/pdf: Extraer texto con PDFBox-Android(Phase 8.6 Mejora,extracción de texto real)
+ *  - docx(office open xml): Analizar la extracción de word/document.xml <w:t> texto
+ *  - pptx: analizar ppt/slides/slide*.xml Extracto <a:t> texto
+ *  - xlsx: analizar xl/sharedStrings.xml + xl/worksheets/sheet*.xml Extraer texto de celda(v1.133 Nuevo)
+ *  - epub: ZIP + OPF spine + XHTML pelado de etiquetas
+ *  - fotos(image subtipo): la persona que llama va OcrManager,Esta categoría no maneja
  *
- * 体积控制: 文本截断到 1MB(避免超大文件 OOM)。
+ * control de volumen: texto truncado a 1MB(Evite archivos muy grandes OOM).
  *
- * 合规: 全部代码独立编写,未复制第三方实现(同类方案用 Apache POI,本项目用自实现 OOXML 解析)。
+ * Cumplimiento: Todo el código se escribe de forma independiente.,Implementación de terceros no copiada(Para soluciones similares Apache POI,Este proyecto utiliza análisis OOXML autoimplementado).
  */
 class DocumentParser(
     private val httpClient: OkHttpClient = CloudDocumentParser.defaultHttpClient(),
 ) {
 
     companion object {
-        /** L-DP6: 文本截断上限(1MB),粗略估算 chars*2 ≈ bytes。 */
+        /** L-DP6: Límite de truncamiento de texto(1MB),estimación aproximada chars*2 ≈ bytes. */
         private const val MAX_TEXT_BYTES = 1 shl 20
 
-        /** H-DP1: ZIP 单 entry 解压上限(4MB),防 ZIP 炸弹。 */
+        /** H-DP1: ZIP Límite de descompresión de entrada única(4MB),Protegido contra bombas ZIP. */
         private const val ZIP_MAX_BYTES = 4 * (1 shl 20)
 
-        /** 云端上传大小上限(50MB),防止超大文件 OOM。 */
+        /** Límite de tamaño de carga en la nube(50MB),Evite OOM de archivos muy grandes. */
         private const val MAX_UPLOAD_BYTES = 50L * 1024 * 1024
 
-        /** v2.2.1: PDFBox 主内存预算(32MB),超出部分外溢到临时文件,防大 PDF 解析把堆打满。 */
+        /** v2.2.1: PDFBox presupuesto de memoria principal(32MB),La porción excedida se derramó en un archivo temporal,Evite que el análisis de PDF de gran tamaño llene el montón. */
         private const val PDF_MAIN_MEMORY_BUDGET_BYTES = 32L * (1 shl 20)
     }
 
-    /** PDFBox 需要一次性 init(加载字体资源)。 */
+    /** PDFBox Necesito una sola vez init(Cargar recursos de fuentes). */
     private val pdfBoxInited = AtomicBoolean(false)
 
-    /** CLOUD / MinerU 云端解析客户端。 */
+    /** CLOUD / MinerU Cliente de análisis de la nube. */
     private val cloudParser = CloudDocumentParser(httpClient)
 
     /**
-     * M-DP2: 解析文档,返回 [Result]。
-     * 成功携带纯文本(可能为空串);失败返回 [Result.Error] 携带可读消息。
-     * @param uri 内容 URI(SAF 返回)
-     * @param context 用于 ContentResolver + PDFBox init
+     * M-DP2: Analizar documento,Regresar [Result].
+     * Texto plano llevado con éxito(Puede ser una cadena vacía);Retorno del fracaso [Result.Error] Llevar mensajes legibles.
+     * @param uri contenido URI(SAF Regresar)
+     * @param context usado para ContentResolver + PDFBox init
      *
-     * 错误消息已提取至 strings_data.xml 资源,readXxx 方法内用 context.getString() 获取。
-     * 截断标记(如"[… 文件过大,已截断 …]")是文本结构的一部分,不属于 UI 文案。
+     * Mensaje de error extraído al recurso strings_data.xml,readXxx Utilizado dentro de los métodos. context.getString() Conseguir.
+     * marca de truncamiento(Como por ejemplo"[… Archivo demasiado grande,truncado …]")es parte de la estructura del texto,No se considera redacción publicitaria de UI.
      */
     fun parseResult(uri: Uri, context: Context): Result<String> {
         val resolver = context.contentResolver
@@ -92,7 +92,7 @@ class DocumentParser(
                 mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ->
                     readXlsx(uri, context)
                 mimeType == "application/epub+zip" -> readEpub(uri, context)
-                // 兜底:按扩展名再试一次
+                // Ten todo en cuenta:Inténtalo de nuevo por extensión
                 else -> {
                     val lower = uri.toString().lowercase()
                     when {
@@ -109,30 +109,30 @@ class DocumentParser(
     }
 
     /**
-     * 解析文档,返回纯文本。
+     * Analizar documento,Devuelve texto sin formato.
      *
-     * M-DP2: 旧调用方兼容入口。失败时返回空串(而非错误文案),由调用方按 isBlank 校验;
-     * 新调用方应改用 [parseResult] 以获取失败原因。
+     * M-DP2: Antiguo portal de compatibilidad de llamadas. Devuelve una cadena vacía en caso de error(en lugar de una copia incorrecta),Verificado por la persona que llama según isBlank;
+     * Las nuevas personas que llaman deben usar [parseResult] para obtener el motivo del error.
      *
-     * @param uri 内容 URI(SAF 返回)
-     * @param context 用于 ContentResolver + PDFBox init
-     * @return 提取的文本;失败或空内容返回空串
+     * @param uri contenido URI(SAF Regresar)
+     * @param context usado para ContentResolver + PDFBox init
+     * @return Texto extraído;Devuelve una cadena vacía en caso de error o contenido vacío
      */
     fun parse(uri: Uri, context: Context): String = parseResult(uri, context).getOrNull() ?: ""
 
     /**
-     * v1.0.47 P7-1: 根据 [RagConfig.documentParserType] 路由文档解析。
+     * v1.0.47 P7-1: Según [RagConfig.documentParserType] Análisis de documentos de enrutamiento.
      *
-     * - LOCAL: 调用本地 [parseResult](默认)
-     * - CLOUD/MINERU: 上传文件到 endpoint → 轮询 → 提取语义文本;
-     *   未配置 endpoint 时返回明确错误,不再静默降级 LOCAL
+     * - LOCAL: llamar local [parseResult](Predeterminado)
+     * - CLOUD/MINERU: Subir archivos a endpoint → sondeo → Extraer texto semántico;
+     *   Devuelve un error explícito cuando el punto final no está configurado,No más rebajas silenciosas LOCAL
      *
-     * @param uri 内容 URI
+     * @param uri contenido URI
      * @param context Context
-     * @param parserType 解析器类型(来自 RagConfig)
-     * @param cloudEndpoint 云端解析 endpoint(CLOUD 类型用)
-     * @param mineruEndpoint MinerU endpoint(MINERU 类型用)
-     * @param mineruToken MinerU Token(MINERU 类型用,作为 Bearer Token)
+     * @param parserType tipo de analizador(de RagConfig)
+     * @param cloudEndpoint Análisis de la nube endpoint(CLOUD Para tipo)
+     * @param mineruEndpoint MinerU endpoint(MINERU Para tipo)
+     * @param mineruToken MinerU Token(MINERU Para tipo,como Bearer Token)
      */
     fun parseResult(
         uri: Uri,
@@ -147,14 +147,14 @@ class DocumentParser(
                 parseResult(uri, context)
             io.zer0.muse.rag.RagConfig.ParserType.CLOUD -> {
                 if (cloudEndpoint.isBlank()) {
-                    Result.Error("云端解析 endpoint 未配置，请在 RAG 设置中填写")
+                    Result.Error("El punto final de análisis de la nube no está configurado; complételo en la configuración de RAG.")
                 } else {
                     parseCloud(uri, context, cloudEndpoint, token = "", mineruMode = false)
                 }
             }
             io.zer0.muse.rag.RagConfig.ParserType.MINERU -> {
                 if (mineruEndpoint.isBlank()) {
-                    Result.Error("MinerU endpoint 未配置，请在 RAG 设置中填写")
+                    Result.Error("MinerU endpoint No configurado, complete la configuración de RAG")
                 } else {
                     parseCloud(uri, context, mineruEndpoint, token = mineruToken, mineruMode = true)
                 }
@@ -162,10 +162,10 @@ class DocumentParser(
         }
     }
 
-    /** 读取文件字节并交给 [CloudDocumentParser] 上传解析。 */
+    /** Leer bytes de archivo y entregarlos a [CloudDocumentParser] Subir análisis. */
     private fun parseCloud(uri: Uri, context: Context, endpoint: String, token: String, mineruMode: Boolean): Result<String> {
         val bytes = readUploadBytes(uri, context)
-            ?: return Result.Error("无法读取待解析文件")
+            ?: return Result.Error("No se puede leer el archivo que se va a analizar")
         val fileName = uri.lastPathSegment
             ?.substringAfterLast('/')
             ?.substringAfterLast('%')
@@ -174,7 +174,7 @@ class DocumentParser(
         return cloudParser.parse(bytes, fileName, endpoint, token, mineruMode)
     }
 
-    /** 云端上传用字节读取(上限 50MB,防 OOM)。 */
+    /** La carga en la nube utiliza lectura de bytes(límite superior 50MB,protegerse contra OOM). */
     private fun readUploadBytes(uri: Uri, context: Context): ByteArray? {
         val resolver = context.contentResolver
         resolver.openInputStream(uri)?.use { input ->
@@ -185,7 +185,7 @@ class DocumentParser(
             while (n > 0) {
                 total += n
                 if (total > MAX_UPLOAD_BYTES) {
-                    throw IOException("文件超过 50MB，无法上传到云端解析")
+                    throw IOException("El archivo supera los 50 MB y no se puede cargar en la nube para su análisis.")
                 }
                 baos.write(buf, 0, n)
                 n = input.read(buf)
@@ -196,17 +196,17 @@ class DocumentParser(
     }
 
     /**
-     * 读取纯文本文件(txt/md/csv/json/xml/html)。1MB 截断防 OOM。
+     * Leer archivo de texto sin formato(txt/md/csv/json/xml/html).1MB Truncar para evitar OOM.
      *
-     * M-DP3: 编码检测——
-     *  1. 读前 3 字节嗅探 BOM:UTF-8(EF BB BF)/ UTF-16 LE(FF FE)/ UTF-16 BE(FE FF)
-     *  2. 无 BOM 则尝试 UTF-8 严格解码;失败则按 GBK 兜底(中文 Windows 常见编码)
-     *  3. GBK 也失败则回退 UTF-8 宽松解码(替换非法字节)
+     * M-DP3: Detección de codificación——
+     *  1. Leer los primeros 3 bytes olfatear BOM:UTF-8(EF BB BF)/ UTF-16 LE(FF FE)/ UTF-16 BE(FE FF)
+     *  2. Si no hay ninguna lista de materiales, intente con la decodificación estricta UTF-8.;Si falla, presione GBK para guardar el dinero.(Codificaciones comunes de Windows en chino)
+     *  3. GBK Si esto falla, recurra a la decodificación relajada UTF-8.(Reemplazar bytes ilegales)
      */
     private fun readAsText(uri: Uri, context: Context): String {
         val resolver = context.contentResolver
         resolver.openInputStream(uri)?.use { input ->
-            // 先读全部字节(限 MAX_TEXT_BYTES,防超大文件 OOM)
+            // Lea todos los bytes primero(limitado MAX_TEXT_BYTES,Archivos anti-sobredimensionados OOM)
             val baos = ByteArrayOutputStream()
             val buf = ByteArray(8 * 1024)
             var total = 0
@@ -225,7 +225,7 @@ class DocumentParser(
             val charset = detectCharset(bytes)
             val text = String(bytes, charset).trim()
             return if (truncated) {
-                "$text\n\n[… 文件过大,已截断。原文件超过 1MB,仅读取前 1MB 内容 …]"
+                "$text\n\n[… Archivo demasiado grande,Truncado. El archivo original excede 1MB,Leer solo el primer 1MB …]"
             } else {
                 text
             }
@@ -234,12 +234,12 @@ class DocumentParser(
     }
 
     /**
-     * M-DP3: 嗅探字节序列的字符编码。
-     * - 有 BOM:按 BOM 返回对应 charset
-     * - 无 BOM:尝试 UTF-8 严格解码,失败则返回 GBK
+     * M-DP3: Huele la codificación de caracteres de una secuencia de bytes.
+     * - Hay BOM: presione BOM para regresar a la correspondiente charset
+     * - Sin BOM: pruebe la decodificación estricta UTF-8,Retorno del fracaso GBK
      */
     private fun detectCharset(bytes: ByteArray): Charset {
-        // BOM 嗅探
+        // BOM oler
         if (bytes.size >= 3 &&
             (bytes[0].toInt() and 0xFF) == 0xEF &&
             (bytes[1].toInt() and 0xFF) == 0xBB &&
@@ -253,7 +253,7 @@ class DocumentParser(
             if (b0 == 0xFF && b1 == 0xFE) return StandardCharsets.UTF_16LE
             if (b0 == 0xFE && b1 == 0xFF) return StandardCharsets.UTF_16BE
         }
-        // 无 BOM:尝试 UTF-8 严格解码
+        // Sin BOM: pruebe la decodificación estricta UTF-8
         val decoder = StandardCharsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT)
@@ -261,27 +261,27 @@ class DocumentParser(
             decoder.decode(java.nio.ByteBuffer.wrap(bytes))
             StandardCharsets.UTF_8
         }.getOrElse {
-            // UTF-8 解码失败,按 GBK 兜底(GBK 几乎不会对任意字节报错);
-            // GBK 不可用则回退 UTF-8(后续 String 构造会替换非法字节)
+            // UTF-8 Falló la decodificación,Presione GBK para más detalles(GBK Casi no se informará ningún error para ningún byte);
+            // GBK Reserva si no está disponible UTF-8(La construcción posterior de cadenas reemplazará los bytes ilegales)
             runCatching { Charset.forName("GBK") }.getOrElse { StandardCharsets.UTF_8 }
         }
     }
 
     /**
-     * Phase 8.6: PDF 文本提取(用 PDFBox-Android)。
+     * Phase 8.6: PDF Extracción de texto(usar PDFBox-Android).
      *
-     * Phase 11.2.3 增强:复杂版式处理(L7)
-     *  - 文档元数据(标题/作者/主题/关键词/创建时间)→ 前置 "[文档信息]" 块
-     *  - 文档目录(PDOutline 递归)→ 前置 "[目录]" 块(最多 2 层)
-     *  - stripper 参数:sortByPosition + 段落分隔(空行强化段落)
-     *  - 页眉/页脚过滤:跨页重复(>=3 页)的首/尾行视为页眉页脚,后处理剔除
+     * Phase 11.2.3 mejorar:Procesamiento de diseño complejo(L7)
+     *  - Metadatos del documento(Título/Autor/Tema/palabras clave/tiempo de creación)→ prefijo "[Información del documento]" bloquear
+     *  - Directorio de documentos(PDOutline recursividad)→ prefijo "[Directorio]" bloquear(Hasta 2 niveles)
+     *  - stripper parámetros:sortByPosition + Separación de párrafos(Las líneas en blanco fortalecen los párrafos)
+     *  - encabezamiento/Filtro de pie de página:Repetir en todas las páginas(>=3 página)el primero/La última línea se considera encabezado y pie de página.,Selección posprocesamiento
      *
-     * PDFBox-Android 是 Apache PDFBox 的 Android 实现版,支持:
-     *  - 真正文本提取(PDFTextStripper,基于 PDF 文本对象)
-     *  - 加密 PDF 解密(若已知密码)
-     *  - 不依赖原生 PdfRenderer(无 Bitmap 中转)
+     * PDFBox-Android ¿Es la implementación de Android de Apache PDFBox?,apoyo:
+     *  - extracción de texto real(PDFTextStripper,Basado en objetos de texto PDF)
+     *  - Cifrar PDF Descifrar(Si se conoce la contraseña)
+     *  - No depende del nativo PdfRenderer(Sin retransmisión de mapa de bits)
      *
-     * 局限:扫描型 PDF(图片型)文本提取会返回空,需走 OCR。
+     * limitaciones:Tipo de escaneo PDF(tipo de imagen)La extracción de texto vuelve vacía,Se requiere OCR.
      */
     private fun readPdf(uri: Uri, context: Context): String {
         ensurePdfBoxInited(context)
@@ -291,17 +291,17 @@ class DocumentParser(
                 val maxPages = 200
                 val end = minOf(total, maxPages)
 
-                // Step 1: 逐页提取文本(保留页面分隔符便于页眉页脚过滤)
+                // Step 1: Extraer texto página por página(Preservar los separadores de páginas para facilitar el filtrado de encabezados y pies de página)
                 val stripper = PDFTextStripper()
                 stripper.sortByPosition = true
-                // 段落分隔:PDFBox 默认按缩进检测段落,这里用空行强化段落分隔
+                // Separación de párrafos:PDFBox Detectar párrafos por sangría de forma predeterminada,Utilice líneas en blanco aquí para reforzar la separación de párrafos.
                 stripper.paragraphStart = "\n\n"
                 stripper.paragraphEnd = "\n\n"
                 stripper.wordSeparator = " "
 
-                // v2.2.1: 逐页抽取改为“带上限的 Writer” —— PDFBox 的 getText 内部是无上限
-                // StringWriter,病态/超大 PDF 的单页文本可膨胀到百 MB 级直接 OOM(2026-09-27
-                // 用户反馈:知识库导入 PDF 崩溃)。上限口径与既有 chars*2≈bytes 一致。
+                // v2.2.1: Extraer página por página para“con límite superior Writer” —— PDFBox El getText internamente está destapado.
+                // StringWriter,enfermo/Una sola página de texto en un PDF muy grande puede expandirse a cientos de MB. OOM(2026-09-27
+                // Comentarios de los usuarios:La importación de PDF de la base de conocimientos falla). Calibre límite superior y existente. chars*2≈bytes coherente.
                 val charBudget = MAX_TEXT_BYTES / 2
                 val pageTexts = mutableListOf<String>()
                 var usedChars = 0
@@ -318,7 +318,7 @@ class DocumentParser(
                     val pageResult = runCatching { stripper.writeText(doc, writer) }
                     val pageText = writer.toString()
                     if (writer.hitLimit) {
-                        // 命中上限:保留已抽取部分,停止后续页
+                        // golpear la tapa:Conservar la parte extraída.,Detener páginas siguientes
                         if (pageText.isNotBlank()) pageTexts.add(pageText)
                         truncatedByLimit = true
                         break
@@ -328,33 +328,33 @@ class DocumentParser(
                     pageTexts.add(pageText)
                 }
 
-                // Step 2: 页眉/页脚过滤(跨页重复的首/尾行)
+                // Step 2: encabezamiento/Filtro de pie de página(Repetir encabezado en todas las páginas/fila de cola)
                 val cleanedTexts = filterHeadersFooters(pageTexts)
 
-                // Step 3: 合并正文(抽取阶段已按 charBudget 收紧,此处仅拼接)
+                // Step 3: Fusionar texto(La fase de extracción ha sido reforzada por charBudget,Sólo empalme aquí)
                 val sb = StringBuilder()
                 cleanedTexts.forEach { pageText -> sb.append(pageText) }
                 if (truncatedByLimit) {
                     sb.appendLine()
-                    sb.appendLine("[… PDF 内容过长,已截断 …]")
+                    sb.appendLine("[… PDF El contenido es demasiado largo.,truncado …]")
                 }
-                // L-DP8: 页数提示与截断标记互不影响
+                // L-DP8: Las sugerencias de números de página y las marcas de truncamiento no se afectan entre sí
                 if (total > maxPages) {
                     sb.appendLine()
-                    sb.appendLine("[… PDF 共 $total 页,仅提取前 $maxPages 页 …]")
+                    sb.appendLine("[… PDF total $total página,Sólo antes de la extracción $maxPages página …]")
                 }
 
-                // Step 4: 前置元数据 + 目录(若有)
+                // Step 4: Pre-metadatos + directorio(Si es así)
                 val meta = extractPdfMetadata(doc)
                 val toc = extractPdfOutline(doc)
                 val prefix = buildString {
                     if (meta.isNotBlank()) {
-                        appendLine("[文档信息]")
+                        appendLine("[Información del documento]")
                         appendLine(meta)
                         appendLine()
                     }
                     if (toc.isNotBlank()) {
-                        appendLine("[目录]")
+                        appendLine("[Directorio]")
                         appendLine(toc)
                         appendLine()
                     }
@@ -373,10 +373,10 @@ class DocumentParser(
     }
 
     /**
-     * Phase 11.2.3: 提取 PDF 元数据(PDDocumentInformation)。
+     * Phase 11.2.3: Extraer metadatos PDF(PDDocumentInformation).
      *
-     * PDF 元数据字段:Title / Author / Subject / Keywords / Creator / Producer / CreationDate。
-     * 仅返回非空字段,格式 "字段: 值"。
+     * PDF campos de metadatos:Title / Author / Subject / Keywords / Creator / Producer / CreationDate.
+     * Devolver solo campos que no estén vacíos,Formato "campo: valor".
      */
     private fun extractPdfMetadata(doc: PDDocument): String {
         return runCatching {
@@ -384,22 +384,22 @@ class DocumentParser(
             val sb = StringBuilder()
             info ?: return@runCatching ""
             listOf(
-                "标题" to info.title,
-                "作者" to info.author,
-                "主题" to info.subject,
-                "关键词" to info.keywords,
-                "创建者" to info.creator,
-                "生成器" to info.producer,
+                "Título" to info.title,
+                "Autor" to info.author,
+                "Tema" to info.subject,
+                "palabras clave" to info.keywords,
+                "Creador" to info.creator,
+                "generador" to info.producer,
             ).forEach { (label, value) ->
                 if (!value.isNullOrBlank()) {
                     sb.appendLine("$label: $value")
                 }
             }
-            // 创建时间(可选)
+            // tiempo de creación(Opcional)
             runCatching {
                 val cal = info.creationDate
                 if (cal != null) {
-                    sb.appendLine("创建时间: ${cal.time}")
+                    sb.appendLine("tiempo de creación: ${cal.time}")
                 }
             }
             sb.toString().trim()
@@ -407,13 +407,13 @@ class DocumentParser(
     }
 
     /**
-     * Phase 11.2.3: 递归提取 PDF 目录(PDOutlineItem)。
+     * Phase 11.2.3: Extraer directorios PDF de forma recursiva(PDOutlineItem).
      *
-     * 限制:
-     *  - 最多 2 层深度(避免深层目录刷屏)
-     *  - 最多 100 条(超长目录截断)
-     *  - 仅取 title,不解析 destination(目标页码需解析 PDPageDestination,
-     *    复杂度高,且对纯文本提取价值不大,留作扩展)
+     * Límite:
+     *  - Hasta 2 niveles de profundidad(Evite el spam de directorio profundo)
+     *  - Hasta 100 artículos(Truncamiento de directorios muy largos.)
+     *  - tomar solo title,No analizado destination(Es necesario analizar el número de página de destino. PDPageDestination,
+     *    Alta complejidad,Y tiene poco valor para la extracción pura de texto.,reservado para expansión)
      */
     private fun extractPdfOutline(doc: PDDocument): String {
         return runCatching {
@@ -430,7 +430,7 @@ class DocumentParser(
                     sb.appendLine("$indent• $title")
                     count++
                 }
-                // 递归子节点(最多 2 层)
+                // nodo hijo recursivo(Hasta 2 niveles)
                 if (depth < 1) {
                     var child = item.firstChild
                     while (child != null && count < maxItems) {
@@ -445,29 +445,29 @@ class DocumentParser(
                 top = top.nextSibling
             }
             if (count >= maxItems) {
-                sb.appendLine("… (目录过长,已截断) …")
+                sb.appendLine("… (Directorio demasiado largo,truncado) …")
             }
             sb.toString().trim()
         }.getOrDefault("")
     }
 
     /**
-     * Phase 11.2.3: 页眉/页脚过滤。
+     * Phase 11.2.3: encabezamiento/Filtrado de pie de página.
      *
-     * 启发式:对每页文本取首 2 行 + 末 2 行,统计跨页重复次数。
-     * 重复 >= 3 页的行视为页眉/页脚,从所有页面中剔除。
+     * heurístico:Obtenga las 2 primeras líneas + las 2 últimas líneas de cada página de texto,Cuente el número de repeticiones entre páginas.
+     * Repetir >= 3 Las filas de la página se tratan como encabezados./Pie de página,Excluido de todas las páginas.
      *
-     * 局限:
-     *  - 短文档(< 3 页)不会触发过滤(保留全部内容)
-     *  - 页码每页不同(如 "1/10"、"2/10")不会被识别为重复,保留
-     *  - 对章节标题误判风险:若某章节首行跨多页重复(罕见),会被误删
+     * limitaciones:
+     *  - documento corto(< 3 página)No activa el filtrado(mantener todo el contenido)
+     *  - Los números de página son diferentes para cada página.(Como por ejemplo "1/10","2/10")no será reconocido como un duplicado,Reservar
+     *  - Riesgo de error de valoración de los títulos de los capítulos:Si la primera línea de un capítulo se repite en varias páginas(raro),será eliminado por error
      */
     private fun filterHeadersFooters(pageTexts: List<String>): List<String> {
         if (pageTexts.size < 3) return pageTexts
 
-        // 统计每页首/尾行的出现次数
+        // Estadísticas en la parte superior de cada página./El número de apariciones de la última fila.
         val lineCounts = mutableMapOf<String, Int>()
-        val candidates = mutableListOf<List<String>>() // 每页的候选行(首2+尾2)
+        val candidates = mutableListOf<List<String>>() // Filas candidatas por página(primero2+cola2)
         pageTexts.forEach { pageText ->
             val lines = pageText.lines().filter { it.isNotBlank() }
             if (lines.isEmpty()) {
@@ -483,12 +483,12 @@ class DocumentParser(
             }
         }
 
-        // 重复 >= 3 页的视为页眉页脚
+        // Repetir >= 3 Encabezados y pies de página
         val headerFooterLines = lineCounts.filter { it.value >= 3 }.keys
 
         if (headerFooterLines.isEmpty()) return pageTexts
 
-        // 从每页文本中剔除这些行(整行匹配,避免误删段落内文本)
+        // Elimina estas líneas de cada página de texto.(Coincidir con toda la línea,Evite eliminar accidentalmente texto dentro de un párrafo)
         return pageTexts.map { pageText ->
             pageText.lines().filter { line ->
                 line.isBlank() || !headerFooterLines.contains(line)
@@ -496,33 +496,33 @@ class DocumentParser(
         }
     }
 
-    /** PDFBox-Android 需在首次使用前 init(加载内置字体资源)。 */
+    /** PDFBox-Android Requerido antes del primer uso. init(Cargar recursos de fuentes integrados). */
     private fun ensurePdfBoxInited(context: Context) {
         if (pdfBoxInited.compareAndSet(false, true)) {
-            // v1.25: 失败时回滚标志并记录日志,允许后续重试
+            // v1.25: Revertir bandera y falla de inicio de sesión,Permitir reintentos posteriores
             runCatching { PDFBoxResourceLoader.init(context) }
                 .onFailure { e ->
                     pdfBoxInited.set(false)
-                    Logger.w("DocumentParser", "PDFBox 初始化失败", e)
+                    Logger.w("DocumentParser", "PDFBox La inicialización falló", e)
                 }
         }
     }
 
     /**
-     * v2.2.1: PDF 解析内存策略 —— 主内存预算 32MB,超出部分自动外溢到应用缓存目录的临时文件。
+     * v2.2.1: PDF Política de memoria de análisis —— presupuesto de memoria principal 32MB,La parte sobrante se desborda automáticamente a archivos temporales en el directorio de caché de la aplicación.
      *
-     * 大 PDF(含大量图片/字体)默认全量驻留主内存,解析阶段可直接把堆打满;改为"内有限+
-     * 磁盘兜底"后,解析内存与文件体积解耦。
+     * grande PDF(Contiene muchas fotos/fuente)De forma predeterminada, la cantidad total reside en la memoria principal.,El montón se puede llenar directamente durante la fase de análisis.;Cambiar a"Limitado+
+     * bolsillo para disco"después,Desacoplar la memoria de análisis del tamaño del archivo.
      */
     private fun pdfMemorySetting(context: Context): MemoryUsageSetting = MemoryUsageSetting.setupMixed(PDF_MAIN_MEMORY_BUDGET_BYTES)
         .setTempDir(File(context.cacheDir, "pdfbox-tmp").apply { mkdirs() })
 
     /**
-     * v2.2.1: 带上限的字符串 Writer(防 PDF 文本抽取无上限增长)。
+     * v2.2.1: cuerda tapada Writer(Evite que la extracción de texto PDF crezca ilimitadamente).
      *
-     * PDFBox 的 [PDFTextStripper.getText] 内部使用无上限 StringWriter,病态/超大 PDF 的
-     * 单页文本可膨胀到百 MB 级并触发 OOM;改用 [PDFTextStripper.writeText] + 本 Writer,
-     * 超过 [limit] 字符即抛 [TextLimitExceededException],由调用方截断收尾,数组不再扩容。
+     * PDFBox de [PDFTextStripper.getText] Uso interno ilimitado StringWriter,enfermo/PDF extra grandes
+     * Una sola página de texto puede expandirse a cientos de MB y provocar OOM;Usar en su lugar [PDFTextStripper.writeText] + ben Writer,
+     * exceder [limit] Los personajes son desechados. [TextLimitExceededException],Truncado por la persona que llama,La matriz ya no se expande.
      */
     private class CappedStringWriter(private val limit: Int) : Writer() {
         private val sb = StringBuilder()
@@ -556,24 +556,24 @@ class DocumentParser(
         override fun toString(): String = sb.toString()
     }
 
-    /** 抽取上限命中标记:仅用于中断 PDFBox 的写入循环,不向上暴露。 */
+    /** Extraer marcas de golpes de tapa:Solo se usa para interrumpir el ciclo de escritura de PDFBox,No expuesto hacia arriba. */
     private class TextLimitExceededException : IOException("PDF text extraction exceeded the configured limit")
 
     /**
-     * Phase 8.6: DOCX 文本提取(自实现 OOXML 解析)。
+     * Phase 8.6: DOCX Extracción de texto(Análisis OOXML autoimplementado).
      *
-     * DOCX 是 ZIP 包,主要文件:
-     *  - word/document.xml: 文档主体
+     * DOCX es un paquete ZIP,documento principal:
+     *  - word/document.xml: Cuerpo del documento
      *
-     * 文本结构:
-     *  - <w:p>: 段落
-     *  - <w:t>: 文本片段
-     *  - <w:tab/>: 制表符
-     *  - <w:br/>: 软换行
-     *  - <w:cr/>: 硬回车
+     * estructura del texto:
+     *  - <w:p>: párrafo
+     *  - <w:t>: fragmento de texto
+     *  - <w:tab/>: carácter de tabulación
+     *  - <w:br/>: salto de línea suave
+     *  - <w:cr/>: duro retorno
      *
-     * 解析策略: 遍历 document.xml,按 <w:p> 切段,合并 <w:t> 文本,
-     * 遇 <w:tab>/<w:br>/<w:cr> 转 \t/\n,段落间换行。
+     * estrategia de análisis: atravesar document.xml,prensa <w:p> Cortar en secciones,fusionar <w:t> texto,
+     * encuentro <w:tab>/<w:br>/<w:cr> girar \t/\n,Saltos de línea entre párrafos.
      */
     private fun readDocx(uri: Uri, context: Context): String {
         val xml = readZipEntry(context, uri, "word/document.xml")
@@ -589,7 +589,7 @@ class DocumentParser(
                 XmlPullParser.START_TAG -> {
                     val name = parser.name?.substringAfterLast(':') ?: ""
                     when (name) {
-                        "p" -> { // 注意:OOXML 默认命名空间,本地名即 p/t/tab/br/cr
+                        "p" -> { // Nota:OOXML espacio de nombres predeterminado,El nombre local es p/t/tab/br/cr
                             inParagraph = true
                             paragraphText.setLength(0)
                         }
@@ -607,9 +607,9 @@ class DocumentParser(
                         if (paragraphText.isNotEmpty()) {
                             sb.appendLine(paragraphText.toString())
                         }
-                        // M-DP4: 每段结束后检查累计长度,超 1MB 即截断并 break
+                        // M-DP4: Verifique la longitud acumulada después de cada segmento.,Si supera 1 MB, se truncará y fusionará. break
                         if (sb.length * 2 > MAX_TEXT_BYTES) {
-                            sb.appendLine("[… DOCX 内容过长,已截断 …]")
+                            sb.appendLine("[… DOCX El contenido es demasiado largo.,truncado …]")
                             break
                         }
                     }
@@ -621,18 +621,18 @@ class DocumentParser(
     }
 
     /**
-     * Phase 8.6: PPTX 文本提取(自实现 OOXML 解析)。
+     * Phase 8.6: PPTX Extracción de texto(Análisis OOXML autoimplementado).
      *
-     * PPTX 是 ZIP 包,主要文件:
-     *  - ppt/slides/slide1.xml, slide2.xml, ... : 各页幻灯片
+     * PPTX es un paquete ZIP,documento principal:
+     *  - ppt/slides/slide1.xml, slide2.xml, ... : Diapositivas para cada página.
      *
-     * 文本结构:
-     *  - <a:p>: 段落
-     *  - <a:t>: 文本片段
-     *  - <a:br>: 软换行
+     * estructura del texto:
+     *  - <a:p>: párrafo
+     *  - <a:t>: fragmento de texto
+     *  - <a:br>: salto de línea suave
      *
-     * 解析策略: 按文件名排序遍历 slide{N}.xml,每页输出 "— Slide N —" 分隔,
-     * 合并 <a:t> 文本。
+     * estrategia de análisis: Ordenar por nombre de archivo slide{N}.xml,Salida por página "— Slide N —" separar,
+     * fusionar <a:t> texto.
      */
     private fun readPptx(uri: Uri, context: Context): String {
         val slideNames = listZipEntries(context, uri)
@@ -678,7 +678,7 @@ class DocumentParser(
             }
             sb.appendLine()
             if (sb.length * 2 > MAX_TEXT_BYTES) {
-                sb.appendLine("[… PPTX 内容过长,已截断 …]")
+                sb.appendLine("[… PPTX El contenido es demasiado largo.,truncado …]")
                 break
             }
         }
@@ -686,41 +686,41 @@ class DocumentParser(
     }
 
     /**
-     * v1.133: XLSX 文本提取(自实现 OOXML 解析,无 Apache POI 依赖)。
+     * v1.133: XLSX Extracción de texto(Análisis OOXML autoimplementado,Sin dependencia de puntos de interés de Apache).
      *
-     * XLSX 是 ZIP 包,主要文件:
-     *  - xl/sharedStrings.xml: 共享字符串表(所有唯一字符串,按出现顺序索引)
-     *  - xl/worksheets/sheet1.xml, sheet2.xml, ... : 各工作表
+     * XLSX es un paquete ZIP,documento principal:
+     *  - xl/sharedStrings.xml: Tabla de cadenas compartida(todas las cadenas únicas,Índice en orden de aparición.)
+     *  - xl/worksheets/sheet1.xml, sheet2.xml, ... : Cada hoja de trabajo
      *
-     * sharedStrings 结构:
-     *  - <sst><si><t>字符串</t></si>...</sst>
-     *  - <si> 可能含多个 <t>(富文本格式),应合并
+     * sharedStrings estructura:
+     *  - <sst><si><t>cuerda</t></si>...</sst>
+     *  - <si> Puede contener múltiples <t>(formato de texto enriquecido),debería fusionarse
      *
-     * worksheet 结构:
+     * worksheet estructura:
      *  - <worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>
-     *  - <c> 标签的 t 属性:
-     *    - 不存在或 "n":数字,<v> 是数字
-     *    - "s":共享字符串,<v> 是 sharedStrings 索引
-     *    - "inlineStr":内联字符串,<is><t>值</t></is>
-     *    - "str":公式字符串,<v> 是公式计算结果
-     *    - "b":布尔,<v> 是 0/1
-     *    - "e":错误,<v> 是错误字符串
+     *  - <c> El atributo t de la etiqueta.:
+     *    - no existe o "n":numeros,<v> es un numero
+     *    - "s":cadena compartida,<v> es el índice de cadenas compartidas
+     *    - "inlineStr":cadena en línea,<is><t>valor</t></is>
+     *    - "str":cadena de fórmula,<v> es el resultado del cálculo de la fórmula
+     *    - "b":Booleano,<v> si 0/1
+     *    - "e":error,<v> es la cadena de error
      *
-     * 解析策略:
-     *  1. 读 sharedStrings.xml,解析所有 <si> 到 List<String>(按出现顺序)
-     *  2. 按文件名数字排序遍历 sheet{N}.xml,每页输出 "— Sheet N —" 分隔
-     *  3. 逐 <row> 解析,逐 <c> 输出值(制表符分隔),行末换行
+     * estrategia de análisis:
+     *  1. leer sharedStrings.xml,analizar todo <si> llegar List<String>(en orden de aparición)
+     *  2. Ordenar por número de nombre de archivo sheet{N}.xml,Salida por página "— Sheet N —" separar
+     *  3. perseguir <row> analizar,perseguir <c> Valor de salida(separado por tabulaciones),Avance de línea al final de la línea
      *
-     * 简化点:
-     *  - 不解析 workbook.xml + rels 取 sheet 名称(按 sheetN.xml 文件名排序,纯文本提取场景足够)
-     *  - 公式单元格只取 <v> 计算结果,不取 <f> 公式本身
-     *  - 单元格坐标(r 属性)只用于定位,不用于补空列(纯文本场景丢空列可接受)
+     * Simplifica el punto:
+     *  - No analice workbook.xml + rels para obtener el nombre de la hoja(Ordenar por nombre de archivo hojaN.xml,Los escenarios de extracción de texto sin formato son suficientes)
+     *  - Las celdas de fórmula solo toman <v> Resultado del cálculo,no tomar <f> fórmula en sí
+     *  - coordenadas de la celda(r Propiedades)Sólo se utiliza para posicionamiento.,No se utiliza para columnas de relleno(Es aceptable eliminar columnas vacías en escenarios de texto sin formato.)
      */
     private fun readXlsx(uri: Uri, context: Context): String {
-        // 1. 读共享字符串表(可能不存在 — 全数字表)
+        // 1. Leer tabla de cadenas compartidas(puede que no exista — medidor digital completo)
         val sharedStrings = parseSharedStrings(readZipEntry(context, uri, "xl/sharedStrings.xml"))
 
-        // 2. 列出所有 sheet 文件,按数字排序
+        // 2. Listar todos los archivos de hoja,Ordenar numéricamente
         val sheetNames = listZipEntries(context, uri)
             .filter { it.matches(Regex("""xl/worksheets/sheet\d+\.xml""")) }
             .sortedBy { name ->
@@ -735,7 +735,7 @@ class DocumentParser(
             parseWorksheet(xml, sharedStrings, sb)
             sb.appendLine()
             if (sb.length * 2 > MAX_TEXT_BYTES) {
-                sb.appendLine("[… XLSX 内容过长,已截断 …]")
+                sb.appendLine("[… XLSX El contenido es demasiado largo.,truncado …]")
                 break
             }
         }
@@ -743,12 +743,12 @@ class DocumentParser(
     }
 
     /**
-     * v1.133: 解析 xl/sharedStrings.xml — 返回 <si> 顺序对应的字符串列表。
+     * v1.133: analizar xl/sharedStrings.xml — Regresar <si> Una lista de cadenas correspondientes al pedido.
      *
-     * 每个 <si> 可能含一个或多个 <t>(富文本格式),合并所有 <t> 文本。
-     * 解析失败返回空列表(纯数字表可能无此文件)。
+     * cada uno <si> Puede contener uno o más <t>(formato de texto enriquecido),fusionar todo <t> texto.
+     * El error de análisis devuelve una lista vacía(Es posible que las tablas digitales puras no tengan este archivo).
      *
-     * 注:可见性 internal 供单元测试直接调用(parseResult 走 ContentResolver 不便测试)。
+     * Nota:Visibilidad interna para que las pruebas unitarias llamen directamente(parseResult Es inconveniente probar usando ContentResolver).
      */
     internal fun parseSharedStrings(xml: String?): List<String> {
         if (xml.isNullOrBlank()) return emptyList()
@@ -768,7 +768,7 @@ class DocumentParser(
                             siText.setLength(0)
                         }
                         "t" -> if (inSi) {
-                            // nextText 会消费 START_TAG + TEXT + END_TAG,自动定位到 END_TAG 之后
+                            // nextText consumirá START_TAG + TEXT + END_TAG,Orientar automáticamente después de END_TAG
                             siText.append(parser.nextText())
                         }
                     }
@@ -786,23 +786,23 @@ class DocumentParser(
     }
 
     /**
-     * v1.133: 解析 xl/worksheets/sheetN.xml — 提取 <row><c> 单元格值,追加到 [sb]。
+     * v1.133: analizar xl/worksheets/sheetN.xml — Extracto <row><c> valor de celda,añadir a [sb].
      *
-     * 每个 <row> 输出一行,单元格之间用 \t 分隔。
-     * <c> 标签按 t 属性解析:
-     *  - "s":查 sharedStrings 表
-     *  - "inlineStr":读 <is><t>
-     *  - 其他/无 t:读 <v> 原值(数字/公式结果/布尔/错误)
+     * cada uno <row> Salida de una línea,usado entre celdas \t Separado.
+     * <c> Las etiquetas se analizan por atributo t:
+     *  - "s":Verifique la tabla de cadenas compartidas
+     *  - "inlineStr":leer <is><t>
+     *  - Otros/Ninguno t:leer <v> valor original(numeros/resultado de la fórmula/Booleano/error)
      *
-     * 注:可见性 internal 供单元测试直接调用。
+     * Nota:Visibilidad interna para pruebas unitarias para llamar directamente.
      */
     internal fun parseWorksheet(xml: String, sharedStrings: List<String>, sb: StringBuilder) {
         val parser = newSecurePullParser()
         parser.setInput(xml.reader())
         var inRow = false
         var inCell = false
-        var cellType = "" // <c t="..."> 的 t 属性
-        var inInlineStr = false // 是否在 <is> 内
+        var cellType = "" // <c t="..."> El atributo t
+        var inInlineStr = false // hay <is> dentro
         val rowCells = mutableListOf<String>()
         val cellBuffer = StringBuilder()
         var event = parser.eventType
@@ -819,7 +819,7 @@ class DocumentParser(
                             inCell = true
                             cellType = ""
                             cellBuffer.setLength(0)
-                            // 读 t 属性
+                            // Leer atributo t
                             for (i in 0 until parser.attributeCount) {
                                 if (parser.getAttributeName(i) == "t") {
                                     cellType = parser.getAttributeValue(i) ?: ""
@@ -841,12 +841,12 @@ class DocumentParser(
                         "is" -> inInlineStr = false
                         "c" -> {
                             if (inCell) {
-                                // 根据 cellType 转换 cellBuffer 内容
+                                // Convertir el contenido de cellBuffer según el tipo de celda
                                 val raw = cellBuffer.toString()
                                 val display = when {
                                     raw.isEmpty() -> ""
                                     cellType == "s" -> {
-                                        // 共享字符串:raw 是索引
+                                        // cadena compartida:raw es el índice
                                         val idx = raw.toIntOrNull()
                                         if (idx != null && idx in sharedStrings.indices) {
                                             sharedStrings[idx]
@@ -855,7 +855,7 @@ class DocumentParser(
                                         }
                                     }
                                     cellType == "b" -> if (raw == "1") "TRUE" else "FALSE"
-                                    // inlineStr / str / n / e / 无 t:直接用 raw
+                                    // inlineStr / str / n / e / Ninguno t: Usar directamente raw
                                     else -> raw
                                 }
                                 rowCells.add(display)
@@ -878,38 +878,38 @@ class DocumentParser(
     }
 
     /**
-     * Phase 8.6: EPUB 文本提取(自实现)。
+     * Phase 8.6: EPUB Extracción de texto(autoimplementable).
      *
-     * EPUB 是 ZIP 包,结构:
-     *  - META-INF/container.xml: 指向 OPF 文件
-     *  - *.opf: 书目清单(spine 标签定义阅读顺序)
-     *  - *.xhtml / *.html: 内容文件
+     * EPUB es un paquete ZIP,estructura:
+     *  - META-INF/container.xml: Apuntar al archivo OPF
+     *  - *.opf: lista bibliográfica(spine Las etiquetas definen el orden de lectura)
+     *  - *.xhtml / *.html: archivo de contenido
      *
-     * 解析策略:
-     *  1. 从 container.xml 读 rootfile@full-path 找 OPF
-     *  2. 从 OPF 读 spine <itemref idref=...> 取阅读顺序
-     *  3. 从 manifest <item id=... href=... media-type=...> 取 id → href 映射
-     *  4. 按 spine 顺序读每个 XHTML,剥离 HTML 标签输出文本
+     * estrategia de análisis:
+     *  1. Lea rootfile@full-path desde contenedor.xml para encontrar OPF
+     *  2. Leer de OPF spine <itemref idref=...> Obtener orden de lectura
+     *  3. de manifest <item id=... href=... media-type=...> tomar id → href mapeo
+     *  4. Lea cada uno en el orden del lomo. XHTML,Quitar etiquetas HTML del texto de salida
      */
     private fun readEpub(uri: Uri, context: Context): String {
-        // 1. 读 container.xml 找 OPF 路径
+        // 1. Lea container.xml para encontrar la ruta OPF
         val containerXml = readZipEntry(context, uri, "META-INF/container.xml")
             ?: return context.getString(R.string.doc_err_epub_no_container)
         val opfPath = parseContainerForOpfPath(containerXml)
             ?: return context.getString(R.string.doc_err_epub_no_opf)
         val opfDir = opfPath.substringBeforeLast('/', "")
 
-        // 2. 读 OPF,解析 manifest 与 spine
+        // 2. leer OPF,Analizar manifiesto con spine
         val opfXml = readZipEntry(context, uri, opfPath)
             ?: return context.getString(R.string.doc_err_epub_missing_opf, opfPath)
         val manifest = parseOpfManifest(opfXml) // id → href
-        val spine = parseOpfSpine(opfXml) // idref 顺序列表
+        val spine = parseOpfSpine(opfXml) // idref lista ordenada
 
-        // 3. 按 spine 顺序读 XHTML 并剥离标签
+        // 3. Leer XHTML en orden de lomo y quitar etiquetas
         val sb = StringBuilder()
         for (idref in spine) {
             val href = manifest[idref] ?: continue
-            // M-DP5: 路径拼接后规范化,处理 href 中的 "../" 避免越界或匹配失败
+            // M-DP5: Normalización después del empalme de caminos.,Manejar href en "../" Evite fuera de límites o fallos de coincidencia
             val path = resolveZipPath(opfDir, href)
             val xhtml = readZipEntry(context, uri, path) ?: continue
             val text = stripHtmlTags(xhtml)
@@ -918,22 +918,22 @@ class DocumentParser(
                 sb.appendLine()
             }
             if (sb.length * 2 > MAX_TEXT_BYTES) {
-                sb.appendLine("[… EPUB 内容过长,已截断 …]")
+                sb.appendLine("[… EPUB El contenido es demasiado largo.,truncado …]")
                 break
             }
         }
         return truncate(sb.toString().trim())
     }
 
-    /** 从 container.xml 解析 OPF 路径(rootfile@full-path)。 */
+    /** Analizar la ruta OPF desde contenedor.xml(rootfile@full-path). */
     private fun parseContainerForOpfPath(xml: String): String? {
         val parser = newSecurePullParser()
         parser.setInput(xml.reader())
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG && parser.name == "rootfile") {
-                // namespace 可能是 "urn:oasis:names:tc:opendocument:xmlns:container"
-                // 但本地名即 rootfile,full-path 属性可能无命名空间
+                // namespace puede ser "urn:oasis:names:tc:opendocument:xmlns:container"
+                // Pero el nombre local es rootfile,full-path Es posible que la propiedad no tenga espacio de nombres
                 for (i in 0 until parser.attributeCount) {
                     val attrName = parser.getAttributeName(i)
                     if (attrName == "full-path") {
@@ -946,7 +946,7 @@ class DocumentParser(
         return null
     }
 
-    /** 从 OPF 解析 manifest:<item id=... href=... media-type=.../>。 */
+    /** Analizar desde OPF manifest:<item id=... href=... media-type=.../>. */
     private fun parseOpfManifest(xml: String): Map<String, String> {
         val map = mutableMapOf<String, String>()
         val parser = newSecurePullParser()
@@ -971,7 +971,7 @@ class DocumentParser(
         return map
     }
 
-    /** 从 OPF 解析 spine:<itemref idref=.../> 顺序列表。 */
+    /** Analizar desde OPF spine:<itemref idref=.../> Lista secuencial. */
     private fun parseOpfSpine(xml: String): List<String> {
         val list = mutableListOf<String>()
         val parser = newSecurePullParser()
@@ -991,11 +991,11 @@ class DocumentParser(
         return list
     }
 
-    /** 剥离 HTML/XHTML 标签,只保留文本;换行处理 <p>/<br>/<div>。 */
+    /** Quitar etiquetas HTML/XHTML,mantener solo texto;Procesamiento de avance de línea <p>/<br>/<div>. */
     private fun stripHtmlTags(html: String): String {
         val sb = StringBuilder()
         val parser = newSecurePullParser()
-        // 宽松模式:HTML 可能不规范
+        // Modo relajado:HTML Puede ser irregular
         try {
             parser.setInput(html.reader())
             var event = parser.eventType
@@ -1014,13 +1014,13 @@ class DocumentParser(
                 event = parser.next()
             }
         } catch (e: Throwable) {
-            // v1.73: XML 解析失败:回退 HtmlCompat 解码(完整 HTML 实体支持)。
-            // L-DP9: 旧实现仅解码 nbsp/amp/lt/gt 四种实体,中文/特殊符号实体(&copy; &hellip; 等)丢失。
-            Logger.w("DocumentParser", "XML 解析失败,回退 HtmlCompat 剥离标签", e)
+            // v1.73: XML El análisis falló:Decodificación alternativa HtmlCompat(Soporte completo de entidades HTML).
+            // L-DP9: La implementación anterior solo decodifica cuatro entidades nbsp/amp/lt/gt,chino/Entidad de símbolo especial(&copy; &hellip; espera)perdido.
+            Logger.w("DocumentParser", "XML El análisis falló,Etiquetas de eliminación de HtmlCompat de reserva", e)
             return runCatching {
                 HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
             }.getOrElse {
-                // HtmlCompat 也失败:最终回退纯正则
+                // HtmlCompat también falló:Retorno final a la pura regularidad
                 html.replace(Regex("<[^>]+>"), " ")
                     .replace(Regex("\\s+"), " ")
                     .trim()
@@ -1029,21 +1029,21 @@ class DocumentParser(
         return sb.toString()
     }
 
-    /** L-DP6: 1MB 文本截断(粗略估算 chars*2 ≈ bytes)。 */
+    /** L-DP6: 1MB Truncamiento de texto(estimación aproximada chars*2 ≈ bytes). */
     private fun truncate(text: String): String {
         return if (text.length * 2 > MAX_TEXT_BYTES) {
-            text.take(MAX_TEXT_BYTES / 2) + "\n\n[… 内容超过 1MB,已截断 …]"
+            text.take(MAX_TEXT_BYTES / 2) + "\n\n[… El contenido excede 1MB,truncado …]"
         } else {
             text
         }
     }
 
     /**
-     * L-DP7: 创建安全的 XmlPullParser,禁用外部实体防 XXE。
+     * L-DP7: Crear un seguro XmlPullParser,Deshabilite la protección de entidades externas contra XXE.
      *
-     * Android 默认 KXmlParser 不下载外部实体(安全),但显式 setFeature 更稳妥;
-     * kxml2 不支持 external-entities feature,runCatching 忽略不支持的情况,
-     * 依赖默认安全行为。
+     * Android Por defecto, KXmlParser no descarga entidades externas(seguro),Pero setFeature explícito es más seguro;
+     * kxml2 No compatible external-entities feature,runCatching Ignorar casos no admitidos,
+     * Confíe en el comportamiento de seguridad predeterminado.
      */
     private fun newSecurePullParser(): XmlPullParser {
         val factory = XmlPullParserFactory.newInstance()
@@ -1053,8 +1053,8 @@ class DocumentParser(
     }
 
     /**
-     * M-DP5: 规范化 ZIP entry 路径,处理 href 中的 "../"。
-     * 用 java.nio.file.Paths.normalize() 解析后转回正斜杠(ZIP entry 统一用 '/')。
+     * M-DP5: Normalizar la ruta de entrada ZIP,Manejar href en "../".
+     * usar java.nio.file.Paths.normalize() Convertir de nuevo a barra diagonal después del análisis(ZIP entry Para uso unificado '/').
      */
     private fun resolveZipPath(baseDir: String, href: String): String {
         if (baseDir.isEmpty()) return href
@@ -1062,7 +1062,7 @@ class DocumentParser(
         return resolved.toString().replace('\\', '/')
     }
 
-    /** 列出 ZIP 中所有 entry 名。 */
+    /** Enumere todos los nombres de las entradas en ZIP. */
     private fun listZipEntries(context: Context, uri: Uri): List<String> {
         val names = mutableListOf<String>()
         context.contentResolver.openInputStream(uri)?.use { input ->
@@ -1078,10 +1078,10 @@ class DocumentParser(
     }
 
     /**
-     * 读取 ZIP 中指定 entry 的内容(字符串)。
+     * Leer el contenido de la entrada especificada en el ZIP(cuerda).
      *
-     * H-DP1: 防 ZIP 炸弹——手动读取到 ByteArrayOutputStream 并检查累计字节数,
-     * 超 [ZIP_MAX_BYTES] (4MB) 抛 [IOException],避免 zis.readBytes() 无上限解压导致 OOM。
+     * H-DP1: Bomba anti-ZIP——Lea manualmente en ByteArrayOutputStream y verifique los bytes acumulados,
+     * súper [ZIP_MAX_BYTES] (4MB) tirar [IOException],evitar zis.readBytes() La descompresión ilimitada provoca OOM.
      */
     private fun readZipEntry(context: Context, uri: Uri, entryName: String): String? {
         context.contentResolver.openInputStream(uri)?.use { input ->
@@ -1096,7 +1096,7 @@ class DocumentParser(
                         while (n > 0) {
                             total += n
                             if (total > ZIP_MAX_BYTES) {
-                                throw IOException("ZIP entry '$entryName' 解压超限(${ZIP_MAX_BYTES} 字节),疑似 ZIP 炸弹")
+                                throw IOException("ZIP entry '$entryName' La descompresión supera el límite(${ZIP_MAX_BYTES} bytes),Sospecha de bomba ZIP")
                             }
                             baos.write(buf, 0, n)
                             n = zis.read(buf)
@@ -1110,7 +1110,7 @@ class DocumentParser(
         return null
     }
 
-    /** 从 URI 路径猜测 MIME 类型(兜底,部分 SAF 返回 null)。 */
+    /** Adivina el tipo MIME a partir de la ruta URI(Ten todo en cuenta,Devolución parcial del SAF null). */
     private fun guessMimeFromName(name: String): String? {
         val lower = name.lowercase()
         return when {

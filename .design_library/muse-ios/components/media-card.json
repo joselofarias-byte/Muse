@@ -19,7 +19,7 @@
     {
       "name": "Image Generating",
       "whySelected": "AI image generation in progress",
-      "traits": {"type": "image", "state": "generating", "radius": "20px card", "bg": "surface-raised", "aspectRatio": "1:1 or 16:9", "shimmer": "animated gradient sweep", "label": "生成中…", "progress": "optional percentage"},
+      "traits": {"type": "image", "state": "generating", "radius": "20px card", "bg": "surface-raised", "aspectRatio": "1:1 or 16:9", "shimmer": "animated gradient sweep", "label": "generando…", "progress": "optional percentage"},
       "childrenDigest": "Shimmer placeholder + generating label + progress indicator"
     },
     {
@@ -37,7 +37,7 @@
     {
       "name": "Video Generating",
       "whySelected": "AI video generation in progress",
-      "traits": {"type": "video", "state": "generating", "radius": "20px", "bg": "surface-raised", "shimmer": "animated gradient", "label": "视频生成中…", "progress": "percentage with estimated time"},
+      "traits": {"type": "video", "state": "generating", "radius": "20px", "bg": "surface-raised", "shimmer": "animated gradient", "label": "Generación de vídeo…", "progress": "percentage with estimated time"},
       "childrenDigest": "Shimmer placeholder + progress bar + estimated time"
     }
   ],

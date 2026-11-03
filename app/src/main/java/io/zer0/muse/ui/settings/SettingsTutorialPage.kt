@@ -50,28 +50,28 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v1.61-B: 使用教程页 — 面向新手的图文引导。
+ * v1.61-B: Usando la página del tutorial — Una guía gráfica para principiantes.
  *
- * 把用户当成完全不懂技术的小白,用通俗语言讲解 Muse 的各项功能。
- * 分为八个章节,每章用圆角卡片(MuseShapes.large)包裹,风格对齐系统设置。
- * 禁止 emoji,禁止 Android 原生方块风格。
+ * Trate a los usuarios como novatos que no entienden nada de tecnología.,Explique varias funciones de Muse en un lenguaje sencillo.
+ * Dividido en ocho capítulos.,Utilice tarjetas con esquinas redondeadas para cada capítulo.(MuseShapes.large)paquete,Configuración del sistema de alineación de estilos.
+ * prohibido emoji,Deshabilite el estilo de bloque nativo de Android.
  *
- * v1.0.16: 右侧增加章节快速跳转竖条,点击对应章节序号可快速滚动定位。
+ * v1.0.16: Agregue una barra vertical para saltar rápidamente de capítulo en el lado derecho,Haga clic en el número de capítulo correspondiente para desplazarse y localizarlo rápidamente.
  *
  * v1.0.17:
- *  - 顶部增加搜索框(MuseTextField),输入关键词过滤匹配小节(标题+正文)。
- *  - 章节卡片支持折叠/展开,默认第一章展开,其余折叠;展开图标使用 MuseIcons.chevronDown/Right。
- *  - 跳转条改为显示章节首字(开/配/日/高/个/数/常),选中态用 onSurface 黑白风格。
- *  - 用 rememberSaveable 保存最后查看的章节索引,进入页面自动滚动到上次查看位置。
+ *  - Agregar cuadro de búsqueda en la parte superior(MuseTextField),Ingrese palabras clave para filtrar secciones coincidentes(Título+Texto).
+ *  - Las tarjetas de capítulo se pueden plegar/Expandir,Expandir el Capítulo 1 de forma predeterminada,Resto de los pliegues;Para expandir el ícono use MuseIcons.chevronDown/Right.
+ *  - La barra de salto se cambia para mostrar la primera palabra del capítulo.(abierto/Partido/dia/alto/un/numero/a menudo),Utilice el estilo blanco y negro de onSurface cuando esté seleccionado.
+ *  - Utilice RememberSaveable para guardar el índice del último capítulo visto.,Al ingresar a la página, se desplaza automáticamente a la última posición vista.
  *
- * v2.x 重构(用户反馈"右侧滑动条一块一块跳、不跟随内容"):
- *  - 原实现 LazyColumn 每章一个 item(展开后一章极长),指示器按"可见章节"整块高亮,
- *    且点击只滚到章节顶部 → 体感一块一块、点击不精确。
- *  - 现改为"章节头 + 每个小节"均为独立 LazyColumn item(扁平列表):
- *    · 指示器高亮 = 当前可见 item 对应的小节,滚动连续跟随;
- *    · 点击指示点 = 精确滚动到该小节(折叠章节则先展开再定位);
- *    · 指示器自身随滚动自动迁移,始终把当前点保持在可视区。
- *  - 视觉同步简化:章节头独立卡片;小节逐节紧凑卡片,分隔清晰。
+ * v2.x Refactorizar(Comentarios de los usuarios"La barra deslizante de la derecha salta una por una y no sigue el contenido."):
+ *  - La implementación original de LazyColumn es una para cada capítulo. item(El próximo capítulo es muy largo.),botón indicador"Capítulos visibles"Resalta todo el bloque,
+ *    Y haga clic solo para desplazarse hasta la parte superior del capítulo. → El cuerpo se siente abultado y los clics son imprecisos.
+ *  - Ahora cambiado a"Encabezado del capítulo + cada sección"son independientes LazyColumn item(lista plana):
+ *    · resaltado del indicador = La sección correspondiente al elemento actualmente visible.,Desplázate para seguir continuamente;
+ *    · Haga clic en el punto indicador = Desplázate hasta la sección exacta(Los capítulos contraídos se expandirán primero y luego se ubicarán.);
+ *    · El indicador en sí migra automáticamente con el desplazamiento.,Mantenga siempre el punto actual en el área visible.
+ *  - Sincronización visual simplificada:Tarjeta independiente del encabezado del capítulo;Tarjetas compactas sección por sección,Separación clara.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +79,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
     val listState = rememberLazyListState()
     val context = LocalContext.current
 
-    // 章节元数据(图标 + 标题资源 id + 小节列表)。
+    // Metadatos del capítulo(Icono + título ID de recurso + lista de secciones).
     val chapters = remember {
         listOf(
             TutorialChapterData(
@@ -194,7 +194,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
     }
     val chapterCount = chapters.size
 
-    // 预加载所有小节字符串(标题+正文),用于搜索过滤。
+    // Precargar todas las cadenas de sección(Título+Texto),Se utiliza para el filtrado de búsqueda.
     val searchableSections = remember(context, chapters) {
         chapters.flatMapIndexed { chapterIndex, chapter ->
             chapter.sections.map { section ->
@@ -209,17 +209,17 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
         }
     }
 
-    // 搜索状态(本会话内有效,退出页面即重置)。
+    // estado de búsqueda(Válido dentro de esta sesión,Restablecer al salir de la página).
     var searchQuery by remember { mutableStateOf("") }
     val isSearching = searchQuery.isNotBlank()
 
-    // 章节展开状态:默认第一章展开,其余折叠。
+    // Estado de expansión del capítulo:Expandir el Capítulo 1 de forma predeterminada,Dobla el resto.
     var expandedChapters by remember { mutableStateOf<Set<Int>>(setOf(0)) }
 
-    // 最后查看的章节索引(跨会话持久化)。
+    // Índice del último capítulo visto(Persistencia entre sesiones).
     var lastViewedChapter by rememberSaveable { mutableStateOf(0) }
 
-    // 搜索过滤结果。
+    // Resultados del filtro de búsqueda.
     val filteredSections = if (isSearching) {
         searchableSections.filter { section ->
             section.sectionTitle.contains(searchQuery, ignoreCase = true) ||
@@ -229,7 +229,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
         emptyList()
     }
 
-    // v2.x: 扁平 item 列表(章节头 + 展开章节的小节),供 LazyColumn 平铺渲染。
+    // v2.x: Lista de elementos planos(Encabezado del capítulo + secciones para ampliar el capítulo.),Para renderizado de mosaicos LazyColumn.
     val flatItems = remember(chapters, expandedChapters) {
         buildList {
             chapters.forEachIndexed { ci, ch ->
@@ -241,7 +241,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
         }
     }
 
-    // 进入页面时自动滚动到上次查看的章节(v2.x: 定位到该章节头所在的 flat index)。
+    // Desplácese automáticamente al último capítulo visto al ingresar a la página(v2.x: Localice el encabezado del capítulo. flat index).
     LaunchedEffect(Unit) {
         if (!isSearching && lastViewedChapter in 1 until chapterCount) {
             val headerIndex = flatItems.indexOfFirst {
@@ -251,7 +251,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
         }
     }
 
-    // 监听当前可见章节,持久化保存索引(搜索时不更新,避免污染)。
+    // Monitorear los capítulos actualmente visibles,Guardar índice persistentemente(No actualiza al buscar,evitar la contaminación).
     LaunchedEffect(listState, isSearching, flatItems) {
         if (!isSearching) {
             snapshotFlow { listState.firstVisibleItemIndex }
@@ -285,7 +285,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
                 .imePadding()
                 .navigationBarsPadding(),
         ) {
-            // 左侧:章节内容列表
+            // lado izquierdo:Lista de contenido del capítulo
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -298,7 +298,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // 顶部搜索框 — 始终作为第 0 项
+                // cuadro de búsqueda superior — siempre como elemento 0
                 item {
                     MuseTextField(
                         value = searchQuery,
@@ -334,7 +334,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
                 }
 
                 if (isSearching) {
-                    // 搜索结果视图 — 扁平小节列表
+                    // Vista de resultados de búsqueda — Lista de secciones planas
                     if (filteredSections.isEmpty()) {
                         item {
                             Surface(
@@ -356,8 +356,8 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
                         }
                     }
                 } else {
-                    // 完整章节视图 — v2.x: 平铺到小节(章节头 + 逐节独立 item),
-                    // 指示器才能随滚动连续跟随、点击精确到节。
+                    // Vista completa del capítulo — v2.x: Azulejos a barras(Encabezado de capítulo + sección independiente por sección item),
+                    // El indicador puede seguir continuamente el desplazamiento y hacer clic con precisión en el nudo.
                     items(flatItems, key = { it.key }) { item ->
                         when (item) {
                             is TutorialFlatItem.ChapterHeader -> {
@@ -387,7 +387,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
                 }
             }
 
-            // v2.5.9: 右侧热区 — 长按激活后上下滑动线性滚动（不再画可视轨道）。
+            // v2.5.9: zona caliente derecha — Mantenga presionado para activar y luego deslice hacia arriba y hacia abajo para desplazarse linealmente (no se dibujan más pistas visuales).
             if (!isSearching) {
                 LinearScrollGesture(
                     listState = listState,
@@ -402,7 +402,7 @@ fun SettingsTutorialPage(onBack: () -> Unit) {
 }
 
 /**
- * v2.x: 教程章节头卡片 — 图标 + 标题 + 展开状态。独立 LazyColumn item。
+ * v2.x: Tarjeta de encabezado del capítulo del tutorial — Icono + título + estado expandido. Elemento LazyColumn independiente.
  */
 @Composable
 private fun TutorialChapterHeader(icon: ImageVector, titleRes: Int, isExpanded: Boolean, onToggleExpand: () -> Unit) {
@@ -441,7 +441,7 @@ private fun TutorialChapterHeader(icon: ImageVector, titleRes: Int, isExpanded: 
 }
 
 /**
- * v2.x: 教程小节卡片 — 标题(主色) + 正文。独立 LazyColumn item。
+ * v2.x: Tarjetas de sección de tutoriales — Título(color principal) + Texto. Elemento LazyColumn independiente.
  */
 @Composable
 private fun TutorialSectionCard(titleRes: Int, contentRes: Int) {
@@ -467,7 +467,7 @@ private fun TutorialSectionCard(titleRes: Int, contentRes: Int) {
 }
 
 /**
- * v1.0.17: 搜索结果卡片 — 扁平展示匹配的小节(含所属章节标题作为上下文)。
+ * v1.0.17: Tarjeta de resultados de búsqueda — Visualización plana de secciones coincidentes.(Incluir títulos de capítulos como contexto.).
  */
 @Composable
 private fun SearchResultCard(section: SearchableSection) {
@@ -507,7 +507,7 @@ private fun SearchResultCard(section: SearchableSection) {
     }
 }
 
-/** v2.x: 教程页扁平列表项(章节头 / 小节)。 */
+/** v2.x: Elementos de lista plana de la página de tutorial(Encabezado/sección del capítulo). */
 private sealed interface TutorialFlatItem {
     val key: String
 
@@ -520,20 +520,20 @@ private sealed interface TutorialFlatItem {
     }
 }
 
-/** 教程小节 — 标题资源 id + 正文资源 id。 */
+/** Sección de tutoriales — ID del recurso del título + ID del recurso del cuerpo. */
 private class TutorialSection(
     val titleRes: Int,
     val contentRes: Int,
 )
 
-/** v1.0.17: 章节元数据 — 图标 + 标题资源 + 小节列表。 */
+/** v1.0.17: Metadatos del capítulo — Icono + recurso de título + lista de secciones. */
 private class TutorialChapterData(
     val icon: ImageVector,
     val titleRes: Int,
     val sections: List<TutorialSection>,
 )
 
-/** v1.0.17: 用于搜索的可索引小节 — 已加载字符串,可直接做 contains 过滤。 */
+/** v1.0.17: Secciones indexables para búsqueda. — Cadena cargada,El filtrado que contiene se puede realizar directamente. */
 private class SearchableSection(
     val chapterIndex: Int,
     val chapterTitle: String,

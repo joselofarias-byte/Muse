@@ -18,17 +18,17 @@ import java.util.zip.ZipOutputStream
 import kotlin.uuid.Uuid
 
 /**
- * 角色卡导入/导出/分享。
+ * Importación de tarjeta de personaje/Exportar/Compartir.
  *
- * 把 [AssistantEntity](及可选头像图片)打包成 zip(.muse-assistant 文件),
- * 便于跨设备/跨安装分享角色配置。仅用 java.util.zip,不引入新依赖。
+ * poner [AssistantEntity](y foto de avatar opcional)empaquetado en zip(.muse-assistant Archivo),
+ * Conveniente en todos los dispositivos/Comparta configuraciones de roles entre instalaciones. Sólo uso java.util.zip,No se introducen nuevas dependencias.
  *
- * zip 结构:
- *  - assistant.json      序列化的 AssistantEntity(导出时 id 清空,导入时重新生成)
- *  - avatar.<ext>        可选,头像图片字节(从头像路径推断扩展名)
+ * zip estructura:
+ *  - assistant.json      serializado AssistantEntity(Borrar la identificación al exportar,Regenerar al importar)
+ *  - avatar.<ext>        Opcional,Bytes de imagen de avatar(Inferir la extensión de la ruta del avatar)
  *
- * v2.x: 新增一键分享([share],系统分享面板直发角色包)与导入预览
- * ([parse] 解析 → 用户确认 → [commitParsed] 写入)。
+ * v2.x: Agregar uso compartido con un solo clic([share],El panel de uso compartido del sistema envía directamente el paquete de personajes)con vista previa de importación
+ * ([parse] analizar → Confirmación de usuario → [commitParsed] escribir).
  */
 object AssistantCardExporter {
 
@@ -36,28 +36,28 @@ object AssistantCardExporter {
     private const val ENTRY_JSON = "assistant.json"
     private const val ENTRY_AVATAR_PREFIX = "avatar."
 
-    /** v2.x: 角色包 MIME — 与 AndroidManifest 的 VIEW intent-filter 对齐(分享/接收唯一标识)。 */
+    /** v2.x: paquete de personajes MIME — Alineado con el filtro de intención VIEW de AndroidManifest(Compartir/Recibir identificador único). */
     const val MIME_TYPE = "application/x-muse-assistant"
 
-    /** v2.x: 角色包文件扩展名。 */
+    /** v2.x: Extensión de archivo del paquete de caracteres. */
     const val FILE_EXTENSION = "muse-assistant"
 
-    // M-EXP1: 头像扩展名白名单(只允许常见图片格式),防止恶意卡片写入 .exe 等可执行扩展名
+    // M-EXP1: Lista blanca de extensiones de avatar(Sólo se permiten formatos de imagen comunes),Evite que tarjetas maliciosas escriban extensiones ejecutables como .exe
     private val ALLOWED_AVATAR_EXTS = setOf("jpg", "jpeg", "png", "webp")
 
-    // v1.113: 限制单条目最大 10MB,防 ZIP 炸弹
+    // v1.113: Limitar la entrada única al máximo 10MB,Bomba anti-ZIP
     private const val MAX_ENTRY_BYTES = 10L * 1024 * 1024
 
-    /** M-EXP1: 校验扩展名是否在白名单内,不在则回退 "jpg"。 */
+    /** M-EXP1: Verifique que la extensión esté en la lista blanca,Reserva si no está presente "jpg". */
     private fun sanitizeAvatarExt(raw: String): String {
         val lower = raw.lowercase().trim()
         return if (lower in ALLOWED_AVATAR_EXTS) lower else "jpg"
     }
 
     /**
-     * v2.x: 解析出的角色卡内容(尚未写入磁盘/数据库)。
+     * v2.x: Contenido de la tarjeta de personaje analizado(Aún no escrito en el disco/base de datos).
      *
-     * 供导入预览确认使用:用户确认后由 [commitParsed] 落盘入库。
+     * Para uso de confirmación de vista previa de importación:Después de que el usuario confirme el [commitParsed] Guarde la bandeja.
      */
     class ParsedCard(
         val entity: AssistantEntity,
@@ -65,21 +65,21 @@ object AssistantCardExporter {
         val avatarExt: String?,
     )
 
-    // ── 打包(导出与一键分享共用) ─────────────────────────────────────────
+    // ── paquete(Exporta y comparte con un clic) ─────────────────────────────────────────
 
-    /** 把 [assistant] 打包为角色包 zip 写入 [os](导出副本:id 清空;头像字节随包)。 */
+    /** poner [assistant] Empaquetado como paquete de caracteres de escritura zip [os](Exportar una copia:id Borrar;Paquete de bytes de avatar). */
     private fun writeZip(os: OutputStream, assistant: AssistantEntity) {
-        // 导出副本:清除 id
+        // Exportar una copia:Borrar id
         val exportEntity = assistant.copy(id = "")
         val json = AppJson.encodeToString(AssistantEntity.serializer(), exportEntity)
 
-        // 头像字节(可选):仅当 avatarImageUrl 指向存在的本地文件时打包
+        // byte de avatar(Opcional):Empaquetar sólo si avatarImageUrl apunta a un archivo local existente
         var avatarExt: String? = null
         var avatarBytes: ByteArray? = null
         if (assistant.avatarImageUrl.isNotBlank()) {
             val avatarFile = File(assistant.avatarImageUrl)
             if (avatarFile.exists()) {
-                // M-EXP1: 扩展名经白名单清洗,防御本地数据被篡改后写出可疑扩展名
+                // M-EXP1: Extensión incluida en la lista blanca,Evite que los datos locales sean manipulados y escriban extensiones sospechosas
                 avatarExt = sanitizeAvatarExt(avatarFile.extension.ifBlank { "jpg" })
                 avatarBytes = avatarFile.readBytes()
             }
@@ -99,16 +99,16 @@ object AssistantCardExporter {
         }
     }
 
-    /** v2.x: 角色包文件名安全化(去除路径分隔/保留字符/空白)。 */
+    /** v2.x: Seguridad del nombre del archivo del paquete de caracteres(Eliminar separación de caminos/personajes reservados/en blanco). */
     private fun safePackName(name: String): String = name.ifBlank { "assistant" }
         .replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
         .take(60)
 
     /**
-     * 导出角色卡到 [outputUri](SAF 保存)。
+     * Exportar tarjeta de personaje a [outputUri](SAF guardar).
      *
-     * - id 清空为 ""(导入时重新生成),其余字段原样保留(本地卡片,敏感字段不清除)
-     * - 若 [AssistantEntity.avatarImageUrl] 指向存在的本地文件,把头像字节一并打包
+     * - id Claro para ""(Regenerar al importar),Deje los campos restantes como están(tarjeta local,Los campos sensibles no se borran)
+     * - si [AssistantEntity.avatarImageUrl] Apuntar a un archivo local existente,Empaque los bytes del avatar juntos
      */
     suspend fun export(context: Context, assistant: AssistantEntity, outputUri: Uri) = withContext(Dispatchers.IO) {
         context.contentResolver.openOutputStream(outputUri)?.use { os ->
@@ -117,11 +117,11 @@ object AssistantCardExporter {
     }
 
     /**
-     * v2.x: 一键分享 — 打包角色包到 cacheDir 并经系统分享面板发送(ACTION_SEND)。
+     * v2.x: Comparte con un clic — Empaque el paquete de caracteres en cacheDir y envíelo a través del panel para compartir del sistema(ACTION_SEND).
      *
-     * 接收方(装了 Muse 的设备)点开文件可按 MIME 直接进入导入;其他渠道作为普通文件传递。
+     * Receptor(Dispositivos con Muse instalado)Haga clic en el archivo para ingresar directamente a la importación por MIME;Otros canales se entregan como archivos normales.
      *
-     * @return 是否成功发起分享(打包/拉起失败返回 false)
+     * @return Si el intercambio se inició exitosamente(paquete/Regresar si no se detuvo false)
      */
     suspend fun share(context: Context, assistant: AssistantEntity): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -148,14 +148,14 @@ object AssistantCardExporter {
         }
     }
 
-    // ── 解析 / 提交(导入预览确认) ───────────────────────────────────────
+    // ── analizar/enviar(Confirmación de vista previa de importación) ───────────────────────────────────────
 
     /**
-     * v2.x: 解析角色卡但不写入 — 供导入预览确认。
+     * v2.x: Analiza la tarjeta de personaje pero no escribas. — Para confirmación de vista previa de importación.
      *
-     * 读取 zip 中的 assistant.json 与头像字节;不写磁盘、不入库。
+     * Lea los bytes de asistente.json y avatar en zip;Sin escritura en disco, sin almacenamiento.
      *
-     * @return 解析结果;格式无效或解析失败返回 null
+     * @return Analizar resultados;El formato no es válido o el análisis falla. null
      */
     suspend fun parse(context: Context, inputUri: Uri): ParsedCard? = withContext(Dispatchers.IO) {
         var jsonStr: String? = null
@@ -172,7 +172,7 @@ object AssistantCardExporter {
                             jsonStr = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name).toString(Charsets.UTF_8)
                         }
                         name.startsWith(ENTRY_AVATAR_PREFIX) -> {
-                            // M-EXP1: 恶意卡片可能塞 avatar.exe 等条目,扩展名经白名单清洗后再写盘
+                            // M-EXP1: Las tarjetas maliciosas pueden contener entradas como avatar.exe,Las extensiones se incluyen en la lista blanca antes de escribirse en el disco.
                             avatarExt = sanitizeAvatarExt(name.removePrefix(ENTRY_AVATAR_PREFIX))
                             avatarBytes = readZipEntryWithLimit(zis, MAX_ENTRY_BYTES, name)
                         }
@@ -199,17 +199,17 @@ object AssistantCardExporter {
     }
 
     /**
-     * v2.x: 把已解析的角色卡写入磁盘与数据库(预览确认后调用)。
+     * v2.x: Escriba tarjetas de personajes analizadas en el disco y la base de datos.(Llamado después de la confirmación de la vista previa).
      *
-     * - 重新生成 id([Uuid.random]),设 createdAt/updatedAt 为当前时间
-     * - 头像字节写回 filesDir/avatars/ 并更新 avatarImageUrl
-     * - 用 [repo].upsert 存入数据库
+     * - regenerar id([Uuid.random]),Deje que createAt/updatedAt sea la hora actual
+     * - Bytes de avatar escritos nuevamente en filesDir/avatars/ y actualizados avatarImageUrl
+     * - usar [repo].upsert Guardar en base de datos
      */
     suspend fun commitParsed(context: Context, repo: AssistantRepository, card: ParsedCard): AssistantEntity = withContext(Dispatchers.IO) {
         val newId = Uuid.random().toString()
         val now = System.currentTimeMillis()
 
-        // 头像写回内部存储(若有)
+        // El avatar se vuelve a escribir en el almacenamiento interno.(Si es así)
         val newAvatarUrl = run {
             val bytes = card.avatarBytes ?: return@run null
             val ext = card.avatarExt?.takeIf { it.isNotBlank() } ?: "jpg"
@@ -230,11 +230,11 @@ object AssistantCardExporter {
     }
 
     /**
-     * 从 [inputUri] 导入角色卡(解析 + 提交,一步到位)。
+     * de [inputUri] Importar cartas de personajes(analizar + confirmar,un paso).
      *
-     * 保留给不经过预览确认的调用方;带预览的导入请用 [parse] + [commitParsed]。
+     * Reservado para personas que llaman sin confirmación previa;Utilice la importación con vista previa [parse] + [commitParsed].
      *
-     * @return 导入后的 [AssistantEntity];若文件格式无效或解析失败返回 null
+     * @return Después de importar [AssistantEntity];Si el formato del archivo no es válido o el análisis falla, devuelva null
      */
     suspend fun import(context: Context, repo: AssistantRepository, inputUri: Uri): AssistantEntity? {
         val card = parse(context, inputUri) ?: return null

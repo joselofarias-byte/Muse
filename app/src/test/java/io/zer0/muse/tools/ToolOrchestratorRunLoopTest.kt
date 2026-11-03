@@ -31,10 +31,10 @@ import kotlin.math.max
 import kotlin.uuid.Uuid
 
 /**
- * R-TEST-10: ToolOrchestrator 工具执行真实路径测试。
+ * R-TEST-10: ToolOrchestrator La herramienta realiza pruebas de rutas reales.
  *
- * 覆盖 calculator/web_search 执行回填、超时终止、连续失败 3 次熔断、并行执行。
- * 通过 mock ToolRegistry + fake ToolLoopHost 注入,不依赖 ChatViewModel。
+ * Anule la calculadora/web_search para realizar el reabastecimiento, la terminación del tiempo de espera, 3 fallas consecutivas y la ejecución paralela.
+ * Pase mock ToolRegistry + fake ToolLoopHost inyectar,No depende de ChatViewModel.
  */
 class ToolOrchestratorRunLoopTest {
 
@@ -65,8 +65,8 @@ class ToolOrchestratorRunLoopTest {
         every { accessor.snapshot } returns snapshot
 
         coordinator = mockk(relaxed = true)
-        // P5-6: mock 必须复用生产判定器 ToolResultJudge.isSuccess(20+ 失败前缀),
-        // 不能用「只认 error/[超时]」的弱替身,否则测试与生产判定漂移。
+        // P5-6: mock Debe reutilizar el determinante de producción. ToolResultJudge.isSuccess(20+ prefijo de falla),
+        // No puedes usar "sólo reconocer error/[tiempo de espera]"Sustituto débil de,De lo contrario, los juicios de prueba y producción se desviarán.
         every { coordinator.isToolResultSuccess(any()) } answers {
             ToolResultJudge.isSuccess(firstArg())
         }
@@ -119,7 +119,7 @@ class ToolOrchestratorRunLoopTest {
         firstTokenTime = 0L,
     )
 
-    /** 参数被输出上限截断的一轮:assistant 带 toolCalls,但那些 arguments 是残缺 JSON。 */
+    /** Una ronda donde los parámetros se truncan por el límite superior de salida:assistant traer toolCalls,Pero esos argumentos son JSON incompletos. */
     private fun truncatedToolRound(toolCalls: List<ToolCall>): StreamRoundResult.Success = StreamRoundResult.Success(
         assistantMessage = UIMessage(
             role = MessageRole.ASSISTANT,
@@ -247,7 +247,7 @@ class ToolOrchestratorRunLoopTest {
         assertTrue(history.any { it.role == MessageRole.TOOL && it.content.contains("tool_execution_paused") })
         assertEquals(TaskStepStatus.CANCELLED, uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().status)
         assertTrue(
-            uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().result.contains("已暂停"),
+            uiAccessor.snapshot.taskCards.getValue(assistantId.toString()).steps.single().result.contains("suspendido"),
         )
     }
 
@@ -291,7 +291,7 @@ class ToolOrchestratorRunLoopTest {
 
         assertTrue(result.success)
         val toolMessage = history.first { it.role == MessageRole.TOOL }
-        assertTrue(toolMessage.content.startsWith("[超时]"))
+        assertTrue(toolMessage.content.startsWith("[tiempo de espera]"))
         assertTrue(toolMessage.content.contains("calculator"))
     }
 
@@ -312,7 +312,7 @@ class ToolOrchestratorRunLoopTest {
         val history = mutableListOf<UIMessage>()
         val result = orchestrator().runLoop(params(), history, host, accessor, coordinator)
 
-        // 工具熔断后仍应把已有结果交给模型生成一轮无工具最终答复。
+        // Una vez que se destruye la herramienta, los resultados existentes aún deben entregarse al modelo para generar una ronda de respuestas finales sin herramientas.
         assertTrue(result.success)
         assertEquals(ToolLoopTerminationReason.COMPLETED_AFTER_TOOL_FAILURES, result.terminationReason)
         assertEquals(4, host.calls.size)
@@ -344,7 +344,7 @@ class ToolOrchestratorRunLoopTest {
         assertNotNull(result.error)
         assertEquals(2, result.round)
         assertEquals(2, result.totalToolCallCount)
-        // 轮次耗尽仍注入用户可见收尾文案
+        // Una vez agotada la ronda, todavía se inyecta una copia final visible para el usuario.
         assertNotNull(result.finalAssistantMessage)
     }
 
@@ -353,7 +353,7 @@ class ToolOrchestratorRunLoopTest {
         val repeated = listOf(
             toolRound(listOf(ToolCall("d1", "calculator", """{"expression":"1"}"""))),
             toolRound(listOf(ToolCall("d2", "calculator", """{"expression":"1"}"""))),
-            // 第 3 轮签名重复达阈值,熔断发生在执行之前
+            // La duplicación de firmas en la ronda 3 alcanza el umbral,La interrupción del circuito se produce antes de la ejecución.
             toolRound(listOf(ToolCall("d3", "calculator", """{"expression":"1"}"""))),
         )
         val host = FakeToolLoopHost(ArrayDeque(repeated))
@@ -365,7 +365,7 @@ class ToolOrchestratorRunLoopTest {
         assertFalse(result.success)
         assertEquals(ToolLoopTerminationReason.REPEATED_TOOL_CALLS, result.terminationReason)
         assertEquals(3, result.round)
-        // 前两轮真实执行,第三轮被停滞检测拦截(计数在检测前记录,共 3 次"模型发出")
+        // Ejecución real de las dos primeras rondas.,La tercera ronda fue interceptada por detección de pérdida.(Los recuentos se registran antes de la prueba.,3 veces en total"El modelo emite")
         assertEquals(3, result.totalToolCallCount)
         assertEquals(2, history.count { it.role == MessageRole.TOOL })
     }
@@ -385,7 +385,7 @@ class ToolOrchestratorRunLoopTest {
             "too late"
         }
 
-        // 真实 coordinator + 内存 accessor:验证任务卡步骤终态(而非仅工具消息文本)
+        // Coordinador real + accesor a memoria: verificar el estado final del paso de la tarjeta de tareas(en lugar de solo texto de mensaje de herramienta)
         val uiAccessor = InMemoryChatStateAccessor()
         val realCoordinator = ChatTaskCardCoordinator(uiAccessor, registry)
         val history = mutableListOf<UIMessage>()
@@ -424,16 +424,16 @@ class ToolOrchestratorRunLoopTest {
         }
 
         val history = mutableListOf<UIMessage>()
-        // B-38 串行语义:显式关闭只读并行(生产默认开启,经「实验功能」可关)
+        // B-38 semántica serial:Desactivar explícitamente el paralelismo de solo lectura(La producción está habilitada de forma predeterminada.,Se puede desactivar mediante la "Función experimental")
         val result = orchestrator(parallelReadOnlyToolsEnabled = false)
             .runLoop(params(), history, host, accessor, coordinator)
 
         assertTrue(result.success)
         assertEquals(2, result.totalToolCallCount)
         assertEquals(2, history.count { it.role == MessageRole.TOOL })
-        // B-38: 工具执行改为串行,消除 afterExecute/taskCard/计数竞态;断言不再并发
+        // B-38: La ejecución de la herramienta cambió a serie.,Eliminar la condición de carrera afterExecute/taskCard/count;Afirmar que ya no es concurrente
         assertEquals(
-            "B-38 后工具应串行执行,最大并发应恒为 1,实际=$maxActive",
+            "B-38 Las herramientas de publicación deben ejecutarse en serie.,La concurrencia máxima siempre debe ser 1,real=$maxActive",
             1,
             maxActive.get(),
         )
@@ -447,9 +447,9 @@ class ToolOrchestratorRunLoopTest {
                 listOf(
                     truncatedToolRound(
                         listOf(
-                            // 半截 JSON:不合法、不解析,更不允许被执行
-                            ToolCall("tc-half", "write_file", """{"path":"a.md","content":"写了一"""),
-                            // 上游连 id 都没发全,回填时必须合成一个能配对的
+                            // Medio JSON: ilegal y no se puede analizar,No se permite ejecutar
+                            ToolCall("tc-half", "write_file", """{"path":"a.md","content":"Escribió"""),
+                            // El upstream ni siquiera envió la identificación completa.,Al rellenar, debe sintetizar una coincidencia
                             ToolCall("", "calculator", """{"exp"""),
                         ),
                     ),
@@ -466,20 +466,20 @@ class ToolOrchestratorRunLoopTest {
         val result = orchestrator().runLoop(params(), history, host, accessor, coordinator)
 
         assertTrue(result.success)
-        assertEquals("截断轮不得触碰工具执行", 0, executions.get())
+        assertEquals("La rueda de corte no debe tocar la herramienta al ejecutar", 0, executions.get())
 
         val assistantToolMsg = history.first { !it.toolCalls.isNullOrEmpty() }
         val toolMsgs = history.filter { it.role == MessageRole.TOOL }
         assertEquals(2, toolMsgs.size)
-        // 每条截断调用都有配对的 tool result,且 id 非空(否则下一次请求被 provider 拒)
+        // Cada llamada de truncamiento tiene un par tool result,Y la identificación no está vacía(De lo contrario, la siguiente solicitud será rechazada por el proveedor.)
         assertEquals(assistantToolMsg.toolCalls!!.map { it.id }, toolMsgs.map { it.toolCallId })
         assertTrue(toolMsgs.all { !it.toolCallId.isNullOrBlank() })
         assertTrue(toolMsgs.all { it.content.contains("arguments_truncated_by_output_limit") })
-        // 回传给 provider 的 assistant tool_calls 必须是合法 JSON,残缺参数不会出现在历史里
+        // Las llamadas de herramientas del asistente devueltas al proveedor deben ser legales. JSON,Los parámetros incompletos no aparecerán en el historial.
         assertTrue(assistantToolMsg.toolCalls!!.all { ToolCallSanitizer.isValidJson(it.arguments) })
         assertFalse(assistantToolMsg.toolCalls!!.any { it.arguments.contains("a.md") })
 
-        // 错误结果随下一轮请求发出 —— 模型能自己重发;代价是本轮循环多吃一轮
+        // El resultado del error se envía con la siguiente ronda de solicitudes. —— El modelo puede ser reeditado solo.;El precio es que se comerá una ronda más en este ciclo.
         assertEquals(2, host.calls.size)
         assertEquals(2, result.round)
         assertEquals(
@@ -510,8 +510,8 @@ class ToolOrchestratorRunLoopTest {
 
         assertFalse(result.success)
         assertEquals(0, executions.get())
-        // 连工具名都没收到时无法描述也无从配对,退回“本轮无有效调用”的既有收口路径,
-        // 不会留下没有 tool result 的 assistant tool_call。
+        // Cuando ni siquiera recibí el nombre de la herramienta, no pude describirla ni compararla.,devolver“No hay convocatoria válida en esta ronda”El camino de cierre existente de,
+        // El asistente tool_call sin el resultado de la herramienta no quedará.
         assertEquals(ToolLoopTerminationReason.INVALID_TOOL_CALLS, result.terminationReason)
         assertEquals(0, history.count { it.role == MessageRole.TOOL })
         assertEquals(1, host.calls.size)

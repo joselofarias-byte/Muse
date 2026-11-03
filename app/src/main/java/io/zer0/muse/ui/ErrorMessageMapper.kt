@@ -5,25 +5,25 @@ import io.zer0.common.ErrorMessage
 import io.zer0.muse.R
 
 /**
- * ErrorMessage → 用户可见本地化字符串的适配层。
+ * ErrorMessage → Capa de adaptación para cadenas localizadas visibles para el usuario.
  *
- * 职责:
- *  - 在 app 模块(common 模块无 Android 依赖)桥接 [ErrorMessage] 与 [R.string]
- *  - 支持带参数的错误(如 [ErrorMessage.ApiError.RATE_LIMIT] 的 retryAfter)
- *  - 默认 locale 缺失时回退到 [ErrorMessage.defaultMessage](英文兜底)
+ * Responsabilidades:
+ *  - en el módulo de la aplicación(common El módulo no tiene dependencias de Android)puente [ErrorMessage] con [R.string]
+ *  - Soporta errores con parámetros.(Como por ejemplo [ErrorMessage.ApiError.RATE_LIMIT] de retryAfter)
+ *  - Volver a la configuración regional predeterminada si falta [ErrorMessage.defaultMessage](ingles para decir la verdad)
  *
- * 调用方:
- *  - ViewModel / Activity / Fragment 持有 [Context] 时调用 [toLocalizedString]
- *  - 不持有 [Context] 的纯 Kotlin 类(如 ai / memory 模块)只产出 [ErrorMessage],
- *    由上层 ViewModel 在 catch / Result.Error 分支调用本扩展
+ * llamador:
+ *  - ViewModel / Activity / Fragment mantener [Context] llamado cuando [toLocalizedString]
+ *  - No retenido [Context] Clase pura de Kotlin(Como módulo ai/memoria)solo salida [ErrorMessage],
+ *    Esta extensión es llamada por el ViewModel superior en la rama catch/Result.Error
  *
- * 设计原则:
- *  - 单一映射函数,使用 exhaustive when(Kotlin 编译器强制覆盖所有 [ErrorMessage] 子类)
- *  - 新增 [ErrorMessage] 子类后必须在此补对应 when 分支,否则编译失败(强制同步)
- *  - 字符串资源命名约定:`error_<code>`(与 [ErrorMessage.code] 一一对应)
+ * principios de diseño:
+ *  - función de mapeo único,uso exhaustive when(Kotlin El compilador fuerza la cobertura de todos [ErrorMessage] Subclase)
+ *  - Nuevo [ErrorMessage] Después de la subclasificación, debe agregar aquí la rama when correspondiente.,De lo contrario, la compilación falla(Sincronización de fuerza)
+ *  - Convención de nomenclatura de recursos de cadenas:`error_<code>`(con [ErrorMessage.code] correspondencia uno a uno)
  */
 fun ErrorMessage.toLocalizedString(context: Context): String = when (this) {
-    // ── 网络错误 ──
+    // ── error de red ──
     ErrorMessage.NetworkError.TIMEOUT ->
         context.getString(R.string.error_network_timeout)
     ErrorMessage.NetworkError.NO_CONNECTION ->
@@ -31,7 +31,7 @@ fun ErrorMessage.toLocalizedString(context: Context): String = when (this) {
     ErrorMessage.NetworkError.DNS_FAILED ->
         context.getString(R.string.error_network_dns_failed)
 
-    // ── 鉴权错误 ──
+    // ── Error de autenticación ──
     ErrorMessage.AuthError.INVALID_KEY ->
         context.getString(R.string.error_auth_invalid_key)
     ErrorMessage.AuthError.EXPIRED ->
@@ -39,9 +39,9 @@ fun ErrorMessage.toLocalizedString(context: Context): String = when (this) {
     ErrorMessage.AuthError.UNAUTHORIZED ->
         context.getString(R.string.error_auth_unauthorized)
 
-    // ── API 服务错误 ──
+    // ── API error de servicio ──
     is ErrorMessage.ApiError.RATE_LIMIT -> {
-        // 带 retryAfter 时格式化为"请 N 秒后重试",否则用无参变体
+        // Con retryAfter, formatéelo como"Inténtalo de nuevo en N segundos.",De lo contrario, utilice la variante sin argumentos.
         val seconds = this.retryAfter
         if (seconds != null && seconds > 0) {
             context.getString(R.string.error_api_rate_limit, seconds)
@@ -56,7 +56,7 @@ fun ErrorMessage.toLocalizedString(context: Context): String = when (this) {
     ErrorMessage.ApiError.CONTEXT_LENGTH ->
         context.getString(R.string.error_api_context_length)
 
-    // ── 存储错误 ──
+    // ── Error de almacenamiento ──
     ErrorMessage.StorageError.DB_FULL ->
         context.getString(R.string.error_storage_db_full)
     ErrorMessage.StorageError.IO_ERROR ->
@@ -64,13 +64,13 @@ fun ErrorMessage.toLocalizedString(context: Context): String = when (this) {
     ErrorMessage.StorageError.MIGRATION_FAILED ->
         context.getString(R.string.error_storage_migration_failed)
 
-    // ── 校验错误 ──
+    // ── error de verificación ──
     ErrorMessage.ValidationError.EMPTY_INPUT ->
         context.getString(R.string.error_validation_empty_input)
     ErrorMessage.ValidationError.INVALID_FORMAT ->
         context.getString(R.string.error_validation_invalid_format)
 
-    // ── 通用兜底 ──
+    // ── Bolsillo universal ──
     ErrorMessage.GenericError.UNKNOWN ->
         context.getString(R.string.error_generic_unknown)
 }

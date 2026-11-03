@@ -16,14 +16,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
- * A2A 协议处理器 —— 把 Muse 的对话能力映射到标准 A2A JSON-RPC 方法。
+ * A2A manejador de protocolo —— Asigne las capacidades conversacionales de Muse a los métodos estándar A2A JSON-RPC.
  *
- * 执行模型：无 UI、无工具的请求-响应文本补全。A2A 每个 context 映射到 handler-owned Agent 会话，
- * 使用 ChatService.completeText + 专用消息历史；不会切换或读取用户当前聊天状态，也不会执行设备工具。
- * taskId/contextId 由外部协议管理，CancelTask 只取消本 handler 登记的请求协程。
+ * Modelo de ejecución: solicitudes sin interfaz de usuario ni herramientas-Completar el texto de respuesta.A2A Cada contexto se asigna a una sesión del Agente propiedad del controlador,
+ * Utilice ChatService.completeText + historial de mensajes privados; El estado de chat actual del usuario no se alternará ni se leerá, y las herramientas del dispositivo no se ejecutarán.
+ * taskId/contextId gestionado por un protocolo externo,CancelTask Cancele únicamente la rutina de solicitud registrada por este controlador.
  *
- * 有意的能力边界：A2A 目前仅提供文本对话与多轮上下文；若需工具/设备操作，用户必须在本机 UI 中触发，
- * 不能通过远程 A2A 绕过交互审批。
+ * Límites de capacidad intencionales:A2A Actualmente sólo se proporcionan diálogos de texto y contexto de múltiples turnos; si necesitas herramientas/Operaciones del dispositivo, que el usuario debe activar en la interfaz de usuario nativa,
+ * La aprobación de la interacción no se puede omitir mediante A2A remoto.
  */
 class A2aHandler(
     private val chatService: ChatService,
@@ -31,45 +31,45 @@ class A2aHandler(
     private val assistantRepository: AssistantRepository,
     private val appVersion: String,
 ) {
-    /** 任务簿有界且可校验归属；用于 GetTask/CancelTask 精确按 A2A task id 操作。 */
+    /** El libro de tareas tiene propiedad limitada y verificable; se utiliza para operaciones GetTask/CancelTask ​​basadas exactamente en la identificación de la tarea A2A. */
     private val taskRegistry = A2aTaskRegistry()
     private val headlessGenerator = A2aHeadlessGenerator(chatService, sessionRepo, assistantRepository)
 
-    /** 串行化 A2A SendMessage，避免共享生成资源发生请求间串台。 */
+    /** Serialice A2A SendMessage para evitar la serialización entre solicitudes de recursos generados compartidos. */
     private val sendMutex = kotlinx.coroutines.sync.Mutex()
 
-    /** 当前 A2A task → 对应生成 session；CancelTask 只停止该 session，不触碰用户其他生成。 */
+    /** actual A2A task → Correspondiente a generar sesión;CancelTask Sólo detiene la sesión y no toca las creaciones de otros usuarios. */
     private val taskSessions = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /** 当前 A2A task 的 coroutine job；CancelTask 只取消自己的请求。 */
+    /** El trabajo de rutina de la tarea A2A actual;CancelTask Cancele únicamente su propia solicitud. */
     private val taskJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
-    /** 外部 context id → handler-owned session;有界 LRU，淘汰时删除隐藏 Agent 会话。 */
+    /** externo context id → handler-owned session;LRU limitada, elimina sesiones ocultas del Agente en caso de desalojo. */
     private val contexts = A2aContextRegistry()
 
-    /** Agent Card：声明本 agent 的身份、能力与技能。 */
+    /** Agent Card: Declara la identidad, habilidades y destrezas de este agente. */
     fun agentCard(baseUrl: String): AgentCard = AgentCard(
         protocolVersion = A2A_PROTOCOL_VERSION,
         name = "Muse",
-        description = "Muse — Android 端 AI 助手，提供隔离的文本对话补全（A2A 不执行本地工具或设备操作）。",
+        description = "Muse — Android Asistente de terminal AI, que proporciona finalización de conversaciones de texto aisladas (A2A no realiza operaciones de herramientas o dispositivos locales).",
         url = "$baseUrl/a2a",
         version = appVersion,
         capabilities = AgentCapabilities(streaming = false, pushNotifications = false),
         skills = listOf(
             AgentSkill(
                 id = "chat",
-                name = "对话",
-                description = "隔离文本对话与多轮上下文；A2A 不执行本地工具或设备操作。",
+                name = "dialogo",
+                description = "Aislar conversaciones de texto del contexto de múltiples turnos;A2A No se realizan operaciones de dispositivos o herramientas locales.",
                 tags = listOf("chat", "text"),
             ),
         ),
     )
 
     /**
-     * 处理 `SendMessage`：发送文本、等待生成完成、返回任务结果。
+     * Proceso `SendMessage`: envíe texto, espere a que se complete la generación y devuelva los resultados de la tarea.
      *
-     * @param params 含 message.parts 的文本
-     * @return 完成态任务；失败/超时返回 failed 任务（不抛异常，交由 JSON-RPC 层包装）
+     * @param params Texto que contiene mensaje.partes
+     * @return Tarea completada; falló/La tarea fallida se devuelve después del tiempo de espera (no se genera ninguna excepción y está empaquetada por la capa JSON-RPC)
      */
     @Suppress("ReturnCount", "TooGenericExceptionCaught", "CyclomaticComplexMethod")
     suspend fun sendMessage(params: MessageSendParams): A2aTask = sendMutex.withLock {
@@ -132,7 +132,7 @@ class A2aHandler(
                 ),
             )
         } catch (e: TimeoutCancellationException) {
-            Logger.w(TAG, "A2A SendMessage 超时: ${e.message}")
+            Logger.w(TAG, "A2A SendMessage tiempo de espera: ${e.message}")
             record(A2aTask(id = taskId, state = A2aTaskState.FAILED, error = "generation timeout"))
         } catch (e: CancellationException) {
             if (taskRegistry.isCancelable(taskId)) {
@@ -140,15 +140,15 @@ class A2aHandler(
             }
             throw e
         } catch (e: Exception) {
-            Logger.e(TAG, "A2A SendMessage 失败: ${e.message}", e)
+            Logger.e(TAG, "A2A SendMessage falló: ${e.message}", e)
             record(A2aTask(id = taskId, state = A2aTaskState.FAILED, error = e.message ?: "internal error"))
         }
     }
 
-    /** 处理 `GetTask`：回查最近任务结果。 */
+    /** Proceso `GetTask`: revisa los resultados de las tareas recientes. */
     fun getTask(taskId: String): A2aTask? = taskRegistry.get(taskId)
 
-    /** 只取消本 handler 登记且仍在运行的任务；未知/终态 taskId 返回 null，不触碰 UI 生成。 */
+    /** Cancele únicamente las tareas registradas por este controlador y aún en ejecución; desconocido/El taskId final devuelve nulo y no afecta a la generación de la interfaz de usuario. */
     @Suppress("ReturnCount")
     fun cancelTask(taskId: String): A2aTask? {
         val current = taskRegistry.get(taskId) ?: return null
@@ -159,11 +159,11 @@ class A2aHandler(
         return record(current.copy(state = A2aTaskState.CANCELED, error = null))
     }
 
-    /** 记录任务快照（有界）。 */
+    /** Grabar instantánea de la tarea (limitada). */
     private fun record(task: A2aTask): A2aTask {
         val recorded = taskRegistry.record(task)
         if (task.state != A2aTaskState.WORKING) {
-            // 完成任务不再可取消；会话映射随有界任务簿一并保留,仅供结果审计/状态使用。
+            // Las tareas completadas ya no se pueden cancelar; Las asignaciones de sesiones se conservan con el libro de tareas delimitado.,Sólo para auditoría de resultados/uso del estado.
             taskSessions.remove(task.id)
             taskJobs.remove(task.id)
         }

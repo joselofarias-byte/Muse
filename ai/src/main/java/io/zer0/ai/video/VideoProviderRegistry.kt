@@ -4,23 +4,23 @@ import io.zer0.ai.core.ProviderConfig
 import io.zer0.common.Logger
 
 /**
- * v1.137: Video Provider 注册中心(与 [io.zer0.ai.image.ImageProviderRegistry] 风格一致)。
+ * v1.137: Video Provider Centro de registro(con [io.zer0.ai.image.ImageProviderRegistry] estilo consistente).
  *
- * 适配器注册表(AdapterRegistry)模式 + 现有 ImageProviderRegistry:
- *  - 各 [VideoProvider] 实现类在启动时通过 [register] 注册到本中心;
- *  - 调用方通过 [selectFor] 按 [ProviderConfig] 自动选择合适的 provider;
- *  - 选择策略按 specId / baseUrl host 三层匹配,兜底 [GenericOpenAiVideoProvider]。
+ * registro de adaptadores(AdapterRegistry)esquema + existente ImageProviderRegistry:
+ *  - cada uno [VideoProvider] La clase de implementación se pasa al inicio. [register] Regístrate en este centro;
+ *  - la persona que llama pasa [selectFor] prensa [ProviderConfig] Seleccione automáticamente el apropiado provider;
+ *  - Seleccione la estrategia de acuerdo con la coincidencia de tres capas del host specId / baseUrl,Ten todo en cuenta [GenericOpenAiVideoProvider].
  *
- * 选择优先级:
- *  1. specId / id(去 preset_ 前缀)精确匹配(如 specId="agnes" → AgnesVideoProvider);
- *  2. baseUrl host 包含供应商关键字(如含 "agnes-ai" → AgnesVideoProvider);
- *  3. 兜底 [genericProvider](通用 OpenAI 兼容协议,对未知中转站友好)。
+ * Seleccionar prioridad:
+ *  1. specId / id(Ir al prefijo preset_)coincidencia exacta(Como por ejemplo specId="agnes" → AgnesVideoProvider);
+ *  2. baseUrl host Contiene palabras clave del proveedor.(Si está incluido "agnes-ai" → AgnesVideoProvider);
+ *  3. Ten todo en cuenta [genericProvider](Protocolo universal compatible con OpenAI,Amigable con puntos de tránsito desconocidos).
  *
- * 修复 v1.136 的 providerId 路由 bug:
- *  - 旧实现按 [ProviderConfig.id] 硬匹配 map key,导致 "preset_kling" ≠ "kling" 时路由失败
- *  - 新实现按 specId / id(去 preset_ 前缀)路由,与用户自定义 id 无关
+ * Arreglar el enrutamiento de ID de proveedor para v1.136 bug:
+ *  - Prensa de implementación antigua [ProviderConfig.id] partido duro map key,causa "preset_kling" ≠ "kling" El enrutamiento falla cuando
+ *  - Nuevo botón de implementación specId / id(Ir al prefijo preset_)enrutamiento,No tiene nada que ver con identificadores definidos por el usuario.
  *
- * @param genericProvider 通用兜底 Provider(未命中时返回)
+ * @param genericProvider Bolsillo universal Provider(Regresar en caso de error)
  */
 class VideoProviderRegistry(
     private val genericProvider: GenericOpenAiVideoProvider,
@@ -28,33 +28,33 @@ class VideoProviderRegistry(
 
     private val providers = mutableMapOf<String, VideoProvider>()
 
-    /** 注册一个 [VideoProvider](以其 [VideoProvider.providerId] 为 key,后者覆盖前者)。 */
+    /** Registrar un [VideoProvider](con su [VideoProvider.providerId] para key,Este último cubre el primero.). */
     fun register(provider: VideoProvider) {
         providers[provider.providerId] = provider
         Logger.i(TAG, "registered video provider: ${provider.providerId}")
     }
 
-    /** 按 providerId 取已注册的 [VideoProvider]。 */
+    /** Regístrese por ID de proveedor [VideoProvider]. */
     fun get(providerId: String): VideoProvider? = providers[providerId]
 
-    /** 所有已注册的 provider(不含 genericProvider)。 */
+    /** Todos registrados provider(no contiene genericProvider). */
     fun all(): Collection<VideoProvider> = providers.values
 
     /**
-     * 根据 [ProviderConfig] 自动选择合适的 [VideoProvider]。
+     * Según [ProviderConfig] Seleccione automáticamente el apropiado [VideoProvider].
      *
-     * 选择顺序见类注释。永不返回 null([genericProvider] 兜底)。
+     * Consulte las notas de clase para conocer el orden de selección. nunca regresar null([genericProvider] Ten todo en cuenta).
      */
     fun selectFor(config: ProviderConfig): VideoProvider {
-        // 1. specId / id(去 preset_ 前缀)精确匹配
-        //    对齐 ImageProviderRegistry:处理 preset_kling → kling 等历史 id
+        // 1. specId / id(Ir al prefijo preset_)coincidencia exacta
+        //    Alinear ImageProviderRegistry: Manejo preset_kling → kling esperando la historia id
         val key = config.specId?.takeIf { it.isNotBlank() }
             ?: config.id.removePrefix("preset_").takeIf { it.isNotBlank() }
         if (key != null) {
             providers[key]?.let { return it }
         }
 
-        // 2. baseUrl host 关键字匹配
+        // 2. baseUrl host concordancia de palabras clave
         val host = runCatching {
             java.net.URI(config.resolvedBaseUrl()).host?.lowercase()
         }.getOrNull().orEmpty()
@@ -66,7 +66,7 @@ class VideoProviderRegistry(
             }
         }
 
-        // 3. 兜底通用 Provider(对未知中转站友好,走 OpenAI 兼容协议)
+        // 3. Universales Provider(Amigable con puntos de tránsito desconocidos,Siga el protocolo compatible con OpenAI)
         return genericProvider
     }
 
@@ -74,12 +74,12 @@ class VideoProviderRegistry(
         private const val TAG = "VideoProviderRegistry"
 
         /**
-         * baseUrl host 模式 → providerId 映射(按优先级排序)。
+         * baseUrl host modo → providerId mapeo(Ordenar por prioridad).
          *
-         * host 模糊匹配用于覆盖用户自定义 baseUrl 但 specId 留空的情况。
+         * host La coincidencia aproximada se utiliza para anular la baseUrl definida por el usuario, pero deja el specId en blanco.
          */
         private val HOST_PATTERNS: List<Pair<String, String>> = listOf(
-            // Agnes 优先匹配(避免被通用兜底拦截)
+            // Agnes coincidencia de prioridad(Evite ser interceptado por Propósito General)
             "agnes-ai" to AgnesVideoProvider.PROVIDER_ID,
             // Kling
             "klingai" to KlingVideoProvider.PROVIDER_ID,
@@ -87,7 +87,7 @@ class VideoProviderRegistry(
         )
 
         /**
-         * 从 URL 中提取 host(小写),供日志诊断用。
+         * Extracto de URL host(minúscula),Para diagnóstico de registros.
          */
         internal fun extractHost(baseUrl: String): String {
             if (baseUrl.isBlank()) return ""

@@ -11,20 +11,20 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.x: 从 ChatViewModel 抽离的工具审批/权限 Controller。
+ * v1.x: Aprobación de herramientas extraída de ChatViewModel/Controlador de permisos.
  *
- * 职责:待审批工具调用的参考图覆盖、"始终允许/本次运行全部放行"勾选态、
- * 会话级工具权限模式、以及批准/拒绝(经共享的 [approvalResults] 完成等待中的 deferred)。
+ * Responsabilidades:Superposición de imagen de referencia para que se apruebe la llamada de herramienta,"siempre permitido/Todos están liberados para esta carrera."Estado comprobado,
+ * Modos de permisos y aprobaciones de herramientas a nivel de sesión/rechazar(compartido [approvalResults] Pendiente completo deferred).
  */
 class ChatToolController(
     private val accessor: ChatStateAccessor,
     private val sessionPermissionStore: SessionPermissionStore,
-    /** 与生成侧 requestToolApproval 共享的等待结果表(键 = toolCallId)。 */
+    /** Tabla de resultados de espera compartida con requestToolApproval del lado de compilación(clave = toolCallId). */
     private val approvalResults: ConcurrentHashMap<String, CompletableDeferred<ToolApprovalState>>,
     private val toolConfigStore: ToolConfigStore?,
 ) {
 
-    /** 设置待审批工具调用的参考图覆盖值(data URI;null 清除已选图片)。 */
+    /** Establezca el valor de cobertura de la imagen de referencia para que se aprueben las llamadas de herramientas(data URI;null Borrar imágenes seleccionadas). */
     fun setToolApprovalReferenceImage(toolCallId: String, dataUri: String?) {
         accessor.update { current ->
             current.copy(
@@ -39,7 +39,7 @@ class ChatToolController(
         }
     }
 
-    /** 更新待审批工具调用的"始终允许"勾选状态。 */
+    /** Actualizar la herramienta solicitada para aprobación"siempre permitido"Consultar estado. */
     fun setToolApprovalAlwaysAllow(toolCallId: String, alwaysAllow: Boolean) {
         accessor.update { current ->
             current.copy(
@@ -54,7 +54,7 @@ class ChatToolController(
         }
     }
 
-    /** 更新待审批工具调用的"本次开启期间批准全部"勾选状态,同时写 appRunAllowAllTools。 */
+    /** Actualizar la herramienta solicitada para aprobación"Aprobar todo durante este período de apertura"Estado comprobado,También escriba appRunAllowAllTools. */
     fun setToolApprovalAppRunAllowAll(toolCallId: String, allowAll: Boolean) {
         accessor.update { current ->
             current.copy(
@@ -70,7 +70,7 @@ class ChatToolController(
         }
     }
 
-    /** P3: 设置当前会话的工具权限模式(内存态 + 持久化)。 */
+    /** P3: Establecer el modo de permiso de la herramienta para la sesión actual(Estado de la memoria + persistencia). */
     fun setSessionPermissionMode(mode: SessionPermissionMode) {
         val sessionId = if (accessor.snapshot.isAgentMode) {
             accessor.snapshot.agentSessionId
@@ -83,7 +83,7 @@ class ChatToolController(
         }
     }
 
-    /** 批准工具调用:移除待审批项,把用户在卡片选的参考图作为 argOverrides 注入,并完成等待结果。 */
+    /** Aprobar llamadas de herramientas:Eliminar elementos pendientes de aprobación,Inyecte la imagen de referencia seleccionada por el usuario en la tarjeta como argOverrides,y terminar de esperar los resultados. */
     fun approveToolCall(toolCallId: String) {
         val pending = accessor.snapshot.pendingToolApprovals.firstOrNull { it.toolCallId == toolCallId } ?: return
         accessor.update {
@@ -100,11 +100,11 @@ class ChatToolController(
     }
 
     /**
-     * F-37: 批准工具调用并注入由调用方提供的任意参数覆盖映射。
+     * F-37: La herramienta de aprobación llama e inyecta cualquier asignación de anulación de parámetros proporcionada por la persona que llama.
      *
-     * 与 [approveToolCall] 的区别:覆盖值不局限于参考图,可直接承载 Host 网关透传的
-     * 用户填写参数(web 审批 answered),并经 [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides]
-     * 由 ToolOrchestrator 合并进工具 arguments 后再执行。
+     * con [approveToolCall] la diferencia:Los valores de cobertura no se limitan a imágenes de referencia.,Puede transportar directamente la transmisión transparente de la puerta de enlace del Host
+     * El usuario completa los parámetros(web Aprobación answered),y a través de [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides]
+     * Fusionado en argumentos de herramienta por ToolOrchestrator antes de la ejecución.
      */
     fun approveToolCallWithOverrides(toolCallId: String, argOverrides: Map<String, String>) {
         val pending = accessor.snapshot.pendingToolApprovals.firstOrNull { it.toolCallId == toolCallId } ?: return
@@ -114,7 +114,7 @@ class ChatToolController(
         approvalResults[toolCallId]?.complete(ToolApprovalState.Approved(argOverrides))
     }
 
-    /** 拒绝工具调用:移除待审批项,并完成等待结果。 */
+    /** Denegar llamada a herramienta:Eliminar elementos pendientes de aprobación,y terminar de esperar los resultados. */
     fun denyToolCall(toolCallId: String, reason: String) {
         val pending = accessor.snapshot.pendingToolApprovals.firstOrNull { it.toolCallId == toolCallId } ?: return
         accessor.update {
@@ -123,17 +123,17 @@ class ChatToolController(
         approvalResults[toolCallId]?.complete(ToolApprovalState.Denied(reason))
     }
 
-    /** 持久化单工具策略(由审批卡片"始终允许"按钮触发)。与本次批准解耦。 */
+    /** Estrategia persistente de una sola herramienta(por tarjeta de aprobación"siempre permitido"disparador de botón). Desvinculado de esta aprobación. */
     fun persistToolPolicy(toolCallId: String, policy: ToolApprovalPolicy) {
         val pending = accessor.snapshot.pendingToolApprovals.firstOrNull { it.toolCallId == toolCallId } ?: return
         val store = toolConfigStore ?: return
         accessor.coroutineScope.launch {
             runCatching { store.setPolicy(pending.toolName, policy) }
-                .onFailure { Logger.w("ChatVM", "persistToolPolicy(${pending.toolName}) 失败: ${it.message}") }
+                .onFailure { Logger.w("ChatVM", "persistToolPolicy(${pending.toolName}) falló: ${it.message}") }
         }
     }
 
-    /** 把工具加入当前会话的临时允许集合(本会话不再问,仅内存不持久化)。 */
+    /** Agregue la herramienta al conjunto temporal permitido para la sesión actual(No vuelvas a preguntar en esta conversación.,Sólo la memoria no es persistente.). */
     fun allowToolForSession(toolCallId: String) {
         val pending = accessor.snapshot.pendingToolApprovals.firstOrNull { it.toolCallId == toolCallId } ?: return
         val sessionId = if (accessor.snapshot.isAgentMode) {
@@ -145,7 +145,7 @@ class ChatToolController(
     }
 
     companion object {
-        /** 支持在审批卡片中选取本地参考图的工具名集合。 */
+        /** Admite la selección de la colección de nombres de herramientas de dibujos de referencia locales en la tarjeta de aprobación. */
         private val REFERENCE_IMAGE_TOOL_NAMES: Set<String> = setOf("generate_image")
     }
 }

@@ -1,35 +1,35 @@
-// v2.2.1 虚拟屏:服务端契约(AIDL)。
+// v2.2.1 pantalla virtual:Contrato de servidor(AIDL).
 //
-// 服务端: io.zer0.muse.vdserver.Main 起的 shell uid app_process 进程(独立 jar)。
-// 客户端: io.zer0.muse.automation.vdisplay.VirtualDisplayClient(主应用进程),
-//         经广播手递手拿到 IBinder 后通过本接口调用。
+// Servidor: io.zer0.muse.vdserver.Main Se inició el proceso shell uid app_process(independiente jar).
+// cliente: io.zer0.muse.automation.vdisplay.VirtualDisplayClient(proceso de solicitud principal),
+//         Después de pasar el IBinder por la transmisión, llámelo a través de esta interfaz.
 //
-// 设计原则:
-//  - 全部同步返回(无 oneway),调用方拿到确定结果
-//  - 截图返回图像字节(高分辨率下用 JPEG 编码,避开 Binder 1MB 事务上限;
-//    失败返回 null);建议虚拟屏宽度 <= 1080、高度 <= 1920
-//  - 输入注入不走本接口(用 `input -d <displayId>` shell 命令,复用既有执行器)
+// principios de diseño:
+//  - Todos regresan sincrónicamente(Ninguno oneway),La persona que llama obtiene el resultado confirmado.
+//  - La captura de pantalla devuelve bytes de imagen(Codificado en JPEG en alta resolución.,Evitar el límite de transacciones de 1 MB de Binder;
+//    Retorno del fracaso null);Ancho de pantalla virtual recomendado <= 1080, altura <= 1920
+//  - La inyección de entrada no utiliza esta interfaz(usar `input -d <displayId>` shell comando,Reutilizar ejecutores existentes)
 package io.zer0.muse.vdproto;
 
 interface IVirtualDisplayService {
 
-    // 确保兼容虚拟屏存在(同尺寸复用;尺寸变化时只重建此兼容屏)。返回 displayId;失败返回 -1。
+    // Asegúrese de que existan pantallas virtuales compatibles(Reutilizar el mismo tamaño;Solo reconstruya esta pantalla compatible cuando cambie el tamaño). Regresar displayId;Devuelve -1 en caso de error.
     int ensureDisplay(int width, int height, int dpi);
 
-    // 创建独立 display，不复用/替换兼容屏或其他独立屏；调用方必须在任务结束时 destroyDisplay。
-    // active display 数达到服务端上限或创建失败时返回 -1。
+    // Crea una pantalla independiente sin reutilización/Reemplace una pantalla compatible u otra pantalla independiente; la persona que llama debe destruir la pantalla al final de la tarea.
+    // active display -1 se devuelve cuando el número alcanza el límite del servidor o falla la creación.
     int createDisplay(int width, int height, int dpi);
 
-    // 在指定虚拟屏里启动应用(服务端以 shell 身份解析 launcher 活动并 am start --display)。
-    // 成功返回 true。
+    // Inicie la aplicación en la pantalla virtual especificada(El servidor analiza la actividad del iniciador como shell y am start --display).
+    // Devuelve verdadero en caso de éxito.
     boolean launchApp(String packageName, int displayId);
 
-    // 销毁指定虚拟屏(不存在则忽略)。
+    // Destruye la pantalla virtual especificada(Ignorar si no existe).
     void destroyDisplay(int displayId);
 
-    // 抓取指定虚拟屏的一帧 PNG(超时/失败返回 null)。同时用于保活。
+    // Capturar un fotograma de la pantalla virtual especificada PNG(tiempo de espera/Retorno del fracaso null). También se utiliza para mantenerse con vida.
     byte[] requestScreenshot(int displayId);
 
-    // 服务端存活探测(同时刷新保活时间戳)。
+    // Detección de supervivencia del servidor(Actualice también la marca de tiempo de keepalive).
     boolean isAlive();
 }

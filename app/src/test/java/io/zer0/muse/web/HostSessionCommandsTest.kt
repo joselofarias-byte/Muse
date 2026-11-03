@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** session.rename / archive / delete 的焦点隔离测试。 */
+/** session.rename / archive / delete Pruebas de aislamiento de enfoque. */
 class HostSessionCommandsTest {
 
     private class RecordingMutations : HostSessionMutations {
@@ -31,7 +31,7 @@ class HostSessionCommandsTest {
             type = type,
             requestId = "req-$type",
             sessionId = sessionId,
-            title = "新标题",
+            title = "nuevo título",
         )
         HostSessionCommands.TYPE_ARCHIVE -> HostCommand(
             type = type,
@@ -52,12 +52,12 @@ class HostSessionCommandsTest {
         HostSessionCommands.types.forEach { type ->
             val event = commands.handle(command(type, "session-1"), connectionId = "connection-b")
 
-            assertEquals("$type 应回 error 事件", HostSessionCommands.EVENT_ERROR, event.type)
+            assertEquals("$type Debería devolver un evento de error", HostSessionCommands.EVENT_ERROR, event.type)
             assertEquals(HostSessionCommands.ERROR_FOCUS_NOT_HELD, event.error)
             assertEquals("req-$type", event.requestId)
         }
 
-        assertTrue("未持焦点的连接不得改动会话", mutations.renames.isEmpty())
+        assertTrue("Una conexión que no mantiene el foco no debe modificar la sesión.", mutations.renames.isEmpty())
         assertTrue(mutations.archives.isEmpty())
         assertTrue(mutations.deletes.isEmpty())
     }
@@ -72,12 +72,12 @@ class HostSessionCommandsTest {
         HostSessionCommands.types.forEach { type ->
             val event = commands.handle(command(type, "session-1"), connectionId = "connection-a")
 
-            assertEquals("$type 应被接受", HostSessionCommands.EVENT_ACCEPTED, event.type)
+            assertEquals("$type debe ser aceptado", HostSessionCommands.EVENT_ACCEPTED, event.type)
             assertEquals("session-1", event.sessionId)
             assertEquals("req-$type", event.requestId)
         }
 
-        assertEquals(listOf("session-1" to "新标题"), mutations.renames)
+        assertEquals(listOf("session-1" to "nuevo título"), mutations.renames)
         assertEquals(listOf("session-1" to true), mutations.archives)
         assertEquals(listOf("session-1"), mutations.deletes)
     }

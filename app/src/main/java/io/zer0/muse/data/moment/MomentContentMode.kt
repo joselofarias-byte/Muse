@@ -1,18 +1,18 @@
 package io.zer0.muse.data.moment
 
 /**
- * 朋友圈内容模式（用户可在设置页切换）。
+ * Modo de contenido de Momentos (los usuarios pueden cambiar en la página de configuración).
  *
- * 背景：旧实现的 prompt 写死在"只依据真实素材，不编造用户没说过的经历"。
- * 这条规则在角色扮演语境下把角色锁死在"只能复述用户"——角色没有自己的生活，
- * 朋友圈就退化成"用户记忆摘要"，失去沉浸感。但反过来完全放开又会变成凭空编造，
- * 同样破坏信任。故做成两档，由用户按自己的玩法选择。
+ * Antecedentes: la antigua implementación del aviso fue escrita hasta la muerte"Basado únicamente en materiales reales, no inventes experiencias que los usuarios no hayan dicho.".
+ * Esta regla encierra al personaje en un contexto de juego de roles."Solo puedo repetir usuario"——Los personajes no tienen vida propia;
+ * El círculo de amigos ha degenerado en"Resumen de memoria de usuario", perdiendo inmersión. Pero, por otro lado, dejarse ir por completo se convertirá en una invención de la nada.
+ * También destruye la confianza. Por lo tanto, se divide en dos niveles y los usuarios pueden elegir según su propia jugabilidad.
  *
- * - [REAL] 真实系：只发和用户有关的事，克制，像真的在记录生活
- * - [CHARACTER] 角色系：角色有自己的生活、工作、遭遇，用户是旁观者；
- *   涉及用户的部分仍不得编造
+ * - [REAL] Autenticidad: publique únicamente cosas relacionadas con el usuario, con moderación, como si realmente estuviera registrando su vida.
+ * - [CHARACTER] Sistema de personajes: los personajes tienen su propia vida, trabajo y encuentros, y los usuarios son espectadores;
+ *   Aún no se permite fabricar piezas que involucren a usuarios
  *
- * 默认 [REAL]：更保守，不会冒出用户没经历过的内容，新用户不会被吓到。
+ * Predeterminado [REAL]: Más conservador, el contenido que los usuarios no hayan experimentado no aparecerá y los nuevos usuarios no se asustarán.
  */
 enum class MomentContentMode {
     REAL,
@@ -20,14 +20,14 @@ enum class MomentContentMode {
     ;
 
     companion object {
-        /** 从持久化字符串还原；未知值退化为 [REAL]。 */
+        /** Restaurar desde una cadena persistente; valor desconocido se degrada a [REAL]. */
         fun fromStorage(value: String?): MomentContentMode = when (value?.trim()?.lowercase()) {
             "character" -> CHARACTER
             else -> REAL
         }
     }
 
-    /** 持久化字符串。 */
+    /** Cadena persistente. */
     fun toStorage(): String = when (this) {
         REAL -> "real"
         CHARACTER -> "character"

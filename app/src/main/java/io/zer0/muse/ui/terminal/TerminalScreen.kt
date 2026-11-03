@@ -53,16 +53,16 @@ import java.util.ArrayDeque
 
 private const val TAG = "TerminalScreen"
 
-/** 终页诊断探针开关:黑屏之谜已收敛,默认关闭;排查时置 true 重新启用。 */
+/** Interruptor de sonda de diagnóstico de página final:El misterio de la pantalla negra ha sido resuelto,Desactivado de forma predeterminada;Establezca verdadero para volver a habilitarlo al solucionar problemas. */
 private const val TERMINAL_PROBES_ENABLED = false
 
 /**
- * v2.x 终端一期:应用沙盒终端页。
+ * v2.x fase terminal uno:Página de terminal de zona de pruebas de la aplicación.
  *
- * - 显示:xterm.js(assets/terminal)运行在 WebView 中,ANSI 颜色与 UTF-8 完整支持;
- * - 会话:[TerminalSessionStore] 进程级单例,离开页面会话不杀,回来继续;
- * - 输入:底部 Compose 输入行(IME 友好),本地回显后写入会话 stdin;
- * - 后续:PTY 引擎接入后,交互式程序与 Ctrl-C 信号在此页直接可用,UI 无需改动。
+ * - mostrar:xterm.js(assets/terminal)Ejecutando en WebView,ANSI Soporte a todo color y UTF-8;
+ * - sesión:[TerminalSessionStore] Singleton a nivel de proceso,La sesión no se cerrará después de abandonar la página.,Vuelve y continúa;
+ * - entrada:Línea de entrada de composición inferior(IME amigable),Sesión de escritura después del eco local stdin;
+ * - Seguimiento:PTY Después de conectar el motor,Los programas interactivos y las señales Ctrl-C están disponibles directamente en esta página.,UI No se requieren cambios.
  */
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
@@ -75,7 +75,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     var input by remember { mutableStateOf("") }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var webReady by remember { mutableStateOf(false) }
-    // 未就绪时的输出先入队,ready 后一次性冲刷(主线程访问,无并发问题)
+    // La salida cuando no está lista se pone en cola primero,ready Después de un solo lavado(Acceso al hilo principal,Sin problemas de concurrencia)
     val pendingJs = remember { ArrayDeque<String>() }
 
     fun pushToTerminal(bytes: ByteArray) {
@@ -94,7 +94,7 @@ fun TerminalScreen(onBack: () -> Unit) {
 
     fun pushText(text: String) = pushToTerminal(text.toByteArray(Charsets.UTF_8))
 
-    // 调试探针:回读 WebView 内 xterm 真实状态(尺寸/行列/字元/写入计数/JS 错误)
+    // sonda de depuración:Vuelva a leer el verdadero estado de xterm en WebView(Tamaño/rangos/personaje/escribe contar/JS error)
     fun runProbe(wv: WebView, tag: String) {
         val probe =
             "(function(){try{var t=window.__t;var q=document.querySelector('.xterm');" +
@@ -118,19 +118,19 @@ fun TerminalScreen(onBack: () -> Unit) {
                 }
             },
         )
-        // v2.2.1: ensureStarted 含进程启动/文件 IO,移到 IO 线程执行(消除 StrictMode 主线程告警)
+        // v2.2.1: ensureStarted Incluyendo el inicio del proceso./Archivo IO,Pasar a la ejecución del hilo IO(Eliminar la alarma del hilo principal StrictMode)
         val startJob = scope.launch(Dispatchers.IO) { session.ensureStarted() }
         onDispose {
             startJob.cancel()
             session.setListener(null)
-            // 会话保留(进程级单例),仅回收 WebView,避免泄漏;下次进入重载缓冲
+            // retención de sesión(Singleton a nivel de proceso),Reciclar solo WebView,evitar fugas;Ingrese al búfer de recarga la próxima vez
             webViewRef?.destroy()
             webViewRef = null
         }
     }
 
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
-        // ── 顶栏 ─────────────────────────────────────────────
+        // ── barra superior ─────────────────────────────────────────────
         Row(
             modifier =
             Modifier
@@ -191,7 +191,7 @@ fun TerminalScreen(onBack: () -> Unit) {
             }
         }
 
-        // ── 终端画面(xterm.js) ───────────────────────────────
+        // ── pantalla terminal(xterm.js) ───────────────────────────────
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {
@@ -200,7 +200,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                     settings.domStorageEnabled = true
                     isVerticalScrollBarEnabled = false
                     setBackgroundColor(android.graphics.Color.parseColor("#101014"))
-                    // 首次布局/尺寸变化时重算终端行列(fit 在加载时可能测到 0 高度,导致 rows=1)
+                    // primer diseño/Recalcular filas y columnas terminales cuando cambia el tamaño(fit Puede medir 0 altura mientras se carga,causa rows=1)
                     addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
                         val changed =
                             (right - left) != (oldRight - oldLeft) ||
@@ -215,11 +215,11 @@ fun TerminalScreen(onBack: () -> Unit) {
                     webViewClient =
                         object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
-                                Logger.i(TAG, "WebView 加载完成: $url")
+                                Logger.i(TAG, "WebView Cargando completada: $url")
                             }
 
                             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                                Logger.w(TAG, "WebView 加载错误: ${error?.errorCode} ${error?.description} ${request?.url}")
+                                Logger.w(TAG, "WebView Error de carga: ${error?.errorCode} ${error?.description} ${request?.url}")
                             }
                         }
                     webChromeClient =
@@ -239,7 +239,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                             fun onReady() {
                                 mainHandler.post {
                                     webReady = true
-                                    Logger.i(TAG, "WebView onReady 到达:pending=${pendingJs.size}")
+                                    Logger.i(TAG, "WebView onReady llegar:pending=${pendingJs.size}")
                                     val wv = webViewRef
                                     if (wv != null) {
                                         while (pendingJs.isNotEmpty()) {
@@ -272,7 +272,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 .weight(1f),
         )
 
-        // ── 输入行 ───────────────────────────────────────────
+        // ── línea de entrada ───────────────────────────────────────────
         Row(
             modifier =
             Modifier
@@ -312,7 +312,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 onClick = {
                     val cmd = input.trimEnd()
                     if (cmd.isNotBlank()) {
-                        // PTY 下由终端自身回显输入与提示符;管道引擎本地回显
+                        // PTY El propio terminal repite la entrada y solicita;Eco local del motor de tubería
                         if (!session.isPty) pushText("❯ $cmd\r\n")
                         session.write(cmd + "\n")
                     }

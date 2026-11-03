@@ -23,14 +23,14 @@ android {
     }
 
     sourceSets {
-        // 迁移测试要按导出的 schema 造一个旧版本的库:把 schemas 目录当测试资产,
-        // 测试里直接读 1.json 建表,不把建表语句抄一份到代码里
+        // Las pruebas de migración requieren crear una versión antigua de la biblioteca basada en el esquema exportado.:Trate el directorio de esquemas como un activo de prueba,
+        // Lea directamente 1.json en la prueba para crear una tabla,No copie la declaración de creación de la tabla en el código
         getByName("test").assets.srcDir("$projectDir/schemas")
     }
 
     testOptions {
         unitTests {
-            // Robolectric 需要 merged resources 才能拿到 Application Context(Room 内存库用)
+            // Robolectric Requiere recursos fusionados para obtener Application Context(Room Para banco de memoria)
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
             all {
@@ -50,27 +50,27 @@ android {
     }
 }
 
-// 本模块 DB 独立于宿主 MuseDb,版本号从 1 起,导出 schema 作为后续迁移的基线。
+// La base de datos de este módulo es independiente del host. MuseDb,Los números de versión comienzan desde 1,Exporte el esquema como base para migraciones posteriores.
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
-    // AI 消息与工具定义的公共类型:角色的回复走宿主注入的生成能力,但会话形状由本模块定义
+    // AI Tipos públicos definidos por mensajes y herramientas.:La recuperación del personaje depende de la capacidad de generación inyectada por el anfitrión.,Pero la forma de la sesión está definida por este módulo.
     implementation(project(":ai"))
 
-    // 日志门面(Logger):后台定时生成必须能从 logcat 看出「为什么没发」
+    // fachada de troncos(Logger):La generación programada en segundo plano debe poder decir "por qué no se envió" desde logcat
     implementation(project(":common"))
 
-    // Compose(桌面外壳与页面)
+    // Compose(Shells y páginas de escritorio)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui)
-    // 布局/Canvas/Lazy 列表都在 foundation;material3 只把它当 implementation 依赖,不传递到编译期
+    // Diseño/Canvas/Lazy La lista está toda ahí. foundation;material3 Simplemente trátelo como una dependencia de implementación.,No pasó al tiempo de compilación
     implementation("androidx.compose.foundation:foundation")
     implementation(libs.androidx.compose.material3)
 
-    // ViewModel(外壳状态的唯一持有者)
+    // ViewModel(El único poseedor del estado caparazón.)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Room
@@ -78,7 +78,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // 协程(Flow / suspend 接口)
+    // corrutina(Flow / suspend interfaz)
     implementation(libs.kotlinx.coroutines.android)
 
     // Koin
@@ -86,25 +86,25 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
 
-    // 系统返回键(聊天页退出)
+    // Tecla de retorno del sistema(Salir de la página de chat)
     implementation(libs.androidx.activity.compose)
 
-    // 头像/图片加载:版本跟宿主一致(coil = 2.7.0),不另引新版本
+    // avatar/Cargando imagen:La versión es consistente con el host.(coil = 2.7.0),No citar nuevas versiones.
     implementation(libs.coil.compose)
 
-    // 后台定时生成动态:WorkManager 版本跟宿主一致(toml 的 work = 2.9.0),
-    // 不另引新版本 —— 宿主 :app 已经在跑同一个运行时,两处版本必须同源
+    // Genera dinámicas regularmente en segundo plano.:WorkManager La versión es consistente con el host.(toml de work = 2.9.0),
+    // No citar nuevas versiones. —— Host: la aplicación ya está ejecutando el mismo tiempo de ejecución,Las dos versiones deben tener la misma fuente.
     implementation(libs.androidx.work.runtime.ktx)
 
-    // 模块内设置(自动发朋友圈开关、上次生成时间):不往 mp_profile 加字段,也不动 Room schema
+    // Configuraciones dentro del módulo(Enviar automáticamente al interruptor de Momentos y la última hora generada):No agregue campos a mp_profile,Tampoco se mueve Room schema
     implementation(libs.androidx.datastore.preferences)
 
-    // 测试
+    // prueba
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core.ktx)
     testImplementation(libs.kotlinx.coroutines.test)
-    // Compose UI 测试(Robolectric 本地 JVM):tab 切换、列表顺序、空态都靠它验证
+    // Compose UI prueba(Robolectric locales JVM):tab Verifica el cambio, el orden de la lista y los estados vacíos.
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.compose.ui:ui-test-manifest")

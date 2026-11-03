@@ -8,10 +8,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * 「这一轮该不该主动发私信」的纯判定。
+ * Un juicio puro sobre "¿debería tomar la iniciativa de enviar mensajes privados en esta ronda?"
  *
- * 这里不涉及 Room、不发网络、不读系统时钟:时间点、时区与骰子都由测试给出,
- * 于是「23 点该跳过」「距上次 2 小时该跳过」这类边界可以被钉死。
+ * No hay espacio involucrado, ni distribución de red, ni lectura del reloj del sistema.:Los puntos de tiempo, las zonas horarias y los dados se obtienen mediante pruebas.,
+ * Entonces "23 Se pueden fijar límites como "se debe omitir el clic" y "debe omitirse 2 horas desde la última vez".
  */
 class MpProactiveChatPlanTest {
 
@@ -19,7 +19,7 @@ class MpProactiveChatPlanTest {
 
     @Test
     fun switchOffSkipsBeforeAnythingElse() {
-        // 开关关着时,即便时间、会话、概率都满足也不发(它是默认值,绝大多数用户走这一条)
+        // Cuando el interruptor está apagado,Incluso si se cumplen el tiempo, la conversación y la probabilidad, no se enviará.(es el valor predeterminado,La gran mayoría de usuarios van por este camino.)
         assertEquals(MpProactiveChatDecision.Skip(MpProactiveChatSkipReason.DISABLED), decide(at(14), enabled = false))
     }
 
@@ -65,33 +65,33 @@ class MpProactiveChatPlanTest {
 
     @Test
     fun exactlyTenMinutesOfSilenceKeepsGoing() {
-        // 边界在「小于 10 分钟」上:刚好 10 分钟就该放行
+        // El límite está en "menos de 10 minutos":Faltan exactamente 10 minutos para el estreno.
         val state = decide(at(14), lastUserMessageAtMillis = at(13, minute = 50))
         assertEquals(MpProactiveChatDecision.Send, state)
     }
 
     @Test
     fun userNeverSpokeHereIsNotJustActive() {
-        // 会话里用户一句话都没说过(null):不能当成「刚刚活跃」
+        // El usuario nunca dijo una palabra durante la conversación.(null):No puede considerarse "simplemente activo"
         assertEquals(MpProactiveChatDecision.Send, decide(at(14), lastUserMessageAtMillis = null))
     }
 
     @Test
     fun userJustActiveWinsOverTooSoon() {
-        // 距上次主动私信 5 小时(已过 4 小时间隔),但用户 3 分钟前说过话 → 应当报 user_just_active
+        // 5 horas desde el último mensaje privado activo(Pasaron 4 horas),Pero el usuario habló hace 3 minutos. → debe ser reportado user_just_active
         val state = decide(at(14), lastProactiveAtMillis = at(9), lastUserMessageAtMillis = at(13, minute = 57))
         assertEquals(MpProactiveChatDecision.Skip(MpProactiveChatSkipReason.USER_JUST_ACTIVE), state)
     }
 
     @Test
     fun neverSentBeforeIsNotTooSoon() {
-        // 从没发过(lastProactiveAtMillis = null):不能判「太快」,否则第一次永远发不出去
+        // nunca publicado(lastProactiveAtMillis = null):No se puede considerar "demasiado rápido",De lo contrario, nunca se enviará por primera vez.
         assertEquals(MpProactiveChatDecision.Send, decide(at(14), lastProactiveAtMillis = null))
     }
 
     @Test
     fun fourHoursAfterLastProactiveChatMaySend() {
-        // 间隔正好 4 小时:边界在「小于」上,到点就该放行
+        // exactamente con 4 horas de diferencia:El límite está en "menos que",Debería ser liberado en ese momento.
         assertEquals(MpProactiveChatDecision.Send, decide(at(14), lastProactiveAtMillis = at(10)))
     }
 
@@ -107,7 +107,7 @@ class MpProactiveChatPlanTest {
 
     @Test
     fun quietHourWinsOverOtherReasons() {
-        // 23 点且距上次 10 分钟:应当先报安静时段,而不是 too_soon
+        // 23 Haga clic y 10 minutos desde la última vez.:Las horas de silencio deben informarse primero,en lugar de too_soon
         val state = decide(at(23), lastProactiveAtMillis = at(22, minute = 50))
         assertEquals(MpProactiveChatDecision.Skip(MpProactiveChatSkipReason.QUIET_HOUR), state)
     }

@@ -7,15 +7,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * v1.107 数据库完整性校验器。
+ * v1.107 Comprobador de integridad de la base de datos.
  *
- * 启动时(或手动触发)执行 SQLite 的 `PRAGMA integrity_check`,将结果与数据库文件大小
- * 记录到 [db_integrity_log][DbIntegrityLogEntity] 表,用于追踪数据库健康度与体积增长趋势。
- * 若校验失败,UI 层可提示用户从自动备份恢复。
+ * Al iniciar(o disparar manualmente)Ejecutando SQLite `PRAGMA integrity_check`,Comparar resultados con el tamaño del archivo de la base de datos.
+ * grabado en [db_integrity_log][DbIntegrityLogEntity] mesa,Se utiliza para realizar un seguimiento del estado de la base de datos y de las tendencias de crecimiento del volumen.
+ * Si la verificación falla,UI La capa puede solicitar al usuario que restaure desde una copia de seguridad automática.
  *
- * @param integrityLogDao 完整性日志 DAO
- * @param db Room 暴露的 [SupportSQLiteDatabase],由 `MuseDb.openHelper.writableDatabase` 获取,
- *           用于执行 PRAGMA 查询与读取数据库文件路径
+ * @param integrityLogDao registro de integridad DAO
+ * @param db Room expuesto [SupportSQLiteDatabase],por `MuseDb.openHelper.writableDatabase` Obtener,
+ *           Se utiliza para ejecutar consultas PRAGMA y leer rutas de archivos de bases de datos.
  */
 class IntegrityChecker(
     private val integrityLogDao: DbIntegrityLogDao,
@@ -25,22 +25,22 @@ class IntegrityChecker(
     companion object {
         private const val TAG = "IntegrityChecker"
 
-        /** 历史日志保留条数。 */
+        /** El número de entradas del registro histórico retenidas. */
         private const val KEEP_LOG_COUNT = 30
     }
 
     /**
-     * 执行一次 `PRAGMA integrity_check` 并落库记录。
+     * Ejecutar una vez `PRAGMA integrity_check` Y grábalo en la biblioteca.
      *
-     * 步骤:
-     *  1. 读取数据库主文件大小(用于追踪增长趋势);
-     *  2. 通过 [SupportSQLiteDatabase.query] 执行 `PRAGMA integrity_check`,读取全部结果行;
-     *  3. 将状态("ok"/"error")、详情、文件大小、时间戳写入 db_integrity_log;
-     *  4. 顺带清理旧日志,仅保留最近 [KEEP_LOG_COUNT] 条。
+     * pasos:
+     *  1. Leer el tamaño del archivo maestro de la base de datos(Se utiliza para rastrear las tendencias de crecimiento.);
+     *  2. Pase [SupportSQLiteDatabase.query] ejecutar `PRAGMA integrity_check`,Leer todas las líneas de resultados;
+     *  3. estado de voluntad("ok"/"error"), detalles, tamaño del archivo, escritura de marca de tiempo db_integrity_log;
+     *  4. Por cierto, limpia los registros viejos.,Mantenga solo el más reciente [KEEP_LOG_COUNT] artículo.
      *
-     * 在 [AppDispatchers.io] 上执行。任一步骤异常都被捕获并记录,不向上抛出。
+     * en [AppDispatchers.io] ejecutar en. Las excepciones en cualquier paso se detectan y registran.,No lanzado hacia arriba.
      *
-     * @return true 表示校验通过(结果为 "ok");false 表示存在异常或查询失败
+     * @return true Indica que la verificación pasó(El resultado es "ok");false Indica una excepción o error de consulta
      */
     suspend fun checkAndLog(): Boolean = withContext(AppDispatchers.io) {
         val dbSize = readDbSizeBytes()
@@ -55,7 +55,7 @@ class IntegrityChecker(
                 if (sb.isEmpty()) "empty" else sb.toString()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "checkAndLog: 执行 integrity_check 失败", e)
+            Logger.e(TAG, "checkAndLog: No se pudo ejecutar integridad_check", e)
             "query_failed: ${e.message}"
         }
 
@@ -72,49 +72,49 @@ class IntegrityChecker(
                 ),
             )
         } catch (e: Exception) {
-            Logger.e(TAG, "checkAndLog: 写入完整性日志失败", e)
+            Logger.e(TAG, "checkAndLog: No se pudo escribir el registro de integridad", e)
         }
 
         try {
             integrityLogDao.trim(KEEP_LOG_COUNT)
         } catch (e: Exception) {
-            Logger.w(TAG, "checkAndLog: 清理旧完整性日志失败: ${e.message}", e)
+            Logger.w(TAG, "checkAndLog: Error al limpiar el antiguo registro de integridad: ${e.message}", e)
         }
 
         if (isOk) {
             Logger.i(TAG, "checkAndLog: integrity_check ok, dbSize=$dbSize")
         } else {
-            Logger.w(TAG, "checkAndLog: integrity_check 异常: $details")
+            Logger.w(TAG, "checkAndLog: integrity_check anormal: $details")
         }
         isOk
     }
 
     /**
-     * 获取最近一次完整性校验记录。
+     * Obtenga el último registro de verificación de integridad.
      *
-     * 在 [AppDispatchers.io] 上执行。
+     * en [AppDispatchers.io] ejecutar en.
      *
-     * @return 最近一条记录;表为空时返回 null
+     * @return último registro;Regresa cuando la tabla está vacía null
      */
     suspend fun getLatestStatus(): DbIntegrityLogEntity? = withContext(AppDispatchers.io) {
         integrityLogDao.getLatest()
     }
 
     /**
-     * 读取数据库主文件大小,失败或路径为空时返回 0。
+     * Leer el tamaño del archivo maestro de la base de datos,Devuelve 0 en caso de error o si la ruta está vacía.
      */
     private fun readDbSizeBytes(): Long {
         val path: String? = try {
             db.path
         } catch (e: Exception) {
-            Logger.w(TAG, "readDbSizeBytes: 获取数据库路径失败: ${e.message}", e)
+            Logger.w(TAG, "readDbSizeBytes: No se pudo obtener la ruta de la base de datos: ${e.message}", e)
             null
         }
         if (path.isNullOrEmpty()) return 0L
         return try {
             File(path).length()
         } catch (e: Exception) {
-            Logger.w(TAG, "readDbSizeBytes: 读取文件大小失败: ${e.message}", e)
+            Logger.w(TAG, "readDbSizeBytes: No se pudo leer el tamaño del archivo: ${e.message}", e)
             0L
         }
     }

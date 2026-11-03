@@ -15,45 +15,45 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Fact 数据库。
+ * Fact base de datos.
  *
- * v3 schema: 仅 facts 主表(LIKE 搜索,无 FTS)。
- * v4 schema: 新增 importance 字段(0=普通,1=重要,2=关键),关键事实永不衰减。
- * v5 schema: 新增 category / confidence / source / expires_at / last_confirmed_at 结构化字段。
- * v6 schema: 新增 facts_fts FTS4 虚拟表(中文 ngram 全文索引),保留 LIKE 作为单字/异常回退。
- * v7 schema: 新增 last_hit_at 字段,支持命中加成(hitBonus)重置衰减时钟。
- * v8 schema: 新增 scope 字段(记忆作用域,默认 "main" 表示主助手作用域),
- *   用于隔离不同 Agent 的记忆,避免子助手误用主助手事实或团队成员记忆混淆。
- * v9 schema: 新增 space_id 字段(记忆空间,默认 "default"),用于多 Space 隔离
- *   (工作/生活/学习场景互不干扰);同时新增 memory_spaces 表
- *   存储 Space 元数据。space_id 与 scope 正交:scope 按 Agent 隔离,space_id 按场景隔离。
- * v10 schema: 新增 memory_links 表(记忆知识图谱边),存储事实间关系
- *   (causes/explains/part_of/related_to/contradicts),用于 AI 驱动记忆管理
- *   构建用户记忆图谱(P2-3)。
- * v12 schema: 新增 entity_key 列(实体归一化键),同一实体不同写法共享同一键,
- *   用于写入时精确查重与跨写法合并(解决同名重复记忆)。历史数据为 NULL,
- *   由反思任务在整理时回填。
- * v13 schema: 新增 fact_revisions 表(关键记忆修订记录),支持审计与回滚。
- * v15 schema: 新增按 scope+space 隔离的持久化事实删除墓碑,与事实删除事务原子提交。
- * v17 schema: 新增 score / score_updated_at / suppressed_at 三列 —— 衰减分数落库,低分记忆只"出场"不删行。
- * v18 schema: 新增 supersedes_id 列 —— 新记忆指向它取代的旧记忆(冲突仲裁);旧行保留,
- *   仅退出编译上下文。历史数据为 NULL,行为与升级前一致。
- * v19 schema: 新增 merged_into_id 列 —— 本条被合并进了哪条记忆(重复聚合);被指向的新行承载
- *   整合后的正文,指向方保留可查但不参与召回、不进投影。历史数据为 NULL,行为与升级前一致。
+ * v3 schema: tabla principal de hechos solamente(LIKE Buscar,Ninguno FTS).
+ * v4 schema: Campo de importancia agregado(0=ordinario,1=importante,2=clave),Los hechos clave nunca decaen.
+ * v5 schema: Nuevo category / confidence / source / expires_at / last_confirmed_at Campos estructurados.
+ * v6 schema: Se agregó la mesa virtual Facts_fts FTS4.(Índice de texto completo de ngram chino),Mantenga ME GUSTA como palabra/Reversión de excepciones.
+ * v7 schema: Se agregó el campo last_hit_at,Bonificación de golpe de apoyo(hitBonus)Reinicie el reloj de decadencia.
+ * v8 schema: Agregar campo de alcance(alcance de la memoria,Predeterminado "main" Representa el ámbito de ayuda principal.),
+ *   Se utiliza para aislar la memoria de diferentes Agentes.,Evite el mal uso por parte del subasistente de los datos del asistente principal o la confusión de la memoria de los miembros del equipo.
+ * v9 schema: Campo space_id agregado(espacio de memoria,Predeterminado "default"),Utilizado para aislamiento de múltiples espacios.
+ *   (trabajo/vida/Las escenas de aprendizaje no interfieren entre sí.);Agregue también la tabla Memory_spaces.
+ *   Almacena metadatos del espacio.space_id ortogonal al alcance:scope Cuarentena por agente,space_id Aislar por escena.
+ * v10 schema: Se agregó la tabla de enlaces de memoria.(Borde del gráfico de conocimiento de la memoria),Almacenar relaciones entre hechos.
+ *   (causes/explains/part_of/related_to/contradicts),Para la gestión de memoria impulsada por IA
+ *   Construir gráfico de memoria de usuario(P2-3).
+ * v12 schema: Agregar columna entidad_clave(Clave de normalización de entidad),Diferentes métodos de escritura de la misma entidad comparten la misma clave,
+ *   Se utiliza para comprobar con precisión la duplicación y fusionar métodos de escritura cruzada durante la escritura.(Resuelve el problema de la memoria repetida del mismo nombre.). Los datos históricos son NULL,
+ *   Rellenado con tareas de reflexión durante la recopilación.
+ * v13 schema: Agregar tabla fact_revisions(Registro de revisión de memoria clave),Admite auditoría y reversión.
+ * v15 schema: Se agregó aislamiento de hechos de persistencia por alcance + espacio para eliminar lápidas,Confirmación atómica de transacción con eliminación de hecho.
+ * v17 schema: Nuevo score / score_updated_at / suppressed_at tres columnas —— Biblioteca de caída de fracciones de desintegración,Sólo memoria de puntuación baja"aparecer"No elimine filas.
+ * v18 schema: Se agregó la columna supersedes_id —— La nueva memoria apunta a la antigua memoria que reemplaza.(arbitraje de conflictos);Mantener filas antiguas,
+ *   Solo sale del contexto de compilación. Los datos históricos son NULL,El comportamiento es el mismo que antes de la actualización.
+ * v19 schema: Se agregó la columna fusionada_into_id —— ¿En qué memoria está fusionado este artículo?(Repetir agregación);La nueva línea apuntaba a los acarreos.
+ *   Texto integrado,La parte señaladora permanece disponible para consultas pero no participa en la recuperación ni en la proyección. Los datos históricos son NULL,El comportamiento es el mismo que antes de la actualización.
  *
- * FTS4 选型说明:
- *  - 部分国产 ROM(如 OPPO Android 16)的 SQLite 未编译 FTS5 模块,
- *    `CREATE VIRTUAL TABLE ... USING fts5(...)` 会抛 `no such module: fts5`。
- *  - FTS4 自 SQLite 3.7.4(2010)内置,Android 自带 SQLite 均支持,兼容性可靠。
- *  - 中文检索由应用层 [FactFtsManager.toNgram] 预处理为 2-gram,不依赖内置 tokenizer。
+ * FTS4 Instrucciones de selección:
+ *  - Parcialmente hecho en China ROM(Como por ejemplo OPPO Android 16)SQLite no compila el módulo FTS5,
+ *    `CREATE VIRTUAL TABLE ... USING fts5(...)` puede tirar `no such module: fts5`.
+ *  - FTS4 desde SQLite 3.7.4(2010)Incorporado,Android Todo el SQLite integrado es compatible,La compatibilidad es confiable.
+ *  - La búsqueda en chino la realiza la capa de aplicación. [FactFtsManager.toNgram] Preprocesado como 2-gram,No depende del tokenizador incorporado.
  */
 
 /**
- * 当前 facts 库 schema 版本。
+ * La versión actual del esquema de la biblioteca de hechos.
  *
- * 必须与 [FactDb] 的 @Database 版本、迁移链末端(当前 MIGRATION_18_19)三者一致;
- * 版本守卫 [FactDb.archiveUnknownVersionDatabase] 也引用本常量。
- * 历史缺陷正是守卫写死旧值(13)导致 v14 真库被误判为"未知高版本"反复归档清空。
+ * debe ser con [FactDb] @Versión de base de datos, fin de la cadena de migración(actual MIGRATION_18_19)Los tres son consistentes;
+ * guardia de versión [FactDb.archiveUnknownVersionDatabase] También haga referencia a esta constante.
+ * El defecto histórico es proteger los viejos valores.(13)Como resultado, la biblioteca real v14 fue juzgada erróneamente como"Versión alta desconocida"Borrado repetido de archivos.
  */
 internal const val FACT_DB_VERSION = 19
 
@@ -67,14 +67,14 @@ internal const val FACT_DB_VERSION = 19
         FactTombstoneEntity::class,
     ],
     version = FACT_DB_VERSION,
-    // v1.78 (H4): 开启 schema 导出,未来 v4+ 升级时编写 Migration 替代 destructive
-    // 历史 v1→v2→v3 的 destructive migration 已无法补救,从 v3 开始留基线
+    // v1.78 (H4): Habilitar exportación de esquema,Escriba un reemplazo de migración para futuras actualizaciones de v4+ destructive
+    // historia v1→v2→v3 La migración destructiva es irremediable,Mantenga una línea de base a partir de la v3
     exportSchema = true,
 )
 abstract class FactDb : RoomDatabase() {
     abstract fun factDao(): FactDao
 
-    /** v13 (T4-1): 事实修订记录 DAO。 */
+    /** v13 (T4-1): Registros de revisión de hechos DAO. */
     abstract fun factRevisionDao(): FactRevisionDao
 
     /** Durable, scope/space-local deletion markers. */
@@ -82,13 +82,13 @@ abstract class FactDb : RoomDatabase() {
 
     abstract fun memorySpaceDao(): io.zer0.memory.space.MemorySpaceDao
 
-    /** v10: 记忆知识图谱边 DAO(P2-3)。 */
+    /** v10: Borde del gráfico de conocimiento de la memoria DAO(P2-3). */
     abstract fun memoryLinkDao(): io.zer0.memory.ai.MemoryLinkDao
 
     companion object {
         /**
-         * v3→v4 迁移: 新增 importance 列(默认 0=普通)+ 索引。
-         * ALTER TABLE ADD COLUMN 是 SQLite 原生 DDL,Android 16 无 execSQL DML 限制。
+         * v3→v4 Migrar: Agregar columna de importancia(Predeterminado 0=ordinario)+ índice.
+         * ALTER TABLE ADD COLUMN ¿Es SQLite nativo? DDL,Android 16 Sin restricciones de DML de execSQL.
          */
         val MIGRATION_3_4 =
             object : Migration(3, 4) {
@@ -99,7 +99,7 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v4→v5 迁移: 新增结构化事实字段(category / confidence / source / expires_at / last_confirmed_at)。
+         * v4→v5 Migrar: Agregar nuevo campo de hechos estructurados(category / confidence / source / expires_at / last_confirmed_at).
          */
         val MIGRATION_4_5 =
             object : Migration(4, 5) {
@@ -114,14 +114,14 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v5→v6 迁移: 新增 facts_fts FTS4 虚拟表 + 级联删除触发器。
+         * v5→v6 Migrar: Se agregó la tabla virtual FTS4 de Facts_fts + activador de eliminación en cascada.
          *
-         * 注意:
-         * - SQL 必须与 @Fts4 注解生成的完全一致(含反引号 + 列顺序),否则 Room schema 校验失败。
-         * - 迁移只建空表,不填数据。首次启动/首次搜索由 [FactStore.ensureFtsIndexConsistent]
-         *   比较两表 count 后全量 rebuild(用 [FactFtsManager.toNgram] 转换)。
-         * - 不在迁移里 INSERT SELECT: SQL 无法调用 Kotlin ngram 函数,直接塞原文会导致
-         *   索引/查询不一致(MATCH 不到)。rebuild 必须在 Kotlin 层做。
+         * Nota:
+         * - SQL Debe ser exactamente igual al generado por la anotación @Fts4(Con acento grave + orden de columnas),De lo contrario, la verificación del esquema de la sala falla.
+         * - La migración solo crea tablas vacías,No dejes ningún dato en blanco. primer comienzo/Primera búsqueda por [FactStore.ensureFtsIndexConsistent]
+         *   Compare el recuento de las dos tablas y luego la cantidad total rebuild(usar [FactFtsManager.toNgram] Convertir).
+         * - No en migración INSERT SELECT: SQL no puede llamar a la función ngram de Kotlin,Insertar directamente el texto original dará lugar a
+         *   índice/La consulta es inconsistente(MATCH menos que).rebuild Debe hacerse en la capa de Kotlin.
          */
         val MIGRATION_5_6 =
             object : Migration(5, 6) {
@@ -136,8 +136,8 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v6: 创建 facts 表级联清理 facts_fts 的触发器。
-         * 用于 [FactStore.applyDecay] 等批量 DELETE 场景自动同步索引,避免孤儿行。
+         * v6: Cree un activador para la limpieza en cascada de hechos_fts en la tabla de hechos.
+         * usado para [FactStore.applyDecay] Sincronizar automáticamente índices para escenarios DELETE por lotes,Evite filas huérfanas.
          */
         private fun createFtsCleanupTrigger(db: SupportSQLiteDatabase) {
             db.execSQL(
@@ -147,8 +147,8 @@ abstract class FactDb : RoomDatabase() {
         }
 
         /**
-         * v6→v7 迁移: 新增 last_hit_at 列,用于命中加成衰减时钟。
-         * 历史数据默认保持 NULL(未命中状态),后续命中后写入当前时间。
+         * v6→v7 Migrar: Se agregó la columna last_hit_at,Se utiliza para el reloj de caída de bonificación de golpe.
+         * Los datos históricos se mantienen de forma predeterminada. NULL(estado de señorita),La hora actual se escribe después de visitas posteriores.
          */
         val MIGRATION_6_7 =
             object : Migration(6, 7) {
@@ -158,15 +158,15 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v7→v8 迁移: 新增 scope 列(记忆作用域,默认 "main")+ 索引。
+         * v7→v8 Migrar: Agregar nueva columna de alcance(alcance de la memoria,Predeterminado "main")+ índice.
          *
-         * scope 用于隔离不同 Agent(主助手/子助手/团队成员)的记忆:
-         *  - 历史数据全部默认为 "main"(主助手作用域),迁移后行为不变
-         *  - 新增子助手记忆时由 FactStore.add(scope = assistantId) 写入
-         *  - 查询时按 scope 过滤,避免跨作用域误用
+         * scope utilizado para aislar diferentes Agent(asistente principal/sub-asistente/miembro del equipo)memoria:
+         *  - Todos los datos históricos están predeterminados en "main"(alcance de ayuda principal),Comportamiento sin cambios después de la migración
+         *  - Al agregar una memoria de subasistente FactStore.add(scope = assistantId) escribir
+         *  - Filtrar por alcance al realizar consultas,Evite el uso indebido entre alcances
          *
-         * 索引名 index_facts_scope 与 @Index 注解默认命名一致
-         * (Room 自动生成 `index_<table>_<column>`)。
+         * El nombre del índice index_facts_scope es coherente con el nombre predeterminado de la anotación @Index
+         * (Room Generado automáticamente `index_<table>_<column>`).
          */
         val MIGRATION_7_8 =
             object : Migration(7, 8) {
@@ -177,26 +177,26 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v8→v9 迁移: P2-2 多 Space 记忆隔离。
+         * v8→v9 Migrar: P2-2 Aislamiento de memoria multiespacio.
          *
-         *  1. facts 表新增 space_id 列(默认 "default"),并建索引。
-         *  2. 新建 memory_spaces 表存储 Space 元数据(id/name/icon/description/created_at/sort_index)。
-         *  3. 插入默认 Space("default"),历史 facts 通过 DEFAULT 'default' 自动归入。
+         *  1. facts Agregar la columna space_id a la tabla(Predeterminado "default"),Y construir índice.
+         *  2. Cree una nueva tabla Memory_spaces para almacenar metadatos de espacio.(id/name/icon/description/created_at/sort_index).
+         *  3. Insertar valor predeterminado Space("default"),hechos históricos a través DEFAULT 'default' Incluido automáticamente.
          *
-         * 注意:
-         *  - ALTER TABLE ADD COLUMN 在 SQLite 中是 O(1) 元数据操作,不会重写整张表。
-         *  - memory_spaces 表结构必须与 [MemorySpaceEntity] @Entity 注解生成的 SQL 完全一致,
-         *    否则 Room schema 校验失败(包括列顺序、类型、默认值、索引名)。
-         *  - 索引名 idx_memory_spaces_sort 与 @Index(name = "idx_memory_spaces_sort") 对齐。
+         * Nota:
+         *  - ALTER TABLE ADD COLUMN En SQLite es O(1) Operaciones de metadatos,No se reescribirá toda la tabla.
+         *  - memory_spaces La estructura de la tabla debe ser consistente con [MemorySpaceEntity] @Entity El SQL generado por la anotación es exactamente el mismo.,
+         *    De lo contrario, falla la verificación del esquema de la habitación(Incluyendo orden de columnas, tipo, valor predeterminado, nombre de índice).
+         *  - El nombre del índice idx_memory_spaces_sort es el mismo que @Index(name = "idx_memory_spaces_sort") Alineación.
          */
         val MIGRATION_8_9 =
             object : Migration(8, 9) {
                 override fun migrate(db: SupportSQLiteDatabase) {
-                    // 1. facts 表新增 space_id 列
+                    // 1. facts Agregar la columna space_id a la tabla
                     db.execSQL("ALTER TABLE facts ADD COLUMN space_id TEXT NOT NULL DEFAULT 'default'")
                     db.execSQL("CREATE INDEX IF NOT EXISTS index_facts_space_id ON facts(space_id)")
 
-                    // 2. 创建 memory_spaces 表
+                    // 2. Crear tabla de espacios de memoria
                     db.execSQL(
                         """
                         CREATE TABLE IF NOT EXISTS memory_spaces (
@@ -211,31 +211,31 @@ abstract class FactDb : RoomDatabase() {
                     )
                     db.execSQL("CREATE INDEX IF NOT EXISTS idx_memory_spaces_sort ON memory_spaces(sort_index)")
 
-                    // 3. 插入默认 Space(用 INSERT OR IGNORE 防止重复)
+                    // 3. Insertar valor predeterminado Space(Utilice INSERTAR O IGNORAR para evitar duplicaciones)
                     val defaultCreatedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                     db.execSQL(
                         """
                         INSERT OR IGNORE INTO memory_spaces (id, name, icon, description, created_at, sort_index)
-                        VALUES ('default', '默认', 'bookmark', '', '$defaultCreatedAt', 0)
+                        VALUES ('default', 'Predeterminado', 'bookmark', '', '$defaultCreatedAt', 0)
                         """.trimIndent(),
                     )
                 }
             }
 
         /**
-         * v9→v10 迁移: P2-3 记忆知识图谱。
+         * v9→v10 Migrar: P2-3 Gráfico de conocimiento de la memoria.
          *
-         *  新建 memory_links 表存储事实间关系(causes/explains/part_of/related_to/contradicts)。
-         *  - source_fact_id / target_fact_id 指向 facts.id(不加 FOREIGN KEY,避免级联性能损耗)
-         *  - source_title / target_title 冗余标题(事实删除后仍可展示关系语义)
-         *  - space_id / scope 与 facts 表对齐,支持多 Space + 多 Agent 隔离
-         *  - weight 关系强度 0.0~1.0
+         *  Cree una nueva tabla Memory_links para almacenar relaciones entre hechos.(causes/explains/part_of/related_to/contradicts).
+         *  - source_fact_id / target_fact_id señalar a facts.id(No agregado FOREIGN KEY,Evite pérdidas de rendimiento en cascada)
+         *  - source_title / target_title título redundante(La semántica relacional aún se puede mostrar después de eliminar hechos)
+         *  - space_id / scope Alinear con la tabla de hechos,Admite aislamiento multiespacio + multiagente
+         *  - weight fuerza de la relación 0.0~1.0
          *
-         * 注意:
-         *  - 表结构必须与 [MemoryLinkEntity] @Entity 注解生成的 SQL 完全一致
-         *    (列名/类型/默认值/索引名),否则 Room schema 校验失败。
-         *  - 索引名 idx_memory_links_* 与 @Index(name = ...) 对齐。
-         *  - 历史数据无 memory_links 记录,迁移仅建空表。
+         * Nota:
+         *  - La estructura de la tabla debe ser consistente con [MemoryLinkEntity] @Entity El SQL generado por la anotación es exactamente el mismo.
+         *    (Lista/Tipo/Valor predeterminado/Nombre del índice),De lo contrario, la verificación del esquema de la sala falla.
+         *  - Nombre del índice idx_memory_links_* con @Index(name = ...) Alineación.
+         *  - No hay ningún registro de enlaces de memoria en los datos históricos.,La migración solo crea tablas vacías.
          */
         val MIGRATION_9_10 =
             object : Migration(9, 10) {
@@ -264,7 +264,7 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * B4-05: v10→v11 迁移 — facts 表加 pinned_at 列(手动置顶记忆)。
+         * B4-05: v10→v11 Migrar — facts Agregar la columna pinned_at a la tabla(Memoria de pines manual).
          */
         val MIGRATION_10_11 =
             object : Migration(10, 11) {
@@ -274,11 +274,11 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v11→v12 迁移 — facts 表加 entity_key 列(实体归一化键)。
+         * v11→v12 Migrar — facts Agregar la columna entidad_clave a la tabla(Clave de normalización de entidad).
          *
-         * - 仅 ADD COLUMN,SQLite O(1) 元数据操作,不重写表,历史数据无损。
-         * - 新列可空,历史数据保持 NULL,由反思任务在整理时按实体名回填。
-         * - 索引 idx_facts_entity_key 加速写入时查重(同实体键候选扫描)。
+         * - solo ADD COLUMN,SQLite O(1) Operaciones de metadatos,No reescribir la tabla,Los datos históricos están intactos.
+         * - Las nuevas columnas pueden estar vacías,Retención de datos históricos NULL,Rellenado por nombre de entidad mediante la tarea de reflexión durante la clasificación.
+         * - El índice idx_facts_entity_key acelera la verificación de duplicaciones durante la escritura(Escaneo de candidato clave de la misma entidad).
          */
         val MIGRATION_11_12 =
             object : Migration(11, 12) {
@@ -289,8 +289,8 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v12→v13 迁移 — 新建 fact_revisions 表(关键记忆修订记录)。
-         * 仅建空表,历史无修订数据。表结构必须与 [FactRevisionEntity] 对齐。
+         * v12→v13 Migrar — Crear una nueva tabla fact_revisions(Registro de revisión de memoria clave).
+         * Crear solo tablas vacías,No hay datos de revisión histórica. La estructura de la tabla debe ser consistente con [FactRevisionEntity] Alineación.
          */
         val MIGRATION_12_13 =
             object : Migration(12, 13) {
@@ -313,8 +313,8 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v13→v14 迁移 — 新增 hit_count 列（检索命中累计次数）。
-         * NOT NULL + DEFAULT 0 必须与 [FactEntity] 声明一致，否则 Room schema 校验失败。
+         * v13→v14 Migrar — Se agregó la columna hit_count (para recuperar el número acumulado de visitas).
+         * NOT NULL + DEFAULT 0 debe ser con [FactEntity] Las declaraciones son coherentes; de lo contrario, falla la verificación del esquema de la habitación.
          */
         val MIGRATION_13_14 =
             object : Migration(13, 14) {
@@ -341,10 +341,10 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v15→v16（记忆审计）: 新增 (scope, space_id) 复合索引。
+         * v15→v16(auditoría de memoria): Nuevo (scope, space_id) Índice compuesto.
          *
-         * 绝大多数查询都是“同 scope + 同 space”过滤（列表/检索/去重/衰减），
-         * 旧实现只有单列索引，数据量增长后需索引合并或全表扫描。
+         * La gran mayoría de las consultas son“mismo alcance + mismo space”filtro (lista/Buscar/Eliminar duplicados/atenuación),
+         * La implementación anterior solo tenía un índice de una sola columna y, cuando aumenta el volumen de datos, se requiere la combinación de índices o un escaneo completo de la tabla.
          */
         val MIGRATION_15_16 =
             object : Migration(15, 16) {
@@ -356,22 +356,22 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v16→v17（记忆衰减可回拨）: 新增 score / score_updated_at / suppressed_at 三列。
+         * v16→v17(La atenuación de la memoria se puede volver a marcar): Nuevo score / score_updated_at / suppressed_at Tres columnas.
          *
-         * - `score`: 持久化的衰减分数。默认 10.0 即 [io.zer0.memory.ticker.MemoryConfig.baseImportance],
-         *   ALTER TABLE 的 DEFAULT 会直接给历史行补上这个值 —— 不能是 0,
-         *   否则升级后所有旧记忆会在第一轮结算里集体出场。旧行的真实年龄由下一轮衰减按
-         *   created_at / last_hit_at 结算,所以 10.0 只是起点而非终值。
-         * - `suppressed_at`: 出场时间,NULL = 仍在召回中。低分记忆只写本列、不删行。
-         * - `score_updated_at`: 上次结算时间,增量衰减的时钟。
+         * - `score`: La fracción de descomposición de la persistencia. El valor predeterminado es 10.0, que es [io.zer0.memory.ticker.MemoryConfig.baseImportance],
+         *   ALTER TABLE DEFAULT agregará directamente este valor a la fila del historial. —— no puede ser 0,
+         *   De lo contrario, todos los viejos recuerdos aparecerán colectivamente en la primera ronda de liquidación después de la actualización. La verdadera edad de la antigua disputa decae en la siguiente ronda.
+         *   created_at / last_hit_at Liquidación,Entonces 10.0 es solo el punto de partida y no el valor final.
+         * - `suppressed_at`: tiempo de juego,NULL = Todavía bajo retirada. Una memoria de puntuación baja solo escribe la columna actual y no elimina filas.
+         * - `score_updated_at`: Última hora de liquidación,Reloj que decae progresivamente.
          *
-         * 回退方案(不在代码里执行,只为降级/返工留证):
-         *  1) 两列都是新增列,旧版本 APK 打开 v17 库时会被 [archiveUnknownVersionDatabase]
-         *     整库改名为 `facts.db.pre-destructive.bak`,数据不丢,可人工迁回;
-         *  2) 需要退出该特性时,在备份副本上执行
+         * Plan alternativo(No ejecutado en código,Sólo para bajar de categoría/Certificado de retrabajo):
+         *  1) Ambas columnas son columnas nuevas.,Cuando la versión anterior del APK abra la biblioteca v17, será [archiveUnknownVersionDatabase]
+         *     Se cambió el nombre de toda la base de datos. `facts.db.pre-destructive.bak`,No se pierden datos,Se puede retroceder manualmente;
+         *  2) Cuando necesitas salir de esta función,Ejecutar en copia de seguridad
          *     `ALTER TABLE facts DROP COLUMN score; ALTER TABLE facts DROP COLUMN score_updated_at;`
          *     `ALTER TABLE facts DROP COLUMN suppressed_at;`
-         *     并把 user_version 置回 16。
+         *     Y vuelva a establecer user_version en 16.
          */
         val MIGRATION_16_17 =
             object : Migration(16, 17) {
@@ -383,17 +383,17 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v17→v18（冲突仲裁）: 新增 supersedes_id 列 —— 新记忆记下它取代了哪条旧记忆。
+         * v17→v18(Arbitraje de conflictos): Se agregó la columna supersedes_id —— La nueva memoria anota qué memoria antigua reemplaza.
          *
-         * - 可空列,ALTER TABLE ADD COLUMN 是 O(1) 元数据操作,不重写表;
-         *   历史行全部为 NULL = "不取代任何记忆",编译/召回行为与升级前完全一致。
-         * - 不加索引: 唯一的读取方是 FACTS 段投影,它本来就在内存里遍历同一 scope+space 的行。
-         * - 不删旧行: 被取代的记忆仍在 facts 表里,记忆页可见,删掉指向它的新记忆即自动回到上下文。
+         * - columna que acepta valores NULL,ALTER TABLE ADD COLUMN si O(1) Operaciones de metadatos,No reescribir la tabla;
+         *   Todas las líneas históricas son NULL = "No reemplaza ninguna memoria",compilar/El comportamiento de recuperación es exactamente el mismo que antes de la actualización.
+         * - Sin indexación: El único lector es la proyección del segmento FACTS.,Originalmente atraviesa las filas del mismo alcance + espacio en la memoria.
+         * - No eliminar filas antiguas: La memoria reemplazada todavía está en la tabla de hechos.,página de memoria visible,Al eliminar la nueva memoria que apunta a ella, se vuelve automáticamente al contexto.
          *
-         * 回退方案(降级/返工时在备份副本上执行,不在代码里跑):
-         *  1) 旧版本 APK 打开 v18 库时会被 [archiveUnknownVersionDatabase] 整库改名为
-         *     `facts.db.pre-destructive.bak`,数据不丢,可人工迁回;
-         *  2) 需要退出该特性时: `ALTER TABLE facts DROP COLUMN supersedes_id` 并把 user_version 置回 17。
+         * Plan alternativo(Rebajar/Ejecutar en copia de seguridad durante el retrabajo,No ejecutes el código):
+         *  1) Cuando la versión anterior del APK abra la biblioteca v18, será [archiveUnknownVersionDatabase] Se cambió el nombre de toda la base de datos.
+         *     `facts.db.pre-destructive.bak`,No se pierden datos,Se puede retroceder manualmente;
+         *  2) Cuando necesitas salir de esta función: `ALTER TABLE facts DROP COLUMN supersedes_id` Y vuelva a establecer user_version en 17.
          */
         val MIGRATION_17_18 =
             object : Migration(17, 18) {
@@ -403,21 +403,21 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * v18→v19（重复记忆合并）: 新增 merged_into_id 列 —— 本条被合并进了哪条记忆。
+         * v18→v19(Fusión de memoria duplicada): Se agregó la columna fusionada_into_id —— ¿En qué memoria se fusionó este elemento?
          *
-         * - 可空列,ALTER TABLE ADD COLUMN 是 O(1) 元数据操作,不重写表;
-         *   历史行全部为 NULL = "未被合并",召回/投影/记忆页行为与升级前完全一致。
-         * - 不加索引: 只按“哪些行带了标记”整批读一次(scoped scan),配合已有的
-         *   (scope, space_id) 复合索引即可,不另建单列索引。
-         * - 与 supersedes_id 语义不同: 那条是内容取代(矛盾仲裁),本列是重复聚合;
-         *   被合并的行不删、可查、可回退(删掉合并后的新行即自动撤销)。
+         * - columna que acepta valores NULL,ALTER TABLE ADD COLUMN si O(1) Operaciones de metadatos,No reescribir la tabla;
+         *   Todas las líneas históricas son NULL = "No fusionado",recordar/proyección/El comportamiento de la página de memoria es exactamente el mismo que antes de la actualización.
+         * - Sin indexación: Sólo presione“¿Qué líneas están marcadas?”Lea el lote completo una vez(scoped scan),Coincidir existente
+         *   (scope, space_id) El índice compuesto es suficiente,No se creará ningún índice adicional de una sola columna.
+         * - Semántica diferente a la de reemplaza_id: Ese es reemplazo de contenido.(Arbitraje de conflictos),Esta columna es una agregación repetida.;
+         *   Las filas fusionadas no se eliminan, se pueden verificar y se pueden revertir(La eliminación de las nuevas filas fusionadas se deshará automáticamente.).
          *
-         * 回退方案(降级/返工时在备份副本上执行,不在代码里跑):
-         *  1) 旧版本 APK 打开 v19 库时会被 [archiveUnknownVersionDatabase] 整库改名为
-         *     `facts.db.pre-destructive.bak`,数据不丢,可人工迁回;
-         *  2) 需要退出该特性时: 先把标记清掉(`UPDATE facts SET merged_into_id = NULL`,否则旧版本虽然不读
-         *     本列,以后重新升级会看到指向已不存在行的编号),再 `ALTER TABLE facts DROP COLUMN merged_into_id`
-         *     并把 user_version 置回 18。
+         * Plan alternativo(Rebajar/Ejecutar en copia de seguridad durante el retrabajo,No ejecutes el código):
+         *  1) Cuando la versión anterior del APK abra la biblioteca v19, será [archiveUnknownVersionDatabase] Se cambió el nombre de toda la base de datos.
+         *     `facts.db.pre-destructive.bak`,No se pierden datos,Se puede retroceder manualmente;
+         *  2) Cuando necesitas salir de esta función: Limpia la marca primero(`UPDATE facts SET merged_into_id = NULL`,De lo contrario, no se leerá la versión anterior.
+         *     esta columna,Si actualiza nuevamente en el futuro, verá números que apuntan a filas que ya no existen.),otra vez `ALTER TABLE facts DROP COLUMN merged_into_id`
+         *     Y vuelva a establecer user_version en 18.
          */
         val MIGRATION_18_19 =
             object : Migration(18, 19) {
@@ -427,8 +427,8 @@ abstract class FactDb : RoomDatabase() {
             }
 
         /**
-         * R-DB-03: 归档早期 v1/v2 或损坏的 facts 数据库。
-         * 归档为 <name>.bak 后由 Room 重建空库,避免打开时崩溃。
+         * R-DB-03: Archive la versión 1/v2 anterior o la base de datos de hechos corruptos.
+         * Archivado como <name>.bak Luego, Room reconstruye la biblioteca vacía.,Evite choques al abrir.
          */
         private fun archiveLegacyOrCorruptDatabase(context: Context, name: String) {
             val file = context.getDatabasePath(name)
@@ -449,10 +449,10 @@ abstract class FactDb : RoomDatabase() {
         }
 
         /**
-         * 审计修复 (0.2): 未知/更高版本数据库在 destructive fallback 前归档。
-         * 原实现的 destructive fallback 会静默清空用户事实记忆且无备份;
-         * 这里在 Room 打开前检查版本: 高于迁移链覆盖(高版本降级)或版本异常时,
-         * 先重命名 .bak 保留数据,Room 再重建空库,数据可恢复。
+         * Reparación de auditoría (0.2): desconocido/Las bases de datos posteriores se archivan antes de un recurso destructivo.
+         * La implementación original de respaldo destructivo borrará silenciosamente la memoria de hechos del usuario sin respaldo.;
+         * Aquí comprueba la versión antes de abrir Room.: Por encima de la cobertura de la cadena migratoria(Bajar de versión superior)O cuando la versión es anormal,
+         * Cambie el nombre de .bak primero para conservar los datos,Room Reconstruir la base de datos vacía,Los datos son recuperables.
          */
         private fun archiveUnknownVersionDatabase(context: Context, name: String) {
             val file = context.getDatabasePath(name)
@@ -461,21 +461,21 @@ abstract class FactDb : RoomDatabase() {
                 try {
                     SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { it.version }
                 } catch (_: Exception) {
-                    return // 损坏库交给 archiveLegacyOrCorruptDatabase 处理
+                    return // La biblioteca dañada se entrega a archiveLegacyOrCorruptDatabase para su procesamiento.
                 }
-            // 迁移链覆盖范围内(3..FACT_DB_VERSION)一律不归档。
-            // 历史缺陷: 此处曾写死 13,数据库升到 14 后把当前版本真库误判为
-            // "未知高版本",每次启动归档重建 → 事实记忆不保留(83 个空 .bak 即其痕迹)。
+            // Dentro de la cobertura de la cadena migratoria(3..FACT_DB_VERSION)Nunca archives.
+            // defectos historicos: La muerte fue escrita aquí. 13,Después de que la base de datos se actualizó a 14, la versión actual de la base de datos real fue juzgada erróneamente como
+            // "Versión alta desconocida",Inicie la reconstrucción del archivo cada vez → La memoria de hechos no se conserva.(83 Un .bak vacío es su rastro.).
             if (version <= FACT_DB_VERSION) return
             archiveDatabaseFiles(context, file, nextBackupFile(file, "$name.pre-destructive.bak"), name)
         }
 
         /**
-         * 归档数据库文件(main + wal + shm)。
+         * Archivar archivos de base de datos(main + wal + shm).
          *
-         * 归档前尽力 `wal_checkpoint(TRUNCATE)` 把 WAL 内数据并入主库;checkpoint 失败或
-         * 打不开时,将 -wal/-shm 一并改名随备份保留,避免历史"只保主文件、WAL 数据被删"
-         * 的静默数据丢失。归档后标记 [MemoryLegacyReset] 供 UI 提示。
+         * Haz tu mejor esfuerzo antes de presentar la solicitud `wal_checkpoint(TRUNCATE)` Fusionar datos en WAL en la base de datos principal;checkpoint falló o
+         * Cuando no se puede abrir,Cambie el nombre de -wal/-shm y guárdelo con la copia de seguridad,evitar la historia"Sólo se guarda el archivo principal,WAL Los datos fueron eliminados"
+         * Pérdida de datos silenciosa. Etiqueta después de archivar [MemoryLegacyReset] Proporciona indicaciones de la interfaz de usuario.
          */
         private fun archiveDatabaseFiles(context: Context, file: File, bak: File, name: String) {
             val checkpointed =
@@ -489,7 +489,7 @@ abstract class FactDb : RoomDatabase() {
                 }
             val renamed = runCatching { file.renameTo(bak) }.getOrDefault(false)
             check(renamed) {
-                "无法安全归档记忆库，已保留原文件: ${file.absolutePath}"
+                "No se puede archivar la memoria de forma segura; se ha conservado el archivo original: ${file.absolutePath}"
             }
             val parent = file.parentFile
             listOf("wal", "shm").forEach { suffix ->
@@ -507,16 +507,16 @@ abstract class FactDb : RoomDatabase() {
         }
 
         /**
-         * v2.2.1 数据救援: 从历史误归档的备份中恢复事实记忆。
+         * v2.2.1 rescate de datos: Recupere la memoria factual de copias de seguridad históricas mal archivadas.
          *
-         * 触发条件(全部满足才执行,且每库只尝试一次):
-         *  1) 存在未消费的归档事件标记(排除从未发生过误归档的设备);
-         *  2) 主库缺失或 facts 行数为 0(排除仍在正常使用的库);
-         *  3) 存在可打开、版本不超过 [FACT_DB_VERSION]、facts 行数 > 0 的
-         *     `*.pre-destructive.bak*` 备份(取行数最多者)。
-         * 恢复前把当前空库另存为 `*.replaced-by-recovery.bak`,不覆盖任何现有数据。
+         * Condición de activación(Ejecutar sólo cuando todos estén satisfechos.,Y solo inténtelo una vez por biblioteca.):
+         *  1) Hay etiquetas de eventos de archivo no consumidas(Excluir dispositivos que nunca hayan sido archivados erróneamente);
+         *  2) Falta la biblioteca principal o el número de filas de hechos es 0(Excluir bibliotecas que todavía están en uso normal);
+         *  3) Existe y se puede abrir, y la versión no excede [FACT_DB_VERSION],facts Número de líneas > 0 de
+         *     `*.pre-destructive.bak*` copia de seguridad(El que tiene más filas).
+         * Antes de restaurar, guarde la biblioteca vacía actual como `*.replaced-by-recovery.bak`,No sobrescribe ningún dato existente.
          *
-         * @return 恢复的事实条数;未执行/未找到时为 null
+         * @return Número de hechos restaurados;No ejecutado/Cuando no se encuentra es null
          */
         private fun recoverFromMisarchivedBackup(context: Context, name: String): Int? {
             if (MemoryLegacyReset.isRecoveryAttempted(context, name)) return null
@@ -548,7 +548,7 @@ abstract class FactDb : RoomDatabase() {
                 return null
             }
 
-            // 当前空库另存后再迁回备份(不覆盖、可回退)
+            // Guarde la base de datos vacía actual y luego muévala nuevamente a la copia de seguridad(No cubierto, se puede revertir)
             if (main.exists()) {
                 runCatching { main.renameTo(File(parent, "$name.replaced-by-recovery.bak")) }
                 listOf("-wal", "-shm").forEach { suffix ->
@@ -557,17 +557,17 @@ abstract class FactDb : RoomDatabase() {
             }
             val restored = runCatching { source.renameTo(main) }.getOrDefault(false)
             if (!restored) {
-                Logger.w("FactDb", "从归档恢复失败(rename 被拒),保留备份: ${source.absolutePath}")
+                Logger.w("FactDb", "Error al restaurar desde el archivo(rename rechazado),Mantener copias de seguridad: ${source.absolutePath}")
                 MemoryLegacyReset.markRecoveryAttempted(context, name)
                 return null
             }
             MemoryLegacyReset.markRecoveryAttempted(context, name)
             MemoryLegacyReset.noteRecovered(context, bestCount)
-            Logger.i("FactDb", "已从归档恢复事实记忆: $bestCount 条(来源 ${source.name})")
+            Logger.i("FactDb", "Memoria de hechos recuperada del archivo: $bestCount Artículo(Fuente ${source.name})")
             return bestCount
         }
 
-        /** 读取数据库文件中 facts 表行数;不可读时返回 0。 */
+        /** Lea el número de filas en la tabla de hechos en el archivo de base de datos;Devuelve 0 si no es legible. */
         private fun countFacts(file: File): Int = try {
             SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
                 db.rawQuery("SELECT COUNT(*) FROM facts", null).use { cursor ->
@@ -578,16 +578,16 @@ abstract class FactDb : RoomDatabase() {
             0
         }
 
-        /** 读取数据库 user_version;不可读时返回 null。 */
+        /** Leer base de datos user_version;Devuelve nulo si no es legible. */
         private fun readVersion(file: File): Int? = try {
             SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { it.version }
         } catch (_: Exception) {
             null
         }
 
-        /** 为归档选择不覆盖已有备份的目标路径。 */
+        /** Seleccione una ruta de destino para el archivado que no sobrescriba las copias de seguridad existentes. */
         private fun nextBackupFile(file: File, preferredName: String): File {
-            val parent = file.parentFile ?: error("数据库文件缺少父目录: ${file.absolutePath}")
+            val parent = file.parentFile ?: error("Falta el directorio principal del archivo de base de datos: ${file.absolutePath}")
             val preferred = File(parent, preferredName)
             if (!preferred.exists()) return preferred
             var index = 1
@@ -598,11 +598,11 @@ abstract class FactDb : RoomDatabase() {
             }
         }
 
-        /** 单例数据库实例。全局唯一,内存数据库失败时回退。 */
+        /** Instancia de base de datos singleton. Único a nivel mundial,Respaldo cuando falla la base de datos en memoria. */
         fun create(context: Context, name: String = "facts.db"): FactDb {
             archiveLegacyOrCorruptDatabase(context, name)
             archiveUnknownVersionDatabase(context, name)
-            // v2.2.1: 版本守卫缺陷修复后,顺带把被误归档的历史真库迁回(仅一次)
+            // v2.2.1: Después de que se solucione el defecto de protección de versión,Por cierto, la base de datos histórica que se archivó por error fue retirada.(solo una vez)
             recoverFromMisarchivedBackup(context, name)
             return Room.databaseBuilder(context, FactDb::class.java, name)
                 .addMigrations(
@@ -619,7 +619,7 @@ abstract class FactDb : RoomDatabase() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             createFtsCleanupTrigger(db)
-                            // v9: 全新安装时插入默认 Space(与 MIGRATION_8_9 行为对齐)
+                            // v9: Insertar valor predeterminado en una instalación nueva Space(Alineado con el comportamiento MIGRATION_8_9)
                             val defaultCreatedAt =
                                 LocalDateTime.now()
                                     .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
@@ -627,13 +627,13 @@ abstract class FactDb : RoomDatabase() {
                                 """
                                 INSERT OR IGNORE INTO memory_spaces
                                     (id, name, icon, description, created_at, sort_index)
-                                VALUES ('default', '默认', 'bookmark', '', '$defaultCreatedAt', 0)
+                                VALUES ('default', 'Predeterminado', 'bookmark', '', '$defaultCreatedAt', 0)
                                 """.trimIndent(),
                             )
                         }
                     },
                 )
-                // 禁止 destructive migration：无法安全迁移时保留原库并交给恢复流程处理。
+                // Deshabilite la migración destructiva: cuando la migración no se puede realizar de manera segura, la base de datos original se conserva y se entrega al proceso de recuperación.
                 .build()
         }
     }

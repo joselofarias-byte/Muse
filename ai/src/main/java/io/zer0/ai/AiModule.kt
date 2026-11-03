@@ -28,11 +28,11 @@ import io.zer0.common.toMessage
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Provider 注册表。根据 [ProviderConfig.type] 动态构造对应 [Provider] 实例。
+ * Provider Registro. Según [ProviderConfig.type] Correspondencia dinámica de construcción. [Provider] Ejemplo.
  *
- * v1.80 (M-CORE9): 加入简单缓存 — 按 config.id + apiKey + baseUrl 的指纹缓存 Provider 实例,
- * 避免每次请求都重建 OkHttpClient / VertexAiAuthToken 等重型对象。
- * config 内容变化时自动失效重建。
+ * v1.80 (M-CORE9): Agregar caché simple — prensa config.id + apiKey + baseUrl Instancia de proveedor de caché de huellas dactilares,
+ * Evite reconstruir objetos pesados ​​como OkHttpClient/VertexAiAuthToken en cada solicitud.
+ * config Falla y reconstruye automáticamente cuando cambia el contenido.
  */
 object ProviderRegistry {
 
@@ -40,8 +40,8 @@ object ProviderRegistry {
     private val cache = java.util.concurrent.ConcurrentHashMap<CacheKey, Provider>()
 
     fun create(config: ProviderConfig): Provider {
-        // 指纹:id + type + baseUrl + apiKey 后4位 + specific + P1-3 限流参数,变化即失效
-        // P1-3: 限流参数纳入指纹,确保用户修改 RPM/并发后缓存失效重建 decorator
+        // huella digital:id + type + baseUrl + apiKey después4Bit + específico + parámetro de límite de corriente P1-3,El cambio significa fracaso
+        // P1-3: Los parámetros limitantes actuales se incorporan a las huellas dactilares,Asegúrese de que el caché se invalide y se reconstruya después de que el usuario modifique RPM/concurrencia decorator
         val fp = "${config.type}|${config.resolvedBaseUrl()}|${config.apiKey.takeLast(4)}|${config.specific}" +
             "|rpm=${config.requestLimitPerMinute}|conc=${config.maxConcurrentRequests}"
         val key = CacheKey(config.id, fp)
@@ -50,11 +50,11 @@ object ProviderRegistry {
                 ProviderType.OPENAI -> OpenAIProvider(config)
                 ProviderType.ANTHROPIC -> AnthropicProvider(config)
                 ProviderType.GEMINI -> GeminiProvider(config)
-                // v1.0.6: OPENAI_RESPONSES 暂复用 OpenAIProvider(其内部通过 specific.useResponseApi 切换到 /v1/responses)
+                // v1.0.6: OPENAI_RESPONSES reutilización temporal OpenAIProvider(Internamente, cambia aspecific.useResponseApi /v1/responses)
                 ProviderType.OPENAI_RESPONSES -> OpenAIProvider(config)
             }
-            // P1-3: 任一限流参数 > 0 时叠加 RateLimitDecorator(RPM 滑动窗口 + 并发 Semaphore)
-            // decorator 是前置控制,与 KeyRoulette(后置 429 key 切换)互补;两者可叠加共存
+            // P1-3: Cualquier parámetro limitante actual > 0 superposición de tiempo RateLimitDecorator(RPM Ventana deslizante + concurrencia Semaphore)
+            // decorator es control previo,con KeyRoulette(Interruptor de llave trasero 429)complementario;Ambos pueden superponerse y coexistir.
             if (config.requestLimitPerMinute > 0 || config.maxConcurrentRequests > 0) {
                 io.zer0.ai.decorator.RateLimitDecorator(
                     delegate = base,
@@ -67,30 +67,30 @@ object ProviderRegistry {
         }
     }
 
-    /** 清除所有缓存(配置删除/重置时调用)。 */
+    /** borrar todo el caché(Eliminar configuración/Llamado al reiniciar). */
     fun clearCache() {
         cache.clear()
     }
 }
 
 /**
- * v2.4.5: 采样温度出口归一常量。
+ * v2.4.5: Constante de normalización de la temperatura de muestreo en la salida.
  *
- * 应用内允许的温度范围是 [0, 2],但部分供应商走开区间(如商汤 [0.0, 2.0))。
- * 这里给出通用下界/上界,[ProviderCompat.maxTemperatureExclusive] 可进一步收紧上界。
+ * El rango de temperatura permitido dentro de la aplicación es [0, 2],Pero algunos proveedores abandonan la gama.(Como Shangtang [0.0, 2.0)).
+ * Aquí hay un límite inferior general./límite superior,[ProviderCompat.maxTemperatureExclusive] El límite superior se puede ajustar aún más.
  */
 private const val MIN_TEMPERATURE = 0f
 private const val MAX_TEMPERATURE = 2f
 
-/** 排他上界收紧时留出的余量,保证落在开区间内。 */
+/** El margen que queda cuando el límite superior exclusivo se estrecha,Garantizado para caer dentro del rango abierto. */
 private const val TEMPERATURE_EPSILON = 0.0001f
 
 /**
- * v2.4.5: 采样温度出口归一。
+ * v2.4.5: La temperatura de muestreo en la salida está normalizada.
  *
- * 应用内允许的范围是 [0, 2],但部分供应商走开区间(如商汤 [0.0, 2.0)),
- * 由 [ProviderCompat.maxTemperatureExclusive] 声明。原值透传会被上游以
- * 400 "field Temperature invalid" 拒绝,这里统一收紧。
+ * El rango permitido dentro de la aplicación es [0, 2],Pero algunos proveedores abandonan la gama.(Como Shangtang [0.0, 2.0)),
+ * por [ProviderCompat.maxTemperatureExclusive] declaración. El valor original será transmitido de forma transparente por el upstream como
+ * 400 "field Temperature invalid" rechazar,Ajuste uniforme aquí.
  */
 internal fun normalizeTemperature(temperature: Float?, compat: ProviderCompat): Float? {
     val raw = temperature ?: return null
@@ -106,27 +106,27 @@ internal fun normalizeTemperature(temperature: Float?, compat: ProviderCompat): 
  * "unsupported"; only an explicit known capability set without TOOL should
  * suppress tools.
  *
- * v2.6.1: 区分“显式声明不支持”与“未声明”—— 修复中转站/云目录只写了 reasoning
- *   而漏写 toolUse 时(如 deepseek-flash,abilities=[REASONING])工具链被整条
- *   切断、模型只能把工具调用当普通文本吐出的问题。
- *   优先级(从高到低):
- *     1) 用户显式编辑过的模型(userEdited)→ 严格以用户的 abilities 为准,
- *        用户说支持就发、说只推理就不发 —— 用户配置优先级最高。
- *     2) abilities 含 TOOL → 发送。
- *     3) 其余(未声明 / 只声明了 REASONING 等)→ 交由 Provider 能力矩阵终裁,
- *        只有矩阵**显式**判不支持(如 deepseek-reasoner / o1-mini)才抑制。
+ * v2.6.1: distinguir“No se admite la declaración explícita”con“No declarado”—— Estación de transferencia de reparación/El directorio de la nube solo escribe reasoning
+ *   Cuando falta herramientaUtilizar(Como por ejemplo deepseek-flash,abilities=[REASONING])La cadena de herramientas está completamente
+ *   Elimine el problema de que el modelo solo puede mostrar llamadas a herramientas como texto normal.
+ *   prioridad(de mayor a menor):
+ *     1) Modelos editados explícitamente por el usuario.(userEdited)→ Estrictamente basado en las habilidades del usuario.,
+ *        Publique si los usuarios dicen que lo apoyan, pero no publique si dicen que es solo un razonamiento. —— La configuración del usuario tiene la máxima prioridad.
+ *     2) abilities Contiene TOOL → Enviar.
+ *     3) el resto(No declarado/solo declarado RAZONAMIENTO, etc.)→ Déjelo en manos de la matriz de capacidad del proveedor para la decisión final.,
+ *        solo matriz**explícito**Sentencia no sustentada(Como por ejemplo deepseek-reasoner / o1-mini)Simplemente suprímelo.
  *
- * v2.1.0: 抑制路径统一留日志(静默丢弃曾让整个 Agent 工具链路无声失效)。
+ * v2.1.0: Suprimir rutas y mantener registros uniformemente(El descarte silencioso una vez provocó que toda la cadena de herramientas del Agente fallara silenciosamente).
  */
 internal fun shouldSendTools(model: Model, config: ProviderConfig, tools: List<ToolDefinition>?): Boolean {
     if (tools.isNullOrEmpty()) return false
     val sends =
         when {
-            // 1) 用户显式编辑过能力 → 用户配置最高,以其声明为准。
+            // 1) Capacidad para que los usuarios editen explícitamente → La configuración de usuario más alta.,Sujeto a su declaración.
             model.userEdited -> ModelAbility.TOOL in model.abilities
-            // 2) 明确声明支持工具 → 发送。
+            // 2) Declarar explícitamente herramientas compatibles → Enviar.
             ModelAbility.TOOL in model.abilities -> true
-            // 3) 未声明 / 部分声明 → 兼容矩阵终裁;未知 ≠ 不支持。
+            // 3) No declarado/parcialmente declarado → Decisión final de la matriz de compatibilidad;desconocido ≠ No compatible.
             else ->
                 ProviderCompatRules.resolve(
                     providerType = config.type,
@@ -137,7 +137,7 @@ internal fun shouldSendTools(model: Model, config: ProviderConfig, tools: List<T
     if (!sends) {
         Logger.w(
             "ChatService",
-            "工具未发送: 模型 ${model.id} 被判定不支持 function calling | " +
+            "Herramienta no enviada: modelo ${model.id} Juzgado para no apoyar function calling | " +
                 "abilities=${model.abilities}, userEdited=${model.userEdited}, " +
                 "verification=${model.verification}, " +
                 "discardedTools=${tools.size}, provider=${config.id}",
@@ -147,17 +147,17 @@ internal fun shouldSendTools(model: Model, config: ProviderConfig, tools: List<T
 }
 
 /**
- * 应用层调用 AI 的统一入口。
+ * Una entrada unificada para que la capa de aplicación llame a AI.
  *
- * 设计为无状态:每次调用都基于最新 config 重建 Provider。
- * 所有公共逻辑集中在 [buildProviderRequest] 以消除 streamChat 和 completeText 之间的重复。
+ * Diseñado para ser apátrida:Cada llamada reconstruye el proveedor según la última configuración.
+ * Toda la lógica pública se concentra en [buildProviderRequest] para eliminar la duplicación entre streamChat y completeText.
  */
 class ChatService(
     private val configStore: ProviderConfigStore,
 ) {
     /**
-     * 流式聊天。委托给 Provider.streamChat。
-     * @see [buildProviderRequest] 负责公共前置逻辑。
+     * Charla en streaming. Delegue en Provider.streamChat.
+     * @see [buildProviderRequest] Responsable de la prelógica pública.
      */
     suspend fun streamChat(
         messages: List<UIMessage>,
@@ -174,10 +174,10 @@ class ChatService(
         topP: Float? = null,
         sessionId: String? = null,
     ): Flow<ChatStreamEvent> {
-        // C-11 ②: 续传能力与 Provider 能力绑定 — 仅当 Provider 声明 supportsResumeFromText 时,
-        // 才把已产出文本作为"末尾 assistant 消息"注入,让模型从中断处续写。
-        // 不支持续传的 Provider 会误解/重答一段被截断的 assistant 轮次,此时关闭自动续传,
-        // 交由 UI 层 LCP 去重(duplicateRemaining)接管去重,而不是把部分消息发给模型。
+        // C-11 ②: La capacidad de reanudar la transferencia está vinculada a la capacidad del proveedor. — Sólo si el Proveedor declara admiteResumeFromText,
+        // Sólo entonces trate el texto generado como"mensaje final del asistente"inyectar,Dejemos que el modelo continúe donde lo dejó.
+        // Los proveedores que no admiten transferencias de currículum malinterpretarán/Volver a responder un turno de asistente truncado,Desactivar la reanudación automática en este momento,
+        // Déjelo en manos del LCP de la capa UI para la deduplicación.(duplicateRemaining)Hacerse cargo de la deduplicación,En lugar de enviar mensajes parciales al modelo.
         val effectiveMessages = if (!resumeFromText.isNullOrBlank() &&
             supportsResumeFromText(providerConfig, model)
         ) {
@@ -199,9 +199,9 @@ class ChatService(
             topP,
             sessionId,
         )
-        // B3-01: SSE 建立后长时间无首事件(默认 45s,推理/超长上下文档 90s),自动降级为非流式重试一次
-        // v2.x: 15s→45s — 慢模型首 token 常在 15s 之后,过早降级导致“整段弹出”+ 双倍等待
-        // 审计修复 (7.8): 用户已停止时不再 fallback(省一次计费请求)
+        // B3-01: SSE No hay un primer evento durante mucho tiempo después de la creación.(Predeterminado 45s,razonamiento/Archivo de contexto muy largo 90s),Bajar automáticamente a no transmisión y volver a intentarlo una vez
+        // v2.x: 15s→45s — La primera señal del modelo lento suele ser después de los 15 segundos.,Una rebaja prematura da como resultado“Aparece todo el párrafo”+ doble espera
+        // Reparación de auditoría (7.8): Ya no cuando el usuario se ha detenido. fallback(Guardar una solicitud de facturación)
         return provider.streamChat(request).withFirstEventWatchdog(
             timeoutMs = model?.firstEventTimeoutMs() ?: 45_000L,
             fallback = { provider.completeText(request) },
@@ -210,24 +210,24 @@ class ChatService(
     }
 
     /**
-     * C-11: 查询 [ProviderCompatRules] 判定该 Provider 是否支持 resumeFromText 续传。
+     * C-11: Consulta [ProviderCompatRules] Determine si el proveedor admite la transmisión de currículum resumeFromText.
      *
-     * 按 providerType + baseUrl(host) + modelId 三层解析(与请求体参数构造一致的能力矩阵)。
-     * Provider 未声明时保守返回 true,行为与未接入续传门控前一致。
+     * prensa providerType + baseUrl(host) + modelId Tres capas de análisis(Matriz de capacidad construida de manera consistente con los parámetros del cuerpo de la solicitud).
+     * Provider Regresar de manera conservadora cuando no esté declarado true,El comportamiento es el mismo que antes de conectar el control de puerta de reanudación.
      */
     private suspend fun supportsResumeFromText(providerConfig: ProviderConfig?, model: Model?): Boolean {
-        // providerConfig 由调用方显式传入通常直接命中;缺省回退 configStore(与 buildProviderRequest 同源)。
-        // 取不到配置时保守放行续传:不放行会静默跳过续传,比可能重答的危害更隐蔽,故让 Provider 能力矩阵兜底。
+        // providerConfig La persona que llama transmitida explícitamente generalmente accede directamente;Reserva predeterminada configStore(Mismo origen que buildProviderRequest).
+        // Si no se puede obtener la configuración, se permitirá que la transferencia se reanude automáticamente.:Si no se libera, se omitirá silenciosamente la descarga del currículum.,Más insidioso que el peligro de posibles respuestas repetidas,Deje que la matriz de capacidades del proveedor se encargue de todo.
         val config = providerConfig ?: runCatching { configStore.get() }.getOrNull() ?: return true
         return ProviderCompatRules.resolve(config.type, config.resolvedBaseUrl(), model?.id).supportsResumeFromText
     }
 
     /**
-     * 非流式聊天。一次性返回完整结果,适用于 memory 编译、fact 抽取等后台任务。
-     * @see [buildProviderRequest] 负责公共前置逻辑。
+     * Chat sin transmisión. Devolver resultados completos de una sola vez,Adecuado para compilación de memoria,fact Tareas en segundo plano como la extracción.
+     * @see [buildProviderRequest] Responsable de la prelógica pública.
      *
-     * v1.0.7: 默认 [mode]=[ChatRequestMode.UTILITY](callText 硬编码 utility),
-     *   后台任务无需显式传 mode 即可自动关思考。用户对话路径应调 [streamChat]。
+     * v1.0.7: Predeterminado [mode]=[ChatRequestMode.UTILITY](callText codificado utility),
+     *   Las tareas en segundo plano pueden cerrarse automáticamente sin pasar explícitamente el modo. La ruta del diálogo del usuario debe ajustarse. [streamChat].
      */
     suspend fun completeText(
         messages: List<UIMessage>,
@@ -261,9 +261,9 @@ class ChatService(
     }
 
     /**
-     * [streamChat] 和 [completeText] 的公共前置逻辑。
-     * 从 configStore 获取配置,解析模型,创建 Provider,构造 ChatRequest。
-     * 提取后两个方法都不再需要维护重复的 15 行样板代码。
+     * [streamChat] y [completeText] prelógica pública.
+     * Obtener configuración de configStore,modelo analítico,crear Provider,Construya ChatRequest.
+     * La extracción de ambos métodos elimina la necesidad de mantener 15 líneas duplicadas de código repetitivo.
      */
     private suspend fun buildProviderRequest(
         messages: List<UIMessage>,
@@ -281,14 +281,14 @@ class ChatService(
     ): Pair<Provider, ChatRequest> {
         val config = providerConfig ?: configStore.get()
             ?: error(ErrorCode.NO_PROVIDER_CONFIGURED.toMessage())
-        // v2.2.1: 首选回退改为 store 声明的"用户当前选中模型"(默认实现 null 保持旧行为)。
-        // 原先直接取 config.models.firstOrNull():当激活 Provider 首个模型不可用/非对话模型时,
-        // 所有未传 model 的后台任务(主动消息/日记/日报/翻译等)都会静默跑错模型。
+        // v2.2.1: El respaldo preferido cambió a la tienda declarada"El modelo seleccionado actualmente por el usuario."(La implementación predeterminada nula mantiene el comportamiento anterior).
+        // Originalmente tomado directamente config.models.firstOrNull():Al activar el Proveedor el primer modelo no está disponible/Cuando no está en el modelo conversacional,
+        // Todas las tareas en segundo plano sin pasar el modelo.(mensajes no solicitados/diario/periódico diario/Traducción, etc.)Ejecutará silenciosamente el modelo incorrecto.
         val resolvedModel = model ?: configStore.getPreferredModel() ?: config.models.firstOrNull()
             ?: error(ErrorCode.NO_MODEL_SELECTED.toMessage())
-        // Phase 2C:通过 ModelRegistry 自动适配模型能力
+        // Phase 2C:Capacidades de adaptación automática del modelo a través de ModelRegistry
         val enhancedModel = ModelRegistry.enhanceModel(resolvedModel)
-        // 未声明能力的自定义/中转模型不能当成“不支持工具”;交给 Provider 能力矩阵判断。
+        // Personalización de capacidades no declaradas./El modelo de tránsito no puede considerarse“Herramientas no compatibles”;Déjelo en manos de la matriz de capacidades del proveedor para que lo juzgue.
         val effectiveTools = tools.takeIf { shouldSendTools(enhancedModel, config, it) }
         val estimatedInputTokens = ModelOutputPolicy.estimateInputTokens(messages, effectiveTools)
         val regularMaxTokens = ModelOutputPolicy.resolve(maxTokens, enhancedModel)
@@ -300,26 +300,26 @@ class ChatService(
         if (effectiveMaxTokens != regularMaxTokens || ModelOutputPolicy.wasClamped(maxTokens, enhancedModel)) {
             Logger.w(
                 "ChatService",
-                "输出预算已按模型能力收紧: provider=${config.id}, model=${enhancedModel.id}, " +
+                "Los presupuestos de producción se han visto ajustados por las capacidades del modelo.: provider=${config.id}, model=${enhancedModel.id}, " +
                     "requested=$maxTokens, inputTokens≈$estimatedInputTokens, " +
                     "modelLimit=${enhancedModel.maxOutputTokens}, contextWindow=${enhancedModel.contextWindow}, " +
                     "effective=$effectiveMaxTokens",
             )
         }
         val provider = ProviderRegistry.create(config)
-        // v2.4.5: 取一次能力矩阵,供温度归一使用(与 Provider 内部 resolvedCompat 同一口径)。
+        // v2.4.5: Obtener una matriz de capacidades,Para la normalización de la temperatura.(Mismo calibre que resolveCompat dentro del proveedor).
         val compat = config.resolvedCompat(enhancedModel.id)
-        // v1.0.7: UTILITY 模式强制关思考
-        //  在 ChatService 层统一覆盖 reasoningLevel=OFF,所有 Provider(OpenAI/Anthropic/Gemini)
-        //  自动生效,无需各 Provider 内部重复判断 mode。
+        // v1.0.7: UTILITY Patrón de pensamiento forzado
+        //  Cobertura unificada en la capa ChatService reasoningLevel=OFF,todos Provider(OpenAI/Anthropic/Gemini)
+        //  Entra en vigor automáticamente,No es necesario determinar repetidamente el modo dentro de cada Proveedor.
         val effectiveReasoningLevel = if (mode == ChatRequestMode.UTILITY) {
             ReasoningLevel.OFF
         } else {
             reasoningLevel
         }
-        // v2.4.5: 温度出口归一 — 与 topP 同位置收口。
-        //  应用内温度滑块上限为 2.0、第三方角色卡导入值可任意,而部分供应商对
-        //  temperature 走开区间(如商汤 [0.0, 2.0),2.0 非法)。
+        // v2.4.5: Normalización de temperatura de salida — Cierra en la misma posición que topP.
+        //  El límite superior del control deslizante de temperatura en la aplicación es 2,0 y el valor de importación de tarjetas de personajes de terceros puede ser arbitrario.,Algunos proveedores son
+        //  temperature irse rango(Como Shangtang [0.0, 2.0),2.0 ilegal).
         val effectiveTemperature = normalizeTemperature(temperature, compat)
         val request = ChatRequest(
             messages = messages,
@@ -330,8 +330,8 @@ class ChatService(
             toolChoice = toolChoice
                 ?.takeIf { it == "auto" || it == "required" || it == "none" }
                 ?.takeIf { effectiveTools != null },
-            // 原生搜索仅由明确支持其协议的 Provider 接管；其他类型 fail closed，
-            // 防止把 google_search / web_search_preview 字段误发给兼容层导致 400。
+            // Las búsquedas nativas solo las realizan los proveedores que admiten explícitamente su protocolo; otros tipos fallan cerrados,
+            // Evite que los campos google_search/web_search_preview se envíen a la capa de compatibilidad por error, provocando errores 400.
             nativeWebSearch = nativeWebSearch && config.type in setOf(
                 ProviderType.GEMINI,
                 ProviderType.OPENAI_RESPONSES,
@@ -345,20 +345,20 @@ class ChatService(
     }
 }
 
-/** Provider 配置存取抽象,由 app 模块基于 DataStore 实现。 */
+/** Provider Abstracción de acceso a la configuración,Implementado por módulo de aplicación basado en DataStore. */
 interface ProviderConfigStore {
-    /** 当前生效的 Provider 配置,null 表示未配置。 */
+    /** Configuración del proveedor actualmente efectiva,null Indica no configurado. */
     suspend fun get(): ProviderConfig?
 
-    /** v1.54: 全部已配置的 Provider 列表(用于 embedding provider 选择)。默认空列表。 */
+    /** v1.54: Lista de todos los proveedores configurados(para incorporar la selección del proveedor). La lista predeterminada es vacía. */
     suspend fun getAllProviders(): List<ProviderConfig> = emptyList()
 
     /**
-     * v2.2.1: 后台任务未显式指定模型时的首选回退(通常返回"用户当前选中的模型")。
+     * v2.2.1: Reserva preferida cuando la tarea en segundo plano no especifica explícitamente un modelo(normalmente regresa"El modelo seleccionado actualmente por el usuario.").
      *
-     * [ChatService.buildProviderRequest] 的模型三级链条:
-     * 调用方显式传入 → [getPreferredModel] → 激活 Provider 首个模型。
-     * 默认实现返回 null 保持旧行为(仅影响未覆写的测试替身)。
+     * [ChatService.buildProviderRequest] Modelo de cadena de tres niveles.:
+     * La persona que llama pasa explícitamente → [getPreferredModel] → Activa el primer modelo del Proveedor.
+     * La implementación predeterminada devuelve nulo para mantener el comportamiento anterior.(Sólo afecta a los dobles de prueba no anulados).
      */
     suspend fun getPreferredModel(): Model? = null
 }

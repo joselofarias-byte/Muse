@@ -1,29 +1,29 @@
-# 链路 6：Agent 设备控制 / 自动化 / 运行时 — 去重基线
+# Enlace 6:Agent Control de dispositivos/Automatización/Tiempo de ejecución — Línea base de deduplicación
 
-## 已确认修复/设计决策（不得再报）
-- 三层通道 AutomationManager 分层降级；execTiered 是设备命令唯一入口（Shizuku 优先 Root 兜底）；Shizuku 运行时失败后 Root 兜底已修。
-- DeviceCapabilityProfile 唯一事实来源 + DeviceCapabilityHook 注入档案+规程（priority 80）；子代理不注入；探测失败退化不抛异常。
-- 应用控制面 AppControlCore：包名白名单防注入、系统应用禁清数据/卸载（强停允许）、禁对 Muse 自身破坏、名称四级匹配；应用层不需要授权。
-- 虚拟屏：服务重启自愈（兼容 display 记录尺寸失败重建新 ID）；virtual_close 对已消失 display 幂等成功；最多 3 并发 display；语义读屏 uiautomator dump --display-id 失败不回退主屏。
-- virtual_screen_input / virtual_tap_text：DeviceCommandPolicy 构造校验、最多 5 次滚动查找、点击后验证、失败置未知副作用阻断重放、读屏不持久化。
-- 无障碍截图：Android 14+ takeScreenshot 接入 AccessibilityExecutor.screenshot；13 及以下降级口径。
-- screen_tap_text 结构化 ToolOutcome（attempts/matched/verified/matchedLabel）；tap_text/tap_id 语义匹配+评分+坐标兜底+结果未知禁重放。
-- automation_workflow：node_script 步骤（HIGH 风险审批）、结果 Keystore 加密断点、同 run_id 追加、未知副作用阻断。
-- 内置 Node 运行时：jniLibs 分发 + nativeLibraryDir exec（绕 W^X）；RUNTIME_DATA_VERSION 控制重解压；exec 垫片 LD_PRELOAD；npm assets 解压；strip 会破坏 patchelf 段布局（keepDebugSymbols 已列）。
-- MCP stdio：命令仅允许 node/npm/npx 与运行时内绝对路径。
-- platform_selfcheck 通道级自检（HEAD 最新提交，只读安全 STANDARD）。
+## Solución confirmada/Decisión de diseño (no más presentación)
+- Degradación jerárquica de AutomationManager de canal de tres capas;execTiered Es el único punto de entrada para los comandos del dispositivo (Shizuku Priorizar raíz);Shizuku Se ha solucionado la trampa de raíz después de un fallo en tiempo de ejecución.
+- DeviceCapabilityProfile Fuente única de verdad + archivo de inyección DeviceCapabilityHook+procedimientos (priority 80); no se inyectan subagentes; no se lanzan excepciones cuando la detección falla y se degrada.
+- Plano de control de aplicaciones AppControlCore: lista blanca de nombres de paquetes para evitar la inyección, prohibición de la aplicación del sistema de borrar datos/Desinstalación (se permite la detención forzada), se prohíbe la destrucción de Muse y la coincidencia de nombres de cuatro niveles; no se requiere autorización en la capa de aplicación.
+- Pantalla virtual: autorreparación después del reinicio del servicio (compatible con fallas en el tamaño de grabación de la pantalla y reconstrucción de una nueva ID);virtual_close Éxito idempotente para la exhibición desaparecida; hasta 3 pantallas simultáneas; lectura de pantalla semántica uiautomator dump --display-id no volverá a la pantalla principal si falla.
+- virtual_screen_input / virtual_tap_text:DeviceCommandPolicy Verificación de estructura, hasta 5 búsquedas de desplazamiento, verificación posterior al clic, falla al configurar efectos secundarios desconocidos para bloquear la reproducción y la lectura de pantalla no es persistente.
+- Capturas de pantalla accesibles:Android 14+ takeScreenshot Acceda a AccessibilityExecutor.captura de pantalla;13 y por debajo del calibre degradado.
+- screen_tap_text resultado de la herramienta estructurada (attempts/matched/verified/matchedLabel);tap_text/tap_id coincidencia semántica+Calificación+coordenadas+La repetición está prohibida si se desconoce el resultado.
+- automation_workflow:node_script pasos (HIGH Aprobación de riesgo), resultado Punto de interrupción del cifrado del almacén de claves, mismo anexo run_id, bloqueo de efectos secundarios desconocidos.
+- Tiempo de ejecución de nodo incorporado:jniLibs distribución + ejecución nativaLibraryDir (alrededor W^X);RUNTIME_DATA_VERSION Controlar la descompresión intensa;exec espaciador LD_PRELOAD;npm assets descomprimir;strip romperá el diseño del segmento patchelf (keepDebugSymbols enumerados).
+- MCP stdio:el comando solo permite node/npm/npx con rutas absolutas dentro del tiempo de ejecución.
+- platform_selfcheck Autoprueba de nivel de canal (HEAD Última confirmación, ESTÁNDAR seguro de solo lectura).
 
-## 已知未解决/边界（可引用补充新证据）
-- 无 Shizuku 且无 Root 时不能调 Shell/Root 专属系统 API（能力边界，设计如此）。
-- auto 策略是"有目标包名优先专属虚拟屏，失败降前台"的简单确定性策略，未按任务类型/隐私细分（已知产品边界）。
-- workflow 逐次模型调用间续接，不支持单脚本任意条件分支（已知设计）。
-- Node 脚本是 app UID 全能力执行器（HIGH 风险审批保护，设计如此）；不受 DeviceCommandPolicy 约束（设计如此，专用动作替代）。
-- 真机矩阵验收缺失（已知）。
+## Conocido sin resolver/Límite (se pueden citar nuevas pruebas)
+- Cuando no hay Shizuku ni Root, la API del sistema exclusivo Shell/Root no se puede ajustar (límite de capacidad, este es el diseño).
+- auto La estrategia es"Si se le da prioridad al nombre del paquete de destino, la pantalla virtual dedicada se colocará en la recepción si falla."Estrategia determinista simple para , no por tipo de tarea/Segmentación de privacidad (límites de productos conocidos).
+- workflow Las llamadas sucesivas al modelo son indirectas y no admiten ramificaciones condicionales arbitrarias en un único script (diseño conocido).
+- Node El script es el UID de la aplicación ejecutor totalmente capaz (HIGH Protección de aprobación de riesgos, por diseño); no sujeto a DeviceCommandPolicy (por diseño, anulación de acción privada).
+- Falta la aceptación real de la matriz de la máquina (conocida).
 
-## 本链路重点探查方向
-1. **A2A/Tasker 新入口与设备工具的交集**：A2A 调用是否也走工具审批？远程触发设备控制（tap/清数据）的审批链路是否完整——远程无人在屏幕前时审批卡如何处理？
-2. automation_workflow node_script 步骤的输入校验：脚本内容长度/资源限制/超时；连续 node 步骤的中间结果累积是否无界。
-3. virtual display lease 管理：并发 Agent + 手动 virtual_screen 工具 + A2A 触发的并发场景，display 计数/泄漏。
-4. MuseRuntime 环境变量注入（HOME/TMPDIR/PATH/LD_LIBRARY_PATH/LD_PRELOAD/MUSE_*）在多进程并发 exec 时的竞态/泄漏；npm 解压中断后的状态机。
-5. DeviceCapabilityProfile 探测的时效性：权限被用户运行中撤销（如关闭无障碍）后，档案刷新延迟窗口内模型是否还按旧档案行动。
-6. exec 垫片/patchelf 产物完整性：构建后 md5 核对是否有 CI 护栏，还是只有口头约定。
+## La dirección de exploración clave de este enlace.
+1. **A2A/Tasker La intersección de nuevos portales y herramientas de equipamiento.**:A2A ¿La convocatoria también pasa por la aprobación de la herramienta? Control remoto del dispositivo de disparo (tap/¿Está completo el enlace de aprobación para borrar datos?——¿Cómo manejar las tarjetas de aprobación cuando no hay nadie frente a la pantalla de forma remota?
+2. automation_workflow node_script Validación de entrada de paso: longitud del contenido del script/Límites de recursos/Se acabó el tiempo; si la acumulación de resultados intermedios para pasos de nodos consecutivos es ilimitada.
+3. virtual display lease Gestión: Agente concurrente + herramienta manual virtual_screen + escenarios concurrentes activados por A2A,display contar/filtración.
+4. MuseRuntime Inyección de variables de entorno (HOME/TMPDIR/PATH/LD_LIBRARY_PATH/LD_PRELOAD/MUSE_*) Condición de carrera durante la ejecución simultánea de múltiples procesos/fuga; fuganpm Desempaquete la máquina de estados después de la interrupción.
+5. DeviceCapabilityProfile Puntualidad de la detección: después de que el usuario revoca el permiso durante la operación (como desactivar la accesibilidad), si el modelo aún actúa de acuerdo con el archivo antiguo dentro de la ventana de retraso de actualización del archivo.
+6. exec Junta/patchelf Integridad del producto: md5 posterior a la compilación verifica si existen barreras de seguridad de CI o solo acuerdos verbales.

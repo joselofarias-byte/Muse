@@ -11,31 +11,31 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 /**
- * Agent 间私信系统。
+ * Agent Sistema de mensajería privada.
  *
- * Agent 间异步私信,Room 持久化。
- * 支持频道模式回复 (在群聊中以频道消息形式回复)。
+ * Agent mensaje privado asincrónico,Room Persistencia.
+ * Respuesta en modo canal de soporte (Responder como mensaje del canal en el chat grupal).
  */
 @Serializable
 @Entity(tableName = "agent_messages")
 data class AgentMessageEntity(
     @PrimaryKey
     val id: String,
-    /** 发送方 agent id */
+    /** remitente agent id */
     @ColumnInfo(name = "from_agent_id")
     val fromAgentId: String,
-    /** 接收方 agent id */
+    /** Receptor agent id */
     @ColumnInfo(name = "to_agent_id")
     val toAgentId: String,
-    /** 消息内容 */
+    /** Contenido del mensaje */
     val content: String,
-    /** 是否已读 */
+    /** ¿Ha sido leído? */
     @ColumnInfo(name = "is_read", defaultValue = "0")
     val isRead: Boolean = false,
-    /** 回复的原始消息 id (用于线程) */
+    /** Responder al mensaje original id (para hilos) */
     @ColumnInfo(name = "reply_to_id")
     val replyToId: String? = null,
-    /** 创建时间戳 */
+    /** Crear marca de tiempo */
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
 )

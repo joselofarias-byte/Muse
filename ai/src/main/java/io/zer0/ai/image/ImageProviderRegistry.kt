@@ -5,64 +5,64 @@ import io.zer0.ai.core.ProviderType
 import io.zer0.common.Logger
 
 /**
- * v1.0.18: 图片生成 Provider 注册中心。
+ * v1.0.18: Centro de registro de proveedores de generación de imágenes.
  *
- * 适配器注册表(AdapterRegistry)模式:
- *  - 各 [ImageProvider] 实现类在启动时注册到本中心;
- *  - 调用方通过 [selectFor] 按 [ProviderConfig] 自动选择合适的 provider;
- *  - 选择策略按 specId / baseUrl host / type 三层匹配,兜底 OpenAIImageProvider。
+ * registro de adaptadores(AdapterRegistry)modo:
+ *  - cada uno [ImageProvider] La clase de implementación está registrada en este centro al inicio.;
+ *  - la persona que llama pasa [selectFor] prensa [ProviderConfig] Seleccione automáticamente el apropiado provider;
+ *  - Seleccionar botón de estrategia specId / baseUrl host / type Tres niveles de emparejamiento,OpenAIImageProvider encubierto.
  *
- * 选择优先级:
- *  1. specId / id 精确匹配(如 specId="agnes" → AgnesImageProvider);
- *  2. baseUrl host 包含供应商关键字(如含 "agnes" → AgnesImageProvider);
- *  3. type 匹配(GEMINI → GeminiImageProvider;OPENAI / OPENAI_RESPONSES → OpenAIImageProvider);
- *  4. 兜底 OpenAIImageProvider(对未知中转站友好,走 OpenAI 兼容协议)。
+ * Seleccionar prioridad:
+ *  1. specId / id coincidencia exacta(Como por ejemplo specId="agnes" → AgnesImageProvider);
+ *  2. baseUrl host Contiene palabras clave del proveedor.(Si está incluido "agnes" → AgnesImageProvider);
+ *  3. type partido(GEMINI → GeminiImageProvider;OPENAI / OPENAI_RESPONSES → OpenAIImageProvider);
+ *  4. Ten todo en cuenta OpenAIImageProvider(Amigable con puntos de tránsito desconocidos,Siga el protocolo compatible con OpenAI).
  *
- * Gemini 已有独立 [GeminiImageProvider](B14-2,走原生 generateContent 图片输出);
- * Anthropic 无原生图片生成 API(仅图片理解),故仍会兜底到 [OpenAIImageProvider],
- * 由其返回的 HTTP 错误自然提示用户。
+ * Gemini Ya independiente [GeminiImageProvider](B14-2,Utilice la salida de imagen nativa de generateContent);
+ * Anthropic Sin generación de imágenes nativas API(Solo comprensión de imágenes),Por lo tanto, todavía llegaré al fondo del asunto. [OpenAIImageProvider],
+ * El error HTTP que devuelve naturalmente avisa al usuario.
  */
 class ImageProviderRegistry {
 
     private val providers = mutableMapOf<String, ImageProvider>()
 
-    /** 注册一个 [ImageProvider](以其 [ImageProvider.providerId] 为 key,后者覆盖前者)。 */
+    /** Registrar un [ImageProvider](con su [ImageProvider.providerId] para key,Este último cubre el primero.). */
     fun register(provider: ImageProvider) {
         providers[provider.providerId] = provider
         Logger.i(TAG, "registered image provider: ${provider.providerId}")
     }
 
-    /** 按 providerId 取已注册的 [ImageProvider]。 */
+    /** Regístrese por ID de proveedor [ImageProvider]. */
     fun get(providerId: String): ImageProvider? = providers[providerId]
 
-    /** 所有已注册的 provider。 */
+    /** Todos los proveedores registrados. */
     fun all(): Collection<ImageProvider> = providers.values
 
     /**
-     * 根据 [ProviderConfig] 自动选择合适的 [ImageProvider]。
+     * Según [ProviderConfig] Seleccione automáticamente el apropiado [ImageProvider].
      *
-     * 选择顺序见类注释。返回 null 仅当注册中心为空(启动未注册任何 provider)。
+     * Consulte las notas de clase para conocer el orden de selección. Devuelve nulo sólo si el registro está vacío(Lanzado sin registrar ningún provider).
      */
     fun selectFor(config: ProviderConfig): ImageProvider? {
-        // 1. specId / id 精确匹配
+        // 1. specId / id coincidencia exacta
         val key = config.specId?.takeIf { it.isNotBlank() }
             ?: config.id.removePrefix("preset_").takeIf { it.isNotBlank() }
         if (key != null) {
             providers[key]?.let { return it }
         }
 
-        // 2. baseUrl host 关键字匹配
+        // 2. baseUrl host concordancia de palabras clave
         val host = runCatching {
             java.net.URI(config.baseUrl).host?.lowercase()
         }.getOrNull().orEmpty()
         if (host.isNotEmpty()) {
-            // 含 "agnes" → Agnes(对齐 ENDPOINT_AGNES=apihub.agnes-ai.com)
+            // Contiene "agnes" → Agnes(Alineación ENDPOINT_AGNES=apihub.agnes-ai.com)
             if (host.contains("agnes")) {
                 providers[AgnesImageProvider.PROVIDER_ID]?.let { return it }
             }
         }
 
-        // 3. type 匹配:GEMINI → GeminiImageProvider;OPENAI / OPENAI_RESPONSES → OpenAIImageProvider
+        // 3. type partido:GEMINI → GeminiImageProvider;OPENAI / OPENAI_RESPONSES → OpenAIImageProvider
         if (config.type == ProviderType.GEMINI) {
             providers[GeminiImageProvider.PROVIDER_ID]?.let { return it }
         }
@@ -70,7 +70,7 @@ class ImageProviderRegistry {
             providers[OpenAIImageProvider.PROVIDER_ID]?.let { return it }
         }
 
-        // 4. 兜底 OpenAIImageProvider(对未知中转站友好)
+        // 4. Ten todo en cuenta OpenAIImageProvider(Amigable con puntos de tránsito desconocidos)
         return providers[OpenAIImageProvider.PROVIDER_ID]
     }
 

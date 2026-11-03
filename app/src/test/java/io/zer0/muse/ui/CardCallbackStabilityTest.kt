@@ -19,19 +19,19 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * 卡片回调的实例稳定性。
+ * Estabilidad de instancia de devoluciones de llamadas de tarjetas.
  *
- * 卡片桥以 `onCardAction` 的**实例**作为 remember 的 key：每帧换一个新 lambda，
- * 桥就重建一次，整段卡片 HTML（含 7 次全文正则清洗）跟着重拼。真机上是流式
- * 每帧重复做同一件事，所以这条链必须钉住：
+ * puente de cartas con `onCardAction` de**Ejemplo**Como clave para recordar: cambie una nueva lambda en cada cuadro,
+ * El puente se reconstruye una vez y se vuelve a ensamblar todo el HTML de la tarjeta (incluidas 7 veces de limpieza regular del texto completo). En la máquina real, está transmitiendo.
+ * Haciendo lo mismo repetidamente en cada cuadro, por lo que esta cadena debe estar fijada:
  *
- *  - 同一个 msg.id 在多次重组之间拿到的是同一个 lambda 实例；
- *  - ChatScreen 与 CardRuntime 里确实是这么写的（源码级断言，见各用例注释）。
+ *  - El mismo msg.id obtiene la misma instancia lambda entre múltiples reorganizaciones;
+ *  - ChatScreen De hecho, así es como está escrito en CardRuntime (aserciones a nivel de código fuente, consulte los comentarios de cada caso de uso).
  *
- * 为什么不用「数 assembleHtml 调用次数」来测：它藏在 `CardRuntime` 私有的
- * `remember` 块里，要观测只能往生产代码里塞计数器 —— 那是为测试改实现。
- * 这里改为测「remember 本身给出的保证」（Compose 运行时用例）+ 钉住生产代码
- * 用的是这个保证（源码断言），两者合起来等价，且不污染生产代码。
+ * ¿Por qué no utilizar "contar el número de llamadas a ensamblar HTML" para realizar la prueba? Está oculto en `CardRuntime` privado
+ * `remember` bloque, la única forma de observarlo es insertar el contador en el código de producción. —— Esto se implementó con fines de prueba.
+ * Aquí se cambia a prueba "remember La garantía dada por sí misma” (Compose caso de uso en tiempo de ejecución)+ Código de producción de pines
+ * Se utiliza esta garantía (afirmación del código fuente), las dos son equivalentes juntas y no contaminan el código de producción.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -40,7 +40,7 @@ class CardCallbackStabilityTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    // ── Compose 运行时：remember(key) 的实例稳定性 ──────────────────────
+    // ── Compose Tiempo de ejecución:remember(key) estabilidad de instancia de ──────────────────────
 
     @Test
     fun `callback remembered by message id is the same instance across recompositions`() {
@@ -51,9 +51,9 @@ class CardCallbackStabilityTest {
 
         composeTestRule.setContent {
             val current = tick.value
-            // 与 ChatScreen 同一写法：key 只有不可变的 msg.id。
+            // Mismo método de escritura que ChatScreen:key Sólo msg.id inmutable.
             val stable = remember(messageId) { { messageId.length } }
-            // 对照：不 remember 的内联 lambda。
+            // Contraste: lambda en línea sin recordar.
             val unstable = { messageId.length + current }
             SideEffect {
                 rememberedInstances += stable
@@ -67,42 +67,42 @@ class CardCallbackStabilityTest {
         composeTestRule.runOnIdle { tick.value = 1 }
         composeTestRule.waitForIdle()
 
-        assertTrue("至少经历两次重组: ${rememberedInstances.size}", rememberedInstances.size >= 2)
+        assertTrue("Pasar por al menos dos reorganizaciones.: ${rememberedInstances.size}", rememberedInstances.size >= 2)
         assertSame(
-            "同一个 msg.id 的重组之间必须是同一个实例，否则卡片桥每帧重建",
+            "La reorganización del mismo msg.id debe ser la misma instancia; de lo contrario, el puente de la tarjeta se reconstruirá en cada cuadro.",
             rememberedInstances.first(),
             rememberedInstances.last(),
         )
         assertNotSame(
-            "不 remember 的写法每帧都是新对象 —— 这正是改前被击穿的缓存",
+            "Sin recordar, cada fotograma es un objeto nuevo. —— Este es el caché que fue penetrado antes del cambio.",
             inlineInstances.first(),
             inlineInstances.last(),
         )
     }
 
-    // ── 源码级：生产代码用的是上面这条保证 ──────────────────────────────
+    // ── Nivel de código fuente: el código de producción utiliza la garantía anterior ──────────────────────────────
 
     @Test
     fun `chat screen remembers the per message card bridge`() {
         val screen = readSource("ChatScreen.kt")
 
         val anchor = screen.indexOf("val onCardAction =")
-        assertTrue("ChatScreen 里必须有 onCardAction 声明", anchor >= 0)
+        assertTrue("ChatScreen Debe haber una declaración onCardAction en", anchor >= 0)
         val window = screen.substring(anchor, minOf(screen.length, anchor + 400))
         assertTrue(
-            "卡片回传必须按 msg.id remember，否则下游 remember（桥 → HTML）每帧失效",
+            "La devolución de la tarjeta debe basarse en el recuerdo de msg.id; de lo contrario, el recuerdo descendente (puente → HTML) Falló en cada fotograma",
             window.contains("remember(msg.id)"),
         )
         assertTrue(
-            "remember 之后仍要复用共享的 handleCardAction，不能另造第二套处理器",
+            "remember Aún necesitará reutilizar el handleCardAction compartido más adelante y no podrá crear un segundo conjunto de procesadores.",
             window.contains("handleCardAction(msg.id.toString(), action)"),
         )
         assertTrue(
-            "MessageBubble 收到的必须是这个稳定实例",
+            "MessageBubble Lo que recibas debe ser esta instancia estable.",
             screen.contains("onCardAction = onCardAction,"),
         )
         assertFalse(
-            "旧的内联 lambda 每次重组都是新对象",
+            "La antigua lambda en línea era un objeto nuevo cada vez que se reorganizaba",
             screen.contains("onCardAction = { action -> handleCardAction("),
         )
     }
@@ -112,12 +112,12 @@ class CardCallbackStabilityTest {
         val runtime = readSource("markdown/card/CardRuntime.kt")
 
         assertTrue(
-            "WebViewClient 必须 remember 一次，否则下游以它为 key 的 remember 恒失效",
+            "WebViewClient Debe recordarse una vez; de lo contrario, el usuario posterior que recuerde usarlo como clave siempre no será válido.",
             runtime.contains("val webViewClient = remember { RichContentWebViewClient() }"),
         )
         assertTrue(runtime.contains("webViewClient = webViewClient,"))
         assertFalse(
-            "旧写法每帧 new 一个 client",
+            "La antigua forma de escribir es una nueva por cuadro. client",
             runtime.contains("webViewClient = RichContentWebViewClient(),"),
         )
     }
@@ -127,16 +127,16 @@ class CardCallbackStabilityTest {
         val rich = readSource("markdown/RichContentCard.kt")
 
         assertTrue(
-            "读数据回调也进卡片桥的 remember key，必须按依赖缓存",
+            "La devolución de llamada de lectura de datos también ingresa la clave de recuerdo del puente de la tarjeta y debe almacenarse en caché según las dependencias.",
             rich.contains("remember(store, inlineCardData) { { id: String -> store?.get(id) ?: inlineCardData } }"),
         )
         assertFalse(
-            "旧写法每帧新建 lambda，桥跟着重建",
+            "El antiguo método de escritura crea una nueva lambda en cada fotograma y el puente se reconstruye en consecuencia.",
             rich.contains("readData = { id -> store?.get(id) ?: inlineCardData },"),
         )
     }
 
-    /** 读 ui 目录下的生产源码（测试工作目录可能是模块根，也可能是仓库根）。 */
+    /** Lea el código fuente de producción en el directorio ui (el directorio de trabajo de prueba puede ser la raíz del módulo o la raíz del almacén). */
     private fun readSource(relative: String): String {
         val candidates = listOf(
             Path.of("src/main/java/io/zer0/muse/ui/$relative"),

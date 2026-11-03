@@ -6,12 +6,12 @@ import io.zer0.muse.miniphone.data.db.MpMessageType
 import io.zer0.muse.miniphone.data.media.MpImageStore
 
 /**
- * 图片消息的存盘与落库。
+ * Guardar y registrar mensajes con imágenes.
  *
- * [MpImageStore] 只负责把字节写进私有目录;「写成功了才落一条消息、写不进就跳过这一张」
- * 这层编排在这里,调用方不用自己判断拿到的路径是否可信。
+ * [MpImageStore] Sólo responsable de escribir bytes en el directorio privado.;"Solo publique un mensaje si lo ha escrito correctamente. Si no puede escribirlo, omita este".
+ * Esta capa de arreglo está aquí.,La persona que llama no necesita juzgar si la ruta obtenida es confiable.
  *
- * @param threadId 本会话 id:用户选的图默认落回这里
+ * @param threadId Esta identificación de sesión: la imagen seleccionada por el usuario se devolverá aquí de forma predeterminada.
  */
 internal class ChatMediaWriter(
     private val imageStore: MpImageStore,
@@ -20,9 +20,9 @@ internal class ChatMediaWriter(
 ) {
 
     /**
-     * 用户从相册选的图:存一张落一条,顺序与选择一致。
+     * Imágenes seleccionadas por el usuario del álbum.:Guarda uno y suelta otro,El orden es consistente con la selección.
      *
-     * 存不下(读不到或写不进磁盘)的那张直接跳过,不影响其余几张。
+     * no puedo guardar(No se puede leer ni escribir en el disco)Salta el que está directamente,No afecta a las imágenes restantes.
      */
     suspend fun storePickedImages(uris: List<Uri>, characterId: String) {
         uris.mapNotNull { uri -> imageStore.import(uri) }
@@ -30,10 +30,10 @@ internal class ChatMediaWriter(
     }
 
     /**
-     * 落一条角色发的图片:文件已在盘上,只写消息行。
+     * Fotos del cabello del personaje de Luo Yiyi.:El archivo está en el disco.,Simplemente escriba la línea del mensaje.
      *
-     * 本阶段没有任何地方真的生成图片,这个方法留给后续角色发图与测试用;
-     * 调用方自己负责保证 [localFile] 已经存在。
+     * En realidad, no se genera ninguna imagen en ninguna parte en esta etapa.,Este método está reservado para pruebas y dibujos de personajes posteriores.;
+     * La persona que llama es responsable de garantizar que [localFile] ya existe.
      */
     suspend fun storeCharacterImage(threadId: String, characterId: String, localFile: String) {
         store(threadId, characterId, MpActorType.CHARACTER, localFile)
@@ -53,7 +53,7 @@ internal class ChatMediaWriter(
     }
 
     companion object {
-        /** 图片消息的正文:库里不存图,只存这句预览文案,列表与未读预览都用它。 */
-        const val IMAGE_PREVIEW_TEXT: String = "[图片]"
+        /** El texto del mensaje con imagen.:No hay ninguna foto en la biblioteca.,Guarde solo esta copia preliminar,Úselo tanto para listas como para vistas previas no leídas. */
+        const val IMAGE_PREVIEW_TEXT: String = "[fotos]"
     }
 }

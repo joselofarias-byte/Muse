@@ -6,21 +6,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 
 /**
- * 右侧跳转条的**连续定位**手势（v2.4.5 统一化）。
+ * Barra de salto a la derecha**posicionamiento continuo**Gesto (v2.4.5 unificación).
  *
- * 背景:应用里有多处"右侧竖条快速定位"——聊天消息地图、设置教程小节条、小手机通讯录字母索引。
- * 旧实现统一是"按下 → 换算成某个条目 → scrollToItem",于是:
- *  - 只能停在条目边界,拖动时一格一格跳,手感不是线性滚动;
- *  - 长内容想跳到两屏之间,必须先落到某个条目上。
+ * fondo:Hay muchos lugares en la aplicación."Posicionamiento rápido de la barra vertical derecha."——Mapa de mensajes de chat, configuración de barra de sección de tutorial, índice alfabético de libreta de direcciones de teléfonos celulares pequeños.
+ * La antigua implementación de la unidad es"prensa → Convertir en un artículo → scrollToItem",entonces:
+ *  - Sólo puede detenerse en los límites de los elementos,Salta un fotograma a la vez al arrastrar,La sensación no es un desplazamiento lineal.;
+ *  - El contenido extenso quiere saltar entre dos pantallas,Primero debes aterrizar en un elemento.
  *
- * 本修饰符把"拖动 → 比例"这一段收敛成一处实现,由调用方决定拿到比例后怎么定位
- * (不同页面的列表结构不同:有的前面有附加 item、有的条目与目标列表索引不一致)。
+ * Este modificador pone"Arrastrar → proporción"Esta sección converge en una comprensión,Depende de la persona que llama decidir cómo posicionar la proporción después de obtenerla.
+ * (La estructura de lista de diferentes páginas es diferente.:Algunos tienen elementos adicionales delante y algunas entradas no son coherentes con el índice de la lista de objetivos.).
  *
- * 调用方通常再自己把比例换算成"粗定位 + 亚条条目微调"以获得线性手感 —— 参考
- * [io.zer0.muse.ui.chat.MessageMapBar] 与 `SettingsTutorialPage` 的用法。
+ * La persona que llama normalmente convierte él mismo la proporción en"Posicionamiento aproximado + ajuste fino de entradas de subartículos"para conseguir una sensación lineal —— Referencia
+ * [io.zer0.muse.ui.chat.MessageMapBar] con `SettingsTutorialPage` uso.
  *
- * @param onFraction 拖动比例回调(0..1,已 clamp);y 越大代表越靠下。
- * @param onDragStateChange 拖动开始/结束回调,供调用方控制浮层显隐。
+ * @param onFraction Devolución de llamada de relación de arrastre(0..1,Ya clamp);y Cuanto más grande es, más bajo es.
+ * @param onDragStateChange Arrastra para comenzar/finalizar la devolución de llamada,Permite a la persona que llama controlar la visualización y ocultación de la capa flotante.
  */
 @Composable
 fun Modifier.museJumpRailDrag(onFraction: (Float) -> Unit, onDragStateChange: (Boolean) -> Unit = {}): Modifier = this.pointerInput(Unit) {
@@ -39,19 +39,19 @@ fun Modifier.museJumpRailDrag(onFraction: (Float) -> Unit, onDragStateChange: (B
 }
 
 /**
- * 线性定位助手:把拖动比例换算成"目标条目 + 亚条条目微调量"。
+ * Asistente de posicionamiento lineal:Convertir la relación de arrastre a"Cantidad de ajuste fino de entrada objetivo + subentrada".
  *
- * 返回的 [RailTarget.index] 是条目索引,[RailTarget.subFraction] 是该条目内部的纵向比例
- * (0..1)。调用方用 `listState.scrollToItem(offset + index)` 后,再按平均条目高度
- * `scrollBy(subFraction * avgItemPx)` 即可得到连续定位。
+ * regresó [RailTarget.index] es el índice de entrada,[RailTarget.subFraction] es la escala vertical dentro del elemento
+ * (0..1). Para personas que llaman `listState.scrollToItem(offset + index)` después,Luego presione altura promedio del artículo
+ * `scrollBy(subFraction * avgItemPx)` Puede obtener un posicionamiento continuo.
  */
 data class RailTarget(val index: Int, val subFraction: Float)
 
 /**
- * 把拖动比例换算为目标条目与亚条条目比例。
+ * Convierta la relación de arrastre a la relación entre el elemento de destino y el subelemento.
  *
- * @param fraction 拖动比例(0..1)。
- * @param itemCount 条目总数。
+ * @param fraction Escala de arrastre(0..1).
+ * @param itemCount Número total de entradas.
  */
 fun railTargetFor(fraction: Float, itemCount: Int): RailTarget {
     if (itemCount <= 1) return RailTarget(0, 0f)

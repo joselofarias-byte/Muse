@@ -12,52 +12,52 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.137: 视频生成统一服务(重构)。
+ * v1.137: Servicio unificado de generación de video.(Refactorizar).
  *
- * 设计:
- *  - 通过 [VideoProviderRegistry] 按 specId / host / type 选择 [VideoProvider]
- *    (修复 v1.136 的 providerId 硬匹配 bug:preset_kling ≠ kling 导致路由失败)
- *  - 统一异步轮询机制:
- *    - 5 秒一个 tick
- *    - 按任务年龄自适应频率:
- *      <2min 每 5s, 2-10min 每 15s, >10min 每 30s
- *    - 连续 [MAX_CONSECUTIVE_ERRORS] 次查询错误才标记失败
- *    - 取消围栏([cancelledTasks])防止 in-flight 查询在用户取消后误写
- *  - 进度回调([onProgress])每 5 秒刷新"已生成 Xs"
+ * diseño:
+ *  - Pase [VideoProviderRegistry] prensa specId / host / type elegir [VideoProvider]
+ *    (Se corrigió la coincidencia difícil del ID del proveedor para v1.136 bug:preset_kling ≠ kling causando falla de enrutamiento)
+ *  - Mecanismo de sondeo asincrónico unificado:
+ *    - 5 Uno por segundo tick
+ *    - Adaptar la frecuencia según la edad de la tarea.:
+ *      <2min cada 5s, 2-10min cada 15s, >10min cada 30s
+ *    - continuo [MAX_CONSECUTIVE_ERRORS] Error de marca después de errores de consulta
+ *    - Unfence([cancelledTasks])Evite que las consultas durante el vuelo se escriban accidentalmente después de que el usuario cancele
+ *  - Devolución de llamada de progreso([onProgress])Actualizar cada 5 segundos"Generado Xs"
  *
- * 用法:
+ * Uso:
  * ```
  * val service = VideoGenerationService(registry)
  * val videoUrl = service.generateVideo(
  *     providerConfig = config,
  *     request = VideoGenRequest(prompt = "...", model = "..."),
- *     onProgress = { elapsed -> updateUI("已生成 ${elapsed}s") },
+ *     onProgress = { elapsed -> updateUI("Generado ${elapsed}s") },
  * ).getOrThrow()
  * ```
  *
- * @param registry Video Provider 注册表
+ * @param registry Video Provider Registro
  */
 class VideoGenerationService(
     private val registry: VideoProviderRegistry,
-    /** T1.2: 可注入 key 轮换工厂(测试可用确定性工厂,生产走 LRU pick),默认自建。 */
+    /** T1.2: Fábrica de rotación de llaves inyectables.(Prueba de fábrica determinista disponible,La producción va LRU pick),El valor predeterminado es de construcción propia. */
     private val keyRotationFactory: (ProviderConfig) -> ProviderKeyRotation = { ProviderKeyRotation(it) },
 ) {
     /**
-     * 按 taskId 的取消围栏。
+     * Desarmar por taskId.
      *
-     * 用户取消([cancel])后加入此集合;in-flight 的 poll 返回后检查围栏,
-     * 若已取消则丢弃结果,避免取消后的查询误更新状态。
+     * El usuario cancela([cancel])Únase a esta colección más tarde;in-flight Revise la valla después del regreso de las elecciones,
+     * Si se cancela, descarta el resultado.,Evite actualizaciones de estado incorrectas después de consultas canceladas.
      */
     private val cancelledTasks: ConcurrentHashMap<String, Boolean> = ConcurrentHashMap()
 
     /**
-     * 生成视频 — 提交任务 → 等待完成 → 返回视频 URL。
+     * Generar vídeo — Enviar tarea → esperar a que se complete → Devuelve la URL del vídeo.
      *
-     * @param providerConfig 供应商配置(用于 registry 路由 + 注入 apiKey/baseUrl)
-     * @param request 生成请求(prompt / model / 参考图 / 时长 / 分辨率等)
-     * @param onProgress 进度回调,参数为已用秒数;每 5 秒触发一次;可为 null
-     * @param timeoutMs 总超时(毫秒),默认 10 分钟(视频生成最长约 5-10 分钟)
-     * @return Result.success(videoUrl) 或 Result.failure(exception)
+     * @param providerConfig Configuración del proveedor(Para enrutamiento de registro + inyección apiKey/baseUrl)
+     * @param request Generar solicitud(prompt / model / Imagen de referencia/duración/resolución, etc.)
+     * @param onProgress Devolución de llamada de progreso,El parámetro es el número de segundos transcurridos.;Se activa cada 5 segundos;puede ser null
+     * @param timeoutMs tiempo de espera total(milisegundos),Predeterminado 10 minutos(La generación de vídeo tarda entre 5 y 10 minutos como máximo)
+     * @return Result.success(videoUrl) o Result.failure(exception)
      */
     suspend fun generateVideo(
         providerConfig: ProviderConfig,
@@ -73,9 +73,9 @@ class VideoGenerationService(
                     "specId=${providerConfig.specId} host=${VideoProviderRegistry.extractHost(providerConfig.resolvedBaseUrl())}",
             )
 
-            // 注入凭证
-            // T1.2: 多 Key 轮换 — effectiveApiKey() 按 LRU 选取当前可用 key;
-            // 单 key 场景(hasMultipleKeys=false)等价于直接返回 config.apiKey,无额外开销
+            // Inyectar credenciales
+            // T1.2: Rotación de múltiples claves — effectiveApiKey() Presione LRU para seleccionar actualmente disponible key;
+            // Escenario clave única(hasMultipleKeys=false)Equivale a regresar directamente config.apiKey,Sin gastos generales adicionales
             val effectiveKey = keyRotationFactory(providerConfig).effectiveApiKey()
             val requestWithCreds = request.copy(
                 apiKey = request.apiKey.ifBlank { effectiveKey },
@@ -84,24 +84,24 @@ class VideoGenerationService(
                     ?: (providerConfig.resolvedSpecific() as? io.zer0.ai.core.ProviderSpecificConfig.OpenAI)?.videoGenerationsPath,
             )
 
-            // 1. 提交任务
+            // 1. Enviar tarea
             val submitResult = provider.submit(requestWithCreds)
             val taskId = submitResult.taskId
 
-            // 同步返回:直接取 videoUrl(不需要 taskId)
+            // Retorno sincrónico:Tómalo directamente videoUrl(No es necesario taskId)
             if (!submitResult.isAsync) {
                 val url = submitResult.videoUrl
-                    ?: error("视频任务同步返回但未提供 videoUrl")
+                    ?: error("Se devolvió la sincronización de la tarea de vídeo, pero no se proporcionó videoUrl")
                 onProgress?.invoke(0)
                 return@resultOf url
             }
 
-            // 异步任务必须携带 taskId
+            // Las tareas asincrónicas deben llevar taskId
             if (taskId.isNullOrBlank()) {
-                error("视频任务提交失败:无 taskId")
+                error("Error al enviar la tarea de vídeo:Ninguno taskId")
             }
 
-            // 2. 异步轮询
+            // 2. sondeo asincrónico
             pollUntilCompletion(
                 provider = provider,
                 taskId = taskId,
@@ -116,9 +116,9 @@ class VideoGenerationService(
     }
 
     /**
-     * 仅提交任务(不等待完成),返回提交结果。
+     * Enviar tareas solamente(No esperes a que se complete),Devolver los resultados del envío.
      *
-     * 适用于 UI 层需要手动轮询的场景(如 VideoGenerationPage 后续可拆分提交/轮询)。
+     * Adecuado para escenarios donde se requiere un sondeo manual en la capa de UI(Por ejemplo, VideoGenerationPage se puede dividir y enviar más tarde./sondeo).
      */
     suspend fun submit(providerConfig: ProviderConfig, request: VideoGenRequest): Result<VideoSubmitResult> = withContext(Dispatchers.IO) {
         val r = resultOf {
@@ -139,33 +139,33 @@ class VideoGenerationService(
     }
 
     /**
-     * 取消指定 taskId 的任务。
+     * Cancela la tarea con el taskId especificado.
      *
-     * 加入取消围栏,后续 in-flight 的 poll 结果将被丢弃。
-     * 注意:本方法只标记本地取消,不会通知远端 API(各 Provider 的 cancel 语义由其自身实现)。
+     * Únete a Unfence,Los resultados posteriores de las encuestas durante el vuelo se descartarán.
+     * Nota:Este método solo marca cancelación local,No notificará al extremo remoto API(La semántica de cancelación de cada Proveedor se implementa por sí mismo.).
      */
     fun cancel(taskId: String) {
         cancelledTasks[taskId] = true
-        Logger.i(TAG, "任务已取消: taskId=$taskId")
+        Logger.i(TAG, "Tarea cancelada: taskId=$taskId")
     }
 
     /**
-     * 轮询直到任务完成 / 失败 / 超时 / 取消。
+     * Encuesta hasta que la tarea se complete/falle/se agote el tiempo de espera/se cancele.
      *
-     * 自适应频率：
-     *  - 5s 一个 tick
-     *  - ageMs < 2min:     每 tick 都查(5s)
-     *  - 2min <= ageMs < 10min:  每 3 个 tick 查一次(15s)
-     *  - ageMs >= 10min:   每 6 个 tick 查一次(30s)
+     * Frecuencia adaptativa:
+     *  - 5s uno tick
+     *  - ageMs < 2min:     Revisa cada tic(5s)
+     *  - 2min <= ageMs < 10min:  Verifique cada 3 tics(15s)
+     *  - ageMs >= 10min:   Verifique cada 6 tics(30s)
      *
-     * 错误处理:
-     *  - 单次 poll 抛异常或返回 PENDING+errorMessage → 计入连续错误计数
-     *  - 连续 [MAX_CONSECUTIVE_ERRORS] 次错误才判失败(瞬时网络抖动可自愈)
-     *  - 任何一次成功查询(返回明确 SUCCESS/FAILED)重置错误计数
+     * Manejo de errores:
+     *  - Una sola encuesta arroja una excepción o devuelve PENDING+errorMessage → Incluido en el recuento de errores consecutivos
+     *  - continuo [MAX_CONSECUTIVE_ERRORS] Falló después de 1 error(La fluctuación instantánea de la red puede autocurarse)
+     *  - Cualquier consulta exitosa(volver claro SUCCESS/FAILED)Restablecer recuento de errores
      *
-     * 取消围栏:
-     *  - 每次 poll 返回后检查 [cancelledTasks]
-     *  - 若已取消,丢弃结果并抛出 [CancellationException]
+     * Unfence:
+     *  - Verifique después de que regrese cada encuesta [cancelledTasks]
+     *  - Si se cancela,Descarta el resultado y tira [CancellationException]
      */
     private suspend fun pollUntilCompletion(
         provider: VideoProvider,
@@ -180,21 +180,21 @@ class VideoGenerationService(
 
         val result = withTimeoutOrNull(timeoutMs) {
             while (true) {
-                // 协程取消会通过 delay() / provider.poll() 传播,无需显式检查 isActive
+                // La cancelación de rutina pasará delay() / provider.poll() propagar,No es necesario verificar explícitamente isActive
 
                 val ageMs = System.currentTimeMillis() - startedAt
                 tickCount++
 
-                // 进度回调:每 5s 触发一次(每个 tick)
+                // Devolución de llamada de progreso:Se activa cada 5 segundos(cada uno tick)
                 val elapsedSec = ageMs / 1000
                 if (onProgress != null && elapsedSec != lastProgressSec) {
                     lastProgressSec = elapsedSec
                     onProgress.invoke(elapsedSec)
                 }
 
-                // 自适应频率判断
+                // Juicio de frecuencia adaptativo
                 if (shouldCheckThisTick(ageMs, tickCount)) {
-                    // poll 异常视为瞬时错误;FAILED 是终态,不进入瞬时重试计数
+                    // poll Las excepciones se tratan como errores transitorios.;FAILED es el estado final,No ingrese el recuento de reintentos instantáneos
                     val pollResult = try {
                         provider.poll(taskId)
                     } catch (e: CancellationException) {
@@ -203,51 +203,51 @@ class VideoGenerationService(
                         consecutiveErrors++
                         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
                             error(
-                                "${provider.providerId} 任务连续 $consecutiveErrors 次查询异常: ${e.message}",
+                                "${provider.providerId} continuidad de la tarea $consecutiveErrors Excepciones de consulta: ${e.message}",
                             )
                         }
                         Logger.w(
                             TAG,
-                            "查询异常 ($consecutiveErrors/${MAX_CONSECUTIVE_ERRORS})" +
-                                ",将重试: ${e.message}",
+                            "excepción de consulta ($consecutiveErrors/${MAX_CONSECUTIVE_ERRORS})" +
+                                ",Lo intentaré de nuevo: ${e.message}",
                         )
                         null
                     }
 
                     if (pollResult != null) {
-                        // 取消围栏:poll 返回后检查是否已被取消
+                        // Unfence:poll Comprueba si ha sido cancelado después de regresar
                         if (cancelledTasks.remove(taskId) != null) {
-                            throw CancellationException("任务已被用户取消: taskId=$taskId")
+                            throw CancellationException("La tarea ha sido cancelada por el usuario.: taskId=$taskId")
                         }
 
                         when (pollResult.status) {
                             PollStatus.SUCCESS -> {
                                 consecutiveErrors = 0
                                 val url = pollResult.videoUrl
-                                    ?: error("${provider.providerId} 任务成功但未返回 videoUrl")
+                                    ?: error("${provider.providerId} La tarea fue exitosa pero no regresó. videoUrl")
                                 return@withTimeoutOrNull url
                             }
                             PollStatus.FAILED -> {
                                 consecutiveErrors = 0
-                                error(pollResult.errorMessage ?: "${provider.providerId} 任务失败")
+                                error(pollResult.errorMessage ?: "${provider.providerId} Tarea fallida")
                             }
                             PollStatus.PENDING -> {
-                                // PENDING + errorMessage 表示查询本身出错(网络/HTTP 错误)
+                                // PENDING + errorMessage Indica un error en la propia consulta.(red/HTTP error)
                                 if (pollResult.errorMessage != null) {
                                     consecutiveErrors++
                                     if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
                                         error(
-                                            "${provider.providerId} 任务连续 $consecutiveErrors 次查询失败," +
-                                                "最后错误: ${pollResult.errorMessage}",
+                                            "${provider.providerId} continuidad de la tarea $consecutiveErrors consultas fallidas," +
+                                                "error final: ${pollResult.errorMessage}",
                                         )
                                     }
                                     Logger.w(
                                         TAG,
-                                        "查询失败 ($consecutiveErrors/${MAX_CONSECUTIVE_ERRORS})" +
-                                            ",将重试: ${pollResult.errorMessage}",
+                                        "Consulta fallida ($consecutiveErrors/${MAX_CONSECUTIVE_ERRORS})" +
+                                            ",Lo intentaré de nuevo: ${pollResult.errorMessage}",
                                     )
                                 } else {
-                                    // 纯 PENDING(正常处理中),重置错误计数
+                                    // puro PENDING(Bajo procesamiento normal),Restablecer recuento de errores
                                     consecutiveErrors = 0
                                 }
                             }
@@ -258,9 +258,9 @@ class VideoGenerationService(
                 delay(TICK_MS)
             }
             null
-        } ?: error("${provider.providerId} 任务超时(taskId=$taskId, timeoutMs=$timeoutMs)")
+        } ?: error("${provider.providerId} Tiempo de espera de la tarea(taskId=$taskId, timeoutMs=$timeoutMs)")
 
-        // 清理取消围栏(任务已正常完成)
+        // valla clara(La tarea se ha completado normalmente.)
         cancelledTasks.remove(taskId)
         return result
     }
@@ -268,27 +268,27 @@ class VideoGenerationService(
     companion object {
         private const val TAG = "VideoGenerationService"
 
-        /** 轮询 tick 间隔(5 秒)。 */
+        /** Intervalo de tic de sondeo(5 segundos). */
         private const val TICK_MS = 5_000L
 
-        /** 2 分钟阈值(毫秒)。 */
+        /** 2 umbral de minutos(milisegundos). */
         private const val TWO_MINUTES_MS = 2L * 60 * 1000
 
-        /** 10 分钟阈值(毫秒)。 */
+        /** 10 umbral de minutos(milisegundos). */
         private const val TEN_MINUTES_MS = 10L * 60 * 1000
 
-        /** 连续查询错误上限(达到后判失败)。 */
+        /** Límite superior de error de consulta continua(Fracaso después de alcanzar). */
         private const val MAX_CONSECUTIVE_ERRORS = 5
 
-        /** 默认总超时(10 分钟)。 */
+        /** Tiempo de espera total predeterminado(10 minutos). */
         private const val DEFAULT_TIMEOUT_MS = 10L * 60 * 1000
 
         /**
-         * 判断当前 tick 是否应该执行查询(自适应频率)。
+         * Determinar si el tick actual debe ejecutar la consulta(frecuencia adaptativa).
          *
-         * - ageMs < 2min:   每个 tick 都查(5s 间隔)
-         * - 2-10min:        每 3 个 tick 查一次(15s 间隔)
-         * - >10min:         每 6 个 tick 查一次(30s 间隔)
+         * - ageMs < 2min:   Revisa cada tic(5s intervalo)
+         * - 2-10min:        Verifique cada 3 tics(15s intervalo)
+         * - >10min:         Verifique cada 6 tics(30s intervalo)
          */
         internal fun shouldCheckThisTick(ageMs: Long, tickCount: Int): Boolean {
             return when {
@@ -301,22 +301,22 @@ class VideoGenerationService(
 }
 
 /**
- * 视频任务状态(UI 层展示用)。
+ * Estado de la tarea de vídeo(UI Para visualización de capas).
  *
- * v1.137: 保留给 UI 层(VideoGenerationPage)使用;内部逻辑使用 [PollStatus]。
- * [PROCESSING] 仍保留用于 UI 区分"已开始处理"与"排队中"的展示,
- * 但 [PollStatus] 不再区分二者(都归入 PENDING)。
+ * v1.137: reservado para la capa UI(VideoGenerationPage)uso;Uso de lógica interna [PollStatus].
+ * [PROCESSING] Todavía reservado para la diferenciación de la interfaz de usuario"El procesamiento ha comenzado"con"hacer cola"mostrar,
+ * pero [PollStatus] ya no distingue entre los dos(todos pertenecen a PENDING).
  */
 enum class VideoTaskStatus {
-    /** 排队中(任务已提交,尚未开始处理)。 */
+    /** hacer cola(La tarea ha sido enviada,El procesamiento aún no ha comenzado). */
     PENDING,
 
-    /** 处理中(模型正在生成视频)。 */
+    /** Procesamiento(El modelo está generando video.). */
     PROCESSING,
 
-    /** 成功(视频已生成,可下载视频 URL)。 */
+    /** éxito(El vídeo ha sido generado.,Vídeos descargables URL). */
     SUCCESS,
 
-    /** 失败(任务出错或被拒绝)。 */
+    /** falló(Error o rechazo de tarea). */
     FAILED,
 }

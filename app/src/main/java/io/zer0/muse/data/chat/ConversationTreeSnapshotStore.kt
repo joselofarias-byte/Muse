@@ -10,10 +10,10 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * P0 对话树选择快照。
+ * P0 Instantánea de selección del árbol de diálogo.
  *
- * 只保存“用户组/助手组 + 选中变体索引”，不保存消息内容；
- * 重启后由 [ConversationTree.build(messages, previous)] 恢复上次分支选择。
+ * guardar solo“grupo de usuarios/Grupo asistente + índice de variantes seleccionadas”, no guarde el contenido del mensaje;
+ * Después de reiniciar por [ConversationTree.build(messages, previous)] Restaura la última selección de rama.
  */
 class ConversationTreeSnapshotStore(private val context: Context) {
 
@@ -76,7 +76,7 @@ class ConversationTreeSnapshotStore(private val context: Context) {
                 AppJson.encodeToString(TreeSnapshot.serializer(), snapshot),
             )
         }.onFailure { e ->
-            Logger.w("TreeSnapshotStore", "保存对话树选择快照失败: ${e.message}", e)
+            Logger.w("TreeSnapshotStore", "No se pudo guardar la instantánea de selección del árbol de diálogo: ${e.message}", e)
         }
     }
 
@@ -87,7 +87,7 @@ class ConversationTreeSnapshotStore(private val context: Context) {
             val snapshot = AppJson.decodeFromString(TreeSnapshot.serializer(), file.readText())
             snapshot.toTree()
         }.onFailure { e ->
-            Logger.w("TreeSnapshotStore", "读取对话树选择快照失败: ${e.message}", e)
+            Logger.w("TreeSnapshotStore", "No se pudo leer la instantánea de selección del árbol de diálogo: ${e.message}", e)
             AtomicFileStore.quarantine(file, "snapshot_parse")
         }.getOrNull()
     }

@@ -9,11 +9,11 @@ import io.zer0.muse.session.ConversationSessionManager
 import io.zer0.muse.tools.SessionPermissionStore
 
 /**
- * v1.x: 会话编排(createNewSession/switchSession/restartContext 等)的依赖 bundle。
+ * v1.x: orquestación de sesiones(createNewSession/switchSession/restartContext espera)paquete de dependencia.
  *
- * 收口会话生命周期切换所需的共享状态/服务 + 跨职责回调,供 ChatSessionController
- * 在不反向依赖 ChatViewModel 的情况下执行会话创建/切换/重启。ChatViewModel 私有
- * 的 stopTts/disposeAsr/notifySessionEnd/currentSessionIdForApproval 经回调注入。
+ * Cierre el estado compartido requerido para el cambio del ciclo de vida de la sesión/Servicio + devolución de llamada de responsabilidad cruzada,suministro ChatSessionController
+ * Realizar la creación de sesiones sin dependencia inversa de ChatViewModel/cambiar/Reanudar.ChatViewModel privado
+ * de stopTts/disposeAsr/notifySessionEnd/currentSessionIdForApproval Inyectado mediante devolución de llamada.
  */
 @Suppress("LongParameterList")
 internal class SessionDeps(

@@ -1,60 +1,60 @@
 package io.zer0.muse.automation.executors
 
 /**
- * Root 授权请求的纯逻辑 —— 命令构造、输出判定与失败原因映射。
+ * Root Pura lógica de solicitud de autorización. —— Construcción de comandos, juicio de salida y mapeo de motivos de falla.
  *
- * [RootExecutor.requestRootAccess] 只负责子进程与超时编排;这里全部是不碰 Android/进程的
- * 纯函数,单测据此覆盖各失败路径,无需真的执行 `su`(root 弹窗无法在测试环境复现)。
+ * [RootExecutor.requestRootAccess] Únicamente responsable de los procesos secundarios y la orquestación del tiempo de espera.;Todo aquí no toca Android/proceso
+ * función pura,La prueba única cubre cada ruta de falla en consecuencia.,No es necesario ejecutar realmente `su`(root La ventana emergente no se puede reproducir en el entorno de prueba.).
  */
 
-/** Root 授权请求失败原因,UI 据此给出可读提示。 */
+/** Root Motivo fallido de la solicitud de autorización,UI Esto da una pista legible. */
 enum class RootRequestFailure {
-    /** 设备没有 su 二进制,不会触发 root 管理器弹窗,也无法获得 Root。 */
+    /** El dispositivo no tiene su binario,No activará la ventana emergente del administrador raíz,Tampoco se puede obtener la raíz. */
     NO_SU_BINARY,
 
-    /** 等待 root 管理器授权超时(弹窗一直未被处理)。 */
+    /** Esperando que expire el tiempo de autorización del administrador raíz(La ventana emergente no ha sido procesada.). */
     TIMEOUT,
 
-    /** 用户拒绝授权,或 su 以非 0 退出码结束。 */
+    /** El usuario rechaza la autorización,o su termina con un código de salida distinto de 0. */
     DENIED,
 
-    /** 子进程启动/读取异常等未分类失败。 */
+    /** Comienza el proceso hijo/Fallos sin categoría, como excepciones de lectura. */
     ERROR,
 }
 
-/** Root 授权请求结果。[granted] 为 true 时 [failure] 必为 null。 */
+/** Root Resultado de la solicitud de autorización.[granted] cuando es cierto [failure] Debe ser nulo. */
 data class RootRequestResult(
     val granted: Boolean,
     val failure: RootRequestFailure? = null,
 ) {
     companion object {
-        /** 已拿到 uid=0。 */
+        /** Lo tengo uid=0. */
         val Granted: RootRequestResult = RootRequestResult(granted = true)
 
-        /** 请求失败,附失败原因。 */
+        /** Solicitud fallida,Adjunto el motivo del fracaso. */
         fun failed(reason: RootRequestFailure): RootRequestResult = RootRequestResult(granted = false, failure = reason)
     }
 }
 
-/** su 探针命令:root 管理器会因这次调用弹出授权对话框,同时输出当前 uid。 */
+/** su comando de sonda:root El administrador abrirá un cuadro de diálogo de autorización debido a esta llamada.,También genera el uid actual. */
 internal const val ROOT_PROBE_COMMAND = "id"
 
 /**
- * 构造 su 探针的参数表。
+ * Construya una lista de parámetros para la sonda su.
  *
- * 与 [RootExecutor.shellPrefix] 的调用约定一致:`su -c <cmd>`;固定 argv 走 ProcessBuilder,
- * 不经过 shell 文本拼接,避免命令注入面。
+ * con [RootExecutor.shellPrefix] La convención de convocatoria de:`su -c <cmd>`;Arreglado ir argv ProcessBuilder,
+ * Sin concatenación de texto de shell,Evite las superficies de inyección de comandos.
  */
 internal fun rootProbeArgs(prefix: List<String>): List<String> = prefix + listOf("-c", ROOT_PROBE_COMMAND)
 
-/** 探针输出是否表明已获得 root(uid=0)。 */
+/** ¿La salida de la sonda indica que se obtuvo root(uid=0). */
 internal fun isRootGranted(output: String?): Boolean = output?.contains("uid=0") == true
 
 /**
- * 探针终态判定:退出码 0 且输出含 uid=0 才算授权成功。
+ * Determinación del estado final de la sonda:Código de salida 0 y la salida contiene uid=0 Sólo si la autorización es exitosa.
  *
- * 部分 ROM 的 su 缺失时以 "not found" 文本报错,统一归为 [RootRequestFailure.NO_SU_BINARY],
- * 让 UI 提示"设备无 su"而不是笼统的授权被拒。
+ * Cuando falta su en algunas ROM, el "not found" Error de texto,unificado como [RootRequestFailure.NO_SU_BINARY],
+ * Deje que la interfaz de usuario le indique"Sin equipo su"en lugar de un rechazo general de la autorización.
  */
 internal fun evaluateRootProbe(exitCode: Int, output: String): RootRequestResult = when {
     exitCode == 0 && isRootGranted(output) -> RootRequestResult.Granted
@@ -63,10 +63,10 @@ internal fun evaluateRootProbe(exitCode: Int, output: String): RootRequestResult
     else -> RootRequestResult.failed(RootRequestFailure.DENIED)
 }
 
-/** 探针未在超时内结束(root 弹窗无人处理)→ 超时失败。 */
+/** La sonda no finalizó dentro del tiempo de espera(root Nadie maneja las ventanas emergentes)→ Falló el tiempo de espera. */
 internal fun rootProbeTimeout(): RootRequestResult = RootRequestResult.failed(RootRequestFailure.TIMEOUT)
 
-/** 子进程启动/读取异常 → 失败原因分类。 */
+/** Comienza el proceso hijo/Leer excepción → Clasificación de motivos de fallo. */
 internal fun classifyRootProbeException(error: Throwable): RootRequestFailure = when (error) {
     is SecurityException -> RootRequestFailure.DENIED
     else -> RootRequestFailure.ERROR

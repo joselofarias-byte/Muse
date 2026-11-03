@@ -8,10 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 气泡皮肤目录纯逻辑测试:解析容错、非法皮肤过滤、选中语义与数量上限。
+ * Prueba de lógica pura del directorio de piel de burbuja:Análisis de tolerancia a fallos, filtrado de aspectos ilegal, semántica de selección y límite superior de cantidad.
  *
- * 存储层 [BubbleSkinStore] 只是 DataStore 薄包装,策略全部集中在
- * [BubbleSkinCatalog],因此这里覆盖"非法 schema/对比度回退 default"的完整判定。
+ * capa de almacenamiento [BubbleSkinStore] Sólo una fina envoltura alrededor de DataStore,Todas las estrategias se centran en
+ * [BubbleSkinCatalog],Así que aquí está cubierto."Esquema ilegal/contraste alternativo default"juicio completo.
  */
 class BubbleSkinCatalogTest {
 
@@ -21,7 +21,7 @@ class BubbleSkinCatalogTest {
         radiusDp = 14f,
     )
 
-    /** 对比度不足(浅底浅字)的样式,用于验证过滤/回退。 */
+    /** No hay suficiente contraste(Fondo claro y personajes poco profundos.)estilo,para filtrado de validación/Retroceder. */
     private val lowContrastStyle = BubbleRoleStyle(
         surfaceArgb = 0xFFF2F2F2L,
         contentArgb = 0xFFE8E8E8L,
@@ -89,7 +89,7 @@ class BubbleSkinCatalogTest {
         assertEquals(current.map { it.id }, rejected.map { it.id })
         assertTrue(rejected.none { it.id == "bad" })
 
-        // 内置 id 不允许作为自定义皮肤进入列表
+        // Los identificadores integrados no pueden ingresar a la lista como máscaras personalizadas
         val builtinAttempt = BubbleSkinCatalog.upsert(current, skin(BubbleSkinCatalog.DEFAULT_SKIN_ID))
         assertTrue(builtinAttempt.none { it.id == BubbleSkinCatalog.DEFAULT_SKIN_ID })
     }
@@ -120,7 +120,7 @@ class BubbleSkinCatalogTest {
         assertNull(BubbleSkinCatalog.select(skins, BubbleSkinCatalog.DEFAULT_SKIN_ID))
         assertNull(BubbleSkinCatalog.select(skins, ""))
         assertNull(BubbleSkinCatalog.select(skins, "does-not-exist"))
-        // 列表内的非法皮肤(对比度不足)不会生效,等价于回退内置 default
+        // Máscaras ilegales en la lista.(No hay suficiente contraste)no tendrá efecto,Equivalente al respaldo incorporado default
         assertNull(BubbleSkinCatalog.select(listOf(skin("bad", lowContrastStyle)), "bad"))
         assertEquals("custom", BubbleSkinCatalog.select(skins, "custom")?.id)
     }

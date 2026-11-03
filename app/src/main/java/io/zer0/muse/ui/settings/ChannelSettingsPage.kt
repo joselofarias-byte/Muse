@@ -67,12 +67,12 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.0.92: 消息渠道配置页 — 外部 IM 桥接(飞书 / QQ 等)。
+ * v1.0.92: Página de configuración del canal de mensajes — Puente de mensajería instantánea externa(Feishu/QQ, etc.).
  *
- * 职责:
- *  - 渠道列表(启停开关 / 编辑 / 删除);
- *  - 添加/编辑对话框(AppID/AppSecret/目标 ID,凭据本地加密保存);
- *  - 简要说明(推送能力 + 凭据安全边界 + 去哪注册)。
+ * Responsabilidades:
+ *  - lista de canales(Iniciar/detener interruptor/editar/eliminar);
+ *  - agregar/Editar cuadro de diálogo(AppID/AppSecret/objetivo ID,Las credenciales se guardan cifradas localmente);
+ *  - Breve descripción(Capacidad de inserción + Límite de seguridad de credenciales + Dónde registrarse).
  */
 @Composable
 fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> Unit = {}) {
@@ -82,7 +82,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     val dingtalkReceiver: DingtalkReceiver = koinInject()
     val qqReceiver: QqReceiver = koinInject()
     val feishuReceiver: FeishuReceiver = koinInject()
-    // 配置变更后重启全部接收器(长轮询/长连接按最新渠道配置重建)
+    // Reinicie todos los receptores después de los cambios de configuración(encuesta larga/Las conexiones largas se reconstruyen según la última configuración del canal.)
     val restartAllReceivers = {
         weClawReceiver.restart()
         telegramReceiver.restart()
@@ -107,7 +107,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         title = stringResource(R.string.channel_page_title),
         onBack = onBack,
     ) {
-        // ── 说明卡 ──
+        // ── tarjeta de instrucciones ──
         item(key = "intro") {
             CardGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                 item {
@@ -128,7 +128,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── 渠道列表 ──
+        // ── lista de canales ──
         channels.forEach { cfg ->
             item(key = cfg.id) {
                 CardGroup(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -161,7 +161,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── 添加按钮（v2.0.1: 上移至「最近收到」之前） ──
+        // ── Botón Agregar (v2.0.1: Ir a antes de "Recibidos recientemente") ──
         item(key = "add") {
             Surface(
                 shape = MuseShapes.medium,
@@ -195,7 +195,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             }
         }
 
-        // ── 最近入站消息(webhook 接收) ──
+        // ── Mensajes entrantes recientes(webhook recibir) ──
         if (inbox.isNotEmpty()) {
             item(key = "inbox_title") {
                 Text(
@@ -209,7 +209,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
                 item(key = "inbox_${msg.timestamp}_${msg.platform}") {
                     CardGroup(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         item {
-                            // v2.0.1: 平台名本地化（历史数据存的是枚举名，如 WECLAW）。
+                            // v2.0.1: Localización del nombre de la plataforma (los datos históricos se almacenan en nombres de enumeración, como WECLAW).
                             val inboxPlatform =
                                 remember(msg.platform) {
                                     runCatching { ChannelPlatform.valueOf(msg.platform) }.getOrNull()
@@ -238,7 +238,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         }
     }
 
-    // ── 添加 / 编辑对话框 ──
+    // ── Cuadro de diálogo Agregar/Editar ──
     if (showAdd || editTarget != null) {
         ChannelEditDialog(
             initial = editTarget,
@@ -257,7 +257,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
         )
     }
 
-    // ── 删除确认 ──
+    // ── Eliminar confirmación ──
     deleteTarget?.let { cfg ->
         MuseDialog(
             onDismissRequest = { deleteTarget = null },
@@ -280,7 +280,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     }
 }
 
-/** 单条渠道卡片:名称/平台目标 + 启停开关(首行);操作按钮独立一行,避免长名称/长 ID 挤压变形。 */
+/** Tarjeta monocanal:Nombre/Objetivo de plataforma + interruptor de inicio/parada(primera linea);Botones de operación en una fila separada,evitar nombres largos/Deformación de extrusión de ID larga. */
 @Composable
 private fun ChannelRow(
     config: ChannelConfig,
@@ -346,7 +346,7 @@ private fun ChannelRow(
     }
 }
 
-/** 渠道操作按钮文本(带内边距的可点区域,独立一行排列)。 */
+/** Texto del botón de acción del canal(Área en la que se puede hacer clic con relleno,dispuestos en una fila separada). */
 @Composable
 private fun ChannelActionText(text: String, color: Color, onClick: () -> Unit) {
     Text(
@@ -361,14 +361,14 @@ private fun ChannelActionText(text: String, color: Color, onClick: () -> Unit) {
     )
 }
 
-/** 目标 ID 过长时中段省略(首 8 + … + 尾 6),避免长 ID 在窄屏上折行成竖排。 */
+/** La parte central se omite cuando el ID del objetivo es demasiado largo.(primero 8 + … + cola 6),Evite que los documentos de identidad largos se doblen verticalmente en pantallas estrechas. */
 private fun shortTargetId(raw: String): String {
     val id = raw.ifBlank { "-" }
     if (id.length <= 18) return id
     return id.take(8) + "…" + id.takeLast(6)
 }
 
-/** 添加/编辑渠道对话框（v2.0.1: 按平台定制接入字段）。 */
+/** agregar/Editar cuadro de diálogo de canal (v2.0.1: Accede a campos personalizados por plataforma). */
 @Composable
 private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, onSave: (ChannelConfig) -> Unit) {
     var platform by remember { mutableStateOf(initial?.platform ?: ChannelPlatform.FEISHU) }
@@ -391,7 +391,7 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
     var showWebhookVerificationToken by remember { mutableStateOf(false) }
     var validating by remember { mutableStateOf(false) }
     var validationResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
-    // null = 未改动；空字符串 = 明确解除绑定；非空 = 新扫码得到的 token。
+    // null = Sin modificar; cadena vacía = Desvincularse explícitamente; no vacio = El token obtenido al escanear nuevamente el código QR.
     var weclawTokenOverride by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -426,7 +426,7 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
                 .take(6)
         }
     val validationFailedText = stringResource(R.string.channel_test_failed)
-    // v2.7: 必填规则下沉到凭证类型自身，新增平台不再改这里。
+    // v2.7: Las reglas requeridas están integradas en el propio tipo de bono y las nuevas plataformas no cambiarán esto aquí.
     val canSave =
         platform.buildCredentials(
             appId = appId,
@@ -802,7 +802,7 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
                     }
                     MuseSwitch(checked = autoReply, onCheckedChange = { autoReply = it })
                 }
-                // v2.0.1: 自动回复使用的助手 — 继承其人设、模型与参数。
+                // v2.0.1: Asistente para usar en respuestas automáticas — Hereda su carácter, modelo y parámetros.
                 val assistantOptions = mutableListOf<Pair<String, String>>()
                 assistantOptions += "" to stringResource(R.string.channel_assistant_default)
                 for (a in assistants) {
@@ -863,10 +863,10 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
                 weclawTokenOverride = status.botToken
                 appId = status.botId
                 if (status.userId.isNotBlank()) targetId = status.userId
-                // v2.0.1: 扫码绑定是明确意图 — 默认打开自动回复,避免"绑了却没反应"。
+                // v2.0.1: Escanear el código QR para vincularse es una intención clara — Respuesta automática activada de forma predeterminada,evitar"Empatado pero sin respuesta".
                 autoReply = true
                 showBind = false
-                // v2.2.1: 扫码确认后必须给明确反馈(此前无提示,用户以为没绑上又去点取消)
+                // v2.2.1: Después de escanear el código QR para confirmar, debes dar una respuesta clara.(No hay aviso antes,El usuario pensó que no estaba conectado y hizo clic en Cancelar.)
                 MuseToast.show(context.getString(R.string.channel_weclaw_logged_in))
             },
         )
@@ -879,10 +879,10 @@ private fun ChannelEditDialog(initial: ChannelConfig?, onDismiss: () -> Unit, on
     }
 }
 
-/** ClawBot 二维码自动刷新上限(get_qrcode_status 返回 expired 时自动换新码,与官方实现一致)。 */
+/** ClawBot El código QR actualiza automáticamente el límite superior(get_qrcode_status Cambiar automáticamente a un nuevo código cuando se devuelva el código caducado,Consistente con la implementación oficial). */
 private const val MAX_QR_REFRESH_COUNT = 3
 
-/** v2.0: ClawBot 扫码绑定对话框(拉取二维码 → 轮询状态 → 回填凭据)。 */
+/** v2.0: ClawBot Cuadro de diálogo de enlace de código de escaneo(Tirar código QR → Estado de sondeo → Rellenar credenciales). */
 @Composable
 private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrStatus) -> Unit) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -904,8 +904,8 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
             return@LaunchedEffect
         }
         status = "wait"
-        // v2.2.1: get_qrcode_status 是长轮询(服务端 hold 约 30s,超时属正常,官方以 wait 重试);
-        // 过期时自动换新码(官方行为,最多 3 次)。每次结果打日志,便于线上定位扫码链路。
+        // v2.2.1: get_qrcode_status Es una encuesta larga(El servidor tiene aproximadamente 30s,El tiempo de espera es normal,Reintentar oficialmente con espera);
+        // Renovar automáticamente el código cuando caduque(acción oficial,hasta 3 veces). Registra cada resultado,Conveniente para localizar el enlace del código de escaneo en línea.
         while (isActive) {
             val st = WeClawClient.getQrStatus(qr.qrcode).getOrNull()
             if (st == null) {
@@ -915,7 +915,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
                 continue
             }
             pollFailures = 0
-            Logger.i("WeClawBind", "扫码状态: ${st.status}")
+            Logger.i("WeClawBind", "Estado del código de escaneo: ${st.status}")
             when (st.status.lowercase()) {
                 "confirmed" -> {
                     onBound(st)
@@ -938,7 +938,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
                 }
                 "scaned", "scanned" -> status = "scaned"
                 "wait" -> if (status == "unstable") status = "wait"
-                else -> Unit // 未知状态忽略,继续轮询
+                else -> Unit // Estado desconocido ignorado,Continuar encuestando
             }
             delay(1_000)
         }
@@ -994,7 +994,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
     )
 }
 
-/** 密钥输入框：已有密钥不回显，只允许输入新值覆盖。 */
+/** Cuadro de entrada de clave: las claves existentes no se repetirán, solo se pueden ingresar nuevos valores para sobrescribirlas. */
 @Composable
 private fun SecretInputField(
     value: String,
@@ -1066,7 +1066,7 @@ private fun WebhookReceiverToggle(checked: Boolean, onCheckedChange: (Boolean) -
     )
 }
 
-/** 凭证说明 + 测试连接 + 结果。 */
+/** Descripción de credenciales + conexión de prueba + resultados. */
 @Composable
 private fun PlatformCredentialFooter(hint: String, validating: Boolean, result: Pair<Boolean, String>?, onValidate: () -> Unit) {
     Text(
@@ -1106,7 +1106,7 @@ private fun PlatformCredentialFooter(hint: String, validating: Boolean, result: 
     }
 }
 
-/** 平台接入教程：按平台官方配置步骤。 */
+/** Tutorial de acceso a la plataforma: Sigue los pasos oficiales de configuración de la plataforma. */
 @Composable
 private fun ChannelTutorialDialog(platform: ChannelPlatform, onDismiss: () -> Unit) {
     val stepsRes =
@@ -1142,13 +1142,13 @@ private fun ChannelTutorialDialog(platform: ChannelPlatform, onDismiss: () -> Un
     )
 }
 
-/** v2.0.1: 账号 id 展示美化 — 过长时保留首尾。 */
+/** v2.0.1: Embellecimiento de la visualización del ID de cuenta — Si es demasiado largo, mantén el principio y el final. */
 private fun prettifyAccount(raw: String): String = if (raw.length <= 18) raw else raw.take(8) + "…" + raw.takeLast(4)
 
 /**
- * v2.0.1: 平台本地化显示名 — UI 不直接显示枚举常量名（FEISHU / WECLAW 等英式写法）。
+ * v2.0.1: Nombre para mostrar localizado en la plataforma — UI No muestre directamente el nombre de la constante de enumeración (FEISHU / WECLAW etc. escritura británica).
  *
- * value 匹配仍以 [ChannelPlatform.name] 为稳定键；仅展示层随语言变化。
+ * value El partido aún termina con [ChannelPlatform.name] Es una clave estable; sólo la capa de presentación cambia con el idioma.
  */
 @androidx.annotation.StringRes
 private fun channelPlatformNameRes(platform: ChannelPlatform): Int = when (platform) {

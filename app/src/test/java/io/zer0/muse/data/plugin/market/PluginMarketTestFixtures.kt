@@ -8,7 +8,7 @@ import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 
-/** 市场定向测试共用的签名目录夹具（P-256 ECDSA，与目录校验器同算法）。 */
+/** Accesorio de catálogo exclusivo común para pruebas de orientación al mercado (P-256 ECDSA, el mismo algoritmo que el validador de directorio). */
 internal object PluginMarketTestFixtures {
 
     fun newKeyPair(): KeyPair {

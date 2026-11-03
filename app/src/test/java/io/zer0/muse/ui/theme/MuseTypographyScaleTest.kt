@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * R-TEST-21: MuseTypography fontSizeScale 枚举解析。
+ * R-TEST-21: MuseTypography fontSizeScale Análisis de enumeración.
  */
 class MuseTypographyScaleTest {
 

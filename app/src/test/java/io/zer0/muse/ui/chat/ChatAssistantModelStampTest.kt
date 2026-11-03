@@ -11,13 +11,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * v2.6.15: assistant 消息的产出模型戳。
+ * v2.6.15: assistant El sello del modelo de salida del mensaje.
  *
- * 思考块回放的同模型守卫（ProviderPayloadNormalizer.stripCrossModelReasoning）只认
- * `UIMessage.modelId`。若生成链路不写这个字段，守卫就永远拿不到来源信息 —— 曾经就是
- * 「字段存在但从不赋值」，导致守卫空转。本测试钉住两个写入点：
- *  - 发送占位消息（ChatGenerationController.enqueueSend）；
- *  - 工具轮重建的 assistant 消息与最终回复（ChatToolLoopRunner.streamRound）。
+ * Protector del mismo modelo para reproducción de bloques de pensamiento (ProviderPayloadNormalizer.stripCrossModelReasoning) sólo reconocer
+ * `UIMessage.modelId`. Si no escribe este campo al generar un enlace, el guardia nunca obtendrá la información de origen. —— Solia ser
+ * "El campo existe pero nunca se le asigna un valor", lo que provoca que la guardia quede inactiva. Esta prueba destaca dos puntos de escritura:
+ *  - Enviar un mensaje de marcador de posición (ChatGenerationController.enqueueSend);
+ *  - Mensaje del asistente reconstruido por Toolwheel y respuesta final (ChatToolLoopRunner.streamRound).
  */
 class ChatAssistantModelStampTest {
 
@@ -29,7 +29,7 @@ class ChatAssistantModelStampTest {
         ?.let { Files.newBufferedReader(it).use { reader -> reader.readText() } }
         ?: error("$relativePath not found")
 
-    // ── 取值规则 ──
+    // ── Reglas de valor ──
 
     @Test
     fun `round model wins over the stamp already on the message`() {
@@ -57,7 +57,7 @@ class ChatAssistantModelStampTest {
         assertNull(roundAssistantModelId(null, null))
     }
 
-    // ── 写入点接线 ──
+    // ── Cableado de punto de escritura ──
 
     @Test
     fun `send placeholder carries the producing model`() {
@@ -65,9 +65,9 @@ class ChatAssistantModelStampTest {
         val enqueueBody = text.substringAfter("fun enqueueSend(")
             .substringBefore("suspend fun consumeSendRequest")
 
-        assertTrue("enqueueSend 里找不到发送占位消息", enqueueBody.contains("val assistantMsg ="))
+        assertTrue("enqueueSend No se puede encontrar al enviar un mensaje de marcador de posición", enqueueBody.contains("val assistantMsg ="))
         assertTrue(
-            "发送占位消息必须带 modelId，否则同模型守卫拿不到来源",
+            "El mensaje de marcador de posición debe enviarse con modelId; de lo contrario, el mismo guardia del modelo no podrá obtener la fuente.",
             enqueueBody.substringAfter("val assistantMsg =")
                 .substringBefore("val outboxId")
                 .contains("modelId = accessor.snapshot.selectedModelId"),
@@ -79,11 +79,11 @@ class ChatAssistantModelStampTest {
         val text = source("io/zer0/muse/ui/chat/ChatToolLoopRunner.kt")
 
         assertTrue(
-            "工具轮重建的 assistant 消息必须带 modelId",
+            "El mensaje del asistente para la reconstrucción de la rueda de herramientas debe traer modelId",
             text.contains("modelId = roundAssistantModelId(roundModel, finalizedAssistant)"),
         )
         assertTrue(
-            "最终回复也必须带 modelId",
+            "La respuesta final también debe presentarse modelId",
             text.contains("modelId = roundAssistantModelId(roundModel, finalAssistant)"),
         )
     }

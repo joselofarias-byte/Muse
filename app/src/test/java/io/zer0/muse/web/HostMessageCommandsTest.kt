@@ -33,10 +33,10 @@ import java.nio.file.Files
 import java.util.UUID
 
 /**
- * 消息级写命令：`message.delete` / `message.favorite` / `message.quote`。
+ * Comando de escritura a nivel de mensaje:`message.delete` / `message.favorite` / `message.quote`.
  *
- * 闸门与 `chat.send` 同一条焦点规则；删除只动当前会话里真实存在的消息，
- * 重复删/重复收藏都不报错。
+ * puerta con `chat.send` La misma regla de enfoque; la eliminación solo afecta los mensajes que realmente existen en la conversación actual.
+ * Eliminar duplicados/No se informará ningún error si se realizan cobros repetidos.
  */
 class HostMessageCommandsTest {
 
@@ -85,7 +85,7 @@ class HostMessageCommandsTest {
             ),
         )
         every { chat.messages } returns messagesFlow
-        // 删完要让列表真的变短，否则验不出「同一批再删一次」的幂等。
+        // Haga que la lista sea realmente corta después de la eliminación; de lo contrario, no se podrá probar la idempotencia de "eliminar el mismo lote nuevamente".
         every { chat.deleteMessages(any()) } answers {
             val ids = firstArg<List<kotlin.uuid.Uuid>>().map { it.toString() }.toSet()
             messagesFlow.value = messagesFlow.value.filterNot { it.id.toString() in ids }
@@ -142,11 +142,11 @@ class HostMessageCommandsTest {
     private fun favoriteCommand(requestId: String, id: String, favored: Boolean): String =
         command("message.favorite", requestId, ",\"messageId\":\"$id\",\"favored\":$favored")
 
-    // ── 1. 焦点 ────────────────────────────────────────────────
+    // ── 1. enfocar ────────────────────────────────────────────────
 
     @Test
     fun `delete and favorite without the focus are refused`() = runTest {
-        val target = message(MessageRole.ASSISTANT, "回复")
+        val target = message(MessageRole.ASSISTANT, "Responder")
         val harness = harness(listOf(target), entities = mapOf(target.id.toString() to entity(target)))
 
         val holder = FakeConnection()
@@ -164,7 +164,7 @@ class HostMessageCommandsTest {
         assertEquals("focus_not_held", other.events.firstOrNull { it.requestId == "req-fav" }?.error)
         verify(exactly = 0) { harness.chat.deleteMessages(any()) }
         verify(exactly = 0) { harness.chat.setMessageFavorite(any(), any()) }
-        assertEquals("仓储零变化：消息仍在", 1, harness.messages.value.size)
+        assertEquals("Cero cambios en el almacenamiento: las novedades siguen ahí", 1, harness.messages.value.size)
         assertTrue(harness.favorites.isEmpty())
 
         other.incoming.close()
@@ -174,13 +174,13 @@ class HostMessageCommandsTest {
         holderJob.join()
     }
 
-    // ── 2. 批量删除 ────────────────────────────────────────────
+    // ── 2. Eliminación por lotes ────────────────────────────────────────────
 
     @Test
     fun `batch delete reports deleted count and skipped ids`() = runTest {
-        val first = message(MessageRole.USER, "一")
-        val second = message(MessageRole.ASSISTANT, "二")
-        val third = message(MessageRole.USER, "三")
+        val first = message(MessageRole.USER, "uno")
+        val second = message(MessageRole.ASSISTANT, "dos")
+        val third = message(MessageRole.USER, "tres")
         val harness = harness(listOf(first, second, third))
 
         val connection = FakeConnection()
@@ -192,22 +192,22 @@ class HostMessageCommandsTest {
         advanceUntilIdle()
 
         val accepted = connection.events.firstOrNull { it.requestId == "req-del" }
-        assertNotNull("删除应被受理: ${connection.events.map { it.type to it.error }}", accepted)
+        assertNotNull("Se considerará la eliminación: ${connection.events.map { it.type to it.error }}", accepted)
         assertEquals(2, accepted!!.deletedCount)
         assertEquals(listOf("no-such-id"), accepted.skippedMessageIds)
-        assertEquals("库里应只剩第三条", listOf(third.id.toString()), harness.messages.value.map { it.id.toString() })
+        assertEquals("A Curry solo le debería quedar el tercero", listOf(third.id.toString()), harness.messages.value.map { it.id.toString() })
 
         connection.incoming.close()
         advanceUntilIdle()
         job.join()
     }
 
-    // ── 3. 正在生成的那条 ──────────────────────────────────────
+    // ── 3. El que se genera ──────────────────────────────────────
 
     @Test
     fun `deleting the streaming reply is refused as a whole`() = runTest {
-        val user = message(MessageRole.USER, "问题")
-        val streaming = message(MessageRole.ASSISTANT, "正在写")
+        val user = message(MessageRole.USER, "pregunta")
+        val streaming = message(MessageRole.ASSISTANT, "escribiendo")
         val harness = harness(listOf(user, streaming), streaming = true)
 
         val connection = FakeConnection()
@@ -221,19 +221,19 @@ class HostMessageCommandsTest {
         val error = connection.events.firstOrNull { it.requestId == "req-del" }
         assertEquals("message_is_streaming", error?.error)
         verify(exactly = 0) { harness.chat.deleteMessages(any()) }
-        assertEquals("整批被拒：两条都还在", 2, harness.messages.value.size)
+        assertEquals("Todo el lote fue rechazado: ambos artículos siguen ahí.", 2, harness.messages.value.size)
 
         connection.incoming.close()
         advanceUntilIdle()
         job.join()
     }
 
-    // ── 4. 幂等 ────────────────────────────────────────────────
+    // ── 4. idempotente ────────────────────────────────────────────────
 
     @Test
     fun `deleting the same ids twice is a no-op the second time`() = runTest {
-        val first = message(MessageRole.USER, "一")
-        val second = message(MessageRole.ASSISTANT, "二")
+        val first = message(MessageRole.USER, "uno")
+        val second = message(MessageRole.ASSISTANT, "dos")
         val harness = harness(listOf(first, second))
 
         val connection = FakeConnection()
@@ -248,20 +248,20 @@ class HostMessageCommandsTest {
         val firstResult = connection.events.firstOrNull { it.requestId == "req-1" }
         val secondResult = connection.events.firstOrNull { it.requestId == "req-2" }
         assertEquals(2, firstResult?.deletedCount)
-        assertEquals("第二次应全部跳过而不是报错", 0, secondResult?.deletedCount)
+        assertEquals("La segunda vez se debe omitir en lugar de informar un error.", 0, secondResult?.deletedCount)
         assertEquals(ids, secondResult?.skippedMessageIds)
-        assertNull("重复删不报错", secondResult?.error)
+        assertNull("Eliminar duplicados sin informar un error", secondResult?.error)
 
         connection.incoming.close()
         advanceUntilIdle()
         job.join()
     }
 
-    // ── 5. 收藏 ────────────────────────────────────────────────
+    // ── 5. Colección ────────────────────────────────────────────────
 
     @Test
     fun `favorite flips on and off and on without toggling unexpectedly`() = runTest {
-        val target = message(MessageRole.ASSISTANT, "好句")
+        val target = message(MessageRole.ASSISTANT, "buena frase")
         val harness = harness(listOf(target), entities = mapOf(target.id.toString() to entity(target)))
 
         val connection = FakeConnection()
@@ -270,14 +270,14 @@ class HostMessageCommandsTest {
         val id = target.id.toString()
         connection.incoming.send(Frame.Text(favoriteCommand("req-1", id, true)))
         advanceUntilIdle()
-        assertEquals("开", true, harness.favorites[id])
+        assertEquals("abierto", true, harness.favorites[id])
         connection.incoming.send(Frame.Text(favoriteCommand("req-2", id, false)))
         advanceUntilIdle()
-        assertEquals("关", false, harness.favorites[id])
+        assertEquals("cerrar", false, harness.favorites[id])
         connection.incoming.send(Frame.Text(favoriteCommand("req-3", id, true)))
         advanceUntilIdle()
-        assertEquals("再开", true, harness.favorites[id])
-        // 重复设置同一状态是幂等的：再发一次 true 不报错，值不变。
+        assertEquals("Abrir de nuevo", true, harness.favorites[id])
+        // Establecer repetidamente el mismo estado es idempotente: no se informará ningún error si se envía verdadero nuevamente y el valor permanece sin cambios.
         connection.incoming.send(Frame.Text(favoriteCommand("req-4", id, true)))
         advanceUntilIdle()
         assertEquals(true, harness.favorites[id])
@@ -306,11 +306,11 @@ class HostMessageCommandsTest {
         job.join()
     }
 
-    // ── 6. 引用 ────────────────────────────────────────────────
+    // ── 6. Cotización ────────────────────────────────────────────────
 
     @Test
     fun `quote returns the content for a message in the current session`() = runTest {
-        val target = message(MessageRole.ASSISTANT, "被引用的原话")
+        val target = message(MessageRole.ASSISTANT, "cita original")
         val harness = harness(listOf(target), entities = mapOf(target.id.toString() to entity(target)))
 
         val connection = FakeConnection()
@@ -323,7 +323,7 @@ class HostMessageCommandsTest {
 
         val quoted = connection.events.firstOrNull { it.requestId == "req-quote" }
         assertEquals("message.quote", quoted?.type)
-        assertEquals("被引用的原话", quoted?.content)
+        assertEquals("cita original", quoted?.content)
         assertEquals(target.id.toString(), quoted?.messageId)
 
         connection.incoming.close()
@@ -333,7 +333,7 @@ class HostMessageCommandsTest {
 
     @Test
     fun `quote refuses a message from another session`() = runTest {
-        val target = message(MessageRole.ASSISTANT, "别的会话")
+        val target = message(MessageRole.ASSISTANT, "otras conversaciones")
         val harness = harness(
             listOf(target),
             entities = mapOf(target.id.toString() to entity(target, sessionId = "another-session")),
@@ -349,7 +349,7 @@ class HostMessageCommandsTest {
 
         val event = connection.events.firstOrNull { it.requestId == "req-quote" }
         assertEquals("message_not_in_current_session", event?.error)
-        assertNull("跨会话不该把内容带出去", event?.content)
+        assertNull("El contenido no debe eliminarse entre sesiones.", event?.content)
 
         connection.incoming.close()
         advanceUntilIdle()

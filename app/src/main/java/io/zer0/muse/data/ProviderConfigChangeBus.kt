@@ -3,30 +3,30 @@ package io.zer0.muse.data
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Provider 配置写入后的进程内广播。
+ * Provider Difusión en proceso después de escribir la configuración.
  *
- * 数据层写完供应商/模型配置(含 baseUrl、apiKey、模型列表)后通知一次,
- * 持有「由 Provider 配置派生出来的缓存」的消费者自行失效。这样数据层无需反向依赖
- * 上层服务(如 rag 包里的 EmbeddingService),也不会把缓存失效逻辑散落到各个调用点。
+ * La capa de datos ha escrito el proveedor./Configuración del modelo(Contiene URL base,apiKey, lista de modelos)Notificar una vez más tarde,
+ * Los consumidores que tengan "caché derivado de la configuración del proveedor" caducarán automáticamente. De esta forma la capa de datos no necesita dependencias inversas.
+ * Servicio de nivel superior(Como en la bolsa de trapo EmbeddingService),La lógica de invalidación de la caché no se distribuirá entre varios puntos de llamada.
  *
- * 当前订阅者:[io.zer0.muse.rag.EmbeddingService](Provider 实例缓存)。
- * 回调在写入方协程里同步执行,实现必须是非阻塞、可重入且幂等的。
+ * suscriptores actuales:[io.zer0.muse.rag.EmbeddingService](Provider Caché de instancia).
+ * La devolución de llamada se ejecuta sincrónicamente en la rutina de escritura.,Las implementaciones deben ser no bloqueantes, reentrantes e idempotentes.
  */
 object ProviderConfigChangeBus {
 
     private val listeners = CopyOnWriteArrayList<() -> Unit>()
 
-    /** 注册变更回调;同一实例重复注册只保留一份。 */
+    /** Registrar cambio de devolución de llamada;Sólo se conservará una copia del registro repetido de la misma instancia. */
     fun register(listener: () -> Unit) {
         if (!listeners.contains(listener)) listeners.add(listener)
     }
 
-    /** 注销变更回调(测试或长生命周期对象销毁时用)。 */
+    /** Devolución de llamada de cambio de cierre de sesión(Se utiliza cuando se realizan pruebas o se destruyen objetos con un ciclo de vida prolongado.). */
     fun unregister(listener: () -> Unit) {
         listeners.remove(listener)
     }
 
-    /** 通知所有订阅者配置已变更。单个订阅者抛异常不影响其他订阅者与写入流程。 */
+    /** Notificar a todos los suscriptores sobre los cambios de configuración. Una excepción lanzada por un único suscriptor no afecta a otros suscriptores ni al proceso de escritura. */
     fun notifyChanged() {
         listeners.forEach { listener ->
             runCatching { listener() }

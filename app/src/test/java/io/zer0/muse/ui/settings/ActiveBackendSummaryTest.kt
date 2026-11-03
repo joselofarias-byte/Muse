@@ -6,14 +6,14 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * 「当前实际在用哪个 embedding 后端」摘要的规则锁定。
+ * Bloqueo de regla de resumen "Qué backend integrado está actualmente en uso".
  *
- * 设置页状态卡只渲染 [resolveActiveBackendSummary] 的结果，因此这里的每条断言都对应
- * 用户能看见或看不见的一段文案；降级时 warning 必须非空，否则降级会重新变静默。
+ * Configurar la tarjeta de estado de la página solo se representa [resolveActiveBackendSummary] El resultado de , por lo que cada afirmación aquí corresponde a
+ * Una copia que puede o no ser vista por el usuario; la advertencia no debe estar vacía al degradar; de lo contrario, la degradación volverá a ser silenciosa.
  */
 class ActiveBackendSummaryTest {
 
-    private val fallback = "已降级到其它后端，具体原因未记录"
+    private val fallback = "Se ha degradado a otro backend, el motivo específico no se registra"
 
     private fun state(
         displayName: String = "Local Keyword (Offline)",
@@ -28,13 +28,13 @@ class ActiveBackendSummaryTest {
         reason = reason,
     )
 
-    /** 规则 1：还没跑过检索（state 为 null）时返回 null，调用方整块不渲染。 */
+    /** Regla 1: aún no he realizado la búsqueda (state es nulo), devuelve nulo y la persona que llama no representa el bloque completo. */
     @Test
     fun `null state yields no summary`() {
         assertNull(resolveActiveBackendSummary(null, fallback))
     }
 
-    /** 规则 2：未降级时只有主行，warning 必须为 null（不显示告警行）。 */
+    /** Regla 2: solo existe la fila principal cuando no se degrada.warning Debe ser nulo (no se muestran líneas de advertencia). */
     @Test
     fun `healthy backend yields primary without warning`() {
         val summary = resolveActiveBackendSummary(state(), fallback)
@@ -42,10 +42,10 @@ class ActiveBackendSummaryTest {
         assertNull(summary?.warning)
     }
 
-    /** 规则 3：降级且带原因时，warning 原样使用该原因。 */
+    /** Regla 3: Al bajar de categoría con motivos,warning Utilice la razón tal como está. */
     @Test
     fun `degraded backend exposes reason as warning`() {
-        val reason = "Provider OpenAI 的 API Key 为空"
+        val reason = "Provider OpenAI La clave API está vacía"
         val summary = resolveActiveBackendSummary(
             state(degraded = true, reason = reason),
             fallback,
@@ -54,7 +54,7 @@ class ActiveBackendSummaryTest {
         assertEquals(reason, summary?.warning)
     }
 
-    /** 规则 4：降级但原因为空时用兜底文案，不允许 warning 变回 null。 */
+    /** Regla 4: al bajar de categoría pero el motivo está vacío, utilice texto encubierto y no se permite que la advertencia vuelva a ser nula. */
     @Test
     fun `degraded backend without reason falls back to default text`() {
         val empty = resolveActiveBackendSummary(state(degraded = true, reason = null), fallback)
@@ -64,7 +64,7 @@ class ActiveBackendSummaryTest {
         assertEquals(fallback, blank?.warning)
     }
 
-    /** 规则 5：模型名为空时主行只显示后端名，不留孤立分隔符。 */
+    /** Regla 5: cuando el nombre del modelo está vacío, la fila principal solo muestra el nombre del backend, sin dejar ningún separador huérfano. */
     @Test
     fun `blank model name yields display name only`() {
         val summary = resolveActiveBackendSummary(state(modelName = ""), fallback)

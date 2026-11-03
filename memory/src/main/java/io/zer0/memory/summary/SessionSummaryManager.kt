@@ -19,14 +19,14 @@ import java.time.Instant
 private val VIBE_LINE_REGEX = Regex("""(?im)^\s*Vibe\s*:\s*(.+)$""")
 
 /**
- * Session 摘要管理器。
+ * Session Gestor de resumen.
  *
- * 每个 session 一个摘要(存 Room),通过 [rollingSummary] 滚动更新(覆盖式,非追加)。
- * 输出固定为 [RollingSummaryFormat] 契约规定的两节格式(facts + timeline)。
+ * Un resumen por sesión(guardar Room),Pase [rollingSummary] actualización continua(Cubierto,no agregar).
+ * La salida se fija en [RollingSummaryFormat] El formato de dos secciones del contrato.(facts + timeline).
  *
- * 服务两条路径:
- *  - 普通记忆: [io.zer0.memory.compile.MemoryCompiler] 读摘要 → 递归压缩 → memory.md
- *  - 深度记忆: [io.zer0.memory.deep.DeepMemoryProcessor] 读 snapshot diff → 拆元事实
+ * Sirviendo dos caminos:
+ *  - memoria ordinaria: [io.zer0.memory.compile.MemoryCompiler] Leer resumen → compresión recursiva → memory.md
+ *  - memoria profunda: [io.zer0.memory.deep.DeepMemoryProcessor] leer snapshot diff → Dividir metadatos
  */
 class SessionSummaryManager(
     private val dao: SessionSummaryDao,
@@ -34,15 +34,15 @@ class SessionSummaryManager(
 ) {
 
     /**
-     * v2.6.2（记忆审计）: 按 session 分片的串行锁。
+     * v2.6.2(auditoría de memoria): Bloqueos seriales fragmentados por sesión.
      *
-     * rolling summary 是“读旧摘要 → LLM 生成 → 覆盖写入”，不是原子操作。
-     * MemoryTicker 内部虽有 `_summaryInProgress` 重入保护，但背量迁移 / 手动 flush 等
-     * 入口直接调用本类，可与 ticker 路径并发。后完成的旧消息快照会覆盖较新的
-     * 摘要与 messageCount。这里在管理器层按 sessionId 串行化 read-modify-write。
+     * rolling summary si“Leer resúmenes antiguos → LLM generar → sobrescribir”, no una operación atómica.
+     * MemoryTicker Aunque hay internas `_summaryInProgress` Protección de reentrada, pero migración de backend/vaciado manual, etc.
+     * La entrada llama directamente a esta clase, que puede ser concurrente con la ruta del teletipo. Las instantáneas de mensajes más antiguos que se completen más tarde sobrescribirán las más nuevas.
+     * Resumen y recuento de mensajes. Aquí la lectura-modificación-escritura se serializa mediante sessionId en la capa de administrador.
      *
-     * 用固定分片而非每 session 一个 Mutex，避免长生命周期 App 中会话数无限增长
-     * 导致锁表泄漏。
+     * Utilice fragmentación fija en lugar de un Mutex por sesión para evitar un crecimiento ilimitado en la cantidad de sesiones en aplicaciones de larga duración.
+     * Lo que lleva a bloquear las fugas en la mesa.
      */
     private val summaryLocks = Array(SUMMARY_LOCK_STRIPES) { Mutex() }
 
@@ -58,7 +58,7 @@ class SessionSummaryManager(
         val spaceId: String = "default",
     )
 
-    /** 业务层数据结构(与 Entity 分离,屏蔽 snapshot/snapshotAt 等内部字段)。 */
+    /** Estructura de datos de la capa empresarial(Separado de la entidad,Proteger campos internos como snapshot/snapshotAt). */
     data class SummaryData(
         val sessionId: String,
         val createdAt: String,
@@ -72,39 +72,39 @@ class SessionSummaryManager(
         val spaceId: String = "default",
     )
 
-    /** 读取指定 session 的摘要,不存在返回 null。 */
+    /** Leer el resumen de la sesión especificada.,Devuelve nulo si no está presente. */
     suspend fun getSummary(sessionId: String): SummaryData? = withContext(Dispatchers.IO) {
         dao.get(sessionId)?.toSummaryData()
     }
 
-    /** 写入摘要(覆盖式)。 */
+    /** escribir resumen(Cubierto). */
     suspend fun saveSummary(sessionId: String, data: SummaryData) = withContext(Dispatchers.IO) {
         dao.upsert(data.toEntity(sessionId))
     }
 
-    /** 获取所有"脏" session(summary !== snapshot),供深度记忆用。 */
+    /** Obtener todo"sucio" session(summary !== snapshot),Para uso de memoria profunda. */
     suspend fun getDirtySessions(since: String? = null): List<SummaryData> = withContext(Dispatchers.IO) {
         dao.getDirty()
             .filter { since == null || it.updatedAt > since }
             .map { it.toSummaryData() }
     }
 
-    /** 标记 session 已被深度记忆处理(snapshot = summary)。 */
+    /** Marcar la sesión como procesada por la memoria profunda(snapshot = summary). */
     suspend fun markProcessed(sessionId: String) = withContext(Dispatchers.IO) {
         dao.markProcessed(sessionId, Instant.now().toString())
     }
 
-    /** 获取所有摘要(按 updated_at 降序)。 */
+    /** Obtener todos los resúmenes(Orden descendente por update_at). */
     suspend fun getAllSummaries(): List<SummaryData> = withContext(Dispatchers.IO) {
         dao.getAll().map { it.toSummaryData() }
     }
 
     /**
-     * 获取指定日期范围内的摘要。
+     * Obtenga resúmenes para un rango de fechas específico.
      *
-     * A-19: [mainAssistantId] 非 null 时只返回主助手(及历史遗留无归属行)的摘要 —
-     * 编译管道(today/facts)注入到主助手 prompt,子助手会话摘要不得串台。
-     * 语义: assistant_id == mainAssistantId 或 空/旧数据行 保留,其余排除。
+     * A-19: [mainAssistantId] Cuando no es nulo, solo se devuelve el asistente principal.(y líneas sin dueño sobrantes de la historia)Resumen de —
+     * Tubería de compilación(today/facts)Inyectar en el ayudante principal prompt,Los resúmenes de las sesiones del subasistente no deben ser sesgados.
+     * Semántica: assistant_id == mainAssistantId o vacío/Se conservan las filas de datos antiguas,El resto está excluido.
      */
     suspend fun getSummariesInRange(
         start: Instant,
@@ -116,44 +116,44 @@ class SessionSummaryManager(
         dao.getInRange(start.toString(), end.toString(), since, mainAssistantId, spaceId).map { it.toSummaryData() }
     }
 
-    /** 清空所有摘要。 */
+    /** Borrar todos los resúmenes. */
     suspend fun clearAll() = withContext(Dispatchers.IO) { dao.deleteAll() }
 
     /**
-     * P2: 删除指定 session 的摘要(用于记忆页 UI 删除 Summary 层单条)。
-     * 返回是否删除成功(session 不存在时返回 false)。
+     * P2: Eliminar el resumen de la sesión especificada(Se utiliza para la interfaz de usuario de la página de memoria para eliminar un solo elemento de la capa de resumen).
+     * Devuelve si la eliminación fue exitosa(session Devuelve si no existe false).
      */
     suspend fun delete(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        // v1.78 (M1): 包装 suspend DAO 调用必须用 resultOf,避免吞 CancellationException
+        // v1.78 (M1): El ajuste de las llamadas suspendidas DAO se debe realizar con resultOf,evitar tragar CancellationException
         resultOf {
             dao.deleteById(sessionId)
             true
         }.onError { msg, t ->
-            // v1.78 (M5): 记录删除失败原因
-            Logger.w("SessionSummaryManager", "delete(${sessionId.take(8)}…) 失败: $msg", t)
+            // v1.78 (M5): Motivo del error de eliminación del registro
+            Logger.w("SessionSummaryManager", "delete(${sessionId.take(8)}…) falló: $msg", t)
         }.getOrNull() ?: false
     }
 
     /**
-     * 滚动更新 session 摘要: 每 10 轮或 session 结束时触发。
-     * 若有旧摘要则将旧摘要 + 新对话合并产出新摘要(覆盖,非追加);
-     * 若无旧摘要则直接从对话生成。
+     * Resumen de la sesión de actualización continua: Se dispara cada 10 rondas o al final de la sesión.
+     * Si hay un resumen antiguo, el resumen antiguo + el diálogo nuevo se fusionarán para producir un resumen nuevo.(Portada,no agregar);
+     * Si no hay un resumen antiguo, se genera directamente a partir de la conversación.
      *
-     * @param sessionId 会话 id
-     * @param messages 完整对话历史(含 system / user / assistant)
-     * @param model 目标模型
-     * @param locale 语言
-     * @return 更新结果(含摘要文本和是否变化标志;空对话返回 changed=false + 空摘要)
+     * @param sessionId sesión id
+     * @param messages Historial completo de conversaciones(Contiene system / user / assistant)
+     * @param model modelo objetivo
+     * @param locale Idioma
+     * @return Actualizar resultados(Contiene texto de resumen y bandera de cambio.;Vuelve la conversación vacía changed=false + Resumen vacío)
      */
     suspend fun rollingSummary(
         sessionId: String,
         messages: List<UIMessage>,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         timeZone: String = TimeContext.DEFAULT_TIMEZONE,
         ownership: SummaryOwnership = SummaryOwnership(),
     ): RollingResult = withContext(Dispatchers.IO) {
-        // v2.6.2（记忆审计）: 整个 read-modify-write 按 session 串行，避免并发覆盖。
+        // v2.6.2(auditoría de memoria): Toda la lectura, modificación y escritura se serializa por sesión para evitar la sobrescritura simultánea.
         lockFor(sessionId).withLock {
             val draft = createRollingSummaryDraft(sessionId, messages, model, locale, timeZone, ownership)
                 ?: return@withLock RollingResult(summary = "", changed = false)
@@ -164,25 +164,25 @@ class SessionSummaryManager(
         }
     }
 
-    /** rollingSummary 的返回结果。v1.0.50: 增加 changed 字段,让调用方区分"真变化"与"LLM 返回空"。 */
+    /** rollingSummary El resultado de la devolución.v1.0.50: Agregar campo modificado,Deja que la persona que llama distinga"Cambio real"con"LLM Volver vacío". */
     data class RollingResult(
         val summary: String,
         val changed: Boolean,
     )
 
-    /** 生成草稿(不落盘)。null 表示空对话直接跳过。 */
+    /** Generar borrador(No realizar el pedido).null Indica que el diálogo vacío se omitirá directamente. */
     suspend fun createRollingSummaryDraft(
         sessionId: String,
         messages: List<UIMessage>,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         timeZone: String = TimeContext.DEFAULT_TIMEZONE,
         ownership: SummaryOwnership = SummaryOwnership(),
     ): Draft? = withContext(Dispatchers.IO) {
         val existing = getSummary(sessionId)
         val prevSummary = existing?.summary ?: ""
 
-        // 增量: 只取上次摘要之后的新消息,避免长 session 上下文爆炸
+        // incremento: Recibe solo mensajes nuevos desde el último resumen,Evite la explosión del contexto de sesiones largas
         val lastMessageCount = existing?.messageCount ?: 0
         val newMessages = if (lastMessageCount > 0 && lastMessageCount < messages.size) {
             messages.drop(lastMessageCount)
@@ -197,32 +197,32 @@ class SessionSummaryManager(
         if (convText.isBlank()) {
             return@withContext Draft(prevSummary, changed = false, null)
         }
-        // S-05: 输入侧可逆掩码 — 摘要 LLM 调用不得收到明文 PII(手机号/地址/卡号等)。
-        // 外发文本为占位符([PHONE_1] 等),输出侧 unmask 还原后再走 scrub 落库。
+        // S-05: Máscara reversible del lado de entrada — Resumen de las llamadas de LLM no deben recibir texto claro PII(Número de teléfono celular/dirección/Número de tarjeta, etc.).
+        // El texto saliente es un marcador de posición.([PHONE_1] espera),En el lado de salida, se restaura la desenmascaración y luego se realiza una limpieza para colocar los datos en la biblioteca.
         val maskedConv = PiiGuard.mask(convText)
 
-        // 按全量用户轮数计算摘要配额
+        // Cuota resumida calculada en base a rondas completas de usuarios
         val turnCount = messages.count { it.role == io.zer0.ai.core.MessageRole.USER }
         val budget = rollingSummaryBudget(turnCount)
 
         val systemPrompt = RollingSummaryPrompt.buildSystemPrompt(locale = locale)
         val factTitle = RollingSummaryFormat.getFactSectionTitle(locale)
         val timelineTitle = RollingSummaryFormat.getTimelineSectionTitle(locale)
-        val isZh = locale.startsWith("zh")
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
 
         val factsBudget = maxOf(15, (budget.totalBudget * 0.3).toInt())
         val eventsBudget = budget.totalBudget - factsBudget
         val budgetText = if (isZh) {
-            "$factTitle 最多 $factsBudget 字。$timelineTitle 最多 $eventsBudget 字。"
+            "$factTitle la mayoría $factsBudget palabras.$timelineTitle la mayoría $eventsBudget palabras."
         } else {
             "$factTitle max ${maxOf(
                 10,
                 (factsBudget * 0.6).toInt(),
             )} words. $timelineTitle max ${maxOf(20, (eventsBudget * 0.6).toInt())} words."
         }
-        val prevLabel = if (isZh) "## 已有摘要" else "## Existing Summary"
-        val newLabel = if (isZh) "## 新增对话" else "## New Conversation"
-        val budgetLabel = if (isZh) "## 本次摘要预算" else "## This Run's Summary Budget"
+        val prevLabel = if (isZh) "## Ya tengo un resumen." else "## Existing Summary"
+        val newLabel = if (isZh) "## Agregar nueva conversación" else "## New Conversation"
+        val budgetLabel = if (isZh) "## Este presupuesto resumido" else "## This Run's Summary Budget"
         val userContent = listOfNotNull(
             prevSummary.takeIf { it.isNotBlank() }?.let { "$prevLabel\n\n$it" },
             "$newLabel\n\n${maskedConv.masked}",
@@ -238,14 +238,14 @@ class SessionSummaryManager(
                 maxTokens = budget.visibleMaxTokens,
             )
         }.onError { msg, t ->
-            // v1.78 (M5): 记录 rollingSummary LLM 失败原因
-            Logger.w("SessionSummaryManager", "rollingSummary LLM 调用失败 (${sessionId.take(8)}…): $msg", t)
+            // v1.78 (M5): Registro continuoResumen motivo del fallo de LLM
+            Logger.w("SessionSummaryManager", "rollingSummary LLM llamada fallida (${sessionId.take(8)}…): $msg", t)
         }.getOrNull() ?: return@withContext Draft(prevSummary, changed = false, null)
 
         var newSummary = rawResult.trim()
         if (newSummary.isBlank()) return@withContext Draft(prevSummary, changed = false, null)
 
-        // 写入前结构校验 + 有限次数格式修复
+        // Verificación de estructura antes de escribir + número limitado de reparaciones de formato
         var repairsUsed = 0
         var validation = RollingSummaryFormat.validate(newSummary)
         while (!validation.ok && repairsUsed < RollingSummaryFormat.MAX_REPAIRS) {
@@ -261,8 +261,8 @@ class SessionSummaryManager(
                     maxTokens = budget.visibleMaxTokens,
                 )
             }.onError { msg, t ->
-                // v1.78 (M5): 记录格式修复 LLM 失败原因
-                Logger.w("SessionSummaryManager", "格式修复 LLM 调用失败 (${sessionId.take(8)}…, attempt=$repairsUsed): $msg", t)
+                // v1.78 (M5): Motivo de error de LLM de reparación de formato de registro
+                Logger.w("SessionSummaryManager", "Error en la llamada LLM para corregir el formato (${sessionId.take(8)}…, attempt=$repairsUsed): $msg", t)
             }.getOrNull() ?: break
             if (repairResult.isBlank()) {
                 validation = RollingSummaryFormat.ValidationResult(false, validation.issues + "format repair returned empty")
@@ -272,18 +272,18 @@ class SessionSummaryManager(
             validation = RollingSummaryFormat.validate(newSummary)
         }
         if (!validation.ok) {
-            // 修不好就保留旧摘要,不覆盖
+            // Si no se puede reparar, conserve el resumen anterior.,No cubierto
             return@withContext Draft(prevSummary, changed = false, null)
         }
 
-        // S-05: 还原掩码占位符(仅本地内存;格式校验/修复阶段用占位符,LLM 不接触原文)
+        // S-05: Restaurar marcador de posición de máscara(solo memoria local;Verificación de formato/Utilice marcadores de posición para la fase de reparación,LLM Sin contacto con el texto original.)
         newSummary = PiiGuard.unmask(newSummary, maskedConv.map)
 
-        // PII 脱敏
+        // PII Desensibilización
         val (scrubbed, detected) = PiiGuard.scrub(newSummary)
         if (detected.isNotEmpty()) newSummary = scrubbed
 
-        // 脱敏后再校验一次
+        // Compruébelo nuevamente después de la desensibilización.
         val finalValidation = RollingSummaryFormat.validate(newSummary)
         if (!finalValidation.ok) {
             return@withContext Draft(prevSummary, changed = false, null)
@@ -305,7 +305,7 @@ class SessionSummaryManager(
         Draft(newSummary, changed = true, data)
     }
 
-    /** 草稿结果。 */
+    /** Borrador de resultados. */
     data class Draft(
         val summary: String,
         val changed: Boolean,
@@ -313,8 +313,8 @@ class SessionSummaryManager(
     )
 
     /**
-     * 摘要预算计算。
-     * 按轮数线性缩放: 每轮 40 字配额,10 轮封顶 400 字。
+     * Cálculo presupuestario resumido.
+     * Escalado lineal por número de rondas.: Cuota de 40 palabras por ronda,10 Ronda limitada a 400 palabras.
      */
     private fun rollingSummaryBudget(turnCount: Int): Budget {
         val totalBudget = minOf(400, maxOf(40, turnCount * 40))
@@ -324,13 +324,13 @@ class SessionSummaryManager(
 
     private data class Budget(val totalBudget: Int, val visibleMaxTokens: Int)
 
-    /** 从消息列表构建带时间戳的对话文本(供 LLM 总结)。 */
+    /** Cree texto de conversación con marca de tiempo a partir de la lista de mensajes(Para resumen de LLM). */
     private fun buildConversationText(messages: List<UIMessage>, locale: String, zone: java.time.ZoneId): String {
-        val isZh = locale.startsWith("zh")
-        val userLabel = if (isZh) "用户" else "User"
-        val assistantLabel = if (isZh) "助手" else "Assistant"
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+        val userLabel = if (isZh) "Usuario" else "User"
+        val assistantLabel = if (isZh) "asistente" else "Assistant"
         val assistantVibeLabel = if (isZh) {
-            "助手当时表达的感受（Vibe 自述）"
+            "Los sentimientos expresados por el asistente en ese momento (Vibe Léame)"
         } else {
             "Assistant self-reported Vibe"
         }
@@ -366,7 +366,7 @@ class SessionSummaryManager(
     }
 
     // ════════════════════════════
-    //  Entity ↔ SummaryData 转换
+    //  Entity ↔ SummaryData Convertir
     // ════════════════════════════
 
     private fun SessionSummaryEntity.toSummaryData(): SummaryData {
@@ -374,8 +374,8 @@ class SessionSummaryManager(
             runCatching {
                 json.decodeFromString(TimeContext.SourceTimeRange.serializer(), it)
             }.getOrElse { e ->
-                // v1.78 (M5): 记录 sourceTimeRange JSON 解析失败
-                Logger.w("SessionSummaryManager", "sourceTimeRange JSON 解析失败: ${e.message}")
+                // v1.78 (M5): Error de análisis de JSON de registro de sourceTimeRange
+                Logger.w("SessionSummaryManager", "sourceTimeRange JSON El análisis falló: ${e.message}")
                 null
             }
         }
@@ -412,7 +412,7 @@ class SessionSummaryManager(
     }
 
     private companion object {
-        /** v2.6.2: 摘要串行锁分片数（足够大以降低不同 session 碰撞概率）。 */
+        /** v2.6.2: Número de fragmentos de bloqueo en serie resumidos (lo suficientemente grande como para reducir la probabilidad de colisión de diferentes sesiones). */
         const val SUMMARY_LOCK_STRIPES = 64
     }
 }

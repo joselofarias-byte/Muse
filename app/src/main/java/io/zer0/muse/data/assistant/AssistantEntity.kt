@@ -7,18 +7,18 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Assistant 实体(Phase 8.2 H6)。
+ * Assistant entidad(Phase 8.2 H6).
  *
- * 独立编写实现(35+ 字段)。
- * 一个 Assistant 代表一种"AI 人格",有独立的 system prompt / 模型 / 工具 / 记忆。
- * 不同场景可用不同 Assistant(写作助手/代码助手/翻译助手等)。
+ * Escritura e implementación independientes.(35+ campo).
+ * Un asistente representa un"AI Personalidad",Hay un indicador/modelo/herramienta/memoria del sistema independiente.
+ * Diferentes escenarios pueden usar diferentes Assistant(asistente de escritura/asistente de código/Asistente de traducción, etc.).
  *
- * Phase 8.5 修复: 所有 NOT NULL 字段加 @ColumnInfo(defaultValue=...) 与 MIGRATION_1_2 SQL 对齐,
- * 避免 Room schema 验证时 expected/found defaultValue 不匹配导致崩溃。
+ * Phase 8.5 Reparación: Todos los campos NO NULOS más @ColumnInfo(defaultValue=...) Alineado con MIGRATION_1_2 SQL,
+ * Evite fallas causadas por una discrepancia en el valor predeterminado esperado/encontrado durante la validación del esquema de la sala.
  *
- * L-GC7 修复: 加 @Immutable 注解。所有字段均为 val 且类型为不可变基本类型(String/Int/Float/Boolean/Long),
- * 满足 Compose 不可变契约。使 List<AssistantEntity> 在 Compose 中被视为 stable,
- * 避免 remember(message.senderId, assistants) 因 List 实例变化而无谓重算。
+ * L-GC7 Reparación: Agregue la anotación @Immutable. Todos los campos son val y el tipo es tipo primitivo inmutable(String/Int/Float/Boolean/Long),
+ * Satisface el contrato inmutable Compose. hacer List<AssistantEntity> tratado como stable,
+ * evitar remember(message.senderId, assistants) Recálculo innecesario debido a cambios en la instancia de la Lista.
  */
 @Immutable
 @Serializable
@@ -26,13 +26,13 @@ import kotlinx.serialization.Serializable
 data class AssistantEntity(
     @PrimaryKey val id: String,
     val name: String,
-    /** U-26: 助手启用状态(1=启用,0=停用);停用时从候选列表隐藏,各消费方按需过滤。 */
+    /** U-26: Estado del asistente habilitado(1=habilitar,0=desactivar);Ocultar de la lista de candidatos cuando esté desactivado,Cada consumidor filtra según demanda. */
     @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
     @ColumnInfo(defaultValue = "0") val sortIndex: Int = 0,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
 
-    // ── 模型配置 ──
+    // ── Configuración del modelo ──
     val modelId: String? = null,
     val providerId: String? = null,
     val temperature: Float? = null,
@@ -47,108 +47,108 @@ data class AssistantEntity(
     @ColumnInfo(defaultValue = "[]") val presetMessagesJson: String = "[]",
 
     /**
-     * v2.6.2（用户反馈）: 人格定义段 —— 可编辑的人设块。
+     * v2.6.2(comentarios de los usuarios): sección de definición de personalidad —— Bloques de personajes editables.
      *
-     * 与 [systemPrompt] 分开：systemPrompt 是完整自定义提示词（高级用户整段接管），
-     * 本字段是「人格定义」那一段的结构化内容，会拼进 system prompt 的人格段落，
-     * 在身份锚点之前。留空则不注入。
+     * con [systemPrompt] separar:systemPrompt Es una palabra de aviso completamente personalizada (los usuarios avanzados se hacen cargo de todo el párrafo),
+     * Este campo es el contenido estructurado del párrafo "Definición de personalidad" y se escribirá en el párrafo de personalidad del mensaje del sistema.
+     * Ante los anclajes identitarios. Déjelo en blanco para no inyectar.
      */
     @ColumnInfo(defaultValue = "") val personaDefinition: String = "",
 
     /**
-     * v2.6.2（用户反馈）: 自定义思考过程约束 —— 强约束助手的思考链构成。
+     * v2.6.2(comentarios de los usuarios): Restricciones del proceso de pensamiento personalizado —— La composición de la cadena de pensamiento del asistente de restricciones fuertes.
      *
-     * 会作为独立段落注入 system prompt（在人格段之后），例如：
-     * "先复述用户的问题 → 列出 2-3 个可能假设 → 逐个排除 → 再给结论"。
-     * 留空则不注入（模型按默认方式思考）。
+     * El mensaje del sistema se insertará como un párrafo separado (después del párrafo de personalidad), por ejemplo:
+     * "Primero replanteemos el problema del usuario. → Enumere 2-3 posibles hipótesis → Excluir uno por uno → dar una conclusión".
+     * Déjelo en blanco para no inyectar (el modelo piensa por defecto).
      */
     @ColumnInfo(defaultValue = "") val thinkingChain: String = "",
 
-    // ── 工具 ──
+    // ── Herramientas ──
     @ColumnInfo(defaultValue = "[]") val toolIdsJson: String = "[]",
     @ColumnInfo(defaultValue = "[]") val mcpServerIdsJson: String = "[]",
     @ColumnInfo(defaultValue = "1") val streamOutput: Boolean = true,
 
-    // ── 记忆 ──
+    // ── memoria ──
     @ColumnInfo(defaultValue = "1") val memoryEnabled: Boolean = true,
     // Keep the SQL default aligned with the existing Room schema; Room inserts use this safer Kotlin default.
     @ColumnInfo(defaultValue = "1") val useGlobalMemory: Boolean = false,
     @ColumnInfo(defaultValue = "1") val enableRecentChatsReference: Boolean = true,
 
-    // ── 提醒 ──
+    // ── recordatorio ──
     @ColumnInfo(defaultValue = "1") val enableTimeReminder: Boolean = true,
 
-    // ── 头像 ──
-    // 死物清理第 9 项复核结论(2026-09-20):backgroundUrl / backgroundOpacity /
-    // useGradientBackground 三列已无消费端(助手背景图编辑器早已撤掉),但删除需要在
-    // minSdk 26 的 SQLite(3.18,无 DROP COLUMN)上重建 assistants 表并新增一次 DB
-    // 版本迁移;收益只是少三个带默认值的列,风险却落在设备端升级路径上,因此与
-    // SessionEntity.isLocked 同样按“保留列”处理:只在此标注,不再迁移删除。
+    // ── avatar ──
+    // Conclusión de la revisión del punto 9 de eliminación de materia muerta(2026-09-20):backgroundUrl / backgroundOpacity /
+    // useGradientBackground No hay ningún extremo del consumidor en las tres columnas.(El asistente del editor de imágenes de fondo hace tiempo que se eliminó),Pero la eliminación debe realizarse en
+    // minSdk 26 de SQLite(3.18,Ninguno DROP COLUMN)Reconstruya la tabla de asistentes y agréguela nuevamente. DB
+    // Migración de versión;El beneficio son solo tres columnas menos con valores predeterminados.,El riesgo radica en la ruta de actualización del dispositivo,Por lo tanto con
+    // SessionEntity.isLocked presione lo mismo“columna reservada”Proceso:Sólo marca esto,Las eliminaciones ya no se migrarán.
     @ColumnInfo(defaultValue = "") val backgroundUrl: String = "",
     @ColumnInfo(defaultValue = "1.0") val backgroundOpacity: Float = 1.0f,
     @ColumnInfo(defaultValue = "0") val useGradientBackground: Boolean = false,
     @ColumnInfo(defaultValue = "") val avatarEmoji: String = "",
     @ColumnInfo(defaultValue = "") val avatarImageUrl: String = "",
 
-    // ── 标签 ──
+    // ── etiqueta ──
     @ColumnInfo(defaultValue = "[]") val tagsJson: String = "[]",
 
-    // ── v1.200: 多 Agent 能力标签(JSON 数组,如 ["code","write","research"]) ──
+    // ── v1.200: Etiquetas de capacidad multiagente(JSON matriz,Como por ejemplo ["code","write","research"]) ──
     @ColumnInfo(defaultValue = "[]") val capabilitiesJson: String = "[]",
 
-    // ── 扩展(后续 Phase 实现) ──
+    // ── Expandir(Implementación de la fase posterior) ──
     @ColumnInfo(defaultValue = "[]") val quickMessageIdsJson: String = "[]",
     @ColumnInfo(defaultValue = "[]") val lorebookIdsJson: String = "[]",
     @ColumnInfo(defaultValue = "[]") val modeInjectionIdsJson: String = "[]",
     @ColumnInfo(defaultValue = "[]") val skillIdsJson: String = "[]",
 
-    // v1.0.53: 工具模型(工具调用轮次使用的轻量模型,per-assistant;null 表示沿用全局 toolModelId)
+    // v1.0.53: modelo de herramienta(Un modelo ligero utilizado por rondas de invocación de herramientas.,per-assistant;null Indica que el mundo toolModelId)
     @ColumnInfo(defaultValue = "") val toolModelId: String = "",
 
-    // ── 请求 ──
+    // ── Solicitar ──
     @ColumnInfo(defaultValue = "{}") val customHeadersJson: String = "{}",
     @ColumnInfo(defaultValue = "{}") val customBodiesJson: String = "{}",
 
-    // v1.97: 正则替换规则(JSON 数组,存储 AssistantRegex 列表)
+    // v1.97: Reglas de reemplazo regulares(JSON matriz,Asistente de tiendaLista Regex)
     @ColumnInfo(defaultValue = "[]") val regexRulesJson: String = "[]",
 
-    // ── v1.133 RAG 绑定与配置覆盖 ──
-    /** v1.133: 该助手绑定的知识库 ID 列表(JSON 数组)。空数组 = 不绑定任何 KB(不注入 RAG)。 */
+    // ── v1.133 RAG Anulaciones de vinculación y configuración ──
+    /** v1.133: Lista de ID de la base de conocimientos vinculados a este asistente(JSON matriz). matriz vacía = No vinculado a ninguna KB(No inyectado RAG). */
     @ColumnInfo(defaultValue = "[]") val knowledgeBaseIdsJson: String = "[]",
     /**
-     * v2.4.6: 该助手绑定的「知识库+文件夹」检索作用域(JSON 数组),元素形如 "kbId::folderPath"。
+     * v2.4.6: La "base de conocimientos" vinculada a este asistente+Ámbito de búsqueda de carpeta(JSON matriz),Elementos de la forma "kbId::folderPath".
      *
-     * 世界观:知识库 = 根,文件夹 = 子目录,一个文件夹即一个独立检索域,互不串。
-     *  - 空数组 = 沿用 [knowledgeBaseIdsJson] 的整库绑定(旧数据零迁移)。
-     *  - 元素 "kbId::" (空路径) = 绑定整个知识库;
-     *  - 元素 "kbId::合同" = 仅绑定该知识库下的 `合同` 文件夹(含子目录)。
+     * visión del mundo:base de conocimientos = raíz,carpeta = subdirectorio,Una carpeta es un dominio de búsqueda independiente.,No se crucen.
+     *  - matriz vacía = heredar [knowledgeBaseIdsJson] Toda la biblioteca encuadernada.(Migración cero de datos antiguos).
+     *  - elemento "kbId::" (camino vacío) = Vincular toda la base de conocimientos;
+     *  - elemento "kbId::contrato" = Vincula solo aquellos bajo esta base de conocimiento. `contrato` carpeta(Contiene subdirectorios).
      */
     @ColumnInfo(defaultValue = "[]") val knowledgeFolderScopesJson: String = "[]",
     /**
-     * v1.133: RAG 配置覆盖(JSON 序列化的 RagConfigOverride,可为 null)。
-     * 非空时合并到全局 RagConfig 之上(同名字段以 override 优先)。
-     * 例:{"topK":5,"threshold":0.4,"mmrLambda":0.5}
+     * v1.133: RAG Anulación de configuración(JSON serializado RagConfigOverride,puede ser null).
+     * Fusionarse con RagConfig global cuando no esté vacío(Los campos con el mismo nombre tienen prioridad sobre la anulación).
+     * Ejemplo:{"topK":5,"threshold":0.4,"mmrLambda":0.5}
      */
     @ColumnInfo(defaultValue = "NULL") val ragConfigOverride: String? = null,
 
-    // ── v1.107 冗余统计字段(避免全表聚合,Repository 双写维护) ──
-    /** 该 Assistant 发送的消息总数(统计页直接读,避免 GROUP BY 全表扫描)。 */
+    // ── v1.107 Campos estadísticos redundantes(Evite la agregación completa de tablas,Repository Mantenimiento de doble escritura) ──
+    /** El número total de mensajes enviados por este Asistente(Leer la página de estadísticas directamente,Evite GROUP BY escaneo completo de la tabla). */
     @ColumnInfo(defaultValue = "0") val messageCount: Int = 0,
-    /** 最后使用时间戳(排序/统计"最近活跃"用)。 */
+    /** Última marca de tiempo utilizada(ordenar/Estadísticas"Activo recientemente"usar). */
     @ColumnInfo(defaultValue = "0") val lastUsedAt: Long = 0,
 
-    // ── v1.0.19: Assistant 字段补齐 ──
-    // 注: tags 分组已由上面的 tagsJson 字段承载(JSON 数组),此处不重复定义。
-    /** 一句话简介(用于群聊花名册、助手卡片副标题展示)。 */
+    // ── v1.0.19: Assistant Finalización del campo ──
+    // Nota: tags La agrupación ya está contenida en el campo tagsJson de arriba.(JSON matriz),Las definiciones no se repiten aquí.
+    /** Introducción de una frase(Se utiliza para la lista de chat grupal y la visualización de subtítulos de la tarjeta de asistente.). */
     @ColumnInfo(defaultValue = "") val summary: String = "",
-    /** 聊天界面用助手名替换模型名,false 时显示模型名。 */
+    /** Reemplace el nombre del modelo con el nombre del asistente en la interfaz de chat,false Se muestra el nombre del modelo. */
     @ColumnInfo(defaultValue = "0") val useAssistantName: Boolean = false,
-    /** 是否允许加入群聊(默认 true,关闭后该助手不出现在群聊成员选择列表)。 */
+    /** Si permitir unirse al chat grupal(Predeterminado true,Después del cierre, el asistente no aparecerá en la lista de selección de miembros del chat grupal.). */
     @ColumnInfo(defaultValue = "1") val allowGroupChat: Boolean = true,
 ) {
-    /** 便捷判断:是否用图片头像。 */
+    /** Juicio conveniente:Si se debe utilizar un avatar con imagen. */
     fun hasImageAvatar(): Boolean = avatarImageUrl.isNotBlank()
 
-    /** 便捷判断:是否配置了背景图(对应保留列 backgroundUrl)。 */
+    /** Juicio conveniente:Si una imagen de fondo está configurada(Columna reservada correspondiente backgroundUrl). */
     fun hasBackground(): Boolean = backgroundUrl.isNotBlank()
 }

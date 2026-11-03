@@ -81,15 +81,15 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.ui.theme.semiLarge
 
-/** 首页分类行的测试标签；测试按它数分类行、断言首页没有子页条目。 */
+/** La etiqueta de prueba para la fila de clasificación de la página de inicio; la prueba cuenta las filas de clasificación según ella y afirma que la página de inicio no tiene entradas de subpágina. */
 internal const val SETTINGS_GROUP_ROW_TAG: String = "settings-group-row"
 
 /**
- * 设置首页：12 个一级分类，每类一行（图标 + 分类名 + 一句话说明 + 右箭头）。
+ * Configurar la página de inicio:12 Cada categoría de primer nivel tiene una línea (icono + nombre de la categoría + descripción de una oración + flecha hacia la derecha).
  *
- * 条目（能点进去的页面 / 开关）都在分类页里：原先 48 项平铺在同一个滚动列表里，
- * 页面和开关长得一模一样，用户分不清哪个是入口哪个是状态。分类与条目的顺序、标题
- * 全部来自 [SettingsCatalog]，搜索索引也取自同一份清单，三处不会各自漂移。
+ * Los elementos (páginas/interruptores en los que se puede hacer clic) están todos en la página de categorías: los 48 elementos originales estaban agrupados en la misma lista de desplazamiento.
+ * Las páginas y los interruptores se ven exactamente iguales y los usuarios no pueden distinguir cuál es la entrada y cuál es el estado. Categoría y orden de entrada y título
+ * Todo de [SettingsCatalog], el índice de búsqueda también se toma de la misma lista y los tres lugares no se desplazarán por separado.
  */
 @Composable
 fun SettingsScreen(
@@ -122,7 +122,7 @@ fun SettingsScreen(
                 searchQuery = ""
                 when (val action = record.action) {
                     is SettingsEntryAction.Navigate -> onNavigate(action.route)
-                    // 开关没有独立页面，落到它所在的分类页，用户在那里翻。
+                    // El switch no tiene una página independiente. Cae a la página de categoría donde se encuentra y el usuario pasa allí.
                     is SettingsEntryAction.Toggle -> onOpenGroup(record.group)
                     is SettingsEntryAction.Action -> actionHost.run(action.id)
                 }
@@ -132,10 +132,10 @@ fun SettingsScreen(
 }
 
 /**
- * 设置首页列表：大标题 + 吸顶搜索栏 + 账户卡 + 14 个分类行。
+ * Configure la lista de la página de inicio: título grande + barra de búsqueda de techo + tarjeta de cuenta + 14 filas de categorías.
  *
- * v2.0.1: 大标题（item 0）随滚动推出，搜索栏（item 1）到达顶部后吸顶；吸顶瞬间内部
- * 实色搜索栏淡出、外层玻璃搜索栏（Haze 胶囊内背景模糊）接管。
+ * v2.0.1: Título grande (item 0) se inicia con el desplazamiento y la barra de búsqueda (item 1) después de llegar a la cima, absorba el techo; absorber el techo en este momento dentro
+ * La barra de búsqueda de color sólido se desvanece, la barra de búsqueda de vidrio exterior (Haze El fondo dentro de la cápsula está borroso) toma el relevo.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -149,7 +149,7 @@ private fun SettingsHomeList(
     val isSearchBarStuck by remember {
         derivedStateOf { settingsListState.firstVisibleItemIndex >= 1 }
     }
-    // 吸顶过渡进度（0 = 实色常态，1 = 玻璃吸顶）；内部占位与外层玻璃共用，保证交叉淡化同步。
+    // Progreso de la transición del techo (0 = color sólido normal,1 = techo de cristal); el espacio interno se comparte con el vidrio exterior para garantizar la sincronización del fundido cruzado.
     val searchStuckProgress by animateFloatAsState(
         targetValue = if (isSearchBarStuck) 1f else 0f,
         animationSpec = MuseMotion.tween(MuseAnimation.FAST_NORMAL_MS),
@@ -158,7 +158,7 @@ private fun SettingsHomeList(
     val surfaceHazeState = remember { HazeState() }
 
     io.zer0.muse.ui.common.surface.MusePageScaffold(
-        // v2.0.1: 搜索已改为浮层，不做顶部工具栏切换。
+        // v2.0.1: La búsqueda se ha cambiado a una capa flotante sin cambiar la barra de herramientas superior.
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         val layoutDirection = LocalLayoutDirection.current
@@ -170,14 +170,14 @@ private fun SettingsHomeList(
                 state = settingsListState,
                 modifier = Modifier
                     .fillMaxSize()
-                    // 列表自持状态栏内边距（大标题随列表滚动、搜索栏吸顶于状态栏下方）。
+                    // La lista mantiene el margen interior de la barra de estado (el título grande se desplaza con la lista y la barra de búsqueda está suspendida debajo de la barra de estado).
                     .museSafeTopInsetPadding()
-                    // 作为 Haze 背景模糊的内容源（吸顶玻璃搜索栏读取列表内容）。
+                    // Como fuente de contenido para el desenfoque de fondo Haze (la barra de búsqueda del vidrio del techo lee el contenido de la lista).
                     .hazeSource(state = surfaceHazeState),
                 contentPadding = PaddingValues(
-                    // 吸顶后 stickyHeader 脱离内容流，占位栏不再撑开空间，
-                    // 列表项会直接从搜索栏下方钻过去。这里按吸顶进度补一份
-                    // 等高 padding，保证内容始终停留在搜索栏之下。
+                    // Una vez que se levanta el techo, stickyHeader se separa del flujo de contenido y la barra de marcador de posición ya no tiene espacio.
+                    // Los elementos de la lista se desplazarán directamente debajo de la barra de búsqueda. Aquí hay un suplemento según el progreso del techo.
+                    // El relleno de igual altura garantiza que el contenido siempre permanezca debajo de la barra de búsqueda.
                     top = innerPadding.calculateTopPadding() +
                         (MusePaddings.searchBarHeight + MusePaddings.contentGap) * searchStuckProgress,
                     bottom = innerPadding.calculateBottomPadding() + MusePaddings.sectionGap,
@@ -206,8 +206,8 @@ private fun SettingsHomeList(
                 }
             }
 
-            // 吸顶玻璃搜索栏（覆盖层）——列表滚到顶后接管：只在胶囊形状内对下方内容做
-            // 背景模糊（Haze），胶囊之外无遮罩；内部占位搜索栏同步淡出。
+            // Barra de búsqueda de vidrio de techo (capa de cobertura)——Tome el control después de desplazarse hasta la parte superior de la lista: solo haga el siguiente contenido dentro de la forma de cápsula
+            // fondo borroso (Haze), no hay máscara fuera de la cápsula; la barra de búsqueda de marcador de posición interna se desvanece simultáneamente.
             if (searchStuckProgress > 0.01f) {
                 MuseSearchBar(
                     text = stringResource(R.string.settings_search_hint),
@@ -217,7 +217,7 @@ private fun SettingsHomeList(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .museSafeTopInsetPadding()
-                        // 底部多留一份内容间距，避免胶囊下沿紧贴分隔线。
+                        // Deje un espacio extra de contenido en la parte inferior para evitar que el borde inferior de la cápsula se pegue al divisor.
                         .padding(
                             start = MusePaddings.screen,
                             end = MusePaddings.screen,
@@ -231,11 +231,11 @@ private fun SettingsHomeList(
     }
 }
 
-/** 占位搜索栏：随内容滚动，吸顶后由外层玻璃搜索栏接管。 */
+/** Barra de búsqueda de marcador de posición: se desplaza con el contenido y es reemplazada por la barra de búsqueda de vidrio exterior una vez que se levanta el techo. */
 @Composable
 private fun SettingsStickySearchBar(progress: Float, onOpenSearch: () -> Unit) {
-    // 吸顶时这层会脱离内容流，下方条目从它下面穿过，因此需要一层背景遮住。
-    // 背景只铺胶囊本体高度（不含上下 6dp 呼吸位），避免顶栏白带过厚。
+    // Cuando se levanta el techo, esta capa se separará del flujo de contenido y los elementos que se encuentran debajo pasarán por debajo de ella, por lo que se necesita una capa de fondo para cubrirla.
+    // El fondo solo cubre la altura del cuerpo de la cápsula (excluyendo la posición de respiración superior e inferior de 6 dp) para evitar un espesor excesivo de la leucorrea en la barra superior.
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
@@ -258,9 +258,9 @@ private fun SettingsStickySearchBar(progress: Float, onOpenSearch: () -> Unit) {
 }
 
 /**
- * 首页的 14 个分类行。
+ * 14 filas de categorías en la página de inicio.
  *
- * 单独成一个组合函数，测试可以脱开 DI 与搜索浮层直接渲染它，数分类行、点分类行。
+ * Por separado en una función combinada, la prueba puede renderizarla directamente sin DI y buscar en capas flotantes, filas de clasificación de números y filas de clasificación de puntos.
  */
 @Composable
 internal fun SettingsGroupCards(
@@ -284,10 +284,10 @@ internal fun SettingsGroupCards(
 }
 
 /**
- * 设置搜索浮层 — 胶囊搜索框 + 实时过滤设置项。
+ * Establecer superposición de búsqueda — Cuadro de búsqueda cápsula + configuración de filtro en tiempo real.
  *
- * 结果行显示面包屑（分类 › 条目）：搜索是「知道要找什么」的场景，只给条目名
- * 看不出它在哪一层，也不知道点进去会到哪。
+ * La fila de resultados muestra rutas de navegación (categorizadas › entrada): La búsqueda es un escenario en el que "sabes lo que estás buscando" y sólo se proporciona el nombre de la entrada.
+ * No puedo decir en qué piso está y no sé adónde iré si hago clic en él.
  */
 @Composable
 private fun SettingsSearchPalette(
@@ -296,7 +296,7 @@ private fun SettingsSearchPalette(
     onDismiss: () -> Unit,
     onSelect: (SettingsSearchRecord) -> Unit,
 ) {
-    // 资源在组合期解析一次：过滤逻辑是纯函数，不能在里面调 stringResource。
+    // El recurso se analiza una vez durante el período de combinación: la lógica de filtrado es una función pura y stringResource no se puede ajustar en ella.
     val groupTitles: Map<SettingsGroupKind, String> = SettingsCatalog.groups.associate { group ->
         group.kind to stringResource(group.titleRes)
     }
@@ -346,14 +346,14 @@ private fun SettingsSearchPalette(
     }
 }
 
-/** 搜索浮层顶部的输入胶囊；首次出现时抢焦点并弹键盘。 */
+/** Busque la cápsula de entrada en la parte superior de la superposición; capta el foco y toca el teclado cuando aparece por primera vez. */
 @Composable
 private fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
-    // Dialog 是独立窗口，可能在一帧内尚未 attach，此时 requestFocus 会静默失效。
-    // 改为「等帧 + 重试」，焦点真正落下后再弹键盘。
+    // Dialog Es una ventana independiente y no se puede colocar dentro de un marco. En este momento, requestFocus fallará silenciosamente.
+    // Cámbielo a "Esperar cuadro + Reintentar" y luego toque el teclado después de que el foco caiga.
     LaunchedEffect(Unit) {
         repeat(5) { attempt ->
             withFrameNanos { }
@@ -425,7 +425,7 @@ private fun SettingsSearchField(query: String, onQueryChange: (String) -> Unit) 
     }
 }
 
-/** 搜索结果卡：命中数 + 面包屑行。 */
+/** Tarjeta de resultados de búsqueda: número de visitas + fila de ruta de navegación. */
 @Composable
 private fun SettingsSearchResults(
     results: List<SettingsSearchRecord>,
@@ -466,8 +466,8 @@ private fun SettingsSearchResults(
                         ),
                     )
                 }
-                // key 里带下标：条目清单理论上唯一，但 Compose 对重复 key 直接抛异常，
-                // 带上下标后即使将来又出现重复，也只是渲染两行，不会把应用带走。
+                // key Con subíndices: la lista de entradas es teóricamente única, pero Compose genera directamente una excepción para claves duplicadas.
+                // Incluso si se produce una duplicación en el futuro después de agregar subíndices, solo se representarán dos líneas y la aplicación no se eliminará.
                 itemsIndexed(
                     items = results,
                     key = { index, record -> index.toString() + record.titleRes + record.group.name },
@@ -484,7 +484,7 @@ private fun SettingsSearchResults(
     }
 }
 
-/** 单条搜索结果：图标 + 条目标题 + 面包屑。 */
+/** Resultado de búsqueda único: icono + título del artículo + ruta de navegación. */
 @Composable
 private fun SettingsSearchResultRow(
     record: SettingsSearchRecord,

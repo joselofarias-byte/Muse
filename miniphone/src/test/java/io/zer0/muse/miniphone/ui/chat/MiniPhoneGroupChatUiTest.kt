@@ -28,10 +28,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 群聊界面的三处不同:顶栏写群名与人数、角色气泡旁写谁说的、点顶栏能看成员。
+ * Tres diferencias entre las interfaces de chat grupal:Escriba el nombre del grupo y la cantidad de personas en la columna superior, escriba quién lo dijo junto a la burbuja de roles y haga clic en la columna superior para ver los miembros.
  *
- * 断言落在「文字对不对 / 有没有那一行 / 顺序稳不稳」上,状态由测试直接喂。
- * 私信那一侧的反向断言同样重要:多出来的名字若在 1:1 里也出现,这一整块就成了噪音。
+ * La afirmación recae en "¿Es correcto el texto/existe esa línea/es estable el orden?",El estado es alimentado directamente por la prueba.
+ * La afirmación inversa en el lado de los mensajes privados es igualmente importante.:Si los nombres extras también aparecen en 1:1,Toda esta pieza se convierte en ruido.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -44,30 +44,30 @@ class MiniPhoneGroupChatUiTest {
     fun groupTopBarShowsTheTitleWithTheMemberCount() {
         render(
             groupState(
-                message("m1", characterId = "c1", content = "在的"),
+                message("m1", characterId = "c1", content = "en"),
             ),
         )
 
-        compose.onNodeWithTag(MiniPhoneChatTags.PEER_NAME, useUnmergedTree = true).assertTextEquals("阿远、小满、我")
-        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBER_COUNT, useUnmergedTree = true).assertTextEquals("（3）")
+        compose.onNodeWithTag(MiniPhoneChatTags.PEER_NAME, useUnmergedTree = true).assertTextEquals("Ayuan, Xiaoman, yo")
+        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBER_COUNT, useUnmergedTree = true).assertTextEquals("(3)")
     }
 
     @Test
     fun characterBubblesInAGroupSayWhoIsTalking() {
         render(
             groupState(
-                message("m1", characterId = "c2", content = "小满在这"),
-                message("m2", characterId = "c1", content = "阿远也在", createdAt = TWO_MINUTES_MS),
+                message("m1", characterId = "c2", content = "Xiaoman está aquí"),
+                message("m2", characterId = "c1", content = "Ayuan también está ahí", createdAt = TWO_MINUTES_MS),
             ),
         )
 
-        compose.onNodeWithTag(MiniPhoneChatTags.senderName("m1"), useUnmergedTree = true).assertTextEquals("小满")
-        compose.onNodeWithTag(MiniPhoneChatTags.senderName("m2"), useUnmergedTree = true).assertTextEquals("阿远")
+        compose.onNodeWithTag(MiniPhoneChatTags.senderName("m1"), useUnmergedTree = true).assertTextEquals("Xiaoman")
+        compose.onNodeWithTag(MiniPhoneChatTags.senderName("m2"), useUnmergedTree = true).assertTextEquals("Ayuan")
     }
 
     @Test
     fun ownMessageInAGroupCarriesNoSpeakerName() {
-        render(groupState(message("mine", characterId = "", content = "大家早", sender = MpActorType.USER)))
+        render(groupState(message("mine", characterId = "", content = "Buenos dias a todos", sender = MpActorType.USER)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.senderName("mine"), useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("mine")).assertIsDisplayed()
@@ -79,29 +79,29 @@ class MiniPhoneGroupChatUiTest {
             ChatUiState(
                 threadId = "t1",
                 characterId = "c1",
-                peerName = "阿远",
-                messages = listOf(message("m1", characterId = "c1", content = "在的")),
+                peerName = "Ayuan",
+                messages = listOf(message("m1", characterId = "c1", content = "en")),
             ),
         )
 
-        compose.onNodeWithTag(MiniPhoneChatTags.PEER_NAME, useUnmergedTree = true).assertTextEquals("阿远")
+        compose.onNodeWithTag(MiniPhoneChatTags.PEER_NAME, useUnmergedTree = true).assertTextEquals("Ayuan")
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBER_COUNT).assertDoesNotExist()
         compose.onNodeWithTag(MiniPhoneChatTags.senderName("m1"), useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
     fun tappingTheTopBarListsEveryMemberInJoinOrder() {
-        render(groupState(message("m1", characterId = "c1", content = "在的")))
+        render(groupState(message("m1", characterId = "c1", content = "en")))
 
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TOP_BAR).performClick()
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBERS_PAGE).assertIsDisplayed()
-        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBERS_COUNT).assertTextEquals("（3）")
+        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_MEMBERS_COUNT).assertTextEquals("(3)")
         val tops = MEMBER_IDS.map { id ->
             compose.onNodeWithTag(MiniPhoneChatTags.member(id)).getBoundsInRoot().top
         }
-        assertEquals("成员按入群先后自上而下", tops.sorted(), tops)
+        assertEquals("Los miembros presionan para unirse al grupo de arriba a abajo.", tops.sorted(), tops)
         MEMBER_IDS.forEach { id ->
             compose.onNodeWithTag(MiniPhoneChatTags.member(id)).assertIsDisplayed()
         }
@@ -116,18 +116,18 @@ class MiniPhoneGroupChatUiTest {
     @Test
     fun typingRowNamesTheCharacterWhoIsAboutToSpeak() {
         render(
-            groupState(message("m1", characterId = "c1", content = "在的"))
-                .copy(isGenerating = true, typingName = "小满", typingAvatarUri = null),
+            groupState(message("m1", characterId = "c1", content = "en"))
+                .copy(isGenerating = true, typingName = "Xiaoman", typingAvatarUri = null),
         )
 
         compose.onNodeWithTag(MiniPhoneChatTags.TYPING).assertExists()
-        compose.onNodeWithTag(MiniPhoneChatTags.TYPING_NAME, useUnmergedTree = true).assertTextEquals("小满")
+        compose.onNodeWithTag(MiniPhoneChatTags.TYPING_NAME, useUnmergedTree = true).assertTextEquals("Xiaoman")
     }
 
     @Test
     fun directChatTypingRowStaysNameless() {
         render(
-            ChatUiState(threadId = "t1", characterId = "c1", peerName = "阿远", isGenerating = true),
+            ChatUiState(threadId = "t1", characterId = "c1", peerName = "Ayuan", isGenerating = true),
         )
 
         compose.onNodeWithTag(MiniPhoneChatTags.TYPING).assertExists()
@@ -137,8 +137,8 @@ class MiniPhoneGroupChatUiTest {
     @Test
     fun memberCountIncludesThePhoneOwner() {
         val state = groupState()
-        assertEquals("两个角色 + 自己", 3, state.memberCount)
-        assertEquals(0, ChatUiState(peerName = "阿远").memberCount)
+        assertEquals("Dos personajes + yo", 3, state.memberCount)
+        assertEquals(0, ChatUiState(peerName = "Ayuan").memberCount)
     }
 
     @Test
@@ -153,13 +153,13 @@ class MiniPhoneGroupChatUiTest {
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TITLE_EDIT_SAVE).assertIsNotEnabled()
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TITLE_EDIT_SAVE).performClick()
         compose.waitForIdle()
-        assertEquals("空名不提交", null, renamed)
+        assertEquals("No se enviará el nombre vacío", null, renamed)
 
-        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TITLE_EDIT_FIELD).performTextInput("周末小队")
+        compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TITLE_EDIT_FIELD).performTextInput("equipo de fin de semana")
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TITLE_EDIT_SAVE).performClick()
         compose.waitForIdle()
 
-        assertEquals("周末小队", renamed)
+        assertEquals("equipo de fin de semana", renamed)
     }
 
     @Test
@@ -194,8 +194,8 @@ class MiniPhoneGroupChatUiTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneChatTags.MEMBER_REMOVE_DIALOG).assertIsDisplayed()
-        compose.onNodeWithText("移出后他之前说过的话留在群里。").assertExists()
-        assertEquals("确认之前不移出", null, removed)
+        compose.onNodeWithText("Lo que dijo antes permanecerá en el grupo después de ser eliminado.").assertExists()
+        assertEquals("No te mudes hasta que se confirme", null, removed)
 
         compose.onNodeWithTag(MiniPhoneChatTags.MEMBER_REMOVE_CONFIRM).performClick()
         compose.waitForIdle()
@@ -211,7 +211,7 @@ class MiniPhoneGroupChatUiTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneChatTags.MEMBER_MENU_REMOVE).assertDoesNotExist()
-        assertTrue("剩一个人时没有可做的动作", groupMemberActionsFor(1).isEmpty())
+        assertTrue("No hay ninguna acción que tomar cuando solo queda una persona.", groupMemberActionsFor(1).isEmpty())
         assertEquals(1, groupMemberActionsFor(2).size)
     }
 
@@ -223,10 +223,10 @@ class MiniPhoneGroupChatUiTest {
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_DISBAND_ENTRY).performClick()
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_DISBAND_DIALOG).assertExists()
         assertTrue(
-            "文案要写明不可恢复",
-            compose.onAllNodesWithText("整个群和里面的全部消息都会从这台手机上删掉,无法恢复。").fetchSemanticsNodes().isNotEmpty(),
+            "La copia debe indicar que no es recuperable.",
+            compose.onAllNodesWithText("Todo el grupo y todos los mensajes que contiene se eliminarán de este teléfono.,No se puede recuperar.").fetchSemanticsNodes().isNotEmpty(),
         )
-        assertFalse("确认之前不解散", disbanded)
+        assertFalse("No disuelto antes de la confirmación", disbanded)
 
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_DISBAND_CONFIRM).performClick()
         compose.waitForIdle()
@@ -236,7 +236,7 @@ class MiniPhoneGroupChatUiTest {
 
     @Test
     fun privateChatsHaveNoMemberManagementEntry() {
-        render(ChatUiState(threadId = "t1", characterId = "c1", peerName = "阿远"))
+        render(ChatUiState(threadId = "t1", characterId = "c1", peerName = "Ayuan"))
 
         compose.onNodeWithTag(MiniPhoneChatTags.GROUP_TOP_BAR).performClick()
         compose.waitForIdle()
@@ -255,7 +255,7 @@ class MiniPhoneGroupChatUiTest {
             MiniPhoneTheme(darkTheme = false) {
                 GroupMembersPage(
                     members = members,
-                    title = "阿远、小满、我",
+                    title = "Ayuan, Xiaoman, yo",
                     characters = characters,
                     onBack = {},
                     actions = actions,
@@ -276,9 +276,9 @@ class MiniPhoneGroupChatUiTest {
         threadId = "t-group",
         characterId = "c1",
         isGroup = true,
-        groupTitle = "阿远、小满、我",
+        groupTitle = "Ayuan, Xiaoman, yo",
         members = MEMBERS,
-        selfName = "子奇",
+        selfName = "Ziqi",
         messages = messages.toList(),
     )
 
@@ -301,17 +301,17 @@ class MiniPhoneGroupChatUiTest {
         const val MINUTE_MS: Long = 60_000L
         const val TWO_MINUTES_MS: Long = 120_000L
         val MEMBERS: List<ChatMemberUi> = listOf(
-            ChatMemberUi(characterId = "c1", name = "阿远"),
-            ChatMemberUi(characterId = "c2", name = "小满"),
+            ChatMemberUi(characterId = "c1", name = "Ayuan"),
+            ChatMemberUi(characterId = "c2", name = "Xiaoman"),
         )
         val MEMBER_IDS: List<String> = MEMBERS.map { it.characterId }
 
         val FIVE_CHARACTERS: List<MpCharacter> = listOf(
-            MpCharacter(id = "c1", name = "阿远"),
-            MpCharacter(id = "c2", name = "小满"),
-            MpCharacter(id = "c3", name = "阿吾"),
-            MpCharacter(id = "c4", name = "阿岑"),
-            MpCharacter(id = "c5", name = "阿迟"),
+            MpCharacter(id = "c1", name = "Ayuan"),
+            MpCharacter(id = "c2", name = "Xiaoman"),
+            MpCharacter(id = "c3", name = "Awu"),
+            MpCharacter(id = "c4", name = "azen"),
+            MpCharacter(id = "c5", name = "Ah Chi"),
         )
     }
 }

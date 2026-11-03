@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-15: channel_pass 工具定义与执行回调。
+ * R-TEST-15: channel_pass Las herramientas definen y ejecutan devoluciones de llamada.
  */
 class ChannelPassToolTest {
 
@@ -21,7 +21,7 @@ class ChannelPassToolTest {
         assertTrue("reason" in def.parameters)
 
         val result = tool.execute(emptyMap())
-        assertEquals("已跳过本轮", result)
+        assertEquals("Esta ronda se ha saltado", result)
         assertNull(passedReason)
     }
 

@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** 点赞、评论、日记、相册、资料这几张表的读写(朋友圈与相册页要用的最小集合)。 */
+/** Lectura y escritura de me gusta, comentarios, diario, álbum de fotos y tablas informativas.(El conjunto mínimo utilizado para círculos de amigos y páginas de álbumes de fotos.). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MpSocialDaoTest {
@@ -45,7 +45,7 @@ class MpSocialDaoTest {
         assertTrue(likes.isLiked("m1", MpActorType.CHARACTER, "c1"))
         assertEquals(1, withTimeout(TIMEOUT_MS) { likes.observeLikeCount("m1").first() })
 
-        // 同一人重复点赞不新增行(复合主键 + REPLACE)
+        // Si a la misma persona le gusta repetidamente, no se agregarán nuevas líneas.(Clave primaria compuesta + REPLACE)
         likes.insert(like("m1", MpActorType.CHARACTER, "c1"))
         assertEquals(1, likes.likesOf("m1").size)
 
@@ -74,14 +74,14 @@ class MpSocialDaoTest {
     @Test
     fun diaryUpsertsPerDate() = runBlocking {
         val diary = db.diaryDao()
-        diary.upsert(MpDiaryEntity(date = "2026-10-28", content = "第一天", updatedAt = 1_000L))
-        diary.upsert(MpDiaryEntity(date = "2026-10-29", content = "第二天", updatedAt = 2_000L))
-        diary.upsert(MpDiaryEntity(date = "2026-10-28", content = "第一天(改)", updatedAt = 3_000L))
+        diary.upsert(MpDiaryEntity(date = "2026-10-28", content = "primer dia", updatedAt = 1_000L))
+        diary.upsert(MpDiaryEntity(date = "2026-10-29", content = "al dia siguiente", updatedAt = 2_000L))
+        diary.upsert(MpDiaryEntity(date = "2026-10-28", content = "primer dia(cambiar)", updatedAt = 3_000L))
 
-        assertEquals("第一天(改)", diary.get("2026-10-28")?.content)
+        assertEquals("primer dia(cambiar)", diary.get("2026-10-28")?.content)
         assertEquals(listOf("2026-10-29", "2026-10-28"), diary.recent(limit = 10).map { it.date })
         assertEquals(
-            "第二天",
+            "al dia siguiente",
             withTimeout(TIMEOUT_MS) { diary.observe("2026-10-29").first() }?.content,
         )
     }
@@ -105,15 +105,15 @@ class MpSocialDaoTest {
     @Test
     fun profileIsSingleRowUpsert() = runBlocking {
         val profile = db.profileDao()
-        profile.upsert(MpProfileEntity(nickname = "子奇", signature = "第一版"))
+        profile.upsert(MpProfileEntity(nickname = "Ziqi", signature = "primera edición"))
 
-        assertEquals("子奇", profile.getProfile()?.nickname)
+        assertEquals("Ziqi", profile.getProfile()?.nickname)
 
-        profile.upsert(MpProfileEntity(id = MpProfileEntity.SINGLE_ROW_ID, nickname = "子奇", signature = "第二版"))
+        profile.upsert(MpProfileEntity(id = MpProfileEntity.SINGLE_ROW_ID, nickname = "Ziqi", signature = "segunda edición"))
 
-        assertEquals("第二版", profile.getProfile()?.signature)
+        assertEquals("segunda edición", profile.getProfile()?.signature)
         assertEquals(
-            "第二版",
+            "segunda edición",
             withTimeout(TIMEOUT_MS) { profile.observeProfile().first() }?.signature,
         )
     }
@@ -122,7 +122,7 @@ class MpSocialDaoTest {
         momentId = momentId,
         likerType = type,
         likerId = actorId,
-        likerName = "角色$actorId",
+        likerName = "papel$actorId",
         createdAt = 1_000L,
     )
 
@@ -132,8 +132,8 @@ class MpSocialDaoTest {
         parentId = parentId,
         senderType = MpActorType.USER,
         senderId = "local",
-        senderName = "我",
-        content = "评论 $id",
+        senderName = "yo",
+        content = "Comentario $id",
         createdAt = 1_000L,
     )
 

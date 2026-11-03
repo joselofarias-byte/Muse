@@ -29,37 +29,37 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * 锚定菜单 — 替代 Material3 `DropdownMenu`。
+ * menú de anclaje — sustituto Material3 `DropdownMenu`.
  *
- * 与 `DropdownMenu` 的区别：外壳走项目令牌（圆角/底色/阴影），条目由调用方传
- * [io.zer0.muse.ui.common.surface.MuseListItem]，所以整块菜单和页面其他部分同一套视觉。
+ * con `DropdownMenu` La diferencia: el caparazón toma la ficha del artículo (esquinas redondeadas/color de fondo/sombra), las entradas las pasa la persona que llama
+ * [io.zer0.muse.ui.common.surface.MuseListItem], por lo que todo el menú es visualmente coherente con el resto de la página.
  *
- * 定位机制与 `DropdownMenu` 相同：读取**锚点容器**（调用点所在的可组合项）的边界，
- * 默认向下展开、左对齐锚点；下方空间不足时向上翻转；水平越界时收敛到窗口内。
- * 因此调用方式与 `DropdownMenu` 一致 —— 放在触发控件所在的同一容器里即可。
+ * Mecanismo de posicionamiento y `DropdownMenu` Igual que: leer**contenedor de anclaje**(los límites del elemento componible donde se encuentra el punto de llamada),
+ * De forma predeterminada, se expande hacia abajo y alinea el punto de anclaje a la izquierda; lo gira hacia arriba cuando no hay suficiente espacio debajo; converge hacia la ventana cuando cruza el límite horizontal.
+ * Por lo tanto, el método de llamada es el mismo que `DropdownMenu` consistente —— Simplemente colóquelo en el mismo contenedor que el control del gatillo.
  *
- * 用法:
+ * Uso:
  * ```
  * Box {
- *     MuseTactileButton(icon = ..., onClick = { expanded = true }, contentDescription = "更多")
+ *     MuseTactileButton(icon = ..., onClick = { expanded = true }, contentDescription = "Más")
  *     MuseAnchoredMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
- *         MuseListItem(onClick = { ... }) { Text("重命名") }
+ *         MuseListItem(onClick = { ... }) { Text("Cambiar nombre") }
  *     }
  * }
  * ```
  *
- * @param expanded 是否展开
- * @param onDismissRequest 点击外部或返回键时回调
- * @param modifier 修饰符
- * @param gap 菜单与锚点之间的间距
- * @param alignEnd true 时右对齐锚点（"更多"类触发控件更自然），默认左对齐
- * @param minWidth 菜单最小宽度
- * @param maxWidth 菜单最大宽度
- * @param maxHeight 菜单最大高度（超出滚动）
- * @param focusable 是否抢占窗口焦点。操作型菜单用 true（点外部可关闭）；
- *   输入框自动补全（如 @mention）必须用 false —— 抢焦点会把键盘与输入框焦点带走，
- *   表现为“刚输入 @ 键盘就消失、补全不出来”。
- * @param content 菜单内容（通常是一列 [io.zer0.muse.ui.common.surface.MuseListItem]）
+ * @param expanded Ya sea para expandirse
+ * @param onDismissRequest Se llama cuando se hace clic en la tecla externa o de retorno
+ * @param modifier modificador
+ * @param gap Espaciado entre menú y ancla
+ * @param alignEnd true alinear el punto de anclaje a la derecha ("Más"el control de activación de clase es más natural), alineado a la izquierda de forma predeterminada
+ * @param minWidth Ancho mínimo del menú
+ * @param maxWidth ancho máximo del menú
+ * @param maxHeight Altura máxima del menú (más allá del desplazamiento)
+ * @param focusable Ya sea para aprovechar el foco de la ventana. Utilice verdadero para menús operativos (haga clic afuera para cerrar);
+ *   Se debe utilizar el autocompletado del cuadro de entrada (como @mención) false —— Robar el foco quitará el foco del teclado y del cuadro de entrada.
+ *   Se muestra como“Tan pronto como escribo @, el teclado desaparece y no se puede mostrar la finalización.”.
+ * @param content contenido del menú (normalmente una columna [io.zer0.muse.ui.common.surface.MuseListItem])
  */
 @Composable
 fun MuseAnchoredMenu(

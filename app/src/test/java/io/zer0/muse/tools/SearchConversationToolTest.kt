@@ -43,8 +43,8 @@ class SearchConversationToolTest {
         coEvery {
             repository.searchMessagesInSession("session-1", "history", 5)
         } returns listOf(
-            SearchResult("u1", "session-1", "Chat", "old user", "USER", 1L, "用户原文细节"),
-            SearchResult("a1", "session-1", "Chat", "old assistant", "ASSISTANT", 2L, "助手原文细节"),
+            SearchResult("u1", "session-1", "Chat", "old user", "USER", 1L, "Detalles del texto original del usuario"),
+            SearchResult("a1", "session-1", "Chat", "old assistant", "ASSISTANT", 2L, "Detalles del texto del asistente"),
         )
 
         val result = SearchConversationTool.execute(
@@ -54,8 +54,8 @@ class SearchConversationToolTest {
             context = context,
         )
 
-        assertTrue(result.contains("用户原文细节"))
-        assertTrue(result.contains("助手原文细节"))
+        assertTrue(result.contains("Detalles del texto original del usuario"))
+        assertTrue(result.contains("Detalles del texto del asistente"))
         assertTrue(result.contains("session-1"))
         assertTrue(result.contains("historical reference", ignoreCase = true))
         coVerify(exactly = 1) { repository.searchMessagesInSession("session-1", "history", 5) }

@@ -10,26 +10,26 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.ui.theme.MuseCornerRadius
 
 /**
- * 分组容器 — 一组共用圆角容器,行间用细分割线分隔。
+ * contenedor de grupo — Un conjunto de contenedores redondeados compartidos.,Las líneas están separadas por finas líneas divisorias.
  *
- * v0.34: 自包含实现 — 渲染为 Surface 卡片(surfaceVariant 0.5f 背景 + 20dp 圆角),
- * 与 [io.zer0.muse.ui.common.surface.CardGroup] 视觉一致。保留此兼容封装供现有二级页
- * (BackupSection / ThemeSection / AboutSection 等)继续使用;一级设置页与新页面
- * 直接用 CardGroup + DSL item。
+ * v0.34: Implementación autónoma — Renderizar como tarjeta de Surface(surfaceVariant 0.5f Fondo + esquinas redondeadas 20dp),
+ * con [io.zer0.muse.ui.common.surface.CardGroup] Consistencia visual. Reserve este contenedor compatible para páginas secundarias existentes
+ * (BackupSection / ThemeSection / AboutSection espera)continuar usando;Página de configuración de primer nivel y página nueva
+ * Utilice el elemento CardGroup + DSL directamente.
  *
- * 对齐系统设置列表的分组视觉。
+ * Imágenes agrupadas para alinear las listas de configuraciones del sistema.
  *
- * 用法:
+ * Uso:
  * ```
  * SettingsGroup {
- *     SettingsItemRow(icon, "标题", "副标题") { onClick() }
+ *     SettingsItemRow(icon, "Título", "subtítulo") { onClick() }
  *     SettingsGroupDivider()
- *     SettingsSwitchRow(icon, "开关", checked) { onChange(it) }
+ *     SettingsSwitchRow(icon, "cambiar", checked) { onChange(it) }
  * }
  * ```
  *
- * @param modifier Modifier(默认 fillMaxWidth)
- * @param content 分组内容(由调用方插入 [SettingsItemRow] / [SettingsSwitchRow] / [SettingsGroupDivider])
+ * @param modifier Modifier(Predeterminado fillMaxWidth)
+ * @param content Contenido del grupo(insertado por la persona que llama [SettingsItemRow] / [SettingsSwitchRow] / [SettingsGroupDivider])
  */
 @Deprecated(
     "CMP-06: co-exists with CardGroup; consolidate to CardGroup + DSL items",
@@ -37,8 +37,8 @@ import io.zer0.muse.ui.theme.MuseCornerRadius
 @Composable
 fun SettingsGroup(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme
-    // CMP-08: 走令牌 — 与 CardGroup 一致:surface 背景 + outlineVariant 描边,
-    // 不再用硬编码 White@96%/10% 手写明暗分支。
+    // CMP-08: ficha de paseo — Consistente con CardGroup:surface fondo + contornoTrazo variante,
+    // No más codificación de ramas claras y oscuras escritas a mano en blanco al 96%/10%.
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(MuseCornerRadius.CARD.dp),

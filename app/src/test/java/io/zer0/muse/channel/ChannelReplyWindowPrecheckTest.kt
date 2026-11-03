@@ -6,16 +6,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 排队超窗预检：入站消息在队列里排到被动回复窗口关闭之后，不应该再跑一轮模型。
+ * Verificación previa de la cola fuera de la ventana: después de que el mensaje entrante se coloca en la cola y se cierra la ventana de respuesta pasiva, no debería ejecutar otra ronda del modelo.
  *
- * 原实现的窗口判断只在 runAgent 内部做，于是「排到超窗」的消息照样跑完整轮对话，
- * 烧完 token 才发现发不出去；退避重试还会把这条消息反复拉回来再烧一遍。
+ * La evaluación de la ventana en la implementación original solo se realizó dentro de runAgent, por lo que el mensaje "en cola para la superventana" aún se transmitió durante toda la conversación.
+ * Después de quemar la ficha, descubrí que no se podía enviar; retroceder y volver a intentar devolver el mensaje repetidamente y quemarlo nuevamente.
  */
 class ChannelReplyWindowPrecheckTest {
 
     private val receivedAt = 1_800_000_000_000L
 
-    /** 官方窗口 5 分钟，发送余量 15 秒。 */
+    /** Ventana oficial de 5 minutos, margen de envío de 15 segundos. */
     private val windowMillis = 5 * 60 * 1000L
     private val sendMarginMillis = 15_000L
 
@@ -26,12 +26,12 @@ class ChannelReplyWindowPrecheckTest {
     )
 
     @Test
-    fun `QQ 截止时刻等于入站时间加窗口减发送余量`() {
+    fun `QQ La fecha límite es igual al tiempo de entrada más la ventana menos el margen de envío.`() {
         assertEquals(
             receivedAt + windowMillis - sendMarginMillis,
             ChannelAutoReply.replyWindowDeadlineMillis(ChannelPlatform.QQ.name, receivedAt),
         )
-        // 其它平台没有被动回复窗口，永不超窗。
+        // Otras plataformas no tienen una ventana de respuesta pasiva y nunca excederán la ventana.
         assertEquals(
             Long.MAX_VALUE,
             ChannelAutoReply.replyWindowDeadlineMillis(ChannelPlatform.FEISHU.name, receivedAt),
@@ -39,24 +39,24 @@ class ChannelReplyWindowPrecheckTest {
     }
 
     @Test
-    fun `QQ 入站排队超过被动窗口判为超窗`() {
+    fun `QQ Si la cola entrante excede la ventana pasiva, se considerará que excede la ventana.`() {
         assertTrue(queuedReplyWindowExpired(qqInbound(), receivedAt + 6 * 60 * 1000L))
     }
 
     @Test
-    fun `QQ 入站仍在窗口内时放行`() {
+    fun `QQ Pase entrante mientras aún está dentro de la ventana`() {
         assertFalse(queuedReplyWindowExpired(qqInbound(), receivedAt + 60 * 1000L))
     }
 
     @Test
-    fun `QQ 入站刚好卡在截止时刻判为超窗`() {
+    fun `QQ Si la inscripción se atasca en la fecha límite, se considerará que excedió la ventana.`() {
         assertTrue(
             queuedReplyWindowExpired(qqInbound(), receivedAt + windowMillis - sendMarginMillis),
         )
     }
 
     @Test
-    fun `非 QQ 平台不受被动窗口影响`() {
+    fun `Las plataformas que no son QQ no se ven afectadas por las ventanas pasivas`() {
         val inbound = ChannelInbox.Inbound(
             platform = ChannelPlatform.FEISHU.name,
             from = "chat-1",
@@ -66,19 +66,19 @@ class ChannelReplyWindowPrecheckTest {
     }
 
     @Test
-    fun `拦截终态错误码写明是排队超时`() {
-        assertEquals("被动回复窗口已过期(排队超时)", REPLY_WINDOW_EXPIRED_BY_QUEUE)
+    fun `El código de error final de interceptación indica que se agotó el tiempo de espera de la cola.`() {
+        assertEquals("La ventana de respuesta pasiva ha expirado(Tiempo de espera de cola)", REPLY_WINDOW_EXPIRED_BY_QUEUE)
     }
 
     /**
-     * 预检位置靠源码顺序锁定：拦截必须早于 appendTurn（否则会话里留一条没有回复的用户消息），
-     * 也必须早于 prepareReply（runAgent 只在那里被调用）。
+     * La posición de verificación previa está bloqueada por el orden del código fuente: la interceptación debe ser anterior a appendTurn (de lo contrario, se dejará un mensaje de usuario sin respuesta en la sesión).
+     * También debe preceder a prepareReply(runAgent sólo se llama allí).
      */
     @Test
-    fun `预检拦截早于写会话库与调用模型`() {
+    fun `La interceptación previa a la verificación precede a la escritura de bibliotecas de sesiones y a los modelos de llamada`() {
         val source = java.io.File("src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt").readText()
         val start = source.indexOf("private suspend fun handleMessage(")
-        assertTrue("未找到 handleMessage", start >= 0)
+        assertTrue("no encontrado handleMessage", start >= 0)
         val end = source.indexOf("private suspend fun prepareReply(", start)
         val body = source.substring(start, if (end > start) end else source.length)
 
@@ -86,9 +86,9 @@ class ChannelReplyWindowPrecheckTest {
         val appendIdx = body.indexOf("ChannelConversationStore.appendTurn")
         val prepareIdx = body.indexOf("prepareReply(inbound, config)")
 
-        assertTrue("handleMessage 里必须有排队超窗拦截", blockIdx >= 0)
-        assertTrue("预检必须在 appendTurn 之前", blockIdx < appendIdx)
-        assertTrue("预检必须在 prepareReply(即 runAgent) 之前", blockIdx < prepareIdx)
-        assertEquals("handleMessage 不应直接调用模型", -1, body.indexOf("runAgent("))
+        assertTrue("handleMessage Debe haber una intercepción de ventana de cola.", blockIdx >= 0)
+        assertTrue("la verificación previa debe preceder a appendTurn", blockIdx < appendIdx)
+        assertTrue("La verificación previa debe realizarse prepareReply(Eso es runAgent) antes", blockIdx < prepareIdx)
+        assertEquals("handleMessage Los modelos no deben llamarse directamente", -1, body.indexOf("runAgent("))
     }
 }

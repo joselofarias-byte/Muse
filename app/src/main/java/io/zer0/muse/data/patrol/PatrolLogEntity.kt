@@ -9,22 +9,22 @@ import androidx.room.Query
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.74: 主动巡检日志 — 记录每次巡检做了什么/没做什么。
- * AI 下次巡检时能看到,避免重复做同一件事。
+ * v1.0.74: Registro de inspección activo — Registre lo que se hizo durante cada inspección./No se hizo mucho.
+ * AI Podrás verlo durante la próxima inspección.,Evite hacer lo mismo dos veces.
  */
 @Serializable
 @Entity(tableName = "patrol_logs")
 data class PatrolLogEntity(
     @PrimaryKey val id: String,
-    /** 巡检时间戳。 */
+    /** Marca de tiempo de inspección. */
     val timestamp: Long,
-    /** 巡检结果: wrote_diary / organized_memories / sent_message / idle(无事) / error。 */
+    /** Resultados de la inspección: wrote_diary / organized_memories / sent_message / idle(No pasa nada) / error. */
     val action: String,
-    /** 做了什么(摘要,AI 可读)。 */
+    /** que hizo(Resumen,AI legible). */
     val summary: String,
 )
 
-/** v1.0.74: 巡检日志 DAO。 */
+/** v1.0.74: Registro de inspección DAO. */
 @Dao
 interface PatrolLogDao {
 
@@ -37,7 +37,7 @@ interface PatrolLogDao {
     @Query("DELETE FROM patrol_logs WHERE timestamp < :before")
     suspend fun deleteBefore(before: Long)
 
-    /** 某动作今天是否已做过(防重复)。 */
+    /** Si una determinada acción se ha realizado hoy(Anti-duplicación). */
     @Query("SELECT COUNT(*) FROM patrol_logs WHERE action = :action AND timestamp >= :dayStart")
     suspend fun countActionToday(action: String, dayStart: Long): Int
 }

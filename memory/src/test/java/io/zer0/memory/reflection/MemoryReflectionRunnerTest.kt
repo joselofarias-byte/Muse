@@ -15,11 +15,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v12 (T3-1/3-2/3-3): 记忆反思任务测试。
- *  - 回填历史实体键(entity_key 为 null 的存量数据)
- *  - 合并同实体重复(存量"同名 3 条"清洗)
- *  - 矛盾检测(同实体相反断言)
- *  - 重复确认晋升(同实体多条事实 → 重要度提升)
+ * v12 (T3-1/3-2/3-3): Prueba de tarea de reflexión de la memoria.
+ *  - Rellenar claves de entidad históricas(entity_key Datos de inventario que son nulos)
+ *  - Fusionar duplicados con las mismas entidades(Valores"3 artículos con el mismo nombre"limpio)
+ *  - Detección de contradicciones(Afirmación contraria a la entidad)
+ *  - Repetir confirmación de promoción(Múltiples hechos sobre la misma entidad → mayor importancia)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,7 +46,7 @@ class MemoryReflectionRunnerTest {
 
     @Test
     fun `reflection routes to the resolver store for non-default scope`() = runTest {
-        // v2.6.2（记忆审计）: 非默认 scope 的反思必须落到对应助手库，而不是默认库。
+        // v2.6.2(auditoría de memoria): La reflexión para ámbitos no predeterminados debe recaer en la biblioteca auxiliar correspondiente, no en la biblioteca predeterminada.
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val otherDb = Room.inMemoryDatabaseBuilder(context, FactDb::class.java)
             .allowMainThreadQueries()
@@ -54,7 +54,7 @@ class MemoryReflectionRunnerTest {
         val otherStore = FactStore(otherDb.factDao(), otherDb, assistantId = "assistant-b")
         try {
             val now = java.time.Instant.now().toString()
-            otherDb.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]喜欢摄影", scope = "assistant-b", createdAt = now))
+            otherDb.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]Me gusta la fotografía", scope = "assistant-b", createdAt = now))
 
             var resolverScope: String? = null
             val routed = MemoryReflectionRunner(
@@ -67,7 +67,7 @@ class MemoryReflectionRunnerTest {
             val result = routed.runReflection(scope = "assistant-b", spaceId = "default")
 
             assertEquals("assistant-b", resolverScope)
-            assertTrue("应在子助手库回填实体键", result.backfilled >= 1)
+            assertTrue("Las claves de entidad deben completarse en la biblioteca auxiliar secundaria", result.backfilled >= 1)
         } finally {
             otherDb.close()
         }
@@ -75,101 +75,101 @@ class MemoryReflectionRunnerTest {
 
     @Test
     fun `reflection backfills entity keys and merges duplicates`() = runTest {
-        // 模拟 v11 存量数据(entityKey=null): mask 占位符保留实体区分度,可安全回填
+        // Simular datos bursátiles v11(entityKey=null): mask Los marcadores de posición preservan la distinción de entidades,Seguro para rellenar
         val now = java.time.Instant.now().toString()
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]喜欢摄影", createdAt = now))
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "张三老师喜欢摄影", createdAt = now))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]Me gusta la fotografía", createdAt = now))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "Al profesor Zhang San le gusta la fotografía", createdAt = now))
 
         val result = runner.runReflection()
 
-        assertTrue("占位符数据应回填实体键", result.backfilled >= 1)
-        // 有键的两条占位符同事实应合并(回填后 entityKey 一致 → 合并)
-        store.add(FactStore.Fact(fact = "[NAME_1]喜欢摄影", entityKey = "[NAME_1]"))
+        assertTrue("Los datos del marcador de posición deben rellenar las claves de entidad", result.backfilled >= 1)
+        // Se deben fusionar dos marcadores de posición con claves y hechos.(La entidadKey es consistente después del reabastecimiento → fusionar)
+        store.add(FactStore.Fact(fact = "[NAME_1]Me gusta la fotografía", entityKey = "[NAME_1]"))
         val all = store.getByScopeAndSpace("main", "default")
-        // [NAME_1] 两条(存量+新写入)合并为 1,中文名保守保留
+        // [NAME_1] dos(Valores+nueva escritura)fusionado en 1,Los nombres chinos deben mantenerse de forma conservadora
         val name1Count = all.count { it.fact.contains("NAME_1") }
-        assertEquals("占位符同实体重复应合并为 1 条", 1, name1Count)
+        assertEquals("Los marcadores de posición y entidades duplicados deben fusionarse en uno solo", 1, name1Count)
     }
 
     @Test
     fun `reflection merges same entity duplicates in legacy data`() = runTest {
-        // 直接插入带 entityKey 的存量重复(模拟已回填的历史数据)
+        // Inserte directamente duplicados existentes con entidadKey(Simular datos históricos rellenados)
         val now = java.time.Instant.now().toString()
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]喜欢摄影", createdAt = now, entityKey = "[NAME_1]"))
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "张三老师喜欢摄影", createdAt = now, entityKey = "[NAME_1]"))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "[NAME_1]Me gusta la fotografía", createdAt = now, entityKey = "[NAME_1]"))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "Al profesor Zhang San le gusta la fotografía", createdAt = now, entityKey = "[NAME_1]"))
 
         val result = runner.runReflection()
 
-        assertEquals("应合并 1 条重复", 1, result.merged)
-        assertEquals("合并后只剩 1 条", 1, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("1 duplicado debe fusionarse", 1, result.merged)
+        assertEquals("Solo queda 1 elemento después de fusionarlo", 1, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
     fun `reflection leaves unbackfillable chinese names untouched`() = runTest {
         val now = java.time.Instant.now().toString()
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "张三喜欢摄影", createdAt = now))
-        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "张三老师喜欢摄影", createdAt = now))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "A Zhang San le gusta la fotografía", createdAt = now))
+        db.factDao().insert(io.zer0.memory.fact.FactEntity(fact = "Al profesor Zhang San le gusta la fotografía", createdAt = now))
 
         runner.runReflection()
 
-        // 中文名无 LLM 时保守不回填、不误合并(宁漏不错)
-        assertEquals("中文名存量保守保留", 2, store.getByScopeAndSpace("main", "default").size)
+        // Cuando el nombre chino no tenga un LLM, será conservador y no se repondrá ni se fusionará por error.(Ning Le es bueno)
+        assertEquals("Las acciones de nombres chinos están reservadas de forma conservadora", 2, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
     fun `reflection detects contradictions without deleting`() = runTest {
-        store.add(FactStore.Fact(fact = "张三喜欢喝咖啡", entityKey = "张三"))
-        store.add(FactStore.Fact(fact = "张三讨厌喝咖啡", entityKey = "张三"))
+        store.add(FactStore.Fact(fact = "A Zhang San le gusta tomar café.", entityKey = "Zhang San"))
+        store.add(FactStore.Fact(fact = "Zhang San odia tomar café", entityKey = "Zhang San"))
 
         val contradictions = store.detectContradictions("main", "default")
 
-        assertEquals("应检测到 1 对矛盾", 1, contradictions.size)
-        // 矛盾不自动删除
-        assertEquals("矛盾事实仍保留", 2, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("Se debe detectar 1 par de contradicciones.", 1, contradictions.size)
+        // Los conflictos no se eliminan automáticamente
+        assertEquals("Siguen existiendo hechos contradictorios", 2, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
     fun `reflection promotes repeated entity facts`() = runTest {
-        // 同一实体 3 条不同事实 → 重复确认,重要度提升
-        store.add(FactStore.Fact(fact = "李四在学游泳", entityKey = "李四"))
-        store.add(FactStore.Fact(fact = "李四在学吉他", entityKey = "李四"))
-        store.add(FactStore.Fact(fact = "李四喜欢跑步", entityKey = "李四"))
+        // 3 hechos diferentes sobre la misma entidad → Repetir confirmación,mayor importancia
+        store.add(FactStore.Fact(fact = "Li Si está aprendiendo a nadar.", entityKey = "Juan Pérez"))
+        store.add(FactStore.Fact(fact = "Li Si está aprendiendo a tocar la guitarra.", entityKey = "Juan Pérez"))
+        store.add(FactStore.Fact(fact = "A Li Si le gusta correr", entityKey = "Juan Pérez"))
 
         val promoted = store.promoteRepeatedFacts("main", "default", minConfirmations = 2)
 
-        assertTrue("应晋升至少 1 条", promoted >= 1)
+        assertTrue("Debe ser ascendido a al menos 1", promoted >= 1)
         val all = store.getByScopeAndSpace("main", "default")
-        assertTrue("晋升后存在 importance ≥ 1 的事实", all.any { it.importance >= 1 })
+        assertTrue("Existe después de la promoción. importance ≥ 1 el hecho", all.any { it.importance >= 1 })
     }
 
     @Test
     fun `reflection does not merge different facts of same entity`() = runTest {
-        store.add(FactStore.Fact(fact = "张三喜欢喝咖啡", entityKey = "张三"))
-        store.add(FactStore.Fact(fact = "张三喜欢跑步", entityKey = "张三"))
+        store.add(FactStore.Fact(fact = "A Zhang San le gusta tomar café.", entityKey = "Zhang San"))
+        store.add(FactStore.Fact(fact = "A Zhang San le gusta correr", entityKey = "Zhang San"))
 
         runner.runReflection()
 
-        assertEquals("不同事实不合并", 2, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("No se combinan diferentes hechos.", 2, store.getByScopeAndSpace("main", "default").size)
     }
 
     @Test
     fun `single entity fact does not promote`() = runTest {
-        store.add(FactStore.Fact(fact = "王五喜欢摄影", entityKey = "王五"))
+        store.add(FactStore.Fact(fact = "A Wang Wu le gusta la fotografía.", entityKey = "Wang Wu"))
 
         val promoted = store.promoteRepeatedFacts("main", "default", minConfirmations = 2)
-        assertEquals("单条事实不晋升", 0, promoted)
+        assertEquals("No se promoverá un solo hecho", 0, promoted)
     }
 
     @Test
     fun `reflection reports same entity multi assertion suggestions`() = runTest {
-        store.add(FactStore.Fact(fact = "赵六喜欢咖啡", entityKey = "赵六"))
-        store.add(FactStore.Fact(fact = "赵六在学游泳", entityKey = "赵六"))
-        store.add(FactStore.Fact(fact = "赵六喜欢跑步", entityKey = "赵六"))
+        store.add(FactStore.Fact(fact = "A Zhao Liu le gusta el café", entityKey = "Zhao Liu"))
+        store.add(FactStore.Fact(fact = "Zhao Liu está aprendiendo a nadar.", entityKey = "Zhao Liu"))
+        store.add(FactStore.Fact(fact = "A Zhao Liu le gusta correr", entityKey = "Zhao Liu"))
 
         val result = runner.runReflection()
 
-        assertEquals("应报告 1 个同实体多断言实体", 1, result.mergeSuggestions)
-        // 只建议不合并:三条不同断言仍在
-        assertEquals("不自动合并,事实保留 3 条", 3, store.getByScopeAndSpace("main", "default").size)
+        assertEquals("Se debe informar 1 entidad de afirmación múltiple de la misma entidad", 1, result.mergeSuggestions)
+        // Sólo se recomienda no fusionar:Quedan tres afirmaciones diferentes
+        assertEquals("Sin fusión automática,3 hechos reservados", 3, store.getByScopeAndSpace("main", "default").size)
     }
 }

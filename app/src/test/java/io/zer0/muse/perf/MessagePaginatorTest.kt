@@ -7,10 +7,10 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 /**
- * [MessagePaginator] 的纯逻辑单测。
+ * [MessagePaginator] Prueba única de lógica pura.
  *
- * 它是"性能模式"下 ChatScreen 内存级分页的底层实现(被 ChatScreen 使用),
- * 之前为零覆盖。分页从**尾部(最新)**开始累加,是这块最容易写错的点。
+ * es"Modo de rendimiento"La implementación subyacente de la paginación a nivel de memoria ChatScreen(Utilizado por ChatScreen),
+ * Anteriormente la cobertura era nula. Paginación desde**cola(Lo último)**Empezar a sumar,Este es el punto más común para escribir incorrectamente.
  */
 class MessagePaginatorTest {
 
@@ -33,7 +33,7 @@ class MessagePaginatorTest {
         val ids = (1..5).map { "m$it" }
         val pages = MessagePaginator.createFlow(ids, pageSize = 2).toList()
         assertEquals(3, pages.size)
-        assertEquals("首屏应是最新的两条", listOf("m4", "m5"), pages[0])
+        assertEquals("La primera pantalla deberían ser las dos últimas.", listOf("m4", "m5"), pages[0])
         assertEquals(listOf("m2", "m3", "m4", "m5"), pages[1])
         assertEquals(listOf("m1", "m2", "m3", "m4", "m5"), pages[2])
     }
@@ -49,8 +49,8 @@ class MessagePaginatorTest {
     @Test
     fun `cache key is stable and differs by id or content`() {
         val k1 = MessagePaginator.contentCacheKey("id1", "hello")
-        assertEquals("同样的 id+content 应得到同样的 key", k1, MessagePaginator.contentCacheKey("id1", "hello"))
-        assertNotEquals("id 不同 key 应不同", k1, MessagePaginator.contentCacheKey("id2", "hello"))
-        assertNotEquals("content 不同 key 应不同", k1, MessagePaginator.contentCacheKey("id1", "world"))
+        assertEquals("La misma identificación + contenido debería obtener el mismo key", k1, MessagePaginator.contentCacheKey("id1", "hello"))
+        assertNotEquals("id Las diferentes claves deberían ser diferentes", k1, MessagePaginator.contentCacheKey("id2", "hello"))
+        assertNotEquals("content Las diferentes claves deberían ser diferentes", k1, MessagePaginator.contentCacheKey("id1", "world"))
     }
 }

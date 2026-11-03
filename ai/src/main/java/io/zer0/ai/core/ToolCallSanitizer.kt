@@ -6,30 +6,30 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 
 /**
- * Tool call 参数清洗。
+ * Tool call Limpieza de parámetros.
  *
- * 兼容部分 OpenAI 中转站返回的截断 JSON、多个 JSON 对象拼接、空 arguments。
- * 能修复的参数保留；完全不可恢复时保留工具调用并改成 `{}`，让工具执行层返回
- * 明确的缺参错误交给模型重试，不能静默删掉唯一的 tool call 造成空 UI。
+ * Compatible con JSON truncado, concatenación de múltiples objetos JSON y argumentos vacíos devueltos por algunas estaciones de transferencia OpenAI.
+ * Se conservan los parámetros reparables; cuando es completamente irrecuperable, la llamada a la herramienta se conserva y se cambia a `{}`, deja que la capa de ejecución de la herramienta regrese
+ * Los errores explícitos de parámetros faltantes se pasan al modelo para volver a intentarlo, y la única llamada a la herramienta no se puede eliminar silenciosamente, lo que genera una interfaz de usuario vacía.
  */
 object ToolCallSanitizer {
 
     fun isValid(toolCall: ToolCall): Boolean = isValidName(toolCall.name) && toolCall.arguments.isNotBlank()
 
     /**
-     * v2.6.7: 工具名是否真的是个工具名。
+     * v2.6.7: Si el nombre de la herramienta es realmente un nombre de herramienta.
      *
-     * 背景（用户实测日志）: 某些模型（GLM-4-9B 等）会把正文台词写进 function.name，
-     * 于是出现 `name="好的，子奇！我会创建一个交互式图表…show_card"`。
-     * 旧实现只检查 `name.isNotBlank()`，于是这串中文一路通过清洗、进审批、被当成工具执行，
-     * 最终以 “未知工具” 失败，表现为“卡片根本生成不了”。
+     * Antecedentes (registro de mediciones reales del usuario): Algunos modelos (GLM-4-9B etc.) escribirá las líneas de texto en function.name,
+     * Entonces parece `name="¡Está bien, Ziqi! Crearé un gráfico interactivo.…show_card"`.
+     * La implementación anterior solo se verificó `name.isNotBlank()`Entonces esta cadena de caracteres chinos pasó por limpieza, aprobación y ejecución como herramienta.
+     * Finalmente con “herramienta desconocida” El fracaso, manifestado como“La tarjeta no se puede generar en absoluto.”.
      *
-     * 工具名在协议上永远是 `[A-Za-z0-9_-]` 的标识符，含有任何其它字符就不可能是真工具名。
-     * 这类调用应整条丢弃，让编排器走“参数/调用异常”分支提示模型重试，
-     * 而不是把垃圾当工具名去执行。
+     * El nombre de la herramienta en el protocolo siempre es `[A-Za-z0-9_-]` Un identificador que contenga otros caracteres no puede ser un nombre de herramienta real.
+     * Estas llamadas deben descartarse por completo y dejar ir al orquestador.“parámetros/excepción de llamada”La rama solicita al modelo que vuelva a intentarlo,
+     * En lugar de utilizar basura como nombre de herramienta para ejecutar.
      */
     fun isValidName(name: String): Boolean {
-        // 长度上限：真实工具名远短于此；超长说明混进了正文。
+        // Longitud máxima: el nombre real de la herramienta es mucho más corto que esto; descripciones demasiado largas se mezclan con el texto.
         val withinLimit = name.isNotBlank() && name.length <= 64
         return withinLimit && name.all { c ->
             (c in 'a'..'z') || (c in 'A'..'Z') || (c in '0'..'9') || c == '_' || c == '-'
@@ -37,21 +37,21 @@ object ToolCallSanitizer {
     }
 
     /**
-     * 清洗 tool calls：
-     *  - 空工具名丢弃
-     *  - 工具名被正文污染（含中文/空格/标点）时先尝试还原末尾的工具名，
-     *    还原不出且对不上 [knownToolNames] 才丢弃
-     *  - 非法/空 arguments 尝试修复；无法修复时改成 `{}`，不丢调用
+     * Llamadas de herramientas de limpieza:
+     *  - Los nombres de herramientas vacíos se descartan
+     *  - El nombre de la herramienta está contaminado por el texto (incluido el chino)./espacio/puntuación) primero intente restaurar el nombre de la herramienta al final,
+     *    No se puede restaurar y no coincide. [knownToolNames] solo tíralo
+     *  - ilegal/Los argumentos vacíos intentan reparar; cuando no se pueda reparar, cámbielo a `{}`, sin perder la llamada
      *
-     * @param knownToolNames 本轮真正要暴露给模型的工具名。只有能对上市名单才还原；
-     *   传空集表示调用方没有名单，此时不猜，仍然丢弃非法调用。
+     * @param knownToolNames El nombre de la herramienta que realmente estará expuesta al modelo en esta ronda. Sólo se puede restaurar la lista indicada;
+     *   Pasar un conjunto vacío significa que la persona que llama no tiene una lista. No se hacen conjeturas en este momento y las llamadas ilegales aún se descartan.
      */
     fun sanitize(
         toolCalls: List<ToolCall>,
         knownToolNames: Set<String> = emptySet(),
     ): List<ToolCall> = toolCalls.mapNotNull { tc ->
         if (tc.name.isBlank()) {
-            safeWarn("丢弃工具调用：name 为空, id=${tc.id}")
+            safeWarn("Descartar llamadas a herramientas:name esta vacio, id=${tc.id}")
             return@mapNotNull null
         }
         val effectiveName =
@@ -60,27 +60,27 @@ object ToolCallSanitizer {
             } else {
                 val salvaged = salvageName(tc.name, knownToolNames)
                 if (salvaged == null) {
-                    // 不打印 name 原文（可能夹带用户内容），只给出长度与首字符类别。
+                    // No imprima el texto original del nombre (que puede contener contenido del usuario), solo proporcione la longitud y la categoría del primer carácter.
                     safeWarn(
-                        "丢弃工具调用：name 不是合法标识符(id=${tc.id}, len=${tc.name.length})" +
-                            "，疑似模型把正文写进了函数名且无法还原",
+                        "Descartar llamadas a herramientas:name No es un identificador legal(id=${tc.id}, len=${tc.name.length})" +
+                            ", se sospecha que el modelo ha escrito el texto en el nombre de la función y no se puede restaurar.",
                     )
                     return@mapNotNull null
                 }
-                safeWarn("工具名混入正文,已还原(id=${tc.id}, len=${tc.name.length} -> $salvaged)")
+                safeWarn("Nombre de la herramienta mezclado en texto,Restaurado(id=${tc.id}, len=${tc.name.length} -> $salvaged)")
                 salvaged
             }
         val repaired = repairArguments(tc.arguments)
         if (repaired == null) {
             safeWarn(
-                "工具参数无法解析,保留调用并降级为 {}: " +
+                "El parámetro de herramienta no se puede analizar,Mantenga la llamada y baje a {}: " +
                     safeArgumentsForLog(effectiveName, tc.arguments),
             )
             tc.copy(name = effectiveName, arguments = "{}")
         } else {
             if (repaired != tc.arguments) {
                 safeWarn(
-                    "工具参数已修复: ${safeArgumentsForLog(effectiveName, tc.arguments)}" +
+                    "Parámetros de herramienta fijos: ${safeArgumentsForLog(effectiveName, tc.arguments)}" +
                         " repaired=[REDACTED]",
                 )
             }
@@ -88,19 +88,19 @@ object ToolCallSanitizer {
         }
     }
 
-    /** 工具名结尾允许的标识符形态。 */
+    /** Formularios de identificador permitidos al final de los nombres de las herramientas. */
     private val TRAILING_IDENTIFIER = Regex("[A-Za-z_][A-Za-z0-9_-]*$")
 
     /**
-     * 从被正文污染的 name 里把真正的工具名捞回来。
+     * Obtenga el nombre real de la herramienta a partir del nombre contaminado por el texto.
      *
-     * 实测日志里模型会把台词和函数名连成一串提交：
-     * `Sure, I can help with that. I'll create a card. Please hold on a moment.show_card`。
-     * 整串含空格与标点，但**末尾那段**是货真价实的工具名。丢掉整条调用等于让用户
-     * 反复重试同一个失败，所以这里把尾巴取出来复用。
+     * En el registro de medición real, el modelo enviará las líneas y los nombres de las funciones en una cadena:
+     * `Sure, I can help with that. I'll create a card. Please hold on a moment.show_card`.
+     * Toda la cadena contiene espacios y puntuación, pero**El último párrafo**Es el nombre de una herramienta genuina. Desechar toda la llamada equivale a dejar que el usuario
+     * Se vuelve a intentar el mismo fallo repetidamente, por lo que se saca la cola y se reutiliza.
      *
-     * 只有能对上本轮暴露的工具才采用。拿不到名单时一律返回 null：没有名单就只能靠猜，
-     * 而正文里随时会出现英文单词（"please hold on a moment"），猜错会把一个词当工具执行。
+     * Sólo se deben utilizar herramientas que puedan igualar la exposición actual. Cuando no se puede obtener la lista, se devolverá nulo: sin una lista, solo puede confiar en adivinar.
+     * Y las palabras en inglés aparecerán en cualquier momento del texto ("please hold on a moment"), una suposición incorrecta ejecutará una palabra como herramienta.
      */
     internal fun salvageName(rawName: String, knownToolNames: Set<String>): String? {
         if (knownToolNames.isEmpty()) return null
@@ -121,19 +121,19 @@ object ToolCallSanitizer {
         runCatching { Logger.w("ToolCallSanitizer", message) }
     }
 
-    /** arguments 是否为合法 JSON(object/array/标量均可)。 */
+    /** arguments ¿Es legal? JSON(object/array/Ambos escalares son aceptables.). */
     fun isValidJson(arguments: String): Boolean = runCatching {
         Json.parseToJsonElement(arguments)
         true
     }.getOrDefault(false)
 
-    /** 尝试修复中转站常见的截断/拼接 arguments。 */
+    /** Intente arreglar el truncamiento común en las estaciones de tránsito/Argumentos de empalme. */
     internal fun repairArguments(raw: String): String? {
         val text = raw.trim()
         if (text.isBlank()) return "{}"
         if (isValidJson(text)) return text
 
-        // 先处理 {"a":1}{"b":2}：逐个取顶层对象并合并，后者覆盖同名键。
+        // Procesar primero {"a":1}{"b":2}: Tome los objetos de nivel superior uno por uno y combínelos, este último cubriendo las claves con el mismo nombre.
         splitTopLevelObjects(text)?.takeIf { it.size > 1 }?.let { pieces ->
             val merged = pieces.mapNotNull { piece ->
                 runCatching { Json.parseToJsonElement(piece) as? JsonObject }.getOrNull()
@@ -143,7 +143,7 @@ object ToolCallSanitizer {
             }
         }
 
-        // 模型在 arguments 末尾被截断时，补闭合字符串与容器。只对以对象/数组开始的值做。
+        // Calcula la cadena cerrada y el contenedor cuando el modelo se trunca al final de los argumentos. Sólo objetivo/El valor al principio de la matriz está listo.
         if (text.startsWith("{") || text.startsWith("[")) {
             val balanced = balanceJson(text)
             if (balanced != null && isValidJson(balanced)) return balanced

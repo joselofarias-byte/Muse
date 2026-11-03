@@ -6,29 +6,29 @@ import io.zer0.muse.miniphone.api.MpProfile
 import io.zer0.muse.miniphone.data.db.entity.MpThreadEntity
 
 /**
- * 外壳要展示的全部状态。
+ * Todos los estados que mostrará el shell.
  *
- * 界面只读这一份数据,不碰 DAO / 宿主接口 —— 谁去查库、怎么合并,是 ViewModel 的事。
+ * La interfaz solo lee estos datos.,No tocar la interfaz DAO/host —— ¿Quién verificará la base de datos y cómo fusionarla?,Es una cosa de ViewModel.
  */
 @Immutable
 data class ShellUiState(
     val threads: List<MiniPhoneThreadUi> = emptyList(),
     val contactSections: List<MiniPhoneContactSection> = emptyList(),
     val profile: MpProfile = MpProfile(nickname = ""),
-    /** 「自动发朋友圈」开关:关着时后台 Worker 整轮跳过。默认开。 */
+    /** Interruptor \"Publicar automáticamente en Momentos\":Cuando está desactivado, el trabajador en segundo plano se salta toda la ronda. Activado de forma predeterminada. */
     val autoMomentEnabled: Boolean = true,
-    /** 「角色主动私信」开关:关着时后台 Worker 整轮跳过。默认关。 */
+    /** Interruptor \"Carácter de mensaje privado activo\":Cuando está desactivado, el trabajador en segundo plano se salta toda la ronda. El valor predeterminado está desactivado. */
     val chatProactiveEnabled: Boolean = false,
-    /** 宿主应用的版本名,由 [io.zer0.muse.miniphone.api.MiniPhoneHost] 提供;空串表示宿主没报。 */
+    /** El nombre de la versión de la aplicación host.,por [io.zer0.muse.miniphone.api.MiniPhoneHost] proporcionar;Una cadena vacía indica que el anfitrión no ha informado nada. */
     val appVersionName: String = "",
 )
 
 /**
- * 会话列表的一行。
+ * Una fila en la lista de sesiones.
  *
- * [lastMessageAt] 保留原始时间戳,展示成什么文本由界面按当前时间算,
- * 这样状态本身与「现在几点」无关,也不会因为跨分钟而整表重建。
- * [isGroup] 只用于区分群里与私信:名字已经填成群名,预览行也已经带上 [GROUP_PREVIEW_MARK]。
+ * [lastMessageAt] Mantener la marca de tiempo original,La interfaz calcula el texto que se muestra en función de la hora actual.,
+ * Este estado en sí no tiene nada que ver con "qué hora es ahora".,No se reconstruirá toda la tabla porque dura minutos.
+ * [isGroup] Sólo se utiliza para distinguir entre mensajes grupales y mensajes privados.:El nombre se ha completado como nombre de grupo.,También se ha traído la línea de vista previa. [GROUP_PREVIEW_MARK].
  */
 @Immutable
 data class MiniPhoneThreadUi(
@@ -41,7 +41,7 @@ data class MiniPhoneThreadUi(
     val isGroup: Boolean = false,
 )
 
-/** 通讯录的一组:首字母 + 该组的角色。 */
+/** Un conjunto de libretas de direcciones.:Letra inicial + rol del grupo. */
 @Immutable
 data class MiniPhoneContactSection(
     val key: String,
@@ -49,21 +49,21 @@ data class MiniPhoneContactSection(
 )
 
 /**
- * 非拉丁首字母归到这一组。
+ * Las iniciales no latinas entran en este grupo.
  *
- * 中文名在拿到拼音之前无法可靠映射到拉丁字母,统一落到 `#`,排在字母组之后,
- * 比按笔画或编码乱猜更稳定。
+ * Los nombres chinos no se pueden asignar de manera confiable a letras latinas antes de obtener pinyin,caída unificada `#`,Viene después del grupo de letras.,
+ * Más estable que las adivinanzas aleatorias mediante trazos o códigos.
  */
 internal const val OTHER_SECTION_KEY: String = "#"
 
-/** 取名字的分组键:拉丁首字母大写,其余一律 `#`。 */
+/** Clave de agrupación con nombre:letras mayúsculas latinas,El resto es igual `#`. */
 internal fun sectionKeyOf(name: String): String {
     val first = name.trim().firstOrNull() ?: return OTHER_SECTION_KEY
     val upper = first.uppercaseChar()
     return if (upper in 'A'..'Z') upper.toString() else OTHER_SECTION_KEY
 }
 
-/** 把角色按首字母分组:字母组按 A→Z 排,`#` 收尾。 */
+/** Roles de grupo por primera letra:Prensa de grupo de letras A→Z fila,`#` Refinamiento. */
 internal fun contactSectionsOf(characters: List<MpCharacter>): List<MiniPhoneContactSection> {
     val grouped = characters
         .filter { it.name.isNotBlank() }
@@ -75,12 +75,12 @@ internal fun contactSectionsOf(characters: List<MpCharacter>): List<MiniPhoneCon
 }
 
 /**
- * 合并会话、角色、资料三份数据。
+ * Fusionar datos de sesión, rol y perfil.
  *
- * 会话的排序完全交给 DAO(置顶在前、其余按最后消息倒序),这里只做「角色 id → 名字」的补全:
- * 角色已被删除的会话仍然列出,名字退化成一句提示,而不是从列表里消失。
- * 群会话不走角色名:它是[title]自己那份群名,预览行前补一个 [GROUP_PREVIEW_MARK],
- * 与私信在同一张列表里也能一眼分开。
+ * El orden de las sesiones queda enteramente a cargo de DAO(Pon el de arriba primero y el resto en orden descendente según el último mensaje.),Aquí solo hacemos "roles" id → finalización de "nombre":
+ * Las sesiones cuyas funciones se han eliminado todavía aparecen en la lista,El nombre degenera en un recordatorio.,en lugar de desaparecer de la lista.
+ * Las conversaciones grupales no utilizan nombres de personajes.:es[title]Mi propio nombre de grupo,Agregar uno antes de la línea de vista previa [GROUP_PREVIEW_MARK],
+ * También se pueden separar de los mensajes privados en la misma lista de un vistazo.
  */
 internal fun assembleShellState(threads: List<MpThreadEntity>, characters: List<MpCharacter>, profile: MpProfile): ShellUiState {
     val namesById = characters.associateBy { it.id }
@@ -105,17 +105,17 @@ internal fun assembleShellState(threads: List<MpThreadEntity>, characters: List<
     )
 }
 
-/** 群里在预览行前的标记。 */
-internal const val GROUP_PREVIEW_MARK: String = "[群]"
+/** La marca antes de la fila de vista previa en el grupo. */
+internal const val GROUP_PREVIEW_MARK: String = "[grupo]"
 
-/** 群名空着时的兜底:宁可叫「群聊」,也不让一行会话没有名字。 */
-internal const val UNTITLED_GROUP_NAME: String = "群聊"
+/** La conclusión cuando el nombre del grupo se deja vacío:Prefiero llamarlo \"chat grupal\",Tampoco dejar una fila de sesiones sin nombre. */
+internal const val UNTITLED_GROUP_NAME: String = "chat grupal"
 
-/** 群会话的预览行:带出 [GROUP_PREVIEW_MARK],后面接最后一条消息。 */
+/** Fila de vista previa de la sesión grupal:sacar a relucir [GROUP_PREVIEW_MARK],Seguido del último mensaje. */
 internal fun groupPreviewOf(lastMessagePreview: String?): String {
     val text = lastMessagePreview.orEmpty().trim()
     return if (text.isEmpty()) GROUP_PREVIEW_MARK else "$GROUP_PREVIEW_MARK $text"
 }
 
-/** 角色已被删除时,会话里显示的名字。 */
-internal const val UNKNOWN_CHARACTER_NAME: String = "已注销的角色"
+/** Cuando el rol ha sido eliminado,El nombre que se muestra en la sesión. */
+internal const val UNKNOWN_CHARACTER_NAME: String = "Rol desconectado"

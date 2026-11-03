@@ -1,34 +1,34 @@
 package io.zer0.ai.core
 
 /**
- * 已知模型元信息词典(离线兜底)。
+ * Diccionario de metainformación de modelos conocidos.(Obtén la primicia sin conexión).
  *
- * 本地维护一份主流模型的元信息表,
- * 让离线场景或上游 /models 接口不返回元信息时也能补全模型能力。
+ * Mantener localmente una tabla de metainformación de los modelos principales.,
+ * Permita que los escenarios fuera de línea o la interfaz ascendente /models completen las capacidades del modelo incluso cuando no se devuelva metainformación.
  *
- * 与 [ModelContextWindowRegistry] / [ModelRegistry] 的关系:
- *  - [ModelContextWindowRegistry] 仅推导 contextWindow(单一字段);
- *  - [ModelRegistry] 通过 token 序列推导 abilities / modalities(规则式);
- *  - [KnownModels] 用硬编码方式提供更完整的元信息(contextWindow + maxOutputTokens
- *    + modalities + abilities + pricing + description),三者互补。
+ * con [ModelContextWindowRegistry] / [ModelRegistry] relación:
+ *  - [ModelContextWindowRegistry] Sólo derivación contextWindow(campo único);
+ *  - [ModelRegistry] Derivación mediante secuencia de tokens abilities / modalities(forma regular);
+ *  - [KnownModels] Proporcionar metainformación más completa de forma codificada.(contextWindow + maxOutputTokens
+ *    + modalities + abilities + pricing + description),Los tres se complementan.
  *
- * 调用优先级(由 [ModelRegistry.enrich] 协调):
- *  1. [Model] 自身已有字段(用户/Provider 显式设置)
- *  2. [KnownModels.lookup] 兜底补全
- *  3. [ModelRegistry] / [ModelContextWindowRegistry] 的推断逻辑
+ * prioridad de llamada(por [ModelRegistry.enrich] coordinar):
+ *  1. [Model] Ya posee campos(Usuario/Provider configuración explícita)
+ *  2. [KnownModels.lookup] Completa todo
+ *  3. [ModelRegistry] / [ModelContextWindowRegistry] lógica de inferencia
  *
- * 数据来源:各厂商公开文档(截至 2025-08)。数字保守,不准的字段留 null。
- * Pricing 单位:USD per 1M tokens(prompt / completion)。
+ * fuente de datos:Documentos públicos de cada fabricante.(A partir de 2025-08). Números conservadores,Los campos no autorizados se dejan nulos.
+ * Pricing unidad:USD per 1M tokens(prompt / completion).
  */
 object KnownModels {
 
     // ──────────────────────────────────────────────────────────────
-    // 一、Modality 枚举
+    // 1.Modality enumeración
     // ──────────────────────────────────────────────────────────────
 
     /**
-     * 模态枚举。wireName 与 [Model.inputModalities] / [Model.outputModalities]
-     * 中使用的字符串保持一致("text" / "image" / "audio" / "video" / "file")。
+     * Enumeración modal.wireName con [Model.inputModalities] / [Model.outputModalities]
+     * Las cuerdas utilizadas en("text" / "image" / "audio" / "video" / "file").
      */
     enum class Modality(val wireName: String) {
         TEXT("text"),
@@ -39,22 +39,22 @@ object KnownModels {
     }
 
     // ──────────────────────────────────────────────────────────────
-    // 二、KnownModelInfo 数据类
+    // 2.KnownModelInfo clase de datos
     // ──────────────────────────────────────────────────────────────
 
     /**
-     * 单个已知模型的元信息。
+     * Metainformación sobre un único modelo conocido.
      *
-     * 所有字段均可空,未确认的字段保持 null,由调用方决定是否使用。
+     * Todos los campos pueden estar vacíos,Quedan campos sin confirmar null,Depende de la persona que llama decidir si utilizarlo.
      *
-     * @param contextWindow 上下文窗口大小(token 数)
-     * @param maxOutputTokens 单次最大输出 token 数
-     * @param inputModalities 输入模态集合(空集表示未声明)
-     * @param outputModalities 输出模态集合
-     * @param abilities 能力集合(TOOL / REASONING)
-     * @param pricingPromptPer1M prompt 端价格(USD / 1M tokens)
-     * @param pricingCompletionPer1M completion 端价格(USD / 1M tokens)
-     * @param description 简短描述(可选)
+     * @param contextWindow tamaño de la ventana de contexto(token numero)
+     * @param maxOutputTokens Número máximo de tokens emitidos a la vez
+     * @param inputModalities Colección modal de entrada(Un conjunto vacío significa no declarado)
+     * @param outputModalities Colección modal de salida
+     * @param abilities conjunto de capacidades(TOOL / REASONING)
+     * @param pricingPromptPer1M prompt precio final(USD / 1M tokens)
+     * @param pricingCompletionPer1M completion precio final(USD / 1M tokens)
+     * @param description breve descripción(Opcional)
      */
     data class KnownModelInfo(
         val contextWindow: Int? = null,
@@ -65,20 +65,20 @@ object KnownModels {
         val pricingPromptPer1M: Double? = null,
         val pricingCompletionPer1M: Double? = null,
         /**
-         * v2.5.3 (P4-3): 缓存命中输入的单价（USD / 1M tokens）。
-         * null = 未知或不区分（按普通输入价计）。
+         * v2.5.3 (P4-3): El precio unitario de la entrada de acierto de caché (USD / 1M tokens).
+         * null = Desconocido o indistinguible (basado en el precio normal de los insumos).
          */
         val pricingCachedInputPer1M: Double? = null,
         /**
-         * v2.5.3 (P4-3): 缓存写入的单价（USD / 1M tokens）。
-         * null = 未知或该提供商不收缓存写入费（Anthropic 收写入费，OpenAI 不收）。
+         * v2.5.3 (P4-3): El precio unitario de la escritura en caché (USD / 1M tokens).
+         * null = Desconocido o este proveedor no cobra una tarifa de escritura en caché (Anthropic Se cobra tarifa de escritura,OpenAI No aceptado).
          */
         val pricingCacheWritePer1M: Double? = null,
         val description: String? = null,
     )
 
     // ──────────────────────────────────────────────────────────────
-    // 三、内部常量与工具
+    // 3. Constantes internas y herramientas.
     // ──────────────────────────────────────────────────────────────
 
     private val TEXT_IN: Set<Modality> = setOf(Modality.TEXT)
@@ -91,13 +91,13 @@ object KnownModels {
     private val REASONING_ONLY: Set<ModelAbility> = setOf(REASONING)
 
     /**
-     * provider+modelId 联合键(均小写)。
+     * provider+modelId llave de unión(Todo en minúsculas).
      */
     private data class ProviderKey(val provider: String, val modelId: String)
 
     /**
-     * 部分中转/聚合平台会在模型 ID 前加 provider 前缀(如 openrouter/、openai/),
-     * 剥掉后再查核心 modelId。
+     * Transferencia parcial/La plataforma de agregación agregará el prefijo del proveedor antes del ID del modelo.(Como openrouter/,openai/),
+     * Después de despegarlo, verifique el ID del modelo principal.
      */
     private val KNOWN_PREFIXES: List<String> = listOf(
         "openrouter/",
@@ -121,15 +121,15 @@ object KnownModels {
         return id
     }
 
-    /** 剥除聚合平台前缀并转小写，用于按模型家族判断（如 Anthropic 的 `claude` 前缀）。 */
+    /** Elimine el prefijo de la plataforma de agregación y conviértalo a minúsculas para juzgar por la familia de modelos (como Anthropic's `claude` prefijo). */
     internal fun normalizeModelIdForFamily(modelId: String): String = stripPrefix(modelId.trim().lowercase())
 
     // ──────────────────────────────────────────────────────────────
-    // 四、预置模型词典(均以小写 modelId 为键)
+    // 4. Diccionario de modelos preestablecidos(Todos están codificados con modelId en minúsculas)
     // ──────────────────────────────────────────────────────────────
 
     private val known: Map<String, KnownModelInfo> = buildMap {
-        // ── OpenAI 系列 ──
+        // ── OpenAI Serie ──
         put(
             "gpt-4o",
             KnownModelInfo(
@@ -140,7 +140,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 2.50,
                 pricingCompletionPer1M = 10.00,
-                description = "OpenAI GPT-4o 多模态旗舰",
+                description = "OpenAI GPT-4o Buque insignia multimodal",
             ),
         )
         put(
@@ -153,7 +153,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 0.15,
                 pricingCompletionPer1M = 0.60,
-                description = "OpenAI GPT-4o mini 轻量版",
+                description = "OpenAI GPT-4o mini Versión ligera",
             ),
         )
         put(
@@ -179,7 +179,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 30.00,
                 pricingCompletionPer1M = 60.00,
-                description = "OpenAI GPT-4 原始版(8K)",
+                description = "OpenAI GPT-4 versión original(8K)",
             ),
         )
         put(
@@ -205,7 +205,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 15.00,
                 pricingCompletionPer1M = 60.00,
-                description = "OpenAI o1 推理模型",
+                description = "OpenAI o1 modelo de inferencia",
             ),
         )
         put(
@@ -218,7 +218,7 @@ object KnownModels {
                 abilities = REASONING_ONLY,
                 pricingPromptPer1M = 3.00,
                 pricingCompletionPer1M = 12.00,
-                description = "OpenAI o1-mini 推理模型",
+                description = "OpenAI o1-mini modelo de inferencia",
             ),
         )
         put(
@@ -231,7 +231,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 150.00,
                 pricingCompletionPer1M = 600.00,
-                description = "OpenAI o1-pro 高性能推理",
+                description = "OpenAI o1-pro Inferencia de alto rendimiento",
             ),
         )
         put(
@@ -244,7 +244,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 10.00,
                 pricingCompletionPer1M = 40.00,
-                description = "OpenAI o3 推理模型",
+                description = "OpenAI o3 modelo de inferencia",
             ),
         )
         put(
@@ -257,7 +257,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 1.10,
                 pricingCompletionPer1M = 4.40,
-                description = "OpenAI o3-mini 推理模型",
+                description = "OpenAI o3-mini modelo de inferencia",
             ),
         )
         put(
@@ -270,7 +270,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 1.10,
                 pricingCompletionPer1M = 4.40,
-                description = "OpenAI o4-mini 推理模型",
+                description = "OpenAI o4-mini modelo de inferencia",
             ),
         )
         put(
@@ -283,7 +283,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 5.00,
                 pricingCompletionPer1M = 15.00,
-                description = "OpenAI GPT-5 旗舰",
+                description = "OpenAI GPT-5 buque insignia",
             ),
         )
         put(
@@ -299,7 +299,7 @@ object KnownModels {
                 description = "OpenAI GPT-5 mini",
             ),
         )
-        // v1.0.6: 新增 GPT-5.1 / Codex
+        // v1.0.6: Nuevo GPT-5.1 / Codex
         put(
             "gpt-5.1",
             KnownModelInfo(
@@ -321,11 +321,11 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "OpenAI GPT-5 Codex 代码模型",
+                description = "OpenAI GPT-5 Codex modelo de código",
             ),
         )
 
-        // ── Anthropic Claude 系列 ──
+        // ── Anthropic Claude Serie ──
         put(
             "claude-3-opus",
             KnownModelInfo(
@@ -401,7 +401,7 @@ object KnownModels {
                 abilities = setOf(TOOL, REASONING),
                 pricingPromptPer1M = 3.00,
                 pricingCompletionPer1M = 15.00,
-                description = "Anthropic Claude 3.7 Sonnet(扩展思考)",
+                description = "Anthropic Claude 3.7 Sonnet(Expande tu pensamiento)",
             ),
         )
         put(
@@ -430,7 +430,7 @@ object KnownModels {
                 description = "Anthropic Claude Opus 4",
             ),
         )
-        // v1.0.6: 新增 Claude 4.5 / 4.1 系列
+        // v1.0.6: Nueva serie Claude 4.5 / 4.1
         put(
             "claude-sonnet-4-5",
             KnownModelInfo(
@@ -471,7 +471,7 @@ object KnownModels {
             ),
         )
 
-        // ── Google Gemini 系列 ──
+        // ── Google Gemini Serie ──
         put(
             "gemini-1.5-pro",
             KnownModelInfo(
@@ -482,7 +482,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 1.25,
                 pricingCompletionPer1M = 5.00,
-                description = "Google Gemini 1.5 Pro(2M 上下文)",
+                description = "Google Gemini 1.5 Pro(2M contexto)",
             ),
         )
         put(
@@ -538,7 +538,7 @@ object KnownModels {
             ),
         )
 
-        // ── DeepSeek 系列 ──
+        // ── DeepSeek Serie ──
         put(
             "deepseek-chat",
             KnownModelInfo(
@@ -549,7 +549,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 0.27,
                 pricingCompletionPer1M = 1.10,
-                description = "DeepSeek V3 通用对话",
+                description = "DeepSeek V3 conversación general",
             ),
         )
         put(
@@ -562,7 +562,7 @@ object KnownModels {
                 abilities = REASONING_ONLY,
                 pricingPromptPer1M = 0.55,
                 pricingCompletionPer1M = 2.19,
-                description = "DeepSeek R1 推理模型",
+                description = "DeepSeek R1 modelo de inferencia",
             ),
         )
         put(
@@ -573,11 +573,11 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "DeepSeek Coder 代码模型",
+                description = "DeepSeek Coder modelo de código",
             ),
         )
 
-        // ── Moonshot / Kimi 系列 ──
+        // ── Moonshot / Kimi Serie ──
         put(
             "moonshot-v1-8k",
             KnownModelInfo(
@@ -586,7 +586,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "Moonshot v1 8K 上下文",
+                description = "Moonshot v1 8K contexto",
             ),
         )
         put(
@@ -597,7 +597,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "Moonshot v1 32K 上下文",
+                description = "Moonshot v1 32K contexto",
             ),
         )
         put(
@@ -608,7 +608,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "Moonshot v1 128K 上下文",
+                description = "Moonshot v1 128K contexto",
             ),
         )
         put(
@@ -622,9 +622,9 @@ object KnownModels {
                 description = "Moonshot Kimi K2",
             ),
         )
-        // v1.0.53: Kimi K2.6 — 多模态版本(视觉+文本),支持工具+推理。
-        // 修正:此前误标 TEXT_IN 导致中转站即使声明多模态也被 v1.137 纠错逻辑覆盖为纯文本,
-        // 图片只能走视觉辅助而不能直发。
+        // v1.0.53: Kimi K2.6 — versión multimodal(Visión+texto),Herramientas de soporte+razonamiento.
+        // Corrección:El etiquetado incorrecto anterior de TEXT_IN provocó que la lógica de corrección de errores v1.137 sobrescribiera la estación de transferencia como texto sin formato, incluso si declaraba multimodalidad.,
+        // Las imágenes sólo se pueden utilizar como ayuda visual y no directamente.
         put(
             "kimi-k2.6",
             KnownModelInfo(
@@ -633,7 +633,7 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "Moonshot Kimi K2.6(多模态)",
+                description = "Moonshot Kimi K2.6(multimodal)",
             ),
         )
         put(
@@ -648,7 +648,7 @@ object KnownModels {
             ),
         )
 
-        // ── 通义 Qwen 系列 ──
+        // ── Serie Tongyi Qwen ──
         put(
             "qwen-max",
             KnownModelInfo(
@@ -657,7 +657,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "通义千问 Max 旗舰",
+                description = "Buque insignia Tongyi Qianwen Max",
             ),
         )
         put(
@@ -668,7 +668,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "通义千问 Plus",
+                description = "Tongyi Qianwen Plus",
             ),
         )
         put(
@@ -679,7 +679,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "通义千问 Turbo",
+                description = "Tongyi Qianwen Turbo",
             ),
         )
         put(
@@ -690,7 +690,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "通义千问 3 235B",
+                description = "Tongyi Qianwen 3 235B",
             ),
         )
         put(
@@ -701,7 +701,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "通义千问 2.5 72B",
+                description = "Tongyi Qianwen 2.5 72B",
             ),
         )
         put(
@@ -712,11 +712,11 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "通义千问 2.5 Coder 代码模型",
+                description = "Modelo de código codificador Tongyi Qianwen 2.5",
             ),
         )
 
-        // ── 字节豆包 Doubao 系列 ──
+        // ── Puf Byte serie Doubao ──
         put(
             "doubao-pro",
             KnownModelInfo(
@@ -725,7 +725,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "字节豆包 Pro",
+                description = "Puf de bytes Pro",
             ),
         )
         put(
@@ -736,7 +736,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "字节豆包 Lite",
+                description = "Puf de bytes Lite",
             ),
         )
         put(
@@ -747,7 +747,7 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "字节豆包 1.6",
+                description = "Puf de bytes 1.6",
             ),
         )
         put(
@@ -758,11 +758,11 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "字节豆包 1.5 Pro",
+                description = "Puf de bytes 1.5 Pro",
             ),
         )
 
-        // ── 智谱 GLM 系列 ──
+        // ── Serie GLM ──
         put(
             "glm-4-plus",
             KnownModelInfo(
@@ -771,7 +771,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "智谱 GLM-4-Plus",
+                description = "espectro de sabiduría GLM-4-Plus",
             ),
         )
         put(
@@ -782,7 +782,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "智谱 GLM-4-Air(轻量)",
+                description = "espectro de sabiduría GLM-4-Air(ligero)",
             ),
         )
         put(
@@ -793,7 +793,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "智谱 GLM-4-Flash(免费)",
+                description = "espectro de sabiduría GLM-4-Flash(gratis)",
             ),
         )
         put(
@@ -804,11 +804,11 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "智谱 GLM-4.5",
+                description = "espectro de sabiduría GLM-4.5",
             ),
         )
 
-        // ── Mistral 系列 ──
+        // ── Mistral Serie ──
         put(
             "mistral-large",
             KnownModelInfo(
@@ -858,7 +858,7 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 0.30,
                 pricingCompletionPer1M = 0.90,
-                description = "Mistral Codestral 代码模型",
+                description = "Mistral Codestral modelo de código",
             ),
         )
         put(
@@ -871,11 +871,11 @@ object KnownModels {
                 abilities = TOOL_ONLY,
                 pricingPromptPer1M = 0.15,
                 pricingCompletionPer1M = 0.15,
-                description = "Mistral Pixtral 多模态",
+                description = "Mistral Pixtral multimodal",
             ),
         )
 
-        // ── xAI Grok 系列 ──
+        // ── xAI Grok Serie ──
         put(
             "grok-2",
             KnownModelInfo(
@@ -913,7 +913,7 @@ object KnownModels {
                 description = "xAI Grok 4",
             ),
         )
-        // v1.0.6: 新增 Grok 4.5 / 4.3 系列(主要走 xAI OAuth Responses)
+        // v1.0.6: Se agregó la serie Grok 4.5 / 4.3(Principalmente caminar xAI OAuth Responses)
         put(
             "grok-4.5",
             KnownModelInfo(
@@ -955,11 +955,11 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "xAI Grok 4.3(1M 上下文)",
+                description = "xAI Grok 4.3(1M contexto)",
             ),
         )
 
-        // ── MiniMax abab 系列 ──
+        // ── MiniMax abab Serie ──
         put(
             "abab6.5",
             KnownModelInfo(
@@ -990,12 +990,12 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = TOOL_ONLY,
-                description = "MiniMax M3 视觉模型",
+                description = "MiniMax M3 modelo visual",
             ),
         )
 
-        // ── 思必驰 Agnes 系列 ──
-        // v1.0.8: Agnes chat / image / video 模型(对齐 PresetProviders.agnes)
+        // ── VELOCIDAD Serie Agnes ──
+        // v1.0.8: Agnes chat / image / video modelo(Alineación PresetProviders.agnes)
         put(
             "agnes-2.0-flash",
             KnownModelInfo(
@@ -1004,7 +1004,7 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL),
-                description = "Agnes 2.0 Flash 多模态对话",
+                description = "Agnes 2.0 Flash diálogo multimodal",
             ),
         )
         put(
@@ -1015,10 +1015,10 @@ object KnownModels {
                 inputModalities = VISION_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL),
-                description = "Agnes 2.0 Pro 多模态对话",
+                description = "Agnes 2.0 Pro diálogo multimodal",
             ),
         )
-        // 生图模型:context=0(不适用),仅输出 image 模态
+        // modelo grafico:context=0(No aplicable),Salida solo modal de imagen
         put(
             "agnes-image-2.1-flash",
             KnownModelInfo(
@@ -1027,10 +1027,10 @@ object KnownModels {
                 inputModalities = emptySet(),
                 outputModalities = setOf(Modality.IMAGE),
                 abilities = emptySet(),
-                description = "Agnes Image 2.1 Flash 文生图模型",
+                description = "Agnes Image 2.1 Flash Modelo de diagrama de Vincent",
             ),
         )
-        // 视频模型:context=0(不适用),仅输出 video 模态
+        // modelo de vídeo:context=0(No aplicable),Solo modo de salida de video
         put(
             "agnes-video-v2.0",
             KnownModelInfo(
@@ -1039,12 +1039,12 @@ object KnownModels {
                 inputModalities = emptySet(),
                 outputModalities = setOf(Modality.VIDEO),
                 abilities = emptySet(),
-                description = "Agnes Video 2.0 文生视频模型",
+                description = "Agnes Video 2.0 Vicente vídeo modelo",
             ),
         )
 
-        // ── 近期新模型补全(2025-08 后陆续上线)──
-        // DeepSeek V4 系列(对齐 ModelContextWindowRegistry 精确匹配)
+        // ── Incorporaciones recientes de nuevos modelos(2025-08 Se lanzará más tarde)──
+        // DeepSeek V4 Serie(Alinee ModelContextWindowRegistry para que coincida exactamente)
         put(
             "deepseek-v4",
             KnownModelInfo(
@@ -1053,7 +1053,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "DeepSeek V4 旗舰(1M 上下文)",
+                description = "DeepSeek V4 buque insignia(1M contexto)",
             ),
         )
         put(
@@ -1075,10 +1075,10 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL),
-                description = "DeepSeek V4 Flash 轻量版",
+                description = "DeepSeek V4 Flash Versión ligera",
             ),
         )
-        // 通义 Qwen3-Max 旗舰
+        // El buque insignia Tongyi Qwen3-Max
         put(
             "qwen3-max",
             KnownModelInfo(
@@ -1087,7 +1087,7 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL, REASONING),
-                description = "通义千问 3 Max 旗舰",
+                description = "Tongyi Qianwen 3 Max buque insignia",
             ),
         )
         put(
@@ -1098,22 +1098,22 @@ object KnownModels {
                 inputModalities = TEXT_IN,
                 outputModalities = TEXT_OUT,
                 abilities = setOf(TOOL),
-                description = "通义千问 3 Coder Plus 代码模型",
+                description = "Modelo de código Tongyi Qianwen 3 Coder Plus",
             ),
         )
     }
 
     // ──────────────────────────────────────────────────────────────
-    // 五、Provider 特定覆盖(主要为 OpenRouter 等聚合平台标注 pricing)
+    // 5.Provider cobertura especifica(Principalmente anotado para plataformas de agregación como OpenRouter pricing)
     // ──────────────────────────────────────────────────────────────
 
     /**
-     * OpenRouter 等聚合平台的 pricing 覆盖表。
-     * key 为 (provider, modelId) 均小写;value 为 (promptPer1M, completionPer1M)。
-     * 命中时通过 [KnownModelInfo.copy] 合并到基础 [lookup] 结果上(不覆盖已知非空字段)。
+     * OpenRouter Tabla de cobertura de precios de plataformas de agregación.
+     * key para (provider, modelId) Todo en minúsculas;value para (promptPer1M, completionPer1M).
+     * Pasar el golpe [KnownModelInfo.copy] fusionarse con la base [lookup] Como resultado(No sobrescriba campos conocidos que no sean nulos).
      */
     private val providerPricing: Map<ProviderKey, Pair<Double, Double>> = mapOf(
-        // OpenRouter 上的热门模型 pricing(USD / 1M tokens),仅供参考
+        // OpenRouter Modelos populares en pricing(USD / 1M tokens),Sólo como referencia
         ProviderKey("openrouter", "gpt-4o") to (2.50 to 10.00),
         ProviderKey("openrouter", "gpt-4o-mini") to (0.15 to 0.60),
         ProviderKey("openrouter", "gpt-4-turbo") to (10.00 to 30.00),
@@ -1132,28 +1132,28 @@ object KnownModels {
     )
 
     // ──────────────────────────────────────────────────────────────
-    // 六、对外 API
+    // 6. Externo API
     // ──────────────────────────────────────────────────────────────
 
     /**
-     * 按 modelId 大小写不敏感查找。
-     * 会自动剥掉常见的 provider 前缀(如 "openrouter/gpt-4o" → "gpt-4o")。
-     * 未命中返回 null。
+     * Búsqueda que no distingue entre mayúsculas y minúsculas por modelId.
+     * Eliminará automáticamente los prefijos de proveedores comunes(Como por ejemplo "openrouter/gpt-4o" → "gpt-4o").
+     * Devuelve nulo en caso de error.
      */
     fun lookup(modelId: String): KnownModelInfo? {
         val raw = modelId.trim().lowercase()
         if (raw.isEmpty()) return null
 
-        // 1. 精确匹配
+        // 1. coincidencia exacta
         known[raw]?.let { return it }
 
-        // 2. 剥前缀后再精确匹配
+        // 2. Quite el prefijo y luego haga coincidir exactamente
         val stripped = stripPrefix(raw)
         if (stripped != raw) {
             known[stripped]?.let { return it }
         }
 
-        // 3. 边界前缀匹配(如 "gpt-4o-2024-08-06" 命中 "gpt-4o")
+        // 3. Coincidencia de prefijos de límites(Como por ejemplo "gpt-4o-2024-08-06" golpear "gpt-4o")
         known.entries.firstOrNull { (pattern, _) ->
             raw == pattern || raw.startsWith("$pattern-") || raw.startsWith("${pattern}_") ||
                 stripped == pattern || stripped.startsWith("$pattern-") || stripped.startsWith("${pattern}_")
@@ -1163,13 +1163,13 @@ object KnownModels {
     }
 
     /**
-     * 按 provider + modelId 二级查找。
+     * Búsqueda secundaria por proveedor + modelId.
      *
-     * 流程:
-     *  1. 先用 [lookup] 拿到基础元信息(含本词典自带的 pricing)
-     *  2. 再查 [providerPricing] 是否有该 provider 特定 pricing 覆盖,
-     *     有的话用 [KnownModelInfo.copy] 合并(仅填充基础结果中为 null 的 pricing 字段)
-     *  3. 基础结果为 null 时直接返回 null
+     * proceso:
+     *  1. Usar primero [lookup] Obtener metainformación básica(Incluido en este diccionario pricing)
+     *  2. comprobar de nuevo [providerPricing] ¿Existe alguna cobertura de precios específica para este proveedor?,
+     *     Usar si está disponible [KnownModelInfo.copy] fusionar(Complete solo los campos de precios que sean nulos en los resultados subyacentes)
+     *  3. Regresar directamente cuando el resultado básico es nulo null
      */
     fun lookupProvider(provider: String, modelId: String): KnownModelInfo? {
         val base = lookup(modelId) ?: return null
@@ -1179,7 +1179,7 @@ object KnownModels {
         val raw = modelId.trim().lowercase()
         val stripped = stripPrefix(raw)
 
-        // 查 provider 特定 pricing(分别尝试原始 / 剥前缀 modelId)
+        // Verifique el proveedor específico pricing(Pruebe el prefijo sin formato/eliminado por separado modelId)
         val pricing = providerPricing[ProviderKey(p, raw)]
             ?: providerPricing[ProviderKey(p, stripped)]
             ?: return base
@@ -1191,34 +1191,34 @@ object KnownModels {
     }
 
     /**
-     * 调试用:返回所有预置 modelId(小写,按字母序)。
+     * para depurar:Volver a todos los ajustes preestablecidos modelId(minúscula,orden alfabético).
      */
     fun knownModelIds(): List<String> = known.keys.sorted()
 }
 
 /**
- * v2.5.3 (P4-3): Token 用量 + 成本计算。
+ * v2.5.3 (P4-3): Token Uso + Cálculo de Costos.
  *
- * 支持按输入/缓存命中/缓存写入/输出四类分价。单价未知时保守返回 null（不猜价）。
- * 使用饱和加法防溢出。
+ * Soporte presione enter/golpe de caché/escrituras en caché/Genera cuatro tipos de puntos de precio. Cuando se desconoce el precio unitario, devuelve nulo de forma conservadora (sin adivinar el precio).
+ * Utilice adición saturada para evitar el desbordamiento.
  */
 object TokenCostCalculator {
-    /** 一次用量的分项。 */
+    /** Desglose de la dosis única. */
     data class Usage(
         val promptTokens: Long = 0,
         val cachedTokens: Long = 0,
-        /** 缓存写入 token（Anthropic cache_creation_input_tokens 等）。 */
+        /** Token de escritura de caché (Anthropic cache_creation_input_tokens etcétera). */
         val cacheWriteTokens: Long = 0,
         val completionTokens: Long = 0,
         val reasoningTokens: Long = 0,
         /**
-         * [promptTokens] 是否包含缓存部分（两家的 prompt 口径不同，必须显式声明）：
-         *  - OpenAI / Gemini 的 `prompt_tokens` 含缓存命中，默认 true → 计价时相减
-         *  - Anthropic 的 `input_tokens` 就是非缓存输入 → 置 false，计价时**不相减**
+         * [promptTokens] Ya sea para incluir la parte de caché (los calibres rápidos de las dos compañías son diferentes y deben declararse explícitamente):
+         *  - OpenAI / Gemini de `prompt_tokens` Contiene aciertos de caché, predeterminado true → Restar al fijar el precio
+         *  - Anthropic de `input_tokens` Esa es una entrada no almacenada en caché → Establecer en falso al fijar el precio**Sin resta**
          */
         val promptTokensIncludeCache: Boolean = true,
     ) {
-        /** 饱和加法：避免 Long 溢出回绕。 */
+        /** Adición de saturación: Evite la envoltura de desbordamiento largo. */
         fun plus(other: Usage): Usage =
             Usage(
                 promptTokens = satAdd(promptTokens, other.promptTokens),
@@ -1226,14 +1226,14 @@ object TokenCostCalculator {
                 cacheWriteTokens = satAdd(cacheWriteTokens, other.cacheWriteTokens),
                 completionTokens = satAdd(completionTokens, other.completionTokens),
                 reasoningTokens = satAdd(reasoningTokens, other.reasoningTokens),
-                // 累加时口径必须一致，否则相加本身没意义；取更严格的那个（不相减才不丢输入费）
+                // Los calibres deben ser consistentes al realizar la suma; de lo contrario, la suma en sí misma no tiene sentido; elija el más estricto (si no resta, no perderá la tarifa de entrada)
                 promptTokensIncludeCache = promptTokensIncludeCache && other.promptTokensIncludeCache,
             )
 
         companion object {
             fun satAdd(a: Long, b: Long): Long {
                 val sum = a + b
-                // 同号溢出检测
+                // Detección de desbordamiento del mismo número
                 return if ((a xor b) >= 0 && (sum xor a) < 0) {
                     if (a >= 0) Long.MAX_VALUE else Long.MIN_VALUE
                 } else {
@@ -1243,26 +1243,26 @@ object TokenCostCalculator {
         }
     }
 
-    /** 成本估算结果；[known] = false 表示单价未知，[usd] 仅统计已知部分。 */
+    /** Resultados de la estimación de costos;[known] = false Indica que se desconoce el precio unitario,[usd] Sólo se cuentan las partes conocidas. */
     data class Cost(
         val usd: Double,
         val known: Boolean,
     )
 
     /**
-     * 按用量 + 单价计算美元成本。
+     * Calcule el costo en dólares por uso + precio unitario.
      *
-     * 计价规则：
-     *  - 缓存命中输入按 [KnownModelInfo.pricingCachedInputPer1M]（缺失则按普通输入价）
-     *  - 缓存写入按 [KnownModelInfo.pricingCacheWritePer1M]；为 null 时本函数不计写入部分
-     *    （由 [costFor] 按 [CACHE_WRITE_INPUT_MULTIPLIER] 估算后传入，避免这里再猜厂家）
-     *  - **普通输入两种口径，按 [Usage.promptTokensIncludeCache] 分支**：
-     *      * true（OpenAI / Gemini）：非缓存输入 = promptTokens - cachedTokens - cacheWriteTokens（夹到 0）
-     *      * false（Anthropic）：promptTokens 本身就是非缓存输入，**不相减**
-     *      两家 `prompt` 的含义不同：OpenAI/Gemini 的 prompt_tokens 含缓存命中，
-     *      Anthropic 的 input_tokens 不含（缓存读/写单列）。误用相减会让缓存量大时
-     *      普通输入被夹到 0，输入费直接漏算——而高缓存命中正是常态。
-     *  - 单价为 null → [Cost.known] = false
+     * Reglas de precios:
+     *  - Presione la entrada de caché [KnownModelInfo.pricingCachedInputPer1M](Si falta, se utilizará el precio normal del insumo)
+     *  - Prensa de escritura en caché [KnownModelInfo.pricingCacheWritePer1M]; Cuando es nula, esta función no cuenta la parte de escritura.
+     *    (por [costFor] prensa [CACHE_WRITE_INPUT_MULTIPLIER] Páselo después de la estimación para evitar adivinar el fabricante aquí)
+     *  - **Normalmente introduzca dos calibres, presione [Usage.promptTokensIncludeCache] rama**:
+     *      * true(OpenAI / Gemini): entrada no almacenada en caché = promptTokens - cachedTokens - cacheWriteTokens(recortar a 0)
+     *      * false(Anthropic):promptTokens Es una entrada no almacenada en caché.**Sin resta**
+     *      dos familias `prompt` tienen diferentes significados:OpenAI/Gemini Prompt_tokens contiene aciertos de caché,
+     *      Anthropic Los input_tokens no contienen (lectura de caché/escribir una sola columna). El mal uso de la resta puede generar un tamaño de caché grande
+     *      La entrada ordinaria se fija en 0 y la tarifa de entrada se pierde directamente.——Y los altos aciertos de caché son la norma.
+     *  - El precio unitario es null → [Cost.known] = false
      */
     fun cost(usage: Usage, info: KnownModels.KnownModelInfo?): Cost {
         val inputPrice = info?.pricingPromptPer1M
@@ -1274,11 +1274,11 @@ object TokenCostCalculator {
         val billedCached: Long
         val plainInput: Long
         if (usage.promptTokensIncludeCache) {
-            // OpenAI / Gemini：缓存读/写都是 prompt 的子集，减掉后才是不打折/不打折价的普通输入
+            // OpenAI / Gemini: lectura de caché/Están escritos todos los subconjuntos de indicaciones y solo después de restarlos no se descuentan./Entrada normal sin precio de descuento.
             billedCached = usage.cachedTokens.coerceAtMost(usage.promptTokens).coerceAtLeast(0)
             plainInput = (usage.promptTokens - billedCached - billedCacheWrite).coerceAtLeast(0)
         } else {
-            // Anthropic：prompt 已是非缓存输入，缓存读/写各自独立计费，不相减也不夹 0
+            // Anthropic:prompt Ya es una entrada no almacenada en caché, lectura en caché/Cada uno se factura de forma independiente, sin resta ni inclusión. 0
             billedCached = usage.cachedTokens.coerceAtLeast(0)
             plainInput = usage.promptTokens.coerceAtLeast(0)
         }
@@ -1290,20 +1290,20 @@ object TokenCostCalculator {
         return Cost(usd = usd, known = true)
     }
 
-    /** 便捷入口：按 provider + modelId 查价后计价。 */
+    /** Entrada conveniente: presione proveedor + modelId para verificar el precio y luego calcular el precio. */
     fun costFor(provider: String, modelId: String, usage: Usage): Cost {
         val info = runCatching { KnownModels.lookupProvider(provider, modelId) }.getOrNull()
         return cost(usage, info?.let { withEstimatedCacheWritePrice(modelId, it) })
     }
 
     /**
-     * 便捷入口：[UsageTokens] 直接计价（缓存读/写分列在 [UsageTokens.cachedTokens] /
-     * [UsageTokens.cacheWriteTokens]，此处按同名分项映射到 [Usage]）。
+     * Entrada conveniente:[UsageTokens] Precios directos (lectura de caché/Escribe los puntos enumerados en [UsageTokens.cachedTokens] /
+     * [UsageTokens.cacheWriteTokens], aquí los elementos con el mismo nombre se asignan a [Usage]).
      */
     fun costFor(provider: String, modelId: String, usage: UsageTokens): Cost =
         costFor(provider, modelId, fromUsageTokens(usage))
 
-    /** [UsageTokens] → 计价分项。缓存读继续占 [Usage.cachedTokens]，缓存写单列，prompt 口径随数据走。 */
+    /** [UsageTokens] → Artículos de valoración. La lectura de caché continúa teniendo en cuenta [Usage.cachedTokens], escritura en caché de una sola columna,prompt El calibre depende de los datos. */
     fun fromUsageTokens(usage: UsageTokens): Usage =
         Usage(
             promptTokens = usage.promptTokens.toLong(),
@@ -1315,19 +1315,19 @@ object TokenCostCalculator {
         )
 
     /**
-     * 缓存写入相对基础输入价的倍数。
+     * La caché escribe como un múltiplo del precio de entrada subyacente.
      *
-     * 取自 Anthropic prompt caching 公开定价：5 分钟 TTL 的缓存写入按基础输入价的 1.25 倍计费
-     * （1 小时 TTL 为 2 倍，本估算只取 5 分钟档，属偏保守下限）。
-     * 仅用于价格表 [KnownModelInfo.pricingCacheWritePer1M] 缺失的模型；表内有值时以表为准。
+     * Tomado de precios públicos de almacenamiento en caché de avisos antrópicos:5 Las escrituras en caché con TTL por minuto se facturan a 1,25 veces el precio de entrada base
+     * (1 El TTL por hora es 2 veces. Esta estimación sólo toma 5 minutos, que es un límite inferior conservador).
+     * Sólo para lista de precios [KnownModelInfo.pricingCacheWritePer1M] Modelo faltante; cuando existan valores en la tabla, prevalecerá la tabla.
      */
     const val CACHE_WRITE_INPUT_MULTIPLIER: Double = 1.25
 
     /**
-     * 价格表未给缓存写入单价时，按 [CACHE_WRITE_INPUT_MULTIPLIER] 从输入价估算。
+     * Cuando la lista de precios no escribe el precio unitario en el caché, presione [CACHE_WRITE_INPUT_MULTIPLIER] Estimado a partir de los precios de los insumos.
      *
-     * 只对 Anthropic 模型家族（modelId 为 `claude` 开头，`anthropic/`、`openrouter/` 等前缀已剥除）
-     * 估算：OpenAI / Gemini 没有缓存写入计费项，给它们编一个写入价会虚增成本。
+     * Sólo para la familia de modelos Anthropic (modelId para `claude` al principio,`anthropic/`,`openrouter/` Espere hasta que se haya eliminado el prefijo)
+     * Estimación:OpenAI / Gemini No hay facturación de escritura en caché y asignarles un precio de escritura inflaría el costo.
      */
     internal fun withEstimatedCacheWritePrice(modelId: String, info: KnownModels.KnownModelInfo): KnownModels.KnownModelInfo {
         if (info.pricingCacheWritePer1M != null) return info

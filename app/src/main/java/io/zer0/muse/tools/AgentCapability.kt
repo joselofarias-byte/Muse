@@ -5,14 +5,14 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 
 /**
- * v1.200: Agent 能力标签常量与辅助函数。
+ * v1.200: Agent Constantes de etiquetas de habilidad y funciones auxiliares.
  *
- * 每个 Assistant 可在 AssistantDetailPages 中被标注一组能力标签,
- * 供 AgentRouter 在用户未显式指定 assistantId 时自动匹配最合适的子助手。
+ * Cada Asistente se puede marcar con un conjunto de etiquetas de capacidad en AssistantDetailPages,
+ * Permite que AgentRouter busque automáticamente el subasistente más apropiado cuando el usuario no especifica explícitamente un ID de asistente.
  */
 object AgentCapability {
 
-    // ── 通用能力 ──
+    // ── habilidad general ──
     const val CHAT = "chat"
     const val REASONING = "reasoning"
     const val WRITING = "writing"
@@ -20,7 +20,7 @@ object AgentCapability {
     const val TRANSLATION = "translation"
     const val REVIEW = "review"
 
-    // ── 专业领域 ──
+    // ── Campos profesionales ──
     const val CODE = "code"
     const val MATH = "math"
     const val RESEARCH = "research"
@@ -30,7 +30,7 @@ object AgentCapability {
     const val FINANCE = "finance"
     const val EDUCATION = "education"
 
-    // ── 工具/模态 ──
+    // ── Herramientas/modal ──
     const val IMAGE = "image"
     const val VIDEO = "video"
     const val WEB_SEARCH = "web_search"
@@ -38,44 +38,44 @@ object AgentCapability {
     const val SCHEDULE = "schedule"
     const val KNOWLEDGE = "knowledge"
 
-    /** 所有可选能力标签,按分类排序,用于 UI 展示。 */
+    /** Todas las etiquetas de capacidad opcionales,Ordenar por categoría,Se utiliza para la visualización de la interfaz de usuario. */
     val ALL_CAPABILITIES = listOf(
         CHAT, REASONING, WRITING, CREATIVE, TRANSLATION, REVIEW,
         CODE, MATH, RESEARCH, DATA, LEGAL, MEDICAL, FINANCE, EDUCATION,
         IMAGE, VIDEO, WEB_SEARCH, MEMORY, SCHEDULE, KNOWLEDGE,
     )
 
-    /** 能力标签的友好中文名。 */
+    /** El amigable nombre chino de la etiqueta de habilidad. */
     fun displayName(capability: String): String = when (capability) {
-        CHAT -> "闲聊"
-        REASONING -> "推理"
-        WRITING -> "写作"
-        CREATIVE -> "创意"
-        TRANSLATION -> "翻译"
-        REVIEW -> "审阅"
-        CODE -> "编程"
-        MATH -> "数学"
-        RESEARCH -> "调研"
-        DATA -> "数据处理"
-        LEGAL -> "法律"
-        MEDICAL -> "医疗"
-        FINANCE -> "金融"
-        EDUCATION -> "教育"
-        IMAGE -> "图片生成"
-        VIDEO -> "视频生成"
-        WEB_SEARCH -> "联网搜索"
-        MEMORY -> "记忆整理"
-        SCHEDULE -> "日程管理"
-        KNOWLEDGE -> "知识库"
+        CHAT -> "charlar"
+        REASONING -> "razonamiento"
+        WRITING -> "escribiendo"
+        CREATIVE -> "creatividad"
+        TRANSLATION -> "Traducción"
+        REVIEW -> "revisión"
+        CODE -> "Programación"
+        MATH -> "Matemáticas"
+        RESEARCH -> "Investigación"
+        DATA -> "Procesamiento de datos"
+        LEGAL -> "ley"
+        MEDICAL -> "medico"
+        FINANCE -> "Finanzas"
+        EDUCATION -> "educación"
+        IMAGE -> "Generación de imágenes"
+        VIDEO -> "generación de vídeo"
+        WEB_SEARCH -> "búsqueda en internet"
+        MEMORY -> "organización de la memoria"
+        SCHEDULE -> "Gestión de horarios"
+        KNOWLEDGE -> "base de conocimientos"
         else -> capability
     }
 
-    /** 从 AssistantEntity 解析能力标签列表。 */
+    /** Analiza una lista de etiquetas de capacidad de una AssistantEntity. */
     fun fromEntity(entity: AssistantEntity): List<String> {
         return parseCapabilitiesJson(entity.capabilitiesJson)
     }
 
-    /** 把能力标签列表序列化为 JSON 字符串。 */
+    /** Serializar una lista de etiquetas de capacidad en una cadena JSON. */
     fun toJson(capabilities: List<String>): String {
         return io.zer0.common.AppJson.encodeToString(
             ListSerializer(String.serializer()),
@@ -83,7 +83,7 @@ object AgentCapability {
         )
     }
 
-    /** 解析能力标签 JSON 字符串。 */
+    /** Analizar la cadena JSON de la etiqueta de capacidad. */
     fun parseCapabilitiesJson(json: String): List<String> {
         if (json.isBlank() || json == "[]") return emptyList()
         return runCatching {

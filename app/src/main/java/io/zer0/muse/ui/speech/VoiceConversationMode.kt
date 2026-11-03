@@ -74,43 +74,43 @@ import io.zer0.muse.ui.theme.pill
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * 语音对话模式状态机(ASR 按钮 + TTS 自动播放的循环模型)。
+ * Máquina de estado del modo de conversación de voz(ASR Botón + modelo de bucle de reproducción automática TTS).
  *
- * 状态流转:
- *  - IDLE → LISTENING:用户点击主按钮,开始 ASR 录音
- *  - LISTENING → THINKING:用户再次点击主按钮(「这句话说完了」),取出整段识别文本一次性发送
- *  - THINKING → SPEAKING:AI 流式回复完成,自动调 TtsManager 朗读
- *  - SPEAKING → LISTENING:TTS 朗读完成,自动恢复录音(连续对话)
- *  - 任意状态 → IDLE:用户点击关闭按钮,或主按钮中断
+ * Flujo de estado:
+ *  - IDLE → LISTENING:El usuario hace clic en el botón principal.,Iniciar grabación ASR
+ *  - LISTENING → THINKING:El usuario vuelve a hacer clic en el botón principal.("Esta frase se acabó"),Saca todo el texto reconocido y envíalo de una vez
+ *  - THINKING → SPEAKING:AI Respuesta de transmisión completada,Ajusta automáticamente TtsManager para leer en voz alta
+ *  - SPEAKING → LISTENING:TTS Leer en voz alta completado,Reanudar automáticamente la grabación(dialogo continuo)
+ *  - cualquier estado → IDLE:El usuario hace clic en el botón cerrar,o interrupción del botón principal
  *
- * 设计要点:
- *  - 本段输入何时结束完全由用户决定:主按钮是 toggle(非按住),ASR 自行结束不提交
- *  - TTS 播放时必须暂停 ASR(避免扬声器声音被麦克风拾入形成回声)
- *  - 退出时立即释放 ASR/TTS 资源,避免后台继续录音或朗读
- *  - THINKING / SPEAKING 下点击主按钮中断当前状态,符合"一键可控"交互
+ * Puntos de diseño:
+ *  - Depende totalmente del usuario decidir cuándo finaliza esta sección de entrada.:El botón principal es toggle(No sosteniendo),ASR Terminar solo sin someterse
+ *  - TTS Debe hacer una pausa mientras se juega ASR(Evite que el micrófono capte el sonido del altavoz y provoque eco)
+ *  - Liberar recursos ASR/TTS inmediatamente al salir,Evite grabar o leer en segundo plano
+ *  - THINKING / SPEAKING Haga clic en el botón principal para interrumpir el estado actual.,conformarse a"Control con un clic"interacción
  */
 enum class VoiceConversationState {
-    /** 空闲,等待用户点击主按钮开始对话。 */
+    /** gratis,Espere a que el usuario haga clic en el botón principal para iniciar la conversación. */
     IDLE,
 
-    /** ASR 录音中,实时显示转写文本与波形。 */
+    /** ASR Grabación,Visualización en tiempo real de texto transcrito y formas de onda. */
     LISTENING,
 
-    /** 等待 AI 回复,显示加载动画。 */
+    /** Espere la respuesta de la IA,Mostrar animación de carga. */
     THINKING,
 
-    /** TTS 朗读中,显示 AI 回复文本与播放进度。 */
+    /** TTS Leer en voz alta,Muestra el texto de respuesta de AI y el progreso de la reproducción. */
     SPEAKING,
 }
 
 /**
- * 完整语音对话模式(全屏覆盖式)。
+ * Modo de conversación de voz completa(Cobertura de pantalla completa).
  *
- * 调用方(ChatScreen)用 [AnimatedVisibility] 包裹本 Composable,在用户点击语音对话入口时显示。
- * 关闭时通过 [onClose] 回调通知调用方隐藏。
+ * llamador(ChatScreen)usar [AnimatedVisibility] libro de paquete Composable,Se muestra cuando el usuario hace clic en la entrada de la conversación de voz.
+ * pasar cuando está cerrado [onClose] La devolución de llamada notifica a la persona que llama que se esconde.
  *
- * @param onClose 用户点击关闭按钮(X)时回调,调用方应隐藏本页面并调 [ChatViewModel.stopVoiceConversation]
- * @param viewModel 聊天 ViewModel,提供状态流和控制入口
+ * @param onClose El usuario hace clic en el botón cerrar(X)devolución de llamada,La persona que llama debe ocultar esta página y llamar [ChatViewModel.stopVoiceConversation]
+ * @param viewModel charlar ViewModel,Proporcionar flujo de estado y controlar la entrada.
  */
 @Composable
 fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
@@ -121,14 +121,14 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
     val hint by viewModel.voiceConversationHint.collectAsStateWithLifecycle()
     val chatState by viewModel.state.collectAsStateWithLifecycle()
     val asrState = chatState.asrState
-    // 模式状态 + 实际录音状态:两者一起决定主按钮是音麦(开始)还是停止(结束并发送)
+    // Estado del modo + estado de grabación real:Los dos juntos determinan si el botón principal es el micrófono de audio.(empezar)o parar(finalizar y enviar)
     val isRecording = conversationState == VoiceConversationState.LISTENING && asrState.isRecording
     val playbackState by viewModel.ttsPlaybackStateFlow.collectAsStateWithLifecycle()
 
-    // 切换语音 Bottom Sheet 状态
+    // Cambiar el estado de la hoja inferior de voz
     var showVoicePicker by remember { mutableStateOf(false) }
 
-    // RECORD_AUDIO 权限申请:进入页面时若未授权则申请,授权后自动开启首轮 LISTENING
+    // RECORD_AUDIO Solicitud de permiso:Si no estás autorizado al ingresar a la página, aplica,La primera ronda comenzará automáticamente después de la autorización. LISTENING
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -140,7 +140,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
         }
     }
 
-    // 进入页面时检查权限:已授权直接开始,未授权申请权限
+    // Verificar permisos al ingresar a la página:Autorizado para empezar directamente,Permiso de aplicación no autorizada
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.RECORD_AUDIO,
@@ -152,13 +152,13 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
         }
     }
 
-    // 用户点击关闭:先停 ViewModel 再回调
+    // El usuario hace clic para cerrar:Detenga ViewModel primero y luego vuelva a llamar
     val handleClose: () -> Unit = {
         viewModel.stopVoiceConversation()
         onClose()
     }
 
-    // 用户点击主按钮:toggle(非按住)— LISTENING 时录音中→结束并提交,否则开始录音;其他状态→中断
+    // El usuario hace clic en el botón principal.:toggle(No sosteniendo)— LISTENING grabación→Finalizar y enviar,De lo contrario, comience a grabar;Otro estado→interrumpir
     val handleMainButtonClick: () -> Unit = { viewModel.toggleVoiceConversation() }
 
     Box(
@@ -174,7 +174,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // ── 顶部:关闭按钮 ───────────────────────────────────────────
+            // ── arriba:botón cerrar ───────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,7 +191,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
                 )
             }
 
-            // ── 中部:主按钮 + 状态文本 ─────────────────────────────────
+            // ── céntrico:Botón principal + texto de estado ─────────────────────────────────
             VoiceConversationMainButton(
                 state = conversationState,
                 isRecording = isRecording,
@@ -199,7 +199,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
                 modifier = Modifier.padding(vertical = MusePaddings.sectionGap),
             )
 
-            // ── 中下:状态提示文本 + 实时转写/AI 回复 ───────────────────
+            // ── medio a bajo:Texto de aviso de estado + transcripción en tiempo real/AI Responder ───────────────────
             VoiceConversationStatusPanel(
                 state = conversationState,
                 transcript = transcript,
@@ -213,7 +213,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
                     .padding(horizontal = MusePaddings.screen),
             )
 
-            // ── 底部:切换语音按钮 ─────────────────────────────────────
+            // ── abajo:Alternar botón de voz ─────────────────────────────────────
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                 shape = MuseShapes.pill,
@@ -246,7 +246,7 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
         }
     }
 
-    // 切换语音 Bottom Sheet
+    // Cambiar voz Bottom Sheet
     if (showVoicePicker) {
         MuseSelectionSheet(
             title = stringResource(R.string.voice_conversation_pick_voice_title),
@@ -265,13 +265,13 @@ fun VoiceConversationMode(onClose: () -> Unit, viewModel: ChatViewModel) {
 }
 
 /**
- * 语音对话主按钮(大圆形,根据模式状态 + 实际录音状态切换图标与动画)。
+ * Botón principal de conversación de voz(ronda grande,Cambie de íconos y animaciones según el estado del modo + el estado de grabación real).
  *
- * - IDLE:麦克风图标,静态
- * - LISTENING 且录音中:停止图标 + 脉冲动画(再点一下 = 结束并发送)
- * - LISTENING 但未录音:麦克风图标(点一下 = 开始录音)
- * - THINKING:圆形进度条
- * - SPEAKING:传声器图标 + 波形动画
+ * - IDLE:Icono de micrófono,estático
+ * - LISTENING Y grabando:Icono de parada + animación de pulso(Haga clic de nuevo = finalizar y enviar)
+ * - LISTENING pero no grabado:Icono de micrófono(Haga clic = Empezar a grabar)
+ * - THINKING:barra de progreso circular
+ * - SPEAKING:Ícono de micrófono + animación de onda
  */
 @Composable
 private fun VoiceConversationMainButton(
@@ -284,7 +284,7 @@ private fun VoiceConversationMainButton(
     val onPrimary = MaterialTheme.colorScheme.onPrimary
     val error = MaterialTheme.colorScheme.error
 
-    // 脉冲动画(LISTENING 且录音中时主按钮放大缩小,模拟呼吸感);reduced-motion 下静态展示。
+    // animación de pulso(LISTENING Y cuando la grabación está en curso, el botón principal acerca y aleja el zoom.,Simular la sensación de respirar.);reduced-motion Siguiente visualización estática.
     val pulseScale = if (state == VoiceConversationState.LISTENING && isRecording && !MuseMotion.isReducedMotion()) {
         val transition = rememberInfiniteTransition(label = "voiceMainPulse")
         val animatedScale by transition.animateFloat(
@@ -301,7 +301,7 @@ private fun VoiceConversationMainButton(
         1f
     }
 
-    // v1.0.92: 按压反馈 — 与弹窗按钮一致的 0.97 缩放手感
+    // v1.0.92: Comentarios de prensa — El zoom de 0,97 se siente consistente con los botones emergentes
     val mainButtonInteraction = remember { MutableInteractionSource() }
     val isMainPressed by mainButtonInteraction.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -310,7 +310,7 @@ private fun VoiceConversationMainButton(
         label = "voiceMainPress",
     )
 
-    // 主按钮背景色:LISTENING 且录音中用 error(红,录音中提示),其他用 primary
+    // Color de fondo del botón principal:LISTENING Y utilizado en la grabación. error(rojo,Aviso durante la grabación),Otros usos primary
     val buttonColor = when {
         state == VoiceConversationState.LISTENING && isRecording -> error
         else -> primary
@@ -373,7 +373,7 @@ private fun VoiceConversationMainButton(
 }
 
 /**
- * 状态面板:IDLE 显示提示、LISTENING 显示转写、THINKING 显示加载、SPEAKING 显示 AI 回复与进度。
+ * panel de estado:IDLE Mostrar indicaciones,LISTENING Mostrar transcrito,THINKING Mostrar carga,SPEAKING Muestra las respuestas y el progreso de la IA.
  */
 @Composable
 private fun VoiceConversationStatusPanel(
@@ -434,7 +434,7 @@ private fun VoiceConversationStatusPanel(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(MusePaddings.contentGap))
-                    // 波形动画(归一化振幅 → 竖条高度)
+                    // Animación de olas(amplitud normalizada → altura de la barra vertical)
                     if (amplitudes.isNotEmpty()) {
                         ListeningWaveform(amplitudes = amplitudes)
                         Spacer(Modifier.height(MusePaddings.contentGap))
@@ -499,7 +499,7 @@ private fun VoiceConversationStatusPanel(
                             )
                         }
                     }
-                    // 播放进度(分片进度 + 片内时间)
+                    // Progreso de la reproducción(Progreso de fragmentación + tiempo dentro del segmento)
                     if (playback.totalChunks > 0) {
                         Spacer(Modifier.height(MusePaddings.contentGap))
                         val progress = if (playback.durationMs > 0) {
@@ -525,10 +525,10 @@ private fun VoiceConversationStatusPanel(
 }
 
 /**
- * LISTENING 状态下的波形动画(把最近振幅历史渲染成竖条)。
+ * LISTENING Animación de forma de onda en estado(Representar el historial de amplitud reciente como barras verticales).
  *
- * 振幅已是 0-1f 归一化值(由 ASR 上报),直接映射为竖条高度。
- * 用主色调半透明渲染,与录音中主按钮的红色形成视觉呼应。
+ * La amplitud ya es un valor normalizado de 0-1f.(Reportado por ASR),Asignado directamente a la altura de la barra vertical.
+ * Renderizado con translucidez de color primario,Forma un eco visual con el color rojo del botón principal de la grabación.
  */
 @Composable
 private fun ListeningWaveform(amplitudes: List<Float>) {
@@ -539,7 +539,7 @@ private fun ListeningWaveform(amplitudes: List<Float>) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         amplitudes.forEach { amp ->
-            // 崩溃防御: coerceIn 挡不住 NaN,改用 safeFraction(见 FractionSafety.kt)
+            // defensa contra el colapso: coerceIn Imparable NaN,Usar en su lugar safeFraction(ver FractionSafety.kt)
             val fraction = amp.safeFraction(min = 0.05f, fallback = 0.05f)
             val animatedHeight by animateFloatAsState(
                 targetValue = fraction,
@@ -558,7 +558,7 @@ private fun ListeningWaveform(amplitudes: List<Float>) {
 }
 
 /**
- * 切换语音 Bottom Sheet 内容:列出系统 TTS 可用声音,点击即切换。
+ * Cambiar el contenido de la hoja inferior de voz:Listar los sonidos disponibles TTS del sistema,Haga clic para cambiar.
  */
 @Composable
 private fun VoicePickerContent(voices: List<android.speech.tts.Voice>, currentVoiceName: String, onSelect: (String) -> Unit) {
@@ -621,7 +621,7 @@ private fun VoicePickerContent(voices: List<android.speech.tts.Voice>, currentVo
     }
 }
 
-/** 主按钮无障碍标签（随录音状态变：录音中 = 结束并发送，未录音 = 开始录音）。 */
+/** Etiqueta de accesibilidad del botón principal (cambia con el estado de grabación: Grabación = Finalizar y enviar, sin grabación = iniciar la grabación). */
 @Composable
 private fun stateAccessibilityLabel(state: VoiceConversationState, isRecording: Boolean): String = when (state) {
     VoiceConversationState.IDLE -> stringResource(R.string.voice_conversation_cd_idle)
@@ -634,7 +634,7 @@ private fun stateAccessibilityLabel(state: VoiceConversationState, isRecording: 
     VoiceConversationState.SPEAKING -> stringResource(R.string.voice_conversation_cd_speaking)
 }
 
-/** 主按钮下方状态文本。 */
+/** Texto de estado debajo del botón principal. */
 @Composable
 private fun stateStatusLabel(state: VoiceConversationState, isRecording: Boolean): String = when (state) {
     VoiceConversationState.IDLE -> stringResource(R.string.voice_conversation_state_idle)

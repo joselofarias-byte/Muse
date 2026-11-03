@@ -4,19 +4,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-RAG-F1: 内置文档索引的待处理判定必须比对 embedding 模型指纹。
+ * AUD-RAG-F1: Las decisiones pendientes para los índices de documentos integrados deben compararse con la huella digital del modelo de incrustación.
  *
- * 此前 ensureIndexed 只看 chunkCount/contentHash:换 embedding 模型(尤其
- * 维度相同的模型)后,文档已索引就不会重建,新旧向量混存 → 检索质量静默劣化。
+ * Anteriormente, sureIndexed solo analizaba chunkCount/contentHash: cambiar el modelo de incrustación(especialmente
+ * Modelos con las mismas dimensiones.)después,El documento no se reconstruirá si ya está indexado.,Mezclando vectores antiguos y nuevos → La calidad de la recuperación se degrada silenciosamente.
  */
 class BuiltInKnowledgeDocSeederIndexingTest {
 
     private fun source(): String = java.io.File("src/main/java/io/zer0/muse/data/knowledge/BuiltInKnowledgeDocSeeder.kt").readText()
 
-    /** 安全截取:从锚点取一段(不越界)。 */
+    /** Interceptación segura:Tome un segmento desde el punto de anclaje.(No cruces la línea). */
     private fun body(src: String, anchor: String): String {
         val start = src.indexOf(anchor)
-        assertTrue("未找到 $anchor", start >= 0)
+        assertTrue("no encontrado $anchor", start >= 0)
         val end = (start + 900).coerceAtMost(src.length)
         return src.substring(start, end)
     }
@@ -26,7 +26,7 @@ class BuiltInKnowledgeDocSeederIndexingTest {
         val src = source()
         val body = body(src, "private fun needsIndexing(")
         assertTrue(
-            "待索引判定必须比对 embeddingModel 与 RagConfig.embeddingModelKey(config)",
+            "El índice a determinar debe compararse con embeddingModel y RagConfig.embeddingModelKey(config)",
             body.contains("doc.embeddingModel == RagConfig.embeddingModelKey(config)") &&
                 body.contains("!fingerprintMatches"),
         )
@@ -44,12 +44,12 @@ class BuiltInKnowledgeDocSeederIndexingTest {
     @Test
     fun `reindex writes current embedding model key`() {
         val src = source()
-        // 锚定索引成功后的回写(seed 段另有一处 upsert,不能按首个匹配定位)
+        // Reescritura después de un índice de anclaje exitoso(seed Hay otro lugar en el párrafo. upsert,No se puede apuntar con el primer golpe)
         val start = src.indexOf("chunkCount = chunks,")
-        assertTrue("未找到索引回写", start >= 0)
+        assertTrue("Reescritura de índice no encontrada", start >= 0)
         val body = src.substring(start, start + 300)
         assertTrue(
-            "回写必须刷新 embeddingModel 指纹",
+            "La reescritura debe actualizar la huella digital del modelo incrustado",
             body.contains("embeddingModel = RagConfig.embeddingModelKey(config)"),
         )
     }

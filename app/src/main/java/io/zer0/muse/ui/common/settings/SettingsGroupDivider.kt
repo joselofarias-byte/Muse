@@ -8,14 +8,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * 分组内分隔线 — 用在 [SettingsGroup] 的两个 item 之间。
+ * Línea separadora dentro del grupo — utilizado en [SettingsGroup] entre dos elementos.
  *
- * 留 16dp 左缩进(对齐系统分组分隔线不到边缘的视觉)。
+ * Deje sangría izquierda de 16 dp(Los divisores de agrupación del sistema de alineación no llegan al borde visual).
  */
 @Composable
 fun SettingsGroupDivider() {
     HorizontalDivider(
-        // CMP-10: 缩进统一 56dp(与 MuseDivider 默认一致;此前 54dp 漂移)
+        // CMP-10: Sangría uniforme 56dp(Consistente con MuseDivider por defecto;Anteriormente, deriva de 54 dp)
         modifier = Modifier.padding(start = 56.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.08f),
         thickness = 0.6.dp,

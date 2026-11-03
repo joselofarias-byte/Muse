@@ -19,47 +19,47 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 
 /**
- * 本机作者密钥：由用户设备自己持有的一对 P-256 密钥，用于给助手起草的插件签名。
+ * Clave de autor nativa: un par de claves P-256 que se encuentran en el dispositivo del usuario y que se utilizan para firmar complementos redactados por el Asistente.
  *
- * 安全边界：
- *  - 私钥只保存在 [Context.noBackupFilesDir]（不进入 Android 备份、不写入插件包、
- *    不写入项目目录），以 PKCS#8 的标准 Base64 落盘，公钥以 X.509 SubjectPublicKeyInfo
- *    的标准 Base64 一并保存；私钥内容不对外暴露。
- *  - 签名只覆盖 [PluginSecurityGate.signaturePayload] 定义的内容，签名算法与会话
- *    校验算法一致（`SHA256withECDSA`，DER 编码）。
- *  - 密钥只在首次使用时生成一次，同一设备上 [publisherId]/公钥/指纹保持稳定；
- *    读取或生成失败返回可读失败，不抛异常到上层，也绝不静默换一把新密钥
- *    （换钥会让既有信任根与已签名插件全部失配）。
- *  - 本类只提供密钥；「是否需要用户确认」由 PluginManager 的签名启用路径负责，
- *    本类不会自行触发任何信任根写入。
+ * Límite de seguridad:
+ *  - Las claves privadas sólo se guardan en [Context.noBackupFilesDir](No ingrese la copia de seguridad de Android, no escriba el paquete de complemento,
+ *    (No escriba en el directorio del proyecto), utilice el estándar PKCS#8 Base64 para guardar la clave pública en X.509 SubjectPublicKeyInfo
+ *    El Base64 estándar se guarda junto; el contenido de la clave privada no está expuesto al mundo exterior.
+ *  - Sólo firma cubre [PluginSecurityGate.signaturePayload] Definición de contenido, algoritmo de firma y sesión.
+ *    El algoritmo de verificación es consistente (`SHA256withECDSA`,DER codificación).
+ *  - La clave solo se genera una vez, en el primer uso, en el mismo dispositivo [publisherId]/clave pública/Las huellas dactilares permanecen estables;
+ *    Si falla la lectura o la generación, se devolverá un error legible, no se lanzará ninguna excepción a la capa superior y no se cambiará ninguna clave nueva de forma silenciosa.
+ *    (Cambiar la clave no coincidirá por completo con la raíz de confianza existente y los complementos firmados).
+ *  - Esta clase sólo proporciona claves; "Si se requiere confirmación del usuario" es responsable de la ruta de habilitación de firma de PluginManager.
+ *    Esta clase no activa ninguna raíz de escritura de confianza por sí sola.
  */
 class LocalAuthorKeyStore internal constructor(
     private val storageFile: File,
 ) {
 
-    /** Android 运行时使用的私有、不进入备份的作者密钥存储。 */
+    /** Android Un almacén de claves de autor privado y sin respaldo que se utiliza en tiempo de ejecución. */
     constructor(context: Context) : this(
         File(context.applicationContext.noBackupFilesDir, KEY_FILE_NAME),
     )
 
-    /** 本机作者固定发行者 id；与外部市场发行者处于同一个信任根命名空间。 */
+    /** ID de emisor fijo del autor nativo; en la misma raíz del espacio de nombres de confianza que el emisor del mercado externo. */
     val publisherId: String get() = PUBLISHER_ID
 
     /**
-     * 本机作者公钥（X.509 SPKI 标准 Base64 单行）。
+     * Clave pública del autor nativo (X.509 SPKI Línea única estándar Base64).
      *
-     * 首次调用会生成并持久化密钥对；之后始终复用同一把。
+     * La primera llamada genera y persiste un par de claves; a partir de entonces siempre se reutiliza el mismo.
      */
     fun publicKeyBase64(): Result<String> = material().map { it.publicKeyBase64 }
 
-    /** 本机作者公钥的 SHA-256 指纹（小写 hex），用于与插件注册表记录比对。 */
+    /** La huella digital SHA-256 (hexadecimal en minúscula) de la clave pública del autor nativo, utilizada para comparar con el registro de registro del complemento. */
     fun fingerprint(): Result<String> = material().map { it.fingerprint }
 
     /**
-     * 用本机作者私钥签名 [payload]。
+     * Firmar con clave privada de autor nativo [payload].
      *
-     * 返回 `SHA256withECDSA` 的 DER 签名；调用方负责按 [PluginSecurityGate.signaturePayload]
-     * 组装 payload 并把签名包进 manifest。
+     * Regresar `SHA256withECDSA` firma DER; la persona que llama es responsable de firmar [PluginSecurityGate.signaturePayload]
+     * Ensamble la carga útil y ajuste la firma en el manifiesto.
      */
     fun sign(payload: ByteArray): Result<ByteArray> {
         val material = material().getOrElse { error -> return Result.failure(error) }
@@ -69,17 +69,17 @@ class LocalAuthorKeyStore internal constructor(
             signer.update(payload)
             Result.success(signer.sign())
         } catch (error: Exception) {
-            Logger.e(TAG, "本机作者密钥签名失败", error)
-            Result.failure(IllegalStateException("本机作者密钥签名失败: ${error.message}", error))
+            Logger.e(TAG, "Error al firmar la clave del autor nativo", error)
+            Result.failure(IllegalStateException("Error al firmar la clave del autor nativo: ${error.message}", error))
         }
     }
 
     @Serializable
     private data class StoredAuthorKey(
         val publisherId: String,
-        /** PKCS#8 编码的标准 Base64（单行）。 */
+        /** PKCS#8 Codificación estándar Base64 (una sola línea). */
         val privateKeyPkcs8: String,
-        /** X.509 SubjectPublicKeyInfo 编码的标准 Base64（单行）。 */
+        /** X.509 SubjectPublicKeyInfo Codificación estándar Base64 (una sola línea). */
         val publicKeyX509: String,
     )
 
@@ -103,9 +103,9 @@ class LocalAuthorKeyStore internal constructor(
             try {
                 persist(generated)
             } catch (error: Exception) {
-                Logger.e(TAG, "本机作者密钥写入失败", error)
+                Logger.e(TAG, "Error al escribir la clave del autor nativo", error)
                 return Result.failure(
-                    IllegalStateException("无法保存本机作者密钥: ${error.message ?: "写入失败"}", error),
+                    IllegalStateException("No se puede guardar la clave de autor nativa: ${error.message ?: "Error de escritura"}", error),
                 )
             }
             generated
@@ -116,19 +116,19 @@ class LocalAuthorKeyStore internal constructor(
 
     private fun readMaterial(): Result<AuthorKeyMaterial> = try {
         val stored = AppJson.decodeFromString<StoredAuthorKey>(storageFile.readText())
-        require(stored.publisherId == PUBLISHER_ID) { "作者密钥发行者不匹配" }
-        val privateKeyBytes = decodeBase64(stored.privateKeyPkcs8, "私钥")
-        val publicKeyBytes = decodeBase64(stored.publicKeyX509, "公钥")
+        require(stored.publisherId == PUBLISHER_ID) { "La clave del autor y el emisor no coinciden" }
+        val privateKeyBytes = decodeBase64(stored.privateKeyPkcs8, "clave privada")
+        val publicKeyBytes = decodeBase64(stored.publicKeyX509, "clave pública")
         val privateKey = KeyFactory.getInstance(PluginSecurityGate.KEY_ALGORITHM)
             .generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
-        require(privateKey is ECPrivateKey) { "本机作者私钥不是 EC 私钥" }
+        require(privateKey is ECPrivateKey) { "La clave privada del autor nativo no es una clave privada EC" }
         val publicKey = KeyFactory.getInstance(PluginSecurityGate.KEY_ALGORITHM)
             .generatePublic(X509EncodedKeySpec(publicKeyBytes))
-        require(publicKey is ECPublicKey) { "本机作者公钥不是 EC 公钥" }
-        require(privateKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "本机作者私钥不是 P-256" }
-        require(publicKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "本机作者公钥不是 P-256" }
-        // 校验落盘的一对密钥确实互相匹配：文件损坏/被换过时 fail-closed，
-        // 而不是拿一把无法通过信任根校验的密钥去签名。
+        require(publicKey is ECPublicKey) { "La clave pública del autor nativo no es la clave pública EC" }
+        require(privateKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "La clave privada del autor nativo no es P-256" }
+        require(publicKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "La clave pública del autor nativo no es P-256" }
+        // Verifique que el par de claves colocadas en el disco coincidan entre sí: corrupción de archivos/falla cerrada cuando se reemplaza,
+        // En lugar de firmar con una clave que no puede pasar la raíz de la verificación de confianza.
         val probe = ByteArray(32) { index -> index.toByte() }
         val signature = Signature.getInstance(PluginSecurityGate.SIGNATURE_ALGORITHM).run {
             initSign(privateKey)
@@ -140,7 +140,7 @@ class LocalAuthorKeyStore internal constructor(
             update(probe)
             verify(signature)
         }
-        require(matches) { "本机作者公钥与私钥不匹配" }
+        require(matches) { "La clave pública del autor nativo no coincide con la clave privada" }
         Result.success(
             AuthorKeyMaterial(
                 privateKey = privateKey,
@@ -149,9 +149,9 @@ class LocalAuthorKeyStore internal constructor(
             ),
         )
     } catch (error: Exception) {
-        Logger.w(TAG, "本机作者密钥读取失败", error)
+        Logger.w(TAG, "Error al leer la clave del autor nativo", error)
         Result.failure(
-            IllegalStateException("本机作者密钥不可用: ${error.message ?: "文件损坏"}", error),
+            IllegalStateException("La clave de autor nativa no está disponible: ${error.message ?: "Archivo corrupto"}", error),
         )
     }
 
@@ -162,9 +162,9 @@ class LocalAuthorKeyStore internal constructor(
                 generateKeyPair()
             }
         } catch (error: Exception) {
-            Logger.e(TAG, "本机作者密钥生成失败", error)
+            Logger.e(TAG, "Falló la generación de clave de autor nativo", error)
             return Result.failure(
-                IllegalStateException("无法生成本机作者密钥: ${error.message ?: "系统不支持 P-256"}", error),
+                IllegalStateException("No se puede generar la clave de autor nativa: ${error.message ?: "El sistema no soporta P-256"}", error),
             )
         }
         return materialOf(pair)
@@ -173,8 +173,8 @@ class LocalAuthorKeyStore internal constructor(
     private fun materialOf(pair: KeyPair): Result<AuthorKeyMaterial> = try {
         val privateKey = pair.private as ECPrivateKey
         val publicKey = pair.public as ECPublicKey
-        require(privateKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "私钥不是 P-256" }
-        require(publicKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "公钥不是 P-256" }
+        require(privateKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "La clave privada no es P-256" }
+        require(publicKey.params.curve.field.fieldSize == P256_FIELD_SIZE) { "La clave pública no es P-256" }
         Result.success(
             AuthorKeyMaterial(
                 privateKey = privateKey,
@@ -183,7 +183,7 @@ class LocalAuthorKeyStore internal constructor(
             ),
         )
     } catch (error: Exception) {
-        Result.failure(IllegalStateException("本机作者密钥格式不受支持: ${error.message}", error))
+        Result.failure(IllegalStateException("El formato de clave de autor nativo no es compatible: ${error.message}", error))
     }
 
     private fun persist(material: AuthorKeyMaterial) {
@@ -196,28 +196,28 @@ class LocalAuthorKeyStore internal constructor(
             storageFile,
             AppJson.encodeToString(StoredAuthorKey.serializer(), stored),
         )
-        // 私钥文件权限尽力收紧：仅属主可读写，不能执行；部分文件系统不支持时忽略。
+        // Los permisos del archivo de clave privada son lo más estrictos posible: sólo el propietario puede leer y escribir, pero no puede ejecutar; se ignora si algunos sistemas de archivos no lo admiten.
         runCatching {
             storageFile.setReadable(true, true)
             storageFile.setWritable(true, true)
             storageFile.setExecutable(false, false)
         }.onFailure { error ->
-            Logger.w(TAG, "本机作者密钥文件权限收紧失败(不影响功能)", error)
+            Logger.w(TAG, "Error al ajustar los permisos del archivo clave del autor nativo(No afecta la funcionalidad)", error)
         }
     }
 
     private fun decodeBase64(encoded: String, label: String): ByteArray {
-        require(encoded.isNotBlank()) { "$label 为空" }
-        require(encoded.length <= MAX_KEY_BASE64_CHARS) { "$label 过大" }
+        require(encoded.isNotBlank()) { "$label esta vacio" }
+        require(encoded.length <= MAX_KEY_BASE64_CHARS) { "$label demasiado grande" }
         val bytes = Base64.getDecoder().decode(encoded)
-        require(Base64.getEncoder().encodeToString(bytes) == encoded) { "$label 不是标准 Base64" }
+        require(Base64.getEncoder().encodeToString(bytes) == encoded) { "$label no estándar Base64" }
         return bytes
     }
 
     companion object {
         private const val TAG = "LocalAuthorKeyStore"
 
-        /** 本机作者发行者 id：与外部发行者同一命名规则，且固定不可配置。 */
+        /** ID del editor del autor local: la misma regla de nomenclatura que el editor externo, y es fija y no configurable. */
         const val PUBLISHER_ID = "local-author"
 
         private const val KEY_FILE_NAME = "muse_local_author_key.json"

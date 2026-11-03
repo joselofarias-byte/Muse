@@ -4,10 +4,10 @@ import io.zer0.muse.data.session.ConversationTurnEntity
 import io.zer0.muse.data.session.SessionRepository
 
 /**
- * 对话重构适配层。
+ * Capa de adaptación de la reconstrucción del diálogo.
  *
- * 当前只负责 shadow 事件和回合状态，旧 ChatViewModel 仍然是发送主入口；
- * 后续灰度打开后可逐步把提交与 projection 接入此服务。
+ * Actualmente solo es responsable de los eventos de sombra y el estado de la ronda, y el antiguo ChatViewModel sigue siendo el principal punto de entrada para el envío;
+ * Después de abrir la escala de grises posterior, el envío y la proyección se pueden conectar gradualmente a este servicio.
  */
 class ConversationService(
     private val sessionRepository: SessionRepository,

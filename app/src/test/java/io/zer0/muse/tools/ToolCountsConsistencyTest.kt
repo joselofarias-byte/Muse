@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 三档工具计数与真实消费面的一致性。
+ * La coherencia de la herramienta de tres niveles cuenta con el nivel de consumo real.
  *
- * 第一档必须等于 ChatStreamCoordinator 下发的 schema 工具数，第二档必须等于 find_tools
- * 空查询的条数，第三档等于本地注册总数。另外用「改动前的过滤实现」作为准绳逐条比对，
- * 保证这次收敛只统一了口径，没有改动过滤结果。
+ * El primer nivel debe ser igual a la cantidad de herramientas de esquema emitidas por ChatStreamCoordinator, y el segundo nivel debe ser igual a find_tools
+ * El número de consultas vacías del tercer nivel es igual al número total de registros locales. Además, utilice "implementación de filtrado antes de los cambios" como criterio para comparar uno por uno.
+ * Se asegura que esta convergencia sólo unificó el calibre y no cambió los resultados del filtrado.
  */
 class ToolCountsConsistencyTest {
 
@@ -32,7 +32,7 @@ class ToolCountsConsistencyTest {
 
     private fun skill(id: String) = SkillEntity(id = id, name = id, description = "$id desc")
 
-    /** 本地注册表（含 find_tools 与两个 MCP 服务的工具）。 */
+    /** Registro local (contiene find_tools y herramientas para ambos servicios MCP). */
     private val registered = listOf(
         localTool("find_tools"),
         localTool("browser_click", "phone"),
@@ -42,7 +42,7 @@ class ToolCountsConsistencyTest {
         localTool("mcp_sv2__read", "mcp"),
     )
 
-    /** 各助手启用的技能：含一个与本地工具同名的、一个 channel_ 前缀的。 */
+    /** Skills habilitadas por cada asistente: una con el mismo nombre que la herramienta local y un prefijo canal_. */
     private val skills = listOf(
         skill("generate_image"),
         skill("channel_broadcast"),
@@ -51,10 +51,10 @@ class ToolCountsConsistencyTest {
         skill("my_skill"),
     )
 
-    /** 本会话登记的 find_tools 可检索技能目录（含 find_tools 自身以外的条目）。 */
+    /** Los find_tools registrados en esta sesión pueden buscar en el directorio de habilidades (incluidas entradas distintas a find_tools). */
     private val sessionSkillDefs = listOf(localTool("my_skill", "skill"), localTool("other_skill", "skill"))
 
-    // ── 改动前的过滤实现（准绳，不参与生产代码） ─────────────────────
+    // ── Implementación de filtrado antes de cambios (por regla general, no involucrado en el código de producción) ─────────────────────
 
     private fun legacyLocalDefs(
         configuredToolIds: Set<String>,
@@ -78,7 +78,7 @@ class ToolCountsConsistencyTest {
             .filter { configuredSkillIds.isEmpty() || it.id in configuredSkillIds }
     }
 
-    /** 场景矩阵：覆盖空/非空白名单、MCP 绑定、ALWAYS_DENY。 */
+    /** matriz de escena: superposición vacía/lista no vacía,MCP vinculante,ALWAYS_DENY. */
     private val scenarios = listOf(
         ToolSchemaRules.Criteria(),
         ToolSchemaRules.Criteria(configuredToolIds = setOf("browser_click", "workspace_write")),
@@ -98,12 +98,12 @@ class ToolCountsConsistencyTest {
             val expectedLocal =
                 legacyLocalDefs(criteria.configuredToolIds, criteria.mcpServerIds, criteria.deniedToolNames)
             val actualLocal = ToolSchemaRules.selectLocalTools(registered.map { aiDef(it.name) }, criteria)
-            assertEquals("本地工具顺序与内容必须逐一相同", expectedLocal, actualLocal)
+            assertEquals("El orden y el contenido de las herramientas locales deben ser los mismos uno por uno.", expectedLocal, actualLocal)
 
             val expectedSkills = legacySkills(criteria.configuredSkillIds)
             val actualSkills =
                 ToolSchemaRules.selectSkills(skills, registered.map { it.name }.toSet(), criteria)
-            assertEquals("技能顺序与内容必须逐一相同", expectedSkills.map { it.id }, actualSkills.map { it.id })
+            assertEquals("El orden y el contenido de las habilidades deben ser los mismos uno por uno.", expectedSkills.map { it.id }, actualSkills.map { it.id })
         }
     }
 
@@ -120,14 +120,14 @@ class ToolCountsConsistencyTest {
                     criteria = criteria,
                 ),
             )
-            // ChatStreamCoordinator 的下发路径：选出的本地工具 + 技能经 RouteTable 去重后的 definitions
+            // ChatStreamCoordinator Ruta de entrega: herramientas locales seleccionadas + habilidades después de la deduplicación a través de RouteTable definitions
             val outgoing =
                 RouteTable.snapshot(
                     legacyLocalDefs(criteria.configuredToolIds, criteria.mcpServerIds, criteria.deniedToolNames),
                     legacySkills(criteria.configuredSkillIds),
                 ).definitions
-            assertEquals("第一档必须等于实际下发的 schema 工具数", outgoing.size, counts.callableInSchema)
-            assertEquals("第三档为本地注册总数", registered.size, counts.registeredTotal)
+            assertEquals("El primer nivel debe ser igual al número real de herramientas de esquema distribuido.", outgoing.size, counts.callableInSchema)
+            assertEquals("El tercer nivel es el número total de registros locales.", registered.size, counts.registeredTotal)
         }
     }
 
@@ -144,16 +144,16 @@ class ToolCountsConsistencyTest {
                 criteria = ToolSchemaRules.Criteria(),
             ),
         )
-        // find_tools 空查询的渲染路径：检索目录经同名规则收窄后交给 fullList
+        // find_tools Ruta de representación de la consulta vacía: el directorio de búsqueda se reduce mediante la regla del mismo nombre y se entrega a fullList
         val searchable =
             ToolSchemaRules.visibleSubset(registered + sessionSkillDefs, visibleNames)
         val header = FindToolsTool.fullList(searchable)
         assertTrue(
-            "第二档必须等于 find_tools 空查询的条数：$header",
+            "El segundo nivel debe ser igual al número de consultas vacías de find_tools:$header",
             header.contains("${counts.sessionVisible} tools total"),
         )
-        assertTrue("find_tools 自身不计入", counts.sessionVisible == visibleNames.size - 1)
-        assertTrue("会话可见档不含未登记技能", counts.sessionVisible < counts.registeredTotal + sessionSkillDefs.size)
+        assertTrue("find_tools No se cuenta", counts.sessionVisible == visibleNames.size - 1)
+        assertTrue("Los archivos visibles de la sesión no contienen habilidades no registradas", counts.sessionVisible < counts.registeredTotal + sessionSkillDefs.size)
     }
 
     @Test
@@ -168,9 +168,9 @@ class ToolCountsConsistencyTest {
                 criteria = ToolSchemaRules.Criteria(deniedToolNames = setOf("browser_click")),
             ),
         )
-        // 空 MCP 绑定会剔掉两个 mcp_ 工具，禁用再剔一个，技能只进不与本地工具同名的两个
+        // El enlace MCP vacío eliminará dos herramientas mcp_, deshabilitará y eliminará una, y las habilidades solo ingresarán las dos que no tengan el mismo nombre que la herramienta local.
         assertEquals(3 + 2, counts.callableInSchema)
-        assertEquals("未登记可见集时不做收窄（扣掉 find_tools 自身）", 7, counts.sessionVisible)
+        assertEquals("No se realiza ninguna reducción cuando el conjunto visible no está registrado (se deduce el propio find_tools)", 7, counts.sessionVisible)
         assertEquals(6, counts.registeredTotal)
     }
 

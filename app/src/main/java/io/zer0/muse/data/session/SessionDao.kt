@@ -8,21 +8,21 @@ import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 会话数据访问对象。
+ * Objeto de acceso a datos de sesión.
  */
 @Dao
 interface SessionDao {
 
-    /** 观察全部会话(置顶优先,再按 updatedAt 降序)。含已归档和已软删除会话,仅供备份导出使用。主列表用 [observeActive]。 */
+    /** Mira todas las conversaciones(Máxima prioridad,Luego presione actualizado en en orden descendente). Contiene sesiones archivadas y eliminadas temporalmente,Sólo para uso de copia de seguridad y exportación. Para la lista principal [observeActive]. */
     @Query("SELECT * FROM sessions ORDER BY pinned DESC, sortOrder ASC, updatedAt DESC")
     fun observeAll(): Flow<List<SessionEntity>>
 
-    /** v0.45: 观察未归档会话(置顶优先,再按 updatedAt 降序)。主列表用。 */
+    /** v0.45: Observar conversaciones no archivadas(Máxima prioridad,Luego presione actualizado en en orden descendente). Para la lista principal. */
     @Query("SELECT * FROM sessions WHERE archived = 0 AND deletedAt IS NULL ORDER BY pinned DESC, sortOrder ASC, updatedAt DESC")
     fun observeActive(): Flow<List<SessionEntity>>
 
     /**
-     * v1.28: 观察未归档的任务会话(排除 Agent Tab 会话)。任务列表用。
+     * v1.28: Observar sesiones de tareas no archivadas(Excluir sesiones de la pestaña Agente). Para listas de tareas.
      */
     @Query(
         "SELECT * FROM sessions WHERE archived = 0 AND isAgentSession = 0 " +
@@ -30,135 +30,135 @@ interface SessionDao {
     )
     fun observeTaskSessions(): Flow<List<SessionEntity>>
 
-    /** v1.28: 观察 Agent Tab 会话(Agent 日常聊天)。 */
+    /** v1.28: Observar sesiones de la pestaña Agente(Agent charla diaria). */
     @Query("SELECT * FROM sessions WHERE isAgentSession = 1 AND deletedAt IS NULL ORDER BY updatedAt DESC")
     fun observeAgentSessions(): Flow<List<SessionEntity>>
 
-    /** v1.28: 获取最近的 Agent 会话(一次性,用于自动恢复 Agent 对话)。 */
+    /** v1.28: Obtenga la sesión del Agente más reciente(Desechable,Se utiliza para reanudar automáticamente las conversaciones del agente.). */
     @Query("SELECT * FROM sessions WHERE isAgentSession = 1 AND deletedAt IS NULL ORDER BY updatedAt DESC LIMIT 1")
     suspend fun getLatestAgentSession(): SessionEntity?
 
-    /** v1.0.54: 按助手查最近 Agent 会话(切换助手时恢复该助手的对话房间)。 */
+    /** v1.0.54: Presione Asistente para ver las sesiones recientes del Agente(Restaurar la sala de conversación del asistente al cambiar de asistente). */
     @Query(
         "SELECT * FROM sessions WHERE assistantId = :assistantId AND deletedAt IS NULL " +
             "AND isAgentSession = 1 ORDER BY updatedAt DESC LIMIT :limit",
     )
     suspend fun getRecentAgentByAssistant(assistantId: String, limit: Int): List<SessionEntity>
 
-    /** v0.45: 观察已归档会话。v1.67: 排序与主列表一致(pinned DESC, updatedAt DESC)。 */
+    /** v0.45: Observe conversaciones archivadas.v1.67: Clasificación consistente con la lista principal(pinned DESC, updatedAt DESC). */
     @Query("SELECT * FROM sessions WHERE archived = 1 AND deletedAt IS NULL ORDER BY pinned DESC, sortOrder ASC, updatedAt DESC")
     fun observeArchived(): Flow<List<SessionEntity>>
 
-    /** v0.45: 切换会话归档状态。 */
+    /** v0.45: Alternar el estado de archivo de la sesión. */
     @Query("UPDATE sessions SET archived = :archived WHERE id = :id")
     suspend fun setArchived(id: String, archived: Boolean)
 
-    // ── v2.0: 软删除 ──
+    // ── v2.0: eliminación suave ──
 
-    /** v2.0: 软删除会话(设置 deletedAt 时间戳)。 */
+    /** v2.0: Sesión de eliminación temporal(Establecer eliminado en la marca de tiempo). */
     @Query("UPDATE sessions SET deletedAt = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
 
-    /** v2.0: 恢复软删除的会话。 */
+    /** v2.0: Restaurar sesiones eliminadas temporalmente. */
     @Query("UPDATE sessions SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)
 
-    /** v2.0: 观察 7 天内软删除的会话。 */
+    /** v2.0: Observe las sesiones eliminadas temporalmente dentro de los 7 días. */
     @Query("SELECT * FROM sessions WHERE deletedAt IS NOT NULL AND deletedAt >= :cutoff ORDER BY deletedAt DESC")
     fun observeDeleted(cutoff: Long): Flow<List<SessionEntity>>
 
-    /** v2.0: 永久删除软删除超过 7 天的会话。 */
+    /** v2.0: Elimine permanentemente las sesiones eliminadas temporalmente de más de 7 días. */
     @Query("DELETE FROM sessions WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun permanentlyDeleteOldSessions(cutoff: Long)
 
-    /** v2.0: 即将被永久删除的软删会话 id — 记忆清理需要先知道哪些会话没了。 */
+    /** v2.0: Conversaciones eliminadas temporalmente que se eliminarán permanentemente id — La limpieza de la memoria requiere primero saber qué sesiones han desaparecido. */
     @Query("SELECT id FROM sessions WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun listIdsDeletedBefore(cutoff: Long): List<String>
 
-    /** 清空全部会话前先取一遍 id,供记忆清理使用。 */
+    /** Recupérelo antes de borrar todas las sesiones. id,Para fines de limpieza de memoria. */
     @Query("SELECT id FROM sessions")
     suspend fun listAllIds(): List<String>
 
-    /** 切换会话置顶状态(Phase 8.2 L13 配套)。 */
+    /** Alternar estado superior de la conversación(Phase 8.2 L13 Apoyando). */
     @Query("UPDATE sessions SET pinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: String, pinned: Boolean)
 
-    /** 切换会话绑定的 Assistant(Phase 8.2 H6)。 */
+    /** Cambiar enlace de sesión Assistant(Phase 8.2 H6). */
     @Query("UPDATE sessions SET assistantId = :assistantId WHERE id = :id")
     suspend fun setAssistantId(id: String, assistantId: String)
 
-    /** v1.0.72: 设置会话"不参考记忆"标志。 */
+    /** v1.0.72: Configurar sesión"Sin referencia a la memoria"logo. */
     @Query("UPDATE sessions SET ignoreMemory = :ignore WHERE id = :id")
     suspend fun setIgnoreMemory(id: String, ignore: Boolean)
 
     /**
-     * 保存未发送的输入草稿。
+     * Guarde los borradores de entrada no enviados.
      *
-     * 每个会话各自保存，切换会话时不丢草稿。空串表示清空（已发送或用户删空）。
-     * 不更新 updatedAt —— 草稿只是输入缓冲，不该把会话顶到列表最前面。
+     * Cada sesión se guarda de forma independiente, por lo que los borradores no se pierden al cambiar de sesión. Una cadena vacía significa borrada (enviada o eliminada por el usuario).
+     * No actualizado updatedAt —— Los borradores son solo un búfer de entrada y no deben colocar las sesiones en la parte superior de la lista.
      */
     @Query("UPDATE sessions SET input_draft = :draft WHERE id = :id")
     suspend fun updateInputDraft(id: String, draft: String)
 
-    /** v2.x 导入预热:设置/清除会话首轮全量历史标记。 */
+    /** v2.x Importar calentamiento:ajustes/Borra todas las marcas del historial de la primera ronda de la sesión. */
     @Query("UPDATE sessions SET warmupPending = :pending WHERE id = :id")
     suspend fun setWarmupPending(id: String, pending: Boolean)
 
-    /** v2.5.3 (P3-2): 写入会话级配置快照 JSON(null = 清除快照)。 */
+    /** v2.5.3 (P3-2): Escribir una instantánea de configuración a nivel de sesión JSON(null = borrar instantánea). */
     @Query("UPDATE sessions SET configSnapshotJson = :snapshotJson WHERE id = :id")
     suspend fun setConfigSnapshot(id: String, snapshotJson: String?)
 
-    /** Phase 9.1 (M13): 切换会话所属文件夹(null = 移出文件夹到未分组)。 */
+    /** Phase 9.1 (M13): Cambiar la carpeta de la sesión(null = Mover carpeta a desagrupada). */
     @Query("UPDATE sessions SET folderId = :folderId WHERE id = :id")
     suspend fun setFolderId(id: String, folderId: String?)
 
-    /** 删除文件夹时批量清空其下会话的 folderId(移到未分组)。Android 16 禁止 execSQL DML。 */
+    /** Al eliminar una carpeta, borre las sesiones debajo de ella en lotes folderId(Mover a desagrupado).Android 16 Deshabilite el DML ejecutivo de SQL. */
     @Query("UPDATE sessions SET folderId = NULL WHERE folderId = :folderId")
     suspend fun clearFolderId(folderId: String)
 
-    /** 按 id 取单个会话(一次性)。 */
+    /** Obtener una única sesión por id(Desechable). */
     @Query("SELECT * FROM sessions WHERE id = :id")
     suspend fun getById(id: String): SessionEntity?
 
     /**
-     * v2.6.7 fix (AUDIT F16): 某助手名下全部会话 id。
+     * v2.6.7 fix (AUDIT F16): Todos los ID de sesión bajo el nombre de un asistente.
      *
-     * 只投影 id 列；供跨会话检索一次性过滤，避免逐条查会话。
+     * Sólo se proyecta la columna id; se utiliza para un filtrado único para la recuperación entre sesiones para evitar verificar las sesiones una por una.
      */
     @Query("SELECT id FROM sessions WHERE assistantId = :assistantId AND deletedAt IS NULL")
     suspend fun listIdsByAssistant(assistantId: String): List<String>
 
-    /** 按 id 批量取会话,用于记忆中心关联摘要标题。 */
+    /** Obtener sesiones en lotes por ID,Se utiliza para asociar títulos de resumen en el centro de memoria. */
     @Query("SELECT * FROM sessions WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<SessionEntity>
 
-    /** 插入新会话(冲突时忽略)。 */
+    /** Insertar nueva sesión(Ignorar en caso de conflicto). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(session: SessionEntity)
 
-    /** 更新会话(标题/updatedAt/lastMessagePreview)。 */
+    /** sesión de actualización(Título/updatedAt/lastMessagePreview). */
     @Update
     suspend fun update(session: SessionEntity)
 
     /**
-     * H-SESS2: 原子重命名会话(避免读-改-写并发丢失更新)。
-     * 同步维护 updatedAt。
+     * H-SESS2: Sesión de cambio de nombre atómico(evitar leer-cambiar-Escribir actualizaciones perdidas de simultaneidad).
+     * Mantenimiento sincrónico actualizadoEn.
      */
     @Query("UPDATE sessions SET title = :title, updatedAt = :now WHERE id = :id")
     suspend fun updateTitle(id: String, title: String, now: Long)
 
     /**
-     * H-SESS2: 原子更新会话预览 + updatedAt(删除最后一条消息后回填新预览用)。
+     * H-SESS2: Vista previa de la sesión de actualización atómica + updatedAt(Eliminar el último mensaje y rellenar la nueva vista previa).
      */
     @Query("UPDATE sessions SET lastMessagePreview = :preview, updatedAt = :now WHERE id = :id")
     suspend fun updatePreview(id: String, preview: String, now: Long)
 
     /**
-     * H-SESS2: 原子更新预览 + updatedAt,并在标题仍为默认值且当前消息来自用户时
-     * 自动用消息内容前缀覆盖标题(首条 user 消息自动命名)。
+     * H-SESS2: Vista previa de la actualización atómica + updatedAt,y mientras el título sigue siendo el predeterminado y el mensaje actual es del usuario
+     * Sobrescribir automáticamente los encabezados con el prefijo del contenido del mensaje(El primer mensaje de usuario recibe un nombre automáticamente.).
      *
-     * 用 CASE 在单条 UPDATE 内完成条件标题更新,彻底避免读-改-写竞态。
-     * :isUser 传 1 表示当前消息角色为 USER,否则 0。
+     * Utilice CASE para completar actualizaciones de títulos condicionales en una sola ACTUALIZACIÓN,evitar completamente la lectura-cambiar-Escribe una condición de carrera.
+     * :isUser Pasar 1 indica que la función del mensaje actual es USER,De lo contrario 0.
      */
     @Query(
         """
@@ -175,8 +175,8 @@ interface SessionDao {
     suspend fun updatePreviewAndTitle(id: String, preview: String, now: Long, defaultTitle: String, isUser: Int, autoTitle: String)
 
     /**
-     * 仅更新会话预览 + updatedAt,不改标题。
-     * 退出对话时由 AI 摘要统一命名,首条消息不再自动覆盖标题。
+     * Actualizar solo la vista previa de la sesión + updatedAt,No cambies el título.
+     * Nomenclatura unificada por resumen de IA al salir de la conversación,El primer mensaje ya no sobrescribe automáticamente el título.
      */
     @Query(
         """
@@ -188,52 +188,52 @@ interface SessionDao {
     )
     suspend fun updatePreviewOnly(id: String, preview: String, now: Long)
 
-    /** 按 id 删除会话(级联删消息)。 */
+    /** Eliminar sesión por id(Eliminación de mensajes en cascada). */
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    /** 清空全部会话(备份恢复时用,Android 16 禁止 execSQL DML)。 */
+    /** Borrar todas las conversaciones(Se utiliza para realizar copias de seguridad y restaurar,Android 16 prohibido execSQL DML). */
     @Query("DELETE FROM sessions")
     suspend fun deleteAll()
 
-    /** 会话总数(用于统计)。 */
+    /** Número total de sesiones(para estadísticas). */
     @Query("SELECT COUNT(*) FROM sessions")
     suspend fun count(): Int
 
-    /** 会话总数流(统计面板用)。 */
+    /** Transmisiones totales de sesión(Para panel de estadísticas). */
     @Query("SELECT COUNT(*) FROM sessions")
     fun observeCount(): Flow<Int>
 
-    // ── v1.107 冗余字段维护方法 ──
+    // ── v1.107 Método de mantenimiento de campo redundante ──
 
-    /** v1.107: 原子增减会话消息计数(delta 可正可负)。 */
+    /** v1.107: Incremento atómico y disminución del recuento de mensajes de sesión.(delta Puede ser positivo o negativo). */
     @Query("UPDATE sessions SET messageCount = messageCount + :delta WHERE id = :id")
     suspend fun incrementMessageCount(id: String, delta: Int)
 
-    /** v1.107: 直接设置会话消息计数(回填/校准用)。 */
+    /** v1.107: Establecer directamente el recuento de mensajes de sesión(relleno/Para calibración). */
     @Query("UPDATE sessions SET messageCount = :count WHERE id = :id")
     suspend fun setMessageCount(id: String, count: Int)
 
-    /** v5: 递增分叉子会话计数。 */
+    /** v5: Incrementar el recuento de sesiones secundarias de la bifurcación. */
     @Query("UPDATE sessions SET childCount = childCount + 1 WHERE id = :id")
     suspend fun incrementChildCount(id: String)
 
-    /** v5: 查询指定会话的分叉子会话(按 updatedAt 降序)。 */
+    /** v5: Consultar la subsesión bifurcada de la sesión especificada(Orden descendente por actualizadoEn). */
     @Query("SELECT * FROM sessions WHERE parentSessionId = :parentId AND deletedAt IS NULL ORDER BY updatedAt DESC")
     suspend fun getChildSessions(parentId: String): List<SessionEntity>
 
-    /** v5: 查询指定会话的父会话标题。 */
+    /** v5: Consulta el título de la sesión principal de la sesión especificada. */
     @Query("SELECT title FROM sessions WHERE id = :parentId")
     suspend fun getParentSessionTitle(parentId: String): String?
 
     /**
-     * v1.0.52: 查询某助手最近 N 条会话(供 Recent Chats Reference 注入 system prompt)。
+     * v1.0.52: Consultar las N conversaciones más recientes de un asistente(Para inyección de referencia de chats recientes system prompt).
      *
-     * 过滤规则与 [observeTaskSessions] 对齐:
-     *  - 排除已归档(archived=1)
-     *  - 排除已软删除(deletedAt IS NOT NULL)
-     *  - 排除 Agent Tab 会话(isAgentSession=1,Agent 日常聊天不参与参考)
-     * 按 updatedAt DESC 排序,LIMIT :limit。
+     * Filtrar reglas y [observeTaskSessions] Alineación:
+     *  - excluir archivado(archived=1)
+     *  - Excluir eliminación temporal(deletedAt IS NOT NULL)
+     *  - Excluir sesiones de la pestaña Agente(isAgentSession=1,Agent No participes en chats diarios como referencia.)
+     * Ordenar por actualizadoEn DESC,LIMIT :limit.
      */
     @Query(
         "SELECT * FROM sessions WHERE assistantId = :assistantId " +
@@ -248,34 +248,34 @@ interface SessionDao {
     @Query("UPDATE sessions SET sortOrder = :sortOrder WHERE id = :id")
     suspend fun updateSortOrder(id: String, sortOrder: Int)
 
-    /** B8-01: 更新会话级主动消息排期(null=清除排期)。 */
+    /** B8-01: Actualizar el cronograma de mensajería proactiva a nivel de sesión(null=Horario claro). */
     @Query("UPDATE sessions SET proactiveNextTriggerAt = :nextTriggerAt WHERE id = :id")
     suspend fun updateProactiveNextTriggerAt(id: String, nextTriggerAt: Long?)
 
     /**
-     * v2.6.13: 按 folderId 哨兵值取会话（卡片收藏专用会话复用用）。
+     * v2.6.13: Obtenga la sesión por el valor centinela de ID de carpeta (para la reutilización de la sesión dedicada a la recopilación de tarjetas).
      *
-     * 不用标题匹配：标题是本地化文案，切语言后会变成另一个值，导致每次切语言都新建一个会话。
+     * No es necesario hacer coincidir el título: el título es redacción localizada y cambiará a otro valor después de cambiar de idioma, lo que dará como resultado que se cree una nueva sesión cada vez que se cambie de idioma.
      *
-     * 放在接口末尾：本模块 ktlint 基线按行号匹配，中间插入会让后面所有条目漂移。
+     * Colóquelo al final de la interfaz: la línea base de ktlint de este módulo coincide con el número de línea. Insertar en el medio hará que todas las entradas posteriores se desvíen.
      */
     @Query("SELECT * FROM sessions WHERE folderId = :folderId AND deletedAt IS NULL ORDER BY updatedAt DESC LIMIT 1")
     suspend fun getByFolderId(folderId: String): SessionEntity?
 
     /**
-     * 主动消息落点:该助手最近有用户发言、且写入合法的会话(按最后活动时间倒序取第一条)。
+     * Punto de colocación de mensaje activo:Recientemente, el asistente hizo que un usuario hablara y escribiera una conversación legal.(Tome el primer elemento en orden descendente según el tiempo de la última actividad.).
      *
-     * 排除条件写进 SQL,不靠取回来再在内存里过滤:这里只取一条,内存过滤等于
-     * 「先挑错再补救」,被排除的那条落空后整轮就退化成新建会话,白丢一次判断。
-     *  - deletedAt 非空:已软删除
-     *  - archived = 1:已归档
-     *  - 没有非删除的 USER 消息:用户没在这里说过话,不算「聊完的地方」
+     * Escribir condiciones de exclusión SQL,No es necesario recuperarlo y filtrarlo en la memoria.:Solo toma uno aquí,El filtrado de memoria es igual a
+     * "Primero encontrar fallas y luego arreglarlas.",Después de que el excluido falle, degenerará en una nueva sesión para toda la ronda.,El juicio es un desperdicio.
+     *  - deletedAt No vacío:Eliminación suave
+     *  - archived = 1:Archivado
+     *  - No hay mensajes de USUARIO no eliminados:El usuario no ha hablado aquí.,No es un “lugar para terminar de charlar”
      *
-     * 外层走 idx_sessions_assistantId_updatedAt(assistantId + updatedAt),
-     * EXISTS 子查询走 idx_messages_sessionId_createdAt_role;命中第一条即停,
-     * 不改动主对话列表使用的任何查询或索引。
+     * capa exterior caminando idx_sessions_assistantId_updatedAt(assistantId + updatedAt),
+     * EXISTS La subconsulta va idx_messages_sessionId_createdAt_role;Detente en el primer golpe,
+     * No cambie ninguna consulta o índice utilizado por la lista de conversaciones principal.
      *
-     * 放在接口末尾:本模块 ktlint 基线按行号匹配,中间插入会让后面所有条目漂移。
+     * Ponlo al final de la interfaz.:La línea base de ktlint de este módulo coincide por número de línea,La inserción intermedia hará que todas las entradas posteriores se desvíen.
      */
     @Query(
         "SELECT * FROM sessions s WHERE s.assistantId = :assistantId " +
@@ -287,12 +287,12 @@ interface SessionDao {
     suspend fun getRecentActiveByAssistant(assistantId: String): SessionEntity?
 
     /**
-     * 该助手最近有用户发言的**普通会话**（排除 Agent Tab 会话）。
+     * El asistente ha hecho hablar recientemente a los usuarios.**conversación normal**(Excluyendo las sesiones de la pestaña Agente).
      *
-     * 主动消息的落点优先用它：Agent Tab 是独立界面，用户在那里说话不代表
-     * 主动消息应该出现在 Agent 页。只有连普通会话都没有时才退到 Agent 会话。
+     * Úselo primero para mensajes proactivos:Agent Tab Es una interfaz independiente y el usuario que habla allí no significa
+     * Los mensajes no solicitados deberían aparecer en la página del Agente. Sólo recurra a la sesión del Agente cuando no haya una sesión normal.
      *
-     * 放在接口末尾的原因同上（ktlint 基线按行号匹配）。
+     * El motivo para colocarlo al final de la interfaz es el mismo que el anterior (ktlint Las líneas base coinciden con el número de línea).
      */
     @Query(
         "SELECT * FROM sessions s WHERE s.assistantId = :assistantId " +

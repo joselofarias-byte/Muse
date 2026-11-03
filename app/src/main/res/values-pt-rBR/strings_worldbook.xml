@@ -62,7 +62,7 @@
     <string name="worldbook_field_enabled">Habilitado</string>
     <string name="worldbook_field_enabled_desc">Entradas desativadas não são injetadas</string>
 
-    <!-- 前端修复 (i18n-8): export toast -->
+    <!-- Correcciones en la interfaz (i18n-8): export toast -->
     <string name="worldbook_exported_to">Exported to %1$s</string>
 
     <!-- Settings entry -->

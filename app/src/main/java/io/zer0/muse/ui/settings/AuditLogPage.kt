@@ -72,21 +72,21 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * P2-4: 审计日志页 — 展示应用内关键操作日志,并支持类别筛选 / 关键词搜索 / JSON 导出。
+ * P2-4: Página de registro de auditoría — Mostrar registros de operaciones clave dentro de la aplicación,Y admite filtrado de categorías/búsqueda de palabras clave/exportación JSON.
  *
- * 结构:
- *  - 顶部 MuseTopBar(返回 + 标题 + 导出 JSON + 清空按钮)
- *  - 筛选区:类别 FlowRow Chips(全部 / API 调用 / 用户操作 / 认证 / 系统)+ 关键词搜索框
- *  - 中间 LazyColumn 显示日志条目(分页加载,每页 100 条,客户端筛选)
- *  - 每条目:时间戳(yyyy-MM-dd HH:mm:ss)+ 分类图标 + action + target + success/fail 标记
- *  - 长按弹 MuseDialog 显示完整 detail JSON
- *  - 完全无日志显示"暂无日志记录";有日志但筛选无结果显示"无匹配日志"
+ * estructura:
+ *  - arriba MuseTopBar(Volver + Título + Exportar JSON + Botón Borrar)
+ *  - área de filtro:categoría FlowRow Chips(Todo/Llamadas API/Operaciones de usuario/Autenticación/Sistema)+ cuadro de búsqueda de palabras clave
+ *  - El LazyColumn del medio muestra las entradas del registro.(Cargando página,100 artículos por página,Filtrado de clientes)
+ *  - por entrada:Marca de tiempo(yyyy-MM-dd HH:mm:ss)+ Icono de categoría + action + target + success/fail marca
+ *  - Mantenga presionado para mostrar MuseDialog en su totalidad detail JSON
+ *  - No se muestran registros en absoluto"Aún no hay registros de registro";Hay registros pero no se muestran resultados después del filtrado."No hay registros coincidentes"
  *
- * 数据源:[AuditLogger.query] 分页查询,首次进入加载第 1 页,
- * 滚动到底部自动加载下一页。类别与关键词筛选在客户端完成,
- * 因此筛选后可见结果受已加载量限制,用户可滚动到底部继续加载更多原始数据。
+ * fuente de datos:[AuditLogger.query] Consulta de página,Primera vez cargando la página 1,
+ * Desplácese hasta el final para cargar automáticamente la página siguiente. El filtrado de categorías y palabras clave se completa en el lado del cliente.,
+ * Por lo tanto, los resultados visibles después del filtrado están limitados por la cantidad cargada.,Los usuarios pueden desplazarse hasta la parte inferior para continuar cargando más datos sin procesar.
  *
- * @param onBack 返回回调(由 NavHost 注入)
+ * @param onBack devolución de llamada(Inyectado por NavHost)
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -100,18 +100,18 @@ fun AuditLogPage(onBack: () -> Unit) {
     var isLoading by remember { mutableStateOf(false) }
     var hasMore by remember { mutableStateOf(true) }
     var page by remember { mutableStateOf(0) }
-    // 详情弹窗:长按日志条目时显示完整 detail JSON
+    // Ventana emergente de detalles:Mostrar la entrada de registro completa al presionar prolongadamente detail JSON
     var detailDialog by remember { mutableStateOf<AuditLogEntity?>(null) }
-    // 清空确认弹窗
+    // Borrar ventana emergente de confirmación
     var showClearDialog by remember { mutableStateOf(false) }
-    // P2-4 增强:类别筛选 + 关键词搜索
+    // P2-4 mejorar:Filtrado de categorías + búsqueda de palabras clave
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
     val pageSize = 100
     val dateFormat = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL_SEC, Locale.getDefault()) }
 
-    // 首次进入加载第 1 页
+    // Primera vez cargando la página 1
     LaunchedEffect(Unit) {
         isLoading = true
         val first = auditLogger.query(limit = pageSize, offset = 0)
@@ -133,7 +133,7 @@ fun AuditLogPage(onBack: () -> Unit) {
         }
     }
 
-    // 客户端筛选:类别 + 关键词(忽略大小写,匹配 action / target / detail)
+    // Filtrado de clientes:Categoría + Palabras clave(ignorar caso,partido action / target / detail)
     val filteredLogs = remember(logs, selectedCategory, searchQuery) {
         val cat = selectedCategory
         val q = searchQuery.trim().lowercase(Locale.getDefault())
@@ -159,7 +159,7 @@ fun AuditLogPage(onBack: () -> Unit) {
                 onBack = onBack,
                 largeTitle = true,
                 actions = {
-                    // 导出 JSON(把当前筛选后的日志序列化为 JSON 文件并通过 ACTION_SEND 分享)
+                    // Exportar JSON(Serializa el registro filtrado actual en un archivo JSON y compártelo mediante ACTION_SEND)
                     MuseTactileButton(
                         icon = MuseIcons.share,
                         onClick = { shareAuditLogsAsJson(context, filteredLogs) },
@@ -182,7 +182,7 @@ fun AuditLogPage(onBack: () -> Unit) {
             contentAlignment = Alignment.TopCenter,
         ) {
             if (logs.isEmpty() && !isLoading) {
-                // 完全无日志:全屏空状态(不展示筛选区)
+                // No hay registros en absoluto:Estado vacío de pantalla completa(No mostrar el área de filtro)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -213,7 +213,7 @@ fun AuditLogPage(onBack: () -> Unit) {
                     ),
                     verticalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
                 ) {
-                    // 筛选区:类别 Chips + 关键词搜索框
+                    // área de filtro:Fichas de categoría + cuadro de búsqueda de palabras clave
                     item(key = "filter_header") {
                         FilterHeader(
                             selectedCategory = selectedCategory,
@@ -222,7 +222,7 @@ fun AuditLogPage(onBack: () -> Unit) {
                             onSearchQueryChanged = { searchQuery = it },
                         )
                     }
-                    // 结果计数:仅当有筛选条件时显示"显示 X 条 / 共 Y 条"
+                    // recuento de resultados:Mostrar solo si hay filtros"Mostrando X elementos/total de Y elementos"
                     if (selectedCategory != null || searchQuery.isNotBlank()) {
                         item(key = "result_count") {
                             Text(
@@ -238,7 +238,7 @@ fun AuditLogPage(onBack: () -> Unit) {
                         }
                     }
                     if (filteredLogs.isEmpty()) {
-                        // 有原始日志但筛选无匹配
+                        // Hay registros originales pero no hay coincidencias después del filtrado.
                         item(key = "empty_filtered") {
                             Box(
                                 modifier = Modifier
@@ -262,7 +262,7 @@ fun AuditLogPage(onBack: () -> Unit) {
                             )
                         }
                     }
-                    // 分页加载器:只要还有更多原始数据就显示,用户滚动到底部触发加载下一页
+                    // Cargador de páginas:Se muestra cada vez que hay más datos sin procesar.,El usuario se desplaza hasta la parte inferior para activar la carga de la página siguiente.
                     if (hasMore) {
                         item(key = "footer_loader") {
                             Box(
@@ -283,7 +283,7 @@ fun AuditLogPage(onBack: () -> Unit) {
         }
     }
 
-    // 详情弹窗:展示完整 detail JSON
+    // Ventana emergente de detalles:Mostrar completo detail JSON
     detailDialog?.let { log ->
         MuseDialog(
             onDismissRequest = { detailDialog = null },
@@ -329,7 +329,7 @@ fun AuditLogPage(onBack: () -> Unit) {
         )
     }
 
-    // 清空确认弹窗
+    // Borrar ventana emergente de confirmación
     if (showClearDialog) {
         MuseDialog(
             onDismissRequest = { showClearDialog = false },
@@ -360,10 +360,10 @@ fun AuditLogPage(onBack: () -> Unit) {
 }
 
 /**
- * 筛选区:类别 FlowRow Chips + 关键词搜索框。
+ * área de filtro:Chips FlowRow de categoría + cuadro de búsqueda de palabras clave.
  *
- * Chips:全部 / API 调用 / 用户操作 / 认证 / 系统,单选互斥,再次点击同一项取消选择。
- * 搜索框:实时按 action / target / detail 模糊匹配(忽略大小写)。
+ * Chips:Todo/Llamadas API/Operaciones de usuario/Autenticación/Sistema,Radio mutuamente excluyentes,Haga clic en el mismo elemento nuevamente para anular su selección.
+ * cuadro de búsqueda:prensa en tiempo real action / target / detail coincidencia difusa(ignorar caso).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -380,7 +380,7 @@ private fun FilterHeader(
             "user_action" to R.string.audit_log_category_user,
             "auth" to R.string.audit_log_category_auth,
             "system" to R.string.audit_log_category_system,
-            // F-08: Agent 运行收据(工具执行状态机记录)
+            // F-08: Agent recibo corriente(Registro de máquina de estado de ejecución de herramienta)
             "agent_run" to R.string.audit_log_category_agent,
         )
     }
@@ -440,7 +440,7 @@ private fun FilterHeader(
 }
 
 /**
- * 单条审计日志的行视图。
+ * Vista de filas de un único registro de auditoría.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -461,7 +461,7 @@ private fun AuditLogRow(log: AuditLogEntity, dateFormat: SimpleDateFormat, onLon
                 .padding(MusePaddings.cardInner),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 分类图标(圆形背景 + 不同图标)
+            // Icono de categoría(Fondo redondo + iconos diferentes)
             CategoryIcon(category = log.category)
             Spacer(Modifier.size(MusePaddings.contentGap))
             Column(modifier = Modifier.weight(1f)) {
@@ -480,7 +480,7 @@ private fun AuditLogRow(log: AuditLogEntity, dateFormat: SimpleDateFormat, onLon
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     Spacer(Modifier.size(MusePaddings.contentGap))
-                    // success / fail 标记(用 Material Icons 表达,遵循项目"禁止 emoji"约定)
+                    // success / fail marca(Expresar usando iconos de materiales,seguir proyecto"prohibido emoji"Acuerdo)
                     val statusColor = if (log.success) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -507,13 +507,13 @@ private fun AuditLogRow(log: AuditLogEntity, dateFormat: SimpleDateFormat, onLon
                     }
                 }
                 Spacer(Modifier.size(MusePaddings.tightGap))
-                // 时间戳
+                // Marca de tiempo
                 Text(
                     text = dateFormat.format(Date(log.timestamp)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // target(若有)
+                // target(Si es así)
                 if (log.target.isNotBlank()) {
                     Text(
                         text = "→ ${log.target}",
@@ -529,13 +529,13 @@ private fun AuditLogRow(log: AuditLogEntity, dateFormat: SimpleDateFormat, onLon
 }
 
 /**
- * 分类图标 — 按 [category] 显示不同图标与背景色。
+ * Icono de categoría — prensa [category] Muestra diferentes iconos y colores de fondo.
  *
- *  - api_call: Api 图标 + primary
- *  - user_action: Person 图标 + secondary
- *  - auth: Lock 图标 + tertiary
- *  - system: Settings 图标 + surfaceVariant
- *  - 其他: 默认 Settings 图标
+ *  - api_call: Api icono + primary
+ *  - user_action: Person icono + secondary
+ *  - auth: Lock icono + tertiary
+ *  - system: Settings icono + surfaceVariant
+ *  - Otros: Icono de configuración predeterminada
  */
 @Composable
 private fun CategoryIcon(category: String) {
@@ -562,7 +562,7 @@ private fun CategoryIcon(category: String) {
     }
 }
 
-/** 详情弹窗中的键值对行。 */
+/** Filas de valores-clave en la ventana emergente de detalles. */
 @Composable
 private fun InfoLine(label: String, value: String) {
     Row(
@@ -571,8 +571,8 @@ private fun InfoLine(label: String, value: String) {
             .padding(vertical = MusePaddings.tightGap),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // LAYOUT-01: 键是固定短词,限 1 行;值可能是很长的 target(工具名/路径/ID),
-        // 取剩余宽度并限 3 行,既保留多行可读性,也不会在放大字号下被压成一列。
+        // LAYOUT-01: La clave es una palabra corta fija.,Límite de 1 línea;El valor puede ser muy largo. target(Nombre de la herramienta/camino/ID),
+        // Tome el ancho restante y limítelo a 3 líneas,Preservar la legibilidad de varias líneas,No se comprimirá en una columna cuando se amplíe el tamaño de fuente.
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -590,15 +590,15 @@ private fun InfoLine(label: String, value: String) {
     }
 }
 
-/** 详情弹窗标题(时间 + action)。 */
+/** Título de la ventana emergente de detalles(tiempo + action). */
 private fun formatDialogTitle(log: AuditLogEntity, dateFormat: SimpleDateFormat): String {
     return dateFormat.format(Date(log.timestamp))
 }
 
 /**
- * 把紧凑的 JSON 字符串格式化为带缩进的可读形式。
+ * Formatee una cadena JSON compacta en un formato legible por humanos con sangría.
  *
- * 用极简状态机解析,避免引入额外 JSON 库依赖。输入非合法 JSON 时原样返回。
+ * Análisis utilizando una máquina de estados minimalista.,Evite introducir dependencias adicionales de la biblioteca JSON. Devuelve sin cambios al ingresar JSON ilegal.
  */
 private fun prettyJson(json: String): String {
     if (json.isBlank()) return ""
@@ -640,7 +640,7 @@ private fun prettyJson(json: String): String {
                 builder.append(": ")
             }
             ' ', '\t', '\n', '\r' -> {
-                // 跳过原有空白,用我们的格式替代
+                // Saltar el espacio en blanco original,Reemplazar con nuestro formato
             }
             else -> {
                 builder.append(ch)
@@ -651,10 +651,10 @@ private fun prettyJson(json: String): String {
 }
 
 /**
- * 把筛选后的日志列表导出为 JSON 文件并通过 ACTION_SEND 分享。
+ * Exporte la lista de registros filtrados a un archivo JSON y compártala mediante ACTION_SEND.
  *
- * JSON 结构:`[{ id, timestamp, iso_time, category, action, target, detail, success }, ...]`
- * 文件位于 cacheDir(已在 file_paths.xml 中通过 cache-path 暴露给 FileProvider)。
+ * JSON estructura:`[{ id, timestamp, iso_time, category, action, target, detail, success }, ...]`
+ * El archivo se encuentra en cacheDir(Expuesto a través de la ruta de caché en file_paths.xml FileProvider).
  */
 private fun shareAuditLogsAsJson(context: android.content.Context, logs: List<AuditLogEntity>) {
     if (logs.isEmpty()) {

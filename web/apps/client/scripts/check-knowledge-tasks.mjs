@@ -1,9 +1,9 @@
 /**
- * 知识库页与定时任务页的断言：两页渲染、文档分页、任务字段格式化、空态、能力位。
+ * Aserciones para páginas de base de conocimientos y páginas de tareas programadas: representación de dos páginas, paginación de documentos, formato de campos de tareas, estados vacíos y bits de capacidad.
  *
- * 组件用 renderToStaticMarkup 直接渲染；交互（点知识库、滚到底）与请求接线按源码断言。
+ * Los componentes se renderizan directamente usando renderToStaticMarkup; Las interacciones (haga clic en la base de conocimientos, desplácese hasta la parte inferior) y el cableado de solicitudes se afirman de acuerdo con el código fuente.
  *
- * 用法：npm --workspace @muse/client run test
+ * Uso:npm --workspace @muse/client run test
  */
 import { build } from "esbuild";
 import { readFileSync } from "node:fs";
@@ -19,7 +19,7 @@ export { KnowledgePage, KnowledgeDocumentsView } from "./src/host/KnowledgePage.
 export { TasksPage } from "./src/host/TasksPage.tsx";
 export { KNOWLEDGE_FLAGS, TASK_FLAGS, supportsFlag } from "./src/host/featureCapabilities.ts";
 export { formatRelativeTime, formatBytes } from "./src/i18n/format.ts";
-export { ZH, EN } from "./src/i18n/messages.ts";
+export { ES, EN } from "./src/i18n/messages.ts";
 export { createElement } from "react";
 export { renderToStaticMarkup } from "react-dom/server";
 `;
@@ -59,8 +59,8 @@ const CSS = readFileSync(join(ROOT, "src", "styles.css"), "utf8");
 
 const KNOWLEDGE = {
   bases: [
-    { id: "kb1", name: "PROTO-知识库", documentCount: 12, chunkCount: 345, createdAt: 1, updatedAt: 2, embeddingBackend: "PROTO-bge-m3" },
-    { id: "kb2", name: "PROTO-无向量库", documentCount: 0, chunkCount: 0, createdAt: 1, updatedAt: 2 },
+    { id: "kb1", name: "PROTO-base de conocimientos", documentCount: 12, chunkCount: 345, createdAt: 1, updatedAt: 2, embeddingBackend: "PROTO-bge-m3" },
+    { id: "kb2", name: "PROTO-Sin biblioteca de vectores", documentCount: 0, chunkCount: 0, createdAt: 1, updatedAt: 2 },
   ],
   loading: false,
   error: undefined,
@@ -94,23 +94,23 @@ const tasksPage = (overrides = {}) =>
   );
 
 try {
-  // ── 1. 知识库列表 ───────────────────────────────────────────
+  // ── 1. Lista de la base de conocimientos ───────────────────────────────────────────
   const listHtml = knowledgePage();
-  assert(listHtml.includes("PROTO-知识库") && listHtml.includes("PROTO-无向量库"), "列出所有知识库");
-  assert(listHtml.includes("12 个文档 · 345 个分块"), "文档数与分块数按本地化格式展示");
-  assert(listHtml.includes("PROTO-bge-m3"), "显示 embedding 后端");
-  assert(listHtml.includes("未配置"), "没有向量后端时给占位");
-  assert((listHtml.match(/muse-listrow is-interactive/g) ?? []).length === 2, "每个知识库都可以点进文档列表");
-  assert(listHtml.includes("在手机上导入与管理知识库"), "明确写清只读：在手机上导入与管理");
+  assert(listHtml.includes("PROTO-base de conocimientos") && listHtml.includes("PROTO-Sin biblioteca de vectores"), "Listar todas las bases de conocimiento");
+  assert(listHtml.includes("12 documentos · 345 trozos"), "La cantidad de documentos y fragmentos se muestra en formato localizado.");
+  assert(listHtml.includes("PROTO-bge-m3"), "Mostrar backend incrustado");
+  assert(listHtml.includes("No configurado"), "Marcador de posición cuando no hay un backend vectorial");
+  assert((listHtml.match(/muse-listrow is-interactive/g) ?? []).length === 2, "Se puede hacer clic en cada base de conocimientos para acceder a la lista de documentos.");
+  assert(listHtml.includes("Importar y gestionar la base de conocimientos en el teléfono celular."), "Escriba explícitamente de forma clara y de solo lectura: importe y administre en teléfonos celulares");
 
   const emptyKnowledge = knowledgePage({ knowledge: { ...KNOWLEDGE, bases: [] } });
-  assert(emptyKnowledge.includes("还没有知识库"), "没有知识库时给空态");
+  assert(emptyKnowledge.includes("Aún no existe una base de conocimientos"), "Dar estado vacío cuando no hay base de conocimientos");
   const unsupportedKnowledge = knowledgePage({ supported: false });
-  assert(unsupportedKnowledge.includes("当前版本暂不支持在网页端查看知识库"), "缺能力位时给提示");
-  const failedKnowledge = knowledgePage({ knowledge: { ...KNOWLEDGE, error: "PROTO-错误" } });
-  assert(failedKnowledge.includes("PROTO-错误") && failedKnowledge.includes(">重试<"), "读取失败显示错误与重试");
+  assert(unsupportedKnowledge.includes("La versión actual no permite ver la base de conocimientos en la página web."), "Dar indicaciones cuando falten espacios de habilidad");
+  const failedKnowledge = knowledgePage({ knowledge: { ...KNOWLEDGE, error: "PROTO-error" } });
+  assert(failedKnowledge.includes("PROTO-error") && failedKnowledge.includes(">Inténtalo de nuevo<"), "El error de lectura muestra un error y vuelve a intentarlo");
 
-  // ── 2. 文档列表与分页 ───────────────────────────────────────
+  // ── 2. Lista de documentos y paginación. ───────────────────────────────────────
   const doc = (id, title, chunks, size, status) => ({ id, title, chunkCount: chunks, sizeBytes: size, createdAt: Date.now(), status });
   const docsView = (items, hasMore, overrides = {}) =>
     render(
@@ -123,76 +123,76 @@ try {
         ...overrides,
       }),
     );
-  const docsWithMore = docsView([doc("d1", "PROTO-文档一", 12, 2048, "indexed"), doc("d2", "PROTO-文档二", 3, 300)], true);
-  assert(docsWithMore.includes("PROTO-文档一") && docsWithMore.includes("PROTO-文档二"), "文档标题列出来");
-  assert(docsWithMore.includes("12 个分块"), "文档分块数");
-  assert(/KB|kB/.test(docsWithMore), `文档大小走 Intl 单位：${docsWithMore.includes("2 KB") ? "2 KB" : "见页内"}`);
-  assert(docsWithMore.includes("indexed"), "文档状态原样展示");
-  assert(docsWithMore.includes("加载更多"), "还有下一页时给加载入口");
-  const docsEnd = docsView([doc("d1", "PROTO-文档一", 12, 2048, "indexed")], false);
-  assert(docsEnd.includes("没有更多了") && !docsEnd.includes("加载更多"), "到底后显示「没有更多了」");
+  const docsWithMore = docsView([doc("d1", "PROTO-Documento 1", 12, 2048, "indexed"), doc("d2", "PROTO-Documento 2", 3, 300)], true);
+  assert(docsWithMore.includes("PROTO-Documento 1") && docsWithMore.includes("PROTO-Documento 2"), "Títulos de documentos listados");
+  assert(docsWithMore.includes("12 trozos"), "Número de fragmentos de documentos");
+  assert(/KB|kB/.test(docsWithMore), `El tamaño del documento está en unidades internacionales:${docsWithMore.includes("2 KB") ? "2 KB" : "ver pagina"}`);
+  assert(docsWithMore.includes("indexed"), "El estado del documento se muestra tal cual");
+  assert(docsWithMore.includes("cargar más"), "Cuando haya una página siguiente, proporcione una entrada de carga.");
+  const docsEnd = docsView([doc("d1", "PROTO-Documento 1", 12, 2048, "indexed")], false);
+  assert(docsEnd.includes("no más") && !docsEnd.includes("cargar más"), "Al llegar al final muestra \"No más\"");
   const docsEmpty = docsView([], false);
-  assert(docsEmpty.includes("这个知识库还没有文档"), "知识库无文档时给空态");
-  assert(docsView([], false, { supported: false }).includes("当前版本暂不支持在网页端查看知识库"), "文档页缺能力位也给提示");
-  assert(mod.formatBytes(300) === "300 byte" || mod.formatBytes(300).includes("300"), `字节格式化：${mod.formatBytes(300)}`);
-  assert(/KB|kB/.test(mod.formatBytes(2048)), `KB 格式化：${mod.formatBytes(2048)}`);
-  assert(/MB/.test(mod.formatBytes(5 * 1024 * 1024)), `MB 格式化：${mod.formatBytes(5 * 1024 * 1024)}`);
-  assert(CONNECTION.includes('type: "knowledge.documents"') && CONNECTION.includes("cursor: options.cursor"), "文档分页带 cursor");
-  assert(CONNECTION.includes("KNOWLEDGE_PAGE_SIZE = 20"), "每页 20 条（Host 默认值）");
-  assert(/host-memory-more/.test(readFileSync(join(ROOT, "src", "host", "KnowledgePage.tsx"), "utf8")), "还有更多时给加载按钮");
+  assert(docsEmpty.includes("Aún no hay documentación para esta base de conocimientos."), "El estado vacío se otorga cuando no hay ningún documento en la base de conocimientos.");
+  assert(docsView([], false, { supported: false }).includes("La versión actual no permite ver la base de conocimientos en la página web."), "También se darán avisos si faltan bits de capacidad en las páginas del documento.");
+  assert(mod.formatBytes(300) === "300 byte" || mod.formatBytes(300).includes("300"), `Formato de bytes:${mod.formatBytes(300)}`);
+  assert(/KB|kB/.test(mod.formatBytes(2048)), `KB Formato:${mod.formatBytes(2048)}`);
+  assert(/MB/.test(mod.formatBytes(5 * 1024 * 1024)), `MB Formato:${mod.formatBytes(5 * 1024 * 1024)}`);
+  assert(CONNECTION.includes('type: "knowledge.documents"') && CONNECTION.includes("cursor: options.cursor"), "Banda de paginación de documentos cursor");
+  assert(CONNECTION.includes("KNOWLEDGE_PAGE_SIZE = 20"), "20 artículos por página (Host valor predeterminado)");
+  assert(/host-memory-more/.test(readFileSync(join(ROOT, "src", "host", "KnowledgePage.tsx"), "utf8")), "Dar botón de carga cuando haya más");
 
-  // ── 3. 定时任务 ─────────────────────────────────────────────
+  // ── 3. tareas programadas ─────────────────────────────────────────────
   const now = Date.now();
   const task = {
     id: "t1",
-    name: "PROTO-每日简报",
+    name: "PROTO-sesión informativa diaria",
     cron: "0 8 * * *",
     enabled: true,
     nextRunAt: now + 3 * 60 * 60 * 1000 + 5 * 60 * 1000,
     lastRunAt: now - 2 * 60 * 60 * 1000,
-    lastResult: "PROTO-上次结果",
+    lastResult: "PROTO-Último resultado",
   };
   const tasksHtml = tasksPage({ tasks: { items: [task], loading: false, error: undefined, unsupported: false } });
-  assert(tasksHtml.includes("PROTO-每日简报"), "任务名");
-  assert(tasksHtml.includes("0 8 * * *"), "cron 原样展示");
-  assert(tasksHtml.includes("已启用"), "启用状态");
-  assert(tasksHtml.includes("3 小时后"), "下次执行用未来相对时间");
-  assert(mod.formatRelativeTime(now + 3 * 60 * 60 * 1000 + 5 * 60 * 1000, now, "zh") === "3 小时后", "未来小时取整不跨桶（边界稳定）");
-  assert(tasksHtml.includes("2 小时前"), "上次执行用相对时间");
-  assert(tasksHtml.includes("PROTO-上次结果"), "上次结果");
-  assert(tasksHtml.includes("在手机上管理定时任务"), "明确写清只读：在手机上管理");
+  assert(tasksHtml.includes("PROTO-sesión informativa diaria"), "Nombre de la tarea");
+  assert(tasksHtml.includes("0 8 * * *"), "cron Mostrar como está");
+  assert(tasksHtml.includes("Habilitado"), "Estado habilitado");
+  assert(tasksHtml.includes("en 3 h"), "La próxima ejecución utilizará el tiempo relativo futuro.");
+  assert(mod.formatRelativeTime(now + 3 * 60 * 60 * 1000 + 5 * 60 * 1000, now, "es") === "en 3 h", "El redondeo de horas futuras no cruza categorías (frontera estable)");
+  assert(tasksHtml.includes("hace 2 h"), "El tiempo relativo de la última ejecución.");
+  assert(tasksHtml.includes("PROTO-Último resultado"), "Último resultado");
+  assert(tasksHtml.includes("Gestiona tareas programadas en tu teléfono celular"), "Escritura explícita y solo lectura: administrar en dispositivos celulares");
 
   const disabledTask = tasksPage({ tasks: { items: [{ ...task, enabled: false, nextRunAt: undefined, lastRunAt: undefined, lastResult: undefined }], loading: false, error: undefined, unsupported: false } });
-  assert(disabledTask.includes("已暂停"), "停用的任务显示「已暂停」");
-  assert((disabledTask.match(/还没有执行过/g) ?? []).length >= 2, "没有下次/上次执行时给「还没有执行过」");
+  assert(disabledTask.includes("suspendido"), "Las tareas desactivadas se muestran \"En pausa\"");
+  assert((disabledTask.match(/Aún no ejecutado/g) ?? []).length >= 2, "no la próxima vez/La última ejecución dio \"Aún no ejecutado\".");
 
   const emptyTasks = tasksPage();
-  assert(emptyTasks.includes("还没有定时任务"), "没有任务时给引导");
+  assert(emptyTasks.includes("Aún no hay tareas programadas"), "Proporcionar orientación cuando no hay tareas.");
   const unsupportedTasks = tasksPage({ supported: false });
-  assert(unsupportedTasks.includes("当前版本暂不支持在网页端查看定时任务"), "缺能力位时给提示");
-  const failedTasks = tasksPage({ tasks: { items: [], loading: false, error: "PROTO-错误", unsupported: false } });
-  assert(failedTasks.includes("PROTO-错误") && failedTasks.includes(">重试<"), "任务读取失败可重试");
+  assert(unsupportedTasks.includes("La versión actual no admite la visualización de tareas programadas en la página web."), "Dar indicaciones cuando falten espacios de habilidad");
+  const failedTasks = tasksPage({ tasks: { items: [], loading: false, error: "PROTO-error", unsupported: false } });
+  assert(failedTasks.includes("PROTO-error") && failedTasks.includes(">Inténtalo de nuevo<"), "La lectura de la tarea falla y se puede volver a intentar");
 
-  // ── 4. 未来相对时间（zh / en）──────────────────────────────
-  assert(mod.formatRelativeTime(now - 30 * 1000, now, "zh") === "刚刚", "过去 30 秒仍是刚刚");
-  assert(mod.formatRelativeTime(now + 30 * 1000, now, "zh") === "即将", "未来半分钟是「即将」");
-  assert(mod.formatRelativeTime(now + 12 * 60 * 1000, now, "zh") === "12 分钟后", "未来分钟");
-  assert(mod.formatRelativeTime(now + 3 * 60 * 60 * 1000, now, "en") === "in 3 h", "未来小时（en）");
-  assert(mod.formatRelativeTime(now + 2 * 24 * 60 * 60 * 1000, now, "zh") === "2 天后", "未来天数");
+  // ── 4. Tiempo relativo en el futuro (zh / en)──────────────────────────────
+  assert(mod.formatRelativeTime(now - 30 * 1000, now, "es") === "justo ahora", "Los últimos 30 segundos todavía fueron solo");
+  assert(mod.formatRelativeTime(now + 30 * 1000, now, "es") === "en un momento", "El próximo medio minuto es pronto");
+  assert(mod.formatRelativeTime(now + 12 * 60 * 1000, now, "es") === "en 12 min", "próximos minutos");
+  assert(mod.formatRelativeTime(now + 3 * 60 * 60 * 1000, now, "en") === "in 3 h", "horas en el futuro (en)");
+  assert(mod.formatRelativeTime(now + 2 * 24 * 60 * 60 * 1000, now, "es") === "en 2 días", "Número de días en el futuro");
 
-  // ── 5. 词条与接线 ─────────────────────────────────────────
+  // ── 5. Entradas y cableado ─────────────────────────────────────────
   for (const key of ["knowledge.title", "knowledge.readOnly", "knowledge.documents", "knowledge.unsupported", "tasks.title", "tasks.readOnly", "tasks.nextRun", "tasks.unsupported", "common.loadMore", "common.noMore"]) {
-    assert(typeof mod.ZH[key] === "string" && typeof mod.EN[key] === "string" && mod.ZH[key].length > 0 && mod.EN[key].length > 0, `词条 ${key} 中英都有`);
+    assert(typeof mod.ES[key] === "string" && typeof mod.EN[key] === "string" && mod.ES[key].length > 0 && mod.EN[key].length > 0, `entrada ${key} Tanto chino como inglés.`);
   }
-  assert(HOST_SETTINGS.includes('openPage.entry.id === "rag"') && HOST_SETTINGS.includes("<KnowledgePage"), "「知识库与检索」条目进知识库页");
-  assert(HOST_SETTINGS.includes('openPage.entry.id === "scheduled_tasks"') && HOST_SETTINGS.includes("<TasksPage"), "「定时任务」条目进任务页");
-  assert(mod.supportsFlag(undefined, mod.KNOWLEDGE_FLAGS) === true && mod.supportsFlag([], mod.KNOWLEDGE_FLAGS) === false, "知识库能力位判断");
-  assert(mod.supportsFlag(["tasks"], mod.TASK_FLAGS) === true && mod.supportsFlag(["knowledge"], mod.TASK_FLAGS) === false, "定时任务能力位判断");
-  assert(CONNECTION.includes('type: "knowledge.list"') && CONNECTION.includes('type: "tasks.list"'), "两个读命令都发得出去");
-  assert(/host-task-cron|host-task-meta/.test(CSS), "任务卡片样式存在");
+  assert(HOST_SETTINGS.includes('openPage.entry.id === "rag"') && HOST_SETTINGS.includes("<KnowledgePage"), "Entrada \"Base de conocimientos y búsqueda\" en la página de la base de conocimientos");
+  assert(HOST_SETTINGS.includes('openPage.entry.id === "scheduled_tasks"') && HOST_SETTINGS.includes("<TasksPage"), "La entrada \"Tarea programada\" ingresa a la página de tareas");
+  assert(mod.supportsFlag(undefined, mod.KNOWLEDGE_FLAGS) === true && mod.supportsFlag([], mod.KNOWLEDGE_FLAGS) === false, "Juicio de capacidad de la base de conocimientos");
+  assert(mod.supportsFlag(["tasks"], mod.TASK_FLAGS) === true && mod.supportsFlag(["knowledge"], mod.TASK_FLAGS) === false, "Juicio de capacidad de tarea cronometrada");
+  assert(CONNECTION.includes('type: "knowledge.list"') && CONNECTION.includes('type: "tasks.list"'), "Se pueden emitir ambos comandos de lectura.");
+  assert(/host-task-cron|host-task-meta/.test(CSS), "El estilo de la tarjeta de tareas existe");
 
-  if (failures > 0) throw new Error(`知识库与定时任务断言未通过（${failures} 条）`);
-  console.log("\n知识库与定时任务断言全部通过（两页渲染 / 分页 / 任务格式化 / 空态 / 能力位）。");
+  if (failures > 0) throw new Error(`La base de conocimientos y las aserciones de tareas programadas fallaron (${failures} artículo)`);
+  console.log("\nSe aprobaron todas las afirmaciones de la base de conocimientos y de las tareas programadas (representación de dos páginas/paginación/formato de tarea/estado nulo/bit de capacidad).");
 } finally {
   await rm(TEMP, { force: true });
 }

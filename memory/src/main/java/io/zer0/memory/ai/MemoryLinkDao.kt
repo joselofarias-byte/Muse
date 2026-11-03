@@ -7,10 +7,10 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * v1.0.52 P2-3: 记忆知识图谱边 DAO。
+ * v1.0.52 P2-3: Borde del gráfico de conocimiento de la memoria DAO.
  *
- * 提供记忆关系的 CRUD + 按 Space/Scope 隔离查询。
- * 与 [io.zer0.memory.fact.FactDao] 配合,在事实删除时通过 [deleteByFactId] 清理孤儿边。
+ * Proporciona consultas CRUD + aisladas por espacio/alcance para relaciones memorizadas.
+ * con [io.zer0.memory.fact.FactDao] cooperar,pasado cuando se eliminó el hecho [deleteByFactId] Limpia el lado huérfano.
  */
 @Dao
 interface MemoryLinkDao {
@@ -22,8 +22,8 @@ interface MemoryLinkDao {
     suspend fun insertBatch(links: List<MemoryLinkEntity>): List<Long>
 
     /**
-     * 查询指定 Space + Scope 内的所有关系。
-     * 用于知识图谱可视化/检索时加载边集合。
+     * Consulta todas las relaciones dentro del Espacio + Alcance especificado.
+     * Se utiliza para la visualización de gráficos de conocimiento./Cargue la colección de bordes al recuperar.
      */
     @Query(
         """
@@ -34,7 +34,7 @@ interface MemoryLinkDao {
     )
     suspend fun listBySpaceAndScope(spaceId: String, scope: String): List<MemoryLinkEntity>
 
-    /** 查询指定 Space 下所有作用域的关系，用于记忆中心“全部作用域”视图。 */
+    /** Consultar la relación entre todos los ámbitos en el espacio especificado, utilizado en el centro de memoria.“Todos los alcances”vista. */
     @Query(
         """
         SELECT * FROM memory_links
@@ -45,7 +45,7 @@ interface MemoryLinkDao {
     suspend fun listBySpace(spaceId: String): List<MemoryLinkEntity>
 
     /**
-     * 观察指定 Space + Scope 的关系列表(Flow 形式,UI 实时刷新)。
+     * Observe la lista de relaciones del Espacio + Alcance especificado(Flow forma,UI Actualización en tiempo real).
      */
     @Query(
         """
@@ -57,8 +57,8 @@ interface MemoryLinkDao {
     fun observeBySpaceAndScope(spaceId: String, scope: String): Flow<List<MemoryLinkEntity>>
 
     /**
-     * 查询与指定事实相关的所有边(作为源或目标)。
-     * 用于查看某条事实的关联记忆。
+     * Consultar todos los bordes relacionados con el hecho especificado.(como origen o destino).
+     * Memoria asociativa para visualizar un hecho.
      */
     @Query(
         """
@@ -70,43 +70,43 @@ interface MemoryLinkDao {
     suspend fun listByFactId(factId: Long): List<MemoryLinkEntity>
 
     /**
-     * 删除与指定事实相关的所有边(事实删除时调用,清理孤儿边)。
+     * Eliminar todos los bordes relacionados con el hecho especificado.(Se llama cuando se elimina un hecho.,Limpiar el lado huérfano).
      */
     @Query("DELETE FROM memory_links WHERE source_fact_id = :factId OR target_fact_id = :factId")
     suspend fun deleteByFactId(factId: Long): Int
 
     /**
-     * 删除指定 Space 内的所有边(Space 删除时调用,与事实迁移配合)。
-     * 注意:Space 删除时事实会迁移到默认 Space,边也应迁移而非删除,
-     * 此方法仅用于 Space 强制清空场景。
+     * Eliminar todos los bordes dentro del espacio especificado(Space Llamado al eliminar,Cooperar con la migración de hechos).
+     * Nota:Space Los datos se migran a la configuración predeterminada cuando se eliminan Space,Los bordes también deberían migrarse en lugar de eliminarse,
+     * Este método sólo se utiliza para forzar la limpieza de escenas espaciales.
      */
     @Query("DELETE FROM memory_links WHERE space_id = :spaceId")
     suspend fun deleteBySpaceId(spaceId: String): Int
 
     /**
-     * 迁移指定 Space 内的边到目标 Space(与 [MemorySpaceDao.migrateFacts] 配合)。
+     * Migrar bordes dentro del espacio especificado al destino Space(con [MemorySpaceDao.migrateFacts] cooperar).
      */
     @Query("UPDATE memory_links SET space_id = :targetSpaceId WHERE space_id = :sourceSpaceId")
     suspend fun migrateBySpaceId(sourceSpaceId: String, targetSpaceId: String): Int
 
-    /** 统计指定 Space + Scope 内的边数量。 */
+    /** Cuente el número de aristas dentro del Espacio + Alcance especificado. */
     @Query("SELECT COUNT(*) FROM memory_links WHERE space_id = :spaceId AND scope = :scope")
     suspend fun countBySpaceAndScope(spaceId: String, scope: String): Int
 
-    /** 按 id 删除单条边。 */
+    /** Eliminar un solo borde por id. */
     @Query("DELETE FROM memory_links WHERE id = :id")
     suspend fun deleteById(id: Long): Int
 
-    /** 清空所有边(仅用于测试/重置)。 */
+    /** Limpiar todos los bordes(Sólo para pruebas/restablecer). */
     @Query("DELETE FROM memory_links")
     suspend fun deleteAll(): Int
 
     /**
-     * v2.6.2（记忆审计）: 清理孤儿边 — 源/目标事实已不存在的边。
+     * v2.6.2(auditoría de memoria): Limpiar el lado huérfano — fuente/Bordes donde el hecho objetivo ya no existe.
      *
-     * 用于批量衰减删除（applyDecay）等场景：批量 DELETE 不返回被删 id，
-     * 无法逐条清理关联边，故删除后统一清孤儿。
-     * facts 表为空时子查询为空集，NOT IN 恒真，恰好清空全部边（语义正确）。
+     * para la eliminación de la descomposición por lotes (applyDecay) y otros escenarios: DELETE por lotes no devuelve la identificación eliminada,
+     * No es posible limpiar los bordes relacionados uno por uno, por lo que los huérfanos se limpian juntos después de la eliminación.
+     * facts Cuando la tabla está vacía, la subconsulta es el conjunto vacío.NOT IN Siempre es cierto, borra exactamente todos los bordes (semánticamente correcto).
      */
     @Query(
         "DELETE FROM memory_links WHERE source_fact_id NOT IN (SELECT id FROM facts) OR target_fact_id NOT IN (SELECT id FROM facts)",

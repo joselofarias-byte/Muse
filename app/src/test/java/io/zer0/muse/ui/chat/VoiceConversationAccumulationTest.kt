@@ -25,16 +25,16 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 语音对话跨 ASR 会话的文本累积契约。
+ * Contratos de acumulación de texto para conversaciones de voz entre sesiones ASR.
  *
- * 回归的缺陷:ASR 因非用户原因结束(DashScope 服务端静音收尾、Realtime 断线/Error)时,
- * 之前的实现把整段识别文本丢掉,接着说三十秒也可能只剩最后一句 —— 用户点「结束」时,
- * 说过的内容必须整段提交。
+ * Escollos de la regresión:ASR Finalizado por razones ajenas al usuario(DashScope Final silencioso en el lado del servidor.Realtime desconectado/Error)tiempo,
+ * La implementación anterior descartó todo el texto reconocido.,Si continúas hablando durante treinta segundos, es posible que solo te quede la última frase. —— Cuando el usuario hace clic en "Finalizar",
+ * Lo dicho debe presentarse en su totalidad.
  */
 class VoiceConversationAccumulationTest {
 
     private companion object {
-        const val RETRY_HINT = "没听清，再说一次"
+        const val RETRY_HINT = "No te escuché claramente. Dilo de nuevo."
     }
 
     private lateinit var scope: CoroutineScope
@@ -46,7 +46,7 @@ class VoiceConversationAccumulationTest {
     private val sent = mutableListOf<String>()
     private val inputUpdates = mutableListOf<String>()
 
-    /** 每次 startVoiceConversationListening 注册的回调,用于模拟 ASR 识别结果。 */
+    /** Devolución de llamada registrada cada vez que iniciaVoiceConversationListening,Se utiliza para simular resultados de reconocimiento ASR. */
     private val transcriptCallbacks = mutableListOf<(String) -> Unit>()
 
     @Before
@@ -103,12 +103,12 @@ class VoiceConversationAccumulationTest {
         return state
     }
 
-    /** 模拟一次 ASR 回调(同一次录音会话内)。 */
+    /** Simular una devolución de llamada ASR(dentro de la misma sesión de grabación). */
     private fun asrCallback(text: String) {
         transcriptCallbacks.last().invoke(text)
     }
 
-    /** 模拟 ASR 自行结束(服务端静音收尾 / 断线)。 */
+    /** El ASR simulado termina solo(El servidor finaliza en silencio/desconectado). */
     private fun asrEndsByItself(finalText: String) {
         stateStore.state.value = uiState(ASRStatus.Idle, transcript = finalText)
     }
@@ -117,16 +117,16 @@ class VoiceConversationAccumulationTest {
     fun `speech survives an asr session that ends on its own`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
+        asrCallback("El clima de hoy")
 
-        // DashScope 服务端静音收尾:用户没点结束
-        asrEndsByItself("今天天气")
+        // DashScope Final silencioso del lado del servidor:El usuario no hizo clic para finalizar.
+        asrEndsByItself("El clima de hoy")
 
-        assertEquals("今天天气", voiceState.transcript.value)
-        assertTrue("非用户原因结束不得发消息", sent.isEmpty())
-        assertNull("有累积文本时不提示「再说一次」", voiceState.hint.value)
+        assertEquals("El clima de hoy", voiceState.transcript.value)
+        assertTrue("No se enviarán mensajes hasta que el final sea por motivos ajenos al usuario.", sent.isEmpty())
+        assertNull("No solicite \"Dilo de nuevo\" cuando haya texto acumulado", voiceState.hint.value)
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-        // 录音已重开,继续累积
+        // La grabación se ha reiniciado.,seguir acumulando
         verify(exactly = 2) { audioCoordinator.startVoiceConversationListening(any()) }
     }
 
@@ -134,53 +134,53 @@ class VoiceConversationAccumulationTest {
     fun `reopened session accumulates into the same round`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
-        asrEndsByItself("今天天气")
+        asrCallback("El clima de hoy")
+        asrEndsByItself("El clima de hoy")
 
-        // 重开后的会话把含旧内容的完整文本重发一次:前缀去重,不重复拼接
-        asrCallback("今天天气不错")
-        assertEquals("今天天气不错", voiceState.transcript.value)
+        // La conversación reabierta reenviará el texto completo que contiene el contenido antiguo.:Deduplicación de prefijo,Sin empalmes repetidos
+        asrCallback("El clima esta agradable hoy")
+        assertEquals("El clima esta agradable hoy", voiceState.transcript.value)
 
-        // 同一会话里接着说:直接拼上
-        asrCallback("明天呢")
-        assertEquals("今天天气不错明天呢", voiceState.transcript.value)
-        assertTrue("还没有人点结束", sent.isEmpty())
+        // Continuar en la misma conversación.:Solo ponlo junto
+        asrCallback("¿Qué pasa mañana?")
+        assertEquals("Hace buen tiempo hoy. ¿Qué pasa mañana?", voiceState.transcript.value)
+        assertTrue("Nadie ha terminado todavía", sent.isEmpty())
     }
 
     @Test
     fun `finish submits the whole accumulated text once and clears it`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
-        asrEndsByItself("今天天气")
-        asrCallback("今天天气不错")
-        asrCallback("明天呢")
+        asrCallback("El clima de hoy")
+        asrEndsByItself("El clima de hoy")
+        asrCallback("El clima esta agradable hoy")
+        asrCallback("¿Qué pasa mañana?")
 
-        // 录音重开后 ASR 正在收音
+        // ASR está escuchando después de reiniciar la grabación
         stateStore.state.value = uiState(ASRStatus.Listening)
         controller.finishVoiceConversationListening()
         verify { audioCoordinator.stopVoiceConversationListening() }
-        // 收尾状态只携带本会话最后一段,提交文本应是整轮累积
-        asrEndsByItself("明天呢")
+        // El estado de cierre sólo lleva el último párrafo de esta sesión.,El texto enviado debe acumularse a lo largo de la ronda.
+        asrEndsByItself("¿Qué pasa mañana?")
 
-        assertEquals(listOf("今天天气不错明天呢"), sent)
+        assertEquals(listOf("Hace buen tiempo hoy. ¿Qué pasa mañana?"), sent)
         assertEquals(VoiceConversationState.THINKING, voiceState.state.value)
-        assertEquals("提交后累积清空", "", voiceState.transcript.value)
+        assertEquals("La acumulación se borra después del envío.", "", voiceState.transcript.value)
     }
 
     @Test
     fun `asr error keeps the accumulated text without reopening the microphone`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
+        asrCallback("El clima de hoy")
 
-        stateStore.state.value = uiState(ASRStatus.Error, transcript = "今天天气")
+        stateStore.state.value = uiState(ASRStatus.Error, transcript = "El clima de hoy")
 
-        assertEquals("今天天气", voiceState.transcript.value)
+        assertEquals("El clima de hoy", voiceState.transcript.value)
         assertTrue(sent.isEmpty())
-        assertNull("有累积文本时不提示「再说一次」", voiceState.hint.value)
+        assertNull("No solicite \"Dilo de nuevo\" cuando haya texto acumulado", voiceState.hint.value)
         assertEquals(VoiceConversationState.LISTENING, voiceState.state.value)
-        // Error 后不自动重开(防止 start → Error 死循环),用户点按钮即可继续
+        // Error no se vuelve a abrir automáticamente después(prevenir start → Error bucle infinito),El usuario hace clic en el botón para continuar.
         verify(exactly = 1) { audioCoordinator.startVoiceConversationListening(any()) }
     }
 
@@ -189,7 +189,7 @@ class VoiceConversationAccumulationTest {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
 
-        // 一个字都没识别到就自己结束:没有任何内容可保留,提示重说
+        // Terminó solo sin reconocer una sola palabra.:Nada que guardar,Preguntar para repetir
         asrEndsByItself("")
 
         assertEquals("", voiceState.transcript.value)
@@ -201,16 +201,16 @@ class VoiceConversationAccumulationTest {
     fun `cancel clears the accumulated text without sending`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
-        asrEndsByItself("今天天气")
-        asrCallback("今天天气不错")
-        assertEquals("今天天气不错", voiceState.transcript.value)
+        asrCallback("El clima de hoy")
+        asrEndsByItself("El clima de hoy")
+        asrCallback("El clima esta agradable hoy")
+        assertEquals("El clima esta agradable hoy", voiceState.transcript.value)
 
         controller.interruptVoiceConversation()
 
         assertEquals(VoiceConversationState.IDLE, voiceState.state.value)
-        assertEquals("取消后累积清空", "", voiceState.transcript.value)
-        assertTrue("取消不发送", sent.isEmpty())
+        assertEquals("Acumulación liquidada después de la cancelación", "", voiceState.transcript.value)
+        assertTrue("Cancelar sin enviar", sent.isEmpty())
         verify { audioCoordinator.cancelVoiceConversationListening() }
     }
 
@@ -218,7 +218,7 @@ class VoiceConversationAccumulationTest {
     fun `exit clears the accumulated text`() {
         controller.startVoiceConversation()
         stateStore.state.value = uiState(ASRStatus.Listening)
-        asrCallback("今天天气")
+        asrCallback("El clima de hoy")
 
         controller.stopVoiceConversation()
 

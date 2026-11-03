@@ -9,7 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-/** 媒体发送共用的 HTTP 客户端与响应检查。 */
+/** Los medios envían comprobaciones de respuesta y cliente HTTP compartido. */
 internal object MediaHttp {
     private const val TIMEOUT_SECONDS = 60L
 
@@ -23,18 +23,18 @@ internal object MediaHttp {
 
     val jsonMediaType: okhttp3.MediaType = "application/json; charset=utf-8".toMediaType()
 
-    /** 发请求并检查平台返回的 ok / errcode 字段。 */
+    /** Realice una solicitud y verifique los campos ok/errcode devueltos por la plataforma. */
     fun postAndCheck(req: Request, platform: String) {
         client.newCall(req).execute().use { resp ->
             val text = resp.body.string()
             if (!resp.isSuccessful) error("$platform HTTP ${resp.code}: ${text.take(300)}")
             val obj = runCatching { AppJson.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
             if (obj["ok"]?.jsonPrimitive?.contentOrNull == "false") {
-                error("$platform 拒绝: ${text.take(200)}")
+                error("$platform rechazar: ${text.take(200)}")
             }
             val errcode = obj["errcode"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             if (errcode != null && errcode != 0) {
-                error("$platform 失败: errcode=$errcode ${text.take(200)}")
+                error("$platform falló: errcode=$errcode ${text.take(200)}")
             }
         }
     }

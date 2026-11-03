@@ -28,7 +28,7 @@ class PluginCatalogClientTest {
         val blank = client.fetch("   ")
         val plainHttp = client.fetch("http://example.com/catalog.json")
 
-        assertEquals("插件目录未配置", blank.error)
+        assertEquals("El directorio de complementos no está configurado", blank.error)
         assertTrue(plainHttp.error.orEmpty().contains("https://"))
         assertEquals(0, calls)
     }
@@ -58,7 +58,7 @@ class PluginCatalogClientTest {
         val result = client.fetch("https://example.com/catalog.json")
 
         assertNull(result.signedCatalog)
-        assertEquals("目录体积超过限制", result.error)
+        assertEquals("El tamaño del directorio excede el límite", result.error)
     }
 
     @Test
@@ -68,12 +68,12 @@ class PluginCatalogClientTest {
         val malformed = PluginCatalogClient(transport = { _, _ ->
             CatalogHttpResponse(200, "{not-json".toByteArray())
         }).fetch("https://example.com/catalog.json")
-        val failing = PluginCatalogClient(transport = { _, _ -> throw IOException("DNS 解析失败") })
+        val failing = PluginCatalogClient(transport = { _, _ -> throw IOException("DNS El análisis falló") })
             .fetch("https://example.com/catalog.json")
 
         assertTrue(notFound.error.orEmpty().contains("HTTP 404"))
         assertTrue(malformed.error.orEmpty().contains("JSON"))
-        assertTrue(failing.error.orEmpty().contains("DNS 解析失败"))
+        assertTrue(failing.error.orEmpty().contains("DNS El análisis falló"))
     }
 
     @Test

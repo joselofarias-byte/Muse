@@ -7,17 +7,17 @@ import org.junit.Test
 import java.io.File
 
 /**
- * P5-5: 备份完整性两重守护。
+ * P5-5: La integridad de la copia de seguridad está protegida por dos capas.
  *
- * 1) 实体覆盖: 遍历 MuseDb.kt 声明的 @Database 实体清单(单一真源),
- *    断言每一张数据表都被 [BackupService.Backup] 纳入;新增数据表若未接备份
- *    (也未显式归入运维表清单)直接失败,杜绝换机丢数据回归。
- * 2) 密码降级回归: P0-1 — 已设密码但 Keystore 丢失(读回为空)必须拒绝
- *    导出/上传,不允许静默降级为明文。
+ * 1) cobertura de entidad: Recorra la lista de entidades @Database declarada por MuseDb.kt(única fuente de verdad),
+ *    Afirma que cada tabla de datos es [BackupService.Backup] incorporar;Si no se realiza una copia de seguridad de la nueva tabla de datos
+ *    (Tampoco está incluido explícitamente en la lista de la tabla de operación y mantenimiento.)Fallo directo,Evite la pérdida y regresión de datos al cambiar de dispositivo.
+ * 2) Regresión de degradación de contraseña: P0-1 — Contraseña establecida pero almacén de claves perdido(Volver a leer como vacío)debe negarse
+ *    Exportar/subir,No se permite la degradación silenciosa a texto claro.
  */
 class BackupEntityCoverageTest {
 
-    /** 用户数据实体 → Backup 序列化字段名(必须存在)。 */
+    /** entidad de datos del usuario → Backup Nombre del campo serializado(debe existir). */
     private val dataEntityToField = mapOf(
         "SessionEntity" to "sessions",
         "MessageEntity" to "messages",
@@ -50,21 +50,21 @@ class BackupEntityCoverageTest {
         "ToolRoundEntity" to "toolRounds",
         "MessagePartEntity" to "messageParts",
         "SessionBranchHeadEntity" to "sessionBranchHeads",
-        // v2.6.7（P1-1）: 角色关系状态（用户资产，必须随备份迁移）
+        // v2.6.7(P1-1): Estado de relación de rol (activos de usuario, se deben migrar con copia de seguridad)
         "io.zer0.muse.data.relationship.AssistantRelationshipEntity" to "assistantRelationships",
-        // v2.6.7: 会话待办（用户资产 —— "我记下了"不能换机就丢）
+        // v2.6.7: Sesión pendiente (activo de usuario) —— "lo escribi"Si no puedes reemplazarlo, simplemente tíralo)
         "io.zer0.muse.data.todo.SessionTodoEntity" to "sessionTodos",
-        // v2.6.8: 卡片实体（停靠卡脱离消息流后唯一的存身处，不备份就永久丢卡）
+        // v2.6.8: Entidad de la tarjeta (el único lugar donde la tarjeta acoplada deja el flujo de mensajes. Si no se realiza una copia de seguridad, la tarjeta se perderá para siempre)
         "io.zer0.muse.data.card.CardEntity" to "cardEntities",
-        // v2.6.9: 牵挂账本 —— 助手"记得要问的事"，换机丢了等于关系记忆清零
+        // v2.6.9: Preocupado por el libro mayor —— asistente"Cosas para recordar preguntar", perder la máquina de reemplazo significa que se borra la memoria de relaciones.
         "io.zer0.muse.data.proactive.PendingThoughtEntity" to "pendingThoughts",
-        // v2.6.9: 结果账 —— 学到的反馈历史，丢了亲密度要从头攒
+        // v2.6.9: cuenta de resultados —— Historial de retroalimentación aprendido, si pierdes intimidad, tienes que empezar de cero.
         "io.zer0.muse.data.proactive.ProactiveOutcomeEntity" to "proactiveOutcomes",
-        // v2.6.9: 关系亲密度与等级
+        // v2.6.9: Relación de intimidad y jerarquía.
         "io.zer0.muse.data.proactive.ProactiveRelationEntity" to "proactiveRelations",
     )
 
-    /** 运维/派生表: 明确不纳入备份(重建成本低、含机器元数据)。新数据表不得落入此集合。 */
+    /** Operación y mantenimiento/tabla derivada: Explícitamente no incluido en la copia de seguridad(Bajo costo de reconstrucción, metadatos de la máquina incluidos). Las tablas de datos nuevas no deben pertenecer a esta colección. */
     private val operationalEntities = setOf(
         "StatsCacheEntity",
         "DbIntegrityLogEntity",
@@ -73,16 +73,16 @@ class BackupEntityCoverageTest {
         "io.zer0.muse.data.patrol.PatrolLogEntity",
         "GenerationCheckpointEntity",
         "GroupChatGenerationLedgerEntity",
-        // 用量流水：纯统计派生数据，不是用户资产。
-        // 不备份是有意为之 —— 若随备份恢复，历史流水会与升级回填的数据重复计数。
+        // Flujo de uso: datos derivados puramente estadísticos, no activos del usuario.
+        // No dar marcha atrás es intencional —— Si se restaura junto con la copia de seguridad, el flujo histórico se contará repetidamente y los datos se completarán con la actualización.
         "io.zer0.muse.data.stats.UsageRecordEntity",
     )
 
-    /** 从 MuseDb.kt 源码提取 @Database 声明实体(保持与 Room 真源一致,规避注解反射不可见问题)。 */
+    /** Extraiga la entidad de declaración @Database del código fuente de MuseDb.kt(Mantente fiel a la verdadera fuente de Room,Evite el problema del reflejo de anotación invisible.). */
     private fun declaredEntities(): List<String> {
         val source = File("src/main/java/io/zer0/muse/data/session/MuseDb.kt").readText()
         val block = Regex("entities\\s*=\\s*\\[([\\s\\S]*?)\\]").find(source)?.groupValues?.get(1)
-            ?: error("未能在 MuseDb.kt 找到 entities 声明块")
+            ?: error("No se puede encontrar el bloque de declaración de entidades en MuseDb.kt")
         return Regex("([\\w.]+)::class").findAll(block).map { it.groupValues[1] }.toList()
     }
 
@@ -96,19 +96,19 @@ class BackupEntityCoverageTest {
             val field = dataEntityToField[entity]
             when {
                 field != null && backupFields.contains(field) -> Unit
-                field != null -> missing += "$entity → $field(备份缺少该字段)"
+                field != null -> missing += "$entity → $field(A la copia de seguridad le falta este campo)"
                 entity in operationalEntities -> Unit
                 else -> unknown += entity
             }
         }
 
         assertEquals(
-            "新增数据实体未接入备份(或未显式归入运维表),换机将丢数据:\n" + missing.joinToString("\n"),
+            "La entidad de datos recién agregada no está conectada a la copia de seguridad(O no incluido explícitamente en la tabla de operación y mantenimiento.),Cambiar de dispositivo provocará la pérdida de datos:\n" + missing.joinToString("\n"),
             emptyList<String>(),
             missing,
         )
         assertEquals(
-            "无法识别的实体,请接入 backup 或加入 operationalEntities(运维表)清单:\n" + unknown.joinToString("\n"),
+            "Entidad no reconocida,Por favor acceda a la copia de seguridad o únase operationalEntities(Tabla de operación y mantenimiento.)Lista de verificación:\n" + unknown.joinToString("\n"),
             emptyList<String>(),
             unknown,
         )
@@ -120,13 +120,13 @@ class BackupEntityCoverageTest {
         val knownDerived = setOf(
             "settingsSnapshot",
             "scopedFacts",
-            // v4: 文件型存储快照(渠道/连接器/批注/收件箱/插件),无对应 MuseDb 实体
+            // v4: Instantánea de almacenamiento de archivos(canal/conector/Comentario/Bandeja de entrada/complemento),No hay entidad MuseDb correspondiente
             "fileStores",
-            // v4.1: 目录型文件快照(笔记附件/头像),同为文件型存储,无对应 MuseDb 实体
+            // v4.1: Instantánea del archivo del directorio(Nota adjunta/avatar),Ambos son almacenamiento de archivos.,No hay entidad MuseDb correspondiente
             "binaryFiles",
-            // memory 模块表(独立 MemoryDb,不在 MuseDb 清单)已随备份一并导出
+            // memory tabla de módulos(independiente MemoryDb,No en el manifiesto de MuseDb)Exportado junto con la copia de seguridad
             "sessionSummaries",
-            // v2.x: 会话压缩检查点,同样住在 MemoryDb
+            // v2.x: Punto de control de compresión de sesión,también vive en MemoryDb
             "contextCheckpoints",
             "dailyStates",
             "compiledSections",
@@ -139,25 +139,25 @@ class BackupEntityCoverageTest {
             .filter { it !in knownDerived && it !in dataEntityToField.values }
             .filterNot { it in operationalEntities }
             .filter { it !in declared }
-        assertEquals("备份字段没有对应实体来源,请核对:\n" + orphans.joinToString("\n"), emptyList<String>(), orphans)
+        assertEquals("El campo de respaldo no tiene una fuente de entidad correspondiente,Por favor verifique:\n" + orphans.joinToString("\n"), emptyList<String>(), orphans)
     }
 
     @Test
     fun `password degradation is rejected not downgraded`() {
-        // 已设密码 + Keystore 丢失读回为空 → 拒绝导出/上传
+        // Se ha establecido la contraseña + El almacén de claves se pierde y se vuelve a leer como vacío → Denegar exportación/subir
         assertTrue(
-            "已设密码但读回为空必须判定不可用(P0-1,禁止降级为明文)",
+            "La contraseña se ha establecido pero se vuelve a leer como vacía, por lo que se debe considerar que no está disponible.(P0-1,Deshabilitar la degradación para borrar texto)",
             BackupService.isBackupPasswordUnavailable(
                 CloudBackupConfig(backupPasswordSet = true, backupPassword = ""),
             ),
         )
-        // 从未设过密码 → 明文流程继续(兼容旧备份)
+        // Nunca establezcas una contraseña → El proceso de texto sin formato continúa(Compatible con copias de seguridad antiguas)
         assertFalse(
             BackupService.isBackupPasswordUnavailable(
                 CloudBackupConfig(backupPasswordSet = false, backupPassword = ""),
             ),
         )
-        // 正常密码 → 可用
+        // contraseña normal → Disponible
         assertFalse(
             BackupService.isBackupPasswordUnavailable(
                 CloudBackupConfig(backupPasswordSet = true, backupPassword = "s3cret"),

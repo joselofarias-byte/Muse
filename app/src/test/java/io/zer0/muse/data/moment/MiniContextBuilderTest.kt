@@ -21,11 +21,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P0-1 回归：小手机 / 朋友圈 / 日记等旁路生成必须走完整生成链路。
+ * P0-1 Regresión: la generación de omisión, como pequeños teléfonos celulares/momentos/diarios, debe pasar por el enlace de generación completo.
  *
- * 修复前的缺陷：这些场景只做 `"你是 $name" + 素材` 的三段拼接，绕过
- * [SystemPromptAssembler]，导致世界书 / 记忆 / 用户画像 / 提示词注入全部不生效。
- * 本测试锁住"世界书条目确实被注入到了最终消息里"这条不变量。
+ * Defectos antes de solucionarlos: estos escenarios solo hacen `"tu eres $name" + Materiales` Tres secciones de empalme, bypass.
+ * [SystemPromptAssembler], lo que hace que el libro mundial/la memoria/el retrato del usuario/la inyección rápida de palabras no surta efecto.
+ * Esta prueba está bloqueada"De hecho, las entradas del Libro Mundial se inyectan en el mensaje final."Esta invariante.
  */
 class MiniContextBuilderTest {
 
@@ -45,7 +45,7 @@ class MiniContextBuilderTest {
         AssistantEntity(
             id = "asst-1",
             name = "Muse",
-            systemPrompt = "你是一个温柔的角色。",
+            systemPrompt = "Eres un personaje gentil.",
             memoryEnabled = memoryEnabled,
             lorebookIdsJson = lorebookIds,
             modeInjectionIdsJson = injectionIds,
@@ -53,76 +53,76 @@ class MiniContextBuilderTest {
 
     private fun lorebookEntry() = LorebookEntity(
         id = "lb1",
-        name = "巫师协会",
-        keywordsJson = """["魔法"]""",
-        content = "巫师协会是一个古老的秘密组织。",
+        name = "gremio de magos",
+        keywordsJson = """["magia"]""",
+        content = "El Gremio de Magos es una antigua organización secreta.",
     )
 
     @Test
-    fun `buildMessages 走 SystemPromptAssembler 而不是裸拼人格`() = runTest {
+    fun `buildMessages Utilice SystemPromptAssembler en lugar de personalidad desnuda`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "完整系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso completo del sistema"))
 
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
-        val result = builder().buildMessages(assistant(), "我要发一条朋友圈")
+        val result = builder().buildMessages(assistant(), "Quiero enviar un mensaje a Momentos")
 
-        // 系统提示来自 Assembler，而非自己拼的"你是 XX"
+        // El mensaje del sistema proviene de Assembler, no de su propia ortografía."tu eres XX"
         assertTrue(
-            "系统提示必须来自 SystemPromptAssembler",
-            result.any { it.role == MessageRole.SYSTEM && it.content == "完整系统提示" },
+            "Las indicaciones del sistema deben provenir de SystemPromptAssembler",
+            result.any { it.role == MessageRole.SYSTEM && it.content == "Aviso completo del sistema" },
         )
-        // 最后一条是用户素材
+        // El último elemento es material de usuario.
         assertEquals(MessageRole.USER, result.last().role)
-        assertTrue(result.last().content.contains("朋友圈"))
+        assertTrue(result.last().content.contains("Momentos"))
     }
 
     @Test
-    fun `助手绑定的世界书关键词命中后注入 lorebook 标签`() = runTest {
+    fun `La palabra clave del libro mundial vinculada por el asistente se inyecta en la etiqueta del libro de historia después de presionarla.`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
         val entry = lorebookEntry()
         coEvery { lorebookRepository.getByIdsEnabled(listOf("lb1")) } returns listOf(entry)
-        // matchAgainst 是纯函数，直接返回命中结果
+        // matchAgainst Es una función pura y devuelve directamente el resultado del hit.
         every { lorebookRepository.matchAgainst(any(), any()) } returns listOf(entry)
 
-        val result = builder().buildMessages(assistant(), "今天想聊聊魔法")
+        val result = builder().buildMessages(assistant(), "Hoy quiero hablar de magia.")
 
         val joined = result.joinToString("\n") { it.content }
         assertTrue(
-            "世界书条目必须被注入到消息列表\n实际内容:\n$joined",
-            joined.contains("<lorebook") && joined.contains("巫师协会是一个古老的秘密组织"),
+            "Las entradas del Libro Mundial deben insertarse en la lista de mensajes.\ncontenido real:\n$joined",
+            joined.contains("<lorebook") && joined.contains("El Gremio de Magos es una antigua organización secreta."),
         )
         coVerify { lorebookRepository.getByIdsEnabled(listOf("lb1")) }
     }
 
     @Test
-    fun `未绑定世界书时不查询条目且不注入`() = runTest {
+    fun `Cuando el libro mundial no está encuadernado, las entradas no se consultarán ni se inyectarán.`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
 
-        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "随便说点什么")
+        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "solo di algo")
 
         val joined = result.joinToString("\n") { it.content }
-        assertTrue("未绑定世界书时不应出现 lorebook 标签", !joined.contains("<lorebook"))
+        assertTrue("La etiqueta del libro de historia no debería aparecer cuando el libro mundial no está encuadernado.", !joined.contains("<lorebook"))
         coVerify(exactly = 0) { lorebookRepository.getByIdsEnabled(any()) }
     }
 
     @Test
-    fun `提示词注入条目也会被注入`() = runTest {
+    fun `También se inyectarán entradas de inyección de palabras rápidas.`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
         coEvery { lorebookRepository.getByIdsEnabled(any()) } returns emptyList()
         val injection = PromptInjectionEntity(
             id = "inj1",
-            name = "风格约束",
-            content = "回复必须简短。",
+            name = "restricciones de estilo",
+            content = "Las respuestas deben ser breves.",
             mode = "default",
             enabled = true,
         )
@@ -130,53 +130,53 @@ class MiniContextBuilderTest {
 
         val result = builder().buildMessages(
             assistant(lorebookIds = "[]", injectionIds = """["inj1"]"""),
-            "写点什么",
+            "escribe algo",
         )
 
         val joined = result.joinToString("\n") { it.content }
-        assertTrue("提示词注入必须生效\n实际内容:\n$joined", joined.contains("回复必须简短"))
+        assertTrue("La inyección rápida de palabras debe surtir efecto\ncontenido real:\n$joined", joined.contains("Las respuestas deben ser breves."))
     }
 
     @Test
-    fun `私信路径的系统指令带上语音标记约定`() = runTest {
+    fun `El comando del sistema de la ruta del mensaje privado lleva la convención de marca de voz.`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "完整系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso completo del sistema"))
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
 
-        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "在吗", voiceMessageEnabled = true)
+        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "¿Está ahí?", voiceMessageEnabled = true)
 
         val systemText = result.filter { it.role == MessageRole.SYSTEM }.joinToString("\n") { it.content }
-        assertTrue("私信必须下发语音约定\n实际内容:\n$systemText", systemText.contains(voiceMessageInstruction()))
-        assertTrue("标记写法要写清楚", systemText.contains("[语音]") && systemText.contains("[/语音]"))
-        assertEquals("约定排在用户素材之前且素材仍是最后一条", MessageRole.USER, result.last().role)
+        assertTrue("El mensaje privado debe enviar un acuerdo de voz.\ncontenido real:\n$systemText", systemText.contains(voiceMessageInstruction()))
+        assertTrue("Las marcas deben escribirse claramente.", systemText.contains("[Voz]") && systemText.contains("[/Voz]"))
+        assertEquals("El acuerdo se clasifica antes que el material del usuario y el material sigue siendo el último.", MessageRole.USER, result.last().role)
     }
 
     @Test
-    fun `朋友圈路径不带语音标记约定`() = runTest {
+    fun `Ruta de momentos sin convención de etiquetas de voz`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
-        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "完整系统提示"))
+        } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso completo del sistema"))
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
 
-        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "请发一条朋友圈动态")
+        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "Por favor envía un mensaje a Momentos")
 
         val systemText = result.filter { it.role == MessageRole.SYSTEM }.joinToString("\n") { it.content }
-        assertFalse("朋友圈没有语音出口，不应出现标记\n实际内容:\n$systemText", systemText.contains("[语音]"))
+        assertFalse("No hay exportación de voz en Moments, por lo que no debería haber ninguna marca.\ncontenido real:\n$systemText", systemText.contains("[Voz]"))
         assertFalse(systemText.contains(voiceMessageInstruction()))
     }
 
     @Test
-    fun `Assembler 抛异常时退化为空系统提示而不崩溃`() = runTest {
+    fun `Assembler Cuando se produce una excepción, se degrada a un indicador del sistema vacío sin fallar.`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } throws IllegalStateException("boom")
         coEvery { settingsRepository.getUserProfile() } returns UserProfile()
 
-        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "内容")
+        val result = builder().buildMessages(assistant(lorebookIds = "[]"), "contenido")
 
-        // 至少保留用户消息，不能整体失败
+        // Al menos conservar los mensajes de los usuarios y no fallar en su conjunto.
         assertEquals(MessageRole.USER, result.last().role)
-        assertTrue(result.last().content.contains("内容"))
+        assertTrue(result.last().content.contains("contenido"))
     }
 }

@@ -46,10 +46,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 聊天页的渲染验证:左右分栏、时间分隔、输入栏可用性、超长折叠,以及从会话列表进出的导航。
+ * Representación de verificación de la página de chat:Columnas izquierda y derecha, separación de tiempo, disponibilidad de campos de entrada, plegado extralargo,y navegación dentro y fuera de la lista de conversaciones.
  *
- * 断言只落在「位置对不对 / 能不能按 / 展开了没有」上。状态由测试直接喂,
- * 不经过 ViewModel —— 数据怎么来的由 [MiniPhoneChatViewModelTest] 负责。
+ * La afirmación solo recae en "¿La posición es correcta/se puede presionar/expandir?" El estado es alimentado directamente por la prueba.,
+ * no pasar ViewModel —— ¿De dónde provienen los datos? [MiniPhoneChatViewModelTest] Sea responsable.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -66,8 +66,8 @@ class MiniPhoneChatUiTest {
     fun ownBubbleSitsRightAndPeerBubbleSitsLeft() {
         render(
             chatState(
-                message("m1", MpActorType.CHARACTER, "在的", createdAt = MINUTE_MS),
-                message("m2", MpActorType.USER, "在吗", createdAt = MINUTE_MS + 1_000L),
+                message("m1", MpActorType.CHARACTER, "en", createdAt = MINUTE_MS),
+                message("m2", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS + 1_000L),
             ),
         )
 
@@ -75,17 +75,17 @@ class MiniPhoneChatUiTest {
         val peer = compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).getBoundsInRoot()
         val own = compose.onNodeWithTag(MiniPhoneChatTags.bubble("m2")).getBoundsInRoot()
 
-        assertTrue("对方的气泡应落在左半边", centerX(peer) < rootWidth / 2f)
-        assertTrue("自己的气泡应落在右半边", centerX(own) > rootWidth / 2f)
-        assertTrue("自己的气泡起点在对方之后", own.left > peer.right)
+        assertTrue("La burbuja del oponente debería caer en la mitad izquierda.", centerX(peer) < rootWidth / 2f)
+        assertTrue("Tu propia burbuja debería aterrizar en la mitad derecha.", centerX(own) > rootWidth / 2f)
+        assertTrue("El punto de partida de tu propia burbuja está detrás de la del oponente.", own.left > peer.right)
     }
 
     @Test
     fun timeDividerSitsBetweenMessagesThatAreMinutesApart() {
         render(
             chatState(
-                message("m1", MpActorType.CHARACTER, "先走了", createdAt = MINUTE_MS),
-                message("m2", MpActorType.USER, "我到了", createdAt = MINUTE_MS + TIME_GAP_MS),
+                message("m1", MpActorType.CHARACTER, "vamos primero", createdAt = MINUTE_MS),
+                message("m2", MpActorType.USER, "he llegado", createdAt = MINUTE_MS + TIME_GAP_MS),
             ),
         )
 
@@ -93,8 +93,8 @@ class MiniPhoneChatUiTest {
         val earlier = compose.onNodeWithTag(MiniPhoneChatTags.message("m1")).getBoundsInRoot()
         val later = compose.onNodeWithTag(MiniPhoneChatTags.message("m2")).getBoundsInRoot()
 
-        assertTrue("时间行排在较早那条之后", divider.top >= earlier.bottom)
-        assertTrue("时间行排在较晚那条之前", divider.bottom <= later.top)
+        assertTrue("La línea de tiempo está ordenada después de la anterior.", divider.top >= earlier.bottom)
+        assertTrue("La línea de tiempo se ordena antes que la posterior.", divider.bottom <= later.top)
     }
 
     @Test
@@ -105,22 +105,22 @@ class MiniPhoneChatUiTest {
         compose.onNodeWithTag(MiniPhoneChatTags.SEND_BUTTON).performClick()
         assertEquals(emptyList<String>(), sent)
 
-        compose.onNodeWithTag(MiniPhoneChatTags.INPUT_FIELD).performTextInput("在吗")
+        compose.onNodeWithTag(MiniPhoneChatTags.INPUT_FIELD).performTextInput("¿Está ahí?")
         compose.onNodeWithTag(MiniPhoneChatTags.SEND_BUTTON).assertIsEnabled()
         compose.onNodeWithTag(MiniPhoneChatTags.SEND_BUTTON).performClick()
 
-        assertEquals(listOf("在吗"), sent)
+        assertEquals(listOf("¿Está ahí?"), sent)
     }
 
     @Test
     fun workingCopyReplacesTheTypingRowWhileTheCharacterDoesSomething() {
         render(
-            chatState(message("m1", MpActorType.USER, "帮我找找", createdAt = MINUTE_MS))
+            chatState(message("m1", MpActorType.USER, "Ayúdame a encontrarlo", createdAt = MINUTE_MS))
                 .copy(isGenerating = true, activity = MpActivityKind.SEARCHING),
         )
 
         compose.onNodeWithTag(MiniPhoneChatTags.ACTIVITY).assertExists()
-        compose.onNodeWithText("对方正在翻找…").assertExists()
+        compose.onNodeWithText("La otra parte está hurgando…").assertExists()
         compose.onNodeWithTag(MiniPhoneChatTags.TYPING).assertDoesNotExist()
     }
 
@@ -128,7 +128,7 @@ class MiniPhoneChatUiTest {
     fun systemNoticeIsCenteredAndLongTextCollapses() {
         render(
             chatState(
-                message("sys", MpActorType.SYSTEM, "对方没有回应", createdAt = MINUTE_MS, type = MpMessageType.SYSTEM),
+                message("sys", MpActorType.SYSTEM, "La otra parte no respondió.", createdAt = MINUTE_MS, type = MpMessageType.SYSTEM),
                 message("long", MpActorType.CHARACTER, LONG_TEXT, createdAt = MINUTE_MS + 1_000L),
             ),
         )
@@ -136,8 +136,8 @@ class MiniPhoneChatUiTest {
         val rootWidth = widthOf(compose.onRoot().getBoundsInRoot())
         val noticeCenter = centerX(compose.onNodeWithTag(MiniPhoneChatTags.message("sys")).getBoundsInRoot())
         val middle = rootWidth / 2f
-        assertTrue("系统提示居中", noticeCenter > middle - rootWidth * NOTICE_CENTER_TOLERANCE)
-        assertTrue("系统提示居中", noticeCenter < middle + rootWidth * NOTICE_CENTER_TOLERANCE)
+        assertTrue("Mensajes del sistema centrados", noticeCenter > middle - rootWidth * NOTICE_CENTER_TOLERANCE)
+        assertTrue("Mensajes del sistema centrados", noticeCenter < middle + rootWidth * NOTICE_CENTER_TOLERANCE)
 
         compose.onNodeWithTag(MiniPhoneChatTags.expand("long")).assertExists()
         compose.onNodeWithTag(MiniPhoneChatTags.expand("long")).performClick()
@@ -150,8 +150,8 @@ class MiniPhoneChatUiTest {
             threads = listOf(
                 MiniPhoneThreadUi(
                     id = "t1",
-                    name = "阿离",
-                    preview = "在吗",
+                    name = "ali",
+                    preview = "¿Está ahí?",
                     lastMessageAt = MINUTE_MS,
                     unreadCount = 2,
                     pinned = false,
@@ -166,7 +166,7 @@ class MiniPhoneChatUiTest {
                         Column {
                             Text(text = "chat:$threadId", modifier = Modifier.testTag(FAKE_CHAT_TAG))
                             Text(
-                                text = "返回列表",
+                                text = "Volver a la lista",
                                 modifier = Modifier
                                     .testTag(FAKE_CHAT_BACK_TAG)
                                     .clickable(onClick = onBack),
@@ -181,7 +181,7 @@ class MiniPhoneChatUiTest {
         compose.onNodeWithTag(MiniPhoneTags.thread("t1")).performClick()
 
         compose.onNodeWithTag(FAKE_CHAT_TAG).assertTextEquals("chat:t1")
-        // 聊天页里不显示 tab 栏,输入栏才排得下
+        // La barra de pestañas no se muestra en la página de chat.,Sólo se pueden organizar los campos de entrada
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.MESSAGES)).assertDoesNotExist()
 
         compose.onNodeWithTag(FAKE_CHAT_BACK_TAG).performClick()
@@ -192,7 +192,7 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun longPressOnOwnTextOffersCopyDeleteAndResend() {
-        render(chatState(message("m1", MpActorType.USER, "在吗", createdAt = MINUTE_MS)))
+        render(chatState(message("m1", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).performTouchInput { longClick() }
         compose.waitForIdle()
@@ -205,7 +205,7 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun longPressOnCharacterTextHasNoResend() {
-        render(chatState(message("m1", MpActorType.CHARACTER, "在的", createdAt = MINUTE_MS)))
+        render(chatState(message("m1", MpActorType.CHARACTER, "en", createdAt = MINUTE_MS)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).performTouchInput { longClick() }
         compose.waitForIdle()
@@ -217,7 +217,7 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun longPressOnImageOffersDeleteButNotCopy() {
-        render(chatState(message("img", MpActorType.USER, "[图片]", createdAt = MINUTE_MS, type = MpMessageType.IMAGE)))
+        render(chatState(message("img", MpActorType.USER, "[fotos]", createdAt = MINUTE_MS, type = MpMessageType.IMAGE)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.image("img")).performTouchInput { longClick() }
         compose.waitForIdle()
@@ -229,12 +229,12 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun longPressOnVoiceOffersDeleteButNotCopy() {
-        // 语音条要从 Koin 取播放器;这里只验菜单,给一个不会被真正播放的控制器
+        // La barra de voz necesita ser obtenida por el jugador de Koin.;Sólo echa un vistazo al menú aquí.,Regale un controlador que en realidad no se reproducirá
         startKoin { modules(module { single { MiniPhoneVoicePlaybackController() } }) }
         try {
             render(
                 chatState(
-                    message("voice", MpActorType.CHARACTER, "[语音]", createdAt = MINUTE_MS, type = MpMessageType.VOICE),
+                    message("voice", MpActorType.CHARACTER, "[Voz]", createdAt = MINUTE_MS, type = MpMessageType.VOICE),
                 ),
             )
 
@@ -250,7 +250,7 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun deletingAMessageAsksForConfirmationFirst() {
-        render(chatState(message("m1", MpActorType.USER, "在吗", createdAt = MINUTE_MS)))
+        render(chatState(message("m1", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).performTouchInput { longClick() }
         compose.waitForIdle()
@@ -258,7 +258,7 @@ class MiniPhoneChatUiTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneChatTags.DELETE_DIALOG).assertIsDisplayed()
-        assertEquals("确认之前不能删", emptyList<String>(), deleted)
+        assertEquals("No se puede eliminar antes de confirmar", emptyList<String>(), deleted)
 
         compose.onNodeWithTag(MiniPhoneChatTags.DELETE_CANCEL).performClick()
         compose.waitForIdle()
@@ -277,7 +277,7 @@ class MiniPhoneChatUiTest {
 
     @Test
     fun resendingFromTheMenuReportsTheMessageId() {
-        render(chatState(message("m1", MpActorType.USER, "在吗", createdAt = MINUTE_MS)))
+        render(chatState(message("m1", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS)))
 
         compose.onNodeWithTag(MiniPhoneChatTags.bubble("m1")).performTouchInput { longClick() }
         compose.waitForIdle()
@@ -291,7 +291,7 @@ class MiniPhoneChatUiTest {
     fun failedMessageShowsARetryMarkBesideIt() {
         render(
             chatState(
-                message("m1", MpActorType.USER, "在吗", createdAt = MINUTE_MS, status = MpMessageStatus.FAILED),
+                message("m1", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS, status = MpMessageStatus.FAILED),
             ),
         )
 
@@ -308,13 +308,13 @@ class MiniPhoneChatUiTest {
     fun sendingMessageShowsALightProgressWordNotACover() {
         render(
             chatState(
-                message("m1", MpActorType.USER, "在吗", createdAt = MINUTE_MS, status = MpMessageStatus.SENDING),
+                message("m1", MpActorType.USER, "¿Está ahí?", createdAt = MINUTE_MS, status = MpMessageStatus.SENDING),
             ),
         )
 
-        compose.onNodeWithTag(MiniPhoneChatTags.status("m1")).assertTextEquals("发送中")
-        // 正文不能被进行态遮住
-        compose.onNodeWithText("在吗").assertIsDisplayed()
+        compose.onNodeWithTag(MiniPhoneChatTags.status("m1")).assertTextEquals("Enviando")
+        // El texto principal no puede ser oscurecido por el estado progresista.
+        compose.onNodeWithText("¿Está ahí?").assertIsDisplayed()
     }
 
     @Test
@@ -325,22 +325,22 @@ class MiniPhoneChatUiTest {
                 MiniPhoneChatScreen(state = state, onBack = {}, onLoadOlder = {})
             }
         }
-        // 进页就停在最新一条,不弹提示
+        // La página se detendrá en la última,No reproducir indicaciones
         compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertDoesNotExist()
 
-        // 翻回更早的位置(程序化滚动,不是手势)
+        // Retroceder a una posición anterior(Desplazamiento programado,ni un gesto)
         compose.onNodeWithTag(MiniPhoneChatTags.MESSAGE_LIST).performScrollToIndex(20)
         compose.waitForIdle()
 
         state = state.copy(
-            messages = state.messages + message("arrived", MpActorType.CHARACTER, "刚发来的一句", createdAt = LEAVING_BOTTOM_MS),
+            messages = state.messages + message("arrived", MpActorType.CHARACTER, "lo que acabo de enviar", createdAt = LEAVING_BOTTOM_MS),
         )
         compose.waitForIdle()
 
         compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertIsDisplayed()
-        compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertTextEquals("1 条新消息")
+        compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertTextEquals("1 nuevos mensajes")
 
-        // 点一下回到最新:提示自己收起来
+        // Haga clic para regresar a lo último:Recuerda guardarlo
         compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).performClick()
         compose.waitForIdle()
         compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertDoesNotExist()
@@ -356,13 +356,13 @@ class MiniPhoneChatUiTest {
         }
 
         state = state.copy(
-            messages = state.messages + message("arrived", MpActorType.CHARACTER, "刚发来的一句", createdAt = LEAVING_BOTTOM_MS),
+            messages = state.messages + message("arrived", MpActorType.CHARACTER, "lo que acabo de enviar", createdAt = LEAVING_BOTTOM_MS),
         )
         compose.waitForIdle()
 
-        // 人在底部:新消息直接被看到,不弹提示打断阅读
+        // gente en el fondo:Los nuevos mensajes son visibles directamente,Interrumpir la lectura sin reproducir indicaciones
         compose.onNodeWithTag(MiniPhoneChatTags.NEW_MESSAGES_PILL).assertDoesNotExist()
-        compose.onNodeWithText("刚发来的一句").assertIsDisplayed()
+        compose.onNodeWithText("lo que acabo de enviar").assertIsDisplayed()
     }
 
     private fun render(state: ChatUiState) {
@@ -379,7 +379,7 @@ class MiniPhoneChatUiTest {
         }
     }
 
-    /** 元素横向中心。 `getBoundsInRoot()` 给的是 Dp 矩形,没有现成的 center。 */
+    /** El centro horizontal del elemento. `getBoundsInRoot()` Dado es el rectángulo Dp,No existe un centro ya preparado. */
     private fun centerX(bounds: DpRect): Dp = bounds.left + widthOf(bounds) / 2f
 
     private fun widthOf(bounds: DpRect): Dp = bounds.right - bounds.left
@@ -387,7 +387,7 @@ class MiniPhoneChatUiTest {
     private fun chatState(vararg messages: ChatMessageUi): ChatUiState = ChatUiState(
         threadId = "t1",
         characterId = "c1",
-        peerName = "阿离",
+        peerName = "ali",
         messages = messages.toList(),
     )
 
@@ -407,12 +407,12 @@ class MiniPhoneChatUiTest {
         status = status,
     )
 
-    /** 一串按时间递增的消息:足够撑出滚动,方便验「离开底部」之后的提示。 */
+    /** Una secuencia de mensajes en orden ascendente de tiempo.:suficiente para soportar el rodamiento,Es conveniente comprobar el mensaje después de \"dejar el final\". */
     private fun manyMessages(count: Int): Array<ChatMessageUi> = Array(count) { index ->
         message(
             id = "m$index",
             sender = if (index % 2 == 0) MpActorType.CHARACTER else MpActorType.USER,
-            content = "第 $index 句",
+            content = "No. $index frase",
             createdAt = (index + 1) * MINUTE_MS,
         )
     }
@@ -423,12 +423,12 @@ class MiniPhoneChatUiTest {
         const val TIME_GAP_MS: Long = 10 * MINUTE_MS
         const val FAKE_CHAT_TAG: String = "mp-fake-chat"
         const val FAKE_CHAT_BACK_TAG: String = "mp-fake-chat-back"
-        const val COLLAPSE_ACTION: String = "收起"
+        const val COLLAPSE_ACTION: String = "cerrar"
 
-        /** 居中容差:允许 10% 屏宽的偏差。 */
+        /** tolerancia de centrado:Permita una desviación del 10 % del ancho de la pantalla. */
         const val NOTICE_CENTER_TOLERANCE: Float = 0.1f
 
-        /** 300 字以上的正文,用来验证折叠。 */
-        val LONG_TEXT: String = "这是一句很长的话".repeat(40)
+        /** 300 Texto con más de 10 palabras.,Se utiliza para verificar el plegado. */
+        val LONG_TEXT: String = "Esta es una frase muy larga.".repeat(40)
     }
 }

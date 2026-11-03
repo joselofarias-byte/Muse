@@ -54,10 +54,10 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v0.36: 图片生成默认参数设置。
+ * v0.36: Configuración de parámetros predeterminados para la generación de imágenes.
  *
- * 用户可在此设置默认绘图供应商、模型、尺寸、质量、风格和生成数量。
- * 模型选择改为从已配置的 OPENAI / GEMINI 供应商中挑选。
+ * Aquí el usuario puede establecer el proveedor de dibujo, el modelo, el tamaño, la calidad, el estilo y la cantidad de construcción predeterminados.
+ * En su lugar, la selección de modelos elige entre proveedores OPENAI/GEMINI configurados.
  */
 @Composable
 fun ImageGenSection(settings: SettingsRepository = koinInject(), scope: CoroutineScope) {
@@ -92,7 +92,7 @@ fun ImageGenSection(settings: SettingsRepository = koinInject(), scope: Coroutin
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // 模型选择卡片
+                // Tarjeta de selección de modelo
                 if (providers == null) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -303,7 +303,7 @@ private fun ModelGridCard(model: Model, selected: Boolean, onClick: () -> Unit) 
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧选中图标挤成一列
+                // LAYOUT-01: Row Anchura el texto interior + limita la línea para evitar que el icono seleccionado a la derecha la comprima en una columna cuando se amplía el tamaño de fuente
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

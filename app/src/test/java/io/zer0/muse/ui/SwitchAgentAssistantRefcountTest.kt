@@ -4,13 +4,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F4: switchAgentAssistant 的会话引用计数切换不得误释放仍在使用的会话。
+ * AUD-UI-F4: switchAgentAssistant Un interruptor de recuento de referencias de sesión no debe liberar accidentalmente una sesión que todavía esté en uso.
  *
- * 原实现在协程内先 release(`_state.value.agentSessionId`)再 acquire。快速 A→B
- * 连续切换时,B 路径读到的旧值可能已是 A 刚 acquire 的新会话,release 会多减引用计数,
- * 5s idle reaper 随后把仍在使用的会话资源清掉。
+ * La implementación original ahora está dentro de la corrutina. release(`_state.value.agentSessionId`)adquirir de nuevo. rapido A→B
+ * Al cambiar continuamente,B Es posible que el valor anterior leído por la ruta ya sea la nueva sesión A recién adquirida,release Reducirá más el recuento de referencias.,
+ * 5s idle reaper Luego borre los recursos de la sesión que todavía están en uso.
  *
- * 修复:先快照旧值 → 先 acquire 新会话 → 再 release 快照的旧值(且排除同 id 重复释放)。
+ * Reparación:Capture primero el valor anterior → Primero adquiera una nueva sesión → Luego libere el valor anterior de la instantánea.(Y excluir lanzamientos repetidos con el mismo ID.).
  */
 class SwitchAgentAssistantRefcountTest {
 
@@ -20,14 +20,14 @@ class SwitchAgentAssistantRefcountTest {
     fun `refcount switch snapshots previous session before release`() {
         val src = source()
         val start = src.indexOf("AUD-UI-F4")
-        assertTrue("未找到 AUD-UI-F4 防护块", start >= 0)
+        assertTrue("Bloque de protección AUD-UI-F4 no encontrado", start >= 0)
         val body = src.substring(start, (start + 800).coerceAtMost(src.length))
         assertTrue(
-            "必须先快照旧会话 id",
+            "Primero se deben tomar instantáneas de las sesiones antiguas. id",
             body.contains("val previousAgentSessionId = _state.value.agentSessionId"),
         )
         assertTrue(
-            "必须先 acquire 新会话再释放旧会话(先增后减,不会为负)",
+            "Primero se debe adquirir una nueva sesión y luego liberar la sesión anterior.(Aumentar primero y luego disminuir.,no será negativo)",
             body.indexOf("sessionManager.acquire(sessionId)") <
                 body.indexOf("sessionManager.release(previousAgentSessionId)"),
         )
@@ -37,10 +37,10 @@ class SwitchAgentAssistantRefcountTest {
     fun `release skips identical session id`() {
         val src = source()
         val start = src.indexOf("AUD-UI-F4")
-        assertTrue("未找到 AUD-UI-F4 防护块", start >= 0)
+        assertTrue("Bloque de protección AUD-UI-F4 no encontrado", start >= 0)
         val body = src.substring(start, (start + 800).coerceAtMost(src.length))
         assertTrue(
-            "同 id 不得既 acquire 又 release",
+            "La misma identificación no puede adquirir y al mismo tiempo release",
             body.contains("previousAgentSessionId != sessionId"),
         )
     }

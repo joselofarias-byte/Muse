@@ -3,18 +3,18 @@ import { AlertIcon } from "../components/icons.js";
 import { useI18n } from "../i18n/I18nProvider.js";
 
 interface BlockBoundaryProps {
-  /** 这块是什么（提示文案里点名）；由调用方按当前语言给好。 */
+  /** ¿Qué es esta parte? (nómbrela en la copia del mensaje); la persona que llama le informará según el idioma actual. */
   readonly name: string;
   readonly children: ReactNode;
 }
 
 interface BlockBoundaryState {
   readonly failed: boolean;
-  /** 递增即重挂载子树：这就是「重新加载这一块」的实现。 */
+  /** Incrementar significa volver a montar el subárbol: esta es la implementación de \"recargar este bloque\". */
   readonly nonce: number;
 }
 
-/** 错误态用函数组件写，才能拿到当前语言（class 里不能用 hook）。 */
+/** El estado de error se escribe utilizando componentes de función para obtener el idioma actual (class no se pueden utilizar ganchos). */
 function BlockFallback({ name, onRetry }: { readonly name: string; readonly onRetry: () => void }) {
   const { t } = useI18n();
   return (
@@ -29,11 +29,11 @@ function BlockFallback({ name, onRetry }: { readonly name: string; readonly onRe
 }
 
 /**
- * 页面级错误边界：某一块渲染炸了，只把那一块换成一行提示 + 重新加载，
- * 其余部分（侧栏、输入区、其他卡片）继续可用。
+ * Límite de error a nivel de página: cierto bloque de renderizado explota, simplemente reemplace ese bloque con un mensaje de una línea + recarga,
+ * El resto (barra lateral, área de entrada, otras tarjetas) siguen estando disponibles.
  *
- * 和 MessageErrorBoundary 的分工：那个是逐条消息的隔离，这个是更大的区块
- * （消息列表、会话列表、设置页）的隔离。
+ * División del trabajo con MessageErrorBoundary: ese es el aislamiento mensaje por mensaje, este es bloques más grandes
+ * Aislamiento de (lista de mensajes, lista de conversaciones, página de configuración).
  */
 export class BlockBoundary extends Component<BlockBoundaryProps, BlockBoundaryState> {
   override state: BlockBoundaryState = { failed: false, nonce: 0 };

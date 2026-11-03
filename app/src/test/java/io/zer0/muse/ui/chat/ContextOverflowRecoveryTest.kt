@@ -12,26 +12,26 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * 上下文溢出（请求超出模型窗口）恢复的单测。
+ * Recuperación de prueba única del desbordamiento de contexto (la solicitud excede la ventana del modelo).
  *
- * 覆盖四件事：
- *  1. 判据：各 provider 的溢出文案能识别，非溢出的 400 / 限流文案不能；
- *  2. 一次机会：第一次溢出压缩后重发，第二次不再恢复；
- *  3. 压缩器腾不出空间（原样返回）时不重发，直接报原错误；
- *  4. 接线：runner 的溢出分支确实在「报错出口」之前，且用压缩后的历史重发。
+ * Se cubren cuatro cosas:
+ *  1. Criterio: Se puede identificar la copia de desbordamiento de cada proveedor, pero no se puede identificar la copia sin desbordamiento de 400/límite actual;
+ *  2. Una posibilidad: reenviar después de la compresión de desbordamiento por primera vez y sin recuperación la segunda vez;
+ *  3. Cuando el compresor no puede liberar espacio (regresa como está), no se retransmitirá y el error original se informará directamente;
+ *  4. Cableado:runner De hecho, la rama de desbordamiento se encuentra antes de la "salida de error" y se vuelve a emitir utilizando el historial comprimido.
  *
- * 说明：`ChatToolLoopRunner.streamRound` 的宿主是 ChatViewModel，单独驱动它需要替身
- * 几十个成员，因此「压缩 + 重发」的行为在这里用抽出的纯逻辑 + 源码接线断言钉住。
+ * Descripción:`ChatToolLoopRunner.streamRound` El anfitrión es ChatViewModel, manejarlo solo requiere un sustituto
+ * Hay docenas de miembros, por lo que el comportamiento de "compresión + retransmisión" se concreta aquí con lógica pura extraída + aserciones de cableado de código fuente.
  */
 class ContextOverflowRecoveryTest {
 
-    // ── 判据 ─────────────────────────────────────────────────────────────
+    // ── criterio ─────────────────────────────────────────────────────────────
 
     @Test
     fun `recognizes overflow messages from different providers`() {
         val overflowMessages =
             listOf(
-                // OpenAI 官方
+                // OpenAI oficial
                 "HTTP 400 [invalid request]: This model's maximum context length is 128000 tokens. " +
                     "However, your messages resulted in 137077 tokens. Please reduce the length of the " +
                     "messages. [code=context_length_exceeded] (invalid_request_error)",
@@ -44,13 +44,13 @@ class ContextOverflowRecoveryTest {
                 "HTTP 400 (invalid argument): Range of input length should be [1, 129024]",
                 // Kimi
                 "HTTP 400 [invalid request]: exceeded model token limit",
-                // 请求体过大
+                // El cuerpo de la solicitud es demasiado grande.
                 "HTTP 413 [payload too large]: request entity too large",
-                // 中文中转站
-                "HTTP 400: 输入过长，请缩短对话",
+                // Estación de transferencia china
+                "HTTP 400: La entrada es demasiado larga, acorte la conversación.",
             )
         overflowMessages.forEach { message ->
-            assertTrue("应判为溢出: $message", ContextOverflowSignals.matches(message))
+            assertTrue("Debe considerarse como desbordamiento.: $message", ContextOverflowSignals.matches(message))
         }
     }
 
@@ -62,16 +62,16 @@ class ContextOverflowRecoveryTest {
                 "HTTP 400 [invalid request]: max_tokens is too large for this model",
                 "HTTP 429 [rate limited]: Rate limit reached for tokens per min (TPM)",
                 "HTTP 401 [authentication failed]: Invalid API key",
-                "流式已输出内容但未完成,已保留当前内容(可重试生成)",
+                "Transmisión de contenido de salida pero no completado,El contenido actual se ha conservado.(Generación reintentable)",
                 "",
             )
         otherErrors.forEach { message ->
-            assertFalse("不应判为溢出: $message", ContextOverflowSignals.matches(message))
+            assertFalse("No debe considerarse como un desbordamiento.: $message", ContextOverflowSignals.matches(message))
         }
         assertFalse(ContextOverflowSignals.matches(null))
     }
 
-    // ── 一次机会 ─────────────────────────────────────────────────────────
+    // ── una oportunidad ─────────────────────────────────────────────────────────
 
     @Test
     fun `first overflow compresses once and resends with the compressed history`() = runBlocking {
@@ -92,9 +92,9 @@ class ContextOverflowRecoveryTest {
             )
 
         assertEquals(1, compressCalls)
-        assertEquals("压缩后的历史应交给调用方重发", compressed, recovered)
-        assertTrue("重发用的是压缩后的历史，而不是原历史", recovered!!.size < original.size)
-        assertTrue("机会应被占用", recovery.used)
+        assertEquals("El historial comprimido debe entregarse a la persona que llama para su retransmisión.", compressed, recovered)
+        assertTrue("La retransmisión utiliza el historial comprimido en lugar del historial original.", recovered!!.size < original.size)
+        assertTrue("se debe aprovechar la oportunidad", recovery.used)
     }
 
     @Test
@@ -111,9 +111,9 @@ class ContextOverflowRecoveryTest {
         val second =
             recoverFromContextOverflow(OPENAI_OVERFLOW, streamInterrupted = false, recovery = recovery, compress = compress)
 
-        assertTrue("第一次应恢复", first != null)
-        assertNull("第二次应直接报原错误,不再恢复", second)
-        assertEquals("整个请求生命周期只压缩一次", 1, compressCalls)
+        assertTrue("La primera vez debe ser restaurada.", first != null)
+        assertNull("El error original debe informarse directamente la segunda vez.,No más recuperación", second)
+        assertEquals("Comprimir solo una vez durante todo el ciclo de vida de la solicitud", 1, compressCalls)
     }
 
     @Test
@@ -134,7 +134,7 @@ class ContextOverflowRecoveryTest {
 
         assertNull(recovered)
         assertEquals(0, compressCalls)
-        assertFalse("未命中判据不应占用机会", recovery.used)
+        assertFalse("Los criterios de falta no deberían aprovechar las oportunidades.", recovery.used)
     }
 
     @Test
@@ -163,7 +163,7 @@ class ContextOverflowRecoveryTest {
         var compressCalls = 0
         val compress: suspend () -> List<UIMessage>? = {
             compressCalls++
-            // 压缩器无净收益 / 无可压缩区间时的表现：原样返回，runner 侧折算成 null
+            // Rendimiento cuando el compresor no tiene ganancia neta/no hay intervalo de compresión: regresa como está,runner El lado está doblado hacia null
             null
         }
 
@@ -172,12 +172,12 @@ class ContextOverflowRecoveryTest {
         val second =
             recoverFromContextOverflow(OPENAI_OVERFLOW, streamInterrupted = false, recovery = recovery, compress = compress)
 
-        assertNull("压不动就不恢复", first)
+        assertNull("Si no se puede presionar, no se recuperará.", first)
         assertNull(second)
-        assertEquals("压不动也不重试第二次", 1, compressCalls)
+        assertEquals("Si no se puede presionar, no lo volveré a intentar.", 1, compressCalls)
     }
 
-    // ── 接线 ─────────────────────────────────────────────────────────────
+    // ── Cableado ─────────────────────────────────────────────────────────────
 
     @Test
     fun `runner recovers before the error outlet and resends the compressed history`() {
@@ -191,29 +191,29 @@ class ContextOverflowRecoveryTest {
                 ?: error("ChatToolLoopRunner.kt not found")
 
         val recoveryBlock =
-            source.substringAfter("// 上下文溢出（请求超出模型窗口）恢复")
+            source.substringAfter("// Recuperación de desbordamiento de contexto (la solicitud excede la ventana del modelo)")
                 .substringBefore("streamError?.let {")
-        assertTrue("恢复走统一闸门", recoveryBlock.contains("recoverFromContextOverflow("))
-        assertTrue("压缩复用现成压缩器", recoveryBlock.contains("compressForOverflowRecovery("))
+        assertTrue("Restaurar la puerta unificada", recoveryBlock.contains("recoverFromContextOverflow("))
+        assertTrue("Reutilización de la compresión de compresores disponibles en el mercado", recoveryBlock.contains("compressForOverflowRecovery("))
         assertTrue(
-            "压缩后的历史要重发本轮",
+            "La historia comprimida debe retransmitirse en esta ronda.",
             recoveryBlock.contains("return streamRound(") &&
                 recoveryBlock.contains("history = overflowHistory"),
         )
         assertTrue(
-            "压缩后的历史要回写给整轮循环",
+            "El historial comprimido se reescribe en todo el ciclo.",
             recoveryBlock.contains("conversationHistory.clear()") &&
                 recoveryBlock.contains("conversationHistory.addAll(overflowHistory)"),
         )
 
-        // 恢复必须发生在「错误出口」之前：streamError 先尝试恢复，失败才走最终的
-        // updateAssistant + StreamRoundResult.Error。
-        val recoveryIndex = source.indexOf("// 上下文溢出（请求超出模型窗口）恢复")
-        // 用错误出口里独有的那一行做锚（不用跨行文本：文件是 CRLF，拼 \n 会匹配不到）
+        // La recuperación debe ocurrir antes de la "salida de error":streamError Intente recuperarse primero y solo dé el paso final si falla.
+        // updateAssistant + StreamRoundResult.Error.
+        val recoveryIndex = source.indexOf("// Recuperación de desbordamiento de contexto (la solicitud excede la ventana del modelo)")
+        // Utilice una línea única en la salida de error como ancla (sin texto entre líneas: el archivo es CRLF, deletree \n no coincidirá)
         val errorOutletIndex = source.indexOf("val displayMsg = ErrorMessages.resolve(host.appContext, it)")
-        assertTrue("未找到溢出恢复分支", recoveryIndex > 0)
-        assertTrue("未找到错误出口", errorOutletIndex > 0)
-        assertTrue("恢复分支必须在报错出口之前", recoveryIndex < errorOutletIndex)
+        assertTrue("No se encontró la rama de recuperación de desbordamiento", recoveryIndex > 0)
+        assertTrue("Salida de error no encontrada", errorOutletIndex > 0)
+        assertTrue("La rama de recuperación debe estar antes de la salida del error.", recoveryIndex < errorOutletIndex)
     }
 
     private fun historyOf(size: Int): List<UIMessage> = (1..size).map { index ->

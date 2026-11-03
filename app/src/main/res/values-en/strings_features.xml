@@ -145,7 +145,7 @@
     <string name="schedule_show_advanced">Show advanced automation</string>
     <string name="schedule_hide_advanced">Hide advanced automation</string>
 
-    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -187,7 +187,7 @@
     <string name="schedule_action_tool_id">Tool ID</string>
     <string name="schedule_action_tool_id_placeholder">e.g. quick_note_add</string>
     <string name="schedule_action_tool_params">Tool params (JSON)</string>
-    <string name="schedule_action_tool_params_placeholder">e.g. {「title」:「daily report」}</string>
+    <string name="schedule_action_tool_params_placeholder">e.g. {「title":「daily report"}</string>
     <string name="schedule_action_notify_title">Notification title</string>
     <string name="schedule_action_notify_message">Notification message</string>
     <string name="schedule_chain_title">Chain tasks (trigger after success)</string>
@@ -232,7 +232,7 @@
     <string name="quick_notes_export_folder">Folder: %1$s</string>
     <string name="quick_notes_export_updated_at">Updated: %1$s</string>
     <string name="quick_notes_delete_permanent_title">Delete permanently</string>
-    <string name="quick_notes_delete_permanent_confirm">This cannot be undone. Permanently delete 「%1$s」?</string>
+    <string name="quick_notes_delete_permanent_confirm">This cannot be undone. Permanently delete 「%1$s"?</string>
     <string name="quick_notes_clear_trash">Clear trash</string>
     <string name="quick_notes_clear_trash_confirm">This will permanently delete all %1$d notes in trash. This cannot be undone.</string>
     <string name="quick_notes_trash_count">Trash: %1$d</string>
@@ -303,7 +303,7 @@
     <string name="knowledge_doc_chunks"> · %1$d chunks</string>
     <string name="knowledge_doc_not_indexed"> · Not indexed</string>
 
-    <!-- 前端修复 (i18n-7): PDF metadata card -->
+    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">By updated time</string>
@@ -503,13 +503,13 @@
     <string name="groupchat_tool_context">Group context</string>
     <string name="groupchat_tool_mention">@Mention</string>
 
-    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: 写作群聊快速创建入口 -->
-    <!-- v2.x: 群聊归档 -->
+    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
+    <!-- v2.x: Archivo de chat grupal -->
     <string name="groupchat_archive">Archive</string>
     <string name="groupchat_unarchive">Unarchive</string>
 
@@ -677,7 +677,7 @@
     <string name="wake_diagnostics_refresh">Reload</string>
     <string name="wake_diagnostics_copy">Copy snapshot</string>
     <string name="wake_diagnostics_copied">Snapshot copied</string>
-    <string name="wake_diagnostics_hint">For “ran but failed”, check failed／skipped／missed in the task history. “Never ran at all” is usually not registered, blocked by the system, or the master switch is off — as shown here.</string>
+    <string name="wake_diagnostics_hint">For “ran but failed”, check failed/skipped/missed in the task history. “Never ran at all” is usually not registered, blocked by the system, or the master switch is off — as shown here.</string>
     <string name="wake_diagnostics_total_control">Background work: %1$s</string>
     <string name="wake_diagnostics_total_control_on">on</string>
     <string name="wake_diagnostics_total_control_off">off (wakeups still happen, executors return early)</string>

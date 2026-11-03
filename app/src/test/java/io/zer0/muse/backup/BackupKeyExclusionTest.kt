@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-04: 备份产物扫描 — 序列化后的备份 JSON 不得包含任何 API Key 明文。
+ * R-TEST-04: Escaneo de productos de respaldo — El JSON de copia de seguridad serializado no debe contener ningún texto sin cifrar de clave API.
  */
 class BackupKeyExclusionTest {
 
@@ -38,13 +38,13 @@ class BackupKeyExclusionTest {
         val text = json.encodeToString(BackupService.Backup.serializer(), backup)
         assertFalse(text.contains("sk-fake-123"))
         assertFalse(text.contains("secret-pin"))
-        assertFalse("备份 JSON 不得含 TTS Key 明文", text.contains("sk-tts-456"))
+        assertFalse("El JSON de respaldo no debe contener texto sin formato de clave TTS", text.contains("sk-tts-456"))
         assertTrue(text.contains("mono"))
     }
 
     @Test
     fun `media config encrypted does not leak tts api key plaintext`() = runBlocking {
-        // P0-2: MediaConfig.encrypted() 必须把 ttsApiKey 转成密文(内存替身),序列化后无明文
+        // P0-2: MediaConfig.encrypted() ttsApiKey debe convertirse en texto cifrado(memoria doble),No hay texto claro después de la serialización
         val original = SecureKeyStore.delegate
         try {
             SecureKeyStore.delegate = object : SecureKeyCipher {
@@ -54,10 +54,10 @@ class BackupKeyExclusionTest {
             }
             val config = MediaConfig(ttsApiKey = "sk-tts-789", ttsEngine = "openai")
             val stored = json.encodeToString(MediaConfig.serializer(), config.encrypted())
-            assertFalse("持久化 JSON 不得含 TTS Key 明文", stored.contains("sk-tts-789"))
-            assertTrue("持久化 JSON 应含加密前缀", stored.contains("enc_v1:"))
+            assertFalse("JSON persistente no debe contener texto sin formato de clave TTS", stored.contains("sk-tts-789"))
+            assertTrue("JSON persistente debe contener un prefijo de cifrado", stored.contains("enc_v1:"))
 
-            // 读回解密恢复明文(往返一致)
+            // Leer de nuevo el descifrado para recuperar texto sin formato(Viaje de ida y vuelta consistente)
             val decrypted = json.decodeFromString(MediaConfig.serializer(), stored).decrypted()
             assertTrue(decrypted.ttsApiKey == "sk-tts-789")
         } finally {

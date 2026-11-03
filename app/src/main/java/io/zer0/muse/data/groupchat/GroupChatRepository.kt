@@ -17,24 +17,24 @@ import kotlinx.serialization.builtins.serializer
 import java.util.UUID
 
 /**
- * 群聊仓库 — 封装 DAO,暴露 Flow + suspend 方法。
+ * Almacén de chat grupal — Encapsulación DAO,Exponer métodos de flujo + suspensión.
  *
- * 职责:
- *  - 群聊 CRUD(createChat / deleteChat / updateChat / observeChats)
- *  - 消息发送(sendMessage)与观察(observeMessages 已 @Deprecated / getPagedMessages 分页版)
- *  - 消息分页加载(getRecentMessagesPaged 首屏 + getOlderMessages 上滑加载更多)
- *  - 最近消息读取(getRecentMessages)供 Agent 工具 / 调度器读取上下文
- *  - memberIds JSON 序列化/反序列化辅助
+ * Responsabilidades:
+ *  - chat grupal CRUD(createChat / deleteChat / updateChat / observeChats)
+ *  - envío de mensajes(sendMessage)y observación(observeMessages @Deprecated / getPaggedMessages versión paginada)
+ *  - Carga de mensajes en páginas(getRecentMessagesPaged Primera pantalla + getOlderMessages Deslice hacia arriba para cargar más)
+ *  - Leer mensajes recientes(getRecentMessages)Para que la herramienta/programador del Agente lea el contexto
+ *  - memberIds JSON serialización/Asistencia de deserialización
  *
- * 所有 DB 操作包裹在 [Dispatchers.IO] 中。
- * 跨表操作(发送消息 + 更新时间戳、删除群聊 + 级联消息)用 [MuseDb.withTransaction] 保证原子性。
+ * Todas las operaciones de base de datos están envueltas en [Dispatchers.IO] en.
+ * Operaciones entre mesas(Enviar mensaje + actualizar marca de tiempo, eliminar chat grupal + mensaje en cascada)usar [MuseDb.withTransaction] Atomicidad garantizada.
  *
- * @param db Room 数据库(用于跨表事务)
- * @param groupChatDao 群聊 DAO
- * @param groupChatMessageDao 群聊消息 DAO
- * @param assistantRepository Assistant 仓库(用于反查成员名,可选)
- * @param messageImageStore v2.x 遗留收尾:消息图片统一存储(与单聊同一实例),
- *        把群聊生成图/用户图的大 base64 落盘到 filesDir/muse_images/,DB 只存 file:// 引用。
+ * @param db Room base de datos(para transacciones entre mesas)
+ * @param groupChatDao chat grupal DAO
+ * @param groupChatMessageDao Mensajes de chat grupal DAO
+ * @param assistantRepository Assistant almacén(Se utiliza para comprobar los nombres de los miembros.,Opcional)
+ * @param messageImageStore v2.x cierre del legado:Almacenamiento unificado de imágenes de mensajes.(Misma instancia que el chat único),
+ *        Generar chat grupal en gráfico/La gran base64 del gráfico de usuario se coloca en filesDir/muse_images/,DB Sólo se guardan las referencias file://.
  */
 class GroupChatRepository(
     private val db: MuseDb,
@@ -47,38 +47,38 @@ class GroupChatRepository(
     private val TAG = "GroupChatRepo"
 
     companion object {
-        /** v1.53-GC: 群聊消息分页 — 首屏页大小(初始加载条数)。 */
+        /** v1.53-GC: Paginación de mensajes de chat grupal — Tamaño de la página de inicio(Número inicial de artículos cargados). */
         const val INITIAL_PAGE_SIZE = 30
 
-        /** v1.53-GC: 群聊消息分页 — 上滑加载更多页大小。 */
+        /** v1.53-GC: Paginación de mensajes de chat grupal — Desliza hacia arriba para cargar más tamaños de página. */
         const val LOAD_MORE_PAGE_SIZE = 20
     }
 
-    /** 观察全部群聊(按 updatedAt 降序)。 */
+    /** Mira todos los chats grupales(Orden descendente por actualizadoEn). */
     fun observeChats(): Flow<List<GroupChatEntity>> = groupChatDao.observeAll()
 
     /**
-     * 观察指定群聊的消息(按 timestamp 升序,全量上限 200)。
+     * Observar los mensajes del chat grupal especificado.(Ordenar por marca de tiempo ascendente,Límite total 200).
      *
-     * v1.53-GC: 全量观察长群聊有 OOM 风险(图片 base64 直存 DB 叠加长消息列表)。
-     * 新代码改用 [getPagedMessages](首屏 Flow) + [getRecentMessagesPaged](初始加载)
-     * + [getOlderMessages](上滑加载更多)分页方案。本方法保留向后兼容,不在新代码中使用。
+     * v1.53-GC: Existe riesgo de OOM al observar completamente chats grupales largos(Imagen base64 de almacenamiento directo DB lista de mensajes largos superpuestos).
+     * Utilice un nuevo código en su lugar [getPagedMessages](Por encima del pliegue Flow) + [getRecentMessagesPaged](carga inicial)
+     * + [getOlderMessages](Desliza hacia arriba para cargar más)Esquema de paginación. Este método conserva la compatibilidad con versiones anteriores.,No se utiliza en código nuevo.
      */
     @Deprecated(
-        "全量观察长群聊有 OOM 风险,改用 getPagedMessages / getRecentMessagesPaged + getOlderMessages 分页加载。",
+        "Existe riesgo de OOM al observar completamente chats grupales largos,Usar en su lugar getPagedMessages / getRecentMessagesPaged + getOlderMessages Cargando en páginas.",
         ReplaceWith("getPagedMessages(chatId)"),
     )
     fun observeMessages(chatId: String): Flow<List<GroupChatMessageEntity>> =
         groupChatMessageDao.observeMessages(chatId).map { list -> list.map(::hydrateMessage) }.flowOn(Dispatchers.IO)
 
     /**
-     * v1.53-GC: 观察指定群聊最近 initialPageSize 条消息(按 timestamp 升序,Flow 实时更新)。
+     * v1.53-GC: Observe los últimos mensajes de initialPageSize en el chat grupal especificado(Ordenar por marca de tiempo ascendente,Flow actualizaciones en tiempo real).
      *
-     * 替代全量 [observeMessages]:聊天界面首屏只观察最近一页,新消息到达时 Flow 自动重发,
-     * ViewModel 据此增量追加到已加载列表(已加载的更早历史保留不动)。
+     * Sustituir importe total [observeMessages]:Sólo la página más reciente es visible en la primera pantalla de la interfaz de chat.,Flow se reenvía automáticamente cuando llegan nuevos mensajes,
+     * ViewModel Agregar incrementalmente a la lista cargada en consecuencia(El historial anterior cargado permanece sin cambios).
      *
-     * @param chatId 群聊 id
-     * @param initialPageSize 首屏页大小,默认 [INITIAL_PAGE_SIZE]
+     * @param chatId chat grupal id
+     * @param initialPageSize Tamaño de la página de inicio,Predeterminado [INITIAL_PAGE_SIZE]
      */
     fun getPagedMessages(chatId: String, initialPageSize: Int = INITIAL_PAGE_SIZE): Flow<List<GroupChatMessageEntity>> =
         groupChatMessageDao.observeRecentMessages(chatId, initialPageSize)
@@ -86,14 +86,14 @@ class GroupChatRepository(
             .flowOn(Dispatchers.IO)
 
     /**
-     * v1.53-GC: 分页初始加载 — 取指定群聊最近 limit 条消息(按 timestamp 升序)。
+     * v1.53-GC: Carga inicial de paginación — Obtenga los últimos mensajes límite del chat grupal especificado(Ordenar por marca de tiempo ascendente).
      *
-     * DAO 返回降序(最新在前),这里 reversed() 转为升序,便于直接渲染。
-     * 用于 ViewModel 首屏加载,避免一次性加载全部消息导致卡顿/OOM。
+     * DAO Volver en orden descendente(último primero),aquí reversed() Convertir a orden ascendente,Conveniente para renderizado directo.
+     * Se utiliza para cargar la primera pantalla de ViewModel.,Evite el retraso causado por cargar todos los mensajes a la vez/OOM.
      *
-     * @param chatId 群聊 id
-     * @param limit 页大小,默认 [INITIAL_PAGE_SIZE]
-     * @return 消息列表(按时间升序)
+     * @param chatId chat grupal id
+     * @param limit tamaño de página,Predeterminado [INITIAL_PAGE_SIZE]
+     * @return Lista de mensajes(orden ascendente por tiempo)
      */
     suspend fun getRecentMessagesPaged(chatId: String, limit: Int = INITIAL_PAGE_SIZE): List<GroupChatMessageEntity> =
         withContext(Dispatchers.IO) {
@@ -101,17 +101,17 @@ class GroupChatRepository(
         }
 
     /**
-     * v1.53-GC: 分页加载更多 — 取早于锚点(beforeTimestamp, beforeId)的 limit 条消息(按 timestamp 升序)。
+     * v1.53-GC: Paginación para cargar más. — Tomar antes del punto de anclaje(beforeTimestamp, beforeId)limitar mensajes(Ordenar por marca de tiempo ascendente).
      *
-     * 用于上滑加载更多:以当前列表最早一条消息的 (timestamp, id) 为双锚点,取更早的历史。
-     * DAO 返回降序(最新在前),这里 reversed() 转为升序,可直接前置拼接到现有列表。
-     * 双锚点(timestamp + id)避免同毫秒消息被漏取或重复。
+     * Solía deslizarse hacia arriba para cargar más.:El primer mensaje de la lista actual (timestamp, id) para puntos de anclaje dobles,Tomemos como ejemplo la historia anterior.
+     * DAO Volver en orden descendente(último primero),aquí reversed() Convertir a orden ascendente,Se puede unir previamente directamente a una lista existente.
+     * doble punto de anclaje(timestamp + id)Evite que se pierdan o dupliquen mensajes del mismo milisegundo.
      *
-     * @param chatId 群聊 id
-     * @param beforeTimestamp 锚点时间戳(当前列表最早一条的 timestamp)
-     * @param beforeId 锚点消息 id(当前列表最早一条的 id,同毫秒去重用)
-     * @param limit 页大小,默认 [LOAD_MORE_PAGE_SIZE]
-     * @return 消息列表(按时间升序),空列表表示已无更早历史
+     * @param chatId chat grupal id
+     * @param beforeTimestamp Marca de tiempo de anclaje(El primer elemento de la lista actual timestamp)
+     * @param beforeId mensaje de anclaje id(El primer elemento de la lista actual id,Mismos milisegundos para reutilizar)
+     * @param limit tamaño de página,Predeterminado [LOAD_MORE_PAGE_SIZE]
+     * @return Lista de mensajes(orden ascendente por tiempo),Una lista vacía significa que no hay antecedentes anteriores.
      */
     suspend fun getOlderMessages(
         chatId: String,
@@ -124,21 +124,21 @@ class GroupChatRepository(
             .reversed()
     }
 
-    /** 观察指定群聊的元数据(用于详情页标题刷新)。 */
+    /** Observar los metadatos de un chat grupal específico.(Se utiliza para actualizar el título de la página de detalles.). */
     fun observeChat(id: String): Flow<GroupChatEntity?> = groupChatDao.observeById(id)
 
-    /** 按 id 取单个群聊(一次性)。 */
+    /** Obtenga un chat grupal único por identificación(Desechable). */
     suspend fun getChat(id: String): GroupChatEntity? = withContext(Dispatchers.IO) {
         groupChatDao.getById(id)
     }
 
     /**
-     * 创建群聊。
+     * Crea un chat grupal.
      *
-     * @param name 群聊名称
-     * @param memberIds 成员 assistantId 列表
-     * @param teamId 可选关联团队 id
-     * @return 新创建的群聊 id
+     * @param name Nombre del chat grupal
+     * @param memberIds Lista de ID de asistente de miembro
+     * @param teamId Equipo asociado opcional id
+     * @return Chat grupal recién creado id
      */
     suspend fun createChat(name: String, memberIds: List<String>, teamId: String? = null): String = withContext(Dispatchers.IO) {
         val chatId = UUID.randomUUID().toString()
@@ -149,8 +149,8 @@ class GroupChatRepository(
                 name = name,
                 memberIdsJson = serializeMemberIds(memberIds),
                 teamId = teamId,
-                // 默认把首位成员设为主持人：此前留空，调度器发现 hostId 不在成员里
-                // 就回退成轮流发言，用户选的「主持人」类模板等于没生效。
+                // De forma predeterminada, el primer miembro se establece como host: si se dejó en blanco antes, el programador encontró que el hostId no estaba entre los miembros.
+                // Si se vuelve a turnarse para hablar, la plantilla de "moderador" seleccionada por el usuario no surtirá efecto.
                 hostId = memberIds.firstOrNull(),
                 createdAt = now,
                 updatedAt = now,
@@ -160,17 +160,17 @@ class GroupChatRepository(
     }
 
     /**
-     * 更新群聊信息(名称/描述/成员/讨论模式)。
+     * Actualizar la información del chat grupal(Nombre/Descripción/miembro/modo de discusión).
      *
-     * @param chatId 群聊 id
-     * @param name 新名称(null 表示不更新)
-     * @param description 新描述(null 表示不更新)
-     * @param memberIds 新成员列表(null 表示不更新)
-     * @param discussionMode 讨论模式(null 表示不更新)
-     * @param autoMaxRounds Auto 模式最大轮数(null 表示不更新)
-     * @param hostId 主持人 AI id(null 表示不更新;传 "" 清空)
-     * @param replyLengthMode 发言长度档位(brief/standard/detailed,null 表示不更新)
-     * @param observerIds 观察者成员 id 列表(不参与默认轮转发言,null 表示不更新)
+     * @param chatId chat grupal id
+     * @param name nuevo nombre(null Indica que no hay actualización)
+     * @param description nueva descripción(null Indica que no hay actualización)
+     * @param memberIds Nueva lista de miembros(null Indica que no hay actualización)
+     * @param discussionMode modo de discusión(null Indica que no hay actualización)
+     * @param autoMaxRounds Auto El número máximo de rondas en el modo.(null Indica que no hay actualización)
+     * @param hostId Moderador AI id(null Indica que no hay actualización;pasar "" Borrar)
+     * @param replyLengthMode Rango de longitud del discurso(brief/standard/detailed,null Indica que no hay actualización)
+     * @param observerIds Lista de identificaciones de miembros observadores(No participe en la rotación de oradores predeterminada.,null Indica que no hay actualización)
      */
     suspend fun updateChat(
         chatId: String,
@@ -183,7 +183,7 @@ class GroupChatRepository(
         replyLengthMode: String? = null,
         observerIds: List<String>? = null,
     ) = withContext(Dispatchers.IO) {
-        // M2: 用事务包裹读-改-写,防止并发更新丢失
+        // M2: Leer con contenedor de transacción-cambiar-escribir,Evitar la pérdida de actualizaciones simultáneas
         db.withTransaction {
             val existing = groupChatDao.getById(chatId) ?: return@withTransaction
             val updated = existing.copy(
@@ -202,18 +202,18 @@ class GroupChatRepository(
     }
 
     /**
-     * 发送消息到群聊。
+     * Enviar un mensaje a un chat grupal.
      *
-     * @param chatId 群聊 id
-     * @param senderType 发送者类型: "user" / "assistant"
-     * @param senderId 发送者 id(userId 或 assistantId)
-     * @param senderName 发送者显示名(缓存)
-     * @param body 消息正文
-     * @param imageBase64Json 图片附件 base64 列表(JSON 字符串,默认 "[]")
-     * @param mood Agent 情绪(可选)
-     * @param reasoning Agent 思考过程(可选)
-     * @param videoFileUri v2.x 遗留收尾:generate_video 生成的视频地址(assistant 消息,默认 null)
-     * @return 新消息 id;群聊不存在时返回 null(未落库,调用方需处理)
+     * @param chatId chat grupal id
+     * @param senderType Tipo de remitente: "user" / "assistant"
+     * @param senderId remitente id(userId o assistantId)
+     * @param senderName Nombre para mostrar del remitente(caché)
+     * @param body Texto del mensaje
+     * @param imageBase64Json Lista base64 de archivos adjuntos de imágenes(JSON cuerda,Predeterminado "[]")
+     * @param mood Agent emociones(Opcional)
+     * @param reasoning Agent proceso de pensamiento(Opcional)
+     * @param videoFileUri v2.x cierre del legado:generate_video Dirección de vídeo generada(assistant noticias,Predeterminado null)
+     * @return nuevas noticias id;Regresa cuando el chat grupal no existe null(No en stock,La persona que llama debe manejar)
      */
     suspend fun sendMessage(
         chatId: String,
@@ -231,9 +231,9 @@ class GroupChatRepository(
         videoFileUri: String? = null,
     ): String? = withContext(Dispatchers.IO) {
         val msgId = UUID.randomUUID().toString()
-        // v2.x 遗留收尾: 图片附件落盘 — 长 base64 经 MessageImageStore 写 filesDir/muse_images/,
-        // DB 只存 file:// 引用(与单聊 SessionRepository 同一策略),避免群聊消息行存 MB 级 base64。
-        // 在事务外先完成文件写,避免文件 IO 包在 DB 事务里。
+        // v2.x cierre del legado: Colocación de archivos adjuntos de imágenes — Base64 larga escrita a través de MessageImageStore filesDir/muse_images/,
+        // DB Guarde solo las referencias del archivo://(Misma estrategia que SessionRepository de chat único),Evite que las líneas de mensajes del chat grupal se guarden en MB base64.
+        // Complete la escritura del archivo fuera de la transacción.,Evite envolver el archivo IO en transacciones de base de datos.
         val persistableImageJson = runCatching {
             val images = AppJson.decodeFromString(ListSerializer(String.serializer()), imageBase64Json)
             if (images.isEmpty()) {
@@ -245,11 +245,11 @@ class GroupChatRepository(
                 )
             }
         }.getOrElse { imageBase64Json }
-        // H-GC2: 插入消息 + 更新会话时间戳必须原子,避免崩溃后消息已写但时间戳未更新
-        // 审计修复 (5.2): 群聊不存在时返回 null,不再返回悬空 msgId(调用方以为发成功
-        // 实际没落库,后续引用该 id 全部失效)。
+        // H-GC2: Insertar mensaje + actualizar la marca de tiempo de la sesión debe ser atómico,Evite fallas después de que se haya escrito el mensaje pero la marca de tiempo no se haya actualizado
+        // Reparación de auditoría (5.2): Regresa cuando el chat grupal no existe null,Ya no vuelve a colgar msgId(La persona que llama cree que la transmisión fue exitosa
+        // Biblioteca de rechazo real,Todas las referencias posteriores a esta identificación no serán válidas.).
         val saved = db.withTransaction {
-            // M6: 校验群聊存在,防止孤儿消息(在事务内检查防止竞态)
+            // M6: Verificar que exista el chat grupal,Prevenir mensajes huérfanos(Verifique dentro de las transacciones para evitar condiciones de carrera)
             if (groupChatDao.getById(chatId) == null) return@withTransaction false
             groupChatMessageDao.upsert(
                 GroupChatMessageEntity(
@@ -270,9 +270,9 @@ class GroupChatRepository(
                     messageType = messageType,
                 ),
             )
-            // 更新群聊的 updatedAt(列表页排序用)
+            // Actualizar chat grupal updatedAt(Para ordenar páginas de lista)
             groupChatDao.touchUpdatedAt(chatId)
-            // v1.107 冗余: 更新群聊冗余字段(最后消息预览 + 计数 + 最后活动时间)
+            // v1.107 Redundancia: Actualizar campos redundantes del chat grupal(Vista previa del último mensaje + recuento + tiempo de la última actividad)
             val preview = body.take(50).ifBlank { "…" }
             resultOf {
                 groupChatDao.updateLastMessageAndCount(chatId, preview, 1, System.currentTimeMillis())
@@ -283,11 +283,11 @@ class GroupChatRepository(
     }
 
     /**
-     * 删除群聊(级联删除其全部消息)。
+     * Eliminar chat grupal(Elimina en cascada todos sus mensajes.).
      *
-     * H-GC1: 跨表删除(消息 + 群聊)用 @Transaction 包裹,保证原子性。
+     * H-GC1: Eliminar entre tablas(Mensaje + Chat grupal)Envolver con @Transaction,Atomicidad garantizada.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     suspend fun deleteChat(chatId: String) = withContext(Dispatchers.IO) {
         db.withTransaction {
@@ -297,13 +297,13 @@ class GroupChatRepository(
     }
 
     /**
-     * v1.77: 删除群聊中的单条消息。
+     * v1.77: Eliminar un solo mensaje en un chat grupal.
      *
-     * @param messageId 消息 id
+     * @param messageId noticias id
      */
     suspend fun deleteMessage(messageId: String) = withContext(Dispatchers.IO) {
-        // 审计修复 (5.3): 删除后重算冗余字段(最后消息预览/计数/最后活动时间)。
-        // 原实现只删消息,删除最新消息后列表页预览仍显示已删内容、计数虚高。
+        // Reparación de auditoría (5.3): Recalcular campos redundantes después de la eliminación(Vista previa del último mensaje/contar/Hora de la última actividad).
+        // La implementación original solo elimina mensajes.,Después de eliminar las últimas noticias, la vista previa de la página de la lista todavía muestra el contenido eliminado y el recuento es artificialmente alto.
         db.withTransaction {
             val msg = groupChatMessageDao.getById(messageId)
             if (msg == null) return@withTransaction
@@ -325,12 +325,12 @@ class GroupChatRepository(
     }
 
     /**
-     * 切换群聊置顶状态。
+     * Cambia el chat grupal al estado superior.
      *
-     * @param chatId 群聊 id
+     * @param chatId chat grupal id
      */
     suspend fun togglePin(chatId: String) = withContext(Dispatchers.IO) {
-        // M2: 用事务包裹读-改-写,防止并发更新丢失
+        // M2: Leer con contenedor de transacción-cambiar-escribir,Evitar la pérdida de actualizaciones simultáneas
         db.withTransaction {
             val existing = groupChatDao.getById(chatId) ?: return@withTransaction
             groupChatDao.upsert(existing.copy(pinned = !existing.pinned))
@@ -338,10 +338,10 @@ class GroupChatRepository(
     }
 
     /**
-     * v2.x: 切换群聊归档状态。
+     * v2.x: Alternar el estado del archivo del chat grupal.
      *
-     * @param chatId 群聊 id
-     * @param archived 是否归档
+     * @param chatId chat grupal id
+     * @param archived Archivo o no
      */
     suspend fun toggleArchive(chatId: String, archived: Boolean) = withContext(Dispatchers.IO) {
         db.withTransaction {
@@ -351,43 +351,43 @@ class GroupChatRepository(
     }
 
     /**
-     * 取指定群聊的最近 N 条消息(按 timestamp 升序返回,供 Agent 读取上下文)。
+     * Obtenga los últimos N mensajes del chat grupal especificado(Regresar en orden ascendente por marca de tiempo,Para que el agente lea el contexto).
      *
-     * @param chatId 群聊 id
-     * @param limit 条数上限,默认 20
-     * @return 消息列表(按时间升序)
+     * @param chatId chat grupal id
+     * @param limit Límite superior del número de artículos.,Predeterminado 20
+     * @return Lista de mensajes(orden ascendente por tiempo)
      */
     suspend fun getRecentMessages(chatId: String, limit: Int = 20): List<GroupChatMessageEntity> = withContext(Dispatchers.IO) {
-        // DAO 按 DESC 取最近 N 条,反转后按升序返回(便于顺序阅读)
+        // DAO Presione DESC para obtener los últimos N elementos,Regresar en orden ascendente después de invertir(Fácil de leer secuencialmente)
         groupChatMessageDao.getRecentMessages(chatId, limit).map(::hydrateMessage).reversed()
     }
 
-    /** v1.0.72: 群聊内搜索消息(关键词匹配正文,按时间倒序)。 */
+    /** v1.0.72: Buscar mensajes en el chat grupal(Texto de coincidencia de palabras clave,en orden cronológico inverso). */
     suspend fun searchMessages(chatId: String, query: String, limit: Int = 100): List<GroupChatMessageEntity> =
         withContext(Dispatchers.IO) {
             if (query.isBlank()) return@withContext emptyList()
             groupChatMessageDao.searchMessages(chatId, query.trim(), limit).map(::hydrateMessage)
         }
 
-    /** 取指定群聊的最新一条消息(用于列表页预览)。 */
+    /** Obtenga el último mensaje del chat grupal especificado(Para obtener una vista previa de la página de lista). */
     suspend fun getLatestMessage(chatId: String): GroupChatMessageEntity? = withContext(Dispatchers.IO) {
         groupChatDao.getLatestMessage(chatId)
     }
 
-    /** 统计指定群聊的消息数。 */
+    /** Cuente la cantidad de mensajes en el chat grupal especificado. */
     suspend fun countMessages(chatId: String): Int = withContext(Dispatchers.IO) {
         groupChatDao.countMessages(chatId)
     }
 
-    // ── memberIds JSON 序列化辅助 ──
+    // ── memberIds JSON Asistencia de serialización ──
 
     /**
-     * v2.x 遗留收尾:把 DB 中的图片附件字段(file:// 引用或旧 base64)归一为渲染/上下文所需形式。
+     * v2.x cierre del legado:Coloque el campo de archivo adjunto de imagen en DB(file:// cita o viejo base64)normalizar para renderizar/La forma requerida por el contexto.
      *
-     * 写入侧经 [MessageImageStore.toPersistable] 把长 base64 落盘为 file:// 路径(DB 只存引用),
-     * 读取侧把 file:// 还原为 base64(补 data:image/png;base64, 前缀,与群聊渲染器
-     * MessageImageGrid/SmartImage 的预期一致);http(s)/已是 data URI 的值原样保留。
-     * 与单聊 [io.zer0.muse.data.session.SessionRepository] 的 imageBase64List 归一同一策略。
+     * Escribir escritura paralela [MessageImageStore.toPersistable] Coloque la base64 larga en el disco como ruta file://(DB Guardar solo referencias),
+     * En el lado de lectura, restaure el archivo:// a base64(suplemento data:image/png;base64, prefijo,Representador de chat con grupo
+     * MessageImageGrid/SmartImage consistente con las expectativas);http(s)/El valor que ya es un URI de datos se deja intacto.
+     * Chatea con Dan [io.zer0.muse.data.session.SessionRepository] imageBase64List está normalizado con la misma estrategia.
      */
     private fun hydrateMessage(message: GroupChatMessageEntity): GroupChatMessageEntity {
         val json = message.imageBase64Json
@@ -410,20 +410,20 @@ class GroupChatRepository(
         )
     }
 
-    /** 把 memberIds 列表序列化为 JSON 字符串。 */
+    /** Serializar una lista de memberIds en una cadena JSON. */
     fun serializeMemberIds(memberIds: List<String>): String {
         return AppJson.encodeToString(ListSerializer(String.serializer()), memberIds)
     }
 
-    /** 把 memberIdsJson 反序列化为列表。 */
+    /** Deserialice memberIdsJson en una lista. */
     fun parseMemberIds(chat: GroupChatEntity): List<String> {
         if (chat.memberIdsJson.isBlank() || chat.memberIdsJson == "[]") return emptyList()
-        // L3: 用 resultOf 替代 runCatching,避免吞异常
+        // L3: Utilice resultOf en su lugar runCatching,Evite tragar excepciones.
         return resultOf {
             AppJson.decodeFromString(ListSerializer(String.serializer()), chat.memberIdsJson)
         }.getOrNull() ?: emptyList()
     }
-    // ── B5-02: 群聊生成账本(进程被杀后按断点重放) ──
+    // ── B5-02: El chat grupal genera un libro mayor(Una vez finalizado el proceso, presione el punto de interrupción para reproducir) ──
 
     suspend fun upsertGenerationLedger(entity: GroupChatGenerationLedgerEntity) {
         withContext(Dispatchers.IO) { db.groupChatGenerationLedgerDao().upsert(entity) }
@@ -443,14 +443,14 @@ class GroupChatRepository(
     suspend fun getPendingGenerationLedgers(): List<GroupChatGenerationLedgerEntity> =
         withContext(Dispatchers.IO) { db.groupChatGenerationLedgerDao().getPending() }
 
-    // ── v2.x 群聊上下文管理:群共享文档 ──
+    // ── v2.x Gestión del contexto del chat grupal:Documentos compartidos en grupo ──
 
-    /** 把群共享文档列表序列化为 JSON 字符串。 */
+    /** Serializar una lista de documentos compartidos de grupo en una cadena JSON. */
     fun serializeSharedDocs(docs: List<GroupSharedDoc>): String {
         return AppJson.encodeToString(GroupSharedDoc.serializer().let { kotlinx.serialization.builtins.ListSerializer(it) }, docs)
     }
 
-    /** 把 sharedDocsJson 反序列化为列表。 */
+    /** Deserialice SharedDocsJson en una lista. */
     fun parseSharedDocs(chat: GroupChatEntity): List<GroupSharedDoc> {
         if (chat.sharedDocsJson.isBlank() || chat.sharedDocsJson == "[]") return emptyList()
         return resultOf {
@@ -461,7 +461,7 @@ class GroupChatRepository(
         }.getOrNull() ?: emptyList()
     }
 
-    /** v2.x: 解析观察者成员 id 列表(不参与默认轮转发言)。 */
+    /** v2.x: Analizar la lista de identificación de miembros observadores(No participe en la rotación de oradores predeterminada.). */
     fun parseObserverIds(chat: GroupChatEntity): List<String> {
         if (chat.observerIdsJson.isBlank() || chat.observerIdsJson == "[]") return emptyList()
         return resultOf {
@@ -469,18 +469,18 @@ class GroupChatRepository(
         }.getOrNull() ?: emptyList()
     }
 
-    /** v2.x: 序列化观察者成员 id 列表。 */
+    /** v2.x: Lista serializada de identificaciones de miembros observadores. */
     fun serializeObserverIds(ids: List<String>): String {
         return AppJson.encodeToString(ListSerializer(String.serializer()), ids)
     }
 
     /**
-     * v2.x: 添加一个群共享文档。
+     * v2.x: Agregue un documento compartido de grupo.
      *
-     * @param chatId 群聊 id
-     * @param title 文档标题
-     * @param content 文档正文
-     * @return 新文档 id(失败返回 null)
+     * @param chatId chat grupal id
+     * @param title Título del documento
+     * @param content Texto del documento
+     * @return nuevo documento id(Retorno del fracaso null)
      */
     suspend fun addSharedDoc(chatId: String, title: String, content: String): String? = withContext(Dispatchers.IO) {
         db.withTransaction {
@@ -505,10 +505,10 @@ class GroupChatRepository(
     }
 
     /**
-     * v2.x: 删除一个群共享文档。
+     * v2.x: Eliminar un documento compartido en grupo.
      *
-     * @param chatId 群聊 id
-     * @param docId 文档 id
+     * @param chatId chat grupal id
+     * @param docId Documentación id
      */
     suspend fun removeSharedDoc(chatId: String, docId: String) = withContext(Dispatchers.IO) {
         db.withTransaction {
@@ -522,9 +522,9 @@ class GroupChatRepository(
         }
     }
 
-    // ── v2.x 群聊上下文管理:AI 专属上下文 ──
+    // ── v2.x Gestión del contexto del chat grupal:AI Contexto exclusivo ──
 
-    /** 把成员专属上下文 Map 序列化为 JSON 字符串。 */
+    /** Serializar el mapa de contexto específico del miembro en una cadena JSON. */
     fun serializeMemberPrivateContext(map: Map<String, String>): String {
         return AppJson.encodeToString(
             kotlinx.serialization.builtins.MapSerializer(
@@ -535,7 +535,7 @@ class GroupChatRepository(
         )
     }
 
-    /** 把 memberPrivateContextJson 反序列化为 Map。 */
+    /** Deserializar memberPrivateContextJson al mapa. */
     fun parseMemberPrivateContext(chat: GroupChatEntity): Map<String, String> {
         if (chat.memberPrivateContextJson.isBlank() || chat.memberPrivateContextJson == "{}") return emptyMap()
         return resultOf {
@@ -550,11 +550,11 @@ class GroupChatRepository(
     }
 
     /**
-     * v2.x: 设置某个群成员的专属上下文。
+     * v2.x: Establezca un contexto exclusivo para un miembro del grupo.
      *
-     * @param chatId 群聊 id
-     * @param assistantId 成员 AI id
-     * @param contextText 专属上下文文本(传空字符串则清除该成员的专属上下文)
+     * @param chatId chat grupal id
+     * @param assistantId miembro AI id
+     * @param contextText Texto contextual exclusivo(Pasar una cadena vacía borra el contexto exclusivo del miembro.)
      */
     suspend fun setMemberPrivateContext(chatId: String, assistantId: String, contextText: String) = withContext(Dispatchers.IO) {
         db.withTransaction {

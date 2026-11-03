@@ -19,38 +19,38 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withTimeout
 
 /**
- * [MemoryLlmClient] 的 app 端实现。
+ * [MemoryLlmClient] La implementación del lado de la aplicación.
  *
- * memory 模块只定义接口,不直接依赖 [ChatService] —— 这样 memory 模块可以
- * 单独编译。本类由 app 模块注册到 Koin,把 memory 系统的 LLM 调用桥接到
- * [ChatService.completeText](走 Provider 配置 + OpenAI 兼容协议)。
+ * memory Los módulos solo definen interfaces,no depende directamente de [ChatService] —— De esta manera el módulo de memoria puede
+ * Compile por separado. Esta clase está registrada por el módulo de la aplicación. Koin,Puente de llamadas del sistema de memoria LLM a
+ * [ChatService.completeText](Ir a configuración del proveedor + protocolo compatible con OpenAI).
  *
- * 这里复用 ChatService 的 Provider 配置:用户在设置页改 API Key / baseUrl,
- * memory 路径自动跟着生效。
+ * Aquí se reutiliza la configuración del proveedor de ChatService.:El usuario cambia la página de configuración. API Key / baseUrl,
+ * memory La ruta entrará en vigor automáticamente.
  *
- * v1.78: 加 withTimeout 防止 LLM 调用挂起导致 daily pipeline 永久卡死;
- *        加 Logger 便于排查记忆编译失败;model 为 null 时显式校验。
+ * v1.78: Agregue withTimeout para evitar que la canalización diaria se bloquee permanentemente debido a la suspensión de la llamada LLM.;
+ *        Agregue Logger para facilitar la resolución de problemas de fallas de compilación de memoria;model Verificación explícita cuando es nula.
  *
- * v1.0.50 (记忆系统修复): 记忆 LLM 调用防御:
- *  1. **结构化 reasoning 兜底**: 推理模型服务端可能把 JSON 结果放进 reasoning_content
- *     而 content 为空。此时仅当提示词要求 JSON 且 reasoning 中确实包含 JSON 载荷时
- *     才使用 reasoning;纯思考文本不会作为正文写入,避免污染 memory.md。
- *  2. **think 标签清理**: 部分模型用 `<think>...</think>` 标签包裹输出,在 LLM 客户端
- *     层先清理一道(memory 模块的 [io.zer0.memory.state.CompiledMemoryState] 是第二道)。
- *  3. **reasoning buffer**: 推理模型 +1024 token buffer,防止思考过程挤占可见输出
- *     (使用 `withReasoningHeadroom`)。
- *  4. **空响应报错**: text 和 reasoning 都空,或 reasoning 只有思考内容时抛错,
- *     不让上层把空/伪结果误判为成功。
+ * v1.0.50 (Reparación del sistema de memoria.): Defensa de llamadas de Memory LLM:
+ *  1. **razonamiento estructurado**: El servidor del modelo de inferencia puede poner los resultados JSON en reasoning_content
+ *     Y el contenido está vacío. En este momento, solo si la palabra del mensaje requiere JSON y el razonamiento contiene una carga útil JSON.
+ *     Sólo uso reasoning;El texto de reflexión pura no se escribirá como texto del cuerpo.,Evite contaminar la memoria.md.
+ *  2. **think limpieza de etiquetas**: Para algunos modelos `<think>...</think>` Salida envuelta en etiquetas,En cliente LLM
+ *     Limpiar una capa primero(memory modulares [io.zer0.memory.state.CompiledMemoryState] es la segunda manera).
+ *  3. **reasoning buffer**: modelo de inferencia +1024 token buffer,Evite que los procesos de pensamiento desplacen los resultados visibles
+ *     (uso `withReasoningHeadroom`).
+ *  4. **Error de respuesta vacía**: text y el razonamiento está vacío,O el razonamiento solo arroja error al pensar en el contenido,
+ *     No dejes que los superiores se aprovechen de ello./Los resultados falsos se juzgan erróneamente como éxito.
  *
- * 超时语义(v1.80 L-MEM1): [withTimeout] 超时抛 [kotlinx.coroutines.TimeoutCancellationException]
- * (继承 CancellationException)。下方 catch(CancellationException) 会将其原样向上抛出。
+ * semántica del tiempo de espera(v1.80 L-MEM1): [withTimeout] Lanzar después del tiempo de espera [kotlinx.coroutines.TimeoutCancellationException]
+ * (herencia CancellationException). abajo catch(CancellationException) Será arrojado hacia arriba tal como está.
  */
 class MemoryLlmClientImpl(
     private val chatService: ChatService,
     private val settings: SettingsRepository,
     private val context: Context,
 ) : MemoryLlmClient {
-    /** v2.x: 辅助模型路由 — 记忆提取/编译归「大工具」档(留空级联小工具/主模型)。 */
+    /** v2.x: Enrutamiento de modelo auxiliar — recuperación de memoria/Compílelo y archívelo como un archivo de \"gran herramienta\".(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro). */
     private val utilityRouter = UtilityModelRouter(settings)
 
     override suspend fun callText(
@@ -61,8 +61,8 @@ class MemoryLlmClientImpl(
         maxTokens: Int,
         timeoutMs: Long,
     ): String {
-        // v2.x: 调用方未显式指定模型时,优先走辅助模型路由「大工具」档(留空级联小工具/主模型)。
-        // 绑定带 provider,跨 Provider 精确命中用户配置的记忆模型。
+        // v2.x: Cuando la persona que llama no especifica explícitamente un modelo,Priorizar el archivo "Big Tools" de enrutamiento del modelo auxiliar(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro).
+        // correa vinculante provider,Acceda con precisión a modelos de memoria configurados por el usuario en todos los proveedores.
         val routed = if (model == null) {
             runCatching { utilityRouter.resolve(UtilityTier.LARGE) }.getOrNull()
         } else {
@@ -73,7 +73,7 @@ class MemoryLlmClientImpl(
             throw IllegalStateException(context.getString(R.string.memory_llm_no_model_configured))
         }
         val resolvedProviderConfig = if (model == null) routed?.first else null
-        // v2.6.0: 按应用 locale 追加中/英契约(旧版无论语言都追中文)
+        // v2.6.0: Agregar por configuración regional de la aplicación/Contrato británico(La versión antigua sigue el chino independientemente del idioma.)
         val contractLocale = when (val lang = settings.getLanguageSync()) {
             "system", "" -> java.util.Locale.getDefault().language
             else -> lang
@@ -88,10 +88,10 @@ class MemoryLlmClientImpl(
             UIMessage(role = MessageRole.SYSTEM, content = effectiveSystemPrompt),
             UIMessage(role = MessageRole.USER, content = effectiveUserContent),
         )
-        // v1.0.50: reasoning buffer — 推理模型 +1024 token,防止思考挤占可见输出
+        // v1.0.50: reasoning buffer — modelo de inferencia +1024 token,Evite que el pensamiento desplace el resultado visible
         val effectiveMaxTokens = withReasoningBuffer(maxTokens, resolvedModel)
-        // M-MEM1: 对可重试错误(429/5xx/SocketTimeoutException/IOException)做有限重试,
-        // 最多 3 次(1 次原始 + 2 次重试),指数退避 500ms / 1000ms。
+        // M-MEM1: Sobre errores reintentables(429/5xx/SocketTimeoutException/IOException)Hacer reintentos limitados,
+        // hasta 3 veces(1 veces original + 2 reintentos),Retroceso exponencial 500 ms/1000 ms.
         val maxAttempts = 3
         var lastError: Exception? = null
         for (attempt in 1..maxAttempts) {
@@ -104,7 +104,7 @@ class MemoryLlmClientImpl(
                         temperature = temperature,
                         maxTokens = effectiveMaxTokens,
                     )
-                    // 只接受真实正文;纯 reasoning 思考内容不允许进入记忆链路
+                    // Sólo aceptar texto real;El contenido del pensamiento de razonamiento puro no puede ingresar al enlace de memoria.
                     val raw = resolveMemoryLlmRawText(
                         systemPrompt = effectiveSystemPrompt,
                         text = completion.text,
@@ -114,23 +114,23 @@ class MemoryLlmClientImpl(
                         val reasoningLen = completion.reasoningContent?.length ?: 0
                         Logger.w(
                             "MemoryLlmClient",
-                            "text 为空且 reasoning 非空但非结构化结果,拒绝写入 (model=${resolvedModel.id}, reasoning=$reasoningLen chars)",
+                            "text está vacío y el razonamiento no está vacío pero el resultado no está estructurado,negar escribir (model=${resolvedModel.id}, reasoning=$reasoningLen chars)",
                         )
                         throw IllegalStateException(
                             context.getString(R.string.memory_llm_empty_response, resolvedModel.id),
                         )
                     }
-                    // v1.0.50: LLM 客户端层 think 标签清理(第一道防御)
+                    // v1.0.50: LLM Limpieza de etiquetas de pensamiento de capa de cliente(primera línea de defensa)
                     stripThinkTags(raw)
                 }
             } catch (e: CancellationException) {
-                // M-MEM1: 协程取消必须向上抛出,不可在下面的 catch (e: Exception) 中被吞掉或被记录为失败
+                // M-MEM1: La cancelación de rutina debe lanzarse hacia arriba.,No permitido debajo catch (e: Exception) tragado o registrado como un fracaso
                 throw e
             } catch (e: Exception) {
-                // 流式降级:部分中转站不支持非流式 /v1/chat/completions(stream=false),
-                // 返回 HTTP 400 invalid_request_error。此时回退到 streamChat 收集完整文本。
+                // degradación de transmisión:Algunas estaciones de transferencia no admiten transmisión sin transmisión /v1/chat/completions(stream=false),
+                // Devuelve HTTP 400 invalid_request_error. En este punto, recurra a StreamChat para recopilar el texto completo.
                 if (isHttp400(e) && attempt == 1) {
-                    Logger.i("MemoryLlmClient", "completeText HTTP 400,降级为流式调用 (model=${resolvedModel.id})")
+                    Logger.i("MemoryLlmClient", "completeText HTTP 400,Bajar a llamada de transmisión (model=${resolvedModel.id})")
                     return@callText withTimeout(timeoutMs) {
                         val contentSb = StringBuilder()
                         val reasoningSb = StringBuilder()
@@ -148,15 +148,15 @@ class MemoryLlmClientImpl(
                                 else -> Unit
                             }
                         }
-                        // 流式降级同样只接受真实正文/结构化 JSON,不接收纯思考内容
+                        // La degradación de streaming también solo acepta texto real/estructurado JSON,No aceptes contenido de pensamiento puro.
                         val raw = resolveMemoryLlmRawText(
                             systemPrompt = effectiveSystemPrompt,
                             text = contentSb.toString(),
                             reasoningContent = reasoningSb.toString(),
                         )
                         if (raw == null) {
-                            // v1.0.53: 流式降级后仍为空,优先抛出原始 HTTP 400 错误(如 thinking 字段不支持),
-                            // 而非"空响应"错误 — 避免掩盖真正的失败原因(如 UNKNOWN_FIELD: thinking)
+                            // v1.0.53: Todavía vacío después de la degradación de la transmisión,Lanzar primero los errores HTTP 400 sin procesar(Si el campo del pensamiento no soporta),
+                            // en vez de"respuesta vacía"error — Evite encubrir las verdaderas razones del fracaso(Como por ejemplo UNKNOWN_FIELD: thinking)
                             throw e
                         }
                         stripThinkTags(raw)
@@ -174,7 +174,7 @@ class MemoryLlmClientImpl(
                 val backoffMs = 500L * (1L shl (attempt - 1)) // 500ms, 1000ms
                 Logger.w(
                     "MemoryLlmClient",
-                    "callText 可重试失败,attempt=$attempt/$maxAttempts,${backoffMs}ms 后重试 (model=${resolvedModel.id})",
+                    "callText Fallo reintentable,attempt=$attempt/$maxAttempts,${backoffMs}ms Vuelve a intentarlo más tarde (model=${resolvedModel.id})",
                     e,
                 )
                 delay(backoffMs)
@@ -184,11 +184,11 @@ class MemoryLlmClientImpl(
     }
 
     /**
-     * v1.0.50: reasoning buffer — 使用 `withReasoningHeadroom`。
+     * v1.0.50: reasoning buffer — uso `withReasoningHeadroom`.
      *
-     * 推理模型(ModelAbility.REASONING)的思考过程会消耗 token 预算,如果 maxTokens 设得太小,
-     * 思考结束后可见输出可能被截断。所以在可见预算基础上加 buffer,让模型有空间完成思考
-     * 并输出完整结果。非推理模型不加 buffer。
+     * modelo de inferencia(ModelAbility.REASONING)El proceso de pensamiento consumirá el presupuesto simbólico.,Si maxTokens se establece demasiado pequeño,
+     * La salida visible puede truncarse después de la reflexión. Por lo tanto, sobre la base del presupuesto visible, agregue buffer,Dale al modelo espacio para completar su pensamiento.
+     * y generar los resultados completos. Los modelos de no inferencia no agregan zonas de influencia.
      */
     private fun withReasoningBuffer(visibleMaxTokens: Int, model: Model): Int {
         if (visibleMaxTokens <= 0) return visibleMaxTokens
@@ -199,27 +199,27 @@ class MemoryLlmClientImpl(
     }
 
     /**
-     * v1.0.50: 去除 `<think>...</think>` / `<thinking>...</thinking>` 标签块。
+     * v1.0.50: Quitar `<think>...</think>` / `<thinking>...</thinking>` Bloque de etiquetas.
      *
-     * 部分模型(尤其走中转站的)用标签而非 reasoning_content 字段包裹思考内容,
-     * 如果不清理,标签内容会被当作正文存入记忆,污染 memory.md。
-     * 这是 LLM 客户端层的第一道清理,memory 模块的 CompiledMemoryState 是第二道。
+     * modelo parcial(Especialmente aquellos que viajan a través de estaciones de tránsito.)Envuelva el contenido de pensamiento con etiquetas en lugar del campo de contenido_razonamiento,
+     * Si no se limpia,El contenido de la etiqueta se almacenará en la memoria como texto.,Contaminar la memoria.md.
+     * Esta es la primera limpieza de la capa de cliente LLM,memory CompiledMemoryState del módulo es el segundo paso.
      */
     private fun stripThinkTags(value: String): String {
         if (value.isEmpty()) return ""
         var s = value
-        // 闭合块
+        // bloque cerrado
         s = s.replace(Regex("<think(?:ing)?>[\\s\\S]*?</think(?:ing)?>", RegexOption.IGNORE_CASE), "")
-        // 残留的开头未闭合块(部分模型只输出 <think> 开头)
+        // Bloque restante sin cerrar al principio(Algunos modelos solo emiten <think> comienzo)
         s = s.replace(Regex("<think(?:ing)?>[\\s\\S]*$", RegexOption.IGNORE_CASE), "")
         return s.trim()
     }
 
     /**
-     * M-MEM1: 判断异常是否可重试。
-     * - SocketTimeoutException / IOException:网络瞬时失败(连接中断/读写超时)
-     * - 消息以 "HTTP 429" 开头:触发限流(Provider 抛出的 HTTP 错误消息形如 "HTTP 429 [触发限流]: ...")
-     * - 消息匹配 "HTTP 5xx":服务端临时错误
+     * M-MEM1: Determine si se puede volver a intentar la excepción.
+     * - SocketTimeoutException / IOException:Fallo momentáneo de la red(Conexión interrumpida/Tiempo de espera de lectura y escritura)
+     * - El mensaje comienza con "HTTP 429" comienzo:Límite de corriente del disparador(Provider El mensaje de error HTTP lanzado parece "HTTP 429 [Límite de corriente del disparador]: ...")
+     * - coincidencia de mensajes "HTTP 5xx":Error temporal del lado del servidor
      */
     private fun isRetryable(e: Throwable): Boolean {
         if (e is java.net.SocketTimeoutException) return true
@@ -231,7 +231,7 @@ class MemoryLlmClientImpl(
     }
 
     /**
-     * 判断异常是否为 HTTP 400(中转站不支持非流式请求等)。
+     * Determinar si la excepción es HTTP 400(Relay no admite solicitudes que no sean de transmisión, etc.).
      */
     private fun isHttp400(e: Throwable): Boolean {
         val msg = e.message ?: return false
@@ -239,18 +239,18 @@ class MemoryLlmClientImpl(
     }
 
     private companion object {
-        /** v1.0.50: 推理模型 buffer token 数。 */
+        /** v1.0.50: Número de tokens de búfer del modelo de inferencia. */
         private const val REASONING_BUFFER_TOKENS = 1024
     }
 }
 
 /**
- * 选择记忆 LLM 的最终正文。
+ * Seleccione el texto final de la Memoria LLM.
  *
- * 规则:
- *  - 正文非空时永远优先正文;
- *  - 正文为空时,只有提示词要求 JSON 且 reasoning 中包含 JSON 载荷才使用 reasoning;
- *  - 其余情况返回 null,由调用方按失败处理,避免把模型思考内容写进记忆。
+ * reglas:
+ *  - Si el texto no está vacío, siempre se le dará prioridad al texto.;
+ *  - Cuando el texto está vacío,Se usa solo si la palabra del mensaje requiere JSON y el razonamiento contiene una carga útil JSON. reasoning;
+ *  - Devolución en otros casos null,Manejado como un error por la persona que llama,Evite escribir el pensamiento modelo en la memoria.
  */
 internal fun resolveMemoryLlmRawText(systemPrompt: String, text: String, reasoningContent: String?): String? {
     val visible = text.trim()
@@ -264,7 +264,7 @@ internal fun resolveMemoryLlmRawText(systemPrompt: String, text: String, reasoni
 }
 
 private val JSON_OUTPUT_PROMPT_RE = Regex(
-    """JSON\s*(?:数组|对象)|严格\s*JSON|strict\s*JSON|JSON\s*(?:array|object)|Output\s+Format""",
+    """JSON\s*(?:matriz|objeto)|estricto\s*JSON|strict\s*JSON|JSON\s*(?:array|object)|Output\s+Format""",
     RegexOption.IGNORE_CASE,
 )
 

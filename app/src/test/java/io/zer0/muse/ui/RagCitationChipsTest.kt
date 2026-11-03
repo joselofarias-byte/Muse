@@ -19,9 +19,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Phase 2: RAG 引用 chip 的 key 去重、无障碍描述与展开动作测试。
+ * Phase 2: RAG Referencia de deduplicación de claves de chip, descripción de accesibilidad y prueba de acción de expansión.
  *
- * 使用 zh-rCN 限定符让断言字符串与默认资源一致。
+ * Utilice el calificador zh-rCN para que la cadena de aserción sea coherente con el recurso predeterminado.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "zh-rCN")
@@ -31,23 +31,23 @@ class RagCitationChipsTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun citation(index: Int, title: String = "文档$index") = RagCitation(
+    private fun citation(index: Int, title: String = "Documentación$index") = RagCitation(
         index = index,
         docId = "doc-$index",
         docTitle = title,
         chunkId = "chunk-$index",
         chunkIndex = 0,
-        snippet = "片段内容$index",
+        snippet = "contenido del fragmento$index",
         score = 0.9f,
         matchType = "vector",
     )
 
     @Test
-    fun `重复 index 去重后只渲染一个 chip`() {
+    fun `Repita el índice y solo renderice uno después de la deduplicación chip`() {
         composeTestRule.setContent {
             MaterialTheme {
                 RagCitationChips(
-                    citations = listOf(citation(1), citation(1, title = "重复文档")),
+                    citations = listOf(citation(1), citation(1, title = "Documentos duplicados")),
                 )
             }
         }
@@ -55,12 +55,12 @@ class RagCitationChipsTest {
     }
 
     @Test
-    fun `chip 提供引用编号与文档名的 contentDescription`() {
+    fun `chip Proporcionar número de referencia y nombre del documento. contentDescription`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val expected = context.getString(
             R.string.chat_citation_chip_a11y,
             1,
-            "文档1",
+            "Documentación1",
             context.getString(R.string.action_expand),
         )
         composeTestRule.setContent {
@@ -70,19 +70,19 @@ class RagCitationChipsTest {
     }
 
     @Test
-    fun `展开后显示摘要与复制动作`() {
+    fun `Mostrar resumen y copiar acción después de la expansión`() {
         composeTestRule.setContent {
             MaterialTheme { RagCitationChips(citations = listOf(citation(1))) }
         }
         composeTestRule.onNodeWithText("[1]").performClick()
-        composeTestRule.onNodeWithText("片段内容1").assertExists()
-        composeTestRule.onNodeWithText("复制摘要").assertExists()
-        // 未提供回调时不显示「打开文档」
-        composeTestRule.onNodeWithText("打开文档").assertDoesNotExist()
+        composeTestRule.onNodeWithText("contenido del fragmento1").assertExists()
+        composeTestRule.onNodeWithText("Copiar resumen").assertExists()
+        // No mostrar "Abrir documento" cuando no se proporciona ninguna devolución de llamada
+        composeTestRule.onNodeWithText("Abrir documento").assertDoesNotExist()
     }
 
     @Test
-    fun `提供 onOpenDocument 时展示动作并回调对应引用`() {
+    fun `Cuando se proporciona onOpenDocument, se muestra la acción y se vuelve a llamar a la referencia correspondiente`() {
         var opened: RagCitation? = null
         composeTestRule.setContent {
             MaterialTheme {
@@ -93,7 +93,7 @@ class RagCitationChipsTest {
             }
         }
         composeTestRule.onNodeWithText("[2]").performClick()
-        composeTestRule.onNodeWithText("打开文档").performClick()
+        composeTestRule.onNodeWithText("Abrir documento").performClick()
         assertEquals(2, opened?.index)
     }
 }

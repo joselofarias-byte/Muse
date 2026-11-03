@@ -7,24 +7,24 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.52 P2-2: 记忆空间实体(多 Space 隔离)。
+ * v1.0.52 P2-2: entidad de espacio de memoria(Aislamiento de múltiples espacios).
  *
- * 每个 Space 是一个独立的记忆库,用户可在不同场景(工作/生活/学习)切换,
- * 互不干扰。facts 表通过 space_id 字段关联到 [MemorySpaceEntity]。
+ * Cada Espacio es un banco de memoria independiente,Los usuarios pueden utilizar diferentes escenarios.(trabajo/vida/aprender)cambiar,
+ * No interfieran entre sí.facts La tabla está relacionada con la [MemorySpaceEntity].
  *
- * 与 [io.zer0.memory.fact.FactEntity.scope] 的关系:
- *  - scope: 按 Agent 隔离(主助手 "main" / 子助手 assistantId / 团队成员)
- *  - space_id: 按用户场景隔离(工作 / 生活 / 学习)
- *  - 两者正交,一个 fact 既属于某 Agent scope,也属于某 Space
+ * con [io.zer0.memory.fact.FactEntity.scope] relación:
+ *  - scope: Cuarentena por agente(asistente principal "main" / Asistente de subasistenteId/miembro del equipo)
+ *  - space_id: Aislar por escenario de usuario(trabajo/vida/estudio)
+ *  - Ambos son ortogonales,Un hecho pertenece a algo Agent scope,también pertenece a Space
  *
- * v9 schema: 新增 memory_spaces 表,与 facts 表关联。
+ * v9 schema: Se agregó la tabla de espacios de memoria.,Asociado a la tabla de hechos.
  *
- * @param id Space 唯一 id(如 "default" / "work" / "life")
- * @param name 显示名称(如 "默认" / "工作" / "生活")
- * @param icon 图标标识(可选,用于 UI 展示,如 "work" / "home" / "school")
- * @param description 描述(可选,用户可填写 Space 用途)
- * @param createdAt 创建时间 ISO 8601
- * @param sortIndex 排序序号(用户可调整 Space 顺序,小的在前)
+ * @param id Space solo id(Como por ejemplo "default" / "work" / "life")
+ * @param name nombre para mostrar(Como por ejemplo "Predeterminado" / "trabajo" / "vida")
+ * @param icon logotipo del icono(Opcional,para visualización de interfaz de usuario,Como por ejemplo "work" / "home" / "school")
+ * @param description Descripción(Opcional,El usuario puede completar el propósito del espacio.)
+ * @param createdAt tiempo de creación ISO 8601
+ * @param sortIndex número de clasificación(Orden de espacio ajustable por el usuario,uno pequeño primero)
  */
 @Serializable
 @Entity(
@@ -54,21 +54,21 @@ data class MemorySpaceEntity(
     val sortIndex: Int = 0,
 ) {
     companion object {
-        /** 默认 Space id(首次启动 + 迁移现有数据用)。 */
+        /** Predeterminado Space id(Inicio por primera vez + migración de datos existentes). */
         const val DEFAULT_SPACE_ID = "default"
 
-        /** 默认 Space 名称。 */
-        const val DEFAULT_SPACE_NAME = "默认"
+        /** Nombre del espacio predeterminado. */
+        const val DEFAULT_SPACE_NAME = "Predeterminado"
 
-        /** 默认 Space 图标。 */
+        /** Icono de espacio predeterminado. */
         const val DEFAULT_SPACE_ICON = "bookmark"
     }
 }
 
 /**
- * Space + 关联事实数量(LEFT JOIN COUNT 结果)。
+ * Space + número de hechos relacionados(LEFT JOIN COUNT resultado).
  *
- * 用于 UI 列表展示每个 Space 的事实数,不持久化。
+ * Se utiliza para listas de UI para mostrar la cantidad de hechos para cada espacio.,No persistente.
  */
 data class MemorySpaceWithCount(
     @androidx.room.ColumnInfo(name = "id")

@@ -6,31 +6,31 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * 上下文检查点 DAO。
+ * Punto de control de contexto DAO.
  *
- * 一个会话至多一条检查点（覆盖式写入），所以没有"列表/分页"类查询——
- * 读取方永远只关心"这个会话当前的边界在哪、摘要是什么"。
+ * Una sesión puede tener como máximo un punto de control (sobrescritura), por lo que no hay"lista/Paginación"consulta de clase——
+ * Al lector siempre sólo le importa"¿Dónde están los límites actuales de esta sesión y cuál es el resumen?".
  */
 @Dao
 interface ContextCheckpointDao {
 
-    /** 写入/覆盖检查点。 */
+    /** escribir/Cubrir el puesto de control. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ContextCheckpointEntity)
 
-    /** 读取某会话的检查点（没有则返回 null）。 */
+    /** Lea el punto de control de una sesión (devuelve nulo si no existe ninguno). */
     @Query("SELECT * FROM context_checkpoints WHERE session_id = :sessionId")
     suspend fun get(sessionId: String): ContextCheckpointEntity?
 
-    /** 删除某会话的检查点（会话被删除 / 历史被清空 / 检查点被判定作废时调用）。 */
+    /** Eliminar el punto de control de una sesión (llamado cuando se elimina la sesión/se borra el historial/se considera que el punto de control no es válido). */
     @Query("DELETE FROM context_checkpoints WHERE session_id = :sessionId")
     suspend fun deleteById(sessionId: String)
 
-    /** 清空全部（备份恢复覆盖写入前调用）。 */
+    /** Borrar todo (llamado antes de realizar copias de seguridad y restaurar escrituras de sobrescritura). */
     @Query("DELETE FROM context_checkpoints")
     suspend fun deleteAll()
 
-    /** 备份导出用。 */
+    /** Para copia de seguridad y exportación. */
     @Query("SELECT * FROM context_checkpoints")
     suspend fun getAll(): List<ContextCheckpointEntity>
 }

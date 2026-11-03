@@ -60,31 +60,31 @@ import kotlinx.serialization.encodeToString
 import java.io.ByteArrayInputStream
 
 /**
- * v0.48: 富媒体内容卡片 — 渲染 SVG / HTML / 图表。
+ * v0.48: Tarjeta de contenido multimedia enriquecido — Renderizar SVG/HTML/gráficos.
  *
- * LLM 在回复中用特殊代码块语言标识触发:
- * - ```svg ... ``` → SVG 卡片(WebView 渲染)
- * - ```html ... ``` → HTML 卡片(WebView 渲染)
- * - ```chart {...} ``` → 图表卡片(本期简化为 JSON 展示,后续可接 Vico)
- * - ```mermaid ... ``` → Mermaid 图表卡片(v1.57: WebView + mermaid.js 渲染流程图/时序图等;v1.97 改为本地 assets 加载)
+ * LLM Utilice un lenguaje de bloque de código especial para identificar factores desencadenantes en las respuestas.:
+ * - ```svg ... ``` → SVG tarjeta(WebView renderizado)
+ * - ```html ... ``` → HTML tarjeta(WebView renderizado)
+ * - ```chart {...} ``` → tarjetas gráficas(Este problema se simplifica a la visualización JSON.,Disponible más tarde Vico)
+ * - ```mermaid ... ``` → Mermaid tarjetas gráficas(v1.57: WebView + mermaid.js Diagrama de flujo de renderizado/Diagrama de tiempos, etc.;v1.97 Cambiar a la carga de activos locales)
  *
- * 安全说明: v1.97 起 Chart.js/mermaid.js/KaTeX 均从本地 assets/vendor/ 加载(base URL 为
- * file:///android_asset/),不再依赖任何远程 CDN,无 SRI/劫持风险。RichContentWebViewClient
- * 拦截所有顶层导航。H1 修复: 对 LLM 输出的 HTML/SVG 做基本正则清洗,防止 meta refresh/iframe/事件属性等威胁。
+ * Instrucciones de seguridad: v1.97 A partir de Chart.js/mermaid.js/KaTeX se cargan desde activos/vendedor/locales(base URL para
+ * file:///android_asset/),Ya no depende de ningún control remoto CDN,Sin riesgo de secuestro o SRI.RichContentWebViewClient
+ * Intercepta toda la navegación de nivel superior.H1 Reparación: Realice una limpieza básica regular en la salida HTML/SVG de LLM,Evite amenazas como metaactualización/iframe/atributos de eventos.
  *
- * Phase 2 补齐:
- *  - 头部新增"复制源码"动作(所有语言可用),写入剪贴板 + Toast 反馈;
- *  - 全屏预览扩展到 chart/mermaid:html/svg 仍通过 [onHtmlPreview] 交给 HtmlPreviewScreen;
- *    chart/mermaid 依赖本地 assets 脚本(在 HtmlPreviewScreen 的 about:blank baseUrl 下
- *    无法加载),改用卡片内全屏 WebView 对话框渲染同一份 HTML,保证路径可用。
+ * Phase 2 completo:
+ *  - Cabecera agregada"Copiar código fuente"acción(Todos los idiomas disponibles),Escribir en el portapapeles + brindar comentarios;
+ *  - La vista previa en pantalla completa ampliada a chart/mermaid:html/svg todavía pasa [onHtmlPreview] entregar HtmlPreviewScreen;
+ *    chart/mermaid Depender del script de activos locales(En aproximadamente: URL base en blanco de HtmlPreviewScreen
+ *    No se puede cargar),Utilice el cuadro de diálogo WebView de pantalla completa dentro de la tarjeta para representar la misma copia. HTML,Asegúrese de que la ruta esté disponible.
  *
- * @param onHtmlPreview HTML/SVG 全屏预览回调,参数为完整 HTML 源码
- *         (SVG 会先包装为完整 HTML 再回调)。仅 svg/html 语言触发,其余语言忽略。
- * @param showPreviewButton 是否显示右上角"全屏预览"按钮。调用方无导航能力时(如 ArtifactViewer
- *         弹窗内)可置为 false,避免出现无效按钮。
+ * @param onHtmlPreview HTML/SVG Devolución de llamada de vista previa de pantalla completa,El parámetro es el código fuente HTML completo.
+ *         (SVG Primero se empaquetará en HTML completo y luego se volverá a llamar.). Sólo se activa en lenguaje svg/html,Se ignoran otros idiomas.
+ * @param showPreviewButton Ya sea para mostrar la esquina superior derecha"Vista previa en pantalla completa"botón. Cuando la persona que llama no tiene capacidades de navegación(Como por ejemplo ArtifactViewer
+ *         En la ventana emergente)Se puede configurar en false,Evite botones no válidos.
  */
-// v2.6.0: 新增 inlineCardData 参数后,签名漂移使既有 baseline 条目失配。
-// 这些为屏幕级 @Composable 函数的固有结构(长函数/多参数/复杂条件/命名),按点豁免。
+// v2.6.0: Después de agregar el parámetro inlineCardData,La desviación de la firma hace que las entradas de referencia existentes no coincidan.
+// Estas son estructuras inherentes de las funciones @Composable a nivel de pantalla.(función larga/múltiples parámetros/condiciones complejas/Nombre),Exención por punto.
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod", "FunctionNaming")
 @Composable
 internal fun RichContentCard(
@@ -94,52 +94,52 @@ internal fun RichContentCard(
     onHtmlPreview: (String) -> Unit = {},
     showPreviewButton: Boolean = true,
     /**
-     * v1.0.92: 卡桥回传回调(聊天场景提供)。
+     * v1.0.92: Devolución de llamada de puente de tarjeta(Escenas de chat proporcionadas).
      *
-     * v2.6.8: null 只意味着「卡片没有回传通道」，**不再意味着「卡片无脚本」** ——
-     * JS 与桥已解耦，无桥卡片照常运行自己的脚本与本地交互（见 HtmlCard/SvgCard 注释）。
+     * v2.6.8: null Simplemente significa "la tarjeta no tiene canal de retorno",**Ya no significa "tarjetas sin guiones".** ——
+     * JS Desacopladas del puente, las tarjetas sin puente ejecutan sus propios scripts e interactúan localmente como de costumbre (consulte los comentarios de HtmlCard/SvgCard).
      */
     onCardAction: ((CardAction) -> Unit)? = null,
     /**
-     * v2.6.6: 渐进渲染模式——源码正在流式增长时置 true。
-     * 内部对传递给子 WebView 的内容做节流（每增长固定字符数才刷新一次），
-     * 避免每个 token 重载 WebView。
+     * v2.6.6: Modo de renderizado progresivo——Se establece como verdadero cuando el código fuente se transmite.
+     * Internamente, el contenido que se pasa al WebView secundario se limita (se actualiza solo una vez que aumenta cada número fijo de caracteres).
+     * Evite recargar WebView para cada token.
      */
     progressive: Boolean = false,
     /**
-     * v2.6.0: 内联卡片数据(show_card 的 data 参数)。
+     * v2.6.0: Datos de tarjeta en línea(show_card el parámetro de datos).
      *
-     * 非空时，卡片脚本的 `window.muse.getData(cardId)` 无条件返回这份数据
-     * （不再依赖 CardDataStore 的 cardId 查找 —— show_card 的 cardId 在执行时才生成，
-     * 渲染侧拿不到）。null 时维持原行为（按 cardId 查存储）。
+     * Cuando no está vacío, el script de la tarjeta `window.muse.getData(cardId)` Devolver estos datos incondicionalmente
+     * (Ya no depende de la búsqueda de cardId de CardDataStore —— show_card El cardId se genera solo al ejecutar,
+     * No disponible en el lado del renderizado).null Mantenga el comportamiento original (verifique el almacenamiento por cardId).
      */
     inlineCardData: String? = null,
     /**
-     * v2.6.7: 卡片身份（聊天场景传消息 id）。
+     * v2.6.7: Identidad de la tarjeta (id del mensaje en el escenario de chat).
      *
-     * 注入给卡片脚本的 `window.muse.cardId`，使卡片能读自己的绑定数据、
-     * 回传时也能带上来源，解决「卡片在卡片里结束」的断点。
-     * null 时卡片端 cardId 为 null（只读渲染 / 非聊天场景）。
+     * Inyectado en el guión de la tarjeta `window.muse.cardId`, para que la tarjeta pueda leer sus propios datos vinculantes,
+     * La fuente también se puede traer al regresar para resolver el punto de interrupción de "la tarjeta termina en la tarjeta".
+     * null Cuando el cardId del lado de la tarjeta es nulo (escenario de renderizado de solo lectura/sin chat).
      */
     cardId: String? = null,
     /**
-     * v2.6.11: 模型声明的卡片尺寸（show_card 的 height 参数）。
+     * v2.6.11: tamaño de tarjeta declarado por el modelo (show_card parámetro de altura).
      *
-     * 卡片被裁的根因之一是「高度只能靠测」。模型生成时是知道这张卡要多高的，
-     * 让声明优先于测量：说了就按说的来，没说才去测。
+     * Una de las razones por las que se cortaron las cartas fue que "la altura sólo se puede medir". Cuando se genera el modelo, sabemos qué altura tiene la tarjeta.
+     * Deje que las afirmaciones tengan prioridad sobre las mediciones: haga lo que dice cuando lo dice y mida cuando no lo haga.
      */
     heightSpec: String? = null,
 ) {
     val context = LocalContext.current
-    // 渐进渲染节流 —— 流式期间源码持续增长，每交一次新内容给 WebView 就是一次整页重载
-    // （重解析 HTML + 重跑卡片脚本 + 图表重新初始化）。这里只在翻倍档位上推进快照：
-    // 一张 8KB 图表卡片的整页重载从 68 次降到 7 次，见 [ProgressiveCard]。
-    // 档位不变时返回的是等值前缀，下游 remember 与 WebView 的「内容未变不重载」都能命中。
-    // 流式结束后（progressive=false）直接用最新完整内容。
+    // Limitación progresiva del renderizado —— El código fuente continúa creciendo durante la transmisión y cada vez que se envía contenido nuevo a WebView, se recarga la página completa.
+    // (Volver a analizar HTML + volver a ejecutar el script de la tarjeta + reinicialización del gráfico). Aquí sólo avanzamos la instantánea en la marcha de duplicación:
+    // Las recargas de página completa para una tarjeta de gráficos de 8 KB se redujeron de 68 a 7, consulte [ProgressiveCard].
+    // Cuando la posición del engranaje permanece sin cambios, se devuelve el prefijo equivalente y se pueden acceder tanto al recuerdo descendente como al "contenido sin cambios y no recarga" de WebView.
+    // Después de que finaliza la transmisión (progressive=false) utilizan directamente el contenido más reciente y completo.
     val effectiveContent = if (!progressive) content else ProgressiveCard.snapshot(content)
-    // Phase 2: chart/mermaid 的全屏预览在卡片内完成(本地 assets 脚本可正常加载)
+    // Phase 2: chart/mermaid Se realiza una vista previa en pantalla completa dentro de la tarjeta.(Los scripts de activos locales se pueden cargar normalmente)
     var showFullscreenPreview by remember { mutableStateOf(false) }
-    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本行被多个按钮挤压)
+    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las líneas estrechas de texto de la pantalla sean comprimidas por varios botones)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
     val supportsPreview = richContentSupportsPreview(language)
@@ -157,7 +157,7 @@ internal fun RichContentCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            // 头部行:左侧语言标签 + 右侧动作(复制源码 / 全屏预览)
+            // fila de encabezado:Etiqueta de idioma a la izquierda + acción a la derecha(Copiar código fuente/vista previa en pantalla completa)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -168,12 +168,12 @@ internal fun RichContentCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 语言标签（非正文）限 1 行 —— 右侧两个 48dp 图标按钮在放大字号下
-                    // 会把标签列挤成竖排（线上事故形态）；用户正文在下方单独渲染，不受影响。
+                    // LAYOUT-01: Las etiquetas de idioma (no texto) están limitadas a 1 línea —— Los dos botones con íconos de 48 dp a la derecha tienen un tamaño de fuente ampliado.
+                    // La columna de la etiqueta se comprimirá en una fila vertical (formulario de accidente en línea); el texto del usuario se representará por separado a continuación y no se verá afectado.
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Phase 2: 复制源码 — 所有语言可用,不再局限于 HTML/SVG
+                // Phase 2: Copiar código fuente — Todos los idiomas disponibles,ya no se limita a HTML/SVG
                 MuseTactileButton(
                     icon = MuseIcons.copy,
                     onClick = { copyRichContentSource(context, content) },
@@ -213,8 +213,8 @@ internal fun RichContentCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     if (onCardAction != null) {
-                        // v2.6.13: 收藏排在最前 —— 卡片是“值得留着的东西”，
-                        // 保存为文件是导出手段，放到第二位。
+                        // v2.6.13: Favoritos en la cima —— la tarjeta es“algo que vale la pena conservar”,
+                        // Guardar como archivo es el método de exportación y ocupa el segundo lugar.
                         MuseActionSheetRow(
                             icon = MuseIcons.star,
                             text = stringResource(R.string.card_favorite),
@@ -239,10 +239,10 @@ internal fun RichContentCard(
                             onClick = {
                                 menuExpanded = false
                                 if (isLocalPreview) {
-                                    // chart/mermaid:卡片内全屏 WebView,加载本地 assets 脚本
+                                    // chart/mermaid:Pantalla completa en tarjeta WebView,Cargar script de activos locales
                                     showFullscreenPreview = true
                                 } else {
-                                    // SVG 包装为完整 HTML 后再回调,保证 HtmlPreviewScreen 直接渲染
+                                    // SVG Envuélvalo en HTML completo y luego vuelva a llamar,Asegúrese de que HtmlPreviewScreen se represente directamente
                                     val fullHtml = if (language.lowercase().trim() == "svg") {
                                         "<html><body style=\"margin:0;padding:8px;\">$content</body></html>"
                                     } else {
@@ -261,9 +261,9 @@ internal fun RichContentCard(
         )
     }
 
-    // Phase 2: chart/mermaid 全屏预览对话框(与卡片渲染同一份 HTML)
+    // Phase 2: chart/mermaid Cuadro de diálogo de vista previa en pantalla completa(Igual que la representación de tarjetas HTML)
     if (showFullscreenPreview && isLocalPreview) {
-        // P3-2: 错误前缀从资源注入(JS 内不再硬编码中文)
+        // P3-2: Prefijo de error inyectado desde el recurso(JS No más chino codificado en)
         val renderFailedPrefix = stringResource(R.string.markdown_chart_render_failed_prefix)
         val previewHtml = remember(content, language) { buildLocalPreviewHtml(language, content, renderFailedPrefix) }
         RichContentFullscreenPreview(
@@ -275,28 +275,28 @@ internal fun RichContentCard(
 }
 
 /**
- * 支持全屏预览的富内容语言(html/svg 走外部导航预览;chart/mermaid 走卡片内全屏对话框)。
- * Phase 2: 从原"仅 html/svg"扩展到 chart/mermaid。
+ * Lenguaje de contenido enriquecido con soporte de vista previa en pantalla completa(html/svg Tomar vista previa de navegación externa;chart/mermaid Ingrese al cuadro de diálogo de pantalla completa dentro de la tarjeta).
+ * Phase 2: Del original"solo html/svg"Extendido a gráfico/sirena.
  */
 internal fun richContentSupportsPreview(language: String): Boolean = language.lowercase().trim() in RICH_PREVIEW_LANGUAGES
 
-/** 全屏预览语言集合。 */
+/** Vista previa en pantalla completa de la colección de idiomas. */
 private val RICH_PREVIEW_LANGUAGES = setOf("html", "svg", "chart", "mermaid")
 
 /**
- * 依赖本地 assets 脚本渲染、需在卡片内全屏 WebView 预览的语言。
- * HtmlPreviewScreen 以 about:blank 为 baseUrl,相对路径的 vendor 脚本无法加载。
+ * Un lenguaje que se basa en la representación de secuencias de comandos de activos locales y requiere una vista previa de WebView en pantalla completa en la tarjeta.
+ * HtmlPreviewScreen Dejar sobre: estar en blanco baseUrl,No se puede cargar el script del proveedor relativo.
  */
 internal val RICH_LOCAL_PREVIEW_LANGUAGES = setOf("chart", "mermaid")
 
-/** 生成卡片内全屏预览用 HTML(与卡片渲染使用同一构建函数)。 */
+/** Generar vista previa a pantalla completa en la tarjeta HTML(Utilice el mismo constructor que el renderizado de tarjetas.). */
 private fun buildLocalPreviewHtml(language: String, content: String, errorPrefix: String): String = when (language.lowercase().trim()) {
     "chart" -> buildChartHtml(content, errorPrefix)
     "mermaid" -> buildMermaidHtml(content, errorPrefix)
     else -> content
 }
 
-/** 复制富内容源码到剪贴板,并 Toast 反馈。 */
+/** Copie el código fuente de contenido enriquecido al portapapeles,Y comentarios brindados. */
 private fun copyRichContentSource(context: Context, source: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("muse_rich_content", source))
@@ -304,10 +304,10 @@ private fun copyRichContentSource(context: Context, source: String) {
 }
 
 /**
- * Phase 2: 卡片内全屏预览对话框 — 顶部标题 + 关闭按钮,主体为占满屏幕的 WebView。
+ * Phase 2: Cuadro de diálogo de vista previa en pantalla completa dentro de la tarjeta — Título superior + botón de cerrar,El cuerpo principal es un WebView que llena la pantalla.
  *
- * 使用与卡片相同的 [LifecycleAwareWebViewContainer] + `file:///android_asset/` baseUrl,
- * 因此 chart(Chart.js)/mermaid(mermaid.js)的本地 vendor 脚本可正常加载。
+ * Usa lo mismo que la tarjeta. [LifecycleAwareWebViewContainer] + `file:///android_asset/` baseUrl,
+ * Por lo tanto chart(Chart.js)/mermaid(mermaid.js)El script del proveedor local se puede cargar normalmente.
  */
 @Composable
 private fun RichContentFullscreenPreview(title: String, html: String, onDismiss: () -> Unit) {
@@ -315,13 +315,13 @@ private fun RichContentFullscreenPreview(title: String, html: String, onDismiss:
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            // 铺满整屏(含状态栏)：否则全屏预览的底色/遮罩从状态栏下方开始，
-            // 上方会留一条没被覆盖的亮带。
+            // Cubre toda la pantalla(Con barra de estado): De lo contrario, el color de fondo de la vista previa en pantalla completa/El enmascaramiento comienza debajo de la barra de estado,
+            // Habrá una banda brillante descubierta en la parte superior.
             decorFitsSystemWindows = false,
         ),
     ) {
-        // v1.0.92: window 铺满整屏(含状态栏),与 BrowserCapsule / CommandPalette /
-        // FullScreenMediaViewer 的既有处理对齐;否则预览底色从状态栏下沿开始。
+        // v1.0.92: window Cubre toda la pantalla(Con barra de estado),con BrowserCapsule / CommandPalette /
+        // FullScreenMediaViewer alineación de procesamiento existente;De lo contrario, el color de fondo de la vista previa comienza desde el borde inferior de la barra de estado.
         MuseDialogWindowEffect(forceFullScreen = true)
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -339,7 +339,7 @@ private fun RichContentFullscreenPreview(title: String, html: String, onDismiss:
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: 全屏预览对话框标题（非正文）限 1 行 —— 右侧关闭按钮会挤压标题列
+                        // LAYOUT-01: El título del cuadro de diálogo de vista previa en pantalla completa (no el texto) está limitado a 1 línea —— El botón de cerrar a la derecha aprieta la barra de título.
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -357,7 +357,7 @@ private fun RichContentFullscreenPreview(title: String, html: String, onDismiss:
                     baseUrl = "file:///android_asset/",
                     javaScriptEnabled = true,
                     webViewClient = RichContentWebViewClient(),
-                    // v2.6.7: 全屏预览允许内部滚动 —— 卡片可能远超一屏。
+                    // v2.6.7: La vista previa en pantalla completa permite el desplazamiento interno —— Las tarjetas pueden extenderse mucho más allá de una pantalla.
                     scrollable = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -369,8 +369,8 @@ private fun RichContentFullscreenPreview(title: String, html: String, onDismiss:
 }
 
 /**
- * v1.131: HTML/SVG 清洗正则 — 文件级常量,避免每次 [sanitizeHtml] 调用都新建 9 个 Regex。
- * 原实现每次 LLM 输出富内容都重建一次,在长 SVG/HTML 输入下 GC 压力明显。
+ * v1.131: HTML/SVG Reglas de limpieza — Constantes de nivel de archivo,evitar cada vez [sanitizeHtml] Cada llamada crea 9 nuevas expresiones regulares.
+ * La implementación original se reconstruía cada vez que LLM generaba contenido enriquecido.,La presión del GC se nota bajo una entrada SVG/HTML larga.
  */
 private val IFRAME_BLOCK_REGEX = Regex("""(?is)<iframe\b[^>]*>.*?</iframe>""")
 private val FORM_BLOCK_REGEX = Regex("""(?is)<form\b[^>]*>.*?</form>""")
@@ -380,58 +380,58 @@ private val IFRAME_SELF_CLOSED_REGEX = Regex("""(?is)<iframe\b[^>]*/?>""")
 private val EMBED_SELF_CLOSED_REGEX = Regex("""(?is)<embed\b[^>]*/?>""")
 private val META_HTTP_EQUIV_REGEX = Regex("""(?is)<meta\b[^>]*http-equiv[^>]*>""")
 
-// v2.6.7: EVENT_ATTR_REGEX 已由 [rewriteInlineHandlers] 取代 —— 事件属性改为
-// 重写成 addEventListener，不再直接移除。
+// v2.6.7: EVENT_ATTR_REGEX Ya por [rewriteInlineHandlers] reemplazar —— Los atributos del evento se cambian a
+// Reescrito en addEventListener y ya no se elimina directamente.
 private val JS_PROTO_REGEX = Regex("""(?i)(href|src)\s*=\s*("javascript:[^"]*"|'javascript:[^']*')""")
 
 /**
- * H1 修复: 对 LLM 输出的 HTML/SVG 做基本清洗,移除高危标签与属性。
+ * H1 Reparación: Limpieza básica de salida HTML/SVG por LLM,Elimine etiquetas y atributos de alto riesgo.
  *
- * v2.6.7 交互修复: `onXxx` 事件属性不再直接删掉 —— 删掉就等于把卡片的交互
- * 能力全部硫掉（模型写的 onclick 正是点击交互的唯一载体），而这正是
- * “卡片能看不能点”的直接原因。
+ * v2.6.7 Reparación interactiva: `onXxx` Los atributos de eventos ya no se eliminan directamente —— Eliminarlo equivale a eliminar la interacción de la tarjeta.
+ * Se pierden todas las capacidades (el clic escrito en el modelo es el único portador de interacción de clic), y esto es exactamente
+ * “¿Se pueden ver o hacer clic en las tarjetas?”causa directa.
  *
- * 改为：先把 `onXxx="handler"` 收集起来，从属性里移除，再重写成等价的
- * `<script>` 事件绑定（`el.addEventListener`）。因为 CSP 已允许
- * `script-src 'unsafe-inline'`（本地渲染、无外部网络），重写后行为不变，
- * 但不再依赖内联属性执行，也让代码路径只有一条。
+ * Cambiar a: primero `onXxx="handler"` Recójalos, elimínelos de las propiedades y vuelva a escribirlos en equivalentes.
+ * `<script>` enlace de evento (`el.addEventListener`). Porque CSP ha permitido
+ * `script-src 'unsafe-inline'`(Representación local, sin red externa), el comportamiento permanece sin cambios después de reescribir,
+ * Pero ya no depende de la ejecución de atributos en línea y solo hay una ruta de código.
  *
- * 已知限制(正则清洗的固有限制):
- *  - 无法覆盖所有 XSS 向量(如畸形标签、Unicode 绕过、属性值内嵌套引号等);
- *  - 但能拦截常见威胁:<meta http-equiv="refresh">、<iframe>、<form>、<object>/<embed>、
- *    javascript: 伪协议。
- *  - 卡片本身运行在禁一切外部网络（connect-src 'none'）+ 导航全拦截的沙箱里，
- *    所以允许内联交互脚本的风险面被限制在“卡片自己的 DOM”内。
+ * Limitaciones conocidas(Limitaciones inherentes a la limpieza regular):
+ *  - No se pueden cubrir todos los vectores XSS(Como etiquetas con formato incorrecto,Unicode Omitir, comillas anidadas dentro de valores de atributos, etc.);
+ *  - pero puede bloquear amenazas comunes:<meta http-equiv="refresh">,<iframe>,<form>,<object>/<embed>,
+ *    javascript: Pseudo acuerdo.
+ *  - La tarjeta en sí se ejecuta en una red que prohíbe todas las redes externas (connect-src 'none')+ En una zona de pruebas con interceptación de navegación completa,
+ *    Por lo tanto, la superficie de riesgo de permitir scripts interactivos en línea se limita a“propia de la tarjeta DOM”Adentro.
  */
 internal fun sanitizeHtml(input: String): String {
     var s = input
-    // 移除 iframe / form / object / embed(含内容,跨行)
+    // Quitar iframe / form / object / embed(Contiene contenido,a través de líneas)
     s = IFRAME_BLOCK_REGEX.replace(s, "")
     s = FORM_BLOCK_REGEX.replace(s, "")
     s = OBJECT_BLOCK_REGEX.replace(s, "")
     s = EMBED_BLOCK_REGEX.replace(s, "")
-    // 移除自闭合 iframe/embed(无闭合标签)
+    // Quitar el cierre automático iframe/embed(Sin etiqueta de cierre)
     s = IFRAME_SELF_CLOSED_REGEX.replace(s, "")
     s = EMBED_SELF_CLOSED_REGEX.replace(s, "")
-    // 移除 meta http-equiv(refresh 跳转)
+    // Quitar meta http-equiv(refresh saltar)
     s = META_HTTP_EQUIV_REGEX.replace(s, "")
-    // v2.6.7: 事件属性改写成 addEventListener 绑定（保留交互）
+    // v2.6.7: Las propiedades del evento se reescriben como enlace addEventListener (conservando la interacción)
     s = rewriteInlineHandlers(s)
-    // 移除 javascript: 伪协议(href/src="javascript:...")
+    // Eliminar javascript: pseudoprotocolo(href/src="javascript:...")
     s = JS_PROTO_REGEX.replace(s, """$1="#" """)
     return s
 }
 
 /**
- * [sanitizeHtml] 的进程级 LRU。
+ * [sanitizeHtml] LRU a nivel de proceso.
  *
- * 清洗是 7 段正则 + 一次整篇标签重写，纯函数且只与输入有关。而这条路径会被
- * 反复走：消息滚出屏幕再滚回来（LazyColumn 销毁并重建组合）、深浅色切换
- * （themeCss 变 → 重新装配 HTML）都会对**同一份卡片源码**再洗一遍。
+ * La limpieza consta de 7 párrafos de expresiones regulares + una reescritura de etiqueta completa. Es una función pura y solo está relacionada con la entrada. Y este camino será
+ * Repetidamente: el mensaje sale de la pantalla y luego retrocede (LazyColumn Destruye y reconstruye la combinación), cambio de color claro y oscuro.
+ * (themeCss cambiar → Reensamblar HTML) será correcto**El mismo código fuente de la tarjeta.**Lavar de nuevo.
  *
- * 键用内容原文而不是哈希：正则清洗的结果不允许有碰撞风险，而条目上限很小
- * （[MAX_ENTRIES]），把原文留在内存里是可控的代价。超长内容（[MAX_CONTENT_LENGTH]
- * 以上）不进缓存，避免大卡片把缓存撑满。
+ * La clave utiliza el contenido original en lugar del hash: el resultado de la limpieza regular no tiene en cuenta el riesgo de colisión y el límite superior de entradas es muy pequeño
+ * ([MAX_ENTRIES]), mantener el texto original en la memoria es un coste controlable. Contenido extra largo ([MAX_CONTENT_LENGTH]
+ * Arriba) no ingrese al caché para evitar que tarjetas grandes llenen el caché.
  */
 internal object SanitizedHtmlCache {
 
@@ -443,7 +443,7 @@ internal object SanitizedHtmlCache {
             size > MAX_ENTRIES
     }
 
-    /** 取清洗结果；同一份内容第二次进来直接命中原对象。 */
+    /** Obtenga el resultado de la limpieza; el mismo contenido llega por segunda vez y llega directamente al objeto original. */
     fun get(code: String): String {
         if (code.length > MAX_CONTENT_LENGTH) return sanitizeHtml(code)
         return synchronized(entries) {
@@ -451,31 +451,31 @@ internal object SanitizedHtmlCache {
         }
     }
 
-    /** 仅供测试：当前条目数。 */
+    /** Solo para pruebas: número actual de entradas. */
     internal fun size(): Int = synchronized(entries) { entries.size }
 
-    /** 仅供测试：清空。 */
+    /** Sólo para pruebas: claro. */
     internal fun clear() = synchronized(entries) { entries.clear() }
 }
 
-/** 匹配 `onXxx="code"` / `onXxx='code'` / `onXxx=code`。 */
+/** partido `onXxx="code"` / `onXxx='code'` / `onXxx=code`. */
 private val INLINE_HANDLER_REGEX =
     Regex("""\s+(on[a-z]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))""", RegexOption.IGNORE_CASE)
 
 /**
- * v2.6.7: 把内联事件属性改写为 `<script>` 里的 addEventListener。
+ * v2.6.7: Vuelva a escribir el atributo de evento en línea como `<script>` addEventListener en.
  *
- * 做法：每个带事件的元素打上 `data-muse-h="mN"` 标记，
- * 事件名与代码收到表里，最后拼一段脚本统一绑定。
- * 既保留模型写的交互，又不依赖内联属性执行。
+ * Método: marcar cada elemento con un evento `data-muse-h="mN"` marca,
+ * El nombre y el código del evento se reciben en la tabla y, finalmente, se crea un script para vincularlos.
+ * No solo conserva la interacción escrita por el modelo, sino que tampoco depende de la ejecución de atributos en línea.
  */
 private fun rewriteInlineHandlers(html: String): String {
-    val handlers = mutableListOf<Triple<String, String, String>>() // (标记, 事件名, 代码)
+    val handlers = mutableListOf<Triple<String, String, String>>() // (marca, nombre del evento, código)
     var seq = 0
 
     val out = TAG_REGEX.replace(html) { tagMatch ->
         val tag = tagMatch.value
-        // 当前标签内的事件：先收集，再决定是否打标记。
+        // Eventos dentro de la etiqueta actual: recójalos primero y luego decida si desea marcarlos.
         val local = mutableListOf<Triple<String, String, String>>()
         val stripped = INLINE_HANDLER_REGEX.replace(tag) { m ->
             val event = m.groupValues[1].lowercase()
@@ -504,19 +504,19 @@ private fun rewriteInlineHandlers(html: String): String {
     return out + "\n<script>\n" + bindings + "\n</script>"
 }
 
-/** 粗略匹配一个完整标签（不跨 > ），用于在标签内做属性改写。 */
+/** Coincide aproximadamente con una etiqueta completa (que no abarca > ), utilizado para reescribir atributos dentro de etiquetas. */
 private val TAG_REGEX = Regex("""<[a-zA-Z][^>]*>""")
 
 /**
- * 富内容 WebView 统一导航拦截 — 全部拒绝。
+ * Intercepción de navegación unificada WebView de contenido enriquecido — Rechazarlos a todos.
  *
- * v1.0.10: 修复白名单逻辑漏洞。旧版放行 cdn.jsdelivr.net,但 Chart.js/mermaid.js/KaTeX
- * 已改为从本地 assets/vendor/ 加载(见 buildHtml),不再需要任何远程域名白名单。
- * 旧的白名单反而成为安全口子:LLM 若输出指向 jsdelivr 的恶意页面会被放行。
+ * v1.0.10: Se corrigió la vulnerabilidad de la lógica de la lista blanca. Versión antigua lanzada cdn.jsdelivr.net,pero Chart.js/mermaid.js/KaTeX
+ * Cambiado para cargar desde activos locales/proveedor/(ver buildHtml),Ya no es necesario incluir ningún nombre de dominio remoto en la lista blanca.
+ * La antigua lista blanca se ha convertido en un agujero de seguridad:LLM Si el resultado apunta a una página maliciosa de jsdelivr, se permitirá.
  *
- * 现策略:顶层导航一律拦截(return true),杜绝 LLM 输出的 <a>/meta refresh
- * 跳转到任何外部页面或伪协议。本地资源(file:///android_asset/)作为子资源加载,
- * 不受 shouldOverrideUrlLoading 影响。
+ * estrategia actual:La navegación de nivel superior siempre está bloqueada(return true),Evitar la salida de LLM <a>/meta refresh
+ * Saltar a cualquier página externa o pseudoprotocolo. recursos locales(file:///android_asset/)Cargar como subrecurso,
+ * No afectado por deberíaOverrideUrlLoading.
  */
 internal class RichContentWebViewClient : WebViewClient() {
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -524,11 +524,11 @@ internal class RichContentWebViewClient : WebViewClient() {
     }
 
     /**
-     * v2.6.6 安全加固: 拦截一切外部网络请求。
+     * v2.6.6 Refuerzo de seguridad: Intercepte todas las solicitudes de la red externa.
      *
-     * 卡片的所有依赖(Chart.js / mermaid.js / KaTeX)均从本地 `file:///android_asset/`
-     * 加载,子资源不受 shouldOverrideUrlLoading 影响,这里再补一道:
-     * 非本地(asset/file/data/blob)一律阻断。防止模型产卡片偷偷请求外部服务(跟踪/回传)。
+     * Todas las dependencias de la tarjeta.(Chart.js / mermaid.js / KaTeX)Todo de local `file:///android_asset/`
+     * Cargar,Los subrecursos no se ven afectados por shouldOverrideUrlLoading,Una cosa más aquí:
+     * no local(asset/file/data/blob)Siempre bloqueado. Evite que las tarjetas generadas por modelos soliciten servicios externos en secreto(Seguimiento/volver).
      */
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
         val url = request?.url?.toString()
@@ -540,20 +540,20 @@ internal class RichContentWebViewClient : WebViewClient() {
                 url.startsWith("about:") ||
                 url.startsWith("javascript:")
         return if (allowed) {
-            null // null = 走默认处理
+            null // null = Tomar procesamiento predeterminado
         } else {
-            // 阻断外部请求:返回空响应
+            // Bloquear solicitudes externas:Devolver respuesta vacía
             WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
         }
     }
 }
 
 /**
- * 订阅这张卡自己的绑定数据，产出推送凭据。
+ * Suscríbase a los datos vinculantes propios de esta tarjeta y genere credenciales push.
  *
- * 只盯 `cardId` 这一个键：整张 cardId→data 映射变了但本卡没变时不产出新凭据，
- * 也就不会给卡片发无意义的通知。存储缺失（无 CardDataStore 的宿主）或卡无身份时
- * 返回 null，卡片侧据此退回 800ms 轮询。
+ * Solo mira fijamente `cardId` Esta clave: Hoja completa cardId→data Si la asignación cambia pero la tarjeta permanece sin cambios, no se generarán nuevas credenciales.
+ * Esto significa que no se enviarán notificaciones sin sentido a la tarjeta. Cuando falta el almacenamiento (no hay host de CardDataStore) o la tarjeta no tiene identidad
+ * Devuelve nulo y el lado de la tarjeta vuelve al sondeo de 800 ms en consecuencia.
  */
 @Composable
 private fun rememberCardPushToken(
@@ -578,8 +578,8 @@ private fun SvgCard(
 ) {
     val cardDataStore: io.zer0.muse.data.card.CardDataStore? = koinInject()
     val store = cardDataStore
-    // 读数据回调只依赖存储与内联数据，按这两个缓存：每帧新建会让卡片桥
-    // （以它为 key 的 remember）重建，进而重拼整段卡片 HTML。
+    // La devolución de llamada de lectura de datos solo se basa en el almacenamiento y los datos en línea. Según estos dos cachés: cada cuadro creará un nuevo puente de tarjeta.
+    // (recuerde usarlo como clave) se reconstruye y luego se vuelve a ensamblar todo el HTML de la tarjeta.
     val readData = remember(store, inlineCardData) { { id: String -> store?.get(id) ?: inlineCardData } }
     CardRuntime(
         spec = CardSpec(
@@ -608,7 +608,7 @@ private fun HtmlCard(
 ) {
     val cardDataStore: io.zer0.muse.data.card.CardDataStore? = koinInject()
     val store = cardDataStore
-    // 同 SvgCard：读数据回调必须跨重组稳定，否则卡片桥跟着重建。
+    // Igual que SvgCard: la devolución de llamada de datos leídos debe ser estable durante la reorganización; de lo contrario, el puente de la tarjeta se reconstruirá en consecuencia.
     val readData = remember(store, inlineCardData) { { id: String -> store?.get(id) ?: inlineCardData } }
     CardRuntime(
         spec = CardSpec(
@@ -631,11 +631,11 @@ private fun ChartCard(json: String) {
     val chartCd = stringResource(R.string.markdown_chart_cd, json)
     val errorPrefix = stringResource(R.string.markdown_chart_render_failed_prefix)
     val html = remember(json) { buildChartHtml(json, errorPrefix) }
-    // v2.6.13: 图表高度也走“内容一次定格”。
+    // v2.6.13: La altura del gráfico también va“Congelar el contenido una vez”.
     //
-    // 旧实现只有一个 `heightIn(min = 260.dp)`：没有上限也没有自适应，
-    // 图表实际需要多高它都只给 260dp 起、多出来的内容在 WebView 里被裁。
-    // 现在与其他卡片一致：卡片侧定格脚本上报真实高度，这里只管接。
+    // La implementación anterior tenía solo una `heightIn(min = 260.dp)`: No hay límite superior ni adaptación.
+    // No importa qué tan alto deba ser el gráfico, solo comienza en 260 dp y el contenido adicional se recorta en WebView.
+    // Ahora es consistente con otras tarjetas: el script de fotograma congelado en el costado de la tarjeta informa la altura real, que simplemente se acepta aquí.
     var chartHeightPx by remember(html) { mutableStateOf(0) }
     val heightSink = remember { CardHeightSink() }
     androidx.compose.runtime.LaunchedEffect(heightSink) {
@@ -652,7 +652,7 @@ private fun ChartCard(json: String) {
         onWebViewCreated = { webView ->
             webView.addJavascriptInterface(heightSink, CardHeightSink.NAME)
         },
-        // 高度跟随内容，图表也一眼看全，不做卡内滚动。
+        // Siga estrictamente el contenido y los gráficos se podrán ver de un vistazo sin tener que desplazarse por la tarjeta.
         scrollable = false,
         modifier = Modifier
             .fillMaxWidth()
@@ -668,14 +668,14 @@ private fun ChartCard(json: String) {
 }
 
 /**
- * 构建 Chart.js 渲染页面(卡片与全屏预览共用)。
+ * Crear página de renderizado Chart.js(Las tarjetas se comparten con vistas previas en pantalla completa.).
  *
- * v1.97: Chart.js 从本地 assets/vendor 加载,解决 CDN 在中国不可用的问题。
- * LLM 输出的 JSON 直接作为 Chart.js 配置传入(new Chart(ctx, config))。
+ * v1.97: Chart.js Carga desde activos/proveedor local,Resuelva el problema de que CDN no esté disponible en China.
+ * LLM El JSON de salida se pasa directamente como configuración de Chart.js.(new Chart(ctx, config)).
  */
 private fun buildChartHtml(json: String, errorPrefix: String): String {
     val encoded = io.zer0.common.AppJson.encodeToString(String.serializer(), json)
-    // P3-2: JS 错误前缀从资源注入(JSON 编码为 JS 字面量),消除硬编码中文
+    // P3-2: JS Prefijo de error inyectado desde el recurso(JSON Codificado como literal JS),Eliminar el chino codificado
     val encodedPrefix = io.zer0.common.AppJson.encodeToString(String.serializer(), errorPrefix)
     return """
         <html><head><meta charset="UTF-8">
@@ -701,7 +701,7 @@ private fun buildChartHtml(json: String, errorPrefix: String): String {
                 new Chart(ctx, config);
             } catch(e) {
                 document.getElementById('wrap').style.display = 'none';
-                document.getElementById('err').textContent = $encodedPrefix + e.message + '\n\n原始数据:\n' + raw;
+                document.getElementById('err').textContent = $encodedPrefix + e.message + '\n\ndatos sin procesar:\n' + raw;
             }
         </script>
         <script>$HEIGHT_OBSERVER_SCRIPT</script>
@@ -710,16 +710,16 @@ private fun buildChartHtml(json: String, errorPrefix: String): String {
 }
 
 /**
- * 构建 Mermaid 渲染页面(全屏预览用)。
- * P3-2: 卡片渲染已收敛到 [io.zer0.muse.ui.markdown.ChartRenderer.MermaidBlock]
- * (自带轮询取高与资源化错误前缀),此处仅保留全屏预览的静态 WebView 页面。
+ * Construyendo una página renderizada de sirena(Para obtener una vista previa en pantalla completa).
+ * P3-2: La representación de tarjetas ha convergido a [io.zer0.muse.ui.markdown.ChartRenderer.MermaidBlock]
+ * (Viene con sondeo para obtener un prefijo de error alto y basado en recursos),Aquí solo se guardan páginas WebView estáticas con vistas previas en pantalla completa.
  *
- * v1.97: mermaid.js 从本地 assets/vendor 加载;mermaid 源码通过 JSON 编码注入 JS,避免 XSS。
+ * v1.97: mermaid.js Carga desde activos/proveedor local;mermaid El código fuente se inyecta mediante codificación JSON. JS,Evite XSS.
  */
 private fun buildMermaidHtml(mermaid: String, errorPrefix: String): String {
-    // JSON 编码 mermaid 源码,安全注入 JS 字符串
+    // JSON Codificación del código fuente de sirena,Inyecte cadenas JS de forma segura
     val encoded = io.zer0.common.AppJson.encodeToString(String.serializer(), mermaid)
-    // P3-2: 错误前缀从资源注入,消除硬编码中文('渲染失败: ')
+    // P3-2: Prefijo de error inyectado desde el recurso,Eliminar el chino codificado('Error de renderizado: ')
     val encodedPrefix = io.zer0.common.AppJson.encodeToString(String.serializer(), errorPrefix)
     return """
         <html><head><meta charset="UTF-8">
@@ -733,7 +733,7 @@ private fun buildMermaidHtml(mermaid: String, errorPrefix: String): String {
         <div id="err"></div>
         <script>
             try {
-                // M1 修复: securityLevel 改为 strict,禁用 click 回调与 HTML 嵌入,降低 LLM 内容风险
+                // M1 Reparación: securityLevel Cambiar a strict,Deshabilitar las devoluciones de llamada de clic y la incrustación de HTML,Reducir el riesgo del contenido de LLM
                 mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
                 var src = $encoded;
                 mermaid.render('mmd', src).then(function(res) {

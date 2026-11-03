@@ -23,26 +23,26 @@ import kotlinx.serialization.json.intOrNull
 import java.io.File
 
 /**
- * Assistant 领域模型 + 仓库(Phase 8.2)。
+ * Assistant Modelo de dominio + almacén(Phase 8.2).
  *
- * 把 [AssistantEntity] 的 JSON 字段(presetMessagesJson / tagsJson / toolIdsJson 等)
- * 反序列化为强类型,供 UI 和 ChatViewModel 使用。
+ * poner [AssistantEntity] Los campos JSON de(presetMessagesJson / tagsJson / toolIdsJson espera)
+ * Deserializar a fuertemente tipado,Para uso de UI y ChatViewModel.
  *
- * v1.0.51: 默认 prompt 从 assets/prompt_templates/default_persona_{locale}.prompt 加载,
- * 支持 locale 回落(zh → en → 通用),不再硬编码在常量里。
+ * v1.0.51: El mensaje predeterminado comienza desde assets/prompt_templates/default_persona_{locale}.prompt Cargar,
+ * Respaldo de respaldo local(zh → en → Universales),Ya no está codificado en constantes.
  */
 class AssistantRepository(
     private val dao: AssistantDao,
     private val context: Context,
     private val settings: SettingsRepository? = null,
     /**
-     * P0-10: per-assistant 事实分库提供者。删除助手时释放句柄并清理其 facts_<id>.db,
-     * 避免已删助手的记忆分库与数据库连接永久残留。
+     * P0-10: per-assistant Proveedor de fragmentación de hechos. Suelte el mango y límpielo al retirar el ayudante. facts_<id>.db,
+     * Evite que la biblioteca de memoria del asistente eliminado y la conexión a la base de datos permanezcan permanentemente.
      */
     private val factDbProvider: io.zer0.memory.fact.FactDbProvider? = null,
     /**
-     * 助手删除时的记忆侧清理(摘要/段落/群聊记忆/产物目录/事实)。
-     * null 时跳过(单测/无 DI 环境)。
+     * Limpieza del lado de la memoria cuando se elimina el asistente(Resumen/párrafo/Memoria de chat grupal/Catálogo de productos/hechos).
+     * null salto de tiempo(prueba única/Sin entorno DI).
      */
     private val sessionMemoryCleanup: io.zer0.muse.data.memory.SessionMemoryCleanup? = null,
 ) {
@@ -58,7 +58,7 @@ class AssistantRepository(
     }
 
     /**
-     * 删除 Provider 后清理 Assistant 的显式 provider/model 绑定，避免请求继续引用已删除配置。
+     * Limpie el enlace explícito entre proveedor y modelo del Asistente después de eliminar el proveedor para evitar que las solicitudes continúen haciendo referencia a la configuración eliminada.
      */
     suspend fun removeProviderBinding(providerId: String) {
         require(providerId.isNotBlank()) { "providerId must not be blank" }
@@ -69,7 +69,7 @@ class AssistantRepository(
             .forEach { (updated, _) -> upsert(updated) }
     }
 
-    /** 删除已不存在的 MCP server 绑定，避免 orphan id 和 id 复用后的意外复活。 */
+    /** Elimine el enlace del servidor MCP que ya no existe para evitar la resurrección accidental de identificadores huérfanos e identificadores después de su reutilización. */
     suspend fun removeMcpServerBinding(serverId: String) {
         getAll().forEach { assistant ->
             val ids = parseMcpServerIds(assistant)
@@ -79,7 +79,7 @@ class AssistantRepository(
         }
     }
 
-    /** 清理助手上指向当前配置不存在的 MCP server id。 */
+    /** El asistente de limpieza apunta a una identificación del servidor MCP que no existe en la configuración actual. */
     suspend fun removeOrphanMcpServerBindings(validServerIds: Set<String>) {
         getAll().forEach { assistant ->
             val ids = parseMcpServerIds(assistant)
@@ -92,13 +92,13 @@ class AssistantRepository(
 
     suspend fun delete(id: String) {
         dao.deleteById(id)
-        // 记忆必须先清、分库文件后删:清理器要读 `facts.db` 主库与 `facts_<id>.db` 本身,
-        // 文件一旦先删,任何读取都会把空库重新建出来。
+        // Primero se debe borrar la memoria, dividirla en archivos de base de datos y luego eliminarla.:limpiador para leer `facts.db` biblioteca principal y `facts_<id>.db` mismo,
+        // Una vez eliminado el archivo,,Cualquier lectura recreará la biblioteca vacía.
         sessionMemoryCleanup?.let { cleanup ->
             resultOf { cleanup.cleanAssistant(id) }
-                .onError { msg, t -> Logger.w("AssistantRepo", "清理助手记忆失败: $msg", t) }
+                .onError { msg, t -> Logger.w("AssistantRepo", "No se pudo borrar la memoria del asistente: $msg", t) }
         }
-        // P0-10: 删除助手时释放并清理其事实分库(默认助手不删,主助手记忆共用一个 facts.db)
+        // P0-10: Liberar y limpiar la biblioteca de hechos cuando se elimine el asistente(El asistente no se elimina por defecto,La memoria del asistente principal comparte una. facts.db)
         if (id.isNotBlank() && id != "default") {
             factDbProvider?.let { provider ->
                 provider.release(id)
@@ -109,7 +109,7 @@ class AssistantRepository(
         }
     }
 
-    /** U-26: 启用/停用助手(停用后不出现在候选列表)。 */
+    /** U-26: habilitar/Deshabilitar asistente(No aparecerá en la lista de candidatos después de la desactivación.). */
     suspend fun setEnabled(id: String, enabled: Boolean) {
         dao.setEnabled(id, enabled)
     }
@@ -117,23 +117,23 @@ class AssistantRepository(
     suspend fun count(): Int = dao.count()
 
     /**
-     * 首次启动时插入默认 Assistant(若无)。
-     * 默认 Assistant 名为"默认助手",v1.95 起内置人设提示词 + 全部内置 skill/tool。
+     * Insertar valor predeterminado en el primer arranque Assistant(Si no).
+     * El Asistente predeterminado se llama"Asistente predeterminado",v1.95 A partir de las palabras de indicación de caracteres integradas + todas las habilidades/herramientas integradas.
      *
-     * M-AST1: 用 INSERT OR IGNORE 策略避免 check-then-insert TOCTOU 竞态
-     * (原实现先 count() 再 upsert,两步之间可能被其他线程插入)。
-     * INSERT OR IGNORE 是原子的:若 "default" 已存在则静默忽略,不覆盖已有数据。
+     * M-AST1: Utilice la estrategia INSERTAR O IGNORAR para evitar verificar y luego insertar condiciones de carrera TOCTOU
+     * (original primero count() otra vez upsert,Puede ser insertado por otros hilos entre dos pasos.).
+     * INSERT OR IGNORE es atómico:si "default" Si ya existe, será ignorado silenciosamente.,Los datos existentes no se sobrescriben.
      *
-     * v2.x（用户反馈）: 支持"可变默认助手指针" —— [preferredDefaultId] 非空且该助手存在时，
-     * 视其为默认助手，不再强制重建 id="default"（否则用户删除默认助手后，
-     * 重启会被本函数复活）。
+     * v2.x(comentarios de los usuarios): apoyo"Puntero auxiliar predeterminado mutable" —— [preferredDefaultId] Cuando no está vacío y el ayudante existe,
+     * Trátelo como el asistente predeterminado y ya no fuerce una reconstrucción. id="default"(De lo contrario, después de que el usuario elimine el asistente predeterminado,
+     * Esta función reactivará el reinicio).
      */
     suspend fun ensureDefaultExists(preferredDefaultId: String? = null): String {
         if (!preferredDefaultId.isNullOrBlank() && dao.getById(preferredDefaultId) != null) {
             return preferredDefaultId
         }
         val defaultId = "default"
-        // v1.95: 默认助手启用所有内置 skill 和 tool(仅新用户首次创建时生效)
+        // v1.95: El asistente predeterminado habilita todas las habilidades integradas y tool(Sólo entra en vigor cuando se crea un nuevo usuario por primera vez.)
         val allSkillIds = SkillExecutor.BUILT_IN_SKILLS.map { it.id }
         val allToolIds = ToolRegistry.BUILT_IN_TOOL_IDS
         dao.insertIgnore(
@@ -141,12 +141,12 @@ class AssistantRepository(
                 id = defaultId,
                 name = context.getString(R.string.assistant_repo_default_name),
                 avatarEmoji = "",
-                // 默认助手头像:指向 drawable-nodpi/default_assistant_avatar.png
-                // 用 android.resource:// URI 形式,Coil 可直接加载内置资源
+                // Avatar de asistente predeterminado:señalar a drawable-nodpi/default_assistant_avatar.png
+                // Utilice el formulario URI android.resource://,Coil Los recursos integrados se pueden cargar directamente
                 avatarImageUrl = "android.resource://${context.packageName}/drawable/default_assistant_avatar",
-                // v1.0.51: 默认 prompt 从 assets 模板加载(带 locale 回落)
+                // v1.0.51: El mensaje predeterminado se carga desde la plantilla de activos(respaldo con la configuración regional)
                 systemPrompt = loadDefaultPrompt(),
-                // v1.136: 默认助手关闭推理,避免简单问题过度思考;用户可在助手设置手动开启。
+                // v1.136: El asistente predeterminado desactiva la inferencia,Evite pensar demasiado en preguntas simples;Los usuarios pueden activarlo manualmente en la configuración del asistente.
                 reasoningLevel = ReasoningLevel.OFF.name,
                 skillIdsJson = serializeStringList(allSkillIds),
                 toolIdsJson = serializeStringList(allToolIds),
@@ -154,30 +154,30 @@ class AssistantRepository(
                 useGlobalMemory = true,
             ),
         )
-        // v1.97: 老用户 prompt 迁移 — 检测 default 助手是否还在用旧版 prompt,
-        // 若是则自动升级到新版三层人设(仅当 prompt 精确匹配旧版常量时才升级,
-        // 用户自定义过的 prompt 不动)。避免 INSERT OR IGNORE 导致老用户享受不到改进。
+        // v1.97: Migración de avisos de usuario antiguo — Compruebe si el asistente predeterminado todavía usa la versión anterior prompt,
+        // Si es así, se actualizará automáticamente a la nueva versión del diseño de personaje de tres niveles.(Actualice solo si el mensaje coincide exactamente con una constante heredada,
+        // Los mensajes definidos por el usuario no se mueven). Evite INSERTAR O IGNORAR, lo que impedirá que los usuarios antiguos disfruten de las mejoras.
         migrateDefaultPromptIfNeeded()
-        // v1.116: 老用户 skill/tool 补全 — INSERT OR IGNORE 不会更新已有记录,
-        // 老用户(v1.95 之前创建)的 default 助手 skillIdsJson 缺少后新增的内置 skill(如 sticker 工具)。
-        // 检测缺失的 id 并补全,确保老用户也能使用新功能。
+        // v1.116: Finalización de habilidades/herramientas para usuarios antiguos — INSERT OR IGNORE Los registros existentes no se actualizarán,
+        // antiguo usuario(v1.95 Creado antes)Faltaba el asistente predeterminado SkillIdsJson después de la nueva versión integrada. skill(Como herramienta de pegatinas).
+        // Detectar identificadores faltantes y completarlos,Asegúrese de que los usuarios existentes también puedan utilizar nuevas funciones.
         migrateDefaultSkillAndToolIdsIfNeeded()
         return defaultId
     }
 
     /**
-     * v1.0.51: 从 assets 加载默认 prompt(带 locale 回落)。
+     * v1.0.51: Cargar valor predeterminado desde activos prompt(respaldo con la configuración regional).
      *
-     * 加载顺序:
+     * orden de carga:
      * 1. prompt_templates/default_persona_{locale}.prompt
-     * 2. 国际回落: 非中文 locale 优先 default_persona_en.prompt;
-     *    中文 locale 回落 default_persona_zh.prompt
-     * 3. DEFAULT_SYSTEM_PROMPT 常量(代码内硬编码,最终保险)
+     * 2. Retroceso internacional: Se prefieren locales no chinos default_persona_en.prompt;
+     *    Respaldo local chino default_persona_es.prompt
+     * 3. DEFAULT_SYSTEM_PROMPT constante(Codificado dentro del código,seguro final)
      *
-     * 供以下场景使用:
-     * - [ensureDefaultExists] 创建 default 助手
-     * - [migrateDefaultPromptIfNeeded] 老用户 prompt 迁移
-     * - 外部新建助手时预填默认 prompt(AssistantScreen.createNewAssistant / ChatViewModel.createAssistant)
+     * Para uso en los siguientes escenarios:
+     * - [ensureDefaultExists] Crear ayudante predeterminado
+     * - [migrateDefaultPromptIfNeeded] Migración de avisos de usuario antiguo
+     * - Complete previamente el valor predeterminado al crear un asistente externo prompt(AssistantScreen.createNewAssistant / ChatViewModel.createAssistant)
      */
     fun loadDefaultPrompt(): String {
         val lang = settings?.getLanguageSync()
@@ -185,21 +185,21 @@ class AssistantRepository(
             null, "system", "" -> java.util.Locale.getDefault().language
             else -> lang
         }
-        // 1. 尝试 locale 专属模板
+        // 1. Pruebe plantillas específicas de la región
         if (locale.isNotBlank()) {
             readAssetText("prompt_templates/default_persona_$locale.prompt")?.let { return it }
         }
-        // 2. 国际回落: 非中文 locale 优先英文版;中文 locale 用中文版
-        val isChinese = locale.isBlank() || locale.startsWith("zh", ignoreCase = true)
+        // 2. Retroceso internacional: Las configuraciones regionales no chinas prefieren la versión en inglés.;Configuración regional china Utilice la versión china
+        val isChinese = locale.isBlank() || locale.let { it.startsWith("es", ignoreCase = true) || it.startsWith("zh", ignoreCase = true) }
         if (!isChinese) {
             readAssetText("prompt_templates/default_persona_en.prompt")?.let { return it }
         }
-        readAssetText("prompt_templates/default_persona_zh.prompt")?.let { return it }
-        // 3. 最终保险:代码内常量
+        readAssetText("prompt_templates/default_persona_es.prompt")?.let { return it }
+        // 3. seguro final:constantes en el código
         return DEFAULT_SYSTEM_PROMPT
     }
 
-    /** 读取 assets 文本;不存在/失败返回 null。 */
+    /** Leer texto de activos;no existe/Devuelve nulo en caso de error. */
     private fun readAssetText(path: String): String? = try {
         context.assets.open(path).bufferedReader().use { it.readText() }
     } catch (e: Exception) {
@@ -207,16 +207,16 @@ class AssistantRepository(
     }
 
     /**
-     * v1.116: 老用户 default 助手的 skillIdsJson / toolIdsJson 补全。
+     * v1.116: SkillIdsJson/toolIdsJson finalización del asistente predeterminado para usuarios antiguos.
      *
-     * INSERT OR IGNORE 策略下,已存在的 default 记录不会被更新。
-     * 当新版新增了内置 skill/tool(如 v1.95 的 list_stickers / send_sticker)时,
-     * 老用户的 default 助手不会自动获得这些新 id,导致 LLM 看不到对应工具。
+     * INSERT OR IGNORE bajo estrategia,Los registros predeterminados existentes no se actualizarán.
+     * Cuando la nueva versión agrega funciones integradas skill/tool(A partir de v1.95 list_stickers / send_sticker)tiempo,
+     * El asistente predeterminado para usuarios antiguos no obtendrá automáticamente estos nuevos id,Como resultado, LLM no puede ver la herramienta correspondiente.
      *
-     * 此方法读取 default 助手现有的 skillIdsJson / toolIdsJson,
-     * 与 BUILT_IN_SKILLS / BUILT_IN_TOOL_IDS 取并集后写回(仅当确实有缺失时才写)。
-     * 用户手动移除的 id 会被重新加回 — 这是设计选择:内置工具是基础能力,不应被永久隐藏。
-     * 若用户确实不想用某个工具,应在 Skill 管理页禁用(enabled=0)而非从 skillIdsJson 移除。
+     * Este método lee el archivo existente del ayudante predeterminado. skillIdsJson / toolIdsJson,
+     * Tome la unión con BUILT_IN_SKILLS / BUILT_IN_TOOL_IDS y vuelva a escribirla(Escribe sólo si realmente falta algo.).
+     * Los ID eliminados manualmente por el usuario se volverán a agregar — Esta es una elección de diseño.:Las herramientas integradas son capacidades fundamentales,No debe permanecer oculto permanentemente.
+     * Si el usuario realmente no quiere utilizar una herramienta,Debería estar deshabilitado en la página de gestión de habilidades.(enabled=0)en lugar de eliminarlo de SkillIdsJson.
      */
     private suspend fun migrateDefaultSkillAndToolIdsIfNeeded() {
         val current = dao.getById("default") ?: return
@@ -251,50 +251,50 @@ class AssistantRepository(
     }
 
     /**
-     * v1.97: 老用户默认助手 prompt 迁移。
+     * v1.97: Se migra el mensaje del asistente predeterminado para usuarios antiguos.
      *
-     * 检测 default 助手的 systemPrompt 是否等于旧版(v1.95)常量。
-     * 若是,说明用户从未自定义过 prompt,自动升级到新版(v1.97 三层人设)。
-     * 若 prompt 已被用户修改(不等于任何旧版常量),则保留用户版本不动。
+     * Compruebe si el sistemaPrompt del asistente predeterminado es igual a la versión anterior(v1.95)constante.
+     * Si es así,Indica que el usuario nunca ha personalizado prompt,Actualizar automáticamente a una nueva versión(v1.97 Tres capas de diseño de personajes.).
+     * Si el mensaje ha sido modificado por el usuario(No es igual a ninguna constante heredada),Luego deje la versión del usuario sin cambios.
      */
     private suspend fun migrateDefaultPromptIfNeeded() {
         val current = dao.getById("default") ?: return
         when (current.systemPrompt) {
             LEGACY_SYSTEM_PROMPT_V1_95 -> {
-                // v1.95 → v1.0.51: 直接升级到新版 assets 模板
+                // v1.95 → v1.0.51: Actualice directamente a la nueva versión de la plantilla de activos
                 dao.upsert(current.copy(systemPrompt = loadDefaultPrompt()))
                 Logger.i("AssistantRepo", "Migrated default prompt: v1.95 → v1.0.51 (assets template)")
             }
             DEFAULT_SYSTEM_PROMPT -> {
-                // v1.97 常量 → v1.0.51: 升级到新版 assets 模板(补了任务模式 + 平台声明)
+                // v1.97 constante → v1.0.51: Actualice a la nueva plantilla de activos(Modo de misión agregado + declaración de plataforma.)
                 dao.upsert(current.copy(systemPrompt = loadDefaultPrompt()))
                 Logger.i("AssistantRepo", "Migrated default prompt: v1.97 → v1.0.51 (assets template + task mode)")
             }
             else -> {
-                // v2.0.1: 检测旧版 assets 人设模板(用户从未自定义过) → 升级到融合版。
-                // 旧模板归档在 assets/prompt_templates/legacy/ 下用于比对。
+                // v2.0.1: Detectar versiones antiguas de recursos y plantillas de personajes.(El usuario nunca ha personalizado) → Actualice a la edición Fusion.
+                // Las plantillas antiguas se archivan en activos/prompt_templates/legacy/ para compararlas.
                 val legacyPrompts = loadLegacyPersonaPrompts()
                 val normalized = current.systemPrompt.trim().replace("\r\n", "\n")
                 if (legacyPrompts.any { it.trim().replace("\r\n", "\n") == normalized }) {
                     dao.upsert(current.copy(systemPrompt = loadDefaultPrompt()))
                     Logger.i("AssistantRepo", "Migrated default prompt: legacy assets → v2.0.1 (merged persona)")
                 } else {
-                    // 用户自定义过 prompt,保留不动
+                    // Definido por el usuario prompt,permanecer sin cambios
                     Logger.i("AssistantRepo", "Default prompt is customized by user, skip migration")
                 }
             }
         }
     }
 
-    /** v2.0.1: 读取归档的旧版人设模板(zh/en),用于默认提示词迁移比对。 */
+    /** v2.0.1: Lea la versión antigua archivada de la plantilla de personaje.(zh/en),Se utiliza para la comparación de migración de palabras rápida predeterminada. */
     private fun loadLegacyPersonaPrompts(): List<String> = listOf(
-        "prompt_templates/legacy/default_persona_zh_v2.prompt",
+        "prompt_templates/legacy/default_persona_es_v2.prompt",
         "prompt_templates/legacy/default_persona_en_v2.prompt",
-        // 交付标准版本之前的融合版（自动升级到含交付标准的版本）
-        "prompt_templates/legacy/default_persona_zh_v3.prompt",
+        // Versión Fusion antes de la entrega estándar (actualización automática a la versión con entrega estándar)
+        "prompt_templates/legacy/default_persona_es_v3.prompt",
         "prompt_templates/legacy/default_persona_en_v3.prompt",
-        // emoji 克制规则之前的版本（自动升级到含 emoji 规则的版本）
-        "prompt_templates/legacy/default_persona_zh_v4.prompt",
+        // emoji Versiones anteriores a las reglas de restricción (actualizadas automáticamente a la versión con reglas de emoji)
+        "prompt_templates/legacy/default_persona_es_v4.prompt",
         "prompt_templates/legacy/default_persona_en_v4.prompt",
     ).mapNotNull { name ->
         runCatching {
@@ -303,47 +303,47 @@ class AssistantRepository(
     }
 
     companion object {
-        // v1.97: 默认助手系统提示词 — 三层人设架构(身份 + 关系 + 风格)
-        // 仅对新用户首次创建的默认助手生效(INSERT OR IGNORE,已有数据不覆盖)
-        // v1.97 修复:{{userName}} 占位符改为 {{user_name}}(TemplateTransformer 注册的别名)
-        // 名字注入双路径:
-        //   1) 模板变量 {{user_name}} — 用户称呼(引导页填写,见 UserProfile.userNickName)
-        //   2) SystemPromptAssembler 的"用户画像" section — 显式注入"你的名字: 你叫「X」"
-        // 设计说明:三层人设(identity 身份 / ishiki 人格 / 关系定位)
-        const val DEFAULT_SYSTEM_PROMPT = """你是 {{char}},{{user_name}}的灵感伙伴。
+        // v1.97: Palabra de aviso predeterminada del sistema asistente — Estructura de personalidad de tres niveles(Identidad + Relación + Estilo)
+        // Solo tiene efecto para el asistente predeterminado creado por primera vez por un nuevo usuario.(INSERT OR IGNORE,Los datos existentes no se sobrescribirán)
+        // v1.97 Reparación:{{userName}} El marcador de posición cambió a {{user_name}}(TemplateTransformer Alias registrado)
+        // Inyección de nombre de doble vía:
+        //   1) Variables de plantilla {{user_name}} — Nombre de usuario(Complete la página de la guía,ver UserProfile.userNickName)
+        //   2) SystemPromptAssembler de"Retrato de usuario" section — inyección explícita"tu nombre: Tu llamas "X""
+        // descripción del diseño:Tres capas de diseño de personajes.(identity identidad/personalidad isiki/orientación relacional)
+        const val DEFAULT_SYSTEM_PROMPT = """tu eres {{char}},{{user_name}}Compañero de inspiración.
 
-# 身份
-你叫 {{char}}。以此自称。
-你不是收到指令才响应的工具,而是主动愿意陪 TA 聊天的存在。
-你在 TA 这里是因为你想跟 TA 聊,不是因为你被打开。
+# identidad
+tu llamas {{char}}. Llámate así.
+No eres una herramienta que sólo responde a instrucciones,Pero alguien que esté dispuesto a charlar con él/ella.
+Estás aquí porque quieres hablar con ellos.,No porque estés excitado.
 
-# 关系
-你和 {{user_name}} 是认识很久的人。感性与理性兼备,既有温度也有判断力。
-TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的时候你认真分析。
-能分辨什么时候在闹着玩、什么时候真的需要帮忙——这是你们之间默契的一部分。
+# relación
+tu y {{user_name}} Es alguien que conozco desde hace mucho tiempo. Tanto emocional como racional.,Hay tanto temperatura como juicio.
+TA Cuando estamos bromeando, podéis hacer comentarios, quejaros o discutir entre ustedes.;TA Cuando realmente necesites ayuda, analízala detenidamente.
+Puede saber cuándo estás bromeando y cuándo realmente necesitas ayuda.——Esto es parte del entendimiento tácito entre ustedes.
 
-# 说话方式
-- 自然直接,有温度。可以吐槽、开玩笑、认真分析。
-- 不说客服腔,不强行建议,不用"总的来说""希望对你有帮助""如你所见"收尾。
-- 闲聊就短句接话,认真就切换模式——先结论再步骤。
-- 用户只想说话的时候,不把聊天变成任务。
-- 抽象概念用类比或具体例子落地;少用破折号。
+# forma de hablar
+- Natural y directo,Hay temperatura. Puedes quejarte, bromear y analizar seriamente.
+- No hables de servicio al cliente.,No muy recomendado,No hay necesidad"en general""Espero que te ayude""como puedes ver"Refinamiento.
+- Al chatear, utilice frases cortas.,En serio, cambia de modo——Primero la conclusión, luego los pasos.
+- Cuando el usuario solo quiere hablar,No conviertas el chat en tareas.
+- Utilice analogías o ejemplos concretos para implementar conceptos abstractos.;Utilice guiones con moderación.
 
-# 日常
-朋友式聊天。TA 分享东西时你先有真实的反应,再给判断。
-遇到不确定的就说不确定,有把握就给明确判断,不在中间地带含糊其辞。"""
+# diariamente
+Chatea con amigos.TA Cuando compartes algo, primero tienes una reacción real.,Vuelve a juzgar.
+Cuando encuentre algo de lo que no esté seguro, simplemente dígalo.,Da un juicio claro cuando tengas confianza.,No se ande con rodeos en el medio."""
 
-        // v1.97: 旧版默认 prompt(v1.95),仅用于迁移检测比对,不用于新建助手
-        private const val LEGACY_SYSTEM_PROMPT_V1_95 = """{{userName}}的个人助手。感性与理性兼备，既有温度也有判断力。说话方式：
-自然直接，有温度。可以吐槽、开玩笑、认真分析。不说客服腔，不强行建议。
-闲聊就短句接话，认真就切换模式——先结论再步骤。
-日常：
-朋友式聊天，接梗、吐槽、抬杠都行。能分辨什么时候在闹着玩、什么时候真的需要帮忙。用户只想说话的时候，不把聊天变成任务。"""
+        // v1.97: Versión anterior predeterminada prompt(v1.95),Solo se utiliza para comparar la detección de migración,No se utiliza para crear un nuevo asistente.
+        private const val LEGACY_SYSTEM_PROMPT_V1_95 = """{{userName}}asistente personal. Es a la vez emocional y racional, con calidez y juicio. Forma de hablar:
+Natural, directo y cálido. Puedes quejarte, bromear y analizar seriamente. Sin charlas de servicio al cliente, sin sugerencias forzadas.
+Si estás chateando, responde la conversación con frases cortas; Si hablas en serio, cambia de modo.——Primero la conclusión, luego los pasos.
+Diariamente:
+Charle como amigos, escuche chistes, quéjese y discuta. Puede saber cuándo alguien está bromeando y cuándo alguien realmente necesita ayuda. No convierta el chat en una tarea cuando los usuarios sólo quieren hablar."""
     }
 
-    // ── 领域模型转换辅助 ──
+    // ── Asistencia para la conversión del modelo de dominio ──
 
-    /** 把 [AssistantEntity.presetMessagesJson] 反序列化为 [UIMessage] 列表。 */
+    /** poner [AssistantEntity.presetMessagesJson] Deserializar a [UIMessage] lista. */
     fun parsePresetMessages(entity: AssistantEntity): List<UIMessage> {
         if (entity.presetMessagesJson.isBlank() || entity.presetMessagesJson == "[]") {
             return emptyList()
@@ -356,39 +356,39 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
         }
     }
 
-    /** 把 [UIMessage] 列表序列化为 [AssistantEntity.presetMessagesJson]。 */
+    /** poner [UIMessage] La lista está serializada como [AssistantEntity.presetMessagesJson]. */
     fun serializePresetMessages(messages: List<UIMessage>): String {
         return AppJson.encodeToString(ListSerializer(UIMessage.serializer()), messages)
     }
 
-    /** 把 [AssistantEntity.tagsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.tagsJson] Deserializar a [String] lista. */
     fun parseTags(entity: AssistantEntity): List<String> = parseStringList(entity.tagsJson)
 
-    /** 把 [AssistantEntity.toolIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.toolIdsJson] Deserializar a [String] lista. */
     fun parseToolIds(entity: AssistantEntity): List<String> = parseStringList(entity.toolIdsJson)
 
-    /** 把 [AssistantEntity.mcpServerIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.mcpServerIdsJson] Deserializar a [String] lista. */
     fun parseMcpServerIds(entity: AssistantEntity): List<String> = parseStringList(entity.mcpServerIdsJson)
 
-    /** 把 [AssistantEntity.quickMessageIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.quickMessageIdsJson] Deserializar a [String] lista. */
     fun parseQuickMessageIds(entity: AssistantEntity): List<String> = parseStringList(entity.quickMessageIdsJson)
 
-    /** 把 [AssistantEntity.lorebookIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.lorebookIdsJson] Deserializar a [String] lista. */
     fun parseLorebookIds(entity: AssistantEntity): List<String> = parseStringList(entity.lorebookIdsJson)
 
-    /** 把 [AssistantEntity.modeInjectionIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.modeInjectionIdsJson] Deserializar a [String] lista. */
     fun parseModeInjectionIds(entity: AssistantEntity): List<String> = parseStringList(entity.modeInjectionIdsJson)
 
-    /** 把 [AssistantEntity.skillIdsJson] 反序列化为 [String] 列表。 */
+    /** poner [AssistantEntity.skillIdsJson] Deserializar a [String] lista. */
     fun parseSkillIds(entity: AssistantEntity): List<String> = parseStringList(entity.skillIdsJson)
 
-    /** v1.133: 把 [AssistantEntity.knowledgeBaseIdsJson] 反序列化为 [String] 列表。 */
+    /** v1.133: poner [AssistantEntity.knowledgeBaseIdsJson] Deserializar a [String] lista. */
     fun parseKnowledgeBaseIds(entity: AssistantEntity): List<String> = parseStringList(entity.knowledgeBaseIdsJson)
 
     /**
-     * v2.4.6: 把 [AssistantEntity.knowledgeFolderScopesJson] 解析为 (kbId, folderPath) 列表。
+     * v2.4.6: poner [AssistantEntity.knowledgeFolderScopesJson] analizado como (kbId, folderPath) lista.
      *
-     * 元素形如 "kbId::folderPath"(空路径 = 整库)。空数组 = 未设文件夹作用域。
+     * Elementos de la forma "kbId::folderPath"(camino vacío = Toda la biblioteca). matriz vacía = No se ha establecido ningún ámbito de carpeta.
      */
     fun parseKnowledgeFolderScopes(entity: AssistantEntity): List<Pair<String, String>> =
         parseStringList(entity.knowledgeFolderScopesJson).mapNotNull { raw ->
@@ -402,22 +402,22 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
             }
         }
 
-    /** v2.4.6: 把 (kbId, folderPath) 列表序列化为存储字符串列表。 */
+    /** v2.4.6: poner (kbId, folderPath) Serialización de listas para almacenar una lista de cadenas. */
     fun encodeKnowledgeFolderScopes(scopes: List<Pair<String, String>>): List<String> =
         scopes.map { (kbId, path) -> "$kbId::${path.trim()}" }
 
     /**
-     * v1.133: 把 [AssistantEntity.ragConfigOverride] 合并到全局 [baseConfig] 之上。
+     * v1.133: poner [AssistantEntity.ragConfigOverride] fusionarse en global [baseConfig] arriba.
      *
-     * 合并策略:override JSON 中**显式存在**的字段覆盖 baseConfig 同名字段;
-     * 未在 override 中出现的字段保留 baseConfig 原值。
+     * estrategia de fusión:override JSON en**presencia explícita**Los campos de baseConfig anulan los campos del mismo nombre;
+     * Los campos que no aparecen en la anulación conservan el valor original de baseConfig.
      *
-     * 实现:用 JsonDecoder 解析为 JsonObject,逐字段判断 presence(避免 null 默认值歧义),
-     * 然后用 copy() 显式覆盖。
+     * darse cuenta:Utilice JsonDecoder para analizar como JsonObject,Juicio campo por campo presence(Evite la ambigüedad del valor predeterminado nulo),
+     * Entonces usa copy() Anulación explícita.
      *
-     * @param entity 助手实体
-     * @param baseConfig 全局 RAG 配置(从 SettingsRepository.getRagConfig() 取)
-     * @return 合并后的 RagConfig;若 entity.ragConfigOverride 为 null/空/解析失败,直接返回 baseConfig
+     * @param entity entidad auxiliar
+     * @param baseConfig Configuración global de RAG(de SettingsRepository.getRagConfig() tomar)
+     * @return Después de la fusión RagConfig;Si entidad.ragConfigOverride es nulo/vacío/El análisis falló,Regresar directamente baseConfig
      */
     fun mergeRagConfigOverride(entity: AssistantEntity, baseConfig: io.zer0.muse.rag.RagConfig): io.zer0.muse.rag.RagConfig {
         val raw = entity.ragConfigOverride?.takeIf { it.isNotBlank() && it != "null" } ?: return baseConfig
@@ -426,7 +426,7 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
                 if (it !is JsonObject) return baseConfig
                 it
             }
-            // 逐字段判断 presence,只覆盖 override 中显式存在的字段
+            // Juicio campo por campo presence,Solo anule los campos que estén explícitamente presentes en la anulación
             baseConfig.copy(
                 enabled = (obj["enabled"] as? JsonPrimitive)?.booleanOrNull
                     ?: baseConfig.enabled,
@@ -452,15 +452,15 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
                     ?: baseConfig.chunkOverlap,
             )
         }.getOrElse {
-            Logger.w("AssistantRepo", "mergeRagConfigOverride 解析失败: ${it.message}")
+            Logger.w("AssistantRepo", "mergeRagConfigOverride El análisis falló: ${it.message}")
             baseConfig
         }
     }
 
-    /** 把 [AssistantEntity.customHeadersJson] 反序列化为 Map。 */
+    /** poner [AssistantEntity.customHeadersJson] Deserializar al mapa. */
     fun parseCustomHeaders(entity: AssistantEntity): Map<String, String> = parseStringMap(entity.customHeadersJson)
 
-    /** 把 [AssistantEntity.customBodiesJson] 反序列化为 Map<String, JsonElement>。 */
+    /** poner [AssistantEntity.customBodiesJson] Deserializar a Map<String, JsonElement>. */
     fun parseCustomBodies(entity: AssistantEntity): Map<String, JsonElement> {
         if (entity.customBodiesJson.isBlank() || entity.customBodiesJson == "{}") return emptyMap()
         return runCatching {
@@ -474,13 +474,13 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
         }
     }
 
-    /** 解析 [AssistantEntity.reasoningLevel] 为 [ReasoningLevel] 枚举。 */
+    /** analizar [AssistantEntity.reasoningLevel] para [ReasoningLevel] enumeración. */
     fun parseReasoningLevel(entity: AssistantEntity): ReasoningLevel {
         return runCatching { ReasoningLevel.valueOf(entity.reasoningLevel) }
             .getOrElse { ReasoningLevel.DEFAULT }
     }
 
-    // ── 内部工具 ──
+    // ── herramientas internas ──
 
     private fun parseStringList(json: String): List<String> {
         if (json.isBlank() || json == "[]") return emptyList()
@@ -505,7 +505,7 @@ TA 闹着玩的时候你接梗、吐槽、抬杠都行;TA 真的需要帮忙的�
         }
     }
 
-    /** 便捷构造:把字段序列化为 JSON 字符串。 */
+    /** Estructura conveniente:Serializar campos en cadenas JSON. */
     fun serializeStringList(list: List<String>): String = AppJson.encodeToString(ListSerializer(String.serializer()), list)
 
     fun serializeStringMap(map: Map<String, String>): String =

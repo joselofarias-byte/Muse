@@ -27,10 +27,10 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * 语音消息条渲染与播放行为测试。
+ * Prueba de comportamiento de reproducción y representación de la barra de mensajes de voz.
  *
- * 播放器通过 [VoiceAudioPlayer] 注入假实现，因此不碰系统音频栈：断言的是
- * "播放器被调了几次 / 图标切没切 / 换条时上一条停没停"这些气泡自身的契约。
+ * pases de jugador [VoiceAudioPlayer] Inyecta una implementación falsa y por lo tanto no toca la pila de audio del sistema: la afirmación es
+ * "El reproductor ha sido ajustado varias veces / el icono no ha sido cambiado / el anterior no se ha detenido al cambiar de tira"Estas burbujas tienen sus propios contratos.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -51,7 +51,7 @@ class VoiceMessageBubbleTest {
         VoiceMessageStore(storageDir = storageDir, durationProbe = VoiceDurationProbe { 7000L })
     }
 
-    /** 存档目录里的真实文件（`resolve` 只认目录内的文件）。 */
+    /** El archivo real en el directorio de archivo (`resolve` Sólo reconoce archivos en el directorio). */
     private fun storedVoice(name: String): String {
         val file = File(storageDir, name).apply { writeText("RIFF-fake-wav") }
         return "file://" + file.absolutePath
@@ -103,16 +103,16 @@ class VoiceMessageBubbleTest {
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_BUBBLE_TAG).performClick()
 
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_PAUSE_ICON_TAG, useUnmergedTree = true).assertExists()
-        assertEquals("点一次只应起播一次", 1, player.loadCount)
-        assertEquals("起播后不应再额外调 start", 0, player.startCount)
-        assertTrue("控制器应处于播放态", controller.state.isPlaying)
+        assertEquals("Al hacer clic una vez, el juego solo debería comenzar una vez.", 1, player.loadCount)
+        assertEquals("No se deben realizar ajustes adicionales después de la transmisión. start", 0, player.startCount)
+        assertTrue("El controlador debe estar en estado de juego.", controller.state.isPlaying)
 
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_BUBBLE_TAG).performClick()
 
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_PLAY_ICON_TAG, useUnmergedTree = true).assertExists()
-        assertEquals("再点应是暂停而不是重新装载", 1, player.pauseCount)
-        assertEquals("整段交互只装载一次", 1, player.loadCount)
-        assertFalse("控制器应处于暂停态", controller.state.isPlaying)
+        assertEquals("Al hacer clic nuevamente, se debe hacer una pausa en lugar de recargar.", 1, player.pauseCount)
+        assertEquals("La interacción completa solo se carga una vez", 1, player.loadCount)
+        assertFalse("El controlador debe estar en estado de pausa.", controller.state.isPlaying)
     }
 
     @Test
@@ -126,9 +126,9 @@ class VoiceMessageBubbleTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_PLAY_ICON_TAG, useUnmergedTree = true).assertExists()
-        assertEquals("播完应复位为空闲", null, controller.state.uri)
-        assertFalse("播完不应还在播放", controller.state.isPlaying)
-        assertTrue("播完应释放播放器", player.releaseCount >= 1)
+        assertEquals("Después de jugar, debería restablecerse al modo inactivo.", null, controller.state.uri)
+        assertFalse("No debería reproducirse una vez terminado.", controller.state.isPlaying)
+        assertTrue("El jugador debe ser liberado después de jugar.", player.releaseCount >= 1)
     }
 
     @Test
@@ -141,9 +141,9 @@ class VoiceMessageBubbleTest {
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_EXPIRED_TAG).assertExists()
         composeTestRule.onNodeWithText(context.getString(R.string.chat_voice_expired)).assertExists()
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_BUBBLE_TAG).assertDoesNotExist()
-        // 失效态不建播放器，点也点不出声音
+        // En estado de falla, el reproductor no se construye y no se produce ningún sonido.
         composeTestRule.onNodeWithTag(VOICE_MESSAGE_EXPIRED_TAG).performClick()
-        assertEquals("失效语音不应装载播放器", 0, player.loadCount)
+        assertEquals("Las voces no válidas no deberían cargar el reproductor.", 0, player.loadCount)
         assertEquals(null, controller.state.uri)
     }
 
@@ -182,14 +182,14 @@ class VoiceMessageBubbleTest {
 
         composeTestRule.onAllNodesWithTag(VOICE_MESSAGE_BUBBLE_TAG)[1].performClick()
 
-        assertFalse("第一条应被停掉", firstPlayer.playing)
-        assertTrue("第一条的播放器应被释放", firstPlayer.releaseCount >= 1)
-        assertTrue("第二条应在播", secondPlayer.playing)
-        assertEquals("播放权应转给第二条", secondUri, controller.state.uri)
+        assertFalse("El artículo 1 debería suspenderse", firstPlayer.playing)
+        assertTrue("El primer jugador debería ser liberado.", firstPlayer.releaseCount >= 1)
+        assertTrue("El artículo 2 debería difundirse ahora", secondPlayer.playing)
+        assertEquals("Los derechos de radiodifusión se transferirán al artículo 2.", secondUri, controller.state.uri)
     }
 }
 
-/** 假播放器：只记录调用，不出声。 */
+/** Reproductor falso: solo graba llamadas y no emite ningún sonido. */
 private class FakeVoiceAudioPlayer : VoiceAudioPlayer {
     var loadCount = 0
     var startCount = 0

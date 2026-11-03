@@ -8,54 +8,54 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * 按路径分配的进程内互斥锁。
+ * Mutex en proceso asignado por ruta.
  *
- * 粒度为「一个文件」：同一路径的读—改—写串行，不同路径各自并行。工作区是多会话、
- * 子代理、定时任务共用的，两处同时改同一份文件时若各读各的再各写各的，
- * 后写的那次会把先写的那次整段覆盖掉，且两边都拿到「成功」。
+ * La granularidad es "un archivo": leer la misma ruta—cambiar—Escriba en serie y se escriben diferentes rutas en paralelo. El espacio de trabajo es multisesión,
+ * Es compartido por subagentes y tareas programadas. Cuando dos lugares modifican el mismo archivo al mismo tiempo, si cada uno lee el suyo y luego escribe el suyo,
+ * El que se escriba más tarde sobrescribirá todo el párrafo escrito primero y ambas partes obtendrán "éxito".
  *
- * 键先经 [WorkspacePathParser] 归一（`a.txt`、`./a.txt`、`/a.txt` 落到同一个键），
- * 再整体折成小写：大小写不敏感的文件系统上 `A.TXT` 与 `a.txt` 是同一个文件，
- * 必须共用一把锁；大小写敏感的文件系统上最多把两个不同文件排到一把锁上，
- * 只损失一点并行度，不会丢更新。
+ * primer meridiano clave [WorkspacePathParser] Normalizar (`a.txt`,`./a.txt`,`/a.txt` caer en la misma clave),
+ * Luego dóblelo en minúsculas como un todo: en un sistema de archivos que no distingue entre mayúsculas y minúsculas `A.TXT` con `a.txt` es el mismo archivo,
+ * Se debe compartir un candado; en sistemas de archivos que distinguen entre mayúsculas y minúsculas, se pueden colocar hasta dos archivos diferentes en un candado.
+ * Sólo se pierde un poco de paralelismo y no se pierde ninguna actualización.
  *
- * 已知限制：键是「挂载标识 + 相对路径」，不做 canonicalPath 解析 —— SAF 挂载本来拿不到
- * 真实路径，只对本地挂载做合一会让「什么时候合并、什么时候不合并」变得不可预测；
- * 因此符号链接别名、以及两条挂载指向同一物理目录时，各拿各的锁，不保证互斥。
+ * Limitaciones conocidas: la clave es "ID de montaje + ruta relativa", no se realiza ningún análisis de canonicalPath —— SAF La montura no se pudo obtener originalmente.
+ * Para rutas reales, solo fusionar montajes locales hará que "cuándo fusionar y cuándo no fusionar" sea impredecible;
+ * Por lo tanto, cuando un alias de enlace simbólico y dos montajes apuntan al mismo directorio físico, cada uno toma su propio bloqueo y no se garantiza la exclusión mutua.
  *
- * 锁表是进程内、按 [WorkspaceManager] 实例隔离的。当前只有 `AppKoinModule` 里的单例
- * 参与写入；若将来出现第二个参与写入的实例，两份锁表互不感知 —— 新建 manager 去写文件前，
- * 要么复用它，要么把锁表提到共享作用域，否则会出现本类就是为了避免的那种丢更新。
+ * La tabla de bloqueo está en proceso, presione [WorkspaceManager] Instancia aislada. Actualmente solo hay `AppKoinModule` El singleton en
+ * Participar por escrito; Si se produce una segunda instancia de participación por escrito en el futuro, las dos tablas de bloqueo no se conocerán entre sí. —— Antes de crear un nuevo administrador para escribir archivos,
+ * Reutilícelo o lleve la tabla de bloqueo al ámbito compartido; de lo contrario, se perderán el tipo de actualizaciones que esta clase está diseñada para evitar.
  *
- * 本类是单进程内的表，不跨进程、不落盘。
+ * Esta clase es una tabla dentro de un solo proceso y no cruza procesos ni se coloca en el disco.
  *
- * @param acquireTimeoutMs 等锁上限（毫秒）；超时抛 [WorkspaceIoException] 而不是无限等，
- *   这样一个未释放锁的调用方只会拖慢它自己那一次请求，不会让后续写入永久挂住
+ * @param acquireTimeoutMs Límite superior de bloqueo de espera (milisegundos); tirar cuando se agota el tiempo [WorkspaceIoException] En lugar de esperar infinitamente,
+ *   Una persona que llama y no ha liberado el bloqueo solo ralentizará su propia solicitud y no bloqueará permanentemente las escrituras posteriores.
  */
 internal class WorkspacePathLock(
     private val acquireTimeoutMs: Long = DEFAULT_ACQUIRE_TIMEOUT_MS,
 ) {
-    /** 一个键上的锁与参与者计数。 */
+    /** Bloquee una clave con el recuento de participantes. */
     private class Entry {
         val mutex = Mutex()
 
-        /** 持有者 + 等待者总数；归零时从表里摘掉，避免路径越用越多把表撑大。 */
+        /** Titulares + número total de camareros; se elimina de la tabla cuando se restablece a cero, para evitar que la tabla se amplíe a medida que se utilizan más rutas. */
         var participants = 0
     }
 
-    /** 保护 [entries] 自身。 */
+    /** proteger [entries] sí mismo. */
     private val registry = Mutex()
 
     private val entries = HashMap<String, Entry>()
 
     /**
-     * 在目标路径的锁内执行 [block]。
+     * Ejecutar dentro del bloqueo de la ruta de destino. [block].
      *
-     * 锁不可重入：持锁块内部不要再调用会加锁的方法（见 [WorkspaceManager] 里的约定）。
+     * El bloqueo no es reentrante: no llame a métodos de bloqueo dentro del bloque de retención de bloqueo (consulte [WorkspaceManager] acuerdo).
      *
-     * @param mountId 目标挂载标识
-     * @param relative 挂载内相对路径
-     * @param display 给用户看的路径，只用于超时文案
+     * @param mountId ID de montaje de destino
+     * @param relative Ruta relativa dentro del monte
+     * @param display La ruta que se muestra a los usuarios, solo se utiliza para la redacción de textos publicitarios con tiempo de espera.
      */
     suspend fun <T> withLock(mountId: String, relative: String, display: String, block: suspend () -> T): T {
         val key = keyOf(mountId, relative)
@@ -69,8 +69,8 @@ internal class WorkspacePathLock(
         if (acquired == null) {
             release(key, entry)
             throw WorkspaceIoException(
-                "等待文件锁超时(${acquireTimeoutMs}ms)：另一个会话或任务正在写「$display」," +
-                    "本次未执行,请稍后重试",
+                "Esperando que se agote el tiempo de bloqueo del archivo(${acquireTimeoutMs}ms): Otra sesión o tarea está escribiendo \"$display\"," +
+                    "No ejecutado esta vez,Por favor inténtalo de nuevo más tarde.",
             )
         }
         try {
@@ -81,10 +81,10 @@ internal class WorkspacePathLock(
         }
     }
 
-    /** 归一化锁键：挂载标识 + 规范化相对路径，整体折小写。 */
+    /** Tecla de bloqueo normalizada: identificación de montaje + ruta relativa normalizada, todo en minúsculas. */
     fun keyOf(mountId: String, relative: String): String = WorkspacePathParser.format(mountId, relative).lowercase()
 
-    /** 参与者退场；这张表只在还有人持有或等待时保留该键。 */
+    /** El participante sale; la mesa solo retiene la llave mientras alguien más la sostiene o espera. */
     private suspend fun release(key: String, entry: Entry) {
         withContext(NonCancellable) {
             registry.withLock {
@@ -95,7 +95,7 @@ internal class WorkspacePathLock(
     }
 
     companion object {
-        /** 默认等锁上限：15 秒。单次写入是毫秒级的，等这么久说明有调用方异常未释放。 */
+        /** Límite superior predeterminado de bloqueo de espera:15 segundos. Una sola escritura tarda milisegundos. Esperar tanto tiempo significa que la excepción de la persona que llama no se ha liberado. */
         const val DEFAULT_ACQUIRE_TIMEOUT_MS: Long = 15_000L
     }
 }

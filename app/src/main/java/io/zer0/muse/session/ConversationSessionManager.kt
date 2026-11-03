@@ -7,30 +7,30 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.x: 会话级资源管理器 — 引用计数 + 自动 idle 清理。
+ * v1.x: Administrador de recursos a nivel de sesión — Conteo de referencias + limpieza automática en ralentí.
  *
- * 设计目的:
- *  - 多会话切换场景下,跟踪每个会话的"活跃持有者"数量(acquire/release 配对),
- *    在引用计数归零且生成任务结束后的 [IDLE_TIMEOUT_MS] 内自动清理会话资源,
- *    避免内存泄漏(协程未取消、引用未释放)。
- *  - 集中管理会话级生成任务([setGenerationJob] 自动取消前一个),与 [io.zer0.muse.schedule.ChatGenerationManager]
- *    互补:后者负责应用级"切页/后台保持生成不中断",本类负责会话级引用计数 + idle 释放。
+ * propósito del diseño:
+ *  - En escenarios de conmutación de sesiones múltiples,Seguimiento de cada sesión"titular activo"Cantidad(acquire/release emparejamiento),
+ *    Después de que el recuento de referencias llegue a cero y finalice la tarea de compilación [IDLE_TIMEOUT_MS] Limpiar automáticamente los recursos de la sesión dentro,
+ *    Evite pérdidas de memoria(La rutina no ha sido cancelada y la referencia no ha sido publicada.).
+ *  - Administre centralmente tareas de compilación a nivel de sesión([setGenerationJob] Cancelar automáticamente el anterior),con [io.zer0.muse.schedule.ChatGenerationManager]
+ *    complementario:Este último es responsable del nivel de aplicación."Cortar páginas/Sigue generando en segundo plano sin interrupciones",Esta clase es responsable del recuento de referencias a nivel de sesión + liberación inactiva.
  *
- * M1.1 演进:内部持有对象从只含引用计数的 SessionRef 升级为 [SessionRuntime]
- * (turn 检查点 + 生成 Job + 取消标志 + 引用计数)。对外公共 API
- * (acquire/release/setGenerationJob/cancelGeneration/clearAll)保持不变;
- * 新增 [runtime]/[getOrCreateRuntime]/[beginTurn] 供生成链路读写 turn 检查点。
+ * M1.1 Evolución:El objeto retenido internamente se actualiza desde un SessionRef contado por referencia a [SessionRuntime]
+ * (turn Punto de control + Generar trabajo + Cancelar marca + Recuento de referencias). Público externo API
+ * (acquire/release/setGenerationJob/cancelGeneration/clearAll)permanecer sin cambios;
+ * Nuevo [runtime]/[getOrCreateRuntime]/[beginTurn] Para generar enlaces, leer y escribir puntos de control de giro.
  *
- * 使用约定:
- *  - ChatViewModel.switchSession / createNewSession 等会话切换入口:
+ * Convención de uso:
+ *  - ChatViewModel.switchSession / createNewSession Espere la entrada del cambio de sesión:
  *      release(oldSessionId); acquire(newSessionId)
- *  - launchStream 启动生成:beginTurn(sessionId, turnId) + setGenerationJob(sessionId, job)
+ *  - launchStream Iniciar la construcción:beginTurn(sessionId, turnId) + setGenerationJob(sessionId, job)
  *  - onCleared / release:release(currentSessionId)
  *
- * 线程安全:[ConcurrentHashMap] + [SessionRuntime] 内部原子类型保证多线程安全;
- *  idle 清理器运行在构造时传入的 [scope] 中。
+ * Seguridad del hilo:[ConcurrentHashMap] + [SessionRuntime] Los tipos atómicos internos garantizan la seguridad de múltiples subprocesos;
+ *  idle Los tramos de limpieza pasaron durante la construcción. [scope] en.
  *
- * @param scope idle 清理器运行的 CoroutineScope(应使用应用级 appScope,避免随 ViewModel 生命周期取消)
+ * @param scope idle carrera más limpia CoroutineScope(Se debe utilizar el nivel de aplicación. appScope,Evite la cancelación con el ciclo de vida de ViewModel)
  */
 class ConversationSessionManager(
     private val scope: CoroutineScope,
@@ -40,15 +40,15 @@ class ConversationSessionManager(
     private val idleReaper = SessionIdleReaper(scope, sessions, IDLE_TIMEOUT_MS)
 
     companion object {
-        /** 引用计数归零后,等待 idle 多少毫秒再清理会话条目。 */
+        /** Después de que el recuento de referencia llegue a cero,Cuántos milisegundos esperar inactivo antes de borrar las entradas de la sesión. */
         private const val IDLE_TIMEOUT_MS = 5_000L
     }
 
     /**
-     * 获取会话引用(引用计数 +1)。
+     * Obtener referencia de sesión(Conteo de referencias +1).
      *
-     * 应在进入会话(switchSession/createNewSession/setAgentMode 等)时调用。
-     * 取消该会话已挂起的 idle 清理(若有)。
+     * Deberías entrar a la sesión.(switchSession/createNewSession/setAgentMode espera)cuando lo llaman.
+     * Cancelar la limpieza inactiva pendiente de esta sesión(Si es así).
      */
     fun acquire(sessionId: String) {
         val runtime = getOrCreateRuntime(sessionId)
@@ -58,10 +58,10 @@ class ConversationSessionManager(
     }
 
     /**
-     * 释放会话引用(引用计数 -1)。
+     * Referencia de la sesión de lanzamiento(Conteo de referencias -1).
      *
-     * 应在离开会话(switchSession 旧会话/onCleared/release 等)时调用。
-     * 引用计数归零时调度 idle 清理(等 [IDLE_TIMEOUT_MS] 后移除,留出短时间切回的窗口)。
+     * debe abandonar la sesión(switchSession antigua sesión/onCleared/release espera)cuando lo llaman.
+     * Programe una limpieza inactiva cuando el recuento de referencias llegue a cero(espera [IDLE_TIMEOUT_MS] eliminar más tarde,Deje una breve ventana para volver a cambiar).
      */
     fun release(sessionId: String) {
         val runtime = sessions[sessionId] ?: return
@@ -72,15 +72,15 @@ class ConversationSessionManager(
     }
 
     /**
-     * 设置生成任务(自动取消前一个)。
+     * Configurar tareas de compilación(Cancelar automáticamente el anterior).
      *
-     * M1.1:会话未 acquire 过时自动创建 [SessionRuntime](群聊 "group:$chatId" 等
-     * 生成 id 可能从未走 acquire 路径,旧实现直接 return 会让生成任务脱离引用管理)。
+     * M1.1:La sesión se crea automáticamente cuando no se ha adquirido. [SessionRuntime](chat grupal "group:$chatId" espera
+     * Es posible que la generación de la identificación nunca tome la ruta de adquisición,La implementación anterior regresa directamente y hará que la tarea de generación sea independiente de la gestión de referencias.).
      *
-     * 应在 [io.zer0.muse.ui.ChatViewModel.launchStream] 启动生成时调用,
-     * 把 chatGenerationManager 返回的 Job 传进来,本类负责:
-     *  - 取消前一个生成任务(防重入)
-     *  - 任务完成时清理引用 + 调度 idle 清理
+     * debería estar en [io.zer0.muse.ui.ChatViewModel.launchStream] Llamado al iniciar la construcción.,
+     * Pasar el trabajo devuelto por chatGenerationManager,Esta categoría es responsable de:
+     *  - Cancelar la tarea de compilación anterior(Anti-reentrada)
+     *  - Limpiar referencias cuando se complete la tarea + programar una limpieza inactiva
      */
     fun setGenerationJob(sessionId: String, job: Job?) {
         val runtime = getOrCreateRuntime(sessionId)
@@ -88,10 +88,10 @@ class ConversationSessionManager(
             runtime.generationJob?.cancel()
             runtime.generationJob = job
         }
-        // 审查修复(P1):回调闭包捕获自己的 job,完成后仅在"运行时登记的仍是本 job"时清理。
-        // 同 session 快速重入时,旧 job 的完成回调可能晚于新 job 的登记执行
-        // (NonCancellable 收尾拖慢 completion);无条件置 null 会把新 job 引用清空,
-        // 导致后台生成被误判结束、cancelGeneration 失效、idle reaper 误清理。
+        // Revisión de corrección(P1):El cierre de devolución de llamada captura su propia job,Después de la finalización sólo en"Lo que se registra en tiempo de ejecución sigue siendo esto. job"Limpiar de vez en cuando.
+        // Igual que el reingreso rápido de sesión,La devolución de llamada de finalización del trabajo anterior puede ejecutarse más tarde que la ejecución del registro del nuevo trabajo.
+        // (NonCancellable final lento completion);Establecer nulo incondicionalmente borrará la nueva referencia de trabajo,
+        // Como resultado, se juzga erróneamente que la generación de fondo termina,cancelGeneration fracaso,idle reaper Limpiado por error.
         job?.invokeOnCompletion {
             synchronized(runtime) {
                 if (runtime.generationJob === job) {
@@ -99,39 +99,39 @@ class ConversationSessionManager(
                     runtime.touch()
                 }
             }
-            // 引用计数归零且当前无生成任务时才调度 idle 清理;
-            // 新 job 仍在挂时(generationJob != null)reaper 触发后也会跳过。
+            // La limpieza inactiva solo se programa cuando el recuento de referencias llega a cero y actualmente no hay tareas generadas.;
+            // El nuevo trabajo aún está pendiente.(generationJob != null)reaper También se omitirá después de la activación.
             if (runtime.refCount.get() <= 0) {
                 idleReaper.schedule(sessionId)
             }
         }
     }
 
-    /** 取消会话的生成任务(用户点停止时调用),并记录取消标志。 */
+    /** Cancelar la tarea de compilación de la sesión.(Se llama cuando el punto de usuario se detiene.),Y registre la bandera de cancelación. */
     fun cancelGeneration(sessionId: String) {
         val runtime = sessions[sessionId] ?: return
         runtime.requestCancel()
         runtime.generationJob?.cancel()
     }
 
-    /** M1.1: 读取会话运行时(不存在时返回 null,只读观察用)。 */
+    /** M1.1: Leer el tiempo de ejecución de la sesión(Devuelve si no existe null,Leer solo para observación). */
     fun runtime(sessionId: String): SessionRuntime? = sessions[sessionId]
 
-    /** M1.1: 获取或创建会话运行时 — 同一 sessionId 永远复用同一实例。 */
+    /** M1.1: Obtener o crear un tiempo de ejecución de sesión — El mismo sessionId siempre reutiliza la misma instancia. */
     fun getOrCreateRuntime(sessionId: String): SessionRuntime = sessions.computeIfAbsent(sessionId) { SessionRuntime(it) }
 
     /**
-     * M1.1: 生成链路开启新 turn 的便捷入口 — 运行时不存在时自动创建,
-     * 保证 launchStream 闭包内第一个检查点写入不会丢失。
+     * M1.1: Genere un enlace para abrir una entrada conveniente a un nuevo turno — Creado automáticamente cuando no existe en tiempo de ejecución,
+     * Se garantiza que la primera escritura del punto de control dentro del cierre de launchStream no se perderá.
      */
     fun beginTurn(sessionId: String, turnId: String) {
         getOrCreateRuntime(sessionId).beginTurn(turnId)
     }
 
     /**
-     * 清理所有会话(App 退出 / 测试用)。
+     * Limpiar todas las sesiones(App Salir/probar).
      *
-     * 取消所有生成任务与 idle 清理协程,清空 [sessions]。
+     * Cancelar todas las tareas de compilación y rutinas de limpieza inactivas,Borrar [sessions].
      */
     fun clearAll() {
         sessions.values.forEach { it.generationJob?.cancel() }
@@ -141,7 +141,7 @@ class ConversationSessionManager(
 }
 
 /**
- * 会话 idle 清理器:对每个会话至多保留一个延迟清理任务。
+ * Limpiador inactivo de sesión:Mantenga como máximo una tarea de limpieza diferida por sesión.
  */
 private class SessionIdleReaper(
     private val scope: CoroutineScope,

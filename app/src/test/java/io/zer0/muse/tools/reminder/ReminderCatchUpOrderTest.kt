@@ -5,32 +5,32 @@ import org.junit.Test
 import java.io.File
 
 /**
- * 提醒重排的顺序契约。
+ * Recordatorio de contratos de pedidos reordenados.
  *
- * 这里测的是**语句先后**，不是行为结果 —— 行为需要真实 Context 与通知通道，
- * 单测里起不来（Robolectric 在本机会撞 native crash）。
+ * Lo que se mide aquí es**Secuencia de declaraciones**, no el resultado del comportamiento —— El comportamiento requiere contexto real y canal de notificación.
+ * No puedo levantarme durante la prueba única (Robolectric Se producirá un bloqueo nativo).
  *
- * 为什么值得单独锁住：如果先发通知再落盘，进程在两步之间死亡时，
- * 下次重排会看到那条提醒依旧是「已过期」，于是再补一遍。
- * 用户收到两条一模一样的「(补)」通知，而这条路径极难在真机上复现。
+ * ¿Por qué vale la pena bloquearlo por separado? Si primero envía una notificación y luego realiza el pedido, y el proceso se detiene entre los dos pasos,
+ * La próxima vez que vuelvas a realizar un pedido, verás que el recordatorio todavía está "caducado", así que lo compensaré nuevamente.
+ * El usuario recibe dos idénticos "(suplemento)" Fíjate, y este camino es extremadamente difícil de reproducir en una máquina real.
  */
 class ReminderCatchUpOrderTest {
 
     @Test
-    fun `过期提醒必须先落盘移除再补发通知`() {
+    fun `Los recordatorios vencidos deben colocarse y eliminarse antes de emitir una notificación de reemplazo.`() {
         val source = File("src/main/java/io/zer0/muse/tools/reminder/ReminderStore.kt").readText()
         val start = source.indexOf("private fun rescheduleAllLocked(")
         val end = source.indexOf("private fun catchUpNotify", startIndex = start)
-        require(start >= 0 && end > start) { "无法定位 rescheduleAllLocked 方法边界" }
+        require(start >= 0 && end > start) { "No se puede localizar el límite del método rescheduleAllLocked" }
         val body = source.substring(start, end)
 
         val persistAt = body.indexOf("writeAll(remaining)")
         val notifyAt = body.indexOf("catchUpNotify(it)")
 
-        assertTrue("重排方法里必须落盘一次", persistAt >= 0)
-        assertTrue("过期提醒必须在落盘之后才发补发通知", notifyAt >= 0)
+        assertTrue("En el método de reordenamiento, el pedido debe realizarse una vez", persistAt >= 0)
+        assertTrue("Los recordatorios vencidos deben emitirse después de realizar el pedido.", notifyAt >= 0)
         assertTrue(
-            "落盘必须先于补发通知：先通知后落盘会在进程死亡时导致重复补发",
+            "La colocación debe preceder a la notificación de reemisión: notificar primero y luego realizar el pedido resultará en una reemisión repetida cuando el proceso finalice.",
             persistAt < notifyAt,
         )
     }

@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.5.3 (P4-3): Token 成本计算测试。
+ * v2.5.3 (P4-3): Token Prueba de costeo.
  */
 class TokenCostCalculatorTest {
 
@@ -23,7 +23,7 @@ class TokenCostCalculatorTest {
         val usage = TokenCostCalculator.Usage(promptTokens = 1_000_000, completionTokens = 1_000_000)
         val cost = TokenCostCalculator.cost(usage, info)
         assertTrue(cost.known)
-        // 输入 1M * 3 + 输出 1M * 15 = 18
+        // entrada 1M * 3 + salida 1M * 15 = 18
         assertEquals(18.0, cost.usd, 0.0001)
     }
 
@@ -36,7 +36,7 @@ class TokenCostCalculatorTest {
                 completionTokens = 0,
             )
         val cost = TokenCostCalculator.cost(usage, info)
-        // 全部命中缓存：1M * 0.3
+        // Todos los aciertos de caché:1M * 0.3
         assertEquals(0.3, cost.usd, 0.0001)
     }
 
@@ -44,7 +44,7 @@ class TokenCostCalculatorTest {
     fun `cache write charged when priced`() {
         val usage = TokenCostCalculator.Usage(promptTokens = 1_000_000, cacheWriteTokens = 1_000_000)
         val cost = TokenCostCalculator.cost(usage, info)
-        // 全部为缓存写入：1M * 3.75
+        // Todas las escrituras en caché:1M * 3.75
         assertEquals(3.75, cost.usd, 0.0001)
     }
 
@@ -53,7 +53,7 @@ class TokenCostCalculatorTest {
         val infoNoWrite = info.copy(pricingCacheWritePer1M = null)
         val usage = TokenCostCalculator.Usage(promptTokens = 1_000_000, cacheWriteTokens = 1_000_000)
         val cost = TokenCostCalculator.cost(usage, infoNoWrite)
-        // 缓存写入不计费
+        // Las escrituras en caché no se facturan
         assertEquals(0.0, cost.usd, 0.0001)
     }
 
@@ -66,7 +66,7 @@ class TokenCostCalculatorTest {
                 completionTokens = 0,
             )
         val cost = TokenCostCalculator.cost(usage, info)
-        // billedCached 夹到 100，普通输入为 0
+        // billedCached Sujete a 100, la entrada normal es 0
         assertEquals(100 / 1_000_000.0 * 0.3, cost.usd, 1e-9)
     }
 
@@ -81,8 +81,8 @@ class TokenCostCalculatorTest {
     fun `costFor looks up pricing by provider and model`() {
         val usage = TokenCostCalculator.Usage(promptTokens = 1_000_000, completionTokens = 1_000_000)
         val cost = TokenCostCalculator.costFor("openrouter", "gpt-4o", usage)
-        assertTrue("gpt-4o 有定价应可计算", cost.known)
-        assertTrue("成本应为正", cost.usd > 0)
+        assertTrue("gpt-4o El precio debe ser calculable.", cost.known)
+        assertTrue("el costo debe ser positivo", cost.usd > 0)
     }
 
     @Test

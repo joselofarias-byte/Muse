@@ -41,7 +41,7 @@ import io.zer0.muse.ui.theme.MuseMotion
 import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.fakeGlassSurface
 
-/** 顶栏浮动菜单中的独立操作项。 */
+/** Elementos de acción independientes en el menú flotante de la barra superior. */
 internal data class MuseFloatingActionItem(
     val key: String,
     val icon: ImageVector,
@@ -53,18 +53,18 @@ internal data class MuseFloatingActionItem(
 )
 
 /**
- * 顶栏「更多」的浮动菜单。
+ * El menú flotante de "Más" en la barra superior.
  *
- * v1.0.90 重做：原来是「灰底面板 + 逐行细分割线 + 行尾打勾」的密集菜单，视觉上像一张
- * 系统设置表格。现在按主流对话 App（GPT 等）的语言重做：
- *  - 面板用最浅的一层底（surfaceContainerLowest，浅色下即纯白）+ 阴影分层，
- *    不再用 surfaceContainerHigh 的灰底，也不用分割线 —— 层级靠留白和圆角表达；
- *  - 每行左侧一颗圆形图标片（surfaceVariant 底 + 中性图标），标签只留文字；
- *  - 开关态不在行尾打勾，改为**图标本身用主题色点亮**（primary 图标 + primaryContainer 图标片），
- *    状态直接长在图标上，行尾不再多一个控件；
- *  - 整体收窄、行高压到 44dp，面板不再占掉半屏。
+ * v1.0.90 Reelaboración: resultó ser un menú denso de "panel de fondo gris + líneas divisorias finas línea por línea + marcas de final de línea", que visualmente parece un
+ * Formulario de configuración del sistema. Ahora presione la aplicación de conversación principal (GPT etc.) reelaboración del lenguaje:
+ *  - Utilice la capa menos profunda de base para el panel (surfaceContainerLowest, el color claro significa blanco puro)+ capas de sombra,
+ *    Ya no utilices el fondo gris de SurfaceContainerHigh ni la línea divisoria. —— La jerarquía se expresa mediante espacios en blanco y esquinas redondeadas;
+ *  - Un icono circular en el lado izquierdo de cada línea (surfaceVariant Abajo + icono neutro), la etiqueta solo deja texto;
+ *  - No verifique el estado del interruptor al final de la línea y cámbielo a**El ícono en sí está iluminado con el color del tema.**(primary icono + pieza de icono del contenedor principal),
+ *    El estado se muestra directamente en el icono y no hay más control al final de la línea;
+ *  - Con el estrechamiento general y la alta presión a 44dp, el panel ya no ocupa la mitad de la pantalla.
  *
- * 侧滑/淡入动画与「点完自动收起」的约定保持不变。
+ * Deslizamiento lateral/La concordancia entre la animación gradual y el "colapso automático después de hacer clic" permanece sin cambios.
  */
 @Composable
 internal fun MuseFloatingActionMenu(
@@ -85,9 +85,9 @@ internal fun MuseFloatingActionMenu(
         alignment = Alignment.TopEnd,
         offset = resolvedOffset,
     ) {
-        // v2.6.1: Popup 是独立窗口,跨窗口采样主窗口的 LayerBackdrop/LiquidState 不可行
-        // (表现为黑遮罩 + GraphicsLayer 方形边界透明洞)。这里不再用 glassSurfaceModifier,
-        // 而是直接走 fakeGlassSurface(渐变底 + 高光边 + 描边),无需 backdrop。
+        // v2.6.1: Popup Es una ventana independiente.,No es posible el muestreo entre ventanas del LayerBackdrop/LiquidState de la ventana principal
+        // (Aparece como una máscara negra + agujero transparente en el borde cuadrado de GraphicsLayer). Ya no se usa aquí glassSurfaceModifier,
+        // Pero ve directamente fakeGlassSurface(Base de degradado + borde resaltado + trazo),No se requiere fondo.
         AnimatedVisibility(
             visible = true,
             enter = fadeIn(MuseMotion.tween(duration)) +
@@ -100,12 +100,12 @@ internal fun MuseFloatingActionMenu(
             Surface(
                 shape = MuseShapes.extraLarge,
                 color = if (glassActive) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLowest,
-                // 玻璃开启时由 fakeGlassSurface 自带宽边画高光,Surface 自身不再投影,
-                // 否则透明填充 + 高阴影会在 Popup 窗口里露出一圈灰框(无填充色)。
+                // Cuando se enciende el vidrio, fakeGlassSurface dibuja automáticamente reflejos en los bordes anchos.,Surface ya no se proyecta,
+                // De lo contrario, el relleno transparente + sombra alta expondrá un marco gris en la ventana emergente.(Sin color de relleno).
                 shadowElevation = if (glassActive) 0.dp else MuseElevation.high,
                 tonalElevation = 0.dp,
-                // v2.6.1: 更多菜单与主界面同开关联动。Popup 是独立窗口无法采样真玻璃,
-                // 改用假玻璃(渐变底 + 高光边 + 描边)呈现玻璃质感。
+                // v2.6.1: Hay más menús asociados con la interfaz principal y el interruptor.Popup Es una ventana independiente y no puede probar vidrio real.,
+                // Utilice vidrio falso en su lugar(Base de degradado + borde resaltado + trazo)Presenta una textura de vidrio.
                 modifier = Modifier
                     .then(
                         if (glassActive) {
@@ -120,7 +120,7 @@ internal fun MuseFloatingActionMenu(
                     .padding(end = 2.dp, top = 4.dp),
             ) {
                 Column(
-                    // v1.0.90: 顶栏更多菜单保持紧凑 —— 统一收窄宽度,避免长标签被过早挤成省略号
+                    // v1.0.90: Barra superior más menús mantenidos compactos —— Ancho estrecho unificado,Evite que las etiquetas largas queden apretadas prematuramente en puntos suspensivos
                     modifier = Modifier
                         .widthIn(min = 160.dp, max = 192.dp)
                         .padding(vertical = 4.dp),
@@ -135,9 +135,9 @@ internal fun MuseFloatingActionMenu(
 }
 
 /**
- * 菜单行：圆形图标片 + 标签，整行可点。
+ * Fila del menú: icono circular + etiqueta, se puede hacer clic en toda la fila.
  *
- * 开关态（[MuseFloatingActionItem.checked] 为 true）用主题色点亮图标表达，行尾不放勾。
+ * estado del interruptor ([MuseFloatingActionItem.checked] es cierto) use el color del tema para iluminar el ícono para expresar y no marque el final de la línea.
  */
 @Composable
 private fun MenuRow(item: MuseFloatingActionItem) {

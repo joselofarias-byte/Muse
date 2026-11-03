@@ -10,7 +10,7 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * v2.5.3 (P3-1): 编辑助手消息 = 新增版本节点，旧版本永久保留。
+ * v2.5.3 (P3-1): Editar mensaje del asistente = Se agregan nodos de nuevas versiones y las versiones antiguas se conservan de forma permanente.
  */
 class ConversationTreeAssistantEditTest {
 
@@ -21,7 +21,7 @@ class ConversationTreeAssistantEditTest {
             UIMessage(
                 id = userId,
                 role = MessageRole.USER,
-                content = "你好",
+                content = "Hola",
                 createdAt = 100L,
                 variantGroupId = "usg_1",
             )
@@ -29,7 +29,7 @@ class ConversationTreeAssistantEditTest {
             UIMessage(
                 id = Uuid.random(),
                 role = MessageRole.ASSISTANT,
-                content = "原始回复",
+                content = "respuesta original",
                 createdAt = 101L,
                 variantGroupId = replyGroup,
                 parentGroupId = userId.toString(),
@@ -47,28 +47,28 @@ class ConversationTreeAssistantEditTest {
     @Test
     fun `editing assistant appends a new variant and keeps the old one`() {
         val (tree, _, reply) = userAndReply()
-        val update = tree.editAssistantMessage(reply.id, "编辑后的回复")
-        assertTrue("编辑应返回新树", update?.newMessage != null)
+        val update = tree.editAssistantMessage(reply.id, "Respuesta editada")
+        assertTrue("La edición debería devolver el nuevo árbol.", update?.newMessage != null)
         val newMsg = update!!.newMessage!!
-        assertNotEquals("新版本必须用新 id，不能覆盖旧版本", reply.id, newMsg.id)
-        assertEquals("编辑后的回复", newMsg.content)
-        // 旧版本仍在树里
+        assertNotEquals("La nueva versión debe utilizar una nueva ID y no puede sobrescribir la versión anterior.", reply.id, newMsg.id)
+        assertEquals("Respuesta editada", newMsg.content)
+        // La versión anterior todavía está en el árbol.
         val allAssistantContents =
             update.tree.userNodes
                 .flatMap { it.variants }
                 .flatMap { it.assistantNodes }
                 .flatMap { it.variants }
                 .map { it.content }
-        assertTrue("旧版本应保留: $allAssistantContents", allAssistantContents.contains("原始回复"))
-        assertTrue("新版本应存在: $allAssistantContents", allAssistantContents.contains("编辑后的回复"))
+        assertTrue("Se deben conservar las versiones anteriores.: $allAssistantContents", allAssistantContents.contains("respuesta original"))
+        assertTrue("Debería existir una nueva versión.: $allAssistantContents", allAssistantContents.contains("Respuesta editada"))
     }
 
     @Test
     fun `editing selects the new variant as current`() {
         val (tree, _, reply) = userAndReply()
-        val update = tree.editAssistantMessage(reply.id, "编辑后的回复")!!
+        val update = tree.editAssistantMessage(reply.id, "Respuesta editada")!!
         val displayContents = update.tree.displayMessages.map { it.content }
-        assertTrue("当前显示应为新版本: $displayContents", displayContents.contains("编辑后的回复"))
+        assertTrue("La pantalla actual debe ser la nueva versión.: $displayContents", displayContents.contains("Respuesta editada"))
     }
 
     @Test

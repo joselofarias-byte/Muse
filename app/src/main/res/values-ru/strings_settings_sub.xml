@@ -503,7 +503,7 @@
     <string name="settings_theme_custom_color_h">Хюэ</string>
     <string name="settings_theme_custom_color_s">Насыщенность</string>
     <string name="settings_theme_custom_color_l">Легкость</string>
-    <!-- 前端修复 (i18n-3.x): 主动消息配置区 i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Área de configuración de mensajes activos i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_agent_dm_subtitle">Просмотр личных сообщений между Agent</string>
     <string name="settings_agent_agent_only">Только сессии Agent</string>
     <string name="settings_agent_agent_only_subtitle">При включении только ассистенты Agent отправляют проактивные сообщения, а сессии задач — нет</string>

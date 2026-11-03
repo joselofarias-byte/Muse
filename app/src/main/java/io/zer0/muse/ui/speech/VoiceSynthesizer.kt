@@ -3,23 +3,23 @@ package io.zer0.muse.ui.speech
 import java.io.File
 
 /**
- * 语音合成端口。
+ * Puerto de síntesis de voz.
  *
- * [TtsManager] 是单例且构造即拉起系统引擎，工具层（`send_voice`）直接依赖它会让
- * 单测必须真起引擎。抽成接口后，单测注入假实现即可验证工具流程（与
- * [VoiceDurationProbe] 同一个理由：把不可测的 Android 服务挡在端口外）。
+ * [TtsManager] Es un singleton y su construcción es para levantar el motor del sistema y la capa de herramientas (`send_voice`) confiar directamente en él haría
+ * La prueba única debe efectivamente arrancar el motor. Después de extraer la interfaz, la prueba única puede verificar el flujo de la herramienta inyectando una implementación falsa (similar a
+ * [VoiceDurationProbe] La misma razón: mantener los servicios de Android no comprobables fuera del puerto).
  *
- * 故意不做成 `TtsManager` 的父接口：`TtsManager` 在 detekt 基线里有
- * `TooManyFunctions` 豁免，而基线按类签名匹配 —— 给它加父类型会让这条豁免失效。
+ * No hecho a propósito `TtsManager` La interfaz principal de:`TtsManager` En la línea base detekt hay
+ * `TooManyFunctions` exento, mientras que las líneas de base coinciden con las firmas por clase —— La paternidad invalidará esta exención.
  */
 fun interface VoiceSynthesizer {
     /**
-     * 把 [text] 合成为音频写入 [outputFile]。
+     * poner [text] Sintetizar para escribir audio [outputFile].
      *
-     * @param emotionOverride 本次合成的情绪覆盖；空/空白时由实现回落到全局 TTS 配置的情绪。
-     *   **只影响本次调用**，不写全局配置 —— TtsManager 是单例，朗读链路可能同时在跑。
-     * @return 三种结果之一：首选引擎成功 / 回落系统音色成功 / 彻底失败（见 [TtsSynthResult]）。
-     *   回落也算成功（音频可用），但调用方需要能把「不是用户配的音色」讲清楚。
+     * @param emotionOverride La cobertura emocional de esta síntesis; vacío/Depende de la implementación recurrir al sentimiento configurado de TTS global cuando se deja en blanco.
+     *   **Sólo afecta a esta convocatoria.**, no escriba la configuración global —— TtsManager Es una instancia única y el enlace de lectura puede estar ejecutándose al mismo tiempo.
+     * @return Uno de tres resultados: éxito del motor preferido/éxito del sonido del sistema de respaldo/fallo total (consulte [TtsSynthResult]).
+     *   El respaldo también se considera exitoso (el audio está disponible), pero la persona que llama debe poder dejar en claro que "el tono no es el asignado por el usuario".
      */
     suspend fun synthesizeTo(text: String, outputFile: File, emotionOverride: String?): TtsSynthResult
 }

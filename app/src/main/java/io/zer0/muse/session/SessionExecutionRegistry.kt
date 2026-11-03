@@ -4,7 +4,7 @@ import io.zer0.common.Logger
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/** 可由生成器、工具和后台资源共同使用的执行资源类型。 */
+/** Un tipo de recurso de ejecución que pueden utilizar generadores, herramientas y recursos en segundo plano. */
 enum class ExecutionKind {
     LLM,
     TOOL,
@@ -18,7 +18,7 @@ enum class ExecutionKind {
     CHECKPOINT,
 }
 
-/** 执行资源的生命周期；取消请求和取消完成严格分开。 */
+/** Ejecutar el ciclo de vida del recurso; la cancelación de solicitudes y la cancelación de finalización están estrictamente separadas. */
 enum class ExecutionState {
     REGISTERED,
     RUNNING,
@@ -30,10 +30,10 @@ enum class ExecutionState {
 }
 
 /**
- * 一个生成身份关联的外部执行资源。
+ * Un recurso de ejecución externo que genera asociaciones de identidad.
  *
- * [cancel] 只负责发出合作式取消信号；真正结束由 [SessionExecutionRegistry.finish]
- * 或 [SessionExecutionRegistry.fail] 记录，避免把“请求取消”误当成“资源已停止”。
+ * [cancel] Único responsable de enviar señales de cancelación cooperativa; el final real es por [SessionExecutionRegistry.finish]
+ * o [SessionExecutionRegistry.fail] grabar para evitar“Solicitar cancelación”confundido con“Recurso detenido”.
  */
 data class ExecutionRecord(
     val id: String,
@@ -45,27 +45,27 @@ data class ExecutionRecord(
 )
 
 /**
- * Session-scoped 执行资源注册表。
+ * Session-scoped Ejecutar registro de recursos.
  *
- * 这是生命周期协调器，不拥有具体工具或网络实现。调用方登记可取消资源，
- * 停止时按 session/turn/generation 过滤并发出取消信号；晚到结果必须先通过
- * 由 [isCurrent] 检查，才能更新当前 UI 或写入当前代状态。
+ * Este es un coordinador del ciclo de vida y no posee herramientas específicas ni implementaciones de red. La persona que llama registra un recurso que puede cancelarse,
+ * Filtrar por sesión/turno/generación y emitir una señal de cancelación al detenerse; los resultados tardíos deben pasar primero
+ * por [isCurrent] Verifique antes de actualizar la interfaz de usuario actual o escribir el estado de generación actual.
  *
- * Phase 3 可靠性(执行账本清理):
- *  - 活跃记录([ExecutionState.REGISTERED]/[ExecutionState.RUNNING]/CANCEL_REQUESTED)
- *    与终态历史([ExecutionState.CANCELLED]/COMPLETED/FAILED/SUPPRESSED)分离存放:
- *    取消扫描、代际判定只遍历活跃表，历史表无限增长不再拖慢这些热路径。
- *  - 终态记录受 TTL([historyRetentionMs])与容量([maxHistoryRecords])约束，
- *    每次终态迁移后自动 [prune];也可由调用方显式裁剪。
- *  - register/start/finish/fail/markCancelled 对外语义保持不变(仅新增历史裁剪)。
+ * Phase 3 Fiabilidad(Realizar limpieza del libro mayor):
+ *  - registro activo([ExecutionState.REGISTERED]/[ExecutionState.RUNNING]/CANCEL_REQUESTED)
+ *    y la historia final([ExecutionState.CANCELLED]/COMPLETED/FAILED/SUPPRESSED)almacenamiento separado:
+ *    Cancelar el escaneo y el juicio generacional solo atraviesa la tabla activa, y el crecimiento infinito de la tabla histórica ya no ralentizará estos caminos calientes.
+ *  - El registro estatal final está sujeto a TTL([historyRetentionMs])y capacidad([maxHistoryRecords])restricciones,
+ *    Automáticamente después de cada transición de estado final [prune];La persona que llama también puede recortarlo explícitamente.
+ *  - register/start/finish/fail/markCancelled La semántica externa permanece sin cambios.(Agregar solo recorte histórico).
  */
 @Suppress("TooManyFunctions", "TooGenericExceptionCaught", "LoopWithTooManyJumpStatements")
 class SessionExecutionRegistry(
-    /** 终态记录保留时长(毫秒),超过后由 [prune] 从历史中移除。 */
+    /** Tiempo de retención del récord final(milisegundos),después de exceder [prune] Eliminado de la historia. */
     private val historyRetentionMs: Long = DEFAULT_HISTORY_RETENTION_MS,
-    /** 终态历史容量上限;超出时按 finishedAt 由旧到新淘汰。 */
+    /** Límite superior de capacidad histórica del estado final;Cuando se exceda, presione FinishAt para eliminar de antiguo a nuevo. */
     private val maxHistoryRecords: Int = DEFAULT_MAX_HISTORY_RECORDS,
-    /** 时间源(测试可注入,确定性验证 TTL);生产用系统时钟。 */
+    /** fuente de tiempo(Se pueden inyectar pruebas,Verificación determinista TTL);Reloj del sistema de producción. */
     private val nowMs: () -> Long = System::currentTimeMillis,
 ) {
 
@@ -74,16 +74,16 @@ class SessionExecutionRegistry(
         val cancel: (() -> Unit)?,
     )
 
-    /** 活跃记录(非终态);热路径只遍历此表。 */
+    /** registro activo(estado no final);La ruta activa solo atraviesa esta tabla. */
     private val active = ConcurrentHashMap<String, Registered>()
 
-    /** 终态历史记录;只保留诊断所需的有限窗口,由 [prune] 裁剪。 */
+    /** Historia del estado final;Mantenga solo la ventana limitada requerida para el diagnóstico,por [prune] Cultivo. */
     private val history = ConcurrentHashMap<String, Registered>()
 
-    /** 每个 session 最近登记的 generation；用于拒绝旧代晚到事件。 */
+    /** La generación registrada más recientemente para cada sesión; solía rechazar los eventos de llegada tardía de la vieja generación. */
     private val latestGenerationBySession = ConcurrentHashMap<String, String>()
 
-    /** 登记一个执行资源，返回稳定资源 ID。 */
+    /** Registre un recurso de ejecución y devuelva el ID del recurso estable. */
     fun register(identity: GenerationIdentity, kind: ExecutionKind, cancel: (() -> Unit)? = null): String {
         val id = "exec-${UUID.randomUUID()}"
         active[id] = Registered(
@@ -94,13 +94,13 @@ class SessionExecutionRegistry(
         return id
     }
 
-    /** 标记资源开始运行。 */
+    /** Marque el recurso para comenzar a ejecutar. */
     fun start(id: String): Boolean = update(id) { record ->
         if (record.state != ExecutionState.REGISTERED) return@update null
         record.copy(state = ExecutionState.RUNNING)
     } != null
 
-    /** 请求取消一个资源；重复调用保持幂等。 */
+    /** Solicita la cancelación de un recurso; las llamadas repetidas siguen siendo idempotentes. */
     fun requestCancel(id: String, reason: String = "cancelled"): Boolean {
         val registered = active[id] ?: return false
         val updated = update(id) { record ->
@@ -112,32 +112,32 @@ class SessionExecutionRegistry(
             try {
                 registered.cancel?.invoke()
             } catch (error: Exception) {
-                Logger.w(TAG, "执行资源取消信号失败: id=$id kind=${registered.record.kind} reason=$reason", error)
+                Logger.w(TAG, "No se pudo ejecutar la señal de cancelación de recursos: id=$id kind=${registered.record.kind} reason=$reason", error)
             }
         }
         return accepted
     }
 
-    /** 请求取消指定 session 下的全部非终态资源。 */
+    /** Solicitud de cancelación de todos los recursos no finales bajo la sesión especificada. */
     fun requestCancelForSession(sessionId: String, reason: String = "session_cancelled"): List<String> = active.values
         .map { it.record }
         .filter { it.identity.sessionId == sessionId && it.state !in TERMINAL_STATES }
         .mapNotNull { record -> record.id.takeIf { requestCancel(it, reason) } }
 
     /**
-     * 只允许当前 generation 更新当前状态；旧代晚到事件返回 false。
+     * Sólo la generación actual puede actualizar el estado actual; el evento de llegada tardía de la generación anterior devuelve falso.
      *
-     * ENG-10 复核结论：本方法**当前没有生产调用方**，工具的迟到结果由
-     * `ChatMediaGenHost` 捕获的代际令牌(`ChatGenerationState.toolGenerationToken`)拦截。
-     * 两者**不等价，不能互为替代**：
-     *  - 令牌是全局单计数器，新生成(含切到其他会话)会使**所有会话**的在途工具结果作废；
-     *    本方法按 sessionId 分代，只作废同会话旧代。
-     *  - 本方法还额外要求该代仍有活跃记录(`ACTIVE_STATES` 不含 CANCEL_REQUESTED)，
-     *    令牌门禁没有这个“资源存活”条件；注册表为 null 时本方法恒为 false。
-     *  - 投递 Slot 不持有 GenerationIdentity，改走本方法等于换判据，不是收口。
-     * 因此保留本方法作为执行账本侧的代际判定与取消诊断，有测试覆盖
-     * ([SessionExecutionRegistryTest] / [SessionExecutionRegistryPruningTest])；
-     * 要接工具回写路径，先统一上述三点差异再谈接线。
+     * ENG-10 Conclusión de la revisión: este método**Actualmente no hay personas que llamen a producción.**, el resultado tardío de la herramienta viene dado por
+     * `ChatMediaGenHost` Token generacional capturado(`ChatGenerationState.toolGenerationToken`)Interceptación.
+     * ambos**No son equivalentes y no pueden sustituirse entre sí.**:
+     *  - El token es un contador único global, recién generado.(Incluye cambiar a otras conversaciones.)hará**Todas las sesiones**El resultado de la herramienta en tránsito no es válido;
+     *    Este método divide las generaciones según el ID de sesión y solo invalida la generación anterior de la misma sesión.
+     *  - Este método también requiere adicionalmente que la generación todavía tenga registros activos.(`ACTIVE_STATES` no contiene CANCEL_REQUESTED),
+     *    El control de acceso al token no tiene esto“supervivencia de recursos”Condición; este método siempre es falso cuando el registro es nulo.
+     *  - El espacio de entrega no contiene GenerationIdentity. Cambiar este método equivale a cambiar el criterio, no cerrarlo.
+     * Por lo tanto, este método se conserva como juicio intergeneracional y diagnóstico de cancelación en el lado del libro mayor de ejecución, y está cubierto por pruebas.
+     * ([SessionExecutionRegistryTest] / [SessionExecutionRegistryPruningTest]);
+     * Para conectar la ruta de reescritura de la herramienta, primero unifique las tres diferencias anteriores y luego hable sobre el cableado.
      */
     fun isCurrent(identity: GenerationIdentity): Boolean = latestGenerationBySession[identity.sessionId] == identity.generationId &&
         active.values.any { registered ->
@@ -146,15 +146,15 @@ class SessionExecutionRegistry(
                 registered.record.state in ACTIVE_STATES
         }
 
-    /** 判断两个事件是否属于同一代。 */
+    /** Determinar si dos eventos pertenecen a la misma generación. */
     fun matches(left: GenerationIdentity, right: GenerationIdentity): Boolean =
         left.sessionId == right.sessionId && left.generationId == right.generationId
 
     /**
-     * 标记资源正常完成并保留记录用于诊断。
+     * Marque el recurso para su finalización normal y mantenga registros con fines de diagnóstico.
      *
-     * 若资源此前已收到取消请求，即使底层调用以普通返回结束，也只能收敛为
-     * [ExecutionState.CANCELLED]；否则会把取消期间的晚到结果误报为成功。
+     * Si el recurso ha recibido previamente una solicitud de cancelación, incluso si la llamada subyacente finaliza con un retorno normal, solo puede converger a
+     * [ExecutionState.CANCELLED]; De lo contrario, los resultados de llegadas tardías durante el período de cancelación se informarán erróneamente como éxito.
      */
     fun finish(id: String): Boolean = update(id) { record ->
         when {
@@ -165,7 +165,7 @@ class SessionExecutionRegistry(
         }
     } != null
 
-    /** 标记资源失败并保留记录用于诊断。取消请求期间的异常归入取消终态。 */
+    /** Marque los recursos como fallidos y mantenga registros con fines de diagnóstico. Las excepciones durante la solicitud de cancelación se clasifican en el estado final de cancelación. */
     fun fail(id: String): Boolean = update(id) { record ->
         when {
             record.state in TERMINAL_STATES -> record
@@ -175,7 +175,7 @@ class SessionExecutionRegistry(
         }
     } != null
 
-    /** 标记资源已取消；适用于 cancel handle 完成回调。 */
+    /** Marca el recurso como cancelado; se aplica para cancelar la devolución de llamada de finalización del identificador. */
     fun markCancelled(id: String): Boolean = update(id) { record ->
         if (record.state in TERMINAL_STATES) {
             record
@@ -184,36 +184,36 @@ class SessionExecutionRegistry(
         }
     } != null
 
-    /** 获取资源当前状态；未知资源(含已裁剪历史)返回 null。 */
+    /** Obtener el estado actual de los recursos; recursos desconocidos(Incluye historial recortado.)Devuelve nulo. */
     fun state(id: String): ExecutionState? = (active[id] ?: history[id])?.record?.state
 
-    /** 获取指定 session 的资源快照(活跃 + 未被裁剪的终态历史)。 */
+    /** Obtenga una instantánea de recursos de la sesión especificada(Historial de estado final activo + sin recortar). */
     fun snapshot(sessionId: String? = null): List<ExecutionRecord> = (active.values + history.values)
         .map { it.record }
         .filter { sessionId == null || it.identity.sessionId == sessionId }
         .sortedBy { it.startedAt }
 
-    /** Phase 3: 仅活跃记录的快照(取消扫描/诊断用)。 */
+    /** Phase 3: Instantáneas de registros activos únicamente(Cancelar escaneo/para diagnóstico). */
     fun activeSnapshot(sessionId: String? = null): List<ExecutionRecord> = active.values
         .map { it.record }
         .filter { sessionId == null || it.identity.sessionId == sessionId }
         .sortedBy { it.startedAt }
 
-    /** Phase 3: 仅终态历史记录的快照(诊断用;可能已被 [prune] 裁剪)。 */
+    /** Phase 3: Instantánea de la historia final del estado únicamente(para diagnóstico;puede haber sido [prune] Cultivo). */
     fun historySnapshot(sessionId: String? = null): List<ExecutionRecord> = history.values
         .map { it.record }
         .filter { sessionId == null || it.identity.sessionId == sessionId }
         .sortedBy { it.startedAt }
 
     /**
-     * Phase 3: 裁剪终态历史。
+     * Phase 3: Recorte la historia del estado final.
      *
-     * 1. TTL: finishedAt(缺失时回退 startedAt)早于 `now - historyRetentionMs` 的记录移除;
-     * 2. 容量: 仍超过 [maxHistoryRecords] 时，按 finishedAt 由旧到新淘汰。
+     * 1. TTL: finishedAt(Reserva si falta startedAt)antes que `now - historyRetentionMs` registros eliminados;
+     * 2. Capacidad: todavía exceder [maxHistoryRecords] Cuando termine, At se elimina de antiguo a nuevo.
      *
-     * 活跃记录永不裁剪;每次终态迁移([finish]/[fail]/[markCancelled])后自动调用。
+     * Los registros activos nunca se recortan;Cada transición de estado final([finish]/[fail]/[markCancelled])llamado automáticamente más tarde.
      *
-     * @return 本次移除的记录数
+     * @return Número de registros eliminados esta vez
      */
     fun prune(now: Long = nowMs()): Int {
         var removed = 0
@@ -234,16 +234,16 @@ class SessionExecutionRegistry(
                 }
         }
         if (removed > 0) {
-            Logger.d(TAG, "执行历史裁剪: 移除 $removed 条(剩余 ${history.size} 条)")
+            Logger.d(TAG, "Realizar recorte de historial: Quitar $removed Artículo(restante ${history.size} Artículo)")
         }
         return removed
     }
 
     /**
-     * 原子更新一条记录。
+     * Actualizar atómicamente un registro.
      *
-     * 记录可能位于活跃表或历史表;一旦 transform 产生终态，记录从活跃表迁移到历史表
-     * (迁移失败说明并发调用已抢先迁移，循环重试命中历史分支)，并触发历史裁剪。
+     * Los registros pueden estar en la tabla activa o en la tabla de historial.;Una vez que la transformación produce un estado final, los registros se migran de la tabla activa a la tabla de historial.
+     * (El error de migración indica que las llamadas simultáneas se han migrado de forma preventiva y el reintento del bucle llega a la rama histórica.)y activar el recorte histórico.
      */
     private fun update(id: String, transform: (ExecutionRecord) -> ExecutionRecord?): ExecutionRecord? {
         while (true) {
@@ -252,7 +252,7 @@ class SessionExecutionRegistry(
                 val next = transform(currentActive.record) ?: return null
                 val updated = currentActive.copy(record = next)
                 if (next.state in TERMINAL_STATES) {
-                    // 终态迁移:从活跃表移除(而非替换),再写入历史表
+                    // transición de estado final:Eliminar de la lista activa(en lugar de reemplazar),Luego escribe en la tabla de historial.
                     if (!active.remove(id, currentActive)) continue
                     history[id] = updated
                     prune()
@@ -270,10 +270,10 @@ class SessionExecutionRegistry(
     private companion object {
         const val TAG = "SessionExecutionRegistry"
 
-        /** 终态记录默认保留 10 分钟,足够事后诊断又不无限占用内存。 */
+        /** Los registros del estado final se conservan durante 10 minutos de forma predeterminada,Es suficiente para el diagnóstico post mortem sin ocupar memoria ilimitada. */
         const val DEFAULT_HISTORY_RETENTION_MS = 10 * 60 * 1000L
 
-        /** 终态历史默认容量上限(超出按最旧 finishedAt 淘汰)。 */
+        /** Límite superior de capacidad predeterminada del historial de estado final(Los superados se eliminan por los acabados más antiguos.). */
         const val DEFAULT_MAX_HISTORY_RECORDS = 256
 
         val ACTIVE_STATES = setOf(

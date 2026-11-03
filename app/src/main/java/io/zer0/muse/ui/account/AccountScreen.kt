@@ -57,23 +57,23 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.x: 账户中心 — 本地个人资料编辑页(无登录/注册 UI)。
+ * v2.x: Centro de cuentas — Página de edición de perfil local(Sin iniciar sesión/Registrarse UI).
  *
- * 设计原则:
- *  - 无云服务依赖,所有资料本地存储(DataStore)
- *  - 用户可自由选择头像(相册图片)和昵称
- *  - 头像 URI 持久化,空昵称回退默认名
- *  - 保存后立即生效,AccountCard 等订阅 accountStateFlow 的 UI 自动刷新
+ * principios de diseño:
+ *  - Sin dependencias de servicios en la nube,Todos los datos almacenados localmente(DataStore)
+ *  - Los usuarios pueden elegir libremente su avatar(fotos del album)y apodo
+ *  - Persistencia de URI de avatar,El apodo vacío vuelve al nombre predeterminado
+ *  - Efectivo inmediatamente después de guardar,AccountCard Espere a que la interfaz de usuario que se suscribe a accountStateFlow se actualice automáticamente.
  *
- * UI 结构:
- *  - 顶部:MuseTopBar("编辑个人资料" + 返回)
- *  - 主体:大头像(可点击更换) + 头像提示 + 昵称输入框 + 保存按钮
+ * UI estructura:
+ *  - arriba:MuseTopBar("Editar perfil" + Regresar)
+ *  - sujeto:gran avatar(Haga clic para reemplazar) + Mensaje de avatar + cuadro de entrada de apodo + botón Guardar
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(
     onBack: () -> Unit,
-    /** v2.x: 点击进入设置迁移过来的"个人资料"(用户画像)页。 */
+    /** v2.x: Haga clic para ingresar a la configuración migrada"datos personales"(Retrato de usuario)Página. */
     onOpenUserProfile: () -> Unit,
 ) {
     val settings: SettingsRepository = koinInject()
@@ -83,13 +83,13 @@ fun AccountScreen(
         initialValue = io.zer0.muse.data.AccountState(),
     )
 
-    // 本地编辑态 — 进入页面时用当前 accountState 初始化
+    // estado de edición local — Inicializado con el estado de la cuenta actual al ingresar a la página.
     var editName by remember(accountState.userName) { mutableStateOf(accountState.userName) }
     var editAvatarUri by remember(accountState.avatarUri) { mutableStateOf(accountState.avatarUri) }
     var saving by remember { mutableStateOf(false) }
     var avatarSaving by remember { mutableStateOf(false) }
 
-    // 头像选择 launcher — Photo Picker,只选图片
+    // selección de avatar launcher — Photo Picker,Seleccionar solo imágenes
     val pickAvatarLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
@@ -104,8 +104,8 @@ fun AccountScreen(
                             3000,
                         )
                     } else {
-                        // 选择完成后立即落盘到账户资料,即使用户随后离开页面或进程被杀,
-                        // 也不会因为还没点底部保存按钮而丢失头像。
+                        // Una vez completada la selección, el pedido se realizará en la información de la cuenta inmediatamente.,Incluso si el usuario abandona la página o el proceso finaliza,
+                        // No perderás tu avatar porque no has hecho clic en el botón Guardar en la parte inferior.
                         val profile = settings.getUserProfile()
                         settings.saveUserProfile(profile.copy(avatarUri = persistentUri))
                         editAvatarUri = persistentUri
@@ -143,7 +143,7 @@ fun AccountScreen(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // ── 头像(可点击更换) ──
+            // ── avatar(Haga clic para reemplazar) ──
             AvatarPicker(
                 userName = editName,
                 avatarUri = editAvatarUri,
@@ -161,7 +161,7 @@ fun AccountScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // ── 昵称输入 ──
+            // ── Entrada de apodo ──
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -192,13 +192,13 @@ fun AccountScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // ── 个人资料入口(从设置迁移过来) ──
+            // ── Entrada de datos personales(Migrar desde la configuración) ──
             UserProfileEntryCard(
                 onClick = onOpenUserProfile,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // ── 保存按钮 ──
+            // ── botón guardar ──
             SaveButton(
                 enabled = canSave,
                 saving = saving || avatarSaving,
@@ -206,8 +206,8 @@ fun AccountScreen(
                     scope.launch {
                         saving = true
                         val profile = settings.getUserProfile()
-                        // v1.0.74 fix: 头像 content URI 权限重启后失效(变灰色占位),
-                        // 保存时拷贝到私有目录存本地路径
+                        // v1.0.74 fix: El permiso de URI del contenido de Avatar deja de ser válido después de reiniciar(Marcador de posición gris),
+                        // Al guardar, cópielo a un directorio privado y guarde la ruta local.
                         val persistentUri = AvatarStorage.persist(context, editAvatarUri)
                         val avatarWasChanged = editAvatarUri != profile.avatarUri
                         if (avatarWasChanged && !editAvatarUri.isNullOrBlank() && persistentUri.isNullOrBlank()) {
@@ -234,13 +234,13 @@ fun AccountScreen(
         }
     }
 }
-// ── 头像选择组件 ──────────────────────────────────────────
+// ── Componente de selección de avatar ──────────────────────────────────────────
 
 /**
- * v2.x: 个人资料(用户画像)入口卡片。
+ * v2.x: datos personales(Retrato de usuario)Tarjeta de entrada.
  *
- * 把原来设置页里的"用户画像/个人资料"功能迁移到账户页,
- * 点击后进入完整用户画像编辑页。
+ * Cambiar la página de configuración original"Retrato de usuario/datos personales"Funciones migradas a la página de cuenta,
+ * Haga clic para ingresar a la página completa de edición de retratos de usuarios.
  */
 @Composable
 private fun UserProfileEntryCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -296,11 +296,11 @@ private fun UserProfileEntryCard(onClick: () -> Unit, modifier: Modifier = Modif
 }
 
 /**
- * 大号头像 + 右下角相机编辑徽标。
+ * Logotipo grande de edición de avatar + cámara en la esquina inferior derecha.
  *
- * @param userName 用于无头像时取首字母占位
- * @param avatarUri 头像 URI(null 时用首字母占位)
- * @param onClick 点击头像触发(打开相册)
+ * @param userName Se utiliza para tomar el marcador de posición de la letra inicial cuando no hay avatar.
+ * @param avatarUri avatar URI(null Usar marcador de posición de letra inicial)
+ * @param onClick Haga clic en el avatar para activar(Abrir álbum de fotos)
  */
 @Composable
 private fun AvatarPicker(userName: String, avatarUri: String?, onClick: () -> Unit) {
@@ -310,7 +310,7 @@ private fun AvatarPicker(userName: String, avatarUri: String?, onClick: () -> Un
             .clickable(onClick = onClick),
         contentAlignment = Alignment.BottomEnd,
     ) {
-        // 头像主体
+        // sujeto avatar
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -345,7 +345,7 @@ private fun AvatarPicker(userName: String, avatarUri: String?, onClick: () -> Un
                 }
             }
         }
-        // 相机编辑徽标(右下角)
+        // logotipo de edición de cámara(esquina inferior derecha)
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.inverseSurface,
@@ -365,7 +365,7 @@ private fun AvatarPicker(userName: String, avatarUri: String?, onClick: () -> Un
         }
     }
 }
-// ── 保存按钮 ──────────────────────────────────────────
+// ── botón guardar ──────────────────────────────────────────
 
 @Composable
 private fun SaveButton(enabled: Boolean, saving: Boolean, onClick: () -> Unit) {
@@ -411,13 +411,13 @@ private fun SaveButton(enabled: Boolean, saving: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ── 设置页顶部账户卡片 ──────────────────────────────────────
+// ── Tarjeta de cuenta en la parte superior de la página de configuración ──────────────────────────────────────
 
 /**
- * 设置页顶部的账户卡片 — 左侧头像 + 右侧昵称 + "编辑个人资料" 提示。
+ * Tarjeta de cuenta en la parte superior de la página de configuración — Avatar a la izquierda + Apodo a la derecha + "Editar perfil" Consejos.
  *
- * v2.x: 移除登录/注册概念,无论是否登录都显示本地个人资料。
- * 点击进入 [AccountScreen] 编辑头像和昵称。
+ * v2.x: Eliminar inicio de sesión/Concepto de registro,Muestra el perfil local ya sea que haya iniciado sesión o no.
+ * Haga clic para entrar [AccountScreen] Editar avatar y apodo.
  */
 @Composable
 fun AccountCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -436,7 +436,7 @@ fun AccountCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 头像(48dp)
+            // avatar(48dp)
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,

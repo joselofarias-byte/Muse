@@ -4,10 +4,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F14: 全屏输入编辑页必须有 imePadding,否则键盘遮住输入框/发送按钮。
+ * AUD-UI-F14: La página de edición de entrada de pantalla completa debe tener imePadding,De lo contrario, el teclado cubre el cuadro de entrada./Botón enviar.
  *
- * 该页由 InputBar 内直接组合(非 Dialog 独立窗口),MainActivity 开启 edge-to-edge
- * 后软键盘 inset 不会自动顶起内容 —— 仅 systemBarsPadding 不够。
+ * Esta página está compuesta directamente dentro de la barra de entrada.(Ventana independiente sin diálogo),MainActivity encender edge-to-edge
+ * La inserción del teclado post-soft no subirá automáticamente el contenido —— systemBarsPadding por sí solo no es suficiente.
  */
 class ExpandedInputEditorImePaddingTest {
 
@@ -17,11 +17,11 @@ class ExpandedInputEditorImePaddingTest {
     fun `expanded editor root applies ime padding`() {
         val src = source()
         assertTrue(
-            "根布局必须应用 imePadding",
+            "Se debe aplicar el diseño de raíz. imePadding",
             src.contains(".imePadding()"),
         )
         assertTrue(
-            "imePadding 需导入",
+            "imePadding Necesidad de importar",
             src.contains("import androidx.compose.foundation.layout.imePadding"),
         )
     }

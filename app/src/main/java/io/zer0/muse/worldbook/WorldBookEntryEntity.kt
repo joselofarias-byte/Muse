@@ -6,20 +6,20 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * P1-2: Worldbook(动态世界书)实体。
+ * P1-2: Worldbook(Libro del mundo dinámico)entidad.
  *
- * 与现有 [io.zer0.muse.data.lorebook.LorebookEntity] 的区别:
- *  - Lorebook 走 Transformer 管道,仅扫描最后一条 USER 消息,注入位置有限(before/after_system/before_last)
- *  - Worldbook 走 Hook 系统(SystemPromptComposeHook + PromptFinalizeHook),支持:
- *    · alwaysActive 常驻激活(无需关键词命中)
- *    · scanDepth 扫描最近 N 层 USER 消息(非仅最后一条)
- *    · isRegex 正则关键词(配合 caseSensitive)
- *    · assistantId 绑定特定助手(null = 全局)
- *    · AT_DEPTH 深度注入(插入到历史第 N 层,而非仅系统提示前后)
+ * con existente [io.zer0.muse.data.lorebook.LorebookEntity] la diferencia:
+ *  - Lorebook Pasa por el oleoducto Transformer.,Escanea solo el último mensaje de USUARIO,Los lugares de inyección son limitados(before/after_system/before_last)
+ *  - Worldbook Sigue el sistema Hook(SystemPromptComposeHook + PromptFinalizeHook),apoyo:
+ *    · alwaysActive Activación residente(No se requieren coincidencias de palabras clave)
+ *    · scanDepth Escanea los últimos N niveles de mensajes de USUARIO(No sólo el último)
+ *    · isRegex Palabras clave habituales(cooperar caseSensitive)
+ *    · assistantId Vincular un ayudante específico(null = situación general)
+ *    · AT_DEPTH inyección profunda(Insertar en el enésimo nivel de la historia.,No solo antes y después de las indicaciones del sistema.)
  *
- * 两者并存,互不干扰:LorebookTransformer 在管道内执行,WorldBookHook 在管道后执行。
+ * Ambos coexisten,No interfieran el uno con el otro:LorebookTransformer ejecutar dentro de la canalización,WorldBookHook Ejecutado después del oleoducto.
  *
- * 所有 NOT NULL 字段均带 @ColumnInfo(defaultValue=...),与 MIGRATION_57_58 SQL 对齐。
+ * Todos los campos NO NULOS tienen @ColumnInfo(defaultValue=...),Alineado con MIGRATION_57_58 SQL.
  */
 @Serializable
 @Entity(tableName = "worldbook_entries")
@@ -32,40 +32,40 @@ data class WorldBookEntryEntity(
     @ColumnInfo(defaultValue = "1") val enabled: Boolean = true,
     @ColumnInfo(defaultValue = "0") val caseSensitive: Boolean = false,
     /**
-     * v2.x: 全词匹配(仅子串模式生效;isRegex=true 时由用户自行写 \b)。
-     * 英文/数字关键词前后需为单词边界以减少误触发;含 CJK 的关键词自动退化为子串匹配。
+     * v2.x: coincidencia de palabras completas(Sólo el modo de subcadena tiene efecto;isRegex=true escrito por el usuario \b).
+     * ingles/Las palabras clave numéricas deben ir precedidas y seguidas de límites de palabras para reducir los desencadenantes falsos.;Las palabras clave que contienen CJK degeneran automáticamente en coincidencias de subcadenas.
      */
     @ColumnInfo(defaultValue = "0") val wholeWord: Boolean = false,
-    /** 关键词是否按正则表达式匹配(isRegex=true 时 keywordsJson 每项视为正则源串)。 */
+    /** Si las palabras clave coinciden con expresiones regulares(isRegex=true Cada elemento de palabras claveJson se trata como una cadena fuente normal.). */
     @ColumnInfo(defaultValue = "0") val isRegex: Boolean = false,
-    /** 常驻激活:无需关键词命中即注入到系统提示。 */
+    /** Activación residente:Se inyecta en el indicador del sistema sin coincidencias de palabras clave. */
     @ColumnInfo(defaultValue = "0") val alwaysActive: Boolean = false,
-    /** 扫描最近 N 层 USER 消息(1 = 仅最后一条,与 Lorebook 行为一致)。 */
+    /** Escanea los últimos N niveles de mensajes de USUARIO(1 = solo el ultimo,Consistente con el comportamiento del Lorebook). */
     @ColumnInfo(defaultValue = "3") val scanDepth: Int = 3,
     /**
-     * 注入目标(对应 [WorldBookInjectTarget]):
-     *  - system: 注入到 SYSTEM 消息(默认)
-     *  - user:   注入为 USER 消息前缀
-     *  - assistant: 注入为 ASSISTANT 消息前缀
+     * inyectar objetivo(corresponder [WorldBookInjectTarget]):
+     *  - system: Inyectar en el mensaje del SISTEMA(Predeterminado)
+     *  - user:   Inyectado como prefijo de mensaje de USUARIO
+     *  - assistant: Inyectar como prefijo de mensaje ASISTENTE
      */
     @ColumnInfo(defaultValue = "system") val injectTarget: String = "system",
     /**
-     * 注入位置(对应 [WorldBookInjectPosition]):
-     *  - prepend:  插到目标角色消息之前
-     *  - append:   追加到目标角色消息之后
-     *  - at_depth:  插入到历史第 [insertionDepth] 层 USER 消息处
+     * Ubicación de la inyección(corresponder [WorldBookInjectPosition]):
+     *  - prepend:  Insertar antes del mensaje de rol de destino
+     *  - append:   Adjunto al mensaje del personaje objetivo.
+     *  - at_depth:  Insertar en la historia [insertionDepth] Oficina de mensajes de capa USUARIO
      */
     @ColumnInfo(defaultValue = "append") val injectPosition: String = "append",
-    /** injectPosition=at_depth 时,插入到倒数第 N 层 USER 消息处(1 = 最后一层)。 */
+    /** injectPosition=at_depth tiempo,Insertar en el mensaje de USUARIO de enésimo nivel desde abajo(1 = última capa). */
     @ColumnInfo(defaultValue = "0") val insertionDepth: Int = 0,
-    /** 绑定特定助手(null = 全局,所有助手生效)。 */
+    /** Vincular un ayudante específico(null = situación general,Todos los asistentes entran en vigor.). */
     @ColumnInfo(defaultValue = "NULL") val assistantId: String? = null,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
 )
 
 /**
- * 注入目标角色。
+ * Inyecta el personaje objetivo.
  */
 enum class WorldBookInjectTarget(val storage: String) {
     SYSTEM("system"),
@@ -79,7 +79,7 @@ enum class WorldBookInjectTarget(val storage: String) {
 }
 
 /**
- * 注入位置策略。
+ * Inyectar estrategia de ubicación.
  */
 enum class WorldBookInjectPosition(val storage: String) {
     PREPEND("prepend"),

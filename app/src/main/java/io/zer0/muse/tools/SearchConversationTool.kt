@@ -9,27 +9,27 @@ import io.zer0.muse.data.session.SessionRepository
  * arguments. This keeps a safe tool path for details that are not present in
  * the current user query while reusing the existing messages FTS index.
  *
- * ## 跨会话检索的隐私边界（v2.6.7）
+ * ## Límites de privacidad para la recuperación entre sesiones (v2.6.7)
  *
- * 助手自审第 6 条要的是「能想起别处聊过的事」。但「全库搜索」会让 A 角色读到
- * 用户和 B 角色的对话 —— 那不是能力，是越界。
+ * El punto 6 del autoexamen del asistente es “recordar cosas que se han discutido en otra parte”. Pero la "búsqueda completa en la base de datos" permitirá que el carácter A lea
+ * Conversación entre el usuario y el personaje B. —— Eso no es habilidad, es cruzar la línea.
  *
- * 因此跨会话检索**按助手隔离**：只搜「当前会话所属助手」的其他会话。
- * 用户和同一个角色在别处的对话，本来就属于这段关系的一部分；
- * 换成另一个角色的私密对话，不属于。
+ * Así que la recuperación entre sesiones**Aislar por asistente**: Busca sólo otras sesiones del "Asistente al que pertenece la sesión actual".
+ * Las conversaciones entre el usuario y el mismo personaje en otro lugar son inherentemente parte de la relación;
+ * Una conversación privada con otro personaje no pertenece.
  */
 object SearchConversationTool {
 
-    /** 检索范围。 */
+    /** Alcance de la búsqueda. */
     private const val SCOPE_CURRENT = "current"
     private const val SCOPE_ASSISTANT = "assistant"
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "search_conversation",
-        description = "搜索过往对话中用户与助手的原始消息。" +
-            "上下文被压缩后需要旧细节,或用户提到之前聊过的内容时使用。" +
-            "scope='current'(默认)只搜当前会话;" +
-            "scope='assistant' 还会搜同一助手的其他会话(绝不跨到别的助手)。",
+        description = "Busca mensajes originales entre usuarios y asistentes en conversaciones pasadas." +
+            "El contexto está comprimido y requiere detalles antiguos.,O se usa cuando el usuario menciona algo de lo que habló antes." +
+            "scope='current'(Predeterminado)Buscar solo la sesión actual;" +
+            "scope='assistant' También busca otras conversaciones con el mismo asistente(Nunca pases a otro asistente).",
         parameters = mapOf(
             "query" to "Required. Keywords or a phrase from the earlier conversation.",
             "limit" to "Optional. Maximum matching messages, default 8.",
@@ -69,21 +69,21 @@ object SearchConversationTool {
     }
 
     /**
-     * 跨会话检索：先全库搜，再过滤到同一助手的会话。
+     * Búsqueda entre sesiones: primero busque en toda la base de datos y luego filtre por las sesiones del mismo asistente.
      *
-     * 为什么不在 SQL 层按 assistantId 过滤：`searchMessages` 走 FTS，结果集本身很小
-     * （limit 上限 20），在内存里过滤比改 DAO/FTS 查询更安全 —— 后者要动迁移与索引，
-     * 而这里只需要一个正确的边界。
+     * ¿Por qué no filtrar por ID de asistente en el nivel SQL?`searchMessages` Usando FTS, el conjunto de resultados en sí es muy pequeño
+     * (limit Límite superior 20), filtrar en la memoria es más seguro que cambiar las consultas DAO/FTS —— Este último requiere migración e indexación manuales.
+     * Y aquí lo único que se necesita es un límite correcto.
      */
     private suspend fun searchAcrossAssistant(sessionRepository: SessionRepository, sessionId: String, query: String, limit: Int): String {
         val ownerAssistantId = sessionRepository.getSessionById(sessionId)?.assistantId
         if (ownerAssistantId == null) {
             return searchCurrentSession(sessionRepository, sessionId, query, limit)
         }
-        // 多取一些候选，过滤后仍能凑够 limit。
+        // Elija más candidatos y aún pueda compensar el límite después del filtrado.
         val candidates = sessionRepository.searchMessages(query).take(limit * 4)
-        // v2.6.7 fix (AUDIT F16): 旧实现逐条 getSessionById（最多 80 次单查询），
-        // 改为一次性取同助手会话 id 集。
+        // v2.6.7 fix (AUDIT F16): Implementación anterior de getSessionById elemento por elemento (hasta 80 consultas individuales),
+        // En su lugar, obtenga el mismo conjunto de identificadores de sesión del asistente todos a la vez.
         val ownedSessionIds = sessionRepository.sessionsOfAssistant(ownerAssistantId).toSet()
         val owned =
             candidates.filter { result ->
@@ -112,7 +112,7 @@ object SearchConversationTool {
                     else -> result.role
                 }
             appendLine()
-            // 跨会话时标出来源，让模型知道这是「别处聊过的」，而不是当前上下文。
+            // Marque la fuente en las conversaciones para que el modelo sepa que "se habló de esto en otro lugar" en lugar del contexto actual.
             val source = result.sessionTitle.takeIf { it.isNotBlank() }
             appendLine(if (source != null) "[$role · from \"$source\"]" else "[$role]")
             appendLine(result.content.ifBlank { result.contentSnippet })

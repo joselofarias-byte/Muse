@@ -20,25 +20,25 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * [DeviceCapabilityProfile] / [DeviceCapabilityHook] 定向测试。
+ * [DeviceCapabilityProfile] / [DeviceCapabilityHook] Pruebas de orientación.
  *
- * 锁定两件事：
- *  1. 档案渲染反映**真实**通道可用性（哪层可用、能不能截屏、最高层级），
- *     不把「没有权限」渲染成「能力不存在」，也不反过来谎报可用；
- *  2. Hook 的行为边界：子代理不注入、探测失败不抛异常也不丢整段档案。
+ * Bloquea dos cosas:
+ *  1. Reflexión de representación de archivos**cierto**Disponibilidad del canal (qué capa está disponible, si se pueden tomar capturas de pantalla, la capa más alta),
+ *     No interprete "sin autoridad" como "la capacidad no existe", ni afirme falsamente que está disponible;
+ *  2. Hook Límites de comportamiento: sin inyección de subagente, sin excepción cuando falla la detección y sin pérdida de archivo completo.
  *
- * [RootExecutor]/[ShizukuAuthorizer] 用 mock 注入（见 AutomationManager 可注入构造参数），
- * 不会真的执行 su / bind Shizuku。
+ * [RootExecutor]/[ShizukuAuthorizer] Utilice inyección simulada (consulte los parámetros de construcción inyectables de AutomationManager),
+ * En realidad, no ejecutará su/bind Shizuku.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class DeviceCapabilityProfileTest {
 
     /**
-     * 直接给定权限状态的 manager。
+     * Asigne directamente el estado del permiso al administrador.
      *
-     * Hook 测试关心的是「拿到状态后怎么渲染」，而不是探测本身能否在测试环境跑通
-     * （Robolectric 下无障碍服务恒为未启用，会让断言变成对影子实现的断言）。
+     * Hook La prueba se centra en "cómo renderizar después de obtener el estado", en lugar de detectar si se puede ejecutar en el entorno de prueba.
+     * (Robolectric El servicio de accesibilidad siempre estará deshabilitado, lo que convertirá la afirmación en una implementación oculta).
      */
     private fun managerWithState(accessibility: Boolean, shell: Boolean, root: Boolean): AutomationManager {
         val state = AutomationManager.PermissionState(
@@ -65,7 +65,7 @@ class DeviceCapabilityProfileTest {
         forSubagent = forSubagent,
     )
 
-    // ── 档案派生属性 ────────────────────────────────────────────
+    // ── Propiedades derivadas de archivos ────────────────────────────────────────────
 
     @Test
     fun `no channel means no control capability and no screenshot`() {
@@ -98,7 +98,7 @@ class DeviceCapabilityProfileTest {
         assertTrue(profile.canScreenshot)
     }
 
-    // ── 面向模型的渲染 ──────────────────────────────────────────
+    // ── Representación orientada al modelo ──────────────────────────────────────────
 
     @Test
     fun `rendered profile states each channel truthfully`() {
@@ -110,45 +110,45 @@ class DeviceCapabilityProfileTest {
             nodeRuntime = true,
         ).renderForModel()
 
-        assertTrue(text.contains("设备能力档案"))
-        assertTrue(text.contains("无障碍(读屏/手势/输入): 可用"))
-        assertTrue(text.contains("Shell 通道(Shizuku/adb: input/screencap/pm/am/settings): 不可用"))
-        assertTrue(text.contains("Root(su: 系统分区读写/完整控制): 不可用"))
-        assertTrue(text.contains("截屏能力: 不可用"))
-        assertTrue(text.contains("内置 Node 运行时(跑脚本/数据处理/MCP stdio): 可用"))
-        assertTrue(text.contains("当前最高权限层: 无障碍"))
+        assertTrue(text.contains("Perfil de capacidad del dispositivo"))
+        assertTrue(text.contains("Accesibilidad(leer pantalla/gesto/entrada): Disponible"))
+        assertTrue(text.contains("Shell canal(Shizuku/adb: input/screencap/pm/am/settings): No disponible"))
+        assertTrue(text.contains("Root(su: Lectura y escritura de partición del sistema/Control total): No disponible"))
+        assertTrue(text.contains("Capacidad de captura de pantalla: No disponible"))
+        assertTrue(text.contains("Tiempo de ejecución de nodo incorporado(Ejecutar script/Procesamiento de datos/MCP stdio): Disponible"))
+        assertTrue(text.contains("Nivel más alto de autoridad actual: Accesibilidad"))
     }
 
     @Test
     fun `rendered profile warns when no control channel exists`() {
         val text = DeviceCapabilityProfile().renderForModel()
-        assertTrue(text.contains("当前最高权限层: 无（只能做应用内操作，无法控制其他应用）"))
-        assertTrue(text.contains("截屏能力: 不可用"))
+        assertTrue(text.contains("Nivel más alto de autoridad actual: Ninguno (solo puede realizar operaciones dentro de la aplicación, no puede controlar otras aplicaciones)"))
+        assertTrue(text.contains("Capacidad de captura de pantalla: No disponible"))
     }
 
     @Test
     fun `operating guide covers channel selection verification and escalation`() {
         val guide = DeviceCapabilityProfile().renderOperatingGuide()
-        // 先探测再动手
-        assertTrue(guide, guide.contains("动手前先确认能力"))
-        // 按最低够用层级选通道（避免一上来就动 Root）
-        assertTrue(guide, guide.contains("按最低够用层级选通道"))
-        // 应用层工具无需自动化授权 → 必须写进规程，否则模型会绕过最省事的一层
+        // Detectar primero antes de actuar
+        assertTrue(guide, guide.contains("Confirma tu habilidad antes de actuar."))
+        // Seleccione el canal de acuerdo con el nivel suficiente más bajo (evite tocar Root tan pronto como comience)
+        assertTrue(guide, guide.contains("Seleccione el canal según el nivel más bajo suficiente"))
+        // Las herramientas de la capa de aplicación no requieren autorización automatizada → Los procedimientos deben estar escritos; de lo contrario, el modelo omitirá la capa menos problemática.
         assertTrue(guide, guide.contains("app_list"))
         assertTrue(guide, guide.contains("app_launch"))
         assertTrue(guide, guide.contains("app_settings"))
         assertTrue(guide, guide.contains("app_force_stop"))
-        // 每步验证
-        assertTrue(guide, guide.contains("每步都要验证"))
-        // 重复流程写脚本
-        assertTrue(guide, guide.contains("优先写成脚本"))
-        // 缺权限如实说
-        assertTrue(guide, guide.contains("缺权限就如实说"))
+        // Cada paso de la verificación
+        assertTrue(guide, guide.contains("Verifica cada paso"))
+        // Repetir el proceso de escritura del guión.
+        assertTrue(guide, guide.contains("Guión primero"))
+        // Falta de autoridad para decir la verdad.
+        assertTrue(guide, guide.contains("Si te falta permiso, di la verdad."))
         assertTrue(guide, guide.contains("display=auto"))
-        assertTrue(guide, guide.contains("本次专属虚拟屏"))
+        assertTrue(guide, guide.contains("Esta pantalla virtual exclusiva"))
     }
 
-    // ── Hook 行为边界 ──────────────────────────────────────────
+    // ── Hook límites de comportamiento ──────────────────────────────────────────
 
     @Test
     fun `hook injects profile and guide for a normal session`() = runTest {
@@ -158,10 +158,10 @@ class DeviceCapabilityProfileTest {
         )
         val injected = hook.afterComposeSystemPrompt(promptContext())
 
-        assertTrue(injected, injected.contains("设备能力档案"))
-        assertTrue(injected, injected.contains("操作手机的决策规程"))
-        assertTrue(injected, injected.contains("当前最高权限层: 无障碍"))
-        assertTrue(injected, injected.contains("内置 Node 运行时(跑脚本/数据处理/MCP stdio): 可用"))
+        assertTrue(injected, injected.contains("Perfil de capacidad del dispositivo"))
+        assertTrue(injected, injected.contains("Procedimientos de toma de decisiones para el funcionamiento de teléfonos celulares."))
+        assertTrue(injected, injected.contains("Nivel más alto de autoridad actual: Accesibilidad"))
+        assertTrue(injected, injected.contains("Tiempo de ejecución de nodo incorporado(Ejecutar script/Procesamiento de datos/MCP stdio): Disponible"))
     }
 
     @Test
@@ -179,22 +179,22 @@ class DeviceCapabilityProfileTest {
             virtualDisplayProbe = { true },
         )
         val injected = hook.afterComposeSystemPrompt(promptContext())
-        assertTrue(injected.contains("当前最高权限层: Root"))
-        assertTrue(injected.contains("截屏能力: 可用"))
-        assertTrue(injected.contains("虚拟屏(把应用启动到独立屏幕,不打扰用户当前界面): 可用"))
+        assertTrue(injected.contains("Nivel más alto de autoridad actual: Root"))
+        assertTrue(injected.contains("Capacidad de captura de pantalla: Disponible"))
+        assertTrue(injected.contains("pantalla virtual(Inicie la aplicación en una pantalla separada,No perturbar la interfaz actual del usuario.): Disponible"))
     }
 
     @Test
     fun `hook never throws even when probes fail`() = runTest {
-        // 虚拟屏与 Node 探测都抛异常：档案仍应渲染出（能力记为不可用），不得向上抛。
+        // Tanto la pantalla virtual como la detección de nodos generan excepciones: el archivo aún debe renderizarse (la capacidad está marcada como no disponible) y no debe lanzarse hacia arriba.
         val hook = DeviceCapabilityHook(
             automationManager = managerWithState(accessibility = false, shell = false, root = false),
             virtualDisplayProbe = { error("boom") },
             nodeRuntimeProbe = { error("boom") },
         )
         val injected = hook.afterComposeSystemPrompt(promptContext())
-        assertTrue(injected.contains("设备能力档案"))
-        assertTrue(injected.contains("虚拟屏(把应用启动到独立屏幕,不打扰用户当前界面): 不可用"))
+        assertTrue(injected.contains("Perfil de capacidad del dispositivo"))
+        assertTrue(injected.contains("pantalla virtual(Inicie la aplicación en una pantalla separada,No perturbar la interfaz actual del usuario.): No disponible"))
     }
 
     @Test
@@ -203,6 +203,6 @@ class DeviceCapabilityProfileTest {
             automationManager = managerWithState(accessibility = false, shell = false, root = false),
         )
         assertEquals("device_capability_profile", hook.id)
-        assertTrue("设备档案应先于 Worldbook(60) 注入", hook.priority > 60)
+        assertTrue("Los archivos del dispositivo deben preceder Worldbook(60) inyectar", hook.priority > 60)
     }
 }

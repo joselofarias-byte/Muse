@@ -5,19 +5,19 @@ import io.zer0.muse.R
 import kotlinx.serialization.Serializable
 
 /**
- * v1.58: Prompt 模板 — 预置场景提示词(写作/翻译/总结/代码/学习/创意)。
+ * v1.58: Prompt Plantilla — Palabras de indicación de escena preestablecidas(escribiendo/Traducción/Resumen/código/aprender/creatividad).
  *
- * 用户可从输入栏 plus 菜单进入模板库,选择模板一键插入输入框。
- * 与 QuickMessage(快捷短句 chips)区分:模板库是完整的长 prompt。
+ * Los usuarios pueden ingresar a la biblioteca de plantillas desde el campo de entrada más el menú,Seleccione una plantilla e inserte el cuadro de entrada con un clic.
+ * con QuickMessage(frases abreviadas chips)distinguir:La biblioteca de plantillas está completa con indicaciones largas.
  *
- * 占位符语法说明(L-PT1):
- * - PromptTemplate 使用单括号占位符(如 {主题}),需用户手动替换或由调用方替换;
- *   模板内容仅作为初始文本插入输入框,不做自动变量渲染。
- * - QuickMessage 使用双括号占位符(如 {{input}}),由 QuickMessageRepository.renderTemplate
- *   自动渲染(input/clipboard/date)。两者语义不同,勿混用。
+ * Descripción de la sintaxis del marcador de posición(L-PT1):
+ * - PromptTemplate Usar marcador de posición de corchete único(Como por ejemplo {Tema}),Debe ser reemplazado manualmente por el usuario o por la persona que llama.;
+ *   El contenido de la plantilla se inserta en el cuadro de entrada solo como texto inicial.,Sin renderizado variable automático.
+ * - QuickMessage Utilice marcadores de posición de doble corchete(Como por ejemplo {{input}}),por QuickMessageRepository.renderTemplate
+ *   renderizado automático(input/clipboard/date). Los dos tienen semántica diferente.,No mezclar.
  *
- * @param category 分类:写作/翻译/总结/代码/学习/创意(见 [CATEGORIES] 常量,自由 String 不做枚举强校验)
- * @param builtIn 是否内置模板(内置不可删除)
+ * @param category Clasificación:escribiendo/Traducción/Resumen/código/aprender/creatividad(ver [CATEGORIES] constante,Free String no realiza una verificación de enumeración sólida)
+ * @param builtIn Si tener plantillas integradas(El integrado no se puede eliminar)
  */
 @Serializable
 data class PromptTemplate(

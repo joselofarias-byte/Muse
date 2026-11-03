@@ -1,20 +1,20 @@
 # Muse vX.Y.Z
 
-> 给普通用户看：只写功能与修复，不写版本号、不写工程细节；补丁版不吹新功能。
+> Para usuarios normales: sólo se escriben características y correcciones, no se escribe ningún número de versión ni detalles del proyecto; la versión del parche no cuenta con nuevas funciones.
 
-（中文正文。按需使用小节，例如：）
+(Texto en chino. Utilice las subsecciones según sea necesario, por ejemplo :)
 
-## 重要修复
+## Correcciones importantes
 
-- **一句话卖点**：具体修复了什么 + 用户能感知的变化。
+- **Punto de venta en una frase.**: Lo que se arregla específicamente + cambios que los usuarios pueden percibir.
 
-## 新能力
+## nuevas capacidades
 
-- **一句话卖点**：新能力的具体表现。
+- **Punto de venta en una frase.**: La manifestación específica de nuevas capacidades.
 
-## 体验改进
+## Mejoras en la experiencia
 
-- 打磨类条目。
+- Artículos de pulido.
 
 ---
 

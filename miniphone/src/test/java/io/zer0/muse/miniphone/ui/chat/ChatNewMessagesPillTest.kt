@@ -4,17 +4,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * 新消息提示的计数判定。
+ * Determinación del recuento de mensajes nuevos.
  *
- * 只验这一点:给定「上一次条数 / 这一次条数 / 人在不在底部 / 已经显示的条数」,
- * 该显示几条。全是纯函数,不需要手势、列表布局或界面。
+ * Solo prueba esto:Dado "el número de elementos la última vez / el número de elementos esta vez / si la persona está en la parte inferior / el número de elementos que ya se muestran",
+ * Se deben mostrar varios elementos. Todas las funciones puras,No se requieren gestos, diseños de listas ni interfaces.
  */
 class ChatNewMessagesPillTest {
 
     @Test
     fun awayFromBottomCountsTheMessagesThatArrived() {
         assertEquals(
-            "离底部时新到 3 条就显示 3",
+            "Cuando esté lejos del final, mostrará 3 elementos nuevos. 3",
             3,
             advanceNewMessageCount(previousTotal = 2, currentTotal = 5, atBottom = false, displayed = 0),
         )
@@ -23,7 +23,7 @@ class ChatNewMessagesPillTest {
     @Test
     fun anotherArrivalAccumulatesOnTopOfTheDisplayedCount() {
         assertEquals(
-            "已有的 3 条不清零,再 +1",
+            "Los 3 elementos existentes no se borran.,otra vez +1",
             4,
             advanceNewMessageCount(previousTotal = 5, currentTotal = 6, atBottom = false, displayed = 3),
         )
@@ -32,12 +32,12 @@ class ChatNewMessagesPillTest {
     @Test
     fun atBottomNeverShowsAnything() {
         assertEquals(
-            "人在底部时新消息直接被看到",
+            "Cuando las personas están en la parte inferior, los mensajes nuevos son directamente visibles.",
             0,
             advanceNewMessageCount(previousTotal = 2, currentTotal = 5, atBottom = true, displayed = 0),
         )
         assertEquals(
-            "回到最新一条后把待显示的条数清掉",
+            "Después de regresar al último elemento, borre la cantidad de elementos que se mostrarán.",
             0,
             advanceNewMessageCount(previousTotal = 6, currentTotal = 6, atBottom = true, displayed = 3),
         )
@@ -46,7 +46,7 @@ class ChatNewMessagesPillTest {
     @Test
     fun unchangedTotalKeepsWhatIsAlreadyShown() {
         assertEquals(
-            "条数没变就保持原样",
+            "Si el número de artículos no cambia, seguirá siendo el mismo.",
             2,
             advanceNewMessageCount(previousTotal = 4, currentTotal = 4, atBottom = false, displayed = 2),
         )
@@ -55,7 +55,7 @@ class ChatNewMessagesPillTest {
     @Test
     fun deletedMessageDoesNotMakeTheCountGoNegative() {
         assertEquals(
-            "自己的消息被删掉时不清零、也不变成负数",
+            "Cuando se eliminan sus propios mensajes, no se borrarán ni se volverán negativos.",
             2,
             advanceNewMessageCount(previousTotal = 5, currentTotal = 4, atBottom = false, displayed = 2),
         )
@@ -64,7 +64,7 @@ class ChatNewMessagesPillTest {
     @Test
     fun firstObservationOnAnEmptyThreadShowsNothing() {
         assertEquals(
-            "刚进页什么都没有时不弹提示",
+            "No aparece ningún mensaje emergente cuando se acaba de ingresar a la página y no hay nada",
             0,
             advanceNewMessageCount(previousTotal = 0, currentTotal = 0, atBottom = false, displayed = 0),
         )
@@ -72,7 +72,7 @@ class ChatNewMessagesPillTest {
 
     @Test
     fun pillLabelReadsAsASentence() {
-        assertEquals("3 条新消息", newMessagePillLabel(3))
-        assertEquals("1 条新消息", newMessagePillLabel(1))
+        assertEquals("3 nuevos mensajes", newMessagePillLabel(3))
+        assertEquals("1 nuevos mensajes", newMessagePillLabel(1))
     }
 }

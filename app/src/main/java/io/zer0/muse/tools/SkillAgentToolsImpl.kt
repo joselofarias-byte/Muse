@@ -14,14 +14,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * P1-3e 拆域：SkillExecutor 的 Agent 工作流/群聊工具实现。
+ * P1-3e Deslocalización:SkillExecutor Flujo de trabajo del agente/Implementación de herramienta de chat grupal.
  *
- * 承载：
- * - task_plan / update_plan_step（内存计划缓存）
- * - channel_reply / channel_pass / channel_read_context（群聊决策工具）
- * - agent_phone（主 agent 触发群聊成员私聊）
+ * Capacidad de carga:
+ * - task_plan / update_plan_step(caché del plan de memoria)
+ * - channel_reply / channel_pass / channel_read_context(Herramienta de toma de decisiones de chat grupal)
+ * - agent_phone(El agente principal activa un chat privado entre los miembros del chat grupal)
  *
- * delegateAgent 仍留在 SkillExecutor（递归、暂停点、链路追踪与 Koin 依赖耦合高）。
+ * delegateAgent Todavía en SkillExecutor (alto acoplamiento de recursividad, puntos de pausa, seguimiento de enlaces y dependencias de Koin).
  */
 class SkillAgentToolsImpl(
     private val context: Context,
@@ -31,9 +31,9 @@ class SkillAgentToolsImpl(
 ) {
 
     /**
-     * 当前活跃的计划内存缓存(planId → AgentPlan)。ChatViewModel 也会读取此缓存更新 UI。
+     * Caché de memoria del plan actualmente activo(planId → AgentPlan).ChatViewModel Este caché también se lee para actualizar la interfaz de usuario.
      *
-     * LRU 淘汰(上限 50 条)，避免长期运行累积计划导致内存泄漏。
+     * LRU eliminar(Máximo 50 artículos), para evitar pérdidas de memoria causadas por planes de acumulación en ejecución a largo plazo.
      */
     private val activePlans: MutableMap<String, AgentPlan> =
         java.util.Collections.synchronizedMap(
@@ -46,22 +46,22 @@ class SkillAgentToolsImpl(
             },
         )
 
-    /** 读取全部活跃计划，保留给全局统计等旧调用方。 */
+    /** Lea todos los planes activos, reservados para personas que llaman anteriormente, como estadísticas globales. */
     fun getActivePlans(): Map<String, AgentPlan> = synchronized(activePlans) { activePlans.toMap() }
 
-    /** 读取指定会话的活跃计划，避免并行会话串台。 */
+    /** Lea el plan activo de la sesión especificada para evitar la serialización de sesiones paralelas. */
     fun getActivePlans(sessionId: String): Map<String, AgentPlan> = synchronized(activePlans) {
         activePlans.toMap().filter { (_, plan) -> plan.sessionId == sessionId }
     }
 
     /**
-     * 将消息历史重放出的计划回灌执行器缓存。
+     * El plan para reproducir el historial de mensajes se descarga en la caché del ejecutor.
      *
-     * 计划展示消息已经落库；回灌这一步让重新进入会话后继续调用 update_plan_step
-     * 时不会因为进程内 activePlans 为空而返回“计划不存在”。
+     * El mensaje de visualización planificado se ha eliminado; este paso de reinyección permite que la llamada continúe después de volver a ingresar a la sesión. update_plan_step
+     * no se devolverá porque activePlans en el proceso está vacío“El plan no existe”.
      */
     fun restoreActivePlans(plans: Map<String, AgentPlan>, sessionId: String = "default") {
-        // 只替换当前会话的旧投影，保留其他会话正在执行的计划。
+        // Sólo reemplaza la antigua proyección de la sesión actual, preservando los planes que se están ejecutando en otras sesiones.
         synchronized(activePlans) {
             activePlans.entries.removeIf { it.value.sessionId == sessionId }
             plans.forEach { (id, plan) ->
@@ -71,13 +71,13 @@ class SkillAgentToolsImpl(
     }
 
     /**
-     * v2.6.4: 收尾指定会话下未结束的计划 —— 把 PENDING / IN_PROGRESS 步骤落成 CANCELLED。
+     * v2.6.4: Finalizar el plan inacabado en la sesión especificada —— Convierta el paso PENDIENTE/EN_PROGRESO en CANCELADO.
      *
-     * 背景:计划的推进完全靠模型主动调 update_plan_step。一旦工具循环因轮次耗尽、
-     * 连续失败、用户停止等原因退出,不再有人更新步骤状态,计划卡就会永远停在“转圈”态。
-     * 这个方法是终态落账的兜底 —— 运行结束时由编排器调用,保证卡片能收尾。
+     * fondo:El avance del plan depende completamente del ajuste activo de update_plan_step del modelo. Una vez que el ciclo de la herramienta se agota debido a las rondas,
+     * Salida por fallo continuo, parada de usuario, etc.,Ya nadie actualiza el estado del paso,La tarjeta del plan siempre se detendrá en“girar en circulos”estado.
+     * Este método es el secreto para saldar la cuenta final. —— Llamado por el orquestador al final de la carrera.,Asegúrate de que la tarjeta termine bien.
      *
-     * @return 被自动收尾的计划（供调用方同步到 UI）。
+     * @return El plan que se cierra automáticamente (para que la persona que llama se sincronice con la interfaz de usuario).
      */
     fun settleUnfinishedPlans(sessionId: String = "default"): Map<String, AgentPlan> {
         synchronized(activePlans) {
@@ -119,7 +119,7 @@ class SkillAgentToolsImpl(
             )
             jsonArray.mapIndexed { idx, element ->
                 val obj = element.jsonObject
-                val stepTitle = obj["title"]?.jsonPrimitive?.content?.trim() ?: "步骤 ${idx + 1}"
+                val stepTitle = obj["title"]?.jsonPrimitive?.content?.trim() ?: "pasos ${idx + 1}"
                 val stepDesc = obj["description"]?.jsonPrimitive?.content?.trim() ?: ""
                 AgentPlanStep(
                     id = "step-$idx",
@@ -128,7 +128,7 @@ class SkillAgentToolsImpl(
                 )
             }
         }.onError { msg, _ ->
-            Logger.w("SkillAgentTools", "task_plan steps 解析失败: $msg")
+            Logger.w("SkillAgentTools", "task_plan steps El análisis falló: $msg")
         }.getOrNull()
             ?: return context.getString(R.string.skill_steps_invalid)
 
@@ -145,14 +145,14 @@ class SkillAgentToolsImpl(
         activePlans[planId] = plan
 
         val planSummary = buildString {
-            appendLine("计划已创建。planId: $planId")
-            appendLine("标题: $title")
-            appendLine("步骤:")
+            appendLine("Plan creado.planId: $planId")
+            appendLine("Título: $title")
+            appendLine("pasos:")
             steps.forEachIndexed { idx, step ->
                 appendLine("  $idx. ${step.title}${if (step.description.isNotBlank()) " — ${step.description.take(80)}" else ""}")
             }
             appendLine()
-            appendLine("请按顺序执行各步骤。每完成一步,调用 update_plan_step(planId=\"$planId\", stepIndex=索引, status=\"done\") 更新进度。")
+            appendLine("Siga los pasos en orden. cada paso completado,llamar update_plan_step(planId=\"$planId\", stepIndex=índice, status=\"done\") Progreso de la actualización.")
         }
         return planSummary
     }
@@ -198,7 +198,7 @@ class SkillAgentToolsImpl(
 
         val step = updatedSteps[stepIndex]
         val completedCount = updatedSteps.count { it.status == AgentPlanStepStatus.DONE }
-        return "步骤 $stepIndex「${step.title}」已更新为: ${context.getString(status.labelRes)}。进度: $completedCount/${updatedSteps.size}"
+        return "pasos $stepIndex「${step.title}” ha sido actualizado a: ${context.getString(status.labelRes)}. Progreso: $completedCount/${updatedSteps.size}"
     }
 
     suspend fun execChannelReply(args: Map<String, String>): String {
@@ -213,7 +213,7 @@ class SkillAgentToolsImpl(
         if (body.isBlank()) return context.getString(R.string.skill_body_blank)
 
         val assistant = resultOf { assistantRepository.getById(assistantId) }
-            .onError { msg, _ -> Logger.w("SkillAgentTools", "channel_reply getById 失败: $msg") }
+            .onError { msg, _ -> Logger.w("SkillAgentTools", "channel_reply getById falló: $msg") }
             .getOrNull()
         val senderName = assistant?.name ?: context.getString(R.string.skill_unknown_agent)
 
@@ -268,7 +268,7 @@ class SkillAgentToolsImpl(
             ?: return context.getString(R.string.skill_agent_phone_not_configured)
 
         val target = resultOf { assistantRepository.getById(targetAssistantId) }
-            .onError { msg, _ -> Logger.w("SkillAgentTools", "agent_phone getById 失败: $msg") }
+            .onError { msg, _ -> Logger.w("SkillAgentTools", "agent_phone getById falló: $msg") }
             .getOrNull()
         if (target == null) return context.getString(R.string.skill_agent_phone_target_not_found)
 

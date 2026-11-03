@@ -11,9 +11,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 单卡/单工具暂停回归:
- * - 单步暂停只改变目标步骤;
- * - 整卡暂停只标记仍可暂停的步骤,不改动已经运行或完成的步骤。
+ * tarjeta única/Retorno de pausa de una sola herramienta:
+ * - La pausa de un solo paso solo cambia el paso objetivo;
+ * - Se pausa toda la tarjeta y solo se marcan los pasos que aún se pueden pausar.,No modifique los pasos que ya se hayan ejecutado o completado.
  */
 class ChatTaskCardCoordinatorPauseTest {
 
@@ -25,7 +25,7 @@ class ChatTaskCardCoordinatorPauseTest {
                 taskCards = mapOf(
                     CARD_ID to TaskCardData(
                         id = CARD_ID,
-                        title = "任务",
+                        title = "Tarea",
                         phase = TaskCardPhase.EXECUTING,
                         steps = listOf(
                             TaskStep("s0", "calculator", status = TaskStepStatus.PENDING, toolCallId = "call-0"),
@@ -52,7 +52,7 @@ class ChatTaskCardCoordinatorPauseTest {
                 taskCards = mapOf(
                     CARD_ID to TaskCardData(
                         id = CARD_ID,
-                        title = "任务",
+                        title = "Tarea",
                         phase = TaskCardPhase.EXECUTING,
                         steps = listOf(
                             TaskStep(
@@ -86,7 +86,7 @@ class ChatTaskCardCoordinatorPauseTest {
                 taskCards = mapOf(
                     CARD_ID to TaskCardData(
                         id = CARD_ID,
-                        title = "任务",
+                        title = "Tarea",
                         phase = TaskCardPhase.EXECUTING,
                         steps = listOf(
                             TaskStep("s0", "calculator", status = TaskStepStatus.PENDING, toolCallId = "call-0"),

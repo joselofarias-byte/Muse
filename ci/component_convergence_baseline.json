@@ -1,5 +1,5 @@
 {
-  "note": "CMP-11 组件收敛基线。只允许下降: 基线外的新文件或出现次数高于本文件即失败。清理存量后运行 py -3 ci/script/check_component_convergence.py --update-baseline 收紧(默认拒绝写入上升值,需 --allow-increase)。",
+  "note": "CMP-11 Los componentes convergen a la línea de base. solo se permite descender: Los archivos nuevos fuera de la línea base o los archivos que aparecen con más frecuencia que este archivo fallarán. Después de borrar el inventario, ejecute py -3 ci/script/check_component_convergence.py --update-baseline para ajustar(Denegar escritura de valor ascendente por defecto,necesidad --allow-increase).",
   "ui_root": "app/src/main/java/io/zer0/muse/ui",
   "symbols": [
     "AlertDialog",

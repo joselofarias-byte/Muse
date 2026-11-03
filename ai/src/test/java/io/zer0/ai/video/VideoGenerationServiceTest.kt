@@ -16,7 +16,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-20: 视频生成服务轮询频率、同步/异步完成、超时与取消围栏测试。
+ * R-TEST-20: Frecuencia de sondeo del servicio de generación de vídeo, sincronización./Pruebas de finalización asincrónica, tiempo de espera y eliminación de barreras.
  */
 class VideoGenerationServiceTest {
 
@@ -89,7 +89,7 @@ class VideoGenerationServiceTest {
         val service = serviceWith(provider)
         val result = service.generateVideo(config(specId = "slow"), request(), timeoutMs = 1)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("任务超时") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("Tiempo de espera de la tarea") == true)
     }
 
     @Test

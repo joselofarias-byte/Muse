@@ -18,17 +18,17 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 新消息提示的计数推进:一次「列表状态 + 消息条数」的观察 → 新的待显示条数。
+ * Avance de conteo para alertas de mensajes nuevos:Una observación de "estado de la lista + número de mensajes" → El nuevo número de elementos que se mostrarán.
  *
- * 三条规则,都只看状态、不看手势:
- * - 人已经在底部:没有「错过了什么」,计数一律归零(新消息立刻被看见)
- * - 人不在底部且条数变多:把这一段增量累加进已有计数
- * - 条数没变(或变少,比如自己删了一条):计数不动,不清零也不变成负数
+ * tres reglas,Sólo se fijan en el estatus, no en los gestos:
+ * - La gente ya está en el fondo.:No se "pierde" nada,El conteo siempre vuelve a cero.(Los mensajes nuevos se ven inmediatamente)
+ * - La gente no está abajo y el número de bares aumenta:Agregue este incremento al recuento existente
+ * - El número de artículos no ha cambiado.(o menos,Por ejemplo, si elimina un elemento usted mismo):el conteo no se mueve,No se convierte en un número negativo aunque no se borre.
  *
- * @param previousTotal 上一次观察到的消息条数
- * @param currentTotal 这一次观察到的消息条数
- * @param atBottom 这一次观察时人是否停在最新一条
- * @param displayed 当前已经显示的条数
+ * @param previousTotal El número de mensajes observados por última vez.
+ * @param currentTotal El número de mensajes observados esta vez.
+ * @param atBottom ¿Se detuvo la persona en el último elemento al observar este momento?
+ * @param displayed El número de elementos mostrados actualmente.
  */
 internal fun advanceNewMessageCount(previousTotal: Int, currentTotal: Int, atBottom: Boolean, displayed: Int): Int {
     if (atBottom) return 0
@@ -37,28 +37,28 @@ internal fun advanceNewMessageCount(previousTotal: Int, currentTotal: Int, atBot
 }
 
 /**
- * 人是不是停在最新一条上。
+ * ¿La gente se detiene en el último?
  *
- * 倒序布局(`reverseLayout`)里下标 0 就是最新一条,贴着视口起点;一旦往上翻,它就滑出视口,
- * 首屏可见的就不再含下标 0。判据只读列表的布局结果,不累计滚动距离 ——
- * 快速甩动、内容高度变化都不会让它变歪。
+ * Diseño de orden inverso(`reverseLayout`)El subíndice 0 es el último.,Adjunto al origen de la ventana gráfica;Una vez que apareció,Se desliza fuera de la ventana gráfica.,
+ * Lo que es visible en la primera pantalla ya no contiene el subíndice 0. Criterios para el diseño de resultados de listas de solo lectura,No hay distancia de rodadura acumulada ——
+ * Las sacudidas rápidas y los cambios en la altura del contenido no provocarán que se distorsione.
  */
 internal fun LazyListState.isAtNewestItem(): Boolean {
     val info = layoutInfo
     if (info.totalItemsCount == 0) return true
     val newest = info.visibleItemsInfo.firstOrNull { item -> item.index == 0 } ?: return false
-    // 静止在底部时,最新一条的起点正好落在「视口起点 + 前置内边距」上
+    // mientras descansa en el fondo,El punto de partida del último cae exactamente en el "punto de partida de la ventana gráfica + relleno inicial"
     return newest.offset - (info.viewportStartOffset + info.beforeContentPadding) <= BOTTOM_TOLERANCE_PX
 }
 
 /**
- * 盯着列表状态与消息条数,把推导出的待显示条数报给调用方。
+ * Esté atento al estado de la lista y la cantidad de mensajes.,Informe el número derivado de elementos que se mostrarán a la persona que llama.
  *
- * 用 [snapshotFlow] 而不是滚动回调:列表布局与消息条数本身就是可观察状态,
- * 每一跳都重新推导一次「在不在底部」,不必累加滚动距离。
+ * usar [snapshotFlow] en lugar de devolución de llamada de desplazamiento:El diseño de la lista y la cantidad de mensajes en sí son estados observables.,
+ * Para cada salto, ¿se vuelve a deducir "¿está en el fondo"?,No es necesario acumular distancia de desplazamiento.
  *
- * @param messageTotal 当前消息总条数(不含时间分隔与「正在输入」这类占位行)
- * @param onCountChanged 待显示条数变化时回调;为 0 表示不该显示胶囊
+ * @param messageTotal Número total de mensajes actuales(No incluye líneas de marcador de posición como separación de tiempo y "escritura")
+ * @param onCountChanged Se le devuelve la llamada cuando cambia el número de elementos mostrados;Un valor de 0 indica que la cápsula no debe mostrarse
  */
 @Composable
 internal fun NewMessagesEffect(listState: LazyListState, messageTotal: Int, onCountChanged: (Int) -> Unit) {
@@ -84,7 +84,7 @@ internal fun NewMessagesEffect(listState: LazyListState, messageTotal: Int, onCo
     }
 }
 
-/** 提示胶囊:一条浮起的短条,点一下回到最新。 */
+/** Cápsula de consejos:una corta franja flotante,Haga clic para volver a lo último. */
 @Composable
 internal fun ChatNewMessagesPill(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -101,10 +101,10 @@ internal fun ChatNewMessagesPill(count: Int, onClick: () -> Unit, modifier: Modi
     )
 }
 
-/** 胶囊上的字:条数 + 一句「有几条没看」。 */
-internal fun newMessagePillLabel(count: Int): String = "$count 条新消息"
+/** palabras en la capsula:Número de elementos + frase \"Hay algunos elementos que no he leído\". */
+internal fun newMessagePillLabel(count: Int): String = "$count nuevos mensajes"
 
-/** 判定「贴底」允许的像素级偏差:滚动停稳时未必严格落在整数像素上。 */
+/** Determine la desviación permitida a nivel de píxeles de \"pegarse al fondo\":Es posible que la parada de desplazamiento no caiga exactamente en un píxel entero. */
 private const val BOTTOM_TOLERANCE_PX: Int = 2
 
 private val pillCorner = 50.dp

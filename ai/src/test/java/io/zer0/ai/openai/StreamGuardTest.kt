@@ -21,16 +21,16 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-01: OpenAIProvider stream-guard 状态机回归测试。
+ * R-TEST-01: OpenAIProvider stream-guard Pruebas de regresión de máquinas de estados.
  *
- * 覆盖 R-AI-01 修复后的关键判据:
- *  - 空 name tool_call 在 Done 时恢复为正文(guard 挂起/恢复)
- *  - reasoning 先到、content 滞后时正常结束,不误回退
- *  - 空 finishReason 仍能正常 Done
+ * Cubra los criterios clave después de la reparación del R-AI-01:
+ *  - El nombre vacío tool_call vuelve a ser texto al finalizar(guard colgar/restaurar)
+ *  - reasoning primero en llegar,content Termina normalmente cuando estás retrasado,Rebobinar sin error
+ *  - Acabado vacío. La razón todavía funciona bien. Done
  *
- * 早停触发非流式回退的完整网络路径由 FirstEventWatchdogTest(回退编排)
- * 与 ProviderRequestBodySnapshotTest(非流式请求格式)共同覆盖;
- * MockWebServer 下 SSE 断连与 fallback 二次请求存在时序竞争,不在此处重复模拟。
+ * La ruta de red completa para la parada anticipada que activa el respaldo sin transmisión viene dada por FirstEventWatchdogTest(orquestación alternativa)
+ * con ProviderRequestBodySnapshotTest(Formato de solicitud sin transmisión)cobertura común;
+ * MockWebServer Existe una competencia de tiempo entre la desconexión de SSE y las solicitudes secundarias de respaldo.,La simulación no se repite aquí.
  */
 class StreamGuardTest {
 
@@ -71,11 +71,11 @@ class StreamGuardTest {
         .setBody(events.joinToString(separator = "\n\n") { "data: $it\n" } + "\n\n")
 
     @Test
-    fun `空 name tool call 在 Done 时恢复为正文`() = runBlocking {
+    fun `La llamada a la herramienta de nombre vacío vuelve a ser texto cuando termina`() = runBlocking {
         server.enqueue(
             sse(
-                """{"choices":[{"index":0,"delta":{"content":"一二三四五六七八九十"},"finish_reason":null}]}""",
-                """{"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","function":{"name":"","arguments":"{\"city\":\"北京\"}"}}]},"finish_reason":null}]}""",
+                """{"choices":[{"index":0,"delta":{"content":"Uno, dos, tres, cuatro, cinco, seis, siete, ocho, noventa"},"finish_reason":null}]}""",
+                """{"choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","function":{"name":"","arguments":"{\"city\":\"Pekín\"}"}}]},"finish_reason":null}]}""",
                 """{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}""",
                 """[DONE]""",
             ),
@@ -84,19 +84,19 @@ class StreamGuardTest {
         val events = withTimeout(10_000) { provider().streamChat(request()).toList() }
 
         assertTrue(
-            "空 name tool call 的 arguments 应恢复为正文",
-            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("北京") },
+            "Los argumentos para la llamada a la herramienta de nombre vacío deben restaurarse a texto",
+            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("Pekín") },
         )
-        assertFalse("不应输出 ToolCallDelta", events.any { it is ChatStreamEvent.ToolCallDelta })
-        assertTrue("应以 Done 结束", events.last() is ChatStreamEvent.Done)
+        assertFalse("no debe ser emitido ToolCallDelta", events.any { it is ChatStreamEvent.ToolCallDelta })
+        assertTrue("Debería terminar con Listo", events.last() is ChatStreamEvent.Done)
     }
 
     @Test
-    fun `reasoning 先到 content 滞后时不误回退`() = runBlocking {
+    fun `reasoning No retrocederá accidentalmente cuando el contenido se retrase primero`() = runBlocking {
         server.enqueue(
             sse(
-                """{"choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"这是很长的一段思考过程"},"finish_reason":null}]}""",
-                """{"choices":[{"index":0,"delta":{"content":"最终回答内容"},"finish_reason":null}]}""",
+                """{"choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"Ha sido un largo proceso de reflexión."},"finish_reason":null}]}""",
+                """{"choices":[{"index":0,"delta":{"content":"Contenido de la respuesta final"},"finish_reason":null}]}""",
                 """{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}""",
                 """[DONE]""",
             ),
@@ -104,16 +104,16 @@ class StreamGuardTest {
 
         val events = withTimeout(10_000) { provider().streamChat(request()).toList() }
 
-        assertTrue("应输出 reasoning", events.any { it is ChatStreamEvent.ReasoningDelta })
-        assertTrue("应输出 content", events.any { it is ChatStreamEvent.ContentDelta && it.delta == "最终回答内容" })
-        assertTrue("应以 Done 结束", events.last() is ChatStreamEvent.Done)
+        assertTrue("debería ser salida reasoning", events.any { it is ChatStreamEvent.ReasoningDelta })
+        assertTrue("debería ser salida content", events.any { it is ChatStreamEvent.ContentDelta && it.delta == "Contenido de la respuesta final" })
+        assertTrue("Debería terminar con Listo", events.last() is ChatStreamEvent.Done)
     }
 
     @Test
-    fun `空 finishReason 仍正常 Done`() = runBlocking {
+    fun `Final vacío. La razón sigue siendo normal. Done`() = runBlocking {
         server.enqueue(
             sse(
-                """{"choices":[{"index":0,"delta":{"content":"一二三四五六七八九十"},"finish_reason":""}]}""",
+                """{"choices":[{"index":0,"delta":{"content":"Uno, dos, tres, cuatro, cinco, seis, siete, ocho, noventa"},"finish_reason":""}]}""",
                 """[DONE]""",
             ),
         )
@@ -121,11 +121,11 @@ class StreamGuardTest {
         val events = withTimeout(10_000) { provider().streamChat(request()).toList() }
 
         assertTrue(events.any { it is ChatStreamEvent.ContentDelta })
-        assertTrue("空 finishReason 后应正常 Done", events.last() is ChatStreamEvent.Done)
+        assertTrue("Debería funcionar bien después de un final vacío. Done", events.last() is ChatStreamEvent.Done)
     }
 
     @Test
-    fun `空工具名流断开后应完成非流式回退并回传工具调用`() = runBlocking {
+    fun `Después de desconectar el nombre de la herramienta vacía, se debe completar el respaldo sin transmisión y se debe devolver la llamada a la herramienta.`() = runBlocking {
         val malformedToolChunks = (0..10).map { index ->
             """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":$index,"id":"call_bad_$index","function":{"name":"","arguments":"{\"chunk\":\"$index-very-long\"}"}}]},"finish_reason":null}]}"""
         }
@@ -150,18 +150,18 @@ class StreamGuardTest {
         val events = withTimeout(10_000) { provider().streamChat(request()).toList() }
 
         assertTrue(
-            "非流式回退应把有效工具名回传给上层",
+            "El respaldo sin transmisión debe devolver el nombre válido de la herramienta a la capa superior",
             events.any { it is ChatStreamEvent.ToolCallDelta && it.name == "echo" },
         )
         assertTrue(
-            "非流式回退应把工具参数回传给上层",
+            "El respaldo sin transmisión debe devolver los parámetros de la herramienta a la capa superior",
             events.any { it is ChatStreamEvent.ToolCallDelta && it.argumentsDelta?.contains("\"ok\"") == true },
         )
-        assertTrue("回退完成后 Flow 必须发出 Done", events.last() is ChatStreamEvent.Done)
+        assertTrue("Una vez completada la reversión, Flow debe emitir Done", events.last() is ChatStreamEvent.Done)
     }
 
     @Test
-    fun `非流式回退连续失败时必须发出错误而不能 Done-only 收口`() = runBlocking {
+    fun `Cuando el respaldo sin transmisión falla continuamente, se debe emitir un error en lugar del cierre de solo hecho.`() = runBlocking {
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"content":"a"},"finish_reason":"stop"}]}""",
@@ -184,36 +184,36 @@ class StreamGuardTest {
         val events = withTimeout(10_000) { provider().streamChat(request()).toList() }
 
         assertTrue(
-            "回退连续失败必须把明确错误传给上层",
+            "Si la reversión falla continuamente, se debe pasar un error claro a la capa superior.",
             events.any { it is ChatStreamEvent.Error },
         )
         assertFalse(
-            "回退失败不能伪装成正常 Done-only 完成",
+            "El error de reversión no se puede disfrazar como una finalización normal de solo hecho",
             events.last() is ChatStreamEvent.Done,
         )
     }
 
     /**
-     * v2.6.1 (#5): 非流式回退遇到 finish_reason=tool_calls 时，reasoning 不得兜底成正文。
+     * v2.6.1 (#5): Se encontró un recurso alternativo sin transmisión finish_reason=tool_calls cuando,reasoning No cuentes toda la historia.
      *
-     * 用户实测：模型停下来调工具但调用未解析出来时，旧逻辑把 reasoning_content
-     * v2.6.1 (#5) → v2.7 冗余措施（用户确认“吐可以，空不行”）。
+     * Medición real del usuario: cuando el modelo se detiene para ajustar la herramienta pero la llamada no se analiza, la lógica anterior reasoning_content
+     * v2.6.1 (#5) → v2.7 Medidas de despido (confirmación del usuario“Está bien vomitar, pero no vaciar.”).
      *
-     * 触发路径：流式只发 reasoning（content 为 0）→ stream-guard 判定过早结束 →
-     * 非流式回退 → 回退响应 content 空、reasoning_content 非空、finish_reason=tool_calls
-     * **但一个工具调用都没解析出来**（协议畸形/上游降级）。
-     * issue #5 方案 C（v2.6.4 起）：协议畸形**首次不吐 reasoning**，而是报错触发重试。
+     * Ruta de activación: transmisión solo de razonamiento (content es 0)→ stream-guard La sentencia terminó prematuramente →
+     * Respaldo sin transmisión → El contenido de la respuesta alternativa está vacío,reasoning_content No vacío,finish_reason=tool_calls
+     * **Pero no se analizó ni una sola llamada a la herramienta.**(Malformación del protocolo/degradación aguas arriba).
+     * issue #5 Plan C (v2.6.4 (de): Malformación del protocolo**No vomitar por primera vez. reasoning**, pero un error provoca un reintento.
      *
-     * 触发路径：流式只发 reasoning（content 为 0）→ stream-guard 判定过早结束 →
-     * 非流式回退 → 回退响应 content 空、reasoning_content 非空、finish_reason=tool_calls
-     * **但一个工具调用都没解析出来**（协议畸形/上游降级）。
+     * Ruta de activación: transmisión solo de razonamiento (content es 0)→ stream-guard La sentencia terminó prematuramente →
+     * Respaldo sin transmisión → El contenido de la respuesta alternativa está vacío,reasoning_content No vacío,finish_reason=tool_calls
+     * **Pero no se analizó ni una sola llamada a la herramienta.**(Malformación del protocolo/degradación aguas arriba).
      *
-     * 旧行为：直接把 reasoning 当正文（用户看到思考泄漏，见 issue #5）。
-     * 新行为：先报错让上层重发一次；真救不回来才退兜底保 never-empty。
+     * Comportamiento anterior: trate el razonamiento directamente como texto (los usuarios ven fugas de pensamiento, consulte el número 5).
+     * Nuevo comportamiento: informe un error primero y deje que la capa superior lo reenvíe; Sólo retirará la garantía si no se puede guardar. Nunca vacío.
      */
     @Test
-    fun `非流式回退遇工具协议畸形时首次不吐 reasoning`() = runBlocking {
-        val thinkingText = "我先判断一下需不需要调用工具,这一步是内部推理"
+    fun `La reversión sin transmisión no se detecta la primera vez que el protocolo de la herramienta tiene un formato incorrecto. reasoning`() = runBlocking {
+        val thinkingText = "Primero déjame determinar si necesito llamar a la herramienta.,Este paso es el razonamiento interno."
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"$thinkingText"},"finish_reason":null}]}""",
@@ -221,7 +221,7 @@ class StreamGuardTest {
                 """[DONE]""",
             ),
         )
-        // 非流式回退响应：content 空、reasoning_content 非空、finish_reason=tool_calls、无 tool_calls
+        // Respuesta alternativa sin transmisión:content vacío,reasoning_content No vacío,finish_reason=tool_calls, ninguno tool_calls
         server.enqueue(
             MockResponse()
                 .setHeader("Content-Type", "application/json")
@@ -234,27 +234,27 @@ class StreamGuardTest {
         val events = withTimeout(15_000) { provider().streamChat(request()).toList() }
 
         assertFalse(
-            "协议畸形首次不应把 reasoning 当正文（避免思考泄漏）",
-            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("内部推理") },
+            "Por primera vez, el razonamiento no debe utilizarse como texto del protocolo deformidad (para evitar fugas de pensamiento)",
+            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("razonamiento interno") },
         )
         assertTrue(
-            "应报错以便上层重试",
+            "Se debe informar un error para que la capa superior pueda volver a intentarlo.",
             events.any { it is ChatStreamEvent.Error },
         )
         assertTrue(
-            "reasoning 仍应作为思考过程下发",
+            "reasoning todavía debería emitirse como un proceso de pensamiento",
             events.any { it is ChatStreamEvent.ReasoningDelta },
         )
     }
 
     /**
-     * 对照：有工具调用时不得把 reasoning 当正文（#5 原始诉求）。
+     * Contraste: no utilice el razonamiento como texto cuando lo llame una herramienta (#5 apelación original).
      *
-     * 模型停下来调工具，后续轮次会接着产出；把思考当正文会直接上屏。
+     * Cuando el modelo se detiene para ajustar las herramientas, las rondas posteriores continuarán produciendo resultados; Si tratas tus pensamientos como texto, aparecerán directamente en la pantalla.
      */
     @Test
-    fun `非流式回退遇 tool_calls 且有工具调用时不兜底`() = runBlocking {
-        val thinkingText = "我先判断一下需不需要调用工具,这一步是内部推理不应上屏"
+    fun `El respaldo sin transmisión encuentra llamadas a herramientas y no revela los detalles cuando hay llamadas a herramientas.`() = runBlocking {
+        val thinkingText = "Primero déjame determinar si necesito llamar a la herramienta.,Este paso es un razonamiento interno y no debe mostrarse en la pantalla."
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"$thinkingText"},"finish_reason":null}]}""",
@@ -262,7 +262,7 @@ class StreamGuardTest {
                 """[DONE]""",
             ),
         )
-        // 非流式回退响应：带完整 tool_calls
+        // Respuesta alternativa sin transmisión: con completa tool_calls
         server.enqueue(
             MockResponse()
                 .setHeader("Content-Type", "application/json")
@@ -276,22 +276,22 @@ class StreamGuardTest {
         val events = withTimeout(15_000) { provider().streamChat(request()).toList() }
 
         assertTrue(
-            "应回传工具调用给上层",
+            "La llamada a la herramienta debe devolverse a la capa superior.",
             events.any { it is ChatStreamEvent.ToolCallDelta },
         )
         assertFalse(
-            "有工具调用待执行时，reasoning 不得兜底成正文",
-            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("内部推理") },
+            "Cuando hay que ejecutar una llamada a una herramienta,reasoning No cuentes toda la historia",
+            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("razonamiento interno") },
         )
     }
 
     /**
-     * v2.6.1 (#5) 反向对照：真·reasoning-only 模型（停止原因非 tool_calls）
-     * 仍应保留兜底，否则用户看到空回复。
+     * v2.6.1 (#5) Comparación inversa: verdadera·reasoning-only Modelo (motivo de parada distinto de tool_calls)
+     * La línea final aún debe conservarse; de ​​lo contrario, el usuario verá una respuesta vacía.
      */
     @Test
-    fun `非流式回退遇普通停止原因时保留 reasoning 兜底`() = runBlocking {
-        val thinkingText = "这是一段比较长的思考内容用于触发流式过早结束判定并保留兜底行为"
+    fun `El respaldo sin transmisión mantiene el razonamiento cuando se encuentran motivos de detención comunes.`() = runBlocking {
+        val thinkingText = "Este es un contenido de pensamiento relativamente largo que se utiliza para desencadenar el final prematuro del flujo y retener el comportamiento evasivo."
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"$thinkingText"},"finish_reason":null}]}""",
@@ -311,8 +311,8 @@ class StreamGuardTest {
         val events = withTimeout(15_000) { provider().streamChat(request()).toList() }
 
         assertTrue(
-            "普通停止原因下 reasoning-only 仍应兜底成正文，避免空回复",
-            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("思考内容") },
+            "Por razones comunes para detenerse, se debe escribir solo razonamiento en el texto principal para evitar respuestas vacías.",
+            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("Piensa en el contenido") },
         )
     }
 }

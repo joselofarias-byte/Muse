@@ -10,10 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * ThinkTagTransformer + stripThinkTags 单元测试。
+ * ThinkTagTransformer + stripThinkTags Pruebas unitarias.
  *
- * ThinkTagTransformer 用于把 ASSISTANT 消息中的 `<think>...</think>` 标签提取到 reasoning 字段。
- * stripThinkTags 是独立工具函数,用于翻译路径的 think 标签清理。
+ * ThinkTagTransformer Se utiliza para poner el mensaje ASISTENTE en `<think>...</think>` Las etiquetas se extraen en el campo de razonamiento.
+ * stripThinkTags es una función de herramienta independiente,Piense en la limpieza de etiquetas para las rutas de traducción.
  */
 class ThinkTagTransformerTest {
 
@@ -26,14 +26,14 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>这是思考过程</think>这是最终回复",
+                content = "<think>Este es el proceso de pensamiento.</think>Esta es la respuesta final",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
         assertEquals(1, result.size)
-        assertEquals("这是思考过程", result[0].reasoning)
-        assertEquals("这是最终回复", result[0].content)
+        assertEquals("Este es el proceso de pensamiento.", result[0].reasoning)
+        assertEquals("Esta es la respuesta final", result[0].content)
     }
 
     @Test
@@ -41,13 +41,13 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>一步步分析</think>所以答案是42。",
+                content = "<think>análisis paso a paso</think>entonces la respuesta es42.",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        assertEquals("所以答案是42。", result[0].content)
-        assertEquals("一步步分析", result[0].reasoning)
+        assertEquals("entonces la respuesta es42.", result[0].content)
+        assertEquals("análisis paso a paso", result[0].reasoning)
     }
 
     @Test
@@ -55,7 +55,7 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "这是一个普通回复。",
+                content = "Esta es una respuesta normal.",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
@@ -69,13 +69,13 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>思考过程</think>",
+                content = "<think>proceso de pensamiento</think>",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
         assertEquals("", result[0].content)
-        assertEquals("思考过程", result[0].reasoning)
+        assertEquals("proceso de pensamiento", result[0].reasoning)
     }
 
     @Test
@@ -83,13 +83,13 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think></think>回复内容",
+                content = "<think></think>Responder contenido",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        assertEquals("回复内容", result[0].content)
-        assertNull(result[0].reasoning) // 空标签,extracted=null
+        assertEquals("Responder contenido", result[0].content)
+        assertNull(result[0].reasoning) // etiqueta vacía,extracted=null
     }
 
     @Test
@@ -97,7 +97,7 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>未闭合标签",
+                content = "<think>Etiqueta no cerrada",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
@@ -109,19 +109,19 @@ class ThinkTagTransformerTest {
     @Test
     fun `only ASSISTANT messages are processed`() = runTest {
         val messages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "你是助手"),
-            UIMessage(role = MessageRole.USER, content = "<think>用户思考</think>你好"),
-            UIMessage(role = MessageRole.ASSISTANT, content = "<think>助手思考</think>回复"),
+            UIMessage(role = MessageRole.SYSTEM, content = "tu eres el asistente"),
+            UIMessage(role = MessageRole.USER, content = "<think>Pensamiento del usuario</think>Hola"),
+            UIMessage(role = MessageRole.ASSISTANT, content = "<think>asistente de pensamiento</think>Responder"),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        // SYSTEM 消息保持不变
+        // SYSTEM El mensaje sigue siendo el mismo.
         assertEquals(messages[0], result[0])
-        // USER 消息保持不变(即使包含 think 标签)
+        // USER El mensaje sigue siendo el mismo.(Incluso si la etiqueta think está incluida)
         assertEquals(messages[1], result[1])
-        // ASSISTANT 消息已处理
-        assertEquals("回复", result[2].content)
-        assertEquals("助手思考", result[2].reasoning)
+        // ASSISTANT El mensaje ha sido procesado.
+        assertEquals("Responder", result[2].content)
+        assertEquals("asistente de pensamiento", result[2].reasoning)
     }
 
     @Test
@@ -129,15 +129,15 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>思考</think>回复",
-                reasoning = "已有推理",
+                content = "<think>pensar</think>Responder",
+                reasoning = "ya inferido",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        assertEquals("已有推理", result[0].reasoning)
-        // content 保持不变,因为已有 reasoning 字段 -> 跳过处理
-        assertEquals("<think>思考</think>回复", result[0].content)
+        assertEquals("ya inferido", result[0].reasoning)
+        // content permanecer sin cambios,Porque ya existe un campo de razonamiento. -> Saltar procesamiento
+        assertEquals("<think>pensar</think>Responder", result[0].content)
     }
 
     @Test
@@ -145,13 +145,13 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>第一步</think><think>第二步</think>最终答案",
+                content = "<think>primer paso</think><think>Paso 2</think>respuesta final",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        assertEquals("最终答案", result[0].content)
-        assertEquals("第一步\n第二步", result[0].reasoning)
+        assertEquals("respuesta final", result[0].content)
+        assertEquals("primer paso\nPaso 2", result[0].reasoning)
     }
 
     @Test
@@ -159,13 +159,13 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<THINK>大写标签</THINK>内容",
+                content = "<THINK>etiqueta mayúscula</THINK>contenido",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
-        assertEquals("内容", result[0].content)
-        assertEquals("大写标签", result[0].reasoning)
+        assertEquals("contenido", result[0].content)
+        assertEquals("etiqueta mayúscula", result[0].reasoning)
     }
 
     @Test
@@ -173,40 +173,40 @@ class ThinkTagTransformerTest {
         val messages = listOf(
             UIMessage(
                 role = MessageRole.ASSISTANT,
-                content = "<think>\n多行\n思考\n</think>\n回复内容",
+                content = "<think>\nmúltiples líneas\npensar\n</think>\nResponder contenido",
             ),
         )
         val result = transformer.transform(messages, TransformContext())
 
         assertNotNull(result[0].reasoning)
-        assertTrue(result[0].reasoning!!.contains("多行"))
-        assertTrue(result[0].reasoning!!.contains("思考"))
-        assertEquals("回复内容", result[0].content.trim())
+        assertTrue(result[0].reasoning!!.contains("múltiples líneas"))
+        assertTrue(result[0].reasoning!!.contains("pensar"))
+        assertEquals("Responder contenido", result[0].content.trim())
     }
 
     // ======================== stripThinkTags utility ========================
 
     @Test
     fun `stripThinkTags removes think blocks`() {
-        val result = stripThinkTags("<think>思考</think>回复")
-        assertEquals("回复", result)
+        val result = stripThinkTags("<think>pensar</think>Responder")
+        assertEquals("Responder", result)
     }
 
     @Test
     fun `stripThinkTags returns original when no tags`() {
-        val result = stripThinkTags("普通文本无标签")
-        assertEquals("普通文本无标签", result)
+        val result = stripThinkTags("Texto normal sin etiquetas")
+        assertEquals("Texto normal sin etiquetas", result)
     }
 
     @Test
     fun `stripThinkTags handles empty content with only tags`() {
-        val result = stripThinkTags("<think>思考</think>")
+        val result = stripThinkTags("<think>pensar</think>")
         assertEquals("", result)
     }
 
     @Test
     fun `stripThinkTags handles text before and after tags`() {
-        val result = stripThinkTags("开头<think>中间</think>结尾")
-        assertEquals("开头结尾", result)
+        val result = stripThinkTags("comienzo<think>medio</think>finalizando")
+        assertEquals("Principio y final", result)
     }
 }

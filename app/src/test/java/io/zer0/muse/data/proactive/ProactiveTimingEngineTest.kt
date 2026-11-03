@@ -7,29 +7,29 @@ import org.junit.Test
 import kotlin.math.abs
 
 /**
- * 主动消息判定引擎的单测。
+ * Prueba única del motor de decisión de mensajes activo.
  *
- * 这个引擎只回答「现在能不能说」，所以测试覆盖：
- *  - 每一道硬闸都能独立拦截（免打扰 / 用户刚说过话 / 正在生成 / 冷却 / 太频繁）
- *  - 预算的地板、天花板、学习值三层关系
- *  - 反馈增量的不对称性
+ * Este motor solo responde "¿puedes saberlo ahora?", por lo que la prueba cubre:
+ *  - Cada puerta dura se puede interceptar de forma independiente (no molestar/el usuario solo habló/generando/enfriando/demasiado frecuente)
+ *  - La relación de tres niveles entre piso, techo y valor de aprendizaje presupuestario
+ *  - Asimetría de incrementos de retroalimentación.
  *
- * 「该说什么」不在这里测 —— 那由生成那一步看着最近对话决定，判定引擎不参与。
+ * "Qué decir" no se prueba aquí. —— Eso se determina observando el diálogo reciente en el paso de generación, y el motor de juicio no está involucrado.
  *
- * 用固定时间戳而不是 System.currentTimeMillis()：跨日/跨时的断言
- * 依赖绝对时间会变成 flaky，而这套逻辑最怕的就是偶发。
+ * Utilice una marca de tiempo fija en su lugar System.currentTimeMillis():día cruzado/afirmación a través del tiempo
+ * Confiar en el tiempo absoluto se volverá inestable, y lo que más teme esta lógica es el azar.
  */
 class ProactiveTimingEngineTest {
 
-    /** 2026-10-25 14:00 本地时间（下午，不在任何默认免打扰时段内）。 */
+    /** 2026-10-25 14:00 Hora local (tarde, no durante ningún período DND predeterminado). */
     private val baseNow = localMillis(2026, 10, 25, 14, 0)
 
     // ══════════════════════════════════════════════════════════════
-    // 时机：能不能说
+    // Momento: ¿Puedo decirlo?
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `免打扰时段内直接拦截`() {
+    fun `Interceptar directamente durante el período de no molestar`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(now = localMillis(2026, 10, 25, 23, 30)),
         )
@@ -38,7 +38,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `全天允许时深夜也放行`() {
+    fun `Si se permite durante el día, también se permitirá a altas horas de la noche.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(now = localMillis(2026, 10, 25, 23, 30), allDayAllowed = true),
         )
@@ -46,7 +46,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `用户刚说过话不发`() {
+    fun `El usuario acaba de decir algo pero no lo envió.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastUserMessageAt = baseNow - 3 * 60 * 1000L),
         )
@@ -54,7 +54,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `用户说话已过去 11 分钟就不再算活跃`() {
+    fun `Un usuario ya no está activo después de 11 minutos de conversación.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastUserMessageAt = baseNow - 11 * 60 * 1000L),
         )
@@ -62,13 +62,13 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `正在生成回复时不插话`() {
+    fun `No interrumpir mientras se genera una respuesta`() {
         val decision = ProactiveTimingEngine.evaluate(input().copy(isGenerating = true))
         assertEquals(ProactiveTimingEngine.Verdict.IN_CONVERSATION, decision.verdict)
     }
 
     @Test
-    fun `冷却期内不发`() {
+    fun `No emitido durante el período de enfriamiento`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(relation = relation().copy(cooldownUntil = baseNow + 24 * 3600_000L)),
         )
@@ -76,7 +76,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `距上一条主动消息太近不发`() {
+    fun `El último mensaje activo está demasiado cerca para enviarse.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveSentAt = baseNow - 30 * 60 * 1000L),
         )
@@ -84,7 +84,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `间隔够了就能发`() {
+    fun `Puedes enviarlo si el intervalo es suficiente.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveSentAt = baseNow - 4 * 3600_000L),
         )
@@ -92,9 +92,9 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `上一轮还在生成时也按太近拦下`() {
-        // 结果账是空的（消息还没落库），但上一轮的开跑时间已经登记。
-        // 这正是生成窗口内的重复发送来源：只看结果账就会以为「上一轮不存在」。
+    fun `Cuando la ronda anterior todavía se estaba generando, haz clic demasiado cerca para detenerla.`() {
+        // Como resultado, la cuenta está vacía (el mensaje aún no se ha grabado), pero se ha registrado la hora de inicio de la ronda anterior.
+        // Esta es exactamente la fuente del envío duplicado dentro de la ventana de generación: con sólo mirar la cuenta de resultados te hará pensar "la ronda anterior no existió".
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveSentAt = 0L, lastProactiveAttemptAt = baseNow - 5 * 60 * 1000L),
         )
@@ -103,7 +103,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `上一轮开跑已过去很久就不再拦`() {
+    fun `Ha pasado mucho tiempo desde la última ronda de carrera, así que no pararé más.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveAttemptAt = baseNow - 4 * 3600_000L),
         )
@@ -111,8 +111,8 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `尝试时间不会掩盖更近的发送时间`() {
-        // 两个时间戳同时存在时，谁更近就以谁为准。
+    fun `El tiempo de prueba no enmascara los tiempos de envío más recientes.`() {
+        // Cuando existan dos marcas de tiempo al mismo tiempo, prevalecerá la más reciente.
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
                 lastProactiveSentAt = baseNow - 10 * 60 * 1000L,
@@ -123,23 +123,23 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `账本状态不再影响判定结论`() {
-        // 素材来自最近对话，不来自账本。同样的输入只要时机和额度都过，就该放行。
+    fun `El estado del libro mayor ya no afecta la conclusión del juicio.`() {
+        // El material proviene de conversaciones recientes, no de libros de contabilidad. Se deben liberar los mismos insumos siempre que se superen el calendario y la cuota.
         val decision = ProactiveTimingEngine.evaluate(input())
         assertEquals(ProactiveTimingEngine.Verdict.OK, decision.verdict)
         assertTrue(decision.shouldSend)
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 预算
+    // presupuesto
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `预算耗尽时如实报告用的是预算`() {
+    fun `Informar con sinceridad cuando se agote el presupuesto y utilizarlo.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
                 relation = relation().copy(
-                    // 标准档每天 15 条，发满之后才是真正的「额度用完」
+                    // La cuota estándar es de 15 líneas por día y la cuota se “agotará” realmente una vez que se haya emitido por completo.
                     spentToday = 15,
                     intimacy = 0.15f,
                     intensity = ProactiveIntensity.STANDARD.name,
@@ -150,7 +150,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `标准档发到第 14 条时仍有额度`() {
+    fun `Todavía hay una cuota cuando se emite el expediente estándar al artículo 14.`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
                 relation = relation().copy(
@@ -163,28 +163,28 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `标准档每天拿到 15 条额度`() {
+    fun `El nivel estándar recibe 15 cuotas cada día`() {
         val relation = relation().copy(intimacy = 0.15f, intensity = ProactiveIntensity.STANDARD.name)
-        // 额度只看档位，不再被亲密度打折
+        // El cupo sólo depende del nivel y ya no se descontará por intimidad.
         assertEquals(15f, ProactiveTimingEngine.remainingBudget(relation), 0.001f)
     }
 
     @Test
-    fun `黏人档额度不受亲密度影响`() {
-        // intimacy 为 0 也应该是不限，而不是回到一个很小的地板值
+    fun `El nivel de rigidez no se ve afectado por el nivel de intimidad.`() {
+        // intimacy 0 también debería ser ilimitado, en lugar de volver a caer a un valor mínimo muy pequeño
         val relation = relation().copy(intimacy = 0f, intensity = ProactiveIntensity.CLINGY.name)
         val remaining = ProactiveTimingEngine.remainingBudget(relation)
-        assertTrue("黏人档应当不限，实际 $remaining", remaining > 1_000_000f)
+        assertTrue("No debería haber límite para el apego. De hecho, $remaining", remaining > 1_000_000f)
     }
 
     @Test
-    fun `安静档固定 3 条不受亲密度影响`() {
+    fun `Las marchas silenciosas se fijan en 3 y no se ven afectadas por la intimidad.`() {
         val relation = relation().copy(intimacy = 1f, intensity = ProactiveIntensity.QUIET.name)
         assertEquals(3f, ProactiveTimingEngine.remainingBudget(relation), 0.001f)
     }
 
     @Test
-    fun `剩余额度随今日已发递减`() {
+    fun `El monto restante disminuirá a medida que el monto se emita hoy.`() {
         val idle = relation().copy(intimacy = 0.5f, intensity = ProactiveIntensity.ACTIVE.name, spentToday = 0)
         val used = idle.copy(spentToday = 3)
         assertEquals(30f, ProactiveTimingEngine.remainingBudget(idle), 0.001f)
@@ -192,13 +192,13 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `发满后额度归零`() {
+    fun `El monto volverá a cero una vez que se haya emitido en su totalidad.`() {
         val relation = relation().copy(intensity = ProactiveIntensity.RESERVED.name, spentToday = 8)
         assertEquals(0f, ProactiveTimingEngine.remainingBudget(relation), 0.001f)
     }
 
     @Test
-    fun `互动回补不再改变每日条数`() {
+    fun `El reabastecimiento interactivo ya no cambia el recuento de barras diarias`() {
         val base = relation().copy(intimacy = 0.5f, spentToday = 2, intensity = ProactiveIntensity.STANDARD.name)
         val earned = base.copy(earnedToday = 1f)
         assertEquals(
@@ -209,53 +209,53 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `跨日需要重置预算计数`() {
+    fun `Los recuentos de presupuesto deben restablecerse entre días`() {
         val relation = relation().copy(budgetDate = "2026-10-24")
         assertTrue(ProactiveTimingEngine.needsBudgetReset(relation, "2026-10-25"))
         assertFalse(ProactiveTimingEngine.needsBudgetReset(relation, "2026-10-24"))
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 反馈 → 亲密度
+    // retroalimentación → intimidad
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `回复的加分远大于划掉的扣分`() {
+    fun `Los puntos de bonificación por responder son mucho mayores que la deducción por tachar.`() {
         val replied = ProactiveLearning.intimacyDelta(OutcomeState.REPLIED)
         val dismissed = ProactiveLearning.intimacyDelta(OutcomeState.DISMISSED)
         assertTrue(replied > 0f)
         assertTrue(dismissed < 0f)
-        // 划掉要连划好几次才抵得上一次回复 —— 因为划掉很可能只是他现在忙
+        // Es necesario tacharlo varias veces antes de que valga la pena responder. —— Porque tacharlo probablemente sea solo porque está ocupado en este momento.
         assertTrue(
-            "正负反馈量级应明显不对称：reply=$replied dismiss=$dismissed",
+            "La magnitud de la retroalimentación positiva y negativa debería ser significativamente asimétrica:reply=$replied dismiss=$dismissed",
             abs(replied) > abs(dismissed) * 1.5f,
         )
     }
 
     @Test
-    fun `亲密度被钳在 0 到 1 之间`() {
+    fun `La cercanía se fija entre 0 y 1`() {
         assertEquals(1f, ProactiveLearning.applyOutcome(0.99f, OutcomeState.REPLIED), 0.001f)
         assertEquals(0f, ProactiveLearning.applyOutcome(0.01f, OutcomeState.DISMISSED), 0.001f)
     }
 
     @Test
-    fun `样本太少时不下不受欢迎的结论`() {
-        // 3 条全划掉也还不算 —— 样本不足
+    fun `Evite sacar conclusiones impopulares cuando la muestra sea demasiado pequeña`() {
+        // 3 No importa si tachas todos los elementos. —— Muestra insuficiente
         assertFalse(ProactiveLearning.isKindUnpopular(dismissed = 3, total = 3))
-        // 4 条里 3 条被划掉才算
+        // 4 Sólo cuenta si 3 de los ítems están tachados
         assertTrue(ProactiveLearning.isKindUnpopular(dismissed = 3, total = 4))
-        // 4 条里 2 条被划掉不算
+        // 4 No cuenta si se tachan 2 elementos
         assertFalse(ProactiveLearning.isKindUnpopular(dismissed = 2, total = 4))
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 构造辅助
+    // Ayuda a la construcción
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * 构造辅助一律零参默认 + copy。
+     * El auxiliar de construcción siempre tiene cero parámetros y por defecto es + copiar.
      *
-     * 这样每个用例只写出它真正关心的那一两个差异，读的人不用数位置。
+     * De esta manera, cada caso de uso solo escribe una o dos diferencias que realmente le interesan y el lector no necesita contar las posiciones.
      */
     private fun input(): ProactiveTimingEngine.Input = ProactiveTimingEngine.Input(
         now = baseNow,
@@ -278,7 +278,7 @@ class ProactiveTimingEngineTest {
         earnedToday = 0f,
     )
 
-    /** 构造本地时区的时间戳，避免用 fixed offset 在别的时区跑测试时漂移。 */
+    /** Cree una marca de tiempo en la zona horaria local para evitar la desviación al ejecutar pruebas en otras zonas horarias utilizando un desplazamiento fijo. */
     private fun localMillis(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long =
         java.util.Calendar.getInstance().apply {
             clear()

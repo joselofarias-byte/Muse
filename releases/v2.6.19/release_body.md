@@ -1,70 +1,70 @@
 # Muse v2.6.19
 
-> 这一版做的是「把该省的工作省掉，把该有的反馈补上」：
-> 四条链路的性能整改、JS 沙盒终于能真的联网、编辑消息后分支就地展开、
-> 主动消息不再一股脑往 Agent 页塞。凡是没有测量支撑的说法，都从文档里撤掉了。
+> Esta versión lo que hace es "omitir el trabajo de la provincia y completar la retroalimentación que se debe brindar":
+> Rectificación de rendimiento de cuatro enlaces,JS El sandbox finalmente se puede conectar a Internet. Después de editar el mensaje, se pueden implementar sucursales en el acto.
+> Los mensajes activos ya no aparecen inundados en la página del Agente. Cualquier afirmación que no estuviera respaldada por mediciones se eliminó del documento.
 
-本版合并了 v2.6.18 之后到现在的全部改动。
+Esta versión incorpora todos los cambios desde la v2.6.18 hasta la actualidad.
 
 ---
 
-## 中文
+## chino
 
-### 性能：三条有证据的收益
+### Rendimiento: tres beneficios comprobados
 
-| 指标 | 改前 | 改后 |
+| indicador | antes del cambio | Después de la modificación |
 |---|---|---|
-| 渠道积压 50 条带图消息，45 秒内磁盘写入 | 479.9 MB | **10.6 MB（45×）** |
-| 每轮对话的客户端开销（提示词组装 + 管道） | 约 530 ms | **约 355 ms（−33%）** |
-| 安装包体积 | — | **每个 ABI −2.96 MB** |
+| El canal tiene un atraso de 50 mensajes con imágenes,45 El disco escribe en segundos | 479.9 MB | **10.6 MB(45×)** |
+| Gastos generales del lado del cliente por ronda de conversación (ensamblaje de palabras rápidas + canalización) | aprox. 530 ms | **Aproximadamente 355 ms (−33%)** |
+| Tamaño del paquete de instalación | — | **cada uno ABI −2.96 MB** |
 
-- 收件箱、会话、卡片数据都改成按条目/按会话分片落盘，不再「处理一条消息重写整个收件箱」；
-- 每轮里那些「算一遍只为确认真没变」的工作（工具清单、经验库、上下文占用、压缩 token）改成算一次记住；
-- 日志文件改成常驻句柄，不再每行开关一次文件。
+- Los datos de la bandeja de entrada, la conversación y la tarjeta se cambian a elementos/Distribuido por fragmentos de sesión, ya no "procesa un mensaje y reescribe toda la bandeja de entrada";
+- En cada ronda, las tareas que se "calculan una vez sólo para confirmar que no han cambiado" (lista de herramientas, biblioteca de experiencias, ocupación de contexto, token de compresión) se cambian para contarse una vez y recordarse;
+- El archivo de registro se cambia a un identificador residente y el archivo ya no se abre ni se cierra para cada línea.
 
-同时**撤回**了三条曾经写在文档里、但被测量推翻的说法：卡片整页重载 68→9、卡片滚动帧 36→34 ms、
-8 张卡内存 −7.5%。用 n=3 复测后它们都没有显著差异 —— 代码保留，但不再计入收益。
+al mismo tiempo**Retirar**Hay tres afirmaciones que alguna vez estuvieron escritas en el documento pero que fueron volcadas por las medidas: la tarjeta se recarga en toda la página. 68→9, marco de desplazamiento de tarjeta 36→34 ms,
+8 memoria de la tarjeta −7.5%. usar n=3 No hubo diferencias significativas entre ellos después de volver a realizar la prueba. —— El código permanece pero ya no cuenta para las ganancias.
 
-### JS 沙盒：网络与异步返回值
+### JS Sandbox: redes y valores de retorno asincrónicos
 
-- **fetch / XMLHttpRequest 由宿主原生发起**，不受浏览器同源策略限制（沙盒页面 origin 是 null，
-  以前任何跨站请求都会被 CORS 拦成失败）。每次外发都会写审计日志：方法、主机、体积、状态码。
-- **脚本可以 `return Promise`**：以前 async 函数返回的是空对象 `{}`，成功和失败完全不可区分；
-  现在会等 Promise 完成再返回真实结果，异常也会进 `error` 字段。
-- 脚本返回值不再被二次编码：`return {a:1}` 与 `return '{"a":1}'` 都只编码一次。
-- 顺带修掉一个一直存在的 bug：沙盒初始化脚本只在建 WebView 时注入一次，
-  页面加载后 `host.getConfig()` 等覆盖其实已经失效 —— 现在每次执行前重新注入。
+- **fetch / XMLHttpRequest Iniciado de forma nativa por el anfitrión**, no restringido por la política del mismo origen del navegador (el origen de la página sandbox es nulo,
+  En el pasado, CORS bloqueaba cualquier solicitud entre sitios y fallaba). Se escribirán registros de auditoría para cada transacción saliente: método, host, volumen, código de estado.
+- **El guión puede `return Promise`**: Anteriormente la función asíncrona devolvía un objeto vacío `{}`, el éxito y el fracaso son completamente indistinguibles;
+  Ahora esperará a que se complete la Promesa antes de devolver el resultado real y también se procesarán las excepciones. `error` campo.
+- Los valores de retorno del script ya no se vuelven a codificar:`return {a:1}` con `return '{"a":1}'` Sólo se codifican una vez.
+- Por cierto, se ha solucionado un error existente: el script de inicialización de la zona de pruebas solo se inyecta una vez al crear WebView.
+  Después de que se carga la página `host.getConfig()` Espere hasta que la cobertura haya expirado. —— Ahora vuelva a inyectar antes de cada ejecución.
 
-### 对话：编辑消息就地分支
+### Diálogo: Editar rama de mensaje en su lugar
 
-以前编辑中间某条用户消息后，新回复会跑到会话末尾；现在会**停在原位置**形成分支，
-并显示「2/2」变体标记，可以左右切换 —— 和切换对话树是同一套行为。
+En el pasado, después de editar un mensaje de usuario en el medio, la nueva respuesta iba al final de la conversación; ahora lo hará**detenerse en la posición original**formar ramas,
+y muestra "2/2"Marca variante, puedes cambiar de izquierda a derecha —— Es el mismo comportamiento que cambiar el árbol de diálogo.
 
-### 复制按钮：只复制正文
+### Botón Copiar: Copiar solo texto
 
-以前「复制」会把思考过程一起拼在正文后面（还带一个 `[思考过程]` 标记），
-看起来像「复制出来的是思考」。现在只复制正文；正文为空时才回退到思考。
-想要思考有单独的「复制思考」。
+En el pasado, al "copiar", el proceso de pensamiento se agrupaba al final del texto (con un `[proceso de pensamiento]` marca),
+Parece que "lo que se copia es pensamiento". Ahora sólo se copia el texto; Vuelve a pensar cuando el texto está vacío.
+Si quieres pensar, hay un "Pensamiento de copia" separado.
 
-### 主动消息：落点与开关
+### Mensajes activos: puntos de entrega y conmutadores
 
-- 落点优先**普通对话会话**（最近有用户发言的那个），不再因为 Agent 页更新更晚就抢过去；
-- 只在 Agent 里聊过时，写回**那个已有的 Agent 会话**，不再每次都新建一个空的；
-- 设置里那个「仅 Agent 会话」开关**以前没有任何代码读它**（怎么切都没反应），
-  现在改成真正的「Agent 会话」开关：关掉后主动消息只发普通会话，宁可不发也不落进 Agent 页。
+- Colocar prioridad**sesión de conversación normal**(De la que habló un usuario recientemente), ya no se apresure a ir a la página del Agente solo porque se actualiza más tarde;
+- Solo cuando chatee en Agente, responda**Esa sesión de Agente existente**, ya no crea uno vacío cada vez;
+- El interruptor "Solo sesión de agente" en la configuración**Ningún código lo ha leído antes.**(no hay respuesta, no importa cómo lo corte),
+  Ahora cámbialo al real "Agent Interruptor "Conversación": después de desactivarlo, los mensajes activos solo se enviarán a conversaciones normales. Es mejor no enviar mensajes que caer en la página del Agente.
 
-### 其它
+### Otros
 
-- `read_file` 失败时会列出同目录现有文件（以前提示你去 `workspace_list` 列目录，而那个动作根本够不着 `tool_outputs/`）；
-- 明文 HTTP 放开：沙盒要访问任意 http 主机，而 Android 的明文策略按域名放行、无法只对沙盒开口子，
-  因此全局放开（Provider 走 http 时日志仍会告警）。想收回把 `network_security_config.xml` 里的 `true` 改回 `false` 即可。
+- `read_file` En caso de error, se enumerarán los archivos existentes en el mismo directorio (anteriormente se le solicitaba que `workspace_list` Incluya el directorio y esa acción simplemente estará fuera de su alcance `tool_outputs/`);
+- Versión HTTP de texto sin cifrar: el entorno de pruebas necesita acceder a cualquier host http, pero la política de texto sin cifrar de Android permite permisos basados en nombres de dominio y no se puede abrir solo en el entorno de pruebas.
+  Por lo tanto, el lanzamiento global (Provider El registro seguirá avisando cuando se utilice http). Quiero recuperarlo `network_security_config.xml` adentro `true` Cambiar de nuevo `false` Eso es todo.
 
-### 已知问题
+### Problemas conocidos
 
-- **帧率类指标仍需真机验证**：模拟器（含 GPU 直通）的帧时间下限约 32 ms，比要验证的差异还大，
-  卡片滚动流畅度在模拟器上量不出差别；
-- 工具数量口径不一致（提示词索引 234 vs `find_tools` 231），待单独修；
-- 沙盒 WebSocket 仍未支持（fetch/XHR 已可用）。
+- **Los indicadores de velocidad de cuadros aún deben verificarse en máquinas reales**: El límite inferior del tiempo de fotograma del simulador (incluido el paso de GPU) es de aproximadamente 32 ms, que es mayor que la diferencia a verificar.
+  No hay diferencia en la suavidad del desplazamiento de la tarjeta medida en el simulador;
+- El número y calibre de las herramientas son inconsistentes (índice de palabras rápido 234 vs `find_tools` 231), para reparar por separado;
+- Los WebSockets en espacio aislado todavía no son compatibles (fetch/XHR ya disponible).
 
 ---
 

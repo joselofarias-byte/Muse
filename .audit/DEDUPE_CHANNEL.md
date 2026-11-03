@@ -1,23 +1,23 @@
-# 链路 4：渠道与后台可靠性 — 去重基线
+# Enlace 4: Fiabilidad del canal y del backend — Línea base de deduplicación
 
-## 已确认修复/设计决策（不得再报）
-- ChannelInbox 可靠派发：PENDING 先落盘、PROCESSING 恢复、队列满拒绝、BLOCKED(CHECKPOINT_UNREADABLE) 不循环重试。
-- Telegram 整批入站才推进 offset；WeClaw 游标/context token SecureKeyStore 加密持久化，写失败不推进；QQ 绑定原 sourceEventId。
-- 渠道恢复闸门：ChannelInbox/ChannelConversationStore 在 ProcessWriteGate.restoring 时 fail-closed，webhook 异常返回 503 触发平台重试。
-- 群聊/定时任务/主动消息/朋友圈写点闸门全落地（AUD-20261006-* 系列）。
-- 渠道 Agent 工具 checkpoint 加密、副作用不确定阻断重跑；at-least-once 是声明的设计边界。
-- 渠道媒体：清理前 attach inbox+历史收集 mediaPath，保护被引用文件。
-- 微信媒体 CDN 下载+AES 解密、语音服务端 ASR；群消息 group: 前缀路由。
+## Solución confirmada/Decisión de diseño (no más presentación)
+- ChannelInbox Entrega confiable:PENDING Haz el pedido primero,PROCESSING Recuperación, rechazo completo de cola,BLOCKED(CHECKPOINT_UNREADABLE) Vuelva a intentarlo sin bucle.
+- Telegram La compensación sólo avanza después de todo el lote de entradas entrantes;WeClaw Cursor/context token SecureKeyStore Persistencia cifrada, la falla de escritura no avanzará;QQ Vincula el sourceEventId original.
+- Puerta de recuperación del canal:ChannelInbox/ChannelConversationStore cerrado por error durante la restauración de ProcessWriteGate.webhook El retorno de excepción 503 hace que la plataforma vuelva a intentarlo.
+- chat grupal/tareas programadas/mensajes no solicitados/Las compuertas de la escritura en Moments están todas cerradas (AUD-20261006-* serie).
+- Cifrado del punto de control de la herramienta Channel Agent, efectos secundarios inciertos, bloqueo de repetición;at-least-once es el límite de diseño declarado.
+- Medios del canal: adjunte la bandeja de entrada + mediaPath de la colección histórica antes de limpiar para proteger los archivos a los que se hace referencia.
+- Descarga de CDN multimedia de WeChat+AES Descifrado, servidor de voz ASR; grupo de mensajes grupales: enrutamiento de prefijo.
 
-## 已知未解决（可引用编号补充新证据）
-- P1 #13-16/#18-19（渠道生命周期与落盘历史项）——但其中很多可能已随 ChannelInbox 落地，**先核实再引用**；已实现的标注"已闭环"。
-- 渠道 ON_STOP 停接收器、指数退避抖动——核实是否已落地。
-- 真实平台矩阵（QQ/飞书/Telegram/钉钉/微信 iLink）无设备/账号验收——已知，不算发现。
+## Se sabe que no está resuelto (se pueden agregar nuevas pruebas citando el número)
+- P1 #13-16/#18-19(Elementos del historial de ubicación y ciclo de vida del canal)——Pero es posible que gran parte ya haya llegado a ChannelInbox,**Verificar antes de citar**; Anotación implementada"Bucle cerrado".
+- El canal ON_STOP detiene el receptor, jitter de retroceso exponencial——Verifique si ha aterrizado.
+- Matriz de plataforma real (QQ/Feishu/Telegram/DingTalk/WeChat iLink) Sin dispositivo/Aceptación de cuenta——Conocido, no descubierto.
 
-## 本链路重点探查方向
-1. **五渠道接收器的生命周期管理现状**：前后台切换/进程回收时接收器启停；退避重试是否有上限与抖动；断网恢复后的积压处理。
-2. ChannelInbox dispatcher：单线程串行还是并发？一个渠道阻塞（如飞书长连接断）会不会饿死其他渠道？
-3. A2A/Tasker 入站与渠道入站共享 ChannelConversationStore 吗？并发写同一会话的锁/幂等。
-4. webhook 接收端 HTTP 超时/慢 body deadline（曾修过慢 body deadline——核实覆盖所有平台接收器）。
-5. 通知回传（Tasker 结果通知、渠道回复通知）的通知渠道/权限/免打扰处理。
-6. 媒体文件生命周期：临时下载文件清理、解密文件落盘位置权限。
+## La dirección de exploración clave de este enlace.
+1. **Estado actual de la gestión del ciclo de vida de los receptores de cinco canales.**: Cambiar entre delante y detrás/El receptor arranca y se detiene durante el proceso de reciclaje; si existe un límite superior y fluctuación para los reintentos de retroceso; y procesamiento de trabajos pendientes después de la desconexión y recuperación de la red.
+2. ChannelInbox dispatcher: ¿Serie de un solo subproceso o concurrente? ¿Se bloqueará un canal (como la desconexión prolongada de la conexión de Feishu) y privará a otros canales?
+3. A2A/Tasker ¿El canal entrante comparte ChannelConversationStore con el canal entrante? Bloqueos de escritura simultáneos para la misma sesión/Idempotente.
+4. webhook Tiempo de espera HTTP del receptor/Fecha límite de cuerpo lento (he estudiado la fecha límite de cuerpo lento) body deadline——Verificar cobertura de todos los receptores de la plataforma).
+5. Devolución de notificación (Tasker Notificación de resultados, notificación de respuesta del canal) canal de notificación/Permisos/No perturbar el procesamiento.
+6. Ciclo de vida de los archivos multimedia: limpieza de archivos de descarga temporal, permisos de ubicación de archivos descifrados.

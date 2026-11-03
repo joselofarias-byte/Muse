@@ -9,10 +9,10 @@ import org.junit.Test
 import kotlin.uuid.Uuid
 
 /**
- * UIMessage 单元测试。
+ * UIMessage Pruebas unitarias.
  *
- * 覆盖构造、默认参数、role 枚举、id 默认生成、imageBase64List / toolCalls /
- * reasoning / citationUrls 等关键字段读写。
+ * Anular construcción, parámetros predeterminados,role enumeración,id Generado por defecto,imageBase64List / toolCalls /
+ * reasoning / citationUrls Espere a que se lean y escriban los campos clave.
  */
 class UIMessageTest {
 
@@ -93,7 +93,7 @@ class UIMessageTest {
 
     @Test
     fun `should preserve toolCalls when provided`() {
-        val tc = ToolCall(id = "tc1", name = "getWeather", arguments = "{\"city\":\"北京\"}")
+        val tc = ToolCall(id = "tc1", name = "getWeather", arguments = "{\"city\":\"Pekín\"}")
         val msg = UIMessage(
             role = MessageRole.ASSISTANT,
             content = "",
@@ -103,7 +103,7 @@ class UIMessageTest {
         assertEquals(1, msg.toolCalls!!.size)
         assertEquals("tc1", msg.toolCalls!![0].id)
         assertEquals("getWeather", msg.toolCalls!![0].name)
-        assertEquals("{\"city\":\"北京\"}", msg.toolCalls!![0].arguments)
+        assertEquals("{\"city\":\"Pekín\"}", msg.toolCalls!![0].arguments)
     }
 
     @Test

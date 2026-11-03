@@ -14,30 +14,30 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * 渠道入站图片下载。
+ * Descarga de imágenes entrantes del canal.
  *
- * 背景：此前只有微信桥接端真正下载图片并转 base64，飞书 / QQ 等端在解析消息时
- * 直接把图片写成 `"[图片]"` 字面量。结果是模型只看到四个字，视觉辅助也拿不到字节
- * （它的前置条件是 `mediaBase64` 非空），两个症状同源。
+ * Antecedentes: anteriormente, solo el puente WeChat descargaba imágenes y las convertía a base64, mientras Feishu/QQ y otros terminales analizaban los mensajes.
+ * Escribe la imagen directamente como `"[fotos]"` Literal. El resultado es que el modelo sólo ve cuatro palabras y la ayuda visual no puede obtener los bytes.
+ * (Su condición previa es `mediaBase64` no vacío), los dos síntomas tienen el mismo origen.
  *
- * 这里按平台补齐「取附件标识 → 下载 → 压缩成 base64」这一段，
- * 失败一律降级成占位文本，不抛异常、不阻断接收循环。
+ * Aquí, complete el "Obtener identidad del archivo adjunto" según la plataforma. → Descargar → Comprimido en una sección base64",
+ * El error siempre se degradará a texto de marcador de posición, no se generará ninguna excepción y el bucle de recepción no se bloqueará.
  */
 internal object ChannelImageFetcher {
     private const val TAG = "ChannelImageFetcher"
 
-    /** 单张图片下载超时。 */
+    /** Se agotó el tiempo de descarga de una sola imagen. */
     private const val TIMEOUT_MS = 15_000L
 
     /**
-     * 单张图片的兜底上限。
+     * El límite máximo para una sola imagen.
      *
-     * 真实上限由各渠道的能力表决定；这里只防「能力表没声明到」的极端情况，
-     * 取各渠道声明中的最大值，保证不会比平台限制更严。
+     * El límite superior real está determinado por la tabla de capacidades de cada canal; aquí sólo evitamos la situación extrema de "la tabla de capacidades no está declarada".
+     * Tome el valor máximo indicado en la declaración de cada canal para asegurarse de que no sea más restrictivo que las restricciones de la plataforma.
      */
     private const val FALLBACK_MAX_BYTES = 50L * 1024 * 1024
 
-    /** 取某渠道某输入方式下图片的字节上限。 */
+    /** Obtenga el límite superior de bytes de imágenes en un determinado canal y modo de entrada. */
     private fun imageLimit(platform: ChannelPlatform, mode: MediaInputMode): Long {
         val limit = platform.capabilities.mediaCapabilities.limitFor(mode, MediaKind.IMAGE)
         return if (limit > 0L) limit else FALLBACK_MAX_BYTES
@@ -54,9 +54,9 @@ internal object ChannelImageFetcher {
     }
 
     /**
-     * 飞书图片：`GET {openBase}/open-apis/im/v1/images/{image_key}`，带 tenant_access_token。
+     * Fotos de Feishu:`GET {openBase}/open-apis/im/v1/images/{image_key}`, con tenencia_acceso_token.
      *
-     * @return 压缩后的 base64；任何一步失败返回 null。
+     * @return Base comprimida64; devuelve nulo si algún paso falla.
      */
     suspend fun fetchFeishu(config: ChannelConfig, imageKey: String, tokenProvider: (ChannelConfig) -> Pair<String, Long>): String? =
         withContext(Dispatchers.IO) {
@@ -80,26 +80,26 @@ internal object ChannelImageFetcher {
                             error("HTTP ${resp.code}")
                         }
                         val len = resp.body.contentLength()
-                        if (len > maxBytes) error("图片过大: $len > $maxBytes")
+                        if (len > maxBytes) error("Imagen demasiado grande: $len > $maxBytes")
                         resp.body.bytes()
                     }
                 }
                 if (bytes == null) {
-                    Logger.w(TAG, "飞书图片下载超时")
+                    Logger.w(TAG, "Tiempo de espera de descarga de imágenes de Feishu")
                     return@runCatching null
                 }
                 ChannelMediaUtils.toCompactImageBase64(bytes)
             }.onFailure { e ->
-                Logger.w(TAG, "飞书图片获取失败: ${e.message}")
+                Logger.w(TAG, "Falló la adquisición de la imagen de Feishu: ${e.message}")
             }.getOrNull()
         }
 
     /**
-     * QQ 图片：attachments 里直接给地址，直连下载。
+     * QQ Imagen:attachments Proporcione la dirección directamente aquí y descárguela directamente.
      *
-     * 地址带时效，必须在收到消息后立即下载，不能缓存等后续处理。
+     * La dirección es urgente y debe descargarse inmediatamente después de recibir el mensaje. No se puede almacenar en caché ni procesar de otro modo más adelante.
      *
-     * @return 压缩后的 base64；任何一步失败返回 null。
+     * @return Base comprimida64; devuelve nulo si algún paso falla.
      */
     suspend fun fetchQq(imageUrl: String): String? = withContext(Dispatchers.IO) {
         if (imageUrl.isBlank()) return@withContext null
@@ -112,27 +112,27 @@ internal object ChannelImageFetcher {
                         error("HTTP ${resp.code}")
                     }
                     val len = resp.body.contentLength()
-                    if (len > maxBytes) error("图片过大: $len > $maxBytes")
+                    if (len > maxBytes) error("Imagen demasiado grande: $len > $maxBytes")
                     resp.body.bytes()
                 }
             }
             if (bytes == null) {
-                Logger.w("QQ", "图片下载超时")
+                Logger.w("QQ", "Tiempo de espera de descarga de imágenes")
                 return@runCatching null
             }
             ChannelMediaUtils.toCompactImageBase64(bytes)
         }.onFailure { e ->
-            Logger.w("QQ", "图片获取失败: ${e.message}")
+            Logger.w("QQ", "Error en la adquisición de imágenes: ${e.message}")
         }.getOrNull()
     }
 
     /**
 
-     * 从 QQ 消息的 attachments 里取图片地址。
+     * Obtenga la dirección de la imagen de los archivos adjuntos del mensaje QQ.
 
      *
 
-     * 兼容 `url` 与 `file_url` 两种字段写法。
+     * compatibles `url` con `file_url` Dos formas de escribir campos.
 
      */
 
@@ -160,9 +160,9 @@ internal object ChannelImageFetcher {
     }
 
     /**
-     * 钉钉图片：downloadCode + access_token 换临时地址，再下载。
+     * Imágenes de DingTalk:downloadCode + access_token Cambie la dirección temporal y descargue nuevamente.
      *
-     * @return 压缩后的 base64；任何一步失败返回 null。
+     * @return Base comprimida64; devuelve nulo si algún paso falla.
      */
     suspend fun fetchDingTalk(apiBase: String, accessToken: String, downloadCode: String): String? = withContext(Dispatchers.IO) {
         if (downloadCode.isBlank() || accessToken.isBlank()) return@withContext null
@@ -183,7 +183,7 @@ internal object ChannelImageFetcher {
                 }
             }
             if (url.isNullOrBlank()) {
-                Logger.w(TAG, "钉钉未返回下载地址")
+                Logger.w(TAG, "DingTalk no devolvió la dirección de descarga")
                 return@runCatching null
             }
             val imgReq = Request.Builder().url(url).get().build()
@@ -191,21 +191,21 @@ internal object ChannelImageFetcher {
                 HTTP.newCall(imgReq).execute().use { resp ->
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
                     val len = resp.body.contentLength()
-                    if (len > maxBytes) error("图片过大: $len > $maxBytes")
+                    if (len > maxBytes) error("Imagen demasiado grande: $len > $maxBytes")
                     resp.body.bytes()
                 }
             }
             if (bytes == null) {
-                Logger.w(TAG, "钉钉图片下载超时")
+                Logger.w(TAG, "Tiempo de espera de descarga de imágenes de DingTalk")
                 return@runCatching null
             }
             ChannelMediaUtils.toCompactImageBase64(bytes)
         }.onFailure { e ->
-            Logger.w(TAG, "钉钉图片获取失败: ${e.message}")
+            Logger.w(TAG, "No se pudieron obtener imágenes de DingTalk: ${e.message}")
         }.getOrNull()
     }
 
-    /** 从钉钉机器人回调里取图片 downloadCode。 */
+    /** Obtenga el código de descarga de la imagen de la devolución de llamada del robot DingTalk. */
     fun dingtalkDownloadCode(payload: kotlinx.serialization.json.JsonObject): String? {
         val msgType = runCatching {
             payload["msgtype"]?.jsonPrimitive?.content.orEmpty()
@@ -218,9 +218,9 @@ internal object ChannelImageFetcher {
     }
 
     /**
-     * 从飞书消息 content 里取 image_key。
+     * Obtenga image_key del contenido del mensaje de Feishu.
      *
-     * content 形如 `{"image_key":"img_v2_xxx"}`。
+     * content en forma de `{"image_key":"img_v2_xxx"}`.
      */
     fun feishuImageKey(contentJson: String): String? = runCatching {
         AppJson.parseToJsonElement(contentJson).jsonObject
@@ -228,10 +228,10 @@ internal object ChannelImageFetcher {
     }.getOrNull()?.takeIf { it.isNotBlank() }
 
     /**
-     * 下载任意媒体字节，不做压缩。
+     * Descargue cualquier byte multimedia sin compresión.
      *
-     * 图片走 [toCompactImageBase64] 会重编码，视频/文档不能这么做，
-     * 所以发送路径用这个直接拿原始字节。
+     * paseo fotográfico [toCompactImageBase64] Volverá a codificar el vídeo./La documentación no puede hacer esto,
+     * Entonces, la ruta de envío usa esto para obtener directamente los bytes originales.
      */
     suspend fun downloadRaw(url: String, maxBytes: Long = 50L * 1024 * 1024): ByteArray? = withContext(Dispatchers.IO) {
         if (url.isBlank()) return@withContext null
@@ -241,12 +241,12 @@ internal object ChannelImageFetcher {
                 HTTP.newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) error("HTTP ${resp.code}")
                     val len = resp.body.contentLength()
-                    if (len > maxBytes) error("媒体过大: $len > $maxBytes")
+                    if (len > maxBytes) error("Los medios son demasiado grandes.: $len > $maxBytes")
                     resp.body.bytes()
                 }
             }
         }.onFailure { e ->
-            Logger.w(TAG, "媒体下载失败: ${e.message}")
+            Logger.w(TAG, "Falló la descarga de medios: ${e.message}")
         }.getOrNull()
     }
 }

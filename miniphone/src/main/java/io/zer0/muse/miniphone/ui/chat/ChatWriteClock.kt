@@ -3,10 +3,10 @@ package io.zer0.muse.miniphone.ui.chat
 import java.util.UUID
 
 /**
- * 落库时用的两个可替换来源:现在几点、下一条消息的 id。
+ * Dos fuentes alternativas utilizadas al abandonar la biblioteca:¿Qué hora es ahora y la identificación del próximo mensaje?
  *
- * 合成一个值是为了让 ViewModel 的参数表不至于膨胀 —— 这两个东西永远一起被替换,
- * 测试用假时钟钉死 `createdAt`、用自增 id 让断言可预期。
+ * Sintetizar un valor es evitar que la lista de parámetros de ViewModel se hinche. —— Estas dos cosas siempre se reemplazan juntas.,
+ * Prueba crucificada con reloj falso `createdAt`, utilice identificadores de incremento automático para hacer que las afirmaciones sean predecibles.
  */
 data class ChatWriteClock(
     val now: () -> Long = System::currentTimeMillis,

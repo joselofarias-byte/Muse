@@ -10,7 +10,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 
-/** 持久化的工具轮，保留旧 toolCallInfoJson 作为兼容字段。 */
+/** Rueda de herramientas persistente, que conserva la antigua herramientaCallInfoJson como campo de compatibilidad. */
 @kotlinx.serialization.Serializable
 @Entity(
     tableName = "tool_rounds",
@@ -59,11 +59,11 @@ interface ToolRoundDao {
     @Query("DELETE FROM tool_rounds WHERE turnId IN (SELECT turnId FROM conversation_turns WHERE sessionId = :sessionId)")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: 备份导出用 — 全量读取。 */
+    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
     @Query("SELECT * FROM tool_rounds")
     suspend fun getAll(): List<ToolRoundEntity>
 
-    /** P0-10: 备份恢复用 — 全量清空。 */
+    /** P0-10: Para respaldo y recuperación — Borrar todo. */
     @Query("DELETE FROM tool_rounds")
     suspend fun deleteAll()
 }

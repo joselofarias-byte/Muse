@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 3. 海洋主题 (蓝色系)
+// 3. tema marino (color azul)
 // ─────────────────────────────────────────────────────────────────────────────
 private val OceanPrimary = Color(0xFF2E7BD6)
 private val OceanPrimaryLightContainer = Color(0xFFD4E8FA)
@@ -33,10 +33,10 @@ val OceanTheme = PresetTheme(
         onSecondaryContainer = Color(0xFF0E2A4A),
         tertiary = OceanPrimary,
         onTertiary = Color.White,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = OceanPrimaryLightContainer,
         onTertiaryContainer = Color(0xFF0E2A4A),
-        // M-2: surface 容器梯度,surfaceContainer 复用 AiBubble(蓝调略深于 surface)。
+        // M-2: surface gradiente de contenedor,surfaceContainer Reutilizar AiBubble(azules ligeramente más oscuros que surface).
         surfaceContainer = OceanLightAiBubble,
         surfaceContainerLow = OceanLightBg,
         surfaceContainerHigh = Color(0xFFDDE5EF),
@@ -70,10 +70,10 @@ val OceanTheme = PresetTheme(
         onSecondaryContainer = OceanOnPrimaryDark,
         tertiary = OceanPrimary,
         onTertiary = OceanOnPrimaryDark,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = OceanPrimaryDarkContainer,
         onTertiaryContainer = OceanOnPrimaryDark,
-        // M-2: surface 容器梯度(深色越 high 越亮),surfaceContainer 复用 AiBubble。
+        // M-2: surface gradiente de contenedor(Cuanto más oscuro es el color, más brillante es),surfaceContainer Reutilizar AiBubble.
         surfaceContainer = OceanDarkAiBubble,
         surfaceContainerLow = OceanDarkBg,
         surfaceContainerHigh = Color(0xFF223040),

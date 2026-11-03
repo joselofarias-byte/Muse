@@ -8,16 +8,16 @@ import type { HostSystemState } from "./useHostConnection.js";
 interface DataPrivacyPageProps {
   readonly title: string;
   readonly system: HostSystemState;
-  /** 能力位 / 运行时「不支持」判断。 */
+  /** Juicio de bit de capacidad/tiempo de ejecución \"no compatible\". */
   readonly supported: boolean;
   readonly onRequest: () => void;
-  /** PII 守护：条目来自 settings.snapshot（toggleKey=piiGuardEnabled）。 */
+  /** PII demonio: entrada desde settings.snapshot(toggleKey=piiGuardEnabled). */
   readonly pii: { readonly checked: boolean; readonly writable: boolean } | undefined;
   readonly onTogglePii: (enabled: boolean) => void;
   readonly onBack: () => void;
 }
 
-/** 存储条的分段顺序与配色（顺序即展示顺序）。 */
+/** El orden segmentado y la combinación de colores de las tiras de almacenamiento (el orden es el orden de visualización). */
 const STORAGE_SEGMENTS = [
   { key: "databaseBytes", labelKey: "data.database", className: "is-database" },
   { key: "mediaBytes", labelKey: "data.media", className: "is-media" },
@@ -27,10 +27,10 @@ const STORAGE_SEGMENTS = [
 ] as const;
 
 /**
- * 数据与隐私页。
+ * Página de datos y privacidad.
  *
- * 存储占用用一条横向堆叠条 + 明细行；备份与开关都是只读回显（写入口在手机上），
- * 只有 PII 守护走现有的 `settings.update` 白名单，可以直接在网页上开关。
+ * La ocupación del almacenamiento utiliza una barra apilada horizontal + una fila detallada; la copia de seguridad y el cambio son ecos de solo lectura (el puerto de escritura está en el teléfono celular).
+ * Sólo los guardias de PII eliminan los existentes. `settings.update` La lista blanca se puede cambiar directamente en la página web.
  */
 export function DataPrivacyPage({ title, system, supported, onRequest, pii, onTogglePii, onBack }: DataPrivacyPageProps) {
   const { t, locale } = useI18n();

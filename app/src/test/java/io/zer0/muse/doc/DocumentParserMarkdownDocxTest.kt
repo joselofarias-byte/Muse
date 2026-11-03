@@ -14,7 +14,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * R-TEST-07: 知识库文档索引失败路径 — markdown / 双扩展名 .md.txt / docx 解析。
+ * R-TEST-07: Ruta de error de indexación de documentos de la base de conocimientos — markdown / Análisis de doble extensión .md.txt/docx.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class, sdk = [33])
@@ -25,28 +25,28 @@ class DocumentParserMarkdownDocxTest {
 
     @Test
     fun `markdown file parses as text`() {
-        val file = writeTempFile("note.md", "# 标题\n\n正文内容")
+        val file = writeTempFile("note.md", "# Título\n\nContenido del texto")
         val result = parser.parseResult(Uri.fromFile(file), context)
-        assertTrue("markdown 解析失败: $result", result.isSuccess)
-        assertEquals("# 标题\n\n正文内容", result.getOrNull())
+        assertTrue("markdown El análisis falló: $result", result.isSuccess)
+        assertEquals("# Título\n\nContenido del texto", result.getOrNull())
     }
 
     @Test
     fun `double extension md txt parses as text`() {
-        val file = writeTempFile("note.md.txt", "双扩展名内容")
+        val file = writeTempFile("note.md.txt", "Contenido de doble extensión")
         val result = parser.parseResult(Uri.fromFile(file), context)
-        assertTrue("md.txt 解析失败: $result", result.isSuccess)
-        assertEquals("双扩展名内容", result.getOrNull())
+        assertTrue("md.txt El análisis falló: $result", result.isSuccess)
+        assertEquals("Contenido de doble extensión", result.getOrNull())
     }
 
     @Test
     fun `minimal docx extracts paragraph text`() {
-        val file = createMinimalDocx("第一段", "第二段")
+        val file = createMinimalDocx("primer párrafo", "Segundo párrafo")
         val result = parser.parseResult(Uri.fromFile(file), context)
-        assertTrue("docx 解析失败: $result", result.isSuccess)
+        assertTrue("docx El análisis falló: $result", result.isSuccess)
         val text = result.getOrNull() ?: ""
-        assertTrue(text.contains("第一段"))
-        assertTrue(text.contains("第二段"))
+        assertTrue(text.contains("primer párrafo"))
+        assertTrue(text.contains("Segundo párrafo"))
     }
 
     private fun writeTempFile(name: String, content: String): File {

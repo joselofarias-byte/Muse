@@ -1,17 +1,17 @@
 import type { HostSettingValue } from "../api.js";
 
 /**
- * 设置子页的归页规则。
+ * Establezca reglas de paginación para subpáginas.
  *
- * Host 的 `values[]` 是一张扁平的「键 → 当前值」表，没有分组字段；分类页点进去的
- * 是目录条目（`entry.id`）。所以这里用两张表把两边接上：
- *  - `entryIds`：哪个目录条目对应哪一页（`appearance` / `chat` / `tts` / `memory` …）；
- *  - `keyTokens`：值键归一后（去掉 `.` `_` `-`、小写）包含任一 token 即归入本页。
+ * Host de `values[]` Es una "llave" plana → Tabla "Valor actual", no hay campo de agrupación; haga clic en la página de clasificación
+ * es una entrada de directorio (`entry.id`). Entonces aquí usamos dos tablas para conectar los dos lados:
+ *  - `entryIds`: Qué entrada del directorio corresponde a qué página (`appearance` / `chat` / `tts` / `memory` …);
+ *  - `keyTokens`: Después de la normalización de la clave de valor (eliminar `.` `_` `-`, minúsculas) que contiene cualquier token se incluye en esta página.
  *
- * 归页只看**键的形状**，不看文案：行标题一律优先用 Host 已本地化的目录标题，
- * 目录里没有对应条目时用键派生，绝不在 Web 侧维护中文文案表。
- * 匹配按数组顺序取第一个命中页，所以出现跨页歧义的键（如 `memoryAutoSave`）时，
- * 把更具体的页放在前面即可调整归属。
+ * Página de inicio para ver sólo**forma de llave**, no lea la copia: el título de la fila siempre utilizará primero el título del directorio localizado del Host.
+ * La derivación de claves se utiliza cuando no hay una entrada correspondiente en el directorio y la tabla de copia china nunca se mantiene en el lado web.
+ * La coincidencia toma la primera página visitada en orden de matriz, por lo que hay claves ambiguas entre páginas (como `memoryAutoSave`),
+ * La atribución se puede ajustar colocando primero páginas más específicas.
  */
 export type SettingsPageId = "appearance" | "chat" | "voice" | "memory" | "general";
 
@@ -54,15 +54,15 @@ export const SETTINGS_PAGE_SPECS: readonly SettingsPageSpec[] = [
     keyTokens: ["memory", "autosave"],
   },
   {
-    // 目录里暂时没有独立的「通用」入口；Host 加上 general 后自动改走它。
-    // `about` 是对当前版本能落到这一页的兜底入口（语言 / 模型是否已配置本来就在这类页）。
+    // Actualmente no existe ninguna entrada "general" independiente en el directorio;Host Se cambiará automáticamente después de agregar general.
+    // `about` Esta es la entrada de abajo hacia arriba a esta página para la versión actual (si el idioma/modelo se ha configurado ya se encuentra en esta página).
     id: "general",
     entryIds: ["general", "common", "about"],
     keyTokens: ["language", "locale", "modelconfigured", "modelready", "configured", "general"],
   },
 ];
 
-/** 键归一：`chatPreferences.enterToSend` → `chatpreferencesentertosend`。 */
+/** Normalización clave:`chatPreferences.enterToSend` → `chatpreferencesentertosend`. */
 export function normalizeSettingKey(key: string): string {
   return key.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -78,7 +78,7 @@ export function pageForValueKey(key: string): SettingsPageSpec | undefined {
   return SETTINGS_PAGE_SPECS.find((spec) => spec.keyTokens.some((token) => normalized.includes(token)));
 }
 
-/** 页面要显示的值：按 Host 下发的顺序保留，不重排。 */
+/** Valores a mostrar en la página: conservados en el orden emitido por el Anfitrión, sin reordenamiento. */
 export function valuesForPage(
   spec: SettingsPageSpec,
   values: readonly HostSettingValue[] | undefined,
@@ -88,8 +88,8 @@ export function valuesForPage(
 }
 
 /**
- * 行标题的兜底：Host 没下发这条值的标题时，从键派生一个可读词。
- * 只做大小写与分隔符切分，不做翻译（避免 Web 侧维护一份会与 Host 漂移的文案表）。
+ * El resultado final para los títulos de las filas:Host Cuando no se emite un título para este valor, de la clave se deriva una palabra legible por humanos.
+ * Solo se realiza la segmentación de casos y delimitadores, y no se realiza ninguna traducción (para evitar mantener una tabla de copia en el lado web que se desvíe con el host).
  */
 export function humanizeSettingKey(key: string): string {
   const tail = key.split(".").pop() ?? key;
@@ -102,8 +102,8 @@ export function humanizeSettingKey(key: string): string {
 }
 
 /**
- * 只读键：`values[]` 不区分「能不能写」，这几类按产品约定只看不给改——
- * 音色名与「模型是否已配置」都是回显型信息，写成开关/输入框反而是错的。
+ * Claves de solo lectura:`values[]` No hay distinción entre "si se puede escribir". Estas categorías no pueden modificarse según el acuerdo del producto.——
+ * El nombre del sonido y "si el modelo ha sido configurado" son información de eco, escrita como un interruptor./En cambio, el cuadro de entrada es incorrecto.
  */
 const READ_ONLY_KEY_TOKENS: readonly string[] = ["modelconfigured", "modelready", "voicename", "voiceid", "voiceprofile"];
 
@@ -117,8 +117,8 @@ export function readBoolean(value: unknown): boolean {
 }
 
 /**
- * 一条值的行标题：目录里 toggleKey 命中的 Host 标题 → Host 若下发的 label → 键派生。
- * 子页渲染与搜索索引共用这一份，避免同一个值在两处显示成不同名字。
+ * El título de la fila de un valor: el título del Host alcanzado por toggleKey en el directorio → Host Si se emite label → Derivación de claves.
+ * La representación de subpáginas y la indexación de búsqueda comparten esta parte para evitar que se muestre el mismo valor con nombres diferentes en dos lugares.
  */
 export function resolveValueTitle(
   value: HostSettingValue,
@@ -146,12 +146,12 @@ export function readText(value: unknown): string {
   return "";
 }
 
-/** 数字行的步长：整数按 1，带小数的（如语速 1.0 / 0.9）按 0.1。 */
+/** El tamaño del paso de la recta numérica: presione 1 para números enteros, presione 0,1 para decimales (como velocidad de habla 1,0/0,9). */
 export function numberStepFor(current: number): number {
   return Number.isInteger(current) ? 1 : 0.1;
 }
 
-/** 步进结果，向下不越过 0（Host 侧再做一次类型与范围校验）。 */
+/** Resultado del paso, hacia abajo no cruza 0 (Host Haga otra verificación de tipo y rango en el costado). */
 export function stepNumber(current: number, direction: 1 | -1): number {
   const next = Number((current + numberStepFor(current) * direction).toFixed(2));
   return next < 0 ? 0 : next;

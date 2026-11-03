@@ -1,41 +1,41 @@
 package io.zer0.muse.tools
 
 /**
- * 工具审批状态机。
+ * Máquina de estado de aprobación de herramienta.
  *
- * 决定工具调用在执行前是否需要用户审批，并承载审批结果。
+ * Determine si la llamada a la herramienta requiere la aprobación del usuario antes de su ejecución y transmita los resultados de la aprobación.
  *
- * 状态流转：
- *  - AUTO：按策略自动放行（始终允许）
- *  - PENDING：等待用户决定，生成循环在此中断
- *  - APPROVED：用户批准本次调用，可携带参数覆盖
- *  - DENIED：用户拒绝本次调用（可附原因）
- *  - ANSWERED：用户提供自定义回答，不执行工具
+ * Flujo de estado:
+ *  - AUTO: Liberado automáticamente según la política (siempre permitido)
+ *  - PENDING: A la espera de la decisión del usuario, el ciclo de generación se interrumpe aquí.
+ *  - APPROVED: el usuario aprueba esta llamada y puede realizar anulaciones de parámetros.
+ *  - DENIED: El usuario rechaza esta llamada (se pueden adjuntar los motivos)
+ *  - ANSWERED: El usuario proporciona una respuesta personalizada y no ejecuta la herramienta.
  *
- * v1.x: [Approved] 携带 [Approved.argOverrides],允许用户在审批卡片中覆盖个别参数
- * (典型场景: generate_image 工具的 reference_image,LLM 无法直接提供本地图片,
- * 由用户在审批 UI 中从相册选择,选中后转 data URI 通过 argOverrides 注入工具执行)。
+ * v1.x: [Approved] llevar [Approved.argOverrides],Permitir a los usuarios anular parámetros individuales en tarjetas de aprobación
+ * (Escenario típico: generate_image Herramienta reference_image,LLM No se pueden proporcionar imágenes locales directamente,
+ * Seleccionado por el usuario del álbum en la interfaz de usuario de aprobación,Después de la selección, el URI de datos se ejecuta a través de la herramienta de inyección argOverrides.).
  */
 sealed class ToolApprovalState {
-    /** 自动审批通过，立即执行。 */
+    /** Aprobado automáticamente y ejecutado de inmediato. */
     data object Auto : ToolApprovalState()
 
-    /** 等待用户审批。生成循环应在此中断。 */
+    /** Esperando la aprobación del usuario. El ciclo de construcción debería interrumpirse aquí. */
     data object Pending : ToolApprovalState()
 
     /**
-     * 用户批准了本次工具调用。
+     * El usuario aprobó esta llamada a la herramienta.
      *
-     * @param argOverrides 审批阶段用户覆盖的工具参数(键 → 值);空表示不覆盖,使用 LLM 原始参数。
-     * 覆盖值会由 [io.zer0.muse.tools.ToolOrchestrator] 合并进 [io.zer0.ai.core.ToolCall.arguments]
-     * 的 JSON 中再执行工具。
+     * @param argOverrides Parámetros de herramientas anulados por los usuarios durante la fase de aprobación(clave → valor);Vacío significa que no hay cobertura,Utilice parámetros sin procesar de LLM.
+     * El valor anulado será [io.zer0.muse.tools.ToolOrchestrator] fusionarse en [io.zer0.ai.core.ToolCall.arguments]
+     * Herramienta de ejecución en JSON.
      */
     data class Approved(val argOverrides: Map<String, String> = emptyMap()) : ToolApprovalState()
 
-    /** 用户拒绝了本次工具调用。 */
+    /** El usuario rechazó esta llamada a la herramienta. */
     data class Denied(val reason: String = "") : ToolApprovalState()
 
-    /** 用户提供了自定义文本回答，而非执行该工具。 */
+    /** El usuario proporcionó una respuesta de texto personalizada en lugar de ejecutar la herramienta. */
     data class Answered(val answer: String) : ToolApprovalState()
 
     val isTerminal: Boolean
@@ -46,15 +46,15 @@ sealed class ToolApprovalState {
 }
 
 /**
- * 针对单个工具的审批策略，持久化到 DataStore。
+ * Las políticas de aprobación para herramientas individuales se conservan en DataStore.
  */
 enum class ToolApprovalPolicy {
-    /** 始终自动批准（如 get_time 等安全工具的默认值）。 */
+    /** Aprobar siempre automáticamente (predeterminado para herramientas de seguridad como get_time). */
     ALWAYS_ALLOW,
 
-    /** 始终拒绝（相当于禁用该工具）。 */
+    /** Negar siempre (equivale a desactivar la herramienta). */
     ALWAYS_DENY,
 
-    /** 每次都询问用户。 */
+    /** Pregúntele al usuario cada vez. */
     ASK_EVERY_TIME,
 }

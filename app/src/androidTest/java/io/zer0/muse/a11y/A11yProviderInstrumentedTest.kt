@@ -12,13 +12,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * v2.2.1: 无障碍双路(独立 Provider / 应用内服务)设备面实证。
+ * v2.2.1: Acceso dual sin barreras(Proveedor independiente/servicio en la aplicación)Verificación de equipos.
  *
- * 前置(由外部脚本准备,缺失时 assume 跳过,不判失败):
- *  1. Provider 用例: 已安装 accessibility-provider-debug.apk(同 debug 签名)且其无障碍服务已启用;
- *  2. 应用内用例: 主应用无障碍服务已启用,且 Provider 服务未启用(否则路由优先走 Provider)。
+ * prefijo(Preparado por guión externo.,asumir omitir si falta,No juzgues el fracaso):
+ *  1. Provider caso de uso: Instalado accessibility-provider-debug.apk(Igual que la firma de depuración)y sus servicios de accesibilidad están habilitados;
+ *  2. Casos de uso en la aplicación: Los servicios de accesibilidad de la aplicación principal están habilitados.,y el servicio del Proveedor no está habilitado(En caso contrario, la ruta tendrá prioridad. Provider).
  *
- * 验证链路: bindService/静态实例 → UI 操作接口 → 跨进程/同进程读取 UI 层级与当前 Activity。
+ * Verificar enlace: bindService/instancia estática → UI Interfaz de operación → Proceso cruzado/Lea el nivel de UI y la actividad actual en el mismo proceso.
  */
 @RunWith(AndroidJUnit4::class)
 class A11yProviderInstrumentedTest {
@@ -27,17 +27,17 @@ class A11yProviderInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val client = AccessibilityClient(context)
 
-        assumeTrue("独立 Provider APK 未安装,跳过", client.isProviderInstalled())
+        assumeTrue("Proveedor independiente APK no instalado,saltar", client.isProviderInstalled())
         assumeTrue(
-            "独立 Provider 无障碍服务未在系统设置启用,跳过",
+            "El servicio de accesibilidad del proveedor independiente no está habilitado en la configuración del sistema,saltar",
             isServiceEnabled(context, AccessibilityClient.PROVIDER_PACKAGE),
         )
 
-        // ColorOS 等定制 ROM 的后台限制(WIU 逻辑)会拒绝后台应用跨应用绑定。
-        // 测试前把自身活动拉到前台,模拟真实使用场景(用户打开应用时绑定)。
+        // ColorOS Esperando restricciones en segundo plano de ROM personalizadas(WIU lógica)Se denegará la vinculación entre aplicaciones para aplicaciones en segundo plano.
+        // Traiga sus propias actividades al primer plano antes de realizar la prueba.,Simular escenarios de uso reales(Vincular cuando el usuario abre la aplicación).
         bringSelfToFront(context)
 
-        // 绑定是异步的: 轮询等待桥接就绪(binder 到达后 isConnected 转 true)
+        // El enlace es asincrónico: Votación para puente listo(binder Después de alcanzar la transferencia isConnected true)
         var connected = false
         for (attempt in 0 until 24) {
             if (client.isConnected()) {
@@ -46,7 +46,7 @@ class A11yProviderInstrumentedTest {
             }
             Thread.sleep(250)
         }
-        assertTrue("Provider 桥接未在 6s 内就绪", connected)
+        assertTrue("Provider Puente no listo en 6 segundos", connected)
 
         assertReadable(context, client)
     }
@@ -57,11 +57,11 @@ class A11yProviderInstrumentedTest {
         val client = AccessibilityClient(context)
 
         assumeTrue(
-            "应用内无障碍服务未在系统设置启用,跳过",
+            "Los servicios de accesibilidad en la aplicación no están habilitados en la configuración del sistema,saltar",
             isServiceEnabled(context, context.packageName),
         )
         assumeTrue(
-            "独立 Provider 仍被启用(路由优先于应用内服务),跳过",
+            "El proveedor independiente todavía está habilitado(Las rutas tienen prioridad sobre los servicios dentro de la aplicación),saltar",
             !isServiceEnabled(context, AccessibilityClient.PROVIDER_PACKAGE),
         )
 
@@ -75,14 +75,14 @@ class A11yProviderInstrumentedTest {
             }
             Thread.sleep(250)
         }
-        // instrument 启动会 force-stop 应用,部分 ROM 不会把应用内无障碍服务重绑进测试进程;
-        // 该场景跳过而非判失败(跨进程 Provider 路径另有 provider_bridge 用例硬覆盖)。
-        assumeTrue("应用内无障碍服务未在测试进程内就绪(force-stop 重绑限制),跳过", connected)
+        // instrument El inicio forzará la detención de la aplicación,Algunas ROM no vuelven a vincular los servicios de accesibilidad dentro de la aplicación al proceso de prueba;
+        // La escena se omite en lugar de fallar.(La ruta del proveedor entre procesos también tiene una anulación estricta del caso de uso de Provider_bridge.).
+        assumeTrue("Los servicios de accesibilidad en la aplicación no están listos durante el proceso de prueba(force-stop Restricciones de vinculación),saltar", connected)
 
         assertReadable(context, client)
     }
 
-    /** 读屏可读性断言: 当前 Activity 组件名 + 非空 UI 层级(带重试,窗口状态可能滞后)。 */
+    /** Aserción de legibilidad de pantalla: Nombre del componente de actividad actual + nivel de UI no vacío(con reintento,El estado de la ventana puede retrasarse). */
     private suspend fun assertReadable(context: Context, client: AccessibilityClient) {
         var activity = ""
         for (attempt in 0 until 6) {
@@ -90,7 +90,7 @@ class A11yProviderInstrumentedTest {
             if (activity.contains('/')) break
             Thread.sleep(500)
         }
-        assertTrue("currentActivityName 应返回组件名,实际: $activity", activity.contains('/'))
+        assertTrue("currentActivityName Se debe devolver el nombre del componente.,real: $activity", activity.contains('/'))
 
         var page = ""
         for (attempt in 0 until 8) {
@@ -98,8 +98,8 @@ class A11yProviderInstrumentedTest {
             if (page.contains("[activity]")) break
             Thread.sleep(500)
         }
-        assertTrue("getPageInfo 应返回非空层级文本,实际: $page", page.isNotBlank())
-        assertTrue("getPageInfo 应包含 [activity] 头,实际: $page", page.contains("[activity]"))
+        assertTrue("getPageInfo Debería devolver texto jerárquico no vacío,real: $page", page.isNotBlank())
+        assertTrue("getPageInfo debe contener [activity] cabeza,real: $page", page.contains("[activity]"))
     }
 
     private fun bringSelfToFront(context: Context) {
@@ -112,7 +112,7 @@ class A11yProviderInstrumentedTest {
         Thread.sleep(2000)
     }
 
-    /** 通过 Secure 设置解析指定包的无障碍服务是否启用(不依赖内部实现)。 */
+    /** Si el servicio de accesibilidad que analiza el paquete especificado está habilitado a través de la configuración Seguro(No depende de la implementación interna). */
     private fun isServiceEnabled(context: Context, packageName: String): Boolean {
         val enabled =
             runCatching {

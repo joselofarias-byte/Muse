@@ -3,32 +3,32 @@ package io.zer0.muse.transformer
 import io.zer0.ai.core.UIMessage
 
 /**
- * v2.3.2: 进程内"已摘要水位线"(上下文压缩审查 findings C / D)。
+ * v2.3.2: En proceso"Marca de agua abstraída"(Revisión de compresión contextual findings C / D).
  *
- * 记录"某会话的哪些消息已被摘要覆盖",供两处使用:
- *  - **C 摘要复用**:会话切回 / 重载后,同一段历史不必再花一次 LLM 调用重新摘要
- *    (压缩结果原先只存在内存的 `_messages` 里,从 DB 重载会拿回全量历史 → 又要重压一遍,
- *    白花一次 LLM 调用,并可能带来最长 20s 的首字延迟)
- *  - **D 阻断还原**:对话树重建(`mergeRebuildMessages`)会把旧树里的原文合并回来,
- *    与摘要共存导致 token 双计;按这里的 coveredIds 过滤即可
+ * grabar"Qué mensajes de una conversación han sido cubiertos por el resumen",Para uso en dos lugares:
+ *  - **C Reutilización resumida**:Después del cambio/recarga de la sesión,No es necesario realizar otra convocatoria de LLM para resumir la misma parte de la historia.
+ *    (Los resultados de la compresión se almacenaron originalmente sólo en la memoria. `_messages` adentro,La recarga desde la base de datos recuperará el historial completo → Hay que presionar de nuevo,
+ *    Una llamada de LLM desperdiciada,y puede causar un retraso en la primera palabra de hasta 20 segundos.)
+ *  - **D Restauración de bloque**:Reconstrucción del árbol del diálogo(`mergeRebuildMessages`)El texto original en el árbol antiguo se volverá a fusionar.,
+ *    La coexistencia con el resumen conduce a una doble contabilización de tokens;Simplemente filtre por ID cubiertos aquí
  *
- * 摘要正文与边界由 MemoryDb 的 ContextCheckpointEntity 持久化；本表是进程内快速索引，
- * 会在读取持久检查点后回灌。容量按写入时序淘汰,避免长跑进程无界增长。
+ * El cuerpo del resumen y los límites los conserva ContextCheckpointEntity de MemoryDb; esta tabla es un índice rápido en proceso.
+ * Se devolverá después de leer el punto de control persistente. La capacidad se elimina gradualmente por orden escrita.,Evite el crecimiento ilimitado de procesos de larga duración.
  */
 object CompressionSummaryStore {
-    /** 一次压缩的结果:摘要文本 + 被它覆盖(已从上下文移除)的消息 id。 */
+    /** El resultado de una compresión.:texto resumido + cubierto por él(Eliminado del contexto)identificación del mensaje. */
     data class Entry(val summary: String, val coveredIds: Set<String>)
 
-    /** 最多记住的会话数(超出淘汰最早写入的)。 */
+    /** Número máximo de sesiones recordadas(Superando la eliminación de los escritos más antiguos). */
     private const val MAX_ENTRIES = 32
 
     private val entries = LinkedHashMap<String, Entry>()
 
-    /** 记下一次压缩(会话 id / 摘要为空、或没有覆盖任何消息时忽略)。 */
+    /** Recuerda una compresión(Ignorar si el ID/resumen de la sesión está vacío o no se cubren mensajes). */
     @Synchronized
     fun remember(sessionId: String?, coveredIds: Set<String>, summary: String) {
         if (sessionId.isNullOrBlank() || summary.isBlank() || coveredIds.isEmpty()) return
-        // 重新插入即"最近写入",超出容量时淘汰最早的
+        // volver a insertar, es decir"Escrito recientemente",Cuando se supere el aforo se eliminará el de mayor antigüedad.
         entries.remove(sessionId)
         entries[sessionId] = Entry(summary, coveredIds)
         if (entries.size > MAX_ENTRIES) {
@@ -36,17 +36,17 @@ object CompressionSummaryStore {
         }
     }
 
-    /** 读取会话的最近一次压缩记录(没有则返回 null)。 */
+    /** Leer el registro de compresión más reciente de la sesión.(Si no, regresa null). */
     @Synchronized
     fun entry(sessionId: String?): Entry? = sessionId?.let { entries[it] }
 
-    /** 清空某会话的记录(会话被删除 / 历史被清空时调用)。 */
+    /** Borrar el registro de una sesión(Se llama cuando se elimina la sesión/se borra el historial). */
     @Synchronized
     fun clear(sessionId: String) {
         entries.remove(sessionId)
     }
 
-    /** 仅供单测:清空全部记录。 */
+    /** Solo para pruebas individuales:Borrar todos los registros. */
     @Synchronized
     internal fun clearAllForTest() {
         entries.clear()
@@ -54,11 +54,11 @@ object CompressionSummaryStore {
 }
 
 /**
- * v2.3.2 (C): 能否复用缓存摘要。
+ * v2.3.2 (C): ¿Se pueden reutilizar los resúmenes almacenados en caché?
  *
- * 命中条件:该会话已有缓存摘要,且本次待压缩区间**全部**落在其覆盖范围内。
- * 只覆盖一部分时不能复用 —— 那会把未被覆盖的消息也一并替换掉(等于丢历史),
- * 这种情况交给压缩器重新摘要(新摘要会覆盖更大的区间)。
+ * condición de golpe:Esta sesión ya tiene un resumen en caché,Y el intervalo a comprimir esta vez.**Todos**cae dentro de su área de cobertura.
+ * No se puede reutilizar cuando solo se cubre una parte —— Eso también reemplazará los mensajes descubiertos.(es como perder la historia),
+ * En este caso, el compresor se resume.(El nuevo resumen cubrirá una gama más amplia).
  */
 internal fun reusableSummary(entry: CompressionSummaryStore.Entry?, toCompress: List<UIMessage>): String? = entry?.summary?.takeIf {
     toCompress.isNotEmpty() && toCompress.all { message -> message.id.toString() in entry.coveredIds }

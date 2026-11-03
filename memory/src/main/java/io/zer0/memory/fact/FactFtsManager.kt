@@ -1,47 +1,47 @@
 package io.zer0.memory.fact
 
 /**
- * Facts FTS4 中文分词管理器。
+ * Facts FTS4 Gestor de segmentación de palabras chinas.
  *
- * 采用应用层 ngram 方案(避免 NDK 依赖 + 兼容所有 Android 版本):
- *  - 中文(CJK 统一表意文字 + 假名)做 2-gram 滑窗,空格分隔
- *  - 英文/数字保留原词(小写化)
- *  - 标点/空格作为分隔符
+ * Adopte la solución ngram de capa de aplicación(Evite dependencias de NDK + compatible con todas las versiones de Android):
+ *  - chino(CJK ideograma unificado + kana)Haz una ventana corredera de 2 gramos.,espacio separado
+ *  - ingles/Los números conservan las palabras originales.(Minúsculas)
+ *  - puntuación/El espacio como separador
  *
- * 索引时:把 fact 内容转成 ngram(含末位单字),存入 facts_fts 虚拟表。
- * 查询时:把 query 转成 ngram(不含末位单字),用 FTS4 MATCH(默认 AND,可改 OR)。
+ * indexación:Convertir el contenido de hechos en ngram(Contiene la última palabra),Almacenar en la tabla virtual Facts_fts.
+ * Al consultar:Convertir consulta a ngram(No incluye la última palabra.),usar FTS4 MATCH(Predeterminado AND,Se puede cambiar OR).
  *
- * 示例:
- *  - "你好世界" → "你好 好世 世界"
- *  - "hello 你好" → "hello 你好"
- *  - "GPT-4 模型" → "gpt 4 模型"
+ * Ejemplo:
+ *  - "hola mundo" → "hola buen mundo mundo"
+ *  - "hello Hola" → "hello Hola"
+ *  - "GPT-4 modelo" → "gpt 4 modelo"
  */
 object FactFtsManager {
 
-    /** CJK 2-gram 滑窗的窗口大小。 */
+    /** CJK 2-gram El tamaño de la ventana de la ventana corredera. */
     private const val NGRAM_SIZE = 2
 
-    /** FTS4 MATCH 表达式里的 OR 连接符。 */
+    /** FTS4 MATCH Conector OR en una expresión. */
     private const val OR_OPERATOR = " OR "
 
-    /** 判断字符是否为 CJK(中文/日文/韩文)。 */
+    /** Determinar si el personaje es CJK(chino/japonés/coreano). */
     private fun isCjk(ch: Char): Boolean {
         val code = ch.code
-        return (code in 0x4E00..0x9FFF) || // CJK 统一表意文字
-            (code in 0x3400..0x4DBF) || // CJK 扩展 A
-            (code in 0x3040..0x309F) || // 平假名
-            (code in 0x30A0..0x30FF) || // 片假名
-            (code in 0xAC00..0xD7AF) // 韩文音节
+        return (code in 0x4E00..0x9FFF) || // CJK ideogramas unificados
+            (code in 0x3400..0x4DBF) || // CJK Expandir A
+            (code in 0x3040..0x309F) || // hiragana
+            (code in 0x30A0..0x30FF) || // Katakana
+            (code in 0xAC00..0xD7AF) // sílabas coreanas
     }
 
     /**
-     * 把文本转成 ngram 序列(空格分隔的 token 串)。
+     * Convertir texto en secuencia de ngram(cadena de token separada por espacios).
      *
-     * 中文做 2-gram,英文/数字保留原词(小写化),标点作为分隔符。
-     * 单个 CJK 字符(孤立)直接作为 token(支持单字查询)。
+     * hacer en chino 2-gram,ingles/Los números conservan las palabras originales.(Minúsculas),La puntuación sirve como separador.
+     * Carácter único CJK(aislado)directamente como token(Admite consultas de una sola palabra).
      *
-     * @param includeTrailingTailChar 是否额外输出 CJK 段的末位单字。索引侧需要它来覆盖
-     *   奇数长度片段的末尾字符;查询侧不需要 —— 末位单字在 AND 语义下只会加约束,不会加召回。
+     * @param includeTrailingTailChar Si se debe generar adicionalmente la última palabra del segmento CJK. Es necesario en el lado índice para cubrir.
+     *   carácter final de segmento de longitud impar;No requerido en el lado de la consulta —— La última palabra sólo estará restringida según la semántica AND.,No habrá retirada.
      */
     fun toNgram(text: String, includeTrailingTailChar: Boolean = true): String {
         if (text.isBlank()) return ""
@@ -57,7 +57,7 @@ object FactFtsManager {
                     tokens.add(s.substring(i, i + NGRAM_SIZE))
                 }
             }
-            // 尾部单字也加入(索引侧用它覆盖末尾字符)
+            // También se añade la última palabra.(Úselo en el lado del índice para cubrir el último carácter.)
             if (includeTrailingTailChar && s.isNotEmpty()) {
                 tokens.add(s.last().toString())
             }
@@ -92,31 +92,31 @@ object FactFtsManager {
     }
 
     /**
-     * 把查询词转成 FTS4 MATCH 表达式。
+     * Convierta términos de consulta en expresiones FTS4 MATCH.
      *
-     * - 空查询返回空字符串(调用方应跳过搜索)
-     * - 单 token 直接返回
-     * - 多 token 默认用空格连接(FTS4 默认 AND 语义);[orSemantics] 为 true 时用 OR 连接
-     * - 对特殊字符做转义(FTS4 的 " * : 等)
+     * - La consulta vacía devuelve una cadena vacía(La persona que llama debe omitir la búsqueda.)
+     * - El token único regresa directamente
+     * - Varios tokens están conectados con espacios de forma predeterminada.(FTS4 Semántica Y predeterminada);[orSemantics] Cuando sea verdadero, use OR para conectarse
+     * - Escapar de caracteres especiales(FTS4 de " * : espera)
      *
-     * 查询侧不输出末位单字 token:同一行事实里散落的词本来就不共享 2-gram,
-     * 再要求末位单字命中只会让召回更少。
+     * El lado de la consulta no genera el token de la última palabra: las palabras dispersas en la misma fila de hechos no son de naturaleza compartida. 2-gram,
+     * Exigir que se diga la última palabra sólo conducirá a menos retiradas.
      */
     fun toMatchQuery(query: String, orSemantics: Boolean = false): String {
         val ngram = toNgram(query, includeTrailingTailChar = false)
         if (ngram.isBlank()) return ""
         val joiner = if (orSemantics) OR_OPERATOR else " "
-        // 转义 FTS4 特殊字符:用双引号包裹每个 token
+        // Escapar de los caracteres especiales de FTS4:Envuelva cada uno entre comillas dobles token
         return ngram.split(' ')
             .filter { it.isNotBlank() }
             .joinToString(joiner) { "\"${it.replace("\"", "")}\"" }
     }
 
     /**
-     * 把查询串拆成检索词:空白与标点都是分隔符,不做分词判断。
+     * Divida la cadena de consulta en términos de búsqueda:Los espacios en blanco y la puntuación son delimitadores.,No se hace ningún juicio de participio.
      *
-     * 用于 LIKE 兜底:整串当子串查不到时,拆成词逐个查,任一命中即可作为候选。
-     * 原样的词序与大小写保持不变(LIKE 由 SQLite 决定大小写敏感性),重复词只留一个。
+     * Para pantalones de bolsillo LIKE:La cadena completa cuando no se puede encontrar la subcadena,Divídelo en palabras y busca una por una.,Cualquier acierto se convierte en candidato.
+     * El orden de las palabras y las mayúsculas originales permanecen sin cambios.(LIKE Sensibilidad entre mayúsculas y minúsculas determinada por SQLite),Sólo queda una palabra repetida.
      */
     fun toQueryTerms(query: String): List<String> {
         if (query.isBlank()) return emptyList()
@@ -135,13 +135,13 @@ object FactFtsManager {
     }
 
     /**
-     * 判断查询是否只包含孤立单 CJK 字符(此时 FTS4 2-gram 无法命中,应回退 LIKE)。
+     * Determinar si la consulta contiene solo caracteres CJK individuales aislados(En este momento no se puede alcanzar FTS4 de 2 gramos,Debería revertirse LIKE).
      */
     fun shouldFallbackToLike(query: String): Boolean {
         val ngram = toNgram(query, includeTrailingTailChar = false)
         if (ngram.isBlank()) return true
         val tokens = ngram.split(' ').filter { it.isNotBlank() }
-        // 全是单字符 token 时(无 2-gram),FTS4 召回不足,回退 LIKE
+        // Cuando todos son tokens de un solo carácter(Ninguno 2-gram),FTS4 Recuerdo inadecuado,revertir LIKE
         return tokens.isNotEmpty() && tokens.all { it.length == 1 }
     }
 }

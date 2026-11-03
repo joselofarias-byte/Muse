@@ -10,10 +10,10 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * [ConversationExporter] 的纯函数部分(Markdown / HTML)单测。
+ * [ConversationExporter] La parte de función pura de(Markdown / HTML)Prueba única.
  *
- * 只覆盖不依赖 Android 的导出路径;PDF 依赖 [android.graphics.pdf.PdfDocument],
- * 在 JVM 单测里无法实例化,故不在本测试范围(需要 instrumented / Robolectric)。
+ * Anule solo las rutas de exportación que no dependen de Android;PDF depender de [android.graphics.pdf.PdfDocument],
+ * No se puede crear una instancia en la prueba unitaria JVM,Por lo tanto, no está dentro del alcance de esta prueba.(necesitar instrumented / Robolectric).
  */
 class ConversationExporterTest {
 
@@ -27,20 +27,20 @@ class ConversationExporterTest {
             chatTitle = "My Chat",
             locale = Locale.ENGLISH,
         )
-        assertTrue("应以 # 标题开头", out.startsWith("# My Chat"))
-        assertTrue("应含英文角色标签", out.contains("**User**: hello"))
-        assertTrue("应含英文助手标签", out.contains("**Assistant**: hi there"))
+        assertTrue("Debería comenzar con # título", out.startsWith("# My Chat"))
+        assertTrue("Debe contener etiquetas de caracteres en inglés.", out.contains("**User**: hello"))
+        assertTrue("Se debe incluir una etiqueta de ayuda en inglés.", out.contains("**Assistant**: hi there"))
     }
 
     @Test
     fun `markdown uses chinese role labels for zh locale`() {
         val out = ConversationExporter.exportToMarkdown(
-            listOf(msg(MessageRole.USER, "你好"), msg(MessageRole.ASSISTANT, "在的")),
-            chatTitle = "会话",
+            listOf(msg(MessageRole.USER, "Hola"), msg(MessageRole.ASSISTANT, "en")),
+            chatTitle = "sesión",
             locale = Locale.SIMPLIFIED_CHINESE,
         )
-        assertTrue(out.contains("**用户**: 你好"))
-        assertTrue(out.contains("**助手**: 在的"))
+        assertTrue(out.contains("**Usuario**: Hola"))
+        assertTrue(out.contains("**asistente**: en"))
     }
 
     @Test
@@ -50,7 +50,7 @@ class ConversationExporterTest {
             chatTitle = "t",
             locale = Locale.ENGLISH,
         )
-        assertTrue("空回复应标注 (Empty reply)", out.contains("(Empty reply)"))
+        assertTrue("Las respuestas vacías deben marcarse (Empty reply)", out.contains("(Empty reply)"))
     }
 
     @Test
@@ -84,8 +84,8 @@ class ConversationExporterTest {
             locale = Locale.ENGLISH,
         )
         assertTrue(out.startsWith("<!DOCTYPE html>"))
-        assertTrue("英文 locale 应输出 lang=en", out.contains("lang=\"en\""))
-        assertTrue("<title> 应转义", out.contains("<title>A &amp; B &lt;x&gt;</title>"))
+        assertTrue("La configuración regional en inglés debería aparecer lang=en", out.contains("lang=\"en\""))
+        assertTrue("<title> se debe escapar", out.contains("<title>A &amp; B &lt;x&gt;</title>"))
     }
 
     @Test
@@ -95,8 +95,8 @@ class ConversationExporterTest {
             chatTitle = "t",
             locale = Locale.ENGLISH,
         )
-        assertTrue("正文应被转义", out.contains("&lt;script&gt;"))
-        assertTrue("不得出现可执行的原始 script 标签", !out.contains("<script>alert"))
+        assertTrue("El texto debe tener escape.", out.contains("&lt;script&gt;"))
+        assertTrue("Las etiquetas de script sin formato ejecutables no deben estar presentes", !out.contains("<script>alert"))
     }
 
     @Test
@@ -113,8 +113,8 @@ class ConversationExporterTest {
     @Test
     fun `html uses zh lang for chinese locale`() {
         val out = ConversationExporter.exportToHtml(
-            listOf(msg(MessageRole.USER, "你好")),
-            chatTitle = "会话",
+            listOf(msg(MessageRole.USER, "Hola")),
+            chatTitle = "sesión",
             locale = Locale.SIMPLIFIED_CHINESE,
         )
         assertTrue(out.contains("lang=\"zh-CN\""))
@@ -130,17 +130,17 @@ class ConversationExporterTest {
             createdAt = 1L,
         )
         val out = ConversationExporter.exportToHtml(listOf(m), "t", Locale.ENGLISH)
-        assertTrue("base64 图应内联为 data URI", out.contains("src=\"data:image/jpeg;base64,AAAA\""))
-        assertTrue("远程图应降级为带 rel 的链接", out.contains("rel=\"noopener noreferrer\""))
+        assertTrue("base64 La figura debe estar alineada como data URI", out.contains("src=\"data:image/jpeg;base64,AAAA\""))
+        assertTrue("El gráfico remoto debe degradarse a un enlace con rel", out.contains("rel=\"noopener noreferrer\""))
     }
 
-    // ── v2.6.8: card_state 尾巴不得进导出 ──────────────────────────────
+    // ── v2.6.8: card_state La cola no se puede importar ni exportar. ──────────────────────────────
 
-    /** 卡片回传的机器字段（cardId / JSON 键值）不能出现在任何导出格式里。 */
+    /** El campo de la máquina devuelto por la tarjeta (cardId / JSON valor-clave) no puede aparecer en ningún formato de exportación. */
     private fun cardStateMessage(): UIMessage = msg(
         MessageRole.USER,
         io.zer0.muse.ui.markdown.appendCardStateToMessage(
-            text = "把睡眠调到 6 小时",
+            text = "Configurar el sueño en 6 horas",
             cardId = "msg-123",
             data = """{"hours":6}""",
         ),
@@ -150,10 +150,10 @@ class ConversationExporterTest {
     fun `markdown export drops the card state tail`() {
         val out = ConversationExporter.exportToMarkdown(listOf(cardStateMessage()), chatTitle = "t", locale = Locale.ENGLISH)
 
-        assertTrue("正文要留着", out.contains("把睡眠调到 6 小时"))
-        assertFalse("不能导出卡片状态标记", out.contains("card_state"))
-        assertFalse("不能导出卡片身份", out.contains("cardId="))
-        assertFalse("不能导出 JSON 键值", out.contains("hours"))
+        assertTrue("mantener el texto", out.contains("Configurar el sueño en 6 horas"))
+        assertFalse("La etiqueta de estado de la tarjeta no se puede exportar", out.contains("card_state"))
+        assertFalse("La identidad de la tarjeta no se puede exportar", out.contains("cardId="))
+        assertFalse("No se pueden exportar valores-clave JSON", out.contains("hours"))
     }
 
     @Test
@@ -165,7 +165,7 @@ class ConversationExporterTest {
             locale = Locale.ENGLISH,
         )
 
-        assertTrue(out.contains("把睡眠调到 6 小时"))
+        assertTrue(out.contains("Configurar el sueño en 6 horas"))
         assertFalse(out.contains("card_state"))
         assertFalse(out.contains("cardId="))
         assertFalse(out.contains("hours"))
@@ -175,7 +175,7 @@ class ConversationExporterTest {
     fun `html export drops the card state tail`() {
         val out = ConversationExporter.exportToHtml(listOf(cardStateMessage()), chatTitle = "t", locale = Locale.ENGLISH)
 
-        assertTrue(out.contains("把睡眠调到 6 小时"))
+        assertTrue(out.contains("Configurar el sueño en 6 horas"))
         assertFalse(out.contains("card_state"))
         assertFalse(out.contains("cardId="))
         assertFalse(out.contains("hours"))

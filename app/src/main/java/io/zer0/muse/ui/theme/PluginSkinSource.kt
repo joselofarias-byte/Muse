@@ -3,10 +3,10 @@ package io.zer0.muse.ui.theme
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 已安装插件提供的声明式气泡皮肤。
+ * Máscara de burbuja declarativa proporcionada por el complemento instalado.
  *
- * [skin] 必须已经通过 [BubbleSkinValidator.isValid];[enabled] 为 false 表示插件未确认或已禁用,
- * 此时该条目只允许用于设置页展示「不可用」,不得进入渲染路径。
+ * [skin] debe haber pasado [BubbleSkinValidator.isValid];[enabled] es falso significa que el complemento no está confirmado o deshabilitado,
+ * En este momento, la entrada solo puede usarse en la página de configuración para mostrar "no disponible",No se debe ingresar la ruta de renderizado.
  */
 data class InstalledSkin(
     val pluginId: String,
@@ -17,23 +17,23 @@ data class InstalledSkin(
 )
 
 /**
- * 插件皮肤来源 — 宿主渲染层只依赖这个窄接口,不直接依赖插件管理器实现。
+ * Fuente de máscara de complemento — La capa de renderizado del host solo se basa en esta interfaz estrecha,No depende directamente de la implementación del administrador de complementos.
  *
- * 实现方必须保证:[listInstalledSkins] 返回的皮肤都经过 [BubbleSkinValidator] 校验,
- * 且只有当前可用(已确认、已启用、签名/信任/摘要复核通过)的插件才以 [InstalledSkin.enabled] = true 返回;
- * 插件被禁用、卸载或信任被撤销后,下一次读取不得再返回其可用皮肤。
- * 皮肤始终只是声明式数据,不允许把插件代码或 Compose 对象带过这个边界。
+ * El implementador debe garantizar:[listInstalledSkins] Todas las máscaras devueltas han pasado por [BubbleSkinValidator] verificar,
+ * y solo están disponibles actualmente(Confirmado, habilitado, firmado/confianza/Revisión del resumen aprobada)El complemento es [InstalledSkin.enabled] = true Regresar;
+ * Después de deshabilitar, desinstalar o revocar la confianza de un complemento,La siguiente lectura no debe devolver sus máscaras disponibles.
+ * Las máscaras son siempre solo datos declarativos.,Ningún código de complemento ni objetos Compose pueden cruzar este límite.
  */
 interface PluginSkinSource {
 
     /**
-     * 读取已安装插件的皮肤。
+     * Lea la máscara del complemento instalado.
      *
-     * @param includeDisabled true 时同时返回已安装但当前不可用的皮肤(供设置页提示),
-     * 否则只返回可进入渲染路径的皮肤。
+     * @param includeDisabled true También devuelve máscaras instaladas pero actualmente no disponibles.(Solicitar página de configuración),
+     * De lo contrario, solo se devuelven máscaras que pueden ingresar a la ruta de renderizado.
      */
     fun listInstalledSkins(includeDisabled: Boolean = false): List<InstalledSkin>
 
-    /** 插件注册表变更信号;值变化表示皮肤列表可能已变化,收集方应重新读取。 */
+    /** Señal de cambio de registro de complemento;Los cambios de valor indican que la lista de aspectos puede haber cambiado,El coleccionista debería volver a leer. */
     val revisionFlow: Flow<Int>
 }

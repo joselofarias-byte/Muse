@@ -1,18 +1,18 @@
 import type { MessageKey } from "../i18n/messages.js";
 
 /**
- * 消息操作菜单与批量操作的纯逻辑。
+ * Lógica pura del menú de operación de mensajes y operación por lotes.
  *
- * 菜单项只由三件事决定：角色、能力位、当前收藏状态。抽成纯函数是为了能脱离 DOM
- * 断言「缺 message_write 只剩复制」「tool / system 只给复制」这类规则；
- * 菜单项只给**词条 key**，文案由组件自己按当前语言翻译（本模块不碰语言）。
+ * Los elementos del menú están determinados por solo tres cosas: personaje, espacio de habilidad y estado actual de la colección. El propósito de extraer funciones puras es escapar de DOM
+ * Afirmar "Falta message_write, solo copiando"tool / system Reglas como "Sólo copiar";
+ * Los elementos del menú solo dan**entrada key**, la copia es traducida por el propio componente según el idioma actual (este módulo no toca el idioma).
  */
 export type MessageActionId = "copy" | "quote" | "favorite" | "unfavorite" | "delete" | "select";
 
 export interface MessageActionItem {
   readonly id: MessageActionId;
   readonly labelKey: MessageKey;
-  /** 删除是破坏性操作，样式上单独标色。 */
+  /** La eliminación es una operación destructiva y está marcada por separado en el estilo. */
   readonly danger?: boolean;
 }
 
@@ -24,11 +24,11 @@ export interface MessageActionInput {
 }
 
 /**
- * 菜单项（顺序即渲染顺序）：
- *  - 复制：有正文就给；
- *  - 引用 / 收藏（或取消收藏）/ 删除：需要 message_write；
- *  - 多选：需要 message_multi_select；
- *  - role=tool / system：只给复制——这两类不是「对话消息」，删了或引用都没有意义。
+ * Elementos del menú (el orden es el orden de representación):
+ *  - Copia: Si tienes el texto, por favor entrégalo;
+ *  - Cita/Favorito (o no favorito)/ Eliminar: se requiere escribir_mensaje;
+ *  - Selección múltiple: se requiere message_multi_select;
+ *  - role=tool / system: sólo para copiar——Estas dos categorías no son "mensajes de conversación" y eliminarlas o citarlas no tendrá ningún significado.
  */
 export function actionsForMessage(input: MessageActionInput): readonly MessageActionItem[] {
   const items: MessageActionItem[] = [];
@@ -43,14 +43,14 @@ export function actionsForMessage(input: MessageActionInput): readonly MessageAc
   return items;
 }
 
-/** 被引用内容的摘要：压平换行、截断到一行，输入区上方那条不能撑高。 */
+/** Resumen del contenido citado: aplanar y ajustar, truncar en una línea y la barra sobre el área de entrada no se podrá elevar. */
 export function quoteExcerpt(text: string, max = 80): string {
   const flat = text.replace(/\s+/g, " ").trim();
   if (flat.length <= max) return flat;
   return `${flat.slice(0, max)}…`;
 }
 
-/** 多选复制：只拼有正文的消息，空行分隔。 */
+/** Copia de selección múltiple: solo se deletrean los mensajes con texto, separados por líneas en blanco. */
 export function selectionCopyText(messages: readonly { readonly content: string }[]): string {
   return messages
     .map((message) => message.content.trim())
@@ -58,7 +58,7 @@ export function selectionCopyText(messages: readonly { readonly content: string 
     .join("\n\n");
 }
 
-/** 删除确认用哪条词条：单条 / 批量。文案由调用方用 t() 取。 */
+/** Qué entrada utilizar para la confirmación de eliminación: entrada única/lote. La persona que llama utiliza la copia t() Llevar. */
 export function deleteConfirmKey(count: number): MessageKey {
   return count <= 1 ? "message.deleteConfirmOne" : "message.deleteConfirmMany";
 }

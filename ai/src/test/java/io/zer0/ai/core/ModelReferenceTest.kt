@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Provider/model 联合引用的格式与兼容性测试。 */
+/** Provider/model Pruebas de formato y compatibilidad de referencias sindicales. */
 class ModelReferenceTest {
 
     @Test

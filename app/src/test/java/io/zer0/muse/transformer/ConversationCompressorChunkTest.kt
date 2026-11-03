@@ -7,41 +7,41 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [ConversationCompressor] 分块与预算逻辑单测。
+ * [ConversationCompressor] Prueba única de lógica de bloqueo y presupuesto.
  *
- * 覆盖 2026-09-29 审查发现:「单块 prompt 上限 ≈38.4 万字符(256×1500)必然超压缩模型窗口」。
+ * Cobertura 2026-09-29 Revisar los resultados:"Límite superior de solicitud de bloque único ≈38.4 esvástica(256×1500)Ventana de modelo necesariamente supercomprimida".
  */
 class ConversationCompressorChunkTest {
     private fun msg(chars: Int): UIMessage = UIMessage(role = MessageRole.USER, content = "x".repeat(chars))
 
     @Test
-    fun `单块预算按模型窗口计算并受上下限约束`() {
-        // 窗口未知 → 保守默认(32k × 0.4)
+    fun `El presupuesto de bloque único se calcula en función de la ventana del modelo y está sujeto a límites superior e inferior.`() {
+        // Ventana desconocida → default conservador(32k × 0.4)
         assertEquals(12_800, ConversationCompressor.chunkBudgetChars(null))
         assertEquals(12_800, ConversationCompressor.chunkBudgetChars(0))
-        // 大窗口 → 不超过上限(避免单块过大)
+        // ventana grande → No exceda el límite superior(Evite bloques de gran tamaño)
         assertEquals(48_000, ConversationCompressor.chunkBudgetChars(512_000))
-        // 小窗口 → 不低于下限(否则会切得过碎)
+        // pequeña ventana → No menos que el límite inferior(De lo contrario quedará demasiado picado.)
         assertEquals(6_000, ConversationCompressor.chunkBudgetChars(8_000))
     }
 
     @Test
-    fun `长会话按字符预算切块而不是切出一个超窗口巨块`() {
-        // 旧实现:256 条(上限)× 1500 字符(单条上限)= 384_000 字符挤在一个 prompt 里
+    fun `Las sesiones largas se organizan según el presupuesto de los personajes en lugar de dividir un trozo de superventana.`() {
+        // antigua implementación:256 Artículo(límite superior)× 1500 personaje(Límite superior único)= 384_000 Personajes agrupados en un mensaje
         val messages = List(256) { msg(1_500) }
         val budget = ConversationCompressor.chunkBudgetChars(null)
         val chunks = ConversationCompressor.chunkMessages(messages, budget)
 
-        assertTrue("应切成多块,实际 ${chunks.size} 块", chunks.size >= 30)
+        assertTrue("Debe cortarse en varios trozos.,real ${chunks.size} bloquear", chunks.size >= 30)
         chunks.forEach { chunk ->
             val chars = chunk.sumOf { minOf(it.content.length, 1_500) }
-            assertTrue("单块 $chars 字符超出预算 $budget(块内 ${chunk.size} 条)", chars <= budget)
+            assertTrue("Monobloque $chars Los personajes superan el presupuesto. $budget(dentro del bloque ${chunk.size} Artículo)", chars <= budget)
         }
-        assertEquals("切块不能丢消息", 256, chunks.sumOf { it.size })
+        assertEquals("No puedes perder el mensaje cortándolo en pedazos.", 256, chunks.sumOf { it.size })
     }
 
     @Test
-    fun `条数上限依然生效`() {
+    fun `El límite superior en el número de artículos sigue vigente.`() {
         val messages = List(300) { msg(10) }
         val chunks = ConversationCompressor.chunkMessages(messages, 1_000_000)
         assertEquals(2, chunks.size)
@@ -50,24 +50,24 @@ class ConversationCompressorChunkTest {
     }
 
     @Test
-    fun `超长消息按截断后的长度计费且不丢消息`() {
-        // 送进 prompt 的单条消息会被截断到 MAX_MSG_CHARS(1500),分块按截断后的长度计费:
-        // 10 条 2 万字符的消息 ≈ 每条只算 1500 → 预算 5000 时每块 3 条
+    fun `Los mensajes extralargos se facturan según la longitud truncada sin perder el mensaje.`() {
+        // Un único mensaje enviado al mensaje se truncará a MAX_MSG_CHARS(1500),Los bloques se facturan según la longitud truncada.:
+        // 10 Un mensaje de 20.000 caracteres ≈ Cada elemento solo cuenta 1500 → 3 artículos por bloque cuando el presupuesto es 5000
         val messages = List(10) { msg(20_000) }
         val budget = 5_000
         val chunks = ConversationCompressor.chunkMessages(messages, budget)
 
         assertEquals(4, chunks.size)
         assertEquals(listOf(3, 3, 3, 1), chunks.map { it.size })
-        assertEquals("切块不能丢消息", 10, chunks.sumOf { it.size })
+        assertEquals("No puedes perder el mensaje cortándolo en pedazos.", 10, chunks.sumOf { it.size })
         chunks.forEach { chunk ->
             val chars = chunk.sumOf { minOf(it.content.length, 1_500) }
-            assertTrue("单块 $chars 字符超出预算 $budget", chars <= budget)
+            assertTrue("Monobloque $chars Los personajes superan el presupuesto. $budget", chars <= budget)
         }
     }
 
     @Test
-    fun `空列表返回空块`() {
+    fun `La lista vacía devuelve un bloque vacío`() {
         assertTrue(ConversationCompressor.chunkMessages(emptyList(), 1_000).isEmpty())
     }
 }

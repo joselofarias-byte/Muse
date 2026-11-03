@@ -18,37 +18,37 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * P2-11: 安全凭证存储,基于 Android Keystore + 普通 SharedPreferences(加密后落盘)。
+ * P2-11: Almacenamiento seguro de credenciales,Basado en el almacén de claves de Android + Normal SharedPreferences(Cifrado y colocado en el disco.).
  *
- * 与普通 API Key(存在 SettingsRepository.providers Flow 中)物理隔离,
- * OAuth access_token / refresh_token 存此处,降低泄露风险。
+ * con ordinario API Key(Existe en el flujo de SettingsRepository.providers)aislamiento físico,
+ * OAuth access_token / refresh_token guardar aquí,Reducir el riesgo de fugas.
  *
- * 实现:项目无 androidx.security:security-crypto 依赖,采用 Keystore 直接加密 + 普通 SP 兜底,
- *      与既有 [io.zer0.muse.data.SecureKeyStore] 风格保持一致。
+ * darse cuenta:El proyecto no tiene dependencia androidx.security:security-crypto,Uso de cifrado directo de Keystore + SP ordinario para protección,
+ *      con existente [io.zer0.muse.data.SecureKeyStore] El estilo sigue siendo consistente.
  *
- * 加密:AES-256-GCM,密钥由 Android Keystore 管理(不可导出,卸载即销毁)
- * 存储:`"enc_v1:" + Base64(iv + ciphertext + authTag)` 写入 SharedPreferences
+ * Cifrado:AES-256-GCM,Las claves son administradas por Android Keystore(No exportable,Destruir al desinstalar)
+ * almacenamiento:`"enc_v1:" + Base64(iv + ciphertext + authTag)` escribir SharedPreferences
  *
- * 安全保证:
- *  - 不在日志中输出 token 明文(只输出长度/前 4 字符做调试)
- *  - 加密失败不静默回退明文(写入被放弃,调用方读取时返回 null,用户需重新登录)
- *  - 解密失败返回 null(用户需重新登录),不抛异常以避免崩溃
+ * garantía de seguridad:
+ *  - No generar texto sin formato del token en el registro(Solo genera la longitud/Primeros 4 caracteres para depurar)
+ *  - La falla de cifrado no vuelve silenciosamente al texto sin formato(escribe abortado,Devuelto cuando la persona que llama lee null,El usuario necesita iniciar sesión nuevamente)
+ *  - El error de descifrado regresa null(El usuario necesita iniciar sesión nuevamente),No lances excepciones para evitar fallos
  */
 class SecureCredentialStore(context: Context) {
 
     private val masterKeyAlias: String = "muse_oauth_master_key"
 
-    /** 加密 SP 实例(独立于其他模块的 SP,实现物理隔离)。 */
+    /** Instancia de SP cifrada(independiente de otros módulos SP,Implementar aislamiento físico). */
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /** 初始化主密钥(Android Keystore 中生成,AES256-GCM)。返回 alias 便于调用方观察。 */
+    /** Inicializar clave maestra(Android Keystore generado en,AES256-GCM). Devuelve el alias para que la persona que llama pueda observarlo fácilmente. */
     private fun ensureMasterKey(): String {
         getOrCreateKey()
         return masterKeyAlias
     }
 
-    /** 加密存储 OAuth token(providerId → TokenBundle)。 */
+    /** Almacenamiento cifrado OAuth token(providerId → TokenBundle). */
     suspend fun storeOAuthToken(providerId: String, bundle: TokenBundle) {
         if (providerId.isBlank()) return
         withContext(Dispatchers.IO) {
@@ -57,21 +57,21 @@ class SecureCredentialStore(context: Context) {
                 val json = AppJson.encodeToString(TokenBundle.serializer(), bundle)
                 val encrypted = encrypt(json)
                 prefs.edit().putString(providerId, encrypted).apply()
-                // 维护 providerId 索引(便于 listProviderIds 不遍历所有 SP key)
+                // Mantener el índice de ID de proveedor(Conveniente para que listProviderIds no se repita sobre todos SP key)
                 val ids = readIndex().toMutableSet()
                 ids.add(providerId)
                 writeIndex(ids)
-                Logger.i(TAG, "OAuth token 已存储: provider=${maskId(providerId)}, len=${json.length}")
+                Logger.i(TAG, "OAuth token salvado: provider=${maskId(providerId)}, len=${json.length}")
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                // 加密失败绝不静默回退明文;但也不能让 OAuth 流程崩溃,记录错误日志
-                Logger.w(TAG, "storeOAuthToken 失败: ${truncateForLog(t.message)}")
+                // La falla del cifrado nunca volverá silenciosamente al texto sin formato;Pero no permita que el proceso OAuth falle,Grabar registro de errores
+                Logger.w(TAG, "storeOAuthToken falló: ${truncateForLog(t.message)}")
             }
         }
     }
 
-    /** 读取 OAuth token。无记录或解密失败返回 null。 */
+    /** Lea el token de OAuth. Devuelve nulo si no hay ningún registro o falla el descifrado. */
     suspend fun getOAuthToken(providerId: String): TokenBundle? {
         if (providerId.isBlank()) return null
         return withContext(Dispatchers.IO) {
@@ -90,18 +90,18 @@ class SecureCredentialStore(context: Context) {
                     val ids = readIndex().toMutableSet()
                     ids.remove(providerId)
                     writeIndex(ids)
-                    Logger.w(TAG, "legacy OAuth token 迁移失败，已删除: ${truncateForLog(it.message)}")
+                    Logger.w(TAG, "legacy OAuth token Error de migración, eliminado: ${truncateForLog(it.message)}")
                 }.getOrNull()
             } ?: return@withContext null
             runCatching {
                 AppJson.decodeFromString(TokenBundle.serializer(), json)
             }.onFailure {
-                Logger.w(TAG, "getOAuthToken 反序列化失败: ${truncateForLog(it.message)}")
+                Logger.w(TAG, "getOAuthToken Falló la deserialización: ${truncateForLog(it.message)}")
             }.getOrNull()
         }
     }
 
-    /** 删除 OAuth token。 */
+    /** Eliminar el token de OAuth. */
     suspend fun deleteOAuthToken(providerId: String) {
         if (providerId.isBlank()) return
         withContext(Dispatchers.IO) {
@@ -109,18 +109,18 @@ class SecureCredentialStore(context: Context) {
             val ids = readIndex().toMutableSet()
             ids.remove(providerId)
             writeIndex(ids)
-            Logger.i(TAG, "OAuth token 已删除: provider=${maskId(providerId)}")
+            Logger.i(TAG, "OAuth token Eliminado: provider=${maskId(providerId)}")
         }
     }
 
-    /** 列出所有已存储 OAuth 的 providerId。 */
+    /** Enumera todos los ID de proveedores de OAuth almacenados. */
     suspend fun listProviderIds(): List<String> = withContext(Dispatchers.IO) {
         readIndex()
     }
 
-    // ── 内部工具(Keystore 加解密 + SP 索引维护) ─────────────────────────
+    // ── herramientas internas(Keystore Cifrado y descifrado + mantenimiento del índice SP) ─────────────────────────
 
-    /** 获取或创建 AES-256 密钥(由 Android Keystore 托管)。 */
+    /** Obtener o crear una clave AES-256(Alojado por el almacén de claves de Android). */
     private fun getOrCreateKey(): SecretKey = synchronized(lock) {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (keyStore.getEntry(masterKeyAlias, null) as? KeyStore.SecretKeyEntry)?.let {
@@ -142,17 +142,17 @@ class SecureCredentialStore(context: Context) {
         generator.generateKey()
     }
 
-    /** 加密明文,返回 `"enc_v1:" + Base64(iv + ciphertext + authTag)`。 */
+    /** Cifrar texto sin formato,Regresar `"enc_v1:" + Base64(iv + ciphertext + authTag)`. */
     private fun encrypt(plain: String): String {
         val key = getOrCreateKey()
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key)
-        val iv = cipher.iv // GCM 自动生成 12B IV
+        val iv = cipher.iv // GCM Generado automáticamente 12B IV
         val cipherBytes = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
         return PREFIX + Base64.encodeToString(iv + cipherBytes, Base64.NO_WRAP)
     }
 
-    /** 解密。legacy 明文由读取方先迁移；此函数不把明文当作凭证返回。 */
+    /** Descifrar.legacy El lector migra primero el texto sin formato; esta función no devuelve el texto sin formato como credencial. */
     private fun decrypt(stored: String): String? {
         if (!stored.startsWith(PREFIX)) return null
         return runCatching {
@@ -166,11 +166,11 @@ class SecureCredentialStore(context: Context) {
             cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
             String(cipher.doFinal(cipherBytes), Charsets.UTF_8)
         }.onFailure {
-            Logger.w(TAG, "decrypt 失败: ${truncateForLog(it.message)}")
+            Logger.w(TAG, "decrypt falló: ${truncateForLog(it.message)}")
         }.getOrNull()
     }
 
-    /** providerId 索引(避免遍历所有 SP key 来判断哪些是 OAuth token)。 */
+    /** providerId índice(Evite recorrer todas las claves SP para determinar cuáles son OAuth token). */
     private fun readIndex(): List<String> {
         val raw = prefs.getString(KEY_INDEX, "") ?: ""
         return raw.split(',').map { it.trim() }.filter { it.isNotBlank() }
@@ -180,13 +180,13 @@ class SecureCredentialStore(context: Context) {
         prefs.edit().putString(KEY_INDEX, ids.joinToString(",")).apply()
     }
 
-    /** 截断日志消息,避免泄露 token 内容或撑爆日志文件。 */
+    /** Truncar mensajes de registro,Evite filtrar contenidos de tokens o explotar archivos de registro. */
     private fun truncateForLog(msg: String?): String {
         if (msg == null) return ""
         return if (msg.length > MAX_LOG_MSG_LENGTH) msg.substring(0, MAX_LOG_MSG_LENGTH) + "..." else msg
     }
 
-    /** 日志安全:providerId 只输出前 4 字符 + 长度,避免关联性推断。 */
+    /** Seguridad de registro:providerId Solo genera los primeros 4 caracteres + longitud,Evite las inferencias correlacionales. */
     private fun maskId(id: String): String {
         return if (id.length <= 4) id else "${id.take(4)}***(${id.length})"
     }
@@ -196,7 +196,7 @@ class SecureCredentialStore(context: Context) {
         private const val PREFS_NAME = "muse_oauth_store"
         private const val KEY_INDEX = "__provider_ids__"
         private const val PREFIX = "enc_v1:"
-        private const val IV_LENGTH = 12 // GCM 推荐 12 字节 IV
+        private const val IV_LENGTH = 12 // GCM 12 bytes recomendados IV
         private const val GCM_TAG_LENGTH_BITS = 128
         private const val MAX_LOG_MSG_LENGTH = 200
         private val lock = Any()
@@ -204,15 +204,15 @@ class SecureCredentialStore(context: Context) {
 }
 
 /**
- * OAuth token bundle(标准 OAuth 2.0 token response 投影)。
+ * OAuth token bundle(Proyección de respuesta de token estándar de OAuth 2.0).
  *
- * 由 [SecureCredentialStore] 加密存储, [OAuthManager] 在登录成功后写入、
- * 在 [OAuthManager.refreshTokenIfNeeded] 中读取并更新。
+ * por [SecureCredentialStore] Almacenamiento cifrado, [OAuthManager] Después de iniciar sesión correctamente, escriba
+ * en [OAuthManager.refreshTokenIfNeeded] Leer y actualizar.
  *
- * @param accessToken 访问令牌(Bearer)
- * @param refreshToken 刷新令牌(部分供应商不返回,可空)
- * @param expiresAt 过期时间(epoch millis,0 表示不过期/未知)
- * @param scope 实际授权范围(可能与请求的不同)
+ * @param accessToken token de acceso(Bearer)
+ * @param refreshToken token de actualización(Algunos proveedores no regresan,Disponible)
+ * @param expiresAt tiempo de vencimiento(epoch millis,0 Indica que no tiene vencimiento/desconocido)
+ * @param scope Alcance real de la autorización(Puede diferir de lo solicitado)
  */
 @Serializable
 data class TokenBundle(
@@ -220,6 +220,6 @@ data class TokenBundle(
     val refreshToken: String? = null,
     val expiresAt: Long = 0, // epoch millis
     val scope: String = "",
-    /** v2.x（Codex）: OpenID Connect id_token（内含 chatgpt_account_id claim，请求头需要）。 */
+    /** v2.x(Codex): OpenID Connect id_token(Contiene el reclamo chatgpt_account_id, requerido en el encabezado de la solicitud). */
     val idToken: String? = null,
 )

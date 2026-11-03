@@ -7,16 +7,16 @@ import io.zer0.muse.transformer.ContextCompressTransformer
 import kotlin.uuid.Uuid
 
 /**
- * v2.x 重构 S2: [ChatCompressionCoordinator] 访问 ChatViewModel 的窄桥接口。
+ * v2.x Refactorizar S2: [ChatCompressionCoordinator] Acceda a la interfaz de puente estrecho de ChatViewModel.
  *
- * 压缩编排需要访问 VM 的检查点读取器、压缩器、状态与少量回调。用显式接口
- * 声明这些访问,而不是把 ViewModel 整体传入 —— 依赖面可见、可测、可替身。
+ * La orquestación de compresión requiere acceso al lector de puntos de control, al compresor, al estado y algunas devoluciones de llamada de la VM. Usar interfaz explícita
+ * reclamar estos accesos,En lugar de pasar el ViewModel como un todo —— La superficie de dependencia es visible, mensurable y reemplazable.
  *
- * 迁移性质:纯抽取。VM 侧以匿名对象实现,全部为**直接转发**,无逻辑。
+ * Propiedades de migración:Extracción pura.VM Implementado con objetos anónimos.,Todo por**Reenviar directamente**,Sin lógica.
  */
 internal interface ChatCompressionHostBridge {
 
-    // ── 依赖 ───────────────────────────────────────────────────────────
+    // ── depender de ───────────────────────────────────────────────────────────
 
     val stateStore: ChatStateStore
     val appContext: android.content.Context
@@ -27,15 +27,15 @@ internal interface ChatCompressionHostBridge {
     val memoryTicker: io.zer0.memory.ticker.MemoryTicker
     val coroutineScope: kotlinx.coroutines.CoroutineScope
 
-    // ── 状态(原 VM 的可变水位线)───────────────────────────────────────
+    // ── Estado(Marca de agua variable para VM original)───────────────────────────────────────
 
-    /** 原 `checkpointCoveredSessionId`(读写)。 */
+    /** Originales `checkpointCoveredSessionId`(leer y escribir). */
     var checkpointCoveredSessionId: String?
 
-    /** 原 `checkpointCoveredIds`(读写)。 */
+    /** Originales `checkpointCoveredIds`(leer y escribir). */
     var checkpointCoveredIds: Set<String>
 
-    // ── 原 VM 方法转发 ─────────────────────────────────────────────────
+    // ── Reenvío del método de VM original ─────────────────────────────────────────────────
 
     fun displayedSessionId(): String?
     fun reportError(message: String)
@@ -44,9 +44,9 @@ internal interface ChatCompressionHostBridge {
     suspend fun refreshCheckpointCoveredIds(sessionId: String)
     suspend fun refreshContextInfo()
 
-    /** 原 `newlyCoveredCount`(已下沉 companion 的纯函数)。 */
+    /** Originales `newlyCoveredCount`(Funciones puras que han hundido al compañero). */
     fun newlyCoveredCount(messages: List<UIMessage>, coveredIds: Set<String>, previousBoundaryId: String?): Int
 }
 
-/** 桥接用的消息 id 类型别名,避免各处重复写全限定名。 */
+/** Alias de tipo de ID de mensaje para puente,Evite repetir el nombre completo en todas partes. */
 internal typealias CompMessageId = Uuid

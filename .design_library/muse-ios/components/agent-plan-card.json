@@ -18,25 +18,25 @@
     {
       "name": "Executing Plan",
       "whySelected": "Active multi-step agent plan",
-      "traits": {"status": "executing", "radius": "20px card", "bg": "accent-soft 5pct", "border": "1px accent-17pct", "padding": "16px", "header": "brain icon + Agent 计划 + progress text", "stepCount": "3 of 5"},
+      "traits": {"status": "executing", "radius": "20px card", "bg": "accent-soft 5pct", "border": "1px accent-17pct", "padding": "16px", "header": "brain icon + Agent planear + progress text", "stepCount": "3 of 5"},
       "childrenDigest": "Header with progress + vertical timeline of steps with status indicators"
     },
     {
       "name": "Completed Plan",
       "whySelected": "All steps finished successfully",
-      "traits": {"status": "completed", "radius": "20px", "bg": "success-5pct", "border": "1px success-25pct", "icon": "checkmark-circle", "label": "计划完成", "textColor": "success"},
+      "traits": {"status": "completed", "radius": "20px", "bg": "success-5pct", "border": "1px success-25pct", "icon": "checkmark-circle", "label": "Plan completado", "textColor": "success"},
       "childrenDigest": "Success header + completed step list with results"
     },
     {
       "name": "Paused Plan",
       "whySelected": "User paused execution",
-      "traits": {"status": "paused", "radius": "20px", "bg": "warning-5pct", "border": "1px warning-25pct", "icon": "pause-circle", "label": "已暂停", "actions": "resume button"},
+      "traits": {"status": "paused", "radius": "20px", "bg": "warning-5pct", "border": "1px warning-25pct", "icon": "pause-circle", "label": "suspendido", "actions": "resume button"},
       "childrenDigest": "Paused header + step list with current step highlighted + resume action"
     },
     {
       "name": "Step Failed",
       "whySelected": "A step failed during execution",
-      "traits": {"status": "failed", "radius": "20px", "bg": "danger-7pct", "border": "1px danger-35pct", "icon": "error indicator", "label": "步骤失败", "textColor": "danger", "actions": "retry skip buttons"},
+      "traits": {"status": "failed", "radius": "20px", "bg": "danger-7pct", "border": "1px danger-35pct", "icon": "error indicator", "label": "Paso fallido", "textColor": "danger", "actions": "retry skip buttons"},
       "childrenDigest": "Error header + failed step with error message + retry skip actions"
     }
   ],

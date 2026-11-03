@@ -12,12 +12,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 工具定义列表缓存。
+ * Caché de lista de definición de herramientas.
  *
- * 这条路径的调用频率远超直觉：每次工具调用前的能力校验、每轮请求组装（两次）、
- * 定时任务、渠道自动回复都会调 `listToolsAsToolDefinitions()`。缓存失效语义必须
- * 与 `_revision` 严格对齐，否则会出现「新注册的工具在 schema 里看不见」这类
- * 静默故障 —— 所以这里重点测失效，而不是测快不快。
+ * La frecuencia de llamadas de este camino es mucho mayor que la intuición: verificación de capacidad antes de cada llamada de herramienta, solicitud de ensamblaje en cada ronda (dos veces),
+ * Se ajustarán las tareas programadas y las respuestas automáticas del canal. `listToolsAsToolDefinitions()`. La semántica de invalidación de caché debe
+ * con `_revision` Alineación estricta; de lo contrario, aparecerá "las herramientas recién registradas no se pueden ver en el esquema".
+ * fracaso silencioso —— Por lo tanto, el enfoque aquí está en medir el fracaso, en lugar de medir la velocidad.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,8 +29,8 @@ class ToolRegistryDefinitionCacheTest {
 
     private fun echoTool(name: String) = ToolRegistry.ToolDef(
         name = name,
-        description = "测试用工具 $name",
-        parameters = mapOf("text" to "要回显的文本"),
+        description = "Herramientas para probar $name",
+        parameters = mapOf("text" to "texto para hacer eco"),
         parameterTypes = mapOf("text" to "string"),
         required = setOf("text"),
         riskLevel = ToolRiskLevel.SAFE,
@@ -43,7 +43,7 @@ class ToolRegistryDefinitionCacheTest {
 
         val first = registry.listToolsAsToolDefinitions()
         val second = registry.listToolsAsToolDefinitions()
-        assertSame("注册表没变时必须命中缓存", first, second)
+        assertSame("Se debe acceder al caché cuando el registro no ha cambiado", first, second)
     }
 
     @Test
@@ -56,9 +56,9 @@ class ToolRegistryDefinitionCacheTest {
         registry.register(echoTool("cache_probe_c")) { args -> args["text"] ?: "" }
         val after = registry.listToolsAsToolDefinitions()
 
-        assertNotSame("注册新工具后必须重建", before, after)
-        assertTrue("新工具必须出现在定义里", "cache_probe_c" in after.map { it.name })
-        assertTrue("重建不应丢旧工具", beforeNames.all { it in after.map { d -> d.name } })
+        assertNotSame("Debe reconstruirse después de registrar una nueva herramienta", before, after)
+        assertTrue("Nuevas herramientas deben aparecer en la definición.", "cache_probe_c" in after.map { it.name })
+        assertTrue("La reconstrucción no debe desechar herramientas viejas.", beforeNames.all { it in after.map { d -> d.name } })
     }
 
     @Test
@@ -69,7 +69,7 @@ class ToolRegistryDefinitionCacheTest {
 
         registry.unregister("cache_probe_d")
         assertTrue(
-            "注销后不得再出现在定义里",
+            "Después de cerrar sesión, no debe volver a aparecer en la definición.",
             registry.listToolsAsToolDefinitions().none { it.name == "cache_probe_d" },
         )
     }
@@ -83,11 +83,11 @@ class ToolRegistryDefinitionCacheTest {
         val filter = listOf("cache_probe_e")
         val first = registry.listToolsAsToolDefinitions(filter)
         val second = registry.listToolsAsToolDefinitions(filter)
-        assertSame("同一份过滤条件必须命中缓存", first, second)
+        assertSame("La misma condición de filtro debe afectar al caché.", first, second)
         assertEquals(listOf("cache_probe_e"), first.map { it.name })
 
         val manual = registry.listToolsAsToolDefinitions().filter { it.name in filter }
-        assertEquals("缓存结果必须与手工过滤一致", manual.map { it.name }, first.map { it.name })
+        assertEquals("Los resultados almacenados en caché deben ser coherentes con el filtrado manual", manual.map { it.name }, first.map { it.name })
     }
 
     @Test
@@ -99,10 +99,10 @@ class ToolRegistryDefinitionCacheTest {
 
         registry.register(echoTool("cache_probe_h")) { args -> args["text"] ?: "" }
         val after = registry.listToolsAsToolDefinitions(filter)
-        assertEquals("过滤缓存必须随版本失效", listOf("cache_probe_g"), after.map { it.name })
+        assertEquals("La caché del filtro debe invalidarse con la versión", listOf("cache_probe_g"), after.map { it.name })
 
         val both = registry.listToolsAsToolDefinitions(listOf("cache_probe_g", "cache_probe_h"))
-        // 顺序由注册表内部 map 决定（与改动前一致），这里只比集合。
+        // El orden lo determina el mapa interno del registro (el mismo que antes del cambio), aquí solo se compara la colección.
         assertEquals(setOf("cache_probe_g", "cache_probe_h"), both.map { it.name }.toSet())
     }
 
@@ -111,8 +111,8 @@ class ToolRegistryDefinitionCacheTest {
         val registry = registry()
         registry.register(echoTool("cache_probe_i")) { args -> args["text"] ?: "" }
         val definition = registry.listToolsAsToolDefinitions().first { it.name == "cache_probe_i" }
-        assertTrue("仍要生成 object 类型 schema", definition.parametersJsonSchema.contains("\"type\":\"object\""))
-        assertTrue("仍要包含参数描述", definition.parametersJsonSchema.contains("要回显的文本"))
-        assertTrue("required 不能丢", definition.parametersJsonSchema.contains("\"required\""))
+        assertTrue("todavía genera tipo de objeto schema", definition.parametersJsonSchema.contains("\"type\":\"object\""))
+        assertTrue("Las descripciones de los parámetros aún deben incluirse", definition.parametersJsonSchema.contains("texto para hacer eco"))
+        assertTrue("required No puedo tirarlo", definition.parametersJsonSchema.contains("\"required\""))
     }
 }

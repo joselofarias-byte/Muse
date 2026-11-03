@@ -10,21 +10,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * v2.6.0: OAuth loopback 回调服务器（Authorization Code Flow 专用）。
+ * v2.6.0: OAuth loopback servidor de devolución de llamada (Authorization Code Flow dedicado).
  *
- * 背景：OpenAI Codex CLI 同款公开 client_id 只允许 `http://localhost:<port>/…`
- * 形式的回调 URI，自定义 scheme（io.zer0.muse://oauth/callback）会被授权服务器
- * 拒绝。因此当 redirectUri 是 loopback 时，启动临时 HTTP 服务器接收浏览器重定向。
+ * Antecedentes:OpenAI Codex CLI Solo se permite el mismo client_id público `http://localhost:<port>/…`
+ * URI de devolución de llamada en forma de esquema personalizado (io.zer0.muse://oauth/callback) será autorizado por el servidor
+ * Rechazar. Entonces, cuando redirigirUri es un bucle invertido, se inicia un servidor HTTP temporal para recibir redireccionamientos del navegador.
  *
- * 实现：原生 [ServerSocket] 手写极简 HTTP GET 解析 —— 只需读取请求行 +
- * 解析 query，无任何 HTTP 框架依赖（Android 无 com.sun.net.httpserver，
- * Ktor/Netty 对单请求场景过重）。
+ * Implementación: nativa [ServerSocket] Análisis HTTP GET minimalista escrito a mano —— Simplemente lea la línea de solicitud +
+ * Analizar consulta sin ninguna dependencia del marco HTTP (Android Ninguno com.sun.net.httpserver,
+ * Ktor/Netty El escenario de solicitud única es demasiado pesado).
  *
- * 生命周期：launchAuthorizationCodeFlow 打开浏览器前 start()，拿到 code 或
- * 超时/取消后 stop()。单次授权一个 server，不复用。
+ * Ciclo de vida:launchAuthorizationCodeFlow Antes de abrir el navegador start(), obtener código o
+ * tiempo de espera/después de la cancelación stop(). Autorice un servidor una vez y no lo reutilice.
  *
- * 安全：仅绑定 loopback（外部无法访问）；state 校验复用
- * [OAuthManager.completeAuthorizationCodeFlow] 路径；给浏览器返回可读页面。
+ * Seguridad: solo enlaza loopback (no accesible desde el exterior);state comprobar multiplexación
+ * [OAuthManager.completeAuthorizationCodeFlow] Camino; devuelve una página legible al navegador.
  */
 internal object LoopbackCallbackServer {
 
@@ -33,18 +33,18 @@ internal object LoopbackCallbackServer {
     private val SUCCESS_HTML =
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>Muse OAuth</title></head>" +
             "<body style=\"font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0\">" +
-            "<div style=\"text-align:center\"><h2>&#10003; 授权成功</h2><p>可以关闭此页面，回到 Muse 继续。</p></div></body></html>"
+            "<div style=\"text-align:center\"><h2>&#10003; Autorización exitosa</h2><p>Puedes cerrar esta página y regresar a Muse para continuar.</p></div></body></html>"
 
     private val FAILURE_HTML =
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>Muse OAuth</title></head>" +
             "<body style=\"font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0\">" +
-            "<div style=\"text-align:center\"><h2>&#10007; 授权失败</h2><p>请回到 Muse 查看错误信息后重试。</p></div></body></html>"
+            "<div style=\"text-align:center\"><h2>&#10007; Autorización fallida</h2><p>Vuelve a Muse para comprobar el mensaje de error y vuelve a intentarlo.</p></div></body></html>"
 
     /**
-     * 在 redirectUri 指定的端口启动 loopback 服务器。
-     * @param redirectUri 形如 http://localhost:1455/auth/callback
-     * @param pending 当前等待回调的授权流程（code 经 state 校验后 resolve）；
-     *   保留参数以维持与 completeAuthorizationCodeFlow 的关联文档语义
+     * Inicie el servidor de bucle invertido en el puerto especificado por redirigirUri.
+     * @param redirectUri en forma de http://localhost:1455/auth/callback
+     * @param pending Proceso de autorización actualmente esperando devolución de llamada (code resolver después de la verificación estatal);
+     *   Conserve los parámetros para mantener la semántica del documento asociado con completeAuthorizationCodeFlow
      */
     fun start(redirectUri: String, @Suppress("UnusedParameter") pending: OAuthManager.PendingAuthCode): LoopbackServerHandle {
         val slash = redirectUri.removePrefix("http://")
@@ -52,25 +52,25 @@ internal object LoopbackCallbackServer {
         val hostPort = if (hostEnd > 0) slash.take(hostEnd) else slash
         val port = hostPort.substringAfter(':', "80").toIntOrNull() ?: 80
         val serverSocket = ServerSocket(port, 1, java.net.InetAddress.getByName("127.0.0.1"))
-        Logger.i(TAG, "Loopback 回调服务器已启动: 127.0.0.1:$port")
+        Logger.i(TAG, "Loopback Servidor de devolución de llamada iniciado: 127.0.0.1:$port")
         val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "oauth-loopback") }
         val closed = AtomicBoolean(false)
         executor.execute {
             try {
-                // 单请求：授权回调只发生一次；accept 阻塞由 stop() close socket 打断
+                // Solicitud única: la devolución de llamada de autorización solo ocurre una vez;accept bloqueado por stop() close socket interrumpir
                 val socket: Socket = serverSocket.accept()
                 socket.use { handle(it) }
             } catch (_: java.net.SocketException) {
-                // stop() 关闭 socket 的正常打断
+                // stop() Cerrar interrupciones normales del socket
             } catch (t: Throwable) {
-                Logger.e(TAG, "loopback 回调服务器异常", t)
+                Logger.e(TAG, "loopback Excepción del servidor de devolución de llamada", t)
             }
         }
         return LoopbackServerHandle(serverSocket, executor, closed)
     }
 
-    // CyclomaticComplexMethod 15/15：状态机三态(error/缺参/state 校验)×解析容错，
-    // 拆分会把回调协议处理散落到多个函数，按项目惯例按点豁免。
+    // CyclomaticComplexMethod 15/15:Máquina de estados tres estados(error/Parámetros faltantes/state verificar)×Analizando la tolerancia a fallos,
+    // La división extenderá el procesamiento del protocolo de devolución de llamada a múltiples funciones y estará exenta por punto de acuerdo con la convención del proyecto.
     @Suppress("CyclomaticComplexMethod")
     private fun handle(socket: Socket) {
         var ok = false
@@ -93,22 +93,22 @@ internal object LoopbackCallbackServer {
             val state = params["state"]
             ok = when {
                 error != null -> {
-                    Logger.w(TAG, "授权服务器返回 error=$error")
+                    Logger.w(TAG, "El servidor de autorización regresa error=$error")
                     false
                 }
                 code.isNullOrBlank() || state.isNullOrBlank() -> {
-                    Logger.w(TAG, "回调缺少 code/state")
+                    Logger.w(TAG, "Falta la devolución de llamada code/state")
                     false
                 }
-                // 复用既有 state 校验 + deferred resolve 路径
+                // Reutilizar la verificación del estado existente + ruta de resolución diferida
                 !OAuthManager.completeAuthorizationCodeFlow(code, state) -> {
-                    Logger.w(TAG, "state 校验失败或无 pending 流程")
+                    Logger.w(TAG, "state Verificación fallida o ningún proceso pendiente")
                     false
                 }
                 else -> true
             }
         } catch (t: Throwable) {
-            Logger.e(TAG, "解析 loopback 回调失败", t)
+            Logger.e(TAG, "No se pudo analizar la devolución de llamada de bucle invertido", t)
         }
         try {
             val body = (if (ok) SUCCESS_HTML else FAILURE_HTML).toByteArray(Charsets.UTF_8)
@@ -122,12 +122,12 @@ internal object LoopbackCallbackServer {
                 out.flush()
             }
         } catch (t: Throwable) {
-            Logger.w(TAG, "写回响应失败: ${t.message}")
+            Logger.w(TAG, "Error al escribir la respuesta: ${t.message}")
         }
     }
 }
 
-/** loopback 服务器句柄；stop() 幂等（关闭 socket + 关闭线程池）。 */
+/** loopback identificador del servidor;stop() Idempotente (cerrar socket + cerrar grupo de subprocesos). */
 internal class LoopbackServerHandle(
     private val serverSocket: ServerSocket,
     private val executor: java.util.concurrent.ExecutorService,
@@ -137,6 +137,6 @@ internal class LoopbackServerHandle(
         if (!closed.compareAndSet(false, true)) return
         runCatching { serverSocket.close() }
         runCatching { executor.shutdownNow() }
-        Logger.i("LoopbackCallbackServer", "Loopback 回调服务器已停止")
+        Logger.i("LoopbackCallbackServer", "Loopback El servidor de devolución de llamada se ha detenido")
     }
 }

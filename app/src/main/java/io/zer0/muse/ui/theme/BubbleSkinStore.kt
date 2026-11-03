@@ -15,25 +15,25 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 
 /**
- * 气泡皮肤目录 — 纯逻辑(无 Android 依赖),负责皮肤的解析/过滤/选择语义。
+ * Catálogo de piel de burbuja — pura logica(Sin dependencias de Android),Responsable de análisis de piel./filtrar/Elige la semántica.
  *
- * 与 [BubbleSkinStore] 拆分的原因:存储层需要 DataStore/Context,
- * 而"哪些皮肤可被应用、选中不存在的皮肤怎么办"这一策略必须能在纯 JVM 单测中验证。
+ * con [BubbleSkinStore] Razón de la división:Necesidades de la capa de almacenamiento DataStore/Context,
+ * y"¿Qué pieles se pueden aplicar? ¿Qué hacer si seleccionas una skin inexistente?"Esta estrategia debe ser verificable en una prueba única de JVM pura.
  *
- * 不变量:
- *  - 内置 default 永远由 [BubbleSkinResolver.defaultSkin] 提供,不进入自定义列表;
- *  - 校验不通过(含对比度不达标)的皮肤一律被过滤,消费侧因此回退内置 default;
- *  - 未选中/选中 id 不存在/选中内置 id 时返回 null,调用方传 null 即保持既有渲染。
+ * invariante:
+ *  - El valor predeterminado incorporado siempre está representado por [BubbleSkinResolver.defaultSkin] proporcionar,No ingresar a la lista personalizada;
+ *  - La verificación falló(Incluir la relación de contraste no está a la altura del estándar.)Todas las pieles están filtradas.,Por lo tanto, el lado del consumidor vuelve a recurrir a la default;
+ *  - No seleccionado/La identificación seleccionada no existe/Devuelto cuando se selecciona la identificación incorporada null,La persona que llama pasa null para mantener la representación existente.
  */
 object BubbleSkinCatalog {
 
-    /** 内置默认皮肤 id,与 [BubbleSkinResolver.defaultSkin] 的 id 保持一致。 */
+    /** Máscara predeterminada incorporada id,con [BubbleSkinResolver.defaultSkin] La identificación sigue siendo consistente. */
     const val DEFAULT_SKIN_ID = "builtin-default"
 
-    /** 自定义皮肤数量上限,防止 DataStore 单键无限增长。 */
+    /** Número máximo de máscaras personalizadas,Evite que la clave única de DataStore crezca indefinidamente. */
     const val MAX_CUSTOM_SKINS = 32
 
-    /** 解析自定义皮肤列表 JSON;任何解析失败都返回空列表而不是抛出。 */
+    /** Analizar la lista de máscaras personalizadas JSON;Cualquier error de análisis devuelve una lista vacía en lugar de arrojarla. */
     fun decode(raw: String?): List<BubbleSkin> {
         if (raw.isNullOrBlank()) return emptyList()
         val decoded = runCatching {
@@ -44,13 +44,13 @@ object BubbleSkinCatalog {
 
     fun encode(skins: List<BubbleSkin>): String = AppJson.encodeToString(ListSerializer(BubbleSkin.serializer()), sanitize(skins))
 
-    /** 过滤非法皮肤/内置 id/重复 id,并限制数量;保证列表内容始终可安全渲染。 */
+    /** Filtrar máscaras ilegales/identificación incorporada/duplicada id,y limitar la cantidad;Se garantiza que el contenido de la lista será seguro de procesar en todo momento. */
     fun sanitize(skins: List<BubbleSkin>): List<BubbleSkin> = skins
         .filter { it.id != DEFAULT_SKIN_ID && BubbleSkinValidator.isValid(it) }
         .distinctBy { it.id }
         .take(MAX_CUSTOM_SKINS)
 
-    /** 新增或覆盖同 id 皮肤;非法皮肤不会进入列表(调用方保持现状 → 回退 default)。 */
+    /** Agregar o sobrescribir una máscara con la misma ID;Las máscaras ilegales no se incluirán en la lista.(La persona que llama mantiene el status quo → revertir default). */
     fun upsert(current: List<BubbleSkin>, skin: BubbleSkin): List<BubbleSkin> {
         if (skin.id == DEFAULT_SKIN_ID || !BubbleSkinValidator.isValid(skin)) return sanitize(current)
         return sanitize(current.filterNot { it.id == skin.id } + skin)
@@ -59,9 +59,9 @@ object BubbleSkinCatalog {
     fun remove(current: List<BubbleSkin>, id: String): List<BubbleSkin> = sanitize(current.filterNot { it.id == id })
 
     /**
-     * 解析导入的单张皮肤 JSON(分享文本/SAF 文件)。
+     * Analizar máscaras individuales importadas JSON(compartir texto/SAF Archivo).
      *
-     * 非法 schema、非法数值范围或对比度不达标都返回 null,由 UI 提示失败并保持当前皮肤。
+     * Se devolverá un esquema ilegal, un rango de valores ilegal o un contraste deficiente. null,La interfaz de usuario indica el error y se conserva el aspecto actual.
      */
     fun parseSkin(raw: String?): BubbleSkin? {
         if (raw.isNullOrBlank()) return null
@@ -73,10 +73,10 @@ object BubbleSkinCatalog {
     }
 
     /**
-     * 选择当前生效皮肤。
+     * Seleccione la máscara actualmente activa.
      *
-     * @return 可渲染的自定义皮肤;内置 id / 空 id / 未找到 / 校验不通过一律返回 null,
-     * 调用方把 null 传给气泡组件即保持既有默认外观。
+     * @return Máscaras personalizadas renderizables;La identificación incorporada / identificación vacía / no encontrada / se devolverá si falla la verificación. null,
+     * La persona que llama pasa null al componente de burbuja para mantener la apariencia predeterminada.
      */
     fun select(skins: List<BubbleSkin>, selectedId: String): BubbleSkin? {
         if (selectedId == DEFAULT_SKIN_ID || selectedId.isBlank()) return null
@@ -84,13 +84,13 @@ object BubbleSkinCatalog {
     }
 
     /**
-     * 合并自定义皮肤与插件皮肤后的选择。
+     * Opciones después de fusionar máscaras personalizadas y máscaras de complementos.
      *
-     * 自定义皮肤保持既有优先级:同 id 时用户导入的皮肤获胜,安装/卸载插件不会改变用户
-     * 已有选择的外观;仅当自定义列表未命中时才回退到插件皮肤。插件皮肤已由插件层校验,
-     * 这里再校验一次,保证非法皮肤永远进不了渲染路径。
+     * Las máscaras personalizadas mantienen las prioridades existentes:Gana la máscara importada por el usuario con la misma identificación.,Instalación/Desinstalar el complemento no cambiará el usuario
+     * Apariencia ya seleccionada;Recurra al aspecto del complemento solo si falta la lista personalizada. La máscara del complemento ha sido verificada por la capa del complemento.,
+     * Consulta nuevamente aquí,Se garantiza que las máscaras ilegales nunca entrarán en la ruta de renderizado.
      *
-     * @return 可渲染皮肤;内置 id / 空 id / 两处都未找到 / 校验不通过一律返回 null。
+     * @return Piel renderizable;La identificación incorporada / identificación vacía / no encontrada en ambos lugares / nulo se devolverá si falla la verificación.
      */
     fun select(customSkins: List<BubbleSkin>, pluginSkins: List<BubbleSkin>, selectedId: String): BubbleSkin? {
         if (selectedId == DEFAULT_SKIN_ID || selectedId.isBlank()) return null
@@ -100,19 +100,19 @@ object BubbleSkinCatalog {
 }
 
 /**
- * 气泡皮肤轻量存储(DataStore Preferences,与 [io.zer0.muse.data.AppearanceSettingsStore]
- * 共用 `muse_settings` 文件)。
+ * Almacenamiento ligero de piel de burbuja.(DataStore Preferences,con [io.zer0.muse.data.AppearanceSettingsStore]
+ * compartir `muse_settings` Archivo).
  *
- * 只保存两个键:当前选中皮肤 id + 自定义皮肤 JSON 列表。未写入过时
- * [selectedSkinIdFlow] 默认内置 default、[customSkinsFlow] 默认空列表,
- * [selectedSkinFlow] 因此为 null,ChatScreen/群聊页保持改造前的渲染路径。
+ * Guarda solo dos claves:ID de máscara seleccionada actualmente + lista JSON de máscaras personalizadas. No escrito desactualizado
+ * [selectedSkinIdFlow] Predeterminado predeterminado incorporado,[customSkinsFlow] Lista vacía predeterminada,
+ * [selectedSkinFlow] Por lo tanto null,ChatScreen/La página de chat grupal mantiene la ruta de renderizado antes de la transformación.
  *
- * Phase 4 起可注入 [PluginSkinSource]:选中 id 命中已安装 ui-skin 插件的皮肤时返回该皮肤;
- * 插件被禁用/卸载/信任撤销或皮肤非法时,插件层不再返回该条目,这里自然回退内置 default。
+ * Phase 4 Se puede inyectar desde [PluginSkinSource]:Devuelve el skin cuando la identificación seleccionada llega al skin que tiene instalado el complemento ui-skin.;
+ * El complemento está deshabilitado/Desinstalar/Cuando se revoca la confianza o la piel es ilegal,La capa de complemento ya no devuelve esta entrada,Naturalmente, esto vuelve al valor predeterminado incorporado.
  */
 class BubbleSkinStore(
     private val context: Context,
-    /** 插件皮肤来源;null 表示不消费插件皮肤(既有单测与未接入插件的调用方行为不变)。 */
+    /** Fuente de máscara de complemento;null Indica que no se consumen máscaras de complementos.(El comportamiento de las pruebas individuales existentes y de los llamantes que no están conectados al complemento permanece sin cambios.). */
     private val pluginSkinSource: PluginSkinSource? = null,
 ) {
 
@@ -126,19 +126,19 @@ class BubbleSkinStore(
         prefs[KEY_SELECTED_SKIN_ID] ?: BubbleSkinCatalog.DEFAULT_SKIN_ID
     }
 
-    /** 插件注册表变更信号;无插件来源时恒定,不改变既有 combine 语义。 */
+    /** Señal de cambio de registro de complemento;Constante cuando no hay una fuente de complemento,No cambia la semántica combinada existente. */
     private val pluginRevisionFlow: Flow<Int> = pluginSkinSource?.revisionFlow ?: flowOf(0)
 
     /**
-     * 已安装插件皮肤(含不可用条目,供设置页展示)。
+     * Máscara de complemento instalada(Contiene artículos no disponibles,Para mostrar en la página de configuración).
      *
-     * 读取会重新校验插件包并读磁盘,统一切到 IO 线程,避免在主线程做签名/摘要计算。
+     * Leer volverá a comprobar el paquete del complemento y leerá el disco.,Corte unificado a hilo IO,Evite iniciar sesión en el hilo principal./Cálculo resumido.
      */
     val pluginSkinsFlow: Flow<List<InstalledSkin>> = pluginRevisionFlow
         .map { pluginSkinSource?.listInstalledSkins(includeDisabled = true).orEmpty() }
         .flowOn(Dispatchers.IO)
 
-    /** 当前生效皮肤;null = 使用内置 default(与改造前行为完全一致)。 */
+    /** Piel actualmente activa;null = Utilice el incorporado default(Completamente consistente con el comportamiento antes de la transformación.). */
     val selectedSkinFlow: Flow<BubbleSkin?> = combine(
         customSkinsFlow,
         selectedSkinIdFlow,
@@ -155,10 +155,10 @@ class BubbleSkinStore(
         store.edit { prefs -> prefs[KEY_SELECTED_SKIN_ID] = id }
     }
 
-    /** 导入/更新一张皮肤;返回 false 表示皮肤非法被拒(已有列表不受影响)。 */
+    /** importar/Actualizar una máscara;Devolver falso indica que la máscara es ilegal y rechazada.(Las listas existentes no se ven afectadas). */
     suspend fun upsertSkin(skin: BubbleSkin): Boolean {
         if (!BubbleSkinValidator.isValid(skin) || skin.id == BubbleSkinCatalog.DEFAULT_SKIN_ID) {
-            Logger.w("BubbleSkinStore", "拒绝保存非法气泡皮肤: ${skin.id}")
+            Logger.w("BubbleSkinStore", "Negarse a salvar máscaras de burbujas ilegales: ${skin.id}")
             return false
         }
         store.edit { prefs ->
@@ -168,7 +168,7 @@ class BubbleSkinStore(
         return true
     }
 
-    /** 删除皮肤;若删除的是当前选中项,选择回退到内置 default。 */
+    /** quitar la piel;Si se elimina el elemento actualmente seleccionado,Elija recurrir al valor predeterminado integrado. */
     suspend fun deleteSkin(id: String) {
         store.edit { prefs ->
             val current = BubbleSkinCatalog.decode(prefs[KEY_CUSTOM_SKINS])
@@ -177,7 +177,7 @@ class BubbleSkinStore(
         }
     }
 
-    /** 解析并保存导入的皮肤 JSON;null 表示内容非法,由调用方提示失败。 */
+    /** Analizar y guardar máscaras importadas JSON;null Indica contenido ilegal,La persona que llama indica el error. */
     suspend fun importSkin(raw: String?): BubbleSkin? {
         val skin = BubbleSkinCatalog.parseSkin(raw) ?: return null
         return skin.takeIf { upsertSkin(it) }

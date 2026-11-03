@@ -1,23 +1,23 @@
 # Muse v2.2.0
 
-自 2.1 以来规模最大的一次综合更新：群聊会议系统成型、工具能力全面瘦身提速、助手学会自己管理记忆与插件，首次引导与首屏整体重做。建议所有用户升级。
+La actualización integral más grande desde 2.1: el sistema de conferencias de chat grupal ha tomado forma, las capacidades de las herramientas se han reducido y acelerado por completo, el asistente ha aprendido a administrar su propia memoria y complementos, y el primer inicio y la primera pantalla se han rediseñado por completo. Se recomienda a todos los usuarios actualizar.
 
-## 亮点
+## Lo más destacado
 
-- **群聊会议系统**：讨论总结专属卡片（复制 / 分享 / 存为共享文档，下次讨论自动注入全员上下文）；表决票专属渲染；观察者成员（静观不轮转）；发言队列可视化与导演条（暂停 / 继续 / 跳过剩余）；轮次折叠；快速模板（方案评审 / 正反辩论 / 头脑风暴 / 项目复盘）；轮转中插话不再丢失。
-- **工具瘦身与按需检索**：默认只向模型发送常用工具，上下文更干净、响应更快；模型可用 find_tools 按关键词检索并装载长尾能力，命中过的工具在会话内持续可用。
-- **助手自管能力**：可以直接写入 / 删除长期记忆（"记住……""把那条删了"），也可以卸载、启用 / 停用插件。
-- **首次引导与首屏重做**：八步引导（欢迎 / 语言 / 认识 / 记忆 / 接入 / 模型 / 外观 / 出发），多语言欢迎轮播；首屏大 logo 与问候展开入场动效。
-- **图标系统 v1**：173 个自绘图标全量替换旧图标引用，记忆中心 / 供应商 / 任务路由 / 代理等专属图形。
-- **Web 服务器 HTTPS**：内置 Web 服务支持自签证书 HTTPS，远程访问更安全（Netty 引擎）。
-- **RAG 流式索引**：知识库导入放开文件大小限制，滑窗流式摄取，超大文件不再内存崩溃。
-- **模型与路由**：辅助模型三档路由全量接线；模型目录补全 49 个模型的真实最大输出；Gemini 原生图像生成 / 远端模型目录接入。
+- **Sistema de conferencias de chat grupal**: Tarjeta exclusiva para resumen de discusión (copiar/compartir/guardar como documento compartido, la siguiente discusión se inyectará automáticamente con el contexto de todos los miembros); entrega exclusiva de papeletas de votación; miembros observadores (esperan y observan sin rotación); visualización de la cola de voz y la barra del director (pausar/continuar/omitir el resto); plegado de rondas; plantillas rápidas (revisión de planes/debate positivo y negativo/lluvia de ideas/revisión de proyectos); Las interrupciones ya no se perderán durante la rotación.
+- **Adelgazamiento de herramientas y recuperación bajo demanda**: De forma predeterminada, solo se envían al modelo las herramientas de uso común, con un contexto más limpio y una respuesta más rápida; el modelo puede usar find_tools para buscar por palabra clave y cargar capacidades de cola larga, y las herramientas de impacto seguirán estando disponibles dentro de la sesión.
+- **Capacidad de autogestión del asistente.**: Puede escribir/borrar directamente la memoria a largo plazo ("recuerda……""eliminar ese"), también puede desinstalar, habilitar/deshabilitar complementos.
+- **Primer arranque y rehacer la primera pantalla**: Guía de ocho pasos (Bienvenida/Idioma/Comprensión/Memoria/Acceso/Modelo/Apariencia/Salida), carrusel de bienvenida en varios idiomas; Un logotipo grande y saludos en la primera pantalla despliegan la animación de entrada.
+- **sistema de iconos v1**:173 Todos los íconos autodibujados reemplazan completamente las referencias de íconos antiguos, gráficos exclusivos como centro de memoria/proveedor/enrutamiento de tareas/agente.
+- **Web servidor HTTPS**: El servicio web integrado admite el certificado HTTPS autofirmado, lo que hace que el acceso remoto sea más seguro (Netty motor).
+- **RAG índice de transmisión**: El límite de tamaño de archivo se relaja para la importación de la base de conocimientos, se ingiere la transmisión por ventana deslizante y los archivos de gran tamaño ya no causan fallas de memoria.
+- **Modelos y enrutamiento**: El enrutamiento de tres velocidades del modelo auxiliar está completamente conectado; el catálogo de modelos completa la verdadera producción máxima de 49 modelos;Gemini Generación de imágenes nativas/acceso remoto al directorio de modelos.
 
-## 体验与打磨
+## Experiencia y pulido.
 
-- **聊天**：流式"整段弹出"与跟随滚动修复；左滑引用移除（引用统一走长按菜单）；长内容截断修复（续接轮 / 工具轮预算提升）。
-- **记忆**：提取端原子性升级；示例泄漏防护（照抄样例不再入库）；注入收口与失败退避。
-- **设置**：两轮全量整改——结构归位、命名统一、页内去重；聊天页尾拆分、辅助模型页重做、导入页与崩溃上报页整理。
-- **动效**：加号菜单 / 快捷操作栏 / MuseChip 交互动效重做，统一走动效令牌（尊重系统关闭动画设置）。
-- **视觉**：深色模式双平面校准；长内容排版节奏令牌化。
-- **修复**：表情包卡尺寸崩溃；生成服务 Koin 防御；定时任务对话框嵌套滚动崩溃；记忆流时间轴点击崩溃；知识库超大文件导入 OOM。
+- **charlar**: Transmisión"Aparece todo el párrafo"y siga las reparaciones de desplazamiento; eliminación de referencias al deslizar el dedo hacia la izquierda (las referencias se unifican mediante el menú de pulsación larga); Reparaciones largas de truncamiento de contenido (mejora del presupuesto de rueda de continuación/rueda de herramientas).
+- **memoria**: Actualización atómica del extremo de extracción; prevención de fugas de muestras (las muestras copiadas ya no se incluirán en la biblioteca); Cierre de inyección y prevención de fallos.
+- **ajustes**: Dos rondas de rectificación total——Se restaura la estructura, se unifica la denominación y se eliminan las duplicaciones de la página; el final de la página de chat se divide, la página del modelo auxiliar se rehace y se organizan la página de importación y la página de informe de fallos.
+- **animación**: Además, los efectos de interacción del menú/barra de acción rápida/MuseChip se rehacen y los tokens de efectos de movimiento se unifican (respetando la configuración de animación de apagado del sistema).
+- **Visión**: Calibración biplano en modo oscuro; Tokenización del ritmo del diseño del contenido largo.
+- **Reparación**: Bloqueo del tamaño de una tarjeta Emoji; servicio de generación Defensa Koin; bloqueo de desplazamiento anidado del cuadro de diálogo de tareas programadas; bloqueo del clic en la línea de tiempo del flujo de memoria; base de conocimientos importación de archivos grandes OOM.

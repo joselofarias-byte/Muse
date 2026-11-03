@@ -37,8 +37,8 @@ class PluginCatalogRepositoryTest {
         assertEquals(5L, repository.lastAcceptedSequence(CATALOG_ID))
         assertEquals(listOf("safe-plugin"), repository.currentCatalog()?.payload?.entries?.map { it.id })
 
-        // 新实例（模拟重启）只读缓存也能恢复条目与已接受 sequence。
-        val recreated = repository(dir, transport = { _, _ -> throw IOException("不该发起请求") })
+        // Una nueva instancia (que simula un reinicio) de la caché de solo lectura también puede restaurar entradas y secuencias aceptadas.
+        val recreated = repository(dir, transport = { _, _ -> throw IOException("No debería iniciar una solicitud") })
         val snapshot = recreated.loadCache()
 
         assertNull(snapshot.error)
@@ -58,7 +58,7 @@ class PluginCatalogRepositoryTest {
         val rejected = repository.refresh("https://example.com/catalog.json")
 
         assertTrue(rejected is CatalogRefreshResult.Rejected)
-        assertTrue((rejected as CatalogRefreshResult.Rejected).reason.contains("回退"))
+        assertTrue((rejected as CatalogRefreshResult.Rejected).reason.contains("revertir"))
         assertEquals(5L, repository.currentCatalog()?.payload?.sequence)
         assertEquals(listOf("safe-plugin"), repository.loadCache().entries.map { it.id })
     }
@@ -76,9 +76,9 @@ class PluginCatalogRepositoryTest {
             .refresh("https://example.com/catalog.json")
 
         assertTrue(expiredResult is CatalogRefreshResult.Rejected)
-        assertTrue((expiredResult as CatalogRefreshResult.Rejected).reason.contains("过期"))
+        assertTrue((expiredResult as CatalogRefreshResult.Rejected).reason.contains("Caducado"))
         assertTrue(untrustedResult is CatalogRefreshResult.Rejected)
-        assertTrue((untrustedResult as CatalogRefreshResult.Rejected).reason.contains("签名"))
+        assertTrue((untrustedResult as CatalogRefreshResult.Rejected).reason.contains("firma"))
     }
 
     @Test
@@ -110,7 +110,7 @@ class PluginCatalogRepositoryTest {
         val repository = repository(
             dir,
             transport = { _, _ ->
-                if (failNext) throw IOException("网络不可达")
+                if (failNext) throw IOException("Red inalcanzable")
                 CatalogHttpResponse(200, fixtures.catalogJson(signed).toByteArray())
             },
         )
@@ -120,7 +120,7 @@ class PluginCatalogRepositoryTest {
         val failed = repository.refresh("https://example.com/catalog.json")
 
         assertTrue(failed is CatalogRefreshResult.Rejected)
-        assertTrue((failed as CatalogRefreshResult.Rejected).reason.contains("网络不可达"))
+        assertTrue((failed as CatalogRefreshResult.Rejected).reason.contains("Red inalcanzable"))
         assertEquals(7L, repository.currentCatalog()?.payload?.sequence)
         assertEquals(7L, repository.lastAcceptedSequence(CATALOG_ID))
     }
@@ -143,8 +143,8 @@ class PluginCatalogRepositoryTest {
         assertNotNull(tamperedSnapshot.error)
         assertNull(tamperedRepository.currentCatalog())
         assertTrue(expiredSnapshot.entries.isEmpty())
-        assertTrue(expiredSnapshot.error.orEmpty().contains("过期"))
-        // 即使缓存不可用，回退保护仍保留已接受 sequence。
+        assertTrue(expiredSnapshot.error.orEmpty().contains("Caducado"))
+        // La protección alternativa conserva la secuencia aceptada incluso si el caché no está disponible.
         assertEquals(3L, expiredRepository.lastAcceptedSequence(CATALOG_ID))
     }
 
@@ -158,11 +158,11 @@ class PluginCatalogRepositoryTest {
         assertTrue(repository.refresh("https://example.com/catalog.json") is CatalogRefreshResult.Updated)
         assertEquals(5L, repository.lastAcceptedSequence("official"))
 
-        // 自定义目录序号更小，但属于另一个目录 id，不能被判成回退。
+        // El número de directorio personalizado es más pequeño, pero pertenece a otro ID de directorio y no puede considerarse una reversión.
         val switched = repository.refresh("https://mirror.example.com/catalog.json")
-        assertTrue("切换目录不应被当作回退: $switched", switched is CatalogRefreshResult.Updated)
+        assertTrue("Cambiar de directorio no debe considerarse una alternativa: $switched", switched is CatalogRefreshResult.Updated)
         assertEquals(1L, repository.lastAcceptedSequence("custom-catalog"))
-        assertEquals("已接受记录按目录分别保留", 5L, repository.lastAcceptedSequence("official"))
+        assertEquals("Los registros aceptados se mantienen separados por directorio.", 5L, repository.lastAcceptedSequence("official"))
     }
 
     @Test
@@ -186,7 +186,7 @@ class PluginCatalogRepositoryTest {
     }
 
     private companion object {
-        /** fixtures 默认的目录 id。 */
+        /** fixtures La identificación del directorio predeterminado. */
         private const val CATALOG_ID = "official"
     }
 
@@ -204,12 +204,12 @@ class PluginCatalogRepositoryTest {
     private fun sequenced(vararg signed: SignedPluginCatalog): CatalogHttpTransport {
         val remaining = ArrayDeque(signed.toList())
         return { _, _ ->
-            val next = remaining.removeFirstOrNull() ?: throw IOException("没有更多目录")
+            val next = remaining.removeFirstOrNull() ?: throw IOException("no más directorios")
             CatalogHttpResponse(200, fixtures.catalogJson(next).toByteArray())
         }
     }
 
-    private fun unreachable(): CatalogHttpTransport = { _, _ -> throw IOException("不该发起请求") }
+    private fun unreachable(): CatalogHttpTransport = { _, _ -> throw IOException("No debería iniciar una solicitud") }
 
     private fun tempDir(): File = Files.createTempDirectory("plugin-market-test").toFile().also { tempDirs += it }
 

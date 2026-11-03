@@ -1,4 +1,4 @@
-@file:Suppress("FunctionNaming") // Compose 组件名按惯例大写开头（与项目内其它 UI 文件一致）
+@file:Suppress("FunctionNaming") // Compose Los nombres de los componentes comienzan con una letra mayúscula por convención (consistente con otros archivos de UI en el proyecto)
 
 package io.zer0.muse.ui.memory
 
@@ -43,17 +43,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Phase 2 2A: 记忆时间轴视图组件 — 筛选行、月份标题与事件卡片。
+ * Phase 2 2A: Componente de vista de línea de tiempo de memoria — Filtre filas, títulos de meses y tarjetas de eventos.
  *
- * v2.1.x 修复「点时间轴即崩溃」: 原 MemoryTimelineView 自带 LazyColumn,
- * 在 MemoryScreen 外层 LazyColumn 的 item 中渲染构成嵌套滚动, 内层 LazyColumn
- * 测得无限高约束, 抛 "Vertically scrollable component was measured with an
- * infinity maximum height constraints"。
- * 现将时间轴内容拍平到外层 LazyListScope(见 MemoryScreen.memoryStreamItems),
- * 本文件只保留无滚动的子组件。
+ * v2.1.x Arreglar "Bloqueo al hacer clic en la línea de tiempo": El MemoryTimelineView original viene con LazyColumn,
+ * La representación en el elemento de LazyColumn en la capa exterior de MemoryScreen constituye un desplazamiento anidado, capa interna LazyColumn
+ * Restricción de altura infinita medida, tirar "Vertically scrollable component was measured with an
+ * infinity maximum height constraints".
+ * Ahora aplana el contenido de la línea de tiempo a la capa exterior. LazyListScope(ver MemoryScreen.memoryStreamItems),
+ * Este archivo solo mantiene subcomponentes sin desplazamiento.
  */
 
-/** 时间轴内部筛选行(全部 / 事实 / 摘要 / 里程碑)。 */
+/** Filtrar filas dentro de la línea de tiempo(Todo / Hechos / Resumen / Hitos). */
 @Composable
 internal fun MemoryTimelineFilterRow(selected: String, onSelect: (String) -> Unit) {
     val filters = listOf(
@@ -92,23 +92,23 @@ internal fun MonthHeader(month: String) {
 @Composable
 internal fun TimelineEventCard(
     item: TimelineItem,
-    // v2.6.10: 时间轴左侧那串圈改成多选圈——用户反馈记忆会乱记/重复记，
-    // 逐条删又会被刷回列表顶部，长按选中、批量删才是好用路径。
+    // v2.6.10: La cadena de círculos en el lado izquierdo de la línea de tiempo se ha cambiado a un círculo de selección múltiple.——Comentarios de los usuarios de que la memoria está en mal estado/Recuerda repetir,
+    // Eliminar elementos uno por uno los devolverá a la parte superior de la lista. Mantener presionada la tecla para seleccionar y eliminar por lotes son las mejores formas de utilizarlos.
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
     onLongPress: (() -> Unit)? = null,
     onToggleSelect: (() -> Unit)? = null,
 ) {
-    // v2.7（用户反馈）：时间轴卡片长文可点击展开查看全文。
-    //   此前内容硬性 maxLines=3 截断，且无展开入口，长记忆只能进编辑看。
-    //   阈值与列表模式 MemoryFactRow 保持一致（含换行即视为可展开）。
+    // v2.7(Comentarios de los usuarios): Se puede hacer clic en artículos extensos sobre tarjetas de línea de tiempo para expandirlos y ver el texto completo.
+    //   El contenido anterior era rígido. maxLines=3 Truncado y no hay entrada de expansión. La memoria larga sólo se puede ver en el editor.
+    //   El umbral es coherente con el modo de lista MemoryFactRow (con nuevas líneas, se considera ampliable).
     var expanded by remember(item.id) { mutableStateOf(false) }
     val canExpand = item.content.length > TIMELINE_EXPAND_THRESHOLD || item.content.contains('\n')
     val toggleExpand = { if (canExpand) expanded = !expanded }
 
-    // 整卡只装一套手势。正文 Surface 上再挂一层 clickable 会把长按吃掉：
-    // 手指落在卡片主体上时长按根本到不了这里，只有左侧那串窄节点能触发。
-    // 所以点击(展开/勾选)与长按都收在这一处，覆盖整张卡。
+    // Toda la tarjeta contiene sólo un conjunto de gestos. Texto: Agregar una capa en la que se puede hacer clic a la superficie consumirá la pulsación larga:
+    // Cuando su dedo está en el cuerpo principal de la tarjeta, no podrá llegar aquí presionando prolongadamente. Sólo se pueden activar los nodos estrechos de la izquierda.
+    // así que haz clic(Expandir/comprobar)y la pulsación larga se recogen aquí, cubriendo toda la tarjeta.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,7 +130,7 @@ internal fun TimelineEventCard(
     }
 }
 
-/** 时间轴左侧节点（重要性颜色/图标 + 连接线）。 */
+/** Nodo en el lado izquierdo de la línea de tiempo (color de importancia/icono + línea de conexión). */
 @Composable
 private fun TimelineNode(
     item: TimelineItem,
@@ -162,13 +162,13 @@ private fun TimelineNode(
         } else {
             Icon(
                 imageVector = nodeIcon,
-                // A11Y-05: 状态不只靠颜色传达 — 补重要性文本描述
+                // A11Y-05: El estatus se transmite por algo más que el color — Descripción del texto de importancia suplementaria
                 contentDescription = importanceLabel(item.importance),
                 tint = nodeColor,
                 modifier = Modifier.size(12.dp),
             )
         }
-        // 竖向连接线
+        // Línea de conexión vertical
         Box(
             modifier = Modifier
                 .width(2.dp)
@@ -178,11 +178,11 @@ private fun TimelineNode(
     }
 }
 
-/** 时间轴右侧事件卡片主体（标签 + 内容 + 展开 + 时间）。 */
+/** El cuerpo principal de la tarjeta del evento en el lado derecho de la línea de tiempo (etiqueta + contenido + expansión + tiempo). */
 @Composable
 private fun TimelineEventCardBody(item: TimelineItem, expanded: Boolean, canExpand: Boolean) {
     val nodeColor = importanceColor(item.importance)
-    // 点击手势由 [TimelineEventCard] 统一接管（见那里的注释），这里不再挂 clickable。
+    // El gesto de clic se realiza mediante [TimelineEventCard] Unity toma el control (ver nota allí) y ya no se puede hacer clic aquí.
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MuseShapes.medium,
@@ -193,7 +193,7 @@ private fun TimelineEventCardBody(item: TimelineItem, expanded: Boolean, canExpa
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             TimelineEventHeader(item, nodeColor)
-            // 内容（v2.7：可展开查看全文，不再硬性 3 行截断）
+            // contenido (v2.7: Se puede ampliar para ver el texto completo, no más truncamiento rígido de 3 líneas)
             Text(
                 text = item.content,
                 style = MaterialTheme.typography.bodySmall,
@@ -201,7 +201,7 @@ private fun TimelineEventCardBody(item: TimelineItem, expanded: Boolean, canExpa
                 maxLines = if (expanded) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            // v2.7: 展开/收起入口（与列表模式同款文案）
+            // v2.7: Expandir/Cerrar la entrada (misma copia que en modo lista)
             if (canExpand) {
                 Text(
                     text = stringResource(
@@ -217,7 +217,7 @@ private fun TimelineEventCardBody(item: TimelineItem, expanded: Boolean, canExpa
     }
 }
 
-/** 事件卡片顶部行：来源标签 + 重要性星标。 */
+/** Fila superior de tarjetas de eventos: etiqueta de fuente + estrella de importancia. */
 @Composable
 private fun TimelineEventHeader(item: TimelineItem, nodeColor: androidx.compose.ui.graphics.Color) {
     Row(
@@ -250,7 +250,7 @@ private fun TimelineEventHeader(item: TimelineItem, nodeColor: androidx.compose.
     }
 }
 
-/** 事件时间戳（解析失败时不渲染）。 */
+/** Marca de tiempo del evento (no representada si falla el análisis). */
 @Composable
 private fun TimelineEventTime(createdAt: String?) {
     val timeStr = remember(createdAt) {
@@ -270,14 +270,14 @@ private fun TimelineEventTime(createdAt: String?) {
     }
 }
 
-/** 重要性 → 节点颜色。 */
+/** importancia → Color del nodo. */
 private fun importanceColor(importance: Int) = when (importance) {
     2 -> CoralWhisper
     1 -> LavenderDream
     else -> SageCalm
 }
 
-/** 重要性 → 无障碍文本描述。 */
+/** importancia → Descripción en texto accesible. */
 @Composable
 private fun importanceLabel(importance: Int): String = when (importance) {
     2 -> stringResource(R.string.memory_importance_critical)
@@ -286,7 +286,7 @@ private fun importanceLabel(importance: Int): String = when (importance) {
 }
 
 /**
- * 简化的时间轴条目数据类(在 ViewModel 中由 MemoryItem 映射而来)。
+ * Clase de datos de entrada de línea de tiempo simplificada(Asignado desde MemoryItem en ViewModel).
  */
 data class TimelineItem(
     val id: String,
@@ -296,16 +296,16 @@ data class TimelineItem(
     val createdAt: String?,
     val tags: List<String> = emptyList(),
     /**
-     * 底层条目的真正 id:Facts 为 fact.id,摘要为其所属 sessionId。
+     * La identificación real: los hechos de la entrada subyacente son fact.id,El resumen es el sessionId al que pertenece.
      *
-     * [id] 是带 source 前缀的展示/动画键(跨分库会撞号),删不掉东西,删除必须回到这个原始 id。
+     * [id] es una pantalla con el prefijo fuente/clave de animación(Las ramas cruzadas provocarán colisiones.),No puedo borrar cosas,La eliminación debe volver a esta identificación original.
      */
     val itemId: String = id,
-    /** 摘要所属会话 id(事实条目带的是来源会话),删除摘要按它落库。 */
+    /** La sesión a la que pertenece el resumen. id(Las entradas de hechos llevan la sesión de origen),Elimine el resumen y haga clic en él para colocarlo en la biblioteca. */
     val sessionId: String? = null,
-    /** 所属助手分库;各分库 fact.id 独立自增,删除必须带 scope 才能删对那一条。 */
+    /** La biblioteca asistente afiliada;El fact.id de cada base de datos de sucursal se incrementa de forma independiente.,La eliminación debe incluir el alcance para eliminar el correcto. */
     val scope: String? = null,
 )
 
-/** v2.7: 时间轴卡片"可展开"判定阈值（与列表模式 MemoryFactRow 同口径）。 */
+/** v2.7: tarjeta de línea de tiempo"Ampliable"Umbral de decisión (mismo calibre que el modo de lista MemoryFactRow). */
 private const val TIMELINE_EXPAND_THRESHOLD = 80

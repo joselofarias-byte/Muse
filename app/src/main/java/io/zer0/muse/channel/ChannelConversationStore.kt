@@ -14,89 +14,89 @@ import kotlinx.serialization.builtins.serializer
 import java.io.File
 
 /**
- * v2.0.1: 渠道对话存储 — 按 (渠道 id, 来源) 保存多轮对话,供自动回复构造上下文。
+ * v2.0.1: Almacenamiento de conversaciones de canales — prensa (canal id, Fuente) Guarde varias rondas de conversaciones,Proporciona contexto para la construcción de respuestas automáticas.
  *
- * 与 [ChannelInbox] 同构(全局单例 + 原子 JSON 持久化),但存的是"对话记录":
- * 用户与助手的往返轮次 + 滚动摘要(用于上下文自动压缩)。
+ * con [ChannelInbox] isomorfismo(Persistencia global singleton + JSON atómico),Pero lo que queda es"Registro de conversación":
+ * Viaje de ida y vuelta entre usuario y asistente + resumen de desplazamiento(para compresión automática contextual).
  *
- * ## 存储形态(2026-11-01 性能整改)
+ * ## Formulario de almacenamiento(2026-11-01 Mejoras de rendimiento)
  *
- * 旧形态是**单文件全量**:`filesDir/channel_conversations.json` 装全部会话。
- * 每追加一条轮次都要把整张表重新序列化 + 原子写 + fsync —— 50 个会话、每个最多
- * 200 轮时，一次 append 就要编码上兆字节，而实际变化的只有其中一条会话。
- * 渠道每来一条消息至少 append 两次（用户轮 + 助手轮），全部持同一把对象锁。
+ * La forma antigua es**Volumen completo de un solo archivo**:`filesDir/channel_conversations.json` Instalar todas las sesiones.
+ * Cada vez que se agrega una ronda, se debe volver a serializar toda la tabla + escritura atómica + fsync —— 50 sesiones, cada una como máximo
+ * 200 En este momento, un anexo codificará megabytes y solo una de las sesiones cambiará realmente.
+ * Cada mensaje proveniente del canal se agrega al menos dos veces (rueda de usuario + rueda de asistente), todas con el mismo bloqueo de objeto.
  *
- * 现形态是**按会话分片**:`filesDir/channel_conversations/<key 的 sha256>.json`，
- * 每个文件只装一条会话，形如 `{"key":"<channelId>|<from>","conversation":{...}}`。
- * 于是 append 的落盘量 = 这条会话的大小（几十 KB 级），与其它会话无关；
- * 原子写仍然逐文件进行，结论是「每个会话随时都是完整可读的」，比整表重写更不容易出问题。
+ * La forma actual es**Fragmentación por sesión**:`filesDir/channel_conversations/<key de sha256>.json`,
+ * Cada archivo contiene solo una sesión, que se parece a `{"key":"<channelId>|<from>","conversation":{...}}`.
+ * Entonces la cantidad de colocación de anexar = El tamaño de esta sesión (decenas de KB) no tiene nada que ver con otras sesiones;
+ * La escritura atómica todavía se realiza archivo por archivo. La conclusión es que "cada sesión es completamente legible en cualquier momento" y es menos propensa a tener problemas que reescribir toda la tabla.
  *
- * 旧文件保留兼容：分片目录为空且旧文件存在时，读旧文件 → 写分片 → 把旧文件改名成
- * `.migrated`，失败也不影响使用（分片优先）。
+ * Los archivos antiguos siguen siendo compatibles: cuando el directorio de fragmentos está vacío y los archivos antiguos existen, lea los archivos antiguos → escribe fragmento → Cambie el nombre del archivo antiguo a
+ * `.migrated`, la falla no afectará el uso (la fragmentación tiene prioridad).
  */
 object ChannelConversationStore {
 
-    /** 单条对话轮次。role: "user" / "assistant"。 */
+    /** Turno de diálogo único.role: "user" / "assistant". */
     @Serializable
     data class Turn(
         val role: String,
         val text: String,
         val at: Long = System.currentTimeMillis(),
-        /** v2.0.1: 媒体类型("image";空 = 纯文本)。 */
+        /** v2.0.1: tipo de medio("image";vacío = texto plano). */
         val mediaKind: String = "",
-        /** v2.0.1: 图片 base64(压缩后)。 */
+        /** v2.0.1: fotos base64(Después de la compresión). */
         val mediaBase64: String = "",
-        /** v2.x (B4): 非图片媒体(视频/文件)落盘的本地路径。 */
+        /** v2.x (B4): medios sin imagen(vídeo/Archivo)La ruta local al disco. */
         val mediaPath: String = "",
-        /** v2.0.1: 视觉降级描述缓存(模型不支持视觉时生成,避免重复分析)。 */
+        /** v2.0.1: Caché de descripción de degradación visual(Generado cuando el modelo no soporta la visión.,Evite la duplicación de análisis). */
         val mediaDescription: String = "",
-        /** 自动回复派发 ID;重试时用于避免重复追加同一用户/助手轮次。 */
+        /** Envío automático de respuesta ID;Se utiliza para evitar agregar el mismo usuario repetidamente al volver a intentarlo./Turnos de asistente. */
         val dispatchId: String = "",
     )
 
-    /** 单个对话:滚动摘要 + 最近轮次。 */
+    /** sola conversación:Resumen de desplazamiento + rondas recientes. */
     @Serializable
     data class Conversation(
         val summary: String = "",
         val turns: List<Turn> = emptyList(),
         val updatedAt: Long = 0L,
-        /** 保留近期派发轮次身份,即使摘要压缩已经从 turns 中移除原始轮次。 */
+        /** Mantener el estado de las rondas de distribución recientes.,Aunque la compresión de resumen ha eliminado los giros originales de los giros. */
         val recentDispatchTurnIds: List<String> = emptyList(),
     )
 
     private const val TAG = "ChannelConversations"
 
-    /** 旧形态的单文件名（仅迁移时读取）。 */
+    /** Nombre de archivo único en el formato antiguo (solo se lee durante la migración). */
     private const val LEGACY_FILE_NAME = "channel_conversations.json"
 
-    /** 分片目录名。 */
+    /** El nombre del directorio de fragmentos. */
     private const val SHARD_DIR_NAME = "channel_conversations"
 
-    /** 最多保留的对话数(超量时淘汰最久未更新的)。 */
+    /** Número máximo de conversaciones a mantener(Cuando se supere el importe se eliminará el que lleve más tiempo sin actualizarse.). */
     private const val MAX_CONVERSATIONS = 50
 
-    /** 单对话轮次硬上限(压缩逻辑之上再加一层安全带)。 */
+    /** Límite superior estricto para rondas de diálogo únicas(Agregue una capa de cinturón de seguridad encima de la lógica de compresión.). */
     private const val MAX_TURNS = 200
     private const val MAX_DISPATCH_TURN_IDS = 1_000
 
     private val _conversations = MutableStateFlow<Map<String, Conversation>>(emptyMap())
     val conversations: StateFlow<Map<String, Conversation>> = _conversations.asStateFlow()
 
-    /** 旧形态的单文件（仅用于迁移）。 */
+    /** Archivo único en formato antiguo (solo para migración). */
     private var legacyFile: File? = null
 
-    /** 分片目录：一个会话一个文件。 */
+    /** Directorio fragmentado: un archivo por sesión. */
     private var shardDir: File? = null
 
-    /** 已绑定的 filesDir；null 表示还没绑定。 */
+    /** archivos enlazadosDir;null Significa que aún no ha sido vinculado. */
     private var boundFilesDir: File? = null
 
     /**
-     * 绑定应用上下文并恢复历史(幂等)。
+     * Vincular el contexto de la aplicación y restaurar el historial(idempotente).
      *
-     * 以 filesDir 判定幂等而不是一个布尔标记：同一个应用只会用同一个 filesDir，
-     * 但单测里每个用例的临时目录不同 —— 用布尔会把状态留在上一个目录上，
-     * 于是「写进去了吗」这类断言读到的是别的目录。
+     * Utilice filesDir para determinar la idempotencia en lugar de un indicador booleano: la misma aplicación solo utilizará el mismo filesDir.
+     * Pero el directorio temporal de cada caso de uso en una sola prueba es diferente. —— El uso de Boolean dejará el estado en el directorio anterior,
+     * Entonces afirmaciones como "¿ha sido escrito?" se leen de otros directorios.
      */
     @Synchronized
     fun attach(context: Context) {
@@ -108,7 +108,7 @@ object ChannelConversationStore {
         legacyFile = legacy
         shardDir = dir
         when {
-            // 分片优先：只要目录里已经有文件，就不再碰旧文件。
+            // Prioridad de fragmentación: mientras ya haya archivos en el directorio, los archivos antiguos no se tocarán.
             dir.isDirectory && !dir.listFiles().isNullOrEmpty() -> restoreFromShards(dir)
             legacy.exists() -> migrateFromLegacy(legacy, dir)
             else -> Unit
@@ -124,7 +124,7 @@ object ChannelConversationStore {
                     val decoded = ChannelConversationFiles.decode(text)
                     if (decoded != null) restored[decoded.first] = decoded.second
                 }
-                .onFailure { e -> Logger.w(TAG, "分片读取失败,跳过 ${shard.name}: ${e.message}") }
+                .onFailure { e -> Logger.w(TAG, "Error de lectura del fragmento,saltar ${shard.name}: ${e.message}") }
         }
         _conversations.value = restored
             .entries
@@ -141,8 +141,8 @@ object ChannelConversationStore {
             )
         }.onSuccess { restored ->
             _conversations.value = restored
-            // 迁移失败不影响使用：分片写不进去时下一次 append 还会再写分片，
-            // 旧文件继续留作兜底读取源（外部读不到分片就会回落到它）。
+            // El error de migración no afecta el uso: si no se puede escribir el fragmento, el siguiente anexo escribirá el fragmento nuevamente.
+            // El archivo antiguo continúa utilizándose como fuente de lectura (el fragmento recurrirá a él si no se puede leer externamente).
             val startedAt = System.currentTimeMillis()
             val migrated = restored.all { (key, conversation) ->
                 runCatching {
@@ -154,21 +154,21 @@ object ChannelConversationStore {
             }
             val cost = System.currentTimeMillis() - startedAt
             if (migrated && target.renameTo(File(target.parentFile, LEGACY_FILE_NAME + ".migrated"))) {
-                Logger.i(TAG, "旧单文件已迁移为分片存储(${restored.size} 个会话, 耗时 ${cost}ms)")
+                Logger.i(TAG, "El antiguo archivo único se ha migrado al almacenamiento fragmentado.(${restored.size} conversaciones, Consume mucho tiempo ${cost}ms)")
             }
         }.onFailure { e ->
-            // v2.6.0 (AUD-CHANNEL-F4): 恢复失败时隔离坏文件,避免被后续写入覆盖。
-            Logger.w(TAG, "对话历史恢复失败,隔离坏文件: ${e.message}")
+            // v2.6.0 (AUD-CHANNEL-F4): Poner en cuarentena los archivos defectuosos cuando falla la recuperación,Evite ser sobrescrito por escrituras posteriores.
+            Logger.w(TAG, "Error al recuperar el historial de conversaciones,Poner en cuarentena archivos malos: ${e.message}")
             io.zer0.muse.data.AtomicFileStore.quarantine(target, "conversation_restore_failed")
         }
     }
 
     private fun shardFile(dir: File, key: String): File = File(dir, ChannelConversationFiles.shardName(key))
 
-    /** 对话键:渠道 id + 来源(联系人 id)。 */
+    /** clave de diálogo:ID del canal + fuente(Persona de contacto id). */
     fun key(channelId: String, from: String): String = "$channelId|$from"
 
-    /** 追加一条轮次(同步写内存 + 落盘;渠道消息低频,直接调用即可)。 */
+    /** Agregar una ronda(Escribir memoria sincrónicamente + colocar en el disco;Canal de noticias de baja frecuencia.,Solo llámalo directamente). */
     @Synchronized
     fun append(
         channelId: String,
@@ -177,7 +177,7 @@ object ChannelConversationStore {
         text: String,
         mediaKind: String = "",
         mediaBase64: String = "",
-        // v2.x (B4): 视频/文件落盘路径;默认空保持向后兼容。
+        // v2.x (B4): vídeo/Ruta del disco de archivos;El valor predeterminado está vacío para mantener la compatibilidad con versiones anteriores.
         mediaPath: String = "",
     ) {
         appendTurn(
@@ -214,30 +214,30 @@ object ChannelConversationStore {
             .take(MAX_CONVERSATIONS)
             .associate { it.key to it.value }
         val dropped = merged.keys - trimmed.keys
-        // 先落盘再改内存（既有恢复契约）：只写这一条会话的分片。
+        // Primero escriba en el disco y luego cambie la memoria (con contrato de recuperación): escriba solo los fragmentos de esta sesión.
         check(persistConversation(key, updated)) { "Channel conversation could not persist an appended turn" }
-        // 被淘汰的会话删掉对应分片；删失败只影响磁盘占用，内存里已不再引用它。
+        // La sesión eliminada eliminará el fragmento correspondiente; no eliminarlo solo afectará el uso del disco y ya no se hará referencia a él en la memoria.
         dropped.forEach { deleteConversation(it) }
         _conversations.value = trimmed
     }
 
-    /** 读取对话(不存在时返回 null)。 */
+    /** Leer conversación(Devuelve si no existe null). */
     fun conversation(channelId: String, from: String): Conversation? = _conversations.value[key(channelId, from)]
 
     /**
-     * v2.3.2: 压缩结果**条件回写** —— 取代原来的 `replace()` 盲覆盖。
+     * v2.3.2: Comprimir resultados**Reescritura condicional** —— reemplazar el original `replace()` Cobertura ciega.
      *
-     * 原实现的问题:`maybeCompress` 是"读快照 → 调 LLM(最长数十秒)→ 整份覆盖回写",
-     * 期间 [append] 进来的新轮次会被整份覆盖直接丢掉(用户刚说的话从渠道上下文里消失,
-     * 表现为机器人"忘了上一句")。
+     * Problemas con la implementación original.:`maybeCompress` si"leer instantánea → sintonizar LLM(Hasta decenas de segundos)→ Reescritura completa",
+     * período [append] La nueva ronda que entre será completamente cubierta y descartada directamente.(Lo que el usuario acaba de decir desaparece del contexto del canal.,
+     * comportarse como un robot"Olvidé la frase anterior.").
      *
-     * 本方法的语义:
-     *  - 仅当对话摘要仍是压缩前读到的那份([snapshotSummary])才写入 —— 否则说明另一次压缩
-     *    已抢先更新摘要,本次结果作废(下次触发时重试);
-     *  - 仅摘除 [drainedTurns] 这一段(按边界轮次身份校验),压缩期间新 append 的轮次原样保留;
-     *  - 边界轮次对不上(列表被 clear/裁剪重建)时放弃写入,宁可下轮重压也不误删新轮次。
+     * La semántica de este método.:
+     *  - Solo si el resumen de la conversación sigue siendo el mismo que se leyó antes de la compresión.([snapshotSummary])solo escribe —— De lo contrario significa otra compresión.
+     *    El resumen se ha actualizado primero.,Este resultado no es válido(Vuelva a intentarlo la próxima vez que se active);
+     *  - solo eliminar [drainedTurns] esta sección(Verificación de identidad basada en rondas de límites),Las rondas para nuevos apéndices se mantienen intactas durante la compactación;
+     *  - Las rondas de límites no coinciden(La lista se borra/recorta y se reconstruye.)Cancelar la escritura cuando,Sería mejor estar bajo una fuerte presión en la siguiente ronda que eliminar la nueva ronda por error.
      *
-     * @return true = 已写入;false = 放弃(调用方仅记日志)
+     * @return true = ha sido escrito;false = rendirse(La persona que llama solo registra)
      */
     @Synchronized
     fun applyCompression(channelId: String, from: String, snapshotSummary: String, drainedTurns: List<Turn>, summary: String): Boolean {
@@ -259,10 +259,10 @@ object ChannelConversationStore {
     }
 
     /**
-     * 压缩结果是否仍可写回。三条前提(任一不满足即放弃,宁可下轮重压也不误删新轮次):
-     *  1. 对话还在;
-     *  2. 摘要仍是压缩前读到的那份 —— 否则说明另一次压缩已抢先写入;
-     *  3. 边界轮次仍是同一条(时间戳 + 文本)—— 否则列表被 clear/裁剪重建过。
+     * Si los resultados de la compresión aún se pueden reescribir. Tres premisas(Si no estás satisfecho, renuncia,Preferiría estar bajo una fuerte presión en la próxima ronda que borrar la nueva ronda por error.):
+     *  1. La conversación continúa;
+     *  2. El resumen sigue siendo el mismo que se leyó antes de la compresión. —— De lo contrario, significa que se ha escrito de forma preventiva otra compresión.;
+     *  3. Las rondas de límites siguen siendo las mismas.(marca de tiempo + texto)—— De lo contrario, la lista se borra/recorta y se reconstruye.
      */
     private fun compressionApplicable(current: Conversation?, snapshotSummary: String, drainedTurns: List<Turn>): Boolean {
         val boundary = drainedTurns.lastOrNull()
@@ -274,7 +274,7 @@ object ChannelConversationStore {
         return sameSummary && sameBoundary
     }
 
-    /** 清空单个对话。删分片成功才更新内存,保证界面与磁盘一致。 */
+    /** Borrar una sola conversación. Actualice la memoria solo después de eliminar el fragmento con éxito,Asegúrese de que la interfaz sea coherente con el disco. */
     @Synchronized
     fun clear(channelId: String, from: String) {
         val key = key(channelId, from)
@@ -282,7 +282,7 @@ object ChannelConversationStore {
         _conversations.value = _conversations.value - key
     }
 
-    /** v2.0.1: 写入图片轮次的视觉降级描述缓存(按时间戳定位,最多命中一条)。 */
+    /** v2.0.1: Escribir caché de descripción de degradación visual para rondas de imágenes(Posición por marca de tiempo,Golpea como máximo uno). */
     @Synchronized
     fun updateTurnDescription(channelId: String, from: String, turnAt: Long, description: String) {
         val key = key(channelId, from)
@@ -296,7 +296,7 @@ object ChannelConversationStore {
         if (persistConversation(key, updated)) _conversations.value = _conversations.value + (key to updated)
     }
 
-    /** 写一条会话的分片；返回 false 表示没写成功（调用方据此决定是否更新内存）。 */
+    /** Escribe un fragmento de sesión; devuelve falso para indicar que la escritura no fue exitosa (la persona que llama decide si actualiza la memoria en consecuencia). */
     private fun persistConversation(key: String, conversation: Conversation): Boolean {
         if (ProcessWriteGate.restoring) return false
         val dir = shardDir ?: return true
@@ -306,35 +306,35 @@ object ChannelConversationStore {
                 ChannelConversationFiles.encode(key, conversation),
             )
             true
-        }.onFailure { e -> Logger.w(TAG, "对话历史持久化失败: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "Falló la persistencia del historial de conversaciones: ${e.message}") }
             .getOrDefault(false)
     }
 
-    /** 删除一条会话的分片；文件本来就不存在也算成功。 */
+    /** Eliminar los fragmentos de una sesión; el archivo no existe incluso si no existe. */
     private fun deleteConversation(key: String): Boolean {
         val dir = shardDir ?: return true
         return runCatching {
             val target = shardFile(dir, key)
             !target.exists() || target.delete()
-        }.onFailure { e -> Logger.w(TAG, "对话分片删除失败: ${e.message}") }
+        }.onFailure { e -> Logger.w(TAG, "Error al eliminar el fragmento de conversación: ${e.message}") }
             .getOrDefault(false)
     }
 }
 
 /**
- * 分片的文件名与编码。抽出来是为了能在不启动单例、不碰真实 filesDir 的前提下单测
- * 「同一 key 稳定同名」「编码/解码往返」「非法内容不被当成空会话」这三件事。
+ * El nombre del archivo y la codificación del fragmento. Se extrae para permitir pruebas únicas sin iniciar el singleton ni tocar el directorio de archivos real.
+ * "La misma clave tiene el mismo nombre estable" "Codificación/Decodificar ida y vuelta" y "el contenido ilegal no se trata como una sesión vacía" son tres cosas.
  */
 internal object ChannelConversationFiles {
 
-    /** 分片内容：key 一起存进去，文件名只是哈希，读回来才知道它属于谁。 */
+    /** Contenido del fragmento:key Guárdelo junto, el nombre del archivo es solo un hash y no sabrá a quién pertenece hasta que lo vuelva a leer. */
     @Serializable
     internal data class Envelope(
         val key: String,
         val conversation: ChannelConversationStore.Conversation,
     )
 
-    /** 文件名 = key 的 SHA-256 十六进制。key 里有 `|`、可能含路径分隔符与控制字符。 */
+    /** nombre de archivo = key SHA-256 hexagonal.key hay `|`, puede contener separadores de ruta y caracteres de control. */
     fun shardName(key: String): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
             .digest(key.toByteArray(Charsets.UTF_8))
@@ -344,7 +344,7 @@ internal object ChannelConversationFiles {
     fun encode(key: String, conversation: ChannelConversationStore.Conversation): String =
         AppJson.encodeToString(Envelope.serializer(), Envelope(key, conversation))
 
-    /** 解码失败返回 null（调用方跳过该分片，不当成空会话写入内存）。 */
+    /** Si la decodificación falla, se devuelve nulo (la persona que llama omite el fragmento y no lo escribe en la memoria como una sesión vacía). */
     fun decode(text: String): Pair<String, ChannelConversationStore.Conversation>? =
         runCatching { AppJson.decodeFromString(Envelope.serializer(), text) }
             .getOrNull()

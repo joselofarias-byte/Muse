@@ -3,23 +3,23 @@ package io.zer0.muse.tools
 import io.zer0.ai.core.UIMessage
 
 /**
- * v1.200: 委派上下文构造器。
+ * v1.200: Constructor de contexto de delegación.
  *
- * 从会话消息中提取精简上下文,供 [SkillExecutor.delegateAgent] 使用。
- * 只保留最近 [DEFAULT_MAX_MESSAGES] 条文本消息,过滤掉图片/音频等非文本内容,
- * 避免子助手上下文过长或被多模态内容污染。
+ * Extraiga contexto condensado de mensajes de conversación,suministro [SkillExecutor.delegateAgent] Usar.
+ * Mantenga solo el más reciente [DEFAULT_MAX_MESSAGES] mensaje de texto,Filtrar imágenes/Contenido que no es texto, como audio.,
+ * Evite contextos de ayuda infantil que sean demasiado largos o estén contaminados con contenido multimodal.
  */
 object DelegationContextBuilder {
 
-    /** 默认携带的最大上下文消息条数。 */
+    /** El número máximo de mensajes de contexto transportados de forma predeterminada. */
     const val DEFAULT_MAX_MESSAGES = 8
 
     /**
-     * 从会话消息中提取精简上下文。
+     * Extraiga el contexto condensado de los mensajes de conversación.
      *
-     * @param sessionMessages 当前会话的全部消息
-     * @param maxMessages 最大携带条数(取最近 N 条)
-     * @param includeImages 是否保留图片消息(默认 false,委派子助手时不传图)
+     * @param sessionMessages Todos los mensajes de la conversación actual
+     * @param maxMessages Número máximo de artículos a transportar.(Obtenga los N elementos más recientes)
+     * @param includeImages Si conservar mensajes con imágenes(Predeterminado false,No pasar imagen al delegar subasistente)
      */
     fun build(sessionMessages: List<UIMessage>, maxMessages: Int = DEFAULT_MAX_MESSAGES, includeImages: Boolean = false): List<UIMessage> {
         return sessionMessages
@@ -29,8 +29,8 @@ object DelegationContextBuilder {
             }
             .map { msg ->
                 if (includeImages) {
-                    // 即使保留图片,也去掉工具调用元数据、推理链等多余字段,
-                    // 避免子助手请求出现不完整的 tool_calls 或不支持的 reasoning_content。
+                    // Incluso si conservas la foto,Elimine también los campos redundantes, como los metadatos de llamadas a herramientas y la cadena de inferencia.,
+                    // Evite solicitudes de subayudante con llamadas a herramientas incompletas o contenido de razonamiento no compatible.
                     msg.copy(
                         toolCalls = null,
                         toolCallId = null,
@@ -41,8 +41,8 @@ object DelegationContextBuilder {
                         voiceDurationMs = 0L,
                     )
                 } else {
-                    // 委派子助手时走纯文本路径:清空图片、视频、工具调用、推理链等字段,
-                    // 防止向纯文本模型发送图片,或向未启用 tool calling 的请求发送孤儿 toolCalls。
+                    // Utilice la ruta de texto sin formato al delegar ayudantes infantiles:Borre campos como imágenes, videos, llamadas a herramientas, cadenas de inferencia, etc.,
+                    // Evitar el envío de imágenes a modelos de solo texto,O envíe llamadas de herramientas huérfanas a solicitudes que no tengan habilitadas las llamadas de herramientas.
                     msg.copy(
                         imageUrls = emptyList(),
                         imageBase64List = emptyList(),

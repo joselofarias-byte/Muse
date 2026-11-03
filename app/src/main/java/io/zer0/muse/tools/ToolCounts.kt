@@ -4,12 +4,12 @@ import io.zer0.ai.core.ToolDefinition
 import io.zer0.muse.data.skill.SkillEntity
 
 /**
- * 工具数量的三档口径。
+ * Tres calibres para la cantidad de herramientas.
  *
- * 三个数本来就该不同，差别只应来自「问的是哪一层」，而不是来自实现各写一套：
- *  - [callableInSchema]：本轮 function schema 里真正下发的数量 —— 模型此刻能调的就是这些；
- *  - [sessionVisible]：本会话 find_tools 空查询能列出的数量（含可装载技能，扣掉 find_tools 自身）；
- *  - [registeredTotal]：本地注册表里的工具总数（启动日志报的就是这一档）。
+ * Los tres números deberían ser diferentes originalmente. La diferencia sólo debería provenir de "qué capa se solicita", no de la implementación de escribir un conjunto para cada una:
+ *  - [callableInSchema]: El número real emitido en esta ronda de esquema de funciones. —— Esto es lo que el modelo puede ajustar por el momento;
+ *  - [sessionVisible]: El número que puede enumerarse mediante una consulta vacía de find_tools en esta sesión (incluidas las habilidades cargables, excluyendo el propio find_tools);
+ *  - [registeredTotal]: el número total de herramientas en el registro local (este es el archivo informado en el registro de inicio).
  */
 data class ToolCounts(
     val callableInSchema: Int,
@@ -18,15 +18,15 @@ data class ToolCounts(
 )
 
 /**
- * 三档计数的唯一计算入口（纯函数，不依赖 Android）。
+ * La única entrada de cálculo para el conteo de tercer nivel (función pura, no depende de Android).
  *
- * 下发、计数、检索都走 [ToolSchemaRules] 的同一套规则，所以这里的第一个数与
- * ChatStreamCoordinator 真正发给模型的 tools 数量一致，第二个数与 find_tools
- * 空查询的清单长度一致。
+ * La entrega, el conteo y la recuperación están todos realizados. [ToolSchemaRules] El mismo conjunto de reglas para , por lo que el primer número aquí es el mismo que
+ * ChatStreamCoordinator La cantidad de herramientas realmente enviadas al modelo es la misma y el segundo número es el mismo que find_tools
+ * Las consultas vacías tienen la misma longitud de lista.
  */
 object ToolCounter {
 
-    /** 计算输入：把三个口径各自的来源数据集中传入。 */
+    /** Entrada de cálculo: Introduzca los datos de origen de cada uno de los tres calibres de forma centralizada. */
     data class Input(
         val localToolDefs: List<ToolDefinition>,
         val registeredTools: List<ToolRegistry.ToolDef>,

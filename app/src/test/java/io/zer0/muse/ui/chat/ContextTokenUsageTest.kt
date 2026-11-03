@@ -8,16 +8,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [ContextTokenUsage] 的口径测试。
+ * [ContextTokenUsage] prueba de calibre.
  *
- * 重点钉住三件事：
- *  1. 会话里没有任何带 usage 的消息时，结果必须与纯本地估算**逐字节相同**（退化路径，不允许新增差异）；
- *  2. 有 usage 时 = 水位线实测(prompt+completion) + 水位线之后的估算，且 system prompt 不重复计；
- *  3. 实测明显低于估算（可疑值）时，以估算为下限。
+ * Concéntrate en tres cosas:
+ *  1. Cuando no hay mensajes con uso en la sesión, los resultados deben compararse con estimaciones puramente locales.**byte por byte idéntico**(camino degradado, no se permiten nuevas diferencias);
+ *  2. Cuando hay uso = Medición del nivel de agua real(prompt+completion) + Estimación después del nivel del agua y el sistema indica que no repite el cálculo;
+ *  3. Cuando la medición real es significativamente menor que la estimación (valor cuestionable), la estimación se utiliza como límite inferior.
  */
 class ContextTokenUsageTest {
 
-    private val systemPrompt = "You are a helpful assistant. 请用中文回答，保持简洁。"
+    private val systemPrompt = "You are a helpful assistant. Responda en chino y sea conciso."
 
     private fun user(content: String, promptTokens: Int? = null, completionTokens: Int? = null, cachedTokens: Int? = null): UIMessage =
         UIMessage(
@@ -37,29 +37,29 @@ class ContextTokenUsageTest {
             cachedTokens = cachedTokens,
         )
 
-    // ── 1. 退化路径：无 usage 必须与纯估算完全一致 ──────────────────────
+    // ── 1. Ruta de degradación: ningún uso debe ser exactamente igual que la estimación pura ──────────────────────
 
     @Test
-    fun `无任何 usage 时与纯本地估算完全一致`() {
+    fun `Sin ningún uso, es exactamente igual que la estimación puramente local.`() {
         val messages = listOf(
-            user("帮我看看这个项目结构"),
-            assistant("项目分为 app、ai、memory 三个模块。"),
-            user("再详细一点，把依赖关系也说说"),
-            assistant("app 依赖 ai 与 memory，ai 与 memory 互不依赖。"),
+            user("Ayúdame a ver la estructura del proyecto."),
+            assistant("El proyecto se divide en aplicación,ai,memory Tres módulos."),
+            user("Seamos más detallados y hablemos de las dependencias."),
+            assistant("app Depende de la inteligencia artificial y la memoria,ai No depende de la memoria."),
         )
         val pure = TokenEstimator.estimate(messages, systemPrompt)
         assertEquals(
-            "没有 usage 时占用量必须等于纯估算，不能引入任何偏差",
+            "Sin uso, la ocupación debe ser igual a una estimación pura y sin sesgos.",
             pure,
             ContextTokenUsage.estimate(messages, systemPrompt),
         )
     }
 
     @Test
-    fun `usage 字段全为 null 的老数据同样退回纯估算`() {
+    fun `usage Los datos antiguos cuyos campos sean todos nulos también se devolverán a la estimación pura.`() {
         val messages = listOf(
-            user("你好"),
-            assistant("你好，有什么可以帮你？"),
+            user("Hola"),
+            assistant("Hola, ¿en qué puedo ayudarte?"),
         )
         assertEquals(-1, ContextTokenUsage.lastMeasuredIndex(messages))
         assertEquals(
@@ -69,10 +69,10 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `promptTokens 为 0 视为没有 usage`() {
+    fun `promptTokens 0 significa que no hay usage`() {
         val messages = listOf(
-            user("你好"),
-            assistant("你好", promptTokens = 0, completionTokens = 128),
+            user("Hola"),
+            assistant("Hola", promptTokens = 0, completionTokens = 128),
         )
         assertEquals(-1, ContextTokenUsage.lastMeasuredIndex(messages))
         assertEquals(
@@ -82,31 +82,31 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `空列表返回 0 不抛异常`() {
+    fun `Una lista vacía devuelve 0 sin generar una excepción.`() {
         assertEquals(0, ContextTokenUsage.estimate(emptyList(), ""))
         assertEquals(0, TokenEstimator.estimate(emptyList(), ""))
     }
 
-    // ── 2. 水位线的选取 ────────────────────────────────────────────────
+    // ── 2. Selección de línea de nivel de agua. ────────────────────────────────────────────────
 
     @Test
-    fun `水位线取最后一条带 usage 的 assistant 消息`() {
+    fun `El nivel del agua toma el último mensaje del asistente con el uso.`() {
         val messages = listOf(
-            user("第一个问题"),
-            assistant("第一条回答", promptTokens = 1_000, completionTokens = 100),
-            user("第二个问题"),
-            assistant("第二条回答", promptTokens = 2_000, completionTokens = 200),
-            user("第三个问题"),
-            assistant("还没有 usage"),
+            user("primera pregunta"),
+            assistant("Primera respuesta", promptTokens = 1_000, completionTokens = 100),
+            user("segunda pregunta"),
+            assistant("Segunda respuesta", promptTokens = 2_000, completionTokens = 200),
+            user("la tercera pregunta"),
+            assistant("todavía no usage"),
         )
         assertEquals(3, ContextTokenUsage.lastMeasuredIndex(messages))
     }
 
     @Test
-    fun `非 assistant 消息上的 usage 不参与水位线`() {
+    fun `el uso en mensajes que no son del asistente no participa en las marcas de agua`() {
         val messages = listOf(
-            user("带数字的输入", promptTokens = 9_000, completionTokens = 9_000),
-            assistant("无 usage 的回答"),
+            user("entrada con números", promptTokens = 9_000, completionTokens = 9_000),
+            assistant("Sin respuesta de uso"),
         )
         assertEquals(-1, ContextTokenUsage.lastMeasuredIndex(messages))
         assertEquals(
@@ -115,21 +115,21 @@ class ContextTokenUsageTest {
         )
     }
 
-    // ── 3. 合并算法 ────────────────────────────────────────────────────
+    // ── 3. algoritmo de fusión ────────────────────────────────────────────────────
 
     @Test
-    fun `实测只取 prompt 加 completion 不叠加 cached`() {
-        // OpenAI 的 cached 是 prompt 的子集；UsageTokens.total 也是同一口径。
-        val message = assistant("回答", promptTokens = 5_000, completionTokens = 800, cachedTokens = 4_000)
+    fun `La medición real solo requiere una finalización rápida y sin superposición. cached`() {
+        // OpenAI El caché es un subconjunto del mensaje;UsageTokens.total También es del mismo calibre.
+        val message = assistant("responder", promptTokens = 5_000, completionTokens = 800, cachedTokens = 4_000)
         assertEquals(5_800, ContextTokenUsage.measuredTokens(message))
     }
 
     @Test
-    fun `合并值等于水位线实测加水位线之后的估算`() {
-        val tail = user("再补一句很长的追问：" + "细节".repeat(40))
+    fun `El valor combinado es igual al nivel de agua estimado más el nivel de agua medido.`() {
+        val tail = user("Permítanme agregar una pregunta de seguimiento muy larga:" + "Detalles".repeat(40))
         val messages = listOf(
-            user("第一个问题"),
-            assistant("第一条回答", promptTokens = 40_000, completionTokens = 1_000),
+            user("primera pregunta"),
+            assistant("Primera respuesta", promptTokens = 40_000, completionTokens = 1_000),
             tail,
         )
         val expected = 41_000 + TokenEstimator.estimate(listOf(tail))
@@ -137,69 +137,69 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `水位线之后没有消息时只算实测`() {
+    fun `Si no hay novedades después del nivel del agua, sólo se contabilizará la medición real.`() {
         val messages = listOf(
-            user("问题"),
-            assistant("回答", promptTokens = 50_000, completionTokens = 2_000),
+            user("pregunta"),
+            assistant("responder", promptTokens = 50_000, completionTokens = 2_000),
         )
         assertEquals(52_000, ContextTokenUsage.estimate(messages, systemPrompt))
     }
 
     @Test
-    fun `system prompt 不重复计入尾段估算`() {
-        // 长 system prompt 已经包含在实测 promptTokens 里；若尾段再带一遍，结果会远超实测值。
-        val longSystemPrompt = "规则如下。" + "请严格遵守输出格式要求，不要附加多余解释。".repeat(60)
+    fun `system prompt No incluido repetidamente en la estimación del segmento de cola`() {
+        // El aviso largo del sistema ya está incluido en los tokens de aviso medidos; Si se vuelve a incluir la sección de cola, el resultado superará con creces el valor medido.
+        val longSystemPrompt = "Las reglas son las siguientes." + "Cumpla estrictamente con los requisitos del formato de salida y no adjunte explicaciones innecesarias.".repeat(60)
         val messages = listOf(
-            user("问题"),
-            assistant("回答", promptTokens = 60_000, completionTokens = 1_500),
+            user("pregunta"),
+            assistant("responder", promptTokens = 60_000, completionTokens = 1_500),
         )
         val actual = ContextTokenUsage.estimate(messages, longSystemPrompt)
         assertEquals(61_500, actual)
         assertTrue(
-            "尾段不得重复计 system prompt：actual=$actual",
+            "El segmento de la cola no se debe contar dos veces. mensaje del sistema:actual=$actual",
             actual <= 61_500,
         )
     }
 
-    // ── 4. 可疑实测：以估算为下限 ──────────────────────────────────────
+    // ── 4. Medición real sospechosa: tome la estimación como límite inferior ──────────────────────────────────────
 
     @Test
-    fun `实测明显低于估算时退回估算`() {
+    fun `Si la medida real es significativamente menor que la estimación, devuelva la estimación.`() {
         val messages = listOf(
-            user("很长的问题：" + "请解释这段代码的作用。".repeat(60)),
-            assistant("很长的回答：" + "这里先做解析，再做转换。".repeat(60), promptTokens = 1, completionTokens = 1),
+            user("Pregunta muy larga:" + "Por favor explique qué hace este código.".repeat(60)),
+            assistant("Respuesta larga:" + "Aquí hacemos el análisis primero y luego la conversión.".repeat(60), promptTokens = 1, completionTokens = 1),
         )
         val pure = TokenEstimator.estimate(messages, systemPrompt)
         assertEquals(
-            "可疑的小 usage 不能让占用率被压到估算的一半以下",
+            "El escaso uso sospechoso no puede reducir la tasa de ocupación por debajo de la mitad de la estimación",
             pure,
             ContextTokenUsage.estimate(messages, systemPrompt),
         )
     }
 
     @Test
-    fun `blend 在实测为零时退回估算`() {
+    fun `blend Recurrir a la estimación cuando la medición real sea cero`() {
         assertEquals(1_000, ContextTokenUsage.blend(measured = 0, tailEstimate = 500, fullEstimate = 1_000))
         assertEquals(1_000, ContextTokenUsage.blend(measured = -1, tailEstimate = 0, fullEstimate = 1_000))
     }
 
     @Test
-    fun `blend 的可信下限恰好是估算的一半`() {
-        // 合并值 × 2 == 估算 → 不算低于下限，采信实测。
+    fun `blend El límite de confianza inferior es exactamente la mitad de la estimación.`() {
+        // Valor combinado × 2 == estimación → No es inferior al límite inferior y se basa en mediciones reales.
         assertEquals(500, ContextTokenUsage.blend(measured = 500, tailEstimate = 0, fullEstimate = 1_000))
-        // 再小一点就低于下限，改用估算兜底。
+        // Si es menor, estará por debajo del límite inferior, así que utilice la estimación para obtener el resultado final.
         assertEquals(1_000, ContextTokenUsage.blend(measured = 499, tailEstimate = 0, fullEstimate = 1_000))
     }
 
     @Test
-    fun `实测高于估算时直接采信实测`() {
-        // 真实 tokenizer 与 cl100k 存在偏差，中文/多模态场景实测更大时应以实测为准。
+    fun `Si la medida real es mayor que la estimación, la medida real se adoptará directamente.`() {
+        // Hay una desviación entre el tokenizador real y cl100k, chino/Cuando la medición real de la escena multimodal es mayor, la medición real debe prevalecer.
         assertEquals(9_000, ContextTokenUsage.blend(measured = 8_000, tailEstimate = 1_000, fullEstimate = 2_000))
     }
 
     @Test
-    fun `估算为 0 时不影响实测值`() {
-        // jtokkit 初始化失败 + 空文本时估算为 0，不能把实测值也归零。
+    fun `Cuando la estimación es 0, no afecta el valor medido real.`() {
+        // jtokkit Cuando la inicialización falla + texto vacío, se estima que es 0 y el valor medido real no se puede restablecer a cero.
         assertEquals(3_000, ContextTokenUsage.blend(measured = 3_000, tailEstimate = 0, fullEstimate = 0))
     }
 }

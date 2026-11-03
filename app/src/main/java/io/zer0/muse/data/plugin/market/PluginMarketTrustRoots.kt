@@ -5,27 +5,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * v2.0.1: 目录信任根的进程内缓存（Koin 单例）。
+ * v2.0.1: Caché en proceso de raíces de confianza del directorio (Koin singleton).
  *
- * 插件管理页（UI）与后台工具（plugin_market_search / plugin_market_install）必须
- * 共享同一份验签信任根：[PluginCatalogRepository] 的 `trustRootKeys` 是同步 lambda，
- * 而信任根读取（DataStore）是挂起操作，因此用本缓存做桥。
+ * Página de administración de complementos (UI) y herramientas en segundo plano (plugin_market_search / plugin_market_install) debe
+ * Comparta la misma raíz de confianza para la verificación de firmas:[PluginCatalogRepository] de `trustRootKeys` es una lambda sincrónica,
+ * Y la raíz de la confianza dice (DataStore) es una operación pendiente, por lo que este caché se utiliza como puente.
  *
- * 刷新时机：进入插件管理页、保存/移除信任根、工具调用前（[reload]），低频调用。
+ * Actualizar tiempo: ingrese a la página de administración de complementos y guarde/Elimine la raíz de confianza y antes de llamar a la herramienta ([reload]), llamada de baja frecuencia.
  */
 class PluginMarketTrustRoots(
-    /** 信任根设置读写入口；与市场其他组件共享同一 DataStore 封装。 */
+    /** La raíz de confianza establece la entrada de lectura y escritura; comparte el mismo paquete DataStore con otros componentes del mercado. */
     val settings: PluginMarketSettings,
 ) {
     private val _keys = MutableStateFlow(PluginMarketDefaults.catalogRootKeys)
 
-    /** 当前生效信任根（内置官方根 + 用户追加项）；UI 可订阅该状态刷新界面。 */
+    /** Raíz de confianza actualmente efectiva (raíz oficial incorporada + elementos adicionales del usuario);UI Puede suscribirse a este estado para actualizar la interfaz. */
     val keys: StateFlow<Map<String, String>> = _keys.asStateFlow()
 
-    /** 同步读取当前信任根（供 [PluginCatalogRepository] 的同步 lambda 使用）。 */
+    /** Lea sincrónicamente la raíz de confianza actual (por [PluginCatalogRepository] uso de lambda sincronizado). */
     fun current(): Map<String, String> = _keys.value
 
-    /** 从 DataStore 重新加载信任根（挂起；低频调用）。 */
+    /** Vuelva a cargar la raíz de confianza desde DataStore (se bloquea; se llama con poca frecuencia). */
     suspend fun reload() {
         _keys.value = settings.catalogRootKeys()
     }

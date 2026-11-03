@@ -41,21 +41,21 @@ import io.zer0.muse.ui.theme.MuseShapes
 import org.koin.compose.koinInject
 
 // ════════════════════════════════════════════════════════════════════════════
-// P3-2:本地数据分析面板 — 把 LocalAnalyticsTracker 已采集但未 UI 化的指标透出
+// P3-2:Panel de análisis de datos locales — Exponer los indicadores recopilados por LocalAnalyticsTracker pero no basados en UI
 //
-//  数据源:LocalAnalyticsTracker.getSnapshot() → AnalyticsSnapshot
-//         LocalAnalyticsTracker.getFeatureUsage() → List<Pair<String, Int>>(已按 count 降序)
-//  隐私:所有数据仅本地 DataStore,无任何上报
+//  fuente de datos:LocalAnalyticsTracker.getSnapshot() → AnalyticsSnapshot
+//         LocalAnalyticsTracker.getFeatureUsage() → List<Pair<String, Int>>(Ordenado de forma descendente por conteo)
+//  Privacidad:Todos los datos son solo locales. DataStore,No se reportó nada
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * 本地数据分析底部面板。
+ * Panel inferior de análisis de datos locales.
  *
- * 展示内容:
- *  - 核心指标卡片:DAU 今日 / MAU 本月 / 总会话 / 总消息 / 启动次数 / 崩溃次数(含崩溃率)
- *  - 留存卡片:D1 / D7 / D30 留存标记
- *  - 最近活跃日期
- *  - 功能使用 Top 10(按 count 降序,空时提示)
+ * Mostrar contenido:
+ *  - Tarjeta indicadora básica:DAU Hoy / MAU este mes / Total de sesiones / Total de mensajes / Número de inicios / Número de bloqueos(Contiene tasa de accidentes)
+ *  - mantener la tarjeta:D1 / D7 / D30 marca de retención
+ *  - Última fecha activa
+ *  - Uso de funciones Top 10(Ordenar de forma descendente por conteo,Aviso de tiempo vacío)
  */
 @Composable
 internal fun AnalyticsSheet(onDismiss: () -> Unit) {
@@ -81,7 +81,7 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
-                // LAYOUT-01: 已取宽的标题补限行，剩余宽度极小时不再逐字换行
+                // LAYOUT-01: El título ampliado se agregará al límite de líneas. Si el ancho restante es extremadamente pequeño, ya no se ajustará palabra por palabra.
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -109,7 +109,7 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
             }
             else -> {
                 val s = snapshot!!
-                // ── 核心指标:2 列网格 ─────────────────────────────────────────
+                // ── indicadores básicos:2 cuadrícula de columnas ─────────────────────────────────────────
                 MetricGrid(
                     metrics = listOf(
                         stringResource(R.string.debug_metric_dau_today) to s.dauToday.toString(),
@@ -128,7 +128,7 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
 
                 Spacer(Modifier.height(MusePaddings.contentGap))
 
-                // ── 留存卡片 ─────────────────────────────────────────────────
+                // ── mantener la tarjeta ─────────────────────────────────────────────────
                 RetentionCard(
                     d1 = s.d1Retention,
                     d7 = s.d7Retention,
@@ -137,7 +137,7 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
 
                 Spacer(Modifier.height(MusePaddings.contentGap))
 
-                // ── 其他状态:首次对话 / 记忆系统 / 最近活跃 ──────────────────
+                // ── Otro estado:Primera conversación/sistema de memoria/activo recientemente ──────────────────
                 StatusRow(
                     label = stringResource(R.string.debug_status_first_chat),
                     value = if (s.firstChatCompleted) {
@@ -160,7 +160,7 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
 
                 Spacer(Modifier.height(MusePaddings.contentGap))
 
-                // ── 功能使用 Top 10 ──────────────────────────────────────────
+                // ── Uso de funciones Top 10 ──────────────────────────────────────────
                 FeatureUsageSection(usage = featureUsage)
             }
         }
@@ -168,11 +168,11 @@ internal fun AnalyticsSheet(onDismiss: () -> Unit) {
 }
 
 /**
- * 指标网格 — 2 列展示键值对,简洁卡片样式。
+ * rejilla indicadora — 2 Pares clave-valor de visualización de columnas,Estilo de tarjeta sencillo.
  */
 @Composable
 private fun MetricGrid(metrics: List<Pair<String, String>>) {
-    // 用 columnCount=2 的简化网格:每两个一组渲染一行
+    // usar columnCount=2 Cuadrícula simplificada de:Representa una línea por par
     val rows = metrics.chunked(2)
     Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap)) {
         rows.forEach { rowItems ->
@@ -204,7 +204,7 @@ private fun MetricGrid(metrics: List<Pair<String, String>>) {
                         }
                     }
                 }
-                // 若最后一行只有 1 个,补一个占位以保持网格对齐
+                // Si solo hay 1 en la última fila,Agregue un marcador de posición para mantener la cuadrícula alineada
                 if (rowItems.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -214,7 +214,7 @@ private fun MetricGrid(metrics: List<Pair<String, String>>) {
 }
 
 /**
- * 留存卡片:D1 / D7 / D30 三段进度。
+ * mantener la tarjeta:D1 / D7 / D30 Tres etapas de progreso.
  */
 @Composable
 private fun RetentionCard(d1: Int, d7: Int, d30: Int) {
@@ -280,7 +280,7 @@ private fun RetentionItem(label: String, retained: Int) {
     }
 }
 
-/** 键值对行(标签 + 值)。 */
+/** Fila de par clave-valor(etiqueta + valor). */
 @Composable
 private fun StatusRow(label: String, value: String) {
     Row(
@@ -289,7 +289,7 @@ private fun StatusRow(label: String, value: String) {
             .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // LAYOUT-01: 标签取剩余宽度（值仍固定靠右），放大字号下不再逐字换行
+        // LAYOUT-01: La etiqueta toma el ancho restante (el valor todavía está fijo a la derecha) y ya no se ajusta palabra por palabra cuando se amplía el tamaño de fuente.
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -298,7 +298,7 @@ private fun StatusRow(label: String, value: String) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        // LAYOUT-01: 取值靠右固定（SpaceBetween），只限行、不取宽
+        // LAYOUT-01: El valor se fija a la derecha (SpaceBetween), solo línea, sin ancho
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
@@ -310,9 +310,9 @@ private fun StatusRow(label: String, value: String) {
 }
 
 /**
- * 功能使用 Top 10 列表。
+ * Funciones que utilizan la lista Top 10.
  *
- * 空列表显示提示;非空时显示条形图风格的进度条(相对最大值的比例)。
+ * Mensaje de visualización de lista vacía;Mostrar la barra de progreso del estilo del gráfico de barras cuando no está vacía(Relación con el valor máximo).
  */
 @Composable
 private fun FeatureUsageSection(usage: List<Pair<String, Int>>) {
@@ -336,7 +336,7 @@ private fun FeatureUsageSection(usage: List<Pair<String, Int>>) {
                 FeatureUsageRow(
                     name = name,
                     count = count,
-                    // 崩溃防御: 比例值统一经 safeFraction,避免 NaN 漏进 fillMaxWidth
+                    // defensa contra el colapso: Meridiano unificado de valor proporcional safeFraction,Evite las fugas de NaN fillMaxWidth
                     fraction = (count.toFloat() / maxCount).safeFraction(),
                 )
             }
@@ -367,7 +367,7 @@ private fun FeatureUsageRow(name: String, count: Int, fraction: Float) {
             )
         }
         Spacer(Modifier.height(2.dp))
-        // 简化条形图:用 Surface 高度表示比例
+        // Gráfico de barras simplificado:Escala expresa usando la altura de la superficie
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -382,5 +382,5 @@ private fun FeatureUsageRow(name: String, count: Int, fraction: Float) {
     }
 }
 
-/** 把 0..1 的浮点数格式化为百分比字符串(保留 1 位小数)。 */
+/** Formatee un número de coma flotante de 0 a 1 a una cadena de porcentaje(a 1 decimal). */
 private fun formatPercent(value: Float): String = "%.1f%%".format(value * 100)

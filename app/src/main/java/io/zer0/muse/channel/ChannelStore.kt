@@ -10,9 +10,9 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * v1.0.92: 渠道配置存储 — 持久化到 filesDir/channel_configs.json(原子写)。
+ * v1.0.92: Almacenamiento de configuración de canales — persistir en filesDir/channel_configs.json(Escritura atómica).
  *
- * APP Secret 经 [SecureKeyStore] 加密后落盘,内存中保持明文。
+ * APP Secret por [SecureKeyStore] Cifrado y colocado en el disco.,Mantenga texto claro en la memoria.
  */
 class ChannelStore(private val file: File) {
 
@@ -25,7 +25,7 @@ class ChannelStore(private val file: File) {
             val payload = AppJson.decodeFromString(Payload.serializer(), file.readText())
             payload.channels.map { decrypt(it) }
         }.onFailure { e ->
-            Logger.w(TAG, "渠道配置读取失败: ${e.message}")
+            Logger.w(TAG, "No se pudo leer la configuración del canal: ${e.message}")
         }.getOrDefault(emptyList())
     }
 

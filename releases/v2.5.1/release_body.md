@@ -1,37 +1,37 @@
 # Muse v2.5.1
 
-本版为 v2.5.0 的紧急修复版本，修复两个严重回归。**请务必更新到本版**——v2.5.0 的两个问题都会导致对话不可用。
+Esta versión es una versión de reparación de emergencia de v2.5.0, que corrige dos regresiones graves.**Por favor asegúrese de actualizar a esta versión**——v2.5.0 Ambos problemas harán que la conversación no esté disponible.
 
-## 修复
+## Reparación
 
-### 1. 工具调用名被空串续片覆盖，所有工具调用被丢弃（glm / DeepSeek 等中转站必现）
+### 1. El nombre de la llamada a la herramienta se sobrescribe con la continuación de cadena vacía y todas las llamadas a la herramienta se descartan (glm / DeepSeek Debes presentarte en la estación de transferencia)
 
-部分中转站的流式 `tool_calls` 在后续增量分片中携带**空字符串的 name 字段**。此前下游用「null 合并」逻辑累积工具名——空串不是 null，穿透了合并逻辑，把首片已正确到达的完整工具名（如 `knowledge_search`、`search_memory`）覆盖成空串。
+Streaming en algunas estaciones de transferencia `tool_calls` llevado en fragmentos incrementales posteriores**campo de nombre de cadena vacía**. Anteriormente, aguas abajo usaba "null Nombre de la herramienta de acumulación lógica "Fusionar"——La cadena vacía no es nula. Penetra en la lógica de fusión y devuelve el nombre completo de la herramienta de la primera pieza que ha llegado correctamente (como `knowledge_search`,`search_memory`) se sobrescribe en una cadena vacía.
 
-流结束后清洗器按「name 为空」丢弃全部工具调用，表现为：
+Una vez finalizado el flujo, el limpiador presiona "name "Vacío" descarta todas las llamadas a herramientas, el rendimiento es el siguiente:
 
-- 提示「模型发起了 N 个工具调用，但参数格式异常未能执行」
-- 思考过程（CoT）正常输出，但正文为空，直接被工具调用失败挡回
-- 会话回顾时该轮消息闪现后消失（空消息被渲染层过滤）
+- Mensaje "El modelo inició N llamadas a herramientas, pero el formato del parámetro era anormal y no se pudo ejecutar".
+- proceso de pensamiento (CoT) se genera normalmente, pero el texto está vacío y está bloqueado directamente por una falla en la llamada a la herramienta.
+- Durante la revisión de la sesión, esta ronda de mensajes parpadea y luego desaparece (la capa de representación filtra los mensajes vacíos)
 
-双保险修复：上游对后续增量的空白工具名改发 null（下游语义保留旧名）；下游累积时同样过滤空白串。
+Reparación de doble seguro: el flujo ascendente cambia el nombre de la herramienta en blanco de los incrementos posteriores a nulo (la semántica descendente conserva el nombre anterior); el flujo descendente también filtra cadenas en blanco cuando se acumulan.
 
-### 2. 深度思考被 10 分钟总超时硬杀（回复截断）
+### 2. Deep Thought fue eliminado por un tiempo de espera total de 10 minutos (respuesta truncada)
 
-glm-5.3 等深度思考模型在中转站上的思考期（实测 10 分钟以上）**不吐任何流式数据**，而流式请求此前受 10 分钟总超时约束——模型思考满 10 分钟整时，整个流被硬杀，回复截断（此前已有部分工具调用成功也会被丢弃）。
+glm-5.3 Espere el período de reflexión del modelo de pensamiento profundo en la estación de transferencia (más de 10 minutos en medición real)**No escupe ningún dato de transmisión**, mientras que las solicitudes de streaming anteriormente estaban sujetas a un tiempo de espera total de 10 minutos.——Cuando el modelo se considera durante 10 minutos, todo el flujo se elimina por completo y la respuesta se trunca (algunas herramientas que se han llamado con éxito antes también se descartarán).
 
-修复：流式请求不再设总超时。静默挂起仍由 5 分钟读超时兜底（真挂起照样断），用户取消按钮仍然有效；思考多久都不再被系统掐断。
+Solución: las solicitudes de transmisión ya no tienen un tiempo de espera total. La suspensión silenciosa todavía está cubierta por el tiempo de espera de lectura de 5 minutos (aún se interrumpirá si realmente se suspende) y el botón de cancelación del usuario sigue siendo efectivo; No importa cuánto tiempo lo pienses, el sistema ya no lo interrumpirá.
 
-## 已知事项
+## cosas conocidas
 
-- 部分中转站（如 newapi.0z.hk）自身对 glm-5.3 等模型会返回 503/400（`code:11133 参数被供应商拒绝`），这是中转站上游问题，客户端重试也无法解决，建议换模型或换站点验证。
-- 模型自动命名会话时偶尔输出 `...` 字面量导致会话名变省略号的问题，将在下版拦截。
+- Algunas estaciones de transferencia (como newapi.0z.hk) devolverán 503/400 (`code:11133 Parámetro rechazado por el proveedor`), este es un problema aguas arriba de la estación de transferencia y no se puede resolver reintentando al cliente. Se recomienda cambiar el modelo o cambiar el sitio para su verificación.
+- Ocasionalmente se genera cuando el modelo nombra automáticamente la sesión `...` El problema de los literales que provocan que los nombres de las sesiones cambien a elipses se solucionará en la próxima versión.
 
-## 构建信息
+## Información de construcción
 
-- 版本：2.5.1 (251)
-- 数据库版本：109（与 2.5.0 相同，直接覆盖安装）
-- 分发：arm64-v8a / armeabi-v7a / universal
+- Versión:2.5.1 (251)
+- Versión de la base de datos:109(Igual que 2.5.0, sobrescribe directamente la instalación)
+- Distribución:arm64-v8a / armeabi-v7a / universal
 
 ---
 # Muse v2.5.1 (English)

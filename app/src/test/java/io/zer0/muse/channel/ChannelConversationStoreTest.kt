@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [ChannelConversationStore.applyCompression] 单测。
+ * [ChannelConversationStore.applyCompression] Prueba única.
  *
- * 重点覆盖 2026-09-29 审查发现的"渠道滚动摘要丢轮次":
- * 原实现是"读快照 → 调 LLM → 整份覆盖回写",压缩期间新 append 的轮次会被丢掉。
+ * Cobertura clave 2026-09-29 Revisar los hallazgos"El resumen de desplazamiento del canal pierde rondas":
+ * La implementación original es"leer instantánea → sintonizar LLM → Reescritura completa",Las nuevas rondas de agregados se descartan durante la compactación.
  */
 class ChannelConversationStoreTest {
     private fun seed(channelId: String, from: String, count: Int, prefix: String = "turn"): List<ChannelConversationStore.Turn> {
@@ -21,15 +21,15 @@ class ChannelConversationStoreTest {
     }
 
     @Test
-    fun `压缩回写保留压缩期间新到的轮次`() {
+    fun `La reescritura de compresión conserva las rondas recién llegadas durante la compresión`() {
         val channelId = "ch-regression"
         val from = "peer-regression"
         val turns = seed(channelId, from, 6)
         val snapshot = ChannelConversationStore.conversation(channelId, from)!!
         val drained = turns.take(4)
 
-        // 压缩进行中(LLM 调用期间)用户又发了一条
-        ChannelConversationStore.append(channelId, from, "user", "压缩期间的新消息")
+        // Compresión en curso(LLM durante la llamada)El usuario publicó otro
+        ChannelConversationStore.append(channelId, from, "user", "Nuevos mensajes durante la compresión")
 
         val applied =
             ChannelConversationStore.applyCompression(
@@ -37,59 +37,59 @@ class ChannelConversationStoreTest {
                 from = from,
                 snapshotSummary = snapshot.summary,
                 drainedTurns = drained,
-                summary = "摘要A",
+                summary = "ResumenA",
             )
 
-        assertTrue("应写入成功", applied)
+        assertTrue("debe escribirse correctamente", applied)
         val now = ChannelConversationStore.conversation(channelId, from)!!
-        assertEquals("摘要A", now.summary)
-        // 已压缩的 4 轮被摘掉;保留的最近 2 轮 + 压缩期间新到的那条都必须在
-        assertEquals(listOf("turn-4", "turn-5", "压缩期间的新消息"), now.turns.map { it.text })
+        assertEquals("ResumenA", now.summary)
+        // Se quitaron las 4 ruedas comprimidas.;Las últimas 2 rondas retenidas + la nueva llegada durante la compresión deben estar en
+        assertEquals(listOf("turn-4", "turn-5", "Nuevos mensajes durante la compresión"), now.turns.map { it.text })
     }
 
     @Test
-    fun `摘要已被另一次压缩更新时放弃写入`() {
+    fun `Escritura abandonada cuando el resumen ha sido actualizado por otra compactación`() {
         val channelId = "ch-cas"
         val from = "peer-cas"
         val turns = seed(channelId, from, 6)
         val snapshot = ChannelConversationStore.conversation(channelId, from)!!
 
-        // 第一次压缩成功
+        // Primera compresión exitosa
         assertTrue(
-            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "摘要A"),
+            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "ResumenA"),
         )
         val afterFirst = ChannelConversationStore.conversation(channelId, from)!!
 
-        // 第二次压缩用的是"压缩前"的快照(摘要为空)→ 必须放弃,不能把摘要覆盖回旧内容,
-        // 也不能再摘掉 4 轮(否则会误删上一轮之后的新消息)
+        // La segunda compresión utiliza"antes de la compresión"instantánea de(El resumen está vacío)→ debe rendirse,Los extractos no se pueden sobrescribir con contenido antiguo.,
+        // Tampoco puedo realizar 4 rondas más.(De lo contrario, los mensajes nuevos después de la última ronda se eliminarán por error.)
         val applied =
-            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "摘要B")
+            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "ResumenB")
 
-        assertFalse("摘要已被更新,应放弃写入", applied)
+        assertFalse("El resumen ha sido actualizado.,Se debe abandonar la escritura.", applied)
         val afterSecond = ChannelConversationStore.conversation(channelId, from)!!
-        assertEquals("摘要A", afterSecond.summary)
+        assertEquals("ResumenA", afterSecond.summary)
         assertEquals(afterFirst.turns.map { it.text }, afterSecond.turns.map { it.text })
     }
 
     @Test
-    fun `边界轮次对不上时放弃写入`() {
+    fun `Cancelar la escritura cuando la ronda límite no coincide`() {
         val channelId = "ch-boundary"
         val from = "peer-boundary"
         val turns = seed(channelId, from, 6)
         val snapshot = ChannelConversationStore.conversation(channelId, from)!!
 
-        // 对话在压缩期间被清空重建(边界轮次不再是同一条:文本不同)
+        // Las conversaciones se borran y se reconstruyen durante la compresión.(Las rondas de límites ya no son las mismas:El texto es diferente)
         seed(channelId, from, 6, prefix = "rebuilt")
 
         val applied =
-            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "摘要A")
+            ChannelConversationStore.applyCompression(channelId, from, snapshot.summary, turns.take(4), "ResumenA")
 
-        assertFalse("边界对不上应放弃", applied)
+        assertFalse("Si los límites no coinciden, debes rendirte.", applied)
         assertEquals(6, ChannelConversationStore.conversation(channelId, from)!!.turns.size)
     }
 
     @Test
-    fun `正常压缩摘掉已并入摘要的轮次并写入摘要`() {
+    fun `La compresión normal elimina las rondas que se han fusionado en el resumen y escribe el resumen.`() {
         val channelId = "ch-happy"
         val from = "peer-happy"
         val turns = seed(channelId, from, 5)
@@ -100,57 +100,57 @@ class ChannelConversationStoreTest {
                 from = from,
                 snapshotSummary = "",
                 drainedTurns = turns.take(3),
-                summary = "摘要X",
+                summary = "ResumenX",
             )
 
         assertTrue(applied)
         val now = ChannelConversationStore.conversation(channelId, from)!!
-        assertEquals("摘要X", now.summary)
+        assertEquals("ResumenX", now.summary)
         assertEquals(listOf("turn-3", "turn-4"), now.turns.map { it.text })
-        assertTrue("updatedAt 应被刷新", now.updatedAt > 0L)
+        assertTrue("updatedAt debe ser renovado", now.updatedAt > 0L)
     }
 
     @Test
-    fun `无轮次可摘时放弃写入`() {
+    fun `Deje de escribir cuando no haya rondas para elegir.`() {
         val channelId = "ch-empty"
         val from = "peer-empty"
         seed(channelId, from, 3)
 
         val applied =
-            ChannelConversationStore.applyCompression(channelId, from, "", emptyList(), "摘要Y")
+            ChannelConversationStore.applyCompression(channelId, from, "", emptyList(), "ResumenY")
 
         assertFalse(applied)
         assertEquals("", ChannelConversationStore.conversation(channelId, from)!!.summary)
     }
 
     @Test
-    fun `自动回复重试不会重复追加轮次且压缩后仍保持幂等`() {
+    fun `Los reintentos de respuesta automática no agregarán rondas repetidamente y permanecerán idempotentes después de la compresión.`() {
         val channelId = "ch-dispatch-idempotency"
         val from = "peer-dispatch-idempotency"
         val dispatchId = "dispatch-1"
         ChannelConversationStore.clear(channelId, from)
 
-        appendDispatched(channelId, from, "user", "收到的消息", dispatchId)
-        appendDispatched(channelId, from, "assistant", "准备发送的回复", dispatchId)
-        appendDispatched(channelId, from, "user", "重复写入", dispatchId)
+        appendDispatched(channelId, from, "user", "Mensaje recibido", dispatchId)
+        appendDispatched(channelId, from, "assistant", "Responder listo para enviar", dispatchId)
+        appendDispatched(channelId, from, "user", "Escritura repetida", dispatchId)
 
         val beforeCompression = ChannelConversationStore.conversation(channelId, from)!!
-        assertEquals(listOf("收到的消息", "准备发送的回复"), beforeCompression.turns.map { it.text })
+        assertEquals(listOf("Mensaje recibido", "Responder listo para enviar"), beforeCompression.turns.map { it.text })
         assertTrue(
             ChannelConversationStore.applyCompression(
                 channelId,
                 from,
                 beforeCompression.summary,
                 beforeCompression.turns,
-                "对话摘要",
+                "Resumen de la conversación",
             ),
         )
 
-        appendDispatched(channelId, from, "user", "收到的消息", dispatchId)
-        appendDispatched(channelId, from, "assistant", "准备发送的回复", dispatchId)
+        appendDispatched(channelId, from, "user", "Mensaje recibido", dispatchId)
+        appendDispatched(channelId, from, "assistant", "Responder listo para enviar", dispatchId)
 
         val afterRetry = ChannelConversationStore.conversation(channelId, from)!!
-        assertEquals("对话摘要", afterRetry.summary)
+        assertEquals("Resumen de la conversación", afterRetry.summary)
         assertTrue(afterRetry.turns.isEmpty())
     }
 

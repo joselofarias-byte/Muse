@@ -10,23 +10,23 @@ import io.zer0.common.Logger
 import java.io.File
 
 /**
- * P2-2：所有 Settings 子仓库共用的 `muse_settings` DataStore。
+ * P2-2: Común a todos los subrepositorios de configuración `muse_settings` DataStore.
  *
- * 必须只有一个委托，否则同一文件会出现多个 DataStore 实例，
- * 在测试或并发写入时触发 IllegalStateException。
+ * Debe haber un solo delegado; de lo contrario, aparecerán varias instancias de DataStore en el mismo archivo.
+ * Se activa una IllegalStateException al realizar pruebas o escritura simultánea.
  *
- * v2.5.3 (P1-2)：损坏文件先备份再重建。
- * 默认的 ReplaceFileCorruptionHandler 会直接用空偏好替换损坏文件，等于静默清空用户全部设置，
- * 且原始损坏内容不可找回。这里在替换前把损坏文件另存为 `*.corrupt-<时间戳>.preferences_pb`，
- * 便于事后排查与人工恢复。
+ * v2.5.3 (P1-2): Primero haga una copia de seguridad de los archivos dañados y luego reconstrúyalos.
+ * El replaceFileCorruptionHandler predeterminado reemplazará directamente el archivo dañado con una preferencia vacía, lo que equivale a borrar silenciosamente todas las configuraciones del usuario.
+ * Y el contenido original dañado no se puede recuperar. Aquí, guarde el archivo dañado como `*.corrupt-<Marca de tiempo>.preferences_pb`,
+ * Facilita la posterior resolución de problemas y la recuperación manual.
  */
 private const val SETTINGS_STORE_NAME = "muse_settings"
 
 /**
- * 尽力备份损坏的数据文件；失败不影响重建（不能让备份异常阻断启动）。
+ * Haga todo lo posible para realizar una copia de seguridad de los archivos de datos dañados; la falla no afecta la reconstrucción (las excepciones de la copia de seguridad no pueden bloquear el inicio).
  *
- * 该 Handler 拿不到当前被损坏文件路径，但 muse_settings 只有一个固定文件名，
- * 因此按确定路径定位（datastore 子目录与根目录都探测一次，兼容不同 DataStore 版本布局）。
+ * El controlador no puede obtener la ruta del archivo dañado actual, pero muse_settings solo tiene un nombre de archivo fijo.
+ * Por lo tanto, el posicionamiento según la ruta determinada (datastore Tanto los subdirectorios como los directorios raíz se detectan una vez, compatibles con diferentes diseños de versiones de DataStore).
  */
 private fun backupCorruptFile(context: Context) {
     val candidates =
@@ -36,18 +36,18 @@ private fun backupCorruptFile(context: Context) {
         )
     val source = candidates.firstOrNull { it.exists() }
     if (source == null) {
-        Logger.w("MuseSettingsDataStore", "未找到损坏文件，跳过备份")
+        Logger.w("MuseSettingsDataStore", "Archivo corrupto no encontrado, copia de seguridad omitida")
         return
     }
     val backup = File(source.parentFile, "$SETTINGS_STORE_NAME.corrupt-${System.currentTimeMillis()}.preferences_pb")
     source.copyTo(backup, overwrite = true)
-    Logger.w("MuseSettingsDataStore", "损坏文件已备份: ${backup.absolutePath}")
+    Logger.w("MuseSettingsDataStore", "Se han realizado copias de seguridad de los archivos corruptos.: ${backup.absolutePath}")
 }
 
 /**
- * v2.5.3：供损坏备份逻辑拿到 Application Context。
+ * v2.5.3: Proporciona a la lógica de copia de seguridad dañada acceso al contexto de la aplicación.
  *
- * 由 MuseApp.onCreate 初始化；未初始化时备份跳过，不影响 DataStore 重建。
+ * Inicializado por MuseApp.onCreate; la copia de seguridad se omite si no se inicializa y no afecta la reconstrucción del DataStore.
  */
 internal object SettingsStoreContextHolder {
     @Volatile
@@ -57,10 +57,10 @@ internal object SettingsStoreContextHolder {
 internal val Context.museSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = SETTINGS_STORE_NAME,
     corruptionHandler = ReplaceFileCorruptionHandler { ex ->
-        Logger.w("MuseSettingsDataStore", "muse_settings 数据损坏，尝试备份并重建: ${ex.message}", ex)
+        Logger.w("MuseSettingsDataStore", "muse_settings Los datos están dañados, intenta hacer una copia de seguridad y reconstruirlos.: ${ex.message}", ex)
         SettingsStoreContextHolder.applicationContext?.let { ctx ->
             runCatching { backupCorruptFile(ctx) }
-                .onFailure { Logger.w("MuseSettingsDataStore", "备份损坏文件失败: ${it.message}", it) }
+                .onFailure { Logger.w("MuseSettingsDataStore", "Error en la copia de seguridad de archivos dañados: ${it.message}", it) }
         }
         emptyPreferences()
     },

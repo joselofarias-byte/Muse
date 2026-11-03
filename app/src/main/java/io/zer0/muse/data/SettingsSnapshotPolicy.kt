@@ -1,10 +1,10 @@
 package io.zer0.muse.data
 
 /**
- * R-TEST-04: 备份设置快照的安全键策略。
+ * R-TEST-04: Política de clave de seguridad para la instantánea de la configuración de copia de seguridad.
  *
- * 备份恢复跨设备,依赖 SecureKeyStore 的敏感值无法解密,因此导出时只允许
- * 显式白名单键;任何包含 apiKey/token/password/secret 等敏感字段名的键一律排除。
+ * Copia de seguridad y restauración en todos los dispositivos,Los valores confidenciales que dependen de SecureKeyStore no se pueden descifrar,Por lo tanto, solo se permite al exportar.
+ * Claves explícitas de la lista blanca;Se excluyen todas las claves que contengan nombres de campos confidenciales, como apiKey/token/password/secret.
  */
 object SettingsSnapshotPolicy {
 
@@ -21,12 +21,12 @@ object SettingsSnapshotPolicy {
         "task_routing_config_json", "model_profiles_json",
         "account_user_name", "account_login_method",
         "multi_agent_review_model",
-        // v2.6.7 fix (AUDIT F9): 用户偏好（“以后别…”沉淀的硬约束）是用户资产，
-        // 不进备份则换机后全丢。该 key 不含敏感字段名。
+        // v2.6.7 fix (AUDIT F9): Preferencias de usuario (“Nunca más…”Las duras limitaciones de las precipitaciones) son activos de los usuarios,
+        // Si no realiza una copia de seguridad, perderá todo después de cambiar de máquina. Esta clave no contiene nombres de campos confidenciales.
         "user_preferences",
-        // P0-2: media_config_json 已从快照移除 —— MediaConfig 含 ttsApiKey 敏感凭据;
-        // 即使 ttsApiKey 已走 SecureKeyStore 加密,设备绑定密钥也无法跨设备解密,
-        // 导出会携带无用的密文并造成误用,故整体排除(与其他含密钥配置同策略)。
+        // P0-2: media_config_json Eliminado de la instantánea —— MediaConfig Contiene credenciales confidenciales ttsApiKey;
+        // Incluso si ttsApiKey ha sido cifrado por SecureKeyStore,Las claves de vinculación de dispositivos tampoco se pueden descifrar entre dispositivos,
+        // La exportación puede contener texto cifrado inútil y dar lugar a un uso indebido,Por lo tanto, toda la(Misma política que otras configuraciones clave).
     )
 
     val safeBooleanKeys = listOf(
@@ -48,17 +48,17 @@ object SettingsSnapshotPolicy {
     )
 
     /**
-     * v2.6.9 fix (AUDIT §11.3-7): stringSet 类型设置的备份白名单。
+     * v2.6.9 fix (AUDIT §11.3-7): stringSet Lista blanca de respaldo de configuraciones de tipo.
      *
-     * 此前快照只遍历 string/boolean/int/long 四类,stringSet 一个都没导出,
-     * 于是这两个用户的"收藏"永远进不了备份 —— 换机即丢,且没有任何提示。
+     * La instantánea anterior solo atravesó las cuatro categorías de cadena/booleano/int/long,stringSet Ninguno exportado,
+     * Entonces estos dos usuarios"Colección"Nunca puedo acceder a la copia de seguridad —— Pierde tan pronto como cambies la máquina.,Y no hay ningún aviso.
      *
-     * 纳入标准与其它类型一致:内容是用户资产,不含凭据,跨设备可读。
-     *  - moment_favorite_ids: 朋友圈收藏的动态 id(UUID);
-     *  - mini_album_favorite_image_ids: 相册收藏的图片 id(uri hashCode 的十进制串)。
+     * Los criterios de inclusión son consistentes con otros tipos.:El contenido es un activo del usuario.,Sin credenciales,Legible en todos los dispositivos.
+     *  - moment_favorite_ids: Dinámica de cobros en Moments id(UUID);
+     *  - mini_album_favorite_image_ids: Imágenes de la colección de álbumes de fotos. id(uri hashCode cadena decimal).
      *
-     * 被刻意排除的 stringSet 见各自字段注释(daily_summary_* 是调度去重状态,
-     * miniphone_hidden_apps / mini_album_hidden_image_ids 是"隐藏"这类设备侧视图状态)。
+     * Para los conjuntos de cadenas que se excluyen deliberadamente, consulte las notas de campo respectivas.(daily_summary_* Es el estado de deduplicación de programación.,
+     * miniphone_hidden_apps / mini_album_hidden_image_ids si"ocultar"Vista lateral del estado de este tipo de equipos.).
      */
     val safeStringSetKeys = listOf(
         "moment_favorite_ids",
@@ -66,46 +66,46 @@ object SettingsSnapshotPolicy {
     )
 
     /**
-     * stringSet 在快照 Map 里的键前缀。
+     * stringSet El prefijo clave en el mapa de instantáneas.
      *
-     * 值必须编码成 String(快照是 Map<String, String>),用 JSON 数组保留
-     * "空集合"与"没有这个键"的区别 —— 逗号拼接会把空集合压成空串,
-     * 恢复时就分不清该写空集还是该保留原值。
+     * El valor debe codificarse como String(La instantánea es Map<String, String>),Retener con matriz JSON
+     * "colección vacía"con"No existe tal clave"la diferencia —— La concatenación de comas comprimirá el conjunto vacío en una cadena vacía,
+     * Al restaurar, no está claro si escribir el conjunto vacío o conservar el valor original.
      */
     const val STRING_SET_PREFIX = "stringSet:"
 
-    /** v2.6.0: 含密钥白名单 —— 仅当用户显式勾选「包含供应商密钥」时并入导出。
-     *  providers_json 内含各供应商 apiKey / oauth token / customHeaders（可能含账号 ID）等。
-     *  注意：这是可直接使用的明文凭据，备份文件务必妥善保管。 */
+    /** v2.6.0: Contiene lista blanca de claves —— Solo se fusionó en la exportación si el usuario marcó explícitamente \"Incluir clave de proveedor\".
+     *  providers_json Contiene varios proveedores. apiKey / oauth token / customHeaders(puede incluir ID de cuenta), etc.
+     *  Nota: Este es un certificado de texto claro que se puede utilizar directamente. El archivo de copia de seguridad debe conservarse correctamente. */
     val secretStringKeys = listOf(
         "providers_json",
     )
 
-    /** 敏感键名片段:即使误加入白名单也会被拒绝进入备份。 */
+    /** Fragmento de nombre de clave confidencial:Incluso si lo agrega a la lista blanca por error, se le negará la entrada a la copia de seguridad. */
     private val sensitiveFragments = listOf(
         "api_key", "apikey", "token", "password", "secret", "jwt",
         "web_server", "mcp", "cloud_backup", "webdav", "s3", "asr_config", "pin",
     )
 
-    /** 快照 Map 里的类型前缀。string 类型不带前缀(历史格式,存量备份兼容)。 */
+    /** El prefijo de tipo en el mapa de instantánea.string Tipo sin prefijo(formato histórico,Compatible con copia de seguridad de stock). */
     private val typePrefixes = listOf("bool:", "int:", "long:", STRING_SET_PREFIX)
 
     /**
-     * 只有显式白名单键且不命中敏感片段才算安全。
+     * Solo es seguro si incluye explícitamente las claves en la lista blanca y no accede a fragmentos confidenciales.
      *
-     * 判定是**按类型分桶**的:`bool:` 前缀的键只会在 [safeBooleanKeys] 里找,
-     * `stringSet:` 只在 [safeStringSetKeys] 里找。若只看键名不看类型,
-     * 一份被篡改的备份就能用 `stringSet:theme_mode` 这种组合往 DataStore 里
-     * 塞一个“同名的另一种类型”,虽然不影响读取(DataStore 的 key 含类型),
-     * 但会让备份产物里出现永远不该存在的条目。
+     * el juicio es**Cubo por tipo**de:`bool:` Las claves prefijadas sólo estarán en [safeBooleanKeys] Encuentra aquí,
+     * `stringSet:` solo en [safeStringSetKeys] Mira adentro. Si solo miras el nombre de la clave y no el tipo,
+     * Una copia de seguridad manipulada funcionará `stringSet:theme_mode` Esta combinación va al DataStore.
+     * cosas uno“otro tipo con el mismo nombre”,Aunque no afecta la lectura(DataStore La clave contiene tipo),
+     * Pero provocará entradas en el producto de copia de seguridad que nunca deberían existir.
      */
     fun isSafeKey(rawKey: String): Boolean = isSafe(rawKey, allowSecretStringKeys = false)
 
     private fun isSafe(rawKey: String, allowSecretStringKeys: Boolean): Boolean {
         val prefix = typePrefixes.firstOrNull { rawKey.startsWith(it) } ?: ""
         val name = rawKey.removePrefix(prefix)
-        // 用户显式勾选「包含密钥」时 providers_json 直接放行 —— 它是用户已知情的
-        // 选择,不应再被敏感片段规则拦下。
+        // Cuando el usuario marca explícitamente "Incluir clave", se permite directamente proveedores_json. —— es conocido por el usuario
+        // elegir,Ya no debería estar bloqueado por reglas de fragmentos confidenciales.
         val explicitlyAllowedSecret =
             allowSecretStringKeys && prefix.isEmpty() && name in secretStringKeys
         val whitelisted = when (prefix) {
@@ -125,15 +125,15 @@ object SettingsSnapshotPolicy {
     }
 
     /**
-     * v2.6.0: 含密钥导出侧过滤 —— 基础白名单 + secretStringKeys（providers_json）。
-     * 与 [isSafeKey] 不同：providers_json 命中敏感片段（含 apikey）会被 isSafeKey 拒绝，
-     * 但用户显式勾选后应当允许，因此这里单独判定。
+     * v2.6.0: Contiene filtrado lateral de exportación clave —— Lista blanca básica + secretStringKeys(providers_json).
+     * con [isSafeKey] Diferente:providers_json IsSafeKey rechazará los fragmentos sensibles (incluido apikey).
+     * Sin embargo, debe permitirse después de que el usuario lo verifique explícitamente, por lo que aquí se juzga por separado.
      */
     fun isSafeKeyWithSecrets(rawKey: String): Boolean = isSafe(rawKey, allowSecretStringKeys = true)
 
-    /** 只保留安全键;供测试与导出逻辑共用同一过滤语义。 */
+    /** Conserve sólo las llaves de seguridad;Para probar y exportar lógica para compartir la misma semántica de filtrado. */
     fun sanitize(raw: Map<String, String>): Map<String, String> = raw.filterKeys(::isSafeKey)
 
-    /** v2.6.0: 含密钥恢复侧过滤 —— 允许 providers_json 写回。 */
+    /** v2.6.0: Contiene filtrado lateral de recuperación de claves —— Permitir reescritura de proveedores_json. */
     fun sanitizeWithSecrets(raw: Map<String, String>): Map<String, String> = raw.filterKeys(::isSafeKeyWithSecrets)
 }

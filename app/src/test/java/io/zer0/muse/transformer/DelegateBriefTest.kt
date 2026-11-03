@@ -7,13 +7,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 可委托助手简介的测试。
+ * Testing del perfil de asistente delegable.
  *
- * 助手自审第 13 条：「多 Agent 委托里可委托的助手，简介几乎一样，我很难判断该找谁」。
- * 根因：简介取 `systemPrompt.take(80)`，而多数助手的人设开头是同一套通用话术
- * （「你是一个…」/「You are a…」），截出来自然全都雷同。
+ * Punto 13 de la autoevaluación del asistente: "Los asistentes a los que se les puede confiar en la delegación de múltiples agentes tienen casi los mismos perfiles y me resulta difícil juzgar a quién buscar".
+ * Causa raíz: breve introducción `systemPrompt.take(80)`, y los personajes de la mayoría de los asistentes comienzan con el mismo conjunto de habilidades generales para hablar.
+ * ("Eres un…"/「You are a…”), naturalmente todos son iguales cuando se cortan.
  *
- * 这里钉住：优先用结构化字段（人格定义 / 标签），回退时剥掉通用开场白。
+ * Fijado aquí: utilice primero los campos estructurados (definiciones/etiquetas de personalidad) y elimine los abridores genéricos cuando recurra.
  */
 class DelegateBriefTest {
 
@@ -31,31 +31,31 @@ class DelegateBriefTest {
     @Test
     fun `persona definition wins over system prompt`() {
         val a = assistant(
-            systemPrompt = "你是一个乐于助人的通用助手，擅长各种任务。",
-            personaDefinition = "专攻数据可视化，擅长把复杂指标画成易懂的图",
+            systemPrompt = "Eres un asistente útil y universal que destaca en una variedad de tareas.",
+            personaDefinition = "Se especializa en visualización de datos y es bueno para dibujar indicadores complejos en gráficos fáciles de entender.",
         )
 
-        assertTrue("应优先采用人格定义", brief(a).contains("数据可视化"))
+        assertTrue("Se deben preferir las definiciones de personalidad.", brief(a).contains("visualización de datos"))
     }
 
     @Test
     fun `tags are used when persona is empty`() {
         val a = assistant(
-            systemPrompt = "你是一个乐于助人的通用助手。",
-            tagsJson = """["写作","润色","文案"]""",
+            systemPrompt = "Eres un útil asistente universal.",
+            tagsJson = """["escribiendo","polaco","redacción"]""",
         )
 
-        assertEquals("写作、润色、文案", brief(a))
+        assertEquals("Redacción, pulido, redacción publicitaria.", brief(a))
     }
 
     @Test
     fun `generic opening is stripped from system prompt fallback`() {
-        val a = assistant(systemPrompt = "你是一个资深法律顾问，擅长合同审查与风险提示。")
+        val a = assistant(systemPrompt = "Usted es un consultor jurídico senior que se especializa en revisión de contratos y advertencia de riesgos.")
 
         val out = brief(a)
 
-        assertTrue("通用开场白应被剥掉，实际: $out", !out.startsWith("你是一个"))
-        assertTrue("应保留有区分度的部分", out.contains("法律顾问"))
+        assertTrue("Los abridores genéricos deberían eliminarse, en realidad: $out", !out.startsWith("eres un"))
+        assertTrue("Debe conservarse la parte distintiva", out.contains("asesor legal"))
     }
 
     @Test
@@ -64,36 +64,36 @@ class DelegateBriefTest {
 
         val out = brief(a)
 
-        assertTrue("英文通用开场白也应剥掉，实际: $out", !out.startsWith("You are"))
+        assertTrue("Las primeras líneas comunes en inglés también deberían eliminarse, de hecho: $out", !out.startsWith("You are"))
         assertTrue(out.contains("backend engineer"))
     }
 
     @Test
     fun `two assistants with identical generic openings still get different briefs`() {
-        // 这就是用户报的「简介几乎一样」的场景
-        val a = assistant("x", systemPrompt = "你是一个 AI 助手。擅长数据分析与报表。")
-        val b = assistant("y", systemPrompt = "你是一个 AI 助手。擅长小说创作与世界观设定。")
+        // Este es el escenario que reportan los usuarios que “los perfiles son casi iguales”
+        val a = assistant("x", systemPrompt = "Eres un asistente de IA. Bueno en análisis de datos e informes.")
+        val b = assistant("y", systemPrompt = "Eres un asistente de IA. Bueno en la creación de novelas y la configuración de la visión del mundo.")
 
-        assertNotEquals("简介必须能区分这两个助手", brief(a), brief(b))
-        assertTrue(brief(a).contains("数据分析"))
-        assertTrue(brief(b).contains("小说创作"))
+        assertNotEquals("La introducción debe diferenciar entre los dos asistentes.", brief(a), brief(b))
+        assertTrue(brief(a).contains("análisis de datos"))
+        assertTrue(brief(b).contains("Creación novedosa"))
     }
 
     @Test
     fun `brief is truncated to the configured budget`() {
-        val a = assistant(personaDefinition = "长".repeat(200))
+        val a = assistant(personaDefinition = "largo".repeat(200))
 
         assertTrue(brief(a).length <= SystemPromptAssembler.BRIEF_MAX_CHARS)
     }
 
     @Test
     fun `newlines and extra whitespace collapse to one line`() {
-        val a = assistant(personaDefinition = "第一行\n\n  第二行   第三行")
+        val a = assistant(personaDefinition = "primera linea\n\n  segunda línea tercera línea")
 
         val out = brief(a)
 
-        assertTrue("不能有换行", !out.contains("\n"))
-        assertTrue("连续空白应收敛", !out.contains("  "))
+        assertTrue("Sin saltos de línea", !out.contains("\n"))
+        assertTrue("Los espacios en blanco continuos deben converger", !out.contains("  "))
     }
 
     @Test
@@ -103,7 +103,7 @@ class DelegateBriefTest {
 
     @Test
     fun `malformed tags json does not crash`() {
-        val a = assistant(systemPrompt = "你是一个通用助手。", tagsJson = "not-json")
+        val a = assistant(systemPrompt = "Eres un asistente universal.", tagsJson = "not-json")
 
         assertTrue(brief(a).isNotEmpty())
     }
@@ -114,6 +114,6 @@ class DelegateBriefTest {
 
         val out = brief(a)
 
-        assertEquals("a、b、c、d", out)
+        assertEquals("a,b,c,d", out)
     }
 }

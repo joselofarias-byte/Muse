@@ -6,10 +6,10 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** settings.snapshot 载荷（含子页 values）与 settings.update 类型校验的行为测试。 */
+/** settings.snapshot Prueba de comportamiento de la carga útil (incluidos los valores de subpágina) y verificación del tipo de configuración.actualización. */
 class HostSettingsCommandsTest {
 
-    /** 假仓储：记录写入并让随后的读取看到新值，等价于“写进去再读回来”。 */
+    /** Repositorio falso: registra la escritura y deja que las lecturas posteriores vean el nuevo valor, equivalente a“Escríbelo y léelo de nuevo.”. */
     private class FakeAccess(initial: HostSettingsValues = HostSettingsValues()) : HostSettingsAccess {
         private val overrides = mutableMapOf<String, String>()
         private val initialValues = initial
@@ -24,7 +24,7 @@ class HostSettingsCommandsTest {
         }
     }
 
-    /** 假文案解析：每个资源名都解析出带语言前缀的文本，便于断言“文本来自解析而不是资源名”。 */
+    /** Análisis de redacción falsa: cada nombre de recurso se analiza en texto con prefijo de idioma para facilitar su afirmación.“el texto proviene del análisis, no del nombre del recurso”. */
     private val strings = HostSettingsStrings { name, language -> "text($language):$name" }
 
     private fun commands(access: HostSettingsAccess) = HostSettingsCommands(access, strings)
@@ -32,35 +32,35 @@ class HostSettingsCommandsTest {
     private fun HostSettingsSnapshot.value(key: String): HostSettingValue =
         values.single { it.key == key }
 
-    // ── values 覆盖 ──────────────────────────────────────────────
+    // ── values Portada ──────────────────────────────────────────────
 
     @Test
     fun `values cover every category with the right type`() = runTest {
         val snapshot = commands(FakeAccess()).snapshot()
         val byKey = snapshot.values.associateBy { it.key }
 
-        // 外观
+        // Apariencia
         assertEquals("enum", byKey.getValue("themeMode").type)
         assertEquals("enum", byKey.getValue("fontSizeScale").type)
         assertEquals("enum", byKey.getValue("liquidGlassMode").type)
         assertEquals("number", byKey.getValue("liquidGlassStrength").type)
         assertEquals("boolean", byKey.getValue("dynamicColor").type)
         assertEquals("boolean", byKey.getValue("highContrast").type)
-        // 聊天
+        // charlar
         assertEquals("boolean", byKey.getValue(HostSettingKeys.CHAT_ENTER_TO_SEND).type)
         assertEquals("boolean", byKey.getValue("chatPreferences.showToolCallDetails").type)
         assertEquals("boolean", byKey.getValue("chatPreferences.showTimestamp").type)
         assertEquals("boolean", byKey.getValue(HostSettingKeys.CHAT_STREAM_RESPONSE).type)
         assertEquals("boolean", byKey.getValue("chatPreferences.forceReasoning").type)
         assertEquals("enum", byKey.getValue("chatPreferences.reasoningLevel").type)
-        // 语音
+        // Voz
         assertEquals("enum", byKey.getValue("mediaConfig.ttsEngine").type)
         assertEquals("number", byKey.getValue("mediaConfig.ttsSpeechRate").type)
         assertEquals("text", byKey.getValue("mediaConfig.ttsVoiceName").type)
-        // 记忆
+        // memoria
         assertEquals("boolean", byKey.getValue(HostSettingKeys.MEMORY).type)
         assertEquals("boolean", byKey.getValue("notificationMemoryEnabled").type)
-        // 通用
+        // Universales
         assertEquals("enum", byKey.getValue("language").type)
         assertEquals("boolean", byKey.getValue("model.configured").type)
     }
@@ -72,7 +72,7 @@ class HostSettingsCommandsTest {
         val strength = snapshot.value("liquidGlassStrength")
         assertEquals(0.0, strength.min)
         assertEquals(100.0, strength.max)
-        assertNotNull("数字项必须给步进,否则滑块无处落点", strength.step)
+        assertNotNull("Los elementos numéricos deben ser escalonados.,De lo contrario, el control deslizante no tendrá dónde aterrizar.", strength.step)
 
         val rate = snapshot.value("mediaConfig.ttsSpeechRate")
         assertEquals(0.5, rate.min)
@@ -84,14 +84,14 @@ class HostSettingsCommandsTest {
         val snapshot = commands(FakeAccess(HostSettingsValues(language = "ja"))).snapshot()
 
         val enums = snapshot.values.filter { it.type == "enum" }
-        assertTrue("至少要有主题/语言/引擎/思考强度几个枚举项", enums.size >= 4)
+        assertTrue("Al menos debe haber un tema./Idioma/motor/Piense en la solidez de varios elementos de enumeración.", enums.size >= 4)
         enums.forEach { item ->
-            assertTrue("${item.key} 应带候选", item.options.isNotEmpty())
+            assertTrue("${item.key} Los candidatos deben ser traídos", item.options.isNotEmpty())
             item.options.forEach { option ->
-                assertTrue("${item.key}/${option.value} 的显示名为空", option.label.isNotBlank())
-                // 显示名来自 Host 的本地化解析,不是资源名本身。
+                assertTrue("${item.key}/${option.value} el nombre para mostrar está vacío", option.label.isNotBlank())
+                // El nombre para mostrar proviene de la resolución localizada del host,No el nombre del recurso en sí.
                 assertTrue(
-                    "${item.key}/${option.value} 的显示名不像本地化文本: ${option.label}",
+                    "${item.key}/${option.value} El nombre para mostrar no parece texto localizado: ${option.label}",
                     option.label.startsWith("text(ja):"),
                 )
             }
@@ -130,24 +130,24 @@ class HostSettingsCommandsTest {
 
         val readOnly = snapshot.values.filterNot { it.writable }.map { it.key }
         assertEquals(listOf("mediaConfig.ttsVoiceName", "model.configured"), readOnly)
-        assertTrue("只读项不得进白名单", readOnly.none { it in snapshot.writableKeys })
+        assertTrue("No se permite incluir elementos de solo lectura en la lista blanca", readOnly.none { it in snapshot.writableKeys })
     }
 
-    /** 防漂移：白名单必须是 values 里可写项的子集，且两者都由同一份定义派生。 */
+    /** Antideriva: la lista blanca debe ser un subconjunto de los elementos grabables en los valores, y ambos se derivan de la misma definición. */
     @Test
     fun `writable keys and the values list cannot drift apart`() = runTest {
         val snapshot = commands(FakeAccess()).snapshot()
 
         assertEquals(HostSettingDefinitions.writableKeys, snapshot.writableKeys)
         assertEquals(
-            "values 里的可写项必须与白名单完全一致",
+            "values Los elementos grabables deben ser exactamente los mismos que los de la lista blanca.",
             snapshot.values.filter { it.writable }.map { it.key },
             snapshot.writableKeys,
         )
-        assertEquals("白名单与 values 数量不一致", snapshot.values.size, snapshot.values.map { it.key }.distinct().size)
+        assertEquals("La lista blanca no es coherente con el número de valores.", snapshot.values.size, snapshot.values.map { it.key }.distinct().size)
     }
 
-    // ── 写入成功 ────────────────────────────────────────────────
+    // ── Escribe con éxito ────────────────────────────────────────────────
 
     @Test
     fun `boolean number and enum writes land and read back`() = runTest {
@@ -186,7 +186,7 @@ class HostSettingsCommandsTest {
         assertEquals(listOf(HostSettingKeys.MEMORY to "true"), access.writes)
     }
 
-    // ── 拒绝路径 ────────────────────────────────────────────────
+    // ── Denegar camino ────────────────────────────────────────────────
 
     @Test
     fun `unknown key is rejected`() = runTest {
@@ -195,7 +195,7 @@ class HostSettingsCommandsTest {
 
         assertTrue(result is HostSettingsUpdateResult.Rejected)
         assertTrue((result as HostSettingsUpdateResult.Rejected).reason.contains("someMagicKey"))
-        assertTrue("未知键不得写入仓库", access.writes.isEmpty())
+        assertTrue("Las claves desconocidas no se deben escribir en el repositorio.", access.writes.isEmpty())
     }
 
     @Test
@@ -204,9 +204,9 @@ class HostSettingsCommandsTest {
 
         listOf(null, "", "yes", "1", "on").forEach { raw ->
             val rejected = commands(access).update(HostSettingKeys.PII_GUARD, raw)
-            assertTrue("值 $raw 应被类型校验拒绝", rejected is HostSettingsUpdateResult.Rejected)
+            assertTrue("valor $raw debe ser rechazado mediante verificación de tipo", rejected is HostSettingsUpdateResult.Rejected)
         }
-        assertTrue("类型不合法时不得写入仓库", access.writes.isEmpty())
+        assertTrue("Si el tipo es ilegal, no se debe escribir en el almacén.", access.writes.isEmpty())
     }
 
     @Test
@@ -215,14 +215,14 @@ class HostSettingsCommandsTest {
 
         listOf("101", "-1", "1e9").forEach { raw ->
             val rejected = commands(access).update("liquidGlassStrength", raw)
-            assertTrue("$raw 超出 0..100", rejected is HostSettingsUpdateResult.Rejected)
+            assertTrue("$raw más allá 0..100", rejected is HostSettingsUpdateResult.Rejected)
             assertTrue(
-                "拒绝原因应点出范围: ${(rejected as HostSettingsUpdateResult.Rejected).reason}",
+                "Se deben especificar las razones del rechazo.: ${(rejected as HostSettingsUpdateResult.Rejected).reason}",
                 rejected.reason.contains("out of range"),
             )
         }
         assertTrue(commands(access).update("mediaConfig.ttsSpeechRate", "0.1") is HostSettingsUpdateResult.Rejected)
-        assertTrue("越界时不得写入仓库", access.writes.isEmpty())
+        assertTrue("Cuando esté fuera de los límites, no se permite escribir al almacén.", access.writes.isEmpty())
     }
 
     @Test
@@ -232,11 +232,11 @@ class HostSettingsCommandsTest {
         val rejected = commands(access).update("themeMode", "purple")
         assertTrue(rejected is HostSettingsUpdateResult.Rejected)
         assertTrue(
-            "拒绝原因应列出候选: ${(rejected as HostSettingsUpdateResult.Rejected).reason}",
+            "Los motivos de rechazo deben incluir candidatos: ${(rejected as HostSettingsUpdateResult.Rejected).reason}",
             rejected.reason.contains("dark"),
         )
         assertTrue(commands(access).update("mediaConfig.ttsEngine", "nope") is HostSettingsUpdateResult.Rejected)
-        assertTrue("非法枚举值不得写入仓库", access.writes.isEmpty())
+        assertTrue("Los valores de enumeración ilegales no se deben escribir en el almacén.", access.writes.isEmpty())
     }
 
     @Test
@@ -259,7 +259,7 @@ class HostSettingsCommandsTest {
         assertTrue(access.writes.isEmpty())
     }
 
-    // ── 既有快照行为 ──────────────────────────────────────────────
+    // ── Comportamiento de instantáneas existente ──────────────────────────────────────────────
 
     @Test
     fun `snapshot exposes every catalog group and the toggle state`() = runTest {
@@ -301,37 +301,37 @@ class HostSettingsCommandsTest {
 
         assertEquals(HostSettingKeys.readable.size, snapshot.toggles.size)
         assertTrue(
-            "常用开关数量应在 8..12 之间,实际 ${snapshot.toggles.size}",
+            "El número de interruptores de uso común debe estar entre 8 y 12.,real ${snapshot.toggles.size}",
             snapshot.toggles.size in 8..12,
         )
-        // 缺值按 false 回填而不是漏项,避免客户端把 undefined 当开关状态。
+        // Los valores faltantes se completan con elementos falsos en lugar de faltantes.,Evite que el cliente trate indefinido como un estado de cambio.
         assertTrue(snapshot.toggles.none { it.key.isBlank() })
         assertTrue(
-            "可写键必须都能在 values 里读到,否则网页端写完后取不到新值",
+            "Las claves grabables deben ser legibles en valores.,De lo contrario, el nuevo valor no se podrá obtener después de escribirlo en la página web.",
             snapshot.writableKeys.all { key -> snapshot.values.any { it.key == key } },
         )
     }
 
     /**
-     * 本地化文本随快照下发:分组带 groupTitle,条目带 title,声明了 descKey 的带 desc。
-     * 这是网页端删掉自己的文案表后唯一的数据源,缺字就等于界面上空一行。
+     * El texto localizado se entrega con la instantánea.:banda de agrupación groupTitle,banda de entrada title,DescKey declarado con desc.
+     * Esta es la única fuente de datos después de que la página web elimina su propia tabla de copia.,Las palabras faltantes equivalen a una línea vacía en la interfaz.
      */
     @Test
     fun `snapshot carries localized text for every group and entry`() = runTest {
         val snapshot = commands(FakeAccess(HostSettingsValues(language = "ja"))).snapshot()
 
         snapshot.groups.forEach { group ->
-            assertTrue("分组 ${group.key} 缺少本地化标题", group.groupTitle.isNotBlank())
+            assertTrue("grupo ${group.key} Falta título localizado", group.groupTitle.isNotBlank())
             assertEquals("text(ja):${group.key}", group.groupTitle)
-            assertTrue("分组 ${group.key} 没有条目", group.entries.isNotEmpty())
+            assertTrue("grupo ${group.key} sin entradas", group.entries.isNotEmpty())
             group.entries.forEach { entry ->
-                assertTrue("条目 ${entry.id} 缺少本地化标题", entry.title.isNotBlank())
+                assertTrue("entrada ${entry.id} Falta título localizado", entry.title.isNotBlank())
                 assertEquals("text(ja):${entry.titleKey}", entry.title)
                 assertEquals(entry.descKey?.let { "text(ja):$it" }, entry.desc)
             }
         }
         assertTrue(
-            "至少要有一条带说明的条目,否则这条断言等于没测",
+            "Debe haber al menos una entrada con una descripción.,De lo contrario, esta afirmación es igual a no probada",
             snapshot.groups.flatMap { it.entries }.any { it.desc != null },
         )
     }
@@ -341,8 +341,8 @@ class HostSettingsCommandsTest {
         val missing = HostSettingsStrings { _, _ -> null }
         val snapshot = HostSettingsCommands(FakeAccess(), missing).snapshot()
 
-        assertTrue("解析不到也不能把资源名当文案", snapshot.groups.all { it.groupTitle.isEmpty() })
+        assertTrue("Si no se puede analizar, no puede utilizar el nombre del recurso como redacción.", snapshot.groups.all { it.groupTitle.isEmpty() })
         assertTrue(snapshot.groups.flatMap { it.entries }.all { it.title.isEmpty() && it.desc == null })
-        assertTrue("枚举候选的显示名同样不能退回资源名", snapshot.values.all { item -> item.options.all { it.label.isEmpty() } })
+        assertTrue("El nombre para mostrar del candidato de enumeración no puede devolver también el nombre del recurso.", snapshot.values.all { item -> item.options.all { it.label.isEmpty() } })
     }
 }

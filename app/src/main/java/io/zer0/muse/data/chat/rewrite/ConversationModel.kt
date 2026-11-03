@@ -3,7 +3,7 @@ package io.zer0.muse.data.chat.rewrite
 import io.zer0.muse.data.session.ConversationEventEntity
 import java.security.MessageDigest
 
-/** 追加式对话事件类型。 */
+/** Agregar tipo de evento de conversación. */
 enum class ConversationEventType {
     USER_SUBMITTED,
     ASSISTANT_STARTED,
@@ -20,7 +20,7 @@ enum class ConversationEventType {
     BRANCH_SELECTED,
 }
 
-/** 持久化回合状态。 */
+/** Estado redondo persistente. */
 enum class ConversationTurnPhase {
     CREATED,
     STREAMING,
@@ -32,7 +32,7 @@ enum class ConversationTurnPhase {
     CANCELLED,
 }
 
-/** 内存事件草稿，eventSeq 由数据库按 session 原子分配。 */
+/** borrador de evento de memoria,eventSeq Asignado atómicamente por sesión por la base de datos. */
 data class ConversationEventDraft(
     val sessionId: String,
     val turnId: String,
@@ -52,7 +52,7 @@ data class ConversationEventDraft(
         require(generationSerial >= 0) { "generationSerial must not be negative" }
     }
 
-    /** 将事件正文中的敏感键替换为固定占位符，事件表不保存凭据。 */
+    /** Reemplace las claves confidenciales en el cuerpo del evento con marcadores de posición fijos; la tabla de eventos no guarda las credenciales. */
     fun redactedPayload(): String = ConversationEventSanitizer.redact(payloadJson)
 
     /** Stable id for retry-safe event append; excludes createdAt so a retried logical event deduplicates. */
@@ -91,7 +91,7 @@ data class ConversationEventDraft(
     }
 }
 
-/** 事件摘要脱敏器；仅处理常见凭据键，不改变普通用户正文。 */
+/** Desensibilizador de resumen de eventos; solo maneja claves de credenciales comunes y no cambia el cuerpo del usuario normal. */
 object ConversationEventSanitizer {
     private val secretPattern = Regex(
         """(?i)("(?:api[_-]?key|authorization|cookie|password|token|secret)"\s*:\s*")[^"]*(")""",
@@ -102,7 +102,7 @@ object ConversationEventSanitizer {
     }
 }
 
-/** 使用 SHA-256 记录事件摘要，避免把完整 delta 写入 shadow 日志。 */
+/** Utilice SHA-256 para registrar resúmenes de eventos para evitar escribir el delta completo en el registro oculto. */
 fun sha256(value: String): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
     return digest.joinToString("") { byte -> "%02x".format(byte) }

@@ -1,69 +1,69 @@
 package io.zer0.muse.automation.core
 
 /**
- * UI 自动化动作原语。
+ * UI Primitivas de acción de automatización.
  *
- * 三层执行器都实现这些原语,差异仅在于能力范围和实现方式:
- * - 无障碍: 通过 AccessibilityService 读取控件树 + dispatchGesture
- * - Shell: 通过 input 命令 + screencap + dumpsys
- * - Root: 在 Shell 基础上增加 /data/data 访问和系统修改
+ * Los tres niveles de ejecutores implementan estas primitivas.,La diferencia radica únicamente en el alcance de las capacidades y los métodos de implementación.:
+ * - Accesibilidad: Leer el árbol de control a través de AccessibilityService + dispatchGesture
+ * - Shell: mediante comando de entrada + screencap + dumpsys
+ * - Root: Agregar /data/acceso a datos y modificación del sistema basado en Shell
  *
- * 所有动作均为 suspend,便于在协程中串行/并行调度。
+ * Todas las acciones son suspend,Conveniente para la serialización en corrutinas./Programación paralela.
  */
 interface AutomationExecutor {
 
-    /** 该执行器对应的权限层级。 */
+    /** El nivel de permiso correspondiente a este ejecutor. */
     val level: PermissionLevel
 
-    /** 该执行器当前是否可用(服务已连接/Shizuku 已授权/root 可 su)。 */
+    /** ¿Este ejecutor está disponible actualmente?(El servicio está conectado./Shizuku Autorizado/root si su). */
     suspend fun isAvailable(): Boolean
 
-    /** 执行器初始化(连接服务、检查授权等)。 */
+    /** Inicialización del ejecutor(Conectar servicios, consultar autorización, etc.). */
     suspend fun initialize() {}
 
-    /** 执行器释放。 */
+    /** Actuador liberado. */
     suspend fun dispose() {}
 
-    // ── 屏幕读取 ──────────────────────────────────────────────
+    // ── lectura de pantalla ──────────────────────────────────────────────
 
     /**
-     * 截屏,返回 PNG 字节数组。失败返回 null。
-     * 各层实现: 无障碍走 MediaProjection / Shell 走 screencap / Root 同 Shell。
+     * captura de pantalla,Devuelve una matriz de bytes PNG. Devuelve nulo en caso de error.
+     * Implementación de cada capa.: Accesibilidad a través de MediaProjection/Shell a través de captura de pantalla/Root Igual que Shell.
      */
     suspend fun screenshot(): ByteArray?
 
     /**
-     * 读取当前屏幕的控件树摘要(文本/描述/位置),供 AI 判断点击目标。
-     * 无障碍层最完整;Shell/Root 通过 dumpsys activity 拿到的信息有限。
+     * Leer el resumen del árbol de control de la pantalla actual(texto/Descripción/ubicación),Para que la IA determine el objetivo del clic.
+     * La capa sin barreras más completa;Shell/Root La información obtenida a través de la actividad de dumpsys es limitada.
      */
     suspend fun readScreen(): ScreenInfo
 
-    /** 获取当前前台应用包名。 */
+    /** Obtenga el nombre del paquete de aplicación en primer plano actual. */
     suspend fun currentPackage(): String?
 
-    // ── 输入动作 ──────────────────────────────────────────────
+    // ── acción de entrada ──────────────────────────────────────────────
 
-    /** 点击屏幕坐标。 */
+    /** Haga clic en las coordenadas de la pantalla. */
     suspend fun tap(x: Int, y: Int): Boolean
 
-    /** 长按屏幕坐标。 */
+    /** Mantenga presionadas las coordenadas de la pantalla. */
     suspend fun longPress(x: Int, y: Int, durationMs: Long = 600): Boolean
 
-    /** 从 (x1,y1) 滑动到 (x2,y2)。 */
+    /** de (x1,y1) deslizar a (x2,y2). */
     suspend fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Long = 400): Boolean
 
     /**
-     * v2.x: 双指缩放(pinch) — 两指以 (centerX, centerY) 为中心对称开合。
+     * v2.x: Pellizcar para hacer zoom(pinch) — dos dedos (centerX, centerY) Abrir y cerrar simétricamente respecto al centro.
      *
-     * @param startDistance 起始两指间距(像素)
-     * @param endDistance 结束两指间距(像素);大 = 放大,小 = 缩小
-     * 默认不支持(仅无障碍层实现;Shell/Root 的 input 命令无多指注入能力)。
+     * @param startDistance Distancia inicial entre dos dedos.(Píxel)
+     * @param endDistance Terminar la distancia entre dos dedos.(Píxel);grande = Acercar,pequeño = alejar
+     * No compatible de forma predeterminada(Solo implementación de capa de accesibilidad;Shell/Root El comando de entrada no tiene capacidad de inyección con varios dedos.).
      */
     suspend fun pinch(centerX: Int, centerY: Int, startDistance: Int, endDistance: Int, durationMs: Long = 300): Boolean = false
 
     /**
-     * v2.x: 多段滑动 — 单指依次经过多个路径点(解锁图案/复杂拖拽)。
-     * 默认实现降级为首点 → 末点单段滑动;无障碍层为精确逐点实现。
+     * v2.x: Deslizamiento multisegmento — Mueva un dedo a través de múltiples puntos de referencia en secuencia(patrón de desbloqueo/Arrastrar y soltar complejo).
+     * La implementación predeterminada se degrada al primer punto → Deslizamiento de segmento único de punto final;La capa de accesibilidad se implementa precisamente punto por punto.
      */
     suspend fun swipePath(points: List<Pair<Int, Int>>, durationMs: Long = 400): Boolean {
         if (points.size < 2) return false
@@ -72,26 +72,26 @@ interface AutomationExecutor {
         return swipe(first.first, first.second, last.first, last.second, durationMs)
     }
 
-    /** 输入文本(往当前聚焦的输入框写入)。 */
+    /** Introducir texto(Escribir en el cuadro de entrada actualmente enfocado). */
     suspend fun inputText(text: String): Boolean
 
-    /** 发送按键事件(KEYCODE_*)。 */
+    /** Enviar evento clave(KEYCODE_*). */
     suspend fun pressKey(keyCode: Int): Boolean
 
-    // ── 系统动作 ──────────────────────────────────────────────
+    // ── Acción del sistema ──────────────────────────────────────────────
 
-    /** 启动指定包名的 App。 */
+    /** Inicie la aplicación con el nombre del paquete especificado. */
     suspend fun launchApp(packageName: String): Boolean
 
-    /** 按下返回键。 */
+    /** Presione la tecla de retorno. */
     suspend fun back(): Boolean = pressKey(4) // KEYCODE_BACK
 
-    /** 按下 Home 键。 */
+    /** Presione el botón Inicio. */
     suspend fun home(): Boolean = pressKey(3) // KEYCODE_HOME
 
-    /** 打开通知栏。 */
+    /** Abra la pantalla de notificaciones. */
     suspend fun openNotifications(): Boolean
 
-    /** 打开快速设置。 */
+    /** Abra la configuración rápida. */
     suspend fun openQuickSettings(): Boolean
 }

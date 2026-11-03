@@ -78,21 +78,21 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
 /**
- * v2.2: 统计页 — 仪表盘风格重构。
+ * v2.2: Página de estadísticas — Refactorización del estilo del tablero.
  *
- * 重构要点:
- *  - 仪表盘头部:大数字(总消息数 36sp Bold)+ 副标题 + 导出按钮
- *  - 关键指标网格:2 行 × 3 列展示 6 项指标(总对话/总消息/平均每日/最活跃/本月/连续天数)
- *  - 时间范围筛选:仅影响关键指标网格(明确语义,其他卡片保持全量)
- *  - 热力图:单 Canvas + drawRoundRect 绘制(替代 371 个 Box),支持点击 tooltip
- *  - 趋势图:7/30/90 天窗口切换,折线图 + 平均线(虚线) + 末端高亮
- *  - 小时分布:Canvas 24 根柱状图,峰值用 primary 色
- *  - 助手占比:Canvas 环形图(donut),灰阶色系
- *  - Top 模型:Top 5 + "查看全部"展开,进度条用灰阶
- *  - 空数据状态:图标 + 提示 + 行动按钮
- *  - 视觉统一:所有卡片 MuseShapes.extraLarge,文字 onSurface/onSurfaceVariant,
- *    图表灰阶(surfaceVariant/onSurfaceVariant/outline),峰值用 primary
- *  - 所有图标用 TablerIcons,图标 tint 用 onSurface/onSurfaceVariant
+ * Puntos clave de la refactorización:
+ *  - Encabezado del panel:números grandes(Número total de mensajes 36sp Bold)+ Subtítulo + botón Exportar
+ *  - Cuadrícula de métricas clave:2 OK × 3 Columna que muestra 6 indicadores.(dialogo total/noticias generales/promedio diario/más activo/este mes/dias consecutivos)
+ *  - Filtro de rango de tiempo:Sólo afecta a la cuadrícula de métricas clave.(semántica clara,Mantenga otras tarjetas en su totalidad)
+ *  - mapa de calor:Lienzo único + dibujo drawRoundRect(Reemplazado 371 Box),Haga clic en soporte tooltip
+ *  - Gráfico de tendencias:7/30/90 Cambio de ventana de día,Gráfico de líneas + línea promedio(línea discontinua) + resaltado final
+ *  - Distribución horaria:Canvas 24 histograma raíz,Utilice color primario para los picos.
+ *  - Proporción de asistente:Canvas gráfico de anillos(donut),Sistema de color en escala de grises
+ *  - Top modelo:Top 5 + "Ver todo"Expandir,Barra de progreso en escala de grises
+ *  - estado de datos vacíos:Icono + Consejo + Botón de acción
+ *  - unidad visual:Todas las tarjetas MuseShapes.extraLarge,texto onSurface/onSurfaceVariant,
+ *    Gráfico en escala de grises(surfaceVariant/onSurfaceVariant/outline),Para uso máximo primary
+ *  - para todos los iconos TablerIcons,Tinte de icono para onSurface/onSurfaceVariant
  */
 @Composable
 fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewModel: StatsViewModel = koinViewModel()) {
@@ -109,7 +109,7 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // v2.x: 动效补齐 — 加载/空态/内容三态切换走令牌淡入淡出(与 ChatScreen 同 Crossfade 规格)
+        // v2.x: Finalización del efecto de movimiento — Cargar/Estado vacío/El cambio de contenido en tres estados requiere que el token aparezca y desaparezca(Misma especificación Crossfade que ChatScreen)
         val statsContentState = when {
             state.isLoading -> 0
             state.totalMessages == 0 && state.totalSessions == 0 -> 1
@@ -149,8 +149,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                         ),
                         verticalArrangement = Arrangement.spacedBy(MusePaddings.sectionGap),
                     ) {
-                        // 1. 时间范围筛选(仅影响下方指标网格)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 1. Filtro de rango de tiempo(Sólo afecta la cuadrícula de indicadores a continuación)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "time_range_filter") {
                             Box(museAnimateItem()) {
                                 TimeRangeFilterRow(
@@ -161,8 +161,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 2. 关键指标网格 2×3(响应 timeRange)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 2. Cuadrícula de métricas clave 2×3(respuesta timeRange)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "metrics_grid") {
                             Box(museAnimateItem()) {
                                 KeyMetricsGrid(
@@ -172,8 +172,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 3. 活跃热力图(单 Canvas,全量历史)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 3. Mapa de calor de actividad(soltero Canvas,historia completa)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "heatmap") {
                             Box(museAnimateItem()) {
                                 HeatmapCard(
@@ -183,8 +183,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 4. 活跃趋势(7/30/90 天窗口,折线 + 平均线)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 4. tendencia activa(7/30/90 ventana del cielo,Polilínea + línea media)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "trend") {
                             Box(museAnimateItem()) {
                                 TrendCard(
@@ -194,8 +194,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 5. 小时活跃分布(24 根柱状图)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 5. Distribución activa horaria(24 histograma raíz)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "hourly") {
                             Box(museAnimateItem()) {
                                 HourlyDistributionCard(
@@ -205,8 +205,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 6. 助手使用占比(环形图)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 6. Proporción de uso del asistente(gráfico de anillos)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "assistant_donut") {
                             Box(museAnimateItem()) {
                                 AssistantDonutCard(
@@ -216,8 +216,8 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
                             }
                         }
 
-                        // 7. Top 模型(Top 5 + 展开)
-                        // v2.x: 动效补齐 — 卡片入场(令牌 animateItem)
+                        // 7. Top modelo(Top 5 + Expandir)
+                        // v2.x: Finalización del efecto de movimiento — admisión con tarjeta(ficha animateItem)
                         item(key = "top_models") {
                             Box(museAnimateItem()) {
                                 TopModelsCard(
@@ -232,14 +232,14 @@ fun StatsScreen(onBack: () -> Unit, onOpenSession: (String) -> Unit = {}, viewMo
         }
     }
 }
-// ── 1. 仪表盘头部 ──────────────────────────────────────────────────────
+// ── 1. Encabezado del panel ──────────────────────────────────────────────────────
 
 /**
- * 仪表盘头部:返回按钮 + 导出按钮 + 大数字(总消息数) + 副标题。
+ * Encabezado del panel:Botón Atrás + Botón Exportar + Número grande(Número total de mensajes) + subtitular.
  *
- * - 大数字:36sp Bold,onSurface 色
- * - 副标题:"共 X 个对话 · Y 天活跃"
- * - 右上角:MuseIcons.share 导出按钮,点击调起系统分享
+ * - números grandes:36sp Bold,onSurface Color
+ * - subtítulo:"Total X conversaciones · Y dia activo"
+ * - esquina superior derecha:MuseIcons.share botón exportar,Haga clic para activar el sistema compartido
  */
 @Composable
 private fun DashboardHeader(state: StatsViewModel.StatsUiState, onBack: () -> Unit, onExport: () -> Unit) {
@@ -266,17 +266,17 @@ private fun DashboardHeader(state: StatsViewModel.StatsUiState, onBack: () -> Un
                 tint = MaterialTheme.colorScheme.onSurface,
             )
         }
-        // 大数字:总消息数
+        // números grandes:Número total de mensajes
         Text(
             text = formatCount(state.totalMessages),
             style = MaterialTheme.typography.displaySmall.copy(
                 fontWeight = FontWeight.Bold,
-                fontSize = 36.sp, // 统计大数字，固定展示层级
+                fontSize = 36.sp, // Estadísticas de números grandes, nivel de visualización fijo.
             ),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
         )
-        // 副标题:共 X 个对话 · Y 天活跃
+        // subtítulo:Total X conversaciones · Y dia activo
         val activeDays = state.messagesPerDay.keys.size
         Text(
             text = stringResource(R.string.stats_dashboard_subtitle, state.totalSessions, activeDays),
@@ -288,10 +288,10 @@ private fun DashboardHeader(state: StatsViewModel.StatsUiState, onBack: () -> Un
     }
 }
 
-// ── 2. 空数据状态 ──────────────────────────────────────────────────────
+// ── 2. estado de datos vacíos ──────────────────────────────────────────────────────
 
 /**
- * 空数据状态:ChartBar 图标 + 提示文本 + "去发起对话"按钮。
+ * estado de datos vacíos:ChartBar Icono + texto de aviso + "para iniciar una conversación"botón.
  */
 @Composable
 private fun EmptyStatsState(onAction: () -> Unit, modifier: Modifier = Modifier) {
@@ -330,12 +330,12 @@ private fun EmptyStatsState(onAction: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-// ── 3. 关键指标网格 ────────────────────────────────────────────────────
+// ── 3. Cuadrícula de métricas clave ────────────────────────────────────────────────────
 
 /**
- * 关键指标网格:2 行 × 3 列,6 个指标(总对话/总消息/平均每日/最活跃/本月/连续天数)。
+ * Cuadrícula de métricas clave:2 OK × 3 columna,6 indicadores(dialogo total/noticias generales/promedio diario/más activo/este mes/dias consecutivos).
  *
- * 每个指标:大数字 + 小标签 + 图标(灰阶 tint)。
+ * cada indicador:Números grandes + etiquetas pequeñas + iconos(Escala de grises tint).
  */
 @Composable
 private fun KeyMetricsGrid(state: StatsViewModel.StatsUiState, modifier: Modifier = Modifier) {
@@ -410,7 +410,7 @@ private fun KeyMetricsGrid(state: StatsViewModel.StatsUiState, modifier: Modifie
     }
 }
 
-/** 单个指标单元:图标(灰阶)+ 大数字 + 小标签。 */
+/** unidad indicadora única:icono(Escala de grises)+ Números grandes + etiquetas pequeñas. */
 @Composable
 private fun MetricCell(icon: ImageVector, value: String, label: String, modifier: Modifier = Modifier) {
     Column(
@@ -442,11 +442,11 @@ private fun MetricCell(icon: ImageVector, value: String, label: String, modifier
     }
 }
 
-// ── 4. 时间范围筛选行 ──────────────────────────────────────────────────
+// ── 4. Filas de filtro de rango de tiempo ──────────────────────────────────────────────────
 
 /**
- * 时间范围筛选行:横向滚动的 MuseChip(全部 / 本月 / 本周 / 今天)。
- * 仅关键指标网格响应筛选;图表卡片保持全量。
+ * Filas de filtro de rango de tiempo:desplazamiento horizontal MuseChip(Todo/Este mes/Esta semana/Hoy).
+ * Filtrado de respuesta de cuadrícula de métricas clave únicamente;Las tarjetas gráficas permanecen a todo volumen.
  */
 @Composable
 private fun TimeRangeFilterRow(currentRange: StatsTimeRange, onRangeChange: (StatsTimeRange) -> Unit, modifier: Modifier = Modifier) {
@@ -477,14 +477,14 @@ private fun TimeRangeFilterRow(currentRange: StatsTimeRange, onRangeChange: (Sta
     }
 }
 
-// ── 5. 热力图卡片(单 Canvas) ─────────────────────────────────────────
+// ── 5. Tarjeta de mapa de calor(soltero Canvas) ─────────────────────────────────────────
 
 /**
- * 热力图卡片:标题 + Canvas 网格 + 图例。
+ * Tarjeta de mapa de calor:Título + Cuadrícula de lienzo + Leyenda.
  *
- * - 单 Canvas + drawRoundRect 绘制 53 周 × 7 天(替代 371 个 Box)
- * - 配色:5 级灰阶(透明度 0/0.2/0.4/0.7/1.0)用 onSurface,不用 primary
- * - 点击单元格显示当天消息数 tooltip
+ * - Single Canvas + dibujo drawRoundRect 53 semanas × 7 dia(Reemplazado 371 Box)
+ * - combinación de colores:5 Escala de grises(Transparencia 0/0.2/0.4/0.7/1.0)usar onSurface,No hay necesidad primary
+ * - Haga clic en la celda para mostrar la cantidad de mensajes del día. tooltip
  */
 @Composable
 private fun HeatmapCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = Modifier) {
@@ -504,7 +504,7 @@ private fun HeatmapCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier 
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            // Tooltip 行:显示选中日期的消息数,或提示
+            // Tooltip OK:Muestra el número de mensajes para la fecha seleccionada.,o rápido
             Text(
                 text = selectedCell?.let { (date, count) ->
                     stringResource(
@@ -520,7 +520,7 @@ private fun HeatmapCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier 
                 messagesPerDay = messagesPerDay,
                 onCellTap = { date, count -> selectedCell = date to count },
             )
-            // 图例:少 ↔ 多
+            // Leyenda:menos ↔ mucho
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
@@ -566,12 +566,12 @@ private fun HeatmapCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier 
 }
 
 /**
- * Canvas 热力图:53 周 × 7 天,单节点绘制。
+ * Canvas mapa de calor:53 semana × 7 dia,Dibujo de un solo nodo.
  *
- * - 左侧固定列:周几标签(Mon/Wed/Fri)
- * - 右侧滚动区:月份标签行 + Canvas 网格
- * - 点击命中:根据 offset 计算 weekIdx/dow,反推日期
- * - 配色:5 级灰阶(0/0.2/0.4/0.7/1.0),用 onSurface,不用 primary
+ * - columna fija izquierda:Etiquetas del día de la semana.(Mon/Wed/Fri)
+ * - área de desplazamiento hacia la derecha:Fila de etiqueta de mes + cuadrícula de lienzo
+ * - haga clic en golpear:Calculado en base al desplazamiento weekIdx/dow,fecha atrasada
+ * - combinación de colores:5 Escala de grises(0/0.2/0.4/0.7/1.0),usar onSurface,No hay necesidad primary
  */
 @Composable
 private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (LocalDate, Int) -> Unit) {
@@ -581,7 +581,7 @@ private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (Local
         .minusWeeks(52)
 
     val numWeeks = 53
-    // 四分位数(只在有消息的日子中算)
+    // cuartiles(Sólo contó los días con novedades.)
     val activeCounts = messagesPerDay.values.filter { it > 0 }.sorted()
     val q1 = activeCounts.getOrElse((activeCounts.size * 0.25).toInt()) { 1 }
     val q2 = activeCounts.getOrElse((activeCounts.size * 0.50).toInt()) { 2 }
@@ -599,18 +599,18 @@ private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (Local
     val gridWidthDp = (numWeeks * (cellSize.value + cellSpacing.value) - cellSpacing.value).dp
     val gridHeightDp = (7 * (cellSize.value + cellSpacing.value) - cellSpacing.value).dp
 
-    // 周几标签:只显示 Mon/Wed/Fri 节省空间(Sun=0 索引)
+    // Etiquetas del día de la semana.:Mostrar solo lunes/miércoles/viernes para guardar espacio(Sun=0 índice)
     val dowLabels = listOf("", "Mon", "", "Wed", "", "Fri", "")
 
     val onSurface = MaterialTheme.colorScheme.onSurface
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     val outline = MaterialTheme.colorScheme.outline
 
-    // 初始滚到最右(最新一周)
+    // Desplazamiento inicial hacia la derecha(última semana)
     val scrollState = rememberScrollState(initial = Int.MAX_VALUE)
 
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        // 左侧固定列:顶部留白 + 7 个周几标签
+        // columna fija izquierda:Deje la parte superior en blanco + etiquetas de 7 días de la semana
         Column(
             modifier = Modifier.width(16.dp),
             verticalArrangement = Arrangement.spacedBy(cellSpacing),
@@ -633,12 +633,12 @@ private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (Local
             }
         }
 
-        // 右侧滚动区:月份标签行 + Canvas 网格
+        // área de desplazamiento hacia la derecha:Fila de etiqueta de mes + cuadrícula de lienzo
         Column(
             modifier = Modifier.horizontalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            // 月份标签行:遍历 53 周,每周取该周内第一个 dayOfMonth==1 的日期
+            // fila de etiqueta de mes:Atravesando 53 semanas,Consigue el primero de esa semana todas las semanas. dayOfMonth==1 fecha
             Row(horizontalArrangement = Arrangement.spacedBy(cellSpacing)) {
                 for (weekIdx in 0 until numWeeks) {
                     val weekStart = startSunday.plusDays((weekIdx * 7).toLong())
@@ -671,7 +671,7 @@ private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (Local
             }
 
             val heatmapCd = stringResource(R.string.stats_heatmap_cd, numWeeks)
-            // Canvas 热力图主体:53 列(周)× 7 行(天),单节点
+            // Canvas Asunto del mapa de calor:53 columna(semana)× 7 OK(dia),nodo único
             Canvas(
                 modifier = Modifier
                     .width(gridWidthDp)
@@ -724,21 +724,21 @@ private fun CanvasHeatmap(messagesPerDay: Map<LocalDate, Int>, onCellTap: (Local
     }
 }
 
-// ── 6. 趋势卡片(7/30/90 天 + 平均线) ────────────────────────────────
+// ── 6. tarjetas de tendencia(7/30/90 día + media celular) ────────────────────────────────
 
 /**
- * 趋势卡片:时间窗口切换(7/30/90 天)+ 折线图 + 平均线(虚线)+ 末端高亮。
+ * tarjetas de tendencia:Cambio de ventana de tiempo(7/30/90 dia)+ Gráfico de líneas + línea promedio(línea discontinua)+ Finalizar lo más destacado.
  *
- * - 数据源:messagesPerDay(全量历史,本地按窗口截取)
- * - Canvas 绘制折线 + 末端圆点(primary)+ 平均线(outline 虚线)
- * - 横轴:7 天显示周几,30/90 天显示 M/d
+ * - fuente de datos:messagesPerDay(historia completa,Captura local por ventana)
+ * - Canvas Dibujar polilínea + puntos finales(primary)+ linea promedio(outline línea discontinua)
+ * - eje horizontal:7 Mostrar día de la semana,30/90 visualización del día M/d
  */
 @Composable
 private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = Modifier) {
     var windowDays by remember { mutableStateOf(7) }
     val today = LocalDate.now()
 
-    // 按窗口截取趋势数据(oldest → today)
+    // Capture datos de tendencias por ventana(oldest → today)
     val trendData = remember(messagesPerDay, windowDays) {
         (0 until windowDays).map { offset ->
             val date = today.minusDays((windowDays - 1 - offset).toLong())
@@ -780,7 +780,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                // 末端值(今日消息数)
+                // valor final(Número de mensajes hoy)
                 if (hasData) {
                     Text(
                         text = formatCount(counts.lastOrNull() ?: 0),
@@ -791,7 +791,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                 }
             }
 
-            // 时间窗口切换
+            // Cambio de ventana de tiempo
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -808,7 +808,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
             if (!hasData) {
                 EmptyStatsHint()
             } else {
-                // 折线图
+                // gráfico de líneas
                 val trendChartCd = stringResource(R.string.stats_trend_chart_cd)
                 Box(
                     modifier = Modifier
@@ -823,7 +823,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                         val padding = 6.dp.toPx()
                         val usableH = h - padding * 2
 
-                        // 平均线(虚线)
+                        // linea promedio(línea discontinua)
                         val avgRatio = (avg.toFloat() / maxCount).coerceIn(0f, 1f)
                         val avgY = padding + (1f - avgRatio) * usableH
                         val dashEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
@@ -835,7 +835,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                             pathEffect = dashEffect,
                         )
 
-                        // 折线路径
+                        // camino de polilínea
                         val path = Path()
                         counts.forEachIndexed { idx, count ->
                             val x = idx * stepX
@@ -849,7 +849,7 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                             style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
                         )
 
-                        // 末端点(今日)实心圆高亮
+                        // punto final(hoy)Resaltado de círculo sólido
                         val lastIdx = counts.lastIndex
                         val lastX = lastIdx * stepX
                         val lastRatio = counts[lastIdx].toFloat() / maxCount
@@ -861,13 +861,13 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
                         )
                     }
                 }
-                // 平均值标签
+                // etiqueta promedio
                 Text(
                     text = stringResource(R.string.stats_avg_label, avg),
                     style = MaterialTheme.typography.labelSmall,
                     color = onSurfaceVariant,
                 )
-                // 横轴标签
+                // Etiquetas de eje horizontal
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -898,10 +898,10 @@ private fun TrendCard(messagesPerDay: Map<LocalDate, Int>, modifier: Modifier = 
     }
 }
 
-// ── 7. 小时分布卡片(24 根柱状图) ────────────────────────────────────
+// ── 7. Tarjeta de distribución horaria(24 histograma raíz) ────────────────────────────────────
 
 /**
- * 小时活跃分布卡片:Canvas 24 根柱状图,峰值用 primary,其余用 onSurfaceVariant。
+ * Tarjetas de distribución activas horarias:Canvas 24 histograma raíz,Para uso máximo primary,Utilice onSurfaceVariant para el resto.
  */
 @Composable
 private fun HourlyDistributionCard(hourlyDistribution: List<Int>, modifier: Modifier = Modifier) {
@@ -969,7 +969,7 @@ private fun HourlyDistributionCard(hourlyDistribution: List<Int>, modifier: Modi
                         }
                     }
                 }
-                // 横轴:0, 6, 12, 18, 23
+                // eje horizontal:0, 6, 12, 18, 23
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -987,14 +987,14 @@ private fun HourlyDistributionCard(hourlyDistribution: List<Int>, modifier: Modi
     }
 }
 
-// ── 8. 助手使用占比卡片(环形图) ──────────────────────────────────────
+// ── 8. Asistente utiliza tarjeta de proporción(gráfico de anillos) ──────────────────────────────────────
 
 /**
- * 助手使用占比卡片:Canvas 环形图(donut),灰阶色系。
+ * Asistente utiliza tarjeta de proporción:Canvas gráfico de anillos(donut),Esquema de color en escala de grises.
  *
- * - 环形分段:按数量降序,前 5 段用不同灰阶,其余归入"其他"
- * - 中心显示总消息数
- * - 下方图例:助手名 + 数量
+ * - segmento de anillo:Orden descendente por cantidad,Utilice diferentes escalas de grises para los primeros 5 segmentos,El resto cae bajo"Otros"
+ * - El centro muestra el número total de mensajes.
+ * - leyenda a continuación:Nombre del asistente + cantidad
  */
 @Composable
 private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsage>, modifier: Modifier = Modifier) {
@@ -1003,7 +1003,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
 
-    // 灰阶色系(从深到浅)
+    // Sistema de color en escala de grises(de profundo a superficial)
     val grayScale = listOf(
         onSurface,
         onSurface.copy(alpha = 0.7f),
@@ -1012,7 +1012,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
         onSurface.copy(alpha = 0.2f),
     )
 
-    // 按数量降序,取前 5,其余归入"其他"
+    // Orden descendente por cantidad,Antes de recoger 5,El resto cae bajo"Otros"
     val sortedCounts = assistantCounts.sortedByDescending { it.count }
     val totalCount = sortedCounts.sumOf { it.count }
     val displayed = sortedCounts.take(5)
@@ -1048,7 +1048,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
                     horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // 环形图
+                    // gráfico de anillos
                     Box(
                         modifier = Modifier.size(120.dp),
                         contentAlignment = Alignment.Center,
@@ -1064,7 +1064,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
                             val topLeft = Offset(cx - radius, cy - radius)
                             val arcSize = Size(radius * 2, radius * 2)
 
-                            // 背景环(surfaceVariant)
+                            // anillo de fondo(surfaceVariant)
                             drawArc(
                                 color = surfaceVariant,
                                 startAngle = 0f,
@@ -1075,8 +1075,8 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
                                 style = Stroke(width = strokeWidth),
                             )
 
-                            // 分段
-                            var startAngle = -90f // 从顶部开始
+                            // segmentación
+                            var startAngle = -90f // empezar desde arriba
                             segments.forEach { (_, count, color) ->
                                 val sweep = if (totalCount > 0) 360f * count / totalCount else 0f
                                 if (sweep > 0f) {
@@ -1093,7 +1093,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
                                 }
                             }
                         }
-                        // 中心:总消息数
+                        // Centro:Número total de mensajes
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -1111,7 +1111,7 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
                         }
                     }
 
-                    // 图例
+                    // Leyenda
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -1149,13 +1149,13 @@ private fun AssistantDonutCard(assistantCounts: List<StatsViewModel.AssistantUsa
     }
 }
 
-// ── 9. Top 模型卡片(Top 5 + 展开) ───────────────────────────────────
+// ── 9. Top tarjeta modelo(Top 5 + Expandir) ───────────────────────────────────
 
 /**
- * Top 模型卡片:默认显示 Top 5,"查看全部"展开后显示全部。
+ * Top tarjeta modelo:Mostrado por defecto Top 5,"Ver todo"Expandir para mostrar todo.
  *
- * - 每行:排名 + 模型名 + 数量 + 百分比 + 进度条(灰阶)
- * - 进度条用 onSurface(深)填充 + surfaceVariant 轨道,Top 1 用 primary 高亮
+ * - por línea:Clasificación + nombre del modelo + cantidad + porcentaje + barra de progreso(Escala de grises)
+ * - Para barra de progreso onSurface(profundo)acolchado + superficiePista variante,Top 1 Resaltar con primaria
  */
 @Composable
 private fun TopModelsCard(modelCounts: List<StatsViewModel.ModelUsage>, modifier: Modifier = Modifier) {
@@ -1191,8 +1191,8 @@ private fun TopModelsCard(modelCounts: List<StatsViewModel.ModelUsage>, modifier
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        // LAYOUT-01: 「查看全部/收起」是行尾紧凑动作组(行宽由内容决定,取宽会撑开整行),
-                        // 故只限 1 行兜底,防止放大字号下被 chevron 挤成逐字换行。
+                        // LAYOUT-01: "Ver todo/"Colapso" es un grupo de acción compacto al final de la línea.(El ancho de línea está determinado por el contenido.,Más ancho estirará toda la línea),
+                        // Por lo tanto, sólo se permite 1 línea de información.,Evite que los caracteres queden comprimidos en saltos de línea mediante chevron cuando se amplía el tamaño de fuente.
                         Text(
                             text = stringResource(if (expanded) R.string.stats_collapse else R.string.stats_view_all),
                             style = MaterialTheme.typography.labelMedium,
@@ -1224,13 +1224,13 @@ private fun TopModelsCard(modelCounts: List<StatsViewModel.ModelUsage>, modifier
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // 排名 + 模型名
+                            // Clasificación + nombre del modelo
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.weight(1f),
                             ) {
-                                // LAYOUT-01: 排名徽章是纯装饰短文本(剩余宽度归右侧模型名的 weight),限 1 行。
+                                // LAYOUT-01: Las insignias de clasificación son textos breves puramente decorativos.(El ancho restante pertenece al nombre del modelo a la derecha. weight),Límite de 1 línea.
                                 Text(
                                     text = "#${idx + 1}",
                                     style = MaterialTheme.typography.labelMedium,
@@ -1247,14 +1247,14 @@ private fun TopModelsCard(modelCounts: List<StatsViewModel.ModelUsage>, modifier
                                     modifier = Modifier.weight(1f),
                                 )
                             }
-                            // 数量 · 百分比
+                            // Cantidad · Porcentaje
                             Text(
                                 text = "${formatCount(usage.count)} · ${(usage.percentage * 100).toInt()}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = outline,
                             )
                         }
-                        // 进度条:轨道 + 填充(灰阶,Top 1 用 primary)
+                        // barra de progreso:rastrear + llenar(Escala de grises,Top 1 usar primary)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1277,9 +1277,9 @@ private fun TopModelsCard(modelCounts: List<StatsViewModel.ModelUsage>, modifier
     }
 }
 
-// ── 辅助函数 ──────────────────────────────────────────────────────────
+// ── Función auxiliar ──────────────────────────────────────────────────────────
 
-/** 空数据提示文本。 */
+/** Texto de sugerencia de datos vacío. */
 @Composable
 private fun EmptyStatsHint() {
     Text(
@@ -1290,7 +1290,7 @@ private fun EmptyStatsHint() {
 }
 
 /**
- * 大数格式化:>= 1M 用 "M" 后缀,>= 1K 用 "K" 后缀(保留 1 位小数,整数则省略小数)。
+ * Formato de números grandes:>= 1M usar "M" sufijo,>= 1K usar "K" sufijo(a 1 decimal,Los números enteros omiten decimales).
  */
 private fun formatCount(count: Int): String = when {
     count >= 1_000_000 -> formatWithSuffix(count / 1_000_000.0, "M")
@@ -1298,7 +1298,7 @@ private fun formatCount(count: Int): String = when {
     else -> count.toString()
 }
 
-/** 平均值格式化:大数走 K/M 后缀,小数保留 1 位。 */
+/** Formato promedio:Dashu toma el sufijo K/M,Mantenga 1 decimal. */
 private fun formatAvg(avg: Double): String = when {
     avg >= 1_000_000 -> formatWithSuffix(avg / 1_000_000.0, "M")
     avg >= 1_000 -> formatWithSuffix(avg / 1_000.0, "K")
@@ -1306,11 +1306,11 @@ private fun formatAvg(avg: Double): String = when {
 }
 
 private fun formatTokenCount(chars: Long): String {
-    val estimatedTokens = chars / 2 // 粗略估算:中文约 2 字符/token
+    val estimatedTokens = chars / 2 // estimación aproximada:Chino alrededor de 2 caracteres./token
     return formatCount(estimatedTokens.toInt())
 }
 
-/** 带后缀格式化:四舍五入到 1 位小数,整数部分省略小数点。 */
+/** Formato con sufijo:Redondear a 1 decimal,Omita el punto decimal para la parte entera. */
 private fun formatWithSuffix(value: Double, suffix: String): String {
     val rounded = (value * 10).toLong() / 10.0
     return if (rounded == rounded.toLong().toDouble()) {
@@ -1321,7 +1321,7 @@ private fun formatWithSuffix(value: Double, suffix: String): String {
 }
 
 /**
- * 构建统计摘要文本(用于导出分享)。
+ * Construir texto de resumen estadístico(Para compartir exportaciones).
  */
 private fun buildStatsSummaryText(context: Context, state: StatsViewModel.StatsUiState): String = buildString {
     appendLine(context.getString(R.string.stats_summary_header))
@@ -1356,7 +1356,7 @@ private fun buildStatsSummaryText(context: Context, state: StatsViewModel.StatsU
 }
 
 /**
- * 调起系统分享,导出统计摘要文本。
+ * Llamar al sistema compartido,Exportar texto de resumen estadístico.
  */
 private fun shareStatsSummary(context: Context, state: StatsViewModel.StatsUiState) {
     val summary = buildStatsSummaryText(context, state)

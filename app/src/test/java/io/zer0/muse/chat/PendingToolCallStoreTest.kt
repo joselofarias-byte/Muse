@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Pending 工具调用的审批阶段必须持久化且可更新。 */
+/** Pending La etapa de aprobación de la llamada de una herramienta debe ser persistente y actualizable. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class PendingToolCallStoreTest {

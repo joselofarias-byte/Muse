@@ -10,46 +10,46 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * [Result] 通用结果封装的单元测试。
+ * [Result] Resultados genéricos de pruebas unitarias empaquetadas.
  *
- * 覆盖范围:
- *  - [resultOf] 成功路径与失败路径(含 CancellationException 重抛语义)
- *  - [Result.Success] / [Result.Error] 状态判定([isSuccess] / [isError])
- *  - [getOrNull] 成功/失败取值
- *  - [getOrThrow] 成功取值与失败抛异常
- *  - [onSuccess] / [onError] 回调触发与链式返回
- *  - [map] 转换 Success,Error 透传
- *  - [flatMap] 链式 Success/Error 传递
+ * Cobertura:
+ *  - [resultOf] Camino al éxito y camino al fracaso.(Contiene semántica de reinicio de CancellationException)
+ *  - [Result.Success] / [Result.Error] Determinación del estado([isSuccess] / [isError])
+ *  - [getOrNull] éxito/Valor de falla
+ *  - [getOrThrow] Adquisición de valor exitosa y fracaso al lanzar una excepción
+ *  - [onSuccess] / [onError] Activación de devolución de llamada y devoluciones encadenadas
+ *  - [map] Convertir Success,Error paso a través
+ *  - [flatMap] Entrega encadenada de éxito/error
  */
 class ResultTest {
 
-    // ── resultOf{} 成功路径 ──────────────────────────────────────────────
+    // ── resultOf{} camino al éxito ──────────────────────────────────────────────
 
     @Test
-    fun `resultOf 成功返回 Success 并携带数据`() {
+    fun `resultOf Devuelve el éxito con éxito y lleva datos.`() {
         val result = resultOf { 42 }
         assertTrue(result is Result.Success)
         assertEquals(42, (result as Result.Success).data)
     }
 
     @Test
-    fun `resultOf 成功路径 isSuccess 为 true isError 为 false`() {
+    fun `resultOf la ruta del éxito es el éxito es verdadero es el error es false`() {
         val result = resultOf { "ok" }
         assertTrue(result.isSuccess)
         assertFalse(result.isError)
     }
 
     @Test
-    fun `resultOf 块返回 null 时仍为 Success`() {
+    fun `resultOf el bloque devuelve nulo mientras todavía Success`() {
         val result = resultOf<String?> { null }
         assertTrue(result is Result.Success)
         assertNull(result.getOrNull())
     }
 
-    // ── resultOf{} 失败路径 ──────────────────────────────────────────────
+    // ── resultOf{} camino de falla ──────────────────────────────────────────────
 
     @Test
-    fun `resultOf 抛异常时返回 Error 并携带消息与原异常`() {
+    fun `resultOf Cuando se lanza una excepción, se devuelve Error y lleva el mensaje y la excepción original.`() {
         val ex = IllegalStateException("boom")
         val result = resultOf<Int> { throw ex }
         assertTrue(result is Result.Error)
@@ -59,7 +59,7 @@ class ResultTest {
     }
 
     @Test
-    fun `resultOf 抛异常时 message 为空则使用 Unknown error 兜底`() {
+    fun `resultOf Cuando se produce una excepción, si el mensaje está vacío, utilice Error desconocido para averiguarlo.`() {
         val ex = RuntimeException()
         val result = resultOf<Int> { throw ex }
         assertTrue(result is Result.Error)
@@ -68,44 +68,44 @@ class ResultTest {
     }
 
     @Test
-    fun `resultOf 抛异常时 isSuccess 为 false isError 为 true`() {
+    fun `resultOf Cuando se lanza una excepción, isSuccess es falso y isError es true`() {
         val result = resultOf<Int> { throw IllegalArgumentException("bad") }
         assertFalse(result.isSuccess)
         assertTrue(result.isError)
     }
 
     @Test
-    fun `resultOf 不吞 CancellationException 而是重抛`() {
+    fun `resultOf No trague CancellationException pero vuelva a lanzarlo`() {
         val cex = kotlin.coroutines.cancellation.CancellationException("cancelled")
         assertThrows(kotlin.coroutines.cancellation.CancellationException::class.java) {
             resultOf<Int> { throw cex }
         }
     }
 
-    // ── getOrNull() 成功/失败 ────────────────────────────────────────────
+    // ── getOrNull() éxito/falló ────────────────────────────────────────────
 
     @Test
-    fun `getOrNull 成功时返回数据`() {
+    fun `getOrNull Devolver datos sobre el éxito`() {
         val result: Result<String> = resultOf { "hello" }
         assertEquals("hello", result.getOrNull())
     }
 
     @Test
-    fun `getOrNull 失败时返回 null`() {
+    fun `getOrNull Retorno del fracaso null`() {
         val result: Result<String> = resultOf { throw RuntimeException("err") }
         assertNull(result.getOrNull())
     }
 
-    // ── getOrThrow() 成功/失败 ───────────────────────────────────────────
+    // ── getOrThrow() éxito/falló ───────────────────────────────────────────
 
     @Test
-    fun `getOrThrow 成功时返回数据`() {
+    fun `getOrThrow Devolver datos sobre el éxito`() {
         val result: Result<Int> = resultOf { 7 }
         assertEquals(7, result.getOrThrow())
     }
 
     @Test
-    fun `getOrThrow 失败且 throwable 非空时抛出原异常`() {
+    fun `getOrThrow Lanza la excepción original en caso de falla y lo arrojable no está vacío`() {
         val ex = IllegalStateException("original")
         val result: Result<Int> = resultOf { throw ex }
         val thrown = assertThrows(IllegalStateException::class.java) {
@@ -115,8 +115,8 @@ class ResultTest {
     }
 
     @Test
-    fun `getOrThrow 失败且 throwable 为空时抛 IllegalStateException 并携带 message`() {
-        // 构造 throwable 为 null 的 Error(直接实例化,不通过 resultOf)
+    fun `getOrThrow Lanza IllegalStateException en caso de falla y lo arrojable está vacío y lleva message`() {
+        // Construir arrojable a nulo Error(Creación de instancias directas,falló resultOf)
         val result: Result<Int> = Result.Error(message = "no throwable", throwable = null)
         val thrown = assertThrows(IllegalStateException::class.java) {
             result.getOrThrow()
@@ -124,10 +124,10 @@ class ResultTest {
         assertEquals("no throwable", thrown.message)
     }
 
-    // ── onSuccess{} 回调 ────────────────────────────────────────────────
+    // ── onSuccess{} devolución de llamada ────────────────────────────────────────────────
 
     @Test
-    fun `onSuccess 在成功时触发回调并传入数据`() {
+    fun `onSuccess Activar una devolución de llamada en caso de éxito y pasar datos`() {
         var captured: String? = null
         var callCount = 0
         val result: Result<String> = resultOf { "data" }
@@ -140,7 +140,7 @@ class ResultTest {
     }
 
     @Test
-    fun `onSuccess 在失败时不触发回调`() {
+    fun `onSuccess No activar la devolución de llamada en caso de error`() {
         var callCount = 0
         val result: Result<String> = resultOf { throw RuntimeException("err") }
         result.onSuccess { callCount++ }
@@ -148,16 +148,16 @@ class ResultTest {
     }
 
     @Test
-    fun `onSuccess 返回原 Result 实例便于链式调用`() {
+    fun `onSuccess Devuelve la instancia de resultado original para facilitar las llamadas en cadena`() {
         val result: Result<Int> = resultOf { 1 }
         val returned = result.onSuccess { /* no-op */ }
         assertSame(result, returned)
     }
 
-    // ── onError{} 回调 ──────────────────────────────────────────────────
+    // ── onError{} devolución de llamada ──────────────────────────────────────────────────
 
     @Test
-    fun `onError 在失败时触发回调并传入 message 与 throwable`() {
+    fun `onError Activar devolución de llamada en caso de falla y pasar mensaje y throwable`() {
         val ex = IllegalStateException("boom")
         var capturedMsg: String? = null
         var capturedT: Throwable? = null
@@ -174,7 +174,7 @@ class ResultTest {
     }
 
     @Test
-    fun `onError 在成功时不触发回调`() {
+    fun `onError No activar la devolución de llamada en caso de éxito`() {
         var callCount = 0
         val result: Result<Int> = resultOf { 1 }
         result.onError { _, _ -> callCount++ }
@@ -182,7 +182,7 @@ class ResultTest {
     }
 
     @Test
-    fun `onError 回调收到 throwable 为 null 的情况`() {
+    fun `onError La devolución de llamada recibe un arrojable que es nulo.`() {
         val result: Result<Int> = Result.Error(message = "msg", throwable = null)
         var receivedT: Throwable? = "sentinel".let { null }
         result.onError { _, t -> receivedT = t }
@@ -190,16 +190,16 @@ class ResultTest {
     }
 
     @Test
-    fun `onError 返回原 Result 实例便于链式调用`() {
+    fun `onError Devuelve la instancia de resultado original para facilitar las llamadas en cadena`() {
         val result: Result<Int> = resultOf { throw RuntimeException("err") }
         val returned = result.onError { _, _ -> /* no-op */ }
         assertSame(result, returned)
     }
 
-    // ── map{} 转换 ──────────────────────────────────────────────────────
+    // ── map{} Convertir ──────────────────────────────────────────────────────
 
     @Test
-    fun `map 成功时对数据应用转换`() {
+    fun `map Aplicar la transformación a los datos sobre el éxito`() {
         val result: Result<Int> = resultOf { 5 }
         val mapped = result.map { it * 2 }
         assertTrue(mapped is Result.Success)
@@ -207,14 +207,14 @@ class ResultTest {
     }
 
     @Test
-    fun `map 成功时转换类型`() {
+    fun `map Convertir tipo en caso de éxito`() {
         val result: Result<Int> = resultOf { 42 }
         val mapped: Result<String> = result.map { "value=$it" }
         assertEquals("value=42", mapped.getOrNull())
     }
 
     @Test
-    fun `map 失败时透传 Error 实例`() {
+    fun `map Transmitir de forma transparente la instancia de error en caso de falla`() {
         val ex = IllegalStateException("boom")
         val result: Result<Int> = resultOf { throw ex }
         val mapped = result.map { it * 2 }
@@ -225,7 +225,7 @@ class ResultTest {
     }
 
     @Test
-    fun `map 失败时不调用 transform`() {
+    fun `map No llamado ante el fracaso transform`() {
         var transformCalled = false
         val result: Result<Int> = resultOf { throw RuntimeException("err") }
         result.map {
@@ -235,10 +235,10 @@ class ResultTest {
         assertFalse(transformCalled)
     }
 
-    // ── flatMap{} 链式 ──────────────────────────────────────────────────
+    // ── flatMap{} cadena ──────────────────────────────────────────────────
 
     @Test
-    fun `flatMap 成功时把数据交给 transform 产生新 Result`() {
+    fun `flatMap Cuando tenga éxito, pase los datos para transformar y generar nuevos Result`() {
         val result: Result<Int> = resultOf { 3 }
         val flat = result.flatMap<Int> { resultOf { it + 10 } }
         assertTrue(flat is Result.Success)
@@ -246,7 +246,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap 成功时 transform 可返回 Error 形成失败链`() {
+    fun `flatMap Si tiene éxito, la transformación puede devolver un error para formar una cadena de fallas.`() {
         val result: Result<Int> = resultOf { 3 }
         val flat: Result<String> = result.flatMap {
             Result.Error(message = "downstream failure", throwable = null)
@@ -256,7 +256,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap 失败时透传原 Error 不调用 transform`() {
+    fun `flatMap Cuando ocurre una falla, el error original se transmite de forma transparente y no se llama. transform`() {
         val ex = IllegalStateException("upstream")
         val result: Result<Int> = resultOf { throw ex }
         var transformCalled = false
@@ -272,7 +272,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap 链式多步组合保持成功`() {
+    fun `flatMap Las combinaciones encadenadas de varios pasos siguen siendo exitosas`() {
         val final: Result<Int> = resultOf { 1 }
             .flatMap { resultOf { it + 2 } }
             .flatMap { resultOf { it * 3 } }
@@ -280,7 +280,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap 链式任一步失败则整体失败`() {
+    fun `flatMap Si falla algún paso de la cadena, falla toda la cadena.`() {
         val final: Result<Int> = resultOf { 1 }
             .flatMap<Int> { resultOf<Int> { throw IllegalStateException("step2") } }
             .flatMap { resultOf { it * 3 } }
@@ -288,10 +288,10 @@ class ResultTest {
         assertEquals("step2", (final as Result.Error).message)
     }
 
-    // ── 综合链式:onSuccess / onError / map / flatMap 组合 ───────────────
+    // ── Cadena integral:onSuccess / onError / map / flatMap combinación ───────────────
 
     @Test
-    fun `综合链式 map 后 onSuccess 收到转换后的值`() {
+    fun `Después de integrar el mapa de la cadena, onSuccess recibe el valor convertido`() {
         var captured: String? = null
         resultOf { 10 }
             .map { it.toString() }
@@ -300,7 +300,7 @@ class ResultTest {
     }
 
     @Test
-    fun `综合链式 flatMap 失败时 onError 收到失败信息`() {
+    fun `Cuando falla el flatMap encadenado integral, onError recibe información de falla`() {
         var capturedMsg: String? = null
         var capturedT: Throwable? = null
         resultOf { 10 }
@@ -314,8 +314,8 @@ class ResultTest {
         assertTrue(capturedT is IllegalArgumentException)
     }
 
-    // ── 辅助函数 ────────────────────────────────────────────────────────
+    // ── Función auxiliar ────────────────────────────────────────────────────────
 
-    /** 从 [Result] 中取出 Error 实例(测试辅助,假定调用者已知是 Error)。 */
-    private fun <T> err(result: Result<T>): Result.Error = (result as? Result.Error) ?: error("预期 Error,实际 $result")
+    /** de [Result] Obtener la instancia de error de(Ayuda de prueba,Se supone que se sabe que la persona que llama es Error). */
+    private fun <T> err(result: Result<T>): Result.Error = (result as? Result.Error) ?: error("esperado Error,real $result")
 }

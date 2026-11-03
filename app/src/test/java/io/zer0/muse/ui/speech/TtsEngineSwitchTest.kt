@@ -7,74 +7,74 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 切换 TTS 引擎时的音色 id 处理。
+ * Manejo de identificación de tono al cambiar de motor TTS.
  *
- * 只换引擎不换音色，上游拿到的是上一个引擎的 id —— 必然是 4xx，然后整条链路
- * 静默回落系统 TTS。这里钉住「不属于新引擎就清空、属于就保留」。
+ * Sólo se cambia el motor pero no se cambia el sonido. Lo que obtiene el upstream es el motor anterior. id —— Debe ser 4xx, y luego el enlace completo.
+ * Sistema de respaldo silencioso TTS. La clave aquí es "eliminarlo si no pertenece al nuevo motor, conservarlo si sí".
  */
 class TtsEngineSwitchTest {
 
     @Test
-    fun `旧音色不属于新引擎时被清空并提示`() {
+    fun `Cuando los sonidos antiguos no pertenecen al nuevo motor, se borrarán y se indicarán.`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = "alloy"),
             newEngine = "dashscope",
         )
 
         assertEquals("dashscope", switched.config.ttsEngine)
-        assertEquals("openai 的音色不能留在 dashscope 下", "", switched.config.ttsVoice)
-        assertTrue("清空了就要提示用户重选", switched.voiceReset)
+        assertEquals("openai El sonido no se puede dejar debajo del tablero.", "", switched.config.ttsVoice)
+        assertTrue("Una vez borrado, se le pedirá al usuario que vuelva a seleccionar.", switched.voiceReset)
     }
 
     @Test
-    fun `新引擎也有同名音色时保留`() {
+    fun `Si el nuevo motor también tiene un sonido con el mismo nombre, se conservará.`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "dashscope", ttsVoice = "longxiaochun"),
             newEngine = "qwen",
         )
 
         assertEquals("qwen", switched.config.ttsEngine)
-        assertEquals("qwen 与 dashscope 共用音色表，选择应当保留", "longxiaochun", switched.config.ttsVoice)
-        assertFalse("没被清空就不该提示", switched.voiceReset)
+        assertEquals("qwen Lista de sonidos compartida con dashscope, la selección debe conservarse", "longxiaochun", switched.config.ttsVoice)
+        assertFalse("No debería avisar si no se ha borrado.", switched.voiceReset)
     }
 
     @Test
-    fun `拿不到新引擎音色集合同样清空`() {
+    fun `Si no puede obtener la nueva colección de sonidos del motor, también se borrará.`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = "alloy"),
             newEngine = "elevenlabs",
         )
 
         assertEquals("elevenlabs", switched.config.ttsEngine)
-        assertEquals("要联网拉音色表的引擎无从校验，宁可让用户重选", "", switched.config.ttsVoice)
+        assertEquals("No hay forma de verificar el motor que pone la lista de tonos en línea y preferiría permitir que el usuario la vuelva a seleccionar.", "", switched.config.ttsVoice)
         assertTrue(switched.voiceReset)
     }
 
     @Test
-    fun `原本空音色时不提示`() {
+    fun `No se da ningún aviso cuando el tono está originalmente vacío.`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = ""),
             newEngine = "elevenlabs",
         )
 
         assertEquals("", switched.config.ttsVoice)
-        assertFalse("本来就没选音色，不算被重置", switched.voiceReset)
+        assertFalse("En primer lugar, no se seleccionó ningún tono, por lo que no cuenta como restablecido.", switched.voiceReset)
     }
 
     @Test
-    fun `切到系统 TTS 不动云端音色选择`() {
+    fun `Cambie al TTS del sistema sin pasar a la selección de tono de nube`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = "alloy"),
             newEngine = "system",
         )
 
         assertEquals("system", switched.config.ttsEngine)
-        assertEquals("系统引擎不读 ttsVoice，清空只会逼用户白重选一次", "alloy", switched.config.ttsVoice)
+        assertEquals("El motor del sistema no lee ttsVoice. Borrarlo solo obligará al usuario a volver a seleccionar en vano.", "alloy", switched.config.ttsVoice)
         assertFalse(switched.voiceReset)
     }
 
     @Test
-    fun `切到当前引擎不改任何字段`() {
+    fun `Cambiar al motor actual sin cambiar ningún campo`() {
         val current = MediaConfig(ttsEngine = "openai", ttsVoice = "alloy")
 
         val switched = TtsEngineSwitch.apply(current, newEngine = "openai")

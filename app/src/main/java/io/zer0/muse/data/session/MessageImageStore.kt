@@ -6,40 +6,40 @@ import java.util.Base64
 import java.util.LinkedHashMap
 
 /**
- * v1.134 P1-2: 消息图片存储服务 — base64 ↔ 文件路径双向转换。
+ * v1.134 P1-2: Servicio de almacenamiento de imágenes de mensajes. — base64 ↔ Conversión de ruta de archivo en ambas direcciones.
  *
- * **背景**:Phase 8.6 起消息表 [MessageEntity.imageBase64Json] 直接存图片 base64 字符串,
- * 单张 4K 图 base64 约 1MB+,长会话 / 多图会话会让 messages 表行体积膨胀,
- * 影响 SQLite 查询 / 索引 / 备份性能。
+ * **fondo**:Phase 8.6 iniciar tabla de mensajes [MessageEntity.imageBase64Json] Guarde imágenes directamente como cadenas base64,
+ * Base de imagen única 4K64 aprox. 1MB+,Las sesiones largas/sesiones con varias imágenes ampliarán el tamaño de las filas de la tabla de mensajes,
+ * Afecta el rendimiento de consultas/índices/copias de seguridad de SQLite.
  *
- * **改造**:此服务负责把 base64 落盘到 [storageDir],DB 只存 "file://xxx" 形式的路径;
- * 读取时识别 "file://" 前缀读文件返回 base64,否则当作旧数据直接返回 base64(向后兼容)。
+ * **Transformación**:Este servicio es responsable de colocar base64 en el disco. [storageDir],DB sólo mantener "file://xxx" camino de la forma;
+ * Identificar al leer "file://" Devolución de archivo de lectura de prefijo base64,De lo contrario, se devolverán directamente como datos antiguos. base64(compatible con versiones anteriores).
  *
- * **触发阈值**:仅当 base64 长度 > [MIN_LENGTH_TO_PERSIST](默认 1024) 时才落盘,
- * 短数据(如 1x1 占位图)仍以 base64 形式存 DB,避免小文件碎片化。
+ * **umbral de activación**:Sólo si la longitud base64 > [MIN_LENGTH_TO_PERSIST](Predeterminado 1024) Solo haz el pedido,
+ * datos cortos(Como imagen de marcador de posición 1x1)Todavía almacenado en formato base64 DB,Evite la fragmentación de archivos pequeños.
  *
- * **文件命名**:`{messageId}_{index}.bin`(base64 原文,不含 MIME 前缀),
- * 同 messageId + index 覆盖式写入,避免重复。
+ * **Nomenclatura de archivos**:`{messageId}_{index}.bin`(base64 Texto original,Sin prefijo MIME),
+ * Igual que messageId + sobrescritura de índice,Evite la duplicación.
  *
- * **线程安全**:所有方法在 [Dispatchers.IO] 上调用(由调用方保证),
- * 内部不做同步(单条消息的写入 / 读取不会并发)。
+ * **Seguridad del hilo**:Todos los métodos en [Dispatchers.IO] llamar a(Garantizado por quien llama),
+ * Sin sincronización interna(La escritura/lectura de un solo mensaje no será simultánea).
  *
- * **失败容错**:写入失败返回原始 base64(降级为旧行为),读取失败返回空字符串,
- * 避免图片存储故障阻塞主对话流。
+ * **Tolerancia al fracaso**:Si la escritura falla, regrese al original. base64(degradar al comportamiento anterior),El error de lectura devuelve una cadena vacía,
+ * Evite fallos en el almacenamiento de imágenes bloqueando el flujo principal de la conversación.
  *
- * @param storageDir 持久化目录(filesDir/muse_images/)
+ * @param storageDir directorio de persistencia(filesDir/muse_images/)
  */
 class MessageImageStore(
     private val storageDir: File,
 ) {
-    /** base64 长度阈值,超过此值才落盘(短数据仍存 base64)。 */
+    /** base64 umbral de longitud,Realizar el pedido sólo si supera este valor(Todavía existen datos breves base64). */
     private val minLengthToPersist: Int = MIN_LENGTH_TO_PERSIST
 
     /**
-     * R-DB-04: 文件→base64 LRU 缓存(access-order)。
-     * 同时按条目数(MAX_CACHE_ENTRIES)与总字节数(MAX_CACHE_BYTES)淘汰,
-     * 避免多张 base64 大图滞留数百 MB(审计 J-P2)。
-     * 避免消息列表映射时对同一张图片重复磁盘读(N+1)。
+     * R-DB-04: Archivo→base64 LRU caché(access-order).
+     * Según el número de artículos al mismo tiempo.(MAX_CACHE_ENTRIES)y el número total de bytes(MAX_CACHE_BYTES)eliminar,
+     * Evite que se atasquen cientos de imágenes base64 grandes MB(auditoría J-P2).
+     * Evite lecturas de disco repetidas para la misma imagen durante el mapeo de la lista de mensajes(N+1).
      */
     private var imageCacheBytes = 0L
     private val imageCache = object : LinkedHashMap<String, String>(MAX_CACHE_ENTRIES, 0.75f, true) {
@@ -53,54 +53,54 @@ class MessageImageStore(
     }
 
     /**
-     * 把 base64 列表转为可持久化形式(路径或原始 base64)。
+     * Convertir la lista base64 a forma persistente(ruta u original base64).
      *
-     * - base64 长度 ≤ [minLengthToPersist]:原样返回(存 DB)
-     * - base64 长度 > [minLengthToPersist]:落盘,返回 "file://{absolutePath}"
-     * - 已是 "file://" 前缀:原样返回(已落盘,避免重复写)
+     * - base64 longitud ≤ [minLengthToPersist]:Volver como está(guardar DB)
+     * - base64 longitud > [minLengthToPersist]:Realizar el pedido,Regresar "file://{absolutePath}"
+     * - Ya "file://" prefijo:Volver como está(Ya colocado,evitar la duplicación)
      *
-     * 审查修复 (2.0 B-04/A-03): 文件名带内容哈希后缀 — 同轮并行生图工具对同一消息
-     * 并发调用本方法时,不同内容的文件互不覆盖(旧命名 {messageId}_{idx}.bin 路径相同、
-     * 后写者胜,两条 imageUrls 会指向同一文件);同内容重复写入命中同名文件,覆盖无害。
+     * Revisión de corrección (2.0 B-04/A-03): Nombre de archivo con sufijo hash de contenido — Herramienta de generación de gráficos paralelos en la misma ronda para el mismo mensaje
+     * Al llamar a este método simultáneamente,Los archivos con diferentes contenidos no se sobrescriben entre sí.(antiguo nombre {messageId}_{idx}.bin El camino es el mismo
+     * Quien escriba último gana,Dos imageUrls apuntarán al mismo archivo);La escritura repetida del mismo contenido llega al archivo con el mismo nombre.,Cubrirse es inofensivo.
      *
-     * @param messageId 消息 id(用作文件名前缀)
-     * @param base64List 原始 base64 列表(可能含 data:image/...;base64, 前缀)
-     * @return 可持久化形式列表(路径或 base64)
+     * @param messageId noticias id(Usado como prefijo de nombre de archivo)
+     * @param base64List Lista base64 sin procesar(puede contener data:image/...;base64, prefijo)
+     * @return Lista de formularios persistentes(camino o base64)
      */
     fun toPersistable(messageId: String, base64List: List<String>): List<String> {
         if (base64List.isEmpty()) return emptyList()
         return base64List.mapIndexed { idx, value ->
-            // 已是路径,原样返回(避免重复写)
+            // ya un camino,Volver como está(evitar la duplicación)
             if (value.startsWith(FILE_PREFIX)) return@mapIndexed value
-            // 短数据,原样返回
+            // datos cortos,Volver como está
             if (value.length < minLengthToPersist) return@mapIndexed value
-            // 长数据,落盘
+            // datos largos,Realizar el pedido
             runCatching {
-                // 剥离 data:image/...;base64, 前缀后写入
+                // despegar data:image/...;base64, Escribir después del prefijo
                 val raw = stripDataUriPrefix(value)
                 val file = File(storageDir, "${messageId}_${idx}_${contentHash(raw)}.bin")
                 if (!storageDir.exists()) storageDir.mkdirs()
-                // B-03: 上游可能按 76 字符换行输出 base64,JDK basic 解码遇换行抛异常
-                // (此前 runCatching 降级为把整串 base64 存 DB);改用 MIME 解码器忽略换行
+                // B-03: Upstream puede ajustar la salida con 76 caracteres base64,JDK basic Se produce una excepción cuando la decodificación encuentra una nueva línea
+                // (Anteriormente, runCatching se rebajó para almacenar la cadena completa en base64. DB);Utilice el decodificador MIME para ignorar las nuevas líneas en su lugar
                 file.writeBytes(Base64.getMimeDecoder().decode(raw))
                 FILE_PREFIX + file.absolutePath
             }.getOrElse { e ->
-                Logger.w(TAG, "图片落盘失败,降级为 base64: ${e.message}")
+                Logger.w(TAG, "Error al colocar la imagen,degradado a base64: ${e.message}")
                 value
             }
         }
     }
 
     /**
-     * 把持久化形式(路径或 base64)转为 UI 用的 base64 列表。
+     * persistir la forma(camino o base64)Convierta a una lista base64 para uso de la interfaz de usuario.
      *
-     * - "file://" 前缀:读文件返回纯 base64(不含 data: 前缀;调用方渲染时自行拼前缀,
-     *   见 MessageBubble.displayImageUris 的 "data:image/png;base64,$it" 包装)
-     * - 其他:当作 base64 直接返回(向后兼容旧数据)
+     * - "file://" prefijo:Leer el archivo vuelve puro. base64(sin datos: prefijo;La persona que llama deletrea el prefijo por sí mismo al renderizar,
+     *   Ver MessageBubble.displayImageUris "data:image/png;base64,$it" embalaje)
+     * - Otros:Regresar directamente como base64(Compatible con versiones anteriores con datos más antiguos)
      *
-     * 审查修复 (2.0 C-02): 修正文档与实际不符 — 本方法返回的是无前缀纯 base64。
+     * Revisión de corrección (2.0 C-02): Corregir la inconsistencia del documento con la situación real. — Este método devuelve base64 pura sin prefijo.
      *
-     * 读取失败返回空字符串(不抛异常,避免阻塞消息列表加载)。
+     * El error de lectura devuelve una cadena vacía(No lanzar excepción,Evite bloquear la carga de la lista de mensajes).
      */
     fun toBase64List(persistableList: List<String>): List<String> {
         if (persistableList.isEmpty()) return emptyList()
@@ -112,17 +112,17 @@ class MessageImageStore(
             }
             val encoded = runCatching {
                 val bytes = File(path).readBytes()
-                // 文件存的是原始 base64 解码后的二进制,重新编码为 base64
-                // 不加 data: 前缀(UI 层 Picasso/Coil 等会自动识别纯 base64)
+                // El archivo almacena el binario decodificado en base64 original.,recodificado como base64
+                // Sin datos: prefijo(UI La capa Picasso/Coil, etc. reconocerá automáticamente la pureza base64)
                 Base64.getEncoder().encodeToString(bytes)
             }.getOrElse { e ->
-                Logger.w(TAG, "图片读取失败: ${e.message}")
+                Logger.w(TAG, "Falló la lectura de la imagen: ${e.message}")
                 ""
             }
             if (encoded.isNotEmpty()) {
                 synchronized(imageCache) {
-                    // 撤销旧值字节计数(同 path 覆盖时避免重复累计),再计入新值;
-                    // 随后 put 触发 removeEldestEntry 扣减被淘汰的 eldest。
+                    // Deshacer el recuento de bytes del valor anterior(Evite la acumulación repetida al cubrir el mismo camino.),Agregar nuevo valor;
+                    // Luego coloque los activadores removeEldestEntry para deducir el mayor eliminado.
                     imageCache.remove(path)?.let { imageCacheBytes -= it.length }
                     imageCacheBytes += encoded.length
                     imageCache[path] = encoded
@@ -133,12 +133,12 @@ class MessageImageStore(
     }
 
     /**
-     * 删除指定消息的所有图片文件(删除消息时调用,避免孤儿文件)。
-     * 文件不存在静默忽略。
+     * Eliminar todos los archivos de imagen del mensaje especificado(Llamado cuando se elimina un mensaje,Evite archivos huérfanos).
+     * El archivo no existe y se ignora silenciosamente.
      *
-     * 扫描的是 `{messageId}_` 前缀，所以除了本类落盘的 `{messageId}_{idx}_{hash}.bin`，
-     * 也会消掉 Web 端为内联 base64 生成的 `{messageId}_inline_{hash}.{ext}`（见
-     * [io.zer0.muse.web.HostMediaStore]）—— 这两类文件都只服务于那一条消息。
+     * escaneado es `{messageId}_` prefijo, por lo que además de este tipo de ubicación `{messageId}_{idx}_{hash}.bin`,
+     * También eliminará el lado web generado para base64 en línea. `{messageId}_inline_{hash}.{ext}`(Ver
+     * [io.zer0.muse.web.HostMediaStore])—— Ambos tipos de archivos solo sirven ese mensaje.
      */
     fun deleteByMessageId(messageId: String) {
         runCatching {
@@ -147,11 +147,11 @@ class MessageImageStore(
             storageDir.listFiles { f -> f.isFile && f.name.startsWith(prefix) }
                 ?.forEach { f -> runCatching { f.delete() } }
         }.onFailure { e ->
-            Logger.w(TAG, "删除消息图片失败: $messageId", e)
+            Logger.w(TAG, "No se pudo eliminar la imagen del mensaje: $messageId", e)
         }
     }
 
-    /** 恢复事务成功前记录候选 sidecar;新写入的文件不纳入旧文件清理。 */
+    /** Registre los candidatos antes de que la transacción de recuperación tenga éxito sidecar;Los archivos escritos recientemente no se incluyen en la limpieza de archivos antiguos. */
     fun snapshotStoredFilePaths(): Set<String> {
         return storageDir.listFiles { file -> file.isFile && file.name.endsWith(".bin") }
             ?.map { it.absolutePath }
@@ -159,7 +159,7 @@ class MessageImageStore(
             .orEmpty()
     }
 
-    /** 只删除恢复前已存在且恢复后不再被任何消息引用的图片文件。 */
+    /** Solo se eliminan los archivos de imagen que existían antes de la recuperación y a los que ya no se hace referencia en ningún mensaje después de la recuperación. */
     fun deleteSnapshotFilesNotReferenced(snapshot: Set<String>, referencedValues: Set<String>) {
         val referencedPaths = referencedValues
             .filter { it.startsWith(FILE_PREFIX) }
@@ -179,22 +179,22 @@ class MessageImageStore(
                     }
                 }
             }.onFailure { error ->
-                Logger.w(TAG, "恢复后清理孤立图片失败: ${error.message}")
+                Logger.w(TAG, "La limpieza de imágenes huérfanas después de que falló la recuperación: ${error.message}")
             }
         }
     }
 
-    /** 剥离 data:image/...;base64, 前缀,返回纯 base64 字符串。 */
+    /** despegar data:image/...;base64, prefijo,Devuelve una cadena base64 pura. */
     private fun stripDataUriPrefix(value: String): String {
         val commaIdx = value.indexOf(',')
-        // data:image/png;base64,xxx 形式
+        // data:image/png;base64,xxx forma
         if (value.startsWith("data:") && commaIdx > 0 && commaIdx < 100) {
             return value.substring(commaIdx + 1)
         }
         return value
     }
 
-    /** base64 内容短哈希(文件名后缀,防同消息并行写入互覆盖;内容相同则文件名相同,覆盖无害)。 */
+    /** base64 Hash corto de contenido(Sufijo de nombre de archivo,Evite que la escritura paralela de los mismos mensajes se sobrescriba entre sí;Si el contenido es el mismo, el nombre del archivo será el mismo.,Superposición inofensiva). */
     private fun contentHash(raw: String): String {
         val digest = java.security.MessageDigest.getInstance("SHA-1")
             .digest(raw.toByteArray(Charsets.UTF_8))
@@ -204,16 +204,16 @@ class MessageImageStore(
     private companion object {
         private const val TAG = "MessageImageStore"
 
-        /** base64 长度阈值,超过此值才落盘(约 1KB,对应 ~750 字节二进制)。 */
+        /** base64 umbral de longitud,Realizar el pedido sólo si supera este valor(aprox. 1KB,corresponder ~750 byte binario). */
         private const val MIN_LENGTH_TO_PERSIST = 1024
 
-        /** 文件路径前缀,用于识别已落盘的图片。 */
+        /** prefijo de ruta de archivo,Se utiliza para identificar imágenes que se han comercializado. */
         private const val FILE_PREFIX = "file://"
 
-        /** LRU 缓存条目数上限。 */
+        /** LRU El número máximo de entradas de caché. */
         private const val MAX_CACHE_ENTRIES = 64
 
-        /** LRU 缓存字节上限(约 64MB),防止 base64 大图滞留数百 MB。 */
+        /** LRU Límite de bytes de caché(aprox. 64MB),Evite que las imágenes base64 grandes ocupen cientos de MB. */
         private const val MAX_CACHE_BYTES = 64L * 1024 * 1024
     }
 }

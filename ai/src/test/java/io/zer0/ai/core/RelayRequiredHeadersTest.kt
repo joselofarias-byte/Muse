@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.6.2: 中转站强制请求头规则测试。
+ * v2.6.2: Prueba de regla de encabezado de solicitud obligatoria de estación de retransmisión.
  *
- * 锁死：OpenCode Go 必须自动带上 `x-opencode-session`，值按会话稳定、
- * 用户显式填的同名头优先。
+ * Bloqueado:OpenCode Go Debe traerse automáticamente. `x-opencode-session`, los valores son estables por sesión,
+ * Tienen prioridad los encabezados con el mismo nombre completados explícitamente por el usuario.
  */
 class RelayRequiredHeadersTest {
 
@@ -84,7 +84,7 @@ class RelayRequiredHeadersTest {
         val auto = mapOf("x-opencode-session" to "auto-value")
         val user = mapOf("X-OpenCode-Session" to "user-value")
         val merged = RelayRequiredHeaders.mergeWithUserHeaders(auto, user)
-        // 用户的大小写写法保留，自动注入不重复添加
+        // Las mayúsculas del usuario se conservan y se inyectan automáticamente sin adiciones repetidas.
         assertEquals("user-value", merged.getValue("X-OpenCode-Session"))
         assertEquals(1, merged.size)
     }

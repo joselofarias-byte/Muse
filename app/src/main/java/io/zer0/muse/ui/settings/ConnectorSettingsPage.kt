@@ -42,10 +42,10 @@ import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.launch
 
 /**
- * v1.0.92: OAuth 连接器页 — 连接外部服务(通用 OAuth2)。
+ * v1.0.92: OAuth Página del conector — Conectarse a servicios externos(Universales OAuth2).
  *
- * 作用:为后续"数据接入类"功能(日历/笔记/代码托管等)提供统一的授权通道;
- * 授权走系统浏览器 + Deep Link 回调,凭证由 OAuthManager 加密保存。
+ * función:Para seguimiento"Clase de acceso a datos"Función(Calendario/Notas/Alojamiento de código, etc.)Proporcionar un canal de autorización unificado;
+ * Autorizar el uso del navegador del sistema + devolución de llamada de enlace profundo,Las credenciales se almacenan cifradas mediante OAuthManager.
  */
 @Composable
 fun ConnectorSettingsPage(onBack: () -> Unit) {
@@ -59,8 +59,8 @@ fun ConnectorSettingsPage(onBack: () -> Unit) {
     var deleteTarget by remember { mutableStateOf<ConnectorConfig?>(null) }
 
     LaunchedEffect(Unit) {
-        // v2.0: loadOrNull 区分“未配置”与“配置损坏” — 损坏时给用户可见警告,
-        // 不再静默显示空列表(且不覆盖原文件,用户可自行重配或从备份恢复)。
+        // v2.0: loadOrNull distinguir“No configurado”con“Configuración corrupta” — Advertencia visible al usuario cuando está dañado.,
+        // Ya no muestra silenciosamente listas vacías(sin sobrescribir el archivo original,Los usuarios pueden reconfigurarse o restaurar desde una copia de seguridad).
         val loaded = store.loadOrNull()
         if (loaded == null) {
             connectors = emptyList()
@@ -231,7 +231,7 @@ fun ConnectorSettingsPage(onBack: () -> Unit) {
     }
 }
 
-/** 单条连接器行:名称/端点 + 连接/编辑/删除。 */
+/** fila de conector único:Nombre/punto final + conexión/Editar/borrar. */
 @Composable
 private fun ConnectorRow(config: ConnectorConfig, onConnect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     Row(
@@ -281,7 +281,7 @@ private fun ConnectorRow(config: ConnectorConfig, onConnect: () -> Unit, onEdit:
     }
 }
 
-/** 添加/编辑连接器对话框。 */
+/** agregar/Cuadro de diálogo Editar conector. */
 @Composable
 private fun ConnectorEditDialog(initial: ConnectorConfig?, onDismiss: () -> Unit, onSave: (ConnectorConfig) -> Unit) {
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }

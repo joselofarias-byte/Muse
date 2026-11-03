@@ -8,15 +8,15 @@ import { useDelayedFlag } from "./useDelayedFlag.js";
 import { useMediaQuery } from "./useMediaQuery.js";
 import type { HostSessionSummary } from "./useHostConnection.js";
 
-/** 与 styles.css 的桌面档断点保持一致（只用于决定左栏要不要预取会话预览）。 */
+/** Consistente con el punto de interrupción del archivo de escritorio de estilos.css (solo se usa para determinar si la columna de la izquierda debe buscar previamente las vistas previas de la sesión). */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
-/** 会话面板的数据与回调：抽屉与桌面左栏共用同一份。 */
+/** Los datos y devoluciones de llamada del panel de sesión: el cajón y la columna izquierda del escritorio comparten la misma copia. */
 interface SessionPanelData {
   readonly sessions: readonly HostSessionSummary[];
-  /** 首屏快照还没到：列表先上骨架（超过 300ms 才真显），不显示「还没有会话」。 */
+  /** La primera instantánea de la pantalla aún no ha llegado: la lista se esqueletiza primero (no se mostrará hasta después de 300 ms) y no se muestra \"aún no hay sesión\". */
   readonly ready: boolean;
-  /** 归档会话默认隐藏，打开这个开关才出现。 */
+  /** Las sesiones de archivo están ocultas de forma predeterminada y aparecen solo cuando este interruptor está activado. */
   readonly showArchived: boolean;
   readonly onToggleArchived: () => void;
   readonly currentId: string | undefined;
@@ -30,7 +30,7 @@ interface SessionPanelData {
   readonly onDelete: (sessionId: string) => void;
   readonly onOpenSettings: () => void;
   readonly onLogout: () => void;
-  /** 仅左栏：收起左栏。抽屉里不传。 */
+  /** Solo columna izquierda: contrae la columna izquierda. No pasó en el cajón. */
   readonly onCollapse?: (() => void) | undefined;
 }
 
@@ -40,7 +40,7 @@ export interface SessionDrawerProps extends SessionPanelData {
 }
 
 export type SessionSidebarProps = SessionPanelData & {
-  /** 桌面档左栏是否收起（收起时顶栖会多出一个展开按钮）。 */
+  /** Si la columna izquierda del archivo del escritorio está contraída (cuando esté contraída, habrá un botón de expansión adicional en la parte superior). */
   readonly collapsed: boolean;
   readonly onToggleSidebar: () => void;
 };
@@ -48,14 +48,14 @@ export type SessionSidebarProps = SessionPanelData & {
 const PREVIEW_BATCH = 40;
 
 /**
- * 会话面板内容。
+ * Contenido del panel de sesión.
  *
- * 手机上它是滑出的抽屉（头部带关闭键、底部带设置入口）；桌面档左栏常驻，
- * 头部直接放设置入口、不需要关闭键。列表行两边完全一致——同一套
- * `host-session` 几何（ListRow：高 60、内边距 16/12）。
+ * En el teléfono celular, es un cajón deslizable (con un botón de cierre en la parte superior y una entrada de configuración en la parte inferior); la columna izquierda del archivo del escritorio es permanente.
+ * El cabezal se coloca directamente en la entrada de configuración y no es necesario cerrar la llave. Ambos lados de la fila de la lista son exactamente iguales.——mismo conjunto
+ * `host-session` Geometría (ListRow: altura 60, acolchado 16/12).
  *
- * 重命名是行内输入（不走 window.prompt）：空名禁用「保存」，Enter 提交、Esc 取消。
- * 归档会话默认不列，头部有「显示归档」开关。
+ * El cambio de nombre es una entrada en línea (no utilice window.prompt): un nombre vacío desactiva "guardar".Enter enviar,Esc Cancelar.
+ * Las sesiones de archivo no aparecen en la lista de forma predeterminada y hay un interruptor "Mostrar archivos" en el encabezado.
  */
 function SessionPanel({
   variant,
@@ -270,7 +270,7 @@ function SessionPanel({
   );
 }
 
-/** 手机 / 平板档的会话抽屉：遮罩 + 滑出面板。桌面档由 CSS 隐藏。 */
+/** Cajón de conversación para celular/tablet: mascarilla + panel deslizable. Los archivos de escritorio están ocultos por CSS. */
 export function SessionDrawer(props: SessionDrawerProps) {
   const { t } = useI18n();
   const { open, onClose, ...data } = props;
@@ -290,9 +290,9 @@ export function SessionDrawer(props: SessionDrawerProps) {
   );
 }
 
-/** 桌面档常驻左栏：同一个面板，去掉遮罩与关闭键。 */
+/** El archivo del escritorio se encuentra permanentemente en la columna de la izquierda: el mismo panel, sin la máscara y las teclas de cierre. */
 export function SessionSidebar(props: SessionSidebarProps) {
-  // 只在左栏真的显示（桌面档、且未收起）时才预取会话预览，免得手机上抽屉没开也发一批请求。
+  // Obtenga previamente la vista previa de la sesión solo cuando la columna de la izquierda realmente se muestra (archivo de escritorio y no cerrado), para no enviar un lote de solicitudes cuando el cajón no está abierto en el teléfono celular.
   const { t } = useI18n();
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const { collapsed, onToggleSidebar, ...data } = props;

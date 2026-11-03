@@ -170,7 +170,7 @@
     <string name="memory_screen_experience_add_dialog_title">새 경험 추가</string>
     <string name="memory_screen_experience_edit_title">경험 편집</string>
     <string name="memory_screen_experience_title_label">제목</string>
-    <string name="memory_screen_experience_title_hint">간단한 설명, 예「Kotlin 코루틴 타임아웃 처리」</string>
+    <string name="memory_screen_experience_title_hint">간단한 설명, 예「Kotlin 코루틴 타임아웃 처리"</string>
     <string name="memory_screen_experience_content_label">상세 내용</string>
     <string name="memory_screen_experience_content_hint">단계, 주의사항, 코드 조각 등</string>
     <string name="memory_screen_experience_category_label">분류(선택)</string>
@@ -334,8 +334,8 @@
     <string name="channel_weclaw_bind_failed">QR 코드를 가져오지 못했습니다: </string>
     <string name="channel_weclaw_status_scaned">스캔됨, 휴대폰에서 확인하세요</string>
     <string name="channel_weclaw_status_expired">QR 코드가 만료되었습니다. 다시 시도하세요</string>
-    <string name="channel_telegram_hint">App Secret에 @BotFather의 Bot Token을 입력; 전송 대상은 chat_id(비워 두면 자동 답장이 보낸 사람에게 돌아갑니다)。</string>
-    <string name="channel_dingtalk_hint">App ID에 앱의 ClientID(AppKey), App Secret에 ClientSecret을 입력; 봇 수신 방식을 Stream으로 설정하세요(공인 URL 불필요)。</string>
+    <string name="channel_telegram_hint">App Secret에 @BotFather의 Bot Token을 입력; 전송 대상은 chat_id(비워 두면 자동 답장이 보낸 사람에게 돌아갑니다).</string>
+    <string name="channel_dingtalk_hint">App ID에 앱의 ClientID(AppKey), App Secret에 ClientSecret을 입력; 봇 수신 방식을 Stream으로 설정하세요(공인 URL 불필요).</string>
     <string name="settings_screen_notification_listener_desc">AI가 다른 앱의 알림을 읽을 수 있도록 승인</string>
     <!-- v1.0.4: AI tools -->
     <string name="settings_screen_tools">도구</string>
@@ -435,12 +435,12 @@
     <string name="skill_use_case_web_fetch">웹 링크를 제공하면 LLM이 페이지 본문을 가져옵니다. 긴 결과도 전체 보존되며 나누어 읽을 수 있습니다.</string>
     <string name="skill_use_case_knowledge_search">지식 베이스 문서 내용과 관련된 질문일 때 LLM이 추측 대신 지식 베이스를 검색합니다.</string>
     <string name="skill_use_case_arxiv_search">학술 논문이나 연구 방향을 물으면 LLM이 arXiv 학술 프리프린트 저장소를 검색합니다.</string>
-    <string name="skill_use_case_install_skill">새로운 능력 요구(예: 「환율 조회 스킬 만들기」)를 설명하면 LLM이 자동으로 새 스킬을 생성하고 설치합니다.</string>
+    <string name="skill_use_case_install_skill">새로운 능력 요구(예: 「환율 조회 스킬 만들기")를 설명하면 LLM이 자동으로 새 스킬을 생성하고 설치합니다.</string>
     <!-- ===== Assistant detail: regex rules ===== -->
     <string name="assistant_detail_regex_title">정규식 치환 규칙</string>
     <string name="assistant_detail_regex_desc">사용자/어시스턴트 메시지에 정규식 치환을 적용합니다(역할명 치환, 민감어 필터, 포맷 정규화 등)</string>
     <string name="assistant_detail_regex_add">규칙 추가</string>
-    <string name="assistant_detail_regex_empty">규칙이 없습니다. 「규칙 추가」를 눌러 만드세요</string>
+    <string name="assistant_detail_regex_empty">규칙이 없습니다. 「규칙 추가"를 눌러 만드세요</string>
     <string name="assistant_detail_regex_edit_title">규칙 편집</string>
     <string name="assistant_detail_regex_name_label">규칙 이름</string>
     <string name="assistant_detail_regex_name_hint">예: 역할명 치환</string>
@@ -670,7 +670,7 @@
     <string name="tool_resume_step">%1$s 실행 중 (%2$d/%3$d)…</string>
     <string name="tts_not_ready">TTS 초기화 중, 잠시 후 다시 시도하세요</string>
     <string name="chat_list_reorder">드래그하여 정렬</string>
-    <!-- 前端修复 (i18n-3.x): 设置页搜索索引 SettingsEntry title i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_screen_entry_tts_playback">TTS 음성 재생</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">보관된 채팅</string>
@@ -822,15 +822,15 @@
     <string name="permission_a11y_provider_desc">독립 버전을 설치하면 메인 앱을 업데이트하거나 재설치해도 접근성 권한이 유지됩니다. 선택 사항입니다.</string>
     <string name="permission_a11y_provider_install_btn">독립 버전 설치</string>
     <string name="permission_a11y_provider_install_failed">설치 프로그램을 열 수 없습니다</string>
-    <!-- v2.2.1: 微信 QR 연결 — 네트워크 오류 / 자동 갱신 안내 -->
+    <!-- v2.2.1: WeChat QR 연결 — 네트워크 오류 / 자동 갱신 안내 -->
     <string name="channel_weclaw_status_unstable">네트워크 오류, 재시도 중…</string>
     <string name="channel_weclaw_status_refreshed">QR 코드가 만료되어 자동 갱신했습니다. 다시 스캔해 주세요</string>
     <string name="greeting_open_todos">%1$d개의 대화에 끝내지 못한 일이 있습니다</string>
     <string name="settings_preference_title">사용자 선호</string>
     <string name="settings_preference_subtitle">어시스턴트가 기록한 장기 규칙</string>
-    <string name="settings_preference_desc">「앞으로는 …하지 마」라고 말하면 여기에 하드 제약으로 저장되어 모든 대화에서 지켜집니다.</string>
+    <string name="settings_preference_desc">「앞으로는 …하지 마"라고 말하면 여기에 하드 제약으로 저장되어 모든 대화에서 지켜집니다.</string>
     <string name="settings_preference_empty">아직 기록된 선호가 없습니다</string>
-    <string name="settings_preference_empty_hint">「앞으로 막연한 격려는 쓰지 마」라고 말해 보세요</string>
+    <string name="settings_preference_empty_hint">「앞으로 막연한 격려는 쓰지 마"라고 말해 보세요</string>
     <string name="settings_preference_disable">사용 안 함</string>
     <string name="settings_preference_enable">사용</string>
     <string name="settings_preference_delete">삭제</string>

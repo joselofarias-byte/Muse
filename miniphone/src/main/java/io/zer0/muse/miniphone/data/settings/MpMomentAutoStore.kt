@@ -15,56 +15,56 @@ import kotlinx.coroutines.flow.map
 import java.io.IOException
 
 /**
- * 模块级后台设置:自动发朋友圈的开关与上一次生成时间,以及角色主动私信的开关与上次时间。
+ * Configuración de fondo a nivel de módulo:El cambio de publicación automática a Momentos y la hora de última generación,Así como el cambio y última hora del mensaje privado activo del personaje.
  *
- * 这些都放在模块自己的 DataStore 里:`mp_profile` 是本机用户资料的业务表,
- * 加调度字段会把「用户是谁」和「后台跑了没」混在一张表里,还得改 Room schema。
- * 同一个 DataStore 里加键就行 —— 多声明一个 `preferencesDataStore` 会在同名文件上开第二个实例而崩溃。
+ * Estos se colocan en el DataStore propio del módulo.:`mp_profile` Es la tabla de negocios de datos de usuarios locales.,
+ * Agregar un campo de programación combinará "quién es el usuario" y "¿se ha escapado el fondo" en una tabla?,También es necesario cambiar el esquema de la habitación.
+ * Simplemente agregue claves al mismo DataStore —— Declarar uno más `preferencesDataStore` Se bloqueará al abrir una segunda instancia de un archivo con el mismo nombre.
  *
- * @see miniPhoneMomentAutoStore 生产实现
+ * @see miniPhoneMomentAutoStore realización de la producción
  */
 interface MpMomentAutoStore {
-    /** 开关状态,默认开。 */
+    /** estado del interruptor,Activado de forma predeterminada. */
     val enabledFlow: Flow<Boolean>
 
     suspend fun isEnabled(): Boolean
 
     suspend fun setEnabled(enabled: Boolean)
 
-    /** 上次成功生成的时间(毫秒);从没生成过返回 `null`。 */
+    /** El momento de la última construcción exitosa.(milisegundos);Rentabilidad nunca generada `null`. */
     suspend fun lastGeneratedAt(): Long?
 
-    /** 记下这次生成的时间,给下一轮的防抖用。 */
+    /** Tenga en cuenta el tiempo de esta generación.,Utilizado para la siguiente ronda de antivibración. */
     suspend fun markGenerated(atMillis: Long)
 
-    /** 「角色主动私信」开关,默认关:没人开就一直不打扰。 */
+    /** Interruptor \"Carácter de mensaje privado activo\",Desactivado predeterminado:No me molestes hasta que no haya nadie. */
     val chatProactiveEnabledFlow: Flow<Boolean>
 
     suspend fun isChatProactiveEnabled(): Boolean
 
     suspend fun setChatProactiveEnabled(enabled: Boolean)
 
-    /** 上次主动私信成功的时间(毫秒);从没发过返回 `null`。 */
+    /** La hora en la que se envió correctamente el último mensaje privado activo(milisegundos);Nunca envié una devolución `null`. */
     suspend fun lastProactiveChatAt(): Long?
 
-    /** 记下这次主动私信的时间,给 4 小时的间隔判定用。只在真的落库之后写。 */
+    /** Anota la hora de este mensaje privado proactivo,Dé un intervalo de 4 horas para fines de evaluación. Escriba solo después de que realmente se haya caído. */
     suspend fun markProactiveChat(atMillis: Long)
 }
 
-/** 模块内 DataStore 文件名:只放手机相关的设置,不与宿主共用。 */
+/** Nombre del archivo DataStore dentro del módulo:Almacenar solo configuraciones relacionadas con el teléfono,No compartido con el anfitrión. */
 private const val STORE_NAME: String = "miniphone_settings"
 
 private val Context.miniPhoneSettingsDataStore: DataStore<Preferences> by preferencesDataStore(name = STORE_NAME)
 
-/** 取模块内设置,进程内同一份 DataStore(DataStore 不允许同文件开两个实例)。 */
+/** Obtener la configuración en el módulo,La misma copia dentro del proceso. DataStore(DataStore No se permite abrir dos instancias del mismo archivo.). */
 fun miniPhoneMomentAutoStore(context: Context): MpMomentAutoStore =
     DataStoreMpMomentAutoStore(context.applicationContext.miniPhoneSettingsDataStore)
 
 /**
- * DataStore 实现。
+ * DataStore Darse cuenta.
  *
- * 读失败(磁盘坏、文件被占)当「用默认值」处理:自动发朋友圈的开关退回默认的开、
- * 角色主动私信退回默认的关,上次时间当成没有,后台任务不该因为一次读失败就永久停摆。
+ * Error de lectura(El disco está defectuoso, los archivos están ocupados.)Cuando se procesa "usar valor predeterminado":El interruptor para publicar automáticamente en Momentos vuelve al valor predeterminado activado.
+ * El mensaje privado activo del rol vuelve al nivel predeterminado.,La última vez fue tratada como si no hubiera tiempo.,Las tareas en segundo plano no deben suspenderse permanentemente debido a una lectura fallida.
  */
 internal class DataStoreMpMomentAutoStore(
     private val dataStore: DataStore<Preferences>,
@@ -109,7 +109,7 @@ internal class DataStoreMpMomentAutoStore(
     companion object {
         private const val DEFAULT_AUTO_ENABLED: Boolean = true
 
-        /** 主动私信默认关:它比朋友圈更打扰,必须由用户自己打开。 */
+        /** La mensajería privada activa está desactivada de forma predeterminada:Es más intrusivo que Moments,Debe ser abierto por el propio usuario. */
         private const val DEFAULT_CHAT_PROACTIVE_ENABLED: Boolean = false
 
         private val KEY_AUTO_ENABLED = booleanPreferencesKey("auto_moment_enabled")

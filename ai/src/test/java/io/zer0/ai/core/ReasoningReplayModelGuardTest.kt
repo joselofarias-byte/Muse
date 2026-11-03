@@ -5,12 +5,12 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * v2.6.14: 思考块回放的同模型守卫。
+ * v2.6.14: Mismo modelo de guardia para la repetición del bloque de pensamiento.
  *
- * 锁定三条契约：
- *  1. 历史思考块来自另一个模型时，一律剥离（不外发给当前模型）；
- *  2. 同模型时原样保留（回放链路不受影响）；
- *  3. 历史未记录产出模型（旧数据）时保持原样，不做无证据的剥离。
+ * Tres contratos están bloqueados:
+ *  1. Cuando los bloques de pensamiento histórico provengan de otro modelo, serán eliminados (pero no enviados al modelo actual);
+ *  2. Mantener el mismo modelo tal como está (el enlace de reproducción no se ve afectado);
+ *  3. Cuando el modelo de salida (datos antiguos) no se registra en el historial, permanece como está y no se realiza ninguna eliminación sin evidencia.
  */
 class ReasoningReplayModelGuardTest {
 
@@ -36,11 +36,11 @@ class ReasoningReplayModelGuardTest {
         val history = assistant(modelId = "claude-sonnet-4-5", signature = "sig-claude")
         val result = normalize(listOf(history), "deepseek-v4").single()
 
-        assertNull("跨模型时 reasoning 不应外发", result.reasoning)
-        assertNull("跨模型时 signature 不应外发", result.thinkingSignature)
-        assertNull("跨模型时 encrypted_content 不应外发", result.thinkingEncryptedContent)
-        assertEquals("正文必须原样保留", "answer", result.content)
-        assertEquals("产出模型记录保留（供 UI/排障）", "claude-sonnet-4-5", result.modelId)
+        assertNull("El razonamiento no debe exportarse entre modelos.", result.reasoning)
+        assertNull("La firma no debe enviarse al cruzar modelos.", result.thinkingSignature)
+        assertNull("encrypted_content no debe enviarse al cruzar modelos", result.thinkingEncryptedContent)
+        assertEquals("El texto debe dejarse intacto.", "answer", result.content)
+        assertEquals("Retención de registros del modelo de producción (para UI/solución de problemas)", "claude-sonnet-4-5", result.modelId)
     }
 
     @Test
@@ -57,7 +57,7 @@ class ReasoningReplayModelGuardTest {
         val history = assistant(modelId = null, signature = "sig-legacy")
         val result = normalize(listOf(history), "claude-sonnet-4-5").single()
 
-        assertEquals("来源未知时不剥离", "thinking text", result.reasoning)
+        assertEquals("Sin extracción cuando se desconoce la fuente", "thinking text", result.reasoning)
         assertEquals("sig-legacy", result.thinkingSignature)
     }
 
@@ -66,7 +66,7 @@ class ReasoningReplayModelGuardTest {
         val history = assistant(modelId = "[ais]Claude-Sonnet-4-5")
         val result = normalize(listOf(history), "claude-sonnet-4-5").single()
 
-        assertEquals("归一化后视为同模型", "thinking text", result.reasoning)
+        assertEquals("Tratado como el mismo modelo después de la normalización.", "thinking text", result.reasoning)
     }
 
     @Test
@@ -74,7 +74,7 @@ class ReasoningReplayModelGuardTest {
         val history = assistant(modelId = "openrouter/anthropic/claude-sonnet-4-5")
         val result = normalize(listOf(history), "claude-sonnet-4-5").single()
 
-        assertEquals("剥前缀后同模型，保留回放", "thinking text", result.reasoning)
+        assertEquals("Quita el prefijo y mantén el mismo modelo, manteniendo la reproducción.", "thinking text", result.reasoning)
     }
 
     @Test

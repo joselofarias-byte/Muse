@@ -2,11 +2,11 @@ import type { HostSettingsSnapshot } from "../api.js";
 import { humanizeSettingKey, pageForValueKey, resolveValueTitle, type SettingsPageSpec } from "./settingsPages.js";
 
 /**
- * 设置搜索：只用已经拿到的 `settings.snapshot` 本地过滤，不发任何请求。
+ * Configurar la búsqueda: usa solo lo que ya tienes `settings.snapshot` Filtrado local, no se envían solicitudes.
  *
- * 参与匹配的字段：条目名、分类名、条目说明、值行标题、值所属页标题、原始设置键。
- * 大小写不敏感，中文按子串匹配（不做分词）。拼音首字母没做——那需要一张几千字的
- * 汉字→拼音表，本端不许新增依赖，也不该把这种会过时的数据表塞进界面代码。
+ * Campos involucrados en la coincidencia: nombre de entrada, nombre de categoría, descripción de entrada, título de fila de valor, título de página de valor, clave de configuración original.
+ * No distingue entre mayúsculas y minúsculas y los caracteres chinos coinciden según subcadenas (sin segmentación de palabras). Las iniciales Pinyin no están hechas.——Eso requeriría un documento de varios miles de palabras.
+ * caracteres chinos→Tabla Pinyin, este extremo no puede agregar nuevas dependencias, y este tipo de tabla de datos desactualizada no debe insertarse en el código de la interfaz.
  */
 export type SettingsSearchTarget =
   | { readonly kind: "entry"; readonly entryId: string }
@@ -15,7 +15,7 @@ export type SettingsSearchTarget =
 export interface SettingsSearchHit {
   readonly id: string;
   readonly title: string;
-  /** 两级面包屑：分类 › 条目 / 子页 › 设置项。 */
+  /** Migas de pan de dos niveles: clasificación › Artículo/Subpágina › Elementos de configuración. */
   readonly breadcrumb: readonly string[];
   readonly target: SettingsSearchTarget;
 }
@@ -25,11 +25,11 @@ export interface SettingsSearchRow {
   readonly title: string;
   readonly breadcrumb: readonly string[];
   readonly target: SettingsSearchTarget;
-  /** 参与匹配的字段（已小写）。 */
+  /** Campos participantes en el partido (bajados). */
   readonly fields: readonly string[];
 }
 
-/** 值所属子页的标题：目录里有同名条目的就用它的标题，没有再从页 id 派生。 */
+/** El título de la subpágina a la que pertenece el valor: si hay una entrada con el mismo nombre en el directorio, se utilizará su título y no se derivará de la identificación de la página. */
 export function settingsPageTitle(snapshot: HostSettingsSnapshot, page: SettingsPageSpec): string {
   for (const group of snapshot.groups) {
     for (const entry of group.entries) {
@@ -39,7 +39,7 @@ export function settingsPageTitle(snapshot: HostSettingsSnapshot, page: Settings
   return humanizeSettingKey(page.id);
 }
 
-/** toggleKey → 目录标题，用于把值行标题与子页里显示的保持一致。 */
+/** toggleKey → Título del catálogo, utilizado para mantener el título de la fila de valores coherente con lo que se muestra en la subpágina. */
 function titledSettingKeys(snapshot: HostSettingsSnapshot): Map<string, string> {
   const map = new Map<string, string>();
   for (const group of snapshot.groups) {
@@ -51,8 +51,8 @@ function titledSettingKeys(snapshot: HostSettingsSnapshot): Map<string, string> 
 }
 
 /**
- * 建索引：可进入的目录条目（link / action，且未禁用）+ 全部值行。
- * 开关条目（kind=switch）不进索引——它们本来就住在分类页上，点开也没有去处。
+ * Indexación: entradas de directorio accesibles (link / action, y no discapacitado)+ Todas las filas de valores.
+ * entrada del interruptor (kind=switch) no indexado——Ya viven en la página de categorías y no tienen adónde ir si haces clic en ellos.
  */
 export function buildSettingsSearchRows(snapshot: HostSettingsSnapshot): readonly SettingsSearchRow[] {
   const rows: SettingsSearchRow[] = [];
@@ -73,7 +73,7 @@ export function buildSettingsSearchRows(snapshot: HostSettingsSnapshot): readonl
   const titles = titledSettingKeys(snapshot);
   for (const value of snapshot.values ?? []) {
     const page = pageForValueKey(value.key);
-    if (page === undefined) continue; // 归不到任何子页的值没有去处，不塞进结果
+    if (page === undefined) continue; // Los valores que no se pueden devolver a ninguna subpágina no tienen adónde ir y no se incluyen en los resultados.
     const pageTitle = settingsPageTitle(snapshot, page);
     const title = resolveValueTitle(value, titles);
     rows.push({
@@ -88,7 +88,7 @@ export function buildSettingsSearchRows(snapshot: HostSettingsSnapshot): readonl
   return rows;
 }
 
-/** 本地过滤：标题命中排在面包屑 / 键命中前面，其余保持快照顺序。 */
+/** Filtrado local: las visitas al título se clasifican antes de las rutas de navegación o de las teclas, el resto permanece en el orden de la instantánea. */
 export function searchSettings(snapshot: HostSettingsSnapshot, query: string): readonly SettingsSearchHit[] {
   const needle = query.trim().toLowerCase();
   if (needle.length === 0) return [];
@@ -97,7 +97,7 @@ export function searchSettings(snapshot: HostSettingsSnapshot, query: string): r
     if (!row.fields.some((field) => field.includes(needle))) continue;
     scored.push({ row, score: row.title.toLowerCase().includes(needle) ? 3 : 1 });
   }
-  // sort 在 ES2019+ 是稳定的：同分保持快照顺序，不做多余的排序魔法。
+  // sort Estable en ES2019+: mantenga el orden de las instantáneas, sin magia de clasificación innecesaria.
   scored.sort((left, right) => right.score - left.score);
   return scored.map(({ row }) => ({
     id: row.id,
@@ -107,7 +107,7 @@ export function searchSettings(snapshot: HostSettingsSnapshot, query: string): r
   }));
 }
 
-/** 面包屑文案：分类 › 条目。 */
+/** Copia de ruta de navegación: clasificación › entrada. */
 export function breadcrumbText(hit: SettingsSearchHit): string {
   return hit.breadcrumb.join(" › ");
 }

@@ -64,11 +64,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * R-TEST-02: 会话焦点恢复回归测试。
+ * R-TEST-02: El enfoque de la sesión reanuda las pruebas de regresión.
  *
- * 覆盖 R-UI-02 后端修复:
- *  - 进程重建后优先还原用户离开时查看的会话,而不是最近活跃会话
- *  - outbox 重放只恢复消息,不改写当前查看焦点
+ * Anular la corrección del backend R-UI-02:
+ *  - Una vez reconstruido el proceso, se restaurará primero la sesión vista cuando el usuario abandonó.,en lugar de sesiones activas recientes
+ *  - outbox La reproducción solo restaura mensajes,No sobrescriba el foco de visualización actual
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -135,8 +135,8 @@ class ChatViewModelFocusRestoreTest {
         every { delegationChainTracker.chains } returns MutableStateFlow<Map<String, DelegationChainTracker.ChainNode>>(emptyMap())
         every { delegationPauseManager.activePauses } returns MutableStateFlow<Map<String, DelegationPauseManager.PauseRequest>>(emptyMap())
         every { chatGenerationManager.activeGeneration } returns MutableStateFlow<ChatGenerationManager.ActiveGeneration?>(null)
-        // fcc18f6: ChatViewModel 改为观察 activeGenerations(多会话并发生成),
-        // 测试 stub 须同步提供复数版本, 否则 relaxed mockk 收集时抛 KotlinNothingValueException
+        // fcc18f6: ChatViewModel observar en su lugar activeGenerations(Generación concurrente multisesión),
+        // Los resguardos de prueba deben proporcionar versiones en plural simultáneamente, De lo contrario, se lanzará un simulacro relajado al recoger KotlinNothingValueException
         every { chatGenerationManager.activeGenerations } returns MutableStateFlow(emptyMap())
         every { visionBridge.progressFlow } returns MutableStateFlow(VisionProgress(idle = true, index = 0, total = 0))
         every { deferredResultStore.completedTasks } returns MutableStateFlow(emptyMap())
@@ -146,8 +146,8 @@ class ChatViewModelFocusRestoreTest {
         coEvery { sessionRepository.getMessageCount(any()) } returns 0
         coEvery { sessionRepository.getRecentMessages(any(), any()) } returns emptyList()
         coEvery { sessionRepository.getAssistantId(any()) } returns "default"
-        // 会话切换会先校验目标会话是否存在（深链校验）；不打这个桩的话 relaxed mock 返回 null，
-        // switchSession 会在写入焦点前提前返回，导致「初始焦点」永远是 null。
+        // El cambio de sesión primero verificará si la sesión de destino existe (verificación de cadena profunda); Si este código auxiliar no está configurado, el simulacro relajado devolverá nulo.
+        // switchSession Regresará temprano antes de escribir el enfoque, lo que hará que el "enfoque inicial" siempre sea nulo.
         coEvery { sessionRepository.getSessionById(any()) } answers {
             val id = firstArg<String>()
             listOf(newSession, oldSession).firstOrNull { it.id == id }
@@ -162,9 +162,9 @@ class ChatViewModelFocusRestoreTest {
 
     @After
     fun tearDown() {
-        // 先取消上一条用例留下的协程：它们会在共享的测试调度器上继续运行，
-        // 其中可能包含新的会话切换 —— 那会把 SessionSwitchGuard 的序号推高，
-        // 使下一条用例自己的切换被判为「过期」而直接丢弃。
+        // Primero cancele las corrutinas dejadas por el caso de prueba anterior: continuarán ejecutándose en el programador de pruebas compartido.
+        // que puede incluir nuevos cambios de sesión —— Eso aumentará el número de secuencia de SessionSwitchGuard,
+        // El cambio propio del siguiente caso de uso se considerará "caducado" y se descartará directamente.
         if (::viewModel.isInitialized) {
             viewModel.viewModelScope.cancel()
         }
@@ -213,23 +213,23 @@ class ChatViewModelFocusRestoreTest {
     )
 
     @Test
-    fun `进程恢复优先还原查看会话而不是最近活跃会话`() = runTest(testDispatcher) {
+    fun `La recuperación del proceso prioriza las sesiones de visualización de restauración sobre las sesiones activas recientemente`() = runTest(testDispatcher) {
         val focus = awaitFocusSettled()
 
-        assertEquals("应恢复用户离开时查看的 session-old", "session-old", focus)
+        assertEquals("Se debe restaurar la vista que el usuario vio mientras estaba fuera. session-old", "session-old", focus)
         coVerify(atLeast = 1) { settings.getViewedSessionId() }
         coVerify(atLeast = 1) { settings.saveViewedSessionId("session-old") }
     }
 
     @Test
-    fun `outbox 重放不改写查看焦点`() = runTest(testDispatcher) {
+    fun `outbox Reproducir sin cambiar el enfoque de la vista`() = runTest(testDispatcher) {
         testDispatcher.scheduler.advanceUntilIdle()
-        // 不变量：outbox 重放只能补消息，不得把焦点挪到生成会话上。
-        // 「启动后焦点恢复到哪个会话」由同类另一条用例负责；这里不断言恢复是否已完成，
-        // 否则两条不变量缠在一起，全量跑时一条的时序问题会把另一条的真问题掩盖掉。
+        // Invariantes:outbox La reproducción solo puede agregar mensajes y no puede mover el foco a la sesión generada.
+        // "A qué sesión se restablece el foco después del inicio" es responsabilidad de otro caso de uso del mismo tipo; aquí no se afirma si se ha completado la restauración.
+        // De lo contrario, las dos invariantes se entrelazarán y el problema de sincronización de una cubrirá el problema real de la otra cuando se ejecute a todo volumen.
         val focusBefore = viewModel.state.value.currentSessionId
 
-        // 模拟启动后出现一条属于生成会话的 outbox;恢复只补写消息,不应把焦点切到生成会话。
+        // Una vez iniciada la simulación, aparece un mensaje perteneciente a la sesión generada. outbox;Restaurar solo escribir mensajes,El foco no debe cambiarse a la sesión generada.
         coEvery { sessionRepository.getPendingOutbox() } returns listOf(
             io.zer0.muse.data.session.MessageOutboxEntity(
                 id = "outbox-1",
@@ -244,20 +244,20 @@ class ChatViewModelFocusRestoreTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val focusAfter = viewModel.state.value.currentSessionId
-        assertNotEquals("焦点不得被挪到生成会话", "session-generating", focusAfter)
-        // 重放期间若焦点从无到有地变成了别的会话，那只能是恢复自己落定的结果，
-        // 仍然属“未被重放改动”；这里只拦“被重放改成生成会话”这一件事。
+        assertNotEquals("El foco no se debe mover a la sesión generada", "session-generating", focusAfter)
+        // Si el foco cambia repentinamente a otra conversación durante la repetición, solo puede ser el resultado de restaurar su propio acuerdo.
+        // todavía pertenece a“No cambiado por repetición”;Aquí sólo bloques“Cambiado por repetición para generar sesión.”Esta única cosa.
         if (focusBefore != null) {
-            assertEquals("重放不应改写已经落定的焦点", focusBefore, focusAfter)
+            assertEquals("Las repeticiones no deben reescribir el foco que se ha resuelto.", focusBefore, focusAfter)
         }
         coVerify(exactly = 0) { settings.saveViewedSessionId("session-generating") }
     }
 
     /**
-     * 泵到恢复完成。
+     * Bombee hasta que se complete la recuperación.
      *
-     * 恢复挂在会话流首次发射上，单次 advanceUntilIdle 不保证发射已经排上，
-     * 所以多泵几次；上限到了就返回当前值，交给调用方断言。
+     * La recuperación se bloquea en el primer inicio de la secuencia de la sesión. Un solo avance hasta Idle no garantiza que el lanzamiento haya sido programado.
+     * Así que bombea unas cuantas veces más; cuando se alcanza el límite superior, se devuelve el valor actual y se entrega a la persona que llama para su afirmación.
      */
     private suspend fun awaitFocusSettled(): String? {
         repeat(20) {

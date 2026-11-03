@@ -33,41 +33,41 @@ import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
 
 /**
- * 发送时那段「文字从输入框升起来、收成气泡」的飞行。
+ * Al enviar, el vuelo del "texto se eleva desde el cuadro de entrada y forma una burbuja".
  *
- * 只在会话的第一条消息触发：后续每条都飞会变成噪音，而第一句恰好是「对话开始」
- * 这件事本身，值得一个动作。
+ * Solo se activa en el primer mensaje de la conversación: cada mensaje posterior se convertirá en ruido y la primera oración será "La conversación comienza".
+ * Esto en sí mismo merece una acción.
  *
- * 关键实现取舍：幽灵层画在一个独立的窗口里（Popup），坐标系用 window bounds。
- * 这样它不受 Scaffold 的内容区裁剪，也不必为了叠一层而改造屏幕根布局。
+ * Compensación clave de implementación: la capa fantasma se dibuja en una ventana separada (Popup), el sistema de coordenadas utiliza límites de ventana.
+ * De esta manera, el área de contenido de Scaffold no la recorta y no es necesario modificar el diseño raíz de la pantalla para apilar una capa.
  *
- * 飞行末段（最后 15%）幽灵层淡出，与列表里已经就位的真实气泡重合。
- * 不做实时重排文字：宽度收窄时真文字会不停跳行，反而比交叉淡变更乱。
+ * Al final del vuelo (el último 15%), la capa fantasma se desvanece para coincidir con las burbujas reales que ya están en su lugar en la lista.
+ * Sin reflujo de texto en tiempo real: el texto real seguirá saltando líneas cuando se reduzca el ancho, lo cual es más confuso que el fundido cruzado.
  */
 
-/** 一次发送飞行的几何与内容。 */
+/** Envía la geometría y el contenido del vuelo de una vez. */
 internal data class SendFlight(
     val text: String,
     val from: Rect,
     val to: Rect,
 )
 
-/** 飞行总时长。 */
+/** Duración total del vuelo. */
 private const val FLIGHT_MS = 480
 
 /**
- * 起步快、尾巴长的缓动。落地不回弹：回弹会让这个动作显得轻浮。
+ * Comienza rápidamente y se mueve lentamente con una cola larga. Sin rebote después del aterrizaje: El rebote hará que el movimiento parezca frívolo.
  */
 private val FlightEasing = CubicBezierEasing(0.22f, 0.68f, 0f, 1f)
 
-/** 气泡落点的最大宽度占比（与聊天气泡的最大宽度保持一致的手感）。 */
+/** La relación de ancho máximo del punto de aterrizaje de la burbuja (la sensación es consistente con el ancho máximo de la burbuja de chat). */
 private const val TARGET_WIDTH_RATIO = 0.72f
 
 /**
- * 由输入框与消息列表的窗口矩形推算落点。
+ * El punto de ubicación se calcula a partir del rectángulo de la ventana del cuadro de entrada y la lista de mensajes.
  *
- * 落点取列表底部往上一行：新消息发出后总是贴在列表底部，幽灵层落在这里，
- * 正好压在真实气泡上。
+ * El punto de ubicación está una fila por encima del final de la lista: los mensajes nuevos siempre se publican al final de la lista después de enviarlos, y la capa fantasma cae aquí.
+ * Presione justo encima de la burbuja real.
  */
 internal fun computeSendFlight(text: String, input: Rect, list: Rect): SendFlight? {
     val valid = text.isNotBlank() && input.width > 0f && input.height > 0f && list.width > 0f
@@ -82,9 +82,9 @@ internal fun computeSendFlight(text: String, input: Rect, list: Rect): SendFligh
 }
 
 /**
- * 幽灵层。整个窗口大小的一层，靠偏移把文字放在该在的地方。
+ * Capa fantasma. Una capa del tamaño completo de la ventana usa desplazamiento para colocar el texto donde debería estar.
  *
- * @param flight 为 null 时不渲染；渲染完毕回调 [onFinished] 让调用方清空状态
+ * @param flight No se representa cuando es nulo; devolución de llamada después de renderizar [onFinished] Deje que la persona que llama borre el estado
  */
 @Composable
 internal fun SendFlightLayer(flight: SendFlight?, onFinished: () -> Unit) {
@@ -100,9 +100,9 @@ internal fun SendFlightLayer(flight: SendFlight?, onFinished: () -> Unit) {
     val y = lerpFloat(flight.from.top, flight.to.top, p)
     val width = lerpFloat(flight.from.width, flight.to.width, p)
     val height = lerpFloat(flight.from.height, flight.to.height, p)
-    // 前 30% 只是离地，背景仍透明：像把文字从输入框里"拿起来"。
+    // El primer 30% apenas ha despegado, el fondo sigue siendo transparente: como sacar texto de un cuadro de entrada"recogerlo".
     val backgroundAlpha = ((p - 0.30f) / 0.55f).coerceIn(0f, 1f)
-    // 最后 15% 淡出，交由真实气泡接管。
+    // El último 15% se desvanece y la verdadera burbuja toma el control.
     val ghostAlpha = if (p > 0.85f) ((1f - p) / 0.15f).coerceIn(0f, 1f) else 1f
     val cornerRadius = lerpFloat(10f, 18f, p)
     Box(modifier = Modifier.fillMaxSize()) {
@@ -133,17 +133,17 @@ internal fun SendFlightLayer(flight: SendFlight?, onFinished: () -> Unit) {
 
 private fun lerpFloat(start: Float, end: Float, fraction: Float): Float = start + (end - start) * fraction
 
-/** 文本颜色在背景渐显时切换，这里给出便于观察的中间态判阈。 */
+/** El color del texto cambia cuando el fondo aparece gradualmente. Aquí hay un umbral de estado intermedio para una fácil observación. */
 private const val TEXT_COLOR_FLIP_ALPHA = 0.5f
 
-/** 背景显到一半以上就改用浅色文字。 */
+/** Cuando el fondo sea más de la mitad visible, utilice texto de color claro. */
 internal fun useOnPrimaryText(backgroundAlpha: Float): Boolean = backgroundAlpha > TEXT_COLOR_FLIP_ALPHA
 
 /**
- * 把幽灵层挂到一个独立的窗口上，位置钉在窗口原点。
+ * Cuelga la capa fantasma en una ventana independiente y fija la posición al origen de la ventana.
  *
- * 用窗口而不是普通叠层的原因：它不受 Scaffold 内容区裁剪，也不必为了叠一层
- * 而改造屏幕根布局；坐标统一用 window bounds，与 onGloballyPositioned 的量法一致。
+ * La razón para usar una ventana en lugar de una superposición normal: no está recortada por el área de contenido de Scaffold, ni es necesario superponerla para
+ * Y transforme el diseño raíz de la pantalla; las coordenadas se unifican mediante límites de ventana, lo que es coherente con el método de medición de onGloballyPositioned.
  */
 @Composable
 internal fun SendFlightWindow(flight: SendFlight?, onFinished: () -> Unit) {

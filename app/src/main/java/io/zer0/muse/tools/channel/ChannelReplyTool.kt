@@ -4,17 +4,17 @@ import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.tools.ToolRiskLevel
 
 /**
- * 群聊回复工具 — Phone Session 模式下 agent 用此工具发言。
+ * Herramienta de respuesta de chat grupal — Phone Session En modo el agente usa esta herramienta para hablar.
  *
- * 设计:
- *  - 只有此工具的 content 会写入群聊消息(其他工具不会)
- *  - chatId / senderAssistantId 在工具构造时绑定,LLM 无需也无法传入
- *  - 通过 [onReply] 回调把内容交回调用方(由 GroupChatScheduler 持久化到群聊)
+ * diseño:
+ *  - Solo el contenido de esta herramienta se escribirá en los mensajes de chat grupal.(Otras herramientas no)
+ *  - chatId / senderAssistantId Vincular en el momento de la construcción de la herramienta,LLM No es necesario y no se puede pasar
+ *  - Pase [onReply] La devolución de llamada devuelve el contenido a la persona que llama.(Persistente en el chat grupal por GroupChatScheduler)
  *
- * 与 SkillExecutor 中已有的 channel_reply 区别:
- *  - SkillExecutor 版本:LLM 传 chatId/assistantId/body,主会话可调
- *  - 此版本:chatId/assistantId 由框架绑定,只供群聊 Phone Session 使用,
- *    避免主会话 LLM 误用群聊工具
+ * Diferencia con el canal_reply existente en SkillExecutor:
+ *  - SkillExecutor versión:LLM pasar chatId/assistantId/body,Sesión principal ajustable
+ *  - esta versión:chatId/assistantId atado por marco,Solo para uso de sesión telefónica de chat grupal,
+ *    Evite el uso indebido de las herramientas de chat grupal mediante master session LLM
  */
 class ChannelReplyTool(
     private val groupChatId: String,
@@ -23,18 +23,18 @@ class ChannelReplyTool(
 ) {
 
     /**
-     * 工具定义。
+     * Definición de herramienta.
      *
-     * LLM 只需提供 content 参数;chatId / assistantId 已在构造时绑定,
-     * 不暴露给 LLM,避免 LLM 伪造发送者身份。
+     * LLM Simplemente proporcione el parámetro de contenido.;chatId / assistantId Ya encuadernado en el momento de la construcción.,
+     * no expuesto a LLM,Evite que LLM falsifique la identidad del remitente.
      */
     fun toolDef() = ToolRegistry.ToolDef(
         name = "channel_reply",
-        description = "在群聊中发言。你的回复内容将通过此工具发送到群聊频道。" +
-            "这是唯一能让你的消息出现在群聊中的方式。" +
-            "如果你不想发言,请使用 channel_pass。",
+        description = "Habla en un chat grupal. Su respuesta se enviará al canal de chat grupal a través de esta herramienta." +
+            "Esta es la única forma de hacer que tu mensaje aparezca en el chat grupal." +
+            "si no quieres hablar,Utilice channel_pass.",
         parameters = mapOf(
-            "content" to "必填。你要在群聊中发送的回复内容",
+            "content" to "Requerido. La respuesta que quieres enviar en el chat grupal.",
         ),
         required = setOf("content"),
         category = "built-in",
@@ -42,22 +42,22 @@ class ChannelReplyTool(
     )
 
     /**
-     * 执行工具:校验 content 并通过 [onReply] 回调发送。
+     * herramienta de ejecución:Verificar contenido y aprobar [onReply] Devolución de llamada enviada.
      *
-     * @param args 工具参数,LLM 传入的 arguments JSON 解析后的 map
-     * @return 执行结果字符串(成功 / 错误信息)
+     * @param args Parámetros de la herramienta,LLM Los argumentos entrantes JSON analizados map
+     * @return Cadena de resultado de ejecución(mensaje de éxito/error)
      */
     suspend fun execute(args: Map<String, String>): String {
         val content = args["content"]?.trim()
         if (content.isNullOrEmpty()) {
-            return "错误: content 不能为空"
+            return "error: content no puede estar vacío"
         }
-        // groupChatId / senderAssistantId 仅用于绑定上下文,不参与 LLM 可见的逻辑,
-        // 但保留校验:若未绑定说明工具被错误构造,直接报错而非静默发送。
+        // groupChatId / senderAssistantId Sólo para contexto vinculante,No participa en la lógica visible para LLM,
+        // Pero mantén el cheque:Si no está atada, la herramienta fue construida incorrectamente.,Informe un error directamente en lugar de enviarlo en silencio.
         if (groupChatId.isBlank() || senderAssistantId.isBlank()) {
-            return "错误: 群聊工具未正确绑定(chatId/assistantId 为空)"
+            return "error: La herramienta de chat grupal no está vinculada correctamente(chatId/assistantId esta vacio)"
         }
         onReply(content)
-        return "已发送到群聊"
+        return "Enviado al chat grupal"
     }
 }

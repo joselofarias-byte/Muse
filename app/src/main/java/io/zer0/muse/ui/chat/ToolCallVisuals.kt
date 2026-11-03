@@ -8,27 +8,27 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * v1.0.80: 工具调用的视觉元数据 — 图标 + 人摘要 + 中文标签。
+ * v1.0.80: Metadatos visuales para llamadas a herramientas. — Icono + resumen de persona + etiqueta china.
  *
- * 把原来所有工具共用一个 Build/Check 图标的毛坯状态,换成每种工具自己的语义图标,
- * 并为折叠态生成一句"做了什么"的中文摘要,替代裸的工具名+前40字结果。
+ * Cambie el estado original del ícono Build/Check original que comparten todas las herramientas.,Reemplazado con el ícono semántico propio de cada herramienta.,
+ * y generar una oración para el estado plegado"que hizo"resumen chino de,Nombre de herramienta básica alternativa+antes40Resultados de palabras.
  *
- * 图标全部来自 Tabler Icons(项目已依赖);未命中的工具回退到通用扳手图标,不报错。
+ * Todos los iconos provienen de Tabler Icons(El proyecto depende de);Las herramientas perdidas vuelven al ícono de llave universal,No se informa ningún error.
  */
 internal object ToolCallVisuals {
 
-    /** 取工具图标(未命中回退为通用扳手)。 */
+    /** Obtener icono de herramienta(Señorita recurrir a la llave universal). */
     fun iconFor(toolName: String): ImageVector = mapping[toolName] ?: prefixIcon(toolName) ?: MuseIcons.wrench
 
-    /** 折叠态一句话摘要。I18N-01: 传入 res 走资源(zh+en 已入 strings_tools,其余语言分批)。 */
+    /** Un resumen de una frase del estado plegado.I18N-01: Pasar en res para obtener recursos.(zh+en Ya entré strings_tools,Otros idiomas en lotes). */
     fun summaryFor(toolName: String, arguments: String, result: String, isSuccess: Boolean, res: Resources? = null): String {
-        // v2.0.1: 失败时用「操作名 + 失败」语义 — 不再复用成功动词
-        // （用户反馈：审批超时的工具卡仍写着“写入了工作区 xxx”）。
+        // v2.0.1: Utilice la semántica "nombre de operación + error" cuando se produzca un error — Deja de reutilizar verbos de éxito
+        // (Comentarios de los usuarios: la tarjeta de herramientas para el tiempo de espera de aprobación todavía dice“Espacio de trabajo escrito xxx”).
         if (!isSuccess) {
             val failLabel = res?.let { r ->
                 labelIds[toolName]?.let { r.getString(it) }
             } ?: labels[toolName] ?: prettify(toolName)
-            // res==null 的兜底(非 Android 环境):仅返回标签,不带失败后缀。
+            // res==null El resultado final(Entorno no Android):Devolver solo etiquetas,Sin el sufijo de error.
             return res?.getString(R.string.tool_summary_failed, failLabel) ?: failLabel
         }
         val verb = res?.let { r ->
@@ -37,60 +37,60 @@ internal object ToolCallVisuals {
                 ?: r.getString(R.string.tool_summary_default_success)
         } ?: (successVerb[toolName] ?: prefixVerb(toolName) ?: defaultVerb(true))
         var obj = targetFor(toolName, arguments, result)
-        // v2.3.1: find_tools 未带 query 表示「列出全部工具」—— 兜底文案走资源;
-        // 在此处(而非 targetFor)取,避免改动 targetFor 签名导致 detekt 基线签名失配
+        // v2.3.1: find_tools Sin consulta, significa "enumerar todas las herramientas".—— Profundizando en recursos de redacción publicitaria;
+        // aquí(en vez de targetFor)tomar,Evite cambiar la firma targetFor, lo que causa una discrepancia en la firma de la línea base de Detekt.
         if (obj.isBlank() && toolName == "find_tools") {
             obj = res?.getString(R.string.tool_target_all_tools).orEmpty()
         }
         return if (obj.isBlank()) verb else "$verb $obj"
     }
 
-    /** 展开态工具标签(原来直接显示英文 toolName)。I18N-01: 同 [summaryFor]。 */
+    /** Etiqueta de herramienta ampliada(Resulta que el inglés se muestra directamente. toolName).I18N-01: Lo mismo [summaryFor]. */
     fun labelFor(toolName: String, res: Resources? = null): String {
         val localized = res?.let { r -> labelIds[toolName]?.let { id -> r.getString(id) } }
         return localized ?: labels[toolName] ?: prettify(toolName)
     }
 
     /**
-     * 终态摘要：超时与中断在折叠态直接可见。
+     * Resumen del estado final: los tiempos de espera y las interrupciones son directamente visibles en el estado colapsado.
      *
-     * 返回 null 表示结果不是编排器合成的终态，调用方应回退到 [summaryFor]。
+     * Devolver nulo indica que el resultado no es el estado final sintetizado por el orquestador, y la persona que llama debe recurrir a [summaryFor].
      */
     fun terminalSummaryFor(result: String, res: Resources? = null): String? {
         val text = result.trimStart()
         return when {
-            // I18N: 兜底只在 res==null(预览/纯函数)时触达,生产路径始终走资源
-            text.startsWith("[超时]") -> res?.getString(R.string.tool_terminal_timeout) ?: ""
-            text.startsWith("[中断]") -> res?.getString(R.string.tool_terminal_interrupted) ?: ""
+            // I18N: La conclusión es sólo res==null(Vista previa/función pura)tiempo para alcanzar,El camino de la producción siempre requiere recursos.
+            text.startsWith("[tiempo de espera]") -> res?.getString(R.string.tool_terminal_timeout) ?: ""
+            text.startsWith("[interrumpir]") -> res?.getString(R.string.tool_terminal_interrupted) ?: ""
             else -> null
         }
     }
 
-    // ── 图标映射 ─────────────────────────────────────────────────────────
+    // ── mapa de iconos ─────────────────────────────────────────────────────────
 
     private val mapping: Map<String, ImageVector> = mapOf(
-        // 搜索 / 知识
+        // Búsqueda / Conocimiento
         "web_search" to MuseIcons.globe,
         "search_memory" to MuseIcons.search,
         "pin_memory" to MuseIcons.star,
         "unpin_memory" to MuseIcons.star,
         "recall_experience" to MuseIcons.book,
         "record_experience" to MuseIcons.book,
-        // 文件 / 工作区
+        // Archivo/espacio de trabajo
         "read_file" to MuseIcons.file,
         "write_file" to MuseIcons.edit,
         "list_files" to MuseIcons.folder,
         "workspace_write" to MuseIcons.edit,
         "workspace_edit" to MuseIcons.edit,
         "workspace_read" to MuseIcons.file,
-        // 代码 / 终端
+        // código/terminal
         "execute_code" to MuseIcons.code,
         "execute_javascript" to MuseIcons.braces,
         "execute_node_script" to MuseIcons.terminal,
         "execute_shell" to MuseIcons.terminal,
         "run_command" to MuseIcons.terminal,
         "json_pretty" to MuseIcons.braces,
-        // 浏览器 / 网络
+        // Navegador/Web
         "open_url" to MuseIcons.browser,
         "browser_navigate" to MuseIcons.browser,
         "browser_click" to MuseIcons.browser,
@@ -100,11 +100,11 @@ internal object ToolCallVisuals {
         "dns_lookup" to MuseIcons.activity,
         "get_public_ip" to MuseIcons.globe,
         "download" to MuseIcons.download,
-        // 生成媒体
+        // Generar medios
         "generate_image" to MuseIcons.image,
         "generate_video" to MuseIcons.video,
         "cover_generation" to MuseIcons.image,
-        // 时间 / 日历 / 提醒
+        // Hora/Calendario/Recordatorio
         "get_current_time" to MuseIcons.clock,
         "calendar_today" to MuseIcons.calendar,
         "add_calendar_event" to MuseIcons.calendar,
@@ -119,7 +119,7 @@ internal object ToolCallVisuals {
         "scheduled_task_delete" to MuseIcons.calendar,
         "scheduled_task_execute" to MuseIcons.calendar,
         "scheduled_task_get_history" to MuseIcons.calendar,
-        // 系统 / 设备
+        // Sistema/Dispositivo
         "get_device_info" to MuseIcons.server,
         "get_battery_info" to MuseIcons.server,
         "get_storage_info" to MuseIcons.server,
@@ -143,7 +143,7 @@ internal object ToolCallVisuals {
         "toggle_flashlight" to MuseIcons.bulb,
         "vibrate" to MuseIcons.phone,
         "screen_time" to MuseIcons.clock,
-        // 电话 / 短信 / 联系人
+        // Teléfono/SMS/Contactos
         "make_phone_call" to MuseIcons.phone,
         "send_sms" to MuseIcons.chat,
         "get_contacts_count" to MuseIcons.users,
@@ -154,23 +154,23 @@ internal object ToolCallVisuals {
         "share_text" to MuseIcons.send,
         "send_email" to MuseIcons.mail,
         "get_recent_notifications" to MuseIcons.bell,
-        // 剪贴板
+        // portapapeles
         "clipboard_read" to MuseIcons.clipboard,
         "clipboard_write" to MuseIcons.clipboard,
-        // 便签
+        // Notas
         "quick_note_add" to MuseIcons.note,
         "quick_note_list" to MuseIcons.note,
         "quick_note_get" to MuseIcons.note,
         "quick_note_update" to MuseIcons.note,
         "quick_note_delete" to MuseIcons.note,
         "quick_note_pin" to MuseIcons.note,
-        // 资源 / 知识库
+        // Recursos/Base de conocimientos
         "resource_add" to MuseIcons.database,
         "resource_list" to MuseIcons.database,
         "resource_search" to MuseIcons.database,
         "resource_get" to MuseIcons.database,
         "resource_delete" to MuseIcons.database,
-        // 多 Agent / 委派
+        // Multiagente/Delegación
         "delegate_agent" to MuseIcons.hierarchy,
         "subagent_task" to MuseIcons.hierarchy,
         "subagent_run" to MuseIcons.hierarchy,
@@ -178,7 +178,7 @@ internal object ToolCallVisuals {
         "channel_pass" to MuseIcons.hierarchy,
         "channel_reply" to MuseIcons.hierarchy,
         "channel_read_context" to MuseIcons.hierarchy,
-        // 技能 / 插件 / MCP
+        // Habilidades/Complementos / MCP
         "skill_import" to MuseIcons.puzzle,
         "skill_run" to MuseIcons.puzzle,
         "plugin_market_search" to MuseIcons.search,
@@ -190,12 +190,12 @@ internal object ToolCallVisuals {
         "terminal_exec" to MuseIcons.terminal,
         "termux_exec" to MuseIcons.terminal,
         "mcp_tool" to MuseIcons.plug,
-        // 通知 / 主动消息 / 卡片
+        // Notificaciones/Mensajes activos/Tarjetas
         "notify" to MuseIcons.bell,
         "proactive_message_wish" to MuseIcons.wand,
         "show_card" to MuseIcons.wand,
         "current_status" to MuseIcons.info,
-        // 杂项
+        // Varios
         "calculator" to MuseIcons.calculator,
         "echo" to MuseIcons.chat,
         "translate" to MuseIcons.languages,
@@ -227,89 +227,89 @@ internal object ToolCallVisuals {
         else -> null
     }
 
-    // ── 动词 ─────────────────────────────────────────────────────────────
+    // ── verbo ─────────────────────────────────────────────────────────────
 
     private val successVerb: Map<String, String> = mapOf(
-        "web_search" to "搜索了网页",
-        "search_memory" to "检索了记忆",
-        "pin_memory" to "置顶了记忆",
-        "unpin_memory" to "取消置顶记忆",
-        "read_file" to "读取了文件",
-        "write_file" to "写入了文件",
-        "list_files" to "列出了文件",
-        "workspace_write" to "写入了工作区",
-        "execute_code" to "执行了代码",
-        "execute_javascript" to "执行了脚本",
-        "execute_shell" to "执行了命令",
-        "run_command" to "运行了命令",
-        "open_url" to "打开了网页",
-        "generate_image" to "生成了图片",
-        "generate_video" to "生成了视频",
-        "get_current_time" to "查询了时间",
-        "calendar_today" to "查看了日历",
-        "add_calendar_event" to "添加了日历事件",
-        "schedule_reminder" to "设置了提醒",
-        "cancel_reminder" to "取消了提醒",
-        "list_reminders" to "列出了提醒",
-        "set_alarm" to "设置了闹钟",
-        "set_timer" to "启动了计时器",
-        "get_device_info" to "读取了设备信息",
-        "get_battery_info" to "读取了电量",
-        "get_storage_info" to "读取了存储",
-        "get_memory_info" to "读取了内存",
-        "get_cpu_info" to "读取了 CPU",
-        "get_network_info" to "读取了网络",
-        "list_installed_apps" to "列出了应用",
-        "open_app" to "打开了应用",
-        "make_phone_call" to "拨打电话",
-        "send_sms" to "发送了短信",
-        "get_contacts_list" to "读取了联系人",
-        "add_contact" to "添加了联系人",
-        "get_location" to "获取了位置",
-        "open_maps" to "打开了地图",
-        "share_text" to "分享了文本",
-        "send_email" to "发送了邮件",
-        "get_recent_notifications" to "读取了通知",
-        "clipboard_read" to "读取了剪贴板",
-        "clipboard_write" to "写入了剪贴板",
-        "quick_note_add" to "新建了便签",
-        "quick_note_list" to "列出了便签",
-        "quick_note_get" to "读取了便签",
-        "quick_note_update" to "更新了便签",
-        "quick_note_delete" to "删除了便签",
-        "quick_note_pin" to "置顶了便签",
-        "resource_add" to "添加了资源",
-        "resource_list" to "列出了资源",
-        "resource_search" to "检索了资源",
-        "resource_get" to "读取了资源",
-        "resource_delete" to "删除了资源",
-        "delegate_agent" to "委派了子助手",
-        "subagent_task" to "启动了子任务",
-        "subagent_run" to "运行了子任务",
-        "subagent_close" to "关闭了子任务",
-        "notify" to "发送了通知",
-        "proactive_message_wish" to "记下了主动消息",
-        "show_card" to "展示了卡片",
-        "current_status" to "查询了状态",
-        "calculator" to "计算",
-        "translate" to "翻译",
-        "speak_text" to "朗读了文本",
-        "get_weather" to "查询了天气",
-        "todo_write" to "更新了待办",
-        "ping_host" to "Ping 了主机",
-        "dns_lookup" to "DNS 查询",
-        "get_public_ip" to "查询了公网 IP",
-        "download" to "下载了文件",
-        "json_pretty" to "格式化了 JSON",
-        "hash_text" to "计算了哈希",
-        "generate_password" to "生成了密码",
-        "record_experience" to "记录了经历",
-        "recall_experience" to "回想了经历",
-        "take_photo" to "拍了照片",
-        "cover_generation" to "生成了封面",
+        "web_search" to "Busqué en la web",
+        "search_memory" to "memoria recuperada",
+        "pin_memory" to "Memoria fijada",
+        "unpin_memory" to "Cancelar memoria fijada",
+        "read_file" to "leer archivo",
+        "write_file" to "Archivo escrito",
+        "list_files" to "archivos listados",
+        "workspace_write" to "Espacio de trabajo escrito",
+        "execute_code" to "código ejecutado",
+        "execute_javascript" to "Guión ejecutado",
+        "execute_shell" to "Ejecutó el comando",
+        "run_command" to "ejecutó el comando",
+        "open_url" to "Abrió la página web.",
+        "generate_image" to "imagen generada",
+        "generate_video" to "Vídeo generado",
+        "get_current_time" to "consultar la hora",
+        "calendar_today" to "Calendario visto",
+        "add_calendar_event" to "Evento de calendario agregado",
+        "schedule_reminder" to "Conjunto de recordatorio",
+        "cancel_reminder" to "Recordatorio cancelado",
+        "list_reminders" to "Recordatorios enumerados",
+        "set_alarm" to "alarma configurada",
+        "set_timer" to "temporizador iniciado",
+        "get_device_info" to "Leer información del dispositivo",
+        "get_battery_info" to "Leer el nivel de la batería",
+        "get_storage_info" to "Leer el almacenamiento",
+        "get_memory_info" to "leer memoria",
+        "get_cpu_info" to "leer CPU",
+        "get_network_info" to "leer la red",
+        "list_installed_apps" to "Aplicaciones enumeradas",
+        "open_app" to "Abrió la aplicación",
+        "make_phone_call" to "hacer una llamada",
+        "send_sms" to "mensaje de texto enviado",
+        "get_contacts_list" to "Leer el contacto",
+        "add_contact" to "Contacto añadido",
+        "get_location" to "Tengo ubicación",
+        "open_maps" to "Abrió el mapa",
+        "share_text" to "texto compartido",
+        "send_email" to "Correo electrónico enviado",
+        "get_recent_notifications" to "Notificación leída",
+        "clipboard_read" to "lectura del portapapeles",
+        "clipboard_write" to "Escrito en el portapapeles",
+        "quick_note_add" to "Creó una nueva nota",
+        "quick_note_list" to "Notas enumeradas",
+        "quick_note_get" to "leer la nota",
+        "quick_note_update" to "Nota actualizada",
+        "quick_note_delete" to "Nota eliminada",
+        "quick_note_pin" to "nota fijada",
+        "resource_add" to "Recursos agregados",
+        "resource_list" to "recursos enumerados",
+        "resource_search" to "Recursos recuperados",
+        "resource_get" to "Lectura de recursos",
+        "resource_delete" to "Recurso eliminado",
+        "delegate_agent" to "Sub-Asistente Delegado",
+        "subagent_task" to "Subtarea iniciada",
+        "subagent_run" to "subtarea ejecutada",
+        "subagent_close" to "Subtarea cerrada",
+        "notify" to "Notificación enviada",
+        "proactive_message_wish" to "Anota el mensaje proactivo",
+        "show_card" to "tarjeta mostrada",
+        "current_status" to "Comprobado el estado",
+        "calculator" to "calcular",
+        "translate" to "Traducción",
+        "speak_text" to "leer texto en voz alta",
+        "get_weather" to "comprobó el clima",
+        "todo_write" to "Tareas pendientes actualizadas",
+        "ping_host" to "Ping anfitrión",
+        "dns_lookup" to "DNS Consulta",
+        "get_public_ip" to "Consultar la red pública IP",
+        "download" to "Archivo descargado",
+        "json_pretty" to "formateado JSON",
+        "hash_text" to "hash calculado",
+        "generate_password" to "Contraseña generada",
+        "record_experience" to "experiencias registradas",
+        "recall_experience" to "Recordando la experiencia",
+        "take_photo" to "tomó fotos",
+        "cover_generation" to "Portada generada",
     )
 
-    // I18N-01: 动词资源 ID(生产路径优先；successVerb 为 res==null 兜底的存量文案,新增工具只登记资源;es/ko/ja/pt/ru 翻译分批补齐)。
+    // I18N-01: recursos verbales ID(La vía de producción tiene prioridad;successVerb para res==null Redacción de textos publicitarios consecutivos,Las nuevas herramientas solo registran recursos;es/ko/ja/pt/ru La traducción se completa en lotes.).
     private val successVerbIds: Map<String, Int> = mapOf(
         "web_search" to R.string.tool_summary_web_search,
         "search_memory" to R.string.tool_summary_search_memory,
@@ -401,19 +401,19 @@ internal object ToolCallVisuals {
     )
 
     private fun prefixVerb(toolName: String): String? = when {
-        toolName.startsWith("browser_") -> "操作了浏览器"
-        toolName.startsWith("workspace_") -> "操作了工作区"
-        toolName.startsWith("scheduled_task_") -> "管理了定时任务"
-        toolName.startsWith("quick_note_") -> "管理了便签"
-        toolName.startsWith("resource_") -> "管理了资源"
-        toolName.startsWith("subagent_") -> "管理了子任务"
-        toolName.startsWith("channel_") -> "管理了频道"
-        toolName.startsWith("clipboard_") -> "操作了剪贴板"
-        toolName.startsWith("mcp_") -> "调用了 MCP 工具"
+        toolName.startsWith("browser_") -> "Operado el navegador"
+        toolName.startsWith("workspace_") -> "Trabajó en el espacio de trabajo."
+        toolName.startsWith("scheduled_task_") -> "Tareas programadas gestionadas"
+        toolName.startsWith("quick_note_") -> "notas administradas"
+        toolName.startsWith("resource_") -> "recursos gestionados"
+        toolName.startsWith("subagent_") -> "Subtareas gestionadas"
+        toolName.startsWith("channel_") -> "Canal administrado"
+        toolName.startsWith("clipboard_") -> "Portapapeles operado"
+        toolName.startsWith("mcp_") -> "herramienta MCP llamada"
         else -> null
     }
 
-    // I18N-01: 前缀动词资源 ID(与 prefixVerb 一一对应)。
+    // I18N-01: Recursos verbales de prefijo ID(Correspondencia uno a uno con prefijoVerbo).
     private fun prefixVerbId(toolName: String): Int? = when {
         toolName.startsWith("browser_") -> R.string.tool_summary_prefix_browser
         toolName.startsWith("workspace_") -> R.string.tool_summary_prefix_workspace
@@ -427,9 +427,9 @@ internal object ToolCallVisuals {
         else -> null
     }
 
-    private fun defaultVerb(isSuccess: Boolean) = if (isSuccess) "调用了工具" else "工具调用失败"
+    private fun defaultVerb(isSuccess: Boolean) = if (isSuccess) "Herramienta llamada" else "Falló la llamada a la herramienta"
 
-    // ── 目标对象(从参数或结果里抠出关键词) ───────────────────────────────
+    // ── público objetivo(Extraer palabras clave de parámetros o resultados) ───────────────────────────────
 
     private fun targetFor(toolName: String, arguments: String, result: String): String {
         val args = parseArgs(arguments)
@@ -524,49 +524,49 @@ internal object ToolCallVisuals {
         return if (one.length > 40) one.take(40) + "…" else one
     }
 
-    // ── 中文标签 ─────────────────────────────────────────────────────────
+    // ── etiqueta china ─────────────────────────────────────────────────────────
 
     private val labels: Map<String, String> = mapOf(
-        "web_search" to "网页搜索",
-        "search_memory" to "记忆检索",
-        "read_file" to "读取文件",
-        "write_file" to "写入文件",
-        "list_files" to "列出文件",
-        "execute_code" to "代码执行",
-        "execute_javascript" to "脚本执行",
-        "execute_shell" to "Shell 命令",
-        "open_url" to "打开网页",
-        "generate_image" to "图像生成",
-        "generate_video" to "视频生成",
-        "get_current_time" to "当前时间",
-        "calendar_today" to "查看日历",
-        "schedule_reminder" to "提醒",
-        "set_alarm" to "闹钟",
-        "set_timer" to "计时器",
-        "get_device_info" to "设备信息",
-        "list_installed_apps" to "应用列表",
-        "open_app" to "打开应用",
-        "make_phone_call" to "拨打电话",
-        "send_sms" to "发送短信",
-        "get_location" to "获取位置",
-        "clipboard_read" to "读取剪贴板",
-        "clipboard_write" to "写入剪贴板",
-        "quick_note_add" to "新建便签",
-        "quick_note_list" to "便签列表",
-        "delegate_agent" to "委派子助手",
-        "subagent_task" to "子任务",
-        "notify" to "发送通知",
-        "calculator" to "计算器",
-        "translate" to "翻译",
-        "speak_text" to "语音朗读",
-        "get_weather" to "天气查询",
+        "web_search" to "búsqueda web",
+        "search_memory" to "recuperación de memoria",
+        "read_file" to "leer archivo",
+        "write_file" to "escribir archivo",
+        "list_files" to "Listar archivos",
+        "execute_code" to "ejecución de código",
+        "execute_javascript" to "Ejecución de script",
+        "execute_shell" to "Shell comando",
+        "open_url" to "Abrir página web",
+        "generate_image" to "generación de imágenes",
+        "generate_video" to "generación de vídeo",
+        "get_current_time" to "hora actual",
+        "calendar_today" to "Ver calendario",
+        "schedule_reminder" to "recordatorio",
+        "set_alarm" to "despertador",
+        "set_timer" to "minutero",
+        "get_device_info" to "Información del dispositivo",
+        "list_installed_apps" to "Lista de aplicaciones",
+        "open_app" to "Abrir aplicación",
+        "make_phone_call" to "hacer una llamada",
+        "send_sms" to "Enviar SMS",
+        "get_location" to "Obtener ubicación",
+        "clipboard_read" to "leer portapapeles",
+        "clipboard_write" to "Escribir en el portapapeles",
+        "quick_note_add" to "Crear nueva nota",
+        "quick_note_list" to "Lista de notas",
+        "delegate_agent" to "Delegar subayudantes",
+        "subagent_task" to "subtarea",
+        "notify" to "Enviar notificación",
+        "calculator" to "calculadora",
+        "translate" to "Traducción",
+        "speak_text" to "Lectura de voz",
+        "get_weather" to "Consulta meteorológica",
         "ping_host" to "Ping",
-        "dns_lookup" to "DNS 查询",
-        "mcp_tool" to "MCP 工具",
-        "show_card" to "展示卡片",
+        "dns_lookup" to "DNS Consulta",
+        "mcp_tool" to "MCP Herramientas",
+        "show_card" to "mostrar tarjeta",
     )
 
-    // I18N-01: 标签资源 ID(生产路径优先;labels 为 res==null 兜底的存量文案,新增工具只登记资源)。
+    // I18N-01: Etiquetar recursos ID(Prioridad de la ruta de producción;labels para res==null Redacción de textos publicitarios consecutivos,Las nuevas herramientas solo registran recursos).
     private val labelIds: Map<String, Int> = mapOf(
         "web_search" to R.string.tool_label_web_search,
         "search_memory" to R.string.tool_label_search_memory,

@@ -3,10 +3,10 @@ package io.zer0.muse.miniphone.data.db
 import androidx.room.TypeConverter
 
 /**
- * Room 枚举 ↔ 文本列的转换。
+ * Room enumeración ↔ Conversión de columnas de texto.
  *
- * 库里存小写字符串(而不是序号),便于直接看 SQL、也便于跨版本增删枚举项;
- * 反序列化遇到未知值一律退回该枚举的首项,保证旧库里读到脏值时不崩。
+ * Almacenar cadenas en minúsculas en la biblioteca(en lugar del número de serie),Es conveniente leer SQL directamente y agregar y eliminar elementos de enumeración entre versiones.;
+ * Cuando la deserialización encuentra un valor desconocido, se devolverá el primer elemento de la enumeración.,Asegúrese de que la biblioteca antigua no falle cuando se lean valores sucios.
  */
 class MpConverters {
     @TypeConverter

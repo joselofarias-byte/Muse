@@ -32,21 +32,21 @@ internal suspend fun protectWeClawCursor(cursor: String): String =
 internal suspend fun restoreWeClawCursor(storedCursor: String): String {
     if (storedCursor.isBlank()) return ""
     val plaintext = SecureKeyStore.decryptOrNull(storedCursor)
-        ?: error("无法解密 WeClaw 同步游标")
+        ?: error("No se puede descifrar el cursor de sincronización de WeClaw")
     return when {
         plaintext.startsWith(WECLAW_CURSOR_PREFIX) -> plaintext.removePrefix(WECLAW_CURSOR_PREFIX)
-        storedCursor.startsWith("enc_v1:") -> error("WeClaw 同步游标密文格式不匹配")
+        storedCursor.startsWith("enc_v1:") -> error("WeClaw El formato de texto cifrado del cursor de sincronización no coincide")
         else -> plaintext
     }
 }
 
 /**
- * v2.0: 微信 ClawBot(iLink)接收器 — 长轮询循环。
+ * v2.0: WeChat ClawBot(iLink)receptor — Ciclo de votación largo.
  *
- * 存在启用中的 WECLAW 渠道时循环调用 getupdates(长轮询约 30s):
- * 用户消息写入 [ChannelInbox](触发自动回复链路),context_token 写入
- * 加密暂存于 inbox 直到派发完成,同时更新 [WeClawContextCache] 供其他回发路径使用。
- * 配置保存/删除后由 UI 调用 [restart]。
+ * Llamado cíclicamente cuando hay un canal WECLAW habilitado getupdates(encuesta larga 30s):
+ * Escritura de mensajes de usuario [ChannelInbox](Activar enlace de respuesta automática),context_token escribir
+ * El cifrado se almacena temporalmente en la bandeja de entrada hasta que se complete la distribución.,Actualizar simultáneamente [WeClawContextCache] Para uso en otras rutas de devolución de datos.
+ * Guardar configuración/Llamado por UI después de la eliminación [restart].
  */
 class WeClawReceiver(
     private val channelManager: ChannelManager,
@@ -57,21 +57,21 @@ class WeClawReceiver(
     private data class PollCursor(val channelId: String = "", val buffer: String = "")
 
     /**
-     * 启动入口:先按持久化配置判定一次,再跟随后续的渠道变化起停。
+     * iniciar el portal:Primero determine de acuerdo con la configuración de persistencia.,Luego siga los cambios de canal posteriores para iniciar y detener.
      *
-     * 只有存在启用中的 WECLAW 渠道时才起接收循环 —— 老实现无条件 [restart],没有渠道时
-     * 循环以 30 秒为周期空转,每次都要往调试日志里写一条「无渠道」。
+     * El bucle de recepción solo comienza si hay un canal WECLAW activo —— Implementación anterior incondicional [restart],Cuando no hay canal
+     * El bucle se inactivo cada 30 segundos,Cada vez, se debe escribir un mensaje "Sin canal" en el registro de depuración.
      *
-     * [ChannelManager.channels] 是 [kotlinx.coroutines.flow.StateFlow],但进程刚起来时
-     * 还没读过持久化配置(值是空列表),所以先 [ChannelManager.refresh] 再判定;
-     * 就在调用方的启动协程里读,不另开线程。
+     * [ChannelManager.channels] si [kotlinx.coroutines.flow.StateFlow],Pero cuando el proceso comenzó
+     * Aún no he leído sobre la configuración de persistencia(el valor es una lista vacía),Entonces primero [ChannelManager.refresh] Rejuicio;
+     * Simplemente léelo en la rutina de inicio de la persona que llama.,No abras otro hilo.
      */
     suspend fun startForEnabledChannels() {
         channelManager.refresh()
         applyAvailability(weClawChannelAvailable(channelManager.channels.value))
         appScope.launch {
-            // 渠道增删/启停后跟着起停。StateFlow 只在值真的变化时回调,
-            // 而 pollLoop 每轮 refresh() 出来的列表内容没变就不会触发这里。
+            // Adición y eliminación de canales/Iniciar y detener seguido de iniciar y detener.StateFlow Sólo devolución de llamada cuando el valor realmente cambia,
+            // Y sondear en bucle cada ronda. refresh() Si el contenido de la lista que sale no ha cambiado, esto no se activará.
             channelManager.channels.collect { channels ->
                 applyAvailability(weClawChannelAvailable(channels))
             }
@@ -79,11 +79,11 @@ class WeClawReceiver(
     }
 
     /**
-     * 按「是否存在启用中的 WECLAW 渠道」起停。
+     * Haga clic en "Si hay un canal WECLAW activo" para iniciar y detener.
      *
-     * 只在「该跑」与「正在跑」不一致时动手,这就是防自触发的那道判断:[stop] 之后渠道并没有
-     * 变化,同一份值不会把循环重新拉起来。停用再启用依旧收得到消息 —— 渠道变回「有启用渠道」
-     * 就是一次状态转移,会走到 [restart];[pollLoop] 里的 30 秒兜底仍然保留作第二道保险。
+     * Solo tome medidas cuando "debería ejecutarse" y "ejecutarse" sean inconsistentes,Este es el juicio para evitar la autodesencadenamiento:[stop] Después de eso, el canal no
+     * cambiar,El mismo valor no iniciará el ciclo nuevamente. Deshabilite y habilite nuevamente y aún reciba el mensaje —— El canal vuelve a cambiar a "canal habilitado".
+     * es una transferencia estatal,irá [restart];[pollLoop] El bolsillo interior de 30 segundos todavía está reservado como segunda capa de seguro.
      */
     @Synchronized
     private fun applyAvailability(available: Boolean) {
@@ -94,7 +94,7 @@ class WeClawReceiver(
         }
     }
 
-    /** 启动轮询(幂等;已有循环先停再起)。 */
+    /** Empezar a sondear(idempotente;Existe un ciclo de detenerse y luego comenzar de nuevo.). */
     @Synchronized
     fun restart() {
         job?.cancel()
@@ -104,7 +104,7 @@ class WeClawReceiver(
         }
     }
 
-    /** 停止轮询(App 关闭或渠道被删时)。 */
+    /** dejar de sondear(App Cuando el canal se cierra o se elimina). */
     @Synchronized
     fun stop() {
         job?.cancel()
@@ -113,8 +113,8 @@ class WeClawReceiver(
 
     private suspend fun pollLoop() {
         var cursor = PollCursor()
-        // 上一轮是否找到可用渠道。只在状态变化时记日志：老实现每 30 秒打一条「无渠道」，
-        // 6 小时能占满半份调试日志，把真正要看的东西埋掉。
+        // Si se encontraron canales disponibles en la ronda anterior. Registre solo cuando cambie el estado: la implementación anterior registra un "sin canal" cada 30 segundos.
+        // 6 Puede ocupar la mitad del registro de depuración cada hora, enterrando lo que realmente necesita ser visto.
         var lastAvailable: Boolean? = null
         while (currentCoroutineContext().isActive) {
             channelManager.refresh()
@@ -123,8 +123,8 @@ class WeClawReceiver(
             channelAvailabilityLog(available, lastAvailable)?.let { Logger.i(TAG, it) }
             lastAvailable = available
             if (config == null) {
-                // v2.6.7 fix (AUDIT F17): 不要 return —— 旧实现让整个接收 job 终结且无人重启，
-                // 用户停用再启用渠道后就再也收不到消息，直到重启 App 或再点一次保存。
+                // v2.6.7 fix (AUDIT F17): no lo hagas return —— La implementación anterior permitía que todo el trabajo de recepción finalizara sin que nadie lo reiniciara.
+                // Después de que el usuario desactive y vuelva a habilitar el canal, ya no recibirá mensajes hasta que reinicie la aplicación o haga clic en Guardar nuevamente.
                 delay(30_000L)
                 continue
             }
@@ -163,7 +163,7 @@ class WeClawReceiver(
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {
-        Logger.w(TAG, "WeClaw 更新未能可靠入队,保留轮询游标: ${error.message}")
+        Logger.w(TAG, "WeClaw La actualización no pudo ponerse en cola de manera confiable,Mantener el cursor de sondeo: ${error.message}")
         delay(RETRY_DELAY_MS)
         previousCursor
     }
@@ -184,9 +184,9 @@ class WeClawReceiver(
     }
 
     /**
-     * v2.0.1: 媒体消息处理 — 图片下载(CDN + AES 解密)并压缩入库;
-     * 语音使用服务端转写(parseMessages 已填充);
-     * v2.x (B4): 视频/文件下载到私有目录并记录本地路径(文本占位升级为含文件名/路径)。
+     * v2.0.1: Procesamiento de mensajes multimedia — Descarga de imagen(CDN + AES Descifrar)Y comprimirlo en la base de datos.;
+     * Discurso mediante transcripción del lado del servidor(parseMessages Lleno);
+     * v2.x (B4): vídeo/Descargue el archivo a un directorio privado y registre la ruta local(El marcador de posición de texto se actualiza para incluir el nombre del archivo./camino).
      */
     private suspend fun handleMediaMessage(msg: WeClawClient.InboundMsg, media: WeClawClient.MediaRef, source: ChannelInbox.Source) {
         val from = source.from
@@ -199,39 +199,39 @@ class WeClawReceiver(
                 if (base64 != null) {
                     ChannelInbox.record(
                         source = source,
-                        text = "[图片]",
+                        text = "[fotos]",
                         rawPayload = "",
                         media = ChannelInbox.Media(kind = "image", base64 = base64),
                     )
                 } else {
-                    Logger.w(TAG, "图片下载或解码失败(from=$from)")
+                    Logger.w(TAG, "Error al descargar o decodificar la imagen(from=$from)")
                     ChannelInbox.record(
                         source,
-                        "[图片(未能获取)]",
+                        "[fotos(No se pudo obtener)]",
                         "",
                     )
                 }
             }
             "voice" -> {
-                // iLink 语音自带服务端 ASR 转写;无转写时给占位。
+                // iLink La voz viene con transcripción ASR del lado del servidor;Se proporciona un marcador de posición cuando no hay traducción.
                 ChannelInbox.record(
                     source,
-                    msg.text.ifBlank { "[语音]" },
+                    msg.text.ifBlank { "[Voz]" },
                     "",
                 )
             }
-            // v2.x (B4): 视频/文件 — 下载 + 落盘 + 记录(含文件名与路径)
-            "video" -> handleBinaryMedia(media, source, kind = "video", label = "[视频]")
-            else -> handleBinaryMedia(media, source, kind = "file", label = "[文件]")
+            // v2.x (B4): vídeo/Archivo — Descargar + colocar + grabar(Contiene el nombre del archivo y la ruta.)
+            "video" -> handleBinaryMedia(media, source, kind = "video", label = "[vídeo]")
+            else -> handleBinaryMedia(media, source, kind = "file", label = "[Archivo]")
         }
     }
 
     /**
-     * v2.x (B4): 视频/文件入站 — 下载并解密到 [MEDIA_DIR],记录含文件名与本地路径。
+     * v2.x (B4): vídeo/Archivo entrante — Descargar y descifrar en [MEDIA_DIR],El registro contiene el nombre del archivo y la ruta local.
      *
-     * v2.x 遗留收尾:改为**流式**下载(边下边写文件),不再一次性读入内存;
-     * [MAX_MEDIA_SAVE_BYTES] 保护在流内生效(超出立即中止并删除半成品)。
-     * 失败/超限/超时降级为占位文本(不抛异常,不阻断后续轮询)。
+     * v2.x cierre del legado:Cambiar a**transmisión**Descargar(Escribe el archivo mientras escribes.),Ya no lee en la memoria todo a la vez;
+     * [MAX_MEDIA_SAVE_BYTES] La protección entra en vigor dentro de la secuencia(Cancelar y eliminar inmediatamente el trabajo en curso).
+     * falló/por encima del límite/Tiempo de espera reducido a texto de marcador de posición(No lanzar excepción,No bloquear encuestas posteriores).
      */
     @Suppress("TooGenericExceptionCaught") // Cleanup must run for every persistence failure after a media file is created.
     private suspend fun handleBinaryMedia(
@@ -251,10 +251,10 @@ class WeClawReceiver(
             WeClawClient.downloadMediaToFile(media, target, MAX_MEDIA_SAVE_BYTES)
         }
         if (result == null) {
-            Logger.w(TAG, "媒体下载超时(kind=$kind, from=$from)")
+            Logger.w(TAG, "Tiempo de espera de descarga de medios(kind=$kind, from=$from)")
             ChannelInbox.record(
                 source,
-                "$label(未能获取)",
+                "$label(No se pudo obtener)",
                 "",
                 media = ChannelInbox.Media(kind = kind),
             )
@@ -264,18 +264,18 @@ class WeClawReceiver(
         if (written == null) {
             val error = result.exceptionOrNull()
             if (error is MediaTooLargeException) {
-                Logger.w(TAG, "媒体超出大小上限(kind=$kind, from=$from)")
+                Logger.w(TAG, "Los medios exceden el límite de tamaño(kind=$kind, from=$from)")
                 ChannelInbox.record(
                     source,
-                    "$label(超出大小上限 ${MAX_MEDIA_SAVE_BYTES / 1024 / 1024}MB,未落盘)",
+                    "$label(Límite de tamaño excedido ${MAX_MEDIA_SAVE_BYTES / 1024 / 1024}MB,Aún no colocado)",
                     "",
                     ChannelInbox.Media(kind = kind),
                 )
             } else {
-                Logger.w(TAG, "媒体下载失败(kind=$kind, from=$from, err=${error?.message})")
+                Logger.w(TAG, "Falló la descarga de medios(kind=$kind, from=$from, err=${error?.message})")
                 ChannelInbox.record(
                     source,
-                    "$label(未能获取)",
+                    "$label(No se pudo obtener)",
                     "",
                     media = ChannelInbox.Media(kind = kind),
                 )
@@ -303,25 +303,25 @@ class WeClawReceiver(
     companion object {
         private const val TAG = "WeClawReceiver"
 
-        /** 出错重试退避(毫秒)。 */
+        /** Error al volver a intentar retroceder(milisegundos). */
         private const val RETRY_DELAY_MS = 5_000L
 
-        /** v2.0.1: 媒体下载超时(毫秒)。 */
+        /** v2.0.1: Tiempo de espera de descarga de medios(milisegundos). */
         private const val MEDIA_DOWNLOAD_TIMEOUT_MS = 60_000L
 
-        /** v2.x (B4): 视频/文件落盘目录(私有 filesDir 下)。 */
+        /** v2.x (B4): vídeo/Directorio de ubicación de archivos(en archivos privadosDir). */
         private const val MEDIA_DIR = "channel_media"
 
-        /** v2.x (B4): 视频/文件落盘大小上限(32MB),超出仅记录占位。 */
+        /** v2.x (B4): vídeo/Límite de tamaño de archivo(32MB),Más allá de simplemente registrar marcadores de posición. */
         private const val MAX_MEDIA_SAVE_BYTES = 32L * 1024 * 1024
     }
 }
 
 /**
- * 渠道可用性 + 当前是否在跑 → 该怎么做什么。
+ * Disponibilidad del canal + si se está ejecutando actualmente → Qué hacer.
  *
- * 「两边一致就 NONE」是防自触发的全部秘密:stop 之后渠道没变,同一份值再进来也是 NONE,
- * 不会把刚停掉的循环重新拉起来;真要重新拉起,只能等渠道配置真的变回「有启用渠道」。
+ * "Si ambas partes están de acuerdo, NINGUNO" es todo el secreto para evitar la autodesencadenamiento:stop El canal no ha cambiado desde entonces.,El mismo valor vuelve a entrar. NONE,
+ * No reiniciará el ciclo que acaba de detenerse.;Realmente necesito levantarlo de nuevo.,Sólo nos queda esperar hasta que la configuración del canal realmente cambie a "canales habilitados".
  */
 internal fun weClawPollAction(available: Boolean, running: Boolean): WeClawPollAction = when {
     available && !running -> WeClawPollAction.START
@@ -329,18 +329,18 @@ internal fun weClawPollAction(available: Boolean, running: Boolean): WeClawPollA
     else -> WeClawPollAction.NONE
 }
 
-/** [weClawPollAction] 的三种结果。 */
+/** [weClawPollAction] de tres resultados. */
 internal enum class WeClawPollAction { START, STOP, NONE }
 
-/** 这条渠道配置能不能撑起 WECLAW 长轮询(enabled + 平台匹配 + 有密钥)。 */
+/** ¿Puede esta configuración de canal admitir sondeos largos de WECLAW?(enabled + Coincidencia de plataforma + tiene clave). */
 private fun ChannelConfig.isUsableWeClaw(): Boolean =
     enabled && platform == ChannelPlatform.WECLAW && appSecret.isNotBlank()
 
 /**
- * 渠道列表里有没有能跑 WECLAW 长轮询的那一条。
+ * ¿Existe alguna lista de canales que pueda ejecutar encuestas largas de WECLAW?
  *
- * 抽成纯函数是为了让「启动门禁」可以被单测直接喂假配置,而不是只能靠真机验证:
- * 空列表、只有停用渠道、密钥为空、平台不是 WECLAW 都不该把接收循环拉起来。
+ * El propósito de extraer funciones puras es permitir que el "control de acceso de activación" se alimente directamente con configuraciones falsas mediante pruebas únicas.,En lugar de depender de la verificación de una máquina real:
+ * Una lista vacía, solo canales deshabilitados, una clave vacía o una plataforma que no sea WECLAW no deberían desencadenar un bucle de recepción.
  */
 internal fun weClawChannelAvailable(channels: List<ChannelConfig>): Boolean = channels.any { it.isUsableWeClaw() }
 
@@ -356,23 +356,23 @@ private fun sanitizeWeClawFileName(raw: String): String = raw.substringAfterLast
     .take(120)
 
 /**
- * 渠道可用性变化时该记的那一条日志;不需要记就返回 null。
+ * ¿Qué registro se debe registrar cuando cambia la disponibilidad del canal?;Devuelve nulo si no es necesario recordarlo.
  *
- * 接收循环必须每 30 秒重试一次(见 [WeClawReceiver.pollLoop] 里的 v2.6.7 注释),
- * 所以「无渠道」是个会长期重复的状态,而不是一个事件。把它当事件记一次,
- * 状态真正变化时才再记 —— 既保留「什么时候开始收不到」这个关键时间点,
- * 也不会让日志被同一句话刷屏。
+ * El bucle de recepción debe reintentar cada 30 segundos.(ver [WeClawReceiver.pollLoop] v2.6.7 comentarios en),
+ * Por tanto, "sin canales" es un estado que se repetirá durante mucho tiempo.,en lugar de un evento. Recuérdalo como un evento.,
+ * Recuerde solo cuando el estado realmente cambie —— También conserva el momento clave de "¿cuándo empezaré a no recibirlo?",
+ * Tampoco se inundará el diario con la misma frase.
  *
- * @param hasChannel 本轮是否找到了可用渠道
- * @param previousHasChannel 上一轮的结果;null 表示这是循环的第一轮
- * @return 本条日志文本;null 表示状态未变、不该记
+ * @param hasChannel ¿Se ha encontrado un canal disponible en esta ronda?
+ * @param previousHasChannel Resultados de la ronda anterior;null Indica que esta es la primera ronda del ciclo.
+ * @return El texto de este registro.;null Indica que el estado no ha cambiado y no debe registrarse.
  */
 internal fun channelAvailabilityLog(hasChannel: Boolean, previousHasChannel: Boolean?): String? = when {
-    previousHasChannel == null && hasChannel -> "接收循环启动,当前有可用渠道"
-    previousHasChannel == null -> "无启用中的 ClawBot 渠道,30 秒后重试"
+    previousHasChannel == null && hasChannel -> "recibir inicio de ciclo,Actualmente hay canales disponibles."
+    previousHasChannel == null -> "No hay canales activos de ClawBot,30 Vuelve a intentarlo en segundos"
     previousHasChannel == hasChannel -> null
-    hasChannel -> "渠道恢复,继续接收"
-    else -> "无启用中的 ClawBot 渠道,30 秒后重试"
+    hasChannel -> "recuperación de canal,seguir recibiendo"
+    else -> "No hay canales activos de ClawBot,30 Vuelve a intentarlo en segundos"
 }
 
 internal fun weClawBatchEventId(requestBuffer: String, responseBuffer: String, index: Int, message: WeClawClient.InboundMsg): String {

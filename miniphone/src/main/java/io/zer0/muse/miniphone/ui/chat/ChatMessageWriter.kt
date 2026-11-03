@@ -11,16 +11,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * 消息落库的唯一入口:写库、刷新会话预览、把新消息交回界面。
- * 用户文本、图片、角色回复三处写入都走这条路,先后由 [writeMutex] 兜住。
- * 翻页读游标也借用这把闸:倒序窗口的游标是「已加载条数」,
- * 读游标与查询之间插进一条新消息,那一页就会和前页重一条、再漏一条更早的。
+ * La única entrada al almacenamiento de mensajes.:Escriba la base de datos, actualice la vista previa de la sesión y devuelva nuevos mensajes a la interfaz.
+ * Esta es la forma de escribir texto de usuario, imágenes y respuestas de personajes.,sucesivamente por [writeMutex] Esperar.
+ * El cursor para pasar páginas también utiliza esta puerta.:El cursor de la ventana de orden inverso es "número de artículos cargados",
+ * Insertar un nuevo mensaje entre el cursor de lectura y la consulta,Esa página tendrá la misma página que la página anterior y perderá una página anterior.
  *
- * @param now 时间源,默认取系统时钟;测试用它钉死 `createdAt`
- * @param newId 主键生成器,默认 UUID;测试用它让消息 id 可预期
- * @param onStored 属于本会话的消息落地后回调,参数是界面要追加的那一行
- * @param onStatusChanged 发送状态改写后回调:库里与界面上那一行必须同时变
- * @param onDeleted 本机删掉一条后回调
+ * @param now fuente de tiempo,El valor predeterminado es el reloj del sistema;prueba clavada con eso `createdAt`
+ * @param newId generador de clave primaria,Predeterminado UUID;Utilice esto para realizar pruebas y hacer que los identificadores de mensajes sean predecibles.
+ * @param onStored Devolución de llamada después de que llegue el mensaje perteneciente a esta sesión,El parámetro es la línea que se agregará a la interfaz.
+ * @param onStatusChanged Devolución de llamada después de enviar reescritura de estado:La biblioteca y la línea en la interfaz deben cambiar al mismo tiempo.
+ * @param onDeleted Devolución de llamada después de que la máquina elimine un elemento
  */
 internal class ChatMessageWriter(
     private val threadId: String,
@@ -33,16 +33,16 @@ internal class ChatMessageWriter(
     private val onDeleted: (messageId: String) -> Unit = {},
 ) {
 
-    /** 落库与翻页共用的闸。 */
+    /** Una puerta común para dejar caer y pasar páginas. */
     private val writeMutex = Mutex()
 
     /**
-     * 落一条消息:库里、会话预览、界面列表三处一起更新。
+     * dejar un mensaje:La biblioteca, la vista previa de la sesión y la lista de interfaces se actualizan juntas.
      *
-     * 只有属于本会话的才交回界面 —— 图片种子方法允许写别的会话,那边由别的 ViewModel 列。
+     * Sólo aquellos pertenecientes a esta sesión volverán a la interfaz —— El método de semilla de imagen permite escribir otras sesiones.,Hay otras columnas de ViewModel.
      *
-     * @param message 待落的整条消息;用户发出的话先以「发送中」落库,拿到结果后再改
-     * @return 新消息的 id,调用方用它跟踪状态
+     * @param message El mensaje completo se eliminará.;Si el usuario lo envía, primero se iniciará sesión como "Enviando".,Cámbialo después de obtener el resultado.
+     * @return nuevas noticias id,Utilizado por personas que llaman para rastrear el estado
      */
     suspend fun append(message: ChatOutgoingMessage): String {
         val entity = message.toEntity(id = newId(), createdAt = now())
@@ -56,7 +56,7 @@ internal class ChatMessageWriter(
         return entity.id
     }
 
-    /** 改一条消息的发送状态:库里与界面上那一行一起改,不存在一边新一边旧。 */
+    /** Cambiar el estado de envío de un mensaje:Curry y la línea en la interfaz se cambian juntos.,No hay un lado que sea nuevo y otro que sea viejo. */
     suspend fun updateStatus(messageId: String, status: MpMessageStatus) {
         writeMutex.withLock {
             messageDao.updateStatus(messageId, status)
@@ -64,7 +64,7 @@ internal class ChatMessageWriter(
         }
     }
 
-    /** 本机删一条:只动消息表,会话行的预览与时间保持在删除前的样子。 */
+    /** Eliminar uno localmente:Mueve solo la tabla de mensajes.,La vista previa y la hora de la fila de la sesión permanecen como estaban antes de la eliminación. */
     suspend fun delete(messageId: String) {
         writeMutex.withLock {
             messageDao.deleteMessage(messageId)
@@ -72,15 +72,15 @@ internal class ChatMessageWriter(
         }
     }
 
-    /** 在同一把闸里读一段消息:游标、查询、写回界面必须是连续的一步。 */
+    /** Leer un mensaje en la misma puerta.:La interfaz de cursor, consulta y reescritura debe ser un paso continuo. */
     suspend fun <R> withWriteLock(block: suspend () -> R): R = writeMutex.withLock { block() }
 }
 
 /**
- * 一条待落库的消息。
+ * Un mensaje esperando ser dejado en la biblioteca.
  *
- * 把「写一条消息需要知道的全部字段」合成一个值:字段与表一一对应,
- * 各个调用方只管把手里那份填满,不用记住八参数调用的顺序。
+ * Combine "todos los campos que necesita saber para escribir un mensaje" en un solo valor:Correspondencia uno a uno entre campos y tablas.,
+ * Cada persona que llama simplemente llena su parte,No es necesario recordar el orden de ocho llamadas a parámetros.
  */
 @Immutable
 internal data class ChatOutgoingMessage(
@@ -93,7 +93,7 @@ internal data class ChatOutgoingMessage(
     val voiceDurationMs: Long? = null,
     val status: MpMessageStatus = MpMessageStatus.SENT,
 ) {
-    /** 添上主键与时间,变成要写进表的整行。 */
+    /** Agregar clave principal y hora,se convierte en la fila completa que se escribirá en la tabla. */
     fun toEntity(id: String, createdAt: Long): MpMessageEntity = MpMessageEntity(
         id = id,
         threadId = threadId,

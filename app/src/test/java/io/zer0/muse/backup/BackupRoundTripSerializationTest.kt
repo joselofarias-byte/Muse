@@ -17,13 +17,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * P0-10 ① 验收:round-trip 备份恢复测试 — 此前缺失的实体(6 会话域 + Diary + 6 用户表)
- * 经 Backup 序列化 → 反序列化后字段完整往返,不丢数据。
+ * P0-10 ① Aceptación:round-trip Prueba de recuperación de copia de seguridad — entidad previamente desaparecida(6 Dominio de sesión + Diario + Tabla de 6 usuarios)
+ * Serializado mediante copia de seguridad → Viaje de ida y vuelta completo de campos después de la deserialización.,No se pierde ningún dato.
  *
- * 说明:BackupService 依赖多个 Room DB/Context,单测层用 Backup 结构体的
- * 序列化 round-trip 验证(与 BackupKeyExclusionTest 同层级);DB 落库路径
- * 由 applyBackupInternal / applyNdJsonStreaming 的对称断言(导入侧同字段)
- * 与实体覆盖测试共同保证。
+ * Descripción:BackupService Depende de múltiples Room DB/Context,La capa de prueba única utiliza la estructura de respaldo
+ * Validación de ida y vuelta serializada(Mismo nivel que BackupKeyExclusionTest);DB Camino de caída
+ * Aserción simétrica por applyBackupInternal / applyNdJsonStreaming(Importar campos laterales)
+ * Garantizado conjuntamente con pruebas de cobertura de la entidad.
  */
 class BackupRoundTripSerializationTest {
 
@@ -33,18 +33,18 @@ class BackupRoundTripSerializationTest {
     fun `P0-10 entities round trip without data loss`() {
         val quickNote = QuickNoteEntity(
             id = "qn1",
-            title = "标题",
-            content = "内容",
+            title = "Título",
+            content = "contenido",
             tags = listOf("a", "b"),
-            folder = "工作",
+            folder = "trabajo",
             contentType = "markdown",
             attachmentsJson = "[]",
         )
         val worldBook = WorldBookEntryEntity(
             id = "wb1",
-            name = "条目",
-            content = "正文",
-            keywordsJson = """["关键词"]""",
+            name = "entrada",
+            content = "Texto",
+            keywordsJson = """["palabras clave"]""",
             alwaysActive = true,
             scanDepth = 5,
         )
@@ -66,13 +66,13 @@ class BackupRoundTripSerializationTest {
             messageId = "m1",
             partIndex = 0,
             kind = "text",
-            text = "正文",
+            text = "Texto",
             createdAt = 100L,
         )
         val outbox = MessageOutboxEntity(
             id = "o1",
             sessionId = "s1",
-            text = "待发",
+            text = "Listo para ir",
             userMessageId = "m1",
             assistantMessageId = "m2",
             createdAt = 100L,
@@ -80,11 +80,11 @@ class BackupRoundTripSerializationTest {
         val translate = TranslateHistoryEntity(
             id = "tr1",
             sourceText = "hello",
-            translatedText = "你好",
+            translatedText = "Hola",
             sourceLanguage = "en",
             targetLanguage = "zh",
         )
-        val kb = KnowledgeBaseEntity(id = "kb1", name = "知识库", description = "d")
+        val kb = KnowledgeBaseEntity(id = "kb1", name = "base de conocimientos", description = "d")
         val thread = SubagentThreadEntity(
             threadId = "th1",
             parentSessionId = "s1",
@@ -106,7 +106,7 @@ class BackupRoundTripSerializationTest {
             id = "gm1",
             groupChatId = "g1",
             assistantId = "a1",
-            summary = "摘要",
+            summary = "Resumen",
         )
 
         val backup = BackupService.Backup(
@@ -150,14 +150,14 @@ class BackupRoundTripSerializationTest {
         val todo = io.zer0.muse.data.todo.SessionTodoEntity(
             id = "todo1",
             sessionId = "s1",
-            todosJson = """[{"content":"写方案","status":"pending"}]""",
+            todosJson = """[{"content":"escribir plan","status":"pending"}]""",
             hasOpenItems = true,
             createdAt = 100L,
             updatedAt = 200L,
         )
         val relationship = io.zer0.muse.data.relationship.AssistantRelationshipEntity(
             assistantId = "a1",
-            relationLabel = "朋友",
+            relationLabel = "amigos",
             affinity = 42,
             lastInteractionAt = 300L,
             proactiveLevel = "normal",
@@ -178,12 +178,12 @@ class BackupRoundTripSerializationTest {
         )
 
         assertEquals(todo, restored.sessionTodos.single())
-        assertEquals("角色关系此前只导出不恢复，换机后亲密度全丢 —— 这条锁住恢复侧", relationship, restored.assistantRelationships.single())
+        assertEquals("Las relaciones de los personajes se exportaron previamente pero no se restauraron, y toda la intimidad se perdió después de cambiar de dispositivo. —— Esto bloquea el lado de recuperación.", relationship, restored.assistantRelationships.single())
     }
 
     @Test
     fun `empty P0-10 fields serialize as absent for old backups`() {
-        // 旧备份无新字段 → 反序列化默认空列表,hasAnyData 不受影响
+        // La copia de seguridad anterior no tiene campos nuevos → Deserializar la lista vacía predeterminada,hasAnyData no afectado
         val oldStyle = """{"version":3,"exportedAt":1,"sessions":[],"messages":[]}"""
         val restored = json.decodeFromString(BackupService.Backup.serializer(), oldStyle)
         assertEquals(emptyList<TranslateHistoryEntity>(), restored.translateHistories)

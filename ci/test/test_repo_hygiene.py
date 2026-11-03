@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-test_repo_hygiene.py — check_repo_hygiene.py 的单元测试。
+test_repo_hygiene.py — check_repo_hygiene.py pruebas unitarias.
 
-重点回归 v2.6.1 收紧的冲突标记正则:
-  - 真实 Git 冲突标记(恰好 7 个字符 + 行尾/空格)必须命中;
-  - markdown 的 `====` 分隔线、`----` 下划线等不应被误判(旧写法 `^={7}` 会假红)。
+Centrarse en devolver las reglas de marcado de conflictos más estrictas v2.6.1:
+  - Banderas de conflicto reales de Git(Exactamente 7 caracteres + final de línea/espacio)debe golpear;
+  - markdown de `====` línea divisoria,`----` Los guiones bajos, etc. no deben juzgarse mal(antigua forma de escribir `^={7}` Será rojo falso).
 
-运行: py -3 ci/test/test_repo_hygiene.py
+correr: py -3 ci/test/test_repo_hygiene.py
 """
 
 import sys
@@ -19,59 +19,59 @@ from check_repo_hygiene import CONFLICT_PATTERN
 
 
 def _has_conflict(text: str) -> bool:
-    """给定文本是否含冲突标记。"""
+    """Si el texto dado contiene marcadores de conflicto."""
     return bool(CONFLICT_PATTERN.search(text))
 
 
 def test_real_conflict_markers_detected():
-    """三种真实冲突标记都应命中。"""
+    """Los tres verdaderos marcadores de conflicto deberían aparecer."""
     assert _has_conflict("<<<<<<< HEAD")
     assert _has_conflict("=======")
     assert _has_conflict(">>>>>>> feature/branch")
-    # 冲突标记行首 + 后续内容
+    # Inicio de línea de marca de conflicto + contenido posterior
     assert _has_conflict("<<<<<<< HEAD\nsome code\n=======\nother\n>>>>>>> other")
 
 
 def test_conflict_marker_with_trailing_space_detected():
-    """标记后可跟空格(部分工具会补尾随空格)。"""
+    """La marca puede ir seguida de un espacio.(Algunas herramientas rellenarán los espacios finales)."""
     assert _has_conflict("<<<<<<< HEAD   ")
 
 
 def test_markdown_separators_not_detected():
-    """markdown 分隔线不应被误判为冲突标记(v2.6.1 修复的假红)。"""
-    # release_verification.txt 标题下划线这类
-    assert not _has_conflict("Muse v2.6.1 构建校验\n============================\n")
-    assert not _has_conflict("标题\n====\n")
-    assert not _has_conflict("标题\n==========\n")
+    """markdown Los divisores no deben confundirse con marcadores de conflicto(v2.6.1 Rojo falso fijo)."""
+    # release_verification.txt Título subrayado y similares.
+    assert not _has_conflict("Muse v2.6.1 Verificación de compilación\n============================\n")
+    assert not _has_conflict("Título\n====\n")
+    assert not _has_conflict("Título\n==========\n")
 
 
 def test_dashes_and_other_runs_not_detected():
-    """其它连续符号(非 < / = / > 的 7 连)不应命中。"""
+    """Otros símbolos consecutivos(no < / = / > La séptima compañía)No debería golpear."""
     assert not _has_conflict("--------")
     assert not _has_conflict("########")
     assert not _has_conflict("*" * 20)
 
 
 def test_shorter_or_longer_runs_not_detected():
-    """少于 7 个不算;多于 7 个且后接非空白也不算(需紧跟空格/行尾)。"""
+    """Menos de 7 no cuenta;Más de 7 seguidos de espacios que no estén en blanco no cuentan.(Debe ir seguido de un espacio./final de línea)."""
     assert not _has_conflict("<<<<<<")
-    # 8 个 < 后接文字 —— 不是标准标记形态
+    # 8 un < seguido de texto —— No es un formulario de marca estándar
     assert not _has_conflict("<<<<<<<<x")
 
 
 def test_embedded_marker_not_detected():
-    """行中出现的符号序列不应命中(必须行首)。"""
+    """La secuencia de símbolos que aparecen en la línea no debe coincidir(debe comenzar con)."""
     assert not _has_conflict("code = a <<<<<<< b")
 
 
 def test_each_pattern_kind_detected():
-    """三种前缀各自独立命中。"""
+    """Cada uno de los tres prefijos aparece de forma independiente."""
     for marker in ("<<<<<<<", "=======", ">>>>>>>"):
-        assert _has_conflict(marker), f"应命中: {marker}"
+        assert _has_conflict(marker), f"Golpea el objetivo: {marker}"
 
 
 def run_all_tests():
-    """运行所有测试并报告结果。"""
+    """Ejecute todas las pruebas e informe los resultados."""
     tests = [
         test_real_conflict_markers_detected,
         test_conflict_marker_with_trailing_space_detected,

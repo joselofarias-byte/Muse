@@ -1,44 +1,44 @@
 #!/usr/bin/env python3
 """
-check_font_scale_clipping.py — A11Y-03 大字体裁切护栏。
+check_font_scale_clipping.py — A11Y-03 Barandilla con corte tipo letra grande.
 
-扫描 app/src/main 的 UI 源码中对 `.height(<N>.dp)` 的**固定高度**用法：当
-N >= MIN_RISK_DP(32) 且该 Modifier 所在容器内有文本可渲染内容（Text /
-BasicText / stringResource / label / title / subtitle 等）、且不是媒体占位
-（Image / AsyncImage / Canvas / Icon 容器）时计为 1 处「大字体裁切风险」。
+Escanee el código fuente de la interfaz de usuario de app/src/main para `.height(<N>.dp)` de**altura fija**Uso: cuando
+N >= MIN_RISK_DP(32) Y hay contenido de texto renderizable en el contenedor donde se encuentra el Modificador (Text /
+BasicText / stringResource / label / title / subtitle etc.) y no es un marcador de posición de medios
+(Image / AsyncImage / Canvas / Icon Contenedor) se cuenta como 1 "riesgo de recorte de fuente grande".
 
-为什么拦:
-  固定高度在系统字体放大(1.3x / 1.5x,Android 无障碍「大字体」)时不会随文本
-  增长,文字被裁掉或与相邻元素重叠;正确的写法是 `heightIn(min = N.dp)`
-  —— 保底高度不变,文本放大时容器一起长高。项目已有大量 heightIn(min=) 用法
-  (MuseChip / MuseCapsuleTab / ChatScreen 等)可作范例。
+¿Por qué parar?:
+  Altura fija cuando se amplían las fuentes del sistema(1.3x / 1.5x,Android Accesibilidad "Fuente grande")no irá acompañado de texto
+  crecimiento,El texto está recortado o se superpone a elementos adyacentes.;La forma correcta de escribirlo es `heightIn(min = N.dp)`
+  —— La altura mínima se mantiene sin cambios.,El contenedor crece a medida que se amplía el texto. Hay una gran cantidad de proyectos. heightIn(min=) Uso
+  (MuseChip / MuseCapsuleTab / ChatScreen espera)Se puede utilizar como ejemplo.
 
-识别口径（每处计 1 次）:
-  1. 形如 `.height(48.dp)` 的修饰符调用；`heightIn(` 不计,`Spacer` 行不计
-     （间距不承载文本,放大字号无害）。
-  2. N >= MIN_RISK_DP；再小的固定高度是图标/圆点/分割线/胶囊,不涉及文字裁切。
-  3. 规则 B(同为大字体/无界高度风险):`heightIn(min = …)` **没有 max** 且其后 12 行内
-     出现 `.fillMaxSize()` —— 子项会请求父级最大高度,在无界父容器(顶栏插槽、Scaffold)
-     里会撑满整屏。1.3x 走查实测:聊天顶栏中岛因此长到 1608px,页面内容被挤出屏幕。
-     带 max 的 heightIn(min=…, max=…) 不在此列(已限上界)。
-  4. 向容器体内看 TEXT_FORWARD 行必须有文本标记（否则只是相邻组件的文字）；
-     在「前 MEDIA_LOOKBACK 行 + 后 MEDIA_FORWARD 行」内出现媒体标记则按媒体
-     处理（图片头图上的标题属于覆盖层、滑块/图表容器的高度由 Canvas 或图片
-     决定,都不随字号撑高）。
-  注释中的提及不计（strip_comments 与 check_component_convergence.py 同一套）。
+Identificar calibre (contado 1 vez por cada ubicación):
+  1. en forma de `.height(48.dp)` llamada modificadora;`heightIn(` no cuentes,`Spacer` No importa lo que pase
+     (Gap no lleva texto,No hay nada de malo en aumentar el tamaño de la fuente).
+  2. N >= MIN_RISK_DP;La altura fija más pequeña es el icono/puntos/línea divisoria/cápsula,No se requiere ningún recorte de texto.
+  3. reglas B(Igual que fuente grande/Alto riesgo ilimitado):`heightIn(min = …)` **No max** y dentro de las 12 líneas siguientes
+     aparecer `.fillMaxSize()` —— El niño solicitará la altura máxima del padre.,en contenedor principal ilimitado(Ranura de barra superior,Scaffold)
+     llenará toda la pantalla.1.3x Medición real guiada:Como resultado, la isla en la barra superior del chat ha crecido hasta 1608px,El contenido de la página se elimina de la pantalla.
+     con máximo heightIn(min=…, max=…) No en esta lista(Ya limitado al límite superior.).
+  4. Mirando dentro del cuerpo del contenedor, la línea TEXT_FORWARD debe tener un marcado de texto (de lo contrario, es solo el texto del componente adyacente);
+     Si la etiqueta multimedia aparece en "antes de la línea MEDIA_LOOKBACK + después de la línea MEDIA_FORWARD", presione la etiqueta multimedia
+     Procesamiento (el título en el encabezado de la imagen pertenece a la superposición, control deslizante/La altura del contenedor del gráfico está determinada por el lienzo o la imagen.
+     decidir,No aumenta con el tamaño de la fuente).
+  Las menciones en comentarios no cuentan (strip_comments Mismo conjunto que check_component_convergence.py).
 
-基线机制:
-  - 默认对比 ci/font_scale_clipping_baseline.json：逐文件处数不得高于基线,
-    总数只减不升;基线文件缺失 = 失败(fail closed)。
-  - --update-baseline 重写基线;默认拒绝写入上升条目,需 --allow-increase。
-  - 消除一处风险后运行 --update-baseline 收紧,门禁随改造变严。
+mecanismo de referencia:
+  - Comparación predeterminada ci/font_scale_clipping_baseline.json: el número archivo por archivo no debe ser mayor que la línea base,
+    El total solo disminuirá pero no aumentará.;Falta el archivo de referencia = falló(fail closed).
+  - --update-baseline Reescribir la línea base;Denegar escritura de entradas ascendentes por defecto,Requiere --allow-increase.
+  - Después de eliminar un riesgo, ejecute --update-baseline para ajustarlo,El control de acceso se ha vuelto más estricto con la renovación.
 
-已知局限:
-  - 纯词法启发式,无法识别 `LocalDensity` 换算或自定义 Layout 的裁切
-  - 不覆盖 XML 布局与 material3/common 模块的设计系统实现
-  - `.size(N.dp)` / `.requiredHeight(N.dp)` 不在统计内（前者多见于图标与头像）
+Limitaciones conocidas:
+  - Heurística léxica pura,no reconocido `LocalDensity` Convertir o personalizar el recorte del diseño
+  - No cubre la implementación del sistema de diseño y diseño XML de material3/módulo común
+  - `.size(N.dp)` / `.requiredHeight(N.dp)` No incluido en estadísticas (el primero es más común en íconos y avatares)
 
-用法:
+Uso:
   py -3 ci/script/check_font_scale_clipping.py
   py -3 ci/script/check_font_scale_clipping.py --verbose
   py -3 ci/script/check_font_scale_clipping.py --update-baseline [--allow-increase]
@@ -66,7 +66,7 @@ MEDIA_FORWARD = 40
 MEDIA_LOOKBACK = 12
 
 HEIGHT_RE = re.compile(r"\.height\(\s*([0-9]+(?:\.[0-9]+)?)\.dp\s*\)")
-# 规则 B:只匹配**没有** max 的 heightIn(min=…);带 max 说明作者已限定上界
+# Regla B: Sólo partido**No** max de heightIn(min=…);Con max, significa que el autor ha limitado el límite superior
 HEIGHTIN_MIN_ONLY_RE = re.compile(r"\.heightIn\(\s*min\s*=\s*[0-9.]+(?:\.dp)?\s*\)")
 TEXT_RE = re.compile(
     r"\bText\(|BasicText|stringResource|label\s*=|title\s*=|subtitle\s*=|placeholder\s*="
@@ -78,7 +78,7 @@ MEDIA_RE = re.compile(
 
 @dataclass
 class FileScan:
-    """单个 UI 文件的固定高度风险统计。file 为项目根相对 posix 路径。"""
+    """Se corrigieron estadísticas de alto riesgo para archivos de interfaz de usuario individuales.file Una ruta posix relativa a la raíz del proyecto."""
 
     file: str
     occurrences: int = 0
@@ -89,7 +89,7 @@ class FileScan:
 
 
 def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
-    """剔除块/行注释,字符串字面量原样保留（与 check_component_convergence.py 一致）。"""
+    """bloque de sacrificio/Comentarios de línea,Los literales de cadena se dejan intactos (de conformidad con check_component_convergence.py)."""
     out: list[str] = []
     i = 0
     n = len(line)
@@ -130,16 +130,16 @@ def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
 
 
 def scan_file(path: Path, rel: str) -> FileScan:
-    """统计一个 .kt 文件里「承载文本的固定高度」处数。"""
+    """Cuente el número de "alturas fijas para transportar texto" en un archivo .kt."""
     scan = FileScan(file=rel)
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as e:
-        print(f"WARN: 无法读取 {path}: {e}", file=sys.stderr)
+        print(f"WARN: No puedo leer {path}: {e}", file=sys.stderr)
         return scan
 
-    # 先剥注释,再统计;上下文判断同样基于剥注释后的文本,避免注释里的
-    # 「Text(」或「Image(」误判。
+    # Quita los comentarios primero,Estadísticas de nuevo;El juicio contextual también se basa en el texto después de eliminar los comentarios.,Evite comentarios
+    # 「Text(" o "Image("Error de juicio.
     code_lines: list[str] = []
     in_block = False
     for line in lines:
@@ -154,13 +154,13 @@ def scan_file(path: Path, rel: str) -> FileScan:
         value = float(m.group(1))
         if value < MIN_RISK_DP or "Spacer" in code:
             continue
-        # 细线/分隔条(width 0.5~2dp)不承载文本,高度固定无害
+        # linea delgada/tira separadora(width 0.5~2dp)No lleva texto,Altamente fijo e inofensivo.
         nearby = "\n".join(code_lines[max(0, i - 3) : i + 1])
         if re.search(r"\.width\(\s*(?:0\.5|1|2)\.dp\s*\)", nearby):
             continue
-        # 文本必须在紧邻的容器体内(前 TEXT_FORWARD 行),否则只是相邻组件里的文字;
-        # 媒体窗口更宽(前 MEDIA_LOOKBACK 行 + 后 MEDIA_FORWARD 行):滑块轨道、图表
-        # 容器的高度由 Canvas/图片决定,头图上的标题遮罩也属媒体覆盖层,都不随字号撑高。
+        # El texto debe estar dentro del cuerpo del contenedor inmediato.(Las primeras líneas TEXT_FORWARD),De lo contrario, es sólo el texto del componente adyacente.;
+        # Ventana multimedia más amplia(antes de las líneas MEDIA_LOOKBACK + después de las líneas MEDIA_FORWARD):Pistas deslizantes, gráficos
+        # La altura del contenedor está determinada por Canvas/Imagen.,La máscara de título en la imagen del encabezado también es una superposición multimedia.,No aumenta según el tamaño de fuente.
         body = "\n".join(code_lines[i : i + TEXT_FORWARD])
         if not TEXT_RE.search(body):
             continue
@@ -170,22 +170,22 @@ def scan_file(path: Path, rel: str) -> FileScan:
         scan.occurrences += 1
         scan.details.append(f"L{i + 1}: height({m.group(1)}.dp)")
 
-    # 规则 B:heightIn(min=…) 无上界 + 子项 fillMaxSize()
+    # reglas B:heightIn(min=…) Límite infinito + niños fillMaxSize()
     for i, code in enumerate(code_lines):
         if not HEIGHTIN_MIN_ONLY_RE.search(code):
             continue
         if ".fillMaxSize()" in "\n".join(code_lines[i + 1 : i + 13]):
             scan.unbounded += 1
-            scan.unbounded_details.append(f"L{i + 1}: heightIn(min=…) 无 max + 子项 fillMaxSize()")
+            scan.unbounded_details.append(f"L{i + 1}: heightIn(min=…) Sin máximo + niños fillMaxSize()")
 
     return scan
 
 
 def scan_roots(root: Path) -> list[FileScan]:
-    """扫描所有 UI 根目录,返回**所有含固定高度**的文件（按路径排序）。
+    """Escanee todos los directorios raíz de la interfaz de usuario,Regresar**Todo con altura fija**archivos (ordenados por ruta).
 
-    返回全集而非仅命中集,以便报告如实给出「固定高度总数 / 其中承载文本的风险数」;
-    基线只使用 occurrences > 0 的子集。
+    Devolver el conjunto completo en lugar de solo el conjunto de resultados,Para que el informe pueda dar con veracidad "el número total de alturas fijas / el número de riesgos que lleva el texto";
+    Usos solo de referencia occurrences > 0 subconjunto.
     """
     results: list[FileScan] = []
     seen: set[str] = set()
@@ -203,7 +203,7 @@ def scan_roots(root: Path) -> list[FileScan]:
                 results.append(scan)
     if not seen:
         raise FileNotFoundError(
-            "UI 源码目录不存在: " + ", ".join((root / r).as_posix() for r in SCAN_ROOTS)
+            "UI El directorio del código fuente no existe.: " + ", ".join((root / r).as_posix() for r in SCAN_ROOTS)
         )
     results.sort(key=lambda s: s.file)
     return results
@@ -216,14 +216,14 @@ def load_baseline(path: Path) -> dict:
 
 
 def evaluate(current: list[FileScan], baseline: dict) -> tuple[list[str], list[str]]:
-    """对比当前扫描与基线,返回 (failures, improvements)。"""
+    """Comparar la exploración actual con la línea de base,Regresar (failures, improvements)."""
     failures: list[str] = []
     improvements: list[str] = []
 
     if baseline.get("min_risk_dp") is not None and int(baseline["min_risk_dp"]) != MIN_RISK_DP:
         failures.append(
-            f"  基线 min_risk_dp={baseline['min_risk_dp']} 与脚本 {MIN_RISK_DP} 不一致 ——"
-            f"识别口径已变化,请复核后 --update-baseline 重新落基线"
+            f"  línea de base min_risk_dp={baseline['min_risk_dp']} con guión {MIN_RISK_DP} inconsistente ——"
+            f"El calibre de identificación ha cambiado.,Revise y utilice --update-baseline para volver a establecer la línea de base"
         )
 
     base_files = {k: int(v) for k, v in (baseline.get("files") or {}).items()}
@@ -232,44 +232,44 @@ def evaluate(current: list[FileScan], baseline: dict) -> tuple[list[str], list[s
     for scan in current:
         u_allowed = base_unbounded.get(scan.file, 0)
         if scan.unbounded > u_allowed:
-            kind = "新增文件" if scan.file not in base_unbounded else "高于基线"
+            kind = "Agregar nuevo archivo" if scan.file not in base_unbounded else "por encima de la línea de base"
             failures.append(
-                f"  {scan.file}: 无界 heightIn 当前 {scan.unbounded} 处 > 基线 {u_allowed} 处 "
+                f"  {scan.file}: Altura ilimitada en la actualidad {scan.unbounded} en > línea de base {u_allowed} en "
                 f"({kind}) {scan.unbounded_details}"
             )
         elif scan.unbounded < u_allowed:
-            improvements.append(f"  {scan.file}: 无界 heightIn {u_allowed} → {scan.unbounded}")
+            improvements.append(f"  {scan.file}: ilimitado heightIn {u_allowed} → {scan.unbounded}")
 
         allowed = base_files.get(scan.file, 0)
         if scan.occurrences > allowed:
-            kind = "新增文件" if scan.file not in base_files else "高于基线"
+            kind = "Agregar nuevo archivo" if scan.file not in base_files else "por encima de la línea de base"
             failures.append(
-                f"  {scan.file}: 当前 {scan.occurrences} 处 > 基线 {allowed} 处 ({kind}) "
+                f"  {scan.file}: actual {scan.occurrences} en > línea de base {allowed} en ({kind}) "
                 f"{scan.details}"
             )
         elif scan.occurrences < allowed:
             improvements.append(f"  {scan.file}: {allowed} → {scan.occurrences}")
 
     for gone in sorted(set(base_files) - {s.file for s in current}):
-        improvements.append(f"  {gone}: 已清零")
+        improvements.append(f"  {gone}: Borrado")
     for gone in sorted(set(base_unbounded) - {s.file for s in current}):
-        improvements.append(f"  {gone}: 无界 heightIn 已清零")
+        improvements.append(f"  {gone}: Altura ilimitadaEn borrado")
 
     cur_unbounded = sum(s.unbounded for s in current)
     base_unbounded_total = int((baseline.get("totals") or {}).get("unbounded", 0))
     if cur_unbounded > base_unbounded_total:
-        failures.append(f"  无界 heightIn 总处数: 当前 {cur_unbounded} > 基线 {base_unbounded_total}")
+        failures.append(f"  Altura ilimitadaEn número total de posiciones: actual {cur_unbounded} > línea de base {base_unbounded_total}")
 
     cur_total = sum(s.occurrences for s in current)
     base_total = int((baseline.get("totals") or {}).get("occurrences", 0))
     if cur_total > base_total:
-        failures.append(f"  总处数: 当前 {cur_total} > 基线 {base_total}")
+        failures.append(f"  Número total de casos: actual {cur_total} > línea de base {base_total}")
 
     return failures, improvements
 
 
 def update_baseline(path: Path, current: list[FileScan], allow_increase: bool) -> int:
-    """用当前扫描结果重写基线;默认拒绝写入上升条目（只降不升）。"""
+    """Sobrescribir la línea de base con los resultados del análisis actual;De forma predeterminada, se deniega la escritura de entradas ascendentes (solo descendentes pero no ascendentes)."""
     old = load_baseline(path)
     old_files = {k: int(v) for k, v in (old.get("files") or {}).items()}
     old_unbounded = {k: int(v) for k, v in (old.get("unbounded") or {}).items()}
@@ -279,23 +279,23 @@ def update_baseline(path: Path, current: list[FileScan], allow_increase: bool) -
         if s.occurrences > old_files.get(s.file, 0)
     ]
     increases += [
-        f"  {s.file}: 无界 heightIn {old_unbounded.get(s.file, 0)} → {s.unbounded}"
+        f"  {s.file}: ilimitado heightIn {old_unbounded.get(s.file, 0)} → {s.unbounded}"
         for s in current
         if s.unbounded > old_unbounded.get(s.file, 0)
     ]
     if increases and old and not allow_increase:
-        print("[font-scale-clipping] 拒绝写回: 以下条目高于现有基线(只降不升)")
+        print("[font-scale-clipping] Negarse a responder: Las siguientes entradas están por encima de la línea base existente(Solo cayendo pero no subiendo)")
         for line in increases:
             print(line)
-        print("先把固定高度改成 heightIn(min = …) 或去掉高度;确需保留请显式加 --allow-increase 并说明理由。")
+        print("Primero cambie la altura fija a heightIn(min = …) o quitar la altura;Si realmente necesita conservarlo, agregue explícitamente --allow-increase y explique el motivo.")
         return 1
 
     total = sum(s.occurrences for s in current)
     payload = {
         "note": (
-            "A11Y-03 大字体裁切基线。只允许下降: 基线外的新文件或处数高于本文件即失败。"
-            "改造后运行 py -3 ci/script/check_font_scale_clipping.py --update-baseline 收紧"
-            "(默认拒绝写入上升值,需 --allow-increase)。"
+            "A11Y-03 Las fuentes grandes recortan la línea base. solo se permite descender: Los archivos nuevos fuera de la línea base o los archivos con un número mayor que este archivo fallarán."
+            "Después de la transformación, ejecute py -3 ci/script/check_font_scale_clipping.py --update-baseline para ajustar"
+            "(Denegar escritura de valor ascendente por defecto,necesidad --allow-increase)."
         ),
         "scan_roots": [r.as_posix() for r in SCAN_ROOTS],
         "min_risk_dp": MIN_RISK_DP,
@@ -313,26 +313,26 @@ def update_baseline(path: Path, current: list[FileScan], allow_increase: bool) -
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
-        f"[font-scale-clipping] 基线已更新: {path} "
-        f"({len(current)} 个文件 / {total} 处固定高度承载文本)"
+        f"[font-scale-clipping] Línea base actualizada: {path} "
+        f"({len(current)} archivos / {total} Mantener texto a una altura fija)"
     )
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="A11Y-03 大字体裁切护栏检查")
-    parser.add_argument("--root", type=Path, default=PROJECT_ROOT, help="项目根(测试可用 fixture)")
-    parser.add_argument("--baseline", type=Path, default=None, help="基线 JSON 路径")
-    parser.add_argument("--update-baseline", action="store_true", help="用当前扫描结果重写基线")
-    parser.add_argument("--allow-increase", action="store_true", help="更新基线时允许写入上升值")
-    parser.add_argument("--verbose", action="store_true", help="打印每个文件的明细")
+    parser = argparse.ArgumentParser(description="A11Y-03 Inspección de barandillas de fuente grande")
+    parser.add_argument("--root", type=Path, default=PROJECT_ROOT, help="raíz del proyecto(Pruebas disponibles fixture)")
+    parser.add_argument("--baseline", type=Path, default=None, help="Ruta JSON de referencia")
+    parser.add_argument("--update-baseline", action="store_true", help="Sobrescribir la línea de base con los resultados del análisis actual")
+    parser.add_argument("--allow-increase", action="store_true", help="Permitir la escritura de valores crecientes al actualizar la línea base")
+    parser.add_argument("--verbose", action="store_true", help="Imprimir detalles de cada archivo")
     args = parser.parse_args()
     baseline_path = args.baseline or (args.root / BASELINE_REL)
 
     try:
         current = scan_roots(args.root)
     except FileNotFoundError as e:
-        print(f"[font-scale-clipping] 扫描失败: {e}")
+        print(f"[font-scale-clipping] Error de escaneo: {e}")
         return 1
 
     risky = [s for s in current if s.occurrences or s.unbounded]
@@ -340,9 +340,9 @@ def main() -> int:
     total = sum(s.occurrences for s in current)
     unbounded = sum(s.unbounded for s in current)
     print(
-        f"[font-scale-clipping] 扫描 UI 源码: 固定高度 {fixed} 处"
-        f"(承载文本且 >= {MIN_RISK_DP}dp 的 {total} 处),"
-        f"无界 heightIn(min=…)+fillMaxSize 子项 {unbounded} 处,跨 {len(risky)} 个文件"
+        f"[font-scale-clipping] Escanear el código fuente de la interfaz de usuario: altura fija {fixed} en"
+        f"(lleva texto y >= {MIN_RISK_DP}dp de {total} en),"
+        f"ilimitado heightIn(min=…)+fillMaxSize niño {unbounded} en,a través {len(risky)} archivos"
     )
     if args.verbose:
         for s in risky:
@@ -354,7 +354,7 @@ def main() -> int:
 
     baseline = load_baseline(baseline_path)
     if not baseline:
-        print(f"[font-scale-clipping] FAILED — 未找到基线 {baseline_path};生成: --update-baseline")
+        print(f"[font-scale-clipping] FAILED — Línea base no encontrada {baseline_path};generar: --update-baseline")
         return 1
 
     base_files = baseline.get("files") or {}
@@ -362,28 +362,28 @@ def main() -> int:
     unbounded_total = sum(s.unbounded for s in current)
     base_unbounded_n = len(baseline.get("unbounded") or {})
     print(
-        f"[font-scale-clipping] 当前 / 基线: 文件 {len(current)}/{len(base_files)}, "
-        f"处数 {total}/{base_total}, 无界 heightIn {unbounded_total}/{base_unbounded_n}"
+        f"[font-scale-clipping] actual/línea de base: Archivo {len(current)}/{len(base_files)}, "
+        f"Número de plazas {total}/{base_total}, ilimitado heightIn {unbounded_total}/{base_unbounded_n}"
     )
 
     failures, improvements = evaluate(current, baseline)
     if improvements:
-        print("[font-scale-clipping] 有改善,建议 --update-baseline 收紧:")
+        print("[font-scale-clipping] hay mejora,Se recomienda ajustar --update-baseline:")
         for line in improvements:
             print(line)
     if failures:
-        print("[font-scale-clipping] FAILED — 新增/高于基线的「固定高度承载文本」:")
+        print("[font-scale-clipping] FAILED — Nuevo/"Texto de alojamiento de altura fija" por encima de la línea de base:")
         for line in failures:
             print(line)
         print(
-            "修复方式: ① 固定高度 → Modifier.heightIn(min = N.dp)(保底不变、随字号增长),"
-            "注意子项若用 fillMaxSize 需同时给 max 上界或把子项改为 fillMaxWidth;"
-            "② 无界 heightIn + fillMaxSize 子项 → 给 max 上界,或把子项改成 fillMaxWidth。"
+            "como solucionarlo: ① altura fija → Modifier.heightIn(min = N.dp)(Mantenga el resultado final sin cambios y crezca con el tamaño de fuente),"
+            "Tenga en cuenta que si usa fillMaxSize para un subelemento, también debe dar un límite superior a max o cambiar el subelemento a fillMaxWidth;"
+            "② Altura ilimitadaIn + fillMaxSize niño → Límite superior máximo,O cambie el elemento secundario para llenarMaxWidth."
         )
         return 1
     print(
-        f"[font-scale-clipping] PASS — 未超过基线 "
-        f"(存量 {len(base_files)} 个文件 / {base_total} 处,只降不升)"
+        f"[font-scale-clipping] PASS — no superó la línea de base "
+        f"(Valores {len(base_files)} archivos / {base_total} en,Solo cayendo pero no subiendo)"
     )
     return 0
 

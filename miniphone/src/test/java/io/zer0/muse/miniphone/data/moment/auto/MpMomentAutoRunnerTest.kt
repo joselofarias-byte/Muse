@@ -34,11 +34,11 @@ import java.time.ZoneId
 import kotlin.random.Random
 
 /**
- * 后台生成的一轮完整流程:判定 → 挑角色 → 宿主生成 → 落库 → 记时间。
+ * Un proceso completo generado en segundo plano.:juicio → Elige un papel → generación de host → Cayó en la biblioteca → Lleve un registro del tiempo.
  *
- * 库里跑真 Room(内存库),宿主与设置用替身:这样「真的写进去了」「失败时一条也没写」
- * 是断言而不是自证。判定本身在 [MpMomentAutoPlanTest] 里已经逐条钉过,
- * 这里关心的是「判定之后做了什么」。
+ * el curry es realmente bueno Room(banco de memoria),Alias de host y configuración:De esta manera, "realmente lo escribí" y "no escribí nada cuando fallé".
+ * Es una afirmación más que una evidencia. La sentencia misma es [MpMomentAutoPlanTest] Ha sido clavado uno por uno.,
+ * La preocupación aquí es "lo que se hizo después de la sentencia".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -85,9 +85,9 @@ class MpMomentAutoRunnerTest {
         assertEquals(CHARACTER_ID, saved?.authorId)
         assertEquals(COMPOSED_TEXT, saved?.content)
         assertEquals(NOW, store.lastGeneratedAtMillis)
-        // 时段提示跟着素材一起交给宿主:14 点那句仍在
-        assertTrue(host.lastHint.orEmpty().contains("下午的碎片时间"))
-        assertTrue("素材应包含最近发生了什么: ${host.lastHint}", host.lastHint.orEmpty().contains("还没有和用户聊过"))
+        // El mensaje del período de tiempo se entrega al anfitrión junto con el material.:14 Esa frase sigue ahí
+        assertTrue(host.lastHint.orEmpty().contains("Fragmentos de tiempo de la tarde"))
+        assertTrue("El material debe incluir lo que sucedió recientemente.: ${host.lastHint}", host.lastHint.orEmpty().contains("Aún no he chateado con el usuario"))
     }
 
     @Test
@@ -98,10 +98,10 @@ class MpMomentAutoRunnerTest {
         val outcome = runner(host = host, store = store).run()
 
         assertEquals(MpMomentAutoOutcome.Failed("compose_null"), outcome)
-        // 一轮里只调一次:失败不重试,下个周期自然再来
+        // Ajuste solo una vez por ronda:No reintentar en caso de error,Vuelve naturalmente en el próximo ciclo.
         assertEquals(1, host.composeCalls)
         assertEquals(0, db.momentDao().count())
-        // 没落库就不记时间戳,否则下一轮会被自己的防抖挡住
+        // La marca de tiempo no se registrará si la base de datos no está en uso.,De lo contrario, la siguiente ronda será bloqueada por su propio antivibración.
         assertNull(store.lastGeneratedAtMillis)
     }
 
@@ -189,10 +189,10 @@ class MpMomentAutoRunnerTest {
     private companion object {
         val ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
 
-        /** 白天 14:00:不在安静时段。 */
+        /** Durante el día 14:00: no durante las horas tranquilas. */
         val NOW: Long = LocalDateTime.of(2026, 5, 12, 14, 0).atZone(ZONE).toInstant().toEpochMilli()
 
-        /** 夜里 23:00:安静时段。 */
+        /** Noche 23:00: Hora de tranquilidad. */
         val NIGHT: Long = LocalDateTime.of(2026, 5, 12, 23, 0).atZone(ZONE).toInstant().toEpochMilli()
 
         const val THIRTY_MINUTES_MS: Long = 30L * 60L * 1000L
@@ -203,11 +203,11 @@ class MpMomentAutoRunnerTest {
 
         const val MOMENT_AT: Long = 1_000L
 
-        const val COMPOSED_TEXT: String = "下午的风有点大，顺手买了杯热奶茶。"
+        const val COMPOSED_TEXT: String = "El viento era un poco fuerte por la tarde, así que compré una taza de té con leche caliente."
     }
 }
 
-/** 固定骰子:概率判定与挑角色都读它,让一轮流程完全可预期。 */
+/** dados fijos:Léelo para juzgar la probabilidad y seleccionar personajes.,Haga que el proceso de ronda sea completamente predecible. */
 private class FixedRandom(
     private val value: Double,
 ) : Random() {
@@ -216,10 +216,10 @@ private class FixedRandom(
     override fun nextDouble(): Double = value
 }
 
-/** 假宿主:角色名单与生成结果都是固定值,顺带记下被调了几次、hint 是什么。 */
+/** anfitrión falso:La lista de caracteres y los resultados de la generación son valores fijos.,Por cierto, tomé nota de cuántas veces me trasladaron.hint Qué es. */
 private class FakeHost(
     private val content: String?,
-    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "阿离")),
+    private val characters: List<MpCharacter> = listOf(MpCharacter(id = "c1", name = "ali")),
 ) : MiniPhoneHost {
 
     var composeCalls: Int = 0
@@ -230,7 +230,7 @@ private class FakeHost(
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(characters)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flowOf(MpReplyEvent.Failed)
 
@@ -249,7 +249,7 @@ private class FakeHost(
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }
 
-/** 假设置:开关与上次生成时间的可变替身,把写进来的值留在字段上供断言。 */
+/** Asumir la configuración:Dobles variables para cambios y últimos tiempos de generación,Deje el valor escrito en el campo para la afirmación. */
 private class FakeAutoStore(
     enabled: Boolean = true,
     lastGeneratedAt: Long? = null,

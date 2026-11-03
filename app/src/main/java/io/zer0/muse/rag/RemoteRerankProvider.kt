@@ -6,14 +6,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * P2-6（审计报告）: OpenAI 兼容的云端 rerank provider。
+ * P2-6(informe de auditoría): OpenAI Proveedor de cambio de rango en la nube compatible.
  *
- * 报告指出：rerank 完全没有云端方案，`LocalRerankProvider` 对中文基本空转
- * （`extractTerms` 把整句中文当一个 token 去 `contains`，几乎不可能命中，
- * 所有候选 score=0，UI 还会把「相似度」显示成 0.00）。
+ * El informe afirma:rerank No existe ninguna solución en la nube,`LocalRerankProvider` Inactivo básico para chinos
+ * (`extractTerms` Trate toda la oración china como una muestra `contains`, casi imposible de acertar,
+ * todos los candidatos score=0,UI La "similitud" también se mostrará como 0,00).
  *
- * 这里实现一套 **OpenAI 兼容的 `/rerank` 协议**，SiliconFlow / Jina / Cohere
- * 都能复用同一份实现，只需配 baseUrl + model + key：
+ * Aquí hay un conjunto **OpenAI compatibles `/rerank` Acuerdo**,SiliconFlow / Jina / Cohere
+ * Puede reutilizar la misma implementación, solo configure baseUrl + model + key:
  *
  * ```
  * POST {baseUrl}/rerank
@@ -22,8 +22,8 @@ import kotlinx.serialization.json.Json
  * {"results": [{"index": 0, "relevance_score": 0.93}, ...]}
  * ```
  *
- * 各家的差异靠 [responseShape] 容忍：Jina 用 `results[].relevance_score`，
- * Cohere 用 `results[].relevance_score`，部分实现用 `data[].score`。
+ * La diferencia entre cada familia depende de [responseShape] Tolerancia:Jina usar `results[].relevance_score`,
+ * Cohere usar `results[].relevance_score`, utilizado para implementación parcial `data[].score`.
  */
 class RemoteRerankProvider(
     private val baseUrl: String,
@@ -62,18 +62,18 @@ class RemoteRerankProvider(
         }
 
         val raw = runCatching { httpPost(url, headers, requestBody) }
-            .onFailure { Logger.w(TAG, "云端 rerank 请求失败，降级本地重排: ${it.message}") }
+            .onFailure { Logger.w(TAG, "La solicitud de cambio de rango en la nube falló y el cambio de rango local se degradó.: ${it.message}") }
             .getOrNull() ?: return LocalRerankProvider().rerank(query, candidates, topK)
 
         val parsed = runCatching { parseResponse(raw) }
-            .onFailure { Logger.w(TAG, "云端 rerank 响应解析失败，降级本地重排: ${it.message}") }
+            .onFailure { Logger.w(TAG, "El análisis de la respuesta de reclasificación en la nube falló y se degradó a reclasificación local: ${it.message}") }
             .getOrNull()
         if (parsed.isNullOrEmpty()) {
-            Logger.w(TAG, "云端 rerank 返回空结果，降级本地重排")
+            Logger.w(TAG, "La reclasificación en la nube devuelve resultados vacíos y degrada la reclasificación local.")
             return LocalRerankProvider().rerank(query, candidates, topK)
         }
 
-        // 按返回的 index 映射回候选；越界的 index 直接忽略（不同实现偶有 1-based）
+        // Mapear de nuevo al candidato según el índice devuelto; los índices fuera de límites se ignoran directamente (diferentes implementaciones ocasionalmente tienen base 1)
         val mapped = parsed.mapNotNull { item ->
             val idx = item.index
             val candidate = candidates.getOrNull(idx)
@@ -95,7 +95,7 @@ class RemoteRerankProvider(
         }
     }
 
-    /** 容忍多种响应结构：results[] / data[]，relevance_score / score。 */
+    /** Tolera múltiples estructuras de respuesta:results[] / data[],relevance_score / score. */
     private fun parseResponse(raw: String): List<ScoredIndex> {
         val root = json.parseToJsonElement(raw)
         return runCatching {
@@ -107,7 +107,7 @@ class RemoteRerankProvider(
                 }
             }
         }.getOrElse {
-            // 宽松兜底：直接扫 results/data 数组里的 index + 任意分数字段
+            // Seguridad flexible: escanee directamente el índice + cualquier campo de puntuación en la matriz de resultados/datos
             val obj = root as? kotlinx.serialization.json.JsonObject ?: return emptyList()
             val arr = (obj["results"] ?: obj["data"]) as? kotlinx.serialization.json.JsonArray
                 ?: return emptyList()

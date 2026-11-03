@@ -5,115 +5,115 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Muse 配色系统(对齐前端设计完整方案 §2)。
+ * Muse sistema de combinación de colores(Solución completa para alinear el diseño frontal §2).
  *
- * 设计哲学:90% 黑白灰 + <5% 品牌色。品牌绿是稀缺资源,只用在
- * 交互元素(发送按钮 / Tab 选中 / 开关激活 / 深色模式用户气泡),
- * 绝不大面积铺底。
+ * filosofía del diseño:90% Negro, blanco y gris + <5% Color de la marca. La marca verde es un recurso escaso,solo usado en
+ * elementos interactivos(Botón Enviar / Selección de pestaña / Activación de interruptor / Burbuja de usuario en modo oscuro),
+ * Nunca pavimente un área grande.
  *
- * 浅色模式:暖白底(#FAFAF8,非纯白,长时间不刺眼)
- *           用户气泡由 colorScheme.primary 承载(浅色=品牌绿,见 PresetTheme)
- *           AI 气泡暖灰(#F0F0EC,比背景深一点,让气泡浮起来)
- * 深色模式:OLED 纯黑底(#000000,省电 + 对比度最高)
- *           用户气泡由 colorScheme.primary 承载(品牌绿,用颜色区分用户和 AI)
- *           AI 气泡深灰(#1C1C1E,比背景亮一点,刚好看出边界)
+ * modo de luz:fondo blanco cálido(#FAFAF8,No blanco puro,Sin deslumbramiento durante mucho tiempo)
+ *           Las burbujas de usuario están alojadas en colorScheme.primary(color claro=marca verde,ver PresetTheme)
+ *           AI gris cálido burbuja(#F0F0EC,más oscuro que el fondo,Deja que las burbujas floten)
+ * modo oscuro:OLED Fondo negro puro(#000000,Ahorro de energía + relación de contraste más alta)
+ *           Las burbujas de usuario están alojadas en colorScheme.primary(marca verde,Utilice el color para distinguir entre usuarios y AI)
+ *           AI burbuja gris oscuro(#1C1C1E,Un poco más brillante que el fondo.,Sólo mira el límite)
  *
- * 注(M-PT1):历史上此文件曾定义 LightUserBubble / DarkUserBubble /
- * LightOnUserBubble / DarkOnUserBubble 等气泡专用色,但全项目气泡实际通过
- * MaterialTheme.colorScheme.primary / onPrimary 渲染(见 PresetTheme),这些
- * 色值从未被引用,已删除以消除死代码。气泡配色统一在 PresetTheme 中维护。
+ * Nota(M-PT1):Históricamente este archivo se define LightUserBubble / DarkUserBubble /
+ * LightOnUserBubble / DarkOnUserBubble Color especial para burbujas.,Pero la burbuja del proyecto en su totalidad pasó
+ * MaterialTheme.colorScheme.primary / onPrimary renderizado(ver PresetTheme),estos
+ * Nunca se hace referencia a los valores de color.,Eliminado para eliminar el código muerto. La coincidencia de colores de las burbujas se mantiene en PresetTheme.
  */
 
-// ── 品牌色 ──────────────────────────────────────────────────────────────
+// ── Color de la marca ──────────────────────────────────────────────────────────────
 /**
- * 月桂绿:主品牌色(浅色模式)。来源于缪斯的月桂叶象征,偏深偏沉的墨绿。
- * v1.0.21: #2D8C5F -> #2A7A55,对比度 4.0:1 -> 4.8:1,达到 WCAG AA 标准,
- * 同时保持月桂绿品牌识别度(可读性优先)。
+ * verde laurel:Color de marca principal(modo de luz). El símbolo de la hoja de laurel derivado de la Muse.,Un verde oscuro más oscuro.
+ * v1.0.21: #2D8C5F -> #2A7A55,Contraste 4.0:1 -> 4.8:1,Cumple con los estándares WCAG AA,
+ * Manteniendo el reconocimiento de la marca Laurel Green(Legibilidad primero).
  */
 val LaurelGreen = Color(0xFF2A7A55)
 
 /**
- * 月桂绿提亮版:深色模式专用 primary。
- * v1.0.21 新增:深色模式下纯黑背景用原 LaurelGreen 可见性偏低(对比度 3.5:1),
- * 提亮到 #4A9F70 后对比度提升到 5.5:1,按钮/气泡在 OLED 屏幕更清晰。
+ * Versión iluminadora verde laurel:Modo oscuro dedicado primario.
+ * v1.0.21 Nuevo:En modo oscuro, el fondo negro puro con LaurelGreen original tiene poca visibilidad(Contraste 3.5:1),
+ * Se iluminó a #4A9F70 y el contraste aumentó a 5.5:1,botón/Las burbujas son más claras en las pantallas OLED.
  */
 val LaurelGreenBright = Color(0xFF4A9F70)
 
-/** 品牌绿浅容器(浅色模式选中态背景)。 */
+/** Contenedor de luz verde de marca.(Fondo seleccionado del modo de luz.). */
 val LaurelGreenLightContainer = Color(0xFFD4EBDD)
 
-/** 品牌绿深文字(浅色模式 onContainer)。 */
+/** Texto verde oscuro de la marca.(modo de luz onContainer). */
 val LaurelGreenDark = Color(0xFF0F3D2A)
 
-/** 品牌绿浅文字(深色模式 onContainer)。 */
+/** Texto de luz verde de marca(modo oscuro onContainer). */
 val LaurelGreenLight = Color(0xFFA8DBC4)
 
-/** 品牌绿深容器(深色模式选中态背景)。 */
+/** Contenedor hondo verde de marca(Fondo seleccionado en modo oscuro). */
 val LaurelGreenDarkContainer = Color(0xFF1F4D38)
 
-/** 星光金:辅助强调色。仅用于 Logo / 会员标识 / 里程碑徽章,日常界面不出现。 */
+/** estrella de oro:Color de acento secundario. Solo se utiliza para logotipo/identidad de miembro/insignia de hito,La interfaz diaria no aparece. */
 val StarGold = Color(0xFFF5C842)
 
-// ── 浅色模式色板 ────────────────────────────────────────────────────────
-/** 页面背景:暖白,非纯白,带极微暖黄调。 */
+// ── Muestras de modo de luz ────────────────────────────────────────────────────────
+/** Fondo de la página:blanco cálido,No blanco puro,Tono amarillo muy ligeramente cálido. */
 val LightBg = Color(0xFFFAFAF8)
 
-/** AI 气泡:暖灰,比背景深一点让气泡浮起来。用户气泡改用 colorScheme.primary。 */
+/** AI Burbujas:gris cálido,Hazlo más oscuro que el fondo para que las burbujas floten. Las burbujas de usuario usan colorScheme.primary en su lugar. */
 val LightAiBubble = Color(0xFFF0F0EC)
 
-/** 正文文字:近黑。 */
+/** texto del cuerpo:Casi negro. */
 val Ink = Color(0xFF1A1A1A)
 
-/** 次要文字:时间戳 / 模型名 / 提示。 */
+/** texto secundario:marca de tiempo/nombre del modelo/pista. */
 val Secondary = Color(0xFF8E8E93)
 
-/** 分割线:极浅,存在但不抢眼。 */
+/** línea divisoria:extremadamente superficial,Está presente pero no es llamativo. */
 val Divider = Color(0xFFE8E8E4)
 
 /**
- * 危险色:删除 / 停止生成。
- * v1.0.21: #FF3B30(冷红) -> #D94034(暖砖红),与暖调质感协调,
- * 降低视觉攻击性,同时保持足够的警示对比度。
+ * color peligro:Eliminar/detener generación.
+ * v1.0.21: #FF3B30(rojo frio) -> #D94034(Rojo ladrillo cálido),Armoniza con texturas cálidas.,
+ * Reducir la agresión visual,manteniendo al mismo tiempo un contraste de advertencia adecuado.
  */
 val Danger = Color(0xFFD94034)
 
-/** 危险色浅容器。v1.0.21: 配套暖化调整。 */
+/** Contenedores luminosos de colores peligrosos.v1.0.21: Viene con ajuste de calefacción. */
 val DangerLightContainer = Color(0xFFF8DCD8)
 
-// ── 深色模式色板 ────────────────────────────────────────────────────────
-/** 深色页面背景:OLED 纯黑,省电 + 对比度最高。 */
+// ── Muestras de modo oscuro ────────────────────────────────────────────────────────
+/** Fondo de página oscuro:OLED negro puro,Ahorro de energía + relación de contraste más alta. */
 val DarkBg = Color(0xFF000000)
 
-/** 深色 AI 气泡:深灰,比背景亮一点。用户气泡改用 colorScheme.primary。 */
+/** Burbujas oscuras de IA:gris oscuro,Un poco más claro que el fondo. Las burbujas de usuario usan colorScheme.primary en su lugar. */
 val DarkAiBubble = Color(0xFF1C1C1E)
 
-/** 深色正文:略偏暖的白,不用纯白减少对比度疲劳。 */
+/** texto oscuro:Blanco ligeramente cálido,No utilizar blanco puro reduce la fatiga del contraste. */
 val DarkInk = Color(0xFFE8E8E8)
 
-/** 深色分割线:极暗。 */
+/** línea divisoria oscura:Extremadamente oscuro. */
 val DarkDivider = Color(0xFF2C2C2E)
 
-/** 深色危险色容器。v1.0.21: 配套暖化调整。 */
+/** Contenedores de colores oscuros peligrosos.v1.0.21: Viene con ajuste de calefacción. */
 val DangerDarkContainer = Color(0xFF3D1818)
 
-// ── 情感色板(关系可视化 / 记忆回顾 / 情绪轨迹)───────────────────────────
-/** 珊瑚粉:关怀、心动。用于里程碑徽章、AI 主动关怀卡片。 */
+// ── paleta de colores emocionales(Visualización de relaciones/revisión de memoria/trayectoria emocional)───────────────────────────
+/** rosa coral:Cariñoso, reconfortante. para insignias de hitos,AI Tarjetas de atención proactiva. */
 val CoralWhisper = Color(0xFFFF6B6B)
 
-/** 薰衣草:梦境、回忆。用于记忆回顾时间轴节点、回忆录封面。 */
+/** lavanda:Sueños, recuerdos. Se utiliza para revisar la memoria, nodos de la línea de tiempo y portadas de memorias. */
 val LavenderDream = Color(0xFF9B8EC4)
 
-/** 琥珀橙:温暖、怀旧。用于关系时长进度条、年度回顾高亮。 */
+/** naranja ámbar:Cálido y nostálgico. Se utiliza para la barra de progreso de la duración de la relación y para resaltar la revisión anual. */
 val AmberWarmth = Color(0xFFE8A838)
 
-/** 鼠尾草绿:平静、成长。用于情绪轨迹正面区域。 */
+/** verde salvia:Paz, crecimiento. Para uso en el área positiva de la pista de emociones. */
 val SageCalm = Color(0xFF7DB88F)
 
-/** 雾灰:中性、过渡。用于空状态插画、分割线、禁用态。 */
+/** gris brumoso:Neutral, transitorio. Se utiliza para ilustraciones de estados vacíos, líneas divisorias y estados deshabilitados. */
 val MistGray = Color(0xFFC7C7CC)
 
-// ── 会话列表首字母头像 8 色循环 ────────────────────────────────────────
-/** 首字母头像预设色板,从 [MaterialTheme.colorScheme] 动态生成,不再用固定 8 色调色板。 */
+// ── Lista de conversación iniciales avatar 8 ciclo de color ────────────────────────────────────────
+/** Paleta de colores preestablecida de avatar inicial,de [MaterialTheme.colorScheme] Generado dinámicamente,No más paletas fijas de 8 colores. */
 @Composable
 fun avatarColors(): List<Color> = buildList {
     val scheme = MaterialTheme.colorScheme

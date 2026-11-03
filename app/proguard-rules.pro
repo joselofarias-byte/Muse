@@ -1,9 +1,9 @@
-# muse ProGuard 规则
-# release 已启用 isMinifyEnabled=true + isShrinkResources=true(R8 全量压缩混淆)。
-# Phase 11.4: 完善规则集,覆盖全部依赖。补充:Compose / io.zer0.ai / KSP 生成类。
+# muse ProGuard reglas
+# release Habilitado isMinifyEnabled=true + isShrinkResources=true(R8 Ofuscación de compresión total).
+# Phase 11.4: Mejorar el conjunto de reglas,Cubre todas las dependencias. suplemento:Compose / io.zer0.ai / KSP Generar clase.
 
 # ============================================================================
-# 通用:保留注解、内部类、泛型签名(反射 / 序列化依赖)
+# Universales:Mantenga anotaciones, clases internas y firmas genéricas.(Dependencias de reflexión/serialización)
 # ============================================================================
 -keepattributes *Annotation*, InnerClasses, Signature, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations
@@ -11,7 +11,7 @@
 -keepattributes RuntimeVisibleTypeAnnotations, RuntimeInvisibleTypeAnnotations
 
 # ============================================================================
-# Kotlin:保留元数据(反射用)+ @Metadata 注解
+# Kotlin:Preservar metadatos(para reflexionar)+ @Metadata anotación
 # ============================================================================
 -keep class kotlin.Metadata { *; }
 -keepclassmembers class ** {
@@ -20,7 +20,7 @@
 -dontnote kotlinx.serialization.AnnotationsKt
 
 # ============================================================================
-# kotlinx.serialization:序列化器伴生对象 + @Serializable 类
+# kotlinx.serialization:Objeto complementario serializador + clase @Serializable
 # ============================================================================
 -keepclassmembers class kotlinx.serialization.json.** {
     *** Companion;
@@ -28,26 +28,26 @@
 -keepclasseswithmembers class kotlinx.serialization.json.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
-# 保留所有 @Serializable 标注的类(项目实体 + 依赖库的 DTO)
+# Mantenga todas las clases anotadas @Serializable(Entidad de proyecto + biblioteca dependiente DTO)
 -keep,allowobfuscation,allowshrinking @kotlinx.serialization.Serializable class *
 -keepclassmembers class * {
     @kotlinx.serialization.Serializable <fields>;
 }
 
 # ============================================================================
-# 项目实体类:io.zer0.* 包下的 @Serializable / Room 实体必须保留字段名
-# (Room 反射列名 / JSON 序列化字段名 / 备份导入导出兼容性)
+# Clase de entidad del proyecto:io.zer0.* @Serializable/las entidades de sala bajo paquetes deben conservar los nombres de los campos
+# (Room Nombres de columnas reflejadas/nombres de campos serializados JSON/compatibilidad de importación y exportación de copias de seguridad)
 # ============================================================================
--keep class io.zer0.muse.data.** { *; }       # SessionEntity/MessageEntity/AssistantEntity 等
--keep class io.zer0.memory.** { *; }          # FactEntity/SessionSummaryEntity 等
--keep class io.zer0.ai.core.** { *; }         # UIMessage/ChatRequest/ChatCompletion 等
--keep class io.zer0.muse.backup.** { *; }     # Backup 数据类
--keep class io.zer0.muse.mcp.** { *; }        # MCP 数据类(McpConfig/McpOAuthConfig 等)
+-keep class io.zer0.muse.data.** { *; }       # SessionEntity/MessageEntity/AssistantEntity espera
+-keep class io.zer0.memory.** { *; }          # FactEntity/SessionSummaryEntity espera
+-keep class io.zer0.ai.core.** { *; }         # UIMessage/ChatRequest/ChatCompletion espera
+-keep class io.zer0.muse.backup.** { *; }     # Backup clase de datos
+-keep class io.zer0.muse.mcp.** { *; }        # MCP clase de datos(McpConfig/McpOAuthConfig espera)
 -keep class io.zer0.muse.asr.** { *; }        # AsrConfig
 -keep class io.zer0.muse.balance.** { *; }    # BalanceConfig
 
 # ============================================================================
-# Room:实体类 + DAO(已通过上面的 io.zer0.muse.data 覆盖,这里加数据库相关)
+# Room:clase de entidad + DAO(Anulado a través de io.zer0.muse.data arriba,Agregue información relacionada con la base de datos aquí)
 # ============================================================================
 -dontwarn androidx.room.paging.**
 -keep class androidx.room.RoomDatabase { *; }
@@ -55,7 +55,7 @@
 -keepclassmembers @androidx.room.Entity class * { *; }
 
 # ============================================================================
-# Koin:模块类 + 反射注入
+# Koin:Clase de módulo + inyección reflectante.
 # ============================================================================
 -keep class org.koin.** { *; }
 -keep class * extends org.koin.core.module.Module { *; }
@@ -64,25 +64,25 @@
 }
 
 # ============================================================================
-# OkHttp + OkHttp SSE:平台相关类 + ConnectionSpec
+# OkHttp + OkHttp SSE:Clases relacionadas con la plataforma + ConnectionSpec
 # ============================================================================
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
-# M-2: 已注释 — OkHttp 自带 consumer-rules.pro,无需手动 -keep,过度保留会阻止 R8 裁剪死代码
+# M-2: Anotado — OkHttp Trae el tuyo consumer-rules.pro,No se requiere manual -keep,La retención excesiva evita que R8 elimine el código inactivo
 # -keep class okhttp3.** { *; }
 # -keep interface okhttp3.** { *; }
 
 # ============================================================================
-# Coil:ImageLoader 解码器(SvgDecoder / GifDecoder 反射注册)
+# Coil:ImageLoader decodificador(SvgDecoder / GifDecoder Registro de reflexión)
 # ============================================================================
-# M-2: 已注释 — Coil 自带 consumer-rules.pro,无需手动 -keep,过度保留会阻止 R8 裁剪死代码
+# M-2: Anotado — Coil Trae el tuyo consumer-rules.pro,No se requiere manual -keep,La retención excesiva evita que R8 elimine el código inactivo
 # -keep class coil.** { *; }
 # -keep class coil.decode.** { *; }
-# v1.112 (F3): 保留 GIF 动画解码器(ImageDecoderDecoder / GifDecoder)和
-# AnimatedImage/AnimatedDrawable 相关类。R8 混淆可能破坏反射注册和 Animatable 生命周期,
-# 导致 GIF 只显示第一帧变静态图。
+# v1.112 (F3): Preservar el decodificador de GIF animado(ImageDecoderDecoder / GifDecoder)y
+# AnimatedImage/AnimatedDrawable Clases relacionadas.R8 La ofuscación puede interrumpir el registro de reflexión y el ciclo de vida de Animatable,
+# Hace que el GIF muestre solo el primer fotograma y se convierta en una imagen estática.
 -keep class coil.decode.GifDecoder* { *; }
 -keep class coil.decode.ImageDecoderDecoder* { *; }
 -keep class coil.decode.AnimationDecoder { *; }
@@ -94,7 +94,7 @@
 -keep class android.graphics.ImageDecoder$* { *; }
 
 # ============================================================================
-# PDFBox-Android:字体资源 + 反射加载
+# PDFBox-Android:Recursos de fuentes + carga reflectante
 # ============================================================================
 -keep class com.tom_roush.pdfbox.** { *; }
 -keep class com.tom_roush.fontbox.** { *; }
@@ -103,7 +103,7 @@
 # ============================================================================
 # ML Kit OCR / ML Kit Text Recognition
 # ============================================================================
-# M-2: 已注释 — ML Kit 自带 consumer-rules.pro,无需手动 -keep,过度保留会阻止 R8 裁剪死代码
+# M-2: Anotado — ML Kit Trae el tuyo consumer-rules.pro,No se requiere manual -keep,La retención excesiva evita que R8 elimine el código inactivo
 # -keep class com.google.mlkit.** { *; }
 # -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.mlkit.**
@@ -118,23 +118,23 @@
 }
 
 # ============================================================================
-# v1.55: jtokkit(BPE tokenizer)— 保留编码表资源和反射加载的类
+# v1.55: jtokkit(BPE tokenizer)— Preservar los recursos de la tabla de codificación y las clases cargadas reflexivamente
 # ============================================================================
 -keep class com.knuddels.jtokkit.** { *; }
 -dontwarn com.knuddels.jtokkit.**
 
 # ============================================================================
-# AndroidX Compose:Composable 函数保留(编译器已处理,这里兜底)
+# AndroidX Compose:Composable Función reservada(El compilador ha procesado,Aquí está el resultado final)
 # ============================================================================
 -dontwarn androidx.compose.**
 -keep class androidx.compose.runtime.** { *; }
 
 # ============================================================================
-# 反射调用的 Java API(JJWT / S3 签名 / WebDAV 等)
+# llamada reflejada Java API(JJWT / S3 Firma/WebDAV, etc.)
 # ============================================================================
 
 # ============================================================================
-# 崩溃栈保留:Throwable 子类(便于 CrashHandler 上报)
+# Retención de pila de fallos:Throwable Subclase(Conveniente para que CrashHandler informe)
 # ============================================================================
 -keep class java.lang.Throwable { *; }
 -keep class * extends java.lang.Throwable { *; }
@@ -142,22 +142,22 @@
 # Shizuku UserService is instantiated by reflection in a non-Android process.
 # Keep the class, AIDL Stub methods and constructors across release shrinking.
 #
-# v2.6.6 修：原来只 keep 了 ShellService 自身，漏了 AIDL 接口与 Stub。R8 把
-# IShellService / IShellService$Stub / $Stub$Proxy 当成“仅本进程内使用”剥掉，
-# 导致 release 包里 bindUserService 永远等不到 onServiceConnected：
-#   授权位 granted（向导显示已授权）→ ensureServiceBound() 超时 →
-#   shellEnabled=false → 能力档案告诉模型“Shell 不可用” → 助手说没权限。
-# 实测证据：debug 包 classes18.dex 有 IShellService/$Stub/$Stub$Proxy，
-# release 包三个 dex 里一个都找不到（dexdump -f 全量搜无命中）。
-# UserService 由 Shizuku 在独立进程反射创建并跨进程调用，接口名与
-# TRANSACTION 方法必须原样保留，不能改名也不能移除。
+# v2.6.6 Reparación: Resulta que solo se conservó el ShellService y se omitieron la interfaz AIDL y el Stub.R8 poner
+# IShellService / IShellService$Stub / $Stub$Proxy Como“Sólo se utiliza dentro de este proceso.”despegar,
+# Como resultado, bindUserService en el paquete de lanzamiento nunca puede esperar a onServiceConnected:
+#   Bit de autorización concedido (el asistente muestra que ha sido autorizado)→ ensureServiceBound() tiempo de espera →
+#   shellEnabled=false → El perfil de capacidad le dice al modelo“Shell No disponible” → El asistente dijo que no había permiso.
+# Evidencia de prueba:debug El paquete clases18.dex tiene IShellService/$Stub/$Stub$Proxy,
+# release No puedo encontrar ninguno de los tres dex en el paquete (dexdump -f No hay resultados en la búsqueda completa).
+# UserService Creado por Shizuku en una reflexión de proceso independiente y llamado entre procesos, el nombre de la interfaz es el mismo que
+# TRANSACTION Los métodos deben conservarse tal como están y no se les puede cambiar el nombre ni eliminarlos.
 -keep class io.zer0.muse.tools.system.IShellService { *; }
 -keep class io.zer0.muse.tools.system.IShellService$Stub { *; }
 -keep class io.zer0.muse.tools.system.IShellService$Stub$Proxy { *; }
 -keep class io.zer0.muse.tools.system.ShellService { *; }
 
 # ============================================================================
-# 枚举:values() / valueOf 反射
+# enumeración:values() / valueOf reflexión
 # ============================================================================
 -keepclassmembers enum * {
     public static **[] values();
@@ -165,44 +165,44 @@
 }
 
 # ============================================================================
-# R8 兼容:避免过度优化导致 ClassCastException
+# R8 compatibles:Evite la optimización excesiva que resulte en ClassCastException
 # ============================================================================
 -allowaccessmodification
-# M-12: 已注释 — -overloadaggressively 有风险,可能导致方法名冲突引发反射调用失败
+# M-12: Anotado — -overloadaggressively arriesgado,Puede provocar un conflicto en el nombre del método, lo que provoca un error en la llamada de reflexión.
 # -overloadaggressively
 -repackageclasses ''
 
 # ============================================================================
-# v1.49: Ktor 引用了 JVM 专有类(java.lang.management.*),Android 不提供,
-# R8 报 missing class。这些类仅在 IntelliJ 调试检测路径引用,运行时不会触达,
-# 用 -dontwarn 抑制即可。
+# v1.49: Ktor Referencias a clases propietarias de JVM(java.lang.management.*),Android No disponible,
+# R8 Reportar falta de clase. Solo se hace referencia a estas clases en la ruta de instrumentación de depuración de IntelliJ.,No se alcanzará durante el tiempo de ejecución,
+# Simplemente suprímalo con -dontwarn.
 # ============================================================================
 -dontwarn java.lang.management.ManagementFactory
 -dontwarn java.lang.management.RuntimeMXBean
 
 # ============================================================================
-# 补充(Phase: release 启用 R8):Compose 全量保留
-# 原 androidx.compose.runtime.** 兜底不够,扩展到整个 androidx.compose 包,
-# 防止 R8 误删 Composable 函数 / Theme 类 / Modifier 实现。
+# suplemento(Phase: release habilitar R8):Compose Reservado en su totalidad
+# Originales androidx.compose.runtime.** No hay suficientes bolsillos,Se expande a todo el paquete androidx.compose,
+# Evite que R8 elimine accidentalmente funciones componibles/clases de temas/implementaciones de modificadores.
 # ============================================================================
-# M-1: 已注释 — Compose 自带 consumer-rules.pro,全量 -keep 会阻止 R8 裁剪死代码,
-# 显著增大包体积。上游规则已保留必要的 Composable 函数 / Modifier 实现。
+# M-1: Anotado — Compose Trae el tuyo consumer-rules.pro,La conservación completa evitará que R8 elimine el código inactivo,
+# Aumenta significativamente el tamaño del paquete. Las reglas ascendentes han conservado las implementaciones necesarias de función componible/modificador.
 # -keep class androidx.compose.** { *; }
 # -keep interface androidx.compose.** { *; }
 
 # ============================================================================
-# 补充:io.zer0.ai 全模块 DTO 保留
-# 原仅保留 io.zer0.ai.core.**,这里扩展到整个 ai 模块,
-# 覆盖 ai 子包内所有 @Serializable 数据类(ChatRequest / ChatCompletion 等)。
+# suplemento:io.zer0.ai Módulo completo DTO reservado
+# Sólo se conserva el original io.zer0.ai.core.**,Esto se extiende a todo el módulo ai.,
+# Cubre todas las clases de datos @Serializable en el subpaquete ai(ChatRequest / ChatCompletion espera).
 # ============================================================================
 -keep @kotlinx.serialization.Serializable class *
 
 # ============================================================================
-# 补充:KSP 生成的类(Room DAO 实现 / kotlinx.serialization $serializer)
-# KSP 生成的类不携带 @Keep 注解,R8 可能误删,显式保留。
-#   - **_Impl:Room DAO 实现类(如 SessionDao_Impl)
-#   - **_$serializer:kotlinx.serialization 编译器生成的序列化器
-#   - Companion / INSTANCE:KSP 生成的伴生对象与单例
+# suplemento:KSP clase generada(Room DAO darse cuenta / kotlinx.serialization $serializer)
+# KSP La clase generada no lleva la anotación @Keep,R8 Puede eliminarse por error,Reservado explícitamente.
+#   - **_Impl:Room DAO Clase de implementación(Como por ejemplo SessionDao_Impl)
+#   - **_$serializer:kotlinx.serialization Serializador generado por el compilador
+#   - Companion / INSTANCE:KSP Objetos complementarios generados y singletons.
 # ============================================================================
 -keep class **_Impl { *; }
 -keep class **_$serializer { *; }
@@ -211,8 +211,8 @@
     *** INSTANCE;
 }
 
-# v2.2.0: Netty(ktor-server-netty, HTTPS 方案 A)引入的可选依赖缺失抑制 —
-# 这些类(tcnative OpenSSL 加速/log4j/jetty-npn)在 Android 运行时不会被加载(走 JDK SSL+NIO), 仅 R8 静态检查报警。
+# v2.2.0: Netty(ktor-server-netty, HTTPS Planificar A)Se introdujo la supresión de pérdida de dependencia opcional —
+# estas clases(tcnative OpenSSL acelerar/log4j/jetty-npn)No se cargará cuando se ejecute en Android(ir JDK SSL+NIO), Alarma de verificación estática R8 únicamente.
 -dontwarn io.netty.internal.tcnative.AsyncSSLPrivateKeyMethod
 -dontwarn io.netty.internal.tcnative.AsyncTask
 -dontwarn io.netty.internal.tcnative.Buffer
@@ -240,21 +240,21 @@
 -dontwarn org.eclipse.jetty.npn.NextProtoNego$ServerProvider
 -dontwarn org.eclipse.jetty.npn.NextProtoNego
 
-# v2.6.3 (issue #4): KTOR-7298 —— Ktor 3.0.x 在 R8 混淆的 release 构建里,
-# engine factory 的 ServiceLoader 探测会拿到多个候选,内部 single() 抛
-# `IllegalArgumentException: Array has more than one element`,WebServer 永远起不来。
-# 虽然已升级到 Ktor 3.1.3(官方修复),这里仍 keep 住 ServiceLoader 约定与 engine
-# 实现类,避免未来依赖变更再次触发同类问题。
+# v2.6.3 (issue #4): KTOR-7298 —— Ktor 3.0.x En la versión de lanzamiento ofuscada de R8,
+# engine factory La sonda ServiceLoader obtendrá múltiples candidatos,interno single() tirar
+# `IllegalArgumentException: Array has more than one element`,WebServer Nunca te levantes.
+# Aunque actualizado a Ktor 3.1.3(Solución oficial),Aquí todavía mantenemos la convención ServiceLoader con engine
+# Clase de implementación,Evite que futuros cambios de dependencia provoquen problemas similares nuevamente.
 -keep class io.ktor.server.engine.ApplicationEngineFactory { *; }
 -keep class * implements io.ktor.server.engine.ApplicationEngineFactory { *; }
 -keep class io.ktor.server.engine.EngineMain { *; }
 -keep class io.ktor.server.netty.NettyApplicationEngine { *; }
 -keep class io.ktor.server.netty.NettyApplicationEngine$Configuration { *; }
 
-# v2.6.14: Netty 已从依赖中移除（Web 服务改用 CIO 引擎），
-# Netty 的多处反射（ReflectiveChannelFactory、ResourceLeakDetector 静态初始化）
-# 在 R8 混淆的 release 包里会被逐处掐掉，导致服务端起不来；CIO 是纯 Kotlin 实现，没有这个问题。
-# 下面保留少量 dontwarn 以兼容残留的三方可选引用。
+# v2.6.14: Netty Eliminado de las dependencias (Web servicio utiliza el motor CIO en su lugar),
+# Netty de múltiples reflejos (ReflectiveChannelFactory,ResourceLeakDetector inicialización estática)
+# El paquete de versión ofuscado de R8 se eliminará uno por uno, lo que provocará que el servidor no pueda iniciarse;CIO Es una implementación pura de Kotlin y no tiene este problema.
+# A continuación se incluyen algunas advertencias para dar cabida a referencias opcionales residuales de terceros.
 -keepnames class io.ktor.server.engine.ApplicationEngineFactory
 -keepnames class * implements io.ktor.server.engine.ApplicationEngineFactory
 -keepattributes *Annotation*
@@ -264,13 +264,13 @@
 
 
 # ============================================================================
-# R8 优化关闭
+# R8 Optimización desactivada
 #
-# MessageBubble 是单个 2000+ 行、70+ 参数的 Composable，局部寄存器用量超过
-# 200 个槽。R8 的优化（方法内联 / 寄存器重排 / 类合并）在这个体量上会产出
-# 类型不一致的 dex，被 Android 14+ 的 ART verifier 拒收，表现为点开对话直接
-# 抛 VerifyError: copy-cat1 ... type=Reference: MutableState。
+# MessageBubble es una sola fila de más de 2000,70+ Parámetro componible, el uso del registro local excede
+# 200 ranura.R8 La optimización (integración de métodos/reordenamiento de registros/fusión de clases) producirá
+# El verificador ART de Android 14+ rechaza el dex con tipos inconsistentes, que aparece como un clic directo para abrir el diálogo.
+# tirar VerifyError: copy-cat1 ... type=Reference: MutableState.
 #
-# 关闭优化后仍然保留混淆（类名/成员名改写）与资源压缩，源码保护不受影响，
-# 代价是包体增大。根治方案是把这方法体拆小，拆分完成即可移除本开关。
+# La ofuscación aún se conserva después de desactivar la optimización (nombre de clase/Reescritura de nombres de miembros) y compresión de recursos, la protección del código fuente no se ve afectada.
+# El precio es que el cuerpo del paquete aumenta. La solución radical es desmontar el cuerpo del método en trozos más pequeños. Una vez que se completa el desmontaje, se puede quitar el interruptor.
 -dontoptimize

@@ -1,15 +1,15 @@
 # ============================================================
-# Muse 一键全量测试脚本
-# 用法: pwsh .\run-all-tests.ps1 [-Fast] [-NoReport] [-SkipAndroidTest] [-Gates]
-# 作用: 跑全部 6 个模块(app/memory/ai/common/accessibility/material3)单元测试,
-#       并在检测到已连接设备/模拟器时执行 app androidTest(P4-4 补全)。
-# 退出码: 0 = 全部通过; 1 = 有失败
+# Muse Script de prueba completo con un solo clic
+# Uso: pwsh .\run-all-tests.ps1 [-Fast] [-NoReport] [-SkipAndroidTest] [-Gates]
+# función: Ejecute los 6 módulos(app/memory/ai/common/accessibility/material3)Pruebas unitarias,
+#       y cuando se detecta un dispositivo conectado/Ejecutado en el simulador. app androidTest(P4-4 completo).
+# código de salida: 0 = Todo pasó; 1 = hay fracaso
 # ============================================================
 param(
-    [switch]$Fast,           # 跳过重新编译,直接用缓存(仅测变化)
-    [switch]$NoReport,       # 不生成汇总报告文件
-    [switch]$SkipAndroidTest, # 强制执行 app androidTest(即使未检测到设备)
-    [switch]$Gates           # 跑完单测后再跑一遍全部 ci/script/check_*.py 门禁(只判回归)
+    [switch]$Fast,           # Saltar recopilación,Usar caché directamente(Sólo cambios de medida)
+    [switch]$NoReport,       # No generar archivos de informes resumidos
+    [switch]$SkipAndroidTest, # hacer cumplir app androidTest(Incluso si el dispositivo no es detectado)
+    [switch]$Gates           # Después de ejecutar la prueba única, vuelva a ejecutar la prueba completa. ci/script/check_*.py control de acceso(solo regreso)
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,11 +17,11 @@ $start = Get-Date
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "==============================================" -ForegroundColor Cyan
-Write-Host " Muse 全量测试" -ForegroundColor Cyan
-Write-Host " 开始: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Cyan
+Write-Host " Muse prueba completa" -ForegroundColor Cyan
+Write-Host " empezar: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
 
-# 1. 全部单元测试模块(P4-4: 补上 common / accessibility / material3)
+# 1. Todos los módulos de prueba unitaria(P4-4: maquillar common / accessibility / material3)
 $moduleTasks = @(
     ":app:testDebugUnitTest",
     ":memory:testDebugUnitTest",
@@ -32,12 +32,12 @@ $moduleTasks = @(
 )
 $unitArgs = $moduleTasks + @("--console=plain")
 if ($Fast) { $unitArgs += "--rerun-tasks" }
-Write-Host "`n[1/2] 单元测试(6 模块)..." -ForegroundColor Yellow
+Write-Host "`n[1/2] Pruebas unitarias(6 módulo)..." -ForegroundColor Yellow
 $unitOut = & .\gradlew.bat @unitArgs 2>&1
 $unitExit = $LASTEXITCODE
 $unitOut | Select-Object -Last 5
 
-# 2. app androidTest(需要设备/模拟器;没有则跳过并提示)
+# 2. app androidTest(Equipo requerido/emulador;Si no, omita y solicite)
 $androidExit = 0
 $androidRan = $false
 $androidOut = @()
@@ -50,27 +50,27 @@ if (-not $SkipAndroidTest) {
     }
 }
 if ($SkipAndroidTest) {
-    Write-Host "`n[2/2] androidTest 已按 -SkipAndroidTest 跳过" -ForegroundColor DarkYellow
+    Write-Host "`n[2/2] androidTest Presionado -SkipAndroidTest para omitir" -ForegroundColor DarkYellow
 } elseif (-not $hasDevice) {
-    Write-Host "`n[2/2] androidTest 跳过:未检测到已连接的设备/模拟器(adb devices 为空)。" -ForegroundColor DarkYellow
-    Write-Host "       连上设备后重跑本脚本,或用 -SkipAndroidTest 有意跳过。" -ForegroundColor DarkYellow
+    Write-Host "`n[2/2] androidTest saltar:Dispositivo conectado no detectado/emulador(adb devices esta vacio)." -ForegroundColor DarkYellow
+    Write-Host "       Vuelva a ejecutar este script después de conectarse al dispositivo,O utilice -SkipAndroidTest para omitir intencionalmente." -ForegroundColor DarkYellow
 } else {
-    Write-Host "`n[2/2] app androidTest(设备已连接)..." -ForegroundColor Yellow
+    Write-Host "`n[2/2] app androidTest(El dispositivo está conectado)..." -ForegroundColor Yellow
     $androidOut = & .\gradlew.bat ":app:connectedDebugAndroidTest" "--console=plain" 2>&1
     $androidExit = $LASTEXITCODE
     $androidRan = $true
     $androidOut | Select-Object -Last 5
 }
 
-# ---- 汇总 ----
+# ---- Resumen ----
 $elapsed = ((Get-Date) - $start).TotalSeconds
 Write-Host "`n==============================================" -ForegroundColor Cyan
-Write-Host " 测试完成: $([math]::Round($elapsed,1))s" -ForegroundColor Cyan
+Write-Host " Prueba completada: $([math]::Round($elapsed,1))s" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
 
 $allPass = ($unitExit -eq 0) -and ($androidExit -eq 0)
 
-# 收集 XML 报告统计(单测 6 模块 + androidTest 报告若有)
+# Recopilar estadísticas de informes XML(Módulo de prueba única 6 + informe de prueba de Android si está disponible)
 $totalTests = 0; $totalFail = 0; $totalErr = 0; $totalSkip = 0
 $failedSuites = @()
 $reportDirs = @(
@@ -99,61 +99,61 @@ foreach ($dir in $reportDirs) {
 }
 
 Write-Host ""
-Write-Host "  用例总数: $totalTests" -ForegroundColor White
-Write-Host "  通过:     $($totalTests - $totalFail - $totalErr - $totalSkip)" -ForegroundColor Green
-Write-Host "  失败:     $totalFail" -ForegroundColor $(if ($totalFail -gt 0) { "Red" } else { "Green" })
-Write-Host "  错误:     $totalErr" -ForegroundColor $(if ($totalErr -gt 0) { "Red" } else { "Green" })
-Write-Host "  跳过:     $totalSkip" -ForegroundColor Yellow
+Write-Host "  Número total de casos de uso: $totalTests" -ForegroundColor White
+Write-Host "  Pase:     $($totalTests - $totalFail - $totalErr - $totalSkip)" -ForegroundColor Green
+Write-Host "  falló:     $totalFail" -ForegroundColor $(if ($totalFail -gt 0) { "Red" } else { "Green" })
+Write-Host "  error:     $totalErr" -ForegroundColor $(if ($totalErr -gt 0) { "Red" } else { "Green" })
+Write-Host "  saltar:     $totalSkip" -ForegroundColor Yellow
 
 if ($failedSuites.Count -gt 0) {
-    Write-Host "`n  失败套件:" -ForegroundColor Red
+    Write-Host "`n  conjunto de fracasos:" -ForegroundColor Red
     $failedSuites | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
 }
 
 if ($androidRan) {
-    Write-Host "`n  androidTest: 已执行" -ForegroundColor Green
+    Write-Host "`n  androidTest: ejecutado" -ForegroundColor Green
 } else {
-    Write-Host "`n  androidTest: 跳过(无设备或 -SkipAndroidTest)" -ForegroundColor DarkYellow
+    Write-Host "`n  androidTest: saltar(Ningún dispositivo o -SkipAndroidTest)" -ForegroundColor DarkYellow
 }
 
-# 门禁(-Gates): 跑全部 check_*.py，按「是否回归」判定
+# control de acceso(-Gates): ejecutar todo check_*.py, presione "Si regresar" para determinar
 $gatesExit = $null
 $gatesSummary = "SKIPPED (-Gates not set)"
 if ($Gates) {
-    Write-Host "`n== 门禁 (check_*.py) ==" -ForegroundColor Cyan
+    Write-Host "`n== control de acceso (check_*.py) ==" -ForegroundColor Cyan
     $gatesLog = python "$root\ci\script\run_gates.py" --verbose 2>&1
     $gatesExit = $LASTEXITCODE
     $gatesLog | ForEach-Object { Write-Host $_ }
     if ($gatesExit -eq 0) {
         $gatesSummary = "PASS (no regression)"
-        Write-Host "  门禁: 无回归 OK" -ForegroundColor Green
+        Write-Host "  control de acceso: sin regresión OK" -ForegroundColor Green
     } else {
         $gatesSummary = "FAIL (regression)"
-        Write-Host "  门禁: 有回归 FAIL" -ForegroundColor Red
+        Write-Host "  control de acceso: hay un regreso FAIL" -ForegroundColor Red
     }
 }
 
-# 汇总报告文件
+# archivo de informe resumido
 if (-not $NoReport) {
     $reportFile = "$root\test-report-$(Get-Date -Format 'yyyyMMdd-HHmm').txt"
     @"
-Muse 全量测试报告
-时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-耗时: $([math]::Round($elapsed,1))s
-结果: $(if ($allPass) { 'PASS' } else { 'FAIL' })
+Muse Informe de prueba completo
+tiempo: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+Consume mucho tiempo: $([math]::Round($elapsed,1))s
+resultado: $(if ($allPass) { 'PASS' } else { 'FAIL' })
 androidTest: $(if ($androidRan) { 'EXECUTED' } else { 'SKIPPED (no device or -SkipAndroidTest)' })
-用例: $totalTests (通过 $($totalTests - $totalFail - $totalErr - $totalSkip) / 失败 $totalFail / 错误 $totalErr / 跳过 $totalSkip)
-门禁: $gatesSummary
-$(if ($failedSuites.Count -gt 0) { "失败套件:`n" + ($failedSuites | ForEach-Object { "  - $_" }) -join "`n" } else { '' })
+caso de uso: $totalTests (Pase $($totalTests - $totalFail - $totalErr - $totalSkip) / falló $totalFail / error $totalErr / saltar $totalSkip)
+control de acceso: $gatesSummary
+$(if ($failedSuites.Count -gt 0) { "conjunto de fracasos:`n" + ($failedSuites | ForEach-Object { "  - $_" }) -join "`n" } else { '' })
 "@ | Set-Content $reportFile
-    Write-Host "`n  报告已保存: $reportFile" -ForegroundColor Cyan
+    Write-Host "`n  Informe guardado: $reportFile" -ForegroundColor Cyan
 }
 
-# 门禁回归也算失败(仅在 -Gates 时判定，避免默认流程被存量债卡住)
+# La devolución del control de acceso también se considera un fracaso.(Sólo se determina cuando se utiliza -Gates para evitar que el proceso de impago se vea estancado por la deuda existente.)
 $finalPass = $allPass -and ($gatesExit -eq $null -or $gatesExit -eq 0)
 if ($finalPass) {
-    Write-Host "`n  结果: 全部通过 ✓  可以发布" -ForegroundColor Green
+    Write-Host "`n  resultado: Todo pasó ✓  se puede publicar" -ForegroundColor Green
 } else {
-    Write-Host "`n  结果: 存在失败 ✗  请先修复再发布" -ForegroundColor Red
+    Write-Host "`n  resultado: fracaso existencial ✗  Por favor corríjalo antes de publicar." -ForegroundColor Red
 }
 exit $(if ($finalPass) { 0 } else { 1 })

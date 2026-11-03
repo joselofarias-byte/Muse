@@ -22,13 +22,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 3: 任务卡失败步骤重试的可靠性测试。
+ * Phase 3: Prueba de confiabilidad para reintentos fallidos de pasos de la tarjeta de tareas.
  *
- * 覆盖:
- *  - 重试超时写回 [TaskStepStatus.TIMED_OUT](不再永远 RUNNING / 误写 FAILED);
- *  - 取消传播:步骤写回 [TaskStepStatus.CANCELLED] 且不吞 CancellationException;
- *  - 成功/失败仍按原语义写回;
- *  - TIMED_OUT 可被 "ALL_FAILED" 重试,而 CANCELLED 不在重试范围。
+ * Portada:
+ *  - Reintentar reescritura del tiempo de espera [TaskStepStatus.TIMED_OUT](No más para siempre CORRER / Mal escrito FAILED);
+ *  - Cancelar propagación:paso escribir de nuevo [TaskStepStatus.CANCELLED] no tragar CancellationException;
+ *  - éxito/Si falla, se volverá a escribir según la semántica original.;
+ *  - TIMED_OUT puede ser "ALL_FAILED" Inténtalo de nuevo,Y CANCELADO no está en el rango de reintentos.
  */
 class ChatTaskCardCoordinatorRetryTest {
 
@@ -40,7 +40,7 @@ class ChatTaskCardCoordinatorRetryTest {
                 name = name,
                 description = "phase3 test tool",
                 parameters = emptyMap(),
-                // 纯占位条目（只用于解析步骤所属工具），不执行任何操作。
+                // Entrada de marcador de posición pura (solo utilizada por la herramienta a la que pertenece el paso de análisis) y no realiza ninguna operación.
                 riskLevel = ToolRiskLevel.SAFE,
             ),
         )
@@ -48,7 +48,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
     private fun cardWith(vararg statuses: Pair<String, TaskStepStatus>) = TaskCardData(
         id = CARD_ID,
-        title = "任务",
+        title = "Tarea",
         phase = TaskCardPhase.DONE,
         steps = statuses.map { (id, status) ->
             TaskStep(id = id, title = "calculator", detail = "{}", status = status, rawArgs = "{}")
@@ -64,7 +64,7 @@ class ChatTaskCardCoordinatorRetryTest {
     private fun stepOf(accessor: InMemoryChatStateAccessor, stepId: String): TaskStep? =
         accessor.snapshot.taskCards[CARD_ID]?.steps?.firstOrNull { it.id == stepId }
 
-    /** 轮询等待步骤进入预期终态(重试在独立协程里执行)。 */
+    /** El paso de sondeo y espera entra en el estado final esperado.(Reintentar la ejecución en una rutina independiente). */
     private suspend fun awaitStatus(accessor: InMemoryChatStateAccessor, stepId: String, expected: TaskStepStatus) {
         withTimeout(AWAIT_TIMEOUT_MS) {
             while (stepOf(accessor, stepId)?.status != expected) {
@@ -115,7 +115,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         val step = stepOf(accessor, "s0")
         assertNotNull(step)
-        assertTrue(step!!.result.startsWith("[超时]"))
+        assertTrue(step!!.result.startsWith("[tiempo de espera]"))
         assertEquals(TaskCardPhase.DONE, accessor.snapshot.taskCards[CARD_ID]?.phase)
     }
 
@@ -131,13 +131,13 @@ class ChatTaskCardCoordinatorRetryTest {
         val coordinator = ChatTaskCardCoordinator(accessor, registry, retryTimeoutMs = 60_000L)
 
         coordinator.retryFailedStep(CARD_ID, "s0")
-        // 先确认重试已真正开始(RUNNING),再取消整个作用域
+        // Primero confirme que el reintento realmente haya comenzado.(RUNNING),Luego cancele todo el alcance.
         awaitStatus(accessor, "s0", TaskStepStatus.RUNNING)
         scope.cancel()
 
-        // 取消后步骤必须落到 CANCELLED(而不是永远 RUNNING,也不是 FAILED)
+        // Los pasos posteriores a la cancelación deben ser: CANCELLED(en lugar de para siempre RUNNING,Ni FAILED)
         awaitStatus(accessor, "s0", TaskStepStatus.CANCELLED)
-        assertTrue(stepOf(accessor, "s0")!!.result.startsWith("[取消]"))
+        assertTrue(stepOf(accessor, "s0")!!.result.startsWith("[Cancelar]"))
     }
 
     @Test
@@ -155,7 +155,7 @@ class ChatTaskCardCoordinatorRetryTest {
         coordinator.retryFailedStep(CARD_ID, "ALL_FAILED")
 
         awaitStatus(accessor, "s0", TaskStepStatus.SUCCESS)
-        // 取消的步骤不在可重试集合内,保持原状
+        // El paso cancelado no está en el conjunto reintentable,quédate como está
         assertEquals(TaskStepStatus.CANCELLED, stepOf(accessor, "s1")?.status)
     }
 
@@ -174,12 +174,12 @@ class ChatTaskCardCoordinatorRetryTest {
 
     @Test
     fun `high risk tool is not auto retried`() = runBlocking {
-        // v2.6.2（工具审计）: 自动重试不得绕过审批直接重发高危工具（send_/delete_/browser_/ui_）。
+        // v2.6.2(Auditoría de herramientas): El reintento automático no debe pasar por alto la aprobación y reenviar directamente herramientas de alto riesgo (send_/delete_/browser_/ui_).
         stubToolRegistered(name = "send_sms")
         coEvery { registry.executeFromJson("send_sms", any()) } coAnswers { "ok" }
         val card = TaskCardData(
             id = CARD_ID,
-            title = "任务",
+            title = "Tarea",
             phase = TaskCardPhase.DONE,
             steps = listOf(
                 TaskStep(id = "s0", title = "send_sms", detail = "{}", status = TaskStepStatus.FAILED, rawArgs = "{}"),
@@ -194,7 +194,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         val step = stepOf(accessor, "s0")
         assertEquals(TaskStepStatus.FAILED, step?.status)
-        assertTrue("应提示需手动重试", step!!.result.contains("不自动重试"))
+        assertTrue("Se le pedirá que vuelva a intentarlo manualmente.", step!!.result.contains("No reintentar automáticamente"))
         io.mockk.coVerify(exactly = 0) { registry.executeFromJson("send_sms", any<String>()) }
     }
 

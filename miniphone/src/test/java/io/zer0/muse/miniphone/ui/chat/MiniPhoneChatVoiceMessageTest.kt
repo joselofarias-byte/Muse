@@ -35,10 +35,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 一轮回复里带语音时,消息怎么落库、怎么排。
+ * Cuando una ronda de respuestas contiene voz,Cómo almacenar y organizar mensajes.
  *
- * 宿主给的事件顺序就是消息顺序:一段文本一条,一段语音一条。语音那条的正文只存
- * 会话列表用的预览文案,音频引用与时长各进自己的字段。
+ * El orden de los eventos dado por el anfitrión es el orden de los mensajes.:una pieza de texto,Una pieza de voz. Sólo se guarda el texto del mensaje de voz.
+ * Vista previa de copia para lista de conversaciones,La referencia de audio y la duración ingresan cada una en sus propios campos.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -67,14 +67,14 @@ class MiniPhoneChatVoiceMessageTest {
         val viewModel = createViewModel(
             ScriptHost(
                 listOf(
-                    MpReplyEvent.Text("先说话"),
+                    MpReplyEvent.Text("habla primero"),
                     MpReplyEvent.Voice(VOICE_URI, DURATION_MS),
-                    MpReplyEvent.Text("再说话"),
+                    MpReplyEvent.Text("hablar de nuevo"),
                 ),
             ),
         )
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 4 && !chat.isGenerating }
         assertEquals(
@@ -83,10 +83,10 @@ class MiniPhoneChatVoiceMessageTest {
         )
         val voice = state.messages[2]
         assertEquals(MpActorType.CHARACTER, voice.sender)
-        assertEquals("[语音]", voice.content)
+        assertEquals("[Voz]", voice.content)
         assertEquals(VOICE_URI, voice.mediaUri)
         assertEquals(DURATION_MS, voice.voiceDurationMs)
-        assertTrue("语音消息走语音渲染分支", voice.isVoice)
+        assertTrue("Los mensajes de voz toman la rama de representación de voz", voice.isVoice)
     }
 
     @Test
@@ -94,14 +94,14 @@ class MiniPhoneChatVoiceMessageTest {
         seedThread()
         val viewModel = createViewModel(ScriptHost(listOf(MpReplyEvent.Voice(VOICE_URI, DURATION_MS))))
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
         awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
 
         val stored = db.messageDao().observeMessages(THREAD_ID).first().last()
         assertEquals(MpMessageType.VOICE, stored.type)
         assertEquals(VOICE_URI, stored.mediaUri)
         assertEquals(DURATION_MS, stored.voiceDurationMs)
-        assertEquals("[语音]", stored.content)
+        assertEquals("[Voz]", stored.content)
     }
 
     @Test
@@ -116,11 +116,11 @@ class MiniPhoneChatVoiceMessageTest {
             ),
         )
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 2 && !chat.isGenerating }
-        assertEquals("活动提示不进消息列表", listOf(MpMessageType.TEXT, MpMessageType.VOICE), state.messages.map { it.type })
-        assertEquals("结束后收起活动提示", null, state.activity)
+        assertEquals("El recordatorio de actividad no ingresa a la lista de mensajes", listOf(MpMessageType.TEXT, MpMessageType.VOICE), state.messages.map { it.type })
+        assertEquals("Ocultar recordatorio de actividad una vez finalizada", null, state.activity)
     }
 
     private fun createViewModel(host: MiniPhoneHost): MiniPhoneChatViewModel {
@@ -178,14 +178,14 @@ class MiniPhoneChatVoiceMessageTest {
     }
 }
 
-/** 按给定顺序吐事件的宿主:用来钉住「事件顺序 = 消息顺序」。 */
+/** Envía hosts de eventos en un orden determinado:Se utiliza para precisar la \"secuencia de eventos\". = Secuencia de mensajes\". */
 private class ScriptHost(
     private val events: List<MpReplyEvent>,
 ) : MiniPhoneHost {
 
-    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "阿离")))
+    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "ali")))
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         events.forEach { emit(it) }

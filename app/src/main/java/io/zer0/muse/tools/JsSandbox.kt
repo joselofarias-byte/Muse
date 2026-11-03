@@ -31,54 +31,54 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
 /**
- * JavaScript 执行沙盒(单例)。
+ * JavaScript zona de pruebas de ejecución(singleton).
  *
- * Android 无内置 JS 引擎且不能新增大型依赖,
- * 改用 WebView 的 V8 引擎执行 JS,让 AI Agent 能跑数学计算/数据处理/简单算法。
+ * Android No hay motor JS incorporado y no se pueden agregar grandes dependencias,
+ * Cambie a utilizar la ejecución del motor V8 de WebView JS,Deje que AI Agent ejecute cálculos matemáticos/Procesamiento de datos/Algoritmo sencillo.
  *
- * 设计要点:
- *  - 持有单个 WebView 实例,必须在主线程创建和访问([Dispatchers.Main] 切换)
- *  - 用 [WebView.evaluateJavascript] 执行代码,回调中拿到 JSON 字符串返回值
- *  - [WebChromeClient.onConsoleMessage] 拦截 console.log/warn/error 收集日志
- *  - 安全边界(v2.x 已放开网络):JS 可直接用 fetch/XHR/WebSocket;
- *    仅拦截**页面导航**(window.open)与本地 file://content:// 读取;
- *    不加载任何外部 URL(只 loadDataWithBaseURL("about:blank", ...))
- *  - 超时机制:[withTimeoutOrNull] 包裹 evaluateJavascript 回调;JS 本身无法中断,
- *    但 Kotlin 侧会返回超时错误,避免无限挂起
- *  - 线程安全:所有 WebView 访问都在 [Dispatchers.Main] 协程上下文中,
- *    日志收集用 synchronized 保护
+ * Puntos de diseño:
+ *  - Contiene una única instancia de WebView,Debe ser creado y accedido en el hilo principal.([Dispatchers.Main] cambiar)
+ *  - usar [WebView.evaluateJavascript] Ejecutar código,Obtenga el valor de retorno de la cadena JSON en la devolución de llamada
+ *  - [WebChromeClient.onConsoleMessage] Intercepte console.log/warn/error para recopilar registros
+ *  - límite de seguridad(v2.x La red ha sido liberada.):JS Se puede utilizar directamente fetch/XHR/WebSocket;
+ *    interceptar sólo**Navegación de página**(window.open)Leer con archivo local://content://;
+ *    No cargue ningún externo URL(solo loadDataWithBaseURL("about:blank", ...))
+ *  - mecanismo de tiempo de espera:[withTimeoutOrNull] Envolver la devolución de llamada de JavaScript;JS en sí no puede ser interrumpido,
+ *    Pero el lado de Kotlin devuelve un error de tiempo de espera,Evita cuelgues infinitos
+ *  - Seguridad del hilo:Todos los accesos a WebView están en [Dispatchers.Main] en contexto de rutina,
+ *    La recopilación de registros está protegida con sincronización
  *
- * 使用前必须先调用 [init] 注入 Application Context(由 [CodeExecutionTool] / [SkillExecutor] 桥接)。
+ * Debe llamarse antes de su uso. [init] inyectar Application Context(por [CodeExecutionTool] / [SkillExecutor] puente).
  */
 object JsSandbox {
 
     private const val TAG = "JsSandbox"
 
-    /** 当前执行的插件 id（用于 host.getConfig 查找配置）。 */
+    /** La identificación del complemento que se está ejecutando actualmente (utilizado por host.getConfig para encontrar la configuración). */
     @Volatile private var currentPluginId: String? = null
 
     /**
-     * 设置当前 JS 执行所属的插件 id，用于 host.getConfig(key) 查找配置。
+     * Establezca la identificación del complemento al que pertenece la ejecución JS actual, por ejemplo host.getConfig(key) Encuentra la configuración.
      *
-     * 必须在 [execute] 调用前设置，执行结束后自动清空。
+     * debe estar en [execute] Se establece antes de llamar y se borra automáticamente después de la ejecución.
      */
     fun setCurrentPluginId(pluginId: String?) {
         currentPluginId = pluginId
     }
 
     /**
-     * 沙盒环境不可用。
+     * El entorno Sandbox no está disponible.
      *
-     * 属于本机环境问题（WebView 未就绪、自检未通过），与调用方传入的代码无关。
-     * 工具层据此给出“不要重试、换条路”的提示，而不是把内部实现名甩给模型。
+     * Es un problema ambiental local (WebView No listo, la autoprueba falló), independientemente del código pasado por la persona que llama.
+     * La capa de herramientas se proporciona en consecuencia.“No lo vuelvas a intentar, cambia de ruta”rápido en lugar de volcar el nombre de la implementación interna en el modelo.
      */
     class JsSandboxUnavailableException(message: String) : IllegalStateException(message)
 
     /**
-     * 构造每次执行前的宿主配置注入。
+     * Construye la inyección de configuración del host antes de cada ejecución.
      *
-     * WebView 全局对象会跨 execute() 保留；即使 localStorage/缓存被清理，
-     * 不覆盖这些变量也会让下一个插件读取上一个插件的配置。
+     * WebView Los objetos globales abarcarán execute() Retenido; incluso si se borra localStorage/cache,
+     * No anular estas variables también hará que el siguiente complemento lea la configuración del complemento anterior.
      */
     internal fun buildHostInjectionScript(scopeKey: String?, pluginConfigJson: String?): String {
         val config = pluginConfigJson ?: "null"
@@ -87,31 +87,31 @@ object JsSandbox {
     }
 
     /**
-     * 注入的沙盒初始化 JS。
+     * JS de inicialización de sandbox inyectado.
      *
-     * v2.x（沙盒放开）:JS 可直接使用 fetch / XMLHttpRequest / WebSocket —— 不再桩掉。
-     * 之前网络被完全禁用（桩函数 + shouldInterceptRequest 阻断 + blockNetworkLoads），
-     * 使插件/JS 技能只能靠 `__bridge__` 逐项报批访问网络，过于保守。
-     * 现改为：网络能力直接可用，但**保留两类底线**：
-     *  - 页面导航（window.open / location 写入）仍禁 —— 沙盒不该能跳页/弹窗；
-     *  - 请求仍经 [shouldInterceptRequest] 与 [WebSettings] 的 SSRF/本地文件防护。
+     * v2.x(Caja de arena lanzada):JS Se puede utilizar directamente fetch / XMLHttpRequest / WebSocket —— No más montones.
+     * Anteriormente, la red estaba completamente deshabilitada (función stub + bloqueo de shouldInterceptRequest + blockNetworkLoads),
+     * habilitar complemento/JS Las habilidades sólo pueden depender de `__bridge__` Solicitar la aprobación de acceso a la red elemento por elemento es demasiado conservador.
+     * Ahora cambiado a: las capacidades de red están disponibles directamente, pero**Mantenga dos tipos de resultados finales**:
+     *  - Navegación de página (window.open / location escribir) todavía está prohibido —— La zona de pruebas no debería poder saltar a la página./ventana emergente;
+     *  - La solicitud aún se procesa [shouldInterceptRequest] con [WebSettings] SSRF/protección de archivos locales.
      */
     private const val INIT_JS = """
         (function() {
             'use strict';
             var marker = 'muse-js-sandbox-open-v2';
-            // v2.x: fetch / XMLHttpRequest / WebSocket / sendBeacon 不再拦截，直接可用。
-            // 仅保留导航防护：禁止弹窗与页面跳转（沙盒不应能控制宿主浏览行为）。
-            try { window.open = function() { return null; }; } catch (e) { /* 属性可能不存在,静默跳过 */ }
-            try { window.close = function() {}; } catch (e) { /* 属性可能不存在,静默跳过 */ }
-            try { document.write = function() {}; } catch (e) { /* 属性可能不存在,静默跳过 */ }
-            try { document.writeln = function() {}; } catch (e) { /* 属性可能不存在,静默跳过 */ }
+            // v2.x: fetch / XMLHttpRequest / WebSocket / sendBeacon No más intercepciones, disponibles directamente.
+            // Solo se conserva la protección de navegación: las ventanas emergentes y los saltos de página están prohibidos (el entorno limitado no debería poder controlar el comportamiento de navegación del host).
+            try { window.open = function() { return null; }; } catch (e) { /* La propiedad puede no existir,Saltar en silencio */ }
+            try { window.close = function() {}; } catch (e) { /* La propiedad puede no existir,Saltar en silencio */ }
+            try { document.write = function() {}; } catch (e) { /* La propiedad puede no existir,Saltar en silencio */ }
+            try { document.writeln = function() {}; } catch (e) { /* La propiedad puede no existir,Saltar en silencio */ }
             Object.defineProperty(window, '__museSandboxDisabled', {
                 value: marker, writable: false, configurable: false, enumerable: false
             });
-            // ── 网络垫片 ──
-            // 沙盒页面是 about:blank，origin=null：直接 fetch 会被同源策略拦成 CORS 错误。
-            // 这里把 fetch / XMLHttpRequest 改走 __museHttp（Kotlin 侧 OkHttp），彻底绕开 CORS。
+            // ── junta de red ──
+            // La página de la zona de pruebas es aproximadamente: en blanco,origin=null: La recuperación directa será bloqueada por la misma política de origen y provocará un error de CORS.
+            // Aquí, cambie fetch / XMLHttpRequest a __museHttp (Kotlin OkHttp), evitando completamente CORS.
             function __museDoHttp(method, url, headers, body) {
                 var payload = { method: method, url: url, headers: headers || {}, body: body };
                 var raw = __museHttp.httpRequest(JSON.stringify(payload));
@@ -179,7 +179,7 @@ object JsSandbox {
                 }, 0);
             };
             window.XMLHttpRequest = MuseXHR;
-            // B7-01: host 对象 — 插件可通过 host.getConfig(key) 读取宿主提供的配置值
+            // B7-01: host objeto — Se puede acceder a los complementos a través de host.getConfig(key) Leer los valores de configuración proporcionados por el host
             if (typeof host === 'undefined') {
                 window.host = {
                     getConfig: function(key) {
@@ -195,17 +195,17 @@ object JsSandbox {
     """
 
     /**
-     * v2.x（沙盒放开）:验证仅检查导航防护生效；网络 API 已放开，不再要求 "必抛错"。
-     * 覆盖两类：window.open 被覆盖 + document.write 被禁用。
+     * v2.x(Caja de arena lanzada):La verificación sólo comprueba que la protección de navegación esté vigente; la API de red se ha lanzado y ya no es necesaria. "Debe arrojar error".
+     * Cubre dos categorías:window.open Sobrescrito + document.write está deshabilitado.
      */
     internal const val VERIFY_JS = """
         (function() {
             var issues = [];
             if (typeof window.open !== 'function') { issues.push('window.open missing'); }
-            else { try { var r = window.open('about:blank'); if (r !== null) issues.push('window.open not blocked'); } catch (e) { /* 抛错也视为已阻断 */ } }
-            // 必须显式 return：evaluateJavascript 取的是整个表达式的值，
-            // 直接写 JSON.stringify(...) 作为语句时函数返回 undefined，回调收到 "null"，
-            // 会被当成“自检没返回结果”。
+            else { try { var r = window.open('about:blank'); if (r !== null) issues.push('window.open not blocked'); } catch (e) { /* Lanzar un error también se considera bloqueado. */ } }
+            // Debe devolver explícitamente:evaluateJavascript toma el valor de la expresión completa,
+            // Escribe directamente JSON.stringify(...) Cuando se usa como declaración, la función devuelve indefinido y la devolución de llamada recibe "null",
+            // será considerado como“La autoprueba no arrojó resultados”.
             return JSON.stringify({ verified: issues.length === 0, issues: issues });
         })();
     """
@@ -213,37 +213,37 @@ object JsSandbox {
     @Volatile private var webViewRef: WebView? = null
 
     /**
-     * 异步返回值通道：脚本返回 Promise 时，`evaluateJavascript` 拿到的是 `{}`（Promise 无法序列化）。
-     * 包装脚本识别到 thenable 后改为通过 `__museAsync.deliver(...)` 回传真实结果，
-     * 这里保存当前等待中的回调（同一时刻只有一次执行，Mutex 已串行化）。
+     * Canal de valor de retorno asincrónico: cuando el script devuelve Promesa,`evaluateJavascript` Lo que obtuve fue `{}`(Promise no se puede serializar).
+     * El script contenedor reconoce thenable y lo cambia para pasar `__museAsync.deliver(...)` Devolver resultados reales,
+     * La devolución de llamada actualmente en espera se guarda aquí (solo se ejecuta una vez al mismo tiempo,Mutex serializado).
      */
     private val asyncDeliver = java.util.concurrent.atomic.AtomicReference<((String) -> Unit)?>(null)
 
-    /** JS 侧「等我异步回传」的哨兵值。 */
+    /** JS El valor centinela de \"Esperando mi retorno asincrónico\". */
     private const val ASYNC_SENTINEL = "__MUSE_ASYNC__"
 
-    /** 沙盒 HTTP 单次超时（毫秒）。 */
+    /** Tiempo de espera único HTTP de Sandbox (milisegundos). */
     private const val HTTP_TIMEOUT_MS = 15_000L
 
-    /** 沙盒 HTTP 响应体上限：2 MB，超出即截断并标记。 */
+    /** Límite del cuerpo de respuesta HTTP de Sandbox:2 MB, se truncará y marcará si se excede. */
     private const val MAX_HTTP_BYTES = 2 * 1024 * 1024
 
-    /** 供 JS 调用的异步回传入口（注册为 `__museAsync`）。 */
+    /** Entrada de devolución de datos asincrónica para llamadas JS (registrada como `__museAsync`). */
     @android.webkit.JavascriptInterface
     fun deliverAsyncResult(payload: String) {
         asyncDeliver.getAndSet(null)?.invoke(payload)
     }
 
     /**
-     * 供 JS 调用的 HTTP 入口（注册为 `__museHttp`）：**由 Kotlin 侧 OkHttp 真正发请求**。
+     * Entrada HTTP para llamadas JS (registrada como `__museHttp`):**La solicitud real la realiza OkHttp en el lado de Kotlin.**.
      *
-     * 为什么需要它：沙盒页面是 `about:blank`，origin 是 `null`，浏览器同源策略会把
-     * 绝大多数跨站请求直接拦成 CORS 错误 —— 工具描述里承诺的 fetch/XHR 实际上用不了。
-     * 走原生请求就没有 CORS 这回事。
+     * Por qué lo necesitas: La página Sandbox es `about:blank`,origin si `null`, la política del mismo origen del navegador
+     * La gran mayoría de las solicitudes entre sitios se bloquean directamente como errores CORS. —— El fetch/XHR prometido en la descripción de la herramienta en realidad no funciona.
+     * No existe CORS cuando se utilizan solicitudes nativas.
      *
-     * 边界（有意保留）：只允许 http/https；不带任何 cookie/凭据；响应体上限 [MAX_HTTP_BYTES]；
-     * 超时 [HTTP_TIMEOUT_MS]。@JavascriptInterface 方法运行在 WebView 的 JavaBridge 线程，
-     * 阻塞在这里不会卡主线程。
+     * Límites (reservados intencionalmente): solo se permite http/https; sin cookies/credenciales; límite del cuerpo de respuesta [MAX_HTTP_BYTES];
+     * tiempo de espera [HTTP_TIMEOUT_MS].@JavascriptInterface El método se ejecuta en el hilo JavaBridge de WebView,
+     * Bloquear aquí no bloqueará el hilo principal.
      */
     @android.webkit.JavascriptInterface
     fun httpRequest(requestJson: String): String {
@@ -256,9 +256,9 @@ object JsSandbox {
             return """{"error":"only http/https allowed"}"""
         }
         val bodyText = (request["body"] as? JsonPrimitive)?.contentOrNull
-        // 审计：沙盒能发任意 HTTP，就得留下「发了什么」的痕迹（host + 方法 + 体量）。
+        // Auditoría: el sandbox puede enviar HTTP arbitrario, por lo que debe dejar rastros de "lo que se envió" (host + método + volumen).
         val host = runCatching { java.net.URI(url).host }.getOrNull() ?: "?"
-        Logger.i(TAG, "沙盒外发请求 | method=$method | host=$host | bodyBytes=${bodyText?.length ?: 0}")
+        Logger.i(TAG, "Solicitud saliente de zona de pruebas | method=$method | host=$host | bodyBytes=${bodyText?.length ?: 0}")
         return try {
             val builder = okhttp3.Request.Builder().url(url).method(method, null)
             (request["headers"] as? JsonObject)?.forEach { (name, value) ->
@@ -271,8 +271,8 @@ object JsSandbox {
             httpClient.newCall(builder.build()).execute().use { response ->
                 val bytes = response.body?.bytes() ?: ByteArray(0)
                 val truncated = bytes.size > MAX_HTTP_BYTES
-                // 审计（收尾）：记下状态码与体积，脚本侧拿到的就是这份。
-                Logger.i(TAG, "沙盒外发完成 | host=$host | status=${response.code} | bytes=${bytes.size}")
+                // Auditoría (Acabado): Anote el código de estado y el volumen. Esto es lo que obtienes en el lado del guión.
+                Logger.i(TAG, "Se completó la subcontratación del espacio aislado | host=$host | status=${response.code} | bytes=${bytes.size}")
                 val text = String(
                     if (truncated) bytes.copyOf(MAX_HTTP_BYTES) else bytes,
                     Charsets.UTF_8,
@@ -291,14 +291,14 @@ object JsSandbox {
                 }.toString()
             }
         } catch (e: Exception) {
-            Logger.w(TAG, "沙盒 HTTP 请求失败: ${e.message}")
+            Logger.w(TAG, "Error en la solicitud HTTP del espacio aislado: ${e.message}")
             buildJsonObject {
                 put("error", JsonPrimitive(e.message ?: e::class.java.simpleName))
             }.toString()
         }
     }
 
-    /** 沙盒网络：共享客户端（不带 cookie jar，避免脚本拿到宿主会话）。 */
+    /** Red Sandbox: cliente compartido (sin tarro de cookies para evitar que los scripts obtengan la sesión del host). */
     private val httpClient: okhttp3.OkHttpClient by lazy {
         okhttp3.OkHttpClient.Builder()
             .connectTimeout(HTTP_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -310,20 +310,20 @@ object JsSandbox {
 
     @Volatile private var appContext: Context? = null
 
-    /** R-SVC-04: 连续超时熔断阈值。 */
+    /** R-SVC-04: Umbral del disyuntor de tiempo de espera continuo. */
     private const val MAX_CONSECUTIVE_TIMEOUTS = 2
 
-    /** R-SVC-04: 熔断后自动恢复冷却时间。 */
+    /** R-SVC-04: El tiempo de enfriamiento se restablece automáticamente después de que se funde el fusible. */
     private const val CIRCUIT_COOLDOWN_MS = 60_000L
 
-    /** R-SVC-04: 累计超时配额(进程内),超过后同样熔断。 */
+    /** R-SVC-04: Cuota de tiempo de espera acumulada(En proceso),También se fusionará tras superarlo. */
     private const val MAX_TOTAL_TIMED_OUT_MS = 60_000L
 
     /**
-     * C-30: 熔断状态按 scopeKey(插件 id)维度隔离,避免一个插件死循环熔断连坐全部 JS 工具。
-     * key == null 代表内置/非插件工具(保留原有全局语义)。
-     * 改用 [ConcurrentHashMap] 支持并发读写(每个周期的状态更新在同一主线程 mutex 内串行,
-     * 但读取 [isCircuitBroken] 可能来自其他线程)。
+     * C-30: Botón de estado del fusible scopeKey(complemento id)Aislamiento dimensional,Esto evita que un complemento apague todas las herramientas JS en un bucle infinito.
+     * key == null Representa incorporado/Herramientas no complementarias(Conservar la semántica global original).
+     * Usar en su lugar [ConcurrentHashMap] Admite lectura y escritura simultáneas(Las actualizaciones de estado en cada ciclo se serializan dentro del mismo mutex del hilo principal.,
+     * pero lee [isCircuitBroken] Puede ser de otro hilo).
      */
     private class CircuitState(
         @Volatile var consecutiveTimeouts: Int = 0,
@@ -334,56 +334,56 @@ object JsSandbox {
     private val circuitStates = ConcurrentHashMap<String?, CircuitState>()
 
     /**
-     * [ConcurrentHashMap] 不允许 null key：内置工具走 [execute] 时 scopeKey 为 null，
-     * 若直接以 null 作 key 会在 get 时抛 NPE（"Attempt to invoke virtual method
-     * 'int java.lang.Object.hashCode()' on a null object reference"）——
-     * 所有内置 execute_javascript 调用因此 100% 失败（用户实测）。
-     * 用固定哨兵串代替 null key，对外语义不变（null 仍代表内置/默认 scope）。
+     * [ConcurrentHashMap] No permitir clave nula: las herramientas integradas desaparecen [execute] cuando alcanceKey es nulo,
+     * Si se usa null como clave directamente, se generará NPE durante get ("Attempt to invoke virtual method
+     * 'int java.lang.Object.hashCode()' on a null object reference")——
+     * Por lo tanto, todas las llamadas integradas a ejecutar_javascript fallan el 100% del tiempo (probado por los usuarios).
+     * Utilice una cadena centinela fija para reemplazar la clave nula y la semántica externa permanecerá sin cambios (null Todavía representa incorporado/alcance predeterminado).
      */
     private const val DEFAULT_SCOPE_KEY = "\u0000builtin-default"
 
-    /** 获取指定 scopeKey(插件 id)的熔断状态;null scope 表示内置工具,keyed 惰性创建。 */
+    /** Obtener especificado scopeKey(complemento id)estado del fusible;null scope Indica herramientas integradas,keyed Creación perezosa. */
     private fun stateFor(scopeKey: String?): CircuitState = circuitStates.getOrPut(scopeKey ?: DEFAULT_SCOPE_KEY) { CircuitState() }
 
-    /** 日志缓冲区:每次 execute 前清空。synchronized 保护多线程访问。 */
+    /** búfer de registro:Borrar antes de cada ejecución.synchronized Proteja el acceso multiproceso. */
     private val logsLock = Any()
     private val currentLogs = mutableListOf<String>()
 
-    /** 审计修复 (4.4): execute 互斥锁 — 串行化 WebView JS 执行。 */
+    /** Reparación de auditoría (4.4): execute bloqueo mutex — Serializar la ejecución de WebView JS. */
     private val executionMutex = Mutex()
 
-    /** JS 沙盒执行结果。 */
+    /** JS Resultados de la ejecución del sandbox. */
     data class JsResult(
-        /** 执行返回值(JSON 字符串形式,可由调用方再解析)。 */
+        /** Valor de retorno de ejecución(JSON forma de cadena,Puede ser analizado por la persona que llama). */
         val value: Any?,
-        /** console.log/warn/error 收集到的日志。 */
+        /** console.log/warn/error Registros recopilados. */
         val consoleLogs: List<String>,
-        /** 执行错误信息(超时/JS 异常),null 表示成功。 */
+        /** Mensaje de error de ejecución(tiempo de espera/JS anormal),null Indica éxito. */
         val error: String?,
     )
 
     /**
-     * 注入 Application Context。幂等,可多次调用。
+     * Inyecte el contexto de la aplicación. idempotente,Se puede llamar varias veces.
      *
-     * 在 [CodeExecutionTool] / [SkillExecutor] 第一次执行前调用,
-     * 让单例 WebView 能拿到 applicationContext 创建。
+     * en [CodeExecutionTool] / [SkillExecutor] Llamado antes de la primera ejecución.,
+     * Deje que WebView singleton obtenga el contexto de aplicación para crear.
      */
     fun init(context: Context) {
         if (appContext == null) {
             appContext = context.applicationContext
-            Logger.i(TAG, "JsSandbox 已注入 applicationContext")
+            Logger.i(TAG, "JsSandbox inyectado applicationContext")
         }
     }
 
     /**
-     * 执行 JavaScript 代码。
+     * Ejecutar código JavaScript.
      *
-     * @param code JS 代码(可以是表达式、语句块或函数调用;若为语句块,返回最后一个表达式的值)
-     * @param timeoutMs 超时毫秒数,默认 10 秒
-     * @param scopeKey C-30: 执行归属的插件 id(插件工具传 pluginId;内置工具不传使用 null 全局 scope)。
-     *   熔断状态按此隔离,一个插件的死循环超时只熔断自身,不会连坐其他插件/内置工具。
-     * @param pluginConfigJson B7-01: 插件配置 JSON 字符串,用于注入 host.getConfig() 桥接。null 时跳过注入。
-     * @return [Result] 包裹的 [JsResult];Kotlin 侧异常返回 failure(JS 执行错误封装在 JsResult.error 中)
+     * @param code JS código(Puede ser una expresión, un bloque de instrucciones o una llamada de función.;Si es un bloque de declaración,Devuelve el valor de la última expresión.)
+     * @param timeoutMs Tiempo de espera en milisegundos,Predeterminado 10 segundos
+     * @param scopeKey C-30: Ejecute el complemento de su propiedad id(Transferencia de herramientas complementarias pluginId;Las herramientas integradas no se pasan usando null global scope).
+     *   El estado del fusible está aislado de acuerdo con este,El tiempo de espera del bucle infinito de un complemento solo se fusiona a sí mismo,No se conecta a otros complementos/Herramientas incorporadas.
+     * @param pluginConfigJson B7-01: Cadena JSON de configuración del complemento,para inyección host.getConfig() puente.null Se omite la inyección.
+     * @return [Result] envuelto [JsResult];Kotlin retorno de excepción lateral failure(JS Los errores de ejecución están encapsulados en JsResult.error)
      */
     suspend fun execute(
         code: String,
@@ -391,39 +391,39 @@ object JsSandbox {
         scopeKey: String? = null,
         pluginConfigJson: String? = null,
     ): Result<JsResult> = withContext(Dispatchers.Main) {
-        // 审计修复 (4.4): execute 加互斥 — 原实现无并发控制,多个工具同时 execute
-        // 会并发进入 WebView JS 执行,console 日志缓冲区互相污染、超时销毁与回调交错;
-        // 用 Mutex 串行化,同一时刻只允许一个 JS 执行。锁内等待是挂起而非阻塞主线程。
+        // Reparación de auditoría (4.4): execute agregar exclusión mutua — La implementación original no tenía control de concurrencia.,Múltiples herramientas al mismo tiempo execute
+        // Entrará en la ejecución de WebView JS al mismo tiempo,console Los buffers de registro están contaminados entre sí, la destrucción del tiempo de espera y las devoluciones de llamada están intercaladas;
+        // Serialización con Mutex,Solo se permite ejecutar un JS al mismo tiempo. Esperar dentro del bloqueo suspende en lugar de bloquear el hilo principal.
         executionMutex.withLock {
             try {
-                // C-30: 熔断状态按 scopeKey 隔离读取
+                // C-30: El estado del fusible se lee de forma aislada según la clave de alcance.
                 val state = stateFor(scopeKey)
                 if (System.currentTimeMillis() < state.circuitBrokenUntil) {
                     return@withContext Result.failure(
-                        IllegalStateException("JS 沙盒已熔断，请稍后重试(scope=${scopeKey ?: "default"})"),
+                        IllegalStateException("JS La zona de pruebas se ha roto, inténtelo de nuevo más tarde.(scope=${scopeKey ?: "default"})"),
                     )
                 }
                 val webView = ensureWebView()
-                // C-30: 每次执行前清理 localStorage / 缓存 / 表单数据,防止跨插件(以及跨执行)残留
-                //   泄漏到下一次执行。WebView 是全局共享单例,无法按插件隔离实例;
-                //   用"执行前清空数据"保证插件 A 写入的 localStorage 不会被插件 B 读到。
+                // C-30: Limpie los datos de localStorage/cache/formulario antes de cada ejecución,Prevenir complementos cruzados(y entre ejecuciones)Residuo
+                //   Fuga a la próxima ejecución.WebView Es un singleton compartido globalmente.,No se pueden aislar instancias por complemento;
+                //   usar"Borrar datos antes de la ejecución."Asegúrese de que el almacenamiento local escrito por el complemento A no sea leído por el complemento B.
                 clearPerExecutionData(webView)
-                // 清空当前日志
+                // Borrar registro actual
                 synchronized(logsLock) { currentLogs.clear() }
 
-                // 用 IIFE 包裹代码:让 LLM 可以写语句块;返回值用 JSON.stringify 序列化
-                // 注意:LLM 写的代码可能是 "1+2" / "const x = 3; x*2" / "Math.max(1,2)" 等
-                // 这里用 (function(){ ... })() 包裹后,内部代码可以用 return 返回值;
-                // 但若 LLM 写的是表达式而非 return 语句,IIFE 内部最后表达式不会自动返回。
-                // 折中方案:用 eval(code) 求值,表达式直接返回;语句块若没 return 则返回 undefined
+                // Envolver código con IIFE:Permitir que LLM escriba bloques de declaraciones;El valor de retorno se serializa usando JSON.stringify
+                // Nota:LLM El código escrito puede ser "1+2" / "const x = 3; x*2" / "Math.max(1,2)" espera
+                // Usado aquí (function(){ ... })() Después del paquete,El código interno puede usar return para devolver un valor;
+                // Pero si LLM escribe una expresión en lugar de una declaración de devolución,IIFE La última expresión interna no se devuelve automáticamente.
+                // compromiso:usar eval(code) evaluar,La expresión regresa directamente.;Si no hay devolución en el bloque de declaración, devuelva undefined
                 val wrappedCode = buildString {
                     append("(function() {\n")
                     append("    try {\n")
                     append("        var __result__ = eval(")
                     append(quoteJs(code))
                     append(");\n")
-                    append("        // 脚本返回 Promise 时必须等它 settle：evaluateJavascript 只会拿到 {},\n")
-                    append("        // 成功和失败都变成空对象 —— 那是静默失败，比报错更难查。\n")
+                    append("        // Cuando un script devuelve una Promesa debe esperar a que se establezca:evaluateJavascript sólo obtendrá {},\n")
+                    append("        // Tanto el éxito como el fracaso se convierten en objetos vacíos. —— Se trata de un fallo silencioso, que es más difícil de comprobar que un error.\n")
                     append("        if (__result__ && typeof __result__.then === 'function') {\n")
                     append("            try {\n")
                     append("                __result__.then(\n")
@@ -446,14 +446,14 @@ object JsSandbox {
                     append(ASYNC_SENTINEL)
                     append("';\n")
                     append("        }\n")
-                    append("        // JSON.stringify 包装返回值,undefined → null\n")
+                    append("        // JSON.stringify valor de retorno del contenedor,undefined → null\n")
                     append("        if (__result__ === undefined) {\n")
                     append("            return { ok: true, value: null };\n")
                     append("        }\n")
                     append("        try {\n")
                     append("            return { ok: true, value: JSON.stringify(__result__) };\n")
                     append("        } catch (e) {\n")
-                    append("            // 不可序列化(如函数/DOM 节点):降级到 String()\n")
+                    append("            // No serializable(Como función/DOM nodo):bajar de categoría a String()\n")
                     append("            return { ok: true, value: String(__result__), stringifyError: e.message };\n")
                     append("        }\n")
                     append("    } catch (e) {\n")
@@ -464,42 +464,42 @@ object JsSandbox {
 
                 val raw = withTimeoutOrNull(timeoutMs) {
                     suspendCancellableCoroutine { cont ->
-                        // B7-01: 在执行前注入当前插件的配置到 window.__musePluginConfig
-                        // pluginConfigJson 已经是安全的 JSON 字符串；即使为空也必须显式
-                        // 覆盖旧值，避免共享 WebView 的全局状态跨插件泄漏。
+                        // B7-01: Inyecte la configuración del complemento actual en window.__musePluginConfig
+                        // pluginConfigJson Ya es una cadena JSON segura; debe ser explícito incluso si está vacío
+                        // Sobrescriba los valores antiguos para evitar filtrar el estado global del WebView compartido entre complementos.
                         val done = java.util.concurrent.atomic.AtomicBoolean(false)
                         fun finish(value: String?) {
                             if (done.compareAndSet(false, true) && cont.isActive) cont.resume(value)
                         }
                         asyncDeliver.set { payload -> finish(payload) }
                         cont.invokeOnCancellation { asyncDeliver.set(null) }
-                        // INIT_JS 必须在**每次执行前**重新注入：WebView 只加载一次 about:blank，
-                        // 但 loadDataWithBaseURL 会换掉整个 document，window 上的 fetch/XHR 垫片
-                        // 与 host 对象会被一起清掉 —— 只在建 WebView 时注入一次等于没注入。
+                        // INIT_JS debe estar en**antes de cada ejecución**Reinyectar:WebView Acerca de: el espacio en blanco solo se carga una vez,
+                        // Pero loadDataWithBaseURL reemplazará todo el documento,window buscar/calza XHR en
+                        // y el objeto host se borrarán juntos. —— Inyectarlo solo una vez al crear WebView equivale a no inyectar.
                         webView.evaluateJavascript(
                             INIT_JS + "\n" + buildHostInjectionScript(scopeKey, pluginConfigJson),
                         ) { }
                         webView.evaluateJavascript(wrappedCode) { result ->
-                            // 异步脚本：包装脚本返回哨兵，真实结果稍后由 __museAsync 回传，别在这里结束。
+                            // Script asincrónico: el script contenedor devuelve el centinela y __museAsync devuelve el resultado real más tarde. No termines aquí.
                             if (result != null && result.contains(ASYNC_SENTINEL)) return@evaluateJavascript
-                            // withTimeout 取消后回调仍可能触发;用 isActive 守卫避免 resume 已取消的 cont
+                            // withTimeout La devolución de llamada aún puede activarse después de la cancelación.;Utilice isActive guard para evitar que se cancele el currículum cont
                             finish(result)
                         }
                     }
                 }
 
                 if (raw == null) {
-                    // 超时:JS 仍在 V8 中跑(无法中断),但 Kotlin 侧返回超时错误
+                    // tiempo de espera:JS Todavía funcionando en un V8(No se puede interrumpir),Pero el lado de Kotlin devuelve un error de tiempo de espera
                     val logs = synchronized(logsLock) { currentLogs.toList() }
-                    // R-SVC-04 + C-30: 超时后销毁 WebView 真正终止 JS,并累计熔断状态。
-                    //   熔断计数按 scopeKey 隔离,避免一个插件死循环连坐其他 JS 工具。
+                    // R-SVC-04 + C-30: Destruya WebView después del tiempo de espera y finalice realmente JS,Y el estado del fusible se acumula.
+                    //   El recuento de interrupciones del circuito está aislado por ScopeKey,Evite un bucle infinito de complementos que interfieran con otras herramientas JS.
                     state.consecutiveTimeouts++
                     state.totalTimedOutMs += timeoutMs
                     if (state.consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS || state.totalTimedOutMs >= MAX_TOTAL_TIMED_OUT_MS) {
                         state.circuitBrokenUntil = System.currentTimeMillis() + CIRCUIT_COOLDOWN_MS
                         Logger.e(
                             TAG,
-                            "JS 沙盒超时熔断(scope=${scopeKey ?: "default"}): " +
+                            "JS Disyuntor de tiempo de espera de Sandbox(scope=${scopeKey ?: "default"}): " +
                                 "consecutive=${state.consecutiveTimeouts} total=${state.totalTimedOutMs}",
                         )
                     }
@@ -508,7 +508,7 @@ object JsSandbox {
                         JsResult(
                             value = null,
                             consoleLogs = logs,
-                            error = "执行超时(${timeoutMs}ms)",
+                            error = "Tiempo de espera de ejecución(${timeoutMs}ms)",
                         ),
                     )
                 }
@@ -516,53 +516,53 @@ object JsSandbox {
                 val logs = synchronized(logsLock) { currentLogs.toList() }
                 val (value, error) = parseRawResult(raw)
                 state.consecutiveTimeouts = 0
-                // B-16a: totalTimedOutMs 原单调不减,熔断冷却结束后累计量仍逼近上限,
-                //   导致任意一次新超时就立即再次熔断(直至手动复位才恢复)。成功执行时
-                //   按固定 window 衰减(减半),熔断后允许逐步恢复;不彻底清零以保留对
-                //   连续超时的保守记忆(fixed-window 衰减的保守实现)。
+                // B-16a: totalTimedOutMs La monotonía original permanece sin cambios.,Una vez completado el enfriamiento del fusible, la cantidad acumulada aún se acerca al límite superior.,
+                //   Como resultado, cualquier nuevo tiempo de espera hará que el disyuntor se vuelva a quemar inmediatamente.(No se recuperará hasta el reinicio manual). en ejecución exitosa
+                //   Decaimiento por ventana fija(reducido a la mitad),Permitir la recuperación gradual después del disyuntor.;No está completamente autorizado a retener el
+                //   Memoria conservadora para tiempos de espera consecutivos.(fixed-window Implementación conservadora de la decadencia.).
                 state.totalTimedOutMs /= 2
                 Result.success(JsResult(value = value, consoleLogs = logs, error = error))
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-                // B-16a: 协程取消信号必须向上传播,不能被 catch(Exception) 吞掉
+                // B-16a: La señal de cancelación de rutina debe propagarse hacia arriba.,no puede ser catch(Exception) tragar
                 throw e
             } catch (e: Exception) {
-                Logger.e(TAG, "JsSandbox execute 异常: ${e.message}", e)
+                Logger.e(TAG, "JsSandbox execute anormal: ${e.message}", e)
                 Result.failure(e)
             }
         }
     }
 
     /**
-     * R-SVC-04: 当前是否处于熔断期(内置/默认 scope,null key)。
-     * C-30: 保留对内置工具的全局语义;插件请使用 [isCircuitBrokenFor] 按 id 判断。
+     * R-SVC-04: ¿Se encuentra actualmente en un período de disyuntor?(Incorporado/Predeterminado scope,null key).
+     * C-30: Preservar la semántica global para las herramientas integradas;Por favor use el complemento [isCircuitBrokenFor] Juzgar por id.
      */
     val isCircuitBroken: Boolean get() = isCircuitBrokenFor(null)
 
-    /** C-30: 指定插件/scope 是否处于熔断期。 */
+    /** C-30: Especificar complemento/scope Si está en el período del disyuntor. */
     fun isCircuitBrokenFor(scopeKey: String?): Boolean {
         val state = circuitStates[scopeKey ?: DEFAULT_SCOPE_KEY] ?: return false
         return System.currentTimeMillis() < state.circuitBrokenUntil
     }
 
     /**
-     * R-SVC-04: 手动复位熔断(用户重试/插件禁用后可调用)。
-     * C-30: 默认复位内置 scope;插件复位传对应 pluginId。
+     * R-SVC-04: Fusible de reinicio manual(Reintentos del usuario/Se puede llamar después de que el complemento esté deshabilitado.).
+     * C-30: Restablecimiento predeterminado incorporado scope;El restablecimiento del complemento pasa el ID del complemento correspondiente.
      */
     fun resetCircuitBreaker(scopeKey: String? = null) {
         val state = stateFor(scopeKey)
         state.circuitBrokenUntil = 0L
         state.consecutiveTimeouts = 0
         state.totalTimedOutMs = 0L
-        Logger.i(TAG, "JsSandbox 熔断已复位(scope=${scopeKey ?: "default"})")
+        Logger.i(TAG, "JsSandbox El fusible se ha reiniciado(scope=${scopeKey ?: "default"})")
     }
 
     /**
-     * C-30: 每次执行前清理沙箱 WebView 的持久数据,防止跨插件残留。必须在主线程调用
-     * (execute 在 Main 线程串行执行,安全)。
+     * C-30: Limpiar los datos persistentes del Sandbox WebView antes de cada ejecución.,Evite los residuos de complementos cruzados. Debe ser llamado en el hilo principal.
+     * (execute Ejecutar en serie en el hilo principal,seguro).
      *
-     * P2-20: 不再调用 WebStorage.deleteAllData() — 沙箱只加载 about:blank(opaque
-     * origin,自带 localStorage 不可用),而 WebStorage 是应用级全局存储,删除会同时
-     * 清掉 BrowserManager/浏览器已登录站点的 localStorage(登录态丢失)。
+     * P2-20: ya no me llaman WebStorage.deleteAllData() — La zona de pruebas solo se carga about:blank(opaque
+     * origin,El almacenamiento local integrado no está disponible),WebStorage es almacenamiento global a nivel de aplicación,La eliminación se producirá al mismo tiempo.
+     * Borre el sitio BrowserManager/navegador conectado localStorage(Estado de inicio de sesión perdido).
      */
     private fun clearPerExecutionData(webView: WebView) {
         runCatching {
@@ -570,18 +570,18 @@ object JsSandbox {
             webView.clearFormData()
             webView.clearHistory()
         }.onFailure { e ->
-            // 清理失败不影响 JS 执行本身(沙盒权限仍有限制),记录日志便于排查
-            Logger.w(TAG, "JsSandbox 每次执行数据清理失败: ${e.message}")
+            // El error de limpieza no afecta la ejecución de JS en sí(Los permisos de la zona de pruebas aún son limitados),Registre registros para solucionar problemas fácilmente
+            Logger.w(TAG, "JsSandbox La limpieza de datos falla cada vez: ${e.message}")
         }
     }
 
     /**
-     * 销毁 WebView(可在 Application.onTerminate / 测试 tearDown 调用,释放资源)。
-     * 必须在主线程调用。
+     * destruir WebView(Se puede llamar en Application.onTerminate/Test tearDown,Liberar recursos).
+     * Debe llamarse en el hilo principal.
      */
     fun destroy() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            Logger.w(TAG, "destroy 必须在主线程调用,已忽略")
+            Logger.w(TAG, "destroy Debe ser llamado en el hilo principal.,ignorado")
             return
         }
         webViewRef?.let { wv ->
@@ -592,64 +592,64 @@ object JsSandbox {
         }
         webViewRef = null
         synchronized(logsLock) { currentLogs.clear() }
-        Logger.i(TAG, "JsSandbox WebView 已销毁")
+        Logger.i(TAG, "JsSandbox WebView Destruido")
     }
 
-    // ── 内部实现 ──────────────────────────────────────────────────────
+    // ── implementación interna ──────────────────────────────────────────────────────
 
     /**
-     * 创建/获取 WebView 单例。必须在主线程调用。
-     * 第一次调用会创建 WebView + 注入安全限制 JS。
+     * crear/Obtenga el singleton de WebView. Debe llamarse en el hilo principal.
+     * La primera llamada crea un JS restringido para inyección WebView +.
      */
     @SuppressLint("SetJavaScriptEnabled")
     private suspend fun ensureWebView(): WebView {
         check(Looper.myLooper() == Looper.getMainLooper()) {
-            "JsSandbox WebView 必须在主线程创建和访问"
+            "JsSandbox WebView Debe ser creado y accedido en el hilo principal."
         }
         webViewRef?.let { return it }
         val ctx = appContext
-            ?: error("JsSandbox 未初始化,请先调用 init(context) 注入 Application Context")
+            ?: error("JsSandbox no inicializado,Por favor llame primero init(context) inyectar Application Context")
 
         val wv = WebView(ctx).apply {
-            // 异步返回值通道（脚本 return Promise 时用）。只暴露一个回传方法，不提供任何读取能力。
+            // Canal de valor de retorno asincrónico (utilizado cuando el script devuelve Promise). Solo expone un método de devolución de llamada y no proporciona ninguna capacidad de lectura.
             @Suppress("AddJavascriptInterface")
             addJavascriptInterface(JsSandbox, "__museAsync")
-            // 网络垫片后端：Kotlin 侧发请求，绕开沙盒的 opaque origin（CORS）。
+            // Backend de corrección de red:Kotlin Solicitudes de problemas secundarios, sin pasar por el origen opaco del sandbox (CORS).
             addJavascriptInterface(JsSandbox, "__museHttp")
-            // ── WebSettings:开启 JS + 关闭所有危险功能 ──
+            // ── WebSettings:Habilite JS + desactive todas las funciones peligrosas ──
             settings.javaScriptEnabled = true
             settings.allowContentAccess = false
             settings.allowFileAccess = false
             settings.allowFileAccessFromFileURLs = false
             settings.allowUniversalAccessFromFileURLs = false
             settings.databaseEnabled = false
-            settings.domStorageEnabled = true // localStorage 等(沙盒内可用)
+            settings.domStorageEnabled = true // localStorage espera(Disponible en caja de arena)
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.mediaPlaybackRequiresUserGesture = true
             settings.cacheMode = WebSettings.LOAD_NO_CACHE
             settings.loadsImagesAutomatically = false
-            // v2.x（沙盒放开）：不再阻止网络加载 —— fetch/XHR/WebSocket 直接可用。
-            // 本地文件访问仍关闭（allowFileAccess=false / allowContentAccess=false），
-            // 防 file:// / content:// 跨域读取。
+            // v2.x(Versión Sandbox): ya no bloquea la carga de la red —— fetch/XHR/WebSocket Disponible directamente.
+            // El acceso a archivos locales permanece cerrado (allowFileAccess=false / allowContentAccess=false),
+            // Evite la lectura entre dominios file:// / content://.
             settings.blockNetworkLoads = false
 
-            // ── WebViewClient:仅拦页面导航;网络请求放行（保留底线） ──
+            // ── WebViewClient:Bloquear solo la navegación de la página;Liberación de solicitud de red (mantenga el resultado final) ──
             webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = true // 阻止任何页面跳转
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = true // Evitar cualquier salto de página
 
                 override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                    // v2.x（沙盒放开）：不再无脑阻断。仅保留 file:// / content:// 隔离（防本地文件读取）;
-                    // http/https/wss 等正常放行。
+                    // v2.x(Versión Sandbox): No más bloqueos sin sentido. Mantenga únicamente file:// / content:// aislado (para evitar la lectura de archivos locales);
+                    // http/https/wss Espere la liberación normal.
                     val scheme = request?.url?.scheme?.lowercase()
                     return if (scheme == "file" || scheme == "content") {
                         WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("sandbox-local-blocked".toByteArray()))
                     } else {
-                        null // 交给 WebView 正常处理
+                        null // Déjelo en WebView para el procesamiento normal.
                     }
                 }
             }
 
-            // ── WebChromeClient:拦截 console.log 收集日志 + 阻止弹窗 ──
+            // ── WebChromeClient:Interceptar console.log para recopilar registros + bloquear ventanas emergentes ──
             webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
                     val level = when (consoleMessage.messageLevel()) {
@@ -667,7 +667,7 @@ object JsSandbox {
                 }
 
                 override fun onJsAlert(view: WebView?, url: String?, message: String?, result: android.webkit.JsResult): Boolean {
-                    // 收集 alert 日志并阻止弹窗
+                    // Recopile registros de alertas y bloquee ventanas emergentes
                     synchronized(logsLock) {
                         currentLogs.add("[alert] ${message ?: ""}")
                     }
@@ -685,9 +685,9 @@ object JsSandbox {
             }
         }
 
-        // 加载空白页(不加载任何外部 URL)
+        // Cargar página en blanco(No cargue ningún externo URL)
         wv.loadDataWithBaseURL("about:blank", "<html><body></body></html>", "text/html", "utf-8", null)
-        // evaluateJavascript 是异步的；必须等 INIT_JS 回调完成后再验证，避免竞态。
+        // evaluateJavascript Es asincrónico; debe esperar a que se complete la devolución de llamada INIT_JS antes de verificar para evitar condiciones de carrera.
         suspendCancellableCoroutine<Unit> { cont ->
             wv.evaluateJavascript(INIT_JS) { if (cont.isActive) cont.resume(Unit) }
         }
@@ -696,25 +696,25 @@ object JsSandbox {
         }
         val verifiedResult = parseVerificationResult(raw)
         if (!verifiedResult.first) {
-            Logger.w(TAG, "JsSandbox 劫持验证失败: ${verifiedResult.second.joinToString(", ")}")
+            Logger.w(TAG, "JsSandbox Error en la verificación del secuestro: ${verifiedResult.second.joinToString(", ")}")
             wv.destroy()
-            throw JsSandboxUnavailableException("沙盒环境自检未通过: ${verifiedResult.second.joinToString(", ").ifBlank { "未知原因" }}")
+            throw JsSandboxUnavailableException("Error en la autoprueba del entorno Sandbox: ${verifiedResult.second.joinToString(", ").ifBlank { "razón desconocida" }}")
         }
         webViewRef = wv
-        Logger.i(TAG, "WebView 沙盒已初始化")
+        Logger.i(TAG, "WebView La zona de pruebas se ha inicializado")
         return wv
     }
 
     /**
-     * 解析自检返回值。
+     * Analice el valor de retorno de la autoprueba.
      *
-     * [evaluateJavascript] 回调给的是 JSON 编码后的结果：正常是一条被转义的 JSON 字符串，
-     * 自检脚本没返回值时是字面量 `null`。两种都要能分辨，
-     * 否则失败原因会写成“解析失败”，掩盖真正的问题。
+     * [evaluateJavascript] La devolución de llamada proporciona el resultado codificado en JSON: normalmente es una cadena JSON con escape.
+     * Cuando el script de autoprueba no devuelve un valor, es un valor literal `null`. Tienes que poder distinguir ambos tipos.
+     * De lo contrario, el motivo del fallo se escribirá como“El análisis falló”, enmascarando el verdadero problema.
      */
     internal fun parseVerificationResult(raw: String?): Pair<Boolean, List<String>> = runCatching {
         if (raw == null || raw.isBlank() || raw == "null") {
-            return@runCatching false to listOf("自检未返回结果")
+            return@runCatching false to listOf("La autoprueba no arrojó resultados")
         }
         val first = AppJson.parseToJsonElement(raw)
         val elem = if (first is JsonPrimitive && first.isString) {
@@ -722,54 +722,54 @@ object JsSandbox {
         } else {
             first
         }
-        val obj = elem as? JsonObject ?: error("自检返回格式不是对象")
+        val obj = elem as? JsonObject ?: error("El formato de devolución de autodiagnóstico no es un objeto.")
         val verified = (obj["verified"] as? JsonPrimitive)?.booleanOrNull == true
         val issues = (obj["issues"] as? JsonArray)
             ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             ?.filter { it.isNotBlank() } ?: emptyList()
         verified to issues
-    }.getOrElse { false to listOf("自检结果解析失败：${it.message}") }
+    }.getOrElse { false to listOf("Error en el análisis del resultado de la autoprueba:${it.message}") }
 
     /**
-     * 解析 evaluateJavascript 回调返回的字符串。
+     * Analiza la cadena devuelta por la devolución de llamada de evaluaJavascript.
      *
-     * 回调返回的是 JSON-encoded 字符串,如:
-     *  - null / "null" 表示无返回值
-     *  - "{\"ok\":true,\"value\":\"42\"}" 表示执行成功
-     *  - "{\"ok\":false,\"error\":\"...\"}" 表示执行抛错
+     * La devolución de llamada devuelve una cadena codificada en JSON.,Como por ejemplo:
+     *  - null / "null" Indica que no hay valor de retorno
+     *  - "{\"ok\":true,\"value\":\"42\"}" Indica ejecución exitosa
+     *  - "{\"ok\":false,\"error\":\"...\"}" Indica error de ejecución
      */
     private fun parseRawResult(raw: String?): Pair<Any?, String?> {
         if (raw.isNullOrBlank() || raw == "null") return null to null
         return try {
             val element = AppJson.parseToJsonElement(raw)
             if (element !is JsonObject) {
-                // 非 JSON 对象(数字/字符串/布尔):直接返回原值
+                // Objeto que no es JSON(numeros/cuerda/Booleano):Devuelve el valor original directamente
                 return raw to null
             }
             val ok = (element["ok"] as? JsonPrimitive)?.booleanOrNull ?: true
             if (ok) {
                 val valueStr = (element["value"] as? JsonPrimitive)?.contentOrNull
-                // 不做二次编码：value 本身已是 JSON 文本，这里解析成结构化元素返回，
-                // 让下游只序列化一次。否则 return {"a":1} 的字符串会被再包一层引号+转义，
-                // 模型得自己反两次 —— 用户实测 `"{\"a\":1}"` 就是这么来的。
+                // Sin codificación secundaria:value Ya es texto JSON, que se analiza en elementos estructurados y se devuelve.
+                // Deje que el flujo descendente se serialice solo una vez. De lo contrario return {"a":1} La cadena estará entre comillas.+escapar,
+                // El modelo debe invertirse dos veces. —— Prueba real del usuario `"{\"a\":1}"` Así surgió.
                 val structured = valueStr?.let { text ->
                     runCatching { AppJson.parseToJsonElement(text) }.getOrNull()
                 }
                 (structured ?: valueStr) to null
             } else {
                 val err = (element["error"] as? JsonPrimitive)?.contentOrNull
-                    ?: "未知错误"
+                    ?: "error desconocido"
                 null to err
             }
         } catch (e: Exception) {
-            Logger.w(TAG, "解析 JS 返回值失败: ${e.message}(raw=$raw)")
+            Logger.w(TAG, "No se pudo analizar el valor de retorno de JS: ${e.message}(raw=$raw)")
             raw to null
         }
     }
 
-    /** 把 Kotlin 字符串转为 JS 字符串字面量(用 JSON.stringify 风格)。 */
+    /** Convertir cadena Kotlin en literal de cadena JS(Usando el estilo JSON.stringify). */
     private fun quoteJs(s: String): String {
-        // 用 JSON-style 转义:简单且安全
+        // Escape con estilo JSON:Sencillo y seguro
         val sb = StringBuilder("\"")
         for (ch in s) {
             when (ch) {

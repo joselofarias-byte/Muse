@@ -48,19 +48,19 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.61-A: 数据迁移与导入页。
+ * v1.61-A: Página de migración e importación de datos.
  *
- * 从第三方应用导入 Provider 配置、助手、会话和消息(RikkaHub / Kelivo / ChatGPT / CherryStudio / Chatbox)。
- * v2.x: Muse 原生备份的还原统一在「数据与备份」页的「导入备份」,本页不再重复提供入口。
- * 页面结构:
- *  1. 顶部说明卡片
- *  2. 选择来源(RikkaHub / Kelivo / ChatGPT / CherryStudio / Chatbox),每个卡片含导出步骤折叠说明
- *  3. 选择备份文件按钮
- *  4. 导入中进度
- *  5. 导入结果(数量统计 + 错误列表)
- *  6. 底部温馨提示
+ * Importe configuraciones de proveedores, ayudantes, sesiones y mensajes de aplicaciones de terceros(RikkaHub / Kelivo / ChatGPT / CherryStudio / Chatbox).
+ * v2.x: Muse La restauración de copias de seguridad nativas está unificada en "Importar copia de seguridad" en la página "Datos y copia de seguridad",Esta página no proporcionará entradas repetidas.
+ * Estructura de la página:
+ *  1. Tarjeta de instrucciones superior
+ *  2. Seleccionar fuente(RikkaHub / Kelivo / ChatGPT / CherryStudio / Chatbox),Cada tarjeta contiene instrucciones de plegado paso a paso para exportar.
+ *  3. Seleccione el botón del archivo de copia de seguridad
+ *  4. Importando progreso
+ *  5. Importar resultados(Estadísticas de cantidad + lista de errores)
+ *  6. Recordatorio cálido en la parte inferior.
  *
- * P3-1: 新增 CherryStudio / Chatbox JSON 入口,复用 [ConfigImporter](自动嗅探两种 JSON 格式)。
+ * P3-1: Se agregó la entrada JSON de CherryStudio/Chatbox,Reutilizar [ConfigImporter](Olfateo automático de dos formatos JSON).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +74,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
 
     var isImporting by remember { mutableStateOf(false) }
     var importResult by remember { mutableStateOf<ImportResult?>(null) }
-    // P3-1: CherryStudio / Chatbox JSON 导入结果(与 ThirdPartyImporter.ImportResult 结构不同,独立状态)
+    // P3-1: CherryStudio / Chatbox JSON Importar resultados(Diferente de la estructura ThirdPartyImporter.ImportResult,estado independiente)
     var jsonImportResult by remember { mutableStateOf<ConfigImporter.Result?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -92,7 +92,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
                         sessionRepo = sessionRepo,
                     )
                 }.onError { message, throwable ->
-                    Logger.w("DataImportPage", "第三方备份导入异常: ${throwable?.message ?: message}", throwable)
+                    Logger.w("DataImportPage", "Excepción de importación de copias de seguridad de terceros: ${throwable?.message ?: message}", throwable)
                 }.getOrNull()
                 importResult = outcome ?: ImportResult(
                     errors = listOf(context.getString(R.string.import_error_parse_failed)),
@@ -102,7 +102,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
         }
     }
 
-    // P3-1: JSON 文件 picker,调用 ConfigImporter(自动嗅探 CherryStudio / Chatbox 格式)
+    // P3-1: JSON Archivo picker,llamar ConfigImporter(Olfatear automáticamente los formatos CherryStudio/Chatbox)
     val jsonFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -111,7 +111,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
                 isImporting = true
                 val outcome = resultOf { configImporter.importFromUri(context, uri) }
                     .onError { message, throwable ->
-                        Logger.w("DataImportPage", "配置导入异常: ${throwable?.message ?: message}", throwable)
+                        Logger.w("DataImportPage", "Excepción de importación de configuración: ${throwable?.message ?: message}", throwable)
                     }.getOrNull()
                 jsonImportResult = outcome
                 isImporting = false
@@ -120,7 +120,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
     }
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_import_page_title), onBack = onBack) {
-        // ── 顶部说明卡片 ──
+        // ── Tarjeta de instrucciones superior ──
         item {
             Surface(
                 shape = MuseShapes.large,
@@ -147,7 +147,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
             }
         }
 
-        // ── 第一步:了解如何导出备份 ──
+        // ── primer paso:Aprenda a exportar una copia de seguridad ──
         item {
             Text(
                 stringResource(R.string.settings_import_step1),
@@ -185,7 +185,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
                 },
             )
         }
-        // v1.0.74: ChatGPT 对话导入(官方导出 zip 或解压后的 conversations.json)
+        // v1.0.74: ChatGPT Importación de conversación(Zip exportado oficialmente o descomprimido conversations.json)
         item {
             ImportSourceCard(
                 title = "ChatGPT",
@@ -201,7 +201,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
                 },
             )
         }
-        // P3-1: CherryStudio / Chatbox JSON 导入入口(复用 ConfigImporter,只导入 Provider 配置)
+        // P3-1: CherryStudio / Chatbox JSON Entrada de importación(Reutilizar ConfigImporter,Importar solo la configuración del proveedor)
         item {
             ImportSourceCard(
                 title = stringResource(R.string.settings_import_cherrystudio_title),
@@ -218,7 +218,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
             )
         }
 
-        // ── 第二步:选择备份文件 ──
+        // ── Paso 2:Seleccionar archivo de respaldo ──
         item {
             Text(
                 stringResource(R.string.settings_import_step2_title),
@@ -238,7 +238,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
             )
         }
 
-        // ── 导入中 ──
+        // ── Importando ──
         if (isImporting) {
             item {
                 Surface(
@@ -250,28 +250,28 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        // ST-09: 导入中改用统一加载态组件(替代裸 CircularProgressIndicator)
+                        // ST-09: En su lugar, utilice componentes de estado de carga unificados durante la importación.(alternativa desnuda CircularProgressIndicator)
                         MuseLoadingState(message = stringResource(R.string.settings_importing))
                     }
                 }
             }
         }
 
-        // ── 导入结果 ──
+        // ── Importar resultados ──
         importResult?.let { result ->
             item {
                 ImportResultCard(result)
             }
         }
 
-        // P3-1: CherryStudio / Chatbox JSON 导入结果
+        // P3-1: CherryStudio / Chatbox JSON Importar resultados
         jsonImportResult?.let { result ->
             item {
                 ImportJsonResultCard(result)
             }
         }
 
-        // ── 底部温馨提示 ──
+        // ── Recordatorio cálido en la parte inferior. ──
         item {
             Text(
                 stringResource(R.string.settings_import_tips),
@@ -284,7 +284,7 @@ fun SettingsDataImportPage(onBack: () -> Unit) {
 }
 
 /**
- * 导入来源卡片,含可折叠的导出步骤说明。
+ * Importar tarjeta fuente,Contiene instrucciones paso a paso de exportación plegable.
  */
 @Composable
 private fun ImportSourceCard(title: String, description: String, steps: List<String>, onSelect: () -> Unit) {
@@ -343,7 +343,7 @@ private fun ImportSourceCard(title: String, description: String, steps: List<Str
 }
 
 /**
- * 导入结果展示卡片。
+ * Tarjeta de visualización de resultados de importación.
  */
 @Composable
 private fun ImportResultCard(result: ImportResult) {
@@ -363,8 +363,8 @@ private fun ImportResultCard(result: ImportResult) {
             Text(stringResource(R.string.settings_import_assistants_count, result.assistantsImported))
             Text(stringResource(R.string.settings_import_conversations_count, result.conversationsImported))
             Text(stringResource(R.string.settings_import_messages_count, result.messagesImported))
-            // UI-FIX: 区分「只导入了模型配置」和「导入了会话」——很多第三方备份只有 Provider，
-            // 用户看到四个 0 会以为导入失败。
+            // UI-FIX: Distinga entre "solo se importa la configuración del modelo" y "se importa la sesión"——Muchas copias de seguridad de terceros solo tienen Provider.
+            // Los usuarios que vean cuatro ceros asumirán que la importación falló.
             if (result.errors.isEmpty() && result.conversationsImported == 0 && result.assistantsImported == 0) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -393,10 +393,10 @@ private fun ImportResultCard(result: ImportResult) {
 }
 
 /**
- * P3-1: CherryStudio / Chatbox JSON 导入结果卡片。
+ * P3-1: CherryStudio / Chatbox JSON Importar tarjetas de resultados.
  *
- * 与 [ImportResultCard] 分离:[ConfigImporter.Result] 只含 Provider 维度数据
- * (imported / skipped / providers 名称列表),无助手/会话/消息。
+ * con [ImportResultCard] separación:[ConfigImporter.Result] Solo datos de dimensión del proveedor
+ * (imported / skipped / providers lista de nombres),Sin asistente/sesión/mensaje.
  */
 @Composable
 private fun ImportJsonResultCard(result: ConfigImporter.Result) {

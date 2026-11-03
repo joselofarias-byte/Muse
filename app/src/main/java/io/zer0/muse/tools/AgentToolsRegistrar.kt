@@ -11,60 +11,60 @@ import io.zer0.muse.notification.MuseNotificationManager
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Agent 工具注册器（实现自既有工具系统）。
+ * Agent Registro de herramientas (implementado a partir del sistema de herramientas existente).
  *
- * 将所有从 既有工具系统实现的工具注册到现有 ToolRegistry：
- *  - pin_memory / unpin_memory（Phase 1C）
- *  - memory_config_get / memory_config_set（记忆系统参数读写）
- *  - recall_experience / record_experience（Phase 3B）
- *  - search_memory（Phase 1 v6）
- *  - save_memory / delete_memory（v2.x: 记忆库自管 — 显式写入/删除）
- *  - todo_write（Phase 4A）
- *  - show_card（Phase 4B）
- *  - notify（Phase 4C）
- *  - current_status（Phase 4D）
- *  - subagent_task（Phase 5A / v1.202: launch+reply+close 三件套）
- *  - subagent_run（v1.0.52 P2-1: 同步阻塞式独立子 agent,完整工具循环 + XML 协议）
- *  - find_tools（v2.x: 工具库按需检索 — 分层收窄的补全通道,命中即装载后续轮次可见）
- *  - get_token_usage（v2.x: token 消耗与上下文占用自查）
+ * Registre todas las herramientas implementadas desde el sistema de herramientas existente en ToolRegistry existente:
+ *  - pin_memory / unpin_memory(Phase 1C)
+ *  - memory_config_get / memory_config_set(Leer y escribir parámetros del sistema de memoria)
+ *  - recall_experience / record_experience(Phase 3B)
+ *  - search_memory(Phase 1 v6)
+ *  - save_memory / delete_memory(v2.x: Banco de memoria autogestionado — escritura explícita/eliminar)
+ *  - todo_write(Phase 4A)
+ *  - show_card(Phase 4B)
+ *  - notify(Phase 4C)
+ *  - current_status(Phase 4D)
+ *  - subagent_task(Phase 5A / v1.202: launch+reply+close conjunto de tres piezas)
+ *  - subagent_run(v1.0.52 P2-1: Niño independiente de bloqueo sincrónico agent,Ciclo completo de herramienta + protocolo XML)
+ *  - find_tools(v2.x: Búsqueda de biblioteca de herramientas bajo demanda — Canales de finalización jerárquicamente reducidos,El golpe está cargado (visible en rondas posteriores)
+ *  - get_token_usage(v2.x: token Autoexamen de consumo y contexto de ocupación)
  */
-// 该注册器聚合多个工具域依赖，拆分需同步调整工具注册生命周期，暂保留局部豁免。
+// Este registrador agrega múltiples dependencias de dominio de herramientas. La división requiere un ajuste simultáneo del ciclo de vida del registro de la herramienta y se reservan temporalmente exenciones parciales.
 @Suppress("LongParameterList")
 class AgentToolsRegistrar(
     private val toolRegistry: ToolRegistry,
     private val pinnedMemoryStore: PinnedMemoryStore,
     private val experienceRepository: ExperienceRepository,
     private val factStore: FactStore,
-    /** 按执行上下文的 assistantId 选择对应 facts.db；为空时回退主 facts.db。 */
+    /** Seleccione el fact.db correspondiente según el asistenteId del contexto de ejecución; si está vacío, recurra al archivo principal Facts.db. */
     private val factDbProvider: FactDbProvider? = null,
     private val settings: SettingsRepository,
     private val notificationManager: MuseNotificationManager,
     private val context: Context,
-    // v1.202: SubagentTool 所需依赖 — 委派执行 / 线程管理 / 异步结果回灌 / 后台 Scope
+    // v1.202: SubagentTool dependencias requeridas — Ejecución delegada/gestión de subprocesos/comentarios de resultados asincrónicos/antecedentes Scope
     private val skillExecutor: SkillExecutor,
     private val subagentThreadStore: SubagentThreadStore,
     private val deferredResultStore: DeferredResultStore,
     private val appScope: CoroutineScope,
-    // v1.0.52 P2-1: SubagentRunSkill 所需 — 同步阻塞式独立子 agent 运行器
+    // v1.0.52 P2-1: SubagentRunSkill requerido — Corredor de agente infantil independiente de bloqueo sincrónico
     private val subagentRunner: SubagentRunner,
-    // v2.0: 卡片数据绑定 — show_card 数据写入 + update_card_data 工具
+    // v2.0: Enlace de datos de tarjeta — show_card Escritura de datos + herramienta update_card_data
     private val cardDataStore: io.zer0.muse.data.card.CardDataStore? = null,
     /**
-     * v2.6.7: tool_status 需要读三层通道就绪状态。
+     * v2.6.7: tool_status Necesita leer el estado de preparación del canal de tres capas.
      *
-     * 为 null 时不注册该工具（测试环境或未装配自动化模块的宿主）——
-     * 宁可不提供，也不能提供一个拿不到真实状态的假货。
+     * null para no registrar la herramienta (entorno de prueba o host con módulos de automatización no ensamblados)——
+     * Es mejor no proporcionarlo que proporcionar un producto falso que no se puede obtener en su estado original.
      */
     private val automationManager: io.zer0.muse.automation.core.AutomationManager? = null,
-    /** v2.6.9: 牵挂账本 —— note_thought 工具写入，主动消息调度的燃料。 */
+    /** v2.6.9: Preocupado por el libro mayor —— note_thought Las herramientas están escritas para impulsar la programación proactiva de mensajes. */
     private val proactiveThoughtStore: io.zer0.muse.data.proactive.ProactiveThoughtRepository? = null,
-    /** v2.x: token 用量自查 — 用量流水只读口；为 null 时工具回报不可用，不用空数据冒充。 */
+    /** v2.x: token Autocontrol de dosis — El registro de uso es un puerto de sólo lectura; cuando es nulo, el informe de la herramienta no está disponible y no se utilizan datos vacíos para fingir. */
     private val usageRecordDao: io.zer0.muse.data.stats.UsageRecordDao? = null,
-    /** 本会话用量读取器（用量流水没有会话维度，该数字取自消息行的实测字段）。 */
+    /** Este lector de uso de sesión (el flujo de uso no tiene una dimensión de sesión, este número se toma del campo medido de la línea de mensaje). */
     private val sessionUsageReader: (suspend (String) -> TokenUsageTool.SessionUsage?)? = null,
-    /** 当前上下文占用（占用, 上限）；由 ChatViewModel 绑定，未绑定时工具侧整行省略。 */
+    /** El contexto actual ocupa (ocupa, Límite superior); vinculado por ChatViewModel, toda la línea en el lado de la herramienta se omite cuando no está vinculado. */
     private val contextOccupancy: (() -> Pair<Int, Int>?)? = null,
-    /** facts 表查不到时的编译摘要回落口；为空时 search_memory 只报事实表结果。 */
+    /** facts Compile el resumen de reserva cuando no se pueda encontrar la tabla; cuando search_memory está vacío, solo se informan los resultados de la tabla de hechos. */
     private val compiledSummarySearch: SearchMemoryTool.CompiledSummarySearch? = null,
 ) {
     init {
@@ -72,26 +72,26 @@ class AgentToolsRegistrar(
     }
 
     /**
-     * 注册牵挂记账工具。
+     * Regístrese en la herramienta de contabilidad de cuidados.
      *
-     * 账本未就绪时也给模型一个真实答复，而不是抛异常：
-     * 工具列表是全局共享的，某个工具在特定宿主下不可用属于正常情况。
-     * 单独抽成函数是因为 registerAll 的圈复杂度已经贴着上限，
-     * 再往里塞一个分支就会爆。
+     * Cuando el libro mayor no está listo, también le da al modelo una respuesta verdadera en lugar de generar una excepción:
+     * La lista de herramientas se comparte globalmente y es normal que una herramienta no esté disponible en un host específico.
+     * La función de extracción separada se debe a que la complejidad ciclomática de RegisterAll ya está cerca del límite superior.
+     * Si empujas otra rama hacia adentro, explotará.
      */
     private fun registerNoteThought() {
         toolRegistry.registerWithContext(NoteThoughtTool.toolDef()) { args, executionContext ->
             proactiveThoughtStore?.let { store ->
                 NoteThoughtTool.execute(args, store, executionContext)
-            } ?: "Error: 牵挂账本未就绪"
+            } ?: "Error: El libro mayor no está listo"
         }
     }
 
     /**
-     * token 用量自查（get_token_usage）。
+     * token Autocontrol de dosis (get_token_usage).
      *
-     * 三个数据源各自独立降级：用量流水缺失 → 明确报不可用；会话读取器缺失 → 只少一行；
-     * 上下文探针未绑定（后台任务 / 未打开对话）→ 整行省略。任何一项都不会被编成 0。
+     * Tres fuentes de datos se degradan de forma independiente: falta el flujo de uso → Informado explícitamente como no disponible; falta el lector de sesión → Sólo falta una línea;
+     * Sondeo de contexto no vinculado (tarea en segundo plano/conversación no abierta)→ Se omite toda la línea. Ninguno será programado a 0.
      */
     private fun registerTokenUsage() {
         toolRegistry.registerWithContext(TokenUsageTool.toolDef()) { args, executionContext ->
@@ -106,19 +106,19 @@ class AgentToolsRegistrar(
     }
 
     fun registerAll() {
-        // v2.6.7: 工具可用性总览 —— 一次告诉模型「现在真正能用什么」。
-        // 助手自审：「206 个工具，而且没有地图」。它要的不是更多工具，是边界。
+        // v2.6.7: Resumen de disponibilidad de herramientas —— Dígale al modelo una vez "lo que realmente se puede utilizar ahora".
+        // Autoexamen del asistente: "206 una herramienta y ningún mapa”. No se trata de más herramientas, se trata de límites.
         automationManager?.let { manager ->
             toolRegistry.register(ToolStatusTool.toolDef()) { args ->
                 ToolStatusTool.execute(args, toolRegistry, manager)
             }
         }
 
-        // Phase 1C：置顶记忆
+        // Phase 1C: Memoria de pines
         toolRegistry.registerWithContext(PinMemoryTool.toolDef()) { args, executionContext ->
             PinMemoryTool.execute(args, pinnedMemoryStore, executionContext.assistantId)
         }
-        // 记忆系统参数：此前只有内容读写，参数只能在设置页手拖。
+        // Parámetros del sistema de memoria: anteriormente, solo se podía leer y escribir contenido, y los parámetros solo se podían arrastrar manualmente a la página de configuración.
         toolRegistry.registerWithContext(MemoryConfigTool.getDef()) { _, _ ->
             MemoryConfigTool.get(settings)
         }
@@ -129,7 +129,7 @@ class AgentToolsRegistrar(
             UnpinMemoryTool.execute(args, pinnedMemoryStore, executionContext.assistantId)
         }
 
-        // Phase 3B：经验工具
+        // Phase 3B: herramienta de experiencia
         toolRegistry.register(RecallExperienceTool.toolDef()) { args ->
             RecallExperienceTool.execute(args, experienceRepository)
         }
@@ -137,13 +137,13 @@ class AgentToolsRegistrar(
             RecordExperienceTool.execute(args, experienceRepository)
         }
 
-        // Phase 1 v6：长期记忆搜索
+        // Phase 1 v6: Búsqueda de memoria a largo plazo
         toolRegistry.registerWithContext(SearchMemoryTool.toolDef()) { args, executionContext ->
             val scopedStore = factDbProvider?.getFactStore(executionContext.assistantId ?: "default") ?: factStore
             SearchMemoryTool.execute(args, scopedStore, executionContext, compiledSummarySearch)
         }
 
-        // v2.x: 记忆库显式写入/删除 — 助手自管记忆能力(作用域/空间走执行上下文,不可伪造)
+        // v2.x: Escritura explícita del banco de memoria./Eliminar — Capacidad de memoria de autogestión del asistente.(Alcance/contexto de ejecución espacial,Inolvidable)
         toolRegistry.registerWithContext(SaveMemoryTool.toolDef()) { args, executionContext ->
             val scopedStore = factDbProvider?.getFactStore(executionContext.assistantId ?: "default") ?: factStore
             SaveMemoryTool.execute(args, scopedStore, executionContext)
@@ -153,12 +153,12 @@ class AgentToolsRegistrar(
             DeleteMemoryTool.execute(args, scopedStore, executionContext)
         }
 
-        // v2.x 阶段3:工具库按需检索(命中即装载,后续轮次可见;装载 ≠ 放行)
+        // v2.x escenario3:Búsqueda de biblioteca de herramientas bajo demanda(Golpear y cargar,Visible para rondas posteriores;cargar ≠ liberar)
         toolRegistry.registerWithContext(FindToolsTool.toolDef()) { args, executionContext ->
             FindToolsTool.execute(args, toolRegistry, executionContext)
         }
 
-        // v2.x 终端一期:应用沙盒终端命令(工作目录 = 应用工作区)
+        // v2.x fase terminal uno:Aplicar comandos de terminal sandbox(directorio de trabajo = Espacio de trabajo de la aplicación)
         toolRegistry.register(TerminalExecTool.toolDef()) { args ->
             TerminalExecTool.execute(
                 args,
@@ -166,27 +166,27 @@ class AgentToolsRegistrar(
                 java.io.File(context.filesDir, TOOL_OUTPUTS_DIR),
             )
         }
-        // v2.2.1 Termux 通道:完整 Linux 环境命令执行(需用户安装 Termux 并授权;未就绪时返回配置引导)
+        // v2.2.1 Termux canal:Ejecución completa de comandos del entorno Linux(Los usuarios deben instalar Termux y autorizarlo.;Volver al inicio de configuración cuando no esté listo)
         toolRegistry.register(TermuxExecTool.toolDef()) { args ->
             TermuxExecTool.execute(args, context)
         }
 
-        // 普通聊天里的“许愿”：把当前助手绑定到主动消息调度器。
+        // en chat normal“pide un deseo”: Vincula el asistente actual al programador de mensajes activo.
         toolRegistry.registerWithContext(ProactiveWishTool.toolDef()) { args, executionContext ->
             ProactiveWishTool.execute(args, settings, executionContext)
         }
 
-        // v2.6.9: 牵挂记账 —— 主动消息新机制的主要燃料。
-        // 日常对话里顺手记下「隔几天再问会显得有人味」的事，
-        // 没有它账本就是空的，主动消息退回成定时问候。
-        // 单独抽成函数是因为 registerAll 已经贴着圈复杂度上限，
-        // 再往里塞一个分支就会爆。
+        // v2.6.9: Preocupado por la contabilidad —— El principal combustible del nuevo mecanismo de mensajería proactiva.
+        // En las conversaciones diarias, anota cosas que "te harán más agradable si vuelves a preguntar después de unos días".
+        // Sin él, el libro mayor está vacío y los mensajes no solicitados se devuelven a los saludos programados.
+        // La función de extracción separada se debe a que RegisterAll ya está cerca del límite superior de complejidad ciclomática.
+        // Si empujas otra rama hacia adentro, explotará.
         registerNoteThought()
 
-        // Phase 4A：待办
-        // v2.6.7: 走持久化入口 —— 此前只写进程内存，切会话即丢。
-        // v2.6.7 fix (AUDIT F5): 会话 id 改由宿主上下文注入 ——
-        // 旧实现要模型自己传 session_id，而模型无从得知当前会话 UUID。
+        // Phase 4A: Tareas pendientes
+        // v2.6.7: Toma la entrada de la persistencia —— Anteriormente, sólo se escribía la memoria del proceso y se perdía la sesión.
+        // v2.6.7 fix (AUDIT F5): En su lugar, el contexto del host inyecta la identificación de la sesión ——
+        // La implementación anterior requiere que el modelo pase el session_id en sí, pero el modelo no tiene forma de conocer el UUID de la sesión actual.
         toolRegistry.registerWithContext(TodoTool.toolDef()) { args, executionContext ->
             val sessionId = executionContext.sessionId?.trim().orEmpty()
             if (sessionId.isEmpty()) {
@@ -196,12 +196,12 @@ class AgentToolsRegistrar(
             }
         }
 
-        // v2.6.7：读用户设备上的文件（SAF，需用户点选）
+        // v2.6.7: Leer un archivo en el dispositivo del usuario (SAF, el usuario debe hacer clic)
         toolRegistry.register(ReadUserFileTool.toolDef()) { args ->
             ReadUserFileTool.execute(args)
         }
 
-        // v2.6.7：用户偏好学习 —— 用户说「以后别…」时存成硬约束
+        // v2.6.7: Aprendizaje de preferencias del usuario —— El usuario dijo "No…"El almacenamiento de tiempo se convierte en una dura limitación
         toolRegistry.register(UserPreferenceTool.toolDef()) { args ->
             val store =
                 org.koin.core.context.GlobalContext.get()
@@ -209,11 +209,11 @@ class AgentToolsRegistrar(
             UserPreferenceTool.execute(args, store)
         }
 
-        // Phase 4B：展示卡片（v2.0: 支持绑定结构化数据）
+        // Phase 4B:Mostrar tarjeta(v2.0: Admite datos estructurados vinculantes)
         //
-        // v2.6.13: 改用 context 版注册 —— 卡片的身份是承载它的消息 id，
-        // 模型在生成过程中拿不到它，必须由宿主注入（[io.zer0.muse.tools.ToolExecutionContext.messageId]）。
-        // 回执里带上这个 id，模型下一轮想更新同一张卡就有据可依。
+        // v2.6.13: Utilice el registro de versión de contexto en su lugar —— La identidad de una tarjeta es el id del mensaje que la lleva,
+        // El modelo no puede obtenerlo durante la generación y debe ser inyectado por el host ([io.zer0.muse.tools.ToolExecutionContext.messageId]).
+        // Si incluyes este DNI en el recibo, el modelo tendrá base para actualizar la misma tarjeta en la siguiente ronda.
         toolRegistry.registerWithContext(ShowCardTool.toolDef()) { args, ctx ->
             ShowCardTool.execute(args, ctx.messageId)
         }
@@ -222,21 +222,21 @@ class AgentToolsRegistrar(
             RenderDataTool.execute(args)
         }
 
-        // v2.0: 卡片数据绑定 — 更新已展示卡片的数据
+        // v2.0: Enlace de datos de tarjeta — Actualizar datos de tarjetas mostradas
         //
-        // v2.6.13: 键改为**消息 id**。
+        // v2.6.13: clave cambiada a**noticias id**.
         //
-        // 旧参数说明写的是“show_card 返回的 card_id（形如 c_xxx）”，但渲染层注入给卡片的
-        // window.muse.cardId 是消息 id —— 两个不同的 id 域。按旧说明传 c_xxx 时，写入落在
-        // 一个渲染侧永远不会去查的 key 上，于是“数据更新了但卡片没变”，也从不报错。
-        // 现在统一到消息 id：卡片自己读 window.muse.cardId 拿到的就是它，
-        // 模型只需要知道“哪条消息上的卡片”，而不是一个它无法从 show_card 拿到的一次性 id。
+        // La antigua descripción del parámetro dice:“show_card Card_id devuelto (en el formato c_xxx)”, pero la capa de renderizado lo inyecta en la tarjeta.
+        // window.muse.cardId es la noticia id —— Dos campos de identificación diferentes. Al pasar c_xxx según las instrucciones antiguas, la escritura cae en
+        // Una clave que el lado del renderizado nunca verificará, por lo que“Los datos se han actualizado pero la tarjeta no ha cambiado.”y nunca informa un error.
+        // Ahora unifícalo con el ID del mensaje: la tarjeta dice window.muse.cardId y eso es lo que obtienes.
+        // El modelo sólo necesita saber“tarjeta en la que mensaje”, en lugar de una identificación única que no puede obtener de show_card.
         toolRegistry.registerWithContext(
             ToolRegistry.ToolDef(
                 name = "update_card_data",
-                description = "更新已展示卡片所绑定的结构化数据。" +
-                    "卡片会通过 window.muse.getData() 与 window.muse.data.onChange 重新读取。" +
-                    "省略 card_id 时默认更新当前这条消息上的卡片。",
+                description = "Actualice los datos estructurados vinculados a la tarjeta mostrada." +
+                    "la tarjeta pasará window.muse.getData() Vuelva a leer con window.muse.data.onChange." +
+                    "Cuando se omite card_id, la tarjeta del mensaje actual se actualizará de forma predeterminada.",
                 parameters = mapOf(
                     "card_id" to "Optional. The message id carrying the card. Omit it to update the card on the current message.",
                     "data" to "Required. JSON text with the new data.",
@@ -248,16 +248,16 @@ class AgentToolsRegistrar(
         ) { args, ctx ->
             val requested = args["card_id"]?.trim().orEmpty()
             val data = args["data"].orEmpty()
-            // 省略 card_id 时指向本轮这条助手消息：模型刚 show_card 完想换数据，
-            // 它手上唯一确定的就是「当前这条消息」，而不是一个它从未见过的 id。
+            // Cuando se omite card_id, apunta a este mensaje del asistente en esta ronda: El modelo acaba de terminar show_card y quiere cambiar los datos.
+            // Lo único que sabe con certeza es "el mensaje actual", no una identificación que nunca antes haya visto.
             val cardId = ShowCardTool.resolveCardTarget(requested, ctx.messageId)
             when {
                 data.isBlank() -> "Error: data is required."
                 cardId.isBlank() -> "Error: card_id is required when the current message id is unavailable."
                 cardDataStore == null -> "Error: card data store unavailable."
                 else -> {
-                    // 写入前先看一眼这个 id 以前绑过数据没有：
-                    // 写到一个没人读的键上不会报错，表现只是「卡片不动」，极难排查。
+                    // Antes de escribir, eche un vistazo a esta ID para ver si se ha vinculado a datos antes:
+                    // Si escribe en una clave que nadie lee, no se informará ningún error. El rendimiento es simplemente "la tarjeta no se mueve", lo cual es extremadamente difícil de solucionar.
                     val previouslyBound = cardDataStore.get(cardId) != null
                     cardDataStore.put(cardId, data)
                     if (previouslyBound || cardId == ctx.messageId) {
@@ -270,21 +270,21 @@ class AgentToolsRegistrar(
             }
         }
 
-        // Phase 4C：通知
+        // Phase 4C: Notificación
         toolRegistry.register(NotifyTool.toolDef()) { args ->
             NotifyTool.execute(args, notificationManager)
         }
 
-        // Phase 4D：当前状态
+        // Phase 4D:Estado actual
         toolRegistry.register(CurrentStatusTool.toolDef()) { args ->
             CurrentStatusTool.execute(args, context)
         }
 
-        // token 用量自查：让模型答得出「我花了多少」「上下文还剩多少」。
+        // token Autoexamen de uso: Deje que el modelo responda "cuánto gasté" y "cuánto queda en el contexto".
         registerTokenUsage()
 
-        // v1.202: 子 agent 任务工具(launch / reply / close 三件套 + status / cancel / list)
-        // 之前漏注册导致 subagent_task 工具永远不可用,此处补齐
+        // v1.202: Herramienta de tareas de subagente(launch / reply / close conjunto de tres piezas + status / cancel / list)
+        // La falta de registro anterior provocó que la herramienta subagent_task nunca estuviera disponible,Completa aquí
         toolRegistry.register(SubagentTool.toolDef()) { args ->
             SubagentTool.execute(
                 args = args,
@@ -295,14 +295,14 @@ class AgentToolsRegistrar(
             )
         }
 
-        // v1.0.52 P2-1: 同步阻塞式独立子 agent(完整工具循环 + maxToolCalls 限制 + XML 协议)
-        // 与 subagent_task(非阻塞异步)互补:适合短调研任务,主 agent 等待并收到结构化 XML
+        // v1.0.52 P2-1: Niño independiente de bloqueo sincrónico agent(Bucle de herramientas completo + límite maxToolCalls + protocolo XML)
+        // con subagent_task(asíncrono sin bloqueo)complementario:Adecuado para tareas de investigación cortas.,El agente maestro espera y recibe la información estructurada. XML
         toolRegistry.register(SubagentRunSkill.toolDef()) { args ->
             SubagentRunSkill.execute(args, subagentRunner)
         }
 
-        // v1.0.53 Phase 1: subagent_close — 主动关闭子 agent 线程
-        // 主 agent 用此工具释放不再需要的线程;子 agent 内部禁止调用(SubagentRunner RECURSIVE_FORBIDDEN_TOOLS)
+        // v1.0.53 Phase 1: subagent_close — Cerrar activamente hilos de agentes secundarios
+        // El agente principal utiliza esta herramienta para liberar subprocesos que ya no son necesarios.;Está prohibido llamar dentro del subagente.(SubagentRunner RECURSIVE_FORBIDDEN_TOOLS)
         toolRegistry.register(SubagentCloseTool.toolDef()) { args ->
             SubagentCloseTool.execute(args, subagentThreadStore)
         }

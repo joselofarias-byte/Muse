@@ -6,19 +6,19 @@ internal inline fun <T> routeMemoryItemAction(
     onSummary: (sessionId: String) -> T,
     onUnsupported: () -> T,
     /**
-     * v2.6.7: 经验库条目（source="Experience"）。
+     * v2.6.7: Experimente la entrada a la biblioteca (source="Experience").
      *
-     * MemoryViewModel 的 addExperience / editExperience / deleteExperience 早就实现，
-     * ExperienceLibraryCard 与 ExperienceEditDialog 两个组件也写好了，但
-     * MemoryScreen 从未引用它们 —— 经验库只能被 AI 写、用户看不了也改不了。
+     * MemoryViewModel de addExperience / editExperience / deleteExperience Se ha realizado hace mucho tiempo,
+     * ExperienceLibraryCard Los dos componentes con ExperienceEditDialog también se han escrito, pero
+     * MemoryScreen nunca los cites —— La base de datos de experiencias solo puede ser escrita por IA y los usuarios no pueden leerla ni modificarla.
      */
     onExperience: (id: String) -> T,
     /**
-     * v2.6.7: 编译产物（source="Compile"）。
+     * v2.6.7: Compilar producto (source="Compile").
      *
-     * id 即 section key（facts/today/week/longterm），与 MemoryCompiler.Section.key 一致。
-     * 之前这类条目落到 onUnsupported —— 编辑确认后静默保存失败、删除什么都不发生，
-     * 而 editCompile / deleteCompile 早就实现好了。
+     * id Esa es la clave de sección (facts/today/week/longterm), coherente con MemoryCompiler.Section.key.
+     * Anteriormente, dichas entradas se incluían en onUnsupported —— Después de la edición y la confirmación, el guardado silencioso falla y no sucede nada al eliminar.
+     * Y editCompile/deleteCompile se implementó hace mucho tiempo.
      */
     onCompile: (sectionKey: String) -> T,
 ): T = when (item.source) {

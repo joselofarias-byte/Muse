@@ -118,7 +118,7 @@
     <string name="schedule_show_advanced">고급 자동화 표시</string>
     <string name="schedule_hide_advanced">고급 자동화 숨기기</string>
 
-    <!-- 前端修复 (i18n-5): describeCron human-readable schedule descriptions -->
+    <!-- Correcciones en la interfaz (i18n-5): describeCron human-readable schedule descriptions -->
     <string name="schedule_cron_daily">Every day at %1$s</string>
     <string name="schedule_cron_hourly">Every hour at minute %1$s</string>
     <string name="schedule_cron_every_minute">Every minute</string>
@@ -276,7 +276,7 @@
     <string name="knowledge_doc_chunks">· %1$d 청크</string>
     <string name="knowledge_doc_not_indexed">· 색인이 생성되지 않음</string>
 
-    <!-- 前端修复 (i18n-7): PDF metadata card -->
+    <!-- Correcciones en la interfaz (i18n-7): PDF metadata card -->
     <string name="knowledge_doc_info">Document info</string>
     <string name="knowledge_doc_outline">Outline (%1$d items)</string>
     <string name="knowledge_sort_updated">업데이트된 시간별</string>
@@ -476,13 +476,13 @@
     <string name="groupchat_tool_context">그룹 컨텍스트</string>
     <string name="groupchat_tool_mention">@언급하다</string>
 
-    <!-- 前端修复 (i18n-1/2): group chat detail background desc, clear memory -->
+    <!-- Correcciones en la interfaz (i18n-1/2): group chat detail background desc, clear memory -->
     <string name="groupchat_bg_cd">Chat background</string>
     <string name="groupchat_clear_memory">Clear group memory</string>
     <string name="groupchat_clear_memory_confirm">Clear this group\'s memory? Assistants will no longer reference past discussion summaries (including tone and style).</string>
     <string name="groupchat_clear_memory_btn">Clear</string>
-    <!-- v2.x: 写作群聊快速创建入口 -->
-    <!-- v2.x: 群聊归档 -->
+    <!-- v2.x: Cree rápidamente una entrada para escribir un chat grupal -->
+    <!-- v2.x: Archivo de chat grupal -->
     <string name="groupchat_archive">아카이브</string>
     <string name="groupchat_unarchive">아카이브 해제</string>
 
@@ -725,7 +725,7 @@
     <string name="wake_diagnostics_refresh">다시 읽기</string>
     <string name="wake_diagnostics_copy">스냅숏 복사</string>
     <string name="wake_diagnostics_copied">스냅숏을 복사했습니다</string>
-    <string name="wake_diagnostics_hint">“실행됐지만 실패”는 작업 기록의 failed／skipped／missed를 보세요. “한 번도 실행되지 않음”은 보통 여기 보이는 미등록·제한·마스터 스위치 꺼짐이 원인입니다.</string>
+    <string name="wake_diagnostics_hint">“실행됐지만 실패”는 작업 기록의 failed/skipped/missed를 보세요. “한 번도 실행되지 않음”은 보통 여기 보이는 미등록·제한·마스터 스위치 꺼짐이 원인입니다.</string>
     <string name="wake_diagnostics_total_control">백그라운드 작업 마스터: %1$s</string>
     <string name="wake_diagnostics_total_control_on">켜짐</string>
     <string name="wake_diagnostics_total_control_off">꺼짐(깨우기는 계속되지만 실행체가 바로 반환합니다)</string>

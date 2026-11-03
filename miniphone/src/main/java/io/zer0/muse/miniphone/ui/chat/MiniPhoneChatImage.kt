@@ -49,19 +49,19 @@ import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 import java.io.File
 
 /**
- * 图片气泡:一张圆角图,最大边长 [ImageMaxEdge],按原图比例显示。
+ * Burbuja de imagen:Un diagrama de esquinas redondeadas,Longitud lateral máxima [ImageMaxEdge],Se muestra en proporción a la imagen original.
  *
- * 加载中先占一块底色,不把行高从 0 撑开再跳;路径失效(文件被删、uri 读不到)画破图,
- * 而不是留一块永远转圈的空白 —— 聊天记录里「这里曾经有一张图」比空白更接近事实。
+ * Primero ocupe un trozo de color de fondo durante la carga.,No expanda la altura de la fila desde 0 antes de saltar;Fallo de ruta(El archivo fue eliminado,uri no puedo leer)Haz un dibujo roto,
+ * En lugar de dejar un espacio en blanco que siempre rodeará —— "Aquí había una imagen" en el historial de chat está más cerca de la verdad que en blanco.
  *
- * @param onLongPress 长按弹操作菜单
+ * @param onLongPress Mantenga presionado para que aparezca el menú de operación.
  */
 @Composable
 internal fun ChatImageBubble(message: ChatMessageUi, maxWidth: Dp, onOpen: (String) -> Unit, onLongPress: () -> Unit = {}) {
     val colors = MiniPhoneTheme.colors
     val density = LocalDensity.current
     val path = message.mediaUri.orEmpty()
-    // 本地路径却已然不存在:直接画破图,不必让加载器白跑一趟
+    // La ruta local ya no existe.:Haz el dibujo directamente,No es necesario hacer que el cargador funcione en vano
     val missing = path.isEmpty() || isMissingLocalFile(path)
     var loadFailed by remember(path) { mutableStateOf(false) }
     var natural by remember(path) { mutableStateOf(IntSize.Zero) }
@@ -74,7 +74,7 @@ internal fun ChatImageBubble(message: ChatMessageUi, maxWidth: Dp, onOpen: (Stri
             .clip(ImageShape)
             .background(colors.divider)
             .size(size)
-            // 能不能点开只看路径在不在:缩略图解码失败不代表原图就打不开
+            // ¿Puedo hacer clic en él para ver si la ruta está ahí?:No decodificar la miniatura no significa que no se pueda abrir la imagen original.
             .combinedClickable(
                 onClick = { if (!missing) onOpen(path) },
                 onLongClick = onLongPress,
@@ -97,10 +97,10 @@ internal fun ChatImageBubble(message: ChatMessageUi, maxWidth: Dp, onOpen: (Stri
 }
 
 /**
- * 全屏看图:黑底、图片居中、双指缩放、点任意处关闭。
+ * Ver imágenes en pantalla completa:Fondo negro, centra la imagen, pellizca para hacer zoom, haz clic en cualquier lugar para cerrar.
  *
- * 缩放只做等比:放大后不再缩放到底图以外,缩小到 1 倍即回到居中 —— 一次拖动留下的
- * 偏移不会在缩小之后把图推到屏幕外。
+ * Zoom solo a proporciones iguales:Ya no hace zoom fuera de la imagen base después de hacer zoom,Alejar a 1x y volver al centro —— dejado atrás por un arrastre
+ * El desplazamiento no sacará la imagen de la pantalla después de alejarla.
  */
 @Composable
 internal fun MiniPhoneImageViewer(uri: String, onDismiss: () -> Unit) {
@@ -137,11 +137,11 @@ internal fun MiniPhoneImageViewer(uri: String, onDismiss: () -> Unit) {
 }
 
 /**
- * 图集查看器:一次看同一组图,左右滑动切换,顶部带「3 / 9」。
+ * Visor de galería:Mira el mismo conjunto de imágenes a la vez.,Deslice hacia la izquierda o hacia la derecha para cambiar,Cubra con "3 / 9”.
  *
- * [initialIndex] 是零基下标:点第几张就从第几张开始。手势与单图查看器同一套 -
- * 点任意处关闭;多一个下滑关闭 —— 横向手势归翻页,竖向留给退出,两者不抢。
- * 翻页容器自己处理左右滑动,所以这里不接管横向拖动。
+ * [initialIndex] es un subíndice de base cero:Cualquier imagen en la que haga clic comenzará desde esa imagen. Los gestos son los mismos que los del visor de imágenes únicas. -
+ * Haga clic en cualquier lugar para cerrar;Una diapositiva más para cerrar. —— El gesto horizontal devuelve el paso de página.,Vertical izquierda para salida,No compitan entre sí.
+ * El contenedor de paso de página maneja el deslizamiento hacia la izquierda y hacia la derecha por sí solo.,Por lo tanto, aquí no se realiza el arrastre horizontal.
  */
 @Composable
 internal fun MiniPhoneGalleryViewer(uris: List<String>, initialIndex: Int, onDismiss: () -> Unit) {
@@ -186,10 +186,10 @@ internal fun MiniPhoneGalleryViewer(uris: List<String>, initialIndex: Int, onDis
     }
 }
 
-/** 计数文本:当前第几张(一基)与总数。 */
+/** contar texto:¿Cuál es el panorama actual?(una base)con el número total. */
 internal fun galleryCounterOf(pageIndex: Int, pageCount: Int): String = "${pageIndex + 1} / $pageCount"
 
-/** 破图:自绘图标 + 一句说明,和外框同一尺寸,列表不会因为它换行。 */
+/** imagen rota:Ícono autodibujado + descripción de una oración,Mismo tamaño que el marco exterior.,La lista no terminará por eso. */
 @Composable
 private fun BrokenImageContent(messageId: String) {
     val colors = MiniPhoneTheme.colors
@@ -216,14 +216,14 @@ private fun BrokenImageContent(messageId: String) {
     }
 }
 
-/** 本地路径但文件已经不在了;`content://` 这类由外部提供的 uri 交给加载器去判断。 */
+/** Ruta local pero el archivo ya no está ahí;`content://` Este tipo de uri proporcionado por el exterior se deja a criterio del cargador. */
 private fun isMissingLocalFile(path: String): Boolean {
     val parsed = Uri.parse(path)
     val local = parsed.scheme == null || parsed.scheme == ContentResolver.SCHEME_FILE
     return local && !File(parsed.path ?: path).exists()
 }
 
-/** 按原图比例缩进 [maxEdge] 的方框;小图不放大,填满方框反而糊。 */
+/** Sangrar proporcionalmente a la imagen original [maxEdge] caja;Las imágenes pequeñas no se amplían.,Llenar el cuadro lo hará borroso. */
 private fun fitInside(natural: IntSize, maxEdge: Dp, density: Density): DpSize = with(density) {
     val width = natural.width.toDp()
     val height = natural.height.toDp()
@@ -242,12 +242,12 @@ private val ImageMaxEdge = 200.dp
 private val PlaceholderSize = DpSize(132.dp, 132.dp)
 private val BrokenIconSize = 24.dp
 
-/** 计数与屏幕上沿的距离之外再留的一点空隙。 */
+/** Cuente el espacio que queda más allá del borde superior de la pantalla. */
 private val GalleryCounterGap = 8.dp
 
-/** 下滑超过这个位移就算「要关掉」:轻扫不会被误判成退出。 */
+/** Si se desliza más allá de este desplazamiento, se considerará que se \"apaga\".:Deslizar el dedo no se confundirá con salir. */
 private const val GALLERY_DISMISS_DRAG_PX = 120f
 
 private const val MIN_ZOOM: Float = 1f
 private const val MAX_ZOOM: Float = 5f
-private const val BROKEN_IMAGE_TEXT: String = "图片无法显示"
+private const val BROKEN_IMAGE_TEXT: String = "La imagen no se puede mostrar"

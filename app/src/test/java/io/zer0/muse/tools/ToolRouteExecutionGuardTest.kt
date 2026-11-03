@@ -20,7 +20,7 @@ class ToolRouteExecutionGuardTest {
     fun `unregistered tool is rejected before execution`() = runBlocking {
         val registry = ToolRegistry(context)
         val result = ToolRouteExecutionGuard(registry).executeFromJson("removed_mcp", "{}")
-        assertTrue(result.contains("不存在或已注销"))
+        assertTrue(result.contains("No existe o ha sido desconectado"))
     }
 
     @Test
@@ -41,7 +41,7 @@ class ToolRouteExecutionGuardTest {
                 description = "calendar-like test tool",
                 parameters = mapOf("title" to "event title"),
                 required = setOf("title"),
-                // 夹具模拟写日程类工具（本地可逆副作用）。
+                // Herramienta de programación de simulación de accesorios (efectos secundarios locales reversibles).
                 riskLevel = ToolRiskLevel.NORMAL,
             ),
         ) { args: Map<String, String> -> "executed:${args["title"]}" }

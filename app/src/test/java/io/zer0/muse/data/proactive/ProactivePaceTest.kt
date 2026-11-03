@@ -5,19 +5,19 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * [ProactivePace] 档位反推的单元测试。
+ * [ProactivePace] Prueba unitaria para empuje de marcha atrás.
  *
- * 重点验证：默认配置必须落在 STANDARD，且每一档的 (interval, probability)
- * 都能原样反推回自身（保证 UI 选档后不会显示成「自定义」）。
+ * Verificación de clave: La configuración predeterminada debe ser ESTÁNDAR y el (interval, probability)
+ * Se puede devolver a sí mismo tal como está (para garantizar que la interfaz de usuario no se muestre como "personalizada" después de la selección del archivo).
  *
- * 每日条数不在本枚举里，由 [ProactiveIntensity.cap] 决定，因此档位反推只看
- * 间隔与概率两个维度。
+ * El número de artículos diarios no está incluido en esta enumeración, debido a [ProactiveIntensity.cap] Decisión, por lo que el empuje de marcha atrás solo mira
+ * Dimensiones de intervalo y probabilidad.
  */
 class ProactivePaceTest {
 
     @Test
     fun `default config maps to standard`() {
-        // ProactiveMessageConfig 默认值：240 分钟 / 100%
+        // ProactiveMessageConfig Valor predeterminado:240 minutos / 100%
         assertEquals(ProactivePace.STANDARD, ProactivePace.from(240, 100))
     }
 

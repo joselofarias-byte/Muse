@@ -55,15 +55,15 @@ class MemoryItemActionRoutingTest {
     }
 
     /**
-     * v2.6.7: 编译产物（source="Compile"）此前落到 onUnsupported，
-     * 导致 editCompile / deleteCompile 零调用 —— 用户编辑确认后静默失败、
-     * 删除点下去什公都不发生。现在 id（section key）必须路由到 onCompile。
+     * v2.6.7: Compilar producto (source="Compile") anteriormente recayó en onUnsupported,
+     * da como resultado cero llamadas editCompile/deleteCompile —— Fallo silencioso después de la confirmación de edición del usuario,
+     * No pasará nada si hago clic en el botón Eliminar. ahora identificación (section key) debe enrutarse a onCompile.
      */
     @Test
     fun compileSectionRoutesByIdToCompilePath() {
         val item = MemoryItem(
             id = "longterm",
-            title = "长期记忆",
+            title = "memoria a largo plazo",
             content = "compiled text",
             source = "Compile",
         )
@@ -81,16 +81,16 @@ class MemoryItemActionRoutingTest {
     }
 
     /**
-     * v2.6.7: 经验库条目此前落到 onUnsupported。
-     * addExperience/editExperience/deleteExperience 与 ExperienceLibraryCard、
-     * ExperienceEditDialog 都写好了，但界面从未引用，用户看不了也改不了。
+     * v2.6.7: Las entradas de la base de experiencia anteriormente recaían en onUnsupported.
+     * addExperience/editExperience/deleteExperience Con ExperienceLibraryCard,
+     * ExperienceEditDialog Está todo escrito, pero nunca se ha hecho referencia a la interfaz y los usuarios no pueden verla ni cambiarla.
      */
     @Test
     fun experienceItemRoutesToExperiencePath() {
         val item = MemoryItem(
             id = "exp_1700000000_42",
-            title = "打包要先提交",
-            content = "先提交后打包，否则包内容与 HEAD 不一致",
+            title = "El embalaje debe enviarse primero.",
+            content = "Envíelo primero y luego empaquete; de lo contrario, el contenido del paquete no es consistente con HEAD",
             source = "Experience",
         )
 

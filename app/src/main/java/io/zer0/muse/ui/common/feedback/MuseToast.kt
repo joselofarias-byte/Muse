@@ -5,42 +5,42 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 优雅提示组件 — 替代原生 Toast。
+ * Componente de aviso elegante — Reemplaza a Toast nativo.
  *
- * 全局单例,任何地方调用 [show] 即可触发,
- * 由 [MuseToastHost] Composable 观察并渲染。
+ * Singleton global,Llama a cualquier lugar [show] puede ser activado,
+ * por [MuseToastHost] Composable Observar y renderizar.
  *
- * 用法:
+ * Uso:
  * ```kotlin
- * MuseToast.show("已复制")           // 短显示(2s)
- * MuseToast.show("保存成功", 3000)   // 自定义时长
+ * MuseToast.show("copiado")           // pantalla corta(2s)
+ * MuseToast.show("Guardado exitosamente", 3000)   // Duración personalizada
  * ```
  */
 object MuseToast {
 
-    // L-MT1: 用 MutableStateFlow 单值承载当前 toast,无内部队列。
-    // 连续调用 show() 会直接覆盖上一条(不排队),旧 toast 的剩余显示时长被丢弃。
-    // 这是有意为之:toast 用于轻量即时反馈,避免队列积压导致提示滞后用户操作。
-    // 若未来需要依次展示多条,应改用 Channel + 列表 StateFlow 实现排队。
+    // L-MT1: Utilice el valor único de MutableStateFlow para transportar la corriente toast,Sin cola interna.
+    // llamadas continuas show() sobrescribirá directamente el anterior(no hagas cola),Se descarta la duración restante de visualización del antiguo brindis.
+    // esto es intencional:toast para una respuesta instantánea y ligera,Evite el retraso en la cola, lo que provoca que los mensajes retrasen las operaciones del usuario.
+    // Si necesita mostrar varios elementos en secuencia en el futuro,,En su lugar, se debe usar StateFlow de lista de canal + para implementar colas.
     private val _message = MutableStateFlow<ToastData?>(null)
     val message: StateFlow<ToastData?> = _message.asStateFlow()
 
     /**
-     * 显示提示。
-     * @param text 提示文本
-     * @param durationMillis 显示时长(毫秒),默认 2000
+     * Mostrar mensaje.
+     * @param text Texto rápido
+     * @param durationMillis Duración de la visualización(milisegundos),Predeterminado 2000
      */
     fun show(text: String, durationMillis: Long = 2000) {
         _message.value = ToastData(text = text, durationMillis = durationMillis)
     }
 
-    /** 清除当前提示(动画消失后调用)。 */
+    /** Borrar mensaje actual(Se llama después de que la animación desaparece.). */
     internal fun clear() {
         _message.value = null
     }
 }
 
-/** Toast 数据。 */
+/** Toast datos. */
 data class ToastData(
     val text: String,
     val durationMillis: Long,

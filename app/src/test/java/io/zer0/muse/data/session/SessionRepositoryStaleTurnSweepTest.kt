@@ -17,12 +17,12 @@ import java.io.File
 import java.util.UUID
 
 /**
- * A9: 启动 sweep 收敛悬挂 turn 的行为。
+ * A9: Inicia el comportamiento de barrido de convergencia pendientes de giros.
  *
- * 钉住三件事:
- *  1. 只收敛 `finishedAt IS NULL` 且 `startedAt` 早于窗口的行,落终态并盖完成时间;
- *  2. 窗口内的行与已完成的行一律不动;
- *  3. 重复执行结果一致 —— 第二次返回 0 行且不改动任何数据。
+ * Fijar tres cosas:
+ *  1. solo convergencia `finishedAt IS NULL` y `startedAt` filas antes de la ventana,Caer al estado final y cubrir el tiempo de finalización.;
+ *  2. Las líneas en la ventana y las líneas completadas no se moverán.;
+ *  3. Los resultados de la ejecución repetida son consistentes. —— La segunda vez devuelve 0 filas sin cambiar ningún dato.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -60,7 +60,7 @@ class SessionRepositoryStaleTurnSweepTest {
         )
     }
 
-    /** 插入一条 turn;[finishedAt] 为 null 即“悬挂行”(生产里由进程被杀留下)。 */
+    /** Insertar un turn;[finishedAt] es nulo es decir“fila colgante”(En producción, el proceso muere y se deja atrás.). */
     private suspend fun seedTurn(
         turnId: String,
         sessionId: String,
@@ -102,16 +102,16 @@ class SessionRepositoryStaleTurnSweepTest {
         assertEquals(TurnPhase.FAILED.name, stale.phase)
         assertEquals(now, stale.finishedAt)
         assertEquals(now, stale.updatedAt)
-        // 跨会话一次性收敛,不需要按 sessionId 逐条处理
+        // Convergencia única entre sesiones,No es necesario procesar cada elemento por sessionId
         assertEquals(TurnPhase.FAILED.name, turn("stale-2")!!.phase)
         assertEquals(now, turn("stale-2")!!.finishedAt)
 
-        // 窗口内(含刚好落在窗口边界)的悬挂行不动
+        // ventana interior(Contiene justo dentro del límite de la ventana)La suspensión no funciona.
         assertEquals("STREAMING", turn("fresh")!!.phase)
         assertNull(turn("fresh")!!.finishedAt)
         assertEquals("STREAMING", turn("boundary")!!.phase)
         assertNull(turn("boundary")!!.finishedAt)
-        // 已完成行不被回退 phase 或覆盖完成时间
+        // Las filas completadas no retroceden ni se sobrescriben con el tiempo de finalización
         val done = turn("done")!!
         assertEquals("COMPLETED", done.phase)
         assertEquals(now - 500L, done.finishedAt)
@@ -139,12 +139,12 @@ class SessionRepositoryStaleTurnSweepTest {
         seedTurn("stale", "session-a", startedAt = now - grace - 60_000L)
 
         assertEquals(1, repository.closeStaleOpenTurns(now))
-        // 时钟继续走:同一行已带 finishedAt,后续启动的 sweep 不该再命中它
+        // El reloj sigue corriendo:Se ha seguido la misma línea finishedAt,Los barridos iniciados posteriormente no deberían volver a golpearlo.
         assertEquals(0, repository.closeStaleOpenTurns(now + 2 * grace))
         assertEquals(TurnPhase.FAILED.name, turn("stale")!!.phase)
         assertEquals(now, turn("stale")!!.finishedAt)
 
-        // 窗口内的行只有在跨过窗口之后才被收敛
+        // Las filas dentro de la ventana convergen solo después de cruzar la ventana
         seedTurn("later", "session-a", startedAt = now - 60_000L)
         assertEquals(1, repository.closeStaleOpenTurns(now + grace))
         assertEquals(TurnPhase.FAILED.name, turn("later")!!.phase)

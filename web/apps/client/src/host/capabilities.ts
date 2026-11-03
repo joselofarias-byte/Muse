@@ -1,31 +1,31 @@
 /**
- * Host 的能力位协商。
+ * Host Capacidad de negociación.
  *
- * host 侧 `capabilityFlags` 是「这份 Host 实现了什么」的声明，网页据此开关界面，
- * 免得对着一堆永远失败的交互点按：
- *  - `media`：imageUrls / voiceUrl 是可访问地址（`/api/media/<token>`）；
- *  - `tool_call_details`：消息带 `toolCalls[]` 明细；
- *  - `message_status`：消息带 `status` / `errorText`，并且认 `chat.retry`；
- *  - `settings_values`：`settings.snapshot` 带 `values[]`，且 `settings.update` 接受按类型校验的写入；
- *  - `message_write`：认 message.quote / message.favorite / message.delete；
- *  - `message_multi_select`：消息多选 + 批量写（删除/收藏）。
+ * host lado `capabilityFlags` Es una declaración de "lo que implementa este Host" y la página web cambia la interfaz en consecuencia.
+ * Para evitar hacer clic en un montón de interacciones que nunca fallan:
+ *  - `media`:imageUrls / voiceUrl es una dirección accesible (`/api/media/<token>`);
+ *  - `tool_call_details`: cinta de mensaje `toolCalls[]` detalles; detalles
+ *  - `message_status`: cinta de mensaje `status` / `errorText`y reconocer `chat.retry`;
+ *  - `settings_values`:`settings.snapshot` traer `values[]`, y `settings.update` Aceptar escrituras verificadas;
+ *  - `message_write`: reconocer message.quote / message.favorite / message.delete;
+ *  - `message_multi_select`:Selección múltiple de mensajes + escritura por lotes (eliminar/recolectar).
  *
- * 关键区分：**没下发** capabilityFlags（老 Host）与「下发了但没这一位」不是一回事。
- * 前者按老行为继续工作（能渲染的照渲染，取不到的给占位），后者才是明确关闭。
- * 否则一次协议升级就会把老 Host 的图片和状态全抹掉。
- * 例外是消息写操作：老 Host 根本没有这三条命令，所以缺省按「不可写」处理。
+ * Distinción clave:**No emitido** capabilityFlags(Anfitrión antiguo) no es lo mismo que "emitido pero sin éste".
+ * El primero continúa funcionando de acuerdo con el comportamiento anterior (los que se pueden renderizar se renderizan y los que no están disponibles se usan como marcadores de posición), mientras que el segundo se cierra explícitamente.
+ * De lo contrario, una actualización del protocolo borrará todas las imágenes y el estado del antiguo Host.
+ * La excepción es la operación de escritura de mensajes: el antiguo Host no tiene estos tres comandos en absoluto, por lo que se trata como "no grabable" de forma predeterminada.
  */
 export interface HostCapabilities {
-  /** 是否收到过 capabilityFlags。false = 老 Host，所有能力按老行为兜底。 */
+  /** Si se han recibido indicadores de capacidad.false = Anfitrión antiguo, todas las capacidades se basan en comportamientos antiguos. */
   readonly known: boolean;
   readonly media: boolean;
   readonly toolCallDetails: boolean;
   readonly messageStatus: boolean;
-  /** settings.snapshot 带 `values[]`，且 `settings.update` 接受按类型校验的写入。 */
+  /** settings.snapshot traer `values[]`, y `settings.update` Acepte escrituras verificadas. */
   readonly settingsValues: boolean;
-  /** 引用 / 收藏 / 删除。 */
+  /** Cotizar/Cobrar/Eliminar. */
   readonly messageWrite: boolean;
-  /** 多选与批量操作。 */
+  /** Selección múltiple y operaciones por lotes. */
   readonly multiSelect: boolean;
 }
 
@@ -34,9 +34,9 @@ export const LEGACY_CAPABILITIES: HostCapabilities = {
   media: true,
   toolCallDetails: true,
   messageStatus: true,
-  // 老 Host 根本没有 values[]，也不认数字/枚举写入：子页走「暂不支持在网页端调整」。
+  // El antiguo anfitrión no tiene ninguno. values[], tampoco reconoce números/Escritura de enumeración: subpágina "Actualmente no se admiten ajustes en la página web".
   settingsValues: false,
-  // 同理：没有 message.delete / message.favorite，老 Host 只留复制。
+  // De la misma manera: no hay message.delete / message.favorite, el Host antiguo solo copia.
   messageWrite: false,
   multiSelect: false,
 };

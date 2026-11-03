@@ -5,16 +5,16 @@ import io.zer0.muse.data.session.MessageDao
 import io.zer0.muse.data.session.SessionDao
 
 /**
- * Phase 2 2B: 里程碑检查器 — 在消息发送/会话创建时检查是否触发里程碑。
+ * Phase 2 2B: Comprobador de hitos — Enviar mensaje/Compruebe si el hito se activa cuando se crea la sesión.
  *
- * 触发条件:
- *  - first_message: 第一条消息
- *  - day_7: 相伴第 7 天
- *  - msg_100: 第 100 条消息
- *  - day_30: 相伴第 30 天
- *  - day_100: 相伴第 100 天
- *  - msg_1000: 第 1000 条消息
- *  - day_365: 相伴第 365 天
+ * Condición de activación:
+ *  - first_message: primer mensaje
+ *  - day_7: Día 7 juntos
+ *  - msg_100: Mensaje 100
+ *  - day_30: Día 30 juntos
+ *  - day_100: 100 días juntos
+ *  - msg_1000: Mensaje 1000
+ *  - day_365: Día 365 juntos
  */
 class MilestoneChecker(
     private val milestoneDao: MilestoneDao,
@@ -31,18 +31,18 @@ class MilestoneChecker(
         )
 
         val DEFINITIONS = listOf(
-            MilestoneDefinition("first_message", "初次对话", "你们的故事从这条消息开始 ✨"),
-            MilestoneDefinition("day_7", "相伴第 7 天", "一周的陪伴，是最美的开始 🌿"),
-            MilestoneDefinition("msg_100", "第 100 条消息", "一百次对话，一百次灵感的碰撞 💡"),
-            MilestoneDefinition("day_30", "相伴第 30 天", "一个月的相伴，已是最懂你的朋友 🌙"),
-            MilestoneDefinition("day_100", "相伴第 100 天", "一百天的陪伴，感谢一路同行 ⭐"),
-            MilestoneDefinition("msg_1000", "第 1000 条消息", "一千次对话，每一次都是独特的 ✨"),
-            MilestoneDefinition("day_365", "相伴一周年", "整整一年的相伴，这是最珍贵的关系 🎉"),
+            MilestoneDefinition("first_message", "primera conversación", "Tu historia comienza con este mensaje. ✨"),
+            MilestoneDefinition("day_7", "Día 7 juntos", "Una semana de compañerismo es el comienzo más hermoso 🌿"),
+            MilestoneDefinition("msg_100", "Mensaje 100", "Cien conversaciones, cien colisiones de inspiración. 💡"),
+            MilestoneDefinition("day_30", "Día 30 juntos", "Después de un mes de estar contigo ya soy el amigo que mejor te entiende. 🌙"),
+            MilestoneDefinition("day_100", "100 días juntos", "Cien días de compañerismo, gracias por recorrer el camino ⭐"),
+            MilestoneDefinition("msg_1000", "Mensaje 1000", "Mil conversaciones, cada una única ✨"),
+            MilestoneDefinition("day_365", "Un año de aniversario juntos", "Todo un año de compañerismo, esta es la relación más preciosa. 🎉"),
         )
     }
 
     /**
-     * 检查并触发里程碑。应在消息发送后调用。
+     * Verifique y active hitos. Se debe llamar después de enviar el mensaje.
      */
     suspend fun checkAndTrigger(sessionId: String, assistantId: String? = null) {
         try {

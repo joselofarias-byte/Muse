@@ -24,30 +24,30 @@ import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
 /**
- * v2.6.9: 常驻保活前台服务（用户显式开启）。
+ * v2.6.9: Servicio de recepción residente keep-alive (activado explícitamente por el usuario).
  *
- * 为什么需要它：
- * 定时任务、AI 主动私信、朋友圈调度都跑在应用进程里。进程被 ROM 回收后，
- * WorkManager 最快也要 15 分钟才回来，中间的消息全部错过。
- * 一个常驻前台服务能把进程钉在前台级别，这是 Android 上唯一「合规且有效」的保活手段。
+ * Por qué lo necesitas:
+ * tareas programadas,AI Los mensajes privados activos y la programación del círculo de amigos se ejecutan en el proceso de solicitud. Una vez que la ROM recicla el proceso,
+ * WorkManager Se necesitarían 15 minutos como máximo para regresar y se perderían todos los mensajes intermedios.
+ * Un servicio de primer plano residente puede fijar el proceso en el nivel de primer plano, que es el único método de mantenimiento "compatible y eficaz" en Android.
  *
- * 与 [ChatGenerationService] 的区别：
- * 那个是「生成期间临时进入前台」，生成完就退；这个是「用户主动开启的常驻」，
- * 生命周期由设置开关控制，不随单次生成结束。
+ * con [ChatGenerationService] La diferencia:
+ * Éste "pasa temporalmente al primer plano durante la generación" y sale tras generación; éste es "residente activo por el usuario".
+ * El ciclo de vida se controla mediante interruptores y no termina con una sola generación.
  *
- * 诚实边界（写清楚，避免误导用户）：
- *  - Android 强制要求前台服务必须有可见通知，**不能隐藏**。任何声称能隐藏的都不是正规手段。
- *  - 国产 ROM（MIUI/EMUI/ColorOS…）会额外清理后台，仍需用户在系统设置里放自启动白名单，
- *    这部分只能引导、无法自动完成。
- *  - 不做任何伪装成其他应用的形为：改包名/仿冒图标/隐藏图标都属于恶意软件特征，
- *    会被应用商店判定为风险应用。
+ * Límites de la honestidad (escriba claramente para evitar engañar a los usuarios):
+ *  - Android Es obligatorio que los servicios front-end tengan notificaciones visibles,**no se puede ocultar**. Cualquier cosa que pretenda estar oculta no es un medio legítimo.
+ *  - ROM nacional (MIUI/EMUI/ColorOS…) además limpiará el fondo y el usuario aún deberá incluir una lista blanca de inicio automático en la configuración del sistema.
+ *    Esta parte sólo puede ser guiada y no puede completarse automáticamente.
+ *  - No hagas nada para hacerse pasar por otra aplicación: cambia el nombre del paquete/Icono de falsificación/Los íconos ocultos son todas características del malware.
+ *    La tienda de aplicaciones la considerará una aplicación riesgosa.
  *
- * 保活手段（全部合规）：
- *  1. startForeground + 常驻通知（进程优先级提升到前台）
- *  2. 可选 WakeLock（用户开启时持有，防止 Doze 让 CPU 休眠导致网络挂起）
- *  3. onTaskRemoved 触发重启（用户从最近任务划掉后尝试拉起）
- *  4. START_STICKY（系统内存回收后自动重建）
- *  5. 心跳协程定期刷新存活状态（错过的调度由各功能自己的 Worker 与前台补触发负责，不在这里做）
+ * Medios para mantenerse con vida (todos conformes):
+ *  1. startForeground + Notificación permanente (la prioridad del proceso pasa al primer plano)
+ *  2. WakeLock opcional (se mantiene cuando el usuario lo enciende para evitar que Doze ponga la CPU en suspensión y provoque que la red se cuelgue)
+ *  3. onTaskRemoved Activar un reinicio (el usuario intenta recuperarlo después de tacharlo de la tarea reciente)
+ *  4. START_STICKY(La memoria del sistema se reconstruye automáticamente después del reciclaje)
+ *  5. La rutina de latido actualiza periódicamente el estado de supervivencia (la programación perdida es responsabilidad del propio trabajador de cada función y la activación complementaria en primer plano, que no se realizará aquí)
  */
 class KeepAliveService : Service() {
 
@@ -61,7 +61,7 @@ class KeepAliveService : Service() {
         private const val CHANNEL_ID = MuseNotificationManager.CHANNEL_KEEP_ALIVE
         private const val HEARTBEAT_INTERVAL_MS = 60_000L
 
-        /** 启动常驻服务。已是常驻状态时重复调用无副作用。 */
+        /** Iniciar el servicio residente. Cuando ya se encuentra en el estado de residencia, las llamadas repetidas no tienen efectos secundarios. */
         fun start(context: Context) {
             runCatching {
                 val intent = Intent(context, KeepAliveService::class.java).setAction(ACTION_START)
@@ -71,16 +71,16 @@ class KeepAliveService : Service() {
                     context.startService(intent)
                 }
             }.onFailure { t ->
-                Logger.w(TAG, "启动常驻服务失败: ${t.message}")
+                Logger.w(TAG, "No se pudo iniciar el servicio para residentes: ${t.message}")
             }
         }
 
-        /** 停止常驻服务。 */
+        /** Detener el servicio residente. */
         fun stop(context: Context) {
             runCatching {
                 context.startService(Intent(context, KeepAliveService::class.java).setAction(ACTION_STOP))
             }.onFailure { t ->
-                Logger.w(TAG, "停止常驻服务失败: ${t.message}")
+                Logger.w(TAG, "No se pudo detener el servicio para residentes: ${t.message}")
             }
         }
     }
@@ -91,36 +91,36 @@ class KeepAliveService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // Android 要求 startForeground 尽快调用，否则 ANR/崩溃。创建即进前台。
+        // Android Requiere que se llame a startForeground lo antes posible; de ​​lo contrario, ANR/crash. Crea e ingresa a la recepción.
         startForegroundCompat()
         startHeartbeat()
         acquireWakeLockIfEnabled()
-        Logger.i(TAG, "常驻服务已启动")
+        Logger.i(TAG, "Se ha iniciado el servicio a residentes.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                Logger.i(TAG, "收到停止指令")
+                Logger.i(TAG, "Comando de parada recibido")
                 stopSelf()
                 return START_NOT_STICKY
             }
-            else -> Logger.d(TAG, "常驻服务运行中")
+            else -> Logger.d(TAG, "El servicio para residentes está funcionando.")
         }
-        // START_STICKY: 系统内存回收后自动重建服务（不保留 intent）
+        // START_STICKY: Reconstruir automáticamente el servicio después de recuperar la memoria del sistema (la intención no se conserva)
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     /**
-     * 用户从最近任务划掉应用时触发。
+     * Se activa cuando el usuario elimina la aplicación de tareas recientes.
      *
-     * 这里尝试重新拉起自己——划掉后进程通常还会存活很短时间，
-     * 这个窗口内重启服务成功率较高。ROM 深度清理时仍会失败，属预期。
+     * Intenta levantarte de nuevo aquí.——Los procesos suelen sobrevivir poco tiempo después de ser tachados.
+     * La tasa de éxito al reiniciar el servicio es mayor dentro de esta ventana.ROM Todavía falla durante la limpieza profunda, lo cual es de esperar.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Logger.i(TAG, "任务被划掉，尝试重启常驻服务")
+        Logger.i(TAG, "La tarea fue tachada, intenta reiniciar el servicio residente.")
         val restart = Intent(applicationContext, KeepAliveService::class.java).setAction(ACTION_START)
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -129,7 +129,7 @@ class KeepAliveService : Service() {
                 applicationContext.startService(restart)
             }
         }.onFailure { t ->
-            Logger.w(TAG, "重启常驻服务失败（可能被 ROM 限制）: ${t.message}")
+            Logger.w(TAG, "No se pudo reiniciar el servicio residente (puede estar restringido por ROM): ${t.message}")
         }
         super.onTaskRemoved(rootIntent)
     }
@@ -138,18 +138,18 @@ class KeepAliveService : Service() {
         heartbeatJob?.cancel()
         releaseWakeLock()
         serviceScope.cancel()
-        Logger.i(TAG, "常驻服务已停止")
+        Logger.i(TAG, "El servicio para residentes se ha detenido.")
         super.onDestroy()
     }
 
-    /** 进入前台并挂常驻通知。失败时必须仍调 startForeground，否则系统抛超时异常。 */
+    /** Ingrese a la recepción y cuelgue la notificación para residentes. Cuando falla, aún se debe llamar a startForeground; de lo contrario, el sistema generará una excepción de tiempo de espera. */
     private fun startForegroundCompat() {
-        // 渠道统一由通知管理器注册（幂等）。
+        // Los canales son registrados uniformemente por el administrador de notificaciones (idempotente).
         MuseNotificationManager(this).ensureChannels()
         val notification = buildNotification()
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // Android 14+ 必须显式声明前台服务类型
+                // Android 14+ El tipo de servicio front-end debe declararse explícitamente
                 startForeground(
                     NOTIFICATION_ID,
                     notification,
@@ -159,7 +159,7 @@ class KeepAliveService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         }.onFailure { t ->
-            Logger.e(TAG, "startForeground 失败，放弃常驻", t)
+            Logger.e(TAG, "startForeground Fallar, renunciar permanentemente", t)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 runCatching {
                     startForeground(
@@ -173,9 +173,9 @@ class KeepAliveService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        // v2.6.9: 读取用户自定义通知文案（空串 → 默认）。
-        // 读取是 suspend，而这里需要在 startForeground 前同步拿到，
-        // 故用 runBlocking 限时 200ms：拿不到就用默认，绝不阻塞启动。
+        // v2.6.9: Leer texto de notificación definido por el usuario (cadena vacía → predeterminado).
+        // La lectura está suspendida y debe obtenerse sincrónicamente antes de iniciarForeground.
+        // Por lo tanto, runBlocking está limitado a 200 ms: si no puede obtenerlo, use el valor predeterminado y nunca bloquee el inicio.
         val (customTitle, customText) = runCatching {
             kotlinx.coroutines.runBlocking {
                 kotlinx.coroutines.withTimeoutOrNull(200L) {
@@ -195,7 +195,7 @@ class KeepAliveService : Service() {
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-        // 点击回到应用主界面
+        // Haga clic para regresar a la interfaz principal de la aplicación.
         runCatching {
             val launch = packageManager.getLaunchIntentForPackage(packageName)
             if (launch != null) {
@@ -214,11 +214,11 @@ class KeepAliveService : Service() {
     }
 
     /**
-     * 心跳：定期记录存活状态。
+     * Latido del corazón: registre el estado de supervivencia con regularidad.
      *
-     * 这里刻意只做「轻量唤醒 + 日志」，不直接跑生成任务——
-     * 生成任务由 ScheduledTaskRunner / ProactiveMessageRunner 各自的轮询负责，
-     * 服务只保证进程活着，不重复实现调度逻辑（否则会出现双份轮询互抢）。
+     * Aquí deliberadamente solo hacemos "activación ligera + registro" y no ejecutamos directamente la tarea de generación.——
+     * La generación de tareas es responsable del sondeo respectivo de ScheduledTaskRunner/ProactiveMessageRunner,
+     * El servicio solo garantiza que el proceso esté activo y no implemente la lógica de programación repetidamente (de lo contrario, habrá doble sondeo y captura mutua).
      */
     private fun startHeartbeat() {
         heartbeatJob = serviceScope.launch {
@@ -227,18 +227,18 @@ class KeepAliveService : Service() {
                 delay(HEARTBEAT_INTERVAL_MS)
                 tick++
                 if (tick % 10 == 0L) {
-                    Logger.d(TAG, "常驻心跳存活，已运行 $tick 分钟")
+                    Logger.d(TAG, "El latido del corazón del residente está vivo y funcionando $tick minutos")
                 }
             }
         }
     }
 
-    /** 用户显式开启「屏幕关闭也保持连接」时持有 WakeLock。 */
+    /** Mantenga presionado WakeLock cuando el usuario active explícitamente \"Mantener conectado incluso cuando la pantalla esté apagada\". */
     private fun acquireWakeLockIfEnabled() {
         val settings = runCatching {
             GlobalContext.get().get<SettingsRepository>()
         }.getOrNull() ?: return
-        // 设置读取是 suspend，用 IO scope 异步取，取不到就不持有
+        // Configure el modo de lectura para suspender, use el alcance IO para obtenerlo de forma asincrónica y, si no puede obtenerlo, no lo mantenga presionado.
         serviceScope.launch {
             val enabled = runCatching { settings.keepAliveWakeLockFlowSnapshot() }.getOrDefault(false)
             if (!enabled) return@launch
@@ -246,11 +246,11 @@ class KeepAliveService : Service() {
                 val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Muse::KeepAlive").apply {
                     setReferenceCounted(false)
-                    acquire(24 * 60 * 60 * 1000L) // 最多 24 小时，到期自动释放，避免忘记释放耗电
+                    acquire(24 * 60 * 60 * 1000L) // Hasta 24 horas, liberado automáticamente después del vencimiento para evitar olvidar liberar el consumo de energía
                 }
-                Logger.i(TAG, "已获取 WakeLock（用户开启）")
+                Logger.i(TAG, "WakeLock adquirido (usuario habilitado)")
             }.onFailure { t ->
-                Logger.w(TAG, "获取 WakeLock 失败: ${t.message}")
+                Logger.w(TAG, "No se pudo obtener WakeLock: ${t.message}")
             }
         }
     }

@@ -7,17 +7,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 13: LicenseManifest 反序列化单元测试。
+ * Phase 13: LicenseManifest Pruebas unitarias de deserialización.
  *
- * 验证:
- *  1. manifest.json 能被 kotlinx.serialization 正确解析
- *  2. 字段映射正确(schemaVersion / appName / dependencies)
- *  3. 依赖条目按协议分组(groupedByLicense)工作
- *  4. licenseId 标签渲染(toLicenseLabel)产出可读协议名
- *  5. 协议全文路径非空(确保 assets 引用正确)
+ * verificar:
+ *  1. manifest.json Puede ser analizado correctamente por kotlinx.serialization
+ *  2. El mapeo de campo es correcto(schemaVersion / appName / dependencies)
+ *  3. Entradas de dependencia agrupadas por protocolo(groupedByLicense)trabajo
+ *  4. licenseId Representación de etiquetas(toLicenseLabel)Producir un nombre de protocolo legible por humanos
+ *  5. La ruta de texto completo del protocolo no está vacía.(Asegúrese de que los activos estén referenciados correctamente)
  *
- * 不依赖 Android Context(纯 JVM),所以 [LicenseRepository.loadManifest] 不在此测,
- * 这里直接用 raw JSON 字符串(与实际 manifest 等价)做反序列化测试。
+ * no depende de Android Context(puro JVM),entonces [LicenseRepository.loadManifest] No probado aquí,
+ * Utilice una cadena JSON sin formato directamente aquí(Equivalente al manifiesto real)Hacer pruebas de deserialización.
  */
 class LicenseManifestTest {
 
@@ -86,7 +86,7 @@ class LicenseManifestTest {
         assertEquals("BSD 3-Clause", "bsd-3-clause".toLicenseLabel())
         assertEquals("BSD 2-Clause", "bsd-2-clause".toLicenseLabel())
         assertEquals("EPL 1.0", "epl-1.0".toLicenseLabel())
-        // 未知协议直接显示原 id(graceful degradation)
+        // El protocolo desconocido muestra directamente el original id(graceful degradation)
         assertEquals("weird-protocol-v9", "weird-protocol-v9".toLicenseLabel())
     }
 

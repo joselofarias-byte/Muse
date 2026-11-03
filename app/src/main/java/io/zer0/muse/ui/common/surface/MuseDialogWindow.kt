@@ -58,7 +58,7 @@ internal fun MuseDialogWindowEffect(forceFullScreen: Boolean = false, bottomAlig
             val originalBackground: Drawable? = dialogWindow.decorView.background
 
             clearMuseWindowDim(dialogWindow)
-            // 独立窗口沿用宿主系统栏图标对比度，禁止系统再给手势区叠保护色。
+            // La ventana independiente sigue el contraste del icono de la barra del sistema host y prohíbe que el sistema superponga el área de gestos con un color protector.
             dialogWindow.navigationBarColor = Color.TRANSPARENT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) dialogWindow.isNavigationBarContrastEnforced = false
             activityWindow?.let { host ->
@@ -78,9 +78,9 @@ internal fun MuseDialogWindowEffect(forceFullScreen: Boolean = false, bottomAlig
                 }
             }
             if (forceFullScreen) {
-                // v2.0 修复(用户真机复现: scrim 盖不住状态栏):
-                // 仅 setLayout 在部分 ROM 上窗口仍从状态栏下沿起画 — 显式关闭 decor fit、
-                // 让窗口从屏幕左上角开始,并在首帧后再设一次防被 Dialog 内部布局覆盖。
+                // v2.0 Reparación(Reproducción de máquina real del usuario.: scrim No puedo cubrir la barra de estado):
+                // Sólo las ventanas setLayout todavía se dibujan desde el borde inferior de la barra de estado en algunas ROM — Desactivar explícitamente el ajuste de decoración,
+                // Haga que la ventana comience en la esquina superior izquierda de la pantalla.,Y configúrelo nuevamente después del primer cuadro para evitar que el diseño interno de Dialog lo sobrescriba.
                 WindowCompat.setDecorFitsSystemWindows(dialogWindow, false)
                 dialogWindow.addFlags(
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,

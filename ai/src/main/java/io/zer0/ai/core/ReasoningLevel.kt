@@ -3,25 +3,25 @@ package io.zer0.ai.core
 import kotlinx.serialization.Serializable
 
 /**
- * 推理等级,对应 OpenAI o1 系列 / Anthropic thinking / Gemini thinking 等可调推理强度。
+ * nivel de razonamiento,Compatible con la serie OpenAI o1 / Anthropic thinking / Gemini thinking Fuerza de razonamiento ajustable.
  *
- * Phase 8.1 扩展: 从 5 级(AUTO/NONE/LOW/MEDIUM/HIGH)扩展到 6 级 + budgetTokens。
- * 独立编写(OFF/AUTO/LOW/MEDIUM/HIGH/XHIGH + budgetTokens)。
+ * Phase 8.1 Expandir: desde el nivel 5(AUTO/NONE/LOW/MEDIUM/HIGH)Se expande al nivel 6 + BudgetTokens.
+ * Escrito de forma independiente(OFF/AUTO/LOW/MEDIUM/HIGH/XHIGH + budgetTokens).
  *
- * - [OFF]: 关闭推理(对应 Anthropic thinking=disabled;OpenAI Chat Completions 官方端点
- *   可用 minimal 表达最低推理强度;Responses API 没有通用关闭值,由 Provider 省略配置交给上游决定)
- * - [AUTO]: 自动(让服务端决定,不加 budgetTokens)
- * - [LOW]: 轻量推理(~1000 tokens)
- * - [MEDIUM]: 中等推理(~2000 tokens)
- * - [HIGH]: 深度推理(~8000 tokens)
- * - [XHIGH]: 极深推理(~16000 tokens,仅顶级模型支持)
+ * - [OFF]: Razonamiento cercano(corresponder Anthropic thinking=disabled;OpenAI Chat Completions Punto final oficial
+ *   Utilice mínimo para expresar la intensidad más baja de razonamiento.;Responses API Sin valor de apagado universal,El proveedor omite la configuración y deja que el upstream decida.)
+ * - [AUTO]: automático(Deja que el servidor decida,No agregado budgetTokens)
+ * - [LOW]: razonamiento ligero(~1000 tokens)
+ * - [MEDIUM]: razonamiento medio(~2000 tokens)
+ * - [HIGH]: razonamiento profundo(~8000 tokens)
+ * - [XHIGH]: Razonamiento extremadamente profundo(~16000 tokens,Sólo compatible con los mejores modelos)
  *
- * @property budgetTokens 对应的思考预算 token 数;
- *   null 表示不指定(AUTO / OFF),由服务端决定
- * @property effort OpenAI o1 系列的 effort 字段(low/medium/high);
- *   null 表示不传该字段
- * @property anthropicLevel Anthropic thinking 的 level(disabled/low/medium/high);
- *   null 表示不传该字段
+ * @property budgetTokens El número correspondiente de fichas de presupuesto pensante.;
+ *   null Indica no especificado(AUTO / OFF),Determinado por el servidor
+ * @property effort OpenAI o1 El campo de esfuerzo de la serie.(low/medium/high);
+ *   null Indica no pasar este campo
+ * @property anthropicLevel Anthropic thinking de level(disabled/low/medium/high);
+ *   null Indica no pasar este campo
  */
 @Serializable
 enum class ReasoningLevel(
@@ -36,15 +36,15 @@ enum class ReasoningLevel(
     HIGH(budgetTokens = 8000, effort = "high", anthropicLevel = "high"),
 
     /**
-     * v1.80 (M-CORE8): XHIGH 补全 effort/anthropicLevel。
-     * 原先为 null 导致 OpenAI/Anthropic 不发送推理参数,用户选"极深推理"实际未生效。
-     * OpenAI 无 "xhigh" 值,降级为 "high";Anthropic 同理用 "high"。
+     * v1.80 (M-CORE8): XHIGH Esfuerzo completo/Nivel antrópico.
+     * Originalmente nulo provocó que OpenAI/Anthropic no enviara parámetros de inferencia,Usuario seleccionado"Razonamiento extremadamente profundo"En realidad no surte efecto.
+     * OpenAI Ninguno "xhigh" valor,degradado a "high";Anthropic Usado de la misma manera "high".
      */
     XHIGH(budgetTokens = 16000, effort = "high", anthropicLevel = "high"),
     ;
 
     companion object {
-        /** 默认推理等级(向后兼容旧配置无字段时)。 */
+        /** Nivel de razonamiento predeterminado(Compatibilidad con versiones anteriores cuando la configuración anterior no tiene campos). */
         val DEFAULT = AUTO
     }
 }

@@ -1,37 +1,37 @@
 package io.zer0.memory.observe
 
 /**
- * D3-P1: 记忆管线五阶段标签。
+ * D3-P1: Etiqueta de cinco etapas de la canalización de memoria.
  *
- * 用于给现有 [io.zer0.memory.ticker.MemoryTicker] 步骤标注其对应的概念阶段,
- * 让观测数据(见 [PipelineLog])能按 Ingest→Extract→Index→Retrieve→Inject 聚合。
+ * utilizado para agregar existente [io.zer0.memory.ticker.MemoryTicker] Los pasos están etiquetados con sus correspondientes etapas conceptuales.,
+ * Deja que los datos de observación.(ver [PipelineLog])puede presionar Ingest→Extract→Index→Retrieve→Inject agregación.
  *
- * 注意:P1 阶段仅做"标注",不改变现有步骤的实际实现或调用顺序;真正的
- * 五阶段解耦(每步可单独失败/重试/观测)留待后续阶段。
+ * Nota:P1 solo escenario"marca",No cambia la implementación real ni el orden de llamada de los pasos existentes.;real
+ * Cinco etapas de desacoplamiento(Cada paso puede fallar individualmente/Inténtalo de nuevo/observación)Déjelo para etapas posteriores.
  */
 enum class MemoryStage {
-    /** 记忆产生入口:对话实时保存、每日深挖、手动/回填导入。 */
+    /** Entrada a la generación de memoria.:Conversación guardada en tiempo real, excavación diaria, manual/Importación de reabastecimiento. */
     INGEST,
 
-    /** LLM 提取:会话 → 摘要、摘要 → 原子事实。 */
+    /** LLM Extracto:sesión → abstracto, abstracto → Hechos atómicos. */
     EXTRACT,
 
-    /** 写入/编排存储:编译产物落 Room/文件、窗口滚动、对账。 */
+    /** escribir/Orquestar almacenamiento:El producto compilado se divide en Sala/archivo, desplazamiento de ventana y conciliación. */
     INDEX,
 
-    /** 注入侧检索:按当前问题召回相关记忆。 */
+    /** Recuperación del lado de inyección:Recordar recuerdos relevantes basados ​​en el problema actual. */
     RETRIEVE,
 
-    /** system prompt 组装注入。 */
+    /** system prompt Inyección de montaje. */
     INJECT,
     ;
 
     companion object {
         /**
-         * 管线段落 → 主阶段的默认映射。
+         * sección de tubería → Mapeo predeterminado para el escenario principal.
          *
-         * 每个段落一步只给一个"主阶段"(步骤内部常同时含抽取与落盘,此处按其
-         * 产物归属归类):摘要/事实抽取归 EXTRACT,编译产物编排归 INDEX。
+         * Solo se da un paso para cada párrafo."escenario principal"(Los pasos suelen incluir extracción y colocación al mismo tiempo.,Haga clic aquí
+         * Clasificación de atribución de productos):Resumen/extracción de hechos EXTRACT,El diseño del producto compilado pertenece a INDEX.
          */
         fun ofStep(stepKey: String): MemoryStage = when (stepKey) {
             "rollingSummary" -> EXTRACT
@@ -43,7 +43,7 @@ enum class MemoryStage {
             else -> INDEX
         }
 
-        /** 检索阶段步骤(注入侧,当前由 SystemPromptAssembler 触发)。 */
+        /** Pasos de la etapa de búsqueda(lado de inyección,Actualmente activado por SystemPromptAssembler). */
         fun ofRetrieveStep(stepKey: String): MemoryStage = when (stepKey) {
             "relevantMemory" -> RETRIEVE
             "longTermMemory" -> INJECT

@@ -7,5 +7,5 @@ import sys
 def require_baseline(path: Path, checker: str) -> bool:
     if path.is_file():
         return True
-    print(f"[{checker}] ERROR: baseline 缺失或不是文件: {path}", file=sys.stderr)
+    print(f"[{checker}] ERROR: baseline Falta o no un archivo: {path}", file=sys.stderr)
     return False

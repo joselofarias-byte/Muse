@@ -67,25 +67,25 @@ import kotlinx.coroutines.withContext
  * Shown when a tool call requires user approval before execution.
  * Displays tool name, argument preview, and approve/deny buttons.
  *
- * v1.0.20: 新增"始终允许"/"始终拒绝"按钮 — 点击后通过 [onPersistPolicy]
- * 持久化到 [io.zer0.muse.tools.ToolConfigStore],后续该工具调用直接走对应策略,
- * 不再弹审批卡片。
+ * v1.0.20: Nuevo"siempre permitido"/"siempre rechace"botón — Haga clic para pasar [onPersistPolicy]
+ * persistir en [io.zer0.muse.tools.ToolConfigStore],Las llamadas posteriores a esta herramienta seguirán directamente la estrategia correspondiente.,
+ * No más tarjetas de aprobación.
  *
- * v1.x: 新增"本会话允许"按钮 — 介于"批准本次"(单次)与"始终允许"(持久)之间的中间地带。
- * 点击后通过 [onAllowThisSession] 把工具加入 [io.zer0.muse.tools.SessionPermissionStore]
- * 的会话级临时允许缓存(纯内存,不持久化),本会话内该工具不再弹审批卡片,
- * 切换会话/冷启动后自动失效。同时触发 [onApprove] 处理本次调用。
+ * v1.x: Nuevo"Esta sesión permite"botón — entre"Aprobar esto"(soltero)con"siempre permitido"(duradero)El término medio entre.
+ * Haga clic para pasar [onAllowThisSession] agregar herramientas [io.zer0.muse.tools.SessionPermissionStore]
+ * almacenamiento en caché de permisos temporales a nivel de sesión(pura memoria,No persistente),Esta herramienta ya no mostrará la tarjeta de aprobación en esta sesión.,
+ * Cambiar de sesión/Falla automáticamente después del arranque en frío. disparar simultáneamente [onApprove] Maneja esta llamada.
  *
- * v1.x: 对 generate_image 等支持参考图的工具,在卡片中渲染"选择参考图"按钮 —
- * 用户从相册选择本地图片后转 data URI,通过 [onReferenceImageChange] 写入
- * [io.zer0.muse.ui.PendingToolApproval.referenceImageOverride];批准时由
- * ChatViewModel 注入 [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides],
- * ToolOrchestrator 合并进工具执行参数。LLM 自身无法访问用户本地相册,
- * 故图生图的参考图主要从此入口提供。
+ * v1.x: Herramientas que admiten imágenes de referencia como generate_image,Renderizar en tarjeta"Seleccionar imagen de referencia"botón —
+ * El usuario selecciona una imagen local del álbum y luego la transfiere. data URI,Pase [onReferenceImageChange] escribir
+ * [io.zer0.muse.ui.PendingToolApproval.referenceImageOverride];Aprobado por
+ * ChatViewModel inyectar [io.zer0.muse.tools.ToolApprovalState.Approved.argOverrides],
+ * ToolOrchestrator Fusionado en los parámetros de ejecución de la herramienta.LLM No se puede acceder al álbum de fotos local del usuario,
+ * Por lo tanto, las imágenes de referencia para los dibujos se proporcionan principalmente desde esta entrada.
  *
- * v1.0.48: UI 重构 — 紧凑单行主操作(批准/拒绝/更多)+ 折叠次级操作,
- * 替代原三行按钮 + 双复选框的臃肿布局;配色由 tertiaryContainer 改为
- * surface + primary 强调色,视觉更清爽。
+ * v1.0.48: UI Refactorizar — Operación principal compacta de una sola fila(aprobar/rechazar/Más)+ Contraer operaciones secundarias,
+ * Reemplace el diseño abultado original de tres filas de botones + casillas de verificación dobles;La combinación de colores cambió de tertiaryContainer a
+ * surface + primary color de acento,La visión es más refrescante.
  */
 @Suppress("LongMethod", "LongParameterList", "CyclomaticComplexMethod")
 @Composable
@@ -93,39 +93,39 @@ fun ToolApprovalCard(
     toolName: String,
     argumentsPreview: String,
     /**
-     * 全量参数(审批判定用的同一份)。
+     * Parámetros completos(La misma copia utilizada para revisión y aprobación.).
      *
-     * [argumentsPreview] 只有 200 字符,写 4KB 正文时用户看到的只是开头;
-     * 完整参数从这里取,卡片据此提示「还有 N 字符未显示」并支持展开查看。
-     * 为空时退化到只用预览展示。
+     * [argumentsPreview] Sólo 200 caracteres,Al escribir texto de 4 KB, el usuario solo ve el comienzo;
+     * Los parámetros completos se toman desde aquí.,En consecuencia, la tarjeta indica "No se muestran N caracteres" y admite la expansión para su visualización.
+     * Cuando está vacío, se degrada a la vista previa únicamente.
      */
     argumentsFull: Map<String, Any?> = emptyMap(),
     onApprove: () -> Unit,
     onDeny: (reason: String) -> Unit,
     /**
-     * v1.0.20: 持久化单工具策略回调。
+     * v1.0.20: Devolución de llamada persistente de estrategia de herramienta única.
      *
-     * "始终允许"按钮点击时传入 [ToolApprovalPolicy.ALWAYS_ALLOW],
-     * 调用方应在此回调内:
-     *  1. 调用 [io.zer0.muse.tools.ToolConfigStore.setPolicy] 持久化策略
-     *  2. 同步触发 onApprove / onDeny 处理本次调用
+     * "siempre permitido"Pasado cuando se hace clic en el botón [ToolApprovalPolicy.ALWAYS_ALLOW],
+     * La persona que llama debe estar dentro de esta devolución de llamada.:
+     *  1. llamar [io.zer0.muse.tools.ToolConfigStore.setPolicy] estrategia de persistencia
+     *  2. Activa sincrónicamente onApprove/onDeny para manejar esta llamada
      */
     onPersistPolicy: (ToolApprovalPolicy) -> Unit = {},
     /**
-     * v1.x: "本会话允许"按钮回调 — 把工具加入会话级临时允许缓存。
+     * v1.x: "Esta sesión permite"Devolución de llamada del botón — Agregue herramientas al nivel de sesión para permitir temporalmente el almacenamiento en caché.
      *
-     * 调用方应在此回调内调用 [io.zer0.muse.tools.SessionPermissionStore.allowToolForSession]
-     * 把工具名加入当前会话的内存缓存;同时由按钮内部触发 [onApprove] 处理本次调用。
-     * 本会话内该工具不再弹审批卡片,切换会话/冷启动后自动失效。
+     * La persona que llama debe llamar dentro de esta devolución de llamada. [io.zer0.muse.tools.SessionPermissionStore.allowToolForSession]
+     * Agregue el nombre de la herramienta a la memoria caché de la sesión actual;También se activa internamente mediante el botón. [onApprove] Maneja esta llamada.
+     * Esta herramienta ya no mostrará la tarjeta de aprobación en esta sesión.,Cambiar de sesión/Falla automáticamente después del arranque en frío.
      */
     onAllowThisSession: () -> Unit = {},
     /**
-     * v1.x: 用户在审批卡片中选择的参考图(data URI,如 "data:image/jpeg;base64,...")。
-     * 非空时显示缩略图预览;null 表示未选择。
+     * v1.x: La imagen de referencia seleccionada por el usuario en la tarjeta de aprobación.(data URI,Como por ejemplo "data:image/jpeg;base64,...").
+     * Mostrar vista previa en miniatura cuando no esté vacía;null Indica no seleccionado.
      */
     referenceImageOverride: String? = null,
     /**
-     * v1.x: 参考图选择变化回调。dataUri 非空表示用户选了新图;null 表示清除。
+     * v1.x: Consulte la devolución de llamada de cambio de selección de imagen.dataUri No vacío significa que el usuario seleccionó una nueva imagen.;null Indica claro.
      */
     onReferenceImageChange: (String?) -> Unit = {},
     /**
@@ -134,20 +134,20 @@ fun ToolApprovalCard(
      */
     countdownSeconds: Int = DEFAULT_APPROVAL_COUNTDOWN_SECONDS,
     /**
-     * CHAT-08: 倒计时是否暂停(折叠为「N 项待审批」阅读期间为 true)。
-     * 暂停时 UI 倒计时冻结,且由调用方同步暂停 VM 侧超时,避免 UI/VM 失步。
+     * CHAT-08: Si la cuenta regresiva está en pausa(doblado en "N El período de lectura del "Artículo pendiente de aprobación" es true).
+     * La cuenta regresiva de la interfaz de usuario se congela cuando se pausa,Y la persona que llama pausa el tiempo de espera del lado VM sincrónicamente,Evite la desincronización de UI/VM.
      */
     countdownPaused: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var showDenyReason by remember { mutableStateOf(false) }
     var denyReason by remember { mutableStateOf("") }
-    // 参考图读取中标志(避免大图阻塞主线程时按钮无响应)
+    // Bandera de lectura de imagen de referencia.(Evite que los botones no respondan cuando las imágenes grandes bloqueen el hilo principal)
     var isLoadingRefImage by remember { mutableStateOf(false) }
-    // v1.x: 次级操作折叠状态(本会话允许 / 始终允许)
+    // v1.x: Estado plegado de operación secundaria(Permitido para esta sesión/Siempre permitido)
     var showMoreOptions by remember { mutableStateOf(false) }
-    // 审批超时倒计时:与 VM 的 30s 超时对齐,归零后卡片会被 VM 侧拒绝。
-    // CHAT-08: countdownPaused 时倒计时冻结(折叠阅读期间),恢复后继续。
+    // Cuenta regresiva del tiempo de espera de aprobación:Alineado con el tiempo de espera de 30 segundos de VM,Después de la puesta a cero, la tarjeta será rechazada por el lado VM.
+    // CHAT-08: countdownPaused congelación de la cuenta regresiva del tiempo(Doblar durante la lectura),Continuar después de la recuperación.
     var remainingSeconds by remember(toolName, countdownSeconds) {
         mutableStateOf(countdownSeconds.coerceAtLeast(0))
     }
@@ -165,7 +165,7 @@ fun ToolApprovalCard(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // v1.x: 相册选择器,仅对支持参考图的工具启用
+    // v1.x: Selector de álbumes,Habilitado solo para herramientas que admiten dibujos de referencia.
     val supportsReferenceImage = toolName in REFERENCE_IMAGE_TOOL_NAMES
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -173,7 +173,7 @@ fun ToolApprovalCard(
         uri ?: return@rememberLauncherForActivityResult
         isLoadingRefImage = true
         scope.launch {
-            // 大图片读取 + Base64 编码移到 IO 线程,避免阻塞 UI
+            // Lectura de imágenes grandes + codificación Base64 movida al hilo IO,evitar el bloqueo UI
             val dataUri = withContext(Dispatchers.IO) {
                 runCatching {
                     val resolver = context.contentResolver
@@ -181,7 +181,7 @@ fun ToolApprovalCard(
                     require(bytes != null && bytes.size <= MAX_REF_IMAGE_BYTES) {
                         context.getString(R.string.chat_image_too_large)
                     }
-                    // 推断 mime;PickVisualMedia 返回的 content URI 一般有 type
+                    // inferencia mime;PickVisualMedia El URI de contenido devuelto generalmente tiene type
                     val mime = resolver.getType(uri)?.takeIf { it.startsWith("image/") } ?: "image/png"
                     val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
                     "data:$mime;base64,$base64"
@@ -195,19 +195,19 @@ fun ToolApprovalCard(
         }
     }
 
-    // Phase 2: 统一走项目容器基元 [MuseSurface],保留原 Card 的圆角(medium)、
-    // surface 底色、0dp 阴影与 1dp primary 边框,不改变可见尺寸。
+    // Phase 2: Unifique las primitivas del contenedor del proyecto. [MuseSurface],Mantenga las esquinas redondeadas de la Tarjeta original.(medium),
+    // surface color de fondo,0dp Sombra con borde primario de 1dp,No cambia el tamaño visible.
     MuseSurface(
         modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
         shape = MuseShapes.medium,
         color = MaterialTheme.colorScheme.surface,
-        // CHAT-09: 消息内卡片统一规范 — 底色 + 1dp 描边 + 统一圆角(此前 primary 45% 边框)
+        // CHAT-09: Estándares unificados para tarjetas dentro de mensajes. — Color base + trazo 1dp + esquinas redondeadas uniformes(Frontera del 45% anteriormente primaria)
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Header: 工具图标徽标(使用语义图标) + 标题/工具名
+            // Header: Logotipo del icono de herramienta(Utilice iconos semánticos) + Título/Nombre de la herramienta
             val visualIcon = remember(toolName) { ToolCallVisuals.iconFor(toolName) }
-            // I18N-01: 标签走资源
+            // I18N-01: Etiquetar recursos para caminar
             val displayName = remember(toolName) { ToolCallVisuals.labelFor(toolName, context.resources) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -238,8 +238,8 @@ fun ToolApprovalCard(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                // 倒计时与风险提示:审批不会永远等待(30s 后自动拒绝)。
-                // CHAT-08: 暂停期间显示「已暂停」,不再倒计时。
+                // Cuenta atrás y aviso de riesgo:La aprobación no esperará para siempre(30s rechazado automáticamente después).
+                // CHAT-08: "Pausado" se muestra durante el período de pausa.,No más cuentas regresivas.
                 if (countdownPaused) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -270,10 +270,10 @@ fun ToolApprovalCard(
                 }
             }
 
-            // v2.x: 参数展示 — 预览 + 明确的截断提示 + 可展开看全量。
-            // 审批判定用的是全量 args,但卡片过去只拿到 200 字符预览:写 4KB 正文时
-            // 用户只看到开头就点了批准。预览之外必须写清还有多少字符没显示,
-            // 并把完整参数放到展开入口后面(展开后按 key 分行、框内可滚动)。
+            // v2.x: Visualización de parámetros — Vista previa + mensaje de truncamiento claro + se puede expandir para ver la cantidad total.
+            // El importe total se utiliza para revisión y evaluación. args,Pero las tarjetas solían obtener solo 200 vistas previas de personajes.:Al escribir texto de 4 KB
+            // El usuario solo vio el comienzo y hizo clic en aprobar. Además de la vista previa, debes indicar claramente cuántos caracteres no se muestran.,
+            // Y coloque los parámetros completos detrás de la entrada de expansión.(Después de la expansión, presione la tecla para bifurcarse en filas y desplazarse dentro del cuadro.).
             val argumentEntries = remember(argumentsPreview, argumentsFull) {
                 approvalArgumentEntries(argumentsPreview, argumentsFull)
             }
@@ -283,14 +283,14 @@ fun ToolApprovalCard(
             val approvalFilePath = remember(argumentEntries) { approvalValueOf(argumentEntries, APPROVAL_FILE_KEYS) }
             val approvalContent = remember(argumentEntries) { approvalValueOf(argumentEntries, APPROVAL_CONTENT_KEYS) }
             val extraArgs = remember(argumentEntries) { approvalExtraArguments(argumentEntries) }
-            // 结构化摘要(文件/内容)存在时才有「其余参数」与「高级详情」两段。
+            // resumen estructurado(Archivo/contenido)Hay dos secciones "Parámetros restantes" y "Detalles avanzados" solo cuando existe.
             val hasStructuredSummary = approvalFilePath != null || approvalContent != null
             var showRawDetails by remember(argumentsPreview) { mutableStateOf(false) }
             var showFullArguments by remember(argumentsPreview) { mutableStateOf(false) }
             val previewScroll = rememberScrollState()
             val rawScroll = rememberScrollState()
 
-            // 预览文本和「省略了多少字符」用同一组数字,避免提示和预览各说各话。
+            // El texto de vista previa y "cuántos caracteres se omitieron" utilizan el mismo conjunto de números,Evite indicaciones y vistas previas, cada una de las cuales tiene algo que decir.
             val previewTotalChars = approvalContent?.length ?: rawArguments.length
             val previewText = when {
                 approvalContent != null ->
@@ -343,7 +343,7 @@ fun ToolApprovalCard(
                         )
                     }
                 }
-                // 截断提示与展开入口:不告诉用户「这里被截断」,展开入口等于没做。
+                // Truncar mensajes y expandir entradas:No le digas al usuario "Truncado aquí",Ampliar la entrada equivale a no hacerlo.
                 if (hiddenChars > 0) {
                     ApprovalArgumentsToggle(
                         label = stringResource(R.string.tool_approval_show_full_args) + " · " +
@@ -360,7 +360,7 @@ fun ToolApprovalCard(
                         onClick = { showFullArguments = false },
                     )
                 }
-                // 其余标量参数以 k: v 列出（最多 6 行）
+                // Los argumentos escalares restantes se enumeran k:v (hasta 6 líneas)
                 extraArgs.forEach { (k, v) ->
                     Text(
                         text = "$k: $v",
@@ -370,7 +370,7 @@ fun ToolApprovalCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // 高级详情:完整原始 JSON(框内可滚动)
+                // Detalles avanzados:original completo JSON(Desplazable dentro del marco)
                 if (hasStructuredSummary) {
                     ApprovalArgumentsToggle(
                         label = stringResource(R.string.tool_approval_advanced_details),
@@ -399,8 +399,8 @@ fun ToolApprovalCard(
                 }
             }
 
-            // v1.x: 参考图选择区(仅 generate_image 等支持参考图的工具显示)
-            // LLM 无法访问用户本地相册,故图生图参考图由此入口提供
+            // v1.x: Área de selección de imágenes de referencia(Solo se muestran herramientas que admiten imágenes de referencia como generate_image)
+            // LLM No se puede acceder al álbum de fotos local del usuario,La imagen de referencia de la imagen original la proporciona esta entrada.
             if (supportsReferenceImage) {
                 ReferenceImageSection(
                     referenceImageOverride = referenceImageOverride,
@@ -418,12 +418,12 @@ fun ToolApprovalCard(
                 )
             }
 
-            // 主操作行:批准(强调) + 拒绝 + 更多(折叠次级操作)
+            // Línea operativa principal:aprobar(enfatizar) + Negar y más(Contraer operaciones secundarias)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 批准 — 主按钮,最高优先级,使用 filled 强调
+                // aprobar — botón principal,máxima prioridad,Utilice relleno para dar énfasis
                 MuseCapsuleButton(
                     text = stringResource(R.string.tool_approval_approve),
                     onClick = onApprove,
@@ -431,7 +431,7 @@ fun ToolApprovalCard(
                     fillWidth = false,
                 )
 
-                // 拒绝 — 次级,OutlinedButton
+                // rechazar — secundario,OutlinedButton
                 MuseCapsuleButton(
                     text = if (showDenyReason) {
                         stringResource(R.string.tool_approval_confirm_deny)
@@ -452,7 +452,7 @@ fun ToolApprovalCard(
 
                 Spacer(Modifier.width(2.dp))
 
-                // 更多 — 折叠/展开次级操作
+                // Más — doblar/Ampliar las operaciones secundarias
                 MuseCapsuleButton(
                     text = stringResource(R.string.action_more),
                     onClick = { showMoreOptions = !showMoreOptions },
@@ -461,7 +461,7 @@ fun ToolApprovalCard(
                 )
             }
 
-            // 拒绝理由输入框(点击拒绝后展开)
+            // Cuadro de entrada del motivo del rechazo(Haga clic para rechazar y expandir)
             if (showDenyReason) {
                 MuseTextField(
                     value = denyReason,
@@ -472,7 +472,7 @@ fun ToolApprovalCard(
                 )
             }
 
-            // 次级操作(折叠区):本会话允许 / 始终允许
+            // operaciones secundarias(área de plegado):Permitido para esta sesión/Siempre permitido
             AnimatedVisibility(
                 visible = showMoreOptions,
                 enter = MuseMotion.expandFadeEnter(),
@@ -488,7 +488,7 @@ fun ToolApprovalCard(
                         MuseCapsuleButton(
                             text = stringResource(R.string.tool_approval_allow_this_session),
                             onClick = {
-                                // 把工具加入会话级临时允许缓存,并触发本次批准
+                                // Agregue herramientas al nivel de sesión para permitir temporalmente el almacenamiento en caché,y activar esta aprobación
                                 onAllowThisSession()
                                 onApprove()
                             },
@@ -500,7 +500,7 @@ fun ToolApprovalCard(
                         MuseCapsuleButton(
                             text = stringResource(R.string.tool_approval_always_approve),
                             onClick = {
-                                // 持久化 ALWAYS_ALLOW 策略,并触发本次批准
+                                // Política ALWAYS_ALLOW persistente,y activar esta aprobación
                                 onPersistPolicy(ToolApprovalPolicy.ALWAYS_ALLOW)
                                 onApprove()
                             },
@@ -516,11 +516,11 @@ fun ToolApprovalCard(
 }
 
 /**
- * CHAT-08: 多张审批卡折叠为「N 项待审批」摘要条,避免多卡堆叠顶掉输入栏。
+ * CHAT-08: Varias tarjetas de aprobación se pliegan en "N Barra de resumen "Artículo pendiente de aprobación",Evite que se acumulen varias tarjetas y anulen el campo de entrada.
  *
- * 折叠态只占一行;展开后逐张渲染 [ToolApprovalCard]。折叠(阅读)期间各卡
- * 倒计时暂停([countdownPaused]),配合 VM 侧暂停,避免审批在用户阅读时被 30s 自动拒绝。
- * 展开状态由调用方持有(与 VM 暂停联动)。
+ * El estado colapsado solo ocupa una línea.;Renderizar uno por uno después de la expansión. [ToolApprovalCard]. doblar(leer)Cada tarjeta durante el período.
+ * Cuenta regresiva pausada([countdownPaused]),Funciona con suspensión lateral VM,Evite que la aprobación sea rechazada automáticamente en 30 segundos cuando los usuarios la lean.
+ * El estado expandido lo mantiene la persona que llama.(Vinculado a la suspensión de VM).
  */
 @Composable
 fun PendingApprovalsSummary(
@@ -535,9 +535,9 @@ fun PendingApprovalsSummary(
     countdownPaused: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    // I18N-01: 标签走资源
+    // I18N-01: Etiquetar recursos para caminar
     val resources = LocalContext.current.resources
-    // lambda 内不可直接引用 composable 上下文,标签列表在 composable 作用域预计算
+    // lambda No se puede hacer referencia directa al contexto componible dentro,La lista de etiquetas se calcula previamente en un ámbito componible
     val pendingLabels = approvals.joinToString(", ") { ToolCallVisuals.labelFor(it.toolName, resources) }
     Column(modifier = modifier.fillMaxWidth()) {
         MuseSurface(
@@ -633,12 +633,12 @@ fun PendingApprovalsSummary(
 }
 
 /**
- * v1.x: 工具审批卡片中的参考图选择区。
+ * v1.x: El área de selección de dibujo de referencia en la tarjeta de aprobación de herramienta.
  *
- * 三种状态:
- *  - 未选图:显示"+ 参考图"按钮,点击触发 PickVisualMedia
- *  - 读取中:显示进度指示器
- *  - 已选图:显示缩略图预览(带清除按钮)
+ * tres estados:
+ *  - Imágenes no seleccionadas:mostrar"+ Imagen de referencia"botón,Haga clic en el disparador PickVisualMedia
+ *  - leyendo:Mostrar indicador de progreso
+ *  - Imagen seleccionada:Mostrar vista previa en miniatura(Con botón claro)
  */
 @Composable
 private fun ReferenceImageSection(referenceImageOverride: String?, isLoading: Boolean, onPick: () -> Unit, onClear: () -> Unit) {
@@ -707,51 +707,51 @@ private fun ReferenceImageSection(referenceImageOverride: String?, isLoading: Bo
 }
 
 /**
- * v1.x: 支持在审批卡片中选取本地参考图的工具名集合(与 ChatViewModel 中保持一致)。
- * 命名上仅在本文件内使用,故 private。
+ * v1.x: Admite la selección de la colección de nombres de herramientas de dibujos de referencia locales en la tarjeta de aprobación(Consistente con ChatViewModel).
+ * El nombre sólo se utiliza en este documento.,Por tanto privado.
  */
 private val REFERENCE_IMAGE_TOOL_NAMES: Set<String> = setOf("generate_image")
 
 /**
- * 倒计时秒数从审批编排器的超时常量派生(ChatToolApprovalCoordinator.TOOL_APPROVAL_TIMEOUT_MS),
- * 不在这里另存一份数字: 两份各写各的时候, 界面数到第 31 秒后台早就拒了,
- * 用户看到的那 30 秒是假的。
+ * Los segundos de cuenta atrás se derivan de la constante de tiempo de espera del orquestador de aprobación.(ChatToolApprovalCoordinator.TOOL_APPROVAL_TIMEOUT_MS),
+ * No guarde una copia separada del número aquí: Al escribir dos copias cada una, Cuando la interfaz llega al segundo 31, el fondo ya lo ha rechazado.,
+ * Esos 30 segundos que ve el usuario son falsos.
  */
 private val DEFAULT_APPROVAL_COUNTDOWN_SECONDS: Int = (ChatToolApprovalCoordinator.TOOL_APPROVAL_TIMEOUT_MS / 1_000L).toInt()
 
-/** 参考图大小上限 5MB(InputBar.ImageGenParamsPanel 里用的也是这个值)。 */
+/** Tamaño máximo de imagen de referencia 5MB(InputBar.ImageGenParamsPanel Este valor también se utiliza en). */
 private const val MAX_REF_IMAGE_BYTES = 5L * 1024 * 1024
 
-/** 内容预览字符数:折叠时的上限(200 的 JSON 预览撑不住一段正文,这里单独放宽到这一段)。 */
+/** Caracteres de vista previa de contenido:Límite superior al plegar(200 La vista previa JSON no puede contener un párrafo de texto,Relajemos esta sección por separado.). */
 private const val APPROVAL_CONTENT_PREVIEW_CHARS = 300
 
-/** 内容预览行数:折叠时的上限。 */
+/** Número de líneas de vista previa de contenido:El límite superior cuando está plegado. */
 private const val APPROVAL_CONTENT_PREVIEW_LINES = 8
 
-/** 原始 JSON 预览行数:折叠时的上限。 */
+/** Recuento de filas de vista previa JSON sin formato:El límite superior cuando está plegado. */
 private const val APPROVAL_RAW_PREVIEW_LINES = 6
 
-/** 展开后的参数框最大高度:超出后在框内滚动,不把整张卡片顶出屏幕。 */
+/** La altura máxima del cuadro de parámetros expandido.:Desplácese dentro del cuadro después de exceder,No empuja toda la tarjeta fuera de la pantalla. */
 private val APPROVAL_EXPANDED_MAX_HEIGHT = 320.dp
 
-/** 作为「目标文件」展示的参数 key。 */
+/** La clave de parámetro se muestra como el \"archivo de destino\". */
 private val APPROVAL_FILE_KEYS = listOf("path", "file_path", "filepath", "filename", "file")
 
-/** 作为「内容正文」展示的参数 key。 */
+/** Clave de parámetro mostrada como \"texto de contenido\". */
 private val APPROVAL_CONTENT_KEYS = listOf("content", "text", "data", "message", "query", "url", "command")
 
 /**
- * 预览之外仍未显示的字符数;<= 0 表示没有截断。
+ * Número de caracteres que aún no se muestran fuera de la vista previa;<= 0 Indica que no hay truncamiento.
  *
- * 提示文案与预览共用同一组数字,不能一边显示前 300 字符、一边声称已经全部展示。
+ * La copia rápida y la vista previa comparten el mismo conjunto de números,No puede mostrar los primeros 300 caracteres y afirmar que los ha mostrado todos.
  */
 internal fun hiddenCharacters(total: Int, shown: Int): Int = (total - shown).coerceAtLeast(0)
 
 /**
- * 参数条目:优先用全量 args(结构化、不丢层次),缺失时回落到预览 JSON 的解析结果。
+ * Entrada de parámetros:Utilice la cantidad total primero args(Estructurado sin perder jerarquía),Si falta, recurra a la vista previa de los resultados del análisis JSON.
  *
- * 预览被截断时 JSON 通常已无法解析(尾部缺失),这就是大体积参数过去只能看到
- * 原始转义字符的原因;全量参数在场时才能给出「文件 + 字符数 + 正文」。
+ * JSON a menudo no se puede analizar cuando se trunca la vista previa(cola faltante),Esto es lo que los parámetros de gran volumen sólo podían observar en el pasado.
+ * El motivo del personaje de escape original.;"Archivo + número de caracteres + texto" sólo se puede proporcionar cuando todos los parámetros están presentes.
  */
 internal fun approvalArgumentEntries(preview: String, full: Map<String, Any?>): List<Pair<String, String>> {
     if (full.isNotEmpty()) {
@@ -761,7 +761,7 @@ internal fun approvalArgumentEntries(preview: String, full: Map<String, Any?>): 
     return obj.keys().asSequence().map { key -> key to obj.optString(key) }.toList()
 }
 
-/** 条目拼成可读 JSON;无条目时返回 null(调用方回落到原始预览)。 */
+/** Las entradas están escritas para que sean legibles. JSON;Devuelve cuando no hay entradas. null(La persona que llama vuelve a la vista previa original.). */
 internal fun approvalRawJson(entries: List<Pair<String, String>>): String? {
     if (entries.isEmpty()) return null
     val obj = org.json.JSONObject()
@@ -769,13 +769,13 @@ internal fun approvalRawJson(entries: List<Pair<String, String>>): String? {
     return obj.toString(2)
 }
 
-/** 按 key 优先级取第一个非空值。 */
+/** Obtenga el primer valor no nulo según la prioridad clave. */
 internal fun approvalValueOf(entries: List<Pair<String, String>>, keys: List<String>): String? =
     keys.firstNotNullOfOrNull { key ->
         entries.firstOrNull { it.first == key }?.second?.takeIf { it.isNotBlank() && it != "null" }
     }
 
-/** 摘要之外的其余参数(最多 6 条,单值超过 100 字符先截断,完整值看展开视图)。 */
+/** Parámetros restantes además del resumen(Máximo 6,Los valores individuales que superen los 100 caracteres se truncarán primero.,Vea la vista ampliada para conocer el valor completo). */
 internal fun approvalExtraArguments(entries: List<Pair<String, String>>): List<Pair<String, String>> {
     val summaryKeys = (APPROVAL_FILE_KEYS + APPROVAL_CONTENT_KEYS).toSet()
     return entries
@@ -786,10 +786,10 @@ internal fun approvalExtraArguments(entries: List<Pair<String, String>>): List<P
 }
 
 /**
- * 审批卡里的展开/收起入口:chevron + 文案,整行可点。
+ * Aprobación de ampliación de tarjeta/cerrar la entrada:chevron + redacción,Se puede hacer clic en toda la fila.
  *
- * [highlighted] 用于截断提示与展开入口(primary 色,告诉用户这里还有东西没看到),
- * 「高级详情」这种次要点用弱色。
+ * [highlighted] Se utiliza para truncar indicaciones y expandir entradas.(primary Color,Dígale al usuario que hay algo que no ha visto aquí.),
+ * Utilice colores débiles para puntos secundarios como "Detalles avanzados".
  */
 @Composable
 private fun ApprovalArgumentsToggle(

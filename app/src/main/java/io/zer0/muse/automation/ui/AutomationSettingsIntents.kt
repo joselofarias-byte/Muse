@@ -6,11 +6,11 @@ import android.content.Intent
 import io.zer0.common.Logger
 
 /**
- * 启动系统设置入口的最小安全边界。
+ * Inicie el sistema para establecer el límite mínimo de seguridad para la entrada.
  *
- * 某些厂商系统没有实现特定 Settings action,即使 Intent 构造成功,
- * startActivity 仍会抛 ActivityNotFoundException。逐个检查并捕获启动异常,
- * 保证权限页点击不会把整个 Compose Activity 弄崩。
+ * Algunos sistemas de proveedores no implementan Settings action,Incluso si la intención se construye con éxito,
+ * startActivity Se seguirá lanzando ActivityNotFoundException. Verifique y detecte las excepciones de inicio una por una,
+ * Asegúrese de que al hacer clic en la página de permisos no se bloquee toda la actividad de redacción.
  */
 internal fun launchFirstResolvable(candidates: List<Intent>, canResolve: (Intent) -> Boolean, startActivity: (Intent) -> Unit): Boolean {
     candidates.forEach { candidate ->
@@ -19,15 +19,15 @@ internal fun launchFirstResolvable(candidates: List<Intent>, canResolve: (Intent
             startActivity(candidate)
             return true
         } catch (error: ActivityNotFoundException) {
-            Logger.w("AutomationSettings", "系统设置入口不可用: ${candidate.action}", error)
+            Logger.w("AutomationSettings", "La entrada de configuración del sistema no está disponible: ${candidate.action}", error)
         } catch (error: SecurityException) {
-            Logger.w("AutomationSettings", "系统设置入口无权限: ${candidate.action}", error)
+            Logger.w("AutomationSettings", "La entrada de configuración del sistema no tiene permiso: ${candidate.action}", error)
         }
     }
     return false
 }
 
-/** 从非 Activity Context 启动设置时,把 NEW_TASK 加到最终候选 Intent。 */
+/** Al iniciar la configuración desde un contexto que no es de actividad,Agregue NEW_TASK a la intención del candidato final. */
 internal fun openAutomationSettings(context: Context, candidates: List<Intent>, onUnavailable: () -> Unit = {}): Boolean {
     val started = launchFirstResolvable(
         candidates = candidates.map { Intent(it).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },

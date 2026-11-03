@@ -7,10 +7,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * 会话路径的绘图模型兜底:文本模型不得被当成出图模型硬用。
+ * Modelo de dibujo de la ruta de la sesión en detalle.:Los modelos de texto no deben utilizarse como modelos de dibujo.
  *
- * 工具路径(MediaGenToolsImpl)一直带 supportsImageOutput 校验,会话路径原先直接
- * `models.firstOrNull()`,两条口径不一致,导致同一份配置在聊天里报上游错误、在工具里正常。
+ * ruta de la herramienta(MediaGenToolsImpl)Utilice siempre la comprobación de soportesImageOutput,La ruta de la sesión era originalmente directa.
+ * `models.firstOrNull()`,Los dos calibres son inconsistentes.,Como resultado, la misma configuración informó un error ascendente en el chat pero parecía normal en la herramienta.
  */
 class ImageGenModelResolutionTest {
 
@@ -34,14 +34,14 @@ class ImageGenModelResolutionTest {
     fun textOnlyModelFallsBackToFirstImageCapableModel() {
         val resolved = resolveImageCapableModel(provider(textModel, imageModel), textModel)
 
-        assertEquals("不能出图的模型必须被跳过", "gpt-image-1", resolved?.id)
+        assertEquals("Se deben omitir los modelos que no se pueden trazar.", "gpt-image-1", resolved?.id)
     }
 
     @Test
     fun providerWithoutImageCapableModelResolvesNothing() {
         val resolved = resolveImageCapableModel(provider(textModel), textModel)
 
-        assertNull("供应商没有可出图模型时必须返回 null,交给调用方报错", resolved)
+        assertNull("Debe devolverse cuando el proveedor no tenga un modelo dibujable. null,Entrégaselo a la persona que llama para informar un error.", resolved)
     }
 
     @Test
@@ -53,6 +53,6 @@ class ImageGenModelResolutionTest {
 
     @Test
     fun noProviderResolvesNothing() {
-        assertNull("供应商缺失时不得凭空给出模型", resolveImageCapableModel(null, textModel))
+        assertNull("Los modelos no deben darse de la nada cuando faltan proveedores", resolveImageCapableModel(null, textModel))
     }
 }

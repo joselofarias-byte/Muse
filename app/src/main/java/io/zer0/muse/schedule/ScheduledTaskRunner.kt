@@ -44,28 +44,28 @@ import kotlinx.serialization.json.JsonObject
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Phase 17: 定时任务执行器。
+ * Phase 17: Ejecutor de tareas programadas.
  *
- * 在 App 启动时启动,每 60 秒检查一次是否有到期的定时任务。
- * 到期任务会真正执行 prompt(调用 AI + 写入会话),并弹通知(点击跳转到对应任务)。
- * 使用协程轮询而非 AlarmManager,避免 Android 后台限制。
+ * Iniciar cuando se inicia la aplicación,Comprueba cada 60 segundos para ver si hay tareas programadas caducadas.
+ * Las tareas caducadas se ejecutarán realmente prompt(Llamar a AI + sesión de escritura),notificación emergente(Haga clic para saltar a la tarea correspondiente).
+ * Utilice encuestas de rutina en lugar de AlarmManager,Evite las restricciones de fondo de Android.
  *
- * P1-7: 执行任务后插入一条 execution 记录(success/failed),供 UI 展示执行历史。
+ * P1-7: Insertar un registro de ejecución después de ejecutar la tarea.(success/failed),Para que la interfaz de usuario muestre el historial de ejecución.
  *
- * 真正执行改造(按 [ProactiveMessageRunner]):
- *  - 按 task.assistantId 解析助手配置,用其 systemPrompt 作为系统消息
- *  - 调用 [ChatService.completeText](非流式)执行 task.prompt
- *  - 把用户 prompt 和 AI 回复写入一个专用会话(标题用 task.name)
- *  - replySummary 存 AI 回复正文(最多 10,000 字);失败时 errorMessage 记录真实异常
- *  - 通知内容用 AI 回复摘要
- *  - [executeTask] 对外暴露,供 UI"立即执行"按钮调试调用
+ * Implementar realmente la transformación(prensa [ProactiveMessageRunner]):
+ *  - Analizar la configuración del asistente por task.assistantId,Utilice su systemPrompt como mensaje del sistema
+ *  - llamar [ChatService.completeText](sin transmisión)ejecutar task.prompt
+ *  - Escriba mensajes de usuario y respuestas de IA en una sesión dedicada(Por título task.name)
+ *  - replySummary Guardar texto de respuesta de IA(la mayoría 10,000 palabra);En caso de error, errorMessage registra la excepción real.
+ *  - El contenido de las notificaciones utiliza IA para responder al resumen
+ *  - [executeTask] expuesto al mundo exterior,suministro UI"Ejecutar inmediatamente"Llamada de depuración del botón
  *
- * @param dao 定时任务 DAO(含 @Transaction 组合方法)
- * @param chatService 非流式调用 LLM 执行 task.prompt
- * @param sessionRepository 把用户 prompt 和 AI 回复写入会话
- * @param assistantRepository 按 task.assistantId 取助手配置(systemPrompt / temperature / maxTokens)
- * @param context 应用 Context
- * @param appScope App 全局协程作用域
+ * @param dao tareas programadas DAO(Contiene el método de combinación @Transaction)
+ * @param chatService Ejecución de LLM de llamadas sin transmisión task.prompt
+ * @param sessionRepository Escriba indicaciones de usuario y respuestas de IA a la sesión.
+ * @param assistantRepository Obtenga la configuración del asistente mediante task.assistantId(systemPrompt / temperature / maxTokens)
+ * @param context Solicitud Context
+ * @param appScope App Alcance de la rutina global
  */
 class ScheduledTaskRunner(
     private val dao: ScheduledTaskDao,
@@ -76,7 +76,7 @@ class ScheduledTaskRunner(
     private val appScope: CoroutineScope,
     private val pendingMessageManager: io.zer0.muse.data.schedule.PendingMessageManager? = null,
     private val toolRegistry: ToolRegistry? = null,
-    // v1.0.17: 改用 Room DAO(替代 QuickNoteStore JSON 存储)
+    // v1.0.17: Usar en su lugar Room DAO(Reemplazo para el almacenamiento JSON QuickNoteStore)
     private val quickNoteDao: QuickNoteDao? = null,
 ) {
     private var job: Job? = null
@@ -88,10 +88,10 @@ class ScheduledTaskRunner(
     private var lastStuckRecoveryAt: Long = 0L
 
     /**
-     * 定点推进([computeNextRunAnchored])的结果。
+     * Avance de punto fijo([computeNextRunAnchored])resultado.
      *
-     * - [nextRunAt]: 下一次执行时间;<=0 表示无下次执行(once / 非法 cron / 未知 interval)
-     * - [missedCount]: 这次不补跑、只记一条 missed 历史的计划轮次数(0 = 没错过)
+     * - [nextRunAt]: próximo tiempo de ejecución;<=0 Indica que no hay próxima ejecución(once / Cron ilegal / desconocido interval)
+     * - [missedCount]: Esta vez no habrá carreras de recuperación, solo se registrará el número histórico de rondas planificadas perdidas.(0 = No te lo pierdas)
      */
     internal data class ScheduleAdvance(val nextRunAt: Long, val missedCount: Int)
 
@@ -101,23 +101,23 @@ class ScheduledTaskRunner(
         private const val TAG = "ScheduledTask"
 
         /**
-         * R-TEST-11: 计算 [now] 之后的下次执行时间(纯函数,不操作 DB)。
+         * R-TEST-11: calcular [now] Próxima hora de ejecución después(función pura,Sin operación DB).
          *
-         * 定时任务间隔的唯一实现:工具建/改任务、UI 预览、改间隔后的首跑都调这里
-         * (任务执行完推进调度走 [computeNextRunAnchored]),不在别处重写间隔表,
-         * 避免「同一个 interval 在不同入口算出不同时间」。
+         * La única implementación de intervalos de tareas programadas.:Herramientas para construir/Cambiar tareas,UI Aquí se ajustan la vista previa y la primera ejecución después de cambiar el intervalo.
+         * (Una vez ejecutada la tarea, se avanza el cronograma. [computeNextRunAnchored]),No reescriba la tabla de intervalos en ningún otro lugar.,
+         * Evite "el mismo intervalo calcula diferentes tiempos en diferentes entradas".
          *
-         * - hourly / daily / weekly: now + 固定间隔
-         * - cron: 用 [CronExpression] 解析;空表达式或解析失败 → 0
-         * - once / 未知 interval: 0
+         * - hourly / daily / weekly: now + intervalo fijo
+         * - cron: usar [CronExpression] analizar;Expresión vacía o error de análisis → 0
+         * - once / desconocido interval: 0
          *
-         * 返回 <=0 表示「没有下一次执行」,而不是「马上再跑一次」:
-         * [ScheduledTaskDao.recordExecutionAndScheduleNext] 见 <=0 即禁用任务,
-         * 一次性任务因此执行完就退出调度,不会被算出第二次执行。
-         * 建任务时问的是「首跑时间」,那个用 [initialNextRunAt]。
+         * Regresar <=0 Indica "no hay próxima ejecución",En lugar de "Ejecutar de nuevo ahora mismo":
+         * [ScheduledTaskDao.recordExecutionAndScheduleNext] ver <=0 es decir, desactivar tareas,
+         * La tarea única sale de la programación después de ejecutarse.,No será descontado para la segunda ejecución.
+         * Al crear una tarea, pregunté sobre el "primer tiempo de ejecución".,eso es para [initialNextRunAt].
          *
-         * 注意:这是「从现在算」的口径,只适合还没有历史计划时刻的入口(建任务、改间隔、
-         * UI 预览)。任务执行完后推进调度用 [computeNextRunAnchored],锚定上次计划时刻。
+         * Nota:Este es el calibre de "contar de ahora en adelante",Sólo apto para entradas que no tienen momentos de planificación histórica.(Crear tareas, cambiar intervalos,
+         * UI Vista previa). Se utiliza para avanzar en la programación después de la ejecución de la tarea. [computeNextRunAnchored],Anclar el último momento planificado.
          */
         internal fun computeNextRun(interval: String, cronExpr: String, now: Long): Long {
             if (interval == "cron") return nextCronRunAfter(cronExpr, now)
@@ -126,10 +126,10 @@ class ScheduledTaskRunner(
         }
 
         /**
-         * 固定周期 interval 的周期长度(毫秒);cron / once / 未知 interval 返回 null。
+         * La duración del período del intervalo de período fijo.(milisegundos);cron / once / El intervalo desconocido devuelve nulo.
          *
-         * 间隔表只此一份:[computeNextRun] 与 [computeNextRunAnchored] 共用,
-         * 避免「同一 interval 在两个口径下用两套周期」。
+         * Sólo hay una copia de la tabla de intervalos.:[computeNextRun] con [computeNextRunAnchored] compartir,
+         * Evite "usar dos series de ciclos para el mismo intervalo en dos calibres".
          */
         private fun fixedPeriodMillis(interval: String): Long? = when (interval) {
             "hourly" -> 3_600_000L
@@ -139,7 +139,7 @@ class ScheduledTaskRunner(
         }
 
         /**
-         * cron 下一次执行时间(纯函数)。空表达式 / 解析失败 / 无匹配时的取值与原口径一致。
+         * cron próximo tiempo de ejecución(función pura). El valor de una expresión vacía/fallo de análisis/no coincide es el mismo que el calibre original.
          */
         private fun nextCronRunAfter(cronExpr: String, after: Long): Long {
             if (cronExpr.isBlank()) return 0L
@@ -149,28 +149,28 @@ class ScheduledTaskRunner(
         }
 
         /**
-         * 锚定上次计划时刻推进调度(纯函数,不操作 DB)。
+         * Anclar el último momento planificado para adelantar la programación(función pura,Sin operación DB).
          *
-         * 为什么不能一律从 now 算:任务到期后往往晚几十秒到几小时才被执行(轮询抖动、Doze、
-         * 设备关机、进程被杀)。以 now 为基准每次都会把下一次推到「现在 + 一个周期」,错过的那
-         * 一轮被永久跳过且不留痕,而且每次唤醒都再漂一次,墙钟不断往后走。
+         * ¿Por qué no podemos contar siempre desde ahora?:Las tareas suelen ejecutarse decenas de segundos u horas después de su vencimiento.(nerviosismo en las encuestas,Doze,
+         * El dispositivo se apaga y el proceso finaliza.). Usar ahora como base impulsará la próxima vez a "ahora + un ciclo" cada vez,Me perdí eso
+         * Una ronda se salta permanentemente sin dejar rastro,Y cada vez que me despierto vuelvo a flotar,El reloj de pared sigue yendo hacia atrás.
          *
-         * 这里改用 [scheduledAt](上次的计划时刻,即执行前的 next_run_at) 作锚点:
-         * 下一次 = scheduledAt + 整数倍周期,仍然是「原计划节奏」上的点。
-         * [missedCount] = 本次没有补跑的计划轮次数 = 锚点之后已经过去的计划时刻个数。
+         * Usar aquí en su lugar [scheduledAt](Última hora planificada,Es decir, antes de la ejecución. next_run_at) punto de anclaje:
+         * La próxima vez = scheduledAt + Periodo entero múltiple,Todavía está en el "ritmo planificado original".
+         * [missedCount] = Esta vez no hay un número planificado de rondas para las carreras de recuperación. = El número de momentos planificados que han transcurrido desde el punto de anclaje.
          *
-         * 补跑策略:只补跑最近一次(本次执行就是那一次),更早的轮次不补跑、只记 missed ——
-         * 一次补跑几十轮网络请求 / 写文件,比漏跑更糟。因为 [nextRunAt] 一定 > now,
-         * 本次执行结束后任务不会在同一秒内被再次领取。
+         * estrategia de maquillaje:Solo compensa la última ejecución(Esta ejecución es ese momento.),No habrá carreras de recuperación en rondas anteriores, solo recuerda missed ——
+         * Ejecute docenas de rondas de solicitudes de red/escriba archivos a la vez,Peor que perderse una carrera. porque [nextRunAt] Definitivamente > now,
+         * Luego de esta ejecución, la tarea no será reclamada nuevamente dentro del mismo segundo.
          *
-         * 兜底口径:
-         * - [scheduledAt] <= 0(旧数据无锚点):退回 [computeNextRun] 的「从现在算」,不计 missed
-         * - [scheduledAt] > now(任务还没到期,典型场景是用户点「立即执行」,也可能是系统时间
-         *   被回拨):下一次就是原定的那个计划时刻,一次也不动 —— 手动多跑一次不能把
-         *   以后每天 09:00 永久改成 12:00
-         * - once / 未知 interval:无下次执行(0),不计 missed,与原语义一致
-         * - 周期数超过 [MAX_MISSED_SCAN]:按 [MAX_MISSED_SCAN] 记上限并从 now 重新起算,
-         *   避免异常时钟(如 1970 年的锚点)把 Long 算溢出或空转上百万次
+         * Calibre inferior:
+         * - [scheduledAt] <= 0(Los datos antiguos no tienen ancla):devolver [computeNextRun] "a partir de ahora",no cuentes missed
+         * - [scheduledAt] > now(La tarea aún no ha vencido,Un escenario típico es que el usuario haga clic en "Ejecutar ahora".,También podría ser la hora del sistema.
+         *   llamado de vuelta):La próxima vez será el momento planeado.,Ni siquiera una vez —— No puedes ejecutarlo manualmente una vez más.
+         *   A partir de ahora, se cambiará permanentemente a las 09:00 todos los días. 12:00
+         * - once / Intervalo desconocido: no hay próxima ejecución(0),no cuentes missed,Consistente con la semántica original.
+         * - El número de ciclos excede [MAX_MISSED_SCAN]:prensa [MAX_MISSED_SCAN] Recuerda el límite superior y reinicia desde ahora.,
+         *   Evite relojes anormales(como ancla en 1970)Cuente tanto como desbordado o inactivo millones de veces
          */
         internal fun computeNextRunAnchored(
             interval: String,
@@ -186,10 +186,10 @@ class ScheduledTaskRunner(
             }
         }
 
-        /** 固定周期(hourly / daily / weekly)的锚定推进:下一次 = 锚点 + 整数倍周期。 */
+        /** periodo fijo(hourly / daily / weekly)empuje de anclaje:La próxima vez = Punto de anclaje + múltiplo entero de período. */
         private fun anchoredFixedPeriod(period: Long, scheduledAt: Long, now: Long): ScheduleAdvance {
             if (scheduledAt <= 0L) return ScheduleAdvance(now + period, 0)
-            // 还没到期(手动「立即执行」/ 时钟回拨):原定计划时刻一次也不动
+            // Aún no caducado(Manual "Ejecutar ahora"/ Reloj retrasado):El tiempo planeado nunca se movió ni una vez.
             if (scheduledAt > now) return ScheduleAdvance(scheduledAt, 0)
             val periods = (now - scheduledAt) / period
             return if (periods > MAX_MISSED_SCAN.toLong()) {
@@ -200,10 +200,10 @@ class ScheduledTaskRunner(
         }
 
         /**
-         * cron 的锚定推进:从 [scheduledAt] 逐格前进,数出跳过了几个计划时刻。
+         * cron empuje de anclaje:de [scheduledAt] Avanza un cuadrado a la vez,Cuente algunos momentos de planificación que se omitieron.
          *
-         * cron 表达式本身已经锚定墙钟(如「每天 9:00」),所以没错过时结果与
-         * [computeNextRun] 一致;这里额外做的是把「跳过了几格」数出来。
+         * cron La propia expresión ha anclado el reloj de pared.(Como por ejemplo "Todos los días a las 9:00"),Así que no hay ningún resultado obsoleto con
+         * [computeNextRun] consistente;Lo que se hace adicionalmente aquí es contar "cuántos espacios se han saltado".
          */
         private fun advanceCron(cronExpr: String, scheduledAt: Long, now: Long): ScheduleAdvance {
             if (cronExpr.isBlank()) return ScheduleAdvance(0L, 0)
@@ -212,19 +212,19 @@ class ScheduledTaskRunner(
                 .getOrNull() ?: return ScheduleAdvance(0L, 0)
             if (scheduledAt <= 0L) return ScheduleAdvance(expr.nextRunAfter(now), 0)
             return when {
-                // 还没到期(cron 任务的手动立即执行):保持原定的下一格
+                // Aún no caducado(cron Ejecución manual inmediata de tareas.):Mantenga el siguiente cuadrado original
                 scheduledAt > now -> ScheduleAdvance(scheduledAt, 0)
                 else -> scanSkippedCronSlots(expr, scheduledAt, now)
             }
         }
 
-        /** 从锚点逐格前进到 [now] 之后,返回下一次计划时刻与中间被跳过的格数。 */
+        /** Avance desde el punto de anclaje hasta [now] después,Devuelve la siguiente hora planificada y el número de celdas omitidas en el medio. */
         private fun scanSkippedCronSlots(expr: CronExpression, scheduledAt: Long, now: Long): ScheduleAdvance {
             var cursor = scheduledAt
             var missed = 0
             while (missed < MAX_MISSED_SCAN) {
                 val candidate = expr.nextRunAfter(cursor)
-                // 不前进(含 NO_MATCH)或已跨过 now:收敛到这一格
+                // sin avanzar(Contiene NO_MATCH)o ha cruzado ahora: convergió a esta red
                 if (candidate <= cursor || candidate > now) return ScheduleAdvance(candidate, missed)
                 missed++
                 cursor = candidate
@@ -233,13 +233,13 @@ class ScheduledTaskRunner(
         }
 
         /**
-         * 构造一条「这几轮错过了、没有补跑」的执行记录。
+         * Construya un registro de ejecución de "Me perdí estas rondas y no recuperé las carreras".
          *
-         * 只写一条而不是每轮一条:一小时级的任务关机三天会产生 70+ 条,把真正执行过的历史
-         * 淡掉。正文由调用方传入(文案走 strings.xml 的 schedule_missed_summary,与
-         * success / failed / skipped 一致),状态用 [STATUS_MISSED],不新增数据库列。
+         * Escribe solo uno en lugar de uno por ronda.:Una tarea de una hora generará más de 70 elementos si se cierra durante tres días.,Haz la historia de la ejecución real.
+         * desvanecerse. El texto lo pasa la persona que llama.(La redacción está en strings.xml. schedule_missed_summary,con
+         * success / failed / skipped consistente),Para el estado [STATUS_MISSED],No se agregan nuevas columnas de base de datos.
          *
-         * @param now 本次补跑的时间
+         * @param now El momento de esta carrera de maquillaje.
          */
         internal fun missedExecutionEntity(
             taskId: String,
@@ -255,52 +255,52 @@ class ScheduledTaskRunner(
         )
 
         /**
-         * 新建任务 / 改间隔后的首跑时间(纯函数)。
+         * Nueva tarea/primer tiempo de ejecución después de cambiar el intervalo(función pura).
          *
-         * 与 [computeNextRun] 只差「没有下一次」这一种情况:[computeNextRun] 返回 0 是
-         * 「不要再有下一次」的禁用标记([ScheduledTaskDao.recordExecutionAndScheduleNext] 见
-         * <=0 就 setEnabled(false)),不能拿去落库;建任务/改间隔时一次性任务还没跑过,应当尽快
-         * 跑一次,所以兜底成 now + [POLL_INTERVAL_MS]。
+         * con [computeNextRun] Lo único que queda es "no la próxima vez".:[computeNextRun] Devolver 0 Sí
+         * Etiqueta "Nunca más" desactivada([ScheduledTaskDao.recordExecutionAndScheduleNext] ver
+         * <=0 solo setEnabled(false)),No puedo llevarlo al almacén.;Tareas de construcción/Al cambiar el intervalo, la tarea única aún no se ha ejecutado.,debe hacerse lo antes posible
+         * correr una vez,Entonces está bien now + [POLL_INTERVAL_MS].
          *
-         * 为什么兜底是 60 秒而不是 now:调度靠 [POLL_INTERVAL_MS] 轮询 + getDueTasks(next_run_at <= now),
-         * 落成 now 会让任务在下一次扫描(0–60s,最坏是紧接着的那一跳)就被领取执行——用户点完
-         * 「创建」退出对话框,几十秒内就看到任务已经跑完、执行历史多了一条。留一个轮询周期的缓冲。
-         * 周期类 interval 走 [computeNextRun] 的正值,不受这个兜底影响。
+         * ¿Por qué el resultado final es 60 segundos en lugar de ahora? La programación depende de [POLL_INTERVAL_MS] sondeo + getDueTasks(next_run_at <= now),
+         * Completar ahora hará que la tarea se analice la próxima vez.(0–60s,Lo peor es el salto inmediatamente después.)ser recibido y ejecutado——El usuario hizo clic
+         * Cuadro de diálogo de salida "Crear",En decenas de segundos, podrá ver que la tarea se ha completado y hay un historial de ejecución adicional. Deje un búfer para los ciclos de sondeo.
+         * Movimientos de intervalo de clase de período [computeNextRun] valor positivo,No afectado por este encubrimiento.
          */
         internal fun initialNextRunAt(interval: String, cronExpr: String, now: Long): Long =
             computeNextRun(interval, cronExpr, now).takeIf { it > 0 } ?: (now + POLL_INTERVAL_MS)
 
-        private const val POLL_INTERVAL_MS = 60_000L // 每分钟检查一次
+        private const val POLL_INTERVAL_MS = 60_000L // revisa cada minuto
 
         /**
-         * 锚定推进最多数多少格 missed。
+         * La mayor cantidad de mosaicos perdidos por el avance del ancla.
          *
-         * 正常错过(关机数小时到数天)远达不到这个量级;超过它的只可能是锚点异常
-         * (如时钟被回拨到 1970),此时按上限记数并从 now 重新起算,不逐格空转。
+         * extraño normalmente(Apagado durante horas o días)Lejos de llegar a este nivel;Cualquier cosa más allá sólo puede ser una excepción ancla.
+         * (Si el reloj se pone en hora 1970),En este momento, cuente según el límite superior y reinicie desde ahora,Sin ralentí de un cuadro a otro.
          */
         private const val MAX_MISSED_SCAN = 1_000
 
-        /** 执行历史里「这一轮错过了、没有补跑」的状态值(与 success / failed / skipped 并列)。 */
+        /** El valor de estado de \"Me perdí esta ronda y no recuperé la carrera\" en el historial de ejecución.(con success / failed / skipped yuxtaponer). */
         internal const val STATUS_MISSED = "missed"
 
-        // 执行历史展开后展示正文;限制上限避免异常工具输出无限膨胀数据库。
+        // Mostrar el texto después de expandir el historial de ejecución;Limite el límite superior para evitar anomalías en la salida de la herramienta que inflen la base de datos infinitamente.
         private const val EXECUTION_DETAIL_MAX_LEN = 10_000
 
         /**
-         * B-12: 抢占式领取判定(纯函数,供单元测试直接调用)。
+         * B-12: Sentencia de cobro preventivo(función pura,Para pruebas unitarias llamar directamente).
          *
-         * [dao.claimTask] 返回受影响行数:1 = 本执行者领取成功;0 = 已被其他执行者抢先领取。
-         * 行数 > 0 即判定领取成功;负数/意外值按失败处理(保守跳过,杜绝重复执行)。
+         * [dao.claimTask] Devuelve el número de filas afectadas.:1 = Este ejecutor recibió exitosamente;0 = Primero ha sido recogido por otros ejecutores.
+         * Número de líneas > 0 Se determina que la colección es exitosa.;numero negativo/Los valores inesperados se manejan como fallas.(Saltar de forma conservadora,Evite la duplicación).
          */
         internal fun claimTaskSucceeded(rowsAffected: Int): Boolean = rowsAffected > 0
 
     /**
-     * 下一轮巡检等待时长（纯函数，便于单测）。
+     * El tiempo de espera para la siguiente ronda de inspección (función pura, conveniente para pruebas únicas).
      *
-     * - 没有到期任务 → [POLL_INTERVAL_MS]（保持每分钟一次的心跳）
-     * - 有到期任务且已经过期 → [MIN_POLL_DELAY_MS]（别空转，但也不能 0）
-     * - 到期时间在 [MIN_POLL_DELAY_MS] 与 [POLL_INTERVAL_MS] 之间 → 恰好睡到那一刻
-     * - 到期时间更远 → [POLL_INTERVAL_MS]（**不睡更久**：新建的近期任务不能被拖）
+     * - No hay tareas debidas → [POLL_INTERVAL_MS](Mantenga un latido del corazón de un latido por minuto)
+     * - Hay tareas vencidas y han caducado → [MIN_POLL_DELAY_MS](No esté inactivo, pero tampoco llegue a 0)
+     * - El tiempo de vencimiento está en [MIN_POLL_DELAY_MS] con [POLL_INTERVAL_MS] entre → Me quede dormido en ese momento
+     * - La fecha de caducidad está más lejos. → [POLL_INTERVAL_MS](**Quédate despierto más tiempo**: Las tareas recientes recién creadas no se pueden arrastrar)
      */
     internal fun computePollDelay(
         now: Long,
@@ -317,51 +317,51 @@ class ScheduledTaskRunner(
         }
     }
 
-        /** 单次任务 AI 调用超时(毫秒)。 */
+        /** Tiempo de espera de llamada de IA de tarea única(milisegundos). */
         private const val LLM_TIMEOUT_MS = 60_000L
 
         /**
-         * v2.6.8: 定时任务单次执行最多几轮工具调用。
+         * v2.6.8: Una tarea programada puede ejecutar hasta varias rondas de llamadas a herramientas a la vez.
          *
-         * 定时任务在后台跑，没人看着；给 3 轮足够覆盖“查笔记 → 查屏幕时长 → 汇总”这类链式需求，
-         * 又能避免模型陷入无限工具循环把额度烧光。
+         * La tarea programada se ejecuta en segundo plano y nadie está mirando; 3 rondas son suficientes para cubrirlo.“comprobar notas → tiempo de pantalla → Resumen”Este tipo de requisito de cadena,
+         * También puede evitar que el modelo caiga en un bucle infinito de herramientas y agote el crédito.
          */
         private const val MAX_TOOL_ROUNDS = 3
 
-        /** v1.0.17: 链式任务最大递归深度,防止无限循环。 */
+        /** v1.0.17: Profundidad máxima de recursividad de tareas encadenadas,Evite bucles infinitos. */
         private const val MAX_CHAIN_DEPTH = 10
 
-        /** v1.0.17: 重试退避上限(毫秒,5 分钟)。 */
+        /** v1.0.17: Reintentar límite de retroceso(milisegundos,5 minutos). */
         private const val RETRY_BACKOFF_MAX_MS = 300_000L
 
-        /** v1.0.17: 重试退避步长(毫秒,每次递增 1 分钟)。 */
+        /** v1.0.17: Reintentar el tamaño del paso de retroceso(milisegundos,incrementos de 1 minuto). */
         private const val RETRY_BACKOFF_STEP_MS = 60_000L
 
         /**
-         * B-12: 领取后临时推进的 next_run_at 哨兵值(远未来,≈146 亿年后)。
+         * B-12: El valor centinela Next_run_at avanzó temporalmente después de recibirlo(futuro lejano,≈146 miles de millones de años después).
          *
-         * 领取(CAS)时把 next_run_at 临时推到该值以摘除"到期"身份,执行期间任何到期扫描/
-         * 再领取都不命中;执行结束 [executeTask] 会用真实的下次执行时间覆盖它。
+         * recibir(CAS)Cuando next_run_at se empuja temporalmente a este valor para eliminar"Caducidad"identidad,Cualquier escaneo de vencimiento durante la ejecución/
+         * No hubo suerte en conseguirlo de nuevo.;Finaliza la ejecución [executeTask] Se sobrescribirá con el tiempo real de próxima ejecución.
          */
         private const val CLAIM_NEXT_RUN_SENTINEL = Long.MAX_VALUE
 
         /**
-         * B-26: 哨兵看门狗阈值 —— claim 后超过该时长仍停在哨兵值视为"卡死"(领取后
-         * recordExecutionAndScheduleNext 事务失败回滚),允许重置 next_run_at。
-         * 单次 AI 执行有 [LLM_TIMEOUT_MS](60s)上限,5 分钟远超单次耗时,不会误伤执行中任务。
+         * B-26: Umbral de vigilancia centinela —— claim Si aún se detiene en el valor centinela después de exceder este tiempo, se considerará como"atascado"(Después de recibir
+         * recordExecutionAndScheduleNext Reversión de fallas de transacción),Permita que se restablezca next_run_at.
+         * Una sola ejecución de IA tiene [LLM_TIMEOUT_MS](60s)límite superior,5 Los minutos superan con creces el tiempo empleado en un solo viaje.,No habrá daños accidentales a las tareas en ejecución.
          */
         private const val CLAIM_STUCK_TIMEOUT_MS = 5 * 60 * 1000L
 
-    /** 哨兵看门狗最小扫描间隔；与 [CLAIM_STUCK_TIMEOUT_MS] 同量级即可。 */
+    /** Intervalo mínimo de exploración del organismo guardián Sentinel; con [CLAIM_STUCK_TIMEOUT_MS] De la misma magnitud. */
     private const val STUCK_RECOVERY_INTERVAL_MS = CLAIM_STUCK_TIMEOUT_MS
 
-    /** 自适应休眠的下限：到期时间已过（或近在眼前）时也不要空转。 */
+    /** El límite inferior de la hibernación adaptativa: no permanezca inactivo cuando el tiempo de vencimiento haya pasado (o sea inminente). */
     private const val MIN_POLL_DELAY_MS = 1_000L
     }
 
     private fun restoreBlocksScheduledWrites(taskId: String, operation: String): Boolean {
         if (!io.zer0.common.ProcessWriteGate.restoring) return false
-        Logger.w(TAG, "备份恢复进行中，跳过定时任务 $taskId 的${operation}写入")
+        Logger.w(TAG, "Copia de seguridad y restauración en curso, tarea programada omitida $taskId de${operation}escribir")
         return true
     }
 
@@ -370,7 +370,7 @@ class ScheduledTaskRunner(
         job?.cancel()
         job = appScope.launch(GlobalCoroutineExceptionHandler) {
             Logger.i(TAG, "Runner started")
-            // 开关只订阅一次：早先每 tick 都要 GlobalContext 查找 + DataStore 读一次。
+            // El conmutador solo se suscribe una vez: anteriormente requería una búsqueda de GlobalContext + DataStore leía cada tick.
             launch { observeScheduleWorkEnabled() }
             while (isActive) {
                 tickOnce()
@@ -380,11 +380,11 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * 订阅「后台调度总控」开关，写入 [scheduleWorkEnabledCache]。
+     * Suscríbase al interruptor "Control maestro de programación en segundo plano" y escriba [scheduleWorkEnabledCache].
      *
-     * 只订阅一次的原因：轮询是每分钟一次，而开关变化是低频事件 —— 每分钟去 DataStore
-     * 读一遍（还要先做一次 Koin 查找）属于白付。订阅后仍保持同样语义：开关关掉，
-     * 下一轮巡检就跳过。
+     * El motivo para suscribirse solo una vez: el sondeo se realiza una vez por minuto y los cambios de interruptor son eventos de baja frecuencia —— Ve cada minuto DataStore
+     * Leerlo una vez (y hacer una búsqueda de Koin primero) es una pérdida de dinero. La misma semántica se mantiene después de suscribirse: el interruptor se apaga,
+     * Se omitirá la siguiente ronda de inspección.
      */
     private suspend fun observeScheduleWorkEnabled() {
         val settings = resultOf {
@@ -394,11 +394,11 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * 下一轮巡检的等待时长。
+     * El tiempo de espera para la siguiente ronda de inspección.
      *
-     * 有明确的到期时间就睡到那一刻（下限 [MIN_POLL_DELAY_MS]，上限仍是 [POLL_INTERVAL_MS]）。
-     * **只允许比 60s 短，不允许更长**：新建一个 5 秒后执行的任务时，固定 60s 轮询也会等最多 60s，
-     * 睡得更久就成了行为回退。
+     * Si hay un tiempo de caducidad claro, duerma hasta ese momento (límite inferior [MIN_POLL_DELAY_MS], el límite superior sigue siendo [POLL_INTERVAL_MS]).
+     * **Solo se permiten menores de 60 años, ya no se permite**: Al crear una nueva tarea que se ejecutará en 5 segundos, el sondeo fijo de 60 segundos también esperará hasta 60 segundos.
+     * Dormir más se convierte en una regresión conductual.
      */
     private suspend fun nextPollDelay(): Long {
         val now = System.currentTimeMillis()
@@ -407,31 +407,31 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * v1.104 P3: 一次扫描所有到期任务并执行。
+     * v1.104 P3: Escanee todas las tareas pendientes a la vez y ejecútelas.
      *
-     * 从 [start] 轮询循环抽出,供:
-     *  - 协程轮询每分钟调用一次(原有路径)
-     *  - [ScheduledTaskWorker] 在 App 进程被杀后由 WorkManager 拉起时调用一次
+     * de [start] extracción del bucle de sondeo,suministro:
+     *  - El sondeo de rutina se realiza cada minuto.(camino original)
+     *  - [ScheduledTaskWorker] Se llama una vez cuando WorkManager inicia el proceso de la aplicación después de finalizarlo.
      *
-     * 不循环 delay,调用方决定调用频率。所有异常被捕获并记录,不会向上抛出
-     * (CancellationException 例外,确保协程能被正常取消)。
+     * Sin bucle delay,La persona que llama decide con qué frecuencia se le llama. Todas las excepciones se detectan y registran.,No será arrojado hacia arriba
+     * (CancellationException excepción,Asegúrese de que la corrutina se pueda cancelar normalmente.).
      */
     private suspend fun tickOnce() {
         try {
-            // B-25: 后台调度总控 — 关闭时跳过整次巡检(读 DataStore 缓存值,成本低)
+            // B-25: Control maestro de programación backend — Saltarse toda la inspección al cerrar(Leer el valor de la caché del almacén de datos,bajo costo)
             if (!isScheduleWorkEnabled()) {
-                Logger.i(TAG, "后台调度总控已关闭,跳过定时任务巡检")
+                Logger.i(TAG, "Se ha cerrado el control maestro de programación en segundo plano.,Saltar la inspección de tareas programadas")
                 return
             }
-            // B-7: 备份恢复(文件级替换 DB)窗口内跳过任务巡检,避免写丢失。
+            // B-7: Copia de seguridad y restauración(Reemplazo de nivel de archivo DB)Saltar inspección de tareas dentro de la ventana,Evite pérdidas de escritura.
             if (io.zer0.common.ProcessWriteGate.restoring) {
-                Logger.i(TAG, "备份恢复进行中,跳过定时任务巡检")
+                Logger.i(TAG, "Restauración de copia de seguridad en curso,Saltar la inspección de tareas programadas")
                 return
             }
             val now = System.currentTimeMillis()
-            // B-26: 哨兵看门狗 — 先回收领取后事务失败、卡死在哨兵值(CLAIM_NEXT_RUN_SENTINEL)
-            // 的任务,把超时未释放的 next_run_at 重置为 now,让本轮 getDueTasks 将其重新纳入到期执行。
-            // 哨兵看门狗自身有 5 分钟超时门槛，没必要每分钟扫一次：每 5 分钟一轮足够。
+            // B-26: perro guardián centinela — Después de reciclar y recolectar, la transacción falló y se quedó estancada en el valor centinela.(CLAIM_NEXT_RUN_SENTINEL)
+            // tarea,Restablezca next_run_at que no se haya liberado después del tiempo de espera para now,Dejemos que esta ronda de getDueTasks vuelva a ponerlo en ejecución debida.
+            // El propio dispositivo de vigilancia Sentinel tiene un umbral de tiempo de espera de 5 minutos y no es necesario escanear cada minuto: un ciclo cada 5 minutos es suficiente.
             try {
                 if (now - lastStuckRecoveryAt >= STUCK_RECOVERY_INTERVAL_MS) {
                     lastStuckRecoveryAt = now
@@ -439,14 +439,14 @@ class ScheduledTaskRunner(
                 }
             } catch (e: Exception) {
                 if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                Logger.w(TAG, "哨兵看门狗回收失败: ${e.message}")
+                Logger.w(TAG, "Falló la recuperación del perro guardián Sentinel: ${e.message}")
             }
             val dueTasks = dao.getDueTasks(now)
             dueTasks.forEach { task ->
                 resultOf { executeTask(task) }
                     .onError { msg, t -> Logger.w(TAG, "Task ${task.id} execute error: ${t?.message ?: msg}") }
             }
-            // Phase 3 3E: 检查并发送定时消息
+            // Phase 3 3E: Consultar y enviar mensajes programados
             pendingMessageManager?.drainDueMessages()?.forEach { pm ->
                 resultOf { deliverPendingMessage(pm) }
                     .onError { msg, t -> Logger.w(TAG, "Pending message ${pm.id} delivery error: ${t?.message ?: msg}") }
@@ -458,15 +458,15 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * B-25: 读取后台调度总控开关。
+     * B-25: Lea el interruptor de control maestro de programación en segundo plano.
      *
-     * ScheduledTaskRunner 未注入 SettingsRepository(保持 Koin 模块签名稳定),这里
-     * 经 GlobalContext 解析;Koin 缺失/读取失败时保守返回 false，避免设置不可读时
-     * 在用户不知情的情况下继续执行定时任务。
+     * ScheduledTaskRunner No inyectado SettingsRepository(Mantenga estables las firmas del módulo Koin),aquí
+     * Analizado por GlobalContext;Koin desaparecido/Devuelve falso de forma conservadora cuando la lectura falla para evitar que sea ilegible
+     * Continuar ejecutando tareas programadas sin el conocimiento del usuario.
      */
     private suspend fun isScheduleWorkEnabled(): Boolean {
-        // 进程内已有快照就直接用（由 [observeScheduleWorkEnabled] 维护）。
-        // Worker 拉起、collector 还没跑起来时才会走到下面的实时读取。
+        // Si ya hay una instantánea en el proceso, úsela directamente (por [observeScheduleWorkEnabled] mantenimiento).
+        // Worker levantar,collector Antes de comenzar a correr, accederá a la lectura en tiempo real a continuación.
         scheduleWorkEnabledCache?.let { return it }
         val settings = resultOf {
             org.koin.core.context.GlobalContext.get().get<io.zer0.muse.data.SettingsRepository>()
@@ -480,17 +480,17 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * B-26: 哨兵看门狗 —— 释放卡死在领取哨兵(CLAIM_NEXT_RUN_SENTINEL)的过期任务。
+     * B-26: perro guardián centinela —— La liberación se atasca mientras recibe el centinela.(CLAIM_NEXT_RUN_SENTINEL)tareas atrasadas.
      *
-     * [executeTask] 领取后若 [dao.recordExecutionAndScheduleNext] 事务失败回滚,next_run_at
-     * 会停在哨兵值(远未来),此后任何到期扫描都命中不了 → 任务永久丢失。
-     * 这里把"哨兵值且 updated_at 已超过 [CLAIM_STUCK_TIMEOUT_MS]"的任务重置为 now,
-     * 由本轮轮询重新执行。
+     * [executeTask] Después de recibir si [dao.recordExecutionAndScheduleNext] Reversión de fallas de transacción,next_run_at
+     * se detendrá en el valor centinela(futuro lejano),Cualquier escaneo de vencimiento posterior no alcanzará el objetivo. → La tarea se pierde permanentemente.
+     * poner aquí"Se ha excedido el valor centinela y actualizado_at [CLAIM_STUCK_TIMEOUT_MS]"La tarea se restablece a now,
+     * Reejecutado por esta ronda de votación.
      *
-     * 防误重置:领取哨兵本就是 [executeTask] 摘除到期身份的唯一来源;单次 AI 执行
-     * 有 [LLM_TIMEOUT_MS](60s)上限,5 分钟阈值远大于单次执行耗时,不会误伤
-     * "正在执行中"的任务(执行中 updated_at 很新,不会被判为过期)。
-     * 仅重置仍 enabled 的任务,避免复活用户已手动禁用的任务。
+     * Evitar reinicios accidentales:Recibir el Sentinel es el [executeTask] La única fuente de eliminación de identidad caducada;Ejecución única de IA
+     * si [LLM_TIMEOUT_MS](60s)límite superior,5 El umbral de minutos es mucho mayor que el tiempo necesario para una sola ejecución.,Sin lesiones accidentales
+     * "ejecutando"tarea(Ejecutar update_at es muy nuevo,no se considerará caducado).
+     * Restablecer solo las tareas que aún estén habilitadas,Evite resucitar tareas que el usuario haya desactivado manualmente.
      */
     private suspend fun recoverStuckClaimNow(now: Long) {
         val recovered = dao.recoverStuckClaim(
@@ -499,15 +499,15 @@ class ScheduledTaskRunner(
             now = now,
         )
         if (recovered > 0) {
-            Logger.w(TAG, "B-26 哨兵看门狗: 回收 $recovered 个卡在哨兵值的任务,已重置为 now 重新调度")
+            Logger.w(TAG, "B-26 perro guardián centinela: reciclar $recovered misiones estancadas en el valor centinela,Restablecer a ahora reprogramado")
         }
     }
 
     /**
-     * v1.104 P3: 供 [ScheduledTaskWorker] 调用的一次性扫描入口。
+     * v1.104 P3: suministro [ScheduledTaskWorker] Se llamó una entrada de escaneo única.
      *
-     * Worker 进程被 WorkManager 拉起时,通知渠道可能尚未创建(新进程),所以这里幂等调用一次。
-     * 之后委托给 [tickOnce] 完成实际扫描。
+     * Worker Cuando el proceso es iniciado por WorkManager,Es posible que el canal de notificación aún no se haya creado(nuevo proceso),Entonces aquí hay una llamada idempotente una vez.
+     * Luego delégalo en [tickOnce] Complete el escaneo real.
      */
     suspend fun tickOnceForWorker() {
         createNotificationChannel()
@@ -515,38 +515,38 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * v1.137: 执行单个自动化任务。
+     * v1.137: Ejecute una única tarea automatizada.
      *
-     * 流程:
-     *  0. 抢占式领取 CAS(见 B-12):执行前原子比对 next_run_at(含 ABA 哨兵防御),
-     *     失败即已被人领取/删除,跳过不做任何副作用
-     *  1. 评估 condition(条件触发)
-     *  2. 按 action_type 执行对应动作(ai_prompt / create_quick_note / call_tool / notify)
-     *  3. 成功执行后触发链式任务(next_task_ids)
-     *  4. 原子记录执行历史 + 推进下次执行时间
+     * proceso:
+     *  0. Cobro preventivo CAS(ver B-12):Alineación atómica previa a la ejecución next_run_at(Contiene defensa centinela ABA),
+     *     Si falla, ha sido cobrado./Eliminar,Saltar sin efectos secundarios.
+     *  1. Evaluación condition(Disparador condicional)
+     *  2. Ejecutar la acción correspondiente según action_type(ai_prompt / create_quick_note / call_tool / notify)
+     *  3. Activar tareas encadenadas después de una ejecución exitosa(next_task_ids)
+     *  4. Historial de ejecución de registros atómicos + avance del siguiente tiempo de ejecución
      *
-     * v1.0.17: 新增 [chainDepth] 参数用于链式任务递归深度限制;
-     *  执行失败时按指数退避重试(retry_count < max_retries 时递增,达上限后重置)。
+     * v1.0.17: Nuevo [chainDepth] Parámetro utilizado para el límite de profundidad de recursividad de tareas en cadena;
+     *  Reintentar con retroceso exponencial cuando falla la ejecución(retry_count < max_retries incremento de tiempo,Reiniciar después de alcanzar el límite superior).
      *
-     * B-12: 执行动作前先通过 [ScheduledTaskDao.claimTask] 做抢占式领取,
-     *  保证轮询 / Worker / 手动"立即执行" / 链式多路不同进程不会重复执行同一到期任务。
+     * B-12: pasado antes de ejecutar la acción [ScheduledTaskDao.claimTask] Hacer cobro preventivo,
+     *  Sondeo Garantizado / Trabajador / Manual"Ejecutar inmediatamente" / La multiplexación encadenada de diferentes procesos no ejecutará repetidamente la misma tarea debida.
      *
-     * 任何环节失败都记录一条 failed execution,不抛异常。
+     * Si algún enlace falla, se registrará un registro. failed execution,No se lanza ninguna excepción.
      */
     suspend fun executeTask(task: ScheduledTaskEntity, chainDepth: Int = 0) {
-        // v1.0.17: 链式任务深度限制,防止无限递归
+        // v1.0.17: Límite de profundidad de la tarea en cadena,Prevenir la recursividad infinita
         if (chainDepth >= MAX_CHAIN_DEPTH) {
             Logger.w(TAG, "Chain depth limit reached ($MAX_CHAIN_DEPTH), skip task ${task.id}")
             return
         }
-        if (restoreBlocksScheduledWrites(task.id, "任务执行")) return
+        if (restoreBlocksScheduledWrites(task.id, "Ejecución de tareas")) return
 
         val now = System.currentTimeMillis()
-        // B-12: 抢占式领取 — 执行动作前先做原子 CAS,防止轮询(tickOnce)与 Worker(tickOnceForWorker)
-        // 并发执行同一到期任务导致重复 AI 调用 / 重复通知。CAS 期望值用 DB 当前 next_run_at(而非调用方
-        // 快照),兼容 UI 手动"立即执行"传入的过期实体;领取时把 next_run_at 推进为远未来哨兵摘除"到期"
-        // 身份,后续执行者再按原到期值 CAS 必失败。执行结束由 recordExecutionAndScheduleNext 重置为真实
-        // 下次执行时间。依赖 ScheduledTaskDao.claimTask 的单条原子 UPDATE 实现跨进程安全。
+        // B-12: Cobro preventivo — Hacer átomos antes de ejecutar una acción. CAS,Prevenir encuestas(tickOnce)con Worker(tickOnceForWorker)
+        // La ejecución simultánea de la misma tarea pendiente da como resultado llamadas de IA/notificaciones duplicadas.CAS Valor esperado usando DB actual next_run_at(en lugar de la persona que llama
+        // Instantánea),Compatible con el manual de interfaz de usuario"Ejecutar inmediatamente"La entidad vencida pasó;Al recibirlo, avance next_run_at para eliminar al centinela del futuro lejano."Caducidad"
+        // identidad,Los ejecutores posteriores fallarán si presionan el valor de vencimiento original CAS. El fin de la ejecución se restablece a verdadero mediante recordExecutionAndScheduleNext
+        // Próxima hora de ejecución. Confíe en una única ACTUALIZACIÓN atómica de ScheduledTaskDao.claimTask para lograr seguridad entre procesos.
         val current = try {
             dao.getById(task.id)
         } catch (e: Exception) {
@@ -554,15 +554,15 @@ class ScheduledTaskRunner(
             Logger.w(TAG, "Task ${task.id} load failed: ${e.message}")
             null
         }
-        // 任务已在执行前被删除,无法领取,跳过(同时避免对已删除任务写执行记录)
+        // La tarea fue eliminada antes de la ejecución.,No se puede recolectar,saltar(Evite también escribir registros de ejecución para tareas eliminadas.)
         if (current == null) {
             Logger.w(TAG, "Task ${task.id} not found, skip")
             return
         }
-        // B-12(ABA 防御):若当前 next_run_at 已是领取哨兵,说明另一执行者正在执行本任务
-        // (已领取且尚未重置),此时绝不能再按哨兵值 CAS(会命中而重复执行),直接跳过。
-        // 哨兵值不会由正常调度产生(computeNextRun 上限为周级/退避;cron 无匹配走
-        // CronExpression.NO_MATCH = MAX-1,与领取哨兵 MAX 区分,见 C-06),唯一来源就是领取动作。
+        // B-12(ABA defensa):Si el next_run_at actual ya está recibiendo centinela,Indica que otro ejecutor está ejecutando esta tarea.
+        // (Recibido y aún no reiniciado),Nunca vuelvas a presionar el valor centinela en este momento CAS(Golpeará y ejecutará repetidamente),Simplemente sáltatelo.
+        // Los valores centinela no se generan mediante programación normal(computeNextRun El límite superior es el nivel semanal./retirarse;cron No hay partido para ir
+        // CronExpression.NO_MATCH = MAX-1,Diferenciarse de recibir Sentinel MAX,ver C-06),La única fuente es recibir acciones.
         if (current.nextRunAt == CLAIM_NEXT_RUN_SENTINEL) {
             Logger.w(TAG, "Task ${task.id} is currently being executed by another executer, skip")
             return
@@ -579,10 +579,10 @@ class ScheduledTaskRunner(
             Logger.w(TAG, "Task ${task.id} already claimed by another executer, skip")
             return
         }
-        // 恢复可能在 CAS 领取后开始。此时不再调用模型/工具，避免把结果写进待替换数据集；
-        // 领取哨兵由 watchdog 或恢复后的下一轮调度重新接管。
+        // El restablecimiento puede comenzar después del cobro del CAS. El modelo ya no se llama en este momento./Herramientas para evitar escribir resultados en el conjunto de datos que se va a reemplazar;
+        // La recopilación de centinelas la retoma el organismo de control o la siguiente ronda de programación después de la recuperación.
         if (io.zer0.common.ProcessWriteGate.restoring ||
-            restoreBlocksScheduledWrites(task.id, "任务动作")
+            restoreBlocksScheduledWrites(task.id, "acción de tarea")
         ) {
             return
         }
@@ -592,22 +592,22 @@ class ScheduledTaskRunner(
         var errorMessage = ""
 
         try {
-            // 1. 条件评估
+            // 1. evaluación de condición
             val condition = task.conditionJson.toCondition()
             if (!evaluateCondition(task, condition)) {
                 status = "skipped"
                 replySummary = context.getString(R.string.schedule_condition_not_met)
-                // 条件不满足仍推进 schedule,避免任务卡死
+                // Avanzar aunque no se cumplan las condiciones schedule,Evite tareas estancadas
             } else {
-                // 2. 执行动作
-                if (restoreBlocksScheduledWrites(task.id, "任务动作")) return
+                // 2. realizar acción
+                if (restoreBlocksScheduledWrites(task.id, "acción de tarea")) return
                 val action = AutomationConfig.Action(
                     type = task.actionType,
                     config = task.actionConfigJson.toAction().config,
                 )
                 val output = executeAction(task, action)
                 replySummary = output.take(EXECUTION_DETAIL_MAX_LEN)
-                // 3. 触发链式任务
+                // 3. Tareas de cadena de activación
                 triggerChainTasks(task, chainDepth)
             }
         } catch (e: Exception) {
@@ -617,7 +617,7 @@ class ScheduledTaskRunner(
             errorMessage = (e.message ?: e.javaClass.simpleName).take(EXECUTION_DETAIL_MAX_LEN)
         }
 
-        // 4. 原子记录执行历史 + 推进下次执行时间
+        // 4. Historial de ejecución de registros atómicos + avance del siguiente tiempo de ejecución
         val execution = ScheduledTaskExecutionEntity(
             id = "exec-${java.util.UUID.randomUUID()}",
             taskId = task.id,
@@ -626,29 +626,29 @@ class ScheduledTaskRunner(
             replySummary = replySummary,
             errorMessage = errorMessage,
         )
-        // v1.0.17: 重试策略 — 失败时按指数退避重试,成功/达上限时重置 retryCount
+        // v1.0.17: Estrategia de reintento — Reintentar con retroceso exponencial en caso de falla,éxito/Reiniciar cuando se alcanza el límite superior retryCount
         val isFailed = status == "failed"
         val willRetry = isFailed && task.retryCount < task.maxRetries
         val newRetryCount = if (willRetry) task.retryCount + 1 else 0
-        // 错过的轮次补偿(锚点 = 领取前 DB 里的 next_run_at,即本应该跑的那个计划时刻)。
-        // 重试走退避、不参与锚定推进,也不记 missed —— 失败已经有一条 failed 记录。
+        // Compensación de ronda perdida(punto de anclaje = en DB antes de recibir next_run_at,Es decir, el momento previsto en el que debería haber huido.).
+        // Intente nuevamente retirarse y no participar en el avance del anclaje.,tampoco lo recuerdo missed —— El fracaso ya tiene un historial fallido.
         val advance = if (willRetry) {
-            // 指数退避: retryCount * 60s,上限 5 分钟
+            // retroceso exponencial: retryCount * 60s,máximo 5 minutos
             val backoff = minOf(newRetryCount.toLong() * RETRY_BACKOFF_STEP_MS, RETRY_BACKOFF_MAX_MS)
             ScheduleAdvance(now + backoff, 0)
         } else {
             computeNextRunAnchored(task.interval, task.cronExpr, current.nextRunAt, now)
         }
-        // 只对启用中的任务记 missed:禁用任务的手动执行不算「漏跑」,那只是用户关掉了调度。
+        // Sólo las tareas habilitadas se registran como perdidas: la ejecución manual de tareas deshabilitadas no cuenta como "perdidas",Ese es solo el usuario que desactiva la programación.
         val missedExecutions = if (advance.missedCount > 0 && current.enabled) {
             listOf(buildMissedExecution(task.id, advance.missedCount, current.nextRunAt, execution.executedAt))
         } else {
             emptyList()
         }
-        if (restoreBlocksScheduledWrites(task.id, "任务执行记录")) return
+        if (restoreBlocksScheduledWrites(task.id, "Registro de ejecución de tareas")) return
         resultOf {
-            // 执行记录 + missed 记录 + 推进 next_run_at 在同一个事务内落库:
-            // 要么都在,要么都不在,不会出现「记了 missed 但调度没推进」导致下轮重复计数。
+            // Registro de ejecución + registro perdido + avance next_run_at en la misma transacción:
+            // O están todos ahí,O no aquí,No habrá ningún "perdido pero la programación no se adelantó" que provocará un conteo repetido en la siguiente ronda.
             dao.recordExecutionAndScheduleNext(
                 execution = execution,
                 taskId = task.id,
@@ -661,14 +661,14 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * 构造一条 missed 执行记录,正文走 strings.xml([R.string.schedule_missed_summary])。
+     * Construir un registro de ejecución perdida,El texto va strings.xml([R.string.schedule_missed_summary]).
      *
-     * 与 success / failed / skipped 同一条路:执行历史的摘要本来就是 context.getString
-     * 拼出来的([ScheduledTaskExecutionEntity.replySummary] 存的是已本地化的文本),
-     * 所以 missed 也在这里拼,不在代码里写死中文。
+     * con success / failed / skipped mismo camino:Un resumen del historial de ejecución habría sido context.getString
+     * deletreado([ScheduledTaskExecutionEntity.replySummary] Guarda texto localizado),
+     * Así que perdido también se escribe aquí,No escriba caracteres chinos en el código.
      *
-     * @param scheduledAt 上次的计划时刻(missed 计数的锚点)
-     * @param now 本次补跑的时间
+     * @param scheduledAt Última hora planificada(missed Contando puntos de anclaje)
+     * @param now El momento de esta carrera de maquillaje.
      */
     private fun buildMissedExecution(
         taskId: String,
@@ -687,9 +687,9 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * v1.137: 评估自动化条件。
+     * v1.137: Evaluar las condiciones de automatización.
      *
-     * v1.0.17: 改为 suspend 以适配 Room DAO 的 suspend 查询(quick_note_exists 条件)。
+     * v1.0.17: Se cambió a suspender para adaptarse a la consulta de suspensión de Room DAO(quick_note_exists Condiciones).
      */
     private suspend fun evaluateCondition(task: ScheduledTaskEntity, condition: AutomationConfig.Condition): Boolean {
         return when (condition.type) {
@@ -707,7 +707,7 @@ class ScheduledTaskRunner(
                 val tag = cfg["tag"]?.toString()?.trim('"')
                 val keyword = cfg["keyword"]?.toString()?.trim('"')
                 val dao = quickNoteDao ?: return false
-                // DAO search 已排除 deleted=1,keyword/tag 为 null 时不过滤
+                // DAO search excluido deleted=1,keyword/tag Sin filtrado cuando es nulo
                 dao.search(keyword, tag, limit = 1).isNotEmpty()
             }
             AutomationConfig.Condition.CONTAINS -> {
@@ -725,8 +725,8 @@ class ScheduledTaskRunner(
                 val mustCharging = condition.config["mustCharging"]?.toString()?.toBoolean() ?: true
                 if (mustCharging) {
                     val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-                    // 传 null 接收器只是查询系统粘性广播的当前值，没有任何第三方发送者参与，
-                    // 所以固定 NOT_EXPORTED；但标志不能省，ContextCompat 见到 0 会直接抛异常。
+                    // Al pasar nulo, el receptor simplemente consulta el valor actual de la transmisión fija del sistema, sin la participación de ningún remitente externo.
+                    // Entonces NOT_EXPORTED está arreglado; pero la bandera no se puede omitir,ContextCompat Cuando vea 0, se lanzará una excepción directamente.
                     val batteryStatus = ContextCompat.registerReceiver(
                         context,
                         null,
@@ -744,7 +744,7 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * v1.137: 按动作类型执行具体动作,返回结果摘要。
+     * v1.137: Realizar acciones específicas por tipo de acción,Devuelve un resumen de los resultados.
      */
     private suspend fun executeAction(task: ScheduledTaskEntity, action: AutomationConfig.Action): String {
         return when (action.type) {
@@ -759,16 +759,16 @@ class ScheduledTaskRunner(
     private suspend fun executeAiPrompt(task: ScheduledTaskEntity): String {
         val assistant = resolveAssistant(task.assistantId)
         val messages = buildMessages(assistant, task.prompt).toMutableList()
-        // v2.6.8（用户反馈）: 定时任务此前完全拿不到工具。
+        // v2.6.8(comentarios de los usuarios): Anteriormente, las tareas programadas no tenían ninguna herramienta.
         //
-        // 旧实现调 chatService.completeText 时**没传 tools 参数**，模型手里根本没有任何工具，
-        // 所以用户看到的“本轮数据源不可用: quick_note_list / screen_time / 天气”不是模型懒得调，
-        // 而是它一个工具都没有。文档写“定时任务复用同一套工具注册表”，实现与文档不一致。
+        // Cuando la implementación anterior llama a chatService.completeText**No se pasó ningún parámetro de herramientas**, el modelo no tiene ninguna herramienta,
+        // Entonces lo que ve el usuario“La fuente de datos no está disponible para esta ronda.: quick_note_list / screen_time / clima”No es que el modelo sea demasiado vago para adaptarse.
+        // Pero no tiene una sola herramienta. redacción de documentos“Las tareas programadas reutilizan el mismo registro de herramientas”, la implementación es inconsistente con la documentación.
         //
-        // 这里补上工具装配 + 多轮工具调用循环，与主对话一致：
-        //  - 只发只读工具（README/NORMAL 风险），后台无人值守不能执行 HIGH 风险动作
-        //  - 最多 MAX_TOOL_ROUNDS 轮，避免无限循环
-        //  - 每轮把 tool 结果回灌为 tool 消息，再要一次回复
+        // Aquí se agrega el ciclo de ensamblaje de herramientas + llamada de herramientas de múltiples rondas, que es consistente con el diálogo principal:
+        //  - Enviar solo herramientas de solo lectura (README/NORMAL riesgo), el fondo desatendido no puede realizar acciones de ALTO riesgo
+        //  - Como máximo MAX_TOOL_ROUNDS rondas para evitar bucles infinitos
+        //  - En cada ronda, los resultados de la herramienta se retroalimentan en mensajes de la herramienta y se requiere otra respuesta.
         val toolDefs = resolveScheduledToolDefinitions(assistant)
         var toolRounds = 0
         var completion: io.zer0.ai.core.ChatCompletion? = null
@@ -785,11 +785,11 @@ class ScheduledTaskRunner(
             val calls = current.toolCalls
             if (calls.isNullOrEmpty() || toolDefs.isEmpty()) break
             if (toolRounds >= MAX_TOOL_ROUNDS) {
-                Logger.w(TAG, "定时任务工具轮次达上限 $MAX_TOOL_ROUNDS，停止继续调用")
+                Logger.w(TAG, "El número de rondas de la herramienta de tareas programadas ha alcanzado el límite superior $MAX_TOOL_ROUNDS, deja de llamar")
                 break
             }
             toolRounds++
-            // 把助手这轮的 tool_call 回灌进历史，再逐条执行并回填结果
+            // Complete la ronda actual de llamadas a herramientas del asistente nuevamente en el historial, luego ejecútelas una por una y rellene los resultados.
             messages.add(
                 UIMessage(
                     role = MessageRole.ASSISTANT,
@@ -812,9 +812,9 @@ class ScheduledTaskRunner(
         }
         val finalCompletion = completion
             ?: error(context.getString(R.string.schedule_err_ai_timeout, LLM_TIMEOUT_MS / 1000))
-        // v1.0.74 fix: 剥离 <think> 推理标签,防止思考内容混入任务回复
+        // v1.0.74 fix: despegar <think> etiqueta de inferencia,Evitar que el contenido del pensamiento se mezcle con las respuestas a las tareas.
         val reply = io.zer0.muse.transformer.stripThinkTags(finalCompletion.text)
-        if (restoreBlocksScheduledWrites(task.id, "定时会话")) return ""
+        if (restoreBlocksScheduledWrites(task.id, "sesión cronometrada")) return ""
         val now = System.currentTimeMillis()
         val sessionId = if (task.dedicatedSessionId.isNotBlank()) {
             task.dedicatedSessionId
@@ -845,11 +845,11 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * v2.6.8: 定时任务可用的工具集合。
+     * v2.6.8: Una colección de herramientas disponibles para tareas programadas.
      *
-     * 只取只读档工具（SAFE / NORMAL）。后台无人值守执行不能做高风险动作，
-     * 即使助手配置里勾了也不发——这是与主对话有意为之的差异。
-     * 工具可用性还受助手自身的 toolIdsJson 白名单约束。
+     * Herramienta de archivos de solo lectura (SAFE / NORMAL). Las acciones de alto riesgo no se pueden realizar durante la ejecución desatendida en segundo plano.
+     * Aunque esté marcado en la configuración del asistente no se enviará.——Esta es una diferencia intencional en el diálogo con el Señor.
+     * La disponibilidad de la herramienta también está sujeta a la lista blanca de toolIdsJson del asistente.
      */
     private fun resolveScheduledToolDefinitions(assistant: AssistantEntity): List<ToolDefinition> {
         val registry = toolRegistry ?: return emptyList()
@@ -869,23 +869,23 @@ class ScheduledTaskRunner(
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (t: Throwable) {
-            Logger.w(TAG, "装配定时任务工具失败，本轮不提供工具: ${t.message}")
+            Logger.w(TAG, "No se pudieron ensamblar las herramientas de tareas programadas. No se proporcionan herramientas para esta ronda.: ${t.message}")
             emptyList()
         }
     }
 
-    /** v2.6.8: 执行单个工具调用，返回回填给模型的文本。 */
+    /** v2.6.8: Ejecute una única llamada a la herramienta que devuelva el texto rellenado al modelo. */
     private suspend fun executeScheduledTool(call: io.zer0.ai.core.ToolCall): String {
-        val registry = toolRegistry ?: return "[工具不可用] ToolRegistry 未初始化"
+        val registry = toolRegistry ?: return "[La herramienta no está disponible] ToolRegistry no inicializado"
         val risk = runCatching {
             io.zer0.muse.tools.ToolPermissionResolver.riskLevelFor(call.name)
         }.getOrDefault(io.zer0.muse.tools.ToolRiskLevel.HIGH)
         if (risk == io.zer0.muse.tools.ToolRiskLevel.HIGH) {
-            Logger.w(TAG, "定时任务跳过 HIGH 风险工具: ${call.name}")
-            return "[跳过] ${call.name} 属于高风险工具，定时任务后台执行不授权"
+            Logger.w(TAG, "Herramienta de ALTO riesgo para omitir tareas programadas: ${call.name}")
+            return "[saltar] ${call.name} Es una herramienta de alto riesgo y no está autorizada la ejecución en segundo plano de tareas programadas."
         }
         return try {
-            // ToolCall.arguments 是 JSON 文本，ToolRegistry.execute 需要 Map<String, String>
+            // ToolCall.arguments es un texto JSON,ToolRegistry.execute necesitar Map<String, String>
             val argsJson = AppJson.parseToJsonElement(call.arguments) as? kotlinx.serialization.json.JsonObject
             val argsMap: Map<String, String> = argsJson
                 ?.mapValues { (_, v) ->
@@ -894,29 +894,29 @@ class ScheduledTaskRunner(
                 .orEmpty()
             val outcome = registry.execute(call.name, argsMap)
             if (outcome.isError) {
-                "[失败] ${call.name}: ${outcome.content}"
+                "[falló] ${call.name}: ${outcome.content}"
             } else {
                 outcome.content
             }
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {
             throw e
         } catch (t: Throwable) {
-            Logger.w(TAG, "定时任务工具 ${call.name} 执行异常: ${t.message}")
-            "[异常] ${call.name}: ${t.message ?: t::class.simpleName}"
+            Logger.w(TAG, "Herramienta de tareas programadas ${call.name} excepción de ejecución: ${t.message}")
+            "[anormal] ${call.name}: ${t.message ?: t::class.simpleName}"
         }
     }
 
     private suspend fun executeCreateQuickNote(action: AutomationConfig.Action): String {
         val cfg = action.config
         val title = cfg["title"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }
-            ?: throw IllegalArgumentException("create_quick_note 缺少 title")
+            ?: throw IllegalArgumentException("create_quick_note desaparecido title")
         val content = cfg["content"]?.toString()?.trim('"') ?: ""
         val tags = cfg["tags"]?.toString()?.trim('"')?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
-        val dao = quickNoteDao ?: throw IllegalStateException("QuickNoteDao 未初始化")
+        val dao = quickNoteDao ?: throw IllegalStateException("QuickNoteDao no inicializado")
         val id = java.util.UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         if (io.zer0.common.ProcessWriteGate.restoring) {
-            Logger.w(TAG, "备份恢复进行中，跳过定时速记写入")
+            Logger.w(TAG, "Restauración de copia de seguridad en curso, omitiendo la escritura taquigráfica programada")
             return ""
         }
         dao.upsert(
@@ -938,22 +938,22 @@ class ScheduledTaskRunner(
     private suspend fun executeCallTool(task: ScheduledTaskEntity, action: AutomationConfig.Action): String {
         val cfg = action.config
         val toolId = cfg["toolId"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }
-            ?: throw IllegalArgumentException("call_tool 缺少 toolId")
+            ?: throw IllegalArgumentException("call_tool desaparecido toolId")
         val paramsElement = cfg["params"]
         val paramsJson = when (paramsElement) {
             is JsonObject -> AppJson.encodeToString(JsonObject.serializer(), paramsElement)
             else -> paramsElement?.toString()?.trim('"') ?: "{}"
         }
-        val registry = toolRegistry ?: throw IllegalStateException("ToolRegistry 未初始化")
-        if (restoreBlocksScheduledWrites(task.id, "定时工具")) return ""
-        // v1.0.17: 定时任务 call_tool 动作增加风险审批,绕过 ToolPermissionResolver 的安全风险修复
-        // 定时任务在后台无用户交互执行,无法走会话级权限审批,故在此直接拦截 HIGH 风险工具。
-        // P0-3: 风险判定走 ToolPermissionResolver.riskLevelFor(显式表 + 前缀推断的单一真源),
-        // 不再依赖注册台账值 —— 注册值与显式表脱节(如 send_email 曾注册为 NORMAL)时
-        // 会绕过本拦截,必须以解析器为准
+        val registry = toolRegistry ?: throw IllegalStateException("ToolRegistry no inicializado")
+        if (restoreBlocksScheduledWrites(task.id, "herramientas de sincronización")) return ""
+        // v1.0.17: La acción call_tool de la tarea programada aumenta la aprobación del riesgo,Solución de riesgo de seguridad para omitir ToolPermissionResolver
+        // Las tareas programadas se ejecutan en segundo plano sin interacción del usuario,No se puede realizar la aprobación de permisos a nivel de sesión,Por lo tanto, la herramienta de ALTO riesgo se intercepta directamente aquí.
+        // P0-3: La evaluación de riesgos va ToolPermissionResolver.riskLevelFor(Tabla explícita + fuente única de verdad para la inferencia de prefijos),
+        // Ya no dependa del valor de la cuenta de registro —— Los valores registrados están desconectados de las tablas explícitas.(Por ejemplo, send_email se registró como NORMAL)tiempo
+        // evitará esta interceptación,Debe basarse en el analizador.
         if (io.zer0.muse.tools.ToolPermissionResolver.riskLevelFor(toolId) == io.zer0.muse.tools.ToolRiskLevel.HIGH) {
             Logger.w(TAG, "call_tool skipped HIGH risk tool '$toolId' in scheduled task '${task.name}'")
-            return "跳过高风险工具: $toolId"
+            return "Evite las herramientas de alto riesgo: $toolId"
         }
         return io.zer0.muse.tools.ToolRouteExecutionGuard(registry)
             .executeFromJson(toolId, paramsJson)
@@ -963,18 +963,18 @@ class ScheduledTaskRunner(
         val cfg = action.config
         val title = cfg["title"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() } ?: "Muse"
         val message = cfg["message"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }
-            ?: throw IllegalArgumentException("notify 缺少 message")
-        if (restoreBlocksScheduledWrites(task.id, "定时通知")) return ""
+            ?: throw IllegalArgumentException("notify desaparecido message")
+        if (restoreBlocksScheduledWrites(task.id, "Notificación periódica")) return ""
         showNotification(title, message, MuseNotificationTarget.ScheduledTask(task.id))
         return message
     }
 
     /**
-     * v1.137: 触发链式任务。
+     * v1.137: Activar tareas en cadena.
      *
-     * v1.0.17: 改为同步执行 — 对每个后续任务先更新 next_run_at,然后直接 executeTask,
-     * 不再等下一轮 60s 轮询。每个链式任务独立 try-catch,单个失败不影响其他。
-     * [chainDepth] 透传给 executeTask,达到 [MAX_CHAIN_DEPTH] 时停止递归。
+     * v1.0.17: Cambiar a ejecución sincrónica — Actualice primero cada tarea posterior next_run_at,luego directamente executeTask,
+     * No más esperas a la próxima ronda electoral de los años 60. Cada tarea de la cadena es independiente. try-catch,Un solo fracaso no afecta a los demás.
+     * [chainDepth] pasar por executeTask,alcanzar [MAX_CHAIN_DEPTH] Detener la recursividad.
      */
     private suspend fun triggerChainTasks(task: ScheduledTaskEntity, chainDepth: Int = 0) {
         val nextIds = task.nextTaskIdsJson.toIdsList()
@@ -992,7 +992,7 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * 检查设备当前是否有可用网络连接。
+     * Compruebe si el dispositivo tiene actualmente una conexión de red disponible.
      */
     private fun isNetworkAvailable(): Boolean {
         return try {
@@ -1006,10 +1006,10 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * 按 assistantId 解析助手配置。
-     * - assistantId 为空或 "default" → 取 id="default" 的助手,再兜底第一个
-     * - 其他 id → 精确匹配;找不到则回退 default,再兜底第一个
-     * - 完全无助手 → 抛异常(由 [executeTask] 捕获记录 failed)
+     * Resolver la configuración del asistente por AssistantId.
+     * - assistantId está vacío o "default" → tomar id="default" asistente,Sé el primero en dar el paso
+     * - Otros id → coincidencia exacta;Si no lo encuentra, retroceda default,Sé el primero en dar el paso
+     * - Ningún ayudante → Lanzar excepción(por [executeTask] registro de captura failed)
      */
     private suspend fun resolveAssistant(assistantId: String): AssistantEntity {
         val assistants = assistantRepository.observeAll.first()
@@ -1025,7 +1025,7 @@ class ScheduledTaskRunner(
             ?: error(context.getString(R.string.schedule_err_no_assistant))
     }
 
-    /** 构造调用 AI 的消息列表:助手 systemPrompt(非空时) + 用户 prompt。 */
+    /** Construya una lista de mensajes para llamar a AI:asistente systemPrompt(tiempo no vacío) + mensaje de usuario. */
     private fun buildMessages(assistant: AssistantEntity, prompt: String): List<UIMessage> {
         val list = mutableListOf<UIMessage>()
         if (assistant.systemPrompt.isNotBlank()) {
@@ -1042,22 +1042,22 @@ class ScheduledTaskRunner(
     }
 
     /**
-     * Phase 3 3E: 发送定时消息 — 将用户预写的消息写入会话并弹通知。
+     * Phase 3 3E: Enviar mensajes programados — Escriba el mensaje escrito previamente del usuario en la sesión y muestre la notificación.
      */
     private suspend fun deliverPendingMessage(pm: io.zer0.muse.data.schedule.PendingMessage) {
         if (io.zer0.common.ProcessWriteGate.restoring ||
-            restoreBlocksScheduledWrites(pm.id, "待发送消息")
+            restoreBlocksScheduledWrites(pm.id, "Mensaje a enviar")
         ) {
             return
         }
         val now = System.currentTimeMillis()
         try {
-            // 将消息写入目标会话
+            // Escribir mensaje en la sesión de destino
             sessionRepository.appendMessage(
                 sessionId = pm.sessionId,
                 message = UIMessage(role = MessageRole.USER, content = pm.content, createdAt = now),
             )
-            // 弹出通知
+            // Notificación emergente
             showNotification(
                 "Scheduled Message",
                 pm.content,
@@ -1082,8 +1082,8 @@ class ScheduledTaskRunner(
     private val notificationId = AtomicInteger(NOTIFICATION_ID_BASE)
 
     /**
-     * v1.64: 弹出定时任务到期通知 — 点击直达对应任务并展开执行历史。
-     * 用 muse://scheduled-task/{taskId} deep link,经 ShareIntentHandler 解析后导航到指定任务路由。
+     * v1.64: Notificación emergente de vencimiento de tarea programada — Haga clic para ir directamente a la tarea correspondiente y expandir el historial de ejecución.
+     * usar muse://scheduled-task/{taskId} deep link,Navegue hasta la ruta de tareas especificada después de que ShareIntentHandler la analice.
      */
     private fun showNotification(title: String, content: String, target: MuseNotificationTarget) {
         val notificationManager = MuseNotificationManager(context)

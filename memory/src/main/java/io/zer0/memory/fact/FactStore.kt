@@ -25,20 +25,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.exp
 
 /**
- * 元事实存储。
+ * Almacenamiento de metahechos.
  *
- * v6: 全文搜索升级为 FTS4 + 应用层 CJK 2-gram,保留 LIKE 作为单字/异常回退。
- *  - 增删改查(单条/批量/按 session/按 id)
- *  - 标签搜索(json_each 精确匹配,OR 逻辑,按匹配数降序)
- *  - 全文搜索(FTS4 MATCH,ngram 预处理;单字回退 LIKE)
- *  - FTS 索引一致性自检与全量 rebuild
+ * v6: Búsqueda de texto completo actualizada a la capa de aplicación FTS4 + CJK 2-gram,Mantenga ME GUSTA como palabra/Reversión de excepciones.
+ *  - Agregar, eliminar, modificar y verificar(soltero/lote/sesión de prensa/prensa id)
+ *  - Búsqueda de etiquetas(json_each coincidencia exacta,OR lógica,Orden descendente por número de coincidencias)
+ *  - Búsqueda de texto completo(FTS4 MATCH,ngram preprocesamiento;reserva de una sola palabra LIKE)
+ *  - FTS Autocomprobación de coherencia del índice y volumen completo rebuild
  *
- * 所有写入前对 fact 字段做 PII 脱敏。
+ * El campo de hechos es PII insensibilizado antes de cualquier escritura.
  *
- * v5: 添加事实去重(按内容前缀匹配)与智能重要度判定(关键词驱动)。
+ * v5: Agregue datos para eliminar duplicados(Coincidir por prefijo de contenido)y juicio de importancia de inteligencia(impulsado por palabras clave).
  *
- * v1.0.27 P0-1.3: addBatch 加事务,避免中途失败留下半完成状态(facts 表有数据但 facts_fts 缺失)。
- *  注入 FactDb 实例以使用 [androidx.room.withTransaction]。
+ * v1.0.27 P0-1.3: addBatch Agregar transacción,Evitar fallar a mitad de camino y dejar un estado a medio terminar(facts La tabla tiene datos pero falta fact_fts).
+ *  Inyecte una instancia de FactDb para usar [androidx.room.withTransaction].
  */
 class FactStore(
     private val dao: FactDao,
@@ -51,27 +51,27 @@ class FactStore(
      */
     private val tombstoneFile: File? = null,
     /**
-     * v12: LLM 去重判定器 — 算法层(字符相似度/实体键)无法确定的模糊候选对交给大模型判断。
-     * 默认 [NoopFactDedupJudge] 不调 LLM,行为与未接入完全一致;app 模块注入真实实现。
+     * v12: LLM Determinante de deduplicación — capa de algoritmo(Similitud de personajes/Clave de entidad)Los pares de candidatos difusos que no se pueden determinar se entregan al modelo grande para su evaluación.
+     * Predeterminado [NoopFactDedupJudge] desafinado LLM,El comportamiento es exactamente el mismo que no conectado.;app Los módulos inyectan implementaciones reales.
      */
     private val dedupJudge: FactDedupJudge = NoopFactDedupJudge,
     /**
-     * v13 (T4-1): 事实修订记录 DAO — 关键记忆(importance≥1 或实体键合并)的变更历史。
-     * null 时不记录(测试/兼容降级)。
+     * v13 (T4-1): expediente de revisión de hechos DAO — memoria clave(importance≥1 o fusión de clave de entidad)historia de cambios.
+     * null No grabado en todo momento(prueba/degradación de compatibilidad).
      */
     private val revisionDao: FactRevisionDao? = null,
     /**
-     * Phase 3 (可靠性 P1): 写入后的增量对账 hook(新增/批量/更新事实后触发)。
+     * Phase 3 (Fiabilidad P1): Conciliación incremental después de escribir hook(Nuevo/lote/Activado después de actualizar los hechos).
      *
-     * FACTS 编译产物原先只由每日流水线(12–24h)对账一次,用户在记忆页新增/编辑事实后
-     * system prompt 仍会注入旧表述。写入成功后经本 hook 立即对账,消除该延迟。
+     * FACTS Los productos compilados fueron producidos originalmente solo por el canal diario.(12–24h)reconciliarse una vez,Usuario agregado en la página de memoria./Editar después del hecho
+     * system prompt La antigua representación seguirá siendo inyectada. Una vez que la escritura sea exitosa, la cuenta se conciliará inmediatamente a través de este gancho.,Eliminar este retraso.
      *
-     * - null(默认): 运行时从 Koin 惰性解析 [io.zer0.memory.compile.MemoryCompiler]
-     *   (生产装配零改动);无 DI 环境(单测/CLI)解析不到时退化为 no-op,行为与旧版一致。
-     * - 显式传入: 优先使用(单测注入 fake;DI 装配也可显式覆盖)。
+     * - null(Predeterminado): Análisis diferido de Koin en tiempo de ejecución [io.zer0.memory.compile.MemoryCompiler]
+     *   (Producción y montaje sin modificaciones.);Sin entorno DI(prueba única/CLI)Cuando no se puede analizar, degenera en no-op,El comportamiento es consistente con versiones anteriores.
+     * - Pasado explícitamente: uso prioritario(Inyección de prueba única fake;DI El ensamblaje también se puede anular explícitamente).
      *
-     * 触发在独立协程中做节流/合并(见 [scheduleReconcile]),不阻塞写入路径,
-     * hook 内部再次写库会被递归防护忽略,由每日对账兜底。
+     * Activación de aceleración en corrutinas independientes/fusionar(ver [scheduleReconcile]),No bloquea la ruta de escritura.,
+     * hook La protección de recursión ignorará la escritura interna de la biblioteca nuevamente.,Respaldados por la reconciliación diaria.
      */
     private val reconcileHook: FactReconcileHook? = null,
     /** Owner of this per-assistant FactDb; guards explicit delete ownership. */
@@ -85,10 +85,10 @@ class FactStore(
         encodeDefaults = true
     }
 
-    /** v6: 是否已经做过 FTS 索引一致性检查(避免每次搜索都重复 COUNT)。 */
+    /** v6: ¿Ha realizado una verificación de coherencia del índice FTS?(Evite la duplicación en cada búsqueda. COUNT). */
     private var ftsConsistencyChecked = false
 
-    /** 元事实数据(业务层结构,与 Entity 分离)。 */
+    /** datos metafactuales(Estructura de capa empresarial,Separado de la entidad). */
     data class Fact(
         val id: Long = 0,
         val fact: String,
@@ -96,95 +96,95 @@ class FactStore(
         val time: String? = null,
         val sessionId: String? = null,
         val createdAt: String = Instant.now().toString(),
-        /** v4: 重要程度(0=普通,1=重要,2=关键)。 */
+        /** v4: importancia(0=ordinario,1=importante,2=clave). */
         val importance: Int = 0,
-        /** v5: 结构化分类(如 preference / identity / event / relationship / goal / medical)。 */
+        /** v5: clasificación estructurada(Como por ejemplo preference / identity / event / relationship / goal / medical). */
         val category: String = "general",
-        /** v5: LLM 对事实可靠性的置信度,0.0 ~ 1.0。 */
+        /** v5: LLM Confianza en la fiabilidad de los hechos.,0.0 ~ 1.0. */
         val confidence: Float = 1.0f,
-        /** v5: 事实来源(user_explicit / inferred / imported)。 */
+        /** v5: fuente de hechos(user_explicit / inferred / imported). */
         val source: String = "inferred",
-        /** v5: 事实过期时间 ISO 8601。 */
+        /** v5: Tiempo de caducidad del hecho ISO 8601. */
         val expiresAt: String? = null,
-        /** v5: 最近一次确认时间 ISO 8601。 */
+        /** v5: Última hora confirmada ISO 8601. */
         val lastConfirmedAt: String? = null,
-        /** v7: 最近一次命中时间 ISO 8601,用于 hitBonus 衰减时钟。 */
+        /** v7: Hora del último golpe ISO 8601,Se utiliza para el reloj de caída de hitBonus. */
         val lastHitAt: String? = null,
-        /** v14: 被检索命中的累计次数（0 = 从未被召回）。 */
+        /** v14: El número acumulado de visitas recuperadas (0 = nunca recordado). */
         val hitCount: Int = 0,
         /**
-         * v8: 记忆作用域,默认 "main" 表示主助手作用域。
-         * 子助手/团队成员使用各自的 assistantId,用于隔离不同 Agent 的记忆。
-         * [add] / [addBatch] 的 scope 参数会覆盖此字段。
+         * v8: alcance de la memoria,Predeterminado "main" Representa el ámbito auxiliar principal.
+         * sub-asistente/Los miembros del equipo usan los suyos. assistantId,Se utiliza para aislar los recuerdos de diferentes Agentes.
+         * [add] / [addBatch] El parámetro de alcance anula este campo.
          */
         val scope: String = "main",
         /**
-         * v9: 记忆空间 id,默认 "default" 表示默认空间。
-         * 用于多 Space 隔离(工作/生活/学习场景互不干扰)。
-         * 与 [scope] 正交:scope 按 Agent 隔离,spaceId 按场景隔离。
-         * [add] / [addBatch] 的 spaceId 参数会覆盖此字段。
+         * v9: espacio de memoria id,Predeterminado "default" Representa el espacio predeterminado.
+         * Utilizado para aislamiento de múltiples espacios.(trabajo/vida/Las escenas de aprendizaje no interfieren entre sí.).
+         * con [scope] ortogonal:scope Cuarentena por agente,spaceId Aislar por escena.
+         * [add] / [addBatch] El parámetro spaceId anula este campo.
          */
         val spaceId: String = "default",
-        /** B4-05: 手动置顶时间 ISO 8601,null 表示未置顶。 */
+        /** B4-05: Tiempo de fijación manual ISO 8601,null Indica que no está fijado. */
         val pinnedAt: String? = null,
         /**
-         * v12: 实体归一化键。同一实体的不同写法(如"张三"/"张先生")共享同一键,
-         * 写入时按 entityKey 精确查重,命中即合并而非新增。
+         * v12: Clave de normalización de la entidad. Diferentes formas de escribir la misma entidad(Como por ejemplo"Zhang San"/"Sr. Zhang")compartir la misma clave,
+         * Comprobación precisa de duplicaciones basada en la clave de entidad al escribir,Las visitas se fusionan en lugar de agregarse.
          */
         val entityKey: String? = null,
-        /** v17: 持久化的衰减分数(见 [FactEntity.score])。 */
+        /** v17: Fracción de decadencia de persistencia(ver [FactEntity.score]). */
         val score: Float = 10f,
-        /** v17: 出场时间 ISO 8601,null 表示仍在召回中(见 [FactEntity.suppressedAt])。 */
+        /** v17: tiempo de juego ISO 8601,null Dijo que todavía estaba siendo retirado(ver [FactEntity.suppressedAt]). */
         val suppressedAt: String? = null,
         /**
-         * v18: 本条记忆取代的旧记忆 id,null 表示不取代任何记忆(见 [FactEntity.supersedesId])。
-         * 被指向的旧记忆仍然在库里、记忆页可见,只是不进编译产出的 FACTS 段。
+         * v18: El viejo recuerdo reemplazado por este recuerdo. id,null Indica que no reemplaza ninguna memoria.(ver [FactEntity.supersedesId]).
+         * El antiguo recuerdo puntiagudo todavía está en la biblioteca y la página del recuerdo es visible.,Simplemente no ingrese a la sección HECHOS del resultado compilado.
          */
         val supersedesId: Long? = null,
         /**
-         * v19: 本条记忆被合并进了哪条记忆,null 表示未被合并(见 [FactEntity.mergedIntoId])。
-         * 与 [supersedesId] 是两种关系: 那条是内容取代(矛盾),本列是重复聚合;
-         * 带本值的行仍在库里、记忆页可见,只是不参与自动召回与编译投影。
+         * v19: ¿En qué memoria se fusiona esta memoria?,null Indica que no se ha fusionado.(ver [FactEntity.mergedIntoId]).
+         * con [supersedesId] Son dos tipos de relaciones.: Ese es reemplazo de contenido.(contradicción),Esta columna es una agregación repetida.;
+         * La fila con este valor todavía está en la biblioteca y la página de memoria está visible.,Simplemente no participa en la recuperación automática ni en la proyección de compilación.
          */
         val mergedIntoId: Long? = null,
         val matchCount: Int? = null,
     )
 
     /**
-     * Phase 3 (可靠性 P1): 事实写入后的增量对账入口。
+     * Phase 3 (Fiabilidad P1): Entrada de conciliación incremental después de escribir los hechos.
      *
-     * 由 [FactStore] 在新增/批量/更新成功后调用,携带本次写入的最终事实(已脱敏/已合并),
-     * 由 host 侧(生产环境为 [io.zer0.memory.compile.MemoryCompiler.reconcileFactsSectionWithStore])
-     * 把 FACTS 编译产物中的对应行对齐为 facts 表现值,消除 system prompt 注入最长 12–24h 延迟。
+     * por [FactStore] Añadiendo nuevo/lote/Llamado después de una actualización exitosa,Llevando el hecho final de este escrito.(Insensibilizado/Fusionado),
+     * por parte del anfitrión(El entorno de producción es [io.zer0.memory.compile.MemoryCompiler.reconcileFactsSectionWithStore])
+     * Alinear las líneas correspondientes en el producto compilado FACTS con los valores de representación de hechos,Eliminar la inyección rápida del sistema por más tiempo 12–24h Demora.
      *
-     * @param facts 本次写入后的事实(最终文本;对账只读取 [Fact.fact])
-     * @param scope 记忆作用域
-     * @param spaceId 记忆空间
+     * @param facts Los hechos después de este escrito.(texto final;Conciliación solo lectura [Fact.fact])
+     * @param scope alcance de la memoria
+     * @param spaceId espacio de memoria
      */
     fun interface FactReconcileHook {
         suspend fun onFactsChanged(facts: List<Fact>, scope: String, spaceId: String)
     }
 
     /**
-     * v5: 关键词 → 重要度映射。
-     *  - 包含"过敏/密码/地址/生日/身份证/电话"等 → 重要度 2(关键)
-     *  - 包含"喜欢/不喜欢/爱吃/最"等 → 重要度 1(重要)
-     *  - 其他日常 → 重要度 0(普通)
+     * v5: palabras clave → Mapeo de importancia.
+     *  - contiene"Alergia/Contraseña/dirección/cumpleaños/tarjeta de identificación/telefono"espera → importancia 2(clave)
+     *  - contiene"me gusta/no me gusta/Me encanta comer/la mayoría"espera → importancia 1(importante)
+     *  - Otra vida diaria → importancia 0(ordinario)
      */
-    private val criticalKeywords = listOf("过敏", "密码", "地址", "生日", "身份证", "电话", "血型", "紧急", "病历")
-    private val importantKeywords = listOf("喜欢", "不喜欢", "爱吃", "最", "讨厌", "害怕", "梦想", "目标", "习惯")
+    private val criticalKeywords = listOf("Alergia", "Contraseña", "dirección", "cumpleaños", "tarjeta de identificación", "telefono", "tipo de sangre", "urgente", "Registros médicos")
+    private val importantKeywords = listOf("me gusta", "no me gusta", "Me encanta comer", "la mayoría", "odio", "miedo", "soñar", "objetivo", "hábito")
 
-    /** v1.x: 增强去重 — 否定词正则(出现次数不同 = 语义可能相反,不合并)。 */
-    private val NEGATION_RE = Regex("不|没|未|别|无|非")
+    /** v1.x: Deduplicación mejorada — palabra negativa regular(Los sucesos varían = La semántica puede ser opuesta.,no fusionar). */
+    private val NEGATION_RE = Regex("No|No|todavía no|no lo hagas|Ninguno|no")
 
-    /** v1.x: 增强去重 — 字符 bigram Jaccard 相似度阈值(≥ 视为重复)。
-     * 实际重复多为小幅措辞差异(插入/删减/词序),Jaccard 一般在 0.5-0.8;
-     * 0.5 阈值下"喜欢喝咖啡" vs "喜欢喝茶"(0.43)不会误合并。 */
+    /** v1.x: Deduplicación mejorada — Umbral de similitud de Jaccard del bigrama de caracteres(≥ Tratar como duplicado).
+     * Las duplicaciones reales son en su mayoría diferencias menores en la redacción.(Insertar/eliminar/orden de las palabras),Jaccard Generalmente en 0.5-0.8;
+     * 0.5 subumbral"le gusta tomar cafe" vs "le gusta tomar té"(0.43)Sin fusiones erróneas. */
     private val SIMILARITY_THRESHOLD = 0.5
 
     /**
-     * v5: 智能判定重要度(0/1/2)。
-     * 关键关键词优先匹配,其次重要关键词,默认普通。
+     * v5: Juicio inteligente de importancia(0/1/2).
+     * Priorizar la coincidencia de palabras clave clave,Segundas palabras clave importantes,El valor predeterminado es Normal.
      */
     private fun inferImportanceScore(text: String): Int {
         val lower = text.lowercase()
@@ -194,25 +194,25 @@ class FactStore(
     }
 
     /**
-     * v5: 按前缀匹配相似度判断两条事实是否相似。
-     * 取较短文本,若较长文本以其开头则视为重复。
+     * v5: Determine si dos hechos son similares basándose en la similitud de coincidencia de prefijos.
+     * Obtener texto más corto,Los textos más largos que comienzan con este se consideran duplicados.
      *
-     * v9: 先去常见主语前缀,避免"对青霉素过敏"和"用户对青霉素过敏"被当成两条事实。
-     * v1.x: 增强 — 前缀不命中时再用字符 bigram 重叠率判定近似重复
-     * (如"明天要参加英语四级考试" vs "明天上午9点考英语四级");
-     * 否定词出现次数不同(如"不吃香菜" vs "吃香菜")强制不相似,避免语义反转误合并。
+     * v9: Primero elimine los prefijos de asunto comunes.,evitar"alérgico a la penicilina"y"El usuario es alérgico a la penicilina."tratados como dos hechos.
+     * v1.x: mejorar — Cuando el prefijo no coincide, se utiliza la tasa de superposición del bigrama de caracteres para determinar la duplicación aproximada.
+     * (Como por ejemplo"Mañana tengo que hacer el examen CET-4" vs "mañana por la mañana9Prueba de inglés CET-4");
+     * Las palabras negativas aparecen en diferentes números.(Como por ejemplo"No comas cilantro" vs "comer cilantro")Fuerza disimilitud,Evite la fusión errónea de inversión semántica.
      */
     private fun isSimilar(a: String, b: String): Boolean {
         val na = normalizeDedupText(a)
         val nb = normalizeDedupText(b)
         if (na == nb) return true
         if (na.isBlank() || nb.isBlank()) return false
-        // 否定词保护:否定出现次数不同 = 语义可能相反,绝不合并
+        // protección de palabras negativas:Los sucesos negativos varían = La semántica puede ser opuesta.,Nunca fusionar
         if (negationCount(na) != negationCount(nb)) return false
         val short = if (na.length <= nb.length) na else nb
         val long = if (na.length > nb.length) na else nb
         if (long.startsWith(short)) return true
-        // 增强:字符 bigram Jaccard 重叠率(近似语义重复)
+        // mejorar:Tasa de superposición de Jaccard de bigrama de caracteres(repetición semántica aproximada)
         if (na.length >= 4 && nb.length >= 4) {
             return bigramSimilarity(na, nb) >= SIMILARITY_THRESHOLD
         }
@@ -220,19 +220,19 @@ class FactStore(
     }
 
     /**
-     * v1.0.72: 找出近似重复的事实簇(供 LLM 合并去重)。
+     * v1.0.72: Encuentre grupos de hechos casi duplicados(Para fusión y deduplicación de LLM).
      *
-     * 贪心分组:取全部事实,用 [isSimilar] 判定互相相似的分组到同一簇。
-     * 单条事实不成簇。返回的每簇 ≥ 2 条,由调用方决定是否交给 LLM 合并。
+     * agrupación codiciosa:obtener todos los hechos,usar [isSimilar] Se determina que los grupos que son similares entre sí se agrupan en el mismo grupo.
+     * Los hechos individuales no están agrupados. Cada grupo devolvió ≥ 2 Artículo,Depende de la persona que llama decidir si entregarlo a LLM para que lo fusione.
      *
-     * @param scope 记忆作用域(默认 main)
-     * @param spaceId 记忆空间(默认 default,仅在该空间内聚簇)
-     * @param maxGroups 最多返回簇数(限制 LLM 调用次数,默认 10)
-     * @return 相似簇列表(每簇按 id 升序)
+     * @param scope alcance de la memoria(Predeterminado main)
+     * @param spaceId espacio de memoria(Predeterminado default,Clúster solo dentro de este espacio)
+     * @param maxGroups Número máximo de clústeres devueltos(Limitar el número de llamadas de LLM,Predeterminado 10)
+     * @return Lista de grupos similares(Cada grupo está ordenado por identificación en orden ascendente)
      */
     suspend fun findSimilarGroups(scope: String = "main", spaceId: String = "default", maxGroups: Int = 10): List<List<Fact>> =
         withContext(Dispatchers.IO) {
-            // v12: 严格按 scope + space_id 双重过滤,避免跨空间误聚簇
+            // v12: Estrictamente doble filtro por alcance + space_id,Evite agrupaciones erróneas en el espacio
             val all = dao.getByScopeAndSpace(scope, spaceId).map { it.toDomainFact() }
             if (all.size < 2) return@withContext emptyList()
             val used = mutableSetOf<Long>()
@@ -242,7 +242,7 @@ class FactStore(
                 val cluster = mutableListOf(all[i])
                 for (j in i + 1 until all.size) {
                     if (all[j].id in used) continue
-                    // 与簇内任意一条相似即并入(传递闭包)
+                    // Si es similar a cualquiera del grupo, se fusionará en(cierre transitivo)
                     if (cluster.any { isSimilar(it.fact, all[j].fact) }) {
                         cluster.add(all[j])
                     }
@@ -258,10 +258,10 @@ class FactStore(
             groups
         }
 
-    /** 否定词数量(不/没/未/别/无/非)。 */
+    /** Número de palabras negativas(No/No/todavía no/no lo hagas/Ninguno/no). */
     private fun negationCount(text: String): Int = NEGATION_RE.findAll(text).count()
 
-    /** 字符 bigram Jaccard 相似度。 */
+    /** Bigrama de personaje parecido a Jaccard. */
     private fun bigramSimilarity(a: String, b: String): Double {
         fun bigrams(s: String): Set<String> {
             if (s.length < 2) return setOf(s)
@@ -275,33 +275,33 @@ class FactStore(
     }
 
     /**
-     * v9: 为去重比较去除常见主语前缀。
-     * 如"用户对青霉素过敏" → "对青霉素过敏";
-     * "The user is allergic to penicillin" → "allergic to penicillin"。
+     * v9: Elimine los prefijos de asunto comunes para realizar comparaciones de deduplicación.
+     * Como por ejemplo"El usuario es alérgico a la penicilina." → "alérgico a la penicilina";
+     * "The user is allergic to penicillin" → "allergic to penicillin".
      *
-     * v12: 增强归一化 — 大小写折叠 + 全半角转换 + 去首尾空白 + 压缩内部空白。
-     * 使"Zhang San"/"zhang san"/"张三 "跨写法可判等,支撑实体键去重第二通道。
+     * v12: Normalización mejorada — Plegado de casos + conversión completa de medio ancho + eliminación de espacios en blanco iniciales y finales + compresión de espacios en blanco internos.
+     * hacer"Zhang San"/"zhang san"/"Zhang San "El método de escritura cruzada se puede considerar igual,Admite el segundo canal de deduplicación de claves físicas.
      */
     private fun normalizeDedupText(text: String): String {
         return text.trim().lowercase()
-            .replace(Regex("^(用户|我|他|她|这个用户|the user|i am|he is|she is)\\s*"), "")
+            .replace(Regex("^(Usuario|yo|el|ella|este usuario|the user|i am|he is|she is)\\s*"), "")
             .trim()
             .normalizeFullWidth()
             .replace(WHITESPACE_RE, " ")
     }
 
     /**
-     * v12: 全半角归一 — 全角字母/数字/常用符号转半角,兼容中英文混写重复。
-     * 示例: "ａｂｃ１２３" → "abc123", "张三（同学）" → "张三(同学)"。
+     * v12: Normalización de ancho completo y medio — Letras de ancho completo/numeros/Símbolos de uso común de medio ancho.,Compatible con duplicación mixta en chino e inglés.
+     * Ejemplo: "abc123" → "abc123", "Zhang San (compañero de clase)" → "Zhang San(compañeros de clase)".
      */
     private fun String.normalizeFullWidth(): String {
         val sb = StringBuilder(length)
         for (ch in this) {
             val code = ch.code
             when {
-                // 全角字母/数字(FF01-FF5E) → 半角(0x21-0x7E)
+                // Letras de ancho completo/numeros(FF01-FF5E) → medio tamaño(0x21-0x7E)
                 code in 0xFF01..0xFF5E -> sb.append((code - 0xFEE0).toChar())
-                // 全角空格
+                // espacio de ancho completo
                 code == 0x3000 -> sb.append(' ')
                 else -> sb.append(ch)
             }
@@ -310,74 +310,74 @@ class FactStore(
     }
 
     /**
-     * v12: 从事实文本推断实体键(提取阶段未给出时使用)。
-     * 只认两类高置信信号,避免把普通词当人名造成误合并:
-     *  - PiiGuard 脱敏后的占位符 {{name_N}}(姓氏+称谓已脱敏,占位符即稳定实体键)
-     *  - 英文人名模式(两个大写开头的词,如 "Zhang San")
-     * 中文人名由提取阶段 LLM 显式给出 entity_key(prompt 已要求);
-     * 无法识别时返回 null,由文本相似度通道兜底,宁可漏记不可错记。
+     * v12: Inferir claves de entidad a partir de texto de hechos(Se utiliza cuando no se da la fase de extracción.).
+     * Solo reconoce dos tipos de señales de alta confianza.,Evite la combinación errónea de palabras comunes como nombres.:
+     *  - PiiGuard Marcador de posición después de la desensibilización {{name_N}}(apellido+El título está insensibilizado.,El marcador de posición es una clave de entidad estable)
+     *  - patrón de nombre en inglés(dos palabras que empiezan con mayúsculas,Como por ejemplo "Zhang San")
+     * Los nombres chinos se dan explícitamente en la etapa de extracción LLM entity_key(prompt Solicitado);
+     * Regresar cuando no sea reconocido null,Cubierto por el canal de similitud de texto,Es mejor omitir que recordar incorrectamente.
      */
     private fun inferEntityKey(fact: String): String? {
         val trimmed = fact.trim()
         if (trimmed.isBlank()) return null
-        // 已脱敏人名标记直接作为实体键(mask 可逆占位符 [NAME_N] 等,保留实体区分度)
+        // La etiqueta de nombre de persona insensibilizada se utiliza directamente como clave de entidad(mask Marcador de posición reversible [NAME_N] espera,Preservar la distinción de entidad)
         val namePlaceholder = namePlaceholderRe.find(trimmed)?.value
         if (namePlaceholder != null) return namePlaceholder
-        // 英文人名模式: 两个大写开头词(已脱敏场景少,主要覆盖 imported 数据)
+        // patrón de nombre en inglés: dos palabras mayúsculas(Hay pocas escenas insensibles.,Cubre principalmente datos importados.)
         val enName = enNameRe.find(trimmed)?.value
         if (enName != null) return enName.lowercase()
         return null
     }
 
     /**
-     * v12: 从事实文本中提取实体键。
-     * 提取阶段已给出 entityKey 时直接使用;否则按人名规则推断;
-     * 推断不出时回退为归一化文本(保证同文重复仍可判等)。
+     * v12: Extraiga claves de entidad del texto de hechos.
+     * Úselo directamente cuando se haya proporcionado la clave de entidad en la fase de extracción.;De lo contrario, se inferirá según las reglas de nombres.;
+     * Recurrir al texto normalizado cuando no se puede hacer inferencia(Garantizar que los duplicados del mismo artículo seguirán siendo considerados iguales).
      */
     private fun resolveEntityKey(explicit: String?, fact: String): String? {
         if (!explicit.isNullOrBlank()) return explicit.trim().lowercase()
         return inferEntityKey(fact)
     }
 
-    /** v12: 同实体判定公开入口(诊断/测试/反思任务复用)。 */
+    /** v12: Entrada pública de determinación de la misma entidad.(Diagnóstico/prueba/Reflexionar sobre la reutilización de tareas). */
     fun debugIsSameEntity(a: String, b: String): Boolean = isSameEntityFact(a, b)
 
-    /** v12: LLM 判定结果缓存(进程内 LRU,同步访问)— 同一事实对只问一次模型,防止重复消费 token。 */
+    /** v12: LLM Caché de resultados del juicio(En proceso LRU,Acceso sincrónico)— Pregúntele al modelo solo una vez por el mismo par de hechos.,Evite el consumo repetido de tokens. */
     private val dedupVerdictCache = object : LinkedHashMap<String, DedupVerdict>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, DedupVerdict>?): Boolean = size > 256
     }
 
     /**
-     * v2.6.2（记忆审计）: 去重/合并互斥锁。
+     * v2.6.2(auditoría de memoria): Eliminar duplicados/Fusionar bloqueos mutex.
      *
-     * `dedupPass` / `mergeSameEntityDuplicates` / `dedupPassAllScopes` 都是
-     * “读候选 → 两两比较 → 分步写”的多步操作，并发调用（每日整理 + UI 手动整理 +
-     * 写入合并）会互相干扰：同一对事实被两个协程判为重复，分别删除/覆盖，
-     * 导致重复事实、FTS 残留或错误删除。本锁串行化同一 store 内的合并操作。
+     * `dedupPass` / `mergeSameEntityDuplicates` / `dedupPassAllScopes` Todos
+     * “leer candidato → Comparación por pares → Escribe paso a paso”Operaciones de varios pasos, llamadas simultáneas (clasificación diaria + clasificación manual de UI) +
+     * Write merge) interferirán entre sí: dos corrutinas consideran que el mismo par de hechos está duplicado y se eliminan por separado./cubrir,
+     * lo que lleva a la duplicación de hechos,FTS Restantes o eliminados por error. Este bloqueo serializa las operaciones de fusión dentro de la misma tienda.
      */
     private val dedupMutex = kotlinx.coroutines.sync.Mutex()
 
     private fun dedupCacheKey(entityKey: String, cleaned: String): String = "$entityKey|$cleaned"
 
-    /** v12: PII 占位符形态 — scrub 硬脱敏输出 [REDACTED];mask 可逆占位符 [NAME_1] 等;兼容旧 {{name_0}}。
-     * IGNORE_CASE: normalizeDedupText 已 lowercase,大写占位符需不敏感匹配。 */
+    /** v12: PII formulario de marcador de posición — scrub Salida de desensibilización dura [REDACTED];mask Marcador de posición reversible [NAME_1] espera;Compatible con el viejo {{name_0}}.
+     * IGNORE_CASE: normalizeDedupText Ya lowercase,Los marcadores de posición en mayúsculas requieren una coincidencia insensible. */
     private val piiPlaceholderRe =
         Regex(
             "\\[REDACTED\\]|\\[(?:API_KEY|INLINE_SECRET|PRIVATE_KEY|ID_CARD|CREDIT_CARD|SSN|EMAIL|PHONE|IPV4|ADDRESS|NAME|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}",
             RegexOption.IGNORE_CASE,
         )
 
-    /** v12: 人名专属占位符(mask 可逆 [NAME_N] / 旧 {{name_N}}) — 仅此形态可作为实体键。 */
+    /** v12: Marcador de posición específico del nombre(mask reversibles [NAME_N] / viejo {{name_N}}) — Sólo este formulario se puede utilizar como clave de entidad. */
     private val namePlaceholderRe = Regex("\\[(?:NAME|ENGLISH_NAME)_\\d+\\]|\\{\\{name_\\d+\\}\\}", RegexOption.IGNORE_CASE)
 
-    /** v12: 大写开头英文人名候选。 */
+    /** v12: Candidatos para nombres ingleses que empiezan con mayúsculas. */
     private val enNameRe = Regex("\\b[A-Z][a-z]{1,12}\\s+[A-Z][a-z]{1,12}\\b")
 
     /**
-     * v5: 合并两条相似事实,保留最高重要度、最高置信度与最新 created_at;
-     *     分类优先采用新事实,来源以 user_explicit 优先。
+     * v5: Fusionar dos hechos similares,Mantenga la mayor importancia, la mayor confianza y lo último created_at;
+     *     La clasificación prioriza hechos nuevos.,La fuente tiene prioridad con user_explicit.
      *
-     * v9: 合并时若两条事实仅差主语,保留更短、不带主语的原始表述。
+     * v9: Al fusionar dos hechos, la única diferencia es el tema.,Mantenga la declaración original más corta sin asunto.
      */
     private fun mergeFact(existing: FactEntity, new: Fact): FactEntity {
         val mergedImportance = maxOf(existing.importance, if (new.importance > 0) new.importance else inferImportanceScore(new.fact))
@@ -391,9 +391,9 @@ class FactStore(
         val mergedSource = if (existing.source == "user_explicit" || new.source == "user_explicit") "user_explicit" else new.source
         val mergedExpiresAt = new.expiresAt ?: existing.expiresAt
         val mergedLastConfirmedAt = new.lastConfirmedAt ?: existing.lastConfirmedAt
-        // v7: 合并视为一次命中,重置衰减时钟
+        // v7: Combinado como un solo golpe,restablecer el reloj de decadencia
         val mergedLastHitAt = Instant.now().toString()
-        // v12: 合并保留非空实体键(新事实显式携带时优先)
+        // v12: La fusión conserva claves de entidad no nulas(Los hechos nuevos tienen prioridad cuando se llevan explícitamente)
         val mergedEntityKey = new.entityKey ?: existing.entityKey
         return existing.copy(
             fact = pickMergedWording(existing.fact, new.fact),
@@ -413,38 +413,38 @@ class FactStore(
     }
 
     /**
-     * v9: 合并两条相似事实的文本。
-     * 若语义相同(去主语后相等),保留更短、更原始的表述;
-     * 否则保留信息更完整(更长)的版本。
+     * v9: Fusionar dos textos con hechos similares.
+     * Si la semántica es la misma(Igualdad después de eliminar el tema.),Mantenga expresiones más cortas y originales.;
+     * En caso contrario, conserva la información de forma más completa.(más largo)versión.
      *
-     * v12: PII 占位符感知 — 脱敏版(如 [REDACTED]喜欢摄影)虽更长但信息密度低,
-     * 优先保留无占位符的用户原文版本,避免合并后越并越"脱敏"。
+     * v12: PII conciencia de marcador de posición — Versión insensibilizada(Como por ejemplo [REDACTED]Me gusta la fotografía)Aunque más largo, la densidad de información es baja.,
+     * Dar prioridad a conservar la versión original del usuario sin marcadores de posición,Evite fusionar y fusionar"Desensibilización".
      */
     private fun pickMergedWording(existing: String, new: String): String {
         val normExisting = normalizeDedupText(existing)
         val normNew = normalizeDedupText(new)
         if (normExisting == normNew) {
-            // 仅差主语时保留更短的原始表述
+            // Mantenga la expresión original más corta cuando solo el sujeto sea diferente
             return if (new.length < existing.length) new else existing
         }
         val existingClean = !piiPlaceholderRe.containsMatchIn(normExisting)
         val newClean = !piiPlaceholderRe.containsMatchIn(normNew)
         return when {
-            existingClean && !newClean -> existing // 旧版无占位符,保留旧版
-            !existingClean && newClean -> new // 新版无占位符,保留新版
-            else -> if (new.length > existing.length) new else existing // 同态,保留更长
+            existingClean && !newClean -> existing // Versión antigua sin marcador de posición,mantener la versión anterior
+            !existingClean && newClean -> new // Nueva versión sin marcadores de posición,Mantener nueva versión
+            else -> if (new.length > existing.length) new else existing // homomorfismo,mantener más tiempo
         }
     }
 
     /**
-     * v12: 同实体判定 — 比 [isSimilar] 更宽松,专用于同 entity_key 下的查重。
+     * v12: Juicio de la misma entidad — que [isSimilar] más flojo,Dedicado a la verificación de duplicaciones bajo la misma clave de entidad.
      *
-     * 背景: PiiGuard 会把"张先生"脱敏成 {{name_0}},导致同实体的两条事实
-     * (一条原文、一条占位符)的字符相似度被破坏,常规 [isSimilar] 判不相等。
-     * 这里剥离占位符后做子串判定: 短文本是长文本子串即视为同实体同事实。
+     * fondo: PiiGuard voluntad"Sr. Zhang"desensibilización {{name_0}},Dos hechos que conducen a la misma entidad
+     * (Un texto original, un marcador de posición)La similitud de personajes se destruye.,regular [isSimilar] No igual.
+     * Aquí se elimina el marcador de posición y se determina la subcadena.: El texto corto es una subcadena de texto largo que se considera la misma entidad y hecho.
      *
-     * 安全性: 只用于同 entityKey 通道(已限定同实体),不会跨实体误合并;
-     * 子串含置最少 4 字,避免"喜欢"级别的过短子串误判。
+     * seguridad: Solo se utiliza para el mismo canal de clave de entidad(Limitado a la misma entidad),Sin fusiones erróneas entre entidades;
+     * La subcadena contiene al menos 4 caracteres.,evitar"me gusta"Juicio erróneo de subcadenas que son demasiado cortas para el nivel.
      */
     internal fun isSameEntityFact(a: String, b: String): Boolean {
         if (isSimilar(a, b)) return true
@@ -456,18 +456,18 @@ class FactStore(
         return long.contains(short)
     }
 
-    /** v12: 剥离 PII 占位符并归一化(用于同实体文本对比)。 */
+    /** v12: Quitar marcadores de posición de PII y normalizar(Se utiliza para comparar con texto de la misma entidad.). */
     private fun stripNamePlaceholders(text: String): String {
         val normalized = normalizeDedupText(text)
         return normalized.replace(piiPlaceholderRe, " ").replace(WHITESPACE_RE, " ").trim()
     }
 
     /**
-     * v12 (T3-1): 反思任务 — 合并同实体键下的重复事实(存量整理)。
-     * 对已入库的历史数据做一次全量扫描: 同 entity_key + 占位符感知判定的重复
-     * 合并为一条(保留重要度/置信度更高、文本更完整的一方),置顶事实不参与。
+     * v12 (T3-1): tareas de reflexión — Fusionar hechos duplicados bajo la misma clave de entidad(clasificación de existencias).
+     * Realizar un escaneo completo de los datos históricos que se han almacenado en la base de datos.: Igual que entidad_clave + duplicación del juicio de conocimiento del marcador de posición
+     * fusionarse en uno(mantener la importancia/El partido con mayor confianza y texto más completo),Los hechos fijados no están involucrados.
      *
-     * @return 合并掉的条数
+     * @return Número de elementos fusionados
      */
     suspend fun mergeSameEntityDuplicates(scope: String = "main", spaceId: String = "default"): Int = withContext(Dispatchers.IO) {
         val all = dao.getByScopeAndSpace(scope, spaceId).toMutableList()
@@ -479,7 +479,7 @@ class FactStore(
             var j = i + 1
             while (j < all.size) {
                 val other = all[j]
-                // 同实体键 + 占位符感知判定 + 置顶保护
+                // Misma clave de entidad + juicio de percepción de marcador de posición + protección superior
                 if (other.pinnedAt == null && current.pinnedAt == null &&
                     other.entityKey != null && current.entityKey != null &&
                     other.entityKey == current.entityKey &&
@@ -501,17 +501,17 @@ class FactStore(
             i++
         }
         if (merged > 0) {
-            Logger.i("FactStore", "反思合并: $merged 条重复事实(scope=$scope, space=$spaceId)")
+            Logger.i("FactStore", "Reflexión sobre la fusión: $merged hechos repetidos(scope=$scope, space=$spaceId)")
         }
         merged
     }
 
     /**
-     * v12 (T3-1): 反思任务 — 回填历史数据的实体键。
-     * 早期数据 entity_key 为 null(迁移后遗留),按人名规则回填;
-     * 回填后同一实体的不同写法在下一次反思时即可被 [mergeSameEntityDuplicates] 合并。
+     * v12 (T3-1): tareas de reflexión — Claves de entidad para rellenar datos históricos.
+     * Los primeros datos de la entidad_clave son null(legado después de la migración),Rellenar según las reglas de nombres;
+     * Después del relleno, se pueden usar diferentes métodos de escritura para la misma entidad durante la siguiente reflexión. [mergeSameEntityDuplicates] unir.
      *
-     * @return 回填条数
+     * @return Número de artículos de reposición
      */
     suspend fun backfillEntityKeys(scope: String = "main", spaceId: String = "default"): Int = withContext(Dispatchers.IO) {
         val missing = dao.getByScopeAndSpace(scope, spaceId).filter { it.entityKey.isNullOrBlank() }
@@ -522,20 +522,20 @@ class FactStore(
             if (dao.updateEntityKey(f.id, key) > 0) updated++
         }
         if (updated > 0) {
-            Logger.i("FactStore", "反思回填实体键: $updated 条(scope=$scope, space=$spaceId)")
+            Logger.i("FactStore", "Claves de entidad de relleno de reflexión: $updated Artículo(scope=$scope, space=$spaceId)")
         }
         updated
     }
 
     /**
-     * v12 (T3-2): 反思任务 — 矛盾检测(确定性规则版)。
-     * 同实体键下,若两条事实的断言极性相反(喜欢/讨厌、会/不会、早睡/熬夜等关键词对),
-     * 返回矛盾对供上层标记“待确认”(不自动删除)。
+     * v12 (T3-2): tareas de reflexión — Detección de contradicciones(versión de regla determinista).
+     * Bajo la misma clave de entidad,Si las afirmaciones de dos hechos son de polaridad opuesta(me gusta/odio, voluntad/No, vete a dormir temprano/Quedarse despierto hasta tarde y otros pares de palabras clave),
+     * Devolver pares en conflicto para marcar la capa superior“Por confirmar”(No eliminar automáticamente).
      *
-     * v18: 写入时已被 supersedes 仲裁过的一对不再上报 —— 旧记忆已退出上下文,
-     * 再列进“待确认”只会让用户对已处理完的冲突重新做一遍决定。
+     * v18: Un par que ha sido arbitrado por reemplaza al momento de escribir este artículo ya no se informa. —— La vieja memoria ha salido del contexto.,
+     * re-listado“Por confirmar”Sólo permitirá al usuario tomar una nueva decisión sobre el conflicto que ha sido resuelto.
      *
-     * @return 矛盾事实对列表(每对按 id 升序)
+     * @return lista de pares de hechos contradictorios(Cada par está ordenado de forma ascendente por id.)
      */
     suspend fun detectContradictions(scope: String = "main", spaceId: String = "default"): List<Pair<Fact, Fact>> =
         withContext(Dispatchers.IO) {
@@ -560,18 +560,18 @@ class FactStore(
         }
 
     /**
-     * v12 (T3-2): 关键词级矛盾判定 — 同一实体下相反断言视为矛盾。
-     * 高置信极性词对(喜欢↔讨厌/讨厌↔喜欢、会↔不会、是↔不是、早起↔熬夜等)。
+     * v12 (T3-2): Determinación de conflictos a nivel de palabras clave — Se consideran contradictorias las afirmaciones opuestas sobre una misma entidad.
+     * Pares de palabras polares de alta confianza(me gusta↔odio/odio↔como, voluntad↔No, si↔No, levántate temprano↔Quédate despierto hasta tarde y espera).
      */
     private fun isContradictory(a: String, b: String): Boolean {
         fun polarity(text: String): Int {
             var score = 0
-            if (text.contains("喜欢") || text.contains("爱吃") || text.contains("爱喝")) score += 1
-            if (text.contains("讨厌") || text.contains("不喜欢") || text.contains("害怕") || text.contains("抗拒")) score -= 1
-            if (text.contains("会") && !text.contains("不会")) score += 1
-            if (text.contains("不会")) score -= 1
-            if (text.contains("早起") || text.contains("早睡")) score += 1
-            if (text.contains("熬夜") || text.contains("晚睡")) score -= 1
+            if (text.contains("me gusta") || text.contains("Me encanta comer") || text.contains("me encanta beber")) score += 1
+            if (text.contains("odio") || text.contains("no me gusta") || text.contains("miedo") || text.contains("Resistir")) score -= 1
+            if (text.contains("voluntad") && !text.contains("No")) score += 1
+            if (text.contains("No")) score -= 1
+            if (text.contains("levantarse temprano") || text.contains("Vete a la cama temprano")) score += 1
+            if (text.contains("quedarse despierto hasta tarde") || text.contains("dormir hasta tarde")) score -= 1
             return score
         }
         val pa = polarity(a)
@@ -580,25 +580,25 @@ class FactStore(
     }
 
     /**
-     * v18: 写入时判定“本条新记忆取代了哪条旧记忆”。
+     * v18: Determinar al escribir“¿Qué viejo recuerdo reemplaza este nuevo recuerdo?”.
      *
-     * 只有证据充分时才返回旧记忆 id(由调用方写进 supersedes_id,该行随后退出编译上下文);
-     * 拿不准一律返回 null —— 两条都留在库里、都进上下文,让模型看到冲突,
-     * 比错误地剔除一条正确记忆安全。
+     * Volver a viejos recuerdos sólo cuando la evidencia sea suficiente. id(escrito por la persona que llama supersedes_id,Esta línea luego sale del contexto de compilación.);
+     * Si no estás seguro, regresa siempre. null —— Ambos permanecen en la biblioteca y entran en el contexto.,Deja que el modelo vea el conflicto.,
+     * Más seguro que eliminar por error un recuerdo correcto.
      *
-     * 同时满足全部条件才判为“取代”:
-     *  - 同一个 entityKey(同实体;无键不做判定);
-     *  - 新记忆是用户明确陈述(source=user_explicit) —— 推断/导入的陈述不足以推翻已有事实;
-     *  - 断言极性相反([isContradictory] 的关键词级判定);
-     *  - 与它矛盾的**在场**旧记忆只有一条(多条说明旧状态本身有歧义,交给人判断);
-     *  - 旧记忆未手动置顶(置顶语义为“用户要求永远记得”);
-     *  - 旧记忆不是关键事实(importance=2)而新记忆低于关键 —— 健康/安全问题不让普通陈述推翻。
+     * Sólo cuando se cumplan todas las condiciones al mismo tiempo se considerará como“reemplazar”:
+     *  - el mismo entityKey(Misma entidad;No se emite ningún juicio si no hay una clave.);
+     *  - Los nuevos recuerdos son declaraciones explícitas del usuario.(source=user_explicit) —— inferencia/La declaración importada no es suficiente para revertir los hechos existentes.;
+     *  - afirmar la polaridad opuesta([isContradictory] Determinación del nivel de palabras clave);
+     *  - contradictorio con ello**presente**Sólo hay un viejo recuerdo(Múltiples explicaciones indican que el antiguo estatus en sí es ambiguo.,Deja que la gente juzgue);
+     *  - Los viejos recuerdos no se fijaron manualmente en la parte superior(La semántica de permanecer en la cima es“Recuerde siempre los requisitos del usuario”);
+     *  - Los viejos recuerdos no son hechos clave(importance=2)mientras la nueva memoria está debajo de la clave —— salud/Las cuestiones de seguridad no quedan anuladas por las declaraciones ordinarias.
      *
-     * “在场”= 还没被别的记忆取代。已让位的旧行不再参与判定,否则用户“先喜欢、
-     * 又讨厌、再喜欢”这类反复会卡死:中间那条排斥了第一条,而最后一条又只能
-     * 跟第一条竞争,结果两条互斥断言一直留在上下文里。
+     * “presente”= No ha sido reemplazado por otros recuerdos. Las viejas disputas que han cedido ya no participarán en la determinación,De lo contrario el usuario“Como primero,
+     * Lo odio, me gusta de nuevo”Este tipo de repetición hará que el sistema se atasque.:El del medio excluye al primero.,Y el último sólo puede ser
+     * Compite con el primero.,Como resultado, dos afirmaciones mutuamente excluyentes permanecen en contexto.
      *
-     * @return 应被本条取代的旧记忆;不满足条件时返回 null(两条都留在上下文)
+     * @return Viejos recuerdos que deberían ser reemplazados por este artículo.;Devolución cuando no se cumplan las condiciones null(Ambos quedan en contexto.)
      */
     private suspend fun findSupersededFact(
         newFact: String,
@@ -618,11 +618,11 @@ class FactStore(
     }
 
     /**
-     * v12 (T3-3): 反思任务 — 记忆晋升路径。
-     * 同一实体的多条事实(重复确认 ≥ [minConfirmations] 条)说明该实体/主题被反复提及,
-     * 重要性提升一级(0→1,1→2),晋升后参与衰减的门槛更高。
+     * v12 (T3-3): tareas de reflexión — Memorice las rutas de promoción.
+     * Múltiples hechos sobre la misma entidad(Repetir confirmación ≥ [minConfirmations] Artículo)Describe la entidad/El tema se menciona repetidamente.,
+     * Mayor importancia un nivel(0→1,1→2),El umbral de caída de la participación después del ascenso es más alto.
      *
-     * @return 晋升条数
+     * @return Número de promociones
      */
     suspend fun promoteRepeatedFacts(scope: String = "main", spaceId: String = "default", minConfirmations: Int = 2): Int =
         withContext(Dispatchers.IO) {
@@ -640,31 +640,31 @@ class FactStore(
                 }
             }
             if (promoted > 0) {
-                Logger.i("FactStore", "反思晋升: $promoted 条事实提升重要度(scope=$scope, space=$spaceId)")
+                Logger.i("FactStore", "Reflexionar sobre la promoción.: $promoted Los hechos aumentan la importancia(scope=$scope, space=$spaceId)")
             }
             promoted
         }
 
-    /** D6 第 2 期: 同实体多断言分组 —— “合并建议”的确定性候选,不代表应合并。 */
+    /** D6 Número 2: Agrupar múltiples afirmaciones de la misma entidad —— “Combinar sugerencias”Candidato definitivo a,Esto no significa que deban fusionarse. */
     data class SameEntityAssertions(
-        /** 实体归一化键。 */
+        /** Clave de normalización de la entidad. */
         val entityKey: String,
-        /** 该实体下去重后的断言(每条一个 [Fact])。 */
+        /** La afirmación después de la deduplicación de esta entidad.(Uno para cada [Fact]). */
         val assertions: List<Fact>,
     )
 
     /**
-     * D6 第 2 期: 检测“同实体多断言”实体,为“合并建议”提供确定性候选。
+     * D6 Número 2: Detección“Múltiples afirmaciones para la misma entidad”entidad,para“Combinar sugerencias”Proporcionar candidatos deterministas.
      *
-     * 设计(只检测,不改数据、不自动合并):
-     *  - 仅统计 entity_key 非空且未置顶的实体(中文名无键的存量不误判,沿用“宁漏不错”);
-     *  - 同实体的重复断言用 [isSameEntityFact] 去重后再计数;
-     *  - 断言数 ≥ [minAssertions] 的实体视为“多断言实体”,可提示用户或供后续 LLM 版整合为实体画像。
+     * diseño(solo detectar,Sin cambios de datos, sin fusión automática):
+     *  - Solo cuente entidades cuya clave_entidad no esté vacía y no esté fijada en la parte superior(No hay ningún error en el inventario sin nombre chino.,heredar“Ning Le es bueno”);
+     *  - Se utilizan afirmaciones repetidas de la misma entidad. [isSameEntityFact] Contar después de la deduplicación;
+     *  - número de afirmaciones ≥ [minAssertions] entidad es considerada como“Múltiples entidades de afirmación”,Puede avisar al usuario o integrarlo en un retrato físico en la siguiente versión de LLM.
      *
-     * 定位: 与 [mergeSameEntityDuplicates](重叠断言)互补 —— 本方法处理
-     * “同一实体多条不同断言”,为后续合并建议提供候选,当前不产生任何写操作。
+     * Posicionamiento: con [mergeSameEntityDuplicates](afirmaciones superpuestas)complementario —— Este método maneja
+     * “Múltiples afirmaciones diferentes para la misma entidad”,Proporcionar candidatos para futuras propuestas de fusión.,Actualmente no se están realizando operaciones de escritura.
      *
-     * @return 按断言数降序的多断言分组;无匹配返回空列表
+     * @return Agrupación de aserciones múltiples en orden descendente del número de aserción;Ninguna coincidencia devuelve una lista vacía
      */
     suspend fun findSameEntityMultiAssertionGroups(
         scope: String = "main",
@@ -691,8 +691,8 @@ class FactStore(
     }
 
     /**
-     * v13 (T4-1): 记录修订 — 仅对关键记忆(importance ≥ 1 或实体键非空)写入,防止表膨胀。
-     * revisionDao 为 null 或写入失败时静默降级,不影响主流程。
+     * v13 (T4-1): Revisión de registros — Sólo para recuerdos clave(importance ≥ 1 O la clave de entidad no está vacía)escribir,Evite la expansión de la mesa.
+     * revisionDao Se degrada silenciosamente cuando falla nulo o escritura,No afecta el proceso principal.
      */
     private suspend fun recordRevisionIfKey(factId: Long, oldContent: String, newContent: String, reason: String) {
         val dao2 = revisionDao ?: return
@@ -710,35 +710,35 @@ class FactStore(
                 ),
             )
         }.onError { msg, t ->
-            Logger.w("FactStore", "记录修订失败(fact=$factId): $msg", t)
+            Logger.w("FactStore", "Error en la revisión de la grabación(fact=$factId): $msg", t)
         }
     }
 
     /**
-     * v13 (T4-1): 按事实 id 查询修订历史(新→旧)。
+     * v13 (T4-1): Historial de revisión de consultas por ID de hecho(nuevo→viejo).
      *
-     * @return 修订记录列表(可为空)
+     * @return Lista de registros de revisión(Puede ser nulo)
      */
     suspend fun getRevisions(factId: Long, limit: Int = 20): List<FactRevisionEntity> = withContext(Dispatchers.IO) {
         revisionDao?.getByFactId(factId, limit) ?: emptyList()
     }
 
     /**
-     * v13 (T4-1): 回滚到指定修订 — 把事实内容恢复为某次修订的旧值。
-     * 用于用户确认"合并错了/更新错了"后的恢复。
+     * v13 (T4-1): Retroceder a la revisión especificada — Restaura el contenido del hecho al valor anterior de una revisión.
+     * para confirmación del usuario"Fusión incorrecta/Actualización incorrecta"recuperación posterior.
      *
-     * @return 是否回滚成功
+     * @return Si la reversión fue exitosa
      */
     suspend fun revertToRevision(factId: Long, revisionId: Long): Boolean = withContext(Dispatchers.IO) {
         val dao2 = revisionDao ?: return@withContext false
         val revision = dao2.getByFactId(factId, limit = 50).firstOrNull { it.id == revisionId } ?: return@withContext false
         val current = dao.getById(factId) ?: return@withContext false
-        // 回滚本身也是一次变更,记录当前值
+        // La reversión en sí misma también es un cambio.,registrar el valor actual
         recordRevisionIfKey(factId, current.fact, revision.oldContent, "revert")
         val ok = dao.updateContent(factId, revision.oldContent, null) > 0
         if (ok) {
             syncFtsRow(factId, FactFtsManager.toNgram(revision.oldContent))
-            // Phase 3 (P1): 回滚同样改变事实文本,立即对账避免注入旧表述
+            // Phase 3 (P1): La reversión también cambia el texto del hecho.,Conciliar inmediatamente para evitar inyectar viejas representaciones.
             scheduleReconcile(
                 listOf(Fact(id = factId, fact = revision.oldContent, scope = current.scope, spaceId = current.spaceId)),
                 current.scope,
@@ -749,22 +749,22 @@ class FactStore(
     }
 
     /**
-     * v9: 查找数据库中与新事实语义相似的已有事实。
-     * 先用原始前缀匹配,再用去主语后的前缀匹配,最后用子串搜索兜底,
-     * 确保"对青霉素过敏"和"用户对青霉素过敏"能被识别为同一条。
+     * v9: Encuentre hechos existentes en la base de datos que sean semánticamente similares al hecho nuevo.
+     * Coincidir primero con el prefijo original,Luego use la coincidencia de prefijo después de eliminar el asunto.,Finalmente, use la subcadena para buscar el resultado final.,
+     * asegurar"alérgico a la penicilina"y"El usuario es alérgico a la penicilina."puede identificarse como el mismo artículo.
      *
-     * v9 改进: 新增 spaceId 过滤,仅在相同 scope + space_id 内查找相似事实,
-     * 避免跨空间误合并(如"工作"空间的"喜欢美式咖啡"不应与"生活"空间的"喜欢美式咖啡"合并)。
+     * v9 mejorar: Filtro spaceId agregado,Encuentre hechos similares solo dentro del mismo alcance + space_id,
+     * Evite la fusión errónea entre espacios(Como por ejemplo"trabajo"espacial"como el cafe americano"no debe usarse con"vida"espacial"como el cafe americano"fusionar).
      *
-     * v12 改进: 新增 entityKey 参数,优先按实体归一化键精确查找。
-     * 同一实体的不同写法(如“张三”/“张先生”/“张三老师”)共享同一 entity_key,
-     * 命中即视为重复,直接解决“同一用户名 3 条重复记忆”问题。
+     * v12 mejorar: Parámetro de entidad clave agregado,Priorice la búsqueda precisa por clave de normalización de entidades.
+     * Diferentes formas de escribir la misma entidad(Como por ejemplo“Zhang San”/“Sr. Zhang”/“Maestro Zhang San”)compartir lo mismo entity_key,
+     * Un acierto se considera un duplicado.,resolver directamente“3 memorias duplicadas para el mismo nombre de usuario”pregunta.
      *
-     * v19: **隐藏行不得作为写入目标** —— 已加入合并的行([FactEntity.mergedIntoId] 非空)
-     * 既不进自动召回、也不进编译产出的 FACTS 段,不能当去重目标: 写进去的内容
-     * 用户既看不到、也召不回来,等于数据静默丢失。
-     * 已出场([FactEntity.suppressedAt] 非空)、已被取代的行写进去至少还能在记忆页看到,
-     * 暂不在此列;但将来若再引入“彻底隐藏”的机制,所有匹配通道必须一起补上对应谓词。
+     * v19: **Las filas ocultas no deben ser objetivos escritos** —— Se agregaron filas fusionadas([FactEntity.mergedIntoId] No vacío)
+     * No se procesan ni la recuperación automática ni las secciones de FACTS compiladas.,No se puede utilizar como objetivo para la deduplicación: lo que esta escrito
+     * Los usuarios no pueden ver ni recordar,Equivale a una pérdida silenciosa de datos.
+     * Apareció([FactEntity.suppressedAt] No vacío), las líneas reemplazadas al menos se pueden ver en la página de memoria.,
+     * Aún no en esta lista;Pero si se vuelve a introducir en el futuro“completamente oculto”mecanismo,Todos los canales coincidentes deben llenarse juntos con los predicados correspondientes.
      */
     private suspend fun findSimilarFact(
         cleaned: String,
@@ -773,18 +773,18 @@ class FactStore(
         entityKey: String? = null,
         excludeId: Long? = null,
     ): FactEntity? {
-        // 0) v12: 实体键精确查重 — 同 entity_key + 同 scope/space 即视为同一实体,
-        //    用占位符感知的 [isSameEntityFact] 判定文本是否实质同一。
-        //    excludeId: 更新路径排除自身,避免 update 后先匹配到自己。
+        // 0) v12: Comprobación precisa de duplicados de claves físicas — La misma clave_entidad + el mismo alcance/espacio se consideran la misma entidad,
+        //    consciente del marcador de posición [isSameEntityFact] Determinar si los textos son sustancialmente iguales.
+        //    excludeId: La ruta de actualización se excluye a sí misma,Evite coincidir usted mismo primero después de la actualización.
         if (!entityKey.isNullOrBlank()) {
-            // v19: 已被合并进其他事实的行不再当去重目标 —— 它已退出上下文,
-            // 把新内容并进去等于写入一条看不见的记忆。
+            // v19: Las filas que se han fusionado con otros hechos ya no son objetivos de deduplicación. —— ha salido del contexto,
+            // Incorporar nuevos contenidos equivale a escribir una memoria invisible.
             val sameKey = dao.findByEntityKey(entityKey, scope, spaceId).filter { it.mergedIntoId == null }
             val hit = sameKey.firstOrNull { it.id != excludeId && isSameEntityFact(it.fact, cleaned) }
             if (hit != null) return hit
-            // v12: 算法层 miss — 同实体键下有候选但文本判定不相似(如语义等价但
-            //    表述差异大、或 PII 脱敏后写法不同),交给 LLM 判断。只对 top 候选
-            //    问一次并缓存结果,控制 token 消耗;低置信/失败宁可不合并。
+            // v12: capa de algoritmo miss — Hay candidatos bajo la misma clave de entidad pero el juicio del texto no es similar.(Como semánticamente equivalente pero
+            //    Las expresiones son muy diferentes o la PII se escribe de diferentes maneras después de la desensibilización.),Deje que LLM juzgue. Sólo para los mejores candidatos
+            //    Preguntar una vez y almacenar en caché los resultados.,Controlar el consumo de tokens;baja confianza/El fracaso preferiría no fusionarse.
             if (dedupJudge !== NoopFactDedupJudge && sameKey.isNotEmpty()) {
                 val cacheKey = dedupCacheKey(entityKey, cleaned)
                 val cached = synchronized(dedupVerdictCache) { dedupVerdictCache[cacheKey] }
@@ -796,26 +796,26 @@ class FactStore(
                 if (verdict.highConfidenceSame) {
                     io.zer0.common.Logger.d(
                         "FactStore",
-                        "LLM 判定同实体同事实: [${sameKey[0].fact.take(30)}] ≈ [${cleaned.take(30)}] (${verdict.confidence})",
+                        "LLM Determinar la misma entidad y hecho.: [${sameKey[0].fact.take(30)}] ≈ [${cleaned.take(30)}] (${verdict.confidence})",
                     )
                     return sameKey[0]
                 }
             }
         }
 
-        // 1) 原始前缀匹配(保持 v5 行为)+ space_id 过滤
+        // 1) Coincidencia de prefijos sin formato(Mantener el comportamiento v5)+ space_id filtrar
         dao.findSimilarBySpace(cleaned.take(40), scope, spaceId)
             .firstOrNull { it.mergedIntoId == null && isSimilar(it.fact, cleaned) }?.let { return it }
 
-        // 2) 去主语后的前缀匹配
+        // 2) Coincidencia de prefijo después de la eliminación del sujeto
         val normalized = normalizeDedupText(cleaned)
         if (normalized != cleaned.lowercase() && normalized.isNotBlank()) {
             dao.findSimilarBySpace(normalized.take(40), scope, spaceId)
                 .firstOrNull { it.mergedIntoId == null && isSimilar(it.fact, cleaned) }?.let { return it }
         }
 
-        // 3) 兜底:子串搜索,限制数量避免全表扫描
-        // v9: 同时按 scope + space_id 过滤,避免跨作用域/跨空间误合并
+        // 3) Ten todo en cuenta:búsqueda de subcadenas,Limite el número para evitar el escaneo completo de la tabla
+        // v9: Filtrar por alcance + space_id al mismo tiempo,Evite cruzar ámbitos/Fusión errónea en el espacio cruzado
         dao.likeSearchBySpace(cleaned.take(40), 20, scope, spaceId)
             .firstOrNull { it.mergedIntoId == null && isSimilar(it.fact, cleaned) }?.let { return it }
 
@@ -823,18 +823,18 @@ class FactStore(
     }
 
     /**
-     * v1.x: 全量去重 — 扫描指定作用域内相似事实并两两合并,返回被合并掉的数量。
+     * v1.x: Quitar todo el peso — Escanee hechos similares dentro del alcance especificado y combínelos de dos en dos,Devuelve la cantidad combinada.
      *
-     * 处理存量重复(此前仅前缀匹配漏掉的近似重复,如"明天考四级" vs "明天上午9点考英语四级")。
-     * 合并规则:
-     *  - 置顶记忆(pinnedAt 非空)不参与合并(用户主动固定的)
-     *  - 保留重要度/置信度更高、文本更完整的一方
-     *  - 同 id REPLACE 更新 + 删除另一方
+     * Manejo de la duplicación de inventario(Coincidencia de solo prefijo casi duplicados omitidos anteriormente,Como por ejemplo"Mañana prueba CET-4" vs "mañana por la mañana9Prueba de inglés CET-4").
+     * fusionar reglas:
+     *  - Memoria de pines(pinnedAt No vacío)No involucrado en la fusión(Fijado por el usuario activamente.)
+     *  - mantener la importancia/El partido con mayor confianza y texto más completo
+     *  - Misma identificación REEMPLAZAR actualización + eliminar otra parte
      */
     suspend fun dedupPass(scope: String = "main", maxPairs: Int = 300, spaceId: String? = null): Int = dedupMutex.withLock {
         withContext(Dispatchers.IO) {
-            // v12: spaceId 非 null 时仅在该空间内去重,避免跨空间误合并;
-            // null 保持旧行为(按 scope 全量)兼容既有调用方。
+            // v12: spaceId Cuando no sea nulo, deduplica solo dentro de este espacio.,Evite la fusión errónea entre espacios;
+            // null mantener el viejo comportamiento(Importe total por alcance)Compatible con llamantes existentes.
             val all = if (spaceId != null) {
                 dao.getByScopeAndSpace(scope, spaceId).toMutableList()
             } else {
@@ -849,15 +849,15 @@ class FactStore(
                 while (j < all.size && merged < maxPairs) {
                     val other = all[j]
                     if (current.pinnedAt == null && other.pinnedAt == null && isSimilar(current.fact, other.fact)) {
-                        // 合并 other → current(保留重要度更高者为主,否则保留 current)
+                        // fusionar other → current(Mantenga los que tienen mayor importancia.,De lo contrario mantener current)
                         val keeper = if (other.importance > current.importance) other else current
                         val removed = if (keeper.id == current.id) other else current
                         val mergedEntity = mergeForDedup(keeper, removed)
-                        dao.insert(mergedEntity.copy(id = keeper.id)) // REPLACE:覆盖 keeper
+                        dao.insert(mergedEntity.copy(id = keeper.id)) // REPLACE:Portada keeper
                         dao.deleteById(removed.id)
-                        // v2.6.2（记忆审计）: 同步 FTS 索引 —— 旧实现只 insert+delete，
-                        // 被合并行的旧索引残留（facts_after_delete 触发器只清被删 id），
-                        // 导致搜索可能返回已合并掉的旧表述。与 mergeSameEntityDuplicates 对齐。
+                        // v2.6.2(auditoría de memoria): Sincronizar el índice FTS —— La implementación anterior solo insertaba+eliminaba,
+                        // Los restos del antiguo índice de las filas fusionadas (facts_after_delete El disparador solo borra la identificación eliminada),
+                        // Como resultado, las búsquedas pueden arrojar representaciones antiguas que se han fusionado. Alineado con mergeSameEntityDuplicates.
                         dao.deleteFts(removed.id)
                         syncFtsRow(keeper.id, FactFtsManager.toNgram(mergedEntity.fact))
                         all.removeAt(j)
@@ -874,8 +874,8 @@ class FactStore(
     }
 
     /**
-     * 在当前空间内按所有记忆作用域分别去重。
-     * 记忆中心默认展示全部 scope，整理入口也必须覆盖全部 scope，不能只处理 main。
+     * Deduplicar por separado todos los ámbitos de memoria en el espacio actual.
+     * El centro de memoria muestra todos los ámbitos de forma predeterminada, y la entrada de clasificación también debe cubrir todos los ámbitos y no puede tratar solo con el principal.
      */
     suspend fun dedupPassAllScopes(spaceId: String = "default", maxPairs: Int = 300): Int = withContext(Dispatchers.IO) {
         val scopes = dao.getAll(null)
@@ -891,7 +891,7 @@ class FactStore(
         merged
     }
 
-    /** v1.0.92: 库内实际存在的 scope+space 组合(供 LLM 整合器等遍历使用,不跨空间)。 */
+    /** v1.0.92: La combinación de alcance + espacio que realmente existe en la biblioteca.(Para uso transversal por parte de integradores LLM, etc.,No a través del espacio). */
     suspend fun listScopeSpacePairs(): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         dao.getAll(null)
             .asSequence()
@@ -900,7 +900,7 @@ class FactStore(
             .toList()
     }
 
-    /** 按数据库中实际存在的 space + scope 组合执行去重，绝不跨空间比较。 */
+    /** La deduplicación se realiza en función de la combinación espacio + alcance que realmente existe en la base de datos y nunca se realizan comparaciones entre espacios. */
     suspend fun dedupPassAllSpaces(maxPairs: Int = 300): Int = withContext(Dispatchers.IO) {
         val groups = dao.getAll(null)
             .asSequence()
@@ -912,7 +912,7 @@ class FactStore(
         }
     }
 
-    /** v1.x: 合并两条相似事实(用于全量去重),保留信息更完整的文本。 */
+    /** v1.x: Fusionar dos hechos similares(Utilizado para la eliminación completa de peso.),Texto que conserva información más completa. */
     private suspend fun mergeForDedup(base: FactEntity, other: FactEntity): FactEntity {
         val mergedTags = (decodeTags(base.tags) + decodeTags(other.tags)).distinct()
         return base.copy(
@@ -926,38 +926,38 @@ class FactStore(
             expiresAt = base.expiresAt ?: other.expiresAt,
             lastConfirmedAt = base.lastConfirmedAt ?: other.lastConfirmedAt,
             lastHitAt = Instant.now().toString(),
-            // v12: 合并保留非空实体键
+            // v12: La fusión conserva claves de entidad no nulas
             entityKey = base.entityKey ?: other.entityKey,
         )
     }
 
     /**
-     * v5: 新增一条元事实。自动去重 + 智能重要度。
-     * 发现相似已有事实时合并(保留最高重要度和最新更新时间)。
+     * v5: Añade un nuevo metadato. Deduplicación automática + importancia inteligente.
+     * Fusionar cuando se encuentren hechos existentes similares(Mantenga la máxima importancia y la última hora de actualización).
      *
-     * v8: 新增 scope 参数(默认 "main"),用于指定记忆作用域。
-     *  - "main":主助手作用域(默认),用户与主助手的对话事实
-     *  - assistantId:子助手/团队成员作用域
-     * scope 参数会覆盖 entry.scope,调用方无需在 Fact 上单独设置。
-     * 去重时仅在相同 scope 内查找相似事实,避免跨作用域误合并。
+     * v8: Parámetro de alcance agregado(Predeterminado "main"),Se utiliza para especificar el alcance de la memoria.
+     *  - "main":alcance de ayuda principal(Predeterminado),Datos sobre la conversación del usuario con el asistente principal.
+     *  - assistantId:sub-asistente/Alcance de los miembros del equipo
+     * scope Los parámetros se anularán entry.scope,La persona que llama no necesita configurar una configuración separada en Fact.
+     * Al deduplicar, solo busque hechos similares dentro del mismo alcance,Evite la combinación errónea entre alcances.
      *
-     * v9: 新增 spaceId 参数(默认 "default"),用于指定记忆空间。
-     *  - "default":默认空间(兼容旧调用方)
-     *  - 自定义 id:用户创建的工作/生活/学习等空间
-     * spaceId 与 scope 正交:一个 fact 既属于某 Agent scope,也属于某 Space。
-     * 去重时仅在相同 scope + space_id 内查找,避免跨空间误合并。
+     * v9: Parámetro spaceId agregado(Predeterminado "default"),Se utiliza para especificar el espacio de memoria.
+     *  - "default":Espacio predeterminado(Compatible con personas mayores)
+     *  - ID personalizado: trabajo creado por el usuario/vida/Estudio y otros espacios
+     * spaceId ortogonal al alcance:Un hecho pertenece a algo Agent scope,También pertenece a un Espacio.
+     * Al deduplicar, busque solo dentro del mismo alcance + space_id,Evite fusionar mal los espacios.
      */
     suspend fun add(entry: Fact, scope: String = "main", spaceId: String = "default"): Long = withContext(Dispatchers.IO) {
         val (cleaned, detected) = PiiGuard.scrub(entry.fact)
         if (detected.isNotEmpty()) {
             io.zer0.common.Logger.d("FactStore", "PII detected in fact: $detected")
         }
-        // v12: 实体键 — 提取阶段显式给出优先,否则按人名规则推断,再退化 null
+        // v12: Clave de entidad — La prioridad se da explícitamente durante la fase de extracción.,De lo contrario, se inferirá según las reglas de nombres.,Degenerar de nuevo null
         val entityKey = resolveEntityKey(entry.entityKey, cleaned)
         val newEntry = entry.copy(fact = cleaned, scope = scope, spaceId = spaceId, entityKey = entityKey)
         val existingSimilar = findSimilarFact(cleaned, scope, spaceId, entityKey)
         if (existingSimilar != null) {
-            // v13 (T4-1): 合并前记录修订(被合并方原文入 revisions,可追溯)
+            // v13 (T4-1): Registrar revisiones antes de fusionar(Texto original del partido fusionado revisions,rastreable)
             recordRevisionIfKey(
                 factId = existingSimilar.id,
                 oldContent = existingSimilar.fact,
@@ -965,8 +965,8 @@ class FactStore(
                 reason = "merge:add",
             )
             val merged = mergeFact(existingSimilar, newEntry)
-            // v2.6.2（记忆审计）: 合并写入包进事务 —— 旧实现 updateEntity + syncFtsRow
-            // 分两步，中途失败会留下“正文已改、FTS 未同步”的不一致状态。
+            // v2.6.2(auditoría de memoria): Fusionar paquete de escritura en transacción —— antigua implementación updateEntity + syncFtsRow
+            // Dos pasos, el fracaso en el medio te dejará.“El texto ha sido cambiado,FTS No sincronizado”estado inconsistente.
             db.withTransaction {
                 dao.updateEntity(
                     merged.id, merged.fact, merged.tags, merged.time, merged.sessionId,
@@ -978,11 +978,11 @@ class FactStore(
             }
             io.zer0.common.Logger.d(
                 "FactStore",
-                "合并相似事实(scope=$scope, space=$spaceId, entity=$entityKey): ${existingSimilar.fact.take(
+                "Fusionar hechos similares(scope=$scope, space=$spaceId, entity=$entityKey): ${existingSimilar.fact.take(
                     30,
                 )}… ↔ ${cleaned.take(30)}… → id=${existingSimilar.id}",
             )
-            // Phase 3 (P1): 合并后的最终文本立即对账,注入不再携带旧表述
+            // Phase 3 (P1): El texto final fusionado se concilia inmediatamente,Las inyecciones ya no llevan viejas representaciones.
             scheduleReconcile(
                 listOf(Fact(id = merged.id, fact = merged.fact, scope = scope, spaceId = spaceId)),
                 scope,
@@ -992,7 +992,7 @@ class FactStore(
         }
         val importance = if (newEntry.importance > 0) newEntry.importance else inferImportanceScore(cleaned)
         val now = Instant.now().toString()
-        // v18: 冲突仲裁 — 只在证据充分时记下被本条取代的旧记忆(旧行不删,仅退出编译上下文)
+        // v18: arbitraje de conflictos — Sólo se registrarán viejos recuerdos sustituidos por este artículo cuando existan pruebas suficientes.(No eliminar filas antiguas,Salir solo del contexto de compilación)
         val superseded = findSupersededFact(cleaned, newEntry.source, importance, entityKey, scope, spaceId)
         val entity = FactEntity(
             fact = cleaned,
@@ -1006,26 +1006,26 @@ class FactStore(
             source = newEntry.source.takeIf { it.isNotBlank() } ?: "inferred",
             expiresAt = newEntry.expiresAt,
             lastConfirmedAt = newEntry.lastConfirmedAt,
-            // v7: 新增事实视为一次命中,默认享受 hitBonus
+            // v7: Agregar un dato cuenta como un acierto,Disfruta por defecto hitBonus
             lastHitAt = newEntry.lastHitAt ?: now,
-            // v8: 记忆作用域,由调用方指定(默认 "main")
+            // v8: alcance de la memoria,Especificado por la persona que llama(Predeterminado "main")
             scope = scope,
-            // v9: 记忆空间,由调用方指定(默认 "default")
+            // v9: espacio de memoria,Especificado por la persona que llama(Predeterminado "default")
             spaceId = spaceId,
             pinnedAt = newEntry.pinnedAt,
-            // v12: 实体归一化键
+            // v12: Clave de normalización de entidad
             entityKey = entityKey,
-            // v18: 被本条取代的旧记忆
+            // v18: Viejos recuerdos reemplazados por este artículo.
             supersedesId = superseded?.id,
         )
-        // 审查修复 (B-22): 单条 add 的事务化 — facts 与 facts_fts 两表写入包进同一事务,
-        // 与 addBatch 对齐,避免 insertFts 失败时留下 facts 表有数据但 FTS 缺失的半完成状态。
+        // Revisión de corrección (B-22): Transaccionalización de un único anuncio — facts La escritura en las dos tablas de fact_fts está incluida en la misma transacción.,
+        // Alinear con addBatch,Evite que insertFts falle y deje un estado a medio completar donde la tabla de hechos tiene datos pero falta FTS.
         val insertedId = db.withTransaction {
             val id = dao.insert(entity)
             dao.insertFts(id, FactFtsManager.toNgram(cleaned))
             id
         }
-        // Phase 3 (P1): 新增后立即增量对账(FACTS 产物中同义行对齐为表内定稿文本)
+        // Phase 3 (P1): Conciliación incremental inmediatamente después de agregar(FACTS Las filas sinónimos del producto están alineadas con el texto final de la tabla.)
         scheduleReconcile(
             listOf(Fact(id = insertedId, fact = cleaned, scope = scope, spaceId = spaceId)),
             scope,
@@ -1035,21 +1035,21 @@ class FactStore(
     }
 
     /**
-     * v5: 批量新增。自动去重 + 智能重要度,原子事务保证一致性。
+     * v5: Agregue en lotes. Deduplicación automática + importancia inteligente,Las transacciones atómicas garantizan la coherencia.
      *
-     * v8: 新增 scope 参数(默认 "main"),批量写入时统一使用该作用域。
-     * 去重时仅在相同 scope 内查找,避免跨作用域误合并。
+     * v8: Parámetro de alcance agregado(Predeterminado "main"),Este alcance se usa de manera uniforme cuando se escribe en lotes.
+     * Al realizar la deduplicación, busque únicamente dentro del mismo alcance.,Evite la combinación errónea entre alcances.
      *
-     * v9: 新增 spaceId 参数(默认 "default"),批量写入时统一使用该空间。
-     * 去重时仅在相同 scope + space_id 内查找,避免跨空间误合并。
+     * v9: Parámetro spaceId agregado(Predeterminado "default"),Este espacio se utiliza de manera uniforme al escribir en lotes.
+     * Al deduplicar, busque solo dentro del mismo alcance + space_id,Evite fusionar mal los espacios.
      *
-     * v1.0.27 P0-1.3: 用 [FactDb.withTransaction] 包裹整个循环,确保 facts 与 facts_fts
-     * 两表的写入要么全部成功要么全部回滚,避免中途失败留下半完成状态。
+     * v1.0.27 P0-1.3: usar [FactDb.withTransaction] envolver todo el bucle,Asegúrese de que los hechos sean consistentes con facts_fts
+     * Las escrituras en ambas tablas deben realizarse correctamente o revertirse.,Evitar fallar a mitad de camino y dejarlo a medio terminar.
      */
     suspend fun addBatch(entries: List<Fact>, scope: String = "main", spaceId: String = "default"): Int = withContext(Dispatchers.IO) {
         if (entries.isEmpty()) return@withContext 0
         val now = Instant.now().toString()
-        // Phase 3 (P1): 收集本次写入后的最终事实,事务提交后统一触发一次增量对账(节流合并)
+        // Phase 3 (P1): Recopila los hechos finales después de este escrito.,Una vez enviada la transacción, se activa una conciliación incremental de manera uniforme(Fusión del acelerador)
         val touched = mutableListOf<Fact>()
         val inserted = db.withTransaction {
             var inserted = 0
@@ -1058,7 +1058,7 @@ class FactStore(
                 if (detected.isNotEmpty()) {
                     io.zer0.common.Logger.d("FactStore", "PII detected in batch fact: $detected")
                 }
-                // v12: 实体键 — 提取阶段显式给出优先,否则按人名规则推断
+                // v12: Clave de entidad — La prioridad se da explícitamente durante la fase de extracción.,De lo contrario, se inferirá según las reglas de nombres.
                 val entityKey = resolveEntityKey(entry.entityKey, cleaned)
                 val newEntry = entry.copy(fact = cleaned, scope = scope, spaceId = spaceId, entityKey = entityKey)
                 val existingSimilar = findSimilarFact(cleaned, scope, spaceId, entityKey)
@@ -1092,14 +1092,14 @@ class FactStore(
                             spaceId = spaceId,
                             pinnedAt = newEntry.pinnedAt,
                             entityKey = entityKey,
-                            // v18: 同 add 的保守冲突判定
+                            // v18: Determinación conservadora de conflictos con add.
                             supersedesId = findSupersededFact(
                                 cleaned, newEntry.source, importance, entityKey, scope, spaceId,
                             )?.id,
                         ),
                     )
                     dao.insertFts(insertedId, FactFtsManager.toNgram(cleaned))
-                    // 新插入的 id 不会有重复 FTS,直接 insertFts 即可(upsertFts 多一次 DELETE 无必要)
+                    // No habrá duplicación de identificadores recién insertados. FTS,Simplemente inserte Fts directamente(upsertFts Un BORRAR más es innecesario)
                     touched.add(Fact(id = insertedId, fact = cleaned, scope = scope, spaceId = spaceId))
                 }
                 inserted++
@@ -1111,21 +1111,21 @@ class FactStore(
     }
 
     /**
-     * v6: 全文搜索。优先 FTS4 MATCH(ngram 预处理),单字/异常时回退 LIKE。
-     * B-06: 结果同样过滤已过期事实(expires_at < now),与 getAll/getByScope 口径一致。
+     * v6: Búsqueda de texto completo. Prioridad FTS4 MATCH(ngram preprocesamiento),sola palabra/Recurra a LIKE cuando se produzca una excepción.
+     * B-06: Los resultados también filtran datos caducados(expires_at < now),Mismo calibre que getAll/getByScope.
      */
     suspend fun searchFullText(query: String, limit: Int = 20): List<Fact> =
         searchFullTextWithMode(query, limit, MatchMode.EXACT)
 
     /**
-     * 按指定匹配语义做全文搜索。
+     * Realice una búsqueda de texto completo basada en una semántica coincidente especificada.
      *
-     * [MatchMode.EXACT] 要求所有词命中([searchFullText] 的原有行为),
-     * [MatchMode.ANY] 任一命中即算候选 —— 用于精确检索结果不足时的召回兜底。
+     * [MatchMode.EXACT] Requerir todas las palabras para acertar([searchFullText] comportamiento original),
+     * [MatchMode.ANY] Cualquier acierto cuenta como candidato. —— Se utiliza para recuperar cuando los resultados de búsqueda precisos son insuficientes.
      *
-     * @param query 原始查询串,内部做 ngram/LIKE 预处理
-     * @param limit 返回条数上限
-     * @param mode 匹配语义
+     * @param query Cadena de consulta original,Hacer preprocesamiento interno de ngram/LIKE
+     * @param limit Devuelve el límite superior del número de artículos.
+     * @param mode Semántica de coincidencias
      */
     suspend fun searchFullTextWithMode(query: String, limit: Int = 20, mode: MatchMode = MatchMode.EXACT): List<Fact> =
         withContext(Dispatchers.IO) {
@@ -1135,9 +1135,9 @@ class FactStore(
         }
 
     /**
-     * 两段式全文搜索:先精确,不够再放宽,合并去重后取前 [limit] 条。
+     * Búsqueda de texto completo en dos etapas:Sea preciso primero,No es suficiente para relajarse,Fusionar y eliminar duplicados antes de tomar el primero [limit] artículo.
      *
-     * 两段式只影响召回,不改命中顺序里的优先级:精确命中的行始终排在前面。
+     * Las dos etapas solo afectan el recuerdo,No cambia la prioridad en el orden de acierto:Las filas con aciertos exactos siempre ocupan el primer lugar.
      */
     suspend fun searchFullTextTwoStage(query: String, limit: Int = 20): List<Fact> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
@@ -1153,11 +1153,11 @@ class FactStore(
         merged.also { reviveSuppressed(it) }
     }
 
-    /** 按 scope + space 搜索，供会话内 search_memory 使用。 */
+    /** Búsqueda por alcance + espacio, para uso de memoria_búsqueda durante la sesión. */
     suspend fun searchFullTextScoped(query: String, scope: String, spaceId: String, limit: Int = 20): List<Fact> =
         searchFullTextScopedWithMode(query = query, scope = scope, spaceId = spaceId, limit = limit, mode = MatchMode.EXACT)
 
-    /** 按 scope + space + 指定匹配语义搜索。 */
+    /** Búsqueda por alcance + espacio + semántica coincidente especificada. */
     suspend fun searchFullTextScopedWithMode(
         query: String,
         scope: String,
@@ -1173,10 +1173,10 @@ class FactStore(
     }
 
     /**
-     * 两段式 scoped 全文搜索:先精确,结果不足 [limit] 再按任一命中补一轮,合并去重。
+     * Búsqueda de texto completo con ámbito de dos etapas:Sea preciso primero,Resultados insuficientes [limit] Presiona cualquier golpe nuevamente para completar una ronda.,Fusionar y eliminar duplicados.
      *
-     * 事实通常散落在多行里,而 FTS4 的默认连接是 AND —— 一个句子里同时出现所有词才算命中。
-     * 精确优先保证“整句命中”排在前面;任一命中兜底保证散落的单条事实不会被整体漏掉。
+     * Los hechos a menudo se distribuyen en varias líneas.,La conexión predeterminada para FTS4 es AND —— Un acierto se produce cuando todas las palabras aparecen juntas en una frase.
+     * Garantía de prioridad precisa“Toda la frase golpea”en el frente;Cualquiera que llegue al fondo garantiza que los hechos individuales dispersos no pasarán desapercibidos en su conjunto.
      */
     suspend fun searchFullTextScopedTwoStage(
         query: String,
@@ -1197,15 +1197,15 @@ class FactStore(
         merged.also { reviveSuppressed(it) }
     }
 
-    /** 合并两段结果:保留第一段顺序,第二段只补第一段没有的 fact,总体不超过 [limit]。 */
+    /** Fusionar dos resultados:Mantén el orden del primer párrafo.,El segundo párrafo simplemente completa lo que el primer párrafo no tiene. fact,En total no más de [limit]. */
     private fun mergeDistinct(primary: List<Fact>, secondary: List<Fact>, limit: Int): List<Fact> {
         val seen = HashSet<Long>(primary.size + secondary.size)
         return (primary + secondary).filter { seen.add(it.id) }.take(limit)
     }
 
     /**
-     * 审查修复 (B-19): 按 space_id 过滤、scope 不限(全部作用域)的全文搜索。
-     * 记忆中心 scope=null 语义(全部)下仍按当前 [spaceId] 隔离,避免跨空间搜索泄漏。
+     * Revisión de corrección (B-19): Filtrar por space_id,scope Sin límite(Todos los alcances)Búsqueda de texto completo.
+     * centro de memoria scope=null Semántica(Todos)Aún presiona actual [spaceId] cuarentena,Evite fugas de búsqueda entre espacios.
      */
     suspend fun searchFullTextBySpace(query: String, spaceId: String, limit: Int = 20): List<Fact> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
@@ -1214,35 +1214,35 @@ class FactStore(
     }
 
     /**
-     * v12 (T2-2): 运行时相关记忆检索 — 按当前问题召回 top-K 相关事实。
-     * 在 [searchFullText] 基础上增加 scope + space 过滤,防止跨助手/跨空间串记忆;
-     * 用于 system prompt 的 <relevant_memory> 段(按 query 召回,而非全量注入)。
+     * v12 (T2-2): Recuperación de memoria relacionada con el tiempo de ejecución — Recuerde los K hechos relevantes según la pregunta actual.
+     * en [searchFullText] En base a esto, agregue alcance + filtrado de espacio,Prevenir ayuda cruzada/memoria de cadena en el espacio cruzado;
+     * para aviso del sistema <relevant_memory> segmento(Recordar por consulta,en lugar de inyección completa).
      *
-     * v17: 已出场(分数低于阈值)的记忆不参与召回;取数窗口按出场情况逐步放大,
-     * 保证出场几条不会让召回条数跟着变少。
+     * v17: Apareció(puntuación por debajo del umbral)La memoria no participa en el recuerdo.;La ventana de toma de números se amplía gradualmente según la situación de apariencia.,
+     * Se garantiza que la cantidad de entradas que aparecen no hará que la cantidad de entradas recuperadas disminuya en consecuencia.
      */
     suspend fun searchRelevantFacts(query: String, scope: String = "main", spaceId: String = "default", limit: Int = 8): List<Fact> =
         withContext(Dispatchers.IO) {
             if (query.isBlank()) return@withContext emptyList()
             ensureFtsIndexConsistent()
-            // 必须在 SQL/FTS 查询阶段就按 scope + space 过滤。
-            // 先全库取 limit*3 再在内存过滤会被其他助手/空间的高相关结果占满，
-            // 造成当前作用域明明有事实却返回空或不完整结果。
+            // El filtrado por alcance + espacio debe realizarse durante la fase de consulta SQL/FTS.
+            // Obtenga primero toda la biblioteca limit*3 Luego, otros ayudantes utilizarán el filtrado en memoria./El espacio está lleno de resultados altamente correlacionados,
+            // Hace que el alcance actual devuelva resultados vacíos o incompletos aunque haya hechos.
             val hits = recallEligibleFacts(query.trim(), scope, spaceId, limit)
-            // 命中回写:让 last_hit_at 反映真实使用情况(衰减加成与“最近命中”都依赖它)
+            // presionar reescritura:Deje que last_hit_at refleje el uso real(Bonificación de decadencia vs.“éxitos recientes”todos dependen de ello)
             recordHits(hits)
             hits
         }
 
     /**
-     * v17: 自动召回候选 — 排除已出场/已过期事实后凑够 [limit] 条。
+     * v17: Llamar candidatos automáticamente — Excluir apariciones/Caducado [limit] artículo.
      *
-     * FTS 先按窗口取再在内存过滤,所以出场记忆会占掉窗口名额。
-     * 若窗口已被结果占满而合格项不足 [limit],成倍放大窗口重取(最多到 8 倍),
-     * 确保“出场了几条”不会变成“召回数量变少”。
+     * FTS Primero buscar por ventana y luego filtrar en la memoria,Por tanto, la memoria de apariencia ocupará la cuota de ventana.
+     * Si la ventana está llena de resultados y no hay suficientes elementos calificados [limit],Recuperación de ventana de doble ampliación(hasta 8 veces),
+     * asegurar“Hizo algunas apariciones”no se convertirá“Menos retiros”.
      *
-     * v18: 已被取代的旧记忆也不进自动召回 —— 否则两条互斥断言会一起出现在
-     * <relevant_memory> 里,与 FACTS 段的仲裁结果自相矛盾。
+     * v18: Los viejos recuerdos que han sido reemplazados no se recuperan automáticamente —— De lo contrario, dos afirmaciones mutuamente excluyentes aparecerán juntas en
+     * <relevant_memory> adentro,Los resultados del arbitraje contradicen el párrafo de HECHOS.
      */
     private suspend fun recallEligibleFacts(query: String, scope: String, spaceId: String, limit: Int): List<Fact> {
         if (limit <= 0) return emptyList()
@@ -1254,7 +1254,7 @@ class FactStore(
             val raw = runFtsOrLikeSearchScoped(query, window, scope, spaceId)
                 .filterNot { it.isExpired() }
             val eligible = raw.filter { it.isInRecall() && it.id !in superseded && it.id !in merged }
-            // raw 行数不到窗口 = 库里已经没有更多候选,再放大也没用
+            // raw No hay suficientes filas en la ventana = Curry no tiene más candidatos,Es inútil acercarse más
             val truncated = raw.size >= window
             if (eligible.size >= limit || !truncated || window >= maxWindow) {
                 return eligible.take(limit)
@@ -1264,31 +1264,31 @@ class FactStore(
     }
 
     /**
-     * 检索命中回写 —— 刷新 last_hit_at 与持久分数。
+     * Reescritura de resultados de búsqueda —— Actualice last_hit_at con puntuación de persistencia.
      *
-     * 只回写时间/计数/分数,不改变任何内容;失败只记日志,绝不影响检索结果本身。
+     * Sólo escribe el tiempo/contar/puntuación,no cambies nada;Solo falla al iniciar sesión,De ninguna manera afecta los resultados de la búsqueda en sí.
      */
     private suspend fun recordHits(hits: List<Fact>) {
         val ids = hits.mapNotNull { fact -> fact.id.takeIf { it > 0L } }
         if (ids.isEmpty()) return
         runCatching { dao.updateLastHitAt(ids, Instant.now().toString()) }
-            .onFailure { Logger.w("FactStore", "命中回写失败(不影响检索): ${it.message}") }
-        // 命中次数同样验证“这条记忆还在被用到”，与时间一起回写
+            .onFailure { Logger.w("FactStore", "Falló la reescritura(No afecta la recuperación): ${it.message}") }
+        // También se verifica el número de aciertos.“Esta memoria todavía está en uso.”, escribe de nuevo junto con el tiempo
         runCatching { dao.incrementHitCount(ids) }
-            .onFailure { Logger.w("FactStore", "命中计数失败(不影响检索): ${it.message}") }
-        // v17: 命中同时给持久分数加成,被引用的记忆不易出场
+            .onFailure { Logger.w("FactStore", "Error en el recuento de visitas(No afecta la recuperación): ${it.message}") }
+        // v17: Los aciertos también otorgan una bonificación de puntuación duradera.,La memoria referenciada no es fácil de aparecer.
         runCatching {
             val config = MemoryConfig()
             dao.boostScores(ids, config.hitBonus, revivalCeiling(config), Instant.now().toString())
-        }.onFailure { Logger.w("FactStore", "命中分数回拨失败(不影响检索): ${it.message}") }
+        }.onFailure { Logger.w("FactStore", "Error en la devolución de llamada de puntuación de aciertos(No afecta la recuperación): ${it.message}") }
     }
 
     /**
-     * v17: 出场记忆的「访问回拨」。
+     * v17: "Devolución de llamada de acceso" de la memoria de aparición.
      *
-     * 显式检索(记忆页 / search_memory 工具)命中一条已出场的记忆,说明它仍被需要:
-     * 补一次命中加成、清除出场标记,下一次自动召回就能重新命中它。
-     * 只处理已出场的行,正常记忆不受影响;失败只记日志,不影响检索结果。
+     * búsqueda explícita(Página de memoria/herramienta search_memory)Golpea una memoria existente,indica que todavía es necesario:
+     * Añade una bonificación de un golpe y borra la marca de salida.,La próxima recuperación automática lo volverá a alcanzar.
+     * Procesar solo las filas que han aparecido,La memoria normal no se ve afectada.;Solo falla al iniciar sesión,No afecta los resultados de búsqueda.
      */
     private suspend fun reviveSuppressed(hits: List<Fact>) {
         val ids = hits.filter { it.suppressedAt != null }.map { it.id }.filter { it > 0L }
@@ -1296,7 +1296,7 @@ class FactStore(
         runCatching {
             val config = MemoryConfig()
             dao.boostScores(ids, config.hitBonus, revivalCeiling(config), Instant.now().toString())
-        }.onFailure { Logger.w("FactStore", "出场记忆回拨失败(不影响检索): ${it.message}") }
+        }.onFailure { Logger.w("FactStore", "Error en la devolución de llamada de la memoria de apariencia(No afecta la recuperación): ${it.message}") }
     }
 
     private suspend fun runFtsOrLikeSearchScoped(
@@ -1318,10 +1318,10 @@ class FactStore(
     }
 
     /**
-     * scoped LIKE 回退:整串不命中时拆词逐查,任一命中算候选,命中词多的排在前面。
+     * scoped LIKE revertir:Cuando no toque toda la cadena, divida las palabras y revíselas una por una.,Cualquier candidato exitoso,Aquellos con más palabras exitosas ocupan el primer lugar.
      *
-     * 整串命中保持原有顺序(置顶/重要度/时间),拆词结果才按命中词数重排 ——
-     * 这样单词查询与拆分前的行为完全一致。
+     * Toda la cadena de hits mantiene su orden original.(fijar hacia arriba/importancia/tiempo),Los resultados de la división de palabras se reorganizan según la cantidad de palabras clave. ——
+     * De esta manera, las consultas de palabras se comportan exactamente como lo hacían antes de dividirse.
      */
     private suspend fun likeScopedByWords(trimmed: String, limit: Int, scope: String, spaceId: String): List<Fact> {
         val whole = dao.likeSearchBySpace(trimmed, limit, scope, spaceId)
@@ -1334,9 +1334,9 @@ class FactStore(
     }
 
     /**
-     * 按词逐个 LIKE 后合并:同一行只留一条,按命中词数降序(同数保持首次出现顺序)。
+     * Me gusta las palabras una por una y luego fusionarlas:Deja solo uno en la misma línea.,Ordenar de forma descendente por número de palabras clave(Mantener el orden de primera aparición con el mismo número.).
      *
-     * @param query 逐词执行的查询体,由调用方决定作用域/空间过滤
+     * @param query Cuerpo de la consulta ejecutado palabra por palabra,El alcance lo determina la persona que llama./filtrado espacial
      */
     private suspend fun likeByWords(
         trimmed: String,
@@ -1355,7 +1355,7 @@ class FactStore(
         return matched.values.sortedByDescending { it.second }.map { it.first }.take(limit)
     }
 
-    /** 审查修复 (B-19): 仅按 space_id 过滤的 FTS/LIKE 全文搜索(FTS 失败回退 LIKE 同空间查询)。 */
+    /** Revisión de corrección (B-19): Búsqueda de texto completo FTS/LIKE filtrada solo por space_id(FTS Respaldo en caso de error COMO consulta del mismo espacio). */
     private suspend fun runFtsOrLikeSearchBySpaceId(
         trimmed: String,
         limit: Int,
@@ -1381,7 +1381,7 @@ class FactStore(
         return ftsResults.map { it.toDomainFact() }
     }
 
-    /** 先尝试 FTS4 MATCH，单字或异常时回退 LIKE。 */
+    /** Pruebe FTS4 MATCH primero y recurra a LIKE si hay una sola palabra o excepción. */
     private suspend fun runFtsOrLikeSearch(
         trimmed: String,
         limit: Int,
@@ -1403,14 +1403,14 @@ class FactStore(
     }
 
     /**
-     * 按标签搜索(精确匹配,OR 逻辑,按匹配数降序)。
-     * 使用 json_each 精确匹配标签值,避免 LIKE 子串误匹配。
-     * B-06: 结果过滤已过期事实。
+     * Buscar por etiqueta(coincidencia exacta,OR lógica,Orden descendente por número de coincidencias).
+     * Utilice json_each para hacer coincidir exactamente los valores de las etiquetas,Evite la falta de coincidencia de subcadenas LIKE.
+     * B-06: Los resultados se filtran por hechos caducados.
      */
     suspend fun searchByTags(queryTags: List<String>, dateRange: DateRange? = null, limit: Int = 20): List<Fact> =
         searchByTagsInternal(queryTags, dateRange, limit, null, null)
 
-    /** 按 scope + space 搜索标签，供会话内 search_memory 使用。 */
+    /** Busque etiquetas por alcance + espacio para el uso de search_memory durante la sesión. */
     suspend fun searchByTagsScoped(
         queryTags: List<String>,
         scope: String,
@@ -1432,8 +1432,8 @@ class FactStore(
         plan.refine(rows)
             .map { fact ->
                 if (scope != null && spaceId != null) {
-                    // TagSearchRow 兼容旧 Room 投影时可能没有回填新增列；
-                    // SQL 已经按边界过滤，这里把宿主边界明确写回领域对象。
+                    // TagSearchRow Es posible que las columnas nuevas no se rellenen cuando sean compatibles con las proyecciones de habitaciones antiguas;
+                    // SQL Ya filtrado por límite, aquí el límite del host se vuelve a escribir explícitamente en el objeto de dominio.
                     fact.copy(scope = scope, spaceId = spaceId)
                 } else {
                     fact
@@ -1444,12 +1444,12 @@ class FactStore(
     }
 
     /**
-     * 获取所有元事实(按时间降序)。
+     * Obtener todos los metadatos(Orden descendente por tiempo).
      *
-     * v8: 新增可选 scope 参数,null 表示全部作用域,非 null 仅返回指定作用域的事实。
-     * v17: [includeSuppressed] 默认 true(列表/去重/对账/UI 需要看到全部行);
-     * 注入上下文的召回调用传 false,排除已出场(分数低于阈值)的记忆。
-     * v18: 传 false 时同时排除已被取代的旧记忆(行仍在库里,只是不进上下文)。
+     * v8: Parámetro de alcance opcional agregado,null Representa todo el alcance.,No nulo Devuelve sólo hechos para el ámbito especificado.
+     * v17: [includeSuppressed] Predeterminado true(lista/Eliminar duplicados/reconciliación/UI necesito ver todas las filas);
+     * Inyectar pase de llamada de recuperación del contexto false,Excluir apariciones(puntuación por debajo del umbral)memoria.
+     * v18: Pasar falso también excluye viejos recuerdos que han sido reemplazados.(OK todavía está en la biblioteca.,Simplemente no encaja en el contexto.).
      */
     suspend fun getAll(scope: String? = null, includeSuppressed: Boolean = true): List<Fact> = withContext(Dispatchers.IO) {
         val rows = dao.getAll(scope)
@@ -1458,24 +1458,24 @@ class FactStore(
         if (includeSuppressed) rows else rows.filterRecallable(scope, null)
     }
 
-    /** B-18: 事实是否已过期(expires_at 存在且早于当前时间)。 */
+    /** B-18: Si el hecho ha expirado(expires_at Existe y es anterior a la hora actual.). */
     private fun Fact.isExpired(): Boolean {
         val expiresAt = expiresAt ?: return false
         val t = runCatching { java.time.Instant.parse(expiresAt) }.getOrNull() ?: return false
         return t.isBefore(java.time.Instant.now())
     }
 
-    /** 按 session_id 查询。B-06: 过滤已过期事实。 */
+    /** Consulta por session_id.B-06: Filtrar hechos caducados. */
     suspend fun getBySession(sessionId: String): List<Fact> = withContext(Dispatchers.IO) {
         dao.getBySession(sessionId).map { it.toDomainFact() }.filterNot { it.isExpired() }
     }
 
-    /** 按 id 查询。B-06: 已过期事实返回 null(与列表口径一致)。 */
+    /** Consulta por id.B-06: Hechos caducados devueltos null(Mismo calibre que la lista.). */
     suspend fun getById(id: Long): Fact? = withContext(Dispatchers.IO) {
         dao.getById(id)?.toDomainFact()?.takeIf { !it.isExpired() }
     }
 
-    /** 总数。 */
+    /** total. */
     suspend fun size(): Int = withContext(Dispatchers.IO) { dao.count() }
 
     /** Compatibility path: derive scope/space from the row inside the transaction; assistant identity comes from this store. */
@@ -1515,8 +1515,8 @@ class FactStore(
             if (!removed) error("Fact disappeared during transactional delete (id=$id)")
             // memory_links deliberately has no FK cascade; remove both source/target edges atomically.
             db.memoryLinkDao().deleteByFactId(id)
-            // v2.6.2（记忆审计）: 同步删除修订历史 —— 否则用户删了敏感记忆后，
-            // 旧正文仍留在 fact_revisions 且可通过修订接口读出，形成隐私残留。
+            // v2.6.2(auditoría de memoria): Eliminar el historial de revisiones de forma sincrónica —— De lo contrario, después de que el usuario elimine la memoria confidencial,
+            // El texto antiguo permanece en fact_revisions y se puede leer a través de la interfaz de revisiones, formando un residuo privado.
             revisionDao?.deleteByFactId(id)
             target.toDomainFact()
         }
@@ -1525,15 +1525,15 @@ class FactStore(
     }
 
     /**
-     * 会话被删除时清掉该会话在本库产生的全部事实。
+     * Cuando se elimina una sesión, se borran todos los datos generados por la sesión en la base de datos.
      *
-     * 删除语义与 [delete] 一致:每条事实先写持久化墓碑,再清 FTS 索引、图谱边与修订记录,
-     * 整批在同一个 Room 事务里完成。墓碑是关键 —— 编译侧靠它判定“这条不允许再补录”,
-     * 少了它下一轮 [io.zer0.memory.compile.MemoryCompiler] 会把摘要里的同一句话重新补录回表。
+     * Eliminar semántica y [delete] consistente:Primero escriba una lápida persistente para cada hecho.,Volver a limpiar el índice FTS, los bordes del mapa y el historial de revisiones,
+     * Todo el lote se completa en la misma transacción de Habitación. La lápida es la clave —— El compilador se basa en él para determinar“No se permiten entradas adicionales para este artículo.”,
+     * perdiéndolo la próxima ronda [io.zer0.memory.compile.MemoryCompiler] La misma oración en el resumen se agregará nuevamente a la tabla.
      *
-     * 幂等：会话已无事实(或已清过)时返回 0,不会报错也不会重复写墓碑。
+     * Idempotente: la sesión no tiene hechos.(o aclarado)regresar cuando 0,No se informarán errores y las lápidas no se escribirán repetidamente.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     suspend fun deleteBySession(sessionId: String): Int {
         val id = sessionId.trim()
@@ -1543,12 +1543,12 @@ class FactStore(
     }
 
     /**
-     * 助手被删除时清掉该作用域在本库的全部事实。
+     * Cuando se elimina el asistente, se borran todos los datos sobre el alcance en la biblioteca.
      *
-     * 分库文件由删除助手的一方负责删,本方法只管库内的行 —— 主库 `facts.db` 里
-     * 仍可能残留同 scope 的历史行,那是“删了助手但记忆页还看得见”的另一条来源。
+     * Los archivos de la subbiblioteca los elimina la parte que elimina el asistente.,Este método solo controla las filas de la biblioteca. —— biblioteca principal `facts.db` adentro
+     * Puede que aún queden líneas históricas con el mismo alcance,eso es“Eliminé el asistente pero la página de memoria aún está visible”Otra fuente de.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     suspend fun deleteAllByScope(scope: String): Int {
         val key = scope.trim()
@@ -1558,10 +1558,10 @@ class FactStore(
     }
 
     /**
-     * 批量硬删一组事实:墓碑 + FTS + 图谱边 + 修订记录,整批一个事务。
+     * Eliminar por lotes un conjunto de hechos:Tombstone + FTS + Borde del mapa + Historial de revisiones,Todo un lote de transacciones.
      *
-     * [removeRows] 负责真正的 DELETE(facts_fts 有级联触发器,不另写删除语句);
-     * [rows] 只用来写墓碑与清派生数据,所以先读后删、行集会随事务一起生效。
+     * [removeRows] responsable de lo real DELETE(facts_fts Hay desencadenantes en cascada,No escriba otra declaración de eliminación);
+     * [rows] Solo se utiliza para escribir lápidas y borrar datos derivados.,Por lo tanto, lea primero y luego elimine, el ensamblaje de filas entra en vigor junto con la transacción.
      */
     private suspend fun deleteRows(rows: List<FactEntity>, removeRows: suspend () -> Int): Int = withContext(Dispatchers.IO) {
         if (rows.isEmpty()) return@withContext 0
@@ -1581,7 +1581,7 @@ class FactStore(
                     )
                     touchedScopes += row.scope to row.spaceId
                 }
-                // memory_links / fact_revisions 没有外键级联,按 id 逐条清,否则留下指向空行的孤儿。
+                // memory_links / fact_revisions Sin cascada de claves externas,Borrar elementos uno por uno por id.,De lo contrario, queda un huérfano que apunta a una línea vacía.
                 db.memoryLinkDao().deleteByFactId(row.id)
                 revisionDao?.deleteByFactId(row.id)
             }
@@ -1590,7 +1590,7 @@ class FactStore(
             }
             removeRows()
         }
-        // 提交后再调度对账:编译产物里的 FACTS 段是按本库事实投影的,删完得让它重算一次。
+        // Programar la conciliación después del envío:La sección HECHOS en el producto compilado se proyecta de acuerdo con los datos de la biblioteca.,Después de la eliminación, se debe volver a calcular.
         rows.groupBy { it.scope to it.spaceId }.forEach { (key, group) ->
             scheduleReconcile(
                 group.map { Fact(id = it.id, fact = it.fact, scope = key.first, spaceId = key.second) },
@@ -1604,17 +1604,17 @@ class FactStore(
     private fun normalizeAssistantId(id: String): String = id.trim().ifBlank { "default" }
 
     /**
-     * v2.6.2（记忆审计）: 原子合并一组相似事实 —— 把 keeper 正文改为 [mergedContent]
-     * 并删除 [removableIds] 其余成员，全部在**同一个 Room 事务**内完成。
+     * v2.6.2(auditoría de memoria): Fusión atómica de un conjunto de hechos similares. —— Cambiar el texto del guardián a [mergedContent]
+     * y borrar [removableIds] El resto de los miembros están todos en**La misma transacción de habitación**Completado dentro.
      *
-     * 背景: 修复 LLM 整合的不可逆丢数据 —— 旧流程先逐条删除、再 update keeper，
-     * 两步不在同一事务；若部分删除成功而 keeper 更新失败，原始事实已经丢失，
-     * “回写”只是新增一条，不会恢复被删事实的原字段/置顶/标签/链接/修订。
+     * fondo: Solucionar la pérdida de datos irreversible en la integración de LLM —— Primero elimine el proceso anterior uno por uno y luego actualice el guardián.
+     * Los dos pasos no están en la misma transacción; si la eliminación parcial tiene éxito pero la actualización del guardián falla, los hechos originales se han perdido.
+     * “escribir de nuevo”Simplemente agregar uno nuevo no restaurará los campos originales de los datos eliminados./fijar hacia arriba/etiqueta/enlace/Revisión.
      *
-     * 本方法保证：任一步失败时整个事务回滚，keeper 与成员保持原状。
-     * 不走 update() 的内部自动去重（避免与簇内删除叠加成“双删清空”）。
+     * Este método garantiza que toda la transacción se revertirá si falla algún paso.keeper Quédate con los miembros.
+     * no irse update() Deduplicación automática interna (para evitar la superposición con la eliminación dentro del clúster)“doble eliminación”).
      *
-     * @return 实际删除的成员数；keeper 不存在或归属不符时返回 -1（未做任何改动）
+     * @return El número de miembros realmente eliminados;keeper Devuelve -1 si no existe o la propiedad no coincide (no se realizan cambios)
      */
     suspend fun mergeIntoKeeper(keeperId: Long, mergedContent: String, removableIds: List<Long>, scope: String, spaceId: String): Int =
         withContext(Dispatchers.IO) {
@@ -1626,7 +1626,7 @@ class FactStore(
             db.withTransaction {
                 val keeper = dao.getById(keeperId) ?: return@withTransaction
                 if (keeper.scope != scope || keeper.spaceId != spaceId) return@withTransaction
-                // 修订记录（事务内；失败仅记日志，不回滚合并语义）
+                // Registro de revisión (dentro de la transacción; el error solo se registra, no hay semántica de fusión de reversión)
                 recordRevisionIfKey(
                     factId = keeperId,
                     oldContent = keeper.fact,
@@ -1648,8 +1648,8 @@ class FactStore(
         }
 
     /**
-     * v2.6.2: 合并时删除一个成员事实（含 tombstone/FTS/links/修订清理）。
-     * 调用方必须已持有事务；成员不存在或归属不符时返回 false（不动）。
+     * v2.6.2: Elimine un hecho de miembro al fusionar (con limpieza de desecho/FTS/enlaces/revisión).
+     * La persona que llama ya debe retener la transacción; si el miembro no existe o la propiedad no coincide, devuelve falso (sin cambios).
      */
     private suspend fun removeMemberIfOwned(id: Long, scope: String, spaceId: String): Boolean {
         val target = dao.getById(id)
@@ -1673,39 +1673,39 @@ class FactStore(
     }
 
     /**
-     * v19: 多条合并成一条 —— 新增一条聚合事实,把源行标记为“已合并进它”。
+     * v19: Fusionar varias líneas en una —— Agregar un hecho agregado,Marque la línea de origen como“fusionado en él”.
      *
-     * 与 [mergeIntoKeeper] 的区别: 那条是“留一条、删其余”,源行的独有信息只能靠调用方写进 keeper;
-     * 本条不删任何行,而是另插一条 [mergedText],源行只被 [FactEntity.mergedIntoId] 指向新行,
-     * 所以可以整批撤销([unmergeFacts]) —— 合并后用户还能回头。
+     * con [mergeIntoKeeper] la diferencia: Ese es“Conserva uno, elimina el resto.”,La información única sobre la línea de origen solo puede ser escrita por la persona que llama keeper;
+     * No elimines ninguna línea de este artículo.,Pero inserte otro [mergedText],La línea fuente es sólo [FactEntity.mergedIntoId] Señalar a nueva línea,
+     * Para que puedas cancelarlo en lotes([unmergeFacts]) —— Los usuarios aún pueden volver después de la fusión.
      *
-     * 事务: 新行插入 + FTS 索引 + 源行标记全在同一个 Room 事务内。任一步失败整批回滚,
-     * 不会留下“新行已建、源行还参与召回”的半完成状态 —— 那会让重复内容双份进上下文。
+     * negocios: Inserción de nueva fila + índice FTS + marca de fila de origen, todo dentro de la misma transacción de Room. Si algún paso falla, se revertirá todo el lote.,
+     * no se quedará“Se ha creado el nuevo banco y el banco original también participa en la retirada.”estado semiacabado —— Eso pone el contenido duplicado en contexto dos veces.
      *
-     * 元数据继承规则:
-     *  - importance / confidence 取源最高;category 取第一个非 general 的源(与 [mergeForDedup] 一致)
-     *  - tags 合并去重(按源 id 升序的首次出现顺序)
-     *  - time / sessionId / expiresAt / lastConfirmedAt / entityKey 取第一个非空值
-     *  - source: 源里有 user_explicit 则为 user_explicit,否则沿用主源
-     *  - pinnedAt: 源里有置顶则新行也置顶(取最早那个置顶时间) —— 用户主动固定的不因合并丢失
-     *  - hitCount: 取源之和,合并行承接这些行被召回的次数
-     *  - score 取源最高分 —— 合并只是去重、不是新记忆,不把旧记忆的年龄清零;
-     *    score_updated_at 记为本次合并时间,suppressed_at 清空(合并本身算一次人工访问)
-     *  - supersedes_id: 列只有一列,源里有多条不同的取代指向时只能留一个(取数字最小的),
-     *    尽量不让已被取代的旧记忆因为源行退出上下文而重新回到上下文
+     * Reglas de herencia de metadatos:
+     *  - importance / confidence la fuente más alta;category Tome la primera fuente no general.(con [mergeForDedup] consistente)
+     *  - tags Fusionar y eliminar duplicados(Orden de primera aparición por ID de fuente ascendente)
+     *  - time / sessionId / expiresAt / lastConfirmedAt / entityKey Obtener el primer valor no nulo
+     *  - source: Si hay user_explicit en la fuente, es user_explicit,De lo contrario, utilice la fuente principal.
+     *  - pinnedAt: Si hay un pin en la fuente, la nueva línea también quedará fijada.(Consigue el mejor tiempo lo antes posible) —— Los elementos reparados activamente por el usuario no se perderán debido a la fusión.
+     *  - hitCount: Suma de fuentes,Las filas fusionadas asumen el número de veces que se recuperaron estas filas
+     *  - score Obtenga la puntuación más alta de la fuente —— La fusión solo elimina los duplicados, no los recuerdos nuevos,No borres la edad de viejos recuerdos.;
+     *    score_updated_at Registre como el momento de esta fusión.,suppressed_at Borrar(La fusión en sí cuenta como una visita manual.)
+     *  - supersedes_id: Solo hay una columna,Cuando hay varios puntos de reemplazo diferentes en la fuente, solo se puede dejar uno.(Toma el número más pequeño),
+     *    Intente no permitir que la memoria antigua que ha sido reemplazada vuelva al contexto porque la línea fuente sale del contexto.
      *
-     * 源行筛选: 只接受存在、未被合并过、且与主源同 scope + 同 space 的行。
-     * 已经带 merged_into_id 的行不再参与合并 —— 否则会形成链式指向,
-     * 撤销时就无法分辨“这张行的合并是谁做的”。
+     * Filtro de fila de origen: Solo acepte filas que existan, que no se hayan fusionado y que tengan el mismo alcance + el mismo espacio que la fuente principal.
+     * Las filas con merged_into_id ya no participarán en la combinación —— De lo contrario, una cadena que apunta a,
+     * No puedo saber cuándo deshacer“¿Quién hizo la fusión de esta línea?”.
      *
-     * 同一条原则的另一面: 被合并的行也**不能作为写入去重目标**(新内容会被并进一条看不见的行),
-     * 约束在 [findSimilarFact] 的匹配谓词里。
+     * La otra cara del mismo principio: Las filas fusionadas también son**No se puede utilizar como destino de deduplicación de escritura.**(El contenido nuevo se fusionará en una línea invisible.),
+     * restringido por [findSimilarFact] en el predicado coincidente.
      *
-     * @param sourceIds 参与合并的事实 id(重复值与不存在的 id 忽略)
-     * @param mergedText 合并后的正文(去重后已整合各源独有信息)
-     * @param scope 归属校验:非 null 时只接受该作用域的源
-     * @param spaceId 归属校验:非 null 时只接受该空间的源
-     * @return 新事实 id;无可用源(空列表 / 全部不存在或已被合并 / 正文为空)时返回 null
+     * @param sourceIds Hechos involucrados en la fusión id(Se ignoran los valores duplicados y los identificadores inexistentes.)
+     * @param mergedText Texto fusionado(Después de la deduplicación, se ha integrado información única de diversas fuentes.)
+     * @param scope cheque de pertenencia:Cuando no es nulo, solo se aceptan fuentes de este alcance.
+     * @param spaceId cheque de pertenencia:Cuando no es nulo, solo se acepta la fuente de este espacio.
+     * @return nuevos hechos id;No hay fuente disponible(Lista vacía / No existen todos o se han fusionado / El texto está vacío)regresar cuando null
      */
     suspend fun mergeFacts(
         sourceIds: List<Long>,
@@ -1728,7 +1728,7 @@ class FactStore(
                         (spaceId == null || candidate.spaceId == spaceId)
                 }
             val owner = candidates.firstOrNull() ?: return@withTransaction
-            // 同一批选择必须落在同一个 scope + space: 跨边界的行不并入,避免源行指向另一个作用域的新行
+            // El mismo lote de selecciones debe estar en el mismo ámbito + espacio: las líneas transfronterizas no se fusionan,Evite líneas de origen que apunten a nuevas líneas en otro ámbito
             val sources = candidates
                 .filter { it.scope == owner.scope && it.spaceId == owner.spaceId }
                 .sortedBy { it.id }
@@ -1764,21 +1764,21 @@ class FactStore(
             newId = id
             mergedFact = entity.copy(id = id).toDomainFact()
         }
-        // 写后增量对账: 投影取“在场且未被合并”的行,下一次注入就是合并后的文本(源行自动退场)
+        // Conciliación incremental posterior a la escritura: Proyección“presente y no fusionado”de filas,La siguiente inyección es el texto fusionado.(La línea fuente sale automáticamente)
         mergedFact?.let { scheduleReconcile(listOf(it), it.scope, it.spaceId) }
         newId
     }
 
     /**
-     * v19: 撤销合并 —— 删除合并产物,把指向它的源行的 merged_into_id 清空。
+     * v19: Deshacer fusión —— Eliminar producto fusionado,Borre el fusionado_into_id de la fila de origen que apunta a él.
      *
-     * 同一个 Room 事务: 先清指向、再删行。顺序不能反 —— 先删行会留下一批指向已不存在 id 的
-     * 孤儿标记,那些源行既回不到召回、也不再属于任何合并。
+     * La misma transacción de habitación: Primero borre el puntero y luego elimine la línea. El orden no se puede revertir —— Eliminar la fila primero dejará un lote de referencias a identificadores que ya no existen.
+     * marca huérfana,Esas filas de origen ya no se recuperan ni forman parte de ninguna combinación.
      *
-     * 删行时写删除墓碑(与 [deleteInternal] 一致): 否则下一轮 FACTS 对账会把编译产物里
-     * 还留着的那行合并文本当成“产物孤儿”重新补录回 facts 表 —— 刚撤销的合并又复活了。
+     * Escribir eliminar lápida al eliminar una línea(con [deleteInternal] consistente): De lo contrario, la próxima ronda de conciliación de FACTS incluirá el producto compilado.
+     * La línea restante de texto combinado se trata como“producto huérfano”Vuelva a ingresar a la tabla de hechos —— Se revivió la fusión que acababa de deshacerse.
      *
-     * @return 是否删掉了合并产物(id 不存在时返回 false,不做任何改动)
+     * @return ¿Se eliminó el producto fusionado?(id Devuelve si no existe false,Sin cambios)
      */
     suspend fun unmergeFacts(mergedFactId: Long): Boolean = withContext(Dispatchers.IO) {
         val removed = db.withTransaction {
@@ -1806,15 +1806,15 @@ class FactStore(
     }
 
     /**
-     * v19: 某条合并事实聚合了哪些原始行(供 UI 展示“由 N 条合并”与撤销前预览)。
+     * v19: Qué filas originales se agregan mediante un hecho de fusión(Para visualización de interfaz de usuario“Fusionado por N elementos”Vista previa antes de deshacer).
      *
-     * 不按 expires_at 过滤: 合并关系是历史事实,已过期的源行仍属于这次合并。
+     * No filtrar por expires_at: La relación de fusión es un hecho histórico,Las filas de origen caducadas todavía pertenecen a esta combinación.
      */
     suspend fun getMergedChildren(factId: Long): List<Fact> = withContext(Dispatchers.IO) {
         dao.getMergedChildren(factId).map { it.toDomainFact() }
     }
 
-    /** v19: 合并时继承的标签 —— 各源标签按 id 升序首次出现顺序去重。 */
+    /** v19: Etiquetas heredadas al fusionar —— Cada etiqueta de origen se deduplica en el orden de su primera aparición en orden ascendente de identificación. */
     private fun inheritedTags(sources: List<FactEntity>): List<String> {
         val seen = LinkedHashSet<String>()
         for (source in sources) {
@@ -1824,34 +1824,34 @@ class FactStore(
     }
 
     /**
-     * P2: 更新单条 Fact 内容(用于记忆页 UI 编辑 Fact 层)。
+     * P2: Actualizar el contenido de un único hecho(Se utiliza para recordar la edición de la interfaz de usuario de la página Capa de hechos).
      *
-     * 与 [add] 不同,这里不走 PII 脱敏(用户手动编辑的内容,保持原样),
-     * 仅做轻量去空白处理。返回是否更新成功(目标 id 不存在时返回 false)。
+     * con [add] diferente,Aquí no hay desensibilización de PII(Contenido editado manualmente por los usuarios.,quédate como está),
+     * Realice únicamente la eliminación de espacios en blanco ligeros. Devuelve si la actualización fue exitosa(Devuelto si la identificación del objetivo no existe false).
      *
-     * v8: 新增可选 scope 参数:
-     *  - scope 为 null(默认):只更新 content,保留原有作用域
-     *  - scope 非 null:同时更新 content 与 scope(用于 UI 切换事实作用域)
+     * v8: Parámetro de alcance opcional agregado:
+     *  - scope para null(Predeterminado):Actualizar solo content,Mantener el alcance original
+     *  - scope No nulo: actualiza el contenido y scope(Se utiliza para que la interfaz de usuario cambie los alcances de los hechos.)
      */
     suspend fun update(id: Long, content: String, scope: String? = null): Boolean = withContext(Dispatchers.IO) {
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return@withContext false
-        // B-17: 更新同样走 PII 脱敏 — 调用方含 LLM 输出路径(MemoryAutoSaveScheduler
-        // update 合并去重结果),旧注释"用户手动编辑不走脱敏"的前提不成立;
-        // 与 add 保持一致,敏感信息一律不落明文。
+        // B-17: La actualización también utiliza la desensibilización de PII. — La persona que llama contiene la ruta de salida de LLM(MemoryAutoSaveScheduler
+        // update Fusionar resultados de deduplicación),viejo comentario"La edición del manual del usuario no causa desensibilización"La premisa no está establecida.;
+        // consistente con agregar,La información confidencial nunca se mantendrá clara.
         val scrubbed = PiiGuard.scrub(trimmed).cleaned
         val target = dao.getById(id)
         val updated = dao.updateContent(id, scrubbed, scope) > 0
-        // Phase 3 (P1): 更新后的最终事实(合并场景为合并结果),用于写后增量对账
+        // Phase 3 (P1): Hechos finales actualizados(El escenario fusionado es el resultado fusionado.),Se utiliza para la conciliación incremental posterior a la escritura
         var reconciled: Fact? = null
         if (updated) {
-            // v1.0.51: 用 upsertFts 避免更新已有事实时产生重复 FTS 条目
+            // v1.0.51: Utilice upsertFts para evitar entradas FTS duplicadas al actualizar datos existentes
             syncFtsRow(id, FactFtsManager.toNgram(scrubbed))
-            // v12: 更新后接入去重检查 — 新内容与同 scope/space 下其他事实重复时,
-            //    自动合并(删除被覆盖方,保留更完整表述),修复"更新路径绕过去重"漏洞。
+            // v12: Acceda a la verificación de deduplicación después de la actualización — Cuando el nuevo contenido duplica otros hechos bajo el mismo alcance/espacio,
+            //    Fusión automática(Eliminar parte cubierta,Mantenga una declaración más completa),Reparación"Ruta de actualización para evitar la deduplicación"lagunas jurídicas.
             val current = target ?: dao.getById(id)
             if (current != null) {
-                // v13 (T4-1): update 记录修订(重要性 ≥1 的关键记忆)
+                // v13 (T4-1): update Revisión de registros(importancia ≥1 memoria clave)
                 recordRevisionIfKey(
                     factId = id,
                     oldContent = current.fact,
@@ -1859,7 +1859,7 @@ class FactStore(
                     reason = "update",
                 )
                 val mergedEntity = current.copy(fact = scrubbed)
-                // v12: excludeId=自身 — 更新后 findSimilarFact 不应匹配到自己
+                // v12: excludeId=mismo — Después de la actualización, findSimilarFact no debería coincidir consigo mismo
                 val dup = findSimilarFact(scrubbed, mergedEntity.scope, mergedEntity.spaceId, mergedEntity.entityKey, excludeId = id)
                 if (dup != null && dup.id != id) {
                     val merged = mergeFact(
@@ -1880,7 +1880,7 @@ class FactStore(
                     syncFtsRow(merged.id, FactFtsManager.toNgram(merged.fact))
                     dao.deleteFts(id)
                     dao.deleteById(id)
-                    io.zer0.common.Logger.d("FactStore", "update 触发去重合并: $id → ${merged.id}")
+                    io.zer0.common.Logger.d("FactStore", "update Activar combinación de deduplicación: $id → ${merged.id}")
                     reconciled = Fact(id = merged.id, fact = merged.fact, scope = merged.scope, spaceId = merged.spaceId)
                 } else {
                     reconciled = Fact(
@@ -1897,15 +1897,15 @@ class FactStore(
     }
 
     /**
-     * v2.6.2（记忆审计）: 原子更新一条事实的正文 + 重要度 + 分类/标签。
+     * v2.6.2(auditoría de memoria): Actualizar atómicamente el texto + importancia + clasificación de un hecho/etiqueta.
      *
-     * 旧实现（MemoryAutoSaveScheduler）分三次调 update/setImportance/updateCategoryAndTags，
-     * 并发自动保存或同一分析中两条更新指向同一事实时后写覆盖前写，且三类字段不在同一事务，
-     * 会出现半更新。本方法在同一 Room 事务内完成全部字段与 FTS 同步。
+     * implementación anterior (MemoryAutoSaveScheduler) ajustado en tres tiempos update/setImportance/updateCategoryAndTags,
+     * Cuando el guardado automático simultáneo o dos actualizaciones en el mismo análisis apuntan al mismo hecho, la escritura posterior sobrescribe la escritura anterior y los tres tipos de campos no están en la misma transacción.
+     * Habrá una semi-actualización. Este método completa la sincronización de todos los campos con FTS dentro de la misma transacción de Room.
      *
-     * @return 是否更新成功（目标不存在或归属不符返回 false）
+     * @return Si la actualización se realizó correctamente (devuelve falso si el objetivo no existe o la propiedad no coincide)
      */
-    // LongParameterList 豁免：字段更新本就多字段对应，拆对象反而降低调用可读性。
+    // LongParameterList Exención: las actualizaciones de campos ya corresponden a varios campos y dividir objetos reducirá la legibilidad de la llamada.
     @Suppress("LongParameterList")
     suspend fun applyFieldUpdates(
         id: Long,
@@ -1934,42 +1934,42 @@ class FactStore(
     }
 
     /**
-     * v4: 更新单条 Fact 的重要程度(用于记忆页 UI 手动调整)。
-     * @param importance 0=普通,1=重要,2=关键
-     * @return 是否更新成功
+     * v4: Actualizar la importancia de un solo hecho(Se utiliza para ajustes manuales de la interfaz de usuario de la página de memoria.).
+     * @param importance 0=ordinario,1=importante,2=clave
+     * @return ¿La actualización fue exitosa?
      */
     suspend fun setImportance(id: Long, importance: Int): Boolean = withContext(Dispatchers.IO) {
         dao.updateImportance(id, importance.coerceIn(0, 2)) > 0
     }
 
-    /** B4-05: 设置/取消手动置顶。 */
+    /** B4-05: ajustes/Cancelar la fijación manual. */
     suspend fun setPinned(id: Long, pinned: Boolean): Boolean = withContext(Dispatchers.IO) {
         dao.updatePinnedAt(id, if (pinned) Instant.now().toString() else null) > 0
     }
 
     /**
-     * v10 P2-3: 更新指定 fact 的分类和标签(用于 AI 记忆管理)。
+     * v10 P2-3: Actualizar la clasificación y etiqueta del hecho especificado.(Para la gestión de memoria de IA).
      *
-     * @param category 分类(null 保留原值)
-     * @param tags 标签列表(null 保留原值,非 null 则替换)
-     * @return 是否更新成功
+     * @param category Clasificación(null Mantener el valor original)
+     * @param tags lista de etiquetas(null Mantener el valor original,Si no es nulo, reemplace)
+     * @return ¿La actualización fue exitosa?
      */
     suspend fun updateCategoryAndTags(id: Long, category: String? = null, tags: List<String>? = null): Boolean =
         withContext(Dispatchers.IO) {
-            // B-17: tags 逐项 PII 脱敏 — 调用方含 LLM 路径(autoCategorize/AI 记忆管理),
-            // prompt 鼓励用人名做标签,不脱敏会把姓名明文落库。
+            // B-17: tags Desensibilización de PII detallada — La persona que llama contiene la ruta LLM(autoCategorize/AI gestión de memoria),
+            // prompt Fomentar el etiquetado con los nombres de las personas.,Sin desensibilización, el nombre quedará registrado en la base de datos.
             val scrubbedTags = tags?.map { PiiGuard.scrub(it).cleaned }
             val tagsJson = scrubbedTags?.let { json.encodeToString(ListSerializer(String.serializer()), it) }
             dao.updateCategoryAndTags(id, category, tagsJson) > 0
         }
 
-    /** 清空所有。 */
+    /** Limpiar todo. */
     suspend fun clearAll(): Unit = withContext(Dispatchers.IO) {
         db.withTransaction {
             dao.clearFts()
             dao.deleteAll()
             db.factTombstoneDao().deleteAll()
-            // v2.6.2（记忆审计）: 同时清修订历史，避免重置后旧正文仍可读出。
+            // v2.6.2(auditoría de memoria): Al mismo tiempo, el historial de revisiones se borra para evitar que el texto antiguo aún pueda leerse después del reinicio.
             revisionDao?.deleteAll()
         }
         if (clearLegacyTombstonesOnReset) {
@@ -1978,50 +1978,50 @@ class FactStore(
     }
 
     /**
-     * P0-10: 重置记忆级联清理 — 事实 + FTS + 墓碑 + 知识图谱边(memory_links)一次清空。
+     * P0-10: Restablecer la limpieza en cascada de memoria — Hechos + FTS + Lápidas + Bordes del gráfico de conocimiento(memory_links)Vaciar una vez.
      *
-     * 此前"重置记忆"只删 facts 行,指向已删事实的图谱边残留成孤儿(memory_links 建表时
-     * 刻意不加外键级联),且子助手分库完全未清理。本方法供数据管理页"重置记忆"与
-     * 删除助手级联共用。
+     * anteriormente"restablecer la memoria"Eliminar solo la línea de hechos,Los bordes del gráfico que apuntan a hechos eliminados permanecen huérfanos(memory_links Al crear una tabla
+     * No agregar deliberadamente una cascada de claves externas),Y la biblioteca del subasistente no se ha limpiado en absoluto. Este método se utiliza para páginas de gestión de datos."restablecer la memoria"con
+     * Elimine el recurso compartido en cascada del asistente.
      */
     suspend fun clearAllWithLinks(): Unit = withContext(Dispatchers.IO) {
         clearAll()
         db.memoryLinkDao().deleteAll()
     }
 
-    // ─── Phase 3 (可靠性 P1): 写入后增量对账(节流/合并/防递归) ───
+    // ─── Phase 3 (Fiabilidad P1): Conciliación incremental después de escribir(acelerador/fusionar/Anti-recursión) ───
 
     /**
-     * 写后对账的合并窗口(ms)。窗口内的多次写入(addBatch/连续 add/合并)合并为一次
-     * hook 调用,避免连续写入放大对账开销。internal 便于单测缩短等待时间。
+     * Ventana de combinación para conciliación posterior a la escritura(ms). Múltiples escrituras dentro de una ventana(addBatch/Agregar/fusionar continuamente)fusionarse en uno
+     * hook llamar,Evite escrituras consecutivas que amplifiquen la sobrecarga de conciliación.internal Es conveniente para pruebas únicas y acorta el tiempo de espera.
      */
     internal var reconcileDebounceMs: Long = DEFAULT_RECONCILE_DEBOUNCE_MS
 
-    /** 对账调度锁:保护 [reconcilePending] 与 [reconcileJob](写入可能来自多协程)。 */
+    /** Bloqueo de programación de conciliación:proteger [reconcilePending] con [reconcileJob](Las escrituras pueden provenir de múltiples corrutinas.). */
     private val reconcileLock = Any()
 
-    /** 待对账事实,按 (scope, spaceId) 分组;窗口结束时逐组调用 hook。 */
+    /** Hechos a conciliar,prensa (scope, spaceId) grupo;El gancho se llama grupo por grupo cuando finaliza la ventana. */
     private val reconcilePending = LinkedHashMap<Pair<String, String>, MutableList<Fact>>()
 
-    /** 当前节流窗口的调度任务;窗口内重复写入不重复调度。 */
+    /** Programación de tareas para la ventana de limitación actual;Las escrituras repetidas dentro de la ventana no se programan repetidamente. */
     private var reconcileJob: Job? = null
 
-    /** hook 执行期间置位 — 防止 hook 内部再写 facts 造成递归触发。 */
+    /** hook Establecido durante la ejecución — Evite que la activación recursiva escriba hechos dentro del gancho. */
     private val reconcileInFlight = AtomicBoolean(false)
 
-    /** 对账协程 scope(只承载轻量节流任务,不阻塞写入路径)。 */
+    /** Corrutina de reconciliación scope(Sólo realiza tareas ligeras de aceleración,No bloquea la ruta de escritura.). */
     private val reconcileScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** 默认 hook 的解析结果缓存(显式注入优先,见 [resolveReconcileHook])。 */
+    /** Caché de resultados de análisis del gancho predeterminado(La inyección explícita tiene prioridad,ver [resolveReconcileHook]). */
     @Volatile
     private var resolvedDefaultHook: FactReconcileHook? = null
 
     /**
-     * Phase 3 (P1): 调度一次写后增量对账。
+     * Phase 3 (P1): Programe una conciliación incremental después de una escritura.
      *
-     * - 节流/合并: [reconcileDebounceMs] 窗口内的多次写入合并为一次 hook 调用;
-     * - 防递归: hook 执行期间的写入不再触发(由每日流水线对账兜底);
-     * - 无 hook(单测/无 DI)时零调度开销,行为与旧版完全一致。
+     * - acelerador/fusionar: [reconcileDebounceMs] Varias escrituras dentro de la ventana se combinan en una llamada de enlace;
+     * - Anti-recursión: hook Las escrituras durante la ejecución ya no se activan(Mantenido por la conciliación diaria de la línea de montaje.);
+     * - Ninguno hook(prueba única/Ninguno DI)Gastos generales de programación en tiempo cero,El comportamiento es exactamente el mismo que en la versión anterior.
      */
     private fun scheduleReconcile(facts: List<Fact>, scope: String, spaceId: String) {
         if (facts.isEmpty()) return
@@ -2041,7 +2041,7 @@ class FactStore(
         }
     }
 
-    /** Phase 3 (P1): 取出待对账批次并执行 hook;失败仅告警(每日编译对账兜底)。 */
+    /** Phase 3 (P1): Saque el lote a conciliar y ejecútelo. hook;Alarma solo en caso de falla(Recopilación y conciliación diaria.). */
     private suspend fun flushReconcile() {
         val batches = synchronized(reconcileLock) {
             if (reconcilePending.isEmpty()) {
@@ -2061,7 +2061,7 @@ class FactStore(
             for ((scope, spaceId, facts) in batches) {
                 resultOf { hook.onFactsChanged(facts, scope, spaceId) }
                     .onError { msg, t ->
-                        Logger.w("FactStore", "写后对账失败(下次编译兜底): ${t?.message ?: msg}")
+                        Logger.w("FactStore", "La conciliación falló después de escribir(Se compilará la próxima vez.): ${t?.message ?: msg}")
                     }
             }
         } finally {
@@ -2069,14 +2069,14 @@ class FactStore(
         }
     }
 
-    /** Phase 3 (P1): 显式注入优先;否则惰性解析默认 hook 并缓存(解析失败则下次重试)。 */
+    /** Phase 3 (P1): La inyección explícita tiene prioridad;De lo contrario, el enlace predeterminado se analiza y almacena en caché de forma diferida.(Si el análisis falla, inténtalo de nuevo la próxima vez.). */
     private fun resolveReconcileHook(): FactReconcileHook? {
         reconcileHook?.let { return it }
         resolvedDefaultHook?.let { return it }
         return resolveDefaultReconcileHook()?.also { resolvedDefaultHook = it }
     }
 
-    // ─── S-04: 删除墓碑(防已删事实从摘要复活) ───
+    // ─── S-04: Eliminar lápida(Evitar que los hechos eliminados se recuperen del resumen) ───
 
     /**
      * Legacy pre-v15 JSON tombstone read lock. New deletion markers are transactional Room rows
@@ -2084,12 +2084,12 @@ class FactStore(
      */
     private val tombstoneLock = TOMBSTONE_LOCK
 
-    /** 所有本库墓碑；主要供兼容调用，编译/注入应使用带 scope 和 space 的重载。 */
+    /** Todas las lápidas de esta biblioteca; principalmente para llamadas de compatibilidad y compilación/La inyección debe utilizar la sobrecarga con alcance y espacio. */
     suspend fun getTombstones(): List<String> = withContext(Dispatchers.IO) {
         (db.factTombstoneDao().getAllNormalizedFacts() + loadLegacyTombstones()).distinct()
     }
 
-    /** 只返回当前 assistant 数据库、scope 和 space 的删除标记。 */
+    /** Solo devuelve la base de datos del asistente actual,scope y marcadores de eliminación de espacios. */
     suspend fun getTombstones(scope: String, spaceId: String): List<String> = withContext(Dispatchers.IO) {
         val currentFacts = dao.getByScopeAndSpace(scope, spaceId)
             .map { it.toDomainFact() }
@@ -2118,48 +2118,48 @@ class FactStore(
         }
     }
 
-    /** 规范化: 去首尾空白 + 压缩连续空白,保证跨措辞微差仍可匹配。 */
+    /** estandarizar: Eliminar espacios en blanco iniciales y finales + comprimir espacios en blanco consecutivos,Garantizado que seguirá coincidiendo en todos los matices de redacción. */
     private fun normalizeTombstone(text: String): String = text.trim().replace(WHITESPACE_RE, " ")
 
     /** Exact comparison used to detect a legitimate re-add without applying substring deletion semantics. */
     private fun comparableTombstone(text: String): String = normalizeTombstone(text).replace(PUNCT_RE, "")
 
     companion object {
-        /** D6 第 2 期: “多断言实体”默认阈值 —— 同实体 ≥3 条不同断言才值得提示整合。 */
+        /** D6 Número 2: “Múltiples entidades de afirmación”Umbral predeterminado —— Misma entidad ≥3 Vale la pena incitar a la integración a diferentes afirmaciones. */
         const val DEFAULT_MIN_ASSERTIONS = 3
 
         /**
-         * 全文检索的匹配语义。
+         * Semántica coincidente para la recuperación de texto completo.
          *
-         * [EXACT] 要求查询里的词全部命中(原有行为);[ANY] 任一命中即算候选。
-         * 两者只差 MATCH 表达式的连接符与 LIKE 兜底的排序,不改变作用域/空间过滤。
+         * [EXACT] Requiere que se atiendan todas las palabras de la consulta(comportamiento original);[ANY] Cualquier acierto cuenta como candidato.
+         * La única diferencia entre los dos es el conector de la expresión MATCH y la clasificación de LIKE.,No cambia de alcance/Filtrado espacial.
          */
         enum class MatchMode {
-            /** 全部词命中。 */
+            /** Todas las palabras acertan. */
             EXACT,
 
-            /** 任一命中。 */
+            /** Cualquiera de los dos acertó. */
             ANY,
         }
 
         private val WHITESPACE_RE = Regex("\\s+")
 
-        /** B-26: 进程级墓碑锁(所有 FactStore 实例共享同一把锁)。 */
+        /** B-26: Bloqueo de lápida a nivel de proceso(Todas las instancias de FactStore comparten el mismo bloqueo). */
         val TOMBSTONE_LOCK = Any()
 
-        /** B-10: 墓碑条目上限(超出裁剪最旧,文件体积与过滤开销有界)。 */
+        /** B-10: Límite de entrada a la lápida(Más antiguo más allá del recorte,El tamaño del archivo y la sobrecarga de filtrado están limitados). */
         const val TOMBSTONE_MAX_ENTRIES = 1000
 
-        /** Phase 3 (P1): 写后对账合并窗口默认值(ms)。 */
+        /** Phase 3 (P1): Valor predeterminado de la ventana de combinación de conciliación posterior a la escritura(ms). */
         const val DEFAULT_RECONCILE_DEBOUNCE_MS = 1500L
 
         /**
-         * Phase 3 (P1): 默认写后对账 hook — 运行时从 Koin 惰性解析
-         * [io.zer0.memory.compile.MemoryCompiler],把 FACTS 编译产物与 facts 表对齐。
+         * Phase 3 (P1): Conciliación después de escribir por defecto hook — Análisis diferido de Koin en tiempo de ejecución
+         * [io.zer0.memory.compile.MemoryCompiler],Alinee los productos compilados de FACTS con la tabla de hechos.
          *
-         * 不在 FactStore 构造期解析:MemoryCompiler 反向依赖 FactStore,构造期查找会构成
-         * Koin 循环依赖;首次写入触发时才查找。无 DI(单测/CLI)或未注册时返回 null(禁用),
-         * 行为与旧版一致(仅靠每日编译对账)。
+         * No analizado durante la construcción de FactStore:MemoryCompiler dependencia inversa FactStore,La búsqueda durante la construcción constituirá
+         * Koin dependencia circular;Busque solo cuando se active con la primera escritura. Ninguno DI(prueba única/CLI)O regresar cuando no esté registrado null(Desactivar),
+         * El comportamiento es consistente con versiones anteriores.(Confíe únicamente en la recopilación y conciliación diaria).
          */
         private fun resolveDefaultReconcileHook(): FactReconcileHook? {
             val koin = org.koin.core.context.GlobalContext.getOrNull() ?: return null
@@ -2174,18 +2174,18 @@ class FactStore(
             }
         }
 
-        /** B-07: 标点/空白剥离(第二匹配通道)。 */
-        private val PUNCT_RE = Regex("[，。！？、；：,.!?;:()（）\\[\\]【】\"'“”‘’\\s]+")
+        /** B-07: puntuación/eliminación de espacios en blanco(segundo canal coincidente). */
+        private val PUNCT_RE = Regex("[,. ! ? ,;:,.!?;:()()\\[\\]【】\"'“”‘’\\s]+")
 
         /**
-         * 审查修复 (2.0 B-07): 共享墓碑过滤 — 逐行规范化匹配。
+         * Revisión de corrección (2.0 B-07): Filtro de lápida compartido — Coincidencia normalizada línea por línea.
          *
-         * 编译对象是另一 LLM 通道改写后的摘要,措辞几乎必然与墓碑原文不同,
-         * 纯 contains 匹配常失效。双通道匹配:
-         *  - 通道 1: 空白压缩后的子串匹配(墓碑记录时已压缩);
-         *  - 通道 2: 剥离标点/空白后的子串匹配(捕获 LLM 改写时新增的标点/换行)。
-         * 完整语义归一(近义改写)需要 LLM 判定,超出本方法范围。
-         * 定义为 companion 成员,供 MemoryCompiler/DeepMemoryProcessor 以类名调用。
+         * El objeto compilado es un resumen reescrito de otro pase de LLM.,Es casi seguro que la redacción es diferente del texto original de la lápida.,
+         * La coincidencia de contenidos puros a menudo falla. Coincidencia de doble canal:
+         *  - Canal 1: coincidencia de subcadenas comprimidas con espacios en blanco(La grabación de Tombstone está comprimida);
+         *  - Paso 2: puntuación de tira/Coincidencia de subcadenas después de espacios en blanco(Capture nueva puntuación cuando se reescriba LLM/nueva línea).
+         * Normalización semántica completa(sinónimo de reescritura)Se requiere determinación de LLM,más allá del alcance de este método.
+         * definido como miembro acompañante,Llamado por MemoryCompiler/DeepMemoryProcessor con nombre de clase.
          */
         fun filterTombstonedLines(text: String, tombstones: List<String>): String {
             if (tombstones.isEmpty()) return text
@@ -2197,7 +2197,7 @@ class FactStore(
                 .joinToString("\n")
         }
 
-        /** B-07: 单条文本是否命中某墓碑(双通道匹配,见 [filterTombstonedLines])。 */
+        /** B-07: Si un solo texto llega a una determinada lápida(Coincidencia de doble canal,ver [filterTombstonedLines]). */
         fun matchesTombstone(text: String, tombstone: String): Boolean {
             val normalized = text.trim().replace(WHITESPACE_RE, " ")
             val tomb = tombstone.trim().replace(WHITESPACE_RE, " ")
@@ -2209,14 +2209,14 @@ class FactStore(
     }
 
     /**
-     * v6: 检查 facts_fts 索引一致性,不一致则全量 rebuild。
+     * v6: Verifique la coherencia del índice Facts_fts,Si es inconsistente, reconstruya en su totalidad.
      *
-     * 触发场景:
-     * - v5→v6 迁移后(facts_fts 空表,需首次全量索引)
-     * - 外部修改 facts 表(备份导入后)
-     * - 索引损坏(FTS 查询异常后下次搜索自愈)
+     * escena desencadenante:
+     * - v5→v6 Después de la migración(facts_fts mesa vacia,Requiere indexación completa por primera vez)
+     * - Modificar externamente la tabla de hechos.(Después de la importación de la copia de seguridad)
+     * - Corrupción del índice(FTS Después de que la consulta sea anormal, la siguiente búsqueda será de autorreparación.)
      *
-     * 调用一次后设置 [ftsConsistencyChecked],避免重复 COUNT。
+     * Configurar después de llamar una vez [ftsConsistencyChecked],Evite duplicar COUNT.
      */
     suspend fun ensureFtsIndexConsistent() = withContext(Dispatchers.IO) {
         if (ftsConsistencyChecked) return@withContext
@@ -2236,9 +2236,9 @@ class FactStore(
     }
 
     /**
-     * v6: 全量重建 facts_fts 索引。清空后遍历 facts 重新插入(ngram 转换)。
+     * v6: Reconstruya completamente el índice Facts_fts. Después de borrar, recorra los hechos y vuelva a insertarlos.(ngram Convertir).
      *
-     * 调用方应在 IO 线程。
+     * La persona que llama debe estar en el hilo IO.
      */
     suspend fun rebuildFtsIndex() = withContext(Dispatchers.IO) {
         dao.clearFts()
@@ -2256,34 +2256,34 @@ class FactStore(
     }
 
     /**
-     * 按 [MemoryConfig] 配置执行一轮 fact 衰减。
+     * prensa [MemoryConfig] La configuración realiza una ronda de decadencia de hechos.
      *
-     * v4 改进:关键事实(importance=2)永不衰减,避免"青霉素过敏"等高风险信息被遗忘。
-     * v7 改进:引入命中加成(hitBonus)。
-     * v8 改进:新增可选 scope 参数,null 表示全部作用域(兼容旧调用方)。
+     * v4 mejorar:hechos clave(importance=2)nunca decaer,evitar"alergia a la penicilina"Se olvida la información de alto riesgo.
+     * v7 mejorar:Introduciendo el bono de golpe(hitBonus).
+     * v8 mejorar:Parámetro de alcance opcional agregado,null Representa todo el alcance.(Compatible con personas mayores).
      *
-     * v17（衰减可回拨）:从"到期硬删除"改为"分数出场"。
-     *  - 分数落库到 `score` 列,不再每次按年龄现算,阈值判定有稳定依据;
-     *  - 结算时钟:上次结算时间(score_updated_at) → 首次结算回退到 created_at;
-     *    自上次结算后又被命中/合并(last_hit_at 更新)的行补一次 hitBonus 并重置时钟;
-     *  - 结算后分数低于 [MemoryConfig.compileThreshold] 的行写入 suppressed_at(出场):
-     *    不再参与自动召回与上下文注入,但整行保留,可被后续引用/显式检索拉回;
-     *  - 分数回昇(或改为关键/置顶)的行清除 suppressed_at 重新参与召回。
-     * 只有 `expires_at` 到期的时效性事实仍然硬删除 —— 那是写入时的显式 TTL,不由衰减阈值决定。
-     * 真正的清理(单条删除/清空记忆)走 [delete] / [clearAll] 等显式入口。
+     * v17(La atenuación se puede reducir):de"Eliminación definitiva caducada"Cambiar a"apariencia de la partitura".
+     *  - Puntuación caída en la biblioteca. `score` columna,Ya no se calcula en función de la edad cada vez,Existe una base estable para la determinación del umbral.;
+     *  - reloj de liquidación:Última hora de liquidación(score_updated_at) → Regresar al primer asentamiento. created_at;
+     *    Golpear de nuevo desde el último acuerdo/fusionar(last_hit_at actualizar)línea para rellenar el hitBonus y restablecer el reloj;
+     *  - Después de la liquidación, la puntuación es inferior a [MemoryConfig.compileThreshold] filas escritas suppressed_at(aparecer):
+     *    Ya no participa en la recuperación automática ni en la inyección de contexto.,pero toda la fila permanece,Se puede hacer referencia más adelante./retroceso de búsqueda explícito;
+     *  - rebote de puntuación(o cambiar a clave/fijar hacia arriba)La línea que se borra suprimida_at vuelve a participar en la recuperación.
+     * solo `expires_at` Los datos vencidos y urgentes permanecen eliminados —— Eso es explícito al escribir. TTL,No determinado por el umbral de atenuación.
+     * limpieza real(Eliminar un solo elemento/borrar la memoria)ir [delete] / [clearAll] Espere una entrada explícita.
      *
-     * 该方法在 daily pipeline(deepMemory step 之后)由
-     * [io.zer0.memory.deep.DeepMemoryProcessor] 调用,每个 assistant 的 FactStore 各跑一次。
+     * Este método está en daily pipeline(deepMemory step después)por
+     * [io.zer0.memory.deep.DeepMemoryProcessor] llamar,El FactStore de cada asistente se ejecuta una vez.
      *
-     * @return 本轮新出场(即不再参与召回)的 fact 数
+     * @return Nueva apariencia esta ronda(Es decir, ya no participará en el retiro.)El número de hechos
      */
     suspend fun applyDecay(config: MemoryConfig, scope: String? = null, spaceId: String? = null): Int =
         withContext(Dispatchers.IO) {
             val now = Instant.now()
             val nowIso = now.toString()
-            // B-18: 先清理已到期事实(expires_at < now) — 时效性事实由显式 TTL 决定,不属于衰减
+            // B-18: Primero limpie los datos caducados(expires_at < now) — Los hechos de puntualidad están determinados por TTL explícito,Sin atenuación
             dao.deleteExpired(nowIso, scope, spaceId)
-            // v2.6.2（记忆审计）: 批量删除后统一清孤儿边/修订。
+            // v2.6.2(auditoría de memoria): Borre los bordes huérfanos de manera uniforme después de la eliminación del lote/Revisión.
             db.memoryLinkDao().deleteOrphans()
             revisionDao?.deleteOrphans()
 
@@ -2291,7 +2291,7 @@ class FactStore(
             var outOfRecall = 0
             db.withTransaction {
                 for (candidate in candidates) {
-                    // 时间戳无法解析时本轮不结算该行:宁可不衰减,不能误判成低分出场
+                    // Si no se puede analizar la marca de tiempo, la fila no se liquidará en esta ronda.:Preferiría no decaer,No juzgues mal una apariencia con una puntuación baja.
                     val elapsed = elapsedDays(candidate.refAt, now) ?: continue
                     var next = decayedScore(candidate.score, elapsed, config)
                     if (candidate.hitSinceDecay != 0) {
@@ -2303,17 +2303,17 @@ class FactStore(
                 dao.releaseAboveThreshold(config.compileThreshold, scope, spaceId)
             }
             if (outOfRecall > 0) {
-                Logger.d("FactStore", "applyDecay: $outOfRecall 条事实分数低于阈值,已退出召回(行保留)")
+                Logger.d("FactStore", "applyDecay: $outOfRecall La puntuación de hechos está por debajo del umbral.,Salido del retiro(fila reservada)")
             }
             outOfRecall
         }
 
-    /** 一天的毫秒数(衰减结算用)。 */
+    /** milisegundos en un día(Para liquidación de atenuación). */
     private val millisPerDay = 86_400_000.0
 
     /**
-     * [refAt] 到 [now] 的间隔天数(负数按 0 算)。
-     * 时间戳无法解析时返回 null —— 调用方应跳过该行,而不是当作"无限旧"直接出场。
+     * [refAt] llegar [now] número de días entre(Los números negativos se cuentan como 0.).
+     * Devuelto cuando no se puede analizar la marca de tiempo null —— La persona que llama debe saltarse esta línea.,en lugar de como"infinitamente viejo"Preséntese directamente.
      */
     private fun elapsedDays(refAt: String?, now: Instant): Double? {
         if (refAt.isNullOrBlank()) return null
@@ -2323,8 +2323,8 @@ class FactStore(
     }
 
     /**
-     * 指数衰减:`score × exp(-λ·天数)`,λ = [MemoryConfig.decayPerDay] × [MemoryConfig.forgetSpeed]。
-     * 与 [MemoryConfig.factScore] 同一模型:指数无记忆性,增量结算与按年龄一次结算等价。
+     * decaimiento exponencial:`score × exp(-λ·días)`,λ = [MemoryConfig.decayPerDay] × [MemoryConfig.forgetSpeed].
+     * con [MemoryConfig.factScore] mismo modelo:Índice de falta de memoria,La liquidación incremental equivale a una liquidación única basada en la edad.
      */
     private fun decayedScore(score: Float, elapsedDays: Double, config: MemoryConfig): Float {
         val lambda = (config.decayPerDay * config.forgetSpeed).toDouble()
@@ -2333,38 +2333,38 @@ class FactStore(
         return if (next.isNaN() || next < 0.0) 0f else next.toFloat()
     }
 
-    /** 分数上限:命中后不超过"全新记忆 + 一次命中加成",防止反复命中把分数堆到无意义高位。 */
+    /** Límite de puntuación:No más que"Nueva memoria + bonificación de un golpe",Evite que los golpes repetidos acumulen su puntuación a un nivel alto sin sentido. */
     private fun revivalCeiling(config: MemoryConfig): Float = config.baseImportance + config.hitBonus
 
-    /** v17: 这条记忆是否仍在召回范围内(未出场;关键/置顶恒在)。 */
+    /** v17: ¿Esta memoria todavía está dentro del rango de recuperación?(No presente;clave/Siempre en la cima). */
     private fun Fact.isInRecall(): Boolean = suppressedAt == null || pinnedAt != null || importance >= 2
 
     /**
-     * v18: 按 scope/space 取出“已被取代”的旧记忆 id 集合。
+     * v18: Presione alcance/espacio para eliminar“ha sido reemplazado”Una colección de identificadores de memoria antiguos.
      *
-     * 查询失败时返回空集 —— 拿不到仲裁依据时宁可两条都留在上下文,
-     * 也不能因为读不到指向而被误剔除一条正确记忆。
+     * Devuelve un conjunto vacío cuando falla la consulta —— Cuando no hay base para el arbitraje, prefiero dejarlos a ambos en su contexto.,
+     * Tampoco se puede borrar por error una memoria correcta sólo porque el puntero no se puede leer.
      */
     private suspend fun supersededIds(scope: String?, spaceId: String?): Set<Long> =
         runCatching { dao.getSupersededIds(scope, spaceId).toSet() }
-            .onFailure { Logger.w("FactStore", "读取被取代记忆失败(本次不剔除): ${it.message}") }
+            .onFailure { Logger.w("FactStore", "No se pudo leer la memoria reemplazada(No eliminado esta vez): ${it.message}") }
             .getOrDefault(emptySet())
 
     /**
-     * v19: 按 scope/space 取出“已被合并进其他事实”的行 id 集合。
+     * v19: Presione alcance/espacio para eliminar“fusionado con otros hechos”Una colección de identificadores de fila.
      *
-     * 与 [supersededIds] 同样容错: 读不到时返回空集 —— 宁可多注入一条重复记忆,
-     * 也不能因为一次读失败把正常记忆挡在上下文外。
+     * con [supersededIds] Igualmente tolerante a fallos: Devuelve un conjunto vacío si no se puede leer. —— Prefiero inyectar un recuerdo duplicado más.,
+     * Tampoco se puede bloquear la memoria normal fuera de contexto debido a una lectura fallida.
      */
     private suspend fun mergedIds(scope: String?, spaceId: String?): Set<Long> =
         runCatching { dao.getMergedIds(scope, spaceId).toSet() }
-            .onFailure { Logger.w("FactStore", "读取已合并记忆失败(本次不剔除): ${it.message}") }
+            .onFailure { Logger.w("FactStore", "No se pudo leer la memoria fusionada(No eliminado esta vez): ${it.message}") }
             .getOrDefault(emptySet())
 
     /**
-     * v18/v19: 注入上下文用的可见性过滤 —— 已出场的不进,已被取代的不进,
-     * 已被合并进其他事实的也不进。列表/记忆页走默认参数(不过滤),
-     * 所以被取代、被合并的记忆依旧可见、依旧可以显式检索到。
+     * v18/v19: Filtrado de visibilidad para el contexto de inyección. —— Los que ya se han presentado no entrarán.,ha sido reemplazado,
+     * No se incluyen los hechos que hayan sido incorporados a otros hechos. lista/Parámetros predeterminados de la página de memoria(Sin filtrado),
+     * Por lo tanto, los recuerdos reemplazados y fusionados siguen siendo visibles y aún pueden recuperarse explícitamente.
      */
     private suspend fun List<Fact>.filterRecallable(scope: String?, spaceId: String?): List<Fact> {
         val superseded = supersededIds(scope, spaceId)
@@ -2372,24 +2372,24 @@ class FactStore(
         return filter { it.isInRecall() && it.id !in superseded && it.id !in merged }
     }
 
-    // ── v8: 按作用域(scope)查询/观察/衰减 ────────────────────────────────
+    // ── v8: por alcance(scope)Consulta/observar/Atenuación ────────────────────────────────
 
     /**
-     * v8: 按 scope 观察事实列表(Flow 形式),用于 UI 实时刷新。
-     * 排序与 [getAll] 一致:importance DESC + time DESC。
+     * v8: Observar lista de hechos por alcance.(Flow forma),Se utiliza para la actualización de la interfaz de usuario en tiempo real.
+     * ordenar con [getAll] consistente:importance DESC + time DESC.
      */
     fun observeByScope(scope: String): Flow<List<Fact>> =
         dao.observeByScope(scope, java.time.Instant.now().toString()).map { entities -> entities.map { it.toDomainFact() } }
 
     /**
-     * v8: 按 scope 同步查询事实列表。
-     * 用于 system prompt 注入、子助手记忆检索等场景。
+     * v8: Consulta la lista de hechos de forma sincrónica por alcance.
+     * Se utiliza para inyección de avisos del sistema, recuperación de memoria del subasistente y otros escenarios.
      */
     /**
-     * v17: [includeSuppressed] 默认 true(记忆页/去重等需要看到全部行),
-     * 写进上下文的召回路径传 false —— 出场的记忆不该再参与注入,
-     * 但“能不能看见”与“要不要注入”必须是两件事。
-     * v18: 传 false 时同时排除已被取代的旧记忆。
+     * v17: [includeSuppressed] Predeterminado true(pagina de memoria/Necesita ver todas las filas para eliminar duplicados, etc.),
+     * Escriba la ruta de recuperación pasada al contexto. false —— El recuerdo de la aparición ya no debería participar en la inyección.,
+     * pero“puedes ver”con“¿Quieres inyectarte?”Tienen que ser dos cosas.
+     * v18: Pasar falso también excluye viejos recuerdos que han sido reemplazados.
      */
     suspend fun getByScope(scope: String, includeSuppressed: Boolean = true): List<Fact> = withContext(Dispatchers.IO) {
         val rows = dao.getByScope(scope)
@@ -2399,30 +2399,30 @@ class FactStore(
     }
 
     /**
-     * v8: 按作用域清理 —— 删除指定 scope 下早于 [cutoffIso] 且 importance < [minImportance] 的事实。
+     * v8: Limpiar por alcance —— Eliminar el alcance especificado antes de [cutoffIso] y importance < [minImportance] hecho.
      *
-     * 这是显式清理入口(数据管理/重置场景)、不是衰减路径:
-     * 衰减由 [applyDecay] 按持久分数判定,只出场不删行;
-     * 本方法直接传 [cutoffIso] 硬删,调用方需明确知道自己在删数据。
+     * Esta es una entrada de limpieza explícita.(Gestión de datos/restablecer escena), no una ruta de atenuación:
+     * Atenuación por [applyDecay] Juzgado por la puntuación de durabilidad,Sólo aparecen y no eliminan líneas.;
+     * Este método transfiere directamente [cutoffIso] Eliminación definitiva,La persona que llama debe saber claramente que está eliminando datos.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     suspend fun deleteByScopeExceptImportant(scope: String, cutoffIso: String, minImportance: Int): Int = withContext(Dispatchers.IO) {
         dao.deleteByScopeExceptImportant(scope, cutoffIso, minImportance)
     }
 
-    // ── v9: 按 Space(space_id)查询/观察/衰减 ───────────────────────────
+    // ── v9: prensa Space(space_id)Consulta/observar/Atenuación ───────────────────────────
 
     /**
-     * v9: 按 space_id 观察事实列表(Flow 形式),用于记忆页 UI 实时刷新。
+     * v9: Observar la lista de hechos por space_id(Flow forma),Se utiliza para actualizar en tiempo real la interfaz de usuario de la página de memoria.
      */
     fun observeBySpace(spaceId: String): Flow<List<Fact>> =
         dao.observeBySpace(spaceId, java.time.Instant.now().toString()).map { entities -> entities.map { it.toDomainFact() } }
 
     /**
-     * v9: 按 space_id 同步查询事实列表。
-     * 用于记忆页 UI 展示、system prompt 注入等场景。
-     * v18: [includeSuppressed]=false 时同时排除已被取代的旧记忆。
+     * v9: Consulta la lista de hechos de forma sincrónica mediante space_id.
+     * Se utiliza para la visualización de la interfaz de usuario de la página de memoria,system prompt Inyección y otros escenarios.
+     * v18: [includeSuppressed]=false Al mismo tiempo, se eliminan viejos recuerdos que han sido reemplazados.
      */
     suspend fun getBySpace(spaceId: String, includeSuppressed: Boolean = true): List<Fact> = withContext(Dispatchers.IO) {
         val rows = dao.getBySpace(spaceId)
@@ -2432,9 +2432,9 @@ class FactStore(
     }
 
     /**
-     * v9: 按 scope + space_id 双重过滤查询事实列表。
-     * scope 按 Agent 隔离,space_id 按场景隔离,两者正交。
-     * v18: [includeSuppressed]=false 时同时排除已被取代的旧记忆。
+     * v9: Lista de hechos de consulta de filtro doble por alcance + space_id.
+     * scope Cuarentena por agente,space_id Aislar por escena,Los dos son ortogonales.
+     * v18: [includeSuppressed]=false Al mismo tiempo, se eliminan viejos recuerdos que han sido reemplazados.
      */
     suspend fun getByScopeAndSpace(scope: String, spaceId: String, includeSuppressed: Boolean = true): List<Fact> =
         withContext(Dispatchers.IO) {
@@ -2445,39 +2445,39 @@ class FactStore(
         }
 
     /**
-     * v9: 按 scope + space_id 双重过滤观察事实列表(Flow 形式)。
+     * v9: Lista de hechos de observación de doble filtro por alcance + space_id(Flow forma).
      */
     fun observeByScopeAndSpace(scope: String, spaceId: String): Flow<List<Fact>> =
         dao.observeByScopeAndSpace(scope, spaceId, java.time.Instant.now().toString())
             .map { entities -> entities.map { it.toDomainFact() } }
 
     /**
-     * v9: 按 space_id 清理 —— 删除指定 Space 下早于 [cutoffIso] 且 importance < [minImportance] 的事实。
+     * v9: Limpiar por space_id —— Elimine el espacio especificado que sea anterior a [cutoffIso] y importance < [minImportance] hecho.
      *
-     * 同 [deleteByScopeExceptImportant]:显式清理入口,不是衰减路径。
+     * Lo mismo [deleteByScopeExceptImportant]:Borrar entrada explícitamente,No es un camino de atenuación.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     suspend fun deleteBySpaceExceptImportant(spaceId: String, cutoffIso: String, minImportance: Int): Int = withContext(Dispatchers.IO) {
         dao.deleteBySpaceExceptImportant(spaceId, cutoffIso, minImportance)
     }
 
     /**
-     * v9: 统计指定 Space 下的事实数量。
+     * v9: Cuente el número de hechos en el espacio especificado.
      */
     suspend fun countBySpace(spaceId: String): Int = withContext(Dispatchers.IO) {
         dao.countBySpace(spaceId)
     }
 
     // ════════════════════════════
-    //  内部转换
+    //  conversión interna
     // ════════════════════════════
 
     /**
-     * v1.0.51: 安全 upsert FTS 索引 — 先删后插,避免 FTS4 表产生重复 fact_id 条目。
+     * v1.0.51: Índice FTS de inserción segura — Eliminar primero y luego insertar.,Evite entradas duplicadas de fact_id para tablas FTS4.
      *
-     * FTS4 虚拟表无唯一约束,`INSERT OR REPLACE` 只按 rowid 去重不按 fact_id 去重,
-     * 合并/更新事实时直接 insertFts 会产生重复索引行,导致搜索返回重复结果。
+     * FTS4 La mesa virtual no tiene restricción única,`INSERT OR REPLACE` Deduplicar solo por rowid y no por fact_id,
+     * fusionar/Al actualizar hechos, insertFts directamente generará filas de índice duplicadas,Hace que las búsquedas arrojen resultados duplicados.
      */
     private suspend fun syncFtsRow(factId: Long, contentNgram: String) {
         dao.deleteFts(factId)
@@ -2499,20 +2499,20 @@ class FactStore(
         lastConfirmedAt = lastConfirmedAt,
         lastHitAt = lastHitAt,
         hitCount = hitCount,
-        // v8: 透传 scope 字段
+        // v8: Transmisión transparente del campo de alcance.
         scope = scope,
-        // v9: 透传 spaceId 字段
+        // v9: Transmitir transparentemente el campo spaceId
         spaceId = spaceId,
-        // B4-05: 透传置顶时间
+        // B4-05: Tiempo de transmisión transparente
         pinnedAt = pinnedAt,
-        // v12: 透传实体归一化键
+        // v12: Clave de normalización de entidad transparente
         entityKey = entityKey,
-        // v17: 透传持久分数与出场标记
+        // v17: Transmisión transparente de puntuaciones persistentes y marcas de salida.
         score = score,
         suppressedAt = suppressedAt,
-        // v18: 透传“取代了哪条旧记忆”
+        // v18: paso a través“¿Qué viejo recuerdo ha sido reemplazado?”
         supersedesId = supersedesId,
-        // v19: 透传“被合并进了哪条记忆”
+        // v19: paso a través“¿En qué memoria se fusionó?”
         mergedIntoId = mergedIntoId,
     )
 
@@ -2545,13 +2545,13 @@ class FactStore(
         emptyList()
     }
 
-    /** 日期范围。 */
+    /** Rango de fechas. */
     data class DateRange(val from: String? = null, val to: String? = null)
 }
 
 /**
- * 标签搜索计划：构造 LIKE 候选 SQL，并在 Kotlin 层做 JSON 精确匹配与 matchCount 排序。
- * 避免依赖 SQLite 的 json_each（部分测试环境/旧版 Android SQLite 不支持）。
+ * Plan de búsqueda de etiquetas: construya SQL candidato LIKE y realice coincidencias exactas JSON y ordenación matchCount en la capa Kotlin.
+ * Evite confiar en json_each de SQLite (parte del entorno de prueba/No es compatible con versiones anteriores de Android SQLite).
  */
 private class TagSearchPlan(
     private val queryTags: List<String>,
@@ -2577,7 +2577,7 @@ private class TagSearchPlan(
         dateRange?.to?.let { add(it) }
         scope?.let { add(it) }
         spaceId?.let { add(it) }
-        add(limit * 2) // 多拉候选,内存过滤后可能丢弃部分
+        add(limit * 2) // candidata a dora,Algunos pueden descartarse después del filtrado de memoria.
     }.toTypedArray()
 
     fun refine(rows: List<FactTagSearchRow>): List<FactStore.Fact> {

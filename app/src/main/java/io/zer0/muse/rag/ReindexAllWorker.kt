@@ -21,34 +21,34 @@ import io.zer0.muse.notification.MuseNotificationTarget
 import org.koin.core.context.GlobalContext
 
 /**
- * v1.133: 批量重索引 Worker — 在后台重新索引所有 KB 的全部文档。
+ * v1.133: Reindexación por lotes Worker — Reindexar todos los documentos para todos los KB en segundo plano.
  *
- * 触发场景:
- *  - 用户在"知识库管理"页点击"重新索引全部"(应用在前台,直接走 [RagService.reindexAllInKbs] 即可)
- *  - 用户在 RAG 设置页调整分块参数后,希望批量重新索引所有文档(走本 Worker,后台执行)
- *  - 升级 embedding 模型后,旧向量维度不匹配 → 走本 Worker
+ * escena desencadenante:
+ *  - El usuario está en"Gestión de la base de conocimientos."Clic en la página"Reindexar todo"(Aplicación en primer plano,Ir directamente [RagService.reindexAllInKbs] Eso es todo)
+ *  - Después de que el usuario ajusta los parámetros de bloqueo en la página de configuración de RAG,Quiere reindexar de forma masiva todos los documentos(toma el libro Worker,ejecución en segundo plano)
+ *  - Después de actualizar el modelo de incrustación,Las dimensiones vectoriales antiguas no coinciden → toma el libro Worker
  *
- * 设计:
- *  - 用 setForeground + 进度通知,长任务可被用户感知(Android 12+ 强制要求 foreground service)
- *  - 失败不重试(同 [CloudBackupWorker]):返回 retry 会让 WorkManager 30s 内反复重试
- *  - 通知 channel 复用 [MuseNotificationManager.CHANNEL_WEB_SERVER](低优先级,无声音)
- *  - 进度更新通过 setProgressAsync 同步到 WorkManager,UI 可观察
- *  - 终态反馈(UX 复核):任务结束时 WorkManager 会撤掉前台进度通知,因此这里再补一条
- *    结果通知(全部成功 / 部分失败 / 全部失败 / 没有可索引文档),否则用户点完按钮
- *    什么也看不到 —— 失败不再只写日志。
+ * diseño:
+ *  - Utilice setForeground + notificación de progreso,Los usuarios pueden percibir tareas largas(Android 12+ Requisitos obligatorios foreground service)
+ *  - No reintentar en caso de error(Lo mismo [CloudBackupWorker]):Devolver el reintento hará que WorkManager lo vuelva a intentar repetidamente dentro de los 30 segundos.
+ *  - Reutilización del canal de notificación [MuseNotificationManager.CHANNEL_WEB_SERVER](baja prioridad,Sin sonido)
+ *  - Las actualizaciones de progreso se sincronizan con el WorkManager,UI observable
+ *  - retroalimentación del estado final(UX Revisión):Cuando finalice la tarea, WorkManager eliminará la notificación de progreso en primer plano.,Así que aquí hay una cosa más.
+ *    Notificación de resultados(Todos exitosos/Algunos fallidos/Todos fallidos/No hay documentos indexables),De lo contrario, el usuario hace clic en el botón.
+ *    no puedo ver nada —— Los fallos ya no se registran simplemente.
  *
- * 用法:
+ * Uso:
  * ```
  * ReindexAllWorker.enqueue(context, kbIds = listOf("default", "kb-xxx"))
  * ```
  */
 
-/** 重索引终态:决定结果通知的文案与优先级。 */
+/** reindexar el estado final:Determinar el texto y la prioridad de las notificaciones de resultados. */
 internal enum class ReindexOutcome { SUCCESS, PARTIAL, FAILED }
 
 /**
- * 由成功/总数推出终态。total<=0 视为「无事可做」按完成处理;
- * successCount==0 且 total>0 是**全部失败**,必须与成功区分(此前一律 Result.success 静默)。
+ * por el éxito/El número total conduce al estado final.total<=0 Trátelo como "nada que hacer" y presione Listo.;
+ * successCount==0 y total>0 si**Todo falló**,debe distinguirse del éxito(Result.success siempre estuvo en silencio antes).
  */
 internal fun reindexOutcomeOf(successCount: Int, total: Int): ReindexOutcome = when {
     total <= 0 || successCount >= total -> ReindexOutcome.SUCCESS
@@ -63,65 +63,65 @@ class ReindexAllWorker(
     override suspend fun doWork(): Result {
         val koin = resultOf { GlobalContext.get() }.getOrNull()
         if (koin == null) {
-            Logger.w(TAG, "Koin 未初始化(Safe Mode?),稍后重试")
+            Logger.w(TAG, "Koin no inicializado(Safe Mode?),Vuelve a intentarlo más tarde")
             return Result.retry()
         }
         val ragService = resultOf { koin.get<RagService>() }.getOrNull()
-            ?: return Result.retry().also { Logger.w(TAG, "RagService 解析失败,稍后重试") }
+            ?: return Result.retry().also { Logger.w(TAG, "RagService El análisis falló,Vuelve a intentarlo más tarde") }
         val settings = resultOf { koin.get<SettingsRepository>() }.getOrNull()
-            ?: return Result.retry().also { Logger.w(TAG, "SettingsRepository 解析失败,稍后重试") }
+            ?: return Result.retry().also { Logger.w(TAG, "SettingsRepository El análisis falló,Vuelve a intentarlo más tarde") }
         val kbDao = resultOf { koin.get<KnowledgeBaseDao>() }.getOrNull()
-            ?: return Result.retry().also { Logger.w(TAG, "KnowledgeBaseDao 解析失败,稍后重试") }
+            ?: return Result.retry().also { Logger.w(TAG, "KnowledgeBaseDao El análisis falló,Vuelve a intentarlo más tarde") }
         val notifMgr = resultOf { koin.get<MuseNotificationManager>() }.getOrNull()
 
-        // 1. 取要重索引的 KB 列表(未指定则全部)
+        // 1. Obtenga una lista de KB para reindexar(Todo si no se especifica)
         val kbIds = inputData.getStringArray(KEY_KB_IDS)?.toList()
             ?: kbDao.getAll().map { it.id }
         if (kbIds.isEmpty()) {
-            Logger.i(TAG, "无 KB 需要重索引")
+            Logger.i(TAG, "No se requieren KB para volver a indexar")
             notifyNothingToDo()
             return Result.success()
         }
 
-        // 2. 切前台服务 + 进度通知
+        // 2. Cortar el servicio de recepción + notificación de progreso
         val totalCount = resultOf { koin.get<io.zer0.muse.data.knowledge.KnowledgeDocDao>().getByKbIds(kbIds).size }
             .getOrNull() ?: 0
         if (totalCount == 0) {
-            Logger.i(TAG, "无文档需要重索引(kbIds=$kbIds)")
+            Logger.i(TAG, "No es necesario reindexar ningún documento(kbIds=$kbIds)")
             notifyNothingToDo()
             return Result.success()
         }
         setForeground(buildForegroundInfo(0, totalCount, applicationContext))
         notifMgr?.ensureChannels()
 
-        // 3. 读取 RAG 配置
+        // 3. Leer la configuración de RAG
         val ragConfig = resultOf { settings.getRagConfig() }.getOrNull() ?: RagConfig()
 
-        // 4. 执行重索引
-        Logger.i(TAG, "开始重索引:$totalCount 篇文档,kbIds=$kbIds")
+        // 4. Realizar reindexación
+        Logger.i(TAG, "Empezar a reindexar:$totalCount documentos,kbIds=$kbIds")
         val failures = ragService.reindexAllInKbs(
             kbIds = kbIds,
             ragConfig = ragConfig,
             onProgress = { current, total ->
-                // 更新 WorkManager 进度(非 suspend,可从普通回调调用)
+                // Actualizar el progreso de WorkManager(no suspend,Llamable desde una devolución de llamada normal)
                 setProgressAsync(workDataOf(KEY_PROGRESS to current, KEY_TOTAL to total))
-                // setForeground 是 suspend,在回调里无法直接调用 — 通过 NotificationManager 直接更新通知
+                // setForeground si suspend,No se puede llamar directamente en la devolución de llamada. — Actualice las notificaciones directamente a través de NotificationManager
                 resultOf { updateProgressNotification(current, total, applicationContext) }
-                    .onError { msg, _ -> Logger.w(TAG, "更新进度通知失败: $msg") }
+                    .onError { msg, _ -> Logger.w(TAG, "Error en la notificación de progreso de la actualización: $msg") }
             },
         )
         val successCount = (totalCount - failures.size).coerceAtLeast(0)
-        Logger.i(TAG, "重索引完成:成功 $successCount/$totalCount,失败 ${failures.size}")
-        // UX 复核:前台进度通知随任务结束被撤掉,这里补终态通知 —— 失败必须有用户可见反馈
+        Logger.i(TAG, "Reindexación completada:éxito $successCount/$totalCount,falló ${failures.size}")
+        // UX Revisión:La notificación de progreso en primer plano se elimina cuando finaliza la tarea.,Notificación final aquí —— El error debe tener comentarios visibles para el usuario.
         notifyResult(successCount, totalCount, failures)
         return Result.success()
     }
 
     /**
-     * 终态结果通知(全部成功 / 部分失败 / 全部失败)。
+     * Notificación del resultado final(Todo éxito / fracaso parcial / todo fracaso).
      *
-     * 不返回 retry:失败原因多为 embedding 配置或文档本身不可解析,重试会在 30s 内反复撞同一面墙;
-     * 用户看得到失败原因 + 有 KB 管理页入口,可自行处理后重跑。
+     * No se devuelve el reintento: el motivo del error es principalmente la incrustación de la configuración o el documento en sí no se puede analizar.,Al volver a intentarlo, golpearás la misma pared repetidamente en 30 segundos.;
+     * Los usuarios pueden ver el motivo del error + hay una entrada a la página de administración de KB,Puedes manejarlo tú mismo y ejecutarlo nuevamente.
      */
     private fun notifyResult(successCount: Int, totalCount: Int, failures: Map<String, String>) {
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
@@ -167,10 +167,10 @@ class ReindexAllWorker(
         resultOf {
             MuseNotificationManager(applicationContext).ensureChannels()
             nm.notify(NOTIF_ID_REINDEX_RESULT, notification)
-        }.onError { msg, _ -> Logger.w(TAG, "结果通知发送失败: $msg") }
+        }.onError { msg, _ -> Logger.w(TAG, "No se pudo enviar la notificación de resultados: $msg") }
     }
 
-    /** 「没有需要重新索引的文档」也要给用户一句回执,否则点完按钮毫无反馈。 */
+    /** \"No hay documentos que deban volver a indexarse\", pero también entregue un recibo al usuario,De lo contrario, no habrá comentarios después de hacer clic en el botón. */
     private fun notifyNothingToDo() {
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             ?: return
@@ -187,14 +187,14 @@ class ReindexAllWorker(
         resultOf {
             MuseNotificationManager(applicationContext).ensureChannels()
             nm.notify(NOTIF_ID_REINDEX_RESULT, notification)
-        }.onError { msg, _ -> Logger.w(TAG, "结果通知发送失败: $msg") }
+        }.onError { msg, _ -> Logger.w(TAG, "No se pudo enviar la notificación de resultados: $msg") }
     }
 
     /**
-     * 构建前台服务通知(进度条形式)。
+     * Crear notificación de servicio en primer plano(formulario de barra de progreso).
      *
-     * 复用 [MuseNotificationManager.CHANNEL_WEB_SERVER] 渠道(低优先级,无声音),
-     * 避免新建渠道打扰用户。
+     * Reutilizar [MuseNotificationManager.CHANNEL_WEB_SERVER] canal(baja prioridad,Sin sonido),
+     * Evite molestar a los usuarios creando nuevos canales.
      */
     private fun buildForegroundInfo(current: Int, total: Int, context: Context): ForegroundInfo {
         val contentIntent = MuseNotificationManager(context).buildMainActivityPendingIntent(
@@ -229,8 +229,8 @@ class ReindexAllWorker(
     }
 
     /**
-     * 直接通过 NotificationManager 更新进度通知(非 suspend,可从回调调用)。
-     * 与 [buildForegroundInfo] 共用 [NOTIF_ID_REINDEX] 通知 id,覆盖更新。
+     * Actualice las notificaciones de progreso directamente a través de NotificationManager(no suspend,Llamable desde devolución de llamada).
+     * con [buildForegroundInfo] compartir [NOTIF_ID_REINDEX] Notificación id,Actualizaciones de cobertura.
      */
     private fun updateProgressNotification(current: Int, total: Int, context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
@@ -269,14 +269,14 @@ class ReindexAllWorker(
         // Keep RAG progress/results outside MuseNotificationManager's fixed chat/backup IDs.
         private const val NOTIF_ID_REINDEX = 1105
 
-        /** 终态结果通知用独立 id:前台进度通知会被 WorkManager 在任务结束时撤掉,复用会一起消失。 */
+        /** La notificación del resultado final utiliza una identificación independiente: WorkManager eliminará la notificación de progreso en primer plano al final de la tarea.,La reutilización desaparecerá por completo. */
         private const val NOTIF_ID_REINDEX_RESULT = 1106
 
         /**
-         * 入队一次性重索引任务。
+         * Poner en cola una tarea de reindexación única.
          *
-         * @param context 任意 Context
-         * @param kbIds 要重索引的 KB id 列表;为空时重索引所有 KB
+         * @param context arbitrario Context
+         * @param kbIds Lista de identificadores de KB para reindexar;Reindexar todo si está vacío KB
          */
         fun enqueue(context: Context, kbIds: List<String> = emptyList()) {
             val request = OneTimeWorkRequestBuilder<ReindexAllWorker>()
@@ -287,7 +287,7 @@ class ReindexAllWorker(
                 androidx.work.ExistingWorkPolicy.REPLACE,
                 request,
             )
-            Logger.i(TAG, "已入队重索引任务,kbIds=$kbIds")
+            Logger.i(TAG, "Tarea de reindexación en cola,kbIds=$kbIds")
         }
     }
 }

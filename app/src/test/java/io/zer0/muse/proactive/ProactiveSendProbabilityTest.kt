@@ -6,30 +6,30 @@ import org.junit.Test
 import java.io.File
 
 /**
- * 发送概率闸。
+ * Enviar puerta de probabilidad.
  *
- * 概率是用户在设置页能看到的数字，所以两端必须守恒：0 永不发送，100 与没有这道闸
- * 完全一致。中间值用注入的掷骰结果验证两条分支 —— 去断言「跑一百次大约发五十次」
- * 只会得到一条偶发失败的测试，而真正要保证的是「掷骰结果怎么映射成发不发」。
+ * La probabilidad es un número que los usuarios pueden ver en la página de configuración, por lo que se deben conservar ambos extremos:0 nunca enviar,100 Con o sin esta puerta
+ * Totalmente consistente. El valor intermedio valida ambas ramas con el resultado del dado inyectado. —— Para afirmar que "si corres cien veces, te despedirán aproximadamente cincuenta veces".
+ * Sólo obtendrás una prueba fallida ocasionalmente, y lo que realmente quieres asegurar es "cómo se asigna el resultado de la tirada de dados a si se dispara o no".
  */
 class ProactiveSendProbabilityTest {
 
     @Test
-    fun `概率为 0 时永不发送`() {
+    fun `Nunca envíe cuando la probabilidad es 0`() {
         (0 until ProactiveSendProbability.ROLL_BOUND).forEach { roll ->
             assertFalse("roll=$roll", ProactiveSendProbability.allows(0, roll))
         }
     }
 
     @Test
-    fun `概率为 100 时全发`() {
+    fun `Todos se emiten cuando la probabilidad es 100.`() {
         (0 until ProactiveSendProbability.ROLL_BOUND).forEach { roll ->
             assertTrue("roll=$roll", ProactiveSendProbability.allows(100, roll))
         }
     }
 
     @Test
-    fun `概率为 50 时按掷骰结果二分`() {
+    fun `Cuando la probabilidad es 50, el resultado del dado se divide en dos puntos.`() {
         assertTrue(ProactiveSendProbability.allows(50, 0))
         assertTrue(ProactiveSendProbability.allows(50, 49))
         assertFalse(ProactiveSendProbability.allows(50, 50))
@@ -37,7 +37,7 @@ class ProactiveSendProbabilityTest {
     }
 
     @Test
-    fun `脏值按边界处理`() {
+    fun `Los valores sucios se manejan sobre una base límite`() {
         assertTrue(ProactiveSendProbability.allows(150, 99))
         assertFalse(ProactiveSendProbability.allows(-10, 0))
         assertTrue(ProactiveSendProbability.allows(1, 0))
@@ -45,15 +45,15 @@ class ProactiveSendProbabilityTest {
     }
 
     @Test
-    fun `巡检在生成之前真的读了配置里的概率`() {
-        // 纯函数测完还得盯住接线：概率曾经是「界面在写、调度不读」的字段之一，
-        // 这里做源码级断言，防止以后把这道闸留在函数里却没接到巡检上。
+    fun `La inspección realmente lee la probabilidad en la configuración antes de generar`() {
+        // Después de probar las funciones puras, todavía hay que estar atento al cableado: la probabilidad solía ser uno de los campos de que "la interfaz escribe, pero el planificador no lee".
+        // Haga afirmaciones a nivel de código fuente aquí para evitar que esta puerta quede en la función pero no se inspeccione en el futuro.
         val source = source("ProactiveCycleRunner.kt")
         assertTrue(
-            "巡检必须用配置里的 sendProbability 掷骰",
+            "La inspección debe utilizar sendProbability en la configuración para rodar el dado.",
             source.contains("ProactiveSendProbability.allows(ready.config.sendProbability"),
         )
-        assertTrue("随机源必须可注入", source.contains("rollPercent"))
+        assertTrue("La fuente de aleatoriedad debe ser inyectable.", source.contains("rollPercent"))
     }
 
     private fun source(name: String): String {
@@ -61,7 +61,7 @@ class ProactiveSendProbabilityTest {
             File("src/main/java/io/zer0/muse/proactive/$name"),
             File("app/src/main/java/io/zer0/muse/proactive/$name"),
         )
-        val file = candidates.firstOrNull { it.exists() } ?: error("找不到 $name")
+        val file = candidates.firstOrNull { it.exists() } ?: error("no encontrado $name")
         return file.readText()
     }
 }

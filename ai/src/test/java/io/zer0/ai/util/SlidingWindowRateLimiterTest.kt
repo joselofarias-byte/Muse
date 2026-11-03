@@ -10,10 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P1-3: [SlidingWindowRateLimiter] 单元测试。
+ * P1-3: [SlidingWindowRateLimiter] Pruebas unitarias.
  *
- * 用 `runTest` 的虚拟时间 + 注入 `clock = { testScheduler.currentTime }` 让限流器的窗口判断
- * 与 `delay` 的虚拟时间推进保持一致,可确定性验证"超限等待 → 窗口滑动 → 放行"。
+ * usar `runTest` tiempo virtual + inyección `clock = { testScheduler.currentTime }` Deje que la ventana del limitador actual juzgue
+ * con `delay` El avance del tiempo virtual de,Verificación determinista"Espera más allá del límite → ventana corredera → liberar".
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SlidingWindowRateLimiterTest {
@@ -25,7 +25,7 @@ class SlidingWindowRateLimiterTest {
         limiter.acquire()
         limiter.acquire()
         assertEquals(3, limiter.currentCount())
-        // 3 次立即获取,虚拟时间未推进
+        // 3 Obtener inmediatamente,El tiempo virtual no ha avanzado
         assertEquals(0L, testScheduler.currentTime)
     }
 
@@ -36,11 +36,11 @@ class SlidingWindowRateLimiterTest {
         limiter.acquire() // t=0
         assertEquals(0L, testScheduler.currentTime)
 
-        // 第 3 次:窗口已满(t=0 时有 2 条),需等到 t=1000 首条滑出窗口
+        // tercera vez:la ventana está llena(t=0 Hay 2 artículos a veces),hay que esperar hasta t=1000 Primera ventana deslizable
         limiter.acquire()
-        // 虚拟时间应推进到 1000(首条时间戳 0 + windowMs 1000)
+        // El tiempo virtual debe adelantarse a 1000(Primera marca de tiempo 0 + windowMs 1000)
         assertEquals(1_000L, testScheduler.currentTime)
-        // t=1000 时:cutoff = 1000-1000 = 0,t=0 的两条都 <= 0 被清理,新增 t=1000 一条 → size=1
+        // t=1000 tiempo:cutoff = 1000-1000 = 0,t=0 ambos de <= 0 ser aclarado,Nuevo t=1000 una pieza → size=1
         assertEquals(1, limiter.currentCount())
     }
 
@@ -68,26 +68,26 @@ class SlidingWindowRateLimiterTest {
         limiter.acquire() // t=0
         assertEquals(2, limiter.currentCount())
 
-        delay(600) // 推进到 t=600,两条 t=0 都过期(cutoff=100)
+        delay(600) // avanzar a t=600,dos t=0 Todo caducado(cutoff=100)
         assertEquals(0, limiter.currentCount())
 
-        // 过期后可再次立即获取
+        // Puede obtenerse nuevamente inmediatamente después de su vencimiento.
         limiter.acquire()
         assertEquals(1, limiter.currentCount())
     }
 
     @Test
     fun `acquire should serialize concurrent acquires without over-allocating`() = runTest {
-        // 5 并发 acquire,但窗口只允许 2 个 → 多余的等待,最终全部完成但耗时 ≥ windowMs
+        // 5 concurrencia acquire,Pero la ventana sólo permite 2 → espera innecesaria,Al final todo estuvo hecho pero tomó mucho tiempo. ≥ windowMs
         val limiter = SlidingWindowRateLimiter(maxRequests = 2, windowMs = 1_000, clock = { testScheduler.currentTime })
         val results = (1..5).map {
             async { limiter.acquire() }
         }
         results.awaitAll()
-        // 5 个请求分批:2 个 t=0,2 个 t=1000,1 个 t=2000 → 最终虚拟时间 ≥ 2000
+        // 5 solicitudes en lotes:2 un t=0,2 un t=1000,1 un t=2000 → tiempo virtual final ≥ 2000
         val now = testScheduler.currentTime
         assertTrue("expected virtual time >= 2000, got $now", now >= 2_000L)
-        // 全部完成
+        // todo hecho
         assertEquals(5, results.size)
     }
 }

@@ -1,5 +1,5 @@
-// P4-5: material3 桥接层单测 — DynamicScheme.toColorScheme() 此前零覆盖。
-// 用 material-color-utilities 构造明/暗 DynamicScheme,断言映射正确。
+// P4-5: material3 Prueba única de capa puente — DynamicScheme.toColorScheme() Cobertura anteriormente nula.
+// Construya la luz usando material-color-utilities./oscuro DynamicScheme,Afirme que el mapeo es correcto.
 package io.zer0.material3
 
 import androidx.compose.ui.graphics.Color
@@ -30,7 +30,7 @@ class ColorSchemeBridgeTest {
     fun `dark scheme surfaces differ from light scheme`() {
         val dark = scheme(isDark = true).toColorScheme()
         val light = scheme(isDark = false).toColorScheme()
-        // 明暗方案在背景与容器渐变上必须不同(否则映射失去意义)
+        // Los esquemas de iluminación y oscurecimiento deben diferir según los gradientes del fondo y del contenedor.(De lo contrario, el mapeo pierde significado.)
         assertNotEquals(dark.background, light.background)
         assertNotEquals(dark.surfaceContainer, light.surfaceContainer)
         assertNotEquals(dark.surface, light.surface)

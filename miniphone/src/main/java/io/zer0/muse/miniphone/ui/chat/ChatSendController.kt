@@ -17,28 +17,28 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 /**
- * 发消息与收回复。
+ * Envía mensajes y recibe respuestas.
  *
- * 用户的话先落库再问角色:请求失败也不会从列表里消失;空白输入不产生任何动作。
- * 落库时先标「发送中」,拿到回复改成「已发出」,一轮下来一句都没落就改成「发送失败」——
- * 界面上可以指着那条重发一次,不用重新敲字。
+ * Si es un usuario, inicie sesión primero y luego pregunte sobre el rol.:Incluso si la solicitud falla, no desaparecerá de la lista.;La entrada en blanco no produce ninguna acción.
+ * Por favor marque "Dependiente" al colocarlo en stock.,Obtenga la respuesta y cámbiela a "enviado",Al final de la ronda, sin terminar una frase, se cambió a "Error al enviar".——
+ * En la interfaz, puedes señalar ese elemento y reenviarlo nuevamente.,No es necesario volver a escribir.
  *
- * 角色回复走 [replyQueue] 的单消费者 —— 生成期间可以继续发消息,但一轮应答
- * 永远只有一条 `respond` 在跑。
+ * El personaje responde y se va. [replyQueue] de consumidores individuales —— Puedes seguir enviando mensajes durante el proceso de generación.,Pero una ronda de respuesta
+ * siempre hay solo uno `respond` Correr.
  *
- * 一条用户消息由几个角色接话由 [respondersFor] 定:私信恒为会话那个角色;
- * 群聊按点名、最近说过话、稳定随机三层挑最多 [MAX_GROUP_RESPONDERS] 个人(见
- * [selectGroupResponders])。两个人**串行**说:后一个开口时前一个的话已经落库,
- * 也就在他收到的历史里(见 [chatHistoryOf])。中间留一段停顿,[pauseBetweenResponders]
- * 可注入,测试用它把节奏钉成确定的。
+ * Un mensaje de usuario es respondido por varios roles. [respondersFor] determinado:El mensaje privado siempre es el papel de la conversación.;
+ * Los chats grupales se basan en pasar lista, conversaciones recientes y selección aleatoria estable. [MAX_GROUP_RESPONDERS] personales(ver
+ * [selectGroupResponders]). dos personas**de serie**decir:Cuando este último abrió la boca, las palabras del anterior ya habían sido olvidadas.,
+ * También está en la historia que recibió.(ver [chatHistoryOf]). Deja una pausa en el medio,[pauseBetweenResponders]
+ * Inyectable,Las pruebas lo utilizan para fijar el ritmo.
  *
- * 同一条消息只认领一轮:[claimedRounds] 挡住重试与多处调用;上一轮还在跑时又提交了
- * 一模一样的一句话,当作重复提交,不再另起一轮。
+ * El mismo mensaje sólo se puede reclamar una vez:[claimedRounds] Bloquear reintentos y múltiples llamadas;Enviado nuevamente mientras aún se estaba ejecutando la última ronda.
+ * exactamente la misma frase,tratado como envío duplicado,No más empezar otra ronda.
  *
- * @param writer 落库的唯一入口
- * @param media 图片的存盘与落库:发图只负责「选中了哪几张」
- * @param state 界面状态;本类只往里写「生成中」「谁在打字」「角色在做什么」,标题与头像由 ViewModel 管
- * @param pauseBetweenResponders 两个角色之间的停顿;默认 600–1200ms,注入成空实现可以让测试不等待
+ * @param writer La única entrada a Luoku.
+ * @param media Guardar y registrar imágenes:La publicación de imágenes solo es responsable de "qué imágenes han sido seleccionadas".
+ * @param state Estado de la interfaz;Esta categoría sólo escribe "generando", "quién escribe" y "qué está haciendo el personaje".,El título y el avatar son administrados por ViewModel
+ * @param pauseBetweenResponders pausa entre dos personajes;Predeterminado 600–1200ms,Inyectar una implementación vacía permite que la prueba no espere
  */
 internal class ChatSendController(
     private val threadId: String,
@@ -52,30 +52,30 @@ internal class ChatSendController(
     private val groupCandidates: suspend () -> List<GroupResponderCandidate> = { emptyList() },
 ) {
 
-    /** 待生成的应答:单消费者顺序消费,[Channel.UNLIMITED] 让发送不必等上一条回复。 */
+    /** Respuesta a generar:Consumo secuencial de un solo consumidor,[Channel.UNLIMITED] No espere una respuesta antes de enviar. */
     private val replyQueue = Channel<PendingReply>(Channel.UNLIMITED)
 
-    /** 排队中的应答轮数,决定「对方正在输入…」何时收起。 */
+    /** Número de rondas de respuesta en cola,Determinar \"La otra parte está escribiendo…\"Cuándo guardarlo\". */
     private var pendingReplies: Int = 0
 
-    /** 已经认领过应答的用户消息 id:同一条消息不会因为重发或多处调用跑出两轮。 */
+    /** ID de mensaje del usuario que ha reclamado la respuesta: el mismo mensaje no se enviará dos veces debido a reenvíos o llamadas múltiples. */
     private val claimedRounds: MutableSet<String> = mutableSetOf()
 
-    /** 开始消费应答队列;ViewModel 接好状态之后调一次。 */
+    /** Comience a consumir la cola de respuestas;ViewModel Ajústelo una vez después de conectar el estado. */
     fun start() {
         scope.launch { consumeReplies() }
     }
 
-    /** ViewModel 销毁时收尾:关掉队列,消费循环随之结束。 */
+    /** ViewModel Terminar cuando sea destruido:cerrar la cola,El ciclo de consumo termina. */
     fun close() {
         replyQueue.close()
     }
 
     /**
-     * 发送一条文本。
+     * Envía un mensaje de texto.
      *
-     * 先落库再问角色:用户消息不依赖网络结果。空白输入不产生任何动作,
-     * 界面上的置灰只是视觉提示。
+     * Primero abandone la biblioteca y pregunte sobre el rol más tarde.:Los mensajes de usuario no dependen de los resultados de la red. La entrada en blanco no produce ninguna acción,
+     * La apariencia gris de la interfaz es solo un recordatorio visual.
      */
     fun send(text: String) {
         val content = text.trim()
@@ -92,16 +92,16 @@ internal class ChatSendController(
                     status = MpMessageStatus.SENDING,
                 ),
             )
-            // 上一轮还没结束又提交了一模一样的一句:当成重复提交,不再起一轮
+            // Antes de que terminara la última ronda, volví a enviar exactamente la misma frase.:Tratar como envío duplicado,No más rondas
             if (isDuplicateSubmission(content, messageId)) {
                 writer.updateStatus(messageId, MpMessageStatus.SENT)
                 return@launch
             }
             val started = startRound(messageId, respondersFor(content, messageId))
             when (started) {
-                // 页面正在销毁:队列已关,那一条在 startRound 里已标成发送失败
+                // La página está siendo destruida.:La cola está cerrada.,Ese se ha marcado como que no se pudo enviar en startRound.
                 RoundStart.STARTED, RoundStart.QUEUE_CLOSED -> Unit
-                // 重复提交或没人可接:这一条已经落库,不必挂着「发送中」
+                // Envío duplicado o nadie podrá aceptarlo.:Este artículo ha sido eliminado.,No es necesario colgar "Enviando"
                 RoundStart.ALREADY_STARTED, RoundStart.NO_RESPONDER ->
                     writer.updateStatus(messageId, MpMessageStatus.SENT)
             }
@@ -109,11 +109,11 @@ internal class ChatSendController(
     }
 
     /**
-     * 重发一条自己发出的文本。
+     * Reenviar un mensaje de texto que enviaste.
      *
-     * 同一行原处回到「发送中」再走一遍应答,成功后改回「已发出」—— 列表里不会多出
-     * 一条一模一样的气泡。只接受自己发的文本,其余消息(角色的、图片、语音)直接忽略。
-     * 已经答过一轮的消息不会被重发再跑一次:认领挡在前面,状态也不会停在「发送中」。
+     * Vuelva a la misma línea que "Enviando" y revísela nuevamente para responder.,Vuelva a cambiarlo a "Emitido" después del éxito.—— No habrá más en la lista.
+     * Una burbuja idéntica. Solo acepta mensajes de texto tuyos,resto de noticias(Personajes, imágenes, voces.)Simplemente ignóralo.
+     * Los mensajes que hayan sido respondidos en una ronda no se reenviarán ni se ejecutarán nuevamente.:Reclamar y ponerse al frente,El estado no se detendrá en "Enviando".
      */
     fun resend(messageId: String) {
         val message = state.value.messages.firstOrNull { it.id == messageId } ?: return
@@ -125,35 +125,35 @@ internal class ChatSendController(
     }
 
     /**
-     * 发送若干张图,按选择顺序各落一条。
+     * envía algunas fotos,Suelte uno en orden de selección.
      *
-     * 发图**不**请求角色回复:当前链路里模型还看不见图,硬答一句只会是无关的话,
-     * 等接上多模态再打开这一步。存不下的那张由 [ChatMediaWriter] 跳过,不影响其余几张。
+     * Publicar fotos**No**Solicitar respuesta de rol:El modelo en el enlace actual no puede ver la imagen todavía.,Una respuesta dura sólo será irrelevante.,
+     * Espere hasta que se conecte la multimodalidad antes de abrir este paso. La tarjeta que no puedo guardar [ChatMediaWriter] saltar,No afecta a las imágenes restantes.
      */
     fun sendImages(uris: List<Uri>) {
         if (uris.isEmpty()) return
         scope.launch { media.storePickedImages(uris, storedCharacterIdOf(currentThread())) }
     }
 
-    /** 库里的会话行:发言人与群标记都以它为准,状态还没填上也拿得到。 */
+    /** Línea de conversación de Curry:Los oradores y las etiquetas de grupo se basan en él.,Puede obtenerlo incluso si el estado aún no está completo. */
     private suspend fun currentThread(): MpThreadEntity? = threadDao.getThread(threadId)
 
-    /** 角色 id 从当前状态取;状态还没填上时问一次库,避免消息挂在空角色上。 */
+    /** La identificación del rol se toma del estado actual.;Si el estado no ha sido completado, pregunte a la base de datos una vez.,Evite mensajes colgados de roles vacíos. */
     private suspend fun resolveCharacterId(): String =
         state.value.characterId.ifEmpty { threadDao.getThread(threadId)?.characterId.orEmpty() }
 
     /**
-     * 这条用户消息该由谁接话。
+     * Quién debe responder a este mensaje de usuario.
      *
-     * 私信只有会话那个角色一个人 —— 一对一不会被这次改动变成多人应答。
-     * 群里交给 [selectGroupResponders]:点名、最近说过话、稳定随机,最多两个。
+     * El mensaje privado solo tiene una persona en la conversación —— Este cambio no convertirá las respuestas individuales en respuestas multijugador.
+     * Déjalo en manos del grupo. [selectGroupResponders]:Pasar lista, hablado recientemente, estable y aleatorio,Máximo dos.
      */
     private suspend fun respondersFor(content: String, messageId: String): List<String> {
         val current = state.value
         if (!current.isGroup) return listOfNotNull(resolveCharacterId().takeIf(String::isNotEmpty))
         val members = current.members
             .map { GroupResponderCandidate(characterId = it.characterId, name = it.name) }
-            // 刚进群、成员还没到界面上时,从库里补一次,不能因此让这条消息没人接
+            // Cuando acabas de unirte al grupo y los miembros aún no han aparecido en la interfaz,Compénsalo una vez desde la biblioteca.,No podemos dejar que este mensaje quede sin respuesta por esto.
             .ifEmpty { groupCandidates() }
         return selectGroupResponders(
             members = members,
@@ -163,16 +163,16 @@ internal class ChatSendController(
         )
     }
 
-    /** 是否是一次重复提交:同一句话已经有一条还在等回复。 */
+    /** ¿Es una presentación repetida?:Ya hay uno con la misma frase, todavía esperando respuesta. */
     private fun isDuplicateSubmission(content: String, messageId: String): Boolean = state.value.messages.any { message ->
         message.isMine && message.id != messageId && message.content == content && message.status == MpMessageStatus.SENDING
     }
 
     /**
-     * 认领一条消息的应答并排进队列。
+     * Reclama la respuesta a un mensaje y lo pone en cola.
      *
-     * @return 认领成功并已入队;[RoundStart.ALREADY_STARTED] 表示这条消息已经有一轮;
-     *   [RoundStart.QUEUE_CLOSED] 表示页面正在销毁,那一条已经标成「发送失败」
+     * @return Reclamó con éxito y se unió al equipo.;[RoundStart.ALREADY_STARTED] Indica que este mensaje ha sido;
+     *   [RoundStart.QUEUE_CLOSED] Indica que la página está siendo destruida.,Ese ha sido marcado como "Error al enviar"
      */
     private suspend fun startRound(messageId: String, responders: List<String>): RoundStart {
         if (!claimedRounds.add(messageId)) return RoundStart.ALREADY_STARTED
@@ -185,7 +185,7 @@ internal class ChatSendController(
         if (replyQueue.trySend(PendingReply(messageId = messageId, responders = responders)).isSuccess) {
             return RoundStart.STARTED
         }
-        // 队列已关(页面在销毁):这一条既拿不到回复也等不到下一轮,直接标失败
+        // La cola está cerrada.(La pagina esta siendo destruida):Éste no recibirá respuesta ni esperará a la siguiente ronda.,Falló la marca directa
         claimedRounds.remove(messageId)
         writer.updateStatus(messageId, MpMessageStatus.FAILED)
         settleReply()
@@ -202,32 +202,32 @@ internal class ChatSendController(
         }
     }
 
-    /** 一轮应答结束(成功、失败、取消都算):退掉排队数,没人排队就收起输入提示。 */
+    /** Finaliza una ronda de respuesta(El éxito, el fracaso y la cancelación cuentan):salir de la cola,Si no hay nadie en la fila, guarde el mensaje de entrada. */
     private fun settleReply() {
         pendingReplies -= 1
         state.update { it.copy(isGenerating = pendingReplies > 0, typingName = null, typingAvatarUri = null) }
     }
 
     /**
-     * 一轮应答:让认领到的角色依次开口。
+     * una ronda de respuesta:Deje que los personajes reclamados hablen por turnos.
      *
-     * 顺序很重要 —— 上一段落库之后才轮到下一个人,「两人同时说话」的撞车从这里就断掉了;
-     * 中间那段停顿让两个气泡之间有打字的节奏,不是两条消息同时弹出来。
-     * 谁在打字由 [showTyping] 写进状态,界面据此换掉「正在输入」那一行的名字与头像。
+     * el orden es importante —— Es el turno de la siguiente persona después del párrafo anterior.,Aquí termina el choque de "dos personas hablando al mismo tiempo";
+     * La pausa en el medio crea un ritmo de escritura entre las dos burbujas.,No aparecen dos mensajes al mismo tiempo.
+     * ¿Quién está escribiendo? [showTyping] escribir estado,La interfaz reemplaza el nombre y el avatar de la línea "Entrada" en consecuencia.
      */
     private suspend fun deliverRound(reply: PendingReply) {
         var delivered = 0
         reply.responders.forEachIndexed { index, characterId ->
             if (index > 0) pauseBetweenResponders()
             showTyping(characterId)
-            // 宿主约定失败发 Failed;再兜一层,免得某个实现抛异常把整条队列带停
+            // El acuerdo de anfitrión falló Failed;una capa mas,Esto evita que una implementación genere una excepción y detenga toda la cola.
             delivered += runCatching { collectReply(characterId) }
                 .onFailure { state.update { current -> current.copy(activity = null) } }
                 .getOrDefault(0)
         }
         state.update { it.copy(typingName = null, typingAvatarUri = null) }
         if (delivered == 0) {
-            // 这一轮再试还有意义:退回认领,重发能从原处再来一次
+            // Todavía tiene sentido intentarlo de nuevo esta vez.:Volver a reclamar,El reenvío puede comenzar nuevamente desde el lugar original.
             claimedRounds.remove(reply.messageId)
             writer.updateStatus(reply.messageId, MpMessageStatus.FAILED)
             writer.append(
@@ -244,7 +244,7 @@ internal class ChatSendController(
         }
     }
 
-    /** 该谁说下一句:名字与头像从成员表里取,私信退化成对方。 */
+    /** ¿Quién debería decir lo siguiente?:El nombre y el avatar se toman de la lista de miembros.,Los mensajes privados degeneran unos en otros. */
     private fun showTyping(characterId: String) {
         val member = state.value.members.firstOrNull { it.characterId == characterId }
         state.update { current ->
@@ -256,10 +256,10 @@ internal class ChatSendController(
     }
 
     /**
-     * 收完一个角色的一轮生成,返回这次落了几条消息。
+     * Completa una ronda de generación de un personaje.,Regresé esta vez y dejé algunos mensajes.
      *
-     * 中途的 Activity 只换界面那一行文案,不进消息列表;结束后无论成败都收起,
-     * 免得失败时那一行卡在界面上。历史在**每次请求前**现取:上一个人刚落的库就在里面。
+     * La actividad en el medio solo cambia la línea de redacción en la interfaz.,No entrar en la lista de mensajes;Cuando termine, sin importar el éxito o el fracaso, guárdelo,
+     * Para evitar que esa línea se atasque en la interfaz cuando falla. historia en**antes de cada solicitud**Retirar ahora:La biblioteca de la que acaba de salir la última persona está dentro.
      */
     private suspend fun collectReply(characterId: String): Int {
         var stored = 0
@@ -272,18 +272,18 @@ internal class ChatSendController(
                         storeVoice(characterId, event)
                         stored += 1
                     }
-                    // 失败这一轮什么都不落,由条数判断要不要补系统提示
+                    // Si fallas esta ronda, no perderás nada.,Determinar si se deben compensar las indicaciones del sistema según la cantidad de entradas
                     MpReplyEvent.Failed -> Unit
                 }
             }
         } finally {
-            // 成功、失败、取消三条路径都收起那一行,不给界面上留半截提示
+            // Cierra esa línea para los tres caminos del éxito, el fracaso y la cancelación.,No dejes ninguna pista en la interfaz.
             state.update { it.copy(activity = null) }
         }
         return stored
     }
 
-    /** 落一条角色文本;空白段不落(模型偶尔只给一个换行,没必要占一行)。 */
+    /** Suelta un texto de carácter;No queda ningún párrafo en blanco(El modelo ocasionalmente solo da una nueva línea.,No es necesario ocupar una línea). */
     private suspend fun storeText(characterId: String, content: String): Boolean {
         val text = content.trim()
         if (text.isEmpty()) return false
@@ -300,9 +300,9 @@ internal class ChatSendController(
     }
 
     /**
-     * 落一条角色语音:正文只存预览文案,音频引用与时长进各自字段。
+     * Deja la voz de un personaje:Solo se guarda la copia preliminar del texto principal.,La referencia del audio y la duración ingresan en sus propios campos.
      *
-     * 用户侧发语音(录音 + 转写)还没接,接上后走同一条写入,只换 sender 与音频来源。
+     * Voz del lado del usuario(Grabación + Transcripción)Aún no recogido,Después de conectarse, siga el mismo camino para escribir,Simplemente cambie el remitente y la fuente de audio.
      */
     private suspend fun storeVoice(characterId: String, voice: MpReplyEvent.Voice) {
         writer.append(
@@ -318,48 +318,48 @@ internal class ChatSendController(
         )
     }
 
-    /** 一条消息的应答认领结果。 */
+    /** El resultado del reclamo de respuesta de un mensaje. */
     private enum class RoundStart {
-        /** 已认领并排进队列。 */
+        /** Reclamados y en cola. */
         STARTED,
 
-        /** 这条消息此前已经认领过:不再跑第二轮。 */
+        /** Este mensaje ha sido reclamado antes.:No más carreras de segunda ronda. */
         ALREADY_STARTED,
 
-        /** 没有可接话的人。 */
+        /** No hay nadie para contestar el teléfono. */
         NO_RESPONDER,
 
-        /** 队列已关,页面正在销毁。 */
+        /** La cola está cerrada.,La página está siendo destruida. */
         QUEUE_CLOSED,
     }
 
-    /** 排队里的一条待生成应答;[messageId] 跟着它走,回复回来时靠它写回发送状态。 */
+    /** Se generará una respuesta en cola;[messageId] síguelo,Confíe en él para escribir el estado de envío cuando reciba la respuesta. */
     private data class PendingReply(
         val messageId: String,
         val responders: List<String>,
     )
 
     private companion object {
-        /** 角色没给出回复时落在列表里的系统提示。 */
-        const val NO_REPLY_TEXT: String = "对方没有回应"
+        /** Un mensaje del sistema que aparece en la lista cuando el personaje no responde. */
+        const val NO_REPLY_TEXT: String = "La otra parte no respondió."
 
-        /** 语音消息的正文:库里不存音频,只存这句预览文案,会话列表与未读预览都用它。 */
-        const val VOICE_PREVIEW_TEXT: String = "[语音]"
+        /** Texto del mensaje de voz:El audio no se almacena en la biblioteca.,Guarde solo esta copia preliminar,Se utiliza tanto para la lista de conversaciones como para la vista previa de no leídos. */
+        const val VOICE_PREVIEW_TEXT: String = "[Voz]"
     }
 }
 
-/** 两个角色之间的停顿下限与上限(毫秒)。 */
+/** Los límites inferior y superior de pausa entre dos personajes.(milisegundos). */
 internal const val RESPONDER_GAP_MIN_MS: Long = 600L
 internal const val RESPONDER_GAP_MAX_MS: Long = 1_200L
 
-/** 掷一段停顿:上一个人说完到下一个人开口之间等多久。 */
+/** hacer una pausa:Cuánto tiempo hay que esperar entre que la última persona termine de hablar y la siguiente persona que hable. */
 internal fun responderGapMillis(): Long = Random.nextLong(RESPONDER_GAP_MIN_MS, RESPONDER_GAP_MAX_MS + 1)
 
 /**
- * 用户消息落库时的 characterId。
+ * El ID de carácter del mensaje de usuario cuando se coloca en la base de datos.
  *
- * 私信里记会话那个角色 —— 会话里只有一个对方,这一列就当「这条属于哪个人」用。
- * 群里记空串:说话的是自己,不对应任何角色;记成第一个成员的话,历史消息里
- * 「我说的」会被读成「他说的」。谁接话由 [selectGroupResponders] 另行挑。
+ * Recuerda el papel en la conversación en el mensaje privado. —— Sólo hay otra persona en la conversación.,Esta columna se utiliza como "¿A quién pertenece este artículo?"
+ * Recuerda la cadena vacía en el grupo.:eres tu quien habla,No corresponde a ningún rol;Si está registrado como el primer miembro,En noticias históricas
+ * "Dije" se leerá como "Él dijo". ¿Quién respondió la llamada? [selectGroupResponders] Elige otro.
  */
 internal fun storedCharacterIdOf(thread: MpThreadEntity?): String = if (thread?.isGroup == true) "" else thread?.characterId.orEmpty()

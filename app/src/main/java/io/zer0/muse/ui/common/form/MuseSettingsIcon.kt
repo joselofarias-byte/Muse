@@ -9,12 +9,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import io.zer0.muse.ui.theme.MuseIconSizes
 
 /**
- * 设置图标 — 黑白线条风格。
+ * icono de configuración — Estilo de línea en blanco y negro.
  *
- * 直接渲染 24dp 线条图标，颜色跟随 onSurface（自动适配亮/暗色模式）。
+ * Representa directamente el icono de línea de 24 dp y el color sigue en la superficie (se adapta automáticamente al brillo)./modo oscuro).
  *
- * @param icon 线条图标（推荐使用 Icons.Outlined.*）
- * @param modifier 修饰符
+ * @param icon Icono de línea (recomendado Icons.Outlined.*)
+ * @param modifier modificador
  */
 @Composable
 fun MuseSettingsIcon(icon: ImageVector, modifier: Modifier = Modifier) {

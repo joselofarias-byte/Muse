@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * 插件行为验收脚本。
+ * Script de aceptación del comportamiento del complemento.
  *
- * 用宿主（WebViewSkillEngine）完全相同的调用契约跑遍每个插件的每个工具：
- *   eval(入口源码); JSON.stringify(fn.apply(null, [args]))
+ * Utilice el anfitrión (WebViewSkillEngine) Exactamente el mismo contrato de llamada se ejecuta en todas las herramientas de cada complemento:
+ *   eval(Código fuente de entrada); JSON.stringify(fn.apply(null, [args]))
  *
- * 验收口径：
- *  1. 正常用例必须返回对象且不含 error 字段；
- *  2. 非法用例必须返回带非空 error 的对象（而不是抛异常）；
- *  3. 任何用例都不允许抛异常——抛出即视为插件缺陷（宿主会把它变成一次失败的工具调用）。
+ * Calibre de aceptación:
+ *  1. Los casos de uso normales deben devolver objetos sin campos de error;
+ *  2. Los casos de uso ilegal deben devolver objetos con un error no nulo (en lugar de generar excepciones);
+ *  3. No se permiten excepciones en ningún caso de uso.——El lanzamiento se considera un defecto del complemento (el host lo convertirá en una llamada de herramienta fallida).
  *
- * 用法：node verify-plugins.js [插件目录，默认 ../plugins]
+ * Uso:node verify-plugins.js [Directorio de complementos, predeterminado ../plugins]
  */
 
 const fs = require("fs");
@@ -20,12 +20,12 @@ const pluginsRoot = process.argv[2] || path.join(__dirname, "plugins");
 
 const cases = {
     "text-toolkit": [
-        ["textStats", { text: "Hello 世界 👋\n\n第二段文字" }, "ok"],
+        ["textStats", { text: "Hello mundo 👋\n\nsegundo párrafo" }, "ok"],
         ["textStats", { text: 123 }, "error"],
         ["textTransform", { text: "hello world_test-case", mode: "camel" }, "ok"],
         ["textTransform", { text: "x", mode: "nope" }, "error"],
-        ["slugify", { text: "Hello, Muse 世界!" }, "ok"],
-        ["base64Tool", { text: "中文测试 🚀", mode: "encode" }, "ok"],
+        ["slugify", { text: "Hello, Muse mundo!" }, "ok"],
+        ["base64Tool", { text: "prueba china 🚀", mode: "encode" }, "ok"],
         ["base64Tool", { text: "!!!not-base64!!!", mode: "decode" }, "error"],
         ["jsonTool", { text: '{"a":1,"b":[2,3]}', mode: "format" }, "ok"],
         ["jsonTool", { text: "{", mode: "format" }, "error"],
@@ -96,7 +96,7 @@ function loadPlugin(id) {
     return { manifest, source };
 }
 
-/** 宿主调用契约的精确复刻。 */
+/** Una réplica exacta del contrato de llamada al anfitrión. */
 function callTool(source, functionName, args) {
     const combined =
         source + "\n;" + "JSON.stringify(" + functionName + ".apply(null, " + JSON.stringify([args]) + "))";
@@ -113,7 +113,7 @@ for (const [pluginId, pluginCases] of Object.entries(cases)) {
         plugin = loadPlugin(pluginId);
     } catch (error) {
         failed += 1;
-        failures.push(`${pluginId}: 加载失败 ${error.message}`);
+        failures.push(`${pluginId}: Error al cargar ${error.message}`);
         continue;
     }
 
@@ -122,7 +122,7 @@ for (const [pluginId, pluginCases] of Object.entries(cases)) {
         const label = `${pluginId}/${functionName}`;
         if (!declared.has(functionName)) {
             failed += 1;
-            failures.push(`${label}: manifest 未声明该函数`);
+            failures.push(`${label}: manifest La función no está declarada.`);
             continue;
         }
 
@@ -131,7 +131,7 @@ for (const [pluginId, pluginCases] of Object.entries(cases)) {
             raw = callTool(plugin.source, functionName, args);
         } catch (error) {
             failed += 1;
-            failures.push(`${label}: 抛异常 ${error.message}`);
+            failures.push(`${label}: Lanzar excepción ${error.message}`);
             continue;
         }
 
@@ -140,40 +140,40 @@ for (const [pluginId, pluginCases] of Object.entries(cases)) {
             value = JSON.parse(raw);
         } catch (error) {
             failed += 1;
-            failures.push(`${label}: 返回值不是合法 JSON（${raw.slice(0, 80)}）`);
+            failures.push(`${label}: El valor de retorno no es un JSON válido (${raw.slice(0, 80)})`);
             continue;
         }
         if (value === null || typeof value !== "object" || Array.isArray(value)) {
             failed += 1;
-            failures.push(`${label}: 返回值必须是对象，实际是 ${typeof value}`);
+            failures.push(`${label}: El valor de retorno debe ser un objeto, que en realidad es ${typeof value}`);
             continue;
         }
 
         const hasError = typeof value.error === "string" && value.error.length > 0;
         if (expectation === "ok" && hasError) {
             failed += 1;
-            failures.push(`${label}: 期望成功却返回错误「${value.error}」`);
+            failures.push(`${label}: Éxito esperado pero devolvió el error \"${value.error}\"`);
             continue;
         }
         if (expectation === "error" && !hasError) {
             failed += 1;
-            failures.push(`${label}: 期望错误却成功了（${JSON.stringify(value).slice(0, 80)}）`);
+            failures.push(`${label}: Esperando algo equivocado pero teniendo éxito (${JSON.stringify(value).slice(0, 80)})`);
             continue;
         }
         passed += 1;
     }
 
-    // 每个工具都必须有至少一个用例，避免新增工具漏测。
+    // Cada herramienta debe tener al menos un caso de uso para evitar herramientas nuevas no probadas.
     for (const functionName of declared) {
         const covered = pluginCases.some(([name]) => name === functionName);
         if (!covered) {
             failed += 1;
-            failures.push(`${pluginId}/${functionName}: 验收脚本缺少用例`);
+            failures.push(`${pluginId}/${functionName}: Faltan casos de uso en el script de aceptación`);
         }
     }
 }
 
-console.log(`插件验收：${passed} 条通过，${failed} 条失败`);
+console.log(`Aceptación de complementos:${passed} pasó,${failed} falló`);
 if (failures.length > 0) {
     for (const failure of failures) console.log(`  - ${failure}`);
     process.exit(1);

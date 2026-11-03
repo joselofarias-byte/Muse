@@ -73,7 +73,7 @@ import org.koin.compose.koinInject
 import java.io.ByteArrayOutputStream
 
 /**
- * VideoTaskStatus 枚举的 Saver(rememberSaveable 不能直接保存枚举,用 name 序列化/反序列化)。
+ * VideoTaskStatus enumerado Saver(rememberSaveable No se puede guardar la enumeración directamente,Serializar con nombre/Deserialización).
  */
 private val VideoTaskStatusSaver = Saver<VideoTaskStatus?, String>(
     save = { it?.name ?: "" },
@@ -87,22 +87,22 @@ private val VideoTaskStatusSaver = Saver<VideoTaskStatus?, String>(
 )
 
 /**
- * P2-8: 视频生成页 — 全屏工具页。
+ * P2-8: Página de generación de vídeo — Página de herramientas en pantalla completa.
  *
- * 布局:
- *  - MuseTopBar:返回 + 标题「视频生成」
- *  - 表单区(可滚动):
- *    - Prompt 输入框(多行)
- *    - 模型选择(可灵 v1 / v2,MuseCapsuleTab 风格)
- *    - 时长选择(5s / 10s)
- *    - 分辨率(720p / 1080p)
- *    - 参考图(从本地相册选择,可选;留空走文生视频)
- *    - API Key 输入框(密码模式)
- *  - 「生成视频」按钮(Surface + clickable,不用 Material3 Button)
- *  - 任务状态区:进度条 + 状态文本
- *  - 完成后:视频 URL 卡片 + 「打开视频」按钮(Intent.ACTION_VIEW)
+ * Diseño:
+ *  - MuseTopBar:Volver + Título "Generación de Vídeo"
+ *  - área de formulario(desplazable):
+ *    - Prompt Cuadro de entrada(múltiples líneas)
+ *    - Selección de modelo(ke ling v1 / v2,MuseCapsuleTab estilo)
+ *    - Selección de duración(5s / 10s)
+ *    - resolución(720p / 1080p)
+ *    - Imagen de referencia(Seleccionar del álbum de fotos local,Opcional;Déjelo en blanco y vaya a Vincent Video)
+ *    - API Key Cuadro de entrada(modo contraseña)
+ *  - Botón "Generar vídeo"(Surface + clickable,No hay necesidad Material3 Button)
+ *  - Área de estado de la tarea:Barra de progreso + texto de estado
+ *  - Después de la finalización:Tarjeta URL del vídeo + botón "Abrir vídeo"(Intent.ACTION_VIEW)
  *
- * 设计令牌:MuseShapes / MusePaddings,不使用 Material3 默认 Button。
+ * ficha de diseño:MuseShapes / MusePaddings,No utiliza el botón predeterminado Material3.
  */
 @Composable
 fun VideoGenerationPage(
@@ -113,28 +113,28 @@ fun VideoGenerationPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // v1.132: 从 SettingsRepository 读取所有启用的供应商,让用户选择
-    // (不再硬编码 Kling API Key 输入框,用户在供应商菜单加了供应商后这里就能选)
+    // v1.132: Lea todos los proveedores habilitados desde SettingsRepository,Permitir que los usuarios elijan
+    // (No más codificación del cuadro de entrada de la clave API de Kling,Después de que el usuario agrega un proveedor en el menú de proveedores, puede seleccionarlo aquí)
     val providersState by settingsRepo.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val enabledProviders = remember(providersState) {
         providersState.filter { it.enabled && it.apiKey.isNotBlank() }
     }
 
-    // 表单状态(rememberSaveable 保证旋转/配置变更后保留)
+    // estado del formulario(rememberSaveable Rotación garantizada/Conservar después de cambios de configuración)
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedModel by rememberSaveable { mutableStateOf("") }
     var duration by rememberSaveable { mutableStateOf(5) }
     var resolution by rememberSaveable { mutableStateOf("720p") }
-    // v1.143: 参考图改为本地文件选择,保存的是 data URI(data:image/jpeg;base64,...)
+    // v1.143: Cambiar la imagen de referencia a la selección de archivos locales,Lo que se salva es data URI(data:image/jpeg;base64,...)
     var referenceImageUri by rememberSaveable { mutableStateOf("") }
-    // v1.132: 选中的供应商 ID(从用户已配置的供应商中选),替代原来的 apiKey 输入
+    // v1.132: proveedor seleccionado ID(Seleccionar entre los proveedores configurados por el usuario),Reemplazar la entrada apiKey original
     var selectedProviderId by rememberSaveable { mutableStateOf("") }
-    // 当前选中的供应商(派生状态)
+    // Proveedor actualmente seleccionado(estado derivado)
     val selectedProvider: ProviderConfig? = remember(enabledProviders, selectedProviderId) {
         enabledProviders.firstOrNull { it.id == selectedProviderId }
             ?: enabledProviders.firstOrNull()
     }
-    // 自动选中第一个供应商(首次进入或所选供应商被删除时)
+    // Seleccionar automáticamente el primer proveedor(Al ingresar por primera vez o cuando se elimina el proveedor seleccionado)
     LaunchedEffect(enabledProviders) {
         if (selectedProviderId.isBlank() && enabledProviders.isNotEmpty()) {
             selectedProviderId = enabledProviders.first().id
@@ -145,11 +145,11 @@ fun VideoGenerationPage(
         }
     }
 
-    // 当前供应商下支持视频输出的模型列表
+    // Lista de modelos que admiten salida de video según el proveedor actual
     val videoModels = remember(selectedProvider) {
         selectedProvider?.models?.filter { it.supportsVideoOutput() } ?: emptyList()
     }
-    // 自动选中第一个视频模型
+    // Selecciona automáticamente el primer modelo de vídeo.
     LaunchedEffect(videoModels) {
         if (selectedModel.isBlank() && videoModels.isNotEmpty()) {
             selectedModel = videoModels.first().id
@@ -158,22 +158,22 @@ fun VideoGenerationPage(
         }
     }
 
-    // 任务状态
+    // Estado de la tarea
     var isGenerating by rememberSaveable { mutableStateOf(false) }
     var taskStatus by rememberSaveable(stateSaver = VideoTaskStatusSaver) { mutableStateOf<VideoTaskStatus?>(null) }
     var statusMessage by rememberSaveable { mutableStateOf("") }
     var videoUrl by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf("") }
 
-    // 9.5 修复: 进程重建后 rememberSaveable 会恢复 isGenerating=true,但任务上下文已丢失,
-    // 此时 loading 永不消失。首次进入页面时检查并重置。
+    // 9.5 Reparación: recuerdeSaveable se restaurará después de que se reconstruya el proceso. isGenerating=true,Pero el contexto de la tarea se pierde.,
+    // En este punto, la carga nunca desaparece. Verifique y reinicie al ingresar a la página por primera vez.
     LaunchedEffect(Unit) {
         if (isGenerating) {
             isGenerating = false
         }
     }
 
-    // v1.143: 本地图片选择器,选中后压缩为 data URI 作为参考图
+    // v1.143: Selector de imágenes locales,Después de la selección, comprímalo en URI de datos como imagen de referencia.
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
@@ -215,7 +215,7 @@ fun VideoGenerationPage(
                 .padding(horizontal = MusePaddings.screen, vertical = MusePaddings.contentGap),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // ── Prompt 输入 ──
+            // ── Prompt entrada ──
             FormSection(label = stringResource(R.string.video_gen_prompt)) {
                 MuseTextField(
                     value = prompt,
@@ -229,7 +229,7 @@ fun VideoGenerationPage(
                 )
             }
 
-            // ── 模型选择(动态:从当前供应商中筛选支持视频输出的模型)──
+            // ── Selección de modelo(Dinámico:Filtre modelos de proveedores actuales que admitan salida de video)──
             FormSection(label = stringResource(R.string.video_gen_model)) {
                 if (videoModels.isEmpty()) {
                     Surface(
@@ -238,7 +238,7 @@ fun VideoGenerationPage(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = "当前供应商没有支持视频输出的模型。请在「设置→模型与服务」中为模型开启「视频输出」能力。",
+                            text = "Actualmente no hay modelos del proveedor que admitan salida de vídeo. Por favor vaya a \"Configuración\"→Habilite la capacidad \"Salida de video\" para el modelo en \"Modelos y servicios\".",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(MusePaddings.cardInner),
@@ -294,7 +294,7 @@ fun VideoGenerationPage(
                 }
             }
 
-            // ── 时长选择 ──
+            // ── Selección de duración ──
             FormSection(label = stringResource(R.string.video_gen_duration)) {
                 SegmentedOptions(
                     options = listOf(5 to "5s", 10 to "10s"),
@@ -304,7 +304,7 @@ fun VideoGenerationPage(
                 )
             }
 
-            // ── 分辨率选择 ──
+            // ── Selección de resolución ──
             FormSection(label = stringResource(R.string.video_gen_resolution)) {
                 SegmentedOptions(
                     options = listOf("720p" to "720p", "1080p" to "1080p"),
@@ -314,7 +314,7 @@ fun VideoGenerationPage(
                 )
             }
 
-            // ── 参考图(本地文件,可选)──
+            // ── Imagen de referencia(archivo local,Opcional)──
             FormSection(label = stringResource(R.string.video_gen_reference_image)) {
                 if (referenceImageUri.isBlank()) {
                     Surface(
@@ -380,10 +380,10 @@ fun VideoGenerationPage(
                 }
             }
 
-            // ── 供应商选择(v1.132: 从 SettingsRepository 读取,不再硬编码 API Key 输入)──
+            // ── Selección de proveedores(v1.132: Leer desde el repositorio de configuración,No más entradas de clave API codificadas)──
             FormSection(label = stringResource(R.string.video_gen_provider)) {
                 if (enabledProviders.isEmpty()) {
-                    // 没有可用供应商时提示用户先去供应商菜单添加
+                    // Cuando no hay ningún proveedor disponible, se le solicita al usuario que vaya al menú de proveedores para agregarlo primero.
                     Surface(
                         shape = MuseShapes.semiLarge,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -397,8 +397,8 @@ fun VideoGenerationPage(
                         )
                     }
                 } else {
-                    // 供应商列表(SegmentedOptions,单选)
-                    // 用 Surface+clickable 列表呈现,选中高亮 primary
+                    // Lista de proveedores(SegmentedOptions,elección única)
+                    // Renderizado con Superficie+lista en la que se puede hacer clic,Seleccionar resaltado primary
                     Surface(
                         shape = MuseShapes.semiLarge,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
@@ -454,7 +454,7 @@ fun VideoGenerationPage(
                                                 )
                                             }
                                         }
-                                        // API Key 末 4 位预览(让用户知道已配置 key)
+                                        // API Key Vista previa de los 4 últimos(Informar al usuario que ha sido configurado. key)
                                         Text(
                                             text = "••••${provider.apiKey.takeLast(4)}",
                                             style = MaterialTheme.typography.bodySmall,
@@ -472,7 +472,7 @@ fun VideoGenerationPage(
                 }
             }
 
-            // ── 生成视频按钮(Surface + clickable,不用 Material3 Button)──
+            // ── Botón generar vídeo(Surface + clickable,No hay necesidad Material3 Button)──
             Surface(
                 shape = MuseShapes.medium,
                 color = if (isGenerating || selectedProvider == null || videoModels.isEmpty()) {
@@ -502,8 +502,8 @@ fun VideoGenerationPage(
                                 duration = duration,
                                 resolution = resolution,
                             )
-                            // v1.137: 通过 VideoProviderRegistry 按 specId/host 路由,
-                            // 不再按 providerId 硬匹配(修复 preset_kling ≠ kling 的路由 bug)
+                            // v1.137: Enrutamiento por specId/host a través de VideoProviderRegistry,
+                            // No más coincidencias difíciles por ID de proveedor(Reparación preset_kling ≠ kling enrutamiento bug)
                             val result = videoService.generateVideo(provider, request)
                             isGenerating = false
                             result.onSuccess { url ->
@@ -556,7 +556,7 @@ fun VideoGenerationPage(
                 }
             }
 
-            // ── 任务状态区 ──
+            // ── Área de estado de la tarea ──
             if (isGenerating || taskStatus != null) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 StatusSection(
@@ -566,7 +566,7 @@ fun VideoGenerationPage(
                 )
             }
 
-            // ── 完成后视频预览 ──
+            // ── Vista previa del vídeo una vez finalizado ──
             if (videoUrl.isNotBlank() && taskStatus == VideoTaskStatus.SUCCESS) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 VideoResultCard(
@@ -583,14 +583,14 @@ fun VideoGenerationPage(
                 )
             }
 
-            // 底部留白
+            // Deja la parte inferior en blanco
             Spacer(Modifier.height(MusePaddings.sectionGap))
         }
     }
 }
 
 /**
- * 表单分组(标题 + 内容)。
+ * Agrupación de formularios(título + contenido).
  */
 @Composable
 private fun FormSection(label: String, content: @Composable () -> Unit) {
@@ -606,8 +606,8 @@ private fun FormSection(label: String, content: @Composable () -> Unit) {
 }
 
 /**
- * 分段选择器(用 Surface + clickable 实现胶囊风格,与 MuseCapsuleTab 同视觉;
- * 比 MuseCapsuleTab 多一个 `enabled` 禁用态,故保留本页私有实现)。
+ * selector de segmento(Logre un estilo cápsula con Surface + en el que se puede hacer clic,Misma visión que MuseCapsuleTab;
+ * Uno más que MuseCapsuleTab `enabled` Discapacitado,Por lo tanto, se mantiene la implementación privada de esta página.).
  */
 @Composable
 private fun <T> SegmentedOptions(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, enabled: Boolean = true) {
@@ -654,11 +654,11 @@ private fun <T> SegmentedOptions(options: List<Pair<T, String>>, selected: T, on
 }
 
 /**
- * 任务状态区(进度条 + 状态文本)。
+ * Área de estado de la tarea(Barra de progreso + texto de estado).
  */
 @Composable
 private fun StatusSection(status: VideoTaskStatus?, statusMessage: String, isGenerating: Boolean) {
-    // 预提取 stringResource(ifBlank lambda 非 @Composable,不能直接调用)
+    // captación previa stringResource(ifBlank lambda no @Composable,no se puede llamar directamente)
     val pendingText = stringResource(R.string.video_gen_pending)
     val processingText = stringResource(R.string.video_gen_processing)
     val successText = stringResource(R.string.video_gen_success)
@@ -702,7 +702,7 @@ private fun StatusSection(status: VideoTaskStatus?, statusMessage: String, isGen
 }
 
 /**
- * 视频结果卡片 — 展示视频 URL + 「打开视频」按钮。
+ * Tarjeta de resultados de vídeo — Mostrar URL del vídeo + botón "Abrir vídeo".
  */
 @Composable
 private fun VideoResultCard(videoUrl: String, onOpen: () -> Unit) {
@@ -762,20 +762,20 @@ private fun VideoResultCard(videoUrl: String, onOpen: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 图片压缩/编码工具(专供 VideoGenerationPage 使用,与 InputBar 逻辑保持一致)
+// Compresión de imágenes/herramientas de codificación(Para uso exclusivo con VideoGenerationPage,Consistente con la lógica de InputBar)
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * v1.143: 把用户选中的参考图 URI 压缩为符合体积/尺寸约束的 Data URI。
+ * v1.143: Comprimir el URI de la imagen de referencia seleccionado por el usuario para que se ajuste al tamaño/URI de datos para la restricción de tamaño.
  *
- * 处理流程:
- *  1. 先解码边界获取原始尺寸
- *  2. 计算 inSampleSize,使长边缩到 [maxSide] 附近(2 的幂次降采样)
- *  3. 解码得到 Bitmap 后,如长边仍 > [maxSide],用 Matrix 精确缩放
- *  4. JPEG 压缩质量 [quality],base64 后如仍超过 [maxBase64Bytes],则
- *     逐级降质量 / 缩尺寸,直到满足体积约束或降到下限
+ * Flujo de procesamiento:
+ *  1. Primero decodifica los límites para obtener el tamaño original.
+ *  2. calcular inSampleSize,encoger el lado largo para [maxSide] cerca(2 reducción de resolución a la potencia de)
+ *  3. Después de decodificar para obtener el mapa de bits.,Mientras el lado esté quieto > [maxSide],Escalado preciso con Matrix
+ *  4. JPEG Calidad de compresión [quality],base64 Si aún excede [maxBase64Bytes],regla
+ *     Reducir gradualmente la calidad/tamaño,Hasta que se cumpla la restricción de volumen o se reduzca el límite inferior
  *
- * 抛出 [IllegalStateException] 表示压缩失败(原图无法解码或压缩后仍过大)。
+ * tirar [IllegalStateException] Indica falla de compresión(La imagen original no se puede decodificar o aún es demasiado grande después de la compresión).
  */
 private fun compressVideoReferenceImageToDataUri(
     uri: Uri,
@@ -786,34 +786,34 @@ private fun compressVideoReferenceImageToDataUri(
 ): VideoReferenceImage {
     val resolver = context.contentResolver
 
-    // 1. 解码原始尺寸
+    // 1. Decodificar tamaño original
     val (origW, origH) = decodeVideoImageBounds(resolver, uri)
     if (origW <= 0 || origH <= 0) {
         error("decode bounds failed for $uri")
     }
 
-    // 2. 计算 inSampleSize(2 的幂次,使降采样后长边尽量接近 maxSide 但不超过 2 倍)
+    // 2. calcular inSampleSize(2 al poder de,Haga que el lado largo después de reducir la resolución esté lo más cerca posible de maxSide, pero no más de 2 veces)
     var sample = 1
     while (origW / sample / 2 >= maxSide || origH / sample / 2 >= maxSide) sample *= 2
 
-    // 3. 解码为 Bitmap(降采样后)
+    // 3. decodificado como Bitmap(Después de reducir la resolución)
     var bitmap = decodeVideoSampledBitmap(resolver, uri, sample)
         ?: error("decode bitmap failed for $uri")
 
-    // 4. 精确缩放到 maxSide 内(保持宽高比)
+    // 4. Escale exactamente dentro de maxSide(Mantener relación de aspecto)
     val scaled = scaleVideoBitmapToMaxSide(bitmap, maxSide)
     if (scaled !== bitmap) {
         bitmap.recycle()
         bitmap = scaled
     }
 
-    // 5. 逐级压缩,直到 base64 体积满足约束或降到下限
+    // 5. Compresión paso a paso,Hasta que el volumen base64 cumpla con las restricciones o caiga al límite inferior
     var currentQuality = quality
     var currentBmp = bitmap
     var bytes = compressVideoJpeg(currentBmp, currentQuality)
     var base64Len = videoBase64Length(bytes.size)
 
-    // 5.1 先尝试只降质量(75 → 65 → 55)
+    // 5.1 Primero intenta solo reducir la calidad.(75 → 65 → 55)
     val qualitySteps = listOf(75, 65, 55)
     var stepIndex = 0
     while (base64Len > maxBase64Bytes && stepIndex < qualitySteps.size) {
@@ -822,7 +822,7 @@ private fun compressVideoReferenceImageToDataUri(
         base64Len = videoBase64Length(bytes.size)
     }
 
-    // 5.2 仍超限则缩小尺寸(768 → 512 → 384)
+    // 5.2 Si todavía está por encima del límite, reduzca el tamaño.(768 → 512 → 384)
     val sideSteps = listOf(768, 512, 384)
     var sideIndex = 0
     while (base64Len > maxBase64Bytes && sideIndex < sideSteps.size) {
@@ -841,7 +841,7 @@ private fun compressVideoReferenceImageToDataUri(
     currentBmp.recycle()
 
     if (base64Len > maxBase64Bytes) {
-        // 仍超限:拒绝上传,避免 OOM/超时
+        // Aún por encima del límite:Negarse a subir,Evite OOM/tiempos de espera
         error("image still too large after compression (${width}x$height, ${bytes.size / 1024}KB)")
     }
 
@@ -856,12 +856,12 @@ private fun compressVideoReferenceImageToDataUri(
 }
 
 /**
- * 参考图压缩结果。
+ * Resultados de compresión de imágenes de referencia.
  *
- * @property dataUri 形如 `data:image/jpeg;base64,...` 的 Data URI,可直接交给 VideoProvider
- * @property width 压缩后宽度
- * @property height 压缩后高度
- * @property byteCount 压缩后 JPEG 字节数(未 base64)
+ * @property dataUri en forma de `data:image/jpeg;base64,...` de Data URI,Se puede entregar directamente a VideoProvider
+ * @property width ancho después de la compresión
+ * @property height Altura después de la compresión
+ * @property byteCount Bytes JPEG comprimidos(todavía no base64)
  */
 private data class VideoReferenceImage(
     val dataUri: String,
@@ -869,14 +869,14 @@ private data class VideoReferenceImage(
     val height: Int,
     val byteCount: Int,
 ) {
-    /** 人类可读的尺寸/体积描述,用于 Toast 提示。 */
+    /** tamaño legible por humanos/Descripción del volumen,Se utiliza para indicaciones de brindis. */
     fun describe(): String {
         val kb = byteCount / 1024
         return "${width}x$height, ${kb}KB"
     }
 }
 
-/** 解码原图边界(宽高),不将像素加载到内存。 */
+/** Decodificar los límites de la imagen original(ancho y alto),No carga píxeles en la memoria. */
 private fun decodeVideoImageBounds(resolver: android.content.ContentResolver, uri: Uri): Pair<Int, Int> {
     val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     resolver.openInputStream(uri)?.use { input ->
@@ -885,7 +885,7 @@ private fun decodeVideoImageBounds(resolver: android.content.ContentResolver, ur
     return opts.outWidth to opts.outHeight
 }
 
-/** 按 inSampleSize 解码 Bitmap。 */
+/** Decodificar mapa de bits mediante inSampleSize. */
 private fun decodeVideoSampledBitmap(resolver: android.content.ContentResolver, uri: Uri, sampleSize: Int): Bitmap? {
     val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
     return resolver.openInputStream(uri)?.use { input ->
@@ -893,7 +893,7 @@ private fun decodeVideoSampledBitmap(resolver: android.content.ContentResolver, 
     }
 }
 
-/** 把 Bitmap 等比缩放到长边 <= maxSide;若已满足则原样返回。 */
+/** Escale el mapa de bits proporcionalmente al lado largo <= maxSide;Si está satisfecho, devuélvalo tal cual. */
 private fun scaleVideoBitmapToMaxSide(src: Bitmap, maxSide: Int): Bitmap {
     val w = src.width
     val h = src.height
@@ -906,15 +906,15 @@ private fun scaleVideoBitmapToMaxSide(src: Bitmap, maxSide: Int): Bitmap {
     return Bitmap.createBitmap(src, 0, 0, w, h, matrix, true)
 }
 
-/** JPEG 压缩为字节数组。 */
+/** JPEG Comprimido en una matriz de bytes. */
 private fun compressVideoJpeg(bmp: Bitmap, quality: Int): ByteArray {
     val out = ByteArrayOutputStream()
     bmp.compress(Bitmap.CompressFormat.JPEG, quality, out)
     return out.toByteArray()
 }
 
-/** base64 编码后体积约为原字节 * 4/3,向上取整。 */
+/** base64 El volumen después de la codificación es aproximadamente los bytes originales. * 4/3,Redondeo. */
 private fun videoBase64Length(byteCount: Int): Int {
-    // 每 3 字节 → 4 字符;不足 3 按 3 算。NO_WRAP 不加换行符。
+    // cada 3 bytes → 4 personaje;Si es menos de 3, cuente como 3.NO_WRAP No se agregan nuevas líneas.
     return ((byteCount + 2) / 3) * 4
 }

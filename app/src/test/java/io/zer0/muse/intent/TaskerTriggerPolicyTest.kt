@@ -4,24 +4,24 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * AUD-20261011-TASKER-ABUSE（.audit REPORT_SECURITY F1 / 性能 F2）：
+ * AUD-20261011-TASKER-ABUSE(.audit REPORT_SECURITY F1 / Rendimiento F2):
  *
- * TaskerTriggerReceiver 是 exported=true 且无 permission 的广播入口
- * （AndroidManifest.xml:263-269），任意应用可循环发送
- * io.zer0.muse.action.TASKER_TRIGGER。缓解已验证：completeText 不带 tools，
- * 外部广播无法间接触发工具执行、无用户数据外泄面。但缺三道成本防线：
- *  1) 无开关 —— 用户从未启用过 Tasker 联动也会响应；
- *  2) 无长度上限 —— 超长 extra 直通计费 LLM；
- *  3) 无限频 —— 可循环触发连续调用。
+ * TaskerTriggerReceiver si exported=true Entrada de difusión sin permiso
+ * (AndroidManifest.xml:263-269), cualquier aplicación puede enviarlo cíclicamente
+ * io.zer0.muse.action.TASKER_TRIGGER. Mitigación verificada:completeText Sin herramientas,
+ * La transmisión externa no puede desencadenar indirectamente la ejecución de la herramienta y no existe riesgo de fuga de datos del usuario. Pero faltan tres líneas de defensa de costos:
+ *  1) Sin interruptor —— Incluso si el usuario nunca ha habilitado la vinculación de Tasker, responderá;
+ *  2) Sin límite superior de longitud —— LLM de facturación de transferencia extra larga y extra larga;
+ *  3) Frecuencia ilimitada —— Las llamadas continuas se pueden activar en un bucle.
  *
- * 判定抽成纯函数以便单测（Receiver 依赖 BroadcastReceiver + Koin，单元内不可直接构造）。
+ * La decisión se extrae en una función pura para pruebas únicas (Receiver Depende de BroadcastReceiver + Koin, no se puede construir directamente dentro de la unidad).
  */
 class TaskerTriggerPolicyTest {
 
     @Test
     fun `disabled by default rejects the trigger`() {
         assertEquals(
-            "默认关闭时必须拒绝(Tasker 联动是可选功能,不该默认敞开)",
+            "Debe ser rechazado cuando está desactivado de forma predeterminada.(Tasker El enlace es una característica opcional.,No debería estar abierto por defecto)",
             TaskerTriggerGuard.Decision.REJECTED_DISABLED,
             TaskerTriggerGuard.evaluate(
                 enabled = false,
@@ -52,7 +52,7 @@ class TaskerTriggerPolicyTest {
     @Test
     fun `oversized prompt is rejected`() {
         assertEquals(
-            "超长 prompt 必须拒绝,避免外部应用把巨型文本直通计费模型",
+            "Se deben rechazar las indicaciones demasiado largas.,Evite que aplicaciones externas incluyan texto enorme en el modelo de facturación.",
             TaskerTriggerGuard.Decision.REJECTED_TOO_LONG,
             TaskerTriggerGuard.evaluate(
                 enabled = true,
@@ -68,7 +68,7 @@ class TaskerTriggerPolicyTest {
     @Test
     fun `rapid retrigger inside the interval is throttled`() {
         assertEquals(
-            "限频窗口内的重复广播必须节流,否则可被循环触发刷计费",
+            "Las transmisiones repetidas dentro de la ventana de limitación de frecuencia deben limitarse,De lo contrario, el ciclo puede activarlo para eliminar la facturación.",
             TaskerTriggerGuard.Decision.REJECTED_THROTTLED,
             TaskerTriggerGuard.evaluate(
                 enabled = true,
@@ -113,7 +113,7 @@ class TaskerTriggerPolicyTest {
 
     @Test
     fun `clock regression does not permanently block`() {
-        // 系统时间回拨:now 早于 lastAccepted,不得判定为"永不限频"
+        // Devolución de hora del sistema:now antes que lastAccepted,no será juzgado como"Nunca limites la frecuencia"
         assertEquals(
             TaskerTriggerGuard.Decision.ACCEPTED,
             TaskerTriggerGuard.evaluate(

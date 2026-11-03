@@ -90,13 +90,13 @@ class SkillBridgeHttpClientTest {
         )
 
         val result = client.getComplete(origin.url("/").withHost(host), outputDirectory)
-        val savedPath = Regex("""\[完整输出已保存到: ([^\]]+)]""")
+        val savedPath = Regex("""\[El resultado completo se ha guardado en: ([^\]]+)]""")
             .find(result.body)
             ?.groupValues
             ?.get(1)
 
         assertEquals(200, result.status)
-        assertTrue("大响应应返回分页文件引用: ${result.body.take(200)}", savedPath != null)
+        assertTrue("La respuesta grande debería devolver la referencia del archivo de paginación: ${result.body.take(200)}", savedPath != null)
         assertEquals(responseBody, File(savedPath!!).readText())
     }
 
@@ -112,7 +112,7 @@ class SkillBridgeHttpClientTest {
             client.get("http://private.test:${origin.port}/", maxSize = 1024)
         }
 
-        assertTrue(failure.message.orEmpty().contains("DNS 地址未通过 SSRF 校验"))
+        assertTrue(failure.message.orEmpty().contains("DNS Dirección de verificación SSRF fallida"))
         assertEquals(0, origin.requestCount)
     }
 
@@ -155,7 +155,7 @@ class SkillBridgeHttpClientTest {
             client.get("http://rebind.test:${origin.port}/", maxSize = 1024)
         }
 
-        assertTrue(failure.message.orEmpty().contains("DNS 地址未通过 SSRF 校验"))
+        assertTrue(failure.message.orEmpty().contains("DNS Dirección de verificación SSRF fallida"))
         assertEquals(1, dnsCalls)
         assertEquals(0, origin.requestCount)
     }
@@ -205,7 +205,7 @@ class SkillBridgeHttpClientTest {
                 client.get(origin.url("/").withHost(host), maxSize = 1024)
             }
 
-            assertTrue(failure.message.orEmpty().contains("代理连接"))
+            assertTrue(failure.message.orEmpty().contains("conexión proxy"))
             assertEquals(0, origin.requestCount)
             assertEquals(0, proxy.requestCount)
         } finally {

@@ -14,23 +14,23 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * v1.43: 应用级聊天生成调度器。
+ * v1.43: Programador de generación de chat a nivel de aplicación.
  *
- * 解决切页 / 后台时 AI 生成被 ViewModel 生命周期中断的问题:
- * - 生成任务运行在 [appScope] 而非 [androidx.lifecycle.viewModelScope],不依赖页面生命周期
- * - 维护 [activeGeneration]/[activeGenerations] 只读保活状态,供前台服务与新 ViewModel 绑定
+ * Resuelva el problema de que la generación de IA sea interrumpida por el ciclo de vida de ViewModel al cambiar de página o de fondo.:
+ * - La tarea de construcción continúa [appScope] en vez de [androidx.lifecycle.viewModelScope],No depende del ciclo de vida de la página.
+ * - mantenimiento [activeGeneration]/[activeGenerations] Estado de mantenimiento de solo lectura,Para que los servicios front-end estén vinculados al nuevo ViewModel
  *
- * v1.x(唯一 Job 账本收口):
- * - 本类**不再持有/取消任何 Job**。会话级生成 Job 的唯一 owner 是
- *   [io.zer0.muse.session.ConversationSessionManager] 持有的
- *   `SessionRuntime.generationJob`。
- * - [launchGeneration] 只做应用级调度:从 owner 读上一代 Job 做串行化(新 block 等旧
- *   finally 结束),启动协程后立即通过 owner 的 `setGenerationJob` 登记,替换/取消/完成
- *   清理全部由 owner 完成。
- * - 活跃状态([_activeGenerations])仅用于前台服务保活与 [isStreaming] 只读查询,
- *   按 sessionId 记录"是否有未结束的生成",以 ActiveGeneration 对象身份做清理守护,
- *   不是 Job 的第二份账本。
- * - [stop] 只移除保活状态,取消动作委托给 owner `cancelGeneration`。
+ * v1.x(El único cierre del libro de trabajo):
+ * - Esta categoría**ya no se mantiene/Cancelar cualquier Job**. El único propietario del trabajo generado a nivel de sesión es
+ *   [io.zer0.muse.session.ConversationSessionManager] sostenido
+ *   `SessionRuntime.generationJob`.
+ * - [launchGeneration] Sólo programación a nivel de aplicación:Lea el trabajo de la generación anterior del propietario para su serialización.(El nuevo bloque espera al viejo.
+ *   finally fin),Inmediatamente después de iniciar la corrutina, pase la prueba del propietario. `setGenerationJob` Registrarse,reemplazar/Cancelar/Completo
+ *   La limpieza la realiza toda el propietario.
+ * - estado activo([_activeGenerations])Sólo se utiliza para el servicio de recepción. Mantener vivo y [isStreaming] consulta de solo lectura,
+ *   Grabar por ID de sesión"¿Hay alguna construcción sin terminar?",Actuar como un demonio de limpieza como un objeto ActiveGeneration,
+ *   No el segundo libro de contabilidad de Job.
+ * - [stop] Eliminar solo el estado de mantenimiento de actividad,Cancelar acción delegada a owner `cancelGeneration`.
  */
 class ChatGenerationManager(
     private val appScope: CoroutineScope,
@@ -38,42 +38,42 @@ class ChatGenerationManager(
     private val appContext: Context? = null,
 ) {
 
-    /** 当前活跃的生成会话。null 表示没有正在生成。 */
+    /** La sesión de compilación actualmente activa.null Indica que no se está generando. */
     data class ActiveGeneration(
         val sessionId: String,
         val assistantId: String,
         val sessionTitle: String,
-        /** 稳定的代际身份；与 StreamRunState/执行资源共用同一个字符串 ID。 */
+        /** Identidad generacional estable; comparte el mismo ID de cadena con el recurso StreamRunState/ejecución. */
         val generationId: String,
-        /** 本轮对话 turn 身份；旧后台调用可为空。 */
+        /** La identidad de esta ronda de conversación gira; la antigua llamada en segundo plano puede estar vacía. */
         val turnId: String? = null,
         val isStreaming: Boolean = true,
         val lastUpdatedAt: Long = System.currentTimeMillis(),
-        /** v2.5.0: 已生成字数(心跳线程与 UI 线程共用),供前台通知展示真实进度。 */
+        /** v2.5.0: Número de palabras generadas(El hilo del latido se comparte con el hilo de la interfaz de usuario.),Para que la notificación en la recepción muestre el progreso real. */
         val currentChars: Int = 0,
     )
 
     private val _activeGeneration = MutableStateFlow<ActiveGeneration?>(null)
     val activeGeneration: StateFlow<ActiveGeneration?> = _activeGeneration.asStateFlow()
 
-    /** 所有活跃生成任务的只读快照, key 为 sessionId。 */
+    /** Instantánea de solo lectura de todas las tareas de compilación activas, key es ID de sesión. */
     private val _activeGenerations = MutableStateFlow<Map<String, ActiveGeneration>>(emptyMap())
     val activeGenerations: StateFlow<Map<String, ActiveGeneration>> = _activeGenerations.asStateFlow()
 
     private val lock = Any()
     /**
-     * 在应用级协程中启动生成任务,并登记到唯一 owner 的会话级账本。
+     * Inicie la tarea de compilación en una rutina a nivel de aplicación,Y registrado en el libro mayor de nivel de sesión del propietario único.
      *
-     * 调度顺序:
-     * 1. 从 owner 读同一 session 上一代 Job(串行化依据),并取消它;
-     * 2. 同步写入活跃保活状态;
-     * 3. 启动块(先 `join` 上一代 finally,避免两代流同时写同一会话);
-     * 4. 通过 `sessionManager.setGenerationJob` 登记新 Job(owner 会取消旧的并注册新的);
-     * 5. 返回 Job(兼容旧调用方,可忽略)。
+     * Orden de programación:
+     * 1. Leer la misma sesión de la generación anterior del propietario. Job(Base de serialización),y cancelarlo;
+     * 2. Escribir sincrónicamente el estado de mantenimiento activo;
+     * 3. bloque de inicio(primero `join` generación anterior finally,Evite dos generaciones de transmisiones escribiendo la misma sesión al mismo tiempo);
+     * 4. Pase `sessionManager.setGenerationJob` Registrar nuevo Job(owner Cancelará el anterior y registrará el nuevo.);
+     * 5. Regresar Job(Compatible con personas mayores,puede ser ignorado).
      *
-     * @param sessionId 会话 id(单聊为会话 id,群聊为 "group:$chatId")
+     * @param sessionId sesión id(Chat único como conversación id,El chat grupal es "group:$chatId")
      */
-    /** 兼容旧调用方：由 manager 为未接入统一身份的后台生成分配代际。 */
+    /** Compatible con llamantes antiguos: el administrador genera y asigna generaciones para fondos que no están conectados a la identidad unificada. */
     fun launchGeneration(sessionId: String, assistantId: String, sessionTitle: String, block: suspend () -> Unit): Job = launchGeneration(
         sessionId = sessionId,
         assistantId = assistantId,
@@ -83,9 +83,9 @@ class ChatGenerationManager(
     )
 
     /**
-     * 启动带显式统一代际身份的生成。
+     * Generación iniciada con identidad generacional unificada explícita.
      *
-     * 保留五参数重载，兼容已有调用方；需要 turn 身份时使用下方扩展重载。
+     * La sobrecarga de cinco parámetros se conserva y es compatible con los llamantes existentes; utilice la sobrecarga extendida a continuación cuando se requiera identidad de giro.
      */
     fun launchGeneration(
         sessionId: String,
@@ -102,7 +102,7 @@ class ChatGenerationManager(
         block = block,
     )
 
-    /** 带 generationId 与 turnId 的 Host/原生统一生成入口。 */
+    /** Entrada de generación unificada de host/nativo con GenerationId y turnId. */
     @Suppress("LongParameterList")
     fun launchGeneration(
         sessionId: String,
@@ -113,7 +113,7 @@ class ChatGenerationManager(
         block: suspend () -> Unit,
     ): Job {
         synchronized(lock) {
-            // 从唯一 owner 读上一代 Job。若上一代已正常完成,owner 已清空 → null(无需串行化)。
+            // Lea el trabajo de la generación anterior del propietario único. Si la generación anterior se ha completado normalmente,owner Borrado → null(No es necesario serializar).
             val previousJob = sessionManager.runtime(sessionId)?.generationJob
             previousJob?.cancel()
 
@@ -126,7 +126,7 @@ class ChatGenerationManager(
                 isStreaming = true,
                 lastUpdatedAt = System.currentTimeMillis(),
             )
-            // 先同步写入活跃状态。ON_STOP 可能紧跟在发送动作后发生;前台保活服务据此判定。
+            // Primero escriba el estado activo de forma sincrónica.ON_STOP Puede ocurrir inmediatamente después de enviar una acción.;El servicio de mantenimiento de la recepción se determina en consecuencia.
             _activeGenerations.value = _activeGenerations.value + (sessionId to generation)
             _activeGeneration.value = generation
 
@@ -142,9 +142,9 @@ class ChatGenerationManager(
                     block()
                 } finally {
                     heartbeatJob.cancel()
-                    // touch()/updateSessionTitle() 会用 copy() 更新显示字段，不能用对象身份判断。
-                    // 只比较不可变的 generationId，才能保证旧代 finally 不会清掉新代，
-                    // 同时保证正常完成后活跃 map 一定能被移除。
+                    // touch()/updateSessionTitle() usará copy() Los campos de visualización de actualización no se pueden juzgar por la identidad del objeto.
+                    // Solo comparar el ID de generación inmutable puede garantizar que la generación anterior finalmente no borre la nueva generación.
+                    // Al mismo tiempo, se garantiza que el mapa activo se eliminará después de su finalización normal.
                     synchronized(lock) {
                         if (_activeGenerations.value[sessionId]?.generationId == generation.generationId) {
                             _activeGenerations.value = _activeGenerations.value - sessionId
@@ -159,23 +159,23 @@ class ChatGenerationManager(
                 }
             }
 
-            // 唯一 owner 登记:取消上一代(幂等)、登记新 Job、完成时清理 + idle 调度。
+            // Registro de propietario único:Cancelar generación anterior(idempotente), registrar nuevos trabajos, limpiar cuando se complete + programación inactiva.
             sessionManager.setGenerationJob(sessionId, job)
             job.start()
 
-            // 生成一登记就进入前台服务,避免 ON_STOP 与任务启动之间的竞态。
+            // Una vez registrado, ingresará al servicio de recepción.,Evite condiciones de carrera entre ON_STOP y el inicio de la tarea.
             appContext?.let { context ->
                 runCatching { ChatGenerationService.start(context) }
-                    .onFailure { Logger.w("ChatGenMgr", "生成开始时启动前台服务失败", it) }
+                    .onFailure { Logger.w("ChatGenMgr", "No se pudo iniciar el servicio en primer plano cuando comienza la compilación", it) }
             }
             return job
         }
     }
 
     /**
-     * 用户停止指定会话的生成。取消动作委托给会话级唯一 owner。
+     * El usuario detiene la generación de la sesión especificada. Las acciones de cancelación se delegan al propietario único a nivel de sesión.
      *
-     * @param sessionId 要停止的会话 id;不传则取消全部(兼容旧调用方)
+     * @param sessionId sesión para detener id;Si no, todo será cancelado.(Compatible con personas mayores)
      */
     fun stop(sessionId: String? = null) {
         synchronized(lock) {
@@ -196,7 +196,7 @@ class ChatGenerationManager(
         }
     }
 
-    /** 刷新指定会话的心跳;为 null 时兼容旧调用,刷新最近任务。 */
+    /** Actualizar el latido de la sesión especificada;Compatible con llamadas antiguas cuando son nulas,Actualizar tareas recientes. */
     fun touch(sessionId: String? = null) {
         synchronized(lock) {
             val targetId = sessionId ?: _activeGeneration.value?.sessionId ?: return
@@ -208,8 +208,8 @@ class ChatGenerationManager(
     }
 
     /**
-     * v2.5.0: 更新已生成字数,供前台通知展示真实进度。
-     * 由流式增量回调调用(节流后),服务层读取快照拼通知文案。
+     * v2.5.0: Actualizar el recuento de palabras generadas,Para que la notificación en la recepción muestre el progreso real.
+     * Llamado por una devolución de llamada delta de transmisión(Después de estrangular),La capa de servicio lee la instantánea y detalla la copia de la notificación.
      */
     fun updateChars(sessionId: String, chars: Int) {
         synchronized(lock) {
@@ -220,13 +220,13 @@ class ChatGenerationManager(
         }
     }
 
-    /** 更新最近生成的通知标题(群聊异步获取群聊名后调用)。 */
+    /** Actualizar el título de la notificación generada recientemente(Se llama después de que el chat grupal obtiene de forma asincrónica el nombre del chat grupal.). */
     fun updateSessionTitle(title: String) {
         val sessionId = synchronized(lock) { _activeGeneration.value?.sessionId }
         if (sessionId != null) updateSessionTitle(sessionId, title)
     }
 
-    /** 更新指定会话的通知标题。 */
+    /** Actualiza el título de la notificación para la sesión especificada. */
     fun updateSessionTitle(sessionId: String, title: String) {
         synchronized(lock) {
             val current = _activeGenerations.value[sessionId] ?: return
@@ -236,7 +236,7 @@ class ChatGenerationManager(
         }
     }
 
-    /** 将已登记生成补充关联 turn 身份，保持旧五参数调用方兼容。 */
+    /** Se registrará para generar una identidad de giro de asociación suplementaria, manteniendo compatible la antigua persona que llama con cinco parámetros. */
     fun setTurnId(sessionId: String, generationId: String, turnId: String) {
         synchronized(lock) {
             val current = _activeGenerations.value[sessionId] ?: return
@@ -247,7 +247,7 @@ class ChatGenerationManager(
         }
     }
 
-    /** 只读状态:指定 sessionId 是否有未结束的生成。 */
+    /** estado de solo lectura:Especifica si el sessionId tiene una generación pendiente. */
     fun isStreaming(sessionId: String): Boolean {
         synchronized(lock) {
             return _activeGenerations.value.containsKey(sessionId)
@@ -255,7 +255,7 @@ class ChatGenerationManager(
     }
 
     private companion object {
-        /** 任务没有文本输出时仍定期证明协程存活,避免长工具调用被误判为卡死。 */
+        /** Demuestre periódicamente que la rutina está activa incluso cuando la tarea no tiene salida de texto.,Evite que las llamadas de herramientas largas se consideren erróneamente como atascadas. */
         const val HEARTBEAT_INTERVAL_MS = 30_000L
     }
 }

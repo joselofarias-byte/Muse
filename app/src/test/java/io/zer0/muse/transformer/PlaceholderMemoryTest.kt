@@ -5,45 +5,45 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 编译记忆空壳判定的测试。
+ * Prueba de juicio de shell vacío de memoria de compilación.
  *
- * 助手自审第 19 条：「跨会话的性格一致性锚 —— 让新会话的我，别一上来就像陌生人」。
+ * Ítem 19 de la autoevaluación del asistente: “Anclas de la coherencia del carácter en todas las sesiones —— Déjame, que soy nuevo en la conversación, no actuar como un extraño cuando te conozco por primera vez”.
  *
- * 核查发现机制其实存在（`buildLongTermMemorySection` 按 assistantId 跨会话注入），
- * 但有个真缺陷：`MemoryCompiler.assembleCompiledMarkdown` 对四个空段一律填「（暂无）」，
- * **永远返回非空字符串**。于是新会话会稳定注入：
+ * El mecanismo de verificación y descubrimiento realmente existe (`buildLongTermMemorySection` inyectado en todas las sesiones por AssistantId),
+ * Pero hay un defecto real:`MemoryCompiler.assembleCompiledMarkdown` Complete las cuatro secciones en blanco con "(Ninguno todavía)".
+ * **Siempre devuelve una cadena no vacía**. Entonces las nuevas sesiones se inyectarán de manera estable:
  *
- *   重要事实：（暂无）／今天：（暂无）／本周早些时候：（暂无）／长期情况：（暂无）
+ *   Datos importantes: (ninguno) / Hoy: (ninguno) / A principios de esta semana: (ninguno) / Situación a largo plazo: (ninguno)
  *
- * 那不是记忆，是噪音 —— 占 token，还让模型以为「我记得些什么」却什么都说不出来。
+ * Eso no es memoria, es ruido. —— Al ocupar tokens, también hace que el modelo piense "Recuerdo algo" pero no puede decir nada.
  */
 class PlaceholderMemoryTest {
 
     private fun isPlaceholder(md: String) = SystemPromptAssembler.isPlaceholderOnly(md)
 
-    /** 与 MemoryCompiler.assembleCompiledMarkdown 输出完全一致的空壳。 */
+    /** Un shell vacío idéntico a la salida de MemoryCompiler.assembleCompiledMarkdown. */
     private val emptyShell =
         """
-        ## 重要事实
+        ## hechos importantes
 
-        （暂无）
+        (Ninguno todavía)
 
-        ## 今天
+        ## hoy
 
-        （暂无）
+        (Ninguno todavía)
 
-        ## 本周早些时候
+        ## a principios de esta semana
 
-        （暂无）
+        (Ninguno todavía)
 
-        ## 长期情况
+        ## situación a largo plazo
 
-        （暂无）
+        (Ninguno todavía)
         """.trimIndent() + "\n"
 
     @Test
     fun `all-placeholder markdown is detected as empty shell`() {
-        assertTrue("四段全「（暂无）」就是空壳", isPlaceholder(emptyShell))
+        assertTrue("Los cuatro párrafos \"(Ninguno)\" son sólo cáscaras vacías", isPlaceholder(emptyShell))
     }
 
     @Test
@@ -74,37 +74,37 @@ class PlaceholderMemoryTest {
     fun `real facts are not treated as placeholder`() {
         val real =
             """
-            ## 重要事实
+            ## hechos importantes
 
-            - 用户在做 Android 项目 Muse，偏好简洁回答
-            - 用户在 2026-10 提到要做外包
+            - El usuario está trabajando en el proyecto de Android Muse y prefiere respuestas concisas.
+            - El usuario mencionó que quería subcontratar en 2026-10
 
-            ## 今天
+            ## hoy
 
-            （暂无）
+            (Ninguno todavía)
 
-            ## 本周早些时候
+            ## a principios de esta semana
 
-            （暂无）
+            (Ninguno todavía)
 
-            ## 长期情况
+            ## situación a largo plazo
 
-            （暂无）
+            (Ninguno todavía)
             """.trimIndent()
 
-        assertFalse("有任何真实内容就不能当成空壳", isPlaceholder(real))
+        assertFalse("Si hay contenido real, no se puede tratar como un caparazón vacío.", isPlaceholder(real))
     }
 
     @Test
     fun `a single real line among placeholders is enough to keep it`() {
-        val mostlyEmpty = emptyShell.replaceFirst("（暂无）", "- 用户在写一个音乐播放器卡片")
+        val mostlyEmpty = emptyShell.replaceFirst("(Ninguno todavía)", "- El usuario está escribiendo una tarjeta de reproductor de música.")
 
-        assertFalse("宁可漏判也不能误判丢掉真记忆", isPlaceholder(mostlyEmpty))
+        assertFalse("Es mejor perderse el veredicto que juzgar mal y perder el verdadero recuerdo.", isPlaceholder(mostlyEmpty))
     }
 
     @Test
     fun `blank markdown is handled by the earlier isBlank check not this one`() {
-        // 空串在调用点已被 md.isBlank() 拦掉；这里只确认不抛异常。
+        // La cadena vacía ha sido reemplazada en el pulsador. md.isBlank() Bloquear; aquí solo confirmamos que no se lanzará ninguna excepción.
         assertTrue(isPlaceholder(""))
     }
 
@@ -112,20 +112,20 @@ class PlaceholderMemoryTest {
     fun `headings alone do not count as content`() {
         val onlyHeadings =
             """
-            ## 重要事实
-            ## 今天
-            ## 本周早些时候
-            ## 长期情况
+            ## hechos importantes
+            ## hoy
+            ## a principios de esta semana
+            ## situación a largo plazo
             """.trimIndent()
 
-        assertTrue("只有标题没有正文，仍是空壳", isPlaceholder(onlyHeadings))
+        assertTrue("Sólo el título y ningún texto siguen siendo conchas vacías.", isPlaceholder(onlyHeadings))
     }
 
     @Test
     fun `markdown bullets and emphasis do not count as content`() {
         val symbolsOnly =
             """
-            ## 重要事实
+            ## hechos importantes
             - ** **
             - __ __
             """.trimIndent()

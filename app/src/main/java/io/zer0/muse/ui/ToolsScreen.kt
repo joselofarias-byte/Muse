@@ -50,30 +50,30 @@ import io.zer0.muse.ui.theme.tiny
 import org.koin.compose.koinInject
 
 /**
- * v1.0.4 P2-3:AI 工具管理页 — 把 ToolRegistry 中已注册但用户不可见的工具列表透出。
+ * v1.0.4 P2-3:AI Página de gestión de herramientas — Exponer la lista de herramientas registradas en ToolRegistry pero no visibles para el usuario.
  *
- * 后端能力(均已实现):
- *  - [ToolRegistry.listTools] 列出全部 ToolDef(name/description/parameters/riskLevel/category)
- *  - [ToolRegistry.BUILT_IN_TOOL_IDS] 静态内置工具 id 清单
- *  - [ToolRiskLevel] 三级风险等级(SAFE / NORMAL / HIGH),用于权限审批
+ * Capacidades de backend(se han realizado):
+ *  - [ToolRegistry.listTools] enumerar todo ToolDef(name/description/parameters/riskLevel/category)
+ *  - [ToolRegistry.BUILT_IN_TOOL_IDS] Lista estática de identificadores de herramientas integradas
+ *  - [ToolRiskLevel] Nivel de riesgo nivel 3(SAFE / NORMAL / HIGH),Utilizado para la aprobación de permisos
  *
- * 本页职责:
- *  1. 按分类(built-in / local / mcp)分组列出所有工具
- *  2. 每行展示:name + description + 风险等级颜色徽章
- *  3. 点击查看详情:参数 Schema + required + category + 安全说明
- *  4. 引导用户:"通过助手详情页 → 扩展 → 工具,可控制每个助手使用哪些工具"
+ * Responsabilidades de esta página:
+ *  1. por categoría(built-in / local / mcp)Listar todas las herramientas en grupos
+ *  2. mostrar por fila:name + description + Insignia de color de nivel de riesgo
+ *  3. Haga clic para ver detalles:parámetros Schema + required + category + Instrucciones de seguridad
+ *  4. guiar a los usuarios:"A través de la página de detalles del asistente → Expandir → Herramientas,Controla qué herramientas utiliza cada asistente"
  *
- * 注:工具的全局启用/禁用由 AssistantEntity.toolIdsJson 控制(per-Assistant 粒度),
- *     本页不做全局开关(避免与 per-Assistant 机制冲突),只做展示与说明。
+ * Nota:Habilitación global de herramientas./Deshabilitado controlado por AssistantEntity.toolIdsJson(per-Assistant Granularidad),
+ *     No hay ningún cambio global en esta página.(Evite conflictos con el mecanismo por Asistente),Mostrar y explicar únicamente.
  */
 @Composable
 fun ToolsScreen(onBack: () -> Unit) {
     val toolRegistry: ToolRegistry = koinInject()
-    // ToolRegistry 支持 MCP/插件动态注册；订阅 revision，避免页面首次为空后永久不刷新。
+    // ToolRegistry Admite registro dinámico de complementos/MCP; suscríbase a la revisión para evitar que la página nunca se actualice después de estar vacía por primera vez.
     val registryRevision by toolRegistry.revision.collectAsStateWithLifecycle()
-    // listTools() 是同步函数(读 ConcurrentHashMap.values),无需 IO
+    // listTools() es una función sincrónica(leer ConcurrentHashMap.values),No es necesario IO
     val tools = remember(registryRevision) { toolRegistry.listTools().sortedBy { it.name } }
-    // 按分类分组
+    // Agrupar por categoría
     val grouped = remember(tools) {
         tools.groupBy { it.category }.toSortedMap()
     }
@@ -96,8 +96,8 @@ fun ToolsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(vertical = MusePaddings.sectionGap),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.sectionGap),
         ) {
-            // ── 说明卡片 ────────────────────────────────────────────────────
-            // v2.x: 动效补齐 — 列表项入场(令牌 animateItem)
+            // ── tarjeta de instrucciones ────────────────────────────────────────────────────
+            // v2.x: Finalización del efecto de movimiento — Entrada de elemento de lista(ficha animateItem)
             item(key = "intro") {
                 Box(museAnimateItem()) {
                     CardGroup(modifier = Modifier.padding(horizontal = MusePaddings.screen)) {
@@ -128,8 +128,8 @@ fun ToolsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── 工具总数 + 高风险数 ────────────────────────────────────────
-            // v2.x: 动效补齐 — 列表项入场(令牌 animateItem)
+            // ── Número total de herramientas + número de riesgos altos ────────────────────────────────────────
+            // v2.x: Finalización del efecto de movimiento — Entrada de elemento de lista(ficha animateItem)
             item(key = "stats") {
                 val highRiskCount = tools.count { it.riskLevel == ToolRiskLevel.HIGH }
                 Box(museAnimateItem()) {
@@ -142,9 +142,9 @@ fun ToolsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── 按分类分组展示 ─────────────────────────────────────────────
+            // ── Mostrar en grupos por categoría ─────────────────────────────────────────────
             if (tools.isEmpty()) {
-                // v2.x: 动效补齐 — 空态入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — entrada vacía(ficha animateItem)
                 item(key = "tools_empty") {
                     Box(museAnimateItem()) {
                         MuseEmptyState(
@@ -156,7 +156,7 @@ fun ToolsScreen(onBack: () -> Unit) {
                 }
             }
             grouped.forEach { (category, toolsInCategory) ->
-                // v2.x: 动效补齐 — 分类分组入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — Admisión por categorías(ficha animateItem)
                 item(key = "group_$category") {
                     Box(museAnimateItem()) {
                         CardGroup(
@@ -176,11 +176,11 @@ fun ToolsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── v1.0.4 (P3-6): 内置插件清单 ──────────────────────────────
-            // 后端 PluginManifest.BUILT_IN 声明了 5 个内置插件(image-gen / beautify /
-            // media / mcp-bridge / office),含 trust/capabilities/activationEvents。
-            // 此处透出给用户,提升能力边界透明度(只读展示,启用/禁用仍由代码控制)。
-            // v2.x: 动效补齐 — 插件分组入场(令牌 animateItem)
+            // ── v1.0.4 (P3-6): Lista de complementos integrados ──────────────────────────────
+            // El backend PluginManifest.BUILT_IN declara 5 complementos integrados(image-gen / beautify /
+            // media / mcp-bridge / office),Contiene eventos de confianza/capacidades/activación.
+            // Revelado aquí a los usuarios.,Mejorar la transparencia de los límites de capacidad(pantalla de solo lectura,habilitar/La desactivación todavía está controlada por código).
+            // v2.x: Finalización del efecto de movimiento — Admisión grupal enchufable(ficha animateItem)
             item(key = "plugins_group") {
                 Box(museAnimateItem()) {
                     CardGroup(
@@ -205,7 +205,7 @@ fun ToolsScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── 详情弹窗 ─────────────────────────────────────────────────────
+    // ── Ventana emergente de detalles ─────────────────────────────────────────────────────
     detailTarget?.let { tool ->
         ToolDetailDialog(
             tool = tool,
@@ -215,7 +215,7 @@ fun ToolsScreen(onBack: () -> Unit) {
 }
 
 /**
- * 单条工具行 — 图标 + name + description + 风险等级徽章。
+ * línea de herramienta única — icono + name + description + Insignia de nivel de riesgo.
  */
 private fun CardGroupScope.ToolRow(tool: ToolRegistry.ToolDef, onClick: () -> Unit) {
     item(
@@ -249,11 +249,11 @@ private fun CardGroupScope.ToolRow(tool: ToolRegistry.ToolDef, onClick: () -> Un
 }
 
 /**
- * 风险等级徽章 — 颜色:SAFE 绿 / NORMAL 橙 / HIGH 红,软胶囊样式。
+ * Insignia de nivel de riesgo — color:SAFE VERDE / NARANJA NORMAL / ROJO ALTO,Formato cápsula blanda.
  */
 @Composable
 private fun RiskBadge(level: ToolRiskLevel) {
-    // v1.0.52: 风险色接入语义状态色,深色模式自动切换亮档保证对比度
+    // v1.0.52: El color de riesgo accede al color de estado semántico,El modo oscuro cambia automáticamente al modo brillante para garantizar el contraste
     val statusColors = MaterialTheme.statusColors
     val (label, color) = when (level) {
         ToolRiskLevel.SAFE -> stringResource(R.string.tools_risk_safe) to statusColors.success
@@ -275,24 +275,24 @@ private fun RiskBadge(level: ToolRiskLevel) {
 }
 
 /**
- * 工具详情弹窗 — 展示参数 Schema + 风险等级 + 安全说明。
+ * Ventana emergente de detalles de la herramienta — Parámetro de visualización Esquema + nivel de riesgo + instrucciones de seguridad.
  */
 @Composable
 private fun ToolDetailDialog(tool: ToolRegistry.ToolDef, onDismiss: () -> Unit) {
     MuseDialog(
         onDismissRequest = onDismiss,
         title = tool.name,
-        // v1.0.86: 只留"关闭"一个按钮 — 工具详情是只读展示,
-        // "取消"与"关闭"语义重复(脱裤子放屁),去掉默认的取消按钮。
+        // v1.0.86: solo quédate"cerrar"un botón — Los detalles de la herramienta son de solo lectura.,
+        // "Cancelar"con"cerrar"repetición semántica(Quítate los pantalones y tírate un pedo),Elimine el botón de cancelación predeterminado.
         dismissText = null,
         content = {
-            // v1.0.7 修复崩溃:MuseDialog 的 content 区已自带 verticalScroll(heightIn(max=420dp)),
-            // 此处再嵌套 verticalScroll 会导致"Vertically scrollable component was measured
-            // with an infinity maximum height constraints"崩溃。去掉内层 verticalScroll。
+            // v1.0.7 arreglar falla:MuseDialog El área de contenido viene con verticalScroll(heightIn(max=420dp)),
+            // Anidar verticalScroll aquí dará como resultado"Vertically scrollable component was measured
+            // with an infinity maximum height constraints"colapsar. Retire el desplazamiento vertical interior.
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                // 描述
+                // Descripción
                 Text(
                     text = tool.description,
                     style = MaterialTheme.typography.bodyMedium,
@@ -300,14 +300,14 @@ private fun ToolDetailDialog(tool: ToolRegistry.ToolDef, onDismiss: () -> Unit) 
                 )
                 Spacer(Modifier.height(12.dp))
 
-                // 元信息行:分类 + 风险等级
+                // línea de metainformación:Clasificación + Nivel de Riesgo
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.tools_detail_category_label, categoryLabel(tool.category)),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
+                        // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -315,7 +315,7 @@ private fun ToolDetailDialog(tool: ToolRegistry.ToolDef, onDismiss: () -> Unit) 
                 }
                 Spacer(Modifier.height(16.dp))
 
-                // 参数 Schema
+                // parámetros Schema
                 if (tool.parameters.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.tools_detail_params),
@@ -337,7 +337,7 @@ private fun ToolDetailDialog(tool: ToolRegistry.ToolDef, onDismiss: () -> Unit) 
                     }
                 }
 
-                // execute_javascript 专属安全说明
+                // execute_javascript Instrucciones de seguridad específicas
                 if (tool.name == "execute_javascript") {
                     Spacer(Modifier.height(12.dp))
                     Surface(
@@ -378,7 +378,7 @@ private fun ToolDetailDialog(tool: ToolRegistry.ToolDef, onDismiss: () -> Unit) 
 }
 
 /**
- * 参数行 — 名称(等宽)+ 类型 + 必填标记 + 描述。
+ * Línea de parámetros — Nombre(Ancho igual)+ Tipo + etiquetas requeridas + descripción.
  */
 @Composable
 private fun ParamRow(name: String, type: String, required: Boolean, description: String) {
@@ -435,7 +435,7 @@ private fun ParamRow(name: String, type: String, required: Boolean, description:
     }
 }
 
-/** 把分类 key 映射为本地化标签。 */
+/** Asigne claves de clasificación a etiquetas localizadas. */
 @Composable
 private fun categoryLabel(category: String): String = when (category) {
     "built-in" -> stringResource(R.string.tools_category_built_in)
@@ -445,10 +445,10 @@ private fun categoryLabel(category: String): String = when (category) {
 }
 
 /**
- * v1.0.4 (P3-6): 内置插件行 — 展示 PluginManifest 的 name/description/trust/capabilities。
+ * v1.0.4 (P3-6): Línea de complementos incorporada — Nombre para mostrar/descripción/confianza/capacidades de PluginManifest.
  *
- * 只读展示(不带开关):插件的实际启用由代码内部决定,这里仅向用户透出能力边界。
- * trust=full-access 用红色徽章高亮,sandboxed 用中性色,让用户一眼识别高风险插件。
+ * pantalla de solo lectura(sin interruptor):La activación real del complemento está determinada internamente por el código.,Aquí sólo se revelan al usuario los límites de las capacidades.
+ * trust=full-access Resaltar con insignia roja,sandboxed Usa colores neutros,Permita que los usuarios identifiquen complementos de alto riesgo de un vistazo.
  */
 private fun CardGroupScope.PluginRow(plugin: PluginManifest) {
     item(key = plugin.id) {
@@ -482,7 +482,7 @@ private fun CardGroupScope.PluginRow(plugin: PluginManifest) {
                         maxLines = 2,
                     )
                 }
-                // 能力 + 激活事件小字
+                // Habilidad + letra pequeña del evento de activación
                 val permissionsLabel = stringResource(R.string.tools_permissions_label)
                 val activationLabel = stringResource(R.string.tools_activation_label)
                 val capsText = buildString {
@@ -506,7 +506,7 @@ private fun CardGroupScope.PluginRow(plugin: PluginManifest) {
                     )
                 }
             }
-            // trust 徽章
+            // trust insignia
             Surface(
                 color = if (plugin.trust == "full-access") {
                     MaterialTheme.colorScheme.errorContainer

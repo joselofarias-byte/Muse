@@ -1,25 +1,25 @@
 package io.zer0.muse.ui.chat
 
 /**
- * 当前对话上下占用量的对外只读入口。
+ * Entrada externa de solo lectura para la ocupación superior e inferior de la conversación actual.
  *
- * 占用量是 ViewModel 的内存态（每轮生成后重算），工具层在执行时只拿到
- * [io.zer0.muse.tools.ToolExecutionContext]，看不到 ChatUiState。这里提供一个
- * 进程级绑定点：由 ChatViewModel 启动时绑定一次（它是进程级单例），工具侧读到的
- * 就是占用圆环上那个数字，不会出现「工具报的占用率和界面不一致」。
+ * La ocupación es el estado de la memoria de ViewModel (recalculado después de cada ronda de generación). La capa de herramientas solo obtiene
+ * [io.zer0.muse.tools.ToolExecutionContext], ChatUiState no es visible. Aquí hay un
+ * Punto de enlace a nivel de proceso: enlace una vez cuando se inicia ChatViewModel (es un singleton a nivel de proceso), leído por el lado de la herramienta
+ * Es el número en el círculo de ocupación y no habrá "inconsistencia entre la tasa de ocupación informada por la herramienta y la interfaz".
  *
- * 未绑定（后台任务/未打开对话）时返回 null，调用方应整行省略而不是报 0。
+ * Sin consolidar (tarea en segundo plano/Devuelve nulo si el cuadro de diálogo no está abierto), la persona que llama debe omitir toda la línea en lugar de informar 0.
  */
 object ContextOccupancyProbe {
 
     @Volatile
     private var supplier: (() -> Pair<Int, Int>?)? = null
 
-    /** 绑定读取器；后绑定的覆盖先绑定的（热重载/多实例时以最新对话为准）。 */
+    /** Atar al lector; el que se vincula más tarde anula el que se vincula primero (recarga en caliente)/Cuando existan múltiples instancias prevalecerá la última conversación). */
     fun bind(reader: () -> Pair<Int, Int>?) {
         supplier = reader
     }
 
-    /** (当前占用, 上限)；未绑定或读取失败返回 null。 */
+    /** (Actualmente ocupado, límite superior); Devuelve nulo si no está vinculado o no se pudo leer. */
     fun current(): Pair<Int, Int>? = runCatching { supplier?.invoke() }.getOrNull()
 }

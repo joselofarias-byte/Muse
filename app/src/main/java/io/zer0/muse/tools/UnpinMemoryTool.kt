@@ -3,23 +3,23 @@ package io.zer0.muse.tools
 import io.zer0.memory.pin.PinnedMemoryStore
 
 /**
- * unpin_memory 工具。
+ * unpin_memory Herramientas.
  *
- * 允许 AI 按关键词或 id 移除已置顶的记忆。
+ * Permite que la IA elimine recuerdos anclados por palabra clave o identificación.
  */
 object UnpinMemoryTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "unpin_memory",
-        description = "取消一条置顶记忆。用户要求忘掉此前置顶的内容," +
-            "或置顶信息已不再准确时使用。",
+        description = "Cancelar un recuerdo anclado. El usuario solicitó olvidar el contenido previamente fijado.," +
+            "O se usa cuando la información fijada ya no es precisa.",
         parameters = mapOf(
             "keyword" to "Optional. Remove the first pinned memory whose content contains this keyword.",
             "id" to "Optional. Remove by exact memory id prefix.",
         ),
         required = emptySet(),
         category = "built-in",
-        // P0-3: 与 ToolPermissionResolver 显式表一致(HIGH)— 长期记忆变更,隐私敏感
+        // P0-3: Consistente con la tabla explícita ToolPermissionResolver(HIGH)— cambios en la memoria a largo plazo,sensible a la privacidad
         riskLevel = ToolRiskLevel.HIGH,
     )
 
@@ -32,7 +32,7 @@ object UnpinMemoryTool {
         val scopedAssistantId = assistantId?.takeIf { it.isNotBlank() }
         val includeGlobal = scopedAssistantId == "default"
         val removed = if (!id.isNullOrEmpty()) {
-            // 尝试精确前缀匹配
+            // Pruebe una coincidencia exacta de prefijo
             val all = if (scopedAssistantId == null) {
                 store.getAll()
             } else {
@@ -47,8 +47,8 @@ object UnpinMemoryTool {
                 store.removeByIdForAssistant(target.id, scopedAssistantId, includeGlobal)
             }
         } else {
-            // v1.131: keyword 此处非空(上面已 guard),用 requireNotNull 替代 !! 让契约更显式,
-            // 误用会抛 IllegalArgumentException 而非 NPE,定位更清晰。
+            // v1.131: keyword No esta vacio aqui(Ya arriba guard),Utilice requireNotNull en su lugar !! Hacer los contratos más explícitos,
+            // El mal uso arrojará IllegalArgumentException en lugar de NPE,El posicionamiento es más claro.
             requireNotNull(keyword) { "keyword must be non-null when id is empty" }
             if (scopedAssistantId == null) {
                 store.removeByKeyword(keyword)

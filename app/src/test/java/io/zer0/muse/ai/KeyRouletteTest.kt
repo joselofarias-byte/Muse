@@ -8,16 +8,16 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * KeyRoulette API key 轮换单元测试。
+ * KeyRoulette API key Rotar pruebas unitarias.
  *
- * 测试 LRU 选 key 策略 + 黑名单(软/硬)逻辑:
- *  - [KeyRoulette.pick]:LRU 策略选取 key(优先未使用过的)
- *  - [KeyRoulette.pickNext]:429 限流时切换到下一个 key(当前 key 加入软黑名单)
- *  - [KeyRoulette.markFailed]:标记 key 失败(hardBlock 完全排除)
- *  - [KeyRoulette.clearBlacklist]:清除指定 Provider 的黑名单
- *  - [KeyRoulette.clear]:清除全部缓存与黑名单
+ * Pruebe la estrategia de selección de claves LRU + lista negra(suave/duro)lógica:
+ *  - [KeyRoulette.pick]:LRU Selección de estrategia key(Priorizar los no utilizados)
+ *  - [KeyRoulette.pickNext]:429 Cambie al siguiente cuando la corriente sea limitada key(La clave actual se agrega a la lista negra suave)
+ *  - [KeyRoulette.markFailed]:Error al marcar la clave(hardBlock completamente excluido)
+ *  - [KeyRoulette.clearBlacklist]:Borrar la lista negra del proveedor especificado
+ *  - [KeyRoulette.clear]:Borrar todo el caché y la lista negra
  *
- * 每个测试方法使用独立的 KeyRoulette 实例,避免状态污染。
+ * Utilice una instancia de KeyRoulette separada para cada método de prueba,Evite la contaminación estatal.
  */
 class KeyRouletteTest {
 
@@ -34,181 +34,181 @@ class KeyRouletteTest {
         roulette = KeyRoulette()
     }
 
-    // ── pick:LRU 选 key ────────────────────────────────────────────────
+    // ── pick:LRU elegir key ────────────────────────────────────────────────
 
     @Test
-    fun `单 key 时 pick 返回原 key`() {
+    fun `Cuando hay una sola clave, pick devuelve la original key`() {
         val result = roulette.pick(providerId, key1)
         assertEquals(key1, result)
     }
 
     @Test
-    fun `多 key 时 pick 返回其中一个候选 key`() {
+    fun `Cuando hay varias claves, pick devuelve una de las candidatas. key`() {
         val result = roulette.pick(providerId, multiKeys)
-        assertTrue("pick 结果应是候选 key 之一: $result", result in listOf(key1, key2, key3))
+        assertTrue("pick El resultado debe ser una de las claves candidatas.: $result", result in listOf(key1, key2, key3))
     }
 
     @Test
-    fun `pick 后再次 pick 不会返回刚用过的 key(LRU)`() {
-        // 第一次 pick
+    fun `pick Recoger nuevamente después de eso no devolverá lo recién usado. key(LRU)`() {
+        // primera vez pick
         val first = roulette.pick(providerId, multiKeys)
-        // 第二次 pick:first 刚用过,应选其他 key
+        // La segunda elección: la primera se acaba de usar.,Se debe seleccionar otro key
         val second = roulette.pick(providerId, multiKeys)
-        assertFalse("LRU 策略下第二次 pick 不应返回刚用过的 key: first=$first, second=$second", first == second)
+        assertFalse("LRU La segunda elección según la estrategia no debería devolver lo recién usado. key: first=$first, second=$second", first == second)
     }
 
     @Test
-    fun `三次 pick 覆盖全部三个 key`() {
+    fun `La triple selección cubre los tres key`() {
         val picked = mutableSetOf<String>()
         repeat(3) {
             picked.add(roulette.pick(providerId, multiKeys))
         }
-        // 三次 pick 应覆盖全部三个 key(LRU 无重复)
-        assertEquals("三次 pick 应覆盖全部 key: $picked", 3, picked.size)
+        // Tres selecciones deberían cubrir los tres key(LRU Sin duplicación)
+        assertEquals("Tres selecciones deberían cubrir todo key: $picked", 3, picked.size)
         assertTrue(key1 in picked)
         assertTrue(key2 in picked)
         assertTrue(key3 in picked)
     }
 
     @Test
-    fun `换行分隔的 key 也能正确解析`() {
+    fun `Las claves separadas por nueva línea también se pueden analizar correctamente`() {
         val newlineKeys = "$key1\n$key2\n$key3"
         val result = roulette.pick(providerId, newlineKeys)
-        assertTrue("换行分隔的 key 应能正确解析: $result", result in listOf(key1, key2, key3))
+        assertTrue("Las claves separadas por nueva línea deben analizarse correctamente: $result", result in listOf(key1, key2, key3))
     }
 
     @Test
-    fun `含空值的 key 列表自动过滤`() {
-        // "key1,,key2" 中间有空值,应被过滤
+    fun `Las listas de claves que contienen valores nulos se filtran automáticamente`() {
+        // "key1,,key2" Hay un valor nulo en el medio.,debe ser filtrado
         val keysWithEmpty = "$key1,,$key2"
         val result = roulette.pick(providerId, keysWithEmpty)
-        assertTrue("空值 key 应被过滤: $result", result in listOf(key1, key2))
+        assertTrue("Los valores clave vacíos deben filtrarse: $result", result in listOf(key1, key2))
     }
 
     @Test
-    fun `不同 providerId 的 LRU 状态隔离`() {
+    fun `Aislamiento de estado LRU para diferentes ID de proveedor`() {
         // provider-A pick key1
         val a1 = roulette.pick("provider-A", multiKeys)
-        // provider-B pick 不受 provider-A 的 LRU 影响
+        // provider-B pick No afectado por la LRU del proveedor A
         val b1 = roulette.pick("provider-B", multiKeys)
-        // provider-A 第二次 pick 应避开 a1
+        // provider-A Se debe evitar la segunda elección. a1
         val a2 = roulette.pick("provider-A", multiKeys)
-        assertFalse("provider-A 的 LRU 不应影响 provider-B", a1 == a2)
+        assertFalse("provider-A La LRU no debería afectar provider-B", a1 == a2)
     }
 
-    // ── pickNext:429 限流切换 ──────────────────────────────────────────
+    // ── pickNext:429 Conmutación de límite de corriente ──────────────────────────────────────────
 
     @Test
-    fun `pickNext 切换到不同的 key`() {
+    fun `pickNext cambiar a diferente key`() {
         val first = roulette.pick(providerId, multiKeys)
         val next = roulette.pickNext(providerId, multiKeys, first)
-        assertFalse("pickNext 应切换到不同的 key: first=$first, next=$next", first == next)
-        assertTrue("切换后的 key 应在候选列表中: $next", next in listOf(key1, key2, key3))
+        assertFalse("pickNext debería cambiar a otro key: first=$first, next=$next", first == next)
+        assertTrue("La clave cambiada debe estar en la lista de candidatos.: $next", next in listOf(key1, key2, key3))
     }
 
     @Test
-    fun `单 key 时 pickNext 返回原 key`() {
+    fun `Cuando hay una sola clave, pickNext devuelve la original key`() {
         val result = roulette.pickNext(providerId, key1, key1)
-        assertEquals("单 key 时 pickNext 应返回原 key", key1, result)
+        assertEquals("Cuando se utiliza una sola clave, pickNext debería devolver el original key", key1, result)
     }
 
     @Test
-    fun `pickNext 把当前 key 加入软黑名单后不再优先选`() {
+    fun `pickNext Después de agregar la clave actual a la lista negra suave, ya no tendrá prioridad.`() {
         val first = roulette.pick(providerId, multiKeys)
         roulette.pickNext(providerId, multiKeys, first)
-        // 再次 pick,first 在软黑名单中,应优先选其他 key
+        // otra vez pick,first en lista negra suave,A otros se les debe dar prioridad key
         val third = roulette.pick(providerId, multiKeys)
-        // 软黑名单中的 key 降优先级,有其他候选时不选它
+        // Disminuir la prioridad de las claves en la lista negra suave,No lo selecciones cuando haya otros candidatos.
         val remaining = listOf(key1, key2, key3) - first
-        assertTrue("软黑名单中的 key 应被降优先级: $third", third in remaining)
+        assertTrue("Se debe quitar prioridad a las claves de la lista negra suave: $third", third in remaining)
     }
 
     @Test
-    fun `连续 pickNext 最终轮换所有 key`() {
+    fun `PickNext continuo eventualmente rota todo key`() {
         val first = roulette.pick(providerId, multiKeys)
         val second = roulette.pickNext(providerId, multiKeys, first)
         val third = roulette.pickNext(providerId, multiKeys, second)
-        // 三个 key 都应被选到
+        // Se deben seleccionar las tres teclas.
         val all = setOf(first, second, third)
-        assertEquals("连续 pickNext 应轮换全部 key: $all", 3, all.size)
+        assertEquals("PickNext consecutivo debería rotar todo key: $all", 3, all.size)
     }
 
-    // ── markFailed:硬黑名单 ────────────────────────────────────────────
+    // ── markFailed:lista negra dura ────────────────────────────────────────────
 
     @Test
-    fun `markFailed 后该 key 被完全排除`() {
+    fun `markFailed La clave queda completamente excluida después`() {
         roulette.markFailed(providerId, key1, hardBlock = true)
-        // 多次 pick 都不应返回 key1
+        // Varias selecciones no deberían regresar key1
         repeat(5) {
             val picked = roulette.pick(providerId, multiKeys)
-            assertFalse("markFailed 后 key1 应被排除: 第 ${it + 1} 次 pick=$picked", picked == key1)
+            assertFalse("markFailed Después de la clave 1 se debe excluir: No. ${it + 1} veces pick=$picked", picked == key1)
         }
     }
 
     @Test
-    fun `markFailed 所有 key 后退化为返回第一个 key`() {
-        // 把三个 key 都标记为失败
+    fun `markFailed Después de que todas las claves degeneren para devolver la primera. key`() {
+        // Marcar las tres claves como fallidas
         roulette.markFailed(providerId, key1, hardBlock = true)
         roulette.markFailed(providerId, key2, hardBlock = true)
         roulette.markFailed(providerId, key3, hardBlock = true)
-        // 全部 hard-blocked → 返回第一个 key(让 Provider 自己报错)
+        // Todos hard-blocked → volver a la primera key(Deje que el proveedor informe los errores por sí solo)
         val result = roulette.pick(providerId, multiKeys)
-        assertEquals("全部 key 被拉黑应返回第一个 key", key1, result)
+        assertEquals("Si todas las claves están bloqueadas, se debe devolver la primera. key", key1, result)
     }
 
     @Test
-    fun `markFailed softBlock 时 key 降优先级但不排除`() {
-        // hardBlock=false:软黑名单,有其他候选时不选,无其他候选时仍可选
+    fun `markFailed softBlock Cuando la clave no tiene prioridad pero no se excluye`() {
+        // hardBlock=false:lista negra suave,No seleccionar si hay otros candidatos,Aún disponible cuando no hay otros candidatos
         roulette.markFailed(providerId, key1, hardBlock = false)
-        // 有 key2/key3 可用,不应选 key1
+        // Hay key2/key3 disponibles,No debe ser seleccionado key1
         repeat(3) {
             val picked = roulette.pick(providerId, multiKeys)
-            assertFalse("软黑名单下有其他候选时不选 key1: $picked", picked == key1)
+            assertFalse("No seleccionar si hay otros candidatos en la lista negra suave key1: $picked", picked == key1)
         }
     }
 
     @Test
-    fun `markFailed 只影响指定 provider`() {
+    fun `markFailed Sólo afecta a lo especificado provider`() {
         roulette.markFailed("provider-A", key1, hardBlock = true)
-        // provider-B 不受影响
+        // provider-B no afectado
         val result = roulette.pick("provider-B", multiKeys)
-        assertTrue("markFailed 不应影响其他 provider: $result", result in listOf(key1, key2, key3))
+        assertTrue("markFailed no debe afectar a otros provider: $result", result in listOf(key1, key2, key3))
     }
 
     // ── clearBlacklist / clear ─────────────────────────────────────────
 
     @Test
-    fun `clearBlacklist 恢复被拉黑的 key`() {
+    fun `clearBlacklist Recuperar bloqueado key`() {
         roulette.markFailed(providerId, key1, hardBlock = true)
-        // 清除黑名单
+        // Borrar lista negra
         roulette.clearBlacklist(providerId)
-        // key1 恢复候选
+        // key1 candidato de recuperación
         val picked = mutableSetOf<String>()
         repeat(5) { picked.add(roulette.pick(providerId, multiKeys)) }
-        assertTrue("clearBlacklist 后 key1 应恢复候选: $picked", key1 in picked)
+        assertTrue("clearBlacklist Después de la clave 1, el candidato debe ser restaurado.: $picked", key1 in picked)
     }
 
     @Test
-    fun `clear 清除全部状态`() {
+    fun `clear Borrar todo el estado`() {
         roulette.pick(providerId, multiKeys)
         roulette.markFailed(providerId, key1, hardBlock = true)
         roulette.clear()
-        // clear 后 key1 应恢复候选
+        // clear Después de la clave 1, el candidato debe ser restaurado.
         val picked = mutableSetOf<String>()
         repeat(5) { picked.add(roulette.pick(providerId, multiKeys)) }
-        assertTrue("clear 后 key1 应恢复候选: $picked", key1 in picked)
+        assertTrue("clear Después de la clave 1, el candidato debe ser restaurado.: $picked", key1 in picked)
     }
 
     @Test
-    fun `clearBlacklist 只影响指定 provider`() {
+    fun `clearBlacklist Sólo afecta a lo especificado provider`() {
         roulette.markFailed("provider-A", key1, hardBlock = true)
         roulette.markFailed("provider-B", key1, hardBlock = true)
-        // 只清除 provider-A 的黑名单
+        // Borre solo la lista negra del proveedor A
         roulette.clearBlacklist("provider-A")
-        // provider-B 的 key1 仍被拉黑
+        // provider-B La clave 1 sigue bloqueada
         repeat(3) {
             val picked = roulette.pick("provider-B", multiKeys)
-            assertFalse("clearBlacklist 不应影响 provider-B: $picked", picked == key1)
+            assertFalse("clearBlacklist no debería afectar provider-B: $picked", picked == key1)
         }
     }
 }

@@ -29,10 +29,10 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
-// E4 (前端专项 H8): 消息表情回应选择器。
-// 项目 UI 约定禁止 emoji 字符(见 AuditLogPage/settings 注释),预设回应采用
-// Material 语义图标表达(Facebook 式 reaction,无文字标签)。
-// reaction 字段存预设 key("like"/"love"/...),UI 层经 reactionIcon/reactionLabelRes 映射。
+// E4 (Especialización front-end H8): Selector de respuesta de emoticonos de mensaje.
+// La convención de interfaz de usuario del proyecto prohíbe los caracteres emoji(Ver AuditLogPage/comentario de configuración),Respuesta predeterminada adoptada
+// Material Expresión de icono semántico(Facebook fórmula reaction,Sin etiqueta de texto).
+// reaction Valor predeterminado de almacenamiento de campo key("like"/"love"/...),UI Las capas se asignan mediante reaccionarIcon/reactionLabelRes.
 internal val REACTION_PRESETS: List<Pair<String, ImageVector>> = listOf(
     "like" to MuseIcons.thumbUp,
     "love" to MuseIcons.heart,
@@ -42,7 +42,7 @@ internal val REACTION_PRESETS: List<Pair<String, ImageVector>> = listOf(
     "angry" to MuseIcons.flame,
 )
 
-/** reaction key → 内容描述字符串资源;未知 key 返回 null(渲染层跳过)。 */
+/** reaction key → Contenido Descripción Cadena Recurso;Clave desconocida devuelta null(Capa de renderizado omitida). */
 internal fun reactionLabelRes(key: String): Int? = when (key) {
     "like" -> R.string.chat_reaction_like
     "love" -> R.string.chat_reaction_love
@@ -53,10 +53,10 @@ internal fun reactionLabelRes(key: String): Int? = when (key) {
     else -> null
 }
 
-/** reaction key → 图标;未知 key 返回 null。 */
+/** reaction key → icono;La clave desconocida devuelve nulo. */
 internal fun reactionIcon(key: String): ImageVector? = REACTION_PRESETS.firstOrNull { it.first == key }?.second
 
-/** 表情回应选择面板 — 预设回应横排 + 清除(已有回应时)。 */
+/** Panel de selección de respuesta de expresión — Respuesta predeterminada horizontal + borrar(Cuando hay una respuesta). */
 @Composable
 internal fun MuseReactionSheet(current: String?, onSelect: (String?) -> Unit, onDismiss: () -> Unit) {
     MuseBottomSheet(onDismissRequest = onDismiss) {
@@ -94,10 +94,10 @@ internal fun MuseReactionSheet(current: String?, onSelect: (String?) -> Unit, on
     }
 }
 
-/** 单个回应按钮 — 选中态高亮描边;内容描述用本地化标签(TalkBack)。 */
+/** botón de respuesta única — Trazo resaltado seleccionado;Utilice etiquetas localizadas para descripciones de contenido(TalkBack). */
 @Composable
 private fun ReactionButton(key: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    // 标签在 Composable 上下文取值(semantics lambda 内不能调用 stringResource)
+    // Las etiquetas toman valor en el contexto componible(semantics lambda No se puede llamar dentro stringResource)
     val label = reactionLabelRes(key)?.let { stringResource(it) }
     Icon(
         imageVector = icon,

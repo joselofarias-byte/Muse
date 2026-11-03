@@ -1,26 +1,26 @@
 # Muse v2.5.4
 
-本次更新把液态玻璃从自绘方案换成专用渲染引擎，并同步升级 Compose 工具链。
+Esta actualización cambia Liquid Glass de una solución de autopintura a un motor de renderizado dedicado y, simultáneamente, actualiza la cadena de herramientas Compose.
 
-## 液态玻璃（重做）
+## Vidrio líquido (reelaborado)
 
-- **换用专用引擎**：磨砂用 kyant backdrop（模糊 + 饱和度提升 + 折射与色散 + 高光边 + 投影），水玻璃用 RuntimeShader，观感从「半透明灰块」升级为真正的玻璃。
-- **全局背景取景**：玻璃从页面背景（图片/渐变）实时取景，滚动时透出动态背景，而不是静态平涂。
-- **内容色自适应**：深色背景下岛内标题、图标、文字自动转浅色，浅色背景下用深色，解决此前玻璃太透导致的文字看不清。
-- **低版本降级**：Android 13 以下自动回退到渐变 + 高光边的近似玻璃，不影响可用性。
-- **消息气泡仍用轻量玻璃**：一屏几十个气泡不跑真模糊，保证滚动流畅。
+- **Cambiar a un motor dedicado**: Utilice un fondo kyant para el glaseado (desenfoque + aumento de saturación + refracción y dispersión + borde resaltado + proyección) y utilice RuntimeShader para vaso de agua. La apariencia se actualiza desde un "bloque gris translúcido" hasta vidrio real.
+- **Encuadre de fondo global**:Vidrio del fondo de la página (imagen/Degradado) Vista en vivo, que revela un fondo dinámico a medida que se desplaza, en lugar de una pintura plana estática.
+- **Color de contenido adaptable**: El título, el icono y el texto de la isla se convierten automáticamente a colores claros sobre fondos oscuros, y se utilizan colores oscuros sobre fondos claros para resolver el problema del texto poco claro causado por el vidrio anterior que es demasiado transparente.
+- **Bajar de versión inferior**:Android 13 Lo siguiente vuelve automáticamente al vidrio aproximado con gradiente + bordes resaltados, sin afectar la usabilidad.
+- **Las burbujas de mensajes todavía usan vidrio liviano**: Docenas de burbujas en una pantalla están realmente borrosas sin moverse, lo que garantiza un desplazamiento fluido.
 
-## 工具链升级
+## Actualización de la cadena de herramientas
 
-- Compose 1.7 → 1.10.4，compileSdk 35 → 36。
-- 测试框架升级以适配新 SDK。
+- Compose 1.7 → 1.10.4,compileSdk 35 → 36.
+- Marco de prueba actualizado para adaptarse al nuevo SDK.
 
-## 修复
+## Reparación
 
-- 修复进入对话页时因玻璃层与内容层渲染依赖成环导致的闪退（表现为打开会话瞬间退出、不留崩溃记录）。
-- 修复群聊详情页玻璃未取本页背景的问题（与单聊行为对齐）。
+- Se corrigió un bloqueo causado por el bucle de dependencia entre la capa de vidrio y la representación de la capa de contenido al ingresar a la página de conversación (que se muestra como salir inmediatamente después de abrir la sesión sin dejar un registro de bloqueo).
+- Se solucionó el problema por el cual el cristal de la página de detalles del chat grupal no tomaba el fondo de esta página (alineado con el comportamiento del chat único).
 
-## 说明
+## Descripción
 
-- 液态玻璃默认关闭，可在「设置 → 外观 → 液态玻璃」开启并调节档位与强度。
-- 本包仅本地构建，用于真机观感验证，未发布 GitHub Release。
+- El vidrio líquido está desactivado de forma predeterminada y se puede encontrar en Configuración → Apariencia → "Liquid Glass" se abre y ajusta la marcha y la intensidad.
+- Este paquete solo se construye localmente y se utiliza para la verificación de la apariencia y el funcionamiento de la máquina real. No se ha publicado en GitHub Release.

@@ -14,23 +14,23 @@ import java.io.File
 import java.util.UUID
 
 /**
- * v1.0.92: 渠道入站收件箱 — 记录外部 IM 平台推送进来的消息(webhook 接收侧)。
+ * v1.0.92: Bandeja de entrada entrante del canal — Grabar mensajes enviados por plataformas de mensajería instantánea externas(webhook lado receptor).
  *
- * 全局单例(静态对象):WebServer 的 webhook 路由写入,UI 读取展示。
- * 最近处理记录最多 [MAX_ITEMS] 条;未完成事件作为有界队列持久化。
- * 收件箱内容会经 PII 遮蔽后入库,降低敏感信息残留。
+ * Singleton global(objeto estático):WebServer La ruta del webhook escribe,UI Leer pantalla.
+ * Registros procesados más recientemente [MAX_ITEMS] Artículo;Los eventos pendientes persisten como una cola delimitada.
+ * El contenido de la bandeja de entrada está enmascarado por PII antes de almacenarse,Reducir los residuos de información sensible.
  */
 object ChannelInbox {
 
     @Serializable
     enum class DispatchState {
-        /** 旧版 JSON 缺少队列字段;升级后不重放历史记录。 */
+        /** Falta el campo de cola JSON heredado;El historial no se reproduce después de la actualización. */
         COMPLETED,
         PENDING,
         PROCESSING,
         IGNORED,
 
-        /** 需要人工复核的终态;保留必要恢复材料,不会自动重试。 */
+        /** Estado final que requiere revisión manual;Mantenga los materiales de recuperación necesarios.,No lo volverá a intentar automáticamente. */
         BLOCKED,
     }
 
@@ -44,57 +44,57 @@ object ChannelInbox {
         val platform: String,
         val from: String,
         val channelId: String = "",
-        /** 平台事件 ID;平台缺少稳定 ID 时可使用接收端派生的重投键。 */
+        /** Eventos de plataforma ID;Se puede utilizar una clave de retorno derivada del receptor cuando la plataforma carece de una identificación estable. */
         val eventId: String = "",
-        /** 渠道临时回发凭据的 SecureKeyStore 密文;只在事件待处理期间落盘。 */
+        /** El texto secreto de SecureKeyStore de la credencial de devolución de datos temporal del canal.;Realice pedidos únicamente mientras el evento esté pendiente. */
         val encryptedReplyContextToken: String = "",
     )
 
-    /** 单条入站消息(摘要 + 原始负载,供排查与后续路由使用)。 */
+    /** Mensaje entrante único(Resumen + carga útil sin procesar,Para uso en la resolución de problemas y enrutamiento posterior). */
     @Serializable
     data class Inbound(
         val platform: String,
-        /** 消息来源(群/用户 openid / chat_id 等,因平台而异)。 */
+        /** Fuente(grupo/Usuario openid/chat_id, etc.,Varía según la plataforma). */
         val from: String = "",
-        /** 可读摘要(消息文本,已做 PII 遮蔽并截断)。 */
+        /** resumen legible por humanos(texto del mensaje,Enmascaramiento de PII y truncado). */
         val summary: String = "",
-        /** 原始负载(Raw JSON,截断存储)。 */
+        /** carga bruta(Raw JSON,Truncar almacenamiento). */
         val raw: String = "",
         val timestamp: Long = System.currentTimeMillis(),
-        /** v2.0.1: 媒体类型("image" 等;空 = 纯文本)。 */
+        /** v2.0.1: tipo de medio("image" espera;vacío = texto plano). */
         val mediaKind: String = "",
-        /** v2.0.1: 图片 base64(压缩后;仅 image 类)。 */
+        /** v2.0.1: fotos base64(Después de la compresión;clase de imagen solamente). */
         val mediaBase64: String = "",
         /**
-         * v2.x (B4): 非图片媒体(视频/文件)落盘后的本地绝对路径。
+         * v2.x (B4): medios sin imagen(vídeo/Archivo)La ruta absoluta local después de la colocación.
          *
-         * 视频/文件体积大,不适合走 [mediaBase64];下载后保存到私有目录,
-         * 路径记于此,供后续处理/引用。空 = 无本地文件(纯文本或未落盘)。
+         * vídeo/Tamaño de archivo grande,No apto para caminar [mediaBase64];Después de la descarga, guárdelo en un directorio privado.,
+         * El camino está registrado aquí.,para su posterior procesamiento/Cita. vacío = Sin archivos locales(Texto plano o no colocado).
          */
         val mediaPath: String = "",
-        /** 渠道配置 ID:webhook 来源为认证配置,长连接来源为当前接收配置。 */
+        /** ID de configuración del canal: la fuente del webhook es la configuración de autenticación,La fuente de la conexión larga es la configuración de recepción actual. */
         val sourceChannelId: String = "",
-        /** 事件去重 ID;无可用稳定 ID 的来源可以为空。 */
+        /** Deduplicación de eventos ID;Las fuentes sin ID estables disponibles pueden estar vacías. */
         val sourceEventId: String = "",
-        /** 本地派发 ID;无平台事件 ID 时也能定位并恢复同一条队列项。 */
+        /** distribución local ID;El mismo elemento de la cola también se puede localizar y restaurar sin un ID de evento de plataforma. */
         val dispatchId: String = "",
-        /** 旧版 JSON 缺失此字段时默认完成,避免升级后重放历史消息。 */
+        /** JSON heredado se completa de forma predeterminada cuando falta este campo,Evite reproducir mensajes históricos después de la actualización. */
         val dispatchState: DispatchState = DispatchState.COMPLETED,
         val attemptCount: Int = 0,
         val retryAtMillis: Long = 0L,
-        /** 发信前持久化,重试时复用以避免重复调用模型生成不同回复。 */
+        /** Persistencia antes de enviar,Reutilice cuando vuelva a intentar para evitar llamar al modelo repetidamente para generar respuestas diferentes. */
         val preparedReply: String = "",
-        /** 渠道临时回发凭据密文;完成派发后立即清空。 */
+        /** El canal devuelve temporalmente el texto cifrado de la credencial.;Vacíe inmediatamente después de completar la distribución. */
         val encryptedReplyContextToken: String = "",
-        /** 加密后的 Agent 工具轮次断点;完成派发后立即清空。 */
+        /** Puntos de interrupción redondos de la herramienta Agente cifrado;Vacíe inmediatamente después de completar la distribución. */
         val encryptedAgentCheckpoint: String = "",
-        /** 终态错误码;当前用于标记不可读取的 Agent 断点。 */
+        /** código de error final;Actualmente se utiliza para marcar puntos de interrupción del Agente ilegibles. */
         val dispatchErrorCode: String = "",
         /**
-         * 队列序号（2026-11-01 分片存储引入）。
+         * Número de serie de la cola (2026-11-01 Introducción del almacenamiento fragmentado).
          *
-         * 分片文件名用它排序，恢复顺序 = 旧实现的数组顺序；0 表示旧数据，迁移时按原下标补齐。
-         * 它只表达**入队先后**，不表达调度优先级 —— 优先级仍由 dispatchState + 列表顺序决定。
+         * Úselo para ordenar los nombres de los archivos de fragmentos y restaurar el orden. = Orden de matriz para la implementación anterior;0 Representa datos antiguos, que se completarán de acuerdo con el subíndice original durante la migración.
+         * solo expresa**Orden de incorporación al equipo.**, no expresa prioridad de programación —— La prioridad todavía está determinada por el orden de lista de estado de envío +.
          */
         val seq: Long = 0L,
     )
@@ -104,7 +104,7 @@ object ChannelInbox {
     private const val MAX_RAW_LENGTH = 4000
     private const val INBOX_FILE = "channel_inbox.json"
 
-    /** 分片目录名（目录型备份白名单里也要有它）。 */
+    /** El nombre del directorio fragmentado (también debe incluirse en la lista blanca de copia de seguridad de tipo directorio). */
     internal const val INBOX_DIR_NAME = "channel_inbox"
     private const val WEBHOOK_EVENT_LEDGER_FILE = "channel_webhook_event_ids.json"
 
@@ -113,14 +113,14 @@ object ChannelInbox {
 
     internal val journal = ChannelInboxJournal(_messages)
 
-    /** 兼容旧观察者;只代表新事件已入 inbox,不代表自动回复处理完成。 */
+    /** Compatible con antiguos observadores.;Solo significa que se han ingresado nuevos eventos. inbox,No significa que se complete el procesamiento automático de respuesta. */
     var onInbound: ((Inbound) -> Unit)?
         get() = journal.onInbound
         set(value) {
             journal.onInbound = value
         }
 
-    /** 绑定应用上下文并恢复历史记录(幂等;webhook 首次触发或 UI 进入时调用)。 */
+    /** Vincular el contexto de la aplicación y restaurar el historial(idempotente;webhook Se llama cuando se activa por primera vez o cuando se ingresa a la interfaz de usuario). */
     @Synchronized
     fun attach(context: Context) {
         val directory = context.applicationContext.filesDir
@@ -130,7 +130,7 @@ object ChannelInbox {
         )
     }
 
-    /** 记录一条入站消息(summary 做 PII 遮蔽与截断)。 */
+    /** Registrar un mensaje entrante(summary Hacer enmascaramiento y truncamiento de PII). */
     fun record(source: Source, text: String?, rawPayload: String, media: Media = Media()): Boolean {
         val safeSummary = text
             ?.let { t ->
@@ -156,7 +156,7 @@ object ChannelInbox {
         return journal.record(source, item)
     }
 
-    /** 清空已处理历史;未完成队列项会保留,避免清理操作丢失自动回复。 */
+    /** Borrar historial procesado;Los elementos de la cola sin terminar se conservan,Evite perder respuestas automáticas para operaciones de limpieza. */
     fun clear() = journal.clear()
 }
 
@@ -165,13 +165,13 @@ internal class ChannelInboxJournal(
     private val messages: MutableStateFlow<List<ChannelInbox.Inbound>> = MutableStateFlow(emptyList()),
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
-    /** 旧单文件（迁移源）；分片目录就绪后只作为备份白名单里的历史产物保留。 */
+    /** Archivo único antiguo (fuente de migración); Una vez que el directorio fragmentado esté listo, solo se conservará como un producto histórico en la lista blanca de respaldo. */
     private var file: File? = null
 
-    /** 分片目录：一条队列项一个文件，见 [persistItem]。 */
+    /** Directorio de fragmentos: un elemento de cola por archivo, consulte [persistItem]. */
     private var shardDir: File? = null
 
-    /** 已分配的最大序号（新事件取 +1）。 */
+    /** Número de secuencia máximo asignado (+1 para nuevos eventos). */
     private var maxSeq: Long = 0L
 
     private var webhookEventDeduplicator: WebhookEventDeduplicator? = null
@@ -190,7 +190,7 @@ internal class ChannelInboxJournal(
         val dir = File(inboxFile.parentFile, ChannelInbox.INBOX_DIR_NAME)
         shardDir = dir
         when {
-            // 分片优先：目录里已经有文件就不再碰旧单文件。
+            // Prioridad de fragmentación: si ya hay un archivo en el directorio, el archivo único anterior no se tocará.
             dir.isDirectory && !dir.listFiles().isNullOrEmpty() -> restoreFromShards(dir)
             inboxFile.exists() -> migrateFromLegacyFile(inboxFile)
             else -> Unit
@@ -201,7 +201,7 @@ internal class ChannelInboxJournal(
                 webhookEventDeduplicationFailure = null
             }.onFailure { error ->
                 webhookEventDeduplicationFailure = error
-                Logger.e(TAG, "Webhook 事件去重账本不可用，拒绝处理带事件 ID 的消息", error)
+                Logger.e(TAG, "Webhook El libro de contabilidad de deduplicación de eventos no está disponible y se rechaza el procesamiento de mensajes con ID de evento.", error)
             }
     }
 
@@ -227,11 +227,11 @@ internal class ChannelInboxJournal(
                 ledgerFailure = runCatching { claimEvent(source) }.exceptionOrNull()
                 false
             } else if (isEventClaimed(source)) {
-                // 重连 Resume 补发的重复事件会落在这里;账本保留 10 分钟,
-                // 没有日志的话它们就是无声消失,事后完全查不到痕迹。
+                // Reconectar Reanudar Los eventos duplicados reeditados caerán aquí;El libro mayor se conserva durante 10 minutos.,
+                // Si no hay ningún registro, desaparecerán silenciosamente.,Después no se pudo encontrar ningún rastro.
                 Logger.i(
                     TAG,
-                    "事件已被去重账本认领,跳过(platform=${source.platform}, from=${source.from}, " +
+                    "El evento ha sido reclamado por el libro mayor deduplicado.,saltar(platform=${source.platform}, from=${source.from}, " +
                         "eventId=${source.eventId})",
                 )
                 false
@@ -240,11 +240,11 @@ internal class ChannelInboxJournal(
                 val enriched = item.copy(seq = ++maxSeq)
                 val candidate = listOf(enriched) + messages.value
                 val retained = retain(candidate)
-                // 先落盘这条新事件，再改内存；被裁掉的条目随后删分片。
+                // Primero descargue este nuevo evento y luego modifique la memoria; la entrada eliminada se eliminará del fragmento.
                 check(persistItem(enriched)) { "Channel inbox could not persist the inbound event" }
-                // 用 seq 判"有没有被裁掉"，不能比 data class 相等：
-                // normalize 会把终态条目的 mediaBase64 清空，清空后的副本与原对象不相等 ——
-                // 按相等来判会把"刚被规范化过的那条"误当成被裁掉，删掉它的分片。
+                // Usa seq para juzgar"¿Te han despedido?", no puede ser igual a la clase de datos:
+                // normalize Se borrará el mediaBase64 de la entrada final y la copia borrada no será igual al objeto original. ——
+                // El juicio se basará en la igualdad"El que acaba de estandarizarse."Confundiéndolo con un recorte, elimine sus fragmentos.
                 val keptSeqs = retained.mapTo(HashSet()) { it.seq }
                 deleteDropped(candidate.filterNot { it.seq in keptSeqs })
                 messages.value = retained
@@ -256,7 +256,7 @@ internal class ChannelInboxJournal(
         }
         observerItem?.let { inbound ->
             runCatching { onInbound?.invoke(inbound) }
-                .onFailure { error -> Logger.w(TAG, "入站监听回调失败: ${error.message}") }
+                .onFailure { error -> Logger.w(TAG, "Error en la devolución de llamada del oyente entrante: ${error.message}") }
         }
         if (wake) notifyPendingListener()
         ledgerFailure?.let { throw it }
@@ -291,8 +291,8 @@ internal class ChannelInboxJournal(
                 val normalizedItem = recovered.first { it.seq == seq }
                 check(persistItem(normalizedItem)) { "Channel inbox could not recover interrupted dispatches" }
             }
-            // 同上：只删"seq 已不存在"的分片。按相等判会把刚改过状态的那几条一并删掉（它们
-            // 在 current 里是 PROCESSING、在 recovered 里是 PENDING），等于刚写完就删。
+            // Igual que arriba: eliminar solo"seq ya no existe"de fragmentos. Según la sentencia de igualdad, los distintos elementos que acaban de cambiar de estado se eliminarán juntos (son
+            // En actual está PROCESANDO, en recuperado está PENDIENTE), lo que significa borrarlo tan pronto como termines de escribir.
             val keptSeqs = recovered.mapTo(HashSet()) { it.seq }
             deleteDropped(current.filterNot { it.seq in keptSeqs })
             messages.value = recovered
@@ -341,11 +341,11 @@ internal class ChannelInboxJournal(
     }
 
     /**
-     * 把不可自动恢复的派发转为人工复核终态。
+     * Convierta las distribuciones que no se pueden restaurar automáticamente a un estado final de revisión manual.
      *
-     * Agent checkpoint 故障时不能走 [completeDispatch]：清除密文会丢失
-     * 识别/排查副作用是否已经发生所需的证据。只清理一次性回发令牌,
-     * 保留 checkpoint 与已准备回复供后续诊断。
+     * Agent checkpoint No puedo caminar cuando hay una avería. [completeDispatch]: Se perderá el borrado del texto cifrado.
+     * identificar/Se necesitan pruebas para comprobar si se han producido efectos secundarios. Borrar solo tokens de devolución de datos de una sola vez,
+     * Mantener puntos de control y respuestas preparadas para su posterior diagnóstico.
      */
     @Synchronized
     fun blockDispatch(dispatchId: String, errorCode: String) {
@@ -430,7 +430,7 @@ internal class ChannelInboxJournal(
         return updateProcessing(dispatchId) { it.copy(encryptedAgentCheckpoint = checkpoint) }
     }
 
-    /** 清除已处理历史;未完成队列项不会因 UI 清理操作而丢失。 */
+    /** Borrar historial procesado;Los elementos pendientes de la cola no se pierden debido a las operaciones de limpieza de la interfaz de usuario. */
     @Synchronized
     fun clear() {
         val retained = messages.value.filter { it.isDispatchActive() }
@@ -448,8 +448,8 @@ internal class ChannelInboxJournal(
         val transformed = transform(current[index])
         val updated = current.toMutableList().also { it[index] = transformed }
         val retained = retain(updated)
-        // 落盘要用**规范化之后**的副本：transform 得出的条目可能还带着 mediaBase64，
-        // 而 normalize 会把终态条目的那份字节清掉。写原始副本等于把要清的东西又写回磁盘。
+        // Utilizado para la colocación**Después de la normalización**Una copia de:transform Las entradas resultantes también pueden tener mediaBase64,
+        // Y normalizar borrará los bytes de la entrada final. Escribir la copia original equivale a escribir las cosas que se van a borrar en el disco.
         val normalized = retained.firstOrNull { it.seq == transformed.seq } ?: transformed
         check(persistItem(normalized)) { "Channel inbox could not persist dispatch state" }
         val keptSeqs = retained.mapTo(HashSet()) { it.seq }
@@ -466,7 +466,7 @@ internal class ChannelInboxJournal(
     }
 
     private fun claimEvent(source: ChannelInbox.Source): Boolean {
-        check(!ProcessWriteGate.restoring) { "备份恢复进行中，暂不接受渠道事件" }
+        check(!ProcessWriteGate.restoring) { "La copia de seguridad y la restauración están en curso; los eventos del canal no se aceptan por el momento." }
         if (source.eventId.isBlank() || source.channelId.isBlank() || file == null) return true
         val deduplicator = webhookEventDeduplicator
             ?: error("Webhook event deduplication is unavailable: ${webhookEventDeduplicationFailure?.message}")
@@ -483,7 +483,7 @@ internal class ChannelInboxJournal(
         sourceEventId == source.eventId
 
     private fun normalize(items: List<ChannelInbox.Inbound>): List<ChannelInbox.Inbound> {
-        // 分片文件名带 seq，缺失（seq==0，来自旧数据或异常输入）时按当前顺序补齐。
+        // El nombre del archivo del fragmento contiene seq, que falta (seq==0, a partir de datos antiguos o entradas anormales) se completan en el orden actual.
         items.forEach { if (it.seq > maxSeq) maxSeq = it.seq }
         val withSeq = items.map { item -> if (item.seq > 0L) item else item.copy(seq = ++maxSeq) }
         val assigned = withSeq
@@ -491,15 +491,15 @@ internal class ChannelInboxJournal(
             when {
                 item.isDispatchActive() && item.dispatchId.isBlank() ->
                     item.copy(dispatchId = UUID.randomUUID().toString())
-                // 终态条目的图片 base64 必须清掉。
+                // Se debe borrar la imagen base64 de la entrada final.
                 //
-                // 它在这个时刻已经随轮次写进了 ChannelConversationStore（自动回复构造上下文时
-                // 就复制了一份），留在收件箱里没有任何消费者 —— 而收件箱是**整表落盘**的：
-                // 一条历史图片会让之后每次 record / claim / 完成派发都重新搬运这份字节。
-                // 带图的历史攒到十几条，单次落盘就是几 MB，全部持对象锁。
+                // Se ha escrito en ChannelConversationStore con la ronda en este momento (respuesta automática al construir contexto
+                // Acabo de hacer una copia) y la dejé en la bandeja de entrada sin ningún consumidor. —— Y la bandeja de entrada es**Colocación de toda la mesa**de:
+                // Una imagen histórica hará que este byte se retransmita cada vez que se complete el registro/reclamo/distribución.
+                // Hay más de una docena de piezas de historia con imágenes, y una sola ubicación ocupa varios MB, todos los cuales contienen bloqueos de objetos.
                 //
-                // BLOCKED 是「人工复核」终态（还留着 checkpoint 与已准备回复供诊断），图片同样保留。
-                // 只清 base64、不动 mediaPath：后者是磁盘文件引用，ChannelMediaCleaner 靠它判断哪些文件仍被引用。
+                // BLOCKED Es el estado final de "revisión manual" (el punto de control y la respuesta preparada aún quedan para el diagnóstico), y las imágenes también se conservan.
+                // Solo borre base64 y deje mediaPath intacto: este último es una referencia de archivo de disco.ChannelMediaCleaner Úselo para determinar a qué archivos todavía se hace referencia.
                 !item.isDispatchActive() &&
                     item.dispatchState != ChannelInbox.DispatchState.BLOCKED &&
                     item.mediaBase64.isNotEmpty() ->
@@ -514,37 +514,37 @@ internal class ChannelInboxJournal(
 
     private fun retain(items: List<ChannelInbox.Inbound>): List<ChannelInbox.Inbound> = normalize(items)
 
-    // ── 分片持久化（2026-11-01 性能整改）────────────────────────
+    // ── Persistencia fragmentada (2026-11-01 mejoras de rendimiento)────────────────────────
     //
-    // 旧形态是单个 channel_inbox.json：每次状态迁移都整表重写。渠道一条消息的生命周期里，
-    // 领取 / 存草稿 / **每次工具调用的断点（执行前后各一次）** / 完成，全是整表重写 ——
-    // 队列越大、工具调用越多，写放大越夸张，而且全部持对象锁。
+    // La forma anterior es un único canal_inbox.json: la tabla completa se reescribe para cada transición de estado. En el ciclo de vida de un mensaje en un canal,
+    // Obtener/guardar borrador / **Puntos de interrupción para cada llamada de herramienta (una vez antes y después de la ejecución)** / Completo, se reescribe toda la tabla. ——
+    // Cuanto más grande es la cola, más llamadas a herramientas, más exagerada es la amplificación de escritura y todas mantienen bloqueos de objetos.
     //
-    // 现在一条队列项一个文件：channel_inbox/<seq 12 位>-<key 指纹>.json。
-    // 文件名带序号 → 恢复时按文件名排序即还原入队顺序，不需要额外索引文件。
+    // Ahora un elemento de la cola por archivo:channel_inbox/<seq 12 poco>-<key huella digital>.json.
+    // Nombre de archivo con número de serie → Durante la recuperación, la clasificación por nombre de archivo restaura el orden de puesta en cola y no se requieren archivos de índice adicionales.
     //
-    // 语义变化（有意、且更安全）：以前一次写覆盖整队，现在每个条目各自原子写。
-    // 条目之间本就没有跨条目不变量，所以崩溃后的"部分写入"仍是合法状态：
-    // 每条要么是旧状态、要么是新状态，不会出现半条。
+    // Cambio semántico (intencional y más seguro): donde antes una escritura cubría toda la cola, ahora cada entrada se escribe de forma atómica.
+    // No hay invariantes de entrada cruzada entre entradas, por lo que después del bloqueo"escritura parcial"Aún legal:
+    // Cada artículo está en el estado anterior o en el nuevo estado, y no habrá mitades de artículos.
 
     private fun restoreFromShards(dir: File) {
         val loaded = dir.listFiles().orEmpty()
             .filter { it.isFile && it.name.endsWith(".json") }
-            // 入队顺序：record 把新事件放在列表**最前**（listOf(item) + 旧列表），
-            // 所以 seq 越大越靠前 —— 恢复时必须降序，否则重启后领取顺序会反过来。
+            // Orden de entrada:record Poner nuevos eventos en la lista**primero**(listOf(item) + lista antigua),
+            // Por lo tanto, cuanto mayor sea la secuencia, más cerca estará del frente. —— El orden debe ser descendente al restaurar; de lo contrario, el orden de recolección se invertirá después de reiniciar.
             .sortedByDescending { it.name }
             .mapNotNull { shard ->
                 runCatching {
                     AppJson.decodeFromString(ChannelInbox.Inbound.serializer(), shard.readText())
                 }.onFailure { error ->
-                    Logger.w(TAG, "分片读取失败,跳过 ${shard.name}: ${error.message}")
+                    Logger.w(TAG, "Error de lectura del fragmento,saltar ${shard.name}: ${error.message}")
                     AtomicFileStore.quarantine(shard, "inbox_shard_parse")
                 }.getOrNull()
             }
         maxSeq = loaded.maxOfOrNull { it.seq } ?: 0L
         val normalized = normalize(loaded)
         messages.value = normalized
-        // 规范化可能裁掉条目（超上限），把对应分片删掉，避免下次又被读进来。
+        // La normalización puede cortar las entradas (que superen el límite superior) y eliminar los fragmentos correspondientes para evitar que se vuelvan a leer la próxima vez.
         val kept = normalized.mapTo(HashSet()) { shardKeyOf(it) }
         loaded.filterNot { shardKeyOf(it) in kept }.forEach { deleteItem(it) }
     }
@@ -556,8 +556,8 @@ internal class ChannelInboxJournal(
                 inboxFile.readText(),
             )
         }.onSuccess { restored ->
-            // 旧数组**顺序即内存顺序**（新事件在前），所以下标 0 要拿最大的 seq，
-            // 这样按 seq 降序恢复出来的顺序与旧实现完全一致。
+            // matriz antigua**El orden es el orden de la memoria.**(los nuevos eventos primero), por lo que el subíndice 0 toma la secuencia más grande,
+            // El orden restaurado en orden descendente de secuencia es exactamente el mismo que el de la implementación anterior.
             val withSeq = restored.mapIndexed { index, item -> item.copy(seq = (restored.size - index).toLong()) }
             maxSeq = withSeq.maxOfOrNull { it.seq } ?: 0L
             val normalized = normalize(withSeq)
@@ -566,15 +566,15 @@ internal class ChannelInboxJournal(
             val allWritten = normalized.all { persistItem(it) }
             val cost = System.currentTimeMillis() - startedAt
             if (allWritten && inboxFile.renameTo(File(inboxFile.parentFile, inboxFile.name + ".migrated"))) {
-                Logger.i(TAG, "收件箱已迁移为分片存储(${normalized.size} 条, 耗时 ${cost}ms)")
+                Logger.i(TAG, "La bandeja de entrada se ha migrado al almacenamiento fragmentado(${normalized.size} Artículo, Consume mucho tiempo ${cost}ms)")
             }
         }.onFailure { error ->
-            Logger.w(TAG, "收件箱恢复失败,隔离坏文件: ${error.message}")
+            Logger.w(TAG, "Falló la recuperación de la bandeja de entrada,Poner en cuarentena archivos malos: ${error.message}")
             AtomicFileStore.quarantine(inboxFile, "inbox_restore_failed")
         }
     }
 
-    /** 分片名里的稳定部分：dispatchId 优先；历史条目可能为空 → 退回内容指纹。 */
+    /** La parte estable del nombre del segmento:dispatchId Prioridad; las entradas del historial pueden estar vacías → Devolver huella digital del contenido. */
     private fun shardKeyOf(item: ChannelInbox.Inbound): String =
         item.dispatchId.ifBlank { "${item.platform}|${item.from}|${item.timestamp}|${item.summary.take(64)}" }
 
@@ -593,22 +593,22 @@ internal class ChannelInboxJournal(
         return runCatching {
             AtomicFileStore.writeText(target, AppJson.encodeToString(ChannelInbox.Inbound.serializer(), item))
             true
-        }.onFailure { error -> Logger.w(TAG, "收件箱分片写入失败: ${error.message}") }.getOrDefault(false)
+        }.onFailure { error -> Logger.w(TAG, "Error al escribir el fragmento de la bandeja de entrada: ${error.message}") }.getOrDefault(false)
     }
 
     private fun deleteItem(item: ChannelInbox.Inbound) {
         val target = shardFile(item) ?: return
         runCatching {
-            if (target.exists() && !target.delete()) Logger.w(TAG, "分片删除失败: ${target.name}")
-        }.onFailure { error -> Logger.w(TAG, "分片删除异常: ${error.message}") }
+            if (target.exists() && !target.delete()) Logger.w(TAG, "Error al eliminar el fragmento: ${target.name}")
+        }.onFailure { error -> Logger.w(TAG, "Excepción de eliminación de fragmentos: ${error.message}") }
     }
 
-    /** 删除 [dropped] 里所有条目的分片（裁剪 / 清空历史用）。 */
+    /** Eliminar [dropped] Fragmentación de todas las entradas que contiene (para recortar/borrar el historial). */
     private fun deleteDropped(dropped: List<ChannelInbox.Inbound>) { dropped.forEach { deleteItem(it) } }
 
     private fun notifyPendingListener() {
         runCatching { pendingListener?.invoke() }
-            .onFailure { error -> Logger.w(TAG, "唤醒入站派发失败: ${error.message}") }
+            .onFailure { error -> Logger.w(TAG, "Error en el envío entrante del despertador: ${error.message}") }
     }
 
     private fun retryDelayMillis(attempt: Int): Long {

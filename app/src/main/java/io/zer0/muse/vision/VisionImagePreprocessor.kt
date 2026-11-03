@@ -10,31 +10,31 @@ import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
 /**
- * v1.0.5 视觉辅助重写:图片预处理器。
+ * v1.0.5 Reescritura de ayuda visual:Preprocesador de imágenes.
  *
- * 职责:
- *  - 对 base64 图片做尺寸压缩(最长边 ≤ [POLICY.maxDimension])和 JPEG 质量压缩
- *  - 通过 magic bytes 嗅探真实 MIME 类型(不信任声明)
- *  - 按图片数量分摊单图预算,超出 [POLICY.totalBase64BudgetBytes] 总预算抛错
- *  - 对非 JPEG/PNG/WebP/GIF 的图片统一转 JPEG
+ * Responsabilidades:
+ *  - Compresión de tamaño de imágenes base64.(lado más largo ≤ [POLICY.maxDimension])y compresión de calidad JPEG
+ *  - Olfateando tipos MIME reales a través de bytes mágicos(declaración de desconfianza)
+ *  - Asigne el presupuesto de una sola imagen según la cantidad de imágenes.,más allá [POLICY.totalBase64BudgetBytes] Error presupuestario total
+ *  - Conversión unificada de imágenes que no son JPEG/PNG/WebP/GIF JPEG
  *
- * 实现要点:
- *  - 缩放压缩用 [Bitmap.compress],不依赖浏览器 Canvas
- *  - 单图 4.5MB + 总 24MB,Android 端 JPEG 压缩通常比浏览器更紧凑
- *  - base64 用 [Base64.decode] 直接校验长度与内容
+ * Puntos de implementación:
+ *  - Para escalado y compresión. [Bitmap.compress],No depende del navegador Canvas
+ *  - Imagen única 4,5 MB + total 24MB,Android La compresión JPEG de extremo a extremo es generalmente más compacta que la del navegador
+ *  - base64 usar [Base64.decode] Verificar directamente la longitud y el contenido
  */
 object VisionImagePreprocessor {
 
     private const val TAG = "VisionImagePreprocessor"
 
     /**
-     * 图片输入策略。
+     * Estrategia de entrada de imágenes.
      *
-     * 数值含义:
-     *  - [maxDimension] 2000:最长边 2000px。足够清晰,又控制 base64 体积。
-     *  - [maxImageBase64Bytes] 4.5MB:单张 base64 上限。超过则继续压缩到该体积内。
-     *  - [totalBase64BudgetBytes] 24MB:整个请求 base64 总预算(provider 端 32MB cap 的安全余量)。
-     *  - [jpegQuality] 80:质量与体积的平衡点。
+     * significado numérico:
+     *  - [maxDimension] 2000:Lado más largo 2000px. lo suficientemente claro,También controla el volumen base64.
+     *  - [maxImageBase64Bytes] 4.5MB:Límite superior único base64. Si excede, continuará comprimido en este volumen.
+     *  - [totalBase64BudgetBytes] 24MB:Presupuesto total base64 de toda la solicitud(provider Margen de seguridad de límite de 32 MB).
+     *  - [jpegQuality] 80:El punto de equilibrio entre masa y volumen.
      */
     object POLICY {
         const val maxDimension = 2000
@@ -44,14 +44,14 @@ object VisionImagePreprocessor {
     }
 
     /**
-     * 预处理结果。
+     * Resultados del preprocesamiento.
      *
-     * @param base64 预处理后的 base64(无 data: 前缀)
-     * @param mimeType 嗅探到的真实 MIME 类型
-     * @param originalWidth 原图宽度(px),解码失败为 0
-     * @param originalHeight 原图高度(px)
-     * @param resizedWidth 压缩后宽度(px)
-     * @param resizedHeight 压缩后高度(px)
+     * @param base64 preprocesado base64(Ninguno dato: prefijo)
+     * @param mimeType El tipo MIME real olfateado
+     * @param originalWidth Ancho de la imagen original(px),La decodificación falló como 0
+     * @param originalHeight Altura de la imagen original(px)
+     * @param resizedWidth ancho después de la compresión(px)
+     * @param resizedHeight Altura después de la compresión(px)
      */
     data class PreparedImage(
         val base64: String,
@@ -63,39 +63,39 @@ object VisionImagePreprocessor {
     )
 
     /**
-     * 预处理单张 base64 图片。
+     * Preprocesar una única imagen base64.
      *
-     * 流程:
-     *  1. 嗅探 MIME(magic bytes)
-     *  2. Base64 解码为字节数组
-     *  3. 解码为 Bitmap,读取原始尺寸
-     *  4. 按 [perImageMaxBytes] 计算缩放比例,resize 到 ≤ [POLICY.maxDimension]
-     *  5. JPEG 压缩,若体积仍超预算则递减质量直到达标
-     *  6. 重新 base64 编码
+     * proceso:
+     *  1. oler MIME(magic bytes)
+     *  2. Base64 Decodificar a matriz de bytes
+     *  3. decodificado como Bitmap,Leer tamaño original
+     *  4. prensa [perImageMaxBytes] Calcular escala,resize llegar ≤ [POLICY.maxDimension]
+     *  5. JPEG Compresión,Si el volumen aún excede el presupuesto, la calidad se reducirá hasta alcanzar el estándar.
+     *  6. Codificación Rebase64
      *
-     * @param imageBase64 原始 base64(无 data: 前缀)
-     * @param imageCount 本次请求的图片总数,用于分摊单图预算
-     * @return 预处理后的图片;解码失败返回 null(调用方决定丢弃或走降级)
+     * @param imageBase64 originales base64(Ninguno dato: prefijo)
+     * @param imageCount El número total de imágenes en esta solicitud.,Se utiliza para asignar presupuesto de imagen única.
+     * @return imágenes preprocesadas;Volver si falla la decodificación null(La persona que llama decide descartar o bajar de categoría)
      */
     suspend fun prepareSingle(imageBase64: String, imageCount: Int = 1): PreparedImage? = withContext(Dispatchers.IO) {
         if (imageBase64.isBlank()) return@withContext null
 
-        // 1. 嗅探 MIME + 解码
+        // 1. Olfateando MIME + decodificación
         val mimeType = sniffMimeType(imageBase64)
         val bytes = runCatching {
             Base64.decode(imageBase64, Base64.NO_WRAP)
         }.getOrElse {
-            Logger.w(TAG, "base64 解码失败: ${it.message}")
+            Logger.w(TAG, "base64 Falló la decodificación: ${it.message}")
             return@withContext null
         }
 
-        // 2. 解码 Bitmap 读取原始尺寸
+        // 2. Decodificar mapa de bits para leer el tamaño original
         val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOpts)
         val origW = boundsOpts.outWidth.takeIf { it > 0 } ?: 0
         val origH = boundsOpts.outHeight.takeIf { it > 0 } ?: 0
 
-        // 3. 计算缩放:目标 ≤ maxDimension,同时按 sampleSize 2^n 缩放(避免 OOM)
+        // 3. Escalado informático:objetivo ≤ maxDimension,Presione simultáneamente sampleSize 2^n Ampliar(evitar OOM)
         val targetMaxDim = POLICY.maxDimension
         var sample = 1
         while (origW / sample > targetMaxDim || origH / sample > targetMaxDim) sample *= 2
@@ -104,7 +104,7 @@ object VisionImagePreprocessor {
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts)
             ?: return@withContext null
 
-        // 4. 进一步精确缩放(如果 sample 缩放后仍超过 maxDimension)
+        // 4. Escalado más preciso(Si la muestra está escalada y aún excede maxDimension)
         val resized = if (bitmap.width > targetMaxDim || bitmap.height > targetMaxDim) {
             val scale = minOf(
                 targetMaxDim.toFloat() / bitmap.width,
@@ -119,7 +119,7 @@ object VisionImagePreprocessor {
             bitmap
         }
 
-        // 5. JPEG 压缩,按预算递减质量
+        // 5. JPEG Compresión,Disminuir la calidad al presupuesto.
         val perImageMaxBytes = computePerImageBudget(imageCount)
         val compressed = compressToBudget(resized, POLICY.jpegQuality, perImageMaxBytes)
         resized.recycle()
@@ -127,7 +127,7 @@ object VisionImagePreprocessor {
         val resultBase64 = Base64.encodeToString(compressed, Base64.NO_WRAP)
         PreparedImage(
             base64 = resultBase64,
-            mimeType = "image/jpeg", // 统一转 JPEG
+            mimeType = "image/jpeg", // Transferencia unificada JPEG
             originalWidth = origW,
             originalHeight = origH,
             resizedWidth = if (origW > 0) minOf(origW, targetMaxDim) else 0,
@@ -136,10 +136,10 @@ object VisionImagePreprocessor {
     }
 
     /**
-     * 批量预处理多张图片,校验总预算。
+     * Preprocesar varias imágenes en lotes,Consulta el presupuesto total.
      *
-     * @param images 原始 base64 列表
-     * @return 预处理后的图片列表(失败的图片被丢弃);若总预算超限抛 [VisionImagePreprocessException]
+     * @param images Lista base64 sin procesar
+     * @return Lista de imágenes preprocesadas(Las imágenes fallidas se descartan);Si el presupuesto total excede el límite, deséchelo. [VisionImagePreprocessException]
      */
     suspend fun prepareBatch(images: List<String>): List<PreparedImage> = withContext(Dispatchers.IO) {
         if (images.isEmpty()) return@withContext emptyList()
@@ -149,13 +149,13 @@ object VisionImagePreprocessor {
 
         for (img in images) {
             val prepared = prepareSingle(img, count) ?: run {
-                Logger.w(TAG, "第 ${results.size + 1} 张图片预处理失败,丢弃")
+                Logger.w(TAG, "No. ${results.size + 1} Error en el preprocesamiento de la imagen,descartar")
                 continue
             }
             totalBytes += prepared.base64.length
             if (totalBytes > POLICY.totalBase64BudgetBytes) {
                 throw VisionImagePreprocessException(
-                    "压缩后图片总大小(${totalBytes / 1024}KB)超过预算(${POLICY.totalBase64BudgetBytes / 1024}KB)",
+                    "El tamaño total de la imagen comprimida.(${totalBytes / 1024}KB)por encima del presupuesto(${POLICY.totalBase64BudgetBytes / 1024}KB)",
                 )
             }
             results.add(prepared)
@@ -163,7 +163,7 @@ object VisionImagePreprocessor {
         results
     }
 
-    /** 计算单图预算:总预算按图片数量均分,但不超过单图上限。 */
+    /** Calcular el presupuesto de una sola imagen:El presupuesto total se divide en partes iguales entre el número de imágenes.,Pero no excede el límite superior de una sola imagen. */
     private fun computePerImageBudget(imageCount: Int): Int {
         val safeCount = imageCount.coerceAtLeast(1)
         return minOf(
@@ -173,7 +173,7 @@ object VisionImagePreprocessor {
     }
 
     /**
-     * JPEG 压缩到预算内:从 [startQuality] 递减质量,直到体积 ≤ [maxBytes] 或质量降到 30。
+     * JPEG Ajustarse al presupuesto:de [startQuality] calidad decreciente,hasta volumen ≤ [maxBytes] O la calidad baja a 30.
      */
     private fun compressToBudget(bitmap: Bitmap, startQuality: Int, maxBytes: Int): ByteArray {
         var quality = startQuality.coerceIn(30, 100)
@@ -188,9 +188,9 @@ object VisionImagePreprocessor {
     }
 
     /**
-     * 通过 base64 头部字符(magic bytes)嗅探 MIME 类型。
+     * Pasar caracteres de encabezado base64(magic bytes)Olfatear tipos MIME.
      *
-     * 支持的格式:JPEG / PNG / GIF / WebP,其他回退 image/jpeg。
+     * Formatos soportados:JPEG / PNG / GIF / WebP,Otras alternativas son imagen/jpeg.
      */
     fun sniffMimeType(base64: String): String {
         val trimmed = base64.trim()
@@ -204,8 +204,8 @@ object VisionImagePreprocessor {
     }
 
     /**
-     * 计算图片 base64 的短 hash(用于缓存 key)。
-     * 取 SHA-256 前 16 字符,足够区分不同图片。
+     * Calcular la longitud corta de la imagen base64. hash(para almacenamiento en caché key).
+     * Obtenga los primeros 16 caracteres de SHA-256,Suficiente para distinguir entre diferentes imágenes.
      */
     fun hashShort(base64: String): String {
         if (base64.isBlank()) return "empty"
@@ -216,6 +216,6 @@ object VisionImagePreprocessor {
 }
 
 /**
- * 图片预处理异常(总预算超限等)。
+ * Excepción de preprocesamiento de imágenes(El presupuesto total excede el límite, etc.).
  */
 class VisionImagePreprocessException(message: String) : Exception(message)

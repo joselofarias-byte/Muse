@@ -7,11 +7,11 @@ class SystemPromptThinkingLanguageTest {
 
     @Test
     fun `thinking language follows the configured interface locale`() {
-        assertEquals("中文", thinkingLanguageName("zh"))
+        assertEquals("Español", thinkingLanguageName("zh"))
+        assertEquals("Español", thinkingLanguageName("es"))
         assertEquals("English", thinkingLanguageName("en"))
         assertEquals("日本語", thinkingLanguageName("ja"))
         assertEquals("한국어", thinkingLanguageName("ko"))
-        assertEquals("Español", thinkingLanguageName("es"))
         assertEquals("Português", thinkingLanguageName("pt"))
         assertEquals("Русский", thinkingLanguageName("ru"))
     }

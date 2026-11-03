@@ -29,12 +29,12 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
 /**
- * v1.0.8 (7.6): 单个模型健康检查状态。
+ * v1.0.8 (7.6): Estado de verificación de salud del modelo individual.
  *
- * - [Idle]: 未测试(默认),不显示状态 chip
- * - [InProgress]: 测试进行中(显示 CircularProgressIndicator + "测试中")
- * - [Success]: 测试通过(显示 ✓ + "健康",可选携带模型回复摘要)
- * - [Failed]: 测试失败(显示 ✗ + "失败",携带错误信息)
+ * - [Idle]: No probado(Predeterminado),No mostrar estado chip
+ * - [InProgress]: Prueba en progreso(mostrar CircularProgressIndicator + "Bajo prueba")
+ * - [Success]: Prueba superada(mostrar ✓ + "salud",Resumen de respuesta del modelo de transporte opcional)
+ * - [Failed]: prueba fallida(mostrar ✗ + "falló",llevar mensaje de error)
  */
 sealed class ModelTestStatus {
     data object Idle : ModelTestStatus()
@@ -44,12 +44,12 @@ sealed class ModelTestStatus {
 }
 
 /**
- * Provider 详情页模型行组件。
+ * Provider Componente de fila del modelo de página de detalles.
  *
- * 左侧 Provider 小图标,中间模型名 + 能力标签,右侧测试按钮 + 设置/添加按钮。
+ * Pequeño icono de proveedor a la izquierda,Nombre del modelo intermedio + etiqueta de capacidad,Botón derecho de prueba + configuración/Botón Agregar.
  *
- * v1.0.8 (7.6): 新增 [onTest] / [testStatus] 用于触发和展示模型健康检查结果。
- * v1.0.8 (7.7): 能力标签新增上下文窗口显示(如 "128K 上下文")。
+ * v1.0.8 (7.6): Nuevo [onTest] / [testStatus] Se utiliza para activar y mostrar los resultados de la verificación del estado del modelo.
+ * v1.0.8 (7.7): Se agregó visualización de ventana contextual para la etiqueta de capacidad(Como por ejemplo "128K contexto").
  */
 @Composable
 internal fun ProviderModelRow(
@@ -59,7 +59,7 @@ internal fun ProviderModelRow(
     isAdded: Boolean = true,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
-    // v1.0.8 (7.6): 模型健康检查回调,null 表示不显示测试按钮(如未保存的新增模型)
+    // v1.0.8 (7.6): Devolución de llamada de verificación de estado del modelo,null Indica que el botón de prueba no se muestra(Si el nuevo modelo no se guarda,)
     onTest: (() -> Unit)? = null,
     testStatus: ModelTestStatus = ModelTestStatus.Idle,
 ) {
@@ -70,14 +70,14 @@ internal fun ProviderModelRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 左侧 Provider 品牌 logo 砖(线性图标/字标)
+        // Ladrillo con el logotipo de la marca del proveedor a la izquierda(Icono lineal/marca denominativa)
         ProviderLogo(
             type = providerType,
             name = providerName,
             size = 40.dp,
         )
 
-        // 中间:模型名 + 能力标签
+        // medio:Nombre del modelo + etiqueta de habilidad
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = model.name.takeIf { it.isNotBlank() } ?: model.id,
@@ -90,8 +90,8 @@ internal fun ProviderModelRow(
             ModelAbilityChips(model = model, testStatus = testStatus)
         }
 
-        // v1.0.8 (7.6): 测试按钮(可选,仅当 onTest != null 时显示)
-        // F-12: 模型完整链路测试(真实对话 healthCheck),文案与端点测试(测试连接)区分
+        // v1.0.8 (7.6): botón de prueba(Opcional,solo si onTest != null visualización de la hora)
+        // F-12: Prueba de enlace completo del modelo(conversación real healthCheck),Redacción publicitaria y pruebas de endpoints(conexión de prueba)distinguir
         if (onTest != null) {
             val canTest = testStatus !is ModelTestStatus.InProgress
             Surface(
@@ -138,7 +138,7 @@ internal fun ProviderModelRow(
             }
         }
 
-        // 右侧操作按钮
+        // Botón de operación derecho
         MuseTactileButton(
             icon = if (isAdded) MuseIcons.sliders else MuseIcons.plus,
             onClick = onAction,
@@ -155,12 +155,12 @@ internal fun ProviderModelRow(
 }
 
 /**
- * 模型能力标签行。
+ * Fila de etiqueta de capacidad del modelo.
  *
- * 按顺序显示:工具 / 推理 / 流式 / 画图 / 多模态 / 视频 / 上下文窗口,没有任何能力时默认显示"聊天"。
+ * Mostrar en orden:Herramientas/Inferencia/Transmisión/Dibujo/Multimodalidad/Vídeo/Ventana de contexto,Se muestra de forma predeterminada cuando no hay ninguna habilidad disponible."charlar".
  *
- * v1.0.8 (7.6): 新增 [testStatus] — 在能力行末尾追加健康检查状态 chip。
- * v1.0.8 (7.7): 新增上下文窗口 chip(如 "128K 上下文"),仅当 contextWindow > 0 时显示。
+ * v1.0.8 (7.6): Nuevo [testStatus] — Agregue el chip de estado de verificación de salud al final de la línea de capacidad.
+ * v1.0.8 (7.7): Agregar ventana de contexto chip(Como por ejemplo "128K contexto"),solo si contextWindow > 0 desplegado.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -180,9 +180,9 @@ internal fun ModelAbilityChips(model: Model, testStatus: ModelTestStatus = Model
     val labelTestSuccessFmt = stringResource(R.string.settings_model_test_success_with_msg)
     val labelTestFailedFmt = stringResource(R.string.settings_model_test_failed_with_msg)
 
-    // v1.0.8 (7.7): 上下文窗口 chip 文本(格式化为 K/M 后缀,null/0 不显示)
+    // v1.0.8 (7.7): texto del chip de ventana contextual(Formateado con el sufijo K/M,null/0 no mostrar)
     val contextChip = rememberContextChip(model, labelContextFmt)
-    // v2.x: 输出上限 chip 文本(与上下文 chip 并列展示模型元数据上限)
+    // v2.x: Texto del chip de límite superior de salida(Mostrar límites de metadatos del modelo uno al lado del otro con chips contextuales)
     val outputChip = rememberOutputChip(model, labelOutputFmt)
 
     val labels = buildList {
@@ -228,7 +228,7 @@ internal fun ModelAbilityChips(model: Model, testStatus: ModelTestStatus = Model
             }
         }
 
-        // v1.0.8 (7.6): 健康检查状态 chip(追加在能力标签末尾)
+        // v1.0.8 (7.6): estado de control de salud chip(añadido al final de la etiqueta de habilidad)
         when (testStatus) {
             is ModelTestStatus.InProgress -> TestStatusChip(
                 text = labelTestInProgress,
@@ -281,7 +281,7 @@ internal fun ModelAbilityChips(model: Model, testStatus: ModelTestStatus = Model
 }
 
 /**
- * v1.0.8 (7.6): 健康检查状态 chip(图标 + 文本)。
+ * v1.0.8 (7.6): estado de control de salud chip(icono + texto).
  */
 @Composable
 private fun TestStatusChip(
@@ -311,14 +311,14 @@ private fun TestStatusChip(
 }
 
 /**
- * v1.0.8 (7.7): 计算上下文窗口 chip 文本。
+ * v1.0.8 (7.7): Calcular el texto del chip de la ventana de contexto.
  *
- * - 0 或 null → null(不显示)
- * - >= 1M → "1M 上下文"
- * - >= 1K → "128K 上下文"
- * - 其他 → "8192 上下文"
+ * - 0 o null → null(no mostrar)
+ * - >= 1M → "1M contexto"
+ * - >= 1K → "128K contexto"
+ * - Otros → "8192 contexto"
  *
- * 用 [remember] + [derivedStateOf] 避免每次重组都重新格式化。
+ * usar [remember] + [derivedStateOf] Evite reformatear cada vez que reorganice.
  */
 @Composable
 private fun rememberContextChip(model: Model, labelFormat: String): String? {
@@ -334,7 +334,7 @@ private fun rememberContextChip(model: Model, labelFormat: String): String? {
 }
 
 /**
- * v2.x: 输出上限 chip 文本(如 "64K 输出"),格式规则与上下文 chip 一致,null/0 不显示。
+ * v2.x: Texto del chip de límite superior de salida(Como por ejemplo "64K salida"),Las reglas de formato son consistentes con el chip de contexto.,null/0 No mostrado.
  */
 @Composable
 private fun rememberOutputChip(model: Model, labelFormat: String): String? {

@@ -10,13 +10,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * P0-4 回归:记忆中心 UI 与生产写入同库路由原语。
+ * P0-4 Regresar:La interfaz de usuario de Memory Center comparte las mismas primitivas de enrutamiento de biblioteca que las escrituras de producción.
  *
- * 生产侧(DeepMemoryProcessor / MemoryAutoSaveScheduler / SystemPromptAssembler)
- * 按助手分库写事实([FactDbProvider.getFactStore]),记忆中心 UI 现按同一 provider
- * 解析 store。本测试验证核心约束:
- *  - UI 对子助手 scope 写入 → 该分库能读回(此前落在默认库,对 AI 无效)
- *  - 其他 scope 的分库不受影响(写入隔离)
+ * lado de producción(DeepMemoryProcessor / MemoryAutoSaveScheduler / SystemPromptAssembler)
+ * Escribir hechos según la base de datos del asistente.([FactDbProvider.getFactStore]),UI del Centro de memoria Ahora presione lo mismo provider
+ * tienda de análisis. Esta prueba verifica las restricciones principales.:
+ *  - UI Escribir en el alcance del asistente infantil → Esta subbiblioteca puede volver a leer(Anteriormente caía en la biblioteca predeterminada,No válido para IA)
+ *  - Las subbibliotecas de otros ámbitos no se ven afectadas.(escribe aislamiento)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -33,19 +33,19 @@ class FactDbProviderScopeIsolationTest {
             val defaultStore = provider.getFactStore("default")
 
             val addedId = storeA.add(
-                FactStore.Fact(fact = "用户喜欢蓝色主题"),
+                FactStore.Fact(fact = "A los usuarios les gusta el tema azul"),
                 scope = "assistant_a",
                 spaceId = "default",
             )
-            assertTrue("写入子助手分库必须成功", addedId > 0)
+            assertTrue("La escritura en la subbiblioteca del subasistente debe realizarse correctamente", addedId > 0)
 
-            // 目标 scope 能读回
+            // El alcance objetivo puede volver a leer
             val readBack = storeA.getByScopeAndSpace("assistant_a", "default")
-            assertTrue("目标分库必须能读回 UI 写入的事实", readBack.any { it.id == addedId && it.fact.contains("蓝色主题") })
+            assertTrue("El hecho de que el repositorio de destino debe poder leer las escrituras de la interfaz de usuario", readBack.any { it.id == addedId && it.fact.contains("tema azul") })
 
-            // 其他 scope 分库不受影响
-            assertEquals("其他子助手分库不得读到该事实", 0, storeB.getByScopeAndSpace("assistant_b", "default").size)
-            assertEquals("主助手默认库不得读到该事实", 0, defaultStore.getByScopeAndSpace("main", "default").size)
+            // Otras bibliotecas de alcance no se ven afectadas
+            assertEquals("Otros subasistentes no deben leer este hecho.", 0, storeB.getByScopeAndSpace("assistant_b", "default").size)
+            assertEquals("La biblioteca principal auxiliar predeterminada no debe leer este hecho.", 0, defaultStore.getByScopeAndSpace("main", "default").size)
         } finally {
             provider.releaseAll()
         }
@@ -57,7 +57,7 @@ class FactDbProviderScopeIsolationTest {
         try {
             val defaultStore = provider.getFactStore("default")
 
-            defaultStore.add(FactStore.Fact(fact = "主助手事实示例"), scope = "main", spaceId = "default")
+            defaultStore.add(FactStore.Fact(fact = "Ejemplo de hechos del asistente maestro"), scope = "main", spaceId = "default")
 
             assertTrue(defaultStore.getByScopeAndSpace("main", "default").isNotEmpty())
         } finally {
@@ -66,11 +66,11 @@ class FactDbProviderScopeIsolationTest {
     }
 
     /**
-     * SEC-04 前提：各分库的自增 id **会撞号**。
+     * SEC-04 Requisito previo: autoincremento de cada biblioteca sucursal id **Habrá colisiones**.
      *
-     * 这正是「按裸 id 跨库查找」必然出错的原因——记忆中心的编辑/删除/置顶必须带 scope 精确定位
-     * （见 `MemoryViewModel.storeForFact`），不能靠 id 猜归属。若哪天分库改成全局唯一 id，
-     * 这条会失败，届时才可以放心简化路由逻辑。
+     * Esta es la razón por la que la "búsqueda entre bases de datos mediante ID simple" seguramente saldrá mal——Editor del Centro de la Memoria/Eliminar/Fijado en la parte superior debe tener margen para un posicionamiento preciso
+     * (Ver `MemoryViewModel.storeForFact`), la propiedad no se puede adivinar basándose en la identificación. Si un día la subbiblioteca se cambia a una identificación global única,
+     * Esto fallará y luego podrá simplificar de forma segura la lógica de enrutamiento.
      */
     @Test
     fun `fact ids collide across per-assistant databases`() = runTest {
@@ -80,19 +80,19 @@ class FactDbProviderScopeIsolationTest {
             val storeB = provider.getFactStore("assistant_b")
 
             val idA = storeA.add(
-                FactStore.Fact(fact = "A 助手的事实"),
+                FactStore.Fact(fact = "A hechos del asistente"),
                 scope = "assistant_a",
                 spaceId = "default",
             )
             val idB = storeB.add(
-                FactStore.Fact(fact = "B 助手的事实"),
+                FactStore.Fact(fact = "B hechos del asistente"),
                 scope = "assistant_b",
                 spaceId = "default",
             )
 
-            assertEquals("两个分库各自自增，首条事实 id 相同", idA, idB)
-            assertTrue("A 库按自己的 id 读到 A 的记录", storeA.getById(idA)?.fact?.contains("A 助手") == true)
-            assertTrue("B 库按同一 id 读到的是 B 的记录", storeB.getById(idB)?.fact?.contains("B 助手") == true)
+            assertEquals("Cada una de las dos subbases de datos se incrementa y la primera identificación de hecho es la misma.", idA, idB)
+            assertTrue("A La biblioteca lee los registros de A según su propia identificación.", storeA.getById(idA)?.fact?.contains("A asistente") == true)
+            assertTrue("B La biblioteca lee el registro de B según la misma identificación.", storeB.getById(idB)?.fact?.contains("B asistente") == true)
         } finally {
             provider.releaseAll()
         }

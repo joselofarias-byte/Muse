@@ -40,11 +40,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 翻译历史区。
+ * Área de historial de traducción.
  *
- * [history] 已由调用方根据 [favoritesOnly] 取好（完整历史 / 仅收藏），
- * [totalHistoryCount] 传入未筛选的条数，仅用于决定收藏开关是否显示 ——
- * 否则收藏为空时开关也跟着消失，用户就卡在空列表回不去了。
+ * [history] ha sido utilizado por la persona que llama basándose en [favoritesOnly] Get Good (historial completo/colección únicamente),
+ * [totalHistoryCount] Pase la cantidad de elementos sin filtrar, que solo se utiliza para determinar si se muestra el interruptor de favorito. ——
+ * De lo contrario, el interruptor desaparecerá cuando la colección esté vacía y el usuario quedará atrapado en la lista vacía y no podrá regresar.
  */
 @Suppress("LongParameterList")
 @Composable
@@ -85,11 +85,11 @@ internal fun TranslateHistorySection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
             ) {
-                // §11-6: 翻译收藏以前是完整断路 —— 星标能点、能落库、能进 state.favorites，
-                // 但 UI 从不渲染 favorites。这里加一个"仅看收藏"筛选，口径与朋友圈的
-                // favoritesOnly 同型（同一个开关决定列表源），不另开页面。
-                // 开关按「完整历史」而非当前列表判断是否显示，否则收藏为空时开关也会消失，
-                // 用户就卡在空列表里回不去了。
+                // §11-6: La colección de traducciones solía estar completamente desconectada —— Se puede hacer clic en las estrellas, colocarlas en la biblioteca e ingresarlas en state.favorites.
+                // Pero la interfaz de usuario nunca muestra favoritos. Añade uno aquí"Ver solo colecciones"Proyección, calibre y círculo de amigos.
+                // favoritesOnly Mismo tipo (el mismo interruptor determina la fuente de la lista), no se abrirá ninguna página nueva.
+                // El cambio se juzga por el "Historial completo" en lugar de por la lista actual; de lo contrario, el cambio desaparecerá cuando la colección esté vacía.
+                // El usuario está atrapado en la lista vacía y no puede regresar.
                 if (totalHistoryCount > 0) {
                     MuseTactileButton(
                         icon = MuseIcons.star,
@@ -115,7 +115,7 @@ internal fun TranslateHistorySection(
         }
 
         if (history.isEmpty()) {
-            // ST-03: 空态统一 MuseEmptyState。收藏视图的空态要与"完全没有历史"区分。
+            // ST-03: El estado vacío unifica MuseEmptyState. El estado vacío de la vista de colección debe ser el mismo que"sin historia en absoluto"Distinguir.
             MuseEmptyState(
                 title = stringResource(
                     if (favoritesOnly) {
@@ -136,7 +136,7 @@ internal fun TranslateHistorySection(
                     onClick = { onItemClick(item) },
                     onToggleFavorite = { onToggleFavorite(item) },
                     onLongPressCopy = {
-                        // v2.4.6: 长按复制"原文 + 译文"(两者都带上,便于直接黏贴使用)
+                        // v2.4.6: Mantenga presionado para copiar"Texto original + traducción"(trae ambos,Fácil de pegar y usar directamente)
                         val ctx = context
                         copyToClipboard(
                             ctx,
@@ -155,11 +155,11 @@ internal fun TranslateHistorySection(
 }
 
 /**
- * 单条翻译历史卡片 — 设计图风格。
+ * Tarjeta de historial de traducción única — Estilo de dibujo de diseño.
  *
- * 顶部:语言流向 chip + 相对时间 + 收藏星标
- * 中部:原 + 原文(单行省略)
- * 底部:译 + 译文(单行省略)
+ * arriba:Chip de flujo de lenguaje + tiempo relativo + estrella favorita
+ * céntrico:original + texto original(línea única omitida)
+ * abajo:traducción + traducción(línea única omitida)
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -192,7 +192,7 @@ private fun TranslateHistoryItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                // 源 → 目标语言 chip
+                // fuente → idioma de destino chip
                 Surface(
                     shape = MuseShapes.pill,
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -202,7 +202,7 @@ private fun TranslateHistoryItemCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        // LAYOUT-01: 卡片内语言胶囊是行内短文本(行宽由内容决定,不取宽),限 1 行防逐字换行。
+                        // LAYOUT-01: Las cápsulas de lenguaje en la tarjeta son textos cortos en línea.(El ancho de línea está determinado por el contenido.,Sin ancho),Límite a 1 línea para evitar el ajuste palabra por palabra.
                         Text(
                             text = item.sourceLanguage,
                             style = MaterialTheme.typography.labelSmall,
@@ -227,7 +227,7 @@ private fun TranslateHistoryItemCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
                 ) {
-                    // LAYOUT-01: 时间标注是行尾定宽短文本,限 1 行,防止被收藏按钮挤成一列。
+                    // LAYOUT-01: La marca de tiempo es un texto breve con un ancho fijo al final de la línea.,Límite de 1 línea,Evite que los botones favoritos lo aprieten en una columna.
                     Text(
                         text = timeText,
                         style = MaterialTheme.typography.labelSmall,
@@ -235,7 +235,7 @@ private fun TranslateHistoryItemCard(
                         maxLines = 1,
                     )
                     MuseTactileButton(
-                        // §11-8: 单枚 star 图标 + tint + 底色三档表达选中态（无 starOutline 可用）。
+                        // §11-8: Un icono de una sola estrella + tinte + tres niveles de color de fondo expresan el estado seleccionado (no hay ningún contorno de estrella disponible).
                         icon = MuseIcons.star,
                         onClick = onToggleFavorite,
                         contentDescription = stringResource(
@@ -246,19 +246,19 @@ private fun TranslateHistoryItemCard(
                             },
                         ),
                         tint = favoriteStarTint(item.favorite),
-                        // 已收藏给实心圆底，未收藏无底，色块差异比颜色差异更抗深浅主题漂移。
+                        // Se ha recogido el fondo sólido y redondo, y no hay fondo si no se ha recogido. La diferencia en los bloques de color es más resistente a la deriva de temas claros y oscuros que la diferencia de color.
                         container = if (item.favorite) MuseIconContainer.Tonal else MuseIconContainer.None,
                         size = MuseIconSizes.touchTarget,
                         iconSize = MuseIconSizes.iconSmall,
                     )
                 }
             }
-            // 原 + 原文
+            // original + texto original
             HistoryTextLine(
                 label = stringResource(R.string.translate_page_history_source_short),
                 text = item.sourceText,
             )
-            // 译 + 译文
+            // traducción + traducción
             HistoryTextLine(
                 label = stringResource(R.string.translate_page_history_translated_short),
                 text = item.translatedText,
@@ -267,14 +267,14 @@ private fun TranslateHistoryItemCard(
     }
 }
 
-/** 历史卡片内的"标签 + 内容"单行。 */
+/** en la tarjeta de historia"etiqueta + contenido"Línea única. */
 @Composable
 private fun HistoryTextLine(label: String, text: String) {
     Row(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
     ) {
-        // LAYOUT-01: 「原文/译文」标签是行首定宽短词(剩余宽度归正文的 weight),限 1 行。
+        // LAYOUT-01: "Texto original/La etiqueta "Traducción" es una palabra corta que determina el ancho al principio de la línea.(ancho restante del texto weight),Límite de 1 línea.
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -293,14 +293,14 @@ private fun HistoryTextLine(label: String, text: String) {
     }
 }
 
-/** 格式化历史时间戳为相对时间。 */
+/** Formatee las marcas de tiempo históricas como tiempos relativos. */
 private fun formatHistoryTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     return when {
-        diff < 60_000 -> "刚刚"
-        diff < 60 * 60_000 -> "${diff / 60_000} 分钟前"
-        diff < 24 * 60 * 60_000 -> "${diff / (60 * 60_000)} 小时前"
+        diff < 60_000 -> "justo ahora"
+        diff < 60 * 60_000 -> "${diff / 60_000} hace minutos"
+        diff < 24 * 60 * 60_000 -> "${diff / (60 * 60_000)} hace horas"
         else -> SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
     }
 }

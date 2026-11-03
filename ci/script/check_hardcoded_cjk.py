@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-check_hardcoded_cjk.py — UI 硬编码中文字面量检查。
+check_hardcoded_cjk.py — UI Verificación literal china codificada.
 
-扫描 ui/ 目录下的 Jetpack Compose 代码，拦截绕过 stringResource 的
-硬编码中文字符串（存量放过、新增拦截、只降不升）。
+Escanee el código Jetpack Compose en el directorio ui/ e intercepte el código que omite stringResource.
+Cadenas chinas codificadas (se ignora la existencia, se agrega una nueva interceptación, solo disminuye pero no aumenta).
 
-识别范围：
-  - 同一行双引号字符串内包含 CJK 字面量，如 Text("你好")
-  - 同一行包含双引号且包含 CJK 的兜底识别（覆盖 raw string 起始/结束行）
-  - 自动剔除行注释与块注释，避免文档示例误报
+Alcance del reconocimiento:
+  - La misma línea de cadenas entre comillas dobles contiene literales CJK, como Text("Hola")
+  - La misma línea contiene comillas dobles y contiene el código de portada de CJK (que cubre el comienzo de la cadena sin formato)./línea final)
+  - Elimine automáticamente los comentarios de línea y bloquee los comentarios para evitar falsos positivos en los ejemplos de documentos.
 
-已知局限：
-  - 跨越多行的 raw string 中不含引号的续行不会识别
-  - 更严格的 Kotlin 词法解析留给 IDE/Lint 插件，本脚本用于 CI 快速闸门
+Limitaciones conocidas:
+  - No se reconocen las líneas de continuación sin comillas en cadenas sin formato que abarcan varias líneas
+  - El análisis léxico de Kotlin más estricto se deja en manos de los complementos IDE/Lint; este script se utiliza para la puerta rápida de CI
 
-Baseline 机制：
-  - CI 模式（--baseline ci/baseline/hardcoded_cjk_baseline.txt）：
-    逐文件对比违规数，多于 baseline 或出现新违规文件则失败
-  - 更新 baseline（--update-baseline）：清理存量后重新生成
+Baseline Mecanismo:
+  - CI modo(--baseline ci/baseline/hardcoded_cjk_baseline.txt):
+    Compare el número de infracciones archivo por archivo. Si es mayor que la línea base o aparecen nuevos archivos de infracción, fallará.
+  - actualizar línea base (--update-baseline): Regenerar después de limpiar el inventario.
 
-用法：
+Uso:
   py -3 ci/script/check_hardcoded_cjk.py
   py -3 ci/script/check_hardcoded_cjk.py --baseline <path>
   py -3 ci/script/check_hardcoded_cjk.py --update-baseline
@@ -39,9 +39,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UI_DIR = PROJECT_ROOT / "app" / "src" / "main" / "java" / "io" / "zer0" / "muse" / "ui"
 BASELINE_PATH = PROJECT_ROOT / "ci" / "baseline" / "hardcoded_cjk_baseline.txt"
 
-# 同一行双引号字符串内包含 CJK
+# Las cadenas entre comillas dobles en la misma línea contienen CJK
 CJK_IN_QUOTED_STRING = re.compile(r'"([^"\n]*[\u4e00-\u9fff][^"\n]*)"')
-# 兜底：行内含双引号且含 CJK（覆盖 raw string 的边界行）
+# Solución de problemas: líneas que contienen comillas dobles y CJK (que cubren las líneas límite de una cadena sin formato)
 CJK_WITH_QUOTE = re.compile(r'[\u4e00-\u9fff]')
 LOGGER_CALL_START = re.compile(r'\b(?:Logger|Log)\.[A-Za-z]+\s*\(')
 
@@ -54,7 +54,7 @@ class Violation:
 
 
 def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
-    """剔除块/行注释,并跳过字符串字面量(不把 "text/*" 里的 /* 当块注释,避免吞掉其后代码)。"""
+    """bloque de sacrificio/Comentarios de línea,y omitir literales de cadena(No "text/*" adentro /* Cuando bloquear comentarios,Evite tragar el código posterior)."""
     out: list[str] = []
     i = 0
     n = len(line)
@@ -68,7 +68,7 @@ def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
             i += 1
             continue
         if ch in "\"'":
-            # 字符串字面量:原样 emit,跳过其中的 /* 与 //(含转义)
+            # literal de cadena:tal cual emit,saltarse el /* con //(Contiene escape)
             quote = ch
             out.append(ch)
             i += 1
@@ -89,14 +89,14 @@ def strip_comments(line: str, in_block_comment: bool) -> tuple[str, bool]:
             i += 2
             continue
         if ch == "/" and i + 1 < n and line[i + 1] == "/":
-            break  # 行注释,丢弃剩余
+            break  # Comentarios de línea,Descartar el resto
         out.append(ch)
         i += 1
     return "".join(out), in_block_comment
 
 
 def strip_cjk_logger_calls(code: str, in_logger_call: bool = False) -> tuple[str, bool]:
-    """剔除完整 Logger/Log 调用表达式,支持调用参数跨行。"""
+    """Eliminar la expresión completa de llamada Logger/Log,Admite parámetros de llamada entre líneas."""
     result: list[str] = []
     cursor = 0
     depth = 1 if in_logger_call else 0
@@ -136,7 +136,7 @@ def scan_file(path: Path) -> list[Violation]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as e:
-        print(f"WARN: 无法读取 {path}: {e}", file=sys.stderr)
+        print(f"WARN: No puedo leer {path}: {e}", file=sys.stderr)
         return violations
     in_block_comment = False
     in_logger_call = False
@@ -145,7 +145,7 @@ def scan_file(path: Path) -> list[Violation]:
         code, in_logger_call = strip_cjk_logger_calls(code, in_logger_call)
         if not code.strip():
             continue
-        # 日志调用属于内部诊断,不纳入 UI 文案 i18n 检查
+        # Las llamadas de registro son diagnósticos internos,No incluido en las comprobaciones de copia de UI i18n
         if re.search(r'\b(Logger|Log)\.[A-Za-z]+\(.*[\u4e00-\u9fff]', code):
             continue
         if CJK_IN_QUOTED_STRING.search(code):
@@ -185,11 +185,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# hardcoded_cjk baseline — 存量硬编码中文字面量豁免清单",
-        "# 格式: <file>: <违规数>;新增或上升都会失败,只允许下降",
-        "# 清理存量后运行: py -3 ci/script/check_hardcoded_cjk.py --update-baseline",
+        "# hardcoded_cjk baseline — Lista de exenciones de literales chinos codificados existentes",
+        "# Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender",
+        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_hardcoded_cjk.py --update-baseline",
         "#",
-        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
+        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
     ]
     for file, vs in sorted(violations.items()):
         lines.append(f"{file}: {len(vs)}")
@@ -197,10 +197,10 @@ def write_baseline(path: Path, violations: dict[str, list[Violation]]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="UI 硬编码中文字面量检查")
-    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline 文件路径")
-    parser.add_argument("--update-baseline", action="store_true", help="用当前扫描结果重写 baseline")
-    parser.add_argument("--verbose", action="store_true", help="打印每一处违规明细")
+    parser = argparse.ArgumentParser(description="UI Verificación literal china codificada")
+    parser.add_argument("--baseline", type=Path, default=BASELINE_PATH, help="baseline ruta del archivo")
+    parser.add_argument("--update-baseline", action="store_true", help="Sobrescribir con los resultados del análisis actual baseline")
+    parser.add_argument("--verbose", action="store_true", help="Imprimir detalles de cada infracción")
     args = parser.parse_args()
 
     violations = scan_all()
@@ -208,11 +208,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline 已更新: {args.baseline}")
-        print(f"  共 {total} 处硬编码中文字面量,分布 {len(violations)} 个文件")
+        print(f"baseline actualizado: {args.baseline}")
+        print(f"  total {total} Literales chinos codificados,Distribución {len(violations)} archivos")
         return 0
 
-    print(f"[hardcoded-cjk] 扫描 ui/ 目录: {total} 处硬编码中文字面量,分布 {len(violations)} 个文件")
+    print(f"[hardcoded-cjk] Escanee el directorio ui/: {total} Literales chinos codificados,Distribución {len(violations)} archivos")
 
     if args.verbose:
         for file, vs in sorted(violations.items()):
@@ -230,26 +230,26 @@ def main() -> int:
         allowed = baseline.get(file, 0)
         if current > allowed:
             delta = current - allowed
-            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {delta})")
+            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {delta})")
         elif current < allowed:
-            improved.append(f"  {file}: {allowed} → {current} (清理了 {allowed - current} 处)")
+            improved.append(f"  {file}: {allowed} → {current} (limpiado {allowed - current} en)")
     cleaned_files = [f for f in baseline if f not in violations]
     for f in cleaned_files:
-        improved.append(f"  {f}: 已清零")
+        improved.append(f"  {f}: Borrado")
 
     if improved:
-        print("[hardcoded-cjk] 有改善,建议运行 --update-baseline 收紧:")
+        print("[hardcoded-cjk] hay mejora,Se recomienda ejecutar --update-baseline para ajustar:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[hardcoded-cjk] FAILED — 新增硬编码中文字面量:")
+        print("[hardcoded-cjk] FAILED — Se agregaron literales chinos codificados:")
         for line in failures:
             print(line)
-        print("修复方式: 使用 stringResource(R.string.xxx);若为存量请清理后 --update-baseline")
+        print("como solucionarlo: uso stringResource(R.string.xxx);Si está en stock, límpielo. --update-baseline")
         return 1
 
-    print(f"[hardcoded-cjk] PASS — 无新增硬编码中文字面量 (存量 {total} 处,按 baseline 豁免)")
+    print(f"[hardcoded-cjk] PASS — No hay nuevos literales chinos codificados (Valores {total} en,Exento por línea de base)")
     return 0
 
 

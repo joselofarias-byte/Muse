@@ -5,18 +5,18 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * v1.107 统计聚合缓存表。
+ * v1.107 Tabla de caché de agregación de estadísticas.
  *
- * 缓存 MessageDao 中 6 处全表 GROUP BY 聚合的结果,避免每次进统计页全表扫描。
- *  - key: 聚合维度标识(如 "countByRole" / "countByModel" / "countByAssistant" /
- *    "countByHour" / "topSessions" / "totalMessages" / "totalSessions" 等)
- *  - value: JSON 序列化的聚合结果
- *  - updatedAt: 最后刷新时间,用于判断缓存是否过期
+ * Almacene en caché los resultados de 6 agregaciones GROUP BY de tabla completa en MessageDao,Evite el escaneo completo de la tabla cada vez que ingrese a la página de estadísticas.
+ *  - key: Identificador de dimensión de agregación(Como por ejemplo "countByRole" / "countByModel" / "countByAssistant" /
+ *    "countByHour" / "topSessions" / "totalMessages" / "totalSessions" espera)
+ *  - value: JSON Resultados agregados serializados
+ *  - updatedAt: Última hora de actualización,Se utiliza para determinar si el caché ha caducado
  *
- * 刷新策略:
- *  1. 消息发送/删除后异步刷新(延迟 5s 合并多次写入)
- *  2. WorkManager 每日定时全量刷新
- *  3. 统计页打开时若缓存超过 1 小时则后台刷新,先显示旧缓存
+ * estrategia de actualización:
+ *  1. envío de mensajes/Actualizar de forma asincrónica después de la eliminación(Retrasa 5 segundos para fusionar múltiples escrituras)
+ *  2. WorkManager Actualización completa todos los días
+ *  3. Cuando se abre la página de estadísticas, si el caché excede 1 hora, se actualizará en segundo plano.,Mostrar caché antiguo primero
  */
 @Entity(tableName = "stats_cache")
 data class StatsCacheEntity(

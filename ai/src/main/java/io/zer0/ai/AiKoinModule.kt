@@ -16,21 +16,21 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * ai 模块的 Koin 装配。
+ * ai Montaje de módulos Koin.
  *
- * [ProviderConfigStore] 由 app 模块提供实现(基于 DataStore),
- * [OkHttpClient] 也由 app 模块注册(用 named("chat") qualifier,与 web search client 区分),
- * 因此这里只声明 [ChatService] / [ImageService] / [VideoGenerationService]。
+ * [ProviderConfigStore] Implementado por el módulo de la aplicación.(Basado en DataStore),
+ * [OkHttpClient] También registrado por el módulo de la aplicación.(usar named("chat") qualifier,Diferenciarse del cliente de búsqueda web),
+ * Por lo tanto, aquí sólo declaramos [ChatService] / [ImageService] / [VideoGenerationService].
  *
- * v1.0.18: 图片生成改为 Provider 抽象 — 注册 [ImageProviderRegistry] 与各 [io.zer0.ai.image.ImageProvider]
- * (Agnes / OpenAI),[ImageService] 通过 registry 按 [io.zer0.ai.core.ProviderConfig] 自动选择适配器。
+ * v1.0.18: La generación de imágenes cambió a la abstracción del proveedor. — Registrarse [ImageProviderRegistry] con cada uno [io.zer0.ai.image.ImageProvider]
+ * (Agnes / OpenAI),[ImageService] a través de prensa de registro [io.zer0.ai.core.ProviderConfig] Selecciona automáticamente el adaptador.
  */
 val aiModule: Module = module {
     single { ChatService(get()) }
 
-    // v1.0.18: 图片生成 Provider 抽象层
-    // G4: 参考图 SSRF 校验器经 Koin 注入(app 模块 SsrfBridgeModule 注册
-    // RefImageUrlValidator → SsrfGuard.refImageUrlValidator);未注册时回退 null(旧行为)。
+    // v1.0.18: Generación de imágenes Capa de abstracción del proveedor
+    // G4: Imagen de referencia del validador SSRF inyectado por Koin(app Módulo SsrfBridgeRegistro del módulo
+    // RefImageUrlValidator → SsrfGuard.refImageUrlValidator);Reserva cuando no está registrado null(viejo comportamiento).
     single {
         AgnesImageProvider(
             client = get(named("chat")),
@@ -43,7 +43,7 @@ val aiModule: Module = module {
             referenceImageUrlValidator = getOrNull<RefImageUrlValidator>(),
         )
     }
-    // B14-2: Gemini 独立图片 Provider(原生 generateContent 图片输出)
+    // B14-2: Gemini fotos independientes Provider(Salida de imagen nativa de generateContent)
     single {
         GeminiImageProvider(
             client = get(named("chat")),
@@ -59,11 +59,11 @@ val aiModule: Module = module {
     }
     single { ImageService(get(), get()) } // configStore + registry
 
-    // P2-8: 视频生成服务 — 注入 named("chat") OkHttpClient(已配 30s connect / 300s read 超时,
-    // 满足提交 30s + 轮询 5min 的超时要求)
-    // v1.137: 视频生成重构 — 注册 [VideoProviderRegistry],按 specId/host 路由到具体 Provider,
-    // 不再按 providerId 硬匹配(修复 preset_kling ≠ kling 的路由 bug)。
-    // 各 Provider 实现 VideoProvider 接口,统一 submit/poll 协议。
+    // P2-8: Servicios de generación de vídeo. — inyectar named("chat") OkHttpClient(Ya asignado 30s connect / 300s read tiempo de espera,
+    // Cumplir con el requisito de tiempo de espera de 30 segundos para el envío + 5 minutos para el sondeo)
+    // v1.137: Generación y reconstrucción de vídeo. — Registrarse [VideoProviderRegistry],Ruta a específico por specId/host Provider,
+    // No más coincidencias difíciles por ID de proveedor(Reparación preset_kling ≠ kling enrutamiento bug).
+    // Cada proveedor implementa la interfaz VideoProvider,Unifique el protocolo de envío/encuesta.
     single { KlingVideoProvider(get(named("chat"))) }
     single { AgnesVideoProvider(get(named("chat"))) }
     single { GenericOpenAiVideoProvider(get(named("chat"))) }
@@ -77,13 +77,13 @@ val aiModule: Module = module {
 }
 
 /**
- * G4: 参考图下载前的 SSRF 校验器 — http/https URL 经 app 层 SsrfGuard 判定
- * (命中内网/回环/保留地址返回 false 需拒绝),其余 scheme(data:/file:) 恒 true 放行。
+ * G4: Comprobador SSRF antes de descargar la imagen de referencia — http/https URL Determinado por la capa de aplicación SsrfGuard
+ * (Ir a la intranet/bucle invertido/La dirección reservada devuelve falso y debe rechazarse),el resto scheme(data:/file:) Siempre fiel al lanzamiento.
  *
- * app 模块 SsrfBridgeModule 将 [SsrfGuard.refImageUrlValidator] 注册为此类型;
- * 未注册时 AgnesImageProvider 拿到 null,回退旧行为(直接下载)。
+ * app El módulo SsrfBridgeModule [SsrfGuard.refImageUrlValidator] Regístrate para este tipo;
+ * Cuando no está registrado, AgnesImageProvider obtiene null,Revertir el antiguo comportamiento(Descarga directa).
  */
 fun interface RefImageUrlValidator {
-    /** 返回 true 表示该 URL 可以发起下载;false 应拒绝。 */
+    /** Devolver verdadero indica que la URL puede iniciar la descarga;false debe ser rechazado. */
     fun isAllowed(url: String): Boolean
 }

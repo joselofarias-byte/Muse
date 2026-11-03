@@ -21,7 +21,7 @@ class ChatRestoreWriteGateWiringTest {
         val currentBody = source.substringAfter("suspend fun persistCurrentAssistant")
             .substringBefore("suspend fun persistInterruptedAssistant")
         val interruptedBody = source.substringAfter("suspend fun persistInterruptedAssistant")
-            .substringBefore("// ── 字符串处理工具")
+            .substringBefore("// ── Herramientas de procesamiento de cuerdas")
         assertTrue(currentBody.contains("ProcessWriteGate.restoring"))
         assertTrue(interruptedBody.contains("ProcessWriteGate.restoring"))
     }

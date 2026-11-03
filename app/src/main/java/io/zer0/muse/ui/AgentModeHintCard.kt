@@ -27,15 +27,15 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v1.0.47 P6: Agent Mode 增强提示卡片。
+ * v1.0.47 P6: Agent Mode Tarjetas recordatorias mejoradas.
  *
- * 三种状态(可叠加):
- *  - 会话锁定:Agent 模式开启后会话锁定,仅显示状态,不可关闭
- *  - 弱工具降级:当前模型工具调用能力弱,已自动降级为串行,可关闭
- *  - Agent Mode 提示:其他 Agent Mode 相关提示,可关闭
+ * tres estados(Se puede apilar):
+ *  - bloqueo de sesión:Agent Sesión bloqueada después de habilitar el modo,Mostrar solo estado,No se puede cerrar
+ *  - Degradación de herramienta débil:La capacidad de llamada de la herramienta del modelo actual es débil,Degradado automáticamente a serie,se puede cerrar
+ *  - Agent Mode Consejos:Otros consejos relacionados con el modo agente,se puede cerrar
  *
- * 视觉风格沿用 ChatScreen 顶部 Banner(tertiaryContainer + MuseShapes.medium),
- * 由 [ChatScreen] 在消息列表上方根据 [ChatUiState] 字段条件渲染。
+ * El estilo visual sigue la parte superior de ChatScreen. Banner(tertiaryContainer + MuseShapes.medium),
+ * por [ChatScreen] encima de la lista de mensajes según [ChatUiState] Representación condicional de campo.
  */
 @Composable
 fun AgentModeHintCard(
@@ -47,10 +47,10 @@ fun AgentModeHintCard(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        // 1) 会话锁定状态(常驻,不可关闭)
+        // 1) estado de bloqueo de sesión(permanente,No se puede cerrar)
         AnimatedVisibility(
             visible = isSessionLocked,
-            // v2.6.7: 原地长出（缩放 + 淡入），不再纵向撑开。
+            // v2.6.7: Crece en su lugar (zoom + aparición gradual), ya no se estira verticalmente.
             enter = MuseMotion.scaleFadeEnter(initialScale = 0.96f),
             exit = MuseMotion.scaleFadeExit(),
         ) {
@@ -62,10 +62,10 @@ fun AgentModeHintCard(
             )
         }
 
-        // 2) 弱工具降级提示(可关闭)
+        // 2) Consejos para degradar herramientas débiles(se puede cerrar)
         AnimatedVisibility(
             visible = !weakToolHint.isNullOrEmpty(),
-            // v2.6.7: 原地长出（缩放 + 淡入），不再纵向撑开。
+            // v2.6.7: Crece en su lugar (zoom + aparición gradual), ya no se estira verticalmente.
             enter = MuseMotion.scaleFadeEnter(initialScale = 0.96f),
             exit = MuseMotion.scaleFadeExit(),
         ) {
@@ -86,10 +86,10 @@ fun AgentModeHintCard(
             )
         }
 
-        // 3) Agent Mode 一般提示(可关闭)
+        // 3) Agent Mode Consejos generales(se puede cerrar)
         AnimatedVisibility(
             visible = !agentModeHint.isNullOrEmpty(),
-            // v2.6.7: 原地长出（缩放 + 淡入），不再纵向撑开。
+            // v2.6.7: Crece en su lugar (zoom + aparición gradual), ya no se estira verticalmente.
             enter = MuseMotion.scaleFadeEnter(initialScale = 0.96f),
             exit = MuseMotion.scaleFadeExit(),
         ) {

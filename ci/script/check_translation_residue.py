@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
 """
-check_translation_residue.py — I18N-02 非中文语言包 CJK 残留校验。
+check_translation_residue.py — I18N-02 Comprobación residual CJK del paquete de idioma distinto del chino.
 
-用 XML 解析（而不是「<string name="x"> 必须紧邻」的正则）扫描各
-values-<locale>/ 语言包里值含 CJK 的字符串条目，统计条数并与基线
-ci/translation_residue_baseline.json 比较：高于基线即失败（只降不升）。
-带 formatted/tools 等属性的 <string> 不会再漏报（旧 PowerShell 脚本
-scripts/i18n_cjk_guard.ps1 的缺陷，该脚本已随本次整改废弃删除）。
+Utilice análisis XML (en lugar de "<string name="x"> deben estar inmediatamente adyacentes entre sí) para escanear cada
+values-<locale>/ Entradas de cadena que contienen CJK en el paquete de idioma, cuente el número de entradas y compárelas con la línea base
+ci/translation_residue_baseline.json Comparación: si es superior a la línea base, falla (solo disminuye pero no aumenta).
+Con atributos como formato/herramientas <string> No más falsos negativos (antiguo script de PowerShell
+scripts/i18n_cjk_guard.ps1 defecto, el script ha sido descartado y eliminado con esta rectificación).
 
-口径（写死在脚本里，避免第二个脚本各说各话）:
-  - 扫描对象: 路径形如 values-<语言>[-r<地区>] 的目录（en/es/ko/pt-rBR/ru…）
-    下所有 .xml；条目 = <string>，以及 <plurals>/<string-array> 里的 <item>
-    （用户可见的字符串值一个都不漏）。
-  - 排除 values（默认包 = 中文源，本来就该是中文）。
-  - 排除 values-ja: 日文汉字合法落在 CJK 统一表意文字区间，字符区间无法与简体
-    中文区分，故不做正则拦截（ja 的残留由翻译评审兜底；当前 ja 仍有一条
-    settings_agent_send_probability_hint 是中文，见整改报告）。
-  - 排除 zh* 语言包与纯限定符目录（values-v31 等）。
-  - 只统计「值」: 元素的文本内容（XML 解析天然覆盖任意属性写法）；
-    XML 注释不是元素，天然不计。
-  - translatable="false" 的条目不计（本就不参与翻译，允许保留原文）。
-  - CJK 判定区间: [\\u4e00-\\u9fff\\u3400-\\u4dbf]（与 check_hardcoded_cjk.py 同域）。
-  - 每个条目只计 1 次（按条目数，不按字符数）。
+Calibre (escrito en el guión para evitar que el segundo guión diga cosas diferentes):
+  - Objeto de escaneo: El camino parece values-<Idioma>[-r<área>] directorio (en/es/ko/pt-rBR/ru…)
+    Todo .xml; entradas bajo = <string>, y <plurals>/<string-array> adentro <item>
+    (No se omite ningún valor de cadena visible para el usuario).
+  - excluir valores (paquete predeterminado = Fuente china, debería ser china).
+  - Excluir valores-ja: los caracteres chinos japoneses se encuentran legalmente en el rango de caracteres ideográficos unificados de CJK y el rango de caracteres no se puede comparar con los caracteres simplificados.
+    Distinción china, por lo que no hay intercepción regular (ja Los restos de ja se dejan a los revisores de la traducción; actualmente ja todavía tiene uno
+    settings_agent_send_probability_hint Está en chino, ver informe de rectificación).
+  - excluir zh* Paquetes de idiomas y directorios de calificadores puros (values-v31 etcétera).
+  - Sólo cuenta "valor": El contenido de texto del elemento (XML El análisis cubre naturalmente cualquier método de escritura de atributos);
+    XML Los comentarios no son elementos y, naturalmente, no se cuentan.
+  - translatable="false" Las entradas no se computarán (no intervendrán en la traducción y se permitirá conservar el texto original).
+  - CJK Intervalo de decisión: [\\u4e00-\\u9fff\\u3400-\\u4dbf](Mismo dominio que check_hardcoded_cjk.py).
+  - Cada entrada cuenta solo una vez (por número de entradas, no por número de caracteres).
 
-基线机制:
-  - 默认对比 ci/translation_residue_baseline.json（各语言包条数，当前全 0）。
-  - 高于基线、或基线外的新语言包出现残留 → 失败。
-  - 基线文件缺失 = 失败(fail closed),避免删掉基线绕过门禁。
-  - --update-baseline 重写基线；默认拒绝写入「上升」的条目，需 --allow-increase。
-  - 补完翻译后把基线保持 0（而不是调高），门禁才是真的。
+mecanismo de referencia:
+  - La comparación predeterminada es ci/translation_residue_baseline.json (el número de cada paquete de idioma, actualmente todos 0).
+  - Los nuevos paquetes de idiomas que son superiores a la línea de base o están fuera de la línea de base parecen ser residuales → fallido.
+  - Falta el archivo de referencia = falló(fail closed),Evite eliminar líneas base para evitar el control de la puerta.
+  - --update-baseline Reescribir la línea de base; rechace escribir entradas de "aumento" de forma predeterminada, requiera --allow-increase.
+  - Después de completar la traducción, mantenga la línea base en 0 (en lugar de aumentarla) y la puerta será real.
 
-用法:
+Uso:
   py -3 ci/script/check_translation_residue.py
   py -3 ci/script/check_translation_residue.py --baseline <path>
   py -3 ci/script/check_translation_residue.py --update-baseline
@@ -59,7 +59,7 @@ STRING_CONTAINERS = ("plurals", "string-array")
 
 @dataclass(frozen=True)
 class Residue:
-    """一条 CJK 残留。file 为 res/ 下相对 posix 路径。"""
+    """Un remanente de CJK.file ¿Es la ruta relativa posix en res/."""
 
     locale: str
     file: str
@@ -68,7 +68,7 @@ class Residue:
 
 
 def locale_of(dir_name: str) -> str | None:
-    """values-en → en;values-pt-rBR → pt-rBR;不扫描的目录返回 None。"""
+    """values-en → en;values-pt-rBR → pt-rBR;Los directorios no escaneados devuelven Ninguno."""
     m = LOCALE_DIR_RE.match(dir_name)
     if not m:
         return None
@@ -79,7 +79,7 @@ def locale_of(dir_name: str) -> str | None:
 
 
 def iter_string_entries(root: ET.Element):
-    """产出 (name, text):<string> 及其容器内 <item>,跳过 translatable="false"。"""
+    """salida (name, text):<string> y dentro de su contenedor <item>,saltar translatable="false"."""
     for el in root.iter():
         if el.tag == "string":
             if el.get("translatable") == "false":
@@ -95,10 +95,10 @@ def iter_string_entries(root: ET.Element):
 
 
 def scan_res(root: Path) -> dict[str, list[Residue]]:
-    """扫描所有受检语言包,返回 locale → 残留列表(含 0 条的语言包)。"""
+    """Escanee todos los paquetes de idiomas marcados,Regresar locale → lista residual(Paquete de idiomas con 0 artículos)."""
     res_dir = root / RES_REL
     if not res_dir.is_dir():
-        raise FileNotFoundError(f"资源目录不存在: {res_dir}")
+        raise FileNotFoundError(f"El directorio de recursos no existe: {res_dir}")
     found: dict[str, list[Residue]] = {}
     for d in sorted(res_dir.glob("values-*")):
         if not d.is_dir():
@@ -111,8 +111,8 @@ def scan_res(root: Path) -> dict[str, list[Residue]]:
             try:
                 tree = ET.parse(xml)
             except ET.ParseError as e:
-                # 解析失败必须失败退出:静默跳过会让门禁假绿
-                raise ValueError(f"{xml} 解析失败: {e}") from e
+                # El error de análisis debe fallar y salir:Saltar en silencio hará que el control de acceso se ponga verde
+                raise ValueError(f"{xml} El análisis falló: {e}") from e
             for name, text in iter_string_entries(tree.getroot()):
                 if CJK_RE.search(text):
                     hits.append(
@@ -128,14 +128,14 @@ def scan_res(root: Path) -> dict[str, list[Residue]]:
 
 
 def load_baseline(path: Path) -> dict:
-    """读取基线 JSON;不存在返回空 dict(等价于「只报告不拦截」)。"""
+    """Leer línea de base JSON;No existe y regresa vacío. dict(Equivalente a "solo informar sin interceptación")."""
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def evaluate(current: dict[str, list[Residue]], baseline: dict) -> tuple[list[str], list[str]]:
-    """对比当前残留与基线,返回 (failures, improvements) 两组人读消息。"""
+    """Comparar el residuo actual con el valor inicial,Regresar (failures, improvements) Dos grupos leen el mensaje."""
     failures: list[str] = []
     improvements: list[str] = []
     base = {k: int(v) for k, v in (baseline.get("locales") or {}).items()}
@@ -144,19 +144,19 @@ def evaluate(current: dict[str, list[Residue]], baseline: dict) -> tuple[list[st
         hits = current[locale]
         allowed = base.get(locale, 0)
         if len(hits) > allowed:
-            new_locale = " (基线外语言包)" if locale not in base else ""
+            new_locale = " (Paquetes de idiomas no básicos)" if locale not in base else ""
             failures.append(
-                f"  {locale}: 当前 {len(hits)} 条 > 基线 {allowed} 条{new_locale}"
+                f"  {locale}: actual {len(hits)} Artículo > línea de base {allowed} Artículo{new_locale}"
             )
             for h in hits[:20]:
                 failures.append(f"      {h.file}: {h.name} = {h.value}")
             if len(hits) > 20:
-                failures.append(f"      … 其余 {len(hits) - 20} 条省略,可用 --verbose 查看")
+                failures.append(f"      … el resto {len(hits) - 20} Artículo omitido,Disponible: vista detallada")
         elif len(hits) < allowed:
             improvements.append(f"  {locale}: {allowed} → {len(hits)}")
 
     for locale in sorted(set(base) - set(current)):
-        improvements.append(f"  {locale}: 语言包已移除")
+        improvements.append(f"  {locale}: Paquete de idioma eliminado")
 
     return failures, improvements
 
@@ -164,7 +164,7 @@ def evaluate(current: dict[str, list[Residue]], baseline: dict) -> tuple[list[st
 def update_baseline(
     path: Path, current: dict[str, list[Residue]], allow_increase: bool
 ) -> int:
-    """用当前扫描结果重写基线;默认拒绝写入上升条目(只降不升)。"""
+    """Sobrescribir la línea de base con los resultados del análisis actual;Denegar escritura de entradas ascendentes por defecto(Solo cayendo pero no subiendo)."""
     old = load_baseline(path)
     old_locales = {k: int(v) for k, v in (old.get("locales") or {}).items()}
     increases = [
@@ -173,21 +173,21 @@ def update_baseline(
         if len(hits) > old_locales.get(locale, 0)
     ]
     if increases and old and not allow_increase:
-        print("[translation-residue] 拒绝写回: 以下语言包高于现有基线(只降不升)")
+        print("[translation-residue] Negarse a responder: Los siguientes paquetes de idiomas están por encima de la línea base existente(Solo cayendo pero no subiendo)")
         for line in increases:
             print(line)
-        print("先把这些条目翻译成本地语言;确需豁免请显式加 --allow-increase 并说明理由。")
+        print("Primero traduzca estos elementos al idioma local.;Si realmente necesita una exención, agregue explícitamente --allow-increase y explique el motivo.")
         return 1
 
     payload = {
         "note": (
-            "I18N-02 非中文语言包 CJK 残留基线。只允许下降: 高于本文件或出现基线外"
-            "语言包的残留即失败。补完翻译后运行 "
-            "py -3 ci/script/check_translation_residue.py --update-baseline 收紧"
-            "(默认拒绝写入上升值,需 --allow-increase)。"
+            "I18N-02 Línea de base residual CJK del paquete de idioma distinto del chino. solo se permite descender: por encima de este documento o fuera de la línea base"
+            "Los paquetes de idiomas restantes fallan. Ejecutar después de completar la traducción. "
+            "py -3 ci/script/check_translation_residue.py --update-baseline apretar"
+            "(Denegar escritura de valor ascendente por defecto,necesidad --allow-increase)."
         ),
-        "measure": "每个语言包中值含 CJK 的 string/plurals-item/string-array-item 条目数",
-        "excluded": ["values(默认/中文源)", "values-ja(日文汉字合法)", "values-zh*(中文变体)", "values-vNN(纯限定符)"],
+        "measure": "Número de entradas de cadena/elemento de plurales/elemento de matriz de cadena que contienen CJK en cada paquete de idioma",
+        "excluded": ["values(Predeterminado/fuente china)", "values-ja(Los kanji japoneses son legales)", "values-zh*(variante china)", "values-vNN(puro calificador)"],
         "locales": {locale: len(hits) for locale, hits in sorted(current.items())},
     }
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -195,31 +195,31 @@ def update_baseline(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     total = sum(len(v) for v in current.values())
-    print(f"[translation-residue] 基线已更新: {path} ({len(current)} 个语言包 / 共 {total} 条)")
+    print(f"[translation-residue] Línea base actualizada: {path} ({len(current)} paquetes de idiomas / total {total} Artículo)")
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="I18N-02 非中文语言包 CJK 残留检查")
-    parser.add_argument("--root", type=Path, default=PROJECT_ROOT, help="项目根(测试可用 fixture)")
-    parser.add_argument("--baseline", type=Path, default=None, help="基线 JSON 路径")
-    parser.add_argument("--update-baseline", action="store_true", help="用当前扫描结果重写基线")
-    parser.add_argument("--allow-increase", action="store_true", help="更新基线时允许写入上升值")
-    parser.add_argument("--verbose", action="store_true", help="打印每条残留明细")
+    parser = argparse.ArgumentParser(description="I18N-02 Comprobación residual CJK del paquete de idioma distinto del chino")
+    parser.add_argument("--root", type=Path, default=PROJECT_ROOT, help="raíz del proyecto(Pruebas disponibles fixture)")
+    parser.add_argument("--baseline", type=Path, default=None, help="Ruta JSON de referencia")
+    parser.add_argument("--update-baseline", action="store_true", help="Sobrescribir la línea de base con los resultados del análisis actual")
+    parser.add_argument("--allow-increase", action="store_true", help="Permitir la escritura de valores crecientes al actualizar la línea base")
+    parser.add_argument("--verbose", action="store_true", help="Imprima los detalles de cada residuo")
     args = parser.parse_args()
     baseline_path = args.baseline or (args.root / BASELINE_REL)
 
     try:
         current = scan_res(args.root)
     except (FileNotFoundError, ValueError) as e:
-        print(f"[translation-residue] 扫描失败: {e}")
+        print(f"[translation-residue] Error de escaneo: {e}")
         return 1
 
     total = sum(len(v) for v in current.values())
-    excluded_note = "排除 values(中文源) / values-ja(日文汉字) / values-zh*, "
+    excluded_note = "excluir values(fuente china) / values-ja(kanji japonés) / values-zh*, "
     print(
-        f"[translation-residue] 扫描 {RES_REL.as_posix()} ({excluded_note}"
-        f"受检 {len(current)} 个语言包): 共 {total} 条 CJK 残留"
+        f"[translation-residue] Escanear {RES_REL.as_posix()} ({excluded_note}"
+        f"bajo inspección {len(current)} paquete de idiomas): total {total} residuo de CJK"
     )
     if args.verbose:
         for locale, hits in sorted(current.items()):
@@ -231,9 +231,9 @@ def main() -> int:
 
     baseline = load_baseline(baseline_path)
     if not baseline:
-        # 基线缺失 = 门禁失效,必须失败(删掉基线文件不能成为绕过手段)
-        print(f"[translation-residue] FAILED — 未找到基线 {baseline_path};"
-              f"生成: --update-baseline")
+        # Línea de base faltante = Control de acceso no válido,debe fallar(La eliminación del archivo de referencia no se puede utilizar como una omisión.)
+        print(f"[translation-residue] FAILED — Línea base no encontrada {baseline_path};"
+              f"generar: --update-baseline")
         return 1
 
     base = baseline.get("locales") or {}
@@ -241,21 +241,21 @@ def main() -> int:
         f"{locale} {len(current.get(locale, []))}/{int(base.get(locale, 0))}"
         for locale in sorted(set(current) | set(base))
     )
-    print(f"[translation-residue] 当前 / 基线: {pairs}")
+    print(f"[translation-residue] actual/línea de base: {pairs}")
 
     failures, improvements = evaluate(current, baseline)
     if improvements:
-        print("[translation-residue] 有改善,建议 --update-baseline 收紧:")
+        print("[translation-residue] hay mejora,Se recomienda ajustar --update-baseline:")
         for line in improvements:
             print(line)
     if failures:
-        print("[translation-residue] FAILED — 非中文语言包出现 CJK 残留:")
+        print("[translation-residue] FAILED — Aparecen restos de CJK en paquetes en idiomas distintos del chino:")
         for line in failures:
             print(line)
-        print("修复方式: 把条目翻译成对应语言的值(values-<locale>/strings*.xml);"
-              "不要用 --allow-increase 调高基线。")
+        print("como solucionarlo: Traducir elementos a valores en el idioma correspondiente.(values-<locale>/strings*.xml);"
+              "No utilice --allow-increase para aumentar la línea de base.")
         return 1
-    print(f"[translation-residue] PASS — 所有受检语言包残留数为 0 或在基线内 (共 {total} 条)")
+    print(f"[translation-residue] PASS — Todos los paquetes de idiomas probados tienen recuentos residuales de 0 o dentro del valor inicial (total {total} Artículo)")
     return 0
 
 

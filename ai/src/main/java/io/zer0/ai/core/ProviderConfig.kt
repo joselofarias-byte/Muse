@@ -3,10 +3,10 @@ package io.zer0.ai.core
 import kotlinx.serialization.Serializable
 
 /**
- * 供应商分类(用于 UI 分组展示)。
- * - [OFFICIAL]: 厂商官方直连
- * - [RELAY]: 中转站(OpenAI 兼容协议,聚合多家厂商)
- * - [CUSTOM]: 用户自定义
+ * Clasificación de proveedores(Se utiliza para la visualización del grupo UI).
+ * - [OFFICIAL]: Conexión directa oficial del fabricante.
+ * - [RELAY]: estación de transferencia(OpenAI Protocolo compatible,Agregar múltiples fabricantes)
+ * - [CUSTOM]: Definido por el usuario
  */
 @Serializable
 enum class ProviderCategory {
@@ -16,47 +16,47 @@ enum class ProviderCategory {
 }
 
 /**
- * Provider 的连接配置。
+ * Provider configuración de conexión.
  *
- * Phase 3 起支持多 Provider 共存:每个配置带 [type] 字段标识厂商,
- * [ProviderRegistry] 根据 [type] 走对应分支。
+ * Phase 3 Soporta la coexistencia de múltiples Proveedores.:Cada banda de configuración [type] El campo identifica al fabricante.,
+ * [ProviderRegistry] Según [type] Tome la sucursal correspondiente.
  *
- * Phase 8.1: 加 [specific] 字段(ProviderSpecificConfig sealed class),
- * 把 Provider 独有配置(Claude 的 promptCaching / OpenAI 的 useResponseApi /
- * Gemini 的 Vertex AI 等)封装到子类,让编译器保证类型安全。
- * 旧 JSON 数据无 specific 字段时,序列化框架用 [fallbackSpecific] 兜底。
+ * Phase 8.1: agregar [specific] campo(ProviderSpecificConfig sealed class),
+ * Configurar proveedor de forma única(Claude rápidoAlmacenamiento en caché / OpenAI useResponseApi /
+ * Gemini El Vertex AI et al.)Encapsular en subclase,Deje que el compilador garantice la seguridad de tipos.
+ * Cuando los datos JSON antiguos no tienen campos específicos,Para marco de serialización [fallbackSpecific] Llega al fondo de esto.
  *
- * [baseUrl] 留空时按 [type] 取默认值:
+ * [baseUrl] Presione cuando quede en blanco [type] Tomar valor predeterminado:
  *  - OPENAI → [DEFAULT_OPENAI_BASE_URL]
  *  - ANTHROPIC → [DEFAULT_ANTHROPIC_BASE_URL]
  *  - GEMINI → [DEFAULT_GEMINI_BASE_URL]
  *
- * P1-6: [oauthConfig] 非空时,ProviderEditPage 会显示「OAuth 登录」按钮,
- * 通过 Device Flow 或 Authorization Code Flow 自动获取 [apiKey](access_token)。
+ * P1-6: [oauthConfig] tiempo no vacío,ProviderEditPage "OAuth Botón de inicio de sesión,
+ * Obtenido automáticamente a través del flujo del dispositivo o del flujo del código de autorización [apiKey](access_token).
  *
- * @param enabled 是否启用(默认 true),禁用的 Provider 不出现在选择列表
- * @param builtIn 是否内置(默认 false),内置 Provider 不可删除
- * @param balanceApiPath 余额查询端点路径(可选,如 /dashboard/billing/usage)
- * @param balanceResultPath 余额结果 JSON 路径(如 $.data.total_usage)
- * @param category 供应商分类(默认 OFFICIAL,向后兼容旧数据)
- * @param oauthConfig P1-6 OAuth 登录配置(可选);非空时支持 OAuth 自动获取 apiKey
- * @param allowMissingApiKey v1.0.6: 是否允许空 apiKey(authType=none/optional)。
- *   true 时 Provider 不强制要求 apiKey(如 Ollama 本地部署、system-speech 等)。
- *   默认 false(向后兼容,绝大多数供应商需要 apiKey)。
- * @param specId v1.0.7: 内置供应商规格标识(预设供应商规格的 providerId)。
- *   非空时标识该配置源自某个内置供应商规格(如 "openai"/"deepseek"/"anthropic"),
- *   运行时 [io.zer0.ai.core.ProviderSpecMerger] 会把 spec 默认模型列表与用户 overlay 合并:
- *    - spec 默认模型 + 用户自定义模型(同 id 去重,用户字段优先)
- *    - 当内置供应商更新默认模型列表后,已添加的用户自动看到新模型
- *   为 null 时表示纯自定义供应商,不参与合并(向后兼容旧数据)。
- *   数据迁移时给已有 "preset_" 前缀 id 的配置自动推断 specId。
- * @param requestLimitPerMinute P1-3: 每分钟最大请求数(RPM),0 表示不限。
- *   [io.zer0.ai.decorator.RateLimitDecorator] 在请求发出前用滑动窗口限流,
- *   超限时挂起等待空位而非直接拒绝,避免用户请求失败。
- *   与 KeyRoulette(429 后置 key 切换)互补:decorator 前置限流,KeyRoulette 后置重试。
- * @param maxConcurrentRequests P1-3: 最大并发在途请求数,0 表示不限。
- *   通过协程 Semaphore 控制,限制同一 Provider 同时进行的流式/非流式请求数,
- *   防止短时间大量并发请求打爆上游(尤其多 Key 池场景下 KeyRoulette 只管 key 轮询不管总并发)。
+ * @param enabled Ya sea para habilitar(Predeterminado true),Los proveedores deshabilitados no aparecen en la lista de selección
+ * @param builtIn ¿Está incorporado?(Predeterminado false),El proveedor integrado no se puede eliminar
+ * @param balanceApiPath Ruta del punto final de consulta de saldo(Opcional,Como por ejemplo /dashboard/billing/usage)
+ * @param balanceResultPath Ruta JSON del resultado del saldo(Como por ejemplo $.data.total_usage)
+ * @param category Clasificación de proveedores(Predeterminado OFFICIAL,Compatible con versiones anteriores con datos más antiguos)
+ * @param oauthConfig P1-6 OAuth Configuración de inicio de sesión(Opcional);Admite la adquisición automática de OAuth cuando no es nulo apiKey
+ * @param allowMissingApiKey v1.0.6: Ya sea para permitir vacío apiKey(authType=none/optional).
+ *   true El proveedor no requiere apiKey(Como el despliegue local de Ollama,system-speech espera).
+ *   Predeterminado false(compatible con versiones anteriores,La mayoría de los proveedores requieren apiKey).
+ * @param specId v1.0.7: Identificación de especificaciones de proveedor incorporada(Especificaciones del proveedor predeterminado providerId).
+ *   Si no es nulo, indica que la configuración se deriva de una especificación incorporada del proveedor.(Como por ejemplo "openai"/"deepseek"/"anthropic"),
+ *   tiempo de ejecución [io.zer0.ai.core.ProviderSpecMerger] Fusionará la lista de modelos predeterminados de especificaciones con la superposición del usuario.:
+ *    - spec Modelo predeterminado + modelo definido por el usuario(Eliminar duplicados con el mismo ID,Los campos de usuario tienen prioridad)
+ *    - Cuando el proveedor integrado actualiza la lista de modelos predeterminados,Los usuarios agregados ven automáticamente el nuevo modelo.
+ *   Cuando nulo representa un proveedor puramente personalizado,No involucrado en la fusión(Compatible con versiones anteriores con datos más antiguos).
+ *   Proporcionar datos existentes durante la migración de datos "preset_" La configuración del id del prefijo infiere automáticamente el specId.
+ * @param requestLimitPerMinute P1-3: Número máximo de solicitudes por minuto(RPM),0 No indica límite.
+ *   [io.zer0.ai.decorator.RateLimitDecorator] Utilice una ventana deslizante para limitar el flujo antes de enviar la solicitud,
+ *   Cuando se exceda el límite, espere un espacio en lugar de rechazarlo directamente.,Evite fallas en las solicitudes de los usuarios.
+ *   con KeyRoulette(429 interruptor de llave posterior)complementario:decorator Limitación precorriente,KeyRoulette Vuelva a intentarlo más tarde.
+ * @param maxConcurrentRequests P1-3: Número máximo de solicitudes simultáneas en vuelo,0 No indica límite.
+ *   Controlado por corrutina Semaphore,Limitar la transmisión simultánea desde el mismo proveedor/Número de solicitudes que no son de transmisión,
+ *   Evite que una gran cantidad de solicitudes simultáneas abrumen el flujo ascendente en un corto período de tiempo(Especialmente en escenarios con múltiples grupos de claves, KeyRoulette solo se preocupa por el sondeo de claves y no por la concurrencia total.).
  */
 @Serializable
 data class ProviderConfig(
@@ -69,7 +69,7 @@ data class ProviderConfig(
     val specific: ProviderSpecificConfig? = null,
     val enabled: Boolean = true,
     val builtIn: Boolean = false,
-    /** 内部运行时供应商仍可被前台使用,但不出现在供应商设置列表。 */
+    /** La interfaz aún puede utilizar proveedores de tiempo de ejecución internos,pero no aparece en la lista de configuración del proveedor. */
     val hiddenFromSettings: Boolean = false,
     val balanceApiPath: String = "",
     val balanceResultPath: String = "",
@@ -81,11 +81,11 @@ data class ProviderConfig(
     val maxConcurrentRequests: Int = 0,
 ) {
     /**
-     * v1.80 (H-CORE1): 自定义 toString 防止 apiKey 明文泄露到日志/调试输出。
-     * data class 自动生成的 toString 会暴露 apiKey,此处掩码处理。
+     * v1.80 (H-CORE1): Personalice toString para evitar que el texto sin formato de apiKey se filtre en los registros/Salida de depuración.
+     * data class El toString generado automáticamente quedará expuesto. apiKey,Procesamiento de máscara aquí.
      *
-     * v1.80 (M-CORE1): 短 key(<=12 位)泄露比例过高(原 take(4)+takeLast(4)
-     * 对 8~12 位 key 几乎不掩码),改为统一掩码为 "****",只露末 2 位用于辨识。
+     * v1.80 (M-CORE1): corto key(<=12 poco)La tasa de fuga es demasiado alta.(Originales take(4)+takeLast(4)
+     * si 8~12 Las claves de bits apenas están enmascaradas),Cambia la máscara del uniforme a "****",Sólo los últimos 2 dígitos se revelan para identificación.
      */
     override fun toString(): String {
         val maskedKey = when {
@@ -94,17 +94,17 @@ data class ProviderConfig(
             else -> ""
         }
         return "ProviderConfig(id=$id, displayName=$displayName, type=$type, baseUrl=$baseUrl, " +
-            "apiKey=$maskedKey, models=${models.size}个, specific=$specific, enabled=$enabled, " +
+            "apiKey=$maskedKey, models=${models.size}un, specific=$specific, enabled=$enabled, " +
             "builtIn=$builtIn, category=$category, oauthConfig=${
                 if (oauthConfig != null) "OAuthConfig(clientId=${oauthConfig.clientId})" else "null"
             })"
     }
 
     /**
-     * 按 type 解析实际 baseUrl(空则取默认)。
+     * analizar real por tipo baseUrl(Si está vacío, tome el valor predeterminado).
      *
-     * v1.80 (L-CORE13): 对非 https 的 baseUrl 记录 Logger.w 警告,
-     * 提醒用户明文 HTTP 传输 apiKey 风险(默认值均已是 https,仅自定义 baseUrl 可能违规)。
+     * v1.80 (L-CORE13): Advertencia de Log Logger.w para URL base que no sea https,
+     * Advertir a los usuarios sobre el riesgo de transmisión HTTP de texto claro apiKey(Los valores predeterminados son todos https,Personalizar solo baseUrl puede violar las reglas).
      */
     fun resolvedBaseUrl(): String {
         val resolved = normalizeKnownBaseUrl(
@@ -120,7 +120,7 @@ data class ProviderConfig(
         if (resolved.isNotEmpty() && !resolved.startsWith("https://", ignoreCase = true)) {
             io.zer0.common.Logger.w(
                 "ProviderConfig",
-                "baseUrl 非 https(id=$id, type=$type),apiKey 可能明文传输: $resolved",
+                "baseUrl no https(id=$id, type=$type),apiKey Posiblemente transmitido en texto claro.: $resolved",
             )
         }
         return resolved
@@ -148,23 +148,23 @@ data class ProviderConfig(
     }
 
     /**
-     * 取特定配置,specific 为 null 时按 [type] 兜底(向后兼容旧数据)。
-     * 这样调用方永远拿到非 null 的 [ProviderSpecificConfig],
-     * 可以安全 `as ProviderSpecificConfig.Anthropic` 转换。
+     * Obtener configuración específica,specific Presione cuando sea nulo [type] Ten todo en cuenta(Compatible con versiones anteriores con datos más antiguos).
+     * De esta manera, la persona que llama siempre obtendrá un valor no nulo. [ProviderSpecificConfig],
+     * puede estar seguro `as ProviderSpecificConfig.Anthropic` Convertir.
      */
     fun resolvedSpecific(): ProviderSpecificConfig = specific ?: ProviderSpecificConfig.defaultFor(type)
 
     /**
-     * 派生 Provider 能力矩阵(compat)。
+     * Derivar matriz de capacidades del proveedor(compat).
      *
-     * 调用 [ProviderCompatRules.resolve] 按 type + baseUrl + (可选) modelId 三层匹配:
-     *  1. type 决定协议级基础规则(OPENAI 全 true / ANTHROPIC / GEMINI)
-     *  2. baseUrl host 细化厂商 OpenAI 兼容层差异
-     *  3. modelId 细化具体模型支持情况
+     * llamar [ProviderCompatRules.resolve] prensa type + baseUrl + (Opcional) modelId Tres niveles de emparejamiento:
+     *  1. type Determinar las reglas básicas a nivel de protocolo(OPENAI lleno true / ANTHROPIC / GEMINI)
+     *  2. baseUrl host Refinando las diferencias entre las capas de compatibilidad OpenAI de los proveedores
+     *  3. modelId Refinar la compatibilidad con modelos específicos
      *
-     * @param modelId 当前请求的模型 id(可选)。同一 Provider 不同模型可能有不同 compat,
-     *   传入时按 model 进一步细化(如 deepseek-reasoner 关闭 tool calling);
-     *   不传时仅按 type + baseUrl 派生。
+     * @param modelId El modelo solicitado actualmente. id(Opcional). Diferentes modelos del mismo Proveedor pueden tener diferentes compat,
+     *   Al pasar, refinar más por modelo(Si el razonador de búsqueda profunda está desactivado tool calling);
+     *   Si no se aprueba, solo se derivará por tipo + baseUrl.
      */
     fun resolvedCompat(modelId: String? = null): ProviderCompat = ProviderCompatRules.resolve(type, baseUrl, modelId)
 

@@ -28,15 +28,15 @@ internal fun sanitizeDingtalkPayloadForStorage(payload: JsonObject): String = Js
 ).toString()
 
 /**
- * v2.0: 钉钉接收器 — Stream 模式 WebSocket 长连接。
+ * v2.0: receptor de uñas — Stream Modo de conexión persistente WebSocket.
  *
- * 流程:注册连接凭证 → 建立 WebSocket → 处理推送帧:
- *  - CALLBACK 机器人消息 → 解析(文本 / sessionWebhook / 发送人)→ 写入 [ChannelInbox];
- *  - SYSTEM ping → 回 ACK(opaque 原样带回);
- *  - SYSTEM disconnect → 主动断开,由外层循环重新建连。
+ * proceso:Registrar credenciales de conexión → crear WebSocket → Manipulación de marcos de empuje:
+ *  - CALLBACK Mensajes de robots → analizar(texto/sesiónWebhook/remitente)→ escribir [ChannelInbox];
+ *  - SYSTEM ping → volver ACK(opaque Devuélvelo como está);
+ *  - SYSTEM disconnect → Desconectarse activamente,Restablezca la conexión desde el bucle exterior.
  *
- * 断开后按 [RECONNECT_DELAY_MS] 退避重连;无启用渠道时退出循环。
- * 出站连接,免公网与隧道。
+ * Después de desconectar, presione [RECONNECT_DELAY_MS] Retrocede y vuelve a conectarte;Salga del bucle cuando no haya canales habilitados.
+ * Conexión saliente,Libre de red pública y túneles.
  */
 class DingtalkReceiver(
     private val channelManager: ChannelManager,
@@ -45,14 +45,14 @@ class DingtalkReceiver(
 ) {
 
     /**
-     * 当前生效的渠道配置。
+     * La configuración de canal actualmente efectiva.
      *
-     * 图片下载是异步的，需要读到与连接循环同一份配置。
+     * La descarga de imágenes es asíncrona y requiere leer la misma configuración que el bucle de conexión.
      */
     @Volatile private var currentConfig: ChannelConfig? = null
     private var job: Job? = null
 
-    /** 启动长连接(幂等;已有连接先停再起)。 */
+    /** Iniciar conexión larga(idempotente;Si hay una conexión existente, deténgase y luego comience de nuevo.). */
     fun restart() {
         job?.cancel()
         job = appScope.launch {
@@ -61,7 +61,7 @@ class DingtalkReceiver(
         }
     }
 
-    /** 停止长连接。 */
+    /** Detener conexiones largas. */
     fun stop() {
         job?.cancel()
         job = null
@@ -75,11 +75,11 @@ class DingtalkReceiver(
                     it.appId.isNotBlank() && it.appSecret.isNotBlank()
             }
             if (config == null) {
-                // v2.6.7: 无启用渠道时**挂起等待配置变化**，不再每 5 秒空转唤醒。
-                // 旧写法 delay(5s)+continue 让五个接收器每分钟合计唤醒 60 次，阻止深度休眠。
-                // 配置变更由 ChannelManager.upsert/remove/refresh 写入 channels；
-                // 设置页保存后还会调 restart() 重进本循环，两条路径都能唤醒。
-                Logger.i(TAG, "无启用中的钉钉渠道,接收循环挂起等待配置")
+                // v2.6.7: Cuando no hay ningún canal habilitado**Suspender esperando cambios de configuración**, ya no se activará inactivo cada 5 segundos.
+                // antigua forma de escribir delay(5s)+continue Permite que cinco receptores se despierten un total combinado de 60 veces por minuto, evitando el sueño profundo.
+                // Los cambios de configuración se escriben en los canales mediante ChannelManager.upsert/remove/refresh;
+                // Una vez guardada la página de configuración, se ajustará restart() Al volver a entrar en este ciclo, ambos caminos pueden despertarse.
+                Logger.i(TAG, "No hay canales activos de DingTalk,El bucle de recepción se bloquea esperando la configuración")
                 channelManager.channels.first { list ->
                     list.any {
                         it.enabled && it.platform == ChannelPlatform.DINGTALK &&
@@ -90,13 +90,13 @@ class DingtalkReceiver(
             }
             runCatching {
                 connectOnce(config)
-            }.onFailure { e -> Logger.w(TAG, "钉钉 Stream 连接异常: ${e.message}") }
+            }.onFailure { e -> Logger.w(TAG, "Anormalidad en la conexión de DingTalk Stream: ${e.message}") }
             if (!currentCoroutineContext().isActive) return
             delay(RECONNECT_DELAY_MS)
         }
     }
 
-    /** 建立一次 WebSocket 并挂起至断开。 */
+    /** Establezca un WebSocket una vez y espere hasta que se desconecte. */
     private suspend fun connectOnce(config: ChannelConfig) {
         currentConfig = config
         val connection = DingtalkClient.openStreamConnection(
@@ -104,7 +104,7 @@ class DingtalkReceiver(
             config.appSecret,
             config.dingtalkApiBase,
         ).getOrElse { e ->
-            Logger.w(TAG, "钉钉 Stream 注册失败: ${e.message}")
+            Logger.w(TAG, "Error en el registro de DingTalk Stream: ${e.message}")
             return
         }
         val disconnected = CompletableDeferred<Unit>()
@@ -115,22 +115,22 @@ class DingtalkReceiver(
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     appScope.launch {
                         runCatching { handleFrame(webSocket, text, config.id) }
-                            .onFailure { e -> Logger.w(TAG, "钉钉帧处理失败: ${e.message}") }
+                            .onFailure { e -> Logger.w(TAG, "Falló el procesamiento del marco de DingTalk: ${e.message}") }
                     }
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    Logger.i(TAG, "钉钉 WebSocket 关闭: code=$code $reason")
+                    Logger.i(TAG, "DingTalk WebSocket Cerrar: code=$code $reason")
                     disconnected.complete(Unit)
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Logger.w(TAG, "钉钉 WebSocket 断开: ${t.message}")
+                    Logger.w(TAG, "DingTalk WebSocket desconectado: ${t.message}")
                     disconnected.complete(Unit)
                 }
             },
         )
-        Logger.i(TAG, "钉钉 Stream 已连接")
+        Logger.i(TAG, "DingTalk Stream está conectado")
         try {
             disconnected.await()
         } finally {
@@ -138,7 +138,7 @@ class DingtalkReceiver(
         }
     }
 
-    /** 处理 Stream 推送帧(协议见钉钉开发者文档)。 */
+    /** Manejo de marcos push de Stream(Consulte la documentación para desarrolladores de DingTalk para conocer el protocolo.). */
     private suspend fun handleFrame(webSocket: WebSocket, frame: String, channelId: String) {
         val obj = runCatching { AppJson.parseToJsonElement(frame).jsonObject }.getOrNull() ?: return
         val type = obj["type"]?.jsonPrimitive?.contentOrNull.orEmpty()
@@ -154,7 +154,7 @@ class DingtalkReceiver(
                 webSocket.send(DingtalkClient.ackFrame(messageId, "{\"opaque\":\"$opaque\"}"))
             }
             type == "SYSTEM" && topic == "disconnect" -> {
-                Logger.i(TAG, "钉钉服务端请求断开: ${data.take(200)}")
+                Logger.i(TAG, "Desconexión de solicitud del servidor DingTalk: ${data.take(200)}")
                 webSocket.cancel()
             }
             type == "CALLBACK" && topic == "/v1.0/im/bot/messages/get" -> {
@@ -162,7 +162,7 @@ class DingtalkReceiver(
                 webSocket.send(DingtalkClient.ackFrame(messageId, "{\"response\": null}"))
             }
             else -> {
-                // 其他推送(事件/卡片回调)礼貌 ACK,不影响主链路
+                // Otro empujón(evento/Devolución de llamada de tarjeta)educado ACK,No afecta el enlace principal.
                 if (messageId.isNotBlank()) {
                     webSocket.send(DingtalkClient.ackFrame(messageId, "{\"response\": null}"))
                 }
@@ -170,16 +170,16 @@ class DingtalkReceiver(
         }
     }
 
-    /** 解析机器人消息回调并写入收件箱。 */
+    /** Analiza la devolución de llamada del mensaje del bot y escribe en la bandeja de entrada. */
     private suspend fun handleRobotMessage(dataJson: String, channelId: String, eventId: String) {
         val payload = runCatching { AppJson.parseToJsonElement(dataJson).jsonObject }.getOrNull() ?: return
-        // text 字段为对象 {"content": "..."};防御式兼容纯字符串形式
+        // text campos como objetos {"content": "..."};Defensivamente compatible con la forma pura del encordado.
         val content = (payload["text"] as? JsonObject)
             ?.get("content")?.jsonPrimitive?.contentOrNull
             ?: payload["text"]?.jsonPrimitive?.contentOrNull
         val text = content?.trim().orEmpty()
 
-        // v2.7: 图片消息的 text 为空，不能在这里丢弃；先取 downloadCode。
+        // v2.7: El texto del mensaje con imagen está vacío y no se puede descartar aquí; obtenga el código de descarga primero.
 
         val downloadCode = ChannelImageFetcher.dingtalkDownloadCode(payload)
 
@@ -189,10 +189,10 @@ class DingtalkReceiver(
         val conversationType = payload["conversationType"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val webhook = payload["sessionWebhook"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val expireAt = payload["sessionWebhookExpiredTime"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
-        // 群/单聊双键缓存,回发侧无需区分来源类型
+        // grupo/Caché de doble clave de chat único,El lado de devolución no necesita distinguir el tipo de fuente
         DingtalkSessionCache.put(listOf(conversationId, senderStaffId), webhook, expireAt)
         val encryptedReplyContextToken = protectDingtalkReplyContextToken(webhook)
-        // 群聊(conversationType=2)用会话 id,单聊用发送人 id,与发送侧目标语义一致
+        // chat grupal(conversationType=2)Usar sesión id,Chat único usando el remitente id,Consistente con la semántica objetivo del lado emisor
         val from = if (conversationType == "2") conversationId else senderStaffId
         val source = ChannelInbox.Source(
             platform = "DINGTALK",
@@ -225,14 +225,14 @@ class DingtalkReceiver(
                 if (base64 != null) {
                     ChannelInbox.record(
                         source = source,
-                        text = text.ifBlank { "[图片]" },
+                        text = text.ifBlank { "[fotos]" },
                         rawPayload = sanitizeDingtalkPayloadForStorage(payload),
                         media = ChannelInbox.Media(kind = "image", base64 = base64),
                     )
                 } else {
-                    Logger.w(TAG, "钉钉图片获取失败(from=$from)")
+                    Logger.w(TAG, "No se pudieron obtener imágenes de DingTalk(from=$from)")
 
-                    ChannelInbox.record(source, text.ifBlank { "[图片(未能获取)]" }, sanitizeDingtalkPayloadForStorage(payload))
+                    ChannelInbox.record(source, text.ifBlank { "[fotos(No se pudo obtener)]" }, sanitizeDingtalkPayloadForStorage(payload))
                 }
             }
         }
@@ -241,7 +241,7 @@ class DingtalkReceiver(
     companion object {
         private const val TAG = "DingtalkReceiver"
 
-        /** 断开后重连退避(毫秒)。 */
+        /** Retroceder al volver a conectar después de la desconexión(milisegundos). */
         private const val RECONNECT_DELAY_MS = 5_000L
     }
 }

@@ -68,8 +68,8 @@ function HostLogin({ onLogin }: { readonly onLogin: () => void }) {
 /**
  * Host (LAN) shell: PIN gate, then the mobile chat surface.
  *
- * 登录页还没拿到 Host 设置，语言按浏览器语言解析（system 规则）；连上之后
- * HostChat 会按 settings.values.language 再套一层 Provider 接管整棵树。
+ * La página de inicio de sesión aún no ha obtenido la configuración del host y el idioma se analiza según el idioma del navegador (system reglas); después de conectar
+ * HostChat Según settings.values.language, se agregará otra capa de Proveedor para hacerse cargo de todo el árbol.
  */
 export function HostApp() {
   const [authenticated, setAuthenticated] = useState(isHostAuthenticated);

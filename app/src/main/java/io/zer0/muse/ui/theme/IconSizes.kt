@@ -3,21 +3,21 @@ package io.zer0.muse.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Phase 12: muse 图标尺寸令牌(MuseIconSizes)。
+ * Phase 12: muse ficha de tamaño de icono(MuseIconSizes).
  *
- * 根治"IconButton size 24/28/32/36/44 混用"的不一致问题,
- * 同时满足 Material Design 可访问性红线(触摸目标 ≥ 48dp)。
+ * curar"IconButton size 24/28/32/36/44 Mezclar"inconsistencias,
+ * Al cumplir con las líneas rojas de accesibilidad de Material Design(tocar el objetivo ≥ 48dp).
  *
- * 令牌层级(从大到小):
- *  - [touchTarget]: 48.dp — 触摸目标最小尺寸(MD3 红线,所有 IconButton 必须用此尺寸)
- *  - [iconEmpty]:   64.dp — 空状态/错误态大图标(MuseEmptyState / MuseErrorStateBox 顶部)
- *  - [iconLarge]:   32.dp — 大图标(头像 / 强调图标)
- *  - [icon]:        24.dp — 图标视觉尺寸(MD3 标准)
- *  - [iconMedium]:  20.dp — 中图标(导航 / 操作行)
- *  - [iconSmall]:   18.dp — 小图标(列表项)
- *  - [iconTiny]:    14.dp — 微图标(标签内图标)
+ * Jerarquía de tokens(De grande a pequeño):
+ *  - [touchTarget]: 48.dp — Tamaño mínimo del objetivo táctil(MD3 linea roja,Todos los IconButtons deben usar este tamaño)
+ *  - [iconEmpty]:   64.dp — Estado vacío/Icono grande de estado de error(MuseEmptyState / MuseErrorStateBox arriba)
+ *  - [iconLarge]:   32.dp — gran icono(Icono de avatar/acento)
+ *  - [icon]:        24.dp — Tamaño visual del icono(MD3 Estándar)
+ *  - [iconMedium]:  20.dp — icono mediano(Línea de navegación/acción)
+ *  - [iconSmall]:   18.dp — pequeño icono(elemento de la lista)
+ *  - [iconTiny]:    14.dp — microicono(Icono en la etiqueta)
  *
- * 用法:
+ * Uso:
  * ```
  * IconButton(
  *     modifier = Modifier.size(MuseIconSizes.touchTarget),
@@ -28,59 +28,59 @@ import androidx.compose.ui.unit.dp
  * ```
  */
 object MuseIconSizes {
-    /** 触摸目标最小尺寸(MD3 红线,所有 IconButton 必须用此尺寸)。 */
+    /** Tamaño mínimo del objetivo táctil(MD3 linea roja,Todos los IconButtons deben usar este tamaño). */
     val touchTarget = 48.dp
 
-    /** 空状态/错误态大图标(MuseEmptyState / MuseErrorStateBox 顶部,L-ES2)。 */
+    /** Estado vacío/Icono grande de estado de error(MuseEmptyState / MuseErrorStateBox arriba,L-ES2). */
     val iconEmpty = 64.dp
 
-    /** 大图标(头像 / 强调图标)。 */
+    /** gran icono(Icono de avatar/acento). */
     val iconLarge = 32.dp
 
-    /** 图标视觉尺寸(MD3 标准)。 */
+    /** Tamaño visual del icono(MD3 Estándar). */
     val icon = 24.dp
 
-    /** 中图标(导航 / 操作行)。 */
+    /** icono mediano(Línea de navegación/acción). */
     val iconMedium = 20.dp
 
-    /** 小图标(列表项)。 */
+    /** pequeño icono(elemento de la lista). */
     val iconSmall = 18.dp
 
-    /** 微图标(标签内图标)。 */
+    /** microicono(Icono en la etiqueta). */
     val iconTiny = 14.dp
 
     /**
-     * v2.x: 自绘图标线宽 — muse-icons 生成器的权威值(1.7f)。
-     * MuseIcons.kt 为生成文件;调整线宽需同步修改生成器(muse-icons 仓库脚本),
-     * 此常量供文档化与本文件外的引用,不要在其他手写代码里散落硬编码。
+     * v2.x: Ancho de línea de icono personalizado — muse-icons El valor autorizado del generador.(1.7f).
+     * MuseIcons.kt Generar archivos para;Ajustar el ancho de línea requiere modificar el generador simultáneamente(muse-icons Guión de almacén),
+     * Esta constante es para documentación y referencia fuera de este documento.,No ensucies otros códigos escritos a mano con codificación rígida.
      */
     const val strokeWidth = 1.7f
 
-    /** B7-07: 16dp 图标/进度圈。 */
+    /** B7-07: 16dp icono/Círculo de progreso. */
     val iconSmallTiny = 16.dp
 
-    /** B7-07: 28dp 视频缩略图标。 */
+    /** B7-07: 28dp Icono de miniatura de vídeo. */
     val iconVideo = 28.dp
 
-    /** B7-07: 32dp 紧凑触控区(移除小圆点/工具按钮)。 */
+    /** B7-07: 32dp Área táctil compacta(Quitar puntos/Botón de herramienta). */
     val controlTouch = 32.dp
 
-    /** B7-07: 36dp 停止/发送胶囊内部尺寸。 */
+    /** B7-07: 36dp detenerse/Enviar dimensiones internas de la cápsula. */
     val stopButton = 36.dp
 
-    /** UI-FIX A: 顶栏实心圆按钮的视觉直径(触摸区仍为 [touchTarget])。 */
+    /** UI-FIX A: El diámetro visual del botón de círculo sólido de la barra superior.(El área táctil permanece [touchTarget]). */
     val topBarSolid = 36.dp
 
-    /** B7-07: 进度圈描边。 */
+    /** B7-07: Trazo de círculo de progreso. */
     val progressStroke = 2.dp
 
-    /** B7-07: 输入框最小高度。 */
+    /** B7-07: La altura mínima del cuadro de entrada. */
     val inputMinHeight = 36.dp
 
-    /** CMP-08: 浮动按钮默认尺寸(Material FAB 规范 56dp)。 */
+    /** CMP-08: Tamaño predeterminado del botón flotante(Material FAB normativo 56dp). */
     val fab = 56.dp
 
-    /** B7-07: 录音波形条尺寸。 */
+    /** B7-07: Tamaño de la barra de onda de grabación. */
     val waveformHeight = 24.dp
     val waveformBarWidth = 3.dp
     val waveformBarRadius = 1.5.dp

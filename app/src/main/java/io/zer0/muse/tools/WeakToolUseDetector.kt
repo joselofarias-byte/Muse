@@ -3,64 +3,64 @@ package io.zer0.muse.tools
 import io.zer0.ai.core.Model
 
 /**
- * v1.0.47 P6-2: 弱工具调用模型检测器。
+ * v1.0.47 P6-2: Las herramientas débiles se llaman verificadores de modelos.
  *
- * 识别工具调用能力较弱的模型(如 DeepSeek R1/V3 早期版本、部分开源模型),
- * 在 Agent Mode 下对这些模型进行降级处理:
- *  - 禁用并行工具调用(改为串行)
- *  - UI 提示用户当前模型工具调用能力较弱
+ * Identificar modelos con capacidades débiles de llamada de herramientas(Como las primeras versiones de DeepSeek R1/V3 y algunos modelos de código abierto.),
+ * Degradar estos modelos en modo agente:
+ *  - Deshabilitar llamadas de herramientas paralelas(Cambiar a serie)
+ *  - UI Indica al usuario que la capacidad de llamada de la herramienta del modelo actual es débil
  *
- * 判定依据:模型 ID 模式匹配。已知弱工具模型通过 [WEAK_TOOL_PATTERNS] 定义。
- * 未匹配的模型默认为 STRONG(正常工具调用)。
+ * Base del juicio:Coincidencia de patrones de identificación del modelo. Los modelos de herramientas débiles conocidos pasan [WEAK_TOOL_PATTERNS] definición.
+ * Los modelos incomparables tienen por defecto STRONG(Llamada de herramienta normal).
  */
 object WeakToolUseDetector {
 
     /**
-     * 已知弱工具调用模型的 ID 模式(正则,大小写不敏感)。
+     * Patrones de identificación de modelos llamados por herramientas débiles conocidas(regular,No distingue entre mayúsculas y minúsculas).
      *
-     * - DeepSeek R1 系列(reasoning 模型,工具调用不稳定)
-     * - DeepSeek V3/v3 早期版本(v3.2 之前并行工具调用有已知问题)
-     * - Qwen 早期版本(Qwen2 之前工具调用格式不稳定)
-     * - 部分极小模型(mini/tiny/nano 级别,参数量不足以稳定工具调用)
+     * - DeepSeek R1 Serie(reasoning modelo,La llamada a la herramienta es inestable)
+     * - DeepSeek V3/v3 versión anterior(v3.2 Hubo problemas conocidos con llamadas anteriores a herramientas paralelas.)
+     * - Qwen versión anterior(Qwen2 El formato de llamada de herramienta anterior era inestable)
+     * - Modelo parcialmente minimalista(mini/tiny/nano nivel,El número de parámetros no es suficiente para estabilizar la llamada a la herramienta.)
      */
     private val WEAK_TOOL_PATTERNS = listOf(
         Regex("(?i)deepseek-r1"),
-        Regex("(?i)deepseek-v3(?!\\.2)"), // v3 但排除 v3.2
+        Regex("(?i)deepseek-v3(?!\\.2)"), // v3 pero excluir v3.2
         Regex("(?i)deepseek-chat(?!.+v3\\.2)"),
-        Regex("(?i)qwen-?2(?![.\\d])"), // Qwen2 但非 Qwen2.5+
+        Regex("(?i)qwen-?2(?![.\\d])"), // Qwen2 pero no Qwen2.5+
         Regex("(?i)\\b(mini|tiny|nano)\\b.*\\b(instruct|chat)\\b"),
-        Regex("(?i)gemma-?2(?![.\\d])"), // Gemma2 但非 Gemma3
+        Regex("(?i)gemma-?2(?![.\\d])"), // Gemma2 pero no Gemma3
     )
 
     /**
-     * 检测给定模型是否为弱工具调用模型。
+     * Detecta si el modelo dado es un modelo de llamada de herramientas débil.
      *
-     * @param model 当前选用的模型(null 时返回 false,保守处理)
-     * @return true 表示该模型工具调用能力较弱,建议降级
+     * @param model Modelo actualmente seleccionado(null regresar cuando false,Tratar de forma conservadora)
+     * @return true Indica que la herramienta modelo tiene una capacidad de llamada débil,Recomendar bajar de categoría
      */
     fun isWeakToolModel(model: Model?): Boolean {
         if (model == null) return false
-        // 不支持工具调用的模型不算"弱",而是"不支持"
+        // Los modelos que no admiten llamadas a herramientas no se cuentan"débil",más bien"No compatible"
         if (!model.supportsToolCalling()) return false
         return WEAK_TOOL_PATTERNS.any { it.containsMatchIn(model.id) }
     }
 
     /**
-     * 获取弱工具模型的降级建议文案。
-     * 返回 null 表示非弱工具模型,无需提示。
+     * Obtenga una copia de consejos de degradación para modelos de herramientas débiles.
+     * Devuelve nulo para indicar un modelo de herramienta no débil,No se requieren indicaciones.
      */
     fun getWeakToolHint(model: Model?): String? {
-        // 显式判空,让编译器智能转换 model 为非空
+        // Prueba vacía explícita,Deje que el compilador convierta inteligentemente el modelo a no vacío
         if (model == null || !isWeakToolModel(model)) return null
         return when {
             model.id.contains(Regex("(?i)deepseek-r1")) ->
-                "DeepSeek R1 系列工具调用不稳定,已降级为串行调用"
+                "DeepSeek R1 Las llamadas a herramientas en serie son inestables,Degradado a llamada en serie"
             model.id.contains(Regex("(?i)deepseek")) ->
-                "DeepSeek 早期版本并行工具调用可能异常,已降级为串行调用"
+                "DeepSeek Las llamadas a herramientas paralelas en versiones anteriores pueden ser anormales,Degradado a llamada en serie"
             model.id.contains(Regex("(?i)qwen")) ->
-                "Qwen 早期版本工具调用格式不稳定,已降级为串行调用"
+                "Qwen El formato de llamada de herramientas de versiones anteriores es inestable,Degradado a llamada en serie"
             else ->
-                "当前模型工具调用能力较弱,已降级为串行调用"
+                "La capacidad de llamada de la herramienta del modelo actual es débil,Degradado a llamada en serie"
         }
     }
 }

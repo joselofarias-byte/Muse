@@ -14,9 +14,9 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * 录音器的边界:采集起不来时不落盘、采完之后交出的是一段完整 WAV、临时文件最后一定被删。
+ * bordes de la grabadora:Cuando la colección no se pueda iniciar, no se eliminará. Una vez completada la recopilación, se entregará un WAV completo y el archivo temporal se eliminará al final.
  *
- * 采集器全部换成假实现 —— 单测不开麦克风、不申请权限,只验「字节怎么进文件、怎么出来」。
+ * Todos los recopiladores son reemplazados por implementaciones falsas. —— No encienda el micrófono ni solicite permiso durante una prueba única,Sólo revisa "cómo entran los bytes al archivo y cómo salen".
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MpVoiceRecorderTest {
@@ -25,7 +25,7 @@ class MpVoiceRecorderTest {
     val tempDir = TemporaryFolder()
 
     @Test
-    fun `拿不到采集器时 start 返回 false 且不落任何文件`() = runTest {
+    fun `Cuando no se puede obtener el recopilador, start devuelve falso y no se descarta ningún archivo.`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
 
         val recorder = MpVoiceRecorder(
@@ -34,14 +34,14 @@ class MpVoiceRecorderTest {
             ioDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
 
-        assertFalse("初始化失败必须返回 false", recorder.start())
-        assertTrue("失败路径不该留下临时文件", cache.listFiles().isNullOrEmpty())
+        assertFalse("Debe regresar si falla la inicialización false", recorder.start())
+        assertTrue("Las rutas fallidas no deberían dejar archivos temporales", cache.listFiles().isNullOrEmpty())
     }
 
     @Test
-    fun `起采失败时 start 返回 false 且清掉临时文件`() = runTest {
+    fun `Cuando la minería falla, start devuelve falso y borra los archivos temporales.`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
-        val record = FakeAudioRecord(startError = IllegalStateException("麦克风被占用"))
+        val record = FakeAudioRecord(startError = IllegalStateException("El micrófono está ocupado."))
 
         val recorder = MpVoiceRecorder(
             directory = cache,
@@ -50,12 +50,12 @@ class MpVoiceRecorderTest {
         )
 
         assertFalse(recorder.start())
-        assertTrue("起采失败要释放采集器", record.released)
-        assertTrue("起采失败不该留下临时文件", cache.listFiles().isNullOrEmpty())
+        assertTrue("Si la minería falla, el recolector debe ser liberado.", record.released)
+        assertTrue("No extraer no debería dejar archivos temporales", cache.listFiles().isNullOrEmpty())
     }
 
     @Test
-    fun `停止后交出带 WAV 头的字节并删掉临时文件`() = runTest {
+    fun `Después de detenerse, entregue los bytes con el encabezado WAV y elimine el archivo temporal`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
         val pcm = ByteArray(PCM_BYTES) { SAMPLE_BYTE }
         val record = FakeAudioRecord(chunks = listOf(pcm))
@@ -69,18 +69,18 @@ class MpVoiceRecorderTest {
         assertTrue(recorder.start())
         val wav = recorder.stop()
 
-        assertNotNull("采到数据就该有音频", wav)
-        assertEquals("WAV = 44 字节头 + PCM", 44 + PCM_BYTES, wav!!.size)
+        assertNotNull("Cuando se recopilan datos, debe haber audio.", wav)
+        assertEquals("WAV = 44 encabezado de byte + PCM", 44 + PCM_BYTES, wav!!.size)
         assertEquals("RIFF", String(wav, 0, 4, Charsets.US_ASCII))
         assertEquals(PCM_BYTES, leInt(wav, 40))
         assertEquals(MpVoiceRecorder.SAMPLE_RATE, leInt(wav, 24))
-        assertEquals("首个采样原样落到头部之后", SAMPLE_BYTE, wav[44])
-        assertTrue("交付后临时文件必须删掉", cache.listFiles().isNullOrEmpty())
-        assertTrue("停止后要释放采集器", record.released)
+        assertEquals("Después de que la primera muestra caiga a la cabeza tal como está", SAMPLE_BYTE, wav[44])
+        assertTrue("Los archivos temporales deben eliminarse después de la entrega.", cache.listFiles().isNullOrEmpty())
+        assertTrue("Libere el recolector después de detenerse.", record.released)
     }
 
     @Test
-    fun `一个字节都没采到时 stop 返回 null 且不残留文件`() = runTest {
+    fun `Cuando no se recopila ni un solo byte, stop devuelve nulo y no quedan archivos.`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
         val record = FakeAudioRecord(chunks = emptyList())
 
@@ -92,12 +92,12 @@ class MpVoiceRecorderTest {
 
         assertTrue(recorder.start())
 
-        assertNull("没有音频就没有结果", recorder.stop())
+        assertNull("Sin audio, sin resultados", recorder.stop())
         assertTrue(cache.listFiles().isNullOrEmpty())
     }
 
     @Test
-    fun `取消后停采并删掉临时文件`() = runTest {
+    fun `Deje de minar y elimine archivos temporales después de la cancelación`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
         val record = FakeAudioRecord(chunks = listOf(ByteArray(PCM_BYTES)))
 
@@ -110,14 +110,14 @@ class MpVoiceRecorderTest {
         assertTrue(recorder.start())
         recorder.cancel()
 
-        assertTrue("取消要停采", record.stopped)
-        assertTrue("取消要释放采集器", record.released)
-        assertTrue("取消要删掉临时文件", cache.listFiles().isNullOrEmpty())
-        assertNull("取消过就没有音频可交", recorder.stop())
+        assertTrue("Cancelar para dejar de comprar", record.stopped)
+        assertTrue("Cancelar para liberar al cobrador", record.released)
+        assertTrue("Cancelar para eliminar archivos temporales", cache.listFiles().isNullOrEmpty())
+        assertNull("Si cancelas, no habrá audio para entregar.", recorder.stop())
     }
 
     @Test
-    fun `清理只删超过一小时的本模块前缀文件`() {
+    fun `Limpie y elimine solo los archivos de prefijo de este módulo que tengan más de una hora.`() {
         val cache = tempDir.newFolder(CACHE_DIR)
         val now = 1_700_000_000_000L
         val fresh = cache.recordingFile("mp-voice-fresh.pcm", touchedAt = now - 1_000L)
@@ -126,10 +126,10 @@ class MpVoiceRecorderTest {
 
         val removed = cleanupStaleRecordings(cache, now = now)
 
-        assertEquals("只该删那一个旧的本前缀文件", 1, removed)
-        assertTrue("刚改过的录音不能删", fresh.exists())
-        assertTrue("不是本模块前缀的文件不能删", foreign.exists())
-        assertFalse("超过一小时的残留要删掉", stale.exists())
+        assertEquals("Sólo se debe eliminar el archivo de prefijo antiguo.", 1, removed)
+        assertTrue("La grabación que acaba de cambiar no se puede eliminar.", fresh.exists())
+        assertTrue("Los archivos que no tengan el prefijo de este módulo no se pueden eliminar.", foreign.exists())
+        assertFalse("Los residuos que superen la hora deberán eliminarse.", stale.exists())
     }
 
     private fun File.recordingFile(name: String, touchedAt: Long): File = File(this, name).apply {
@@ -151,10 +151,10 @@ class MpVoiceRecorderTest {
 }
 
 /**
- * 假采集器:按给定的块吐数据,吐完就报 -1(与 AudioRecord.read 的约定一致)。
+ * coleccionista falso:escupir datos en trozos dados,Informe después de vomitar -1(De acuerdo con la convención de AudioRecord.read).
  *
- * @param chunks 依次交给调用方的 PCM 块
- * @param startError 非空时起采直接抛,用来验失败路径
+ * @param chunks Bloque PCM que se entrega a la persona que llama por turno
+ * @param startError Cuando no esté vacío, recogerlo y tirarlo directamente.,Se utiliza para verificar rutas fallidas.
  */
 private class FakeAudioRecord(
     private val chunks: List<ByteArray> = emptyList(),
