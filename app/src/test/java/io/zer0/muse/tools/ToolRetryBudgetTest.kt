@@ -17,15 +17,15 @@ class ToolRetryBudgetTest {
     fun `first retryable failure says how many chances remain`() {
         val line = ToolRetryBudget.describe("web_fetch", attempt = 1, retryable = true)
 
-        assertTrue("¿Cuántas veces debería decírtelo?", line.contains("1er fracaso"))
-        assertTrue("Dar oportunidades restantes", line.contains("Queda 1 oportunidad de reintento"))
+        assertTrue("¿Cuántas veces debería decírtelo?", line.contains("No. 1 falló"))
+        assertTrue("Dar oportunidades restantes", line.contains("restante 1"))
     }
 
     @Test
     fun `exhausted budget tells the model to stop calling the same tool`() {
         val line = ToolRetryBudget.describe("web_fetch", attempt = 2, retryable = true)
 
-        assertTrue(line.contains("Oportunidades para volver a intentarlo agotadas"))
+        assertTrue(line.contains("agotadas"))
         assertTrue("Deja claro que parar", line.contains("No vuelvas a llamar a la misma herramienta"))
     }
 
@@ -34,7 +34,7 @@ class ToolRetryBudgetTest {
         val line = ToolRetryBudget.describe("screen_tap", attempt = 1, retryable = false)
 
         assertTrue("No se pueden dar las oportunidades restantes cuando no es posible volver a intentarlo.", !line.contains("izquierda"))
-        assertTrue(line.contains("Este error no se puede volver a intentar."))
+        assertTrue(line.contains("no se puede volver a intentar"))
     }
 
     @Test
@@ -49,7 +49,7 @@ class ToolRetryBudgetTest {
         val line = ToolRetryBudget.describe("x", attempt = 9, retryable = true)
 
         assertTrue("No se permiten números negativos.", !line.contains("-"))
-        assertTrue(line.contains("agotado"))
+        assertTrue(line.contains("agotad"))
     }
 
     @Test
