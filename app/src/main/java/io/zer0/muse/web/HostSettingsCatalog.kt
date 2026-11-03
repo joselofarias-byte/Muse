@@ -74,6 +74,7 @@ internal object HostSettingsCatalog {
             "settings_group_tools",
             link("tools", "settings_screen_tools", "settings_screen_tools_desc", "wrench"),
             link("permission_wizard", "permission_wizard_title", "permission_wizard_desc", "shieldCheck"),
+            link("bridge", "bridge_settings_title", "bridge_settings_desc", "terminal"),
             link("web_search", "settings_screen_web_search", "settings_screen_web_search_desc", "globe"),
         ),
         group(
