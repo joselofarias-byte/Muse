@@ -23,7 +23,7 @@ import org.junit.Test
 class MpVoiceInputControllerTest {
 
     @Test
-    fun `Cuando esté inactivo, haga clic en el micrófono para ingresar a la grabación y comenzar a contar desde cero segundos.`() = runTest {
+    fun `Cuando esté inactivo, haga clic en el micrófono para ingresar a la grabación y comenzar a contar desde cero segundos`() = runTest {
         val rig = Rig()
         val controller = rig.controller(backgroundScope)
 
@@ -36,7 +36,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Añade uno cada segundo durante la grabación.`() = runTest {
+    fun `Añade uno cada segundo durante la grabación`() = runTest {
         val rig = Rig()
         val controller = rig.controller(backgroundScope)
         controller.start()
@@ -47,7 +47,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Después de finalizar la grabación, ingrese primero la transcripción, luego entregue el texto y vuelva al estado inactivo.`() = runTest {
+    fun `Después de finalizar la grabación, ingrese primero la transcripción, luego entregue el texto y vuelva al estado inactivo`() = runTest {
         val rig = Rig()
         val controller = rig.controller(backgroundScope)
         controller.start()
@@ -84,7 +84,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Se ignora hacer clic nuevamente en el micrófono durante la transcripción.`() = runTest {
+    fun `Se ignora hacer clic nuevamente en el micrófono durante la transcripción`() = runTest {
         val rig = Rig()
         val gate = CompletableDeferred<String?>()
         rig.onTranscribe = { gate.await() }
@@ -108,7 +108,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Cuando el resultado del reconocimiento está vacío, indica que el mensaje no se escuchó claramente y vuelve al estado inactivo.`() = runTest {
+    fun `Cuando el resultado del reconocimiento está vacío, indica que el mensaje no se escuchó claramente y vuelve al estado inactivo`() = runTest {
         val rig = Rig()
         rig.onTranscribe = { "   " }
         val controller = rig.controller(backgroundScope)
@@ -123,7 +123,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Cuando no se recopile ningún audio, se mostrará el mensaje y el sistema volverá al estado inactivo.`() = runTest {
+    fun `Cuando no se recopile ningún audio, se mostrará el mensaje y el sistema volverá al estado inactivo`() = runTest {
         val rig = Rig(capture = FakeCapture(wav = null))
         val controller = rig.controller(backgroundScope)
         controller.start()
@@ -151,7 +151,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Cuando no se puede iniciar la grabadora, el estado sigue inactivo y se emite una devolución de llamada de error.`() = runTest {
+    fun `Cuando no se puede iniciar la grabadora, el estado sigue inactivo y se emite una devolución de llamada de error`() = runTest {
         val rig = Rig(capture = FakeCapture(startResult = false))
         val controller = rig.controller(backgroundScope)
 
@@ -163,7 +163,7 @@ class MpVoiceInputControllerTest {
     }
 
     @Test
-    fun `Cuando la configuración no admite la grabación, el micrófono no entrará en la grabación.`() = runTest {
+    fun `Cuando la configuración no admite la grabación, el micrófono no entrará en la grabación`() = runTest {
         val rig = Rig(canRecord = false)
         val controller = rig.controller(backgroundScope)
 

@@ -55,7 +55,7 @@ class RagCitationChipsTest {
     }
 
     @Test
-    fun `chip Proporcionar número de referencia y nombre del documento. contentDescription`() {
+    fun `chip Proporcionar número de referencia y nombre del documento contentDescription`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val expected = context.getString(
             R.string.chat_citation_chip_a11y,

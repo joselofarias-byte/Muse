@@ -44,7 +44,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `Moments trae las últimas ocho conversaciones y marca al hablante.`() = runBlocking {
+    fun `Moments trae las últimas ocho conversaciones y marca al hablante`() = runBlocking {
         seedThread()
         seedMessages(count = 12)
 
@@ -69,7 +69,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `Cada conversación está limitada a 100 palabras.`() = runBlocking {
+    fun `Cada conversación está limitada a 100 palabras`() = runBlocking {
         seedThread()
         val longText = (1..40).joinToString("") { index -> "No.${index}segmento." }
         insertMessage(index = 1, sender = MpActorType.USER, content = longText)
@@ -81,7 +81,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `Moments utiliza la publicación anterior como referencia para evitar duplicaciones.`() = runBlocking {
+    fun `Moments utiliza la publicación anterior como referencia para evitar duplicaciones`() = runBlocking {
         seedThread()
         insertMoment(id = "old", content = "Hace mucho tiempo", at = 10L)
         val latest = (1..40).joinToString("") { index -> "No.${index}segmento." }
@@ -96,7 +96,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `Los mensajes privados incluyen conversación y tiempo, pero no referencia.`() = runBlocking {
+    fun `Los mensajes privados incluyen conversación y tiempo, pero no referencia`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
         insertMoment(id = "m1", content = "hace viento hoy", at = 10L)
@@ -110,7 +110,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `El orden del círculo de amigos es contexto, tiempo e instrucciones de cierre.`() = runBlocking {
+    fun `El orden del círculo de amigos es contexto, tiempo e instrucciones de cierre`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
         insertMoment(id = "m1", content = "hace viento hoy", at = 10L)
@@ -124,7 +124,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `El orden de los mensajes privados es contexto, hora e instrucciones de cierre.`() = runBlocking {
+    fun `El orden de los mensajes privados es contexto, hora e instrucciones de cierre`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
 
@@ -136,7 +136,7 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `Trae la hora y el período actual.`() = runBlocking {
+    fun `Trae la hora y el período actual`() = runBlocking {
         val evening = material(at = EVENING).forMoment(CHARACTER_ID)
         val dawn = material(at = DAWN).forMoment(CHARACTER_ID)
 

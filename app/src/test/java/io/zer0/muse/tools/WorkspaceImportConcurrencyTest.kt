@@ -82,7 +82,7 @@ class WorkspaceImportConcurrencyTest {
     }
 
     @Test
-    fun `Después de la importación simultánea, continuar importando un tercer archivo con el mismo nombre aún pospondrá el número de serie.`() {
+    fun `Después de la importación simultánea, continuar importando un tercer archivo con el mismo nombre aún pospondrá el número de serie`() {
         val first = sourceFile("import-c.txt", "c1")
         val second = sourceFile("import-d.txt", "c2")
         val third = sourceFile("import-e.txt", "c3")

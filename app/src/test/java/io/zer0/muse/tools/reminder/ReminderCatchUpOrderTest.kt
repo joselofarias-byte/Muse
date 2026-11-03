@@ -17,7 +17,7 @@ import java.io.File
 class ReminderCatchUpOrderTest {
 
     @Test
-    fun `Los recordatorios vencidos deben colocarse y eliminarse antes de emitir una notificación de reemplazo.`() {
+    fun `Los recordatorios vencidos deben colocarse y eliminarse antes de emitir una notificación de reemplazo`() {
         val source = File("src/main/java/io/zer0/muse/tools/reminder/ReminderStore.kt").readText()
         val start = source.indexOf("private fun rescheduleAllLocked(")
         val end = source.indexOf("private fun catchUpNotify", startIndex = start)

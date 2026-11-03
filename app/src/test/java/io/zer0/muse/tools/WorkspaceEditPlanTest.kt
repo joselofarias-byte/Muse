@@ -20,14 +20,14 @@ class WorkspaceEditPlanTest {
     }
 
     @Test
-    fun `Si el fragmento aparece 0 veces, será rechazado y se indicará que no se puede encontrar.`() {
+    fun `Si el fragmento aparece 0 veces, será rechazado y se indicará que no se puede encontrar`() {
         val message = rejectionMessage(plan("primera linea\nsegunda linea\n", "fragmento que no existe", "nuevo contenido"))
         assertTrue(message, message.contains("No se puede encontrar el fragmento."))
         assertTrue(message, message.contains("Archivo sin cambios"))
     }
 
     @Test
-    fun `Cuando un fragmento aparece varias veces, rechácelo e informe el número de apariciones.`() {
+    fun `Cuando un fragmento aparece varias veces, rechácelo e informe el número de apariciones`() {
         val message = rejectionMessage(plan("x\ntarget\ny\ntarget\n", "target", "ok"))
         assertTrue(message, message.contains("Aparece 2 veces"))
         assertTrue(message, message.contains("solo"))
@@ -42,19 +42,19 @@ class WorkspaceEditPlanTest {
     }
 
     @Test
-    fun `La cadena_antigua vacía se rechaza directamente en lugar de insertarse.`() {
+    fun `La cadena_antigua vacía se rechaza directamente en lugar de insertarse`() {
         val message = rejectionMessage(plan("abc", "", "x"))
         assertTrue(message, message.contains("old_string no puede estar vacío"))
     }
 
     @Test
-    fun `CRLF Si la notación LF no se encuentra en el archivo, indique la diferencia en los saltos de línea.`() {
+    fun `CRLF Si la notación LF no se encuentra en el archivo, indique la diferencia en los saltos de línea`() {
         val message = rejectionMessage(plan("a\r\nb\r\nc\r\n", "a\nb", "x"))
         assertTrue(message, message.contains("CRLF"))
     }
 
     @Test
-    fun `Las ocurrencias superpuestas también se cuentan como múltiples veces.`() {
+    fun `Las ocurrencias superpuestas también se cuentan como múltiples veces`() {
         assertEquals(2, WorkspaceTool.countOccurrences("aaa", "aa"))
         assertEquals(1, WorkspaceTool.countOccurrences("abc", "abc"))
         assertEquals(0, WorkspaceTool.countOccurrences("abc", "z"))
@@ -86,7 +86,7 @@ class WorkspaceEditPlanTest {
     }
 
     @Test
-    fun `Los cambios en el encabezado del archivo comienzan en la línea 1 y no tienen contexto anterior.`() {
+    fun `Los cambios en el encabezado del archivo comienzan en la línea 1 y no tienen contexto anterior`() {
         val diff = WorkspaceTool.diffLines("head\nb\nc\n", "HEAD\nb\nc\n")
         assertEquals(1, diff.firstChangedLine)
         assertEquals(1, diff.oldLineCount)

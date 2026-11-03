@@ -43,7 +43,7 @@ class ChatMediaGenHostVoiceTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun `En la misma ronda, tres voces caen sobre tres mensajes del asistente y están ordenadas en el orden de entrega.`() = runBlocking {
+    fun `En la misma ronda, tres voces caen sobre tres mensajes del asistente y están ordenadas en el orden de entrega`() = runBlocking {
         val fixture = displayedFixture()
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
@@ -58,7 +58,7 @@ class ChatMediaGenHostVoiceTest {
     }
 
     @Test
-    fun `El primer mensaje de voz sólo está vinculado al mensaje ancla y no envía mensajes adicionales.`() = runBlocking {
+    fun `El primer mensaje de voz sólo está vinculado al mensaje ancla y no envía mensajes adicionales`() = runBlocking {
         val fixture = displayedFixture()
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
@@ -76,7 +76,7 @@ class ChatMediaGenHostVoiceTest {
     }
 
     @Test
-    fun `Cuando el mensaje ancla ya tenga texto, el texto no se sobrescribirá.`() = runBlocking {
+    fun `Cuando el mensaje ancla ya tenga texto, el texto no se sobrescribirá`() = runBlocking {
         val fixture = displayedFixture(anchorContent = EXISTING_TEXT)
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))
 
@@ -105,7 +105,7 @@ class ChatMediaGenHostVoiceTest {
     }
 
     @Test
-    fun `Cuando no se muestra la conversación, se insertan tres voces en la biblioteca y se adjuntan a diferentes mensajes a través de adjuntarMediaToMessage.`() = runBlocking {
+    fun `Cuando no se muestra la conversación, se insertan tres voces en la biblioteca y se adjuntan a diferentes mensajes a través de adjuntarMediaToMessage`() = runBlocking {
         val repository = VoiceRepositoryFake()
         val fixture = displayedFixture(displayed = false, repository = repository.asMock())
         val slot = requireNotNull(fixture.host.begin(MediaGenKind.VOICE))

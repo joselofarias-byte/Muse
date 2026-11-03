@@ -15,7 +15,7 @@ class DataCardRendererTest {
     private val info = Color(0xFF2196F3)
 
     @Test
-    fun `barWidthFor Los datos vacíos devuelven 0 y no generan una excepción de división por cero.`() {
+    fun `barWidthFor Los datos vacíos devuelven 0 y no generan una excepción de división por cero`() {
         assertEquals(0f, barWidthFor(canvasWidth = 300f, barCount = 0, gap = 6f), 0.001f)
     }
 
@@ -26,17 +26,17 @@ class DataCardRendererTest {
     }
 
     @Test
-    fun `barWidthFor Cuando el lienzo es demasiado estrecho, se reduce a 0 en lugar de a un número negativo.`() {
+    fun `barWidthFor Cuando el lienzo es demasiado estrecho, se reduce a 0 en lugar de a un número negativo`() {
         assertEquals(0f, barWidthFor(canvasWidth = 10f, barCount = 10, gap = 6f), 0.001f)
     }
 
     @Test
-    fun `barWidthFor Una sola columna llena el lienzo.`() {
+    fun `barWidthFor Una sola columna llena el lienzo`() {
         assertEquals(200f, barWidthFor(canvasWidth = 200f, barCount = 1, gap = 6f), 0.001f)
     }
 
     @Test
-    fun `donut Los colores de la leyenda están en el mismo orden que los colores del sector.`() {
+    fun `donut Los colores de la leyenda están en el mismo orden que los colores del sector`() {
         val palette = donutSectorPalette(accent, info)
         for (index in 0..7) {
             assertEquals(
@@ -48,7 +48,7 @@ class DataCardRendererTest {
     }
 
     @Test
-    fun `donut El primer elemento de la paleta es el color de acento y los colores se reciclan.`() {
+    fun `donut El primer elemento de la paleta es el color de acento y los colores se reciclan`() {
         val palette = donutSectorPalette(accent, info)
         assertEquals(5, palette.size)
         assertEquals(accent, sectorColor(palette, 0))

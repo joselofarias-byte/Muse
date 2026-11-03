@@ -37,7 +37,7 @@ class TokenEstimatorTest {
     }
 
     @Test
-    fun `Aproximadamente 4 caracteres en inglés. per token`() {
+    fun `Aproximadamente 4 caracteres en inglés per token`() {
         // "hello" = 1 token (cl100k_base),Verifique aproximadamente el orden de magnitud.
         val tokens = TokenEstimator.estimate("hello hello hello hello")
         assertTrue("5 hola cita 5+ token,real $tokens", tokens >= 4)
@@ -94,7 +94,7 @@ class TokenEstimatorTest {
     }
 
     @Test
-    fun `Cuando la lista de mensajes vacía solo contiene mensajes del sistema, es igual a la cantidad de tokens del mensaje del sistema.`() {
+    fun `Cuando la lista de mensajes vacía solo contiene mensajes del sistema, es igual a la cantidad de tokens del mensaje del sistema`() {
         val sysPrompt = "You are a helpful assistant."
         val total = TokenEstimator.estimate(emptyList(), systemPrompt = sysPrompt)
         val sysOnly = TokenEstimator.estimate(sysPrompt)
@@ -115,7 +115,7 @@ class TokenEstimatorTest {
     }
 
     @Test
-    fun `El token total de la lista de mensajes es igual al sistema más el contenido de cada mensaje más la sobrecarga fija de cada mensaje.`() {
+    fun `El token total de la lista de mensajes es igual al sistema más el contenido de cada mensaje más la sobrecarga fija de cada mensaje`() {
         // verificar estimate(messages, systemPrompt) = estimate(systemPrompt) + Σ estimate(msg.content) + Gastos generales fijos por mensaje
         // M6: Aproximadamente 4 tokens por mensaje(OpenAI Gastos generales fijos por mensaje del protocolo.:role marca + delimitador)
         val perMessageOverhead = 4
@@ -138,7 +138,7 @@ class TokenEstimatorTest {
     }
 
     @Test
-    fun `La sobrecarga fija por mensaje aumenta linealmente con el número de mensajes.`() {
+    fun `La sobrecarga fija por mensaje aumenta linealmente con el número de mensajes`() {
         // M6: Aproximadamente 4 tokens por mensaje.N Hay más de 1 mensaje idéntico. (N-1)*4 + (N-1)*contentTokens
         val msg = io.zer0.ai.core.UIMessage(
             role = io.zer0.ai.core.MessageRole.USER,
@@ -156,7 +156,7 @@ class TokenEstimatorTest {
     }
 
     @Test
-    fun `La estimación para texto mixto en chino e inglés es mayor que 0 y entre chino puro e inglés puro.`() {
+    fun `La estimación para texto mixto en chino e inglés es mayor que 0 y entre chino puro e inglés puro`() {
         val pureEn = TokenEstimator.estimate("Hello World")
         val pureCn = TokenEstimator.estimate("hola mundo")
         val mixed = TokenEstimator.estimate("Hello hola mundo mundo")

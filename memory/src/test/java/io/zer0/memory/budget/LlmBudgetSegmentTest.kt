@@ -72,7 +72,7 @@ class LlmBudgetSegmentTest {
     }
 
     @Test
-    fun `Cuando el presupuesto es insuficiente, hoy al menos se recorta y se mantiene. longterm`() {
+    fun `Cuando el presupuesto es insuficiente, hoy al menos se recorta y se mantiene longterm`() {
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 300)
         // today Es la sección del medio la que ha sido estirada.(baja prioridad),Se le debe cortar la cola
         assertTrue("Después de estirar la sección media, se debe activar la marca de truncamiento.: $result", result.contains("(memory truncated)"))
@@ -83,7 +83,7 @@ class LlmBudgetSegmentTest {
     }
 
     @Test
-    fun `Cuando el presupuesto es insuficiente, el largo plazo no se quedará en cola hasta el primero y se descartará.`() {
+    fun `Cuando el presupuesto es insuficiente, el largo plazo no se quedará en cola hasta el primero y se descartará`() {
         // retorno del núcleo:B-20 Anteriormente, si la cola se truncaba, se descartaba primero. longterm;Ahora el plazo final debería estar todavía al final del texto.
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 300)
         val longtermIdx = result.indexOf("## situación a largo plazo")
@@ -95,14 +95,14 @@ class LlmBudgetSegmentTest {
     // ── ③ Genere registros cuando se produzca un truncamiento y no arroje excepciones ────────────────────────────────────
 
     @Test
-    fun `Si el presupuesto excede el presupuesto, el resultado se truncará sin generar una excepción.`() {
+    fun `Si el presupuesto excede el presupuesto, el resultado se truncará sin generar una excepción`() {
         // Por pequeño que sea el presupuesto,debería devolver de forma segura resultados que no estén en blanco,No lanzar excepción
         val result = LlmBudget.truncateToTokenBudget(sampleMarkdown(), 3)
         assertTrue("El resultado no puede ser una cadena vacía.", result.isNotBlank())
     }
 
     @Test
-    fun `El texto vacío y un presupuesto de 0 mantienen el comportamiento original.`() {
+    fun `El texto vacío y un presupuesto de 0 mantienen el comportamiento original`() {
         assertEquals("", LlmBudget.truncateToTokenBudget("", 100))
         val md = sampleMarkdown()
         // budget=0 Tratado como sin restricciones,Volver al texto original
@@ -112,7 +112,7 @@ class LlmBudgetSegmentTest {
     // ── Lógica de corte/segmentación de funciones puras ────────────────────────────────────────────
 
     @Test
-    fun `splitSegments Las funciones puras se dividen correctamente en cuatro segmentos.`() {
+    fun `splitSegments Las funciones puras se dividen correctamente en cuatro segmentos`() {
         val segments = LlmBudget.splitSegments(sampleMarkdown())
         assertEquals(4, segments.size)
         assertEquals("## hechos importantes", segments[0].heading)
@@ -121,7 +121,7 @@ class LlmBudgetSegmentTest {
     }
 
     @Test
-    fun `truncateBySegments La función pura solo corta la sección intermedia y deja la sección de alta prioridad sin cambios.`() {
+    fun `truncateBySegments La función pura solo corta la sección intermedia y deja la sección de alta prioridad sin cambios`() {
         val segments = LlmBudget.splitSegments(sampleMarkdown())
         val result = LlmBudget.truncateBySegments(segments, budget = 300)
         // La primera sección de hechos y la última sección de largo plazo se mantienen intactas con alta prioridad.

@@ -33,7 +33,7 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `Si una sola partida excede el presupuesto, se conservará al menos la última partida.`() {
+    fun `Si una sola partida excede el presupuesto, se conservará al menos la última partida`() {
         val history = (1..3).map { msg(it) }
         val result = WarmupHistory.trimToBudget(history, budgetTokens = 50) { 100 }
         assertTrue(result.truncated)
@@ -49,14 +49,14 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `Cálculo de presupuesto y mochilero.`() {
+    fun `Cálculo de presupuesto y mochilero`() {
         assertEquals(4800, WarmupHistory.budgetTokensFor(8000))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.budgetTokensFor(0))
         assertEquals(WarmupHistory.FALLBACK_BUDGET_TOKENS, WarmupHistory.budgetTokensFor(-1))
     }
 
     @Test
-    fun `La sesión informativa es un mensaje del sistema y no se puede reclamar.`() {
+    fun `La sesión informativa es un mensaje del sistema y no se puede reclamar`() {
         val briefing = WarmupHistory.briefingMessage(truncated = true)
         assertEquals(MessageRole.SYSTEM, briefing.role)
         assertTrue(briefing.content.contains("importar"))
@@ -68,7 +68,7 @@ class WarmupHistoryTest {
     }
 
     @Test
-    fun `El presupuesto de caracteres de compresión es el mismo que el presupuesto de token de calentamiento.`() {
+    fun `El presupuesto de caracteres de compresión es el mismo que el presupuesto de token de calentamiento`() {
         // El presupuesto de compresión y el presupuesto de calentamiento ya no tienen el mismo valor: la compresión también deduce la reserva de salida y el margen de seguridad.
         // De lo contrario, el modelo llenará la ventana después de escribir una respuesta larga. El presupuesto de calentamiento sólo es responsable de "cuánto historial cargar".
         assertTrue(

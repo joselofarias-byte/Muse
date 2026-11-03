@@ -28,7 +28,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `TIMED_OUT Se puede volver a intentar, pero CANCELADO no solicita activamente volver a intentarlo.`() {
+    fun `TIMED_OUT Se puede volver a intentar, pero CANCELADO no solicita activamente volver a intentarlo`() {
         assertTrue(TaskStepStatus.FAILED.isRetryable)
         assertTrue(TaskStepStatus.TIMED_OUT.isRetryable)
         assertFalse(TaskStepStatus.CANCELLED.isRetryable)
@@ -37,7 +37,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `La tarjeta de tarea con el paso de tiempo de espera alcanza el estado final,Los tiempos de espera no están incluidos en el progreso.`() {
+    fun `La tarjeta de tarea con el paso de tiempo de espera alcanza el estado final,Los tiempos de espera no están incluidos en el progreso`() {
         val card = TaskCardData(
             id = "c1",
             title = "t",
@@ -54,7 +54,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `Una tarjeta de tarea con un paso de cancelación llega al estado final y no tiene pasos de reintento.`() {
+    fun `Una tarjeta de tarea con un paso de cancelación llega al estado final y no tiene pasos de reintento`() {
         val card = TaskCardData(
             id = "c2",
             title = "t",
@@ -84,7 +84,7 @@ class TaskCardTerminalStatusTest {
     }
 
     @Test
-    fun `Agregar nuevos valores a una enumeración no cambia el número de secuencia de los valores existentes.`() {
+    fun `Agregar nuevos valores a una enumeración no cambia el número de secuencia de los valores existentes`() {
         // persistencia/Barandilla de compatibilidad:El orden de los valores de enumeración existentes debe permanecer sin cambios.,Sólo se pueden agregar nuevos valores.
         assertEquals(0, TaskStepStatus.PENDING.ordinal)
         assertEquals(1, TaskStepStatus.RUNNING.ordinal)

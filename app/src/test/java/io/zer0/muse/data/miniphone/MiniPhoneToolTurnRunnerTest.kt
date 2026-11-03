@@ -35,7 +35,7 @@ import org.junit.Test
 class MiniPhoneToolTurnRunnerTest {
 
     @Test
-    fun `La rueda de herramientas envía la actividad primero y luego el texto y completa el resultado en un mensaje de HERRAMIENTA.`() = runBlocking {
+    fun `La rueda de herramientas envía la actividad primero y luego el texto y completa el resultado en un mensaje de HERRAMIENTA`() = runBlocking {
         val chatService = mockk<ChatService>()
         val registry = registryWith(def("quick_note_list"))
         coEvery { registry.executeFromJson("quick_note_list", "{}") } returns "hay una nota"
@@ -88,7 +88,7 @@ class MiniPhoneToolTurnRunnerTest {
     }
 
     @Test
-    fun `Una vez agotada la herramienta de tres ruedas, se enviará nuevamente una solicitud sin herramienta.`() = runBlocking {
+    fun `Una vez agotada la herramienta de tres ruedas, se enviará nuevamente una solicitud sin herramienta`() = runBlocking {
         val chatService = mockk<ChatService>()
         val registry = registryWith(def("quick_note_list"))
         val sent = stubCompletions(chatService) { index, tools ->
@@ -112,7 +112,7 @@ class MiniPhoneToolTurnRunnerTest {
     }
 
     @Test
-    fun `Cuando la generación se cuelgue, presione tiempo de espera. Failed`() = runBlocking {
+    fun `Cuando la generación se cuelgue, presione tiempo de espera Failed`() = runBlocking {
         val chatService = mockk<ChatService>()
         coEvery {
             chatService.completeText(

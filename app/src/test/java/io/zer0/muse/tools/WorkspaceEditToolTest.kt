@@ -92,7 +92,7 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `Después del reemplazo normal, el resto del archivo permanece sin cambios palabra por palabra.`() {
+    fun `Después del reemplazo normal, el resto del archivo permanece sin cambios palabra por palabra`() {
         val original =
             "# Título\n" +
                 "\n" +
@@ -141,7 +141,7 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `El recibo tiene una diferencia a nivel de línea que indica qué líneas se han modificado.`() {
+    fun `El recibo tiene una diferencia a nivel de línea que indica qué líneas se han modificado`() {
         val original = (1..8).joinToString("\n") { "line$it" } + "\n"
         seed("h.txt", original)
 
@@ -171,7 +171,7 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `find_tools Esta herramienta se puede encontrar usando palabras clave de edición.`() {
+    fun `find_tools Esta herramienta se puede encontrar usando palabras clave de edición`() {
         // Descubribilidad: una vez distribuida la herramienta, hay que encontrarla. Tanto el nombre como la descripción deben contener palabras interrogativas comunes.
         val defs = WorkspaceTool.toolDefs()
         listOf("Editar archivo", "Editar", "reemplazar", "Modificar", "workspace edit").forEach { query ->
@@ -189,7 +189,7 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `Si el archivo no existe, se informará un error en lugar de crear uno nuevo.`() {
+    fun `Si el archivo no existe, se informará un error en lugar de crear uno nuevo`() {
         val receipt = edit("missing.txt", "a", "b")
 
         assertTrue(receipt, receipt.startsWith("Error:"))

@@ -31,7 +31,7 @@ class GreetingHelperTest {
     }
 
     @Test
-    fun `Si recuerdas los saludos para el examen de mañana, puedes usarlos primero como recordatorios del examen.`() {
+    fun `Si recuerdas los saludos para el examen de mañana, puedes usarlos primero como recordatorios del examen`() {
         val today = LocalDate.of(2026, 8, 7)
         val tomorrow = today.plusDays(1).toString()
         val facts = listOf(fact("El usuario realizará mañana el test CET-4", time = tomorrow))
@@ -59,7 +59,7 @@ class GreetingHelperTest {
     }
 
     @Test
-    fun `Cuando no hay eventos recientes, los términos solares y festivales son aleatorios y solo se selecciona uno.`() {
+    fun `Cuando no hay eventos recientes, los términos solares y festivales son aleatorios y solo se selecciona uno`() {
         val today = LocalDate.of(2026, 8, 7) // Mañana 8.8 Comienzo de Otoño
         val greeting = GreetingHelper.buildGreeting(emptyList(), hour = 20, date = today)
 
@@ -70,14 +70,14 @@ class GreetingHelperTest {
     }
 
     @Test
-    fun `Sin recuerdos, sin términos solares, sólo saludos durante las fiestas.`() {
+    fun `Sin recuerdos, sin términos solares, sólo saludos durante las fiestas`() {
         val today = LocalDate.of(2026, 8, 10) // Sin estaciones, sin festivales
         val greeting = GreetingHelper.buildGreeting(emptyList(), hour = 9, date = today)
         assertEquals("buenos dias", greeting)
     }
 
     @Test
-    fun `Informar cumpleaños cuando el cumpleaños sea mañana.`() {
+    fun `Informar cumpleaños cuando el cumpleaños sea mañana`() {
         val today = LocalDate.of(2026, 8, 7)
         val facts = listOf(fact("El cumpleaños del usuario es8mes8dia"))
         val hint = GreetingHelper.getMemoryHint(facts, today)
@@ -86,7 +86,7 @@ class GreetingHelperTest {
     }
 
     @Test
-    fun `3No hay recordatorios para eventos fuera del cielo.`() {
+    fun `3No hay recordatorios para eventos fuera del cielo`() {
         val today = LocalDate.of(2026, 8, 7)
         val far = today.plusDays(5).toString()
         val facts = listOf(fact("El usuario quiere realizar el examen.", time = far))
@@ -94,7 +94,7 @@ class GreetingHelperTest {
     }
 
     @Test
-    fun `El resumen diario más reciente seguirá al saludo de la hora.`() {
+    fun `El resumen diario más reciente seguirá al saludo de la hora`() {
         val today = LocalDate.of(2026, 8, 10)
         val greeting = GreetingHelper.buildGreeting(
             facts = emptyList(),

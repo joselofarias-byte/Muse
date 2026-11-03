@@ -24,14 +24,14 @@ class JsSandboxVerificationTest {
     }
 
     @Test
-    fun `Cuando no hay ningún valor de retorno, no se devuelve ningún resultado.`() {
+    fun `Cuando no hay ningún valor de retorno, no se devuelve ningún resultado`() {
         val (ok, issues) = JsSandbox.parseVerificationResult("null")
         assertFalse(ok)
         assertEquals(listOf("La autoprueba no arrojó resultados"), issues)
     }
 
     @Test
-    fun `Una devolución de llamada vacía tampoco informa que no se devolvió ningún resultado.`() {
+    fun `Una devolución de llamada vacía tampoco informa que no se devolvió ningún resultado`() {
         val (ok, issues) = JsSandbox.parseVerificationResult(null)
         assertFalse(ok)
         assertEquals(listOf("La autoprueba no arrojó resultados"), issues)
@@ -46,7 +46,7 @@ class JsSandboxVerificationTest {
     }
 
     @Test
-    fun `Proporcionar razones específicas del fracaso.`() {
+    fun `Proporcionar razones específicas del fracaso`() {
         val payload = """{"verified":false,"issues":["window_open_not_blocked"]}"""
         val (ok, issues) = JsSandbox.parseVerificationResult(encode(payload))
         assertFalse(ok)

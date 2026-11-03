@@ -103,7 +103,7 @@ class ConversationTreeOrderingTest {
     }
 
     @Test
-    fun `Los mensajes antiguos desordenados se insertan nuevamente en el período de tiempo de acuerdo con createAt en lugar de colocarse en un extremo.`() {
+    fun `Los mensajes antiguos desordenados se insertan nuevamente en el período de tiempo de acuerdo con createAt en lugar de colocarse en un extremo`() {
         val m1 =
             UIMessage(
                 id = Uuid.random(),
@@ -136,7 +136,7 @@ class ConversationTreeOrderingTest {
     }
 
     @Test
-    fun `El texto original resumido ya no se fusiona con el árbol anterior.`() {
+    fun `El texto original resumido ya no se fusiona con el árbol anterior`() {
         val user =
             UIMessage(
                 id = Uuid.random(),

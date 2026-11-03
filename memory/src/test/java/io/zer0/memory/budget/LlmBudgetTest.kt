@@ -75,7 +75,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `withReasoningHeadroom null El modelo devuelve el valor original.`() {
+    fun `withReasoningHeadroom null El modelo devuelve el valor original`() {
         assertEquals(4096, LlmBudget.withReasoningHeadroom(4096, null))
     }
 }

@@ -79,7 +79,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `observeProfile Obtenga el apodo, avatar y firma del retrato del usuario.`() = runBlocking {
+    fun `observeProfile Obtenga el apodo, avatar y firma del retrato del usuario`() = runBlocking {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.userProfileFlow } returns flowOf(
             UserProfile(
@@ -117,7 +117,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `respond Utilice las indicaciones del sistema y el historial para detallar la entrada del modelo y filtrar las líneas del sistema.`() = runBlocking {
+    fun `respond Utilice las indicaciones del sistema y el historial para detallar la entrada del modelo y filtrar las líneas del sistema`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
         val captured = slot<List<UIMessage>>()
         every { runner.reply(capture(captured), any(), any()) } returns flowOf(MpReplyEvent.Text("en"))
@@ -145,7 +145,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `La respuesta se envía cuando el modelo no proporciona texto. Failed`() = runBlocking {
+    fun `La respuesta se envía cuando el modelo no proporciona texto Failed`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
         every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("<think>solo pensando</think>"))
 
@@ -157,7 +157,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `respond Aplicar a la cadena de ensamblaje de personalidad para la convención de marcado de voz.`() = runBlocking {
+    fun `respond Aplicar a la cadena de ensamblaje de personalidad para la convención de marcado de voz`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
         every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("en"))
         val voiceEnabled = slot<Boolean>()
@@ -180,7 +180,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `composeMoment Sigue el tono de Moments y no inyectes textos de comentarios dinámicos.`() = runBlocking {
+    fun `composeMoment Sigue el tono de Moments y no inyectes textos de comentarios dinámicos`() = runBlocking {
         val generator = mockk<MiniPhoneTextGenerator>(relaxed = true)
         val captured = slot<String>()
         coEvery { generator.generate(any(), capture(captured), any()) } returns "<think>x</think>El viento era muy fuerte hoy y la ropa tendida a secar se fue volando."
@@ -228,7 +228,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `cleanOutput Quita los corchetes de humor al final de la línea.`() {
+    fun `cleanOutput Quita los corchetes de humor al final de la línea`() {
         assertEquals("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.", composer().cleanOutput("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.\n(estado de ánimo: tranquilo)"))
         assertEquals("Hace mucho viento hoy.", composer().cleanOutput("Hace mucho viento hoy.(estado de ánimo: un poco bajo)"))
     }
@@ -287,7 +287,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `synthesizeVoice Cuando tiene éxito, se devuelve la referencia del archivo y la duración y la emoción se transmite de forma transparente.`() = runBlocking {
+    fun `synthesizeVoice Cuando tiene éxito, se devuelve la referencia del archivo y la duración y la emoción se transmite de forma transparente`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         val store = mockk<VoiceMessageArchiver>(relaxed = true)
         coEvery { synthesizer.synthesizeTo(any(), any(), "soft") } answers {
@@ -308,7 +308,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `MomentChainTextGenerator Dale el material al enlace Persona y luego ajústalo. completeText`() = runBlocking {
+    fun `MomentChainTextGenerator Dale el material al enlace Persona y luego ajústalo completeText`() = runBlocking {
         val chatService = mockk<ChatService>()
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
         val assistant = AssistantEntity(id = "a1", name = "un ling")
@@ -330,7 +330,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `MomentChainTextGenerator Parámetros de modelo y muestreo manipulados con roles.`() = runBlocking {
+    fun `MomentChainTextGenerator Parámetros de modelo y muestreo manipulados con roles`() = runBlocking {
         val chatService = mockk<ChatService>()
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
         coEvery { contextBuilder.buildMessages(assistant = any(), userContent = any()) } returns
@@ -416,7 +416,7 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `El módulo de host está clasificado después del módulo de miniteléfono y cubre la implementación del marcador de posición.`() {
+    fun `El módulo de host está clasificado después del módulo de miniteléfono y cubre la implementación del marcador de posición`() {
         val host = host()
         val koinApp = koinApplication {
             modules(

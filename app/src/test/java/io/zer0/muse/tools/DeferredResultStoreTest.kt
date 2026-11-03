@@ -129,7 +129,7 @@ class DeferredResultStoreTest {
     }
 
     @Test
-    fun `consumeCompleted Sin residuos después del consumo.`() = runTest {
+    fun `consumeCompleted Sin residuos después del consumo`() = runTest {
         val store = DeferredResultStore()
         store.defer("t1", "s1", null, null, "task")
         store.resolve("t1", "r")

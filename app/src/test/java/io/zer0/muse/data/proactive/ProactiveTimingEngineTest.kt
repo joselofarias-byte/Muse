@@ -38,7 +38,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Si se permite durante el día, también se permitirá a altas horas de la noche.`() {
+    fun `Si se permite durante el día, también se permitirá a altas horas de la noche`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(now = localMillis(2026, 10, 25, 23, 30), allDayAllowed = true),
         )
@@ -46,7 +46,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El usuario acaba de decir algo pero no lo envió.`() {
+    fun `El usuario acaba de decir algo pero no lo envió`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastUserMessageAt = baseNow - 3 * 60 * 1000L),
         )
@@ -54,7 +54,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Un usuario ya no está activo después de 11 minutos de conversación.`() {
+    fun `Un usuario ya no está activo después de 11 minutos de conversación`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastUserMessageAt = baseNow - 11 * 60 * 1000L),
         )
@@ -76,7 +76,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El último mensaje activo está demasiado cerca para enviarse.`() {
+    fun `El último mensaje activo está demasiado cerca para enviarse`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveSentAt = baseNow - 30 * 60 * 1000L),
         )
@@ -84,7 +84,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Puedes enviarlo si el intervalo es suficiente.`() {
+    fun `Puedes enviarlo si el intervalo es suficiente`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveSentAt = baseNow - 4 * 3600_000L),
         )
@@ -92,7 +92,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Cuando la ronda anterior todavía se estaba generando, haz clic demasiado cerca para detenerla.`() {
+    fun `Cuando la ronda anterior todavía se estaba generando, haz clic demasiado cerca para detenerla`() {
         // Como resultado, la cuenta está vacía (el mensaje aún no se ha grabado), pero se ha registrado la hora de inicio de la ronda anterior.
         // Esta es exactamente la fuente del envío duplicado dentro de la ventana de generación: con sólo mirar la cuenta de resultados te hará pensar "la ronda anterior no existió".
         val decision = ProactiveTimingEngine.evaluate(
@@ -103,7 +103,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Ha pasado mucho tiempo desde la última ronda de carrera, así que no pararé más.`() {
+    fun `Ha pasado mucho tiempo desde la última ronda de carrera, así que no pararé más`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(lastProactiveAttemptAt = baseNow - 4 * 3600_000L),
         )
@@ -111,7 +111,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El tiempo de prueba no enmascara los tiempos de envío más recientes.`() {
+    fun `El tiempo de prueba no enmascara los tiempos de envío más recientes`() {
         // Cuando existan dos marcas de tiempo al mismo tiempo, prevalecerá la más reciente.
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
@@ -123,7 +123,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El estado del libro mayor ya no afecta la conclusión del juicio.`() {
+    fun `El estado del libro mayor ya no afecta la conclusión del juicio`() {
         // El material proviene de conversaciones recientes, no de libros de contabilidad. Se deben liberar los mismos insumos siempre que se superen el calendario y la cuota.
         val decision = ProactiveTimingEngine.evaluate(input())
         assertEquals(ProactiveTimingEngine.Verdict.OK, decision.verdict)
@@ -135,7 +135,7 @@ class ProactiveTimingEngineTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Informar con sinceridad cuando se agote el presupuesto y utilizarlo.`() {
+    fun `Informar con sinceridad cuando se agote el presupuesto y utilizarlo`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
                 relation = relation().copy(
@@ -150,7 +150,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Todavía hay una cuota cuando se emite el expediente estándar al artículo 14.`() {
+    fun `Todavía hay una cuota cuando se emite el expediente estándar al artículo 14`() {
         val decision = ProactiveTimingEngine.evaluate(
             input().copy(
                 relation = relation().copy(
@@ -170,7 +170,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El nivel de rigidez no se ve afectado por el nivel de intimidad.`() {
+    fun `El nivel de rigidez no se ve afectado por el nivel de intimidad`() {
         // intimacy 0 también debería ser ilimitado, en lugar de volver a caer a un valor mínimo muy pequeño
         val relation = relation().copy(intimacy = 0f, intensity = ProactiveIntensity.CLINGY.name)
         val remaining = ProactiveTimingEngine.remainingBudget(relation)
@@ -178,13 +178,13 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `Las marchas silenciosas se fijan en 3 y no se ven afectadas por la intimidad.`() {
+    fun `Las marchas silenciosas se fijan en 3 y no se ven afectadas por la intimidad`() {
         val relation = relation().copy(intimacy = 1f, intensity = ProactiveIntensity.QUIET.name)
         assertEquals(3f, ProactiveTimingEngine.remainingBudget(relation), 0.001f)
     }
 
     @Test
-    fun `El monto restante disminuirá a medida que el monto se emita hoy.`() {
+    fun `El monto restante disminuirá a medida que el monto se emita hoy`() {
         val idle = relation().copy(intimacy = 0.5f, intensity = ProactiveIntensity.ACTIVE.name, spentToday = 0)
         val used = idle.copy(spentToday = 3)
         assertEquals(30f, ProactiveTimingEngine.remainingBudget(idle), 0.001f)
@@ -192,7 +192,7 @@ class ProactiveTimingEngineTest {
     }
 
     @Test
-    fun `El monto volverá a cero una vez que se haya emitido en su totalidad.`() {
+    fun `El monto volverá a cero una vez que se haya emitido en su totalidad`() {
         val relation = relation().copy(intensity = ProactiveIntensity.RESERVED.name, spentToday = 8)
         assertEquals(0f, ProactiveTimingEngine.remainingBudget(relation), 0.001f)
     }
@@ -220,7 +220,7 @@ class ProactiveTimingEngineTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Los puntos de bonificación por responder son mucho mayores que la deducción por tachar.`() {
+    fun `Los puntos de bonificación por responder son mucho mayores que la deducción por tachar`() {
         val replied = ProactiveLearning.intimacyDelta(OutcomeState.REPLIED)
         val dismissed = ProactiveLearning.intimacyDelta(OutcomeState.DISMISSED)
         assertTrue(replied > 0f)

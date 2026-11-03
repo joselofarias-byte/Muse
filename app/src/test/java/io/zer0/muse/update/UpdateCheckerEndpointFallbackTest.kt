@@ -64,7 +64,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `Cuando la imagen creada por usted mismo devuelva 200, el resultado se utilizará directamente.`() {
+    fun `Cuando la imagen creada por usted mismo devuelva 200, el resultado se utilizará directamente`() {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(releaseJson("v9.9.9")),
         )
@@ -84,7 +84,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `Un cuerpo de respuesta vacío se trata como un fracaso más que como un éxito.`() {
+    fun `Un cuerpo de respuesta vacío se trata como un fracaso más que como un éxito`() {
         server.enqueue(MockResponse().setResponseCode(200).setBody(""))
         val result = runBlocking { fetchFromOfficialEndpoint() }
         assertTrue("Una respuesta vacía debe ser un error.", result is Result.Error)

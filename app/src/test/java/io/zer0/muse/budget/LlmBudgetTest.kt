@@ -46,14 +46,14 @@ class LlmBudgetTest {
     // ── Un solo mensaje no supera el límite ──────────────────────────────────────────────────
 
     @Test
-    fun `Un solo mensaje no supera el límite. Volver al texto original.`() {
+    fun `Un solo mensaje no supera el límite Volver al texto original`() {
         val text = "Hello World"
         val result = LlmBudget.truncateToTokenBudget(text, 1000)
         assertEquals(text, result)
     }
 
     @Test
-    fun `budget Si es mucho mayor que la cantidad de tokens de texto, se devolverá el texto original.`() {
+    fun `budget Si es mucho mayor que la cantidad de tokens de texto, se devolverá el texto original`() {
         val text = "Este es un texto corto."
         val result = LlmBudget.truncateToTokenBudget(text, 10000)
         assertEquals(text, result)
@@ -62,7 +62,7 @@ class LlmBudgetTest {
     // ── El número total de tokens en varios mensajes supera el límite.,Validar truncamiento desde head ────────────────────────────
 
     @Test
-    fun `Después de unir varios mensajes, se truncan y se marcan cuando superan el límite.`() {
+    fun `Después de unir varios mensajes, se truncan y se marcan cuando superan el límite`() {
         // Simular la unión de múltiples mensajes de memoria.
         val text = buildString {
             appendLine("memoria1:A los usuarios les encanta programar")
@@ -131,7 +131,7 @@ class LlmBudgetTest {
     // ── frontera:Un solo mensaje ha superado maxTokens ────────────────────────────────────
 
     @Test
-    fun `Un solo mensaje se trunca cuando excede maxTokens.`() {
+    fun `Un solo mensaje se trunca cuando excede maxTokens`() {
         val text = "This is a very long single message that definitely exceeds the token budget " +
             "and should be truncated with the memory truncated marker appended at the end"
         val result = LlmBudget.truncateToTokenBudget(text, 3)
@@ -140,7 +140,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `Un único mensaje muy largo se trunca y se conserva el encabezado. token`() {
+    fun `Un único mensaje muy largo se trunca y se conserva el encabezado token`() {
         val text = "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
         val result = LlmBudget.truncateToTokenBudget(text, 2)
         // Se deben conservar los primeros caracteres del encabezado.
@@ -157,7 +157,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `budget Devuelve el texto original para números negativos.(sin limite)`() {
+    fun `budget Devuelve el texto original para números negativos(sin limite)`() {
         val text = "Hello World"
         assertEquals(text, LlmBudget.truncateToTokenBudget(text, -1))
     }
@@ -175,7 +175,7 @@ class LlmBudgetTest {
     // ── withReasoningHeadroom frontera ─────────────────────────────────
 
     @Test
-    fun `withReasoningHeadroom null El modelo devuelve el valor original.`() {
+    fun `withReasoningHeadroom null El modelo devuelve el valor original`() {
         assertEquals(4096, LlmBudget.withReasoningHeadroom(4096, null))
     }
 
@@ -191,7 +191,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `withReasoningHeadroom reasoning El modelo aumenta el buffer sin exceder el límite superior.`() {
+    fun `withReasoningHeadroom reasoning El modelo aumenta el buffer sin exceder el límite superior`() {
         val model = io.zer0.ai.core.Model(
             id = "o1-preview",
             name = "O1 Preview",
@@ -234,7 +234,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `withReasoningHeadroom Identificar varios modelos de razonamiento. id`() {
+    fun `withReasoningHeadroom Identificar varios modelos de razonamiento id`() {
         val reasoningIds = listOf("o1-preview", "o3-mini", "o4-mini", "model-thinking", "reasoning-v1", "deepseek-r1")
         for (id in reasoningIds) {
             val model = io.zer0.ai.core.Model(

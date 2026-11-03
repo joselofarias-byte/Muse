@@ -21,7 +21,7 @@ class AnrDetectorTest {
     private fun AnrDetector.tick(nowMs: Long, pongCount: Long) = onCheck(nowMs = nowMs, postedAtMs = nowMs - 2_000L, pongCount = pongCount)
 
     @Test
-    fun `No se emite ningún juicio cuando el latido del corazón es normal. ANR`() {
+    fun `No se emite ningún juicio cuando el latido del corazón es normal ANR`() {
         val d = detector()
         var pong = 0L
         var t = 10_000L
@@ -33,7 +33,7 @@ class AnrDetectorTest {
     }
 
     @Test
-    fun `El hilo principal continuamente no responde y excede el umbral para determinar ANR y solo informa una vez.`() {
+    fun `El hilo principal continuamente no responde y excede el umbral para determinar ANR y solo informa una vez`() {
         val d = detector()
         var t = 10_000L
         // Las dos primeras rondas de latidos del corazón fueron normales.
@@ -61,7 +61,7 @@ class AnrDetectorTest {
     }
 
     @Test
-    fun `Una vez congelado el proceso, regrese a la recepción y no se permitirán falsas alarmas. ANR`() {
+    fun `Una vez congelado el proceso, regrese a la recepción y no se permitirán falsas alarmas ANR`() {
         val d = detector()
         // antes de congelar:latidos normales del corazón
         assertEquals(AnrDetector.Decision.Healthy, d.tick(10_000L, 7L))
@@ -76,7 +76,7 @@ class AnrDetectorTest {
     }
 
     @Test
-    fun `Dentro de la tolerancia de congelación, la acumulación se seguirá contando como bloqueada.`() {
+    fun `Dentro de la tolerancia de congelación, la acumulación se seguirá contando como bloqueada`() {
         val d = detector()
         var t = 10_000L
         d.tick(t, 1L)

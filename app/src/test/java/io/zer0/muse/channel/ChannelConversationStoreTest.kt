@@ -89,7 +89,7 @@ class ChannelConversationStoreTest {
     }
 
     @Test
-    fun `La compresión normal elimina las rondas que se han fusionado en el resumen y escribe el resumen.`() {
+    fun `La compresión normal elimina las rondas que se han fusionado en el resumen y escribe el resumen`() {
         val channelId = "ch-happy"
         val from = "peer-happy"
         val turns = seed(channelId, from, 5)
@@ -111,7 +111,7 @@ class ChannelConversationStoreTest {
     }
 
     @Test
-    fun `Deje de escribir cuando no haya rondas para elegir.`() {
+    fun `Deje de escribir cuando no haya rondas para elegir`() {
         val channelId = "ch-empty"
         val from = "peer-empty"
         seed(channelId, from, 3)
@@ -124,7 +124,7 @@ class ChannelConversationStoreTest {
     }
 
     @Test
-    fun `Los reintentos de respuesta automática no agregarán rondas repetidamente y permanecerán idempotentes después de la compresión.`() {
+    fun `Los reintentos de respuesta automática no agregarán rondas repetidamente y permanecerán idempotentes después de la compresión`() {
         val channelId = "ch-dispatch-idempotency"
         val from = "peer-dispatch-idempotency"
         val dispatchId = "dispatch-1"

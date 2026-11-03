@@ -26,14 +26,14 @@ class ProactivePaceWiringTest {
     }
 
     @Test
-    fun `El intervalo y la probabilidad escritos por la selección de archivos son los campos realmente leídos por la capa de decisión.`() {
+    fun `El intervalo y la probabilidad escritos por la selección de archivos son los campos realmente leídos por la capa de decisión`() {
         val text = source()
         assertTrue(text.contains("intervalMinutes = pace.intervalMinutes"))
         assertTrue(text.contains("sendProbability = pace.sendProbability"))
     }
 
     @Test
-    fun `Los intervalos entre las cuatro marchas están todos dentro del rango permitido.`() {
+    fun `Los intervalos entre las cuatro marchas están todos dentro del rango permitido`() {
         ProactivePace.values().forEach { pace ->
             assertTrue(
                 "${pace.name}=${pace.intervalMinutes} Los minutos exceden el intervalo de juicio.",

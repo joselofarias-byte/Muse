@@ -22,14 +22,14 @@ class ProactiveSendProbabilityTest {
     }
 
     @Test
-    fun `Todos se emiten cuando la probabilidad es 100.`() {
+    fun `Todos se emiten cuando la probabilidad es 100`() {
         (0 until ProactiveSendProbability.ROLL_BOUND).forEach { roll ->
             assertTrue("roll=$roll", ProactiveSendProbability.allows(100, roll))
         }
     }
 
     @Test
-    fun `Cuando la probabilidad es 50, el resultado del dado se divide en dos puntos.`() {
+    fun `Cuando la probabilidad es 50, el resultado del dado se divide en dos puntos`() {
         assertTrue(ProactiveSendProbability.allows(50, 0))
         assertTrue(ProactiveSendProbability.allows(50, 49))
         assertFalse(ProactiveSendProbability.allows(50, 50))

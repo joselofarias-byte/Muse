@@ -59,7 +59,7 @@ class WorkspaceEditConcurrencyTest {
         )
 
     @Test
-    fun `Cuando workspace_edits el mismo archivo simultáneamente, cada cambio se escribe en el disco.`() {
+    fun `Cuando workspace_edits el mismo archivo simultáneamente, cada cambio se escribe en el disco`() {
         // Número de dos dígitos: ninguna marca es un prefijo de otras marcas, lo que garantiza que old_string sea única en el archivo.
         val tokens = (1..12).map { it.toString().padStart(2, '0') }
         seed("race.txt", tokens.joinToString("\n") { "item $it" } + "\n")
@@ -86,7 +86,7 @@ class WorkspaceEditConcurrencyTest {
     }
 
     @Test
-    fun `Leer, modificar y escribir el mismo archivo no ingresará a la sección crítica al mismo tiempo.`() = runBlocking {
+    fun `Leer, modificar y escribir el mismo archivo no ingresará a la sección crítica al mismo tiempo`() = runBlocking {
         seed("serial.txt", "start\n")
         val active = AtomicInteger(0)
         val peak = AtomicInteger(0)
@@ -135,7 +135,7 @@ class WorkspaceEditConcurrencyTest {
     }
 
     @Test
-    fun `El bloqueo aún se liberará después de leer, modificar y escribir una excepción.`() = runBlocking {
+    fun `El bloqueo aún se liberará después de leer, modificar y escribir una excepción`() = runBlocking {
         seed("boom.txt", "x\n")
 
         val boom = runCatching {
@@ -151,7 +151,7 @@ class WorkspaceEditConcurrencyTest {
     }
 
     @Test
-    fun `El mismo archivo aún se puede editar después de una edición rechazada.`() {
+    fun `El mismo archivo aún se puede editar después de una edición rechazada`() {
         seed("reject.txt", "alpha\n")
 
         val rejected = edit("reject.txt", "fragmento no encontrado", "x")

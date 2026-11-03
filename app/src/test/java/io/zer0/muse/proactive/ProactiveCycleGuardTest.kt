@@ -19,7 +19,7 @@ import org.junit.Test
 class ProactiveCycleGuardTest {
 
     @Test
-    fun `Sólo se permite una entrada al mismo tiempo.`() {
+    fun `Sólo se permite una entrada al mismo tiempo`() {
         val guard = ProactiveCycleGuard()
         val first = guard.tryEnter(now = 1_000L)
 
@@ -29,7 +29,7 @@ class ProactiveCycleGuardTest {
     }
 
     @Test
-    fun `Después de salir, puedes ingresar a la siguiente ronda.`() {
+    fun `Después de salir, puedes ingresar a la siguiente ronda`() {
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!
         guard.leave(entry, sent = false)
@@ -39,7 +39,7 @@ class ProactiveCycleGuardTest {
     }
 
     @Test
-    fun `Las credenciales resaltan el tiempo de intento de la última ronda.`() {
+    fun `Las credenciales resaltan el tiempo de intento de la última ronda`() {
         val guard = ProactiveCycleGuard()
         val first = guard.tryEnter(now = 1_000L)!!
         guard.markAttempt(1_500L)
@@ -51,7 +51,7 @@ class ProactiveCycleGuardTest {
     }
 
     @Test
-    fun `El tiempo del último intento en la primera ronda fue cero.`() {
+    fun `El tiempo del último intento en la primera ronda fue cero`() {
         val guard = ProactiveCycleGuard()
         assertEquals(0L, guard.tryEnter(now = 1_000L)?.previousAttemptAt)
     }
@@ -103,7 +103,7 @@ class ProactiveCycleGuardTest {
     }
 
     @Test
-    fun `Las rondas no registradas no falsificarán los tiempos de intento.`() {
+    fun `Las rondas no registradas no falsificarán los tiempos de intento`() {
         // Las rondas que estén bloqueadas durante No molestar/Crédito insuficiente no se generarán y no habrá ningún intento de marca.
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!

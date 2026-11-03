@@ -175,7 +175,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `add Sobrescribe el vector antiguo con la misma identificación y mantén el tamaño sin cambios.`() {
+    fun `add Sobrescribe el vector antiguo con la misma identificación y mantén el tamaño sin cambios`() {
         val index = newTestIndex()
         val vec1 = FloatArray(16) { 1f }
         val vec2 = FloatArray(16) { 2f }
@@ -223,7 +223,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `search top-1 Consistente con el recorrido de fuerza bruta: 100 vectores a pequeña escala`() {
+    fun `search top-1 Consistente con el recorrido de fuerza bruta 100 vectores a pequeña escala`() {
         val n = 100
         val dim = 64
         val vectors = genVectors(n = n, dim = dim)
@@ -245,7 +245,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `search top-1 Consistente con el recorrido de fuerza bruta: 500 vectores de escala media`() {
+    fun `search top-1 Consistente con el recorrido de fuerza bruta 500 vectores de escala media`() {
         val n = 500
         val dim = 64
         val vectors = genVectors(n = n, dim = dim)
@@ -300,7 +300,7 @@ class HnswVectorIndexTest {
     // ── save + load consistencia ──
 
     @Test
-    fun `save Los resultados de la búsqueda después de la carga son consistentes.`() {
+    fun `save Los resultados de la búsqueda después de la carga son consistentes`() {
         val vectors = genVectors(n = 80, dim = 32)
         val index1 = newTestIndex(efSearch = 200)
         vectors.forEach { (id, vec) -> index1.add(id, vec) }
@@ -334,7 +334,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `save Sólo se conservará el índice más reciente después de sobrescribir los archivos existentes.`() {
+    fun `save Sólo se conservará el índice más reciente después de sobrescribir los archivos existentes`() {
         val file = File(tempDir, "replace.bin")
         val first = newTestIndex().apply { add("old", FloatArray(8) { 1f }) }
         first.save(file)
@@ -402,7 +402,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `Después de eliminar todos los nodos, guardar y cargar estarán vacíos y se podrán crear nuevas dimensiones.`() {
+    fun `Después de eliminar todos los nodos, guardar y cargar estarán vacíos y se podrán crear nuevas dimensiones`() {
         val file = File(tempDir, "empty-rebuild.bin")
         val index = newTestIndex().apply {
             add("old", FloatArray(4) { 1f })
@@ -441,7 +441,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `save Contiene nodos eliminados: tamaño consistente después de la carga`() {
+    fun `save Contiene nodos eliminados tamaño consistente después de la carga`() {
         val vectors = genVectors(n = 50, dim = 32)
         val index = newTestIndex()
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -471,7 +471,7 @@ class HnswVectorIndexTest {
     // ── remove ──
 
     @Test
-    fun `remove El tamaño se reduce después de la identificación existente.`() {
+    fun `remove El tamaño se reduce después de la identificación existente`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 20, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -484,7 +484,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `remove Si la identificación no existe, no se generará ninguna excepción y el tamaño permanecerá sin cambios.`() {
+    fun `remove Si la identificación no existe, no se generará ninguna excepción y el tamaño permanecerá sin cambios`() {
         val index = newTestIndex()
         val vectors = genVectors(n = 5, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -496,7 +496,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `remove Después de eso, la identificación ya no aparece en los resultados de búsqueda.`() {
+    fun `remove Después de eso, la identificación ya no aparece en los resultados de búsqueda`() {
         val index = newTestIndex(efSearch = 200)
         val vectors = genVectors(n = 30, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }
@@ -516,7 +516,7 @@ class HnswVectorIndexTest {
     }
 
     @Test
-    fun `remove Todavía funciona bien después del punto de entrada. search`() {
+    fun `remove Todavía funciona bien después del punto de entrada search`() {
         val index = newTestIndex(efSearch = 200)
         val vectors = genVectors(n = 50, dim = 32)
         vectors.forEach { (id, vec) -> index.add(id, vec) }

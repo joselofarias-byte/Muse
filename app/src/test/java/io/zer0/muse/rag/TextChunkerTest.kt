@@ -40,7 +40,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `El texto largo se divide en párrafos.`() {
+    fun `El texto largo se divide en párrafos`() {
         val chunker = TextChunker(targetSize = 50, overlap = 5)
         val para1 = "a".repeat(40)
         val para2 = "b".repeat(40)
@@ -67,7 +67,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `Las frases muy largas están marcadas por los personajes.`() {
+    fun `Las frases muy largas están marcadas por los personajes`() {
         val chunker = TextChunker(targetSize = 10, overlap = 0)
         val text = "a".repeat(35)
         val result = chunker.split(text)
@@ -88,7 +88,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `CRLF Los saltos de línea están normalizados.`() {
+    fun `CRLF Los saltos de línea están normalizados`() {
         val chunker = TextChunker(targetSize = 100, overlap = 10)
         val text = "primera linea\r\nsegunda linea\r\nla tercera linea"
         val result = chunker.split(text)
@@ -125,7 +125,7 @@ class TextChunkerTest {
     // ── v1.133: markdownAware prueba de patrón ──
 
     @Test
-    fun `markdownAware El bloque de código se conserva completo y no se corta.`() {
+    fun `markdownAware El bloque de código se conserva completo y no se corta`() {
         // targetSize=20 Mucho más pequeño que un bloque de código,Los bloques de código aún deben conservarse en su totalidad
         val chunker = TextChunker(targetSize = 20, overlap = 0, markdownAware = true)
         val codeBlock = "```kotlin\n" + "val x = 1\n".repeat(10) + "```"
@@ -138,7 +138,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `markdownAware Las filas de encabezado se dividen por separado y se registran los metadatos de las secciones.`() {
+    fun `markdownAware Las filas de encabezado se dividen por separado y se registran los metadatos de las secciones`() {
         val chunker = TextChunker(targetSize = 500, overlap = 0, markdownAware = true)
         val text = "# Capítulo 1\n\nContenido uno\n\n# Capítulo 2\n\nContenido dos"
         val result = chunker.split(text)
@@ -148,7 +148,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `markdownAware Mantener la mesa entera.`() {
+    fun `markdownAware Mantener la mesa entera`() {
         val chunker = TextChunker(targetSize = 15, overlap = 0, markdownAware = true)
         val table = """
             | columna1 | columna2 | columna3 |
@@ -164,7 +164,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `markdownAware El texto normal todavía se corta según el tamaño objetivo.`() {
+    fun `markdownAware El texto normal todavía se corta según el tamaño objetivo`() {
         // Utilice el título como límite estructural para activar la fragmentación(markdownAware Dividido por límites estructurales,
         // Título/bloque de código/Las tablas son límites naturales.;Los párrafos puros sin bordes se fusionarán en un solo bloque)
         val chunker = TextChunker(targetSize = 30, overlap = 0, markdownAware = true)

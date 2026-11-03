@@ -28,7 +28,7 @@ class DataCardParserTest {
     }
 
     @Test
-    fun `line También compatible con tarjetas de donas.`() {
+    fun `line También compatible con tarjetas de donas`() {
         assertTrue(DataCardParser.parseJson("""{"type":"line","labels":["a","b"],"values":[1,2]}""") != null)
         assertTrue(DataCardParser.parseJson("""{"type":"donut","labels":["a","b"],"values":[1,2]}""") != null)
     }
@@ -44,12 +44,12 @@ class DataCardParserTest {
     }
 
     @Test
-    fun `labels Devuelve inconsistente con el número de valores. null`() {
+    fun `labels Devuelve inconsistente con el número de valores null`() {
         assertNull(DataCardParser.parseJson("""{"type":"bar","labels":["a","b"],"values":[1]}"""))
     }
 
     @Test
-    fun `Devuelve una lista de valores vacíos. null`() {
+    fun `Devuelve una lista de valores vacíos null`() {
         assertNull(DataCardParser.parseJson("""{"type":"bar","labels":[],"values":[]}"""))
     }
 

@@ -15,7 +15,7 @@ import org.junit.Test
 class TtsEngineSwitchTest {
 
     @Test
-    fun `Cuando los sonidos antiguos no pertenecen al nuevo motor, se borrarán y se indicarán.`() {
+    fun `Cuando los sonidos antiguos no pertenecen al nuevo motor, se borrarán y se indicarán`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = "alloy"),
             newEngine = "dashscope",
@@ -27,7 +27,7 @@ class TtsEngineSwitchTest {
     }
 
     @Test
-    fun `Si el nuevo motor también tiene un sonido con el mismo nombre, se conservará.`() {
+    fun `Si el nuevo motor también tiene un sonido con el mismo nombre, se conservará`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "dashscope", ttsVoice = "longxiaochun"),
             newEngine = "qwen",
@@ -39,7 +39,7 @@ class TtsEngineSwitchTest {
     }
 
     @Test
-    fun `Si no puede obtener la nueva colección de sonidos del motor, también se borrará.`() {
+    fun `Si no puede obtener la nueva colección de sonidos del motor, también se borrará`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = "alloy"),
             newEngine = "elevenlabs",
@@ -51,7 +51,7 @@ class TtsEngineSwitchTest {
     }
 
     @Test
-    fun `No se da ningún aviso cuando el tono está originalmente vacío.`() {
+    fun `No se da ningún aviso cuando el tono está originalmente vacío`() {
         val switched = TtsEngineSwitch.apply(
             MediaConfig(ttsEngine = "openai", ttsVoice = ""),
             newEngine = "elevenlabs",

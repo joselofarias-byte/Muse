@@ -33,7 +33,7 @@ class ShowCardToolTest {
     }
 
     @Test
-    fun `El recibo contiene el mensaje vinculado a la tarjeta. id`() {
+    fun `El recibo contiene el mensaje vinculado a la tarjeta id`() {
         val result = ShowCardTool.execute(
             args = mapOf("title" to "demo", "code" to "<div>hi</div>"),
             messageId = "msg-42",
@@ -43,7 +43,7 @@ class ShowCardToolTest {
     }
 
     @Test
-    fun `Los recibos no son locuaces cuando no hay una identificación del mensaje.`() {
+    fun `Los recibos no son locuaces cuando no hay una identificación del mensaje`() {
         val result = ShowCardTool.execute(
             args = mapOf("title" to "demo", "code" to "<div>hi</div>"),
             messageId = null,

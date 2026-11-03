@@ -64,7 +64,7 @@ class ToolCallSnapshotTest {
     }
 
     @Test
-    fun `La reversión repetida no escribirá los parámetros dos veces.`() {
+    fun `La reversión repetida no escribirá los parámetros dos veces`() {
         val full = """{"content":"Hola"}"""
         val events = listOf(
             ChatStreamEvent.ToolCallDelta(index = 0, name = "channel_reply", argumentsDelta = """{"con"""),

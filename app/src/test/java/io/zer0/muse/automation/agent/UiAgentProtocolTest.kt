@@ -111,7 +111,7 @@ class UiAgentProtocolTest {
     }
 
     @Test
-    fun `Toma la última expresión.`() {
+    fun `Toma la última expresión`() {
         val raw = """
             Debo hacer clic en el cuadro de búsqueda.
             do(action="tap", x=1, y=2)

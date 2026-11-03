@@ -38,7 +38,7 @@ class TextChunkerOverlapTest {
     }
 
     @Test
-    fun `overlap Cuando es 0, no se produce superposición.`() {
+    fun `overlap Cuando es 0, no se produce superposición`() {
         val chunker = TextChunker(targetSize = 100, overlap = 0, markdownAware = true)
         // Cada contenido es único, evita“El mismo texto reaparece naturalmente.”Determinación de superposición de interferencias
         val text = (1..6).joinToString("\n\n") {
@@ -70,7 +70,7 @@ class TextChunkerOverlapTest {
     }
 
     @Test
-    fun `Los números de serie del bloque son consecutivos.`() {
+    fun `Los números de serie del bloque son consecutivos`() {
         val chunker = TextChunker(targetSize = 80, overlap = 10, markdownAware = true)
         val chunks = chunker.split((1..5).joinToString("\n\n") { "Texto de prueba de contenido de párrafo$it" })
         assertEquals(chunks.indices.toList(), chunks.map { it.index })

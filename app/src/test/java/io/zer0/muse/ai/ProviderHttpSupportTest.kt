@@ -104,7 +104,7 @@ class ProviderHttpSupportTest {
     // ── buildHttpErrorMessage:Generar mensaje de error completo ──────────────────────────
 
     @Test
-    fun `buildHttpErrorMessage Contiene prefijo y código de estado.`() {
+    fun `buildHttpErrorMessage Contiene prefijo y código de estado`() {
         val msg = ProviderHttpSupport.buildHttpErrorMessage("OpenAI", 500, "")
         assertTrue("debe contener prefijo: $msg", msg.contains("OpenAI"))
         assertTrue("Debe contener código de estado: $msg", msg.contains("500"))
@@ -112,19 +112,19 @@ class ProviderHttpSupportTest {
     }
 
     @Test
-    fun `buildHttpErrorMessage Contiene clasificación de certificación 401.`() {
+    fun `buildHttpErrorMessage Contiene clasificación de certificación 401`() {
         val msg = ProviderHttpSupport.buildHttpErrorMessage("Gemini", 401, "")
         assertTrue("debe contener authentication failed: $msg", msg.contains("authentication failed"))
     }
 
     @Test
-    fun `buildHttpErrorMessage Contiene 429 categorías limitantes actuales.`() {
+    fun `buildHttpErrorMessage Contiene 429 categorías limitantes actuales`() {
         val msg = ProviderHttpSupport.buildHttpErrorMessage("Anthropic", 429, "")
         assertTrue("debe contener rate limited: $msg", msg.contains("rate limited"))
     }
 
     @Test
-    fun `buildHttpErrorMessage Contiene un resumen del cuerpo truncado.`() {
+    fun `buildHttpErrorMessage Contiene un resumen del cuerpo truncado`() {
         val body = "Invalid API key provided"
         val msg = ProviderHttpSupport.buildHttpErrorMessage("OpenAI", 401, body)
         assertTrue("Debe contener resumen corporal insensibilizado.: $msg", msg.contains("API key=[REDACTED]"))

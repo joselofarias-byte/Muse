@@ -66,7 +66,7 @@ class ProactiveReplyParserTest {
     }
 
     @Test
-    fun `El texto extralargo se corta dentro del límite superior según los límites de la oración.`() {
+    fun `El texto extralargo se corta dentro del límite superior según los límites de la oración`() {
         val sentence = "Pasé por esa tienda hoy y recordé que dijiste que querías comer sus fideos. Me pregunto si todavía quieres ir."
         val longBody = sentence.repeat(10)
         val raw = """{"skip": false, "content": "$longBody", "tone": "cuidar"}"""
@@ -91,7 +91,7 @@ class ProactiveReplyParserTest {
     }
 
     @Test
-    fun `Sólo la puntuación se considera no dicha.`() {
+    fun `Sólo la puntuación se considera no dicha`() {
         val raw = """{"skip": false, "content": ". . . !"}"""
 
         val result = ProactiveReplyParser.parse(raw)

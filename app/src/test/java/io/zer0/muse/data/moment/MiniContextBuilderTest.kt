@@ -78,7 +78,7 @@ class MiniContextBuilderTest {
     }
 
     @Test
-    fun `La palabra clave del libro mundial vinculada por el asistente se inyecta en la etiqueta del libro de historia después de presionarla.`() = runTest {
+    fun `La palabra clave del libro mundial vinculada por el asistente se inyecta en la etiqueta del libro de historia después de presionarla`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
@@ -99,7 +99,7 @@ class MiniContextBuilderTest {
     }
 
     @Test
-    fun `Cuando el libro mundial no está encuadernado, las entradas no se consultarán ni se inyectarán.`() = runTest {
+    fun `Cuando el libro mundial no está encuadernado, las entradas no se consultarán ni se inyectarán`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
@@ -113,7 +113,7 @@ class MiniContextBuilderTest {
     }
 
     @Test
-    fun `También se inyectarán entradas de inyección de palabras rápidas.`() = runTest {
+    fun `También se inyectarán entradas de inyección de palabras rápidas`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso del sistema"))
@@ -138,7 +138,7 @@ class MiniContextBuilderTest {
     }
 
     @Test
-    fun `El comando del sistema de la ruta del mensaje privado lleva la convención de marca de voz.`() = runTest {
+    fun `El comando del sistema de la ruta del mensaje privado lleva la convención de marca de voz`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } returns listOf(UIMessage(role = MessageRole.SYSTEM, content = "Aviso completo del sistema"))
@@ -167,7 +167,7 @@ class MiniContextBuilderTest {
     }
 
     @Test
-    fun `Assembler Cuando se produce una excepción, se degrada a un indicador del sistema vacío sin fallar.`() = runTest {
+    fun `Assembler Cuando se produce una excepción, se degrada a un indicador del sistema vacío sin fallar`() = runTest {
         coEvery {
             assembler.build(any(), any(), any(), any(), any())
         } throws IllegalStateException("boom")

@@ -39,7 +39,7 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `El intervalo predeterminado es 240 minutos.`() {
+    fun `El intervalo predeterminado es 240 minutos`() {
         val pacing = ProactiveTimingEngine.Pacing()
         assertEquals(240, ProactiveTimingEngine.effectiveIntervalMinutes(input(0, pacing)))
         assertEquals(
@@ -53,7 +53,7 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `Los intervalos se limitan a 30 a 1440 minutos.`() {
+    fun `Los intervalos se limitan a 30 a 1440 minutos`() {
         // La configuración anterior puede almacenarse durante 15 minutos o varios días y la capa de decisión no puede hacer que entre en vigor.
         assertEquals(
             ProactiveTimingEngine.MIN_INTERVAL_MINUTES,
@@ -70,7 +70,7 @@ class ProactivePacingConfigTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `El mismo asistente recibe la misma compensación el mismo día.`() {
+    fun `El mismo asistente recibe la misma compensación el mismo día`() {
         val key = ProactiveTimingEngine.dayKey(baseNow)
         val first = ProactiveTimingEngine.dailyOffsetMinutes(key, "a1", 60)
         val second = ProactiveTimingEngine.dailyOffsetMinutes(key, "a1", 60)
@@ -80,7 +80,7 @@ class ProactivePacingConfigTest {
     }
 
     @Test
-    fun `Otro día, la compensación cambia en consecuencia.`() {
+    fun `Otro día, la compensación cambia en consecuencia`() {
         // Validación con entrada hash fija: la fecha es la única variable
         val today = ProactiveTimingEngine.dailyOffsetMinutes("2026-10-25", "default", 60)
         val tomorrow = ProactiveTimingEngine.dailyOffsetMinutes("2026-10-26", "default", 60)

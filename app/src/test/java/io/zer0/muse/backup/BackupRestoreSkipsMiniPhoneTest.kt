@@ -109,7 +109,7 @@ class BackupRestoreSkipsMiniPhoneTest {
     }
 
     @Test
-    fun `NDJSON La recuperación omite pequeñas conversaciones telefónicas antiguas y sus mensajes.`() = runBlocking {
+    fun `NDJSON La recuperación omite pequeñas conversaciones telefónicas antiguas y sus mensajes`() = runBlocking {
         val service = newService()
 
         invokeNdJsonRecovery(

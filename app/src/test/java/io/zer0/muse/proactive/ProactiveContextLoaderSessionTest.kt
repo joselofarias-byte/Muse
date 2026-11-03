@@ -296,7 +296,7 @@ class ProactiveContextLoaderSessionTest {
     }
 
     @Test
-    fun `Cuando la cantidad total de materiales supere el presupuesto, se descartarán los elementos más antiguos.`() = runTest {
+    fun `Cuando la cantidad total de materiales supere el presupuesto, se descartarán los elementos más antiguos`() = runTest {
         // 40 Artículo × 600 Palabras: un solo artículo no es largo, pero cuando se apila, contiene más de 20.000 palabras.
         // La función del presupuesto es limitar el monto total, debiendo perderse el segmento más antiguo.
         val total = ProactiveContextLoader.RECENT_MESSAGE_COUNT

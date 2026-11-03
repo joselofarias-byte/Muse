@@ -209,7 +209,7 @@ class ProviderRequestBodySnapshotTest {
     }
 
     @Test
-    fun `OpenAI El cuerpo de la solicitud se lleva al aclarar la intención de la herramienta. required tool_choice`() = runTest {
+    fun `OpenAI El cuerpo de la solicitud se lleva al aclarar la intención de la herramienta required tool_choice`() = runTest {
         server.enqueue(
             MockResponse().setHeader("Content-Type", "application/json").setBody(
                 """{"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}""",

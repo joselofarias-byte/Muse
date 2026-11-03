@@ -39,7 +39,7 @@ class SkillBulkToggleTargetsTest {
     }
 
     @Test
-    fun `Solo las habilidades del usuario se cambiarán en lotes.`() {
+    fun `Solo las habilidades del usuario se cambiarán en lotes`() {
         val skills = listOf(
             skill(id = "read_file", impl = "read_file"),
             skill(id = "plugin_skill", impl = "plugin:p:fn"),

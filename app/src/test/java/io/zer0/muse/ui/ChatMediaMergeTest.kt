@@ -28,7 +28,7 @@ class ChatMediaMergeTest {
     )
 
     @Test
-    fun `finalAssistant Cuando traigas tus propios medios, prevalecerá esto.`() {
+    fun `finalAssistant Cuando traigas tus propios medios, prevalecerá esto`() {
         val final = assistantMsg(imageUrls = listOf("https://a.com/1.png"))
         val existing = assistantMsg(imageUrls = listOf("https://old.com/x.png"), videoFileUri = "https://old.com/v.mp4")
         val merged = mergeFinalAssistantMedia(final, existing)
@@ -52,7 +52,7 @@ class ChatMediaMergeTest {
     }
 
     @Test
-    fun `existingMsg Cuando es nulo, los medios están vacíos.`() {
+    fun `existingMsg Cuando es nulo, los medios están vacíos`() {
         val final = assistantMsg()
         val merged = mergeFinalAssistantMedia(final, null)
         assertEquals(emptyList<String>(), merged.imageUrls)
@@ -62,7 +62,7 @@ class ChatMediaMergeTest {
     }
 
     @Test
-    fun `finalAssistant Cuando tanto los medios como los existentes tienen medios, el final tiene prioridad y no se superpone.`() {
+    fun `finalAssistant Cuando tanto los medios como los existentes tienen medios, el final tiene prioridad y no se superpone`() {
         val final = assistantMsg(imageUrls = listOf("https://new.com/n.png"), videoFileUri = "https://new.com/n.mp4")
         val existing = assistantMsg(imageUrls = listOf("https://old.com/o.png"), videoFileUri = "https://old.com/o.mp4")
         val merged = mergeFinalAssistantMedia(final, existing)

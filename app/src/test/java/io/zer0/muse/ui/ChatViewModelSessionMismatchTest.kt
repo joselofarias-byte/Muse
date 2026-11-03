@@ -351,7 +351,7 @@ class ChatViewModelSessionMismatchTest {
     }
 
     @Test
-    fun `isStreaming Cuando sea cierto, el envío nuevamente no se repetirá en la cola.`() = runTest(testDispatcher) {
+    fun `isStreaming Cuando sea cierto, el envío nuevamente no se repetirá en la cola`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }

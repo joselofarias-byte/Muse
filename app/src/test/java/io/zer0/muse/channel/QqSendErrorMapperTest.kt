@@ -48,13 +48,13 @@ class QqSendErrorMapperTest {
     }
 
     @Test
-    fun `Si no está en el grupo, se le pedirá que se una primero al grupo.`() {
+    fun `Si no está en el grupo, se le pedirá que se una primero al grupo`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034101}", isGroup = true)
         assertTrue(text.contains("Únete al grupo"))
     }
 
     @Test
-    fun `Si no hay permiso de mensaje activo, significa que el chat grupal no admite el envío activo.`() {
+    fun `Si no hay permiso de mensaje activo, significa que el chat grupal no admite el envío activo`() {
         val text = QqSendErrorMapper.describe("HTTP 400: {\"code\":40034102}", isGroup = true)
         assertTrue(text.contains("Toma la iniciativa"))
     }
@@ -79,7 +79,7 @@ class QqSendErrorMapperTest {
     }
 
     @Test
-    fun `Aún puedes intentarlo nuevamente si no hay códigos de error o errores de control de frecuencia.`() {
+    fun `Aún puedes intentarlo nuevamente si no hay códigos de error o errores de control de frecuencia`() {
         assertFalse(QqSendErrorMapper.isPermanent(null))
         assertFalse(QqSendErrorMapper.isPermanent("HTTP 500: gateway timeout"))
         assertFalse(QqSendErrorMapper.isPermanent("HTTP 400: {\"code\":40034105}"))

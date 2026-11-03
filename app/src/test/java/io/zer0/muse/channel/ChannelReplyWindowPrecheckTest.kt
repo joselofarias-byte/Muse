@@ -26,7 +26,7 @@ class ChannelReplyWindowPrecheckTest {
     )
 
     @Test
-    fun `QQ La fecha límite es igual al tiempo de entrada más la ventana menos el margen de envío.`() {
+    fun `QQ La fecha límite es igual al tiempo de entrada más la ventana menos el margen de envío`() {
         assertEquals(
             receivedAt + windowMillis - sendMarginMillis,
             ChannelAutoReply.replyWindowDeadlineMillis(ChannelPlatform.QQ.name, receivedAt),
@@ -39,7 +39,7 @@ class ChannelReplyWindowPrecheckTest {
     }
 
     @Test
-    fun `QQ Si la cola entrante excede la ventana pasiva, se considerará que excede la ventana.`() {
+    fun `QQ Si la cola entrante excede la ventana pasiva, se considerará que excede la ventana`() {
         assertTrue(queuedReplyWindowExpired(qqInbound(), receivedAt + 6 * 60 * 1000L))
     }
 
@@ -49,7 +49,7 @@ class ChannelReplyWindowPrecheckTest {
     }
 
     @Test
-    fun `QQ Si la inscripción se atasca en la fecha límite, se considerará que excedió la ventana.`() {
+    fun `QQ Si la inscripción se atasca en la fecha límite, se considerará que excedió la ventana`() {
         assertTrue(
             queuedReplyWindowExpired(qqInbound(), receivedAt + windowMillis - sendMarginMillis),
         )
@@ -66,7 +66,7 @@ class ChannelReplyWindowPrecheckTest {
     }
 
     @Test
-    fun `El código de error final de interceptación indica que se agotó el tiempo de espera de la cola.`() {
+    fun `El código de error final de interceptación indica que se agotó el tiempo de espera de la cola`() {
         assertEquals("La ventana de respuesta pasiva ha expirado(Tiempo de espera de cola)", REPLY_WINDOW_EXPIRED_BY_QUEUE)
     }
 

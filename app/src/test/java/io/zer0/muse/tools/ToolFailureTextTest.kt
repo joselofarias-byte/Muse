@@ -15,7 +15,7 @@ import javax.net.ssl.SSLHandshakeException
 class ToolFailureTextTest {
 
     @Test
-    fun `La clasificación del tiempo de espera incluye conexión o lectura y dirección.`() {
+    fun `La clasificación del tiempo de espera incluye conexión o lectura y dirección`() {
         val text = ToolFailureText.httpFailure("HTTP GET", "https://example.com/a", SocketTimeoutException("timeout"))
         assertTrue(text.contains("tiempo de espera"))
         assertTrue(text.contains("https://example.com/a"))
@@ -38,7 +38,7 @@ class ToolFailureTextTest {
     }
 
     @Test
-    fun `El resto de excepciones tienen información y direcciones originales.`() {
+    fun `El resto de excepciones tienen información y direcciones originales`() {
         val text = ToolFailureText.httpFailure("HTTP POST", "https://example.com/c", IOException("connection reset"))
         assertTrue(text.contains("https://example.com/c"))
         assertTrue(text.contains("connection reset"))

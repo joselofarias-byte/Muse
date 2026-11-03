@@ -15,7 +15,7 @@ import org.junit.Test
 class ProactiveIntensityTest {
 
     @Test
-    fun `Sólo se permite decir cosas específicas en modo silencioso.`() {
+    fun `Sólo se permite decir cosas específicas en modo silencioso`() {
         assertTrue(ProactiveIntensity.QUIET.allows(ThoughtKind.REMINDER))
         assertFalse("Los archivos silenciosos no deben compartirse activamente", ProactiveIntensity.QUIET.allows(ThoughtKind.SHARE))
         assertFalse("Los archivos silenciosos no deben informar nodos de relación", ProactiveIntensity.QUIET.allows(ThoughtKind.MILESTONE))
@@ -23,7 +23,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `De vez en cuando, se me recuerda que puedo recibir llamadas y atención, pero no puedo compartir.`() {
+    fun `De vez en cuando, se me recuerda que puedo recibir llamadas y atención, pero no puedo compartir`() {
         assertTrue(ProactiveIntensity.RESERVED.allows(ThoughtKind.FOLLOW_UP))
         assertTrue(ProactiveIntensity.RESERVED.allows(ThoughtKind.CARE))
         assertFalse(ProactiveIntensity.RESERVED.allows(ThoughtKind.SHARE))
@@ -44,7 +44,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `El número máximo diario de artículos es 3, 8, 15, 30 e ilimitado según el nivel.`() {
+    fun `El número máximo diario de artículos es 3, 8, 15, 30 e ilimitado según el nivel`() {
         assertEquals(3, ProactiveIntensity.QUIET.cap)
         assertEquals(8, ProactiveIntensity.RESERVED.cap)
         assertEquals(15, ProactiveIntensity.STANDARD.cap)
@@ -64,7 +64,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `Filtrar candidatos por equipo puede eliminar tipos que no deberían mencionarse en ese equipo.`() {
+    fun `Filtrar candidatos por equipo puede eliminar tipos que no deberían mencionarse en ese equipo`() {
         val ledger = listOf(
             thought(id = "t1", kind = ThoughtKind.REMINDER),
             thought(id = "t2", kind = ThoughtKind.SHARE),

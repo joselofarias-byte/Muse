@@ -56,7 +56,7 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Todo hecho está. Todo hecho está. true`() {
+    fun `Todo hecho está Todo hecho está true`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
@@ -88,7 +88,7 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `SKIPPED No se considera una culminación, ni tampoco un fracaso.`() {
+    fun `SKIPPED No se considera una culminación, ni tampoco un fracaso`() {
         val plan = AgentPlan(
             id = "p1",
             title = "test",
@@ -137,7 +137,7 @@ class AgentPlanTest {
     }
 
     @Test
-    fun `Cada estado tiene recursos de redacción independientes y distintos de cero.`() {
+    fun `Cada estado tiene recursos de redacción independientes y distintos de cero`() {
         val labelResIds = AgentPlanStepStatus.values().map { it.labelRes }
         assertEquals(labelResIds.size, labelResIds.distinct().size)
         assertTrue(labelResIds.all { it != 0 })

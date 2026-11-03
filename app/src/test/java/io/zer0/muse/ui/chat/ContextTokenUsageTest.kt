@@ -40,7 +40,7 @@ class ContextTokenUsageTest {
     // ── 1. Ruta de degradación: ningún uso debe ser exactamente igual que la estimación pura ──────────────────────
 
     @Test
-    fun `Sin ningún uso, es exactamente igual que la estimación puramente local.`() {
+    fun `Sin ningún uso, es exactamente igual que la estimación puramente local`() {
         val messages = listOf(
             user("Ayúdame a ver la estructura del proyecto."),
             assistant("El proyecto se divide en aplicación,ai,memory Tres módulos."),
@@ -56,7 +56,7 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `usage Los datos antiguos cuyos campos sean todos nulos también se devolverán a la estimación pura.`() {
+    fun `usage Los datos antiguos cuyos campos sean todos nulos también se devolverán a la estimación pura`() {
         val messages = listOf(
             user("Hola"),
             assistant("Hola, ¿en qué puedo ayudarte?"),
@@ -82,7 +82,7 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `Una lista vacía devuelve 0 sin generar una excepción.`() {
+    fun `Una lista vacía devuelve 0 sin generar una excepción`() {
         assertEquals(0, ContextTokenUsage.estimate(emptyList(), ""))
         assertEquals(0, TokenEstimator.estimate(emptyList(), ""))
     }
@@ -90,7 +90,7 @@ class ContextTokenUsageTest {
     // ── 2. Selección de línea de nivel de agua. ────────────────────────────────────────────────
 
     @Test
-    fun `El nivel del agua toma el último mensaje del asistente con el uso.`() {
+    fun `El nivel del agua toma el último mensaje del asistente con el uso`() {
         val messages = listOf(
             user("primera pregunta"),
             assistant("Primera respuesta", promptTokens = 1_000, completionTokens = 100),
@@ -118,14 +118,14 @@ class ContextTokenUsageTest {
     // ── 3. algoritmo de fusión ────────────────────────────────────────────────────
 
     @Test
-    fun `La medición real solo requiere una finalización rápida y sin superposición. cached`() {
+    fun `La medición real solo requiere una finalización rápida y sin superposición cached`() {
         // OpenAI El caché es un subconjunto del mensaje;UsageTokens.total También es del mismo calibre.
         val message = assistant("responder", promptTokens = 5_000, completionTokens = 800, cachedTokens = 4_000)
         assertEquals(5_800, ContextTokenUsage.measuredTokens(message))
     }
 
     @Test
-    fun `El valor combinado es igual al nivel de agua estimado más el nivel de agua medido.`() {
+    fun `El valor combinado es igual al nivel de agua estimado más el nivel de agua medido`() {
         val tail = user("Permítanme agregar una pregunta de seguimiento muy larga:" + "Detalles".repeat(40))
         val messages = listOf(
             user("primera pregunta"),
@@ -137,7 +137,7 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `Si no hay novedades después del nivel del agua, sólo se contabilizará la medición real.`() {
+    fun `Si no hay novedades después del nivel del agua, sólo se contabilizará la medición real`() {
         val messages = listOf(
             user("pregunta"),
             assistant("responder", promptTokens = 50_000, completionTokens = 2_000),
@@ -164,7 +164,7 @@ class ContextTokenUsageTest {
     // ── 4. Medición real sospechosa: tome la estimación como límite inferior ──────────────────────────────────────
 
     @Test
-    fun `Si la medida real es significativamente menor que la estimación, devuelva la estimación.`() {
+    fun `Si la medida real es significativamente menor que la estimación, devuelva la estimación`() {
         val messages = listOf(
             user("Pregunta muy larga:" + "Por favor explique qué hace este código.".repeat(60)),
             assistant("Respuesta larga:" + "Aquí hacemos el análisis primero y luego la conversión.".repeat(60), promptTokens = 1, completionTokens = 1),
@@ -184,7 +184,7 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `blend El límite de confianza inferior es exactamente la mitad de la estimación.`() {
+    fun `blend El límite de confianza inferior es exactamente la mitad de la estimación`() {
         // Valor combinado × 2 == estimación → No es inferior al límite inferior y se basa en mediciones reales.
         assertEquals(500, ContextTokenUsage.blend(measured = 500, tailEstimate = 0, fullEstimate = 1_000))
         // Si es menor, estará por debajo del límite inferior, así que utilice la estimación para obtener el resultado final.
@@ -192,13 +192,13 @@ class ContextTokenUsageTest {
     }
 
     @Test
-    fun `Si la medida real es mayor que la estimación, la medida real se adoptará directamente.`() {
+    fun `Si la medida real es mayor que la estimación, la medida real se adoptará directamente`() {
         // Hay una desviación entre el tokenizador real y cl100k, chino/Cuando la medición real de la escena multimodal es mayor, la medición real debe prevalecer.
         assertEquals(9_000, ContextTokenUsage.blend(measured = 8_000, tailEstimate = 1_000, fullEstimate = 2_000))
     }
 
     @Test
-    fun `Cuando la estimación es 0, no afecta el valor medido real.`() {
+    fun `Cuando la estimación es 0, no afecta el valor medido real`() {
         // jtokkit Cuando la inicialización falla + texto vacío, se estima que es 0 y el valor medido real no se puede restablecer a cero.
         assertEquals(3_000, ContextTokenUsage.blend(measured = 3_000, tailEstimate = 0, fullEstimate = 0))
     }

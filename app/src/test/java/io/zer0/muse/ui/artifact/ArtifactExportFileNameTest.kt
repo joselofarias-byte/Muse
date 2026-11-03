@@ -14,7 +14,7 @@ class ArtifactExportFileNameTest {
     }
 
     @Test
-    fun `Los caracteres ilegales se reemplazan con guiones bajos.`() {
+    fun `Los caracteres ilegales se reemplazan con guiones bajos`() {
         assertEquals("My_Doc_2024.txt", artifactExportFileName("My Doc/2024"))
     }
 
@@ -29,7 +29,7 @@ class ArtifactExportFileNameTest {
     }
 
     @Test
-    fun `Títulos muy largos truncados a 40 caracteres.`() {
+    fun `Títulos muy largos truncados a 40 caracteres`() {
         assertEquals("a".repeat(40) + ".txt", artifactExportFileName("a".repeat(100)))
     }
 }

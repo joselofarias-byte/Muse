@@ -42,7 +42,7 @@ class SendVoiceToolTest {
     )
 
     @Test
-    fun `Cuando la síntesis sea exitosa, entregue Success con uri y duración y elimine el archivo temporal.`() = runBlocking {
+    fun `Cuando la síntesis sea exitosa, entregue Success con uri y duración y elimine el archivo temporal`() = runBlocking {
         val synth = FakeSynthesizer()
         val archive = FakeArchive()
         val host = RecordingHost()
@@ -61,7 +61,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `El fallo se produce cuando la síntesis falla y no se ajusta. persist`() = runBlocking {
+    fun `El fallo se produce cuando la síntesis falla y no se ajusta persist`() = runBlocking {
         val synth = FakeSynthesizer(TtsSynthResult.Failure("Tanto la nube como el sistema fallaron"))
         val archive = FakeArchive()
         val host = RecordingHost()
@@ -77,7 +77,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Al volver al sonido del sistema, los resultados de la herramienta indican que la nube no ha surtido efecto y por qué.`() = runBlocking {
+    fun `Al volver al sonido del sistema, los resultados de la herramienta indican que la nube no ha surtido efecto y por qué`() = runBlocking {
         val synth = FakeSynthesizer(TtsSynthResult.SystemFallback("API Key esta vacio"))
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive()).also { it.installHost(host) }
@@ -140,7 +140,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Se envía repetidamente el mismo texto y emoción y solo se envía una copia del audio.`() = runBlocking {
+    fun `Se envía repetidamente el mismo texto y emoción y solo se envía una copia del audio`() = runBlocking {
         val synth = FakeSynthesizer()
         val store = realStore()
         val host = RecordingHost()
@@ -155,7 +155,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Diferentes emociones se completan en diferentes archivos.`() = runBlocking {
+    fun `Diferentes emociones se completan en diferentes archivos`() = runBlocking {
         val store = realStore()
         val impl = tool(FakeSynthesizer(), store).also { it.installHost(RecordingHost()) }
 
@@ -166,7 +166,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Cuando falla la generación, no se escribirá ninguna voz en ningún mensaje y se eliminará el archivo.`() = runBlocking {
+    fun `Cuando falla la generación, no se escribirá ninguna voz en ningún mensaje y se eliminará el archivo`() = runBlocking {
         val archive = FakeArchive()
         val host = RecordingHost(active = false)
         val impl = tool(FakeSynthesizer(), archive).also { it.installHost(host) }
@@ -179,7 +179,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Si falta texto, se informará directamente un error de parámetro.`() = runBlocking {
+    fun `Si falta texto, se informará directamente un error de parámetro`() = runBlocking {
         val synth = FakeSynthesizer()
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive()).also { it.installHost(host) }
@@ -194,7 +194,7 @@ class SendVoiceToolTest {
     // ── Lectura en voz alta párrafo por párrafo: puerta china / ranura independiente / número máximo de párrafos por ronda ─────────────────
 
     @Test
-    fun `Si no hay caracteres chinos en el texto, no lo sintetice y explique el motivo.`() = runBlocking {
+    fun `Si no hay caracteres chinos en el texto, no lo sintetice y explique el motivo`() = runBlocking {
         val synth = FakeSynthesizer()
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive()).also { it.installHost(host) }
@@ -207,7 +207,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Disposición mixta de chino e inglés, incluido el chino.`() = runBlocking {
+    fun `Disposición mixta de chino e inglés, incluido el chino`() = runBlocking {
         val synth = FakeSynthesizer()
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive()).also { it.installHost(host) }
@@ -219,7 +219,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `Se envían tres mensajes de voz en una misma ronda y cada entrega no se cubre entre sí.`() = runBlocking {
+    fun `Se envían tres mensajes de voz en una misma ronda y cada entrega no se cubre entre sí`() = runBlocking {
         val synth = FakeSynthesizer()
         val host = RecordingHost()
         // El puerto de archivo recibe una referencia diferente cada vez: si varias voces comparten la ranura/Con el mismo resultado portador, tres resultados serán uno mismo.
@@ -238,7 +238,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `La sexta voz en una sola ronda está bloqueada por el límite superior y no se sintetiza afinada.`() = runBlocking {
+    fun `La sexta voz en una sola ronda está bloqueada por el límite superior y no se sintetiza afinada`() = runBlocking {
         val synth = FakeSynthesizer()
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive(uriFactory = { n -> "file:///data/voice_messages/v$n.wav" }))
@@ -260,7 +260,7 @@ class SendVoiceToolTest {
     }
 
     @Test
-    fun `find_tools Esta herramienta se puede encontrar utilizando palabras clave como \"discurso\".`() {
+    fun `find_tools Esta herramienta se puede encontrar utilizando palabras clave como "discurso"`() {
         // Descubribilidad: una vez enviada la herramienta, el modelo debe encontrarla. Utilice la cuenta registrada real para ejecutar la búsqueda,
         // No hecho a mano ToolDef —— De lo contrario, no se informará ningún error incluso si se cambia la descripción.
         val registry = ToolRegistry(context)

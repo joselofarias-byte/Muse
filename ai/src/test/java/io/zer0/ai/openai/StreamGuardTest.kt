@@ -110,7 +110,7 @@ class StreamGuardTest {
     }
 
     @Test
-    fun `Final vacío. La razón sigue siendo normal. Done`() = runBlocking {
+    fun `Final vacío La razón sigue siendo normal Done`() = runBlocking {
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"content":"Uno, dos, tres, cuatro, cinco, seis, siete, ocho, noventa"},"finish_reason":""}]}""",
@@ -125,7 +125,7 @@ class StreamGuardTest {
     }
 
     @Test
-    fun `Después de desconectar el nombre de la herramienta vacía, se debe completar el respaldo sin transmisión y se debe devolver la llamada a la herramienta.`() = runBlocking {
+    fun `Después de desconectar el nombre de la herramienta vacía, se debe completar el respaldo sin transmisión y se debe devolver la llamada a la herramienta`() = runBlocking {
         val malformedToolChunks = (0..10).map { index ->
             """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":$index,"id":"call_bad_$index","function":{"name":"","arguments":"{\"chunk\":\"$index-very-long\"}"}}]},"finish_reason":null}]}"""
         }
@@ -161,7 +161,7 @@ class StreamGuardTest {
     }
 
     @Test
-    fun `Cuando el respaldo sin transmisión falla continuamente, se debe emitir un error en lugar del cierre de solo hecho.`() = runBlocking {
+    fun `Cuando el respaldo sin transmisión falla continuamente, se debe emitir un error en lugar del cierre de solo hecho`() = runBlocking {
         server.enqueue(
             sse(
                 """{"choices":[{"index":0,"delta":{"content":"a"},"finish_reason":"stop"}]}""",
@@ -212,7 +212,7 @@ class StreamGuardTest {
      * Nuevo comportamiento: informe un error primero y deje que la capa superior lo reenvíe; Sólo retirará la garantía si no se puede guardar. Nunca vacío.
      */
     @Test
-    fun `La reversión sin transmisión no se detecta la primera vez que el protocolo de la herramienta tiene un formato incorrecto. reasoning`() = runBlocking {
+    fun `La reversión sin transmisión no se detecta la primera vez que el protocolo de la herramienta tiene un formato incorrecto reasoning`() = runBlocking {
         val thinkingText = "Primero déjame determinar si necesito llamar a la herramienta.,Este paso es el razonamiento interno."
         server.enqueue(
             sse(
@@ -253,7 +253,7 @@ class StreamGuardTest {
      * Cuando el modelo se detiene para ajustar las herramientas, las rondas posteriores continuarán produciendo resultados; Si tratas tus pensamientos como texto, aparecerán directamente en la pantalla.
      */
     @Test
-    fun `El respaldo sin transmisión encuentra llamadas a herramientas y no revela los detalles cuando hay llamadas a herramientas.`() = runBlocking {
+    fun `El respaldo sin transmisión encuentra llamadas a herramientas y no revela los detalles cuando hay llamadas a herramientas`() = runBlocking {
         val thinkingText = "Primero déjame determinar si necesito llamar a la herramienta.,Este paso es un razonamiento interno y no debe mostrarse en la pantalla."
         server.enqueue(
             sse(
@@ -290,7 +290,7 @@ class StreamGuardTest {
      * La línea final aún debe conservarse; de ​​lo contrario, el usuario verá una respuesta vacía.
      */
     @Test
-    fun `El respaldo sin transmisión mantiene el razonamiento cuando se encuentran motivos de detención comunes.`() = runBlocking {
+    fun `El respaldo sin transmisión mantiene el razonamiento cuando se encuentran motivos de detención comunes`() = runBlocking {
         val thinkingText = "Este es un contenido de pensamiento relativamente largo que se utiliza para desencadenar el final prematuro del flujo y retener el comportamiento evasivo."
         server.enqueue(
             sse(

@@ -51,7 +51,7 @@ class ContentSafetyRulesTest {
     }
 
     @Test
-    fun `El contenido del texto no participa en la coincidencia de reglas de ruta.`() {
+    fun `El contenido del texto no participa en la coincidencia de reglas de ruta`() {
         // El camino es legal. Hay puntos suspensivos y escritura de ruta absoluta en el texto, por lo que no se puede bloquear como fuera de límites.
         val args =
             mapOf(
@@ -63,7 +63,7 @@ class ContentSafetyRulesTest {
     }
 
     @Test
-    fun `El camino en sí cruza el límite y todavía está bloqueado.`() {
+    fun `El camino en sí cruza el límite y todavía está bloqueado`() {
         assertEquals(
             "workspace-traversal",
             ContentSafetyRules.checkArgs(

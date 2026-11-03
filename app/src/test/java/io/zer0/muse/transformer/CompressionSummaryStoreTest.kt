@@ -31,7 +31,7 @@ class CompressionSummaryStoreTest {
     }
 
     @Test
-    fun `Después de la grabación, se puede volver a leer por sesión.`() {
+    fun `Después de la grabación, se puede volver a leer por sesión`() {
         CompressionSummaryStore.remember("s1", setOf("a", "b"), "ResumenA")
         val entry = CompressionSummaryStore.entry("s1")
         assertNotNull(entry)
@@ -78,7 +78,7 @@ class CompressionSummaryStoreTest {
     }
 
     @Test
-    fun `No reutilizar cuando cubra solo una parte del área.(De lo contrario, la historia se perderá.)`() {
+    fun `No reutilizar cuando cubra solo una parte del área(De lo contrario, la historia se perderá)`() {
         val m1 = msg("m1")
         val m2 = msg("m2")
         val entry = CompressionSummaryStore.Entry(summary = "ResumenA", coveredIds = setOf(m1.id.toString()))

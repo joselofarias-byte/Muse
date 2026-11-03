@@ -168,7 +168,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `formula block El cierre paralelo contiene el signo igual y letras griegas.`() {
+    fun `formula block El cierre paralelo contiene el signo igual y letras griegas`() {
         val md = "\$\$ \\alpha + \\beta = \\gamma \$\$"
         val blocks = parseMarkdown(md)
         val formula = blocks.firstOrNull { it is MarkdownBlock.Formula } as? MarkdownBlock.Formula
@@ -268,7 +268,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Análisis incremental: Agregar por fila, equivalente al monto total, incluidos los estados intermedios no cerrados`() {
+    fun `Análisis incremental Agregar por fila, equivalente al monto total, incluidos los estados intermedios no cerrados`() {
         val lines = listOf(
             "Prefacio",
             "",
@@ -305,7 +305,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Análisis incremental: Agregar dentro del mismo párrafo equivale al monto total`() {
+    fun `Análisis incremental Agregar dentro del mismo párrafo equivale al monto total`() {
         // Los formatos fluidos suelen agregarse dentro de la misma línea de un párrafo. token(Sin nuevos saltos de línea),El último bloque debe volverse a escanear en lugar de reutilizarse directamente.
         val parser = IncrementalMarkdownParser()
         var acc = "primer párrafo"
@@ -320,7 +320,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Análisis incremental: la valla no cerrada se cierra gradualmente, lo que equivale al importe total`() {
+    fun `Análisis incremental la valla no cerrada se cierra gradualmente, lo que equivale al importe total`() {
         val parser = IncrementalMarkdownParser()
         var acc = "comienzo"
         acc += "\n```kotlin"
@@ -336,7 +336,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Análisis incremental: las fórmulas de varias líneas no cerradas se cierran gradualmente y equivalen al monto total`() {
+    fun `Análisis incremental las fórmulas de varias líneas no cerradas se cierran gradualmente y equivalen al monto total`() {
         val parser = IncrementalMarkdownParser()
         var acc = "\$\$"
         assertEquals("Fórmula abierta", parseMarkdown(acc), parser.parse(acc))
@@ -347,7 +347,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Análisis incremental: la tabla agrega gradualmente filas de datos, lo que equivale a la cantidad total`() {
+    fun `Análisis incremental la tabla agrega gradualmente filas de datos, lo que equivale a la cantidad total`() {
         val parser = IncrementalMarkdownParser()
         var acc = "| A | B |\n|---|---|"
         assertEquals("encabezado+divisor", parseMarkdown(acc), parser.parse(acc))
@@ -369,7 +369,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `Resolución incremental El bloque de estabilización de la cabeza sigue siendo el mismo.`() {
+    fun `Resolución incremental El bloque de estabilización de la cabeza sigue siendo el mismo`() {
         // Afirmaciones principales para caché de nodo estable:Al agregar la cola,La instancia del bloque de encabezado cerrado permanece sin cambios.,
         // Compose para omitir el reensamblaje de estos bloques
         val parser = IncrementalMarkdownParser()

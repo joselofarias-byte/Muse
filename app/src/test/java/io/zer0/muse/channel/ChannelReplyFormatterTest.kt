@@ -31,7 +31,7 @@ class ChannelReplyFormatterTest {
     }
 
     @Test
-    fun `Fusionar la cola cuando haya más de cinco párrafos.`() {
+    fun `Fusionar la cola cuando haya más de cinco párrafos`() {
         val text = (1..8).joinToString("\n\n") { "No.${it}segmento" }
         val plan = ChannelReplyFormatter.plan(text)
         // QQ Se permiten un máximo de 5 respuestas pasivas para un mensaje entrante, y el quinto párrafo debe contener 5~8 Párrafo y entrar

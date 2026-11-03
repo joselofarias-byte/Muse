@@ -55,7 +55,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `En la versión bilingüe no se habla la parte sin chino.`() = runBlocking {
+    fun `En la versión bilingüe no se habla la parte sin chino`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         val host = voiceHost(answer = "[Voz]Okay let's go[/Voz]", synthesizer = synthesizer)
 
@@ -66,7 +66,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `Cuando hay más de cinco párrafos, los párrafos adicionales se degradan a texto.`() = runBlocking {
+    fun `Cuando hay más de cinco párrafos, los párrafos adicionales se degradan a texto`() = runBlocking {
         val script = (1..7).joinToString(separator = "") { "[Voz]No. $it frase[/Voz]" }
         val host = voiceHost(answer = script)
 
@@ -81,7 +81,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `Cuando la síntesis falla, este párrafo se degrada a texto.`() = runBlocking {
+    fun `Cuando la síntesis falla, este párrafo se degrada a texto`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         coEvery { synthesizer.synthesizeTo(any(), any(), any()) } returns TtsSynthResult.Failure("La síntesis falló")
         val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz]", synthesizer = synthesizer)
@@ -92,7 +92,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `Este párrafo también se degrada a texto cuando el archivo no se puede guardar.`() = runBlocking {
+    fun `Este párrafo también se degrada a texto cuando el archivo no se puede guardar`() = runBlocking {
         val store = archiver(archivedUri = null)
         val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz]", store = store)
 
@@ -116,7 +116,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `La colocación de pedidos y las etiquetas no cerradas no están incluidas en el texto.`() = runBlocking {
+    fun `La colocación de pedidos y las etiquetas no cerradas no están incluidas en el texto`() = runBlocking {
         val host = voiceHost(answer = "[Voz]Lee esta frase[/Voz][/Voz] fin[Voz]la mitad")
 
         val events = host.respond("a1", USER_TURN).toList()
@@ -132,7 +132,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `Si el marcado puro no tiene cuerpo, se considerará fallido.`() = runBlocking {
+    fun `Si el marcado puro no tiene cuerpo, se considerará fallido`() = runBlocking {
         val host = voiceHost(answer = "[Voz][/Voz]")
 
         val events = host.respond("a1", USER_TURN).toList()
@@ -141,7 +141,7 @@ class MiniPhoneVoiceScriptTest {
     }
 
     @Test
-    fun `La identificación china solo se fija en los caracteres chinos y no en la puntuación ni en las letras latinas.`() {
+    fun `La identificación china solo se fija en los caracteres chinos y no en la puntuación ni en las letras latinas`() {
         assertTrue(hasChineseCharacters("buenas noches"))
         assertTrue(hasChineseCharacters("Okay, buenas noches"))
         assertFalse(hasChineseCharacters("Okay let's go"))

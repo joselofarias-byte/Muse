@@ -50,7 +50,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `La respuesta normal es eliminar el texto con espacios en blanco al principio y al final.`() {
+    fun `La respuesta normal es eliminar el texto con espacios en blanco al principio y al final`() {
         assertEquals("Habrá una reunión a las tres de la tarde.", parseOneShotTranscription("""{"text":"  Habrá una reunión a las tres de la tarde. \n"}"""))
     }
 
@@ -60,7 +60,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `La baseUrl asignada a v1 no duplica el segmento ortográfico.`() {
+    fun `La baseUrl asignada a v1 no duplica el segmento ortográfico`() {
         assertEquals(
             "https://api.openai.com/v1/audio/transcriptions",
             oneShotTranscriptionUrl("https://api.openai.com/v1"),
@@ -72,7 +72,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `El nombre de dominio simple se complementa con v1 y la ruta del punto final.`() {
+    fun `El nombre de dominio simple se complementa con v1 y la ruta del punto final`() {
         assertEquals(
             "https://asr.example.com/v1/audio/transcriptions",
             oneShotTranscriptionUrl("https://asr.example.com"),
@@ -80,7 +80,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `Úselo como está cuando pegue directamente el punto final completo.`() {
+    fun `Úselo como está cuando pegue directamente el punto final completo`() {
         assertEquals(
             "https://asr.example.com/audio/transcriptions",
             oneShotTranscriptionUrl("https://asr.example.com/audio/transcriptions"),
@@ -88,14 +88,14 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `Se considera que solo son compatibles los motores con llave compatibles con Whisper.`() {
+    fun `Se considera que solo son compatibles los motores con llave compatibles con Whisper`() {
         assertTrue(AsrConfig(provider = AsrProviderType.OPENAI_WHISPER, apiKey = "sk-x").supportsFileTranscription())
         assertTrue(AsrConfig(provider = AsrProviderType.AGNES, apiKey = "sk-x").supportsFileTranscription())
         assertFalse("Incluso la solicitud no se puede enviar sin completar la clave.", AsrConfig(provider = AsrProviderType.OPENAI_WHISPER).supportsFileTranscription())
     }
 
     @Test
-    fun `Los motores de streaming y asincrónicos no admiten el párrafo completo, incluso si tienen una clave.`() {
+    fun `Los motores de streaming y asincrónicos no admiten el párrafo completo, incluso si tienen una clave`() {
         val unsupported = listOf(
             AsrProviderType.SYSTEM,
             AsrProviderType.DASHSCOPE,
@@ -113,7 +113,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `baseUrl Si no es http, se considerará no compatible.`() {
+    fun `baseUrl Si no es http, se considerará no compatible`() {
         assertFalse(
             AsrConfig(
                 provider = AsrProviderType.OPENAI_WHISPER,

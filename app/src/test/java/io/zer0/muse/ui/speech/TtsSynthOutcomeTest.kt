@@ -14,7 +14,7 @@ import org.junit.Test
 class TtsSynthOutcomeTest {
 
     @Test
-    fun `Cuando la nube tiene éxito, la nube se encuentra en un estado exitoso sin ajustar el sistema. TTS`() = runBlocking {
+    fun `Cuando la nube tiene éxito, la nube se encuentra en un estado exitoso sin ajustar el sistema TTS`() = runBlocking {
         var systemCalls = 0
 
         val result = resolveCloudSynthOutcome(
@@ -43,7 +43,7 @@ class TtsSynthOutcomeTest {
     }
 
     @Test
-    fun `Cuando el sistema no está disponible, es un fracaso total y la síntesis del sistema no se ajusta.`() = runBlocking {
+    fun `Cuando el sistema no está disponible, es un fracaso total y la síntesis del sistema no se ajusta`() = runBlocking {
         var systemCalls = 0
 
         val result = resolveCloudSynthOutcome(
@@ -64,7 +64,7 @@ class TtsSynthOutcomeTest {
     }
 
     @Test
-    fun `Cuando la síntesis del sistema también falla, es un completo fracaso.`() = runBlocking {
+    fun `Cuando la síntesis del sistema también falla, es un completo fracaso`() = runBlocking {
         val result = resolveCloudSynthOutcome(
             cloudOk = false,
             failureReason = "Error en la síntesis de TTS en la nube",

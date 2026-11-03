@@ -71,7 +71,7 @@ class FrontmatterParserTest {
     }
 
     @Test
-    fun `Las claves no distinguen entre mayúsculas y minúsculas y se eliminan los espacios.`() {
+    fun `Las claves no distinguen entre mayúsculas y minúsculas y se eliminan los espacios`() {
         val md = "---\n  Title : tecla mayúscula\n---\n"
         val fm = FrontmatterParser.parse(md)
         assertEquals("tecla mayúscula", fm?.title)
@@ -128,7 +128,7 @@ class FrontmatterParserTest {
     }
 
     @Test
-    fun `withCover Insertar cuando ya hay frontmatter y no hay portada.`() {
+    fun `withCover Insertar cuando ya hay frontmatter y no hay portada`() {
         val md = "---\ntitle: Sin documento de portada\n---\nTexto"
         val out = FrontmatterParser.withCover(md, "covers/added.jpg")
         val fm = FrontmatterParser.parse(out)

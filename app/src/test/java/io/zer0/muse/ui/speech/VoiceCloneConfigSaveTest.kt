@@ -14,7 +14,7 @@ import org.junit.Test
 class VoiceCloneConfigSaveTest {
 
     @Test
-    fun `La clonación se realiza correctamente y el tono del motor y la clave en el cuadro de entrada se escriben en la configuración.`() {
+    fun `La clonación se realiza correctamente y el tono del motor y la clave en el cuadro de entrada se escriben en la configuración`() {
         val saved = MediaConfig(ttsEngine = "system", ttsVoice = "")
             .afterVoiceClone(engine = "elevenlabs", voiceId = "voice-abc", apiKey = "  sk-abc  ")
 

@@ -12,7 +12,7 @@ import org.junit.Test
 class MpWavHeaderTest {
 
     @Test
-    fun `El encabezado se fija en 44 bytes y termina con tres párrafos de datos RIFF WAVE.`() {
+    fun `El encabezado se fija en 44 bytes y termina con tres párrafos de datos RIFF WAVE`() {
         val header = wavHeader(dataLength = 1_000, sampleRate = 16_000)
 
         assertEquals("WAV longitud de la cabeza", 44, header.size)
@@ -41,7 +41,7 @@ class MpWavHeaderTest {
     }
 
     @Test
-    fun `fmt El bloque especifica PCM mono de 16 bits y frecuencia de muestreo.`() {
+    fun `fmt El bloque especifica PCM mono de 16 bits y frecuencia de muestreo`() {
         val header = wavHeader(dataLength = 0, sampleRate = 16_000, channels = 1, bitsPerSample = 16)
 
         assertEquals("fmt longitud del bloque", 16, intLe(header, 16))

@@ -45,7 +45,7 @@ class ArtifactCardListTest {
     )
 
     @Test
-    fun `Cuando hay más de tres, se muestra una barra plegable al final.`() {
+    fun `Cuando hay más de tres, se muestra una barra plegable al final`() {
         composeTestRule.setContent {
             MaterialTheme {
                 ArtifactCardList(artifacts = (1..7).map(::artifact), onArtifactClick = {})
@@ -57,7 +57,7 @@ class ArtifactCardListTest {
     }
 
     @Test
-    fun `Haga clic en la barra plegable para expandir todos los productos.`() {
+    fun `Haga clic en la barra plegable para expandir todos los productos`() {
         composeTestRule.setContent {
             MaterialTheme {
                 ArtifactCardList(artifacts = (1..7).map(::artifact), onArtifactClick = {})

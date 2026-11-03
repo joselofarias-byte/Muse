@@ -43,13 +43,13 @@ class KeyRouletteTest {
     }
 
     @Test
-    fun `Cuando hay varias claves, pick devuelve una de las candidatas. key`() {
+    fun `Cuando hay varias claves, pick devuelve una de las candidatas key`() {
         val result = roulette.pick(providerId, multiKeys)
         assertTrue("pick El resultado debe ser una de las claves candidatas.: $result", result in listOf(key1, key2, key3))
     }
 
     @Test
-    fun `pick Recoger nuevamente después de eso no devolverá lo recién usado. key(LRU)`() {
+    fun `pick Recoger nuevamente después de eso no devolverá lo recién usado key(LRU)`() {
         // primera vez pick
         val first = roulette.pick(providerId, multiKeys)
         // La segunda elección: la primera se acaba de usar.,Se debe seleccionar otro key
@@ -113,7 +113,7 @@ class KeyRouletteTest {
     }
 
     @Test
-    fun `pickNext Después de agregar la clave actual a la lista negra suave, ya no tendrá prioridad.`() {
+    fun `pickNext Después de agregar la clave actual a la lista negra suave, ya no tendrá prioridad`() {
         val first = roulette.pick(providerId, multiKeys)
         roulette.pickNext(providerId, multiKeys, first)
         // otra vez pick,first en lista negra suave,A otros se les debe dar prioridad key
@@ -146,7 +146,7 @@ class KeyRouletteTest {
     }
 
     @Test
-    fun `markFailed Después de que todas las claves degeneren para devolver la primera. key`() {
+    fun `markFailed Después de que todas las claves degeneren para devolver la primera key`() {
         // Marcar las tres claves como fallidas
         roulette.markFailed(providerId, key1, hardBlock = true)
         roulette.markFailed(providerId, key2, hardBlock = true)

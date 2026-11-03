@@ -17,7 +17,7 @@ import java.io.File
 class ProactiveDismissWiringTest {
 
     @Test
-    fun `Sólo se reclamarán las acciones contenidas en este acuerdo.`() {
+    fun `Sólo se reclamarán las acciones contenidas en este acuerdo`() {
         assertEquals(
             "o1",
             ProactiveDismissProtocol.dismissedOutcomeId(ProactiveDismissProtocol.ACTION_DISMISS, "o1"),
@@ -53,7 +53,7 @@ class ProactiveDismissWiringTest {
     }
 
     @Test
-    fun `La notificación de mensaje activo se cuelga y esta vez no se utiliza ningún botón.`() {
+    fun `La notificación de mensaje activo se cuelga y esta vez no se utiliza ningún botón`() {
         val notifier = source("io/zer0/muse/notification/MuseNotificationManager.kt")
         assertTrue(
             "Debe haber un botón de acción en la notificación; de lo contrario, el usuario no tendrá forma de \"no usarlo esta vez\".",
@@ -75,7 +75,7 @@ class ProactiveDismissWiringTest {
     }
 
     @Test
-    fun `Durante la inspección se realizó cierre de vencimientos y filtrado de candidatos.`() {
+    fun `Durante la inspección se realizó cierre de vencimientos y filtrado de candidatos`() {
         val runner = source("io/zer0/muse/proactive/ProactiveCycleRunner.kt")
         assertTrue("El cierre vencido debe quedar colgado en la inspección, no configurar cronómetro", runner.contains("expireOverdue(now)"))
         assertTrue("El filtrado de candidatos utiliza conclusiones aprendidas", runner.contains("unpopularKinds("))

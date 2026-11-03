@@ -45,7 +45,7 @@ class SpeechModelPickerTest {
     // ── lista de candidatos ────────────────────────────────────────────────────────
 
     @Test
-    fun `Si el proveedor tiene modelos, se enumeran todos y el pedido permanece sin cambios.`() {
+    fun `Si el proveedor tiene modelos, se enumeran todos y el pedido permanece sin cambios`() {
         val options = SpeechModelPicker.options(provider)
 
         assertEquals(
@@ -56,20 +56,20 @@ class SpeechModelPickerTest {
     }
 
     @Test
-    fun `Si el proveedor no tiene modelo, déjelo en blanco.`() {
+    fun `Si el proveedor no tiene modelo, déjelo en blanco`() {
         assertTrue("Los proveedores vacíos no deberían crear candidatos de la nada", SpeechModelPicker.options(emptyProvider).isEmpty())
         assertTrue("Si no hay ningún proveedor, la selección estará vacía.", SpeechModelPicker.options(null).isEmpty())
     }
 
     @Test
-    fun `Los proveedores candidatos eligen preferentemente el especificado en la configuración.`() {
+    fun `Los proveedores candidatos eligen preferentemente el especificado en la configuración`() {
         val picked = SpeechModelPicker.candidateProvider(listOf(disabledProvider, provider), "p1")
 
         assertEquals("p1", picked?.id)
     }
 
     @Test
-    fun `Cuando no se especifica ningún proveedor, se toma el primero habilitado.`() {
+    fun `Cuando no se especifica ningún proveedor, se toma el primero habilitado`() {
         val picked = SpeechModelPicker.candidateProvider(listOf(disabledProvider, provider), "")
 
         assertEquals("Los proveedores desactivados no se pueden utilizar como candidatos predeterminados", "p1", picked?.id)
@@ -85,7 +85,7 @@ class SpeechModelPickerTest {
     // ── Compatible con valores antiguos ────────────────────────────────────────────────────────
 
     @Test
-    fun `Cuando el valor completado manualmente no se encuentra entre los candidatos, se muestra como personalizado y no se borra.`() {
+    fun `Cuando el valor completado manualmente no se encuentra entre los candidatos, se muestra como personalizado y no se borra`() {
         val selection = SpeechModelPicker.selection(
             currentId = "legacy-model",
             options = SpeechModelPicker.options(provider),
@@ -96,7 +96,7 @@ class SpeechModelPickerTest {
     }
 
     @Test
-    fun `Muestra el nombre del modelo del proveedor cuando el valor está en el candidato.`() {
+    fun `Muestra el nombre del modelo del proveedor cuando el valor está en el candidato`() {
         val selection = SpeechModelPicker.selection("tts-2", SpeechModelPicker.options(provider))
 
         assertEquals(
@@ -127,7 +127,7 @@ class SpeechModelPickerTest {
     }
 
     @Test
-    fun `TTS Sigue el patrón y escribe ttsModelId sin moverte. ttsModel`() {
+    fun `TTS Sigue el patrón y escribe ttsModelId sin moverte ttsModel`() {
         val saved = SpeechModelPicker.applyToTts(
             config = MediaConfig(
                 ttsEngine = "openai",
@@ -176,7 +176,7 @@ class SpeechModelPickerTest {
     }
 
     @Test
-    fun `ASR DashScope Incluso si lo sigues, todavía lo escribes. model`() {
+    fun `ASR DashScope Incluso si lo sigues, todavía lo escribes model`() {
         val config = AsrConfig(
             provider = AsrProviderType.DASHSCOPE,
             model = "paraformer-realtime-v2",

@@ -15,7 +15,7 @@ class ConversationCompressorChunkTest {
     private fun msg(chars: Int): UIMessage = UIMessage(role = MessageRole.USER, content = "x".repeat(chars))
 
     @Test
-    fun `El presupuesto de bloque único se calcula en función de la ventana del modelo y está sujeto a límites superior e inferior.`() {
+    fun `El presupuesto de bloque único se calcula en función de la ventana del modelo y está sujeto a límites superior e inferior`() {
         // Ventana desconocida → default conservador(32k × 0.4)
         assertEquals(12_800, ConversationCompressor.chunkBudgetChars(null))
         assertEquals(12_800, ConversationCompressor.chunkBudgetChars(0))
@@ -26,7 +26,7 @@ class ConversationCompressorChunkTest {
     }
 
     @Test
-    fun `Las sesiones largas se organizan según el presupuesto de los personajes en lugar de dividir un trozo de superventana.`() {
+    fun `Las sesiones largas se organizan según el presupuesto de los personajes en lugar de dividir un trozo de superventana`() {
         // antigua implementación:256 Artículo(límite superior)× 1500 personaje(Límite superior único)= 384_000 Personajes agrupados en un mensaje
         val messages = List(256) { msg(1_500) }
         val budget = ConversationCompressor.chunkBudgetChars(null)
@@ -41,7 +41,7 @@ class ConversationCompressorChunkTest {
     }
 
     @Test
-    fun `El límite superior en el número de artículos sigue vigente.`() {
+    fun `El límite superior en el número de artículos sigue vigente`() {
         val messages = List(300) { msg(10) }
         val chunks = ConversationCompressor.chunkMessages(messages, 1_000_000)
         assertEquals(2, chunks.size)
@@ -50,7 +50,7 @@ class ConversationCompressorChunkTest {
     }
 
     @Test
-    fun `Los mensajes extralargos se facturan según la longitud truncada sin perder el mensaje.`() {
+    fun `Los mensajes extralargos se facturan según la longitud truncada sin perder el mensaje`() {
         // Un único mensaje enviado al mensaje se truncará a MAX_MSG_CHARS(1500),Los bloques se facturan según la longitud truncada.:
         // 10 Un mensaje de 20.000 caracteres ≈ Cada elemento solo cuenta 1500 → 3 artículos por bloque cuando el presupuesto es 5000
         val messages = List(10) { msg(20_000) }

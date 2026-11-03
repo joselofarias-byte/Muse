@@ -58,14 +58,14 @@ class ModelReasoningReplayTest {
     }
 
     @Test
-    fun `El modelo desconocido no está declarado.`() {
+    fun `El modelo desconocido no está declarado`() {
         assertNull(declare("some-random-model"))
         assertNull(declare(""))
         assertNull(ModelReasoningReplayResolver.declare(null))
     }
 
     @Test
-    fun `resolveen lo desconocidohostEl resultado final está cubierto por declaraciones a nivel de modelo.`() {
+    fun `resolveen lo desconocidohostEl resultado final está cubierto por declaraciones a nivel de modelo`() {
         // Host de estación de transferencia desconocido, el modelo es un sistema de pensamiento de búsqueda profunda -> Todavía merece un contrato de repetición
         val compat = ProviderCompatRules.resolve(
             ProviderType.OPENAI,

@@ -15,7 +15,7 @@ class LinkPreviewCardTest {
     }
 
     @Test
-    fun `linkDomain Mantenga el subdominio y elimine el puerto.`() {
+    fun `linkDomain Mantenga el subdominio y elimine el puerto`() {
         assertEquals("sub.example.com", linkDomain("https://sub.example.com:8443/path"))
     }
 

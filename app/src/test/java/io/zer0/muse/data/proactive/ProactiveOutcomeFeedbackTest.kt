@@ -127,7 +127,7 @@ class ProactiveOutcomeFeedbackTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Abre la conversación y marca la respuesta pendiente como leída.`() = runTest {
+    fun `Abre la conversación y marca la respuesta pendiente como leída`() = runTest {
         val id = outcomes.recordSent(thought = null, sessionId = SESSION, now = now, assistantId = ASSISTANT)
 
         scheduler.onSessionOpened(SESSION)
@@ -138,7 +138,7 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     @Test
-    fun `Abra una conversación y marque solo la entrada más reciente de la conversación.`() = runTest {
+    fun `Abra una conversación y marque solo la entrada más reciente de la conversación`() = runTest {
         val older = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 2 * HOUR, assistantId = ASSISTANT)
         val newer = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - HOUR, assistantId = ASSISTANT)
         val elsewhere = outcomes.recordSent(thought = null, sessionId = OTHER_SESSION, now = now, assistantId = ASSISTANT)
@@ -167,7 +167,7 @@ class ProactiveOutcomeFeedbackTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Si a nadie le importa durante un día, se considerará caducado.`() = runTest {
+    fun `Si a nadie le importa durante un día, se considerará caducado`() = runTest {
         val stale = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 25 * HOUR, assistantId = ASSISTANT)
 
         val expired = outcomes.expireOverdue(now)
@@ -179,7 +179,7 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     @Test
-    fun `Los registros de respuesta pendientes que tengan menos de un día de antigüedad no se moverán.`() = runTest {
+    fun `Los registros de respuesta pendientes que tengan menos de un día de antigüedad no se moverán`() = runTest {
         val fresh = outcomes.recordSent(thought = null, sessionId = SESSION, now = now - 23 * HOUR, assistantId = ASSISTANT)
 
         val expired = outcomes.expireOverdue(now)
@@ -211,7 +211,7 @@ class ProactiveOutcomeFeedbackTest {
     // ══════════════════════════════════════════════════════════════
 
     @Test
-    fun `Los tipos que estén tachados repetidamente serán bloqueados para los candidatos.`() = runTest {
+    fun `Los tipos que estén tachados repetidamente serán bloqueados para los candidatos`() = runTest {
         repeat(3) { seedOutcome("d$it", ThoughtKind.MILESTONE, OutcomeState.DISMISSED, now - it * HOUR) }
         seedOutcome("r1", ThoughtKind.MILESTONE, OutcomeState.REPLIED, now - 3 * HOUR)
         seedOutcome("c1", ThoughtKind.CARE, OutcomeState.REPLIED, now - 4 * HOUR)
@@ -237,7 +237,7 @@ class ProactiveOutcomeFeedbackTest {
     }
 
     @Test
-    fun `Si no hay muestras suficientes, no se considerará no interesado.`() = runTest {
+    fun `Si no hay muestras suficientes, no se considerará no interesado`() = runTest {
         repeat(2) { seedOutcome("d$it", ThoughtKind.MILESTONE, OutcomeState.DISMISSED, now - it * HOUR) }
         repeat(3) { seedOutcome("r$it", ThoughtKind.MILESTONE, OutcomeState.REPLIED, now - (it + 3) * HOUR) }
 

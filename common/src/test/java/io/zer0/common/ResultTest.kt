@@ -26,7 +26,7 @@ class ResultTest {
     // ── resultOf{} camino al éxito ──────────────────────────────────────────────
 
     @Test
-    fun `resultOf Devuelve el éxito con éxito y lleva datos.`() {
+    fun `resultOf Devuelve el éxito con éxito y lleva datos`() {
         val result = resultOf { 42 }
         assertTrue(result is Result.Success)
         assertEquals(42, (result as Result.Success).data)
@@ -49,7 +49,7 @@ class ResultTest {
     // ── resultOf{} camino de falla ──────────────────────────────────────────────
 
     @Test
-    fun `resultOf Cuando se lanza una excepción, se devuelve Error y lleva el mensaje y la excepción original.`() {
+    fun `resultOf Cuando se lanza una excepción, se devuelve Error y lleva el mensaje y la excepción original`() {
         val ex = IllegalStateException("boom")
         val result = resultOf<Int> { throw ex }
         assertTrue(result is Result.Error)
@@ -59,7 +59,7 @@ class ResultTest {
     }
 
     @Test
-    fun `resultOf Cuando se produce una excepción, si el mensaje está vacío, utilice Error desconocido para averiguarlo.`() {
+    fun `resultOf Cuando se produce una excepción, si el mensaje está vacío, utilice Error desconocido para averiguarlo`() {
         val ex = RuntimeException()
         val result = resultOf<Int> { throw ex }
         assertTrue(result is Result.Error)
@@ -182,7 +182,7 @@ class ResultTest {
     }
 
     @Test
-    fun `onError La devolución de llamada recibe un arrojable que es nulo.`() {
+    fun `onError La devolución de llamada recibe un arrojable que es nulo`() {
         val result: Result<Int> = Result.Error(message = "msg", throwable = null)
         var receivedT: Throwable? = "sentinel".let { null }
         result.onError { _, t -> receivedT = t }
@@ -246,7 +246,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap Si tiene éxito, la transformación puede devolver un error para formar una cadena de fallas.`() {
+    fun `flatMap Si tiene éxito, la transformación puede devolver un error para formar una cadena de fallas`() {
         val result: Result<Int> = resultOf { 3 }
         val flat: Result<String> = result.flatMap {
             Result.Error(message = "downstream failure", throwable = null)
@@ -256,7 +256,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap Cuando ocurre una falla, el error original se transmite de forma transparente y no se llama. transform`() {
+    fun `flatMap Cuando ocurre una falla, el error original se transmite de forma transparente y no se llama transform`() {
         val ex = IllegalStateException("upstream")
         val result: Result<Int> = resultOf { throw ex }
         var transformCalled = false
@@ -280,7 +280,7 @@ class ResultTest {
     }
 
     @Test
-    fun `flatMap Si falla algún paso de la cadena, falla toda la cadena.`() {
+    fun `flatMap Si falla algún paso de la cadena, falla toda la cadena`() {
         val final: Result<Int> = resultOf { 1 }
             .flatMap<Int> { resultOf<Int> { throw IllegalStateException("step2") } }
             .flatMap { resultOf { it * 3 } }

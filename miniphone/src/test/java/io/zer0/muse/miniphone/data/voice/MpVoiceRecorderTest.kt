@@ -25,7 +25,7 @@ class MpVoiceRecorderTest {
     val tempDir = TemporaryFolder()
 
     @Test
-    fun `Cuando no se puede obtener el recopilador, start devuelve falso y no se descarta ningún archivo.`() = runTest {
+    fun `Cuando no se puede obtener el recopilador, start devuelve falso y no se descarta ningún archivo`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
 
         val recorder = MpVoiceRecorder(
@@ -39,7 +39,7 @@ class MpVoiceRecorderTest {
     }
 
     @Test
-    fun `Cuando la minería falla, start devuelve falso y borra los archivos temporales.`() = runTest {
+    fun `Cuando la minería falla, start devuelve falso y borra los archivos temporales`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
         val record = FakeAudioRecord(startError = IllegalStateException("El micrófono está ocupado."))
 
@@ -80,7 +80,7 @@ class MpVoiceRecorderTest {
     }
 
     @Test
-    fun `Cuando no se recopila ni un solo byte, stop devuelve nulo y no quedan archivos.`() = runTest {
+    fun `Cuando no se recopila ni un solo byte, stop devuelve nulo y no quedan archivos`() = runTest {
         val cache = tempDir.newFolder(CACHE_DIR)
         val record = FakeAudioRecord(chunks = emptyList())
 
@@ -117,7 +117,7 @@ class MpVoiceRecorderTest {
     }
 
     @Test
-    fun `Limpie y elimine solo los archivos de prefijo de este módulo que tengan más de una hora.`() {
+    fun `Limpie y elimine solo los archivos de prefijo de este módulo que tengan más de una hora`() {
         val cache = tempDir.newFolder(CACHE_DIR)
         val now = 1_700_000_000_000L
         val fresh = cache.recordingFile("mp-voice-fresh.pcm", touchedAt = now - 1_000L)

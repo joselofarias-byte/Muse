@@ -126,7 +126,7 @@ class WorkspacePathLockTest {
     }
 
     @Test
-    fun `El bloqueo aún se libera después de que la sección crítica genera una excepción.`() = runBlocking {
+    fun `El bloqueo aún se libera después de que la sección crítica genera una excepción`() = runBlocking {
         val lock = WorkspacePathLock(acquireTimeoutMs = 500)
 
         val boom = runCatching {
@@ -140,7 +140,7 @@ class WorkspacePathLockTest {
     }
 
     @Test
-    fun `El candado sigue disponible después de cancelar el servicio del camarero.`() = runBlocking {
+    fun `El candado sigue disponible después de cancelar el servicio del camarero`() = runBlocking {
         val lock = WorkspacePathLock(acquireTimeoutMs = 200)
         val holding = CompletableDeferred<Unit>()
         val holder = launch(Dispatchers.Default) {
