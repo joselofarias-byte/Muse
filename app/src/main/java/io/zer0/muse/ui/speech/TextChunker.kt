@@ -22,7 +22,7 @@ object TextChunker {
      * lookbehind `(?<=[...])` Coincidir con la posición de ancho cero después de la puntuación,String.split Cortar en esta ubicación,
      * La puntuación en sí permanece en el párrafo anterior.(Haga una pausa natural al leer en voz alta).
      */
-    private val sentenceEndRegex = Regex("(?<=[. ! ? ,,:;.!?:,\n])")
+    private val sentenceEndRegex = Regex("(?<=[。！？，、：;.!?:,\n])")
 
     /**
      * poner [text] Una lista de piezas cortadas en trozos adecuados para la lectura TTS.

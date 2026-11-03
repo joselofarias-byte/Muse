@@ -765,7 +765,7 @@ private fun extractFilePaths(text: String): List<Pair<String, Long?>> {
 private val IMAGE_PREVIEW_TOOL_NAMES: Set<String> = setOf("generate_image", "generate_video", "generate_qrcode")
 
 /** F-19: de resultados de herramientas coincidentes http(s) URL de la imagen. */
-private val IMAGE_URL_PATTERN = Regex("""https?://[^\s)\]},,. ;;]+""")
+private val IMAGE_URL_PATTERN = Regex("""https?://[^\s)\]},，。；;]+""")
 
 /** F-19: Archivos de imagen locales que coinciden con rutas absolutas dentro del entorno sandbox (generate_qrcode etc. para devolver la ruta del archivo cacheDir). */
 private val IMAGE_LOCAL_PATH_PATTERN = Regex("""(/data/[^\s,)]+\.(?:png|jpe?g|gif|webp|bmp))""", RegexOption.IGNORE_CASE)

@@ -57,7 +57,7 @@ class SendVoiceToolTest {
         assertEquals("El repartidor debe abrir rondas según el tipo de voz.", listOf(MediaGenKind.VOICE), host.kinds)
         assertFalse("Los archivos temporales no fueron eliminados", tempFileOf(synth).exists())
         assertFalse("La copia devuelta al modelo no debe contener uri: $reply", reply.contains("file://"))
-        assertTrue("La copia de devolución debe indicar que la voz ha sido enviada.: $reply", reply.contains("Voz"))
+        assertTrue("La copia de devolución debe indicar que la voz ha sido enviada.: $reply", reply.contains("voz enviado"))
     }
 
     @Test
@@ -84,7 +84,7 @@ class SendVoiceToolTest {
 
         val reply = impl.execSendVoice(mapOf("text" to "Buenas noches, acuéstate temprano."))
 
-        assertTrue("Incluso después de volver al tono del sistema, la voz siguió saliendo.: $reply", reply.contains("El teléfono celular viene con sonidos."))
+        assertTrue("Incluso después de volver al tono del sistema, la voz siguió saliendo.: $reply", reply.contains("tono integrado"))
         assertTrue("Hay que explicar claramente el motivo por el que la nube no es eficaz.: $reply", reply.contains("API Key esta vacio"))
         assertTrue("Retroceder se considera una entrega exitosa", host.results.single() is MediaGenResult.Success)
     }
@@ -175,7 +175,7 @@ class SendVoiceToolTest {
 
         assertTrue("Los resultados no se entregarán en rondas no válidas.", host.results.isEmpty())
         assertEquals("Los archivos no entregados no deben conservarse", listOf(ARCHIVED_URI), archive.deleted)
-        assertTrue(reply, reply.contains("No emitido"))
+        assertTrue(reply, reply.contains("no enviado"))
     }
 
     @Test
@@ -199,11 +199,11 @@ class SendVoiceToolTest {
         val host = RecordingHost()
         val impl = tool(synth, FakeArchive()).also { it.installHost(host) }
 
-        val reply = impl.execSendVoice(mapOf("text" to "Good night, sleep well. See you tomorrow."), TURN_KEY)
+        val reply = impl.execSendVoice(mapOf("text" to "123 ... !!!"), TURN_KEY)
 
-        assertEquals("Si no hablas chino, no deberías gastar el crédito TTS", 0, synth.calls)
+        assertEquals("Sin letras no debería gastar el crédito TTS", 0, synth.calls)
         assertTrue("Tampoco debería haber espacios para la entrega.", host.kinds.isEmpty())
-        assertTrue("Los resultados de la herramienta deben aclararse y no generarse.: $reply", reply.contains("nada de chino"))
+        assertTrue("Los resultados de la herramienta deben aclararse y no generarse.: $reply", reply.contains("no tiene texto"))
     }
 
     @Test
@@ -249,7 +249,7 @@ class SendVoiceToolTest {
         }
         val over = impl.execSendVoice(mapOf("text" to "No.${TURN_LIMIT + 1}lineas"), TURN_KEY)
 
-        assertTrue("antes $TURN_LIMIT Todas las tiras serán enviadas.: $replies", replies.all { it.contains("Se ha dado voz") })
+        assertTrue("antes $TURN_LIMIT Todas las tiras serán enviadas.: $replies", replies.all { it.contains("voz enviado") })
         assertTrue("Se debe explicar el motivo de la superación del límite.: $over", over.contains("límite superior"))
         assertEquals("La llamada de síntesis se detiene en $TURN_LIMIT veces", TURN_LIMIT, synth.calls)
         assertEquals("El artículo que supere el límite no será entregado.", TURN_LIMIT, host.results.size)

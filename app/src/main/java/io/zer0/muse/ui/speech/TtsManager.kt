@@ -63,7 +63,7 @@ class TtsManager(
     companion object {
         // M-SP2 Reparación: Promocionar la expresión regular recién creada para cada llamada en talkStream/stripMarkdown a una constante de objeto complementario,
         // Evite la sobrecarga de compilación de patrones Regex(13 un Regex × por mensaje = Estrés significativo de GC)
-        private val SENTENCE_END_REGEX = Regex("[. ! ?.!?]")
+        private val SENTENCE_END_REGEX = Regex("[。！？.!?]")
         private val HEADING_PREFIX_REGEX = Regex("^#+\\s*")
         private val UNORDERED_LIST_REGEX = Regex("^[-*+]\\s+")
         private val ORDERED_LIST_REGEX = Regex("^\\d+\\.\\s+")

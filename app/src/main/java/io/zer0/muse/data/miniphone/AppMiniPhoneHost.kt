@@ -292,7 +292,7 @@ internal class MiniPhoneTextComposer(
         private const val MAX_HISTORY_TURNS = 20
 
         /** MOOD toda la línea comenzando con:El modelo escribe la barra de estado como parte del texto. */
-        private val MOOD_LINE = Regex("""^\s*MOOD\s*[::].*$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
+        private val MOOD_LINE = Regex("""^\s*MOOD\s*[:：].*$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
 
         /** `[mood]…[/mood]` con `<mood>…</mood>` Segmentos envueltos. */
         private val MOOD_BLOCK = Regex("""[\[<]\s*mood\s*[\]>][\s\S]*?[\[<]\s*/\s*mood\s*[\]>]""", RegexOption.IGNORE_CASE)

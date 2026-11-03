@@ -48,7 +48,7 @@ object FindToolsTool {
         val raw = query.trim().lowercase()
         if (raw.isEmpty()) return emptyList()
         val terms =
-            raw.split(Regex("[\\s,,,;;]+"))
+            raw.split(Regex("[\\s,，、;；]+"))
                 .filter { it.length >= 2 }
                 .ifEmpty { listOf(raw) }
         return tools

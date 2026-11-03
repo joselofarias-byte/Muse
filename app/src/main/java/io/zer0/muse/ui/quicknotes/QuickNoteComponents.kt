@@ -579,7 +579,7 @@ internal fun QuickNoteTrashDialog(
 
 /** Extraer #etiquetas del texto,Devuelve una lista de etiquetas sin #. */
 internal fun extractHashTags(text: String): List<String> {
-    val regex = Regex("#([^#\\s,,..!!??\\n]+)")
+    val regex = Regex("#([^#\\s,，.。!！?？\\n]+)")
     return regex.findAll(text)
         .map { it.groupValues[1].trim() }
         .filter { it.isNotBlank() }
@@ -592,7 +592,7 @@ internal fun extractHashTags(text: String): List<String> {
  * Tome primero la primera línea de texto que no esté vacía;Si la primera línea es demasiado corta o solo contiene etiquetas,Luego toma los primeros 40 caracteres.
  */
 internal fun deriveTitle(text: String, tags: List<String>): String {
-    val stripped = text.replace(Regex("#[^#\\s,,..!!??\\n]+"), "").trim()
+    val stripped = text.replace(Regex("#[^#\\s,，.。!！?？\\n]+"), "").trim()
     val firstLine = stripped.lines().firstOrNull { it.isNotBlank() }?.trim() ?: ""
     return when {
         firstLine.length >= 3 -> firstLine.take(40)

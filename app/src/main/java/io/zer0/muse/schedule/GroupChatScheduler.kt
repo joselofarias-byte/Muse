@@ -340,7 +340,7 @@ class GroupChatScheduler(
         private const val ACTIVITY_IDLE_DELAY_MS = 3000L
 
         /** v1.97: @mention regular — Coincide con el formulario @name,name Es una secuencia de caracteres sin espacios en blanco ni puntuación. */
-        private val MENTION_REGEX = Regex("@([^\\s@,,..!!??::;;()()\\[\\]【】]+)")
+        private val MENTION_REGEX = Regex("@([^\\s@,，。.!！?？:：;；()（）\\[\\]【】]+)")
 
         /**
          * v1.0.53 Phase 5: channel_* Tapa redonda de decisión de herramienta.

@@ -423,29 +423,23 @@ class MediaGenToolsImpl(
      * @return null Indica que se puede sintetizar.;De lo contrario, la copia de la descripción se devolverá directamente al modelo.
      */
     private fun voiceBlockReason(text: String, turnKey: String?): String? {
-        if (!containsChinese(text)) return VOICE_SKIPPED_NO_CHINESE
+        if (!containsSpeakableText(text)) return VOICE_SKIPPED_NO_SPEECH
         if (!voiceQuota.tryConsume(turnKey)) {
             return "La cantidad de mensajes de voz en esta ronda ha alcanzado el límite superior ($VOICE_TURN_LIMIT ), este artículo no genera voz."
         }
         return null
     }
 
-    /** Si el texto contiene caracteres chinos (CJK Ideógrafos unificados y sus extensiones/zonas de compatibilidad). */
-    private fun containsChinese(text: String): Boolean {
+    /** Hay letras (español, chino u otro idioma) que se pueden leer en voz alta. */
+    private fun containsSpeakableText(text: String): Boolean {
         var index = 0
         while (index < text.length) {
             val codePoint = text.codePointAt(index)
-            if (isCjkIdeograph(codePoint)) return true
+            if (Character.isLetter(codePoint)) return true
             index += Character.charCount(codePoint)
         }
         return false
     }
-
-    private fun isCjkIdeograph(codePoint: Int): Boolean =
-        codePoint in CJK_UNIFIED_RANGE ||
-            codePoint in CJK_EXT_A_RANGE ||
-            codePoint in CJK_COMPAT_RANGE ||
-            codePoint in CJK_EXT_B_RANGE
 
     /** Colocación de voz + detección de duración + entrega; la copia devuelta al modelo no contiene uri.
      *
@@ -588,17 +582,11 @@ class MediaGenToolsImpl(
         const val VOICE_TURN_WINDOW = 16
 
         /** Resultados de la herramienta cuando no hay caracteres chinos en el texto: explique el motivo y solicite utilizar texto en su lugar. */
-        const val VOICE_SKIPPED_NO_CHINESE =
-            "No hay chino en este párrafo y no se genera voz (responda con texto en inglés y otro contenido, no lo lea)"
+        const val VOICE_SKIPPED_NO_SPEECH =
+            "Este párrafo no tiene texto para leer en voz alta"
 
         /** La herramienta surge cuando el TTS de la nube y del sistema no se sintetizan (la redacción es la misma que antes de la transformación). */
         const val VOICE_SYNTH_FAILED = "La síntesis de voz falló"
-
-        /** Punto de código de caracteres chinos:CJK ideogramas unificados (4E00–9FFF) y su área de extensión A/compatible/extensión B. */
-        val CJK_UNIFIED_RANGE = 0x4E00..0x9FFF
-        val CJK_EXT_A_RANGE = 0x3400..0x4DBF
-        val CJK_COMPAT_RANGE = 0xF900..0xFAFF
-        val CJK_EXT_B_RANGE = 0x20000..0x2FA1F
     }
 }
 

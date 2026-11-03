@@ -104,7 +104,7 @@ private val CITATION_REGEX = Regex("""\[(\d+)]""")
 // Las exclusiones pueden provocar que las URL se trunquen.ASCII período `.` Del mismo modo, no se excluye(URL legal dentro,Como por ejemplo example.com),Puntuación al final de la oración
 // Limpiado dos veces por el sitio de llamadas(Mantén las clases de personajes simples aquí.).
 // Nota: `!` Mantener exclusiones(Signo de exclamación chino de ancho completo ! No debe incluirse cuando va seguido de texto en chino. URL).
-internal val URL_AUTOLINK_REGEX = Regex("""https?://[^\s<>"'`)\]]』』. ,,;!]+""")
+internal val URL_AUTOLINK_REGEX = Regex("""https?://[^\s<>"'`)\]】」』。、,;!]+""")
 
 /**
  * Componente de renderizado Markdown ligero(autoimplementable,No se introducen bibliotecas de terceros.).

@@ -742,7 +742,7 @@ private fun MessageSearchResultRow(
  * Se utiliza para el contexto de visualización del elemento de resultado de búsqueda,Permita que los usuarios determinen si es el mensaje de destino antes de hacer clic.
  */
 /** Puntuación regular al final de las oraciones.(Chino. ! ? + ASCII .!? + nueva línea),Las aserciones de ancho cero dejan el delimitador al final de la oración. */
-private val SENTENCE_SPLIT_REGEX = "(?<=[. ! ?.!?\n])".toRegex()
+private val SENTENCE_SPLIT_REGEX = "(?<=[。！？.!?\n])".toRegex()
 
 private fun extractContext(content: String, query: String, sentencesAround: Int = 2): String {
     if (content.isBlank()) return ""

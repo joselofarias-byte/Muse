@@ -253,7 +253,7 @@ object AgentResultAggregator {
         return text.trim()
             .lowercase()
             .replace(Regex("[\\s\\n\\r\\t]+", RegexOption.MULTILINE), " ")
-            .replace(Regex("[,. ! ?.,!?;:;;\"'“”]"), "")
+            .replace(Regex("[，。！？.,!?;:；；\"'“”]"), "")
             .trim()
     }
 

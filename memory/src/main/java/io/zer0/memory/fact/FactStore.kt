@@ -2181,7 +2181,7 @@ class FactStore(
         }
 
         /** B-07: puntuación/eliminación de espacios en blanco(segundo canal coincidente). */
-        private val PUNCT_RE = Regex("[,. ! ? ,;:,.!?;:()()\\[\\]【】\"'“”‘’\\s]+")
+        private val PUNCT_RE = Regex("[，。！？、；：,.!?;:()（）\\[\\]【】\"'“”‘’\\s]+")
 
         /**
          * Revisión de corrección (2.0 B-07): Filtro de lápida compartido — Coincidencia normalizada línea por línea.

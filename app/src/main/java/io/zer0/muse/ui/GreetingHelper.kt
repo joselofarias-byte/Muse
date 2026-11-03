@@ -182,7 +182,7 @@ object GreetingHelper {
             val text = fact.fact ?: continue
             // Comprobar fecha de nacimiento (admite"El cumpleaños es en el mes X.Xdia")
             if (text.contains("cumpleaños") || text.contains("nacido")) {
-                val dateMatch = Regex("""(\d{1,2})[mes/-](\d{1,2})""").find(text)
+                val dateMatch = Regex("""(\d{1,2})[月/-](\d{1,2})""").find(text)
                 if (dateMatch != null) {
                     val month = dateMatch.groupValues[1].toIntOrNull() ?: continue
                     val day = dateMatch.groupValues[2].toIntOrNull() ?: continue

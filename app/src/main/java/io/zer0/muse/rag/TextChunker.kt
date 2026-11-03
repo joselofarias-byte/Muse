@@ -33,7 +33,7 @@ class TextChunker(
     )
 
     companion object {
-        private val sentenceEnd = Regex("(?<=[. ! ?!?])|(?<=[.!?])\\s+")
+        private val sentenceEnd = Regex("(?<=[。！？!?])|(?<=[.!?])\\s+")
 
         /** ``` Reconocimiento de límites de bloques de código(abierto/par cerrado). */
         private val codeFence = Regex("^```\\w*\\s*$", RegexOption.MULTILINE)
