@@ -73,6 +73,7 @@ object ToolFailureClassifier {
     )
     private val BLOCKED_MARKERS = listOf(
         "Aprobación",
+        "bloque",
         "rechazar",
         "interceptado",
         "seguro",
@@ -82,7 +83,7 @@ object ToolFailureClassifier {
         "approval",
     )
     private val INVALID_ARGUMENT_MARKERS = listOf(
-        "Faltan campos obligatorios", "Parámetro faltante", "parámetros", "Formato", "ilegal", "ilegal", "invalid", "must be", "required",
+        "Faltan campos obligatorios", "Parámetro faltante", "parámetro", "parámetros", "Formato", "ilegal", "invalid", "must be", "required", "requerido",
         "El análisis falló", "error de tipo",
     )
 
@@ -124,7 +125,7 @@ object ToolFailureClassifier {
         val markers: List<String>,
         val hint: String,
     ) {
-        fun matches(lower: String): Boolean = markers.any { lower.contains(it) }
+        fun matches(lower: String): Boolean = markers.any { lower.contains(it.lowercase()) }
     }
 
     private val UNKNOWN = Verdict(

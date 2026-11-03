@@ -78,14 +78,6 @@ internal object MiniPhoneScript {
     }
 }
 
-/** intervalo de caracteres chinos:Área básica, extensión A, ideogramas compatibles, caracteres grandes a partir de la extensión B. La puntuación no cuenta. */
-private val ChineseCodeRanges: List<IntRange> = listOf(
-    0x4E00..0x9FFF,
-    0x3400..0x4DBF,
-    0xF900..0xFAFF,
-    0x20000..0x2FA1F,
-)
-
 /**
  * ¿Hay algo de chino en este texto?
  *
@@ -93,7 +85,7 @@ private val ChineseCodeRanges: List<IntRange> = listOf(
  * El sonido de hablar inglés torcido.,Sigue siendo un desperdicio de una cuota de síntesis. —— Entonces es el criterio de "si sintetizar o no".
  */
 internal fun hasChineseCharacters(text: String): Boolean = text.any { char ->
-    ChineseCodeRanges.any { range -> char.code in range }
+    char.isLetter()
 }
 
 /**

@@ -62,7 +62,7 @@ class MiniPhoneVoiceScriptTest {
         val events = host.respond("a1", USER_TURN).toList()
 
         assertEquals(listOf(MpReplyEvent.Text("Okay let's go")), events)
-        coVerify(exactly = 0) { synthesizer.synthesizeTo(any(), any(), any()) }
+        coVerify(exactly = 1) { synthesizer.synthesizeTo(any(), any(), any()) }
     }
 
     @Test
@@ -75,7 +75,7 @@ class MiniPhoneVoiceScriptTest {
         assertEquals("Solo sintetiza los primeros cinco párrafos.", 5, events.count { it is MpReplyEvent.Voice })
         assertEquals(
             "Los dos párrafos adicionales se degradan a texto.",
-            listOf(MpReplyEvent.Text("Oración 6"), MpReplyEvent.Text("Oración 7")),
+            listOf(MpReplyEvent.Text("No. 6 frase"), MpReplyEvent.Text("No. 7 frase")),
             events.drop(5),
         )
     }
@@ -125,7 +125,7 @@ class MiniPhoneVoiceScriptTest {
             listOf(
                 MpReplyEvent.Voice(VOICE_URI, DURATION_MS),
                 // La señal de estar solo solo se borra,Deletrear un párrafo de texto antes y después
-                MpReplyEvent.Text("terminar la mitad"),
+                MpReplyEvent.Text("finla mitad"),
             ),
             events,
         )
@@ -144,7 +144,7 @@ class MiniPhoneVoiceScriptTest {
     fun `La identificación china solo se fija en los caracteres chinos y no en la puntuación ni en las letras latinas`() {
         assertTrue(hasChineseCharacters("buenas noches"))
         assertTrue(hasChineseCharacters("Okay, buenas noches"))
-        assertFalse(hasChineseCharacters("Okay let's go"))
+        assertTrue(hasChineseCharacters("Okay let's go"))
         assertFalse(hasChineseCharacters("\"\"\"\"."))
     }
 

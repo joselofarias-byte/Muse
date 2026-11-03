@@ -24,25 +24,25 @@ class SolarTermTest {
     @Test
     fun `2026 autumn start is aug 7 not aug 8`() {
         // Regresar: Comentarios de los usuarios"El comienzo del otoño fue ayer."(Escritura de mesa antigua 8/8)
-        assertEquals("Hoy es el comienzo del otoño.", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 7)))
+        assertEquals("hoy es Principios de otoño", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 7)))
         // 8/8 Ya no es el comienzo del otoño
         assertNull(GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 8)))
     }
 
     @Test
     fun `2026 other autumn terms`() {
-        assertEquals("Hoy es el calor del verano.", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 23)))
+        assertEquals("hoy es Fin del calor del verano", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 23)))
     }
 
     @Test
     fun `2026 spring terms`() {
-        assertEquals("Hoy es el comienzo de la primavera.", GreetingHelper.getSolarTerm(LocalDate.of(2026, 2, 4)))
-        assertEquals("Hoy es el equinoccio de primavera.", GreetingHelper.getSolarTerm(LocalDate.of(2026, 3, 20)))
+        assertEquals("hoy es Principio de primavera", GreetingHelper.getSolarTerm(LocalDate.of(2026, 2, 4)))
+        assertEquals("hoy es equinoccio", GreetingHelper.getSolarTerm(LocalDate.of(2026, 3, 20)))
     }
 
     @Test
     fun `day before term announces tomorrow`() {
-        assertEquals("Mañana es el comienzo del otoño.", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 6)))
+        assertEquals("mañana es Principios de otoño", GreetingHelper.getSolarTerm(LocalDate.of(2026, 8, 6)))
     }
 
     @Test
@@ -54,6 +54,6 @@ class SolarTermTest {
     @Test
     fun `2027 autumn start varies by year`() {
         // 2027 Principios de otoño = 8/8(Diferentes fechas en diferentes años.,Validar tablas no fijas)
-        assertEquals("Hoy es el comienzo del otoño.", GreetingHelper.getSolarTerm(LocalDate.of(2027, 8, 8)))
+        assertEquals("hoy es Principios de otoño", GreetingHelper.getSolarTerm(LocalDate.of(2027, 8, 8)))
     }
 }

@@ -107,8 +107,8 @@ object GreetingHelper {
         }
 
         // Comprobar si hoy o mañana es término solar (avisar con antelación)
-        termFor(date)?.let { return "hoy es$it" }
-        termFor(date.plusDays(1))?.let { return "mañana es$it" }
+        termFor(date)?.let { return "hoy es $it" }
+        termFor(date.plusDays(1))?.let { return "mañana es $it" }
         return null
     }
 
@@ -123,10 +123,10 @@ object GreetingHelper {
             Triple(12, 25, "navidad"),
         )
         val today = festivals.firstOrNull { it.first == date.monthValue && it.second == date.dayOfMonth }
-        if (today != null) return "hoy es${today.third}"
+        if (today != null) return "hoy es ${today.third}"
         val tomorrow = date.plusDays(1)
         val tmr = festivals.firstOrNull { it.first == tomorrow.monthValue && it.second == tomorrow.dayOfMonth }
-        if (tmr != null) return "mañana es${tmr.third}"
+        if (tmr != null) return "mañana es ${tmr.third}"
         return null
     }
 
