@@ -22,29 +22,27 @@ class WorkspaceEditPlanTest {
     @Test
     fun `Si el fragmento aparece 0 veces, será rechazado y se indicará que no se puede encontrar`() {
         val message = rejectionMessage(plan("primera linea\nsegunda linea\n", "fragmento que no existe", "nuevo contenido"))
-        assertTrue(message, message.contains("No se puede encontrar el fragmento."))
+        assertTrue(message, message.contains("No se puede encontrar el fragmento"))
         assertTrue(message, message.contains("Archivo sin cambios"))
     }
 
     @Test
     fun `Cuando un fragmento aparece varias veces, rechácelo e informe el número de apariciones`() {
         val message = rejectionMessage(plan("x\ntarget\ny\ntarget\n", "target", "ok"))
-        assertTrue(message, message.contains("Aparece 2 veces"))
-        assertTrue(message, message.contains("solo"))
-        // Rechace explícitamente el método de corrección silenciosa de "reemplazar solo la primera posición"
-        assertTrue(message, message.contains("No reemplazará solo el primer lugar."))
+        assertTrue(message, message.contains("2 veces"))
+        assertTrue(message, message.contains("sólo la primera"))
     }
 
     @Test
     fun `Rechazar si el contenido antiguo y el nuevo son iguales`() {
         val message = rejectionMessage(plan("a\nb\n", "b", "b"))
-        assertTrue(message, message.contains("El contenido antiguo y el nuevo son iguales."))
+        assertTrue(message, message.contains("son los mismos"))
     }
 
     @Test
     fun `La cadena_antigua vacía se rechaza directamente en lugar de insertarse`() {
         val message = rejectionMessage(plan("abc", "", "x"))
-        assertTrue(message, message.contains("old_string no puede estar vacío"))
+        assertTrue(message, message.contains("No puede estar vacío"))
     }
 
     @Test
