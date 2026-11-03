@@ -83,7 +83,9 @@ jobs:
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
+          if ($LASTEXITCODE -ne 0) { throw "runtime-pack failed: $LASTEXITCODE" }
           bash tools/python-pack/build-python-pack.sh both
+          if ($LASTEXITCODE -ne 0) { throw "python-pack failed: $LASTEXITCODE" }
           if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack Salida faltante: libmuse_node.so' }
           if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack Salida faltante: libpython3.14.so' }
           if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack Salida faltante: muse-runtime-assets.zip' }
@@ -253,7 +255,9 @@ jobs:
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
+          if ($LASTEXITCODE -ne 0) { throw "runtime-pack failed: $LASTEXITCODE" }
           bash tools/python-pack/build-python-pack.sh both
+          if ($LASTEXITCODE -ne 0) { throw "python-pack failed: $LASTEXITCODE" }
           if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libmuse_node.so')) { throw 'runtime-pack Salida faltante: libmuse_node.so' }
           if (-not (Test-Path 'app/src/main/jniLibs/arm64-v8a/libpython3.14.so')) { throw 'python-pack Salida faltante: libpython3.14.so' }
           if (-not (Test-Path 'app/src/main/assets/muse-runtime-assets.zip')) { throw 'runtime-pack Salida faltante: muse-runtime-assets.zip' }

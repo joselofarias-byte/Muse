@@ -47,7 +47,7 @@ object MuseRuntime {
     const val ENV_CPU_COUNT = "MUSE_CPU_COUNT"
 
     /** Marca de versión del paquete de datos (modificada sincrónicamente al actualizar los activos, lo que desencadena la redescompresión). */
-    const val RUNTIME_DATA_VERSION = "npm-11.21.1"
+    const val RUNTIME_DATA_VERSION = "npm-12.2.1"
 
     // ── camino ─────────────────────────────────────────────────────
 

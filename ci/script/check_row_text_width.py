@@ -303,7 +303,7 @@ def main() -> int:
             print(line)
 
     if failures:
-        print("[row-text-width] FAILED — Añadir "Row "El texto interior no está ampliado":")
+        print("[row-text-width] FAILED — Nuevo texto de fila sin ancho:")
         for line in failures:
             print(line)
         print(

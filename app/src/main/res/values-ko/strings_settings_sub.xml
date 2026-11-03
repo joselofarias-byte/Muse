@@ -661,7 +661,7 @@
     <string name="settings_asr_group_transcription">파일 전사</string>
     <string name="settings_chat_typography_section">본문 스타일</string>
     <string name="settings_chat_message_font_size">메시지 글자 크기</string>
-    <string name="settings_chat_message_font_size_subtitle">메시지 본문 글자 크기 조정, 기본 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">메시지 본문 글자 크기 조정, 기본 100%%</string>
     <string name="settings_chat_letter_spacing">자간</string>
     <string name="settings_chat_letter_spacing_subtitle">본문 글자 간격 조정</string>
     <string name="assistant_kb_scope_whole"> (전체)</string>

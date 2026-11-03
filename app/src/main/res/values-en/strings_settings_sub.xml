@@ -687,7 +687,7 @@
     <string name="settings_asr_group_transcription">File transcription</string>
     <string name="settings_chat_typography_section">Typography</string>
     <string name="settings_chat_message_font_size">Message text size</string>
-    <string name="settings_chat_message_font_size_subtitle">Scale message text, default 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Scale message text, default 100%%</string>
     <string name="settings_chat_letter_spacing">Letter spacing</string>
     <string name="settings_chat_letter_spacing_subtitle">Adjust character spacing</string>
 

@@ -661,7 +661,7 @@
     <string name="settings_asr_group_transcription">Transcrição de arquivos</string>
     <string name="settings_chat_typography_section">Tipografia</string>
     <string name="settings_chat_message_font_size">Tamanho do texto</string>
-    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%%</string>
     <string name="settings_chat_letter_spacing">Espaçamento entre letras</string>
     <string name="settings_chat_letter_spacing_subtitle">Ajusta o espaço entre caracteres</string>
     <string name="assistant_kb_scope_whole"> (tudo)</string>

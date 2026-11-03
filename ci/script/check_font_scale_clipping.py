@@ -372,7 +372,7 @@ def main() -> int:
         for line in improvements:
             print(line)
     if failures:
-        print("[font-scale-clipping] FAILED — Nuevo/"Texto de alojamiento de altura fija" por encima de la línea de base:")
+        print("[font-scale-clipping] FAILED — Nuevo texto en altura fija por encima de la linea de base:")
         for line in failures:
             print(line)
         print(

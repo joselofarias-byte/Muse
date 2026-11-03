@@ -661,7 +661,7 @@
     <string name="settings_asr_group_transcription">Транскрипция файлов</string>
     <string name="settings_chat_typography_section">Оформление текста</string>
     <string name="settings_chat_message_font_size">Размер текста</string>
-    <string name="settings_chat_message_font_size_subtitle">Масштаб текста сообщений, по умолчанию 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Масштаб текста сообщений, по умолчанию 100%%</string>
     <string name="settings_chat_letter_spacing">Межбуквенный интервал</string>
     <string name="settings_chat_letter_spacing_subtitle">Интервал между символами</string>
     <string name="assistant_kb_scope_whole"> (все)</string>

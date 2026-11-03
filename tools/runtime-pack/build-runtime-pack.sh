@@ -37,14 +37,14 @@ WORK="${MUSE_RUNTIME_WORK:-/tmp/muse-runtime-pack}"
 TERMUX_BASE="https://packages.termux.dev/apt/termux-main/pool/main"
 
 # ─── versión bloqueada ───────────────────────────────────────────────────────────────
-NODE_VER="26.12.1"
+NODE_VER="26.13.0"
 LIBCXX_VER="30"
 OPENSSL_VER="1%3A3.6.5"   # URL en ':' Necesito escapar como %3A
 CARES_VER="1.34.9"
 ICU_VER="78.3"
-SQLITE_VER="3.54.1"
+SQLITE_VER="3.54.1-1"
 ZLIB_VER="1.3.2"
-NPM_VER="11.21.1"
+NPM_VER="12.2.1"
 LIBFFI_VER="3.8.0"
 
 # ─── Mapeo de archivos: nombre del archivo de la entidad de origen -> nombre de salida (jniLibs solo aceptar lib*.so nombrar) ────────

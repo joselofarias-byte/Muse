@@ -661,7 +661,7 @@
     <string name="settings_asr_group_transcription">ファイル文字起こし</string>
     <string name="settings_chat_typography_section">本文スタイル</string>
     <string name="settings_chat_message_font_size">メッセージ文字サイズ</string>
-    <string name="settings_chat_message_font_size_subtitle">メッセージ本文の文字サイズを調整(初期値 100%)</string>
+    <string name="settings_chat_message_font_size_subtitle">メッセージ本文の文字サイズを調整(初期値 100%%)</string>
     <string name="settings_chat_letter_spacing">文字間隔</string>
     <string name="settings_chat_letter_spacing_subtitle">本文の文字間隔を調整</string>
     <string name="assistant_kb_scope_whole">（全体）</string>

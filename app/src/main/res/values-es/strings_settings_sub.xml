@@ -710,7 +710,7 @@
     <string name="settings_asr_group_transcription">Transcripción de documentos</string>
     <string name="settings_chat_typography_section">Diseño de texto</string>
     <string name="settings_chat_message_font_size">Tamaño de fuente del mensaje</string>
-    <string name="settings_chat_message_font_size_subtitle">Ajustar el tamaño del texto del mensaje, predeterminado 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Ajustar el tamaño del texto del mensaje, predeterminado 100%%</string>
     <string name="settings_chat_letter_spacing">espaciado de palabras</string>
     <string name="settings_chat_letter_spacing_subtitle">Ajustar el espacio entre caracteres del texto</string>
     <string name="settings_chat_quick_customize">Botón de acceso directo personalizado</string>
