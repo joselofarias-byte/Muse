@@ -7,15 +7,14 @@ package io.zer0.muse.terminal.bridge
  * is redacted before it is stored or returned. The matched text itself is never logged.
  */
 internal object SecretGuard {
-    private val PATTERNS: List<Regex> = listOf(
-        Regex("-----BEGIN [A-Z ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
-        Regex("(?i)\\b(authorization\\s*:\\s*bearer|bearer)\\s+[A-Za-z0-9\\-._~+/]{8,}=*"),
-        Regex("(?i)\\b(api[_-]?key|access[_-]?key|secret|token|password|passwd)\\b\\s*[:=]\\s*\\S+"),
-        Regex("\\bsk-[A-Za-z0-9]{16,}\\b"),
-        Regex("\\bgh[pousr]_[A-Za-z0-9]{20,}\\b"),
-        Regex("\\bAKIA[0-9A-Z]{16}\\b"),
-        Regex("\\bAIza[0-9A-Za-z\\-_]{20,}\\b"),
-    )
+    private val PEM = Regex("-----BEGIN [A-Z ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z ]*PRIVATE KEY-----")
+    private val BEARER = Regex("(?i)\\b(authorization\\s*:\\s*bearer|bearer)\\s+[A-Za-z0-9\\-._~+/]{8,}=*")
+    private val ASSIGNMENT = Regex("(?i)\\b(api[_-]?key|access[_-]?key|secret|token|password|passwd)\\b\\s*[:=]\\s*\\S+")
+    private val OPENAI = Regex("\\bsk-[A-Za-z0-9]{16,}\\b")
+    private val GITHUB = Regex("\\bgh[pousr]_[A-Za-z0-9]{20,}\\b")
+    private val AWS = Regex("\\bAKIA[0-9A-Z]{16}\\b")
+    private val GOOGLE = Regex("\\bAIza[0-9A-Za-z\\-_]{20,}\\b")
+    private val PATTERNS = listOf(PEM, BEARER, ASSIGNMENT, OPENAI, GITHUB, AWS, GOOGLE)
 
     fun containsSecret(text: String): Boolean = PATTERNS.any { it.containsMatchIn(text) }
 

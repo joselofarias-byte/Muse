@@ -5,8 +5,9 @@ package io.zer0.muse.terminal.bridge
  * `rish -c`. The pid file receives a process id and nothing else — never the command text.
  */
 internal object NightzukuScript {
+    private val SAFE_ID = Regex("[^A-Za-z0-9_-]")
     fun pidFile(prefix: String, jobId: String): String {
-        val safeId = jobId.replace(Regex("[^A-Za-z0-9_-]"), "")
+        val safeId = jobId.replace(SAFE_ID, "")
         return prefix.trimEnd('/') + "/tmp/muse-bridge-" + safeId + ".pid"
     }
 

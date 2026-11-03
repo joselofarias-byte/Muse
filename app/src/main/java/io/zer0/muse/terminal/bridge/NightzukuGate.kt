@@ -9,6 +9,9 @@ import io.zer0.muse.tools.ShellCommandBoundary
  * cannot grant itself. Root, disk format, and wiping the device root stay blocked even with a grant.
  */
 internal object NightzukuGate {
+    private val SPACES = Regex("\\s+")
+    private val DD_DEVICE = Regex("\\bof=/dev/")
+    private val RM_ROOT = Regex("""\brm\b[^\n]*\s+(/|/\*|/(system|data|sdcard|storage))(\s|$)""")
     data class Consent(val modify: Boolean, val destructive: Boolean)
 
     sealed class Decision {
@@ -57,14 +60,14 @@ internal object NightzukuGate {
     }
 
     private fun hardFloor(command: String): String? {
-        val compact = command.replace(Regex("\\s+"), "")
+        val compact = command.replace(SPACES, "")
         val verb = command.trim().substringBefore(' ').substringAfterLast('/')
         return when {
             compact.contains(":(){:") -> "fork bomb bloqueado"
             verb in setOf("su", "sudo", "doas") -> "sin root: $verb está bloqueado"
             verb == "mkfs" || verb.startsWith("mkfs.") -> "formatear discos está bloqueado"
-            verb == "dd" && Regex("\\bof=/dev/").containsMatchIn(command) -> "dd sobre un dispositivo está bloqueado"
-            Regex("""\brm\b[^\n]*\s+(/|/\*|/(system|data|sdcard|storage))(\s|$)""").containsMatchIn(command) ->
+            verb == "dd" && DD_DEVICE.containsMatchIn(command) -> "dd sobre un dispositivo está bloqueado"
+            RM_ROOT.containsMatchIn(command) ->
                 "borrar la raíz o una partición del sistema está bloqueado"
             else -> null
         }

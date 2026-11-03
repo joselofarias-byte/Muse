@@ -8,6 +8,8 @@ package io.zer0.muse.terminal.bridge
  */
 internal object CommandRiskClassifier {
     private val SEPARATOR = Regex("&&|\\|\\||[;|]")
+    private val WHITESPACE = Regex("\\s+")
+    private val REDIRECT = Regex("(?<!&)\\d?>{1,2}\\s*\\S+")
     private val READ_VERBS = setOf(
         "id", "whoami", "pwd", "echo", "printf", "ls", "cat", "head", "tail", "wc", "stat",
         "uname", "date", "getprop", "dumpsys", "logcat", "ps", "df", "du", "which", "true",
@@ -33,7 +35,7 @@ internal object CommandRiskClassifier {
     }
 
     private fun classifyTokens(segment: String): CommandRisk {
-        val tokens = segment.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val tokens = segment.split(WHITESPACE).filter { it.isNotEmpty() }
         val verb = tokens.firstOrNull { !it.startsWith("-") }?.substringAfterLast('/') ?: return CommandRisk.MODIFY
         val sub = tokens.dropWhile { it.startsWith("-") || it.substringAfterLast('/') != verb }
             .drop(1)
@@ -67,7 +69,6 @@ internal object CommandRiskClassifier {
     }
 
     private fun hasFileRedirect(segment: String): Boolean {
-        val redirect = Regex("""(?<!&)\d?>{1,2}\s*\S+""")
-        return redirect.containsMatchIn(segment) && !segment.contains(">&")
+        return REDIRECT.containsMatchIn(segment) && !segment.contains(">&")
     }
 }
