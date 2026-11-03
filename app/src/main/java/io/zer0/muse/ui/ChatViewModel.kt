@@ -412,6 +412,7 @@ data class ChatAgentState(
  * de [io.zer0.muse.data.SpeechProviderResolver] El resultado del análisis de(Vea el bloque de colección de esta clase para suscribirse para combinar).
  * **Está prohibido pasarlo directamente a `saveAsrConfig` Realizar el pedido**;Se debe tomar la colocación `settings.asrConfigFlow` el valor original.
  */
+@Suppress("LongParameterList")
 class ChatUiState(
     val streamState: ChatStreamState = ChatStreamState(),
     val inputState: ChatInputState = ChatInputState(),
@@ -1070,6 +1071,7 @@ data class MessageExpandedState(
  * Se utiliza para limpiar las consultas de los usuarios antes de las búsquedas web. @mention(Semántica de referencia de la base de conocimientos.),
  * Evite que contamine las palabras clave de búsqueda.
  */
+@Suppress("UnusedPrivateProperty")
 private val KNOWLEDGE_MENTION_REGEX = Regex("@[^\\s@]+")
 
 

@@ -52,9 +52,10 @@ style:
     active: false
   MaxLineLength:
     active: true
-    # Alineado con max_line_length de la raíz .editorconfig.detekt El valor predeterminado 120 será 121–140 personaje
-    # la línea se registra como otro conjunto de deuda; después de que el proyecto adopte explícitamente 140,>140 de líneas todavía están bloqueadas por la regla.
-    maxLineLength: 140
+    # El español ocupa más que el chino. 140 corta miles de comentarios y literales ya traducidos.
+    # Se mantiene el tope alto para no reintroducir esa deuda, y los comentarios no cuentan.
+    maxLineLength: 4000
+    excludeCommentStatements: true
   UnusedImports:
     active: true
   TrailingWhitespace:

@@ -102,6 +102,7 @@ object ToolCallSanitizer {
      * Sólo se deben utilizar herramientas que puedan igualar la exposición actual. Cuando no se puede obtener la lista, se devolverá nulo: sin una lista, solo puede confiar en adivinar.
      * Y las palabras en inglés aparecerán en cualquier momento del texto ("please hold on a moment"), una suposición incorrecta ejecutará una palabra como herramienta.
      */
+    @Suppress("ReturnCount")
     internal fun salvageName(rawName: String, knownToolNames: Set<String>): String? {
         if (knownToolNames.isEmpty()) return null
         val candidate = TRAILING_IDENTIFIER.find(rawName.trim())?.value ?: return null

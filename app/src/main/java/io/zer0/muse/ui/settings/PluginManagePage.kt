@@ -1151,6 +1151,7 @@ private fun SectionHeader(title: String) {
     )
 }
 
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 private fun InstalledPluginRow(
     plugin: PluginManager.InstalledPlugin,

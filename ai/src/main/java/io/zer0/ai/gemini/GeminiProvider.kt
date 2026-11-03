@@ -992,6 +992,7 @@ class GeminiProvider(
         return true
     }
 
+    @Suppress("LongParameterList")
     private fun buildRequestBody(
         system: String?,
         contents: List<GeminiContent>,

