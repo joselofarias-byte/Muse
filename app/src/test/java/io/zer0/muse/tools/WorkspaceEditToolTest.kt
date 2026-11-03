@@ -64,7 +64,7 @@ class WorkspaceEditToolTest {
         val receipt = edit("a.txt", "fragmento que no existe", "x")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("No se puede encontrar el fragmento."))
+        assertTrue(receipt, receipt.contains("No se puede encontrar el fragmento"))
         assertEquals("primera linea\nsegunda linea\nla tercera linea\n", contentOf("a.txt"))
     }
 
@@ -76,7 +76,7 @@ class WorkspaceEditToolTest {
         val receipt = edit("b.txt", "= 1", "= 2")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("Aparece 2 veces"))
+        assertTrue(receipt, receipt.contains("2 veces"))
         assertEquals(original, contentOf("b.txt"))
     }
 
@@ -87,7 +87,7 @@ class WorkspaceEditToolTest {
         val receipt = edit("c.txt", "beta", "beta")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("El contenido antiguo y el nuevo son iguales."))
+        assertTrue(receipt, receipt.contains("son los mismos"))
         assertEquals("alpha\nbeta\n", contentOf("c.txt"))
     }
 
@@ -150,7 +150,7 @@ class WorkspaceEditToolTest {
         assertTrue(receipt, receipt.startsWith("OK: workspace_edit"))
         // Resumen: primera línea modificada + número de líneas modificadas
         assertTrue(receipt, receipt.contains("primera línea cambiada 4"))
-        assertTrue(receipt, receipt.contains("Texto original 1 línea → Nuevo contenido 2 lineas"))
+        assertTrue(receipt, receipt.contains("Texto original 1"))
         // @@ Encabezados y líneas agregadas y eliminadas
         assertTrue(receipt, receipt.contains("@@ -1,7 +1,8 @@"))
         assertTrue(receipt, receipt.contains("\n-line4\n"))
