@@ -153,7 +153,7 @@ class ToolCallSanitizerTest {
     fun `tool name with spaces or punctuation is rejected`() {
         assertFalse(ToolCallSanitizer.isValidName("web search"))
         assertFalse(ToolCallSanitizer.isValidName("web.search"))
-        assertFalse(ToolCallSanitizer.isValidName("webBuscar"))
+        assertFalse(ToolCallSanitizer.isValidName("web_búsqueda"))
     }
 
     @Test

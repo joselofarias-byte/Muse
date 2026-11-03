@@ -226,10 +226,10 @@ class ChatEventNormalizationTest {
 
         // transmisión:La misma respuesta lógica llega fragmentada(Índice desordenado + deduplicación de referencia;Las firmas vienen con marcos de razonamiento.)
         val streamed = listOf<ChatStreamEvent>(
-            ChatStreamEvent.ReasoningDelta("pensar", signature = "sig-1", encryptedContent = "enc-1"),
-            ChatStreamEvent.ReasoningDelta("proceso"),
-            ChatStreamEvent.ContentDelta("eventualmente"),
-            ChatStreamEvent.ContentDelta("responder"),
+            ChatStreamEvent.ReasoningDelta("proceso de ", signature = "sig-1", encryptedContent = "enc-1"),
+            ChatStreamEvent.ReasoningDelta("pensamiento"),
+            ChatStreamEvent.ContentDelta("respuesta "),
+            ChatStreamEvent.ContentDelta("final"),
             ChatStreamEvent.ToolCallDelta(
                 index = 0,
                 id = "call_1",

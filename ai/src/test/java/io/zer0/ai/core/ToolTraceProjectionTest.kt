@@ -52,7 +52,7 @@ class ToolTraceProjectionTest {
         assertEquals(3, projected.size)
         assertTrue(projected[1].content.contains(ToolTraceProjection.SUMMARY_MARKER))
         assertTrue(projected[1].content.contains("Instrucciones del asistente"))
-        assertTrue(projected[1].content.contains("Déjame comprobar la información del dispositivo primero."))
+        assertTrue(projected[1].content.contains("Primero comprobaré la información del dispositivo."))
     }
 
     @Test

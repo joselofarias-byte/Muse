@@ -312,7 +312,7 @@ class StreamGuardTest {
 
         assertTrue(
             "Por razones comunes para detenerse, se debe escribir solo razonamiento en el texto principal para evitar respuestas vacías.",
-            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("Piensa en el contenido") },
+            events.any { it is ChatStreamEvent.ContentDelta && it.delta.contains("contenido de pensamiento") },
         )
     }
 }

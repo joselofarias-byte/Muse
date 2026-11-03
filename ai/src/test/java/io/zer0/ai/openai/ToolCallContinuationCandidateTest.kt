@@ -136,7 +136,7 @@ class ToolCallContinuationCandidateTest {
         // La secuela es ensamblada por el acumulador después de ser devuelta a su posición; esta línea está bloqueada"deletrealo**se puede analizar en JSON** Y los campos están completos.",
         // Es decir, los tres párrafos del diario. {"limit": 15, " / query": "Yan Lin/Lai"} entrada equivalente.
         // Tenga en cuenta que sólo se afirma la semántica (campos analizados), no la forma de la cadena. —— Es normal que el acumulador conserve el espacio en blanco original.
-        val merged = mergeFragments(listOf("""{"limit": 15, """, """"query": "Yanlin""", """ven"}"""))
+        val merged = mergeFragments(listOf("""{"limit": 15, """, """"query": "Yan Lin""", """lai"}"""))
         val parsed = Json.parseToJsonElement(merged).jsonObject
         assertEquals("15", parsed["limit"].toString())
         assertEquals("\"Yan Linlai\"", parsed["query"].toString())

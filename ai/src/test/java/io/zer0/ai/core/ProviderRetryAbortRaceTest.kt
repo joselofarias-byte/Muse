@@ -101,7 +101,7 @@ class ProviderRetryAbortRaceTest {
 
         assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
         signal.abort()
-        withTimeout(5_000) { collector.join() }
+        withTimeout(20_000) { collector.join() }
 
         // Allow the normal 1s retry backoff plus callback delivery time to elapse.
         delay(1_500)

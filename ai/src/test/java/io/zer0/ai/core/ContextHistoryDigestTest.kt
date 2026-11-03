@@ -53,7 +53,7 @@ class ContextHistoryDigestTest {
         // Las últimas reservas,Doblado anteriormente para omitir descripción.
         assertTrue(digest!!.content.contains("noticias40"))
         assertFalse(digest.content.contains("noticias1 "))
-        assertTrue(digest.content.contains("No ampliado"))
+        assertTrue(digest.content.contains("no se expandió"))
     }
 
     @Test
@@ -67,14 +67,15 @@ class ContextHistoryDigestTest {
     fun `keeps newest entries first when budget is tight`() {
         val dropped =
             listOf(
-                UIMessage(role = MessageRole.USER, content = "noticias muy viejas"),
-                UIMessage(role = MessageRole.USER, content = "noticias más recientes"),
+                UIMessage(role = MessageRole.USER, content = "vieja y larga noticia de contexto"),
+                UIMessage(role = MessageRole.USER, content = "nueva"),
             )
 
-        val digest = ContextHistoryDigest.build(dropped, maxChars = 10)
+        // "Usuario: " ya ocupa 9 caracteres; el presupuesto alcanza el mensaje corto y deja fuera el largo.
+        val digest = ContextHistoryDigest.build(dropped, maxChars = 20)
 
         assertTrue(digest != null)
-        assertTrue(digest!!.content.contains("noticias más recientes"))
-        assertFalse(digest.content.contains("noticias muy viejas"))
+        assertTrue(digest!!.content.contains("nueva"))
+        assertFalse(digest.content.contains("vieja"))
     }
 }

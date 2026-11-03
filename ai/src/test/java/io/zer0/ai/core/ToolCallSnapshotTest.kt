@@ -47,8 +47,8 @@ class ToolCallSnapshotTest {
 
     @Test
     fun `Sigue siendo una adición incremental sin instantánea (control)`() {
-        val a = """{"content":"antes"""
-        val b = """Media frase"}"""
+        val a = """{"content":"primera """
+        val b = """mitad"}"""
 
         val events = listOf(
             ChatStreamEvent.ToolCallDelta(index = 0, id = "call_1", name = "channel_reply", argumentsDelta = a),
@@ -58,7 +58,7 @@ class ToolCallSnapshotTest {
         val result = events.normalize()
         assertEquals(
             "Los marcos incrementales ordinarios deben empalmarse en completos. JSON",
-            """{"content":"primera mitad de la oración"}""",
+            """{"content":"primera mitad"}""",
             result.toolCalls.first().arguments,
         )
     }

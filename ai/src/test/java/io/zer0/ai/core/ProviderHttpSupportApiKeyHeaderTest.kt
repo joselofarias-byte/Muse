@@ -59,7 +59,7 @@ class ProviderHttpSupportApiKeyHeaderTest {
     @Test
     fun `non-ascii key is rejected with readable message`() {
         // El primer carácter es chino.“cien”(U+767E),Reproducir la forma típica de un usuario pegando un título.
-        val probe = Probe(config("ciensk-abc"))
+        val probe = Probe(config("百sk-abc"))
         val error = runCatching { probe.apiKeyForTest() }.exceptionOrNull()
         assertTrue("debe ser arrojado ProviderException", error is ProviderException)
         val message = (error as ProviderException).message.orEmpty()
@@ -70,7 +70,7 @@ class ProviderHttpSupportApiKeyHeaderTest {
 
     @Test
     fun `non-ascii in the middle is located`() {
-        val probe = Probe(config("sk-chino-key"))
+        val probe = Probe(config("sk-中文-key"))
         val error = runCatching { probe.apiKeyForTest() }.exceptionOrNull()
         assertTrue(error is ProviderException)
         val message = (error as ProviderException).message.orEmpty()
@@ -91,7 +91,7 @@ class ProviderHttpSupportApiKeyHeaderTest {
         // Compensaciones de diseño: no se puede hacer que todo el proveedor no esté disponible solo porque hay una clave incorrecta en la lista;
         // Una vez que se selecciona una clave incorrecta para su rotación, aún recibirá un error legible antes de enviarla.
         // Bloqueado con toda la lista mala aquí“Seleccionar y verificar”semántica.
-        val probe = Probe(config("cienbad,enbad"))
+        val probe = Probe(config("百bad,中bad"))
         val error = runCatching { probe.apiKeyForTest() }.exceptionOrNull()
         assertTrue("Cuando la clave seleccionada contiene caracteres que no son ASCII, debe interceptarse.", error is ProviderException)
     }

@@ -74,7 +74,7 @@ class ProviderErrorTest {
         assertEquals(ProviderError.InsufficientQuota::class, byBody::class)
 
         // Cómo escribir una estación de transferencia china (copia real en la captura de pantalla del usuario)
-        val zh = ProviderError.from(403, "Cuota de usuarios insuficiente, saldo restante: -0.08")
+        val zh = ProviderError.from(403, "用户额度不足, 剩余额度: -0.08")
         assertEquals(ProviderError.InsufficientQuota::class, zh::class)
     }
 

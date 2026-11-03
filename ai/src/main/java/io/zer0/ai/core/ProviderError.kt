@@ -150,7 +150,11 @@ sealed class ProviderError {
                 lower.contains("billing") ||
                 lower.contains("Saldo insuficiente") ||
                 lower.contains("Cuota insuficiente") ||
-                lower.contains("Saldo agotado")
+                lower.contains("Saldo agotado") ||
+                // Las estaciones de retransmisión siguen devolviendo estos textos en chino.
+                lower.contains("余额不足") ||
+                lower.contains("额度不足") ||
+                lower.contains("余额已用尽")
         }
 
         /**
