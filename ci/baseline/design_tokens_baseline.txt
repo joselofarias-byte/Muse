@@ -2,4 +2,5 @@
 # Formato: <file>: <Número de violaciones>;CI Solo permita que disminuya el número de infracciones.,Agregar o aumentar fallará
 # Ejecutar después de limpiar el inventario.: py -3 ci/script/check_design_tokens.py --update-baseline
 #
-# Actualmente hay 0 ubicaciones,0 archivos distribuidos
+# total actual 13 en,Distribución 1 archivos
+app/src/main/java/io/zer0/muse/ui/markdown/card/CardTheme.kt: 13

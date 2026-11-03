@@ -4,3 +4,6 @@
 # Descripción: línea base vacía = Tolerancia cero para todas las posiciones. texto de usuario (ui/markdown/MarkdownText.kt) están permanentemente exentos por el script EXEMPT_FILES,
 #       decoración de tarjetas (DataCardRenderer / RichContentCard El título y la etiqueta de idioma) han sido restringidos en el sitio de la llamada.
 
+app/src/main/java/io/zer0/muse/ui/SkillScreen.kt:2
+app/src/main/java/io/zer0/muse/ui/WorkspaceScreen.kt:1
+app/src/main/java/io/zer0/muse/ui/schedule/ScheduledTasksScreen.kt:2

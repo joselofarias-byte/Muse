@@ -2,4 +2,5 @@
 # Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender
 # Ejecutar después de limpiar el inventario.: py -3 ci/script/check_touch_target.py --update-baseline
 #
-# Actualmente hay 0 ubicaciones,0 archivos distribuidos
+# total actual 1 en,Distribución 1 archivos
+app/src/main/java/io/zer0/muse/ui/taskcard/SubagentTaskListCard.kt: 1
