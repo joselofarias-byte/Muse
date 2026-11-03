@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <baseline version="1.0">
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/api/MiniPhoneHost.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/api/MiniPhoneHost.kt">
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
         <error line="14" column="5" source="standard:class-signature" />
@@ -16,14 +16,14 @@
         <error line="80" column="5" source="standard:class-signature" />
         <error line="80" column="25" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/chat/MpConversationStore.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/chat/MpConversationStore.kt">
         <error line="39" column="5" source="standard:class-signature" />
         <error line="40" column="5" source="standard:class-signature" />
         <error line="41" column="5" source="standard:class-signature" />
         <error line="42" column="5" source="standard:class-signature" />
         <error line="42" column="46" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/chat/MpGroupChat.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/chat/MpGroupChat.kt">
         <error line="115" column="5" source="standard:class-signature" />
         <error line="116" column="5" source="standard:class-signature" />
         <error line="117" column="5" source="standard:class-signature" />
@@ -33,7 +33,7 @@
         <error line="120" column="72" source="standard:class-signature" />
         <error line="207" column="79" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatPlan.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatPlan.kt">
         <error line="26" column="5" source="standard:class-signature" />
         <error line="26" column="23" source="standard:class-signature" />
         <error line="102" column="9" source="standard:function-signature" />
@@ -46,7 +46,7 @@
         <error line="109" column="9" source="standard:function-signature" />
         <error line="109" column="47" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatRunner.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatRunner.kt">
         <error line="54" column="5" source="standard:class-signature" />
         <error line="55" column="5" source="standard:class-signature" />
         <error line="56" column="5" source="standard:class-signature" />
@@ -58,7 +58,7 @@
         <error line="62" column="5" source="standard:class-signature" />
         <error line="62" column="72" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/MpTypes.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/MpTypes.kt">
         <error line="10" column="5" source="standard:class-signature" />
         <error line="10" column="23" source="standard:class-signature" />
         <error line="24" column="5" source="standard:class-signature" />
@@ -70,7 +70,7 @@
         <error line="71" column="5" source="standard:class-signature" />
         <error line="71" column="23" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpAlbumEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpAlbumEntity.kt">
         <error line="18" column="5" source="standard:class-signature" />
         <error line="19" column="5" source="standard:class-signature" />
         <error line="20" column="5" source="standard:class-signature" />
@@ -79,13 +79,13 @@
         <error line="23" column="5" source="standard:class-signature" />
         <error line="23" column="25" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpDiaryEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpDiaryEntity.kt">
         <error line="11" column="5" source="standard:class-signature" />
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
         <error line="13" column="25" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMessageEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMessageEntity.kt">
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
         <error line="32" column="5" source="standard:class-signature" />
@@ -98,7 +98,7 @@
         <error line="39" column="5" source="standard:class-signature" />
         <error line="39" column="88" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentCommentEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentCommentEntity.kt">
         <error line="18" column="5" source="standard:class-signature" />
         <error line="19" column="5" source="standard:class-signature" />
         <error line="20" column="5" source="standard:class-signature" />
@@ -109,7 +109,7 @@
         <error line="25" column="5" source="standard:class-signature" />
         <error line="25" column="25" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentEntity.kt">
         <error line="23" column="5" source="standard:class-signature" />
         <error line="24" column="5" source="standard:class-signature" />
         <error line="25" column="5" source="standard:class-signature" />
@@ -120,7 +120,7 @@
         <error line="30" column="5" source="standard:class-signature" />
         <error line="30" column="32" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentLikeEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpMomentLikeEntity.kt">
         <error line="16" column="5" source="standard:class-signature" />
         <error line="17" column="5" source="standard:class-signature" />
         <error line="18" column="5" source="standard:class-signature" />
@@ -128,7 +128,7 @@
         <error line="20" column="5" source="standard:class-signature" />
         <error line="20" column="25" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpProfileEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpProfileEntity.kt">
         <error line="11" column="5" source="standard:class-signature" />
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
@@ -137,7 +137,7 @@
         <error line="16" column="5" source="standard:class-signature" />
         <error line="16" column="39" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpThreadEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpThreadEntity.kt">
         <error line="28" column="5" source="standard:class-signature" />
         <error line="29" column="5" source="standard:class-signature" />
         <error line="30" column="5" source="standard:class-signature" />
@@ -150,13 +150,13 @@
         <error line="37" column="5" source="standard:class-signature" />
         <error line="37" column="74" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/db/entity/MpThreadMemberEntity.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/db/entity/MpThreadMemberEntity.kt">
         <error line="21" column="5" source="standard:class-signature" />
         <error line="22" column="5" source="standard:class-signature" />
         <error line="23" column="5" source="standard:class-signature" />
         <error line="23" column="24" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/media/MpImageStore.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/media/MpImageStore.kt">
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
         <error line="32" column="5" source="standard:class-signature" />
@@ -164,7 +164,7 @@
         <error line="33" column="54" source="standard:class-signature" />
         <error line="102" column="64" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/moment/MpCharacterMaterial.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/moment/MpCharacterMaterial.kt">
         <error line="33" column="5" source="standard:class-signature" />
         <error line="34" column="5" source="standard:class-signature" />
         <error line="35" column="5" source="standard:class-signature" />
@@ -172,7 +172,7 @@
         <error line="37" column="5" source="standard:class-signature" />
         <error line="37" column="55" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/moment/MpMomentsRepository.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/moment/MpMomentsRepository.kt">
         <error line="33" column="5" source="standard:class-signature" />
         <error line="34" column="5" source="standard:class-signature" />
         <error line="35" column="5" source="standard:class-signature" />
@@ -188,7 +188,7 @@
         <error line="158" column="9" source="standard:function-signature" />
         <error line="158" column="25" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoPlan.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoPlan.kt">
         <error line="27" column="5" source="standard:class-signature" />
         <error line="27" column="23" source="standard:class-signature" />
         <error line="82" column="9" source="standard:function-signature" />
@@ -199,7 +199,7 @@
         <error line="87" column="9" source="standard:function-signature" />
         <error line="87" column="47" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoRunner.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoRunner.kt">
         <error line="42" column="5" source="standard:class-signature" />
         <error line="43" column="5" source="standard:class-signature" />
         <error line="44" column="5" source="standard:class-signature" />
@@ -209,12 +209,12 @@
         <error line="48" column="5" source="standard:class-signature" />
         <error line="48" column="55" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/settings/MpMomentAutoStore.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/settings/MpMomentAutoStore.kt">
         <error line="60" column="68" source="standard:function-signature" />
         <error line="70" column="5" source="standard:class-signature" />
         <error line="70" column="51" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/data/voice/MpVoiceRecorder.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/data/voice/MpVoiceRecorder.kt">
         <error line="58" column="5" source="standard:class-signature" />
         <error line="59" column="5" source="standard:class-signature" />
         <error line="60" column="5" source="standard:class-signature" />
@@ -225,7 +225,7 @@
         <error line="175" column="9" source="standard:class-signature" />
         <error line="175" column="28" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatActions.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatActions.kt">
         <error line="17" column="5" source="standard:class-signature" />
         <error line="18" column="5" source="standard:class-signature" />
         <error line="19" column="5" source="standard:class-signature" />
@@ -234,13 +234,13 @@
         <error line="30" column="5" source="standard:class-signature" />
         <error line="30" column="41" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMediaWriter.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMediaWriter.kt">
         <error line="17" column="5" source="standard:class-signature" />
         <error line="18" column="5" source="standard:class-signature" />
         <error line="19" column="5" source="standard:class-signature" />
         <error line="19" column="34" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMenuAction.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMenuAction.kt">
         <error line="17" column="5" source="standard:class-signature" />
         <error line="17" column="23" source="standard:class-signature" />
         <error line="48" column="5" source="standard:class-signature" />
@@ -253,7 +253,7 @@
         <error line="56" column="9" source="standard:function-signature" />
         <error line="56" column="35" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMessageWriter.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatMessageWriter.kt">
         <error line="26" column="5" source="standard:class-signature" />
         <error line="27" column="5" source="standard:class-signature" />
         <error line="28" column="5" source="standard:class-signature" />
@@ -273,7 +273,7 @@
         <error line="94" column="5" source="standard:class-signature" />
         <error line="94" column="56" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatPagingController.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatPagingController.kt">
         <error line="24" column="5" source="standard:class-signature" />
         <error line="25" column="5" source="standard:class-signature" />
         <error line="26" column="5" source="standard:class-signature" />
@@ -283,7 +283,7 @@
         <error line="30" column="5" source="standard:class-signature" />
         <error line="30" column="44" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatSendController.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatSendController.kt">
         <error line="44" column="5" source="standard:class-signature" />
         <error line="45" column="5" source="standard:class-signature" />
         <error line="46" column="5" source="standard:class-signature" />
@@ -299,7 +299,7 @@
         <error line="339" column="9" source="standard:class-signature" />
         <error line="339" column="38" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatUiState.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatUiState.kt">
         <error line="81" column="5" source="standard:class-signature" />
         <error line="82" column="5" source="standard:class-signature" />
         <error line="83" column="5" source="standard:class-signature" />
@@ -314,12 +314,12 @@
         <error line="151" column="9" source="standard:class-signature" />
         <error line="151" column="36" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/ChatWriteClock.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/ChatWriteClock.kt">
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
         <error line="13" column="64" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/GroupAdminController.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/GroupAdminController.kt">
         <error line="28" column="5" source="standard:class-signature" />
         <error line="29" column="5" source="standard:class-signature" />
         <error line="30" column="5" source="standard:class-signature" />
@@ -329,7 +329,7 @@
         <error line="34" column="5" source="standard:class-signature" />
         <error line="34" column="39" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/GroupMembersPage.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/GroupMembersPage.kt">
         <error line="65" column="5" source="standard:class-signature" />
         <error line="66" column="5" source="standard:class-signature" />
         <error line="67" column="5" source="standard:class-signature" />
@@ -368,7 +368,7 @@
         <error line="575" column="5" source="standard:function-signature" />
         <error line="575" column="24" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/GroupResponders.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/GroupResponders.kt">
         <error line="19" column="5" source="standard:class-signature" />
         <error line="20" column="5" source="standard:class-signature" />
         <error line="20" column="22" source="standard:class-signature" />
@@ -379,7 +379,7 @@
         <error line="43" column="5" source="standard:function-signature" />
         <error line="43" column="39" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatBubble.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatBubble.kt">
         <error line="71" column="5" source="standard:function-signature" />
         <error line="72" column="5" source="standard:function-signature" />
         <error line="73" column="5" source="standard:function-signature" />
@@ -389,7 +389,7 @@
         <error line="77" column="5" source="standard:function-signature" />
         <error line="77" column="33" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatInputBar.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatInputBar.kt">
         <error line="65" column="5" source="standard:function-signature" />
         <error line="66" column="5" source="standard:function-signature" />
         <error line="67" column="5" source="standard:function-signature" />
@@ -404,14 +404,14 @@
         <error line="181" column="32" source="standard:function-signature" />
         <error line="389" column="53" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatMenu.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatMenu.kt">
         <error line="43" column="5" source="standard:function-signature" />
         <error line="44" column="5" source="standard:function-signature" />
         <error line="45" column="5" source="standard:function-signature" />
         <error line="46" column="5" source="standard:function-signature" />
         <error line="46" column="35" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatScreen.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatScreen.kt">
         <error line="118" column="5" source="standard:function-signature" />
         <error line="119" column="5" source="standard:function-signature" />
         <error line="120" column="5" source="standard:function-signature" />
@@ -435,7 +435,7 @@
         <error line="326" column="5" source="standard:function-signature" />
         <error line="326" column="35" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatViewModel.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatViewModel.kt">
         <error line="41" column="5" source="standard:class-signature" />
         <error line="42" column="5" source="standard:class-signature" />
         <error line="43" column="5" source="standard:class-signature" />
@@ -447,13 +447,13 @@
         <error line="49" column="5" source="standard:class-signature" />
         <error line="49" column="94" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneVoiceBubble.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneVoiceBubble.kt">
         <error line="59" column="5" source="standard:function-signature" />
         <error line="60" column="5" source="standard:function-signature" />
         <error line="61" column="5" source="standard:function-signature" />
         <error line="61" column="34" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneVoicePlaybackController.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneVoicePlaybackController.kt">
         <error line="24" column="5" source="standard:class-signature" />
         <error line="25" column="5" source="standard:class-signature" />
         <error line="26" column="5" source="standard:class-signature" />
@@ -461,7 +461,7 @@
         <error line="130" column="5" source="standard:class-signature" />
         <error line="130" column="95" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/chat/MpVoiceInputController.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/chat/MpVoiceInputController.kt">
         <error line="54" column="5" source="standard:class-signature" />
         <error line="55" column="5" source="standard:class-signature" />
         <error line="56" column="5" source="standard:class-signature" />
@@ -471,7 +471,7 @@
         <error line="60" column="5" source="standard:class-signature" />
         <error line="60" column="39" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsScreen.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsScreen.kt">
         <error line="101" column="5" source="standard:class-signature" />
         <error line="102" column="5" source="standard:class-signature" />
         <error line="103" column="5" source="standard:class-signature" />
@@ -487,7 +487,7 @@
         <error line="126" column="5" source="standard:function-signature" />
         <error line="126" column="31" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsViewModel.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsViewModel.kt">
         <error line="42" column="5" source="standard:class-signature" />
         <error line="43" column="5" source="standard:class-signature" />
         <error line="44" column="5" source="standard:class-signature" />
@@ -497,7 +497,7 @@
         <error line="47" column="49" source="standard:class-signature" />
         <error line="231" column="80" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/moments/MomentCardView.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/moments/MomentCardView.kt">
         <error line="57" column="5" source="standard:function-signature" />
         <error line="58" column="5" source="standard:function-signature" />
         <error line="59" column="5" source="standard:function-signature" />
@@ -521,7 +521,7 @@
         <error line="354" column="5" source="standard:class-signature" />
         <error line="354" column="26" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/moments/MomentsUiState.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/moments/MomentsUiState.kt">
         <error line="21" column="5" source="standard:class-signature" />
         <error line="22" column="5" source="standard:class-signature" />
         <error line="23" column="5" source="standard:class-signature" />
@@ -557,7 +557,7 @@
         <error line="141" column="5" source="standard:function-signature" />
         <error line="141" column="46" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/GroupCreatePage.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/GroupCreatePage.kt">
         <error line="52" column="5" source="standard:function-signature" />
         <error line="53" column="5" source="standard:function-signature" />
         <error line="54" column="5" source="standard:function-signature" />
@@ -573,7 +573,7 @@
         <error line="167" column="5" source="standard:function-signature" />
         <error line="167" column="35" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MePage.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MePage.kt">
         <error line="49" column="5" source="standard:function-signature" />
         <error line="50" column="5" source="standard:function-signature" />
         <error line="51" column="5" source="standard:function-signature" />
@@ -589,14 +589,14 @@
         <error line="212" column="5" source="standard:function-signature" />
         <error line="212" column="30" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MePageActions.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MePageActions.kt">
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
         <error line="14" column="5" source="standard:class-signature" />
         <error line="15" column="5" source="standard:class-signature" />
         <error line="15" column="47" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MessagesPage.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MessagesPage.kt">
         <error line="59" column="5" source="standard:function-signature" />
         <error line="60" column="5" source="standard:function-signature" />
         <error line="61" column="5" source="standard:function-signature" />
@@ -604,7 +604,7 @@
         <error line="63" column="5" source="standard:function-signature" />
         <error line="63" column="54" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShell.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShell.kt">
         <error line="186" column="5" source="standard:class-signature" />
         <error line="187" column="5" source="standard:class-signature" />
         <error line="188" column="5" source="standard:class-signature" />
@@ -619,7 +619,7 @@
         <error line="381" column="5" source="standard:function-signature" />
         <error line="381" column="37" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShellViewModel.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShellViewModel.kt">
         <error line="38" column="5" source="standard:class-signature" />
         <error line="39" column="5" source="standard:class-signature" />
         <error line="40" column="5" source="standard:class-signature" />
@@ -631,7 +631,7 @@
         <error line="113" column="9" source="standard:function-signature" />
         <error line="113" column="28" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneTab.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneTab.kt">
         <error line="12" column="5" source="standard:class-signature" />
         <error line="13" column="5" source="standard:class-signature" />
         <error line="13" column="23" source="standard:class-signature" />
@@ -639,7 +639,7 @@
         <error line="29" column="5" source="standard:class-signature" />
         <error line="29" column="27" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/ShellUiState.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/ShellUiState.kt">
         <error line="35" column="5" source="standard:class-signature" />
         <error line="36" column="5" source="standard:class-signature" />
         <error line="37" column="5" source="standard:class-signature" />
@@ -652,7 +652,7 @@
         <error line="48" column="5" source="standard:class-signature" />
         <error line="48" column="37" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/shell/ThreadMenu.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/shell/ThreadMenu.kt">
         <error line="41" column="5" source="standard:class-signature" />
         <error line="41" column="23" source="standard:class-signature" />
         <error line="65" column="5" source="standard:class-signature" />
@@ -666,7 +666,7 @@
         <error line="82" column="35" source="standard:function-signature" />
         <error line="199" column="71" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/ui/theme/MiniPhoneTheme.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/ui/theme/MiniPhoneTheme.kt">
         <error line="29" column="5" source="standard:class-signature" />
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
@@ -691,20 +691,20 @@
         <error line="118" column="5" source="standard:class-signature" />
         <error line="118" column="112" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/work/MpMomentWorker.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/work/MpMomentWorker.kt">
         <error line="23" column="5" source="standard:class-signature" />
         <error line="24" column="5" source="standard:class-signature" />
         <error line="24" column="30" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/main/java/io/zer0/muse/miniphone/work/MpProactiveChatWorker.kt">
+    <file name="src/main/java/io/zer0/muse/miniphone/work/MpProactiveChatWorker.kt">
         <error line="23" column="5" source="standard:class-signature" />
         <error line="24" column="5" source="standard:class-signature" />
         <error line="24" column="30" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/MpProactiveChatWorkerWiringTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/MpProactiveChatWorkerWiringTest.kt">
         <error line="59" column="54" source="standard:function-expression-body" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatPlanTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatPlanTest.kt">
         <error line="124" column="9" source="standard:function-signature" />
         <error line="125" column="9" source="standard:function-signature" />
         <error line="126" column="9" source="standard:function-signature" />
@@ -714,7 +714,7 @@
         <error line="130" column="9" source="standard:function-signature" />
         <error line="130" column="28" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatRunnerTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/chat/auto/MpProactiveChatRunnerTest.kt">
         <error line="242" column="121" source="standard:function-expression-body" />
         <error line="277" column="5" source="standard:class-signature" />
         <error line="278" column="5" source="standard:class-signature" />
@@ -723,26 +723,26 @@
         <error line="315" column="5" source="standard:class-signature" />
         <error line="315" column="35" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration1To2Test.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration1To2Test.kt">
         <error line="131" column="55" source="standard:function-signature" />
         <error line="140" column="59" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration2To3Test.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration2To3Test.kt">
         <error line="152" column="84" source="standard:function-signature" />
         <error line="165" column="54" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration3To4Test.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration3To4Test.kt">
         <error line="204" column="84" source="standard:function-signature" />
         <error line="217" column="69" source="standard:function-signature" />
         <error line="226" column="54" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration4To5Test.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MiniPhoneDbMigration4To5Test.kt">
         <error line="155" column="84" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MpSocialDaoTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MpSocialDaoTest.kt">
         <error line="140" column="74" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/db/MpThreadMessageDaoTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/db/MpThreadMessageDaoTest.kt">
         <error line="162" column="9" source="standard:function-signature" />
         <error line="163" column="9" source="standard:function-signature" />
         <error line="164" column="9" source="standard:function-signature" />
@@ -750,7 +750,7 @@
         <error line="166" column="9" source="standard:function-signature" />
         <error line="166" column="50" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoPlanTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoPlanTest.kt">
         <error line="95" column="9" source="standard:function-signature" />
         <error line="96" column="9" source="standard:function-signature" />
         <error line="97" column="9" source="standard:function-signature" />
@@ -758,7 +758,7 @@
         <error line="99" column="9" source="standard:function-signature" />
         <error line="99" column="33" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoRunnerTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/moment/auto/MpMomentAutoRunnerTest.kt">
         <error line="172" column="129" source="standard:function-signature" />
         <error line="212" column="5" source="standard:class-signature" />
         <error line="212" column="31" source="standard:class-signature" />
@@ -769,27 +769,27 @@
         <error line="255" column="5" source="standard:class-signature" />
         <error line="255" column="35" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/voice/MpVoiceRecorderTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/voice/MpVoiceRecorderTest.kt">
         <error line="160" column="5" source="standard:class-signature" />
         <error line="161" column="5" source="standard:class-signature" />
         <error line="161" column="47" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/data/voice/MpWavHeaderTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/data/voice/MpWavHeaderTest.kt">
         <error line="73" column="62" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/GroupRespondersTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/GroupRespondersTest.kt">
         <error line="105" column="9" source="standard:function-signature" />
         <error line="106" column="9" source="standard:function-signature" />
         <error line="107" column="9" source="standard:function-signature" />
         <error line="108" column="9" source="standard:function-signature" />
         <error line="108" column="50" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatImageSendTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatImageSendTest.kt">
         <error line="194" column="121" source="standard:function-signature" />
         <error line="213" column="5" source="standard:class-signature" />
         <error line="213" column="43" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatUiTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatUiTest.kt">
         <error line="395" column="9" source="standard:function-signature" />
         <error line="396" column="9" source="standard:function-signature" />
         <error line="397" column="9" source="standard:function-signature" />
@@ -798,7 +798,7 @@
         <error line="400" column="9" source="standard:function-signature" />
         <error line="400" column="56" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatViewModelTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatViewModelTest.kt">
         <error line="375" column="121" source="standard:function-signature" />
         <error line="379" column="67" source="standard:function-signature" />
         <error line="399" column="5" source="standard:class-signature" />
@@ -811,12 +811,12 @@
         <error line="455" column="5" source="standard:class-signature" />
         <error line="455" column="94" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatVoiceMessageTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneChatVoiceMessageTest.kt">
         <error line="168" column="121" source="standard:function-signature" />
         <error line="183" column="5" source="standard:class-signature" />
         <error line="183" column="44" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneGroupChatUiTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneGroupChatUiTest.kt">
         <error line="250" column="9" source="standard:function-signature" />
         <error line="251" column="9" source="standard:function-signature" />
         <error line="252" column="9" source="standard:function-signature" />
@@ -828,7 +828,7 @@
         <error line="290" column="9" source="standard:function-signature" />
         <error line="290" column="53" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneGroupChatViewModelTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MiniPhoneGroupChatViewModelTest.kt">
         <error line="323" column="9" source="standard:function-signature" />
         <error line="324" column="9" source="standard:function-signature" />
         <error line="325" column="9" source="standard:function-signature" />
@@ -839,7 +839,7 @@
         <error line="430" column="5" source="standard:class-signature" />
         <error line="430" column="82" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/chat/MpVoiceInputControllerTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/chat/MpVoiceInputControllerTest.kt">
         <error line="192" column="9" source="standard:class-signature" />
         <error line="193" column="9" source="standard:class-signature" />
         <error line="193" column="47" source="standard:class-signature" />
@@ -847,7 +847,7 @@
         <error line="222" column="9" source="standard:class-signature" />
         <error line="222" column="44" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsUiTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsUiTest.kt">
         <error line="287" column="5" source="standard:function-signature" />
         <error line="288" column="5" source="standard:function-signature" />
         <error line="289" column="5" source="standard:function-signature" />
@@ -857,13 +857,13 @@
         <error line="293" column="5" source="standard:function-signature" />
         <error line="293" column="51" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsViewModelTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/moments/MiniPhoneMomentsViewModelTest.kt">
         <error line="474" column="120" source="standard:function-signature" />
         <error line="512" column="5" source="standard:class-signature" />
         <error line="512" column="42" source="standard:class-signature" />
         <error line="592" column="103" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneGroupChatUiTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneGroupChatUiTest.kt">
         <error line="163" column="9" source="standard:function-signature" />
         <error line="164" column="9" source="standard:function-signature" />
         <error line="165" column="9" source="standard:function-signature" />
@@ -872,7 +872,7 @@
         <error line="168" column="9" source="standard:function-signature" />
         <error line="168" column="28" source="standard:function-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShellViewModelTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneShellViewModelTest.kt">
         <error line="260" column="5" source="standard:class-signature" />
         <error line="260" column="35" source="standard:class-signature" />
         <error line="271" column="87" source="standard:function-signature" />
@@ -886,7 +886,7 @@
         <error line="403" column="5" source="standard:class-signature" />
         <error line="403" column="47" source="standard:class-signature" />
     </file>
-    <file name="miniphone/src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneTimeFormatTest.kt">
+    <file name="src/test/java/io/zer0/muse/miniphone/ui/shell/MiniPhoneTimeFormatTest.kt">
         <error line="15" column="84" source="standard:function-signature" />
     </file>
 </baseline>

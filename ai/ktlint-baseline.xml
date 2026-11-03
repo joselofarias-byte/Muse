@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <baseline version="1.0">
-    <file name="ai/src/main/java/io/zer0/ai/AiModule.kt">
+    <file name="src/main/java/io/zer0/ai/AiModule.kt">
         <error line="156" column="5" source="standard:class-signature" />
         <error line="156" column="50" source="standard:class-signature" />
         <error line="163" column="9" source="standard:function-signature" />
@@ -45,7 +45,7 @@
         <error line="280" column="35" source="standard:function-signature" />
         <error line="335" column="50" source="standard:condition-wrapping" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/anthropic/AnthropicDto.kt">
+    <file name="src/main/java/io/zer0/ai/anthropic/AnthropicDto.kt">
         <error line="61" column="5" source="standard:class-signature" />
         <error line="62" column="5" source="standard:class-signature" />
         <error line="63" column="5" source="standard:class-signature" />
@@ -76,7 +76,7 @@
         <error line="226" column="5" source="standard:class-signature" />
         <error line="226" column="25" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/anthropic/AnthropicProvider.kt">
+    <file name="src/main/java/io/zer0/ai/anthropic/AnthropicProvider.kt">
         <error line="86" column="5" source="standard:class-signature" />
         <error line="86" column="28" source="standard:class-signature" />
         <error line="107" column="88" source="standard:function-signature" />
@@ -97,7 +97,7 @@
         <error line="923" column="45" source="standard:function-signature" />
         <error line="1086" column="92" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ChatEventNormalization.kt">
+    <file name="src/main/java/io/zer0/ai/core/ChatEventNormalization.kt">
         <error line="72" column="5" source="standard:class-signature" />
         <error line="73" column="5" source="standard:class-signature" />
         <error line="74" column="5" source="standard:class-signature" />
@@ -112,10 +112,10 @@
         <error line="83" column="5" source="standard:class-signature" />
         <error line="83" column="42" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/FirstEventWatchdog.kt">
+    <file name="src/main/java/io/zer0/ai/core/FirstEventWatchdog.kt">
         <error line="18" column="74" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/FreeModelConfig.kt">
+    <file name="src/main/java/io/zer0/ai/core/FreeModelConfig.kt">
         <error line="68" column="9" source="standard:function-signature" />
         <error line="69" column="9" source="standard:function-signature" />
         <error line="70" column="9" source="standard:function-signature" />
@@ -125,7 +125,7 @@
         <error line="98" column="128" source="standard:function-signature" />
         <error line="117" column="42" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/KnownModels.kt">
+    <file name="src/main/java/io/zer0/ai/core/KnownModels.kt">
         <error line="1158" column="31" source="standard:condition-wrapping" />
         <error line="1158" column="62" source="standard:condition-wrapping" />
         <error line="1159" column="40" source="standard:condition-wrapping" />
@@ -137,20 +137,20 @@
         <error line="1303" column="79" source="standard:function-signature" />
         <error line="1307" column="53" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/Model.kt">
+    <file name="src/main/java/io/zer0/ai/core/Model.kt">
         <error line="119" column="5" source="standard:class-signature" />
         <error line="120" column="5" source="standard:class-signature" />
         <error line="120" column="38" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelAbilityCatalog.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelAbilityCatalog.kt">
         <error line="77" column="5" source="standard:class-signature" />
         <error line="78" column="5" source="standard:class-signature" />
         <error line="78" column="42" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelContextWindowRegistry.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelContextWindowRegistry.kt">
         <error line="24" column="100" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelListCache.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelListCache.kt">
         <error line="34" column="9" source="standard:class-signature" />
         <error line="35" column="9" source="standard:class-signature" />
         <error line="36" column="9" source="standard:class-signature" />
@@ -160,7 +160,7 @@
         <error line="42" column="9" source="standard:class-signature" />
         <error line="42" column="29" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelReasoningReplay.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelReasoningReplay.kt">
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
         <error line="32" column="5" source="standard:class-signature" />
@@ -173,12 +173,12 @@
         <error line="123" column="72" source="standard:function-signature" />
         <error line="139" column="1" source="standard:no-consecutive-blank-lines" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelReference.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelReference.kt">
         <error line="10" column="5" source="standard:class-signature" />
         <error line="11" column="5" source="standard:class-signature" />
         <error line="11" column="25" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ModelRegistry.kt">
+    <file name="src/main/java/io/zer0/ai/core/ModelRegistry.kt">
         <error line="125" column="73" source="standard:function-expression-body" />
         <error line="151" column="73" source="standard:function-expression-body" />
         <error line="168" column="9" source="standard:class-signature" />
@@ -189,7 +189,7 @@
         <error line="289" column="17" source="standard:backing-property-naming" />
         <error line="566" column="17" source="standard:backing-property-naming" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/Provider.kt">
+    <file name="src/main/java/io/zer0/ai/core/Provider.kt">
         <error line="53" column="9" source="standard:class-signature" />
         <error line="54" column="9" source="standard:class-signature" />
         <error line="55" column="9" source="standard:class-signature" />
@@ -209,7 +209,7 @@
         <error line="421" column="5" source="standard:class-signature" />
         <error line="421" column="26" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderCompat.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderCompat.kt">
         <error line="302" column="1" source="standard:indent" />
         <error line="303" column="1" source="standard:indent" />
         <error line="304" column="1" source="standard:indent" />
@@ -217,7 +217,7 @@
         <error line="306" column="1" source="standard:indent" />
         <error line="403" column="77" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderError.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderError.kt">
         <error line="48" column="9" source="standard:class-signature" />
         <error line="49" column="9" source="standard:class-signature" />
         <error line="49" column="47" source="standard:class-signature" />
@@ -264,19 +264,19 @@
         <error line="400" column="36" source="standard:condition-wrapping" />
         <error line="400" column="59" source="standard:condition-wrapping" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderHttpSupport.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderHttpSupport.kt">
         <error line="28" column="5" source="standard:class-signature" />
         <error line="28" column="42" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderKeyRotation.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderKeyRotation.kt">
         <error line="18" column="5" source="standard:class-signature" />
         <error line="19" column="5" source="standard:class-signature" />
         <error line="19" column="58" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderPayloadNormalizer.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderPayloadNormalizer.kt">
         <error line="159" column="82" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderPromptPatches.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderPromptPatches.kt">
         <error line="30" column="9" source="standard:function-signature" />
         <error line="31" column="9" source="standard:function-signature" />
         <error line="32" column="9" source="standard:function-signature" />
@@ -284,7 +284,7 @@
         <error line="34" column="9" source="standard:function-signature" />
         <error line="34" column="32" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderSpecificConfig.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderSpecificConfig.kt">
         <error line="155" column="9" source="standard:class-signature" />
         <error line="156" column="9" source="standard:class-signature" />
         <error line="157" column="9" source="standard:class-signature" />
@@ -303,27 +303,27 @@
         <error line="211" column="45" source="standard:class-signature" />
         <error line="214" column="42" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProviderTemplateEngine.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProviderTemplateEngine.kt">
         <error line="25" column="43" source="standard:condition-wrapping" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ProxyProvider.kt">
+    <file name="src/main/java/io/zer0/ai/core/ProxyProvider.kt">
         <error line="151" column="85" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ReasoningLevel.kt">
+    <file name="src/main/java/io/zer0/ai/core/ReasoningLevel.kt">
         <error line="28" column="5" source="standard:class-signature" />
         <error line="29" column="5" source="standard:class-signature" />
         <error line="30" column="5" source="standard:class-signature" />
         <error line="30" column="33" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/RelayRequiredHeaders.kt">
+    <file name="src/main/java/io/zer0/ai/core/RelayRequiredHeaders.kt">
         <error line="21" column="9" source="standard:class-signature" />
         <error line="22" column="9" source="standard:class-signature" />
         <error line="22" column="39" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/StreamFrameDiagnostics.kt">
+    <file name="src/main/java/io/zer0/ai/core/StreamFrameDiagnostics.kt">
         <error line="10" column="119" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ToolCallSanitizer.kt">
+    <file name="src/main/java/io/zer0/ai/core/ToolCallSanitizer.kt">
         <error line="34" column="31" source="standard:condition-wrapping" />
         <error line="50" column="9" source="standard:function-signature" />
         <error line="51" column="9" source="standard:function-signature" />
@@ -332,7 +332,7 @@
         <error line="171" column="38" source="standard:multiline-if-else" />
         <error line="203" column="38" source="standard:multiline-if-else" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/ToolTraceProjection.kt">
+    <file name="src/main/java/io/zer0/ai/core/ToolTraceProjection.kt">
         <error line="51" column="9" source="standard:class-signature" />
         <error line="52" column="9" source="standard:class-signature" />
         <error line="53" column="9" source="standard:class-signature" />
@@ -344,19 +344,19 @@
         <error line="146" column="31" source="standard:function-signature" />
         <error line="283" column="63" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/core/UIMessage.kt">
+    <file name="src/main/java/io/zer0/ai/core/UIMessage.kt">
         <error line="29" column="5" source="standard:class-signature" />
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
         <error line="31" column="27" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/decorator/RateLimitDecorator.kt">
+    <file name="src/main/java/io/zer0/ai/decorator/RateLimitDecorator.kt">
         <error line="38" column="5" source="standard:class-signature" />
         <error line="39" column="5" source="standard:class-signature" />
         <error line="40" column="5" source="standard:class-signature" />
         <error line="40" column="32" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/gemini/GeminiDto.kt">
+    <file name="src/main/java/io/zer0/ai/gemini/GeminiDto.kt">
         <error line="90" column="5" source="standard:class-signature" />
         <error line="91" column="5" source="standard:class-signature" />
         <error line="91" column="25" source="standard:class-signature" />
@@ -400,7 +400,7 @@
         <error line="282" column="5" source="standard:class-signature" />
         <error line="282" column="42" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/gemini/GeminiProvider.kt">
+    <file name="src/main/java/io/zer0/ai/gemini/GeminiProvider.kt">
         <error line="57" column="5" source="standard:function-signature" />
         <error line="58" column="5" source="standard:function-signature" />
         <error line="59" column="5" source="standard:function-signature" />
@@ -436,22 +436,22 @@
         <error line="1283" column="9" source="standard:function-signature" />
         <error line="1283" column="27" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/gemini/VertexAiAuthToken.kt">
+    <file name="src/main/java/io/zer0/ai/gemini/VertexAiAuthToken.kt">
         <error line="261" column="59" source="standard:function-expression-body" />
         <error line="267" column="9" source="standard:class-signature" />
         <error line="268" column="9" source="standard:class-signature" />
         <error line="269" column="9" source="standard:class-signature" />
         <error line="269" column="90" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/image/ImageModelCatalog.kt">
+    <file name="src/main/java/io/zer0/ai/image/ImageModelCatalog.kt">
         <error line="160" column="77" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/image/ImageProvider.kt">
+    <file name="src/main/java/io/zer0/ai/image/ImageProvider.kt">
         <error line="93" column="5" source="standard:class-signature" />
         <error line="94" column="5" source="standard:class-signature" />
         <error line="94" column="29" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/image/ImageService.kt">
+    <file name="src/main/java/io/zer0/ai/image/ImageService.kt">
         <error line="32" column="5" source="standard:class-signature" />
         <error line="33" column="5" source="standard:class-signature" />
         <error line="33" column="49" source="standard:class-signature" />
@@ -459,7 +459,7 @@
         <error line="194" column="76" source="standard:function-expression-body" />
         <error line="209" column="85" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/image/OpenAIImageProvider.kt">
+    <file name="src/main/java/io/zer0/ai/image/OpenAIImageProvider.kt">
         <error line="344" column="42" source="standard:condition-wrapping" />
         <error line="345" column="46" source="standard:condition-wrapping" />
         <error line="346" column="42" source="standard:condition-wrapping" />
@@ -485,7 +485,7 @@
         <error line="420" column="13" source="standard:function-signature" />
         <error line="420" column="36" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/openai/OpenAIDto.kt">
+    <file name="src/main/java/io/zer0/ai/openai/OpenAIDto.kt">
         <error line="57" column="5" source="standard:class-signature" />
         <error line="58" column="5" source="standard:class-signature" />
         <error line="59" column="5" source="standard:class-signature" />
@@ -570,7 +570,7 @@
         <error line="498" column="5" source="standard:class-signature" />
         <error line="498" column="44" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/openai/OpenAIProvider.kt">
+    <file name="src/main/java/io/zer0/ai/openai/OpenAIProvider.kt">
         <error line="151" column="5" source="standard:class-signature" />
         <error line="151" column="28" source="standard:class-signature" />
         <error line="787" column="48" source="standard:condition-wrapping" />
@@ -613,10 +613,10 @@
         <error line="3413" column="5" source="standard:function-signature" />
         <error line="3413" column="25" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/openai/ToolCallArgsAccumulator.kt">
+    <file name="src/main/java/io/zer0/ai/openai/ToolCallArgsAccumulator.kt">
         <error line="132" column="38" source="standard:multiline-if-else" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/plugin/ProviderPlugin.kt">
+    <file name="src/main/java/io/zer0/ai/plugin/ProviderPlugin.kt">
         <error line="26" column="5" source="standard:class-signature" />
         <error line="27" column="5" source="standard:class-signature" />
         <error line="28" column="5" source="standard:class-signature" />
@@ -636,27 +636,27 @@
         <error line="57" column="5" source="standard:class-signature" />
         <error line="57" column="40" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/plugin/ProviderPluginRegistry.kt">
+    <file name="src/main/java/io/zer0/ai/plugin/ProviderPluginRegistry.kt">
         <error line="37" column="5" source="standard:class-signature" />
         <error line="37" column="42" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/registry/ModelCapabilityQuery.kt">
+    <file name="src/main/java/io/zer0/ai/registry/ModelCapabilityQuery.kt">
         <error line="55" column="9" source="standard:function-signature" />
         <error line="56" column="9" source="standard:function-signature" />
         <error line="57" column="9" source="standard:function-signature" />
         <error line="58" column="9" source="standard:function-signature" />
         <error line="58" column="36" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/registry/ModelRegistry.kt">
+    <file name="src/main/java/io/zer0/ai/registry/ModelRegistry.kt">
         <error line="693" column="41" source="standard:condition-wrapping" />
         <error line="699" column="40" source="standard:condition-wrapping" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/registry/ModelRegistryDsl.kt">
+    <file name="src/main/java/io/zer0/ai/registry/ModelRegistryDsl.kt">
         <error line="57" column="5" source="standard:class-signature" />
         <error line="57" column="46" source="standard:class-signature" />
         <error line="203" column="73" source="standard:function-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/util/KeyRoulette.kt">
+    <file name="src/main/java/io/zer0/ai/util/KeyRoulette.kt">
         <error line="39" column="9" source="standard:class-signature" />
         <error line="40" column="9" source="standard:class-signature" />
         <error line="40" column="30" source="standard:class-signature" />
@@ -668,20 +668,20 @@
         <error line="185" column="53" source="standard:function-signature" />
         <error line="231" column="46" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/util/SlidingWindowRateLimiter.kt">
+    <file name="src/main/java/io/zer0/ai/util/SlidingWindowRateLimiter.kt">
         <error line="30" column="5" source="standard:class-signature" />
         <error line="31" column="5" source="standard:class-signature" />
         <error line="32" column="5" source="standard:class-signature" />
         <error line="32" column="63" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/AgnesVideoProvider.kt">
+    <file name="src/main/java/io/zer0/ai/video/AgnesVideoProvider.kt">
         <error line="64" column="5" source="standard:class-signature" />
         <error line="64" column="38" source="standard:class-signature" />
         <error line="154" column="30" source="standard:wrapping" />
         <error line="155" column="101" source="standard:wrapping" />
         <error line="366" column="58" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/GenericOpenAiVideoProvider.kt">
+    <file name="src/main/java/io/zer0/ai/video/GenericOpenAiVideoProvider.kt">
         <error line="52" column="5" source="standard:class-signature" />
         <error line="52" column="38" source="standard:class-signature" />
         <error line="67" column="9" source="standard:class-signature" />
@@ -693,7 +693,7 @@
         <error line="114" column="101" source="standard:wrapping" />
         <error line="227" column="69" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/KlingVideoProvider.kt">
+    <file name="src/main/java/io/zer0/ai/video/KlingVideoProvider.kt">
         <error line="58" column="5" source="standard:class-signature" />
         <error line="59" column="5" source="standard:class-signature" />
         <error line="59" column="52" source="standard:class-signature" />
@@ -702,7 +702,7 @@
         <error line="241" column="92" source="standard:function-expression-body" />
         <error line="265" column="59" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/VideoGenerationService.kt">
+    <file name="src/main/java/io/zer0/ai/video/VideoGenerationService.kt">
         <error line="63" column="9" source="standard:function-signature" />
         <error line="64" column="9" source="standard:function-signature" />
         <error line="65" column="9" source="standard:function-signature" />
@@ -715,7 +715,7 @@
         <error line="174" column="25" source="standard:function-signature" />
         <error line="293" column="80" source="standard:function-expression-body" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/VideoProvider.kt">
+    <file name="src/main/java/io/zer0/ai/video/VideoProvider.kt">
         <error line="68" column="5" source="standard:class-signature" />
         <error line="69" column="5" source="standard:class-signature" />
         <error line="70" column="5" source="standard:class-signature" />
@@ -739,29 +739,29 @@
         <error line="123" column="5" source="standard:class-signature" />
         <error line="123" column="38" source="standard:class-signature" />
     </file>
-    <file name="ai/src/main/java/io/zer0/ai/video/VideoProviderRegistry.kt">
+    <file name="src/main/java/io/zer0/ai/video/VideoProviderRegistry.kt">
         <error line="26" column="5" source="standard:class-signature" />
         <error line="26" column="61" source="standard:class-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/anthropic/AnthropicThinkingReplayGuardTest.kt">
+    <file name="src/test/java/io/zer0/ai/anthropic/AnthropicThinkingReplayGuardTest.kt">
         <error line="91" column="73" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/core/CacheUsageProviderMappingTest.kt">
+    <file name="src/test/java/io/zer0/ai/core/CacheUsageProviderMappingTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/core/ChatEventNormalizationTest.kt">
+    <file name="src/test/java/io/zer0/ai/core/ChatEventNormalizationTest.kt">
         <error line="125" column="90" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/core/ProviderCompatCatalogTest.kt">
+    <file name="src/test/java/io/zer0/ai/core/ProviderCompatCatalogTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/core/ProviderRetryAbortRaceTest.kt">
+    <file name="src/test/java/io/zer0/ai/core/ProviderRetryAbortRaceTest.kt">
         <error line="74" column="9" source="standard:function-signature" />
         <error line="75" column="9" source="standard:function-signature" />
         <error line="76" column="9" source="standard:function-signature" />
         <error line="76" column="25" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/core/ReasoningReplayModelGuardTest.kt">
+    <file name="src/test/java/io/zer0/ai/core/ReasoningReplayModelGuardTest.kt">
         <error line="18" column="9" source="standard:function-signature" />
         <error line="19" column="9" source="standard:function-signature" />
         <error line="20" column="9" source="standard:function-signature" />
@@ -769,45 +769,45 @@
         <error line="21" column="35" source="standard:function-signature" />
         <error line="31" column="89" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/image/ImageProviderRegistryTest.kt">
+    <file name="src/test/java/io/zer0/ai/image/ImageProviderRegistryTest.kt">
         <error line="94" column="9" source="standard:function-signature" />
         <error line="95" column="9" source="standard:function-signature" />
         <error line="96" column="9" source="standard:function-signature" />
         <error line="97" column="9" source="standard:function-signature" />
         <error line="97" column="32" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/image/ImageServiceEmptyResultTest.kt">
+    <file name="src/test/java/io/zer0/ai/image/ImageServiceEmptyResultTest.kt">
         <error line="108" column="87" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/openai/OpenAIProviderAbortTest.kt">
+    <file name="src/test/java/io/zer0/ai/openai/OpenAIProviderAbortTest.kt">
         <error line="115" column="111" source="standard:function-signature" />
         <error line="198" column="9" source="standard:class-signature" />
         <error line="199" column="9" source="standard:class-signature" />
         <error line="200" column="9" source="standard:class-signature" />
         <error line="200" column="56" source="standard:class-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/openai/OpenAIProviderCustomTemplateTest.kt">
+    <file name="src/test/java/io/zer0/ai/openai/OpenAIProviderCustomTemplateTest.kt">
         <error line="269" column="5" source="standard:class-signature" />
         <error line="269" column="40" source="standard:class-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/openai/ReasoningReplayModelGuardWireTest.kt">
+    <file name="src/test/java/io/zer0/ai/openai/ReasoningReplayModelGuardWireTest.kt">
         <error line="79" column="9" source="standard:function-signature" />
         <error line="80" column="9" source="standard:function-signature" />
         <error line="81" column="9" source="standard:function-signature" />
         <error line="81" column="28" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/openai/ToolCallContinuationCandidateTest.kt">
+    <file name="src/test/java/io/zer0/ai/openai/ToolCallContinuationCandidateTest.kt">
         <error line="31" column="81" source="standard:function-signature" />
         <error line="35" column="82" source="standard:function-signature" />
         <error line="42" column="73" source="standard:function-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/video/VideoGenerationServiceTest.kt">
+    <file name="src/test/java/io/zer0/ai/video/VideoGenerationServiceTest.kt">
         <error line="134" column="9" source="standard:class-signature" />
         <error line="135" column="9" source="standard:class-signature" />
         <error line="136" column="9" source="standard:class-signature" />
         <error line="136" column="109" source="standard:class-signature" />
     </file>
-    <file name="ai/src/test/java/io/zer0/ai/video/VideoProviderRegistryTest.kt">
+    <file name="src/test/java/io/zer0/ai/video/VideoProviderRegistryTest.kt">
         <error line="89" column="9" source="standard:function-signature" />
         <error line="90" column="9" source="standard:function-signature" />
         <error line="91" column="9" source="standard:function-signature" />
