@@ -130,7 +130,7 @@ class UrlAutolinkRegexTest {
     fun `url followed by chinese fullwidth exclamation excludes it`() {
         assertEquals(
             listOf("https://example.com"),
-            urls("mira https://example.com!impresionante"),
+            urls("快看 https://example.com!太棒了"),
         )
     }
 
@@ -139,7 +139,7 @@ class UrlAutolinkRegexTest {
         // "" Se deben excluir las comillas de la esquina derecha.
         assertEquals(
             listOf("https://example.com"),
-            urls("\"Sitio web oficial: https://example.com""),
+            urls("「官网: https://example.com」"),
         )
     }
 

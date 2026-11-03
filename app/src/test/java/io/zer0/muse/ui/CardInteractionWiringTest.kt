@@ -94,7 +94,7 @@ class CardInteractionWiringTest {
         val runtime = readUi("markdown/card/CardRuntime.kt").codeOnly()
         for (source in listOf(legacy, runtime)) {
             assertFalse(
-                "JS El puente de dependencia es la causa directa de que "todos los controles mueren": el enlace de eventos nunca se ejecuta cuando no hay devolución de llamada." +
+                "JS El puente de dependencia es la causa directa de que \"todos los controles mueren\": el enlace de eventos nunca se ejecuta cuando no hay devolución de llamada." +
                     "Una pulsación larga también degrada a la selección de palabras predeterminada de WebView",
                 source.contains("javaScriptEnabled = bridge != null"),
             )
@@ -139,7 +139,7 @@ class CardInteractionWiringTest {
         val dedupe = screen.substringAfter("val cardRenderedByTaskCard by remember(")
             .substringBefore("val groupedRuns by remember(")
         assertTrue(
-            "El entregable debe eliminarse de la colección "renderizado por tarjeta de tarea"; de lo contrario, la tarjeta se ocultará." +
+            "El entregable debe eliminarse de la colección \"renderizado por tarjeta de tarea\"; de lo contrario, la tarjeta se ocultará." +
                 "Los usuarios sólo pueden ver el plan de ejecución cuando lo expanden.",
             dedupe.contains("inlineDeliverableMessageIds(visibleMessages)"),
         )
@@ -164,7 +164,7 @@ class CardInteractionWiringTest {
         val source = readUi("taskcard/TaskStepRow.kt")
         val stepRow = source.substringAfter("fun TaskStepRow(")
         assertTrue(
-            "Sólo queda una línea de referencia "Tarjeta generada" en la tarjeta de tarea.",
+            "Sólo queda una línea de referencia \"Tarjeta generada\" en la tarjeta de tarea.",
             source.contains("isInlineDeliverableTool(step.toolName)"),
         )
         assertTrue(

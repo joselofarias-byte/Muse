@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <baseline version="1.0">
+    <file name="material3/src/main/kotlin/io/zer0/material3/DynamicSchemeExt.kt">
+        <error line="27" column="48" source="standard:function-expression-body" />
+    </file>
 </baseline>
