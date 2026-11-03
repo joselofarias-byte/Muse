@@ -181,7 +181,8 @@ object SkillImporter {
         "system prompt", "system instruction", "ignore previous", "ignore all", "ignore the",
         "override", "jailbreak", "dan mode", "do anything now", "developer mode",
         "you are now", "you are a", "pretend to be", "roleplay as",
-        "ignorar antes", "ignorar anterior", "ignorar arriba", "sistema de superposición", "Aviso del sistema", "tu eres", "tu eres ahora",
+        "ignorar antes", "ignorar anterior", "ignorar arriba", "instrucciones anteriores", "ignora todas",
+        "sistema de superposición", "Aviso del sistema", "tu eres", "tu eres ahora",
         "jugar", "fingir", "no decirle a los usuarios", "no revelar", "Confidencial",
     )
 
