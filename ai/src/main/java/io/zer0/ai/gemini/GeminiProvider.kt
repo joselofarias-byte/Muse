@@ -294,6 +294,10 @@ class GeminiProvider(
                             call.cancel()
                             scope.launch {
                                 delay(backoffMs(attempt.get(), response.header("Retry-After")))
+                                if (request.abortSignal.aborted || scope.isClosedForSend) {
+                                    close()
+                                    return@launch
+                                }
                                 // M-GEM4: Analizar al reintentar token(Vertex AI Es posible que el token antiguo haya caducado)
                                 token = try {
                                     resolveToken()
@@ -466,6 +470,10 @@ class GeminiProvider(
                         generation.incrementAndGet()
                         scope.launch {
                             delay(backoffMs(attempt.get(), response?.header("Retry-After")))
+                            if (request.abortSignal.aborted || scope.isClosedForSend) {
+                                close()
+                                return@launch
+                            }
                             // M-GEM4: Analizar al reintentar token
                             token = try {
                                 resolveToken()

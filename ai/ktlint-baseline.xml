@@ -153,23 +153,23 @@
         <error line="58" column="5" source="standard:function-signature" />
         <error line="59" column="5" source="standard:function-signature" />
         <error line="59" column="23" source="standard:function-signature" />
-        <error line="997" column="9" source="standard:function-signature" />
-        <error line="998" column="9" source="standard:function-signature" />
-        <error line="999" column="9" source="standard:function-signature" />
-        <error line="1000" column="9" source="standard:function-signature" />
-        <error line="1001" column="9" source="standard:function-signature" />
-        <error line="1002" column="9" source="standard:function-signature" />
-        <error line="1003" column="9" source="standard:function-signature" />
-        <error line="1004" column="9" source="standard:function-signature" />
         <error line="1005" column="9" source="standard:function-signature" />
         <error line="1006" column="9" source="standard:function-signature" />
-        <error line="1006" column="45" source="standard:function-signature" />
-        <error line="1279" column="9" source="standard:function-signature" />
-        <error line="1280" column="9" source="standard:function-signature" />
-        <error line="1281" column="9" source="standard:function-signature" />
-        <error line="1282" column="9" source="standard:function-signature" />
-        <error line="1283" column="9" source="standard:function-signature" />
-        <error line="1283" column="27" source="standard:function-signature" />
+        <error line="1007" column="9" source="standard:function-signature" />
+        <error line="1008" column="9" source="standard:function-signature" />
+        <error line="1009" column="9" source="standard:function-signature" />
+        <error line="1010" column="9" source="standard:function-signature" />
+        <error line="1011" column="9" source="standard:function-signature" />
+        <error line="1012" column="9" source="standard:function-signature" />
+        <error line="1013" column="9" source="standard:function-signature" />
+        <error line="1014" column="9" source="standard:function-signature" />
+        <error line="1014" column="45" source="standard:function-signature" />
+        <error line="1287" column="9" source="standard:function-signature" />
+        <error line="1288" column="9" source="standard:function-signature" />
+        <error line="1289" column="9" source="standard:function-signature" />
+        <error line="1290" column="9" source="standard:function-signature" />
+        <error line="1291" column="9" source="standard:function-signature" />
+        <error line="1291" column="27" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/ai/gemini/VertexAiAuthToken.kt">
         <error line="242" column="55" source="standard:discouraged-comment-location" />
