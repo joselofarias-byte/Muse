@@ -11,9 +11,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
-  # v2.1.0: El disparador automático está desactivado — El control de acceso de calidad y la distribución cambiaron a cantidad total local.(ci/run_ci_checks.ps1 + ci/script/).
-  # push / pull_request / schedule / tag ya no se activan automáticamente; Cuando se requiera autenticación remota, ejecute manualmente el flujo de trabajo en la página Acciones.
+  # Compilación Android verificable en la rama y en el PR: JDK, SDK, caché de Gradle,
+  # comprobaciones, pruebas unitarias y assembleDebug, con el APK de depuración como artefacto.
   workflow_dispatch:
+  push:
+  pull_request:
 
 jobs:
   build:
