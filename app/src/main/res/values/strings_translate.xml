@@ -57,7 +57,7 @@
     <string name="translate_page_custom_style_add">agregar estilo</string>
     <string name="translate_page_custom_style_name">nombre de estilo</string>
     <string name="translate_page_custom_style_prompt">Directivas de estilo (como\"Utilice la traducción al chino clásico antiguo\")</string>
-    <string name="translate_page_custom_style_save">guardar</string>
+    <string name="translate_page_custom_style_save">Guardar</string>
     <string name="translate_page_custom_style_remove">Eliminar</string>
     <string name="translate_page_custom_style_added">Estilo personalizado agregado</string>
     <string name="translate_page_custom_style_removed">Estilo personalizado eliminado</string>
@@ -68,7 +68,7 @@
     <string name="translate_page_glossary_title">Glosario de traducción</string>
     <string name="translate_page_glossary_original">terminología original</string>
     <string name="translate_page_glossary_translated">términos de traducción</string>
-    <string name="translate_page_glossary_add">agregar</string>
+    <string name="translate_page_glossary_add">Agregar</string>
     <string name="translate_page_glossary_remove">Eliminar</string>
     <string name="translate_page_glossary_empty">Aún no hay plazo</string>
     <string name="translate_page_glossary_count">Glosario (%1$d artículo)</string>

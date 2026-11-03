@@ -10,8 +10,8 @@
     <string name="error_network_dns_failed">Error en la resolución del nombre de dominio, verifique la configuración de red o proxy</string>
 
     <!-- ── Error de autenticación(AuthError)── -->
-    <string name="error_auth_invalid_key">API Key No válido, verifique la configuración del servicio del modelo.</string>
-    <string name="error_auth_expired">El inicio de sesión ha caducado, reinicie API Key</string>
+    <string name="error_auth_invalid_key">Clave API inválida. Comprueba la configuración del proveedor.</string>
+    <string name="error_auth_expired">La autenticación venció. Renueva tu clave API.</string>
     <string name="error_auth_unauthorized">No hay permiso para acceder a este recurso, verifique los permisos de la cuenta</string>
 
     <!-- ── API error de servicio(ApiError)── -->
@@ -77,7 +77,7 @@
     <string name="err_chat_db_closed">La conexión de la base de datos se ha desconectado, reinicie la aplicación y vuelva a intentarlo.</string>
     <string name="err_chat_network_unresolvable">No se puede conectar al servidor, verifique la red o la dirección API</string>
     <string name="err_chat_network_timeout">Se agotó el tiempo de conexión, inténtalo de nuevo más tarde.</string>
-    <string name="err_chat_auth_invalid">API Key Permisos no válidos o insuficientes</string>
+    <string name="err_chat_auth_invalid">Clave API inválida o con permisos insuficientes</string>
     <string name="err_chat_rate_limited">La solicitud es demasiado frecuente, inténtalo de nuevo más tarde.</string>
     <string name="err_chat_server_error">Error del servidor, inténtalo de nuevo más tarde.</string>
     <string name="err_chat_stream_broken">La respuesta de transmisión se interrumpió. Inténtelo de nuevo.</string>
@@ -106,7 +106,7 @@
     <string name="err_chat_prompt_unavailable">El ensamblaje del personaje y la descripción de la herramienta falló y esta ronda se canceló (no se generó respuesta). Inténtelo de nuevo; Si persiste, verifique la configuración actual del asistente.</string>
     <string name="err_chat_vision_fallback">La asistencia visual falló, se inyectó un mensaje de degradación (consulte el registro para obtener más detalles)</string>
     <string name="err_chat_reply_save_failed">Error al guardar la respuesta: %1$s</string>
-    <string name="err_chat_unknown">error desconocido</string>
+    <string name="err_chat_unknown">Error desconocido</string>
     <string name="err_chat_ref_save_failed">No se pudo guardar el registro de referencia: %1$s</string>
     <string name="err_chat_reply_generated">Respuesta generada</string>
     <string name="err_chat_resume_busy">Generando, deténgase y luego reanude las llamadas de herramientas no finalizadas</string>

@@ -4,10 +4,10 @@
     <!-- Paso 0: página de bienvenida -->
 
     <!-- Paso 1: idioma y apariencia -->
-    <string name="onboarding_language_title">Elija un idioma primero.</string>
-    <string name="onboarding_language_subtitle">El texto de la interfaz lo utilizará y se puede cambiar en cualquier momento.</string>
-    <string name="onboarding_theme_title">Cambia a algo que te guste.</string>
-    <string name="onboarding_theme_subtitle">El tema se puede cambiar en cualquier momento en la configuración.</string>
+    <string name="onboarding_language_title">Elige tu idioma</string>
+    <string name="onboarding_language_subtitle">Puedes cambiar el idioma de la interfaz en cualquier momento desde Ajustes.</string>
+    <string name="onboarding_theme_title">Elige la apariencia</string>
+    <string name="onboarding_theme_subtitle">Puedes cambiar el tema en cualquier momento desde Ajustes.</string>
     <string name="onboarding_lang_es">Español</string>
     <string name="onboarding_lang_pt">Portugués</string>
     <string name="onboarding_lang_ru">Ruso</string>
@@ -16,57 +16,57 @@
     <string name="onboarding_lang_ko">한국어</string>
 
     <!-- Paso 2: Tu nombre -->
-    <string name="onboarding_names_title">Conózcanse primero.</string>
-    <string name="onboarding_names_subtitle">El título y el nombre se pueden cambiar más adelante.</string>
+    <string name="onboarding_names_title">Vamos a conocernos</string>
+    <string name="onboarding_names_subtitle">Puedes cambiar tu nombre y el del asistente más adelante.</string>
     <string name="onboarding_names_user_label">¿Cómo debería llamarte?</string>
-    <string name="onboarding_names_agent_label">dale un nombre</string>
-    <string name="onboarding_names_hint">El nombre se utilizará en el asistente predeterminado y se podrá cambiar en cualquier momento.</string>
-    <string name="onboarding_memory_title">Déjame recordarte.</string>
-    <string name="onboarding_memory_subtitle">Después de encenderlo, los recuerdos de crecimiento se ordenarán automáticamente después de la conversación. Las actualizaciones frecuentes de la memoria reducirán la tasa de aciertos de la caché del modelo (normalmente es más económico desactivarla), pero es mucho mejor mantenerla a largo plazo.</string>
+    <string name="onboarding_names_agent_label">Nombre del asistente</string>
+    <string name="onboarding_names_hint">Este nombre se usará para el asistente predeterminado. Puedes cambiarlo en cualquier momento.</string>
+    <string name="onboarding_memory_title">Activa la memoria</string>
+    <string name="onboarding_memory_subtitle">Al activarla, Muse organiza automáticamente los recuerdos después de cada conversación. Actualizar la memoria con frecuencia puede reducir el aprovechamiento de la caché del modelo y aumentar el costo, pero permite mantener el contexto a largo plazo.</string>
     <string name="onboarding_memory_switch_title">Habilitar sistema de memoria</string>
-    <string name="onboarding_memory_switch_subtitle">Clasificación automática al final de las conversaciones; Se puede desactivar en cualquier momento en la configuración.</string>
+    <string name="onboarding_memory_switch_subtitle">Organiza los recuerdos al terminar cada conversación. Puedes desactivarla desde Ajustes.</string>
 
     <!-- Paso 3: Configurar el proveedor -->
-    <string name="onboarding_provider_title">Conecta el cerebro.</string>
-    <string name="onboarding_provider_subtitle">Seleccione un modelo de servicio, complete la Clave y pruebe la conexión. Después del éxito, la lista de modelos se extrae automáticamente y las capacidades coinciden.</string>
-    <string name="onboarding_provider_err_auth">Error de autenticación: verifique si la clave API es correcta.</string>
-    <string name="onboarding_provider_err_empty">La conexión es exitosa, pero no se devuelve ningún modelo desde el nivel ascendente.——Por favor verifique la dirección de la interfaz.</string>
-    <string name="onboarding_provider_err_other">La conexión falló:%1$s</string>
-    <string name="onboarding_provider_caps">Habilidad emparejada: Visión %1$d · razonamiento %2$d · Herramientas %3$d</string>
+    <string name="onboarding_provider_title">Conecta un proveedor de IA</string>
+    <string name="onboarding_provider_subtitle">Elige un proveedor, introduce tu clave API y prueba la conexión. Muse obtendrá los modelos disponibles y detectará sus capacidades.</string>
+    <string name="onboarding_provider_err_auth">Error de autenticación: comprueba tu clave API.</string>
+    <string name="onboarding_provider_err_empty">La conexión funciona, pero el proveedor no devolvió modelos. Comprueba la URL de la API.</string>
+    <string name="onboarding_provider_err_other">Error de conexión: %1$s</string>
+    <string name="onboarding_provider_caps">Capacidades detectadas: visión %1$d · razonamiento %2$d · herramientas %3$d</string>
     <string name="onboarding_provider_select_label">Seleccionar proveedor</string>
-    <string name="onboarding_provider_apikey_label">API Key</string>
-    <string name="onboarding_provider_apikey_input">entrada API Key</string>
-    <string name="onboarding_provider_apikey_show">mostrar clave</string>
+    <string name="onboarding_provider_apikey_label">Clave API</string>
+    <string name="onboarding_provider_apikey_input">Introduce tu clave API</string>
+    <string name="onboarding_provider_apikey_show">Mostrar clave</string>
     <string name="onboarding_provider_apikey_hide">Ocultar clave</string>
-    <string name="onboarding_provider_test_button">conexión de prueba</string>
-    <string name="onboarding_provider_test_success">Conexión exitosa, total %1$d modelos disponibles</string>
+    <string name="onboarding_provider_test_button">Probar conexión</string>
+    <string name="onboarding_provider_test_success">Conexión correcta: %1$d modelos disponibles</string>
     <string name="onboarding_provider_skip">Configurarlo más tarde en ajustes</string>
-    <string name="onboarding_provider_custom">personalizado (OpenAI compatibles)</string>
-    <string name="onboarding_provider_custom_baseurl_label">Dirección de interfaz personalizada</string>
+    <string name="onboarding_provider_custom">Personalizado (compatible con OpenAI)</string>
+    <string name="onboarding_provider_custom_baseurl_label">URL base de la API</string>
     <string name="onboarding_provider_custom_baseurl_input">https://api.example.com/v1</string>
 
     <!-- Paso 4: Selecciona un modelo -->
-    <string name="onboarding_model_title">Elija un modelo de caballo de batalla.</string>
-    <string name="onboarding_model_search_label">Modelo de búsqueda</string>
+    <string name="onboarding_model_title">Elige tu modelo principal</string>
+    <string name="onboarding_model_search_label">Buscar modelos</string>
     <string name="onboarding_model_empty_title">Ningún proveedor configurado</string>
-    <string name="onboarding_model_empty_desc">Puede configurar el proveedor y seleccionar el modelo más adelante en la configuración.</string>
+    <string name="onboarding_model_empty_desc">Puedes agregar un proveedor y elegir un modelo más adelante desde Ajustes.</string>
 
     <!-- Paso 5: página completa -->
-    <string name="onboarding_complete_title">Listo.</string>
-    <string name="onboarding_complete_subtitle">Puedes probar estos a continuación</string>
-    <string name="onboarding_tutorial_chat_title">charla diaria</string>
-    <string name="onboarding_tutorial_chat_desc">Puede enviar texto, imágenes y archivos, y puede responder con naturalidad.</string>
+    <string name="onboarding_complete_title">Todo listo</string>
+    <string name="onboarding_complete_subtitle">Estas son algunas cosas que puedes hacer:</string>
+    <string name="onboarding_tutorial_chat_title">Conversaciones</string>
+    <string name="onboarding_tutorial_chat_desc">Conversa con tu asistente y envía texto, imágenes y archivos.</string>
     <string name="onboarding_tutorial_assistant_title">Asistentes y memoria</string>
-    <string name="onboarding_tutorial_assistant_desc">Personaliza tu personalidad y recuerda de qué hablaste.</string>
+    <string name="onboarding_tutorial_assistant_desc">Personaliza el asistente y permite que recuerde tus conversaciones.</string>
     <string name="onboarding_tutorial_tools_title">Herramientas y base de conocimientos</string>
-    <string name="onboarding_tutorial_tools_desc">Pon un despertador, consulta el tiempo, busca documentos, solo pregunta</string>
+    <string name="onboarding_tutorial_tools_desc">Configura alarmas, consulta el clima o busca documentos desde el chat.</string>
     <string name="onboarding_tutorial_backup_title">Copia de seguridad de datos</string>
-    <string name="onboarding_tutorial_backup_desc">Admite copia de seguridad en la nube WebDAV/S3, sin pérdida de datos al cambiar de dispositivo</string>
+    <string name="onboarding_tutorial_backup_desc">Guarda tus datos en WebDAV o S3 y recupéralos cuando cambies de dispositivo.</string>
 
     <!-- botón inferior -->
     <string name="onboarding_button_start">Empezar a configurar</string>
     <string name="onboarding_button_previous">Paso anterior</string>
     <string name="onboarding_button_next">Siguiente paso</string>
-    <string name="onboarding_button_finish">Ve y charla</string>
-    <string name="onboarding_step_progress">No. %1$d pasos/total %2$d paso</string>
+    <string name="onboarding_button_finish">Empezar a conversar</string>
+    <string name="onboarding_step_progress">Paso %1$d de %2$d</string>
 </resources>

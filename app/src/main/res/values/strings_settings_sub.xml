@@ -22,7 +22,7 @@
     <string name="settings_agent_default_assistant_title">Asistente de agente predeterminado</string>
     <string name="settings_agent_loading">Cargando...</string>
     <string name="settings_agent_use_first_assistant">Usa el primer ayudante</string>
-    <string name="settings_agent_section_model">modelo</string>
+    <string name="settings_agent_section_model">Modelo</string>
     <string name="settings_agent_current_model">modelo actual</string>
     <string name="settings_agent_current_model_hint">Valor predeterminado global (diálogo principal/Agent compartido)</string>
     <string name="settings_agent_tool_model_title">Modelo de dispositivo</string>
@@ -56,7 +56,7 @@
     <string name="settings_agent_select_assistant_title">Seleccionar asistente de agente</string>
     <string name="settings_agent_no_assistants_hint">Actualmente no hay ningún asistente. Primero cree uno en la página "Asistente".</string>
     <string name="settings_agent_offset_hint">Deje que los tiempos de envío cambien naturalmente en intervalos,0 está apagado (intervalo fijo)</string>
-    <string name="settings_agent_offset_off_label">cerrar</string>
+    <string name="settings_agent_offset_off_label">Cerrar</string>
     <string name="settings_agent_select_model">Seleccionar modelo de agente</string>
     <string name="settings_agent_no_models_hint">Actualmente no hay ningún modelo disponible, primero configure el proveedor en "Modelos y Servicios".</string>
     <string name="settings_agent_select_tool_model">Selecciona un modelo de gadget</string>
@@ -138,7 +138,7 @@
     <string name="settings_theme_custom_secondary_color">Color secundario (opcional)</string>
     <string name="settings_theme_custom_tertiary_color">Color de acento (opcional)</string>
     <string name="settings_theme_custom_preview">Vista previa de color</string>
-    <string name="settings_theme_custom_save">guardar</string>
+    <string name="settings_theme_custom_save">Guardar</string>
     <string name="settings_theme_custom_delete">Eliminar</string>
     <string name="settings_theme_custom_delete_confirm">¿Estás seguro de que deseas eliminar este tema?</string>
     <string name="settings_theme_custom_delete_confirm_msg">No se puede restaurar después de eliminarlo y la interfaz que utiliza este tema volverá al tema predeterminado.</string>
@@ -173,7 +173,7 @@
     <string name="settings_chat_paste_as_file_threshold">Umbral de pegar en archivo</string>
     <string name="settings_chat_paste_as_file_threshold_subtitle">exceder %1$d Solicitar transferencia de archivos al escribir</string>
     <string name="settings_chat_custom_title_prompt">Palabras de indicación de título personalizadas</string>
-    <string name="settings_chat_custom_title_prompt_default">Utilice palabras de aviso predeterminadas integradas</string>
+    <string name="settings_chat_custom_title_prompt_default">Usar las instrucciones predeterminadas</string>
     <string name="settings_chat_custom_title_prompt_hint">Personalice los comandos de nombres de conversaciones (déjelo en blanco para restaurar el valor predeterminado)</string>
     <string name="settings_memory_custom_compress_prompt">Palabras de indicación de compresión personalizadas</string>
     <string name="settings_memory_custom_compress_prompt_default">Utilice directivas de compresión predeterminadas integradas</string>
@@ -231,7 +231,7 @@
     <string name="settings_memory_policy_never">nunca</string>
     <string name="settings_memory_policy_when_unfocused">al salir</string>
     <string name="settings_memory_policy_always">siempre</string>
-    <string name="settings_memory_page_title">memoria</string>
+    <string name="settings_memory_page_title">Memoria</string>
     <string name="settings_memory_system_section">sistema de memoria</string>
     <string name="settings_memory_conversation_recall">Permitir la recuperación del texto de la sesión</string>
     <string name="settings_memory_conversation_recall_subtitle">Cuando están activados, los resúmenes y las extracciones de hechos leen la conversación completa a pedido, en lugar de solo los mensajes cargados actualmente.</string>
@@ -309,7 +309,7 @@
     <string name="settings_asr_follow_provider">Seguir la configuración del proveedor</string>
     <string name="settings_asr_follow_provider_subtitle">La dirección de la interfaz y la clave API se obtienen del proveedor y el modelo se selecciona manualmente.</string>
     <string name="settings_asr_follow_provider_picker">proveedor</string>
-    <string name="settings_asr_follow_model_picker">modelo</string>
+    <string name="settings_asr_follow_model_picker">Modelo</string>
     <!-- Mensajes de marcador de posición y de reserva compartidos por el modo de seguimiento -->
     <string name="settings_speech_follow_unset">No seleccionado</string>
     <string name="settings_speech_follow_no_models">Este proveedor no tiene modelos opcionales.</string>
@@ -323,9 +323,9 @@
     <string name="settings_speech_follow_reason_provider_missing">El proveedor seleccionado no fue encontrado</string>
     <string name="settings_speech_follow_reason_provider_disabled">El proveedor seleccionado ha sido desactivado</string>
     <string name="settings_speech_follow_reason_model_missing">Ningún modelo seleccionado</string>
-    <string name="settings_asr_hide">ocultar</string>
-    <string name="settings_asr_show">mostrar</string>
-    <string name="settings_asr_model">modelo</string>
+    <string name="settings_asr_hide">Ocultar</string>
+    <string name="settings_asr_show">Mostrar</string>
+    <string name="settings_asr_model">Modelo</string>
     <string name="settings_asr_sample_rate">Tasa de muestreo</string>
     <string name="settings_asr_sample_rate_subtitle">%1$d Hz(Recomendar 16000, la modificación requiere volver a grabar)</string>
     <string name="settings_asr_language_code">código de idioma (como zh / en / ja)</string>
@@ -362,14 +362,14 @@
     <string name="settings_rag_auto_inject_subtitle">Recupera automáticamente conocimientos relevantes e inyecta contexto durante las conversaciones.</string>
     <string name="settings_rag_embedding_source_section">Embedding Fuente</string>
     <string name="settings_rag_cloud_api">nube API</string>
-    <string name="settings_rag_cloud_api_subtitle">La calidad es prioridad, conexión a internet y API Key</string>
+    <string name="settings_rag_cloud_api_subtitle">Prioriza la calidad. Requiere conexión a internet y una clave API.</string>
     <string name="settings_rag_local_keyword">Palabras clave locales (sin conexión)</string>
     <string name="settings_rag_local_keyword_subtitle">No se requiere conexión a Internet, bigram chino + búsqueda hash de segmentación de palabras en inglés</string>
     <string name="settings_rag_active_backend_section">back-end actual</string>
     <string name="settings_rag_active_backend_label">Actualmente en uso</string>
     <string name="settings_rag_active_backend_degraded_unknown">Se ha degradado a otro backend, el motivo específico no se registra</string>
-    <string name="settings_rag_cloud_provider_section">nube Provider</string>
-    <string name="settings_rag_no_provider_hint">Aún no se ha configurado ningún proveedor, se utilizará el chat actualmente activo Provider</string>
+    <string name="settings_rag_cloud_provider_section">Proveedor en la nube</string>
+    <string name="settings_rag_no_provider_hint">Si no configuras un proveedor, se usará el proveedor activo del chat.</string>
     <string name="settings_rag_baseurl_not_set">no establecido baseUrl</string>
     <string name="settings_rag_deselect_hint">Haga clic en un Proveedor seleccionado para deseleccionarlo (volver al Proveedor actualmente activo)</string>
     <string name="settings_rag_embedding_model_section">Embedding modelo</string>
@@ -454,7 +454,7 @@
     <!-- v2.5.0: efecto de vidrio líquido(modo + engranaje) -->
     <string name="settings_theme_liquid_glass">efecto de vidrio líquido</string>
     <string name="settings_theme_liquid_glass_desc">Textura de vidrio de la barra superior, campo de entrada y burbuja de mensaje</string>
-    <string name="settings_glass_off">cerrar</string>
+    <string name="settings_glass_off">Cerrar</string>
     <string name="settings_glass_water">vaso de agua</string>
     <string name="settings_glass_frost">vidrio esmerilado</string>
     <string name="settings_glass_level">nivel de fuerza</string>
@@ -487,7 +487,7 @@
     <string name="settings_image_gen_select_default">Haga clic para seleccionar el proveedor de dibujo que se utilizará de forma predeterminada.</string>
     <string name="settings_image_gen_no_provider">No hay proveedores de dibujos disponibles</string>
     <string name="settings_image_gen_provider">proveedor</string>
-    <string name="settings_image_gen_model_label">modelo</string>
+    <string name="settings_image_gen_model_label">Modelo</string>
     <string name="settings_image_gen_no_model">No hay modelos de dibujo disponibles en este proveedor.</string>
     <string name="settings_image_gen_selected">Seleccionado</string>
 
@@ -498,7 +498,7 @@
     <string name="settings_video_gen_select_default">Haga clic para seleccionar el proveedor de video que usará de forma predeterminada.</string>
     <string name="settings_video_gen_no_provider">No hay proveedores de vídeo disponibles</string>
     <string name="settings_video_gen_provider">proveedor</string>
-    <string name="settings_video_gen_model_label">modelo</string>
+    <string name="settings_video_gen_model_label">Modelo</string>
     <string name="settings_video_gen_no_model">No hay modelos de vídeo disponibles con este proveedor.</string>
     <string name="settings_video_gen_selected">Seleccionado</string>
 
@@ -525,25 +525,25 @@
     <string name="settings_media_tts_engine_qwen">Qwen TTS(Tongyi Qianwen)</string>
     <string name="settings_media_tts_engine_step">Step TTS(estrellas de paso)</string>
     <string name="settings_media_tts_engine_xai">xAI TTS</string>
-    <string name="settings_media_tts_api_key">API Key</string>
+    <string name="settings_media_tts_api_key">Clave API</string>
     <string name="settings_media_tts_voice">timbre / Voice ID</string>
     <string name="settings_media_tts_voice_selector">TTS sonido</string>
     <string name="settings_media_tts_voice_empty">No se encontró ninguna voz disponible</string>
     <string name="settings_media_tts_voice_default">Predeterminado</string>
     <string name="settings_media_tts_voice_placeholder">Déjelo en blanco para usar el sonido predeterminado</string>
-    <string name="settings_media_tts_model">modelo</string>
+    <string name="settings_media_tts_model">Modelo</string>
     <string name="settings_media_tts_model_placeholder">Déjelo en blanco para usar el modelo predeterminado</string>
     <string name="settings_media_tts_endpoint">Dirección de interfaz personalizada</string>
     <string name="settings_media_tts_endpoint_placeholder">Déjelo en blanco para usar la dirección de la interfaz oficial.</string>
-    <string name="settings_media_tts_save_api_key">guardar API Key</string>
+    <string name="settings_media_tts_save_api_key">Guardar clave API</string>
     <string name="settings_media_tts_save_voice">guardar sonido</string>
     <string name="settings_media_tts_save_model">Guardar modelo</string>
     <string name="settings_media_tts_save_endpoint">Guardar dirección de interfaz</string>
-    <string name="settings_media_tts_show">mostrar</string>
-    <string name="settings_media_tts_hide">ocultar</string>
+    <string name="settings_media_tts_show">Mostrar</string>
+    <string name="settings_media_tts_hide">Ocultar</string>
     <string name="settings_media_tts_saved">salvado</string>
     <!-- v1.99: Extracción dinámica de tonos Cloud TTS + parámetros avanzados -->
-    <string name="settings_media_tts_voice_fetch_failed">Error al extraer, por favor verifíquelo API Key</string>
+    <string name="settings_media_tts_voice_fetch_failed">No se pudieron obtener las voces. Comprueba la clave API.</string>
     <string name="settings_media_tts_voice_pick">Seleccionar tono</string>
     <string name="settings_media_tts_voice_reset">El tono se ha restablecido, seleccione nuevamente</string>
     <string name="settings_media_tts_advanced_section">Parámetros avanzados</string>
@@ -558,7 +558,7 @@
     <string name="settings_media_tts_follow_provider">Seguir la configuración del proveedor</string>
     <string name="settings_media_tts_follow_provider_subtitle">La dirección de la interfaz y la clave API se obtienen del proveedor y el modelo se selecciona manualmente.</string>
     <string name="settings_media_tts_follow_provider_picker">proveedor</string>
-    <string name="settings_media_tts_follow_model_picker">modelo</string>
+    <string name="settings_media_tts_follow_model_picker">Modelo</string>
     <string name="settings_media_tts_follow_voice_hint">El seguidor solo toma la dirección y la clave de la interfaz, y es necesario confirmar que el sonido es compatible con el proveedor seleccionado.</string>
     <string name="settings_provider_media_gen_section">modelo de generación de medios</string>
     <string name="settings_asr_entry_title">motor de reconocimiento de voz</string>
@@ -614,7 +614,7 @@
     <string name="settings_moment_content_mode_real_desc">Publica solo cosas que sean relevantes para ti, sé moderado y registra realmente tu vida.</string>
     <string name="settings_moment_content_mode_character">Sistema de caracteres</string>
     <string name="settings_moment_content_mode_character_desc">Los personajes tienen sus propias vidas y experiencias, tú eres un espectador.</string>
-    <string name="settings_agent_moment_count_off">cerrar</string>
+    <string name="settings_agent_moment_count_off">Cerrar</string>
     <string name="settings_agent_moment_count_per_day">%1$d Artículo/dia</string>
     <string name="settings_agent_schedule_work_title">Control maestro de tareas backend</string>
     <string name="settings_agent_schedule_work_subtitle">Interruptor maestro: cuando se apaga, se suspenderán todas las tareas periódicas en segundo plano.</string>
@@ -761,7 +761,7 @@
     <string name="search_custom_engine_empty">Aún no hay motor personalizado</string>
     <string name="search_custom_engine_name">Nombre</string>
     <string name="search_custom_engine_endpoint">Solicitar dirección</string>
-    <string name="search_custom_engine_key">API Key(opcional)</string>
+    <string name="search_custom_engine_key">Clave API (opcional)</string>
     <string name="search_custom_engine_method">Método de solicitud</string>
     <string name="search_custom_engine_body">Solicitar plantilla de cuerpo (POST uso,{query} será reemplazado)</string>
     <string name="search_custom_engine_results_path">Ruta del resultado (como data.results, déjelo en blanco para indicar que la raíz es una matriz)</string>

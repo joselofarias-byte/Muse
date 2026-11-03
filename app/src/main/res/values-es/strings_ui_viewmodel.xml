@@ -11,21 +11,21 @@
     <!-- tarjeta -->
     <string name="quick_msg_new_default_name">Nuevo mensaje rápido</string>
     <string name="quick_msg_unnamed">(sin nombre)</string>
-    <string name="quick_msg_disabled">Discapacitado</string>
+    <string name="quick_msg_disabled">Desactivado</string>
     <string name="quick_msg_scope_global">situación general</string>
     <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
     <string name="quick_msg_scope_label">Alcance: %1$s</string>
     <string name="quick_msg_enabled_cd">Habilitado</string>
-    <string name="quick_msg_disabled_cd">Discapacitado</string>
+    <string name="quick_msg_disabled_cd">Desactivado</string>
     <string name="quick_msg_edit_cd">Editar</string>
     <string name="quick_msg_delete_cd">Eliminar</string>
     <!-- editar página -->
     <string name="quick_msg_unsaved_title">Hay cambios no guardados</string>
     <string name="quick_msg_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
-    <string name="quick_msg_discard">rendirse</string>
+    <string name="quick_msg_discard">Descartar</string>
     <string name="quick_msg_new_title">Nuevo QuickMessage</string>
     <string name="quick_msg_edit_title">Editar QuickMessage</string>
-    <string name="quick_msg_save">guardar</string>
+    <string name="quick_msg_save">Guardar</string>
     <string name="quick_msg_section_basic">Conceptos básicos</string>
     <string name="quick_msg_field_name">Nombre</string>
     <string name="quick_msg_section_content">Contenido de la plantilla</string>
@@ -51,19 +51,19 @@
     <!-- tarjeta -->
     <string name="lorebook_new_default_name">nueva entrada</string>
     <string name="lorebook_unnamed">(sin nombre)</string>
-    <string name="lorebook_disabled">Discapacitado</string>
+    <string name="lorebook_disabled">Desactivado</string>
     <string name="lorebook_keywords_label">Palabras clave: %1$s</string>
     <string name="lorebook_enabled_cd">Habilitado</string>
-    <string name="lorebook_disabled_cd">Discapacitado</string>
+    <string name="lorebook_disabled_cd">Desactivado</string>
     <string name="lorebook_edit_cd">Editar</string>
     <string name="lorebook_delete_cd">Eliminar</string>
     <!-- editar página -->
     <string name="lorebook_unsaved_title">Hay cambios no guardados</string>
     <string name="lorebook_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
-    <string name="lorebook_discard">rendirse</string>
+    <string name="lorebook_discard">Descartar</string>
     <string name="lorebook_new_title">Nuevo Lorebook</string>
     <string name="lorebook_edit_title">Editar Lorebook</string>
-    <string name="lorebook_save">guardar</string>
+    <string name="lorebook_save">Guardar</string>
     <string name="lorebook_section_basic">Conceptos básicos</string>
     <string name="lorebook_field_name">Nombre</string>
     <string name="lorebook_field_keywords">Palabras clave de activación (separadas por comas)</string>
@@ -74,8 +74,8 @@
     <string name="lorebook_field_priority">Prioridad (cuanto mayor sea el número, primero se inyectará)</string>
     <string name="lorebook_field_insertion_position">Ubicación de la inyección</string>
     <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
-    <string name="lorebook_insertion_before_system">Antes de la palabra de aviso del sistema</string>
-    <string name="lorebook_insertion_after_system">Después de la palabra de aviso del sistema</string>
+    <string name="lorebook_insertion_before_system">Antes de las instrucciones del sistema</string>
+    <string name="lorebook_insertion_after_system">Después de las instrucciones del sistema</string>
     <string name="lorebook_insertion_before_last">antes del último mensaje</string>
     <string name="lorebook_field_case_sensitive">distingue entre mayúsculas y minúsculas</string>
     <string name="lorebook_field_case_sensitive_desc">Cuando está activada, la concordancia de palabras clave distingue entre mayúsculas y minúsculas.</string>
@@ -95,19 +95,19 @@
     <!-- tarjeta -->
     <string name="prompt_injection_new_default_name">Nueva inyección</string>
     <string name="prompt_injection_unnamed">(sin nombre)</string>
-    <string name="prompt_injection_disabled">Discapacitado</string>
+    <string name="prompt_injection_disabled">Desactivado</string>
     <string name="prompt_injection_mode_label">Modo: %1$s</string>
     <string name="prompt_injection_enabled_cd">Habilitado</string>
-    <string name="prompt_injection_disabled_cd">Discapacitado</string>
+    <string name="prompt_injection_disabled_cd">Desactivado</string>
     <string name="prompt_injection_edit_cd">Editar</string>
     <string name="prompt_injection_delete_cd">Eliminar</string>
     <!-- editar página -->
     <string name="prompt_injection_unsaved_title">Hay cambios no guardados</string>
     <string name="prompt_injection_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
-    <string name="prompt_injection_discard">rendirse</string>
+    <string name="prompt_injection_discard">Descartar</string>
     <string name="prompt_injection_new_title">Nuevo PromptInjection</string>
     <string name="prompt_injection_edit_title">Editar PromptInjection</string>
-    <string name="prompt_injection_save">guardar</string>
+    <string name="prompt_injection_save">Guardar</string>
     <string name="prompt_injection_section_basic">Conceptos básicos</string>
     <string name="prompt_injection_field_name">Nombre</string>
     <string name="prompt_injection_field_mode">modo</string>
@@ -152,7 +152,7 @@
     <string name="assistant_export_card">Exportar tarjeta de personaje</string>
     <string name="assistant_delete_cd">Eliminar</string>
     <string name="assistant_delete">Eliminar</string>
-    <string name="assistant_close">cerrar</string>
+    <string name="assistant_close">Cerrar</string>
     <string name="assistant_delete_title">Eliminar asistente</string>
     <!-- Toast -->
     <string name="assistant_toast_exported">Tarjeta de personaje exportada: %1$s</string>

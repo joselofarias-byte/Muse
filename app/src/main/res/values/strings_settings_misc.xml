@@ -17,18 +17,18 @@
     <string name="settings_web_search_enable">Habilitar búsqueda web</string>
     <string name="settings_web_search_enable_subtitle">Estado predeterminado global; después del cierre, el chip del campo de entrada aún se puede abrir temporalmente</string>
     <string name="settings_web_search_engine">motor de búsqueda</string>
-    <string name="settings_web_search_api_key_label">API Key(Opcional)</string>
-    <string name="settings_web_search_multi_key_title">multimotor API Key</string>
+    <string name="settings_web_search_api_key_label">Clave API (opcional)</string>
+    <string name="settings_web_search_multi_key_title">Claves API por buscador</string>
     <string name="settings_web_search_multi_key_subtitle">Configurar individualmente para cada motor de búsqueda Key;Auto Los modos retrocederán secuencialmente</string>
     <string name="settings_saved">salvado</string>
-    <string name="settings_web_search_save_api_key">guardar API Key</string>
+    <string name="settings_web_search_save_api_key">Guardar clave API</string>
     <string name="settings_web_search_save_endpoint">Guardar dirección de interfaz</string>
     <string name="settings_web_search_test_query_label">Probar términos de búsqueda</string>
     <string name="settings_web_search_test_query_placeholder">Ingrese palabras clave para buscar y probar…</string>
     <string name="settings_web_search_test_success">Búsqueda exitosa, regresar %1$d Resultados:\n%2$s</string>
     <string name="settings_web_search_test_empty">Búsqueda completada pero no se obtuvieron resultados</string>
     <string name="settings_web_search_test_failed">Prueba fallida: %1$s</string>
-    <string name="settings_web_search_test_failed_unknown">error desconocido</string>
+    <string name="settings_web_search_test_failed_unknown">Error desconocido</string>
     <string name="settings_web_search_testing">Buscando…</string>
     <string name="settings_web_search_test">Búsqueda de prueba</string>
     <!-- v1.98: Nombre del proveedor de búsqueda agregado(bilingüe chino e inglés,Para referencia de visualización/registro/indicador de error de la interfaz de usuario) -->
@@ -93,7 +93,7 @@
 
     <!-- PresetProviderPickerDialog.kt -->
     <string name="settings_preset_select_provider">Seleccionar proveedor</string>
-    <string name="settings_preset_subtitle">Cubre estaciones oficiales nacionales, extranjeras y de transferencia, solo complete después de seleccionar API Key</string>
+    <string name="settings_preset_subtitle">Elige un proveedor oficial o un intermediario y agrega tu clave API.</string>
     <string name="settings_preset_group_overseas">funcionario en el extranjero</string>
     <string name="settings_preset_group_domestic">funcionario nacional</string>
     <string name="settings_preset_group_relay">estación de transferencia</string>
@@ -103,18 +103,18 @@
     <string name="settings_preset_need_baseurl">Requerido baseUrl</string>
     <string name="settings_preset_model_count">%1$d modelo</string>
     <string name="settings_preset_custom">proveedor personalizado</string>
-    <string name="settings_preset_custom_desc">Complete manualmente baseUrl,API Key y lista de modelos</string>
+    <string name="settings_preset_custom_desc">Configura manualmente la URL base, la clave API y los modelos.</string>
 
     <!-- ProviderModelRow.kt -->
     <string name="settings_model_action_settings">ajustes</string>
-    <string name="settings_model_action_add">agregar</string>
+    <string name="settings_model_action_add">Agregar</string>
     <string name="settings_model_ability_tool">Herramientas</string>
     <string name="settings_model_ability_reasoning">razonamiento</string>
     <string name="settings_model_ability_streaming">transmisión</string>
     <string name="settings_model_ability_image">hacer un dibujo</string>
     <string name="settings_model_ability_multimodal">multimodal</string>
     <string name="settings_model_ability_video">vídeo</string>
-    <string name="settings_model_ability_chat">charlar</string>
+    <string name="settings_model_ability_chat">Chat</string>
     <!-- v1.0.8 (7.7): Etiqueta de ventana contextual(Como por ejemplo "128K contexto") -->
     <string name="settings_model_context_label">%1$s contexto</string>
     <string name="settings_model_output_label">%1$s salida</string>
@@ -136,7 +136,7 @@
     <string name="settings_assistant_favorites_subtitle">Ver mensajes favoritos en todas las sesiones</string>
     <string name="settings_assistant_lorebook">libro mundial Lorebook</string>
     <string name="settings_assistant_lorebook_subtitle">Inyección de contexto activada por palabras clave (juego de roles)/Configuración de visión mundial)</string>
-    <string name="settings_assistant_quick_messages">mensaje rapido</string>
+    <string name="settings_assistant_quick_messages">Mensaje rápido</string>
     <string name="settings_assistant_quick_messages_subtitle">Plantillas de mensajes preestablecidas, compatibilidad con sustitución de variables e inserción con un solo clic en el cuadro de entrada</string>
     <string name="settings_assistant_prompt_injection">inyección de patrón</string>
     <string name="settings_assistant_prompt_injection_subtitle">Inyecte automáticamente las palabras clave correspondientes (creativo/Programación/juego de roles, etc).</string>
@@ -169,7 +169,7 @@
     <string name="settings_multi_agent_description_hint">Escenarios de colaboración o uso en equipo</string>
     <string name="settings_multi_agent_select_members">Seleccionar miembros</string>
     <string name="settings_multi_agent_no_assistants">Actualmente no hay ningún asistente opcional; primero cree uno en la página "Asistente".</string>
-    <string name="settings_multi_agent_save">guardar</string>
+    <string name="settings_multi_agent_save">Guardar</string>
     <string name="settings_multi_agent_cancel">Cancelar</string>
 
     <!-- SettingsTutorialPage.kt -->
@@ -192,7 +192,7 @@
     <string name="settings_tutorial_ch2_title">Capítulo 2: Configuración del modelo de IA (importante)</string>
     <string name="settings_tutorial_ch2_s1_title">¿Por qué necesitas configurar el modelo?</string>
     <string name="settings_tutorial_ch2_s1_content">Muse No contiene IA en sí, necesita conectarse a servicios de IA externos. Como un teléfono celular que requiere una tarjeta SIM para realizar llamadas.,Muse necesitar“API Key”Para conectarse a la IA.\n\nAPI Key es una cadena de letras y números, obtenida del proveedor de IA. se usa para demostrar“soy un usuario pago”, se factura al proveedor en consecuencia. Diferentes proveedores tienen diferentes precios y capacidades. Puede configurar varios al mismo tiempo y cambiar según sea necesario.</string>
-    <string name="settings_tutorial_ch2_s2_title">donde aplicar API Key?</string>
+    <string name="settings_tutorial_ch2_s2_title">¿Dónde obtener una clave API?</string>
     <string name="settings_tutorial_ch2_s2_content">A continuación se muestran algunos proveedores de IA de uso común (sin ningún orden en particular):\n\n• DeepSeek(búsqueda profunda)— Fabricado en China, barato y eficaz.\n  Sitio web:platform.deepseek.com\n\n• espectro de sabiduría AI(Palabras claras de sabiduría)— Nacional, con cupo libre\n  Sitio web:open.bigmodel.cn\n\n• Ali Tongyi Qianwen — Nacional, con cupo libre\n  Sitio web:dashscope.aliyun.com\n\n• lado oscuro de la luna Kimi — Fuertes capacidades nacionales de texto largo\n  Sitio web:platform.moonshot.cn\n\n• OpenAI(ChatGPT)— Internacional, el mejor efecto pero requiere pago en el extranjero.\n  Sitio web:platform.openai.com\n\n• Anthropic(Claude)— Internacional, excelente en redacción y razonamiento.\n  Sitio web:console.anthropic.com\n\n• Google Gemini — Fuertes capacidades multimodales internacionales\n  Sitio web:ai.google.dev\n\nSe recomienda que los principiantes comiencen con DeepSeek o Zhipu y lo busquen en segundo plano después de registrarse.“API Keys”página, haga clic“crear nuevo Key”, simplemente copie esa cadena de código. La mayoría de los proveedores nacionales le darán una cuota gratuita después del registro, para que pueda probarla gratis primero.</string>
     <string name="settings_tutorial_ch2_s3_title">Cómo agregar proveedores en Muse</string>
     <string name="settings_tutorial_ch2_s3_content">1. Haga clic en la esquina inferior derecha o en la esquina superior izquierda para ingresar“ajustes”\n2. encontró“Modelos y Servicios”o“proveedor”\n3. Haga clic“Agregar proveedor”\n4. Seleccione el tipo de proveedor (por ejemplo, compatible con OpenAI,Claude,Gemini etcétera). Si hay proveedores preestablecidos en la lista, será más fácil elegir directamente. Simplemente complete el API Key\n5. Complete:\n   - Nombre: Lo que quieras, por ejemplo.“mio DeepSeek”\n   - API Key:Pega el código que acabas de copiar\n   - Dirección de interfaz:DeepSeek rellenar https://api.deepseek.com(El proveedor predeterminado se completará automáticamente)\n6. Haga clic en guardar\n7. Agregue el modelo que desea utilizar (como deepseek-chat) en la lista de modelos. El proveedor predeterminado generalmente muestra automáticamente la lista de modelos, solo verifíquela\n\nDespués de guardar, puede hacer clic“prueba”para verificar que la conexión fue exitosa.</string>
@@ -200,7 +200,7 @@
     <string name="settings_tutorial_ch2_s4_content">En la página de chat, el nombre del modelo se mostrará en la parte superior o cerca del campo de entrada. Haga clic en él y aparecerá una lista de selección de modelos, simplemente seleccione el que desea usar. Se pueden utilizar diferentes modelos para diferentes conversaciones.\n\nCambiar de modelo no perderá el contenido de la conversación actual, pero tenga en cuenta: diferentes modelos tienen diferentes interpretaciones del contexto y usted puede sentir AI“personaje”Ha cambiado, esto es normal.</string>
     <string name="settings_tutorial_ch2_s5_title">Cómo elegir el modelo que más te convenga &amp; Descripción de la capacidad del modelo</string>
     <string name="settings_tutorial_ch2_s5_content">Ante muchos modelos, los principiantes pueden elegir lo siguiente:\n\n• Chat y escritura diarios: simplemente elige un modelo de conversación general, como deepseek-chat,qwen-plus,gpt-4o-mini, bastante barato.\n• Razonamiento complejo, matemáticas, programación: elige una banda“razonamiento”Modelos capaces (como deepseek-reasoner,o1,claude-3.5-sonnet), pensarán primero antes de responder.\n• Mirar imágenes y reconocer imágenes: seleccione soporte“Visión/multimodal”modelos (como gpt-4o,gemini-2.0-flash,qwen-vl), de lo contrario no se podrá reconocer la imagen.\n• Generar imágenes: seleccione soporte“hacer un dibujo”Modelos de capacidades (por ejemplo, dall-e,flux serie).\n• Generar video: seleccione soporte“vídeo”Modelo de capacidades (específico del proveedor).\n\nLa tarjeta de modelo suele estar marcada con iconos para las capacidades que admite: chat, razonamiento, visión (multimodal), dibujo, vídeo e invocación de herramientas. Simplemente elija según sus necesidades, no tiene que perseguir ciegamente el modelo más potente.——Los modelos fuertes son más caros y lentos, pero utilizar modelos pequeños para problemas simples es más rápido y económico.\n\nSe recomienda que los principiantes utilicen primero un modelo general (como deepseek-chat) para obtener los conceptos básicos y luego prueben otros después de familiarizarse con él.</string>
-    <string name="settings_tutorial_ch2_s6_title">Consulta de equilibrio y rotación de múltiples teclas</string>
+    <string name="settings_tutorial_ch2_s6_title">Consulta de saldo y rotación de claves</string>
     <string name="settings_tutorial_ch2_s6_content">Si la clave de un proveedor se agota o está restringida, se pueden configurar varias claves para permitir que Muse rote automáticamente sin interrumpir la conversación.\n\n• Agregar varias claves: puede completar varias claves en la configuración del proveedor API Key(Uno por línea),Muse Cambiará automáticamente a la siguiente clave cuando falle una clave.\n• Consulta de saldo: algunos proveedores admiten verificar el saldo dentro de la aplicación. En la página de detalles del proveedor, haga clic en“Consultar saldo”Eso es todo, no es necesario que acceda al sitio web oficial cada vez. Si no se muestra, lo más adecuado es ir al backend del sitio web oficial del proveedor para comprobarlo.\n• Sugerencia sin preocupaciones: utilice dos proveedores (como DeepSeek + Zhipu) al mismo tiempo para realizar copias de seguridad entre sí. Se puede utilizar un proveedor encima del otro para brindar una experiencia más estable.</string>
 
     <!-- Capítulo 3 -->
@@ -240,7 +240,7 @@
     <string name="settings_tutorial_ch4_s8_content">La colaboración entre múltiples agentes permite que varios personajes de IA realicen sus tareas y cooperen entre sí en la misma conversación, e incluso puedes unirte a un chat grupal.\n\n• Construyendo un equipo: Configuración → Para la colaboración entre múltiples agentes, cree un nuevo equipo y seleccione varios asistentes como miembros (por ejemplo“redacción”,“Planificación del arte”,“revisión”).\n• Chat grupal: habilite al equipo en la conversación y el asistente principal dividirá las tareas y las delegará a los miembros correspondientes. Luego, los miembros resumirán sus respuestas. Sentirás que estás viendo la discusión de todos en el grupo.\n• Escenarios aplicables: división de tareas complejas (escritura de guiones + sugerencias de bandas sonoras), lluvia de ideas desde múltiples perspectivas, juegos de rol de tramas para varios jugadores, etc.\n• Consejo: Cuantos más miembros, mayor será el consumo de Token. Se recomienda tener de 2 a 4 miembros.</string>
     <string name="settings_tutorial_ch4_s9_title">Generación de vídeo y tareas programadas.</string>
     <string name="settings_tutorial_ch4_s9_content">• Generación de videos: si el modelo del proveedor admite capacidades de video, puede hacer que la IA genere videos cortos basados en descripciones de texto. Describe la imagen que deseas en el cuadro de entrada y selecciona un modelo que admita video. Después del envío, la tarea entrará en procesamiento en segundo plano. Después de completar,“página de tareas”Ver los resultados. La generación lleva mucho tiempo, tenga paciencia. La capacidad específica depende del proveedor.\n\n• Tareas programadas y mensajes proactivos: puede configurar tareas programadas para permitir que la IA le envíe mensajes o realice acciones de forma proactiva en un momento específico. por ejemplo“Envíame el clima de hoy y las tareas pendientes todas las mañanas a las 8 a.m.”,“Resumen de la conversación de la semana cada domingo por la noche.”. Configure el tiempo y el contenido de activación en la configuración o en la página de tareas,AI Se le impulsará de forma proactiva cuando llegue el momento, como una secretaria dedicada.</string>
-    <string name="settings_tutorial_ch4_s10_title">Skill Complementos de habilidades y MCP</string>
+    <string name="settings_tutorial_ch4_s10_title">Habilidades y complementos MCP</string>
     <string name="settings_tutorial_ch4_s10_content">• Skill Sistema de habilidades:Skill Es una capacidad de herramienta a la que la IA puede recurrir, como leer y escribir archivos locales, realizar solicitudes HTTP, consultar bases de datos, operar calendarios, etc. → asistente → Skill Administración, puede ver, habilitar y deshabilitar varias habilidades. Después de habilitar,AI Cuando sea necesario, se llamarán automáticamente las habilidades correspondientes para ayudarlo a completar la tarea. Abrirlo según demanda en lugar de abrirlo por completo puede ampliar las capacidades y controlar los riesgos.\n\n• MCP Complemento:MCP(Model Context Protocol) es un protocolo estándar que permite a la IA conectarse a herramientas y fuentes de datos externas. Instalando el complemento MCP,AI puede conectarse a más servicios de terceros (como software para tomar notas, bases de datos,API interfaz). Busque la entrada MCP en la configuración y agregue la configuración del complemento. Adecuado para que usuarios avanzados creen flujos de trabajo personalizados.\n\nLa relación entre los dos:Skill es una herramienta liviana incorporada,MCP Es un canal estándar para acceder a capacidades externas. Cuando se usan juntas, la IA puede ser casi omnipotente. Se recomienda a los principiantes que utilicen primero la habilidad incorporada y luego exploren MCP después de familiarizarse con él.</string>
     <string name="settings_tutorial_ch4_s11_title">Trabajo pendiente y equipo de redacción</string>
     <string name="settings_tutorial_ch4_s11_content">• Tarea a realizar: Cuando la tarea es compleja,AI Primero lo dividiré en una lista de tareas pendientes. Puede ver "Tarea por hacer" encima del cuadro de entrada. · Completo/Progreso "total", haga clic en él para ver la lista completa y comprender en cualquier momento qué paso ha logrado la IA.\n\n• Equipo de redacción: ¿Quiere que varios asistentes colaboren en la redacción? a la configuración → Para colaboración entre múltiples agentes, haga clic en "Plantilla de equipo de escritura" para crear un equipo con un solo clic, luego haga clic en "Esquema". → primer borrador → Añade el asistente correspondiente como miembro en la orden "Retoque". Luego, si inicias una tarea de escritura en el chat grupal, cada uno será responsable de un enlace y lo completará de forma colaborativa.</string>

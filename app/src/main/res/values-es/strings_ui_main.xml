@@ -6,95 +6,95 @@
     <string name="assistant_detail_loading">Cargando...</string>
     <string name="assistant_detail_basic">Conceptos básicos</string>
     <string name="assistant_detail_basic_desc">Nombre / avatar / modelo / parámetros de muestreo</string>
-    <string name="assistant_detail_prompt">palabra rápida</string>
-    <string name="assistant_detail_prompt_desc">systemPrompt / Plantilla de mensaje/mensaje preestablecido</string>
-    <string name="assistant_detail_extensions">Expandir</string>
-    <string name="assistant_detail_extensions_desc">Mensaje rápido / Libro de historia / Inyección / Habilidad / MCP</string>
-    <string name="assistant_detail_memory">memoria</string>
-    <string name="assistant_detail_memory_desc">Cambio de memoria/memoria global/referencia de sesión reciente/recordatorio de tiempo</string>
+    <string name="assistant_detail_prompt">Instrucciones</string>
+    <string name="assistant_detail_prompt_desc">Instrucciones del sistema, plantilla y mensajes predefinidos</string>
+    <string name="assistant_detail_extensions">Extensiones</string>
+    <string name="assistant_detail_extensions_desc">Mensajes rápidos, libro de contexto, inyección de instrucciones, habilidades y MCP</string>
+    <string name="assistant_detail_memory">Memoria</string>
+    <string name="assistant_detail_memory_desc">Memoria del asistente, memoria global, conversaciones recientes y hora actual</string>
     <string name="assistant_detail_advanced">Avanzado</string>
-    <string name="assistant_detail_advanced_desc">Antecedentes / Solicitud personalizada / Etiquetas</string>
-    <string name="assistant_detail_avatar_save_failed">Avatar no pudo guardarse</string>
+    <string name="assistant_detail_advanced_desc">Fondo, solicitudes personalizadas y etiquetas</string>
+    <string name="assistant_detail_avatar_save_failed">No se pudo guardar el avatar</string>
     <string name="assistant_detail_no_image_app">No se encontró ninguna aplicación para abrir la imagen.</string>
     <string name="assistant_detail_pick_image">Seleccionar imágenes</string>
     <string name="assistant_detail_clear">Borrar</string>
-    <string name="assistant_detail_avatar">avatar</string>
-    <string name="assistant_detail_avatar_image_set">Conjunto de avatar de imagen</string>
+    <string name="assistant_detail_avatar">Avatar</string>
+    <string name="assistant_detail_avatar_image_set">Imagen de avatar configurada</string>
     <string name="assistant_detail_avatar_emoji">Usa avatares Emoji</string>
     <string name="assistant_detail_avatar_initial">Usa iniciales</string>
     <string name="assistant_detail_name">Nombre</string>
-    <string name="assistant_detail_avatar_emoji_label">avatar Emoji(1-2 carácter, opcional)</string>
-    <string name="assistant_detail_global_default">incumplimiento global</string>
-    <string name="assistant_detail_exclusive_model">modelo exclusivo</string>
-    <string name="assistant_detail_temperature">Temperature: %1$s</string>
+    <string name="assistant_detail_avatar_emoji_label">Emoji del avatar (1 o 2 caracteres, opcional)</string>
+    <string name="assistant_detail_global_default">Predeterminado global</string>
+    <string name="assistant_detail_exclusive_model">Modelo del asistente</string>
+    <string name="assistant_detail_temperature">Temperatura: %1$s</string>
     <string name="assistant_detail_default">Predeterminado</string>
     <string name="assistant_detail_use_default">Usar predeterminado</string>
-    <string name="assistant_detail_top_p_label">Top P(Déjelo en blanco para usar el valor predeterminado,0-1)</string>
-    <string name="assistant_detail_max_tokens_label">Max Tokens(Déjelo en blanco para usar el valor predeterminado)</string>
+    <string name="assistant_detail_top_p_label">Top P (de 0 a 1; vacío para usar el valor predeterminado)</string>
+    <string name="assistant_detail_max_tokens_label">Máximo de tokens (vacío para usar el valor predeterminado)</string>
     <string name="assistant_detail_context_message_count">Número de mensajes de contexto: %1$d</string>
     <string name="assistant_detail_reasoning_level">nivel de razonamiento</string>
     <!-- v2.0.1: Nombre para mostrar del menú desplegable del nivel de razonamiento -->
-    <string name="reasoning_level_off">cerrar</string>
-    <string name="reasoning_level_auto">automático</string>
-    <string name="reasoning_level_low">ligero</string>
-    <string name="reasoning_level_medium">medio</string>
-    <string name="reasoning_level_high">Profundidad</string>
-    <string name="reasoning_level_xhigh">extremadamente profundo</string>
-    <string name="assistant_detail_stream_output">Salida de transmisión</string>
-    <string name="assistant_detail_stream_output_desc">Devolver la respuesta completa de una vez después del cierre</string>
+    <string name="reasoning_level_off">Desactivado</string>
+    <string name="reasoning_level_auto">Automático</string>
+    <string name="reasoning_level_low">Bajo</string>
+    <string name="reasoning_level_medium">Medio</string>
+    <string name="reasoning_level_high">Alto</string>
+    <string name="reasoning_level_xhigh">Muy alto</string>
+    <string name="assistant_detail_stream_output">Respuesta progresiva</string>
+    <string name="assistant_detail_stream_output_desc">Si se desactiva, la respuesta completa se muestra cuando termina la generación.</string>
     <!-- v1.0.19: Assistant Finalización del campo(summary / useAssistantName / allowGroupChat) -->
-    <string name="assistant_detail_summary">Introducción de una frase</string>
+    <string name="assistant_detail_summary">Descripción breve</string>
     <string name="assistant_detail_summary_hint">Se utiliza para listas de chat grupal y subtítulos de tarjetas de asistente.</string>
-    <string name="assistant_detail_use_assistant_name">Nombre del asistente mostrado en la interfaz de chat</string>
-    <string name="assistant_detail_use_assistant_name_desc">Después de abrir, reemplace la visualización del nombre del modelo con el nombre del asistente.</string>
+    <string name="assistant_detail_use_assistant_name">Mostrar el nombre del asistente en el chat</string>
+    <string name="assistant_detail_use_assistant_name_desc">Muestra el nombre del asistente en lugar del nombre del modelo.</string>
     <string name="assistant_detail_allow_group_chat">Permitir chat grupal</string>
-    <string name="assistant_detail_allow_group_chat_desc">Después del cierre, el asistente no aparecerá en la lista de selección de miembros del chat grupal.</string>
-    <string name="assistant_detail_select_model">Elige tu propio modelo</string>
-    <string name="assistant_detail_close">cerrar</string>
+    <string name="assistant_detail_allow_group_chat_desc">Si se desactiva, este asistente no aparecerá al elegir miembros para un chat grupal.</string>
+    <string name="assistant_detail_select_model">Elegir modelo</string>
+    <string name="assistant_detail_close">Cerrar</string>
     <string name="assistant_detail_global_default_selected">Valor predeterminado global (seleccionado)</string>
     <string name="assistant_detail_model_selected">%1$s (seleccionado)</string>
     <!-- Phase 6: Mejoras en la UX de selección de modelos. -->
     <string name="assistant_detail_use_global_default_card">Usar modelo predeterminado global</string>
     <string name="assistant_detail_using_global_model">Actualmente utilizando el modelo predeterminado global: %1$s</string>
     <string name="assistant_detail_model_hint">Consejo: puedes seleccionar un modelo dedicado en la configuración del asistente. Diferentes asistentes pueden utilizar diferentes modelos de IA.</string>
-    <string name="assistant_detail_system_prompt_label">System Prompt(Configuración/reglas de personajes)</string>
+    <string name="assistant_detail_system_prompt_label">Instrucciones del sistema (personalidad y reglas)</string>
     <string name="assistant_detail_message_template_label">Plantilla de mensaje (admite {{date}} {{time}} {{session_id}} variables)</string>
     <string name="assistant_detail_preset_messages_label">Mensaje predeterminado JSON(Avanzado, como [{\"role\":\"system\",\"content\":\"...\"}])</string>
-    <string name="assistant_detail_ext_quick_message">mensaje rapido</string>
-    <string name="assistant_detail_ext_lorebook">Lorebook</string>
-    <string name="assistant_detail_ext_mode_injection">Prompt inyectar</string>
+    <string name="assistant_detail_ext_quick_message">Mensaje rápido</string>
+    <string name="assistant_detail_ext_lorebook">Libro de contexto</string>
+    <string name="assistant_detail_ext_mode_injection">Inyección de instrucciones</string>
     <string name="assistant_detail_ext_skill">Habilidades</string>
-    <string name="assistant_detail_ext_mcp_server">MCP Server</string>
-    <string name="assistant_detail_ext_tool">Tool</string>
+    <string name="assistant_detail_ext_mcp_server">Servidor MCP</string>
+    <string name="assistant_detail_ext_tool">Herramienta</string>
     <string name="assistant_detail_no_options">Aún no hay opciones disponibles</string>
-    <string name="assistant_detail_done">Completo</string>
+    <string name="assistant_detail_done">Listo</string>
     <string name="assistant_detail_select_all">Seleccionar todo</string>
     <string name="assistant_detail_clear_all">Borrar</string>
-    <string name="assistant_detail_selected_count">Seleccionado %1$d un</string>
+    <string name="assistant_detail_selected_count">Seleccionados: %1$d</string>
     <string name="assistant_detail_enable_memory">Habilitar memoria</string>
-    <string name="assistant_detail_enable_memory_desc">Este asistente no inyecta memoria a largo plazo cuando está cerrado</string>
+    <string name="assistant_detail_enable_memory_desc">Si se desactiva, este asistente no usará la memoria a largo plazo.</string>
     <string name="assistant_detail_use_global_memory">Usar memoria global</string>
     <string name="assistant_detail_use_global_memory_desc">Cuando está activado, se hace referencia adicional a retratos globales de usuarios, recuerdos fijados y experiencias compartidas; cuando está desactivado, se siguen utilizando la memoria de datos del asistente y las conversaciones recientes. El nuevo asistente está desactivado de forma predeterminada.</string>
-    <string name="assistant_detail_recent_chats_reference">Citas de conversaciones recientes</string>
-    <string name="assistant_detail_recent_chats_reference_desc">Inyecte el resumen de la sesión reciente como contexto en el mensaje</string>
-    <string name="assistant_detail_time_reminder">recordatorio de tiempo</string>
-    <string name="assistant_detail_time_reminder_desc">Inyecte la hora actual en la conversación</string>
+    <string name="assistant_detail_recent_chats_reference">Contexto de conversaciones recientes</string>
+    <string name="assistant_detail_recent_chats_reference_desc">Incluye resúmenes de conversaciones recientes en el contexto del modelo.</string>
+    <string name="assistant_detail_time_reminder">Hora actual</string>
+    <string name="assistant_detail_time_reminder_desc">Incluye la hora actual en la conversación.</string>
     <string name="assistant_detail_manual_memory">Memoria manual</string>
-    <string name="assistant_detail_add_memory">agregar memoria</string>
-    <string name="assistant_detail_add_memory_desc">Ingrese los hechos manualmente/conocimiento,AI se referirá a</string>
-    <string name="assistant_detail_saved_memory_count">memoria guardada (%1$d)</string>
-    <string name="assistant_detail_global_pinned_count">memoria global (%1$d)</string>
+    <string name="assistant_detail_add_memory">Agregar recuerdo</string>
+    <string name="assistant_detail_add_memory_desc">Agrega hechos o conocimientos para que el asistente los tenga en cuenta.</string>
+    <string name="assistant_detail_saved_memory_count">Recuerdos guardados (%1$d)</string>
+    <string name="assistant_detail_global_pinned_count">Recuerdos globales (%1$d)</string>
     <string name="assistant_detail_global_pinned_enabled">Usar memoria global está activado, estos contenidos se inyectarán en el asistente actual</string>
     <string name="assistant_detail_global_pinned_disabled">Sólo para visualización; Actualmente el asistente tiene la memoria global desactivada, por lo que no se realizará ninguna inyección.</string>
-    <string name="assistant_detail_saved_memory_interaction_hint">Haga clic para ampliar el texto completo · Mantenga presionado para editar</string>
-    <string name="assistant_detail_no_memory">Aún no hay memoria</string>
+    <string name="assistant_detail_saved_memory_interaction_hint">Toca para ampliar · Mantén presionado para editar</string>
+    <string name="assistant_detail_no_memory">Todavía no hay recuerdos</string>
     <string name="assistant_detail_delete_cd">Eliminar</string>
-    <string name="assistant_detail_delete_memory">borrar memoria</string>
-    <string name="assistant_detail_add_memory_dialog_title">agregar memoria</string>
+    <string name="assistant_detail_delete_memory">Eliminar recuerdo</string>
+    <string name="assistant_detail_add_memory_dialog_title">Agregar recuerdo</string>
     <string name="assistant_detail_memory_edit_missing">Esta memoria ya no existe o el contenido no es válido</string>
     <string name="assistant_detail_edit_memory_dialog_title">Editar memoria</string>
-    <string name="assistant_detail_input_fact">Introduzca los hechos/conocimiento</string>
-    <string name="assistant_detail_save">guardar</string>
+    <string name="assistant_detail_input_fact">Escribe un hecho o conocimiento</string>
+    <string name="assistant_detail_save">Guardar</string>
     <string name="assistant_detail_cancel">Cancelar</string>
     <string name="assistant_detail_custom_headers_label">Encabezado de solicitud personalizado JSON(Como por ejemplo {\"X-Custom\":\"value\"})</string>
     <string name="assistant_detail_custom_bodies_label">Cuerpo de solicitud personalizado JSON(Como por ejemplo {\"user\":\"abc\"})</string>
@@ -135,7 +135,7 @@
     <string name="qr_scan_btn">Escanea el código QR para importar</string>
 
     <!-- ===== pagina de memoria MemoryScreen ===== -->
-    <string name="memory_screen_title">memoria</string>
+    <string name="memory_screen_title">Memoria</string>
     <string name="memory_screen_search_fact_hint">Metafactos de búsqueda…</string>
     <string name="memory_screen_search_cd">Buscar</string>
     <string name="memory_screen_add_fact_cd">Agregar metadato</string>
@@ -149,7 +149,7 @@
     <string name="memory_screen_no_match">No se encontró ninguna memoria coincidente</string>
     <string name="memory_screen_search_results">Resultados de la búsqueda (%1$d)</string>
     <string name="memory_screen_no_fact">Aún no hay metahechos</string>
-    <string name="memory_screen_collapse">cerrar</string>
+    <string name="memory_screen_collapse">Cerrar</string>
     <string name="memory_screen_expand">Expandir</string>
     <string name="memory_screen_edit_cd">Editar</string>
     <string name="memory_pin_cd">fijar hacia arriba</string>
@@ -160,7 +160,7 @@
     <string name="memory_screen_copy_trace_cd">Copiar pila completa</string>
     <string name="memory_screen_retry">Inténtalo de nuevo</string>
     <string name="memory_screen_input_content">Ingresar contenido…</string>
-    <string name="memory_screen_save">guardar</string>
+    <string name="memory_screen_save">Guardar</string>
     <string name="memory_screen_not_running">no corriendo</string>
     <string name="memory_screen_has_error">Hay una anormalidad</string>
     <string name="memory_screen_normal">normales</string>
@@ -250,7 +250,7 @@
     <!-- ===== Establezca la categoría de primer nivel (12 líneas en la página de inicio; el orden es consistente con el catálogo de configuración) ===== -->
     <string name="settings_group_assistants">Asistentes y roles</string>
     <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, recursos de roles y Agent</string>
-    <string name="settings_group_chat">charlar</string>
+    <string name="settings_group_chat">Chat</string>
     <string name="settings_group_chat_desc">Visualización de chat, emoticonos, grabación rápida y uso compartido</string>
     <string name="settings_group_models">Modelos y Proveedores</string>
     <string name="settings_group_models_desc">Proveedores y modelos, enrutamiento de tareas, complementos de proveedores</string>
@@ -284,7 +284,7 @@
     <string name="settings_group_section_developer">Desarrollador</string>
     <string name="settings_screen_appearance_label">Apariencia</string>
     <string name="settings_screen_appearance_desc">Tema/tamaño de fuente</string>
-    <string name="settings_screen_chat">charlar</string>
+    <string name="settings_screen_chat">Chat</string>
     <string name="settings_screen_chat_desc">Visualización de mensajes/Comportamiento interactivo/Avanzado</string>
     <string name="settings_screen_media">Transmisión de voz</string>
     <string name="settings_screen_media_desc">Salida de voz/TTS/Audio</string>
@@ -320,7 +320,7 @@
     <string name="settings_screen_pii_guard_desc">Bloquear automáticamente el número de teléfono celular antes de enviar/Correo electrónico/Tarjeta de identificación, etcétera.</string>
     <string name="settings_screen_provider">proveedor</string>
     <string name="settings_screen_task_routing_desc">Modelo de configuración para agrupación de tareas en segundo plano (widget/grandes herramientas/visión)</string>
-    <string name="settings_screen_provider_desc">proveedor de modelos de gestión,API Key y búsqueda en Internet, etc.</string>
+    <string name="settings_screen_provider_desc">Administra proveedores, claves API y búsquedas en internet.</string>
     <string name="settings_screen_assistant">asistente</string>
     <string name="settings_screen_assistant_desc">Asistentes de gestión, modelos, escenarios de personajes y libros del mundo.</string>
     <string name="settings_screen_agent_desc">Selección de asistente / Colaboración / Mensajería proactiva</string>
@@ -370,7 +370,7 @@
     <string name="channel_edit">Editar</string>
     <string name="channel_delete_confirm">¿Eliminar este canal?</string>
     <string name="channel_empty">El canal aún no se ha configurado, haga clic en el botón de arriba para agregarlo.</string>
-    <string name="channel_save">guardar</string>
+    <string name="channel_save">Guardar</string>
     <string name="channel_field_platform">plataforma</string>
     <!-- v2.0.1: Nombre para mostrar localizado en la plataforma -->
     <string name="channel_platform_feishu">Feishu</string>
@@ -382,8 +382,8 @@
     <string name="channel_tutorial_title">Tutorial de acceso a la plataforma</string>
     <string name="channel_tutorial_close">Lo tengo</string>
     <string name="channel_secret_stored_placeholder">Guardado, ingresa un nuevo valor para reemplazar</string>
-    <string name="channel_secret_show">mostrar</string>
-    <string name="channel_secret_hide">ocultar</string>
+    <string name="channel_secret_show">Mostrar</string>
+    <string name="channel_secret_hide">Ocultar</string>
     <string name="channel_test_connection">conexión de prueba</string>
     <string name="channel_test_failed">prueba fallida</string>
     <string name="channel_owner_select">¿Cuál cuenta es la tuya?</string>
@@ -411,7 +411,7 @@
     <string name="channel_field_target">Enviar objetivo ID</string>
     <string name="channel_field_qq_type">QQ tipo de objetivo</string>
     <string name="channel_type_group">chat grupal</string>
-    <string name="channel_type_c2c">charla privada</string>
+    <string name="channel_type_c2c">Chat privado</string>
     <string name="channel_auto_reply">respuesta automática</string>
     <string name="channel_auto_reply_desc">Ejecute automáticamente el asistente y publique cuando reciba mensajes de este canal (cuota modelo consumida en cada ronda)</string>
     <!-- v2.0.1: Asistente de encuadernación de respuesta automática -->
@@ -428,7 +428,7 @@
     <string name="channel_conversation_reset_confirm_title">¿Reiniciar contexto?</string>
     <string name="channel_conversation_reset_confirm_text">El historial y el resumen de esta conversación se borrarán y las respuestas posteriores ya no recordarán el contenido anterior.</string>
     <string name="channel_conversation_expand">iniciar una conversación</string>
-    <string name="channel_conversation_collapse">cerrar</string>
+    <string name="channel_conversation_collapse">Cerrar</string>
     <string name="channel_weclaw_bind_title">Vincular WeChat ClawBot</string>
     <string name="channel_weclaw_bind_hint">Utilice WeChat para escanear el código QR y completar el enlace</string>
     <string name="channel_weclaw_bind_loading">Obteniendo código QR…</string>
@@ -619,7 +619,7 @@
     <string name="skill_bulk_summary">Habilidades personalizadas %1$d , habilitado %2$d un</string>
     <string name="skill_bulk_disable_all">Desactivar todo</string>
     <string name="skill_bulk_enable_all">Habilitar todo</string>
-    <string name="skill_disabled">Discapacitado</string>
+    <string name="skill_disabled">Desactivado</string>
     <string name="skill_built_in">Incorporado</string>
     <string name="skill_built_in_seed">Incorporado(seed)</string>
     <string name="skill_custom">Personalizar</string>
@@ -629,7 +629,7 @@
     <string name="skill_label_category">Clasificación</string>
     <string name="skill_label_implementation">darse cuenta</string>
     <string name="skill_label_source">Fuente</string>
-    <string name="skill_close">cerrar</string>
+    <string name="skill_close">Cerrar</string>
     <string name="skill_delete">Eliminar</string>
     <string name="skill_delete_confirm_title">Confirmar eliminación</string>
     <string name="skill_delete_confirm_message">¿Estás seguro de que deseas eliminar "?%1$s"?" Esta acción no se puede deshacer.</string>
@@ -672,7 +672,7 @@
 
     <!-- ===== P2-2: Diferencias del modelo ascendente Sheet(ModelDiffSheet) ===== -->
     <string name="model_diff_title">Diferencias del modelo ascendente</string>
-    <string name="model_diff_new">Agregado aguas arriba (%1$d)</string>
+    <string name="model_diff_new">Agregados por el proveedor (%1$d)</string>
     <string name="model_diff_removed">Eliminado (%1$d)</string>
     <string name="model_diff_unchanged">Sea consistente (%1$d)</string>
     <string name="model_diff_add_all">agregar todo nuevo</string>
@@ -723,7 +723,7 @@
     <string name="settings_assistant_resources_title">Recursos asistentes</string>
     <string name="video_gen_title">generación de vídeo</string>
     <string name="video_gen_prompt">Describe el vídeo que deseas generar.</string>
-    <string name="video_gen_model">modelo</string>
+    <string name="video_gen_model">Modelo</string>
     <string name="video_gen_duration">duración</string>
     <string name="video_gen_resolution">resolución</string>
     <string name="video_gen_reference_image">Imágenes de referencia (opcional)</string>
@@ -739,7 +739,7 @@
     <string name="video_gen_open_video">Abrir vídeo</string>
     <string name="video_gen_no_app">No se encontró ninguna aplicación para reproducir vídeo.</string>
     <string name="video_gen_provider">proveedor</string>
-    <string name="video_gen_no_provider">Los proveedores disponibles aún no han sido configurados. Por favor vaya al menú "Proveedores" para agregar y completar el API Key</string>
+    <string name="video_gen_no_provider">No hay proveedores disponibles. Agrega uno desde Proveedores e introduce su clave API.</string>
 
     <!-- ===== P2-5: SiliconFlow Modelo libre para decir la verdad.(PresetProviders / ProviderEditPage) ===== -->
     <string name="preset_siliconflow">flujo a base de silicio</string>
@@ -869,7 +869,7 @@
     <!-- ===== P2-9: Clonación de voz(VoiceCloningPage + MediaSettingsPage entrada) ===== -->
     <string name="voice_cloning_title">Clonación de voz</string>
     <string name="voice_cloning_provider">proveedor de servicios</string>
-    <string name="voice_cloning_api_key">API Key</string>
+    <string name="voice_cloning_api_key">Clave API</string>
     <string name="voice_cloning_new_voice">Clonar nueva voz</string>
     <string name="voice_cloning_voice_name">Nombre de voz</string>
     <string name="voice_cloning_select_audio">Seleccionar audio de muestra</string>
@@ -878,8 +878,8 @@
     <string name="voice_cloning_list_title">Voz clonada</string>
     <string name="voice_cloning_delete_confirm">¿Estás seguro de que deseas eliminar esta voz clonada?</string>
     <string name="voice_cloning_success">Clonación exitosa</string>
-    <string name="voice_cloning_key_saved">El sonido está configurado en actual,API Key salvado</string>
-    <string name="voice_cloning_key_from_provider">El sonido está configurado en actual,API Key Heredar la configuración del proveedor</string>
+    <string name="voice_cloning_key_saved">Voz seleccionada y clave API guardada</string>
+    <string name="voice_cloning_key_from_provider">Voz seleccionada. Se usará la clave API del proveedor.</string>
     <string name="voice_cloning_failed">La clonación falló:%1$s</string>
     <string name="voice_cloning_audio_required">Seleccione primero el audio de muestra</string>
 
@@ -895,7 +895,7 @@
 
     <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n -->
     <string name="settings_screen_entry_tts_playback">TTS Transmisión de voz</string>
-    <string name="settings_screen_entry_api_key">API Key</string>
+    <string name="settings_screen_entry_api_key">Clave API</string>
     <string name="settings_screen_entry_archived">Archivar chat</string>
     <string name="settings_screen_entry_font_size">Tamaño de fuente</string>
     <string name="settings_screen_entry_theme_mode">modo tema</string>
@@ -939,7 +939,7 @@
     <string name="channel_conversation_role_user">la otra parte</string>
     <string name="channel_conversation_turn_line">%1$s:%2$s</string>
     <!-- v2.2.1: Accesible e independiente Provider(Mejoras opcionales) -->
-    <string name="permission_a11y_provider_title">Independiente y accesible Provider</string>
+    <string name="permission_a11y_provider_title">Proveedor independiente para accesibilidad</string>
     <string name="permission_a11y_provider_installed">Se ha instalado la versión independiente (la actualización principal de la aplicación no se eliminará)</string>
     <string name="permission_a11y_provider_not_installed">No instalado (opcional)</string>
     <string name="permission_a11y_provider_desc">Después de instalar la versión independiente, actualizar o reinstalar la aplicación principal no interrumpirá la autorización de accesibilidad. No instalarlo no afectará su uso.</string>

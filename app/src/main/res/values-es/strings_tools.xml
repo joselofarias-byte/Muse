@@ -225,7 +225,7 @@
     <string name="plugin_download_failed">Falló la descarga del complemento</string>
     <string name="plugin_review_failed">Error en la revisión del paquete de complemento</string>
     <string name="plugin_install_failed">La instalación falló</string>
-    <string name="plugin_json_too_large">Provider El complemento JSON supera el límite de tamaño (%1$dKB)</string>
+    <string name="plugin_json_too_large">El JSON del complemento del proveedor supera el límite de tamaño (%1$d KB)</string>
     <string name="plugin_file_read_failed">No se puede leer el archivo seleccionado</string>
     <string name="plugin_public_key_invalid">Clave pública no válida</string>
     <string name="plugin_rollback_failed">La reversión falló</string>

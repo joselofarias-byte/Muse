@@ -57,7 +57,7 @@
     <string name="plugin_author_invalid_capabilities">Las capacidades de los parámetros deben ser una matriz de cadenas (se puede omitir)</string>
     <string name="plugin_author_progress">Generando borrador de complemento...</string>
     <string name="plugin_author_draft_created">Complemento borrador sin firmar creado:%1$s(id=%2$s, v%3$s, Herramientas=%4$s). El borrador está actualmente deshabilitado y no es ejecutable, y aún no se puede llamar al asistente; por favor pídale al usuario que → Después de revisar la lista de herramientas y el código en "Administración de complementos", haga clic en "Firmar y activar". Solo entrará en vigor después de haber sido firmado por la clave del autor local.</string>
-    <string name="skill_unknown_error">error desconocido</string>
+    <string name="skill_unknown_error">Error desconocido</string>
     <string name="chat_auto_route_prefix">ha sido delegado automáticamente a "%1$s"</string>
     <string name="skill_assistant_not_found">No encontrado con identificación %1$s subasistente, créelo en la gestión de asistentes</string>
     <string name="skill_delegate_failed">sub-asistente %1$s La llamada falló: %2$s</string>
@@ -289,7 +289,7 @@
     <string name="tool_sensors_item">  - %1$s (Fabricante: %2$s, Versión: %3$d)</string>
     <string name="tool_sensors_empty">Sensor no encontrado</string>
     <string name="tool_brightness_info">Brillo actual: %1$d / 255\nModo: %2$s</string>
-    <string name="tool_brightness_auto">automático</string>
+    <string name="tool_brightness_auto">Automático</string>
     <string name="tool_brightness_manual">manuales</string>
     <string name="tool_brightness_set">El brillo está configurado en %1$d</string>
     <string name="tool_brightness_auto_set">Brillo automático habilitado</string>
@@ -402,7 +402,7 @@
     <string name="tool_quick_note_missing_id">Parámetros faltantes: id</string>
 
     <!-- ===== web/WebServer ===== -->
-    <string name="webserver_unknown_error">error desconocido</string>
+    <string name="webserver_unknown_error">Error desconocido</string>
     <string name="webserver_rate_limited_remaining">La solicitud es demasiado frecuente, por favor. %1$d Vuelve a intentarlo en segundos</string>
     <string name="webserver_bad_request">Error de formato del cuerpo de la solicitud: %1$s</string>
     <string name="webserver_auth_failed">Contraseña incorrecta</string>

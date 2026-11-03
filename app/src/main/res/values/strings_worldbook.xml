@@ -11,14 +11,14 @@
     <string name="worldbook_new_default_name">entrada del libro nuevo mundo</string>
     <string name="worldbook_new_title">Crear un nuevo libro mundial</string>
     <string name="worldbook_edit_title">Editar libro mundial</string>
-    <string name="worldbook_save">guardar</string>
+    <string name="worldbook_save">Guardar</string>
     <string name="worldbook_unsaved_title">Cambios no guardados</string>
     <string name="worldbook_unsaved_content">El contenido editado actualmente no se ha guardado. ¿Estás seguro de que quieres descartarlo?</string>
     <string name="worldbook_discard">descartar</string>
     <string name="worldbook_unnamed">Sin nombre</string>
-    <string name="worldbook_disabled">Discapacitado</string>
+    <string name="worldbook_disabled">Desactivado</string>
     <string name="worldbook_enabled_cd">Habilitado</string>
-    <string name="worldbook_disabled_cd">Discapacitado</string>
+    <string name="worldbook_disabled_cd">Desactivado</string>
     <string name="worldbook_edit_cd">Editar</string>
     <string name="worldbook_delete_cd">Eliminar</string>
     <string name="worldbook_delete_title">eliminar libro mundial</string>

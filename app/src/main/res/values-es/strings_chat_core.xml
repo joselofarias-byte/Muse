@@ -79,7 +79,7 @@
     <string name="moment_delete_title">Eliminar actualizaciones</string>
     <string name="moment_image_cd">gráficos dinámicos</string>
     <string name="moment_image_cd_indexed">gráficos dinámicos %1$d</string>
-    <string name="moment_avatar_cd">avatar</string>
+    <string name="moment_avatar_cd">Avatar</string>
     <string name="moment_cover_cd">Portada de momentos</string>
     <string name="moment_messages_cd">noticias</string>
     <string name="moment_publish_cd">Publicar noticias (presione brevemente para imágenes y texto, presione prolongadamente para texto sin formato)</string>
@@ -402,7 +402,7 @@
     <string name="chat_quality_high">alto</string>
     <string name="chat_quality_medium">en</string>
     <string name="chat_quality_low">bajo</string>
-    <string name="chat_quality_auto">automático</string>
+    <string name="chat_quality_auto">Automático</string>
     <string name="chat_style_vivid">vívido</string>
     <string name="chat_style_natural">naturales</string>
 
@@ -431,7 +431,7 @@
 
     <!-- Página de inicio de tareas -->
     <string name="chat_list_input_hint">Introduzca cualquier idea…</string>
-    <string name="chat_list_send">enviar</string>
+    <string name="chat_list_send">Enviar</string>
     <string name="chat_list_no_recent_title">Aún no hay sesión</string>
     <string name="chat_list_no_recent_subtitle">Haga clic en el signo + a continuación para iniciar una nueva conversación.</string>
     <string name="chat_list_knowledge_title">base de conocimientos</string>
@@ -515,7 +515,7 @@
     <string name="chat_agent_tab_title">Agent</string>
     <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
     <string name="msg_info_title">información del mensaje</string>
-    <string name="msg_info_model">modelo</string>
+    <string name="msg_info_model">Modelo</string>
     <string name="msg_info_time">tiempo</string>
     <string name="msg_info_duration">Generar lleva mucho tiempo</string>
     <string name="msg_info_tokens_title">Token Dosis</string>
@@ -529,7 +529,7 @@
     <string name="msg_info_estimated">estimación</string>
     <string name="msg_info_no_data">No hay datos generados</string>
     <string name="msg_info_unknown">desconocido</string>
-    <string name="chat_debug_model_label">modelo</string>
+    <string name="chat_debug_model_label">Modelo</string>
     <string name="chat_debug_duration_label">Consume mucho tiempo</string>
     <string name="chat_debug_ttft_label">TTFT</string>
     <string name="chat_debug_rate_label">tarifa</string>
@@ -572,7 +572,7 @@
 
     <!-- ===== UIReparación de experiencia de enlace ===== -->
     <!-- U-1: La barra de avisos para residentes del servicio modelo no está configurada(Haga clic para saltar a la configuración del modelo.) -->
-    <string name="chat_model_not_configured_hint">El servicio modelo aún no se ha configurado, configúrelo primero API Key</string>
+    <string name="chat_model_not_configured_hint">Configura un proveedor e introduce su clave API para empezar.</string>
     <!-- U-6: Aviso único para operación de gestos -->
     <!-- U-17: El servicio de voz aún no está listo(Diferente a la falta de permisos) -->
     <string name="chat_voice_not_ready">La voz aún no está lista. Vuelve a intentarlo más tarde.</string>

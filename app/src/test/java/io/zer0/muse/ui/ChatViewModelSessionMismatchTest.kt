@@ -49,6 +49,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
@@ -229,6 +230,17 @@ class ChatViewModelSessionMismatchTest {
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
+    // Outbox writes run on Dispatchers.IO, outside the virtual test scheduler.
+    private fun awaitSessionRollback() = runBlocking {
+        withTimeout(5_000) {
+            outboxPersisted.await()
+            while (viewModel.state.value.isStreaming) {
+                testDispatcher.scheduler.advanceUntilIdle()
+                delay(10)
+            }
+        }
+    }
+
     // ── caso de prueba ────────────────────────────────────────────────────────
 
     @Test
@@ -252,6 +264,8 @@ class ChatViewModelSessionMismatchTest {
         // Deje que el consumidor del canal maneje la solicitud.(En este momento currentSessionId=B ≠ req.sessionId=A)
         advanceUntilIdle()
 
+        awaitSessionRollback()
+
         // Verifique que el mensaje optimista haya sido eliminado
         val stateAfterRollback = viewModel.state.value
         assertEquals("session mismatch La lista de mensajes debe estar vacía después de la reversión", 0, viewModel.messages.value.size)
@@ -272,6 +286,8 @@ class ChatViewModelSessionMismatchTest {
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
 
+        awaitSessionRollback()
+
         // Verificar que la bandera de transmisión esté restablecida
         assertFalse("mismatch Después de la reversión, isStreaming debería ser false", viewModel.state.value.isStreaming)
         assertFalse("mismatch Después de la reversión, isWaitingFirstToken debería ser false", viewModel.state.value.isWaitingFirstToken)
@@ -288,6 +304,8 @@ class ChatViewModelSessionMismatchTest {
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
 
+        awaitSessionRollback()
+
         // Verifique que nunca se llame a appendMessage(No escriba mensajes en la sesión de error.)
         coVerify(exactly = 0) { sessionRepository.appendMessage(any(), any()) }
     }
@@ -301,6 +319,8 @@ class ChatViewModelSessionMismatchTest {
 
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
+
+        awaitSessionRollback()
 
         // launchGeneration Es la entrada a launchStream.;mismatch no debe ser llamado cuando
         // Nota:launchGeneration no suspend,Utilice verificar en lugar de coVerify
@@ -385,6 +405,8 @@ class ChatViewModelSessionMismatchTest {
         // Cambiar agentSessionId Simular cambio de pestaña Agente
         viewModel.update { it.copy(agentSessionId = "agent-session-B") }
         advanceUntilIdle()
+
+        awaitSessionRollback()
 
         // Verificar que se eliminen los mensajes optimistas
         assertEquals(0, viewModel.messages.value.size)

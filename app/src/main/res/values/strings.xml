@@ -180,9 +180,9 @@
     <string name="recently_deleted_auto_clear">7 Eliminado automática y permanentemente después de divas</string>
 
     <!-- ai/memory Mapa de mensajes de error del módulo ErrorCode -->
-    <string name="err_no_provider_configured">No hay ningún proveedor configurado, vaya a la página de configuración para completarlo primero API Key</string>
-    <string name="err_no_model_selected">Provider No hay ningún modelo configurado, vaya a la página de configuración para agregar un modelo primero</string>
-    <string name="err_auth_failed">Error de autenticación, verifique API Key</string>
+    <string name="err_no_provider_configured">No hay proveedores configurados. Agrega uno e introduce su clave API desde Ajustes.</string>
+    <string name="err_no_model_selected">El proveedor no tiene modelos configurados. Agrega uno desde Ajustes.</string>
+    <string name="err_auth_failed">Error de autenticación. Comprueba tu clave API.</string>
     <string name="err_rate_limited">La solicitud es demasiado frecuente, inténtelo de nuevo más tarde.</string>
     <string name="err_request_timeout">Solicitar tiempo de espera</string>
     <string name="err_service_unavailable">El servicio no está disponible temporalmente, inténtalo de nuevo más tarde.</string>
@@ -204,7 +204,7 @@
     <string name="err_image_reference_too_large">La imagen de referencia es demasiado grande (%1$sMB), límite superior 10MB</string>
     <string name="err_image_reference_download_failed">Falló la descarga de la imagen de referencia (%1$s)</string>
     <string name="err_image_invalid_uri">Formato URI de imagen no compatible</string>
-    <string name="err_image_api_key_missing">No configurado API Key</string>
+    <string name="err_image_api_key_missing">No se ha configurado una clave API</string>
     <string name="err_vertex_ai_config_invalid">Vertex AI Configuración no válida (%1$s)</string>
     <string name="err_vertex_ai_token_failed">Vertex AI Error de autenticación (%1$s)</string>
     <string name="err_memory_token_budget_invalid">El presupuesto del token de memoria no es válido (%1$s)</string>
@@ -248,7 +248,7 @@
     <!-- Advertencia de tarea programada no guardada -->
     <string name="schedule_unsaved_title">¿Renunciar a la modificación?</string>
     <string name="schedule_unsaved_message">Las modificaciones actuales no se han guardado. ¿Estás seguro de que quieres cerrar?</string>
-    <string name="schedule_discard">rendirse</string>
+    <string name="schedule_discard">Descartar</string>
 
     <!-- v1.0.75: AI Interacción en momentos -->
     <string name="moment_sender_user">yo</string>
@@ -267,7 +267,7 @@
     <string name="assistant_detail_capabilities_title">Etiqueta de capacidad</string>
     <string name="assistant_detail_capabilities_desc">Marque las áreas en las que el asistente es bueno para la coincidencia automática de rutas</string>
     <string name="assistant_detail_custom_capability">Capacidades de personalización</string>
-    <string name="assistant_detail_add">agregar</string>
+    <string name="assistant_detail_add">Agregar</string>
 
     <!-- Flujo de trabajo del equipo multiagente -->
     <string name="settings_multi_agent_workflow">Orquestación del flujo de trabajo</string>

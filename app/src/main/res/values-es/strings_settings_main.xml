@@ -4,100 +4,100 @@
     <string name="settings_common_cancel">Cancelar</string>
     <string name="settings_slider_input_hint">Introducir valor</string>
     <string name="settings_slider_input_confirm">OK</string>
-    <string name="settings_rag_embedding_provider_hint">NOTA: No todos los proveedores ofrecen modelos integrados (solo los proveedores con modelos conversacionales fallarán). Después de la configuración, haga clic en "Probar incrustación" a continuación antes de reconstruir el índice.</string>
+    <string name="settings_rag_embedding_provider_hint">No todos los proveedores ofrecen modelos de embeddings. Los proveedores que solo ofrecen modelos de chat no sirven para esta función. Prueba los embeddings antes de reconstruir el índice.</string>
     <string name="settings_rag_onnx_section">Modelo local (opcional)</string>
-    <string name="settings_rag_onnx_model_title">ONNX Embedding modelo</string>
-    <string name="settings_rag_onnx_model_empty">No seleccionado —— Actualmente degradado a recuperación de palabras clave (no semántica)</string>
+    <string name="settings_rag_onnx_model_title">Modelo de embeddings ONNX</string>
+    <string name="settings_rag_onnx_model_empty">Sin modelo: se usa la búsqueda por palabras clave, sin búsqueda semántica.</string>
     <string name="settings_rag_onnx_pick">Seleccionar archivo de modelo</string>
     <string name="settings_rag_onnx_clear">Borrar</string>
-    <string name="settings_rag_onnx_hint">Seleccione un archivo de modelo .onnx en el mismo directorio que vocab.txt. Después de la selección, se copiará automáticamente al directorio privado de la aplicación sin autorización nuevamente.</string>
+    <string name="settings_rag_onnx_hint">Selecciona un archivo .onnx ubicado en el mismo directorio que vocab.txt. Muse lo copiará a su almacenamiento privado para no volver a pedir acceso.</string>
     <string name="settings_rag_onnx_picked">El modelo ha sido importado.</string>
-    <string name="settings_rag_onnx_pick_failed">Error de importación:%1$s</string>
-    <string name="settings_rag_embedding_test">prueba Embedding</string>    <string name="settings_rag_embedding_testing">Bajo prueba…</string>
-    <string name="settings_rag_embedding_test_ok">Conexión correcta: dimensión %1$d, requiere mucho tiempo %2$d ms</string>
-    <string name="settings_rag_embedding_test_failed">Prueba fallida:%1$s</string>
+    <string name="settings_rag_onnx_pick_failed">Error al importar: %1$s</string>
+    <string name="settings_rag_embedding_test">Probar embeddings</string>    <string name="settings_rag_embedding_testing">Probando…</string>
+    <string name="settings_rag_embedding_test_ok">Conexión correcta: dimensión %1$d · %2$d ms</string>
+    <string name="settings_rag_embedding_test_failed">Error en la prueba: %1$s</string>
     <string name="settings_rag_config_read_failed">Error de lectura de configuración</string>
-    <string name="settings_common_save">guardar</string>
+    <string name="settings_common_save">Guardar</string>
     <string name="settings_common_delete">Eliminar</string>
-    <string name="settings_common_close">cerrar</string>
-    <string name="settings_common_add">agregar</string>
-    <string name="settings_common_show">mostrar</string>
-    <string name="settings_common_hide">ocultar</string>
+    <string name="settings_common_close">Cerrar</string>
+    <string name="settings_common_add">Agregar</string>
+    <string name="settings_common_show">Mostrar</string>
+    <string name="settings_common_hide">Ocultar</string>
     <string name="settings_common_expand">Expandir</string>
-    <string name="settings_common_collapse">cerrar</string>
+    <string name="settings_common_collapse">Contraer</string>
     <string name="settings_common_advanced">Avanzado</string>
     <string name="settings_state_enabled">Habilitado</string>
-    <string name="settings_state_disabled">Discapacitado</string>
+    <string name="settings_state_disabled">Desactivado</string>
 
     <!-- ==================== Provider ajustes ==================== -->
-    <string name="settings_provider_list_title">Provider lista</string>
+    <string name="settings_provider_list_title">Proveedores</string>
     <string name="settings_provider_empty_title">Aún no hay proveedor</string>
-    <string name="settings_provider_empty_subtitle">Agregue un proveedor primero antes de que el asistente pueda comenzar a trabajar</string>
+    <string name="settings_provider_empty_subtitle">Agrega un proveedor para empezar a usar el asistente.</string>
     <string name="settings_provider_empty_action">Agregar proveedor</string>
     <string name="settings_provider_category_official">Fabricante oficial</string>
-    <string name="settings_provider_category_relay">estación de transferencia</string>
-    <string name="settings_provider_category_custom">Personalizar</string>
-    <string name="settings_provider_add">agregar Provider</string>
-    <string name="settings_provider_status_enabled">habilitar</string>
-    <string name="settings_provider_status_disabled">Desactivar</string>
+    <string name="settings_provider_category_relay">Intermediarios de API</string>
+    <string name="settings_provider_category_custom">Personalizado</string>
+    <string name="settings_provider_add">Agregar proveedor</string>
+    <string name="settings_provider_status_enabled">Activado</string>
+    <string name="settings_provider_status_disabled">Desactivado</string>
     <string name="settings_provider_json_parse_failed">JSON Error de análisis: falta private_key / client_email</string>
     <string name="settings_provider_imported_from_json">Credenciales de cuenta de servicio importadas desde JSON</string>
     <string name="settings_provider_import_failed">Error de importación: %1$s</string>
-    <string name="settings_provider_fill_api_key_first">Por favor complete primero API Key</string>
-    <string name="settings_provider_no_models_returned">No se devolvió ningún modelo desde el nivel ascendente; verifique si la dirección de la interfaz es correcta</string>
-    <string name="settings_provider_unknown_error">error desconocido</string>
+    <string name="settings_provider_fill_api_key_first">Introduce primero tu clave API.</string>
+    <string name="settings_provider_no_models_returned">El proveedor no devolvió modelos. Comprueba la URL de la API.</string>
+    <string name="settings_provider_unknown_error">Error desconocido</string>
     <string name="settings_provider_404_error">Este proveedor no admite la interfaz /models, agregue modelos manualmente</string>
-    <string name="settings_provider_auth_error">API Key Permisos no válidos o insuficientes</string>
+    <string name="settings_provider_auth_error">Clave API inválida o con permisos insuficientes</string>
     <string name="settings_provider_unable_to_resolve">No se puede conectar al servidor, verifique la dirección de la interfaz</string>
     <string name="settings_provider_connection_timeout">Tiempo de espera de conexión</string>
-    <string name="settings_provider_fetch_failed">La extracción falló: %1$s</string>
+    <string name="settings_provider_fetch_failed">No se pudieron obtener los modelos: %1$s</string>
     <string name="settings_provider_configure_balance_first">Primero configure la ruta del punto final de consulta de saldo</string>
     <string name="settings_provider_balance_query_failed_http">La consulta falló (HTTP %1$d): %2$s</string>
-    <string name="settings_provider_balance_response">Respuesta del equilibrio:\n%1$s</string>
+    <string name="settings_provider_balance_response">Respuesta de saldo:\n%1$s</string>
     <string name="settings_provider_balance_result">Resultado del saldo: %1$s</string>
-    <string name="settings_provider_balance_path_not_found">camino no encontrado %1$s, respuesta original:\n%2$s</string>
+    <string name="settings_provider_balance_path_not_found">No se encontró la ruta %1$s. Respuesta original:\n%2$s</string>
     <string name="settings_provider_unable_to_resolve_server">No se puede resolver la dirección del servidor</string>
     <string name="settings_provider_query_timeout">Tiempo de espera de consulta</string>
     <string name="settings_provider_query_failed">La consulta falló: %1$s</string>
-    <string name="settings_provider_discard_changes_title">¿Renunciar a la modificación?</string>
-    <string name="settings_provider_discard_changes_content">Actualmente hay modificaciones no guardadas que se perderán al salir. ¿Confirmar para rendirse?</string>
-    <string name="settings_provider_discard">rendirse</string>
-    <string name="settings_provider_new">Nuevo Provider</string>
+    <string name="settings_provider_discard_changes_title">¿Descartar los cambios?</string>
+    <string name="settings_provider_discard_changes_content">Hay cambios sin guardar. Si sales, se perderán.</string>
+    <string name="settings_provider_discard">Descartar</string>
+    <string name="settings_provider_new">Nuevo proveedor</string>
     <!-- F-12: Botón de prueba de terminal(Solo ajusta /models conectividad de verificación ligera) -->
-    <string name="settings_provider_test_connection_endpoint">Conexión de prueba (dirección de interfaz)</string>
+    <string name="settings_provider_test_connection_endpoint">Probar conexión con la API</string>
     <string name="settings_provider_test_connection_endpoint_sub">Envía un mensaje real para verificar que el modelo está disponible.</string>
-    <string name="settings_provider_test_success_chat_ok">La conexión es normal. · %1$s Disponible</string>
+    <string name="settings_provider_test_success_chat_ok">Conexión correcta · %1$s disponible</string>
     <!-- v2.4: Copia del resultado de la prueba de conexión independiente(mensaje corto,Diferenciación de la clasificación de errores de fetchModels) -->
-    <string name="settings_provider_test_success_count">La conexión es normal. · %1$d modelos</string>
-    <string name="settings_provider_test_error_auth">API Key Inválido</string>
-    <string name="settings_provider_test_error_404">URL No compatible</string>
+    <string name="settings_provider_test_success_count">Conexión correcta · %1$d modelos</string>
+    <string name="settings_provider_test_error_auth">Clave API inválida</string>
+    <string name="settings_provider_test_error_404">URL no compatible</string>
     <string name="settings_provider_test_error_timeout">Tiempo de espera de conexión</string>
     <string name="settings_provider_test_error_unknown_host">No se puede conectar al servidor</string>
     <string name="settings_provider_test_error_failed">La conexión falló: %1$s</string>
-    <string name="settings_provider_test_success_chat_only">La conexión es normal (esta interfaz no admite lista de modelos, se ha verificado con detección de chat)</string>
-    <string name="settings_provider_test_error_html">El servidor devolvió una página web en lugar de API JSON.NewAPI Las interfaces compatibles generalmente requieren agregar /v1 después de la dirección base; verifique la ruta API y el proxy inverso.</string>
+    <string name="settings_provider_test_success_chat_only">Conexión correcta. Esta API no permite listar modelos; se verificó mediante un mensaje de chat.</string>
+    <string name="settings_provider_test_error_html">El servidor devolvió una página web en lugar de una respuesta JSON de la API. Las interfaces compatibles con NewAPI suelen requerir /v1 al final de la URL base. Comprueba la ruta de la API y el proxy inverso.</string>
     <!-- v1.133: Pruebas de estado del lote del proveedor(encabezado de lista"Todas las pruebas"Botón + pantalla de estado en línea) -->
-    <string name="settings_provider_test_all">Todas las pruebas</string>
-    <string name="settings_provider_test_all_done">Finalización: Éxito %1$d / falló %2$d</string>
-    <string name="settings_provider_test_all_no_providers">Sin proveedores detectables</string>
+    <string name="settings_provider_test_all">Probar todos</string>
+    <string name="settings_provider_test_all_done">Pruebas terminadas: %1$d correctas / %2$d fallidas</string>
+    <string name="settings_provider_test_all_no_providers">No hay proveedores para probar</string>
     <string name="settings_provider_test_result_ok">%1$d ms</string>
     <string name="settings_provider_test_result_failed">falló</string>
-    <string name="settings_provider_test_row_testing">Bajo detección</string>
-    <string name="settings_provider_test_skip_no_key">No configurado API Key</string>
+    <string name="settings_provider_test_row_testing">Probando…</string>
+    <string name="settings_provider_test_skip_no_key">Sin clave API</string>
     <string name="settings_provider_tab_config">Configuración</string>
-    <string name="settings_provider_tab_models">modelo</string>
+    <string name="settings_provider_tab_models">Modelos</string>
     <string name="settings_provider_file_picker_failed">No se puede abrir el selector de archivos: %1$s</string>
     <string name="settings_provider_delete_title">Eliminar proveedor</string>
-    <string name="settings_provider_delete_content">Confirmar eliminación %1$s? Esta operación es irreversible.</string>
+    <string name="settings_provider_delete_content">¿Eliminar %1$s? Esta acción no se puede deshacer.</string>
     <string name="settings_provider_action_activate">Establecer como actual</string>
     <string name="settings_model_catalog_refresh">Buscar actualizaciones</string>
     <string name="settings_model_catalog_refreshing">Actualizando…</string>
     <string name="settings_provider_fetch">Obtener</string>
     <string name="settings_provider_add_new_model">Agregar nuevo modelo</string>
-    <string name="settings_provider_model_id">modelo ID</string>
+    <string name="settings_provider_model_id">ID del modelo</string>
     <string name="settings_provider_type">Tipo</string>
-    <string name="settings_provider_display_name">nombre para mostrar</string>
-    <string name="settings_provider_base_url">Dirección de interfaz (déjela en blanco para usar la predeterminada)</string>
+    <string name="settings_provider_display_name">Nombre para mostrar</string>
+    <string name="settings_provider_base_url">URL base de la API (deja el campo vacío para usar la predeterminada)</string>
     <!-- F-11: Múltiples grupos de claves UI -->
     <string name="settings_provider_api_key_pool">API Grupo de claves (se pueden pegar varias claves)</string>
     <string name="settings_provider_keys_count">configurado %1$d un Key</string>
@@ -113,7 +113,7 @@
     <string name="settings_provider_import_from_json">Importar credenciales desde un archivo JSON</string>
     <string name="settings_provider_service_account_email">Correo electrónico de la cuenta de servicio</string>
     <string name="settings_provider_private_key">clave privada (PEM formato, incluidas las líneas COMIENZO/FIN)</string>
-    <string name="settings_provider_enable_this">Habilitar esto Provider(No aparece en la lista de cambio de modelo después de ser desactivado)</string>
+    <string name="settings_provider_enable_this">Activar este proveedor (si se desactiva, no aparecerá en el selector de modelos)</string>
     <string name="settings_provider_balance_api_path">Ruta del punto final de consulta de saldo (como /dashboard/billing/usage)</string>
     <string name="settings_provider_balance_result_path">Ruta JSON del resultado del saldo (p. ej. $.data.total_usage)</string>
     <string name="settings_provider_query_balance">Consultar saldo</string>
@@ -268,8 +268,8 @@
     <string name="cloud_backup_type_none">No configurado</string>
     <string name="cloud_backup_type_webdav">WebDAV</string>
     <string name="cloud_backup_type_s3">S3 Almacenamiento compatible</string>
-    <string name="cloud_backup_show_secret">mostrar</string>
-    <string name="cloud_backup_hide_secret">ocultar</string>
+    <string name="cloud_backup_show_secret">Mostrar</string>
+    <string name="cloud_backup_hide_secret">Ocultar</string>
 
     <!-- ==================== MCP ajustes ==================== -->
     <string name="settings_mcp_title">MCP servidor</string>
@@ -368,7 +368,7 @@
     <string name="settings_web_status_failed">El inicio del servicio falló:%1$s</string>
 
     <!-- ==================== Chat ajustes ==================== -->
-    <string name="settings_chat_title">charlar</string>
+    <string name="settings_chat_title">Chat</string>
     <string name="settings_chat_background_section">Apariencia</string>
     <string name="settings_chat_background_title">Fondo de chat</string>
     <string name="settings_chat_background_subtitle">Fondo personalizado de chat/agente/chat grupal</string>
@@ -392,13 +392,13 @@
     <string name="settings_chat_randomness">respuesta aleatoriedad</string>
     <string name="settings_chat_temp_hint_certain">Parcialmente seguro, la respuesta es estable y predecible.</string>
     <string name="settings_chat_temp_hint_balanced_low">Equilibrado, teniendo en cuenta la estabilidad y la diversidad.</string>
-    <string name="settings_chat_temp_hint_balanced">equilibrio,0=OK 1=equilibrio 2=creatividad</string>
+    <string name="settings_chat_temp_hint_balanced">0 = preciso · 1 = equilibrado · 2 = creativo</string>
     <string name="settings_chat_temp_hint_creative_low">Sea creativo y tenga respuestas más diversas</string>
     <string name="settings_chat_temp_hint_creative">Creatividad, respuestas divergentes.</string>
     <string name="settings_chat_style">estilo de tono</string>
     <string name="settings_chat_style_subtitle">Nivel de detalle en la respuesta</string>
     <string name="settings_chat_style_concise">conciso</string>
-    <string name="settings_chat_style_balanced">equilibrio</string>
+    <string name="settings_chat_style_balanced">Equilibrado</string>
     <string name="settings_chat_style_detailed">Detallado</string>
     <string name="settings_chat_tone">tono</string>
     <string name="settings_chat_tone_subtitle">tono de respuesta</string>

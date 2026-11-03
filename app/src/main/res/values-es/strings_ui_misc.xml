@@ -2,16 +2,16 @@
 <resources>
     <!-- ===== ui/common Componentes comunes ===== -->
     <string name="common_state_enabled">Habilitado</string>
-    <string name="common_state_disabled">Discapacitado</string>
+    <string name="common_state_disabled">Desactivado</string>
     <string name="common_confirm_delete_message">Confirmar para eliminar "%1$s”?</string>
     <string name="common_delete">Eliminar</string>
     <string name="common_confirm_delete_consequence_default">Esta acción no se puede deshacer.</string>
     <string name="common_cancel">Cancelar</string>
     <string name="common_confirm">OK</string>
     <string name="common_got_it">Lo tengo</string>
-    <string name="common_close">cerrar</string>
+    <string name="common_close">Cerrar</string>
     <string name="common_retry">Inténtalo de nuevo</string>
-    <string name="common_collapse">cerrar</string>
+    <string name="common_collapse">Cerrar</string>
     <string name="common_expand">Expandir</string>
     <string name="common_avatar_cd">%1$savatar</string>
     <string name="common_slider_cd">control deslizante, valor actual %1$s</string>
@@ -104,14 +104,14 @@
     <string name="speech_resume_cd">continuar</string>
 
     <!-- ===== ui/ModelSwitchSheet Panel de interruptores modelo ===== -->
-    <string name="model_switch_title">modelo</string>
-    <string name="model_switch_no_provider">Aún no configurado Provider\nPor favor vaya a "Configuración" → Provider Administrar"Agregar</string>
+    <string name="model_switch_title">Modelo</string>
+    <string name="model_switch_no_provider">No hay proveedores configurados.\nVe a Ajustes → Proveedores para agregar uno.</string>
     <string name="model_switch_provider_label">proveedor</string>
-    <string name="model_switch_no_provider_selected">No seleccionado Provider</string>
+    <string name="model_switch_no_provider_selected">No hay un proveedor seleccionado</string>
     <string name="model_switch_models_label">modelo(%1$s)</string>
     <string name="model_switch_fetching">tirando</string>
     <string name="model_switch_refresh">Actualizar</string>
-    <string name="model_switch_fetching_upstream">Tirando del modelo desde aguas arriba...</string>
+    <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor…</string>
     <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
 Haga clic en Actualizar para extraer la lista desde arriba</string>
     <!-- v1.0.4 (P2): Botón de reintento fallido al extraer el modelo -->
@@ -188,7 +188,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="shortcut_quick_notes_short">taquigrafía</string>
     <string name="shortcut_quick_notes_long">registro rápido</string>
     <!-- v1.0.69: Visor visual del navegador -->
-    <string name="browser_viewer_collapse">cerrar</string>
+    <string name="browser_viewer_collapse">Cerrar</string>
     <string name="browser_viewer_refresh">Actualizar</string>
     <string name="browser_viewer_close">Cerrar el navegador</string>
     <!-- v1.x: Entrada explícita del navegador integrado y estado visible para el usuario -->

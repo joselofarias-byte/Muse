@@ -12,7 +12,7 @@
     <string name="gallery_group_overlays">Ventanas emergentes y paneles</string>
     <string name="gallery_group_misc">Medios y otros</string>
     <string name="gallery_state_loading">En progreso</string>
-    <string name="gallery_state_disabled">Discapacitado</string>
+    <string name="gallery_state_disabled">Desactivado</string>
     <string name="settings_component_gallery">Galería de componentes</string>
     <string name="settings_component_gallery_desc">Aceptación morfológica de todos los componentes en la biblioteca de componentes.</string>
     <string name="settings_component_gallery_keywords">Componentes, Biblioteca de componentes, Galería, Especificación de componentes, Aceptación de componentes,zujian,zujianku,hualang,zj,zjk,hl</string>

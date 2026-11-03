@@ -12,7 +12,7 @@
     <string name="groupchat_delete_message_title">Eliminar mensaje</string>
     <string name="groupchat_delete_message_confirm">¿Estás seguro de que deseas eliminar este mensaje? Esta operación es irreversible.</string>
     <string name="groupchat_reasoning">proceso de pensamiento</string>
-    <string name="groupchat_collapse">cerrar</string>
+    <string name="groupchat_collapse">Cerrar</string>
     <string name="groupchat_expand">Expandir</string>
     <string name="groupchat_image">fotos</string>
     <string name="groupchat_tools">Herramientas</string>
@@ -49,12 +49,12 @@
     <string name="chat_committee_topic">temas de discusión</string>
     <string name="chat_committee_members">Miembros participantes (al menos 2)</string>
     <string name="chat_committee_start">iniciar discusión</string>
-    <string name="groupchat_send">enviar</string>
+    <string name="groupchat_send">Enviar</string>
     <string name="groupchat_pick_content">Elige qué enviar</string>
     <string name="groupchat_pending_image">Fotos para enviar</string>
     <string name="groupchat_members_title">Miembros del chat grupal (%1$d)</string>
     <string name="groupchat_no_members">Aún no hay miembros</string>
-    <string name="groupchat_close">cerrar</string>
+    <string name="groupchat_close">Cerrar</string>
     <string name="groupchat_list_title">chat grupal</string>
     <string name="groupchat_create_cd">Crear un nuevo chat grupal</string>
     <string name="groupchat_no_messages">Aún no hay noticias</string>
@@ -89,7 +89,7 @@
     <string name="groupchat_edit_provider_title">Seleccionar proveedor miembro</string>
     <string name="groupchat_edit">Editar</string>
     <string name="groupchat_edit_title">Editar chat grupal</string>
-    <string name="groupchat_edit_btn">guardar</string>
+    <string name="groupchat_edit_btn">Guardar</string>
     <string name="groupchat_edit_member_required">Por favor mantenga al menos un miembro</string>
     <string name="groupchat_edit_name_hint">Nombre del chat grupal</string>
     <!-- v2.x: Modo de discusión de chat grupal -->
@@ -142,7 +142,7 @@
     <string name="groupchat_context_private_context_hint">Ingrese al contexto único de la IA (configuración de roles, restricciones privadas, etc.)</string>
     <string name="groupchat_context_private_context_set">Ya configurado</string>
     <string name="groupchat_context_private_context_empty">no establecido</string>
-    <string name="groupchat_context_save">guardar</string>
+    <string name="groupchat_context_save">Guardar</string>
     <string name="groupchat_context_clear">Borrar</string>
     <!-- ActivityHub: agent Redacción de chips de estado activo (inactivo/pensar/trabajo/espera/completado) -->
     <string name="groupchat_activity_viewing">leyendo las noticias</string>
@@ -171,12 +171,12 @@
     <string name="account_loading">por favor espera…</string>
     <!-- v2.x: Editar página de perfil(Sin registro de inicio de sesión UI,Solo avatar local + apodo) -->
     <string name="account_edit_profile">Editar perfil</string>
-    <string name="account_avatar">avatar</string>
+    <string name="account_avatar">Avatar</string>
     <string name="account_change_avatar">Cambiar avatar</string>
     <string name="account_change_avatar_hint">Haga clic en el avatar para seleccionar una imagen del álbum.</string>
     <string name="account_name_label">nombre</string>
     <string name="account_name_placeholder">ingresa tu nombre</string>
-    <string name="account_save">guardar</string>
+    <string name="account_save">Guardar</string>
     <string name="account_user_profile_title">datos personales</string>
     <string name="account_user_profile_subtitle">Deja que la IA te conozca mejor</string>
 
@@ -220,7 +220,7 @@
     <string name="schedule_preset_daily_8">todos los dias8punto</string>
     <string name="schedule_preset_midnight">medianoche todos los días</string>
     <string name="schedule_next_run_preview">Será la próxima vez %1$s ejecutar</string>
-    <string name="schedule_save">guardar</string>
+    <string name="schedule_save">Guardar</string>
     <string name="schedule_create_btn">crear</string>
     <string name="schedule_cancel">Cancelar</string>
     <string name="schedule_msg_cancel">Cancelar mensaje programado</string>
@@ -299,7 +299,7 @@
     <string name="quick_notes_title_label">Título</string>
     <string name="quick_notes_content_label">Texto</string>
     <string name="quick_notes_tags_label">Etiquetas (separadas por comas)</string>
-    <string name="quick_notes_save">guardar</string>
+    <string name="quick_notes_save">Guardar</string>
     <string name="quick_notes_cancel">Cancelar</string>
     <string name="quick_notes_error_required">Por favor completa el título</string>
     <string name="quick_notes_input_hint">Graba tus pensamientos en este momento.…</string>
@@ -397,7 +397,7 @@
     <string name="knowledge_deleted">Eliminado</string>
     <string name="knowledge_delete_doc">Eliminar documento</string>
     <string name="knowledge_delete">Eliminar</string>
-    <string name="knowledge_close">cerrar</string>
+    <string name="knowledge_close">Cerrar</string>
     <string name="knowledge_reindex">Reindexar</string>
     <string name="knowledge_repair_index">Reparación/Índice de reconstrucción</string>
     <string name="knowledge_repairing">Reparación del índice FTS y reindexación…</string>
@@ -459,7 +459,7 @@
     <string name="knowledge_content_edited">El texto ha sido actualizado y reindexado.</string>
 
     <!-- F-33: embedding Advertencia de cambio de modelo -->
-    <string name="knowledge_embedding_migrated">El modelo de incrustación ha sido reemplazado. Es posible que la búsqueda continua no pueda encontrar documentos antiguos. Se recomienda volver a indexar.</string>
+    <string name="knowledge_embedding_migrated">El modelo de embeddings cambió. Vuelve a crear el índice para que la búsqueda encuentre los documentos anteriores.</string>
 
     <!-- Correcciones en la interfaz (i18n-7): PDF tarjeta de metainformación -->
     <string name="knowledge_doc_info">Información del documento</string>
@@ -498,7 +498,7 @@
     <string name="stats_empty_title">Las estadísticas se mostrarán aquí después de iniciar una conversación.</string>
     <string name="stats_empty_action">para iniciar una conversación</string>
     <string name="stats_view_all">Ver todo</string>
-    <string name="stats_collapse">cerrar</string>
+    <string name="stats_collapse">Cerrar</string>
     <string name="stats_trend_title">tendencia activa</string>
     <string name="stats_trend_window_7d">7dia</string>
     <string name="stats_trend_window_30d">30dia</string>
@@ -570,7 +570,7 @@
 
     <!-- ===== ui/artifact ===== -->
     <string name="artifact_untitled">Sin nombre</string>
-    <string name="artifact_close">cerrar</string>
+    <string name="artifact_close">Cerrar</string>
     <string name="artifact_copy">Copiar</string>
     <string name="artifact_type_code">código</string>
     <string name="artifact_type_image">fotos</string>

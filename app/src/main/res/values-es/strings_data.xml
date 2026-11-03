@@ -75,8 +75,8 @@
     <string name="import_default_provider_name">Proveedores importados</string>
     <string name="import_default_assistant_name">Ayudante de importación</string>
     <string name="import_default_session_title">Sesiones importadas</string>
-    <string name="import_error_provider_failed">Provider Error de importación: %1$s</string>
-    <string name="import_error_provider_with_key_failed">Provider \'%1$s\' Error de importación: %2$s</string>
+    <string name="import_error_provider_failed">Error al importar el proveedor: %1$s</string>
+    <string name="import_error_provider_with_key_failed">Error al importar el proveedor \'%1$s\': %2$s</string>
     <string name="import_error_assistant_failed">Error al importar el asistente: %1$s</string>
     <string name="import_error_session_failed">Error al importar la sesión: %1$s</string>
     <string name="import_error_rikka_parse_failed">RikkaHub Error al analizar la copia de seguridad: %1$s</string>
