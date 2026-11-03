@@ -41,6 +41,7 @@ object ToolExposurePolicy {
         if (tools.isEmpty() || shouldDisableTools(userText)) return false
         val normalized = userText.trim().lowercase()
         if (normalized.isBlank()) return false
+        if (tools.any { it.name.isNotBlank() && normalized.contains(it.name.lowercase()) }) return true
         // v2.6.2(Auditoría de herramientas): Antes de forzarlo, confirme que exista una herramienta con capacidades coincidentes. ——
         // La implementación anterior solo analizaba las palabras clave y las herramientas relacionadas estaban en la lista blanca./Reducir el filtro obligará al modelo a elegir una de las herramientas irrelevantes.
         // Agregue una llamada de herramienta sin sentido. Esto requiere que al menos una herramienta expuesta pertenezca a la misma familia (o que exista una herramienta MCP).
@@ -58,7 +59,7 @@ object ToolExposurePolicy {
         val names = tools.mapTo(mutableSetOf()) { it.name }
         if (names.any { it.startsWith("mcp_") }) return true
         return TOOL_FAMILIES
-            .filter { family -> family.keywords.any { normalized.contains(it) } }
+            .filter { family -> family.keywords.any { normalized.contains(it.lowercase()) } }
             .any { family -> family.toolNames.any { it in names } }
     }
 
@@ -114,7 +115,7 @@ object ToolExposurePolicy {
             if (normalized.isBlank()) {
                 tools
             } else {
-                val matched = TOOL_FAMILIES.filter { family -> family.keywords.any { normalized.contains(it) } }
+                val matched = TOOL_FAMILIES.filter { family -> family.keywords.any { normalized.contains(it.lowercase()) } }
                 val familyAllowed = matched.flatMapTo(mutableSetOf()) { it.toolNames }
                 val dynamicAllowed = familyAllowed + stickyToolNames + authorizedToolNames + loadedToolNames
                 // Bolsillo suelto:Solicitud de acción clara y no una simple frase → OPTIONAL Liberar toda la cola larga,Evite perder herramientas a mitad de tareas de varios pasos
@@ -259,7 +260,7 @@ object ToolExposurePolicy {
             ToolFamily(
                 // v2.6.2(comentarios de los usuarios): El asistente hojea otras conversaciones —— session_* Familia de herramientas
                 keywords = setOf(
-                    "sesión", "Registro de conversación", "Historial de chat", "Sesión de historia", "otra conversación", "otras conversaciones",
+                    "sesión", "Registro de conversación", "Historial de chat", "Sesión de historia", "otra conversación", "otras conversaciones", "conversaciones anteriores",
                     "mirar a través", "dale la vuelta", "charlar antes", "dicho antes", "hablamos", "session",
                 ),
                 toolNames =
@@ -484,7 +485,10 @@ object ToolExposurePolicy {
             ),
         )
 
-    private fun String.containsAny(values: Set<String>): Boolean = values.any { contains(it) }
+    private fun String.containsAny(values: Set<String>): Boolean {
+        val haystack = lowercase()
+        return values.any { haystack.contains(it.lowercase()) }
+    }
 
     private const val SIMPLE_REQUEST_MAX_CHARS = 120
 
@@ -492,6 +496,7 @@ object ToolExposurePolicy {
         setOf(
             "por qué",
             "análisis",
+            "analiza",
             "comparar",
             "Planificar",
             "diseño",
@@ -507,7 +512,7 @@ object ToolExposurePolicy {
         )
     private val NO_TOOL_KEYWORDS =
         setOf(
-            "No llames a ninguna herramienta", "No llames a las herramientas", "No uses ninguna herramienta", "No uses herramientas",
+            "No llames a ninguna herramienta", "No llame a ninguna", "No llames a las herramientas", "No uses ninguna herramienta", "No uses herramientas",
             "Deshabilitar herramientas de llamadas", "Herramientas prohibidas", "Solo haz una lista, no llames", "Solo lista, no llames",
             "Solo haz una lista", "Sólo lista", "No ejecutar herramienta", "No ejecute ninguna herramienta",
             "do not call any tools", "don't call any tools", "do not use tools", "without using tools",
@@ -516,6 +521,7 @@ object ToolExposurePolicy {
     private val EXPLICIT_TOOL_KEYWORDS =
         setOf(
             "llamar",
+            "hazlo",
             "utilizar herramientas",
             "ejecutar",
             "Buscar",
