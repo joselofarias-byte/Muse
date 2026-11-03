@@ -1,6 +1,7 @@
 package io.zer0.muse.ui
 
 import android.content.Context
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.cancel
@@ -46,6 +47,9 @@ import io.zer0.muse.vision.VisionProgress
 import io.zer0.muse.web.WebSearchService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -61,6 +65,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
@@ -253,18 +258,16 @@ class ChatViewModelFocusRestoreTest {
         coVerify(exactly = 0) { settings.saveViewedSessionId("session-generating") }
     }
 
-    /**
-     * Bombee hasta que se complete la recuperación.
-     *
-     * La recuperación se bloquea en el primer inicio de la secuencia de la sesión. Un solo avance hasta Idle no garantiza que el lanzamiento haya sido programado.
-     * Así que bombea unas cuantas veces más; cuando se alcanza el límite superior, se devuelve el valor actual y se entrega a la persona que llama para su afirmación.
-     */
-    private suspend fun awaitFocusSettled(): String? {
-        repeat(20) {
-            testDispatcher.scheduler.advanceUntilIdle()
-            viewModel.state.value.currentSessionId?.let { return it }
-            testDispatcher.scheduler.advanceTimeBy(50)
+    // Lifecycle callbacks can still be queued on Robolectric's Android main looper.
+    // Drain both queues; advancing only virtual coroutine time leaves focus unset.
+    private fun awaitFocusSettled(): String? = runBlocking {
+        withTimeout(5_000) {
+            while (viewModel.state.value.currentSessionId == null) {
+                shadowOf(Looper.getMainLooper()).idle()
+                testDispatcher.scheduler.advanceUntilIdle()
+                delay(10)
+            }
+            viewModel.state.value.currentSessionId
         }
-        return viewModel.state.value.currentSessionId
     }
 }
