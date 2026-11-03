@@ -189,6 +189,11 @@ internal object ToolCallVisuals {
         "device_shell" to MuseIcons.terminal,
         "terminal_exec" to MuseIcons.terminal,
         "termux_exec" to MuseIcons.terminal,
+        "nightzuku_exec" to MuseIcons.terminal,
+        "bridge_job_start" to MuseIcons.terminal,
+        "bridge_job_status" to MuseIcons.terminal,
+        "bridge_job_cancel" to MuseIcons.terminal,
+        "bridge_diagnose" to MuseIcons.terminal,
         "mcp_tool" to MuseIcons.plug,
         // 通知 / 主动消息 / 卡片
         "notify" to MuseIcons.bell,
@@ -398,6 +403,11 @@ internal object ToolCallVisuals {
         "device_shell" to R.string.tool_summary_device_shell,
         "terminal_exec" to R.string.tool_summary_terminal_exec,
         "termux_exec" to R.string.tool_summary_termux_exec,
+        "nightzuku_exec" to R.string.tool_summary_nightzuku_exec,
+        "bridge_job_start" to R.string.tool_summary_bridge_job_start,
+        "bridge_job_status" to R.string.tool_summary_bridge_job_status,
+        "bridge_job_cancel" to R.string.tool_summary_bridge_job_cancel,
+        "bridge_diagnose" to R.string.tool_summary_bridge_diagnose,
     )
 
     private fun prefixVerb(toolName: String): String? = when {
@@ -616,6 +626,11 @@ internal object ToolCallVisuals {
         "device_shell" to R.string.tool_label_device_shell,
         "terminal_exec" to R.string.tool_label_terminal_exec,
         "termux_exec" to R.string.tool_label_termux_exec,
+        "nightzuku_exec" to R.string.tool_label_nightzuku_exec,
+        "bridge_job_start" to R.string.tool_label_bridge_job_start,
+        "bridge_job_status" to R.string.tool_label_bridge_job_status,
+        "bridge_job_cancel" to R.string.tool_label_bridge_job_cancel,
+        "bridge_diagnose" to R.string.tool_label_bridge_diagnose,
     )
 
     private fun prettify(name: String): String = name.split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }

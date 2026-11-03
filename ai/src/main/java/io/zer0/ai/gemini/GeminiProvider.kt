@@ -138,17 +138,7 @@ class GeminiProvider(
             request.model,
         )
         val (system, contents) = splitSystem(normalizedMessages)
-        var body = buildRequestBody(
-            system = system,
-            contents = contents,
-            temperature = request.temperature,
-            maxTokens = request.maxTokens,
-            reasoningLevel = request.reasoningLevel,
-            supportsImageOutput = request.model.supportsImageOutput(),
-            tools = request.tools,
-            nativeWebSearch = request.nativeWebSearch,
-            modelId = request.model.id,
-        )
+        var body = buildRequestBody(bodyRequest(system, contents, request))
         // M-GEM2: buildUrl 可能抛 IllegalStateException(Vertex AI 配置缺失),包裹 try-catch 发 Error
         val url: String = try {
             buildUrl(model = request.model.id, stream = true)
@@ -242,18 +232,7 @@ class GeminiProvider(
                             errText.contains("thinking budget is not supported", ignoreCase = true)
                         ) {
                             forceThinkingLevel = true
-                            body = buildRequestBody(
-                                system = system,
-                                contents = contents,
-                                temperature = request.temperature,
-                                maxTokens = request.maxTokens,
-                                reasoningLevel = request.reasoningLevel,
-                                supportsImageOutput = request.model.supportsImageOutput(),
-                                tools = request.tools,
-                                nativeWebSearch = request.nativeWebSearch,
-                                modelId = request.model.id,
-                                forceThinkingLevel = true,
-                            )
+                            body = buildRequestBody(bodyRequest(system, contents, request, forceThinkingLevel = true))
                             Logger.i(TAG, "流式请求被拒(不接受 thinking budget)，改用 thinking level 重发")
                             generation.incrementAndGet()
                             eventSource.cancel()
@@ -528,17 +507,7 @@ class GeminiProvider(
             request.model,
         )
         val (system, contents) = splitSystem(normalizedMessages)
-        val body = buildRequestBody(
-            system = system,
-            contents = contents,
-            temperature = request.temperature,
-            maxTokens = request.maxTokens,
-            reasoningLevel = request.reasoningLevel,
-            supportsImageOutput = request.model.supportsImageOutput(),
-            tools = request.tools,
-            nativeWebSearch = request.nativeWebSearch,
-            modelId = request.model.id,
-        )
+        val body = buildRequestBody(bodyRequest(system, contents, request))
         // M-GEM7: buildUrl/resolveToken 纳入 try-catch,原在 try 块外抛 IllegalStateException 会绕过错误处理
         // M-GEM13: Vertex AI 服务账号配置无效时 resolveToken 抛 RuntimeException
         val httpRequest: Request
@@ -992,18 +961,44 @@ class GeminiProvider(
         return true
     }
 
-    private fun buildRequestBody(
-        system: String?,
-        contents: List<GeminiContent>,
-        temperature: Float?,
-        maxTokens: Int?,
-        reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
-        supportsImageOutput: Boolean = false,
-        tools: List<ToolDefinition>? = null,
-        nativeWebSearch: Boolean = false,
-        modelId: String? = null,
-        forceThinkingLevel: Boolean = false,
-    ): String {
+    private data class GeminiBodyRequest(
+        val system: String?,
+        val contents: List<GeminiContent>,
+        val temperature: Float?,
+        val maxTokens: Int?,
+        val reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
+        val supportsImageOutput: Boolean = false,
+        val tools: List<ToolDefinition>? = null,
+        val nativeWebSearch: Boolean = false,
+        val modelId: String? = null,
+        val forceThinkingLevel: Boolean = false,
+    )
+
+    private fun bodyRequest(system: String?, contents: List<GeminiContent>, request: ChatRequest, forceThinkingLevel: Boolean = false) =
+        GeminiBodyRequest(
+            system = system,
+            contents = contents,
+            temperature = request.temperature,
+            maxTokens = request.maxTokens,
+            reasoningLevel = request.reasoningLevel,
+            supportsImageOutput = request.model.supportsImageOutput(),
+            tools = request.tools,
+            nativeWebSearch = request.nativeWebSearch,
+            modelId = request.model.id,
+            forceThinkingLevel = forceThinkingLevel,
+        )
+
+    private fun buildRequestBody(spec: GeminiBodyRequest): String {
+        val system = spec.system
+        val contents = spec.contents
+        val temperature = spec.temperature
+        val maxTokens = spec.maxTokens
+        val reasoningLevel = spec.reasoningLevel
+        val supportsImageOutput = spec.supportsImageOutput
+        val tools = spec.tools
+        val nativeWebSearch = spec.nativeWebSearch
+        val modelId = spec.modelId
+        val forceThinkingLevel = spec.forceThinkingLevel
         // 思考参数的两种写法：
         //  - Gemini 2 代及更早：thinkingConfig.thinkingBudget（token 数）
         //  - Gemini 3 代起（含 4 代 / Argon）：thinkingConfig.thinkingLevel（档位）

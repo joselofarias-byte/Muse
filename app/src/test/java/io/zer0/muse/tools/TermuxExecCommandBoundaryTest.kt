@@ -69,7 +69,24 @@ class TermuxExecCommandBoundaryTest {
         val output = run("pkg list-installed")
         assertFalse("正常命令不该被工具自己的边界拦下:$output", output.contains("安全边界"))
         assertTrue("命令应交给通道执行:$output", output.contains("exit=0"))
-        coVerify(exactly = 1) { channel.exec("pkg list-installed", any(), anyNullable()) }
+        coVerify(exactly = 1) {
+            channel.exec(
+                match {
+                    it.contains("\$HOME/bin:\$PREFIX/bin") &&
+                        !it.contains(".bashrc") &&
+                        it.trimEnd().endsWith("pkg list-installed")
+                },
+                any(),
+                anyNullable(),
+            )
+        }
+    }
+
+    @Test
+    fun `termux_exec refuses commands that embed a secret`() {
+        val output = run("curl -H 'Authorization: Bearer abcdefghijklmnop' https://example")
+        assertTrue(output.contains("SECRET_REJECTED"))
+        coVerify(exactly = 0) { channel.exec(any(), any(), anyNullable()) }
     }
 
     @Test

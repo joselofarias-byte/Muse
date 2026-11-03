@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bridge_settings_title">Termux and Nightzuku</string>
+    <string name="bridge_settings_desc">Bridge diagnostics, shell identity and authorizations</string>
+    <string name="bridge_section_termux">Termux</string>
+    <string name="bridge_section_nightzuku">Nightzuku</string>
+    <string name="bridge_section_android">Android</string>
+    <string name="bridge_section_auth">Authorization</string>
+    <string name="bridge_refresh">Refresh diagnostics</string>
+    <string name="bridge_status_ready">Ready</string>
+    <string name="bridge_status_missing">Unavailable</string>
+    <string name="bridge_status_denied">Permission denied</string>
+    <string name="bridge_status_unknown">Not checked</string>
+    <string name="bridge_termux_installed">Termux installed</string>
+    <string name="bridge_run_command">RUN_COMMAND permission</string>
+    <string name="bridge_home">HOME</string>
+    <string name="bridge_prefix">PREFIX</string>
+    <string name="bridge_rish">Detected rish</string>
+    <string name="bridge_identity">Identity</string>
+    <string name="bridge_identity_shell">uid=2000(shell)</string>
+    <string name="bridge_identity_root">root rejected</string>
+    <string name="bridge_identity_other">not shell</string>
+    <string name="bridge_nightzuku_pkg">Nightzuku package</string>
+    <string name="bridge_sdk">Android SDK</string>
+    <string name="bridge_notifications">Notifications</string>
+    <string name="bridge_fgs">Foreground service</string>
+    <string name="bridge_fgs_value">dataSync, within the Android 16 limit</string>
+    <string name="bridge_active_jobs">Active jobs</string>
+    <string name="bridge_auth_modify_title">Authorize modifications</string>
+    <string name="bridge_auth_modify_sub">Allows device changes: am start, input, settings put and screencap. Does not grant root.</string>
+    <string name="bridge_auth_destructive_title">Authorize destructive actions</string>
+    <string name="bridge_auth_destructive_sub">Allows deleting files, deleting settings and equivalent actions. Explicit confirmation is required.</string>
+    <string name="bridge_auth_destructive_dialog_title">Confirm destructive actions</string>
+    <string name="bridge_auth_destructive_dialog_body">While this grant is on, Nightzuku may delete data. It does not grant root and still requires uid=2000(shell).</string>
+    <string name="bridge_auth_modify_dialog_title">Confirm modifications</string>
+    <string name="bridge_auth_modify_dialog_body">Nightzuku may change settings, open apps, inject taps and capture the screen. Only as uid=2000(shell).</string>
+    <string name="bridge_notif_title">Muse is running a command</string>
+    <string name="bridge_notif_text">The job keeps running if Muse moves to the background, within Android\'s limit.</string>
+    <string name="bridge_notif_channel">Termux commands</string>
+    <string name="tool_label_nightzuku_exec">Nightzuku command</string>
+    <string name="tool_label_bridge_job_start">Background job</string>
+    <string name="tool_label_bridge_job_status">Job status</string>
+    <string name="tool_label_bridge_job_cancel">Cancel job</string>
+    <string name="tool_label_bridge_diagnose">Bridge diagnostics</string>
+    <string name="tool_summary_nightzuku_exec">Ran a Nightzuku command</string>
+    <string name="tool_summary_bridge_job_start">Started a background job</string>
+    <string name="tool_summary_bridge_job_status">Checked a job</string>
+    <string name="tool_summary_bridge_job_cancel">Cancelled a job</string>
+    <string name="tool_summary_bridge_diagnose">Checked Termux and Nightzuku</string>
+</resources>

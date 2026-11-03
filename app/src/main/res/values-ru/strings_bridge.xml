@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bridge_settings_title">Termux и Nightzuku</string>
+    <string name="bridge_settings_desc">Диагностика моста, личность shell и разрешения</string>
+    <string name="bridge_section_termux">Termux</string>
+    <string name="bridge_section_nightzuku">Nightzuku</string>
+    <string name="bridge_section_android">Android</string>
+    <string name="bridge_section_auth">Разрешение</string>
+    <string name="bridge_refresh">Обновить диагностику</string>
+    <string name="bridge_status_ready">Готово</string>
+    <string name="bridge_status_missing">Недоступно</string>
+    <string name="bridge_status_denied">Доступ запрещён</string>
+    <string name="bridge_status_unknown">Не проверено</string>
+    <string name="bridge_termux_installed">Termux установлен</string>
+    <string name="bridge_run_command">Разрешение RUN_COMMAND</string>
+    <string name="bridge_home">HOME</string>
+    <string name="bridge_prefix">PREFIX</string>
+    <string name="bridge_rish">Найденный rish</string>
+    <string name="bridge_identity">Личность</string>
+    <string name="bridge_identity_shell">uid=2000(shell)</string>
+    <string name="bridge_identity_root">root отклонён</string>
+    <string name="bridge_identity_other">не shell</string>
+    <string name="bridge_nightzuku_pkg">Пакет Nightzuku</string>
+    <string name="bridge_sdk">Android SDK</string>
+    <string name="bridge_notifications">Уведомления</string>
+    <string name="bridge_fgs">Служба переднего плана</string>
+    <string name="bridge_fgs_value">dataSync, в пределах лимита Android 16</string>
+    <string name="bridge_active_jobs">Активные задачи</string>
+    <string name="bridge_auth_modify_title">Разрешить изменения</string>
+    <string name="bridge_auth_modify_sub">Разрешает менять устройство: am start, input, settings put и screencap. Root не даёт.</string>
+    <string name="bridge_auth_destructive_title">Разрешить разрушительные действия</string>
+    <string name="bridge_auth_destructive_sub">Разрешает удалять файлы, удалять настройки и аналогичные действия. Нужно явное подтверждение.</string>
+    <string name="bridge_auth_destructive_dialog_title">Подтвердить разрушительные действия</string>
+    <string name="bridge_auth_destructive_dialog_body">Пока разрешение включено, Nightzuku может удалять данные. Root не выдаётся, по-прежнему нужен uid=2000(shell).</string>
+    <string name="bridge_auth_modify_dialog_title">Подтвердить изменения</string>
+    <string name="bridge_auth_modify_dialog_body">Nightzuku сможет менять настройки, открывать приложения, вводить нажатия и снимать экран. Только как uid=2000(shell).</string>
+    <string name="bridge_notif_title">Muse выполняет команду</string>
+    <string name="bridge_notif_text">Задача продолжится, если Muse уйдёт в фон, в пределах лимита Android.</string>
+    <string name="bridge_notif_channel">Команды Termux</string>
+    <string name="tool_label_nightzuku_exec">Команда Nightzuku</string>
+    <string name="tool_label_bridge_job_start">Фоновая задача</string>
+    <string name="tool_label_bridge_job_status">Статус задачи</string>
+    <string name="tool_label_bridge_job_cancel">Отменить задачу</string>
+    <string name="tool_label_bridge_diagnose">Диагностика моста</string>
+    <string name="tool_summary_nightzuku_exec">Выполнил команду Nightzuku</string>
+    <string name="tool_summary_bridge_job_start">Запустил фоновую задачу</string>
+    <string name="tool_summary_bridge_job_status">Проверил задачу</string>
+    <string name="tool_summary_bridge_job_cancel">Отменил задачу</string>
+    <string name="tool_summary_bridge_diagnose">Проверил Termux и Nightzuku</string>
+</resources>
