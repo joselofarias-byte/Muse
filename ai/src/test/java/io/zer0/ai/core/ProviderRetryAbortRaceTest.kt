@@ -76,10 +76,14 @@ class ProviderRetryAbortRaceTest {
         modelId: String,
     ) = coroutineScope {
         val firstRequest = CountDownLatch(1)
+        val signal = AbortSignal()
         server.start()
+        // Abort inside the response, before the client schedules its backoff. On a slow CI
+        // runner the test thread can lose the race against a 1s retry and look like a reconnect.
         server.delegate.dispatcher = object : Dispatcher() {
             override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse {
                 firstRequest.countDown()
+                signal.abort()
                 return MockResponse.Builder()
                     .code(503)
                     .clearHeaders()
@@ -89,7 +93,6 @@ class ProviderRetryAbortRaceTest {
             }
         }
 
-        val signal = AbortSignal()
         val request = ChatRequest(
             messages = listOf(UIMessage(role = MessageRole.USER, content = "retry then cancel")),
             model = Model(id = modelId, providerId = config.id),
@@ -100,7 +103,6 @@ class ProviderRetryAbortRaceTest {
         }
 
         assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
-        signal.abort()
         withTimeout(5_000) { collector.join() }
 
         // Allow the normal 1s retry backoff plus callback delivery time to elapse.
