@@ -273,6 +273,7 @@ class GeminiProvider(
                             call.cancel()
                             scope.launch {
                                 delay(backoffMs(attempt.get(), response.header("Retry-After")))
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 // M-GEM4: 重试时重新解析 token(Vertex AI 旧 token 可能已过期)
                                 token = try {
                                     resolveToken()
@@ -283,6 +284,7 @@ class GeminiProvider(
                                     close()
                                     return@launch
                                 }
+                                if (request.abortSignal.aborted || scope.isClosedForSend) return@launch
                                 startStream()
                             }
                             return
