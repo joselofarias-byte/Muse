@@ -48,7 +48,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -110,7 +109,6 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     val assistantRepo: AssistantRepository = koinInject()
     val presetProviders: PresetProviders = koinInject()
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val pagerState = rememberPagerState(pageCount = { 8 })
     val keyboardController = LocalSoftwareKeyboardController.current

@@ -48,7 +48,6 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
     var running by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<TestOutcome?>(null) }
     val scope = rememberCoroutineScope()
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     val localizedResources = androidx.compose.ui.platform.LocalResources.current
 
     Column(modifier = Modifier.fillMaxWidth()) {

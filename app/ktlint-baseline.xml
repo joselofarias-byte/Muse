@@ -4414,11 +4414,13 @@
         <error line="143" column="29" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/muse/ui/onboarding/OnboardingScreen.kt">
+        <error line="658" column="5" source="standard:function-signature" />
+        <error line="659" column="5" source="standard:function-signature" />
         <error line="660" column="5" source="standard:function-signature" />
         <error line="661" column="5" source="standard:function-signature" />
-        <error line="662" column="5" source="standard:function-signature" />
-        <error line="663" column="5" source="standard:function-signature" />
-        <error line="663" column="35" source="standard:function-signature" />
+        <error line="661" column="35" source="standard:function-signature" />
+        <error line="861" column="5" source="standard:function-signature" />
+        <error line="862" column="5" source="standard:function-signature" />
         <error line="863" column="5" source="standard:function-signature" />
         <error line="864" column="5" source="standard:function-signature" />
         <error line="865" column="5" source="standard:function-signature" />
@@ -4429,27 +4431,27 @@
         <error line="870" column="5" source="standard:function-signature" />
         <error line="871" column="5" source="standard:function-signature" />
         <error line="872" column="5" source="standard:function-signature" />
-        <error line="873" column="5" source="standard:function-signature" />
-        <error line="874" column="5" source="standard:function-signature" />
-        <error line="874" column="24" source="standard:function-signature" />
+        <error line="872" column="24" source="standard:function-signature" />
+        <error line="1110" column="5" source="standard:function-signature" />
+        <error line="1111" column="5" source="standard:function-signature" />
         <error line="1112" column="5" source="standard:function-signature" />
         <error line="1113" column="5" source="standard:function-signature" />
         <error line="1114" column="5" source="standard:function-signature" />
         <error line="1115" column="5" source="standard:function-signature" />
-        <error line="1116" column="5" source="standard:function-signature" />
-        <error line="1117" column="5" source="standard:function-signature" />
-        <error line="1117" column="30" source="standard:function-signature" />
+        <error line="1115" column="30" source="standard:function-signature" />
+        <error line="1363" column="5" source="standard:function-signature" />
+        <error line="1364" column="5" source="standard:function-signature" />
         <error line="1365" column="5" source="standard:function-signature" />
         <error line="1366" column="5" source="standard:function-signature" />
         <error line="1367" column="5" source="standard:function-signature" />
-        <error line="1368" column="5" source="standard:function-signature" />
-        <error line="1369" column="5" source="standard:function-signature" />
-        <error line="1369" column="67" source="standard:function-signature" />
+        <error line="1367" column="67" source="standard:function-signature" />
+        <error line="1415" column="5" source="standard:function-signature" />
+        <error line="1416" column="5" source="standard:function-signature" />
         <error line="1417" column="5" source="standard:function-signature" />
         <error line="1418" column="5" source="standard:function-signature" />
-        <error line="1419" column="5" source="standard:function-signature" />
-        <error line="1420" column="5" source="standard:function-signature" />
-        <error line="1420" column="67" source="standard:function-signature" />
+        <error line="1418" column="67" source="standard:function-signature" />
+        <error line="1534" column="5" source="standard:function-signature" />
+        <error line="1535" column="5" source="standard:function-signature" />
         <error line="1536" column="5" source="standard:function-signature" />
         <error line="1537" column="5" source="standard:function-signature" />
         <error line="1538" column="5" source="standard:function-signature" />
@@ -4458,9 +4460,7 @@
         <error line="1541" column="5" source="standard:function-signature" />
         <error line="1542" column="5" source="standard:function-signature" />
         <error line="1543" column="5" source="standard:function-signature" />
-        <error line="1544" column="5" source="standard:function-signature" />
-        <error line="1545" column="5" source="standard:function-signature" />
-        <error line="1545" column="30" source="standard:function-signature" />
+        <error line="1543" column="30" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/muse/ui/quicknotes/QuickCaptureTheme.kt">
         <error line="1" column="1" source="standard:filename" />
