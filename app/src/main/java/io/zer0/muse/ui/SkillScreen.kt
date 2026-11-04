@@ -81,6 +81,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
     val skills by skillRepository.observeAll.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     var detailTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<SkillEntity?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -368,7 +369,7 @@ fun SkillScreen(onBack: () -> Unit, skillRepository: SkillRepository = koinInjec
                 deleteConfirmTarget = null
                 scope.launch {
                     resultOf { skillRepository.delete(skill.id) }
-                        .onError { msg, _ -> MuseToast.show(context.getString(R.string.skill_delete_failed_ui, msg)) }
+                        .onError { msg, _ -> MuseToast.show(localizedResources.getString(R.string.skill_delete_failed_ui, msg)) }
                 }
             },
             dismissText = stringResource(R.string.skill_close),

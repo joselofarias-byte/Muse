@@ -97,6 +97,7 @@ fun WorkspaceScreen(
     val workspaceManager: WorkspaceManager = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val widthClass = rememberWindowWidthClass()
 
     // Ruta relativa al directorio actual(cadena vacía = directorio raíz)
@@ -591,7 +592,7 @@ fun WorkspaceScreen(
                 val name = newName.trim()
                 // El nombre está vacío o contiene caracteres no válidos(/ o ..)Aparecen mensajes emergentes de vez en cuando y no cierra la ventana emergente
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(localizedResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 // Cierra la ventana emergente sin cambiar el nombre.,No ejecutado IO
@@ -678,7 +679,7 @@ fun WorkspaceScreen(
                             runCatching { mountDirectoryLauncher.launch(null) }
                                 .onFailure {
                                     MuseToast.show(
-                                        context.getString(R.string.workspace_mount_failed, it.message),
+                                        localizedResources.getString(R.string.workspace_mount_failed, it.message),
                                     )
                                 }
                         },
@@ -741,7 +742,7 @@ fun WorkspaceScreen(
             onConfirm = {
                 val name = newName.trim()
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(localizedResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 val target = if (currentPath.isEmpty()) name else "$currentPath/$name"

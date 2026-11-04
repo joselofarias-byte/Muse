@@ -205,6 +205,8 @@
     <string name="chat_reasoning_title">proceso de pensamiento</string>
     <string name="chat_process_thinking">Pensé por un momento</string>
     <plurals name="chat_process_ops">
+        <item quantity="one">%1$d operación</item>
+        <item quantity="many">%1$d operaciones</item>
         <item quantity="other">%1$d operaciones</item>
     </plurals>
     <string name="chat_reasoning_elapsed">%1$d segundos</string>

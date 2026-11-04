@@ -247,6 +247,7 @@ internal fun ProviderEditPage(
 
     // Importe credenciales de Vertex AI desde un archivo JSON de cuenta de servicio de Google
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val ioScope = rememberCoroutineScope()
     val settingsRepo: SettingsRepository = koinInject()
     // v2.4: Primero verifique el caché(5minutosTTL,Sólo válido para la configuración actual),Presione éxito tras golpe/El fallo se distribuye al estado correspondiente.
@@ -1270,7 +1271,7 @@ internal fun ProviderEditPage(
                     context.startActivity(openIntent)
                 }.onFailure {
                     MuseToast.show(
-                        context.getString(R.string.oauth_login_failed, it.message ?: "No puedo abrir el navegador"),
+                        localizedResources.getString(R.string.oauth_login_failed, it.message ?: "No puedo abrir el navegador"),
                     )
                 }
             },
@@ -1297,7 +1298,7 @@ internal fun ProviderEditPage(
                     // Borre el cuadro de entrada apiKey + sincronice el estado local
                     apiKey = ""
                     hasStoredOAuthToken = false
-                    MuseToast.show(context.getString(R.string.oauth_revoke_success))
+                    MuseToast.show(localizedResources.getString(R.string.oauth_revoke_success))
                 }
             },
             dismissText = stringResource(R.string.settings_common_cancel),

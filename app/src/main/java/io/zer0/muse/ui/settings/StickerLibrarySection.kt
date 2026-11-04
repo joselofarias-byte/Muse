@@ -93,6 +93,7 @@ import androidx.compose.foundation.lazy.items as lazyItems
 @Composable
 internal fun StickerLibrarySection(settings: SettingsRepository, scope: CoroutineScope) {
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     // v2.6.2: Copia del mensaje de análisis previo (use plantilla + reemplace con parámetros)—— Úselo directamente en la devolución de llamada lambda
     // context.getString Se activará lint LocalContextGetResourceValueCall.
     //
@@ -164,15 +165,15 @@ internal fun StickerLibrarySection(settings: SettingsRepository, scope: Coroutin
                         if (total != null && total > 0) {
                             "$phase $done/$total"
                         } else {
-                            context.getString(R.string.settings_sticker_import_progress, phase, done)
+                            localizedResources.getString(R.string.settings_sticker_import_progress, phase, done)
                         }
                 }
                     .onSuccess { count ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_imported, count))
+                        MuseToast.show(localizedResources.getString(R.string.settings_sticker_imported, count))
                         refreshTrigger++
                     }
                     .onError { msg, _ ->
-                        MuseToast.show(context.getString(R.string.settings_sticker_import_failed, msg), 3500)
+                        MuseToast.show(localizedResources.getString(R.string.settings_sticker_import_failed, msg), 3500)
                     }
                 importingSticker = false
                 stickerImportProgress = null

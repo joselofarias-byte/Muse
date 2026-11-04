@@ -119,6 +119,7 @@ fun KnowledgeScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
     // v1.0.74 fix (Auditoría inicial 6.5): Buscar 300 ms anti-vibración — Originales remember(searchQuery) Cada carácter escrito
     // Reiniciar consulta de flujo de sala,Ingrese el retraso. Utilice snapshotFlow+debounce para controlar los términos de consulta reales.
@@ -1776,7 +1777,7 @@ fun KnowledgeScreen(
             ),
             onConfirm = { newName, _ ->
                 if (kbNow == null || newName.isBlank()) {
-                    if (newName.isBlank()) MuseToast.show(context.getString(R.string.knowledge_folder_name_empty))
+                    if (newName.isBlank()) MuseToast.show(localizedResources.getString(R.string.knowledge_folder_name_empty))
                 } else {
                     scope.launch {
                         val parent = KnowledgeFolderBrowser.parent(oldPath)
@@ -1814,7 +1815,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == oldPath || currentFolderPath.startsWith("$oldPath/")) {
                             currentFolderPath = newPath + currentFolderPath.removePrefix(oldPath)
                         }
-                        MuseToast.show(context.getString(R.string.knowledge_folder_renamed, newName))
+                        MuseToast.show(localizedResources.getString(R.string.knowledge_folder_renamed, newName))
                     }
                 }
                 renamingFolder = null
@@ -1838,7 +1839,7 @@ fun KnowledgeScreen(
                         if (currentFolderPath == path || currentFolderPath.startsWith("$path/")) {
                             currentFolderPath = KnowledgeFolderBrowser.parent(path)
                         }
-                        MuseToast.show(context.getString(R.string.knowledge_folder_deleted))
+                        MuseToast.show(localizedResources.getString(R.string.knowledge_folder_deleted))
                     }
                 }
                 deletingFolder = null

@@ -74,6 +74,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Estado de cada canal
@@ -352,7 +353,7 @@ fun PermissionWizardScreen(onBack: () -> Unit) {
                         android.widget.Toast
                             .makeText(
                                 context,
-                                context.getString(R.string.permission_termux_grant_toast),
+                                localizedResources.getString(R.string.permission_termux_grant_toast),
                                 android.widget.Toast.LENGTH_LONG,
                             )
                             .show()

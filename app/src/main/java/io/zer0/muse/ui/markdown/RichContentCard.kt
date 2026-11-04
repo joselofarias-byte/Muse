@@ -637,7 +637,7 @@ private fun ChartCard(json: String) {
     // No importa qué tan alto deba ser el gráfico, solo comienza en 260 dp y el contenido adicional se recorta en WebView.
     // Ahora es consistente con otras tarjetas: el script de fotograma congelado en el costado de la tarjeta informa la altura real, que simplemente se acepta aquí.
     var chartHeightPx by remember(html) { mutableStateOf(0) }
-    val heightSink = remember { CardHeightSink() }
+    val heightSink: CardHeightSink = remember { CardHeightSink() }
     androidx.compose.runtime.LaunchedEffect(heightSink) {
         heightSink.onHeightChanged = { px -> if (px > 0) chartHeightPx = px }
     }

@@ -111,6 +111,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     val presetProviders: PresetProviders = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val pagerState = rememberPagerState(pageCount = { 8 })
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -244,7 +245,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 is ProviderModelFetcher.VerifyOutcome.NotReady -> {
                                     Logger.w("Onboarding", "La conexión de prueba falló: ${outcome.kind} ${outcome.reason}")
                                     testStatus = TestStatus.Error(
-                                        context.getString(
+                                        localizedResources.getString(
                                             R.string.settings_provider_test_error_failed,
                                             friendlyConnectError(outcome.reason),
                                         ),

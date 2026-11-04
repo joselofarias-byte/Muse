@@ -49,6 +49,7 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
     var result by remember { mutableStateOf<TestOutcome?>(null) }
     val scope = rememberCoroutineScope()
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -72,14 +73,14 @@ internal fun ProxyTestRow(proxyConfig: ProxyConfig) {
                                 runProbe(
                                     proxyConfig,
                                     ProbeTexts(
-                                        invalidConfig = ctx.getString(R.string.proxy_test_invalid_config),
-                                        connected = ctx.getString(R.string.proxy_test_connected),
-                                        needAuth = ctx.getString(R.string.proxy_test_need_auth),
-                                        reachableFailed = ctx.getString(R.string.proxy_test_reachable_failed),
-                                        timeout = ctx.getString(R.string.proxy_test_timeout),
-                                        dnsFailed = ctx.getString(R.string.proxy_test_dns_failed),
-                                        connectFailed = ctx.getString(R.string.proxy_test_connect_failed),
-                                        unexpected = ctx.getString(R.string.proxy_test_unexpected),
+                                        invalidConfig = localizedResources.getString(R.string.proxy_test_invalid_config),
+                                        connected = localizedResources.getString(R.string.proxy_test_connected),
+                                        needAuth = localizedResources.getString(R.string.proxy_test_need_auth),
+                                        reachableFailed = localizedResources.getString(R.string.proxy_test_reachable_failed),
+                                        timeout = localizedResources.getString(R.string.proxy_test_timeout),
+                                        dnsFailed = localizedResources.getString(R.string.proxy_test_dns_failed),
+                                        connectFailed = localizedResources.getString(R.string.proxy_test_connect_failed),
+                                        unexpected = localizedResources.getString(R.string.proxy_test_unexpected),
                                     ),
                                 )
                             }

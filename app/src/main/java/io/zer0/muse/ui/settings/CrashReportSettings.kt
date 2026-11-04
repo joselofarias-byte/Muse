@@ -68,6 +68,7 @@ import org.koin.core.qualifier.named
 @Composable
 fun CrashReportSettingsPage(onBack: () -> Unit) {
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val settings: SettingsRepository = koinInject()
     // Reutilizar named("chat") OkHttpClient(El tiempo de espera se sobrescribirá internamente)
     val chatClient: OkHttpClient = koinInject<OkHttpClient>(qualifier = named("chat"))
@@ -222,7 +223,7 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                             is SubmitOutcome.MailFallback ->
                                 context.getString(R.string.settings_crash_done_mail)
                             SubmitOutcome.NothingToSend, SubmitOutcome.Failed ->
-                                context.getString(R.string.settings_crash_done_failed)
+                                localizedResources.getString(R.string.settings_crash_done_failed)
                         },
                     )
                     Logger.i("CrashReportSettings", "Informar resultados: $outcome, restante $pendingCount Artículo")
