@@ -111,7 +111,7 @@ internal fun MuseFloatingActionMenu(
                         if (glassActive) {
                             Modifier.fakeGlassSurface(
                                 shape = MuseShapes.extraLarge,
-                                surfaceColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                surfaceColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.86f),
                             )
                         } else {
                             Modifier
