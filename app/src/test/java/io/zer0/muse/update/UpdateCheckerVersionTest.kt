@@ -89,16 +89,18 @@ class UpdateCheckerVersionTest {
     }
 
     @Test
-    fun `download asset accepts only trusted https github hosts`() {
+    fun `download asset accepts only trusted https fork release URLs`() {
         val trusted = UpdateChecker.ApkAsset(
             name = "Muse.apk",
-            downloadUrl = "https://objects.githubusercontent.com/releases/Muse.apk",
+            downloadUrl = "https://github.com/joselofarias-byte/Muse/releases/download/v1/Muse.apk",
             size = 1L,
             sha256 = "b".repeat(64),
         )
-        val wrongScheme = trusted.copy(downloadUrl = "http://objects.githubusercontent.com/releases/Muse.apk")
+        val wrongScheme = trusted.copy(downloadUrl = trusted.downloadUrl.replace("https://", "http://"))
         val wrongHost = trusted.copy(downloadUrl = "https://example.com/releases/Muse.apk")
-        val wrongExtension = trusted.copy(downloadUrl = "https://objects.githubusercontent.com/releases/Muse.zip")
+        val wrongExtension = trusted.copy(downloadUrl = trusted.downloadUrl.replace(".apk", ".zip"))
+        val upstreamAsset = trusted.copy(downloadUrl = "https://github.com/Zer0Qing/Muse/releases/download/v1/Muse.apk")
+        val unscopedAsset = trusted.copy(downloadUrl = "https://objects.githubusercontent.com/releases/Muse.apk")
         val wrongHash = trusted.copy(sha256 = "not-a-sha256")
 
         assertTrue(UpdateChecker.isTrustedApkAsset(trusted))
@@ -106,16 +108,15 @@ class UpdateCheckerVersionTest {
         assertTrue(!UpdateChecker.isTrustedApkAsset(wrongHost))
         assertTrue(!UpdateChecker.isTrustedApkAsset(wrongExtension))
         assertTrue(!UpdateChecker.isTrustedApkAsset(wrongHash))
+        assertTrue(!UpdateChecker.isTrustedApkAsset(upstreamAsset))
+        assertTrue(!UpdateChecker.isTrustedApkAsset(unscopedAsset))
     }
 
     // ── Banner mostrar juicio(No más mensajes después de actualizar a la misma versión) ──
 
     @Test
-    fun `official download page constant points to museai ltd https`() {
-        // Descargar/Actualice las exportaciones para que apunten a la página de descarga del sitio web oficial:Debe ser la dirección HTTPS del nombre de dominio museai.ltd
-        val url = UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE
-        assertTrue(url.startsWith("https://museai.ltd/"))
-        assertTrue(url.endsWith("/"))
+    fun `official download page points to fork releases`() {
+        assertEquals("https://github.com/joselofarias-byte/Muse/releases/latest", UpdateNotifier.OFFICIAL_DOWNLOAD_PAGE)
     }
 
     @Test
