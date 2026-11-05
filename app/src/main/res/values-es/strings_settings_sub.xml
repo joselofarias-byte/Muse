@@ -24,10 +24,10 @@
     <string name="settings_agent_use_first_assistant">Usa el primer ayudante</string>
     <string name="settings_agent_section_model">Modelo</string>
     <string name="settings_agent_current_model">modelo actual</string>
-    <string name="settings_agent_current_model_hint">Valor predeterminado global (diálogo principal/Agent compartido)</string>
+    <string name="settings_agent_current_model_hint">Se usa el modelo general configurado para los chats y asistentes.</string>
     <string name="settings_agent_tool_model_title">Modelo de dispositivo</string>
     <string name="settings_agent_subagent_model_title">modelo de herramienta grande</string>
-    <string name="settings_agent_select_subagent_model">Seleccionar modelo de herramienta grande</string>
+    <string name="settings_agent_select_subagent_model">Elegir modelo para tareas complejas</string>
     <string name="settings_agent_clear_subagent_model">Borrar (reutilizar modelo de gadget)</string>
     <string name="settings_agent_multi_agent_section">Colaboración entre múltiples agentes</string>
     <string name="settings_agent_collab_team">equipo colaborativo</string>
@@ -59,7 +59,7 @@
     <string name="settings_agent_offset_off_label">Cerrar</string>
     <string name="settings_agent_select_model">Seleccionar modelo de agente</string>
     <string name="settings_agent_no_models_hint">Actualmente no hay ningún modelo disponible, primero configure el proveedor en "Modelos y Servicios".</string>
-    <string name="settings_agent_select_tool_model">Selecciona un modelo de gadget</string>
+    <string name="settings_agent_select_tool_model">Elegir modelo para herramientas</string>
     <string name="settings_agent_clear_tool_model">Borrar (heredar el modelo principal)</string>
     <string name="settings_agent_unnamed_assistant">ayudante anónimo</string>
     <string name="settings_agent_interval_minutes">cada %1$d minutos</string>
@@ -314,7 +314,7 @@
     <string name="settings_speech_follow_unset">No seleccionado</string>
     <string name="settings_speech_follow_no_models">Este proveedor no tiene modelos opcionales.</string>
     <!-- Selección del modelo de voz (TTS / ASR compartido): el modelo sólo se mantiene en el proveedor -->
-    <string name="settings_speech_model_hint">El modelo es gestionado uniformemente por el proveedor, aquí hay sólo una selección.</string>
+    <string name="settings_speech_model_hint">El proveedor administra los modelos. Elegí aquí cuál querés usar.</string>
     <string name="settings_speech_model_empty">Aún no hay ningún modelo disponible, agréguelo primero al proveedor</string>
     <string name="settings_speech_model_open_providers">Ir a configuración de proveedor</string>
     <string name="settings_speech_model_custom_prefix">Personalizar:%1$s</string>
