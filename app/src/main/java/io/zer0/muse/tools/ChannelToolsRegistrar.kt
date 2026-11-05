@@ -1,6 +1,7 @@
 package io.zer0.muse.tools
 
 import io.zer0.muse.channel.ChannelManager
+import io.zer0.muse.channel.ChannelRelayLedger
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -48,6 +49,57 @@ class ChannelToolsRegistrar(
 
         toolRegistry.register(
             ToolRegistry.ToolDef(
+                name = TOOL_RELAY_CHANNEL,
+                description = "Reenvía un mensaje de texto por otro canal vinculado. Solo al destinatario vinculado; " +
+                    "no permite destinatarios arbitrarios. Úsalo para comunicar entre canales. " +
+                    "Consulta los identificadores con channel_list. Hay límites por turno y por hora.",
+                parameters = mapOf(
+                    "channel_id" to "Obligatorio: identificador del canal de destino (consulta channel_list)",
+                    "text" to "Obligatorio: texto que se reenviará",
+                ),
+                required = setOf("channel_id", "text"),
+                category = "built-in",
+                riskLevel = ToolRiskLevel.NORMAL,
+            ),
+        ) { args ->
+            val channelId = args["channel_id"]?.trim().orEmpty()
+            val text = args["text"].orEmpty()
+            if (channelId.isBlank()) return@register "Falta channel_id"
+            if (text.isBlank()) return@register "Falta text"
+            runBlocking {
+                channelManager.refresh()
+                val config = channelManager.channels.value.firstOrNull { it.id == channelId }
+                if (config == null) {
+                    return@runBlocking "El canal no existe: $channelId"
+                }
+                if (!config.enabled) {
+                    return@runBlocking "El canal está desactivado: ${config.name.ifBlank { channelId }}"
+                }
+                if (config.targetId.isBlank()) {
+                    return@runBlocking "El canal no tiene destinatario vinculado. Configúralo primero en Ajustes."
+                }
+                val now = System.currentTimeMillis()
+                if (!ChannelRelayLedger.tryReserveSend(now)) {
+                    return@runBlocking "Límite de reenvíos por turno o por hora alcanzado. No se envió el mensaje."
+                }
+                var recorded = false
+                try {
+                    val result = channelManager.sendText(channelId, text)
+                    if (result.ok) {
+                        ChannelRelayLedger.recordSent(channelId, text, System.currentTimeMillis())
+                        recorded = true
+                        "Reenviado a ${config.name.ifBlank { config.platform.name }}"
+                    } else {
+                        "Error de reenvío: ${result.detail}"
+                    }
+                } finally {
+                    if (!recorded) ChannelRelayLedger.releaseSend()
+                }
+            }
+        }
+
+        toolRegistry.register(
+            ToolRegistry.ToolDef(
                 name = TOOL_LIST_CHANNELS,
                 description = "Listar canales de mensajería externos configurados(Feishu/QQ espera)y su estado de id/plataforma/habilitado.",
                 parameters = emptyMap(),
@@ -75,7 +127,8 @@ class ChannelToolsRegistrar(
         /** Enviar mensajes a canales externos(Ejecutar después de la aprobación). */
         const val TOOL_SEND_CHANNEL = "send_channel_message"
 
-        /** Enumera los canales configurados. */
+        const val TOOL_RELAY_CHANNEL = "relay_channel_message"
+
         const val TOOL_LIST_CHANNELS = "channel_list"
     }
 }
