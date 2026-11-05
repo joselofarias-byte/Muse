@@ -32,13 +32,13 @@ class AppSettingsStore(private val context: Context) {
     private val languageSyncCache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
     private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }
+    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: DEFAULT_LANGUAGE }
 
     init {
         // Cuando los usuarios históricos actualizan a v1.131+, el SP está vacío y debe copiarse del DataStore; La ejecución asincrónica no bloquea el inicio.
         cacheScope.launch {
             try {
-                val dsLang = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }.first()
+                val dsLang = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: DEFAULT_LANGUAGE }.first()
                 if (languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
                     languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang).apply()
                 }
@@ -54,9 +54,10 @@ class AppSettingsStore(private val context: Context) {
     }
 
     /** Lea la configuración de idioma de forma sincrónica para evitar que el subproceso principal lea DataStore durante el inicio en frío. */
-    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "system") ?: "system"
+    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, DEFAULT_LANGUAGE) ?: DEFAULT_LANGUAGE
 
     private companion object {
+        private const val DEFAULT_LANGUAGE = "es"
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private const val KEY_LANGUAGE_SP = "language"
     }
