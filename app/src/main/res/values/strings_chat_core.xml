@@ -621,4 +621,5 @@
     <string name="chat_process_running_command">Comando en ejecución</string>
     <string name="chat_process_subagent_running">%1$d Subtareas en segundo plano</string>
     <string name="chat_process_subagent_section">Subtareas en segundo plano</string>
+    <string name="settings_sticker_export_location_failed">No se puede escribir en la ubicación seleccionada</string>
 </resources>
