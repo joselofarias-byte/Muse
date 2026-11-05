@@ -23,34 +23,18 @@ import java.net.URI
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * Comprobador de actualizaciones de aplicaciones — Obtenga la última versión de lanzamiento.
- *
- * Puntos finales (pruebe en orden, use el siguiente solo si el anterior falla):
- *  1. `https://museai.ltd/api/latest.json` —— Imagen de construcción propia, la estructura se convierte desde GitHub Release,
- *     **Sin límite actual**;Los campos son consistentes con GitHub (faltan `body`/`digest` procesado por defecto).
- *  2. `https://api.github.com/repos/{repo}/releases/latest` —— Llega al fondo de esto.
- *
- * ¿Por qué debemos anteponer las imágenes creadas por nosotros mismos?GitHub si"No certificado"Las solicitudes están limitadas a 60 solicitudes por hora y se calculan por IP.
- * La IP de salida de la red celular suele ser compartida por una gran cantidad de dispositivos. Cuando la cuota esté llena, se verificará y actualizará toda la IP. 403
- * (Encabezado de respuesta X-RateLimit-Remaining: 0). Este fallo no tiene nada que ver con el comportamiento del propio usuario y sólo se puede solucionar cambiando el punto final.
- *
- * Instrucciones de implementación:
- *  - Las solicitudes de red se ejecutan en el hilo IO.,La corrutina se puede cancelar.(suspendCancellableCoroutine + enqueue)
- *  - No se introducen nuevas dependencias.,Reutilizar proyectos existentes OkHttp + kotlinx.serialization
- *  - GitHub Requisitos obligatorios del terminal User-Agent header,De lo contrario 403
- *
- * @param client OkHttpClient(Inyectado por la persona que llama,Generalmente reutilizado named("chat") singleton)
- * @param repo GitHub identificación del almacén,Formato "owner/name"
- */
+/** Consulta únicamente las versiones publicadas por JolufaSoft en GitHub. */
 class UpdateChecker(
     private val client: OkHttpClient,
-    private val repo: String = DEFAULT_REPO,
+    repo: String = DEFAULT_REPO,
+    private val supportedAbis: () -> List<String> = { android.os.Build.SUPPORTED_ABIS.toList() },
 ) {
 
-    /** GitHub Releases API Punto final (abajo). */
-    private val githubApiUrl: String
-        get() = "https://api.github.com/repos/$repo/releases/latest"
+    init {
+        require(repo == DEFAULT_REPO) { "Updates must come from $DEFAULT_REPO" }
+    }
+
+    private val apiClient = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
 
     /**
      * GitHub Release Recursos(APK Archivo).
@@ -88,27 +72,8 @@ class UpdateChecker(
         val apkAssets: List<ApkAsset>,
     )
 
-    /**
-     * Consulta asincrónicamente la última versión: prueba cada punto final en secuencia y se devolverá el primero que tenga éxito.
-     *
-     * La primera opción es crear una imagen autoconstruida (sin límite actual) y recurrir a la API de GitHub después de una falla. Se devuelve un error sólo si todos fallan.
-     *
-     * @return Regresar exitosamente [Result.Success] llevar [ReleaseInfo];
-     *         falló(red/error de análisis)Regresar [Result.Error]
-     */
     suspend fun checkLatestRelease(): Result<ReleaseInfo> = withContext(Dispatchers.IO) {
-        val attempts = listOf("github" to githubApiUrl)
-        var lastError: Result.Error = Result.Error("network error")
-        for ((label, url) in attempts) {
-            when (val outcome = fetchRelease(label, url)) {
-                is Result.Success -> return@withContext outcome
-                is Result.Error -> {
-                    Logger.w(TAG, "check latest release failed via $label: ${outcome.message}")
-                    lastError = outcome
-                }
-            }
-        }
-        lastError
+        fetchRelease("github", OFFICIAL_LATEST_URL)
     }
 
     /**
@@ -145,16 +110,29 @@ class UpdateChecker(
         val json = AppJson.parseToJsonElement(bodyText).jsonObject
         val tagName = json["tag_name"]?.jsonPrimitive?.contentOrNull
             ?: return Result.Error("failed to parse tag_name")
+        if (!STABLE_VERSION_REGEX.matches(tagName) ||
+            json["draft"]?.jsonPrimitive?.contentOrNull == "true" ||
+            json["prerelease"]?.jsonPrimitive?.contentOrNull == "true"
+        ) return Result.Error("Versión no compatible")
+        val htmlUrl = json["html_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        if (htmlUrl != "https://github.com/$DEFAULT_REPO/releases/tag/$tagName") {
+            return Result.Error("Procedencia de versión no válida")
+        }
         val assets = json["assets"]?.jsonArray
             ?.mapNotNull { it.jsonObject }
             ?.mapNotNull(::parseApkAsset)
             .orEmpty()
+            .filter { asset ->
+                URI(asset.downloadUrl).path == "/$DEFAULT_REPO/releases/download/$tagName/${asset.name}" &&
+                    isCompatibleApkAsset(asset, supportedAbis())
+            }
+        if (assets.isEmpty()) return Result.Error("No hay APK compatible con este dispositivo")
         return Result.Success(
             ReleaseInfo(
                 tagName = tagName,
                 name = json["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                 body = json["body"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                htmlUrl = json["html_url"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                htmlUrl = htmlUrl,
                 publishedAt = parseIso8601ToMillis(
                     json["published_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                 ),
@@ -172,8 +150,8 @@ class UpdateChecker(
                 ?.let { value -> if (':' in value) value.substringAfter(':') else value }
         }
         val validName = name?.takeIf { it.endsWith(".apk", ignoreCase = true) }
-        val validUrl = url?.takeIf { isTrustedDownloadUrl(it) && isForkReleaseAssetUrl(it) }
-        // El resumen que falta es compatible con versiones anteriores; Siempre que el resumen sea proporcionado por upstream, debe ser SHA-256 legal.
+        val validUrl = url?.takeIf { isTrustedDownloadUrl(it) }
+        // El resumen que falta es compatible con versiones anteriores; Siempre que se proporcione un resumen, debe ser SHA-256 legal.
         val validDigest = digest == null || (sha256 != null && SHA256_REGEX.matches(sha256))
         return if (validName != null && validUrl != null && validDigest) {
             ApkAsset(
@@ -195,7 +173,7 @@ class UpdateChecker(
      *  - No ocupes el hilo esperando respuesta.(enqueue Devolución de llamada por hilo del programador OkHttp)
      */
     private suspend fun exec(request: Request): Response = suspendCancellableCoroutine { cont ->
-        val call = client.newCall(request)
+        val call = apiClient.newCall(request)
         cont.invokeOnCancellation { resultOf { call.cancel() } }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -227,45 +205,36 @@ class UpdateChecker(
         /** User-Agent(GitHub API Requisitos obligatorios,De lo contrario 403). */
         private const val USER_AGENT = "muse-android"
 
-        /**
-         * Punto final espejo autoconstruido: el servidor del sitio web oficial sincroniza la instantánea de la versión de GitHub cada 30 minutos.
-         *
-         * Campos con GitHub `releases/latest` alinear (`tag_name` / `name` / `html_url` /
-         * `published_at` / `assets[].browser_download_url`); sin aguas arriba `body` con `digest` cuando,
-         * Botón Aplicar"Predeterminado"Procesamiento (la descripción está vacía, se omite la verificación resumida), lo que no afecta el juicio de versión ni la descarga.
-         */
-        const val OFFICIAL_LATEST_URL = "https://api.github.com/repos/joselofarias-byte/Muse/releases/latest"
+        const val DEFAULT_REPO = "joselofarias-byte/Muse"
+        const val OFFICIAL_LATEST_URL = "https://api.github.com/repos/$DEFAULT_REPO/releases/latest"
         private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
-        private val TRUSTED_DOWNLOAD_HOSTS = setOf(
-            "github.com",
-            "objects.githubusercontent.com",
-            "github-releases.githubusercontent.com",
+        private val STABLE_VERSION_REGEX = Regex("^[vV]?[0-9]+(?:\\.[0-9]+){1,3}$")
+        private val ASSET_PATH_REGEX = Regex(
+            "^/$DEFAULT_REPO/releases/download/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.apk$",
+            RegexOption.IGNORE_CASE,
         )
+        private val APK_ABIS = setOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
-        /** Permitir solo direcciones de activos HTTPS oficiales de GitHub para evitar el almacenamiento en caché/Los datos ascendentes convierten la entrada de descarga en un salto arbitrario. */
+        /** Una URL genérica de GitHub no demuestra procedencia del fork. */
         fun isTrustedDownloadUrl(url: String): Boolean = runCatching {
             val parsed = URI(url)
-            parsed.scheme.equals("https", ignoreCase = true) &&
-                parsed.userInfo == null &&
-                parsed.port in setOf(-1, 443) &&
-                parsed.host?.lowercase() in TRUSTED_DOWNLOAD_HOSTS &&
-                parsed.path.endsWith(".apk", ignoreCase = true)
+            parsed.scheme == "https" && parsed.host == "github.com" &&
+                parsed.userInfo == null && parsed.port in setOf(-1, 443) &&
+                parsed.rawQuery == null && parsed.rawFragment == null &&
+                parsed.rawPath == parsed.path && ASSET_PATH_REGEX.matches(parsed.path) &&
+                parsed.path.startsWith("/$DEFAULT_REPO/releases/download/")
         }.getOrDefault(false)
 
-        /** Only accept APK assets published under the JolufaSoft fork. */
-        private fun isForkReleaseAssetUrl(url: String): Boolean = runCatching {
-            val uri = URI(url)
-            uri.host.equals("github.com", ignoreCase = true) &&
-                uri.path.startsWith("/joselofarias-byte/Muse/releases/download/")
-        }.getOrDefault(false)
+        fun isTrustedApkAsset(asset: ApkAsset): Boolean =
+            isTrustedDownloadUrl(asset.downloadUrl) &&
+                URI(asset.downloadUrl).path.substringAfterLast('/') == asset.name &&
+                asset.size > 0 && (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
 
-        /** Compruebe si el recurso de lanzamiento se puede utilizar como entrada de descarga de APK. La falta de sha256 simplemente significa que la versión anterior no tiene resumen. */
-        fun isTrustedApkAsset(asset: ApkAsset): Boolean = asset.name.endsWith(".apk", ignoreCase = true) &&
-            isTrustedDownloadUrl(asset.downloadUrl) && isForkReleaseAssetUrl(asset.downloadUrl) &&
-            (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
-        /** Repositorio predeterminado de GitHub(owner/name). */
-        /** v1.0.55: Corregido al almacén real. Zer0Qing/Muse(Error ortográfico original zer0/muse,404 Siempre se nota que es lo último.). */
-        const val DEFAULT_REPO = "joselofarias-byte/Muse"
+        fun isCompatibleApkAsset(asset: ApkAsset, supportedAbis: List<String>): Boolean {
+            if (!isTrustedApkAsset(asset)) return false
+            val abi = APK_ABIS.firstOrNull { asset.name.endsWith("_$it.apk") } ?: return false
+            return abi in supportedAbis
+        }
 
         /**
          * Comparación de versiones semánticas(apoyo "v1.132" / "1.132" / "1.13.2" formato etc.).
