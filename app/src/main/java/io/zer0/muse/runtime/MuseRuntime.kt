@@ -2,6 +2,7 @@ package io.zer0.muse.runtime
 
 import android.content.Context
 import io.zer0.common.Logger
+import io.zer0.muse.BuildConfig
 import io.zer0.muse.tools.TOOL_OUTPUTS_DIR
 import io.zer0.muse.tools.ToolOutputCapture
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +77,7 @@ object MuseRuntime {
     fun binDir(ctx: Context): File = File(runtimeDir(ctx), "bin")
 
     /** Listo en tiempo de ejecución (node El binario existe y los datos npm están descomprimidos). */
-    fun isReady(ctx: Context): Boolean = nodeBinary(ctx).isFile && npmCli(ctx).isFile
+    fun isReady(ctx: Context): Boolean = BuildConfig.EMBEDDED_RUNTIMES_ENABLED && nodeBinary(ctx).isFile && npmCli(ctx).isFile
 
     // ── Descompresión de datos ─────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ object MuseRuntime {
      */
     suspend fun ensureData(ctx: Context): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            requireEnabled()
             val rt = runtimeDir(ctx)
             val mark = File(rt, MARK_FILE)
             val installed = runCatching { mark.readText().trim() }.getOrNull()
@@ -206,13 +208,22 @@ object MuseRuntime {
         timeoutMs: Long = 30_000L,
         workdir: File? = homeDir(ctx),
         env: Map<String, String> = emptyMap(),
-    ): ExecResult = exec(
-        ctx = ctx,
-        cmd = listOf(nodeBinary(ctx).absolutePath) + args,
-        timeoutMs = timeoutMs,
-        workdir = workdir,
-        env = env,
-    )
+    ): ExecResult {
+        requireEnabled()
+        return exec(
+            ctx = ctx,
+            cmd = listOf(nodeBinary(ctx).absolutePath) + args,
+            timeoutMs = timeoutMs,
+            workdir = workdir,
+            env = env,
+        )
+    }
+
+    private fun requireEnabled() {
+        check(BuildConfig.EMBEDDED_RUNTIMES_ENABLED) {
+            "Node.js/npm integrado no está disponible en Muse Lite. Use la edición completa para esta función."
+        }
+    }
 
     /** Ejecución de subproceso genérico (entorno de herencia claro, uso [buildEnv] entorno construido). */
     suspend fun exec(
