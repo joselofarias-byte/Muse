@@ -48,9 +48,6 @@ class UpdateChecker(
     private val repo: String = DEFAULT_REPO,
 ) {
 
-    /** Punto final espejo autoconstruido (preferido, sin límite actual). */
-    private val officialApiUrl: String get() = OFFICIAL_LATEST_URL
-
     /** GitHub Releases API Punto final (abajo). */
     private val githubApiUrl: String
         get() = "https://api.github.com/repos/$repo/releases/latest"
