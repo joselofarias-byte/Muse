@@ -4,8 +4,8 @@
     <string name="assistant_detail_title_default">Detalles del asistente</string>
     <string name="assistant_detail_unnamed">(sin nombre)</string>
     <string name="assistant_detail_loading">Cargando...</string>
-    <string name="assistant_detail_basic">Conceptos básicos</string>
-    <string name="assistant_detail_basic_desc">Nombre / avatar / modelo / parámetros de muestreo</string>
+    <string name="assistant_detail_basic">Configuración básica</string>
+    <string name="assistant_detail_basic_desc">Nombre, avatar, modelo y parámetros de generación</string>
     <string name="assistant_detail_prompt">Instrucciones</string>
     <string name="assistant_detail_prompt_desc">Instrucciones del sistema, plantilla y mensajes predefinidos</string>
     <string name="assistant_detail_extensions">Extensiones</string>
@@ -16,23 +16,23 @@
     <string name="assistant_detail_advanced_desc">Fondo, solicitudes personalizadas y etiquetas</string>
     <string name="assistant_detail_avatar_save_failed">No se pudo guardar el avatar</string>
     <string name="assistant_detail_no_image_app">No se encontró ninguna aplicación para abrir la imagen.</string>
-    <string name="assistant_detail_pick_image">Seleccionar imágenes</string>
+    <string name="assistant_detail_pick_image">Elegir imagen</string>
     <string name="assistant_detail_clear">Borrar</string>
     <string name="assistant_detail_avatar">Avatar</string>
-    <string name="assistant_detail_avatar_image_set">Imagen de avatar configurada</string>
-    <string name="assistant_detail_avatar_emoji">Usa avatares Emoji</string>
-    <string name="assistant_detail_avatar_initial">Usa iniciales</string>
+    <string name="assistant_detail_avatar_image_set">Imagen de perfil configurada</string>
+    <string name="assistant_detail_avatar_emoji">Usar un emoji como avatar</string>
+    <string name="assistant_detail_avatar_initial">Usar iniciales como avatar</string>
     <string name="assistant_detail_name">Nombre</string>
     <string name="assistant_detail_avatar_emoji_label">Emoji del avatar (1 o 2 caracteres, opcional)</string>
     <string name="assistant_detail_global_default">Modelo general</string>
     <string name="assistant_detail_exclusive_model">Modelo propio del asistente</string>
     <string name="assistant_detail_temperature">Temperatura: %1$s</string>
     <string name="assistant_detail_default">Predeterminado</string>
-    <string name="assistant_detail_use_default">Usar predeterminado</string>
+    <string name="assistant_detail_use_default">Usar valor predeterminado</string>
     <string name="assistant_detail_top_p_label">Top P (de 0 a 1; vacío para usar el valor predeterminado)</string>
     <string name="assistant_detail_max_tokens_label">Máximo de tokens (vacío para usar el valor predeterminado)</string>
     <string name="assistant_detail_context_message_count">Número de mensajes de contexto: %1$d</string>
-    <string name="assistant_detail_reasoning_level">nivel de razonamiento</string>
+    <string name="assistant_detail_reasoning_level">Nivel de razonamiento</string>
     <!-- v2.0.1: Nombre para mostrar del menú desplegable del nivel de razonamiento -->
     <string name="reasoning_level_off">Desactivado</string>
     <string name="reasoning_level_auto">Automático</string>
@@ -44,7 +44,7 @@
     <string name="assistant_detail_stream_output_desc">Si se desactiva, la respuesta completa se muestra cuando termina la generación.</string>
     <!-- v1.0.19: Assistant Finalización del campo(summary / useAssistantName / allowGroupChat) -->
     <string name="assistant_detail_summary">Descripción breve</string>
-    <string name="assistant_detail_summary_hint">Se utiliza para listas de chat grupal y subtítulos de tarjetas de asistente.</string>
+    <string name="assistant_detail_summary_hint">Se muestra en las listas de chats grupales y en las tarjetas del asistente.</string>
     <string name="assistant_detail_use_assistant_name">Mostrar el nombre del asistente en el chat</string>
     <string name="assistant_detail_use_assistant_name_desc">Muestra el nombre del asistente en lugar del nombre del modelo.</string>
     <string name="assistant_detail_allow_group_chat">Permitir chat grupal</string>
@@ -58,8 +58,8 @@
     <string name="assistant_detail_using_global_model">Modelo general en uso: %1$s</string>
     <string name="assistant_detail_model_hint">Podés elegir un modelo distinto para cada asistente. Si no elegís ninguno, se usará el modelo general.</string>
     <string name="assistant_detail_system_prompt_label">Instrucciones del sistema (personalidad y reglas)</string>
-    <string name="assistant_detail_message_template_label">Plantilla de mensaje (admite {{date}} {{time}} {{session_id}} variables)</string>
-    <string name="assistant_detail_preset_messages_label">Mensaje predeterminado JSON(Avanzado, como [{\"role\":\"system\",\"content\":\"...\"}])</string>
+    <string name="assistant_detail_message_template_label">Plantilla de mensaje (admite las variables {{date}}, {{time}} y {{session_id}})</string>
+    <string name="assistant_detail_preset_messages_label">Mensajes predefinidos en JSON (avanzado; por ejemplo, [{\"role\":\"system\",\"content\":\"...\"}])</string>
     <string name="assistant_detail_ext_quick_message">Mensaje rápido</string>
     <string name="assistant_detail_ext_lorebook">Libro de contexto</string>
     <string name="assistant_detail_ext_mode_injection">Inyección de instrucciones</string>
