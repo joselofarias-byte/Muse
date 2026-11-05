@@ -245,8 +245,12 @@ class ChatGenerationService : Service() {
         serviceScope.cancel()
         // v2.5.0 fix: Notificación sobre el progreso de la limpieza de la base. —— stopService no se ejecutará cuando el sistema cierre el servicio a la fuerza,
         // En la barra de notificaciones permanecerá una barra de progreso dinámica con el mismo recuento de palabras.(Prueba real del usuario"Salir de la aplicación también mantiene").
-        notificationManager.clearLiveProgress()
+        runCatching { notificationManagerOrNull()?.clearLiveProgress() }
+            .onFailure { Logger.w("ChatGenService", "No se pudo limpiar la notificación al detener el servicio", it) }
     }
+
+    private fun notificationManagerOrNull(): MuseNotificationManager? =
+        runCatching { org.koin.core.context.GlobalContext.getOrNull()?.get<MuseNotificationManager>() }.getOrNull()
 
     companion object {
         private const val NOTIFICATION_ID = 2001
