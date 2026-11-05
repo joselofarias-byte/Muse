@@ -299,9 +299,13 @@ android {
             isEnable = true
             reset()
             // P0 Revisión: agregue x86_64 (el simulador local verifica el tiempo de ejecución integrado); evaluar si se debe retener antes de liberarlo
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            if (museLite) {
+                include("arm64-v8a")
+            } else {
+                include("arm64-v8a", "armeabi-v7a", "x86_64")
+            }
             // Para la verificación diaria, use -PnoUniversal para omitir el paquete universal de 169 MB y usar solo el subpaquete ABI.
-            isUniversalApk = providers.gradleProperty("noUniversal").isPresent.not()
+            isUniversalApk = !museLite && providers.gradleProperty("noUniversal").isPresent.not()
         }
     }
 

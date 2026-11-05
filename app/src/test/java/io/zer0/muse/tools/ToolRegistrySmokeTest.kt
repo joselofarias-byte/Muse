@@ -317,7 +317,7 @@ class ToolRegistrySmokeTest {
             "browser_navigate", "browser_click", "browser_type", "browser_extract",
             "browser_scroll_bottom", "browser_get_html", "browser_snapshot",
             // canal de mensajes(dependencia de la red)
-            "send_channel_message", "channel_list",
+            "send_channel_message", "relay_channel_message", "channel_list",
             // OAuth conector(dependencia de la red)
             "connector_list", "call_connector",
             // archivo de espacio de trabajo(Depende del sistema de archivos)
