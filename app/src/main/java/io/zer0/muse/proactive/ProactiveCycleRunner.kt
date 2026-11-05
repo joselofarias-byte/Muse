@@ -210,7 +210,6 @@ class ProactiveCycleRunner(
                 if (ok) "Enviado" else "No se pudo iniciar sesión, inténtalo de nuevo la próxima vez.",
             )
         }
-    }
 
     // ══════════════════════════════════════════════════════════════
     // preparar
@@ -221,11 +220,7 @@ class ProactiveCycleRunner(
         data class Blocked(val outcome: Outcome) : Preparation
     }
 
-    private suspend fun prepare(
-        trigger: String,
-        force: Boolean,
-        entry: ProactiveCycleGuard.Entry,
-    ): Preparation {
+    private suspend fun prepare(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Preparation {
         val gate = gateBlock(force)
         return gate ?: assemble(trigger, entry)
     }
@@ -287,19 +282,22 @@ class ProactiveCycleRunner(
                         randomOffsetMinutes = config.randomOffsetMinutes,
                         assistantId = assistant.id,
                     ),
+                    dailyGuaranteeMs = config.dailyGuaranteeHours.coerceIn(0, 72) * 3_600_000L,
                 ),
             ).also { d ->
                 Logger.d(
                     TAG,
                     "juicio[$trigger]: ${d.verdict} interval=${d.effectiveIntervalMinutes}min " +
-                        "budget=${d.remainingBudget}",
+                        "guarantee=${d.dailyGuarantee} budget=${d.remainingBudget}",
                 )
             }
         }
 
         return when {
-            // Ya no se bloquea cuando el libro mayor está vacío: el material es la conversación más reciente y aún puedes responder la llamada si no tienes preocupaciones.
-            sessionId == null || context == null || decision == null -> blocked("No hay sesiones disponibles")
+            sessionId == null && trigger == ProactiveScheduler.TRIGGER_MANUAL &&
+                !config.agentSessionEnabled && !config.allowPlainChatSession ->
+                blocked("没有可用落点:Agent 会话与普通对话都关着")
+            sessionId == null || context == null || decision == null -> blocked("没有可用会话")
             else -> Preparation.Ready(
                 Prepared(
                     config = config,
@@ -313,11 +311,8 @@ class ProactiveCycleRunner(
         }
     }
 
-    private fun blocked(
-        detail: String,
-        verdict: ProactiveTimingEngine.Verdict? = null,
-        ledgerNotEmpty: Boolean = false,
-    ): Preparation = Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
+    private fun blocked(detail: String, verdict: ProactiveTimingEngine.Verdict? = null, ledgerNotEmpty: Boolean = false): Preparation =
+        Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
 
     // ══════════════════════════════════════════════════════════════
     // generar
@@ -342,7 +337,7 @@ class ProactiveCycleRunner(
 
         // Modo silencioso: no hables sin un motivo específico. Incluso el modelo no está ajustado.
         // Esto no sólo ahorra una llamada, sino que también evita que envíe un saludo bajo la restricción de "sólo hablar de cosas".
-        if (intensity.onlyWhenNeeded && candidates.isEmpty()) {
+        if (intensity.onlyWhenNeeded && candidates.isEmpty() && !ready.decision.dailyGuarantee) {
             return ProactiveReplyParser.Result.Skip("Archivo silencioso: no hay cosas específicas en el libro mayor")
         }
 
@@ -381,11 +376,7 @@ class ProactiveCycleRunner(
      * Cuando falla la deserción, no pasa nada. Esta ronda se trata como si no hubiera sucedido. Inténtalo de nuevo la próxima vez. ——
      * Preferiría volver a intentarlo antes que perder el mensaje, y prefiero que me deduzcan el crédito pero no enviarlo.
      */
-    private suspend fun publish(
-        trigger: String,
-        ready: Prepared,
-        message: ProactiveReplyParser.Result.Message,
-    ): Boolean {
+    private suspend fun publish(trigger: String, ready: Prepared, message: ProactiveReplyParser.Result.Message): Boolean {
         val now = System.currentTimeMillis()
         val written = runCatching {
             runtime.sessions.appendMessage(
