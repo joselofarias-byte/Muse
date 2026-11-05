@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,6 +20,13 @@ import org.robolectric.annotation.Config
 class AppSettingsStoreTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    @Before
+    fun resetLanguagePreferences() = runBlocking {
+        context.museSettingsDataStore.edit { it.clear() }
+        context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE).edit().clear().commit()
+        Unit
+    }
 
     @Test
     fun language_defaultsToSpanish() = runBlocking {
