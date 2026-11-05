@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_agent_daily_guarantee">Garantía diaria</string>
+    <string name="settings_agent_daily_guarantee_hint">Solo omite la espera entre mensajes. Respeta No molestar, el enfriamiento, la actividad reciente, la generación en curso y la cuota diaria.</string>
+    <string name="settings_agent_daily_guarantee_off">Desactivada</string>
+    <string name="settings_agent_daily_guarantee_hours">Cada %1$d horas</string>
+    <string name="settings_agent_allow_plain_chat">Mensajes en conversaciones normales</string>
+    <string name="settings_agent_allow_plain_chat_hint">Si las sesiones de agente están desactivadas, reutiliza una conversación existente. No crea conversaciones normales nuevas.</string>
+</resources>

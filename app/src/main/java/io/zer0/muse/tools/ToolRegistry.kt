@@ -383,24 +383,23 @@ class ToolRegistry(
      *
      * @param enabledToolIds Lista de identificadores de herramientas habilitadas;null O una lista vacía significa habilitar todos
      */
-    fun listToolsAsToolDefinitions(enabledToolIds: List<String>? = null): List<ToolDefinition> =
-        synchronized(definitionsLock) {
-            val revision = _revision.value
-            if (definitionsRevision != revision) {
-                definitionsAll = buildToolDefinitions()
-                definitionsRevision = revision
-                definitionsByFilter.clear()
-            }
-            val all = definitionsAll
-            if (enabledToolIds.isNullOrEmpty()) {
-                all
-            } else {
-                definitionsByFilter.getOrPut(enabledToolIds.toList()) {
-                    if (definitionsByFilter.size >= MAX_FILTERED_DEFINITIONS) definitionsByFilter.clear()
-                    all.filter { it.name in enabledToolIds }
-                }
+    fun listToolsAsToolDefinitions(enabledToolIds: List<String>? = null): List<ToolDefinition> = synchronized(definitionsLock) {
+        val revision = _revision.value
+        if (definitionsRevision != revision) {
+            definitionsAll = buildToolDefinitions()
+            definitionsRevision = revision
+            definitionsByFilter.clear()
+        }
+        val all = definitionsAll
+        if (enabledToolIds.isNullOrEmpty()) {
+            all
+        } else {
+            definitionsByFilter.getOrPut(enabledToolIds.toList()) {
+                if (definitionsByFilter.size >= MAX_FILTERED_DEFINITIONS) definitionsByFilter.clear()
+                all.filter { it.name in enabledToolIds }
             }
         }
+    }
 
     /** Reconstrucción completa [ToolDefinition] Lista (se toma solo cuando falta el caché). */
     private fun buildToolDefinitions(): List<ToolDefinition> = listTools().map { def ->
@@ -828,7 +827,7 @@ class ToolRegistry(
                 "browser_extract", "browser_scroll_bottom", "browser_get_html",
                 "browser_snapshot",
                 // v1.0.92: Herramientas del canal de mensajes(Envío de mensajería instantánea externa,ChannelToolsRegistrar Registrarse)
-                "send_channel_message", "channel_list",
+                "send_channel_message", "relay_channel_message", "channel_list",
                 // v2.0: OAuth herramienta conectora(ConnectorToolsRegistrar Registrarse)
                 "connector_list", "call_connector",
                 // P2-7: Herramienta de gestión de archivos del espacio de trabajo(WorkspaceToolsRegistrar Registrarse)
