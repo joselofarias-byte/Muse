@@ -11,15 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Pruebas de respaldo de endpoints para verificaciones de actualizaciones.
- *
- * Antecedentes:GitHub Limite las solicitudes no autenticadas a 60 veces por IP/Durante horas, la IP de salida de la red celular puede llenarse fácilmente cuando es compartida por una gran cantidad de dispositivos.
- * después**entero IP** La búsqueda de actualizaciones dará como resultado 403 (el usuario falla sin importar cómo actualizar). Por lo tanto, para comprobar la lógica, primero debes preguntar sobre la imagen construida por ti mismo.
- * (sin limitación) y solo recurrir a la API de GitHub si falla.
- *
- * Aquí, use MockWebServer para reemplazar los dos puntos finales y verificar"Orden + respaldo"El acto en sí.
- */
+/** Contrato de la API exclusiva del fork; no se permiten espejos ni fallback. */
 class UpdateCheckerEndpointFallbackTest {
 
     private lateinit var server: MockWebServer
@@ -47,7 +39,7 @@ class UpdateCheckerEndpointFallbackTest {
         server = MockWebServer()
         server.start()
         // server.url("/") En esta categoría, también sirve como"Imagen autoconstruida";Pruebe anulando baseUrl para que apunte a él.
-        checker = UpdateChecker(OkHttpClient())
+        checker = UpdateChecker(OkHttpClient(), supportedAbis = { listOf("arm64-v8a") })
     }
 
     @After
@@ -56,7 +48,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `La constante del punto final espejo autoconstruido apunta al sitio web oficial y es https`() {
+    fun `El punto final pertenece exclusivamente al fork`() {
         val url = UpdateChecker.OFFICIAL_LATEST_URL
         assertTrue("Debe ser https:$url", url.startsWith("https://"))
         assertTrue("Debe apuntar a su propio nombre de dominio:$url", url.contains("api.github.com/repos/joselofarias-byte/Muse"))
@@ -64,7 +56,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `Cuando la imagen creada por usted mismo devuelva 200, el resultado se utilizará directamente`() {
+    fun `La API del fork devuelve la versión compatible`() {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(releaseJson("v9.9.9")),
         )
@@ -75,8 +67,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `Regrese al siguiente punto final al crear una autoimagen 403`() {
-        // Simule que la imagen creada por usted mismo no está disponible y luego MockWebServer también asume el punto final de GitHub durante la prueba.
+    fun `Un 403 devuelve error sin intentar otro punto final`() {
         server.enqueue(MockResponse().setResponseCode(403).setBody("rate limit exceeded"))
         val first = runBlocking { fetchFromOfficialEndpoint() }
         assertTrue("403 no debe considerarse un éxito", first is Result.Error)
@@ -92,8 +83,7 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     @Test
-    fun `Las respuestas espejo a las que les falta el cuerpo y el resumen aún se pueden analizar`() {
-        // Los espejos autoconstruidos no los proporciona la empresa aguas arriba. body / digest —— Debe procesarse de forma predeterminada y no puede dejar de analizarse en su totalidad.
+    fun `Los releases antiguos sin cuerpo ni resumen todavía se pueden analizar`() {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
                 """
@@ -124,5 +114,5 @@ class UpdateCheckerEndpointFallbackTest {
 
     /** Utilice MockWebServer para reemplazar la dirección del punto final y solo verificar"Recuperación de punto final único + análisis"Esta capa. */
     private suspend fun fetchFromOfficialEndpoint(): Result<UpdateChecker.ReleaseInfo> =
-        checker.fetchRelease("official", server.url("/api/latest.json").toString())
+        checker.fetchRelease("official", server.url("/repos/joselofarias-byte/Muse/releases/latest").toString())
 }

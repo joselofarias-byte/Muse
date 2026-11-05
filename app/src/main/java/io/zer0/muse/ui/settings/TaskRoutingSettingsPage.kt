@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.muse.R
 import io.zer0.muse.data.ChatPreferences
 import io.zer0.muse.data.SettingsRepository
+import io.zer0.muse.data.routing.UtilityModelHealth
 import io.zer0.muse.data.routing.UtilityModelBinding
 import io.zer0.muse.data.routing.UtilityTier
 import io.zer0.muse.ui.ModelSwitchSheet
@@ -115,6 +116,12 @@ fun TaskRoutingSettingsPage(
     val utilitySmallInheritText = stringResource(R.string.settings_agent_tool_model_not_set_inherit)
     val utilityLargeInheritText = stringResource(R.string.settings_agent_utility_large_not_set_inherit)
 
+    val utilityFailures by UtilityModelHealth.failures.collectAsStateWithLifecycle()
+    val utilityFailure = remember(utilityFailures, utilityLargeBinding, utilityBinding) {
+        listOfNotNull(utilityLargeBinding, utilityBinding)
+            .firstNotNullOfOrNull { binding -> UtilityModelHealth.lastFor(binding.providerId, binding.modelId) }
+    }
+
     SettingsSubPageScaffold(
         title = stringResource(R.string.settings_task_routing_aux_section),
         onBack = onBack,
@@ -143,6 +150,32 @@ fun TaskRoutingSettingsPage(
                         scope.launch { settings.updateChatPreferences { it.copy(defaultDeepThinking = v) } }
                     },
                 )
+            }
+        }
+        utilityFailure?.let { failure ->
+            item(key = "aux_utility_failure") {
+                Column(
+                    modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_task_routing_utility_failed_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text =
+                        stringResource(
+                            R.string.settings_task_routing_utility_failed_desc,
+                            failure.modelId,
+                            failure.message,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
             }
         }
         item { SectionLabel(stringResource(R.string.settings_task_routing_aux_models_label)) }
