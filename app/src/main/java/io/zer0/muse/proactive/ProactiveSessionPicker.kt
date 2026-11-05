@@ -90,15 +90,14 @@ class ProactiveSessionPicker(private val runtime: ProactiveRuntime) {
         return SessionPick(created, SessionSource.NEW_AGENT, System.currentTimeMillis())
     }
 
-    private fun SessionEntity.isWritableForProactive(assistantId: String): Boolean =
-        this.assistantId == assistantId && deletedAt == null && !archived
+    private fun SessionEntity.isWritableForProactive(assistantId: String): Boolean = this.assistantId == assistantId && deletedAt == null && !archived
 
     private fun logPick(assistant: AssistantEntity, pick: SessionPick, now: Long): SessionPick {
         val idleMinutes = ((now - pick.lastActivityAt) / MINUTE_MS).coerceAtLeast(0L)
         Logger.i(
             TAG,
             "Selección de sesión proactiva | assistantId=${assistant.id} | sessionId=${pick.sessionId} | " +
-                "source=${pick.source.wireName} | inactividad=${idleMinutes} minutos",
+                "source=${pick.source.wireName} | inactividad=$idleMinutes minutos",
         )
         return pick
     }

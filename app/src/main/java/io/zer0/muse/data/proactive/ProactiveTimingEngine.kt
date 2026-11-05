@@ -200,8 +200,7 @@ object ProactiveTimingEngine {
     }
 
     /** distancia [timestamp] insuficiente [intervalMs] Incluso si está demasiado cerca;0 Quiere decir que nunca ha sucedido y no participa en el juicio. */
-    private fun tooSoon(now: Long, timestamp: Long, intervalMs: Long): Boolean =
-        timestamp > 0 && now - timestamp < intervalMs
+    private fun tooSoon(now: Long, timestamp: Long, intervalMs: Long): Boolean = timestamp > 0 && now - timestamp < intervalMs
 
     /**
      * El intervalo realmente utilizado en esta determinación: el intervalo básico configurado por el usuario + el desplazamiento del día.
@@ -272,8 +271,7 @@ object ProactiveTimingEngine {
     }
 
     /** El cupo total del día (no hay límite para los que se ciñen a personas). */
-    fun dailyAllowance(relation: ProactiveRelationEntity): Float =
-        relation.intensityEnum().let { if (it.unlimited) Float.MAX_VALUE else it.cap.toFloat() }
+    fun dailyAllowance(relation: ProactiveRelationEntity): Float = relation.intensityEnum().let { if (it.unlimited) Float.MAX_VALUE else it.cap.toFloat() }
 
     /**
      * Restablecimiento del juicio entre días.
@@ -306,8 +304,7 @@ object ProactiveTimingEngine {
      * (Cerrando por la izquierda y abriéndose por la derecha, cruzando la noche) Ya hay una realización única, y tarde o temprano surgirá una nueva,
      * La realización de esta deriva es "enviar ocasionalmente un mensaje más durante ciertos períodos", lo cual es extremadamente difícil de reproducir.
      */
-    fun isInQuietHours(hour: Int, start: Int, end: Int, allDayAllowed: Boolean = false): Boolean =
-        !QuietHoursPolicy.isWithinAllowedWindow(hour, start, end, allDayAllowed)
+    fun isInQuietHours(hour: Int, start: Int, end: Int, allDayAllowed: Boolean = false): Boolean = !QuietHoursPolicy.isWithinAllowedWindow(hour, start, end, allDayAllowed)
 
     /** Traduzca la conclusión del juicio en una oración que pueda publicarse en la página de configuración. */
     fun describe(decision: Decision): String = when (decision.verdict) {

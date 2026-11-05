@@ -178,8 +178,7 @@ class MuseCrashHandler private constructor(private val appContext: Context) : Th
         private fun safeModeSp(appContext: Context): SharedPreferences = appContext.getSharedPreferences(SAFE_MODE_SP, Context.MODE_PRIVATE)
 
         /** Obtenga una cola de informes de fallas dedicada SharedPreferences(no depende de Koin,Se puede leer temprano al inicio). */
-        private fun crashQueueSp(appContext: Context): SharedPreferences =
-            appContext.getSharedPreferences(CRASH_QUEUE_SP, Context.MODE_PRIVATE)
+        private fun crashQueueSp(appContext: Context): SharedPreferences = appContext.getSharedPreferences(CRASH_QUEUE_SP, Context.MODE_PRIVATE)
 
         /**
          * Leer la cola que se informará desde SP — conjunto de cadenas separadas por nuevas líneas(Evite introducir dependencias JSON).
