@@ -1096,6 +1096,26 @@ class MuseApp : Application(), ImageLoaderFactory {
      * - GIF: Para emoticonos animados/pegatinas dinámicas(minSdk 26 ≥ api19,GifDecoder Disponible;
      *   api28+ El sistema irá automáticamente ImageDecoderDecoder,Mejor rendimiento)
      */
+    // UI_HIDDEN no libera cachés: evita decodificar todas las imágenes al volver a la app.
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val tight = level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+            level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+            level == android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE
+        if (tight) releaseImageCaches()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        releaseImageCaches()
+    }
+
+    private fun releaseImageCaches() {
+        runCatching { io.zer0.muse.perf.DataUriImageCache.clear() }
+        runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+            .onFailure { Logger.w("MuseApp", "No se pudo liberar la caché de imágenes", it) }
+    }
+
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .components {
             add(SvgDecoder.Factory())
@@ -1110,10 +1130,10 @@ class MuseApp : Application(), ImageLoaderFactory {
                 add(GifDecoder.Factory())
             }
         }
-        // v0.36 Optimización del rendimiento:Limitar la memoria caché a la memoria disponible 25%,Evite las imágenes grandesOOM;Agregue almacenamiento en caché de disco para reducir las descargas repetidas.
+        // v0.36 Optimización del rendimiento:Limitar la memoria caché a la memoria disponible 15%,Evite las imágenes grandesOOM;Agregue almacenamiento en caché de disco para reducir las descargas repetidas.
         .memoryCache {
             MemoryCache.Builder(this)
-                .maxSizePercent(0.25)
+                .maxSizePercent(0.15)
                 .build()
         }
         .diskCache {

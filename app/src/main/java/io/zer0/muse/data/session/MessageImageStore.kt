@@ -214,6 +214,6 @@ class MessageImageStore(
         private const val MAX_CACHE_ENTRIES = 64
 
         /** LRU Límite de bytes de caché(aprox. 64MB),Evite que las imágenes base64 grandes ocupen cientos de MB. */
-        private const val MAX_CACHE_BYTES = 64L * 1024 * 1024
+        private const val MAX_CACHE_BYTES = 32L * 1024 * 1024
     }
 }
