@@ -11,6 +11,7 @@ import io.zer0.common.Logger
 import io.zer0.memory.llm.MemoryLlmClient
 import io.zer0.memory.prompt.MemoryPromptContract
 import io.zer0.muse.R
+import io.zer0.muse.data.routing.UtilityModelHealth
 import io.zer0.muse.data.routing.UtilityModelRouter
 import io.zer0.muse.data.routing.UtilityTier
 import kotlinx.coroutines.CancellationException
@@ -164,6 +165,11 @@ class MemoryLlmClientImpl(
                 }
                 lastError = e
                 if (!isRetryable(e) || attempt == maxAttempts) {
+                    UtilityModelHealth.record(
+                        providerId = resolvedProviderConfig?.id,
+                        modelId = resolvedModel.id,
+                        message = e.message ?: e::class.simpleName.orEmpty(),
+                    )
                     Logger.w(
                         "MemoryLlmClient",
                         "callText failed (model=${resolvedModel.id}, maxTokens=$effectiveMaxTokens, attempt=$attempt/$maxAttempts)",
