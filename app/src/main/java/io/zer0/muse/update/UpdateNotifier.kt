@@ -198,7 +198,7 @@ class UpdateNotifier(
          * Se proporciona un botón correspondiente a la arquitectura según el modelo, y el usuario puede descargarlo directamente desde el enlace del activo de GitHub con un clic; juzgue la arquitectura usted mismo dentro de la aplicación
          * Por el contrario, es fácil seleccionar el paquete incorrecto (especialmente en máquinas mixtas de 32/64 bits). La página de descarga del sitio web oficial no almacena el paquete de instalación en sí.
          */
-        const val OFFICIAL_DOWNLOAD_PAGE = "https://museai.ltd/download/"
+        const val OFFICIAL_DOWNLOAD_PAGE = "https://github.com/joselofarias-byte/Muse/releases/latest"
 
         /**
          * Construya un método utilizado para abrir la página de descarga del sitio web oficial. [Intent](ACTION_VIEW).
