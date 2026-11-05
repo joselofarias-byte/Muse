@@ -53,8 +53,7 @@ internal const val REPLY_WINDOW_EXPIRED_BY_QUEUE = "La ventana de respuesta pasi
  * Sólo tiene efecto práctico sobre QQ; otras plataformas [ChannelAutoReply.replyWindowDeadlineMillis] Regresar [Long.MAX_VALUE],
  * Esto siempre es falso. Cuando se devuelve verdadero, la persona que llama debe regresar directamente al estado final y ya no ingresar al modelo.
  */
-internal fun queuedReplyWindowExpired(inbound: ChannelInbox.Inbound, nowMillis: Long): Boolean =
-    nowMillis >= ChannelAutoReply.replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
+internal fun queuedReplyWindowExpired(inbound: ChannelInbox.Inbound, nowMillis: Long): Boolean = nowMillis >= ChannelAutoReply.replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
 
 internal class ChannelAgentCheckpointUnreadableException(cause: Throwable) :
     IllegalStateException("El punto de interrupción de recuperación del agente de canal no se puede leer", cause)
@@ -71,11 +70,7 @@ private data class ChannelToolExecution(
 )
 
 /** Incertidumbre en la ejecución de herramientas de fusión conservadoras,Evite los posibles efectos secundarios de volver a correr durante la recuperación posterior. */
-internal fun channelToolOutcomeUnknown(
-    previousUnknown: Boolean,
-    recoveringUncertainCall: Boolean,
-    executionOutcomeUnknown: Boolean,
-): Boolean = previousUnknown || recoveringUncertainCall || executionOutcomeUnknown
+internal fun channelToolOutcomeUnknown(previousUnknown: Boolean, recoveringUncertainCall: Boolean, executionOutcomeUnknown: Boolean): Boolean = previousUnknown || recoveringUncertainCall || executionOutcomeUnknown
 
 /** NORMAL Cuando una herramienta arroja una excepción o devuelve un error estandarizado,Los efectos secundarios se consideran conservadoramente desconocidos. */
 internal fun channelToolResultUnknown(risk: ToolRiskLevel, executionThrew: Boolean, result: String): Boolean {
@@ -313,12 +308,7 @@ class ChannelAutoReply(
      *  - No se envió ni un solo párrafo. → Se puede volver a intentar, pero error de configuración (no en el grupo/Sin permiso) estado final directo
      *  - enviado parcialmente → **no lo vuelvas a intentar**, de lo contrario el usuario recibirá un duplicado de los primeros párrafos
      */
-    private suspend fun deliverSegments(
-        inbound: ChannelInbox.Inbound,
-        config: ChannelConfig,
-        reply: String,
-        tokenValue: String?,
-    ): HandleResult {
+    private suspend fun deliverSegments(inbound: ChannelInbox.Inbound, config: ChannelConfig, reply: String, tokenValue: String?): HandleResult {
         val segments = ChannelReplyFormatter.plan(reply)
         if (segments.isEmpty()) {
             Logger.w(TAG, "La respuesta está vacía después de darle forma.,Marcar este artículo como ignorado")
@@ -359,17 +349,10 @@ class ChannelAutoReply(
     }
 
     /** Esta respuesta debe enviarse antes de esa fecha; de lo contrario, se cerrará la ventana de respuesta pasiva. */
-    private fun replyDeadline(inbound: ChannelInbox.Inbound): Long =
-        replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
+    private fun replyDeadline(inbound: ChannelInbox.Inbound): Long = replyWindowDeadlineMillis(inbound.platform, inbound.timestamp)
 
     /** Se emitieron varios párrafos para determinar el estado final en función de la situación real, y el“Lo que realmente reciben los usuarios”Vuelve a escribir a la sesión. */
-    private suspend fun finishDelivery(
-        inbound: ChannelInbox.Inbound,
-        config: ChannelConfig,
-        segments: List<String>,
-        sent: Int,
-        lastError: String?,
-    ): HandleResult {
+    private suspend fun finishDelivery(inbound: ChannelInbox.Inbound, config: ChannelConfig, segments: List<String>, sent: Int, lastError: String?): HandleResult {
         if (sent == 0) {
             Logger.w(TAG, "No se pudo enviar la respuesta automática(${inbound.platform}): $lastError")
             return if (QqSendErrorMapper.isPermanent(lastError)) {
@@ -389,8 +372,8 @@ class ChannelAutoReply(
                 dispatchId = inbound.dispatchId,
             ),
         )
-        val partial = if (sent < segments.size) "(${sent}/${segments.size} párrafo)" else ""
-        Logger.i(TAG, "Respuesta automática enviada${partial}(${inbound.platform} ← ${inbound.from})")
+        val partial = if (sent < segments.size) "($sent/${segments.size} párrafo)" else ""
+        Logger.i(TAG, "Respuesta automática enviada$partial(${inbound.platform} ← ${inbound.from})")
         return HandleResult.Sent(config, inbound.from)
     }
 
@@ -540,12 +523,7 @@ class ChannelAutoReply(
         }
     }
 
-    private suspend fun buildInitialAgentMessages(
-        config: ChannelConfig,
-        from: String,
-        renderedSystem: String,
-        model: Model?,
-    ): MutableList<UIMessage> {
+    private suspend fun buildInitialAgentMessages(config: ChannelConfig, from: String, renderedSystem: String, model: Model?): MutableList<UIMessage> {
         val conversation = ChannelConversationStore.conversation(config.id, from)
         val contextTurns = conversation?.turns?.takeLast(CONTEXT_TURNS).orEmpty()
         val imageContext = buildImageContext(contextTurns, model?.supportsVisionInput() == true)
@@ -573,12 +551,7 @@ class ChannelAutoReply(
         )
     }
 
-    private suspend fun buildInitialAgentTurn(
-        config: ChannelConfig,
-        from: String,
-        turn: ChannelConversationStore.Turn,
-        imageContext: ChannelImageContext,
-    ): UIMessage {
+    private suspend fun buildInitialAgentTurn(config: ChannelConfig, from: String, turn: ChannelConversationStore.Turn, imageContext: ChannelImageContext): UIMessage {
         val role = if (turn.role == "assistant") MessageRole.ASSISTANT else MessageRole.USER
         return if (turn.role == "user" && turn.mediaKind == "image" && turn.mediaBase64.isNotBlank()) {
             when {
@@ -604,11 +577,7 @@ class ChannelAutoReply(
         val recentFallbackAts: Set<Long>,
     )
 
-    private suspend fun executePendingToolCalls(
-        workingMessages: MutableList<UIMessage>,
-        offeredToolNames: Set<String>,
-        initialCheckpoint: ChannelAgentCheckpoint,
-    ): ChannelAgentCheckpoint {
+    private suspend fun executePendingToolCalls(workingMessages: MutableList<UIMessage>, offeredToolNames: Set<String>, initialCheckpoint: ChannelAgentCheckpoint): ChannelAgentCheckpoint {
         val assistantIndex = workingMessages.indexOfLast {
             it.role == MessageRole.ASSISTANT && !it.toolCalls.isNullOrEmpty()
         }
@@ -652,13 +621,7 @@ class ChannelAutoReply(
         return checkpoint
     }
 
-    private suspend fun executePendingToolCall(
-        toolCall: ToolCall,
-        inFlightId: String?,
-        workingMessages: MutableList<UIMessage>,
-        offeredToolNames: Set<String>,
-        checkpoint: ChannelAgentCheckpoint,
-    ): ChannelAgentCheckpoint {
+    private suspend fun executePendingToolCall(toolCall: ToolCall, inFlightId: String?, workingMessages: MutableList<UIMessage>, offeredToolNames: Set<String>, checkpoint: ChannelAgentCheckpoint): ChannelAgentCheckpoint {
         val risk = ToolPermissionResolver.riskLevelFor(toolCall.name)
         val recoveringUncertainCall = toolCall.id == inFlightId
         var executionOutcomeUnknown = false
@@ -943,11 +906,11 @@ class ChannelAutoReply(
         /** Tiempo de espera de llamada de IA de una sola ronda(Consistente con las tareas programadas.,milisegundos). */
         private const val LLM_TIMEOUT_MS = 60_000L
 
-    /** QQ Ventana de respuesta pasiva (valor oficial, consistente con chat grupal y chat único). */
-    private const val QQ_PASSIVE_WINDOW_MS = 5 * 60 * 1000L
+        /** QQ Ventana de respuesta pasiva (valor oficial, consistente con chat grupal y chat único). */
+        private const val QQ_PASSIVE_WINDOW_MS = 5 * 60 * 1000L
 
-    /** El margen reservado para el envío en sí para evitar enviar hasta el último segundo y descubrir que la ventana se ha cerrado. */
-    private const val SEND_MARGIN_MS = 15_000L
+        /** El margen reservado para el envío en sí para evitar enviar hasta el último segundo y descubrir que la ventana se ha cerrado. */
+        private const val SEND_MARGIN_MS = 15_000L
 
         /**
          * La hora de finalización de la ventana de respuesta pasiva (milisegundos).
@@ -1008,13 +971,7 @@ internal fun selectAutoReplyConfig(configs: List<ChannelConfig>, inbound: Channe
     }
 }
 
-internal fun qqReplyEventIdOverride(
-    platform: String,
-    target: String,
-    sourceEventId: String,
-    receivedAt: Long,
-    nowMillis: Long = System.currentTimeMillis(),
-): String? {
+internal fun qqReplyEventIdOverride(platform: String, target: String, sourceEventId: String, receivedAt: Long, nowMillis: Long = System.currentTimeMillis()): String? {
     if (platform != ChannelPlatform.QQ.name) return null
     val age = nowMillis - receivedAt
     // La caducidad debe devolver un valor nulo en lugar de una cadena vacía. La cadena vacía es un valor venenoso que "parece valioso":

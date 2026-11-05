@@ -9,12 +9,7 @@ internal fun proactiveConfigOnReadFailure(): ProactiveMessageConfig = ProactiveM
 )
 
 object ProactiveManualTestRoute {
-    suspend fun resolve(
-        config: ProactiveMessageConfig,
-        existingAgentSession: suspend () -> ProactiveContextLoader.SessionPick?,
-        createAgentSession: suspend () -> ProactiveContextLoader.SessionPick,
-        plainSession: suspend () -> ProactiveContextLoader.SessionPick? = { null },
-    ): ProactiveContextLoader.SessionPick? {
+    suspend fun resolve(config: ProactiveMessageConfig, existingAgentSession: suspend () -> ProactiveContextLoader.SessionPick?, createAgentSession: suspend () -> ProactiveContextLoader.SessionPick, plainSession: suspend () -> ProactiveContextLoader.SessionPick? = { null }): ProactiveContextLoader.SessionPick? {
         if (config.agentSessionEnabled) {
             return existingAgentSession() ?: createAgentSession()
         }

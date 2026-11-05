@@ -249,8 +249,7 @@ class ChatGenerationService : Service() {
             .onFailure { Logger.w("ChatGenService", "No se pudo limpiar la notificación al detener el servicio", it) }
     }
 
-    private fun notificationManagerOrNull(): MuseNotificationManager? =
-        runCatching { org.koin.core.context.GlobalContext.getOrNull()?.get<MuseNotificationManager>() }.getOrNull()
+    private fun notificationManagerOrNull(): MuseNotificationManager? = runCatching { org.koin.core.context.GlobalContext.getOrNull()?.get<MuseNotificationManager>() }.getOrNull()
 
     companion object {
         private const val NOTIFICATION_ID = 2001

@@ -213,11 +213,7 @@ class ToolRegistry(
      * Registro de inicio, índice de herramientas de Word rápido,find_tools El recuento se obtiene a partir de aquí: los tres números se corresponden entre sí.
      * Una capa de consumo real ya no necesita escribir un conjunto de implementaciones de detección.
      */
-    fun countTools(
-        sessionId: String?,
-        criteria: ToolSchemaRules.Criteria = ToolSchemaRules.Criteria(),
-        enabledSkills: List<io.zer0.muse.data.skill.SkillEntity> = emptyList(),
-    ): ToolCounts = ToolCounter.compute(
+    fun countTools(sessionId: String?, criteria: ToolSchemaRules.Criteria = ToolSchemaRules.Criteria(), enabledSkills: List<io.zer0.muse.data.skill.SkillEntity> = emptyList()): ToolCounts = ToolCounter.compute(
         ToolCounter.Input(
             localToolDefs = listToolsAsToolDefinitions(),
             registeredTools = listTools(),
@@ -451,16 +447,10 @@ class ToolRegistry(
      * @param args parámetros map
      * @return Cadena de resultado de ejecución;La herramienta no existe o los parámetros son incorrectos y se devuelve un mensaje de error.
      */
-    suspend fun execute(name: String, args: Map<String, String>, cancellationToken: () -> Boolean = { false }): ToolOutcome =
-        executeInternal(name, args, null, cancellationToken)
+    suspend fun execute(name: String, args: Map<String, String>, cancellationToken: () -> Boolean = { false }): ToolOutcome = executeInternal(name, args, null, cancellationToken)
 
     /** Ejecutar herramientas con un contexto de host; Las herramientas que requieren límites de aislamiento deben utilizar esta entrada. */
-    suspend fun execute(
-        name: String,
-        args: Map<String, String>,
-        executionContext: ToolExecutionContext,
-        cancellationToken: () -> Boolean = { false },
-    ): ToolOutcome = executeInternal(name, args, executionContext, cancellationToken)
+    suspend fun execute(name: String, args: Map<String, String>, executionContext: ToolExecutionContext, cancellationToken: () -> Boolean = { false }): ToolOutcome = executeInternal(name, args, executionContext, cancellationToken)
 
     private suspend fun <T> withDeviceInteractionLock(name: String, block: suspend () -> T): T = if (requiresDeviceInteractionLock(name)) {
         deviceInteractionMutex.withLock { block() }
@@ -468,21 +458,11 @@ class ToolRegistry(
         block()
     }
 
-    private suspend fun executeInternal(
-        name: String,
-        args: Map<String, String>,
-        executionContext: ToolExecutionContext?,
-        cancellationToken: () -> Boolean,
-    ): ToolOutcome = withDeviceInteractionLock(name) {
+    private suspend fun executeInternal(name: String, args: Map<String, String>, executionContext: ToolExecutionContext?, cancellationToken: () -> Boolean): ToolOutcome = withDeviceInteractionLock(name) {
         executeInternalUnlocked(name, args, executionContext, cancellationToken)
     }
 
-    private suspend fun executeInternalUnlocked(
-        name: String,
-        args: Map<String, String>,
-        executionContext: ToolExecutionContext?,
-        cancellationToken: () -> Boolean,
-    ): ToolOutcome {
+    private suspend fun executeInternalUnlocked(name: String, args: Map<String, String>, executionContext: ToolExecutionContext?, cancellationToken: () -> Boolean): ToolOutcome {
         jsonTools[name]?.let { fn ->
             return executeJson(name, stringArgsToJson(args), fn, cancellationToken)
         }
@@ -559,8 +539,7 @@ class ToolRegistry(
      */
     suspend fun executeFromJson(name: String, argumentsJson: String): String = executeFromJsonInternal(name, argumentsJson, null)
 
-    suspend fun executeFromJson(name: String, argumentsJson: String, executionContext: ToolExecutionContext): String =
-        executeFromJsonInternal(name, argumentsJson, executionContext)
+    suspend fun executeFromJson(name: String, argumentsJson: String, executionContext: ToolExecutionContext): String = executeFromJsonInternal(name, argumentsJson, executionContext)
 
     private suspend fun executeFromJsonInternal(name: String, argumentsJson: String, executionContext: ToolExecutionContext?): String {
         // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
@@ -623,12 +602,7 @@ class ToolRegistry(
         }
     }
 
-    private suspend fun executeJson(
-        name: String,
-        rawArgs: JsonObject,
-        fn: JsonToolFn,
-        cancellationToken: () -> Boolean = { false },
-    ): ToolOutcome {
+    private suspend fun executeJson(name: String, rawArgs: JsonObject, fn: JsonToolFn, cancellationToken: () -> Boolean = { false }): ToolOutcome {
         val stringArgs = rawArgs.entries.associate { (k, v) -> k to jsonArgValue(v) }
         ContentSafetyRules.checkArgs(name, stringArgs)?.let { rule ->
             Logger.w("ToolRegistry", "Se cumplió la regla de seguridad de contenido: ${rule.ruleId} (tool=$name)")
@@ -760,8 +734,7 @@ class ToolRegistry(
          * Tools that observe or mutate the shared foreground device UI. They are serialized across
          * sessions so screenshot -> decision -> action loops and durable workflows cannot interleave.
          */
-        internal fun requiresDeviceInteractionLock(name: String): Boolean =
-            name in DEVICE_INTERACTION_TOOL_NAMES || name.startsWith("screen_") || name.startsWith("ui_")
+        internal fun requiresDeviceInteractionLock(name: String): Boolean = name in DEVICE_INTERACTION_TOOL_NAMES || name.startsWith("screen_") || name.startsWith("ui_")
 
         internal val DEVICE_INTERACTION_TOOL_NAMES = setOf(
             "ui_agent", "automation_workflow", "device_shell",

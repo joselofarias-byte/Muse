@@ -3623,7 +3623,7 @@ private fun ensureMessageColumns(db: androidx.sqlite.db.SupportSQLiteDatabase) {
         "cachedTokens INTEGER DEFAULT NULL",
         // H11: El mensaje fuente del mensaje de traducción. id(Comparación y plegado de texto original.)
         "translationSourceId TEXT DEFAULT NULL",
-                        // v2.6.15: Tokens de escritura en caché (separados de cachedTokens; comportamiento anterior NULL = desconocido)
+        // v2.6.15: Tokens de escritura en caché (separados de cachedTokens; comportamiento anterior NULL = desconocido)
         "cacheWriteTokens INTEGER DEFAULT NULL",
         // v2.6.16: Cita de audio del mensaje de voz + duración (línea antigua NULL / 0 = mensajes no de voz)
         "voiceUri TEXT DEFAULT NULL",

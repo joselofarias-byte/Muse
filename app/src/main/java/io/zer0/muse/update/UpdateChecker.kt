@@ -123,25 +123,23 @@ class UpdateChecker(
             }
         return if (assets.isEmpty()) {
             Result.Error("No hay APK compatible con este dispositivo")
-        } else Result.Success(
-            ReleaseInfo(
-                tagName = tagName,
-                name = json["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                body = json["body"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                htmlUrl = htmlUrl,
-                publishedAt = parseIso8601ToMillis(
-                    json["published_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+        } else {
+            Result.Success(
+                ReleaseInfo(
+                    tagName = tagName,
+                    name = json["name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    body = json["body"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    htmlUrl = htmlUrl,
+                    publishedAt = parseIso8601ToMillis(
+                        json["published_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    ),
+                    apkAssets = assets,
                 ),
-                apkAssets = assets,
-            ),
-        )
+            )
+        }
     }
 
-    private fun releaseMetadataError(
-        json: kotlinx.serialization.json.JsonObject,
-        tagName: String,
-        htmlUrl: String,
-    ): String? = when {
+    private fun releaseMetadataError(json: kotlinx.serialization.json.JsonObject, tagName: String, htmlUrl: String): String? = when {
         tagName.isEmpty() -> "failed to parse tag_name"
         !STABLE_VERSION_REGEX.matches(tagName) ||
             json["draft"]?.jsonPrimitive?.contentOrNull == "true" ||
@@ -235,10 +233,9 @@ class UpdateChecker(
                 parsed.path.startsWith("/$DEFAULT_REPO/releases/download/")
         }.getOrDefault(false)
 
-        fun isTrustedApkAsset(asset: ApkAsset): Boolean =
-            isTrustedDownloadUrl(asset.downloadUrl) &&
-                URI(asset.downloadUrl).path.substringAfterLast('/') == asset.name &&
-                asset.size > 0 && (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
+        fun isTrustedApkAsset(asset: ApkAsset): Boolean = isTrustedDownloadUrl(asset.downloadUrl) &&
+            URI(asset.downloadUrl).path.substringAfterLast('/') == asset.name &&
+            asset.size > 0 && (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
 
         fun isCompatibleApkAsset(asset: ApkAsset, supportedAbis: List<String>): Boolean {
             if (!isTrustedApkAsset(asset)) return false

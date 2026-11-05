@@ -13,13 +13,7 @@ import org.junit.Test
 class UpdateCheckerSecurityTest {
     private val checker = UpdateChecker(OkHttpClient(), supportedAbis = { listOf("arm64-v8a") })
 
-    private fun release(
-        tag: String = "v2.4.2",
-        assetTag: String = tag,
-        name: String = "Muse_${tag}_arm64-v8a.apk",
-        owner: String = "joselofarias-byte",
-        extra: String = "",
-    ): String = """
+    private fun release(tag: String = "v2.4.2", assetTag: String = tag, name: String = "Muse_${tag}_arm64-v8a.apk", owner: String = "joselofarias-byte", extra: String = ""): String = """
         {"tag_name":"$tag", "html_url":"https://github.com/$owner/Muse/releases/tag/$tag",
          "assets":[{"name":"$name", "size":100,
          "browser_download_url":"https://github.com/$owner/Muse/releases/download/$assetTag/$name"}]$extra}
@@ -69,8 +63,11 @@ class UpdateCheckerSecurityTest {
         val base = "https://github.com/joselofarias-byte/Muse/releases/download/v2.4.2/Muse.apk"
         assertTrue(UpdateChecker.isTrustedDownloadUrl(base))
         listOf(
-            "$base?redirect=other", "$base#other", base.replace("Muse.apk", "..%2FMuse.apk"),
-            base.replace("github.com/", "github.com:444/"), base.replace("github.com/", "user@github.com/"),
+            "$base?redirect=other",
+            "$base#other",
+            base.replace("Muse.apk", "..%2FMuse.apk"),
+            base.replace("github.com/", "github.com:444/"),
+            base.replace("github.com/", "user@github.com/"),
             base.replace("joselofarias-byte", "another-owner"),
             "https://objects.githubusercontent.com/Muse.apk",
             "https://museai.ltd/Muse.apk",

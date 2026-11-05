@@ -18,16 +18,14 @@ import java.security.MessageDigest
 internal const val WECLAW_REPLY_CONTEXT_TOKEN_PREFIX = "muse.weclaw.context.v1:"
 private const val WECLAW_CURSOR_PREFIX = "muse.weclaw.cursor.v1:"
 
-internal suspend fun protectWeClawReplyContextToken(token: String): String =
-    if (token.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX + token)
+internal suspend fun protectWeClawReplyContextToken(token: String): String = if (token.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX + token)
 
 internal suspend fun restoreWeClawReplyContextToken(encryptedToken: String): String? = SecureKeyStore.decryptOrNull(encryptedToken)
     ?.takeIf { it.startsWith(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX) }
     ?.removePrefix(WECLAW_REPLY_CONTEXT_TOKEN_PREFIX)
     ?.takeIf { it.isNotBlank() }
 
-internal suspend fun protectWeClawCursor(cursor: String): String =
-    if (cursor.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_CURSOR_PREFIX + cursor)
+internal suspend fun protectWeClawCursor(cursor: String): String = if (cursor.isBlank()) "" else SecureKeyStore.encrypt(WECLAW_CURSOR_PREFIX + cursor)
 
 internal suspend fun restoreWeClawCursor(storedCursor: String): String {
     if (storedCursor.isBlank()) return ""
@@ -364,8 +362,7 @@ internal fun weClawPollAction(available: Boolean, running: Boolean): WeClawPollA
 internal enum class WeClawPollAction { START, STOP, NONE }
 
 /** ¿Puede esta configuración de canal admitir sondeos largos de WECLAW?(enabled + Coincidencia de plataforma + tiene clave). */
-private fun ChannelConfig.isUsableWeClaw(): Boolean =
-    enabled && platform == ChannelPlatform.WECLAW && appSecret.isNotBlank()
+private fun ChannelConfig.isUsableWeClaw(): Boolean = enabled && platform == ChannelPlatform.WECLAW && appSecret.isNotBlank()
 
 /**
  * ¿Existe alguna lista de canales que pueda ejecutar encuestas largas de WECLAW?

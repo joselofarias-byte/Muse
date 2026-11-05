@@ -54,14 +54,7 @@ class MemoryLlmClientImpl(
     /** v2.x: Enrutamiento de modelo auxiliar — recuperación de memoria/Compílelo y archívelo como un archivo de \"gran herramienta\".(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro). */
     private val utilityRouter = UtilityModelRouter(settings)
 
-    override suspend fun callText(
-        systemPrompt: String,
-        userContent: String,
-        model: Model?,
-        temperature: Float,
-        maxTokens: Int,
-        timeoutMs: Long,
-    ): String {
+    override suspend fun callText(systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long): String {
         // v2.x: Cuando la persona que llama no especifica explícitamente un modelo,Priorizar el archivo "Big Tools" de enrutamiento del modelo auxiliar(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro).
         // correa vinculante provider,Acceda con precisión a modelos de memoria configurados por el usuario en todos los proveedores.
         val routed = if (model == null) {

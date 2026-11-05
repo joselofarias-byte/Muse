@@ -120,11 +120,10 @@ class ProactiveCycleRunner(
         )
     }
 
-    private suspend fun run(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Outcome =
-        when (val prepared = prepare(trigger, force, entry)) {
-            is Preparation.Blocked -> prepared.outcome
-            is Preparation.Ready -> runPrepared(trigger, prepared.value, force)
-        }
+    private suspend fun run(trigger: String, force: Boolean, entry: ProactiveCycleGuard.Entry): Outcome = when (val prepared = prepare(trigger, force, entry)) {
+        is Preparation.Blocked -> prepared.outcome
+        is Preparation.Ready -> runPrepared(trigger, prepared.value, force)
+    }
 
     /** Después de obtener los materiales preparados, decida si hablará o no. */
     private suspend fun runPrepared(trigger: String, ready: Prepared, force: Boolean): Outcome {
@@ -174,14 +173,9 @@ class ProactiveCycleRunner(
     }
 
     /** ¿Queda algo sin decir en el libro mayor? Solo afecta el intervalo de la próxima revisión y ya no es un requisito previo para poder decirlo. */
-    private suspend fun hasOpenThoughts(ready: Prepared): Boolean =
-        stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
+    private suspend fun hasOpenThoughts(ready: Prepared): Boolean = stores.thoughts.getOpen(ready.assistant.id).isNotEmpty()
 
-    private suspend fun publishResult(
-        trigger: String,
-        decision: ProactiveTimingEngine.Decision,
-        ready: Prepared,
-    ): Outcome {
+    private suspend fun publishResult(trigger: String, decision: ProactiveTimingEngine.Decision, ready: Prepared): Outcome {
         return when (val produced = produce(ready)) {
             is ProactiveReplyParser.Result.Failed -> {
                 Logger.w(TAG, "Error de compilación: ${produced.reason}")
@@ -192,11 +186,7 @@ class ProactiveCycleRunner(
         }
     }
 
-    private suspend fun skippedResult(
-        decision: ProactiveTimingEngine.Decision,
-        ready: Prepared,
-        produced: ProactiveReplyParser.Result.Skip,
-    ): Outcome {
+    private suspend fun skippedResult(decision: ProactiveTimingEngine.Decision, ready: Prepared, produced: ProactiveReplyParser.Result.Skip): Outcome {
         Logger.i(TAG, "Saltar juicio | reason=${produced.reason} | ${skipContext(ready)}")
         return Outcome(
             decision.verdict,
@@ -206,12 +196,7 @@ class ProactiveCycleRunner(
         )
     }
 
-    private suspend fun publishMessageResult(
-        trigger: String,
-        decision: ProactiveTimingEngine.Decision,
-        ready: Prepared,
-        produced: ProactiveReplyParser.Result.Message,
-    ): Outcome {
+    private suspend fun publishMessageResult(trigger: String, decision: ProactiveTimingEngine.Decision, ready: Prepared, produced: ProactiveReplyParser.Result.Message): Outcome {
         Logger.i(
             TAG,
             "Generación de candidatos de mensajes activos | assistantId=${ready.assistant.id} | len=${produced.content.length} | trigger=$trigger",
@@ -330,8 +315,7 @@ class ProactiveCycleRunner(
         }
     }
 
-    private fun blocked(detail: String, verdict: ProactiveTimingEngine.Verdict? = null, ledgerNotEmpty: Boolean = false): Preparation =
-        Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
+    private fun blocked(detail: String, verdict: ProactiveTimingEngine.Verdict? = null, ledgerNotEmpty: Boolean = false): Preparation = Preparation.Blocked(Outcome(verdict, false, ledgerNotEmpty, detail))
 
     // ══════════════════════════════════════════════════════════════
     // generar
@@ -451,13 +435,7 @@ class ProactiveCycleRunner(
      * La excepción se traga internamente, por lo que "el mensaje se descarta pero no hay nada en la barra de notificaciones" y no hay rastro en el registro.
      * Dos cosas para agregar aquí: si la llamada en sí se lanza y si el nivel del sistema bloqueará esto (permisos/el canal está cerrado).
      */
-    private suspend fun notifyProactive(
-        trigger: String,
-        ready: Prepared,
-        message: ProactiveReplyParser.Result.Message,
-        currentSessionId: String?,
-        outcomeId: String,
-    ) {
+    private suspend fun notifyProactive(trigger: String, ready: Prepared, message: ProactiveReplyParser.Result.Message, currentSessionId: String?, outcomeId: String) {
         val blocker: String? = runCatching { runtime.notifier.proactiveNotificationBlocker() }.getOrNull()
         val failure = runCatching {
             runtime.notifier.notifyProactiveMessage(
