@@ -129,7 +129,7 @@ fun AgentSettingsPage(
 
     var showAssistantPicker by remember { mutableStateOf(false) }
     var showOffsetPicker by remember { mutableStateOf(false) }
-    // v1.xxx: Ventana emergente de entrada del período de resumen diario
+    var showGuaranteePicker by remember { mutableStateOf(false) }
     var showSlotsDialog by remember { mutableStateOf(false) }
     // v1.xxx: AI Ventana emergente para seleccionar el número diario de publicaciones en Momentos
     var showMomentCountPicker by remember { mutableStateOf(false) }
@@ -978,6 +978,18 @@ fun AgentSettingsPage(
                         )
                         SettingsGroupDivider()
                         SettingsItemRow(
+                            icon = MuseIcons.clock,
+                            title = stringResource(R.string.settings_agent_daily_guarantee),
+                            subtitle = guaranteeLabel(proactiveConfig.dailyGuaranteeHours),
+                            onClick = {
+                                showAdvancedDialog = false
+                                showGuaranteePicker = true
+                            },
+                        ) {
+                            ChevronRight()
+                        }
+                        SettingsGroupDivider()
+                        SettingsItemRow(
                             icon = MuseIcons.switch,
                             title = stringResource(R.string.settings_agent_temperature),
                             subtitle = "%.1f".format(proactiveConfig.temperature),
@@ -1178,7 +1190,48 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── v2.0 5.9: Generar ventana emergente de selección de temperatura(0.0 ~ 2.0,tamaño del paso 0.1)──
+    if (showGuaranteePicker) {
+        var hours by rememberSaveable { mutableStateOf(proactiveConfig.dailyGuaranteeHours) }
+        MuseDialog(
+            onDismissRequest = { showGuaranteePicker = false },
+            title = stringResource(R.string.settings_agent_daily_guarantee),
+            content = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = guaranteeLabel(hours),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_agent_daily_guarantee_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                    MuseSlider(
+                        value = hours.toFloat(),
+                        onValueChange = { hours = it.toInt() },
+                        valueRange = 0f..48f,
+                        valueFormatter = { it.toInt().toString() },
+                    )
+                }
+            },
+            confirmText = stringResource(R.string.action_save),
+            onConfirm = {
+                scope.launch {
+                    settings.saveProactiveMessageConfig(
+                        proactiveConfig.copy(dailyGuaranteeHours = hours),
+                    )
+                }
+                showGuaranteePicker = false
+            },
+            dismissText = stringResource(R.string.action_cancel),
+            onDismiss = { showGuaranteePicker = false },
+        )
+    }
+
     if (showTemperaturePicker) {
         var sliderValue by rememberSaveable { mutableStateOf(proactiveConfig.temperature) }
         // Alinear a 0,1 pasos:kotlin.math.round(Float) Regresar Float,Evite la ambigüedad de sobrecarga de Math.round
@@ -1325,7 +1378,14 @@ private fun offsetLabel(minutes: Int): String {
     }
 }
 
-/** UI-FIX: Etiquetas de subgrupo dentro de grupos de mensajes activos para crear una jerarquía para conmutadores en mosaico. */
+
+@Composable
+private fun guaranteeLabel(hours: Int): String {
+    if (hours <= 0) return stringResource(R.string.settings_agent_daily_guarantee_off)
+    return stringResource(R.string.settings_agent_daily_guarantee_hours, hours)
+}
+
+
 @Composable
 private fun ProactiveGroupLabel(text: String) {
     Text(
