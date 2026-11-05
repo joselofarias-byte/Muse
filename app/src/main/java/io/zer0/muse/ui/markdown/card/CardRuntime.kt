@@ -1,8 +1,6 @@
 package io.zer0.muse.ui.markdown.card
 
 import android.annotation.SuppressLint
-
-import io.zer0.common.Logger
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,12 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.zer0.common.Logger
+import io.zer0.muse.ui.common.media.LifecycleAwareWebViewContainer
 import io.zer0.muse.ui.markdown.CardHeightSink
 import io.zer0.muse.ui.markdown.MuseCardBridge
 import io.zer0.muse.ui.markdown.MuseCardTheme
 import io.zer0.muse.ui.markdown.RichContentWebViewClient
 import io.zer0.muse.ui.markdown.SanitizedHtmlCache
-import io.zer0.muse.ui.common.media.LifecycleAwareWebViewContainer
 
 /**
  * La única implementación de renderizado de tarjetas.
@@ -41,11 +40,7 @@ import io.zer0.muse.ui.common.media.LifecycleAwareWebViewContainer
  * Como resultado, cualquiera de las partes puede cambiar la altura y nadie puede saber de dónde viene el valor final.
  */
 @Composable
-internal fun CardRuntime(
-    spec: CardSpec,
-    host: CardHost,
-    modifier: Modifier = Modifier,
-) {
+internal fun CardRuntime(spec: CardSpec, host: CardHost, modifier: Modifier = Modifier) {
     var contentHeightPx by remember { mutableIntStateOf(0) }
 
     val sink: CardHeightSink = remember { CardHeightSink() }
@@ -126,10 +121,7 @@ internal fun CardRuntime(
  * Tampoco le des primero una caja grande y luego amontones el contenido en ella (este último saltará significativamente).
  */
 @Composable
-private fun sizeModifier(
-    size: CardSize,
-    measuredPx: Int,
-): Modifier = when (size) {
+private fun sizeModifier(size: CardSize, measuredPx: Int): Modifier = when (size) {
     // La altura declarada es el límite superior, no el marco de hierro. Si el contenido es más corto, se reducirá en consecuencia. ——
     // Una tarjeta con tres cruces se extiende a 520 dp y el resto está completamente en blanco, lo que se lee como un error de carga.
     // Arréglelo solo si el contenido realmente excede el límite y déjelo rodar en la tarjeta.
@@ -161,13 +153,7 @@ private val MIN_CARD_HEIGHT = 88.dp
  * Tokens de tema y CSP por [MuseCardTheme] Siempre uniforme, la tarjeta en sí no define el color. —— Cambiar entre colores claros y oscuros
  * No se requiere coordinación de tarjeta. Los scripts siempre se inyectan al final.
  */
-private fun assembleHtml(
-    spec: CardSpec,
-    host: CardHost,
-    themeCss: String,
-    componentCss: String,
-    pushEnabled: Boolean,
-): String {
+private fun assembleHtml(spec: CardSpec, host: CardHost, themeCss: String, componentCss: String, pushEnabled: Boolean): String {
     val safe = SanitizedHtmlCache.get(spec.code)
     val idBoot = host.cardId
         ?.takeIf { it.isNotBlank() }
