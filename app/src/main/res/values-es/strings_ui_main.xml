@@ -24,8 +24,8 @@
     <string name="assistant_detail_avatar_initial">Usa iniciales</string>
     <string name="assistant_detail_name">Nombre</string>
     <string name="assistant_detail_avatar_emoji_label">Emoji del avatar (1 o 2 caracteres, opcional)</string>
-    <string name="assistant_detail_global_default">Predeterminado global</string>
-    <string name="assistant_detail_exclusive_model">Modelo del asistente</string>
+    <string name="assistant_detail_global_default">Modelo general</string>
+    <string name="assistant_detail_exclusive_model">Modelo propio del asistente</string>
     <string name="assistant_detail_temperature">Temperatura: %1$s</string>
     <string name="assistant_detail_default">Predeterminado</string>
     <string name="assistant_detail_use_default">Usar predeterminado</string>
@@ -51,12 +51,12 @@
     <string name="assistant_detail_allow_group_chat_desc">Si se desactiva, este asistente no aparecerá al elegir miembros para un chat grupal.</string>
     <string name="assistant_detail_select_model">Elegir modelo</string>
     <string name="assistant_detail_close">Cerrar</string>
-    <string name="assistant_detail_global_default_selected">Valor predeterminado global (seleccionado)</string>
+    <string name="assistant_detail_global_default_selected">Modelo general (seleccionado)</string>
     <string name="assistant_detail_model_selected">%1$s (seleccionado)</string>
     <!-- Phase 6: Mejoras en la UX de selección de modelos. -->
-    <string name="assistant_detail_use_global_default_card">Usar modelo predeterminado global</string>
-    <string name="assistant_detail_using_global_model">Actualmente utilizando el modelo predeterminado global: %1$s</string>
-    <string name="assistant_detail_model_hint">Consejo: puedes seleccionar un modelo dedicado en la configuración del asistente. Diferentes asistentes pueden utilizar diferentes modelos de IA.</string>
+    <string name="assistant_detail_use_global_default_card">Usar el modelo general</string>
+    <string name="assistant_detail_using_global_model">Modelo general en uso: %1$s</string>
+    <string name="assistant_detail_model_hint">Podés elegir un modelo distinto para cada asistente. Si no elegís ninguno, se usará el modelo general.</string>
     <string name="assistant_detail_system_prompt_label">Instrucciones del sistema (personalidad y reglas)</string>
     <string name="assistant_detail_message_template_label">Plantilla de mensaje (admite {{date}} {{time}} {{session_id}} variables)</string>
     <string name="assistant_detail_preset_messages_label">Mensaje predeterminado JSON(Avanzado, como [{\"role\":\"system\",\"content\":\"...\"}])</string>
