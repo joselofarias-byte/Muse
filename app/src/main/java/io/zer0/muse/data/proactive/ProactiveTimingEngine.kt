@@ -48,12 +48,8 @@ object ProactiveTimingEngine {
 
     private const val MINUTE_MS = 60_000L
 
-    /**
-     * Todas las entradas para un juicio.
-     *
-     * Creado deliberadamente para ser una clase de datos planos en lugar de un montón de parámetros: la persona que llama debe preparar todo explícitamente,
-     * Si se omite uno, la compilación fallará y no se "olvidará cargar el tiempo activo del usuario, lo que provocará interrupciones nocturnas".
-     */
+    const val DAILY_GUARANTEE_MS = 22L * 60 * 60 * 1000L
+
     data class Input(
         val now: Long,
         val relation: ProactiveRelationEntity,
@@ -84,6 +80,8 @@ object ProactiveTimingEngine {
          * También hace que la persona que llama piense que no tienen nada que ver entre sí.
          */
         val pacing: Pacing = Pacing(),
+
+        val dailyGuaranteeMs: Long = DAILY_GUARANTEE_MS,
     )
 
     /**
@@ -132,6 +130,8 @@ object ProactiveTimingEngine {
         val hourOfDay: Int,
         /** Esta vez, determine el intervalo real utilizado (incluido el desplazamiento del día). Mírelo primero cuando solucione el problema \"por qué aún no ha llegado al punto\". */
         val effectiveIntervalMinutes: Int = DEFAULT_INTERVAL_MINUTES,
+
+        val dailyGuarantee: Boolean = false,
     ) {
         val shouldSend: Boolean get() = verdict == Verdict.OK
     }
@@ -148,17 +148,33 @@ object ProactiveTimingEngine {
         val remaining = remainingBudget(input.relation)
         val intervalMinutes = effectiveIntervalMinutes(input)
 
-        // Q1: Sincronización
+        val quiet = !input.allDayAllowed &&
+            isInQuietHours(hour, input.allowedHourStart, input.allowedHourEnd)
+
         val timingBlock = checkTiming(input, hour, intervalMinutes * MINUTE_MS)
 
-        // Q2: Cantidad. Se coloca después del momento porque las direcciones de investigación de "no se puede perturbar ahora" y "sin cuota" son diferentes.
-        val verdict = timingBlock ?: if (remaining < 1f) Verdict.NO_BUDGET else Verdict.OK
+        //
+        val intervalMs = intervalMinutes * MINUTE_MS
+        val attemptedRecently = tooSoon(input.now, input.lastProactiveAttemptAt, intervalMs)
+        val usedGuarantee = input.dailyGuaranteeMs > 0L && !quiet && !attemptedRecently &&
+            remaining >= 1f &&
+            timingBlock == Verdict.TOO_SOON &&
+            (
+                input.lastProactiveSentAt <= 0L ||
+                    input.now - input.lastProactiveSentAt >= input.dailyGuaranteeMs
+                )
+
+        val verdict = when {
+            usedGuarantee -> Verdict.OK
+            else -> timingBlock ?: if (remaining < 1f) Verdict.NO_BUDGET else Verdict.OK
+        }
 
         return Decision(
             verdict = verdict,
             remainingBudget = remaining,
             hourOfDay = hour,
             effectiveIntervalMinutes = intervalMinutes,
+            dailyGuarantee = usedGuarantee,
         )
     }
 
@@ -265,8 +281,7 @@ object ProactiveTimingEngine {
      * true Indica que la persona que llama debe poner el recuento del presupuesto en cero antes de continuar.
      * Se coloca aquí en lugar de en DAO porque "cross-day" es semántica comercial, no semántica de almacenamiento.
      */
-    fun needsBudgetReset(relation: ProactiveRelationEntity, todayDate: String): Boolean =
-        relation.budgetDate != todayDate
+    fun needsBudgetReset(relation: ProactiveRelationEntity, todayDate: String): Boolean = relation.budgetDate != todayDate
 
     // ══════════════════════════════════════════════════════════════
     // Herramientas
