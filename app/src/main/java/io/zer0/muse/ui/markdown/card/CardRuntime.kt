@@ -1,5 +1,7 @@
 package io.zer0.muse.ui.markdown.card
 
+import android.annotation.SuppressLint
+
 import io.zer0.common.Logger
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -102,7 +104,9 @@ internal fun CardRuntime(
         javaScriptEnabled = true,
         webViewClient = webViewClient,
         scrollable = scrollable,
-        onWebViewCreated = { webView ->
+        // Ambos objetos exponen métodos @JavascriptInterface en CardAction.kt.
+        // Supresión local: lint no resuelve correctamente las anotaciones del puente.
+        onWebViewCreated = @SuppressLint("JavascriptInterface") { webView ->
             // Registro incondicional de interfaz de alto nivel: no tiene nada que ver con "si se puede devolver".
             webView.addJavascriptInterface(sink, CardScript.HEIGHT_SINK_NAME)
             bridge?.let { webView.addJavascriptInterface(it, CardScript.BRIDGE_NAME) }
