@@ -1,69 +1,88 @@
 name: Muse Lite - upstream selective integration
 on:
   workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: Full SHA of the reviewed integration revision already published on integration/muse-lite-upstream
+        required: true
+        type: string
+      reviewed_base:
+        description: Full SHA of the Lite base used to review this integration
+        required: true
+        type: string
   push:
+    branches: [integration/muse-lite-upstream]
     paths:
       - .github/workflows/lite-upstream-integration.yml
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+concurrency:
+  group: muse-lite-integration-review
+  cancel-in-progress: false
 jobs:
   integrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/muse-android-lite-es
+          ref: ${{ inputs.reviewed_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: true
-      - name: Cherry-pick reviewed upstream improvements
+      - name: Replay reviewed integration commits
+        id: replay
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha || github.sha }}
+          REVIEWED_BASE: ${{ inputs.reviewed_base }}
         shell: bash
         run: |
           set -euo pipefail
+          [[ "$REVIEWED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$REVIEWED_SHA"
+          git fetch origin feature/muse-android-lite-es integration/muse-lite-upstream
+          test "$(git rev-parse origin/integration/muse-lite-upstream)" = "$REVIEWED_SHA"
+          base="${REVIEWED_BASE:-$(git rev-parse origin/feature/muse-android-lite-es)}"
+          [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$base" "$REVIEWED_SHA"
+          git merge-base --is-ancestor origin/feature/muse-android-lite-es "$REVIEWED_SHA"
+          test -z "$(git rev-list --merges "$base..$REVIEWED_SHA")"
+          series="$RUNNER_TEMP/reviewed-integration-commits.txt"
+          git rev-list --reverse --topo-order "$base..$REVIEWED_SHA" > "$series"
+          test -s "$series"
+          printf 'Pinned Lite base: %s\nReviewed integration: %s\nOrdered commits:\n' "$base" "$REVIEWED_SHA"
+          cat "$series"
+          branch="integration/muse-lite-replay-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git remote add upstream https://github.com/Zer0Qing/Muse.git
-          git fetch upstream main
-          git switch -c integration/muse-lite-upstream
-          # Oldest to newest: FTS5 stability, theme, auxiliary model diagnostics,
-          # channel relay, proactive settings, memory, Safe Mode, Chinese UI strings.
-          commits=(
-            b6b68306
-            6d393fd2
-            9ebc4c2d
-            037ce8a4
-            456fabeb
-            82efe6a5
-            390f9d0c
-            47a72195
-          )
-          for prefix in "${commits[@]}"; do
-            sha="$(git rev-parse "upstream/main^{commit}")"
-            match="$(git rev-list upstream/main | grep "^${prefix}" | head -1 || true)"
-            if [[ -z "$match" ]]; then
-              echo "::error::Upstream commit not found: $prefix"
-              exit 1
-            fi
-            echo "Applying $match"
-            if ! git cherry-pick -x "$match"; then
-              echo "::error::Conflict at $prefix; no automatic conflict resolution"
+          git switch -c "$branch" "$base"
+          # Replay reviewed semantic resolutions, not the conflicting raw upstream patches.
+          while IFS= read -r commit; do
+            if ! git cherry-pick "$commit"; then
+              echo "::error::Reviewed replay conflict at $commit; no automatic conflict resolution"
               git status --short
               exit 1
             fi
-          done
-          # Do not permit upstream updater configuration to overwrite JolufaSoft routes.
-          grep -q 'const val DEFAULT_REPO = "joselofarias-byte/Muse"' app/src/main/java/io/zer0/muse/update/UpdateChecker.kt
-          grep -q 'https://github.com/joselofarias-byte/Muse/releases/latest' app/src/main/java/io/zer0/muse/update/UpdateNotifier.kt
-          grep -q 'name: muse-lite-arm64' .github/workflows/ci.yml
-          git push origin HEAD:refs/heads/integration/muse-lite-upstream
-      - name: Open integration pull request
+          done < "$series"
+          test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "$REVIEWED_SHA^{tree}")"
+          git diff --check "$base...HEAD"
+          python3 ci/script/check_lite_integration.py
+          python3 ci/test/test_lite_integration.py
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+      - name: Validate existing PR or open reviewed integration PR
         env:
           GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ inputs.reviewed_sha || github.sha }}
+          REPLAY_BRANCH: ${{ steps.replay.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
+          # Never update the existing integration branch or any other remote branch.
+          test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/heads/integration/muse-lite-upstream --jq .object.sha)" = "$REVIEWED_SHA"
           existing="$(gh pr list --head integration/muse-lite-upstream --base feature/muse-android-lite-es --json number --jq '.[0].number // empty')"
-          if [[ -z "$existing" ]]; then
-            gh pr create --draft --base feature/muse-android-lite-es --head integration/muse-lite-upstream --title 'Integrate selected upstream fixes into Muse Lite' --body 'Selective upstream cherry-picks for stability, memory, theme, assistant routing, channels and proactive features. Keep JolufaSoft update endpoints, Spanish localization and ARM64-only CI artifact. Requires CI and device validation before merging.'
+          if [[ -n "$existing" ]]; then
+            test "$(gh pr view "$existing" --json headRefOid --jq .headRefOid)" = "$REVIEWED_SHA"
+            echo "Existing PR #$existing validated; reviewed replay has an identical tree. No branches changed."
+            exit 0
           fi
+          gh pr create --draft --base feature/muse-android-lite-es --head integration/muse-lite-upstream --title 'Integrate selected upstream fixes into Muse Lite' --body "Replayed full ordered reviewed commit series from $REVIEWED_SHA on a pinned Lite base. Tree equality, conflict guards and Lite boundaries passed. No remote branches were modified. CI and device validation are required before merging."
