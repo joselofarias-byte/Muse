@@ -82,13 +82,14 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
     val dingtalkReceiver: DingtalkReceiver = koinInject()
     val qqReceiver: QqReceiver = koinInject()
     val feishuReceiver: FeishuReceiver = koinInject()
-    // Reinicie todos los receptores después de los cambios de configuración(encuesta larga/Las conexiones largas se reconstruyen según la última configuración del canal.)
-    val restartAllReceivers = {
-        weClawReceiver.restart()
-        telegramReceiver.restart()
-        dingtalkReceiver.restart()
-        qqReceiver.restart()
-        feishuReceiver.restart()
+    val restartReceiverFor: (ChannelPlatform) -> Unit = { platform ->
+        when (platform) {
+            ChannelPlatform.WECLAW -> weClawReceiver.restart()
+            ChannelPlatform.TELEGRAM -> telegramReceiver.restart()
+            ChannelPlatform.DINGTALK -> dingtalkReceiver.restart()
+            ChannelPlatform.QQ -> qqReceiver.restart()
+            ChannelPlatform.FEISHU -> feishuReceiver.restart()
+        }
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -139,7 +140,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
                             onToggle = { enabled ->
                                 scope.launch {
                                     manager.upsert(cfg.copy(enabled = enabled))
-                                    restartAllReceivers()
+                                    restartReceiverFor(cfg.platform)
                                 }
                             },
                             onEdit = { editTarget = cfg },
@@ -249,7 +250,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onSave = { cfg ->
                 scope.launch {
                     manager.upsert(cfg)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                     showAdd = false
                     editTarget = null
                 }
@@ -270,7 +271,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
             onConfirm = {
                 scope.launch {
                     manager.remove(cfg.id)
-                    restartAllReceivers()
+                    restartReceiverFor(cfg.platform)
                 }
                 deleteTarget = null
             },
