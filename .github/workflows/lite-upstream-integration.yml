@@ -1,69 +1,55 @@
 name: Muse Lite - upstream selective integration
 on:
   workflow_dispatch:
+    inputs:
+      reviewed_sha:
+        description: Full SHA of the reviewed integration revision already published on integration/muse-lite-upstream
+        required: true
+        type: string
   push:
+    branches: [integration/muse-lite-upstream]
     paths:
       - .github/workflows/lite-upstream-integration.yml
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+concurrency:
+  group: muse-lite-integration-review
+  cancel-in-progress: false
 jobs:
   integrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/muse-android-lite-es
+          ref: ${{ inputs.reviewed_sha || github.sha }}
           fetch-depth: 0
-          persist-credentials: true
-      - name: Cherry-pick reviewed upstream improvements
+          persist-credentials: false
+      - name: Verify reviewed integration revision
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git remote add upstream https://github.com/Zer0Qing/Muse.git
-          git fetch upstream main
-          git switch -c integration/muse-lite-upstream
-          # Oldest to newest: FTS5 stability, theme, auxiliary model diagnostics,
-          # channel relay, proactive settings, memory, Safe Mode, Chinese UI strings.
-          commits=(
-            b6b68306
-            6d393fd2
-            9ebc4c2d
-            037ce8a4
-            456fabeb
-            82efe6a5
-            390f9d0c
-            47a72195
-          )
-          for prefix in "${commits[@]}"; do
-            sha="$(git rev-parse "upstream/main^{commit}")"
-            match="$(git rev-list upstream/main | grep "^${prefix}" | head -1 || true)"
-            if [[ -z "$match" ]]; then
-              echo "::error::Upstream commit not found: $prefix"
-              exit 1
-            fi
-            echo "Applying $match"
-            if ! git cherry-pick -x "$match"; then
-              echo "::error::Conflict at $prefix; no automatic conflict resolution"
-              git status --short
-              exit 1
-            fi
-          done
-          # Do not permit upstream updater configuration to overwrite JolufaSoft routes.
-          grep -q 'const val DEFAULT_REPO = "joselofarias-byte/Muse"' app/src/main/java/io/zer0/muse/update/UpdateChecker.kt
-          grep -q 'https://github.com/joselofarias-byte/Muse/releases/latest' app/src/main/java/io/zer0/muse/update/UpdateNotifier.kt
-          grep -q 'name: muse-lite-arm64' .github/workflows/ci.yml
-          git push origin HEAD:refs/heads/integration/muse-lite-upstream
+          [[ "$REVIEWED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$REVIEWED_SHA"
+          git fetch origin feature/muse-android-lite-es integration/muse-lite-upstream
+          test "$(git rev-parse origin/integration/muse-lite-upstream)" = "$REVIEWED_SHA"
+          git merge-base --is-ancestor origin/feature/muse-android-lite-es HEAD
+          # Conflicts are resolved and reviewed in this revision, never hidden by --ours/--theirs.
+          git diff --check origin/feature/muse-android-lite-es...HEAD
+          python3 ci/script/check_lite_integration.py
       - name: Open integration pull request
         env:
           GH_TOKEN: ${{ github.token }}
+          REVIEWED_SHA: ${{ inputs.reviewed_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
+          # Recheck immediately before creating the PR; this workflow never writes branches.
+          test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/heads/integration/muse-lite-upstream --jq .object.sha)" = "$REVIEWED_SHA"
           existing="$(gh pr list --head integration/muse-lite-upstream --base feature/muse-android-lite-es --json number --jq '.[0].number // empty')"
           if [[ -z "$existing" ]]; then
-            gh pr create --draft --base feature/muse-android-lite-es --head integration/muse-lite-upstream --title 'Integrate selected upstream fixes into Muse Lite' --body 'Selective upstream cherry-picks for stability, memory, theme, assistant routing, channels and proactive features. Keep JolufaSoft update endpoints, Spanish localization and ARM64-only CI artifact. Requires CI and device validation before merging.'
+            gh pr create --draft --base feature/muse-android-lite-es --head integration/muse-lite-upstream --title 'Integrate selected upstream fixes into Muse Lite' --body "Reviewed integration revision: $REVIEWED_SHA. Semantic conflict resolutions are committed in this branch; no automatic cherry-picks or branch overwrites. Preserve JolufaSoft updates, Spanish localization and a single ARM64 APK. CI and device validation are required before merging."
           fi
