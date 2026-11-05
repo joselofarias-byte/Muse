@@ -182,8 +182,8 @@ jobs:
           test -s app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
           grep -q "native-code:.*'arm64-v8a'" app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
           cd app/build/outputs/apk/debug
-          sha256sum *.apk > SHA256SUMS
-          stat --printf='%n %s bytes\n' *.apk > APK-SIZES.txt
+          sha256sum app-arm64-v8a-debug.apk > SHA256SUMS
+          stat --printf='%n %s bytes\n' app-arm64-v8a-debug.apk > APK-SIZES.txt
       - name: Upload debug APK
         if: steps.lanes.outputs.run_full == 'true'
         uses: actions/upload-artifact@v7
