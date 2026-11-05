@@ -143,8 +143,8 @@ internal object MarkdownParseCache {
 }
 
 /** La caché de mapa de bits se adapta al tamaño del montón:Cuanto más rica es la pila, más queda.,pero no más que [IMAGE_CACHE_MAX_BYTES_CEILING]. */
-private const val IMAGE_CACHE_MAX_BYTES_CEILING = 48 * 1024 * 1024
-private const val IMAGE_CACHE_HEAP_FRACTION = 8
+private const val IMAGE_CACHE_MAX_BYTES_CEILING = 32 * 1024 * 1024
+private const val IMAGE_CACHE_HEAP_FRACTION = 10
 
 /**
  * data-URI Caché de resultados de decodificación de imágenes(nivel de proceso,Límite superior en bytes).
