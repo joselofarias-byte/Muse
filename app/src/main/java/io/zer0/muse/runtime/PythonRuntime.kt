@@ -2,6 +2,7 @@ package io.zer0.muse.runtime
 
 import android.content.Context
 import io.zer0.common.Logger
+import io.zer0.muse.BuildConfig
 import io.zer0.muse.tools.TOOL_OUTPUTS_DIR
 import io.zer0.muse.tools.ToolOutputCapture
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +114,7 @@ object PythonRuntime {
     fun caBundleFile(ctx: Context): File = File(runtimeDir(ctx), "cacert.pem")
 
     /** Listo en tiempo de ejecución (stub El binario existe y stdlib está descomprimido). */
-    fun isReady(ctx: Context): Boolean = pythonBinary(ctx).isFile && File(stdlibDir(ctx), "os.py").isFile
+    fun isReady(ctx: Context): Boolean = BuildConfig.EMBEDDED_RUNTIMES_ENABLED && pythonBinary(ctx).isFile && File(stdlibDir(ctx), "os.py").isFile
 
     // ── Descompresión de datos ─────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ object PythonRuntime {
      */
     suspend fun ensureData(ctx: Context): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            requireEnabled()
             val rt = runtimeDir(ctx)
             val mark = File(rt, MARK_FILE)
             val installed = runCatching { mark.readText().trim() }.getOrNull()
@@ -338,28 +340,25 @@ object PythonRuntime {
     )
 
     /** Ejecute el Python incorporado (args adjunto después de la ruta del código auxiliar). */
-    suspend fun execPython(
-        ctx: Context,
-        args: List<String>,
-        timeoutMs: Long = 30_000L,
-        workdir: File? = homeDir(ctx),
-        env: Map<String, String> = emptyMap(),
-    ): ExecResult = exec(
-        ctx = ctx,
-        cmd = listOf(pythonBinary(ctx).absolutePath) + args,
-        timeoutMs = timeoutMs,
-        workdir = workdir,
-        env = env,
-    )
+    suspend fun execPython(ctx: Context, args: List<String>, timeoutMs: Long = 30_000L, workdir: File? = homeDir(ctx), env: Map<String, String> = emptyMap()): ExecResult {
+        requireEnabled()
+        return exec(
+            ctx = ctx,
+            cmd = listOf(pythonBinary(ctx).absolutePath) + args,
+            timeoutMs = timeoutMs,
+            workdir = workdir,
+            env = env,
+        )
+    }
+
+    private fun requireEnabled() {
+        check(BuildConfig.EMBEDDED_RUNTIMES_ENABLED) {
+            "Python integrado no está disponible en Muse Lite. Use la edición completa para esta función."
+        }
+    }
 
     /** Ejecución de subproceso genérico (entorno de herencia claro, uso [buildEnv] entorno construido). */
-    suspend fun exec(
-        ctx: Context,
-        cmd: List<String>,
-        timeoutMs: Long = 30_000L,
-        workdir: File? = null,
-        env: Map<String, String> = emptyMap(),
-    ): ExecResult = withContext(Dispatchers.IO) {
+    suspend fun exec(ctx: Context, cmd: List<String>, timeoutMs: Long = 30_000L, workdir: File? = null, env: Map<String, String> = emptyMap()): ExecResult = withContext(Dispatchers.IO) {
         val pb = ProcessBuilder(cmd)
         workdir?.let {
             it.mkdirs()

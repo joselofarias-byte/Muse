@@ -698,7 +698,7 @@ fun SettingsAppearancePage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val themeMode by settings.themeModeFlow.collectAsStateWithLifecycle(initialValue = "system")
     val fontSizeScale by settings.fontSizeScaleFlow.collectAsStateWithLifecycle(initialValue = "medium")
-    val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = "system")
+    val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = settings.getLanguageSync())
     SettingsSubPageScaffold(title = stringResource(R.string.settings_theme_appearance), onBack = onBack) {
         item {
             ThemeSection(
