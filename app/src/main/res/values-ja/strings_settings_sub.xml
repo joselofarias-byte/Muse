@@ -742,4 +742,10 @@
     <string name="settings_chat_carry_over_subtitle">前の会話の最後の数ターンを読み込みます。つながりが良くなりますが、入力トークンを使います。</string>
     <string name="settings_chat_carry_over_count">%1$d 件のメッセージを引き継ぐ</string>
     <string name="settings_chat_carry_over_count_hint">およそ %1$d ターン分</string>
+    <string name="settings_task_routing_utility_failed_title">補助モデルの呼び出しに失敗しました</string>
+    <string name="settings_task_routing_utility_failed_desc">直近の %1$s の呼び出し結果：%2$s。記憶の抽出や要約などのバックグラウンド処理に影響します（チャットは影響を受けません）。使えるモデルに変更するか、空欄にしてメインモデルを使えます。</string>
+    <string name="settings_agent_daily_guarantee">毎日の保証</string>
+    <string name="settings_agent_daily_guarantee_hint">この時間を超えて主動メッセージが送られていない場合、強制的に1件送ります。静かな時間帯、クールダウン、直近の発言、1日の上限は引き続き有効です。</string>
+    <string name="settings_agent_daily_guarantee_hours">%1$d 時間</string>
+    <string name="settings_agent_daily_guarantee_off">オフ</string>
 </resources>

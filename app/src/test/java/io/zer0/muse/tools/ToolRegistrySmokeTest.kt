@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -43,6 +44,22 @@ class ToolRegistrySmokeTest {
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         registry = ToolRegistry(context)
+    }
+
+    @Test
+    fun `channel relay preserves external send approval risk`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        ChannelToolsRegistrar(registry, io.zer0.muse.channel.ChannelManager(context))
+        for (name in listOf("send_channel_message", "relay_channel_message")) {
+            val risk = registry.getToolRiskLevel(name)
+            assertEquals(name, ToolRiskLevel.HIGH, risk)
+            assertEquals(name, ToolRiskLevel.HIGH, ToolPermissionResolver.riskLevelFor(name))
+            assertEquals(
+                name,
+                ToolApprovalState.Pending,
+                ToolPermissionResolver.resolve(name, risk, SessionPermissionMode.ASK, null),
+            )
+        }
     }
 
     /**
@@ -317,7 +334,7 @@ class ToolRegistrySmokeTest {
             "browser_navigate", "browser_click", "browser_type", "browser_extract",
             "browser_scroll_bottom", "browser_get_html", "browser_snapshot",
             // canal de mensajes(dependencia de la red)
-            "send_channel_message", "channel_list",
+            "send_channel_message", "relay_channel_message", "channel_list",
             // OAuth conector(dependencia de la red)
             "connector_list", "call_connector",
             // archivo de espacio de trabajo(Depende del sistema de archivos)

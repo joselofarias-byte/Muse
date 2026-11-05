@@ -767,4 +767,10 @@
     <string name="settings_chat_carry_over_count_hint">Roughly %1$d turns (user and assistant each count as one)</string>
     <string name="settings_agent_agent_session_enabled">Agent sessions</string>
     <string name="settings_agent_agent_session_enabled_subtitle">When off, proactive messages only go to normal chat sessions and never to the Agent tab</string>
+    <string name="settings_task_routing_utility_failed_title">Helper model call failed</string>
+    <string name="settings_task_routing_utility_failed_desc">The last call to %1$s returned: %2$s. Background tasks such as memory extraction and summaries are affected; chat is not. Pick a working model, or leave it empty to use the main model.</string>
+    <string name="settings_agent_daily_guarantee">Daily guarantee</string>
+    <string name="settings_agent_daily_guarantee_hint">If no proactive message has gone out for this long, one is forced. Quiet hours, cooldown, recent activity and the daily budget still apply.</string>
+    <string name="settings_agent_daily_guarantee_hours">%1$d h</string>
+    <string name="settings_agent_daily_guarantee_off">Off</string>
 </resources>
