@@ -30,12 +30,12 @@ class UpdateCheckerEndpointFallbackTest {
         {
           "tag_name": "$tag",
           "name": "Muse $tag",
-          "html_url": "https://github.com/Zer0Qing/Muse/releases/tag/$tag",
+          "html_url": "https://github.com/joselofarias-byte/Muse/releases/tag/$tag",
           "published_at": "2026-10-03T19:19:31Z",
           "assets": [
             {
               "name": "Muse_${tag}_arm64-v8a.apk",
-              "browser_download_url": "https://github.com/Zer0Qing/Muse/releases/download/$tag/Muse_${tag}_arm64-v8a.apk",
+              "browser_download_url": "https://github.com/joselofarias-byte/Muse/releases/download/$tag/Muse_${tag}_arm64-v8a.apk",
               "size": 85553209
             }
           ]
@@ -59,8 +59,8 @@ class UpdateCheckerEndpointFallbackTest {
     fun `La constante del punto final espejo autoconstruido apunta al sitio web oficial y es https`() {
         val url = UpdateChecker.OFFICIAL_LATEST_URL
         assertTrue("Debe ser https:$url", url.startsWith("https://"))
-        assertTrue("Debe apuntar a su propio nombre de dominio:$url", url.contains("museai.ltd"))
-        assertTrue("Debe apuntar a Latest.json:$url", url.endsWith("/api/latest.json"))
+        assertTrue("Debe apuntar a su propio nombre de dominio:$url", url.contains("api.github.com/repos/joselofarias-byte/Muse"))
+        assertTrue("Debe apuntar a Latest.json:$url", url.endsWith("/releases/latest"))
     }
 
     @Test
@@ -100,12 +100,12 @@ class UpdateCheckerEndpointFallbackTest {
                 {
                   "tag_name": "v2.4.2",
                   "name": "Muse v2.4.2",
-                  "html_url": "https://github.com/Zer0Qing/Muse/releases/tag/v2.4.2",
+                  "html_url": "https://github.com/joselofarias-byte/Muse/releases/tag/v2.4.2",
                   "published_at": "2026-10-03T19:19:31Z",
                   "assets": [
                     {
                       "name": "Muse_v2.4.2_arm64-v8a.apk",
-                      "browser_download_url": "https://github.com/Zer0Qing/Muse/releases/download/v2.4.2/Muse_v2.4.2_arm64-v8a.apk",
+                      "browser_download_url": "https://github.com/joselofarias-byte/Muse/releases/download/v2.4.2/Muse_v2.4.2_arm64-v8a.apk",
                       "size": 85553209
                     }
                   ]

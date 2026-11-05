@@ -388,6 +388,10 @@ internal class CardHeightSink {
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
+    internal fun attachTo(webView: android.webkit.WebView) {
+        webView.addJavascriptInterface(this, NAME)
+    }
+
     @android.webkit.JavascriptInterface
     fun reportHeight(px: Int) {
         if (px <= 0) return

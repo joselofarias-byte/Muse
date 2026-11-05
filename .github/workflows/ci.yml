@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     # v2.1.0: 45→75 — v2.0.0 Al publicar, simultaneidad de doble inserción principal+etiqueta, superposición de compilación completa,Se levantó el límite de 45 minutos.
     timeout-minutes: 75
+    env:
+      ORG_GRADLE_PROJECT_museLite: ${{ github.head_ref == 'feature/muse-android-lite-es' || github.ref == 'refs/heads/feature/muse-android-lite-es' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -42,7 +44,7 @@ jobs:
         with:
           # The legacy `tools` SDK package was removed from current runners.
           # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake(autoescrito forkpty JNI)
-          packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
+          packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -67,6 +69,9 @@ jobs:
           else:
               scopes = {'android_jvm', 'android_full', 'android_resources', 'script', 'localization', 'config'}
           heavy = bool(scopes & {'android_jvm', 'android_full', 'android_resources', 'script'})
+          # Lite PR must exercise Gradle even when only the workflow changed.
+          if os.environ.get('GITHUB_HEAD_REF') == 'feature/muse-android-lite-es' or os.environ.get('GITHUB_REF') == 'refs/heads/feature/muse-android-lite-es':
+              heavy = True
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"run_full={'true' if heavy else 'false'}\n")
               f.write('scopes=' + ','.join(sorted(scopes)) + '\n')
@@ -79,7 +84,8 @@ jobs:
           npm ci
           npm run build
       - name: Pack embedded runtimes (Node + Python)
-        if: steps.lanes.outputs.run_full == 'true'
+        # Lite experiment: test whether Android can build without bundled interpreters.
+        if: steps.lanes.outputs.run_full == 'true' && github.head_ref != 'feature/muse-android-lite-es' && github.ref != 'refs/heads/feature/muse-android-lite-es'
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
@@ -148,12 +154,47 @@ jobs:
       - name: Build debug APK
         if: steps.lanes.outputs.run_full == 'true'
         run: ./ci/run_ci_checks.ps1 -Lane debug
+      - name: Verify debug APKs
+        if: steps.lanes.outputs.run_full == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          for apk in app/build/outputs/apk/debug/*.apk; do
+            unzip -t "$apk" >/dev/null
+            "$tools/apksigner" verify --verbose "$apk"
+            "$tools/zipalign" -c -P 16 -v 4 "$apk"
+            "$tools/aapt" dump badging "$apk" > "$apk.badging.txt"
+            "$tools/aapt2" dump resources "$apk" > "$apk.resources.txt"
+            grep -q "package: name='io.zer0.muse'" "$apk.badging.txt"
+            grep -q "targetSdkVersion:'36'" "$apk.badging.txt"
+            grep -q 'Mantenga presionado el texto para seleccionar y copiar' "$apk.resources.txt"
+            grep -q 'Long press the text to select and copy it' "$apk.resources.txt"
+            grep -q 'network_security_config' "$apk.resources.txt"
+            if [[ "$ORG_GRADLE_PROJECT_museLite" == true ]]; then
+              unzip -Z1 "$apk" > "$apk.entries.txt"
+              if grep -Eq '(^assets/muse-(runtime|python)-assets.zip$|/lib(muse_node|muse_python|python3[^/]*)\.so$)' "$apk.entries.txt"; then
+                echo "Unexpected bundled runtime in Lite APK: $apk" >&2
+                exit 1
+              fi
+            fi
+          done
+          test -s app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+          grep -q "native-code:.*'arm64-v8a'" app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
+          cd app/build/outputs/apk/debug
+          sha256sum app-arm64-v8a-debug.apk > SHA256SUMS
+          stat --printf='%n %s bytes\n' app-arm64-v8a-debug.apk > APK-SIZES.txt
       - name: Upload debug APK
         if: steps.lanes.outputs.run_full == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: muse-lite-arm64
+          path: |
+            app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+            app/build/outputs/apk/debug/SHA256SUMS
+            app/build/outputs/apk/debug/APK-SIZES.txt
+            app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
+          retention-days: 30
           if-no-files-found: error
       - name: Upload reports
         if: always()
@@ -184,7 +225,7 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake
-          packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
+          packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Grant execute permission for gradlew
         run: |
           $path = (Resolve-Path './gradlew').Path
@@ -239,7 +280,7 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           # v2.2.x: Requisitos para construir la biblioteca nativa PTY del terminal NDK + CMake
-          packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
+          packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
