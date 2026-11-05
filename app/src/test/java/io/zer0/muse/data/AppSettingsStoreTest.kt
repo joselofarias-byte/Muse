@@ -36,26 +36,26 @@ class AppSettingsStoreTest {
     }
 
     @Test
-    fun existingLanguage_isMigratedToEmptySyncCache() = runBlocking {
+    fun existingLanguage_replacesStaleSyncCache() = runBlocking {
         context.museSettingsDataStore.edit { it[stringPreferencesKey("language")] = "en" }
         val cache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
-        cache.edit().clear().commit()
+        cache.edit().putString("language", "system").commit()
 
         val store = AppSettingsStore(context)
         assertEquals("en", store.languageFlow.first())
         withTimeout(5_000) {
-            while (cache.getString("language", null) == null) delay(10)
+            while (cache.getString("language", null) != "en") delay(10)
         }
         assertEquals("en", store.getLanguageSync())
     }
 
     @Test
-    fun existingSystemCache_isNotReplacedWithSpanish() = runBlocking {
+    fun existingSystemCache_isPreservedInFlowAndSyncCache() = runBlocking {
         val cache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
         cache.edit().putString("language", "system").commit()
         val store = AppSettingsStore(context)
         assertEquals("system", store.getLanguageSync())
-        assertEquals("es", store.languageFlow.first())
+        assertEquals("system", store.languageFlow.first())
         assertEquals("system", store.getLanguageSync())
     }
 
