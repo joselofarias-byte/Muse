@@ -220,6 +220,7 @@ object ToolCategories {
             "browser_screenshot",
             // canal de mensajes(v1.0.92)
             "send_channel_message",
+            "relay_channel_message",
             "channel_list",
             // OAuth conector(v2.0)
             "connector_list",

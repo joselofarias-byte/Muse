@@ -3,6 +3,7 @@ package io.zer0.muse.channel
 import android.content.Context
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -86,9 +87,14 @@ class QqReceiver(
                 }
                 continue
             }
-            Logger.i(TAG, "QQ recibir bucle: encontrar canales ${config.id},Establecer conexión…")
-            runCatching { connectOnce(config) }
-                .onFailure { e -> Logger.w(TAG, "QQ Anormalidad de conexión: ${e.message}") }
+            Logger.i(TAG, "QQ 接收循环: 找到渠道 ${config.id},建立连接…")
+            try {
+                connectOnce(config)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (e: Exception) {
+                Logger.w(TAG, "QQ 连接异常: ${e::class.simpleName}: ${e.message}")
+            }
             if (!currentCoroutineContext().isActive) return
             delay(RECONNECT_DELAY_MS)
         }
@@ -297,8 +303,6 @@ class QqReceiver(
 
         /** Periodo de latido predeterminado(Hello los marcos se sobrescribirán). */
         private const val DEFAULT_HEARTBEAT_MS = 45_000L
-
-
     }
 }
 
@@ -309,9 +313,9 @@ private const val GROUP_AND_C2C_INTENT = 1 shl 25
 private fun resumePayload(accessToken: String, sessionId: String, seq: Long): String = buildJsonObject {
     put("op", 6)
     putJsonObject("d") {
-            put("token", "QQBot $accessToken")
-            put("session_id", sessionId)
-            put("seq", seq)
+        put("token", "QQBot $accessToken")
+        put("session_id", sessionId)
+        put("seq", seq)
     }
 }.toString()
 

@@ -603,4 +603,5 @@
     <string name="chat_process_running_command">コマンドを実行中</string>
     <string name="chat_process_subagent_running">サブタスク %1$d 件が実行中</string>
     <string name="chat_process_subagent_section">バックグラウンドのサブタスク</string>
+    <string name="settings_sticker_export_location_failed">選択した場所に書き込めません</string>
 </resources>
