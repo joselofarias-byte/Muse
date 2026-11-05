@@ -232,6 +232,7 @@ class ChannelAutoReply(
         channelManager.refresh()
         val config = selectAutoReplyConfig(channelManager.channels.value, inbound)
         if (config == null) return HandleResult.Ignored
+        ChannelRelayLedger.beginTurn()
         // Verificación previa de la cola fuera de la ventana: el juicio de la ventana originalmente solo se realiza en runAgent, después de que el mensaje se coloca en la cola y pasa a través de la ventana
         // De todos modos, primero revisé una ronda del modelo, solo para descubrir que no se puede enviar en absoluto.
         // Debe ser anterior a appendTurn: de lo contrario, se dejará un mensaje de usuario sin respuesta en la sesión, contaminando el contexto posterior.
@@ -257,6 +258,10 @@ class ChannelAutoReply(
                 dispatchId = inbound.dispatchId,
             ),
         )
+        if (ChannelRelayLedger.isEcho(config.id, text, System.currentTimeMillis())) {
+            Logger.i(TAG, "Eco ignorado (coincide con un reenvío reciente): channel=${config.id}")
+            return HandleResult.Ignored
+        }
         return when (val reply = prepareReply(inbound, config)) {
             is ReplyPreparation.Ready -> sendPreparedReply(inbound, config, reply.text)
             ReplyPreparation.Ignored -> HandleResult.Ignored
@@ -446,12 +451,7 @@ class ChannelAutoReply(
 
     /** Ejecutar una conversación(Contexto de conversación del canal + bucle de herramientas);Presione para recuperar si falla/Clasificación irrecuperable. */
     @Suppress("CyclomaticComplexMethod", "ReturnCount", "TooGenericExceptionCaught")
-    private suspend fun runAgent(
-        config: ChannelConfig,
-        from: String,
-        dispatchId: String,
-        deadlineAt: Long,
-    ): ChannelAgentRunResult {
+    private suspend fun runAgent(config: ChannelConfig, from: String, dispatchId: String, deadlineAt: Long): ChannelAgentRunResult {
         val restoredCheckpoint = try {
             loadAgentCheckpoint(dispatchId)
         } catch (error: ChannelAgentCheckpointUnreadableException) {
@@ -833,13 +833,23 @@ class ChannelAutoReply(
             appendLine("Combine el contenido anterior en un resumen conciso de la conversación en chino, conservando la información clave, el título y las tareas pendientes. Sólo se emite el texto resumido.")
         }
         val summary = withTimeoutOrNull(COMPRESS_TIMEOUT_MS) {
-            chatService.completeText(
-                messages = listOf(UIMessage(role = MessageRole.USER, content = prompt)),
-                model = model,
-                providerConfig = providerConfig,
-                maxTokens = SUMMARY_MAX_TOKENS,
-                mode = ChatRequestMode.UTILITY,
-            )
+            runCatching {
+                chatService.completeText(
+                    messages = listOf(UIMessage(role = MessageRole.USER, content = prompt)),
+                    model = model,
+                    providerConfig = providerConfig,
+                    maxTokens = SUMMARY_MAX_TOKENS,
+                    mode = ChatRequestMode.UTILITY,
+                )
+            }.onFailure { e ->
+                if (e !is CancellationException) {
+                    io.zer0.muse.data.routing.UtilityModelHealth.record(
+                        providerId = if (routed != null) routed.first.id else providerConfig?.id,
+                        modelId = model?.id.orEmpty(),
+                        message = e.message ?: e::class.simpleName.orEmpty(),
+                    )
+                }
+            }.getOrThrow()
         }?.text?.let { io.zer0.muse.transformer.stripThinkTags(it).trim() } ?: return
         if (summary.isBlank()) return
         // v2.3.2: Reescritura condicional —— Los cartuchos recién llegados deben conservarse durante la compactación.(La implementación original de una cobertura total los desecharía),
@@ -945,12 +955,11 @@ class ChannelAutoReply(
          * Solo tiene sentido para QQ: otras plataformas no tienen ventanas de respuesta pasiva, regrese [Long.MAX_VALUE] Indica no exceder nunca la ventana.
          * El juicio previo al envío y la verificación previa de la ventana de cola comparten este cálculo para evitar la desviación de los dos umbrales.
          */
-        internal fun replyWindowDeadlineMillis(platform: String, receivedAtMillis: Long): Long =
-            if (platform == ChannelPlatform.QQ.name) {
-                receivedAtMillis + QQ_PASSIVE_WINDOW_MS - SEND_MARGIN_MS
-            } else {
-                Long.MAX_VALUE
-            }
+        internal fun replyWindowDeadlineMillis(platform: String, receivedAtMillis: Long): Long = if (platform == ChannelPlatform.QQ.name) {
+            receivedAtMillis + QQ_PASSIVE_WINDOW_MS - SEND_MARGIN_MS
+        } else {
+            Long.MAX_VALUE
+        }
 
         /** Límite de texto de devolución,Evite que contenidos extremadamente largos excedan el límite de mensajes de cada plataforma. */
         private const val MAX_REPLY_LENGTH = 4_000
