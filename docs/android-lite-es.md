@@ -12,7 +12,8 @@ archivos `muse-runtime-assets.zip` y `muse-python-assets.zip`, así como las
 bibliotecas descargadas en `app/src/main/jniLibs`. No excluye las bibliotecas
 aportadas por dependencias. CMake sigue compilando `pty` y `muse_exec`, pero no
 el ejecutable auxiliar de Python. Por tanto, Lite todavía necesita el SDK,
-NDK y CMake configurados por el proyecto.
+NDK y CMake configurados por el proyecto. CI instala JDK 21 explícitamente;
+no necesita el resolver Foojay para descargar otro JDK.
 
 ## Motivo y alcance
 

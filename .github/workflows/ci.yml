@@ -169,7 +169,15 @@ jobs:
             grep -q "package: name='io.zer0.muse'" "$apk.badging.txt"
             grep -q "targetSdkVersion:'36'" "$apk.badging.txt"
             grep -q 'Mantenga presionado el texto para seleccionar y copiar' "$apk.resources.txt"
+            grep -q 'Long press the text to select and copy it' "$apk.resources.txt"
             grep -q 'network_security_config' "$apk.resources.txt"
+            if [[ "$ORG_GRADLE_PROJECT_museLite" == true ]]; then
+              unzip -Z1 "$apk" > "$apk.entries.txt"
+              if grep -Eq '(^assets/muse-(runtime|python)-assets.zip$|/lib(muse_node|muse_python|python3[^/]*)\.so$)' "$apk.entries.txt"; then
+                echo "Unexpected bundled runtime in Lite APK: $apk" >&2
+                exit 1
+              fi
+            fi
           done
           test -s app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
           grep -q "native-code:.*'arm64-v8a'" app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
