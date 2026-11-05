@@ -188,12 +188,12 @@ jobs:
         if: steps.lanes.outputs.run_full == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
+          name: muse-lite-arm64
           path: |
-            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
             app/build/outputs/apk/debug/SHA256SUMS
             app/build/outputs/apk/debug/APK-SIZES.txt
-            app/build/outputs/apk/debug/*.badging.txt
+            app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
           retention-days: 30
           if-no-files-found: error
       - name: Upload reports
