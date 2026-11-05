@@ -100,7 +100,7 @@ class UpdateChecker(
      *         falló(red/error de análisis)Regresar [Result.Error]
      */
     suspend fun checkLatestRelease(): Result<ReleaseInfo> = withContext(Dispatchers.IO) {
-        val attempts = listOf("official" to officialApiUrl, "github" to githubApiUrl)
+        val attempts = listOf("github" to githubApiUrl)
         var lastError: Result.Error = Result.Error("network error")
         for ((label, url) in attempts) {
             when (val outcome = fetchRelease(label, url)) {
@@ -175,7 +175,7 @@ class UpdateChecker(
                 ?.let { value -> if (':' in value) value.substringAfter(':') else value }
         }
         val validName = name?.takeIf { it.endsWith(".apk", ignoreCase = true) }
-        val validUrl = url?.takeIf(::isTrustedDownloadUrl)
+        val validUrl = url?.takeIf { isTrustedDownloadUrl(it) && isForkReleaseAssetUrl(it) }
         // El resumen que falta es compatible con versiones anteriores; Siempre que el resumen sea proporcionado por upstream, debe ser SHA-256 legal.
         val validDigest = digest == null || (sha256 != null && SHA256_REGEX.matches(sha256))
         return if (validName != null && validUrl != null && validDigest) {
@@ -237,7 +237,7 @@ class UpdateChecker(
          * `published_at` / `assets[].browser_download_url`); sin aguas arriba `body` con `digest` cuando,
          * Botón Aplicar"Predeterminado"Procesamiento (la descripción está vacía, se omite la verificación resumida), lo que no afecta el juicio de versión ni la descarga.
          */
-        const val OFFICIAL_LATEST_URL = "https://museai.ltd/api/latest.json"
+        const val OFFICIAL_LATEST_URL = "https://api.github.com/repos/joselofarias-byte/Muse/releases/latest"
         private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
         private val TRUSTED_DOWNLOAD_HOSTS = setOf(
             "github.com",
@@ -255,13 +255,20 @@ class UpdateChecker(
                 parsed.path.endsWith(".apk", ignoreCase = true)
         }.getOrDefault(false)
 
+        /** Only accept APK assets published under the JolufaSoft fork. */
+        private fun isForkReleaseAssetUrl(url: String): Boolean = runCatching {
+            val uri = URI(url)
+            uri.host.equals("github.com", ignoreCase = true) &&
+                uri.path.startsWith("/joselofarias-byte/Muse/releases/download/")
+        }.getOrDefault(false)
+
         /** Compruebe si el recurso de lanzamiento se puede utilizar como entrada de descarga de APK. La falta de sha256 simplemente significa que la versión anterior no tiene resumen. */
         fun isTrustedApkAsset(asset: ApkAsset): Boolean = asset.name.endsWith(".apk", ignoreCase = true) &&
-            isTrustedDownloadUrl(asset.downloadUrl) &&
+            isTrustedDownloadUrl(asset.downloadUrl) && isForkReleaseAssetUrl(asset.downloadUrl) &&
             (asset.sha256 == null || SHA256_REGEX.matches(asset.sha256))
         /** Repositorio predeterminado de GitHub(owner/name). */
         /** v1.0.55: Corregido al almacén real. Zer0Qing/Muse(Error ortográfico original zer0/muse,404 Siempre se nota que es lo último.). */
-        const val DEFAULT_REPO = "Zer0Qing/Muse"
+        const val DEFAULT_REPO = "joselofarias-byte/Muse"
 
         /**
          * Comparación de versiones semánticas(apoyo "v1.132" / "1.132" / "1.13.2" formato etc.).
