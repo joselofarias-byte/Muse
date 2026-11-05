@@ -22,6 +22,9 @@ composeCompiler {
     metricsDestination = layout.buildDirectory.dir("compose_metrics")
 }
 
+// Lite omite Node/npm y Python integrados; no cambia permisos ni puentes JavaScript.
+val museLite = providers.gradleProperty("museLite").map(String::toBooleanStrict).getOrElse(false)
+
 val museWebAssetsDir = layout.buildDirectory.dir("generated/museWebAssets").get().asFile
 // Utilice Sincronizar en lugar de Copiar:web El resultado de cada compilación al final es un nuevo nombre de archivo nombrado según el hash del contenido.
 // Copy Solo agregue pero no elimine, el hash antiguo permanecerá en el directorio de destino y se enviará junto con el APK (2026-11-01 Acumulado 57 pruebas reales,
@@ -110,6 +113,12 @@ android {
     sourceSets.getByName("main").assets.srcDir(museWebAssetsDir)
     sourceSets.getByName("main").assets.srcDir(vdServerAssetsDir)
 
+    if (museLite) {
+        sourceSets.getByName("main").assets.exclude("muse-runtime-assets.zip", "muse-python-assets.zip")
+        // jniLibs contiene los runtimes descargados; las bibliotecas CMake y de dependencias se conservan.
+        sourceSets.getByName("main").jniLibs.setSrcDirs(emptyList<String>())
+    }
+
     namespace = "io.zer0.muse"
     compileSdk = 36
 
@@ -126,6 +135,10 @@ android {
 
     defaultConfig {
         applicationId = "io.zer0.muse"
+        buildConfigField("boolean", "EMBEDDED_RUNTIMES_ENABLED", (!museLite).toString())
+        if (museLite) {
+            externalNativeBuild.cmake.targets += listOf("pty", "muse_exec")
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 26
         targetSdk = 36
