@@ -603,4 +603,5 @@
     <string name="chat_process_running_command">명령 실행 중</string>
     <string name="chat_process_subagent_running">백그라운드 하위 작업 %1$d개</string>
     <string name="chat_process_subagent_section">백그라운드 하위 작업</string>
+    <string name="settings_sticker_export_location_failed">선택한 위치에 쓸 수 없습니다</string>
 </resources>
