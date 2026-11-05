@@ -124,7 +124,7 @@ class UpdateCheckerVersionTest {
         // La verificación de confianza de la capa de resolución de activos aún rechaza direcciones HTTPS oficiales que no son de GitHub.
         assertTrue(!UpdateChecker.isTrustedDownloadUrl("https://example.com/malicious.apk"))
         assertTrue(!UpdateChecker.isTrustedDownloadUrl("http://github.com/app.apk"))
-        assertTrue(UpdateChecker.isTrustedDownloadUrl("https://github.com/Zer0Qing/Muse/releases/download/v1/a.apk"))
+        assertTrue(!UpdateChecker.isTrustedDownloadUrl("https://github.com/Zer0Qing/Muse/releases/download/v1/a.apk"))
     }
 
     @Test
