@@ -79,7 +79,8 @@ jobs:
           npm ci
           npm run build
       - name: Pack embedded runtimes (Node + Python)
-        if: steps.lanes.outputs.run_full == 'true'
+        # Lite experiment: test whether Android can build without bundled interpreters.
+        if: steps.lanes.outputs.run_full == 'true' && github.ref != 'refs/heads/feature/muse-android-lite-es'
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
