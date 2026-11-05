@@ -176,7 +176,7 @@
     <ID>CyclomaticComplexMethod:McpSection.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun PromptsBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onDismiss: () -&gt; Unit)</ID>
     <ID>CyclomaticComplexMethod:McpSection.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable private fun McpServerAddDialog(onDismiss: () -&gt; Unit, onAdd: suspend (McpServerConfig) -&gt; Unit)</ID>
     <ID>CyclomaticComplexMethod:MediaGenToolsImpl.kt$MediaGenToolsImpl$suspend fun execGenerateImage(args: Map&lt;String, String&gt;): String</ID>
-    <ID>CyclomaticComplexMethod:MemoryLlmClientImpl.kt$MemoryLlmClientImpl$override suspend fun callText( systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long, ): String</ID>
+    <ID>CyclomaticComplexMethod:MemoryLlmClientImpl.kt$MemoryLlmClientImpl$override suspend fun callText(systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long): String</ID>
     <ID>CyclomaticComplexMethod:MemoryScreen.kt$@Composable fun MemoryScreen( onBack: () -&gt; Unit = {}, onOpenSettings: () -&gt; Unit = {}, viewModel: MemoryViewModel = koinViewModel(), onOpenSession: (String) -&gt; Unit = {}, )</ID>
     <ID>CyclomaticComplexMethod:MemoryScreen.kt$@Suppress("FunctionNaming", "LongParameterList") @Composable internal fun MemoryFactRow( item: MemoryItem, sourceMeta: String? = null, onOpenSession: ((String) -&gt; Unit)? = null, onEdit: (() -&gt; Unit)? = null, onDelete: (() -&gt; Unit)? = null, onPin: (() -&gt; Unit)? = null, onImportance: (() -&gt; Unit)? = null, onHistory: (() -&gt; Unit)? = null, )</ID>
     <ID>CyclomaticComplexMethod:MemoryScreen.kt$@Suppress("LongParameterList") private fun LazyListScope.memoryStreamItems( state: MemoryUiState, scopes: List&lt;ScopeOption&gt;, spaces: List&lt;MemorySpaceEntity&gt;, timelineMode: Boolean, timelineFilter: String, onTimelineFilter: (String) -&gt; Unit, onToggleTimeline: () -&gt; Unit, onOpenFacts: () -&gt; Unit, onOpenSession: (String) -&gt; Unit, onHistory: (MemoryItem) -&gt; Unit, onEdit: (MemoryItem) -&gt; Unit, onDelete: (MemoryItem) -&gt; Unit, onPin: (MemoryItem) -&gt; Unit, onImportance: (MemoryItem) -&gt; Unit, )</ID>
@@ -292,9 +292,9 @@
     <ID>CyclomaticComplexMethod:ToolCallVisuals.kt$ToolCallVisuals$fun summaryFor(toolName: String, arguments: String, result: String, isSuccess: Boolean, res: Resources? = null): String</ID>
     <ID>CyclomaticComplexMethod:ToolCallVisuals.kt$ToolCallVisuals$private fun targetFor(toolName: String, arguments: String, result: String): String</ID>
     <ID>CyclomaticComplexMethod:ToolOrchestrator.kt$ToolOrchestrator$suspend fun runLoop( params: ToolLoopParams, conversationHistory: MutableList&lt;UIMessage&gt;, host: ToolLoopHost, accessor: ChatStateAccessor, taskCardCoordinator: ChatTaskCardCoordinator, ): ToolLoopResult</ID>
-    <ID>CyclomaticComplexMethod:ToolPermissionResolver.kt$ToolPermissionResolver$fun resolve( toolName: String, risk: ToolRiskLevel?, mode: SessionPermissionMode, perToolPolicy: ToolApprovalPolicy?, args: Map&lt;String, Any?&gt; = emptyMap(), ): ToolApprovalState</ID>
+    <ID>CyclomaticComplexMethod:ToolPermissionResolver.kt$ToolPermissionResolver$fun resolve(toolName: String, risk: ToolRiskLevel?, mode: SessionPermissionMode, perToolPolicy: ToolApprovalPolicy?, args: Map&lt;String, Any?&gt; = emptyMap()): ToolApprovalState</ID>
     <ID>CyclomaticComplexMethod:ToolPermissionResolver.kt$ToolPermissionResolver$private fun fallbackRiskFor(toolName: String): ToolRiskLevel</ID>
-    <ID>CyclomaticComplexMethod:ToolRegistry.kt$ToolRegistry$private suspend fun executeInternalUnlocked( name: String, args: Map&lt;String, String&gt;, executionContext: ToolExecutionContext?, cancellationToken: () -&gt; Boolean, ): ToolOutcome</ID>
+    <ID>CyclomaticComplexMethod:ToolRegistry.kt$ToolRegistry$private suspend fun executeInternalUnlocked(name: String, args: Map&lt;String, String&gt;, executionContext: ToolExecutionContext?, cancellationToken: () -&gt; Boolean): ToolOutcome</ID>
     <ID>CyclomaticComplexMethod:ToolsSettingsPage.kt$@Composable fun ToolsSettingsPage(onBack: () -&gt; Unit)</ID>
     <ID>CyclomaticComplexMethod:TranslateScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TranslateScreen(onBack: () -&gt; Unit, onSendToNewChat: (String) -&gt; Unit = {}, viewModel: TranslateViewModel = koinViewModel())</ID>
     <ID>CyclomaticComplexMethod:TtsManager.kt$TtsManager$fun speakStream(chunk: String, utteranceId: String)</ID>
@@ -500,7 +500,7 @@
     <ID>LongMethod:McpSection.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun ResourcesBrowserDialog(serverId: String, mcpRegistry: McpRegistry, onDismiss: () -&gt; Unit)</ID>
     <ID>LongMethod:McpSection.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable private fun McpServerAddDialog(onDismiss: () -&gt; Unit, onAdd: suspend (McpServerConfig) -&gt; Unit)</ID>
     <ID>LongMethod:MediaSettingsPage.kt$@Composable private fun AdvancedTtsParamsSection(config: MediaConfig, settings: SettingsRepository)</ID>
-    <ID>LongMethod:MemoryLlmClientImpl.kt$MemoryLlmClientImpl$override suspend fun callText( systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long, ): String</ID>
+    <ID>LongMethod:MemoryLlmClientImpl.kt$MemoryLlmClientImpl$override suspend fun callText(systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long): String</ID>
     <ID>LongMethod:MemorySettingsPage.kt$@Composable fun MemorySettingsPage(onBack: () -&gt; Unit, onOpenMemorySpace: () -&gt; Unit = {})</ID>
     <ID>LongMethod:MemorySpaceSwitcher.kt$@Composable fun MemorySpaceManageScreen(onBack: () -&gt; Unit, viewModel: MemorySpaceViewModel = koinViewModel())</ID>
     <ID>LongMethod:MemoryViewModel.kt$MemoryViewModel$fun loadAll(silent: Boolean = false)</ID>
@@ -1492,11 +1492,11 @@
     <ID>ReturnCount:ToolOrchestrator.kt$ToolOrchestrator$private suspend fun prepareToolOutput(toolCallId: String, output: String, inlineBudgetTokens: Int?): String</ID>
     <ID>ReturnCount:ToolOrchestrator.kt$ToolResultGate$fun publish(value: String): Boolean</ID>
     <ID>ReturnCount:ToolPermissionResolver.kt$ToolPermissionResolver$fun isUnsafeCommand(command: String): Boolean</ID>
-    <ID>ReturnCount:ToolPermissionResolver.kt$ToolPermissionResolver$fun resolve( toolName: String, risk: ToolRiskLevel?, mode: SessionPermissionMode, perToolPolicy: ToolApprovalPolicy?, args: Map&lt;String, Any?&gt; = emptyMap(), ): ToolApprovalState</ID>
+    <ID>ReturnCount:ToolPermissionResolver.kt$ToolPermissionResolver$fun resolve(toolName: String, risk: ToolRiskLevel?, mode: SessionPermissionMode, perToolPolicy: ToolApprovalPolicy?, args: Map&lt;String, Any?&gt; = emptyMap()): ToolApprovalState</ID>
     <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$internal fun parseArgumentsLenient(json: String): JsonObject</ID>
     <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$private suspend fun executeFromJsonInternal(name: String, argumentsJson: String, executionContext: ToolExecutionContext?): String</ID>
-    <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$private suspend fun executeInternalUnlocked( name: String, args: Map&lt;String, String&gt;, executionContext: ToolExecutionContext?, cancellationToken: () -&gt; Boolean, ): ToolOutcome</ID>
-    <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$private suspend fun executeJson( name: String, rawArgs: JsonObject, fn: JsonToolFn, cancellationToken: () -&gt; Boolean = { false }, ): ToolOutcome</ID>
+    <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$private suspend fun executeInternalUnlocked(name: String, args: Map&lt;String, String&gt;, executionContext: ToolExecutionContext?, cancellationToken: () -&gt; Boolean): ToolOutcome</ID>
+    <ID>ReturnCount:ToolRegistry.kt$ToolRegistry$private suspend fun executeJson(name: String, rawArgs: JsonObject, fn: JsonToolFn, cancellationToken: () -&gt; Boolean = { false }): ToolOutcome</ID>
     <ID>ReturnCount:ToolResultJudge.kt$ToolResultJudge$fun isSuccess(result: String): Boolean</ID>
     <ID>ReturnCount:ToolRouteExecutionGuard.kt$ToolRouteExecutionGuard$fun validateLocal(name: String, snapshot: ToolRouteSnapshot? = null): String?</ID>
     <ID>ReturnCount:TranslateScreen.kt$private fun readClipboardText(context: Context): String?</ID>

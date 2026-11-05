@@ -361,13 +361,7 @@ private suspend fun saveUtilityBinding(settings: SettingsRepository, tier: Utili
  * Haga clic para cambiar para activar el proveedor y establecer el modelo predeterminado global(dialogo principal/Agent compartir).
  */
 @Composable
-private fun MainModelPickerDialog(
-    providers: List<io.zer0.ai.core.ProviderConfig>,
-    activeProviderId: String?,
-    selectedModelId: String?,
-    onPick: (providerId: String, modelId: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun MainModelPickerDialog(providers: List<io.zer0.ai.core.ProviderConfig>, activeProviderId: String?, selectedModelId: String?, onPick: (providerId: String, modelId: String) -> Unit, onDismiss: () -> Unit) {
     MuseDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.settings_agent_select_model),

@@ -104,14 +104,7 @@ class ProactiveDailyGuaranteeTest {
         assertFalse(decision.dailyGuarantee)
     }
 
-    private fun input(
-        now: Long = baseNow,
-        lastProactiveSentAt: Long = 0L,
-        lastProactiveAttemptAt: Long = 0L,
-        dailyGuaranteeMs: Long = ProactiveTimingEngine.DAILY_GUARANTEE_MS,
-        spentToday: Int = 0,
-        cooldownUntil: Long = 0L,
-    ): ProactiveTimingEngine.Input = ProactiveTimingEngine.Input(
+    private fun input(now: Long = baseNow, lastProactiveSentAt: Long = 0L, lastProactiveAttemptAt: Long = 0L, dailyGuaranteeMs: Long = ProactiveTimingEngine.DAILY_GUARANTEE_MS, spentToday: Int = 0, cooldownUntil: Long = 0L): ProactiveTimingEngine.Input = ProactiveTimingEngine.Input(
         now = now,
         relation = relation(spentToday, cooldownUntil),
         allowedHourStart = 8,

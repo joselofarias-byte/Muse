@@ -283,13 +283,7 @@ fun ChannelSettingsScreen(onBack: () -> Unit, onOpenConversations: (String) -> U
 
 /** Tarjeta monocanal:Nombre/Objetivo de plataforma + interruptor de inicio/parada(primera linea);Botones de operación en una fila separada,evitar nombres largos/Deformación de extrusión de ID larga. */
 @Composable
-private fun ChannelRow(
-    config: ChannelConfig,
-    onOpenChat: () -> Unit,
-    onToggle: (Boolean) -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
+private fun ChannelRow(config: ChannelConfig, onOpenChat: () -> Unit, onToggle: (Boolean) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     val platformLabel = stringResource(channelPlatformNameRes(config.platform))
     Column(
         modifier =
@@ -997,14 +991,7 @@ private fun WeClawBindDialog(onDismiss: () -> Unit, onBound: (WeClawClient.QrSta
 
 /** Cuadro de entrada de clave: las claves existentes no se repetirán, solo se pueden ingresar nuevos valores para sobrescribirlas. */
 @Composable
-private fun SecretInputField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    storedSecret: String,
-    visible: Boolean,
-    onToggleVisible: () -> Unit,
-) {
+private fun SecretInputField(value: String, onValueChange: (String) -> Unit, label: String, storedSecret: String, visible: Boolean, onToggleVisible: () -> Unit) {
     MuseTextField(
         value = value,
         onValueChange = onValueChange,

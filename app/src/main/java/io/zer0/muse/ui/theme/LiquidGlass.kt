@@ -158,8 +158,7 @@ internal fun resolveGlass(config: LiquidGlassConfig): ResolvedGlass {
 }
 
 /** color base de tinte de vidrio (trazo/vidrio falso/Highlight Fuente de consistencia con el color base). */
-internal fun ResolvedGlass.surfaceTint(surfaceColor: Color): Color =
-    surfaceColor.copy(alpha = (tintAlpha + baseAlpha * 0.35f).coerceIn(0f, 0.85f))
+internal fun ResolvedGlass.surfaceTint(surfaceColor: Color): Color = surfaceColor.copy(alpha = (tintAlpha + baseAlpha * 0.35f).coerceIn(0f, 0.85f))
 
 /**
  * v2.6: FROST vidrio real —— kyant backdrop motor.
@@ -377,13 +376,7 @@ fun Modifier.glassBorder(shape: Shape, config: LiquidGlassConfig): Modifier {
  * 3. El resto (versión inferior/sin capas/apagado)→ Vidrio falso:[glassFakeSurfaceColor] + Resaltado + Trazo
  */
 @Composable
-internal fun glassSurfaceModifier(
-    shape: Shape,
-    surfaceColor: Color,
-    config: LiquidGlassConfig,
-    backdrop: LayerBackdrop?,
-    waterState: LiquidState?,
-): Modifier {
+internal fun glassSurfaceModifier(shape: Shape, surfaceColor: Color, config: LiquidGlassConfig, backdrop: LayerBackdrop?, waterState: LiquidState?): Modifier {
     val realGlass = config.enabled && isRealGlassSupported()
     return when {
         realGlass && config.style == GlassStyle.FROST && backdrop != null ->

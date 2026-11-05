@@ -7,8 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FakeGlassStopsTest {
-    private fun cfg(strength: Float = 0.5f) =
-        LiquidGlassConfig(style = GlassStyle.FROST, strength = strength, mode = LiquidGlassConfig.MODE_FROST)
+    private fun cfg(strength: Float = 0.5f) = LiquidGlassConfig(style = GlassStyle.FROST, strength = strength, mode = LiquidGlassConfig.MODE_FROST)
 
     private val darkBase = Color(0xFF0F0D13)
     private val lightBase = Color(0xFFF7F2FA)

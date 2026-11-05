@@ -324,17 +324,17 @@ private fun resumePayload(accessToken: String, sessionId: String, seq: Long): St
 private fun identifyPayload(accessToken: String): String = buildJsonObject {
     put("op", 2)
     putJsonObject("d") {
-            put("token", "QQBot $accessToken")
-            put("intents", GROUP_AND_C2C_INTENT)
-            putJsonArray("shard") {
-                // [shard_id, shard_count] — Un solo fragmento debe ser [0, 1](count=0 será rechazado: shard count error).
-                add(0)
-                add(1)
-            }
-            putJsonObject("properties") {
-                put("\$os", "android")
-                put("\$browser", "muse")
-                put("\$device", "muse")
-            }
+        put("token", "QQBot $accessToken")
+        put("intents", GROUP_AND_C2C_INTENT)
+        putJsonArray("shard") {
+            // [shard_id, shard_count] — Un solo fragmento debe ser [0, 1](count=0 será rechazado: shard count error).
+            add(0)
+            add(1)
+        }
+        putJsonObject("properties") {
+            put("\$os", "android")
+            put("\$browser", "muse")
+            put("\$device", "muse")
+        }
     }
 }.toString()

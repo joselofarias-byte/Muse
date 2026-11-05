@@ -112,6 +112,5 @@ class UpdateCheckerEndpointFallbackTest {
     }
 
     /** Utilice MockWebServer para reemplazar la dirección del punto final y solo verificar"Recuperación de punto final único + análisis"Esta capa. */
-    private suspend fun fetchFromOfficialEndpoint(): Result<UpdateChecker.ReleaseInfo> =
-        checker.fetchRelease("official", server.url("/repos/joselofarias-byte/Muse/releases/latest").toString())
+    private suspend fun fetchFromOfficialEndpoint(): Result<UpdateChecker.ReleaseInfo> = checker.fetchRelease("official", server.url("/repos/joselofarias-byte/Muse/releases/latest").toString())
 }
