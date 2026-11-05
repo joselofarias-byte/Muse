@@ -338,6 +338,7 @@ object ToolPermissionResolver {
      *  - write_file / pin_memory etc. Las herramientas de efectos secundarios locales son NORMALES o HIGH
      */
     private val EXPLICIT_RISK_OVERRIDES: Map<String, ToolRiskLevel> = mapOf(
+        "relay_channel_message" to ToolRiskLevel.HIGH,
         // SAFE familia explícita(consulta pura/leer)
         "web_search" to ToolRiskLevel.SAFE,
         "web_fetch" to ToolRiskLevel.SAFE,

@@ -190,7 +190,7 @@ class ChatGenerationService : Service() {
         // v2.5.0 fix: Cancele la notificación primero y luego salga de la recepción. —— startForeground Las notificaciones no pueden ser nm.cancel
         // Eliminar individualmente(El sistema se recuperará.),primero debe stopForeground;Por el contrario, si cancela primero, la identidad del front-end lo tragará.,
         // Queda un mensaje con la misma cantidad de caracteres en la barra de notificaciones."Barra de progreso dinámica"(Prueba real del usuario).
-        notificationManager.clearLiveProgress()
+        notificationManagerOrNull()?.clearLiveProgress()
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             .onFailure { Logger.w("ChatGenService", "No se pudo eliminar el estado de primer plano", it) }
         if (latestStartId > 0) {
