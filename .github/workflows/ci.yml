@@ -25,7 +25,7 @@ jobs:
     # v2.1.0: 45→75 — v2.0.0 Al publicar, simultaneidad de doble inserción principal+etiqueta, superposición de compilación completa,Se levantó el límite de 45 minutos.
     timeout-minutes: 75
     env:
-      ORG_GRADLE_PROJECT_museLite: ${{ github.head_ref == 'feature/muse-android-lite-es' || github.ref == 'refs/heads/feature/muse-android-lite-es' }}
+      ORG_GRADLE_PROJECT_museLite: ${{ github.head_ref == 'feature/muse-android-lite-es' || github.ref == 'refs/heads/feature/muse-android-lite-es' || github.head_ref == 'integration/muse-lite-upstream' || github.ref == 'refs/heads/integration/muse-lite-upstream' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -70,7 +70,7 @@ jobs:
               scopes = {'android_jvm', 'android_full', 'android_resources', 'script', 'localization', 'config'}
           heavy = bool(scopes & {'android_jvm', 'android_full', 'android_resources', 'script'})
           # Lite PR must exercise Gradle even when only the workflow changed.
-          if os.environ.get('GITHUB_HEAD_REF') == 'feature/muse-android-lite-es' or os.environ.get('GITHUB_REF') == 'refs/heads/feature/muse-android-lite-es':
+          if os.environ.get('ORG_GRADLE_PROJECT_museLite') == 'true':
               heavy = True
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"run_full={'true' if heavy else 'false'}\n")
@@ -85,7 +85,7 @@ jobs:
           npm run build
       - name: Pack embedded runtimes (Node + Python)
         # Lite experiment: test whether Android can build without bundled interpreters.
-        if: steps.lanes.outputs.run_full == 'true' && github.head_ref != 'feature/muse-android-lite-es' && github.ref != 'refs/heads/feature/muse-android-lite-es'
+        if: steps.lanes.outputs.run_full == 'true' && env.ORG_GRADLE_PROJECT_museLite != 'true'
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
@@ -181,7 +181,14 @@ jobs:
           done
           test -s app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
           grep -q "native-code:.*'arm64-v8a'" app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
+          if [[ "$ORG_GRADLE_PROJECT_museLite" == true ]]; then
+            mapfile -t apks < <(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk')
+            test "${#apks[@]}" -eq 1
+            grep -q "^native-code: 'arm64-v8a'$" app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
+          fi
           cd app/build/outputs/apk/debug
+          printf '{"commit":"%s","repository":"%s","lite":%s,"abi":"arm64-v8a","buildType":"debug","runId":"%s"}\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$ORG_GRADLE_PROJECT_museLite" "$GITHUB_RUN_ID" > build-metadata.json
           sha256sum app-arm64-v8a-debug.apk > SHA256SUMS
           stat --printf='%n %s bytes\n' app-arm64-v8a-debug.apk > APK-SIZES.txt
       - name: Upload debug APK
@@ -193,6 +200,7 @@ jobs:
             app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
             app/build/outputs/apk/debug/SHA256SUMS
             app/build/outputs/apk/debug/APK-SIZES.txt
+            app/build/outputs/apk/debug/build-metadata.json
             app/build/outputs/apk/debug/app-arm64-v8a-debug.apk.badging.txt
           retention-days: 30
           if-no-files-found: error
