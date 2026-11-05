@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,7 @@ import io.zer0.muse.R
 import io.zer0.muse.data.ChatPreferences
 import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.data.routing.UtilityModelBinding
+import io.zer0.muse.data.routing.UtilityModelHealth
 import io.zer0.muse.data.routing.UtilityTier
 import io.zer0.muse.ui.ModelSwitchSheet
 import io.zer0.muse.ui.common.feedback.MuseDialog
@@ -41,6 +43,7 @@ import io.zer0.muse.ui.common.settings.SettingsGroup
 import io.zer0.muse.ui.common.settings.SettingsGroupDivider
 import io.zer0.muse.ui.common.settings.SettingsItemRow
 import io.zer0.muse.ui.common.settings.SettingsSwitchRow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -115,6 +118,21 @@ fun TaskRoutingSettingsPage(
     val utilitySmallInheritText = stringResource(R.string.settings_agent_tool_model_not_set_inherit)
     val utilityLargeInheritText = stringResource(R.string.settings_agent_utility_large_not_set_inherit)
 
+    val utilityFailures by UtilityModelHealth.failures.collectAsStateWithLifecycle()
+    var utilityHealthCheckedAt by remember { mutableStateOf(System.currentTimeMillis()) }
+    val utilityFailure = remember(utilityFailures, utilityLargeBinding, utilityBinding, utilityHealthCheckedAt) {
+        listOfNotNull(utilityLargeBinding, utilityBinding)
+            .firstNotNullOfOrNull { binding -> UtilityModelHealth.lastFor(binding.providerId, binding.modelId) }
+    }
+
+    LaunchedEffect(utilityFailure) {
+        utilityFailure?.let { failure ->
+            val expiresAt = failure.at + 24 * 60 * 60 * 1000L
+            delay((expiresAt - System.currentTimeMillis() + 1).coerceAtLeast(1))
+            utilityHealthCheckedAt = System.currentTimeMillis()
+        }
+    }
+
     SettingsSubPageScaffold(
         title = stringResource(R.string.settings_task_routing_aux_section),
         onBack = onBack,
@@ -143,6 +161,32 @@ fun TaskRoutingSettingsPage(
                         scope.launch { settings.updateChatPreferences { it.copy(defaultDeepThinking = v) } }
                     },
                 )
+            }
+        }
+        utilityFailure?.let { failure ->
+            item(key = "aux_utility_failure") {
+                Column(
+                    modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_task_routing_utility_failed_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        text =
+                        stringResource(
+                            R.string.settings_task_routing_utility_failed_desc,
+                            failure.modelId,
+                            failure.message,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
             }
         }
         item { SectionLabel(stringResource(R.string.settings_task_routing_aux_models_label)) }

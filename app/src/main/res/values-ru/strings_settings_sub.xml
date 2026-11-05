@@ -742,4 +742,10 @@
     <string name="settings_chat_carry_over_subtitle">Читает последние реплики прошлого разговора. Связнее, но расходует входные токены.</string>
     <string name="settings_chat_carry_over_count">Переносить сообщений: %1$d</string>
     <string name="settings_chat_carry_over_count_hint">Примерно %1$d реплик</string>
+    <string name="settings_task_routing_utility_failed_title">Сбой вызова вспомогательной модели</string>
+    <string name="settings_task_routing_utility_failed_desc">Последний вызов %1$s вернул: %2$s. Это влияет на фоновые задачи (извлечение памяти, сводки), чат не затронут. Выберите рабочую модель или оставьте пусто, чтобы использовать основную.</string>
+    <string name="settings_agent_daily_guarantee">Ежедневная гарантия</string>
+    <string name="settings_agent_daily_guarantee_hint">Если за это время не было ни одного инициативного сообщения, оно будет отправлено принудительно. Тихие часы, пауза, ваша недавняя активность и дневной лимит по-прежнему действуют.</string>
+    <string name="settings_agent_daily_guarantee_hours">%1$d ч</string>
+    <string name="settings_agent_daily_guarantee_off">Выкл.</string>
 </resources>
