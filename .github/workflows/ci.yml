@@ -67,6 +67,9 @@ jobs:
           else:
               scopes = {'android_jvm', 'android_full', 'android_resources', 'script', 'localization', 'config'}
           heavy = bool(scopes & {'android_jvm', 'android_full', 'android_resources', 'script'})
+          # Lite PR must exercise Gradle even when only the workflow changed.
+          if os.environ.get('GITHUB_HEAD_REF') == 'feature/muse-android-lite-es' or os.environ.get('GITHUB_REF') == 'refs/heads/feature/muse-android-lite-es':
+              heavy = True
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"run_full={'true' if heavy else 'false'}\n")
               f.write('scopes=' + ','.join(sorted(scopes)) + '\n')
@@ -80,7 +83,7 @@ jobs:
           npm run build
       - name: Pack embedded runtimes (Node + Python)
         # Lite experiment: test whether Android can build without bundled interpreters.
-        if: steps.lanes.outputs.run_full == 'true' && github.ref != 'refs/heads/feature/muse-android-lite-es'
+        if: steps.lanes.outputs.run_full == 'true' && github.head_ref != 'feature/muse-android-lite-es' && github.ref != 'refs/heads/feature/muse-android-lite-es'
         run: |
           sudo apt-get install -y patchelf
           bash tools/runtime-pack/build-runtime-pack.sh both
