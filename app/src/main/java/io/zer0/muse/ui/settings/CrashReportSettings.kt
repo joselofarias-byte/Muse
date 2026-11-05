@@ -219,9 +219,9 @@ fun CrashReportSettingsPage(onBack: () -> Unit) {
                     MuseToast.show(
                         when (outcome) {
                             is SubmitOutcome.Uploaded ->
-                                context.getString(R.string.settings_crash_done_uploaded, outcome.count)
+                                localizedResources.getString(R.string.settings_crash_done_uploaded, outcome.count)
                             is SubmitOutcome.MailFallback ->
-                                context.getString(R.string.settings_crash_done_mail)
+                                localizedResources.getString(R.string.settings_crash_done_mail)
                             SubmitOutcome.NothingToSend, SubmitOutcome.Failed ->
                                 localizedResources.getString(R.string.settings_crash_done_failed)
                         },
