@@ -276,7 +276,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 // I4: Cambio de idioma en caliente — Recopilar flujos de idiomas,Anulación de recursos de Compose a través de RuntimeLocaleProvider,
                 // Cambiar idioma solo reestructurar UI,no reconstruir Activity(El lenguaje inicial de arranque en frío todavía está garantizado por adjuntoBaseContext).
-                val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = "system")
+                val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = settings.getLanguageSync())
                 RuntimeLocaleProvider(lang = language) {
                     // v2.6.2 fix(comentarios de los usuarios): Sistema de colores claros y oscuros. —— no leer LocalConfiguration
                     // (Será sobrescrito por la instantánea del idioma de RuntimeLocaleProvider), use la capa Actividad en su lugar
