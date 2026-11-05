@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_agent_allow_plain_chat">通常のチャットでメッセージを送信</string>
+    <string name="settings_agent_allow_plain_chat_hint">エージェントセッションが無効な場合、既存のチャットを再利用します。新しい通常のチャットは作成しません。</string>
+</resources>

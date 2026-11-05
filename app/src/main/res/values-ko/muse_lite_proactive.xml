@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_agent_allow_plain_chat">일반 대화에서 메시지 보내기</string>
+    <string name="settings_agent_allow_plain_chat_hint">에이전트 세션이 비활성화된 경우 기존 대화를 재사용합니다. 새 일반 대화를 만들지 않습니다.</string>
+</resources>

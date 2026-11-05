@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_agent_allow_plain_chat">Mensagens em conversas normais</string>
+    <string name="settings_agent_allow_plain_chat_hint">Quando as sessões de agente estiverem desativadas, reutiliza uma conversa existente. Não cria novas conversas normais.</string>
+</resources>
