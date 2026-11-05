@@ -130,7 +130,7 @@
     <string name="qr_scan_pick_button">Seleccionar imagen</string>
     <string name="qr_scan_failed">No se pudo reconocer el código QR. Asegúrese de que la imagen sea clara e inténtelo de nuevo.</string>
     <string name="qr_import_success">Proveedores importados: %1$s</string>
-    <string name="qr_import_invalid">El formato del código QR es incorrecto y no está configurado por el proveedor.</string>
+    <string name="qr_import_invalid">El código QR no contiene una configuración de proveedor válida.</string>
     <string name="qr_share_btn">Compartir código QR</string>
     <string name="qr_scan_btn">Escanea el código QR para importar</string>
 
@@ -232,7 +232,7 @@
          chat_display / data_privacy / proactive / storage / migrate Ya no se usa, sólo queda la llave. -->
     <string name="settings_screen_group_assistants">Diálogo y personajes</string>
     <string name="settings_screen_group_chat_input">Chat y entrada</string>
-    <string name="settings_screen_group_models">Modelos y Proveedores</string>
+    <string name="settings_screen_group_models">Modelos y proveedores</string>
     <string name="settings_screen_group_chat_display">diálogo y expresión</string>
     <string name="settings_screen_group_tools">Herramientas y búsqueda</string>
     <string name="settings_screen_group_voice">Voz</string>
@@ -252,8 +252,8 @@
     <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, recursos de roles y Agent</string>
     <string name="settings_group_chat">Chat</string>
     <string name="settings_group_chat_desc">Visualización de chat, emoticonos, grabación rápida y uso compartido</string>
-    <string name="settings_group_models">Modelos y Proveedores</string>
-    <string name="settings_group_models_desc">Proveedores y modelos, enrutamiento de tareas, complementos de proveedores</string>
+    <string name="settings_group_models">Modelos y proveedores</string>
+    <string name="settings_group_models_desc">Configurá proveedores, modelos, rutas de tareas y complementos.</string>
     <string name="settings_group_tools">Herramientas y permisos</string>
     <string name="settings_group_tools_desc">Herramientas disponibles, asistentes de permisos y búsquedas en red.</string>
     <string name="settings_group_voice">Voz</string>
@@ -318,7 +318,7 @@
     <!-- Agrupación de datos y privacidad(PII Guard) -->
     <string name="settings_screen_pii_guard">PII Protección de la privacidad</string>
     <string name="settings_screen_pii_guard_desc">Bloquear automáticamente el número de teléfono celular antes de enviar/Correo electrónico/Tarjeta de identificación, etcétera.</string>
-    <string name="settings_screen_provider">proveedor</string>
+    <string name="settings_screen_provider">Proveedor</string>
     <string name="settings_screen_task_routing_desc">Modelo de configuración para agrupación de tareas en segundo plano (widget/grandes herramientas/visión)</string>
     <string name="settings_screen_provider_desc">Administra proveedores, claves API y búsquedas en internet.</string>
     <string name="settings_screen_assistant">asistente</string>
@@ -686,7 +686,7 @@
 
     <!-- ===== P2-3: Ollama Visión/Inferencia de capacidad de herramienta ===== -->
     <!-- ===== P2-1: Provider detección de conflictos(ProviderSection tarjeta de advertencia) ===== -->
-    <string name="provider_collision_warning">descubrir %1$d Posibles configuraciones de proveedores duplicados.</string>
+    <string name="provider_collision_warning">Se encontraron %1$d posibles configuraciones de proveedores duplicadas.</string>
 
     <!-- ===== P2-4: Registro de auditoría(AuditLogPage) ===== -->
     <string name="settings_audit_log">Registro de auditoría</string>
@@ -738,7 +738,7 @@
     <string name="video_gen_failed">Error de compilación:%1$s</string>
     <string name="video_gen_open_video">Abrir vídeo</string>
     <string name="video_gen_no_app">No se encontró ninguna aplicación para reproducir vídeo.</string>
-    <string name="video_gen_provider">proveedor</string>
+    <string name="video_gen_provider">Proveedor</string>
     <string name="video_gen_no_provider">No hay proveedores disponibles. Agrega uno desde Proveedores e introduce su clave API.</string>
 
     <!-- ===== P2-5: SiliconFlow Modelo libre para decir la verdad.(PresetProviders / ProviderEditPage) ===== -->
@@ -747,16 +747,16 @@
     <string name="free_model_service_unavailable">El servicio de cuota gratuito no está disponible, complete la clave API o espere a que se restablezca el servicio.</string>
 
     <!-- ===== P2-10: Provider Gestión de complementos(ProviderPluginPage) ===== -->
-    <string name="provider_plugins_title">Complemento de proveedor</string>
+    <string name="provider_plugins_title">Complementos de proveedores</string>
     <string name="muse_plugins_external">complemento externo</string>
     <string name="muse_plugins_manage">Gestión de complementos</string>
     <string name="muse_plugins_imported">Paquete de complemento instalado</string>
     <string name="provider_plugins_empty">Aún no hay complementos</string>
     <string name="muse_plugins_empty_hint">Actualmente no hay ningún complemento externo, haga clic en la esquina inferior derecha para importar el paquete .muse-plugin o ZIP</string>
-    <string name="provider_plugins_import">Complemento de importación</string>
+    <string name="provider_plugins_import">Importar complemento</string>
     <string name="provider_plugins_delete">Eliminar complemento</string>
     <string name="provider_plugins_convert">Convertir en proveedor</string>
-    <string name="provider_plugins_import_failed">Error de importación:%1$s</string>
+    <string name="provider_plugins_import_failed">Error de importación: %1$s</string>
     <string name="provider_plugins_import_success">Importación exitosa</string>
     <string name="provider_plugins_delete_confirm_named">Confirme para eliminar el complemento"%1$s”? El complemento no está disponible después de eliminarlo. Si necesita restaurarlo, vuelva a importar el paquete del complemento.</string>
     <string name="muse_plugins_review_failed">La revisión de seguridad falló:%1$s</string>
