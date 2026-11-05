@@ -153,7 +153,7 @@
     <string name="settings_provider_remove_model">Eliminar el modelo de la lista.</string>
     <string name="settings_provider_no_models">Aún no hay modelo</string>
     <string name="settings_provider_no_models_hint">Haga clic en el botón a continuación para extraer el modelo ascendente</string>
-    <string name="settings_provider_select_models">Seleccione el modelo a agregar</string>
+    <string name="settings_provider_select_models">Elegí los modelos que querés agregar</string>
     <string name="settings_provider_models_count">total %1$d modelos · Reconocimiento automático de contexto</string>
     <string name="settings_provider_search_models">Modelo de búsqueda id</string>
     <string name="settings_provider_clear">Borrar</string>
