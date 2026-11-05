@@ -434,7 +434,7 @@ data class ProactiveMessageConfig(
      * Prueba real del usuario "Abrir/No importa si está cerrado”. Los campos reservados solo son compatibles con la deserialización de la configuración anterior; utilice la lógica [agentSessionEnabled].
      */
     @Deprecated("Sin lector, utilice en su lugar agentSessionEnabled")
-    val agentOnly: Boolean = true,
+    val agentOnly: Boolean = false,
 
     /**
      * Agent Tab Si la sesión también recibe mensajes no solicitados.
@@ -443,6 +443,12 @@ data class ProactiveMessageConfig(
      * - false: Mensaje proactivo**Enviar solo sesiones de conversación normales**, nunca cae a la pestaña Agente y no se crea ninguna nueva sesión de Agente para él.
      */
     val agentSessionEnabled: Boolean = true,
+    /**
+     * Garantía diaria: solo omite la espera entre mensajes, nunca los límites de seguridad.
+     */
+    val dailyGuaranteeHours: Int = 22,
+    /** Solo permite mensajes en conversaciones normales si el usuario lo habilita. */
+    val allowPlainChatSession: Boolean = false,
     /**
      * v2.0 5.9: Límite diario de mensajes activos(Predeterminado 3).
      *
