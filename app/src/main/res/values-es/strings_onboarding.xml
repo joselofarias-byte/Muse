@@ -27,13 +27,13 @@
     <string name="onboarding_memory_switch_subtitle">Organiza los recuerdos al terminar cada conversación. Puedes desactivarla desde Ajustes.</string>
 
     <!-- Paso 3: Configurar el proveedor -->
-    <string name="onboarding_provider_title">Conecta un proveedor de IA</string>
-    <string name="onboarding_provider_subtitle">Elige un proveedor, introduce tu clave API y prueba la conexión. Muse obtendrá los modelos disponibles y detectará sus capacidades.</string>
+    <string name="onboarding_provider_title">Configurá un proveedor de IA</string>
+    <string name="onboarding_provider_subtitle">Elegí un proveedor, ingresá tu clave API y probá la conexión. Muse consultará los modelos disponibles y detectará sus capacidades.</string>
     <string name="onboarding_provider_err_auth">Error de autenticación: comprueba tu clave API.</string>
     <string name="onboarding_provider_err_empty">La conexión funciona, pero el proveedor no devolvió modelos. Comprueba la URL de la API.</string>
     <string name="onboarding_provider_err_other">Error de conexión: %1$s</string>
     <string name="onboarding_provider_caps">Capacidades detectadas: visión %1$d · razonamiento %2$d · herramientas %3$d</string>
-    <string name="onboarding_provider_select_label">Seleccionar proveedor</string>
+    <string name="onboarding_provider_select_label">Elegir proveedor</string>
     <string name="onboarding_provider_apikey_label">Clave API</string>
     <string name="onboarding_provider_apikey_input">Introduce tu clave API</string>
     <string name="onboarding_provider_apikey_show">Mostrar clave</string>
