@@ -97,18 +97,18 @@ try {
   // ── 1. Lista de la base de conocimientos ───────────────────────────────────────────
   const listHtml = knowledgePage();
   assert(listHtml.includes("PROTO-base de conocimientos") && listHtml.includes("PROTO-Sin biblioteca de vectores"), "Listar todas las bases de conocimiento");
-  assert(listHtml.includes("12 documentos · 345 trozos"), "La cantidad de documentos y fragmentos se muestra en formato localizado.");
+  assert(listHtml.includes("12 documentos · 345 fragmentos"), "La cantidad de documentos y fragmentos se muestra en formato localizado.");
   assert(listHtml.includes("PROTO-bge-m3"), "Mostrar backend incrustado");
   assert(listHtml.includes("No configurado"), "Marcador de posición cuando no hay un backend vectorial");
   assert((listHtml.match(/muse-listrow is-interactive/g) ?? []).length === 2, "Se puede hacer clic en cada base de conocimientos para acceder a la lista de documentos.");
-  assert(listHtml.includes("Importar y gestionar la base de conocimientos en el teléfono celular."), "Escriba explícitamente de forma clara y de solo lectura: importe y administre en teléfonos celulares");
+  assert(listHtml.includes("Importá y administrá los documentos desde el teléfono."), "Escriba explícitamente de forma clara y de solo lectura: importe y administre en teléfonos celulares");
 
   const emptyKnowledge = knowledgePage({ knowledge: { ...KNOWLEDGE, bases: [] } });
   assert(emptyKnowledge.includes("Aún no existe una base de conocimientos"), "Dar estado vacío cuando no hay base de conocimientos");
   const unsupportedKnowledge = knowledgePage({ supported: false });
   assert(unsupportedKnowledge.includes("La versión actual no permite ver la base de conocimientos en la página web."), "Dar indicaciones cuando falten espacios de habilidad");
   const failedKnowledge = knowledgePage({ knowledge: { ...KNOWLEDGE, error: "PROTO-error" } });
-  assert(failedKnowledge.includes("PROTO-error") && failedKnowledge.includes(">Inténtalo de nuevo<"), "El error de lectura muestra un error y vuelve a intentarlo");
+  assert(failedKnowledge.includes("PROTO-error") && failedKnowledge.includes(">Reintentar<"), "El error de lectura muestra un error y vuelve a intentarlo");
 
   // ── 2. Lista de documentos y paginación. ───────────────────────────────────────
   const doc = (id, title, chunks, size, status) => ({ id, title, chunkCount: chunks, sizeBytes: size, createdAt: Date.now(), status });
@@ -125,14 +125,14 @@ try {
     );
   const docsWithMore = docsView([doc("d1", "PROTO-Documento 1", 12, 2048, "indexed"), doc("d2", "PROTO-Documento 2", 3, 300)], true);
   assert(docsWithMore.includes("PROTO-Documento 1") && docsWithMore.includes("PROTO-Documento 2"), "Títulos de documentos listados");
-  assert(docsWithMore.includes("12 trozos"), "Número de fragmentos de documentos");
+  assert(docsWithMore.includes("12 fragmentos"), "Número de fragmentos de documentos");
   assert(/KB|kB/.test(docsWithMore), `El tamaño del documento está en unidades internacionales:${docsWithMore.includes("2 KB") ? "2 KB" : "ver pagina"}`);
   assert(docsWithMore.includes("indexed"), "El estado del documento se muestra tal cual");
-  assert(docsWithMore.includes("cargar más"), "Cuando haya una página siguiente, proporcione una entrada de carga.");
+  assert(docsWithMore.includes("Cargar más"), "Cuando haya una página siguiente, proporcione una entrada de carga.");
   const docsEnd = docsView([doc("d1", "PROTO-Documento 1", 12, 2048, "indexed")], false);
-  assert(docsEnd.includes("no más") && !docsEnd.includes("cargar más"), "Al llegar al final muestra \"No más\"");
+  assert(docsEnd.includes("No hay más resultados") && !docsEnd.includes("Cargar más"), "Al llegar al final muestra \"No más\"");
   const docsEmpty = docsView([], false);
-  assert(docsEmpty.includes("Aún no hay documentación para esta base de conocimientos."), "El estado vacío se otorga cuando no hay ningún documento en la base de conocimientos.");
+  assert(docsEmpty.includes("Todavía no hay documentos en esta base de conocimientos."), "El estado vacío se otorga cuando no hay ningún documento en la base de conocimientos.");
   assert(docsView([], false, { supported: false }).includes("La versión actual no permite ver la base de conocimientos en la página web."), "También se darán avisos si faltan bits de capacidad en las páginas del documento.");
   assert(mod.formatBytes(300) === "300 byte" || mod.formatBytes(300).includes("300"), `Formato de bytes:${mod.formatBytes(300)}`);
   assert(/KB|kB/.test(mod.formatBytes(2048)), `KB Formato:${mod.formatBytes(2048)}`);
@@ -163,15 +163,15 @@ try {
   assert(tasksHtml.includes("Gestiona tareas programadas en tu teléfono celular"), "Escritura explícita y solo lectura: administrar en dispositivos celulares");
 
   const disabledTask = tasksPage({ tasks: { items: [{ ...task, enabled: false, nextRunAt: undefined, lastRunAt: undefined, lastResult: undefined }], loading: false, error: undefined, unsupported: false } });
-  assert(disabledTask.includes("suspendido"), "Las tareas desactivadas se muestran \"En pausa\"");
-  assert((disabledTask.match(/Aún no ejecutado/g) ?? []).length >= 2, "no la próxima vez/La última ejecución dio \"Aún no ejecutado\".");
+  assert(disabledTask.includes("Desactivado"), "Las tareas desactivadas se muestran \"En pausa\"");
+  assert((disabledTask.match(/Todavía no se ejecutó/g) ?? []).length >= 2, "no la próxima vez/La última ejecución dio \"Aún no ejecutado\".");
 
   const emptyTasks = tasksPage();
   assert(emptyTasks.includes("Aún no hay tareas programadas"), "Proporcionar orientación cuando no hay tareas.");
   const unsupportedTasks = tasksPage({ supported: false });
   assert(unsupportedTasks.includes("La versión actual no admite la visualización de tareas programadas en la página web."), "Dar indicaciones cuando falten espacios de habilidad");
   const failedTasks = tasksPage({ tasks: { items: [], loading: false, error: "PROTO-error", unsupported: false } });
-  assert(failedTasks.includes("PROTO-error") && failedTasks.includes(">Inténtalo de nuevo<"), "La lectura de la tarea falla y se puede volver a intentar");
+  assert(failedTasks.includes("PROTO-error") && failedTasks.includes(">Reintentar<"), "La lectura de la tarea falla y se puede volver a intentar");
 
   // ── 4. Tiempo relativo en el futuro (zh / en)──────────────────────────────
   assert(mod.formatRelativeTime(now - 30 * 1000, now, "es") === "justo ahora", "Los últimos 30 segundos todavía fueron solo");

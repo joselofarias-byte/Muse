@@ -47,7 +47,7 @@
     <string name="debug_crash_log_count">total %1$d copias (en orden cronológico inverso, sólo se conservan las 5 copias más recientes)</string>
     <string name="debug_cd_share_crash_log">Comparte esta publicación</string>
     <string name="debug_loading">leyendo…</string>
-    <string name="debug_crash_preview_truncated">Mostrar solo antes %1$d Personajes, utilicen el botón compartir para exportar y ver el contenido completo.</string>
+    <string name="debug_crash_preview_truncated">Se muestran los primeros %1$d caracteres. Usá Compartir para exportar el informe completo.</string>
 
     <!-- Compartir registros de fallos(Funciones de utilidad no componibles,uso context.getString) -->
     <string name="debug_export_failed_no_crash_logs">Error al exportar: aún no hay registro de fallos</string>

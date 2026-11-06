@@ -13,7 +13,7 @@
     Por lo tanto, este archivo actualmente no tiene entradas de cadena.,Como marcador de posición y registro de revisión para su posterior extracción.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <string name="memory_meta_hit_count">golpear %1$d veces</string>
+    <string name="memory_meta_hit_count">%1$d coincidencias</string>
     <string name="memory_menu_history">Versión histórica</string>
     <string name="memory_revision_title">Historial de cambios</string>
     <string name="memory_revision_empty">Esta memoria aún no ha sido modificada.</string>
@@ -91,12 +91,12 @@
     <string name="memory_summary_title">sesión %1$s</string>
 
     <!-- v6: Error trace labels -->
-    <string name="memory_error_trace_header">== Muse Memory Error ==</string>
+    <string name="memory_error_trace_header">== Error de memoria de Muse ==</string>
     <string name="memory_error_trace_time">Hora: </string>
     <string name="memory_error_trace_exception">Excepción: </string>
     <string name="memory_error_trace_message">Mensaje: </string>
     <string name="memory_error_trace_device">Equipo: </string>
-    <string name="memory_error_trace_stack_header">== Stack Trace ==</string>
+    <string name="memory_error_trace_stack_header">== Traza de ejecución ==</string>
 
     <!-- v8: alcance de la memoria(scope)Relacionado -->
     <string name="memory_scope_all">Todos</string>

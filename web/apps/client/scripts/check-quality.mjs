@@ -112,7 +112,7 @@ try {
   const zh = (key, params) => mod.translate("es", key, params);
   const offline = mod.connectionBanner({ online: false, status: "reconnecting", attempt: 2, everConnected: true });
   assert(offline.visible && offline.textKey === "connection.offline", `Cuando esté desconectado, vaya a la entrada \"La red está desconectada\":${offline.textKey}`);
-  assert(zh(offline.textKey) === "La red está desconectada", `Cuando está desconectado, el texto después de la resolución es \"La red ha sido desconectada\":${zh(offline.textKey)}`);
+  assert(zh(offline.textKey) === "Sin conexión a internet", `Cuando está desconectado, el texto después de la resolución es \"La red ha sido desconectada\":${zh(offline.textKey)}`);
   assert(!offline.retry, "No se permiten reintentos manuales cuando se está desconectado (no se puede conectar incluso si se vuelve a intentar)");
 
   const online1 = mod.connectionBanner({ online: true, status: "connected", attempt: 0, everConnected: true });
@@ -120,7 +120,7 @@ try {
 
   const first = mod.connectionBanner({ online: true, status: "reconnecting", attempt: 0, everConnected: false });
   assert(first.visible && first.textKey === "connection.connecting", `Para la primera conexión, utilice conexión.conexión:${first.textKey}`);
-  assert(zh(first.textKey) === "Conectando teléfono celular…", `Primera copia de conexión:${zh(first.textKey)}`);
+  assert(zh(first.textKey) === "Conectando con el teléfono…", `Primera copia de conexión:${zh(first.textKey)}`);
   assert(!first.retry, "No se permitirán reintentos manuales para las 2 primeras reconexiones.");
 
   const tries2 = mod.connectionBanner({ online: true, status: "reconnecting", attempt: 2, everConnected: true });
@@ -139,13 +139,13 @@ try {
   const hintText = (key) => (key === undefined ? "" : zh(key));
   const hintOffline = mod.composerDisabledHint({ online: false, status: "connected" });
   assert(hintOffline === "composer.hintOffline", `Cuando está sin conexión, la descripción del cuadro de entrada va a compositor.hintOffline:${hintOffline}`);
-  assert(hintText(hintOffline).includes("desconectada"), `Cuando está desconectado, la descripción del cuadro de entrada es \"desconectada\":${hintText(hintOffline)}`);
+  assert(hintText(hintOffline).includes("No hay conexión a internet"), `Cuando está desconectado, la descripción del cuadro de entrada es \"desconectada\":${hintText(hintOffline)}`);
   const hintReconnecting = mod.composerDisabledHint({ online: true, status: "reconnecting" });
   assert(hintReconnecting === "composer.hintReconnecting", `En el cuadro de entrada de reconexión, vaya a compositor.hintReconexión:${hintReconnecting}`);
-  assert(hintText(hintReconnecting).includes("Reconectándose"), `La descripción del cuadro de entrada durante la reconexión:${hintText(hintReconnecting)}`);
+  assert(hintText(hintReconnecting).includes("Reconectando"), `La descripción del cuadro de entrada durante la reconexión:${hintText(hintReconnecting)}`);
   const hintClosed = mod.composerDisabledHint({ online: true, status: "closed" });
   assert(hintClosed === "composer.hintClosed", `Después de desconectarse, la descripción del cuadro de entrada va a compositor.hintClosed:${hintClosed}`);
-  assert(hintText(hintClosed).includes("desconectado"), `Después de la desconexión, la descripción del cuadro de entrada es \"Desconectado\":${hintText(hintClosed)}`);
+  assert(hintText(hintClosed).includes("Se perdió la conexión"), `Después de la desconexión, la descripción del cuadro de entrada es \"Desconectado\":${hintText(hintClosed)}`);
   assert(mod.composerDisabledHint({ online: true, status: "connected" }) === undefined, "El cuadro de entrada está disponible cuando la conexión es normal.");
 
   // ── 2. retraso del esqueleto 300ms ──────────────────────────────────────────
@@ -167,7 +167,7 @@ try {
   assert(/role="alert"/.test(boundary), "Los errores de bloque tienen semántica de alerta");
   const chat = readFileSync(join(ROOT, "src", "host", "HostChat.tsx"), "utf8");
   // El nombre del bloque también es una entrada: al afirmar "qué bloque cubre el límite", miramos la clave que toma y luego verificamos que la copia de la clave no haya cambiado.
-  for (const [key, copy] of [["block.messages", "Lista de mensajes"], ["block.sessions", "Lista de conversación"], ["block.settings", "página de configuración"]]) {
+  for (const [key, copy] of [["block.messages", "Lista de mensajes"], ["block.sessions", "Lista de conversaciones"], ["block.settings", "Página de ajustes"]]) {
     assert(mod.ES[key] === copy, `entrada ${key} es \"${copy}\"`);
     const wrapped = new RegExp(`<BlockBoundary name=\\{t\\("${key.replace(/\./g, "\\.")}"\\)\\}`);
     assert(wrapped.test(chat), `「${copy}\"Se envuelve una capa separada de límites de bloque (el nombre sigue a la entrada)`);
@@ -199,7 +199,7 @@ try {
   );
   assert(placeholder.includes("Esta función debe operarse en un teléfono celular."), "Las instrucciones de la página del marcador de posición deben operarse en un teléfono celular.");
   assert(placeholder.includes("PROTO-¿Qué hace esta función?"), "La página de marcador de posición utiliza instrucciones emitidas por el Anfitrión para explicar la función.");
-  assert(placeholder.includes(">Regresar<"), "La página del marcador de posición tiene un botón de retorno.");
+  assert(placeholder.includes(">Volver<"), "La página del marcador de posición tiene un botón de retorno.");
   assert(!/muse-capsule[^"]*is-primary/.test(placeholder), "La página del marcador de posición no contiene la operación principal (pretendiendo tener algo que hacer)");
   const placeholderNoDesc = mod.renderToStaticMarkup(
     mod.createElement(mod.HostPlaceholder, { title: "PROTO-terminales", onBack: () => undefined }),

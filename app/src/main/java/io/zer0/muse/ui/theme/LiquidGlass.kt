@@ -158,8 +158,7 @@ internal fun resolveGlass(config: LiquidGlassConfig): ResolvedGlass {
 }
 
 /** color base de tinte de vidrio (trazo/vidrio falso/Highlight Fuente de consistencia con el color base). */
-internal fun ResolvedGlass.surfaceTint(surfaceColor: Color): Color =
-    surfaceColor.copy(alpha = (tintAlpha + baseAlpha * 0.35f).coerceIn(0f, 0.85f))
+internal fun ResolvedGlass.surfaceTint(surfaceColor: Color): Color = surfaceColor.copy(alpha = (tintAlpha + baseAlpha * 0.35f).coerceIn(0f, 0.85f))
 
 /**
  * v2.6: FROST vidrio real —— kyant backdrop motor.
@@ -324,14 +323,31 @@ fun Modifier.glassEdgeHighlight(shape: Shape, config: LiquidGlassConfig): Modifi
  * cooperar [glassEdgeHighlight] Puede obtener una apariencia similar al vidrio a un costo casi nulo.
  */
 fun glassFakeSurfaceColor(base: Color, config: LiquidGlassConfig): Brush {
+    val (top, mid, bottom) = fakeGlassStops(base, config)
+    return Brush.verticalGradient(top, mid, bottom)
+}
+
+// Mantiene el vidrio oscuro sin convertirlo en una superficie gris clara.
+internal fun fakeGlassStops(base: Color, config: LiquidGlassConfig): List<Pair<Float, Color>> {
     val p = resolveGlass(config)
     val lift = 0.10f * (p.highlightAlpha / 0.55f).coerceIn(0.3f, 1f)
-    fun mix(alpha: Float) = androidx.compose.ui.graphics.lerp(base, Color.White, alpha)
-    return Brush.verticalGradient(
-        0f to mix(p.baseAlpha + lift),
-        0.55f to mix(p.baseAlpha + p.tintAlpha * 0.6f),
-        1f to mix(p.baseAlpha + p.tintAlpha),
-    )
+    val depth = ((p.baseAlpha + p.tintAlpha) * 0.5f).coerceIn(0f, 0.55f)
+    fun lerpTo(target: Color, alpha: Float) = androidx.compose.ui.graphics.lerp(base, target, alpha.coerceIn(0f, 1f))
+    return if (base.luminance() < 0.5f) {
+        val lifted = androidx.compose.ui.graphics.lerp(base, Color.White, 0.12f)
+        fun onLifted(target: Color, alpha: Float) = androidx.compose.ui.graphics.lerp(lifted, target, alpha.coerceIn(0f, 1f))
+        listOf(
+            0f to onLifted(Color.White, 0.05f + lift * 0.06f),
+            0.45f to onLifted(Color.Black, depth * 0.35f),
+            1f to onLifted(Color.Black, depth * 0.70f),
+        )
+    } else {
+        listOf(
+            0f to lerpTo(Color.White, p.baseAlpha + lift),
+            0.55f to lerpTo(Color.White, p.baseAlpha + p.tintAlpha * 0.6f),
+            1f to lerpTo(Color.White, p.baseAlpha + p.tintAlpha),
+        )
+    }
 }
 
 /**
@@ -360,13 +376,7 @@ fun Modifier.glassBorder(shape: Shape, config: LiquidGlassConfig): Modifier {
  * 3. El resto (versión inferior/sin capas/apagado)→ Vidrio falso:[glassFakeSurfaceColor] + Resaltado + Trazo
  */
 @Composable
-internal fun glassSurfaceModifier(
-    shape: Shape,
-    surfaceColor: Color,
-    config: LiquidGlassConfig,
-    backdrop: LayerBackdrop?,
-    waterState: LiquidState?,
-): Modifier {
+internal fun glassSurfaceModifier(shape: Shape, surfaceColor: Color, config: LiquidGlassConfig, backdrop: LayerBackdrop?, waterState: LiquidState?): Modifier {
     val realGlass = config.enabled && isRealGlassSupported()
     return when {
         realGlass && config.style == GlassStyle.FROST && backdrop != null ->

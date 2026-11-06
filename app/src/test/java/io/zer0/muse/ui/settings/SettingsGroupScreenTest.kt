@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
  * No permitido en este nivel.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], qualifiers = "w411dp-h891dp-xhdpi")
+@Config(application = android.app.Application::class, sdk = [35], qualifiers = "w411dp-h891dp-xhdpi")
 class SettingsGroupScreenTest {
 
     @get:Rule

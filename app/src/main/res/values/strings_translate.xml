@@ -40,9 +40,9 @@
 
     <!-- v1.0.30 gap4.3: Favoritos de traducción -->
     <string name="translate_page_favorite_add">Colección</string>
-    <string name="translate_page_favorite_remove">Cancelar favoritos</string>
+    <string name="translate_page_favorite_remove">Quitar de favoritos</string>
     <string name="translate_page_favorite_added">Recogido</string>
-    <string name="translate_page_favorite_removed">Favoritos cancelados</string>
+    <string name="translate_page_favorite_removed">Se quitó de favoritos</string>
 
     <!-- v1.0.30 gap4.4: Traducción por lotes -->
     <string name="translate_page_batch_translate">Traducción por lotes</string>

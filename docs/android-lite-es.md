@@ -71,3 +71,33 @@ real, su firma, arquitectura y recursos españoles. La prueba funcional debe
 incluir arranque, configuración de un proveedor, envío de un mensaje,
 reapertura del historial y los errores esperados de Node/Python. Se necesitan
 credenciales válidas del proveedor para verificar respuestas reales de IA.
+
+## Integración selectiva de upstream
+
+La rama `integration/muse-lite-upstream` se basa en la revisión Lite `a5032873`
+y adapta las correcciones seleccionadas, sin fusionar upstream completo. El
+inventario y los límites de la revisión están en
+[`upstream-integration-audit.md`](upstream-integration-audit.md).
+
+- FTS5 consulta `PRAGMA compile_options`; si no hay resultados o falla la
+  consulta, conserva el sondeo temporal anterior y su limpieza.
+- Se reducen las cachés de imágenes y se liberan bajo presión de memoria,
+  sin reciclar bitmaps que la interfaz pueda seguir utilizando.
+- Se incorporan correcciones del vidrio oscuro, diagnósticos auxiliares,
+  cierre del servicio sin Koin y selección segura de destinos proactivos.
+- El reenvío entre canales queda limitado a destinatarios vinculados, con
+  cuotas y protección de ecos, conservando la aprobación de envíos externos.
+- La garantía proactiva es configurable y no elude silencio, cuota,
+  actividad ni intentos recientes. Las conversaciones normales requieren
+  habilitación explícita cuando las sesiones de agente están desactivadas.
+- El actualizador solo consulta `joselofarias-byte/Muse`: valida procedencia,
+  etiqueta estable, nombre y ABI del activo. Un digest presente debe ser
+  SHA-256 válido; esto no equivale a verificar los bytes descargados. Android
+  sigue comprobando la firma al instalar.
+
+Lite genera únicamente el split `arm64-v8a`, sin APK universal. CI publica
+`muse-lite-arm64` con un APK, `SHA256SUMS`, tamaño, badging y metadatos de
+procedencia. El workflow de integración reproduce los commits ya revisados
+sobre una base fijada y exige igualdad de árboles; no resuelve conflictos
+ciegamente ni sobrescribe ramas remotas. El PR debe permanecer en borrador,
+sin auto-merge, hasta completar CI y la revisión funcional Android.

@@ -18,17 +18,17 @@
     <string name="settings_agent_tool_model_not_set_inherit">Heredar el modelo principal</string>
     <!-- v2.x: Modelo auxiliar tercera marcha. — Reutilice herramientas pequeñas cuando las herramientas grandes no estén sujetas -->
     <string name="settings_agent_utility_large_not_set_inherit">Reutilizar modelo de gadget</string>
-    <string name="settings_agent_section_assistant">Agent asistente</string>
+    <string name="settings_agent_section_assistant">Asistente del agente</string>
     <string name="settings_agent_default_assistant_title">Asistente de agente predeterminado</string>
     <string name="settings_agent_loading">Cargando...</string>
     <string name="settings_agent_use_first_assistant">Usa el primer ayudante</string>
     <string name="settings_agent_section_model">Modelo</string>
     <string name="settings_agent_current_model">modelo actual</string>
     <string name="settings_agent_current_model_hint">Se usa el modelo general configurado para los chats y asistentes.</string>
-    <string name="settings_agent_tool_model_title">Modelo de dispositivo</string>
-    <string name="settings_agent_subagent_model_title">modelo de herramienta grande</string>
+    <string name="settings_agent_tool_model_title">Modelo para herramientas</string>
+    <string name="settings_agent_subagent_model_title">Modelo para tareas complejas</string>
     <string name="settings_agent_select_subagent_model">Elegir modelo para tareas complejas</string>
-    <string name="settings_agent_clear_subagent_model">Borrar (reutilizar modelo de gadget)</string>
+    <string name="settings_agent_clear_subagent_model">Quitar (usar el modelo para herramientas)</string>
     <string name="settings_agent_multi_agent_section">Colaboración entre múltiples agentes</string>
     <string name="settings_agent_collab_team">equipo colaborativo</string>
     <string name="settings_agent_multi_agent_enabled">Habilitado · %1$d equipos</string>
@@ -44,8 +44,8 @@
     <string name="keep_alive_dialog_open">Ir a configuración</string>
     <string name="settings_agent_proactive_title">mensajes no solicitados</string>
     <!-- v2.x: Agent Título de la página(Alternativa a la codificación rígida "Agent") -->
-    <string name="settings_agent_page_title">Agent</string>
-    <string name="settings_agent_proactive_subtitle">Agent Enviarte mensajes proactivos como una persona real.</string>
+    <string name="settings_agent_page_title">Agentes</string>
+    <string name="settings_agent_proactive_subtitle">Permite que los agentes te envíen mensajes por iniciativa propia.</string>
     <string name="settings_agent_group_pace">enviar ritmo</string>
     <string name="settings_agent_group_daily">Empuje diario</string>
     <!-- v1.0.4 (P3-5): Interruptor de arranque automático al encender — Después de habilitarlo, se abrirá automáticamente cuando se inicie el sistema. Muse,
@@ -98,7 +98,7 @@
     <string name="settings_theme_font_preview_note">Anotación de trompeta · Se utiliza para ayudar a la explicación.</string>
     <!-- Phase 4: Opciones de piel de burbuja/Vista previa -->
     <string name="settings_bubble_skin_section">piel de burbuja</string>
-    <string name="settings_bubble_skin_builtin">Muse Burbuja predeterminada</string>
+    <string name="settings_bubble_skin_builtin">Burbujas predeterminadas de Muse</string>
     <string name="settings_bubble_skin_builtin_desc">Máscara incorporada, la apariencia es consistente con la predeterminada</string>
     <string name="settings_bubble_skin_custom_desc">Piel de burbuja personalizada</string>
     <string name="settings_bubble_skin_import">Importar piel</string>
@@ -166,16 +166,16 @@
     <string name="settings_task_routing_utility_large_desc">Compresión, recuperación de memoria, desmantelamiento de tareas y otros escenarios que requieren comprensión.</string>
     <string name="settings_crash_anr_title">ANR Detección</string>
     <string name="settings_crash_anr_subtitle">Detectar aplicaciones que no responden y registrar fallas/Registro de auditoría</string>
-    <string name="settings_chat_compress_model">modelo comprimido</string>
+    <string name="settings_chat_compress_model">Modelo para resumir el contexto</string>
     <string name="settings_chat_compress_model_default">Modelo predeterminado</string>
     <string name="settings_chat_paste_as_file">Pegar y convertir texto largo en archivos</string>
     <string name="settings_chat_paste_as_file_subtitle">Al pegar texto que supere el umbral, se le pedirá que lo convierta en un archivo adjunto.</string>
     <string name="settings_chat_paste_as_file_threshold">Umbral de pegar en archivo</string>
     <string name="settings_chat_paste_as_file_threshold_subtitle">exceder %1$d Solicitar transferencia de archivos al escribir</string>
-    <string name="settings_chat_custom_title_prompt">Palabras de indicación de título personalizadas</string>
+    <string name="settings_chat_custom_title_prompt">Instrucciones personalizadas para generar títulos</string>
     <string name="settings_chat_custom_title_prompt_default">Usar las instrucciones predeterminadas</string>
     <string name="settings_chat_custom_title_prompt_hint">Personalice los comandos de nombres de conversaciones (déjelo en blanco para restaurar el valor predeterminado)</string>
-    <string name="settings_memory_custom_compress_prompt">Palabras de indicación de compresión personalizadas</string>
+    <string name="settings_memory_custom_compress_prompt">Instrucciones personalizadas para resumir la memoria</string>
     <string name="settings_memory_custom_compress_prompt_default">Utilice directivas de compresión predeterminadas integradas</string>
     <string name="settings_memory_custom_compress_prompt_hint">Personalice las instrucciones de compresión de contexto (déjelo en blanco para restaurar el valor predeterminado)</string>
     <string name="settings_about_auto_update">Buscar actualizaciones automáticamente</string>
@@ -218,9 +218,9 @@
     <string name="settings_about_download">Descargar</string>
     <string name="settings_about_up_to_date">Ya la ultima version</string>
     <string name="settings_about_got_it">Lo tengo</string>
-    <string name="settings_feedback_android_version">Android Versión: %1$s (API %2$d)</string>
+    <string name="settings_feedback_android_version">Versión de Android: %1$s (API %2$d)</string>
     <string name="settings_feedback_device_model">Modelo de equipo: %1$s %2$s</string>
-    <string name="settings_feedback_app_version">App Versión: %1$s</string>
+    <string name="settings_feedback_app_version">Versión de la aplicación: %1$s</string>
     <string name="settings_feedback_subject">muse retroalimentación</string>
     <string name="settings_feedback_chooser_title">Enviar comentarios</string>
     <string name="settings_feedback_recipient">Dirección de recepción: 2119280571@qq.com</string>
@@ -360,7 +360,7 @@
     <string name="settings_rag_attachment_section">Recuperación de archivos adjuntos</string>
     <string name="settings_rag_auto_inject">Inyectar automáticamente la base de conocimientos</string>
     <string name="settings_rag_auto_inject_subtitle">Recupera automáticamente conocimientos relevantes e inyecta contexto durante las conversaciones.</string>
-    <string name="settings_rag_embedding_source_section">Embedding Fuente</string>
+    <string name="settings_rag_embedding_source_section">Origen de los embeddings</string>
     <string name="settings_rag_cloud_api">nube API</string>
     <string name="settings_rag_cloud_api_subtitle">Prioriza la calidad. Requiere conexión a internet y una clave API.</string>
     <string name="settings_rag_local_keyword">Palabras clave locales (sin conexión)</string>
@@ -372,7 +372,7 @@
     <string name="settings_rag_no_provider_hint">Si no configuras un proveedor, se usará el proveedor activo del chat.</string>
     <string name="settings_rag_baseurl_not_set">no establecido baseUrl</string>
     <string name="settings_rag_deselect_hint">Haga clic en un Proveedor seleccionado para deseleccionarlo (volver al Proveedor actualmente activo)</string>
-    <string name="settings_rag_embedding_model_section">Embedding modelo</string>
+    <string name="settings_rag_embedding_model_section">Modelo de embeddings</string>
     <string name="settings_rag_model_name_hint">Nombre del modelo (déjelo en blanco para usar el Proveedor de forma predeterminada)</string>
     <string name="settings_rag_common_models">Modelos comunes: text-embedding-3-small(1536dimensión) / text-embedding-3-large(3072dimensión) / embedding-2(1024dimensión)</string>
     <string name="settings_rag_search_params_section">Parámetros de recuperación</string>
@@ -394,14 +394,14 @@
     <string name="settings_rag_hybrid_bm25_weight_subtitle">RRF Peso del camino BM25 en fusión.</string>
     <string name="settings_rag_hybrid_vector_weight">peso vectorial</string>
     <string name="settings_rag_hybrid_vector_weight_subtitle">RRF Peso de similitud de vectores en fusión.</string>
-    <string name="settings_rag_rerank">Rerank Reordenar</string>
+    <string name="settings_rag_rerank">Reordenar resultados</string>
     <string name="settings_rag_rerank_subtitle">si top-K×5 Refinamiento del codificador cruzado candidato</string>
     <string name="settings_rag_token_budget">Token presupuesto</string>
     <string name="settings_rag_token_budget_subtitle">0=sin límite;>0=Acumule en orden descendente de similitud, deténgase si el presupuesto excede</string>
     <string name="settings_rag_markdown_aware">Markdown fragmentación perceptiva</string>
     <string name="settings_rag_markdown_aware_subtitle">Mantener bloques de código/Título/Integridad del formulario para evitar cortes</string>
-    <string name="settings_rag_chunk_by_token">Bloquear por token</string>
-    <string name="settings_rag_chunk_by_token_subtitle">Después de abrirlo, se divide en bloques según la cantidad de tokens (una mezcla de chino e inglés es más precisa)</string>
+    <string name="settings_rag_chunk_by_token">Dividir por tokens</string>
+    <string name="settings_rag_chunk_by_token_subtitle">Divide los documentos según la cantidad de tokens. Mejora la precisión con contenido en varios idiomas.</string>
     <!-- v1.0.47 P7-1: Configuración del analizador de documentos -->
     <string name="settings_rag_parser_section">analizador de documentos</string>
     <string name="settings_rag_parser_local">análisis local</string>
@@ -411,7 +411,7 @@
     <string name="settings_rag_parser_mineru">MinerU</string>
     <string name="settings_rag_parser_mineru_subtitle">MinerU API, especializado en PDF/fórmula académica/Tabla (es necesario configurar la dirección de interfaz)</string>
     <string name="settings_rag_cloud_parser_endpoint">Dirección de la interfaz de resolución de la nube</string>
-    <string name="settings_rag_mineru_endpoint">MinerU endpoint</string>
+    <string name="settings_rag_mineru_endpoint">URL de MinerU</string>
     <string name="settings_rag_mineru_token">MinerU Token(opcional)</string>
     <string name="settings_rag_notes_section">Descripción</string>
     <string name="settings_rag_note1">• Después de modificar los parámetros de fragmentación, los documentos recién importados se fragmentarán utilizando los nuevos parámetros.</string>
@@ -471,8 +471,8 @@
     <string name="settings_security_include_timestamp_subtitle">Compartir conversación con tiempo de mensaje</string>
     <string name="settings_security_include_model">Contiene el nombre del modelo</string>
     <string name="settings_security_include_model_subtitle">Generar nombre de modelo al compartir</string>
-    <string name="settings_security_include_tokens">Contiene el número de token</string>
-    <string name="settings_security_include_tokens_subtitle">Comparte con cada mensaje. token</string>
+    <string name="settings_security_include_tokens">Incluir cantidad de tokens</string>
+    <string name="settings_security_include_tokens_subtitle">Incluye la cantidad de tokens al compartir cada mensaje.</string>
     <string name="settings_security_include_mood">Contiene bloques de MOOD</string>
     <string name="settings_security_include_mood_subtitle">Compartir viene con borradores internos de IA</string>
     <string name="settings_security_include_reasoning">incluir el proceso de pensamiento</string>
@@ -503,8 +503,8 @@
     <string name="settings_video_gen_selected">Seleccionado</string>
 
     <!-- medios de comunicación -->
-    <string name="settings_media_page_title">Transmisión de voz</string>
-    <string name="settings_media_tts_section">Transmisión de voz</string>
+    <string name="settings_media_page_title">Lectura en voz alta</string>
+    <string name="settings_media_tts_section">Lectura en voz alta</string>
     <string name="settings_media_speech_rate">velocidad al hablar</string>
     <string name="settings_media_speech_rate_subtitle">0.5x Lento / 1.0x normal / 2.0x rápido</string>
     <string name="settings_media_pitch">tono</string>
@@ -548,7 +548,7 @@
     <string name="settings_media_tts_voice_reset">El tono se ha restablecido, seleccione nuevamente</string>
     <string name="settings_media_tts_advanced_section">Parámetros avanzados</string>
     <string name="settings_media_tts_stability">Stability(ElevenLabs)</string>
-    <string name="settings_media_tts_similarity">Similarity Boost(ElevenLabs)</string>
+    <string name="settings_media_tts_similarity">Refuerzo de similitud (ElevenLabs)</string>
     <string name="settings_media_tts_emotion">emoción(MiniMax)</string>
     <string name="settings_media_tts_emotion_placeholder">happy / sad / angry / neutral</string>
     <string name="settings_media_tts_cloud_speed">Velocidad del habla sintética</string>
@@ -571,8 +571,8 @@
 
     <!-- Correcciones en la interfaz (i18n-3.x): Área de configuración de mensajes activos i18n -->
     <string name="settings_agent_dm_subtitle">Ver mensajes privados entre agentes</string>
-    <string name="settings_agent_agent_only">soloAgentsesión</string>
-    <string name="settings_agent_agent_only_subtitle">Sólo después de abrirAgentLos asistentes enviarán mensajes proactivos, las sesiones de tareas no.</string>
+    <string name="settings_agent_agent_only">Solo conversaciones de Agentes</string>
+    <string name="settings_agent_agent_only_subtitle">Solo las conversaciones de Agentes recibirán mensajes proactivos; las sesiones de tareas no los recibirán.</string>
     <string name="settings_agent_temperature">Temperatura de generación</string>
     <string name="settings_agent_temperature_hint">Para la etapa de toma de decisiones temperature×0.5(más seguro), utilice este valor durante la fase de generación. Cuanto mayor es el valor, más creativo, cuanto menor es el valor, más estable es.</string>
     <string name="settings_agent_temperature_stable">0.0 estable</string>
@@ -644,7 +644,7 @@
     <string name="settings_agent_content_moment">Actualizaciones de momentos</string>
     <string name="settings_agent_content_none">Cerrar todo</string>
     <string name="settings_agent_group_advanced">Avanzado</string>
-    <string name="settings_agent_advanced_subtitle">Generar temperatura, compensación aleatoria, solo sesión de agente, envío de prueba</string>
+    <string name="settings_agent_advanced_subtitle">Temperatura, variación aleatoria, sesiones de agentes y envío de prueba</string>
     <string name="settings_agent_advanced_hint">Las siguientes son configuraciones de baja frecuencia, no es necesario ajustarlas para un uso normal.</string>
     <string name="settings_agent_group_background">Backend y confiabilidad</string>
     <string name="automation_orchestration_title">Cómo orquestar acciones automatizadas</string>
@@ -721,7 +721,7 @@
     <string name="settings_backup_include_secrets_subtitle">Después de abrir, la clave API y las credenciales de inicio de sesión de cada proveedor se escribirán en texto claro en el archivo de respaldo; consérvelo correctamente.</string>
     <string name="oauth_device_open_page">Abra la página de autorización</string>
     <string name="oauth_device_open_failed">No puedo abrir el navegador</string>
-    <string name="keep_alive_notification_title">Muse Corriendo en segundo plano</string>
+    <string name="keep_alive_notification_title">Muse se ejecuta en segundo plano</string>
     <string name="keep_alive_notification_text">Mantenga tareas programadas y mensajes activos en línea</string>
     <string name="settings_keep_alive_title">Tras bastidores permanente</string>
     <string name="settings_keep_alive_subtitle">Mantenga el proceso en primer plano con notificaciones a los residentes para reducir el reciclaje por parte del sistema.</string>
@@ -743,7 +743,7 @@
     <string name="settings_keep_alive_notification_custom_title">copia del aviso</string>
     <string name="settings_keep_alive_notification_custom_subtitle">Personaliza el título y el contenido de las notificaciones para residentes.</string>
     <string name="settings_keep_alive_notification_custom_hint">Déjelo en blanco para utilizar la copia predeterminada.</string>
-    <string name="settings_keep_alive_notification_title_placeholder">Predeterminado:Muse Corriendo en segundo plano</string>
+    <string name="settings_keep_alive_notification_title_placeholder">Predeterminado: Muse se ejecuta en segundo plano</string>
     <string name="settings_keep_alive_notification_text_placeholder">Valor predeterminado: mantener las tareas programadas y los mensajes activos en línea</string>
     <string name="settings_relationship_proactive_enabled">Permitir mensajes privados no solicitados</string>
     <string name="settings_relationship_proactive_enabled_subtitle">Después de cerrar, este personaje no tomará la iniciativa de encontrarte, pero no afectará tu iniciativa para chatear.</string>
@@ -770,6 +770,12 @@
     <string name="settings_chat_carry_over_subtitle">Lea también las últimas rondas de la conversación anterior. Será más coherente, pero consumirá tokens de entrada.</string>
     <string name="settings_chat_carry_over_count">traer %1$d mensajes</string>
     <string name="settings_chat_carry_over_count_hint">aprox. %1$d Ronda de preguntas y respuestas (el usuario y el asistente cuentan como uno)</string>
-    <string name="settings_agent_agent_session_enabled">Agent sesión</string>
-    <string name="settings_agent_agent_session_enabled_subtitle">Después del cierre, los mensajes activos solo se enviarán a las sesiones de conversación normales y no aparecerán en Agent Tab</string>
+    <string name="settings_agent_agent_session_enabled">Conversaciones de Agentes</string>
+    <string name="settings_agent_agent_session_enabled_subtitle">Al desactivarlo, los mensajes proactivos se envían a las conversaciones normales y no aparecen en la pestaña Agentes.</string>
+    <string name="settings_task_routing_utility_failed_title">Falló la llamada al modelo auxiliar</string>
+    <string name="settings_task_routing_utility_failed_desc">La última llamada a %1$s devolvió: %2$s. Afecta a tareas en segundo plano como la extracción de memoria y los resúmenes; el chat no se ve afectado. Elige un modelo que funcione o déjalo vacío para usar el modelo principal.</string>
+    <string name="settings_agent_daily_guarantee">Garantía diaria</string>
+    <string name="settings_agent_daily_guarantee_hint">Si no se ha enviado ningún mensaje proactivo durante este tiempo, se fuerza uno. Las horas de silencio, el enfriamiento, tu actividad reciente y el presupuesto diario siguen aplicándose.</string>
+    <string name="settings_agent_daily_guarantee_hours">%1$d h</string>
+    <string name="settings_agent_daily_guarantee_off">Desactivado</string>
 </resources>

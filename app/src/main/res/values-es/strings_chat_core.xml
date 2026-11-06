@@ -39,7 +39,7 @@
     <string name="weather_location_failed">No se puede obtener el posicionamiento, ingrese el nombre de la ciudad para realizar la consulta</string>
     <string name="weather_permission_denied">Posicionamiento no autorizado, ingrese el nombre de la ciudad para realizar la consulta</string>
     <string name="weather_permission_guide">Configure permisos de posicionamiento o ingrese manualmente el nombre de la ciudad para consultar</string>
-    <string name="weather_feels_like_wind">somatosensorial %1$d° · velocidad del viento %2$s km/h</string>
+    <string name="weather_feels_like_wind">Sensación térmica %1$d° · viento %2$s km/h</string>
     <string name="weather_current_location">Ubicación actual</string>
     <string name="weather_condition_clear">claro</string>
     <string name="weather_condition_partly_cloudy">nublado</string>
@@ -110,13 +110,13 @@
     <string name="chat_export_format_html">HTML(.html): Archivo único, estilos e imágenes en línea, se puede abrir y compartir directamente con el navegador</string>
     <string name="chat_export_format_pdf">PDF(.pdf):A4 Documento paginado, apto para impresión o archivo formal.</string>
     <string name="chat_doc_empty_or_unsupported">El contenido del documento está vacío o tiene un formato no compatible.</string>
-    <string name="chat_doc_truncated">\n\n…(El documento es demasiado largo y ha sido truncado. %1$d palabra)</string>
+    <string name="chat_doc_truncated">\n\n…(Documento demasiado largo; se truncó a %1$d caracteres)</string>
     <string name="chat_doc_default_name">Documentación</string>
     <string name="chat_doc_parse_failed">Error al analizar el documento: %1$s</string>
     <string name="chat_attachment_workspace_ref">El archivo adjunto se ha guardado en el espacio de trabajo:%1$s(%2$s)</string>
     <string name="chat_attachment_preview_unavailable">Este archivo no se puede abrir en la aplicación, el original está en el espacio de trabajo:%1$s</string>
     <string name="chat_attachment_import_failed">No se pudo guardar el archivo adjunto:%1$s</string>
-    <string name="chat_doc_char_count">%1$d palabra</string>
+    <string name="chat_doc_char_count">%1$d caracteres</string>
     <string name="chat_pasted_doc_name">Pegar texto_%1$s.txt</string>
     <string name="chat_thinking_preview">pensar · %1$s</string>
     <string name="chat_voice_playing_cd">Reproducción de voz</string>
@@ -157,12 +157,12 @@
     <string name="chat_copied_toast">copiado</string>
 
     <!-- Prompt Plantilla -->
-    <string name="chat_prompt_templates_title">Prompt Plantilla</string>
+    <string name="chat_prompt_templates_title">Plantillas de instrucciones</string>
 
     <!-- base de conocimientos -->
     <string name="chat_knowledge_dialog_title">Hacer referencia a un documento de base de conocimientos</string>
     <string name="chat_knowledge_empty">La base de conocimientos está vacía, primero importe el documento en la configuración</string>
-    <string name="chat_knowledge_doc_meta">%1$s · %2$d palabra</string>
+    <string name="chat_knowledge_doc_meta">%1$s · %2$d caracteres</string>
 
     <!-- Cambio de sesión -->
     <string name="chat_switch_session_title">Cambiar de sesión</string>
@@ -231,7 +231,7 @@
     <string name="chat_delegate_action">delegar a asistente</string>
     <string name="chat_tts_stop">deja de leer</string>
     <string name="chat_tts_play">leer en voz alta</string>
-    <string name="chat_favorite_remove">Cancelar favoritos</string>
+    <string name="chat_favorite_remove">Quitar de favoritos</string>
     <string name="chat_favorite_add">Colección</string>
     <string name="chat_fork_action">conversación bifurcada</string>
     <string name="chat_share_action">compartir conversación</string>
@@ -252,7 +252,7 @@
     <string name="chat_tool_params">parámetros</string>
     <string name="chat_tool_result">resultado</string>
     <string name="chat_tool_copy">Copiar</string>
-    <string name="chat_tool_result_expand">Ampliar el texto completo (%1$d personajes)</string>
+    <string name="chat_tool_result_expand">Mostrar texto completo (%1$d caracteres)</string>
     <string name="chat_tool_result_collapse">Cerrar el texto completo</string>
     <string name="chat_tool_hidden_records">Los mayores escondidos %1$d registros</string>
     <string name="chat_tool_latest">Más reciente:%1$s</string>
@@ -308,7 +308,7 @@
     <string name="chat_tool_knowledge_subtitle">@mention Documentación</string>
     <!-- v2.4.6: El bloque de traducción debajo del mensaje se puede ampliar. -->
     <string name="chat_translation_block_title">Traducción</string>
-    <string name="chat_tool_prompt_template_subtitle">Seleccione palabras de indicaciones de escena de la biblioteca de plantillas</string>
+    <string name="chat_tool_prompt_template_subtitle">Elegí instrucciones predefinidas de la biblioteca de plantillas.</string>
     <string name="chat_tool_skills">Habilidades</string>
     <string name="chat_tool_skills_subtitle">Administrar e invocar habilidades habilitadas</string>
     <string name="chat_tool_draw_mode">modo de dibujo</string>
@@ -514,7 +514,7 @@
     <string name="slash_command_new_done">Nueva sesión creada</string>
     <string name="slash_command_reset_busy">No se puede restablecer durante la generación; detenga la generación primero</string>
     <string name="slash_command_archive_done">Conversación archivada</string>
-    <string name="chat_agent_tab_title">Agent</string>
+    <string name="chat_agent_tab_title">Agentes</string>
     <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
     <string name="msg_info_title">información del mensaje</string>
     <string name="msg_info_model">Modelo</string>
@@ -621,4 +621,5 @@
     <string name="chat_process_running_command">Comando en ejecución</string>
     <string name="chat_process_subagent_running">%1$d Subtareas en segundo plano</string>
     <string name="chat_process_subagent_section">Subtareas en segundo plano</string>
+    <string name="settings_sticker_export_location_failed">No se puede escribir en la ubicación seleccionada</string>
 </resources>

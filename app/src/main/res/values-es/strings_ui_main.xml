@@ -249,7 +249,7 @@
     <string name="settings_screen_group_developer">Desarrollador</string>
     <!-- ===== Establezca la categoría de primer nivel (12 líneas en la página de inicio; el orden es consistente con el catálogo de configuración) ===== -->
     <string name="settings_group_assistants">Asistentes y roles</string>
-    <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, recursos de roles y Agent</string>
+    <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, personajes y agentes</string>
     <string name="settings_group_chat">Chat</string>
     <string name="settings_group_chat_desc">Visualización de chat, emoticonos, grabación rápida y uso compartido</string>
     <string name="settings_group_models">Modelos y proveedores</string>
@@ -257,7 +257,7 @@
     <string name="settings_group_tools">Herramientas y permisos</string>
     <string name="settings_group_tools_desc">Herramientas disponibles, asistentes de permisos y búsquedas en red.</string>
     <string name="settings_group_voice">Voz</string>
-    <string name="settings_group_voice_desc">Lectura de timbre, reconocimiento de voz y clonación de voz.</string>
+    <string name="settings_group_voice_desc">Lectura en voz alta, reconocimiento y clonación de voz.</string>
     <string name="settings_group_image">Imágenes y visión</string>
     <string name="settings_group_image_desc">Generación de imágenes y videos, asistencia visual y traducción.</string>
     <string name="settings_group_memory">memoria y conocimiento</string>
@@ -286,7 +286,7 @@
     <string name="settings_screen_appearance_desc">Tema/tamaño de fuente</string>
     <string name="settings_screen_chat">Chat</string>
     <string name="settings_screen_chat_desc">Visualización de mensajes/Comportamiento interactivo/Avanzado</string>
-    <string name="settings_screen_media">Transmisión de voz</string>
+    <string name="settings_screen_media">Lectura en voz alta</string>
     <string name="settings_screen_media_desc">Salida de voz/TTS/Audio</string>
     <string name="settings_screen_memory_notification">centro de memoria</string>
     <string name="settings_screen_memory_notification_desc">presente/corto plazo/memoria a largo plazo · hechos · parámetros</string>
@@ -319,10 +319,10 @@
     <string name="settings_screen_pii_guard">PII Protección de la privacidad</string>
     <string name="settings_screen_pii_guard_desc">Bloquear automáticamente el número de teléfono celular antes de enviar/Correo electrónico/Tarjeta de identificación, etcétera.</string>
     <string name="settings_screen_provider">Proveedor</string>
-    <string name="settings_screen_task_routing_desc">Modelo de configuración para agrupación de tareas en segundo plano (widget/grandes herramientas/visión)</string>
+    <string name="settings_screen_task_routing_desc">Asigná modelos a tareas en segundo plano, herramientas y análisis de imágenes.</string>
     <string name="settings_screen_provider_desc">Administra proveedores, claves API y búsquedas en internet.</string>
     <string name="settings_screen_assistant">asistente</string>
-    <string name="settings_screen_assistant_desc">Asistentes de gestión, modelos, escenarios de personajes y libros del mundo.</string>
+    <string name="settings_screen_assistant_desc">Administrá asistentes, modelos, perfiles de personajes y libros del mundo.</string>
     <string name="settings_screen_agent_desc">Selección de asistente / Colaboración / Mensajería proactiva</string>
     <!-- v1.x: Compartir página de configuración(Originales"Seguridad y uso compartido",bloqueo de aplicaciones/El motor de búsqueda ha sido eliminado.) -->
     <string name="settings_screen_share">Compartir</string>
@@ -359,9 +359,9 @@
     <string name="connector_config_corrupt">La configuración está dañada, los datos se han conservado y se pueden volver a importar</string>
     <string name="connector_field_authorize">Punto final de autorización</string>
     <string name="connector_field_token">Token punto final</string>
-    <string name="connector_field_scope">Scope</string>
-    <string name="connector_field_client_id">Client ID</string>
-    <string name="connector_field_client_secret">Client Secret</string>
+    <string name="connector_field_scope">Permisos solicitados</string>
+    <string name="connector_field_client_id">ID del cliente</string>
+    <string name="connector_field_client_secret">Secreto del cliente</string>
     <string name="channel_inbox_title">recibido recientemente</string>
     <string name="channel_intro_title">Enviar mensajes a tu IM</string>
     <string name="channel_intro">Después de la configuración, el asistente puede enviar mensajes a Feishu a través de la herramienta./QQ y otros canales. Las credenciales solo se almacenan cifradas localmente y no se cargarán.</string>
@@ -392,20 +392,20 @@
     <string name="channel_field_region">área</string>
     <string name="channel_region_feishu_cn">China</string>
     <string name="channel_region_lark_global">Lark en el extranjero</string>
-    <string name="channel_field_telegram_token">Bot Token</string>
-    <string name="channel_field_corp_id">Corp ID</string>
-    <string name="channel_field_client_id">Client ID / AppKey</string>
-    <string name="channel_field_client_secret">Client Secret / AppSecret</string>
-    <string name="channel_field_robot_code">Robot Code</string>
+    <string name="channel_field_telegram_token">Token del bot</string>
+    <string name="channel_field_corp_id">ID de la organización</string>
+    <string name="channel_field_client_id">ID del cliente / AppKey</string>
+    <string name="channel_field_client_secret">Secreto del cliente / AppSecret</string>
+    <string name="channel_field_robot_code">Código del bot</string>
     <string name="channel_robot_code_hint">Los bots internos suelen ser los mismos que el ID del cliente y se pueden dejar en blanco.</string>
-    <string name="channel_field_api_base">API Base URL</string>
+    <string name="channel_field_api_base">URL base de la API</string>
     <string name="channel_dingtalk_api_default">https://api.dingtalk.com/v1.0</string>
     <string name="channel_field_name">Nombre</string>
-    <string name="channel_field_app_id">App ID</string>
-    <string name="channel_field_app_secret">App Secret</string>
+    <string name="channel_field_app_id">ID de la aplicación</string>
+    <string name="channel_field_app_secret">Secreto de la aplicación</string>
     <string name="channel_webhook_receive">Habilitar devoluciones de llamada de la plataforma</string>
     <string name="channel_webhook_receive_desc">Desactivado de forma predeterminada; solo está habilitado si la plataforma ha configurado una URL de devolución de llamada externa.</string>
-    <string name="channel_webhook_verification_token">Verification Token</string>
+    <string name="channel_webhook_verification_token">Token de verificación</string>
     <string name="channel_webhook_feishu_hint">Solo para devoluciones de llamadas de eventos Feishu configuradas manualmente; complete el mismo token de verificación en la plataforma. Actualmente sólo se admiten devoluciones de llamadas no cifradas,Encrypt Key Déjelo en blanco; esto no es necesario para una recepción de conexión prolongada.</string>
     <string name="channel_webhook_qq_hint">Solo disponible para devoluciones de llamadas QQ configuradas manualmente. Establezca una clave aleatoria de alta seguridad y agréguela a la URL de devolución de llamada. ?token=...;La solicitud también debe llevar una firma Ed25519 nueva y una marca de tiempo, verificadas mediante el secreto de la aplicación anterior. Esto no es necesario para una recepción de conexión prolongada.</string>
     <string name="channel_field_target">Enviar objetivo ID</string>
@@ -539,7 +539,7 @@
     <string name="settings_vision_probe_desc">Envíe una imagen de prueba integrada al modelo de visión seleccionado para verificar que realmente admita la entrada visual y sea utilizable.</string>
     <string name="settings_vision_probe_button">Pruebe el modelo de visión seleccionado</string>
     <string name="settings_vision_probe_running">Bajo prueba…</string>
-    <string name="settings_vision_probe_success">Prueba exitosa: modelo visual devuelto %1$d Descripción del personaje.</string>
+    <string name="settings_vision_probe_success">Prueba correcta: el modelo de visión devolvió una descripción de %1$d caracteres.</string>
     <string name="settings_vision_probe_failed">Prueba fallida:%1$s</string>
     <string name="settings_vision_probe_no_model">Primero seleccione un modelo visual.</string>
     <string name="settings_vision_probe_disabled">Habilite las ayudas visuales y seleccione un modelo visual primero.</string>
@@ -600,8 +600,8 @@
     <string name="skill_management">Skill gestión</string>
     <string name="skill_import_cd">importar .skill.json</string>
     <string name="skill_intro">Skill Es una herramienta invocable por LLM. Después de abrir,Assistant Se puede llamar a pedido en la conversación; cerrado no expuesto al modelo. Haga clic en el botón importar en la esquina superior derecha para importar .skill.json.</string>
-    <string name="skill_no_skill_title">todavía no Skill</string>
-    <string name="skill_no_skill_subtitle">Habla directamente con la IA"Ayúdame a crear una habilidad XX", o haga clic en + en la esquina inferior derecha para importar el archivo Skill</string>
+    <string name="skill_no_skill_title">Todavía no hay habilidades</string>
+    <string name="skill_no_skill_subtitle">Pedile a la IA que cree una habilidad o tocá + para importar un archivo de habilidad.</string>
     <string name="skill_importing">Importando</string>
     <string name="skill_importing_detail">Leer y analizar el documento....</string>
     <string name="skill_open_picker_failed">No se puede abrir el selector de archivos: %1$s</string>
@@ -671,7 +671,7 @@
     <!-- ===== P1-4: Adaptación de tableta(Diseño responsivo) ===== -->
 
     <!-- ===== P2-2: Diferencias del modelo ascendente Sheet(ModelDiffSheet) ===== -->
-    <string name="model_diff_title">Diferencias del modelo ascendente</string>
+    <string name="model_diff_title">Cambios en los modelos del proveedor</string>
     <string name="model_diff_new">Agregados por el proveedor (%1$d)</string>
     <string name="model_diff_removed">Eliminado (%1$d)</string>
     <string name="model_diff_unchanged">Sea consistente (%1$d)</string>
@@ -717,7 +717,7 @@
     <string name="settings_screen_asr">reconocimiento de voz</string>
     <string name="settings_screen_asr_desc">Voz a texto (Sistema/DashScope/Step)</string>
     <string name="settings_screen_mcp">Servidor conectado</string>
-    <string name="settings_screen_mcp_desc">ModeloContextProtocolo(MCP) servidor de herramientas</string>
+    <string name="settings_screen_mcp_desc">Servidores de herramientas mediante Model Context Protocol (MCP)</string>
     <string name="settings_screen_assistant_resources">Recursos asistentes</string>
     <string name="settings_screen_assistant_resources_desc">Favoritos / Libro mundial / Mensaje rápido / Inyección de patrones / Habilidades</string>
     <string name="settings_assistant_resources_title">Recursos asistentes</string>
@@ -743,7 +743,7 @@
 
     <!-- ===== P2-5: SiliconFlow Modelo libre para decir la verdad.(PresetProviders / ProviderEditPage) ===== -->
     <string name="preset_siliconflow">flujo a base de silicio</string>
-    <string name="preset_siliconflow_free">SiliconFlow modelo libre</string>
+    <string name="preset_siliconflow_free">Modelos gratuitos de SiliconFlow</string>
     <string name="free_model_service_unavailable">El servicio de cuota gratuito no está disponible, complete la clave API o espere a que se restablezca el servicio.</string>
 
     <!-- ===== P2-10: Provider Gestión de complementos(ProviderPluginPage) ===== -->
@@ -767,7 +767,7 @@
     <string name="muse_plugins_install_confirm_capabilities">Declarar la capacidad de utilizar:%1$s</string>
     <string name="muse_plugins_capabilities_disclaimer">Esta declaración solo describe para qué se utiliza el complemento y no limita lo que realmente puede hacer una vez instalado.</string>
     <string name="muse_plugins_global_switch_title">Interruptor maestro enchufable</string>
-    <string name="muse_plugins_global_switch_desc">Después del cierre, no se ejecutarán todos los complementos y se conservarán la instalación y configuración.</string>
+    <string name="muse_plugins_global_switch_desc">Al desactivarlo, ningún complemento se ejecutará. Se conservan los complementos instalados y su configuración.</string>
     <string name="muse_plugins_runtime_label">Tiempo de ejecución:%1$s</string>
     <string name="muse_plugins_install_confirm_tools">Herramientas proporcionadas:%1$s</string>
     <string name="muse_plugins_install_confirm_code">entrada %1$d bytes · Archivos adjuntos %2$d un · Entrada SHA-256:%3$s</string>
@@ -894,7 +894,7 @@
     <!-- P2-12 Entrada de texto enriquecido -->
 
     <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n -->
-    <string name="settings_screen_entry_tts_playback">TTS Transmisión de voz</string>
+    <string name="settings_screen_entry_tts_playback">Lectura en voz alta (TTS)</string>
     <string name="settings_screen_entry_api_key">Clave API</string>
     <string name="settings_screen_entry_archived">Archivar chat</string>
     <string name="settings_screen_entry_font_size">Tamaño de fuente</string>
@@ -906,7 +906,7 @@
     <string name="settings_screen_entry_tts_speed">TTS velocidad al hablar</string>
     <string name="settings_screen_entry_memory_toggle">interruptor de memoria</string>
     <string name="settings_screen_entry_proxy_switch">conmutador proxy</string>
-    <string name="settings_screen_entry_rag_model">Recuperar modelo</string>
+    <string name="settings_screen_entry_rag_model">Modelo de recuperación de información</string>
     <string name="settings_screen_entry_chunking">Estrategia de puesta en escena</string>
     <string name="settings_screen_entry_tool_approval">Modo de aprobación de herramienta</string>
     <string name="settings_screen_entry_collab">Asistente de colaboración</string>

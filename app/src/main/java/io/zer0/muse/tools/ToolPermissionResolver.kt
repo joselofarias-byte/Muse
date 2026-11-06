@@ -130,13 +130,7 @@ object ToolPermissionResolver {
      * @param perToolPolicy La política de persistencia establecida por el usuario para esta herramienta.,no configurado para null
      * @param args v1.0.53: Parámetros de la herramienta,para estrategias parametrizadas([ParamPolicies])juicio
      */
-    fun resolve(
-        toolName: String,
-        risk: ToolRiskLevel?,
-        mode: SessionPermissionMode,
-        perToolPolicy: ToolApprovalPolicy?,
-        args: Map<String, Any?> = emptyMap(),
-    ): ToolApprovalState {
+    fun resolve(toolName: String, risk: ToolRiskLevel?, mode: SessionPermissionMode, perToolPolicy: ToolApprovalPolicy?, args: Map<String, Any?> = emptyMap()): ToolApprovalState {
         // Las herramientas dinámicas de terceros no aceptan el elemento "Escribir SAFE en el libro mayor":El valor predeterminado para el libro mayor de registro es SAFE,
         // Una vez que una herramienta de terceros no cumple con la declaración, se considerará una herramienta libre de revisión.,Por lo tanto, SEGURO siempre vuelve a NORMAL.
         // La declaración explícita de ALTO todavía tiene efecto —— Sólo aprieta aquí,Sin degradación.
@@ -234,8 +228,7 @@ object ToolPermissionResolver {
      * extremo opuesto `mcp_<server>__<tool>` entonces NORMAL siempre es forzado. Misma razón `plugin_market_*` toma el libro mayor,
      * `plugin_<len>_<id>_<tool>` VAYA NORMAL.
      */
-    private fun conservativeRisk(toolName: String, declared: ToolRiskLevel): ToolRiskLevel =
-        if (declared == ToolRiskLevel.SAFE && isThirdPartyToolName(toolName)) ToolRiskLevel.NORMAL else declared
+    private fun conservativeRisk(toolName: String, declared: ToolRiskLevel): ToolRiskLevel = if (declared == ToolRiskLevel.SAFE && isThirdPartyToolName(toolName)) ToolRiskLevel.NORMAL else declared
 
     /**
      * P0-3: Acceso de solo lectura a la tabla de riesgos explícitos(Cuenta de registro para pruebas y verificación de coherencia.,única fuente de verdad).
@@ -338,6 +331,7 @@ object ToolPermissionResolver {
      *  - write_file / pin_memory etc. Las herramientas de efectos secundarios locales son NORMALES o HIGH
      */
     private val EXPLICIT_RISK_OVERRIDES: Map<String, ToolRiskLevel> = mapOf(
+        "relay_channel_message" to ToolRiskLevel.HIGH,
         // SAFE familia explícita(consulta pura/leer)
         "web_search" to ToolRiskLevel.SAFE,
         "web_fetch" to ToolRiskLevel.SAFE,
@@ -540,5 +534,4 @@ object ToolPermissionResolver {
  * Merge the per-session "allow this tool" cache with the persisted policy without allowing
  * a temporary allow to override an explicit deny.
  */
-internal fun effectivePerToolPolicy(configuredPolicy: ToolApprovalPolicy?, allowedThisSession: Boolean): ToolApprovalPolicy? =
-    configuredPolicy ?: if (allowedThisSession) ToolApprovalPolicy.ALWAYS_ALLOW else null
+internal fun effectivePerToolPolicy(configuredPolicy: ToolApprovalPolicy?, allowedThisSession: Boolean): ToolApprovalPolicy? = configuredPolicy ?: if (allowedThisSession) ToolApprovalPolicy.ALWAYS_ALLOW else null

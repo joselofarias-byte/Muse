@@ -11,6 +11,7 @@ import io.zer0.common.Logger
 import io.zer0.memory.llm.MemoryLlmClient
 import io.zer0.memory.prompt.MemoryPromptContract
 import io.zer0.muse.R
+import io.zer0.muse.data.routing.UtilityModelHealth
 import io.zer0.muse.data.routing.UtilityModelRouter
 import io.zer0.muse.data.routing.UtilityTier
 import kotlinx.coroutines.CancellationException
@@ -53,14 +54,7 @@ class MemoryLlmClientImpl(
     /** v2.x: Enrutamiento de modelo auxiliar — recuperación de memoria/Compílelo y archívelo como un archivo de \"gran herramienta\".(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro). */
     private val utilityRouter = UtilityModelRouter(settings)
 
-    override suspend fun callText(
-        systemPrompt: String,
-        userContent: String,
-        model: Model?,
-        temperature: Float,
-        maxTokens: Int,
-        timeoutMs: Long,
-    ): String {
+    override suspend fun callText(systemPrompt: String, userContent: String, model: Model?, temperature: Float, maxTokens: Int, timeoutMs: Long): String {
         // v2.x: Cuando la persona que llama no especifica explícitamente un modelo,Priorizar el archivo "Big Tools" de enrutamiento del modelo auxiliar(Déjelo en blanco para conectar en cascada los gadgets/modelo maestro).
         // correa vinculante provider,Acceda con precisión a modelos de memoria configurados por el usuario en todos los proveedores.
         val routed = if (model == null) {
@@ -164,6 +158,11 @@ class MemoryLlmClientImpl(
                 }
                 lastError = e
                 if (!isRetryable(e) || attempt == maxAttempts) {
+                    UtilityModelHealth.record(
+                        providerId = resolvedProviderConfig?.id,
+                        modelId = resolvedModel.id,
+                        message = e.message ?: e::class.simpleName.orEmpty(),
+                    )
                     Logger.w(
                         "MemoryLlmClient",
                         "callText failed (model=${resolvedModel.id}, maxTokens=$effectiveMaxTokens, attempt=$attempt/$maxAttempts)",

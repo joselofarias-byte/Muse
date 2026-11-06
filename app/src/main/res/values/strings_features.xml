@@ -136,7 +136,7 @@
     <string name="groupchat_context_doc_title_hint">Introduzca el título del documento</string>
     <string name="groupchat_context_doc_content_hint">Ingrese el texto del documento (se admite texto sin formato)</string>
     <string name="groupchat_context_no_docs">Aún no hay documentos compartidos</string>
-    <string name="groupchat_context_doc_chars">%1$d palabra</string>
+    <string name="groupchat_context_doc_chars">%1$d caracteres</string>
     <string name="groupchat_context_private_context">AI Contexto exclusivo</string>
     <string name="groupchat_context_private_context_desc">Solo visible para la IA correspondiente, no para otros miembros.</string>
     <string name="groupchat_context_private_context_hint">Ingrese al contexto único de la IA (configuración de roles, restricciones privadas, etc.)</string>
@@ -438,9 +438,9 @@
     <string name="knowledge_reindex_failed">La reindexación falló: %1$s</string>
     <string name="knowledge_reading_default">Leer y analizar el documento.…</string>
     <string name="knowledge_reindexing_default">Reindexación…</string>
-    <string name="knowledge_doc_meta_with_date">%1$s · %2$d palabra · %3$s</string>
+    <string name="knowledge_doc_meta_with_date">%1$s · %2$d caracteres · %3$s</string>
     <string name="knowledge_doc_index_broken">El índice se ha perdido (la reconstrucción falló a mitad de camino) y la recuperación no se realizará. Mantenga presionado para volver a indexar.</string>
-    <string name="knowledge_doc_chars">%1$s · %2$d palabra</string>
+    <string name="knowledge_doc_chars">%1$s · %2$d caracteres</string>
     <string name="knowledge_doc_chunks"> · %1$d bloquear</string>
     <string name="knowledge_doc_not_indexed"> · No indexado</string>
 
@@ -558,11 +558,11 @@
     <!-- ===== ui/taskcard: subagent task list (v1.202) ===== -->
     <string name="subagent_task_list_title">Tareas de subagente en segundo plano</string>
     <string name="skill_impl_not_configured">Herramienta de archivo no configurada</string>
-    <string name="subagent_task_detail_assistant">Assistant</string>
-    <string name="subagent_task_detail_user">User</string>
-    <string name="subagent_task_detail_count">Messages: %1$d</string>
-    <string name="subagent_task_detail_loading">Loading conversation...</string>
-    <string name="subagent_task_detail_empty">No conversation history yet</string>
+    <string name="subagent_task_detail_assistant">Asistente</string>
+    <string name="subagent_task_detail_user">Usuario</string>
+    <string name="subagent_task_detail_count">Mensajes: %1$d</string>
+    <string name="subagent_task_detail_loading">Cargando conversación…</string>
+    <string name="subagent_task_detail_empty">Todavía no hay historial de conversación</string>
     <string name="subagent_task_list_count">%1$d tareas</string>
     <string name="subagent_task_completed">Completado</string>
     <string name="subagent_task_failed">falló</string>
@@ -595,7 +595,7 @@
     <string name="data_card_download">Descargar gráfico</string>
 
     <!-- ===== ui/model ===== -->
-    <string name="model_profile_title">avatar modelo</string>
+    <string name="model_profile_title">Perfil del modelo</string>
     <string name="model_profile_empty_title">Aún no hay modelo</string>
     <string name="model_profile_empty_subtitle">Primero agregue el proveedor de IA en la configuración</string>
 
@@ -670,7 +670,7 @@
     <string name="mini_album_hide_hint">Esta imagen sólo se ocultará del álbum del teléfono celular y no se eliminará el historial de chat.</string>
     <string name="mini_album_restore_action">Restaurar pantalla</string>
     <string name="mini_album_hide_action">Ocultar del álbum</string>
-    <string name="mini_album_unfavorite_action">Cancelar favoritos</string>
+    <string name="mini_album_unfavorite_action">Quitar de favoritos</string>
     <string name="mini_album_favorite_action">Colección</string>
     <string name="mini_album_cancel">Cancelar</string>
     <string name="schedule_last_run_short">la última vez %1$s</string>

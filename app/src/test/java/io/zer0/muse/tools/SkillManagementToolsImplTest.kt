@@ -3,6 +3,7 @@ package io.zer0.muse.tools
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.mockk
+import io.zer0.muse.R
 import io.zer0.muse.data.assistant.AssistantRepository
 import io.zer0.muse.data.skill.SkillDao
 import io.zer0.muse.data.skill.SkillEntity
@@ -21,8 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-// zh-rCN:Recursos chinos fijos,Mensaje chino devuelto por herramienta de aserción(Mismo método que RagCitationChipsTest)
-@Config(sdk = [33], qualifiers = "zh-rCN")
+@Config(sdk = [33], qualifiers = "es")
 class SkillManagementToolsImplTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
@@ -58,7 +58,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertEquals(context.getString(R.string.skill_enabled_result, dao.rows["my_skill"]!!.name, "my_skill"), output)
         assertTrue(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -69,14 +69,15 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "read_file"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertEquals(context.getString(R.string.skill_enabled_result, "leer archivo", "read_file"), output)
         assertTrue(dao.rows["read_file"]!!.enabled)
     }
 
     @Test
     fun enableSkill_rejectsUnknownId() = runBlocking {
         val output = impl.enableSkill(mapOf("id" to "nope"))
-        assertTrue(output.contains("no encontrado"))
+        assertEquals(context.getString(R.string.skill_skill_not_found, "nope"), output)
+        assertTrue(dao.rows.isEmpty())
     }
 
     @Test
@@ -118,7 +119,7 @@ class SkillManagementToolsImplTest {
                 mapOf("id" to "my_skill", "name" to "nuevo nombre", "description" to "Descripciones de habilidades actualizadas"),
             )
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, "nuevo nombre", "my_skill"), output)
         val row = dao.rows["my_skill"]!!
         assertEquals("nuevo nombre", row.name)
         assertEquals("Descripciones de habilidades actualizadas", row.description)
@@ -135,7 +136,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "parametersJson" to schema))
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, dao.rows["my_skill"]!!.name, "my_skill"), output)
         assertTrue(dao.rows["my_skill"]!!.parametersJson.contains("query"))
     }
 
@@ -162,7 +163,8 @@ class SkillManagementToolsImplTest {
     @Test
     fun updateSkill_rejectsUnknownId() = runBlocking {
         val output = impl.updateSkill(mapOf("id" to "nope", "name" to "nuevo nombre"))
-        assertTrue(output.contains("no encontrado"))
+        assertEquals(context.getString(R.string.skill_skill_not_found, "nope"), output)
+        assertTrue(dao.rows.isEmpty())
     }
 
     @Test
@@ -177,21 +179,22 @@ class SkillManagementToolsImplTest {
 
     @Test
     fun updateSkill_requiresAtLeastOneField() = runBlocking {
-        seedUserSkill()
+        val before = seedUserSkill()
 
         val output = impl.updateSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("No hay campos para actualizar"))
+        assertEquals(context.getString(R.string.skill_update_no_fields), output)
+        assertEquals(before, dao.rows["my_skill"])
     }
 
     @Test
     fun updateSkill_rejectsPromptArgForNonPromptSkill() = runBlocking {
-        seedUserSkill()
+        val before = seedUserSkill()
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "prompt" to "nueva directiva"))
 
-        assertTrue("Las habilidades con palabras que no se solicitan no se pueden cambiar prompt,real: $output", output.contains("palabra de aviso"))
-        assertEquals("web_search", dao.rows["my_skill"]!!.implementationKotlin)
+        assertEquals(context.getString(R.string.skill_update_prompt_not_supported, before.name, before.id), output)
+        assertEquals(before, dao.rows["my_skill"])
     }
 
     @Test
@@ -200,7 +203,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_prompt_skill", "prompt" to "Nuevo texto de comando"))
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, dao.rows["my_prompt_skill"]!!.name, "my_prompt_skill"), output)
         val row = dao.rows["my_prompt_skill"]!!
         assertEquals("prompt:Nuevo texto de comando", row.implementationKotlin)
         assertEquals(SkillImporter.EMPTY_PARAMETERS_JSON, row.parametersJson)
@@ -266,7 +269,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.execPromptSkill(skill)
 
-        assertTrue(output.contains("está vacío"))
+        assertEquals(context.getString(R.string.skill_prompt_empty), output)
     }
 
     @Test
@@ -333,11 +336,11 @@ class SkillManagementToolsImplTest {
 
     @Test
     fun uninstallSkill_regression_deletesSkill() = runBlocking {
-        seedUserSkill()
+        val before = seedUserSkill()
 
         val output = impl.uninstallSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Desinstalado"))
+        assertEquals(context.getString(R.string.skill_uninstalled, before.name, before.id), output)
         assertFalse(dao.rows.containsKey("my_skill"))
     }
 
@@ -347,7 +350,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Discapacitado"))
+        assertEquals(context.getString(R.string.skill_disabled_result, dao.rows["my_skill"]!!.name, "my_skill"), output)
         assertFalse(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -390,7 +393,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "read_file"))
 
-        assertTrue("Las habilidades integradas permiten la desactivación manual,real: $output", output.contains("Discapacitado"))
+        assertEquals(context.getString(R.string.skill_disabled_result, "leer archivo", "read_file"), output)
         assertFalse(dao.rows["read_file"]!!.enabled)
     }
 
@@ -462,16 +465,7 @@ class SkillManagementToolsImplTest {
 
     // ── datos de prueba ─────────────────────────────────────────────────
 
-    private fun seedUserSkill(
-        id: String = "my_skill",
-        name: String = "mis habilidades",
-        description: String = "Descripciones de habilidades creadas por los propios usuarios.",
-        implementationKotlin: String = "web_search",
-        parametersJson: String = """{"type":"object","properties":{}}""",
-        requiredJson: String = "[]",
-        category: String = "user",
-        enabled: Boolean = true,
-    ): SkillEntity {
+    private fun seedUserSkill(id: String = "my_skill", name: String = "mis habilidades", description: String = "Descripciones de habilidades creadas por los propios usuarios.", implementationKotlin: String = "web_search", parametersJson: String = """{"type":"object","properties":{}}""", requiredJson: String = "[]", category: String = "user", enabled: Boolean = true): SkillEntity {
         val entity =
             SkillEntity(
                 id = id,
@@ -541,15 +535,7 @@ class SkillManagementToolsImplTest {
             rows.putIfAbsent(entity.id, entity)
         }
 
-        override suspend fun refreshBuiltInDefinition(
-            id: String,
-            name: String,
-            description: String,
-            parametersJson: String,
-            requiredJson: String,
-            category: String,
-            implementationKotlin: String,
-        ) {
+        override suspend fun refreshBuiltInDefinition(id: String, name: String, description: String, parametersJson: String, requiredJson: String, category: String, implementationKotlin: String) {
             rows[id]?.let {
                 rows[id] =
                     it.copy(
