@@ -85,7 +85,9 @@ def test_release_version_rejects_tag_drift():
 def test_release_signing_never_falls_back_to_debug_keystore():
     gradle_text = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
     assert 'signingConfigs.getByName("debug")' not in gradle_text
-    assert "deshabilite la reversión de la firma de depuración" in gradle_text
+    assert 'signingConfig = signingConfigs.getByName("release")' in gradle_text
+    assert 'if (hasReleaseArtifactTask && !keystorePropertiesFile.exists())' in gradle_text
+    assert 'throw GradleException("La release requiere keystore.properties con una firma permanente.")' in gradle_text
 
 
 def test_secret_text_removes_bom_and_transport_whitespace():
