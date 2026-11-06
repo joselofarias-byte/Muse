@@ -215,6 +215,9 @@ data object SettingsTaskRoutingRoute
 data object SettingsPermissionWizardRoute
 
 @Serializable
+data object SettingsBridgeRoute
+
+@Serializable
 data object AssistantsRoute
 
 @Serializable

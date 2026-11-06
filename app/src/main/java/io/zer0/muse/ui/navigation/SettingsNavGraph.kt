@@ -17,6 +17,7 @@ import io.zer0.muse.ui.dev.ComponentGalleryScreen
 import io.zer0.muse.ui.knowledge.KnowledgeScreen
 import io.zer0.muse.ui.settings.AgentSettingsPage
 import io.zer0.muse.ui.settings.AuditLogPage
+import io.zer0.muse.ui.settings.BridgeDiagnosticsScreen
 import io.zer0.muse.ui.settings.ChatSettingsPage
 import io.zer0.muse.ui.settings.CloudBackupPage
 import io.zer0.muse.ui.settings.ExperimentsSettingsPage
@@ -173,6 +174,12 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController, sharedVie
         PermissionWizardScreen(
             onBack = { navController.popBackStack() },
         )
+    }
+    composable<SettingsBridgeRoute>(
+        enterTransition = { MuseTransitions.horizontalPushEnter() },
+        popExitTransition = { MuseTransitions.horizontalPushPopExit() },
+    ) {
+        BridgeDiagnosticsScreen(onBack = { navController.popBackStack() })
     }
     // 用户画像编辑页(年龄/城市/MBTI 等)
     composable<UserProfileEditRoute>(

@@ -3,6 +3,8 @@ package io.zer0.muse.tools
 import android.content.Context
 import io.zer0.common.Logger
 import io.zer0.muse.terminal.TermuxChannel
+import io.zer0.muse.terminal.bridge.SecretGuard
+import io.zer0.muse.terminal.bridge.TermuxBootstrap
 
 /**
  * v2.2.1 Termux 通道:termux_exec — 在用户安装的 Termux(完整 Linux 环境)中执行命令。
@@ -46,6 +48,9 @@ object TermuxExecTool {
         if (command.isEmpty()) return "Error: command is required."
         // 硬边界放在取通道之前:命中第一档时连 Termux 侧的进程都不会起。
         boundaryRejection(command)?.let { return it }
+        if (SecretGuard.containsSecret(command)) {
+            return "BRIDGE error=SECRET_REJECTED\nEl comando contiene un secreto y no se ejecuta."
+        }
         val timeoutMs = (args["timeout_ms"]?.toLongOrNull() ?: TermuxChannel.DEFAULT_TIMEOUT_MS)
             .coerceIn(1_000L, TermuxChannel.MAX_TIMEOUT_MS)
         val workdir = args["workdir"]?.trim()?.takeIf { it.isNotEmpty() }
@@ -56,7 +61,7 @@ object TermuxExecTool {
             return TermuxChannel.describe(availability)
         }
 
-        val result = channel.exec(command, timeoutMs, workdir)
+        val result = channel.exec(TermuxBootstrap.wrap(command), timeoutMs, workdir)
         if (result.error != null) {
             return buildString {
                 append("Termux 执行未完成: ").append(result.error)

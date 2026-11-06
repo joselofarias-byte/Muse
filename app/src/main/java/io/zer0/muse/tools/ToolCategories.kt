@@ -236,6 +236,12 @@ object ToolCategories {
             "terminal_exec",
             // v2.2.1: Termux 通道(完整 Linux 环境命令,高风险)
             "termux_exec",
+            // Termux + Nightzuku bridge: async jobs and shell-uid commands
+            "nightzuku_exec",
+            "bridge_job_start",
+            "bridge_job_status",
+            "bridge_job_cancel",
+            "bridge_diagnose",
             // v2.2.1: GUI Agent 环(视觉驱动的多步屏幕操作,高风险)
             "ui_agent",
             // 虚拟屏(Shizuku/Root 通道;此前注册了但未登记分类)
@@ -332,6 +338,13 @@ object ToolCategories {
             put("ui_agent", setOf(ToolPermission.SHELL_TIER, ToolPermission.ACCESSIBILITY))
             // Termux 通道
             put("termux_exec", setOf(ToolPermission.TERMUX))
+            listOf(
+                "nightzuku_exec",
+                "bridge_job_start",
+                "bridge_job_status",
+                "bridge_job_cancel",
+                "bridge_diagnose",
+            ).forEach { put(it, setOf(ToolPermission.TERMUX)) }
         }
 
     /** 查询工具的权限需求(未登记 = 无需额外授权)。 */

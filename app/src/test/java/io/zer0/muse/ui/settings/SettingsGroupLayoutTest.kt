@@ -41,6 +41,7 @@ class SettingsGroupLayoutTest {
         SettingsGroupKind.TOOLS to listOf(
             SettingsEntryId.TOOLS,
             SettingsEntryId.PERMISSION_WIZARD,
+            SettingsEntryId.BRIDGE,
             SettingsEntryId.WEB_SEARCH,
         ),
         SettingsGroupKind.VOICE to listOf(
@@ -134,7 +135,11 @@ class SettingsGroupLayoutTest {
         val ids = SettingsCatalog.entries.map { it.id }
         val duplicates = ids.groupBy { it }.filterValues { it.size > 1 }.keys
 
-        assertEquals("全部条目应为 48 项，实际 ${ids.size} 项: $ids", EXPECTED_ENTRY_COUNT, ids.size)
+        assertEquals(
+            "全部条目应为 $EXPECTED_ENTRY_COUNT 项，实际 ${ids.size} 项: $ids",
+            EXPECTED_ENTRY_COUNT,
+            ids.size,
+        )
         assertTrue("同一入口出现在多个分类里: $duplicates", duplicates.isEmpty())
         assertEquals(
             "清单必须覆盖全部条目 id，不能加也不能漏",
@@ -192,9 +197,9 @@ class SettingsGroupLayoutTest {
 
     private companion object {
         const val SETTINGS_GROUP_COUNT = 14
-        const val EXPECTED_ENTRY_COUNT = 48
+        const val EXPECTED_ENTRY_COUNT = 49
 
         /** 与上方 expectedLayout 一一对应的条目数，用来锁住分布均衡、没有过大的单类。 */
-        val EXPECTED_GROUP_SIZES: List<Int> = listOf(4, 3, 3, 3, 3, 3, 2, 5, 5, 2, 5, 2, 3, 5)
+        val EXPECTED_GROUP_SIZES: List<Int> = listOf(4, 3, 3, 4, 3, 3, 2, 5, 5, 2, 5, 2, 3, 5)
     }
 }

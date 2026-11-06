@@ -7,19 +7,53 @@
         <error line="80" column="30" source="standard:discouraged-comment-location" />
         <error line="81" column="27" source="standard:discouraged-comment-location" />
     </file>
+    <file name="src/main/java/io/zer0/memory/compile/CompiledSectionHit.kt">
+        <error line="51" column="5" source="standard:function-signature" />
+        <error line="52" column="5" source="standard:function-signature" />
+        <error line="53" column="5" source="standard:function-signature" />
+        <error line="53" column="16" source="standard:function-signature" />
+    </file>
     <file name="src/main/java/io/zer0/memory/fact/FactDao.kt">
-        <error line="101" column="1" source="standard:max-line-length" />
-        <error line="127" column="1" source="standard:max-line-length" />
-        <error line="184" column="1" source="standard:max-line-length" />
-        <error line="198" column="1" source="standard:max-line-length" />
-        <error line="242" column="1" source="standard:max-line-length" />
-        <error line="251" column="1" source="standard:max-line-length" />
-        <error line="419" column="1" source="standard:max-line-length" />
+        <error line="178" column="1" source="standard:max-line-length" />
+        <error line="204" column="1" source="standard:max-line-length" />
+        <error line="261" column="1" source="standard:max-line-length" />
+        <error line="275" column="1" source="standard:max-line-length" />
+        <error line="319" column="1" source="standard:max-line-length" />
+        <error line="391" column="1" source="standard:max-line-length" />
+        <error line="559" column="1" source="standard:max-line-length" />
     </file>
     <file name="src/main/java/io/zer0/memory/fact/FactStore.kt">
-        <error line="161" column="17" source="standard:property-naming" />
-        <error line="166" column="17" source="standard:property-naming" />
-        <error line="349" column="1" source="standard:max-line-length" />
+        <error line="178" column="17" source="standard:property-naming" />
+        <error line="183" column="17" source="standard:property-naming" />
+        <error line="366" column="1" source="standard:max-line-length" />
+        <error line="1097" column="42" source="standard:argument-list-wrapping" />
+        <error line="1097" column="59" source="standard:argument-list-wrapping" />
+        <error line="1097" column="71" source="standard:argument-list-wrapping" />
+        <error line="1097" column="82" source="standard:argument-list-wrapping" />
+        <error line="1097" column="89" source="standard:argument-list-wrapping" />
+        <error line="1117" column="77" source="standard:function-signature" />
+        <error line="1182" column="9" source="standard:function-signature" />
+        <error line="1183" column="9" source="standard:function-signature" />
+        <error line="1184" column="9" source="standard:function-signature" />
+        <error line="1185" column="9" source="standard:function-signature" />
+        <error line="1185" column="25" source="standard:function-signature" />
+        <error line="1186" column="21" source="standard:function-signature" />
+        <error line="1342" column="9" source="standard:function-signature" />
+        <error line="1343" column="9" source="standard:function-signature" />
+        <error line="1344" column="9" source="standard:function-signature" />
+        <error line="1344" column="53" source="standard:function-signature" />
+        <error line="1386" column="9" source="standard:function-signature" />
+        <error line="1387" column="9" source="standard:function-signature" />
+        <error line="1388" column="9" source="standard:function-signature" />
+        <error line="1388" column="43" source="standard:function-signature" />
+        <error line="1711" column="9" source="standard:function-signature" />
+        <error line="1712" column="9" source="standard:function-signature" />
+        <error line="1713" column="9" source="standard:function-signature" />
+        <error line="1714" column="9" source="standard:function-signature" />
+        <error line="1714" column="33" source="standard:function-signature" />
+        <error line="1715" column="16" source="standard:function-signature" />
+        <error line="2280" column="104" source="standard:function-signature" />
+        <error line="2359" column="81" source="standard:function-signature" />
     </file>
     <file name="src/main/java/io/zer0/memory/observe/FailureClassifier.kt">
         <error line="37" column="19" source="standard:discouraged-comment-location" />
@@ -116,28 +150,27 @@
         <error line="236" column="17" source="standard:property-naming" />
         <error line="238" column="27" source="standard:property-naming" />
         <error line="239" column="17" source="standard:property-naming" />
-        <error line="253" column="17" source="standard:property-naming" />
-        <error line="254" column="17" source="standard:property-naming" />
-        <error line="286" column="17" source="standard:property-naming" />
-        <error line="290" column="17" source="standard:property-naming" />
+        <error line="270" column="17" source="standard:property-naming" />
+        <error line="271" column="17" source="standard:property-naming" />
+        <error line="303" column="17" source="standard:property-naming" />
+        <error line="307" column="17" source="standard:property-naming" />
     </file>
     <file name="src/test/java/io/zer0/memory/fact/FactDbMigrationTest.kt">
         <error line="67" column="17" source="standard:property-naming" />
         <error line="89" column="17" source="standard:property-naming" />
         <error line="99" column="17" source="standard:property-naming" />
-        <error line="266" column="13" source="standard:property-naming" />
-        <error line="286" column="13" source="standard:property-naming" />
+        <error line="272" column="13" source="standard:property-naming" />
         <error line="292" column="13" source="standard:property-naming" />
-        <error line="302" column="13" source="standard:property-naming" />
-        <error line="452" column="13" source="standard:property-naming" />
-        <error line="473" column="13" source="standard:property-naming" />
-        <error line="479" column="13" source="standard:property-naming" />
-        <error line="489" column="13" source="standard:property-naming" />
+        <error line="298" column="13" source="standard:property-naming" />
+        <error line="308" column="13" source="standard:property-naming" />
+        <error line="461" column="13" source="standard:property-naming" />
+        <error line="482" column="13" source="standard:property-naming" />
+        <error line="488" column="13" source="standard:property-naming" />
+        <error line="498" column="13" source="standard:property-naming" />
     </file>
     <file name="src/test/java/io/zer0/memory/fact/FactStoreTest.kt">
-        <error line="197" column="46" source="standard:discouraged-comment-location" />
-        <error line="307" column="33" source="standard:discouraged-comment-location" />
-        <error line="370" column="40" source="standard:discouraged-comment-location" />
+        <error line="199" column="46" source="standard:discouraged-comment-location" />
+        <error line="309" column="33" source="standard:discouraged-comment-location" />
     </file>
     <file name="src/test/java/io/zer0/memory/pii/PiiGuardTest.kt">
         <error line="130" column="36" source="standard:discouraged-comment-location" />
@@ -149,6 +182,13 @@
     </file>
     <file name="src/test/java/io/zer0/memory/summary/MemoryDbArchiveRecoveryTest.kt">
         <error line="178" column="1" source="standard:max-line-length" />
+    </file>
+    <file name="src/test/java/io/zer0/memory/summary/SessionSummaryManagerTest.kt">
+        <error line="89" column="5" source="standard:spacing-between-declarations-with-comments" />
+    </file>
+    <file name="src/test/java/io/zer0/memory/ticker/MemoryTickerTest.kt">
+        <error line="621" column="61" source="standard:function-signature" />
+        <error line="668" column="5" source="standard:spacing-between-declarations-with-comments" />
     </file>
     <file name="src/test/java/io/zer0/memory/ticker/MemoryTickerWriteGateWiringTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />

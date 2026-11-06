@@ -70,9 +70,13 @@ class OpenAIProviderAbortTest {
     @Test
     fun `aborting during retry backoff prevents stale EventSource reconnect`() = runBlocking {
         val firstRequest = CountDownLatch(1)
+        val signal = AbortSignal()
+        // Abort before the client schedules its 1s backoff. On a slow runner the test
+        // thread otherwise loses that race and the provider looks like it reconnected.
         server.delegate.dispatcher = object : Dispatcher() {
             override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse {
                 firstRequest.countDown()
+                signal.abort()
                 return MockResponse.Builder()
                     .code(503)
                     .clearHeaders()
@@ -82,7 +86,6 @@ class OpenAIProviderAbortTest {
             }
         }
 
-        val signal = AbortSignal()
         val request = ChatRequest(
             messages = listOf(UIMessage(role = MessageRole.USER, content = "retry then cancel")),
             model = Model(id = "test-model", providerId = "openai-test"),
@@ -102,7 +105,6 @@ class OpenAIProviderAbortTest {
             provider.streamChat(request).collect()
         }
         assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
-        signal.abort()
 
         withTimeout(5_000) { collector.join() }
         // The stale onFailure/onClosed callback from the cancelled EventSource must not

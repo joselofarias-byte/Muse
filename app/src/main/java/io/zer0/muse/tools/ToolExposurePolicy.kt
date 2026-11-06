@@ -406,8 +406,19 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("终端", "命令行", "shell", "adb", "termux", "系统命令", "执行命令"),
-                toolNames = setOf("device_shell", "terminal_exec", "termux_exec"),
+                keywords = setOf(
+                    "终端", "命令行", "shell", "adb", "termux", "nightzuku", "rish", "系统命令", "执行命令",
+                ),
+                toolNames = setOf(
+                    "device_shell",
+                    "terminal_exec",
+                    "termux_exec",
+                    "nightzuku_exec",
+                    "bridge_job_start",
+                    "bridge_job_status",
+                    "bridge_job_cancel",
+                    "bridge_diagnose",
+                ),
             ),
             ToolFamily(
                 // v2.6.1（用户反馈）: Python 请求此前不命中任何族。内置 Python 工具属 GLOBAL 分类，

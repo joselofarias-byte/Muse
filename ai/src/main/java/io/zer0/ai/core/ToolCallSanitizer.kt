@@ -103,11 +103,14 @@ object ToolCallSanitizer {
      * 而正文里随时会出现英文单词（"please hold on a moment"），猜错会把一个词当工具执行。
      */
     internal fun salvageName(rawName: String, knownToolNames: Set<String>): String? {
-        if (knownToolNames.isEmpty()) return null
-        val candidate = TRAILING_IDENTIFIER.find(rawName.trim())?.value ?: return null
-        if (candidate.length > 64) return null
-        if (candidate !in knownToolNames) return null
-        return candidate
+        val candidate = TRAILING_IDENTIFIER.find(rawName.trim())?.value
+        return when {
+            knownToolNames.isEmpty() -> null
+            candidate == null -> null
+            candidate.length > 64 -> null
+            candidate !in knownToolNames -> null
+            else -> candidate
+        }
     }
 
     /**

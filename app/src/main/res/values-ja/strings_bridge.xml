@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bridge_settings_title">Termux と Nightzuku</string>
+    <string name="bridge_settings_desc">ブリッジ診断、shell の身元、許可</string>
+    <string name="bridge_section_termux">Termux</string>
+    <string name="bridge_section_nightzuku">Nightzuku</string>
+    <string name="bridge_section_android">Android</string>
+    <string name="bridge_section_auth">許可</string>
+    <string name="bridge_refresh">診断を更新</string>
+    <string name="bridge_status_ready">準備完了</string>
+    <string name="bridge_status_missing">利用不可</string>
+    <string name="bridge_status_denied">権限が拒否されました</string>
+    <string name="bridge_status_unknown">未確認</string>
+    <string name="bridge_termux_installed">Termux はインストール済み</string>
+    <string name="bridge_run_command">RUN_COMMAND 権限</string>
+    <string name="bridge_home">HOME</string>
+    <string name="bridge_prefix">PREFIX</string>
+    <string name="bridge_rish">検出した rish</string>
+    <string name="bridge_identity">身元</string>
+    <string name="bridge_identity_shell">uid=2000(shell)</string>
+    <string name="bridge_identity_root">root は拒否</string>
+    <string name="bridge_identity_other">shell ではない</string>
+    <string name="bridge_nightzuku_pkg">Nightzuku パッケージ</string>
+    <string name="bridge_sdk">Android SDK</string>
+    <string name="bridge_notifications">通知</string>
+    <string name="bridge_fgs">フォアグラウンドサービス</string>
+    <string name="bridge_fgs_value">dataSync（Android 16 の制限内）</string>
+    <string name="bridge_active_jobs">実行中のジョブ</string>
+    <string name="bridge_auth_modify_title">変更を許可</string>
+    <string name="bridge_auth_modify_sub">端末の変更を許可します: am start、input、settings put、screencap。root は付与しません。</string>
+    <string name="bridge_auth_destructive_title">破壊的な操作を許可</string>
+    <string name="bridge_auth_destructive_sub">ファイル削除や設定削除などの操作を許可します。明示的な確認が必要です。</string>
+    <string name="bridge_auth_destructive_dialog_title">破壊的な操作を確認</string>
+    <string name="bridge_auth_destructive_dialog_body">この許可が有効な間、Nightzuku はデータを削除できます。root は付与せず、uid=2000(shell) が引き続き必要です。</string>
+    <string name="bridge_auth_modify_dialog_title">変更を確認</string>
+    <string name="bridge_auth_modify_dialog_body">Nightzuku は設定変更、アプリ起動、タップ注入、画面キャプチャができます。uid=2000(shell) のときだけです。</string>
+    <string name="bridge_notif_title">Muse がコマンドを実行しています</string>
+    <string name="bridge_notif_text">Muse がバックグラウンドに移っても、Android の制限内でジョブは続きます。</string>
+    <string name="bridge_notif_channel">Termux コマンド</string>
+    <string name="tool_label_nightzuku_exec">Nightzuku コマンド</string>
+    <string name="tool_label_bridge_job_start">バックグラウンドジョブ</string>
+    <string name="tool_label_bridge_job_status">ジョブの状態</string>
+    <string name="tool_label_bridge_job_cancel">ジョブをキャンセル</string>
+    <string name="tool_label_bridge_diagnose">ブリッジ診断</string>
+    <string name="tool_summary_nightzuku_exec">Nightzuku コマンドを実行しました</string>
+    <string name="tool_summary_bridge_job_start">バックグラウンドジョブを開始しました</string>
+    <string name="tool_summary_bridge_job_status">ジョブを確認しました</string>
+    <string name="tool_summary_bridge_job_cancel">ジョブをキャンセルしました</string>
+    <string name="tool_summary_bridge_diagnose">Termux と Nightzuku を確認しました</string>
+</resources>

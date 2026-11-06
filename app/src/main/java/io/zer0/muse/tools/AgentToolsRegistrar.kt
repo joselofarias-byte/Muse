@@ -8,6 +8,7 @@ import io.zer0.muse.data.SettingsRepository
 import io.zer0.muse.data.experience.ExperienceRepository
 import io.zer0.muse.data.subagent.SubagentThreadStore
 import io.zer0.muse.notification.MuseNotificationManager
+import io.zer0.muse.terminal.bridge.BridgeTools
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -69,6 +70,7 @@ class AgentToolsRegistrar(
 ) {
     init {
         registerAll()
+        registerBridge()
     }
 
     /**
@@ -102,6 +104,24 @@ class AgentToolsRegistrar(
                 sessionUsage = sessionUsageReader,
                 contextOccupancy = contextOccupancy,
             )
+        }
+    }
+
+    private fun registerBridge() {
+        toolRegistry.register(BridgeTools.nightzukuExecDef()) { args ->
+            BridgeTools.executeNightzuku(args, context)
+        }
+        toolRegistry.register(BridgeTools.jobStartDef()) { args ->
+            BridgeTools.executeJobStart(args, context)
+        }
+        toolRegistry.register(BridgeTools.jobStatusDef()) { args ->
+            BridgeTools.executeJobStatus(args, context)
+        }
+        toolRegistry.register(BridgeTools.jobCancelDef()) { args ->
+            BridgeTools.executeJobCancel(args, context)
+        }
+        toolRegistry.register(BridgeTools.diagnoseDef()) { args ->
+            BridgeTools.executeDiagnose(args, context)
         }
     }
 

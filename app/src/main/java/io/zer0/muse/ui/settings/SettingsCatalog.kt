@@ -24,10 +24,11 @@ import io.zer0.muse.ui.navigation.SettingsAppearanceRoute
 import io.zer0.muse.ui.navigation.SettingsAsrRoute
 import io.zer0.muse.ui.navigation.SettingsAssistantResourcesRoute
 import io.zer0.muse.ui.navigation.SettingsAutomationRoute
+import io.zer0.muse.ui.navigation.SettingsBridgeRoute
 import io.zer0.muse.ui.navigation.SettingsChatRoute
+import io.zer0.muse.ui.navigation.SettingsCrashReportRoute
 import io.zer0.muse.ui.navigation.SettingsDataImportRoute
 import io.zer0.muse.ui.navigation.SettingsDataRoute
-import io.zer0.muse.ui.navigation.SettingsCrashReportRoute
 import io.zer0.muse.ui.navigation.SettingsExperimentsRoute
 import io.zer0.muse.ui.navigation.SettingsMcpRoute
 import io.zer0.muse.ui.navigation.SettingsMediaRoute
@@ -95,6 +96,7 @@ enum class SettingsEntryId {
     PROVIDER_PLUGINS,
     TOOLS,
     PERMISSION_WIZARD,
+    BRIDGE,
     WEB_SEARCH,
     TTS,
     ASR,
@@ -365,6 +367,14 @@ object SettingsCatalog {
                     MuseIcons.shieldCheck,
                     SettingsEntryAction.Navigate(SettingsPermissionWizardRoute),
                     keywords = listOf("权限", "向导", "无障碍", "Shizuku", "Root", "quanxian", "xiangdao", "wuzhangai", "qx", "xd", "wza"),
+                ),
+                entry(
+                    SettingsEntryId.BRIDGE,
+                    R.string.bridge_settings_title,
+                    R.string.bridge_settings_desc,
+                    MuseIcons.terminal,
+                    SettingsEntryAction.Navigate(SettingsBridgeRoute),
+                    keywords = listOf("termux", "nightzuku", "rish", "shell", "diagnostico", "puente"),
                 ),
                 entry(
                     SettingsEntryId.WEB_SEARCH,

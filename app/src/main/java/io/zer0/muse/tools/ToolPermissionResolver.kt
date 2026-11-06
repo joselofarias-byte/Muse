@@ -412,6 +412,11 @@ object ToolPermissionResolver {
         "terminal_exec" to ToolRiskLevel.HIGH,
         // v2.2.1: Termux 通道 — 完整 Linux 环境可执行任意命令,归 HIGH
         "termux_exec" to ToolRiskLevel.HIGH,
+        "nightzuku_exec" to ToolRiskLevel.HIGH,
+        "bridge_job_start" to ToolRiskLevel.HIGH,
+        "bridge_job_status" to ToolRiskLevel.NORMAL,
+        "bridge_job_cancel" to ToolRiskLevel.NORMAL,
+        "bridge_diagnose" to ToolRiskLevel.NORMAL,
         // v2.2.1: GUI Agent 环 — 可连续多步操作任意 App,归 HIGH
         "ui_agent" to ToolRiskLevel.HIGH,
         // v1.x: update_skill 与 install_skill 同级 — 二者都能改写助手后续要执行的 skill 定义;
