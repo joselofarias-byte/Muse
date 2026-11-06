@@ -2,18 +2,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- ===== QuickMessageScreen página de mensaje rápido ===== -->
     <!-- barra superior -->
-    <string name="quick_msg_screen_title">mensaje rapido QuickMessage</string>
-    <string name="quick_msg_new_cd">Nuevo QuickMessage</string>
+    <string name="quick_msg_screen_title">Mensajes rápidos</string>
+    <string name="quick_msg_new_cd">Nuevo mensaje rápido</string>
     <string name="quick_msg_intro">Plantillas de mensajes preestablecidos. Variables admitidas: {{input}}(entrada actual) / {{clipboard}}(portapapeles) / {{date}}(fecha).</string>
-    <string name="quick_msg_empty_title">todavía no QuickMessage</string>
+    <string name="quick_msg_empty_title">Todavía no hay mensajes rápidos</string>
     <string name="quick_msg_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
-    <string name="quick_msg_delete_title">Eliminar QuickMessage</string>
+    <string name="quick_msg_delete_title">Eliminar mensaje rápido</string>
     <!-- tarjeta -->
     <string name="quick_msg_new_default_name">Nuevo mensaje rápido</string>
     <string name="quick_msg_unnamed">(sin nombre)</string>
     <string name="quick_msg_disabled">Desactivado</string>
-    <string name="quick_msg_scope_global">situación general</string>
-    <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
+    <string name="quick_msg_scope_global">Global</string>
+    <string name="quick_msg_scope_assistant">Asistente: %1$s</string>
     <string name="quick_msg_scope_label">Alcance: %1$s</string>
     <string name="quick_msg_enabled_cd">Habilitado</string>
     <string name="quick_msg_disabled_cd">Desactivado</string>
@@ -21,10 +21,10 @@
     <string name="quick_msg_delete_cd">Eliminar</string>
     <!-- editar página -->
     <string name="quick_msg_unsaved_title">Hay cambios no guardados</string>
-    <string name="quick_msg_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="quick_msg_unsaved_content">Al salir se perderán los cambios actuales. ¿Quieres descartarlos?</string>
     <string name="quick_msg_discard">Descartar</string>
-    <string name="quick_msg_new_title">Nuevo QuickMessage</string>
-    <string name="quick_msg_edit_title">Editar QuickMessage</string>
+    <string name="quick_msg_new_title">Nuevo mensaje rápido</string>
+    <string name="quick_msg_edit_title">Editar mensaje rápido</string>
     <string name="quick_msg_save">Guardar</string>
     <string name="quick_msg_section_basic">Conceptos básicos</string>
     <string name="quick_msg_field_name">Nombre</string>
@@ -33,21 +33,21 @@
     <string name="quick_msg_section_scope">Alcance</string>
     <string name="quick_msg_field_scope">Alcance</string>
     <string name="quick_msg_scope_global_opt">Global (compartido por todos los asistentes)</string>
-    <string name="quick_msg_scope_assistant_opt">Assistant Encuadernación (mostrada únicamente por el asistente designado)</string>
-    <string name="quick_msg_field_bind_assistant">vinculante Assistant</string>
+    <string name="quick_msg_scope_assistant_opt">Vinculado a un asistente (solo se muestra para el asistente designado)</string>
+    <string name="quick_msg_field_bind_assistant">Asistente vinculado</string>
     <string name="quick_msg_section_behavior">comportamiento</string>
     <string name="quick_msg_field_sort_index">Número de clasificación (cuanto menor es el número, mayor es)</string>
     <string name="quick_msg_field_enabled">habilitar</string>
-    <string name="quick_msg_field_enabled_desc">Esta entrada no aparece en la fila del chip InputBar después del cierre.</string>
+    <string name="quick_msg_field_enabled_desc">Al desactivarlo, este mensaje no aparece entre los accesos rápidos de la barra de entrada.</string>
 
     <!-- ===== LorebookScreen páginas de libros del mundo ===== -->
     <!-- barra superior -->
-    <string name="lorebook_screen_title">libro mundial Lorebook</string>
-    <string name="lorebook_new_cd">Nuevo Lorebook</string>
+    <string name="lorebook_screen_title">Libro del mundo</string>
+    <string name="lorebook_new_cd">Nueva entrada del libro del mundo</string>
     <string name="lorebook_intro">Inyección de contexto activada por palabras clave. Cuando el mensaje del usuario llega a una palabra clave, la configuración correspondiente se inyecta como contexto del SISTEMA.</string>
-    <string name="lorebook_empty_title">todavía no Lorebook</string>
+    <string name="lorebook_empty_title">Todavía no hay entradas en el libro del mundo</string>
     <string name="lorebook_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
-    <string name="lorebook_delete_title">Eliminar Lorebook</string>
+    <string name="lorebook_delete_title">Eliminar entrada del libro del mundo</string>
     <!-- tarjeta -->
     <string name="lorebook_new_default_name">nueva entrada</string>
     <string name="lorebook_unnamed">(sin nombre)</string>
@@ -59,10 +59,10 @@
     <string name="lorebook_delete_cd">Eliminar</string>
     <!-- editar página -->
     <string name="lorebook_unsaved_title">Hay cambios no guardados</string>
-    <string name="lorebook_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
+    <string name="lorebook_unsaved_content">Al salir se perderán los cambios actuales. ¿Quieres descartarlos?</string>
     <string name="lorebook_discard">Descartar</string>
-    <string name="lorebook_new_title">Nuevo Lorebook</string>
-    <string name="lorebook_edit_title">Editar Lorebook</string>
+    <string name="lorebook_new_title">Nueva entrada del libro del mundo</string>
+    <string name="lorebook_edit_title">Editar entrada del libro del mundo</string>
     <string name="lorebook_save">Guardar</string>
     <string name="lorebook_section_basic">Conceptos básicos</string>
     <string name="lorebook_field_name">Nombre</string>
