@@ -37,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s ci/script -p test_validate_release_signing.py
+          bash tools/runtime-pack/test-downloads.sh
           python3 ci/script/check_localizations.py --strict-locales es
           python3 ci/script/check_translation_residue.py
       - name: Restore permanent signing key (no fallback)
