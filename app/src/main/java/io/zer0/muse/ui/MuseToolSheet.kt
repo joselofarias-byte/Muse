@@ -264,7 +264,7 @@ internal fun MuseToolSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Seleccionado ${selectedGalleryImages.size} zhang",
+                    text = stringResource(R.string.moment_images_selected, selectedGalleryImages.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

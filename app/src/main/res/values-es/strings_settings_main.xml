@@ -108,7 +108,7 @@
     <string name="settings_provider_vertex_ai">Vertex AI(Nivel empresarial)</string>
     <string name="settings_provider_enable_vertex">Habilitar el punto final de Vertex AI</string>
     <string name="settings_provider_location">Location(Como por ejemplo us-central1)</string>
-    <string name="settings_provider_project_id">Project ID</string>
+    <string name="settings_provider_project_id">ID de proyecto</string>
     <string name="settings_provider_use_service_account">Utilice la cuenta de servicio para autenticarse (de lo contrario, utilice la clave API por seguridad)</string>
     <string name="settings_provider_import_from_json">Importar credenciales desde un archivo JSON</string>
     <string name="settings_provider_service_account_email">Correo electrónico de la cuenta de servicio</string>
@@ -223,9 +223,9 @@
     <string name="settings_backup_restoring_cloud">Recuperarse de la nube...</string>
     <string name="settings_backup_endpoint">dirección de interfaz</string>
     <string name="settings_backup_region">área</string>
-    <string name="settings_backup_bucket">Bucket</string>
+    <string name="settings_backup_bucket">Contenedor</string>
     <string name="settings_backup_access_key">clave de acceso</string>
-    <string name="settings_backup_secret_key">Secret Key</string>
+    <string name="settings_backup_secret_key">Clave secreta</string>
     <string name="settings_backup_key_prefix">Key prefijo (directorio, como muse/)</string>
     <string name="settings_backup_webdav_url">WebDAV dirección</string>
     <string name="settings_backup_username">Nombre de usuario</string>
