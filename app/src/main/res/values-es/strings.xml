@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- App -->
-    <string name="app_name">Muse</string>
+    <string name="app_name">Musa</string>
     <!-- pagina de inicio -->
 
     <!-- widgets de escritorio -->
@@ -14,7 +14,7 @@
     <string name="widget_chat_pick_assistant">Elige qué asistente mostrar</string>
     <string name="widget_quick_pick_assistant">Seleccione el asistente correspondiente a la operación de acceso directo</string>
     <!-- F-25: Widget de inicio de escritorio -->
-    <string name="widget_launcher_title">Muse</string>
+    <string name="widget_launcher_title">Musa</string>
     <string name="widget_launcher_open">Abrir Muse</string>
 
     <!-- Navegación inferior -->
@@ -292,7 +292,7 @@
     <string name="proxy_bypass_hint">Separados por comas. Soporte .sufijo,*.comodín,IP prefijo. Se recomienda incluir modelos locales y servicios de intranet.</string>
     <string name="proxy_test_action">conexión de prueba</string>
     <string name="proxy_test_running">Bajo prueba…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">Primero complete la dirección de proxy válida y el puerto</string>
     <string name="proxy_test_connected">conectividad proxy,</string>
     <string name="proxy_test_need_auth">El agente requiere autenticación, verifique el nombre de usuario y la contraseña.</string>
@@ -335,4 +335,5 @@
     <string name="proactive_kind_care">cuidar</string>
     <string name="proactive_kind_share">Compartir</string>
     <string name="proactive_kind_milestone">nodo</string>
+    <string name="character_card_watermark">Hecho con Musa · museai.ltd</string>
 </resources>

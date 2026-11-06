@@ -271,4 +271,5 @@
     <string name="proactive_kind_care">Забота</string>
     <string name="proactive_kind_share">Поделиться</string>
     <string name="proactive_kind_milestone">Веха</string>
+    <string name="character_card_watermark">Создано с Muse · museai.ltd</string>
 </resources>
