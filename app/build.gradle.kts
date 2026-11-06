@@ -533,9 +533,11 @@ gradle.taskGraph.whenReady {
     }
     val releaseVersionName = (project.findProperty("versionName") as? String) ?: System.getenv("VERSION_NAME")
     val releaseVersionCode = ((project.findProperty("versionCode") as? String) ?: System.getenv("VERSION_CODE"))?.toIntOrNull()
-    if (hasReleaseArtifactTask &&
+    if (
+        hasReleaseArtifactTask &&
         (releaseVersionName.isNullOrBlank() || releaseVersionName == "0.0.0-dev" ||
-            releaseVersionCode == null || releaseVersionCode !in 1..2100000000)
+            releaseVersionCode == null || releaseVersionCode !in 1..2100000000
+        )
     ) {
         throw GradleException("La release requiere versionName no vacío y versionCode entero positivo válidos.")
     }

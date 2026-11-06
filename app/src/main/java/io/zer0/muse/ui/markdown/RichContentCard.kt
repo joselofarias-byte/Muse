@@ -650,7 +650,7 @@ private fun ChartCard(json: String) {
         javaScriptEnabled = true,
         webViewClient = RichContentWebViewClient(),
         onWebViewCreated = { webView ->
-            webView.addJavascriptInterface(heightSink, CardHeightSink.NAME)
+            heightSink.attachTo(webView)
         },
         // Siga estrictamente el contenido y los gráficos se podrán ver de un vistazo sin tener que desplazarse por la tarjeta.
         scrollable = false,
