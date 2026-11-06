@@ -99,11 +99,27 @@ PRUNE_DYNLOAD_GLOBS=(
 
 fetch_pkg() { # $1=arch(aarch64|x86_64) $2=archivo objeto
   local arch="$1" out="$2"
-  if [ ! -f "$out" ]; then
-    local url="https://www.python.org/ftp/python/${PY_VER}/python-${PY_VER}-${arch}-linux-android.tar.gz"
-    echo "  Descargar $url"
-    curl -sSL --retry 3 --connect-timeout 20 -o "$out" "$url"
+  local filename="python-${PY_VER}-${arch}-linux-android.tar.gz"
+  local url="https://www.python.org/ftp/python/${PY_VER}/$filename"
+  local expected
+  expected=$(awk -v name="$filename" '$2 == name {print $1}' "$SCRIPT_DIR/SHA256SUMS")
+  [ -n "$expected" ] || { echo "!! Falta SHA-256 para $filename" >&2; return 1; }
+  if [ -f "$out" ] && printf '%s  %s\n' "$expected" "$out" | sha256sum --check --status; then
+    return
   fi
+  echo "  Descargar $url"
+  rm -f "$out" "$out.part"
+  if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
+    rm -f "$out.part"
+    return 1
+  fi
+  if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
+     ! tar tzf "$out.part" > /dev/null; then
+    echo "!! Paquete inválido o SHA-256 incorrecto: $filename" >&2
+    rm -f "$out.part"
+    return 1
+  fi
+  mv "$out.part" "$out"
 }
 
 # Verifique que un ELF tenga una página de 16 KB alineada
@@ -125,10 +141,8 @@ build_abi() { # $1=arm64|x86_64
   mkdir -p "$base"
   fetch_pkg "$arch" "$tgz"
 
-  if [ ! -d "$unpack/prefix" ]; then
-    rm -rf "$unpack"; mkdir -p "$unpack"
-    tar xzf "$tgz" -C "$unpack"
-  fi
+  rm -rf "$unpack"; mkdir -p "$unpack"
+  tar xzf "$tgz" -C "$unpack"
   local prefix="$unpack/prefix"
 
   echo "== [$abi] Comprobar la alineación de la página =="
