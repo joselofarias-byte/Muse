@@ -319,4 +319,5 @@
     <string name="proactive_kind_care">Care</string>
     <string name="proactive_kind_share">Share</string>
     <string name="proactive_kind_milestone">Milestone</string>
+    <string name="character_card_watermark">Made with Muse · museai.ltd</string>
 </resources>

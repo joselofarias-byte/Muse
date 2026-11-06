@@ -42,7 +42,7 @@
     <string name="err_image_gen_max_images">Admite hasta 4 imágenes</string>
     <string name="err_image_gen_process_failed">Error al procesar la imagen: %1$s</string>
     <string name="err_image_gen_video_no_frames">Error al procesar el vídeo: no se pueden extraer fotogramas clave</string>
-    <string name="err_image_gen_video_too_many">Fotogramas clave de vídeo %1$d Zhang más existente %2$d excede el límite de 4</string>
+    <string name="err_image_gen_video_too_many">Los %1$d fotogramas clave de vídeo y las %2$d imágenes existentes superan el límite de 4 imágenes</string>
     <string name="err_image_gen_video_failed">Error al procesar el vídeo: %1$s</string>
     <string name="err_image_gen_read_failed_msg">La lectura de la imagen falló: %1$s</string>
     <string name="err_image_gen_no_provider">Proveedor de pintura no configurado</string>

@@ -44,7 +44,7 @@
     <string name="keep_alive_dialog_open">Ir a configuración</string>
     <string name="settings_agent_proactive_title">mensajes no solicitados</string>
     <!-- v2.x: Agent Título de la página(Alternativa a la codificación rígida "Agent") -->
-    <string name="settings_agent_page_title">Agent</string>
+    <string name="settings_agent_page_title">Agente</string>
     <string name="settings_agent_proactive_subtitle">Agent Enviarte mensajes proactivos como una persona real.</string>
     <string name="settings_agent_group_pace">enviar ritmo</string>
     <string name="settings_agent_group_daily">Empuje diario</string>
@@ -411,7 +411,7 @@
     <string name="settings_rag_parser_mineru">MinerU</string>
     <string name="settings_rag_parser_mineru_subtitle">MinerU API, especializado en PDF/fórmula académica/Tabla (es necesario configurar la dirección de interfaz)</string>
     <string name="settings_rag_cloud_parser_endpoint">Dirección de la interfaz de resolución de la nube</string>
-    <string name="settings_rag_mineru_endpoint">MinerU endpoint</string>
+    <string name="settings_rag_mineru_endpoint">Punto de conexión de MinerU</string>
     <string name="settings_rag_mineru_token">MinerU Token(opcional)</string>
     <string name="settings_rag_notes_section">Descripción</string>
     <string name="settings_rag_note1">• Después de modificar los parámetros de fragmentación, los documentos recién importados se fragmentarán utilizando los nuevos parámetros.</string>

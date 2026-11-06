@@ -271,4 +271,5 @@
     <string name="proactive_kind_care">걱정</string>
     <string name="proactive_kind_share">공유</string>
     <string name="proactive_kind_milestone">기념일</string>
+    <string name="character_card_watermark">Muse로 제작 · museai.ltd</string>
 </resources>

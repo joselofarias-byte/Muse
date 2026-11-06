@@ -60,18 +60,24 @@ TLS red → npm Descomprimir → npm ejecutar → symlink exec(P1 Conceptos bás
 4. **El enlace de instalación está intacto.**: Del instalador "Punching extracted elf file”Simplemente haga un agujero en la página cero para guardar espacio.
    El contenido no tiene pérdidas (probado para ser consistente con md5).
 
-## Bloqueo de versión (2026-09)
+## Bloqueo de versión (2026-11-06)
 
 | componentes | versión | Fuente |
 |---|---|---|
-| Node.js | 24.18.0 LTS | Termux nodejs-lts 24.18.0-1 |
-| npm | 11.20.0 | Termux npm(all) |
+| Node.js | 26.13.0 | Termux nodejs |
+| npm | 12.2.2 | Termux npm(all) |
 | libc++ | 30 | Termux libc++ |
-| OpenSSL | 3.6.3 | Termux openssl |
-| c-ares | 1.34.8 | Termux c-ares |
+| OpenSSL | 3.6.5 | Termux openssl |
+| c-ares | 1.34.9 | Termux c-ares |
 | ICU | 78.3 | Termux libicu |
-| SQLite | 3.53.4 | Termux libsqlite |
-| zlib | 1.3.2 | Termux zlib |
+| SQLite | 3.54.1-1 | Termux libsqlite |
+| zlib | 1.4 | Termux zlib |
+
+Los SHA-256 de `SHA256SUMS` proceden de los índices oficiales `Packages` de
+`https://packages.termux.dev/apt/termux-main/dists/stable/main/binary-{aarch64,x86_64}/Packages`.
+Al actualizar versiones, actualice también este archivo. Las descargas y la caché se
+comprueban contra esos hashes; los errores HTTP y los archivos incompletos no se reutilizan.
+Los paquetes se extraen de nuevo para evitar reutilizar contenido de otra versión.
 
 > El binario en tiempo de ejecución es parte del proyecto GPLv3 y la fuente es el paquete precompilado oficial de Termux (cada componente conserva su original).
 > Licencia de código abierto), el script de compilación y el flujo de procesamiento se pueden encontrar en este directorio.
