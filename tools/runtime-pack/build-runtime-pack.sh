@@ -37,14 +37,14 @@ WORK="${MUSE_RUNTIME_WORK:-/tmp/muse-runtime-pack}"
 TERMUX_BASE="https://packages.termux.dev/apt/termux-main/pool/main"
 
 # ─── 版本锁定 ───────────────────────────────────────────────────────────────
-NODE_VER="26.12.1"
+NODE_VER="26.13.0"
 LIBCXX_VER="30"
 OPENSSL_VER="1%3A3.6.5"   # URL 中 ':' 需转义为 %3A
 CARES_VER="1.34.9"
 ICU_VER="78.3"
-SQLITE_VER="3.54.1"
-ZLIB_VER="1.3.2"
-NPM_VER="11.21.1"
+SQLITE_VER="3.54.1-1"
+ZLIB_VER="1.4"
+NPM_VER="12.2.2"
 LIBFFI_VER="3.8.0"
 
 # ─── 文件映射：源实体文件名 -> 输出名（jniLibs 只接受 lib*.so 命名） ────────
@@ -58,13 +58,13 @@ declare -A FILEMAP=(
   ["libicudata.so.78.3"]="libicudata.so"
   ["libffi.so"]="libffi.so"
   ["libsqlite3.54.1.so"]="libsqlite3.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
 )
 
 # ─── DT_NEEDED 映射：原字符串 -> 新名（含链接名与实体名两种形态） ───────────
 declare -A NEEDMAP=(
   ["libz.so.1"]="libz.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libssl.so.3"]="libssl.so"
   ["libicui18n.so.78"]="libicui18n.so"
@@ -73,7 +73,7 @@ declare -A NEEDMAP=(
   ["libicuuc.so.78.3"]="libicuuc.so"
   ["libicudata.so.78"]="libicudata.so"
   ["libicudata.so.78.3"]="libicudata.so"
-  ["libsqlite3.so.3.53.4"]="libsqlite3.so"
+  ["libsqlite3.so.3.54.1"]="libsqlite3.so"
 )
 
 # ─── Termux 包 URL 解析 ─────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ pkg_url() { # $1=包 key  $2=abi(arm64|x86_64|all)
 fetch_deb() { # $1=包 key $2=abi $3=目标文件
   if [ ! -f "$3" ]; then
     echo "  下载 $1 ($2) ..."
-    curl -sSL --retry 3 --connect-timeout 20 -o "$3" "$(pkg_url "$1" "$2")"
+    curl -fsSL --retry 3 --connect-timeout 20 -o "$3" "$(pkg_url "$1" "$2")"
   fi
 }
 
