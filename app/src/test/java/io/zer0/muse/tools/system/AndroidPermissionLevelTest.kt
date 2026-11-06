@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P3-3: [AndroidPermissionLevel] 单元测试 — 三通道权限等级逻辑。
+ * P3-3: [AndroidPermissionLevel] Pruebas unitarias — Lógica de nivel de autoridad de tres canales.
  */
 class AndroidPermissionLevelTest {
 

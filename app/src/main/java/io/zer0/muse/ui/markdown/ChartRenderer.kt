@@ -52,9 +52,9 @@ import kotlinx.serialization.builtins.serializer
 import kotlin.coroutines.resume
 
 /**
- * Mermaid 代码块关键字 — 用于 [isMermaidCodeBlock] 启发式识别。
+ * Mermaid palabra clave de bloque de código — usado para [isMermaidCodeBlock] Identificación heurística.
  *
- * 当代码块没有显式 ```mermaid 语言标识时,若代码以这些关键字开头,也判定为 Mermaid。
+ * Cuando el bloque de código no es explícitamente ```mermaid marca de idioma,Si el código comienza con estas palabras clave,También juzgada como Sirena.
  */
 private val MERMAID_KEYWORDS = arrayOf(
     "graph", "flowchart", "sequenceDiagram", "classDiagram",
@@ -62,38 +62,38 @@ private val MERMAID_KEYWORDS = arrayOf(
 )
 
 /**
- * PlantUML 源码起始标记 — 用于 [isPlantUmlCodeBlock] 启发式识别。
+ * PlantUML Etiqueta de inicio del código fuente — usado para [isPlantUmlCodeBlock] Identificación heurística.
  */
 private const val PLANTUML_START = "@startuml"
 
 /**
- * Mermaid/PlantUML 渲染失败时的最大重试次数。
- * 超过后回退到代码块纯文本展示,避免无限重试。
+ * Mermaid/PlantUML El número máximo de reintentos cuando falla la renderización.
+ * Volver a la visualización de texto sin formato del bloque de código después de exceder,Evite infinitos reintentos.
  */
 private const val MAX_RENDER_RETRY = 2
 
 /**
- * Mermaid WebView 高度轮询间隔(毫秒)。
- * mermaid.js 渲染为异步,需轮询 DOM 取实际高度与状态。
+ * Mermaid WebView intervalo de sondeo de altura(milisegundos).
+ * mermaid.js renderizar asíncrono,Es necesario sondear el DOM para obtener la altura y el estado reales.
  */
 private const val MERMAID_POLL_INTERVAL_MS = 150L
 
 /**
- * Mermaid WebView 高度轮询最大次数(超过判定为失败)。
- * 总等待时间约 = [MERMAID_POLL_INTERVAL_MS] * [MERMAID_POLL_MAX_ATTEMPTS]。
+ * Mermaid WebView Número máximo de encuestas de altura.(Si supera el límite, se considerará un fracaso.).
+ * El tiempo total de espera es de aprox. = [MERMAID_POLL_INTERVAL_MS] * [MERMAID_POLL_MAX_ATTEMPTS].
  */
 private const val MERMAID_POLL_MAX_ATTEMPTS = 40
 
 /**
- * 判断代码块是否为 Mermaid 图表。
+ * Determina si el bloque de código es un gráfico de sirena.
  *
- * 判定规则(满足任一即可):
- *  - 语言标识为 "mermaid"(大小写不敏感,去空白);
- *  - 代码首行非空内容以 [MERMAID_KEYWORDS] 中任一关键字开头。
+ * Reglas de decisión(Simplemente satisface a cualquiera):
+ *  - La lengua se identifica como "mermaid"(No distingue entre mayúsculas y minúsculas,Ir al espacio en blanco);
+ *  - El contenido no vacío en la primera línea de código comienza con [MERMAID_KEYWORDS] Comience con cualquiera de las palabras clave.
  *
- * @param lang 代码块声明的语言(可能为 null/空白)
- * @param code 代码块内容
- * @return true 表示应交给 [MermaidBlock] 渲染
+ * @param lang El idioma de la declaración del bloque de código.(Puede ser nulo/en blanco)
+ * @param code contenido del bloque de código
+ * @return true indica que debe ser entregado a [MermaidBlock] renderizado
  */
 fun isMermaidCodeBlock(lang: String?, code: String): Boolean {
     if (lang != null && lang.trim().equals("mermaid", ignoreCase = true)) return true
@@ -103,15 +103,15 @@ fun isMermaidCodeBlock(lang: String?, code: String): Boolean {
 }
 
 /**
- * 判断代码块是否为 PlantUML 图表。
+ * Determine si el bloque de código es un diagrama PlantUML.
  *
- * 判定规则(满足任一即可):
- *  - 语言标识为 "plantuml"(大小写不敏感,去空白);
- *  - 代码包含 [@startuml] 标记(PlantUML 源码必备)。
+ * Reglas de decisión(Simplemente satisface a cualquiera):
+ *  - La lengua se identifica como "plantuml"(No distingue entre mayúsculas y minúsculas,Ir al espacio en blanco);
+ *  - el código contiene [@startuml] marca(PlantUML Código fuente esencial).
  *
- * @param lang 代码块声明的语言(可能为 null/空白)
- * @param code 代码块内容
- * @return true 表示应交给 [PlantUmlBlock] 渲染
+ * @param lang El idioma de la declaración del bloque de código.(Puede ser nulo/en blanco)
+ * @param code contenido del bloque de código
+ * @return true indica que debe ser entregado a [PlantUmlBlock] renderizado
  */
 fun isPlantUmlCodeBlock(lang: String?, code: String): Boolean {
     if (lang != null && lang.trim().equals("plantuml", ignoreCase = true)) return true
@@ -119,36 +119,36 @@ fun isPlantUmlCodeBlock(lang: String?, code: String): Boolean {
 }
 
 /**
- * 渲染 Mermaid 图表 — 用 WebView 加载 mermaid.js(本地 assets,无网络依赖)。
+ * Representar un gráfico de sirena — Cargar con WebView mermaid.js(locales assets,Sin dependencia de la red).
  *
- * 实现要点:
- *  - 启用 JavaScript,禁用文件/内容访问(安全纵深);
- *  - WebView 背景透明,适配深/浅色气泡;
- *  - mermaid 内容用 JSON 编码注入,避免 XSS;
- *  - 渲染完成后用 evaluateJavascript 轮询取实际高度,自适应 Compose 高度;
- *  - 加载中显示 [CircularProgressIndicator];失败时显示错误信息 + "显示源码"按钮回退。
+ * Puntos de implementación:
+ *  - habilitar JavaScript,Deshabilitar archivos/Acceso al contenido(Profundidad de seguridad);
+ *  - WebView fondo transparente,Ajuste profundo/burbujas de luz;
+ *  - mermaid Contenido inyectado usando codificación JSON,evitar XSS;
+ *  - Una vez finalizada la renderización, utilice evaluaJavascript para sondear y obtener la altura real.,Altura de redacción adaptable;
+ *  - Mostrando cargando [CircularProgressIndicator];Mostrar mensaje de error en caso de falla + "Mostrar código fuente"botón para regresar.
  *
- * @param code Mermaid 源码(如 `graph TD; A-->B`)
+ * @param code Mermaid código fuente(Como por ejemplo `graph TD; A-->B`)
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MermaidBlock(code: String) {
-    // 渲染状态:0=加载中 1=成功 2=失败
+    // Estado de renderizado:0=Cargando 1=éxito 2=falló
     var renderState by remember(code) { mutableIntStateOf(0) }
-    // WebView 实际高度(px)
+    // WebView altura real(px)
     var contentHeightPx by remember(code) { mutableStateOf(0) }
-    // 是否回退到源码显示
+    // Si se debe recurrir a la visualización del código fuente
     var showSource by rememberSaveable(code) { mutableStateOf(false) }
-    // 重试计数(避免失败后无限重试)
+    // Recuento de reintentos(Evite infinitos reintentos después del fallo)
     var retryCount by remember(code) { mutableIntStateOf(0) }
-    // 触发重渲染的 key(retryCount 变化时让 AndroidView 重新执行 update)
+    // Activar renderizado key(retryCount Deje que AndroidView se vuelva a ejecutar cuando cambie update)
     var reloadKey by remember(code) { mutableIntStateOf(0) }
 
     val mermaidCd = stringResource(R.string.markdown_mermaid_cd, code.take(80))
-    // CONS-02: JS 错误文案前缀从字符串资源读取,JSON 编码成 JS 字符串字面量后嵌入模板
+    // CONS-02: JS El prefijo de copia de error se lee desde el recurso de cadena,JSON Codificar en cadena JS literal e incrustar en plantilla
     val renderFailedPrefix = stringResource(R.string.markdown_chart_render_failed_prefix)
 
-    // mermaid 源码 JSON 编码,安全注入 JS 字符串
+    // mermaid Codificación JSON del código fuente,Inyecte cadenas JS de forma segura
     val html = remember(code, renderFailedPrefix) {
         val encodedSrc = io.zer0.common.AppJson.encodeToString(String.serializer(), code)
         val encodedPrefix = io.zer0.common.AppJson.encodeToString(String.serializer(), renderFailedPrefix)
@@ -185,10 +185,10 @@ fun MermaidBlock(code: String) {
         """.trimIndent()
     }
 
-    // 持有 WebView 引用,用于轮询 DOM 状态
+    // Contiene una referencia de WebView,Se utiliza para sondear el estado de DOM.
     var webViewRef by remember(code) { mutableStateOf<WebView?>(null) }
 
-    // 轮询 WebView 渲染结果:成功取高度,失败标记错误
+    // Sondeo de resultados de renderizado de WebView:altura del éxito,Error de marca de falla
     LaunchedEffect(reloadKey) {
         if (renderState != 0) return@LaunchedEffect
         var attempts = 0
@@ -198,7 +198,7 @@ fun MermaidBlock(code: String) {
                 attempts++
                 continue
             }
-            // 用 suspendCancellableCoroutine 包装 evaluateJavascript,避免阻塞主线程
+            // Envolver con suspendCancellableCoroutine evaluateJavascript,Evite bloquear el hilo principal.
             val pollResult = suspendCancellableCoroutine { cont ->
                 wv.post {
                     if (cont.isCompleted) return@post
@@ -225,7 +225,7 @@ fun MermaidBlock(code: String) {
                     return@LaunchedEffect
                 }
                 pollResult.startsWith("'ok:") -> {
-                    // 解析高度:'ok:240' → 240
+                    // Altura de resolución:'ok:240' → 240
                     val heightStr = pollResult.removePrefix("'ok:").removeSuffix("'")
                     heightStr.toIntOrNull()?.let { contentHeightPx = it }
                     renderState = 1
@@ -240,21 +240,21 @@ fun MermaidBlock(code: String) {
             }
             attempts++
         }
-        // 超时未拿到结果,判定失败
+        // Se agotó el tiempo y no se obtuvieron resultados.,Decisión fallida
         renderState = 2
     }
 
-    // 外层卡片:与 RichContentCard 风格一致(surfaceVariant 半透明背景 + medium 圆角)
+    // tarjeta exterior:Consistente con el estilo RichContentCard(surfaceVariant fondo translúcido + esquinas redondeadas medianas)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         shape = MuseShapes.medium,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(MusePaddings.contentGap)) {
-            // 头部标签
+            // etiqueta de encabezado
             ChartHeader(label = stringResource(R.string.markdown_mermaid_label))
             when {
-                // 回退显示源码:展示原始代码 + 重试按钮
+                // Alternativa para mostrar el código fuente:Mostrar código original + botón de reintento
                 showSource -> {
                     ChartSourceView(code = code, onRetry = {
                         showSource = false
@@ -264,7 +264,7 @@ fun MermaidBlock(code: String) {
                     })
                 }
                 renderState == 2 -> {
-                    // 渲染失败:错误信息 + 显示源码按钮(失败次数未达上限时附加重试按钮)
+                    // Error de renderizado:Mensaje de error + botón mostrar fuente(Agregue un botón de reintento cuando la cantidad de fallas no alcance el límite superior)
                     ChartErrorView(
                         message = stringResource(R.string.markdown_chart_render_failed),
                         onShowSource = { showSource = true },
@@ -280,14 +280,14 @@ fun MermaidBlock(code: String) {
                     )
                 }
                 else -> {
-                    // 加载中 / 成功:WebView 渲染
+                    // Cargando / Exitoso:WebView renderizado
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 200.dp)
                             .then(
                                 if (contentHeightPx > 0) {
-                                    // 上报值是 WebView 的 CSS px，与 dp 同量级，不能再除密度。
+                                    // El valor informado es el CSS px de WebView, que tiene la misma magnitud que dp y no se puede dividir por densidad.
                                     Modifier.height(contentHeightPx.dp)
                                 } else {
                                     Modifier
@@ -295,9 +295,9 @@ fun MermaidBlock(code: String) {
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // v1.88 修复: 改用 LifecycleAwareWebViewContainer,自动处理 ON_PAUSE/ON_RESUME/ON_DESTROY,
-                        // 解决 Activity 后台时 mermaid.js 渲染相关 JS 定时器继续运行耗电的问题。
-                        // 通过 onWebViewCreated / onWebViewReleased 维护 webViewRef 供轮询使用。
+                        // v1.88 Reparación: Usar en su lugar LifecycleAwareWebViewContainer,Procesamiento automático ON_PAUSE/ON_RESUME/ON_DESTROY,
+                        // Resuelva el problema de que el temporizador JS relacionado con el renderizado de mermaid.js continúa ejecutándose cuando la actividad está en segundo plano y consume energía.
+                        // Mantenga webViewRef para realizar encuestas a través de onWebViewCreated/onWebViewReleased.
                         LifecycleAwareWebViewContainer(
                             htmlContent = html,
                             baseUrl = "file:///android_asset/",
@@ -308,7 +308,7 @@ fun MermaidBlock(code: String) {
                                 .fillMaxWidth()
                                 .semantics { contentDescription = mermaidCd },
                         )
-                        // 加载中浮层:WebView 渲染完成前显示进度
+                        // Cargando capa flotante:WebView Mostrar el progreso antes de que se complete el renderizado
                         if (renderState == 0) {
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -339,44 +339,44 @@ fun MermaidBlock(code: String) {
 }
 
 /**
- * 渲染 PlantUML 图表 — 用 Coil 异步加载 plantuml.com 服务端返回的 SVG。
+ * Representación de diagramas PlantUML — Utilice Coil para cargar de forma asincrónica el SVG devuelto por el servidor plantuml.com.
  *
- * 实现要点:
- *  - URL 用 `~1` 前缀简单模式:`https://www.plantuml.com/plantuml/svg/~1{URL_ENCODED_TEXT}`,
- *    PlantUML 服务端会直接对 URL 编码后的文本做渲染,无需客户端 deflate 编码;
- *  - Phase 2 隐私修复: PlantUML 本地渲染成本过高(需打包 plantuml.jar/Graphviz),
- *    服务端渲染则会把图表源码发送到第三方 plantuml.com,因此默认不发起请求 —
- *    先展示明确的联网/第三方提示,用户点击"仍要联网渲染"后才加载,不再静默外发;
- *  - 用 Coil [AsyncImage] 异步加载,加载中显示 [CircularProgressIndicator],
- *    失败时显示错误信息 + "显示源码"按钮回退。
+ * Puntos de implementación:
+ *  - URL usar `~1` modo simple prefijo:`https://www.plantuml.com/plantuml/svg/~1{URL_ENCODED_TEXT}`,
+ *    PlantUML El servidor representará directamente el texto codificado en URL.,No se requiere codificación desinflada del lado del cliente;
+ *  - Phase 2 Solución de privacidad: PlantUML Los costos de renderizado local son demasiado altos(Necesita ser empacado plantuml.jar/Graphviz),
+ *    La representación del lado del servidor enviará el código fuente del gráfico a un tercero. plantuml.com,Por lo tanto, no se inicia ninguna solicitud por defecto. —
+ *    Mostrar redes claras primero/Consejos de terceros,Clics del usuario"Todavía es necesario renderizarlo en línea."Cargar solo más tarde,No más salir en silencio;
+ *  - usar Coil [AsyncImage] Carga asincrónica,Mostrando cargando [CircularProgressIndicator],
+ *    Mostrar mensaje de error en caso de falla + "Mostrar código fuente"botón para regresar.
  *
- * 已知限制: `~1` 模式对超长源码(>4KB URL 长度限制)不支持,需要走 deflate 编码;
- *           99% 的 LLM 输出图表在限制内,此处简化处理。
+ * Limitaciones conocidas: `~1` Par de patrones para código fuente súper largo(>4KB URL límite de longitud)No compatible,Necesidad de utilizar codificación desinflada;
+ *           99% El gráfico de resultados de LLM está dentro de los límites.,Procesamiento simplificado aquí.
  *
- * @param code PlantUML 源码(含或不含 @startuml/@enduml 标记均可)
+ * @param code PlantUML código fuente(Se puede utilizar con o sin etiquetas @startuml/@enduml)
  */
 @Composable
 fun PlantUmlBlock(code: String) {
     val context = LocalContext.current
-    // 是否回退到源码显示
+    // Si se debe recurrir a la visualización del código fuente
     var showSource by rememberSaveable(code) { mutableStateOf(false) }
-    // 加载状态:0=加载中 1=成功 2=失败
+    // Estado de carga:0=Cargando 1=éxito 2=falló
     var loadState by remember(code) { mutableIntStateOf(0) }
-    // Phase 2: 是否已获得用户对"源码发送到第三方服务"的明确同意(不静默外发)
+    // Phase 2: Si el usuario ha obtenido el"Enviar código fuente a un servicio de terceros"consentimiento expreso(No envíes en silencio)
     var allowRemoteRender by rememberSaveable(code) { mutableStateOf(false) }
 
-    // 构造 PlantUML 服务端 URL(~1 模式:直接传 URL-encoded 文本)
+    // Construyendo el servidor PlantUML URL(~1 modo:Pasar texto codificado en URL directamente)
     val imageUrl = remember(code) { buildPlantUmlUrl(code) }
     val plantumlCd = stringResource(R.string.markdown_plantuml_cd, code.take(80))
 
-    // 外层卡片:与 RichContentCard 风格一致(surfaceVariant 半透明背景 + medium 圆角)
+    // tarjeta exterior:Consistente con el estilo RichContentCard(surfaceVariant fondo translúcido + esquinas redondeadas medianas)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         shape = MuseShapes.medium,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(MusePaddings.contentGap)) {
-            // 头部标签
+            // etiqueta de encabezado
             ChartHeader(label = stringResource(R.string.markdown_plantuml_label))
             when {
                 showSource -> {
@@ -392,7 +392,7 @@ fun PlantUmlBlock(code: String) {
                         onRetry = { loadState = 0 },
                     )
                 }
-                // Phase 2: 未经用户同意不向第三方发送源码,先显示显式提示
+                // Phase 2: No envíe código fuente a terceros sin el consentimiento del usuario,Mostrar mensaje explícito primero
                 !allowRemoteRender -> {
                     PlantUmlRemoteNotice(
                         onRender = {
@@ -454,8 +454,8 @@ fun PlantUmlBlock(code: String) {
 }
 
 /**
- * Phase 2: PlantUML 远程渲染前的显式提示 — 说明需要联网且源码会发送到第三方服务,
- * 用户点击后才发起请求,避免静默外发。
+ * Phase 2: PlantUML Aviso explícito antes del renderizado remoto — Tenga en cuenta que se requiere una conexión a Internet y el código fuente se enviará a un servicio de terceros.,
+ * La solicitud se inicia después de que el usuario hace clic.,Evite los mensajes salientes silenciosos.
  */
 @Composable
 private fun PlantUmlRemoteNotice(onRender: () -> Unit) {
@@ -475,7 +475,7 @@ private fun PlantUmlRemoteNotice(onRender: () -> Unit) {
                 text = stringResource(R.string.markdown_plantuml_render_online),
                 onClick = onRender,
                 variant = IosCapsuleButtonVariant.Secondary,
-                // v2.x: 在线渲染图标修正为 globe(联网语义)
+                // v2.x: El icono de renderizado en línea se corrige a globe(semántica de redes)
                 leadingIcon = MuseIcons.globe,
                 fillWidth = false,
             )
@@ -484,25 +484,25 @@ private fun PlantUmlRemoteNotice(onRender: () -> Unit) {
 }
 
 /**
- * 构造 PlantUML 服务端渲染 URL(~1 简单模式)。
+ * Construyendo renderizado del lado del servidor PlantUML URL(~1 modo sencillo).
  *
- * PlantUML 服务端支持 `~1` 前缀直接传 URL-encoded 文本:
+ * PlantUML Soporte de servidor `~1` El prefijo se pasa directamente al texto codificado en URL.:
  *  - GET https://www.plantuml.com/plantuml/svg/~1{URL_ENCODED_TEXT}
- *  - 服务端会自动识别 @startuml/@enduml,缺省时补全
+ *  - El servidor reconocerá automáticamente @startuml/@enduml,Completo por defecto
  *
- * 对超长源码(超过 URL 安全长度约 4KB),返回空串让加载失败回退到源码。
+ * Para código fuente extremadamente largo(Supera la longitud segura de la URL aprox. 4KB),Devuelve una cadena vacía para recurrir al código fuente si falla la carga.
  */
 private fun buildPlantUmlUrl(code: String): String {
-    // 若源码未显式包含 @startuml,补上(PlantUML 服务端要求)
+    // Si el código fuente no incluye explícitamente @startuml,maquillar(PlantUML Requisitos del servidor)
     val normalized = if (code.contains(PLANTUML_START)) code else "@startuml\n$code\n@enduml"
     val encoded = Uri.encode(normalized)
-    // URL 长度安全限制:超过 4000 字符放弃服务端渲染,让 Coil 触发失败回退
+    // URL Límite de seguridad de longitud:Abandonar la representación del lado del servidor por encima de 4000 caracteres,Permitir que la bobina active el respaldo de falla
     if (encoded.length > 4000) return ""
     return "https://www.plantuml.com/plantuml/svg/~1$encoded"
 }
 
 /**
- * 图表卡片头部标签 — 小号 outline 色文字,与 [RichContentCard] 风格一致。
+ * Etiqueta de encabezado de tarjeta de carta — Texto en color de contorno pequeño,con [RichContentCard] Estilo consistente.
  */
 @Composable
 private fun ChartHeader(label: String) {
@@ -515,7 +515,7 @@ private fun ChartHeader(label: String) {
 }
 
 /**
- * 图表渲染失败视图 — 显示错误信息 + "显示源码"按钮(+ 可选"重试"按钮)。
+ * Vista fallida en la representación del gráfico — Mostrar mensaje de error + "Mostrar código fuente"botón(+ Opcional"Inténtalo de nuevo"botón).
  */
 @Composable
 private fun ChartErrorView(message: String, onShowSource: () -> Unit, onRetry: (() -> Unit)? = null) {
@@ -556,7 +556,7 @@ private fun ChartErrorView(message: String, onShowSource: () -> Unit, onRetry: (
 }
 
 /**
- * 图表源码回退视图 — 等宽字体展示原始代码 + "重试"按钮。
+ * Vista alternativa del código fuente del gráfico — La fuente monoespaciada muestra el código original + "Inténtalo de nuevo"botón.
  */
 @Composable
 private fun ChartSourceView(code: String, onRetry: () -> Unit) {

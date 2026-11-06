@@ -29,13 +29,13 @@ import io.zer0.muse.ui.theme.MuseShapes
 import java.io.File
 
 /**
- * 文件附件芯片 — 显示在工具调用结果下方。
+ * Chip para archivos adjuntos — Se muestra debajo de los resultados de la llamada de la herramienta.
  *
- * 点击用 FileProvider 或 ACTION_VIEW 打开文件。
+ * Haga clic para abrir el archivo con FileProvider o ACTION_VIEW.
  *
- * @param filePath 沙盒内文件的绝对路径
- * @param fileSize 文件字节数(可选,显示尺寸)
- * @param modifier 修饰符
+ * @param filePath Ruta absoluta al archivo dentro del sandbox
+ * @param fileSize bytes de archivo(Opcional,tamaño de pantalla)
+ * @param modifier modificador
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,19 +45,19 @@ fun AttachmentChip(filePath: String, fileSize: Long? = null, modifier: Modifier 
     val fileName = file.name
     val ext = file.extension.lowercase()
 
-    // 根据扩展名选图标
+    // Elija el icono según la extensión
     val icon = when (ext) {
         "txt", "md", "json", "xml", "csv", "log" -> MuseIcons.fileText
         "png", "jpg", "jpeg", "gif", "webp", "bmp" -> MuseIcons.image
         else -> MuseIcons.paperclip
     }
 
-    // 格式化文件大小
+    // Formatear el tamaño del archivo
     val sizeText = fileSize?.let { formatFileSize(it) } ?: ""
 
     Surface(
         onClick = {
-            // 尝试用 FileProvider 打开文件
+            // Intente abrir el archivo con FileProvider
             try {
                 val uri = getFileUri(context, file)
                 val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -76,9 +76,9 @@ fun AttachmentChip(filePath: String, fileSize: Long? = null, modifier: Modifier 
     ) {
         Row(
             modifier = Modifier
-                // H-AC1: 点击区域高度不足 48dp,补 heightIn(min=touchTarget) 满足最小触摸目标。
+                // H-AC1: El área de clic no es lo suficientemente alta. 48dp,suplemento heightIn(min=touchTarget) Cumple con los objetivos mínimos de contacto.
                 .heightIn(min = MuseIconSizes.touchTarget)
-                // L-AC2: 裸 12/8/20 替换为 MusePaddings / MuseIconSizes 令牌。
+                // L-AC2: Desnudo 8/12/20 Reemplazado con tokens MusePaddings / MuseIconSizes.
                 .padding(horizontal = MusePaddings.inputPadding, vertical = MusePaddings.contentGap),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -109,10 +109,10 @@ fun AttachmentChip(filePath: String, fileSize: Long? = null, modifier: Modifier 
     }
 }
 
-/** 格式化文件大小为可读字符串。 */
+/** Formatee el tamaño del archivo como una cadena legible. */
 private fun formatFileSize(bytes: Long): String = FileSizeFormatter.format(bytes)
 
-/** 根据扩展名返回 MIME 类型。 */
+/** Devuelve el tipo MIME según la extensión. */
 private fun getMimeType(ext: String): String {
     return when (ext) {
         "txt" -> "text/plain"
@@ -130,7 +130,7 @@ private fun getMimeType(ext: String): String {
     }
 }
 
-/** 通过 FileProvider 拿到可被其它应用读取的 content Uri。 */
+/** Obtenga el URI de contenido que otras aplicaciones pueden leer a través de FileProvider. */
 private fun getFileUri(context: android.content.Context, file: java.io.File): Uri {
     return FileProvider.getUriForFile(
         context,

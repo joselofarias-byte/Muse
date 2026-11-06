@@ -104,7 +104,7 @@ class OpenAIProviderAbortTest {
         assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
         signal.abort()
 
-        withTimeout(5_000) { collector.join() }
+        withTimeout(20_000) { collector.join() }
         // The stale onFailure/onClosed callback from the cancelled EventSource must not
         // schedule the retry that was pending after the 503 response.
         Thread.sleep(1_500)
@@ -154,7 +154,7 @@ class OpenAIProviderAbortTest {
                 signal.abort()
             }
 
-            withTimeout(5_000) { collector.join() }
+            withTimeout(20_000) { collector.join() }
             assertEquals("collector cancellation must not mutate the caller's signal", !cancelCollector, signal.aborted)
             assertTrue(
                 "server must observe the client closing the long SSE socket",

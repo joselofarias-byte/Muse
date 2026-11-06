@@ -12,32 +12,32 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /**
- * Phase 8.6: 本地 OCR 管理器(ML Kit Text Recognition v2,中英文)。
+ * Phase 8.6: Administrador de OCR local(ML Kit Text Recognition v2,chino e ingles).
  *
- * - 离线识别(模型随 APK 打包,首次使用时由 GMS 下载并缓存到设备)
- * - 支持中文 + 拉丁字符(单一依赖 `text-recognition-chinese` 即可)
- * - 输入: URI(Bitmap 解码) 或 Bitmap
- * - 输出: 拼接后的纯文本(段落间换行)
+ * - Identificación fuera de línea(Los modelos están empaquetados con el APK.,Descargado por GMS y almacenado en caché en el dispositivo en el primer uso)
+ * - Admite caracteres chinos + latinos(dependencia única `text-recognition-chinese` Eso es todo)
+ * - entrada: URI(Bitmap decodificar) o Bitmap
+ * - salida: Texto plano concatenado(Saltos de línea entre párrafos)
  *
- * 局限:
- *  - ML Kit 依赖 Google Play services(国产 ROM 可能需手动安装 GMS)
- *  - 首次使用会触发模型下载(~20MB)
- *  - 不支持手写体识别(ML Kit 单独的手写模型,未集成)
+ * limitaciones:
+ *  - ML Kit depender de Google Play services(Es posible que sea necesario instalar manualmente las ROM nacionales GMS)
+ *  - El primer uso activará la descarga del modelo.(~20MB)
+ *  - No admite el reconocimiento de escritura a mano(ML Kit Modelo de escritura a mano separada,No integrado)
  */
 class OcrManager {
 
-    // L-OCR2: recognizer 随 App 生命周期常驻(lazy 单例),暂不 close()。
-    // TextRecognizer.close() 会释放模型资源,但重新创建需重新加载模型(首次有下载开销),
-    // 对频繁 OCR 场景得不偿失。若未来需精细管理内存,可在 Activity onDestroy 中 close。
+    // L-OCR2: recognizer Permanente con el ciclo de vida de la aplicación.(lazy singleton),todavía no close().
+    // TextRecognizer.close() Lanzará recursos modelo.,Pero recrear requiere recargar el modelo.(Hay una sobrecarga de descarga por primera vez.),
+    // La ganancia supera la ganancia en escenarios frecuentes de OCR. Si necesita administrar la memoria con cuidado en el futuro,Se puede cerrar en Actividad onDestroy.
     private val recognizer by lazy {
         TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
     }
 
     /**
-     * 从 URI 识别文本(自动读取 EXIF 旋转元数据校正方向)。
-     * @param uri 图片 URI(SAF / 相册 / 相机均可用)
-     * @param context 用于 ContentResolver
-     * @return 识别出的纯文本;失败返回空字符串
+     * Identificar texto de URI(Lee automáticamente los metadatos de rotación EXIF para corregir la orientación).
+     * @param uri fotos URI(SAF / Disponible en álbum de fotos/cámara)
+     * @param context usado para ContentResolver
+     * @return Texto plano reconocido;Devuelve una cadena vacía en caso de error
      */
     suspend fun recognize(uri: Uri, context: Context): String {
         val rotation = readExifRotation(uri, context)
@@ -46,10 +46,10 @@ class OcrManager {
     }
 
     /**
-     * 从 Bitmap 识别文本(使用指定旋转角度校正方向)。
-     * @param bitmap 输入位图
-     * @param rotationDegrees 旋转角度(0/90/180/270),由 EXIF 元数据计算
-     * @return 识别出的纯文本;失败返回空字符串
+     * Reconocer texto de mapa de bits(Orientación correcta utilizando el ángulo de rotación especificado).
+     * @param bitmap mapa de bits de entrada
+     * @param rotationDegrees ángulo de rotación(0/90/180/270),Calculado a partir de metadatos EXIF
+     * @return Texto plano reconocido;Devuelve una cadena vacía en caso de error
      */
     suspend fun recognize(bitmap: Bitmap, rotationDegrees: Int = 0): String = suspendCancellableCoroutine { cont ->
         val image = InputImage.fromBitmap(bitmap, rotationDegrees)
@@ -66,13 +66,13 @@ class OcrManager {
                 cont.resume(sb.toString())
             }
             .addOnFailureListener { e ->
-                Logger.w("OcrManager", "OCR 识别失败: ${e.message}", e)
+                Logger.w("OcrManager", "OCR El reconocimiento falló: ${e.message}", e)
                 cont.resume("")
             }
         cont.invokeOnCancellation { }
     }
 
-    /** 读取 URI 指向的图片 EXIF 旋转元数据,返回旋转角度(0/90/180/270)。读取失败返回 0。 */
+    /** Leer los metadatos de rotación EXIF de la imagen señalada por el URI,Devuelve el ángulo de rotación.(0/90/180/270). Devuelve 0 si la lectura falla. */
     private fun readExifRotation(uri: Uri, context: Context): Int {
         return runCatching {
             val input = context.contentResolver.openInputStream(uri) ?: return@runCatching 0
@@ -93,24 +93,24 @@ class OcrManager {
         }.getOrNull() ?: 0
     }
 
-    /** 解码 URI 为 Bitmap;自动按目标尺寸缩放(防 OOM)。 */
+    /** Decodificar el URI para Bitmap;Escalar automáticamente al tamaño objetivo(protegerse contra OOM). */
     private fun decodeBitmap(uri: Uri, context: Context): Bitmap? {
         return runCatching {
             val resolver = context.contentResolver
             val input = resolver.openInputStream(uri) ?: return null
             input.use {
-                // 第一遍:仅解码尺寸
+                // primera vez:Solo tamaño de decodificación
                 val opts = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
                 BitmapFactory.decodeStream(input, null, opts)
-                // 计算 inSampleSize:最长边 ≤ 2048(OCR 不需要超高清)
+                // Calcular en Tamaño de muestra: lado más largo ≤ 2048(OCR No hay necesidad de ultra alta definición)
                 val target = 2048
                 var sample = 1
                 while (opts.outWidth / sample > target || opts.outHeight / sample > target) {
                     sample *= 2
                 }
-                // 第二遍:实际解码
+                // segunda vez:decodificación real
                 val decodeOpts = BitmapFactory.Options().apply {
                     inSampleSize = sample
                 }
@@ -119,8 +119,8 @@ class OcrManager {
                 }
             }
         }.recoverCatching { e ->
-            // L-OCR4: 解码失败记日志,避免静默返回 null 难以排查
-            Logger.w("OcrManager", "Bitmap 解码失败: uri=$uri, ${e.message}", e)
+            // L-OCR4: Registro de errores de decodificación,Evite devolver nulo silenciosamente, lo cual es difícil de solucionar
+            Logger.w("OcrManager", "Bitmap Falló la decodificación: uri=$uri, ${e.message}", e)
             null
         }.getOrNull()
     }

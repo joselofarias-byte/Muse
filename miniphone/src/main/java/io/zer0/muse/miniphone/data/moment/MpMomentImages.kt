@@ -3,21 +3,21 @@ package io.zer0.muse.miniphone.data.moment
 import org.json.JSONArray
 
 /**
- * 动态图片列表与 `imagesJson` 的互转。
+ * Lista de imágenes dinámica con `imagesJson` de transferencia mutua.
  *
- * 库里只存一段 JSON 文本(一行最多九张),不让 Room 多一张关联表:
- * 图片没有自己的生命周期,删动态就该跟着消失,存成文本最省事。
- * 解析失败一律当「没有图」处理 —— 一条脏数据不该让整段动态读不出来。
+ * La biblioteca solo almacena un fragmento de texto JSON.(Máximo de nueve imágenes seguidas.),No permitir que Room tenga una tabla relacionada más:
+ * Las imágenes no tienen su propio ciclo de vida.,Si elimina una actualización, debería desaparecer.,Guardarlo como texto es lo más fácil de hacer.
+ * Los errores de análisis siempre se tratarán como "sin imagen". —— Un dato sucio no debería hacer que todo el segmento dinámico sea ilegible.
  */
 
-/** 图片路径列表 → `imagesJson`;空列表存 `[]`。 */
+/** Lista de rutas de imágenes → `imagesJson`;Almacenamiento de lista vacía `[]`. */
 internal fun encodeMomentImages(images: List<String>): String {
     val array = JSONArray()
     images.forEach { path -> array.put(path) }
     return array.toString()
 }
 
-/** `imagesJson` → 图片路径列表;空串、空数组、坏文本都得到空列表。 */
+/** `imagesJson` → Lista de rutas de imágenes;Las cadenas vacías, las matrices vacías y el texto incorrecto obtienen listas vacías. */
 internal fun decodeMomentImages(json: String?): List<String> {
     if (json.isNullOrBlank()) return emptyList()
     return runCatching {

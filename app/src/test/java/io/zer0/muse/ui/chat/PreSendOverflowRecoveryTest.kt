@@ -11,15 +11,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * 发送前上下文溢出自救（ChatGenerationController）的单测。
+ * Auto-rescate de desbordamiento de contexto antes de enviar (ChatGenerationController) prueba única.
  *
- * 拦截本身不被移除，只是在它前面加一次「压缩 + 重估」：
- *  - 命中拦截 → 压一轮 → 重新估算 → 不超了就正常发送；
- *  - 压完仍超 / 压不动 → 保持拦截，报原错误（文案不变）；
- *  - 全程只压一次，不重试。
+ * La intercepción en sí no se elimina, sólo se le antepone "compresión + revaluación":
+ *  - intercepción de golpe → Presione una ronda → Reestimar → Si no supera el límite, envíalo normalmente;
+ *  - Aún se excede después de presionar/no puedo presionar → Continúe interceptando e informe el error original (la copia permanece sin cambios);
+ *  - Solo presiona una vez en todo el proceso, no hay reintentos.
  *
- * 闸门与运行中那条（[ContextOverflowRecoveryTest]）刻意**独立**：一个是本地估算，
- * 一个是 provider 真实拒绝，两种触发源（理由见 ChatGenerationController 内的注释）。
+ * El portón y el que está en funcionamiento ([ContextOverflowRecoveryTest]) deliberadamente**independiente**: Uno es la estimación local,
+ * Uno es un rechazo real por parte del proveedor y hay dos fuentes desencadenantes (consulte los comentarios en ChatGenerationController para conocer los motivos).
  */
 class PreSendOverflowRecoveryTest {
 
@@ -45,7 +45,7 @@ class PreSendOverflowRecoveryTest {
 
         assertEquals(1, compressCalls)
         assertEquals(1, overflowChecks)
-        assertEquals("压完不超窗就正常发送", compressed, recovered)
+        assertEquals("Después de presionar se enviará normalmente sin exceder la ventana.", compressed, recovered)
     }
 
     @Test
@@ -67,9 +67,9 @@ class PreSendOverflowRecoveryTest {
                 },
             )
 
-        assertNull("压完仍超窗 → 保持拦截,报原错误", recovered)
+        assertNull("Después de presionar, todavía excede la ventana. → sigue interceptando,Informar error original", recovered)
         assertEquals(1, compressCalls)
-        assertEquals("重估一次即可,不反复压", 1, overflowChecks)
+        assertEquals("Solo revalúa una vez,No presione repetidamente", 1, overflowChecks)
     }
 
     @Test
@@ -90,14 +90,14 @@ class PreSendOverflowRecoveryTest {
                     false
                 },
             )
-        assertNull("压缩不可用 / 腾不出空间 → 直接报错", unavailable)
+        assertNull("La compresión no está disponible/no se puede liberar espacio → Informar un error directamente", unavailable)
 
         val unchanged =
             recoverPreSendOverflow(
                 history = original,
                 compress = {
                     compressCalls++
-                    // 压缩器原样返回的折算结果在调用方是 null，这里也覆盖"条数没变"
+                    // El resultado de la conversión devuelto por el compresor tal como está es nulo para la persona que llama, lo cual también se trata aquí."El número de artículos no ha cambiado."
                     original
                 },
                 stillOverflows = {
@@ -105,10 +105,10 @@ class PreSendOverflowRecoveryTest {
                     false
                 },
             )
-        assertNull("没压短 → 不自救", unchanged)
+        assertNull("No corto → No te salves", unchanged)
 
         assertEquals(2, compressCalls)
-        assertEquals("没压短就不必再估一次 payload", 0, overflowChecks)
+        assertEquals("Si no está en corto, no es necesario volver a evaluarlo. payload", 0, overflowChecks)
     }
 
     @Test
@@ -123,21 +123,21 @@ class PreSendOverflowRecoveryTest {
                 ?: error("ChatGenerationController.kt not found")
 
         val recoveryIndex = source.indexOf("recoverPreSendOverflow(")
-        // 用单行锚点定位（文件是 CRLF，跨行文本拼接会匹配不到）
+        // Utilice un posicionamiento de anclaje de una sola línea (el archivo es CRLF y el empalme de texto entre líneas no coincidirá)
         val blockIndex = source.indexOf("contextOverflowBlocked = true")
-        assertTrue("未找到发送前自救调用", recoveryIndex > 0)
-        assertTrue("未找到拦截置位", blockIndex > 0)
-        assertTrue("自救必须发生在拦截置位之前", recoveryIndex < blockIndex)
+        assertTrue("No se encontró la llamada de autorrescate previa al envío", recoveryIndex > 0)
+        assertTrue("Conjunto de intercepción no encontrado", blockIndex > 0)
+        assertTrue("El autorrescate debe ocurrir antes de que se establezca la intercepción.", recoveryIndex < blockIndex)
 
         val block = source.substring(recoveryIndex, blockIndex)
-        assertTrue("压完要回写历史", block.contains("truncatedHistory = compressedHistory"))
-        // 只断言"用压缩后的 candidate 重估"这个语义；不绑定调用写法（第 37 轮给这次估算
-        // 加了共用计数缓存，参数变多，原锚点要求单行完整调用，会把纯格式变化当成回归）。
-        assertTrue("压完要重新估算 payload", block.contains("prefixMessages + candidate"))
+        assertTrue("Una vez que se acabe la presión, tendré que volver a escribir la historia.", block.contains("truncatedHistory = compressedHistory"))
+        // sólo afirmar"Reevaluar utilizando candidatos comprimidos"Esta semántica; Método de escritura de llamadas independientes (la ronda 37 proporciona esta estimación).
+        // Con la adición de una caché de recuento compartida, hay más parámetros. El ancla original requiere una llamada completa en una sola línea y los cambios de formato puro se considerarán regresión).
+        assertTrue("Reestimar después de presionar payload", block.contains("prefixMessages + candidate"))
 
-        // 拦截仍然保留（最末安全网），只是前面多了一次自救
-        assertTrue("拦截不得被移除", block.contains("if (compressedHistory != null)"))
-        assertTrue("拦截文案路径仍在", source.substring(blockIndex).contains("refuse to send"))
+        // La intercepción aún se conserva (la red de seguridad final), pero hay un autorrescate adicional al frente.
+        assertTrue("No se deben quitar los bloques", block.contains("if (compressedHistory != null)"))
+        assertTrue("El camino de la redacción publicitaria de interceptación sigue ahí", source.substring(blockIndex).contains("refuse to send"))
     }
 
     private fun historyOf(size: Int): List<UIMessage> = (1..size).map { index ->

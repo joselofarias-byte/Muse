@@ -38,7 +38,7 @@ class ToolTraceSummaryTest {
         assertEquals(1, search.failureCount)
         assertEquals(1, search.runningCount)
         assertTrue(search.shouldExpandByDefault)
-        // I18N 契约: 状态文案在 UI 走 stringResource;纯函数/无 res 时返回空串而非硬编码中文
+        // I18N contrato: La copia de estado se mueve en la interfaz de usuario stringResource;función pura/Cuando no hay resolución, se devuelve una cadena vacía en lugar de chino codificado.
         assertEquals("", search.latestSummary)
 
         val write = summaries.last()

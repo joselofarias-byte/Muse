@@ -136,15 +136,15 @@ import kotlinx.serialization.builtins.serializer
 import java.io.ByteArrayOutputStream
 
 /**
- * 群聊消息气泡 — 区分 user(右侧)/ assistant(左侧 + 头像)。
+ * Burbuja de mensaje de chat grupal — distinguir user(lado derecho)/ assistant(Izquierda + avatar).
  *
- * @param message 消息实体
- * @param assistants 全部助手列表(查找头像用)
- * @param chatPrefs 聊天偏好(控制 mood/reasoning 显示与默认展开)
- * @param isMoodExpanded mood 块外部受控展开状态(null 表示使用默认)
- * @param isReasoningExpanded reasoning 块外部受控展开状态(null 表示使用默认)
- * @param onToggleMoodExpanded mood 块展开切换回调
- * @param onToggleReasoningExpanded reasoning 块展开切换回调
+ * @param message entidad de mensaje
+ * @param assistants Lista de todos los asistentes(Para encontrar avatares)
+ * @param chatPrefs Preferencias de chat(Controlar la visualización del estado de ánimo/razonamiento y la expansión predeterminada)
+ * @param isMoodExpanded mood Estado de expansión controlada fuera del bloque.(null Indica que se utiliza el valor predeterminado)
+ * @param isReasoningExpanded reasoning Estado de expansión controlada fuera del bloque.(null Indica que se utiliza el valor predeterminado)
+ * @param onToggleMoodExpanded mood Devolución de llamada de alternancia de expansión de bloque
+ * @param onToggleReasoningExpanded reasoning Devolución de llamada de alternancia de expansión de bloque
  */
 @Composable
 internal fun GroupChatMessageBubble(
@@ -155,22 +155,22 @@ internal fun GroupChatMessageBubble(
     isReasoningExpanded: Boolean? = null,
     onToggleMoodExpanded: () -> Unit = {},
     onToggleReasoningExpanded: () -> Unit = {},
-    // v1.77: 长按弹出操作菜单(复制 / 删除)
+    // v1.77: Mantenga presionado para que aparezca el menú de operación.(copiar/eliminar)
     onLongClick: (Rect, Offset?) -> Unit = { _, _ -> },
-    // v1.0.74 fix (前端审计 1.4): 搜索跳转高亮 — 目标消息短暂高亮提示用户定位
+    // v1.0.74 fix (Auditoría inicial 1.4): Resaltado de salto de búsqueda — El mensaje de destino se resalta brevemente para solicitar al usuario que lo localice.
     highlighted: Boolean = false,
-    // v1.x: 多选模式
+    // v1.x: Modo de selección múltiple
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onSelectToggle: () -> Unit = {},
-    /** HTML/SVG 代码块全屏预览回调。 */
+    /** HTML/SVG Bloqueo de código de devolución de llamada de vista previa de pantalla completa. */
     onHtmlPreview: (String) -> Unit = {},
     /**
-     * 卡片回传回调。
+     * Devolución de llamada de devolución de tarjeta.
      *
-     * 群聊里的卡片与单聊是同一套卡片实现，不应该因为“在群聊里”就变成静态图片 ——
-     * 卡片内的开关/滑块/按钮点不动，用户只会以为坏了。这里把回调接出去，
-     * 由群聊层把回传落成一条群聊消息（群聊的上下文就是群聊，不该跳去单聊）。
+     * Las tarjetas en el chat grupal y en el chat individual están implementadas en el mismo conjunto de tarjetas, las cuales no deben usarse porque“en el chat grupal”se convierte en una imagen estática ——
+     * cambiar la tarjeta/control deslizante/Si el botón no se mueve, el usuario simplemente pensará que está roto. Reciba la devolución de llamada aquí,
+     * La capa de chat grupal completará la respuesta como un mensaje de chat grupal (el contexto del chat grupal es el chat grupal y no debe saltar al chat individual).
      */
     onCardAction: ((io.zer0.muse.ui.markdown.CardAction) -> Unit)? = null,
     /** Host-owned bubble skin; null keeps the existing group-chat appearance. */
@@ -194,11 +194,11 @@ internal fun GroupChatMessageBubble(
     var messageBounds by remember { mutableStateOf(Rect.Zero) }
     var pressPointLocal by remember { mutableStateOf(Offset.Zero) }
     val interactionSource = remember { MutableInteractionSource() }
-    // v1.0.74 fix (前端审计 6.1): 气泡最大宽按屏宽 70%,大屏/横屏/大字体下不再过窄
+    // v1.0.74 fix (Auditoría inicial 6.1): Ancho máximo de burbuja según el ancho de la pantalla 70%,pantalla grande/pantalla horizontal/Las fuentes grandes ya no son demasiado estrechas
     val maxBubbleWidth = with(androidx.compose.ui.platform.LocalConfiguration.current) {
         (screenWidthDp * 0.7f).dp
     }
-    // v1.x: 多选模式下点击消息切换选中,长按退出菜单
+    // v1.x: En el modo de selección múltiple, haga clic en el mensaje para cambiar de selección,Mantenga pulsado para salir del menú
     val bubbleClick: () -> Unit = { if (selectionMode) onSelectToggle() }
     val pressTracker = Modifier.pointerInput(message.id) {
         awaitEachGesture {
@@ -213,11 +213,11 @@ internal fun GroupChatMessageBubble(
         Offset(messageBounds.left + point.x, messageBounds.top + point.y)
     }
     if (isUser) {
-        // 用户消息:右侧气泡
+        // Mensajes de usuario:burbuja derecha
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // v1.0.74 fix: 搜索跳转高亮
+                // v1.0.74 fix: Resaltado de salto de búsqueda
                 .then(
                     if (highlighted) {
                         Modifier
@@ -230,12 +230,12 @@ internal fun GroupChatMessageBubble(
             horizontalArrangement = Arrangement.End,
         ) {
             Column(
-                // v1.0.74 fix (前端审计 6.1): 屏宽 70% 替代固定 280dp
+                // v1.0.74 fix (Auditoría inicial 6.1): Ancho de pantalla 70% en lugar de fijo 280dp
                 modifier = Modifier.widthIn(max = maxBubbleWidth),
                 horizontalAlignment = Alignment.End,
             ) {
-                // v1.0.29: combinedClickable 移到 Surface 上,避免 MarkdownText/Text 消费触摸事件
-                // 导致 Row 层 combinedClickable 长按不触发(只能长按空白区域)
+                // v1.0.29: combinedClickable Mover a la superficie,Evite eventos táctiles que consuman MarkdownText/Text
+                // Causa que la capa de fila combinada en la que se puede hacer clic no se active cuando se presiona durante mucho tiempo(Solo puedes mantener presionada la zona vacía)
                 Surface(
                     shape = resolvedSkin?.style?.radiusDp?.dp
                         ?.let { androidx.compose.foundation.shape.RoundedCornerShape(it) }
@@ -266,7 +266,7 @@ internal fun GroupChatMessageBubble(
                         ),
                 ) {
                     Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                        // v2.x: 悄悄话标记
+                        // v2.x: marca de susurro
                         if (message.whisperTargetId != null) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -291,14 +291,14 @@ internal fun GroupChatMessageBubble(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        // 图片附件
+                        // Adjunto de imagen
                         MessageImageGrid(
                             imageBase64Json = message.imageBase64Json,
                             modifier = Modifier.padding(top = 6.dp),
                         )
                     }
                 }
-                // CHAT-04: 群聊用户消息补时间戳(与单聊一致,右对齐)
+                // CHAT-04: Agregar marca de tiempo a los mensajes de los usuarios del chat grupal(Igual que el chat individual,Alinear a la derecha)
                 if (chatPrefs.showTimestamp) {
                     Text(
                         text = formatMessageTime(message.timestamp, use24Hour = chatPrefs.use24Hour),
@@ -310,11 +310,11 @@ internal fun GroupChatMessageBubble(
             }
         }
     } else {
-        // Agent 消息:左侧 + 头像 + senderName
+        // Agent noticias:Izquierda + avatar + senderName
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // v1.0.74 fix: 搜索跳转高亮
+                // v1.0.74 fix: Resaltado de salto de búsqueda
                 .then(
                     if (highlighted) {
                         Modifier
@@ -327,7 +327,7 @@ internal fun GroupChatMessageBubble(
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.Top,
         ) {
-            // 头像(也可长按触发菜单)
+            // avatar(También puedes mantener presionado para activar el menú.)
             val assistant = remember(message.senderId, assistants) {
                 assistants.find { it.id == message.senderId }
             }
@@ -352,7 +352,7 @@ internal fun GroupChatMessageBubble(
                     )
                 }
             } else {
-                // 兜底:首字母圆形头像
+                // Ten todo en cuenta:Avatar redondo de letra inicial
                 Box(
                     modifier = Modifier
                         .size(MuseAvatarSize.inline)
@@ -377,11 +377,11 @@ internal fun GroupChatMessageBubble(
                 }
             }
             Spacer(Modifier.width(8.dp))
-            // 气泡
-            // v1.0.74 fix (前端审计 6.1): 屏宽 70% 替代固定 280dp
+            // Burbujas
+            // v1.0.74 fix (Auditoría inicial 6.1): Ancho de pantalla 70% en lugar de fijo 280dp
             Column(modifier = Modifier.widthIn(max = maxBubbleWidth)) {
                 Text(
-                    // CHAT-04: 群聊 Agent 消息补时间戳(与单聊一致)
+                    // CHAT-04: Agregar marca de tiempo a los mensajes del agente del chat grupal(Igual que el chat individual)
                     text = if (chatPrefs.showTimestamp) {
                         "${message.senderName} · ${formatMessageTime(message.timestamp, use24Hour = chatPrefs.use24Hour)}"
                     } else {
@@ -391,7 +391,7 @@ internal fun GroupChatMessageBubble(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
                 )
-                // v1.46: MOOD 标签胶囊(Agent 内部腹稿,可折叠)
+                // v1.46: MOOD etiquetar las cápsulas(Agent Manuscrito interno,plegable)
                 if (chatPrefs.showMoodBlock) {
                     message.mood?.takeIf { it.isNotBlank() }?.let { mood ->
                         val moodExpanded = isMoodExpanded ?: chatPrefs.moodExpandedByDefault
@@ -402,7 +402,7 @@ internal fun GroupChatMessageBubble(
                         )
                     }
                 }
-                // v1.46: 思考过程块(可折叠)
+                // v1.46: bloques del proceso de pensamiento(plegable)
                 if (chatPrefs.showReasoning) {
                     message.reasoning?.takeIf { it.isNotBlank() }?.let { reasoning ->
                         val reasoningExpanded = isReasoningExpanded ?: chatPrefs.reasoningExpandedByDefault
@@ -416,7 +416,7 @@ internal fun GroupChatMessageBubble(
                         )
                     }
                 }
-                // v1.0.29: combinedClickable 移到 Surface 上,避免 MarkdownText 消费触摸事件
+                // v1.0.29: combinedClickable Mover a la superficie,Evite que MarkdownText consuma eventos táctiles
                 Surface(
                     shape = resolvedSkin?.style?.radiusDp?.dp
                         ?.let { androidx.compose.foundation.shape.RoundedCornerShape(it) }
@@ -447,7 +447,7 @@ internal fun GroupChatMessageBubble(
                         ),
                 ) {
                     Column(modifier = Modifier.padding(MusePaddings.cardInner)) {
-                        // v2.x: 表情包标记 [[sticker:分类]] → 纯图片卡片(群聊与单聊同管线)
+                        // v2.x: Etiquetas de memes [[sticker:Clasificación]] → Tarjeta con imagen pura(El chat grupal y el chat individual están en el mismo proceso)
                         StickerAwareMarkdownBody(
                             text = message.body,
                             stickerSeed = message.id.hashCode().toLong(),
@@ -457,13 +457,13 @@ internal fun GroupChatMessageBubble(
                             onCardAction = onCardAction,
                             cardId = message.id,
                         )
-                        // 图片附件
+                        // Adjunto de imagen
                         MessageImageGrid(
                             imageBase64Json = message.imageBase64Json,
                             modifier = Modifier.padding(top = 6.dp),
                         )
-                        // v2.x 遗留收尾:群聊生成视频结果卡片(generate_video 写入的 videoFileUri)
-                        // 复用单聊 AssistantVideoCard,点击调起系统播放器。
+                        // v2.x cierre del legado:El chat grupal genera tarjeta de resultados de video(generate_video escrito videoFileUri)
+                        // Reutilizar chat único AssistantVideoCard,Haga clic para abrir el reproductor del sistema.
                         message.videoFileUri?.takeIf { it.isNotBlank() }?.let { videoUri ->
                             AssistantVideoCard(
                                 videoUri = videoUri,
@@ -478,7 +478,7 @@ internal fun GroupChatMessageBubble(
 }
 
 /**
- * MOOD 标签胶囊 — 浅绿色背景,品牌色文字,可展开查看完整腹稿。
+ * MOOD etiquetar las cápsulas — fondo verde claro,Texto en color de la marca,Puede ampliar para ver el manuscrito completo.
  */
 @Composable
 internal fun MoodCapsule(mood: String, expanded: Boolean, onToggle: () -> Unit) {
@@ -500,7 +500,7 @@ internal fun MoodCapsule(mood: String, expanded: Boolean, onToggle: () -> Unit) 
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    // ST-10 (A11Y-03): 大字体下标题占满剩余宽度并最多 2 行,避免把右侧展开图标挤出
+                    // ST-10 (A11Y-03): En fuentes grandes, el título ocupa el ancho restante y no puede tener más de 2 líneas.,Evite presionar el ícono de expandir a la derecha
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -529,7 +529,7 @@ internal fun MoodCapsule(mood: String, expanded: Boolean, onToggle: () -> Unit) 
 }
 
 /**
- * 群聊可折叠块 — 用于 MOOD / 思考过程。
+ * Bloque plegable de chat grupal — Se utiliza para el estado de ánimo/proceso de pensamiento.
  */
 @Composable
 internal fun GroupChatExpandableBlock(
@@ -561,7 +561,7 @@ internal fun GroupChatExpandableBlock(
                     text = title,
                     style = MaterialTheme.typography.labelSmall,
                     color = titleColor,
-                    // ST-10 (A11Y-03): 同上 — 标题可换行 + 2 行上限,图标不被挤压
+                    // ST-10 (A11Y-03): Igual que arriba — El título puede ajustarse + límite de 2 líneas,El icono no está comprimido.
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -590,12 +590,12 @@ internal fun GroupChatExpandableBlock(
 }
 
 /**
- * 消息图片网格 — 在气泡内展示用户/Agent 发送的图片附件。
+ * Cuadrícula de imagen de mensaje — Mostrar usuarios dentro de burbujas/Agent Enviar imágenes adjuntas.
  */
 @Composable
 internal fun MessageImageGrid(imageBase64Json: String, modifier: Modifier = Modifier) {
     val images = remember(imageBase64Json) {
-        // L4: 用 resultOf 替代 runCatching,getOrNull 替代 getOrDefault
+        // L4: Utilice resultOf en su lugar runCatching,getOrNull sustituto getOrDefault
         resultOf {
             AppJson.decodeFromString(ListSerializer(String.serializer()), imageBase64Json)
         }.getOrNull() ?: emptyList()
@@ -619,14 +619,14 @@ internal fun MessageImageGrid(imageBase64Json: String, modifier: Modifier = Modi
 }
 
 /**
- * "正在思考..."等待状态 — Agent 回复期间显示。
- * v1.104: 若 currentSpeaker 非空,显示"XXX 正在思考..."并高亮其头像;
- *         为空时回退到通用"正在思考..."(向后兼容)。
+ * "pensando..."estado de espera — Agent Se muestra durante la respuesta.
+ * v1.104: Si currentSpeaker no está vacío,mostrar"XXX pensando..."y resaltar su foto de perfil;
+ *         Volver a general cuando esté vacío"pensando..."(compatible con versiones anteriores).
  */
 @Composable
 internal fun ThinkingIndicator(currentSpeaker: AssistantEntity? = null) {
-    // 按反馈:不再用头像圆 + “正在思考…”气泡占一整行 —— 那会在输入栏上方多出一条
-    // “谁正在回复”的文字提示。现在只在发言者名字旁留一个转圈,思考状态一目了然。
+    // comentarios de prensa:No más avatares redondos + “pensando…”Las burbujas ocupan una línea entera. —— Habrá una línea adicional encima del campo de entrada.
+    // “quien esta respondiendo”mensaje de texto. Ahora simplemente deja un círculo al lado del nombre del orador.,El estado de pensamiento es claro de un vistazo.
     val displayName = currentSpeaker?.name?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.groupchat_streaming_title)
     Row(
@@ -651,10 +651,10 @@ internal fun ThinkingIndicator(currentSpeaker: AssistantEntity? = null) {
 }
 
 /**
- * v2.x: 轮次折叠判定 — 返回 (段起点, 段长, 是否中段) 或 null(非连续助理段成员)。
+ * v2.x: Juicio de plegado redondo — Regresar (punto de partida del segmento, Duan Chang, ¿Es la sección media?) o null(miembros no consecutivos de la sección asistente).
  *
- * 连续助理段 ≥4 条时:保留首 2 条 + 末 1 条,中段收起,
- * 由 [CollapsedRoundBar] 提供"点击展开"; 长讨论轮读起来不再刷屏。
+ * segmento asistente continuo ≥4 tiempo:Mantenga los primeros 2 artículos + el último artículo,Métete en el medio,
+ * por [CollapsedRoundBar] proporcionar"Haga clic para ampliar"; Leer largas rondas de discusión ya no consume la pantalla.
  */
 internal fun groupCollapseSegment(messages: List<GroupChatMessageEntity>, index: Int): Triple<Int, Int, Boolean>? {
     val m = messages.getOrNull(index) ?: return null
@@ -673,7 +673,7 @@ internal fun groupCollapseSegment(messages: List<GroupChatMessageEntity>, index:
     return Triple(start, end - start + 1, isMiddle)
 }
 
-/** v2.x: 轮次折叠提示条 — 收起的中段发言,点击展开。 */
+/** v2.x: Barra de aviso plegable redonda — Colapso a mitad del discurso,Haga clic para ampliar. */
 @Composable
 internal fun CollapsedRoundBar(hiddenCount: Int, onExpand: () -> Unit) {
     Surface(
@@ -697,9 +697,9 @@ internal fun CollapsedRoundBar(hiddenCount: Int, onExpand: () -> Unit) {
 }
 
 /**
- * v2.x: 表决票卡片 — messageType=="vote" 专属渲染。
+ * v2.x: tarjeta de votacion — messageType=="vote" Representación exclusiva.
  *
- * 表决与讨论视觉区分:带"表决"徽章 + 发言人名 + 票面内容卡片。
+ * Distinción visual entre votación y discusión.:traer"votar"Credencial + nombre del orador + tarjeta de contenido del ticket.
  */
 @Composable
 internal fun GroupVoteCard(message: GroupChatMessageEntity) {
@@ -709,7 +709,7 @@ internal fun GroupVoteCard(message: GroupChatMessageEntity) {
             .padding(horizontal = MusePaddings.screen),
         verticalAlignment = Alignment.Top,
     ) {
-        // "表决"徽章
+        // "votar"insignia
         Surface(
             shape = MuseShapes.small,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
@@ -757,11 +757,11 @@ internal fun GroupVoteCard(message: GroupChatMessageEntity) {
 }
 
 /**
- * v2.x: 讨论总结卡片 — messageType=="summary" 的专属渲染。
+ * v2.x: Tarjeta de resumen de discusión — messageType=="summary" Representación exclusiva.
  *
- * 总结不再以普通气泡展示:改为带标题、内文与三个落地动作(复制/分享/存为共享文档)
- * 的结构化卡片 — 补上"讨论 → 可执行物"的最后一公里。
- * 存为共享文档后,下次讨论时全员 agent 会在 system prompt 中自动看到它。
+ * El resumen ya no se muestra en burbujas normales.:Se modificó para incluir título, contenido y tres acciones de aterrizaje.(Copiar/Compartir/Guardar como documento compartido)
+ * tarjetas estructuradas — maquillar"discutir → ejecutable"la última milla.
+ * Después de guardar como documento compartido,Todos los agentes lo verán automáticamente en el mensaje del sistema durante la próxima discusión.
  */
 @Composable
 internal fun GroupSummaryCard(
@@ -777,7 +777,7 @@ internal fun GroupSummaryCard(
             .padding(horizontal = MusePaddings.screen),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // 标题行:图标 + "讨论总结" + 总结者
+        // línea de título:icono + "Resumen de la discusión" + resumidor
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = MuseIcons.fileText,
@@ -798,7 +798,7 @@ internal fun GroupSummaryCard(
                 color = MaterialTheme.colorScheme.outline,
             )
         }
-        // 正文卡片
+        // tarjeta de texto
         Surface(
             shape = MuseShapes.medium,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -811,7 +811,7 @@ internal fun GroupSummaryCard(
                 modifier = Modifier.padding(MusePaddings.cardInner),
             )
         }
-        // 落地动作行
+        // fila de acción de aterrizaje
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MuseCapsuleButton(
                 text = stringResource(R.string.groupchat_summary_copy),
@@ -828,7 +828,7 @@ internal fun GroupSummaryCard(
                 onClick = onSaveAsSharedDoc,
                 variant = IosCapsuleButtonVariant.Secondary,
             )
-            // v2.x: 继续落实 — 把总结带回输入框,用户可补充指令或 @成员后继续推进
+            // v2.x: Continuar implementando — Devolver el resumen al cuadro de entrada,Los usuarios pueden agregar instrucciones o @miembros para continuar con el progreso.
             MuseCapsuleButton(
                 text = stringResource(R.string.groupchat_summary_continue),
                 onClick = onContinue,
@@ -839,15 +839,15 @@ internal fun GroupSummaryCard(
 }
 
 /**
- * 群聊输入栏 — 加号菜单 + 文本输入 + 发送按钮。
+ * Campo de entrada de chat grupal — Menú Plus + entrada de texto + botón enviar.
  *
- * @param text 当前输入文本
- * @param onTextChange 文本变化回调
- * @param onSend 发送回调
- * @param onOpenToolSheet 打开加号菜单回调
- * @param enabled 是否可用(Agent 回复期间禁用)
- * @param canSend 是否可以发送
- * @param members 群聊成员列表(@mention 自动补全用)
+ * @param text Texto de entrada actual
+ * @param onTextChange Devolución de llamada de cambio de texto
+ * @param onSend Enviar devolución de llamada
+ * @param onOpenToolSheet Abrir devolución de llamada del menú plus
+ * @param enabled ¿Está disponible?(Agent Deshabilitado durante la respuesta)
+ * @param canSend ¿Es posible enviar
+ * @param members Lista de miembros del chat grupal(@mention Para autocompletar)
  */
 @Composable
 internal fun GroupChatInputBar(
@@ -859,33 +859,33 @@ internal fun GroupChatInputBar(
     enabled: Boolean,
     canSend: Boolean,
     members: List<AssistantEntity> = emptyList(),
-    /** v2.6.7: 群聊正在生成中 —— 发送键变成停止键。 */
+    /** v2.6.7: Se está generando el chat grupal —— La tecla de envío se convierte en la tecla de parada. */
     isGenerating: Boolean = false,
     /**
-     * v2.6.7: 停止当前生成。
+     * v2.6.7: Detenga la compilación actual.
      *
-     * GroupChatViewModel.stopGeneration() 一直存在但零调用，界面上也没有入口，
-     * 用户发出请求后只能干等。
+     * GroupChatViewModel.stopGeneration() Siempre existe pero no tiene llamadas y no hay entrada en la interfaz.
+     * El usuario sólo puede esperar después de realizar la solicitud.
      */
     onStop: (() -> Unit)? = null,
 ) {
-    // @mention 自动补全状态:用户点击外部关闭后置 false,再次输入 @ 触发时置 true
+    // @mention Estado de autocompletar:El usuario hace clic afuera para cerrar la publicación. false,Ingrese @ nuevamente para activar la configuración true
     var showMentionDropdown by remember { mutableStateOf(false) }
-    // 插入 @成员 后把光标落到末尾的信号量(纯 String 绑定改不动光标,靠它驱动 MuseTextField)
+    // Después de insertar el miembro @, coloque el cursor en el semáforo al final(El enlace Pure String no puede cambiar el cursor,Impulsado por eso MuseTextField)
     var caretTick by remember { mutableIntStateOf(0) }
-    // 从文本末尾找最后一个 @,若 @ 后无空白则为有效 mention 查询
+    // Encuentra el último del final del texto. @,Si no hay espacio después de @, es válida la consulta de mención
     val mentionQuery: String? = remember(text) {
         val atIndex = text.lastIndexOf('@')
         if (atIndex < 0) return@remember null
         val afterAt = text.substring(atIndex + 1)
-        // @ 后无空白字符 — 有效 mention 查询(空字符串表示刚输入 @)
+        // @ No hay espacios en blanco después — Consulta de mención válida(Una cadena vacía significa recién ingresada @)
         if (afterAt.isEmpty() || !afterAt.any { it.isWhitespace() }) afterAt else null
     }
-    // 用户输入新 @ 时重新打开下拉
+    // Vuelva a abrir el menú desplegable cuando el usuario ingrese una nueva @
     LaunchedEffect(mentionQuery) {
         if (mentionQuery != null) showMentionDropdown = true
     }
-    // 过滤匹配成员(按名称包含查询文本,大小写不敏感;长 alias 优先排序)
+    // Filtrar miembros coincidentes(Incluir texto de consulta por nombre,No distingue entre mayúsculas y minúsculas;Priorización de alias largos)
     val filteredMembers = remember(mentionQuery, members) {
         if (mentionQuery == null) {
             emptyList()
@@ -897,19 +897,19 @@ internal fun GroupChatInputBar(
                 .sortedByDescending { it.name.length }
         }
     }
-    // v1.0.28: 输入框重写,对齐任务页面样式(MuseTextField + 圆形按钮在同一行,去掉外层 Surface 色块)
-    // v1.0.72: 输入大岛 — 加号菜单 + 输入框 + 发送全部包裹在圆角大栏里(与单聊输入栏一致)
-    // v1.0.72: 做回岛样式(实色背景 + 圆角 + 阴影)
+    // v1.0.28: Reescritura del cuadro de entrada,Alinear estilos de página de tareas(MuseTextField + Botones redondos en la misma fila.,Retire el bloque de color de la superficie exterior)
+    // v1.0.72: Entra en la Isla Grande — Menú Plus + cuadro de entrada + enviar todos los paquetes en una gran columna redondeada(Igual que el campo de entrada de chat único)
+    // v1.0.72: Hacer estilo isla(Fondo sólido + esquinas redondeadas + sombra)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
-        // v2.4.5 (参考图对齐): 与单聊输入岛一致——真胶囊 + 去投影。
+        // v2.4.5 (Alineación de la imagen de referencia): Consistente con la isla de entrada de chat única——Cápsula Real + Desproyección.
         shape = MuseShapes.pill,
         tonalElevation = io.zer0.muse.ui.theme.MuseElevation.low,
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-            // 系统导航栏与键盘由外层底部操作栏统一处理。
-            // v2.4.5: 与单聊输入岛统一紧凑外边距,并抬高离开底边。
+            // La barra de navegación del sistema y el teclado se manejan de manera uniforme mediante la barra de operación inferior exterior.
+            // v2.4.5: Unifique márgenes compactos con una única isla de entrada de chat,y levante el borde inferior.
             .padding(
                 horizontal = MusePaddings.inputIslandHorizontal,
                 vertical = MusePaddings.inputIslandVertical,
@@ -917,9 +917,9 @@ internal fun GroupChatInputBar(
             .padding(bottom = MusePaddings.inputIslandBottomGap),
     ) {
         Box {
-            // @mention 自动补全下拉(锚定在输入框上方)
-            // focusable = false:自动补全不能抢窗口焦点,否则键盘与输入框焦点被带走,
-            // 表现为「输入 @ 后键盘消失、补全弹不出来」。
+            // @mention Menú desplegable de autocompletar(Ancla encima del cuadro de entrada)
+            // focusable = false:Autocompletar no puede captar el foco de la ventana,De lo contrario, se quitará el foco del teclado y del cuadro de entrada.,
+            // La interpretación es "el teclado desaparece después de escribir @ y la finalización no aparece".
             MuseAnchoredMenu(
                 expanded = showMentionDropdown && filteredMembers.isNotEmpty(),
                 onDismissRequest = { showMentionDropdown = false },
@@ -928,12 +928,12 @@ internal fun GroupChatInputBar(
                 filteredMembers.take(8).forEach { member ->
                     MuseListItem(
                         onClick = {
-                            // 替换 @query 为 @memberName(末尾加空格,便于继续输入)
+                            // Reemplace @query con @memberName(Agrega espacio al final,Fácil de seguir escribiendo)
                             val atIndex = text.lastIndexOf('@')
                             if (atIndex >= 0) {
                                 val newText = text.substring(0, atIndex) + "@${member.name} "
                                 onTextChange(newText)
-                                // 插入后把光标移到末尾,方便直接接着打字
+                                // Después de insertar, mueva el cursor hasta el final.,Conveniente para seguir escribiendo directamente
                                 caretTick++
                             }
                             showMentionDropdown = false
@@ -946,17 +946,17 @@ internal fun GroupChatInputBar(
                 modifier =
                 Modifier
                     .fillMaxWidth()
-                    // v2.4.5 (参考图对齐): 内边距与单聊统一收紧到 6dp。
+                    // v2.4.5 (Alineación de la imagen de referencia): El relleno y el chat único se reducen a 6 dp.
                     .padding(
                         horizontal = MusePaddings.inputIslandInnerHorizontal,
                         vertical = MusePaddings.inputIslandRowVertical,
                     ),
-                // v1.0.72 fix: Bottom 对齐导致加号/发送按钮视觉"歪"(多行输入时),
-                // 改为 CenterVertically 与单聊输入栏一致
+                // v1.0.72 fix: Bottom La alineación da como resultado el signo más/botón de enviar visual"torcido"(Al ingresar varias líneas),
+                // Se cambió a CenterVertically para ser coherente con el campo de entrada de chat único.
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
             ) {
-                // 加号菜单入口(保留,但改为小型图标按钮,不再用大圆形 Surface)
+                // Entrada de menú adicional(Reservar,Pero en lugar de un pequeño botón de icono,No más círculos grandes Surface)
                 MuseTactileButton(
                     icon = MuseIcons.plus,
                     onClick = onOpenToolSheet,
@@ -966,7 +966,7 @@ internal fun GroupChatInputBar(
                     size = MuseIconSizes.touchTarget,
                     iconSize = MuseIconSizes.icon,
                 )
-                // v2.x: 会议操作入口 — 表决/总结/@/成员/上下文/编辑从加号菜单提升为一级入口
+                // v2.x: Entrada de operación de conferencias — votar/Resumen/@/miembro/contexto/El editor asciende desde el menú más a la entrada del primer nivel.
                 MuseTactileButton(
                     icon = MuseIcons.clipboard,
                     onClick = onOpenMeetingSheet,
@@ -980,8 +980,8 @@ internal fun GroupChatInputBar(
                     value = text,
                     onValueChange = onTextChange,
                     caretAtEndTick = caretTick,
-                    // 空输入框必须有可输入提示：此前为省横向空间设为 null，
-                    // 结果只剩 + 和发送箭头，用户不知道这里能打字。
+                    // El cuadro de entrada vacío debe tener un mensaje de entrada: anteriormente, se configuró en nulo para guardar espacio horizontal.
+                    // El resultado es solo las flechas + y enviar, y el usuario no sabe que puede escribir aquí.
                     placeholder = {
                         Text(
                             text = stringResource(R.string.chat_placeholder_simple),
@@ -990,14 +990,14 @@ internal fun GroupChatInputBar(
                         )
                     },
                     enabled = enabled,
-                    // v1.0.72: 输入框背景透明(岛背景即容器)
+                    // v1.0.72: El fondo del cuadro de entrada es transparente(fondo de la isla como contenedor)
                     containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     modifier = Modifier.weight(1f),
                     maxLines = 4,
                     singleLine = false,
                 )
-                // 发送按钮 — CHAT-11: 统一 48dp 触控 + 36dp 主色圆 + 18dp 图标(与单聊一致)
-                // v2.6.7: 生成中变为停止键
+                // boton enviar — CHAT-11: Táctil unificado de 48 dp + círculo de color principal de 36 dp + ícono de 18 dp(Igual que el chat individual)
+                // v2.6.7: Cambiar a tecla de parada durante la generación
                 val stopClickable = isGenerating && onStop != null
                 Box(
                     modifier = Modifier
@@ -1024,8 +1024,8 @@ internal fun GroupChatInputBar(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            // v2.6.4: 发送键与单聊统一为纸飞机。
-                            // v2.6.7: 生成中改用停止图标，避免用户误以为还能再发一条。
+                            // v2.6.4: El botón de enviar y el chat único se unifican en aviones de papel.
+                            // v2.6.7: Utilice el icono de detener durante la generación para evitar que los usuarios piensen erróneamente que pueden enviar otro.
                             imageVector = if (stopClickable) MuseIcons.stop else MuseIcons.send,
                             contentDescription = stringResource(
                                 if (stopClickable) R.string.groupchat_stop_generating else R.string.groupchat_send,
@@ -1041,17 +1041,17 @@ internal fun GroupChatInputBar(
 }
 
 /**
- * 群聊活动状态栏 — 展示当前轮转中各 agent 的状态 chip。
+ * Barra de estado de actividad del chat grupal — Muestra el chip de estado de cada agente en la rotación actual.
  *
- * IDLE 状态被过滤不显示;无活动时整个栏不占空间。
- * 布局:紧凑横向 chip 行,每个 chip 含图标 + 名字 + 状态文案;
- * REPLYING 态加呼吸动画,ERROR 态用错误配色,NO_REPLY 态弱化展示。
+ * IDLE El estado se filtra y no se muestra;Cuando no hay actividad, toda la columna no ocupa espacio.
+ * Diseño:Filas de virutas horizontales compactas,Cada chip contiene icono + nombre + copia de estado;
+ * REPLYING Estado más animación de respiración.,ERROR Combinación de colores incorrecta,NO_REPLY Pantalla debilitada.
  *
- * @param activities 当前群聊中各 agent 的活动列表
+ * @param activities Lista de actividades de cada agente en el chat grupal actual
  */
 @Composable
 internal fun AgentActivityBar(activities: List<AgentActivity>) {
-    // 过滤掉 IDLE 状态(默认空闲,不展示)
+    // Filtrar el estado INACTIVO(Inactivo predeterminado,no mostrar)
     val visible = activities.filter { it.status != AgentActivityStatus.IDLE }
     if (visible.isEmpty()) return
     Surface(
@@ -1074,9 +1074,9 @@ internal fun AgentActivityBar(activities: List<AgentActivity>) {
 }
 
 /**
- * 单个 agent 活动状态 chip — 图标 + 名字 + 状态文案,配色随状态变化。
+ * Estado de actividad del agente único chip — Icono + nombre + copia de estado,El color cambia con el estado.
  *
- * REPLYING 态使用 [rememberInfiniteTransition] 做呼吸 alpha 动画,让用户感知"正在输出"。
+ * REPLYING uso estatal [rememberInfiniteTransition] Hacer animación alfa de respiración.,Permitir que los usuarios perciban"Salida".
  */
 @Composable
 internal fun AgentActivityChip(activity: AgentActivity) {
@@ -1108,9 +1108,9 @@ internal fun AgentActivityChip(activity: AgentActivity) {
         AgentActivityStatus.ERROR -> stringResource(R.string.groupchat_activity_error)
         AgentActivityStatus.IDLE -> ""
     }
-    // REPLYING 态呼吸动画:alpha 在 1f↔0.5f 间循环,让 chip 有"正在输出"的视觉反馈
-    // v1.0.74 fix (前端审计 6.4): 仅 REPLYING 时创建无限动画,
-    // 非 REPLYING 状态不跑动画帧(原实现无条件创建,静止时也每帧驱动)。
+    // REPLYING animación de respiración:alpha en 1f↔0.5f ciclo entre,deja que el chip tenga"Salida"retroalimentación visual
+    // v1.0.74 fix (Auditoría inicial 6.4): Crea animación infinita solo al RESPONDER,
+    // Los fotogramas de animación no se ejecutan en estados que no sean RESPUESTA(La implementación original fue creada incondicionalmente.,También se conduce cada cuadro cuando está parado.).
     val pulseAlpha = if (
         activity.status == AgentActivityStatus.REPLYING &&
         !io.zer0.muse.ui.theme.MuseMotion.isReducedMotion()
@@ -1161,9 +1161,9 @@ internal fun AgentActivityChip(activity: AgentActivity) {
 }
 
 /**
- * 群聊加号菜单 — v1.0.72: 媒体区(相机实时预览 + 相册缩略图) + 横滚 tab。
+ * Menú de chat grupal más — v1.0.72: área de medios(Vista previa en vivo de la cámara + miniatura del álbum) + Pestaña de desplazamiento.
  *
- * 功能:相机拍照 / 相册最近图片 / 图片 / 附件 / 知识库 / Prompt模板
+ * Función:Foto de la cámara/Álbum de imágenes recientes/Imágenes/Adjuntos/Base de conocimientos/Plantilla de mensajes
  */
 @Composable
 internal fun GroupChatToolSheet(
@@ -1171,7 +1171,7 @@ internal fun GroupChatToolSheet(
     onPickDocument: () -> Unit,
     onInsertKnowledge: () -> Unit,
     onPickPromptTemplate: () -> Unit,
-    // v1.0.72: 媒体区(相机 + 相册)
+    // v1.0.72: área de medios(Cámara + Álbum)
     hasGalleryPermission: Boolean = false,
     onRequestGalleryPermission: () -> Unit = {},
     onPickGalleryImage: (Uri) -> Unit = {},
@@ -1179,7 +1179,7 @@ internal fun GroupChatToolSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    // 相机预览权限
+    // Permisos de vista previa de la cámara
     val cameraPermission = android.Manifest.permission.CAMERA
     val hasCameraPermission = remember {
         ContextCompat.checkSelfPermission(context, cameraPermission) ==
@@ -1190,7 +1190,7 @@ internal fun GroupChatToolSheet(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> cameraGranted = granted }
 
-    // 相册最近图片
+    // Álbum de fotos recientes
     var recentImages by remember { mutableStateOf<List<Uri>>(emptyList()) }
     LaunchedEffect(hasGalleryPermission) {
         if (hasGalleryPermission) {
@@ -1202,7 +1202,7 @@ internal fun GroupChatToolSheet(
 
     MuseBottomSheet(
         onDismissRequest = onDismiss,
-        // UI-FIX(贴边): 原来左右不留白，说明文字与媒体区直接顶到屏幕边。
+        // UI-FIX(verdugón): Resulta que no hay espacios en blanco a izquierda y derecha, y el texto de descripción y el área de medios se empujan directamente al borde de la pantalla.
         horizontalPadding = MusePaddings.screen,
     ) {
         Text(
@@ -1211,19 +1211,19 @@ internal fun GroupChatToolSheet(
             color = MaterialTheme.colorScheme.outline,
         )
         Spacer(Modifier.height(12.dp))
-        // v1.0.72: 媒体区 — 相机实时预览 + 相册缩略图(与单聊加号菜单统一)
+        // v1.0.72: área de medios — Vista previa en vivo de la cámara + miniatura del álbum(Unificado con chat único más menú)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // ST-10 (A11Y-03): 固定 128dp → heightIn(min = 128.dp),字号放大 1.3x 时
-                // 内部 128dp 方块可按字高扩展,不被写死高度裁切
+                // ST-10 (A11Y-03): Fijo 128dp → heightIn(min = 128.dp),Cuando el tamaño de fuente se amplía 1,3x
+                // Bloque interno de 128 dp ampliable por altura de fuente,Recorte de altura no codificado
                 .heightIn(min = 128.dp)
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = MusePaddings.tightGap),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
         ) {
-            // 相机实时预览(第一格)
+            // Vista previa en vivo de la cámara(primera grilla)
             if (cameraGranted) {
                 CameraLivePreviewBox(
                     modifier = Modifier.size(128.dp).clip(MuseShapes.extraLarge),
@@ -1236,7 +1236,7 @@ internal fun GroupChatToolSheet(
                     modifier = Modifier.size(128.dp),
                 ) { cameraPermissionLauncher.launch(cameraPermission) }
             }
-            // 相册最近图片缩略图
+            // Miniaturas de fotografías recientes en el álbum.
             if (hasGalleryPermission) {
                 recentImages.forEach { uri ->
                     AsyncImage(
@@ -1258,7 +1258,7 @@ internal fun GroupChatToolSheet(
             }
         }
         Spacer(Modifier.height(16.dp))
-        // 横滚 tab(圆形图标 + 下方文字,与单聊加号菜单统一)
+        // rodar tab(Icono de círculo + texto debajo,Unificado con chat único más menú)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1288,10 +1288,10 @@ internal fun GroupChatToolSheet(
 }
 
 /**
- * v2.x: 群聊会议操作面板 — 从加号菜单中提升的一级入口。
+ * v2.x: Panel de operación de conferencia de chat grupal — Entrada de nivel 1 promocionada desde el menú plus.
  *
- * 承载讨论控制类高频操作:发起表决 / 总结讨论 / @提及成员 / 成员列表 / 群聊上下文 / 编辑群聊。
- * 原实现深埋于加号菜单的第十屏横向滚动位置,用户反馈"按钮藏得太深",故拆出独立面板。
+ * Llevar a cabo debates sobre operaciones de alta frecuencia de tipo control.:Iniciar una votación/resumir la discusión/@mencionar miembros/lista de miembros/contexto del chat grupal/editar el chat grupal.
+ * La implementación original estaba enterrada profundamente en la posición de desplazamiento horizontal de la décima pantalla del menú más.,Comentarios de los usuarios"El botón está demasiado escondido.",Por tanto, retire el panel independiente.
  */
 @Composable
 internal fun GroupChatMeetingSheet(
@@ -1313,7 +1313,7 @@ internal fun GroupChatMeetingSheet(
             color = MaterialTheme.colorScheme.outline,
         )
         Spacer(Modifier.height(12.dp))
-        // 横滚 tab(圆形图标 + 下方文字,与加号菜单统一) — 高频在前:表决/总结/@/成员/上下文/编辑
+        // rodar tab(Icono de círculo + texto debajo,Unificar con menú plus) — Alta frecuencia primero:votar/Resumen/@/miembro/contexto/Editar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1350,7 +1350,7 @@ internal fun GroupChatMeetingSheet(
     }
 }
 
-/** v1.0.72: 群聊加号菜单横滚 tab(圆形图标 + 下方独立文字)。 */
+/** v1.0.72: Chat grupal más desplazamiento del menú tab(Icono redondo + texto independiente debajo). */
 @Composable
 private fun GroupToolTab(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
@@ -1381,14 +1381,14 @@ private fun GroupToolTab(icon: androidx.compose.ui.graphics.vector.ImageVector, 
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
-            // ST-10 (A11Y-03): 补 overflow,超过 2 行时省略而非被父容器裁切
+            // ST-10 (A11Y-03): suplemento overflow,Si hay más de 2 líneas, se omitirán en lugar de ser cortadas por el contenedor principal.
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
     }
 }
 
-/** v1.112: 群聊工具菜单行(左图标 + 标题/副标题 + 右箭头)。 */
+/** v1.112: Fila del menú de herramientas de chat grupal(Icono izquierdo + título/Subtítulo + flecha derecha). */
 @Composable
 internal fun GroupChatToolRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1439,7 +1439,7 @@ internal fun GroupChatToolRow(
     }
 }
 
-/** v1.112: 群聊工具菜单分隔线。 */
+/** v1.112: Divisor del menú de la herramienta de chat grupal. */
 @Composable
 internal fun GroupChatToolDivider() {
     HorizontalDivider(
@@ -1449,11 +1449,11 @@ internal fun GroupChatToolDivider() {
 }
 
 /**
- * v2.6.7: 待发送附件预览行。
+ * v2.6.7: Vista previa de la línea del archivo adjunto que se enviará.
  *
- * 之前 `pendingFileAttachments` 只参与 canSend 判断，界面完全不渲染 ——
- * 用户选了附件看不到，也删不掉（removePendingFileAttachment 零调用）。
- * 这里给一个可横向滚动的文件名 + 删除按钮行。
+ * antes `pendingFileAttachments` Solo participa en el juicio canSend, la interfaz no se representa en absoluto ——
+ * Si el usuario selecciona un archivo adjunto, no puede verlo ni eliminarlo (removePendingFileAttachment cero llamadas).
+ * Aquí se muestra un nombre de archivo desplazable horizontalmente + una fila de botón de eliminación.
  */
 @Composable
 fun PendingAttachmentsRow(attachments: List<FileAttachment>, onRemove: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -1490,7 +1490,7 @@ fun PendingAttachmentsRow(attachments: List<FileAttachment>, onRemove: (Int) -> 
 }
 
 /**
- * 待发送图片预览行 — 可点击右上角删除。
+ * Vista previa de la línea de imagen que se enviará — Haga clic en la esquina superior derecha para eliminar.
  */
 @Composable
 fun PendingImagesRow(images: List<String>, onRemove: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -1519,7 +1519,7 @@ fun PendingImagesRow(images: List<String>, onRemove: (String) -> Unit, modifier:
 }
 
 /**
- * 成员列表对话框。
+ * Cuadro de diálogo de lista de miembros.
  */
 @Composable
 internal fun MembersDialog(memberNames: List<String>, memberCount: Int, onDismiss: () -> Unit) {
@@ -1556,22 +1556,22 @@ internal fun MembersDialog(memberNames: List<String>, memberCount: Int, onDismis
 }
 
 /**
- * v1.97: 编辑群聊对话框 — 改名 + 改成员。
+ * v1.97: Editar diálogo de chat grupal — Cambiar nombre + cambiar miembros.
  *
- * 按 [CreateGroupChatDialog] 的样式,预填当前群聊名与已选成员,
- * 保存时调用 [GroupChatViewModel.updateChat]。
+ * prensa [CreateGroupChatDialog] estilo,Complete previamente el nombre del chat grupal actual y los miembros seleccionados,
+ * Llamado al guardar [GroupChatViewModel.updateChat].
  *
- * @param initialName 当前群聊名(预填)
- * @param assistants 全部助手列表(成员候选)
- * @param initialMemberIds 当前成员 id 列表(预选)
- * @param onDismiss 关闭回调
- * @param onConfirm 确认回调(newName, newMemberIds)
+ * @param initialName Nombre del chat grupal actual(Precargado)
+ * @param assistants Lista de todos los asistentes(Candidato a miembro)
+ * @param initialMemberIds Lista de identificación de miembro actual(Preselección)
+ * @param onDismiss Cerrar devolución de llamada
+ * @param onConfirm Confirmar devolución de llamada(newName, newMemberIds)
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun EditGroupChatDialog(
-    // v1.0.74 fix (前端审计 6.3): 稳定 key — 用 chatId 而非 initialMemberIds,
-    // 否则群聊元数据 Flow 刷新时 key 变化重置用户编辑中的成员/模式选择。
+    // v1.0.74 fix (Auditoría inicial 6.3): estable key — Utilice chatId en lugar de initialMemberIds,
+    // De lo contrario, cuando se actualice el flujo de metadatos del chat grupal, los cambios clave restablecerán a los miembros en la edición del usuario./Selección de modo.
     dialogKey: String,
     initialName: String,
     assistants: List<AssistantEntity>,
@@ -1592,27 +1592,27 @@ internal fun EditGroupChatDialog(
         newObserverIds: List<String>,
     ) -> Unit,
 ) {
-    // v1.97: 用 rememberSaveable 持久化编辑中的状态,旋转屏不丢
-    // v1.0.74 fix (前端审计 6.3): key 统一用 dialogKey(chatId),避免元数据刷新重置编辑
+    // v1.97: Utilice RememberSaveable para conservar el estado de edición.,Gira la pantalla sin perderla
+    // v1.0.74 fix (Auditoría inicial 6.3): key Para uso unificado dialogKey(chatId),Evite la actualización de metadatos y restablezca las ediciones
     var name by rememberSaveable(dialogKey) { mutableStateOf(initialName) }
     var selectedMemberIds by rememberSaveable(dialogKey) {
         mutableStateOf(initialMemberIds.toSet())
     }
     var showErrors by rememberSaveable(dialogKey) { mutableStateOf(false) }
-    // v2.x: 讨论模式状态
+    // v2.x: Estado del modo de discusión
     var discussionMode by rememberSaveable(dialogKey) { mutableStateOf(initialDiscussionMode) }
     var autoMaxRounds by rememberSaveable(dialogKey) { mutableStateOf(initialAutoMaxRounds) }
     var hostId by rememberSaveable(dialogKey) { mutableStateOf(initialHostId ?: "") }
-    // v2.x: 发言长度档位状态(brief/standard/detailed)
+    // v2.x: Estado del engranaje de longitud del discurso(brief/standard/detailed)
     var replyLengthMode by rememberSaveable(dialogKey) { mutableStateOf(initialReplyLengthMode) }
-    // v2.x: 观察者成员(不参与默认轮转发言)
+    // v2.x: miembro observador(No participe en la rotación de oradores predeterminada.)
     var observerIds by rememberSaveable(dialogKey) { mutableStateOf(initialObserverIds.toSet()) }
 
     val maxNameLength = 30
     val nameError = showErrors && name.isBlank()
     val memberError = showErrors && selectedMemberIds.isEmpty()
 
-    // 讨论模式列表
+    // Lista de modos de discusión
     val modeOptions = listOf(
         "round_robin" to R.string.groupchat_mode_round_robin,
         "auto" to R.string.groupchat_mode_auto,
@@ -1630,7 +1630,7 @@ internal fun EditGroupChatDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.groupchat_edit_title),
         content = {
-            // 群聊名输入框
+            // Cuadro de entrada del nombre del chat grupal
             MuseTextField(
                 value = name,
                 onValueChange = { newName ->
@@ -1649,7 +1649,7 @@ internal fun EditGroupChatDialog(
             )
             Spacer(Modifier.height(16.dp))
 
-            // 成员选择
+            // Selección de miembros
             Text(
                 text = stringResource(R.string.groupchat_select_members),
                 style = MaterialTheme.typography.labelMedium,
@@ -1690,7 +1690,7 @@ internal fun EditGroupChatDialog(
                     }
                 }
             }
-            // v2.x: 观察者成员 — 从已选成员中指定,不参与默认轮转发言
+            // v2.x: miembro observador — Especificar entre miembros seleccionados,No participe en la rotación de oradores predeterminada.
             val selectedAssistants = assistants.filter { it.id in selectedMemberIds }
             if (selectedAssistants.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
@@ -1740,7 +1740,7 @@ internal fun EditGroupChatDialog(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // ── v2.x: 讨论模式选择 ──
+            // ── v2.x: Selección del modo de discusión ──
             Spacer(Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.groupchat_mode_title),
@@ -1762,7 +1762,7 @@ internal fun EditGroupChatDialog(
                     )
                 }
             }
-            // 当前模式描述
+            // Descripción del modo actual
             Spacer(Modifier.height(4.dp))
             Text(
                 text = stringResource(modeDescMap[discussionMode] ?: R.string.groupchat_mode_round_robin_desc),
@@ -1771,7 +1771,7 @@ internal fun EditGroupChatDialog(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // ── v2.x: 发言长度档位(简短/标准/详尽) ──
+            // ── v2.x: Rango de longitud del discurso(corto/Estándar/detallado) ──
             Spacer(Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.groupchat_length_title),
@@ -1794,7 +1794,7 @@ internal fun EditGroupChatDialog(
                 }
             }
 
-            // Auto 模式:最大轮数滑块
+            // Auto modo:Control deslizante de número máximo de rondas
             if (discussionMode == "auto") {
                 Spacer(Modifier.height(12.dp))
                 Row(
@@ -1805,8 +1805,8 @@ internal fun EditGroupChatDialog(
                     Text(
                         text = stringResource(R.string.groupchat_mode_auto_rounds),
                         style = MaterialTheme.typography.bodyMedium,
-                        // LAYOUT-01: 设置项名称取剩余宽度 + 限行,右侧只保留档位数值,
-                        // 防止放大字号/窄窗口下名称被数值挤成一列。
+                        // LAYOUT-01: El nombre del elemento de configuración toma el ancho restante + límite de línea,Sólo se conserva el valor de la marcha en el lado derecho,
+                        // Evitar que se amplíe el tamaño de fuente/En una ventana estrecha, los nombres se comprimen en una columna por valores numéricos.
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1816,7 +1816,7 @@ internal fun EditGroupChatDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium,
-                        // LAYOUT-01: 数值列限 1 行。
+                        // LAYOUT-01: Las columnas numéricas están limitadas a 1 fila.
                         maxLines = 1,
                     )
                 }
@@ -1829,7 +1829,7 @@ internal fun EditGroupChatDialog(
                 )
             }
 
-            // 主持人模式:选择主持人
+            // Modo moderador:Seleccionar anfitrión
             if (discussionMode == "host") {
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -1844,7 +1844,7 @@ internal fun EditGroupChatDialog(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(horizontal = 2.dp),
                 ) {
-                    // "不选"选项
+                    // "No seleccionar"Opciones
                     item(key = "no_host") {
                         MuseChip(
                             selected = hostId.isBlank(),
@@ -1852,7 +1852,7 @@ internal fun EditGroupChatDialog(
                             label = stringResource(R.string.groupchat_mode_no_host),
                         )
                     }
-                    // 只能选已选成员做主持人
+                    // Sólo los miembros seleccionados pueden ser seleccionados como moderadores.
                     items(assistants.filter { it.id in selectedMemberIds }, key = { it.id }) { assistant ->
                         MuseChip(
                             selected = hostId == assistant.id,
@@ -1886,21 +1886,21 @@ internal fun EditGroupChatDialog(
 }
 
 /**
- * H5: 把 Bitmap 编码为 base64 字符串。
+ * H5: Codifique el mapa de bits en una cadena base64.
  *
- * 用 JPEG 递减 quality 压缩,直到 base64 字符串不超过 2MB。
- * 最终仍超过 2MB 则抛异常,提示用户选择较小图片。
+ * Disminuir la compresión de calidad con JPEG,Hasta que la cadena base64 no supere los 2 MB.
+ * Al final, si aún supera los 2 MB, se generará una excepción.,Solicita al usuario que seleccione una imagen más pequeña.
  */
 internal fun readImageBytes(context: android.content.Context, uri: Uri): ByteArray {
     val stream = context.contentResolver.openInputStream(uri)
     if (stream != null) return stream.use { it.readBytes() }
     val fd = context.contentResolver.openFileDescriptor(uri, "r")
-        ?: throw IllegalStateException("无法读取图片")
+        ?: throw IllegalStateException("No se puede leer la imagen")
     return fd.use { java.io.FileInputStream(it.fileDescriptor).use { fis -> fis.readBytes() } }
 }
 
 internal fun encodeBitmapToBase64(bitmap: Bitmap): String {
-    val maxBase64Length = 2 * 1024 * 1024 // 2MB(base64 字符串长度上限)
+    val maxBase64Length = 2 * 1024 * 1024 // 2MB(base64 Longitud máxima de la cuerda)
     val baos = ByteArrayOutputStream()
     var quality = 90
     var base64: String
@@ -1916,12 +1916,12 @@ internal fun encodeBitmapToBase64(bitmap: Bitmap): String {
     } while (quality >= 20)
 
     if (base64.length > maxBase64Length) {
-        throw IllegalStateException("图片过大,请选择较小图片")
+        throw IllegalStateException("Imagen demasiado grande,Por favor elige una imagen más pequeña")
     }
     return base64
 }
 
-/** v1.0.72: 群聊加号菜单媒体卡(相机/授权占位)。 */
+/** v1.0.72: Tarjeta multimedia del menú Group Chat Plus(cámara/Marcador de posición autorizado). */
 @Composable
 private fun GroupMediaCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1956,14 +1956,14 @@ private fun GroupMediaCard(
     }
 }
 
-/** v1.0.72: 相机实时取景预览(CameraX,复用单聊加号菜单实现)。 */
+/** v1.0.72: Vista previa de la cámara en vivo(CameraX,Implementación de la reutilización del menú de signo más de chat único). */
 @Composable
 private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnTap by rememberUpdatedState(onTap)
-    // 持有 provider 引用;面板离开组合(onRelease)时解绑,避免相机在菜单关闭后仍绑定
-    // 在 RESUMED Activity 上(指示灯常亮/耗电/阻塞其他相机应用)。
+    // tiene referencia del proveedor;Grupo de hojas de panel(onRelease)Desvincular cuando,Evitar que la cámara permanezca vinculada después de cerrar el menú
+    // en Actividad REANUDA(La luz indicadora está siempre encendida./Consumo de energía/Bloquear otras aplicaciones de cámara).
     val cameraProviderHolder = remember { arrayOfNulls<ProcessCameraProvider>(1) }
     AndroidView(
         factory = { ctx ->
@@ -1982,9 +1982,9 @@ private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
                         }
                         provider.unbindAll()
                         provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview)
-                    }.onFailure { e -> Logger.w("GroupChatToolSheet", "相机预览绑定失败", e) }
+                    }.onFailure { e -> Logger.w("GroupChatToolSheet", "Error al vincular la vista previa de la cámara", e) }
                 }, ContextCompat.getMainExecutor(ctx))
-            }.onFailure { e -> Logger.w("GroupChatToolSheet", "相机预览初始化失败", e) }
+            }.onFailure { e -> Logger.w("GroupChatToolSheet", "Falló la inicialización de la vista previa de la cámara", e) }
             previewView
         },
         onRelease = {
@@ -1995,7 +1995,7 @@ private fun CameraLivePreviewBox(modifier: Modifier, onTap: () -> Unit) {
     )
 }
 
-/** v1.0.72: 查询系统相册最近图片。 */
+/** v1.0.72: Consulta las últimas imágenes en el álbum del sistema. */
 private fun queryRecentGalleryImages(context: Context, maxCount: Int): List<Uri> {
     return runCatching {
         val uris = mutableListOf<Uri>()
@@ -2017,5 +2017,5 @@ private fun queryRecentGalleryImages(context: Context, maxCount: Int): List<Uri>
             }
         }
         uris
-    }.onFailure { e -> Logger.w("GroupChatToolSheet", "查询相册失败", e) }.getOrDefault(emptyList())
+    }.onFailure { e -> Logger.w("GroupChatToolSheet", "No se pudo consultar el álbum", e) }.getOrDefault(emptyList())
 }

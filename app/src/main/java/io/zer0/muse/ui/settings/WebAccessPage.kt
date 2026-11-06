@@ -58,43 +58,44 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.security.SecureRandom
 
-/** 访问地址与 PIN 需要「一眼看到」的信息快照，组合成一屏之内的展示单元。 */
+/** La dirección de acceso y el PIN deben ser instantáneas de información \"vistas de un vistazo\", combinadas en una unidad de visualización dentro de una pantalla. */
 private data class WebAccessSnapshot(
-    /** 服务真实运行状态（取自 WebServer，不看配置里的 enabled）。 */
+    /** El estado de ejecución real del servicio (tomado del servidor web, independientemente de si está habilitado en la configuración). */
     val running: Boolean,
-    /** 实际监听端口；服务未运行时为配置端口。 */
+    /** El puerto de escucha real; cuando el servicio no se está ejecutando, es el puerto configurado. */
     val port: Int,
-    /** 最近一次启动失败原因。 */
+    /** El motivo del último fallo de inicio. */
     val lastError: String?,
-    /** 当前可用访问地址。 */
+    /** Direcciones de acceso disponibles actualmente. */
     val address: WebAccessAddress,
-    /** 当前 6 位 PIN；未生成时为空串。 */
+    /** PIN actual de 6 dígitos; cadena vacía si no se genera. */
     val pin: String,
 )
 
-/** 二维码位图边长（像素）。 */
+/** Longitud del lado del mapa de bits del código QR (píxeles). */
 private const val QR_BITMAP_PX = 640
 
 /**
- * 设置 → 连接 → 网页版访问。
+ * ajustes → conectar → Acceso web.
  *
- * 一屏给出「地址 + PIN + 二维码」，扫一下就能从 iPhone / PC 连上：
- *  - 开关写 [WebServerConfig.enabled]，开启后若服务未起就启动，关闭后停止并释放端口
- *  - 局域网开关对应 [WebServerConfig.allowLan]，关闭时明确写「仅本机可访问」
- *  - 地址取实际运行端口，局域网 IP 由 [resolveLanIpAddress] 枚举网卡得到
- *  - PIN 可重新生成；服务会随配置重启，旧 PIN 立即失效
- *  - 二维码由 zxing 把访问地址渲成位图，外侧留白由白底卡片提供
+ * Una pantalla muestra "dirección + PIN + código QR" y puede conectarse desde iPhone/PC escaneando:
+ *  - cambiar de escritura [WebServerConfig.enabled], inicie el servicio si no se inicia después de abrir, detenga y libere el puerto después de cerrar
+ *  - Correspondencia del conmutador LAN [WebServerConfig.allowLan], escriba claramente "Solo esta máquina puede acceder" al cerrar.
+ *  - La dirección toma el puerto en ejecución real y la IP de LAN es [resolveLanIpAddress] Enumere las tarjetas de red y obtenga
+ *  - PIN Regenerable; El servicio se reiniciará con la configuración y el PIN anterior dejará de ser válido inmediatamente.
+ *  - El código QR se representa zxing en un mapa de bits y el espacio exterior lo proporciona una tarjeta de fondo blanco.
  */
 @Composable
 fun WebAccessPage(onBack: () -> Unit) {
     val settings: SettingsRepository = koinInject()
     val webServer: WebServer = koinInject()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     val config by settings.webServerConfigFlow.collectAsStateWithLifecycle(initialValue = WebServerConfig())
     val isRunning by webServer.isRunning.collectAsStateWithLifecycle(initialValue = false)
     val lastError by webServer.lastError.collectAsStateWithLifecycle(initialValue = null)
-    // 端口以服务端实际监听为准：配置里的端口要等服务重启后才生效
+    // El puerto está sujeto al monitoreo real del servidor: el puerto en la configuración no tendrá efecto hasta que se reinicie el servicio.
     val port = webServer.status().port.takeIf { it > 0 } ?: config.port
     var lanIp by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(config.allowLan) {
@@ -114,18 +115,18 @@ fun WebAccessPage(onBack: () -> Unit) {
             resultOf { applyWebAccessEnabled(host, config, enabled, isRunning) }
                 .onSuccess { runningNow ->
                     if (enabled && !runningNow) {
-                        MuseToast.show(context.getString(R.string.settings_web_status_failed, lastError.orEmpty()), 3500)
+                        MuseToast.show(localizedResources.getString(R.string.settings_web_status_failed, lastError.orEmpty()), 3500)
                     }
                 }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(localizedResources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
     fun toggleLan(allowLan: Boolean) {
-        // 绑定地址和 CORS 都要跟着变，只能重启服务
+        // La dirección de enlace y CORS deben cambiarse en consecuencia y el servicio solo se puede reiniciar.
         scope.launch {
             resultOf { webServer.saveAndApplyConfig(config.copy(allowLan = allowLan)) }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(localizedResources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
@@ -134,9 +135,9 @@ fun WebAccessPage(onBack: () -> Unit) {
         scope.launch {
             resultOf { webServer.saveAndApplyConfig(config.copy(pin = newPin)) }
                 .onSuccess {
-                    MuseToast.show(context.getString(R.string.settings_web_access_pin_regenerated, newPin), 3500)
+                    MuseToast.show(localizedResources.getString(R.string.settings_web_access_pin_regenerated, newPin), 3500)
                 }
-                .onError { _, t -> MuseToast.show(context.getString(R.string.settings_web_failed, t?.message)) }
+                .onError { _, t -> MuseToast.show(localizedResources.getString(R.string.settings_web_failed, t?.message)) }
         }
     }
 
@@ -154,13 +155,13 @@ fun WebAccessPage(onBack: () -> Unit) {
                 onCopyAddress = {
                     snapshot.address.url?.let { url ->
                         copyToClipboard(context, "Muse WebServer", url)
-                        MuseToast.show(context.getString(R.string.settings_web_address_copied, url))
+                        MuseToast.show(localizedResources.getString(R.string.settings_web_address_copied, url))
                     }
                 },
                 onCopyPin = {
                     if (snapshot.pin.isNotBlank()) {
                         copyToClipboard(context, "Muse WebServer PIN", snapshot.pin)
-                        MuseToast.show(context.getString(R.string.settings_web_pin_copied, snapshot.pin))
+                        MuseToast.show(localizedResources.getString(R.string.settings_web_pin_copied, snapshot.pin))
                     }
                 },
             )
@@ -177,7 +178,7 @@ fun WebAccessPage(onBack: () -> Unit) {
     }
 }
 
-/** 运行状态 + 访问地址 + PIN + 二维码的组合卡，让用户一屏看到全部连接信息。 */
+/** La tarjeta combinada de estado de ejecución + dirección de acceso + PIN + código QR permite a los usuarios ver toda la información de conexión en una pantalla. */
 @Composable
 private fun WebAccessHeroCard(
     snapshot: WebAccessSnapshot,
@@ -232,7 +233,7 @@ private fun WebAccessHeroCard(
     }
 }
 
-/** 「标签 - 值 + 复制按钮」一行；值为空时用淡色提示文案而不是留白。 */
+/** Línea \"Etiqueta - Valor + Botón Copiar\"; cuando el valor esté vacío, utilice un color claro para solicitar la copia en lugar de dejarlo en blanco. */
 @Composable
 private fun WebAccessValueRow(
     label: String,
@@ -275,15 +276,15 @@ private fun WebAccessValueRow(
     }
 }
 
-/** 二维码区块的 testTag，供「仅本机模式不渲染二维码」的行为断言使用。 */
+/** La etiqueta de prueba del bloque de código QR se utiliza para la afirmación de comportamiento de \"solo el modo local no representa códigos QR\". */
 internal const val WEB_ACCESS_QR_TAG = "web_access_qr"
 
 /**
- * 二维码区块。
+ * Bloque de código QR.
  *
- * 只在非「仅本机可访问」时渲染：回环地址画成二维码，其他设备扫了也连不上，
- * 所以那种模式下整块不渲染，换成一句说明，不留空框。
- * 局域网访问开着但没拿到 IP 时同样整块不渲染（地址行已经给了提示）。
+ * Solo se representa cuando no es "accesible sólo para esta máquina": la dirección de bucle invertido se dibuja como un código QR y otros dispositivos no pueden conectarse incluso si lo escanean.
+ * Por lo tanto, en ese modo, no se representa el bloque completo y se reemplaza con una descripción, sin dejar ningún marco vacío.
+ * Cuando el acceso LAN está habilitado pero no se obtiene la IP, no se representará el bloque completo (la línea de dirección ya ha dado un mensaje).
  */
 @Composable
 internal fun WebAccessQrBlock(address: WebAccessAddress) {
@@ -343,7 +344,7 @@ internal fun WebAccessQrBlock(address: WebAccessAddress) {
     }
 }
 
-/** 启用开关、局域网开关、PIN 重新生成三行。 */
+/** Conmutador de habilitación, conmutador LAN,PIN Se regeneran tres líneas. */
 @Composable
 private fun WebAccessSwitchGroup(
     config: WebServerConfig,
@@ -381,7 +382,7 @@ private fun WebAccessSwitchGroup(
     }
 }
 
-/** 末尾的三条使用说明：iPhone 全屏、同一 Wi-Fi、关掉即断开。 */
+/** Tres instrucciones al final:iPhone Pantalla completa, mismo Wi-Fi, desconectado al apagarlo. */
 @Composable
 private fun WebAccessTips() {
     val tips = listOf(
@@ -421,13 +422,13 @@ private fun WebAccessTips() {
     }
 }
 
-/** 写入剪贴板；标签只用于系统剪贴板条目的可读描述。 */
+/** Escribe en el portapapeles; La etiqueta se utiliza sólo para descripciones legibles por humanos de las entradas del portapapeles del sistema. */
 private fun copyToClipboard(context: Context, label: String, value: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
 }
 
-/** 把 [SettingsRepository] 与 [WebServer] 适配成开关逻辑需要的副作用边界。 */
+/** poner [SettingsRepository] con [WebServer] Adáptese a los límites de efectos secundarios requeridos por la lógica del cambio. */
 private class WebServerAccessHost(
     private val settings: SettingsRepository,
     private val webServer: WebServer,

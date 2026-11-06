@@ -12,14 +12,14 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 卡片数据分片存储。
+ * Los datos de la tarjeta se almacenan en fragmentos.
  *
- * 背景：旧实现是单文件 `card_data.json`，每次 `put`/`remove` 都把整张表（最多 50 条、
- * 单条最多 64k 字符）重新序列化 + 原子写 + fsync。模型连续 `update_card_data` 时，
- * 每次都在重写别的卡片 —— 单次落盘量可到数 MB。分片后单次写入量只与这张卡有关。
+ * Antecedentes: la implementación anterior era de una sola fila. `card_data.json`, cada vez `put`/`remove` La tabla completa (hasta 50 entradas,
+ * Hasta 64k caracteres por línea) reserialización + escrituras atómicas + fsync. modelo continuo `update_card_data` cuando,
+ * Estoy reescribiendo otras cartas cada vez —— El tamaño de una única ubicación puede alcanzar varios MB. La cantidad de una sola escritura después de la fragmentación solo está relacionada con esta tarjeta.
  *
- * 这里锁四件事：只写自己那片、删卡片删分片、编解码往返、**分片目录必须在备份白名单内**
- * （否则分片之后卡片数据就不在备份范围了，恢复后 show_card 内容全丢）。
+ * Aquí están bloqueadas cuatro cosas: escribir solo su propio segmento, eliminar tarjetas y segmentos, codificar y decodificar de ida y vuelta,**El directorio de fragmentos debe estar en la lista blanca de respaldo**
+ * (De lo contrario, los datos de la tarjeta ya no estarán en el rango de respaldo después de la fragmentación y todo el contenido de show_card se perderá después de la restauración).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -34,9 +34,9 @@ class CardDataStoreShardTest {
 
     @Test
     fun `card removed during restore_is_not_resurrected`() {
-        // P28 把恢复搬到后台线程后引入的竞态：恢复线程手里有磁盘快照，
-        // 若这期间用户删了一张卡，直接 restored + current 会把它复活。
-        // 用 200 条旧数据把迁移窗口拉长，再立刻删掉其中一条。
+        // P28 La condición de carrera introducida después de mover la recuperación al subproceso en segundo plano: el subproceso de recuperación tiene una instantánea del disco en la mano.
+        // Si el usuario elimina una tarjeta durante este período, directamente restaurar + actual la revivirá.
+        // Utilice 200 datos antiguos para ampliar la ventana de migración y luego elimine uno de ellos inmediatamente.
         val legacy = File(filesDir, "card_data.json")
         legacy.parentFile?.mkdirs()
         val entries = (1..200).joinToString(separator = ",") { i ->
@@ -46,22 +46,22 @@ class CardDataStoreShardTest {
         shardDir.deleteRecursively()
 
         val store = newStore()
-        store.remove("c-7")   // 恢复还没完成就删
+        store.remove("c-7")   // Eliminado antes de que se complete la recuperación
 
         val deadline = System.currentTimeMillis() + 10_000
         while (store.get("c-1") == null && System.currentTimeMillis() < deadline) {
             Thread.sleep(10)
         }
 
-        assertEquals("恢复应完成", """{"v":1}""", store.get("c-1"))
-        assertNull("恢复窗口内被删的卡片不得复活", store.get("c-7"))
-        assertTrue("其它卡片照常恢复", store.get("c-200") != null)
+        assertEquals("La recuperación debería completarse", """{"v":1}""", store.get("c-1"))
+        assertNull("Las tarjetas eliminadas dentro de la ventana de recuperación no se pueden reactivar.", store.get("c-7"))
+        assertTrue("Otras tarjetas se restaurarán como de costumbre.", store.get("c-200") != null)
     }
 
     @Test
     fun `legacy_file_is_migrated_in_background`() {
-        // P28：恢复/迁移改到后台线程（设备实测 50 张卡迁移 216ms，原先占主线程）。
-        // 这里锁定三件事：后台确实迁了、旧文件改名 .migrated、分片落盘。
+        // P28:Restaurar/La migración se cambia al hilo de fondo (la medida real del dispositivo es 216 ms para la migración de 50 tarjetas, que originalmente ocupaban el hilo principal).
+        // Aquí se bloquean tres cosas: el fondo se migra, los archivos antiguos se renombran a .migrados y los fragmentos se mueven al disco.
         val legacy = File(filesDir, "card_data.json")
         legacy.parentFile?.mkdirs()
         legacy.writeText("""{"legacy-1":"{\"v\":1}","legacy-2":"{\"v\":2}"}""")
@@ -75,8 +75,8 @@ class CardDataStoreShardTest {
 
         assertEquals("""{"v":1}""", store.get("legacy-1"))
         assertEquals("""{"v":2}""", store.get("legacy-2"))
-        assertTrue("旧文件应改名为 .migrated", File(filesDir, "card_data.json.migrated").exists())
-        assertEquals("两条旧记录应各写一个分片", 2, shards().size)
+        assertTrue("Se debe cambiar el nombre de los archivos antiguos .migrated", File(filesDir, "card_data.json.migrated").exists())
+        assertEquals("Dos registros antiguos deben escribir un fragmento cada uno", 2, shards().size)
     }
 
     @Test
@@ -84,19 +84,19 @@ class CardDataStoreShardTest {
         val store = newStore()
         store.put("card-a", """{"v":1}""")
         val fileA = File(shardDir, CardDataFiles.shardName("card-a"))
-        assertTrue("分片必须落盘", fileA.exists())
+        assertTrue("Los fragmentos deben colocarse en el disco.", fileA.exists())
         val bytesA = fileA.length()
 
         store.put("card-b", """{"v":2}""")
-        assertEquals("写 B 不得改动 A 的分片", bytesA, fileA.length())
-        assertTrue("两张卡片应各自一个分片", shards().size >= 2)
+        assertEquals("Escribir B no debe cambiar los fragmentos de A", bytesA, fileA.length())
+        assertTrue("Ambas cartas deben tener un fragmento cada una.", shards().size >= 2)
     }
 
     @Test
     fun `get_reads_back_in_memory_value`() {
         val store = newStore()
-        store.put("card-c", """{"title":"卡片"}""")
-        assertEquals("""{"title":"卡片"}""", store.get("card-c"))
+        store.put("card-c", """{"title":"tarjeta"}""")
+        assertEquals("""{"title":"tarjeta"}""", store.get("card-c"))
         assertNull(store.get("card-missing"))
     }
 
@@ -108,7 +108,7 @@ class CardDataStoreShardTest {
         assertTrue(file.exists())
 
         store.remove("card-d")
-        assertTrue("remove 后分片应被删除", !file.exists())
+        assertTrue("remove Se deben eliminar los fragmentos posteriores.", !file.exists())
         assertNull(store.get("card-d"))
     }
 
@@ -126,7 +126,7 @@ class CardDataStoreShardTest {
     fun `shard_name_is_stable_and_path_safe`() {
         val name = CardDataFiles.shardName("1780000000000/../evil")
         assertEquals(name, CardDataFiles.shardName("1780000000000/../evil"))
-        assertTrue("不得含路径分隔符", !name.contains("/") && !name.contains("\\"))
+        assertTrue("No se permiten separadores de ruta", !name.contains("/") && !name.contains("\\"))
         assertEquals(64 + 5, name.length)
     }
 
@@ -139,11 +139,11 @@ class CardDataStoreShardTest {
     @Test
     fun `card_data_directory_is_in_backup_whitelist`() {
         assertTrue(
-            "分片目录必须在目录型备份白名单内，否则恢复后卡片数据全丢",
+            "El directorio fragmentado debe estar en la lista blanca de respaldo de tipo directorio; de lo contrario, todos los datos de la tarjeta se perderán después de la recuperación.",
             "card_data/" in BackupBinaryFiles.allowedPrefixes,
         )
         assertTrue(
-            "旧单文件仍要留在文件白名单里（迁移源 + 老备份兼容）",
+            "Los archivos individuales antiguos aún deben permanecer en la lista blanca de archivos (fuente de migración + copia de seguridad antigua compatible)",
             "card_data.json" in io.zer0.muse.backup.BackupService.backupFileStorePaths,
         )
     }

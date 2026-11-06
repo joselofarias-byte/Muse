@@ -1,23 +1,23 @@
 package io.zer0.muse.channel
 
 /**
- * 待发送的媒体。
+ * Medios a enviar.
  *
- * 三种来源对应不同的上传路径：内存字节、本地文件、公开地址。
- * 具体走哪种由各平台的能力表决定（见 [MediaCapabilities.inputModes]），
- * 调用方不需要知道平台差异。
+ * Tres fuentes corresponden a diferentes rutas de carga: bytes de memoria, archivos locales y direcciones públicas.
+ * La elección específica está determinada por la tabla de capacidades de cada plataforma (ver [MediaCapabilities.inputModes]),
+ * La persona que llama no necesita conocer las diferencias de plataforma.
  */
 sealed interface OutboundMedia {
-    /** 媒体类型，决定投递方式。 */
+    /** El tipo de medio determina el método de entrega. */
     val kind: MediaKind
 
-    /** 文件名，部分平台必填（如飞书上传需要）。 */
+    /** Nombre del archivo, requerido para algunas plataformas (como la carga de Feishu). */
     val fileName: String
 
-    /** MIME 类型。 */
+    /** MIME tipo. */
     val mimeType: String
 
-    /** 内存字节。 */
+    /** bytes de memoria. */
     data class Bytes(
         override val kind: MediaKind,
         val bytes: ByteArray,
@@ -25,7 +25,7 @@ sealed interface OutboundMedia {
         override val mimeType: String,
     ) : OutboundMedia
 
-    /** 本地文件路径。 */
+    /** Ruta del archivo local. */
     data class LocalFile(
         override val kind: MediaKind,
         val path: String,
@@ -33,7 +33,7 @@ sealed interface OutboundMedia {
         override val mimeType: String,
     ) : OutboundMedia
 
-    /** 公开可访问的地址。 */
+    /** Dirección de acceso público. */
     data class RemoteUrl(
         override val kind: MediaKind,
         val url: String,
@@ -42,7 +42,7 @@ sealed interface OutboundMedia {
     ) : OutboundMedia
 }
 
-/** 媒体发送结果。失败时给出可读原因，便于回执给用户。 */
+/** Los medios envían resultados. Proporciona un motivo legible del error para que se pueda enviar un recibo al usuario. */
 data class MediaSendResult(
     val ok: Boolean,
     val detail: String = "",
@@ -54,10 +54,10 @@ data class MediaSendResult(
 }
 
 /**
- * 检查某个渠道能否按指定方式发送某种媒体。
+ * Comprueba si un canal puede entregar un determinado medio según lo especificado.
  *
- * 返回 null 表示可以发；否则返回不可发的原因。
- * 上限判断按 [MediaInputMode] 区分，因为同一媒体走内存和走 URL 限制不同。
+ * Devuelve nulo para indicar que se puede enviar; en caso contrario, devuelva el motivo por el cual no se puede enviar.
+ * Botón de evaluación de límite superior [MediaInputMode] La diferencia se debe a que el mismo medio tiene diferentes restricciones de memoria y URL.
  */
 fun ChannelPlatform.checkMediaSendable(media: OutboundMedia): String? {
     val caps = capabilities.mediaCapabilities
@@ -69,21 +69,21 @@ fun ChannelPlatform.checkMediaSendable(media: OutboundMedia): String? {
     val actual = when (media) {
         is OutboundMedia.Bytes -> media.bytes.size.toLong()
         is OutboundMedia.LocalFile -> runCatching { java.io.File(media.path).length() }.getOrDefault(0L)
-        // 远端地址无法预知大小，交给平台自己判断。
+        // El tamaño de la dirección remota no se puede predecir y se deja a la plataforma para juzgarlo.
         is OutboundMedia.RemoteUrl -> 0L
     }
     return when {
         !caps.supports(media.kind) ->
-            "$name 不支持发送 ${media.kind.name.lowercase()}"
+            "$name No soportado para enviar ${media.kind.name.lowercase()}"
         mode !in caps.inputModes ->
-            "$name 不支持以 ${mode.name.lowercase()} 方式发送"
+            "$name No soportado como ${mode.name.lowercase()} Enviar por"
         else -> {
             val limit = caps.limitFor(mode, media.kind)
             if (actual > 0L && limit > 0L && actual > limit) {
                 val mb = actual / (1024.0 * 1024.0)
                 val limitMb = limit / (1024.0 * 1024.0)
-                "$name 的 ${media.kind.name.lowercase()} 上限是 " +
-                    "${"%.1f".format(limitMb)}MB，当前 ${"%.1f".format(mb)}MB"
+                "$name de ${media.kind.name.lowercase()} El límite superior es " +
+                    "${"%.1f".format(limitMb)}MB, actualmente ${"%.1f".format(mb)}MB"
             } else {
                 null
             }
@@ -92,10 +92,10 @@ fun ChannelPlatform.checkMediaSendable(media: OutboundMedia): String? {
 }
 
 /**
- * 待上传的内容。
+ * Contenido a subir.
  *
- * 各平台的上传接口参数高度相似（字节 + 文件名 + MIME），
- * 打包成一个对象避免每个方法都摊开七八个参数。
+ * Los parámetros de la interfaz de carga de cada plataforma son muy similares (bytes + nombre de archivo + MIME).
+ * Empacarlo en un objeto evita distribuir siete u ocho parámetros para cada método.
  */
 data class MediaPayload(
     val kind: MediaKind,
@@ -121,7 +121,7 @@ data class MediaPayload(
     }
 
     companion object {
-        /** 从 [OutboundMedia] 读取字节；本地文件读盘、远端地址下载。 */
+        /** de [OutboundMedia] Leer bytes; lea archivos locales desde el disco y descárguelos desde direcciones remotas. */
         suspend fun from(media: OutboundMedia): MediaPayload? {
             val bytes = when (media) {
                 is OutboundMedia.Bytes -> media.bytes
@@ -140,13 +140,13 @@ data class MediaPayload(
 }
 
 /**
- * 上传目标。
+ * Subir objetivo.
  *
- * 各平台都需要「发到哪个会话」，只是字段名不同。
+ * Cada plataforma requiere "enviar a qué sesión", pero los nombres de los campos son diferentes.
  */
 data class UploadTarget(
-    /** 平台侧的目标标识（chat_id / openid / openConversationId 等）。 */
+    /** Identificación del objetivo en el lado de la plataforma (chat_id / openid / openConversationId etcétera). */
     val id: String,
-    /** 是否群会话。 */
+    /** Si tener una conversación grupal. */
     val isGroup: Boolean,
 )

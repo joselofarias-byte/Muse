@@ -10,14 +10,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 只有 token 预算超了、消息条数没超时，压缩也必须触发。
+ * Solo cuando se excede el presupuesto del token y la cantidad de mensajes no caduca, se debe activar la compresión.
  *
- * 这条曾经被一次「优化」写坏过：把预算判断改成 `overCount && isOver(...)` 的短路形式，
- * 于是「条数没超 → 不算预算 → 判为不超预算 → 直接返回原历史」，压缩永远不触发。
- * 而 `compress_char_budget` 这个 key 在 v2.3.2 就已按 token 预算解释，正是为了
- * 覆盖「条数不多但单条很长」的会话（长文档、卡片源码、日志粘贴）。
+ * Este artículo una vez fue roto por una "optimización": cambiar el juicio presupuestario a `overCount && isOver(...)` forma de cortocircuito,
+ * Entonces "el número de artículos no superó → Sin contar el presupuesto → Se considera que está dentro del presupuesto → Regrese directamente al historial original", la compresión nunca se activará.
+ * y `compress_char_budget` Esta clave ha sido interpretada según el presupuesto del token en v2.3.2, precisamente para
+ * Cubre sesiones con sesiones "no muchas pero muy largas" (documentos largos, código fuente de tarjeta, pegado de registros).
  *
- * 这里用极小阈值构造「条数少但必然超预算」的输入，锁住那条分支。
+ * Aquí, se utiliza un umbral mínimo para construir una entrada que tenga "una pequeña cantidad de entradas pero debe exceder el presupuesto" y bloquear esa rama.
  */
 class ContextCompressTokenBudgetTriggerTest {
 
@@ -29,15 +29,15 @@ class ContextCompressTokenBudgetTriggerTest {
             chatService = mockk(relaxed = true),
             compressor = compressor,
         )
-        // 每条都很长 → token 很大；但条数只有 4，远低于阈值 999。
+        // cada uno es muy largo → token Muy grande; pero el número de entradas es sólo 4, muy por debajo del umbral de 999.
         val messages = List(4) { index ->
             UIMessage(
                 role = if (index == 0) MessageRole.USER else MessageRole.ASSISTANT,
-                content = "很长的历史内容用于撑爆 token 预算 ".repeat(200),
+                content = "Se utiliza contenido histórico muy extenso para estirar el presupuesto simbólico. ".repeat(200),
             )
         }
         val totalTokens = TokenEstimator.estimate(messages)
-        assertTrue("前提：这批消息的 token 必须远超预算", totalTokens > 100)
+        assertTrue("Requisito previo: los tokens para este lote de mensajes deben exceder con creces el presupuesto", totalTokens > 100)
 
         val result = transformer.transform(
             messages,
@@ -48,14 +48,14 @@ class ContextCompressTokenBudgetTriggerTest {
                     "compress_threshold" to 999,
                     "compress_keep_recent" to 1,
                     "compress_char_budget" to 100,
-                    // 摘要模型失败时仍需产出可见的截断标记，避免用例依赖真实模型
+                    // Cuando el modelo de resumen falla, aún se debe generar una marca de truncamiento visible para evitar casos de uso que dependan del modelo real.
                     "compress_force_fallback" to true,
                 ),
             ),
         )
 
         assertTrue(
-            "条数没超但 token 超预算时必须压缩，实际结果条数=${result.size}",
+            "No se excede el número de artículos pero el token excede el presupuesto y debe comprimirse. El número real de resultados es=${result.size}",
             result.size != messages.size,
         )
     }
@@ -66,7 +66,7 @@ class ContextCompressTokenBudgetTriggerTest {
             chatService = mockk(relaxed = true),
             compressor = mockk(relaxed = true),
         )
-        val messages = List(3) { UIMessage(role = MessageRole.USER, content = "短消息 $it") }
+        val messages = List(3) { UIMessage(role = MessageRole.USER, content = "mensaje corto $it") }
 
         val result = transformer.transform(
             messages,
@@ -81,6 +81,6 @@ class ContextCompressTokenBudgetTriggerTest {
             ),
         )
 
-        assertTrue("两个条件都没超时不得改动历史", result.size == messages.size)
+        assertTrue("Si ambas condiciones no expiran, el historial no se puede cambiar.", result.size == messages.size)
     }
 }

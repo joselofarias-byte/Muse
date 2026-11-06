@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** B8-05: 无障碍路径解析与文本转义纯函数测试。 */
+/** B8-05: Análisis de rutas accesibles y texto que escapa a pruebas de funciones puras. */
 class AccessibilityPathUtilsTest {
 
     @Test

@@ -18,45 +18,45 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * 崩溃上报的固定出口。
+ * Salida fija para informes de fallos.
  *
- * ## 为什么不再让用户选
+ * ## ¿Por qué ya no dejar que los usuarios elijan?
  *
- * 旧实现把「发到哪个邮箱 / 哪个 webhook」做成设置项，让终端用户自己填 —— 这件事本身是错的：
- * 用户既不知道该发给谁，也没有义务为开发者的崩溃收集做配置。设置页上是两个空输入框加一个
- * 「保存」按钮，绝大多数人点开只有困惑。
+ * La implementación anterior convertía en "A qué dirección de correo electrónico/a qué webhook enviar" un elemento de configuración, lo que permitía a los usuarios finales completarlo ellos mismos. —— Esto en sí está mal:
+ * Los usuarios no saben a quién enviar ni están obligados a configurar la recopilación de fallos para los desarrolladores. En la página de configuración, hay dos cuadros de entrada vacíos más uno
+ * La mayoría de las personas se confunden cuando hacen clic en el botón "Guardar".
  *
- * 现在的模型是**一个按钮**：点「立即上报」，App 自己把日志送到开发者的服务器；
- * 服务器不可达时才退回邮件（邮件地址也写死在代码里，用户只看到一句「会发给开发者」）。
+ * El modelo actual es**un botón**: Haga clic en "Reportar ahora",App Envíe usted mismo los registros al servidor del desarrollador;
+ * El correo electrónico se devolverá solo cuando no se pueda acceder al servidor (la dirección de correo electrónico también está escrita en el código y el usuario solo ve la frase "se enviará al desarrollador").
  *
- * ## 隐私边界（与旧实现一致，没有放宽）
+ * ## Límite de privacidad (consistente con la implementación anterior, sin relajación)
  *
- * - 上报内容只含：崩溃堆栈（已脱敏）、设备型号 / 品牌 / Android 版本 / ABI、App 版本、时间戳
- * - 不含 IMEI / Android ID / MAC / 位置 / 账号等任何唯一标识
- * - 仍然只在用户点按钮时发生，没有任何后台静默上报
+ * - El contenido reportado solo incluye: crash stack (insensibilizado), modelo/marca/versión de Android/ABI del dispositivo,App versión, marca de tiempo
+ * - no contiene IMEI / Android ID / MAC / Cualquier identificador único, como ubicación/número de cuenta, etc.
+ * - Todavía solo ocurre cuando el usuario hace clic en el botón, sin ningún informe silencioso en segundo plano.
  */
 object CrashReporterFactory {
 
-    /** 崩溃报告的唯一收件地址（开发者邮箱）。用户不需要、也不该填写这个。 */
+    /** La dirección de destinatario única para los informes de fallos (correo electrónico del desarrollador). Los usuarios no necesitan ni deben completar este formulario. */
     const val REPORT_EMAIL = "2119280571@qq.com"
 
     /**
-     * 崩溃报告的服务端接收端点（museai.ltd 自建）。
+     * Punto final de recepción del lado del servidor para informes de fallos (museai.ltd autoconstruido).
      *
-     * 这是开发者自己的服务器，与用户配置的 AI 中转代理无关，**必须直连**。
-     * 详见 [directClient]。
+     * Este es el servidor del desarrollador y no tiene nada que ver con el proxy de retransmisión AI configurado por el usuario.**Debe estar conectado directamente**.
+     * Ver detalles [directClient].
      */
     const val REPORT_ENDPOINT = "https://museai.ltd/api/crash-report"
 
     /**
-     * 为崩溃上报准备一个**不带代理**的 client。
+     * Prepare uno para informar fallos**Sin agente**cliente.
      *
-     * 为什么必须单独建：调用方传进来的往往是 `named("chat")` 那个共享 client，
-     * 它装了动态 ProxySelector，会按用户配置的代理转发所有请求。用户为了连 AI 中转
-     * 而配的代理，很可能根本到不了开发者的服务器（甚至把它整个封掉）——
-     * 于是上报永远失败，而这跟“服务器挂了”从外部看一模一样。
+     * Por qué debe construirse por separado: lo que transmite la persona que llama a menudo es `named("chat")` Ese cliente compartido,
+     * Está equipado con un ProxySelector dinámico y reenviará todas las solicitudes de acuerdo con el proxy configurado por el usuario. Los usuarios se transfieren para conectarse a la IA
+     * Es posible que el proxy configurado no pueda llegar al servidor del desarrollador (o incluso bloquearlo por completo)——
+     * Entonces el informe siempre falla, y esto no es lo mismo que“El servidor está caído”Parece exactamente igual desde fuera.
      *
-     * 这里显式把 proxy 设为 NO_PROXY：崩溃上报这种基建链路不该受用户代理配置影响。
+     * Aquí, el proxy se establece explícitamente en NO_PROXY: los enlaces de infraestructura, como los informes de fallos, no deberían verse afectados por la configuración del agente de usuario.
      */
     internal fun directClient(base: OkHttpClient): OkHttpClient = base.newBuilder()
         .proxy(Proxy.NO_PROXY)
@@ -66,18 +66,18 @@ object CrashReporterFactory {
         .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 
-    /** 服务端单次提交超时（秒）。崩溃后不该为了上报把用户卡在这里。 */
+    /** Tiempo de espera de envío único del lado del servidor (segundos). Los usuarios no deben quedarse atrapados aquí después de un fallo para poder informarlo. */
     internal const val CONNECT_TIMEOUT_SECONDS = 10L
     internal const val WRITE_TIMEOUT_SECONDS = 15L
     internal const val READ_TIMEOUT_SECONDS = 10L
 
     /**
-     * 上报一次崩溃批次。
+     * Informar de un lote bloqueado.
      *
-     * 顺序：先打服务端（一次点击、静默完成）；服务端不可达时退回邮件 Intent，
-     * 保证「有网但服务没起来」和「没网」这两种情况下用户的点击都不白点。
+     * Secuencia: primero acceda al servidor (un clic, complete en silencio); devolver la intención del correo electrónico cuando el servidor es inaccesible,
+     * Asegúrate de que los clics del usuario no se desperdicien en ambos casos: "Hay Internet pero el servicio no funciona" y "No hay Internet".
      *
-     * @return 实际上走了哪条通道，供界面显示准确的结果文案
+     * @return Qué canal se tomó realmente, para que la interfaz muestre la copia exacta del resultado
      */
     suspend fun submit(
         context: Context,
@@ -88,14 +88,14 @@ object CrashReporterFactory {
         if (crashLogs.isEmpty()) return SubmitOutcome.NothingToSend
         val uploaded = runCatching {
             ServerCrashReporter(REPORT_ENDPOINT, directClient(client)).send(crashLogs, metadata)
-        }.onFailure { Logger.w(TAG, "服务端上报异常: ${describeForLog(it)}") }.getOrDefault(false)
+        }.onFailure { Logger.w(TAG, "Excepción de informes del servidor: ${describeForLog(it)}") }.getOrDefault(false)
         return if (uploaded) {
             SubmitOutcome.Uploaded(crashLogs.size)
         } else {
-            // 服务端不通 → 邮件兜底。收件人写死，用户只需要在邮件应用里点发送。
+            // El servidor no está disponible → Correo electrónico para decir la verdad. El destinatario está codificado y el usuario sólo necesita hacer clic en enviar en la aplicación de correo.
             val opened = runCatching {
                 EmailCrashReporter(context, REPORT_EMAIL).report(crashLogs.joinToString("\n\n---\n\n"), metadata)
-            }.onFailure { Logger.w(TAG, "邮件兜底失败: ${it.message}") }.isSuccess
+            }.onFailure { Logger.w(TAG, "Error de correo electrónico: ${it.message}") }.isSuccess
             if (opened) SubmitOutcome.MailFallback(crashLogs.size) else SubmitOutcome.Failed
         }
     }
@@ -103,11 +103,11 @@ object CrashReporterFactory {
     private const val TAG = "CrashReporterFactory"
 
     /**
-     * 把异常转成可诊断的一行。
+     * Convierta la excepción en una línea diagnosticable.
      *
-     * 旧写法只记 `it.message`，而网络异常经常 message 为 null（例如 OkHttp 内部的
-     * `IOException` 子类），日志里就只剩「服务端上报异常: null」—— 等于没有信息。
-     * 这里补上类型名与 cause 链，下次再失败能直接看出是 DNS、拒绝连接还是超时。
+     * La antigua forma de escribir sólo recuerda `it.message`, y las excepciones de red a menudo el mensaje es nulo (como OkHttp interno
+     * `IOException` subcategoría), lo único que queda en el registro es "El servidor informó una excepción.: null"—— Significa que no hay información.
+     * Agregue aquí el nombre del tipo y la cadena de causa. Si falla la próxima vez, podrá saber directamente si se trata de DNS, conexión rechazada o tiempo de espera agotado.
      */
     internal fun describeForLog(t: Throwable): String {
         val parts = mutableListOf<String>()
@@ -123,26 +123,26 @@ object CrashReporterFactory {
     }
 }
 
-/** 崩溃上报的落地结果。 */
+/** Los resultados de la implementación de los informes de fallos. */
 sealed interface SubmitOutcome {
-    /** 没有待上报记录。 */
+    /** No hay registros que reportar. */
     data object NothingToSend : SubmitOutcome
 
-    /** 已提交到开发者服务器。 */
+    /** Enviado al servidor de desarrollador. */
     data class Uploaded(val count: Int) : SubmitOutcome
 
-    /** 服务器不可达，已改为打开邮件（用户在邮件应用里确认发送）。 */
+    /** No se puede acceder al servidor y en su lugar se ha abierto el correo electrónico (el usuario confirma el envío en la aplicación de correo electrónico). */
     data class MailFallback(val count: Int) : SubmitOutcome
 
-    /** 两条通道都失败。 */
+    /** Ambos canales fallaron. */
     data object Failed : SubmitOutcome
 }
 
 /**
- * 邮件崩溃上报器 — 用 [Intent.ACTION_SEND] 调起邮件应用，预填收件人/主题/正文。
+ * Reportero de fallas de correo electrónico — usar [Intent.ACTION_SEND] Inicie la aplicación de correo y complete previamente los destinatarios/Tema/Texto.
  *
- * 只在服务端上报不可达时使用。收件人由 [CrashReporterFactory.REPORT_EMAIL] 固定，
- * 不读任何用户设置。
+ * Solo se usa cuando el servidor informa que no se puede acceder. Destinatario por [CrashReporterFactory.REPORT_EMAIL] fijo,
+ * No lee ninguna configuración de usuario.
  */
 class EmailCrashReporter(
     private val context: Context,
@@ -150,30 +150,30 @@ class EmailCrashReporter(
 ) {
     fun report(crashLog: String, metadata: Map<String, String>) {
         if (recipient.isBlank()) {
-            Logger.w(TAG, "邮件收件人为空,跳过上报")
+            Logger.w(TAG, "El destinatario del correo electrónico está vacío,Saltar informes")
             return
         }
         val body = buildString {
-            appendLine("===== Muse 崩溃报告 =====")
+            appendLine("===== Muse informe de accidente =====")
             metadata.forEach { (k, v) -> appendLine("$k: $v") }
             appendLine()
-            appendLine("----- 崩溃堆栈 -----")
+            appendLine("----- pila de choque -----")
             appendLine(crashLog)
         }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "message/rfc822"
             putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
-            putExtra(Intent.EXTRA_SUBJECT, "Muse 崩溃报告 ${metadata["timestamp"] ?: ""}")
+            putExtra(Intent.EXTRA_SUBJECT, "Muse informe de accidente ${metadata["timestamp"] ?: ""}")
             putExtra(Intent.EXTRA_TEXT, body)
-            // 从 Application Context 启动 Activity 必须加 NEW_TASK
+            // Se debe agregar la actividad inicial desde el contexto de la aplicación. NEW_TASK
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        // createChooser 返回新 Intent，原始 intent 上的 NEW_TASK 不会自动传递，
-        // 统一走 ShareIntentHelper 在非 Activity context 下补 flag。
+        // createChooser Devuelve una nueva intención, NEW_TASK en la intención original no se entrega automáticamente,
+        // Utilice ShareIntentHelper de forma unificada para agregar indicadores en un contexto que no sea de actividad.
         resultOf {
-            io.zer0.muse.util.ShareIntentHelper.startChooserSafely(context, intent, "选择邮件应用发送崩溃报告")
+            io.zer0.muse.util.ShareIntentHelper.startChooserSafely(context, intent, "Seleccione la aplicación de correo para enviar el informe de fallos")
         }.onError { msg, t ->
-            Logger.w(TAG, "调起邮件应用失败: ${t?.message ?: msg}")
+            Logger.w(TAG, "No se pudo iniciar la aplicación de correo: ${t?.message ?: msg}")
         }
     }
 
@@ -183,12 +183,12 @@ class EmailCrashReporter(
 }
 
 /**
- * 服务端崩溃上报器 — POST 到 museai.ltd 的接收端点，JSON 格式。
+ * Reportero de fallos del lado del servidor — POST al punto final de recepción de museai.ltd,JSON formato.
  *
- * 与旧 webhook 实现的差别：URL 固定（不再读用户配置）、**同步返回结果**
- * （调用方要据此决定要不要退回邮件），超时也更短。
+ * Diferencias con la antigua implementación del webhook:URL Corregido (la configuración del usuario ya no se lee),**Devolver resultados sincrónicamente**
+ * (La persona que llama debe decidir si desea rebotar el correo electrónico en consecuencia) y el tiempo de espera es más corto.
  *
- * 请求体：
+ * Cuerpo de la solicitud:
  * ```
  * {
  *   "timestamp": "2026-07-23 12:34:56",
@@ -210,13 +210,13 @@ class ServerCrashReporter(
         .build()
 
     /**
-     * 上传一批崩溃日志。
+     * Cargue un lote de registros de fallos.
      *
-     * @return true 表示服务端接受（HTTP 2xx）；false 表示不可达或被拒 —— 调用方据此回退。
+     * @return true Indica que el servidor acepta (HTTP 2xx);false Indica inalcanzable o rechazado —— En consecuencia, la persona que llama retrocede.
      */
     suspend fun send(crashLogs: List<String>, metadata: Map<String, String>): Boolean {
         if (endpoint.isBlank() || !endpoint.startsWith("http")) {
-            Logger.w(TAG, "上报端点非法: $endpoint")
+            Logger.w(TAG, "El punto final reportado es ilegal: $endpoint")
             return false
         }
         return runCatching {
@@ -226,17 +226,17 @@ class ServerCrashReporter(
                 .build()
             httpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
-                    Logger.i(TAG, "崩溃已上报到服务端 (${crashLogs.size} 条)")
+                    Logger.i(TAG, "El fallo ha sido informado al servidor. (${crashLogs.size} Artículo)")
                     true
                 } else {
-                    Logger.w(TAG, "服务端拒绝崩溃上报: HTTP ${response.code}")
+                    Logger.w(TAG, "El servidor rechaza el informe de fallos: HTTP ${response.code}")
                     false
                 }
             }
-        }.onFailure { Logger.w(TAG, "服务端上报异常: ${CrashReporterFactory.describeForLog(it)}") }.getOrDefault(false)
+        }.onFailure { Logger.w(TAG, "Excepción de informes del servidor: ${CrashReporterFactory.describeForLog(it)}") }.getOrDefault(false)
     }
 
-    /** 构建 JSON 请求体。批次内多条日志用数组，服务端按条归档。 */
+    /** Cree el cuerpo de la solicitud JSON. Varios registros en un lote utilizan matrices y el servidor los archiva por registro. */
     private fun buildJsonPayload(crashLogs: List<String>, metadata: Map<String, String>): String {
         val json = JSONObject()
         json.put("timestamp", metadata["timestamp"] ?: "")
@@ -259,9 +259,9 @@ class ServerCrashReporter(
 }
 
 /**
- * 构建标准崩溃元数据 — 型号 / Android 版本 / App 版本 / 时间戳。
+ * Crear metadatos de fallos estándar — Modelo/Versión de Android/Versión de la aplicación/Marca de tiempo.
  *
- * App 版本通过 PackageManager 读取（无 BuildConfig 依赖，避免 release 构建混淆时丢失）。
+ * App La versión se lee a través de PackageManager (sin dependencia de BuildConfig para evitar pérdidas durante la confusión de la versión de lanzamiento).
  */
 fun buildStandardMetadata(context: Context): Map<String, String> {
     val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())

@@ -9,12 +9,12 @@ import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Fact 数据访问对象(预编译查询)。
+ * Fact objeto de acceso a datos(Consultas precompiladas).
  *
- * v6: 新增 facts_fts FTS4 全文索引。
- *  - 全文搜索优先走 FTS4 MATCH(ngram 预处理)
- *  - 单字/异常时回退 LIKE '%query%'
- *  - 标签搜索用 json_each 精确匹配(避免 LIKE 子串误匹配)
+ * v6: Se agregó el índice de texto completo FTS4 de Facts_fts.
+ *  - La búsqueda de texto completo tiene prioridad FTS4 MATCH(ngram preprocesamiento)
+ *  - sola palabra/Respaldo en caso de excepción LIKE '%query%'
+ *  - La búsqueda de etiquetas utiliza json_each para una coincidencia exacta(Evite la falta de coincidencia de subcadenas LIKE)
  */
 @Dao
 interface FactDao {
@@ -26,10 +26,10 @@ interface FactDao {
     suspend fun insertAll(entities: List<FactEntity>): List<Long>
 
     /**
-     * v4: 按 importance 降序 + time 降序获取全部事实。
-     * 关键(importance=2)和重要(importance=1)的事实排在前面,便于 UI 优先展示。
+     * v4: Obtenga todos los datos en orden descendente de importancia + tiempo descendente.
+     * clave(importance=2)e importante(importance=1)los hechos son lo primero,Conveniente para la visualización de prioridad de la interfaz de usuario.
      *
-     * v8: 新增可选 scope 过滤,null 表示全部作用域,非 null 仅返回指定作用域的事实。
+     * v8: Se agregó filtrado de alcance opcional.,null Representa todo el alcance.,No nulo Devuelve sólo hechos para el ámbito especificado.
      */
     @Query("SELECT * FROM facts WHERE (:scope IS NULL OR scope = :scope) ORDER BY (pinned_at IS NOT NULL) DESC, importance DESC, time DESC")
     suspend fun getAll(scope: String? = null): List<FactEntity>
@@ -41,22 +41,22 @@ interface FactDao {
     suspend fun getBySession(sessionId: String): List<FactEntity>
 
     /**
-     * 会话被删除时清掉它产生的全部事实(含已出场/已合并的行)。
+     * Cuando se elimina una sesión, se borran todos los datos generados por ella.(ha aparecido/filas fusionadas).
      *
-     * 逐行删除只在一条会话的事实很少时才便宜;会话级清理一次删完,再按行号清派生数据。
+     * La eliminación línea por línea solo es económica si hay pocos datos sobre una sesión;Limpieza y eliminación a nivel de sesión de una sola vez,Luego borre los datos derivados por número de fila.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     @Query("DELETE FROM facts WHERE session_id = :sessionId")
     suspend fun deleteBySession(sessionId: String): Int
 
     /**
-     * 助手被删除时清掉该作用域在本库的全部事实。
+     * Cuando se elimina el asistente, se borran todos los datos sobre el alcance en la biblioteca.
      *
-     * 子助手的行一般在 `facts_<id>.db` 里,但主库仍可能残留同 scope 的历史行,
-     * 两个库都要清,否则记忆页还能读到已删助手的事实。
+     * La línea del subasistente suele estar en `facts_<id>.db` adentro,Sin embargo, la biblioteca principal aún puede tener líneas históricas con el mismo alcance.,
+     * Es necesario borrar ambas bibliotecas.,De lo contrario, la página de memoria aún puede leer el hecho de que el asistente ha sido eliminado.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     @Query("DELETE FROM facts WHERE scope = :scope")
     suspend fun deleteAllByScope(scope: String): Int
@@ -68,70 +68,70 @@ interface FactDao {
     suspend fun deleteById(id: Long): Int
 
     /**
-     * P2: 更新指定 fact 的内容(用于记忆页 UI 编辑 Fact 层)。
+     * P2: Actualizar el contenido del hecho especificado.(Se utiliza para recordar la edición de la interfaz de usuario de la página Capa de hechos).
      *
-     * v8: 新增可选 scope 参数:
-     *  - scope 为 null 时,只更新 content,保留原有 scope(COALESCE 语义)
-     *  - scope 非 null 时,同时更新 content 与 scope(用于 UI 切换事实作用域)
+     * v8: Parámetro de alcance opcional agregado:
+     *  - scope cuando es nulo,Actualizar solo content,Mantener original scope(COALESCE Semántica)
+     *  - scope Cuando no es nulo,Actualizar contenido y scope(Se utiliza para que la interfaz de usuario cambie los alcances de los hechos.)
      */
     @Query("UPDATE facts SET fact = :content, scope = COALESCE(:scope, scope) WHERE id = :id")
     suspend fun updateContent(id: Long, content: String, scope: String? = null): Int
 
     /**
-     * v4: 更新指定 fact 的重要程度(用于记忆页 UI 手动调整)。
-     * importance: 0=普通,1=重要,2=关键
+     * v4: Actualiza la importancia de un hecho específico.(Se utiliza para ajustes manuales de la interfaz de usuario de la página de memoria.).
+     * importance: 0=ordinario,1=importante,2=clave
      */
     @Query("UPDATE facts SET importance = :importance WHERE id = :id")
     suspend fun updateImportance(id: Long, importance: Int): Int
 
-    /** B4-05: 设置/取消手动置顶(pinnedAt 为 null 表示取消)。 */
+    /** B4-05: ajustes/Cancelar pin manual(pinnedAt nulo significa cancelar). */
     @Query("UPDATE facts SET pinned_at = :pinnedAt WHERE id = :id")
     suspend fun updatePinnedAt(id: Long, pinnedAt: String?): Int
 
-    /** v12: 回填实体键(反思任务对历史 null 数据)。 */
+    /** v12: Rellenar claves de entidad(Tarea de reflexión sobre datos históricos nulos). */
     @Query("UPDATE facts SET entity_key = :entityKey WHERE id = :id")
     suspend fun updateEntityKey(id: Long, entityKey: String): Int
 
     /**
-     * v10 P2-3: 更新指定 fact 的分类和标签(用于 AI 记忆管理的 updatedEntities/autoCategorize)。
-     * category 或 tags 为 null 时保留原值(COALESCE 语义)。
+     * v10 P2-3: Actualizar la clasificación y etiqueta del hecho especificado.(para la gestión de memoria de IA updatedEntities/autoCategorize).
+     * category O mantener el valor original cuando las etiquetas sean nulas(COALESCE Semántica).
      */
     @Query("UPDATE facts SET category = COALESCE(:category, category), tags = COALESCE(:tags, tags) WHERE id = :id")
     suspend fun updateCategoryAndTags(id: Long, category: String? = null, tags: String? = null): Int
 
     /**
-     * 检索命中回写：刷新最近命中时间。
+     * Reescritura de hits de recuperación: actualice la última hora de hit.
      *
-     * 补一个长期缺口 —— hitBonus 衰减加成依赖 last_hit_at，但检索路径从不回写，
-     * 于是“最近命中”实际等于入库时间、加成也从未生效。
+     * llenar un vacío a largo plazo —— hitBonus La bonificación por deterioro depende de last_hit_at, pero la ruta de recuperación nunca se vuelve a escribir.
+     * entonces“éxitos recientes”En realidad, es igual al tiempo de almacenamiento y la bonificación nunca ha entrado en vigor.
      */
     @Query("UPDATE facts SET last_hit_at = :hitAt WHERE id IN (:ids)")
     suspend fun updateLastHitAt(ids: List<Long>, hitAt: String): Int
 
     /**
-     * 命中计数自增。
+     * El recuento de visitas aumenta.
      *
-     * 独立语句，不并入全字段更新 —— 那条 UPDATE 只改列出的列，
-     * 但把计数塞进去会让每次“编辑事实”都重置计数。
+     * Declaración independiente, no fusionada en la actualización del campo completo —— Esa ACTUALIZACIÓN solo cambia las columnas enumeradas.
+     * Pero abarrotar la cuenta haría que cada uno“editar hechos”Todos reinician el conteo.
      */
     @Query("UPDATE facts SET hit_count = hit_count + 1 WHERE id IN (:ids)")
     suspend fun incrementHitCount(ids: List<Long>): Int
 
     /**
-     * v17: 命中/访问加成 —— 把持久分数加一个量级并重置衰减时钟,同时清除出场标记。
+     * v17: golpear/bono de acceso —— Agregue una magnitud a la puntuación de persistencia y reinicie el reloj de decadencia,También borre la marca de salida.
      *
-     * 上限 [cap] 防止反复命中把分数堆到无意义高位;只处理传入的 id,
-     * 未出场的行传进来也只是补一次命中加成(与命中重置衰减时钟同语义)。
+     * límite superior [cap] Evite que los golpes repetidos acumulen puntuaciones hasta niveles altos y sin sentido;Sólo procesar entrantes id,
+     * Cuando aparece la línea no jugada, solo agrega una bonificación de acierto.(Misma semántica que restablecer el reloj de decaimiento).
      */
     @Query("UPDATE facts SET score = MIN(score + :bonus, :cap), score_updated_at = :updatedAt, suppressed_at = NULL WHERE id IN (:ids)")
     suspend fun boostScores(ids: List<Long>, bonus: Float, cap: Float, updatedAt: String): Int
 
     /**
-     * v18: 已被取代的旧记忆 id —— 被其他行的 supersedes_id 指向的行。
+     * v18: viejos recuerdos que han sido reemplazados id —— La fila a la que apunta reemplaza_id de otras filas.
      *
-     * 召回/注入路径要判断“这条记忆是否已经让位”,这类行通常只有几条,
-     * 所以只取需要的列,不用整表映射换一个集合。
-     * [scope] / [spaceId] 传 null 表示不限(与 [getAll] 的全作用域语义一致)。
+     * recordar/Es necesario juzgar la ruta de inyección.“¿Ha cedido este recuerdo?”,Generalmente solo hay unas pocas líneas de este tipo.,
+     * Entonces solo toma las columnas requeridas,No es necesario asignar toda la tabla a una colección.
+     * [scope] / [spaceId] Pasar nulo significa que no hay límite(con [getAll] La semántica de alcance completo de).
      */
     @Query(
         """
@@ -144,12 +144,12 @@ interface FactDao {
     suspend fun getSupersededIds(scope: String?, spaceId: String?): List<Long>
 
     /**
-     * v19: 已被合并进其他事实的行 id —— 这些行不参与自动召回、不进编译投影。
+     * v19: Filas que se han fusionado con otros hechos id —— Estas líneas no participan en la recuperación automática y no ingresan a la proyección de compilación.
      *
-     * 与 [getSupersededIds] 的区别: 那里取的是“被指向的旧 id”(需要外部集合运算),
-     * 这里取的是自己带 merged_into_id 的行 —— 召回过滤直接看“本行是否在集合里”。
-     * 被指向的新行(合并产物)不在本集合里,正常参与召回。
-     * 只取 id 列,不映射整行;[scope] / [spaceId] 传 null 表示不限。
+     * con [getSupersededIds] la diferencia: lo que se toma ahí es“viejo señaló id”(Requiere operaciones de conjunto externo),
+     * Aquí tomamos la fila con merged_into_id —— Recuperar el filtrado directamente“¿Está este banco en el set?”.
+     * la nueva línea apuntaba a(Producto combinado)No en esta colección,Participe en el retiro con normalidad.
+     * Obtener solo la columna de identificación,No mapear filas enteras;[scope] / [spaceId] Pasar nulo significa ilimitado.
      */
     @Query(
         """
@@ -161,19 +161,19 @@ interface FactDao {
     )
     suspend fun getMergedIds(scope: String?, spaceId: String?): List<Long>
 
-    /** v19: 某条合并事实聚合了哪些原始行(按 id 升序,供 UI 展示“由 N 条合并”)。 */
+    /** v19: Qué filas originales se agregan mediante un hecho de fusión(Ordenar por id ascendente,Para visualización de interfaz de usuario“Fusionado por N elementos”). */
     @Query("SELECT * FROM facts WHERE merged_into_id = :factId ORDER BY id ASC")
     suspend fun getMergedChildren(factId: Long): List<FactEntity>
 
-    /** v19: 把一组源事实标记为“已合并进 [mergedIntoId]”。 */
+    /** v19: Etiquetar un conjunto de hechos fuente como“Fusionado en [mergedIntoId]”. */
     @Query("UPDATE facts SET merged_into_id = :mergedIntoId WHERE id IN (:ids)")
     suspend fun updateMergedInto(ids: List<Long>, mergedIntoId: Long): Int
 
-    /** v19: 撤销合并 —— 清掉指向 [mergedIntoId] 的标记。 */
+    /** v19: Deshacer fusión —— señal clara [mergedIntoId] marca. */
     @Query("UPDATE facts SET merged_into_id = NULL WHERE merged_into_id = :mergedIntoId")
     suspend fun clearMergedInto(mergedIntoId: Long): Int
 
-    /** v5: 全字段更新(用于合并去重后替换内容)。 */
+    /** v5: Actualización de campo completo(Se utiliza para reemplazar contenido después de fusionar y deduplicar). */
     @Query(
         "UPDATE facts SET fact = :fact, tags = :tags, time = :time, session_id = :sessionId, created_at = :createdAt, importance = :importance, category = :category, confidence = :confidence, source = :source, expires_at = :expiresAt, last_confirmed_at = :lastConfirmedAt, last_hit_at = :lastHitAt, entity_key = :entityKey WHERE id = :id",
     )
@@ -195,10 +195,10 @@ interface FactDao {
     )
 
     /**
-     * v5: 查找与给定文本前40字前缀匹配的事实(用于去重)。
+     * v5: Buscar antes del texto dado40hechos de coincidencia de prefijos de palabras(Se utiliza para eliminar duplicados.).
      *
-     * v8: 新增可选 scope 过滤,去重时仅在相同作用域内查找相似事实,
-     * 避免"main"作用域的事实与子助手作用域的事实被误合并。
+     * v8: Se agregó filtrado de alcance opcional.,Busque únicamente hechos similares dentro del mismo alcance al realizar la deduplicación.,
+     * evitar"main"Los hechos del alcance se fusionaron incorrectamente con hechos del alcance del subayudante.
      */
     @Query(
         "SELECT * FROM facts WHERE fact LIKE :prefix || '%' AND (:scope IS NULL OR scope = :scope) ORDER BY importance DESC, created_at DESC LIMIT 5",
@@ -206,8 +206,8 @@ interface FactDao {
     suspend fun findSimilar(prefix: String, scope: String? = null): List<FactEntity>
 
     /**
-     * v9: 按 scope + space_id 双重过滤查找相似事实(用于去重)。
-     * 与 [findSimilar] 的区别:严格按 scope + space_id 过滤,不接受 null。
+     * v9: Encuentre hechos similares por alcance + filtrado doble space_id(Se utiliza para eliminar duplicados.).
+     * con [findSimilar] la diferencia:Filtrar estrictamente por alcance + space_id,No acepta nulo.
      */
     @Query(
         """
@@ -222,9 +222,9 @@ interface FactDao {
     suspend fun findSimilarBySpace(prefix: String, scope: String, spaceId: String): List<FactEntity>
 
     /**
-     * v12: 按 entity_key + scope + space_id 精确查找(写入时实体级查重)。
-     * 同一实体的不同写法共享同一 entity_key,命中即合并而非新增,
-     * 直接解决"张三/张先生/张三老师"多条重复记忆问题。
+     * v12: prensa entity_key + scope + space_id busqueda exacta(Comprobación de duplicación a nivel de entidad al escribir).
+     * Diferentes formas de escribir la misma entidad comparten lo mismo entity_key,Las visitas se fusionan en lugar de agregarse,
+     * resolver directamente"Zhang San/Sr. Zhang/Maestro Zhang San"Múltiples problemas de memoria repetitiva.
      */
     @Query(
         """
@@ -242,20 +242,20 @@ interface FactDao {
     suspend fun deleteAll(): Int
 
     /**
-     * 删除创建时间早于 [cutoffIso] 的全部 fact。
-     * 由 [FactStore.applyDecay] 在 daily pipeline 中调用,实现配置驱动的遗忘。
+     * Eliminar creado antes de [cutoffIso] todos los hechos.
+     * por [FactStore.applyDecay] Llamado en canalización diaria,Implementar el olvido impulsado por la configuración.
      *
-     * 用 created_at 而非 time:time 是 fact 自身描述的事件时间(可空且可远早于入库),
-     * created_at 是落库时间,作为衰减基准更稳定。
+     * Usar create_at en lugar de time:time es la hora del evento descrita por el hecho mismo.(Disponible y disponible mucho antes del almacenamiento.),
+     * created_at Es hora de dejar el inventario.,Más estable como referencia de atenuación.
      *
-     * v8: 新增可选 scope 过滤,null 表示全部作用域,非 null 仅删除指定作用域的事实。
+     * v8: Se agregó filtrado de alcance opcional.,null Representa todo el alcance.,No nulo Solo se eliminan los hechos del ámbito especificado.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     /**
-     * F-6: 手动置顶的事实(pinned_at 非空)永不参与自动衰减删除 —
-     * 置顶语义为"用户要求永远记得",不受时间 cutoff 或过期清理影响。
-     * 用户取消置顶后恢复按正常规则衰减。
+     * F-6: Hechos fijados manualmente(pinned_at No vacío)Nunca participes en la eliminación automática de decaimiento. —
+     * La semántica de permanecer en la cima es"Recuerde siempre los requisitos del usuario",No se ve afectado por el corte de tiempo o la limpieza de vencimiento.
+     * Después de que el usuario cancela el pin, este continúa decayendo de acuerdo con las reglas normales.
      */
     @Query(
         "DELETE FROM facts WHERE created_at < :cutoffIso AND pinned_at IS NULL AND (:scope IS NULL OR scope = :scope) AND (:spaceId IS NULL OR space_id = :spaceId)",
@@ -263,28 +263,28 @@ interface FactDao {
     suspend fun deleteOlderThan(cutoffIso: String, scope: String? = null, spaceId: String? = null): Int
 
     /**
-     * v4: 删除创建时间早于 [cutoffIso] 且 importance < [minImportance] 的 fact。
-     * 关键事实(importance=2)通过 minImportance=3 永不删除,实现"永不衰减"。
+     * v4: Eliminar creado antes de [cutoffIso] y importance < [minImportance] hecho.
+     * hechos clave(importance=2)Pase minImportance=3 nunca borrar,darse cuenta"nunca decaer".
      *
-     * v8: 新增可选 scope 过滤,null 表示全部作用域。
+     * v8: Se agregó filtrado de alcance opcional.,null Representa todo el alcance.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
-    // F-6: pinned_at IS NULL — 置顶事实不受自动衰减影响
+    // F-6: pinned_at IS NULL — Los hechos fijados no se ven afectados por la decadencia automática
     @Query(
         "DELETE FROM facts WHERE created_at < :cutoffIso AND importance < :minImportance AND pinned_at IS NULL AND (:scope IS NULL OR scope = :scope) AND (:spaceId IS NULL OR space_id = :spaceId)",
     )
     suspend fun deleteOlderThanExceptImportant(cutoffIso: String, minImportance: Int, scope: String? = null, spaceId: String? = null): Int
 
     /**
-     * v7: 按命中时间衰减删除。
-     *  - 从未命中(last_hit_at IS NULL)的事实按 created_at 判断
-     *  - 已命中的事实按 last_hit_at 判断
-     *  - importance < minImportance 的事实才会被删除
+     * v7: Eliminar por caída del tiempo de acierto.
+     *  - nunca golpear(last_hit_at IS NULL)El hecho es juzgado por creado_at
+     *  - El hecho de que haya sido golpeado se juzga por last_hit_at
+     *  - importance < minImportance los hechos serán eliminados
      *
-     * 配合 [MemoryConfig.hitBonus] 实现"被引用的记忆更慢遗忘"。
+     * cooperar [MemoryConfig.hitBonus] darse cuenta"Los recuerdos referenciados se olvidan más lentamente.".
      *
-     * v8: 新增可选 scope 过滤,null 表示全部作用域。
+     * v8: Se agregó filtrado de alcance opcional.,null Representa todo el alcance.
      */
     @Query(
         """
@@ -309,24 +309,24 @@ interface FactDao {
     ): Int
 
     /**
-     * B-18: 删除已过期事实(expires_at 非空且早于当前时间)。
-     * 时效性事实(如"明天上午开会")过期后不再驻留、不再注入。
+     * B-18: Eliminar hechos caducados(expires_at No vacío y anterior a la hora actual).
+     * hecho oportuno(Como por ejemplo"Habrá una reunión mañana por la mañana.")Después de su vencimiento, ya no permanecerá ni se inyectará.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
-    // F-6: pinned_at IS NULL — 置顶的时效性事实不因到期被自动删除(取消置顶后恢复正常规则)
+    // F-6: pinned_at IS NULL — Los datos urgentes fijados en la parte superior no se eliminarán automáticamente debido a su vencimiento.(Volver a las reglas normales después de cancelar fijado)
     @Query(
         "DELETE FROM facts WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at < :nowISO AND pinned_at IS NULL AND (:scope IS NULL OR scope = :scope) AND (:spaceId IS NULL OR space_id = :spaceId)",
     )
     suspend fun deleteExpired(nowISO: String, scope: String? = null, spaceId: String? = null): Int
 
     /**
-     * v17: 衰减退场候选 —— 只取结算需要的列。
+     * v17: Candidato a salida de decadencia —— Obtenga sólo las columnas necesarias para la liquidación.
      *
-     * - 关键事实(importance=2)与置顶事实不参与衰减,因此不出现在候选里;
-     * - `refAt`: 本轮衰减的起算时间。自上次结算后又被命中(last_hit_at 比 score_updated_at 新)
-     *   时取 last_hit_at(命中重置时钟),否则取上次结算时间,首次结算回退到 created_at;
-     * - `hitSinceDecay`: 1 表示"自上次结算后又被引用过",本轮需要补 [boostScores] 同等的命中加成。
+     * - hechos clave(importance=2)No participa en la decadencia con hechos fijados.,Por eso no aparece en los candidatos.;
+     * - `refAt`: La hora de inicio de esta ronda de decadencia. Golpear de nuevo desde el último acuerdo(last_hit_at Más reciente que score_updated_at)
+     *   hora de tomar last_hit_at(presione restablecer el reloj),De lo contrario, tome la última hora de liquidación.,Regresar al primer asentamiento. created_at;
+     * - `hitSinceDecay`: 1 expresar"Citado desde el último acuerdo",Necesito recuperar esta ronda [boostScores] Mismo bono de golpe.
      */
     @Query(
         """
@@ -348,14 +348,14 @@ interface FactDao {
     )
     suspend fun getDecayCandidates(scope: String?, spaceId: String?): List<DecayCandidate>
 
-    /** v17: 落库本轮衰减分数(不动出场标记)。 */
+    /** v17: Puntuación de deterioro de esta ronda de abandono(Marca de salida fija). */
     @Query("UPDATE facts SET score = :score, score_updated_at = :updatedAt WHERE id = :id")
     suspend fun updateDecayedScore(id: Long, score: Float, updatedAt: String): Int
 
     /**
-     * v17: 阈值出场 —— 分数低于 [threshold] 的普通/未置顶事实写入出场时间。
+     * v17: salida de umbral —— puntuación inferior a [threshold] de ordinario/El hecho no fijado se escribe en el tiempo de aparición.
      *
-     * 只影响“是否参与召回”,不删行。返回本轮新出场的条数。
+     * Sólo afecta“Si participar en el retiro”,No elimine filas. Devuelve el número de nuevas entradas en esta ronda.
      */
     @Query(
         """
@@ -368,9 +368,9 @@ interface FactDao {
     suspend fun suppressBelowThreshold(at: String, threshold: Float, scope: String?, spaceId: String?): Int
 
     /**
-     * v17: 阈值回场 —— 分数回昇到 [threshold] 以上(或改为关键/置顶)的事实重新进入召回。
+     * v17: umbral de retorno —— Puntuación devuelta a [threshold] arriba(o cambiar a clave/fijar hacia arriba)Los hechos vuelven a entrar en el recuerdo.
      *
-     * 配置调低阈值/关闭遗忘速度后,下一轮结算即可把已出场的记忆成批拉回。
+     * Configurar el umbral de descenso/Después de apagar la velocidad del olvido.,Los recuerdos que se han jugado se pueden recuperar en lotes en la siguiente ronda de liquidación.
      */
     @Query(
         """
@@ -384,8 +384,8 @@ interface FactDao {
     suspend fun releaseAboveThreshold(threshold: Float, scope: String?, spaceId: String?): Int
 
     /**
-     * 全文搜索(LIKE,兼容所有 ROM)。
-     * 在 fact 字段上做子串匹配,v4: 按 importance 降序 + time 降序。
+     * Búsqueda de texto completo(LIKE,compatibles con todos ROM).
+     * Hacer coincidencia de subcadenas en el campo de hechos,v4: Ordenar por importancia descendente + tiempo descendente.
      */
     @Query(
         "SELECT * FROM facts WHERE fact LIKE '%' || :query || '%' AND (scope = :scope OR :scope IS NULL) ORDER BY (pinned_at IS NOT NULL) DESC, importance DESC, time DESC LIMIT :limit",
@@ -393,7 +393,7 @@ interface FactDao {
     suspend fun likeSearch(query: String, limit: Int, scope: String? = null): List<FactEntity>
 
     /**
-     * v9: 按 scope + space_id 双重过滤的 LIKE 全文搜索(用于去重兜底)。
+     * v9: LIKE búsqueda de texto completo con doble filtrado por alcance + space_id(Se utiliza para quitar fondos de bolsas pesadas.).
      */
     @Query(
         """
@@ -408,8 +408,8 @@ interface FactDao {
     suspend fun likeSearchBySpace(query: String, limit: Int, scope: String, spaceId: String): List<FactEntity>
 
     /**
-     * 审查修复 (B-19): 仅按 space_id 过滤的 LIKE 全文搜索(scope 不限,全部作用域)。
-     * 记忆中心的 scope=null(全部)语义下仍需按当前 space_id 隔离,与 getBySpace 口径一致。
+     * Revisión de corrección (B-19): ME GUSTA búsqueda de texto completo filtrada solo por space_id(scope Sin límite,Todos los alcances).
+     * centro de memoria scope=null(Todos)Semánticamente, el aislamiento aún debe basarse en el space_id actual,Mismo calibre que getBySpace.
      */
     @Query(
         """
@@ -423,8 +423,8 @@ interface FactDao {
     suspend fun likeSearchBySpaceId(query: String, limit: Int, spaceId: String): List<FactEntity>
 
     /**
-     * v6: FTS4 全文搜索。
-     * 使用已 ngram 化的 MATCH 表达式(由 [FactFtsManager.toMatchQuery] 生成)。
+     * v6: FTS4 Búsqueda de texto completo.
+     * Usando expresiones MATCH ngramificadas(por [FactFtsManager.toMatchQuery] generar).
      */
     @Query(
         """
@@ -437,7 +437,7 @@ interface FactDao {
     )
     suspend fun searchFts(matchQuery: String, limit: Int): List<FactEntity>
 
-    /** 按 scope + space 搜索 FTS，避免先取全局 top-K 再过滤导致漏召回。 */
+    /** Busque FTS por alcance + espacio para evitar perderse el retiro tomando primero el top-K global y luego filtrando. */
     @Query(
         """
         SELECT f.* FROM facts_fts
@@ -451,7 +451,7 @@ interface FactDao {
     )
     suspend fun searchFtsBySpace(matchQuery: String, limit: Int, scope: String, spaceId: String): List<FactEntity>
 
-    /** 审查修复 (B-19): 仅按 space_id 过滤的 FTS 搜索(scope 不限,全部作用域)。 */
+    /** Revisión de corrección (B-19): Búsqueda FTS filtrada solo por space_id(scope Sin límite,Todos los alcances). */
     @Query(
         """
         SELECT f.* FROM facts_fts
@@ -465,20 +465,20 @@ interface FactDao {
     suspend fun searchFtsBySpaceId(matchQuery: String, limit: Int, spaceId: String): List<FactEntity>
 
     /**
-     * 标签 + 日期范围搜索。SQL 由 [FactStore.searchByTags] 动态拼接
-     * (因为 tag 数量和日期范围组合是动态的,Room 静态 @Query 难以表达)。
+     * Búsqueda de etiqueta + rango de fechas.SQL por [FactStore.searchByTags] empalme dinámico
+     * (Porque la combinación de número de etiqueta y rango de fechas es dinámica,Room La @Query estática es difícil de expresar).
      */
     @RawQuery
     suspend fun tagSearch(query: SupportSQLiteQuery): List<FactTagSearchRow>
 
-    // ── v8: 按作用域(scope)查询/衰减 ──
+    // ── v8: por alcance(scope)Consulta/Atenuación ──
 
     /**
-     * v8: 按 scope 观察事实列表(Flow 形式),用于 UI 实时刷新。
-     * 排序与 [getAll] 一致:importance DESC + time DESC。
+     * v8: Observar lista de hechos por alcance.(Flow forma),Se utiliza para la actualización de la interfaz de usuario en tiempo real.
+     * ordenar con [getAll] consistente:importance DESC + time DESC.
      *
-     * v2.6.2（记忆审计）: 加过期过滤 —— 旧实现不过滤，导致“列表查询不显示、
-     * 实时更新却显示”的语义不一致（suspend 查询均已过滤过期）。
+     * v2.6.2(auditoría de memoria): Agregar filtro caducado —— La implementación anterior no se filtró, lo que resultó en“La consulta de lista no se muestra,
+     * Actualizaciones en tiempo real pero visualización”La semántica de es inconsistente (suspend Todas las consultas han sido filtradas y caducadas).
      */
     @Query(
         "SELECT * FROM facts WHERE scope = :scope " +
@@ -488,54 +488,54 @@ interface FactDao {
     fun observeByScope(scope: String, nowIso: String): Flow<List<FactEntity>>
 
     /**
-     * v8: 按 scope 同步查询事实列表。
-     * 用于 system prompt 注入、子助手记忆检索等场景。
+     * v8: Consulta la lista de hechos de forma sincrónica por alcance.
+     * Se utiliza para inyección de avisos del sistema, recuperación de memoria del subasistente y otros escenarios.
      */
     @Query("SELECT * FROM facts WHERE scope = :scope ORDER BY (pinned_at IS NOT NULL) DESC, importance DESC, time DESC")
     suspend fun getByScope(scope: String): List<FactEntity>
 
     /**
-     * v8: 按作用域衰减删除 — 仅删除指定 scope 下早于 [cutoffIso] 且 importance < [minImportance] 的事实。
-     * 用于 daily pipeline 中各助手作用域独立衰减,避免一个助手的低重要性事实
-     * 影响其他助手的衰减节奏。
+     * v8: Eliminar por caída de alcance — Solo elimine el alcance especificado que sea anterior a [cutoffIso] y importance < [minImportance] hecho.
+     * Se utiliza para la decadencia independiente de cada alcance auxiliar en la canalización diaria.,Evite los hechos de poca importancia de un asistente
+     * Afecta el ritmo de decaimiento de otros asistentes.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
-    // F-6: pinned_at IS NULL — 置顶事实不受按 scope 衰减清理影响
+    // F-6: pinned_at IS NULL — Los hechos fijados no se ven afectados por la limpieza del deterioro del alcance
     @Query("DELETE FROM facts WHERE scope = :scope AND created_at < :cutoffIso AND importance < :minImportance AND pinned_at IS NULL")
     suspend fun deleteByScopeExceptImportant(scope: String, cutoffIso: String, minImportance: Int): Int
 
-    // ── v6: FTS4 索引同步 ──
+    // ── v6: FTS4 Sincronización de índice ──
 
-    /** 插入/更新 facts_fts 索引(fact_id 不索引,content_ngram 全文索引)。 */
+    /** Insertar/Actualizar el índice Facts_fts(fact_id No indexado,content_ngram Índice de texto completo). */
     @Query("INSERT OR REPLACE INTO facts_fts(fact_id, content_ngram) VALUES(:factId, :contentNgram)")
     suspend fun insertFts(factId: Long, contentNgram: String)
 
-    /** 删除指定 fact 的 FTS 索引。 */
+    /** Elimine el índice FTS para el hecho especificado. */
     @Query("DELETE FROM facts_fts WHERE fact_id = :factId")
     suspend fun deleteFts(factId: Long)
 
-    /** 清空 FTS 索引(rebuild 用)。 */
+    /** Borrar índice FTS(rebuild usar). */
     @Query("DELETE FROM facts_fts")
     suspend fun clearFts()
 
-    /** 取全部事实(rebuild 索引用,只取 id + fact)。 */
+    /** obtener todos los hechos(rebuild Para indexar,tomar solo id + fact). */
     @Query("SELECT id, fact FROM facts")
     suspend fun getAllForFtsRebuild(): List<FtsRebuildRow>
 
-    /** facts 表行数(ensureFtsIndexConsistent 比较用)。 */
+    /** facts Número de filas de la tabla(ensureFtsIndexConsistent Más útil). */
     @Query("SELECT COUNT(*) FROM facts")
     suspend fun countFacts(): Int
 
-    /** facts_fts 表行数(ensureFtsIndexConsistent 比较用)。 */
+    /** facts_fts Número de filas de la tabla(ensureFtsIndexConsistent Más útil). */
     @Query("SELECT COUNT(*) FROM facts_fts")
     suspend fun countFts(): Int
 
-    // ── v9: 按 Space(space_id)查询/观察/衰减 ───────────────────────────
+    // ── v9: prensa Space(space_id)Consulta/observar/Atenuación ───────────────────────────
 
     /**
-     * v9: 按 space_id 观察事实列表(Flow 形式),用于 UI 实时刷新。
-     * 排序与 [getAll] 一致:importance DESC + time DESC。
+     * v9: Observar la lista de hechos por space_id(Flow forma),Se utiliza para la actualización de la interfaz de usuario en tiempo real.
+     * ordenar con [getAll] consistente:importance DESC + time DESC.
      */
     @Query(
         "SELECT * FROM facts WHERE space_id = :spaceId " +
@@ -545,15 +545,15 @@ interface FactDao {
     fun observeBySpace(spaceId: String, nowIso: String): Flow<List<FactEntity>>
 
     /**
-     * v9: 按 space_id 同步查询事实列表。
-     * 用于 system prompt 注入、记忆页 UI 展示等场景。
+     * v9: Consulta la lista de hechos de forma sincrónica mediante space_id.
+     * Se utiliza para la inyección de avisos del sistema, visualización de la interfaz de usuario de la página de memoria y otros escenarios.
      */
     @Query("SELECT * FROM facts WHERE space_id = :spaceId ORDER BY (pinned_at IS NOT NULL) DESC, importance DESC, time DESC")
     suspend fun getBySpace(spaceId: String): List<FactEntity>
 
     /**
-     * v9: 按 scope + space_id 双重过滤查询事实列表。
-     * scope 按 Agent 隔离,space_id 按场景隔离,两者正交。
+     * v9: Lista de hechos de consulta de filtro doble por alcance + space_id.
+     * scope Cuarentena por agente,space_id Aislar por escena,Los dos son ortogonales.
      */
     @Query(
         "SELECT * FROM facts WHERE scope = :scope AND space_id = :spaceId ORDER BY (pinned_at IS NOT NULL) DESC, importance DESC, time DESC",
@@ -561,7 +561,7 @@ interface FactDao {
     suspend fun getByScopeAndSpace(scope: String, spaceId: String): List<FactEntity>
 
     /**
-     * v9: 按 scope + space_id 双重过滤观察事实列表(Flow 形式)。
+     * v9: Lista de hechos de observación de doble filtro por alcance + space_id(Flow forma).
      */
     @Query(
         "SELECT * FROM facts WHERE scope = :scope AND space_id = :spaceId " +
@@ -571,22 +571,22 @@ interface FactDao {
     fun observeByScopeAndSpace(scope: String, spaceId: String, nowIso: String): Flow<List<FactEntity>>
 
     /**
-     * v9: 按 space_id 衰减删除 — 仅删除指定 Space 下早于 [cutoffIso] 且 importance < [minImportance] 的事实。
+     * v9: Eliminación de descomposición por space_id — Elimine solo el espacio especificado que sea anterior a [cutoffIso] y importance < [minImportance] hecho.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
-    // F-6: pinned_at IS NULL — 置顶事实不受按 space 衰减清理影响
+    // F-6: pinned_at IS NULL — Los hechos fijados no se ven afectados por la limpieza de la descomposición espacial
     @Query("DELETE FROM facts WHERE space_id = :spaceId AND created_at < :cutoffIso AND importance < :minImportance AND pinned_at IS NULL")
     suspend fun deleteBySpaceExceptImportant(spaceId: String, cutoffIso: String, minImportance: Int): Int
 
     /**
-     * v9: 按 space_id 统计事实数量。
+     * v9: Cuente el número de hechos por space_id.
      */
     @Query("SELECT COUNT(*) FROM facts WHERE space_id = :spaceId")
     suspend fun countBySpace(spaceId: String): Int
 }
 
-/** 标签搜索结果(带 matchCount)。v4: 含 importance 字段。 */
+/** Etiquetar resultados de búsqueda(traer matchCount).v4: Contiene un campo de importancia. */
 data class FactTagSearchRow(
     val id: Long,
     val fact: String,
@@ -615,17 +615,17 @@ data class FactTagSearchRow(
     val matchCount: Int,
 )
 
-/** v17: 衰减结算候选行(只含计算所需列)。 */
+/** v17: Línea de candidatos para el acuerdo de decadencia(Incluya solo las columnas necesarias para el cálculo). */
 data class DecayCandidate(
     val id: Long,
     val score: Float,
-    /** 本轮衰减起算时间 ISO 8601。 */
+    /** El tiempo de inicio de esta ronda de atenuación es ISO 8601. */
     val refAt: String?,
-    /** 1 = 自上次结算后又被命中/合并过。 */
+    /** 1 = Golpear de nuevo desde el último acuerdo/Fusionado. */
     val hitSinceDecay: Int = 0,
 )
 
-/** FTS rebuild 用轻量行。 */
+/** FTS rebuild Utilice peso ligero. */
 data class FtsRebuildRow(
     val id: Long,
     val fact: String,

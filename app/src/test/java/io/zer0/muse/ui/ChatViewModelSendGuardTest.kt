@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-06: ChatViewModel 发送守卫状态机纯逻辑。
+ * R-TEST-06: ChatViewModel Enviar máquina de estado de guardia lógica pura.
  */
 class ChatViewModelSendGuardTest {
 
@@ -17,7 +17,7 @@ class ChatViewModelSendGuardTest {
 
     @Test
     fun `text or images allow generation`() {
-        assertTrue(canStartGeneration("你好", emptyList(), isStreaming = false, isCreatingAgentSession = false))
+        assertTrue(canStartGeneration("Hola", emptyList(), isStreaming = false, isCreatingAgentSession = false))
         assertTrue(
             canStartGeneration(
                 "",
@@ -30,11 +30,11 @@ class ChatViewModelSendGuardTest {
 
     @Test
     fun `streaming blocks new generation`() {
-        assertFalse(canStartGeneration("你好", emptyList(), isStreaming = true, isCreatingAgentSession = false))
+        assertFalse(canStartGeneration("Hola", emptyList(), isStreaming = true, isCreatingAgentSession = false))
     }
 
     @Test
     fun `agent session creation blocks reentry`() {
-        assertFalse(canStartGeneration("你好", emptyList(), isStreaming = false, isCreatingAgentSession = true))
+        assertFalse(canStartGeneration("Hola", emptyList(), isStreaming = false, isCreatingAgentSession = true))
     }
 }

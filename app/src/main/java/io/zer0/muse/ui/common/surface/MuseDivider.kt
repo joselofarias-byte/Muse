@@ -11,18 +11,18 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Muse UI Kit — 分隔线基元 [MuseDivider]。
+ * Muse UI Kit — divisor primitivo [MuseDivider].
  *
- * v1.0.26: 统一所有列表分隔线、卡片内分隔线、表单分组的实现,
- * 消除各页面裸用 [HorizontalDivider] 时 thickness/color/startIndent 取值不统一的问题。
+ * v1.0.26: Unifique la implementación de todos los separadores de listas, separadores de tarjetas y agrupación de formularios.,
+ * Eliminar el uso desnudo de cada página [HorizontalDivider] Los valores de grosor/color/startIndent no son uniformes.
  *
- * 规格:
- *  - thickness: 0.5dp（对齐系统设置：1px 发丝线）
- *  - color: onSurface @ 13% alpha（v2.0.1：改为随文字墨色派生——白卡上约 #E1E1E1，
- *    对齐实测线色 #E0E0E0；深色模式自动变深灰，跨主题自适应。
- *    历史值 outlineVariant@70% 经"偏白归一化"后被拉得太淡，浅色下几乎不可见。）
- *  - 默认 startIndent: 56dp(= 16dp 卡片内边距 + 24dp leading icon + 16dp icon-to-text gap)
- *    对齐系统设置的"从 leading 内容右侧开始分隔"风格
+ * Especificaciones:
+ *  - thickness: 0.5dp(Alinear la configuración del sistema:1px línea del cabello)
+ *  - color: onSurface @ 13% alpha(v2.0.1: Se modificó para que se derive del color de tinta del texto.——Aproximadamente #E1E1E1 en la tarjeta blanca,
+ *    Alinee el color del hilo medido #E0E0E0; El modo oscuro cambia automáticamente a gris oscuro y se adapta a varios temas.
+ *    Esquema del valor históricoVariante@70%"normalización del blanqueamiento"Luego se aclaró demasiado y era casi invisible en colores claros. )
+ *  - Predeterminado startIndent: 56dp(= 16dp relleno de tarjeta + 24dp leading icon + 16dp icon-to-text gap)
+ *    Configuración del sistema de alineación"Separado del lado derecho del contenido principal."estilo
  */
 @Composable
 fun MuseDivider(

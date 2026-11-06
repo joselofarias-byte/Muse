@@ -6,36 +6,36 @@ import androidx.glance.appwidget.updateAll
 import io.zer0.common.Logger
 
 /**
- * v2.6.7 fix (AUDIT F12): 桌面小组件的主动刷新入口。
+ * v2.6.7 fix (AUDIT F12): Entrada de actualización activa para widgets de escritorio.
  *
- * 背景：Glance 的 `provideGlance` 只在首次添加、配置完成、系统广播 APPWIDGET_UPDATE
- * 时执行。`muse_chat_widget_info.xml` 没设 `updatePeriodMillis`，全仓也没有任何地方
- * 对 `MuseChatWidget` 调用 `update/updateAll` —— 于是组件预览长期停在添加那一刻的内容，
- * 之后聊多少都不会变。
+ * Antecedentes:Glance de `provideGlance` Solo cuando se agrega por primera vez, se completa la configuración y se transmite el sistema APPWIDGET_UPDATE
+ * ejecución del tiempo.`muse_chat_widget_info.xml` No establecido `updatePeriodMillis`, no hay lugar en todo el almacén
+ * si `MuseChatWidget` llamar `update/updateAll` —— Entonces, la vista previa del componente se detuvo en el momento de agregar el contenido durante mucho tiempo.
+ * No importa cuánto hablemos después de eso, no cambiará.
  *
- * 这里提供统一入口：生成完成后调用一次即可让两个小组件重新渲染。
- * 失败只记日志：组件刷新不能影响对话主链路。
+ * Aquí se proporciona una entrada unificada: una vez completada la generación, los dos widgets se pueden volver a representar llamándolos una vez.
+ * Solo falla al iniciar sesión: la actualización del componente no puede afectar el enlace principal de la conversación.
  */
 object MuseWidgetRefresher {
 
     private const val TAG = "MuseWidgetRefresher"
 
-    /** 刷新两个 Glance 小组件（对话 + 快捷）。多个实例会一起更新。 */
+    /** Actualiza ambos widgets de Vistazo (Conversación + Acceso directo). Varias instancias se actualizan juntas. */
     suspend fun refreshAll(context: Context) {
-        // updateAll 是 GlanceAppWidget 的扩展，内部会遍历该 widget 的所有实例。
+        // updateAll Es una extensión de GlanceAppWidget y atraviesa internamente todas las instancias del widget.
         runCatching { MuseChatWidget().updateAll(context) }
-            .onFailure { Logger.w(TAG, "刷新对话小组件失败: ${it.message}") }
+            .onFailure { Logger.w(TAG, "No se pudo actualizar el widget de conversación: ${it.message}") }
         runCatching { MuseQuickWidget().updateAll(context) }
-            .onFailure { Logger.w(TAG, "刷新快捷小组件失败: ${it.message}") }
+            .onFailure { Logger.w(TAG, "No se pudo actualizar el widget de acceso directo: ${it.message}") }
     }
 
-    /** 仅刷新对话小组件（消息变化时用）。 */
+    /** Actualiza solo el widget de conversación (se usa cuando cambia el mensaje). */
     suspend fun refreshChatWidget(context: Context) {
         runCatching { MuseChatWidget().updateAll(context) }
-            .onFailure { Logger.w(TAG, "刷新对话小组件失败: ${it.message}") }
+            .onFailure { Logger.w(TAG, "No se pudo actualizar el widget de conversación: ${it.message}") }
     }
 
-    /** 供诊断：当前已添加的小组件实例数。 */
+    /** Para diagnóstico: el número actual de instancias de widget agregadas. */
     suspend fun instanceCount(context: Context): Int = runCatching {
         GlanceAppWidgetManager(context).getGlanceIds(MuseChatWidget::class.java).size
     }.getOrDefault(0)

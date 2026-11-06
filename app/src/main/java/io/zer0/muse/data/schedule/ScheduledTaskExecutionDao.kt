@@ -11,17 +11,17 @@ interface ScheduledTaskExecutionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(execution: ScheduledTaskExecutionEntity)
 
-    /** 每个任务最近一次执行的结局状态(任务一览下发 lastResult 用)。 */
+    /** El estado final de la ejecución más reciente de cada tarea.(LastResult se utiliza para entregar la lista de tareas.). */
     data class TaskLatestStatus(
         @ColumnInfo(name = "task_id") val taskId: String,
         @ColumnInfo(name = "status") val status: String,
     )
 
     /**
-     * 一次拿全部任务最近一次执行的状态,不逐条查。
+     * Obtenga el último estado de ejecución de todas las tareas a la vez,No revises artículo por artículo.
      *
-     * 同一时刻可能有多条执行记录(手动立即执行与轮询撞在一起),相关子查询会把它们都带出来;
-     * 调用方按 taskId 归档时后者覆盖前者,状态先后差异不影响「最近一次」的语义。
+     * Puede haber varios registros de ejecución al mismo tiempo.(La ejecución inmediata manual choca con el sondeo),Las subconsultas correlacionadas las sacarán todas;
+     * Cuando la persona que llama archiva por taskId, este último sobrescribe al primero.,La diferencia de estatus no afecta la semántica de "más reciente".
      */
     @Query(
         """
@@ -34,15 +34,15 @@ interface ScheduledTaskExecutionDao {
     )
     suspend fun latestStatusByTask(): List<TaskLatestStatus>
 
-    /** 查询某任务最近 10 次执行记录(按执行时间倒序)。 */
+    /** Consultar los últimos 10 registros de ejecución de una tarea.(En orden descendente de tiempo de ejecución.). */
     @Query("SELECT * FROM scheduled_task_executions WHERE task_id = :taskId ORDER BY executed_at DESC LIMIT 10")
     suspend fun queryByTaskId(taskId: String): List<ScheduledTaskExecutionEntity>
 
-    /** U-25: 查询某任务全部执行历史(上限 100 条,供"查看全部"对话框使用)。 */
+    /** U-25: Consultar todo el historial de ejecución de una tarea.(Máximo 100 artículos,suministro"Ver todo"Uso del diálogo). */
     @Query("SELECT * FROM scheduled_task_executions WHERE task_id = :taskId ORDER BY executed_at DESC LIMIT 100")
     suspend fun queryAllByTaskId(taskId: String): List<ScheduledTaskExecutionEntity>
 
-    /** 清空某任务的所有执行历史。 */
+    /** Borrar todo el historial de ejecución de una tarea. */
     @Query("DELETE FROM scheduled_task_executions WHERE task_id = :taskId")
     suspend fun deleteByTaskId(taskId: String)
 

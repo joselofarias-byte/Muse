@@ -6,22 +6,22 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 
 /**
- * D3-P1: 记忆管线失败分类。
+ * D3-P1: Clasificación de fallas en la canalización de memoria.
  *
- * 只回答"这个失败要不要再试一次"这一个问题,不改控制流。
- * 分类结果仅用于观测记录(见 [PipelineLog]);真正的重试/补跑策略留待 P3。
+ * solo responde"¿Quieres volver a intentarlo si esto falla?"esta pregunta,El flujo de control no cambia.
+ * Los resultados de la clasificación solo se utilizan para registros de observación.(ver [PipelineLog]);reintento real/La estrategia de recuperación se deja en manos de P3.
  *
- * 分类语义:
- *  - [RETRYABLE] 瞬时故障 —— 网络抖动、限流、服务端 5xx、超时、LLM 空响应、未知异常兜底。
- *  - [PERMANENT] 确定性失败 —— 配置错误、鉴权、4xx、解析/序列化失败、参数非法。
- *  - [FATAL]     进程级/不可恢复 —— 协程取消、OOM、StackOverflow 等 VM 错误。
+ * Semántica de clasificación:
+ *  - [RETRYABLE] Fallo transitorio —— Jitter de red, limitación de corriente, servidor 5xx, tiempo de espera,LLM Respuesta vacía y excepción desconocida.
+ *  - [PERMANENT] falla determinista —— Errores de configuración, autenticación,4xx, análisis/Error de serialización, el parámetro es ilegal.
+ *  - [FATAL]     nivel de proceso/No recuperable —— Cancelación de rutina,OOM,StackOverflow Espere a que aparezcan errores de VM.
  *
- * 判定顺序:取消/VM 错误 → 网络/IO 类型 → **配额/余额终态 → 消息模式(可重试优先于永久)** → 异常类型兜底 → 默认可重试。
- * 之所以默认可重试:记忆任务宁多试一次,不可因未知原因被判死刑而静默丢弃。
+ * orden de sentencia:Cancelar/VM error → red/IO Tipo → **Cuota/Estado final del equilibrio → patrón de mensaje(Reintentable tiene prioridad sobre permanente)** → Secretos de tipo de excepción → Reintentable de forma predeterminada.
+ * La razón por la que se puede volver a intentar de forma predeterminada:Es mejor intentar la tarea de la memoria una vez más.,No se puede descartar silenciosamente la pena de muerte por razones desconocidas.
  *
- * 配额/余额不足必须排在可重试特征之前:上游常用"rate limit exceeded: quota"这类
- * 混着限流词的消息表达"钱没了",重试只会继续吃 402。这与
- * `ProviderError.InsufficientQuota`(402 / isInsufficientQuotaBody 优先判定)同一口径。
+ * Cuota/El saldo insuficiente debe preceder a las funciones reintentables:Comúnmente utilizado en aguas arriba"rate limit exceeded: quota"este tipo
+ * Expresión de mensaje mezclada con palabras limitantes."el dinero se ha ido",Si lo intentas de nuevo, seguirás recibiendo 402. Esto está relacionado con
+ * `ProviderError.InsufficientQuota`(402 / isInsufficientQuotaBody juicio de prioridad)Mismo calibre.
  */
 enum class FailureKind {
     RETRYABLE,
@@ -31,15 +31,15 @@ enum class FailureKind {
 
 object FailureClassifier {
 
-    /** 可重试的消息特征(小写匹配)。 */
+    /** Características del mensaje reintentable(coincidencia de minúsculas). */
     private val RETRYABLE_PATTERNS = listOf(
         "http 429",
-        "http 5", // 5xx 服务端临时错误
+        "http 5", // 5xx Error temporal del lado del servidor
         "timeout",
         "timed out",
         "rate limit",
         "too many requests",
-        "限流",
+        "Limitación de corriente",
         "connection reset",
         "connection refused",
         "broken pipe",
@@ -48,12 +48,12 @@ object FailureClassifier {
         "temporarily",
         "unavailable",
         "overloaded",
-        "空响应",
+        "respuesta vacía",
         "empty response",
         "failed to connect",
     )
 
-    /** 永久性失败的消息特征(小写匹配)。 */
+    /** Características del mensaje con error permanente(coincidencia de minúsculas). */
     private val PERMANENT_PATTERNS = listOf(
         "http 400",
         "http 401",
@@ -65,21 +65,21 @@ object FailureClassifier {
         "invalid",
         "unsupported",
         "no model",
-        "未配置",
-        "未找到 json",
-        "json 解析失败",
+        "No configurado",
+        "no encontrado json",
+        "json El análisis falló",
         "parse",
-        "解析失败",
+        "El análisis falló",
         "schema",
-        "备份恢复",
+        "Copia de seguridad y restauración",
     )
 
     /**
-     * 配额/余额/鉴权类终态特征(小写匹配)。
+     * Cuota/Saldo/Características del estado final de autenticación(coincidencia de minúsculas).
      *
-     * 与 [PERMANENT_PATTERNS] 分开维护:这些信号代表"再试也不会好"的外部状态
-     * (钱没了 / 凭证失效),必须排在 [RETRYABLE_PATTERNS] 之前判定,
-     * 因为上游会把额度不足包装成带限流措辞的消息。
+     * con [PERMANENT_PATTERNS] Mantener por separado:Estas señales representan"No será bueno si lo intentas de nuevo."estado externo
+     * (El dinero se acabó / el bono no es válido),debe ser clasificado [RETRYABLE_PATTERNS] Juicio antes,
+     * Porque el upstream empaquetará la cuota insuficiente en un mensaje con la redacción del límite actual.
      */
     private val TERMINAL_QUOTA_OR_AUTH_PATTERNS = listOf(
         "http 402",
@@ -87,9 +87,9 @@ object FailureClassifier {
         "insufficient_quota",
         "quota exceeded",
         "exceeded your current quota",
-        "余额不足",
-        "额度不足",
-        "余额已用尽",
+        "Saldo insuficiente",
+        "Cuota insuficiente",
+        "Saldo agotado",
         "http 401",
         "unauthorized",
         "invalid api key",
@@ -98,46 +98,49 @@ object FailureClassifier {
     )
 
     /**
-     * 把异常归类为 [FailureKind]。
+     * Clasificar las excepciones como [FailureKind].
      *
-     * @param error 捕获到的异常;null 视为可重试(防御性,正常不应出现)
+     * @param error excepción atrapada;null Considerado reintentable(Defensivo,Normalmente no debería aparecer)
      */
     fun classify(error: Throwable?): FailureKind {
         if (error == null) return FailureKind.RETRYABLE
-        // 协程取消是终态信号,不可重试
+        // La cancelación de la rutina es una señal final,No reintentable
         if (error is CancellationException) return FailureKind.FATAL
-        // 进程级错误:内存耗尽/栈溢出等,重试无意义
+        // error a nivel de proceso:memoria agotada/Desbordamiento de pila, etc.,No tiene sentido volver a intentarlo
         if (error is VirtualMachineError || error is ThreadDeath) return FailureKind.FATAL
-        // 网络/IO 瞬时错误
+        // red/IO error transitorio
         if (error is SocketTimeoutException || error is IOException) return FailureKind.RETRYABLE
 
         val msg = (error.message ?: "").lowercase()
-        // 配额/鉴权终态优先于可重试特征:"rate limit exceeded: quota" 这类消息混着
-        // 限流词,但真实含义是额度已耗尽,重试无意义。
-        if (TERMINAL_QUOTA_OR_AUTH_PATTERNS.any { msg.contains(it) }) return FailureKind.PERMANENT
-        if (RETRYABLE_PATTERNS.any { msg.contains(it) }) return FailureKind.RETRYABLE
-        if (PERMANENT_PATTERNS.any { msg.contains(it) }) return FailureKind.PERMANENT
+        // Cuota/El estado final de autenticación tiene prioridad sobre las funciones reintentables:"rate limit exceeded: quota" Este tipo de noticias son mixtas.
+        // palabras limitantes,Pero el verdadero significado es que la cuota se ha agotado.,No tiene sentido volver a intentarlo.
+        if (matches(msg, TERMINAL_QUOTA_OR_AUTH_PATTERNS)) return FailureKind.PERMANENT
+        if (matches(msg, RETRYABLE_PATTERNS)) return FailureKind.RETRYABLE
+        if (matches(msg, PERMANENT_PATTERNS)) return FailureKind.PERMANENT
 
-        // 类型兜底:序列化/解析/参数类失败重试也不会变好
+        // Tipo de cobertura:serialización/analizar/Incluso si la clase de parámetro falla y se vuelve a intentar, no mejorará.
         if (error is SerializationException ||
             error is IllegalArgumentException ||
             error is IllegalStateException
         ) {
             return FailureKind.PERMANENT
         }
-        // 未知异常:保守判可重试
+        // Excepción desconocida:Se puede volver a intentar la sentencia conservadora
         return FailureKind.RETRYABLE
     }
 
     /**
-     * 是否为「配额/余额/鉴权」类终态失败。
+     * ¿Es una "cuota"?/Saldo/El estado final de la clase "Autenticación" falló.
      *
-     * 供调用方决定要不要做延迟补跑:上游已在节流(如 agnes 的
-     * "not asked again before 02:49"),我们 30s 后再打一次只会继续吃 402。
-     * 只覆盖钱与凭证两类不可恢复状态,解析/参数类失败仍允许补跑(LLM 有随机性)。
+     * Corresponde a la persona que llama decidir si desea retrasar el maquillaje.:Upstream ya se está acelerando(como agnes
+     * "not asked again before 02:49"),Si lo volvemos a presionar 30 segundos después, continuaremos obteniendo 402.
+     * Sólo cubre dos tipos de estados irrecuperables: dinero y vales.,analizar/Si la clase de parámetro falla, aún se permiten ejecuciones de recuperación.(LLM hay aleatoriedad).
      */
+    private fun matches(msg: String, patterns: List<String>): Boolean =
+        patterns.any { msg.contains(it.lowercase()) }
+
     fun isTerminalQuotaOrAuth(error: Throwable?): Boolean {
         val msg = (error?.message ?: "").lowercase()
-        return msg.isNotBlank() && TERMINAL_QUOTA_OR_AUTH_PATTERNS.any { msg.contains(it) }
+        return msg.isNotBlank() && matches(msg, TERMINAL_QUOTA_OR_AUTH_PATTERNS)
     }
 }

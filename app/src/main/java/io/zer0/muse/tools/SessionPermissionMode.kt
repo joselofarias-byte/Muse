@@ -1,24 +1,24 @@
 package io.zer0.muse.tools
 
 /**
- * 会话级工具权限模式。
+ * Modo de permisos de herramientas a nivel de sesión.
  *
- * 覆盖单工具的审批策略,让用户在单次会话内快速切换"信任/询问/严格"三种姿态。
+ * Anular la política de aprobación de una sola herramienta,Permitir a los usuarios cambiar rápidamente dentro de una sola sesión"confianza/preguntar/estricto"Tres posturas.
  */
 enum class SessionPermissionMode {
     /**
-     * 完全放权:除用户显式禁用及工具参数硬拒绝外,所有工具均不逐次审批。
-     * 工具自身的执行器权限、沙箱和设备授权仍照常生效。
+     * Delegación completa de autoridad:Excepto por la desactivación explícita del usuario y el rechazo total de los parámetros de la herramienta.,No todas las herramientas se aprueban caso por caso.
+     * Los permisos de ejecución propios de la herramienta, la zona de pruebas y la autorización del dispositivo siguen vigentes.
      */
     TRUSTED,
 
     /**
-     * 询问模式(默认):安全工具自动执行,普通和高风险工具均需用户审批。
+     * Modo de consulta(Predeterminado):Las herramientas de seguridad automatizan la ejecución,Tanto las herramientas normales como las de alto riesgo requieren la aprobación del usuario.
      */
     ASK,
 
     /**
-     * 严格模式:任何非只读工具都需审批;安全工具中涉及网络/外部应用的也纳入审批。
+     * modo estricto:Cualquier herramienta que no sea de solo lectura requiere aprobación;Networking en herramientas de seguridad/Las solicitudes externas también se incluyen en la revisión y aprobación.
      */
     STRICT,
 }

@@ -21,10 +21,10 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 证明当前时间从聊天组装结果一路进入最终 OpenAI 兼容请求体。
+ * Demuestre que el tiempo actual fluye desde el resultado del ensamblaje del chat hasta el cuerpo final de la solicitud compatible con OpenAI.
  *
- * 这条测试不替代 ChatGenerationController 的设备/UI 验收；
- * 它只锁定“ChatService/Provider 序列化不会丢 SYSTEM 消息”的边界。
+ * Esta prueba no reemplaza el dispositivo ChatGenerationController/UI aceptación;
+ * solo se bloquea“ChatService/Provider La serialización no pierde los mensajes del SISTEMA”borde.
  */
 class ChatSystemTimeProviderRequestTest {
 
@@ -65,18 +65,18 @@ class ChatSystemTimeProviderRequestTest {
         )
         val messages = composeSystemPromptMessages(
             staticPrompt = "stable prompt",
-            dynamicPrompt = "当前时间: 2026-10-05 12:34:56 星期一",
-        ) + UIMessage(role = MessageRole.USER, content = "现在几点？")
+            dynamicPrompt = "hora actual: 2026-10-05 12:34:56 lunes",
+        ) + UIMessage(role = MessageRole.USER, content = "¿Qué hora es ahora?")
 
         service.completeText(messages = messages, model = model)
 
         val body = AppJson.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
         val serializedMessages = body["messages"]?.jsonArray.orEmpty()
         assertTrue(
-            "最终 Provider 请求必须保留当前时间 SYSTEM 消息",
+            "La solicitud final del Proveedor debe conservar el mensaje del SISTEMA de hora actual.",
             serializedMessages.any { message ->
                 message.jsonObject["role"]?.jsonPrimitive?.content == "system" &&
-                    message.jsonObject["content"]?.jsonPrimitive?.content?.contains("当前时间:") == true
+                    message.jsonObject["content"]?.jsonPrimitive?.content?.contains("hora actual:") == true
             },
         )
     }

@@ -10,10 +10,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * 对话链路的追加式影子事件。
+ * Agregar eventos de sombra para enlaces de diálogo.
  *
- * 事件用于审计、去重和重放诊断，不替代现有 messages 表。默认只保存结构化摘要、
- * 长度和 hash，避免把每个流式 delta 再复制一份到数据库。
+ * Los eventos se utilizan para auditoría, deduplicación y diagnóstico de reproducción y no reemplazan la tabla de mensajes existente. De forma predeterminada, solo se guardan fragmentos estructurados,
+ * longitud y hash, para evitar copiar cada delta de transmisión a la base de datos.
  */
 @Entity(
     tableName = "conversation_events",
@@ -77,11 +77,11 @@ interface ConversationEventDao {
     @Query("DELETE FROM conversation_events WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: 备份导出用 — 全量读取。 */
+    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
     @Query("SELECT * FROM conversation_events")
     suspend fun getAll(): List<ConversationEventEntity>
 
-    /** P0-10: 备份恢复用 — 全量清空。 */
+    /** P0-10: Para respaldo y recuperación — Borrar todo. */
     @Query("DELETE FROM conversation_events")
     suspend fun deleteAll()
 }

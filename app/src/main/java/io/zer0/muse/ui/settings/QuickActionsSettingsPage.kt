@@ -31,15 +31,15 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.6.0: 消息快捷按钮自定义页（Via 浏览器式）。
+ * v2.6.0: Página de personalización del botón de acceso directo a mensajes (Via estilo del navegador).
  *
- * 三级入口：设置 → 聊天设置 → 消息快捷按钮。
- * 上区「已启用」：有序列表，每项可上移/下移/移除；
- * 下区「动作池」：未启用的全部动作，点击加入（追加到队尾）。
- * 结果写入 ChatPreferences.quickActionOrder；「恢复默认」回到默认排布。
+ * Entrada Nivel 3: Configuración → Configuración de chat → Botón de acceso directo a mensajes.
+ * Área superior "Habilitada": lista ordenada, cada elemento se puede mover hacia arriba/bajar/eliminar;
+ * Área inferior "Grupo de acciones": para todas las acciones que no están habilitadas, haga clic para agregar (agregar al final de la cola).
+ * El resultado se escribe en ChatPreferences.quickActionOrder; "Restaurar valor predeterminado" vuelve a la disposición predeterminada.
  *
- * 注意：拖拽排序在 Compose 里需要额外手势系统，这里采用 Via 兼容的
- * 上移/下移按钮方案——单击可控、无需长按拖动，后续如需可再加拖拽。
+ * Nota: La clasificación mediante arrastrar y soltar requiere un sistema de gestos adicional en Compose. Aquí se utilizan los compatibles con Via.
+ * subir/Esquema de botones para bajar——Haga clic para controlar, no es necesario presionar y arrastrar. Puede arrastrar nuevamente si es necesario.
  */
 @Composable
 fun QuickActionsSettingsPage(onBack: () -> Unit) {
@@ -53,7 +53,7 @@ fun QuickActionsSettingsPage(onBack: () -> Unit) {
         scope.launch { settings.updateChatPreferences(block) }
     }
 
-    // 当前生效顺序：已配置用配置，未配置展示默认（首次编辑时落盘）
+    // El orden de efecto actual: configuración configurada, visualización predeterminada no configurada (colocada al editar por primera vez)
     val currentOrder: List<QuickAction> =
         if (prefs.quickActionOrder.isNotEmpty()) {
             prefs.quickActionOrder.mapNotNull { QuickAction.fromId(it) }
@@ -123,7 +123,7 @@ fun QuickActionsSettingsPage(onBack: () -> Unit) {
                                     .weight(1f)
                                     .padding(start = MusePaddings.tinyGap),
                             )
-                            // 上移
+                            // subir
                             Text(
                                 text = "↑",
                                 style = MaterialTheme.typography.titleMedium,
@@ -144,7 +144,7 @@ fun QuickActionsSettingsPage(onBack: () -> Unit) {
                                     }
                                     .padding(horizontal = 10.dp),
                             )
-                            // 下移
+                            // bajar
                             Text(
                                 text = "↓",
                                 style = MaterialTheme.typography.titleMedium,
@@ -165,7 +165,7 @@ fun QuickActionsSettingsPage(onBack: () -> Unit) {
                                     }
                                     .padding(horizontal = 10.dp),
                             )
-                            // 移除
+                            // Quitar
                             Text(
                                 text = stringResource(R.string.action_delete),
                                 style = MaterialTheme.typography.labelMedium,
@@ -209,7 +209,7 @@ fun QuickActionsSettingsPage(onBack: () -> Unit) {
                                 .fillMaxWidth()
                                 .clickable {
                                     update { p ->
-                                        // 首次编辑：从默认排布出发追加，避免把旧开关状态清空
+                                        // Primera edición: agregue desde la disposición predeterminada para evitar borrar el estado del interruptor anterior
                                         val base =
                                             if (p.quickActionOrder.isEmpty()) {
                                                 QuickAction.DEFAULT_ORDER.map { it.id }

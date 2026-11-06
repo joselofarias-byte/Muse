@@ -13,11 +13,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 摘要不可用时的"本地重建"检查点测试。
+ * Cuando el resumen no está disponible"reconstrucción local"Pruebas en puntos de control.
  *
- * 这一级是降级阶梯的最后一道：摘要模型报错/超时/网络差时，若什么都不写，
- * 重开应用就又回到全量历史、下次还得再试一遍摘要 —— 用户看到的是"压了但没用"。
- * 本地重建用零请求的确定性文本摘录产出检查点，**边界立刻生效且持久**。
+ * Este nivel es el último paso en la escalera de degradación: error de modelo resumido/tiempo de espera/Cuando la red es pobre, si no escribes nada,
+ * Si vuelves a abrir la aplicación, volverás al historial completo. Tendrás que volver a intentar el resumen la próxima vez. —— Lo que ve el usuario es"Presionado pero sin uso.".
+ * La reconstrucción local produce puntos de control con extractos de texto deterministas de solicitud cero,**Las fronteras son inmediatas y permanentes**.
  */
 class ContextCompressTransformerLocalCheckpointTest {
 
@@ -26,9 +26,9 @@ class ContextCompressTransformerLocalCheckpointTest {
     private fun msg(role: MessageRole, text: String) = UIMessage(role = role, content = text)
 
     private fun coveredMessages(): List<UIMessage> = listOf(
-        msg(MessageRole.USER, "帮我看看压缩这块"),
-        msg(MessageRole.ASSISTANT, "好的，我先读 transformer 的实现"),
-        msg(MessageRole.TOOL, "文件内容：class ContextCompressTransformer { ... }"),
+        msg(MessageRole.USER, "Ayúdame con la parte de compresión."),
+        msg(MessageRole.ASSISTANT, "Bien, déjame leer primero la implementación del transformador."),
+        msg(MessageRole.TOOL, "Contenido del archivo:class ContextCompressTransformer { ... }"),
     )
 
     @Test
@@ -46,13 +46,13 @@ class ContextCompressTransformerLocalCheckpointTest {
             ),
         )
 
-        assertNotNull("应产出检查点", checkpoint)
+        assertNotNull("Se debe producir el punto de control.", checkpoint)
         assertEquals(ContextCheckpointEntity.STRATEGY_LOCAL, checkpoint?.strategy)
         assertEquals("s-1", checkpoint?.sessionId)
         assertEquals(42L, checkpoint?.coveredSeq)
-        assertEquals("边界应落在最后一条被覆盖的消息上", covered.last().id.toString(), checkpoint?.lastCoveredMessageId)
+        assertEquals("El límite debe caer en el último mensaje sobrescrito.", covered.last().id.toString(), checkpoint?.lastCoveredMessageId)
         assertEquals(covered.size, checkpoint?.coveredCount)
-        assertTrue("摘录正文不应为空", checkpoint?.summary?.isNotBlank() == true)
+        assertTrue("El cuerpo del extracto no debe estar vacío.", checkpoint?.summary?.isNotBlank() == true)
     }
 
     @Test
@@ -74,12 +74,12 @@ class ContextCompressTransformerLocalCheckpointTest {
 
     @Test
     fun `only system messages leave nothing worth digesting`() {
-        // ContextHistoryDigest 跳过 SYSTEM 消息（动态注入的 prompt/RAG 不摘录），
-        // 因此全是 SYSTEM 时没有可摘录内容 → 不写检查点（而不是写一个空摘要）
+        // ContextHistoryDigest Omitir mensajes del SISTEMA (los mensajes/RAG inyectados dinámicamente no se extraen),
+        // Por lo tanto, cuando todo es SISTEMA, no hay contenido extraible. → No escriba puntos de control (en lugar de escribir un resumen vacío)
         val checkpoint = transformer.buildLocalCheckpoint(
             io.zer0.muse.transformer.ContextCompressTransformer.LocalCheckpointRequest(
                 sessionId = "s-1",
-                covered = listOf(msg(MessageRole.SYSTEM, "系统提示词"), msg(MessageRole.SYSTEM, "RAG 片段")),
+                covered = listOf(msg(MessageRole.SYSTEM, "Palabra de aviso del sistema"), msg(MessageRole.SYSTEM, "RAG fragmento")),
                 previousBoundaryId = null,
                 coveredSeq = 5L,
                 tokensBefore = 500,
@@ -87,13 +87,13 @@ class ContextCompressTransformerLocalCheckpointTest {
                 reason = ContextCheckpointEntity.REASON_AUTO,
             ),
         )
-        assertNull("无可摘录内容时不写检查点", checkpoint)
+        assertNull("No se escribe ningún punto de control cuando no hay contenido extraíble", checkpoint)
     }
 
     @Test
     fun `local checkpoint takes effect in assembly`() {
-        // 端到端语义：本地检查点产出的边界必须能被组装侧合并 ——
-        // 否则"写了检查点"只是自欺欺人（模型照样收到全量历史）。
+        // Semántica de un extremo a otro: los límites producidos por los puntos de control locales deben fusionarse en el lado del ensamblaje ——
+        // De lo contrario"Escribió un punto de control"Es una broma (el modelo aún recibe el historial completo).
         val covered = coveredMessages()
         val checkpoint = transformer.buildLocalCheckpoint(
             io.zer0.muse.transformer.ContextCompressTransformer.LocalCheckpointRequest(
@@ -107,39 +107,39 @@ class ContextCompressTransformerLocalCheckpointTest {
             ),
         )
         val live = listOf(
-            msg(MessageRole.USER, "那现在改成落库"),
-            msg(MessageRole.ASSISTANT, "这就改"),
+            msg(MessageRole.USER, "Entonces cámbialo a Luoku ahora."),
+            msg(MessageRole.ASSISTANT, "cámbialo ahora"),
         )
         val merged = ContextCheckpointMerge.apply(covered + live, checkpoint)
 
-        assertTrue("本地检查点应当生效", merged.applied)
+        assertTrue("El puesto de control local debería entrar en vigor", merged.applied)
         val summary = merged.messages.first().content
         assertTrue(
-            "摘要消息应带分隔标记",
+            "El mensaje de resumen debe estar delimitado con etiquetas.",
             summary.startsWith(ContextCheckpointMerge.MARKER),
         )
-        // 被覆盖的**助手侧**消息不再作为独立消息出现（它们已并入摘要）
+        // cubierto**lado asistente**Los mensajes ya no aparecen como mensajes separados (se combinan en el resumen)
         assertFalse(
-            "被覆盖的助手回复不应再作为独立消息进入模型",
-            merged.messages.any { it.content == "好的，我先读 transformer 的实现" },
+            "Las respuestas sobrescritas del asistente ya no deberían ingresar al modelo como mensajes independientes",
+            merged.messages.any { it.content == "Bien, déjame leer primero la implementación del transformador." },
         )
-        // 但被覆盖区间里的**用户消息必须保留** —— 那是"用户到底说了什么"的原始记录，
-        // 丢了它模型就会忘记用户的要求（见 ContextCheckpointMerge 的取舍说明）。
+        // Pero en el rango cubierto**Los mensajes de usuario deben conservarse** —— eso es"¿Qué dijo el usuario?"registros originales,
+        // Si lo pierde, el modelo olvidará los requisitos del usuario (consulte la descripción de la compensación de ContextCheckpointMerge).
         assertTrue(
-            "被覆盖区间内的用户消息必须保留",
-            merged.messages.any { it.content == "帮我看看压缩这块" },
+            "Los mensajes de usuario dentro del rango cubierto deben conservarse",
+            merged.messages.any { it.content == "Ayúdame con la parte de compresión." },
         )
-        // 工具结果以**短摘录**并入摘要：内容应出现在摘要里，但被压到远短于原文
-        assertTrue("工具结果应以摘录形式并入摘要", summary.contains("工具结果:"))
-        assertTrue("摘录应远短于原文", summary.length < 4_000)
-        // 边界之后的实时消息保留
-        assertTrue(merged.messages.any { it.content == "那现在改成落库" })
+        // La herramienta da como resultado**breve extracto**Incorporado al resumen: el contenido debe aparecer en el resumen pero suprimirse para que sea mucho más breve que el texto original.
+        assertTrue("Los resultados de la herramienta deben incorporarse al resumen en forma de extracto.", summary.contains("Resultados de la herramienta:"))
+        assertTrue("Los extractos deben ser mucho más cortos que el texto original.", summary.length < 4_000)
+        // Retención de mensajes en vivo más allá de los límites
+        assertTrue(merged.messages.any { it.content == "Entonces cámbialo a Luoku ahora." })
     }
 
     @Test
     fun `previous boundary is reused when nothing new can be parsed`() {
-        // 覆盖集合里若有无法解析成 Uuid 的 id，边界应退回上一次的边界（不写错边界）
-        val weird = UIMessage(role = MessageRole.ASSISTANT, content = "内容")
+        // Si hay una identificación en el conjunto de cobertura que no se puede analizar en un Uuid, el límite debe devolverse al límite anterior (no escriba el límite incorrecto)
+        val weird = UIMessage(role = MessageRole.ASSISTANT, content = "contenido")
         val previousId = java.util.UUID.randomUUID().toString()
         val checkpoint = transformer.buildLocalCheckpoint(
             io.zer0.muse.transformer.ContextCompressTransformer.LocalCheckpointRequest(
@@ -152,7 +152,7 @@ class ContextCompressTransformerLocalCheckpointTest {
                 reason = ContextCheckpointEntity.REASON_AUTO,
             ),
         )
-        // weird.id 是随机 Uuid，能解析；因此边界取它而不是旧边界 —— 这里只断言"有边界且非空"
+        // weird.id es un Uuid aleatorio que se puede analizar; entonces el límite lo toma en lugar del antiguo límite —— Aquí sólo afirmamos"Acotado y no vacío"
         assertNotNull(checkpoint)
         assertTrue(checkpoint?.lastCoveredMessageId?.isNotBlank() == true)
     }

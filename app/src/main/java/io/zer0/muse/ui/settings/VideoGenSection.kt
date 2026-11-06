@@ -53,10 +53,10 @@ import org.koin.compose.koinInject
 import androidx.compose.foundation.lazy.items as lazyItems
 
 /**
- * 视频生成默认参数设置。
+ * Configuración de parámetros predeterminados para la generación de video.
  *
- * 用户可在此设置默认视频供应商、模型、时长和分辨率。
- * ChatViewModel.execGenerateVideo 在 LLM 未显式指定时优先使用此配置。
+ * Aquí el usuario puede configurar el proveedor de video, el modelo, la duración y la resolución predeterminados.
+ * ChatViewModel.execGenerateVideo Esta configuración tiene prioridad cuando LLM no se especifica explícitamente.
  */
 @Composable
 fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: CoroutineScope) {
@@ -65,7 +65,7 @@ fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: Coroutin
     var showModelSelector by remember { mutableStateOf(false) }
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = null)
 
-    // 只显示有视频输出模型的供应商
+    // Mostrar solo proveedores con modelos de salida de vídeo
     val videoProviders = remember(providers) {
         providers?.filter { it.enabled && it.apiKey.isNotBlank() && it.models.any { m -> m.supportsVideoOutput() } }
             ?: emptyList()
@@ -91,7 +91,7 @@ fun VideoGenSection(settings: SettingsRepository = koinInject(), scope: Coroutin
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // 模型选择卡片
+                // Tarjeta de selección de modelo
                 if (providers == null) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -302,7 +302,7 @@ private fun VideoModelGridCard(model: Model, selected: Boolean, onClick: () -> U
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧选中图标挤成一列
+                // LAYOUT-01: Row Anchura el texto interior + limita la línea para evitar que el icono seleccionado a la derecha la comprima en una columna cuando se amplía el tamaño de fuente
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

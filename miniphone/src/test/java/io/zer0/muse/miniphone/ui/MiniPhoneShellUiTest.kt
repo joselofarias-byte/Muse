@@ -48,10 +48,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 外壳与四页的渲染验证。
+ * Verificación de renderizado de shell y cuatro páginas.
  *
- * 断言只落在「看不看得见 / 顺序对不对 / 数字对不对」上:每个用例都从桌面进页,
- * 再按底部 tab 切页,这样顺带证明切页真的换了内容,而不是四页叠在一起。
+ * La afirmación sólo recae en "si es visible o no/si el orden es correcto/si los números son correctos":Cada caso de uso se pagina desde el escritorio.,
+ * Presione la pestaña inferior nuevamente para cambiar de página.,Por cierto, esto demuestra que cambiar de página realmente cambia el contenido.,En lugar de cuatro páginas apiladas una encima de la otra.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -75,26 +75,26 @@ class MiniPhoneShellUiTest {
             }
         }
 
-        // 起始在桌面:图标网格在,页面标题不在
+        // Iniciar en el escritorio:cuadrícula de iconos en,El título de la página no está ahí.
         compose.onNodeWithTag(launcherTag(MiniPhoneTab.MESSAGES)).assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertDoesNotExist()
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.MESSAGES)).performClick()
-        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("消息")
+        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("noticias")
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS).assertExists()
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.CONTACTS)).performClick()
-        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("通讯录")
+        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("libreta de direcciones")
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_CONTACTS).assertExists()
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS).assertDoesNotExist()
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.DISCOVER)).performClick()
-        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("发现")
+        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("descubrir")
         compose.onNodeWithTag(MiniPhoneTags.MOMENTS_ENTRY).assertExists()
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_CONTACTS).assertDoesNotExist()
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.ME)).performClick()
-        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("我")
+        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("yo")
         compose.onNodeWithTag(MiniPhoneTags.MOMENTS_ENTRY).assertDoesNotExist()
         compose.onNodeWithText(MeProfile.nickname).assertExists()
     }
@@ -112,10 +112,10 @@ class MiniPhoneShellUiTest {
         }
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.ME)).performClick()
-        compose.onNodeWithText("自动发朋友圈").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Publicar automáticamente en Momentos").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.AUTO_MOMENT_SWITCH).performScrollTo().performClick()
 
-        // 点一下就是「关掉」:状态在 ViewModel 里,这里只验回调传的是 false
+        // Haga clic para "apagar":El estado está en ViewModel.,Aquí solo verificamos que la devolución de llamada pasada sea false
         assertEquals(false, toggled)
     }
 
@@ -132,12 +132,12 @@ class MiniPhoneShellUiTest {
         }
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.ME)).performClick()
-        compose.onNodeWithText("角色主动私信").performScrollTo().assertIsDisplayed()
-        // 默认关:说明文案要把「只在白天、默认关闭」说清楚
-        compose.onNodeWithText("角色会偶尔主动找你说话，只在 08:00–22:00 之间，默认关闭").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Rol activo mensaje privado").performScrollTo().assertIsDisplayed()
+        // Desactivado predeterminado:La copia de la descripción debe indicar claramente "solo durante el día, cerrado de forma predeterminada".
+        compose.onNodeWithText("El personaje ocasionalmente tomará la iniciativa de hablar contigo, sólo cuando 08:00–22:00 entre, cerrado por defecto").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.CHAT_PROACTIVE_SWITCH).performScrollTo().performClick()
 
-        // 点一下就是「打开」:状态在 ViewModel 里,这里只验回调传的是 true
+        // Haga clic para "abrir":El estado está en ViewModel.,Aquí solo verificamos que la devolución de llamada pasada sea true
         assertEquals(true, toggled)
     }
 
@@ -146,8 +146,8 @@ class MiniPhoneShellUiTest {
         openMessages(ShellUiState())
 
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS).assertIsDisplayed()
-        compose.onNodeWithText("还没有聊天").assertIsDisplayed()
-        compose.onNodeWithText("去通讯录找个角色开始吧").assertIsDisplayed()
+        compose.onNodeWithText("Aún no hay chat").assertIsDisplayed()
+        compose.onNodeWithText("Ve a la libreta de direcciones y busca un personaje para comenzar.").assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.thread("t1")).assertDoesNotExist()
     }
 
@@ -158,8 +158,8 @@ class MiniPhoneShellUiTest {
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS_ACTION).assertIsDisplayed()
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS_ACTION).performClick()
 
-        // 点一下就是「切到通讯录」:消息页连同它的空态一起退场
-        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("通讯录")
+        // Haga clic para "cambiar a la libreta de direcciones":La página del mensaje se retira junto con su estado vacío.
+        compose.onNodeWithTag(MiniPhoneTags.PAGE_TITLE).assertTextEquals("libreta de direcciones")
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_CONTACTS).assertExists()
         compose.onNodeWithTag(MiniPhoneTags.EMPTY_THREADS).assertDoesNotExist()
     }
@@ -182,7 +182,7 @@ class MiniPhoneShellUiTest {
     @Test
     fun tappingContactRowAsksForAThreadAndOpensIt() {
         val asked = mutableListOf<String>()
-        val sections = contactSectionsOf(listOf(MpCharacter(id = "c1", name = "阿离", tagline = "住在楼下")))
+        val sections = contactSectionsOf(listOf(MpCharacter(id = "c1", name = "ali", tagline = "vivir abajo")))
         compose.setContent {
             MiniPhoneTheme(darkTheme = false) {
                 MiniPhoneShell(
@@ -211,12 +211,12 @@ class MiniPhoneShellUiTest {
         val now = System.currentTimeMillis()
         val state = loadState(
             threads = listOf(
-                thread(id = "t-old", characterId = "c-old", preview = "在的", at = now - 86_400_000L),
-                thread(id = "t-new", characterId = "c-new", preview = "晚上吃面吗", at = now - 1_000L, unread = 2),
+                thread(id = "t-old", characterId = "c-old", preview = "en", at = now - 86_400_000L),
+                thread(id = "t-new", characterId = "c-new", preview = "¿Quieres comer fideos esta noche?", at = now - 1_000L, unread = 2),
             ),
             characters = listOf(
-                MpCharacter(id = "c-old", name = "旧朋友"),
-                MpCharacter(id = "c-new", name = "新朋友"),
+                MpCharacter(id = "c-old", name = "viejos amigos"),
+                MpCharacter(id = "c-new", name = "nuevos amigos"),
             ),
         )
 
@@ -224,19 +224,19 @@ class MiniPhoneShellUiTest {
 
         val newerTop = compose.onNodeWithTag(MiniPhoneTags.thread("t-new")).getBoundsInRoot().top
         val olderTop = compose.onNodeWithTag(MiniPhoneTags.thread("t-old")).getBoundsInRoot().top
-        assertTrue("最后消息更新的会话应排在上面", newerTop < olderTop)
+        assertTrue("Las conversaciones con los últimos mensajes actualizados deben clasificarse en la parte superior", newerTop < olderTop)
 
         compose.onNodeWithTag(MiniPhoneTags.unread("t-new"), useUnmergedTree = true).assertTextEquals("2")
         compose.onNodeWithTag(MiniPhoneTags.unread("t-old"), useUnmergedTree = true).assertDoesNotExist()
-        compose.onNodeWithText("晚上吃面吗").assertExists()
-        compose.onNodeWithText("新朋友").assertExists()
+        compose.onNodeWithText("¿Quieres comer fideos esta noche?").assertExists()
+        compose.onNodeWithText("nuevos amigos").assertExists()
     }
 
     @Test
     fun contactsAreGroupedByInitialInAlphabeticalOrder() {
         val sections = contactSectionsOf(
             listOf(
-                MpCharacter(id = "c1", name = "阿离", tagline = "住在楼下"),
+                MpCharacter(id = "c1", name = "ali", tagline = "vivir abajo"),
                 MpCharacter(id = "c2", name = "Cara"),
                 MpCharacter(id = "c3", name = "bob"),
                 MpCharacter(id = "c4", name = "Zoe"),
@@ -254,14 +254,14 @@ class MiniPhoneShellUiTest {
         val tops = listOf("B", "C", "Z", "#").map { key ->
             compose.onNodeWithTag(MiniPhoneTags.contactHeader(key)).getBoundsInRoot().top
         }
-        assertEquals("分组标题必须按 B→C→Z→# 依次向下", tops.sorted(), tops)
+        assertEquals("El título del grupo debe ser B→C→Z→# hacia abajo", tops.sorted(), tops)
         compose.onNodeWithTag(MiniPhoneTags.CONTACT_INDEX).assertExists()
         compose.onNodeWithText("Cara").assertExists()
 
-        // 点右侧索引条跳到中文分组,验证索引条真的会带动列表
+        // Haga clic en la barra de índice a la derecha para saltar al grupo chino,Verifique que la barra de índice realmente controle la lista
         compose.onNodeWithTag(MiniPhoneTags.contactIndex("#")).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("阿离").assertExists()
+        compose.onNodeWithText("ali").assertExists()
     }
 
     @Test
@@ -320,18 +320,18 @@ class MiniPhoneShellUiTest {
 
         compose.onNodeWithTag(MiniPhoneTags.threadMenuAction(ThreadMenuAction.PIN)).performClick()
 
-        assertEquals("置顶带上方向", listOf("t1" to true), pinned)
+        assertEquals("Orientación en la parte superior", listOf("t1" to true), pinned)
 
-        // 删除要二次确认:点了只弹确认框,确认之后才真删
+        // La eliminación requiere doble confirmación:Al hacer clic solo aparece el cuadro de confirmación.,Eliminado solo después de la confirmación.
         compose.onNodeWithTag(MiniPhoneTags.thread("t1")).performSemanticsAction(SemanticsActions.OnLongClick)
         compose.onNodeWithTag(MiniPhoneTags.threadMenuAction(ThreadMenuAction.DELETE)).performClick()
         compose.onNodeWithTag(MiniPhoneTags.THREAD_DELETE_DIALOG).assertIsDisplayed()
-        assertEquals("确认之前不删", emptyList<String>(), deleted)
+        assertEquals("No borrar antes de confirmar", emptyList<String>(), deleted)
 
         compose.onNodeWithTag(MiniPhoneTags.THREAD_DELETE_CONFIRM).performClick()
 
         assertEquals(listOf("t1"), deleted)
-        assertEquals("没点就没标记", 0, markedRead)
+        assertEquals("Sin puntos, sin marcas", 0, markedRead)
     }
 
     @Test
@@ -344,7 +344,7 @@ class MiniPhoneShellUiTest {
 
         compose.onNodeWithTag(MiniPhoneTags.thread("t1")).performSemanticsAction(SemanticsActions.OnLongClick)
 
-        // 未读为 0 不摆「标记已读」;没置顶不摆「取消置顶」
+        // No leído es 0 y no se marca como leído.;Si no lo fijas en la parte superior, no lo pongas "Desanclarlo"
         compose.onNodeWithTag(MiniPhoneTags.threadMenuAction(ThreadMenuAction.MARK_READ)).assertDoesNotExist()
         compose.onNodeWithTag(MiniPhoneTags.threadMenuAction(ThreadMenuAction.UNPIN)).assertDoesNotExist()
         compose.onNodeWithTag(MiniPhoneTags.threadMenuAction(ThreadMenuAction.PIN)).assertIsDisplayed()
@@ -369,11 +369,11 @@ class MiniPhoneShellUiTest {
 
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.ME)).performClick()
         compose.onNodeWithTag(MiniPhoneTags.VERSION_LABEL).performScrollTo()
-            .assertTextEquals("小手机数据 v${MINI_PHONE_DB_VERSION} / 应用 2.6.12")
+            .assertTextEquals("pequeños datos celulares v${MINI_PHONE_DB_VERSION} / Solicitud 2.6.12")
 
         compose.onNodeWithTag(MiniPhoneTags.MY_MOMENTS_ROW).performScrollTo().performClick()
 
-        // 我页进的是「只看自己」:两个入口不共用一份时间线
+        // Lo que entré fue "Mírate sólo a ti mismo":Las dos entradas no comparten línea de tiempo.
         compose.onNodeWithTag(FAKE_CHAT_TAG).assertTextEquals(MINE_ONLY_CONTENT)
     }
 
@@ -393,7 +393,7 @@ class MiniPhoneShellUiTest {
         compose.onNodeWithTag(MiniPhoneTags.CLEAR_CHATS_ROW).performScrollTo().performClick()
         compose.onNodeWithTag(MiniPhoneTags.CLEAR_CHATS_DIALOG).assertIsDisplayed()
 
-        assertEquals("点入口只弹确认", 0, cleared)
+        assertEquals("Haga clic en la entrada y haga clic para confirmar.", 0, cleared)
 
         compose.onNodeWithTag(MiniPhoneTags.CLEAR_CHATS_CONFIRM).performClick()
 
@@ -402,25 +402,25 @@ class MiniPhoneShellUiTest {
 
     @Test
     fun versionLabelDropsTheHostPartWhenTheHostReportsNothing() {
-        assertEquals("小手机数据 v$MINI_PHONE_DB_VERSION", miniPhoneVersionLabel(MINI_PHONE_DB_VERSION, ""))
-        assertEquals("小手机数据 v$MINI_PHONE_DB_VERSION", miniPhoneVersionLabel(MINI_PHONE_DB_VERSION, "  "))
+        assertEquals("pequeños datos celulares v$MINI_PHONE_DB_VERSION", miniPhoneVersionLabel(MINI_PHONE_DB_VERSION, ""))
+        assertEquals("pequeños datos celulares v$MINI_PHONE_DB_VERSION", miniPhoneVersionLabel(MINI_PHONE_DB_VERSION, "  "))
         assertEquals(
-            "小手机数据 v$MINI_PHONE_DB_VERSION / 应用 2.6.12",
+            "pequeños datos celulares v$MINI_PHONE_DB_VERSION / Solicitud 2.6.12",
             miniPhoneVersionLabel(MINI_PHONE_DB_VERSION, "2.6.12"),
         )
     }
 
-    /** 一行会话:默认带两条未读,置顶与未读由参数固定,便于断言菜单里该出现哪几行。 */
+    /** conversación de una línea:De forma predeterminada, hay dos elementos no leídos.,Fijados y no leídos están fijados por parámetros,Es conveniente determinar qué líneas deberían aparecer en el menú. */
     private fun threadUi(unread: Int = 2, pinned: Boolean = false): MiniPhoneThreadUi = MiniPhoneThreadUi(
         id = "t1",
-        name = "阿离",
-        preview = "在吗",
+        name = "ali",
+        preview = "¿Está ahí?",
         lastMessageAt = 1_000L,
         unreadCount = unread,
         pinned = pinned,
     )
 
-    /** 从桌面切到消息页。 */
+    /** Cambie a la página de mensajes desde el escritorio. */
     private fun openMessages(state: ShellUiState) {
         compose.setContent {
             MiniPhoneTheme(darkTheme = false) {
@@ -430,7 +430,7 @@ class MiniPhoneShellUiTest {
         compose.onNodeWithTag(MiniPhoneTags.tab(MiniPhoneTab.MESSAGES)).performClick()
     }
 
-    /** 真落库再读回来:顺带验证 DAO 的排序确实传达到了界面。 */
+    /** Léelo de nuevo:Por cierto, verifique que el pedido del DAO efectivamente se comunique a la interfaz. */
     private fun loadState(threads: List<MpThreadEntity>, characters: List<MpCharacter>): ShellUiState {
         val database = newInMemoryMiniPhoneDb()
         db = database
@@ -455,7 +455,7 @@ class MiniPhoneShellUiTest {
     private fun launcherTag(tab: MiniPhoneTab): String = MiniPhoneTags.launcher(MiniPhoneApps.launcher.first { it.tab == tab })
 
     private companion object {
-        val MeProfile = MpProfile(nickname = "子奇", signature = "慢慢来,比较快")
+        val MeProfile = MpProfile(nickname = "Ziqi", signature = "tómate tu tiempo,relativamente rápido")
         const val FAKE_CHAT_TAG: String = "mp-shell-fake-chat"
         const val MINE_ONLY_CONTENT: String = "mine-only"
         const val ALL_CONTENT: String = "all-moments"

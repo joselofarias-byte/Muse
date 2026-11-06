@@ -12,9 +12,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x: [PromptExampleGuard] 单元测试。
+ * v2.x: [PromptExampleGuard] Pruebas unitarias.
  *
- * 覆盖:示例照抄丢弃 / 真实记忆保留(对话提及关键词) / 大小写 / 整份结果清洗。
+ * Portada:Los ejemplos se copian y descartan / se conservan los recuerdos reales(Palabras clave mencionadas en la conversación.) / Limpieza de caso/resultado completo.
  */
 class PromptExampleGuardTest {
 
@@ -22,8 +22,8 @@ class PromptExampleGuardTest {
     fun `penicillin example is dropped when conversation never mentions it`() {
         assertTrue(
             PromptExampleGuard.isUngroundedExample(
-                text = "对青霉素过敏",
-                conversationText = "用户聊了天气和晚饭,没有提药物。",
+                text = "alérgico a la penicilina",
+                conversationText = "Los usuarios charlaron sobre el clima y la cena.,Ninguna mención de medicación.",
             ),
         )
     }
@@ -32,8 +32,8 @@ class PromptExampleGuardTest {
     fun `real penicillin fact survives when conversation mentions keyword`() {
         assertFalse(
             PromptExampleGuard.isUngroundedExample(
-                text = "对青霉素过敏",
-                conversationText = "用户说自己对青霉素过敏,让我记下来。",
+                text = "alérgico a la penicilina",
+                conversationText = "El usuario dijo que era alérgico a la penicilina.,Déjame escribirlo.",
             ),
         )
     }
@@ -58,62 +58,62 @@ class PromptExampleGuardTest {
     fun `unrelated text passes through`() {
         assertFalse(
             PromptExampleGuard.isUngroundedExample(
-                text = "用户喜欢爬山",
-                conversationText = "随便聊聊",
+                text = "A los usuarios les gusta escalar montañas.",
+                conversationText = "solo charla",
             ),
         )
-        assertFalse(PromptExampleGuard.isUngroundedExample("", "任意对话"))
+        assertFalse(PromptExampleGuard.isUngroundedExample("", "cualquier conversación"))
     }
 
     @Test
     fun `sanitize removes leaked entities links and merges but keeps grounded ones`() {
-        val conversation = "用户:我今天买了美式咖啡,顺便说下我下周要去爬山。"
+        val conversation = "Usuario:Compré un americano hoy,Por cierto, la semana que viene voy a hacer senderismo."
         val analysis = ParsedAnalysis(
-            mainProblem = ParsedEntity(title = "对青霉素过敏", content = "对青霉素过敏"),
+            mainProblem = ParsedEntity(title = "alérgico a la penicilina", content = "alérgico a la penicilina"),
             extractedEntities = listOf(
-                // 示例照抄(对话未提及青霉素)→ 应被剔除
-                ParsedEntity(title = "对青霉素过敏", content = "对青霉素过敏", importance = 0.9f),
-                // 真实事实(对话提到了美式咖啡)→ 应保留
-                ParsedEntity(title = "买了美式咖啡", content = "买了美式咖啡"),
+                // Copia de ejemplo(No se menciona la penicilina en el diálogo.)→ debe ser eliminado
+                ParsedEntity(title = "alérgico a la penicilina", content = "alérgico a la penicilina", importance = 0.9f),
+                // hechos verdaderos(La conversación mencionó el café americano.)→ debe ser retenido
+                ParsedEntity(title = "Compré un café americano.", content = "Compré un café americano."),
             ),
             updatedEntities = listOf(
-                ParsedUpdate(matchTitle = "过敏史", newContent = "对青霉素过敏"),
-                ParsedUpdate(matchTitle = "运动计划", newContent = "下周去爬山"),
+                ParsedUpdate(matchTitle = "Historia de alergia", newContent = "alérgico a la penicilina"),
+                ParsedUpdate(matchTitle = "plan de ejercicios", newContent = "Ir de excursión la próxima semana"),
             ),
             mergedEntities = listOf(
                 ParsedMerge(
-                    sourceTitles = listOf("对青霉素过敏"),
+                    sourceTitles = listOf("alérgico a la penicilina"),
                     mergedTitle = "x",
                     mergedContent = "y",
                 ),
             ),
             links = listOf(
-                ParsedLink(sourceTitle = "对青霉素过敏", targetTitle = "用阿莫西林治疗"),
-                ParsedLink(sourceTitle = "买了美式咖啡", targetTitle = "爬山计划"),
+                ParsedLink(sourceTitle = "alérgico a la penicilina", targetTitle = "Tratar con amoxicilina"),
+                ParsedLink(sourceTitle = "Compré un café americano.", targetTitle = "plan de escalada de montaña"),
             ),
-            profileMarkdown = "## 医疗\n- 对青霉素过敏\n## 兴趣\n- 美式咖啡",
+            profileMarkdown = "## medico\n- alérgico a la penicilina\n## Interés\n- americano",
         )
 
         val cleaned = PromptExampleGuard.sanitize(analysis, conversation)
 
         assertNull(cleaned.mainProblem)
         assertEquals(1, cleaned.extractedEntities.size)
-        assertEquals("买了美式咖啡", cleaned.extractedEntities[0].title)
+        assertEquals("Compré un café americano.", cleaned.extractedEntities[0].title)
         assertEquals(1, cleaned.updatedEntities.size)
-        assertEquals("运动计划", cleaned.updatedEntities[0].matchTitle)
+        assertEquals("plan de ejercicios", cleaned.updatedEntities[0].matchTitle)
         assertTrue(cleaned.mergedEntities.isEmpty())
         assertEquals(1, cleaned.links.size)
-        assertEquals("买了美式咖啡", cleaned.links[0].sourceTitle)
-        // 画像:青霉素行被剔除,美式咖啡行(对话提到)保留
-        assertEquals("## 医疗\n## 兴趣\n- 美式咖啡", cleaned.profileMarkdown)
+        assertEquals("Compré un café americano.", cleaned.links[0].sourceTitle)
+        // retrato:Se elimina la fila de penicilina,cafeteria americana(mencionado en la conversación)Reservar
+        assertEquals("## medico\n## Interés\n- americano", cleaned.profileMarkdown)
     }
 
     @Test
     fun `grounded examples are not removed when conversation truly mentions them`() {
-        val conversation = "用户:帮我记一下,我对青霉素过敏。"
+        val conversation = "Usuario:recuérdalo por mí,Soy alérgico a la penicilina."
         val analysis = ParsedAnalysis(
             extractedEntities = listOf(
-                ParsedEntity(title = "对青霉素过敏", content = "对青霉素过敏", importance = 0.9f),
+                ParsedEntity(title = "alérgico a la penicilina", content = "alérgico a la penicilina", importance = 0.9f),
             ),
         )
         val cleaned = PromptExampleGuard.sanitize(analysis, conversation)

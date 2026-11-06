@@ -32,18 +32,18 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**
- * v1.0.17: 快速记录 UI 状态。
+ * v1.0.17: Registre rápidamente el estado de la interfaz de usuario.
  *
- * @param notes 当前展示的快速记录列表(已应用搜索/标签/文件夹过滤,置顶在前)
- * @param searchKeyword 搜索关键字(空串表示不过滤)
- * @param selectedTag 当前选中的标签(null 表示不过滤)
- * @param selectedFolder 当前选中的文件夹(null 表示全部,空串表示未分类)
- * @param allTags 所有可用标签(从 activeNotes 派生,小写去重排序)
- * @param folders 所有非空文件夹列表(从 observeFolders 派生)
- * @param trashItems 回收站条目
- * @param showTrash 是否展示回收站面板
- * @param isInitialLoading 首次加载标志(避免闪空状态)
- * @param hasMore 是否还有更多记录可加载(分页)
+ * @param notes Lista de registros rápidos mostrados actualmente(Búsqueda aplicada/etiqueta/Filtrado de carpetas,traer al frente)
+ * @param searchKeyword Buscar palabras clave(Una cadena vacía significa que no hay filtrado)
+ * @param selectedTag Etiqueta actualmente seleccionada(null Indica que no hay filtrado)
+ * @param selectedFolder Carpeta actualmente seleccionada(null significa todo,Una cadena vacía indica no clasificado)
+ * @param allTags Todas las etiquetas disponibles(Derivado de notas activas,Desordenamiento de minúsculas)
+ * @param folders Lista de todas las carpetas que no están vacías(Derivado de observeFolders)
+ * @param trashItems Entrada a la papelera de reciclaje
+ * @param showTrash Si mostrar el panel de la papelera de reciclaje
+ * @param isInitialLoading primera bandera de carga(Evite el estado flash)
+ * @param hasMore ¿Hay más registros para cargar?(Paginación)
  */
 data class QuickNotesUiState(
     val notes: List<QuickNoteEntity> = emptyList(),
@@ -56,23 +56,23 @@ data class QuickNotesUiState(
     val showTrash: Boolean = false,
     val isInitialLoading: Boolean = true,
     val hasMore: Boolean = false,
-    /** ST-01: 列表加载失败信息(null=正常)。 */
+    /** ST-01: Listar información sobre errores de carga(null=normales). */
     val error: String? = null,
 )
 
 /**
- * v1.0.17: 快速记录 ViewModel — 替代 QuickNotesScreen 直接持有 QuickNoteStore 的方式。
+ * v1.0.17: registro rápido ViewModel — Reemplaza la forma en que QuickNotesScreen contiene QuickNoteStore directamente.
  *
- * 职责:
- *  - 从 [QuickNoteDao] 的 Flow 收集正常记录 + 回收站记录
- *  - 维护搜索关键字 / 标签 / 文件夹过滤状态,并派生 allTags / folders / notes 视图
- *  - 暴露 add / update / delete / restore / deletePermanent / setPinned / clearTrash 操作
- *  - v1.0.18: 增加 folder / contentType / 提醒 / 加密 / 导入导出 / 分页
+ * Responsabilidades:
+ *  - de [QuickNoteDao] Flow recopila registros normales + registros de papelera de reciclaje
+ *  - Mantener el estado del filtro de palabras clave/etiquetas/carpetas de búsqueda,y derivado allTags / folders / notes ver
+ *  - expuesto add / update / delete / restore / deletePermanent / setPinned / clearTrash Operación
+ *  - v1.0.18: Agregar carpeta/tipo de contenido/recordatorio/cifrado/importación y exportación/paginación
  *
- * 数据源:Room(替代 JSON 文件存储),通过 [io.zer0.muse.tools.quicknote.QuickNoteStore.migrateToRoom]
- * 在 App 启动时一次性把旧 JSON 数据导入 Room,后续 Room 即唯一真源。
+ * fuente de datos:Room(Almacenamiento de archivos JSON alternativo),Pase [io.zer0.muse.tools.quicknote.QuickNoteStore.migrateToRoom]
+ * Importe datos JSON antiguos todos a la vez cuando se inicie la aplicación Room,La Sala siguiente es la única fuente verdadera.
  *
- * v1.0.18: 构造增加 [context](用于 ReminderStore + AlarmManager 调度提醒)。
+ * v1.0.18: aumento de estructura [context](Se utiliza para ReminderStore + AlarmManager para programar recordatorios).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class QuickNotesViewModel(
@@ -83,8 +83,8 @@ class QuickNotesViewModel(
     private val reminderStore = ReminderStore(context)
     private val noteCipher = NoteCipher()
 
-    // v2.6.7: 笔记附件存储。addAttachment 此前零调用 —— 卡片会显示「N 个附件」
-    // （读侧通），但全仓没有任何地方能往里写，等于一个永远为空指示器。
+    // v2.6.7: Almacenamiento de archivos adjuntos de notas.addAttachment Cero llamadas anteriores —— La tarjeta mostrará "N archivos adjuntos
+    // (Lea el pase lateral), pero no hay lugar para escribir en toda la posición, lo que equivale a un indicador que siempre está vacío.
     private val attachmentStore = io.zer0.muse.data.quicknote.NoteAttachmentStore(context)
 
     private val _searchKeyword = MutableStateFlow("")
@@ -92,54 +92,54 @@ class QuickNotesViewModel(
     private val _selectedFolder = MutableStateFlow<String?>(null)
     private val _showTrash = MutableStateFlow(false)
 
-    // ST-01: 列表加载失败信息 + 重试触发源。
-    // DAO Flow 收集失败时写入 _loadError,由 retryLoad() 清空并递增触发源
-    // 使 flatMapLatest 重新订阅 Room Flow,实现重试。
+    // ST-01: Lista de información de error de carga + fuente de activación de reintento.
+    // DAO Flow Escribir cuando falla la colección _loadError,por retryLoad() Borrar e incrementar la fuente de activación
+    // Hacer flatMapLatest volver a suscribirse Room Flow,Implementar reintentos.
     private val _loadError = MutableStateFlow<String?>(null)
     private val retryTrigger = MutableStateFlow(0)
 
-    /** v1.0.18: 分页 — 当前加载上限(到达底部时 loadMore 递增)。 */
+    /** v1.0.18: Paginación — Límite de carga actual(loadMore se incrementa cuando se alcanza el fondo). */
     private val _currentLimit = MutableStateFlow(DEFAULT_LIMIT)
     private val currentLimit: StateFlow<Int> = _currentLimit
 
-    /** 正常记录(deleted=0),按 updatedAt 降序、置顶在前。 */
+    /** Grabación normal(deleted=0),Ordene por actualizado en orden descendente, arriba primero. */
     private val activeNotesFlow: Flow<List<QuickNoteEntity>> = retryTrigger.flatMapLatest {
         dao.observeActive(limit = MAX_LIMIT).catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
-            Logger.w(TAG, "加载快速记录失败: ${e.message}")
+            Logger.w(TAG, "No se pudieron cargar registros rápidos: ${e.message}")
             _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
 
-    /** 回收站记录(deleted=1),按 deletedAt 降序。 */
+    /** Registros de la papelera de reciclaje(deleted=1),Ordenar por eliminadoEn descendente. */
     private val trashFlow: Flow<List<QuickNoteEntity>> = retryTrigger.flatMapLatest {
         dao.observeTrash().catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
-            Logger.w(TAG, "加载回收站失败: ${e.message}")
+            Logger.w(TAG, "No se pudo cargar la papelera de reciclaje: ${e.message}")
             _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
 
-    /** v1.0.18: 所有非空文件夹。 */
+    /** v1.0.18: Todas las carpetas que no estén vacías. */
     private val foldersFlow: Flow<List<String>> = retryTrigger.flatMapLatest {
         dao.observeFolders().catch { e ->
             if (e is kotlinx.coroutines.CancellationException) throw e
-            Logger.w(TAG, "加载文件夹失败: ${e.message}")
+            Logger.w(TAG, "No se pudo cargar la carpeta: ${e.message}")
             _loadError.value = e.message ?: context.getString(R.string.common_load_failed)
             emit(emptyList())
         }
     }
 
     /**
-     * 综合 UI 状态:
-     *  - notes: 应用搜索关键字 + 标签 + 文件夹过滤后的列表(再按 currentLimit 截断)
-     *  - allTags: 从全量 activeNotes 派生(小写去重排序)
-     *  - folders: 从 foldersFlow 取
-     *  - trashItems: 直接从 trashFlow 取
-     *  - showTrash: 由用户切换
-     *  - hasMore: filtered.size > currentLimit(还有未加载的记录)
+     * Estado completo de la interfaz de usuario:
+     *  - notes: Aplicar palabras clave de búsqueda + etiquetas + lista filtrada de carpetas(Presione currentLimit nuevamente para truncar)
+     *  - allTags: Derivado de ActiveNotes completo(Desordenamiento de minúsculas)
+     *  - folders: Tomado de carpetasFlow
+     *  - trashItems: Tomado directamente de trashFlow
+     *  - showTrash: Cambiado por usuario
+     *  - hasMore: filtered.size > currentLimit(Aún quedan registros descargados)
      */
     val state: StateFlow<QuickNotesUiState> =
         combine(
@@ -193,35 +193,35 @@ class QuickNotesViewModel(
             initialValue = QuickNotesUiState(),
         )
 
-    /** 更新搜索关键字。空串表示清除搜索。 */
+    /** Actualizar las palabras clave de búsqueda. Una cadena vacía borra la búsqueda. */
     fun onSearchKeywordChange(keyword: String) {
         _searchKeyword.value = keyword
     }
 
-    /** 切换标签过滤。再次点击同一标签取消选中。 */
+    /** Alternar filtrado de etiquetas. Haga clic en la misma etiqueta nuevamente para anular su selección. */
     fun onTagSelected(tag: String) {
         _selectedTag.value = if (_selectedTag.value == tag) null else tag
     }
 
     /**
-     * v1.0.18: 切换文件夹过滤。
-     * - null: 显示全部文件夹
-     * - "": 未分类(folder 为空的记录)
-     * - 其他: 指定文件夹
-     * 再次点击同一文件夹取消选中(回到全部)。
+     * v1.0.18: Alternar filtrado de carpetas.
+     * - null: Mostrar todas las carpetas
+     * - "": Sin categoría(folder Registros vacíos)
+     * - Otros: Especificar carpeta
+     * Haga clic en la misma carpeta nuevamente para anular su selección.(volver a todos).
      */
     fun onFolderSelected(folder: String?) {
         _selectedFolder.value = if (_selectedFolder.value == folder) null else folder
     }
 
-    /** 切换回收站面板显示/隐藏。 */
+    /** Alternar visualización del panel de la papelera de reciclaje/Oculto. */
     fun toggleTrash(show: Boolean) {
         _showTrash.value = show
     }
 
     /**
-     * v1.0.18: 加载更多(分页)。
-     * 到达列表底部时调用,递增 limit 后刷新视图。
+     * v1.0.18: cargar más(Paginación).
+     * Se llama cuando se llega al final de la lista.,Actualiza la vista después de incrementar el límite.
      */
     fun loadMore() {
         if (_currentLimit.value >= MAX_LIMIT) return
@@ -229,8 +229,8 @@ class QuickNotesViewModel(
     }
 
     /**
-     * ST-01: 列表加载失败后的重试入口。
-     * 清空错误信息并递增触发源,flatMapLatest 会重新订阅 Room Flow 重新加载。
+     * ST-01: Vuelva a intentar la entrada después de un error al cargar la lista.
+     * Borre el mensaje de error e incremente la fuente de activación,flatMapLatest Volveré a suscribirme a la recarga de Room Flow.
      */
     fun retryLoad() {
         _loadError.value = null
@@ -238,10 +238,10 @@ class QuickNotesViewModel(
     }
 
     /**
-     * 通知点击时确保目标记录进入当前列表。
+     * La notificación garantiza que el registro de destino entre en la lista actual cuando se haga clic en él.
      *
-     * 快速记录页面默认只展示前 50 条；提醒可能来自更早的记录，
-     * 因此先读取目标确认它仍是有效记录，再放宽本页展示上限，交给页面滚动定位。
+     * La página de registro rápido solo muestra los primeros 50 registros de forma predeterminada; los recordatorios pueden provenir de registros anteriores.
+     * Por lo tanto, primero lea el objetivo para confirmar que todavía es un registro válido, luego relaje el límite de visualización de esta página y déjelo en la página para el posicionamiento de desplazamiento.
      */
     fun revealNote(noteId: String) {
         viewModelScope.launch {
@@ -253,9 +253,9 @@ class QuickNotesViewModel(
     }
 
     /**
-     * 添加一条快速记录。
+     * Añade una nota rápida.
      *
-     * v1.0.18: 增加 folder / contentType 参数(默认空文件夹 + plain)。
+     * v1.0.18: Agregar parámetro carpeta/tipo de contenido(Carpeta vacía predeterminada + plain).
      */
     fun add(title: String, content: String, tags: List<String>, folder: String = "", contentType: String = "plain") {
         viewModelScope.launch {
@@ -279,9 +279,9 @@ class QuickNotesViewModel(
     }
 
     /**
-     * 更新指定记录(局部更新)。
+     * Actualizar registro especificado(actualización parcial).
      *
-     * v1.0.18: 增加 folder / contentType / reminderAt 参数(传 null 表示不修改)。
+     * v1.0.18: aumentar folder / contentType / reminderAt parámetros(Pase nulo para indicar que no hay modificación).
      */
     fun update(
         id: String,
@@ -295,13 +295,13 @@ class QuickNotesViewModel(
         viewModelScope.launch {
             val existing = dao.getById(id) ?: return@launch
             val newContent = content
-            // 审计修复 (0.6): 空串也视为"未改内容",不得用空串加密覆盖原密文。
-            // 对话框打开加密笔记时 content 为空,若用户只改标题,content 传空串,
-            // 原实现 newContent != null 会把 encrypt("") 写入,原内容永久丢失。
+            // Reparación de auditoría (0.6): También se consideran cadenas vacías."Contenido sin cambios",El texto cifrado original no debe sobrescribirse con cifrado de cadena vacía.
+            // Cuando el cuadro de diálogo abre la nota cifrada, el contenido está vacío.,Si el usuario solo cambia el título,content Pasar cadena vacía,
+            // Implementación original newContent != null voluntad encrypt("") escribir,El contenido original se pierde permanentemente.
             val finalEncryptedContent = if (existing.encrypted) {
                 if (newContent != null && newContent.isNotBlank()) {
                     runCatching { noteCipher.encrypt(newContent) }.getOrElse {
-                        Logger.w(TAG, "快捷笔记更新加密失败: ${it.message}")
+                        Logger.w(TAG, "Falló el cifrado de actualización de notas rápidas: ${it.message}")
                         existing.encryptedContent
                     }
                 } else {
@@ -323,27 +323,27 @@ class QuickNotesViewModel(
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
-            // 同步提醒闹钟
+            // Sincronizar el despertador con recordatorio
             if (reminderAt != null) {
                 syncReminder(existing.id, existing.title, existing.content, reminderAt)
             }
         }
     }
 
-    /** 移入回收站(soft delete)。 */
+    /** Mover a la papelera de reciclaje(soft delete). */
     fun delete(id: String) {
         viewModelScope.launch { dao.moveToTrash(id) }
     }
 
-    /** 从回收站恢复。 */
+    /** Restaurar desde la Papelera de reciclaje. */
     fun restore(id: String) {
         viewModelScope.launch { dao.restore(id) }
     }
 
-    /** 永久删除单条记录(不可恢复)。 */
+    /** Eliminar permanentemente un solo registro(No recuperable). */
     fun deletePermanent(id: String) {
         viewModelScope.launch {
-            // v2.6.7: 先取附件清单再删库 —— 记录一没就读不到了，文件会永久成为孤儿。
+            // v2.6.7: Obtenga primero la lista de archivos adjuntos y luego elimine la biblioteca —— Una vez que se pierde un registro, no se puede leer y el archivo queda huérfano permanentemente.
             val attachments = withContext(Dispatchers.IO) {
                 dao.getById(id)?.let { parseAttachments(it.attachmentsJson) } ?: emptyList()
             }
@@ -354,29 +354,29 @@ class QuickNotesViewModel(
         }
     }
 
-    /** 切换置顶状态。 */
+    /** Alternar estado fijado. */
     fun setPinned(id: String, pinned: Boolean) {
         viewModelScope.launch { dao.setPinned(id, pinned) }
     }
 
     /**
-     * v1.0.18: 设置文件夹。
-     * folder 传空串表示移出文件夹(未分类)。
+     * v1.0.18: Configure la carpeta.
+     * folder Pasar una cadena vacía significa salir de la carpeta(Sin categoría).
      */
     fun setFolder(id: String, folder: String) {
         viewModelScope.launch { dao.setFolder(id, folder) }
     }
 
     /**
-     * v1.0.18: 切换内容类型(plain ↔ markdown)。
+     * v1.0.18: Cambiar tipo de contenido(plain ↔ markdown).
      */
     fun setContentType(id: String, contentType: String) {
         viewModelScope.launch { dao.setContentType(id, contentType) }
     }
 
     /**
-     * v1.0.18: 设置提醒。
-     * reminderAt=0 表示取消提醒;否则通过 ReminderStore + AlarmManager 调度。
+     * v1.0.18: Establecer recordatorios.
+     * reminderAt=0 Indica cancelar el recordatorio.;De lo contrario, envíe a través de ReminderStore + AlarmManager.
      */
     fun setReminder(id: String, title: String, message: String, reminderAt: Long) {
         viewModelScope.launch {
@@ -386,67 +386,67 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v1.0.18: 取消提醒。
+     * v1.0.18: Cancelar recordatorio.
      */
     fun cancelReminder(id: String) {
         viewModelScope.launch {
             dao.setReminderAt(id, 0)
             ReminderAlarmScheduler.cancel(context, id)
-            // ReminderStore 中也可能有对应条目,尝试移除
+            // ReminderStore También puede haber entradas correspondientes en,intenta eliminar
             reminderStore.list().firstOrNull { it.id == id }?.let { reminderStore.remove(it.id) }
         }
     }
 
     /**
-     * v1.0.18: 切换加密状态。
+     * v1.0.18: Cambiar el estado de cifrado.
      *
-     * 加密已实现: NoteCipher 使用 Android Keystore 的 AES-GCM 真实加解密,
-     * 密文格式 base64(iv):base64(ciphertext),导出/导入保留 encryptedContent。
-     * 解密失败时按旧占位密文迁移处理(避免旧版本数据丢失)。
+     * Se implementa el cifrado: NoteCipher Cifrado y descifrado real AES-GCM utilizando Android Keystore,
+     * Formato de texto cifrado base64(iv):base64(ciphertext),Exportar/La importación conserva el contenido cifrado.
+     * Cuando falla el descifrado, se migrará el antiguo texto cifrado del marcador de posición.(Evite la pérdida de datos de versiones antiguas).
      */
     fun setEncrypted(id: String, encrypted: Boolean) {
         viewModelScope.launch {
             val existing = dao.getById(id) ?: return@launch
             if (encrypted) {
-                // 审计修复 (0.7): 加密失败不得降级明文。
-                // 原实现 getOrElse 返回明文写入 encryptedContent,UI 显示"已加密"实为明文,
-                // 用户误以为受保护。失败时保持原样并提示。
+                // Reparación de auditoría (0.7): El texto sin formato no debe degradarse si falla el cifrado.
+                // La implementación original de getOrElse devuelve escritura de texto sin formato. encryptedContent,UI mostrar"cifrado"texto plano,
+                // Los usuarios creen erróneamente que están protegidos. Déjelo como está y avise en caso de error.
                 if (existing.content.isBlank()) {
-                    MuseToast.show("没有可加密的内容")
+                    MuseToast.show("Nada que cifrar")
                     return@launch
                 }
                 val cipher = runCatching { noteCipher.encrypt(existing.content) }.getOrNull()
                 if (cipher == null) {
-                    MuseToast.show("加密失败,笔记保持原样")
-                    Logger.w(TAG, "快捷笔记加密失败,保持明文未标记加密")
+                    MuseToast.show("Error de cifrado,Las notas permanecen como están.")
+                    Logger.w(TAG, "Falló el cifrado rápido de notas,Mantenga el texto sin formato sin marcar para cifrarlo")
                     return@launch
                 }
                 dao.setEncrypted(id, true, cipher)
-                MuseToast.show("已加密")
+                MuseToast.show("cifrado")
             } else {
-                // 审计修复 (0.7): 解密失败保留密文与加密标记,不得把密文当明文写入 content。
+                // Reparación de auditoría (0.7): El descifrado falla y se conservan el texto cifrado y la marca de cifrado.,El texto cifrado no debe incluirse en el contenido como texto sin formato.
                 if (existing.encryptedContent.isNotBlank()) {
                     val plain = runCatching { noteCipher.decrypt(existing.encryptedContent) }.getOrNull()
                     if (plain == null) {
-                        MuseToast.show("解密失败,笔记保持加密")
-                        Logger.w(TAG, "快捷笔记解密失败,保留密文")
+                        MuseToast.show("Falló el descifrado,Las notas permanecen cifradas")
+                        Logger.w(TAG, "Falló el descifrado rápido de la nota,mantener texto cifrado")
                         return@launch
                     }
                     dao.setEncrypted(id, false, plain)
                 } else {
                     dao.setEncrypted(id, false, existing.content)
                 }
-                MuseToast.show("已解密")
+                MuseToast.show("Descifrado")
             }
         }
     }
 
     /**
-     * v1.0.18: 添加图片附件路径。
-     * attachmentsJson 存储为 JSON 数组字符串。
+     * v1.0.18: Agregue la ruta del archivo adjunto de la imagen.
+     * attachmentsJson Almacenado como cadena de matriz JSON.
      *
-     * v2.6.7: 改为 internal —— 外部应走 [attachImage]（它负责把 content URI
-     * 的文件实体拷进应用目录），避免调用方误传一个只读一次就失效的相册 URI。
+     * v2.6.7: Cambiar a internal —— Lo externo debería ir [attachImage](Es responsable de content URI
+     * La entidad del archivo se copia en el directorio de la aplicación) para evitar que la persona que llama transmita erróneamente un URI de álbum que se lee solo una vez y luego deja de ser válido.
      */
     internal fun addAttachment(id: String, path: String) {
         viewModelScope.launch {
@@ -458,11 +458,11 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v2.6.7: 从系统选图器添加附件。
+     * v2.6.7: Agregue archivos adjuntos desde el selector de mapas del sistema.
      *
-     * 必须先把字节拷进应用私有目录：content URI 只有短暂读权限，
-     * 只存 URI 会让笔记附件在下次打开时变成一张破图。
-     * 返回 false 表示导入失败，由调用方提示用户。
+     * Primero se deben copiar los bytes en el directorio privado de la aplicación:content URI Sólo permiso de lectura temporal,
+     * Guardar solo el URI hará que la nota adjunta se convierta en una imagen rota la próxima vez que se abra.
+     * Devolver falso indica que la importación falló y la persona que llama avisa al usuario.
      */
     fun attachImage(id: String, uri: android.net.Uri, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
@@ -478,29 +478,29 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v2.6.7: 移除（并真删）一个附件。
+     * v2.6.7: Eliminar (y eliminar) un archivo adjunto.
      *
-     * 只从清单里摘掉路径而不删文件，会泄漏存储；反过来先删文件再写库，
-     * 写入失败就留下指向不存在文件的脏记录。顺序取后者：先确保清单一致。
+     * Simplemente eliminar la ruta de la lista sin eliminar el archivo perderá almacenamiento; por el contrario, eliminar el archivo primero y luego escribir la biblioteca
+     * No escribir deja un registro sucio que apunta a un archivo inexistente. Tome el último orden: primero asegúrese de que las listas sean consistentes.
      */
     fun removeAttachment(id: String, uriString: String) {
         viewModelScope.launch {
             val existing = dao.getById(id) ?: return@launch
             val list = parseAttachments(existing.attachmentsJson).filterNot { it == uriString }
             dao.upsert(existing.copy(attachmentsJson = encodeAttachments(list), updatedAt = System.currentTimeMillis()))
-            // 只删本存储管理的文件：attachmentsJson 可能随导入数据带入外部路径，
-            // 不加这道限制就会变成任意文件删除。
+            // Elimine únicamente archivos administrados por este almacenamiento:attachmentsJson Se pueden incorporar rutas externas con los datos importados,
+            // Sin esta restricción, se producirá la eliminación arbitraria de archivos.
             if (attachmentStore.isManaged(uriString)) {
                 withContext(Dispatchers.IO) { attachmentStore.delete(uriString) }
             }
         }
     }
 
-    /** 清空整个回收站(先取一次最新快照再逐条永久删除)。 */
+    /** Vaciar toda la papelera de reciclaje(Primero tome la última instantánea y luego elimínela permanentemente una por una.). */
     fun clearTrash() {
         viewModelScope.launch {
             val trash = trashFlow.first()
-            // v2.6.7: 同步回收附件文件，否则清空回收站会满盘子孤儿图片。
+            // v2.6.7: Recicle sincrónicamente los archivos adjuntos; de lo contrario, la Papelera de reciclaje estará llena de imágenes huérfanas cuando la vacíe.
             val doomed = trash.flatMap { parseAttachments(it.attachmentsJson) }
             trash.forEach { dao.deletePermanent(it.id) }
             if (doomed.isNotEmpty()) {
@@ -509,18 +509,18 @@ class QuickNotesViewModel(
         }
     }
 
-    // ── v1.0.18: 导出 / 导入 ──────────────────────────────────────────────────
+    // ── v1.0.18: Exportar/Importar ──────────────────────────────────────────────────
 
     /**
-     * v1.0.18: 导出全部正常记录为 Markdown 字符串。
+     * v1.0.18: Exporte todos los registros normales como cadenas Markdown.
      *
-     * 每条记录格式:
+     * Cada formato de registro:
      * ```
-     * # 标题
+     * # Título
      *
-     * 正文
+     * Texto
      *
-     * > 标签: #tag1 #tag2 | 文件夹: folder | 更新时间: yyyy-MM-dd HH:mm
+     * > etiqueta: #tag1 #tag2 | carpeta: folder | Hora de actualización: yyyy-MM-dd HH:mm
      * ---
      * ```
      */
@@ -555,8 +555,8 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v1.0.18: 导出全部正常记录为 JSON 字符串。
-     * 包含完整字段(folder / contentType / tags / 时间戳等),可用于跨设备迁移。
+     * v1.0.18: Exporte todos los registros normales como cadena JSON.
+     * Contiene campos completos(folder / contentType / tags / Marca de tiempo, etc.),Se puede utilizar para la migración entre dispositivos.
      */
     suspend fun exportToJson(): String {
         val notes = dao.observeActive(limit = MAX_LIMIT).first()
@@ -565,14 +565,14 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v1.0.18: 从 JSON 字符串导入记录。
+     * v1.0.18: Importar registros desde una cadena JSON.
      *
-     * - JSON 格式由 [exportToJson] 产出([QuickNoteExportDto] 列表)
-     * - 已存在的 id 会被覆盖(OnConflictStrategy.REPLACE)
-     * - 导入的记录 deleted 标记为 false(强制恢复正常状态)
-     * v2.0: 解析失败返回 -1(与“成功但无记录”的 0 区分),导入流程据此提示文案。
+     * - JSON Formateado por [exportToJson] salida([QuickNoteExportDto] lista)
+     * - Los identificadores existentes se sobrescribirán(OnConflictStrategy.REPLACE)
+     * - Los registros importados se marcan como eliminados false(Regreso forzado al estado normal.)
+     * v2.0: Devolver si falla el análisis -1(con“Exitoso pero sin récord”0 distinción),El proceso de importación solicita la redacción correspondiente.
      *
-     * @return 成功导入的记录数量;JSON 无法解析时返回 -1
+     * @return Número de registros importados correctamente;JSON Devuelve cuando no se puede analizar -1
      */
     suspend fun importFromJson(json: String): Int {
         return try {
@@ -582,26 +582,26 @@ class QuickNotesViewModel(
             }
             dtos.size
         } catch (e: Exception) {
-            Logger.w(TAG, "导入快速记录失败: ${e.message}")
+            Logger.w(TAG, "No se pudieron importar registros rápidos: ${e.message}")
             -1
         }
     }
 
-    // ── 内部辅助 ──────────────────────────────────────────────────────────────
+    // ── auxiliar interno ──────────────────────────────────────────────────────────────
 
     /**
-     * 应用搜索关键字 + 标签 + 文件夹过滤。
+     * Aplique palabras clave de búsqueda + etiquetas + filtros de carpeta.
      *
-     * 关键字匹配 title/content/tags(大小写不敏感);
-     * 标签匹配 tags 列表(大小写不敏感,精确匹配单个标签);
-     * 文件夹匹配 folder 字段(空串 folder 匹配未分类)。
+     * concordancia de palabras clave title/content/tags(No distingue entre mayúsculas y minúsculas);
+     * lista de etiquetas coincidentes(No distingue entre mayúsculas y minúsculas,Coincide exactamente con una sola etiqueta);
+     * La carpeta coincide con el campo de la carpeta(La carpeta de cadena vacía coincide con sin categoría).
      *
-     * v1.0.18(5.10 全文搜索优化): 当存在搜索关键字时,按相关度排序而非保持原顺序。
-     * 相关度评分(越高越靠前):
-     *  - 标题完全相等(+100)/ 标题前缀匹配(+60)/ 标题包含(+30)
-     *  - 内容包含(+10)/ 标签包含(+15)
-     *  - 置顶额外加权(+50),让置顶记录在相关度相近时优先
-     * 同分时按 updatedAt 降序(新记录优先)。无关键字时保持原顺序(置顶在前 + updatedAt 降序)。
+     * v1.0.18(5.10 Optimización de búsqueda de texto completo): Cuando hay una palabra clave de búsqueda,Ordene por relevancia en lugar de mantener el orden original.
+     * Puntuación de relevancia(Cuanto más alto, más adelante):
+     *  - Los títulos son exactamente iguales.(+100)/ Coincidencia de prefijo de título(+60)/ El título contiene(+30)
+     *  - El contenido contiene(+10)/ la etiqueta contiene(+15)
+     *  - Peso extra para fijado(+50),Dar prioridad a los registros fijados cuando sean de relevancia similar
+     * Ordenar por actualizado en en orden descendente al mismo tiempo(Nuevos registros primero). Mantener el orden original cuando no haya palabras clave(Arriba + actualizadoEn orden descendente).
      */
     private fun filterNotes(notes: List<QuickNoteEntity>, keyword: String, tag: String?, folder: String?): List<QuickNoteEntity> {
         var filtered = notes
@@ -621,7 +621,7 @@ class QuickNotesViewModel(
         if (folder != null) {
             filtered = filtered.filter { it.folder == folder }
         }
-        // v1.0.18(5.10): 搜索时按相关度排序
+        // v1.0.18(5.10): Ordenar por relevancia al buscar
         if (keyword.isBlank()) return filtered
         val kw = keyword.lowercase()
         return filtered
@@ -634,7 +634,7 @@ class QuickNotesViewModel(
             .map { it.first }
     }
 
-    /** 计算单条记录对关键字的相关度得分(越大越相关)。 */
+    /** Calcule la puntuación de relevancia de un solo registro para una palabra clave(Cuanto más grande, más relevante). */
     private fun relevanceScore(note: QuickNoteEntity, kw: String): Int {
         var score = 0
         val title = note.title.lowercase()
@@ -651,15 +651,15 @@ class QuickNotesViewModel(
     }
 
     /**
-     * v1.0.18: 同步提醒闹钟。
-     * reminderAt=0 取消闹钟,否则注册精确闹钟(无精确权限时降级为非精确并引导用户开启)。
+     * v1.0.18: Sincronizar el despertador con recordatorio.
+     * reminderAt=0 Cancelar alarma,De lo contrario registre un despertador preciso(Si no hay un permiso preciso, se degradará a no preciso y se guiará al usuario para que lo abra.).
      */
     private fun syncReminder(id: String, title: String, message: String, reminderAt: Long) {
         if (reminderAt <= 0) {
             ReminderAlarmScheduler.cancel(context, id)
             return
         }
-        // 先存入 ReminderStore(触发后由 ReminderAlarmReceiver 移除)
+        // Depositar primero ReminderStore(Eliminado por ReminderAlarmReceiver después de activarse)
         reminderStore.list().firstOrNull { it.id == id }?.let { reminderStore.remove(it.id) }
         reminderStore.add(
             title = title,
@@ -684,7 +684,7 @@ class QuickNotesViewModel(
                 MuseToast.show(context.getString(R.string.tool_reminder_schedule_failed), 3500L)
             }
             result.needsExactPermission -> {
-                // 已降级为非精确闹钟，先保证「会响」，再引导用户开启「闹钟和提醒」权限。
+                // Se ha degradado a un despertador poco preciso. Primero asegúrese de que "sonará" y luego guíe al usuario para que habilite el permiso "Despertador y recordatorio".
                 reminderStore.markScheduled(id, exact = false, atMillis = System.currentTimeMillis())
                 MuseToast.show(context.getString(R.string.reminder_exact_permission_toast))
                 ReminderAlarmScheduler.requestExactAlarmPermission(context)
@@ -696,13 +696,13 @@ class QuickNotesViewModel(
     companion object {
         private const val TAG = "QuickNotesViewModel"
 
-        /** v1.0.18: 首次加载条数(分页起始 limit)。 */
+        /** v1.0.18: Número de artículos cargados por primera vez(Inicio de salto de página limit). */
         private const val DEFAULT_LIMIT = 50
 
-        /** v1.0.18: 最大加载条数(observeActive 的 LIMIT 上限)。 */
+        /** v1.0.18: Número máximo de artículos cargados(observeActive El límite superior LIMIT de). */
         private const val MAX_LIMIT = 500
 
-        /** 解析 attachmentsJson 为路径列表。 */
+        /** Analiza los archivos adjuntos Json en una lista de rutas. */
         fun parseAttachments(json: String): List<String> {
             if (json.isBlank()) return emptyList()
             return try {
@@ -712,7 +712,7 @@ class QuickNotesViewModel(
             }
         }
 
-        /** 编码路径列表为 attachmentsJson。 */
+        /** La lista de rutas codificadas es adjuntosJson. */
         fun encodeAttachments(list: List<String>): String {
             return if (list.isEmpty()) "" else AppJson.encodeToString(list)
         }
@@ -720,8 +720,8 @@ class QuickNotesViewModel(
 }
 
 /**
- * v1.0.18: 快速记录导出/导入 DTO(JSON 序列化格式)。
- * 与 [QuickNoteEntity] 字段对齐,但不含 Room 注解,便于跨设备迁移。
+ * v1.0.18: Exportación rápida de registros/importar DTO(JSON formato de serialización).
+ * con [QuickNoteEntity] Alineación de campo,Pero no incluye anotación de habitación.,Migre fácilmente entre dispositivos.
  */
 @Serializable
 data class QuickNoteExportDto(
@@ -740,7 +740,7 @@ data class QuickNoteExportDto(
     @SerialName("encrypted_content") val encryptedContent: String = "",
 )
 
-/** 把 [QuickNoteEntity] 转换为导出 DTO。 */
+/** poner [QuickNoteEntity] Convertir para exportar DTO. */
 private fun QuickNoteEntity.toExportDto(): QuickNoteExportDto = QuickNoteExportDto(
     id = id,
     title = title,
@@ -757,7 +757,7 @@ private fun QuickNoteEntity.toExportDto(): QuickNoteExportDto = QuickNoteExportD
     encryptedContent = encryptedContent,
 )
 
-/** 把导出 DTO 转换为 [QuickNoteEntity](导入用,deleted=false/encrypted=false)。 */
+/** Convertir exportación DTO a [QuickNoteEntity](Para importar,deleted=false/encrypted=false). */
 private fun QuickNoteExportDto.toEntity(): QuickNoteEntity = QuickNoteEntity(
     id = id,
     title = title,

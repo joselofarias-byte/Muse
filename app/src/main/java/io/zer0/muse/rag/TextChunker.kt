@@ -1,23 +1,23 @@
 package io.zer0.muse.rag
 
 /**
- * v1.54: 文本递归分块器。
+ * v1.54: Fragmentador recursivo de texto.
  *
- * v1.133 扩展:
- *  - [markdownAware]:识别 ``` 代码块 / Markdown 标题层级 / 表格行,整体保留不切断
- *  - [chunkByToken]:按 token 数分块(替代字符数,中英文混合更精确)
+ * v1.133 Expandir:
+ *  - [markdownAware]:identificar ``` Bloque de código/nivel de encabezado de Markdown/fila de tabla,Mantener el conjunto sin cortar.
+ *  - [chunkByToken]:Dividir en trozos por número de ficha(número de caracteres de sustitución,Mezclar chino e inglés es más preciso)
  *
- * 分块策略(三级递归):
- * 1. 按段落分(双换行 \n\n 分割)
- * 2. 段落超长时按句子分(中文句号/问号/叹号 + 英文 .!?)
- * 3. 句子仍超长时按字符硬切
- * 4. 合并相邻小块到接近 [targetSize]
- * 5. 相邻块之间保留 [overlap] 字符重叠(语义连续性)
+ * estrategia de fragmentación(Tres niveles de recursividad):
+ * 1. dividido por párrafo(doble nueva línea \n\n dividir)
+ * 2. Si el párrafo es demasiado largo, divídelo en oraciones.(periodo chino/signo de interrogación/Signo de exclamación + inglés .!?)
+ * 3. Si la frase aún es demasiado larga, córtala por caracteres.
+ * 4. Fusionar pequeños bloques adyacentes para cerrar [targetSize]
+ * 5. Reservado entre bloques adyacentes [overlap] Superposición de personajes(continuidad semántica)
  *
- * @param targetSize 目标块大小([chunkByToken]=true 时为 token 数,否则字符数,默认 500)
- * @param overlap 相邻块重叠(同 targetSize 单位,默认 50)
- * @param markdownAware v1.133: 是否感知 Markdown 结构(代码块/标题/表格整体保留)
- * @param chunkByToken v1.133: 是否按 token 数分块(true 时 targetSize 单位为 token)
+ * @param targetSize Tamaño del bloque objetivo([chunkByToken]=true el tiempo es el número de fichas,De lo contrario, el número de caracteres,Predeterminado 500)
+ * @param overlap Los bloques adyacentes se superponen(Igual que la unidad targetSize,Predeterminado 50)
+ * @param markdownAware v1.133: Ya sea para comprender la estructura de Markdown(bloque de código/Título/Mantener la mesa entera.)
+ * @param chunkByToken v1.133: Ya sea para dividir en trozos por número simbólico(true cuando la unidad targetSize es token)
  */
 class TextChunker(
     private val targetSize: Int = 500,
@@ -28,32 +28,32 @@ class TextChunker(
     data class Chunk(
         val content: String,
         val index: Int,
-        /** v1.133: chunk 元数据(可包含 section/page/tags 等,用于过滤)。 */
+        /** v1.133: chunk Metadatos(Puede incluir sección/página/etiquetas, etc.,para filtrar). */
         val metadata: Map<String, String> = emptyMap(),
     )
 
     companion object {
         private val sentenceEnd = Regex("(?<=[。！？!?])|(?<=[.!?])\\s+")
 
-        /** ``` 代码块边界识别(开/闭成对)。 */
+        /** ``` Reconocimiento de límites de bloques de código(abierto/par cerrado). */
         private val codeFence = Regex("^```\\w*\\s*$", RegexOption.MULTILINE)
 
-        /** Markdown 标题行(# ~ ######)。 */
+        /** Markdown línea de título(# ~ ######). */
         private val mdHeader = Regex("^(#{1,6})\\s+(.+)$", RegexOption.MULTILINE)
 
-        /** Markdown 表格行(|...|...|)。 */
+        /** Markdown fila de la tabla(|...|...|). */
         private val mdTableRow = Regex("^\\|.*\\|\\s*$", RegexOption.MULTILINE)
     }
 
     /**
-     * 将长文本切分为多个 chunk。
-     * 空文本返回空列表;短文本直接返回单块。
+     * Divida el texto largo en varios fragmentos.
+     * El texto vacío devuelve una lista vacía;El texto breve vuelve directamente al bloque único.
      */
     fun split(text: String): List<Chunk> {
         if (text.isBlank()) return emptyList()
         val normalized = text.replace("\r\n", "\n").replace("\r", "\n").trim()
 
-        // v1.133: Markdown-aware 模式 — 先按结构切,再按 size 切
+        // v1.133: Markdown-aware modo — Primero corte según la estructura.,Presione tamaño nuevamente para cortar
         if (markdownAware) {
             return splitMarkdownAware(normalized)
         }
@@ -62,11 +62,11 @@ class TextChunker(
             return splitByChars(normalized)
         }
 
-        // v1.133: token-based 模式
+        // v1.133: token-based modo
         return splitByTokens(normalized)
     }
 
-    // ── 字符数模式(原 v1.54 实现)──
+    // ── patrón de recuento de caracteres(Implementación original v1.54)──
     private fun splitByChars(text: String): List<Chunk> {
         if (text.length <= targetSize) return listOf(Chunk(text, 0))
         val paragraphs = text.split("\n\n").map { it.trim() }.filter { it.isNotEmpty() }
@@ -81,7 +81,7 @@ class TextChunker(
         return mergeWithOverlap(sentences)
     }
 
-    /** 超长段落按句子分割(中英文标点)。 */
+    /** Dividir párrafos muy largos por oraciones(Puntuación en chino e inglés.). */
     private fun splitLongParagraph(para: String): List<String> {
         val result = mutableListOf<String>()
         val parts = sentenceEnd.split(para).map { it.trim() }.filter { it.isNotEmpty() }
@@ -120,19 +120,19 @@ class TextChunker(
         return chunks.mapIndexed { idx, content -> Chunk(content, idx) }
     }
 
-    // ── v1.133: Markdown-aware 模式 ──
+    // ── v1.133: Markdown-aware modo ──
     /**
-     * 按结构边界(代码块/标题/表格)优先切分,保留语义完整性。
-     * 切完后再按 [targetSize] 在结构边界内进一步切。
+     * por límite de estructura(bloque de código/Título/mesa)Priorizar la división,Preservar la integridad semántica.
+     * Presione nuevamente después de cortar [targetSize] Corte más dentro de los límites de la estructura.
      */
     private fun splitMarkdownAware(text: String): List<Chunk> {
-        // 1. 把文本按"结构单元"拆成 pieces,每个 piece 是一个不可分割的语义块
+        // 1. Presiona el texto"unidad estructural"dividir en pieces,Cada pieza es un bloque semántico indivisible.
         val pieces = splitByMarkdownStructure(text)
-        // 2. 按 targetSize 合并相邻 piece,保留结构边界
+        // 2. Fusionar adyacente por targetSize piece,Preservar los límites de la estructura
         return mergeMarkdownPieces(pieces)
     }
 
-    /** 识别 Markdown 结构边界,返回结构单元列表(每个单元 = 代码块/标题段/表格/普通段落)。 */
+    /** Identificar los límites de la estructura Markdown,Devuelve una lista de unidades estructurales.(por unidad = bloque de código/Párrafo de título/mesa/Párrafo ordinario). */
     private fun splitByMarkdownStructure(text: String): List<MdPiece> {
         val pieces = mutableListOf<MdPiece>()
         val lines = text.split("\n")
@@ -143,21 +143,21 @@ class TextChunker(
         while (i < lines.size) {
             val line = lines[i]
 
-            // ``` 代码块开始
+            // ``` Comienza el bloque de código
             if (codeFence.matches(line)) {
-                // flush 当前累积的普通文本
+                // flush Texto plano acumulado actual
                 if (current.isNotBlank()) {
                     pieces.add(MdPiece(current.toString().trim(), currentHeader, PieceType.TEXT))
                     current.clear()
                 }
-                // 收集整个代码块(包括开闭 ```
+                // Recoge todo el bloque de código(Incluyendo apertura y cierre. ```
                 val codeBlock = StringBuilder(line).append("\n")
                 i++
                 while (i < lines.size && !codeFence.matches(lines[i])) {
                     codeBlock.append(lines[i]).append("\n")
                     i++
                 }
-                if (i < lines.size) { // 闭合 ```
+                if (i < lines.size) { // cerrado ```
                     codeBlock.append(lines[i]).append("\n")
                     i++
                 }
@@ -165,7 +165,7 @@ class TextChunker(
                 continue
             }
 
-            // 标题行
+            // línea de título
             mdHeader.find(line)?.let { m ->
                 if (current.isNotBlank()) {
                     pieces.add(MdPiece(current.toString().trim(), currentHeader, PieceType.TEXT))
@@ -177,7 +177,7 @@ class TextChunker(
                 continue
             }
 
-            // 表格行(连续的 |...|...| 行作为一块)
+            // fila de la tabla(continuo |...|...| filas como una pieza)
             if (mdTableRow.matches(line)) {
                 if (current.isNotBlank()) {
                     pieces.add(MdPiece(current.toString().trim(), currentHeader, PieceType.TEXT))
@@ -193,7 +193,7 @@ class TextChunker(
                 continue
             }
 
-            // 普通行:累积
+            // linea ordinaria:acumular
             current.append(line).append("\n")
             i++
         }
@@ -202,17 +202,17 @@ class TextChunker(
         return pieces
     }
 
-    /** 合并 Markdown pieces 到接近 targetSize,代码块/表格整体不切断。 */
+    /** Fusionar piezas de Markdown para cerrar targetSize,bloque de código/La forma en su totalidad no está cortada. */
     private fun mergeMarkdownPieces(pieces: List<MdPiece>): List<Chunk> {
         if (pieces.isEmpty()) return emptyList()
         val chunks = mutableListOf<Chunk>()
         val current = StringBuilder()
         var currentHeader: String? = null
         var currentTypes = mutableListOf<PieceType>()
-        // P1-2 修复（审计报告）: 旧值 targetSize * 2 允许单个 piece 在“当前块为空”时
-        // 整段塞进（因为 appendTextPiece 只在 current.isNotEmpty() 时才 flush），
-        // 用户设 400 却得到接近 800 的块 —— 参数不生效。
-        // 改为严格按 targetSize 切分，保证块大小可控。
+        // P1-2 Reparación (informe de auditoría): valor antiguo targetSize * 2 Permite una sola pieza en“El bloque actual está vacío.”tiempo
+        // Inserte el párrafo completo (porque appendTextPieza sólo está en current.isNotEmpty() al ras),
+        // El usuario establece 400 pero obtiene bloques cercanos a 800 —— El parámetro no surte efecto.
+        // Cambie a dividir estrictamente según targetSize para garantizar que el tamaño del bloque sea controlable.
         val plainChunkLimit = targetSize.coerceAtLeast(1)
 
         fun flush() {
@@ -232,10 +232,10 @@ class TextChunker(
             val pieceLen = measureSize(content)
             val currentLen = measureSize(current.toString())
             if (current.isNotEmpty() && currentLen + 1 + pieceLen > targetSize) {
-                // P1-1 修复（审计报告）: 必须先取 tail 再 flush。
-                // 旧实现先 flush() 清空 current，再 current.toString().takeLast(...)，
-                // 拿到的永远是空串——markdownAware 默认开启，导致所有用户的
-                // 「分块重叠」设置完全失效（UI 可调、DB 存着，但从未生效）。
+                // P1-1 Reparación (informe de auditoría): Primero debes buscar la cola y luego enjuagar.
+                // Implementación antigua primero flush() Limpiar la corriente, entonces current.toString().takeLast(...),
+                // Lo que obtienes es siempre una cadena vacía.——markdownAware Habilitado de forma predeterminada, lo que da como resultado que todos los usuarios
+                // La configuración de "superposición de bloques" es completamente inválida (UI ajustable,DB existe, pero nunca entra en vigor).
                 val tail = current.toString().takeLast(overlap.coerceAtLeast(0))
                 flush()
                 if (tail.isNotBlank()) current.append(tail).append("\n")
@@ -248,7 +248,7 @@ class TextChunker(
 
         for (piece in pieces) {
             val pieceLen = measureSize(piece.content)
-            // 代码块/表格:即使超过 targetSize 也整体保留(不再切割,保证语义完整)
+            // bloque de código/mesa:Incluso si se excede el tamaño objetivo, todo el(no más cortes,Garantizar la integridad semántica)
             if (piece.type == PieceType.CODE || piece.type == PieceType.TABLE) {
                 if (current.isNotEmpty()) flush()
                 currentHeader = piece.header
@@ -259,8 +259,8 @@ class TextChunker(
                 continue
             }
 
-            // 无结构的超长纯文本不能以一个巨块进入 embedding。
-            // 代码块/表格仍由上面的结构语义分支整体保留。
+            // No se puede incluir texto plano no estructurado y muy largo en una inserción en un bloque gigante.
+            // bloque de código/La tabla aún se conserva en su totalidad en la rama de semántica estructural anterior.
             val fragments = if (pieceLen > plainChunkLimit) {
                 splitOversizedPlainText(piece.content)
             } else {
@@ -272,7 +272,7 @@ class TextChunker(
         return chunks
     }
 
-    /** 把无结构的超长纯文本拆成可合并的目标大小片段,重叠由 [mergeMarkdownPieces] 统一处理。 */
+    /** Divida texto plano largo y no estructurado en segmentos fusionables del tamaño objetivo,superpuesto por [mergeMarkdownPieces] Procesamiento unificado. */
     private fun splitOversizedPlainText(text: String): List<String> {
         val boundedTarget = targetSize.coerceAtLeast(1)
         if (!chunkByToken) return text.chunked(boundedTarget)
@@ -297,9 +297,9 @@ class TextChunker(
     private enum class PieceType { HEADER, TEXT, CODE, TABLE }
     private data class MdPiece(val content: String, val header: String?, val type: PieceType)
 
-    // ── v1.133: token-based 模式 ──
+    // ── v1.133: token-based modo ──
     private fun splitByTokens(text: String): List<Chunk> {
-        // 简化实现:按 token 估算累加,超过 targetSize 即切。中英文混合更精确。
+        // Simplifique la implementación:Acumulación estimada por token,Si excede el tamaño objetivo, se cortará. Mezclar chino e inglés es más preciso.
         val paragraphs = text.split("\n\n").map { it.trim() }.filter { it.isNotEmpty() }
         val chunks = mutableListOf<String>()
         val current = StringBuilder()
@@ -309,7 +309,7 @@ class TextChunker(
             val paraTokens = measureSize(para)
             if (current.isNotEmpty() && currentTokens + paraTokens > targetSize) {
                 chunks.add(current.toString().trim())
-                // overlap:取当前块尾部约 overlap tokens 的文本
+                // overlap:Obtenga el texto sobre tokens de superposición del final del bloque actual
                 val tail = current.toString().takeLast(estimateTokensToChars(overlap))
                 current.clear()
                 current.append(tail)
@@ -323,12 +323,12 @@ class TextChunker(
         return chunks.mapIndexed { idx, content -> Chunk(content, idx) }
     }
 
-    /** 测量文本大小:token 模式返回 token 估算,字符模式返回字符数。 */
+    /** Medir el tamaño del texto:token Estimación del token de retorno del patrón,El modo de caracteres devuelve el número de caracteres. */
     private fun measureSize(text: String): Int = if (chunkByToken) estimateTokens(text) else text.length
 
-    /** 把 token 数粗略换算为字符数(中文 1 token≈1.5 字符,英文 1 token≈4 字符,折中取 2.5)。 */
+    /** Convierta aproximadamente la cantidad de tokens en la cantidad de caracteres(chino 1 token≈1.5 personaje,ingles 1 token≈4 personaje,compromiso 2.5). */
     private fun estimateTokensToChars(tokens: Int): Int = (tokens * 2.5).toInt().coerceAtLeast(0)
 
-    /** v1.55: 精确 token 数(基于 BPE 编码,jtokkit 初始化失败时回退到启发式估算)。 */
+    /** v1.55: Número de token exacto(Basado en codificación BPE,jtokkit Recurrir a la estimación heurística cuando falla la inicialización). */
     fun estimateTokens(text: String): Int = io.zer0.muse.util.TokenEstimator.estimate(text).coerceAtLeast(1)
 }

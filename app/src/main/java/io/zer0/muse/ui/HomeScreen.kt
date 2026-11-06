@@ -65,25 +65,25 @@ import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-// M-CS7: tabs 列表提为文件级 val,避免每次 recomposition 重新创建(原在 Composable 内 listOf)
-// 存资源 id(Int) 与页面序号,UI 层统一用 stringResource 解析。
+// M-CS7: tabs Listar nivel de archivo val,Evite la recomposición cada vez.(Originalmente en Composable listOf)
+// Ahorra recursos id(Int) y número de serie de la página,UI Las capas se analizan uniformemente utilizando stringResource.
 private val HomeTabs = listOf(R.string.home_tab_tasks to 0, R.string.home_tab_agent to 1, R.string.home_tab_group_chat to 2)
 
 /**
- * v0.22 首页 — 顶部双分页导航。
+ * v0.22 pagina de inicio — Navegación de doble página en la parte superior.
  *
- * 架构(极简功能主义设计语言):
- *  - 顶部固定栏: 左侧头像(→设置) | 中间胶囊Tab(任务/Agent) | 右侧搜索
- *  - 内容区: HorizontalPager(2页),两 Tab 完全独立,不互相跳转
- *    - Tab 0 "任务": 任务列表(用户日常工作调研)
- *    - Tab 1 "Agent": 长效日常聊天搭子(独立聊天区域)
+ * Arquitectura(lenguaje de diseño funcionalista minimalista):
+ *  - barra fija superior: avatar izquierdo(→ajustes) | cápsula mediaTab(Tarea/Agent) | Buscar a la derecha
+ *  - área de contenido: HorizontalPager(2página),Las dos pestañas son completamente independientes.,No saltéis el uno al otro
+ *    - Tab 0 "Tarea": lista de tareas(Encuesta de trabajo diario del usuario)
+ *    - Tab 1 "Agent": Socio de chat diario duradero(Área de chat independiente)
  *
- * 设计要点(极简功能主义):
- *  - 暖灰背景(WarmPaper LightBg #FAFAF8),不纯白
- *  - 胶囊Tab: 灰色凹槽容器,选中项白色凸起
- *  - 品牌绿只做点缀(发送按钮/FAB/选中态)
- *  - 大圆角(16-18dp)
- *  - 极简:无装饰元素,内容是唯一视觉焦点
+ * Puntos de diseño(funcionalismo minimalista):
+ *  - fondo gris cálido(WarmPaper LightBg #FAFAF8),No blanco puro
+ *  - cápsulaTab: contenedor acanalado gris,Elemento seleccionado blanco elevado
+ *  - El verde de marca es sólo para decoración.(boton enviar/FAB/Estado seleccionado)
+ *  - Grandes esquinas redondeadas(16-18dp)
+ *  - minimalista:Sin elementos decorativos,El contenido es el único foco visual.
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -92,73 +92,73 @@ fun HomeScreen(
     onOpenAssistants: () -> Unit = {},
     onOpenScheduledTasks: () -> Unit = {},
     onOpenQuickNotes: () -> Unit = {},
-    /** v1.0.27: 打开快速翻译页。 */
+    /** v1.0.27: Abra la página de traducción rápida. */
     onOpenQuickTranslate: () -> Unit = {},
-    /** v1.0.27: 打开知识库页。 */
+    /** v1.0.27: Abra la página de la base de conocimientos. */
     onOpenKnowledgeBase: () -> Unit = {},
-    /** v0.27: 点击任务项 / 新建任务时 push 到独立聊天详情页。 */
+    /** v0.27: Cuando haces clic en un elemento de tarea o creas una nueva tarea, accedes a la página de detalles del chat independiente. */
     onOpenChat: () -> Unit = {},
-    /** v0.45: 打开独立全局搜索页。 */
+    /** v0.45: Abra la página de búsqueda global independiente. */
     onOpenSearch: () -> Unit = {},
-    /** v1.30: 群聊 Tab 中点击群聊卡片 → 跳转群聊详情页(参数为 chatId)。 */
+    /** v1.30: Haga clic en la tarjeta de chat grupal en la pestaña de chat grupal → Ir a la página de detalles del chat grupal(Los parámetros son chatId). */
     onOpenGroupChat: (String) -> Unit = {},
-    /** v2.0: 打开最近删除页。 */
+    /** v2.0: Abra la página eliminada recientemente. */
     onOpenRecentlyDeleted: () -> Unit = {},
-    /** v0.45: 打开归档聊天列表页。 */
+    /** v0.45: Abra la página de la lista de chats archivados. */
     onOpenArchivedChats: () -> Unit = {},
-    /** v1.0.72: 打开小手机 + AI 朋友圈沉浸页。 */
+    /** v1.0.72: Abra la página de inmersión del círculo de amigos de teléfono pequeño + IA. */
     onOpenMiniPhone: () -> Unit = {},
-    /** HTML/SVG 代码块全屏预览回调(由 Tab 1 ChatScreen 触发)。 */
+    /** HTML/SVG Devolución de llamada de vista previa de pantalla completa de bloque de código(Activado por la pestaña 1 ChatScreen). */
     onHtmlPreview: (String) -> Unit = {},
-    /** 加号菜单 → 技能入口。 */
+    /** Menú más → Entrada de habilidad. */
     onOpenSkills: () -> Unit = {},
-    /** B0-07: 打开提示词模板管理页。 */
+    /** B0-07: Abra la página de administración de plantillas de Word. */
     onOpenPromptTemplateManager: () -> Unit = {},
-    // v1.131: ChatViewModel 在 AppKoinModule 中以 `single { }` 注册(见 v1.92 注释),
-    // 全应用共享同一实例,故用 koinInject() 直接取单例即可。
-    // koinViewModel() 对 single 注册也会返回同一实例,但语义上 koinInject 更准确。
+    // v1.131: ChatViewModel En AppKoinModule con `single { }` Registrarse(Ver comentarios v1.92),
+    // Todas las aplicaciones comparten la misma instancia.,Por lo tanto usado koinInject() Simplemente obtenga el singleton directamente.
+    // koinViewModel() El registro para soltero también devolverá la misma instancia.,Pero semánticamente koinInject es más preciso.
     viewModel: ChatViewModel = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // P2-13: 桌面端快捷键总开关(Expanded 窗口 + 物理键盘)
+    // P2-13: Interruptor maestro de tecla de acceso directo de escritorio(Expanded Ventana + teclado físico)
     val desktopShortcutsEnabled = rememberDesktopShortcutsEnabled()
-    // v1.95: 启动默认页由设置决定(0=任务, 1=Agent, 2=群聊),initialPage 仅首次组合生效
+    // v1.95: La página predeterminada para comenzar está determinada por la configuración.(0=Tarea, 1=Agent, 2=chat grupal),initialPage Sólo efectivo para la primera combinación.
     val settings: SettingsRepository = koinInject()
     val defaultPage by settings.defaultHomePageFlow.collectAsStateWithLifecycle(initialValue = 0)
-    // v1.133: 订阅缓存的 ReleaseInfo,有值则渲染 Banner
+    // v1.133: Suscríbete a caché ReleaseInfo,Renderizar si hay un valor Banner
     val releaseJson by settings.latestReleaseInfoFlow.collectAsStateWithLifecycle(initialValue = null)
     val pagerState = rememberPagerState(initialPage = defaultPage, pageCount = { 3 })
     val scope = rememberCoroutineScope()
-    // v1.41: Agent Tab 模型切换面板展开状态
+    // v1.41: Agent Tab Modelo de estado expandido del panel de interruptores
     var showModelSheet by remember { mutableStateOf(false) }
-    // v1.133: 用户主动关闭 Banner 后,本次会话不再展示(下次冷启动恢复)
+    // v1.133: Después de que el usuario cierra activamente el Banner,Esta conversación ya no se mostrará(Próxima recuperación de arranque en frío)
     var bannerDismissed by remember { mutableStateOf(false) }
-    // v1.136 T8: 首页右下快捷工具栏展开/收起状态(长按 Plus 切换)
+    // v1.136 T8: Expanda la barra de herramientas de acceso directo en la parte inferior derecha de la página de inicio/Estado de colapso(Pulsación larga del interruptor Plus)
     var capsuleExpanded by rememberSaveable { mutableStateOf(true) }
     val context = LocalContext.current
-    // v1.137 B3: 区分用户拖拽和点击动画 — 点击时设 clickAnimating=true,
-    // isScrollInProgress 结束后清除,使 MuseCapsuleTab 在拖拽时用连续跟踪、点击时用 tween。
+    // v1.137 B3: Distinguir entre animaciones de arrastrar y hacer clic por parte del usuario — Haga clic en configuración clickAnimating=true,
+    // isScrollInProgress claro después de completar,Haga que MuseCapsuleTab utilice seguimiento continuo al arrastrar y interpolación al hacer clic.
     var clickAnimating by remember { mutableStateOf(false) }
     val reducedMotion = MuseMotion.isReducedMotion()
-    // C1: 全局命令面板可见性(搜索按钮 / Ctrl+K 唤起)
+    // C1: Visibilidad global del panel de comando(Botón de búsqueda / Ctrl+K para invocar)
     var showCommandPalette by rememberSaveable { mutableStateOf(false) }
-    // C4: 宽屏自适应双栏 — Expanded(≥840dp) 时任务 tab 会话列表+消息同屏,
-    // 窄屏保持原单栏 + push 详情页交互
+    // C4: Doble columna adaptable de pantalla ancha — Expanded(≥840dp) Lista de sesiones de la pestaña Tareas+Mensajes en la misma pantalla,
+    // La pantalla estrecha mantiene la interacción original de una sola columna + página de detalles push
     val widthClass = rememberWindowWidthClass()
     val isWideTasks = widthClass == WindowWidthClass.Expanded
     LaunchedEffect(pagerState.isScrollInProgress) {
         if (!pagerState.isScrollInProgress) clickAnimating = false
     }
 
-    // v1.28: 进入/离开 Agent Tab 时切换 Agent 模式(独立会话,不依赖任务)
-    // v1.104: 用 settledPage 替代 currentPage,只在 ViewPager 完全停稳后触发,
-    // 避免从 page 0→2 滑过 page 1 中间态时误触发 setAgentMode(会重载消息、停 TTS/ASR)
+    // v1.28: entrar/Cambiar el modo Agente al salir de la pestaña Agente(sesión independiente,No depende de tareas)
+    // v1.104: Utilice la página establecida en su lugar currentPage,Solo se activa después de que ViewPager se detiene por completo,
+    // evitar de page 0→2 Activado por error al pasar del estado medio de la página 1 setAgentMode(Recargará mensajes, se detendrá. TTS/ASR)
     LaunchedEffect(pagerState.settledPage) {
         viewModel.setAgentMode(pagerState.settledPage == 1)
     }
 
-    // v1.0.16: 新建任务/新会话统一入口 — 被 tab 下方卡片和右下角悬浮胶囊复用
-    // C4: 宽屏双栏时只创建会话(右栏 ChatScreen 跟随 currentSessionId 就地显示),不 push 详情页
+    // v1.0.16: Crear nueva tarea/Entrada unificada para nuevas sesiones. — Reutilizado por la tarjeta debajo de la pestaña y la cápsula flotante en la esquina inferior derecha.
+    // C4: Solo cree sesión cuando la pantalla ancha sea de doble columna(La columna derecha ChatScreen sigue el currentSessionId y lo muestra en su lugar),No empujes la página de detalles.
     val onCreateNewTask: () -> Unit = {
         if (isWideTasks) {
             viewModel.createNewSession()
@@ -169,8 +169,8 @@ fun HomeScreen(
 
     MusePageScaffold(
         floatingActionButton = {
-            // v1.0.17: 悬浮胶囊仅在"任务"Tab(首页)显示,Agent/群聊页不显示
-            // C4: 宽屏双栏时隐藏(FAB 会悬浮在右栏输入区上方遮挡;左栏已有新建入口)
+            // v1.0.17: Las cápsulas de suspensión sólo están disponibles en"Tarea"Tab(pagina de inicio)mostrar,Agent/La página de chat grupal no se muestra
+            // C4: Ocultar cuando hay doble columna en pantalla ancha(FAB Flotará sobre el área de entrada en la columna derecha y la bloqueará.;Hay una nueva entrada en la columna de la izquierda.)
             if (pagerState.currentPage == 0 && !isWideTasks) {
                 HomeQuickActionCapsule(
                     onOpenScheduledTasks = onOpenScheduledTasks,
@@ -183,25 +183,25 @@ fun HomeScreen(
             }
         },
         topBar = {
-            // v1.24: 自定义紧凑顶部栏 — 取消 TopAppBar 默认高度,让 Tab 切换器紧贴下方内容
+            // v1.24: Barra superior compacta personalizada — Cancelar la altura predeterminada de TopAppBar,Haga que el selector de pestañas se ajuste al contenido siguiente
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // v1.99: 大R角/曲面屏横向安全区避让
+                    // v1.99: grandeRángulo/Evitación de zona de seguridad horizontal con pantalla curva
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                     .statusBarsPadding()
                     .padding(horizontal = MusePaddings.inputPadding, vertical = MusePaddings.contentGap),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 左侧:头像 → 设置(与右侧「更多」同款圆按钮,顶栏左右对称)
+                // lado izquierdo:avatar → ajustes(El mismo botón redondo que "Más" a la derecha,La barra superior es simétrica.)
                 MuseTopBarIconButton(
                     icon = MuseIcons.user,
                     contentDescription = stringResource(R.string.home_settings_cd),
                     onClick = onOpenSettings,
                 )
 
-                // 中间:胶囊 Tab 切换器(MuseCapsuleTab 组件)
+                // medio:Conmutador de pestañas de cápsula(MuseCapsuleTab componentes)
                 val tabLabels = HomeTabs.map { (labelResId, _) ->
                     stringResource(labelResId)
                 }
@@ -218,24 +218,24 @@ fun HomeScreen(
                             }
                         }
                     },
-                    // v1.137 B3: 拖拽时连续跟踪手指,点击时用 tween 平滑过渡
+                    // v1.137 B3: Siga continuamente su dedo mientras arrastra,Utilice interpolación para suavizar la transición al hacer clic
                     pageOffset = pagerState.currentPageOffsetFraction,
                     isDragging = pagerState.isScrollInProgress && !clickAnimating,
-                    // 顶部 Tab 收窄,右侧腾出空间给全局搜索按钮
-                    // CHAT-17: 不再写死 172dp — 改为自适应上限,长标签由胶囊内省略处理
+                    // Pestaña superior estrecha,Haz espacio en el lado derecho para el botón de búsqueda global
+                    // CHAT-17: No más escribir hasta la muerte 172dp — Cambiar a límite adaptable,Las etiquetas largas se manejan por omisión dentro de la cápsula.
                     modifier = Modifier.widthIn(max = 172.dp),
                 )
 
-                // 右侧:统一的「更多」入口(与单聊/群聊顶栏同一组件)。
-                // 原先这里并排挂两颗裸图标(全局搜索 + 小手机),与聊天页的菜单风格不一,
-                // 顶栏看起来一长一短;现在收进同一颗圆按钮的下拉菜单里。
-                // 移动端无物理键盘,Ctrl+K 不可用,搜索入口仍需在首屏可达。
-                // 小手机就是一条入口(图标 + 名字),点了直接进小手机。
-                // 是否露出只由编译期总闸决定；原先另有一道「设置里开启」的运行时开关，
-                // 它的设置页随旧实现一起删掉了，留着只会让入口永远不出现。
+                // lado derecho:Entrada unificada "más"(Chatea con Dan/El mismo componente de la barra superior del chat grupal.).
+                // Originalmente aquí había dos iconos desnudos colgados uno al lado del otro.(Búsqueda global + teléfono pequeño),El estilo del menú es diferente al de la página de chat.,
+                // La barra superior parece una larga y otra corta.;Ahora en el menú desplegable del mismo botón redondo.
+                // Sin teclado físico en el celular,Ctrl+K No disponible,Aún es necesario poder acceder a la entrada de búsqueda desde la primera pantalla.
+                // Un pequeño teléfono celular es una entrada.(icono + nombre),Haga clic para ir directamente al teléfono pequeño.
+                // Si está expuesto o no, solo lo determina el cambio en tiempo de compilación; Originalmente había un interruptor de tiempo de ejecución de "activar en la configuración".
+                // Su página de configuración ha sido eliminada junto con la implementación anterior, dejarla ahí sólo hará que la entrada nunca aparezca.
                 val showMiniPhone = io.zer0.muse.feature.FeatureFlags.MINI_PHONE_ENTRY
-                // v1.0.90: 小手机没开时，右上角直接就是搜索图标本身 —— 只有一项的菜单
-                // 等于多点一层。开了小手机才收起成三点菜单（搜索 + 小手机）。
+                // v1.0.90: Cuando el teléfono pequeño no está encendido, el icono de búsqueda está directamente en la esquina superior derecha. —— menú con un solo elemento
+                // Equivale a una capa más. Después de encender el teléfono pequeño, se despliega en un menú de tres puntos (búsqueda + teléfono pequeño).
                 if (showMiniPhone) {
                     MuseTopBarMenu(
                         contentDescription = stringResource(R.string.action_more),
@@ -265,12 +265,12 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // 拦截返回:非 Tab 0 时先切回 Tab 0,避免直接退出 App
+        // interceptar retorno:Si no es la pestaña 0, vuelva primero Tab 0,Evite salir directamente App
         BackHandler(enabled = pagerState.currentPage != 0) {
             scope.launch { pagerState.animateScrollToPage(0) }
         }
-        // P2-13: 桌面端快捷键拦截 — Ctrl+K 打开搜索,Ctrl+N 新建对话
-        // 仅在物理键盘 + Expanded 窗口下生效;Ctrl+N 复用 Tab 0 既有"新建会话 + 跳转"逻辑
+        // P2-13: Bloqueo de teclas de acceso directo del escritorio — Ctrl+K abrir búsqueda,Ctrl+N Nueva conversación
+        // Solo tiene efecto bajo teclado físico + ventana expandida;Ctrl+N Reutilizar la pestaña 0 existente"Nueva sesión + salto"lógica
         val newChatAction: () -> Unit = {
             viewModel.createNewSession(onReady = onOpenChat)
         }
@@ -282,12 +282,12 @@ fun HomeScreen(
                     if (!desktopShortcutsEnabled) return@onKeyEvent false
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                     when {
-                        // Ctrl+K: 打开全局命令面板(搜索 + 斜杠命令)
+                        // Ctrl+K: Abra el panel de comando global(Comando Buscar + barra diagonal)
                         event.key == DesktopShortcuts.FOCUS_SEARCH && event.isCtrlPressed -> {
                             showCommandPalette = true
                             true
                         }
-                        // Ctrl+N: 新建对话(仅在 Tab 0 任务列表响应,与既有 onCreate 一致)
+                        // Ctrl+N: Nueva conversación(Solo responde en la lista de tareas de la pestaña 0,Consistente con onCreate existente)
                         event.key == DesktopShortcuts.NEW_CHAT && event.isCtrlPressed &&
                             pagerState.currentPage == 0 -> {
                             newChatAction()
@@ -297,12 +297,12 @@ fun HomeScreen(
                     }
                 },
         ) {
-            // v1.0.16: 新任务/新会话入口 — 放在 3 大切换 tab 栏正下方,
-            // 从原来的 ChatListScreen 顶部上提到这里,方便所有 Tab 可见。
-            // 仅在"任务"Tab 显示(Agent 页自己就能输入,群聊页有群聊列表入口)。
-            // v1.133: 顶部"新版本可用"Banner — 有缓存 ReleaseInfo 且未被关闭时显示
-            // v1.0.72: 用户点过忽略的版本不再展示(持久化,下次冷启动也不弹)
-            // v1.0.72: 升级到同版本/更高版本后即使缓存未清也不显示(24h 检查间隔内缓存会残留)
+            // v1.0.16: nuevas tareas/Entrada nueva sesión — Colóquelo directamente debajo de las 3 barras de pestañas de cambio principales,
+            // Mencionado aquí desde la parte superior del ChatListScreen original,Conveniente para que todas las pestañas sean visibles.
+            // solo en"Tarea"Tab mostrar(Agent La página se puede ingresar por sí sola.,La página de chat grupal tiene una entrada de lista de chat grupal).
+            // v1.133: arriba"Nueva versión disponible"Banner — Se muestra cuando hay ReleaseInfo en caché y no se ha cerrado
+            // v1.0.72: La versión en la que el usuario hizo clic e ignoró ya no se mostrará.(persistencia,No se encenderá la próxima vez que arranque en frío.)
+            // v1.0.72: Actualizar a la misma versión/Después de una versión superior, no se mostrará incluso si no se borra el caché.(24h El caché permanecerá durante el intervalo de verificación.)
             val ignoredUpdateVersion by settings.ignoredUpdateVersionFlow.collectAsStateWithLifecycle(initialValue = null)
             val currentVersionName = remember { UpdateNotifier.getCurrentVersionName(context) }
             val release = remember(releaseJson, bannerDismissed, ignoredUpdateVersion, currentVersionName) {
@@ -316,7 +316,7 @@ fun HomeScreen(
                 }
             }
             if (release != null) {
-                // 下载/更新出口统一指向官网下载页(版本、更新日志与下载入口一体,国内 CDN 直连)
+                // Descargar/Actualice las exportaciones para que apunten a la página de descarga del sitio web oficial(Versión, registro de actualizaciones y portal de descargas integrados,Conexión directa CDN nacional)
                 val openDownloadPage: () -> Unit = {
                     val intent = UpdateNotifier.buildOfficialDownloadIntent()
                     runCatching {
@@ -327,7 +327,7 @@ fun HomeScreen(
                     release = release,
                     onClose = {
                         bannerDismissed = true
-                        // v1.0.72: 忽略后持久化,该版本不再提示(用户可在设置-更新里手动检查)
+                        // v1.0.72: Persistencia después de ignorar,Esta versión ya no solicita(Los usuarios pueden configurar-Buscar actualizaciones manualmente)
                         scope.launch { settings.saveIgnoredUpdateVersion(release.tagName) }
                     },
                     onViewRelease = openDownloadPage,
@@ -339,16 +339,16 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
-                    // P2-9（审计报告）: 整页横滑翻页会与系统返回手势争抢边缘起手，
-                    // 声明左右边缘为排除区后，从屏幕边缘拖动会先翻页而不是返回。
+                    // P2-9(informe de auditoría): Deslizar toda la página horizontalmente competirá con el gesto de retorno del sistema para comenzar en el borde.
+                    // Después de declarar los bordes izquierdo y derecho como áreas de exclusión, arrastrar desde el borde de la pantalla pasará la página en lugar de regresar.
                     .horizontalGestureExclusion(),
                 userScrollEnabled = true,
             ) { page ->
                 when (page) {
-                    // Tab 0 "任务": 任务列表(用户日常工作调研)
-                    // 点击会话只切换 currentSessionId,不跳转到 Agent Tab
-                    // C4: 宽屏(Expanded)双栏 — 左会话列表(400dp)+ 右消息同屏;
-                    //     窄屏保持原交互(点击任务 push 独立聊天详情页)
+                    // Tab 0 "Tarea": lista de tareas(Encuesta de trabajo diario del usuario)
+                    // Haga clic en solo sesión para cambiar currentSessionId,No saltes a Agent Tab
+                    // C4: pantalla ancha(Expanded)doble columna — lista de sesiones izquierda(400dp)+ Mensaje correcto en la misma pantalla.;
+                    //     La pantalla estrecha mantiene la interacción original(Haga clic en la página de detalles del chat independiente de inserción de tareas)
                     0 -> {
                         if (isWideTasks) {
                             Row(modifier = Modifier.fillMaxSize()) {
@@ -357,7 +357,7 @@ fun HomeScreen(
                                     folders = state.folders,
                                     currentSessionId = state.currentSessionId,
                                     onSelect = { id ->
-                                        // C4: 宽屏右栏 ChatScreen 跟随 currentSessionId 就地显示,不 push
+                                        // C4: La pantalla de chat de la columna derecha de pantalla ancha sigue el ID de sesión actual para mostrarse en su lugar,No push
                                         viewModel.switchSession(id)
                                     },
                                     onCreate = {
@@ -388,7 +388,7 @@ fun HomeScreen(
                                     onOpenKnowledgeBase = onOpenKnowledgeBase,
                                     onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                                     onOpenAssistants = onOpenAssistants,
-                                    // v2.x: 伙伴横排 — 以指定助手开新聊天(宽屏双栏就地切新会话)
+                                    // v2.x: Socios horizontalmente — Abrir un nuevo chat con un asistente designado(Cambio in situ de doble columna en pantalla ancha a nuevas sesiones)
                                     onOpenAssistantChat = { id ->
                                         viewModel.createNewSession(assistantIdOverride = id)
                                     },
@@ -404,7 +404,7 @@ fun HomeScreen(
                                     modifier = Modifier.fillMaxHeight().width(1.dp),
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                                 )
-                                // C4: 右栏消息 — onBack=null 不显示返回按钮,复用共享 ChatViewModel 单例
+                                // C4: Mensaje de la columna derecha — onBack=null No mostrar el botón Atrás,Reutilizar el singleton ChatViewModel compartido
                                 ChatScreen(
                                     onOpenAssistants = onOpenAssistants,
                                     isAgentMode = false,
@@ -420,19 +420,19 @@ fun HomeScreen(
                                 folders = state.folders,
                                 currentSessionId = state.currentSessionId,
                                 onSelect = { id ->
-                                    // v0.27: 点击任务项 → 切换会话 + push 到聊天详情页
+                                    // v0.27: Haga clic en el elemento de la tarea → Cambiar conversación + pulsar para ir a la página de detalles del chat
                                     viewModel.switchSession(id)
                                     onOpenChat()
                                 },
                                 onCreate = {
-                                    // v0.27: 新任务 → 创建会话 + push 到聊天详情页
+                                    // v0.27: nuevas tareas → Crear conversación + enviar a la página de detalles del chat
                                     viewModel.createNewSession(onReady = onOpenChat)
                                 },
                                 onDelete = viewModel::deleteSession,
                                 onRename = { session ->
                                     viewModel.renameSession(session.id, session.title)
                                 },
-                                // v1.48: 修复会话重命名失效 bug — 旧实现传 session.title(原名),改为传用户输入的 newName
+                                // v1.48: Solucionar error de cambio de nombre de sesión bug — La implementación anterior pasó session.title(nombre original),En su lugar, pase la entrada del usuario newName
                                 onRenameTo = { session, newName ->
                                     viewModel.renameSession(session.id, newName)
                                 },
@@ -454,7 +454,7 @@ fun HomeScreen(
                                 onOpenKnowledgeBase = onOpenKnowledgeBase,
                                 onOpenRecentlyDeleted = onOpenRecentlyDeleted,
                                 onOpenAssistants = onOpenAssistants,
-                                // v2.x: 伙伴横排 — 以指定助手开新聊天并进入聊天页
+                                // v2.x: Socios horizontalmente — Abra un nuevo chat con el asistente designado e ingrese a la página de chat
                                 onOpenAssistantChat = { id ->
                                     viewModel.createNewSession(onReady = onOpenChat, assistantIdOverride = id)
                                 },
@@ -472,9 +472,9 @@ fun HomeScreen(
                             )
                         }
                     }
-                    // Tab 1 "Agent": 长效日常聊天搭子
-                    // 独立聊天区域,不依赖任务 Tab 的会话选择
-                    // M-CS6: 移除多余的 Column 包裹 — ChatScreen 内部已用 fillMaxSize 自撑,Column 仅增加一层无意义嵌套
+                    // Tab 1 "Agent": Socio de chat diario duradero
+                    // Área de chat independiente,Selección de sesión independiente de la pestaña de tareas
+                    // M-CS6: Eliminar envoltorios de columnas redundantes — ChatScreen FillMaxSize de uso interno autoportante,Column Simplemente agrega una capa de anidamiento sin sentido.
                     1 -> ChatScreen(
                         onOpenAssistants = onOpenAssistants,
                         isAgentMode = true,
@@ -482,8 +482,8 @@ fun HomeScreen(
                         onOpenSkills = onOpenSkills,
                         onOpenPromptTemplateManager = onOpenPromptTemplateManager,
                     )
-                    // Tab 2 "群聊": 多 Agent 群聊列表
-                    // 点击群聊卡片 → 跳转到群聊详情页(通过 NavHost 路由)
+                    // Tab 2 "chat grupal": Lista de chat grupal de múltiples agentes
+                    // Haga clic en la tarjeta de chat grupal → Ir a la página de detalles del chat grupal(Enrutamiento a través de NavHost)
                     2 -> GroupChatListScreen(
                         onOpenChat = onOpenGroupChat,
                     )
@@ -491,7 +491,7 @@ fun HomeScreen(
             }
         }
 
-        // v1.41: Agent Tab 模型切换面板
+        // v1.41: Agent Tab Panel de interruptores modelo
         if (showModelSheet) {
             ModelSwitchSheet(
                 providers = state.providers,
@@ -506,7 +506,7 @@ fun HomeScreen(
             )
         }
     }
-    // C1: 全局命令面板(独立 Dialog 窗口,覆盖任意 Tab)
+    // C1: panel de comando global(Ventana de diálogo independiente,Cubrir cualquier Tab)
     if (showCommandPalette) {
         CommandPalette(
             onDismiss = { showCommandPalette = false },
@@ -521,18 +521,18 @@ fun HomeScreen(
 }
 
 /**
- * v1.133: "新版本可用"Banner — 在 HomeScreen 顶部展示。
+ * v1.133: "Nueva versión disponible"Banner — Se muestra en la parte superior de la pantalla de inicio.
  *
- * 设计:
- *  - Surface 容器用 primaryContainer 色(暖色调高亮,与品牌一致)
- *  - 左侧:Close 图标(关闭 Banner,本次会话不再显示)
- *  - 中间:标题"<tagName> 已发布" + 版本名
- *  - 右侧:两个 TextButton("查看详情" / "下载 APK"),均打开官网下载页
+ * diseño:
+ *  - Surface El contenedor utiliza el color primario del contenedor.(Resaltan los tonos cálidos,consistente con la marca)
+ *  - lado izquierdo:Close icono(cerrar Banner,Esta conversación no se volverá a mostrar)
+ *  - medio:Título"<tagName> Publicado" + nombre de la versión
+ *  - lado derecho:dos TextButton("Ver detalles" / "Descargar APK"),Abra la página de descarga del sitio web oficial.
  *
- * @param release 最新版本信息
- * @param onClose 关闭 Banner 回调
- * @param onViewRelease 打开官网下载页(版本与更新日志)
- * @param onDownloadApk 打开官网下载页(下载入口)
+ * @param release Información de la última versión
+ * @param onClose Cerrar devolución de llamada de banner
+ * @param onViewRelease Abra la página de descarga del sitio web oficial.(Registro de versiones y actualizaciones)
+ * @param onDownloadApk Abra la página de descarga del sitio web oficial.(Descargar entrada)
  */
 @Composable
 private fun UpdateAvailableBanner(
@@ -599,8 +599,8 @@ private fun UpdateAvailableBanner(
 }
 
 /**
- * 解析缓存的 ReleaseInfo JSON。
- * 解析失败返回 null(Banner 不展示,避免损坏数据让 UI 崩溃)。
+ * Analice el JSON ReleaseInfo almacenado en caché.
+ * Devolver si falla el análisis null(Banner no mostrar,Evite corromper datos y bloquear la interfaz de usuario).
  */
 private fun parseReleaseInfo(json: String?): UpdateChecker.ReleaseInfo? {
     if (json.isNullOrBlank()) return null
@@ -612,12 +612,12 @@ private fun parseReleaseInfo(json: String?): UpdateChecker.ReleaseInfo? {
 }
 
 /**
- * v1.0.16: 首页右下角悬浮胶囊 — 定时任务 / 快速记录 / 快速翻译 / 加号(新建任务)。
+ * v1.0.16: Cápsula de suspensión en la esquina inferior derecha de la página de inicio. — Tareas programadas/grabación rápida/traducción rápida/signo más(Crear nueva tarea).
  *
- * 设计参考用户提供的右下角按钮布局:
- *  - 长椭圆胶囊,与主流输入形态一致
- *  - 4 个图标按钮等分排列,中间用细竖线分隔
- *  - 背景使用 surfaceContainer,漂浮在内容之上
+ * El diseño se refiere a la disposición del botón en la esquina inferior derecha proporcionada por el usuario.:
+ *  - cápsula ovalada larga,Consistente con los formularios de entrada convencionales
+ *  - 4 botones de iconos dispuestos igualmente,separados por una delgada línea vertical
+ *  - uso de fondo surfaceContainer,flotar sobre el contenido
  */
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -640,7 +640,7 @@ private fun HomeQuickActionCapsule(
         shadowElevation = 4.dp,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // v1.136 T8: 收起时仅显示 Plus 按钮;展开时显示全部 4 个按钮(长按 Plus 切换)
+            // v1.136 T8: Mostrar solo el botón Más cuando está contraído;Expandir para mostrar los 4 botones(Pulsación larga del interruptor Plus)
             AnimatedVisibility(
                 visible = expanded,
                 enter = MuseMotion.horizontalExpandEnter(durationMillis = MuseAnimation.TACTILE_MS),
@@ -667,15 +667,15 @@ private fun HomeQuickActionCapsule(
                     HomeCapsuleDivider()
                 }
             }
-            // Plus 按钮始终显示;长按切换展开/收起
-            // CHAT-16: 弱化 FAB 主按钮 — 由实心 primary 改为 primaryContainer,
-            // 避免与首页输入栏发送键「两个大圆」抢焦点。
+            // Plus Botón siempre mostrado;Mantenga presionado para cambiar y expandir/cerrar
+            // CHAT-16: Debilitar el botón principal de FAB — Cambió de primaria sólida a primaryContainer,
+            // Evite competir con la clave de envío de "dos grandes círculos" en el campo de entrada de la página de inicio.
             HomeCapsuleButton(
                 icon = MuseIcons.plus,
                 contentDescription = stringResource(R.string.chat_list_new_task),
                 onClick = onCreateNewTask,
                 onLongClick = onToggleExpanded,
-                // UI-FIX A: 主操作改实心容器（浅色近黑/深色近白）+ 反相图标
+                // UI-FIX A: La operación principal se cambia a un contenedor sólido (color claro casi negro)/Oscuro casi blanco)+ Icono de invertir
                 containerColor = MuseActionColors.container,
                 contentColor = MuseActionColors.content,
             )
@@ -695,12 +695,12 @@ private fun HomeCapsuleButton(
     contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    // 图标 + 文字：此前只有图标，虽然读屏能读语义标签，但视觉上完全靠猜。
+    // Icono + texto: Anteriormente solo había iconos. Aunque los lectores de pantalla pueden leer etiquetas semánticas, el aspecto visual es completamente una conjetura.
     Box(
         modifier = modifier
             .heightIn(min = 56.dp)
             .background(containerColor)
-            // 自绘胶囊按钮保留触觉/颜色反馈,禁止默认 ripple 遮罩。
+            // Los botones de cápsula autopintados conservan el tacto/retroalimentación de color,Deshabilite la máscara de ondulación predeterminada.
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,

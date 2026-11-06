@@ -3,7 +3,7 @@ package io.zer0.muse.data.artifact
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Artifact 仓库:封装 [ArtifactDao],暴露同名的增删查方法。
+ * Artifact almacén:Encapsulación [ArtifactDao],Exponga el método de verificación agregar/eliminar con el mismo nombre.
  */
 class ArtifactRepository(
     private val dao: ArtifactDao,
@@ -20,6 +20,6 @@ class ArtifactRepository(
 
     suspend fun getById(id: String): ArtifactEntity? = dao.getById(id)
 
-    // v2.0.1: 产物中心 — 全量产物流
+    // v2.0.1: Centro de productos — flujo completo de producto
     fun observeAll(): Flow<List<ArtifactEntity>> = dao.observeAll()
 }

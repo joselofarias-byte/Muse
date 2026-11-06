@@ -19,7 +19,7 @@ class ChatMessageMapWiringTest {
         val source = locateChatScreenSource()
         val forwardStart = source.indexOf("forwardText?.let { text ->")
         val mapStart = source.indexOf("MessageMapBar(")
-        val forwardEnd = source.indexOf("// A6: 消息地图", forwardStart)
+        val forwardEnd = source.indexOf("// A6: mapa de mensajes", forwardStart)
 
         assertTrue("forward dialog scope should exist", forwardStart >= 0)
         assertTrue("message map should exist", mapStart >= 0)

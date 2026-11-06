@@ -15,20 +15,20 @@ import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/** 钉钉媒体发送：上传换 mediaId，再通过会话 webhook 发图片。 */
+/** Envío de medios de DingTalk: cargue y cambie el mediaId y luego envíe la imagen a través del webhook de la sesión. */
 internal object DingtalkMediaSender {
     private const val TAG = "DingtalkMedia"
 
     suspend fun send(config: ChannelConfig, media: OutboundMedia, targetOverride: String?): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val target = targetOverride?.takeIf { it.isNotBlank() } ?: config.targetId
-            require(target.isNotBlank()) { "缺少发送目标" }
+            require(target.isNotBlank()) { "Falta destino de envío" }
             val webhook = DingtalkSessionCache.get(target)
-                ?: error("钉钉会话已过期，需要对方重新发消息")
+                ?: error("La sesión de DingTalk expiró y la otra parte debe reenviar el mensaje.")
             val info = DingtalkClient
                 .fetchAccessToken(config.appId, config.appSecret, config.dingtalkApiBase)
                 .getOrThrow()
-            val payload = MediaPayload.from(media) ?: error("无法读取媒体内容")
+            val payload = MediaPayload.from(media) ?: error("No se puede leer el contenido multimedia")
             val mediaId = upload(config, info.accessToken, payload)
             val body = buildJsonObject {
                 put("msgtype", "image")
@@ -38,8 +38,8 @@ internal object DingtalkMediaSender {
                 .url(webhook)
                 .post(body.toRequestBody(MediaHttp.jsonMediaType))
                 .build()
-            MediaHttp.postAndCheck(req, "钉钉")
-        }.onFailure { e -> Logger.w(TAG, "钉钉媒体发送失败: ${e.message}") }
+            MediaHttp.postAndCheck(req, "DingTalk")
+        }.onFailure { e -> Logger.w(TAG, "Los medios de DingTalk no pudieron enviarse: ${e.message}") }
     }
 
     private fun upload(config: ChannelConfig, accessToken: String, payload: MediaPayload): String {
@@ -62,7 +62,7 @@ internal object DingtalkMediaSender {
             val obj = AppJson.parseToJsonElement(text).jsonObject
             return obj["mediaId"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf { it.isNotBlank() }
-                ?: error("上传响应缺 mediaId")
+                ?: error("Falta respuesta de carga mediaId")
         }
     }
 }

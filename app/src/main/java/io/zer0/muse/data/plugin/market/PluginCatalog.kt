@@ -101,7 +101,7 @@ object PluginCatalogVerifier {
         entry.artifactBytes in 1..MAX_ARTIFACT_BYTES &&
         SHA256_REGEX.matches(entry.artifactSha256) &&
         SHA256_REGEX.matches(entry.manifestSha256) &&
-        // v2.x（沙盒放开）：能力不再按固定名单限制，仅校验字符格式。
+        // v2.x(Versión Sandbox): la capacidad ya no está restringida por una lista fija, solo se verifica el formato de los caracteres.
         entry.capabilities.all { PluginSecurityGate.isValidCapabilityName(it) } &&
         entry.permissions.all { PluginSecurityGate.isValidCapabilityName(it) }
 

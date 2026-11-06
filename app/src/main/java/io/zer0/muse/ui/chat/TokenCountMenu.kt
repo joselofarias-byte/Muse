@@ -24,28 +24,28 @@ import io.zer0.muse.ui.common.state.MuseProgressBar
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * v1.0.47 P5-3: Token 计数快照。
+ * v1.0.47 P5-3: Token Contar instantánea.
  *
- * 打开 Token 菜单时由 [io.zer0.muse.ui.ChatViewModel] 计算一次,
- * 避免每次按键都做 BPE 编码(性能开销大)。
+ * Al abrir el menú Token, es [io.zer0.muse.ui.ChatViewModel] Calcular una vez,
+ * Evite la codificación BPE cada vez que presione una tecla(Gastos generales de alto rendimiento).
  *
- * @param inputTokens 当前输入框文本 token 数
- * @param historyTokens 当前会话历史消息(含 reasoning/mood/reflection/toolCalls)token 数
- * @param contextWindow 当前模型上下文窗口(null 表示未知,菜单降级为只展示分项)
+ * @param inputTokens Número de token de texto del cuadro de entrada actual
+ * @param historyTokens Mensajes del historial de sesión actual(Contiene reasoning/mood/reflection/toolCalls)token numero
+ * @param contextWindow Ventana de contexto del modelo actual(null Indica desconocido,El menú se ha degradado para mostrar solo subelementos)
  */
 data class TokenCountSnapshot(
     val inputTokens: Int,
     val historyTokens: Int,
     val contextWindow: Int?,
-    /** v2.5.3 (P4-3): 本会话历史的粗估成本(USD)；null = 单价未知，不展示。 */
+    /** v2.5.3 (P4-3): Estimación aproximada del costo del historial de esta sesión(USD);null = El precio unitario se desconoce y no se mostrará. */
     val estimatedCostUsd: Double? = null,
 )
 
 /**
- * v1.0.47 P5-3: Token 计数详情面板。
+ * v1.0.47 P5-3: Token Panel de detalles del conteo.
  *
- * 展示当前输入 / 历史消息 / 上下文窗口 / 可用剩余 / 占用进度条。
- * 使用 [MuseBottomSheet] 而非 ModalBottomSheet(真机 scrim 卡死 bug)。
+ * Muestra la entrada actual/mensaje del historial/ventana de contexto/barra de progreso disponible restante/ocupada.
+ * uso [MuseBottomSheet] en vez de ModalBottomSheet(Malla de máquina real atascada bug).
  */
 @Composable
 fun TokenCountMenu(snapshot: TokenCountSnapshot, onDismissRequest: () -> Unit) {
@@ -71,7 +71,7 @@ fun TokenCountMenu(snapshot: TokenCountSnapshot, onDismissRequest: () -> Unit) {
                 value = snapshot.historyTokens,
             )
 
-            // v2.5.3 (P4-3): 有定价时展示本会话历史的粗估成本。
+            // v2.5.3 (P4-3): Muestra el costo estimado aproximado del historial de esta sesión cuando el precio esté disponible.
             snapshot.estimatedCostUsd?.let { cost ->
                 Text(
                     text = stringResource(R.string.chat_token_estimated_cost, String.format(java.util.Locale.US, "%.4f", cost)),
@@ -154,5 +154,5 @@ private fun TokenRow(label: String, value: Int) {
     }
 }
 
-/** 千分位格式化,便于阅读大数字。 */
+/** Miles de formatos,Números grandes fáciles de leer. */
 private fun formatNumber(v: Int): String = "%,d".format(v)

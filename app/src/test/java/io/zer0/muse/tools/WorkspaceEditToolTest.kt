@@ -14,10 +14,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * workspace_edit 端到端测试：走 [WorkspaceTool.execute] → [WorkspaceManager] 的完整链路。
+ * workspace_edit Pruebas de un extremo a otro: Ir [WorkspaceTool.execute] → [WorkspaceManager] enlace completo.
  *
- * 钉住四件事：三类前置拒绝各自的文案且文件未被修改；成功替换后文件其余部分逐字不变；
- * 跨行片段与文件头/尾边界；回执里带得上行级 diff。
+ * Se clavan cuatro cosas: los tres tipos de rechazo previo de su respectivo copywriting y el expediente no ha sido modificado; después de un reemplazo exitoso, el resto del archivo permanece sin cambios palabra por palabra;
+ * Fragmentos de líneas cruzadas y encabezados de archivos/Límite final; diferencia de nivel de fila incluida en el recibo.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -31,24 +31,24 @@ class WorkspaceEditToolTest {
         manager = WorkspaceManager(context)
     }
 
-    /** 写一份测试文件。 */
+    /** Escribe un documento de prueba. */
     private fun seed(path: String, content: String) {
         val result = runBlocking { manager.writeFile(path, content) }
-        assertTrue("写入夹具失败: $result", result is WorkspaceManager.OpResult.Success)
+        assertTrue("El dispositivo de escritura falló: $result", result is WorkspaceManager.OpResult.Success)
     }
 
-    /** 读回文件全文。 */
+    /** Vuelva a leer el texto completo del archivo. */
     private fun contentOf(path: String): String =
         runBlocking {
             val result = manager.readFile(path)
-            assertTrue("读取失败: $result", result is WorkspaceManager.ReadResult.Success)
+            assertTrue("Error de lectura: $result", result is WorkspaceManager.ReadResult.Success)
             (result as WorkspaceManager.ReadResult.Success).content
         }
 
     /**
-     * 一次 workspace_edit 调用。
+     * Una llamada workspace_edit.
      *
-     * 故意走 [WorkspaceTool.execute] 而不是内部函数：这条链路才是模型实际走的那条。
+     * ir a proposito [WorkspaceTool.execute] Más que una función interna: este vínculo es el que realmente toma el modelo.
      */
     private fun edit(path: String, oldString: String, newString: String): String =
         WorkspaceTool.execute(
@@ -58,49 +58,49 @@ class WorkspaceEditToolTest {
         )
 
     @Test
-    fun `片段找不到时拒绝且文件未被修改`() {
-        seed("a.txt", "第一行\n第二行\n第三行\n")
+    fun `Rechazar cuando no se encuentra el fragmento y el archivo no se modifica`() {
+        seed("a.txt", "primera linea\nsegunda linea\nla tercera linea\n")
 
-        val receipt = edit("a.txt", "不存在的片段", "x")
+        val receipt = edit("a.txt", "fragmento que no existe", "x")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("找不到该片段"))
-        assertEquals("第一行\n第二行\n第三行\n", contentOf("a.txt"))
+        assertTrue(receipt, receipt.contains("No se puede encontrar el fragmento"))
+        assertEquals("primera linea\nsegunda linea\nla tercera linea\n", contentOf("a.txt"))
     }
 
     @Test
-    fun `片段出现多次时拒绝且文件未被修改`() {
+    fun `Los fragmentos se rechazan si aparecen varias veces y el archivo no se modifica`() {
         val original = "import a\n\nfun first() = 1\n\nfun second() = 1\n"
         seed("b.txt", original)
 
         val receipt = edit("b.txt", "= 1", "= 2")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("出现 2 次"))
+        assertTrue(receipt, receipt.contains("2 veces"))
         assertEquals(original, contentOf("b.txt"))
     }
 
     @Test
-    fun `新旧内容相同时拒绝且文件未被修改`() {
+    fun `Rechazar si el contenido antiguo y el nuevo son iguales y el archivo no ha sido modificado`() {
         seed("c.txt", "alpha\nbeta\n")
 
         val receipt = edit("c.txt", "beta", "beta")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("新旧内容相同"))
+        assertTrue(receipt, receipt.contains("son los mismos"))
         assertEquals("alpha\nbeta\n", contentOf("c.txt"))
     }
 
     @Test
-    fun `正常替换后文件其余部分逐字不变`() {
+    fun `Después del reemplazo normal, el resto del archivo permanece sin cambios palabra por palabra`() {
         val original =
-            "# 标题\n" +
+            "# Título\n" +
                 "\n" +
-                "第一段：包含 emoji 🎯 与制表符\t的行。\n" +
-                "  缩进两个空格的一行  \n" +
+                "Primer párrafo: contiene emoji 🎯 con carácter de tabulación\tDE ACUERDO.\n" +
+                "  Sangrar una línea por dos espacios  \n" +
                 "const value = 1;\n" +
                 "const other = 2;\n" +
-                "结尾没有空行"
+                "No hay línea en blanco al final"
         seed("d.txt", original)
 
         val receipt = edit("d.txt", "const value = 1;", "const value = 42;")
@@ -110,7 +110,7 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `跨行片段整体替换`() {
+    fun `Reemplazar segmento completo a través de líneas`() {
         val original = "header\nfun a() {\n    return 1\n}\nfooter\n"
         seed("e.txt", original)
 
@@ -121,47 +121,47 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `片段位于文件头时替换成功`() {
-        seed("f.txt", "旧首行\nb\nc\n")
+    fun `El reemplazo es exitoso cuando el fragmento se encuentra al principio del archivo`() {
+        seed("f.txt", "antigua primera línea\nb\nc\n")
 
-        val receipt = edit("f.txt", "旧首行", "新首行")
+        val receipt = edit("f.txt", "antigua primera línea", "Nueva primera línea")
 
         assertTrue(receipt, receipt.startsWith("OK:"))
-        assertEquals("新首行\nb\nc\n", contentOf("f.txt"))
+        assertEquals("Nueva primera línea\nb\nc\n", contentOf("f.txt"))
     }
 
     @Test
-    fun `片段位于文件尾时替换成功`() {
-        seed("g.txt", "a\nb\n旧尾行")
+    fun `El reemplazo es exitoso cuando el fragmento está al final del archivo`() {
+        seed("g.txt", "a\nb\nantigua línea de cola")
 
-        val receipt = edit("g.txt", "旧尾行", "新尾行")
+        val receipt = edit("g.txt", "antigua línea de cola", "Nueva línea de cola")
 
         assertTrue(receipt, receipt.startsWith("OK:"))
-        assertEquals("a\nb\n新尾行", contentOf("g.txt"))
+        assertEquals("a\nb\nNueva línea de cola", contentOf("g.txt"))
     }
 
     @Test
-    fun `回执带行级 diff 指明改了哪几行`() {
+    fun `El recibo tiene una diferencia a nivel de línea que indica qué líneas se han modificado`() {
         val original = (1..8).joinToString("\n") { "line$it" } + "\n"
         seed("h.txt", original)
 
-        val receipt = edit("h.txt", "line4", "LINE4\n新增行")
+        val receipt = edit("h.txt", "line4", "LINE4\nAgregar nueva fila")
 
         assertTrue(receipt, receipt.startsWith("OK: workspace_edit"))
-        // 摘要：首个改动行 + 行数变化
-        assertTrue(receipt, receipt.contains("首个改动行 4"))
-        assertTrue(receipt, receipt.contains("原文 1 行 → 新内容 2 行"))
-        // @@ 头部与增删行
+        // Resumen: primera línea modificada + número de líneas modificadas
+        assertTrue(receipt, receipt.contains("primera línea cambiada 4"))
+        assertTrue(receipt, receipt.contains("Texto original 1"))
+        // @@ Encabezados y líneas agregadas y eliminadas
         assertTrue(receipt, receipt.contains("@@ -1,7 +1,8 @@"))
         assertTrue(receipt, receipt.contains("\n-line4\n"))
-        assertTrue(receipt, receipt.contains("\n+LINE4\n+新增行\n"))
-        // 上下文行仍在，能定位改动位置
+        assertTrue(receipt, receipt.contains("\n+LINE4\n+Agregar nueva fila\n"))
+        // La línea de contexto todavía está ahí y se puede localizar la ubicación del cambio.
         assertTrue(receipt, receipt.contains("\n line3\n"))
         assertTrue(receipt, receipt.contains("\n line5\n"))
     }
 
     @Test
-    fun `空 new_string 表示删除片段`() {
+    fun `Vaciar new_string significa eliminar el fragmento`() {
         seed("i.txt", "keep\nremove me\nkeep\n")
 
         val receipt = edit("i.txt", "remove me\n", "")
@@ -171,17 +171,17 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `find_tools 能用编辑类关键词搜到本工具`() {
-        // 可发现性：工具发出去了还得能被找到。名称与描述里都要能命中常见的提问词。
+    fun `find_tools Esta herramienta se puede encontrar usando palabras clave de edición`() {
+        // Descubribilidad: una vez distribuida la herramienta, hay que encontrarla. Tanto el nombre como la descripción deben contener palabras interrogativas comunes.
         val defs = WorkspaceTool.toolDefs()
-        listOf("编辑文件", "编辑", "替换", "修改", "workspace edit").forEach { query ->
+        listOf("Editar archivo", "Editar", "reemplazar", "Modificar", "workspace edit").forEach { query ->
             val names = FindToolsTool.search(query, defs).map { it.name }
-            assertTrue("查询「$query」应能搜到 workspace_edit，实际: $names", WorkspaceTool.NAME_EDIT in names)
+            assertTrue("Consulta \"$query\"se debe encontrar workspace_edit, pero en realidad: $names", WorkspaceTool.NAME_EDIT in names)
         }
     }
 
     @Test
-    fun `路径穿越仍由工作区边界拦下`() {
+    fun `Los cruces de caminos todavía están bloqueados por los límites del área de trabajo`() {
         val receipt = edit("../escape.txt", "a", "b")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
@@ -189,25 +189,25 @@ class WorkspaceEditToolTest {
     }
 
     @Test
-    fun `文件不存在时报错而不是新建`() {
+    fun `Si el archivo no existe, se informará un error en lugar de crear uno nuevo`() {
         val receipt = edit("missing.txt", "a", "b")
 
         assertTrue(receipt, receipt.startsWith("Error:"))
-        assertTrue(receipt, receipt.contains("不存在"))
+        assertTrue(receipt, receipt.contains("no existe"))
         assertTrue(
-            "不该凭空创建文件",
+            "Los archivos no deben crearse de la nada",
             runBlocking { manager.readFile("missing.txt") } is WorkspaceManager.ReadResult.Error,
         )
     }
 
     @Test
-    fun `内容安全规则对 workspace_edit 也只检查路径`() {
-        // 正文里带省略号与绝对路径写法不能触发路径规则
+    fun `Las reglas de seguridad de contenido también solo verifican la ruta de workspace_edit`() {
+        // Escribir con elipses y rutas absolutas en el texto no puede activar reglas de ruta.
         val benign =
             mapOf(
                 "path" to "notes/todo.md",
-                "old_string" to "待办：等待 3 天...",
-                "new_string" to "参见 /usr/local/bin 与 C:\\Windows",
+                "old_string" to "Pendiente: Espere 3 días...",
+                "new_string" to "Ver /usr/local/bin con C:\\Windows",
             )
         assertNull(ContentSafetyRules.checkArgs(WorkspaceTool.NAME_EDIT, benign))
 

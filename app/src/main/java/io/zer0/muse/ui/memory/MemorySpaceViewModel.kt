@@ -18,17 +18,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * v1.0.52 P2-2: 记忆空间管理 ViewModel。
+ * v1.0.52 P2-2: Gestión del espacio de memoria ViewModel.
  *
- * 职责:
- *  - Space 列表展示(含事实数量统计)
- *  - 创建/重命名/删除 Space
- *  - 调整 Space 排序
+ * Responsabilidades:
+ *  - Space Visualización de lista(Contiene estadísticas factuales)
+ *  - crear/Cambiar nombre/Eliminar Space
+ *  - Ajustar la clasificación del espacio
  *
- * 与 [io.zer0.muse.ui.MemoryViewModel] 的分工:
- *  - 本 ViewModel 负责 Space 元数据 CRUD
- *  - MemoryViewModel 负责按当前选中 Space 过滤事实列表
- *  - 两者通过 SettingsRepository.currentSpaceId 共享当前 Space(由 app 层注入)
+ * con [io.zer0.muse.ui.MemoryViewModel] división del trabajo:
+ *  - Este ViewModel es responsable de los metadatos del espacio. CRUD
+ *  - MemoryViewModel Responsable de filtrar la lista de hechos por el Espacio actualmente seleccionado
+ *  - Ambos comparten el espacio actual a través de SettingsRepository.currentSpaceId Space(Inyectado por capa de aplicación)
  */
 class MemorySpaceViewModel(
     application: Application,
@@ -36,107 +36,107 @@ class MemorySpaceViewModel(
 ) : AndroidViewModel(application) {
 
     /**
-     * Space 列表(含事实数量),响应式更新。
-     * UI 通过此 Flow 自动刷新列表。
+     * Space lista(Contiene el número de hechos.),Actualizaciones responsivas.
+     * UI Actualiza automáticamente la lista a través de este flujo.
      */
     val spacesWithCount: StateFlow<List<MemorySpaceWithCount>> =
         spaceRepository.observeSpacesWithCount()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /**
-     * Space 列表(轻量,不含事实数量)。
-     * 用于切换器下拉,避免每次都做 LEFT JOIN COUNT。
+     * Space lista(ligero,No incluye cantidad real).
+     * para el menú desplegable del conmutador,Evite hacer LEFT JOIN COUNT cada vez.
      */
     val spaces: StateFlow<List<MemorySpaceEntity>> =
         spaceRepository.observeSpaces()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** 当前操作状态文案(创建/删除/重命名结果反馈)。 */
+    /** Copia del estado operativo actual(crear/Eliminar/Cambiar el nombre de los comentarios de resultados). */
     private val _operationMessage = MutableStateFlow<String?>(null)
     val operationMessage: StateFlow<String?> = _operationMessage.asStateFlow()
 
-    /** 创建新 Space。返回新建 id(失败返回 null)。 */
+    /** Crea un nuevo espacio. Volver a nuevo id(Retorno del fracaso null). */
     fun createSpace(name: String, icon: String? = null, description: String = "") {
         viewModelScope.launch {
             val id = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.createSpace(name, icon, description) }
                     .onError { msg, t ->
-                        _operationMessage.value = "创建 Space 失败: $msg"
-                        Logger.w("MemorySpaceViewModel", "createSpace 失败: $msg", t)
+                        _operationMessage.value = "No se pudo crear el espacio: $msg"
+                        Logger.w("MemorySpaceViewModel", "createSpace falló: $msg", t)
                     }
                     .getOrNull()
             }
             if (id != null) {
-                _operationMessage.value = "已创建空间: $name"
+                _operationMessage.value = "Espacio creado: $name"
             }
         }
     }
 
-    /** 重命名 Space。 */
+    /** Cambiar el nombre del espacio. */
     fun renameSpace(id: String, newName: String) {
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.renameSpace(id, newName) }
                     .onError { msg, t ->
-                        _operationMessage.value = "重命名失败: $msg"
-                        Logger.w("MemorySpaceViewModel", "renameSpace 失败: $msg", t)
+                        _operationMessage.value = "Error al cambiar el nombre: $msg"
+                        Logger.w("MemorySpaceViewModel", "renameSpace falló: $msg", t)
                     }
                     .getOrNull() ?: false
             }
-            if (ok) _operationMessage.value = "已重命名"
+            if (ok) _operationMessage.value = "renombrado"
         }
     }
 
-    /** 更新 Space 描述。 */
+    /** Descripción del espacio actualizada. */
     fun updateDescription(id: String, description: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.updateDescription(id, description) }
-                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "updateDescription 失败: $msg", t) }
+                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "updateDescription falló: $msg", t) }
             }
         }
     }
 
-    /** 更新 Space 图标。 */
+    /** Icono de espacio actualizado. */
     fun updateIcon(id: String, icon: String?) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.updateIcon(id, icon) }
-                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "updateIcon 失败: $msg", t) }
+                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "updateIcon falló: $msg", t) }
             }
         }
     }
 
     /**
-     * 删除 Space。
-     * 默认 Space 不可删除,会返回失败提示。
-     * 删除前会将其中的事实迁移到默认 Space,避免数据丢失。
+     * Eliminar espacio.
+     * El espacio predeterminado no se puede eliminar,Se devolverá un mensaje de error.
+     * Los hechos se migrarán a la configuración predeterminada antes de eliminarlos. Space,Evite la pérdida de datos.
      */
     fun deleteSpace(id: String) {
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.deleteSpace(id) }
                     .onError { msg, t ->
-                        _operationMessage.value = "删除失败: $msg"
-                        Logger.w("MemorySpaceViewModel", "deleteSpace 失败: $msg", t)
+                        _operationMessage.value = "Error al eliminar: $msg"
+                        Logger.w("MemorySpaceViewModel", "deleteSpace falló: $msg", t)
                     }
                     .getOrNull() ?: false
             }
-            _operationMessage.value = if (ok) "已删除空间,事实已迁回默认空间" else "默认空间不可删除"
+            _operationMessage.value = if (ok) "Espacio eliminado,El hecho ha sido movido de nuevo al espacio predeterminado." else "El espacio predeterminado no se puede eliminar"
         }
     }
 
-    /** 调整 Space 排序。 */
+    /** Ajustar la clasificación del espacio. */
     fun reorderSpaces(orderedIds: List<String>) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.reorderSpaces(orderedIds) }
-                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "reorderSpaces 失败: $msg", t) }
+                    .onError { msg, t -> Logger.w("MemorySpaceViewModel", "reorderSpaces falló: $msg", t) }
             }
         }
     }
 
-    /** 清空操作消息(用户已看到提示后由 UI 调用)。 */
+    /** Borrar mensaje de operación(Llamado por la interfaz de usuario después de que el usuario haya visto el mensaje). */
     fun clearOperationMessage() {
         _operationMessage.value = null
     }

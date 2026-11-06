@@ -44,7 +44,7 @@ class SkillFileToolsImplTest {
         val impl = SkillFileToolsImpl(context, OkHttpClient())
         val outputDir = java.io.File(context.filesDir, TOOL_OUTPUTS_DIR).apply { mkdirs() }
         val file = java.io.File(outputDir, "large-output-test.txt")
-        val source = "甲😀乙\n".repeat(250_000)
+        val source = "un😀b\n".repeat(250_000)
         file.writeText(source)
         try {
             val offset = 1_000_000
@@ -57,8 +57,8 @@ class SkillFileToolsImplTest {
                 ),
             )
 
-            assertTrue("应该返回请求区间的完整文本", result.startsWith(source.substring(offset, offset + length)))
-            assertTrue("应给出下一段的字符游标", result.contains("offset_chars=${offset + length}"))
+            assertTrue("Debe devolver el texto completo del rango solicitado.", result.startsWith(source.substring(offset, offset + length)))
+            assertTrue("Se debe indicar el carácter cursor para el siguiente párrafo.", result.contains("offset_chars=${offset + length}"))
         } finally {
             file.delete()
         }
@@ -78,11 +78,11 @@ class SkillFileToolsImplTest {
             mapOf("uri" to uri.toString()),
         )
 
-        val savedPath = Regex("""\[完整输出已保存到: ([^\]]+)]""")
+        val savedPath = Regex("""\[El resultado completo se ha guardado en: ([^\]]+)]""")
             .find(result)
             ?.groupValues
             ?.get(1)
-        assertTrue("大文件应有完整输出文件引用: $result", savedPath != null)
+        assertTrue("Los archivos grandes deben tener referencias completas del archivo de salida.: $result", savedPath != null)
         val savedFile = java.io.File(savedPath!!)
         try {
             assertTrue(savedFile.readText() == content)
@@ -96,7 +96,7 @@ class SkillFileToolsImplTest {
     fun resolveSandboxFileRejectsTraversal() {
         val impl = SkillFileToolsImpl(context, OkHttpClient())
         val result = impl.execReadFile(mapOf("path" to "../../outside.txt"))
-        assertTrue(result.contains("路径", ignoreCase = true) || result.contains("violation", ignoreCase = true))
+        assertTrue(result.contains("camino", ignoreCase = true) || result.contains("violation", ignoreCase = true))
     }
 
     @Test
@@ -110,8 +110,8 @@ class SkillFileToolsImplTest {
                 mapOf("path" to "../${filesDir.name}-evil/secret.txt"),
             )
             assertTrue(
-                "兄弟目录前缀不能被当成沙盒子路径: $result",
-                result.contains("路径", ignoreCase = true) || result.contains("violation", ignoreCase = true),
+                "Los prefijos de directorios hermanos no se pueden tratar como rutas de zona de pruebas: $result",
+                result.contains("camino", ignoreCase = true) || result.contains("violation", ignoreCase = true),
             )
         } finally {
             secret.delete()

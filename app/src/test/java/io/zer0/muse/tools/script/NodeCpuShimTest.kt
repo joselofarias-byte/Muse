@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 内置 Node 的 CPU 兜底脚本：结构断言（文本）+ 组合断言（纯函数）。
+ * Nodo integrado de script de CPU: afirmaciones estructurales (texto)+ Combinando aserciones (funciones puras).
  *
- * 行为验证（真实 Node 上跑空/非空两种场景）无法进 JVM 单测，这里只锁住
- * 「什么条件下才覆盖、合成条目字段是否齐全、作用域是否隔离」。
+ * Verificación de comportamiento (ejecutándose vacío en un nodo real)/Dos escenarios no vacíos) no pueden ingresar a la prueba única de JVM, solo están bloqueados aquí
+ * "¿Bajo qué condiciones se puede cubrir? ¿Están completos los campos de entrada sintéticos? ¿Están aislados los ámbitos?"
  */
 class NodeCpuShimTest {
 
@@ -18,17 +18,17 @@ class NodeCpuShimTest {
     @Test
     fun `env key matches runtime injection`() {
         assertEquals(MuseRuntime.ENV_CPU_COUNT, NodeCpuShim.ENV_KEY)
-        assertTrue("shim 必须读取注入的环境变量", shim.contains("process.env.MUSE_CPU_COUNT"))
+        assertTrue("shim Las variables de entorno inyectadas deben leerse", shim.contains("process.env.MUSE_CPU_COUNT"))
     }
 
     @Test
     fun `cpus override only when native list is empty`() {
         assertTrue(
-            "只有原生返回空数组时才覆写 os.cpus",
+            "Se reemplaza solo cuando la matriz nativa devuelve una matriz vacía os.cpus",
             shim.contains("if (envCount > 0 && readNativeCpus().length === 0)"),
         )
-        assertTrue("需要覆写 os.cpus 本身", shim.contains("os.cpus = function ()"))
-        assertTrue("合成条目数取注入值", shim.contains("for (var i = 0; i < envCount; i++)"))
+        assertTrue("Es necesario sobrescribir el propio os.cpus", shim.contains("os.cpus = function ()"))
+        assertTrue("El número de entradas sintéticas toma el valor inyectado.", shim.contains("for (var i = 0; i < envCount; i++)"))
     }
 
     @Test
@@ -40,16 +40,16 @@ class NodeCpuShimTest {
 
     @Test
     fun `availableParallelism override only when native is not positive`() {
-        assertTrue("原生非正数或抛错时才覆写", shim.contains("if (!(nativeValue > 0))"))
+        assertTrue("Sobrescriba solo si el número original no es positivo o se produce un error.", shim.contains("if (!(nativeValue > 0))"))
         assertTrue(shim.contains("os.availableParallelism = function () { return effective; }"))
-        assertTrue("覆写值优先用原生探测到的核数", shim.contains("var effective = detected > 0 ? detected :"))
+        assertTrue("El valor sobrescrito utiliza preferentemente el número central detectado de forma nativa.", shim.contains("var effective = detected > 0 ? detected :"))
     }
 
     @Test
     fun `shim is scoped in an iife and does not leak globals`() {
         val lines = shim.lines().filter { it.isNotBlank() }
-        assertEquals("第一行必须是自执行函数开头", ";(function () {", lines.first().trim())
-        assertEquals("最后一行必须闭合自执行函数", "})();", lines.last().trim())
+        assertEquals("La primera línea debe comenzar con una función autoejecutable.", ";(function () {", lines.first().trim())
+        assertEquals("La última línea debe cerrar la función autoejecutable.", "})();", lines.last().trim())
     }
 
     @Test
@@ -57,6 +57,6 @@ class NodeCpuShimTest {
         val body = "console.log('user script');"
         val wrapped = NodeCpuShim.wrap(body)
         assertEquals(shim + "\n" + body, wrapped)
-        assertTrue("shim 必须早于脚本主体执行", wrapped.indexOf("os.cpus = function") < wrapped.indexOf(body))
+        assertTrue("shim Debe ejecutarse antes del cuerpo del script.", wrapped.indexOf("os.cpus = function") < wrapped.indexOf(body))
     }
 }

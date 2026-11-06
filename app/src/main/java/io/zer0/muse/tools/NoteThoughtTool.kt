@@ -7,34 +7,34 @@ import io.zer0.muse.data.proactive.ThoughtSource
 import io.zer0.muse.data.proactive.ThoughtUrgency
 
 /**
- * 牵挂记账工具 —— 「记下一件以后想问他的事」。
+ * Herramientas contables preocupadas —— "Escribe algo que quieras preguntarle más tarde".
  *
- * 这是主动消息新机制的主要燃料来源。整套设计的假设是：
- * 助手在日常对话里顺手记下「隔几天再问会显得有人味」的事，
- * 之后在这些事上主动开口。没有这个工具，账本永远是空的，
- * 主动消息就退回成「定时问候」。
+ * Esta es la principal fuente de combustible para el nuevo mecanismo de mensajería proactiva. Los supuestos para todo el diseño son:
+ * La asistente anota en las conversaciones cotidianas cosas que "harán que sea más humano volver a preguntar pasados ​​unos días".
+ * Entonces tome la iniciativa de hablar sobre estos asuntos. Sin esta herramienta, el libro mayor siempre estará vacío,
+ * Los mensajes activos se devuelven a "saludos programados".
  *
- * 门槛刻意调高。系统提示里反复强调「宁可不记」：
- * 账本一旦塞满碎事，主动消息就会显得廉价 ——
- * 而这套机制的全部说服力就建立在「它说的每句话都有由头」上。
+ * El umbral se eleva deliberadamente. Los mensajes del sistema enfatizan repetidamente "Preferiría no recordarlo":
+ * Una vez que el libro de contabilidad esté lleno de asuntos triviales, la información no solicitada parecerá barata. ——
+ * Toda la persuasión de este mecanismo se basa en el hecho de que "cada palabra que dice tiene una razón".
  */
 object NoteThoughtTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "note_thought",
-        description = "记下一件以后值得主动问起的事。在对话里自然出现时使用：" +
-            "他说了将来要做的事、正困扰他的事、或者明确表达过的期待。" +
-            "不要记日常寒暄和无关紧要的细节 —— 只有隔几天再问起会显得自然的事才值得记。",
+        description = "Anota algo sobre lo que valga la pena preguntar más tarde. Úselo cuando surja naturalmente en una conversación:" +
+            "Habla de cosas que quiere hacer en el futuro, cosas que le molestan o expectativas que están claramente expresadas." +
+            "No recuerdes las bromas cotidianas y los detalles intrascendentes. —— Sólo vale la pena recordar las cosas que parecen naturales cuando se vuelven a preguntar después de unos días.",
         parameters = mapOf(
-            "seed" to "必填。那件事是什么，一句话，用你自己的话写，不要照抄原话。",
-            "kind" to "必填。类型：reminder（他有具体要做的事）/ follow_up（没聊完的话题）/" +
-                "care（他的状态，比如身体或情绪）/ share（你自己想分享的事）/" +
-                "milestone（你们之间的节点）。",
-            "urgency" to "可选。immediate（过了时间点就没意义）/ window（这几天说都行，默认）/" +
-                "evergreen（什么时候说都行）。",
-            "weight" to "可选。你有多在意这件事，0 到 1 之间的小数，默认 0.6。" +
-                "真正要紧的事才给 0.8 以上。",
-            "within_hours" to "可选。如果是 immediate 或 window，多少小时内说都算合适。默认 168（一周）。",
+            "seed" to "Requerido. ¿Qué es esa cosa? En una oración, escríbela con tus propias palabras. No copie las palabras originales.",
+            "kind" to "Requerido. Tipo:reminder(Tiene cosas específicas que hacer)/ follow_up(Tema inacabado)/" +
+                "care(su estado, como físico o emocional)/ share(Cosas que quieres compartir)/" +
+                "milestone(El nodo entre ustedes).",
+            "urgency" to "Opcional.immediate(Deja de tener sentido después de cierto momento)/ window(Puedes decir lo que quieras estos días, por defecto)/" +
+                "evergreen(Puedes decirlo en cualquier momento).",
+            "weight" to "Opcional. ¿Cuánto te importa esto?0 Decimal entre 1 y 1, por defecto 0,6." +
+                "Sólo da 0,8 o más para lo que realmente importa.",
+            "within_hours" to "Opcional. Si es inmediato o de ventana, cualquier número de horas es apropiado. Por defecto 168 (una semana).",
         ),
         category = "built-in",
         riskLevel = ToolRiskLevel.NORMAL,
@@ -46,13 +46,13 @@ object NoteThoughtTool {
         executionContext: ToolExecutionContext,
     ): String {
         val parsed = ParsedArgs.from(args)
-        if (parsed.seed.isBlank()) return "Error: seed 不能为空"
+        if (parsed.seed.isBlank()) return "Error: seed no puede estar vacío"
 
         val now = System.currentTimeMillis()
         val assistantId = resolveAssistantId(executionContext)
 
-        // 用 seed 的哈希做来源标识：同一件事重复被提起时不会记成两条。
-        // 不用会话 id 或时间戳，那样每次都会产生新的「来源」，去重就等于没做。
+        // Utilice el hash de la semilla como identificación de fuente: cuando lo mismo se menciona repetidamente, no se registrará como dos elementos.
+        // No se utiliza ningún ID de sesión ni marca de tiempo, lo que generará una nueva "fuente" cada vez, y la deduplicación equivale a no realizarse.
         val ref = "note_${parsed.seed.hashCode().toUInt().toString(16)}"
 
         val recorded = thoughts.note(
@@ -75,24 +75,24 @@ object NoteThoughtTool {
         )
 
         return if (recorded) {
-            "已记下。之后合适的时候我会问起这件事。"
+            "Anotado. Lo preguntaré más tarde cuando sea el momento adecuado."
         } else {
-            "这件事我已经记着了，不用重复记。"
+            "Ya lo recordé, así que no necesito recordarlo otra vez."
         }
     }
 
-    /** 归属助手：优先执行上下文里的，其次作用域，最后 default。 */
+    /** Ayudante de pertenencia: primero ejecute el contexto, luego el alcance y finalmente el valor predeterminado. */
     private fun resolveAssistantId(executionContext: ToolExecutionContext): String =
         executionContext.assistantId?.takeIf { it.isNotBlank() }
             ?: executionContext.scope.takeIf { it.isNotBlank() && it != "main" }
             ?: "default"
 
     /**
-     * 参数解析。
+     * Análisis de parámetros.
      *
-     * 单独拎出来是因为参数的容错规则（拼错的 kind 该归到哪一类、
-     * 越界的 weight 要不要夹住）值得独立成一段可读的逻辑，
-     * 混在工具主体里会让主体被一串 when 淹掉。
+     * Lo seleccioné debido a las reglas de tolerancia a errores de los parámetros (¿en qué categoría debería clasificarse el tipo mal escrito?
+     * ¿Debería limitarse el peso fuera de límites?) Merece separarse en una lógica legible.
+     * Mezclarlo con el cuerpo de la herramienta hará que el cuerpo se ahogue en una cadena de cuando.
      */
     private data class ParsedArgs(
         val seed: String,

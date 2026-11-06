@@ -1,13 +1,13 @@
 import type { HostMessage, HostToolCall } from "../api.js";
 
 /**
- * 消息的「是否需要重渲染」判定，以及快照合并。
+ * Determinación de "si es necesario volver a renderizar" los mensajes y fusionar instantáneas.
  *
- * Host 每帧重推整个 messages 数组，但绝大多数消息其实没变。这里做两件事：
- *  1. `areMessagesEqual` 只看真正影响渲染的字段（id / 正文 / 状态 / 工具调用 / 引用 / 媒体地址…），
- *     React.memo 用它当比较函数；
- *  2. `mergeMessages` 在快照到达时把没变的消息**换回旧对象引用**，否则 memo 会因为新数组里的
- *     新对象全部失效。两个函数共用同一套字段判断，不会出现「合并说没变、memo 说变了」。
+ * Host Toda la matriz de mensajes se vuelve a enviar en cada cuadro, pero la gran mayoría de los mensajes permanecen sin cambios. Aquí se hacen dos cosas:
+ *  1. `areMessagesEqual` Mire sólo los campos que realmente afectan la representación (id / Texto/Estado/Llamada de herramienta/Cotización/Dirección de medios…),
+ *     React.memo Úselo como función de comparación;
+ *  2. `mergeMessages` Reemplazar mensajes sin cambios cuando llegue la instantánea**Cambiar la referencia del objeto anterior**, de lo contrario, la nota se verá afectada por el
+ *     Todos los objetos nuevos no son válidos. Las dos funciones comparten el mismo conjunto de juicios de campo y no habrá ningún tipo de "fusión dice que no hay cambios".memo Dijo que ha cambiado”.
  */
 
 function sameStrings(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
@@ -37,7 +37,7 @@ function sameToolCalls(left: readonly HostToolCall[] | undefined, right: readonl
   });
 }
 
-/** 两条消息渲染出来是否一模一样（引用相同直接判等）。 */
+/** Si los dos mensajes se representan exactamente igual (la misma referencia determinará directamente la igualdad). */
 export function areMessagesEqual(prev: HostMessage, next: HostMessage): boolean {
   if (prev === next) return true;
   return (
@@ -62,9 +62,9 @@ export function areMessagesEqual(prev: HostMessage, next: HostMessage): boolean 
 }
 
 /**
- * 快照合并：从头逐条比对，没变的消息直接复用旧对象，变了的（通常是流式的最后一条）用新的。
+ * Combinación de instantáneas: compare elementos uno por uno desde el principio, reutilice objetos antiguos directamente para mensajes sin cambios y use objetos nuevos para mensajes modificados (generalmente el último mensaje de la secuencia).
  *
- * 只在**同前缀**上复用——消息顺序、条数一变就整份换成新数组，避免把引用错配到别的消息上。
+ * solo en**Mismo prefijo**multiplexación——Siempre que cambie el orden o el número del mensaje, reemplace el mensaje completo con una nueva matriz para evitar referencias que no coincidan con otros mensajes.
  */
 export function mergeMessages(
   previous: readonly HostMessage[],
@@ -88,7 +88,7 @@ export function mergeMessages(
   return merged;
 }
 
-/** MessageBubble 的 memo 比较：数据字段全等就跳过重渲染（回调都由上层保证是稳定的）。 */
+/** MessageBubble Comparación de notas: si los campos de datos son iguales, se omitirá la nueva representación (se garantiza que las devoluciones de llamada serán estables en la capa superior). */
 export interface BubbleCompareProps {
   readonly message: HostMessage;
   readonly streaming: boolean;

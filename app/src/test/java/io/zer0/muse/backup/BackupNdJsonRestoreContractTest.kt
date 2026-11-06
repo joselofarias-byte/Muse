@@ -15,11 +15,11 @@ class BackupNdJsonRestoreContractTest {
             "private suspend fun applyNdJsonStreamingWithImageCleanup",
             startIndex = start,
         )
-        require(start >= 0 && end > start) { "无法定位 NDJSON 恢复方法边界" }
+        require(start >= 0 && end > start) { "No se puede localizar el límite del método de restauración NDJSON" }
         val ndJsonRestoreMethod = source.substring(start, end)
 
         assertFalse(
-            "NDJSON 恢复不能吞掉 FTS 重建异常，否则不会触发 recovery point 回滚",
+            "NDJSON La recuperación no puede aceptar las excepciones de reconstrucción de FTS; de lo contrario, no se activará la reversión del punto de recuperación.",
             ndJsonRestoreMethod.contains("resultOf { sessionRepository.rebuildFtsIndex() }"),
         )
         assertTrue(ndJsonRestoreMethod.contains("sessionRepository.rebuildFtsIndex()"))
@@ -30,11 +30,11 @@ class BackupNdJsonRestoreContractTest {
         val source = File("src/main/java/io/zer0/muse/backup/BackupService.kt").readText()
 
         assertTrue(
-            "恢复点导入必须有 allowEmptyBackup 入口",
+            "La importación del punto de recuperación debe tener la entrada enableEmptyBackup",
             source.contains("allowEmptyBackup"),
         )
         assertTrue(
-            "NDJSON 失败回滚必须显式允许空恢复点",
+            "NDJSON La reversión fallida debe permitir explícitamente puntos de recuperación vacíos",
             source.contains("applyNdJsonStreaming(recoveryLines, allowEmptyBackup = true)"),
         )
     }

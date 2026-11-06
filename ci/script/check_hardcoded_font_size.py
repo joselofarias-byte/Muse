@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-check_hardcoded_font_size.py — UI 硬编码 fontSize 检查。
+check_hardcoded_font_size.py — UI Comprobación del tamaño de fuente codificada.
 
-扫描 ui/ 目录（theme/ 除外），拦截绕过 MuseTypography 的 fontSize = N.sp。
-同一行带 // 注释说明的视为有意豁免（如情绪特效装饰字号）。
+Escanee el directorio ui/ (theme/ Excepto), la interceptación pasa por alto MuseTypography fontSize = N.sp.
+Todo lo que tenga un comentario // en la misma línea se considera intencionalmente exento (como el tamaño de fuente decorativa de efectos especiales emocionales).
 
-用法：
+Uso:
   py -3 ci/script/check_hardcoded_font_size.py
   py -3 ci/script/check_hardcoded_font_size.py --update-baseline
 """
@@ -77,11 +77,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# hardcoded_font_size baseline — UI 硬编码 fontSize 存量清单",
-        "# 格式: <file>: <违规数>;新增或上升都会失败,只允许下降",
-        "# 清理存量后运行: py -3 ci/script/check_hardcoded_font_size.py --update-baseline",
+        "# hardcoded_font_size baseline — UI Inventario de tamaño de fuente codificado",
+        "# Formato: <file>: <Número de violaciones>;Agregar o aumentar fallará,solo se permite descender",
+        "# Ejecutar después de limpiar el inventario.: py -3 ci/script/check_hardcoded_font_size.py --update-baseline",
         "#",
-        f"# 当前共 {sum(len(v) for v in violations.values())} 处,分布 {len(violations)} 个文件",
+        f"# total actual {sum(len(v) for v in violations.values())} en,Distribución {len(violations)} archivos",
     ]
     for file, hits in sorted(violations.items()):
         lines.append(f"{file}: {len(hits)}")
@@ -89,7 +89,7 @@ def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="硬编码 fontSize 检查")
+    parser = argparse.ArgumentParser(description="Verificación del tamaño de fuente codificada")
     parser.add_argument("--baseline", type=Path, default=BASELINE_PATH)
     parser.add_argument("--update-baseline", action="store_true")
     args = parser.parse_args()
@@ -99,11 +99,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"baseline 已更新: {args.baseline}")
-        print(f"  共 {total} 处,分布 {len(violations)} 个文件")
+        print(f"baseline actualizado: {args.baseline}")
+        print(f"  total {total} en,Distribución {len(violations)} archivos")
         return 0
 
-    print(f"[font-size] 扫描 ui/ 目录: {total} 处硬编码 fontSize,分布 {len(violations)} 个文件")
+    print(f"[font-size] Escanee el directorio ui/: {total} codificado fontSize,Distribución {len(violations)} archivos")
 
     if not require_baseline(args.baseline, "font-size"):
         return 2
@@ -115,26 +115,26 @@ def main() -> int:
         current = len(hits)
         allowed = baseline.get(file, 0)
         if current > allowed:
-            failures.append(f"  {file}: {current} 处 (baseline {allowed},新增 {current - allowed})")
+            failures.append(f"  {file}: {current} en (baseline {allowed},Nuevo {current - allowed})")
         elif current < allowed:
             improved.append(f"  {file}: {allowed} → {current}")
     cleaned = [f for f in baseline if f not in violations]
     for f in cleaned:
-        improved.append(f"  {f}: 已清零")
+        improved.append(f"  {f}: Borrado")
 
     if improved:
-        print("[font-size] 有改善,建议 --update-baseline 收紧:")
+        print("[font-size] hay mejora,Se recomienda ajustar --update-baseline:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[font-size] FAILED — 新增硬编码 fontSize:")
+        print("[font-size] FAILED — Se agregó codificación rígida fontSize:")
         for line in failures:
             print(line)
-        print("修复方式: 使用 MaterialTheme.typography 或 MuseTypography;有意豁免加 // 注释")
+        print("como solucionarlo: Utilice MaterialTheme.typography o MuseTypography;Exención intencional más // comentario")
         return 1
 
-    print(f"[font-size] PASS — 无新增硬编码 fontSize (存量 {total} 处,按 baseline 豁免)")
+    print(f"[font-size] PASS — Sin nueva codificación fontSize (Valores {total} en,Exento por línea de base)")
     return 0
 
 

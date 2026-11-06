@@ -67,7 +67,7 @@ class BuiltInKnowledgeDocSeederTest {
 
         BuiltInKnowledgeDocSeeder(context, dao).ensureSeeded()
 
-        // 内容未变且已索引：不重写、不丢 chunk_count
+        // El contenido permanece sin cambios e indexado: sin reescritura, sin pérdida chunk_count
         coVerify(exactly = 0) { dao.upsert(any()) }
         assertTrue(true)
     }
@@ -78,7 +78,7 @@ class BuiltInKnowledgeDocSeederTest {
         val dao = mockk<KnowledgeDocDao>(relaxed = true)
         val ragService = mockk<RagService>()
         val config = RagConfig()
-        val content = "# Guide\n正文"
+        val content = "# Guide\nTexto"
         val doc =
             KnowledgeDocEntity(
                 id = "devdoc-guide",
@@ -108,7 +108,7 @@ class BuiltInKnowledgeDocSeederTest {
         val context = mockk<Context>()
         val dao = mockk<KnowledgeDocDao>(relaxed = true)
         val ragService = mockk<RagService>()
-        val content = "# Guide\n正文"
+        val content = "# Guide\nTexto"
         coEvery { dao.getInternalDocs() } returns
             listOf(
                 KnowledgeDocEntity(
@@ -140,7 +140,7 @@ class BuiltInKnowledgeDocSeederTest {
                 KnowledgeDocEntity(
                     id = "devdoc-guide",
                     title = "Guide",
-                    content = "# Guide\n正文",
+                    content = "# Guide\nTexto",
                     fileType = "devdoc",
                     isInternal = true,
                     chunkCount = 0,

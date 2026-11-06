@@ -28,38 +28,38 @@ import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
 /**
- * v1.135: 视频附件处理回调类型。
+ * v1.135: Tipo de devolución de llamada de manejo de archivos adjuntos de video.
  */
 private typealias VideoHandler = io.zer0.muse.ui.chat.VideoAttachmentHandler
 
 /**
- * 选出真正能出图的模型。
+ * Elija un modelo que realmente pueda producir imágenes.
  *
- * 优先用调用方指定的模型;它不支持图片输出时,退回该供应商第一个支持图片输出的模型。
- * 返回 null 表示这个供应商没有可出图模型 —— 调用方应报错,而不是把一个文本模型
- * 推给图片接口去拿一个看不懂的上游错误。
+ * Prefiere el modelo especificado por la persona que llama;No admite la salida de imágenes cuando,Devuelva el primer modelo de este proveedor que admita la salida de imágenes.
+ * Devolver nulo indica que este proveedor no tiene un modelo graficable. —— La persona que llama debería informar un error.,En lugar de poner un modelo de texto.
+ * Vaya a la interfaz de la imagen para obtener un error ascendente incomprensible.
  *
- * @param provider 本次绘图使用的供应商(可能为 null,此时无从兜底)
- * @param requested 调用方首选模型(设置里的绘图模型或当前选中模型,可能为 null)
+ * @param provider Proveedores utilizados en este dibujo.(puede ser null,No hay forma de decir la verdad en este momento.)
+ * @param requested Modelo preferido de la persona que llama(El modelo de dibujo en la configuración o el modelo seleccionado actualmente,puede ser null)
  */
 internal fun resolveImageCapableModel(provider: ProviderConfig?, requested: Model?): Model? =
     requested?.takeIf { it.supportsImageOutput() }
         ?: provider?.models?.firstOrNull { it.supportsImageOutput() }
 
 /**
- * v1.105 阶段 1: 从 ChatViewModel 抽离的图片相关 Coordinator。
+ * v1.105 Etapa 1: Coordinador relacionado con imágenes extraído de ChatViewModel.
  *
- * 职责:
- *  - pickImage: 相册选图(视觉输入 base64 / OCR 识别文字)
- *  - removePendingImage: 移除待发送图片
- *  - readImageAsBase64: 内部工具方法
- *  - generateImage: 绘图入口(按 Provider 分支)
- *  - generateImageViaOpenAi / generateImageViaGemini: 各 Provider 绘图实现
+ * Responsabilidades:
+ *  - pickImage: Selección de álbum de fotos.(La entrada visual base64/OCR reconoce texto)
+ *  - removePendingImage: Eliminar imágenes pendientes
+ *  - readImageAsBase64: métodos de herramientas internas
+ *  - generateImage: Entrada de dibujo(Sucursal por proveedor)
+ *  - generateImageViaOpenAi / generateImageViaGemini: Implementación de dibujo de cada proveedor
  *
- * 不持有 state,通过 [accessor] 读写 ChatViewModel 的 state;
- * 持有 [imageJob] 控制单次绘图任务(可被取消)。
+ * No retenido state,Pase [accessor] Leer y escribir ChatViewModel state;
+ * mantener [imageJob] Controlar una única sesión de dibujo(Se puede cancelar).
  *
- * 公开方法签名与原 ChatViewModel 完全一致,UI 层零改动。
+ * La firma del método público es exactamente la misma que la del ChatViewModel original.,UI Cambios de capa cero.
  */
 class ImageGenCoordinator(
     private val accessor: ChatStateAccessor,
@@ -73,51 +73,51 @@ class ImageGenCoordinator(
 
     private val tag = "ChatVM"
 
-    /** 当前图片生成任务(可被新任务取消)。 */
+    /** Tarea de generación de imágenes actual(Puede ser cancelado por nuevas tareas.). */
     private var imageJob: Job? = null
 
-    /** 多选相册图片会并发读取,用锁保证 pendingImages 追加不会互相覆盖。 */
+    /** Las imágenes del álbum seleccionadas varias veces se leerán simultáneamente,Utilice bloqueos para garantizar que las imágenes pendientes adjuntas no se sobrescriban entre sí. */
     private val pendingImageMutex = Mutex()
 
     /**
-     * F-09: 当前媒体任务 id(每次生成分配独立 UUID)。
-     * 旧任务被取消后其 finally 不得覆盖新任务状态(isGeneratingImage 竞态守卫)。
+     * F-09: Asignaciones de medios actuales id(Cada generación se asigna de forma independiente. UUID).
+     * Una vez cancelada la tarea anterior, finalmente no debe sobrescribir el estado de la nueva tarea.(isGeneratingImage guardia de carrera).
      */
     private var currentMediaTaskId: String? = null
 
     companion object {
-        /** 图片缩放最长边(视觉模型不需要超清,控制 base64 体积)。 */
+        /** Ampliar imagen lado más largo(El modelo visual no necesita ser muy claro,Controlar el volumen base64). */
         private const val IMAGE_SCALE_TARGET = 1024
 
-        /** 图片 JPEG 压缩质量(0-100)。 */
+        /** Calidad de compresión de imagen JPEG(0-100). */
         private const val IMAGE_JPEG_QUALITY = 85
 
         /**
-         * 单次待发送图片上限。
+         * El límite superior de imágenes que se enviarán a la vez.
          *
-         * 旧值是硬编码的 4（写在判断里），一次只能选四张，想多发得反复打开相册。
-         * 提到 10 的原因：
-         *  - 内存：单张压缩到长边 1024px / JPEG 85，约 200-400KB（base64 后），
-         *    10 张约 2-4MB，在可接受范围；
-         *  - 上游：多数视觉模型单次支持 10-20 张，取 10 能覆盖主流模型，
-         *    再高会撞到部分模型的单请求上限，用户看到的是发送失败而不是“选多了”。
+         * El valor anterior está codificado 4 (escrito en la sentencia). Sólo puede seleccionar cuatro imágenes a la vez. Si quieres publicar más, debes abrir el álbum repetidamente.
+         * Razones para mencionar 10:
+         *  - Memoria: imagen única comprimida en el borde largo 1024 px/JPEG 85, aproximadamente 200-400 KB (base64 después),
+         *    10 El tamaño es de aproximadamente 2 a 4 MB, lo que está dentro del rango aceptable;
+         *  - Upstream: la mayoría de los modelos visuales admiten entre 10 y 20 imágenes a la vez. Tomar 10 puede cubrir los modelos convencionales.
+         *    Cualquier valor superior alcanzará el límite de solicitud única de algunos modelos y el usuario verá un error al enviar en lugar de“Demasiadas opciones”.
          *
-         * 相册选择器的多选上限与本值保持一致，避免“选得到但发不了”。
+         * El límite superior de selecciones múltiples en el selector de álbumes es consistente con este valor para evitar“Se puede seleccionar pero no se puede enviar.”.
          */
         const val MAX_PENDING_IMAGES = 10
     }
 
     /**
-     * Phase 8.6: 选取图片(相册 / OCR)。
+     * Phase 8.6: Seleccionar imagen(álbum de fotos / OCR).
      *
-     * @param asOcr true=OCR 识别文字追加到输入框;false=视觉输入模式,读 base64 加入 pendingImages
+     * @param asOcr true=OCR Reconocer texto y agregarlo al cuadro de entrada;false=modo de entrada visual,Leer unión base64 pendingImages
      */
     fun pickImage(uri: Uri, context: Context, asOcr: Boolean, reportError: (String) -> Unit, addError: (ChatErrorType, String) -> Unit) {
         if (accessor.snapshot.isStreaming) return
         accessor.coroutineScope.launch(AppDispatchers.io) {
             try {
                 if (asOcr) {
-                    // v1.0.4 (P0): OCR 识别期间设置 isOcrProcessing=true,UI 显示"正在识别图片文字…"
+                    // v1.0.4 (P0): OCR Configuración del período de reconocimiento isOcrProcessing=true,UI mostrar"Reconocer texto de imagen…"
                     accessor.update { it.copy(isOcrProcessing = true) }
                     try {
                         val text = ocrManager.recognize(uri, context)
@@ -125,7 +125,7 @@ class ImageGenCoordinator(
                             reportError(context.getString(R.string.err_image_gen_ocr_failed))
                             return@launch
                         }
-                        // 原子读取最新输入，避免 OCR 完成前用户输入被旧快照覆盖。
+                        // Lee atómicamente la última entrada para evitar que las instantáneas antiguas sobrescriban la entrada del usuario antes de que se complete el OCR.
                         accessor.appendInputAtomically(text)
                     } finally {
                         accessor.update { it.copy(isOcrProcessing = false) }
@@ -154,29 +154,29 @@ class ImageGenCoordinator(
     }
 
     /**
-     * v1.135: 选取视频并提取关键帧,作为多张图片加入 pendingImages。
+     * v1.135: Seleccione video y extraiga fotogramas clave,Únase a imágenes pendientes como varias imágenes.
      *
-     * 当前实现:对不支持视频直传的 Provider,把视频降级为 3 张关键帧图片发送,
-     *          让视觉模型"看到"视频内容。后续可扩展为视频直传。
+     * Implementación actual:Para aquellos que no admiten la transmisión directa de vídeo. Provider,Degradar el vídeo a 3 imágenes de fotogramas clave para enviar,
+     *          Deja que el modelo visual"ver"Contenido de vídeo. Puede ampliarse a la transmisión de vídeo directa en el futuro.
      */
     fun pickVideo(uri: Uri, context: Context, reportError: (String) -> Unit) {
         if (accessor.snapshot.isStreaming) return
         accessor.coroutineScope.launch(AppDispatchers.io) {
             try {
-                // 1. 提取关键帧(首帧/中间/末帧)
+                // 1. Extraer fotogramas clave(primer fotograma/medio/último fotograma)
                 val keyFrames = VideoHandler().extractKeyFrames(uri, context, frameCount = 3)
                 if (keyFrames.isEmpty()) {
                     reportError(context.getString(R.string.err_image_gen_video_no_frames))
                     return@launch
                 }
-                // 2. 检查待发送图片上限(加上关键帧后不超过 4 张)
+                // 2. Verifique el límite superior de imágenes a enviar(No más de 4 imágenes, incluidos fotogramas clave.)
                 val current = accessor.snapshot.pendingImages
                 if (current.size + keyFrames.size > 4) {
                     reportError(context.getString(R.string.err_image_gen_video_too_many, keyFrames.size, current.size))
                     return@launch
                 }
                 accessor.update { it.copy(pendingImages = current + keyFrames) }
-                Logger.i(tag, "pickVideo: 已提取 ${keyFrames.size} 张关键帧加入 pendingImages")
+                Logger.i(tag, "pickVideo: Extraído ${keyFrames.size} Agregar fotogramas clave pendingImages")
             } catch (t: Exception) {
                 Logger.e(tag, "pickVideo failed", t)
                 reportError(context.getString(R.string.err_image_gen_video_failed, t.message ?: ""))
@@ -184,14 +184,14 @@ class ImageGenCoordinator(
         }
     }
 
-    /** Phase 8.6: 移除指定索引的待发送图片。 */
+    /** Phase 8.6: Elimina la imagen que se enviará en el índice especificado. */
     fun removePendingImage(index: Int) {
         val current = accessor.snapshot.pendingImages
         if (index < 0 || index >= current.size) return
         accessor.update { it.copy(pendingImages = current.toMutableList().also { list -> list.removeAt(index) }) }
     }
 
-    /** Phase 8.6: 把图片 URI 读为 base64(无 data: 前缀)。 */
+    /** Phase 8.6: Lea el URI de la imagen como base64(Ninguno dato: prefijo). */
     private suspend fun readImageAsBase64(uri: Uri, context: Context, addError: (ChatErrorType, String) -> Unit): String {
         return withContext(AppDispatchers.io) {
             var errThrowable: Throwable? = null
@@ -259,15 +259,15 @@ class ImageGenCoordinator(
     }
 
     /**
-     * P5-G + Phase 10.2: 生成图片。
+     * P5-G + Phase 10.2: Genera imágenes.
      *
-     * 按 Provider 类型分支:
-     *  - OpenAI 兼容: 走 ImageService(独立 /images/generations 端点,返回 URL)
-     *  - Gemini:      走 streamChat 多模态路径(responseModalities 含 image,收集 ImageDelta base64)
-     *  - Anthropic:   不支持
+     * Sucursal por tipo de proveedor:
+     *  - OpenAI compatibles: ir ImageService(Punto final independiente /images/generaciones,Regresar URL)
+     *  - Gemini:      Tome el camino multimodal de StreamChat(responseModalities Contiene image,recoger ImageDelta base64)
+     *  - Anthropic:   No compatible
      *
-     * [updateAssistant] 由 ChatViewModel 提供(因为该方法内部调用了 extractThinkContent 等流式相关逻辑,
-     * 与流式 Coordinator 强耦合,留在 ViewModel 中转调)。
+     * [updateAssistant] Proporcionado por ChatViewModel(Porque este método llama internamente a extractThinkContent y otra lógica relacionada con la transmisión.,
+     * Fuerte acoplamiento con el coordinador de streaming,Dejar la transición en ViewModel).
      */
     fun generateImage(
         prompt: String,
@@ -282,7 +282,7 @@ class ImageGenCoordinator(
             isStreaming: Boolean,
         ) -> Unit,
     ) {
-        val userMsg = UIMessage(role = MessageRole.USER, content = "[绘图] $prompt")
+        val userMsg = UIMessage(role = MessageRole.USER, content = "[Dibujo] $prompt")
         val assistantMsg = UIMessage(role = MessageRole.ASSISTANT, content = "")
         accessor.updateMessages { it + userMsg + assistantMsg }
         accessor.update {
@@ -296,17 +296,17 @@ class ImageGenCoordinator(
             sessionRepository.appendMessage(sessionId, userMsg)
         }
         imageJob?.cancel()
-        // F-09: 独立媒体任务 id 管理生成生命周期 — 消息只引用结果,
-        // 状态更新(isGeneratingImage)以当前任务为准, 旧任务 finally 不得覆盖新任务
+        // F-09: Ciclo de vida de generación de gestión de identificación de tareas de medios independientes — El mensaje solo hace referencia al resultado.,
+        // actualización de estado(isGeneratingImage)Basado en la tarea actual, Las tareas antiguas finalmente no deben sobrescribir las nuevas
         val mediaTaskId = kotlin.uuid.Uuid.random().toString()
         currentMediaTaskId = mediaTaskId
-        Logger.i(tag, "绘图任务开始 mediaTask=$mediaTaskId | prompt=${prompt.take(60)}")
+        Logger.i(tag, "Comienza la tarea de dibujo mediaTask=$mediaTaskId | prompt=${prompt.take(60)}")
         imageJob = accessor.coroutineScope.launch(AppDispatchers.io) {
             try {
                 val imageGenConfig = settings.imageGenConfigFlow.first()
                 val providers = settings.providersFlow.first()
-                // v1.0.18: 放宽绘图供应商检查 — OpenAI / OpenAI Responses / Agnes / 任意 OpenAI 兼容
-                // 均可通过 ImageProviderRegistry 路由;Gemini 走 streamChat 多模态路径。
+                // v1.0.18: Relájese dibujando cheques de proveedores — OpenAI / OpenAI Responses / Agnes / Cualquiera compatible con OpenAI
+                // Ambos se pueden enrutar a través de ImageProviderRegistry;Gemini Tome el camino multimodal de streamChat.
                 val hasImageProvider = providers.any {
                     it.type == ProviderType.OPENAI ||
                         it.type == ProviderType.OPENAI_RESPONSES ||
@@ -348,7 +348,7 @@ class ImageGenCoordinator(
                 }
                 val model = resolveImageCapableModel(config, requestedModel)
                 if (requestedModel != null && model != null && requestedModel.id != model.id) {
-                    Logger.w(tag, "图片模型 ${requestedModel.id} 不支持图片输出,改用 ${model.id}")
+                    Logger.w(tag, "modelo de imagen ${requestedModel.id} La salida de imágenes no es compatible,Usar en su lugar ${model.id}")
                 }
 
                 if (config == null) {
@@ -392,8 +392,8 @@ class ImageGenCoordinator(
                     return@launch
                 }
 
-                // v1.0.18: Gemini 走 streamChat 多模态;其余(OpenAI / Agnes / 中转站)统一走
-                // ImageService → ImageProviderRegistry,由 registry 按配置自动选择适配器。
+                // v1.0.18: Gemini Ir a streamChat multimodal;el resto(OpenAI / Agnes / estación de transferencia)ir juntos
+                // ImageService → ImageProviderRegistry,El registro selecciona automáticamente el adaptador según lo configurado.
                 when (config.type) {
                     ProviderType.GEMINI -> {
                         if (!model.supportsImageOutput()) {
@@ -446,9 +446,9 @@ class ImageGenCoordinator(
                     }
                 }
             } finally {
-                // 9.1 修复: 任何路径下都重置 isGeneratingImage,避免 Gemini 返回空图片列表等
-                // 错误路径早返回时 loading 卡死(成功/失败/取消均会触发 finally)
-                // F-09: 仅当前任务可重置 — 旧任务 finally 不得覆盖新任务的 isGeneratingImage
+                // 9.1 Reparación: Restablecer en cualquier camino isGeneratingImage,Evite que Gemini devuelva una lista de imágenes vacía, etc.
+                // La carga se atasca cuando la ruta incorrecta regresa antes de tiempo.(éxito/falló/La cancelación desencadenará finally)
+                // F-09: Sólo se puede restablecer la tarea actual — Finalmente, la tarea anterior no debe sobrescribir la tarea nueva. isGeneratingImage
                 if (currentMediaTaskId == mediaTaskId) {
                     accessor.update { it.copy(isGeneratingImage = false) }
                 }
@@ -456,7 +456,7 @@ class ImageGenCoordinator(
         }
     }
 
-    /** Phase 10.2: OpenAI 兼容绘图(走 ImageService 独立端点)。 */
+    /** Phase 10.2: OpenAI Compatible con dibujo(Ir al punto final independiente de ImageService). */
     private suspend fun generateImageViaOpenAi(
         prompt: String,
         sessionId: String,
@@ -465,7 +465,7 @@ class ImageGenCoordinator(
         model: Model,
         addError: (ChatErrorType, String) -> Unit,
     ) {
-        // v1.136: 把 UI 选中的绘图模型 ID 传入 ImageService,避免 model 为空导致自定义端点 404
+        // v1.136: Pase el ID del modelo de dibujo seleccionado en la interfaz de usuario ImageService,Evite puntos finales personalizados causados por un modelo vacío 404
         val urls = imageService.generate(
             prompt,
             accessor.snapshot.imageGenParams.copy(model = model.id),
@@ -512,7 +512,7 @@ class ImageGenCoordinator(
         }
     }
 
-    /** Phase 10.2: Gemini 绘图(走 streamChat 多模态路径,收集 ImageDelta base64)。 */
+    /** Phase 10.2: Gemini Dibujo(Tome el camino multimodal de StreamChat,recoger ImageDelta base64). */
     private suspend fun generateImageViaGemini(
         prompt: String,
         sessionId: String,
@@ -530,7 +530,7 @@ class ImageGenCoordinator(
         ) -> Unit,
     ) {
         val drawMessages = listOf(
-            UIMessage(role = MessageRole.USER, content = "请生成一张图片: $prompt"),
+            UIMessage(role = MessageRole.USER, content = "Por favor genera una imagen: $prompt"),
         )
         val flow = chatService.streamChat(
             messages = drawMessages,

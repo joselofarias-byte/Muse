@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 12. 暮霭玫 (Dusk Rose) theme — 柔和玫瑰色调,暮色中的温柔
+// 12. rosa crepuscular (Dusk Rose) theme — Sombra rosa suave,Ternura en el crepúsculo
 // ─────────────────────────────────────────────────────────────────────────────
 private val DuskRosePrimary = Color(0xFFB07080)
 private val DuskRosePrimaryLightContainer = Color(0xFFF5E0E5)

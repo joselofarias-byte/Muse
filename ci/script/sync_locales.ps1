@@ -2,7 +2,7 @@ $base = "app/src/main/res/values"
 $en = "app/src/main/res/values-en"
 $locales = @("values-ja", "values-ko", "values-ru", "values-es", "values-pt-rBR")
 
-# 获取英文目录下所有 strings_*.xml 文件
+# Obtenga todos los artículos en el directorio en inglés strings_*.xml Archivo
 $enFiles = Get-ChildItem $en -Filter "strings_*.xml"
 
 foreach ($loc in $locales) {
@@ -13,7 +13,7 @@ foreach ($loc in $locales) {
     $copied = 0
     foreach ($f in $enFiles) {
         $target = Join-Path $dest $f.Name
-        # 只复制目标目录中不存在的文件(保留已有翻译)
+        # Solo copia archivos que no existen en el directorio de destino(Mantener las traducciones existentes)
         if (!(Test-Path $target)) {
             Copy-Item $f.FullName $target
             $copied++

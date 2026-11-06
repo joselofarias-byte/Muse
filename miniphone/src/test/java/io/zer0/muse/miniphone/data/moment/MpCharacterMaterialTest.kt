@@ -22,10 +22,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * 角色自发内容的素材：最近聊了什么、上一条发过什么、现在几点、这一条写什么。
+ * Materiales para el contenido espontáneo de los personajes: sobre qué charlaron recientemente, qué publicaron en el post anterior, qué hora es ahora y qué escriben en este post.
  *
- * 库跑真 Room(内存库):「取最后 8 条」「截到 100 字」「上下在前、指令在后」这类断言
- * 必须落在真的查询结果与真的拼接顺序上,用替身就变成了自证。
+ * Ku Paozhen Room(banco de memoria):Afirmaciones como "Tome los últimos 8 elementos", "Reduzca a 100 palabras", "Arriba y abajo primero, las instrucciones al final"
+ * Debe estar entre el verdadero resultado de la consulta y el verdadero orden de empalme.,El uso de un sustituto se convierte en una autocertificación.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -44,106 +44,106 @@ class MpCharacterMaterialTest {
     }
 
     @Test
-    fun `朋友圈带最近八条对话并标出说话方`() = runBlocking {
+    fun `Moments trae las últimas ocho conversaciones y marca al hablante`() = runBlocking {
         seedThread()
         seedMessages(count = 12)
 
         val hint = material(at = EVENING).forMoment(CHARACTER_ID)
 
-        val turns = hint.lineSequence().filter { it.startsWith("用户：") || it.startsWith("我：") }.toList()
-        assertEquals("只取最后 8 条", 8, turns.size)
-        assertEquals("最早那条被挤掉", "用户：在吗 5", turns.first())
-        assertEquals("最新那条在最后", "我：在吗 12", turns.last())
-        assertTrue("用户的话标「用户」", turns[0].startsWith("用户："))
-        assertTrue("角色的话标「我」", turns[1].startsWith("我："))
+        val turns = hint.lineSequence().filter { it.startsWith("Usuario:") || it.startsWith("Yo:") }.toList()
+        assertEquals("Solo toma los últimos 8 artículos.", 8, turns.size)
+        assertEquals("El primero fue expulsado.", "Usuario: ¿Estás ahí? 5", turns.first())
+        assertEquals("El último está al final.", "Yo: ¿Estás ahí? 12", turns.last())
+        assertTrue("Marca denominativa del usuario \"usuario\"", turns[0].startsWith("Usuario:"))
+        assertTrue("Las palabras con caracteres están marcadas con \"I\"", turns[1].startsWith("Yo:"))
     }
 
     @Test
-    fun `没有聊过时明确说明`() = runBlocking {
+    fun `Déjalo claro cuando no estés chateando`() = runBlocking {
         seedThread()
 
         val hint = material(at = EVENING).forMoment(CHARACTER_ID)
 
-        assertTrue(hint, hint.contains("还没有和用户聊过"))
-        assertFalse("没有会话就不该编造对话", hint.contains("用户："))
+        assertTrue(hint, hint.contains("Aún no he chateado con el usuario"))
+        assertFalse("No deberías inventar el diálogo si no tienes diálogo.", hint.contains("Usuario:"))
     }
 
     @Test
-    fun `每条对话截到一百字`() = runBlocking {
+    fun `Cada conversación está limitada a 100 palabras`() = runBlocking {
         seedThread()
-        val longText = (1..40).joinToString("") { index -> "第${index}段。" }
+        val longText = (1..40).joinToString("") { index -> "No.${index}segmento." }
         insertMessage(index = 1, sender = MpActorType.USER, content = longText)
 
         val hint = material(at = EVENING).forMoment(CHARACTER_ID)
 
-        assertTrue("保留前 100 字", hint.contains(longText.take(100)))
-        assertFalse("第 101 字起要丢掉", hint.contains(longText.take(101)))
+        assertTrue("Conserva las primeras 100 palabras", hint.contains(longText.take(100)))
+        assertFalse("Descartar después de la palabra 101", hint.contains(longText.take(101)))
     }
 
     @Test
-    fun `朋友圈把上一条动态作为别重复的参照`() = runBlocking {
+    fun `Moments utiliza la publicación anterior como referencia para evitar duplicaciones`() = runBlocking {
         seedThread()
-        insertMoment(id = "old", content = "很久以前的一条", at = 10L)
-        val latest = (1..40).joinToString("") { index -> "第${index}段。" }
+        insertMoment(id = "old", content = "Hace mucho tiempo", at = 10L)
+        val latest = (1..40).joinToString("") { index -> "No.${index}segmento." }
         insertMoment(id = "new", content = latest, at = 20L)
 
         val hint = material(at = EVENING).forMoment(CHARACTER_ID)
 
-        assertTrue("带最新那条的前 60 字", hint.contains(latest.take(60)))
-        assertFalse("超出 60 字的部分不要", hint.contains(latest.take(61)))
-        assertTrue(hint.contains("别和上一条重复同样的话题"))
-        assertFalse("只参照最新那条", hint.contains("很久以前的一条"))
+        assertTrue("Con las primeras 60 palabras del último artículo.", hint.contains(latest.take(60)))
+        assertFalse("No más de 60 palabras", hint.contains(latest.take(61)))
+        assertTrue(hint.contains("No repitas el mismo tema del anterior."))
+        assertFalse("Consulte solo el último", hint.contains("Hace mucho tiempo"))
     }
 
     @Test
-    fun `私信带对话与时间但不带动参照`() = runBlocking {
+    fun `Los mensajes privados incluyen conversación y tiempo, pero no referencia`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
-        insertMoment(id = "m1", content = "今天风很大", at = 10L)
+        insertMoment(id = "m1", content = "hace viento hoy", at = 10L)
 
         val hint = material(at = EVENING).forProactiveChat(CHARACTER_ID)
 
-        assertTrue(hint, hint.contains("用户：在吗 1"))
-        assertTrue(hint, hint.contains("现在是周二晚上九点"))
-        assertFalse("私信与朋友圈无关", hint.contains("上一条我发的动态"))
-        assertFalse("私信不看动态", hint.contains("今天风很大"))
+        assertTrue(hint, hint.contains("Usuario: ¿Estás ahí? 1"))
+        assertTrue(hint, hint.contains("Son las nueve de la noche del martes."))
+        assertFalse("Los mensajes privados no tienen nada que ver con Moments", hint.contains("último post que publiqué"))
+        assertFalse("No leer actualizaciones en mensajes privados", hint.contains("hace viento hoy"))
     }
 
     @Test
-    fun `朋友圈顺序是上下文 时间 收尾指令`() = runBlocking {
+    fun `El orden del círculo de amigos es contexto, tiempo e instrucciones de cierre`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
-        insertMoment(id = "m1", content = "今天风很大", at = 10L)
+        insertMoment(id = "m1", content = "hace viento hoy", at = 10L)
 
-        val hint = material(at = EVENING).forMoment(CHARACTER_ID, focus = "晚上收工，随便聊聊今天")
+        val hint = material(at = EVENING).forMoment(CHARACTER_ID, focus = "Llámalo una noche y hablemos de hoy casualmente.")
 
-        assertTrue(hint, hint.startsWith("最近和用户的对话（旧→新）："))
-        assertTrue("上一条动态在对话之后", hint.indexOf("上一条我发的动态") > hint.indexOf("用户：在吗 1"))
-        assertTrue("时间在动态之后", hint.indexOf("现在是周二") > hint.indexOf("上一条我发的动态"))
-        assertTrue("收尾指令在最后一句", hint.endsWith("这次可以写：晚上收工，随便聊聊今天"))
+        assertTrue(hint, hint.startsWith("Conversaciones recientes con usuarios (antiguas→nuevo):"))
+        assertTrue("La última actualización es después de la conversación.", hint.indexOf("último post que publiqué") > hint.indexOf("Usuario: ¿Estás ahí? 1"))
+        assertTrue("tiempo después de la dinámica", hint.indexOf("ya es martes") > hint.indexOf("último post que publiqué"))
+        assertTrue("El comando de cierre está en la última frase.", hint.endsWith("Esta vez puedes escribir: Termina el día y hablemos de hoy de manera informal."))
     }
 
     @Test
-    fun `私信顺序是上下文 时间 收尾指令`() = runBlocking {
+    fun `El orden de los mensajes privados es contexto, hora e instrucciones de cierre`() = runBlocking {
         seedThread()
         seedMessages(count = 2)
 
-        val hint = material(at = EVENING).forProactiveChat(CHARACTER_ID, focus = "晚上，随口聊两句")
+        val hint = material(at = EVENING).forProactiveChat(CHARACTER_ID, focus = "Por la noche, charlemos informalmente.")
 
-        assertTrue(hint, hint.startsWith("最近和用户的对话（旧→新）："))
-        assertTrue("时间在对话之后", hint.indexOf("现在是周二") > hint.indexOf("用户：在吗 1"))
-        assertTrue("收尾指令在最后一句", hint.endsWith("此刻的由头：晚上，随口聊两句"))
+        assertTrue(hint, hint.startsWith("Conversaciones recientes con usuarios (antiguas→nuevo):"))
+        assertTrue("tiempo después de la conversación", hint.indexOf("ya es martes") > hint.indexOf("Usuario: ¿Estás ahí? 1"))
+        assertTrue("El comando de cierre está en la última frase.", hint.endsWith("El motivo de este momento: Por la noche, una charla informal."))
     }
 
     @Test
-    fun `带上当前时间与时段`() = runBlocking {
+    fun `Trae la hora y el período actual`() = runBlocking {
         val evening = material(at = EVENING).forMoment(CHARACTER_ID)
         val dawn = material(at = DAWN).forMoment(CHARACTER_ID)
 
-        assertTrue(evening, evening.contains("周二"))
-        assertTrue(evening, evening.contains("晚上九点"))
-        assertTrue("晚上属于「夜」", evening.contains("（夜）"))
-        assertTrue("早上属于「早」", dawn.contains("（早）"))
+        assertTrue(evening, evening.contains("martes"))
+        assertTrue(evening, evening.contains("21:00"))
+        assertTrue("La tarde pertenece a la \"noche\"", evening.contains("(noche)"))
+        assertTrue("La mañana pertenece a \"temprano\"", dawn.contains("(mañana)"))
     }
 
     private fun material(at: Long): MpCharacterMaterial = MpCharacterMaterial(
@@ -163,7 +163,7 @@ class MpCharacterMaterialTest {
             insertMessage(
                 index = index,
                 sender = if (index % 2 == 1) MpActorType.USER else MpActorType.CHARACTER,
-                content = "在吗 $index",
+                content = "¿Está ahí? $index",
             )
         }
     }
@@ -197,15 +197,15 @@ class MpCharacterMaterialTest {
 
     private companion object {
         const val CHARACTER_ID: String = "c1"
-        const val CHARACTER_NAME: String = "阿离"
+        const val CHARACTER_NAME: String = "ali"
         const val THREAD_ID: String = "t1"
 
         val ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
 
-        /** 周二 21:00。 */
+        /** Martes 21:00. */
         val EVENING: Long = LocalDateTime.of(2026, 5, 12, 21, 0).atZone(ZONE).toInstant().toEpochMilli()
 
-        /** 周二 06:00。 */
+        /** Martes 06:00. */
         val DAWN: Long = LocalDateTime.of(2026, 5, 12, 6, 0).atZone(ZONE).toInstant().toEpochMilli()
     }
 }

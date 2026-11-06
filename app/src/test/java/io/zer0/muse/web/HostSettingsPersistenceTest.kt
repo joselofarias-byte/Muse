@@ -16,10 +16,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * `settings.update` → 真 [SettingsRepository] → 再读回来。
+ * `settings.update` → Verdadero [SettingsRepository] → Vuelve a leerlo.
  *
- * 前面的 [HostSettingsCommandsTest] 用假仓储验校验逻辑，这里用真 DataStore 验“写进去了没”：
- * 类型校验通过之后，字符串必须在落库那一步被翻成仓库认识的值，而不是只在内存里过了一手。
+ * frente [HostSettingsCommandsTest] Utilice el almacén falso para verificar la lógica de verificación, aquí utilice el DataStore real para verificar“¿Lo has escrito?”:
+ * Después de pasar la verificación de tipo, la cadena debe traducirse a un valor reconocido por el almacén durante el paso de introducción, en lugar de simplemente almacenarse en la memoria.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = SettingsRepositoryTestApplication::class)
@@ -28,14 +28,14 @@ class HostSettingsPersistenceTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     /**
-     * 整个测试类共用一个仓储。
+     * Toda la clase de prueba comparte un repositorio.
      *
-     * 每题新建一个 `SettingsRepository` 会让多个 DataStore 实例同时据着同一个 preferences 文件，
-     * Windows 下下一次写入/改名就会 `AccessDeniedException`（而且会连累同一 JVM 里其他要用设置库的用例）。
+     * Crea una nueva para cada pregunta. `SettingsRepository` permitirá que varias instancias de DataStore hagan referencia al mismo archivo de preferencias al mismo tiempo.
+     * Windows siguiente escritura/solo cambia el nombre `AccessDeniedException`(Y afectará otros casos de uso en la misma JVM que necesitan usar la biblioteca de configuración).
      */
     private val settings: SettingsRepository by lazy { SettingsRepository(context, mockk(relaxed = true)) }
 
-    /** 每题拿到的都是同一个实例（见 [settings] 的说明）。 */
+    /** Cada pregunta recibió el mismo ejemplo (ver [settings] descripción). */
     private fun repository(): SettingsRepository = settings
 
     private fun commands(settings: SettingsRepository) = HostSettingsCommands(
@@ -51,10 +51,10 @@ class HostSettingsPersistenceTest {
             HostSettingsUpdateResult.Applied(HostSettingKeys.PII_GUARD),
             commands(settings).update(HostSettingKeys.PII_GUARD, "true"),
         )
-        assertTrue("布尔写入必须落库", settings.piiGuardEnabledFlow.first())
+        assertTrue("La escritura booleana debe iniciar sesión en la biblioteca.", settings.piiGuardEnabledFlow.first())
 
         commands(settings).update(HostSettingKeys.PII_GUARD, "false")
-        assertFalse("再写 false 必须覆盖回去", settings.piiGuardEnabledFlow.first())
+        assertFalse("Si vuelve a escribir falso, deberá sobrescribirlo.", settings.piiGuardEnabledFlow.first())
     }
 
     @Test
@@ -113,7 +113,7 @@ class HostSettingsPersistenceTest {
         val after = settings.mediaConfigFlow.first()
         assertEquals("openai", after.ttsEngine)
         assertEquals(1.25, after.ttsSpeechRate.toDouble(), 1e-6)
-        assertEquals("改一个字段不能顺手重置别的字段", before.ttsPitch.toDouble(), after.ttsPitch.toDouble(), 1e-6)
+        assertEquals("Cambiar un campo no puede restablecer fácilmente otros campos", before.ttsPitch.toDouble(), after.ttsPitch.toDouble(), 1e-6)
     }
 
     @Test
@@ -125,7 +125,7 @@ class HostSettingsPersistenceTest {
         assertTrue(commands(settings).update("liquidGlassStrength", "101") is HostSettingsUpdateResult.Rejected)
         assertTrue(commands(settings).update("notAKey", "true") is HostSettingsUpdateResult.Rejected)
 
-        assertEquals("被拒的写入不得改库", before, settings.themeModeFlow.first())
+        assertEquals("Las escrituras rechazadas no se pueden cambiar en la base de datos.", before, settings.themeModeFlow.first())
     }
 
     @Test
@@ -141,7 +141,7 @@ class HostSettingsPersistenceTest {
         assertEquals("light", values.getValue("themeMode").value)
         assertEquals("35", values.getValue("liquidGlassStrength").value)
         assertEquals("edge", values.getValue("mediaConfig.ttsEngine").value)
-        // 派生值跟仓库走（预设供应商可能已让 isConfigured 为真），不写死一个期望值。
+        // El valor derivado sigue el almacén (el proveedor predeterminado puede haber hecho que isConfigured sea verdadero), en lugar de codificar un valor esperado.
         assertEquals(
             (settings.providerConfigFlow.first() != null).toString(),
             values.getValue("model.configured").value,

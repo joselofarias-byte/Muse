@@ -25,11 +25,11 @@ import org.robolectric.annotation.Config
 import java.time.Instant
 
 /**
- * v17: 主动消息的牵挂推导不得使用「已出场」（分数低于衰减阈值）的记忆。
+ * v17: La derivación de mensajes activos no debe utilizar memorias que hayan "salido" (la puntuación está por debajo del umbral de caída).
  *
- * 这条路径的产出会写进主动消息的上下文，所以出场的记忆从这里漏进去，
- * 等于「衰减出场」没生效。此处用真实 FactStore（in-memory Room）+ 假的仓库/运行环境，
- * 直接验证推导结果里只剩仍在召回范围内的记忆。
+ * El resultado de esta ruta se escribirá en el contexto del mensaje activo, por lo que la memoria de la aparición se filtrará desde aquí.
+ * Equivale a que la "atenuación" no surta efecto. Aquí el verdadero FactStore (in-memory Room)+ almacén falso/entorno operativo,
+ * La verificación directa de los resultados de la derivación solo deja recuerdos que todavía están dentro del rango de recuperación.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -69,12 +69,12 @@ class ProactiveContextLoaderRecallTest {
     @Test
     fun `deriveThoughts skips suppressed memories`() = runTest {
         val now = Instant.now().toEpochMilli()
-        // 仍在召回中的记忆:命中 CARE 规则,应推导出牵挂
-        val kept = store.add(FactStore.Fact(fact = "最近总是失眠"))
-        // 已出场的记忆:同样命中 CARE 规则,但不许进入推导
+        // recuerdos que aún se recuerdan:Pulsa la regla CUIDADO,la preocupación debe derivarse
+        val kept = store.add(FactStore.Fact(fact = "Últimamente tengo insomnio"))
+        // Recuerdos que han aparecido:También cumple con la regla CARE,Pero no se le permite ingresar la derivación.
         db.factDao().insert(
             FactEntity(
-                fact = "最近总是头疼",
+                fact = "Últimamente siempre tengo dolor de cabeza",
                 tags = "[]",
                 createdAt = Instant.ofEpochMilli(now).toString(),
                 importance = 0,
@@ -87,7 +87,7 @@ class ProactiveContextLoaderRecallTest {
 
         val recorded = slot<PendingThoughtEntity>()
         coVerify(exactly = 1) { thoughts.note(capture(recorded)) }
-        assertEquals("只应为仍在召回中的记忆记账", "fact_$kept", recorded.captured.sourceRef)
-        assertTrue("推导内容不应包含已出场的记忆", !recorded.captured.seed.contains("头疼"))
+        assertEquals("Sólo se deben contabilizar los recuerdos que todavía se recuerdan.", "fact_$kept", recorded.captured.sourceRef)
+        assertTrue("El contenido de la derivación no debe incluir recuerdos que ya hayan aparecido.", !recorded.captured.seed.contains("dolor de cabeza"))
     }
 }

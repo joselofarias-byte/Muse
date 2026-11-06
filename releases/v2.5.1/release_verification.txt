@@ -1,18 +1,18 @@
-Muse v2.5.1 (versionCode 251) 发布校验记录
+Muse v2.5.1 (versionCode 251) Liberar registros de verificación
 ------------------------------------------------
 
 sourceCommit: 59e012a3
-versionName/versionCode: 2.5.1 / 251（显式注入）
-数据库版本: 109（与 2.5.0 相同,无迁移）
+versionName/versionCode: 2.5.1 / 251(inyección explícita)
+Versión de la base de datos: 109(Igual que 2.5.0,sin migración)
 
-门禁
+control de acceso
 ----
 - :app:compileDebugKotlin          PASS
 - :app:detekt                      PASS
-- :app:ktlintKotlinSourceCheck     PASS（基线重建）
-- :app:testDebugUnitTest           PASS（全量 4m38s）
+- :app:ktlintKotlinSourceCheck     PASS(reconstrucción inicial)
+- :app:testDebugUnitTest           PASS(Volumen completo 4m38s)
 
-分发 (E:\1Project\Muse\releases\v2.5.1\)
+Distribuir (E:\1Project\Muse\releases\v2.5.1\)
 -----------------------
 Muse_v2.5.1_arm64-v8a.apk
   size=85640122
@@ -24,8 +24,8 @@ Muse_v2.5.1_universal.apk
   size=160827023
   sha256=0f686aa98e50bf032716c03ffbaf2d58b134cde09d32dc25595d4905324ba4cb
 
-修复内容
+Arreglar contenido
 --------
-工具调用名被中转站空串续片覆盖,导致全部工具调用被清洗丢弃
-(用户实测: glm 与 deepseek-v4.1-flash 均复现,仅有 CoT 无正文)。
-上游+下游双保险修复。
+El nombre de la llamada de la herramienta se sobrescribe con la extensión de cadena vacía de la estación de transferencia,Hace que todas las llamadas a herramientas se limpien y descarten
+(Prueba real del usuario: glm Reproducido con deepseek-v4.1-flash,Sólo CoT sin texto).
+aguas arriba+Reparación de doble seguro aguas abajo.

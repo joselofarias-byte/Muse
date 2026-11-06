@@ -36,17 +36,17 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.6.7 fix (AUDIT F9): 用户偏好管理页。
+ * v2.6.7 fix (AUDIT F9): Página de gestión de preferencias del usuario.
  *
- * 背景：`PreferenceStore` 的 `preferencesFlow` / `remove` / `setEnabled` / `clear`
- * 此前全仓零调用 —— 助手会把「以后别…」记成硬约束，但用户看不到、删不掉、也关不掉。
- * 一条记错的偏好会永久生效。
+ * Antecedentes:`PreferenceStore` de `preferencesFlow` / `remove` / `setEnabled` / `clear`
+ * Anteriormente, no había llamadas a todas las posiciones. —— El asistente te dirá "No lo vuelvas a hacer en el futuro"…”se registra como una restricción estricta, pero el usuario no puede verla, eliminarla ni desactivarla.
+ * Una preferencia mal recordada se vuelve permanente.
  *
- * 这里把已有能力接成可用界面：列出、停用/启用、删除。
- * 新增条目仍由助手经 `remember_preference` 工具完成（那是它的自然入口）。
+ * Aquí las capacidades existentes se conectan a las interfaces disponibles: listar, desactivar/Habilitar, eliminar.
+ * Los asistentes aún procesan nuevas entradas `remember_preference` Finalización de la herramienta (esa es la entrada natural a la misma).
  */
 @Composable
-@Suppress("LongMethod") // 页级组合函数：弹窗与列表同在一处更易读，拆分会引入参数传递
+@Suppress("LongMethod") // Función de combinación a nivel de página: es más fácil leer la ventana emergente y la lista en el mismo lugar, y la división introducirá el paso de parámetros.
 fun UserPreferencePage(onBack: () -> Unit, store: PreferenceStore = koinInject()) {
     val preferences by store.preferencesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
@@ -102,7 +102,7 @@ fun UserPreferencePage(onBack: () -> Unit, store: PreferenceStore = koinInject()
                             scope.launch {
                                 runCatching { store.setEnabled(pref.id, enabled) }
                                     .onFailure {
-                                        Logger.w("UserPreferencePage", "切换偏好状态失败: ${it.message}")
+                                        Logger.w("UserPreferencePage", "No se pudo cambiar el estado de preferencia: ${it.message}")
                                     }
                             }
                         },
@@ -125,7 +125,7 @@ fun UserPreferencePage(onBack: () -> Unit, store: PreferenceStore = koinInject()
                 deleting = null
                 scope.launch {
                     runCatching { store.remove(target.id) }
-                        .onFailure { Logger.w("UserPreferencePage", "删除偏好失败: ${it.message}") }
+                        .onFailure { Logger.w("UserPreferencePage", "Error al eliminar preferencias: ${it.message}") }
                 }
             },
             onDismiss = { deleting = null },

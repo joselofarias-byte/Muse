@@ -4,10 +4,10 @@ import io.zer0.muse.ui.settings.SettingsGroupKind
 import kotlinx.serialization.Serializable
 
 /**
- * 类型安全路由目的地。
+ * Escriba el destino de ruta seguro.
  *
- * 从 [MuseRoutes] 字符串路由逐步迁移；每迁移一个域就在此定义对应
- * @Serializable 目的地，并同步更新 NavGraph 与 navigate 调用。
+ * de [MuseRoutes] El enrutamiento de cadenas se migra gradualmente; cada vez que se migra un dominio, la definición correspondiente está aquí
+ * @Serializable destino y actualizar NavGraph sincrónicamente con las llamadas de navegación.
  */
 @Serializable
 data object ToolsScreenRoute
@@ -24,24 +24,24 @@ data object StatsRoute
 @Serializable
 data object NotificationListenerRoute
 
-/** v1.0.92: 消息渠道配置页(外部 IM 桥接)。 */
+/** v1.0.92: Página de configuración del canal de mensajes(Puente de mensajería instantánea externa). */
 @Serializable
 data object ChannelSettingsRoute
 
-/** v2.0.1: 渠道对话页(按渠道查看联系人对话与上下文)。 */
+/** v2.0.1: Página de conversación del canal(Ver conversaciones de contacto y contexto por canal). */
 @Serializable
 data class ChannelConversationsRoute(val channelId: String)
 
 /**
- * v2.6.10: 单个联系人的会话流页。
+ * v2.6.10: Página de flujo de conversación para un solo contacto.
  *
- * 从「所有联系人平铺、每条消息一行」改成点进去看一整段对话，
- * 气泡形式才能看出谁说了什么、上下文怎么接的。
+ * Cambie de "todos los contactos planos, cada mensaje en una línea" para hacer clic y ver la conversación completa.
+ * Sólo en forma de burbuja se puede ver quién dijo qué y cómo se relacionó el contexto.
  */
 @Serializable
 data class ChannelChatRoute(val channelId: String, val from: String)
 
-/** v1.0.92: OAuth 连接器页(通用 OAuth2 接入)。 */
+/** v1.0.92: OAuth Página del conector(Acceso universal OAuth2). */
 @Serializable
 data object ConnectorSettingsRoute
 
@@ -58,14 +58,14 @@ data object CoverManagerRoute
 data object SettingsRoute
 
 /**
- * 设置一级分类页。
+ * Configure una página de categoría de primer nivel.
  *
- * 首页只列 14 个分类，点进来才是该类的条目；分类由 [SettingsGroupKind] 标识，
- * 页面内容仍从设置清单里取，路由只负责记住「进了哪一类」。
+ * Sólo hay 14 categorías enumeradas en la página de inicio. Haga clic para ingresar las entradas de esa categoría; las categorías están enumeradas por [SettingsGroupKind] logotipo,
+ * El contenido de la página todavía se toma de la lista de configuración y la ruta solo es responsable de recordar "a qué categoría ingresó".
  *
- * 分类用 **字符串 id** 而不是枚举：类型安全导航会按类名反查序列化器，
- * 枚举一旦被 R8 改名，构造路由就会撑 `Cannot find class with name …`（启动即崩）。
- * 字符串 id 不依赖类名，目标页里再自己映射回枚举。
+ * Para clasificación **cuerda id** En lugar de una enumeración: la navegación con seguridad de tipos buscará el serializador por nombre de clase.
+ * Una vez que R8 cambia el nombre de la enumeración, la ruta construida admitirá `Cannot find class with name …`(Se bloquea al iniciar).
+ * La identificación de la cadena no depende del nombre de la clase y se asigna nuevamente a la enumeración en la página de destino.
  */
 @Serializable
 data class SettingsGroupRoute(val kind: String)
@@ -106,7 +106,7 @@ data object SettingsAboutRoute
 @Serializable
 data object SettingsChatRoute
 
-/** v2.6.0: 消息快捷按钮自定义（Via 式全量动作池 + 有序启用列表），从聊天设置进入。 */
+/** v2.6.0: Personalización del botón de acceso directo a mensajes (Via Grupo de acciones completo + Lista de habilitación ordenada), al que se accede desde la configuración del chat. */
 @Serializable
 data object SettingsQuickActionsRoute
 
@@ -126,10 +126,10 @@ data object SettingsMemoryConfigRoute
 data object SettingsMemorySpaceRoute
 
 /**
- * v2.6.10: 表情包库独立页。
+ * v2.6.10: Una página separada para la biblioteca de emoticonos.
  *
- * 原先只在「媒体」页最底部有一段，而「媒体」的副标题只提语音与 TTS，
- * 用户找不到表情包在哪。功能没被删，是被埋了。
+ * Originalmente solo había un párrafo en la parte inferior de la página "Medios", y el subtítulo de "Medios" solo mencionaba voz y TTS.
+ * Los usuarios no pueden encontrar dónde están los emoticonos. La función no ha sido eliminada, ha sido enterrada.
  */
 @Serializable
 data object StickerSettingsRoute
@@ -155,7 +155,7 @@ data object SettingsCrashReportRoute
 @Serializable
 data object SettingsTutorialRoute
 
-/** v2.6.7 fix (AUDIT F9): 用户偏好管理页（助手记住的长期要求）。 */
+/** v2.6.7 fix (AUDIT F9): Página de gestión de preferencias del usuario (requisitos a largo plazo recordados por el asistente). */
 @Serializable
 data object SettingsPreferenceRoute
 
@@ -198,7 +198,7 @@ data object ArtifactCenterRoute
 @Serializable
 data object ConnectionCenterRoute
 
-/** 网页版访问：地址 / PIN / 二维码一屏给出，从设置 → 连接进入。 */
+/** Acceso a la versión web: la dirección/PIN/código QR se proporcionan en una pantalla, desde la configuración → Introduzca la conexión. */
 @Serializable
 data object SettingsWebAccessRoute
 
@@ -262,30 +262,30 @@ data object HomeRoute
 @Serializable
 data object SearchRoute
 
-/** v2.6.7（P1-1）: 角色关系设置页。 */
+/** v2.6.7(P1-1): Página de configuración de relaciones de roles. */
 @Serializable
 data object RelationshipSettingsRoute
 
-/** v2.6.9: 常驻后台设置页。 */
+/** v2.6.9: Página de configuración de fondo permanente. */
 @Serializable
 data object KeepAliveSettingsRoute
 
 /**
- * 小手机入口页（受 `FeatureFlags.MINI_PHONE` 控制）。
+ * Pequeña portada de teléfono celular (sujeta a `FeatureFlags.MINI_PHONE` controlar).
  *
- * 页面内容由 `:miniphone` 模块自绘，主 App 只提供路由与角色/资料；
- * 该模块自带数据库与聊天链路，不再复用主 App 的会话表。
+ * El contenido de la página es proporcionado por `:miniphone` El módulo es autodibujado y la aplicación principal solo proporciona enrutamiento y roles./información;
+ * Este módulo viene con su propia base de datos y enlace de chat, y ya no reutiliza la tabla de sesiones de la aplicación principal.
  */
 @Serializable
 data object MiniPhoneRoute
 
 /**
- * v2.6.7（P0-3）: 小手机内聊天页。
+ * v2.6.7(P0-3): Página de chat en un pequeño teléfono celular.
  *
- * 与 [ChatDetailRoute] 分开：从「消息」Tab 点会话进这里，外壳是微信风格，
- * 返回回到小手机；[ChatDetailRoute] 仍是主 App 的完整对话页。
- * 复用同一个 [io.zer0.muse.ui.ChatScreen]（传 ChatSurface.MINI_PHONE），
- * 不另写一份聊天页，避免与主线长期分叉。
+ * con [ChatDetailRoute] Separado: de "mensaje"Tab Haga clic en la conversación para ingresar aquí. El caparazón es estilo WeChat.
+ * Regrese al teléfono pequeño;[ChatDetailRoute] Sigue siendo la página de conversación completa de la aplicación principal.
+ * Reutilizar lo mismo [io.zer0.muse.ui.ChatScreen](pase ChatSurface.MINI_PHONE),
+ * No escriba otra página de chat para evitar divergencias a largo plazo con la línea principal.
  */
 @Serializable
 data object MiniPhoneChatRoute
@@ -302,14 +302,14 @@ data class GroupChatDetailRoute(val chatId: String)
 @Serializable
 data object ScheduledTasksRoute
 
-/** 通知点击后打开指定任务并自动展开执行历史。 */
+/** Después de hacer clic en la notificación, se abrirá la tarea especificada y el historial de ejecución se expandirá automáticamente. */
 @Serializable
 data class ScheduledTaskRoute(val taskId: String)
 
 @Serializable
 data object QuickNotesRoute
 
-/** 通知点击后打开指定快速记录并自动展开正文。 */
+/** Después de hacer clic en la notificación, se abrirá el registro rápido especificado y el texto principal se expandirá automáticamente. */
 @Serializable
 data class QuickNoteRoute(val noteId: String)
 

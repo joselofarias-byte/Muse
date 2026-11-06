@@ -30,14 +30,14 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * v2.0.1: 飞书长连接接收器 — pbbp2 over WebSocket(免公网)。
+ * v2.0.1: Receptor de conexión larga Feishu — pbbp2 over WebSocket(Red pública gratuita).
  *
- * 流程:POST {openBase}/callback/ws/endpoint 换取 wss 地址(含 service_id)→ 连接 →
- * 周期性 control ping 保活;数据帧按 message_id 分片合并后解析事件,处理完回写 ack
- * (同帧 payload 置为 {"code":200})。兼容飞书中国版与 Lark 国际版(region 字段)。
+ * proceso:POST {openBase}/callback/ws/endpoint A cambio de dirección wss(Contiene service_id)→ conectar →
+ * Ping de control periódico para mantener vivo;El marco de datos se fragmenta y fusiona mediante message_id para analizar el evento.,Escribir después del procesamiento ack
+ * (La carga útil del mismo marco se establece en {"code":200}). Compatible con la versión china Feishu y la versión internacional Lark(region campo).
  *
- * 事件:仅处理 `im.message.receive_v1`;p2p 消息回给发送者 open_id,群消息回给 chat_id
- * (发送侧 [FeishuChannelSender] 按 target 前缀自动判定 receive_id_type)。
+ * evento:Solo proceso `im.message.receive_v1`;p2p mensaje de vuelta al remitente open_id,Mensaje grupal de regreso a chat_id
+ * (lado emisor [FeishuChannelSender] Determinar automáticamente según el prefijo de destino receive_id_type).
  */
 class FeishuReceiver(
     private val channelManager: ChannelManager,
@@ -45,28 +45,28 @@ class FeishuReceiver(
     private val appScope: CoroutineScope,
 ) {
     /**
-     * 当前生效的渠道配置。
+     * La configuración de canal actualmente efectiva.
      *
-     * 图片下载是异步的，需要读到与连接循环同一份配置，
-     * 所以从 connectLoop 的局部变量提升为成员。
+     * La descarga de imágenes es asíncrona y necesita leer la misma configuración que el bucle de conexión.
+     * Entonces la variable local de connectLoop se promueve a miembro.
      */
     @Volatile private var currentConfig: ChannelConfig? = null
 
     private var job: Job? = null
 
-    /** 分片事件缓冲:有界 FIFO 拼装,避免单个异常连接耗尽内存。 */
+    /** Búfer de eventos fragmentado:Conjunto FIFO acotado,Evite que una sola conexión anormal se quede sin memoria. */
     private val frameAssembler = FeishuFrameAssembler()
 
     private data class InboundEvent(
         val from: String,
         val text: String,
         val eventId: String,
-        /** 图片消息的 image_key；非图片消息为 null。 */
+        /** image_key para mensajes con imágenes; nulo para mensajes sin imágenes. */
 
         val imageKey: String? = null,
     )
 
-    /** 启动接收循环(幂等;已有循环先停再起)。 */
+    /** Iniciar bucle de recepción(idempotente;Existe un ciclo de detenerse y luego comenzar de nuevo.). */
     fun restart() {
         job?.cancel()
         job = appScope.launch {
@@ -75,7 +75,7 @@ class FeishuReceiver(
         }
     }
 
-    /** 停止接收。 */
+    /** Deja de recibir. */
     fun stop() {
         job?.cancel()
         job = null
@@ -91,11 +91,11 @@ class FeishuReceiver(
 
             currentConfig = config
             if (config == null) {
-                // v2.6.7: 无启用渠道时**挂起等待配置变化**，不再每 5 秒空转唤醒。
-                // 旧写法 delay(5s)+continue 让五个接收器每分钟合计唤醒 60 次，阻止深度休眠。
-                // 配置变更由 ChannelManager.upsert/remove/refresh 写入 channels；
-                // 设置页保存后还会调 restart() 重进本循环，两条路径都能唤醒。
-                Logger.i(TAG, "无启用中的飞书渠道,接收循环挂起等待配置")
+                // v2.6.7: Cuando no hay ningún canal habilitado**Suspender esperando cambios de configuración**, ya no se activará inactivo cada 5 segundos.
+                // antigua forma de escribir delay(5s)+continue Permite que cinco receptores se despierten un total combinado de 60 veces por minuto, evitando el sueño profundo.
+                // Los cambios de configuración se escriben en los canales mediante ChannelManager.upsert/remove/refresh;
+                // Una vez guardada la página de configuración, se ajustará restart() Al volver a entrar en este ciclo, ambos caminos pueden despertarse.
+                Logger.i(TAG, "No hay ningún canal Feishu activo,El bucle de recepción se bloquea esperando la configuración")
                 channelManager.channels.first { list ->
                     list.any {
                         it.enabled && it.platform == ChannelPlatform.FEISHU &&
@@ -104,19 +104,19 @@ class FeishuReceiver(
                 }
                 continue
             }
-            Logger.i(TAG, "飞书接收循环: 找到渠道 ${config.id},建立连接…")
+            Logger.i(TAG, "Bucle receptor Feishu: encontrar canales ${config.id},Establecer conexión…")
             runCatching { connectOnce(config) }
-                .onFailure { e -> Logger.w(TAG, "飞书连接异常: ${e.message}") }
+                .onFailure { e -> Logger.w(TAG, "Anormalidad en la conexión Feishu: ${e.message}") }
             if (!currentCoroutineContext().isActive) return
             delay(RECONNECT_DELAY_MS)
         }
     }
 
-    /** 建立一次 WebSocket 并挂起至断开。 */
+    /** Establezca un WebSocket una vez y espere hasta que se desconecte. */
     private suspend fun connectOnce(config: ChannelConfig) {
         val endpoint = requestEndpoint(config) ?: return
         val serviceId = queryParam(endpoint.url, "service_id")?.toIntOrNull() ?: 0
-        Logger.i(TAG, "endpoint 就绪(service=$serviceId, ping=${endpoint.pingIntervalSeconds}s),建立 WebSocket…")
+        Logger.i(TAG, "endpoint listo(service=$serviceId, ping=${endpoint.pingIntervalSeconds}s),crear WebSocket…")
         val disconnected = CompletableDeferred<Unit>()
         val socketRef = AtomicReference<WebSocket?>(null)
         val pingJob = appScope.launch {
@@ -131,21 +131,21 @@ class FeishuReceiver(
             request,
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
-                    Logger.i(TAG, "飞书 WS 已连接")
+                    Logger.i(TAG, "Feishu WS está conectado")
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                     runCatching { handleFrame(bytes.toByteArray(), webSocket, config.id) }
-                        .onFailure { e -> Logger.w(TAG, "飞书帧处理失败: ${e.message}") }
+                        .onFailure { e -> Logger.w(TAG, "Falló el procesamiento del marco Feishu: ${e.message}") }
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Logger.w(TAG, "飞书 WS 断开: ${t.message}")
+                    Logger.w(TAG, "Feishu WS desconectado: ${t.message}")
                     disconnected.complete(Unit)
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    Logger.i(TAG, "飞书 WS 关闭(code=$code, reason=$reason)")
+                    Logger.i(TAG, "Feishu WS Cerrar(code=$code, reason=$reason)")
                     disconnected.complete(Unit)
                 }
             },
@@ -157,16 +157,16 @@ class FeishuReceiver(
         }
     }
 
-    /** 帧分派:control(ping/pong)与 data(事件)。 */
+    /** despacho de marco:control(ping/pong)con data(evento). */
     private fun handleFrame(bytes: ByteArray, webSocket: WebSocket, channelId: String) {
         val frame = FeishuPbbp2.decode(bytes)
         when (frame.method) {
-            FeishuPbbp2.METHOD_CONTROL -> Unit // ping 回显 / pong 配置更新(首版忽略)
+            FeishuPbbp2.METHOD_CONTROL -> Unit // ping actualizaciones de configuración de echo /pong(Ignorar en la primera edición)
             FeishuPbbp2.METHOD_DATA -> handleDataFrame(frame, webSocket, channelId)
         }
     }
 
-    /** 数据帧:分片合并 → 事件分发 → ack 回写。 */
+    /** marco de datos:Fusión de fragmentos → distribución de eventos → ack Contestar. */
     private fun handleDataFrame(frame: FeishuPbbp2.Frame, webSocket: WebSocket, channelId: String) {
         val messageId = frame.header("message_id")
         val frameType = frame.header("type")
@@ -181,7 +181,7 @@ class FeishuReceiver(
             dispatchEvent(merged, channelId)
         }
         if (shouldAcknowledgeFeishuEventFrame(messageId, frameType)) {
-            // 每个事件分片都确认传输层已收到;只有完整 payload 才进入上面的业务派发。
+            // Cada fragmento de evento reconoce que la capa de transporte ha recibido;Sólo la carga útil completa ingresa a la distribución de servicios anterior.
             val ackFrame = frame.copy(
                 headers = frame.headers + FeishuPbbp2.Header("biz_rt", "0"),
                 payload = "{\"code\":200}".toByteArray(Charsets.UTF_8),
@@ -192,15 +192,15 @@ class FeishuReceiver(
 
     /**
 
-     * 事件 JSON 派发(仅 im.message.receive_v1)。
+     * Envío de eventos JSON(solo im.message.receive_v1).
 
      *
 
-     * v2.7: 图片消息在这里真正下载 —— 原来 image 只产出 "[图片]" 字面量，
+     * v2.7: Mensaje con imagen real descargar aquí —— Resulta que la imagen solo sale "[fotos]" literal,
 
-     * 模型拿不到字节，视觉辅助也因为 mediaBase64 为空而整条失效。
+     * El modelo no puede obtener los bytes y la ayuda visual falla porque mediaBase64 está vacía.
 
-     * 下载走协程，不阻塞长连接读循环；失败降级成占位文本。
+     * La descarga pasa por la corrutina sin bloquear el bucle de lectura de conexión larga; si falla, se degradará a texto de marcador de posición.
 
      */
 
@@ -232,9 +232,9 @@ class FeishuReceiver(
                     media = ChannelInbox.Media(kind = "image", base64 = base64),
                 )
             } else {
-                Logger.w(TAG, "飞书图片获取失败(from=${event.from})")
+                Logger.w(TAG, "Falló la adquisición de la imagen de Feishu(from=${event.from})")
 
-                ChannelInbox.record(source, "[图片(未能获取)]", "")
+                ChannelInbox.record(source, "[fotos(No se pudo obtener)]", "")
             }
         }
     }
@@ -258,7 +258,7 @@ class FeishuReceiver(
         val supportedEvent = eventType == "im.message.receive_v1"
         val userMessage = senderType == null || senderType == "user"
         val messageReady = from.isNotBlank() && text.isNotBlank()
-        // 图片消息附带 image_key，供后续真正下载；其余类型为 null。
+        // Los mensajes de imagen vienen con image_key para su posterior descarga real; otros tipos son nulos.
 
         val imageKey =
             if (messageType == "image") {
@@ -279,21 +279,21 @@ class FeishuReceiver(
     private fun inboundText(message: JsonObject?, messageType: String): String = feishuInboundText(message, messageType)
 
     /**
-     * v2.6.0 (AUD-CHANNEL-F8): 从飞书消息提取用户可见文本（长连接/webhook 共用）。
-     * webhook 路径此前直接取 message.content 原始串（{"text":"你好"}）当正文，
-     * 模型收到 JSON 并可能复读；此处与长连接路径统一。
+     * v2.6.0 (AUD-CHANNEL-F8): Extraiga texto visible para el usuario de los mensajes de Feishu (conexión larga/webhook compartido).
+     * webhook La ruta anterior tomaba directamente la cadena original message.content ({"text":"Hola"}) como el texto,
+     * El modelo recibe el JSON y puede volver a leerlo; esto es consistente con rutas de conexión largas.
      */
     internal fun feishuInboundText(message: JsonObject?, messageType: String): String = when (messageType) {
         "text" -> parseFeishuTextContent(message?.get("content")?.jsonPrimitive?.contentOrNull.orEmpty())
-        "image" -> "[图片]"
-        "audio" -> "[语音]"
-        "media" -> "[视频]"
-        "file" -> "[文件]"
-        "post" -> "[富文本]"
+        "image" -> "[fotos]"
+        "audio" -> "[Voz]"
+        "media" -> "[vídeo]"
+        "file" -> "[Archivo]"
+        "post" -> "[texto enriquecido]"
         else -> if (messageType.isBlank()) "" else "[$messageType]"
     }
 
-    /** 解析 text 消息 content(JSON 字符串;去掉 @ 占位符)。 */
+    /** Analizar mensajes de texto content(JSON cuerda;Quitar el marcador de posición @). */
     internal fun parseFeishuTextContent(contentJson: String): String = runCatching {
         AppJson.parseToJsonElement(contentJson).jsonObject
             .get("text")?.jsonPrimitive?.contentOrNull.orEmpty()
@@ -301,7 +301,7 @@ class FeishuReceiver(
             .trim()
     }.getOrDefault("")
 
-    /** POST {openBase}/callback/ws/endpoint 换取连接配置。 */
+    /** POST {openBase}/callback/ws/endpoint a cambio de la configuración de la conexión. */
     private suspend fun requestEndpoint(config: ChannelConfig): EndpointInfo? {
         val base = if (config.region == "intl") "https://open.larksuite.com" else "https://open.feishu.cn"
         return runCatching {
@@ -313,21 +313,21 @@ class FeishuReceiver(
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             val code = obj["code"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: -1
             if (code != 0) {
-                error("endpoint 响应 code=$code ${obj["msg"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
+                error("endpoint respuesta code=$code ${obj["msg"]?.jsonPrimitive?.contentOrNull.orEmpty()}")
             }
-            val data = obj["data"]?.jsonObject ?: error("endpoint 响应缺 data")
+            val data = obj["data"]?.jsonObject ?: error("endpoint Falta de respuesta data")
             val url = data["URL"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-                ?: error("endpoint 响应缺 URL")
+                ?: error("endpoint Falta de respuesta URL")
             val pingSeconds = data["ClientConfig"]?.jsonObject
                 ?.get("PingInterval")?.jsonPrimitive?.contentOrNull?.toLongOrNull()
                 ?.takeIf { it > 0 } ?: DEFAULT_PING_SECONDS
             EndpointInfo(url = url, pingIntervalSeconds = pingSeconds)
         }.onFailure { e ->
-            Logger.w(TAG, "飞书长连接 endpoint 获取失败: ${e.message}")
+            Logger.w(TAG, "Falló la adquisición del punto final de conexión larga de Feishu: ${e.message}")
         }.getOrNull()
     }
 
-    /** control ping 帧(service=serviceId)。 */
+    /** control ping marco(service=serviceId). */
     private fun pingFrame(serviceId: Int): ByteArray = FeishuPbbp2.encode(
         FeishuPbbp2.Frame(
             service = serviceId,
@@ -356,19 +356,19 @@ class FeishuReceiver(
     companion object {
         private const val TAG = "FeishuReceiver"
 
-        /** 重连退避(毫秒)。 */
+        /** evitación de reconexión(milisegundos). */
         private const val RECONNECT_DELAY_MS = 5_000L
 
-        /** endpoint 未返回 PingInterval 时的默认心跳周期(秒)。 */
+        /** endpoint El período de latido predeterminado cuando no se devuelve PingInterval(segundos). */
         private const val DEFAULT_PING_SECONDS = 120L
 
-        /** 文本消息中的 @ 占位符(如 @_user_1)。 */
+        /** @ marcador de posición en mensajes de texto(Como por ejemplo @_user_1). */
         private val AT_PLACEHOLDER_REGEX = Regex("@_user_\\d+")
 
         /**
-         * v2.6.0 (AUD-CHANNEL-F8): webhook 路径用的静态入口。
-         * 从 message.content(JSON 串)与 message_type 解析用户可见文本,
-         * 与长连接路径(实例方法 feishuInboundText)同口径。
+         * v2.6.0 (AUD-CHANNEL-F8): webhook Entrada estática para caminos.
+         * de message.content(JSON cuerda)Analizando texto visible para el usuario con message_type,
+         * con largas rutas de conexión(método de instancia feishuInboundText)Mismo calibre.
          */
         internal fun parseFeishuMessageText(content: String, messageType: String): String = when (messageType) {
             "text", "" -> runCatching {
@@ -377,11 +377,11 @@ class FeishuReceiver(
                     .replace(AT_PLACEHOLDER_REGEX, "")
                     .trim()
             }.getOrDefault("")
-            "image" -> "[图片]"
-            "audio" -> "[语音]"
-            "media" -> "[视频]"
-            "file" -> "[文件]"
-            "post" -> "[富文本]"
+            "image" -> "[fotos]"
+            "audio" -> "[Voz]"
+            "media" -> "[vídeo]"
+            "file" -> "[Archivo]"
+            "post" -> "[texto enriquecido]"
             else -> "[$messageType]"
         }
 
@@ -394,7 +394,7 @@ class FeishuReceiver(
                 .build()
         }
 
-        /** 长连接专用客户端(保活)。 */
+        /** Cliente dedicado de conexión larga(mantener vivo). */
         private val WS_CLIENT: OkHttpClient by lazy {
             io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
                 .connectTimeout(15, TimeUnit.SECONDS)

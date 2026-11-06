@@ -4,18 +4,18 @@ import java.io.File
 import java.util.Locale
 
 /**
- * 媒体类型判定：先看文件头，再退到扩展名。
+ * Determinación del tipo de medio: primero mire el encabezado del archivo y luego vuelva a la extensión.
  *
- * 消息图片落盘时用的是 `.bin` 后缀（`{messageId}_{idx}_{hash}.bin`），扩展名给不出信息；
- * 语音存档的后缀来自 TTS 返回的容器（wav/m4a/mp3 都可能）。两侧都不可靠时，
- * 文件头是唯一的判据，所以先看头、后看名字。
+ * Cuando la imagen del mensaje se comercializa, se utiliza `.bin` sufijo (`{messageId}_{idx}_{hash}.bin`), la extensión no proporciona ninguna información;
+ * El sufijo del archivo de voz proviene del contenedor devuelto por TTS (wav/m4a/mp3 son posibles). Cuando ambas partes no son confiables,
+ * El encabezado del archivo es el único criterio, así que mire primero el encabezado y luego el nombre.
  *
- * 返回 `application/octet-stream` 表示判不出来 —— 路由仍会把文件发出去，
- * 只是浏览器会当附件处理，不会因此 404。
+ * Regresar `application/octet-stream` Dijo que no podía decir —— El enrutador seguirá enviando el archivo,
+ * Es sólo que el navegador lo tratará como un archivo adjunto y no generará un error 404.
  */
 internal object HostMediaContentType {
 
-    /** 读文件头用的字节数：够覆盖各格式的 magic number（最长的是 12 字节的 RIFF/WEBP）。 */
+    /** El número de bytes utilizados para leer el encabezado del archivo: el número mágico que es suficiente para cubrir cada formato (el más largo es RIFF/WEBP de 12 bytes). */
     private const val HEADER_BYTES = 16
 
     const val OCTET_STREAM = "application/octet-stream"
@@ -30,7 +30,7 @@ internal object HostMediaContentType {
     private const val WAV = "audio/wav"
     private const val OGG = "audio/ogg"
 
-    /** 扩展名 → MIME。与 [MIME_TO_EXTENSION] 互为反向，只收录媒体目录里真会出现的类型。 */
+    /** extensión → MIME. con [MIME_TO_EXTENSION] Son inversos entre sí y solo incluyen tipos que realmente aparecen en el directorio de medios. */
     private val EXTENSION_TO_MIME = mapOf(
         "png" to PNG,
         "jpg" to JPEG,
@@ -58,10 +58,10 @@ internal object HostMediaContentType {
         OGG to "ogg",
     )
 
-    /** MIME → 落盘用的扩展名；未知类型返回 null（不落盘，不发链接）。 */
+    /** MIME → La extensión utilizada para la colocación del disco; para tipos desconocidos, se devuelve nulo (sin ubicación en disco, sin envío de enlace). */
     fun extensionFor(mime: String): String? = MIME_TO_EXTENSION[mime.lowercase(Locale.ROOT).substringBefore(';')]
 
-    /** 按文件头判定；判不出返回 null。图片与音频各判一半。 */
+    /** Determinar según el encabezado del archivo; devuelve nulo si no se determina. Las imágenes y el audio recibirán la mitad del premio cada uno. */
     fun detect(head: ByteArray): String? = detectImage(head) ?: detectAudio(head)
 
     private fun detectImage(head: ByteArray): String? = when {
@@ -79,16 +79,16 @@ internal object HostMediaContentType {
         ascii(head, 0, 4) == "OggS" -> OGG
         ascii(head, 0, 3) == "ID3" -> MP3
         head.size >= 8 && ascii(head, 4, 4) == "ftyp" -> MP4
-        // ADTS 帧同步字：11 个 1，首字节 0xFF、次字节高 6 位全 1。
-        // 无 ID3 头的裸 MPEG 帧与 ADTS 开头重合，判不成时由扩展名兑底。
+        // ADTS Palabra de sincronización de cuadros:11 Cada uno es 1, el primer byte es 0xFF y los 6 bits superiores del segundo byte son todos unos.
+        // El fotograma MPEG desnudo sin encabezado ID3 coincide con el comienzo de ADTS. Si la sentencia falla, la prórroga se utilizará para determinar el fin.
         head[0] == 0xFF.toByte() && head[1].toInt() and 0xF6 == 0xF0 -> AAC
         else -> null
     }
 
     /**
-     * 判定已落盘文件的类型：文件头优先，判不出再看扩展名，都不认识返回 [OCTET_STREAM]。
+     * Determinar el tipo de archivo que se ha descargado: se da prioridad al encabezado del archivo. Si no se puede determinar, mire la extensión. Si no lo reconoces regresa [OCTET_STREAM].
      *
-     * 读头失败（文件被并发清理、无权限）返回 null，由调用方兑底；不当错误抛出去。
+     * Si el cabezal de lectura falla (el archivo se limpia al mismo tiempo y no hay permiso), se devuelve nulo, que será corregido por la persona que llama; se arroja un error inapropiado.
      */
     fun of(file: File): String? {
         val head = readHead(file) ?: return null
@@ -96,10 +96,10 @@ internal object HostMediaContentType {
     }
 
     /**
-     * 读文件头。
+     * Lea el encabezado del archivo.
      *
-     * 不用 `InputStream.readNBytes`：那是 API 33 才有的方法。文件比预期短时补零，
-     * 判定函数本就按长度取前几字节。
+     * No hay necesidad `InputStream.readNBytes`: Ese es un método que solo está disponible en API 33. Relleno cero cuando el archivo es más corto de lo esperado.
+     * La función de determinación simplemente toma los primeros bytes según la longitud.
      */
     private fun readHead(file: File): ByteArray? = runCatching {
         val buffer = ByteArray(HEADER_BYTES)
@@ -114,7 +114,7 @@ internal object HostMediaContentType {
         buffer
     }.getOrNull()
 
-    /** `data:` URI 里声明的类型；无声明返回 null。 */
+    /** `data:` URI El tipo declarado en; devuelve nulo si no se declara. */
     fun declaredMime(value: String): String? {
         if (!value.startsWith("data:")) return null
         val header = value.substringAfter("data:").substringBefore(',', "")
@@ -122,7 +122,7 @@ internal object HostMediaContentType {
         return header.substringBefore(';').takeIf { it.contains('/') }?.lowercase(Locale.ROOT)
     }
 
-    /** 剥掉 `data:…;base64,` 前缀，返回纯 base64 载荷。 */
+    /** Despegar `data:…;base64,` prefijo, devuelve una carga útil base64 pura. */
     fun inlinePayload(value: String): String = value.substringAfter(',', value)
 
     private fun ascii(bytes: ByteArray, offset: Int, length: Int): String =

@@ -9,15 +9,15 @@ import io.zer0.ai.core.ModelContextWindowRegistry
 import io.zer0.ai.core.ModelVerification
 
 /**
- * 模型能力注册表。
+ * Registro de capacidades del modelo.
  *
- * 通过声明式规则定义主流模型能力；模型 ID 命中时，
- * 注册表返回解析后的能力/模态/工具。
+ * Definir las capacidades del modelo principal a través de reglas declarativas; cuando llega la identificación del modelo,
+ * El registro devuelve capacidades analizadas/modal/Herramientas.
  *
- * 上层模块使用它来自动适配请求参数：
- *  - 是否发送工具（函数调用）
- *  - 是否包含图片（视觉输入）
- *  - 是否启用推理/思考
+ * El módulo superior lo utiliza para adaptar automáticamente los parámetros de la solicitud:
+ *  - Ya sea para enviar herramientas (llamadas a funciones)
+ *  - Si incluir imágenes (entrada visual)
+ *  - Ya sea para habilitar la inferencia/pensar
  */
 object ModelRegistry {
 
@@ -39,7 +39,7 @@ object ModelRegistry {
         toolReasoningAbility()
     }
 
-    // v1.0.8: GPT-5 系列(旗舰 / mini / nano / codex 等)
+    // v1.0.8: GPT-5 Serie(buque insignia / mini / nano / codex espera)
     private val GPT_5 = defineModel {
         tokens("gpt", "5")
         notTokens(".")
@@ -177,7 +177,7 @@ object ModelRegistry {
         reasoningAbility()
     }
 
-    // v1.0.8: DeepSeek V4 系列(含 flash / pro 等变体)
+    // v1.0.8: DeepSeek V4 Serie(Contiene flash/pro y otras variantes)
     private val DEEPSEEK_V4 = defineModel {
         tokens("deepseek", "v", "4")
         toolReasoningAbility()
@@ -216,15 +216,15 @@ object ModelRegistry {
         reasoningAbility()
     }
 
-    // v1.0.1 (P3): Qwen2-VL 系列(开源视觉模型,中转站常见)
-    // v1.0.4: 支持 grounding(qwen 格式 bbox_2d + point_2d)
+    // v1.0.1 (P3): Qwen2-VL Serie(Modelo de visión de código abierto,Común en estaciones de transferencia)
+    // v1.0.4: apoyo grounding(qwen Formato bbox_2d + point_2d)
     private val QWEN2_VL = defineModel {
         tokens("qwen", "2", "vl")
         visionInput()
         visionGrounding("qwen")
     }
 
-    // ─── 其他 ───
+    // ─── Otros ───
 
     private val GLM_4 = defineModel {
         tokens("glm", "4")
@@ -239,14 +239,14 @@ object ModelRegistry {
         toolAbility()
     }
 
-    // v1.0.1 (P3): GLM-4V 系列(智谱视觉模型,中转站常见)
+    // v1.0.1 (P3): GLM-4V Serie(Modelo visual de espectro inteligente,Común en estaciones de transferencia)
     private val GLM_4V = defineModel {
         tokens("glm", "4", "v")
         visionInput()
         toolAbility()
     }
 
-    // v1.0.1 (P3): GLM-V 系列(智谱视觉模型简写,如 glm-v-4plus)
+    // v1.0.1 (P3): GLM-V Serie(Abreviatura del modelo visual del espectro de sabiduría,Como por ejemplo glm-v-4plus)
     private val GLM_V = defineModel {
         tokens("glm", "v")
         visionInput()
@@ -256,7 +256,7 @@ object ModelRegistry {
         toolAbility()
     }
 
-    // v1.0.1 (P3): Doubao Vision 系列(火山引擎视觉模型)
+    // v1.0.1 (P3): Doubao Vision Serie(Modelo visual del motor del volcán.)
     private val DOUBAO_VISION = defineModel {
         tokens("doubao", "vision")
         visionInput()
@@ -272,7 +272,7 @@ object ModelRegistry {
         toolAbility()
     }
 
-    // v1.0.8: MiniMax M2.5 / M2.7 / M1 系列
+    // v1.0.8: MiniMax M2.5 / M2.7 / M1 Serie
     private val MINIMAX_M2_5 = defineModel {
         tokens("minimax", "m", "2", "5")
         toolAbility()
@@ -295,20 +295,20 @@ object ModelRegistry {
         toolAbility()
     }
 
-    // v1.0.8: Kimi K2 系列(如 kimi-k2, kimi-k2.5, kimi-k2.7 等)
+    // v1.0.8: Kimi K2 Serie(Como por ejemplo kimi-k2, kimi-k2.5, kimi-k2.7 espera)
     private val KIMI_K2 = defineModel {
         tokens("kimi", "k", "2")
         toolReasoningAbility()
     }
 
-    // v1.0.53: Kimi K2.6 — 多模态版本(视觉+文本输入),精确规则分数高于 KIMI_K2,不会误伤 k2/k2.5
+    // v1.0.53: Kimi K2.6 — versión multimodal(Visión+Entrada de texto),La puntuación de la regla exacta es mayor que KIMI_K2,Sin lesiones accidentales k2/k2.5
     private val KIMI_K2_6 = defineModel {
         tokens("kimi", "k", "2", "6")
         visionInput()
         toolReasoningAbility()
     }
 
-    // v1.0.1 (P3): Kimi Vision(Moonshot 视觉模型,如 moonshot-v1-8k-vision-preview)
+    // v1.0.1 (P3): Kimi Vision(Moonshot modelo visual,Como por ejemplo moonshot-v1-8k-vision-preview)
     private val KIMI_VISION = defineModel {
         tokens("kimi", "vision")
         visionInput()
@@ -332,37 +332,37 @@ object ModelRegistry {
         toolAbility()
     }
 
-    // v1.0.1 (P3): InternVL 系列(开源视觉模型,OpenRouter/HuggingFace 常见)
+    // v1.0.1 (P3): InternVL Serie(Modelo de visión de código abierto,OpenRouter/HuggingFace común)
     private val INTERN_VL = defineModel {
         tokens("intern", "vl")
         visionInput()
     }
 
-    // v1.0.1 (P3): CogVLM 系列(清华开源视觉模型)
+    // v1.0.1 (P3): CogVLM Serie(Modelo visual de código abierto de Tsinghua)
     private val COG_VLM = defineModel {
         tokens("cog", "vlm")
         visionInput()
     }
 
-    // v1.0.1 (P3): Step-VL 系列(阶跃星辰视觉模型)
+    // v1.0.1 (P3): Step-VL Serie(Modelo visual de estrella de paso)
     private val STEP_VL = defineModel {
         tokens("step", "vl")
         visionInput()
     }
 
-    // v1.0.1 (P3): LLaVA 系列(开源视觉模型)
+    // v1.0.1 (P3): LLaVA Serie(Modelo de visión de código abierto)
     private val LLAVA = defineModel {
         tokens("llava")
         visionInput()
     }
 
-    // v1.0.1 (P3): Pixtral 系列(Mistral 视觉模型)
+    // v1.0.1 (P3): Pixtral Serie(Mistral modelo visual)
     private val PIXTRAL = defineModel {
         tokens("pixtral")
         visionInput()
     }
 
-    // ─── 全部模型列表 ───
+    // ─── Toda la lista de modelos ───
 
     private val ALL_MODELS = listOf(
         GPT4O, GPT_4_1, OPENAI_O_MODELS, GPT_5, GPT_5_1, GPT_5_4, GPT_5_CODEX,
@@ -378,16 +378,16 @@ object ModelRegistry {
         MINIMAX, MINIMAX_M3, MINIMAX_M2_5, MINIMAX_M2_7, MINIMAX_M1,
         GROK, KIMI, KIMI_K2, KIMI_K2_6, KIMI_VISION, YI,
         LLAMA_3, MISTRAL_LARGE, MISTRAL,
-        // v1.0.1 (P3): 开源/中转站常见视觉模型
+        // v1.0.1 (P3): Código abierto/Modelos visuales comunes de estaciones de transferencia.
         INTERN_VL, COG_VLM, STEP_VL, LLAVA, PIXTRAL,
     )
 
     /**
-     * 解析给定模型 ID 的能力。
-     * 返回按分数排序的最佳匹配定义。
+     * La capacidad de resolver un ID de modelo determinado.
+     * Devuelve las definiciones que mejor coinciden ordenadas por puntuación.
      *
-     * v1.135: 先按原始 modelId 匹配;未命中时剥掉中转/聚合平台前缀再试一次,
-     * 解决 `opencode-go/deepseek-v3` 这类 ID 无法识别能力的问题。
+     * v1.135: Primera coincidencia según el modelId original;Despegue la transferencia si falla/Prefijo de plataforma de agregación, inténtelo de nuevo,
+     * resolver `opencode-go/deepseek-v3` Este tipo de identificación no puede identificar el problema.
      */
     fun resolveDefinitions(modelId: String): List<ModelDefinition> {
         val result = matchDefinitions(modelId)
@@ -415,23 +415,23 @@ object ModelRegistry {
     }
 
     /**
-     * 剥掉常见中转/聚合平台前缀(如 openrouter/、opencode-go/)。
-     * 若不含前缀,则返回最后一个 `/` 之后的部分(兜底)。
+     * Franja de tránsito común/Prefijo de plataforma de agregación(Como openrouter/,opencode-go/).
+     * Sin prefijo,luego devuelve el ultimo `/` la parte despues(Ten todo en cuenta).
      *
-     * v1.0.1 (P3): 补全国内常见中转站前缀(siliconflow/、dashscope/、baichuan/、lingyi/ 等),
-     *  兜底逻辑(substringAfterLast("/"))其实已能处理任意前缀,但显式列出可避免
-     *  某些带版本号前缀(如 "accounts/fireworks/models/")被错误剥离。
+     * v1.0.1 (P3): Complemente los prefijos de estaciones de tránsito comunes en todo el país(siliconflow/,dashscope/,baichuan/,lingyi/ espera),
+     *  Lógica consecutiva(substringAfterLast("/"))De hecho, puede manejar cualquier prefijo.,Sin embargo, una lista explícita evita
+     *  Algunos tienen el prefijo de números de versión.(Como por ejemplo "accounts/fireworks/models/")Despojado por error.
      */
     private fun stripAggregatorPrefix(modelId: String): String {
         val raw = modelId.trim().lowercase()
-        // v2.6.1: 先剥中转站前导分组标签(如 `[ais]gemini-3.8-flash`),再按聚合前缀处理。
+        // v2.6.1: Primero retire la etiqueta del paquete principal de la estación de tránsito.(Como por ejemplo `[ais]gemini-3.8-flash`),Luego procéselo de acuerdo con el prefijo de agregación.
         val deLabeled = io.zer0.ai.core.stripChannelGroupLabels(raw)
         val prefixes = listOf(
-            // 海外聚合站
+            // Estación de agregación en el extranjero
             "openrouter/", "opencode-go/", "anthropic/", "google/", "openai/",
             "meta-llama/", "mistralai/", "nousresearch/", "deepinfra/", "togethercomputer/",
             "accounts/fireworks/models/", "presets/",
-            // v1.0.1 (P3): 国内中转站 / 聚合站
+            // v1.0.1 (P3): Estación de transferencia nacional/estación de agregación
             "siliconflow/", "dashscope/", "baichuan/", "lingyi/", "lingyiwanwu/",
             "stepfun/", "zhipu/", "bigmodel/", "minimax/", "moonshot/",
             "doubao/", "volcengine/", "ark/", "hunyuan/", "qwen/", "aliyun/",
@@ -443,12 +443,12 @@ object ModelRegistry {
     }
 
     /**
-     * 解析模型 ID 对应的能力。
+     * La capacidad de analizar la ID del modelo correspondiente.
      */
     fun resolveAbilities(modelId: String): Set<ModelAbility> = resolveDefinitions(modelId).flatMap { it.abilities }.toSet()
 
     /**
-     * 解析模型 ID 对应的输入模态。
+     * Analice el modo de entrada correspondiente al ID del modelo.
      */
     fun resolveInputModalities(modelId: String): Set<String> {
         val defs = resolveDefinitions(modelId)
@@ -457,7 +457,7 @@ object ModelRegistry {
     }
 
     /**
-     * 解析模型 ID 对应的输出模态。
+     * Analice el modo de salida correspondiente al ID del modelo.
      */
     fun resolveOutputModalities(modelId: String): Set<String> {
         val defs = resolveDefinitions(modelId)
@@ -466,66 +466,66 @@ object ModelRegistry {
     }
 
     /**
-     * 检查模型是否支持视觉输入。
+     * Compruebe si el modelo admite entrada visual.
      */
     fun supportsVision(modelId: String): Boolean = "image" in resolveInputModalities(modelId)
 
     /**
-     * 检查模型是否支持工具调用。
+     * Compruebe si el modelo admite llamadas a herramientas.
      */
     fun supportsToolCalling(modelId: String): Boolean = ModelAbility.TOOL in resolveAbilities(modelId)
 
     /**
-     * 检查模型是否支持推理/思考。
+     * Compruebe si el modelo admite la inferencia./Pensar.
      */
     fun supportsReasoning(modelId: String): Boolean = ModelAbility.REASONING in resolveAbilities(modelId)
 
     /**
-     * 用注册表解析出的能力增强 [Model]。
-     * 仅填充尚未显式设置的字段。
+     * Capacidad mejorada para utilizar el análisis del registro. [Model].
+     * Sólo se completan los campos que no se han configurado explícitamente.
      *
-     * v1.0.8: 增强兜底链路 — 当 token 规则未命中时,回退到 [KnownModels] 与
-     * [ModelContextWindowRegistry],补全 contextWindow / maxOutputTokens / modalities / abilities。
+     * v1.0.8: Mejorar los enlaces finales — Cuando falla la regla del token,Recurrir a [KnownModels] con
+     * [ModelContextWindowRegistry],completo contextWindow / maxOutputTokens / modalities / abilities.
      *
-     * v1.0.8 (7.4): 中转站误标检测 — 即使 registry 未命中(defs 为空),也用 KnownModels
-     *  作为权威来源覆盖上游的错误声明:
-     *  - 上游声明 supportsVision=true 但 KnownModels 明确标记为纯文本模型(inputModalities={text})
-     *    → 以 KnownModels 为准,移除 image 模态,supportsVision=false
-     *  - 上游声明 supportsVideo=true 但 KnownModels 未标记 video(outputModalities 不含 video)
-     *    → 忽略上游声明,supportsVideo=false
-     *  仅在 KnownModels 有明确声明时触发(避免对未知模型误覆盖)。
+     * v1.0.8 (7.4): Detección de etiquetado incorrecto en la estación de transferencia — Incluso si el registro falla(defs esta vacio),También usado KnownModels
+     *  Cubra las afirmaciones falsas de upstream como fuente autorizada:
+     *  - declaración ascendente supportsVision=true Pero los KnownModels están marcados explícitamente como modelos de texto sin formato.(inputModalities={text})
+     *    → Sujeto a modelos conocidos,Quitar imagen modal,supportsVision=false
+     *  - declaración ascendente supportsVideo=true Pero KnownModels no está marcado video(outputModalities no contiene video)
+     *    → Ignorar la declaración ascendente,supportsVideo=false
+     *  Solo se activa cuando los KnownModels se declaran explícitamente(Evite coberturas erróneas de modelos desconocidos).
      */
     // ──────────────────────────────────────────────────────────────
-    // 模型能力目录(双轨第 1 轨)
+    // Catálogo de capacidades de modelos(Doble vía 1)
     // ──────────────────────────────────────────────────────────────
 
-    /** 当前生效的能力目录;由 app 层在启动/刷新后通过 [installCatalog] 注入。 */
+    /** Catálogo de capacidades actualmente vigente;Iniciado por la capa de aplicación./Pasar después de actualizar [installCatalog] Inyectar. */
     @Volatile
     private var catalog: io.zer0.ai.core.ModelCatalog = io.zer0.ai.core.ModelCatalog()
 
-    /** 注入/替换能力目录(线程安全:volatile 整体替换)。 */
+    /** inyectar/Reemplazar directorio de capacidades(Seguridad del hilo:volatile Reemplazo completo). */
     fun installCatalog(newCatalog: io.zer0.ai.core.ModelCatalog) {
         catalog = newCatalog
-        // 兼容性派生([io.zer0.ai.core.ProviderCompatRules])读同一份目录:
-        // 目录里显式声明的兼容性画像优先于 host 硬编码表。
+        // Compatibilidad derivada([io.zer0.ai.core.ProviderCompatRules])Leer el mismo directorio:
+        // Los perfiles de compatibilidad declarados explícitamente en los directorios tienen prioridad sobre las tablas de host codificadas.
         io.zer0.ai.core.ProviderCompatRules.installCatalog(newCatalog)
     }
 
     /**
-     * v2.x（用户反馈 #3-1）: 该 providerId 是否为**内置逻辑供应商**。
+     * v2.x(Comentarios del usuario n.º 3-1): Si el ID del proveedor es**Proveedor de lógica incorporado**.
      *
-     * 判断依据:目录 providers 段里是否存在该键。用户自建供应商(含中转站)的 providerId
-     * 是运行时生成的(如 provider-xxxx)，不在内置目录里 → 返回 false。
+     * Base del juicio:Si la clave existe en la sección de proveedores de directorio. Proveedores creados por el usuario(Incluye estación de transferencia)de providerId
+     * se genera en tiempo de ejecución(Como por ejemplo provider-xxxx), no en el directorio integrado → Devuelve falso.
      *
-     * 用途:能力目录对内置供应商是权威(可纠正上游误标)，对非内置供应商则只作参考 ——
-     * 避免把中转站接入的同一模型名锁死（详见 ModelCapabilityQuery.visionInput 的降级逻辑）。
+     * Propósito:El catálogo de capacidades es autorizado para los proveedores integrados.(Error de etiquetado aguas arriba corregible), para proveedores no integrados, es solo como referencia ——
+     * Evite bloquear el mismo nombre de modelo conectado a la estación de transferencia (consulte la lógica de degradación de ModelCapabilityQuery.visionInput para obtener más detalles).
      */
     fun isBuiltInCatalogProvider(providerId: String?): Boolean {
         if (providerId.isNullOrBlank()) return false
         return catalog.providers.containsKey(providerId)
     }
 
-    /** 目录查询:先按 providerId + modelId 精确命中,再退回按模型名全局查。 */
+    /** consulta de directorio:Primero presione proveedorId + modeloId para acertar con precisión,Luego regrese a la búsqueda global por nombre de modelo. */
     private fun catalogEntryFor(providerId: String, modelId: String): io.zer0.ai.core.ModelCatalogEntry? {
         if (modelId.isBlank()) return null
         val current = catalog
@@ -533,16 +533,16 @@ object ModelRegistry {
         if (providerId.isNotBlank()) {
             current.entryOf(providerId, modelId)?.let { return it }
         }
-        // 用户自建供应商的 providerId 是运行时生成的,与目录逻辑名对不上 → 按模型名全局查。
+        // El ID de proveedor del proveedor creado por el usuario se genera en tiempo de ejecución.,No coincide con el nombre lógico del directorio → Busque globalmente por nombre de modelo.
         return current.entryByModelId(modelId)
     }
 
-    /** 查询当前生效目录中的模型条目,供能力预检边界复用同一真源。 */
+    /** Consultar entradas del modelo en el directorio activo actual,Proporciona límites de verificación previa de capacidad para reutilizar la misma fuente de verdad. */
     fun catalogEntryOf(modelId: String, providerId: String? = null): ModelCatalogEntry? = catalogEntryFor(providerId.orEmpty(), modelId)
 
     private fun resolveCatalogAbilities(model: Model, entry: ModelCatalogEntry): Set<ModelAbility> = buildSet {
         addAll(model.abilities)
-        // toolUse 缺省仍按现有契约保留工具能力,只有显式 false 才关闭。
+        // toolUse De forma predeterminada, las capacidades de la herramienta se conservan según el contrato existente.,Sólo se desactiva si es explícitamente falso.
         when (entry.toolUse?.supportsTools) {
             false -> remove(ModelAbility.TOOL)
             true -> add(ModelAbility.TOOL)
@@ -572,7 +572,7 @@ object ModelRegistry {
         }
     }
 
-    /** 把已声明的目录字段应用到模型;未声明的视觉/推理字段保留已有解析结果。 */
+    /** Aplicar campos de catálogo declarados al modelo.;visión no declarada/El campo de inferencia conserva los resultados del análisis existente. */
     private fun applyCatalogEntry(model: Model, entry: io.zer0.ai.core.ModelCatalogEntry): Model {
         val contextWindow = entry.context?.toInt() ?: model.contextWindow
         val maxOutputTokens = entry.maxOutput?.toInt() ?: model.maxOutputTokens
@@ -587,12 +587,12 @@ object ModelRegistry {
     }
 
     fun enhanceModel(model: Model): Model {
-        // v2.6.1: 用户显式编辑过能力的模型，直接原样返回 —— 不再用注册表/规格文档覆盖。
-        // 修复“打开多模态开关保存后又变回去”：用户设置存于 ProviderConfig.models，
-        // 读回时被本函数的能力校准覆盖，导致用户修改丢失。
+        // v2.6.1: Los modelos cuyas capacidades hayan sido editadas explícitamente por el usuario se devolverán directamente tal como están. —— No más registro/Documentación de especificaciones cubierta.
+        // Reparación“Encienda el interruptor multimodal y vuelva a cambiarlo después de guardar.”: La configuración del usuario se almacena en ProviderConfig.models,
+        // Cuando se vuelve a leer, la calibración de capacidad de esta función lo sobrescribe, lo que provoca que se pierdan las modificaciones del usuario.
         if (model.userEdited) return model
         val catalogEntry = catalogEntryFor(model.providerId, model.id)
-        // 先解析硬编码规格与 KnownModels,让目录未声明的字段有可靠回退值。
+        // Primero analice las especificaciones codificadas y KnownModels,Permitir que los campos no declarados en el catálogo tengan valores alternativos confiables.
 
         val defs = resolveDefinitions(model.id)
         val knownInfo = KnownModels.lookup(model.id)
@@ -601,10 +601,10 @@ object ModelRegistry {
         val resolvedInput = defs.flatMap { it.inputModalities }.toSet()
         val resolvedOutput = defs.flatMap { it.outputModalities }.toSet()
         val resolvedTools = defs.flatMap { it.builtInTools }.toSet()
-        // v1.0.4: 取首个非 null 的 visionCapabilities(Gemini/Qwen-VL 等 grounding 模型)
+        // v1.0.4: Obtener el primer no nulo visionCapabilities(Gemini/Qwen-VL etc. modelo de puesta a tierra)
         val resolvedVisionCaps = defs.firstNotNullOfOrNull { it.visionCapabilities }
 
-        // abilities: 模型已有 > registry > KnownModels
+        // abilities: El modelo ya existe > registry > KnownModels
         val newAbilities = when {
             model.abilities.isNotEmpty() -> model.abilities
             resolvedAbilities.isNotEmpty() -> resolvedAbilities
@@ -612,18 +612,18 @@ object ModelRegistry {
             else -> emptySet()
         }
 
-        // inputModalities: 当 registry 命中已知模型时,以 registry 为权威(覆盖上游/中转站的错误声明);
-        // 未命中时保持原逻辑(模型已有 > KnownModels > 默认)。
-        // v1.137: 修复中转站错误标记文本模型(如 DeepSeek V4)为 vision,
-        // 导致视觉辅助被跳过、图片直发纯文本模型触发 400 或被当作空白的问题。
-        // v1.0.8 (7.4): 进一步加强 — 即使上游声明 inputModalities 含 image(非纯 text),
-        //  只要 KnownModels 明确标记为纯文本(inputModalities={text}),覆盖上游声明。
+        // inputModalities: Cuando el registro llega a un modelo conocido,Usar el registro como autoridad(Cubrir aguas arriba/Declaración de error de la estación de transferencia);
+        // Mantenga la lógica original cuando falte(El modelo ya existe > KnownModels > Predeterminado).
+        // v1.137: Corregir el modelo de texto de etiqueta incorrecto de la estación de tránsito(Como por ejemplo DeepSeek V4)para vision,
+        // Un problema que provoca que se omitan las ayudas visuales, que las imágenes se envíen directamente a modelos de solo texto para activar un 400 o que se traten como en blanco.
+        // v1.0.8 (7.4): fortalecer aún más — Incluso si la declaración ascendente de inputModalities contiene image(impuro text),
+        //  Siempre que los KnownModels estén marcados explícitamente como texto sin formato(inputModalities={text}),Anule la declaración ascendente.
         //
-        // issue #3.1: 「上游声明优先」的例外 —— 上游**明确声明支持 image** 时不覆盖。
-        // 此前 defs.isNotEmpty() 无条件用注册表结果盖掉模型自身声明,导致中转站上
-        // 确实支持多模态的同名模型(如 deepseek-v4.1-flash)被内置标签判为纯文本,
-        // 识图完全不可用。内置注册表只是对主流模型的猜测,上游声明是实际能力,
-        // 两者冲突时应以上游为准(用户仍可在「编辑模型能力」中手动纠正并置 userEdited)。
+        // issue #3.1: Excepciones a "la declaración ascendente tiene prioridad" —— aguas arriba**apoyo estatal explícito image** no cubierto.
+        // anteriormente defs.isNotEmpty() Sobrescribir incondicionalmente la propia declaración del modelo con los resultados del registro.,conducir a la estación de transferencia
+        // Un modelo del mismo nombre que sí admite multimodalidad.(Como por ejemplo deepseek-v4.1-flash)Determinado como texto sin formato mediante etiquetas integradas,
+        // El reconocimiento de imágenes no está disponible en absoluto. El registro integrado es sólo una suposición del modelo principal.,La declaración ascendente es la capacidad real.,
+        // En caso de conflicto entre ambos, prevalecerá el de aguas arriba.(Los usuarios aún pueden corregir manualmente las yuxtaposiciones en Editar capacidades del modelo userEdited).
         val declaredImage = "image" in model.inputModalities
         val newInput = when {
             defs.isNotEmpty() && !declaredImage -> resolvedInput
@@ -634,11 +634,11 @@ object ModelRegistry {
                     else -> model.inputModalities
                 }
             }
-            // v1.0.8 (7.4): 中转站误标检测 — 上游声明含 image 但 KnownModels 明确标记为纯文本
+            // v1.0.8 (7.4): Detección de etiquetado incorrecto en la estación de transferencia — La declaración ascendente contiene una imagen, pero los KnownModels están marcados explícitamente como texto sin formato.
             else -> {
                 val knownInput = knownInfo?.inputModalities?.map { it.wireName }?.toSet()
                 if (!knownInput.isNullOrEmpty() && "image" !in knownInput) {
-                    // KnownModels 明确声明该模型为纯文本(不含 image),覆盖上游误标
+                    // KnownModels Declarar explícitamente que el modelo es texto plano.(no contiene image),Cubrir el etiquetado incorrecto aguas arriba
                     knownInput
                 } else {
                     model.inputModalities
@@ -646,8 +646,8 @@ object ModelRegistry {
             }
         }
 
-        // outputModalities: 同 inputModalities 逻辑
-        // v1.0.8 (7.4): 中转站误标检测 — 上游声明含 video 但 KnownModels 未标记 video
+        // outputModalities: Igual que la lógica de inputModalities
+        // v1.0.8 (7.4): Detección de etiquetado incorrecto en la estación de transferencia — La declaración ascendente contiene video pero los KnownModels no están marcados video
         val newOutput = when {
             defs.isNotEmpty() -> resolvedOutput
             model.outputModalities.size == 1 && "text" in model.outputModalities -> {
@@ -657,11 +657,11 @@ object ModelRegistry {
                     else -> model.outputModalities
                 }
             }
-            // v1.0.8 (7.4): 中转站误标检测 — 上游声明含 video 但 KnownModels 不含 video
+            // v1.0.8 (7.4): Detección de etiquetado incorrecto en la estación de transferencia — La declaración ascendente contiene vídeo pero KnownModels no. video
             else -> {
                 val knownOutput = knownInfo?.outputModalities?.map { it.wireName }?.toSet()
                 if (!knownOutput.isNullOrEmpty() && "video" !in knownOutput && "video" in model.outputModalities) {
-                    // KnownModels 明确声明该模型输出不含 video,忽略上游误标
+                    // KnownModels Declarar explícitamente que la salida del modelo no contiene video,Ignorar el etiquetado incorrecto ascendente
                     knownOutput
                 } else {
                     model.outputModalities
@@ -669,41 +669,41 @@ object ModelRegistry {
             }
         }
 
-        // contextWindow: 模型已有 > KnownModels > ModelContextWindowRegistry
+        // contextWindow: El modelo ya existe > KnownModels > ModelContextWindowRegistry
         val newContextWindow = model.contextWindow
             ?: knownInfo?.contextWindow
             ?: ModelContextWindowRegistry.lookup(model.id)
 
-        // maxOutputTokens: 模型已有 > KnownModels
+        // maxOutputTokens: El modelo ya existe > KnownModels
         val newMaxOutputTokens = model.maxOutputTokens ?: knownInfo?.maxOutputTokens
 
-        // v1.0.53: 计算数据可信度 — VERIFIED / SUSPICIOUS / UNVERIFIED
-        // - 命中本地规格文档(knownInfo 非空 或 defs 非空)即标 VERIFIED 起步
-        // - 检测上游声明的异常字段,有异常则降级为 SUSPICIOUS
-        // - 未命中本地文档则 UNVERIFIED(保持默认值)
+        // v1.0.53: Calcular la credibilidad de los datos — VERIFIED / SUSPICIOUS / UNVERIFIED
+        // - Acceda al documento de especificaciones local(knownInfo no nulo o defs no nulo)Comience con VERIFICADO
+        // - Detectar campos de excepción declarados por upstream,Si hay una excepción, se degradará a SUSPICIOUS
+        // - Entonces falta el documento local. UNVERIFIED(mantener el valor predeterminado)
         val hitLocalRegistry = knownInfo != null || defs.isNotEmpty()
         val verification = if (!hitLocalRegistry) {
             ModelVerification.UNVERIFIED
         } else {
-            // 异常检测:上游声明与本地规格文档冲突的字段
+            // Detección de anomalías:Declaración ascendente de campos que entran en conflicto con el documento de especificación local
             var suspicious = false
-            // 异常1: 上游 contextWindow 为 0 或负数(明显错误)
+            // anormal1: La ventana de contexto ascendente es 0 o negativa(error obvio)
             if (model.contextWindow != null && model.contextWindow <= 0) suspicious = true
-            // 异常2: 上游声明 supportsVision=true 但 KnownModels 标记为纯文本
+            // anormal2: declaración ascendente supportsVision=true Pero los KnownModels están marcados como texto sin formato.
             if (model.supportsVision && knownInfo?.inputModalities?.isNotEmpty() == true &&
                 Modality.IMAGE !in knownInfo.inputModalities
             ) {
                 suspicious = true
             }
-            // 异常3: 上游声明 supportsVideo=true 但 KnownModels 未标记 video 输出
+            // anormal3: declaración ascendente supportsVideo=true Pero la salida de vídeo no está marcada por KnownModels.
             if (model.supportsVideo && knownInfo?.outputModalities?.isNotEmpty() == true &&
                 Modality.VIDEO !in knownInfo.outputModalities
             ) {
                 suspicious = true
             }
-            // 异常4: 上游声明 maxOutputTokens=0(明显错误)
+            // anormal4: declaración ascendente maxOutputTokens=0(error obvio)
             if (model.maxOutputTokens != null && model.maxOutputTokens <= 0) suspicious = true
-            // 异常5: 输出上限不可能大于上下文窗口；只标记可疑，不静默改写用户目录。
+            // anormal5: El límite superior de salida no puede ser mayor que la ventana de contexto; sólo marca sospechoso y no reescribe silenciosamente el directorio de usuarios.
             val hasInvalidOutputLimit = newContextWindow?.let { window ->
                 window > 0 && newMaxOutputTokens?.let { limit -> limit > window } == true
             } == true
@@ -717,33 +717,33 @@ object ModelRegistry {
             inputModalities = newInput,
             outputModalities = newOutput,
             tools = if (model.tools.isEmpty()) resolvedTools else model.tools,
-            // v1.137: registry 命中时 supportsVision/supportsVideo 完全由 newInput/newOutput 派生,
-            // 不保留上游可能错误的标记(中转站常见把纯文本模型误标为 vision)。
-            // 未命中时保持原逻辑(上游 > newInput)。
-            // v1.0.8 (7.4): 进一步加强 — 即使 registry 未命中(defs 为空),
-            //  若 KnownModels 明确声明不含 image/video,也覆盖上游误标的 supportsVision/supportsVideo。
+            // v1.137: registry Cuando accede a supportVision/supportsVideo se deriva completamente de newInput/newOutput,
+            // No retener posibles etiquetas erróneas desde aguas arriba(Las estaciones repetidoras a menudo etiquetan erróneamente los modelos de texto plano como vision).
+            // Mantenga la lógica original cuando falte(aguas arriba > newInput).
+            // v1.0.8 (7.4): fortalecer aún más — Incluso si el registro falla(defs esta vacio),
+            //  Si KnownModels indica explícitamente que no contiene image/video,También anula los soportesVision/supportsVideo mal etiquetados en sentido ascendente.
             supportsVision = when {
                 defs.isNotEmpty() -> "image" in newInput
-                // v1.0.8 (7.4): KnownModels 明确声明为纯文本时,以上游 supportsVision 为 false
+                // v1.0.8 (7.4): KnownModels Cuando se declara explícitamente como texto sin formato,Tomando soporte upstreamVision como false
                 knownInfo?.inputModalities?.isNotEmpty() == true &&
                     "image" !in (knownInfo.inputModalities.map { it.wireName }.toSet()) -> false
                 else -> model.supportsVision || "image" in newInput
             },
             supportsVideo = when {
                 defs.isNotEmpty() -> "video" in newOutput
-                // v1.0.8 (7.4): KnownModels 明确声明输出不含 video 时,忽略上游 supportsVideo
+                // v1.0.8 (7.4): KnownModels Cuando se indica explícitamente que la salida no contiene vídeo,Ignorar aguas arriba supportsVideo
                 knownInfo?.outputModalities?.isNotEmpty() == true &&
                     "video" !in (knownInfo.outputModalities.map { it.wireName }.toSet()) -> false
                 else -> model.supportsVideo || "video" in newOutput
             },
-            // v1.0.4: 仅当模型未显式声明时才用 registry 解析的值
+            // v1.0.4: Valores resueltos con registro sólo si el modelo no está declarado explícitamente
             visionCapabilities = model.visionCapabilities ?: resolvedVisionCaps,
             contextWindow = newContextWindow,
             maxOutputTokens = newMaxOutputTokens,
-            // v1.0.53: 填充数据可信度标注,供 UI 提示用户
+            // v1.0.53: Complete la anotación de credibilidad de los datos,Para que la interfaz de usuario solicite al usuario
             verification = verification,
         )
-        // 显式目录字段优先;缺失的 image/reasoning 保留上面的既有能力解析结果。
+        // Los campos de directorio explícitos tienen prioridad;La imagen/razonamiento que falta conserva la capacidad existente de analizar los resultados anteriores.
         return catalogEntry?.let { applyCatalogEntry(resolvedModel, it) } ?: resolvedModel
     }
 }

@@ -18,38 +18,38 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * v2.0: Telegram Bot API 客户端 — 纯 HTTP/JSON,长轮询收消息(免公网)。
+ * v2.0: Telegram Bot API cliente — puro HTTP/JSON,Sondeo largo para recibir mensajes(Red pública gratuita).
  *
- * 接入:用户在 Telegram 里找 @BotFather 创建机器人拿到 Bot Token(填 appSecret);
- * 收消息用 getUpdates 长轮询,回复用 sendMessage 发到 chat_id。
- * 与微信 ClawBot 同构:出站连接,不需要公网地址与隧道。
+ * Acceso:Los usuarios buscan @BotFather en Telegram para crear un robot y conseguirlo Bot Token(rellenar appSecret);
+ * Recibir mensajes usando el sondeo largo getUpdates,Las respuestas se envían a chat_id mediante sendMessage.
+ * Isomórfico con WeChat ClawBot:Conexión saliente,No se requiere ninguna dirección de red pública ni túnel.
  */
 internal object TelegramClient {
 
     private val HTTP: OkHttpClient by lazy {
         io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
-            // 长轮询服务端 hold 约 30s,读超时需大于该值
+            // El servidor de votación prolongado retiene aproximadamente 30s,El tiempo de espera de lectura debe ser mayor que este valor.
             .readTimeout(45, TimeUnit.SECONDS)
             .build()
     }
 
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    /** 一条入站消息。 */
+    /** Un mensaje entrante. */
     data class InboundMsg(
         val chatId: Long,
         val text: String,
         val chatType: String,
         val updateId: Long? = null,
-        /** 图片消息的 file_id；非图片为 null。 */
+        /** file_id para mensajes de imagen; nulo para no imágenes. */
         val photoFileId: String? = null,
     )
 
-    /** getUpdates 结果。nextOffset 为下次请求应携带的 offset(最后 update_id + 1)。 */
+    /** getUpdates resultados.nextOffset ¿Qué se debe llevar para la próxima solicitud? offset(finalmente update_id + 1). */
     data class Updates(val messages: List<InboundMsg>, val nextOffset: Long?)
 
-    /** 长轮询收消息。 */
+    /** Sondeo largo para recibir mensajes. */
     suspend fun getUpdates(token: String, offset: Long?, timeoutSeconds: Int = 30): Result<Updates> = withContext(Dispatchers.IO) {
         runCatching {
             val params = buildString {
@@ -63,7 +63,7 @@ internal object TelegramClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             if (obj["ok"]?.jsonPrimitive?.booleanOrNull == false) {
                 error(
-                    "Telegram getUpdates 失败: " +
+                    "Telegram getUpdates falló: " +
                         obj["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                 )
             }
@@ -78,7 +78,7 @@ internal object TelegramClient {
                 }
                 val message = update["message"] as? JsonObject ?: continue
                 val text = message["text"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                // photo 是尺寸数组，最后一项最大。
+                // photo es una variedad de tamaños, siendo el último elemento el más grande.
                 val photoFileId = (message["photo"] as? JsonArray)
                     ?.lastOrNull()
                     ?.let { it as? JsonObject }
@@ -101,7 +101,7 @@ internal object TelegramClient {
         }
     }
 
-    /** 取文件路径：getFile 换 file_path。 */
+    /** Obtenga la ruta del archivo:getFile Reemplace ruta_archivo. */
 
     suspend fun getFile(token: String, fileId: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
@@ -116,17 +116,17 @@ internal object TelegramClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
 
             if (obj["ok"]?.jsonPrimitive?.booleanOrNull == false) {
-                error("Telegram getFile 失败")
+                error("Telegram getFile falló")
             }
 
             obj["result"]?.jsonObject
 
                 ?.get("file_path")?.jsonPrimitive?.contentOrNull.orEmpty()
-                .ifBlank { error("getFile 未返回 file_path") }
+                .ifBlank { error("getFile No devuelto file_path") }
         }
     }
 
-    /** 按 file_path 下载字节。 */
+    /** Descargar bytes por file_path. */
 
     suspend fun downloadFile(token: String, filePath: String): Result<ByteArray> = withContext(Dispatchers.IO) {
         runCatching {
@@ -144,7 +144,7 @@ internal object TelegramClient {
         }
     }
 
-    /** 发送文本到指定会话(chat_id 兼容数字与 @channelusername 两种形式)。 */
+    /** Enviar texto a una conversación específica(chat_id Compatible tanto con números como con formularios @channelusername). */
     suspend fun sendMessage(token: String, chatId: String, text: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val body = buildJsonObject {
@@ -159,21 +159,21 @@ internal object TelegramClient {
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             if (obj["ok"]?.jsonPrimitive?.booleanOrNull == false) {
                 error(
-                    "Telegram 发送失败: " +
+                    "Telegram Envío fallido: " +
                         obj["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                 )
             }
         }
     }
 
-    /** v2.0.1: 校验 Bot Token — getMe 成功时返回 bot 用户名(如 @xxx_bot)。 */
+    /** v2.0.1: verificar Bot Token — getMe Devuelve el nombre de usuario del bot en caso de éxito.(Como por ejemplo @xxx_bot). */
     suspend fun getMe(token: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val resp = request("GET", "https://api.telegram.org/bot$token/getMe").getOrThrow()
             val obj = AppJson.parseToJsonElement(resp).jsonObject
             if (obj["ok"]?.jsonPrimitive?.booleanOrNull == false) {
                 error(
-                    "Telegram 校验失败: " +
+                    "Telegram La verificación falló: " +
                         obj["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                 )
             }

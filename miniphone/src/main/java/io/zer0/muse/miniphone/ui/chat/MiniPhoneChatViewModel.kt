@@ -25,17 +25,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * 单个会话的聊天页状态。
+ * Estado de la página de chat para una sola sesión.
  *
- * 这里只做两件事:把协作方产出的状态聚成 [uiState],把界面的调用转给它该去的一方。
- * 打开线程与翻页在 [ChatPagingController],发送与收回复在 [ChatSendController],
- * 图片存盘在 [ChatMediaWriter],三处共用的落库路径在 [ChatMessageWriter]。
- * 界面只读 [uiState],不碰 DAO,也不自己判断「该不该发网络请求」。
+ * Sólo dos cosas que hacer aquí:Agregar el estado producido por los colaboradores en [uiState],Transfiera la llamada de interfaz a la parte a la que debe dirigirse.
+ * Abrir hilos y pasar páginas en [ChatPagingController],Enviar y recibir respuestas en [ChatSendController],
+ * Las imágenes se guardan en [ChatMediaWriter],El camino de bajada compartido por las tres ubicaciones está en [ChatMessageWriter].
+ * Interfaz de solo lectura [uiState],no tocar DAO,Tampoco decides por ti mismo si debes enviar una solicitud de red o no.
  *
- * @param imageStore 图片落盘器:选中的图先复制进私有目录,库里只存本地路径
- * @param groupStore 群成员管理(改名、加人、踢人、解散)的写入口
- * @param clock 拼消息行用的两个可替换来源:现在几点、下一批 id
- * @param pauseBetweenResponders 群里两个角色之间的停顿;默认 600–1200ms,测试注入空实现就不必等
+ * @param imageStore bandeja de fotos:La imagen seleccionada se copia primero en el directorio privado.,Sólo las rutas locales se almacenan en la biblioteca.
+ * @param groupStore Gestión de miembros del grupo(Cambiar nombre, agregar personas, expulsar personas, disolver)puerto de escritura
+ * @param clock Dos fuentes alternativas para deletrear mensajes:¿Qué hora es ahora, próximo lote? id
+ * @param pauseBetweenResponders Una pausa entre dos personajes del grupo.;Predeterminado 600–1200ms,Las pruebas que inyectan implementaciones vacías no tienen que esperar
  */
 class MiniPhoneChatViewModel(
     private val threadId: String,
@@ -53,7 +53,7 @@ class MiniPhoneChatViewModel(
 
     val uiState: StateFlow<ChatUiState> = mutableState.asStateFlow()
 
-    /** 群成员管理:改名、加人、移出、解散。界面把这一份直接交给成员页。 */
+    /** Gestión de miembros del grupo:Cambiar nombre, agregar personas, mudarse, disolverse. La interfaz envía esta copia directamente a la página de miembros. */
     internal val groupAdmin: GroupAdminController = GroupAdminController(
         threadId = threadId,
         threadDao = threadDao,
@@ -64,13 +64,13 @@ class MiniPhoneChatViewModel(
         scope = viewModelScope,
     )
 
-    /** 宿主给的最后一份角色列表,补名字与头像用。 */
+    /** La última lista de personajes dada por el anfitrión.,Se utiliza para complementar el nombre y el avatar. */
     private var peerCharacters: List<MpCharacter> = emptyList()
 
-    /** 群成员行(库里那份),按入群先后;补上名字后才进状态。 */
+    /** Fila de miembros del grupo(la parte del curry),Pulsa para unirte al grupo;Ingrese el estado después de completar el nombre. */
     private var memberRows: List<MpThreadMemberEntity> = emptyList()
 
-    /** 可见期间清未读的作业;离页时取消。 */
+    /** Borrar tareas no leídas durante el período visible;Cancelar al salir de la página. */
     private var markReadJob: Job? = null
 
     private val writer = ChatMessageWriter(
@@ -125,18 +125,18 @@ class MiniPhoneChatViewModel(
     )
 
     init {
-        // 宿主的两条流:角色名单用来补名字与头像,本机资料用来补自己那侧的头像
+        // Dos corrientes del anfitrión.:La lista de personajes se utiliza para completar el nombre y el avatar.,Los datos locales se utilizan para compensar tu propio avatar.
         viewModelScope.launch {
             host.observeCharacters()
                 .catch { emit(emptyList()) }
                 .collect { characters ->
                     peerCharacters = characters
-                    // 群成员管理要先把「不在群里的人」列出来,所以整份名单也要进状态
+                    // Para administrar los miembros del grupo, primero debe enumerar las "personas que no están en el grupo".,Por lo tanto, también es necesario introducir la lista completa.
                     mutableState.update { it.copy(characters = characters) }
                     applyThreadInfo()
                 }
         }
-        // 群成员行:私信会话没有行,这条流直接是空的,不需要另走一条分支
+        // Fila de miembros del grupo:Las conversaciones de mensajes privados no funcionan,Esta secuencia está directamente vacía.,No es necesario tomar otra sucursal.
         viewModelScope.launch {
             memberDao.observeMembers(threadId)
                 .catch { emit(emptyList()) }
@@ -157,7 +157,7 @@ class MiniPhoneChatViewModel(
                     }
                 }
         }
-        // 语音输入能不能用只问一次:进页时问、整个停留期间不变,不必跟设置页实时联动
+        // Solo pregunte una vez si se puede utilizar la entrada de voz.:La hora de entrada a la página y toda la estancia se mantienen sin cambios.,No es necesario vincularse con la página de configuración en tiempo real.
         viewModelScope.launch {
             val supported = host.supportsVoiceTranscription()
             mutableState.update { it.copy(voiceInputAvailable = supported) }
@@ -166,23 +166,23 @@ class MiniPhoneChatViewModel(
         sender.start()
     }
 
-    /** 滚到顶时加载更早的一页。 */
+    /** Cargue una página anterior cuando se desplace hacia la parte superior. */
     fun loadOlder() {
         paging.loadOlder()
     }
 
-    /** 进页时清未读;同一个会话退出再进会复用本对象,界面那时会再调一次。 */
+    /** Borrar no leído al ingresar a la página;Salir y volver a entrar en la misma sesión reutilizará este objeto.,La interfaz se ajustará nuevamente en ese momento. */
     fun markRead() {
         paging.markRead()
     }
 
     /**
-     * 页面可见性。可见期间只要这个会话的消息条数变化(进页、来了新消息)就把未读清零:
-     * 后台主动私信落进正在看的会话时,会话列表不该留下一个未读角标。
+     * Visibilidad de la página. Durante el período visible, siempre que cambie la cantidad de mensajes en esta conversación(Ingrese a la página, viene un nuevo mensaje.)Borrar no leídos:
+     * Cuando un mensaje privado activo cae en la conversación que estás viendo en segundo plano,Las listas de conversaciones no deben dejar una marca de no leído.
      *
-     * 跟踪的是库里那份消息流,而不是界面窗口:后台写入不经过本页的写入回调,
-     * 只有表本身变化才能看见它。用 Flow 收集而不是定时查询:没有新消息就零数据库写入。
-     * 离页即取消 —— 在别处也不断清未读的话,用户会永远看不到后台消息的提示。
+     * Lo que sigo es el flujo de noticias de Curry.,en lugar de la ventana de la interfaz:La escritura en segundo plano no pasa por la devolución de llamada de escritura de esta página.,
+     * Sólo se puede ver si la propia tabla cambia. Utilice Flow para recopilar en lugar de consultas programadas:No hay mensajes nuevos, cero escrituras en la base de datos.
+     * Cancelar al salir de la página —— También sigo borrando palabras no leídas en otros lugares.,Los usuarios nunca verán mensajes de fondo.
      */
     fun setVisible(visible: Boolean) {
         markReadJob?.cancel()
@@ -199,39 +199,39 @@ class MiniPhoneChatViewModel(
         }
     }
 
-    /** 发送一条文本。 */
+    /** Envía un mensaje de texto. */
     fun send(text: String) {
         sender.send(text)
     }
 
-    /** 发送若干张图,按选择顺序各落一条。 */
+    /** envía algunas fotos,Suelte uno en orden de selección. */
     fun sendImages(uris: List<Uri>) {
         sender.sendImages(uris)
     }
 
-    /** 重发一条自己发出的文本:同一行原地重走一次发送流程。 */
+    /** Reenviar un mensaje de texto que enviaste:Repita el proceso de envío para la misma línea en su lugar. */
     fun resend(messageId: String) {
         sender.resend(messageId)
     }
 
-    /** 本机删掉一条消息;会话本身不动。 */
+    /** Eliminar un mensaje localmente;La sesión en sí no se mueve. */
     fun deleteMessage(messageId: String) {
         viewModelScope.launch { writer.delete(messageId) }
     }
 
     /**
-     * 把用户录的一段 WAV 转成文字。
+     * Convierte un WAV grabado por el usuario en texto.
      *
-     * 转写能力归宿主:模块负责采集与展示,这里只把字节递过去。
-     * 失败返回 null,由输入栏提示「没听清」—— 录音本身不落库,也不发出去。
+     * La capacidad de transcribir pertenece al anfitrión.:El módulo es responsable de la recopilación y visualización.,Aquí solo se pasan bytes.
+     * Retorno del fracaso null,El campo de entrada indica "no escuché con claridad"—— La grabación en sí no se deja en la biblioteca.,Tampoco enviado.
      */
     suspend fun transcribeVoice(wavBytes: ByteArray): String? = host.transcribeVoice(wavBytes)
 
     /**
-     * 落一条角色发的图片。
+     * Deja una foto del personaje.
      *
-     * 本阶段没有任何地方真的生成图片,这个方法留给后续角色发图与测试用;
-     * 界面里不提供任何演示入口,调用方自己负责保证 [localFile] 已经存在。
+     * En realidad, no se genera ninguna imagen en ninguna parte en esta etapa.,Este método está reservado para pruebas y dibujos de personajes posteriores.;
+     * La interfaz no proporciona ninguna entrada de demostración.,La persona que llama es responsable de garantizar que [localFile] ya existe.
      */
     suspend fun insertCharacterImage(threadId: String, characterId: String, localFile: String) {
         media.storeCharacterImage(threadId, characterId, localFile)
@@ -242,19 +242,19 @@ class MiniPhoneChatViewModel(
         super.onCleared()
     }
 
-    /** 会话行读出来时:先补对方,再补群成员。两件事都靠角色名单,分两个函数读起来更直。 */
+    /** Cuando se lee la línea de conversación:Complementa a la otra parte primero,Reponer a los miembros del grupo. Ambas cosas dependen de la lista de personajes.,Dividirlo en dos funciones hace que su lectura sea más sencilla. */
     private fun applyThreadInfo() {
         applyPeer()
         applyMembers()
     }
 
-    /** 角色名单到了、或会话的角色 id 到位时,把名字与头像补进状态。 */
+    /** Cuando llega la lista de roles o la identificación del rol de la sesión está en su lugar,Agregue el nombre y el avatar al estado. */
     private fun applyPeer() {
         val characterId = mutableState.value.characterId
         if (characterId.isEmpty()) return
         val peer = peerCharacters.firstOrNull { it.id == characterId }
         if (peer == null) {
-            // 有名单却没这个人:角色被删了;名单还没到就保持现状
+            // Hay una lista pero esta persona no está:El personaje fue eliminado.;Mantenga el status quo hasta que llegue la lista.
             if (peerCharacters.isNotEmpty()) mutableState.update { it.copy(peerName = UNKNOWN_CHARACTER_NAME) }
             return
         }
@@ -267,10 +267,10 @@ class MiniPhoneChatViewModel(
     }
 
     /**
-     * 群成员的接话候选。
+     * Candidatos a miembros del grupo para atender llamadas.
      *
-     * 优先用界面上那一份(名字已经配好);成员流还没到就先问库 —— 刚点进群就发一句,
-     * 也不该因为成员列表晚到一步就没人接话。
+     * Priorizar el que está en la interfaz.(El nombre ha sido asignado);Antes de que llegue el flujo de membresía, pregunte primero en la biblioteca —— Simplemente haga clic para unirse al grupo y publicar una oración.,
+     * Tampoco nadie debe contestar la llamada sólo porque la lista de miembros llega tarde.
      */
     private suspend fun responderCandidates(): List<GroupResponderCandidate> {
         val rendered = mutableState.value.members
@@ -288,11 +288,11 @@ class MiniPhoneChatViewModel(
     }
 
     /**
-     * 把群成员行配上名字与头像。
+     * Haga coincidir los nombres y avatares de los miembros del grupo.
      *
-     * 成员行是库里的那几行,名字来自宿主名单:角色被删了就退化成占位名,但这一行要留着 ——
-     * 群人数与历史消息里的发言人还得对上,列表不该因为一个人消失而变短。
-     * 私信会话没有成员行,这里什么也不写。
+     * Las filas de miembros son las de la biblioteca.,El nombre proviene de la lista de hosts.:Cuando se elimina un carácter, se convierte en un nombre de marcador de posición.,Pero esta línea debería permanecer ——
+     * El número de personas del grupo debe coincidir con el del portavoz en la noticia histórica.,La lista no debería acortarse sólo porque una persona desaparezca.
+     * La conversación de mensaje privado no tiene fila de miembros,No escribas nada aquí.
      */
     private fun applyMembers() {
         if (!mutableState.value.isGroup) return

@@ -30,9 +30,9 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 外壳状态合成:四条流(会话 / 角色 / 资料 / 自动发朋友圈开关)进,一份 [ShellUiState] 出。
+ * Síntesis del estado de la cáscara:cuatro corrientes(Conversación/Rol/Perfil/Enviar automáticamente al interruptor Momentos)entrar,una porción [ShellUiState] afuera.
  *
- * 用假 DAO、假宿主与假设置,把「谁查库」这件事钉在 ViewModel 里 —— 界面拿到的必须已经是成品。
+ * Usar DAO falsos, hosts falsos y configuraciones falsas,Fije la cuestión de "quién verifica la base de datos" en ViewModel —— La interfaz que obtenga ya debe ser un producto terminado.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MiniPhoneShellViewModelTest {
@@ -59,8 +59,8 @@ class MiniPhoneShellViewModelTest {
                 ),
             ),
             host = FakeHost(
-                characters = listOf(MpCharacter(id = "c1", name = "阿离"), MpCharacter(id = "c2", name = "Bob")),
-                profile = MpProfile(nickname = "子奇", signature = "在写小手机"),
+                characters = listOf(MpCharacter(id = "c1", name = "ali"), MpCharacter(id = "c2", name = "Bob")),
+                profile = MpProfile(nickname = "Ziqi", signature = "Escribir en un teléfono celular pequeño"),
             ),
             settings = FakeAutoStore(),
             store = FakeConversationActions(),
@@ -70,10 +70,10 @@ class MiniPhoneShellViewModelTest {
         val state = viewModel.uiState.first { it.threads.isNotEmpty() }
 
         assertEquals(listOf("t2", "t1"), state.threads.map { it.id })
-        assertEquals(listOf("Bob", "阿离"), state.threads.map { it.name })
+        assertEquals(listOf("Bob", "ali"), state.threads.map { it.name })
         assertEquals(listOf(1, 0), state.threads.map { it.unreadCount })
         assertEquals(listOf("B", "#"), state.contactSections.map { it.key })
-        assertEquals("子奇", state.profile.nickname)
+        assertEquals("Ziqi", state.profile.nickname)
     }
 
     @Test
@@ -103,7 +103,7 @@ class MiniPhoneShellViewModelTest {
             groupStore = FakeGroupActions(),
         )
 
-        // 开关关着时状态得跟着关(默认值是 true,所以这里能看出上游真的接上了)
+        // Cuando el interruptor está apagado, el estado debe estar apagado.(El valor predeterminado es true,Aquí podemos ver que el flujo ascendente está realmente conectado.)
         val off = viewModel.uiState.first { !it.autoMomentEnabled }
         assertFalse(off.autoMomentEnabled)
 
@@ -127,7 +127,7 @@ class MiniPhoneShellViewModelTest {
         val first = viewModel.openOrCreateThread("c1")
         val second = viewModel.openOrCreateThread("c1")
 
-        assertEquals("同一个人重复点只能落在同一条会话上", first, second)
+        assertEquals("Los puntos duplicados para la misma persona sólo pueden recaer en la misma conversación.", first, second)
         assertEquals(1, threads.stored.size)
         assertEquals("c1", threads.stored.single().characterId)
     }
@@ -146,7 +146,7 @@ class MiniPhoneShellViewModelTest {
         val existing = viewModel.openOrCreateThread("c2")
         val created = viewModel.openOrCreateThread("c3")
 
-        assertEquals("c2 已有会话,直接用旧的", "t-old", existing)
+        assertEquals("c2 Ya tengo una sesión,Solo usa el viejo", "t-old", existing)
         assertNotEquals(existing, created)
         assertEquals(2, threads.stored.size)
         assertEquals(listOf("c2", "c3"), threads.stored.map { it.characterId }.sorted())
@@ -164,7 +164,7 @@ class MiniPhoneShellViewModelTest {
         )
 
         assertNull(viewModel.openOrCreateThread("  "))
-        assertTrue("空角色不开会话", threads.stored.isEmpty())
+        assertTrue("El rol vacío no abre una sesión", threads.stored.isEmpty())
     }
 
     @Test
@@ -174,23 +174,23 @@ class MiniPhoneShellViewModelTest {
             threadDao = FakeThreadDao(emptyList()),
             host = FakeHost(
                 characters = listOf(
-                    MpCharacter(id = "c1", name = "阿远"),
-                    MpCharacter(id = "c2", name = "小满"),
-                    MpCharacter(id = "c3", name = "阿吾"),
+                    MpCharacter(id = "c1", name = "Ayuan"),
+                    MpCharacter(id = "c2", name = "Xiaoman"),
+                    MpCharacter(id = "c3", name = "Awu"),
                 ),
-                profile = MpProfile(nickname = "子奇"),
+                profile = MpProfile(nickname = "Ziqi"),
             ),
             settings = FakeAutoStore(),
             store = FakeConversationActions(),
             groupStore = groups,
         )
-        // 名单进状态之后才拼得出名字
+        // El nombre sólo se puede deletrear después de que la lista esté en el estado
         viewModel.uiState.first { it.contactSections.isNotEmpty() }
 
         val threadId = viewModel.createGroup(listOf("c3", "c1", "c2"))
 
         assertEquals("g1", threadId)
-        assertEquals("顺序就是选中的顺序", "阿吾、阿远、小满", groups.createdTitle)
+        assertEquals("El orden es el orden de selección.", "Awu, Ayuan, Xiaoman", groups.createdTitle)
         assertEquals(listOf("c3", "c1", "c2"), groups.createdMembers)
     }
 
@@ -199,16 +199,16 @@ class MiniPhoneShellViewModelTest {
         val groups = FakeGroupActions(newThreadId = "g1")
         val viewModel = MiniPhoneShellViewModel(
             threadDao = FakeThreadDao(emptyList()),
-            host = FakeHost(characters = listOf(MpCharacter(id = "c1", name = "阿远")), profile = MpProfile(nickname = "")),
+            host = FakeHost(characters = listOf(MpCharacter(id = "c1", name = "Ayuan")), profile = MpProfile(nickname = "")),
             settings = FakeAutoStore(),
             store = FakeConversationActions(),
             groupStore = groups,
         )
         viewModel.uiState.first { it.contactSections.isNotEmpty() }
 
-        assertNull("一个人不成群", viewModel.createGroup(listOf("c1")))
-        assertNull("重复的那个人也不算两个", viewModel.createGroup(listOf("c1", " c1 ")))
-        assertTrue("没进到写入层", groups.createdMembers.isEmpty())
+        assertNull("Una persona no forma un grupo.", viewModel.createGroup(listOf("c1")))
+        assertNull("La persona que se repite no cuenta como dos.", viewModel.createGroup(listOf("c1", " c1 ")))
+        assertTrue("No entró en la capa de escritura.", groups.createdMembers.isEmpty())
     }
 
     @Test
@@ -227,10 +227,10 @@ class MiniPhoneShellViewModelTest {
         viewModel.deleteThread("t1")
         viewModel.clearConversations()
 
-        assertEquals("置顶带上方向", listOf("t1" to true), actions.pinned)
+        assertEquals("Orientación en la parte superior", listOf("t1" to true), actions.pinned)
         assertEquals(listOf("t1"), actions.read)
         assertEquals(listOf("t1"), actions.deleted)
-        assertEquals("清空只发一次", 1, actions.cleared)
+        assertEquals("Borrar y enviar solo una vez", 1, actions.cleared)
     }
 
     @Test
@@ -243,19 +243,19 @@ class MiniPhoneShellViewModelTest {
             groupStore = FakeGroupActions(),
         )
 
-        assertEquals("我页的版本信息靠它", "2.6.12", viewModel.uiState.first().appVersionName)
+        assertEquals("La información de la versión de mi página depende de ello.", "2.6.12", viewModel.uiState.first().appVersionName)
     }
 
     private fun thread(id: String, characterId: String, at: Long, unread: Int = 0): MpThreadEntity = MpThreadEntity(
         id = id,
         characterId = characterId,
         unreadCount = unread,
-        lastMessagePreview = "在吗",
+        lastMessagePreview = "¿Está ahí?",
         lastMessageAt = at,
     )
 }
 
-/** 内存里的会话表:写入与按角色查作用在同一份数据上,「同一个人只一条会话」才测得出。 */
+/** Tabla de sesiones en memoria:Escribir y consultar por rol trabajan sobre los mismos datos.,Sólo se puede medir mediante \"una sola conversación con la misma persona\". */
 private class FakeThreadDao(
     initial: List<MpThreadEntity>,
 ) : MpThreadDao {
@@ -310,7 +310,7 @@ private class FakeThreadDao(
     }
 }
 
-/** 记下外壳 ViewModel 转过来的动作:只验「有没有转对」,真行为在库测试里跑真 SQL。 */
+/** Tenga en cuenta la acción del Shell ViewModel girando:Sólo comprueba \"si se ha corregido\",El verdadero comportamiento es ejecutar SQL real en las pruebas de la biblioteca. */
 private class FakeConversationActions : MpConversationActions {
 
     val pinned: MutableList<Pair<String, Boolean>> = mutableListOf()
@@ -336,7 +336,7 @@ private class FakeConversationActions : MpConversationActions {
     }
 }
 
-/** 假设置:开关与上次生成时间的可变替身,写进的值留在字段上供断言。 */
+/** Asumir la configuración:Dobles variables para cambios y últimos tiempos de generación,El valor escrito se deja en el campo para la afirmación. */
 private class FakeAutoStore(
     enabled: Boolean = true,
     lastGeneratedAt: Long? = null,
@@ -372,7 +372,7 @@ private class FakeAutoStore(
     override suspend fun markProactiveChat(atMillis: Long) = Unit
 }
 
-/** 假宿主:角色与资料都是固定值,生成类能力一律「没有结果」。 */
+/** anfitrión falso:Los roles y la información son valores fijos.,Las habilidades generativas siempre \"no tienen resultados\". */
 private class FakeHost(
     private val characters: List<MpCharacter>,
     private val profile: MpProfile,
@@ -398,7 +398,7 @@ private class FakeHost(
     override suspend fun supportsVoiceTranscription(): Boolean = false
 }
 
-/** 记下建群请求:群名拼得对不对、成员顺序有没有保住,都从这里读。 */
+/** Tome nota de la solicitud del grupo.:¿Está escrito correctamente el nombre del grupo? ¿Se conserva el orden de los miembros?,Léelos todos desde aquí. */
 private class FakeGroupActions(
     private val newThreadId: String = "g-new",
 ) : MpGroupActions {

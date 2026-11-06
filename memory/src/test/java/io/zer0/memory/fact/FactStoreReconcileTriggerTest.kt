@@ -17,18 +17,18 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Phase 3 (可靠性 P1): 事实写入后的增量对账触发测试。
+ * Phase 3 (Fiabilidad P1): La conciliación incremental después de que el hecho esté escrito desencadena la prueba.
  *
- * 背景: FACTS 编译产物原先只由每日流水线(12–24h)对账一次,用户在记忆页新增/编辑事实后
- * system prompt 仍注入旧表述。修复后 add/addBatch/update 成功即触发一次对账 hook,
- * 并有节流/合并与递归防护:
- *  - 单条 add/update 触发一次 hook,携带写入后的最终文本与 scope/space;
- *  - 窗口内多次(批量)写入合并为一次 hook 调用;
- *  - hook 内部再次写库不会递归触发;
- *  - 未注入 hook(单测/无 DI)时零调度开销,行为与旧版一致。
+ * fondo: FACTS Los productos compilados fueron producidos originalmente solo por el canal diario.(12–24h)reconciliarse una vez,Usuario agregado en la página de memoria./Editar después del hecho
+ * system prompt Todavía inyectando viejas expresiones. Después de la reparación, si add/addBatch/update se realiza correctamente, se activará una conciliación. hook,
+ * Y hay estrangulamiento/Protección de fusión y recursividad:
+ *  - Una sola adición/actualización se activa una vez hook,Llevar el texto final después de escribirlo y scope/space;
+ *  - varias veces dentro de la ventana(lote)Las escrituras se fusionan en una llamada de enlace;
+ *  - hook Escribir internamente la biblioteca nuevamente no activará la recursividad;
+ *  - No inyectado hook(prueba única/Ninguno DI)Gastos generales de programación en tiempo cero,El comportamiento es consistente con versiones anteriores.
  *
- * 说明: 采用 runBlocking 而非 runTest —— hook 在独立 IO 协程中执行,runTest 的虚拟时钟
- * 会在真实后台任务完成前耗尽 withTimeout 预算。
+ * Descripción: Utilice runBlocking en lugar de runTest —— hook Ejecutado en corrutina IO independiente.,runTest reloj virtual
+ * El presupuesto de withTimeout se agotará antes de que se complete la tarea real en segundo plano.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -37,7 +37,7 @@ class FactStoreReconcileTriggerTest {
     private lateinit var db: FactDb
     private lateinit var dao: FactDao
 
-    /** hook 调用记录(scope/space/facts)。 */
+    /** hook registro de llamadas(scope/space/facts). */
     private data class HookCall(
         val facts: List<String>,
         val scope: String,
@@ -51,7 +51,7 @@ class FactStoreReconcileTriggerTest {
             calls.add(HookCall(facts.map { it.fact }, scope, spaceId))
         }
 
-        /** 轮询等待第 [count] 次调用(真实时间,最多 [timeoutMs])。 */
+        /** Encuesta esperando la primera [count] llamadas(tiempo real,la mayoría [timeoutMs]). */
         suspend fun awaitCalls(count: Int, timeoutMs: Long = 5_000) {
             withTimeout(timeoutMs) {
                 while (calls.size < count) delay(20)
@@ -81,12 +81,12 @@ class FactStoreReconcileTriggerTest {
         val hook = RecordingHook()
         val store = storeWithHook(hook)
 
-        store.add(FactStore.Fact(fact = "喜欢喝美式咖啡"), scope = "main", spaceId = "default")
+        store.add(FactStore.Fact(fact = "Le gusta tomar café americano."), scope = "main", spaceId = "default")
         hook.awaitCalls(1)
-        delay(300) // 等待可能的额外窗口,验证未重复触发
+        delay(300) // Espere posibles ventanas adicionales,Verifique que no se active repetidamente
 
-        assertEquals("add 应触发一次对账", 1, hook.calls.size)
-        assertEquals(listOf("喜欢喝美式咖啡"), hook.calls[0].facts)
+        assertEquals("add Debería iniciarse una reconciliación", 1, hook.calls.size)
+        assertEquals(listOf("Le gusta tomar café americano."), hook.calls[0].facts)
         assertEquals("main", hook.calls[0].scope)
         assertEquals("default", hook.calls[0].spaceId)
     }
@@ -98,9 +98,9 @@ class FactStoreReconcileTriggerTest {
 
         store.addBatch(
             listOf(
-                FactStore.Fact(fact = "喜欢喝美式咖啡"),
-                FactStore.Fact(fact = "周末常去公园跑步"),
-                FactStore.Fact(fact = "正在学习吉他"),
+                FactStore.Fact(fact = "Le gusta tomar café americano."),
+                FactStore.Fact(fact = "A menudo salgo a correr al parque los fines de semana."),
+                FactStore.Fact(fact = "aprendiendo guitarra"),
             ),
             scope = "main",
             spaceId = "default",
@@ -108,9 +108,9 @@ class FactStoreReconcileTriggerTest {
         hook.awaitCalls(1)
         delay(300)
 
-        assertEquals("批量写入应节流合并为一次对账", 1, hook.calls.size)
+        assertEquals("Las escrituras por lotes deben limitarse y consolidarse en una conciliación", 1, hook.calls.size)
         assertEquals(
-            setOf("喜欢喝美式咖啡", "周末常去公园跑步", "正在学习吉他"),
+            setOf("Le gusta tomar café americano.", "A menudo salgo a correr al parque los fines de semana.", "aprendiendo guitarra"),
             hook.calls[0].facts.toSet(),
         )
     }
@@ -120,12 +120,12 @@ class FactStoreReconcileTriggerTest {
         val hook = RecordingHook()
         val store = storeWithHook(hook)
 
-        store.add(FactStore.Fact(fact = "喜欢喝美式咖啡"))
-        store.add(FactStore.Fact(fact = "周末常去公园跑步"))
+        store.add(FactStore.Fact(fact = "Le gusta tomar café americano."))
+        store.add(FactStore.Fact(fact = "A menudo salgo a correr al parque los fines de semana."))
 
         hook.awaitCalls(1)
         delay(300)
-        assertEquals("窗口内连续写入应合并为一次对账", 1, hook.calls.size)
+        assertEquals("Las escrituras continuas dentro de la ventana deben combinarse en una conciliación", 1, hook.calls.size)
         assertEquals(2, hook.calls[0].facts.size)
     }
 
@@ -133,23 +133,23 @@ class FactStoreReconcileTriggerTest {
     fun `update triggers reconcile with new content`() = runBlocking {
         val hook = RecordingHook()
         val store = storeWithHook(hook)
-        val id = store.add(FactStore.Fact(fact = "喜欢喝美式咖啡"))
+        val id = store.add(FactStore.Fact(fact = "Le gusta tomar café americano."))
         hook.awaitCalls(1)
         delay(250)
 
-        store.update(id, "喜欢喝手冲咖啡")
+        store.update(id, "Le gusta beber café hecho a mano.")
         hook.awaitCalls(2)
         delay(250)
 
         assertEquals(2, hook.calls.size)
-        assertEquals(listOf("喜欢喝手冲咖啡"), hook.calls[1].facts)
+        assertEquals(listOf("Le gusta beber café hecho a mano."), hook.calls[1].facts)
     }
 
     @Test
     fun deleteTriggersReconcileWithDeletedFactScope() = runBlocking {
         val hook = RecordingHook()
         val store = storeWithHook(hook)
-        val id = store.add(FactStore.Fact(fact = "需要忘记的事实"), scope = "assistant-a", spaceId = "work")
+        val id = store.add(FactStore.Fact(fact = "hechos para olvidar"), scope = "assistant-a", spaceId = "work")
         hook.awaitCalls(1)
         delay(250)
 
@@ -159,7 +159,7 @@ class FactStoreReconcileTriggerTest {
 
         assertEquals("assistant-a", hook.calls[1].scope)
         assertEquals("work", hook.calls[1].spaceId)
-        assertEquals(listOf("需要忘记的事实"), hook.calls[1].facts)
+        assertEquals(listOf("hechos para olvidar"), hook.calls[1].facts)
     }
 
     @Test
@@ -168,28 +168,28 @@ class FactStoreReconcileTriggerTest {
         var store: FactStore? = null
         val hook = FactStore.FactReconcileHook { _, _, _ ->
             calls.incrementAndGet()
-            // hook 内部再次写库:不得再次触发对账(防递归),由每日流水线兜底
-            store?.update(1L, "hook 内部改写的文本")
+            // hook Escribe la biblioteca internamente nuevamente.:La reconciliación no debe volver a desencadenarse(Anti-recursión),Aprovecha la línea de montaje diaria
+            store?.update(1L, "hook Texto reescrito internamente")
         }
         store = storeWithHook(hook)
 
-        store.add(FactStore.Fact(fact = "喜欢喝美式咖啡"))
+        store.add(FactStore.Fact(fact = "Le gusta tomar café americano."))
         withTimeout(5_000) {
             while (calls.get() < 1) delay(20)
         }
         delay(400)
 
-        assertEquals("hook 内的写入不得递归触发对账", 1, calls.get())
+        assertEquals("hook Las escrituras internas no deben desencadenar la conciliación de forma recursiva", 1, calls.get())
     }
 
     @Test
     fun `no hook configured keeps writes working without scheduling`() = runBlocking {
-        // 默认构造(hook=null,无 DI 解析)时行为与旧版一致:写入成功且不抛异常
+        // construcción predeterminada(hook=null,Sin análisis DI)El comportamiento es consistente con la versión anterior.:La escritura es exitosa y no se lanza ninguna excepción.
         val store = FactStore(dao, db)
-        val id = store.add(FactStore.Fact(fact = "喜欢喝美式咖啡"))
+        val id = store.add(FactStore.Fact(fact = "Le gusta tomar café americano."))
         assertTrue(id > 0)
-        assertEquals("喜欢喝美式咖啡", store.getById(id)?.fact)
-        assertTrue(store.update(id, "喜欢喝手冲咖啡"))
-        assertEquals("喜欢喝手冲咖啡", store.getById(id)?.fact)
+        assertEquals("Le gusta tomar café americano.", store.getById(id)?.fact)
+        assertTrue(store.update(id, "Le gusta beber café hecho a mano."))
+        assertEquals("Le gusta beber café hecho a mano.", store.getById(id)?.fact)
     }
 }

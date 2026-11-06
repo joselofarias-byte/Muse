@@ -9,8 +9,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * P1-3b 拆域：资源库工具实现。
- * 由 ResourceToolsRegistrar 注册到 ToolRegistry。
+ * P1-3b Desdomaining: Implementación de herramienta de biblioteca de recursos.
+ * Registrado en ToolRegistry por ResourceToolsRegistrar.
  */
 class ResourceToolsImpl(
     private val context: Context,

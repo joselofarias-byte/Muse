@@ -1,26 +1,26 @@
 /*
- * muse_exec — Muse 内置运行时 exec 垫片（P1-B，LD_PRELOAD）
+ * muse_exec — Muse Ajuste ejecutivo de tiempo de ejecución incorporado (P1-B,LD_PRELOAD)
  * ============================================================================
- * 目标：在应用沙盒（内置 Node 运行时）中，让 npm 生态的「按名字调用
- *      node / npm / npx」以及 shebang 脚本（#!/usr/bin/env node）可以正常执行。
+ * Objetivo: en el entorno limitado de la aplicación (tiempo de ejecución de nodo integrado), permita que el ecosistema npm "llame por nombre"
+ *      node / npm / npx”y el guión shebang (#!/usr/bin/env node) se puede ejecutar normalmente.
  *
- * 背景（Android W^X）：targetSdk 29+ 的应用不可 exec 数据目录内文件，
- *      npx 装配的 .bin 包装脚本（shebang 指向 node）因此会被 SELinux 拦截
- *      （execute_no_trans denied，exit 126）。本垫片在 exec 入口处截住这类
- *      调用，改写为「直接用内置 node 执行」——目标为 apk_data_file（允许）。
+ * fondo (Android W^X):targetSdk 29+ La aplicación no puede ejecutar archivos en el directorio de datos.
+ *      npx El script contenedor .bin ensamblado (shebang apuntando al nodo) y por lo tanto será interceptado por SELinux
+ *      (execute_no_trans denied,exit 126). Esta junta intercepta este tipo de
+ *      Llamada, reescrita como "ejecutar directamente usando el nodo integrado"——El objetivo es apk_data_file (permitido).
  *
- * 机制：
- *   1. 拦截 execve / execvp / execvpe；
- *   2. 名称映射（仅当目标为「裸名字」，即 PATH 查找语义）：
+ * Mecanismo:
+ *   1. interceptar execve / execvp / execvpe;
+ *   2. Mapeo de nombres (solo si el objetivo es un "nombre simple", es decir, semántica de búsqueda de RUTA):
  *        node / nodejs  ->  $MUSE_NODE_BIN
  *        npm            ->  $MUSE_NODE_BIN $MUSE_NPM_CLI
  *        npx            ->  $MUSE_NODE_BIN $MUSE_NPX_CLI
- *   3. shebang 解析：目标为脚本且首行指向 node 时，改写为
- *        $MUSE_NODE_BIN <script> <原参数...>
- *      （open 跟随 symlink，覆盖 node_modules/.bin 的软链入口）
- *   4. 任何解析失败 / 条件不符 → 原样调用真实函数（防御性：绝不阻断子进程）。
+ *   3. shebang Análisis: cuando el objetivo es un script y la primera línea apunta al nodo, reescríbalo como
+ *        $MUSE_NODE_BIN <script> <Parámetros originales...>
+ *      (open Siga el enlace simbólico y cubra la entrada del enlace suave de node_modules/.bin)
+ *   4. Cualquier análisis falló/condición no cumplida → Llame a la función real tal cual (defensiva: nunca bloquee el proceso hijo).
  *
- * 环境变量（由 MuseRuntime.buildEnv 注入）：
+ * Variables de entorno (inyectadas por MuseRuntime.buildEnv):
  *   MUSE_NODE_BIN = <nativeLibraryDir>/libmuse_node.so
  *   MUSE_NPM_CLI  = <runtimeDir>/npm/bin/npm-cli.js
  *   MUSE_NPX_CLI  = <runtimeDir>/npm/bin/npx-cli.js
@@ -62,7 +62,7 @@ static int muse_argc(char *const argv[]) {
     return n;
 }
 
-/* 读取文件首行，判断是否为「指向 node 的 shebang 脚本」。 */
+/* Lea la primera línea del archivo y determine si es un "script shebang que apunta al nodo". */
 static int muse_is_node_script(const char *path) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) return 0;
@@ -74,15 +74,15 @@ static int muse_is_node_script(const char *path) {
     if (buf[0] != '#' || buf[1] != '!') return 0;
     char *p = buf + 2;
     while (*p == ' ' || *p == '\t') p++;
-    /* 形如 #!node / #!/.../node */
+    /* en forma de #!node / #!/.../node */
     if (strncmp(p, "node", 4) == 0) return 1;
     if (strstr(p, "/node") != NULL) return 1;
-    /* 形如 #!/usr/bin/env node */
+    /* en forma de #!/usr/bin/env node */
     if (strstr(p, "env") != NULL && strstr(p, " node") != NULL) return 1;
     return 0;
 }
 
-/* 以 node 执行：node [script] <argv[1..]> */
+/* Ejecutar con nodo:node [script] <argv[1..]> */
 static int muse_exec_with_node(execve_fn fn, const char *node, const char *script,
                                char *const argv[], char *const envp[]) {
     int tail = muse_argc(argv);
@@ -94,7 +94,7 @@ static int muse_exec_with_node(execve_fn fn, const char *node, const char *scrip
     int i = 0;
     nv[i++] = (char *)node;
     if (script) nv[i++] = (char *)script;
-    /* argv[0] 是「程序名」语义，跳过；其余参数原样透传。 */
+    /* argv[0] Es la semántica de "nombre del programa" y se omite; los parámetros restantes se pasan tal como están. */
     for (int j = 1; j < tail; j++) nv[i++] = argv[j];
     nv[i] = NULL;
     int rc = fn(node, nv, envp);
@@ -102,7 +102,7 @@ static int muse_exec_with_node(execve_fn fn, const char *node, const char *scrip
     return rc;
 }
 
-/* 尝试改写执行；返回 1 = 已接管（rc 有效），0 = 未接管（调用方原样执行）。 */
+/* Intentar anular la ejecución; volver 1 = Tomado el control (rc válido),0 = No asumido (la persona que llama se ejecuta sin cambios). */
 static int muse_try_rewrite(const char *path, char *const argv[], char *const envp[],
                             int *rc_out) {
     if (!path || path[0] == '\0') return 0;
@@ -110,7 +110,7 @@ static int muse_try_rewrite(const char *path, char *const argv[], char *const en
     const char *node = muse_env("MUSE_NODE_BIN");
     if (!node) return 0;
 
-    /* 含路径分隔符：不做名字映射；仅尝试 shebang 解析。 */
+    /* Con separador de ruta: no se realiza ninguna asignación de nombres; sólo se intenta el análisis shebang. */
     if (strchr(path, '/') != NULL) {
         if (muse_is_node_script(path)) {
             *rc_out = muse_exec_with_node(real_execve, node, path, argv, envp);
@@ -119,7 +119,7 @@ static int muse_try_rewrite(const char *path, char *const argv[], char *const en
         return 0;
     }
 
-    /* 裸名字映射 */
+    /* Mapeo de nombres desnudos */
     if (strcmp(path, "node") == 0 || strcmp(path, "nodejs") == 0) {
         *rc_out = muse_exec_with_node(real_execve, node, NULL, argv, envp);
         return 1;

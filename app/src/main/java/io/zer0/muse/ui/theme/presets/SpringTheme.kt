@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 4. 春主题 (清新绿)
+// 4. tema de primavera (verde fresco)
 // ─────────────────────────────────────────────────────────────────────────────
 private val SpringPrimary = Color(0xFF4CAF50)
 private val SpringPrimaryLightContainer = Color(0xFFD8F0D9)
@@ -33,10 +33,10 @@ val SpringTheme = PresetTheme(
         onSecondaryContainer = Color(0xFF0A2A0E),
         tertiary = SpringPrimary,
         onTertiary = Color.White,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = SpringPrimaryLightContainer,
         onTertiaryContainer = Color(0xFF0A2A0E),
-        // M-2: surface 容器梯度,surfaceContainer 复用 AiBubble(绿调略深于 surface)。
+        // M-2: surface gradiente de contenedor,surfaceContainer Reutilizar AiBubble(El tono verde es ligeramente más oscuro que surface).
         surfaceContainer = SpringLightAiBubble,
         surfaceContainerLow = SpringLightBg,
         surfaceContainerHigh = Color(0xFFDDE8D5),
@@ -70,10 +70,10 @@ val SpringTheme = PresetTheme(
         onSecondaryContainer = SpringOnPrimaryDark,
         tertiary = SpringPrimary,
         onTertiary = SpringOnPrimaryDark,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = SpringPrimaryDarkContainer,
         onTertiaryContainer = SpringOnPrimaryDark,
-        // M-2: surface 容器梯度(深色越 high 越亮),surfaceContainer 复用 AiBubble。
+        // M-2: surface gradiente de contenedor(Cuanto más oscuro es el color, más brillante es),surfaceContainer Reutilizar AiBubble.
         surfaceContainer = SpringDarkAiBubble,
         surfaceContainerLow = SpringDarkBg,
         surfaceContainerHigh = Color(0xFF1F2D1A),

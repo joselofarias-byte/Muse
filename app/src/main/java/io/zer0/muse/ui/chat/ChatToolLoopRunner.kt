@@ -57,38 +57,38 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * v2.6.15: 本轮 assistant 消息的产出模型戳。
+ * v2.6.15: El sello del modelo de salida de esta ronda de mensajes del asistente.
  *
- * 思考块回放的同模型守卫靠这个字段判定来源（见 ProviderPayloadNormalizer.stripCrossModelReasoning）：
- * 没有它，历史思考块就永远被当成“来源未知”，守卫形同虚设。
+ * El mismo modelo de protección para la reproducción de bloques de pensamiento se basa en este campo para determinar la fuente (ver ProviderPayloadNormalizer.stripCrossModelReasoning):
+ * Sin él, los bloques del pensamiento histórico siempre serán considerados como“Fuente desconocida”, el guardia es sólo de nombre.
  *
- * 取值顺序：本轮实际使用的模型 > 消息上已有的戳。为什么本轮模型优先：发送时的占位消息只能用
- * 当时的选择作估算，真正开始生成后可能因助手专属模型 / 工具轮模型 / 兜底切换而不同，
- * 而这条消息的内容正是那一轮产出的；沿用旧戳会把它标成另一个模型，反而把合法回放剥掉。
+ * Orden de valor: el modelo realmente utilizado en esta ronda > El sello que ya existe en el mensaje. ¿Por qué tiene prioridad este modelo redondo? El mensaje de marcador de posición al enviar solo se puede usar
+ * La selección hecha en ese momento es una estimación. Una vez iniciada la generación real, puede ser diferente debido al cambio de modelo exclusivo del asistente/modelo de rueda de herramientas/respaldo.
+ * El contenido de este mensaje se produjo en esa ronda; usar el sello antiguo lo marcaría como otro modelo, pero lo despojaría de su reproducción legítima.
  */
 internal fun roundAssistantModelId(roundModel: Model?, existing: UIMessage?): String? =
     roundModel?.id?.takeIf { it.isNotBlank() } ?: existing?.modelId?.takeIf { it.isNotBlank() }
 
 /**
- * 上下文溢出（请求超出模型窗口）的判据。
+ * Criterios para el desbordamiento del contexto (solicitud más allá de la ventana del modelo).
  *
- * provider 各家用词不同，同一家不同版本也会换文案，所以判据做成「短语表 + 状态码表」：
- * 新增一家只需往表里加一行，不动判定逻辑。输入是 provider 拼好的错误文案
- * （已带 HTTP 状态码与响应 body 摘要，见各 Provider 的 parseErrorMessage）。
+ * provider Cada empresa utiliza palabras diferentes y las diferentes versiones de la misma empresa también cambiarán su redacción, por lo que los criterios se convierten en "tabla de frases + tabla de códigos de estado":
+ * Para agregar una nueva empresa, solo necesita agregar una fila a la tabla y la lógica de juicio no cambia. La entrada es el texto de error detallado por el proveedor.
+ * (Se incluyen el código de estado HTTP y el resumen del cuerpo de la respuesta; consulte parseErrorMessage de cada proveedor).
  *
- * 表里刻意不放「too many tokens」「token limit」这类宽泛短语：限流（TPM）文案里也常出现，
- * 一旦误判成溢出，就会在限流时白花一次压缩请求，还把上下文压短一截。
+ * No dejarlo ir deliberadamente "too many tokens""token limit"Frases amplias como: limitación actual (TPM) también aparece a menudo en redacción publicitaria,
+ * Una vez que se juzga erróneamente como desbordamiento, una solicitud de compresión se desperdiciará durante la limitación actual y el contexto se acortará.
  */
 internal object ContextOverflowSignals {
-    /** 单条命中即判溢出（比较前统一转小写，所以表内全部小写）。 */
+    /** Un solo resultado provocará un desbordamiento (convierta a minúsculas antes de la comparación, de modo que todo en la tabla esté en minúsculas). */
     private val PHRASES: List<String> =
         listOf(
-            // OpenAI 系（含 DeepSeek / Moonshot / 大部分中转站）
+            // OpenAI sistema (incluyendo DeepSeek / Moonshot / la mayoría de las estaciones de transferencia)
             "context_length_exceeded",
             "maximum context length",
             "context length exceeded",
             "reduce the length of the messages",
-            // 窗口类表述
+            // Representación de clase de ventana
             "context window exceeded",
             "context window exceeds",
             "exceeds the context window",
@@ -96,35 +96,36 @@ internal object ContextOverflowSignals {
             "maximum number of tokens allowed",
             // Anthropic
             "prompt is too long",
-            // 通用输入长度
+            // Longitud de entrada universal
             "input is too long",
             "input length exceeds",
             "range of input length",
             "exceeded model token limit",
-            "输入过长",
-            // 请求体过大：与「上下文放不下」是同一个处置（压缩后重发）
+            "Entrada demasiado larga",
+            "la entrada es demasiado larga",
+            // El cuerpo de la solicitud es demasiado grande: el mismo tratamiento que "no se puede acomodar el contexto" (reenviar después de la compresión)
             "request entity too large",
             "request is too large",
             "payload too large",
         )
 
     /**
-     * 需要成对出现的判据。
+     * Los criterios deben aparecer en pares.
      *
-     * 中文文案常把「上下文」与「超出/过长」拆开说，单独任一个词都太宽（如
-     * 「max_tokens 超过上下文长度」这种参数错误），所以要求两者同时出现。
+     * Los redactores chinos suelen utilizar las palabras "contexto" y "más allá"./"Demasiado largo" separado, cualquier palabra es demasiado amplia (como
+     * 「max_tokens Error del parámetro "Excede la longitud del contexto"), por lo que ambos deben aparecer al mismo tiempo.
      */
     private val PAIRS: List<Pair<String, String>> =
         listOf(
-            "上下文" to "超",
-            "上下文" to "过长",
+            "contexto" to "súper",
+            "contexto" to "demasiado tiempo",
             "context" to "too long",
         )
 
-    /** 状态码判据：413 在语义上就是「请求体放不下」，与溢出同一处置。 */
+    /** Criterios de código de estado:413 Semánticamente significa \"el cuerpo de la solicitud no cabe\", lo que se trata de la misma manera que el desbordamiento. */
     private val STATUS_PATTERNS: List<Regex> = listOf(Regex("""\bhttp\s+413\b"""))
 
-    /** 错误文案是否为上下文溢出。null / 空串一律判否。 */
+    /** Si el texto del error es un desbordamiento de contexto.null / Las cadenas vacías siempre se rechazan. */
     fun matches(message: String?): Boolean {
         val text = message?.trim().orEmpty()
         if (text.isEmpty()) return false
@@ -136,32 +137,32 @@ internal object ContextOverflowSignals {
 }
 
 /**
- * 上下文溢出恢复的「一次性」闸门。
+ * Una puerta de "un solo paso" para la recuperación de desbordamiento de contexto.
  *
- * 整个请求生命周期只允许做一次「压缩 + 重发」：压缩必然缩短历史，反复压会越压越短，
- * 最后还是撞窗口，只是把真实内容一起丢了。所以先占位再压缩：占位之后无论成败都不再
- * 试第二次，直接报原错误。
+ * Solo se permite una "compresión + reenvío" en todo el ciclo de vida de la solicitud: la compresión inevitablemente acortará el historial y la compresión repetida acortará el historial.
+ * Al final, todavía golpeé la ventana, pero perdí el contenido real. Por lo tanto, primero ocupe el espacio y luego comprímalo: después de ocupar el espacio, no importa si es un éxito o un fracaso, ya no importará.
+ * Inténtelo la segunda vez e informe el error original directamente.
  */
 internal class ContextOverflowRecovery {
-    /** 本次请求是否已用过恢复机会。 */
+    /** Si se ha utilizado la oportunidad de recuperación para esta solicitud. */
     var used: Boolean = false
         private set
 
-    /** 是否应当尝试恢复：溢出文案 + 不是网络中断 + 机会还在。 */
+    /** En caso de intentar la recuperación: copia desbordada + no corte de red + oportunidad aún disponible. */
     fun canRecover(error: String?, streamInterrupted: Boolean): Boolean =
         !used && !streamInterrupted && ContextOverflowSignals.matches(error)
 
-    /** 占用本次请求唯一的恢复机会。 */
+    /** Aproveche la única oportunidad de recuperación para esta solicitud. */
     fun markUsed() {
         used = true
     }
 }
 
 /**
- * 溢出后的一次恢复：压缩一轮历史，成功则把压缩后的历史交给调用方重发。
+ * Recuperación después del desbordamiento: comprime una ronda del historial. Si tiene éxito, el historial comprimido se entregará a la persona que llama para que lo reenvíe.
  *
- * @param compress 实际压缩动作；返回 null 表示压缩器没法腾出空间（消息太少 / 无净收益）。
- * @return 压缩后的历史；null 表示放弃恢复，调用方应直接报原错误。
+ * @param compress Acción de compresión real; devuelve nulo si el compresor no pudo liberar espacio (muy pocos mensajes/sin ganancia neta).
+ * @return historia comprimida;null Indica abandonar la recuperación y la persona que llama debe informar directamente el error original.
  */
 internal suspend fun recoverFromContextOverflow(
     error: String?,
@@ -170,7 +171,7 @@ internal suspend fun recoverFromContextOverflow(
     compress: suspend () -> List<UIMessage>?,
 ): List<UIMessage>? {
     if (!recovery.canRecover(error, streamInterrupted)) return null
-    // 先占位再压缩：压缩本身要发一次模型请求，失败也不能把机会退回去
+    // Primero ocupe el espacio y luego comprima: la compresión en sí requiere una solicitud de modelo y la oportunidad no se puede devolver incluso si falla.
     recovery.markUsed()
     return compress()
 }
@@ -185,10 +186,10 @@ internal class ChatToolLoopRunner(
 ) {
 
     /**
-     * 用量流水记录器。
+     * Registrador de flujo de uso.
      *
-     * 走全局容器取单例，避免为一个旁路能力改动整个构造链；
-     * 取不到时静默跳过，统计缺失不能影响对话。
+     * Utilice contenedores globales para obtener singletons para evitar cambiar toda la cadena de construcción por una capacidad de derivación;
+     * Si no se puede obtener, se omitirá en silencio. Las estadísticas faltantes no afectarán el diálogo.
      */
     private val usageRecorder: io.zer0.muse.data.stats.UsageRecorder? by lazy {
         runCatching {
@@ -197,23 +198,23 @@ internal class ChatToolLoopRunner(
     }
 
     /**
-     * 原 ChatViewModel.runToolLoop。
-     * 所有对 ViewModel 成员/方法的访问经 [host] 桥接,保持行为等价。
+     * Anteriormente ChatViewModel.runToolLoop.
+     * Todos los pares de miembros de ViewModel/método de acceso [host] puente,Mantener la equivalencia conductual.
      */
     suspend fun run(state: StreamRunState): Boolean {
         val experiments = state.experiments
         val sessionId = state.sessionId
         val sessionTitle = state.sessionTitle
         val streamStartedAt = state.streamStartedAt
-        // B5-01: 生成检查点 — 记录本轮用户消息与生成起始时间,供进程被杀后恢复
+        // B5-01: Generar punto de control — Registre esta ronda de mensajes de usuario y la hora de inicio de generación.,Para la recuperación después de que se finalice el proceso.
         val checkpointUserMessageId = state.conversationHistory.lastOrNull { it.role == MessageRole.USER }?.id?.toString() ?: ""
         val checkpointCreatedAt = streamStartedAt
         val pendingRagCitations = state.pendingRagCitations
         val assistant = state.assistant
         val effectiveModel = state.effectiveModel
         val effectiveProviderConfig = state.effectiveProviderConfig
-        // C-12: 工具模型配置(可为 null)—— 仅"工具轮"(上一轮结果含 toolCalls 的续接轮)使用,
-        // 最终回复轮切回主模型 effectiveModel,避免主模型视觉被 toolModel 降级为文本路由。
+        // C-12: Configuración del modelo de herramienta(puede ser null)—— solo"rueda de herramientas"(Ronda de continuación del resultado de la última ronda que contiene llamadas a herramientas)uso,
+        // El ciclo de recuperación final vuelve al modelo principal. effectiveModel,Evite que el modelo de herramienta degrade el objeto visual del modelo principal a enrutamiento de texto.
         val toolModel = state.toolModel
         val toolProviderConfig = state.toolProviderConfig
         val tools = state.tools
@@ -221,16 +222,16 @@ internal class ChatToolLoopRunner(
         val topP = assistant?.topP
         val reasoningLevel = state.reasoningLevel
         val searchConfig = host.stateStore.state.value.webSearchConfig
-        // v2.6.10: 原生搜索改成「能力判定」而不是「类型判定」。
-        // 是否走 Responses 端点由 ProviderSpecificConfig.OpenAI.useResponseApi 决定，
-        // 而 DeepSeek 这类预置供应商标的是 ProviderType.OPENAI + useResponseApi=true，
-        // 请求确实打到 /v1/responses。原来只认 OPENAI_RESPONSES 枚举，导致这类
-        // 供应商的 Auto 模式永远拿不到原生搜索，一路退回本地抓取。
+        // v2.6.10: La búsqueda nativa se cambió a "determinación de capacidad" en lugar de "determinación de tipo".
+        // Si se debe ir al punto final de Respuestas está determinado por ProviderSpecificConfig.OpenAI.useResponseApi decidir,
+        // Los proveedores preestablecidos como DeepSeek son ProviderType.OPENAI + useResponseApi=true,
+        // La solicitud llega a /v1/responses. Resulta que solo se reconoce la enumeración OPENAI_RESPONSES, lo que resulta en este tipo de
+        // El modo Automático del proveedor nunca obtendrá la búsqueda nativa y volverá al rastreo local.
         val providerSupportsNativeSearch =
             when (effectiveProviderConfig?.type) {
                 ProviderType.GEMINI, ProviderType.OPENAI_RESPONSES -> true
                 ProviderType.OPENAI ->
-                    // 只有明确开了 Responses 的 OpenAI 类才具备 web_search_preview 能力
+                    // Solo la clase OpenAI con Respuestas habilitadas explícitamente tiene la capacidad web_search_preview.
                     (effectiveProviderConfig?.resolvedSpecific() as? ProviderSpecificConfig.OpenAI)
                         ?.useResponseApi == true
                 else -> false
@@ -248,22 +249,22 @@ internal class ChatToolLoopRunner(
                 !nativeWebSearchEnabled
         val conversationHistory = state.conversationHistory
         val unmaskPii: (String) -> String = state::unmaskPii
-        // 工具执行上下文由宿主捕获，模型不能通过参数切换记忆 scope/space。
+        // El contexto de ejecución de la herramienta es capturado por el host y el modelo no puede cambiar el alcance/espacio de la memoria a través de parámetros.
         val toolExecutionContext =
             io.zer0.muse.tools.ToolExecutionContext(
                 scope = assistant?.id?.takeIf { it.isNotBlank() && it != "default" } ?: "main",
                 spaceId = host.settings.currentSpaceIdFlow.firstOrNull().orEmpty().ifBlank { "default" },
                 assistantId = assistant?.id,
-                // v2.x 阶段3:宿主会话 id — find_tools 装载等按会话生效
+                // v2.x escenario3:sesión de anfitrión id — find_tools La carga tiene efecto por sesión.
                 sessionId = state.sessionId,
-                // 卡片的身份是承载它的消息 id。模型拿不到它，只能由宿主注入 ——
-                // 否则 update_card_data 没有任何可靠的 key 可用。
+                // La identidad de una tarjeta es la identificación del mensaje que la lleva. El modelo no puede obtenerlo y solo puede ser inyectado por el anfitrión. ——
+                // De lo contrario, update_card_data no tiene ninguna clave confiable disponible.
                 messageId = state.assistantId.toString(),
             )
 
-        // v1.42: 流式过程中 UI/通知/token 更新采用字符+时间双阈值节流,降低重组频率。
-        // 这些变量仅在 streamRound 内使用,跨轮共享、重试时重置(与原实现一致)。
-        var firstTokenTime = 0L // v2.3: 首 token 到达时间
+        // v1.42: UI/notificaciones durante la transmisión/token Actualizar usando personajes+Estrangulamiento de doble umbral de tiempo,Reducir la frecuencia de recombinación.
+        // Estas variables solo se usan dentro de streamRound,Compartido entre rondas, reiniciado al reintentar(Consistente con la implementación original).
+        var firstTokenTime = 0L // v2.3: Hora de llegada del primer token
         var lastLoggedCharCount = 0
         var lastUiUpdateChars = 0
         var lastUiUpdateAt = streamStartedAt
@@ -272,63 +273,63 @@ internal class ChatToolLoopRunner(
         var lastNotifAt = streamStartedAt
         var lastTokenUpdateChars = 0
         var lastTokenUpdateAt = streamStartedAt
-        // v1.43: 流式中周期性落盘,避免切页/后台后丢失进度。
+        // v1.43: Realización periódica de pedidos en modo streaming,Evite los cortes de página/Progreso perdido después del fondo.
         var lastPersistChars = 0
         var lastPersistAt = streamStartedAt
-        // v1.0.4: 自适应切片状态 — 仅对 ContentDelta(文本流)生效,不影响 Reasoning/ToolCall。
-        // pendingBuilder 累积未输出到 UI 的 delta,50ms 节流触发时按 computeAdaptiveSlice() 取切片。
+        // v1.0.4: Estado de corte adaptativo — solo para ContentDelta(flujo de texto)hacer efecto,No afecta a Reasoning/ToolCall.
+        // pendingBuilder Acumular no enviar a la interfaz de usuario delta,50ms Presione cuando se active la aceleración computeAdaptiveSlice() Toma rodajas.
         val pendingBuilder = StringBuilder()
         val chunkIntervals = ArrayDeque<Long>(STREAM_SLIDE_WINDOW)
         var lastChunkAt = 0L
-        // 上下文溢出恢复机会：整次请求(含所有工具轮与内部重试)只允许用一次。
-        // 放在 run 作用域而不是 params 里，是因为 streamRound 的递归重试都会落到这里，
-        // 不需要每层手动传递，也不会因为重试重置。
+        // Oportunidad de recuperación de desbordamiento de contexto: solicitud completa(Incluye todas las ruedas de herramientas y reintentos internos.)Sólo se permite su uso una vez.
+        // Se coloca en el ámbito de ejecución en lugar de en los parámetros porque los reintentos recursivos de streamRound caerán aquí.
+        // No es necesario pasar manualmente cada capa y no se restablecerá debido a los reintentos.
         val overflowRecovery = ContextOverflowRecovery()
 
         /**
-         * v1.0.4: 根据流式速率(滑动平均)计算本次 50ms 节流应输出的字符数。
+         * v1.0.4: Según la velocidad de transmisión(media celular)Calcule la cantidad de caracteres que deben generarse durante esta limitación de 50 ms.
          *
-         * - 间隔越大(慢速流,如 Reasoning)→ rate 越小 → 切片越小(细粒度,最小 2)
-         * - 间隔越小(快速流,如纯文本)→ rate 越大 → 切片越大(批量,最大 240)
-         * - 无样本时返回基准值 STREAM_SLICE_BASE
+         * - Cuanto mayor sea el intervalo(flujo lento,Como por ejemplo Reasoning)→ rate el mas pequeño → Cuanto más pequeña sea la porción(de grano fino,más pequeño 2)
+         * - Cuanto menor sea el intervalo(flujo rápido,texto plano)→ rate cuanto mas grande → Cuanto más grande sea la porción(lote,máximo 240)
+         * - Devuelve el valor base cuando no hay muestras. STREAM_SLICE_BASE
          */
         fun computeAdaptiveSlice(currentLength: Int): Int {
-            // v2.0: 长文本阶段刷新节拍变慢,切片同步放大,保证屏幕上的流入速度不降。
+            // v2.0: La frecuencia de actualización durante la etapa de texto largo se ralentiza,Amplificación de sincronización de cortes,Asegúrese de que la velocidad de entrada en la pantalla no disminuya.
             val flushScale = host.streamFlushIntervalMs(currentLength).toDouble() / STREAM_THROTTLE_MS.toDouble()
             if (chunkIntervals.isEmpty()) {
                 return (STREAM_SLICE_BASE * flushScale).toInt().coerceIn(STREAM_SLICE_MIN, STREAM_SLICE_MAX)
             }
             val avgInterval = chunkIntervals.average().toLong()
-            // rate = 50ms / avgInterval:间隔 50ms → rate=1;间隔 500ms → rate=0.1;间隔 5ms → rate=10
+            // rate = 50ms / avgInterval:intervalo 50ms → rate=1;intervalo 500ms → rate=0.1;intervalo 5ms → rate=10
             val rate = (50.0 / maxOf(1L, avgInterval)).coerceIn(0.1, 10.0)
             return (STREAM_SLICE_BASE * rate * flushScale).toInt().coerceIn(STREAM_SLICE_MIN, STREAM_SLICE_MAX)
         }
 
-        // Phase 2: 工具调用循环下沉到 ToolOrchestrator
-        // v1.135: 记录当前助手消息 id,供媒体生成类工具更新消息 UI。
-        // A-13: 启动新一轮生成时递增代际令牌,使上一轮在途工具执行的媒体写入失效。
+        // Phase 2: El bucle de llamada a la herramienta se hunde en ToolOrchestrator
+        // v1.135: Grabar el mensaje actual del asistente id,Para que las herramientas de generación de medios actualicen la interfaz de usuario del mensaje.
+        // A-13: Incrementar el token generacional al iniciar una nueva ronda de generación,Invalidar las escrituras de medios realizadas por la ronda anterior de herramientas en vuelo.
         host.generationState.toolAssistantId = state.currentAssistantId
         host.generationState.activeToolSessionId = state.sessionId
         host.nextToolGenerationToken()
-        // C-17: 本代媒体登记表清零(上一代遗留 id 不参与本代收尾兜底)
+        // C-17: Se borra el formulario de registro de medios de esta generación.(Los ID heredados de la generación anterior no participarán al final de esta generación.)
         host.generationState.toolMediaMessages.clear()
         val baseHistorySize = conversationHistory.size
-        // v2.x: 工具定义占用在本轮生成里算一次就存下来 —— 工具清单（[tools]）整轮不变，
-        // 而编排器每轮会问两次 contextBudgetTokens()，每次都过一遍 schema 的 BPE 编码是纯浪费。
-        // TokenEstimator.estimateToolDefinitions 内部另有一层按内容指纹的缓存，这里是第二层。
-        // 取不到按 0 计，与原行为一致（预算宁可略宽，不能算不出来）。
+        // v2.x: La ocupación de la definición de herramientas se cuenta una vez en esta ronda de generación y se guarda. —— Lista de herramientas ([tools]) permanece sin cambios durante toda la ronda,
+        // El orquestador preguntará dos veces por ronda. contextBudgetTokens(), es un puro desperdicio revisar la codificación BPE del esquema cada vez.
+        // TokenEstimator.estimateToolDefinitions Hay otra capa de caché basada en las huellas digitales del contenido del interior. Esta es la segunda capa.
+        // Si no se puede obtener, se contará como 0, lo cual es consistente con el comportamiento original (el presupuesto sería un poco más amplio que no calculado).
         var toolDefinitionTokensCache: Int? = null
-        // B10: 流式 ThinkTag 实时剥离已接入 — 挂点在 flushPendingToUi(节流触发的 UI 更新),
-        // 由 updateAssistantWithVisualTransform 完成: 先 O(n) contains("<think>") 短路,
-        // 命中时才调用 transformer 层纯函数 splitThinkTagsForStreaming(见 ThinkTagTransformer.kt),
-        // 把剥离后的 content / reasoning 喂回 updateAssistant。不含标签的普通流式路径
-        // 零行为变化,50ms / 自适应切片节流机制本身未改动。
+        // B10: La transmisión de desmontaje en tiempo real de ThinkTag está conectada — punto de suspensión en flushPendingToUi(Actualizaciones de la interfaz de usuario activadas por la limitación),
+        // Hecho por updateAssistantWithVisualTransform: primero O(n) contains("<think>") cortocircuito,
+        // La función pura de la capa transformadora se llama solo cuando se golpea. splitThinkTagsForStreaming(ver ThinkTagTransformer.kt),
+        // Envíe el contenido/razonamiento eliminado a updateAssistant. Ruta de transmisión normal sin etiquetas
+        // Cero cambios de comportamiento,50ms / El mecanismo de regulación de cortes adaptativo permanece sin cambios.
         val toolLoopHost =
             object : ToolLoopHost {
                 /**
-                 * v2.x: 本轮可用的上下文预算 = 窗口 − 预留量，口径与自动压缩触发一致
-                 * （见 [shouldAutoCompress]）。宿主在这里只提供"还剩多少可用"，
-                 * 编排器据此做零请求的本地重建，避免生成中途把窗口撞爆。
+                 * v2.x: Presupuesto de contexto disponible para esta ronda = ventana − La cantidad de reserva y el calibre son consistentes con el disparador de compresión automático.
+                 * (Ver [shouldAutoCompress]). Los anfitriones solo se proporcionan aquí"cuanto queda disponible",
+                 * El orquestador realiza una reconstrucción local sin solicitud basada en esto para evitar que la ventana se bloquee durante la generación.
                  */
                 override fun contextBudgetTokens(): Int {
                     val window = host.stateStore.state.value.contextMaxTokens
@@ -338,12 +339,12 @@ internal class ChatToolLoopRunner(
                             ?: runCatching {
                                 io.zer0.muse.util.TokenEstimator.estimateToolDefinitions(tools)
                             }.getOrDefault(0).also { toolDefinitionTokensCache = it }
-                    // 与压缩触发共用同一套拆解：输出预留和安全余量必须一起扣，
-                    // 否则这里以为还能塞、那边已经开始压缩，同一轮里出现两种判断。
-                    // 工具定义按本轮真实要发的那批算（[tools] = 路由快照里的 definitions，
-                    // 每轮再按命中情况收窄，所以它是实际发送量的上界）；不抽它，额度会系统性偏宽，
-                    // 工具链撞到窗口也没有压缩机会。系统提示仍传 0：system 消息就在
-                    // conversationHistory 里，编排器已按历史计入，再扣一道就重复了。
+                    // Comparte el mismo conjunto de desmontaje que el gatillo de compresión: la reserva de salida y el margen de seguridad deben descontarse juntos.
+                    // De lo contrario, creo que todavía se puede bloquear aquí, pero ha comenzado a comprimirse allí y habrá dos juicios en la misma ronda.
+                    // La definición del instrumento se calcula en función del lote que realmente se emite en esta ronda ([tools] = definiciones en instantáneas de enrutamiento,
+                    // Se reducirá según la situación de acierto en cada ronda, por lo que es el límite superior de la cantidad de envío real); si no lo sacas, la cuota será sistemáticamente más amplia.
+                    // No hay posibilidad de compresión si la cadena de herramientas golpea la ventana. Los mensajes del sistema aún transmiten 0:system la noticia esta ahi
+                    // conversationHistory Aquí, el arreglador se ha calculado según el historial y se repetirá si se deduce nuevamente.
                     return ContextBudget.compute(
                         contextWindow = window,
                         systemTokens = 0,
@@ -353,21 +354,21 @@ internal class ChatToolLoopRunner(
                 }
 
                 /**
-                 * 插话通道：把用户在生成期间排进待发送队列的话交出去，由编排器在
-                 * 下一轮请求前作为 USER 消息插入 —— 用户不必等整轮跑完，也不必按停止
-                 * 把已经做完的工作一起丢掉。
+                 * Canal de interrupción: entregue las palabras que el usuario puso en la cola para ser enviadas durante la generación, y el orquestador las
+                 * Insertar como mensaje de USUARIO antes de la siguiente ronda de solicitud —— El usuario no tiene que esperar a que se complete toda la ejecución ni presionar Detener
+                 * Desecha todo el trabajo que ya has hecho.
                  *
-                 * 取件规则（宁可漏取，不可错取）：
-                 *  - 只取 [io.zer0.muse.ui.PendingMessage.sessionId] 与本轮会话一致的条目。
-                 *    属于别的会话的排队消息被取走，等于在那段对话里塞进用户没说过的话，
-                 *    而且它会成为模型后续推理的依据 —— 这是数据污染，不是延迟问题。
-                 *    sessionId 为 null 的（旧数据/入队时无会话）同样不取。
-                 *  - 另外要求本轮会话正在显示。用户切到别的会话后入队的内容不属于这次运行，
-                 *    留在队列里等他自己发。
-                 *  - 只取纯文本条目。带图片的条目仍走原有排队：媒体要过发送管道的
-                 *    落盘与挂载链路，在这里二次实现会静默丢附件。
-                 *  - 取走即落盘 + 推 UI，插话在会话里是一条真实的用户消息；否则重进
-                 *    会话会看到助手在对着一句不存在的话作答。
+                 * Reglas de recogida (es mejor omitir que recoger por error):
+                 *  - tomar solo [io.zer0.muse.ui.PendingMessage.sessionId] Entradas consistentes con la sesión actual.
+                 *    Los mensajes en cola que pertenecen a otras conversaciones se eliminan, lo que equivale a insertar palabras que el usuario no ha dicho en esa conversación.
+                 *    Y se convertirá en la base para el razonamiento posterior del modelo. —— Esto es contaminación de datos, no un problema de latencia.
+                 *    sessionId es nulo (datos antiguos/Tampoco se toma ninguna sesión al unirse a la cola).
+                 *  - Además, es necesario que se muestre la sesión actual. El contenido puesto en cola después de que el usuario cambia a otra sesión no pertenece a esta ejecución.
+                 *    Quédese en la cola y espere a que él mismo lo envíe.
+                 *  - Obtenga solo entradas de texto sin formato. Las entradas con imágenes siguen pasando por la cola original: los medios tienen que pasar por el canal de envío
+                 *    Soltar y montar enlaces, la segunda implementación aquí soltará archivos adjuntos silenciosamente.
+                 *  - Retire y realice el pedido + push UI, la interrupción es un mensaje de usuario real en la sesión; de lo contrario vuelva a entrar
+                 *    La conversación verá al asistente responder a una frase que no existe.
                  */
                 override suspend fun drainSteeringMessages(): List<String> {
                     val snap = host.accessor.snapshot
@@ -380,7 +381,7 @@ internal class ChatToolLoopRunner(
                     for (item in steering) {
                         val msg = UIMessage(role = MessageRole.USER, content = item.text)
                         runCatching { host.sessionRepository.appendMessage(sessionId, msg) }
-                            .onFailure { Logger.w("ChatVM", "插话消息落盘失败: ${it.message}") }
+                            .onFailure { Logger.w("ChatVM", "Error al colocar el mensaje de interposición: ${it.message}") }
                         host.accessor.updateMessages { list -> list + msg }
                     }
                     host.messageController.rebuildConversationTree()
@@ -394,9 +395,9 @@ internal class ChatToolLoopRunner(
                     // user enabled it; providers that do not support reasoning still legitimately
                     // produce no reasoning delta.
                     val exposeRoundThinking = ToolRoundPresentationPolicy.exposeReasoning(round)
-                    // A-14: 每轮开始把当前轮占位消息 id 同步回 state — 中断恢复(catch 块)依赖
-                    // state.currentAssistantId 定位"本轮生成消息",此前只在 runToolLoop 收尾更新,
-                    // 多轮工具循环中段被取消时指向旧轮次,导致 [已中断] 落错消息。
+                    // A-14: Al comienzo de cada ronda, el ID del mensaje del titular de la ronda actual se sincroniza nuevamente state — Interrumpir la recuperación(catch bloquear)depender de
+                    // state.currentAssistantId Posicionamiento"Genera mensajes en esta ronda",Anteriormente, solo se actualizaba en runToolLoop.,
+                    // Apunta a la ronda anterior cuando se cancela la mitad del ciclo de la herramienta de rondas múltiples,causa [interrumpido] Noticias equivocadas.
                     state.currentAssistantId = params.currentAssistantId
                     if (!state.shadowTurnStarted && ConversationRebuildFlagStore.current.shadowEventsEnabled) {
                         state.shadowTurnStarted = true
@@ -426,29 +427,29 @@ internal class ChatToolLoopRunner(
                             ),
                         )
                     }
-                    // 审查修复 (2.0 A-02): 同步工具媒体写入目标 — host.generationState.toolAssistantId 原本只在
-                    // runToolLoop 起点赋值一次,第 2 轮起的 exec* 媒体全部落回首轮占位 A0,
-                    // 而正文/工具卡片在 A1/A2;这里每轮入口同步,使本轮工具执行(awaitAll
-                    // 于下一轮 streamRound 之前完成)的媒体写入本轮占位消息。
+                    // Revisión de corrección (2.0 A-02): Destino de escritura de medios de la herramienta de sincronización — host.generationState.toolAssistantId Originalmente sólo en
+                    // runToolLoop El punto de partida se asigna una vez.,Desde la ronda 2 en adelante exec* Todos los medios retrocedieron a la primera ronda de ocupaciones de posiciones. A0,
+                    // y el texto/La tarjeta de herramientas está en A1/A2;Aquí cada ronda de entrada está sincronizada.,Haz que esta herramienta redonda se ejecute(awaitAll
+                    // Completado antes de la siguiente ronda de streamRound)Los medios escriben el mensaje marcador de posición para esta ronda.
                     host.generationState.toolAssistantId = params.currentAssistantId
-                    // B5-03: 多轮 thinking 签名/加密内容累积,最终写入 assistant 消息
+                    // B5-03: Firma de múltiples rondas de pensamiento./Acumulación de contenido cifrado,Finalmente escribe el mensaje del asistente.
                     var thinkingSignature: String? = null
                     var thinkingEncryptedContent: String? = null
-                    // B3-03: 断线续传去重 — 跳过与已显示内容重复的前缀 delta,避免用户看到重复文本
+                    // B3-03: Reanudar la transmisión después de la desconexión para eliminar duplicados — Omitir prefijos que sean duplicados de lo que ya se muestra delta,Evite que los usuarios vean texto duplicado
                     var duplicateRemaining: String? = if (params.preservePartialContent) params.builder.toString() else null
                     var firstContentDeltaSeen = false
-                    // 用量统计打点：本轮请求起始时间与首字到达时间。
-                    // firstTokenMs 是用户感知“快慢”最直接的指标，比总耗时更有意义。
+                    // Gestión de estadísticas de uso: hora de inicio de esta ronda de solicitudes y hora de llegada de la primera palabra.
+                    // firstTokenMs Es la percepción del usuario.“rápido o lento”El indicador más directo es más significativo que el tiempo total invertido.
                     val roundStartedAt = System.currentTimeMillis()
                     var firstTokenAt = 0L
-                    // v2.0: 续传重写检测 — 本轮尝试累积的完整文本(含被去重跳过的前缀) + 原文长度。
-                    // 当 provider 在续传/重试时从头重写、且与原内容大面积重叠时,
-                    // 用新一轮全文替换旧内容,而不是把新内容追加到旧文后面(那也是“重复回复”的主要来源)。
+                    // v2.0: Reanudar la detección de reescritura — El texto completo acumulado en esta ronda de intentos(Contiene prefijos que la deduplicación omite) + Longitud original.
+                    // Cuando el proveedor está reanudando la descarga/Al volver a intentarlo, reescribir desde cero y superponer un área grande con el contenido original.,
+                    // Reemplace el contenido antiguo con una nueva ronda de texto completo,En lugar de agregar contenido nuevo al final del artículo anterior(Eso también“repetir respuesta”fuente principal de).
                     var resumeAttemptText: StringBuilder? = if (params.preservePartialContent) StringBuilder() else null
                     val resumeDuplicateTotal = duplicateRemaining?.length ?: 0
-                    // v2.0: 续传前的原文快照(Done 阶段“新文包含原文开头”兑底判定用)
+                    // v2.0: Instantánea del texto original antes de reanudar la carga(Done escenario“El nuevo texto contiene el comienzo del texto original.”Se utiliza para determinar el fondo del canje.)
                     val resumeOriginalText = duplicateRemaining?.takeIf { it.isNotEmpty() }
-                    // v1.0.17: preservePartialContent=true 时跳过 clear,保留 StreamInterrupted 已收的部分内容
+                    // v1.0.17: preservePartialContent=true salto de tiempo clear,Conservar parte del contenido recibido por StreamInterrupted
                     if (!params.preservePartialContent) {
                         params.builder.clear()
                         params.reasoningBuilder.clear()
@@ -456,7 +457,7 @@ internal class ChatToolLoopRunner(
                         Logger.i("ChatVM", "streamRound retry with preservePartialContent, keep ${params.builder.length} chars")
                     }
 
-                    // B5-01: 每轮开始写入生成检查点,确保流式产出有持久化兜底
+                    // B5-01: Escribe y genera puntos de control al comienzo de cada ronda.,Asegúrese de que la salida de streaming sea duradera
                     host.persistCheckpointAndReleaseOutbox(
                         state = state,
                         sessionId = sessionId,
@@ -464,16 +465,16 @@ internal class ChatToolLoopRunner(
                         assistantMessageId = params.currentAssistantId.toString(),
                         content = unmaskPii(params.builder.toString()),
                         createdAt = checkpointCreatedAt,
-                        // 删除 outbox 只发生在 helper 确认 checkpoint 成功之后。
+                        // La eliminación de la bandeja de salida solo ocurre después de que el asistente confirma que el punto de control fue exitoso.
                     )
 
-                    // C-12: 本轮模型选择 — 仅"工具轮"(上一轮结果含 toolCalls → round>1)用 toolModel,
-                    // 首轮(可能直接出最终回复、需视觉读图)与后续最终回复一律使用主模型,
-                    // 避免工具启用并配置 toolModel 后所有轮次被降级成纯文本路由。
-                    // 未配置 toolModel(state.toolModel==null)时此分支恒走主模型,默认行为完全不变;
-                    // 工具轮若历史含图而 toolModel 无视觉,也回退主模型避免给不支持视觉的模型带图 400。
-                    // 审查修复 (2.0 A-01): forceMainModel 置位(主模型补轮递归)时短路 isToolRound,
-                    // 防止二次补轮递归;工具轮最终答复检测在本轮流结束处进行。
+                    // C-12: Selección de modelo para esta ronda. — solo"rueda de herramientas"(Los resultados de la ronda anterior incluyen toolCalls → round>1)usar toolModel,
+                    // primera ronda(La respuesta final podrá emitirse directamente y será necesaria la lectura visual de la imagen.)Utilice siempre el modelo principal para las respuestas finales posteriores.,
+                    // Evite que todas las rondas se degraden a enrutamiento de texto sin formato después de habilitar la herramienta y configurar el modelo de herramienta.
+                    // No configurado toolModel(state.toolModel==null)En este momento, el principal modelo de movimiento constante de esta rama,El comportamiento predeterminado permanece sin cambios;
+                    // Si la rueda de herramientas tiene una imagen en el historial pero el modelo de herramienta no tiene visión,También revierta el modelo principal para evitar agregar la imagen 400 a los modelos que no admiten visión.
+                    // Revisión de corrección (2.0 A-01): forceMainModel conjunto(Recurrencia de rueda suplementaria del modelo principal)cortocircuito isToolRound,
+                    // Prevenir la recursividad de la ronda secundaria;La comprobación de respuesta final de la rueda de herramientas se produce al final del turno.
                     val isToolRound = !params.forceMainModel && params.round > 1
                     val usesToolModel =
                         isToolRound && toolModel != null &&
@@ -485,8 +486,8 @@ internal class ChatToolLoopRunner(
                             .lastOrNull { it.role == MessageRole.USER }
                             ?.content
                             .orEmpty()
-                    // 工具请求的第一轮只需完成意图判断;工具结果回填后的续接轮只需读取结果并收尾。
-                    // 关闭这两类请求的重复深度思考,把用户主动开启的深度思考保留给普通复杂问答。
+                    // La primera ronda de solicitudes de herramientas solo necesita completar el juicio de intención.;La ronda de continuación después de completar los resultados de la herramienta solo necesita leer los resultados y finalizar.
+                    // Cerrar un pensamiento profundo y repetido sobre estos dos tipos de solicitudes.,Reserve el pensamiento profundo iniciado por los usuarios para preguntas y respuestas ordinarias y complejas.
                     val roundReasoningLevel =
                         when {
                             params.forceMainModel -> reasoningLevel
@@ -495,8 +496,8 @@ internal class ChatToolLoopRunner(
                                     configured = reasoningLevel,
                                     round = params.round,
                                 )
-                            // v2.0: 只有用户明确要求动作(工具意图)时才压缩本轮思考/输出预算;
-                            // 普通短句(如“你好”)不再被误降级,用户开启的深度思考保持生效。
+                            // v2.0: Sólo acciones solicitadas explícitamente por el usuario.(intención instrumental)Sólo entonces podremos comprimir esta ronda de pensamiento./Presupuesto de producción;
+                            // oraciones cortas ordinarias(Como por ejemplo“Hola”)No más bajas por error,El pensamiento profundo habilitado por el usuario sigue vigente.
                             tools.isNotEmpty() && ToolExposurePolicy.isDirectToolRequest(latestUserText, tools) ->
                                 ToolRoundPresentationPolicy.reasoningLevelForDirectTool(
                                     configured = reasoningLevel,
@@ -509,20 +510,20 @@ internal class ChatToolLoopRunner(
                         when {
                             params.forceMainModel -> configuredMaxTokens
                             params.round > 1 -> {
-                                // v2.x: 续接轮预算修复 — 原 1024 上限在两类场景必被截断:
-                                //   ① 工具结果回填后模型需输出长内容(写文件/长回复);
-                                //   ② 推理模型单是思考就消耗 2-4K token, 1024 下正文几乎无空间。
-                                // 二轮上调至 16384: 长工具结果回填后的收尾输出(如读完文件写分析)需要充足空间。
+                                // v2.x: Solución presupuestaria de la ronda de continuación — El límite superior original de 1024 debe truncarse en dos tipos de escenarios:
+                                //   ① Una vez completados los resultados de la herramienta, el modelo debe generar contenido extenso.(escribir archivo/respuesta larga);
+                                //   ② El modelo de inferencia se consume con sólo pensarlo 2-4K token, 1024 Casi no hay espacio debajo del texto.
+                                // Segunda ronda elevada a 16384: resultado final después de rellenar los resultados de herramientas largas(Después de leer el archivo, escriba el análisis.)Requiere suficiente espacio.
                                 val base = (configuredMaxTokens ?: 16_384).coerceAtMost(16_384)
                                 io.zer0.memory.budget.LlmBudget.withReasoningHeadroom(base, roundModel)
                             }
                             tools.isNotEmpty() && ToolExposurePolicy.isDirectToolRequest(latestUserText, tools) ->
                                 if (roundModel?.supportsReasoning() == true) {
-                                    // v2.x: 工具轮要生成完整工具参数(可能很长, 如写文件), 原 1536 会切参数;
-                                    // 二轮上调 16384 — 推理模型思考+长参数, 空间要充足
+                                    // v2.x: La rueda de herramientas necesita generar parámetros completos de la herramienta.(puede ser muy largo, Como escribir archivos), El 1536 original puede cambiar parámetros.;
+                                    // Segunda ronda de aumentos 16384 — Pensando en modelos de inferencia+parámetro largo, Debería haber suficiente espacio
                                     configuredMaxTokens?.coerceAtMost(16_384) ?: 16_384
                                 } else {
-                                    // v2.x: 原 512 同样会切长参数, 上调 8192
+                                    // v2.x: El 512 original también reducirá los parámetros de longitud., regular al alza 8192
                                     configuredMaxTokens?.coerceAtMost(8_192) ?: 8_192
                                 }
                             else ->
@@ -539,8 +540,8 @@ internal class ChatToolLoopRunner(
                                 ToolExposurePolicy.shouldRequireTool(latestUserText, tools) -> "required"
                             else -> null
                         }
-                    // ToolOrchestrator 原生请求失败后会把这一字段降为 false，
-                    // 下一次同轮请求才会真正切到用户 API / Bing HTTP / 百度 HTTP。
+                    // ToolOrchestrator Después de que falle la solicitud nativa, este campo se reducirá a falso.
+                    // La siguiente solicitud de la misma ronda llegará al usuario. API / Bing HTTP / HTTP de Baidu.
                     val nativeSearchForRound =
                         params.nativeWebSearch && params.round == 1 && !params.forceFinalResponse
                     val streamToUi =
@@ -558,14 +559,14 @@ internal class ChatToolLoopRunner(
                         requestedReasoningLevel: ReasoningLevel,
                         requestedMode: ChatRequestMode,
                     ): Flow<ChatStreamEvent> {
-                        // v2.0 简单请求关键词收窄 → v2.x 阶段1 升级为默认分层:
-                        //   CORE/STANDARD 恒发;OPTIONAL/GLOBAL 按族命中 + 会话粘性(用过的工具)
-                        //   + 会话授权("本会话允许") + find_tools 动态装载放行;GLOBAL 未命中/未授权不发。
+                        // v2.0 Reducción de palabras clave de solicitud simple → v2.x escenario1 Actualizar a niveles predeterminados:
+                        //   CORE/STANDARD Hengfa;OPTIONAL/GLOBAL Golpes de la familia + rigidez de la sesión(herramientas utilizadas)
+                        //   + autorización de sesión("Esta sesión permite") + find_tools Liberación de carga dinámica;GLOBAL señorita/No publicar sin autorización.
                         val stickyToolNames = host.collectStickyToolNames(params.history)
                         val authorizedToolNames = host.sessionPermissionStore.allowedToolsThisSession(state.sessionId)
                         val loadedToolNames = SessionToolLoadRegistry.loadedFor(state.sessionId)
-                        // 技能在 ToolCategories 里无分类,与 OPTIONAL 同口径收窄(见 filterToolsForRequest);
-                        // 未收窄前每个已启用技能每轮都发,是工具 schema 占位的最大来源。
+                        // Las habilidades no están clasificadas en ToolCategories,Estrecho con el mismo diámetro que OPCIONAL(ver filterToolsForRequest);
+                        // Antes de limitarse, cada habilidad activada se emitirá en cada ronda.,Es la mayor fuente de marcadores de posición de esquemas de herramientas.
                         val skillToolNames = state.skillMap.keys
                         val requestTools =
                             ToolExposurePolicy
@@ -611,7 +612,7 @@ internal class ChatToolLoopRunner(
                         } catch (error: Exception) {
                             listOf(
                                 ChatStreamEvent.Error(
-                                    message = error.message ?: "非流式请求失败",
+                                    message = error.message ?: "Error en la solicitud sin transmisión",
                                     throwable = error,
                                 ),
                             )
@@ -633,7 +634,7 @@ internal class ChatToolLoopRunner(
                                 messages = params.history,
                                 model = roundModel,
                                 providerConfig = roundProviderConfig,
-                                // “不要调用工具”由请求层硬关闭；不依赖模型遵守提示词。
+                                // “No llames a las herramientas”Cerrado duro por la capa de solicitud; No depende del modelo para obedecer la palabra indicada.
                                 tools = requestTools,
                                 toolChoice = requestedToolChoice,
                                 nativeWebSearch = nativeSearchForRound,
@@ -646,8 +647,8 @@ internal class ChatToolLoopRunner(
                                 sessionId = sessionId,
                             )
                         } else {
-                            // 关闭流式输出时仍走同一请求参数，但通过 completeText 真正执行一次性请求。
-                            // 中断续传场景补回已显示的 assistant 文本，保持与 streamChat 一致的上下文。
+                            // Cuando la salida de streaming está desactivada, se siguen utilizando los mismos parámetros de solicitud, pero completeText se utiliza para realizar una solicitud única.
+                            // Compensa el texto del asistente mostrado en el escenario de transmisión del currículum, manteniendo el mismo contexto que streamChat.
                             flow {
                                 completeTextEvents().forEach { emit(it) }
                             }
@@ -658,10 +659,10 @@ internal class ChatToolLoopRunner(
                     val toolCallAccumulator = mutableMapOf<Int, Triple<String?, String?, StringBuilder>>()
                     var streamError: String? = null
                     var doneFinishReason: String? = null
-                    // v1.0.15: StreamInterrupted 标志 — 已收部分内容后网络中断,
-                    //   等待 NetworkMonitor 网络恢复事件后重试(非固定 delay),避免盲重试立即失败
+                    // v1.0.15: StreamInterrupted logotipo — La red fue interrumpida después de recibir algún contenido.,
+                    //   Espere el evento de recuperación de red de NetworkMonitor y vuelva a intentarlo(no fijo delay),Evite los reintentos ciegos que fallan inmediatamente
                     var streamInterrupted = false
-                    // v1.0.17: StreamInterrupted 的原始 throwable,用于判断是否网络错误(IOException)
+                    // v1.0.17: StreamInterrupted el original throwable,Se utiliza para determinar si hay un error de red.(IOException)
                     var streamInterruptedThrowable: Throwable? = null
                     val pendingFlushMutex = Mutex()
 
@@ -690,9 +691,9 @@ internal class ChatToolLoopRunner(
                         }
                     }
 
-                    // P2-2: reasoning-only 流(无 ContentDelta)也必须周期性落盘。
-                    // 统一增量入口 — ContentDelta 与 ReasoningDelta 都经此节流持久化,
-                    // 避免"只有思考内容"的流被强杀后仅剩空 checkpoint。
+                    // P2-2: reasoning-only fluir(Ninguno ContentDelta)También debe colocarse periódicamente.
+                    // Entrada incremental unificada — ContentDelta y ReasoningDelta persisten a través de esta limitación,
+                    // evitar"Sólo pensando en el contenido"Después de que la corriente es eliminada por la fuerza, sólo quedan puntos de control vacíos.
                     suspend fun throttledPersist() {
                         val now = System.currentTimeMillis()
                         if (params.builder.length - lastPersistChars < PERSIST_CHAR_THRESHOLD &&
@@ -720,7 +721,7 @@ internal class ChatToolLoopRunner(
                                     thinkingSignature = thinkingSignature,
                                     thinkingEncryptedContent = thinkingEncryptedContent,
                                 )
-                        // B-1: 会话已删除则跳过周期性落盘与检查点,防止删后"复活"。
+                        // B-1: Si la sesión se ha eliminado, se omitirán las ubicaciones periódicas y los puntos de control.,Prevenir la eliminación"resurrección".
                         if (!host.generationController.isSessionWritesSuppressed(sessionId)) {
                             host.persistCurrentAssistant(sessionId, params.currentAssistantId, persistMsg)
                             host.persistCheckpointAndReleaseOutbox(
@@ -737,9 +738,9 @@ internal class ChatToolLoopRunner(
                     var compatibilityRetryUsed = false
                     var retryWithoutToolChoice = false
                     coroutineScope {
-                        // 旧逻辑只有收到下一个 token 时才检查 50ms 节流;
-                        // 如果上游短暂停顿,尾部 pendingBuilder 会一直留到 Done 才一次性刷出。
-                        // 独立刷新协程让 UI 按时间稳定更新,不改变网络流和工具执行顺序。
+                        // La lógica anterior solo verifica la limitación de 50 ms cuando se recibe el siguiente token;
+                        // Si el flujo ascendente se detiene brevemente,El constructor pendiente de cola se mantendrá hasta que esté listo y luego se eliminará de inmediato.
+                        // La rutina de actualización independiente permite que la interfaz de usuario se actualice de manera estable a tiempo,No cambia el flujo de la red ni el orden de ejecución de las herramientas.
                         val pendingFlushJob =
                             launch {
                                 while (isActive) {
@@ -789,20 +790,20 @@ internal class ChatToolLoopRunner(
                                         retryWithoutToolChoice = true
                                         Logger.w(
                                             "ChatVM",
-                                            "thinking mode 不支持 tool_choice=required,关闭本轮思考后重试一次",
+                                            "thinking mode No compatible tool_choice=required,Cierra esta ronda de pensamiento y vuelve a intentarlo.",
                                         )
                                     }
                                     !shouldRetry
                                 }.collect { event ->
                                     when (event) {
                                         is ChatStreamEvent.ContentDelta -> {
-                                            // 首字打点（只记第一次）：流式下用户看到的第一个字到达时间。
+                                            // Punto de la primera palabra (solo se registra la primera vez): la hora de llegada de la primera palabra vista por el usuario en modo streaming.
                                             if (firstTokenAt == 0L && event.delta.isNotEmpty()) {
                                                 firstTokenAt = System.currentTimeMillis()
                                             }
-                                            // C-11: 续传去重采用保守裁剪。只有完整重放的 delta 才丢弃；
-                                            // 一个 delta 若在旧前缀中途分叉，公共前缀可能只是新内容的巧合开头，
-                                            // 必须保留整段，避免用户真正的首字被吞掉。
+                                            // C-11: La poda conservadora se utiliza para eliminar duplicados en transmisiones continuas. Sólo se descarta el delta completamente repetido;
+                                            // Si un delta se bifurca a la mitad del prefijo antiguo, el prefijo común puede ser simplemente un comienzo coincidente del nuevo contenido,
+                                            // Se debe conservar el párrafo completo para evitar que se trague la primera letra real del usuario.
                                             var effectiveDelta = event.delta
                                             if (experiments.debugMode && !firstContentDeltaSeen && event.delta.isNotEmpty()) {
                                                 firstContentDeltaSeen = true
@@ -816,8 +817,8 @@ internal class ChatToolLoopRunner(
                                                         "duplicateRemaining=${duplicateRemaining?.length ?: 0}",
                                                 )
                                             }
-                                            // v2.0: 续传尝试的全文累积(包含被判为重复而跳过的前缀);
-                                            // delta 阶段命中“从头重写”或 Done 阶段命中“新文包含原文开头”时用它替换旧内容。
+                                            // v2.0: Acumulación del texto completo de intentos de transferencia continuados(Contiene prefijos que se omitieron como duplicados);
+                                            // delta golpe de escenario“reescribir desde cero”o Hecho hit en el escenario“El nuevo texto contiene el comienzo del texto original.”Úselo para reemplazar el contenido anterior.
                                             resumeAttemptText?.append(event.delta)
                                             val duplicate = duplicateRemaining
                                             if (duplicate != null) {
@@ -846,28 +847,28 @@ internal class ChatToolLoopRunner(
                                                         }
                                                         effectiveDelta = ""
                                                     }
-                                                    // 无法证明整段 delta 是重放内容，本轮起停止去重。
+                                                    // No se puede demostrar que todo el delta sea contenido de repetición, por lo que la deduplicación se detendrá a partir de esta ronda.
                                                     duplicateRemaining = null
                                                 } else {
                                                     val remaining = duplicate.substring(drop).takeIf { it.isNotEmpty() }
                                                     duplicateRemaining = remaining
                                                     if (drop < event.delta.length) {
-                                                        // 整个旧前缀在本 delta 开头被重放，后半段才是新内容。
+                                                        // El prefijo antiguo completo se reproduce al comienzo de este delta, siendo la segunda mitad el contenido nuevo.
                                                         effectiveDelta = event.delta.substring(drop)
                                                     } else {
-                                                        // 整个 delta 都落在已显示内容内 → 本次忽略,等待后续 delta
+                                                        // Todo el delta se encuentra dentro del contenido mostrado. → Ignora esta vez,Esperando seguimiento delta
                                                         return@collect
                                                     }
                                                 }
                                             }
-                                            // v1.0.3: 首 token 立即刷新 UI,消除"loading → 大量文字"的视觉断层
+                                            // v1.0.3: El primer token se actualiza inmediatamente. UI,eliminar"loading → mucho texto"falla visual
                                             val isFirstToken = firstTokenTime == 0L
                                             if (isFirstToken) {
                                                 firstTokenTime = System.currentTimeMillis()
-                                                // P3-9: 首字耗时埋点 — 从本轮生成启动到首个正文 token 的间隔
+                                                // P3-9: La primera palabra requiere mucho tiempo para enterrar. — El intervalo desde el inicio de esta ronda de generación hasta el primer token de texto.
                                                 Perf.log("chat-first-token", firstTokenTime - streamStartedAt)
-                                                // 立即清除"等待首 token"状态,ThinkingBubble 消失,StreamingCursor 接管
-                                                // F-10: 首 token 到达 → STREAMING
+                                                // Limpiar ahora"Esperando el primero token"Estado,ThinkingBubble desaparecer,StreamingCursor hacerse cargo
+                                                // F-10: Llega la primera ficha → STREAMING
                                                 host.stateStore.state.update {
                                                     it.copy(
                                                         isWaitingFirstToken = false,
@@ -877,11 +878,11 @@ internal class ChatToolLoopRunner(
                                             }
                                             val now = System.currentTimeMillis()
                                             if (streamToUi) {
-                                                // v1.0.4: 自适应切片路径 — delta 先累积到 pendingBuilder,
-                                                // 50ms 节流触发时按 computeAdaptiveSlice() 取前 N 字符输出,实现平滑流入。
-                                                // chunkIntervals 的读写必须与 computeAdaptiveSlice 同锁：
-                                                // pendingFlushJob 协程在 mutex 内遍历它算平均间隔，
-                                                // 若这里在锁外 addLast/removeFirst，会触发 ConcurrentModificationException。
+                                                // v1.0.4: Ruta de corte adaptativa — delta Acumular primero pendingBuilder,
+                                                // 50ms Presione cuando se active la aceleración computeAdaptiveSlice() Obtenga los primeros N caracteres y salida,Lograr una entrada suave.
+                                                // chunkIntervals La lectura y escritura deben bloquearse con ComputeAdaptiveSlice:
+                                                // pendingFlushJob La corrutina lo atraviesa dentro del mutex para calcular el intervalo promedio.
+                                                // Si addLast/removeFirst está fuera del bloqueo, se activará ConcurrentModificationException.
                                                 pendingFlushMutex.withLock {
                                                     if (lastChunkAt != 0L) {
                                                         chunkIntervals.addLast(now - lastChunkAt)
@@ -891,20 +892,20 @@ internal class ChatToolLoopRunner(
                                                     pendingBuilder.append(effectiveDelta)
                                                 }
                                                 if (isFirstToken) {
-                                                    // 首 token 立即输出,后续由独立刷新协程按 50ms 节奏更新。
+                                                    // El primer token se emite inmediatamente.,Las actualizaciones posteriores se realizan mediante una rutina de actualización independiente a un ritmo de 50 ms.
                                                     flushPendingToUi(force = true)
                                                 } else {
                                                     flushPendingToUi()
                                                 }
                                             } else {
-                                                // 非流式 UI:直接累积到 builder(保持原行为,通知/持久化仍按 builder.length 节流)
+                                                // UI sin transmisión: acumula directamente en builder(Mantener el comportamiento original,Notificación/La persistencia todavía está limitada por builder.length)
                                                 params.builder.append(effectiveDelta)
                                             }
                                             if (params.builder.length - lastNotifChars >= 100 || now - lastNotifAt >= 500) {
                                                 lastNotifChars = params.builder.length
                                                 lastNotifAt = now
                                                 runCatching {
-                                                    // v2.5.0 fix: 同步字数到 manager,前台服务通知才能显示真实进度
+                                                    // v2.5.0 fix: El número de palabras sincronizadas alcanza manager,Sólo las notificaciones del servicio front-end pueden mostrar el progreso real.
                                                     host.chatGenerationManager.updateChars(sessionId, params.builder.length)
                                                     host.notificationManager.updateLiveProgress(
                                                         sessionTitle,
@@ -912,7 +913,7 @@ internal class ChatToolLoopRunner(
                                                         true,
                                                         MuseNotificationTarget.Session(sessionId),
                                                     )
-                                                }.onFailure { Logger.w("ChatVM", "更新进度通知失败: ${it.message}") }
+                                                }.onFailure { Logger.w("ChatVM", "Error en la notificación de progreso de la actualización: ${it.message}") }
                                             }
                                             if (experiments.debugMode && params.builder.length - lastLoggedCharCount >= 100) {
                                                 lastLoggedCharCount = params.builder.length
@@ -928,15 +929,15 @@ internal class ChatToolLoopRunner(
                                                 lastTokenUpdateAt = now
                                                 host.updateContextTokenCount()
                                             }
-                                            // P2-2: reasoning-only 也走统一节流落盘(见 throttledPersist)
+                                            // P2-2: reasoning-only Utilice también el mismo método de estrangulamiento y estabilización.(ver throttledPersist)
                                             throttledPersist()
                                         }
                                         is ChatStreamEvent.ReasoningDelta -> {
-                                            // v1.0.3: 首 token 立即刷新 UI(ReasoningDelta 也算首 token)
+                                            // v1.0.3: El primer token se actualiza inmediatamente. UI(ReasoningDelta También considerado primero token)
                                             val isFirstToken = firstTokenTime == 0L
                                             if (isFirstToken) {
                                                 firstTokenTime = System.currentTimeMillis()
-                                                // P3-9: 首字耗时埋点(reasoning 首 token 同样计入)
+                                                // P3-9: La primera palabra requiere mucho tiempo para enterrar.(reasoning El primer token también se incluye en el cálculo.)
                                                 Perf.log("chat-first-token", firstTokenTime - streamStartedAt)
                                                 host.stateStore.state.update { it.copy(isWaitingFirstToken = false) }
                                             }
@@ -945,13 +946,13 @@ internal class ChatToolLoopRunner(
                                             if (!event.encryptedContent.isNullOrBlank()) thinkingEncryptedContent = event.encryptedContent
                                             val now = System.currentTimeMillis()
                                             val timeSinceUi = now - lastUiUpdateAt
-                                            // v1.0.3: 首 token 立即刷新;后续按 12 字符或 50ms 节流
-                                            // reasoning-only 流(content 为 0)必须按 reasoning 长度节流,
-                                            // 否则首 token 后 UI 永远不更新,用户只看到第一个字符。
+                                            // v1.0.3: El primer token se actualiza inmediatamente.;Limitación posterior de 12 caracteres o 50 ms
+                                            // reasoning-only fluir(content para 0)Debe acelerar por longitud de razonamiento,
+                                            // De lo contrario, la interfaz de usuario nunca se actualizará después del primer token.,El usuario sólo ve el primer carácter.
                                             val reasoningCharsSinceUi = params.reasoningBuilder.length - lastReasoningUiUpdateChars
-                                            // v2.7: 空转保护 — content 与 reasoning 都没增长时不重建消息。
-                                            // 原先 reasoning-only 分支会带着未变的正文走一遍
-                                            // toString + 脱敏 + 整表替换，属于纯浪费。
+                                            // v2.7: Protección inactiva — content No reconstruya mensajes cuando no estén presentes ni el razonamiento ni el incremento.
+                                            // La rama original de solo razonamiento continuará con el texto sin cambios.
+                                            // toString + La desensibilización + sustitución de todo el reloj es puro desperdicio.
                                             val contentGrew = params.builder.length != lastUiUpdateChars
                                             val reasoningGrew = reasoningCharsSinceUi > 0
                                             if (streamToUi && (contentGrew || reasoningGrew) && (
@@ -970,7 +971,7 @@ internal class ChatToolLoopRunner(
 
                                                 state.uiFlushCount++
 
-                                                // v2.7 采样埋点：每 8 次刷新记一条，真机确认热路径成本是否随长度线性上升。
+                                                // v2.7 Muestreo de puntos enterrados: se registra uno cada 8 veces y se utiliza una máquina real para confirmar si el costo del camino caliente aumenta linealmente con la longitud.
 
                                                 if (state.uiFlushCount % 8 == 0) {
                                                     val costMs = (System.nanoTime() - flushStartedAt) / 1_000_000
@@ -988,7 +989,7 @@ internal class ChatToolLoopRunner(
                                                 lastUiUpdateAt = now
                                                 lastReasoningUiUpdateChars = params.reasoningBuilder.length
                                             }
-                                            // P2-2: reasoning-only 流(无 ContentDelta)也按节流周期落盘
+                                            // P2-2: reasoning-only fluir(Ninguno ContentDelta)También colocado según el ciclo de aceleración.
                                             throttledPersist()
                                         }
                                         is ChatStreamEvent.ImageDelta -> {
@@ -1006,7 +1007,7 @@ internal class ChatToolLoopRunner(
                                             }
                                         }
                                         is ChatStreamEvent.ToolCallDelta -> {
-                                            // F-10: 工具调用阶段开始
+                                            // F-10: Comienza la fase de llamada de herramienta
                                             host.stateStore.state.update {
                                                 it.copy(streamState = it.streamState.copy(phase = ChatStreamPhase.TOOLING))
                                             }
@@ -1015,9 +1016,9 @@ internal class ChatToolLoopRunner(
                                                     Triple(null, null, StringBuilder())
                                                 }
                                             val newId = event.id ?: acc.first
-                                            // v2.5.0 fix: 空白 name 不能覆盖已累积的工具名(与上游修复双保险)
+                                            // v2.5.0 fix: Un nombre en blanco no puede sobrescribir el nombre de la herramienta acumulada.(Doble seguro con reparación previa)
                                             val newName = event.name?.takeIf { it.isNotBlank() } ?: acc.second
-                                            // v1.0.81: isSnapshot=true 时参数是完整快照(源头已合并多 JSON 分片),替换而非追加
+                                            // v1.0.81: isSnapshot=true El parámetro de tiempo es una instantánea completa.(La fuente ha fusionado varios fragmentos JSON),reemplazar en lugar de agregar
                                             if (event.isSnapshot) {
                                                 acc.third.setLength(0)
                                                 acc.third.append(event.argumentsDelta ?: "")
@@ -1033,8 +1034,8 @@ internal class ChatToolLoopRunner(
                                                 )
                                             }
                                         }
-                                        // A5: provider 实测 token 用量 — 每轮可能多次(Anthropic 输入/输出分开发),
-                                        // 直接覆盖 state.usageTokens,保证留存最后一次(总量);provider 未返回则保持 null
+                                        // A5: provider Uso real medido del token — Posiblemente varias veces por ronda(Anthropic entrada/La salida se desarrolla por separado.),
+                                        // cobertura directa state.usageTokens,Garantizado para ser guardado por última vez(cantidad total);provider Conservar si no se devuelve null
                                         is ChatStreamEvent.UsageDelta -> {
                                             state.usageTokens = event.usage
                                         }
@@ -1042,17 +1043,17 @@ internal class ChatToolLoopRunner(
                                             citationUrls.addAll(event.urls)
                                         }
                                         is ChatStreamEvent.Done -> {
-                                            // v1.0.30: 某些模型（如 GLM-4-9B）全流程只发空名 tool_call，
-                                            // 无 ContentDelta/ReasoningDelta，isWaitingFirstToken 全程未清。
-                                            // 在 Done 事件强制清除"等待首 token"状态。
+                                            // v1.0.30: Algunos modelos (como el GLM-4-9B) solo envían el nombre vacío tool_call durante todo el proceso.
+                                            // Ninguno ContentDelta/ReasoningDelta,isWaitingFirstToken Todo el proceso no ha sido aclarado.
+                                            // Forzar limpieza en evento Listo"Esperando el primero token"estado.
                                             if (host.stateStore.state.value.isWaitingFirstToken) {
                                                 host.stateStore.state.update { it.copy(isWaitingFirstToken = false) }
                                             }
                                             // The flush coroutine may still own pendingBuilder until collect returns.
                                             // Defer all content mutations until it is cancelled/joined and drained below.
                                             doneFinishReason = event.finishReason
-                                            // 用量落账：本轮已拿到 provider 实测 token，记录一行流水。
-                                            // 旁路能力，异步写、失败不影响对话。
+                                            // Cuenta de uso: En esta ronda se obtuvo el token de medición real del proveedor y se registró una línea de agua.
+                                            // Capacidad de omisión, escritura asincrónica, la falla no afecta la conversación.
                                             val usage = state.usageTokens
                                             if (usage != null) {
                                                 val finishedAt = System.currentTimeMillis()
@@ -1095,7 +1096,7 @@ internal class ChatToolLoopRunner(
                                             MuseToast.show(event.message)
                                         }
                                         is ChatStreamEvent.StreamInterrupted -> {
-                                            // v1.0.15: 已收部分内容后连接中断,保留内容并等待网络恢复后重试(非固定 delay)
+                                            // v1.0.15: La conexión se interrumpió después de recibir parte del contenido.,Conserva el contenido y espera a que la red se recupere antes de volver a intentarlo.(no fijo delay)
                                             streamError = event.message
                                             streamInterrupted = true
                                             streamInterruptedThrowable = event.throwable
@@ -1110,7 +1111,7 @@ internal class ChatToolLoopRunner(
                                     }
                                 }
                                 if (retryWithoutToolChoice) {
-                                    Logger.i("ChatVM", "tool_choice 兼容重试已切换为 utility 模式")
+                                    Logger.i("ChatVM", "tool_choice El reintento de compatibilidad se ha cambiado al modo de utilidad")
                                 }
                             } while (retryWithoutToolChoice)
                         } finally {
@@ -1118,9 +1119,9 @@ internal class ChatToolLoopRunner(
                         }
                     }
 
-                    // v1.0.4: 流结束 flush pendingBuilder 剩余内容(覆盖 Done/Error/StreamInterrupted)。
-                    // 自适应切片下 params.builder 可能滞后于 pendingBuilder,这里把未输出部分一次性写入,
-                    // 确保最终 updateAssistant / persist 拿到完整内容。
+                    // v1.0.4: Pendiente de descarga de fin de flujoContenido restante del generador(Portada Done/Error/StreamInterrupted).
+                    // params.builder puede ir por detrás del corte adaptativo pendingBuilder,Aquí, la parte no publicada se escribe toda de una vez.,
+                    // Asegúrese de que la actualización finalAssistant/persist obtenga el contenido completo.
                     if (pendingBuilder.isNotEmpty()) {
                         params.builder.append(pendingBuilder)
                         pendingBuilder.clear()
@@ -1131,9 +1132,9 @@ internal class ChatToolLoopRunner(
                         }
                     }
 
-                    // v2.0: 续传重写兑底 — 本轮尝试的文本把原文开头片段写回来了,
-                    // 说明 provider 是"从头生成"而不是"续写",用新文替换旧文,
-                    // 消除旧文+新文的重复拼接(流式中未能命中替换的情况在这里收口)。
+                    // v2.0: Reanudar la transferencia y reescribir el resultado final — El texto de esta ronda de intentos ha reescrito el fragmento inicial del texto original.,
+                    // El proveedor de descripción es"Generar desde cero"en lugar de"continuar escribiendo",Reemplazar texto antiguo con texto nuevo,
+                    // Eliminar artículos antiguos+Empalme repetido de nuevos artículos.(La situación de no lograr el reemplazo en el método de transmisión se cierra aquí.).
                     if (streamError == null) {
                         resumeOriginalText?.let { original ->
                             val attempt = resumeAttemptText?.toString()
@@ -1159,11 +1160,11 @@ internal class ChatToolLoopRunner(
                     // Final content mutations happen only after pending deltas are fully drained.
                     // Reasoning-only fallback must observe the complete body, not just the pre-flush builder.
                     //
-                    // v2.6.1 (#5) + v2.7 never-empty 底线（用户确认“吐可以，空不行”）：
-                    //   正文为空时用思考兜底的**唯一例外**是：本轮确实解析出了待执行工具调用
-                    //   （后续轮次会接着产出，把思考当正文会直接上屏）。
-                    //   若 finish_reason=tool_calls 但一个调用都没解析出来（协议畸形/上游降级），
-                    //   后续无任何东西会接着产出，留空 = 用户面对空白回复；此时仍兜底（宁可吐思考）。
+                    // v2.6.1 (#5) + v2.7 never-empty Conclusión (confirmado por el usuario)“Está bien vomitar, pero no vaciar.”):
+                    //   Cuando el texto esté vacío, use Pensar**única excepción**Sí: esta ronda de hecho ha analizado la llamada a la herramienta que se ejecutará.
+                    //   (Las siguientes rondas seguirán produciendo y pensando mientras el texto aparecerá directamente en la pantalla).
+                    //   si finish_reason=tool_calls Pero no se resolvió ni una sola llamada (el protocolo está mal formado)/degradación ascendente),
+                    //   No se mostrará nada más tarde, así que déjelo en blanco. = El usuario se enfrenta a una respuesta en blanco; En este momento, todavía lo sabe todo (preferiría pensar en ello).
                     if (streamError == null &&
                         params.builder.isEmpty() &&
                         params.reasoningBuilder.isNotEmpty() &&
@@ -1175,7 +1176,7 @@ internal class ChatToolLoopRunner(
                     if (streamError == null && ChatStopReason.isLengthLimited(doneFinishReason)) {
                         params.builder.append("\n\n").append(host.appContext.getString(R.string.err_reply_truncated))
                     }
-                    // v2.x（诊断导出项目 A）: 流收尾分类入 trace（纯观察者，不影呴逻辑）
+                    // v2.x(Artículo de exportación de diagnóstico A): El final de la secuencia se clasifica en seguimiento (observador puro, no afecta la lógica)
                     runCatching {
                         io.zer0.muse.diagnostic.GenerationTrace.noteStreamEnd(
                             kind = when {
@@ -1197,11 +1198,11 @@ internal class ChatToolLoopRunner(
 
                     if (streamError != null) {
                         val retryType = host.classifyErrorType(streamError)
-                        // v1.0.1 (P4): 用 params.retryCount 替代外层 streamRetryCount,每轮独立
-                        // v1.0.17: StreamInterrupted 智能续传 — 已收部分内容 + 网络错误时,
-                        //   等待网络恢复(最多 30s)后用 preservePartialContent=true 重试,
-                        //   保留已显示内容,UI 仅追加新内容(不闪回到首字)。
-                        //   超时未恢复网络则降级为手动重试(保留部分内容 + isRecoverable)。
+                        // v1.0.1 (P4): Reemplace la capa exterior con params.retryCount streamRetryCount,Cada ronda es independiente.
+                        // v1.0.17: StreamInterrupted currículum inteligente — Cuando se ha recibido parte del contenido + error de red,
+                        //   Espere a que se recupere la red(la mayoría 30s)para uso posterior preservePartialContent=true Inténtalo de nuevo,
+                        //   Mantener el contenido mostrado,UI Solo agregar contenido nuevo(No vuelvas a la primera palabra.).
+                        //   Si la red no se recupera después de un tiempo de espera, se reducirá a reintento manual.(Mantenga algo de contenido + isRecoverable).
                         val isNetworkError =
                             streamInterruptedThrowable is java.io.IOException ||
                                 (streamInterrupted && retryType == ChatErrorType.NETWORK)
@@ -1213,26 +1214,26 @@ internal class ChatToolLoopRunner(
                             val newRetryCount = params.retryCount + 1
                             Logger.w(
                                 "ChatVM",
-                                "StreamInterrupted 网络中断,等待网络恢复(最多 ${NETWORK_RECOVERY_TIMEOUT_MS}ms)" +
-                                    "(第 $newRetryCount/$MAX_STREAM_RETRIES 次,round=${params.round}): $streamError",
+                                "StreamInterrupted Corte de red,Espere a que se recupere la red(la mayoría ${NETWORK_RECOVERY_TIMEOUT_MS}ms)" +
+                                    "(No. $newRetryCount/$MAX_STREAM_RETRIES veces,round=${params.round}): $streamError",
                             )
                             val recovered = host.waitForNetworkRecovery(NETWORK_RECOVERY_TIMEOUT_MS)
                             if (recovered) {
-                                Logger.i("ChatVM", "网络已恢复,preservePartialContent=true 重试")
-                                // 重置自适应切片状态(上一轮的速率样本不适用于续传)
+                                Logger.i("ChatVM", "La red ha sido restaurada.,preservePartialContent=true Inténtalo de nuevo")
+                                // Restablecer el estado de corte adaptativo(Las muestras de tarifas de la ronda anterior no son aplicables para reanudar transferencias)
                                 pendingBuilder.clear()
                                 chunkIntervals.clear()
                                 lastChunkAt = 0L
-                                // 重置 token 计数与首 token 时间,让续传重新计时
-                                // (但不重置 builder — preservePartialContent=true 保留已显示内容)
+                                // Restablecer el recuento de tokens y el tiempo del primer token,Reiniciar la transferencia del currículum
+                                // (pero no restablecer builder — preservePartialContent=true Mantener el contenido mostrado)
                                 lastNotifChars = params.builder.length
                                 lastNotifAt = System.currentTimeMillis()
                                 lastTokenUpdateChars = params.builder.length
                                 lastTokenUpdateAt = System.currentTimeMillis()
                                 lastPersistChars = params.builder.length
                                 lastPersistAt = System.currentTimeMillis()
-                                // B3-03: UI 层续传去重已生效(duplicateRemaining 跳过重复前缀)。
-                                // Provider 层 resumeFromText 已接入:已显示内容作为末尾 assistant 消息注入,模型从中断处续写。
+                                // B3-03: UI La reanudación de la deduplicación de capa ha entrado en vigor(duplicateRemaining Saltar prefijos repetidos).
+                                // Provider La capa resumeFromText está conectada:Contenido mostrado inyectado como final del mensaje del asistente.,El modelo continúa donde lo dejó.
                                 return streamRound(
                                     params.copy(
                                         retryCount = newRetryCount,
@@ -1240,7 +1241,7 @@ internal class ChatToolLoopRunner(
                                     ),
                                 )
                             } else {
-                                Logger.w("ChatVM", "网络未恢复,降级为手动重试")
+                                Logger.w("ChatVM", "Red no restaurada,Bajar a reintento manual")
                             }
                         }
                         if (!streamInterrupted &&
@@ -1248,7 +1249,7 @@ internal class ChatToolLoopRunner(
                             params.retryCount < MAX_STREAM_RETRIES
                         ) {
                             val newRetryCount = params.retryCount + 1
-                            // v1.0.16: 退避 3s/10s/30s,覆盖典型切后台时长(5-15s)
+                            // v1.0.16: retirarse 3s/10s/30s,Cubre la duración típica de conmutación en segundo plano(5-15s)
                             val delayMs =
                                 when (newRetryCount) {
                                     1 -> 3_000L
@@ -1257,8 +1258,8 @@ internal class ChatToolLoopRunner(
                                 }
                             Logger.w(
                                 "ChatVM",
-                                "stream 错误($retryType),${delayMs}ms 后重试 " +
-                                    "(第 $newRetryCount/$MAX_STREAM_RETRIES 次,round=${params.round}): $streamError",
+                                "stream error($retryType),${delayMs}ms Vuelve a intentarlo más tarde " +
+                                    "(No. $newRetryCount/$MAX_STREAM_RETRIES veces,round=${params.round}): $streamError",
                             )
                             kotlinx.coroutines.delay(delayMs)
                             lastUiUpdateChars = 0
@@ -1270,22 +1271,22 @@ internal class ChatToolLoopRunner(
                             lastPersistChars = 0
                             lastPersistAt = streamStartedAt
                             firstTokenTime = 0L
-                            // v1.0.4: 重置自适应切片状态,避免上一轮的速率样本污染新一轮
+                            // v1.0.4: Restablecer el estado de corte adaptativo,Evite contaminar la nueva ronda con muestras tarifarias de la ronda anterior
                             pendingBuilder.clear()
                             chunkIntervals.clear()
                             lastChunkAt = 0L
-                            // v1.0.3: retry 时重新进入"等待首 token"阶段,
-                            // 因为 builder 已被 streamRound 开头的 clear() 清空,
-                            // UI 会重新显示 ThinkingBubble 直到首个 token 到达
+                            // v1.0.3: retry volver a entrar"Esperando el primero token"escenario,
+                            // Porque el constructor ha sido iniciado por streamRound clear() Borrar,
+                            // UI ThinkingBubble se volverá a mostrar hasta que llegue el primer token
                             host.stateStore.state.update { it.copy(isWaitingFirstToken = true) }
                             return streamRound(params.copy(retryCount = newRetryCount))
                         }
                     }
 
-                    // 上下文溢出（请求超出模型窗口）恢复：压一轮历史再重发一次。
-                    // 这是“聊到一半突然报错、只能开新会话”的主因——provider 已经明确说放不下，
-                    // 压完通常就放得下了。整个请求只尝试一次（机会在 recoverFromContextOverflow
-                    // 里当场占用），压缩器没有产出更短的历史时也直接放弃，报原错误。
+                    // Recuperación de desbordamiento de contexto (la solicitud excede la ventana del modelo): presione una ronda del historial y reenvíe nuevamente.
+                    // esto es“De repente apareció un mensaje de error durante el chat y solo pude abrir una nueva sesión.”causa principal——provider He dejado en claro que no puedo dejarlo ir,
+                    // Después de presionarlo, normalmente se puede soltar. La solicitud completa se intenta solo una vez (lo más probable es que recoverFromContextOverflow
+                    // (Están ocupados en el lugar), si el compresor no produce un historial más corto, se dará por vencido directamente e informará el error original.
                     if (streamError != null) {
                         val overflowHistory =
                             recoverFromContextOverflow(
@@ -1297,15 +1298,15 @@ internal class ChatToolLoopRunner(
                         if (overflowHistory != null) {
                             Logger.w(
                                 "ChatVM",
-                                "context overflow,压缩后重发 | round=${params.round} | " +
+                                "context overflow,Reenviar después de la compresión | round=${params.round} | " +
                                     "messages ${params.history.size} -> ${overflowHistory.size} | error=$streamError",
                             )
-                            // 压缩后的历史回写给整轮循环：否则下一个工具轮又拿原历史撞窗口，
-                            // 而恢复机会已经用掉了。
+                            // El historial comprimido se vuelve a escribir en todo el ciclo: de lo contrario, la siguiente rueda de herramientas llegará a la ventana con el historial original,
+                            // Y la oportunidad de recuperación se ha agotado.
                             conversationHistory.clear()
                             conversationHistory.addAll(overflowHistory)
-                            // 复位与网络重试同款的流式状态：新一轮首 token 重新计时。
-                            // 溢出的请求本来就没吐出内容（provider 直接拒了），无需保留部分正文。
+                            // Restablece el mismo estado de transmisión que el reintento de red: el primer token de la nueva ronda se vuelve a cronometrar.
+                            // La solicitud de desbordamiento no escupió el contenido (provider rechazado directamente) sin conservar parte del texto.
                             pendingBuilder.clear()
                             chunkIntervals.clear()
                             lastChunkAt = 0L
@@ -1328,7 +1329,7 @@ internal class ChatToolLoopRunner(
                     streamError?.let {
                         val type = host.classifyErrorType(it)
                         val displayMsg = ErrorMessages.resolve(host.appContext, it)
-                        // 工具循环出口统一负责向 UI 上报错误，避免同一错误出现两张卡片。
+                        // La salida del bucle de herramientas es uniformemente responsable de informar errores a la interfaz de usuario para evitar que dos tarjetas muestren el mismo error.
                         host.updateAssistant(
                             params.currentAssistantId,
                             unmaskPii(params.builder.toString()),
@@ -1337,7 +1338,7 @@ internal class ChatToolLoopRunner(
                             isStreaming = false,
                         )
                         val partialAssistant = host.stateStore.messages.value.firstOrNull { it.id == params.currentAssistantId }
-                        // B-1: 会话已删除则跳过错误落盘,防止删后"复活"。
+                        // B-1: Si la sesión ha sido eliminada, se omitirá el error.,Prevenir la eliminación"resurrección".
                         if (partialAssistant != null && !host.generationController.isSessionWritesSuppressed(sessionId)) {
                             try {
                                 host.sessionRepository.upsertMessage(sessionId, partialAssistant)
@@ -1352,11 +1353,11 @@ internal class ChatToolLoopRunner(
                                 )
                             }
                         }
-                        // B-24: 仅自己仍是最新生成时才清零(旧生成错误不得清掉新生成的流式状态)
-                        // F-10: 流式错误 → FAILED
+                        // B-24: Sólo autorizado si todavía es la última generación.(Los errores de compilación antiguos no deben borrar el estado de transmisión recién generado)
+                        // F-10: Error de transmisión → FAILED
                         host.clearStreamingStateIfLatest(state, finalPhase = ChatStreamPhase.FAILED)
-                        // B-02: 出口同步最后已知流式内容 — 中断 catch 块只读 state.builder,
-                        // 逐轮 params.builder 是局部对象,不同步则停止时部分回复无法构造
+                        // B-02: Exportar sincronización del último contenido de streaming conocido — Interrumpir bloque de captura de solo lectura state.builder,
+                        // ronda por ronda params.builder es un objeto local,No se puede construir una respuesta parcial cuando se detiene si no se sincroniza
                         state.builder.setLength(0)
                         state.builder.append(params.builder)
                         state.reasoningBuilder.setLength(0)
@@ -1364,18 +1365,18 @@ internal class ChatToolLoopRunner(
                         return StreamRoundResult.Error(type, displayMsg, params.builder.toString(), params.reasoningBuilder.toString())
                     }
 
-                    // 审查修复 (2.0 A-01): 工具轮若直接产出最终答复(无 toolCalls),说明本轮
-                    // 实为"最终回复轮" — 用主模型补一轮,保证最终答复由主模型输出(与上方
-                    // 4840 注释意图一致)。仅在 toolModel != 主模型时重跑;补轮失败(网络/限流)
-                    // 时保留 toolModel 已产出的答复作为兜底,不让用户面对空回复。
-                    // finish_reason=length 表示输出被 token 上限截断，此轮 tool_calls 的
-                    // arguments 很可能只收到一半。残缺参数不能执行（写文件、跑命令都可能偏离
-                    // 原意），但整轮调用作废同样有害：模型以为自己在正常收尾，收不到任何反馈，
-                    // 用户只看到一句"回复被截断"，任务原地停住。
-                    // 这里保留调用列表并标记本轮为"参数被截断"，hasToolCalls 仍为 true ——
-                    // 编排器会为每个调用回填一条明确的错误 tool result，循环因此多走一轮，
-                    // 模型在下一轮请求里看得见原因并能重发完整调用。多耗的一轮比静默失败值得；
-                    // 反复截断仍受既有轮次上限与相同签名停滞检测约束，不会失控。
+                    // Revisión de corrección (2.0 A-01): Si la rueda de herramientas genera directamente la respuesta final(Ninguno toolCalls),Explica esta ronda
+                    // En realidad"ronda de respuesta final" — Haz una ronda con el modelo principal.,La respuesta final garantizada la genera el modelo principal.(con arriba
+                    // 4840 Comentarios con intención consistente). solo en toolModel != Vuelva a ejecutar el modelo principal;Ronda complementaria fallida(red/Limitación de corriente)
+                    // Mantenga las respuestas generadas por toolModel como respaldo,No dejes a los usuarios con respuestas vacías.
+                    // finish_reason=length Indica que la salida está truncada por el límite superior del token. Esta ronda de llamadas a herramientas
+                    // arguments Lo más probable es que sólo se reciba la mitad. Los parámetros incompletos no se pueden ejecutar (la escritura de archivos y la ejecución de comandos pueden desviarse del
+                    // intención original), pero es igualmente perjudicial invalidar toda la ronda de llamadas: el modelo cree que está finalizando normalmente y no recibe ninguna respuesta.
+                    // Los usuarios solo ven una frase"Respuesta truncada", la tarea se detiene en su lugar.
+                    // Aquí guarde la lista de llamadas y marque esta ronda como"Argumento truncado",hasToolCalls todavía true ——
+                    // El orquestador completará un resultado explícito de la herramienta de error para cada llamada, por lo que el ciclo tomará una ronda más.
+                    // El modelo verá el motivo en la siguiente ronda de solicitudes y podrá volver a emitir la llamada completa. La ronda extra vale el fracaso silencioso;
+                    // El truncamiento repetido todavía está sujeto al límite de ronda existente y a la misma detección de estancamiento de firma, y ​​no se saldrá de control.
                     val toolCallsTruncated =
                         toolCallAccumulator.isNotEmpty() &&
                             doneFinishReason != null &&
@@ -1383,17 +1384,17 @@ internal class ChatToolLoopRunner(
                     if (toolCallsTruncated) {
                         Logger.w(
                             "ChatVM",
-                            "finish_reason=length 截断，本轮 ${toolCallAccumulator.size} 个工具调用不执行，回填参数截断错误 | round=$round",
+                            "finish_reason=length truncamiento, epiciclo ${toolCallAccumulator.size} La llamada a la herramienta no se ejecuta y el parámetro de relleno se trunca incorrectamente. | round=$round",
                         )
                     }
-                    // 注意：标记传递链是 runner → StreamRoundResult.Success → 编排器；runner 侧无单测覆盖
-                    // （依赖整个 ChatViewModel 宿主），改这里须连带跑 ToolOrchestratorRunLoopTest。
+                    // NOTA: La cadena de entrega de etiquetas es runner → StreamRoundResult.Success → orquestador;runner Sin cobertura de prueba única
+                    // (Depende de todo el host ChatViewModel), debes ejecutar ToolOrchestratorRunLoopTest juntos al cambiar esto.
                     val hasToolCalls = toolCallAccumulator.isNotEmpty()
                     if (usesToolModel && !hasToolCalls && roundModel != effectiveModel) {
-                        Logger.i("ChatVM", "工具轮产出最终答复(round=$round), 用主模型补一轮 | model=${effectiveModel?.id}")
+                        Logger.i("ChatVM", "La rueda de herramientas produce la respuesta final(round=$round), Haz una ronda con el modelo principal. | model=${effectiveModel?.id}")
                         val toolModelContent = params.builder.toString()
                         val toolModelReasoning = params.reasoningBuilder.toString()
-                        // 清空本轮累积,补轮从零开始;自适应切片/节流/去重/首 token 状态一并复位
+                        // Limpia la acumulación de esta ronda.,Las rondas de compensación empiezan desde cero;corte adaptativo/acelerador/Eliminar duplicados/El estado del primer token se restablece juntos.
                         params.builder.setLength(0)
                         params.reasoningBuilder.setLength(0)
                         imageAccumulator.clear()
@@ -1413,18 +1414,18 @@ internal class ChatToolLoopRunner(
                         lastTokenUpdateAt = streamStartedAt
                         lastPersistChars = 0
                         lastPersistAt = streamStartedAt
-                        // 立即置空 UI 内容 + 恢复"等待首 token",补轮流式到达后替换
+                        // Vaciar inmediatamente el contenido de la interfaz de usuario + restaurar"Esperando el primero token",Rotación complementaria tras la llegada
                         host.updateAssistant(params.currentAssistantId, content = "", isStreaming = true)
                         host.stateStore.state.update { it.copy(isWaitingFirstToken = true) }
                         val replayed = streamRound(params.copy(forceMainModel = true))
-                        // 补轮失败:整体回填 toolModel 答复(整段替换,避免与补轮的部分内容拼接)
+                        // Ronda complementaria fallida:Herramienta de reabastecimiento integralModelo de respuesta(Reemplazar el párrafo completo,Evitar empalmes con parte de la rueda suplementaria.)
                         if (replayed is StreamRoundResult.Error) {
-                            Logger.w("ChatVM", "主模型补轮失败, 保留 toolModel 答复: ${replayed.message}")
+                            Logger.w("ChatVM", "Falló el reabastecimiento de ruedas del modelo principal., Mantener herramientaModelo Responder: ${replayed.message}")
                             params.builder.setLength(0)
                             params.builder.append(toolModelContent)
                             params.reasoningBuilder.setLength(0)
                             params.reasoningBuilder.append(toolModelReasoning)
-                            // B-02: 回填后同步 state.builder,保持中断 catch 可读到已恢复的内容
+                            // B-02: Sincronización después del reabastecimiento state.builder,Mantenga la captura interrumpida para leer el contenido reanudado.
                             state.builder.setLength(0)
                             state.builder.append(params.builder)
                             state.reasoningBuilder.setLength(0)
@@ -1440,8 +1441,8 @@ internal class ChatToolLoopRunner(
                         return replayed
                     }
 
-                    // v1.0.54: 先判断本轮是否为工具轮,再推 UI —
-                    //   工具轮(有 toolCalls)的思考过程不显示(出戏),最终回复轮正常显示。
+                    // v1.0.54: Primero determine si esta rueda es una rueda de herramientas.,Empujar de nuevo UI —
+                    //   rueda de herramientas(si toolCalls)El proceso de pensamiento no se muestra.(hacer una jugada),La rueda de respuesta final se muestra normalmente.
                     host.updateAssistant(
                         params.currentAssistantId,
                         unmaskPii(params.builder.toString()),
@@ -1460,7 +1461,7 @@ internal class ChatToolLoopRunner(
                                 id = params.currentAssistantId,
                                 role = MessageRole.ASSISTANT,
                                 content = finalizedAssistant?.content ?: unmaskPii(params.builder.toString()),
-                                // v2.6.15: 工具轮重建同样要带上产出模型戳 —— 带思考块的恰恰是这类消息。
+                                // v2.6.15: La reconstrucción de la rueda de herramientas también debe llevar el sello del modelo de salida. —— Es precisamente este tipo de mensaje el que viene acompañado de bloqueos de pensamiento.
                                 modelId = roundAssistantModelId(roundModel, finalizedAssistant),
                                 reasoning = if (exposeRoundThinking) {
                                     finalizedAssistant?.reasoning ?: unmaskPii(params.reasoningBuilder.toString()).ifBlank { null }
@@ -1473,10 +1474,10 @@ internal class ChatToolLoopRunner(
                                 thinkingEncryptedContent = finalizedAssistant?.thinkingEncryptedContent ?: thinkingEncryptedContent,
                                 imageBase64List = finalizedAssistant?.imageBase64List ?: emptyList(),
                                 citationUrls = citationUrls.toList(),
-                                // v1.0.88 (R-2): 变体身份字段必须完整保留 — 此前工具轮构建的
-                                // assistantMessage 丢失 variantGroupId/variantIndex/variantCount/parentGroupId,
-                                // 重试(变体)+工具调用后落盘,重进会话树重建时消息挂错位置,
-                                // 表现为"消息重叠/第一句回复变最后一句"。
+                                // v1.0.88 (R-2): El campo de identidad variante debe dejarse intacto — Rueda de herramientas previamente construida
+                                // assistantMessage perdido variantGroupId/variantIndex/variantCount/parentGroupId,
+                                // Inténtalo de nuevo(Variantes)+Realice el pedido después de llamar a la herramienta,Al volver a ingresar al árbol de sesiones y reconstruirlo, el mensaje se cuelga en la ubicación incorrecta.,
+                                // Se muestra como"Superposición de mensajes/La primera respuesta se convierte en la última.".
                                 variantGroupId = finalizedAssistant?.variantGroupId,
                                 variantIndex = finalizedAssistant?.variantIndex ?: 0,
                                 variantCount = finalizedAssistant?.variantCount ?: 1,
@@ -1484,8 +1485,8 @@ internal class ChatToolLoopRunner(
                                 toolCalls =
                                 toolCallAccumulator.toSortedMap().map { (idx, triple) ->
                                     ToolCall(
-                                        // 每条调用都要能被 tool result 精确配对，缺 id 或 id 为空串
-                                        // 都不行（空 id 会被 provider 拒），一律按本轮 index 合成。
+                                        // Cada llamada debe coincidir con precisión con el resultado de la herramienta. Falta la identificación o la identificación es una cadena vacía.
+                                        // Ninguno de estos funcionará (el proveedor rechazará los identificadores vacíos), todos se sintetizarán de acuerdo con el índice de esta ronda.
                                         id = triple.first?.takeIf { it.isNotBlank() }
                                             ?: "call_${System.currentTimeMillis()}_$idx",
                                         name = triple.second ?: "",
@@ -1503,7 +1504,7 @@ internal class ChatToolLoopRunner(
                                     thinkingSignature = thinkingSignature,
                                     thinkingEncryptedContent = thinkingEncryptedContent,
                                     imageBase64List = imageAccumulator.toList(),
-                                    // v2.6.15: 与工具轮一致，最终回复也记本轮实际模型。
+                                    // v2.6.15: En consonancia con la rueda de herramientas, la respuesta final también registra el modelo real de la rueda.
                                     modelId = roundAssistantModelId(roundModel, null),
                                 )
                             val withCitations =
@@ -1522,7 +1523,7 @@ internal class ChatToolLoopRunner(
                             withCitations
                         }
 
-                    // B-02: 出口同步最后已知流式内容(同上,供中断 catch 构造部分回复)
+                    // B-02: Exportar sincronización del último contenido de streaming conocido(Igual que arriba,Para respuesta parcial del constructor de captura de interrupción)
                     state.builder.setLength(0)
                     state.builder.append(params.builder)
                     state.reasoningBuilder.setLength(0)
@@ -1556,9 +1557,9 @@ internal class ChatToolLoopRunner(
                     host.addError(type, message, recoverable)
                 }
 
-                // v2.6.7: 提供设备通道状态,让编排器能在执行前拦下注定失败的工具调用。
-                // 走全局容器取 AutomationManager(与 usageRecorder 同法),避免为一个旁路
-                // 能力改动整个构造链;取不到时返回 null = 跳过预检,维持原行为。
+                // v2.6.7: Proporcionar el estado del canal del dispositivo,Permite al orquestador bloquear llamadas a herramientas condenadas antes de que se ejecuten.
+                // Tome el contenedor global AutomationManager(Mismo método que useRecorder),evitar ser un bypass
+                // Capacidad de cambiar toda la cadena estructural.;Volver cuando no esté disponible null = Saltar verificación previa,Mantener el comportamiento original.
                 override suspend fun availableDeviceChannels(): Set<io.zer0.muse.tools.ToolRequirements.Channel>? {
                     return runCatching {
                         val automation =
@@ -1568,11 +1569,11 @@ internal class ChatToolLoopRunner(
                     }.getOrNull()
                 }
 
-                // v1.x: 单个工具开始/结束回调(用于调试日志)
-                //  默认空实现已存在于接口,这里覆盖做 debug 日志,便于追踪工具执行耗时与状态。
+                // v1.x: Comience con una sola herramienta/finalizar la devolución de llamada(para registros de depuración)
+                //  Ya existe una implementación vacía predeterminada en la interfaz.,Esto cubre la realización de registros de depuración.,Es conveniente realizar un seguimiento del tiempo y el estado de ejecución de la herramienta.
                 override fun onToolStart(toolCallId: String, toolName: String) {
                     host.chatGenerationManager.touch(sessionId)
-                    // M1.7: 工具执行在途 -> WAITING_TOOL 检查点
+                    // M1.7: Ejecución de herramienta en progreso -> WAITING_TOOL punto de control
                     host.sessionManager.runtime(sessionId)?.markWaitingTool(state.turnId)
                     if (ConversationRebuildFlagStore.current.shadowEventsEnabled) {
                         host.coroutineScope.launch(Dispatchers.IO) {
@@ -1595,7 +1596,7 @@ internal class ChatToolLoopRunner(
 
                 override fun onToolFinish(toolCallId: String, toolName: String, success: Boolean, durationMs: Long) {
                     host.chatGenerationManager.touch(sessionId)
-                    // M1.7: 工具执行结束 -> 回 GENERATING(续接请求或最终回复轮)
+                    // M1.7: Finaliza la ejecución de la herramienta -> volver GENERATING(Solicitud de continuación o ronda de respuesta final)
                     host.sessionManager.runtime(sessionId)?.markResumed(state.turnId)
                     if (ConversationRebuildFlagStore.current.shadowEventsEnabled) {
                         host.coroutineScope.launch(Dispatchers.IO) {
@@ -1621,7 +1622,7 @@ internal class ChatToolLoopRunner(
                 }
             }
 
-        // v2.x: 工具轮次上限来自设置(0=无限制);读取失败回退固定值,不阻断对话。
+        // v2.x: El límite superior de rondas de herramientas proviene de la configuración.(0=Ilimitado);Valor fijo de reserva de fallo de lectura,No bloquees las conversaciones.
         val toolRoundLimit =
             (resultOf { host.settings.getToolLoopMaxRounds() }.getOrNull() ?: MAX_TOOL_ROUNDS)
                 .takeIf { it > 0 } ?: 0
@@ -1631,7 +1632,7 @@ internal class ChatToolLoopRunner(
                 params =
                 ToolLoopParams(
                     sessionId = sessionId,
-                    // F-12: 统一链路 id(贯穿工具执行审计与日志)
+                    // F-12: enlace unificado id(Durante toda la ejecución de la herramienta, auditoría y registro)
                     traceId = state.traceId,
                     initialAssistantId = state.currentAssistantId,
                     baseHistorySize = baseHistorySize,
@@ -1666,9 +1667,9 @@ internal class ChatToolLoopRunner(
         state.totalToolCallCount = toolLoopResult.totalToolCallCount
         state.firstTokenTime = toolLoopResult.firstTokenTime
         state.currentAssistantId = toolLoopResult.finalAssistantId
-        // 审查修复 (2.0 C-17): 收尾兜底落盘 — exec* 内已立即落盘,这里对登记过的
-        // 工具媒体消息再扫一次,覆盖落盘失败/进程竞争等窗口;NonCancellable 保证
-        // 取消路径也能完成(登记者在取消分支走 attachMediaToMessage,此处幂等无害)。
+        // Revisión de corrección (2.0 C-17): Ubicación inferior del bolsillo de cierre — exec* El pedido se ha realizado inmediatamente.,Para aquellos que se han registrado
+        // Herramienta para escanear mensajes multimedia nuevamente,No se pudo sobrescribir el disco/Contención de procesos y otras ventanas;NonCancellable garantia
+        // Cancelar la ruta también se puede completar.(Los inscritos acuden a la sucursal de cancelación. attachMediaToMessage,La idempotencia es inofensiva aquí.).
         if (host.generationState.toolMediaMessages.isNotEmpty()) {
             val sweepSession = host.generationState.activeToolSessionId ?: host.currentSessionIdForApproval()
             host.generationState.toolMediaMessages.forEach { mediaId ->
@@ -1676,7 +1677,7 @@ internal class ChatToolLoopRunner(
             }
             host.generationState.toolMediaMessages.clear()
         }
-        // A-13: 收尾递增令牌,使任何仍在途的工具执行(图片生成可达数十秒)媒体写入失效
+        // A-13: token de incremento de cierre,Hacer que se ejecuten las herramientas que aún están en tránsito(La generación de imágenes puede tardar decenas de segundos)Error de escritura de medios
         host.generationState.toolAssistantId = null
         host.generationState.activeToolSessionId = null
         host.nextToolGenerationToken()
@@ -1693,20 +1694,20 @@ internal class ChatToolLoopRunner(
                     payloadJson = "{\"round\":${toolLoopResult.round},\"errorType\":\"${err?.type ?: ChatErrorType.UNKNOWN}\"}",
                 ),
             )
-            // P2-3: 工具循环失败必须收口 shadow turn,否则 turn 长期 OPEN、后续审计/重建失真。
+            // P2-3: La falla del ciclo de la herramienta debe cerrarse shadow turn,De lo contrario, abra la auditoría de seguimiento a largo plazo./Distorsión de la reconstrucción.
             if (ConversationRebuildFlagStore.current.shadowEventsEnabled && state.shadowTurnStarted) {
                 host.conversationService.finishTurn(state.turnId, "FAILED")
             }
             val errMessage = err?.message ?: host.appContext.getString(R.string.err_chat_unknown)
             host.addError(err?.type ?: ChatErrorType.UNKNOWN, errMessage, isRecoverable = err?.type != ChatErrorType.API_KEY)
-            // B-24: 仅自己仍是最新生成时才清零
-            // F-10: 工具循环失败 → FAILED
+            // B-24: Sólo autorizado si todavía es la última generación.
+            // F-10: El ciclo de la herramienta falló → FAILED
             host.clearStreamingStateIfLatest(state, finalPhase = ChatStreamPhase.FAILED)
             return false
         }
 
-        // Phase 8.5 修复 S16: 工具调用达到 maxToolRounds 上限且未产生最终回复时,
-        // 累积的 pendingRagCitations 需要附加到当前 assistant 消息。
+        // Phase 8.5 Solución S16: cuando la llamada a la herramienta alcanza el límite de maxToolRounds y no se genera ninguna respuesta final,
+        // Las RagCitations pendientes acumuladas deben agregarse al mensaje actual del asistente.
         if (toolLoopResult.finalAssistantMessage == null && pendingRagCitations.isNotEmpty()) {
             val lastAssistant = host.stateStore.messages.value.firstOrNull { it.id == state.currentAssistantId }
             if (lastAssistant != null && lastAssistant.ragCitations.isEmpty()) {
@@ -1715,7 +1716,7 @@ internal class ChatToolLoopRunner(
                     host.stateStore.messages.value.map { msg ->
                         if (msg.id == withCitations.id) withCitations else msg
                     }
-                // B-1: 会话已删除则跳过 citations 落盘,防止删后"复活"。
+                // B-1: Si la sesión ha sido eliminada, se omitirán las citas.,Prevenir la eliminación"resurrección".
                 if (!host.generationController.isSessionWritesSuppressed(sessionId)) {
                     try {
                         host.sessionRepository.upsertMessage(sessionId, withCitations)
@@ -1733,14 +1734,14 @@ internal class ChatToolLoopRunner(
             }
         }
 
-        // 将 finalAssistantMessage(含 citations + artifacts)写入 UI / DB / branch
+        // voluntad finalAssistantMessage(Contiene citations + artifacts)escribir UI / DB / branch
         var finalMessagePersistenceFailed = false
         toolLoopResult.finalAssistantMessage?.let { finalAssistant ->
-            // v1.0.75 fix (生图只显示链接根因): finalAssistantMessage 由 GenerationHandler 构造,
-            //   只含 content + toolCalls,不含媒体字段。若直接覆盖同 id 消息,
-            //   execGenerateImage 写入的 imageUrls / videoFileUri / imageBase64List 会丢失,
-            //   导致图片不渲染、模型只能复述 URL。合并保留原消息的媒体字段。
-            // A-16: 合并逻辑抽成 internal 纯函数 [mergeFinalAssistantMedia](有单测护栏)
+            // v1.0.75 fix (El gráfico sin formato solo muestra la causa raíz del enlace.): finalAssistantMessage Construido por GenerationHandler,
+            //   Contiene sólo content + toolCalls,No contiene campos multimedia. Si sobrescribe directamente el mismo mensaje de identificación,
+            //   execGenerateImage escrito imageUrls / videoFileUri / imageBase64List se perderá,
+            //   Como resultado, la imagen no se representa y el modelo sólo puede repetir la URL. La combinación conserva los campos multimedia del mensaje original.
+            // A-16: Fusionar lógica en funciones puras internas [mergeFinalAssistantMedia](Hay una única barandilla de prueba.)
             val existingMsg = host.stateStore.messages.value.firstOrNull { it.id == finalAssistant.id }
             val mergedMedia = mergeFinalAssistantMedia(finalAssistant, existingMsg)
             val withCitations =
@@ -1774,8 +1775,8 @@ internal class ChatToolLoopRunner(
                     if (msg.id == withArtifacts.id) withArtifacts else msg
                 }
             conversationHistory.add(withArtifacts)
-            // v1.0.88 (S-3): 流式收尾完整性自检日志 — 记录最终 content 长度与角色,
-            // 若用户反馈"消息重叠/错乱"时可从日志快速判断是内容叠加还是排序问题。
+            // v1.0.88 (S-3): Registro de autoverificación de integridad de cierre de transmisión — Registre la longitud y los roles del contenido final,
+            // Si los comentarios de los usuarios"Superposición de mensajes/confusión"Puede determinar rápidamente a partir del registro si se trata de un problema de superposición de contenido o de clasificación.
             Logger.i(
                 "ChatVM",
                 "finalize: msg=${withArtifacts.id.toString().take(8)} len=${withArtifacts.content.length} " +
@@ -1802,12 +1803,12 @@ internal class ChatToolLoopRunner(
                     if (commitResult is io.zer0.muse.data.chat.rewrite.MessageCommitResult.Rejected) {
                         error("conversation commit rejected")
                     }
-                    // B-1: 会话已删除则跳过 artifacts 落盘,防止删后"复活"。
+                    // B-1: Si la sesión se eliminó, se omitirán los artefactos.,Prevenir la eliminación"resurrección".
                 } else if (!host.generationController.isSessionWritesSuppressed(sessionId)) {
                     host.sessionRepository.upsertMessage(sessionId, withArtifacts)
                 }
             } catch (e: Exception) {
-                // 提交失败时不能继续走正常 finalize，否则会出现“回合完成但正文未落库”。
+                // Cuando el envío falla, no puede continuar con la finalización normal; de lo contrario, aparecerá“La ronda se completa pero el texto no está en la biblioteca.”.
                 finalMessagePersistenceFailed = true
                 Logger.e("ChatVM", "upsertMessage failed", e)
                 host.addError(
@@ -1843,19 +1844,19 @@ internal class ChatToolLoopRunner(
     }
 
     /**
-     * 上下文溢出恢复用的压缩：用现成压缩器压一轮历史，没压短就返回 null。
+     * Compresión para recuperación de desbordamiento de contexto: use un compresor disponible para comprimir una ronda del historial y devuelva nulo si no está comprimido.
      *
-     * 参数按「尽量压得动」取：强制触发阈值（不受条数门槛限制）、更小的保留尾部、
-     * 摘要失败时允许可见标记截断兜底。理由：走到这里说明 provider 已经判定请求放不下，
-     * 再保守地「没净收益就不压」只会把原错误原样丢给用户。
+     * Los parámetros se seleccionan según "la mayor presión posible": umbral de disparo forzado (no limitado por el número de elementos), cola retenida más pequeña,
+     * Permitir que el marcado visible se trunque cuando falla el resumen. Motivo: Ir aquí significa que el proveedor ha determinado que la solicitud no se puede liberar.
+     * Si continúa siendo conservador y "no presione si no hay beneficio neto", solo le arrojará el error original al usuario.
      *
-     * 压缩器自身的行为与阈值语义不改，这里只读它的返回值。
+     * El comportamiento y la semántica del umbral del compresor en sí no cambian, aquí solo se lee su valor de retorno.
      *
-     * @return 压缩后的历史；null 表示无法恢复（消息太少 / 无可压缩区间 / 无净收益 / 调用失败）。
+     * @return historia comprimida;null Indica que la recuperación es imposible (muy pocos mensajes/ningún rango de compresión/ningún beneficio neto/llamada fallida).
      */
     private suspend fun compressForOverflowRecovery(history: List<UIMessage>, sessionId: String): List<UIMessage>? {
         if (history.size < 2) return null
-        // 可压缩区间 = SYSTEM 前缀之后到最近 keepRecent 条之前，所以尾巴不能把所有消息占满
+        // Intervalo compresible = SYSTEM Después del prefijo y antes del último mensaje keepRecent, la cola no puede ocupar todos los mensajes.
         val keepRecent = minOf(OVERFLOW_RECOVERY_KEEP_RECENT, history.size - 1).coerceAtLeast(1)
         val context =
             TransformContext(
@@ -1877,13 +1878,13 @@ internal class ChatToolLoopRunner(
             resultOf { host.contextCompressTransformer.transform(history, context) }
                 .onError { message, t -> Logger.w("ChatVM", "overflow recovery compress failed: $message", t) }
                 .getOrNull() ?: return null
-        // 条数没变 = 压缩器原样返回，此时重发只会再撞一次同样的窗口
+        // El número de artículos no ha cambiado. = El compresor regresa sin cambios y la retransmisión solo volverá a llegar a la misma ventana.
         return compressed.takeIf { it.size < history.size }
     }
 
     /**
-     * 从 ChatViewModel.companion 复制的常量(原 runToolLoop 直接引用)。
-     * 值逐字照搬,保证行为等价。
+     * Constantes copiadas de ChatViewModel.companion(Referencia directa al runToolLoop original).
+     * Los valores se copian palabra por palabra.,Garantizar la equivalencia comportamental.
      */
     private companion object {
         const val STREAM_SLIDE_WINDOW = 10
@@ -1902,7 +1903,7 @@ internal class ChatToolLoopRunner(
         const val MAX_TOOL_ROUNDS = 12
         const val NETWORK_RECOVERY_TIMEOUT_MS = 30_000L
 
-        /** 溢出恢复压缩后保留的尾部消息条数：比常规压缩更短，以确保真的能腾出窗口。 */
+        /** La cantidad de mensajes finales retenidos después de la compresión de recuperación de desbordamiento: más corta que la compresión normal para garantizar que la ventana realmente se pueda liberar. */
         const val OVERFLOW_RECOVERY_KEEP_RECENT = 4
     }
 }

@@ -1,9 +1,9 @@
 /**
- * 设置项左侧图标：从 `MuseIcons.kt` 照搬的 pathData（24×24 视口、圆头圆角描边）。
+ * El icono en el lado izquierdo del elemento de configuración: desde `MuseIcons.kt` Ruta copiadaDatos(24×24 Ventana gráfica, trazo de esquina redondeada).
  *
- * 只收 `HostSettingsCatalog` 里实际出现的 44 个 `iconKey`，不是整包 180KB 的图标集；
- * 线宽和尺寸走令牌（`--muse-icons-stroke-width` / `--muse-icons-icon-small`，见 primitives.css），
- * 这里只放几何。新增设置项带来新的 `iconKey` 时，按同名 `val` 从 MuseIcons 抄一份即可。
+ * Sólo aceptar `HostSettingsCatalog` 44 realmente aparecieron en `iconKey`, no todo el conjunto de iconos de 180 KB;
+ * El ancho y el tamaño de la línea van token (`--muse-icons-stroke-width` / `--muse-icons-icon-small`, ver primitivos.css),
+ * Simplemente ponga geometría aquí. Los nuevos elementos de configuración traen nuevos `iconKey` , presione el mismo nombre `val` Simplemente cópielo de MuseIcons.
  */
 export const SETTINGS_ICON_PATHS: Readonly<Record<string, readonly string[]>> = {
   affiliate: [

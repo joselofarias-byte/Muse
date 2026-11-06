@@ -21,98 +21,98 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Phase 5-H: 工具注册表(简化版 MCP 框架)。
+ * Phase 5-H: Registro de herramientas(Versión simplificada del marco MCP).
  *
- * Phase 7 扩展:接入 LLM function calling —
- *  - [listToolsAsToolDefinitions] 生成 OpenAI 兼容的 ToolDefinition 列表
- *  - [executeFromJson] 从 LLM 返回的 arguments JSON 字符串执行工具
+ * Phase 7 Expandir:Acceso LLM function calling —
+ *  - [listToolsAsToolDefinitions] Genere una lista de definiciones de herramientas compatibles con OpenAI
+ *  - [executeFromJson] herramienta de ejecución de cadenas JSON de argumentos devuelta por LLM
  *
- * Phase 8.8 扩展:
- *  - 改为动态注册(mutableMap + [register] API),支持运行时增删工具
- *  - 内置 7 个本地工具(本地工具 7 件套,无 QuickJS):
- *    1. get_current_time — 获取当前时间(支持时区参数)
- *    2. calculator — 简易计算器(四则运算)
- *    3. echo — 回显(测试用)
- *    4. clipboard_read — 读取系统剪贴板
- *    5. clipboard_write — 写入系统剪贴板
- *    6. screen_time — 获取今日屏幕使用时间统计(UsageStatsManager)
- *    7. calendar_today — 获取今日日历事件(CalendarContract)
- *  - 手机端工具(10 个,Android 系统 API):
- *    8. set_alarm — 设置闹钟(AlarmClock,支持每周重复)
- *    9. set_timer — 设置倒计时(AlarmClock)
- *    10. open_app — 打开应用(PackageManager,支持 Deep Link)
- *    11. share_text — 分享文本(ACTION_SEND)
- *    12. get_location — 获取粗略位置(LocationManager,需 ACCESS_COARSE_LOCATION)
- *    13. get_device_info — 获取设备信息(Build/BatteryManager)
- *    14. get_contacts_count — 联系人数量(ContactsContract,需 READ_CONTACTS)
- *    15. get_contacts_list — 联系人列表(增强版,需 READ_CONTACTS)
- *    16. send_sms — 发送短信(SmsManager,需 SEND_SMS)
- *    17. add_contact — 新建联系人(Intent.ACTION_INSERT)
- *  - 系统控制与邮件工具(5 个):
- *    18. open_system_setting — 打开系统设置页(支持 wifi/bluetooth/display 等分类)
- *    19. toggle_wifi — 开关 WiFi(Android 10+ 跳设置页,可读状态)
- *    20. toggle_bluetooth — 开关蓝牙(可读状态/关闭/跳设置页开启)
- *    21. send_email — 发送邮件(ACTION_SENDTO 打开邮件应用)
- *    22. get_battery_info — 获取电池信息(电量/充电状态)
- *  - [listToolsAsToolDefinitions] 支持 [enabledToolIds] 参数按 Assistant 过滤
+ * Phase 8.8 Expandir:
+ *  - Cambiar a registro dinámico(mutableMap + [register] API),Admite agregar y eliminar herramientas en tiempo de ejecución
+ *  - 7 herramientas locales integradas(Juego de herramientas locales de 7 piezas.,Ninguno QuickJS):
+ *    1. get_current_time — Obtener la hora actual(Parámetros de zona horaria de soporte)
+ *    2. calculator — calculadora sencilla(Cuatro operaciones aritméticas)
+ *    3. echo — eco(para probar)
+ *    4. clipboard_read — Leer el portapapeles del sistema
+ *    5. clipboard_write — Escribir en el portapapeles del sistema
+ *    6. screen_time — Obtenga las estadísticas del tiempo de pantalla de hoy(UsageStatsManager)
+ *    7. calendar_today — Obtener los eventos del calendario de hoy(CalendarContract)
+ *  - Herramientas celulares(10 un,Android sistema API):
+ *    8. set_alarm — Establecer alarma(AlarmClock,Soporta la repetición semanal.)
+ *    9. set_timer — Establecer cuenta regresiva(AlarmClock)
+ *    10. open_app — Abrir aplicación(PackageManager,apoyo Deep Link)
+ *    11. share_text — compartir texto(ACTION_SEND)
+ *    12. get_location — Obtener una ubicación aproximada(LocationManager,necesidad ACCESS_COARSE_LOCATION)
+ *    13. get_device_info — Obtener información del dispositivo(Build/BatteryManager)
+ *    14. get_contacts_count — Número de contactos(ContactsContract,necesidad READ_CONTACTS)
+ *    15. get_contacts_list — lista de contactos(Versión mejorada,necesidad READ_CONTACTS)
+ *    16. send_sms — Enviar SMS(SmsManager,necesidad SEND_SMS)
+ *    17. add_contact — Crear nuevo contacto(Intent.ACTION_INSERT)
+ *  - Control del sistema y herramientas de correo.(5 un):
+ *    18. open_system_setting — Abra la página de configuración del sistema(Admite wifi/bluetooth/pantalla y otras categorías)
+ *    19. toggle_wifi — cambiar WiFi(Android 10+ Saltar a la página de configuración,estado legible)
+ *    20. toggle_bluetooth — Activar y desactivar Bluetooth(estado legible/cerrar/Vaya a la página de configuración para abrir)
+ *    21. send_email — Enviar correo electrónico(ACTION_SENDTO Abra la aplicación de correo)
+ *    22. get_battery_info — Obtener información de la batería(poder/estado de carga)
+ *  - [listToolsAsToolDefinitions] apoyo [enabledToolIds] Parámetros filtrados por Asistente
  *
- * MCP 协议对标:
+ * MCP Evaluación comparativa de protocolos:
  *  - tools/list: [listTools] / [listToolsAsToolDefinitions]
  *  - tools/call: [execute] / [executeFromJson]
- *  - 后续扩展:从配置加载外部 MCP server(stdio/sse,Phase 9)
+ *  - Ampliación posterior:Cargar externo desde la configuración MCP server(stdio/sse,Phase 9)
  *
- * @param context 应用 Context(用于需要系统服务的工具:Clipboard/UsageStats/Calendar)
+ * @param context Solicitud Context(Herramientas para requerir servicios del sistema.:Clipboard/UsageStats/Calendar)
  */
 class ToolRegistry(
     private val context: Context,
     private val browserManager: BrowserManager = BrowserManager(context),
 ) {
-    /** 工具定义(UI 展示用,parameters 是参数名 → 描述)。
+    /** Definición de herramienta(UI para exhibición,parameters es el nombre del parámetro → Descripción).
      *
-     * v1.???: 新增 [parameterTypes] 支持为每个参数指定 JSON Schema type,解决
-     * execute_javascript 的 timeout_ms 等数字/布尔参数被 LLM 误传为 string 的问题。
-     * 未指定时默认 type=string,保持与旧 [parameters] 行为的兼容性。
+     * v1.???: Nuevo [parameterTypes] Admite la especificación de cada parámetro JSON Schema type,resolver
+     * execute_javascript timeout_ms y otros números/Problema por el cual LLM transmite erróneamente parámetros booleanos como cadenas.
+     * Predeterminado si no se especifica type=string,sigue con lo viejo [parameters] Compatibilidad conductual.
      */
     data class ToolDef(
         val name: String,
         val description: String,
-        val parameters: Map<String, String>, // 参数名 → 描述
-        /** 是否必填。 */
+        val parameters: Map<String, String>, // Nombre del parámetro → Descripción
+        /** ¿Es necesario? */
         val required: Set<String> = emptySet(),
-        /** 工具分类(用于 UI 分组展示):built-in / local / mcp。 */
+        /** Clasificación de herramientas(Se utiliza para la visualización del grupo UI):built-in / local / mcp. */
         val category: String = "built-in",
-        /** 参数名 → JSON Schema type(如 integer / boolean),未指定默认 string。 */
+        /** Nombre del parámetro → JSON Schema type(Como por ejemplo integer / boolean),No se ha especificado ninguna cadena predeterminada. */
         val parameterTypes: Map<String, String> = emptyMap(),
-        /** 工具风险等级,用于会话权限体系。无缺省值:每个构造点必须显式声明,漏写即编译失败。 */
+        /** Nivel de riesgo de la herramienta,Se utiliza para el sistema de permisos de sesión. Sin valor predeterminado:Cada punto de construcción debe declararse explícitamente.,Falta una escritura significa que la compilación falla. */
         val riskLevel: ToolRiskLevel,
-        /** 原始 JSON Schema。MCP 工具使用此字段保留嵌套对象、数组、枚举等完整结构。 */
+        /** Esquema JSON sin formato.MCP Las herramientas utilizan este campo para preservar la estructura completa de objetos anidados, matrices, enumeraciones, etc. */
         val rawParametersJsonSchema: String? = null,
     )
 
     /**
-     * 工具执行函数:参数 map → 结果字符串。
+     * Función de ejecución de herramientas:parámetros map → Cadena de resultado.
      *
-     * v1.134 P0-3: 改为 suspend 函数类型,消除 McpRegistry 的 runBlocking 反模式。
-     * 内置工具大多是同步 IO(ContentResolver 查询 / LocationManager 读取等),
-     * 加 suspend 关键字不影响内部实现,只是让方法引用类型匹配;
-     * MCP 远程调用可直接在协程上下文中执行,超时用 withTimeoutOrNull 替代线程池超时。
+     * v1.134 P0-3: Cambiar para suspender el tipo de función,Elimine el antipatrón runBlocking de McpRegistry.
+     * Las herramientas integradas están en su mayoría sincronizadas IO(ContentResolver Consulta/Lectura de LocationManager, etc.),
+     * Agregar la palabra clave suspender no afecta la implementación interna,Simplemente haga que el tipo de referencia del método coincida;
+     * MCP Las llamadas remotas se pueden ejecutar directamente en el contexto de la rutina.,El tiempo de espera utiliza withTimeoutOrNull en lugar del tiempo de espera del grupo de subprocesos.
      */
     private typealias ToolFn = suspend (Map<String, String>) -> String
 
-    /** 需要宿主会话边界的工具，context 由执行链路注入，模型不能伪造。 */
+    /** Herramientas necesarias para alojar los límites de la sesión,context Inyectado por el enlace de ejecución, el modelo no se puede falsificar. */
     typealias ContextToolFn = suspend (Map<String, String>, ToolExecutionContext) -> String
 
-    /** v1.0.53: 结构化结果执行函数(返回 [ToolOutcome])。 */
+    /** v1.0.53: Función de ejecución de resultados estructurados.(Regresar [ToolOutcome]). */
     private typealias ToolOutcomeFn = suspend (Map<String, String>) -> ToolOutcome
 
-    /** MCP/JSON 工具执行函数,保留数字、布尔、数组和对象参数的原始类型。 */
+    /** MCP/JSON Función de ejecución de herramientas,Conserve los tipos originales de parámetros numéricos, booleanos, de matriz y de objeto. */
     internal typealias JsonToolFn = suspend (JsonObject) -> String
 
-    // M-TR2: 改用 ConcurrentHashMap,保证 register/unregister/execute 并发安全
+    // M-TR2: Usar en su lugar ConcurrentHashMap,Garantizar la seguridad de registro/cancelación de registro/ejecución de concurrencia
     private val tools = ConcurrentHashMap<String, ToolFn>()
     private val contextTools = ConcurrentHashMap<String, ContextToolFn>()
 
-    // v1.0.53: 结构化结果工具通道(优先于 [tools] 查找)
+    // v1.0.53: Canal de herramientas de resultados estructurados(tener prioridad sobre [tools] encontrar)
     private val outcomeTools = ConcurrentHashMap<String, ToolOutcomeFn>()
     private val jsonTools = ConcurrentHashMap<String, JsonToolFn>()
     private val toolDefs = ConcurrentHashMap<String, ToolDef>()
@@ -122,11 +122,11 @@ class ToolRegistry(
     private val _revision = MutableStateFlow(0L)
 
     /**
-     * v2.6.2（工具审计）: 注册/注销串行锁。
+     * v2.6.2(Auditoría de herramientas): Registrarse/Anule el registro del bloqueo en serie.
      *
-     * 各 register / unregister 同时改多个 map（tools/contextTools/outcomeTools/jsonTools/toolDefs）
-     * 与 _revision；无锁时执行线程可能看到“定义已换、旧 handler 还在”的中间状态，
-     * _revision 的非原子递增也可能丢递增。所有写路径共用此锁。
+     * Cada registro/cancelación del registro cambia múltiples mapas al mismo tiempo (tools/contextTools/outcomeTools/jsonTools/toolDefs)
+     * Con _revisión; el hilo en ejecución puede ver“La definición ha sido cambiada, pero el antiguo controlador sigue ahí.”el estado intermedio,
+     * _revision Los incrementos no atómicos también pueden perder incrementos. Todas las rutas de escritura comparten este bloqueo.
      */
     private val registerLock = Any()
 
@@ -134,84 +134,84 @@ class ToolRegistry(
         _revision.value = _revision.value + 1
     }
 
-    // 见 [listToolsAsToolDefinitions]：定义列表按注册表版本缓存。
+    // ver [listToolsAsToolDefinitions]: La lista de definiciones se almacena en caché por versión del registro.
     private val definitionsLock = Any()
     private var definitionsRevision = Long.MIN_VALUE
     private var definitionsAll: List<ToolDefinition> = emptyList()
     private val definitionsByFilter = LinkedHashMap<List<String>, List<ToolDefinition>>()
 
-    /** 动态工具注册/注销版本，供工具页和请求组装器订阅刷新。 */
+    /** Registro dinámico de herramientas/Cancele el registro de la versión de las páginas de herramientas y solicite actualizaciones de la suscripción al ensamblador. */
     val revision: StateFlow<Long> = _revision.asStateFlow()
 
     /**
-     * v2.x: 运行环境授权状态提供器(由 AutomationInitializer 注入;null = 未接线,跳过权限预检)。
+     * v2.x: Proveedor de estado de autorización del entorno de ejecución(Inyectado por AutomationInitializer;null = No cableado,Saltar verificación previa de permiso).
      */
     @Volatile
     var permissionStatusProvider: (() -> ToolPermissionStatus)? = null
 
     /**
-     * v2.x 工具瘦身阶段4:技能发现通道。
+     * v2.x Etapa de adelgazamiento de herramientas.4:Canal de descubrimiento de habilidades.
      *
-     * 技能在 [ToolCategories] 里没有分类，默认与 OPTIONAL 同口径收窄（见
-     * [ToolExposurePolicy.filterToolsForRequest]）；因此 [FindToolsTool] 必须能把
-     * 技能也搜出来并装载，否则收窄 = 功能回退。
+     * Habilidades en [ToolCategories] No existe ninguna clasificación y el valor predeterminado se reduce al mismo calibre que OPCIONAL (consulte
+     * [ToolExposurePolicy.filterToolsForRequest]); por lo tanto [FindToolsTool] Debe poder
+     * Las habilidades también se buscan y cargan, de lo contrario se reducirán. = Reversión funcional.
      *
-     * v2.5.9: 从"单个全局提供器"改为**按会话存放**。技能集合随助手/会话绑定变化，
-     * 用单一全局字段会在会话交错时互相覆盖，导致 find_tools 检索到别的会话的技能。
+     * v2.5.9: de"único proveedor global"Cambiar a**Almacenar por sesión**. El conjunto de habilidades viene con asistente./Cambios de enlace de sesión,
+     * El uso de un único campo global se sobrescribirá entre sí cuando las sesiones se intercalen, lo que hará que find_tools recupere habilidades de otras sesiones.
      */
     private val searchableSkillsBySession =
         java.util.concurrent.ConcurrentHashMap<String, List<ToolDef>>()
 
-    /** 登记某会话可检索的技能目录（组装层在每轮开始时调用）。 */
+    /** Registra un directorio de habilidades que se pueden recuperar para una sesión (llamado por la capa de ensamblaje al comienzo de cada ronda). */
     fun setSearchableSkills(sessionId: String?, skills: List<ToolDef>) {
         val key = sessionId?.takeIf { it.isNotBlank() } ?: return
         if (skills.isEmpty()) searchableSkillsBySession.remove(key) else searchableSkillsBySession[key] = skills
     }
 
-    /** 读取某会话可检索的技能目录（无记录时为空）。 */
+    /** Lea el directorio de habilidades que puede recuperar una sesión (vacío si no hay ningún registro). */
     fun searchableSkills(sessionId: String?): List<ToolDef> = sessionId?.let { searchableSkillsBySession[it] }.orEmpty()
 
-    /** 清除某会话的技能目录（会话结束时调用，防残留）。 */
+    /** Borrar el directorio de habilidades de una sesión (llamado al final de la sesión para evitar residuos). */
     fun clearSearchableSkills(sessionId: String?) {
         sessionId?.let { searchableSkillsBySession.remove(it) }
     }
 
     /**
-     * v2.6.1: 按会话登记的“助手工具配置内”本地工具名集。
+     * v2.6.1: Registrado por sesión“Dentro de la configuración de la herramienta auxiliar”Una colección de nombres de herramientas locales.
      *
-     * ## 为什么需要它
+     * ## por qué es necesario
      *
-     * [FindToolsTool] 原来搜的是 [listTools] 全量注册表，与助手白名单（toolIdsJson）
-     * 完全脱节。当助手白名单是收窄的子集时，find_tools 能搜到并回“now available
-     * from your next call”，但该工具在 ChatStreamCoordinator.resolveToolsAndModel
-     * 的白名单过滤阶段就被裁掉（而那里不看 [SessionToolLoadRegistry]），
-     * 下一轮调用只会得到 `tool 'X' is not exposed in this turn` —— 一句空头支票。
-     * 登记白名单后，find_tools 只装载真正能进 schema 的工具。
+     * [FindToolsTool] Resultó que la búsqueda era [listTools] Registro completo y lista blanca de asistentes (toolIdsJson)
+     * Totalmente fuera de contacto. Cuando la lista blanca de asistentes es un subconjunto reducido,find_tools Puede buscar y regresar“now available
+     * from your next call”, pero la herramienta es ChatStreamCoordinator.resolveToolsAndModel
+     * La etapa de filtrado de la lista blanca está cortada (y no hay vista de [SessionToolLoadRegistry]),
+     * La próxima ronda de llamadas solo recibirá `tool 'X' is not exposed in this turn` —— Una promesa en blanco.
+     * Después de registrar la lista blanca,find_tools Cargue únicamente herramientas que realmente puedan ingresar al esquema.
      *
-     * null（未登记，例如子代理等旧路径）= 不作限制，保持向后兼容。
+     * null(No registrados, como rutas antiguas como subagentes)= Sin restricciones, manteniendo la compatibilidad con versiones anteriores.
      */
     private val visibleToolNamesBySession =
         java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
 
-    /** 登记某会话助手工具配置内的本地工具名（组装层在每轮开始时调用）。 */
+    /** Registre el nombre de la herramienta local dentro de la configuración de la herramienta del asistente de sesión (llamada por la capa de ensamblaje al comienzo de cada ronda). */
     fun setVisibleTools(sessionId: String?, names: Set<String>) {
         val key = sessionId?.takeIf { it.isNotBlank() } ?: return
         if (names.isEmpty()) visibleToolNamesBySession.remove(key) else visibleToolNamesBySession[key] = names
     }
 
-    /** 读取某会话助手工具配置内的工具名；null 表示未登记（不限制）。 */
+    /** Leer el nombre de la herramienta en la configuración de la herramienta del asistente de sesión;null Indica no registrado (sin restricciones). */
     fun visibleTools(sessionId: String?): Set<String>? = sessionId?.let { visibleToolNamesBySession[it] }
 
-    /** 清除某会话的工具可见集（会话结束时调用，防残留）。 */
+    /** Borre el conjunto de herramientas visibles para una sesión (llamado al final de la sesión para evitar residuos). */
     fun clearVisibleTools(sessionId: String?) {
         sessionId?.let { visibleToolNamesBySession.remove(it) }
     }
 
     /**
-     * 三档工具计数的统一入口（口径见 [ToolCounts]，规则见 [ToolSchemaRules]）。
+     * Entrada unificada para conteo de herramientas de tres velocidades (ver calibre [ToolCounts], ver las reglas [ToolSchemaRules]).
      *
-     * 启动日志、提示词工具索引、find_tools 头部计数都从这里取数：三个数各自对应
-     * 一层真实消费面，不再各写一套筛选实现。
+     * Registro de inicio, índice de herramientas de Word rápido,find_tools El recuento se obtiene a partir de aquí: los tres números se corresponden entre sí.
+     * Una capa de consumo real ya no necesita escribir un conjunto de implementaciones de detección.
      */
     fun countTools(
         sessionId: String?,
@@ -228,25 +228,25 @@ class ToolRegistry(
         ),
     )
 
-    // v1.136: 定时提醒、资源库
-    // v1.0.17: 快速记录改用 Room(MuseDb.get(context).quickNoteDao()),不再持有 QuickNoteStore
+    // v1.136: Recordatorios periódicos, biblioteca de recursos
+    // v1.0.17: Registro rápido para usar Room(MuseDb.get(context).quickNoteDao()),ya no se mantiene QuickNoteStore
 
     init {
-        // 注册内置 7 件套
-        // JS 沙盒:让 AI 能执行 JavaScript 代码(数学计算/数据处理/简单算法)
-        // 底层用 WebView 的 V8 引擎,不新增大型依赖
+        // Registrarse Juego incorporado de 7 piezas
+        // JS caja de arena:Deje que la IA ejecute código JavaScript(cálculos matemáticos/Procesamiento de datos/algoritmo simple)
+        // Se utiliza el motor V8 subyacente de WebView.,No hay nuevas grandes dependencias
         register(CodeExecutionTool.toolDef()) { args ->
             CodeExecutionTool.executeFromArgs(args, context)
         }
 
-        // P1-C: Node 脚本执行(内置 Node 运行时,完整能力;高风险同 execute_javascript)
+        // P1-C: Node Ejecución de script(Tiempo de ejecución de nodo incorporado,capacidad total;alto riesgo execute_javascript)
         register(NodeScriptTool.toolDef()) { args ->
             NodeScriptTool.executeFromArgs(args, context)
         }
 
-        // P2-6: 浏览器自动化工具集(navigate/click/type/extract/scroll_bottom/get_html)
-        // 与 Koin 注册的 BrowserManager 单例共享同一实例(由 AppToolModule 注入),
-        // 保证 AI 工具操作与 UI 状态胶囊实时同步。
+        // P2-6: Conjunto de herramientas de automatización del navegador(navigate/click/type/extract/scroll_bottom/get_html)
+        // Comparte la misma instancia que el singleton de BrowserManager registrado con Koin(Inyectado por AppToolModule),
+        // Garantice la sincronización en tiempo real de las operaciones de las herramientas de IA y las cápsulas de estado de la interfaz de usuario.
         BrowserAutomationTool.toolDefs().forEach { def ->
             register(def) { args ->
                 BrowserAutomationTool.executeFromArgs(def.name, args, browserManager)
@@ -255,9 +255,9 @@ class ToolRegistry(
     }
 
     /**
-     * Phase 8.8: 注册工具(动态扩展点,后续 MCP server 加载用)。
-     * @param def 工具定义
-     * @param fn 执行函数
+     * Phase 8.8: herramienta de registro(punto de extensión dinámica,Para carga posterior del servidor MCP).
+     * @param def Definición de herramienta
+     * @param fn Ejecutar función
      */
     fun register(def: ToolDef, fn: ToolFn) {
         synchronized(registerLock) {
@@ -270,7 +270,7 @@ class ToolRegistry(
         }
     }
 
-    /** 注册需要宿主会话 scope/space 边界的工具。 */
+    /** Registre herramientas que requieran límites de espacio/alcance de la sesión de alojamiento. */
     fun registerWithContext(def: ToolDef, fn: ContextToolFn) {
         synchronized(registerLock) {
             contextTools[def.name] = fn
@@ -283,8 +283,8 @@ class ToolRegistry(
     }
 
     /**
-     * v1.0.53: 注册结构化结果工具(返回 [ToolOutcome])。
-     * 优先于旧 String 通道;同名的 String 注册会覆盖回旧通道。
+     * v1.0.53: Regístrese para la herramienta de resultados estructurados(Regresar [ToolOutcome]).
+     * Prioriza los canales String antiguos;Un registro de cadena con el mismo nombre sobrescribirá el canal anterior.
      */
     fun registerOutcome(def: ToolDef, fn: ToolOutcomeFn) {
         synchronized(registerLock) {
@@ -298,10 +298,10 @@ class ToolRegistry(
     }
 
     /**
-     * 注册保留原始 JSON 参数的工具。
+     * Registre una herramienta que conserve los parámetros JSON sin formato.
      *
-     * MCP 的 inputSchema 允许 number / boolean / array / object 参数;
-     * 普通 [ToolFn] 为兼容内置工具会把参数压成 String,因此 MCP 工具必须走此通道。
+     * MCP El esquema de entrada permite number / boolean / array / object parámetros;
+     * ordinario [ToolFn] Para compatibilidad con las herramientas integradas, los parámetros se comprimirán en String,Por lo tanto, las herramientas MCP deben adoptar este canal.
      */
     internal fun registerJson(def: ToolDef, fn: JsonToolFn) {
         synchronized(registerLock) {
@@ -314,7 +314,7 @@ class ToolRegistry(
         }
     }
 
-    /** 注销工具。 */
+    /** Herramienta para cerrar sesión. */
     fun unregister(name: String) {
         synchronized(registerLock) {
             tools.remove(name)
@@ -326,16 +326,16 @@ class ToolRegistry(
         }
     }
 
-    // v1.0.53: 工具分类注册表校验 — 每个内置工具必须有分类
-    // 只检查 category="built-in"(MCP/插件工具豁免);debug 构建缺失时抛异常,release 仅记日志。
-    // 注意:不能在 ToolRegistry.init 里跑 —— 那时各 Registrar 还没注册,只能看到本类自带的
-    // 少量工具,断言为空(自名单漏登记 20+ 个工具也没人发现)。
-    // 由 [ToolRegistrarBootstrapper.init](所有 Registrar 实例化之后)调用。
+    // v1.0.53: Verificación del registro de clasificación de herramientas. — Cada herramienta integrada debe tener una categoría.
+    // Sólo comprobar category="built-in"(MCP/Exención de herramienta complementaria);debug Lanzar una excepción cuando falta la compilación,release Simplemente inicie sesión.
+    // Nota:No se puede ejecutar en ToolRegistry.init —— En ese momento, cada Registrador aún no se había registrado.,Sólo puedes ver los que vienen con esta categoría.
+    // pocas herramientas,afirmar está vacío(Más de 20 herramientas faltaron en la lista y nadie se enteró).
+    // por [ToolRegistrarBootstrapper.init](Después de crear instancias de todos los registradores)llamar.
     fun assertBuiltInCategoryCoverage() {
         val builtInNames = toolDefs.values.filter { it.category == "built-in" }.map { it.name }.toSet()
         val uncovered = ToolCategories.assertCoverage(builtInNames)
         if (uncovered.isNotEmpty()) {
-            val msg = "内置工具分类注册表缺失: ${uncovered.joinToString(", ")} (见 ToolCategories.kt)"
+            val msg = "Falta el registro de clasificación de herramientas integrado: ${uncovered.joinToString(", ")} (ver ToolCategories.kt)"
             if (io.zer0.muse.BuildConfig.DEBUG) {
                 throw IllegalStateException(msg)
             } else {
@@ -344,19 +344,19 @@ class ToolRegistry(
         }
     }
 
-    /** 列出所有可用工具(对标 MCP tools/list)。 */
+    /** Listar todas las herramientas disponibles(Evaluación comparativa MCP tools/list). */
     fun listTools(): List<ToolDef> = toolDefs.values.toList()
 
     /**
-     * 获取指定工具的风险等级,未注册时返回 null。
+     * Obtener el nivel de riesgo de un instrumento específico,Devuelve nulo si no está registrado.
      *
-     * 供 [ToolPermissionResolver] 结合会话权限模式判断是否需要审批。
+     * suministro [ToolPermissionResolver] Combinado con el modo de permiso de sesión para determinar si se requiere aprobación.
      */
     fun getToolRiskLevel(name: String): ToolRiskLevel? = toolDefs[name]?.riskLevel
 
     /**
-     * Phase 8.8: 按工具 id 列表过滤(为 Assistant 绑定工具子集用)。
-     * @param enabledToolIds 启用的工具 id 列表;null 或空列表表示全部启用
+     * Phase 8.8: Filtrar por lista de ID de herramienta(Para usar con un subconjunto de herramientas de encuadernación auxiliares).
+     * @param enabledToolIds Lista de identificadores de herramientas habilitadas;null O una lista vacía significa habilitar todos
      */
     fun listTools(enabledToolIds: List<String>? = null): List<ToolDef> {
         val all = toolDefs.values.toList()
@@ -365,23 +365,23 @@ class ToolRegistry(
     }
 
     /**
-     * Phase 7: 生成 OpenAI 兼容的 ToolDefinition 列表(供 ChatService.streamChat(tools=...) 使用)。
-     * Phase 8.8: 支持 [enabledToolIds] 按 Assistant 过滤。
-     * 把 [ToolDef.parameters](参数名 → 描述) 转换为 JSON Schema 字符串。
+     * Phase 7: Genere una lista de definiciones de herramientas compatibles con OpenAI(suministro ChatService.streamChat(tools=...) uso).
+     * Phase 8.8: apoyo [enabledToolIds] Filtrar por Asistente.
+     * poner [ToolDef.parameters](Nombre del parámetro → Descripción) Convertir a cadena de esquema JSON.
      *
-     * ## 为什么带缓存
+     * ## ¿Por qué almacenar en caché?
      *
-     * 重建一次全量定义并不便宜：带 `rawParametersJsonSchema` 的工具要被
-     * `decodeFromString` 两次（一次校验、一次取值）再 `encodeToString` 回字符串，
-     * 其余工具走 `buildJsonObject` 逐参数拼。而这条路径的调用频率远超直觉：
-     * 每次工具调用前的能力校验（`ToolRouteExecutionGuard.validateLocal`）、每轮请求
-     * 组装（两次）、定时任务、渠道自动回复、提示词里的工具计数都会调它 ——
-     * 等于「每调一次工具就付一遍全量 100+ 工具的定义重建代价」。
+     * Reconstruir una definición completa no es barato: con `rawParametersJsonSchema` herramientas para ser
+     * `decodeFromString` Dos veces (una para verificación y otra para recuperación de valor) y luego `encodeToString` cadena de retorno,
+     * El resto de herramientas van `buildJsonObject` Lucha parámetro por parámetro. Y esta ruta se llama con más frecuencia de lo que piensas:
+     * Verificación de capacidad antes de cada llamada a la herramienta (`ToolRouteExecutionGuard.validateLocal`), cada ronda de solicitudes
+     * Se ajustará para el ensamblaje (dos veces), las tareas programadas, las respuestas automáticas del canal y el recuento de herramientas en palabras breves. ——
+     * Es equivalente a "cada vez que ajusta una herramienta, paga el costo de definición y reconstrucción de las más de 100 herramientas completas".
      *
-     * 缓存键是注册表版本号（每次 register/unregister 都会 bump）+ 过滤用的名称列表。
-     * 版本号变了才重建，过滤结果另存一份并按数量上限淘汰。
+     * La clave de caché es el número de versión del registro (se elimina cada vez que se registra o cancela el registro)+ Una lista de nombres para filtrar.
+     * Se reconstruirá solo cuando cambie el número de versión y los resultados filtrados se guardarán en otra copia y se eliminarán de acuerdo con el límite superior del número.
      *
-     * @param enabledToolIds 启用的工具 id 列表;null 或空列表表示全部启用
+     * @param enabledToolIds Lista de identificadores de herramientas habilitadas;null O una lista vacía significa habilitar todos
      */
     fun listToolsAsToolDefinitions(enabledToolIds: List<String>? = null): List<ToolDefinition> =
         synchronized(definitionsLock) {
@@ -402,7 +402,7 @@ class ToolRegistry(
             }
         }
 
-    /** 全量重建 [ToolDefinition] 列表（缓存未命中时才走）。 */
+    /** Reconstrucción completa [ToolDefinition] Lista (se toma solo cuando falta el caché). */
     private fun buildToolDefinitions(): List<ToolDefinition> = listTools().map { def ->
         val schema =
             def.rawParametersJsonSchema
@@ -438,24 +438,24 @@ class ToolRegistry(
             description = def.description,
             parametersJsonSchema = AppJson.encodeToString(JsonObject.serializer(), schema),
         )
-        // v1.0.4 修复 HTTP 400 "Tool names must be unique":
-        // 防御性按 name 去重,即使 ToolRegistry 内部因多 Registrar 注册同名工具也能拦截。
+        // v1.0.4 Reparación HTTP 400 "Tool names must be unique":
+        // Eliminar duplicados de forma defensiva por nombre,Incluso si ToolRegistry tiene varios registradores que registran herramientas con el mismo nombre, puede interceptarlos.
     }.distinctBy { it.name }
 
     /**
-     * 执行工具(对标 MCP tools/call)。
+     * herramienta de ejecución(Evaluación comparativa MCP tools/call).
      *
-     * v1.134 P0-3: 改为 suspend 函数,与 [ToolFn] 类型对齐。
-     * 调用方无须再手动 withContext(Dispatchers.IO) 包裹(但保留也无害)。
+     * v1.134 P0-3: Cambiar para suspender la función,con [ToolFn] Alineación de tipos.
+     * La persona que llama no necesita hacerlo manualmente withContext(Dispatchers.IO) paquete(Pero no hace daño conservarlo.).
      *
-     * @param name 工具名
-     * @param args 参数 map
-     * @return 执行结果字符串;工具不存在或参数错误返回错误信息
+     * @param name Nombre de la herramienta
+     * @param args parámetros map
+     * @return Cadena de resultado de ejecución;La herramienta no existe o los parámetros son incorrectos y se devuelve un mensaje de error.
      */
     suspend fun execute(name: String, args: Map<String, String>, cancellationToken: () -> Boolean = { false }): ToolOutcome =
         executeInternal(name, args, null, cancellationToken)
 
-    /** 带宿主上下文执行工具；需要隔离边界的工具必须走此入口。 */
+    /** Ejecutar herramientas con un contexto de host; Las herramientas que requieren límites de aislamiento deben utilizar esta entrada. */
     suspend fun execute(
         name: String,
         args: Map<String, String>,
@@ -487,38 +487,38 @@ class ToolRegistry(
         jsonTools[name]?.let { fn ->
             return executeJson(name, stringArgsToJson(args), fn, cancellationToken)
         }
-        // v1.0.53: 内容级安全规则(执行前硬边界,不受审批模式影响)
-        // 传参数表而不是拼好的串：路径类规则只该看 path，不能把正文一起拿去过匹配。
+        // v1.0.53: Reglas de seguridad a nivel de contenido(Límites estrictos previos a la ejecución,No afectado por el modo de aprobación)
+        // Pase la lista de parámetros en lugar de la cadena ensamblada: las reglas de ruta solo deben mirar la ruta y no pueden hacer coincidir el texto.
         ContentSafetyRules.checkArgs(name, args)?.let { rule ->
-            Logger.w("ToolRegistry", "内容安全规则命中: ${rule.ruleId} (tool=$name)")
+            Logger.w("ToolRegistry", "Se cumplió la regla de seguridad de contenido: ${rule.ruleId} (tool=$name)")
             return ToolOutcome.error("${rule.reason}(${rule.ruleId})")
         }
-        // v1.0.53: 取消令牌(停止生成时置 true,长工具尽快返回)
+        // v1.0.53: cancelar token(Configuración del tiempo de parada de generación true,Las herramientas largas regresan lo antes posible)
         if (cancellationToken()) {
-            return ToolOutcome.error("工具调用已取消")
+            return ToolOutcome.error("Llamada de herramienta cancelada")
         }
-        // P1: 工具参数 schema 校验 — 缺失/类型错误在执行前拦截,
-        // 返回结构化错误给 LLM,避免上游 400 或工具静默失败。
+        // P1: Verificación del esquema de parámetros de la herramienta — desaparecido/Los errores de tipo se interceptan antes de la ejecución.,
+        // Devuelve un error estructurado a LLM,Evite fallos de herramientas silenciosos o 400 ascendentes.
         val def = toolDefs[name]
         val validation = ToolArgValidator.validate(name, args, def)
         if (!validation.valid) {
             val detail = validation.errors.joinToString("; ")
-            Logger.w("ToolRegistry", "工具参数校验失败: $name -> $detail")
+            Logger.w("ToolRegistry", "Error en la verificación de parámetros de herramienta: $name -> $detail")
             return ToolOutcome.error(
                 detail,
                 mapOf("errorType" to ToolArgValidator.ERROR_TYPE, "tool" to name, "errors" to validation.errors),
             )
         }
         val validArgs = validation.coercedArgs
-        // v2.x: 运行环境权限预检 — 所需通道未就绪时快速失败并给结构化错误,
-        // 而不是让工具内部返回"语义上成功、内容是不可用说明"的误导结果。
+        // v2.x: Ejecutar verificación previa de permisos del entorno — Falle rápidamente con un error estructurado cuando el canal requerido no esté listo,
+        // En lugar de que la herramienta regrese internamente"Semánticamente exitoso, el contenido no está disponible."resultados engañosos.
         val permissionRequirements = ToolCategories.permissionOf(name)
         if (permissionRequirements.isNotEmpty()) {
             val status = permissionStatusProvider?.invoke()
             if (status != null && !status.satisfiedAny(permissionRequirements)) {
                 return ToolOutcome.error(
-                    "工具 $name 需要 ${status.describe(permissionRequirements)} 授权,当前未就绪;" +
-                        "请先完成授权(设置→权限配置向导)或改用替代工具。",
+                    "Herramientas $name necesitar ${status.describe(permissionRequirements)} Autorizar,Actualmente no está listo;" +
+                        "Primero complete la autorización(ajustes→Asistente de configuración de permisos)O utilice herramientas alternativas en su lugar.",
                     mapOf(
                         "errorType" to "permission_required",
                         "tool" to name,
@@ -530,33 +530,33 @@ class ToolRegistry(
         contextTools[name]?.let { fn ->
             val executionContext =
                 executionContext
-                    ?: return ToolOutcome.error("工具 $name 需要会话执行上下文")
+                    ?: return ToolOutcome.error("Herramientas $name Requiere contexto de ejecución de sesión")
             return resultOf { fn(validArgs, executionContext) }
-                .onError { msg, _ -> Logger.w("ToolRegistry", "工具 $name 执行异常: $msg") }
+                .onError { msg, _ -> Logger.w("ToolRegistry", "Herramientas $name excepción de ejecución: $msg") }
                 .getOrNull()?.let { ToolOutcome.ok(it) }
                 ?: ToolOutcome.error(this.context.getString(R.string.tool_exec_exception))
         }
-        // v1.0.53: 优先结构化通道
+        // v1.0.53: Canal estructurado prioritario
         outcomeTools[name]?.let { fn ->
             return resultOf { fn(validArgs) }
-                .onError { msg, _ -> Logger.w("ToolRegistry", "工具 $name 执行异常: $msg") }
+                .onError { msg, _ -> Logger.w("ToolRegistry", "Herramientas $name excepción de ejecución: $msg") }
                 .getOrNull() ?: ToolOutcome.error(context.getString(R.string.tool_exec_exception))
         }
         val fn =
             tools[name]
                 ?: return ToolOutcome.error(context.getString(R.string.tool_not_found, name, tools.keys.joinToString(", ")))
-        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
+        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
         return resultOf { fn(validArgs) }
-            .onError { msg, _ -> Logger.w("ToolRegistry", "工具 $name 执行异常: $msg") }
+            .onError { msg, _ -> Logger.w("ToolRegistry", "Herramientas $name excepción de ejecución: $msg") }
             .getOrNull()?.let { ToolOutcome.ok(it) }
             ?: ToolOutcome.error(context.getString(R.string.tool_exec_exception))
     }
 
     /**
-     * Phase 7: 从 LLM 返回的 arguments JSON 字符串执行工具。
-     * @param name 工具名
-     * @param argumentsJson LLM 返回的参数 JSON 字符串(如 {"expression":"1+2*3"})
-     * @return 执行结果字符串
+     * Phase 7: La cadena JSON de argumentos devuelta por LLM ejecuta la herramienta.
+     * @param name Nombre de la herramienta
+     * @param argumentsJson LLM Cadena JSON del parámetro devuelto(Como por ejemplo {"expression":"1+2*3"})
+     * @return Cadena de resultado de ejecución
      */
     suspend fun executeFromJson(name: String, argumentsJson: String): String = executeFromJsonInternal(name, argumentsJson, null)
 
@@ -564,14 +564,14 @@ class ToolRegistry(
         executeFromJsonInternal(name, argumentsJson, executionContext)
 
     private suspend fun executeFromJsonInternal(name: String, argumentsJson: String, executionContext: ToolExecutionContext?): String {
-        // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
+        // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
         val obj =
             resultOf {
                 parseArgumentsLenient(argumentsJson)
             }.onError { msg, _ ->
                 Logger.w(
                     "ToolRegistry",
-                    "executeFromJson 参数解析失败: $msg " +
+                    "executeFromJson Falló el análisis de parámetros: $msg " +
                         ToolDataPrivacy.safeArgumentsForPreview(name, argumentsJson),
                 )
             }.getOrNull() ?: return context.getString(
@@ -598,15 +598,15 @@ class ToolRegistry(
             }.onError { msg, _ ->
                 Logger.w(
                     "ToolRegistry",
-                    "executeFromJson 参数转换失败: $msg " +
+                    "executeFromJson Error en la conversión de parámetros: $msg " +
                         ToolDataPrivacy.safeArgumentsForPreview(name, argumentsJson),
                 )
             }.getOrNull() ?: return context.getString(
                 R.string.tool_param_parse_failed,
                 ToolDataPrivacy.safeArgumentsForPreview(name, argumentsJson),
             )
-        // v1.0.53: execute 返回 ToolOutcome,取 content 保持 String 语义。
-        // 空字符串不能继续向上游传播,否则工具卡片只能显示“执行中”而没有终态。
+        // v1.0.53: execute Regresar ToolOutcome,Tome contenido para mantener la semántica de cadenas.
+        // Las cadenas vacías no pueden seguir propagándose en sentido ascendente,De lo contrario, la tarjeta de herramientas sólo puede mostrar“ejecutando”Y no hay un estado final.
         val outcome =
             if (executionContext != null) {
                 execute(name, args, executionContext)
@@ -632,20 +632,20 @@ class ToolRegistry(
     ): ToolOutcome {
         val stringArgs = rawArgs.entries.associate { (k, v) -> k to jsonArgValue(v) }
         ContentSafetyRules.checkArgs(name, stringArgs)?.let { rule ->
-            Logger.w("ToolRegistry", "内容安全规则命中: ${rule.ruleId} (tool=$name)")
+            Logger.w("ToolRegistry", "Se cumplió la regla de seguridad de contenido: ${rule.ruleId} (tool=$name)")
             return ToolOutcome.error("${rule.reason}(${rule.ruleId})")
         }
-        if (cancellationToken()) return ToolOutcome.error("工具调用已取消")
-        // v2.6.2（工具审计）: JSON/MCP 通道补上环境权限预检 —— 旧实现只在普通路径做，
-        // 同一工具走 execute(Map) 与 executeFromJson() 会得到不同权限结果，
-        // JSON 注册工具可绕过通道就绪检查。
+        if (cancellationToken()) return ToolOutcome.error("Llamada de herramienta cancelada")
+        // v2.6.2(Auditoría de herramientas): JSON/MCP El canal agrega verificación previa de permisos ambientales —— La implementación anterior sólo hace esto en rutas normales,
+        // Usa la misma herramienta execute(Map) con executeFromJson() Obtendrá diferentes resultados de permisos.
+        // JSON Las herramientas de registro evitan las comprobaciones de preparación del canal.
         val permissionRequirements = ToolCategories.permissionOf(name)
         if (permissionRequirements.isNotEmpty()) {
             val status = permissionStatusProvider?.invoke()
             if (status != null && !status.satisfiedAny(permissionRequirements)) {
                 return ToolOutcome.error(
-                    "工具 $name 需要 ${status.describe(permissionRequirements)} 授权,当前未就绪;" +
-                        "请先完成授权(设置→权限配置向导)或改用替代工具。",
+                    "Herramientas $name necesitar ${status.describe(permissionRequirements)} Autorizar,Actualmente no está listo;" +
+                        "Primero complete la autorización(ajustes→Asistente de configuración de permisos)O utilice herramientas alternativas en su lugar.",
                     mapOf(
                         "errorType" to "permission_required",
                         "tool" to name,
@@ -658,7 +658,7 @@ class ToolRegistry(
         val validation = ToolArgValidator.validate(name, stringArgs, def)
         if (!validation.valid) {
             val detail = validation.errors.joinToString("; ")
-            Logger.w("ToolRegistry", "工具参数校验失败: $name -> $detail")
+            Logger.w("ToolRegistry", "Error en la verificación de parámetros de herramienta: $name -> $detail")
             return ToolOutcome.error(
                 detail,
                 mapOf("errorType" to ToolArgValidator.ERROR_TYPE, "tool" to name, "errors" to validation.errors),
@@ -669,7 +669,7 @@ class ToolRegistry(
         } catch (ce: kotlinx.coroutines.CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w("ToolRegistry", "JSON 工具 $name 执行异常: ${e.message}")
+            Logger.w("ToolRegistry", "JSON Herramientas $name excepción de ejecución: ${e.message}")
             ToolOutcome.error(context.getString(R.string.tool_exec_exception))
         }
     }
@@ -679,32 +679,32 @@ class ToolRegistry(
     }
 
     /**
-     * 把工具参数的一个 JSON 值转成透传给工具的字符串，保留其原始语义。
+     * Convierta un valor JSON de un parámetro de herramienta en una cadena que se pasa de forma transparente a la herramienta, conservando su semántica original.
      *
-     * - 字符串基元用 [JsonPrimitive.content] 取**去转义后**的文本
-     *   （`"{\"a\":1}"` → `{"a":1}`，模型常把嵌套对象按 string schema 传成转义 JSON）；
-     * - 对象/数组保留 [JsonElement.toString] 的合法 JSON 文本。
+     * - Para primitivas de cadena [JsonPrimitive.content] tomar**después de escapar**el texto de
+     *   (`"{\"a\":1}"` → `{"a":1}`, el modelo a menudo pasa objetos anidados a JSON de escape según el esquema de cadena);
+     * - objeto/Matriz retenida [JsonElement.toString] Texto JSON legal.
      *
-     * 旧实现用 `toString().trim('"')`：对字符串只剥最外层引号，内层 `\"` 转义无法还原，
-     * 导致嵌套对象参数解析失败（如 render_data 报「data 必须是 JSON 对象」）。
+     * Para implementación anterior `toString().trim('"')`: Sólo las comillas más externas se eliminan de la cadena y las comillas internas se eliminan de la cadena. `\"` Escapar no se puede restaurar,
+     * Como resultado, falla el análisis de parámetros de objetos anidados (por ejemplo, render_data informa "data Debe ser un objeto JSON").
      */
     private fun jsonArgValue(element: JsonElement): String = (element as? JsonPrimitive)?.content ?: element.toString()
 
     /**
-     * v1.x: 容错解析工具参数 JSON。
+     * v1.x: Parámetros de la herramienta de análisis de Fault Tolerance JSON.
      *
-     * 模型(尤其深度思考模式下经中转站的推理模型)可能输出畸形参数:
-     *  - 拼接多个 JSON 对象,如 `{}{\"selector\": \"h1\"}` 或 `{\"selector\": \"h1\"}{}`
-     *  - 前后多余空白
+     * modelo(Especialmente el modelo de razonamiento de las estaciones de tránsito en modo de pensamiento profundo.)Puede generar parámetros con formato incorrecto:
+     *  - Concatenar múltiples objetos JSON,Como por ejemplo `{}{\"selector\": \"h1\"}` o `{\"selector\": \"h1\"}{}`
+     *  - Espacio en blanco adicional antes y después
      *
-     * 策略:先标准解析;失败后按最外层花括号配对拆分所有片段,逐个解析并合并
-     * (后者覆盖同名键),任一片段解析成功即返回。
+     * Estrategia:Análisis estándar primero;En caso de error, divida todos los fragmentos mediante el par de llaves más externo,Analizar y fusionar uno por uno
+     * (Este último anula la clave del mismo nombre.),Se devolverá si algún fragmento se analiza correctamente.
      */
     internal fun parseArgumentsLenient(json: String): JsonObject {
-        // 1. 标准解析
+        // 1. Análisis estándar
         runCatching { AppJson.decodeFromString(JsonObject.serializer(), json) }
             .getOrNull()?.let { return it }
-        // 2. 容错:按最外层 {} 配对拆分
+        // 2. tolerancia a fallas:Presione la capa más externa {} par dividido
         val fragments = mutableListOf<String>()
         var depth = 0
         var start = -1
@@ -735,26 +735,26 @@ class ToolRegistry(
                 }
             if (merged.isNotEmpty()) return merged
         }
-        // 3. 兜底:把原始内容当作字符串参数(key = 首个声明参数或 "value")
+        // 3. Ten todo en cuenta:Trate el contenido original como un parámetro de cadena.(key = el primer parámetro declarado o "value")
         return buildJsonObject {
             put("value", JsonPrimitive(json.trim()))
         }
     }
 
-    // ── 内置工具实现 ──────────────────────────────────────────────────────────
+    // ── Implementación de herramientas incorporadas ──────────────────────────────────────────────────────────
 
-    /** Phase 8.8: 读取系统剪贴板文本。 */
+    /** Phase 8.8: Leer el texto del portapapeles del sistema. */
 
-    // ── v1.136: 资源库工具 ───────────────────────────────────────────────────
+    // ── v1.136: Herramientas de la biblioteca de recursos ───────────────────────────────────────────────────
 
-    // ── v1.136: 网络/编码/TTS 工具 ──────────────────────────────────────────
+    // ── v1.136: red/codificación/TTS Herramientas ──────────────────────────────────────────
 
-    /** Ping 指定的域名或 IP。 */
+    /** Ping Nombre de dominio o IP especificado. */
 
-    /** TTS 朗读实现(挂起直到初始化完成并加入队列)。 */
+    /** TTS Leer en voz alta la implementación(Suspender hasta que la inicialización esté completa y en cola). */
 
     companion object {
-        /** 见 [listToolsAsToolDefinitions]：过滤结果缓存上限。 */
+        /** ver [listToolsAsToolDefinitions]: Límite superior de la caché de resultados del filtro. */
         private const val MAX_FILTERED_DEFINITIONS = 8
 
         /**
@@ -778,8 +778,8 @@ class ToolRegistry(
             "set_alarm", "set_timer", "toggle_wifi", "toggle_bluetooth", "open_url", "make_phone_call", "open_maps",
         )
 
-        // v1.95: 所有内置 tool id 列表(与 init 块注册的工具一一对应)
-        // 供 AssistantRepository.ensureDefaultExists 静态读取,无需 ToolRegistry 实例
+        // v1.95: Lista de todas las identificaciones de herramientas integradas(Correspondencia uno a uno con las herramientas registradas en el bloque de inicio)
+        // Para lectura estática por AssistantRepository.ensureDefaultExists,No se requiere ninguna instancia de ToolRegistry
         val BUILT_IN_TOOL_IDS: List<String> =
             listOf(
                 "get_weather", "get_current_time", "calculator", "echo", "clipboard_read", "clipboard_write",
@@ -790,114 +790,114 @@ class ToolRegistry(
                 "open_system_setting", "toggle_wifi", "toggle_bluetooth", "send_email",
                 "get_battery_info", "get_recent_notifications",
                 "open_url", "list_installed_apps", "get_network_info",
-                // v1.136: 新增系统/设备/编码工具
+                // v1.136: Agregar nuevo sistema/Equipo/herramientas de codificación
                 "get_storage_info", "get_memory_info", "get_display_info", "get_cpu_info", "get_sensors_list",
                 "get_brightness", "set_brightness", "get_volume", "set_volume", "toggle_flashlight", "vibrate",
                 "get_foreground_app", "get_wifi_info", "get_bluetooth_devices", "make_phone_call", "open_maps",
                 "url_encode", "url_decode", "base64_encode", "base64_decode", "hash_text", "generate_uuid", "random_number",
-                // v1.136: 定时提醒与资源库工具
+                // v1.136: Recordatorios programados y herramientas de biblioteca de recursos
                 "schedule_reminder", "cancel_reminder", "list_reminders",
                 "resource_add", "resource_list", "resource_search", "resource_get", "resource_delete",
-                // v1.136: 快速记录工具(quick_note_search 已下线,不再暴露)
+                // v1.136: herramienta de grabación rápida(quick_note_search Sin conexión,ya no está expuesto)
                 "quick_note_add", "quick_note_list", "quick_note_get",
                 "quick_note_update", "quick_note_delete", "quick_note_pin",
-                // v1.136: 网络/编码/TTS 工具
+                // v1.136: red/codificación/TTS Herramientas
                 "ping_host", "dns_lookup", "get_public_ip", "json_pretty", "generate_password", "speak_text",
-                // v1.135: 媒体生成工具(ChatViewModel 注册,此处登记用于默认助手启用)
+                // v1.135: herramientas de generación de medios(ChatViewModel Registrarse,Regístrese aquí para la activación del asistente predeterminado)
                 "generate_image", "generate_video", "generate_qr_code",
-                // v2.x: 助手发语音消息(MediaGenToolsRegistrar 注册,与生图同一条媒体投递链路)
+                // v2.x: El asistente envía un mensaje de voz(MediaGenToolsRegistrar Registrarse,El mismo enlace de entrega de medios que Shengtu.)
                 "send_voice",
-                // v1.95: 表情包库工具(SkillExecutor 实现,此处登记便于统一识别)
+                // v1.95: Herramienta de biblioteca de emoticonos(SkillExecutor darse cuenta,Regístrate aquí para facilitar la identificación unificada)
                 "list_stickers", "send_sticker",
-                // 补充内置工具
+                // Complementar las herramientas integradas
                 "pin_memory", "unpin_memory", "save_memory", "delete_memory",
                 "memory_config_get", "memory_config_set",
                 "recall_experience", "record_experience",
                 "todo_write", "show_card", "render_data", "notify", "current_status",
-                // v2.x: token 消耗与上下文占用自查（AgentToolsRegistrar 注册）
+                // v2.x: token Autoevaluación de consumo y contexto de ocupación (AgentToolsRegistrar Registrarse)
                 "get_token_usage",
-                // v2.0: 卡片数据绑定(AgentToolsRegistrar 注册)
+                // v2.0: Enlace de datos de tarjeta(AgentToolsRegistrar Registrarse)
                 "update_card_data",
                 "subagent_task",
-                // JS 沙盒工具(WebView evaluateJavascript,CodeExecutionTool 实现)
+                // JS Herramientas de caja de arena(WebView evaluateJavascript,CodeExecutionTool darse cuenta)
                 "execute_javascript",
-                // P1-C: Node 脚本执行(内置 Node 运行时)
+                // P1-C: Node Ejecución de script(Tiempo de ejecución de nodo incorporado)
                 "execute_node_script",
-                // P2-6: 浏览器自动化工具(BrowserAutomationTool 实现,headless WebView)
+                // P2-6: Herramientas de automatización del navegador(BrowserAutomationTool darse cuenta,headless WebView)
                 "browser_navigate", "browser_click", "browser_type",
                 "browser_extract", "browser_scroll_bottom", "browser_get_html",
                 "browser_snapshot",
-                // v1.0.92: 消息渠道工具(外部 IM 发送,ChannelToolsRegistrar 注册)
+                // v1.0.92: Herramientas del canal de mensajes(Envío de mensajería instantánea externa,ChannelToolsRegistrar Registrarse)
                 "send_channel_message", "channel_list",
-                // v2.0: OAuth 连接器工具(ConnectorToolsRegistrar 注册)
+                // v2.0: OAuth herramienta conectora(ConnectorToolsRegistrar Registrarse)
                 "connector_list", "call_connector",
-                // P2-7: 工作区文件管理工具(WorkspaceToolsRegistrar 注册)
+                // P2-7: Herramienta de gestión de archivos del espacio de trabajo(WorkspaceToolsRegistrar Registrarse)
                 "workspace_list", "workspace_read", "workspace_write",
                 "workspace_edit", "workspace_delete", "workspace_mkdir", "workspace_move",
                 "workspace_copy", "workspace_mounts",
                 "workspace_grep",
-                // v1.0.17: 定时任务工具(助手可创建/管理定时任务)
+                // v1.0.17: Herramienta de tareas programadas(El asistente puede crear/Administrar tareas programadas)
                 "scheduled_task_create", "scheduled_task_list", "scheduled_task_update",
                 "scheduled_task_delete", "scheduled_task_execute", "scheduled_task_get_history",
-                // v1.0.17: 翻译工具(与 SkillExecutor translate skill 对齐,统一走 ToolRegistry)
+                // v1.0.17: herramienta de traducción(Alineado con la habilidad de traducción de SkillExecutor,ir juntos ToolRegistry)
                 "translate",
-                // MCP 管理工具(McpRegistry 注册,助手可直接创建/绑定/删除 MCP 服务器)。
-                // 其中 configure/remove 属「TRUSTED 也强制审批」集合且为 HIGH 风险,
-                // ASK/STRICT 下会弹审批卡;URL 另有出口 SSRF 校验。
+                // MCP Herramientas de gestión(McpRegistry Registrarse,Los asistentes se pueden crear directamente/vinculante/Eliminar servidor MCP).
+                // Entre ellos configurar/eliminar pertenece a "TRUSTED "También aprobación obligatoria" establecida y es de ALTO riesgo,
+                // ASK/STRICT La próxima vez abriré la tarjeta de aprobación.;URL También existe una verificación de exportación de la SSRF.
                 "mcp_mgmt_list", "mcp_mgmt_configure", "mcp_mgmt_remove",
                 "mcp_mgmt_bind_assistant", "mcp_mgmt_reconnect",
-                // 文件/链接/文档(已注册但此前未进白名单,默认助手不可达)
+                // Archivo/enlace/Documentación(Registrado pero no incluido previamente en la lista blanca,No se puede acceder al asistente predeterminado)
                 "read_file", "create_download", "parse_link", "parse_pdf",
-                // v2.6.7 fix (AUDIT F4): 本批新增工具未登记到内置白名单，
-                // 导致默认助手的 toolIdsJson 里没有它们，在 resolveToolsAndModel
-                // 阶段就被过滤掉，find_tools 也绕不过。
+                // v2.6.7 fix (AUDIT F4): Este lote de nuevas herramientas no se ha registrado en la lista blanca incorporada.
+                // Como resultado, no están incluidos en el toolIdsJson del asistente predeterminado. resolveToolsAndModel
+                // la etapa se filtra,find_tools No hay manera de evitarlo.
                 "read_user_file",
                 "remember_preference",
-                // 记忆检索 / 子 agent / 主动消息愿望(同上)
+                // Deseo de recuperación de memoria/subagente/mensaje activo(Igual que arriba)
                 "search_memory", "search_conversation", "subagent_run", "subagent_close", "proactive_message_wish",
-                // v2.x: 工具库按需检索(分层收窄的补全通道)
+                // v2.x: Búsqueda de biblioteca de herramientas bajo demanda(Canales de finalización jerárquicamente reducidos)
                 "find_tools",
-                // v2.x: 插件市场自管(检索/安装/卸载/启停 — 已注册工具,补进白名单让默认助手可达)
+                // v2.x: Mercado de complementos autogestionados(Buscar/Instalación/Desinstalar/Iniciar y detener — Herramienta registrada,Complemente la lista blanca para que el asistente predeterminado sea accesible)
                 "plugin_market_search", "plugin_market_install",
                 "plugin_market_uninstall", "plugin_market_set_enabled",
-                // v2.x 自动化一期:设备命令行通道(Shizuku/Root 分层执行)
+                // v2.x Automatización Fase I:Canal de línea de comando del dispositivo(Shizuku/Root Ejecución jerárquica)
                 "device_shell",
-                // v2.x 终端一期:应用沙盒终端命令
+                // v2.x fase terminal uno:Aplicar comandos de terminal sandbox
                 "terminal_exec",
-                // v2.2.1: Termux 通道(完整 Linux 环境命令,高风险)
+                // v2.2.1: Termux canal(Comandos completos del entorno Linux,alto riesgo)
                 "termux_exec",
-                // v2.2.1: GUI Agent 环(视觉驱动的多步屏幕操作,高风险)
+                // v2.2.1: GUI Agent anillo(Manipulación de pantalla de varios pasos impulsada por la visión,alto riesgo)
                 "ui_agent",
-                // v2.6.2: 应用控制工具集（AppControlTools 注册，此前漏登记 → 默认助手不可达）
+                // v2.6.2: Conjunto de herramientas de control de aplicaciones (AppControlTools Regístrate, te perdiste el registro antes → El asistente predeterminado no es accesible)
                 "app_list", "app_launch", "app_settings",
                 "app_force_stop", "app_clear_data", "app_uninstall",
-                // v2.6.2: 知识库管理 + 会话管理（KnowledgeManageTools / SessionManageTools）
+                // v2.6.2: Gestión de base de conocimientos + gestión de sesiones (KnowledgeManageTools / SessionManageTools)
                 "knowledge_list_docs", "knowledge_delete_doc", "knowledge_create_kb", "knowledge_delete_kb",
                 "knowledge_read_doc",
                 "session_list", "session_read", "session_rename", "session_move_folder", "session_archive", "session_delete",
-                // v2.6.2: 技能管理 + 助手自管理（SkillManageTools / AssistantManageTools）
+                // v2.6.2: Gestión de habilidades + autogestión asistente (SkillManageTools / AssistantManageTools)
                 "skill_manage_list", "skill_manage_toggle", "skill_manage_delete",
                 "assistant_manage_list", "assistant_manage_create", "assistant_manage_update_persona", "assistant_manage_delete",
                 // v2.0: Root-level system tools
                 "settings_get", "settings_put", "am_start", "list_packages", "logcat_tail", "input_inject",
-                // v2.x 扩展运行时(P0):内置 Node 沙盒自检(只读,验证入口)
+                // v2.x Tiempo de ejecución extendido(P0):Autoprueba integrada de la zona de pruebas de Node(solo lectura,Entrada de verificación)
                 "runtime_selfcheck",
-                // v2.7 扩展运行时(Python):Python 脚本执行。
-                // 此前漏登记，默认助手的 toolIdsJson 白名单里没有它，
-                // 在 resolveToolsAndModel 阶段就被过滤掉，模型完全看不到这个工具,
-                // 只能去 shell/Node 里找解释器（用户实测反复空转）。
+                // v2.7 Tiempo de ejecución extendido(Python):Python Ejecución de guiones.
+                // Me perdí el registro antes y no está en la lista blanca de toolIdsJson del asistente predeterminado.
+                // Se filtra en la etapa resolveToolsAndModel y el modelo no puede ver esta herramienta en absoluto.,
+                // Solo puede ir al shell/nodo para encontrar el intérprete (el usuario ha estado inactivo repetidamente).
                 "execute_python_script",
             )
 
         /**
-         * v1.131: Tool 内常用日期格式器 — ThreadLocal 缓存,避免每次 LLM 工具调用都新建 SimpleDateFormat。
-         * LLM 高频调用工具(getCalendarEvents / parseDateTime / getNotifications 等),
-         * 旧实现每次都 `SimpleDateFormat(pattern, Locale).format(...)` 造成 GC 压力。
-         * SimpleDateFormat 非线程安全,用 ThreadLocal 保证每线程独立实例。
+         * v1.131: Tool Formateadores de fecha de uso común — ThreadLocal caché,Evite crear un nuevo SimpleDateFormat con cada llamada a la herramienta LLM.
+         * LLM Herramientas de llamadas de alta frecuencia(getCalendarEvents / parseDateTime / getNotifications espera),
+         * La implementación anterior siempre `SimpleDateFormat(pattern, Locale).format(...)` Provoca estrés en GC.
+         * SimpleDateFormat No es seguro para subprocesos,Utilice ThreadLocal para garantizar instancias independientes por subproceso.
          */
         private val FMT_DATE = ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-        /** parseDateTime 尝试的所有格式(线程安全列表,内部 SimpleDateFormat 通过 ThreadLocal 隔离)。 */
+        /** parseDateTime Todos los formatos probados(Lista segura de subprocesos,SimpleDateFormat interno aislado a través de ThreadLocal). */
         private val PARSE_FORMATS_PATTERNS =
             listOf(
                 "yyyy-MM-dd HH:mm",

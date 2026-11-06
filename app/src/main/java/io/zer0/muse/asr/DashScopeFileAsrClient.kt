@@ -21,33 +21,33 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * Phase 11.1.5: DashScope 异步文件转录 Client。
+ * Phase 11.1.5: DashScope Cliente de transcripción de archivos asincrónicos.
  *
- * 与 [DashScopeAsrClient](WebSocket 流式)不同,本 client 走 **异步文件转录** 协议
+ * con [DashScopeAsrClient](WebSocket transmisión)diferente,este cliente va **Transcripción de archivos asincrónica** Acuerdo
  * (https://help.aliyun.com/document_detail/90727.html):
  *
  * 1. **Submit**:POST `https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription`
- *    传 `file_urls`(公网可访问的音频 URL),返回 `task_id`
+ *    pasar `file_urls`(Audio de acceso público URL),Regresar `task_id`
  * 2. **Query**:GET `https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}`
- *    轮询任务状态:PENDING → RUNNING → SUCCEEDED / FAILED
- * 3. SUCCEEDED 后从 `results.transcription_url` 拿转录 JSON,解析 `sentences.text` 拼接
+ *    Estado de la tarea de sondeo:PENDING → RUNNING → SUCCEEDED / FAILED
+ * 3. SUCCEEDED Más tarde de `results.transcription_url` Obtener transcripción JSON,analizar `sentences.text` empalme
  *
- * 适用场景:
- *  - 长音频文件转录(>1 分钟,流式 WebSocket 会超时)
- *  - 已有公网音频 URL(如 OSS 上传后)
- *  - 批量离线转录
+ * Escenarios aplicables:
+ *  - Transcripción de archivos de audio largos(>1 minutos,Se agota el tiempo de espera de la transmisión de WebSocket)
+ *  - Ya tengo audio de red pública. URL(Por ejemplo, después de cargar en OSS)
+ *  - Transcripción sin conexión por lotes
  *
- * 不适用场景(用 [DashScopeAsrClient]):
- *  - 实时麦克风输入(需流式)
- *  - 短音频快速识别
+ * Escenarios no aplicables(usar [DashScopeAsrClient]):
+ *  - Entrada de micrófono en vivo(Necesita transmisión)
+ *  - Reconocimiento rápido de audio corto.
  *
- * 注意:
- *  - `recognize(audioData, sampleRate)` 接口要求 PCM 字节,但本 client 需要 URL。
- *    调用方应使用 [recognizeFile] 传 URL,而非 [recognize]。
- *  - [recognize] 会用 [AsrConfig.fileAudioUrl] 走转录;未配置时返回带错误信息的空结果
- *    (PCM 直传需先有公网 URL,本地文件上传/OSS 直传为后续扩展点)。
+ * Nota:
+ *  - `recognize(audioData, sampleRate)` Requisitos de interfaz PCM bytes,Pero este cliente requiere una URL.
+ *    La persona que llama debe utilizar [recognizeFile] pasar URL,en vez de [recognize].
+ *  - [recognize] usará [AsrConfig.fileAudioUrl] ir transcribiendo;Devuelve un resultado vacío con un mensaje de error cuando no está configurado
+ *    (PCM La transmisión directa requiere primero una red pública URL,Carga de archivos locales/OSS Transmisión directa como punto de expansión posterior).
  *
- * 独立编写(按 DashScope 官方文档),Apache 2.0。
+ * Escrito de forma independiente(Según la documentación oficial de DashScope),Apache 2.0.
  */
 class DashScopeFileAsrClient(
     private val config: AsrConfig,
@@ -67,52 +67,52 @@ class DashScopeFileAsrClient(
     }
 
     /**
-     * 异步文件转录:从音频 URL 提交任务并轮询结果。
+     * Transcripción de archivos asincrónica:Envíe una tarea desde una URL de audio y realice una encuesta para obtener resultados.
      *
-     * @param audioUrl 公网可访问的音频 URL(支持 mp3/wav/m4a/aac/flac/opus 等)
-     * @return 识别结果;失败返回 null
+     * @param audioUrl Audio de acceso público URL(Compatible con mp3/wav/m4a/aac/flac/opus, etc.)
+     * @return Resultados del reconocimiento;Retorno del fracaso null
      */
     suspend fun recognizeFile(audioUrl: String): AsrResult? = withContext(Dispatchers.IO) {
         if (config.apiKey.isBlank()) {
-            Logger.w(TAG, "apiKey 为空")
+            Logger.w(TAG, "apiKey esta vacio")
             return@withContext null
         }
         val taskId = submitTranscription(audioUrl) ?: return@withContext null
-        Logger.d(TAG, "submit 成功,task_id=$taskId,开始轮询")
+        Logger.d(TAG, "submit éxito,task_id=$taskId,Empezar a sondear")
         val result = pollTask(taskId) ?: return@withContext null
-        // result.transcription_url 指向一个 JSON,需再 fetch
+        // result.transcription_url apuntar a un JSON,necesito de nuevo fetch
         val transcriptionJson = fetchTranscriptionUrl(result.transcriptionUrl) ?: return@withContext null
         val text = parseTranscriptionJson(transcriptionJson)
         if (text.isBlank()) {
-            Logger.w(TAG, "转录结果文本为空")
+            Logger.w(TAG, "El texto del resultado de la transcripción está vacío")
             return@withContext null
         }
         AsrResult(text = text, isFinal = true, durationMs = result.audioDurationMs)
     }
 
     /**
-     * AsrClient 接口实现:异步文件转录需 URL 而非 PCM 字节。
+     * AsrClient Implementación de interfaz:La transcripción de archivos asincrónica requiere URL en lugar de bytes PCM.
      *
-     * 实现:若 [AsrConfig.fileAudioUrl] 已配置,直接用配置的 URL 走转录;
-     * 否则返回带明确错误信息的空结果(PCM 字节无法直接上传,需要先有 URL)。
+     * darse cuenta:si [AsrConfig.fileAudioUrl] configurado,Utilice directamente la URL configurada para la transcripción;
+     * De lo contrario, devolverá un resultado vacío con un mensaje de error explícito.(PCM Los bytes no se pueden cargar directamente,necesito primero URL).
      *
-     * 后续可扩展:加 OSS 上传逻辑(需用户配 OSS 凭证),把 PCM 转 wav 上传拿 URL。
+     * Se puede ampliar más tarde:Agregar lógica de carga OSS(Los usuarios deben proporcionar credenciales de OSS),Convierta PCM a wav y cárguelo para obtener la URL.
      */
     override suspend fun recognize(audioData: ByteArray, sampleRate: Int): AsrResult? {
         val url = config.fileAudioUrl.ifBlank {
-            Logger.w(TAG, "异步文件转录需要 fileAudioUrl 配置,当前为空")
-            return AsrResult(text = "", errorMessage = "异步文件转录需要 fileAudioUrl 配置，当前为空")
+            Logger.w(TAG, "La transcripción de archivos asincrónica requiere la configuración de fileAudioUrl,Actualmente vacío")
+            return AsrResult(text = "", errorMessage = "La transcripción de archivos asincrónica requiere la configuración fileAudioUrl, que actualmente está vacía.")
         }
         return recognizeFile(url)
     }
 
     override fun close() {
-        // OkHttp 客户端无 WebSocket 长连接,无需显式关闭
+        // OkHttp No hay conexión persistente WebSocket en el lado del cliente,No es necesario cerrar explícitamente
     }
 
-    // ── 内部 ──────────────────────────────────────────────────────────────
+    // ── interno ──────────────────────────────────────────────────────────────
 
-    /** Step 1: 提交转录任务,返回 task_id。 */
+    /** Step 1: Enviar una tarea de transcripción,Devuelve task_id. */
     private suspend fun submitTranscription(audioUrl: String): String? = withContext(Dispatchers.IO) {
         resultOf {
             val requestBody = buildJsonObject {
@@ -129,7 +129,7 @@ class DashScopeFileAsrClient(
                         put(
                             "language_hints",
                             kotlinx.serialization.json.JsonArray(
-                                (config.language?.takeIf { it.isNotBlank() }?.split(",") ?: listOf("zh"))
+                                (config.language?.takeIf { it.isNotBlank() }?.split(",") ?: listOf("es"))
                                     .map { JsonPrimitive(it.trim()) },
                             ),
                         )
@@ -147,7 +147,7 @@ class DashScopeFileAsrClient(
                 .build()
             httpClient.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    Logger.w(TAG, "submit 失败: HTTP ${resp.code} ${resp.body.string().take(200)}")
+                    Logger.w(TAG, "submit falló: HTTP ${resp.code} ${resp.body.string().take(200)}")
                     return@resultOf null
                 }
                 val body = resp.body.string()
@@ -155,23 +155,23 @@ class DashScopeFileAsrClient(
                 val output = obj["output"]?.jsonObject
                 val taskId = output?.get("task_id")?.jsonPrimitive?.contentOrNull
                 if (taskId.isNullOrBlank()) {
-                    Logger.w(TAG, "submit 响应缺 task_id: ${body.take(200)}")
+                    Logger.w(TAG, "submit Falta de respuesta task_id: ${body.take(200)}")
                     return@resultOf null
                 }
                 taskId
             }
-        }.onError { msg, t -> Logger.w(TAG, "submitTranscription 失败: $msg", t) }
+        }.onError { msg, t -> Logger.w(TAG, "submitTranscription falló: $msg", t) }
             .getOrNull()
     }
 
-    /** Step 2: 轮询任务状态,直到 SUCCEEDED / FAILED / 超时。 */
+    /** Step 2: Estado de la tarea de sondeo,Hasta que SE ÉXITO/FALLÓ/se agotó el tiempo de espera. */
     private suspend fun pollTask(taskId: String): TranscriptionResult? = withContext(Dispatchers.IO) {
         val deadline = System.currentTimeMillis() + config.pollTimeoutMs
         while (System.currentTimeMillis() < deadline) {
             val status = queryTask(taskId) ?: return@withContext null
             when (status.taskStatus) {
                 "SUCCEEDED" -> {
-                    Logger.d(TAG, "task=$taskId SUCCEEDED,耗时 ${System.currentTimeMillis() - (deadline - config.pollTimeoutMs)}ms")
+                    Logger.d(TAG, "task=$taskId SUCCEEDED,Consume mucho tiempo ${System.currentTimeMillis() - (deadline - config.pollTimeoutMs)}ms")
                     return@withContext status.result
                 }
                 "FAILED" -> {
@@ -179,16 +179,16 @@ class DashScopeFileAsrClient(
                     return@withContext null
                 }
                 else -> {
-                    // PENDING / RUNNING,继续轮询
+                    // PENDING / RUNNING,Continuar encuestando
                     delay(config.pollIntervalMs)
                 }
             }
         }
-        Logger.w(TAG, "task=$taskId 轮询超时(${config.pollTimeoutMs}ms)")
+        Logger.w(TAG, "task=$taskId Tiempo de espera de la encuesta(${config.pollTimeoutMs}ms)")
         null
     }
 
-    /** 单次查询任务状态。 */
+    /** Estado de la tarea de consulta única. */
     private suspend fun queryTask(taskId: String): TaskStatus? = withContext(Dispatchers.IO) {
         resultOf {
             val req = Request.Builder()
@@ -202,27 +202,27 @@ class DashScopeFileAsrClient(
                 val obj = AppJson.decodeFromString(JsonObject.serializer(), body)
                 val output = obj["output"]?.jsonObject
                 val taskStatus = output?.get("task_status")?.jsonPrimitive?.contentOrNull ?: return@resultOf null
-                // DashScope 错误码字段可能是 message 或 code,优先取 message
+                // DashScope El campo del código de error puede ser un mensaje o code,tener prioridad message
                 val message = output["message"]?.jsonPrimitive?.contentOrNull
                     ?: obj["message"]?.jsonPrimitive?.contentOrNull ?: ""
                 val result = output["results"]?.jsonObject
                     ?.let { parseResult(it) }
                 TaskStatus(taskStatus = taskStatus, message = message, result = result)
             }
-        }.onError { msg, t -> Logger.w(TAG, "queryTask($taskId) 失败: $msg", t) }
+        }.onError { msg, t -> Logger.w(TAG, "queryTask($taskId) falló: $msg", t) }
             .getOrNull()
     }
 
-    /** 从 results 对象解析转录 URL + 音频时长。 */
+    /** Analice la URL de la transcripción + la duración del audio del objeto de resultados. */
     private fun parseResult(results: JsonObject): TranscriptionResult? {
-        // results.transcription_url 指向一个 JSON 文件 URL,内含 sentences
+        // results.transcription_url Apuntar a un archivo JSON URL,Contiene sentences
         val transcriptionUrl = results["transcription_url"]?.jsonPrimitive?.contentOrNull
             ?: return null
         val audioDurationMs = results["audio_duration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
         return TranscriptionResult(transcriptionUrl = transcriptionUrl, audioDurationMs = audioDurationMs)
     }
 
-    /** fetch 转录 JSON 文件(公网 URL)。 */
+    /** fetch Transcribir archivos JSON(Red pública URL). */
     private suspend fun fetchTranscriptionUrl(url: String): String? = withContext(Dispatchers.IO) {
         resultOf {
             val req = Request.Builder().url(url).get().build()
@@ -230,16 +230,16 @@ class DashScopeFileAsrClient(
                 if (!resp.isSuccessful) return@resultOf null
                 resp.body.string()
             }
-        }.onError { msg, t -> Logger.w(TAG, "fetchTranscriptionUrl 失败: $msg", t) }
+        }.onError { msg, t -> Logger.w(TAG, "fetchTranscriptionUrl falló: $msg", t) }
             .getOrNull()
     }
 
-    /** 解析转录 JSON,提取所有 sentence 文本拼接。 */
+    /** Analizar transcripción JSON,Extraiga todas las concatenaciones de texto de oraciones. */
     private fun parseTranscriptionJson(jsonText: String): String {
         return resultOf {
             val obj = AppJson.decodeFromString(JsonObject.serializer(), jsonText)
             val transcripts = obj["transcripts"]?.jsonArray ?: return@resultOf ""
-            // 每个 transcript 含 sentences 数组,每句有 text 字段
+            // Cada transcripción contiene una serie de oraciones.,Cada oración tiene un campo de texto.
             transcripts.joinToString("") { transcriptEl ->
                 val transcript = transcriptEl.jsonObject
                 val sentences = transcript["sentences"]?.jsonArray ?: return@joinToString ""
@@ -247,7 +247,7 @@ class DashScopeFileAsrClient(
                     sentenceEl.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: ""
                 }
             }
-        }.onError { msg, t -> Logger.w(TAG, "parseTranscriptionJson 失败: $msg", t) }
+        }.onError { msg, t -> Logger.w(TAG, "parseTranscriptionJson falló: $msg", t) }
             .getOrNull() ?: ""
     }
 

@@ -58,13 +58,13 @@ import org.koin.compose.koinInject
 import java.util.Locale
 
 /**
- * v1.27: Agent 配置二级页。
+ * v1.27: Agent Configurar la página secundaria.
  *
- * 集中 Agent 相关的所有配置:
- *  - Agent 默认助手选择(选哪个助手作为 Agent Tab 的默认陪伴助手)
- *  - 多 Agent 协作入口(跳转到团队管理)
- *  - 主动消息配置(开关 + 间隔 + 随机偏移 + 指定 Agent)
- *  - Agent 行为偏好(问候语 / 自动上下文等)
+ * Centralice todas las configuraciones relacionadas con el agente:
+ *  - Agent Selección de asistente predeterminada(Qué asistente elegir como asistente complementario predeterminado para la pestaña Agente)
+ *  - Portal de colaboración multiagente(Saltar a gestión de equipos)
+ *  - Configuración de mensajes activos(interruptor + intervalo + desplazamiento aleatorio + especificado Agent)
+ *  - Agent preferencias de comportamiento(Saludos/contexto automático, etc.)
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
@@ -73,9 +73,9 @@ fun AgentSettingsPage(
     onBack: () -> Unit,
     onOpenMultiAgentSettings: () -> Unit,
     onOpenAgentDm: () -> Unit = {},
-    /** v2.6.7 fix (AUDIT F9): 用户偏好管理页入口。 */
+    /** v2.6.7 fix (AUDIT F9): Entrada de la página de gestión de preferencias del usuario. */
     onOpenPreferences: () -> Unit = {},
-    /** 独立主动消息页复用同一套配置组件时隐藏 Agent/协作区。 */
+    /** El área Agente/colaboración está oculta cuando la página de mensaje activo independiente reutiliza el mismo conjunto de componentes de configuración. */
     proactiveOnly: Boolean = false,
     showProactiveSettings: Boolean = false,
 ) {
@@ -85,18 +85,18 @@ fun AgentSettingsPage(
     val proactiveConfig by settings.proactiveMessageConfigFlow.collectAsStateWithLifecycle(
         initialValue = ProactiveMessageConfig(),
     )
-    // v1.0.72: 每日总结推送开关
+    // v1.0.72: Pulsador de resumen diario
     val dailySummaryEnabled by settings.dailySummaryEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
-    // v1.xxx: 每日总结时段(24 小时制整点小时)
+    // v1.xxx: Período de resumen diario(24 hora por hora)
     val dailySummarySlots by settings.dailySummarySlotsFlow.collectAsStateWithLifecycle(initialValue = listOf(0, 9, 12, 21))
-    // v1.xxx: AI 朋友圈每日条数(0 = 关闭)
+    // v1.xxx: AI Número diario de publicaciones en Momentos(0 = cerrar)
     val dailyMomentCount by settings.dailyMomentCountFlow.collectAsStateWithLifecycle(initialValue = 2)
-    // v2.6.7（P0-1）: 朋友圈内容模式（决定动态/评论/日记的生成视角）
+    // v2.6.7(P0-1): Modo de contenido de Momentos (determina la dinámica/Comentario/Perspectiva generativa del diario)
     val momentContentMode by settings.momentContentModeFlow
         .collectAsStateWithLifecycle(initialValue = io.zer0.muse.data.moment.MomentContentMode.REAL)
-    // v1.xxx: 后台调度总控开关
+    // v1.xxx: Interruptor de control maestro de despacho backend
     val scheduleWorkEnabled by settings.scheduleWorkEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
-    // v2.x: 保活开关自记忆页归位(系统级后台行为)
+    // v2.x: El interruptor de mantenimiento regresa de la página de memoria(Comportamiento en segundo plano a nivel del sistema)
     val keepAwake by settings.keepAwakeFlow.collectAsStateWithLifecycle(initialValue = false)
     val autoLaunch by settings.autoLaunchFlow.collectAsStateWithLifecycle(initialValue = false)
     val nightPatrolEnabled by settings.nightPatrolEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
@@ -105,17 +105,17 @@ fun AgentSettingsPage(
     )
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // v1.0.72: 主动消息测试发送(避免重复触发)
+    // v1.0.72: Envío de prueba de mensaje activo(Evite los desencadenantes repetidos)
     var testSending by remember { mutableStateOf(false) }
-    // 测试按钮被「上一轮还在生成」拦下时的提示。在组合期取好，
-    // 点击回调里只有协程作用域，取不到 stringResource。
+    // Mensaje cuando el botón de prueba está bloqueado por "La ronda anterior aún se está generando". Tómelo bien durante el período de combinación,
+    // Solo hay alcance de rutina en la devolución de llamada de clic y no se puede obtener stringResource.
     val testAlreadyRunningText = stringResource(R.string.settings_agent_test_already_running)
-    // P0: 主动程度 / 免打扰时段 / 主动内容 / 高级 弹窗
+    // P0: Nivel de actividad/Período de no molestar/Contenido activo/Ventanas emergentes avanzadas
     var showPacePicker by remember { mutableStateOf(false) }
     var showQuietHoursPicker by remember { mutableStateOf(false) }
     var showContentPicker by remember { mutableStateOf(false) }
     var showAdvancedDialog by remember { mutableStateOf(false) }
-    // v2.6.9: 主动消息重建版 —— 牵挂账本面板
+    // v2.6.9: Reconstrucción proactiva de mensajes —— Panel de contabilidad preocupado
     val proactiveThoughts: io.zer0.muse.data.proactive.ProactiveThoughtRepository = koinInject()
     val proactiveRelations: io.zer0.muse.data.proactive.ProactiveRelationRepository = koinInject()
     val proactiveScheduler: io.zer0.muse.proactive.ProactiveScheduler = koinInject()
@@ -129,19 +129,19 @@ fun AgentSettingsPage(
 
     var showAssistantPicker by remember { mutableStateOf(false) }
     var showOffsetPicker by remember { mutableStateOf(false) }
-    // v1.xxx: 每日总结时段输入弹窗
+    // v1.xxx: Ventana emergente de entrada del período de resumen diario
     var showSlotsDialog by remember { mutableStateOf(false) }
-    // v1.xxx: AI 朋友圈每日条数选择弹窗
+    // v1.xxx: AI Ventana emergente para seleccionar el número diario de publicaciones en Momentos
     var showMomentCountPicker by remember { mutableStateOf(false) }
-    // v2.6.7（P0-1）: 朋友圈内容模式选择（真实系 / 角色系）
+    // v2.6.7(P0-1): Selección del modo de contenido de Momentos (realista/basado en personajes)
     var showMomentContentModePicker by remember { mutableStateOf(false) }
-    // v1.x: 保持后台运行引导弹窗(被动入口)
+    // v1.x: Mantenga las ventanas emergentes de inicio ejecutándose en segundo plano(entrada pasiva)
     var showKeepAliveGuide by remember { mutableStateOf(false) }
     var showTemperaturePicker by remember { mutableStateOf(false) }
 
-    // v2.6.x: 全天开放时摘要直接写「全天开放」,避免显示一个无意义的 23:00 – 23:00
-    // 免打扰时段与存储字段 allowedHourStart/End 是互补关系,
-    // 这里统一走 QuietHoursWindow 换算,不再在本页手写取反。
+    // v2.6.x: Cuando esté abierto todo el día, simplemente escriba "abierto todo el día" en el resumen,Evite mostrar algo sin sentido. 23:00 – 23:00
+    // El período de no molestar y el campo de almacenamiento permitidoHourStart/End son complementarios.,
+    // Aquí usamos QuietHoursWindow para la conversión.,No más negaciones escritas a mano en esta página.
     val quietHours = QuietHoursWindow.AllowedWindow(
         proactiveConfig.allowedHourStart,
         proactiveConfig.allowedHourEnd,
@@ -151,8 +151,8 @@ fun AgentSettingsPage(
     } else {
         quietHours.label()
     }
-    // 允许窗口为空(起止相同)= 永远不会发主动消息。这种配置必须在页面上就看见,
-    // 否则用户只能等“一条都不发”自己掘出来。
+    // Permitir que la ventana esté vacía(Mismo comienzo y final)= Nunca envíes mensajes no solicitados. Esta configuración debe estar visible en la página.,
+    // De lo contrario, el usuario sólo puede esperar.“Ni un solo mensaje”Descúbrelo tú mismo.
     val allowedWindow = QuietHoursWindow.AllowedWindow(
         proactiveConfig.allowedHourStart,
         proactiveConfig.allowedHourEnd,
@@ -169,9 +169,9 @@ fun AgentSettingsPage(
         contentSummary.joinToString(" / ")
     }
 
-    // v2.6.9: 账本数据随面板打开刷新；同时把当日额度、等级、冷却一并取出来，
-    // 供入口行与面板共用。放在 LaunchedEffect 里而不是每次重组都读库，
-    // 是因为它要跨三张表，不该跟着输入框的每次按键重跑。
+    // v2.6.9: Los datos del libro mayor se actualizan cuando se abre el panel; al mismo tiempo, se eliminan la cuota, el nivel y el tiempo de reutilización del día actual.
+    // Para uso en filas y paneles de entrada. Póngalo en LaunchedEffect en lugar de leer la biblioteca cada vez que se reorganiza.
+    // Esto se debe a que abarca tres tablas y no debe volver a ejecutarse cada vez que se presiona una tecla en el cuadro de entrada.
     LaunchedEffect(showLedger, proactiveConfig.enabled) {
         if (!proactiveConfig.enabled) return@LaunchedEffect
         runCatching {
@@ -240,7 +240,7 @@ fun AgentSettingsPage(
         onBack = onBack,
     ) {
         if (!proactiveOnly) {
-            // ── Agent 默认助手 ──
+            // ── Agent Asistente predeterminado ──
             item { SectionLabel(stringResource(R.string.settings_agent_section_assistant)) }
             item {
                 SettingsGroup(
@@ -263,9 +263,9 @@ fun AgentSettingsPage(
                     ) {
                         ChevronRight()
                     }
-                    // v2.6.7 fix (AUDIT F9): 用户偏好（助手记住的长期要求）。
-                    // 此前 PreferenceStore 的读取/删除/停用全仓零调用，
-                    // 用户看不到也删不掉一条记错的偏好。
+                    // v2.6.7 fix (AUDIT F9): Preferencias del usuario (requisitos a largo plazo recordados por el asistente).
+                    // Lectura previa de PreferenceStore/Eliminar/Desactivar todas las posiciones y cero llamadas,
+                    // Los usuarios no pueden ver ni eliminar una preferencia que no recuerdan correctamente.
                     SettingsGroupDivider()
                     SettingsItemRow(
                         icon = MuseIcons.check,
@@ -278,7 +278,7 @@ fun AgentSettingsPage(
                 }
             }
 
-            // ── 多 Agent 协作 ──
+            // ── Colaboración entre múltiples agentes ──
             item { SectionLabel(stringResource(R.string.settings_agent_multi_agent_section)) }
             item {
                 SettingsGroup(
@@ -297,7 +297,7 @@ fun AgentSettingsPage(
                         ChevronRight()
                     }
                     SettingsGroupDivider()
-                    // v1.126: Agent 私信收件箱入口
+                    // v1.126: Agent Entrada a la bandeja de entrada de mensajes privados
                     SettingsItemRow(
                         icon = MuseIcons.mail,
                         title = stringResource(R.string.agent_dm_title),
@@ -310,7 +310,7 @@ fun AgentSettingsPage(
             }
         }
         if (showProactiveSettings) {
-            // ── 主动消息 ──
+            // ── mensajes no solicitados ──
             item { SectionLabel(stringResource(R.string.settings_agent_proactive_section)) }
             item {
                 SettingsGroup(
@@ -326,10 +326,10 @@ fun AgentSettingsPage(
                         },
                     )
                     if (proactiveConfig.enabled) {
-                        // P0 收敛: 「间隔 / 偏移 / 概率 / 每日上限」四个实现参数合并为一个
-                        // v2.6.9: 账本入口 —— 点开能看到它最近在惦记什么、今天还能说几次、
-                        // 以及一键让它安静 7 天。这块 UI 是新机制的兑现方式：
-                        // 用户能看见「它凭什么找我」，也能看见「它什么时候闭嘴」。
+                        // P0 Convergencia: Los cuatro parámetros de implementación de "Intervalo/Compensación/Probabilidad/Límite diario" se fusionan en uno
+                        // v2.6.9: Entrada de libro mayor —— Haga clic en él para ver en qué está pensando recientemente y cuántas veces puede hablar de ello hoy.
+                        // Y un clic para silenciarlo durante 7 días. Esta parte de la interfaz de usuario es cómo se implementa el nuevo mecanismo:
+                        // Los usuarios pueden ver "¿Por qué me busca?" y "¿Cuándo se calla?"
                         SettingsGroupDivider()
                         SettingsItemRow(
                             icon = MuseIcons.note,
@@ -346,9 +346,9 @@ fun AgentSettingsPage(
                         ) {
                             ChevronRight()
                         }
-                        // UI-FIX: 子分组标签 —— 原先十几行开关平铺在同一层，看不出哪几个是一组
-                        // P0 收敛: 「间隔 / 偏移 / 概率 / 每日上限」四个实现参数合并为一个
-                        // 用户能表达的「主动程度」档位(少/标准/多);随机偏移与温度降到「高级」。
+                        // UI-FIX: Etiqueta de subgrupo —— Originalmente, más de una docena de filas de interruptores estaban dispuestas en el mismo piso y era difícil saber cuáles estaban en un grupo.
+                        // P0 Convergencia: Los cuatro parámetros de implementación de "Intervalo/Compensación/Probabilidad/Límite diario" se fusionan en uno
+                        // El “nivel de iniciativa” que los usuarios pueden expresar(menos/Estándar/mucho);Compensación aleatoria y la temperatura bajó a "Alta".
                         ProactiveGroupLabel(stringResource(R.string.settings_agent_group_pace))
                         SettingsGroupDivider()
                         SettingsItemRow(
@@ -376,9 +376,9 @@ fun AgentSettingsPage(
                             ChevronRight()
                         }
                         SettingsGroupDivider()
-                        // P0 收敛: 「允许时段开始 / 结束」两个滑块合并为一个「免打扰时段」范围
-                        // 允许窗口为空（起止相同）时红色提示:这种配置一条都不会发，
-                        // 不能让用户只能等到自己发现“怎么没动静”。
+                        // P0 Convergencia: Los dos controles deslizantes de "Permitir inicio/fin del período" se combinan en un rango de "período DND"
+                        // Permitir mensaje rojo cuando la ventana esté vacía (mismo inicio y final):Ninguna de esta configuración será enviada.
+                        // No dejes que los usuarios esperen hasta enterarse“¿Por qué no hay movimiento?”.
                         SettingsItemRow(
                             icon = MuseIcons.moon,
                             title = stringResource(R.string.settings_agent_quiet_hours_title),
@@ -393,7 +393,7 @@ fun AgentSettingsPage(
                             ChevronRight()
                         }
                         SettingsGroupDivider()
-                        // v2.x: 原「发送 Agent」行已删除 — 与「Agent 默认助手」同值同弹窗,合并为单一入口
+                        // v2.x: La línea original "Enviar agente" ha sido eliminada. — con "Agent El "Asistente predeterminado" tiene el mismo valor y la misma ventana emergente,Combinados en un solo portal
                         val senderAgent = assistants?.find { it.id == proactiveConfig.agentId }
                         SettingsItemRow(
                             icon = MuseIcons.user,
@@ -403,7 +403,7 @@ fun AgentSettingsPage(
                         ) {
                             ChevronRight()
                         }
-                        // P0 收敛: 温度 / 概率 / 测试发送 / 仅 Agent 会话 收进「高级」
+                        // P0 Convergencia: Temperatura/Probabilidad/Envío de prueba/Sólo sesión de agente Ingrese "Avanzado"
                         SettingsGroupDivider()
                         SettingsItemRow(
                             icon = MuseIcons.robot,
@@ -413,7 +413,7 @@ fun AgentSettingsPage(
                         ) {
                             ChevronRight()
                         }
-                        // P0 收敛: 每日总结 / 深夜日记 / 朋友圈 收进「主动内容」入口
+                        // P0 Convergencia: Resumen diario/diario nocturno/círculo de amigos están incluidos en la entrada "contenido activo"
                         ProactiveGroupLabel(stringResource(R.string.settings_agent_group_daily))
                         SettingsGroupDivider()
                         SettingsItemRow(
@@ -428,8 +428,8 @@ fun AgentSettingsPage(
                 }
             }
 
-            // P0: 「后台与可靠性」独立分区 —— 后台任务总控管的是全部周期后台任务,
-            // 与主动消息开关解耦;保持后台运行引导也归到这里。
+            // P0: Partición independiente "backend y confiabilidad" —— El maestro de tareas en segundo plano controla todas las tareas periódicas en segundo plano.,
+            // Desacoplado del interruptor de mensaje activo;Mantener el arranque ejecutándose en segundo plano también va aquí.
             item { SectionLabel(stringResource(R.string.settings_agent_group_background)) }
             item {
                 SettingsGroup(modifier = Modifier.padding(top = 8.dp)) {
@@ -443,7 +443,7 @@ fun AgentSettingsPage(
                         },
                     )
                     SettingsGroupDivider()
-                    // v2.x: 保活开关自记忆页归位(系统级后台行为)
+                    // v2.x: El interruptor de mantenimiento regresa de la página de memoria(Comportamiento en segundo plano a nivel del sistema)
                     SettingsSwitchRow(
                         icon = MuseIcons.bolt,
                         title = stringResource(R.string.settings_memory_keep_awake),
@@ -477,11 +477,11 @@ fun AgentSettingsPage(
         }
     }
 
-    // ── v1.xxx: 每日总结时段选择弹窗(整点 chip 多选,替代此前裸文本逗号输入;仍以逗号分隔小时存储)──
+    // ── v1.xxx: Ventana emergente de selección de período de resumen diario(Opción múltiple de chip de punto completo,Reemplazar la entrada de coma de texto simple anterior;Todavía almacenado con horas separadas por comas.)──
     if (showSlotsDialog) {
-        // 仅保留合法 0-23 的初始值;用 remember(非 saveable)保存 Set,避免非 Bundle 类型在进程重建时崩溃
+        // Sólo se conservan los valores iniciales legales 0-23;usar remember(no saveable)guardar Set,Evite que los tipos que no son de paquete fallen durante la reconstrucción del proceso
         var selectedSlots by remember { mutableStateOf(dailySummarySlots.filter { it in 0..23 }.toSet()) }
-        // 按自然时段分组展示 0-23 全部整点,聚焦常见时段
+        // Se muestran en grupos según los períodos de tiempo naturales 0-23 Todo a la hora,Centrarse en períodos de tiempo comunes
         val slotGroups = listOf(
             stringResource(R.string.settings_agent_daily_summary_slots_group_early) to listOf(0, 1, 2, 3, 4, 5),
             stringResource(R.string.settings_agent_daily_summary_slots_group_morning) to listOf(6, 7, 8, 9, 10, 11),
@@ -511,7 +511,7 @@ fun AgentSettingsPage(
                                 MuseChip(
                                     selected = selected,
                                     onClick = {
-                                        // 点击即时切换选中态
+                                        // Haga clic para cambiar instantáneamente el estado seleccionado
                                         selectedSlots = if (selected) selectedSlots - h else selectedSlots + h
                                     },
                                     label = String.format(Locale.getDefault(), "%02d:00", h),
@@ -520,12 +520,12 @@ fun AgentSettingsPage(
                         }
                     }
                     Spacer(Modifier.size(12.dp))
-                    // 底部:无选择时红色提示;否则展示当前已选时段中文描述
+                    // abajo:Aviso rojo cuando no hay selección;De lo contrario, se mostrará la descripción china del período de tiempo seleccionado actualmente.
                     Text(
                         text = if (hasSelection) {
                             stringResource(
                                 R.string.settings_agent_daily_summary_slots_selected,
-                                selectedSlots.sorted().joinToString("、") {
+                                selectedSlots.sorted().joinToString(",") {
                                     String.format(Locale.getDefault(), "%02d:00", it)
                                 },
                             )
@@ -540,11 +540,11 @@ fun AgentSettingsPage(
             },
             confirmText = stringResource(R.string.action_save),
             onConfirm = {
-                // 保存排序后的逗号分隔小时,兼容 SettingsRepository.saveDailySummarySlots
+                // Guardar horas ordenadas separadas por comas,compatibles SettingsRepository.saveDailySummarySlots
                 scope.launch {
                     settings.saveDailySummarySlots(selectedSlots.sorted())
-                    // 设置变更后立即同步 WorkManager；否则仅在下次进程启动时重排，
-                    // 旧小时会继续执行而新小时要等到下一次冷启动。
+                    // Sincronice WorkManager inmediatamente después de los cambios de configuración; de lo contrario, sólo se reprogramará la próxima vez que se inicie el proceso,
+                    // La hora anterior continúa y la nueva espera hasta el próximo arranque en frío.
                     DailySummaryWorker.scheduleNext(context)
                 }
                 showSlotsDialog = false
@@ -554,7 +554,7 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── v1.xxx: AI 朋友圈每日条数选择弹窗(0 = 关闭)──
+    // ── v1.xxx: AI Ventana emergente para seleccionar el número diario de publicaciones en Momentos(0 = cerrar)──
     if (showMomentCountPicker) {
         var countValue by rememberSaveable { mutableStateOf(dailyMomentCount.coerceIn(0, 5)) }
         val alignedValue = countValue.coerceIn(0, 5)
@@ -578,9 +578,9 @@ fun AgentSettingsPage(
                         value = alignedValue.toFloat(),
                         onValueChange = { countValue = it.toInt() },
                         valueRange = 0f..5f,
-                        // 0..5 共 6 档,steps=4 → start/end 之间 4 个停点
+                        // 0..5 6 archivos en total,steps=4 → start/end 4 paradas entre
                         steps = 4,
-                        valueFormatter = { if (it.toInt() <= 0) "关闭" else "${it.toInt()} 条/天" },
+                        valueFormatter = { if (it.toInt() <= 0) "cerrar" else "${it.toInt()} Artículo/dia" },
                     )
                 }
             },
@@ -594,7 +594,7 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── v2.6.7（P0-1）: 朋友圈内容模式选择弹窗（真实系 / 角色系）──
+    // ── v2.6.7(P0-1): Ventana emergente de selección del modo de contenido de Moments (tipo real/personaje)──
     if (showMomentContentModePicker) {
         MuseDialog(
             onDismissRequest = { showMomentContentModePicker = false },
@@ -660,7 +660,7 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── P0: 主动程度选择弹窗(少/标准/多;反推不到则显示自定义) ──
+    // ── P0: Ventana emergente de selección de nivel de actividad(menos/Estándar/mucho;Si no es posible empujar hacia atrás, se mostrará la pantalla personalizada.) ──
     if (showPacePicker) {
         val currentPace = ProactivePace.from(
             proactiveConfig.intervalMinutes,
@@ -728,13 +728,13 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── P0: 免打扰时段弹窗(起止两个滑块) ──
+    // ── P0: Ventana emergente del período No molestar(Iniciar y finalizar dos controles deslizantes) ──
     //
-    // 语义说明（重要）:本弹窗编辑的是「免打扰时段」,存储字段是「允许发送窗口」,
-    // 两者互补。旧实现把这个换算写成 `startHour = allowedHourEnd` / `allowedHourStart = e`,
-    // 方向相反且隔了八十行,读代码时极易误判为“双重取反 bug”（实际往返是恒等的）,
-    // 改动时也极易只改一半而真的把窗口弄反。
-    // 现在换算全部收在 QuietHoursWindow 里,这里只处理「免打扰」一个语义。
+    // Explicación semántica (importante):Esta ventana emergente edita "Tiempo de no molestar",El campo de almacenamiento es "Permitir ventana de envío".,
+    // Los dos se complementan. La implementación anterior escribió esta conversión como `startHour = allowedHourEnd` / `allowedHourStart = e`,
+    // En dirección opuesta y con ochenta líneas de diferencia.,Al leer el código, es fácil juzgar mal el“doble negación bug”(El viaje de ida y vuelta real es constante),
+    // Al realizar cambios, es muy fácil cambiar solo la mitad de la ventana y, de hecho, darle la vuelta a la ventana.
+    // Todas las conversiones ahora se recopilan en QuietHoursWindow,Aquí sólo nos ocupamos de la semántica de "no molestar".
     if (showQuietHoursPicker) {
         val storedQuiet = QuietHoursWindow.AllowedWindow(
             proactiveConfig.allowedHourStart,
@@ -742,8 +742,8 @@ fun AgentSettingsPage(
         ).toQuietHours()
         var startHour by rememberSaveable { mutableStateOf(storedQuiet.startHour) }
         var endHour by rememberSaveable { mutableStateOf(storedQuiet.endHour) }
-        // v2.6.x: 全天开放开关。allowedHourStart/End 是左闭右开的区间,凑不出完整 24 小时
-        // (23-23 = 空区间一条不发,23-0 = 只覆盖 23 点),所以单独给一个总开关。
+        // v2.6.x: Interruptor abierto todo el día.allowedHourStart/End Es un intervalo que está cerrado por la izquierda y abierto por la derecha.,No puedo recuperar 24 horas completas
+        // (23-23 = No se envía a nadie en el intervalo vacío.,23-0 = Sólo 23 puntos cubiertos),Así que dale un interruptor principal separado.
         var allDay by rememberSaveable { mutableStateOf(proactiveConfig.allDayAllowed) }
         val s = startHour.coerceIn(0, 23)
         val e = endHour.coerceIn(0, 23)
@@ -752,7 +752,7 @@ fun AgentSettingsPage(
             title = stringResource(R.string.settings_agent_quiet_hours_title),
             content = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // 全天开放:打开后不再需要选起止小时
+                    // Abierto todo el día:Después de la apertura, ya no es necesario seleccionar las horas de inicio y finalización.
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
@@ -785,8 +785,8 @@ fun AgentSettingsPage(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
-                        // 免打扰起止相同 = 允许窗口为空 = 永远不会发主动消息。
-                        // 这个组合以前能默默保存下来,用户只会看到“一条都不发”。
+                        // No molestar empieza y termina igual = Permitir que la ventana esté vacía = Nunca envíes mensajes no solicitados.
+                        // Esta combinación podría guardarse silenciosamente antes,Los usuarios sólo verán“Ni un solo mensaje”.
                         if (s == e) {
                             Text(
                                 text = stringResource(R.string.settings_agent_quiet_hours_empty_warning),
@@ -830,7 +830,7 @@ fun AgentSettingsPage(
             },
             confirmText = stringResource(R.string.action_save),
             onConfirm = {
-                // 直接写回免打扰语义;换算交给 QuietHoursWindow,不再在这里手写取反。
+                // Escribe directamente la semántica de no molestar;La conversión se entrega a QuietHoursWindow,No más negaciones manuscritas aquí.
                 val allowed = QuietHoursWindow.QuietHours(s, e).toAllowed()
                 scope.launch {
                     settings.saveProactiveMessageConfig(
@@ -848,7 +848,7 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── P0: 主动内容弹窗(每日总结 / 深夜日记 / 朋友圈) ──
+    // ── P0: Ventanas emergentes de contenido activo(Resumen diario / diario nocturno / círculo de amigos) ──
     if (showContentPicker) {
         MuseDialog(
             onDismissRequest = { showContentPicker = false },
@@ -922,7 +922,7 @@ fun AgentSettingsPage(
                             ) {
                                 ChevronRight()
                             }
-                            // v2.6.7（P0-1）: 朋友圈内容模式 — 真实系 / 角色系双档
+                            // v2.6.7(P0-1): Modo de contenido de momentos — Realista/personaje de doble nivel
                             SettingsGroupDivider()
                             SettingsItemRow(
                                 icon = MuseIcons.typography,
@@ -949,7 +949,7 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── P0: 高级弹窗(仅 Agent 会话 / 生成温度 / 随机偏移 / 测试发送) ──
+    // ── P0: Ventanas emergentes avanzadas(Solo sesión de agente/Generar temperatura/Compensación aleatoria/Envío de prueba) ──
     if (showAdvancedDialog) {
         MuseDialog(
             onDismissRequest = { showAdvancedDialog = false },
@@ -1014,17 +1014,17 @@ fun AgentSettingsPage(
                                 testSending = true
                                 scope.launch {
                                     try {
-                                        // v2.2.1: 如实展示结果(含失败原因),替代固定的"已发送"文案
-                                        // v2.6.9: 改走重建版调度器 —— 旧 Runner 已不再启动，
-                                        // 若继续指向它，测试按钮会走一条实际不存在的链路。
+                                        // v2.2.1: Mostrar resultados con sinceridad(Incluyendo razones de falla),reemplazar fijo"Enviado"redacción
+                                        // v2.6.9: Cambiar a la versión reconstruida del programador —— El viejo Runner ya no se inicia,
+                                        // Si continúa señalándolo, el botón de prueba tomará un enlace que en realidad no existe.
                                         val result = proactiveScheduler.runCycle(
                                             io.zer0.muse.proactive.ProactiveScheduler.TRIGGER_MANUAL,
                                             force = true,
                                         )
                                         android.widget.Toast.makeText(
                                             context,
-                                            // 跳过的原因是「上一轮还在跑」，这句要说给人听，
-                                            // 走资源而不是把日志里的中文短语直接弹出来。
+                                            // El motivo para saltarme es "todavía estaba corriendo en la última ronda". Si quieres decirle esto a la gente,
+                                            // Utilice recursos en lugar de mostrar frases en chino directamente en el registro.
                                             if (result.alreadyRunning) {
                                                 testAlreadyRunningText
                                             } else {
@@ -1034,7 +1034,7 @@ fun AgentSettingsPage(
                                         ).show()
                                     } catch (e: Exception) {
                                         if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                                        Logger.w("AgentSettingsPage", "测试主动消息失败: ${e.message}")
+                                        Logger.w("AgentSettingsPage", "Falló la prueba de mensaje no solicitado: ${e.message}")
                                         android.widget.Toast.makeText(
                                             context,
                                             context.getString(R.string.settings_agent_test_failed, e.message),
@@ -1056,14 +1056,14 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── 助手选择弹窗 ──
+    // ── Ventana emergente de selección de asistente ──
     if (showAssistantPicker) {
         MuseDialog(
             onDismissRequest = { showAssistantPicker = false },
             title = stringResource(R.string.settings_agent_select_assistant_title),
             content = {
                 Column {
-                    // v1.74: 局部变量捕获避免 !!(委托属性无法 smart-cast)
+                    // v1.74: Evitación de captura de variables locales !!(Las propiedades delegadas no pueden smart-cast)
                     val assistantList = assistants
                     when {
                         assistantList == null -> {
@@ -1111,11 +1111,11 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── 随机偏移选择弹窗(v1.30: 改为 Slider 自定义,步长 15 分钟,范围 0 ~ 间隔值)──
+    // ── Ventana emergente de selección de desplazamiento aleatorio(v1.30: Cambiar a la personalización del control deslizante,Duración del paso 15 minutos,alcance 0 ~ valor del intervalo)──
     if (showOffsetPicker) {
         var sliderMinutes by rememberSaveable { mutableStateOf(proactiveConfig.randomOffsetMinutes) }
         val maxOffset = proactiveConfig.intervalMinutes
-        // v1.95: 无极调节,不再对齐到 15 分钟步长(不超过当前间隔)
+        // v1.95: Ajuste continuo,Ya no está alineado con pasos de 15 minutos(no más largo que el intervalo actual)
         val alignedMinutes = sliderMinutes.coerceIn(0, maxOffset)
         MuseDialog(
             onDismissRequest = { showOffsetPicker = false },
@@ -1139,16 +1139,16 @@ fun AgentSettingsPage(
                         value = alignedMinutes.toFloat(),
                         onValueChange = { sliderMinutes = it.toInt() },
                         valueRange = 0f..maxOffset.toFloat(),
-                        // v1.95: 无极调节,去掉 steps(原 15 分钟步长)
+                        // v1.95: Ajuste continuo,eliminar steps(Pasos originales de 15 minutos.)
                         valueFormatter = { "${it.toInt()} min" },
                     )
-                    // 分档参考标签
+                    // Etiqueta de referencia de agrupación
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // LAYOUT-01: 滑块两端刻度标注是定宽短文本(两端对齐交给 SpaceBetween),
-                        // 不取宽,仅限 1 行防止放大字号下逐字换行。
+                        // LAYOUT-01: Las etiquetas de escala en ambos extremos del control deslizante son texto corto con un ancho fijo.(Alinee ambos extremos y entregue SpaceBetween),
+                        // Sin ancho,Solo 1 línea evita el ajuste palabra por palabra cuando se amplía el tamaño de fuente.
                         Text(
                             stringResource(R.string.settings_agent_offset_off_label),
                             style = MaterialTheme.typography.labelSmall,
@@ -1178,10 +1178,10 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── v2.0 5.9: 生成温度选择弹窗(0.0 ~ 2.0,步长 0.1)──
+    // ── v2.0 5.9: Generar ventana emergente de selección de temperatura(0.0 ~ 2.0,tamaño del paso 0.1)──
     if (showTemperaturePicker) {
         var sliderValue by rememberSaveable { mutableStateOf(proactiveConfig.temperature) }
-        // 对齐到 0.1 步长:kotlin.math.round(Float) 返回 Float,避免 Math.round 重载歧义
+        // Alinear a 0,1 pasos:kotlin.math.round(Float) Regresar Float,Evite la ambigüedad de sobrecarga de Math.round
         val alignedValue = (kotlin.math.round(sliderValue * 10f) / 10f).coerceIn(0f, 2f)
         MuseDialog(
             onDismissRequest = { showTemperaturePicker = false },
@@ -1211,7 +1211,7 @@ fun AgentSettingsPage(
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        // LAYOUT-01: 同上,温度滑块两端刻度标注限 1 行。
+                        // LAYOUT-01: Igual que arriba,Las marcas de escala en ambos extremos del control deslizante de temperatura están limitadas a 1 línea.
                         Text(
                             stringResource(R.string.settings_agent_temperature_stable),
                             style = MaterialTheme.typography.labelSmall,
@@ -1239,13 +1239,13 @@ fun AgentSettingsPage(
         )
     }
 
-    // ── v1.x: 保持后台运行引导(被动入口,点击才弹出)──
+    // ── v1.x: Sigue arrancando en segundo plano(entrada pasiva,Haga clic para aparecer)──
     if (showKeepAliveGuide) {
         KeepAliveGuideDialog(onDismiss = { showKeepAliveGuide = false })
     }
 }
 
-/** 独立主动消息设置页：复用 Agent 页的完整主动消息设置，不复制状态逻辑。 */
+/** Página de configuración de mensajes activos independientes: reutilice la configuración completa de mensajes activos de la página del Agente sin duplicar la lógica de estado. */
 @Composable
 fun ProactiveMessageSettingsPage(onBack: () -> Unit) {
     AgentSettingsPage(
@@ -1256,7 +1256,7 @@ fun ProactiveMessageSettingsPage(onBack: () -> Unit) {
     )
 }
 
-/** 助手选择行:头像 + 名字 + 单选指示。 */
+/** El asistente selecciona filas:Avatar + Nombre + Instrucciones de radio. */
 @Composable
 private fun AgentPickerRow(assistant: AssistantEntity, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -1286,8 +1286,8 @@ private fun AgentPickerRow(assistant: AssistantEntity, selected: Boolean, onClic
 }
 
 /**
- * 把间隔分钟数转成可读文案。
- * v1.30: 从小时单位改为分钟单位,支持 15/30/45 分钟等细分粒度。
+ * Convierta los minutos de intervalo en una copia legible.
+ * v1.30: Cambiado de unidad de hora a unidad de minutos,Admite granularidad de subdivisión, como 15/30/45 minutos.
  */
 @Composable
 private fun intervalLabel(minutes: Int): String {
@@ -1312,8 +1312,8 @@ private fun intervalLabel(minutes: Int): String {
 }
 
 /**
- * 把随机偏移分钟数转成可读文案。
- * v1.30: 从小时单位改为分钟单位,支持 15/30/45 分钟等细分粒度。
+ * Convierta minutos compensados ​​​​al azar en una copia legible.
+ * v1.30: Cambiado de unidad de hora a unidad de minutos,Admite granularidad de subdivisión, como 15/30/45 minutos.
  */
 @Composable
 private fun offsetLabel(minutes: Int): String {
@@ -1325,7 +1325,7 @@ private fun offsetLabel(minutes: Int): String {
     }
 }
 
-/** UI-FIX: 主动消息组内的子分组标签，给平铺的开关建立层级。 */
+/** UI-FIX: Etiquetas de subgrupo dentro de grupos de mensajes activos para crear una jerarquía para conmutadores en mosaico. */
 @Composable
 private fun ProactiveGroupLabel(text: String) {
     Text(
@@ -1336,7 +1336,7 @@ private fun ProactiveGroupLabel(text: String) {
     )
 }
 
-/** P0: 主动程度档位标题。 */
+/** P0: Título de engranaje horizontal automático. */
 @Composable
 private fun paceTitle(pace: ProactivePace): String = when (pace) {
     ProactivePace.LIGHT -> stringResource(R.string.settings_agent_pace_light)
@@ -1345,7 +1345,7 @@ private fun paceTitle(pace: ProactivePace): String = when (pace) {
     ProactivePace.EXTREME -> stringResource(R.string.settings_agent_pace_extreme)
 }
 
-/** P0: 主动程度档位说明。 */
+/** P0: Descripción de marchas de nivel activo. */
 @Composable
 private fun paceSubtitle(pace: ProactivePace): String = when (pace) {
     ProactivePace.LIGHT -> stringResource(R.string.settings_agent_pace_light_desc)

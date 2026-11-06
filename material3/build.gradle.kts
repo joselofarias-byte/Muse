@@ -1,22 +1,22 @@
-// v1.97 gap7: :material3 模块 — Material Color Utilities 桥接层。
+// v1.97 gap7: :material3 módulo — Material Color Utilities capa puente.
 //
-// 职责:
-//  - 通过 kotlin.srcDir 直接挂载 material-color-utilities 上游 Kotlin 源码
+// Responsabilidades:
+//  - Monte directamente el código fuente de Kotlin ascendente de material-color-utilities a través de kotlin.srcDir
 //    (Google material-foundation/material-color-utilities,Apache 2.0)
-//  - 提供 DynamicScheme.toColorScheme() 扩展,将 HCT 色彩空间生成的方案
-//    转换为 Compose Material3 的 ColorScheme,供 CustomTheme.generateColorScheme 使用
+//  - proporcionar DynamicScheme.toColorScheme() Expandir,Esquema para generar espacio de color HCT.
+//    Convertir para componer material3 ColorScheme,Para uso de CustomTheme.generateColorScheme
 //
-// 设计决策:
-//  - 不通过 Maven 依赖引入,因为 com.google.android.material:material-color-utilities
-//    未发布到 Maven Central(2026-07 验证);采用源码直挂方式
-//  - 上游源码保留在 material-color-utilities/kotlin/ 子目录,便于版本升级时整体替换
-//  - 模块本身是 Android Library(需要 Compose ColorScheme/Color 类型),不是纯 JVM
+// decisiones de diseño:
+//  - No introducido a través de dependencias de Maven,porque com.google.android.material:material-color-utilities
+//    no publicado en Maven Central(2026-07 verificar);Usando el método de enlace directo del código fuente
+//  - El código fuente ascendente se guarda en el subdirectorio material-color-utilities/kotlin/,Conveniente para el reemplazo general durante la actualización de la versión
+//  - El módulo en sí es Android Library(Requiere componer esquema de color/tipo de color),no puro JVM
 
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ktlint)
-    // Phase 2.1: Kover — 插桩本模块字节码,数据上提到 root 聚合报告
+    // Phase 2.1: Kover — Instrumentar el código de bytes de este módulo.,Datos mencionados en el informe de agregación raíz
     alias(libs.plugins.kover)
 }
 
@@ -39,7 +39,7 @@ android {
 
     sourceSets {
         named("main") {
-            // 将 material-color-utilities 上游 Kotlin 源码挂载到编译路径
+            // Monte el código fuente de Kotlin ascendente material-color-utilities en la ruta de compilación
             kotlin.srcDir("material-color-utilities/kotlin")
         }
     }
@@ -47,14 +47,14 @@ android {
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
-    // 与 app 同口径:material3 版本由 root 的 resolutionStrategy.force 统一锁定。
+    // Mismo calibre que la aplicación:material3 Las versiones están bloqueadas uniformemente por la resoluciónStrategy.force del root.
     implementation(libs.androidx.compose.material3)
-    // P4-5: 补真 — material3 此前零测试,覆盖率门禁无法落 minBound。
+    // P4-5: suplemento — material3 Cero pruebas antes,La puerta de cobertura no puede caer en minBound.
     testImplementation(libs.junit)
 }
 
-// P4-5: 覆盖率门禁补全 — material3 此前零测试且无 verify 规则。
-// 新增 ColorSchemeBridgeTest 后实测 LINE 39.2%,按 30 设定(低于即失败)。
+// P4-5: Finalización del control de acceso a la cobertura — material3 Anteriormente no había pruebas ni reglas de verificación.
+// Medición real después de agregar ColorSchemeBridgeTest LINE 39.2%,Presione 30 para configurar(Cualquier cosa menos que eso significa fracaso.).
 kover {
     reports {
         verify {

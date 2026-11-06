@@ -1,79 +1,79 @@
-<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
-# 富内容渲染完整指南
+<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
+# La guía completa para la renderización de contenido enriquecido
 
-> 触发场景: 用户问"怎么发图片""图片能识别文字吗""AI 回复里代码/公式怎么显示""能发视频吗""附件怎么传"时,参考本文档据实回答。
-> 本文档基于源码 ui/chat/ 的 Markdown 渲染组件、MessageBubble 富内容处理、AttachmentChip.kt 的真实实现。
+> escena desencadenante: Usuario preguntó"Cómo publicar fotos""¿Se puede reconocer el texto a partir de imágenes?""AI código en respuesta/Cómo mostrar la fórmula""¿Puedo enviar un vídeo?""Cómo cargar archivos adjuntos"tiempo,Consulte este documento y responda con sinceridad.
+> Este documento se basa en el componente de renderizado Markdown del código fuente ui/chat/.MessageBubble procesamiento de contenido enriquecido,AttachmentChip.kt verdadera realización.
 
-## 一、概述
+## 1. Descripción general
 
-Muse 聊天支持丰富的富内容:
-- **AI 输出侧**: Markdown 全渲染(代码高亮/LaTeX 公式/表格/引用/列表/图片/视频)
-- **用户输入侧**: 图片(压缩/OCR)、视频、文件附件、粘贴内容智能处理
+Muse El chat admite contenido rico y rico:
+- **AI Lado de salida**: Markdown Representación completa(resaltado de código/LaTeX fórmula/mesa/Cotización/lista/fotos/vídeo)
+- **Lado de entrada del usuario**: fotos(Compresión/OCR), vídeos, archivos adjuntos y procesamiento inteligente de contenido pegado
 
-## 二、Markdown 渲染支持范围
+## 2.Markdown Rango de soporte de renderizado
 
-| 类型 | 支持 | 说明 |
+| Tipo | apoyo | Descripción |
 |---|---|---|
-| 代码块 | ✅ | 语法高亮(CodeHighlighter),支持常见语言 |
-| 行内代码 | ✅ | `code` |
-| LaTeX 公式 | ✅ | $...$ 行内 / $$...$$ 块级(FormulaView) |
-| 表格 | ✅ | GFM 表格 |
-| 引用块 | ✅ | > 引用 |
-| 列表 | ✅ | 有序/无序/嵌套 |
-| 标题 | ✅ | # ~ ###### |
-| 粗体/斜体/删除线 | ✅ | **bold** *italic* ~~strike~~ |
-| 链接 | ✅ | [text](url),点击可打开 |
-| 图片 | ✅ | ![alt](url),流式内联渲染 |
-| 任务列表 | ✅ | - [x] 完成项 |
-| 水平线 | ✅ | --- |
+| bloque de código | ✅ | resaltado de sintaxis(CodeHighlighter),Admite idiomas comunes |
+| código en línea | ✅ | `code` |
+| LaTeX fórmula | ✅ | $...$ Dentro de la industria / $$...$$ nivel de bloque(FormulaView) |
+| mesa | ✅ | GFM mesa |
+| bloque de cotización | ✅ | > Cotización |
+| lista | ✅ | ordenado/desorden/anidado |
+| Título | ✅ | # ~ ###### |
+| Negrita/cursiva/tachado | ✅ | **bold** *italic* ~~strike~~ |
+| enlace | ✅ | [text](url),Haga clic para abrir |
+| fotos | ✅ | ![alt](url),Transmisión de renderizado en línea |
+| lista de tareas | ✅ | - [x] Artículos completos |
+| linea horizontal | ✅ | --- |
 
-注意: Markdown 中嵌 HTML 的部分标签有限支持;数学公式依赖 KaTeX 类似实现,公式复杂度过高可能渲染失败(保留原文)。
+Nota: Markdown Soporte limitado para algunas etiquetas incrustadas en HTML;Las fórmulas matemáticas se basan en implementaciones similares a KaTeX,Si la fórmula es demasiado compleja, la representación puede fallar.(Mantener el texto original.).
 
-## 三、图片能力
+## 3. Capacidad de imagen
 
-### 3.1 用户发送图片
-- 入口: 输入栏 + 号 → 图片 / 相机
-- **压缩**: 发送前自动压缩,降低流量与内存
-- **OCR**: 图片自动走 ML Kit 离线文字识别(中文+英文),识别结果可作为上下文给 LLM
-- 多图: 支持一次多张(上限 4 张,单张 ≤2MB 发送限制)
+### 3.1 Usuario envía foto
+- entrada: Campo de entrada + signo → Imágenes/Cámara
+- **Compresión**: Comprimir automáticamente antes de enviar,Reducir el tráfico y la memoria
+- **OCR**: Procesamiento automático de imágenes ML Kit reconocimiento de texto sin conexión(chino+ingles),Los resultados del reconocimiento se pueden utilizar como contexto para LLM
+- Varias imágenes: Admite varias imágenes a la vez(Máximo 4 tarjetas,folleto ≤2MB Enviar restricciones)
 
-### 3.2 AI 回复中的图片
-- 流式渲染 data URI / 网络图
-- **SmartImage 解码**: 先 inJustDecodeBounds 探测尺寸 → inSampleSize 降采样防 OOM → 显示后显式 recycle()
-- 图片点击可放大查看
+### 3.2 AI Fotos en respuestas
+- Transmisión de datos de representación URI/diagrama de red
+- **SmartImage decodificar**: Primero detecta el tamaño con inJustDecodeBounds → inSampleSize Reducción de resolución OOM → explícito después de la visualización recycle()
+- Haga clic en la imagen para ampliarla
 
-## 四、视频能力
+## 4. Capacidades de vídeo
 
-- 用户可发送本地视频文件
-- AI 生成视频(generate_video 工具)在消息内联播放
-- 播放器支持进度/全屏(走系统播放器或内嵌)
+- Los usuarios pueden enviar archivos de video locales.
+- AI Generar vídeo(generate_video Herramientas)Reproducir en línea en el mensaje
+- El jugador apoya el progreso./pantalla completa(Utilice el reproductor del sistema o integrado)
 
-## 五、文件附件
+## 5. Archivos adjuntos
 
-- 用户可附加任意文件(AttachmentChip 显示文件名/大小/类型)
-- 附件以 URI 引用,不占消息文本
-- AI 可通过 file_download / save_to_downloads 处理文件
-- 粘贴长文本自动检测为文件(>5000 字符)提示转附件
+- Los usuarios pueden adjuntar cualquier archivo.(AttachmentChip Mostrar nombre de archivo/tamaño/Tipo)
+- Los archivos adjuntos están referenciados por URI,No ocupa texto del mensaje
+- AI Los archivos se pueden procesar a través de file_download / save_to_downloads
+- Al pegar texto largo se detecta automáticamente como un archivo(>5000 personaje)Solicitar transferir el archivo adjunto
 
-## 六、富内容边界与限制
+## 6. Límites y restricciones del contenido enriquecido
 
-- 图片 base64 单张 ≤2MB,超限丢弃并提示
-- 一次最多 4 张图片
-- 网页抓取内容超 5 万字符截断
-- 超长 AI 消息自动折叠
-- 音频: TTS 朗读,不内联播放录音文件
+- Folleto de imagen base64 ≤2MB,Descartar y avisar cuando se excede el límite
+- Máximo 4 imágenes a la vez
+- El contenido rastreado en la web que supera los 50.000 caracteres se trunca
+- Colapsar automáticamente mensajes de IA súper largos
+- Audio: TTS leer en voz alta,No reproducir archivos de grabación en línea
 
-## 七、常见问题 Q&A
+## 7. Preguntas frecuentes Q&A
 
-1. **"图片发出去 AI 能看到吗"**: 能,图片压缩后走多模态通道;纯文本模型会自动降级为 OCR 文字描述。
-2. **"为什么 AI 回复的公式显示乱码"**: 复杂 LaTeX 可能渲染失败,会显示原始文本;可让 AI 换简单写法。
-3. **"怎么发大文件"**: 附件方式发送;超大文件建议先放网盘给链接。
-4. **"视频能发给 AI 分析吗"**: 支持发送视频文件,但 AI 分析的是文件名/元数据(无视频理解能力时),画面内容需截图。
-5. **"图片压缩会不会糊"**: 压缩保底清晰度,一般场景足够;原图保留在相册。
+1. **"¿Puede la IA ver la imagen después de enviarla?"**: puede,Después de la compresión de imágenes, utilice canales multimodales.;Los modelos de texto sin formato se degradan automáticamente a descripciones de texto OCR.
+2. **"¿Por qué la fórmula de respuesta de la IA muestra caracteres confusos?"**: Es posible que el LaTeX complejo no se renderice,Se mostrará el texto original.;Puedes dejar que la IA cambie a escritura simple.
+3. **"Cómo enviar archivos grandes"**: Enviar como archivo adjunto;Para archivos muy grandes, se recomienda colocarlos primero en el disco de red para vincularlos.
+4. **"¿Se pueden enviar vídeos a la IA para su análisis?"**: Soporte para enviar archivos de video,Pero lo que analiza la IA es el nombre del archivo/Metadatos(Cuando no hay capacidad de comprensión de video),Se requieren capturas de pantalla.
+5. **"¿La compresión de la imagen la hará borrosa?"**: Claridad garantizada por compresión,Suficiente para escenarios generales;La imagen original permanece en el álbum de fotos.
 
-## 八、LLM 调用要点
+## 8.LLM Puntos de llamada
 
-- 回复中可自然使用 Markdown(代码/表格/公式/列表),UI 会正确渲染
-- 生成图片用 generate_image,视频用 generate_video,结果自动内联
-- 引用用户图片时描述内容而非假装看到原图(文本模型场景)
-- 长内容用标题/列表结构化,避免一大段无格式文本
+- Se puede utilizar de forma natural en las respuestas. Markdown(código/mesa/fórmula/lista),UI se renderizará correctamente
+- Se utiliza para generar imágenes. generate_image,Para vídeo generate_video,Los resultados se insertan automáticamente
+- Al citar imágenes de usuarios, describe el contenido en lugar de pretender ver la imagen original.(Escena del modelo de texto)
+- Utilice títulos para contenido extenso/Estructuración de listas,Evite grandes bloques de texto sin formato

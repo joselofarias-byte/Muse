@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">中文</a> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <b>Português</b> · <a href="README_RU.md">Русский</a>
+  <a href="README.md">Español</a> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <a href="README_KO.md">한국어</a> · <a href="README_ES.md">Español</a> · <b>Português</b> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
 </p>
 <p align="center">
-  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQ群-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Grupo de QQ"></a>
-  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/官网-museai.ltd-blueviolet?style=for-the-badge" alt="Site oficial"></a>
+  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQgrupo-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="Grupo de QQ"></a>
+  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/Sitio web oficial-museai.ltd-blueviolet?style=for-the-badge" alt="Site oficial"></a>
   <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="Download"></a>
 </p>
 
@@ -26,7 +26,7 @@
   <a href="#download">Download</a> ·
   <a href="#primeiros-passos">Primeiros passos</a> ·
   <a href="#visão-geral-dos-recursos">Visão geral dos recursos</a> ·
-  <a href="用户手册.md">manual do usuário (chinês)</a> ·
+  <a href="manual-de-usuario.md">manual do usuário (chinês)</a> ·
   <a href="#código-aberto-e-colaboração">Código aberto e colaboração</a>
 </p>
 
@@ -103,7 +103,7 @@ Baixe o APK mais recente na página oficial [museai.ltd/download](https://museai
 2. **Comece a conversar** — volte à tela inicial e envie a primeira mensagem. A memória começa a se acumular nesse instante; troque de modelo, troque de sessão, ele continua lembrando de você.
 3. **Libere os recursos do sistema quando quiser (opcional)** — para ele "agir de verdade", abra **Configurações → Assistente de permissões** e ative, seguindo as instruções, os canais que você precisa entre Acessibilidade / Shizuku / Root / Termux; cada etapa tem detecção e ponto de teste.
 
-> O guia de uso completo (incluindo os gestos e as operações escondidas) está no [manual do usuário (chinês)](用户手册.md) ou dentro do app em **Configurações → Tutorial**.
+> O guia de uso completo (incluindo os gestos e as operações escondidas) está no [manual do usuário (chinês)](manual-de-usuario.md) ou dentro do app em **Configurações → Tutorial**.
 
 ## Por que o Muse
 
@@ -321,7 +321,7 @@ python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*
 
 Contribuições para o projeto são bem-vindas:
 
-- [Guia de contribuição](CONTRIBUTING.md) · [Política de segurança](SECURITY.md) · [Normas de manutenção da biblioteca de componentes de UI (chinês)](UI组件库维护规范.md)
+- [Guia de contribuição](CONTRIBUTING.md) · [Política de segurança](SECURITY.md) · [Normas de manutenção da biblioteca de componentes de UI (chinês)](guia-biblioteca-ui.md)
 - Antes de abrir um PR, passe pelos scripts de verificação locais e pelos testes unitários; strings novas precisam ser sincronizadas em todos os pacotes de idioma
 - Os scripts dos quality gates e do pipeline de release ficam em `ci/script/`; o tutorial embutido no app (Configurações → Tutorial) é mantido em paralelo
 

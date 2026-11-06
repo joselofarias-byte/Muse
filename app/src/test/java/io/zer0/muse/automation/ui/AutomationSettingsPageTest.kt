@@ -24,10 +24,10 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * UI 自动化权限页顶栏测试。
+ * UI Prueba automatizada de la barra superior de la página de permisos.
  *
- * 回归锁定:页面必须渲染带返回键的二级页顶栏,且返回键真的调用 [AutomationSettingsPage] 的
- * `onBack`(此前导航图传了 onBack 但页面没有使用)。
+ * volver al encierro:La página debe mostrar una barra superior de página secundaria con una clave de retorno.,Y la tecla de retorno realmente llama [AutomationSettingsPage] de
+ * `onBack`(Anteriormente, la imagen de navegación se pasaba a onBack pero la página no se usaba.).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "zh-rCN")
@@ -85,7 +85,7 @@ class AutomationSettingsPageTest {
             }
         }
 
-        // v2.x: 三通道权限卡已收敛到向导页 — 本页保留一行入口,且点击真的打开向导
+        // v2.x: Las tarjetas de permiso de tres canales han convergido en la página del asistente. — Esta página reserva una línea de entrada.,Y haga clic en Real para abrir el asistente.
         composeTestRule
             .onNodeWithText(context.getString(R.string.permission_wizard_title))
             .performClick()

@@ -9,17 +9,17 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * 模型能力目录仓库 —— 三层数据源 + 降级链。
+ * Almacén de catálogo de capacidad de modelo —— Fuente de datos de tres niveles + cadena de degradación.
  *
- * 数据源优先级(高 → 低):
- *  1. [refresh] 从远程拉下来的缓存(filesDir/model-catalog.json)
- *  2. 打进 APK 的内置目录(assets/model-catalog.json)
+ * Prioridad de fuente de datos(alto → bajo):
+ *  1. [refresh] Caché extraído del control remoto(filesDir/model-catalog.json)
+ *  2. Ingrese al directorio integrado del APK(assets/model-catalog.json)
  *
- * 任何一环失败都不影响 App 运行:读不到缓存用内置,拉取失败**绝不动现有缓存**
- * (与上游"失败保留旧 snapshot"同一取向)。
+ * El fallo de cualquier enlace no afectará el funcionamiento de la Aplicación:No se puede leer el caché, use el integrado,Error al tirar**Nunca toques el caché existente**
+ * (con aguas arriba"No mantenerte viejo snapshot"misma orientación).
  *
- * 远程地址固定指向 Muse 自建目录服务;发布新目录只需替换服务器上的 JSON,
- * 客户端启动时静默比对 [ModelCatalog.publishedAt],有新版才落盘。
+ * La dirección remota está fijada en el servicio de directorio de creación propia de Muse.;La publicación de un nuevo directorio simplemente reemplaza el JSON,
+ * Comparación silenciosa cuando se inicia el cliente [ModelCatalog.publishedAt],La nueva versión se lanzará sólo cuando esté disponible.
  */
 class ModelCatalogRepository(
     private val context: Context,
@@ -35,21 +35,21 @@ class ModelCatalogRepository(
     private val cacheFile: File get() = File(context.filesDir, CACHE_FILE)
 
     /**
-     * 内存缓存（按 publishedAt 失效）。
+     * Memoria caché (invalidada por PublishedAt).
      *
-     * [current] 现位于模型投影热路径（providersFlow → mergeIntoModels），
-     * 每次读磁盘/asset 会拖慢设置页与聊天启动；这里缓存最近一次解析结果。
+     * [current] Ahora ubicado en la ruta de calor proyectada del modelo (providersFlow → mergeIntoModels),
+     * Leer el disco cada vez/asset Esto ralentizará la página de configuración y el inicio del chat; Los últimos resultados del análisis se almacenan en caché aquí.
      */
     @Volatile
     private var memCache: Pair<String, ModelCatalog>? = null
 
-    /** 内置目录(APK 自带,保底)。解析失败返回空库。 */
+    /** Directorio incorporado(APK Trae el tuyo,Garantizado). Si el análisis falla, se devuelve una biblioteca vacía. */
     fun builtIn(): ModelCatalog = runCatching {
         context.assets.open(ASSET_FILE).bufferedReader().use { it.readText() }
     }.map { ModelCatalogLoader.loadOrEmpty(it) }
         .getOrElse { ModelCatalog() }
 
-    /** 本地缓存(上次拉取成功的目录);不存在返回 null。 */
+    /** caché local(Directorio que se extrajo exitosamente la última vez);Devuelve nulo si no está presente. */
     fun cached(): ModelCatalog? {
         val f = cacheFile
         if (!f.isFile) return null
@@ -58,7 +58,7 @@ class ModelCatalogRepository(
             ?.takeIf { it.providers.isNotEmpty() }
     }
 
-    /** 当前生效目录:缓存优先,否则内置。 */
+    /** Directorio efectivo actual:caché primero,De lo contrario incorporado. */
     fun current(): ModelCatalog {
         memCache?.let { return it.second }
         val resolved = cached() ?: builtIn()
@@ -67,38 +67,38 @@ class ModelCatalogRepository(
     }
 
     /**
-     * 拉取远程目录。仅当远程 [ModelCatalog.publishedAt] 与当前生效目录不同才落盘。
+     * Extraiga el directorio remoto. Sólo si es remoto [ModelCatalog.publishedAt] Sólo cuando el directorio sea diferente del directorio efectivo actual se colocará el disco.
      *
-     * @return 拉取结果描述(供设置页展示)。
+     * @return Extraer descripción del resultado(Para mostrar en la página de configuración).
      */
     fun refresh(): RefreshResult {
         val remoteText = runCatching { httpGet(REMOTE_URL) }
-            .onFailure { Logger.w(TAG, "拉取目录失败: ${it.message}") }
+            .onFailure { Logger.w(TAG, "No se pudo extraer el directorio: ${it.message}") }
             .getOrNull()
-            ?: return RefreshResult(ok = false, message = "网络请求失败")
+            ?: return RefreshResult(ok = false, message = "Error en la solicitud de red")
 
         val remote = ModelCatalogLoader.loadOrEmpty(remoteText)
         if (remote.providers.isEmpty()) {
-            return RefreshResult(ok = false, message = "远程目录为空或格式不合法")
+            return RefreshResult(ok = false, message = "El directorio remoto está vacío o tiene un formato no válido.")
         }
 
         val currentPublished = current().publishedAt
         if (currentPublished.isNotBlank() && currentPublished == remote.publishedAt) {
-            return RefreshResult(ok = true, updated = false, message = "已是最新(${remote.publishedAt})")
+            return RefreshResult(ok = true, updated = false, message = "Ya lo ultimo(${remote.publishedAt})")
         }
 
         return runCatching {
             cacheFile.writeText(remoteText)
             memCache = null
-            Logger.i(TAG, "目录已更新: ${remote.publishedAt}, ${remote.providers.size} 个供应商")
-            RefreshResult(ok = true, updated = true, message = "已更新到 ${remote.publishedAt}")
+            Logger.i(TAG, "Catálogo actualizado: ${remote.publishedAt}, ${remote.providers.size} proveedores")
+            RefreshResult(ok = true, updated = true, message = "ha sido actualizado a ${remote.publishedAt}")
         }.getOrElse {
-            Logger.w(TAG, "写入目录缓存失败: ${it.message}")
-            RefreshResult(ok = false, message = "写入缓存失败")
+            Logger.w(TAG, "Error al escribir en la caché del directorio: ${it.message}")
+            RefreshResult(ok = false, message = "Falló la escritura en caché")
         }
     }
 
-    /** 当前目录的摘要信息(设置页展示用)。 */
+    /** Información resumida para el directorio actual(Para configurar la visualización de la página). */
     fun status(): CatalogStatus {
         val cachedCatalog = cached()
         val catalog = cachedCatalog ?: builtIn()
@@ -126,18 +126,18 @@ class ModelCatalogRepository(
     }
 }
 
-/** 拉取结果。 */
+/** Obtener resultados. */
 data class RefreshResult(
     val ok: Boolean,
     val updated: Boolean = false,
     val message: String,
 )
 
-/** 目录状态摘要。 */
+/** Resumen del estado del directorio. */
 data class CatalogStatus(
     val publishedAt: String,
     val providerCount: Int,
     val modelCount: Int,
-    /** true = 来自缓存(曾成功拉取);false = 内置目录。 */
+    /** true = del caché(Sacado con éxito);false = Directorio incorporado. */
     val fromCache: Boolean,
 )

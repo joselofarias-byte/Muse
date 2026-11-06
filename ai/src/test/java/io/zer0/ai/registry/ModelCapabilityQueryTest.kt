@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * M2.2/M2.8: 能力预检门面测试 — 三态区分与已知模型能力。
+ * M2.2/M2.8: Prueba de fachada de verificación previa de capacidad — Discriminación de tres estados y capacidades del modelo conocido.
  */
 class ModelCapabilityQueryTest {
 
@@ -62,7 +62,7 @@ class ModelCapabilityQueryTest {
             compat = ProviderCompat(supportsJsonMode = false),
         )
         assertEquals(CapabilitySupport.UNSUPPORTED, withoutJson.structuredOutput)
-        // compat 缺省时结构化输出 UNKNOWN,不猜测
+        // compat Salida estructurada por defecto UNKNOWN,no adivines
         val noCompat = ModelCapabilityQuery.snapshot(modelId = "gpt-4o")
         assertEquals(CapabilitySupport.UNKNOWN, noCompat.structuredOutput)
     }

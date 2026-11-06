@@ -49,19 +49,19 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v0.32: 媒体设置页。
+ * v0.32: Página de configuración de medios.
  *
- * 控制语音录制和 TTS 语音播报的参数:
- *  - 录制采样率/比特率
- *  - TTS 开关/语速/音高/语言
- *  - 系统默认音频路由
+ * Parámetros que controlan la grabación de voz y la transmisión de voz TTS:
+ *  - Frecuencia de muestreo de grabación/tasa de bits
+ *  - TTS cambiar/velocidad al hablar/tono/Idioma
+ *  - Enrutamiento de audio predeterminado del sistema
  */
 @Composable
 fun MediaSettingsPage(
     onBack: () -> Unit,
-    /** P2-9: 打开语音克隆页(从「语音播报(TTS)」分组入口进入)。 */
+    /** P2-9: Abra la página de clonación de voz.(De \"transmisión de voz(TTS)\"Ingrese a la entrada del grupo). */
     onOpenVoiceCloning: () -> Unit = {},
-    /** 模型候选为空时的出口：供应商统一管模型，得回到那页去加。 */
+    /** Salir cuando el modelo candidato esté vacío: El proveedor gestiona el modelo de manera uniforme y hay que volver a esa página para agregarlo. */
     onOpenProviderSettings: () -> Unit = {},
 ) {
     val settings: SettingsRepository = koinInject()
@@ -70,7 +70,7 @@ fun MediaSettingsPage(
     val scope = rememberCoroutineScope()
 
     SettingsSubPageScaffold(title = stringResource(R.string.settings_media_page_title), onBack = onBack) {
-        // ── 1. 语音播报(TTS) ──
+        // ── 1. Transmisión de voz(TTS) ──
         item { SectionLabel(stringResource(R.string.settings_media_tts_section)) }
         item {
             SettingsGroup(
@@ -101,7 +101,7 @@ fun MediaSettingsPage(
                         scope.launch { settings.saveMediaConfig(config.copy(ttsPitch = v)) }
                     },
                 )
-                // TTS 声音选择
+                // TTS selección de sonido
                 SettingsGroupDivider()
                 TtsVoiceSelector(
                     ttsManager = ttsManager,
@@ -113,7 +113,7 @@ fun MediaSettingsPage(
             }
         }
 
-        // ── 2. 云端 TTS 引擎 ──
+        // ── 2. Motor TTS en la nube ──
         item { SectionLabel(stringResource(R.string.settings_media_cloud_tts_section)) }
         item {
             CloudTtsConfigSection(
@@ -124,7 +124,7 @@ fun MediaSettingsPage(
             )
         }
 
-        // ── v1.99(4.8): 云端 TTS 高级参数(仅云端引擎显示)──
+        // ── v1.99(4.8): Parámetros avanzados de Cloud TTS(Se muestra solo en Cloud Engine)──
         if (config.ttsEngine != "system" && hasAdvancedParams(config.ttsEngine)) {
             item { SectionLabel(stringResource(R.string.settings_media_tts_advanced_section)) }
             item {
@@ -135,7 +135,7 @@ fun MediaSettingsPage(
             }
         }
 
-        // ── P2-9: 语音克隆入口(独立 SettingsGroup,从云端 TTS 引擎下方进入)──
+        // ── P2-9: Portal de clonación de voz(independiente SettingsGroup,Ingrese desde debajo del motor TTS en la nube)──
         item {
             SettingsGroup(
                 modifier = Modifier.padding(top = 8.dp),
@@ -149,14 +149,14 @@ fun MediaSettingsPage(
             }
         }
 
-        // 输出设备跟随 Android 系统与当前音频焦点，不在 Muse 内重复抽象。
-        // ── 贴纸库（多媒体能力，从聊天页归位）──
+        // El dispositivo de salida sigue el sistema Android y el enfoque de audio actual, sin duplicar abstracciones dentro de Muse.
+        // ── Biblioteca de stickers (capacidades multimedia, devueltas desde la página de chat)──
         item { StickerSettingsSection(settings = settings, scope = scope) }
     }
 }
 
 /**
- * TTS 声音选择器 — 下拉菜单列出系统可用的 TTS 声音。
+ * TTS selector de sonido — El menú desplegable enumera los sonidos TTS disponibles en el sistema.
  */
 @Composable
 private fun TtsVoiceSelector(ttsManager: TtsManager, currentVoice: String, onVoiceSelected: (String) -> Unit) {
@@ -170,7 +170,7 @@ private fun TtsVoiceSelector(ttsManager: TtsManager, currentVoice: String, onVoi
         SettingsItemRow(
             icon = MuseIcons.microphone,
             title = stringResource(R.string.settings_media_tts_voice_selector),
-            // MEM-08: 空列表不再消失 — 副标题给说明
+            // MEM-08: Las listas vacías ya no desaparecen — El subtítulo explica
             subtitle = if (voices.isEmpty()) {
                 stringResource(R.string.settings_media_tts_voice_empty)
             } else {
@@ -180,7 +180,7 @@ private fun TtsVoiceSelector(ttsManager: TtsManager, currentVoice: String, onVoi
         ) {
             ChevronRight()
         }
-        // MEM-08: 浏览型列表改 MuseSelectionSheet(DropdownMenu 不适合长列表)
+        // MEM-08: Cambio de lista navegable MuseSelectionSheet(DropdownMenu No apto para listas largas)
         if (expanded) {
             MuseSelectionSheet(
                 title = stringResource(R.string.settings_media_tts_voice_selector),
@@ -208,17 +208,17 @@ private fun TtsVoiceSelector(ttsManager: TtsManager, currentVoice: String, onVoi
 }
 
 /**
- * v1.97: 云端 TTS 引擎配置区。
+ * v1.97: Área de configuración del motor Cloud TTS.
  *
- * 引擎选择(system + 11 家云端 Provider)→ API Key / Voice / Model / Endpoint 表单。
- * system 模式仅显示引擎选择,隐藏表单。
- * 表单交互按 [AsrSection]:OutlinedTextField + 保存按钮 + Toast 反馈。
+ * Selección de motor(system + 11 nube de inicio Provider)→ API Key / Voice / Model / Endpoint forma.
+ * system El modo muestra solo la selección del motor.,Ocultar el formulario.
+ * botón de interacción de formulario [AsrSection]:OutlinedTextField + Botón Guardar + Comentarios sobre el brindis.
  *
- * v1.99(4.4): 在音色输入下方增加「拉取音色列表」按钮,调用 [TtsManager.listCloudVoices]
- * 动态拉取并展示可选音色,选中后写回 [MediaConfig.ttsVoice]。
+ * v1.99(4.4): Se agregó un botón "Extraer lista de timbres" debajo de la entrada del timbre.,llamar [TtsManager.listCloudVoices]
+ * Extraiga y muestre dinámicamente los timbres disponibles,Escribe después de seleccionar [MediaConfig.ttsVoice].
  */
 @Composable
-@Suppress("LongMethod") // 引擎/跟进/凭据/音色/模型/接口地址同属一块，拆开反而要反复跳转
+@Suppress("LongMethod") // motor/seguimiento/Credenciales/timbre/modelo/Las direcciones de la interfaz pertenecen a la misma pieza. Si los desmontas, tendrás que saltar repetidamente.
 private fun CloudTtsConfigSection(
     config: MediaConfig,
     settings: SettingsRepository,
@@ -235,9 +235,9 @@ private fun CloudTtsConfigSection(
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // 引擎选择(system + 11 家云端)
+        // Selección de motor(system + 11 nube de inicio)
         var engineExpanded by remember { mutableStateOf(false) }
-        // stringResource 必须在 @Composable 作用域直接调用,不能在 let/lambda 内嵌套
+        // stringResource Debe llamarse directamente en el alcance @Composable,no se puede anidar dentro de let/lambda
         val matchedResId = TtsManager.CLOUD_TTS_ENGINES
             .firstOrNull { it.first == config.ttsEngine }?.second
         val currentLabel = if (config.ttsEngine == "system" || matchedResId == null) {
@@ -259,7 +259,7 @@ private fun CloudTtsConfigSection(
                 expanded = engineExpanded,
                 onDismissRequest = { engineExpanded = false },
             ) {
-                // 切引擎同时校验音色 id：旧引擎的音色在新引擎下只会换来 4xx，不如清空重选
+                // Cambie el motor y verifique la identificación del tono al mismo tiempo: el tono del motor antiguo solo será reemplazado por 4xx en el motor nuevo. Es mejor borrar y volver a seleccionar.
                 val switchEngine: (String) -> Unit = { engineId ->
                     val switched = TtsEngineSwitch.apply(config, engineId)
                     scope.launch { settings.saveMediaConfig(switched.config) }
@@ -279,10 +279,10 @@ private fun CloudTtsConfigSection(
             }
         }
 
-        // system 模式不显示表单
+        // system Modal no muestra forma.
         if (config.ttsEngine == "system") return@SettingsGroup
 
-        // 跟随供应商配置(开启后 endpoint / API Key 取自供应商,模型在这里手选)
+        // Seguir la configuración del proveedor(Después de la apertura, el punto final/clave API se obtiene del proveedor.,Los modelos se seleccionan a mano aquí.)
         TtsFollowProviderSection(config = config, settings = settings)
 
         // API Key
@@ -300,7 +300,7 @@ private fun CloudTtsConfigSection(
                 label = { Text(stringResource(R.string.settings_media_tts_api_key)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                // 跟随供应商时凭据由供应商提供,手填值保留但不可编辑
+                // Las credenciales las proporciona el proveedor cuando se sigue a un proveedor,Los valores manuales se conservan pero no se pueden editar.
                 enabled = !config.ttsFollowProvider,
                 visualTransformation = if (apiKeyVisible) {
                     VisualTransformation.None
@@ -336,7 +336,7 @@ private fun CloudTtsConfigSection(
             )
         }
 
-        // 音色 / Voice ID(手动输入 + 动态拉取)
+        // timbre / Voice ID(Entrada manual + tracción dinámica)
         SettingsGroupDivider()
         var voice by remember(config.ttsEngine) { mutableStateOf(config.ttsVoice) }
         var fetchedVoices by remember(config.ttsEngine) {
@@ -410,7 +410,7 @@ private fun CloudTtsConfigSection(
                     variant = IosCapsuleButtonVariant.Text,
                     fillWidth = false,
                 )
-                // MEM-08: 浏览型列表改 MuseSelectionSheet(音色带说明,长列表可滚动)
+                // MEM-08: Cambio de lista navegable MuseSelectionSheet(Descripción de la banda de sonido,Las listas largas se pueden desplazar)
                 if (voicePickerExpanded) {
                     MuseSelectionSheet(
                         title = pickLabel,
@@ -437,13 +437,13 @@ private fun CloudTtsConfigSection(
             }
         }
 
-        // 模型：候选来自供应商，这里只负责选一个
+        // Modelo: Los candidatos provienen de proveedores, aquí solo nos encargamos de seleccionar uno
         SettingsGroupDivider()
         val ttsProviders by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
         val modelProvider = remember(ttsProviders, config.ttsProviderId) {
             SpeechModelPicker.candidateProvider(ttsProviders, config.ttsProviderId)
         }
-        // 跟随供应商时模型存在 ttsModelId，手动模式存在 ttsModel
+        // El modelo existe ttsModelId cuando se sigue al proveedor, existe el modo manual ttsModel
         val currentModelId = if (config.ttsFollowProvider) config.ttsModelId else config.ttsModel
         SpeechModelSection(
             title = stringResource(R.string.settings_media_tts_model),
@@ -456,7 +456,7 @@ private fun CloudTtsConfigSection(
             onOpenProviders = onOpenProviderSettings,
         )
 
-        // 自定义 Endpoint
+        // Personalizar Endpoint
         SettingsGroupDivider()
         var endpoint by remember(config.ttsEngine) { mutableStateOf(config.ttsEndpoint) }
         Column(
@@ -471,7 +471,7 @@ private fun CloudTtsConfigSection(
                 placeholder = { Text(stringResource(R.string.settings_media_tts_endpoint_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                // 跟随供应商时接口地址由供应商提供,手填值保留但不可编辑
+                // Al seguir a un proveedor, la dirección de la interfaz la proporciona el proveedor.,Los valores manuales se conservan pero no se pueden editar.
                 enabled = !config.ttsFollowProvider,
             )
             MuseCapsuleButton(
@@ -491,11 +491,11 @@ private fun CloudTtsConfigSection(
 }
 
 /**
- * 云端 TTS「跟随供应商配置」区块。
+ * Bloque "Seguir configuración de proveedor" de Cloud TTS.
  *
- * 开启后 endpoint / API Key 取自所选供应商;模型在下方「模型」行选（跟随模式写 ttsModelId）,
- * 手填的值原样保留(只是变灰不可编辑),关掉开关立即恢复手动配置。
- * 供应商被删除/停用或未选模型时,合成回退手动配置,这里同步给出提示。
+ * Después de abrir, el punto final/clave API se toma del proveedor seleccionado;Seleccione el modelo en la fila "Modelo" a continuación (escriba ttsModelId siguiendo el modo),
+ * Los valores introducidos manualmente se conservan tal como están.(Simplemente atenuado y no editable),Al apagar el interruptor se restablece inmediatamente la configuración manual.
+ * Proveedor eliminado/Cuando un modelo está desactivado o no seleccionado,Configuración manual de respaldo sintético,Las sugerencias se dan aquí de forma sincrónica.
  */
 @Composable
 private fun TtsFollowProviderSection(config: MediaConfig, settings: SettingsRepository) {
@@ -536,7 +536,7 @@ private fun TtsFollowProviderSection(config: MediaConfig, settings: SettingsRepo
                     MuseListItem(
                         headlineContent = { Text(provider.displayName) },
                         onClick = {
-                            // 换供应商时清空模型选择,避免带着上一个供应商的模型发请求
+                            // Selección clara del modelo al cambiar de proveedor,Evite enviar solicitudes con modelos del proveedor anterior
                             scope.launch {
                                 settings.saveMediaConfig(
                                     config.copy(ttsProviderId = provider.id, ttsModelId = ""),
@@ -549,9 +549,9 @@ private fun TtsFollowProviderSection(config: MediaConfig, settings: SettingsRepo
             }
         }
 
-        // 模型选择不在这里重复：下方「模型」行按跟随开关自动写到 ttsModelId / ttsModel
+        // La selección del modelo no se repite aquí: la línea "Modelo" a continuación se escribe automáticamente presionando el interruptor de seguimiento. ttsModelId / ttsModel
 
-        // 音色不跟随供应商:提醒用户自行确认兼容性,避免误以为整份凭据都已接管
+        // El tono no sigue al proveedor.:Se recuerda a los usuarios que confirmen ellos mismos la compatibilidad,Evite la impresión errónea de que se ha asumido toda la credencial
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -584,7 +584,7 @@ private fun TtsFollowProviderSection(config: MediaConfig, settings: SettingsRepo
     }
 }
 
-/** 回退原因的文案资源(未知原因按「供应商未找到」处理,不在 UI 上暴露内部字符串)。 */
+/** Recursos de redacción publicitaria por motivos alternativos(Los motivos desconocidos se tratan como \"Proveedor no encontrado\".,No exponer cadenas internas en la interfaz de usuario). */
 internal fun speechFollowFallbackReasonRes(reason: String?): Int = when (reason) {
     SpeechProviderResolver.REASON_PROVIDER_DISABLED -> R.string.settings_speech_follow_reason_provider_disabled
     SpeechProviderResolver.REASON_MODEL_MISSING -> R.string.settings_speech_follow_reason_model_missing
@@ -592,13 +592,13 @@ internal fun speechFollowFallbackReasonRes(reason: String?): Int = when (reason)
 }
 
 /**
- * v1.99(4.8): 云端 TTS 高级参数配置区。
+ * v1.99(4.8): Área de configuración de parámetros avanzados de Cloud TTS.
  *
- * 按引擎能力条件渲染:
- *  - ElevenLabs: stability / similarity_boost 滑块
- *  - MiniMax: 情感文本输入 + 语速滑块
- *  - OpenAI 兼容(openai/dashscope/groq/step/edge): 语速滑块 + 音频格式
- *  - 其他: 仅语速滑块(若支持)
+ * Representación basada en las condiciones de capacidad del motor.:
+ *  - ElevenLabs: stability / similarity_boost control deslizante
+ *  - MiniMax: Entrada de texto emocional + control deslizante de velocidad del habla
+ *  - OpenAI compatibles(openai/dashscope/groq/step/edge): Control deslizante de velocidad de voz + formato de audio
+ *  - Otros: Solo control deslizante de velocidad de conversación(Si es compatible)
  */
 @Composable
 private fun AdvancedTtsParamsSection(config: MediaConfig, settings: SettingsRepository) {
@@ -606,7 +606,7 @@ private fun AdvancedTtsParamsSection(config: MediaConfig, settings: SettingsRepo
     val savedToast = stringResource(R.string.settings_media_tts_saved)
     val engine = config.ttsEngine
 
-    // 本地编辑态(随引擎切换重置)
+    // estado de edición local(Reiniciar con el interruptor del motor)
     var stability by remember(engine) { mutableStateOf(config.ttsStability) }
     var similarity by remember(engine) { mutableStateOf(config.ttsSimilarityBoost) }
     var emotion by remember(engine) { mutableStateOf(config.ttsEmotion) }
@@ -731,17 +731,17 @@ private fun AdvancedTtsParamsSection(config: MediaConfig, settings: SettingsRepo
 }
 
 /**
- * 引擎是否支持语速参数(OpenAI 兼容 + MiniMax + Edge)。
+ * Si el motor admite el parámetro de velocidad de voz(OpenAI compatibles + MiniMax + Edge).
  */
 private fun supportsSpeed(engine: String): Boolean = engine in listOf("openai", "minimax", "dashscope", "groq", "step", "edge")
 
 /**
- * 引擎是否支持音频格式选择(OpenAI 兼容 + Edge)。
+ * Si el motor admite la selección de formato de audio(OpenAI compatibles + Edge).
  */
 private fun supportsResponseFormat(engine: String): Boolean = engine in listOf("openai", "dashscope", "groq", "step", "edge")
 
 /**
- * 引擎是否有可配置的高级参数(决定是否显示「高级参数」section)。
+ * ¿El motor tiene parámetros avanzados configurables?(Determinar si se muestran "parámetros avanzados"section).
  */
 private fun hasAdvancedParams(engine: String): Boolean = engine == "elevenlabs" || engine == "minimax" ||
     supportsSpeed(engine) || supportsResponseFormat(engine)

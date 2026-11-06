@@ -30,35 +30,35 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v1.0.18 后续 (B14-2): Google Gemini 原生图片生成 Provider。
+ * v1.0.18 Seguimiento (B14-2): Google Gemini Proveedor de generación de imágenes nativas.
  *
- * 在此之前,Gemini 配置走 [OpenAIImageProvider] 兜底(请求 /images/generations,协议不兼容必失败),
- * 或由 app 层 [io.zer0.muse.ui.chat.ImageGenCoordinator] 走 streamChat 多模态路径。
- * 本类让 Gemini 具备独立的 [ImageProvider] 实现,可经 [ImageProviderRegistry] 正常路由,
- * 与 Agnes / OpenAI 适配器一致。
+ * antes de eso,Gemini Configurar y listo [OpenAIImageProvider] Ten todo en cuenta(Solicitar /images/generations,Si el protocolo es incompatible, fallará.),
+ * o por capa de aplicación [io.zer0.muse.ui.chat.ImageGenCoordinator] Tome el camino multimodal de streamChat.
+ * Esta clase le permite a Géminis tener independencia [ImageProvider] darse cuenta,Transitable [ImageProviderRegistry] Enrutamiento normal,
+ * Consistente con el adaptador Agnes/OpenAI.
  *
- * API(Google 原生图像生成,模型如 `gemini-2.5-flash-image` / Nano Banana):
- *  - 端点: POST {baseUrl}/models/{model}:generateContent(与 chat 同端点,靠 generationConfig 区分)
- *  - 请求体:
- *      { "contents":[{"role":"user","parts":[{"text": prompt}, {"inlineData":{...}}(参考图)]}],
+ * API(Google Generación de imágenes nativas,Modelos como `gemini-2.5-flash-image` / Nano Banana):
+ *  - punto final: POST {baseUrl}/models/{model}:generateContent(Mismo punto final que el chat,Distinguir por generaciónConfig)
+ *  - Cuerpo de la solicitud:
+ *      { "contents":[{"role":"user","parts":[{"text": prompt}, {"inlineData":{...}}(Imagen de referencia)]}],
  *        "generationConfig": { "responseModalities": ["TEXT","IMAGE"] } }
- *  - 响应: candidates[0].content.parts[].inlineData.{mimeType,data}(base64,无 data: 前缀)
- *  - 同步返回(无异步任务),supportsAsync=false
- *  - 图生图通过同端点的 inlineData 输入图实现,supportsImageEdit=true
+ *  - respuesta: candidates[0].content.parts[].inlineData.{mimeType,data}(base64,Ninguno dato: prefijo)
+ *  - Retorno sincrónico(Sin tareas asincrónicas),supportsAsync=false
+ *  - El gráfico generado por el gráfico se implementa a través del gráfico de entrada inlineData del mismo punto final.,supportsImageEdit=true
  *
  * Vertex AI:
- *  - 端点/鉴权复用 [GeminiProvider.buildUrl] / [GeminiProvider.resolveToken],
- *    自动覆盖 服务账号(OAuth Bearer)、Express Mode(API Key)、generativelanguage(API Key)三种模式,
- *    避免两套实现随协议演进漂移。
+ *  - punto final/Reutilización de autenticación [GeminiProvider.buildUrl] / [GeminiProvider.resolveToken],
+ *    Sobrescribir automáticamente la cuenta de servicio(OAuth Bearer),Express Mode(API Key),generativelanguage(API Key)Tres modos,
+ *    Evite que dos conjuntos de implementaciones se desvíen a medida que evoluciona el protocolo.
  *
- * 参考图解析复用 [AgnesImageProvider.resolveReferenceImage](data:/http(s)/file → base64,
- * 含 SSRF 校验与大小限制);返回的 base64 带 `mimeType|` 前缀交由 [ImageService] 拼 data URI。
+ * Análisis y reutilización de imágenes de referencia. [AgnesImageProvider.resolveReferenceImage](data:/http(s)/file → base64,
+ * Con límite de tamaño de suma de comprobación SSRF);Banda base64 devuelta `mimeType|` prefijo entregado [ImageService] URI de datos deletreados.
  */
 class GeminiImageProvider(
     private val client: OkHttpClient,
     /**
-     * G4: http(s) 参考图下载前的 SSRF 预校验器(与 Agnes / OpenAI 同口径),
-     * 由 app 层 Koin 装配注入,null 时回退旧行为(直接下载,无逐跳校验)。
+     * G4: http(s) Verificador previo de la SSRF antes de descargar la imagen de referencia(Mismo calibre que Agnes/OpenAI),
+     * Inyectado por el ensamblaje Koin de la capa de aplicación,null revertir el viejo comportamiento(Descarga directa,Sin verificación salto a salto).
      */
     private val referenceImageUrlValidator: RefImageUrlValidator? = null,
 ) : ImageProvider {
@@ -76,13 +76,13 @@ class GeminiImageProvider(
         val modelId = request.model.takeIf { it.isNotBlank() } ?: DEFAULT_MODEL_ID
 
         try {
-            // 参考图 → base64(无 data: 前缀):解析失败/超限/命中内网会抛业务错误,原样上抛
+            // Imagen de referencia → base64(Ninguno dato: prefijo):El análisis falló/por encima del límite/Acceder a la intranet generará un error comercial,vomitar como está
             val refBase64 = request.referenceImages.map { ref ->
                 AgnesImageProvider.resolveReferenceImage(ref, referenceImageUrlValidator)
             }
             val body = buildImageRequestBody(request.prompt, refBase64)
 
-            // 复用 GeminiProvider 的端点/鉴权解析(含 Vertex Express / 服务号 OAuth / generativelanguage)
+            // Reutilizar puntos finales de GeminiProvider/Análisis de autenticación(Incluye Vertex Express / Número de servicio OAuth / generativelanguage)
             val endpoint = GeminiProvider(config)
             val url = endpoint.buildUrl(model = modelId, stream = false)
             val token = endpoint.resolveToken()
@@ -114,13 +114,13 @@ class GeminiImageProvider(
                     Logger.w(TAG, "gemini image HTTP ${r.code}")
                     error(msg)
                 }
-                // B-03: contentLength 未知(chunked)时同样限长 — 流式读取,超限即中断
+                // B-03: contentLength desconocido(chunked)mismo límite de tiempo — lectura en streaming,Interrumpir si se excede el límite
                 val (respBody, overLimit) = ProviderHttpSupport.readBodyCappedStreaming(r, MAX_RESPONSE_BODY_BYTES)
                 if (overLimit) {
                     error(ErrorCode.IMAGE_RESPONSE_TOO_LARGE.toMessage(MAX_RESPONSE_BODY_BYTES / 1024 / 1024))
                 }
                 if (respBody.isBlank()) error(ErrorCode.IMAGE_EMPTY_RESPONSE.toMessage())
-                // 提示级安全拦截:给出明确原因而非"无结果"
+                // Intercepción de seguridad de nivel rápido:Dar razones claras en lugar de"Sin resultados"
                 val blockReason = runCatching {
                     AppJson.parseToJsonElement(respBody).jsonObject["promptFeedback"]
                         ?.jsonObject?.get("blockReason")?.jsonPrimitive?.content
@@ -135,7 +135,7 @@ class GeminiImageProvider(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: IllegalStateException) {
-            // error() 抛出的业务错误原样传播
+            // error() Los errores comerciales arrojados se propagan sin cambios
             throw e
         } catch (e: Exception) {
             Logger.w(TAG, "gemini image failed: ${e.message}")
@@ -144,14 +144,14 @@ class GeminiImageProvider(
     }
 
     override suspend fun poll(taskId: String): ImagePollResult {
-        error("Gemini 图片生成不支持异步任务: $taskId")
+        error("Gemini La generación de imágenes no admite tareas asincrónicas.: $taskId")
     }
 
     /**
-     * 构造 generateContent 请求体。
+     * Construya el cuerpo de solicitud generateContent.
      *
-     * 参考图以 inlineData part 插入(文本在前,与 Gemini 推荐顺序一致),
-     * responseModalities=["TEXT","IMAGE"] 开启图片输出。
+     * La imagen de referencia se inserta como parte inlineData.(texto primero,Consistente con el orden recomendado por Géminis),
+     * responseModalities=["TEXT","IMAGE"] Habilite la salida de imágenes.
      */
     internal fun buildImageRequestBody(prompt: String, referenceImagesBase64: List<String>): String {
         val parts = buildJsonArray {
@@ -186,10 +186,10 @@ class GeminiImageProvider(
     }
 
     /**
-     * 解析 candidates[0].content.parts[].inlineData 为图片列表。
+     * analizar candidates[0].content.parts[].inlineData para la lista de imágenes.
      *
-     * 与 Agnes / OpenAI 一致:只接受字符串标量,过滤 JSON null / 数字 / 布尔 / 空串。
-     * 返回的 base64 带 `mimeType|` 前缀([ImageService] 拼 data URI 时剥离)。
+     * Consistente con Agnes/OpenAI:Sólo acepta cadenas escalares,Filtrar JSON nulo/número/booleano/cadena vacía.
+     * Banda base64 devuelta `mimeType|` prefijo([ImageService] Tira al deletrear el URI de datos).
      */
     internal fun parseInlineImages(body: String): List<GeneratedImage> {
         val root = AppJson.parseToJsonElement(body).jsonObject
@@ -212,7 +212,7 @@ class GeminiImageProvider(
         }
     }
 
-    /** 从 base64 头部 magic bytes 推断图片 MIME(readReferenceImage 不携带类型信息)。 */
+    /** Inferir imagen a partir de bytes mágicos del encabezado base64 MIME(readReferenceImage No lleva información de tipo.). */
     private fun inferMimeType(base64: String): String {
         val head = base64.take(16).uppercase()
         return when {
@@ -241,16 +241,16 @@ class GeminiImageProvider(
     companion object {
         private const val TAG = "GeminiImageProvider"
 
-        /** Provider 唯一标识。 */
+        /** Provider Identificador único. */
         const val PROVIDER_ID = "gemini"
 
         /**
-         * 默认绘图模型: Gemini 2.5 Flash Image(代号 Nano Banana)。
-         * 仅当调用方未显式传入 model、且 ProviderConfig.models 中也没有图片输出模型时兜底。
+         * Modelo de dibujo predeterminado: Gemini 2.5 Flash Image(nombre en clave Nano Banana).
+         * Solo cuando la persona que llama no pasa explícitamente el modelo y no hay un modelo de salida de imagen en ProviderConfig.models.
          */
         const val DEFAULT_MODEL_ID = "gemini-2.5-flash-image"
 
-        /** 成功响应体上限 32MB(inlineData base64 体积较大)。 */
+        /** Límite superior del cuerpo de respuesta exitosa 32MB(inlineData base64 De mayor tamaño). */
         private const val MAX_RESPONSE_BODY_BYTES = 32 * 1024 * 1024
 
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()

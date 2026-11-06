@@ -11,10 +11,10 @@ import io.zer0.muse.ui.chat.PendingDocument
 import io.zer0.muse.ui.chat.VideoAttachment
 
 /**
- * B7-07: InputBar 输入状态聚合。
+ * B7-07: InputBar Agregación de estado de entrada.
  *
- * 把原来 50+ 个平铺参数中的「数据/开关」收敛为一个不可变状态对象,
- * 回调统一放进 [InputBarCallbacks],输入框只需两个参数。
+ * Coloque los "datos" en los más de 50 parámetros de mosaico originales/switch" converge en un objeto de estado inmutable,
+ * Las devoluciones de llamada se realizan de manera uniforme [InputBarCallbacks],El cuadro de entrada requiere solo dos parámetros.
  */
 data class MuseInputState(
     val text: String = "",
@@ -49,22 +49,22 @@ data class MuseInputState(
     val contextWindow: Int = 0,
     val pasteAsFileEnabled: Boolean = true,
     val pasteAsFileThreshold: Int = 2000,
-    /** v2.6: 液态玻璃效果 — true 时输入岛启用玻璃(真玻璃或降级假玻璃)。 */
+    /** v2.6: efecto de vidrio líquido — true Cuando la isla de entrada está habilitada con vidrio(Vidrio real o vidrio falso degradado). */
     val glassActive: Boolean = false,
-    /** v2.5.0: 玻璃风格与档位配置。 */
+    /** v2.5.0: Estilo de vidrio y configuración de cubículo. */
     val glassConfig: io.zer0.muse.ui.theme.LiquidGlassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(),
 )
 
-/** B7-07: InputBar 全部回调收敛。 */
+/** B7-07: InputBar Todas las devoluciones de llamada convergen. */
 data class InputBarCallbacks(
     val onCycleDeepThinkingLevel: () -> Unit = {},
     val onImageGenParamsChange: (ImageGenParams) -> Unit = {},
     val onTextChanged: (String) -> Unit = {},
     val onSend: () -> Unit = {},
     val onStop: () -> Unit = {},
-    /** A8: 流式中输入非空时,发送按钮变为"插话"(打断当前生成并重定向)。 */
+    /** A8: Cuando la entrada en streaming no está vacía,El botón de enviar cambia a"interponer"(Interrumpir la compilación actual y redirigir). */
     val onInterject: () -> Unit = {},
-    /** B2: 流式中把当前输入加入待发送队列(不打断生成)。 */
+    /** B2: Agregue la entrada actual a la cola para enviarla durante la transmisión(No interrumpir la generación). */
     val onEnqueuePending: () -> Unit = {},
     val onNavigateInputHistory: (Int) -> Unit = {},
     val onPickDocument: () -> Unit = {},

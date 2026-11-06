@@ -1,31 +1,31 @@
 package io.zer0.muse.tools
 
 /**
- * v1.0.53: 内置工具分类注册表。
+ * v1.0.53: Registro de clasificación de herramientas incorporado.
  *
- * CORE      — 移除会破坏模型能力,用户不可关闭,不显示在工具列表
- * STANDARD  — 常开内置工具,不显示开关(行为稳定)
- * OPTIONAL  — 用户可在 设置→工具 开关
- * GLOBAL    — 由全局权限设置页管理(网络/文件/执行类)
- * LEGACY    — 已废弃传输,仅保留兼容,不注册到工具面
+ * CORE      — La eliminación destruirá las capacidades del modelo.,El usuario no puede cerrar,No se muestra en la lista de herramientas
+ * STANDARD  — Herramientas integradas normalmente abiertas,No mostrar interruptor(El comportamiento es estable.)
+ * OPTIONAL  — Los usuarios pueden configurar→interruptor de herramienta
+ * GLOBAL    — Administrado por la página de configuración de permisos globales(red/Archivo/clase de ejecución)
+ * LEGACY    — Transferencia abandonada,Sólo compatibles,No registrado en la superficie de la herramienta
  *
- * 启动断言:每个注册的内置工具必须且只能归属一个分类,
- * 否则 App 启动日志报错(debug 构建拒绝启动),强制新工具登记分类。
+ * iniciar afirmación:Cada herramienta integrada registrada debe y solo puede pertenecer a una categoría,
+ * De lo contrario, el registro de inicio de la aplicación informará un error.(debug La compilación se niega a comenzar),Forzar clasificación de registro de nueva herramienta.
  */
 enum class ToolCategory { CORE, STANDARD, OPTIONAL, GLOBAL, LEGACY }
 
 object ToolCategories {
-    /** 模型能力底座:移除会破坏对话/工具调用。 */
+    /** Base de capacidades del modelo:La eliminación destruye la conversación/Llamada de herramienta. */
     val CORE: Set<String> =
         setOf(
             "get_current_time",
             "calculator",
             "get_device_info",
-            // v2.x 阶段3:工具库按需检索 — 分层收窄的补全通道,必须恒发
+            // v2.x escenario3:Búsqueda de biblioteca de herramientas bajo demanda — Canales de finalización jerárquicamente reducidos,debe ser constante
             "find_tools",
         )
 
-    /** 常开稳定工具。 */
+    /** Herramienta de estabilización normalmente abierta. */
     val STANDARD: Set<String> =
         setOf(
             "get_weather",
@@ -33,17 +33,17 @@ object ToolCategories {
             "web_fetch",
             "get_battery_info",
             "get_network_info",
-            // v2.x 工具瘦身阶段4:冷门设备参数(内存/存储/显示/CPU/传感器)从恒发降级,
-            // 归入 OPTIONAL 与设备信息族同口径收窄。它们只读安全,但不是高频需求,
-            // 每轮恒发会白占 schema 预算;需要时可用设备类关键词命中,或 find_tools 检索。
+            // v2.x Etapa de adelgazamiento de herramientas.4:Parámetros de equipos impopulares(memoria/almacenamiento/mostrar/CPU/sensor)Degradado de Hengfa,
+            // Clasificado como OPCIONAL y reducido al mismo calibre que la familia de información del dispositivo. Son seguros de solo lectura,Pero no es un requisito de alta frecuencia.,
+            // Cada ronda de Hengfa ocupará el presupuesto del esquema en vano.;Utilice palabras clave del dispositivo para acceder cuando sea necesario,O recuperarlo con find_tools.
             "get_foreground_app",
             "clipboard_read",
-            // v2.x: 通道状态自查 — 只读安全,提进 STANDARD 恒可见(否则"需要它时恰恰被 GLOBAL 收窄挡住")
+            // v2.x: Autocomprobación del estado del canal — Sólo lectura segura,Mejorar ESTÁNDAR(De lo contrario"Justo cuando es necesario, es bloqueado por el estrechamiento GLOBAL")
             "screen_permission_status",
-            // v2.x 扩展运行时(P0):内置 Node 沙盒自检 — 只读状态自查,恒可见
+            // v2.x Tiempo de ejecución extendido(P0):Autoprueba integrada de la zona de pruebas de Node — Autocomprobación de estado de solo lectura,siempre visible
             "runtime_selfcheck",
             "platform_selfcheck",
-            // v2.6.10 工具装载整改：自检 / 记忆 / 卡片 / 读文件从 OPTIONAL 上提。
+            // v2.6.10 Mejoras en la carga de herramientas: los archivos de autoprueba/memoria/tarjeta/lectura se cargan desde OPCIONAL.
             "tool_status",
             "pin_memory",
             "unpin_memory",
@@ -58,19 +58,19 @@ object ToolCategories {
             "update_card_data",
             "read_file",
             "read_user_file",
-            // v2.6.10 工具装载整改第二批：状态自查 / 通知 / 任务组织 / 委派入口。
+            // v2.6.10 El segundo lote de carga y rectificación de herramientas: autoverificación de estado/notificación/organización de tareas/entrada de delegación.
             "current_status",
             "notify",
             "todo_write",
             "subagent_task",
             "subagent_run",
-            // 发语音：需配置云端 TTS 才有意义，但工具本身恒可见 ——
-            // 之前归 OPTIONAL，要等用户说出「语音 / 朗读 / voice」才装载，
-            // 导致配好 key 与音色后角色仍不会发语音（自定义助手设过工具白名单时更彻底搜不到）。
+            // Envío de voz: Cloud TTS debe configurarse para que tenga sentido, pero la herramienta en sí siempre está visible ——
+            // Anteriormente, era OPCIONAL y tenía que esperar a que el usuario dijera "voz/lectura/voz" antes de cargar.
+            // Como resultado, el personaje aún no puede hablar después de configurar la tecla y el tono (el asistente personalizado ni siquiera puede buscarlo si la lista blanca de herramientas está configurada).
             "send_voice",
         )
 
-    /** 用户可在设置→工具 开关。 */
+    /** Los usuarios pueden configurar→Interruptor de herramienta. */
     val OPTIONAL: Set<String> =
         setOf(
             "open_url",
@@ -90,11 +90,11 @@ object ToolCategories {
             "vibrate",
             "open_app",
             "open_system_setting",
-            // v2.6.2: 应用控制工具集（app_* 家族，此前漏登记分类 → 走 null 分支恒发/不可见）
+            // v2.6.2: Conjunto de herramientas de control de aplicaciones (app_* Familia, clasificación de registro previamente faltante → Ir a la sucursal nula Hengfa/invisible)
             "app_list",
             "app_launch",
             "app_settings",
-            // v2.6.2: 知识库只读清单 + 会话日常整理（NORMAL，无破坏性）
+            // v2.6.2: Lista de solo lectura de la base de conocimientos + organización diaria de conversaciones (NORMAL, no destructivo)
             "knowledge_list_docs",
             "knowledge_read_doc",
             "session_list",
@@ -102,11 +102,11 @@ object ToolCategories {
             "session_rename",
             "session_move_folder",
             "session_archive",
-            // v2.6.2: 技能列表（SAFE） + 技能启停（NORMAL） + 助手列表（SAFE）
+            // v2.6.2: Lista de habilidades (SAFE) + inicio y parada de habilidad (NORMAL) + lista de ayuda (SAFE)
             "skill_manage_list",
             "skill_manage_toggle",
             "assistant_manage_list",
-            // v2.x: token 用量自查 — 只读且低频，命中关键词族或用 find_tools 装载即可见。
+            // v2.x: token Autocontrol de dosis — De solo lectura y de baja frecuencia, se puede ver presionando la familia de palabras clave o cargándola con find_tools.
             "get_token_usage",
             "clipboard_write",
             "screen_time",
@@ -121,7 +121,7 @@ object ToolCategories {
             "calendar_today",
             "get_wifi_info",
             "get_bluetooth_devices",
-            // v2.x 工具瘦身阶段4:从 STANDARD 降级 — 冷门设备参数,按设备族关键词收窄
+            // v2.x Etapa de adelgazamiento de herramientas.4:Bajar de ESTÁNDAR — Parámetros de equipos impopulares,Limitar por palabras clave de familia de dispositivos
             "get_storage_info",
             "get_memory_info",
             "get_display_info",
@@ -164,27 +164,27 @@ object ToolCategories {
             "json_pretty",
             "generate_password",
             "speak_text",
-            // 文件 / 链接 / 文档(此前注册了但未登记分类)
-            // v2.6.7: SAF 读用户设备文件（需用户点选）
+            // Archivo/Enlace/Documentación(Previamente registrado pero no registrado para la categoría)
+            // v2.6.7: SAF Leer archivos del dispositivo del usuario (requiere clic del usuario)
             "create_download",
             "parse_link",
             "parse_pdf",
-            // 媒体生成
+            // generación de medios
             "generate_image",
             "generate_video",
             "generate_qr_code",
-            // v2.x: 助手发语音消息，已上提为 STANDARD（见上），此处不再列。
-            // 记忆 / 经验
+            // v2.x: El mensaje de voz enviado por el asistente se actualizó a ESTÁNDAR (ver arriba) y ya no aparece aquí.
+            // memoria/experiencia
             "memory_config_get",
             "memory_config_set",
-            // v2.6.7: 用户偏好学习（沉淀硬约束）
+            // v2.6.7: Aprendizaje de preferencias del usuario (precipitando restricciones estrictas)
             "remember_preference",
-            // 任务卡 / 通知 / 状态
-            // 子 agent / 团队 / 群聊
+            // Tarjetas de tareas/Notificaciones/Estado
+            // Subagente/Equipo/Chat grupal
             "subagent_close",
             "delegate_agent",
             "proactive_message_wish",
-            // v2.6.9: 牵挂记账 —— 主动消息新机制的主要燃料
+            // v2.6.9: Preocupado por la contabilidad —— El principal combustible del nuevo mecanismo de mensajería proactiva
             "note_thought",
             "channel_pass",
             "channel_read_context",
@@ -193,7 +193,7 @@ object ToolCategories {
             "send_sticker",
         )
 
-    /** 全局权限页管理(高风险执行/浏览器/工作区/UI 自动化)。 */
+    /** Gestión de páginas de permisos globales(ejecución de alto riesgo/Navegador/espacio de trabajo/UI Automatización). */
     val GLOBAL: Set<String> =
         setOf(
             "execute_javascript",
@@ -218,30 +218,30 @@ object ToolCategories {
             "browser_get_html",
             "browser_snapshot",
             "browser_screenshot",
-            // 消息渠道(v1.0.92)
+            // canal de mensajes(v1.0.92)
             "send_channel_message",
             "channel_list",
-            // OAuth 连接器(v2.0)
+            // OAuth conector(v2.0)
             "connector_list",
             "call_connector",
-            // 插件市场(v2.0.1)——检索与安装外部插件均属扩展能力
+            // mercado de complementos(v2.0.1)——La recuperación e instalación de complementos externos son capacidades de extensión.
             "plugin_market_search",
             "plugin_market_install",
-            // v2.x: 卸载/启停插件
+            // v2.x: Desinstalar/Iniciar y detener complementos
             "plugin_market_uninstall",
             "plugin_market_set_enabled",
-            // v2.x 自动化一期:设备命令行通道(Shizuku/Root 分层执行)
+            // v2.x Automatización Fase I:Canal de línea de comando del dispositivo(Shizuku/Root Ejecución jerárquica)
             "device_shell",
-            // v2.x 终端一期:应用沙盒终端命令
+            // v2.x fase terminal uno:Aplicar comandos de terminal sandbox
             "terminal_exec",
-            // v2.2.1: Termux 通道(完整 Linux 环境命令,高风险)
+            // v2.2.1: Termux canal(Comandos completos del entorno Linux,alto riesgo)
             "termux_exec",
-            // v2.2.1: GUI Agent 环(视觉驱动的多步屏幕操作,高风险)
+            // v2.2.1: GUI Agent anillo(Manipulación de pantalla de varios pasos impulsada por la visión,alto riesgo)
             "ui_agent",
-            // 虚拟屏(Shizuku/Root 通道;此前注册了但未登记分类)
+            // pantalla virtual(Shizuku/Root canal;Previamente registrado pero no registrado para la categoría)
             "virtual_screen", "virtual_screen_input",
             "automation_workflow",
-            // UI 自动化(需无障碍权限,高风险)
+            // UI Automatización(Accesibilidad requerida,alto riesgo)
             "ui_get_page_info",
             "ui_click",
             "ui_long_press",
@@ -252,7 +252,7 @@ object ToolCategories {
             "ui_home",
             "ui_global_action",
             "ui_get_current_app",
-            // 屏幕自动化(需无障碍权限,高风险)
+            // automatización de pantalla(Accesibilidad requerida,alto riesgo)
             "screen_read",
             "screen_current_app",
             "screen_back",
@@ -264,7 +264,7 @@ object ToolCategories {
             "screen_launch_app",
             "screen_open_notifications",
             "screen_wait",
-            // 屏幕自动化补充(此前注册了但未登记分类)
+            // Suplemento de automatización de pantalla(Previamente registrado pero no registrado para la categoría)
             "screen_pinch",
             "screen_swipe_path",
             // Root-level system tools (requires root)
@@ -274,9 +274,9 @@ object ToolCategories {
             "list_packages",
             "logcat_tail",
             "input_inject",
-            // root 网络开关(此前注册了但未登记分类)
+            // root conmutador de red(Previamente registrado pero no registrado para la categoría)
             "network_toggle",
-            // v2.6.2: 破坏性应用控制 + MCP 管理套件（此前漏登记分类）
+            // v2.6.2: Control de aplicaciones destructivas + MCP Management Suite (esta clasificación de registro de fugas)
             "app_force_stop",
             "app_clear_data",
             "app_uninstall",
@@ -285,56 +285,56 @@ object ToolCategories {
             "mcp_mgmt_remove",
             "mcp_mgmt_bind_assistant",
             "mcp_mgmt_reconnect",
-            // v2.6.2: 知识库管理 + 会话管理（写操作走审批）
+            // v2.6.2: Gestión de la base de conocimientos + gestión de sesiones (las operaciones de escritura están sujetas a aprobación)
             "knowledge_delete_doc",
             "knowledge_create_kb",
             "knowledge_delete_kb",
-            // v2.6.2: 会话管理（删除走审批）
+            // v2.6.2: Gestión de sesiones (la eliminación requiere aprobación)
             "session_delete",
-            // v2.6.2: 技能管理（删除走审批，内置不可删）
+            // v2.6.2: Gestión de habilidades (la eliminación requiere aprobación, la función integrada no se puede eliminar)
             "skill_manage_delete",
-            // v2.6.2: 助手自管理（全部走审批，限权设计）
+            // v2.6.2: Autogestión asistente (todo diseño aprobado y con permiso restringido)
             "assistant_manage_create",
             "assistant_manage_update_persona",
             "assistant_manage_delete",
         )
 
-    /** 已废弃传输,仅兼容。 */
+    /** Transferencia abandonada,Sólo compatibles. */
     val LEGACY: Set<String> = emptySet()
 
     /**
-     * v2.x: 工具运行环境权限需求表(需 Shizuku/Root/无障碍/Termux 才能工作)。
+     * v2.x: Tabla de requisitos de permisos del entorno de ejecución de herramientas(Requiere Shizuku/Root/Accesibilidad/Termux trabajar).
      *
-     * 值语义:集合内"任一就绪"即可用(如 screen_* 可走无障碍,也可降级 Shizuku/Root)。
-     * 未出现的工具 = 无需额外授权。用途:find_tools 标注、系统提示标记、执行前预检。
+     * semántica de valores:dentro de la colección"ya sea listo"Listo para usar(Como por ejemplo screen_* Transitable y sin barreras,También se puede degradar Shizuku/Root).
+     * herramientas no presentes = No se requiere autorización adicional. Propósito:find_tools Anotación, marca de aviso del sistema y verificación previa a la ejecución.
      */
     val PERMISSIONS: Map<String, Set<ToolPermission>> =
         buildMap {
-            // 设备命令通道(Shizuku 或 Root 任一)
+            // Canal de comando del dispositivo(Shizuku o Rootear)
             listOf(
                 "device_shell", "settings_get", "settings_put", "am_start", "list_packages",
                 "logcat_tail", "input_inject", "network_toggle", "virtual_screen", "virtual_screen_input",
             ).forEach { put(it, setOf(ToolPermission.SHELL_TIER)) }
             put("automation_workflow", setOf(ToolPermission.ACCESSIBILITY, ToolPermission.SHELL_TIER))
-            // 屏幕自动化(无障碍为主,可降级设备通道;screen_pinch 仅支持无障碍)
+            // automatización de pantalla(Sin barreras,Canal de dispositivo degradable;screen_pinch Sólo accesibilidad)
             listOf(
                 "screen_read", "screen_current_app", "screen_back", "screen_home", "screen_tap",
                 "screen_tap_text", "screen_swipe", "screen_input", "screen_launch_app",
                 "screen_open_notifications", "screen_wait", "screen_swipe_path",
             ).forEach { put(it, setOf(ToolPermission.ACCESSIBILITY, ToolPermission.SHELL_TIER)) }
             put("screen_pinch", setOf(ToolPermission.ACCESSIBILITY))
-            // UI 工具(无障碍)
+            // UI Herramientas(Accesibilidad)
             listOf(
                 "ui_get_page_info", "ui_click", "ui_long_press", "ui_swipe", "ui_set_text",
                 "ui_screenshot", "ui_back", "ui_home", "ui_global_action", "ui_get_current_app",
             ).forEach { put(it, setOf(ToolPermission.ACCESSIBILITY)) }
-            // GUI Agent 环:任一通道可截屏
+            // GUI Agent anillo:Cualquier canal puede tomar capturas de pantalla.
             put("ui_agent", setOf(ToolPermission.SHELL_TIER, ToolPermission.ACCESSIBILITY))
-            // Termux 通道
+            // Termux canal
             put("termux_exec", setOf(ToolPermission.TERMUX))
         }
 
-    /** 查询工具的权限需求(未登记 = 无需额外授权)。 */
+    /** Requisitos de permiso para herramientas de consulta(No registrado = No se requiere autorización adicional). */
     fun permissionOf(toolName: String): Set<ToolPermission> = PERMISSIONS[toolName].orEmpty()
 
     private val ALL: Map<String, ToolCategory> =
@@ -346,14 +346,14 @@ object ToolCategories {
             LEGACY.forEach { put(it, ToolCategory.LEGACY) }
         }
 
-    /** 查询分类(未登记返回 null)。 */
+    /** Clasificación de consultas(Regreso sin registro null). */
     fun categoryOf(toolName: String): ToolCategory? = ALL[toolName]
 
     /**
-     * 启动断言:检查所有已注册内置工具都有分类。
+     * iniciar afirmación:Compruebe que todas las herramientas integradas registradas tengan categorías.
      *
-     * @param registeredNames 已注册工具名集合
-     * @return 未登记分类的工具名列表(空 = 全部覆盖)
+     * @param registeredNames Colección de nombres de herramientas registradas
+     * @return Lista de nombres de herramientas para categorías no registradas(vacío = Todo cubierto)
      */
     fun assertCoverage(registeredNames: Set<String>): List<String> = registeredNames.filter { it !in ALL }.sorted()
 }

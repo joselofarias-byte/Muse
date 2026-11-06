@@ -11,27 +11,27 @@ import org.junit.Test
 import java.nio.ByteBuffer
 
 /**
- * P5-1: RAG 核心逻辑测试 — 此前 HybridSearchService/VectorSearchService 无任何测试。
+ * P5-1: RAG Prueba de lógica central — No se han realizado pruebas de HybridSearchService/VectorSearchService antes.
  *
- * 覆盖: FTS 查询构造、RRF 双路融合排序、BM25-only 命中保留(P2-31 回归)、向量 BLOB 序列化。
+ * Portada: FTS estructura de consulta,RRF Clasificación por fusión de doble vía,BM25-only Golpear y mantener(P2-31 Regresar), serialización de BLOB vectoriales.
  */
 class RagSearchTest {
 
-    // ── FTS 查询构造 ────────────────────────────────────────────────────────
+    // ── FTS Construcción de consultas ────────────────────────────────────────────────────────
 
     @Test
     fun `buildFtsQuery strips punctuation and keeps alnum tokens`() {
-        assertEquals("muse \"记忆\" rag", HybridSearchService.buildFtsQuery("Muse 记忆, rag!"))
+        assertEquals("muse memoria rag", HybridSearchService.buildFtsQuery("Muse memoria, rag!"))
     }
 
     @Test
     fun `buildFtsQuery filters single-char tokens`() {
-        assertEquals("\"记忆\" \"系统\"", HybridSearchService.buildFtsQuery("记 忆 系 统 记忆 系统"))
+        assertEquals("sistema de memoria", HybridSearchService.buildFtsQuery("sistema de memoria sistema de memoria"))
     }
 
     @Test
     fun `buildFtsQuery dedups tokens`() {
-        assertEquals("\"搜索\" \"召回\"", HybridSearchService.buildFtsQuery("搜索 搜索 召回"))
+        assertEquals("buscar recuperar", HybridSearchService.buildFtsQuery("Buscar Buscar Recuperar"))
     }
 
     @Test
@@ -42,22 +42,22 @@ class RagSearchTest {
 
     @Test
     fun `buildFtsQuery long query falls back to OR`() {
-        val query = "记忆 系统 检索 向量 知识 混合 融合 测试 语料 句子 模型"
+        val query = "Modelo de oración de corpus de prueba de fusión mixta de conocimiento vectorial de recuperación de sistema de memoria"
         val fts = HybridSearchService.buildFtsQuery(query)
-        assertTrue("长查询应降级 OR,实际: $fts", fts.contains(" OR "))
+        assertTrue("Las consultas largas deben degradarse OR,real: $fts", fts.contains(" OR "))
     }
 
     @Test
     fun `buildFtsQuery blank query falls back to quoted phrase`() {
-        assertEquals("\"。。。\"", HybridSearchService.buildFtsQuery("。。。"))
+        assertEquals("\". . .\"", HybridSearchService.buildFtsQuery(". . ."))
     }
 
     @Test
     fun `buildFtsQuery expands Chinese text into the same ngrams used by the index`() {
-        assertEquals("\"知识\" \"识库\"", HybridSearchService.buildFtsQuery("知识库"))
+        assertEquals("base de conocimientos", HybridSearchService.buildFtsQuery("base de conocimientos"))
     }
 
-    // ── RRF 融合 ────────────────────────────────────────────────────────────
+    // ── RRF Fusión ────────────────────────────────────────────────────────────
 
     private fun searchResult(chunkId: String, score: Float, docId: String = "doc-$chunkId") = VectorSearchService.SearchResult(
         docId = docId,
@@ -83,10 +83,10 @@ class RagSearchTest {
         val service = HybridSearchService(fts, vector)
         val results = service.hybridSearch("query", floatArrayOf(1f, 0f), topK = 5, threshold = 0.3f, mmrLambda = 0f)
 
-        assertTrue("双路命中 chunk b 应排第一: ${results.map { it.chunkId }}", results.first().chunkId == "b")
+        assertTrue("El fragmento de golpe de doble vía b debe ocupar el primer lugar: ${results.map { it.chunkId }}", results.first().chunkId == "b")
         assertTrue(results.first().bothHit)
         assertEquals("a", results[1].chunkId)
-        assertTrue("both-hit 分数应更高", results.first().rrfScore > results[1].rrfScore)
+        assertTrue("both-hit La puntuación debería ser mayor", results.first().rrfScore > results[1].rrfScore)
     }
 
     @Test
@@ -103,16 +103,16 @@ class RagSearchTest {
             ids.associateWith { id ->
                 HybridSearchService.ChunkMeta(
                     docId = "doc-c",
-                    docTitle = "精确命中文档",
-                    content = "BM25-only 精确命中内容",
+                    docTitle = "Documento de acierto exacto",
+                    content = "BM25-only Contenido de éxito preciso",
                     chunkIndex = 2,
                 )
             }
         })
 
-        val results = service.hybridSearch("专有名词", floatArrayOf(0f, 1f), topK = 5, threshold = 0.3f, mmrLambda = 0f)
+        val results = service.hybridSearch("nombre propio", floatArrayOf(0f, 1f), topK = 5, threshold = 0.3f, mmrLambda = 0f)
 
-        assertEquals("BM25-only 命中不得被丢弃(P2-31)", setOf("a", "c"), results.map { it.chunkId }.toSet())
+        assertEquals("BM25-only Los golpes no se pueden descartar(P2-31)", setOf("a", "c"), results.map { it.chunkId }.toSet())
         val c = results.first { it.chunkId == "c" }
         assertEquals("doc-c", c.docId)
     }
@@ -127,16 +127,16 @@ class RagSearchTest {
         )
         val service = HybridSearchService(fts, vector) // resolver = null
         val results = service.hybridSearch("x", floatArrayOf(0f), topK = 5, threshold = 0.3f, mmrLambda = 0f)
-        assertTrue("无可解析元数据时应跳过(旧行为)", results.isEmpty())
+        assertTrue("Se debe omitir si no hay metadatos para analizar.(viejo comportamiento)", results.isEmpty())
     }
 
-    // ── 向量 BLOB 序列化 ────────────────────────────────────────────────────
+    // ── Serialización de BLOB vectoriales ────────────────────────────────────────────────────
 
     @Test
     fun `floatArrayToBlob roundtrips dimension and values`() {
         val input = floatArrayOf(0.5f, -1.25f, 3.125f, 0f)
         val blob = VectorSearchService.floatArrayToBlob(input)
-        assertEquals("每个 float 4 字节", input.size * 4, blob.size)
+        assertEquals("4 bytes por flotante", input.size * 4, blob.size)
         val buffer = ByteBuffer.wrap(blob).asFloatBuffer()
         val out = FloatArray(input.size)
         buffer.get(out)

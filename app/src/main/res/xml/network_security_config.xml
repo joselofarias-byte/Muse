@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-      默认: 允许明文流量。
+      Predeterminado: Se permite el tráfico de texto claro.
       
-      2026-11 决定: JS 沙盒（execute_javascript / 插件 JS 工具）要能访问任意 http 主机。
-      Android 的网络安全策略是「按域名」放行的，无法只对沙盒开口子 —— 要支持任意主机
-      就只能把 base-config 打开。
+      2026-11 decidir: JS caja de arena (execute_javascript / Herramienta JS complementaria) debe poder acceder a cualquier host http.
+      Android La política de seguridad de la red se publica "por nombre de dominio" y no se puede abrir únicamente en el entorno limitado. —— Para soportar cualquier host
+      Sólo puedes abrir base-config.
       
-      代价与兜底:
-       - 全应用不再强制 https（Provider 走 http 时日志里会告警 baseUrl 非 https）；
-       - 沙盒的每次外发都会写审计日志（JsSandbox.httpRequest），便于回溯；
-       - 仍禁止沙盒读取本地文件、仍拦 cookie / sendBeacon / WebSocket 外传。
-      若要收回这条，把下面的 false 改回来即可（沙盒随即只能走 https）。
+      Precio y cobertura:
+       - https ya no es obligatorio para todas las aplicaciones (Provider Al utilizar http, aparecerá una advertencia en el registro (baseUrl no es https);
+       - Cada vez que se envía el sandbox, se escribirá un registro de auditoría (JsSandbox.httpRequest) para facilitar el retroceso;
+       - La zona de pruebas todavía tiene prohibido leer archivos locales y todavía está bloqueada. cookie / sendBeacon / WebSocket Gaiden.
+      Si desea retractarse de esto, simplemente cambie el siguiente valor falso (la zona de pruebas ahora solo podrá usar https).
     -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- 本地调试例外: localhost 允许明文(供 WebServer / 本地调试用) -->
+    <!-- Excepción de depuración local: localhost texto claro permitido(Para servidor web/depuración local) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">localhost</domain>
         <domain includeSubdomains="false">127.0.0.1</domain>

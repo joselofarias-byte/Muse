@@ -1,57 +1,57 @@
 package io.zer0.muse.crash
 
 /**
- * ANR 判定核心逻辑 —— 纯计算,不依赖 Looper/Handler,便于单测。
+ * ANR Determinar la lógica central —— cálculo puro,no depende de Looper/Handler,Conveniente para pruebas individuales.
  *
- * 设计要点(2026-09-29 修订):
- *  - **ticket 计数法**:看门狗每轮向主线程投递一个 ping,ping 执行时把计数 +1。
- *    判定依据是"计数有没有前进",而不是"距上次响应过了多久" —— 后者在
- *    看门狗线程自身被挂起(进程冻结/深度 Doze)或饿死时会把那段时间错算成主线程阻塞。
- *  - **冻结检测**:若本轮实际耗时远超预期间隔(overshoot 超过 [suspendToleranceMs]),
- *    说明看门狗自己都没能按时醒来,这段时间无法判定主线程 —— 直接重置基线,不报 ANR。
- *    这正是 2026-09-27~29 五份 anr_*.txt 误报的成因:App 退后台被系统冻结 → 回前台解冻,
- *    首轮检查把整个后台时长记成"主线程无响应"(最长 133s),而采到的栈只是恢复前台时的正常工作。
- *  - **去重**:同一段阻塞只报一次,主线程恢复心跳后重新武装。
+ * Puntos de diseño(2026-09-29 revisión):
+ *  - **ticket método de conteo**:El perro guardián entrega uno al hilo principal en cada ronda. ping,ping Aumente el recuento en 1 cuando se ejecute.
+ *    La base para el juicio es"¿Avanza el conteo?",en lugar de"¿Cuánto tiempo ha pasado desde la última respuesta?" —— Este último está en
+ *    El hilo de vigilancia está suspendido.(congelación del proceso/Profundidad Doze)O cuando muera de hambre, ese tiempo se calculará mal como el bloqueo del hilo principal.
+ *  - **detección de congelación**:Si el tiempo real de esta ronda es mucho más largo que el intervalo esperado,(overshoot exceder [suspendToleranceMs]),
+ *    Demuestra que el propio perro guardián no se despertó a tiempo,El hilo principal no se puede determinar durante este tiempo. —— Restablecer directamente la línea base,No reportar ANR.
+ *    esto es exactamente 2026-09-27~29 cinco porciones anr_*.txt Causas de los falsos positivos:App Backstage está congelado por el sistema. → Regrese a la recepción para descongelar,
+ *    La primera ronda de inspección registra toda la duración del backend como"El hilo principal no responde"(más largo 133s),La pila recopilada solo restaura el trabajo normal cuando se restaura el primer plano.
+ *  - **Eliminar duplicados**:El mismo bloqueo solo se informa una vez,El hilo principal se vuelve a armar después de restaurar los latidos del corazón.
  *
- * @param timeoutMs 判定阈值:主线程连续无响应超过该时长即判定 ANR
- * @param expectedIntervalMs 看门狗预期的一轮间隔(投递 ping → 等待 → 检查)
- * @param suspendToleranceMs overshoot 容差:实际耗时超出预期间隔这么多,即认为进程被挂起
+ * @param timeoutMs Umbral de decisión:Si el hilo principal continúa sin responder durante más de este tiempo, será juzgado. ANR
+ * @param expectedIntervalMs Intervalo de ronda esperado del organismo guardián(entrega ping → espera → comprobar)
+ * @param suspendToleranceMs overshoot Tolerancia:El consumo de tiempo real superó con creces el intervalo esperado,Es decir, el proceso se considera suspendido.
  */
 internal class AnrDetector(
     private val timeoutMs: Long,
     private val expectedIntervalMs: Long,
     private val suspendToleranceMs: Long,
 ) {
-    /** 单轮检测结论。 */
+    /** Conclusión de la prueba de una sola ronda. */
     sealed interface Decision {
-        /** 判定 ANR(该段阻塞的首次报告);[silenceMs] 为已累计的阻塞时长。 */
+        /** juicio ANR(Primer informe de bloqueo en este segmento);[silenceMs] Es el tiempo de bloqueo acumulado. */
         data class Blocked(val silenceMs: Long) : Decision
 
-        /** 仍在阻塞,但该段已经报过(去重)。 */
+        /** Todavía bloqueando,Pero este párrafo ya ha sido reportado.(Eliminar duplicados). */
         object Suppressed : Decision
 
-        /** 主线程心跳正常。 */
+        /** El latido del corazón del hilo principal es normal. */
         object Healthy : Decision
 
-        /** 看门狗自身被挂起(进程冻结/深度 Doze):本轮不做判定,基线已重置。 */
+        /** El propio organismo de control está suspendido(congelación del proceso/Profundidad Doze):No se emitirá ningún juicio en esta ronda.,La línea base se ha restablecido. */
         object Suspended : Decision
     }
 
-    /** 上次观察到的 ping 计数(-1 = 尚未建立基线)。 */
+    /** Último recuento de ping observado(-1 = Aún no se ha establecido una línea de base). */
     private var lastPongCount: Long = -1L
 
-    /** 本段阻塞的起始时刻(elapsedRealtime);null = 当前无阻塞。 */
+    /** La hora de inicio de este bloqueo.(elapsedRealtime);null = Actualmente sin bloqueo. */
     private var blockedSinceMs: Long? = null
 
-    /** 本段阻塞是否已报告过。 */
+    /** Si se ha informado del bloqueo en este segmento. */
     private var reported: Boolean = false
 
     /**
-     * 处理一轮检测。
+     * Procese una ronda de pruebas.
      *
-     * @param nowMs 本轮检查时刻(SystemClock.elapsedRealtime)
-     * @param postedAtMs 本轮投递 ping 的时刻(同上时钟)
-     * @param pongCount 主线程已执行的 ping 次数(单调递增)
+     * @param nowMs Consulta el tiempo de esta ronda.(SystemClock.elapsedRealtime)
+     * @param postedAtMs La hora de entrega del ping en esta ronda.(Lo mismo ocurre con el reloj)
+     * @param pongCount Número de pings realizados por el hilo principal(monótonamente creciente)
      */
     fun onCheck(nowMs: Long, postedAtMs: Long, pongCount: Long): Decision {
         val overshootMs = nowMs - postedAtMs - expectedIntervalMs
@@ -59,12 +59,12 @@ internal class AnrDetector(
         val alive = pongCount > lastPongCount
 
         if (suspended || alive) {
-            // 看门狗被挂起,或主线程有心跳 → 基线归零(冻结期间的时间不计入阻塞)
+            // Se suspende el organismo de control,O el hilo principal tiene un latido → Reducción a cero de la línea de base(El tiempo durante el período de congelación no cuenta para el bloqueo.)
             lastPongCount = pongCount
             blockedSinceMs = null
             reported = false
         } else if (blockedSinceMs == null) {
-            // 确认进入阻塞:从"这次没被执行的 ping 的投递时刻"起算
+            // Confirmar bloqueo de entrada:de"El tiempo de entrega del ping que no se ejecutó esta vez."A partir de
             blockedSinceMs = postedAtMs
         }
 

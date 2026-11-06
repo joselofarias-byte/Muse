@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">中文</a> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <b>한국어</b> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
+  <a href="README.md">Español</a> · <a href="README_EN.md">English</a> · <a href="README_JA.md">日本語</a> · <b>한국어</b> · <a href="README_ES.md">Español</a> · <a href="README_PT.md">Português</a> · <a href="README_RU.md">Русский</a>
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
 </p>
 <p align="center">
-  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQ群-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="QQ 그룹"></a>
-  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/官网-museai.ltd-blueviolet?style=for-the-badge" alt="공식 웹사이트"></a>
+  <a href="https://qm.qq.com/q/905451314"><img src="https://img.shields.io/badge/QQgrupo-905451314-0366CC?style=for-the-badge&logo=qq&logoColor=white" alt="QQ 그룹"></a>
+  <a href="https://museai.ltd"><img src="https://img.shields.io/badge/Sitio web oficial-museai.ltd-blueviolet?style=for-the-badge" alt="공식 웹사이트"></a>
   <a href="https://museai.ltd/download/"><img src="https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android" alt="다운로드"></a>
 </p>
 
@@ -26,7 +26,7 @@
   <a href="#다운로드">다운로드</a> ·
   <a href="#빠른-시작">빠른 시작</a> ·
   <a href="#기능-한눈에-보기">기능 한눈에 보기</a> ·
-  <a href="用户手册.md">사용자 매뉴얼(중국어)</a> ·
+  <a href="manual-de-usuario.md">사용자 매뉴얼(중국어)</a> ·
   <a href="#오픈소스-함께-만들기">오픈소스 함께 만들기</a>
 </p>
 
@@ -103,7 +103,7 @@ Muse가 하는 일은 네 가지입니다:
 2. **대화 시작** — 홈으로 돌아가 첫 메시지를 보냅니다. 기억은 그 순간부터 쌓이기 시작합니다. 모델을 바꾸고 세션을 바꿔도 당신을 기억합니다.
 3. **필요할 때 시스템 권한 열기(선택)** — 실제로 "손을 움직이게" 하려면 **설정 → 권한 설정 마법사**를 열고 안내에 따라 접근성 / Shizuku / Root / Termux 중 필요한 채널을 켜면 됩니다. 각 단계마다 감지와 테스트 진입점이 있습니다.
 
-> 더 자세한 사용 안내(각종 제스처와 숨은 조작 포함)는 [사용자 매뉴얼(중국어)](用户手册.md) 또는 앱 내 **설정 → 사용 튜토리얼**에서 확인하십시오.
+> 더 자세한 사용 안내(각종 제스처와 숨은 조작 포함)는 [사용자 매뉴얼(중국어)](manual-de-usuario.md) 또는 앱 내 **설정 → 사용 튜토리얼**에서 확인하십시오.
 
 ## 왜 Muse인가
 
@@ -198,7 +198,7 @@ Muse가 하는 일은 네 가지입니다:
 - **중요도와 감쇠**: 핵심 사실(의료, 재무, 핵심 정체성)은 보호되어 감쇠하지 않고, 일상 정보는 사용 빈도에 따라 사람처럼 자연스럽게 잊힙니다.
 - **기억 패널**: 공간 / 분류별 탐색. 항목 추가·삭제, 중요도 조정, 시간 / 가중치 필터. 길게 눌러 다중 선택 일괄 삭제(목록과 타임라인 모두 지원, 삭제 후 맨 위로 튀지 않음). 모든 기억은 원본 세션까지 추적 가능. 긴 항목은 클릭해서 전문을 펼칩니다.
 - **기억 공간**: 용도가 다른 기억을 서로 격리해 오염되지 않게 합니다.
-- **컨텍스트 연속성**: 컨텍스트 윈도우를 벗어난 기록이 조용히 버려지지 않습니다. 결정론적 기록 발췌(대화 원문 조각과 도구 항목 보존)를 윈도우 앞에 삽입하고, 도구 라운드 압축 시 "어시스턴트 설명"을 보존하며, 압축 요약에 「이 구간에서 어떤 파일이 바뀌었는지」를 덧붙입니다. 긴 작업도 더 이상 "기억 상실"에 빠지지 않습니다.
+- **컨텍스트 연속성**: 컨텍스트 윈도우를 벗어난 기록이 조용히 버려지지 않습니다. 결정론적 기록 발췌(대화 원문 조각과 도구 항목 보존)를 윈도우 앞에 삽입하고, 도구 라운드 압축 시 "어시스턴트 설명"을 보존하며, 압축 요약에 「이 구간에서 어떤 파일이 바뀌었는지"를 덧붙입니다. 긴 작업도 더 이상 "기억 상실"에 빠지지 않습니다.
 - **세션 간 연결**: 새 대화를 시작할 때 이전 대화의 마지막 몇 턴을 가져올 수 있습니다(4~40개 조정 가능, 기본 꺼짐). 창을 닫았다가 같은 이야기를 이어갈 때 배경을 다시 설명하지 않아도 됩니다.
 - **경험 라이브러리**: "이런 문제는 앞으로 이렇게 처리한다"를 경험으로 축적하고, 이후 작업에서 자동으로 참고합니다(켜고 끌 수 있음).
 - **지식 베이스(RAG)**: 문서를 가져오면 자동 파싱, 청크 분할, 색인 생성. 검색은 시맨틱 검색 + 키워드 매칭의 하이브리드 정렬. @로 특정 문서를 지정해 검색. 초대형 파일은 스트리밍 색인. 오프라인 환경에서는 로컬 검색으로 자동 폴백. 인용은 원문 구절까지 추적됩니다.
@@ -321,7 +321,7 @@ python ci/script/validate_release_apks.py --apk "app/build/outputs/apk/release/*
 
 프로젝트에 참여해 주세요:
 
-- [기여 가이드(중국어)](CONTRIBUTING.md) · [보안 정책(중국어)](SECURITY.md) · [UI 컴포넌트 라이브러리 유지보수 규범(중국어)](UI组件库维护规范.md)
+- [기여 가이드(중국어)](CONTRIBUTING.md) · [보안 정책(중국어)](SECURITY.md) · [UI 컴포넌트 라이브러리 유지보수 규범(중국어)](guia-biblioteca-ui.md)
 - PR을 올리기 전에 로컬 게이트 스크립트와 단위 테스트를 통과시켜 주십시오. 새 문자열은 모든 언어 팩에 동기화해야 합니다
 - 게이트와 릴리스 파이프라인 스크립트는 `ci/script/` 아래에 있고, 앱 내 튜토리얼(설정 → 사용 튜토리얼)도 함께 관리됩니다
 

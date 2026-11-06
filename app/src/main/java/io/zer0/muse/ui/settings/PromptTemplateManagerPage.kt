@@ -41,10 +41,10 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * B0-07: Prompt 模板管理页。
+ * B0-07: Prompt Página de gestión de plantillas.
  *
- * 支持新建 / 编辑 / 删除 / 上下排序;内置模板不可删除但可复制为自定义模板。
- * 保存走 [SettingsRepository.savePromptTemplates],重启后保留。
+ * Admite nuevo/editar/eliminar/ordenar hacia arriba y hacia abajo;Las plantillas integradas no se pueden eliminar, pero se pueden copiar como plantillas personalizadas.
+ * Guardar y listo [SettingsRepository.savePromptTemplates],Se conserva después del reinicio.
  */
 @Composable
 fun PromptTemplateManagerPage(onBack: () -> Unit) {

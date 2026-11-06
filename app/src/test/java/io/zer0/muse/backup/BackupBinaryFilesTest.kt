@@ -47,20 +47,20 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v4.1: 目录型文件备份([BackupBinaryFiles])与它在 [BackupService] 里的接线守护。
+ * v4.1: Copia de seguridad de archivos de directorio([BackupBinaryFiles])con eso [BackupService] El protector de cableado en el interior.
  *
- * 缺陷背景:此前 [BackupService.backupFileStorePaths] 只覆盖单文件白名单,
- * `note_attachments/`(NoteAttachmentStore,二进制与文本混存)与 `avatar/`
- * (AvatarStorage 的私有副本)完全不进备份;`card_data.json` 也漏在白名单外。
- * 换机恢复后 QuickNoteEntity.attachmentsJson / AssistantEntity.avatarImageUrl
- * 全部指向不存在的文件,卡片数据整份丢失。
+ * Fondo de defecto:anteriormente [BackupService.backupFileStorePaths] Sobrescribir solo la lista blanca de un solo archivo,
+ * `note_attachments/`(NoteAttachmentStore,Mezclando binario y texto)con `avatar/`
+ * (AvatarStorage copia privada de)No hay ninguna copia de seguridad;`card_data.json` También excluido de la lista blanca.
+ * Después del reemplazo y recuperación. QuickNoteEntity.attachmentsJson / AssistantEntity.avatarImageUrl
+ * Todos apuntan a archivos que no existen.,Se pierden todos los datos de la tarjeta.
  *
- * 覆盖五件事:
- *  1. 往返字节一致(导出 → Base64 → 恢复,含真实 writeNdJson 导出侧);
- *  2. 路径穿越被拒绝且绝不写白名单外(含 `..`、绝对路径、反斜杠、空段);
- *  3. 容量上限(单文件 2MB / 目录 16MB)超限跳过并计数,其余文件照常恢复;
- *  4. 写失败向上传播(共享恢复账本,fail-fast 才能触发 recovery point 回滚);
- *  5. 向后兼容(旧备份无 binaryFiles 字段仍能解析与恢复)。
+ * Cubre cinco cosas:
+ *  1. Consistencia de bytes de ida y vuelta(Exportar → Base64 → restaurar,Contiene un lado de exportación real de writeNdJson);
+ *  2. El recorrido de ruta se deniega y nunca se incluye en la lista blanca(Contiene `..`, ruta absoluta, barra invertida, segmento vacío);
+ *  3. Límite de capacidad(Archivo único 2 MB/directorio 16MB)Saltar el límite y contar,Los archivos restantes se restauran como de costumbre.;
+ *  4. Los errores de escritura se propagan hacia arriba(Libro mayor de recuperación compartido,fail-fast Para activar la reversión del punto de recuperación);
+ *  5. compatible con versiones anteriores(Las copias de seguridad antiguas sin el campo archivos binarios aún se pueden analizar y restaurar).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -100,7 +100,7 @@ class BackupBinaryFilesTest {
         File(context.filesDir, "card_data.json").delete()
     }
 
-    // ── 模块行为(纯文件系统) ──────────────────────────────────────────────
+    // ── comportamiento del módulo(Sistema de archivos puro) ──────────────────────────────────────────────
 
     private fun tempRoot(): File = Files.createTempDirectory("muse-binary-backup").toFile()
 
@@ -108,7 +108,7 @@ class BackupBinaryFilesTest {
     fun `note attachment and avatar bytes round trip unchanged`() = runBlocking {
         val source = tempRoot()
         try {
-            val text = "笔记附件正文\n第二行".toByteArray(Charsets.UTF_8)
+            val text = "Texto adjunto de nota\nsegunda linea".toByteArray(Charsets.UTF_8)
             val binary = ByteArray(64) { (it * 7).toByte() } + byteArrayOf(0x00, 0xFF.toByte(), 0x7F)
             File(source, "note_attachments").mkdirs()
             File(source, "avatar").mkdirs()
@@ -119,7 +119,7 @@ class BackupBinaryFilesTest {
             assertEquals(0, snapshot.skipped.skippedFiles)
             assertEquals(listOf("avatar/b.bin", "note_attachments/a.txt"), snapshot.items.map { it.path })
 
-            // 模拟备份落盘/读回:Base64 文本是唯一载体,往返后必须字节一致。
+            // Simular copia de seguridad en disco/volver a leer:Base64 El texto es el único medio,Los bytes deben ser consistentes después del viaje de ida y vuelta.
             val encoded = snapshot.asBase64Map()
 
             val target = tempRoot()
@@ -152,15 +152,15 @@ class BackupBinaryFilesTest {
                 "note_attachments//nested.txt" to payload,
                 "note_attachments/./dot.txt" to payload,
                 "note_attachments/../evil.txt" to payload,
-                // 合法条目:必须仍能写入,证明拒绝逻辑不是"全盘失败"
+                // entrada legal:Todavía debe poder escribir,Demostrar que la lógica del rechazo no es"fracaso total"
                 "note_attachments/ok.txt" to payload,
             )
 
             val result = BackupBinaryFiles.restore(malicious, root)
 
-            assertEquals("只有白名单内的合法路径允许写回", 1, result.writtenFiles)
-            assertEquals("其余 8 条非法路径必须被拒绝", 8, result.skippedFiles)
-            assertFalse("不得写到 filesDir 之外", outside.exists())
+            assertEquals("Solo se permiten rutas legales en la lista blanca para reescribir", 1, result.writtenFiles)
+            assertEquals("Los 8 caminos ilegales restantes deben ser rechazados.", 8, result.skippedFiles)
+            assertFalse("No debe escribir archivos externos en Dir.", outside.exists())
             assertFalse(File(root.parentFile, "evil.txt").exists())
             assertFalse(File(root, "evil.txt").exists())
             assertFalse(File(root, "absolute/evil.txt").exists())
@@ -191,8 +191,8 @@ class BackupBinaryFilesTest {
             "note_attachments/./x.png",
             "note_attachments/x\u0000.png",
         ).forEach { path ->
-            assertFalse("必须拒绝: $path", BackupBinaryFiles.isAllowedPath(path))
-            assertNull("非法路径不得解析出目标文件: $path", BackupBinaryFiles.resolveTarget(tempRoot(), path))
+            assertFalse("debe negarse: $path", BackupBinaryFiles.isAllowedPath(path))
+            assertNull("Las rutas ilegales no deben resolver el archivo de destino: $path", BackupBinaryFiles.resolveTarget(tempRoot(), path))
         }
         assertTrue(BackupBinaryFiles.isAllowedPath("note_attachments/a.txt"))
         assertTrue(BackupBinaryFiles.isAllowedPath("avatar/deep/nested.jpg"))
@@ -211,11 +211,11 @@ class BackupBinaryFilesTest {
             File(root, "avatar/a.jpg").writeBytes(small)
 
             val snapshot = BackupBinaryFiles.read(root)
-            assertEquals("超限文件不进备份", 1, snapshot.skipped.skippedFiles)
+            assertEquals("No se realizarán copias de seguridad de los archivos excesivos", 1, snapshot.skipped.skippedFiles)
             assertEquals(tooBig.size.toLong(), snapshot.skipped.skippedBytes)
             assertEquals(listOf("avatar/a.jpg", "note_attachments/small.txt"), snapshot.items.map { it.path })
 
-            // 恢复侧同样有上限:手工塞一个超限条目,必须被跳过且不影响其余文件。
+            // También hay un límite superior en el lado de la recuperación.:Insertar manualmente una entrada que excede el límite,Debe omitirse sin afectar los archivos restantes.
             val encoded = snapshot.asBase64Map() +
                 ("note_attachments/injected.png" to Base64.getEncoder().encodeToString(tooBig))
             val target = tempRoot()
@@ -239,7 +239,7 @@ class BackupBinaryFilesTest {
         val root = tempRoot()
         try {
             val dir = File(root, "avatar").apply { mkdirs() }
-            // 每个 1.5MB:第 11 个文件会越过 16MB 目录合计上限。
+            // 1,5 MB cada uno: el undécimo archivo excederá el límite total del directorio de 16 MB.
             val chunk = ByteArray(1536 * 1024) { 2 }
             repeat(12) { index ->
                 File(dir, "avatar_%02d.jpg".format(index)).writeBytes(chunk)
@@ -247,7 +247,7 @@ class BackupBinaryFilesTest {
 
             val snapshot = BackupBinaryFiles.read(root)
 
-            assertEquals("16MB / 1.5MB = 最多 10 个文件进备份", 10, snapshot.items.size)
+            assertEquals("16MB / 1.5MB = Se pueden realizar copias de seguridad de hasta 10 archivos", 10, snapshot.items.size)
             assertEquals(2, snapshot.skipped.skippedFiles)
             assertEquals(chunk.size.toLong() * 2, snapshot.skipped.skippedBytes)
             assertTrue(snapshot.items.all { it.path.startsWith("avatar/") })
@@ -288,7 +288,7 @@ class BackupBinaryFilesTest {
                     ) { _, _ -> error("synthetic binary write failure") }
                 }
             }
-            assertFalse("写失败时不得留下半写文件", File(root, "note_attachments/a.txt").exists())
+            assertFalse("Un archivo a medio escribir no debe quedar atrás cuando falla la escritura", File(root, "note_attachments/a.txt").exists())
         } finally {
             root.deleteRecursively()
         }
@@ -309,12 +309,12 @@ class BackupBinaryFilesTest {
         assertEquals(3, buffer.stats.skippedFiles)
     }
 
-    // ── BackupService 接线(真实 filesDir + 内存库) ─────────────────────────
+    // ── BackupService Cableado(archivos realesDir + biblioteca de memoria) ─────────────────────────
 
     @Test
     fun `ndjson restore writes note attachments and avatars byte for byte`() = runBlocking {
         val session = SessionEntity(id = "s1", title = "t", createdAt = 1L, updatedAt = 1L)
-        val attachmentBytes = "附件内容".toByteArray(Charsets.UTF_8)
+        val attachmentBytes = "Contenido del archivo adjunto".toByteArray(Charsets.UTF_8)
         val avatarBytes = byteArrayOf(0x01, 0x00, 0xFF.toByte(), 0x7F)
 
         invokeNdJsonRecovery(
@@ -340,7 +340,7 @@ class BackupBinaryFilesTest {
         invokeNdJsonRecovery(
             service,
             sequenceOf(
-                // meta 声明 2 条:分发侧两条都要计数,才能通过 B-34 对账。
+                // meta Declaración 2:Se deben contar ambos artículos del lado de la distribución.,Sólo a través de la conciliación B-34.
                 metaLine(sessions = 1, messages = 0, binaryFiles = 2),
                 dataLine("session", SessionEntity.serializer(), session),
                 binaryFileLine("../evil.txt", payload),
@@ -348,17 +348,17 @@ class BackupBinaryFilesTest {
             ),
         )
 
-        assertFalse("路径穿越必须被拒绝,不得写到 filesDir 之外", outside.exists())
+        assertFalse("Se debe negar el cruce de caminos.,No debe escribir archivos externos en Dir.", outside.exists())
         assertFalse(File(context.filesDir, "evil.txt").exists())
         assertFalse(File(context.filesDir.parentFile, "evil.txt").exists())
-        // 恢复本身要成功:会话确实落库。
+        // La recuperación misma debe ser exitosa:De hecho, la sesión está perdida.
         assertEquals(1, museDb.sessionDao().observeAll().first().size)
     }
 
     @Test
     fun `card data file store round trips through the allowlisted file stores`() = runBlocking {
         assertTrue(
-            "card_data.json 必须在文件型白名单内(此前漏在白名单外,卡片数据不进备份)",
+            "card_data.json Debe estar en la lista blanca de tipos de archivos.(Anteriormente excluido de la lista blanca,Los datos de la tarjeta no están respaldados)",
             "card_data.json" in BackupService.backupFileStorePaths,
         )
         val file = File(context.filesDir, "card_data.json")
@@ -390,7 +390,7 @@ class BackupBinaryFilesTest {
         )
         assertEquals(encoded, restored.binaryFiles["note_attachments/a.txt"])
 
-        // 向后兼容:旧备份没有 binaryFiles 字段 → 默认空 map,不报错。
+        // compatible con versiones anteriores:La copia de seguridad anterior no tiene el campo archivos binarios → Vacío predeterminado map,No se informa ningún error.
         val oldStyle = """{"version":3,"exportedAt":1,"sessions":[],"messages":[]}"""
         val old = json.decodeFromString(BackupService.Backup.serializer(), oldStyle)
         assertEquals(emptyMap<String, String>(), old.binaryFiles)
@@ -398,9 +398,9 @@ class BackupBinaryFilesTest {
 
     @Test
     fun `real ndjson export then restore round trips directory files`() = runBlocking {
-        // 真正走一遍导出侧 writeNdJson → 导入侧 applyNdJsonStreamingWithRecovery,
-        // 而不是手工拼行:确保 meta 计数、行类型、恢复分发三处接线一致。
-        val attachment = "附件字节".toByteArray(Charsets.UTF_8)
+        // Camine realmente por el lado de las exportaciones. writeNdJson → Lado de importación applyNdJsonStreamingWithRecovery,
+        // en lugar de escribir manualmente:Asegúrese de que el metaconteo, el tipo de fila y el cableado de distribución de recuperación sean consistentes.
+        val attachment = "Bytes adjuntos".toByteArray(Charsets.UTF_8)
         val avatar = ByteArray(32) { (it * 5).toByte() }
         File(context.filesDir, "note_attachments").mkdirs()
         File(context.filesDir, "avatar").mkdirs()
@@ -409,10 +409,10 @@ class BackupBinaryFilesTest {
         File(context.filesDir, "card_data.json").writeText("""{"c1":"{}"}""")
 
         val exported = exportNdJsonLines()
-        assertTrue("导出必须带 binaryFile 行", exported.any { it.contains("\"binaryFile\"") })
-        assertTrue("导出必须带 card_data.json 的 fileStore 行", exported.any { it.contains("card_data.json") })
+        assertTrue("La exportación debe tener una línea de archivo binario", exported.any { it.contains("\"binaryFile\"") })
+        assertTrue("La exportación debe tener la línea fileStore con card_data.json", exported.any { it.contains("card_data.json") })
 
-        // 清掉源文件,模拟换机后的空目录。
+        // Borrar archivos fuente,Simule el directorio vacío después de cambiar de máquina.
         File(context.filesDir, "note_attachments").deleteRecursively()
         File(context.filesDir, "avatar").deleteRecursively()
         File(context.filesDir, "card_data.json").delete()
@@ -424,7 +424,7 @@ class BackupBinaryFilesTest {
         assertEquals("""{"c1":"{}"}""", File(context.filesDir, "card_data.json").readText())
     }
 
-    // ── 反射工具 ──────────────────────────────────────────────────────────
+    // ── herramienta de reflexión ──────────────────────────────────────────────────────────
 
     private fun newService(): BackupService {
         val settings = mockk<SettingsRepository>(relaxed = true)
@@ -505,12 +505,12 @@ class BackupBinaryFilesTest {
         }
 
     /**
-     * 反射调用 `writeNdJson` 并收集写出的行。
+     * llamada a la reflexión `writeNdJson` y recoger las líneas escritas.
      *
-     * 不能用 suspendCancellableCoroutine 的 continuation 直接传给目标方法:
-     * 目标方法挂起后会用 NdJsonExportSummary 恢复它,而我们的 continuation
-     * 恢复类型是 List<String>,会在 resume 处 ClassCastException。
-     * 这里用独立的内部 continuation 接收目标结果,再转换后恢复外层。
+     * No puede utilizar la continuación de suspendCancellableCoroutine para pasarla directamente al método de destino.:
+     * Una vez suspendido el método de destino, se reanudará utilizando NdJsonExportSummary,y nuestro continuation
+     * El tipo de recuperación es List<String>,ClassCastException ocurrirá al reanudar.
+     * Aquí se utiliza una continuación interna separada para recibir el resultado objetivo.,Restaura la capa exterior después de la conversión.
      */
     private suspend fun exportNdJsonLines(): List<String> = suspendCancellableCoroutine { outer ->
         val method = BackupService::class.java.getDeclaredMethod(

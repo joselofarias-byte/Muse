@@ -8,68 +8,68 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 群聊选人:点名 → 最近说过话 → 稳定随机,最多两个。
+ * Selección de chat grupal:pasar lista → habló recientemente → estable aleatorio,Máximo dos.
  *
- * 纯函数,不需要库也不需要界面:规则本身对不对,这里逐条钉死。
+ * función pura,No se requieren bibliotecas ni interfaces:¿Es correcta la regla en sí?,Aquí está detallado punto por punto.
  */
 class GroupRespondersTest {
 
     @Test
     fun aNamedMemberIsAlwaysPickedEvenWithTheNicknamePrefix() {
-        val picked = select(members = FIVE, text = "阿远哥,你昨天说的那个")
+        val picked = select(members = FIVE, text = "Hermano Ayuan,El que dijiste ayer")
 
-        assertEquals("点名的人排在第一个", "c1", picked.first())
+        assertEquals("La persona cuyo nombre se llama viene primero.", "c1", picked.first())
         assertTrue(picked.contains("c1"))
     }
 
     @Test
     fun thePrefixOfALongNameAlsoCounts() {
-        val members = listOf(candidate("c9", "小满同学"), candidate("c1", "阿远"))
+        val members = listOf(candidate("c9", "Compañero de clase Xiaoman"), candidate("c1", "Ayuan"))
 
-        val picked = select(members = members, text = "小满在吗")
+        val picked = select(members = members, text = "¿Está Xiaoman aquí?")
 
-        assertEquals("名字前两个字对得上就算叫到人", "c9", picked.first())
+        assertEquals("Si los dos primeros caracteres del nombre coinciden, lo llamarán.", "c9", picked.first())
     }
 
     @Test
     fun aSingleCharacterNameIsMatchedOnlyAsIs() {
-        val members = listOf(candidate("c1", "阿"), candidate("c2", "小满"))
+        val members = listOf(candidate("c1", "ah"), candidate("c2", "Xiaoman"))
 
-        assertEquals("c1", select(members = members, text = "阿,你在吗").first())
-        assertFalse("名字没出现就不算叫到", mentions("阿", "晚上好"))
+        assertEquals("c1", select(members = members, text = "ah,¿Estás ahí?").first())
+        assertFalse("Si tu nombre no aparece, no cuenta como llamado.", mentions("ah", "buenas noches"))
     }
 
     @Test
     fun aNamedMemberPlusTheRecentSpeakerAreExactlyTheTwo() {
-        val picked = select(members = FIVE, text = "小满你怎么看", recentSenderIds = listOf("c4"))
+        val picked = select(members = FIVE, text = "Xiaoman, ¿qué opinas?", recentSenderIds = listOf("c4"))
 
-        assertEquals("先点名,再补最近说话的", listOf("c2", "c4"), picked)
+        assertEquals("Nombre primero,Añadir a lo que dije recientemente", listOf("c2", "c4"), picked)
     }
 
     @Test
     fun neverMoreThanTwoEvenInAFiveMemberGroup() {
-        val picked = select(members = FIVE, text = "大家晚上好")
+        val picked = select(members = FIVE, text = "buenas noches a todos")
 
         assertEquals(2, picked.size)
-        assertEquals("不能重复挑同一个人", picked.size, picked.distinct().size)
-        assertTrue("只能从成员里挑", FIVE.map { it.characterId }.containsAll(picked))
+        assertEquals("No puedes elegir a la misma persona dos veces", picked.size, picked.distinct().size)
+        assertTrue("Sólo puedes elegir entre miembros.", FIVE.map { it.characterId }.containsAll(picked))
     }
 
     @Test
     fun namingThreePeopleStillStopsAtTwo() {
-        val picked = select(members = FIVE, text = "阿远、小满、阿吾都来")
+        val picked = select(members = FIVE, text = "Ayuan, Xiaoman y Awu están todos aquí.")
 
-        assertEquals("按成员顺序取前两个", listOf("c1", "c2"), picked)
+        assertEquals("Tome los dos primeros en orden de miembros", listOf("c1", "c2"), picked)
     }
 
     @Test
     fun theSameSceneAlwaysPicksTheSamePeople() {
         val seed = responderSeedOf(threadId = "g1", messageId = "m1")
 
-        val first = select(members = FIVE, text = "在吗", seed = seed)
-        val second = select(members = FIVE, text = "在吗", seed = seed)
+        val first = select(members = FIVE, text = "¿Está ahí?", seed = seed)
+        val second = select(members = FIVE, text = "¿Está ahí?", seed = seed)
 
-        assertEquals("同一个群同一条消息换不了人", first, second)
+        assertEquals("Las personas del mismo grupo y el mismo mensaje no pueden cambiar", first, second)
     }
 
     @Test
@@ -83,7 +83,7 @@ class GroupRespondersTest {
 
         val recent = recentSpeakerIdsOf(messages)
 
-        assertEquals("只留最近的发言者,去掉重复,旧的 c1 不在窗口里", listOf("c2", "c3"), recent)
+        assertEquals("Mantenga solo los oradores más recientes,eliminar duplicados,El viejo c1 no está en la ventana.", listOf("c2", "c3"), recent)
     }
 
     @Test
@@ -98,7 +98,7 @@ class GroupRespondersTest {
 
     @Test
     fun anEmptyGroupPicksNobody() {
-        assertEquals(emptyList<String>(), selectGroupResponders(emptyList(), "在吗", emptyList(), seed = 1L))
+        assertEquals(emptyList<String>(), selectGroupResponders(emptyList(), "¿Está ahí?", emptyList(), seed = 1L))
     }
 
     private fun select(
@@ -115,17 +115,17 @@ class GroupRespondersTest {
         characterId = characterId,
         sender = sender,
         type = MpMessageType.TEXT,
-        content = "第 $id 句",
+        content = "No. $id frase",
         createdAt = 1L,
     )
 
     private companion object {
         val FIVE: List<GroupResponderCandidate> = listOf(
-            GroupResponderCandidate(characterId = "c1", name = "阿远"),
-            GroupResponderCandidate(characterId = "c2", name = "小满"),
-            GroupResponderCandidate(characterId = "c3", name = "阿吾"),
-            GroupResponderCandidate(characterId = "c4", name = "阿岑"),
-            GroupResponderCandidate(characterId = "c5", name = "阿迟"),
+            GroupResponderCandidate(characterId = "c1", name = "Ayuan"),
+            GroupResponderCandidate(characterId = "c2", name = "Xiaoman"),
+            GroupResponderCandidate(characterId = "c3", name = "Awu"),
+            GroupResponderCandidate(characterId = "c4", name = "azen"),
+            GroupResponderCandidate(characterId = "c5", name = "Ah Chi"),
         )
     }
 }

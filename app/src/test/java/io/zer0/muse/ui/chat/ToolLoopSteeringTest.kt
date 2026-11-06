@@ -32,12 +32,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.uuid.Uuid
 
 /**
- * 工具轮之间的插话通道（ToolLoopHost.drainSteeringMessages）。
+ * canal de interpolación entre ruedas de herramientas (ToolLoopHost.drainSteeringMessages).
  *
- * 钉住三件事：
- *  1. 有插话时，它作为一条独立的 USER 消息接在**全部 tool 结果之后**、下一轮请求之前；
- *  2. 无插话时（默认空实现），history 与插话通道不存在时逐字一致；
- *  3. 插话不打断正在执行的工具 —— 取件发生在工具执行完成之后，结果照旧回填。
+ * Fija tres cosas:
+ *  1. Cuando hay una interrupción, se sigue como un mensaje de USUARIO independiente.**Después de todos los resultados de la herramienta**, antes de la próxima ronda de solicitudes;
+ *  2. Cuando no hay interrupción (implementación vacía predeterminada),history Concordancia textual con cuando no existe el canal de interjección;
+ *  3. Interrumpir sin interrumpir la herramienta de ejecución. —— La recogida se produce una vez completada la ejecución de la herramienta y los resultados se completan como de costumbre.
  */
 class ToolLoopSteeringTest {
 
@@ -108,8 +108,8 @@ class ToolLoopSteeringTest {
     )
 
     /**
-     * @param steering 每次 drain 依次返回的元素（List<String> 的列表），耗尽后返回空
-     * @param overrideSteering false 时完全使用 ToolLoopHost 的默认实现（不覆盖插话通道）
+     * @param steering Cada drenaje devuelve los elementos a su vez (List<String> lista), regresa vacío después del agotamiento
+     * @param overrideSteering false La implementación predeterminada de ToolLoopHost se utiliza por completo (no anula el canal de barcaza)
      */
     private class SteeringHost(
         private val results: ArrayDeque<StreamRoundResult>,
@@ -150,12 +150,12 @@ class ToolLoopSteeringTest {
     @Test
     fun `steering message enters next round as user message after tool results`() = runBlocking {
         val toolExecuted = AtomicInteger(0)
-        // 取件时机：drain 被调用时，本轮工具必须已经执行完（插话不打断正在跑的工具）。
+        // Hora de recogida:drain Cuando se llama, la ronda actual de la herramienta debe haber terminado de ejecutarse (la interrupción no interrumpe la herramienta en ejecución).
         var executedAtDrain = -1
         val host =
             SteeringHost(
                 results = ArrayDeque(listOf(toolRound("c1"), finalRound())),
-                steering = listOf(listOf("等等，别改那个文件")),
+                steering = listOf(listOf("Espera, no cambies ese archivo.")),
                 onDrain = { executedAtDrain = toolExecuted.get() },
             )
         coEvery { registry.executeFromJson("calculator", any()) } coAnswers {
@@ -172,21 +172,21 @@ class ToolLoopSteeringTest {
 
         val request = host.calls[1].history
         val lastToolIndex = request.indexOfLast { it.role == MessageRole.TOOL }
-        val steeringIndex = request.indexOfLast { it.role == MessageRole.USER && it.content == "等等，别改那个文件" }
-        assertTrue("插话必须出现在下一轮请求里", steeringIndex >= 0)
-        assertTrue("插话必须排在全部 tool 结果之后", steeringIndex > lastToolIndex)
-        assertEquals("插话必须落在请求末尾", request.size - 1, steeringIndex)
-        // 插话不得拆散 assistant(tool_calls) 与它的 tool 结果
+        val steeringIndex = request.indexOfLast { it.role == MessageRole.USER && it.content == "Espera, no cambies ese archivo." }
+        assertTrue("La interjección debe aparecer en la siguiente ronda de solicitudes.", steeringIndex >= 0)
+        assertTrue("Las interjecciones deben ordenarse después de todos los resultados de la herramienta.", steeringIndex > lastToolIndex)
+        assertEquals("La interrupción debe caer al final de la solicitud.", request.size - 1, steeringIndex)
+        // No se permite que las interjecciones se rompan. assistant(tool_calls) con los resultados de su herramienta
         assertEquals(1, request.count { it.role == MessageRole.TOOL && it.toolCallId == "c1" })
         assertTrue(request.any { it.role == MessageRole.TOOL && it.content == "3" })
 
-        // 工具只执行了一次，且是在取插话之前完成 —— 插话没有打断它
+        // La herramienta solo se ejecutó una vez y se completó antes de que se tomara la interrupción. —— interviniendo sin interrumpirlo
         assertEquals(1, toolExecuted.get())
         assertEquals(1, executedAtDrain)
 
-        // 落进本轮 history 的插话同样在 tool 结果之后
+        // La interrupción que cae en esta ronda de la historia también es posterior al resultado de la herramienta.
         val historyLastTool = history.indexOfLast { it.role == MessageRole.TOOL }
-        val historySteering = history.indexOfLast { it.content == "等等，别改那个文件" }
+        val historySteering = history.indexOfLast { it.content == "Espera, no cambies ese archivo." }
         assertTrue(historySteering > historyLastTool)
     }
 
@@ -208,11 +208,11 @@ class ToolLoopSteeringTest {
         )
         orchestrator().runLoop(params(), explicitEmptyHistory, explicitEmptyHost, accessor, coordinator)
 
-        // 空实现不产生任何额外消息：角色/正文/toolCallId 序列逐条一致，且没有 USER 消息
+        // Una implementación vacía no produce ningún mensaje adicional: rol/Texto/toolCallId La secuencia es consistente una por una y no hay ningún mensaje de USUARIO.
         assertEquals(steerableProjection(defaultHistory), steerableProjection(explicitEmptyHistory))
         assertFalse(defaultHistory.any { it.role == MessageRole.USER })
         assertEquals(0, defaultHost.drainCount)
-        // 空实现下下一轮请求与改动前同形：assistant(tool_calls) + TOOL
+        // La siguiente ronda de solicitudes después de la implementación vacía es la misma que antes del cambio:assistant(tool_calls) + TOOL
         val request = defaultHost.calls[1].history
         assertEquals(listOf(MessageRole.ASSISTANT, MessageRole.TOOL), request.map { it.role })
     }
@@ -222,7 +222,7 @@ class ToolLoopSteeringTest {
         coEvery { registry.executeFromJson("calculator", any()) } coAnswers { "3" }
         val host = SteeringHost(
             results = ArrayDeque(listOf(toolRound("c1"), finalRound())),
-            steering = listOf(listOf("先别动 utils.kt", "改成只读检查")),
+            steering = listOf(listOf("No te muevas todavía utils.kt", "Cambiar a verificación de solo lectura")),
         )
 
         val history = mutableListOf<UIMessage>()
@@ -230,7 +230,7 @@ class ToolLoopSteeringTest {
 
         assertTrue(result.success)
         val users = host.calls[1].history.filter { it.role == MessageRole.USER }.map { it.content }
-        assertEquals(listOf("先别动 utils.kt", "改成只读检查"), users)
+        assertEquals(listOf("No te muevas todavía utils.kt", "Cambiar a verificación de solo lectura"), users)
     }
 
     private companion object {

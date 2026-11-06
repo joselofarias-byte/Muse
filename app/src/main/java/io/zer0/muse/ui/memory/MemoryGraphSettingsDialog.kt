@@ -27,12 +27,12 @@ import io.zer0.muse.ui.common.settings.SettingsSwitchRow
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * v2.6.2（用户反馈）: 记忆星座设置弹窗。
+ * v2.6.2(comentarios de los usuarios): Ventana emergente de configuración de constelación de memoria.
  *
- * 从星座页右上角的小按钮打开，控制：
- *  - AI 深化关联（对弱边用大模型判定关系类型，成本高，默认关）
- *  - 补边频率（会话结束 / 打开星座页 / 仅手动）
- *  - 立即重建关联（手动跑一次补边）
+ * Ábrelo desde el pequeño botón en la esquina superior derecha de la página de la constelación y controla:
+ *  - AI Profundizar la asociación (use un modelo grande para determinar el tipo de relación para bordes débiles, alto costo, desactivado de forma predeterminada)
+ *  - Frecuencia suplementaria (finalizar sesión/abrir página de constelación/solo manual)
+ *  - Restablezca inmediatamente la asociación (ejecute manualmente un parche de borde)
  */
 @Composable
 fun MemoryGraphSettingsDialog(
@@ -105,7 +105,7 @@ fun MemoryGraphSettingsDialog(
     )
 }
 
-/** 频率选项：选中用 Primary 实心，未选中用 Text 描边。 */
+/** Opciones de frecuencia: Primario sólido si está seleccionado, Texto con trazos si no está seleccionado. */
 @Composable
 private fun FrequencyOption(text: String, selected: Boolean, onClick: () -> Unit) {
     MuseCapsuleButton(

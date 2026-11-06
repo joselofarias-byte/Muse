@@ -2,19 +2,19 @@ import { SETTINGS_ICON_PATHS } from "./settings-icon-paths.js";
 import "./primitives.css";
 
 export interface SettingsIconProps {
-  /** 设置条目的 `iconKey`（与 `MuseIcons` 里的 `val` 同名）。 */
+  /** establecer entrada `iconKey`(con `MuseIcons` adentro `val` mismo nombre). */
   readonly iconKey: string;
 }
 
-/** 未知 iconKey 的兜底：一个空心圆，保证行高与左侧栏宽度不变。 */
+/** La línea inferior de la iconKey desconocida: un círculo hueco para garantizar que la altura de la fila y el ancho de la columna izquierda permanezcan sin cambios. */
 const FALLBACK_PATHS: readonly string[] = ["M5.5 12a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0 -13 0"];
 
 /**
- * 设置项左侧图标：圆底药丸 + 线条图标。
+ * El ícono en el lado izquierdo del elemento de configuración: píldora inferior redonda + ícono de línea.
  *
- * 图形来自 `settings-icon-paths.ts`（照搬 `MuseIcons` 的 pathData），
- * 尺寸与颜色全部走令牌（`--muse-icons-icon-large` 圆底 / `--muse-icons-icon-small` 图形 /
- * `--ui-surface-variant` 底 / `--ui-on-surface-variant` 线），页面里不写数值。
+ * Gráficos de `settings-icon-paths.ts`(Copiar `MuseIcons` rutaDatos),
+ * Todos los tamaños y colores están tokenizados (`--muse-icons-icon-large` fondo redondo / `--muse-icons-icon-small` gráficos /
+ * `--ui-surface-variant` abajo / `--ui-on-surface-variant` línea), no se escribe ningún valor numérico en la página.
  */
 export function SettingsIcon({ iconKey }: SettingsIconProps) {
   const paths = SETTINGS_ICON_PATHS[iconKey] ?? FALLBACK_PATHS;

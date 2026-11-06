@@ -4,11 +4,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F5: 压缩完成回调不得把「已切走的会话」的 checkpoint 水位线写成全局状态。
+ * AUD-UI-F5: La devolución de llamada de finalización de la compresión no debe escribir la marca de agua del punto de control de la "sesión cortada" como estado global.
  *
- * 压缩跑在 IO 协程,完成时用户可能已切到 B 会话。原实现无条件执行
+ * Ejecuciones de compresión en la corrutina IO,Es posible que el usuario haya cambiado a la sesión B cuando haya completado. Implementación original de ejecución incondicional.
  * `checkpointCoveredSessionId = sessionId; refresh; updateContextTokenCount()`,
- * 于是 B 会话读到 A 的覆盖集 → 上下文占用率按错会话计算。
+ * Entonces la sesión B lee el conjunto de cobertura de A. → La ocupación del contexto se calcula por sesión.
  */
 class ChatCompressionWatermarkGuardTest {
 
@@ -17,16 +17,16 @@ class ChatCompressionWatermarkGuardTest {
     @Test
     fun `compression completion guards watermark against stale session`() {
         val src = source()
-        // 用本次新增的注释锚点定位(文件里另有降级分支也用 displayedSessionId 判定)
+        // Utilice el posicionamiento del punto de anclaje de anotación recién agregado(También hay ramas degradadas en el archivo que también se determinan mediante displaySessionId.)
         val start = src.indexOf("AUD-UI-F5")
-        assertTrue("未找到 AUD-UI-F5 防护块", start >= 0)
-        val body = src.substring(start, (start + 700).coerceAtMost(src.length))
+        assertTrue("Bloque de protección AUD-UI-F5 no encontrado", start >= 0)
+        val body = src.substring(start, (start + 1400).coerceAtMost(src.length))
         assertTrue(
-            "仅在仍显示该会话时才写 checkpointCoveredSessionId",
+            "Solo escribe si aún se muestra la sesión checkpointCoveredSessionId",
             body.contains("host.checkpointCoveredSessionId = sessionId"),
         )
         assertTrue(
-            "仅在仍显示该会话时才重算上下文 token",
+            "Sólo recalcular el contexto si la sesión todavía se muestra token",
             body.contains("host.updateContextTokenCount()"),
         )
     }
@@ -35,9 +35,9 @@ class ChatCompressionWatermarkGuardTest {
     fun `no unconditional watermark write remains`() {
         val src = source()
         val guard = src.indexOf("AUD-UI-F5")
-        assertTrue("未找到 AUD-UI-F5 防护块", guard >= 0)
-        // 防护块之内应同时出现：判定、水位线写入、token 重算
-        val block = src.substring(guard, (guard + 700).coerceAtMost(src.length))
+        assertTrue("Bloque de protección AUD-UI-F5 no encontrado", guard >= 0)
+        // Dentro del bloque de protección deben aparecer al mismo tiempo: juicio, escritura del nivel del agua,token Recalcular
+        val block = src.substring(guard, (guard + 1400).coerceAtMost(src.length))
         assertTrue(block.contains("host.displayedSessionId() == sessionId"))
         assertTrue(block.contains("host.checkpointCoveredSessionId = sessionId"))
     }

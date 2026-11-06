@@ -11,20 +11,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 /**
- * 会话待办（持久化）。
+ * Sesión de tareas pendientes (persistencia).
  *
- * ## 为什么要有这张表
+ * ## ¿Por qué necesitamos esta mesa?
  *
- * 助手自审第 2 条：「跨会话的待办没有闭环机制。比如播放器那事儿、外包那事儿，
- * 晾几天后我要么忘了，要么只在被追问时想起。缺一个『未完成话题台账』，能主动提醒。」
+ * Punto 2 de autoevaluación del asistente: "No existe un mecanismo de circuito cerrado para las tareas pendientes entre sesiones. Por ejemplo, asuntos de jugadores, asuntos de subcontratación,
+ * Después de unos días de secado, o lo olvido o solo pienso en él cuando lo presiono. Lo que falta es un "Libro mayor de temas inacabados" que pueda recordárselo de forma proactiva. "
  *
- * 此前待办只存在 `TodoTool.sessionTodos`（进程内 ConcurrentHashMap）：
- * 切会话清空、进程重启丢失、别的会话看不到。于是「我记下了」是句空话。
+ * Anteriormente la tarea pendiente sólo existía `TodoTool.sessionTodos`(ConcurrentHashMap en proceso):
+ * Todas las sesiones se borran, los procesos se reinician y se pierden y no se pueden ver otras sesiones. Entonces "lo escribí" es una frase vacía.
  *
- * 表按 sessionId 存一行（整份清单 JSON），而不是每个 todo 一行：
- * - `todo_write` 的语义就是「整份替换」，按行存反而要在每次写入时做 diff；
- * - 清单条目数很小（通常 < 20），JSON 一列足够；
- * - 不引入新的一对多关系，迁移和回滚都简单。
+ * La tabla almacena una fila por ID de sesión (la lista completa en JSON), en lugar de una fila por tarea pendiente:
+ * - `todo_write` La semántica es "reemplazo completo". Si guarda por fila, deberá hacer una diferencia cada vez que escriba;
+ * - El número de artículos del inventario es pequeño (generalmente < 20),JSON Una columna es suficiente;
+ * - No se introduce ninguna nueva relación de uno a muchos y la migración y la reversión son sencillas.
  */
 @Serializable
 @Entity(
@@ -33,16 +33,16 @@ import kotlinx.serialization.Serializable
 )
 data class SessionTodoEntity(
     @PrimaryKey val id: String,
-    /** 所属会话。唯一索引 —— 每个会话只有一份当前清单。 */
+    /** Perteneciente a la sesión. índice único —— Sólo hay una lista actual por sesión. */
     @ColumnInfo(defaultValue = "") val sessionId: String,
-    /** 整份清单的 JSON（与 TodoTool.TodoList 的序列化格式一致）。 */
+    /** JSON de toda la lista (en el mismo formato de serialización que TodoTool.TodoList). */
     @ColumnInfo(defaultValue = "") val todosJson: String,
     /**
-     * 是否还有未完成项（pending + in_progress > 0）。
+     * ¿Hay algún elemento sin terminar (pending + in_progress > 0).
      *
-     * 冗余字段，让「有哪些会话还有事没做完」不必逐行解析 JSON。
-     * 写入时由仓储维护，不做数据库生成列 —— SQLite 生成列要求表达式确定，
-     * 而条目数需要解析 JSON，做不到。
+     * Los campos redundantes eliminan la necesidad de analizar JSON línea por línea para "¿qué conversaciones tienen asuntos pendientes?"
+     * Lo mantiene el almacén al escribir y no genera columnas en la base de datos. —— SQLite La columna generada requiere que se determine una expresión,
+     * La cantidad de entradas requiere analizar JSON, lo cual no se puede hacer.
      */
     @ColumnInfo(defaultValue = "0") val hasOpenItems: Boolean = false,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = 0L,
@@ -57,14 +57,14 @@ interface SessionTodoDao {
     @Query("SELECT * FROM session_todos WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getBySession(sessionId: String): SessionTodoEntity?
 
-    /** 全量（备份导出用）。 */
+    /** Importe total (para copia de seguridad y exportación). */
     @Query("SELECT * FROM session_todos")
     suspend fun getAll(): List<SessionTodoEntity>
 
     @Query("SELECT * FROM session_todos WHERE sessionId = :sessionId LIMIT 1")
     fun observeBySession(sessionId: String): Flow<SessionTodoEntity?>
 
-    /** 还有未完成项的会话（跨会话台账的查询入口）。 */
+    /** También hay sesiones con elementos inacabados (entrada de consulta para libros de contabilidad entre sesiones). */
     @Query("SELECT * FROM session_todos WHERE hasOpenItems = 1 ORDER BY updatedAt DESC")
     suspend fun getSessionsWithOpenItems(): List<SessionTodoEntity>
 
@@ -74,7 +74,7 @@ interface SessionTodoDao {
     @Query("DELETE FROM session_todos WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** 恢复备份前清空（与其它表同口径）。 */
+    /** Borrar antes de restaurar la copia de seguridad (mismo calibre que otras tablas). */
     @Query("DELETE FROM session_todos")
     suspend fun deleteAll()
 

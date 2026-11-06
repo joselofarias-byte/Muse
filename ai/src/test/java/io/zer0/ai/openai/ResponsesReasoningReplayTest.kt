@@ -10,12 +10,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * B5-03: OpenAI Responses reasoning 回放数据契约测试。
+ * B5-03: OpenAI Responses reasoning Reproducir pruebas de contrato de datos.
  *
- * 锁定两个关键结构,防止回归:
- *  1. 请求 `include` 字段 — 缺它服务端不返回 encrypted_content,回放链路无从触发
- *     (2026-09 排查结论:此前该字段缺失导致整条回放空转);
- *  2. 回放 reasoning item 的形状 — type/id/encrypted_content/summary(必填空数组)。
+ * Bloquear dos estructuras clave,Prevenir la regresión:
+ *  1. Solicitar `include` campo — Sin él, el servidor no volverá. encrypted_content,El enlace de reproducción no se puede activar
+ *     (2026-09 Conclusión de la investigación:Anteriormente, la falta de este campo provocaba que toda la reproducción quedara inactiva.);
+ *  2. Reproducir la forma del elemento de razonamiento. — type/id/encrypted_content/summary(Matriz vacía requerida).
  */
 class ResponsesReasoningReplayTest {
 
@@ -49,8 +49,8 @@ class ResponsesReasoningReplayTest {
 
     @Test
     fun `request without include leaves nothing to serialize for replay`() {
-        // 不带 include 时 encrypted_content 恒为 null(服务端行为) — 这里只锁定
-        // DTO 层不因缺省字段崩溃,兼容旧调用方。
+        // Sin inclusión, contenido_encriptado siempre es null(Comportamiento del servidor) — Sólo cierra aquí
+        // DTO Las capas no colapsan con los campos predeterminados,Compatible con personas mayores que llaman.
         val request = ResponsesRequest(
             model = "gpt-5",
             input = emptyList(),

@@ -3,16 +3,16 @@ package io.zer0.muse.tools
 import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
-/** 普通聊天里的“许愿”：允许当前助手之后主动联系用户。 */
+/** en chat normal“pide un deseo”: permite que el asistente actual se comunique proactivamente con el usuario más adelante. */
 object ProactiveWishTool {
     fun toolDef() = ToolRegistry.ToolDef(
         name = "proactive_message_wish",
-        description = "当用户要求助手稍后主动联系、问候或关心时,为当前助手开启主动消息。" +
-            "宿主会自动把这条意愿绑定到当前助手,不要传 assistant id。",
+        description = "Cuando el usuario le pide al asistente que se comunique, salude o se preocupe más tarde,Habilite la mensajería proactiva para el asistente actual." +
+            "El anfitrión vinculará automáticamente este deseo al asistente actual.,No pase la identificación del asistente.",
         parameters = mapOf(
             "schedule_hint" to
-                "可选。自然语言的时间偏好,例如「每天晚上」「明天早上」。" +
-                "只记录意愿,不要承诺具体时刻。",
+                "Opcional. Preferencia de tiempo del lenguaje natural,Por ejemplo, \"todas las noches\" y \"mañana por la mañana\"." +
+                "Sólo desea registrar,No te comprometas con un momento específico.",
         ),
         category = "built-in",
         riskLevel = ToolRiskLevel.NORMAL,
@@ -36,9 +36,9 @@ object ProactiveWishTool {
         )
         val hint = args["schedule_hint"]?.trim()?.takeIf { it.isNotBlank() }
         return if (hint == null) {
-            "已记下这个愿望。之后我会在合适的时间主动联系你；主动消息可以发送到普通聊天，不只限于 Agent 会话。"
+            "Este deseo ha sido tomado en cuenta. Luego me comunicaré con usted de manera proactiva en el momento apropiado; Se pueden enviar mensajes proactivos a chats habituales, no solo a conversaciones de agentes."
         } else {
-            "已记下这个愿望（时间偏好：$hint）。我会结合你的主动消息设置和免打扰时段安排，不承诺精确到点。"
+            "Este deseo ha sido anotado (preferencia horaria:$hint). Combinaré su configuración de mensajes proactivos y horarios de no molestar, y no prometo ser preciso."
         }
     }
 }

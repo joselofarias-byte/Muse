@@ -19,17 +19,17 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 带分段控件的设置项行 — 左侧图标 + 标题 + 副标题,下方嵌入 [MuseCapsuleTab]。
+ * Fila de configuración con control segmentado — Icono izquierdo + título + subtítulo,Insertar a continuación [MuseCapsuleTab].
  *
- * 用于聊天风格、语气、主题模式等需要在分组卡片内做单选的场景,
- * 统一分段控件与卡片其他行的视觉间距。
+ * Se utiliza para escenarios como estilo de chat, tono, modo de tema, etc. que requieren una selección única dentro de tarjetas agrupadas.,
+ * Uniforma el espacio visual entre los controles segmentados y otras filas de tarjetas.
  *
- * @param icon 左侧图标
- * @param title 主标题
- * @param subtitle 副标题
- * @param options 选项文本列表
- * @param selectedIndex 当前选中索引
- * @param onSelectedChange 选中变更回调
+ * @param icon icono izquierdo
+ * @param title título principal
+ * @param subtitle subtítulo
+ * @param options Lista de texto de opciones
+ * @param selectedIndex Índice actualmente seleccionado
+ * @param onSelectedChange Seleccione cambiar devolución de llamada
  */
 @Composable
 fun SettingsSegmentedRow(
@@ -58,7 +58,7 @@ fun SettingsSegmentedRow(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                // LAYOUT-01: 限行兜底(见 SettingsSwitchRow 同处说明)
+                // LAYOUT-01: Restricciones de viaje(Ver la misma descripción de SettingsSwitchRow)
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

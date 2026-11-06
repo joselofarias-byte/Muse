@@ -17,9 +17,9 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * v1.0.74: 用真实 ChatGPT 导出数据做端到端导入测试。
- * 文件: C:/Users/21192/AppData/Local/Temp/gpt_conversations.json
- * 验证: 73 会话 / 1638 消息,首尾顺序正确。
+ * v1.0.74: Realice pruebas de importación de un extremo a otro con datos de exportación reales de ChatGPT.
+ * Archivo: C:/Users/21192/AppData/Local/Temp/gpt_conversations.json
+ * verificar: 73 Conversaciones / 1638 Mensajes,El primer y último orden son correctos.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -55,7 +55,7 @@ class ChatGptRealDataImportTest {
     fun importRealChatGptData_importsAllConversations() = runBlocking {
         val jsonFile = File("C:/Users/21192/AppData/Local/Temp/gpt_conversations.json")
         if (!jsonFile.exists()) {
-            println("SKIP: 真实数据文件不存在")
+            println("SKIP: El archivo de datos real no existe.")
             return@runBlocking
         }
         val json = jsonFile.readText()
@@ -68,11 +68,11 @@ class ChatGptRealDataImportTest {
         )
 
         println("REAL-IMPORT conversations=${result.conversationsImported} messages=${result.messagesImported} errors=${result.errors}")
-        assert(result.errors.isEmpty()) { "导入有错误: ${result.errors}" }
-        // Robolectric 无 FTS5 模块,appendMessage 事务回滚导致 DB 查不到消息(真机正常),
-        // 以 ImportResult 计数为准。
-        assert(result.conversationsImported == 73) { "会话数 ${result.conversationsImported} != 73" }
-        assert(result.messagesImported >= 1600) { "消息数 ${result.messagesImported} 远少于预期 1638" }
+        assert(result.errors.isEmpty()) { "Error de importación: ${result.errors}" }
+        // Robolectric Sin módulo FTS5,appendMessage La reversión de transacciones hace que la base de datos no pueda encontrar mensajes(La máquina real es normal.),
+        // Basado en el recuento de ImportResult.
+        assert(result.conversationsImported == 73) { "Número de sesiones ${result.conversationsImported} != 73" }
+        assert(result.messagesImported >= 1600) { "Número de mensajes ${result.messagesImported} Mucho menos de lo esperado 1638" }
         java.io.File(
             "C:/Users/21192/AppData/Local/Temp/gpt_import_result.txt",
         ).writeText("conversations=${result.conversationsImported} messages=${result.messagesImported} errors=${result.errors}")

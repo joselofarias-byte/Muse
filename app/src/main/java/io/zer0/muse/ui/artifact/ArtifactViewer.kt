@@ -40,8 +40,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * v2.0.1: 富内容预览语言判定(svg / html / chart / mermaid) — type 与 language 双查。
- * 供查看器与「全屏浏览器形态」入口共用同一判据。
+ * v2.0.1: Determinación del idioma de vista previa de contenido enriquecido(svg / html / chart / mermaid) — type Vuelva a verificar con el idioma.
+ * El visor y el portal "Modo de navegador de pantalla completa" comparten los mismos criterios.
  */
 fun richPreviewLanguage(type: String, language: String?): String? {
     val richTypes = listOf("svg", "html", "chart", "mermaid")
@@ -52,13 +52,13 @@ fun richPreviewLanguage(type: String, language: String?): String? {
     }
 }
 
-/** 另存为文本时,标题清洗后为空时的兜底文件名。 */
+/** Al guardar como texto,El nombre del archivo oculto cuando el título está vacío después de la limpieza. */
 internal const val DEFAULT_ARTIFACT_FILE_NAME = "artifact"
 
 /**
- * 由产物标题生成 SAF 另存文件名(非法字符替换为下划线,保留中英文与数字)。
+ * Generar SAF a partir del título del producto Guardar nombre del archivo(Los caracteres ilegales se reemplazan con guiones bajos.,Mantener chino, inglés y números.).
  *
- * @param extension 带点的扩展名,如 ".md"；不传时退回 ".txt"
+ * @param extension extensión punteada,Como por ejemplo ".md";Devolver si no se transmite ".txt"
  */
 internal fun artifactExportFileName(title: String, extension: String = ".txt"): String {
     val sanitized = title.trim()
@@ -70,10 +70,10 @@ internal fun artifactExportFileName(title: String, extension: String = ".txt"): 
 }
 
 /**
- * 按产物类型与语言决定导出扩展名。
+ * Determine la extensión de exportación según el tipo de producto y el idioma.
  *
- * 表格与 Markdown 给 .md（GFM 表格在多数编辑器里能直接渲染），
- * JSON 给 .json，代码按 language 走，其余退回 .txt。
+ * Tablas con Markdown a .md (GFM Las tablas se pueden representar directamente en la mayoría de los editores),
+ * JSON Para .json, el código se mueve según el idioma y el resto se devuelve a .txt.
  */
 internal fun artifactExportExtension(type: String, language: String?): String {
     val byType =
@@ -106,13 +106,13 @@ internal fun artifactExportExtension(type: String, language: String?): String {
             "css" to ".css",
         )
     val normalizedType = type.lowercase()
-    // 单出口：先按类型查，类型是 code 时再按语言查，都没有就退回 .txt
+    // Exportación única: primero verifique por tipo, luego verifique por idioma cuando el tipo sea código y regrese si no hay resultado. .txt
     return byType[normalizedType]
         ?: (if (normalizedType == "code") byLanguage[language?.lowercase()] else null)
         ?: ".txt"
 }
 
-/** 导出用的 MIME。SAF 的 CreateDocument 需要它来挑默认应用。 */
+/** MIME utilizado para exportar.SAF CreateDocument requiere que elija la aplicación predeterminada. */
 internal fun artifactExportMime(type: String): String = when (type.lowercase()) {
     "table", "markdown" -> "text/markdown"
     "json" -> "application/json"
@@ -123,10 +123,10 @@ internal fun artifactExportMime(type: String): String = when (type.lowercase()) 
 }
 
 /**
- * 产物查看器弹窗 —— 显示标题、完整内容与复制按钮。
+ * Ventana emergente del visor de productos —— Mostrar título, contenido completo y botón copiar.
  *
- * Phase 2 补齐: 标题行增加「分享」「另存为文本」动作,
- * 分享复用 [ShareIntentHelper],另存走 SAF CreateDocument(app 已有保存模式)。
+ * Phase 2 completo: Se agregaron las acciones "Compartir" y "Guardar como texto" a la línea de título.,
+ * Compartir y reutilizar [ShareIntentHelper],Guardar como SAF CreateDocument(app El modo guardar ya existe).
  */
 @Composable
 fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy: (String) -> Unit) {
@@ -136,13 +136,13 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
         "code" -> true
         else -> false
     }
-    // v2.0.1: 富内容判定同时看 type 与 language（抽取器常把 HTML 归为 type=code + language=html，
-    // 旧判定只认 type，导致「HTML 产物点开只有一串代码」，用户反馈修复）。
+    // v2.0.1: La determinación del contenido enriquecido analiza tanto el tipo como el idioma (los extractores a menudo clasifican HTML como type=code + language=html,
+    // La antigua sentencia sólo reconoce el tipo, lo que resulta en "HTML Solo hay una cadena de código cuando se hace clic en el producto", corregido según los comentarios de los usuarios).
     val richLanguage = richPreviewLanguage(artifact.type, artifact.language)
     val isRichContent = richLanguage != null
-    // v2.6.10: markdown / document / table / json 走 Markdown 渲染。
-    // 这些类型的正文本身是 Markdown 语法（表格、列表、代码块），
-    // 之前一律塞进 Text，用户点开产物看到的是原始竖线与星号。
+    // v2.6.10: markdown / document / table / json Utilice el renderizado Markdown.
+    // Estos tipos de texto son en sí mismos sintaxis Markdown (tablas, listas, bloques de código),
+    // Antes, se insertaba todo el texto y cuando los usuarios hacían clic en el producto, veían las líneas verticales y los asteriscos originales.
     val isMarkdownContent =
         !isRichContent &&
             artifact.type.lowercase() in setOf("markdown", "document", "table", "json", "csv")
@@ -152,9 +152,9 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
     val exportFileName =
         remember(artifact.title, exportExtension) { artifactExportFileName(artifact.title, exportExtension) }
 
-    // 另存为文本:SAF 选择目标位置后写入(与通知导出/备份导出同一模式)
-    // v2.6.10: 按产物类型给 MIME，表格/Markdown 存成 .md、JSON 存成 .json,
-    // 不再一律 text/plain —— 那样存出来的表格没有任何编辑器会当表格解析。
+    // guardar como texto:SAF Selecciona el destino y escribe(Exportar con notificaciones/Copia de seguridad y exportación del mismo modelo.)
+    // v2.6.10: MIME por tipo de producto, tabla/Markdown Guardar como .md,JSON guardar .json,
+    // ya no es uniforme text/plain —— Ningún editor analizará la tabla guardada de esta manera como una tabla.
     val saveTextLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(exportMime),
     ) { uri ->
@@ -184,7 +184,7 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // 标题行
+                // línea de título
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -204,7 +204,7 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    // Phase 2: 分享产物文本
+                    // Phase 2: Compartir texto del producto
                     MuseTactileButton(
                         icon = MuseIcons.share,
                         onClick = {
@@ -229,7 +229,7 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                         size = MuseIconSizes.touchTarget,
                         iconSize = 20.dp,
                     )
-                    // Phase 2: 另存为文本文件
+                    // Phase 2: Guardar como archivo de texto
                     MuseTactileButton(
                         icon = MuseIcons.deviceFloppy,
                         onClick = { saveTextLauncher.launch(exportFileName) },
@@ -246,7 +246,7 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                         iconSize = 20.dp,
                     )
                 }
-                // 内容区
+                // área de contenido
                 Surface(
                     color = if (isMonospace) {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -259,8 +259,8 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                         .heightIn(max = 320.dp),
                 ) {
                     if (isRichContent) {
-                        // v1.62: svg/html/chart/mermaid 用 RichContentCard 渲染
-                        // 弹窗内无 navController,禁用全屏预览按钮(避免无效点击)
+                        // v1.62: svg/html/chart/mermaid Renderizar con RichContentCard
+                        // No hay ninguna ventana emergente navController,Deshabilitar el botón de vista previa en pantalla completa(Evite clics no válidos)
                         io.zer0.muse.ui.markdown.RichContentCard(
                             language = richLanguage ?: artifact.type.lowercase(),
                             content = artifact.content,
@@ -270,8 +270,8 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                             showPreviewButton = false,
                         )
                     } else if (isMarkdownContent) {
-                        // Markdown 正文：交给项目里已有的 MarkdownText，
-                        // 它支持 GFM 表格 / 列表 / 代码块，表格不再退化成竖线文本。
+                        // Markdown Texto: entréguelo al MarkdownText existente en el proyecto.
+                        // Admite tablas/listas/bloques de código GFM, y las tablas ya no se degradan a texto vertical.
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -284,8 +284,8 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
                             )
                         }
                     } else {
-                        // 长文本产物：内容区自身滚动（Surface 限高 320dp），
-                        // 避免超长内容被 Surface 裁剪后外层滚动只能移动整个面板、裁掉部分永远不可见。
+                        // Productos de texto largo: el área de contenido se desplaza sola (Surface Límite de altura: 320 dp),
+                        // Para evitar que Surface recorte contenido demasiado largo, el desplazamiento exterior solo puede mover todo el panel y la parte recortada nunca será visible.
                         Text(
                             text = artifact.content,
                             style = if (isMonospace) {
@@ -307,7 +307,7 @@ fun ArtifactViewerDialog(artifact: ArtifactEntity, onDismiss: () -> Unit, onCopy
             }
         },
         confirmText = stringResource(R.string.artifact_copy),
-        // L6 已知限制: 复制未标注敏感(artifact 内容可能含敏感信息),暂不区分;后续可结合内容检测判断。
+        // L6 Limitaciones conocidas: Copia no marcada como confidencial(artifact El contenido puede contener información confidencial.),No hay distinción por ahora;El juicio posterior se puede combinar con la detección de contenido.
         onConfirm = { onCopy(artifact.content) },
         dismissText = null,
     )

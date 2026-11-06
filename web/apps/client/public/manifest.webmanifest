@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Muse",
   "short_name": "Muse",
-  "description": "持续认识你的 AI",
+  "description": "seguir conociéndote AI",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

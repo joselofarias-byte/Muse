@@ -3,22 +3,22 @@ package io.zer0.muse.channel
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.92: 渠道平台 — 外部 IM 接入的消息渠道类型。
+ * v1.0.92: plataforma de canal — Tipo de canal de mensajes para acceso a mensajería instantánea externa.
  *
- * v1 支持发送侧(把 Muse 的消息推到平台);接收侧与深度对接分步推进:
- *  - FEISHU  飞书(开放平台自建应用,tenant_access_token + im/v1 发送)
- *  - QQ      QQ 开放平台机器人(AppID/AppSecret 换 access_token + v2 发送)
- *  - WECLAW  微信 ClawBot(iLink 协议,2026-03 官方开放;扫码绑定 + 长轮询收发)
- *  - TELEGRAM Telegram 机器人(@BotFather 创建,Bot Token + 长轮询收发)
- *  - DINGTALK 钉钉机器人(开放平台应用,Stream 长连接接收 + sessionWebhook/OpenAPI 发送)
+ * v1 Soporte de envío(Empuje las noticias de Muse a la plataforma);El lado receptor y el atraque en profundidad se avanzan paso a paso.:
+ *  - FEISHU  Feishu(Aplicaciones de plataforma abierta y autoconstruidas,tenant_access_token + im/v1 enviar)
+ *  - QQ      QQ robot de plataforma abierta(AppID/AppSecret Cambiar access_token + v2 y enviar)
+ *  - WECLAW  WeChat ClawBot(iLink Acuerdo,2026-03 Oficialmente abierto;Escanee el código QR para vincular + sondeo largo para enviar y recibir)
+ *  - TELEGRAM Telegram robot(@BotFather crear,Bot Token + Transceptor de sondeo largo)
+ *  - DINGTALK Robot DingTalk(Aplicaciones de plataforma abierta,Stream Recepción de conexión larga + envío de sesión Webhook/OpenAPI)
  */
 @Serializable
 enum class ChannelPlatform { FEISHU, QQ, WECLAW, TELEGRAM, DINGTALK }
 
 /**
- * v1.0.92: 单条渠道配置。
+ * v1.0.92: Configuración de un solo canal.
  *
- * 凭据字段(APP Secret)在持久化前经 SecureKeyStore 加密,内存中为明文。
+ * Campo de credenciales(APP Secret)Cifrado con SecureKeyStore antes de la persistencia,El texto claro se almacena en la memoria.
  */
 @Serializable
 data class ChannelConfig(
@@ -26,57 +26,57 @@ data class ChannelConfig(
     val platform: ChannelPlatform,
     val name: String = "",
     val enabled: Boolean = true,
-    /** 平台应用凭据(飞书 App ID / QQ 机器人 AppID)。 */
+    /** Credenciales de aplicación de plataforma(Robot ID/QQ de la aplicación Feishu AppID). */
     val appId: String = "",
-    /** 平台应用密钥(飞书 App Secret / QQ AppSecret),存储时加密。 */
+    /** Clave de aplicación de plataforma(Feishu App Secret / QQ AppSecret),Cifrado cuando se almacena. */
     val appSecret: String = "",
-    /** 外部平台回调开关,默认关闭;不影响现有长连接接收。 */
+    /** Interruptor de devolución de llamada de plataforma externa,Desactivado de forma predeterminada;No afecta la recepción de conexiones largas existentes. */
     val webhookEnabled: Boolean = false,
-    /** Webhook 专用共享密钥(Feishu body token / QQ 回调 URL token),独立于 App Secret 并加密落盘。 */
+    /** Webhook clave privada compartida(Feishu body token / QQ devolución de llamada URL token),Independiente del secreto de la aplicación y de la ubicación del disco cifrado. */
     val webhookVerificationToken: String = "",
-    /** 发送目标:飞书 chat_id / open_id;QQ group_openid / user_openid。 */
+    /** Enviar objetivo:Feishu chat_id / open_id;QQ group_openid / user_openid. */
     val targetId: String = "",
-    /** QQ 目标类型:"group" 群聊(默认) 或 "c2c" 单聊;飞书按 targetId 类型自动判定。 */
+    /** QQ tipo de objetivo:"group" chat grupal(Predeterminado) o "c2c" charla privada;Feishu determina automáticamente el tipo de targetId. */
     val targetType: String = "group",
     /**
-     * v2.0.1: 钉钉 Robot Code — 发送回复用;企业内部机器人通常与 Client ID(AppKey) 相同,留空回退 [appId]。
+     * v2.0.1: DingTalk Robot Code — Para enviar respuesta;Los bots internos suelen estar asociados con Client ID(AppKey) Lo mismo,Dejar en blanco para regresar [appId].
      */
     val robotCode: String = "",
     /**
-     * v2.0.1: 钉钉企业标识 Corp ID(企业信息中获取;部分企业级接口需要,先随配置存储)。
+     * v2.0.1: Identidad corporativa de DingTalk Corp ID(Obtenido de información empresarial.;Algunas interfaces de nivel empresarial requieren,Primera tienda con configuración.).
      */
     val corpId: String = "",
     /**
-     * v2.0.1: 钉钉 API Base URL — 留空用官方默认(https://api.dingtalk.com/v1.0),可指向兼容网关。
+     * v2.0.1: DingTalk API Base URL — Déjelo en blanco para usar el valor predeterminado oficial(https://api.dingtalk.com/v1.0),Se puede apuntar a una puerta de enlace compatible.
      */
     val apiBaseUrl: String = "",
     /**
-     * v2.0.1: 飞书区域 — "cn" 中国版(open.feishu.cn) / "intl" 国际版 Lark(open.larksuite.com)。
+     * v2.0.1: Área de Feishu — "cn" versión china(open.feishu.cn) / "intl" Versión internacional Lark(open.larksuite.com).
      */
     val region: String = "cn",
     /**
-     * v2.0: 自动回复 — 收到该平台入站消息时自动跑一轮并回发到消息来源。
-     * 默认关闭,避免未预期时消耗模型额度。
+     * v2.0: respuesta automática — Cuando se recibe un mensaje entrante desde la plataforma, automáticamente ejecutará una ronda y lo enviará de regreso a la fuente del mensaje.
+     * Desactivado de forma predeterminada,Evite consumir créditos de modelo cuando sea inesperado.
      */
     val autoReply: Boolean = false,
     /**
-     * v2.0.1: 自动回复绑定的助手 id — 空串表示默认助手;继承其人设/模型/参数。
+     * v2.0.1: Asistente de encuadernación de respuesta automática id — Una cadena vacía representa el asistente predeterminado;heredar su personalidad/modelo/parámetros.
      */
     val assistantId: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 ) {
-    /** v2.0.1: 钉钉 API Base — 留空回退官方默认;去除尾斜杠避免拼接问题。 */
+    /** v2.0.1: DingTalk API Base — Déjelo en blanco para volver al valor predeterminado oficial.;Elimine las barras diagonales finales para evitar problemas de empalme. */
     val dingtalkApiBase: String
         get() = apiBaseUrl.trim().trimEnd('/').ifBlank { DINGTALK_DEFAULT_API_BASE }
 
     /**
-     * 凭证的类型化视图。
+     * Una vista escrita de la credencial.
      *
-     * 上面的平铺字段（appId / appSecret / robotCode / corpId / apiBaseUrl / region）
-     * 是落盘格式，保持不变；这里按平台把它们装成密封类，供新代码分支使用。
+     * Los campos en mosaico de arriba (appId / appSecret / robotCode / corpId / apiBaseUrl / region)
+     * El formato del disco permanece sin cambios; aquí se instalan en clases selladas según la plataforma para que las utilicen nuevas ramas de código.
      *
-     * 好处是「哪个平台需要哪些凭证」写在类型上，新增平台由编译器提醒补全分支，
-     * 而不是靠字符串字段约定。
+     * La ventaja es que en el tipo está escrito "Qué plataforma requiere qué certificados". Para plataformas nuevas, el compilador le recordará que complete la rama.
+     * En lugar de confiar en la convención de campos de cadenas.
      */
     val credentials: ChannelCredentials
         get() = ChannelCredentialsSerializer.fromFlat(
@@ -104,9 +104,9 @@ data class ChannelConfig(
         )
 
     /**
-     * 用新的凭证覆盖平铺字段。
+     * Sobrescriba el campo en mosaico con las nuevas credenciales.
      *
-     * 写入路径统一走这里，避免调用方既改 credentials 又忘了同步平铺字段。
+     * La ruta de escritura va aquí de manera uniforme para evitar que la persona que llama cambie las credenciales y se olvide de sincronizar los campos en mosaico.
      */
     fun withCredentials(value: ChannelCredentials): ChannelConfig {
         val flat = ChannelCredentialsSerializer.toFlat(value)
@@ -121,10 +121,10 @@ data class ChannelConfig(
     }
 }
 
-/** v2.0.1: 钉钉 API 默认 Base URL。 */
+/** v2.0.1: URL base predeterminada de la API de DingTalk. */
 internal const val DINGTALK_DEFAULT_API_BASE = "https://api.dingtalk.com/v1.0"
 
-/** v1.0.92: 渠道发送结果。 */
+/** v1.0.92: El canal envía los resultados. */
 data class ChannelSendResult(
     val ok: Boolean,
     val detail: String,

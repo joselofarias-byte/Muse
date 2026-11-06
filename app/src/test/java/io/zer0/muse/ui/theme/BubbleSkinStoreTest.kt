@@ -15,10 +15,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 气泡皮肤存储(DataStore)测试。
+ * almacenamiento de piel de burbujas(DataStore)prueba.
  *
- * 遵循既有 Store 测试约定:单个测试方法内"先读默认值再写入",
- * 避免 DataStore 文件在测试方法间互相污染。
+ * Siga las convenciones de prueba establecidas en la Tienda:dentro de un único método de prueba"Lea el valor predeterminado primero y luego escriba",
+ * Evite la contaminación de archivos del almacén de datos entre métodos de prueba.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -43,28 +43,28 @@ class BubbleSkinStoreTest {
     fun bubbleSkinStore_defaultsThenPersistsSelectionImportAndDelete() = runBlocking {
         val store = BubbleSkinStore(context)
 
-        // 默认:没有自定义皮肤、选中内置 default → selectedSkinFlow 为 null,
-        // 调用方传 null 即保持改造前的渲染路径。
+        // Predeterminado:Sin máscara personalizada, seleccione integrada default → selectedSkinFlow para null,
+        // Si la persona que llama pasa nulo, se mantendrá la ruta de representación antes de la transformación.
         assertEquals(BubbleSkinCatalog.DEFAULT_SKIN_ID, store.selectedSkinIdFlow.first())
         assertTrue(store.customSkinsFlow.first().isEmpty())
         assertNull(store.selectedSkinFlow.first())
 
-        // 保存合法皮肤并选中
+        // Guarde el skin legal y selecciónelo
         assertTrue(store.upsertSkin(skin("store-skin")))
         store.saveSelectedSkinId("store-skin")
         assertEquals("store-skin", store.selectedSkinFlow.first()?.id)
         assertEquals(1, store.customSkinsFlow.first().size)
 
-        // 非法皮肤(对比度不足)写入被拒,现有列表/选中不变
+        // piel ilegal(No hay suficiente contraste)Escribir rechazado,lista existente/Mantener seleccionado
         assertFalse(store.upsertSkin(skin("bad-skin", validStyle.copy(contentArgb = 0xFFDDDDDDL, surfaceArgb = 0xFFEEEEEE))))
         assertNull(store.selectedSkinFlow.first()?.takeIf { it.id == "bad-skin" })
         assertEquals(1, store.customSkinsFlow.first().size)
 
-        // 导入非法内容不改变任何状态
+        // Importar contenido ilegal no cambia ningún estado
         assertNull(store.importSkin("{ not json"))
         assertEquals(1, store.customSkinsFlow.first().size)
 
-        // 导入合法 JSON 后可通过 id 选中
+        // Después de importar JSON legal, puede seleccionarlo por ID
         val imported = store.importSkin(
             AppJson.encodeToString(BubbleSkin.serializer(), skin("imported-skin")),
         )
@@ -73,13 +73,13 @@ class BubbleSkinStoreTest {
         assertEquals("imported-skin", store.selectedSkinFlow.first()?.id)
         assertEquals(2, store.customSkinsFlow.first().size)
 
-        // 删除当前选中皮肤 → 选中 id 清空并回退内置 default(null 皮肤)
+        // Eliminar la máscara actualmente seleccionada → Seleccione la identificación para borrar y revertir la función incorporada default(null piel)
         store.deleteSkin("imported-skin")
         assertEquals(BubbleSkinCatalog.DEFAULT_SKIN_ID, store.selectedSkinIdFlow.first())
         assertNull(store.selectedSkinFlow.first())
         assertEquals(1, store.customSkinsFlow.first().size)
 
-        // 未选中自定义皮肤时再一次写内置 id 仍为默认行为
+        // Cuando no se selecciona la máscara personalizada, escribir nuevamente la identificación incorporada sigue siendo el comportamiento predeterminado.
         store.saveSelectedSkinId(BubbleSkinCatalog.DEFAULT_SKIN_ID)
         assertNull(store.selectedSkinFlow.first())
     }

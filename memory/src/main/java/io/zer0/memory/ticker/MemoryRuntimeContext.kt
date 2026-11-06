@@ -1,6 +1,6 @@
 package io.zer0.memory.ticker
 
-/** 记忆后台任务运行时配置与空间快照读取器。 */
+/** Recuerde la configuración del tiempo de ejecución de tareas en segundo plano con el lector de instantáneas espaciales. */
 data class MemoryRuntimeContext(
     val getConfig: () -> MemoryConfig = { MemoryConfig() },
     val getCurrentSpaceId: suspend () -> String = { "default" },

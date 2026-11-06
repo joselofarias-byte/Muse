@@ -8,13 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * `displayContent` 结果缓存的边界。
+ * `displayContent` Los límites de la caché de resultados.
  *
- * 缓存的唯一职责是「同一段正文不重复洗第二遍」，因此必须同时钉住四件事：
- *  - 命中时不再重算，返回的是同一份结果；
- *  - 正文变了必须换结果，绝不能把上一次的文本当成本次结果；
- *  - 超出上限时从最久未使用的一端淘汰，容量恒定；
- *  - 输出与不走缓存的 `stripForDisplay` 逐字节一致。
+ * La única responsabilidad del caché es “no lavar el mismo texto una segunda vez”, por lo que se deben clavar cuatro cosas a la vez:
+ *  - No se volverá a calcular al acertar y se devolverá el mismo resultado;
+ *  - Si el texto cambia, se debe cambiar el resultado. El último texto no debe considerarse como el resultado actual;
+ *  - Cuando se supere el límite superior, se eliminará el extremo que lleve más tiempo sin utilizarse, y la capacidad será constante;
+ *  - Salida y sin almacenamiento en caché `stripForDisplay` Consistente byte a byte.
  */
 class DisplayContentCacheTest {
 
@@ -30,14 +30,14 @@ class DisplayContentCacheTest {
         var computeCount = 0
         val cache = DisplayContentCache(maxEntries = 8)
         val compute = countingCompute { computeCount++ }
-        val raw = "<think>内部思考</think>正文$cardStateTail"
+        val raw = "<think>pensamiento interno</think>Texto$cardStateTail"
 
         val first = cache.getOrCompute(raw, compute)
         val second = cache.getOrCompute(raw, compute)
 
-        assertEquals("同一段正文只该洗一次", 1, computeCount)
-        assertSame("命中时返回的必须是同一份结果", first, second)
-        assertEquals("正文", first)
+        assertEquals("El mismo párrafo de texto sólo debe lavarse una vez", 1, computeCount)
+        assertSame("Se debe devolver el mismo resultado al golpear", first, second)
+        assertEquals("Texto", first)
     }
 
     @Test
@@ -46,11 +46,11 @@ class DisplayContentCacheTest {
         val cache = DisplayContentCache(maxEntries = 8)
         val compute = countingCompute { computeCount++ }
 
-        val before = cache.getOrCompute("<think>内部思考</think>旧正文", compute)
-        val after = cache.getOrCompute("<think>内部思考</think>新正文", compute)
+        val before = cache.getOrCompute("<think>pensamiento interno</think>texto antiguo", compute)
+        val after = cache.getOrCompute("<think>pensamiento interno</think>Nuevo texto", compute)
 
-        assertEquals("旧正文", before)
-        assertEquals("正文变化后必须重新算，不能返回上一次的结果", "新正文", after)
+        assertEquals("texto antiguo", before)
+        assertEquals("El cálculo debe volver a calcularse después de que cambie el texto y no se puede devolver el último resultado.", "Nuevo texto", after)
         assertNotEquals(before, after)
         assertEquals(2, computeCount)
     }
@@ -60,25 +60,25 @@ class DisplayContentCacheTest {
         val cache = DisplayContentCache(maxEntries = 2)
         val compute: (String) -> String = { it }
 
-        cache.getOrCompute("甲", compute)
-        cache.getOrCompute("乙", compute)
-        // 访问甲，把它推到最近使用端；此时乙最久未用。
-        cache.getOrCompute("甲", compute)
-        cache.getOrCompute("丙", compute)
+        cache.getOrCompute("un", compute)
+        cache.getOrCompute("b", compute)
+        // Visite A y empújelo hasta el extremo utilizado más recientemente; En este momento, B no se ha utilizado durante más tiempo.
+        cache.getOrCompute("un", compute)
+        cache.getOrCompute("c", compute)
 
-        assertEquals("容量达上限后条数不再增长", 2, cache.size())
-        assertTrue("刚被访问过的条目应保留", cache.containsKey("甲"))
-        assertFalse("最久未使用的条目应被淘汰", cache.containsKey("乙"))
-        assertTrue(cache.containsKey("丙"))
+        assertEquals("Una vez que la capacidad alcance el límite superior, la cantidad de elementos ya no aumentará.", 2, cache.size())
+        assertTrue("Las entradas a las que se acaba de acceder deben conservarse", cache.containsKey("un"))
+        assertFalse("Se deben eliminar las entradas que no se hayan utilizado durante más tiempo.", cache.containsKey("b"))
+        assertTrue(cache.containsKey("c"))
     }
 
     @Test
     fun `oversized content is computed but not cached`() {
         val cache = DisplayContentCache(maxEntries = 8)
-        val huge = "字".repeat(DISPLAY_CONTENT_CACHE_MAX_CHARS + 1)
+        val huge = "palabra".repeat(DISPLAY_CONTENT_CACHE_MAX_CHARS + 1)
 
         assertEquals(huge, cache.getOrCompute(huge) { it })
-        assertEquals("超长正文不占缓存槽位", 0, cache.size())
+        assertEquals("El texto extralargo no ocupa espacios de caché", 0, cache.size())
         assertFalse(cache.containsKey(huge))
     }
 
@@ -87,24 +87,24 @@ class DisplayContentCacheTest {
         val samples = listOf(
             "",
             "   \n  ",
-            "普通正文",
-            "<think>内部思考</think>正文",
-            "<mood>心情不错</mood><mod>准备作答</mod>正文",
-            "正文$cardStateTail",
-            "上\n\n\n\n下",
-            "[glow]亮[/glow]正文",
-            "List<String> 与 [链接](https://a.b)",
+            "Texto normal",
+            "<think>pensamiento interno</think>Texto",
+            "<mood>de buen humor</mood><mod>Prepárate para responder</mod>Texto",
+            "Texto$cardStateTail",
+            "en\n\n\n\nabajo",
+            "[glow]brillante[/glow]Texto",
+            "List<String> con [enlace](https://a.b)",
         )
         for (sample in samples) {
             val expected = InternalMarkupSanitizer.stripForDisplay(sample)
             assertEquals(
-                "缓存不得改变输出: <$sample>",
+                "El almacenamiento en caché no debe alterar la salida: <$sample>",
                 expected,
                 InternalMarkupSanitizer.displayContent(sample),
             )
-            // 第二次走缓存，结果仍要一模一样。
+            // La segunda vez que reviso el caché, el resultado sigue siendo exactamente el mismo.
             assertEquals(
-                "命中缓存后输出不得改变: <$sample>",
+                "La salida no debe cambiar después del acceso al caché: <$sample>",
                 expected,
                 InternalMarkupSanitizer.displayContent(sample),
             )
@@ -113,8 +113,8 @@ class DisplayContentCacheTest {
 
     @Test
     fun `editing a message shows the new text instead of the cached one`() {
-        assertEquals("旧正文", InternalMarkupSanitizer.displayContent("<think>内部思考</think>旧正文"))
-        assertEquals("新正文", InternalMarkupSanitizer.displayContent("<think>内部思考</think>新正文"))
-        assertEquals("正文", InternalMarkupSanitizer.displayContent("正文$cardStateTail"))
+        assertEquals("texto antiguo", InternalMarkupSanitizer.displayContent("<think>pensamiento interno</think>texto antiguo"))
+        assertEquals("Nuevo texto", InternalMarkupSanitizer.displayContent("<think>pensamiento interno</think>Nuevo texto"))
+        assertEquals("Texto", InternalMarkupSanitizer.displayContent("Texto$cardStateTail"))
     }
 }

@@ -33,31 +33,31 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.huge
 
 /**
- * 浮动按钮 — 替代 Material3 [androidx.compose.material3.FloatingActionButton]。
+ * botón flotante — sustituto Material3 [androidx.compose.material3.FloatingActionButton].
  *
- * 视觉差异:
- *  - 无 ripple 涟漪(用 pressed scale + 颜色渐变替代)
- *  - 圆形 [MuseShapes.huge] 容器,primary 色背景
- *  - 按下时 0.92 缩放(弹簧曲线),模拟按压反馈
- *  - 56dp 默认尺寸符合 Material FAB 规范
+ * diferencias visuales:
+ *  - sin ondulación(Reemplazado con escala presionada + degradado de color)
+ *  - redondo [MuseShapes.huge] recipiente,primary fondo de color
+ *  - Zoom de 0,92 cuando se presiona(curva de resorte),Retroalimentación de compresión analógica
+ *  - 56dp El tamaño predeterminado se ajusta a la especificación FAB del material.
  *
- * 用法:
+ * Uso:
  * ```
  * MuseFloatingButton(
  *     icon = MuseIcons.plus,
  *     onClick = { importLauncher.launch(...) },
- *     contentDescription = "导入插件",
+ *     contentDescription = "Complemento de importación",
  * )
  * ```
  *
- * @param icon 图标矢量
- * @param onClick 点击回调
+ * @param icon vector icono
+ * @param onClick Haga clic en devolución de llamada
  * @param modifier Modifier
- * @param contentDescription 无障碍描述(强烈建议提供)
- * @param containerColor 容器颜色(默认 primary)
- * @param contentColor 图标颜色(默认 onPrimary)
- * @param size 按钮尺寸(默认 56dp,符合 Material FAB 默认尺寸)
- * @param iconSize 图标视觉尺寸(默认 [MuseIconSizes.icon])
+ * @param contentDescription Descripción de accesibilidad(Muy recomendable proporcionar)
+ * @param containerColor color del contenedor(Predeterminado primary)
+ * @param contentColor color del icono(Predeterminado onPrimary)
+ * @param size tamaño del botón(Predeterminado 56dp,Cumplir con las dimensiones predeterminadas del Material FAB)
+ * @param iconSize Tamaño visual del icono(Predeterminado [MuseIconSizes.icon])
  */
 @Composable
 fun MuseFloatingButton(
@@ -67,7 +67,7 @@ fun MuseFloatingButton(
     contentDescription: String? = null,
     containerColor: Color = MuseActionColors.container,
     contentColor: Color = MuseActionColors.content,
-    // CMP-08: 尺寸走令牌(56dp = MuseIconSizes.fab,符合 Material FAB 规范)
+    // CMP-08: ficha para caminar de tamaño(56dp = MuseIconSizes.fab,Cumple con las especificaciones de Material FAB)
     size: Dp = MuseIconSizes.fab,
     iconSize: Dp = MuseIconSizes.icon,
 ) {
@@ -75,7 +75,7 @@ fun MuseFloatingButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val reducedMotion = MuseMotion.isReducedMotion()
 
-    // 按下时 0.92 缩放(弹簧曲线),模拟按压反馈
+    // Zoom de 0,92 cuando se presiona(curva de resorte),Retroalimentación de compresión analógica
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = if (reducedMotion) {
@@ -119,7 +119,7 @@ fun MuseFloatingButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null, // 已在 semantics 提供
+                contentDescription = null, // Ya disponible en semántica.
                 modifier = Modifier.size(iconSize),
             )
         }

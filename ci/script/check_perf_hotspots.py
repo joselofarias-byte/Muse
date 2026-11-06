@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-check_perf_hotspots.py — 性能热点的「回归哨兵」（基线式）。
+check_perf_hotspots.py — "Return Sentinel" (estilo básico) para puntos críticos de rendimiento.
 
-## 为什么需要这条门禁
+## ¿Por qué necesitas este control de acceso?
 
-2026-11-01 的性能整改里，最值钱的几项不是"加了什么"，而是**去掉了什么**：
-每行日志开关文件、环形缓冲每行 O(n) 遍历、每帧跑 BPE、每个调用新建序列化器/正则……
-这些写法都是**写起来自然、review 看着无害、回退时没人发现**。
+2026-11-01 Entre las mejoras de rendimiento, los elementos más valiosos no son"lo que se agregó", pero**lo que fue eliminado**:
+Archivo de cambio de registro por línea, búfer circular por línea O(n) Recorra, ejecute BPE para cada cuadro y cree un nuevo serializador para cada llamada/regular……
+Estos están todos escritos**Se siente natural escribir,review Parece inofensivo y nadie se da cuenta cuando se retira.**.
 
-这条门禁把它们钉死：**以当前状态为基线，只报新增**。
-这样存量噪声不影响判断，而"下次重构又写回去"会被立刻抓住。
+Esta puerta los clava:**Utilice el estado actual como punto de referencia y solo informe las nuevas incorporaciones.**.
+De esta manera, el ruido bursátil no afecta el juicio, pero"Lo escribiré la próxima vez que refactorice."Será atrapado de inmediato.
 
-## 规则
+## reglas
 
-| 规则 | 匹配 | 为什么是热点 |
+| reglas | partido | ¿Por qué es un punto caliente? |
 |---|---|---|
-| `log_append_text` | `appendText(` | 每行 open+write+close 三次系统调用（应改常驻句柄） |
-| `deque_size` | `ConcurrentLinkedDeque` 文件里的 `.size` 判断 | `size()` 是 O(n) 遍历 |
-| `inline_json` | 非 `val x =` 形式的 `Json {` | 每次调用新建序列化器 |
-| `inline_regex` | 非 `val x =` 形式的 `Regex("` | 每次调用重新编译 |
-| `bpe_in_composable` | `@Composable` 邻近行出现 `TokenEstimator.estimate(` | 组合期跑 BPE |
+| `log_append_text` | `appendText(` | Abrir+escribir+cerrar tres llamadas al sistema por línea (se debe cambiar el identificador residente) |
+| `deque_size` | `ConcurrentLinkedDeque` en el archivo `.size` juez | `size()` si O(n) atravesar |
+| `inline_json` | no `val x =` formales `Json {` | Crea un nuevo serializador cada vez |
+| `inline_regex` | no `val x =` formales `Regex("` | Recompilar cada llamada |
+| `bpe_in_composable` | `@Composable` Aparecen filas adyacentes `TokenEstimator.estimate(` | Ejecución del período combinado BPE |
 
-用法：
-  py -3 ci/script/check_perf_hotspots.py                  # 只报新增
+Uso:
+  py -3 ci/script/check_perf_hotspots.py                  # Informar únicamente de nuevas incorporaciones
   py -3 ci/script/check_perf_hotspots.py --update-baseline
   py -3 ci/script/check_perf_hotspots.py --verbose
 """
@@ -44,13 +44,13 @@ SCAN_DIRS = [
     PROJECT_ROOT / "memory" / "src" / "main" / "java",
 ]
 
-# 「实现本身」不算违规
+# La "implementación en sí" no es una violación
 EXEMPT_FILES = {"Logger.kt", "DebugLogStore.kt"}
 
 VAL_DECL = re.compile(r"^\s*(?:private |internal |public |protected |const )?val \w+\s*(?::[^=]+)?=")
 COMPOSABLE = re.compile(r"^\s*@Composable\b")
 RULES = {
-    # 只认真正的 File.appendText；自定义方法名 appendText(...) 在下面按行排除
+    # Sólo verdadero File.appendText; nombre del método personalizado appendText(...) Excluir por fila a continuación
     "log_append_text": re.compile(r"\.appendText\("),
     "inline_json": re.compile(r"\bJson\s*\{"),
     "inline_regex": re.compile(r"\bRegex\(\s*\""),
@@ -78,15 +78,15 @@ def scan_file(path: Path) -> dict[str, int]:
             continue
 
         if COMPOSABLE.match(line):
-            composable_window = 12   # 组合函数体大致范围
+            composable_window = 12   # El rango aproximado del cuerpo de función combinada.
         elif composable_window > 0:
             composable_window -= 1
 
-        # 排除自定义方法定义/调用：`fun appendText(` 与流式缓冲里同名的 appendText(...)
+        # Excluir definiciones de métodos personalizados/Llamar:`fun appendText(` El mismo nombre que en el buffer de streaming. appendText(...)
         if RULES["log_append_text"].search(line) and "fun appendText" not in line and "appendText(sequenceInStream" not in line:
             counts["log_append_text"] = counts.get("log_append_text", 0) + 1
 
-        # 声明式赋值（类/对象级 val）不算"每次调用新建"
+        # Asignación declarativa (clase/valor a nivel de objeto) no cuenta"Crear nuevo cada vez"
         declared = bool(VAL_DECL.match(line))
         if not declared and RULES["inline_json"].search(line):
             counts["inline_json"] = counts.get("inline_json", 0) + 1
@@ -131,7 +131,7 @@ def main() -> int:
             json.dumps(dict(sorted(current.items())), indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-        print(f"已写入基线：{BASELINE_PATH.relative_to(PROJECT_ROOT)}（{len(current)} 条）")
+        print(f"Línea de base escrita:{BASELINE_PATH.relative_to(PROJECT_ROOT)}({len(current)} artículo)")
         return 0
 
     baseline = load_baseline()
@@ -142,17 +142,17 @@ def main() -> int:
             regressions.append((key, allowed, count))
 
     if regressions:
-        print("FAILED — 新增性能热点写法：")
+        print("FAILED — Método de escritura de punto de acceso de rendimiento recientemente agregado:")
         for key, allowed, count in regressions:
             path, rule = key.rsplit("|", 1)
-            print(f"  [{rule}] {path}: {count} 处（基线 {allowed}）")
+            print(f"  [{rule}] {path}: {count} en (línea de base {allowed})")
         print()
-        print("对照本脚本头部注释；确属必要请说明理由后 --update-baseline。")
+        print("Consulte los comentarios del encabezado de este script; si es necesario, explique el motivo --update-baseline.")
         return 1
 
     if args.verbose:
-        print(f"当前共 {len(current)} 条记录，均在基线内。")
-    print("OK: 未新增性能热点写法。")
+        print(f"total actual {len(current)} registros, todos dentro de la línea de base.")
+    print("OK: No existe una nueva forma de escribir puntos críticos de rendimiento.")
     return 0
 
 

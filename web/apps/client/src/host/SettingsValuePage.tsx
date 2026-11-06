@@ -18,7 +18,7 @@ import { useDelayedFlag } from "./useDelayedFlag.js";
 
 export interface SettingsValuePageProps {
   readonly page: SettingsPageSpec;
-  /** 页面标题：被点开的目录条目的 Host 本地化标题。 */
+  /** Título de la página: título localizado del host de la entrada del directorio en la que se hizo clic. */
   readonly title: string;
   readonly snapshot: HostSettingsSnapshot | undefined;
   readonly loading: boolean;
@@ -27,11 +27,11 @@ export interface SettingsValuePageProps {
   readonly onBack: () => void;
   readonly onRetry: () => void;
   readonly onWrite: (key: string, value: string | number | boolean) => void;
-  /** 从搜索结果直达时要高亮的那一行（值的 key）。 */
+  /** La fila a resaltar al llegar directamente desde los resultados de la búsqueda (la clave del valor). */
   readonly focusKey?: string | undefined;
 }
 
-/** toggleKey → 目录条目，用来拿 Host 已本地化的标题 / 说明。 */
+/** toggleKey → Entrada de directorio para obtener el título/descripción localizados del anfitrión. */
 function titledEntries(snapshot: HostSettingsSnapshot): Map<string, { title: string; desc?: string | undefined }> {
   const map = new Map<string, { title: string; desc?: string | undefined }>();
   for (const group of snapshot.groups) {
@@ -43,7 +43,7 @@ function titledEntries(snapshot: HostSettingsSnapshot): Map<string, { title: str
   return map;
 }
 
-/** 行标题：目录标题 → Host 若下发 label → 键派生（与搜索索引同一份逻辑）。 */
+/** Título de la fila: título de la tabla de contenido → Host Si se emite label → Derivación de claves (misma lógica que el índice de búsqueda). */
 function rowInfo(
   value: HostSettingValue,
   entries: Map<string, { title: string; desc?: string | undefined }>,
@@ -55,11 +55,11 @@ function rowInfo(
 }
 
 /**
- * 设置子页。
+ * Configurar subpáginas.
  *
- * 行 = Host `values[]` 里归到本页的那些（顺序照 Host 给，不重排）：
- * boolean → Switch、number → −/＋、enum → 可展开单选、text → 只读行。
- * 所有写入都是「先本地改、再下发」，失败回滚与原因提示在 useHostConnection 里统一处理。
+ * OK = Host `values[]` Los clasificados en esta página (el orden es según Anfitrión, no hay reordenamiento):
+ * boolean → Switch,number → −/+,enum → Selección de radio ampliable,text → Filas de solo lectura.
+ * Todas las escrituras se "modifican localmente primero y luego se distribuyen". La reversión de fallas y las indicaciones de motivo se manejan de manera uniforme en useHostConnection.
  */
 export function SettingsValuePage({
   page,
@@ -91,7 +91,7 @@ export function SettingsValuePage({
     );
   }
 
-  // 明确没有 settings_values 能力位，或这份 Host 压根不下发 values：说清楚，不给空列表。
+  // Está claro que no existe la capacidad de settings_values, o que este Host no emite ningún valor: déjelo claro y no proporcione una lista vacía.
   if (!capabilities.settingsValues || snapshot.values === undefined) {
     return (
       <Screen fill topBar={topBar}>
@@ -127,8 +127,8 @@ export function SettingsValuePage({
 }
 
 /**
- * 一页的可调项卡片：独立的组件，供设置子页和「记忆页」这类混合页复用。
- * 没有匹配到任何值时返回 null，由调用方决定空态怎么画。
+ * Tarjeta sintonizable de una página: un componente independiente para su reutilización en páginas mixtas, como subpáginas de configuración y "páginas de memoria".
+ * Si ningún valor coincide, se devuelve nulo y la persona que llama decide cómo dibujar el estado vacío.
  */
 export function SettingsValueCard({
   page,
@@ -157,7 +157,7 @@ export function SettingsValueCard({
             onWrite={onWrite}
           />
         );
-        // 从搜索直达：把目标行标出来，否则用户进来还得自己找。
+        // Acceso directo desde la búsqueda: marque la fila de destino; de lo contrario, los usuarios tendrán que buscarla ellos mismos.
         return focusKey !== undefined && value.key === focusKey ? (
           <div className="host-setting-highlight" key={value.key}>
             {row}
@@ -184,7 +184,7 @@ function ValueRow({ value, last, info, onWrite }: ValueRowProps) {
     ...(info.subtitle === undefined || info.subtitle === "" ? {} : { subtitle: info.subtitle }),
   };
 
-  // 只读键：回显状态，不给任何写入口。
+  // Clave de solo lectura: refleja el estado y no proporciona ninguna entrada de escritura.
   if (isReadOnlyKey(value.key)) {
     if (value.type === "boolean") {
       return <ListRow {...text} divider={!last} trailing={<Switch checked={readBoolean(value.value)} disabled label={info.title} onChange={() => undefined} />} />;
@@ -237,7 +237,7 @@ function ValueRow({ value, last, info, onWrite }: ValueRowProps) {
               aria-label={t("settings.increase", { title: info.title })}
               onClick={() => onWrite(value.key, stepNumber(current, 1))}
             >
-              ＋
+              +
             </button>
           </span>
         }
@@ -254,7 +254,7 @@ function ValueRow({ value, last, info, onWrite }: ValueRowProps) {
   );
 }
 
-/** 枚举行：点行展开选项，选中项打勾；标签一律用 Host 下发的 option.label。 */
+/** Enumeración: haga clic en la fila para expandir las opciones y marque los elementos seleccionados; todas las etiquetas utilizan la opción.label emitida por el Host. */
 function EnumRow({ value, last, info, onWrite }: ValueRowProps) {
   const [open, setOpen] = useState(false);
   const options: readonly HostSettingOption[] = value.options ?? [];

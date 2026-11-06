@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 纯 Kotlin：模型上下文中的工具轨迹压缩投影测试。 */
+/** Pure Kotlin: prueba de proyección de compresión de seguimiento de herramientas en el contexto del modelo. */
 class ToolTraceProjectionTest {
     @Test
     fun `compresses old successful tool round and keeps latest round complete`() {
@@ -28,7 +28,7 @@ class ToolTraceProjectionTest {
         assertEquals(MessageRole.SYSTEM, projected[1].role)
         assertTrue(projected[1].content.contains(ToolTraceProjection.SUMMARY_MARKER))
         assertTrue(projected[1].content.contains("search"))
-        assertTrue(projected[1].content.contains("成功(SUCCESS)"))
+        assertTrue(projected[1].content.contains("éxito(SUCCESS)"))
         assertTrue(projected[1].content.contains("old result"))
         assertEquals(MessageRole.ASSISTANT, projected[3].role)
         assertEquals(listOf(latestCall), projected[3].toolCalls)
@@ -41,18 +41,18 @@ class ToolTraceProjectionTest {
         val call = ToolCall("old-call", "get_battery_info", "{}")
         val messages =
             listOf(
-                UIMessage(role = MessageRole.USER, content = "看下电量"),
-                UIMessage(role = MessageRole.ASSISTANT, content = "我先查一下设备信息。", toolCalls = listOf(call)),
+                UIMessage(role = MessageRole.USER, content = "Verifique la capacidad de la batería"),
+                UIMessage(role = MessageRole.ASSISTANT, content = "Primero comprobaré la información del dispositivo.", toolCalls = listOf(call)),
                 UIMessage(role = MessageRole.TOOL, content = "battery=80%", toolCallId = call.id),
-                UIMessage(role = MessageRole.USER, content = "继续"),
+                UIMessage(role = MessageRole.USER, content = "continuar"),
             )
 
         val projected = ToolTraceProjection.project(messages, keepRecentRounds = 0)
 
         assertEquals(3, projected.size)
         assertTrue(projected[1].content.contains(ToolTraceProjection.SUMMARY_MARKER))
-        assertTrue(projected[1].content.contains("助手说明"))
-        assertTrue(projected[1].content.contains("我先查一下设备信息"))
+        assertTrue(projected[1].content.contains("Instrucciones del asistente"))
+        assertTrue(projected[1].content.contains("Primero comprobaré la información del dispositivo."))
     }
 
     @Test
@@ -108,7 +108,7 @@ class ToolTraceProjectionTest {
         val twice = ToolTraceProjection.project(once)
 
         assertEquals(4, once.size)
-        assertTrue(once.first().content.contains("结果(截断)"))
+        assertTrue(once.first().content.contains("resultado(Truncar)"))
         assertTrue(once.first().content.contains("…"))
         assertEquals(once, twice)
     }
@@ -168,9 +168,9 @@ class ToolTraceProjectionTest {
         assertEquals(3, projected.size)
         assertEquals(MessageRole.SYSTEM, projected[0].role)
         assertTrue(projected[0].content.contains("search"))
-        assertTrue(projected[0].content.contains("成功(SUCCESS)"))
+        assertTrue(projected[0].content.contains("éxito(SUCCESS)"))
         assertEquals(failedCard, projected[2])
-        assertTrue(projected.none { it.content.contains("失败(FAILED)") })
+        assertTrue(projected.none { it.content.contains("falló(FAILED)") })
     }
 
     @Test

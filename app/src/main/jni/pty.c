@@ -1,12 +1,12 @@
 /*
- * v2.x 终端二期:自编译 PTY 桥。
+ * v2.x Fase terminal II:Puente PTY autocompilado.
  *
- * 标准 POSIX forkpty(3) 解法,自写实现(未使用任何第三方代码)。
- * 提供:创建子进程(伪终端)、阻塞读写、进程退出等待、窗口尺寸同步。
+ * Estándar POSIX forkpty(3) Solución,Implementación autoescrita(No se utiliza código de terceros).
+ * proporcionar:Crear proceso hijo(pseudoterminal), bloqueando lectura y escritura, esperando la salida del proceso y sincronización del tamaño de la ventana.
  *
- * JNI 侧对应 Kotlin 单例 io.zer0.muse.terminal.Pty。
- * 所有 socket/fd 语义均为裸 fd,Java 侧不做 FileDescriptor 反射——
- * 读写全部经由本文件的 native 函数,规避隐藏 API 限制。
+ * JNI Corresponde al singleton de Kotlin io.zer0.muse.terminal.Pty.
+ * Toda la semántica de socket/fd está desnuda fd,Java Sin reflejo de FileDescriptor——
+ * Toda la lectura y escritura se realiza a través de la función nativa de este archivo.,Evite las restricciones de API ocultas.
  */
 #include <jni.h>
 #include <android/log.h>
@@ -28,9 +28,9 @@
 #define MAX_READ_CHUNK 8192
 
 /**
- * 创建伪终端子进程。
- * 语义对齐 forkpty(3):首参为出参 master fd,返回值为子进程 pid(0 = 当前为子进程)。
- * @return 主端(master) fd;失败返回 -1。子进程 pid 写入 pidArray[0]。
+ * Cree un subproceso pseudo-terminal.
+ * alineación semántica forkpty(3):El primer parámetro es el parámetro de salida. master fd,El valor de retorno es el proceso hijo. pid(0 = Actualmente un proceso hijo).
+ * @return extremo principal(master) fd;Devuelve -1 en caso de error. Escritura pid del proceso secundario pidArray[0].
  */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_createSubprocess(
@@ -60,10 +60,10 @@ Java_io_zer0_muse_terminal_Pty_createSubprocess(
     }
 
     if (pid == 0) {
-        /* 子进程:仅做最小 syscall,随后 exec。*/
+        /* proceso hijo:solo haz lo minimo syscall,Luego ejecutivo.*/
         setenv("TERM", "xterm-256color", 1);
         setenv("HOME", cwd_c, 1);
-        /* P1-B: 终端 PATH 追加运行时 bin;注入 exec 垫片(名称映射 + shebang 解析)。*/
+        /* P1-B: Terminal PATH agregar tiempo de ejecución bin;Inyectar cuña ejecutiva(Mapeo de nombres + análisis de shebang).*/
         if (extra_c != NULL && extra_c[0] != '\0') {
             char pathbuf[4096];
             snprintf(pathbuf, sizeof(pathbuf), "%s:/system/bin:/system/xbin", extra_c);
@@ -83,7 +83,7 @@ Java_io_zer0_muse_terminal_Pty_createSubprocess(
         _exit(127);
     }
 
-    /* 父进程:master 为 pty 主端 fd,pid 为子进程 pid */
+    /* proceso padre:master para pty maestro fd,pid para proceso hijo pid */
     jint pidVal = (jint) pid;
     (*env)->SetIntArrayRegion(env, pidArray, 0, 1, &pidVal);
     (*env)->ReleaseStringUTFChars(env, execPath, exec_c);
@@ -95,7 +95,7 @@ Java_io_zer0_muse_terminal_Pty_createSubprocess(
 }
 
 /**
- * 阻塞等待子进程退出;返回退出码(信号终止返回 128+signo)。
+ * Bloquear la espera de que salga el proceso secundario;devolver código de salida(retorno de señal terminada 128+signo).
  */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_waitFor(JNIEnv *env, jobject thiz, jint pid) {
@@ -111,7 +111,7 @@ Java_io_zer0_muse_terminal_Pty_waitFor(JNIEnv *env, jobject thiz, jint pid) {
 }
 
 /**
- * 从 pty 主端读取(阻塞)。返回读到的字节数;<=0 表示 EOF/错误。
+ * Leer del maestro pty(bloqueando). Devuelve el número de bytes leídos.;<=0 Indica EOF/Error.
  */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_read(
@@ -128,7 +128,7 @@ Java_io_zer0_muse_terminal_Pty_read(
 }
 
 /**
- * 向 pty 主端写入,内部处理部分写与 EINTR。返回写入总字节数(<0 出错)。
+ * Escribir al maestro pty,La parte de procesamiento interno está escrita con EINTR. Devuelve el número total de bytes escritos.(<0 error).
  */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_write(
@@ -151,7 +151,7 @@ Java_io_zer0_muse_terminal_Pty_write(
     return total;
 }
 
-/** 主端当前可读字节数(FIONREAD);出错返回 -1。 */
+/** El número de bytes que el host puede leer actualmente.(FIONREAD);Devuelve -1 en caso de error. */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_available(JNIEnv *env, jobject thiz, jint fd) {
     int n = 0;
@@ -159,7 +159,7 @@ Java_io_zer0_muse_terminal_Pty_available(JNIEnv *env, jobject thiz, jint fd) {
     return n;
 }
 
-/** 同步终端窗口尺寸(rows/cols),让全屏程序正确排版。 */
+/** Sincronizar el tamaño de la ventana del terminal(rows/cols),Haga que los programas de pantalla completa se distribuyan correctamente. */
 JNIEXPORT void JNICALL
 Java_io_zer0_muse_terminal_Pty_setWindowSize(
         JNIEnv *env, jobject thiz, jint fd, jint rows, jint cols) {
@@ -172,13 +172,13 @@ Java_io_zer0_muse_terminal_Pty_setWindowSize(
     ioctl(fd, TIOCSWINSZ, &ws);
 }
 
-/** 关闭主端 fd(关闭后阻塞中的 read 会返回错误,用于终止会话)。 */
+/** Cerrar terminal principal fd(Bloquear la lectura después del cierre devolverá un error,Se utiliza para terminar la sesión.). */
 JNIEXPORT void JNICALL
 Java_io_zer0_muse_terminal_Pty_closeFd(JNIEnv *env, jobject thiz, jint fd) {
     if (fd >= 0) close(fd);
 }
 
-/** 最近一次系统调用 errno(调试诊断用;仅当前线程)。 */
+/** llamada al sistema más reciente errno(Para depuración y diagnóstico.;Solo hilo actual). */
 JNIEXPORT jint JNICALL
 Java_io_zer0_muse_terminal_Pty_errnoValue(JNIEnv *env, jobject thiz) {
     return errno;

@@ -1,47 +1,47 @@
 # Muse v2.5.2
 
-本版重做了液态玻璃效果（v2.5.1 起该效果默认关闭、设置项隐藏）。如果你对玻璃观感感兴趣，可在 设置 → 外观 → 液态玻璃效果 中开启体验；不开启则完全不影响日常使用。
+Esta versión ha rehecho el efecto de vidrio líquido (v2.5.1 Este efecto está desactivado de forma predeterminada y el elemento de configuración está oculto). Si está interesado en la apariencia del vidrio, puede configurarlo en Configuración → Apariencia → El efecto de vidrio líquido se puede activar para experimentar el efecto; si no está encendido, no afectará en absoluto el uso diario.
 
-## 液态玻璃重设计
+## Rediseño de vidrio líquido
 
-### 上一版的问题
+### Problemas con la edición anterior.
 
-只做了「模糊 + 半透明平涂着色」，那是毛玻璃；而且着色偏重（0.4+），把模糊本身盖住了——拉强度滑杆几乎看不出变化。真正的玻璃感来自三层，之前缺了两层。
+Sólo hice "coloración plana borrosa + translúcida", que es vidrio esmerilado; y el color es pesado (0.4+), cubriendo el propio desenfoque——El control deslizante de resistencia a la tracción apenas cambia de forma perceptible. La verdadera sensación del vidrio proviene de tres capas, dos de las cuales antes faltaban.
 
-### 本版补齐
+### Completado en esta versión.
 
-**1. 边缘层（最关键的缺失）**
+**1. Capa de borde (lo que falta más importante)**
 
-新增玻璃三要素叠层：
+Se agregó una superposición de vidrio de tres elementos:
 
-- 顶部 1.5dp 白色高光边 —— 玻璃"厚度"的主要来源
-- 底部 1dp 暗边 —— 体积感
-- 斜向 35° 光扫 —— 模拟环境光反射
+- Borde resaltado blanco superior de 1,5 dp —— vidrio"Espesor"fuente principal de
+- Borde oscuro inferior 1dp —— sensación de volumen
+- diagonalmente 35° escaneo de luz —— Simular el reflejo de la luz ambiental
 
-**2. 体层通透度**
+**2. permeabilidad de la capa corporal**
 
-着色透明度大幅调低，让模糊真正可见、强度滑杆变化可感知。
+La transparencia del sombreado se redujo significativamente para que el desenfoque fuera realmente visible y los cambios del control deslizante de intensidad fueran perceptibles.
 
-**3. 双风格（视觉上真正区分）**
+**3. Estilo dual (realmente diferenciado visualmente)**
 
-- **水玻璃**：弱模糊 + 强高光 + 薄着色（接近 iOS 观感）
-- **磨砂玻璃**：强模糊 + 柔高光 + 厚着色（接近 Android 原生观感）
+- **vaso de agua**: Desenfoque débil + resaltado intenso + sombreado fino (similar a la apariencia de iOS)
+- **vidrio esmerilado**: Desenfoque fuerte + resaltado suave + sombreado grueso (similar a la apariencia nativa de Android)
 
-### 范围分层（性能关键）
+### Capas de alcance (rendimiento crítico)
 
-- **真玻璃**（背景模糊）：顶栏返回键 / 更多键 / 输入岛 / 更多菜单 —— 数量少、位置固定
-- **假玻璃**（渐变 + 高光边，不做模糊）：消息气泡 —— 数量多、滚动中，避免一屏几十个模糊层拖垮滚动
+- **vidrio real**(Fondo borroso): Tecla de retorno de la barra superior / Tecla Más / Isla de entrada / Menú Más —— Pequeña cantidad, ubicación fija
+- **vidrio falso**(Degradado + borde resaltado, sin desenfoque): burbuja de mensaje —— Gran número, desplazamiento, evite que docenas de capas borrosas en una pantalla arrastren hacia abajo el desplazamiento
 
-### 其他
+### Otros
 
-- 聊天顶栏从"整条横接透明条"改为**三颗独立岛**（左返回 / 中标题 / 右更多）
-- 更多菜单（右上角三点）同样应用玻璃质感
+- Barra superior de chat desde"Toda la franja transparente horizontal."Cambiar a**tres islas independientes**(Atrás izquierda / Título central / Más derecha)
+- Más menús (tres puntos en la esquina superior derecha) también aplican textura de vidrio
 
-## 构建信息
+## Información de construcción
 
-- 版本：2.5.2 (252)
-- 数据库版本：109（与 2.5.0/2.5.1 相同，直接覆盖安装）
-- 分发：arm64-v8a / armeabi-v7a / universal
+- Versión:2.5.2 (252)
+- Versión de la base de datos:109(Igual que 2.5.0/2.5.1, sobrescribe directamente la instalación)
+- Distribución:arm64-v8a / armeabi-v7a / universal
 
 ---
 # Muse v2.5.2 (English)

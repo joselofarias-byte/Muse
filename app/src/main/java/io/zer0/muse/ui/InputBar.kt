@@ -82,14 +82,14 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 import kotlinx.coroutines.delay
 
-/** L-IB1: 输入框字符上限,防止超长文本拖慢渲染或超出模型上下文窗口。 */
+/** L-IB1: Límite de caracteres del cuadro de entrada,Evite que el texto muy largo ralentice la representación o exceda la ventana de contexto del modelo. */
 internal const val INPUT_TEXT_MAX_LENGTH = 5000
 
 /**
- * v1.0.47 P5-2: 从新旧文本中提取被插入(粘贴)的片段。
+ * v1.0.47 P5-2: Se extrae del texto antiguo y se inserta nuevo.(Pegar)fragmento.
  *
- * 通过剥离最长公共前缀与最长公共后缀,剩下的即为新增内容。
- * 适用于光标在任意位置的粘贴场景(不只是末尾追加)。
+ * Eliminando el prefijo común más largo y el sufijo común más largo,El resto es contenido nuevo.
+ * Adecuado para pegar escenarios donde el cursor está en cualquier posición(No solo agregar al final).
  */
 private fun extractInsertedSegment(oldText: String, newText: String): String {
     if (oldText.isEmpty()) return newText
@@ -104,29 +104,29 @@ private fun extractInsertedSegment(oldText: String, newText: String): String {
 }
 
 /**
- * v1.131: @mention 高亮正则 — 文件级常量,避免每次 [MentionHighlightTransformation.filter]
- * 重组都新建(输入框文本变化时 filter 会被高频调用)。
- * 匹配 @ 后跟中文/英文/数字/下划线序列(避免误高亮邮箱)。
+ * v1.131: @mention Destacar la regularidad — Constantes de nivel de archivo,evitar cada vez [MentionHighlightTransformation.filter]
+ * Reorganizar y construir nuevos(El filtro se llamará con frecuencia cuando cambie el texto en el cuadro de entrada.).
+ * Coincidir @ seguido de chino/ingles/numeros/Secuencia de subrayado(Evite resaltar buzones accidentalmente).
  */
 private val MENTION_HIGHLIGHT_REGEX = Regex("@[\\u4e00-\\u9fa5\\w]+")
 
 /**
- * v0.22 极简胶囊输入栏 — 极简胶囊设计。
+ * v0.22 Campo de entrada de cápsula minimalista — Diseño de cápsula minimalista.
  *
- * 设计(对标图片):
- *  - 整体:浅色圆角长条(圆角 24dp),背景 surfaceVariant
- *  - 左侧:圆形 + 号按钮 → 展开附件/图片/绘图/联网搜索菜单
- *  - 中间:无边框 TextField,占位文字"发送消息…"
- *  - 右侧:麦克风(空文本时) / 发送按钮(有文本时)
- *  - 流式中:右侧变为停止按钮
+ * diseño(Imágenes de referencia):
+ *  - entero:Tiras redondeadas de color claro.(esquinas redondeadas 24dp),fondo surfaceVariant
+ *  - lado izquierdo:Botón redondo + → Ampliar archivo adjunto/fotos/Dibujo/menú de búsqueda en Internet
+ *  - medio:Sin fronteras TextField,texto de marcador de posición"enviar mensaje…"
+ *  - lado derecho:micrófono(texto vacío) / boton enviar(cuando hay texto)
+ *  - Transmisión:El lado derecho se convierte en un botón de parada.
  *
- * 功能保留:
- *  - 附件、图片(OCR/视觉)、语音输入、绘图模式、联网搜索
- *  - 快捷消息 chips、模式选择器、待发送图片预览
- *  - 边缘到边缘安全区由 Chat 页面 bottom bar 统一处理
+ * Funcionalidad retenida:
+ *  - Adjuntos, fotos(OCR/Visión), entrada de voz, modo de dibujo, búsqueda de red
+ *  - Chips de mensajes rápidos, selector de modo, vista previa de imagen a enviar
+ *  - Las zonas seguras de borde a borde se manejan de manera uniforme en la barra inferior de la página de Chat
  */
 
-/** 待发送缩略图上移除按钮的外溢偏移：让按钮角标压在缩略图圆角外，不撑高预览行。 */
+/** Desplazamiento de desbordamiento del botón Eliminar en la miniatura que se enviará: deje que la marca de la esquina del botón se presione fuera de la esquina redondeada de la miniatura y la línea de vista previa no se elevará. */
 private val REMOVE_BUTTON_OVERHANG = 12.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -134,7 +134,7 @@ private val REMOVE_BUTTON_OVERHANG = 12.dp
 internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: InputBarCallbacks = InputBarCallbacks()) {
     val hapticFeedback = LocalHapticFeedback.current
     val reducedMotion = MuseMotion.isReducedMotion()
-    // B7-07: 从聚合状态/回调中解包,保持函数体原有逻辑不变
+    // B7-07: del estado agregado/Desempaquetar en devolución de llamada,Mantenga la lógica original del cuerpo de la función sin cambios.
     val text = state.text
     val assistantName = state.assistantName.ifBlank { "Muse" }
     val isStreaming = state.isStreaming
@@ -195,7 +195,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
     val onShowToolCalls = callbacks.onShowToolCalls
     val toolCallCompleted = state.toolCallCompleted
     val toolCallTotal = state.toolCallTotal
-    // v1.26: 上滑取消后的"已取消"瞬态提示(1.5s 后自动消失)
+    // v1.26: Después de deslizar hacia arriba para cancelar"Cancelado"aviso transitorio(1.5s desaparece automáticamente después)
     var showCancelledHint by remember { mutableStateOf(false) }
     LaunchedEffect(showCancelledHint) {
         if (showCancelledHint) {
@@ -204,10 +204,10 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
         }
     }
     var expanded by remember { mutableStateOf(false) }
-    // 长按输入栏弹出的动作菜单(全屏输入模式入口)
+    // Mantenga presionado el campo de entrada para que aparezca el menú de acciones(Entrada al modo de entrada de pantalla completa)
     var showActionMenu by remember { mutableStateOf(false) }
-    // v2.4.5 fix: 斜杠命令内联补全 — 输入 "/xxx"(尚未含空格)时在输入岛上方给出候选。
-    // 此前 SlashCommand.allCommandNames() 只定义、从未被调用,用户输入 / 看不到任何提示。
+    // v2.4.5 fix: Finalización en línea del comando de barra diagonal — entrada "/xxx"(Aún no hay espacios)Los candidatos se encuentran encima de la isla de entrada.
+    // anteriormente SlashCommand.allCommandNames() Sólo definido, nunca llamado,Entrada del usuario/no ve mensajes.
     val slashQuery = text.takeIf { it.startsWith("/") && !it.contains(' ') && !it.contains('\n') }?.removePrefix("/")
     val slashMatches = remember(slashQuery) {
         if (slashQuery == null) {
@@ -218,8 +218,8 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
     }
-    // F-3: 长按加号展开/收起的快捷工具栏状态(rememberSaveable,旋转/后台保持)。
-    // 无现成持久化开关,按任务要求用 rememberSaveable 即可。
+    // F-3: Mantenga presionado el signo más para expandir/Estado de la barra de herramientas de acceso directo contraída(rememberSaveable,rotar/retención de fondo).
+    // Sin interruptor de persistencia listo para usar,Simplemente use RememberSaveable según lo requiera la tarea.
     var quickBarExpanded by rememberSaveable { mutableStateOf(false) }
     if (expanded) {
         MuseExpandedInputEditor(
@@ -230,25 +230,25 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             onClose = { expanded = false },
         )
     }
-    // 进入聊天页时自动聚焦输入框(仅在文本为空且允许自动聚焦时,避免打断已有草稿)
+    // Centrarse automáticamente en el cuadro de entrada al ingresar a la página de chat(Sólo si el texto está vacío y se permite el enfoque automático,Evite interrumpir borradores existentes)
     val focusRequester = remember { FocusRequester() }
-    // v1.0.74 fix: 等一帧再请求焦点,避免焦点系统未就绪崩溃(华为 Android 10 实测)
+    // v1.0.74 fix: Espere un cuadro antes de solicitar el enfoque,Evite que el sistema de enfoque no esté listo.(Prueba real de Huawei Android 10)
     io.zer0.muse.ui.common.focus.SafeAutoFocusEffect({ autoFocus && text.isEmpty() }, focusRequester)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            // v1.99: 大R角/曲面屏设备横向安全区避让(displayCutout 在非 cutout 设备上返回 0,安全)
+            // v1.99: grandeRángulo/Evitación de zonas de seguridad horizontales para dispositivos con pantalla curva(displayCutout Devoluciones en dispositivos no recortados 0,seguro)
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-            // v2.4.5: 输入岛收窄并抬高(参考图对齐)。
+            // v2.4.5: La isla de entrada se estrecha y se eleva.(Alineación de la imagen de referencia).
             .padding(
                 horizontal = MusePaddings.inputIslandHorizontal,
                 vertical = MusePaddings.inputIslandVertical,
             )
-            // v2.4.5: 底部悬浮间距 — 让输入岛离开底边/导航栏一点,不再贴着底。
+            // v2.4.5: espaciado flotante inferior — Aleje la isla de entrada de la parte inferior/barra de navegación un poco,Ya no se pega al fondo.
             .padding(bottom = MusePaddings.inputIslandBottomGap),
         verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
     ) {
-        // QuickMessages 气泡
+        // QuickMessages Burbujas
         if (quickMessages.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -265,10 +265,10 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                 }
             }
         }
-        // v2.6.11: 这里原本有一颗「工具 22/23」胶囊。
-        // 它和输入栏上方的过程扁条说的是同一件事，两条一起出现既重复又挤竖向空间。
-        // 现在执行态统一由 ActiveProcessBar 承担（点它看明细），这里不再重复。
-        // F-3: 长按加号展开的快捷工具栏(横向一排,点击某项后收起)。
+        // v2.6.11: Originalmente aquí había una cápsula "Tool 22/23".
+        // Dice lo mismo que la barra plana de proceso encima del campo de entrada. Cuando dos de ellos aparecen juntos, son repetitivos y exprimen el espacio vertical.
+        // Ahora el estado de ejecución está unificado por ActiveProcessBar (haga clic en él para obtener más detalles), lo cual no se repetirá aquí.
+        // F-3: Mantenga presionado el signo más para expandir la barra de herramientas de acceso directo(fila horizontal,Haga clic en un elemento para contraerlo).
         if (quickBarExpanded && !isStreaming) {
             Row(
                 modifier = Modifier
@@ -278,7 +278,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
             ) {
                 QuickBarAction(
-                    // v2.x: 联网搜索图标从"翻译"语义(languages)修正为 globe
+                    // v2.x: Icono de búsqueda en Internet de"Traducción"Semántica(languages)Corregido a globe
                     icon = MuseIcons.globe,
                     contentDescription = stringResource(R.string.chat_web_search_cd),
                     active = isWebSearchEnabled,
@@ -334,9 +334,9 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                 )
             }
         }
-        // 待发送图片预览
-        // 行高由缩略图本体决定:移除按钮是 48dp 触摸区,直接放进 Box 会把行撑高,
-        // 让预览条侵入上方消息列表。按钮改为绝对定位叠放,不参与行高测量。
+        // Vista previa de las fotografías a enviar
+        // La altura de la línea está determinada por el cuerpo de la miniatura.:El botón Quitar tiene un área táctil de 48 dp,Ponerlo directamente en la Caja elevará las filas.,
+        // Deje que la barra de vista previa invada la lista de mensajes de arriba. Los botones cambiaron a apilamiento en posición absoluta,No participa en la medición de la altura de las hileras.
         if (pendingImages.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -355,7 +355,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         SmartImage(
                             model = "data:image/jpeg;base64,$b64",
                             contentDescription = stringResource(R.string.chat_pending_image_cd, index + 1),
-                            // 竖图在方框内按 Fit 会缩成中间一条,改 Crop 填满缩略图。
+                            // Si presiona Ajustar en el cuadro, la imagen vertical se reducirá a una línea en el medio.,Cambie Recortar para llenar la miniatura.
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize(),
                         )
@@ -371,7 +371,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
 
-        // v1.136 T10: 待发送文档预览(可移除的文件芯片)
+        // v1.136 T10: Vista previa de los documentos a enviar(Chip de archivo extraíble)
         if (pendingDocuments.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -432,7 +432,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
 
-        // 待发送视频预览(与图片预览样式一致,叠加时长 + 播放图标提示视频类型)
+        // Vista previa del vídeo que se enviará(Consistente con el estilo de vista previa de la imagen.,Duración de superposición + ícono de reproducción indica el tipo de video)
         pendingVideo?.let { va ->
             Row(
                 modifier = Modifier
@@ -446,7 +446,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         .size(MusePaddings.previewThumb)
                         .clip(MuseShapes.medium),
                 ) {
-                    // 缩略图缺失时降级为深色占位 + 视频图标,避免空白
+                    // Degradado a marcador de posición oscuro + ícono de video cuando falta la miniatura,evitar espacios en blanco
                     val thumb = va.thumbnail
                     if (!thumb.isNullOrBlank()) {
                         SmartImage(
@@ -469,7 +469,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             )
                         }
                     }
-                    // 中央播放图标,提示这是视频而非图片
+                    // icono de reproducción central,Consejo: Este es un vídeo, no una imagen.
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -485,7 +485,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             modifier = Modifier.size(MuseIconSizes.iconMedium),
                         )
                     }
-                    // 移除按钮(同图片预览,触摸目标 48dp,Icon 居中)
+                    // botón quitar(Vista previa de la misma imagen,tocar el objetivo 48dp,Icon centro)
                     val removeVideoInteractionSource = remember { MutableInteractionSource() }
                     val isRemoveVideoPressed by removeVideoInteractionSource.collectIsPressedAsState()
                     val removeVideoBgColor by animateColorAsState(
@@ -517,7 +517,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         )
                     }
                 }
-                // 右侧显示视频元信息:时长 + 分辨率,帮助用户确认附件
+                // La metainformación del vídeo se muestra a la derecha.:duración + resolución,Ayudar a los usuarios a confirmar los archivos adjuntos
                 Column {
                     Text(
                         text = formatVideoDuration(va.durationMs),
@@ -535,12 +535,12 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
 
-        // 引用回复:输入框上方显示被引用消息摘要
-        // v1.0.72: 移除引用编辑功能(编辑后引用块会固定在输入栏的 bug,编辑本身没什么用)
-        // v1.0.72 fix: 整个引用块可点击清除(用户反馈"叉点不下去" — X 太小且可能被点击拦截,
-        //   点引用块任意位置都清除引用,降低操作难度)
+        // Cotización Responder:Se muestra un resumen de los mensajes citados encima del cuadro de entrada.
+        // v1.0.72: Eliminar la funcionalidad de edición de cotizaciones(Después de editar, el bloque de referencia se fijará en el campo de entrada. bug,La edición en sí es inútil)
+        // v1.0.72 fix: Todo el bloque de referencia se puede borrar con un solo clic.(Comentarios de los usuarios"no puedo cruzar" — X Demasiado pequeño y puede bloquearse con clics,
+        //   Haga clic en el bloque de referencia en cualquier lugar para borrar la referencia.,Reducir la dificultad operativa)
         replyingTo?.let { msg ->
-            // v1.0.72: 引用块做回岛样式(实色背景 + 圆角),输入框透明已解决白块
+            // v1.0.72: Bloque de citas para crear un estilo isleño.(Fondo sólido + esquinas redondeadas),Cuadro de entrada bloque blanco transparente resuelto
             io.zer0.muse.ui.common.surface.MuseIsland(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -571,7 +571,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Text(
-                            // v2.6.8: 引用预览走展示出口，否则卡片消息会把 JSON 尾巴漏到输入框上方。
+                            // v2.6.8: Cite la vista previa y use la salida de visualización; de lo contrario, el mensaje de la tarjeta filtrará la cola JSON sobre el cuadro de entrada.
                             text = io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(msg.content),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -579,7 +579,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    // v1.0.72: 清除引用按钮 — 加大点击区(48dp) + 图标更大更清晰
+                    // v1.0.72: botón borrar cita — Ampliar área de clic(48dp) + Los iconos son más grandes y claros.
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -602,7 +602,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
 
-        // v0.34: 绘图模式参数面板(临时覆盖设置默认值)
+        // v0.34: Panel de parámetros del modo de dibujo(Anular temporalmente los valores predeterminados de configuración)
         if (isDrawMode) {
             ImageGenParamsPanel(
                 params = imageGenParams,
@@ -610,22 +610,22 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             )
         }
 
-        // v1.0.53: 思考强度胶囊已合并到加号菜单的"深度思考"开关 —
-        // 点击 toggle 开关,长按循环切换级别 (LOW → MED → HIGH → XHIGH)。
+        // v1.0.53: Las cápsulas Thought Strength se han fusionado en el menú Plus"pensamiento profundo"cambiar —
+        // Haga clic en el interruptor de palanca,Mantenga presionado para recorrer los niveles (LOW → MED → HIGH → XHIGH).
 
-        // 主输入栏: 圆角容器
-        // v1.0.72: 做回岛样式 — 实色背景 + 圆角 + 阴影(用户反馈完全透明太裸);
-        //   输入框本身保持透明,避免实色容器叠成"白块"
-        // v2.0 修复(用户反馈: 浅色主题下输入岛与背景对比过弱):
-        //   填充色向 onSurface 混色加深一档,浅色自动加深/深色自动提亮,与 MuseTextField 同口径。
-        // v2.5.0: 液态玻璃 — 开关开启且 hazeState 可用时,输入岛用背景模糊替代实色。
+        // Campo de entrada principal: contenedor de esquinas redondeadas
+        // v1.0.72: Hacer estilo isla — Fondo sólido + esquinas redondeadas + sombra(Los comentarios de los usuarios son completamente transparentes y demasiado desnudos.);
+        //   El cuadro de entrada en sí permanece transparente.,Evite apilar contenedores de colores sólidos"bloque blanco"
+        // v2.0 Reparación(Comentarios de los usuarios: El contraste entre la isla de entrada y el fondo es demasiado débil bajo el tema claro.):
+        //   El color de relleno se intensifica en un nivel hacia el color de mezcla de onSurface.,Los colores claros se oscurecen automáticamente/Ilumina automáticamente los colores oscuros,Mismo calibre que MuseTextField.
+        // v2.5.0: vidrio liquido — Cuando el interruptor está encendido y hazeState está disponible,La isla de entrada tiene un fondo borroso en lugar de un color sólido.
         val islandBaseColor = androidx.compose.ui.graphics.lerp(
             MaterialTheme.colorScheme.surfaceVariant,
             MaterialTheme.colorScheme.onSurface,
             0.06f,
         )
         val islandModifier: Modifier = if (state.glassActive && state.glassConfig.enabled) {
-            // v2.6: 输入岛玻璃 —— 统一由 glassSurfaceModifier 决策(backdrop/liquid 真玻璃或降级假玻璃)
+            // v2.6: Entra en Island Glass —— Unificado por decisión glassSurfaceModifier(backdrop/liquid Vidrio real o vidrio falso degradado)
             io.zer0.muse.ui.theme.glassSurfaceModifier(
                 shape = MuseShapes.pill,
                 surfaceColor = islandBaseColor,
@@ -638,25 +638,25 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
         }
         Surface(
             color = if (state.glassActive && state.glassConfig.enabled) Color.Transparent else islandBaseColor,
-            // v2.4.5 (参考图对齐): 输入岛改为真胶囊(圆角 = 半高) + 去掉投影,
-            // 视觉更轻、更紧凑;高度由行内 48dp 触控区决定。
+            // v2.4.5 (Alineación de la imagen de referencia): Cambia la isla de entrada a una cápsula real.(esquinas redondeadas = media altura) + quitar la sombra,
+            // Visualmente más ligero y compacto;La altura está determinada por el área táctil de 48 dp dentro de la fila.
             shape = MuseShapes.pill,
             tonalElevation = MuseElevation.low,
             modifier = islandModifier.fillMaxWidth(),
         ) {
-            // v0.52: @mention 高亮转换(把 @文档名 染为 primary 色,提示引用了知识库)
+            // v0.52: @mention Resaltar transición(Color @documentname como color primario,El mensaje se refiere a la base de conocimientos.)
             val mentionColor = MaterialTheme.colorScheme.primary
             val mentionTransform = remember(mentionColor) { MentionHighlightTransformation(mentionColor) }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // v2.4.5 (参考图对齐): 内边距收紧到 6dp;行高不再额外加垂直 padding,
-                    // 胶囊高度由内部按钮的 48dp 触控区决定,视觉上更紧凑。
+                    // v2.4.5 (Alineación de la imagen de referencia): Acolchado apretado para 6dp;La altura de la línea ya no agrega una línea vertical adicional padding,
+                    // La altura de la cápsula está determinada por el área táctil de 48 dp del botón interior.,Visualmente más compacto.
                     .padding(
                         horizontal = MusePaddings.inputIslandInnerHorizontal,
                         vertical = MusePaddings.inputIslandRowVertical,
                     )
-                    // 长按输入栏弹出动作菜单(全屏输入模式入口)
+                    // Mantenga presionado el campo de entrada para que aparezca el menú de acciones(Entrada al modo de entrada de pantalla completa)
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -669,12 +669,12 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
             ) {
-                // v0.44: Sheet 状态声明(右侧 Add 按钮触发,弹层锚定在按钮自身)
+                // v0.44: Sheet declaración de estado(El botón Agregar a la derecha activa,La capa de resorte va anclada al propio botón.)
                 Box(modifier = Modifier.size(MuseIconSizes.touchTarget)) {
                     var showToolSheet by remember { mutableStateOf(false) }
                     val context = LocalContext.current
-                    // 左侧: + 号按钮 → 点击弹工具底部栏;长按展开/收起快捷工具栏(F-3)
-                    // F-3: 用 combinedClickable 同时承载单击(弹 Sheet)与长按(切快捷工具栏)。
+                    // lado izquierdo: + botón → Haga clic en la barra inferior de la herramienta emergente;Mantenga presionado para expandir/Cerrar barra de herramientas de acceso directo(F-3)
+                    // F-3: Utilice combinadoClickable para alojar clics simultáneamente(bomba Sheet)con pulsación larga(Cortar barra de herramientas de acceso directo).
                     Box(
                         modifier = Modifier
                             .size(MuseIconSizes.touchTarget)
@@ -685,11 +685,11 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                     showToolSheet = true
                                 },
                                 onLongClick = {
-                                    // combinedClickable 已用 enabled 禁用流式态,这里再判断兜底一次
+                                    // combinedClickable El estado de transmisión se ha deshabilitado usando habilitado,Hagamos otro juicio aquí.
                                     if (!isStreaming) {
                                         MuseHaptics.medium(hapticFeedback)
                                         quickBarExpanded = !quickBarExpanded
-                                        // 每次长按给出 Toast 反馈(onLongClick 每手势只触发一次)
+                                        // Proporciona información sobre el brindis con cada pulsación larga(onLongClick Sólo se activa una vez por gesto)
                                         MuseToast.show(
                                             context.getString(
                                                 if (quickBarExpanded) R.string.chat_quickbar_hint_on else R.string.chat_quickbar_hint_off,
@@ -703,8 +703,8 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         Icon(
                             imageVector = MuseIcons.plus,
                             contentDescription = stringResource(R.string.chat_tools_cd),
-                            // v1.79 (L-I7): 禁用态降低 alpha,提供视觉反馈
-                            // F-3: 快捷工具栏展开时加号高亮为 primary 色,提供可见反馈
+                            // v1.79 (L-I7): Estado deshabilitado reducido alpha,Proporcionar retroalimentación visual
+                            // F-3: Cuando se expande la barra de herramientas de acceso directo, el signo más se resalta en color primario.,Proporcionar comentarios visibles
                             tint = when {
                                 isStreaming -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                                 quickBarExpanded -> MaterialTheme.colorScheme.primary
@@ -717,12 +717,12 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         val deepThinkingLabel = stringResource(R.string.chat_deep_thinking_cd)
                         val deepThinkingTitle = if (isDeepThinkingEnabled) {
                             val levelLabel = when (deepThinkingLevel) {
-                                // v1.0.72: 思考等级改中文(低/中/高/极高)
-                                io.zer0.ai.core.ReasoningLevel.LOW -> "低"
-                                io.zer0.ai.core.ReasoningLevel.MEDIUM -> "中"
-                                io.zer0.ai.core.ReasoningLevel.HIGH -> "高"
-                                io.zer0.ai.core.ReasoningLevel.XHIGH -> "极高"
-                                else -> "自动"
+                                // v1.0.72: Pensando en el cambio de nivel en chino(bajo/en/alto/extremadamente alto)
+                                io.zer0.ai.core.ReasoningLevel.LOW -> "bajo"
+                                io.zer0.ai.core.ReasoningLevel.MEDIUM -> "en"
+                                io.zer0.ai.core.ReasoningLevel.HIGH -> "alto"
+                                io.zer0.ai.core.ReasoningLevel.XHIGH -> "extremadamente alto"
+                                else -> "automático"
                             }
                             "$deepThinkingLabel · $levelLabel"
                         } else {
@@ -731,7 +731,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         val toolEntries = buildList {
                             add(
                                 ToolEntry(
-                                    // v2.x: 联网搜索图标修正为 globe(原 languages 是翻译语义)
+                                    // v2.x: El icono de búsqueda en Internet se ha corregido para globe(Los idiomas originales son semántica de traducción.)
                                     icon = MuseIcons.globe,
                                     title = stringResource(R.string.chat_web_search_cd),
                                     isActive = isWebSearchEnabled,
@@ -753,7 +753,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                         onToggleDeepThinking()
                                     },
                                     onLongClick = {
-                                        // v2.x: 换等级用更重触感 + title 随等级即时更新(可见反馈)
+                                        // v2.x: Cambia el nivel para usar un toque más intenso + el título se actualiza instantáneamente con el nivel(Comentarios visibles)
                                         MuseHaptics.medium(hapticFeedback)
                                         onCycleDeepThinkingLevel()
                                     },
@@ -872,7 +872,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                     }
                 }
 
-                // v2.4.5 fix: 斜杠命令候选(输入 / 开头且未含空格时显示在输入岛上方)
+                // v2.4.5 fix: candidato al comando de barra diagonal(Se muestra encima de la isla de entrada cuando la entrada comienza con / y no contiene espacios)
                 if (slashMatches.isNotEmpty() && !isStreaming) {
                     SlashCommandSuggestions(
                         commands = slashMatches,
@@ -880,8 +880,8 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                     )
                 }
 
-                // v1.0.47 P5-4: 抽取 MessageInputField 子组件,隔离输入框高频重组,
-                // 避免 onValueChange 触发整个 InputBar(含工具 Sheet/图片预览等)重组。
+                // v1.0.47 P5-4: Extraiga el subcomponente MessageInputField,Reorganización de alta frecuencia de caja de entrada aislada.,
+                // Evite que onValueChange active todo InputBar(Contiene herramientas Vista previa de hoja/imagen, etc.)Reorganización.
                 MessageInputField(
                     text = text,
                     isStreaming = isStreaming,
@@ -898,7 +898,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                     onAddPastedTextAsDocument = onAddPastedTextAsDocument,
                     onExpand = { expanded = true },
                 )
-                // 长按输入栏弹出的动作菜单(全屏输入模式入口)
+                // Mantenga presionado el campo de entrada para que aparezca el menú de acciones(Entrada al modo de entrada de pantalla completa)
                 MuseAnchoredMenu(
                     expanded = showActionMenu,
                     onDismissRequest = { showActionMenu = false },
@@ -918,10 +918,10 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         headlineContent = { Text(stringResource(R.string.chat_input_action_fullscreen)) },
                     )
                 }
-                // 右侧: 麦克风(空文本且无待发图片时) / 发送(有文本时) / 停止(流式中) / 插话(流式中输入非空)
+                // lado derecho: micrófono(Texto vacío y no se enviará ninguna imagen.) / enviar(cuando hay texto) / detenerse(Transmisión) / interponer(La entrada en la secuencia no está vacía.)
                 val canInterject = text.isNotBlank() || pendingImages.isNotEmpty() || pendingVideo != null
                 if (isStreaming && !canInterject) {
-                    // 停止生成:红色实心圆形按钮,白色停止图标
+                    // dejar de generar:Botón redondo rojo sólido,Icono de parada blanco
                     val stopInteractionSource = remember { MutableInteractionSource() }
                     val isStopPressed by stopInteractionSource.collectIsPressedAsState()
                     val stopScale by animateFloatAsState(
@@ -969,13 +969,13 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         }
                     }
                 } else if (isStreaming) {
-                    // A8 + B2: 流式中输入非空时,右侧为「入队」+「插话」双按钮 —
-                    // 入队不打断生成,插话打断当前生成并重定向。
+                    // A8 + B2: Cuando la entrada en streaming no está vacía,A la derecha está "Ingresar al equipo".+Doble botón "interrumpir" —
+                    // Unirse a la cola no interrumpe la generación,Interrupt interrumpe la compilación actual y la redirige.
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
                     ) {
-                        // B2 入队按钮:把当前输入加入待发送队列(不打断生成),发送按钮位左侧新增。
+                        // B2 botón unirse:Agregue la entrada actual a la cola para enviar(No interrumpir la generación),El botón enviar se agrega a la izquierda.
                         val enqueueInteractionSource = remember { MutableInteractionSource() }
                         val enqueuePressed by enqueueInteractionSource.collectIsPressedAsState()
                         val enqueueScale by animateFloatAsState(
@@ -1016,7 +1016,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                 )
                             }
                         }
-                        // A8 插话按钮:打断当前生成并重定向(发送按钮位置,主色纸飞机)。
+                        // A8 botón de interrupción:Interrumpir la compilación actual y redirigir(Enviar posición del botón,Avión de papel de color principal.).
                         val interjectInteractionSource = remember { MutableInteractionSource() }
                         val interjectPressed by interjectInteractionSource.collectIsPressedAsState()
                         val interjectScale by animateFloatAsState(
@@ -1059,9 +1059,9 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         }
                     }
                 } else if (text.isBlank() && pendingImages.isEmpty() && pendingVideo == null && showMic) {
-                    // v1.26: 麦克风统一为长按说话 + 上滑取消(不再区分 API/Vosk 路径,
-                    //   由 ChatScreen 在 onStartRecording/onStopRecording/onCancelRecording 回调里
-                    //   决定使用哪个识别器;InputBar 只负责手势交互)
+                    // v1.26: El micrófono está unificado para presionar prolongadamente para hablar + deslizar hacia arriba para cancelar(No más distinción entre rutas API/Vosk,
+                    //   Por ChatScreen en onStartRecording/onStopRecording/onCancelRecording en devolución de llamada
+                    //   Decidir qué reconocedor usar;InputBar Sólo responsable de la interacción de gestos.)
                     val pulseScale by animateFloatAsState(
                         targetValue = if (isRecording && !reducedMotion) 1.25f else 1f,
                         animationSpec = if (isRecording && !reducedMotion) {
@@ -1074,8 +1074,8 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         },
                         label = "micPulse",
                     )
-                    // v1.79 (H-I2): 用 rememberUpdatedState 包装回调,
-                    // 避免 pointerInput(Unit) 捕获过期 lambda(key 不变时不重组)
+                    // v1.79 (H-I2): Envuelva la devolución de llamada con RememberUpdatedState,
+                    // evitar pointerInput(Unit) captura caducada lambda(key Sin reorganización cuando no se modifica)
                     val currentOnStart by rememberUpdatedState(onStartRecording)
                     val currentOnStop by rememberUpdatedState(onStopRecording)
                     val currentOnCancel by rememberUpdatedState(onCancelRecording)
@@ -1083,19 +1083,19 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         modifier = Modifier
                             .size(MuseIconSizes.touchTarget)
                             .pointerInput(Unit) {
-                                // v1.79 (M-I10): 上滑取消阈值由 100dp 降至 48dp
-                                // (PointerInputScope 是 Density,可直接 toPx)
+                                // v1.79 (M-I10): Umbral de cancelación de deslizamiento hacia arriba reducido de 100 dp 48dp
+                                // (PointerInputScope si Density,Puede ser directamente toPx)
                                 val slideThresholdPx = MuseIconSizes.touchTarget.toPx()
                                 awaitPointerEventScope {
                                     val down = awaitFirstDown()
-                                    // 必须真正长按后才开始录音;短按不再误触发系统 ASR 或上传空音频。
+                                    // Realmente tienes que mantener presionado para comenzar a grabar.;Una pulsación breve ya no activa accidentalmente el ASR del sistema ni carga audio vacío.
                                     val longPress = awaitLongPressOrCancellation(down.id)
                                     if (longPress == null) return@awaitPointerEventScope
-                                    // 长按开始录音;若模型未就绪/权限未授予,
-                                    // onStartRecording 返回 false,直接退出不进入手势循环
+                                    // Mantenga presionado para comenzar a grabar;Si el modelo no está listo/Permiso no concedido,
+                                    // onStartRecording Regresar false,Salir directamente sin entrar en el bucle de gestos.
                                     val started = currentOnStart()
                                     if (!started) {
-                                        // v1.98: 移除 Toast 提示,静默处理
+                                        // v1.98: Eliminar mensaje de brindis,Procesamiento silencioso
                                         return@awaitPointerEventScope
                                     }
                                     MuseHaptics.medium(hapticFeedback)
@@ -1103,20 +1103,20 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                     try {
                                         while (true) {
                                             val event = awaitPointerEvent()
-                                            // v1.79 (H-I3): 改用 firstOrNull 防止越界
+                                            // v1.79 (H-I3): Utilice firstOrNull en su lugar para evitar límites
                                             val change = event.changes.firstOrNull() ?: continue
-                                            // 上滑超过阈值 → 取消(放弃本次识别结果)
+                                            // Deslizar hacia arriba supera el umbral → Cancelar(Renunciar a este resultado de reconocimiento.)
                                             if (down.position.y - change.position.y > slideThresholdPx) {
                                                 cancelled = true
                                                 break
                                             }
-                                            // 松手 → 停止录音并处理结果
-                                            // (含快速点击:短按短放也走这里,正常处理录音)
+                                            // Déjalo ir → Dejar de registrar y procesar los resultados.
+                                            // (Incluye clics rápidos:Prensa breve y comunicado breve para ir aquí,Procesar la grabación normalmente)
                                             if (change.changedToUp()) break
                                         }
                                     } finally {
-                                        // v1.79 (H-I1): try/finally 保证 Composable 离开组合时
-                                        // 协程被取消也能释放录音资源
+                                        // v1.79 (H-I1): try/finally Composable Garantizado al salir de la composición
+                                        // Los recursos de grabación también se pueden liberar cuando se cancela la rutina.
                                         if (cancelled) {
                                             currentOnCancel()
                                             showCancelledHint = true
@@ -1132,13 +1132,13 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         val recordingCd = stringResource(R.string.chat_recording_cd)
                         val holdToRecordCd = stringResource(R.string.chat_hold_to_record_cd)
                         when {
-                            // v1.91: Stopping(收尾中)显示 loading,流式模式下 Listening 期间已有结果回填
+                            // v1.91: Stopping(Acabado)mostrar loading,Los resultados se han completado durante la escucha en modo streaming.
                             asrStatus == ASRStatus.Stopping -> MuseSpinner(
                                 modifier = Modifier
                                     .semantics { contentDescription = recognizingCd },
                                 size = MuseIconSizes.iconMedium,
                             )
-                            // 任务 1: Reconnecting(断网重连中)显示 loading,提示用户网络恢复中
+                            // Tarea 1: Reconnecting(Desconectado y reconectándose)mostrar loading,Indica al usuario que la red se está recuperando.
                             asrStatus == ASRStatus.Reconnecting -> MuseSpinner(
                                 modifier = Modifier
                                     .semantics { contentDescription = recognizingCd },
@@ -1153,7 +1153,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                     .scale(pulseScale),
                             )
                             else -> Box(
-                                // v2.4.5 (参考图对齐): 麦克风改为浅色圆底 + 图标。
+                                // v2.4.5 (Alineación de la imagen de referencia): El micrófono cambia a un ícono + de fondo redondo y claro.
                                 modifier =
                                 Modifier
                                     .size(MuseIconSizes.stopButton)
@@ -1171,7 +1171,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         }
                     }
                 } else {
-                    // 发送按钮:月桂绿实心圆形按钮,白色纸飞机图标
+                    // boton enviar:Botón redondo sólido verde laurel,Icono de avión de papel blanco
                     val sendInteractionSource = remember { MutableInteractionSource() }
                     val sendPressed by sendInteractionSource.collectIsPressedAsState()
                     val sendScale by animateFloatAsState(
@@ -1197,7 +1197,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                         Box(
                             modifier =
                             Modifier
-                                // v2.4.5 (参考图对齐): 发送键视觉圆收小到与右侧键一致。
+                                // v2.4.5 (Alineación de la imagen de referencia): El círculo visual de la tecla de envío se reduce para que sea coherente con la tecla correcta.
                                 .size(MuseIconSizes.stopButton)
                                 .graphicsLayer {
                                     scaleX = sendScale
@@ -1205,7 +1205,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                                 }
                                 .clip(CircleShape)
                                 .background(
-                                    // UI-FIX A: 可发送=实心，不可发送=不透明中性底（不再用 38% 半透明主色）
+                                    // UI-FIX A: se puede enviar=Sólido, no enviable=Base neutra opaca (no más 38% de color principal translúcido)
                                     if (canSend) {
                                         MuseActionColors.container
                                     } else {
@@ -1215,7 +1215,7 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                // v2.6.4: 发送键改回纸飞机（用户反馈：上箭头不是要的效果）。
+                                // v2.6.4: Vuelva a cambiar la tecla de envío a avión de papel (comentarios de los usuarios: la flecha hacia arriba no es el efecto deseado).
                                 imageVector = MuseIcons.send,
                                 contentDescription = stringResource(R.string.action_send),
                                 tint = if (canSend) MuseActionColors.content else MuseActionColors.mutedContent,
@@ -1227,9 +1227,9 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             }
         }
 
-        // 录音/识别/取消状态提示条
-        // v1.91: Stopping(收尾中)显示 loading;isRecording 含 Connecting/Listening/Stopping/Reconnecting,
-        // 但 Stopping/Reconnecting 优先匹配到 LoadingDots,Listening/Connecting 才走波形分支
+        // Grabación/identificar/Cancelar barra de aviso de estado
+        // v1.91: Stopping(Acabado)mostrar loading;isRecording Contiene Connecting/Listening/Stopping/Reconnecting,
+        // Pero Detener/Reconectar se emparejará primero LoadingDots,Listening/Connecting Simplemente toma la rama de forma de onda.
         if (isRecording || asrStatus == ASRStatus.Stopping ||
             (asrStatus == ASRStatus.Error && !asrErrorMessage.isNullOrBlank()) || showCancelledHint
         ) {
@@ -1242,10 +1242,10 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
             ) {
                 when {
                     asrStatus == ASRStatus.Stopping -> LoadingDots(text = stringResource(R.string.voice_recognizing))
-                    // 任务 1: Reconnecting(断网重连中)显示"网络异常,正在重连…",提示用户网络问题
+                    // Tarea 1: Reconnecting(Desconectado y reconectándose)mostrar"Anormalidad de la red,Reconectando…",Alertar a los usuarios sobre problemas de red
                     asrStatus == ASRStatus.Reconnecting -> LoadingDots(text = stringResource(R.string.voice_reconnecting))
-                    // v1.0.4 (P2): Connecting 阶段尚未开始录音,显示"正在连接识别服务…"而不是空白波形
-                    // (isRecording 包含 Connecting,必须先短路匹配 Connecting 才能落到正确的分支)
+                    // v1.0.4 (P2): Connecting El escenario aún no ha comenzado a grabar.,mostrar"Conexión al servicio de identificación…"en lugar de una forma de onda en blanco
+                    // (isRecording contiene Connecting,Primero debe hacer coincidir el cortocircuito Conexión para caer a la rama correcta)
                     asrStatus == ASRStatus.Connecting -> LoadingDots(text = stringResource(R.string.voice_connecting))
                     asrStatus == ASRStatus.Error -> Text(
                         text = asrErrorMessage ?: stringResource(R.string.chat_recording_start_failed),
@@ -1273,24 +1273,24 @@ internal fun InputBar(state: MuseInputState = MuseInputState(), callbacks: Input
 }
 
 /**
- * 录音波形条:把最近振幅历史渲染成竖条。
- * v1.91: 振幅改为归一化 Float(0-1f),无需再除以 32768。
+ * Barra de ondas de grabación:Representa el historial de amplitud reciente como barras verticales.
+ * v1.91: La amplitud cambió a normalizada. Float(0-1f),Ya no es necesario dividir por 32768.
  */
 /**
- * v0.52: @mention 高亮转换。
+ * v0.52: @mention Resalte la transición.
  *
- * 知识库选中后输入框插入 "@文档名" 纯文本(见 ChatScreen 知识库 sheet),
- * 此 VisualTransformation 在显示层把 "@文档名" 染为 primary 色 + 中粗体,
- * 作为引用知识库的视觉提示。不改动底层文本(发送内容不变)。
+ * El cuadro de entrada se inserta después de seleccionar la base de conocimientos. "@Nombre del documento" texto plano(Ver la base de conocimientos de ChatScreen sheet),
+ * Esta transformación visual pone "@Nombre del documento" Teñir al color primario + negrita media,
+ * Sirve como señal visual para hacer referencia a la base de conocimientos. No cambies el texto subyacente.(El contenido enviado permanece sin cambios.).
  *
- * 匹配规则:`@` 后跟中文/英文/数字/下划线序列。
+ * Reglas coincidentes:`@` seguido por el chino/ingles/numeros/Secuencia de subrayado.
  */
 private class MentionHighlightTransformation(
     private val highlightColor: Color,
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        // v1.79 (L-I5): 收紧正则,仅匹配 @后跟中文/英文/数字/下划线,避免误高亮邮箱等
-        // v1.131: Regex 提为文件级常量 MENTION_HIGHLIGHT_REGEX,避免每次 filter 重组都新建。
+        // v1.79 (L-I5): Apretar el regular,Sólo coincide con @ seguido de chino/ingles/numeros/subrayado,Evite resaltar accidentalmente buzones, etc.
+        // v1.131: Regex Constante a nivel de archivo MENTION_HIGHLIGHT_REGEX,Evite crear un nuevo filtro cada vez que se reorganice.
         if (!text.text.contains('@')) {
             return TransformedText(text, OffsetMapping.Identity)
         }
@@ -1307,8 +1307,8 @@ private class MentionHighlightTransformation(
 }
 
 /**
- * 视频时长格式化:毫秒 → "M:SS"(超过 1 小时则 "H:MM:SS")。
- * 仅用于 UI 预览,无业务逻辑依赖。
+ * Formato de duración del vídeo:milisegundos → "M:SS"(Más de 1 hora "H:MM:SS").
+ * Solo para vista previa de la interfaz de usuario,Sin dependencias de lógica de negocios.
  */
 private fun formatVideoDuration(durationMs: Long): String {
     if (durationMs <= 0L) return "0:00"
@@ -1320,10 +1320,10 @@ private fun formatVideoDuration(durationMs: Long): String {
 }
 
 /**
- * v2.6.13: 附件芯片的副标题。
+ * v2.6.13: Subtítulo del chip accesorio.
  *
- * 普通附件已改为「原件落工作区 + 消息里一行引用」，正文不再读进来，所以优先显示
- * 文件大小；纯文本附件（读到了正文）才显示字数，两者都没有时退到引用路径末段。
+ * Los archivos adjuntos ordinarios se cambiaron a "el documento original se coloca en el espacio de trabajo + una cita de una línea en el mensaje". El texto ya no se lee, por lo que se muestra primero.
+ * Tamaño del archivo; solo se mostrará el recuento de palabras para los archivos adjuntos de texto sin formato (se ha leído el texto principal) y, cuando ninguno de los dos esté disponible, volverá al final de la ruta de referencia.
  */
 @Composable
 private fun docChipSubtitle(doc: io.zer0.muse.ui.chat.PendingDocument): String {
@@ -1336,23 +1336,23 @@ private fun docChipSubtitle(doc: io.zer0.muse.ui.chat.PendingDocument): String {
 }
 
 /**
- * v1.0.47 P5-4: 消息输入框子组件 — 渲染隔离。
+ * v1.0.47 P5-4: Subcomponente del cuadro de entrada de mensajes — Renderizar aislamiento.
  *
- * 从 [InputBar] 抽取的独立 Composable,封装:
- *  - 草稿标记
- *  - TextField(含 @mention 高亮、回车发送、箭头历史导航)
- *  - 长文本粘贴检测 + 转文件对话框
- *  - 展开按钮(全屏输入)
- *  - Token 计数按钮(仅 tokenEstimateEnabled 时)
+ * de [InputBar] independencia extraída Composable,Encapsulación:
+ *  - marca de borrador
+ *  - TextField(Contiene resaltado de @mención, presione Intro para enviar y flecha de navegación por el historial.)
+ *  - Detección de pegado de texto largo + cuadro de diálogo de conversión de archivos
+ *  - Botón expandir(Entrada de pantalla completa)
+ *  - Token Botón de contar(Sólo cuando tokenEstimateEnabled)
  *
- * 渲染隔离原理:
- *  - Compose 编译器对参数稳定的 Composable 生成 skippable 代码
- *  - 当 InputBar 其他参数变化(如 toolCallCompleted/isStreaming)时,
- *    只要 MessageInputField 的参数未变,它不会被重新组合
- *  - 反之,当 text 变化时,只有本组件重组,InputBar 中的工具 Sheet/
- *    图片预览/文档芯片等(已抽取为独立 Composable 或 if 块)不受影响
+ * Principio de aislamiento de renderizado:
+ *  - Compose El compilador genera código que se puede omitir para Composables con argumentos estables.
+ *  - Cuando cambian otros parámetros de InputBar(Como por ejemplo toolCallCompleted/isStreaming)tiempo,
+ *    Mientras los parámetros de MessageInputField permanezcan sin cambios,no se volverá a montar
+ *  - por el contrario,cuando el texto cambia,Sólo este componente está reorganizado.,InputBar herramientas en Sheet/
+ *    Vista previa de la imagen/Chip de documento, etc.(Extraído a Composable independiente o si es un bloque)no afectado
  *
- * 内部状态(粘贴检测)随组件生命周期管理,切会话时随 InputBar 重组自动重置。
+ * estado interno(Detección de pegado)Con gestión del ciclo de vida de los componentes,Se restablece automáticamente cuando se reorganiza la barra de entrada al cambiar de sesión.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1372,19 +1372,19 @@ private fun RowScope.MessageInputField(
     onAddPastedTextAsDocument: (String) -> Unit,
     onExpand: () -> Unit,
 ) {
-    // ── 长文本粘贴检测状态 ──────────────────────────────────────────
-    // v1.0.47 P5-2: 记录上一次输入文本,用于判断是否为大段粘贴
+    // ── Estado de detección de pegado de texto largo ──────────────────────────────────────────
+    // v1.0.47 P5-2: Grabar el último texto ingresado,Se utiliza para determinar si se pega una sección grande.
     var prevInputText by remember { mutableStateOf(text) }
-    // 待确认的粘贴内容(newText=完整新文本, inserted=提取出的粘贴片段)
+    // Pegar contenido por confirmar(newText=Texto nuevo completo, inserted=Fragmento pegado extraído)
     var pendingPaste by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     /**
-     * 输入变化处理,拦截大段粘贴。
-     * 检测到粘贴(新增字符数 >= [pasteAsFileThreshold])时暂存待确认,弹窗让用户选择
-     * 「作为文件附加」或「直接粘贴」,而非直接塞入输入框。
+     * manejo de cambios de entrada,Pegado de bloques de grandes secciones.
+     * Pegar detectado(Número de personajes nuevos >= [pasteAsFileThreshold])Almacenado temporalmente para confirmación,La ventana emergente permite a los usuarios elegir
+     * "Adjuntar como archivo" o "Pegar directamente",En lugar de insertarlo directamente en el cuadro de entrada.
      */
     fun handleInputChange(newText: String) {
-        // v1.0.74 fix: 超过上限静默丢弃,用户以为打字没反应;改为截断继续写入
+        // v1.0.74 fix: Descartar silenciosamente cuando se exceda el límite superior,Los usuarios piensan que no hay respuesta al escribir;Cambiar para truncar y continuar escribiendo
         if (newText.length > INPUT_TEXT_MAX_LENGTH) {
             val truncated = newText.take(INPUT_TEXT_MAX_LENGTH)
             if (truncated == prevInputText) return
@@ -1397,28 +1397,28 @@ private fun RowScope.MessageInputField(
             val inserted = extractInsertedSegment(prevInputText, newText)
             if (inserted.length >= pasteAsFileThreshold) {
                 pendingPaste = newText to inserted
-                return // 不立即更新 text,等用户选择
+                return // No actualizar inmediatamente text,Espere la selección de usuario
             }
         }
         prevInputText = newText
         onTextChanged(newText)
     }
 
-    // 外部清空输入(发送/切会话/历史导航)时同步 prevInputText,避免误判
+    // Entrada clara externa(enviar/Cambiar de sesión/Navegación histórica)Sincronización horaria prevInputText,evitar errores de juicio
     LaunchedEffect(text) {
         if (pendingPaste == null) prevInputText = text
     }
 
-    // ── 草稿标记 ─────────────────────────────────────────────────────
-    // v2.6.7: 已删除。草稿只负责「关应用/切会话不丢」，不在界面上留任何痕迹。
-    // 用户要求：不要任何提示，也不要做特意的回复，把输入框持久化就行。
+    // ── marca de borrador ─────────────────────────────────────────────────────
+    // v2.6.7: Eliminado. Draft solo es responsable de "aplicaciones relacionadas"/"La sesión no se perderá" y no quedarán rastros en la interfaz.
+    // Requisitos del usuario: no se requieren mensajes ni respuestas especiales, simplemente haga que el cuadro de entrada sea persistente.
 
     // ── TextField ────────────────────────────────────────────────────
-    // 回车键发送(enterToSend 开启时,Enter 发送,Shift+Enter 换行)
+    // Introduce la clave para enviar(enterToSend Cuando se enciende,Enter enviar,Shift+Enter nueva línea)
     MuseTextField(
         value = text,
         onValueChange = { handleInputChange(it) },
-        // v1.0.72: 输入框背景透明 — 岛背景就是容器,避免输入框实色块叠成"白块"
+        // v1.0.72: El fondo del cuadro de entrada es transparente — El fondo de la isla es el contenedor.,Evite la superposición de bloques de colores sólidos en los cuadros de entrada"bloque blanco"
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier
             .weight(1f)
@@ -1435,18 +1435,18 @@ private fun RowScope.MessageInputField(
                     true
                 } else if (event.nativeKeyEvent.action == KeyEvent.ACTION_DOWN &&
                     event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_UP &&
-                    // 审计修复 (8.6): 多行文本时放行给光标移动,不劫持为历史导航
+                    // Reparación de auditoría (8.6): Permitir el movimiento del cursor cuando se utilizan varias líneas de texto,No secuestrar la navegación para la historia
                     !text.contains('\n')
                 ) {
-                    // 上箭头 → 输入历史向更旧移动(仅单行输入场景)
+                    // flecha arriba → El historial de entrada pasa a ser más antiguo(Solo escenario de entrada de una sola línea)
                     onNavigateInputHistory(-1)
                     true
                 } else if (event.nativeKeyEvent.action == KeyEvent.ACTION_DOWN &&
                     event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN &&
-                    // 审计修复 (8.6): 同上,多行时不劫持
+                    // Reparación de auditoría (8.6): Igual que arriba,No secuestrar cuando se utilizan varias líneas
                     !text.contains('\n')
                 ) {
-                    // 下箭头 → 输入历史向更新移动
+                    // flecha hacia abajo → El historial de entrada se mueve para actualizarse
                     onNavigateInputHistory(1)
                     true
                 } else {
@@ -1454,8 +1454,8 @@ private fun RowScope.MessageInputField(
                 }
             },
         placeholder = {
-            // 空输入框必须给出可输入提示：此前完全空白，新用户不知道这里能打字。
-            // 文案用短句，且有内容时自动消失，不会长期占用横向空间。
+            // El cuadro de entrada vacío debe dar un mensaje de entrada: antes estaba completamente en blanco y los nuevos usuarios no sabían que podían escribir aquí.
+            // El texto debe utilizar frases cortas y desaparecer automáticamente cuando haya contenido, por lo que no ocupará espacio horizontal durante mucho tiempo.
             Text(
                 text = if (isDrawMode) {
                     stringResource(R.string.chat_placeholder_draw)
@@ -1481,7 +1481,7 @@ private fun RowScope.MessageInputField(
         visualTransformation = mentionTransform,
     )
 
-    // ── 展开按钮(全屏输入) ──────────────────────────────────────────
+    // ── Botón expandir(Entrada de pantalla completa) ──────────────────────────────────────────
     if (showExpandButton && !isStreaming) {
         MuseTactileButton(
             icon = MuseIcons.maximize,
@@ -1493,14 +1493,14 @@ private fun RowScope.MessageInputField(
         )
     }
 
-    // ── 大段粘贴确认对话框 ──────────────────────────────────────────
+    // ── Cuadro de diálogo de confirmación de pegado de bloque grande ──────────────────────────────────────────
     val pending = pendingPaste
     if (pending != null) {
         val (fullText, inserted) = pending
         val charCount = inserted.length
         MuseDialog(
             onDismissRequest = {
-                // 取消:不粘贴也不转文件,保持原输入
+                // Cancelar:No pegar ni transferir archivos,Mantener la entrada original
                 pendingPaste = null
             },
             title = stringResource(R.string.chat_paste_as_file_title),
@@ -1530,7 +1530,7 @@ private fun RowScope.MessageInputField(
 }
 
 /**
- * F-3: 快捷工具栏单项按钮(圆角小方块,激活态用 primary 色高亮)。
+ * F-3: Botón único de la barra de herramientas de acceso directo(Cuadrado pequeño con esquinas redondeadas.,El estado activo está resaltado con color primario.).
  */
 @Composable
 private fun QuickBarAction(
@@ -1539,7 +1539,7 @@ private fun QuickBarAction(
     active: Boolean,
     onClick: () -> Unit,
 ) {
-    // v2.x: 交互动效 — 按压缩放 + 激活态颜色过渡(自绘反馈,无涟漪)
+    // v2.x: efectos interactivos — Presione para comprimir y expandir + transición de color activa(Comentarios de autodibujo,sin ondulaciones)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -1587,11 +1587,11 @@ private fun QuickBarAction(
 }
 
 /**
- * v2.4.5: 斜杠命令内联补全 — 输入 `/` 开头(未含空格)时在输入岛上方浮出候选。
+ * v2.4.5: Finalización en línea del comando de barra diagonal — entrada `/` comienzo(Sin espacios)Los candidatos aparecen encima de la isla de entrada.
  *
- * 此前 [io.zer0.muse.ui.chat.SlashCommand.allCommandNames] 只定义、从未被任何 UI 调用,
- * 用户输入 `/` 看不到任何提示;这里把命令表接回输入栏。
- * 命令描述复用既有 `slash_command_*` 资源(零新增翻译)。
+ * anteriormente [io.zer0.muse.ui.chat.SlashCommand.allCommandNames] Sólo definido, nunca llamado por ninguna UI,
+ * entrada del usuario `/` No puedo ver ninguna indicación;Aquí la tabla de comandos está conectada nuevamente al campo de entrada.
+ * La descripción del comando reutiliza la existente `slash_command_*` Recursos(Cero traducciones nuevas).
  */
 @Composable
 private fun SlashCommandSuggestions(

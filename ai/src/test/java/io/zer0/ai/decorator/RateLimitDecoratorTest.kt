@@ -20,24 +20,24 @@ import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * P1-3: [RateLimitDecorator] 单元测试。
+ * P1-3: [RateLimitDecorator] Pruebas unitarias.
  *
- * 验证:
- *  - 并发控制(Semaphore)限制同时在途请求数
- *  - 任一参数为 0 时跳过装饰(直接委托)
- *  - streamChat 的并发许可在流收集期间持有,结束/取消时释放
+ * verificar:
+ *  - control de concurrencia(Semaphore)Limitar el número de solicitudes simultáneas en tránsito
+ *  - Saltar decoración cuando algún parámetro sea 0(comisión directa)
+ *  - streamChat El permiso concurrente se mantiene durante la recopilación de transmisiones.,fin/liberado al cancelar
  *
- * 注:RPM 限流逻辑由 [io.zer0.ai.util.SlidingWindowRateLimiterTest] 覆盖
- * (decorator 内部 limiter 用实时时钟,无法注入虚拟时钟,故不在此重复测 RPM 等待)。
+ * Nota:RPM La lógica limitante actual consiste en [io.zer0.ai.util.SlidingWindowRateLimiterTest] Portada
+ * (decorator El limitador interno utiliza reloj en tiempo real,No se puede inyectar el reloj virtual,Por lo tanto, no repetiremos la prueba de RPM aquí y esperaremos.).
  *
- * C-31 评估:[FakeProvider] 只在 ai 模块本文件使用,全仓库无同名/同职责的跨文件复制
- * (VideoGenerationServiceTest 的 FakeVideoProvider 用途不同)。重复度低,不值得建
- * testFixtures 基建,保持文件内私有。见深度审计报告 C-31 修正说明。
+ * C-31 Evaluación:[FakeProvider] Solo se usa en este archivo del módulo ai,No hay nombres en todos los almacenes./Copia cruzada de la misma responsabilidad
+ * (VideoGenerationServiceTest El FakeVideoProvider se usa de manera diferente). Baja repetibilidad,No vale la pena construir
+ * testFixtures Infraestructura,Mantenga los archivos privados. Consulte el informe de auditoría en profundidad C-31 para obtener instrucciones de revisión.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class RateLimitDecoratorTest {
 
-    /** 测试用假 Provider:记录调用数、峰值并发,可注入延迟。 */
+    /** Proveedor falso para pruebas: registre la cantidad de llamadas y la concurrencia máxima,Se puede inyectar retraso. */
     private class FakeProvider(private val delayMs: Long = 0) : Provider {
         override val id: String = "fake"
         override val displayName: String = "Fake"
@@ -49,7 +49,7 @@ class RateLimitDecoratorTest {
 
         private fun enter() {
             val active = activeCount.incrementAndGet()
-            // 记录峰值并发(自旋更新直到成功)
+            // Récord de simultaneidad máxima(Gire las actualizaciones hasta que tenga éxito)
             var prev = maxObservedActive.get()
             while (active > prev && !maxObservedActive.compareAndSet(prev, active)) {
                 prev = maxObservedActive.get()
@@ -94,10 +94,10 @@ class RateLimitDecoratorTest {
         val fake = FakeProvider(delayMs = 100)
         val decorator = RateLimitDecorator(
             delegate = fake,
-            requestLimitPerMinute = 0, // 不限 RPM,只测并发
+            requestLimitPerMinute = 0, // Sin límite RPM,Sólo prueba de simultaneidad
             maxConcurrentRequests = 2,
         )
-        // 6 个并发请求,每个耗时 100ms,但并发上限 2 → 峰值并发 ≤ 2
+        // 6 solicitudes concurrentes,Cada vez que consume mucho tiempo 100ms,Pero el límite de concurrencia 2 → Concurrencia máxima ≤ 2
         val jobs = (1..6).map { async { decorator.completeText(dummyRequest()) } }
         jobs.awaitAll()
         assertEquals(6, fake.completeCallCount.get())
@@ -117,7 +117,7 @@ class RateLimitDecoratorTest {
         )
         decorator.completeText(dummyRequest())
         assertEquals(1, fake.completeCallCount.get())
-        // 无延迟,虚拟时间未推进
+        // Sin demora,El tiempo virtual no ha avanzado
         assertEquals(0L, testScheduler.currentTime)
     }
 
@@ -129,12 +129,12 @@ class RateLimitDecoratorTest {
             requestLimitPerMinute = 0,
             maxConcurrentRequests = 2,
         )
-        // 4 个并发流,每个收集耗时 100ms,并发上限 2 → 峰值 ≤ 2
+        // 4 transmisiones concurrentes,Cada colección lleva tiempo. 100ms,Límite de concurrencia 2 → pico ≤ 2
         val jobs = (1..4).map {
             async { decorator.streamChat(dummyRequest()).toList() }
         }
         jobs.awaitAll()
-        // 每个流发出 ContentDelta + Done
+        // Cada corriente emite ContentDelta + Done
         assertEquals(4, fake.streamCallCount.get())
         assertTrue(
             "max observed active ${fake.maxObservedActive.get()} should be <= 2",
@@ -146,7 +146,7 @@ class RateLimitDecoratorTest {
     fun `decorator should preserve delegate id and displayName`() {
         val fake = FakeProvider()
         val decorator = RateLimitDecorator(fake, requestLimitPerMinute = 10, maxConcurrentRequests = 2)
-        // Provider by delegate 转发属性
+        // Provider by delegate atributo directo
         assertEquals("fake", decorator.id)
         assertEquals("Fake", decorator.displayName)
     }

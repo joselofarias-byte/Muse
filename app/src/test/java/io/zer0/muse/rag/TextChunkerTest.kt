@@ -5,14 +5,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v1.56: TextChunker 单元测试。
+ * v1.56: TextChunker Pruebas unitarias.
  *
- * 覆盖:空文本、短文本、长文本分块、段落分割、句子分割、字符硬切、overlap 重叠。
+ * Portada:Texto vacío, texto corto, segmentación de texto largo, segmentación de párrafos, segmentación de oraciones, corte de caracteres,overlap superposición.
  */
 class TextChunkerTest {
 
     @Test
-    fun `空文本返回空列表`() {
+    fun `El texto vacío devuelve una lista vacía`() {
         val chunker = TextChunker(targetSize = 100, overlap = 10)
         assertTrue(chunker.split("").isEmpty())
         assertTrue(chunker.split("   ").isEmpty())
@@ -20,7 +20,7 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `短文本返回单块`() {
+    fun `El texto corto devuelve un solo bloque`() {
         val chunker = TextChunker(targetSize = 100, overlap = 10)
         val result = chunker.split("Hello World")
         assertEquals(1, result.size)
@@ -29,156 +29,156 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `多个短段落合并到单块`() {
+    fun `Combine varios párrafos cortos en un solo bloque`() {
         val chunker = TextChunker(targetSize = 100, overlap = 10)
-        val text = "段落一\n\n段落二\n\n段落三"
+        val text = "Párrafo uno\n\nPárrafo 2\n\nPárrafo 3"
         val result = chunker.split(text)
         assertEquals(1, result.size)
-        assertTrue(result[0].content.contains("段落一"))
-        assertTrue(result[0].content.contains("段落二"))
-        assertTrue(result[0].content.contains("段落三"))
+        assertTrue(result[0].content.contains("Párrafo uno"))
+        assertTrue(result[0].content.contains("Párrafo 2"))
+        assertTrue(result[0].content.contains("Párrafo 3"))
     }
 
     @Test
-    fun `长文本按段落分块`() {
+    fun `El texto largo se divide en párrafos`() {
         val chunker = TextChunker(targetSize = 50, overlap = 5)
         val para1 = "a".repeat(40)
         val para2 = "b".repeat(40)
         val para3 = "c".repeat(40)
         val text = "$para1\n\n$para2\n\n$para3"
         val result = chunker.split(text)
-        assertTrue("应产生多个块,实际 ${result.size}", result.size >= 2)
-        // 每块不超过 targetSize + overlap
+        assertTrue("Se deben producir múltiples trozos.,real ${result.size}", result.size >= 2)
+        // Cada pieza no excede targetSize + overlap
         result.forEach { chunk ->
-            assertTrue("块 ${chunk.index} 长度 ${chunk.content.length} 超限", chunk.content.length <= 55)
+            assertTrue("bloquear ${chunk.index} longitud ${chunk.content.length} por encima del límite", chunk.content.length <= 55)
         }
     }
 
     @Test
-    fun `超长段落按句子分割`() {
+    fun `Dividir párrafos muy largos por oraciones`() {
         val chunker = TextChunker(targetSize = 20, overlap = 3)
-        val text = "这是第一句话。这是第二句话！这是第三句话？这是第四句话。"
+        val text = "Esta es la primera frase. ¡Esta es la segunda frase! ¿Es esta la tercera frase? Esta es la cuarta frase."
         val result = chunker.split(text)
-        assertTrue("应产生多个块,实际 ${result.size}", result.size >= 2)
-        // 验证 index 连续
+        assertTrue("Se deben producir múltiples trozos.,real ${result.size}", result.size >= 2)
+        // Verificar que el índice sea continuo
         result.forEachIndexed { idx, chunk ->
             assertEquals(idx, chunk.index)
         }
     }
 
     @Test
-    fun `超长句子按字符硬切`() {
+    fun `Las frases muy largas están marcadas por los personajes`() {
         val chunker = TextChunker(targetSize = 10, overlap = 0)
         val text = "a".repeat(35)
         val result = chunker.split(text)
-        assertTrue("35 字符按 10 分应至少 4 块,实际 ${result.size}", result.size >= 3)
+        assertTrue("35 Los personajes deben tener al menos 4 bloques de 10.,real ${result.size}", result.size >= 3)
     }
 
     @Test
-    fun `overlap 在相邻块间保留重叠`() {
+    fun `overlap Preservar la superposición entre bloques adyacentes`() {
         val chunker = TextChunker(targetSize = 20, overlap = 5)
-        val para1 = "abcdefghijklmno".repeat(3) // 45 字符
+        val para1 = "abcdefghijklmno".repeat(3) // 45 personaje
         val text = para1
         val result = chunker.split(text)
         if (result.size >= 2) {
-            // 第一个块的尾部应出现在第二个块的开头(overlap)
+            // El final del primer bloque debe aparecer al comienzo del segundo bloque.(overlap)
             val tail = result[0].content.takeLast(5)
-            assertTrue("块间 overlap 未保留", result[1].content.startsWith(tail))
+            assertTrue("La superposición entre bloques no se conserva", result[1].content.startsWith(tail))
         }
     }
 
     @Test
-    fun `CRLF 换行被规范化`() {
+    fun `CRLF Los saltos de línea están normalizados`() {
         val chunker = TextChunker(targetSize = 100, overlap = 10)
-        val text = "第一行\r\n第二行\r\n第三行"
+        val text = "primera linea\r\nsegunda linea\r\nla tercera linea"
         val result = chunker.split(text)
         assertEquals(1, result.size)
-        assertTrue(result[0].content.contains("第一行"))
+        assertTrue(result[0].content.contains("primera linea"))
         assertTrue(!result[0].content.contains("\r"))
     }
 
     @Test
-    fun `index 从 0 连续递增`() {
+    fun `index Incrementando continuamente desde 0`() {
         val chunker = TextChunker(targetSize = 30, overlap = 5)
-        val text = (1..10).joinToString("\n\n") { "段落$it".repeat(10) }
+        val text = (1..10).joinToString("\n\n") { "párrafo$it".repeat(10) }
         val result = chunker.split(text)
         assertTrue(result.size > 1)
         result.forEachIndexed { idx, chunk ->
-            assertEquals("index 不连续", idx, chunk.index)
+            assertEquals("index discontinuo", idx, chunk.index)
         }
     }
 
     @Test
-    fun `estimateTokens 返回正数`() {
+    fun `estimateTokens Devolver número positivo`() {
         val chunker = TextChunker()
-        val tokens = chunker.estimateTokens("Hello World 你好世界")
-        assertTrue("token 数应 > 0", tokens > 0)
+        val tokens = chunker.estimateTokens("Hello World hola mundo")
+        assertTrue("token El número debería > 0", tokens > 0)
     }
 
     @Test
-    fun `estimateTokens 空文本返回 1`() {
+    fun `estimateTokens Texto vacío devuelto 1`() {
         val chunker = TextChunker()
         val tokens = chunker.estimateTokens("")
         assertEquals(1, tokens)
     }
 
-    // ── v1.133: markdownAware 模式测试 ──
+    // ── v1.133: markdownAware prueba de patrón ──
 
     @Test
-    fun `markdownAware 代码块整体保留不切断`() {
-        // targetSize=20 远小于代码块,代码块仍应整体保留
+    fun `markdownAware El bloque de código se conserva completo y no se corta`() {
+        // targetSize=20 Mucho más pequeño que un bloque de código,Los bloques de código aún deben conservarse en su totalidad
         val chunker = TextChunker(targetSize = 20, overlap = 0, markdownAware = true)
         val codeBlock = "```kotlin\n" + "val x = 1\n".repeat(10) + "```"
-        val text = "前置文本\n\n$codeBlock\n\n后置文本"
+        val text = "pretexto\n\n$codeBlock\n\nPublicar texto"
         val result = chunker.split(text)
-        // 至少有一个 chunk 完整包含代码块
+        // Al menos un fragmento contiene completamente el bloque de código.
         val codeChunk = result.firstOrNull { it.content.contains("```kotlin") }
-        assertTrue("代码块应被保留在某个 chunk 中", codeChunk != null)
-        assertTrue("代码块应完整(含开闭 ```)", codeChunk!!.content.contains("```kotlin") && codeChunk.content.endsWith("```"))
+        assertTrue("Los bloques de código deben mantenerse en fragmentos.", codeChunk != null)
+        assertTrue("El bloque de código debe estar completo.(Incluyendo apertura y cierre. ```)", codeChunk!!.content.contains("```kotlin") && codeChunk.content.endsWith("```"))
     }
 
     @Test
-    fun `markdownAware 标题行单独成块并记录 section 元数据`() {
+    fun `markdownAware Las filas de encabezado se dividen por separado y se registran los metadatos de las secciones`() {
         val chunker = TextChunker(targetSize = 500, overlap = 0, markdownAware = true)
-        val text = "# 章节一\n\n内容一\n\n# 章节二\n\n内容二"
+        val text = "# Capítulo 1\n\nContenido uno\n\n# Capítulo 2\n\nContenido dos"
         val result = chunker.split(text)
-        // 标题"章节一"/"章节二"应作为 section 元数据出现在某些 chunk 上
+        // Título"Capítulo 1"/"Capítulo 2"Debería aparecer como metadatos de sección en ciertos fragmentos.
         val sections = result.flatMap { it.metadata.values }.toSet()
-        assertTrue("应记录章节元数据: $sections", sections.contains("章节一") || sections.contains("章节二"))
+        assertTrue("Los metadatos del capítulo deben registrarse: $sections", sections.contains("Capítulo 1") || sections.contains("Capítulo 2"))
     }
 
     @Test
-    fun `markdownAware 表格整体保留`() {
+    fun `markdownAware Mantener la mesa entera`() {
         val chunker = TextChunker(targetSize = 15, overlap = 0, markdownAware = true)
         val table = """
-            | 列1 | 列2 | 列3 |
+            | columna1 | columna2 | columna3 |
             |-----|-----|-----|
             | A   | B   | C   |
             | D   | E   | F   |
         """.trimIndent()
         val result = chunker.split(table)
-        // 表格应被整体保留在某个 chunk 中
-        val tableChunk = result.firstOrNull { it.content.contains("| 列1") }
-        assertTrue("表格应被保留在某个 chunk 中", tableChunk != null)
-        assertTrue("表格应完整(含末行 | F   |)", tableChunk!!.content.contains("| F   |"))
+        // La tabla debe conservarse entera en un trozo.
+        val tableChunk = result.firstOrNull { it.content.contains("| columna1") }
+        assertTrue("La mesa debe mantenerse en un trozo.", tableChunk != null)
+        assertTrue("El formulario debe estar completo.(Contiene la última línea | F   |)", tableChunk!!.content.contains("| F   |"))
     }
 
     @Test
-    fun `markdownAware 普通文本仍按 targetSize 切`() {
-        // 用标题作为结构边界触发分块(markdownAware 按结构边界切分,
-        // 标题/代码块/表格是天然边界;纯段落无边界时会合并到单块)
+    fun `markdownAware El texto normal todavía se corta según el tamaño objetivo`() {
+        // Utilice el título como límite estructural para activar la fragmentación(markdownAware Dividido por límites estructurales,
+        // Título/bloque de código/Las tablas son límites naturales.;Los párrafos puros sin bordes se fusionarán en un solo bloque)
         val chunker = TextChunker(targetSize = 30, overlap = 0, markdownAware = true)
         val sections = (1..5).joinToString("\n\n") { idx ->
-            "# 标题$idx\n\n" + "段落$idx".repeat(15)
+            "# Título$idx\n\n" + "párrafo$idx".repeat(15)
         }
         val result = chunker.split(sections)
-        assertTrue("有标题边界时应产生多个 chunk,实际 ${result.size} 块", result.size > 1)
+        assertTrue("Debería producir múltiples cuando hay un límite de título chunk,real ${result.size} bloquear", result.size > 1)
     }
 
     @Test
     fun `markdownAware structureless oversized plain text is bounded`() {
         val targetSize = 100
-        val text = "纯段落长文本".repeat(1_000)
+        val text = "Texto largo de párrafo puro".repeat(1_000)
 
         val result = TextChunker(
             targetSize = targetSize,
@@ -186,26 +186,26 @@ class TextChunkerTest {
             markdownAware = true,
         ).split(text)
 
-        assertTrue("无结构长文本应拆成多个 chunk,实际 ${result.size}", result.size > 1)
+        assertTrue("El texto largo no estructurado debe dividirse en varios chunk,real ${result.size}", result.size > 1)
         assertTrue(
-            "普通文本 chunk 不应超过保底上限",
+            "Los fragmentos de texto ordinarios no deben exceder el límite mínimo.",
             result.filter { it.metadata["type"] == null }.all { it.content.length <= targetSize * 2 },
         )
     }
 
-    // ── v1.133: chunkByToken 模式测试 ──
+    // ── v1.133: chunkByToken prueba de patrón ──
 
     @Test
-    fun `chunkByToken 按 token 数切分中英文混合文本`() {
-        // targetSize=10 token,中英文混合应按 token 切
+    fun `chunkByToken Segmentar texto mixto en chino e inglés por número simbólico`() {
+        // targetSize=10 token,La mezcla de chino e inglés debe cortarse según la ficha.
         val chunker = TextChunker(targetSize = 10, overlap = 0, chunkByToken = true)
-        val text = (1..20).joinToString("\n\n") { "Hello World 你好世界" }
+        val text = (1..20).joinToString("\n\n") { "Hello World hola mundo" }
         val result = chunker.split(text)
-        assertTrue("应产生多个块,实际 ${result.size}", result.size > 1)
+        assertTrue("Se deben producir múltiples trozos.,real ${result.size}", result.size > 1)
     }
 
     @Test
-    fun `chunkByToken 短文本返回单块`() {
+    fun `chunkByToken El texto corto devuelve un solo bloque`() {
         val chunker = TextChunker(targetSize = 100, overlap = 0, chunkByToken = true)
         val result = chunker.split("Hello World")
         assertEquals(1, result.size)
@@ -213,25 +213,25 @@ class TextChunkerTest {
     }
 
     @Test
-    fun `chunkByToken 空文本返回空列表`() {
+    fun `chunkByToken El texto vacío devuelve una lista vacía`() {
         val chunker = TextChunker(targetSize = 100, overlap = 0, chunkByToken = true)
         assertTrue(chunker.split("").isEmpty())
         assertTrue(chunker.split("   ").isEmpty())
     }
 
-    // ── v1.133: markdownAware + chunkByToken 组合 ──
+    // ── v1.133: markdownAware + chunkByToken combinación ──
 
     @Test
-    fun `markdownAware 与 chunkByToken 可同时启用`() {
+    fun `markdownAware Se puede habilitar al mismo tiempo que chunkByToken`() {
         val chunker = TextChunker(
             targetSize = 20,
             overlap = 0,
             markdownAware = true,
             chunkByToken = true,
         )
-        val text = "# 标题\n\n" + "代码: ".repeat(5) + "\n```\nval x = 1\n```"
+        val text = "# Título\n\n" + "código: ".repeat(5) + "\n```\nval x = 1\n```"
         val result = chunker.split(text)
-        // 不抛异常 + 至少一个 chunk
-        assertTrue("应至少产生 1 个 chunk", result.isNotEmpty())
+        // Sin excepción + al menos una chunk
+        assertTrue("debe producir al menos 1 chunk", result.isNotEmpty())
     }
 }

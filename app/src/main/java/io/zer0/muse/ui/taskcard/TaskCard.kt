@@ -48,21 +48,21 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.uuid.Uuid
 
 /**
- * Phase 10.1: 任务卡完整调度。
+ * Phase 10.1: Programación completa de tarjetas de tareas.
  *
- * 在 Phase 8.8 基础上增强:
- *  - 独立计划阶段(PLANNING / EXECUTING / DONE)
- *  - 时间线(每步 startedAt / finishedAt,展示执行耗时)
- *  - 展开 / 折叠交互(点击标题切换)
- *  - 重试失败步骤(onRetry 回调)
- *  - 视觉风格(primary 月桂绿渐变标题栏,适配"深夜台灯"调性)
+ * Mejorado basado en la Fase 8.8:
+ *  - etapa de planificación independiente(PLANNING / EXECUTING / DONE)
+ *  - línea de tiempo(cada paso startedAt / finishedAt,Mostrar tiempo de ejecución)
+ *  - Ampliar/contraer interacción(Haga clic en el título para cambiar)
+ *  - Reintentar pasos fallidos(onRetry devolución de llamada)
+ *  - estilo visual(primary Barra de título degradada verde laurel,adaptarse"lámpara de mesa nocturna"Tonalidad)
  *
- * @param id 任务卡 id(绑定到 assistant 消息 id)
- * @param title 任务标题
- * @param steps 步骤列表
- * @param phase 当前阶段
- * @param isExpanded 是否展开(默认 true)
- * @param createdAt 任务卡创建时间戳
+ * @param id tarjeta de tarea id(Vincular al mensaje del asistente id)
+ * @param title Título de la tarea
+ * @param steps Lista de pasos
+ * @param phase etapa actual
+ * @param isExpanded Ya sea para expandirse(Predeterminado true)
+ * @param createdAt Marca de tiempo de creación de la tarjeta de tareas
  */
 data class TaskCardData(
     val id: String,
@@ -72,7 +72,7 @@ data class TaskCardData(
     val isExpanded: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
-    /** 整体进度(0..1),只算 SUCCESS。 */
+    /** progreso general(0..1),Sólo se cuenta el ÉXITO. */
     val progress: Float
         get() = if (steps.isEmpty()) {
             0f
@@ -80,33 +80,33 @@ data class TaskCardData(
             steps.count { it.status == TaskStepStatus.SUCCESS }.toFloat() / steps.size
         }
 
-    /** 是否全部到达终态(SUCCESS / FAILED / CANCELLED / TIMED_OUT)。 */
+    /** Si todos han alcanzado el estado final.(SUCCESS / FAILED / CANCELLED / TIMED_OUT). */
     val isAllDone: Boolean
         get() = steps.isNotEmpty() && steps.all { it.status.isTerminal }
 
-    /** 是否有可重试的终态步骤(FAILED / TIMED_OUT)。 */
+    /** ¿Existe un paso final que se pueda volver a intentar?(FAILED / TIMED_OUT). */
     val hasFailedSteps: Boolean
         get() = steps.any { it.status.isRetryable }
 
-    /** 是否存在仍可被用户暂停的待执行步骤。 */
+    /** Si hay pasos pendientes que el usuario aún puede pausar. */
     val hasPausableSteps: Boolean
         get() = steps.any { it.status == TaskStepStatus.PENDING }
 
-    /** 待执行步骤是否已全部设置暂停意图。 */
+    /** Si todos los pasos a ejecutar tienen intenciones de pausa establecidas. */
     val allPausableStepsPaused: Boolean
         get() = steps.filter { it.status == TaskStepStatus.PENDING }.let { pending ->
             pending.isNotEmpty() && pending.all { it.pauseRequested }
         }
 
-    /** 超时步骤数(折叠态摘要用)。 */
+    /** Número de pasos de tiempo de espera(Para resumen plegado). */
     val timedOutSteps: Int
         get() = steps.count { it.status == TaskStepStatus.TIMED_OUT }
 
-    /** 已取消步骤数(折叠态摘要用)。 */
+    /** Número de pasos cancelados(Para resumen plegado). */
     val cancelledSteps: Int
         get() = steps.count { it.status == TaskStepStatus.CANCELLED }
 
-    /** 总耗时(毫秒),所有已完成步骤的 finishedAt - startedAt 之和。 */
+    /** Tiempo total invertido(milisegundos),La suma de FINALIZADO EN - INICIADO EN para todos los pasos completados. */
     val totalDurationMs: Long
         get() = steps.mapNotNull { s ->
             if (s.startedAt != null && s.finishedAt != null) s.finishedAt - s.startedAt else null
@@ -114,9 +114,9 @@ data class TaskCardData(
 
     companion object {
         /**
-         * 从工具调用列表构建任务卡(PLANNING 阶段,所有步骤 PENDING)。
+         * Cree tarjetas de tareas a partir de la lista de llamadas de herramientas(PLANNING escenario,Todos los pasos PENDING).
          *
-         * @param context 用于取字符串资源(标题)
+         * @param context Se utiliza para obtener recursos de cadena.(Título)
          */
         fun fromToolCalls(
             context: Context,
@@ -138,7 +138,7 @@ data class TaskCardData(
                     toolCallIndex = idx,
                     toolName = name,
                     source = delegateArgs.assistantId,
-                    // 审计修复 (2.6): 存完整参数供重试,detail 可能被截断
+                    // Reparación de auditoría (2.6): Guarde los parámetros completos para volver a intentarlo,detail puede ser truncado
                     rawArgs = args,
                     toolCallId = toolCallIds.getOrNull(idx).orEmpty(),
                 )
@@ -152,7 +152,7 @@ data class TaskCardData(
         }
 
         /**
-         * v1.25: 解析 delegate_agent 工具的参数,提取 assistantId 与 task。
+         * v1.25: Analizar parámetros de la herramienta delegado_agent,Extraiga el ID del asistente y la tarea.
          */
         fun parseDelegateAgentArgs(argumentsJson: String): DelegateAgentArgs {
             return runCatching {
@@ -164,12 +164,12 @@ data class TaskCardData(
         }
 
         /**
-         * 步骤摘要文本。
+         * Texto de resumen de pasos.
          *
-         * 此前一律取 `args.take(200)`,于是 show_card 这类「参数就是整份 HTML」的工具
-         * 会把一段被截断的 JSON 摆在卡片上方——用户看到的是 `{"title":...,"code":"<style>...`,
-         * 既读不懂也挤占纵向空间,而真正的卡片就在它下面。这类工具的参数不是给人看的摘要,
-         * 摘要应当说清「展示的是哪张卡」。
+         * Todo lo anterior `args.take(200)`,Entonces herramientas como show_card "el parámetro es el HTML completo"
+         * Se colocará un JSON truncado encima de la tarjeta.——Lo que ve el usuario es `{"title":...,"code":"<style>...`,
+         * Es difícil de leer y ocupa espacio vertical.,Y la carta real está debajo. Los parámetros de dichas herramientas no son resúmenes para la visualización humana.,
+         * El resumen debe indicar claramente "qué tarjeta se muestra".
          */
         internal fun stepDetailFor(name: String, args: String, delegateArgs: DelegateAgentArgs): String = when {
             name == "delegate_agent" -> delegateArgs.task.take(60)
@@ -177,90 +177,90 @@ data class TaskCardData(
             else -> args.take(200)
         }
 
-        /** 从 show_card / render_data 的参数里取 title;取不到就返回空串(不显示摘要行)。 */
+        /** Tomado de los parámetros de show_card/render_data title;Si no se puede recuperar, se devolverá una cadena vacía.(No mostrar línea de resumen). */
         private fun cardTitleOf(args: String): String = runCatching {
             val obj = io.zer0.common.AppJson.decodeFromString(JsonObject.serializer(), args)
             (obj["title"] as? JsonPrimitive)?.content?.trim().orEmpty()
         }.getOrDefault("")
 
-        /** 参数是「整份卡片内容」而非可读摘要的工具。 */
+        /** El parámetro es una herramienta para \"todo el contenido de la tarjeta\" en lugar de un resumen legible por humanos. */
         private val CARD_TOOL_NAMES = setOf("show_card", "render_data")
     }
 
-    /** v1.25: delegate_agent 参数解析结果。 */
+    /** v1.25: delegate_agent Resultados del análisis de parámetros. */
     data class DelegateAgentArgs(
         val assistantId: String,
         val task: String,
     )
 }
 
-/** 单个步骤。 */
+/** Un solo paso. */
 data class TaskStep(
     val id: String,
     val title: String,
     val detail: String = "",
     val status: TaskStepStatus,
     val result: String = "",
-    /** 开始执行时间戳(进入 RUNNING 时设置)。 */
+    /** Iniciar marca de tiempo de ejecución(Configurar al entrar en RUNNING). */
     val startedAt: Long? = null,
-    /** 结束时间戳(进入 SUCCESS / FAILED 时设置)。 */
+    /** marca de tiempo final(Establecer al ingresar ÉXITO / FALLADO). */
     val finishedAt: Long? = null,
-    /** 对应的 toolCall 索引(用于重试时定位)。 */
+    /** Herramienta correspondienteÍndice de llamadas(Se utiliza para posicionar al reintentar). */
     val toolCallIndex: Int = -1,
-    /** v0.49: 工具执行进度文本(如"正在搜索..."),null 或空时不显示。RUNNING 状态下由 SkillExecutor.onProgress 回调更新。 */
+    /** v0.49: Texto de progreso de ejecución de herramienta(Como por ejemplo"Buscando..."),null O no se muestra cuando está vacío.RUNNING El estado se actualiza mediante la devolución de llamada SkillExecutor.onProgress. */
     val progressText: String? = null,
-    /** v1.200: 步骤来源(Agent/团队名),用于泳道分组。 */
+    /** v1.200: fuente de paso(Agent/Nombre del equipo),Se utiliza para agrupar carriles. */
     val source: String = "",
-    /** v1.200: 子步骤列表,用于团队/工作流结果下钻。 */
+    /** v1.200: Lista de subpasos,para equipos/Desglose de los resultados del flujo de trabajo. */
     val subSteps: List<TaskStep> = emptyList(),
-    /** 审计修复 (2.6): 完整原始 tool 参数(JSON),用于重试。detail 是截断展示用。 */
+    /** Reparación de auditoría (2.6): Parámetros originales completos de la herramienta.(JSON),para reintentos.detail Se utiliza para la visualización de truncamiento. */
     val rawArgs: String = "",
     /**
-     * v2.6.7: 工具名。
+     * v2.6.7: Nombre de la herramienta.
      *
-     * 步骤里原本只有 title/detail/result，无法判断这份 result 是哪类产物
-     * （show_card 的卡片、generate_image 的图片…），于是计划卡里的产物只能
-     * 被当文本截断展示。有工具名后才能复用 resolveDirectOutput 直接渲染。
+     * El paso originalmente solo tenía título/detalle/resultado, por lo que era imposible determinar qué tipo de producto era este resultado.
+     * (show_card de cartas,generate_image fotos…), por lo que los productos de la tarjeta del plan sólo pueden ser
+     * Se muestra como texto truncado. Solo con el nombre de la herramienta se puede reutilizar resolveDirectOutput para la representación directa.
      */
     val toolName: String = "",
-    /** 当前回合内稳定的 tool_call id,用于单工具暂停与执行状态关联。 */
+    /** Estable durante la ronda actual tool_call id,Se utiliza para asociar pausas de una sola herramienta con el estado de ejecución. */
     val toolCallId: String = "",
     /**
-     * 用户已请求暂停该步骤,但尚未执行真实工具。
+     * El usuario ha solicitado que se detenga este paso.,Pero la verdadera herramienta aún no se ha implementado.
      *
-     * 仅 PENDING 步骤可被切换;正在执行的工具不做强杀,避免未知副作用。
+     * Solo se pueden alternar los pasos PENDIENTES;La herramienta que se ejecuta no realiza una matanza forzada.,Evite efectos secundarios desconocidos.
      */
     val pauseRequested: Boolean = false,
 ) {
-    /** 单步耗时(毫秒),null 表示未完成。 */
+    /** Un solo paso lleva tiempo(milisegundos),null Indica incompleto. */
     val durationMs: Long? get() = if (startedAt != null && finishedAt != null) finishedAt - startedAt else null
 }
 
-/** 步骤状态。 */
+/** Estado del paso. */
 enum class TaskStepStatus {
     PENDING,
     RUNNING,
     SUCCESS,
     FAILED,
 
-    /** 执行被取消(用户主动停止 / 流式中断),步骤未跑完。 */
+    /** Ejecución cancelada(Usuario detenido activamente/transmisión interrumpida),Los pasos no se han completado. */
     CANCELLED,
 
-    /** 工具执行超时,被强制终止。 */
+    /** Tiempo de espera de ejecución de herramienta,Terminación forzosa. */
     TIMED_OUT,
 
     ;
 
-    /** 终态:状态不会再变化。 */
+    /** estado final:El estado no volverá a cambiar. */
     val isTerminal: Boolean
         get() = this == SUCCESS || this == FAILED || this == CANCELLED || this == TIMED_OUT
 
-    /** 可重试:失败或超时(取消是用户主动停止,不主动提示重试)。 */
+    /** Se puede volver a intentar:falló o se agotó el tiempo de espera(La cancelación significa que el usuario se detiene activamente,No solicite proactivamente que vuelva a intentarlo). */
     val isRetryable: Boolean
         get() = this == FAILED || this == TIMED_OUT
 }
 
-/** 任务卡阶段。 */
+/** Etapa de la tarjeta de tareas. */
 enum class TaskCardPhase(val labelRes: Int) {
     PLANNING(R.string.task_card_phase_planning),
     EXECUTING(R.string.task_card_phase_executing),
@@ -268,20 +268,20 @@ enum class TaskCardPhase(val labelRes: Int) {
 }
 
 /**
- * Phase 10.1: 任务卡 Composable(完整调度版)。
+ * Phase 10.1: tarjeta de tarea Composable(Versión de programación completa).
  *
- * 视觉:primary 月桂绿渐变标题栏 + 卡片底 + 时间线步骤行。
- * 交互:点击标题切换展开/折叠;失败步骤显示"重试"按钮。
+ * Visión:primary Barra de título con degradado verde laurel + parte inferior de la tarjeta + fila de pasos de la línea de tiempo.
+ * interacción:Haga clic en el título para cambiar y expandir/doblar;Visualización de paso fallido"Inténtalo de nuevo"botón.
  *
- * @param data 任务卡数据
- * @param onToggleExpand 切换展开/折叠回调
- * @param onRetryStep 重试失败步骤回调(参数:stepId)
- * @param delegationChain v1.201: 委派链路根节点列表(可选)。
- *        非空时在步骤列表下方嵌入 [DelegationChainCard],可视化主助手 → 子助手链路。
- *        传 null 或空列表则不渲染。
- * @param onCardAction v2.6.8: 卡片回传处理器 (messageId, action)。
- *        与单条内联卡/分组卡共用同一个处理器(ChatScreen 的 handleCardAction)。
- *        旧实现这里根本没有这个参数，于是步骤里的产物卡天生无桥：能看不能点。
+ * @param data Datos de la tarjeta de tareas
+ * @param onToggleExpand Alternar para expandir/doblar devolución de llamada
+ * @param onRetryStep Reintentar la devolución de llamada del paso fallido(parámetros:stepId)
+ * @param delegationChain v1.201: Lista de nodos raíz de enlace delegado(Opcional).
+ *        Insertar debajo de la lista de pasos si no está vacío [DelegationChainCard],asistente visual maestro → Enlace de subasistente.
+ *        Pasar nulo o una lista vacía no se procesará.
+ * @param onCardAction v2.6.8: procesador de devolución de tarjetas (messageId, action).
+ *        con tarjeta única en línea/Las tarjetas de grupo comparten el mismo procesador(ChatScreen de handleCardAction).
+ *        La implementación anterior no tenía este parámetro en absoluto, por lo que la tarjeta de producto en el paso nació sin puente: se podía ver pero no hacer clic en ella.
  */
 @Composable
 fun TaskCard(
@@ -291,11 +291,11 @@ fun TaskCard(
     onCancel: (() -> Unit)? = null,
     onTogglePause: () -> Unit = {},
     onToggleStepPause: (String) -> Unit = {},
-    // M-TC2 修复: 增加 modifier 参数,允许调用方自定义布局修饰
+    // M-TC2 Reparación: Agregar parámetro modificador,Permitir que las personas que llaman personalicen las modificaciones del diseño
     modifier: Modifier = Modifier,
-    // v1.201: 委派链路(可选,非空时在步骤列表下方渲染)
+    // v1.201: Enlace delegado(Opcional,Representado debajo de la lista de pasos si no está vacía)
     delegationChain: List<DelegationChainTracker.ChainNode>? = null,
-    // v2.6.8: 产物卡的卡片回传处理器 —— 参数为 (messageId, action)
+    // v2.6.8: Procesador de devolución de tarjetas para tarjetas de productos —— Los parámetros son (messageId, action)
     onCardAction: ((String, io.zer0.muse.ui.markdown.CardAction) -> Unit)? = null,
 ) {
     val accent = when (data.phase) {
@@ -308,13 +308,13 @@ fun TaskCard(
         modifier = modifier
             .padding(vertical = 4.dp),
         shape = MuseShapes.medium,
-        // CHAT-09: 消息内卡片统一规范 — 底色 + 1dp 描边 + 统一圆角(此前透明无边)
+        // CHAT-09: Estándares unificados para tarjetas dentro de mensajes. — Color base + trazo 1dp + esquinas redondeadas uniformes(Antes transparente e ilimitado)
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(0.dp)) {
-            // ── 标题栏(可点击切换展开/折叠)── 统一为 outline 风格,不再用渐变填充。
+            // ── barra de título(Haga clic para cambiar y expandir/doblar)── Unificar para delinear el estilo,No más rellenos degradados.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -323,7 +323,7 @@ fun TaskCard(
                     .clickable(onClick = onToggleExpand)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
-                // 图标徽章:阶段图标 + 浅色圆底
+                // insignia de icono:Ícono de escenario + fondo redondo claro
                 Box(
                     modifier = Modifier
                         .size(28.dp)
@@ -362,9 +362,9 @@ fun TaskCard(
                         )
                     }
                 }
-                // 阶段标签 + 标题
+                // etiqueta de escenario + título
                 Column(modifier = Modifier.weight(1f)) {
-                    // v2.0.1: 终态含失败时补充失败信息 — 避免"已完成"与"0/N"进度同时出现的矛盾观感
+                    // v2.0.1: Información suplementaria sobre fallos cuando el estado final contiene fallos. — evitar"Completado"con"0/N"Percepciones contradictorias sobre el progreso al mismo tiempo.
                     val failedCount = data.steps.count {
                         it.status == TaskStepStatus.FAILED || it.status == TaskStepStatus.TIMED_OUT
                     }
@@ -389,7 +389,7 @@ fun TaskCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // 进度数字
+                // números de progreso
                 val successCount = data.steps.count { it.status == TaskStepStatus.SUCCESS }
                 Text(
                     text = "$successCount/${data.steps.size}",
@@ -419,9 +419,9 @@ fun TaskCard(
                 )
             }
 
-            // ── 折叠态紧凑步骤行(v1.0.52) ──
-            // 步骤数 ≥ 2 时显示单行步骤条,用户无需展开即可知晓进度。
-            // 全部完成 → "已完成 N 步";进行中 → 步骤名+状态图标水平排列。
+            // ── Fila de escalones compactos plegados(v1.0.52) ──
+            // numero de pasos ≥ 2 Mostrar una barra de pasos de una sola línea cuando,Los usuarios pueden conocer el progreso sin ampliarlo.
+            // todo hecho → "N pasos completados";En progreso → nombre del paso+Los iconos de estado están dispuestos horizontalmente.
             AnimatedVisibility(
                 visible = !data.isExpanded && data.steps.size >= 2,
                 enter = MuseMotion.expandFadeEnter(),
@@ -434,7 +434,7 @@ fun TaskCard(
                 )
             }
 
-            // ── 卡片内容(展开时显示)──
+            // ── Contenido de la tarjeta(Mostrar cuando esté expandido)──
             AnimatedVisibility(
                 visible = data.isExpanded,
                 enter = MuseMotion.expandFadeEnter(),
@@ -446,7 +446,7 @@ fun TaskCard(
                         .padding(bottom = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    // v1.200: 泳道说明(多个 source 时显示)
+                    // v1.200: descripción del carril(Se muestra cuando hay múltiples fuentes)
                     val sources = remember(data.steps) {
                         data.steps.map { it.source }.filter { it.isNotBlank() }.distinct()
                     }
@@ -460,9 +460,9 @@ fun TaskCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    // 标题不再重复一次：上面折叠行已经写了同样的文字，展开后再写一遍
-                    // 会变成「Execution plan (2 steps)」上下各一条，看着像两张卡。
-                    // 进度条(执行中显示)
+                    // El título no se repetirá una vez: el mismo texto ya ha sido escrito en la línea doblada de arriba, y se volverá a escribir después de ampliarla.
+                    // se convertirá en "Execution plan (2 steps)"Hay uno arriba y otro abajo, que parecen dos cartas.
+                    // barra de progreso(Mostrado durante la ejecución)
                     if (data.phase == TaskCardPhase.EXECUTING || (data.phase == TaskCardPhase.DONE && !data.isAllDone)) {
                         Box(
                             modifier = Modifier
@@ -483,8 +483,8 @@ fun TaskCard(
                         modifier = Modifier.padding(vertical = 2.dp),
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
-                    // 步骤列表
-                    // R-UI-09: 执行中提供取消按钮,由调用方接入停止生成。
+                    // Lista de pasos
+                    // R-UI-09: Proporcionar botón cancelar durante la ejecución,Acceso detenido por la persona que llama.
                     if (data.phase == TaskCardPhase.EXECUTING && onCancel != null) {
                         MuseTactileButton(
                             icon = MuseIcons.x,
@@ -494,26 +494,26 @@ fun TaskCard(
                             modifier = Modifier.padding(top = 2.dp),
                         )
                     }
-                    // L-TC6 修复: forEach 加 key,步骤状态变化时 Compose 能精准重组对应行
+                    // L-TC6 Reparación: forEach agregar key,Cuando cambia el estado del paso, Compose puede reorganizar con precisión las filas correspondientes.
                     data.steps.forEach { step ->
                         key(step.id) {
                             TaskStepRow(
                                 step = step,
                                 onRetry = { onRetryStep(step.id) },
                                 onTogglePause = { onToggleStepPause(step.id) },
-                                // v2.6.8: 产物卡的卡片身份 = 消息 id(data.id 就是挂这张任务卡的助手消息 id),
-                                // 与单条内联卡完全一致;用 toolCallId 会得到另一个 id 空间,
-                                // 卡片读不到自己的数据、回传也带不回正确的 cardId。
+                                // v2.6.8: La tarjeta de identidad de la tarjeta de producto. = noticias id(data.id Es el mensaje del asistente el que cuelga esta tarjeta de tareas. id),
+                                // Exactamente igual que una sola tarjeta en línea;El uso de toolCallId obtendrá otro espacio de identificación,
+                                // La tarjeta no puede leer sus propios datos y no se puede devolver el cardId correcto al devolverla.
                                 cardId = data.id,
                                 onCardAction = onCardAction,
                             )
                         }
                     }
-                    // v1.201: 委派链路图(可选,非空时在步骤列表下方渲染)
+                    // v1.201: Diagrama de enlace de delegación(Opcional,Representado debajo de la lista de pasos si no está vacía)
                     if (!delegationChain.isNullOrEmpty()) {
                         DelegationChainCard(roots = delegationChain)
                     }
-                    // 总耗时(DONE 阶段显示)
+                    // Tiempo total invertido(DONE exhibición en el escenario)
                     if (data.phase == TaskCardPhase.DONE && data.totalDurationMs > 0) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 2.dp),
@@ -528,7 +528,7 @@ fun TaskCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    // 重试全部失败步骤按钮
+                    // Botón Reintentar todos los pasos fallidos
                     if (data.hasFailedSteps && data.phase == TaskCardPhase.DONE) {
                         MuseTactileButton(
                             icon = MuseIcons.refresh,
@@ -544,21 +544,21 @@ fun TaskCard(
     }
 }
 
-/** 阶段徽章(标题栏左侧)。 */
+/** insignia del escenario(Lado izquierdo de la barra de título). */
 @Composable
 private fun PhaseBadge(phase: TaskCardPhase, progress: Float) {
     val onPrimary = MaterialTheme.colorScheme.onPrimary
-    // M-TC5 修复: DONE 分支原先两个分支返回值相同(progress>=1f 和 <1f 都是 0.3f)。
-    // 改为根据 progress 区分:全部成功(1.0)用较低 alpha 的"完成"色,
-    // 部分成功(<1.0,有失败步骤)用较高 alpha 的"警示"色。
+    // M-TC5 Reparación: DONE Rama: las dos ramas originales devuelven el mismo valor.(progress>=1f y <1f Todos 0.3f).
+    // En lugar de ello, distingue en función del progreso:Todo exitoso(1.0)Usar alfa inferior"Completo"Color,
+    // Parcialmente exitoso(<1.0,Hay pasos fallidos)Utilice alfa superior"advertencia"color.
     val (text, bg) = when (phase) {
         TaskCardPhase.PLANNING -> stringResource(phase.labelRes) to onPrimary.copy(alpha = 0.25f)
         TaskCardPhase.EXECUTING -> stringResource(phase.labelRes) to onPrimary.copy(alpha = 0.35f)
         TaskCardPhase.DONE -> if (progress >= 1f) {
-            // 全部成功:柔和完成色
+            // Todo exitoso:Color de acabado suave
             stringResource(phase.labelRes) to onPrimary.copy(alpha = 0.3f)
         } else {
-            // 部分成功/有失败:稍深背景强调"需关注"
+            // Parcialmente exitoso/hay fracaso:Énfasis de fondo ligeramente más oscuro"Necesito atención"
             stringResource(phase.labelRes) to onPrimary.copy(alpha = 0.5f)
         }
     }
@@ -577,34 +577,34 @@ private fun PhaseBadge(phase: TaskCardPhase, progress: Float) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// CompactStepRow — 折叠态步骤条(v1.0.52)
-// 步骤数 ≥2 时替代纯标题,水平排列各步骤状态图标 + 缩写名称。
+// CompactStepRow — Barra de paso plegada(v1.0.52)
+// numero de pasos ≥2 reemplazar el título simple,Organice los íconos de estado + nombres abreviados de cada paso horizontalmente.
 // ═══════════════════════════════════════════════════════════════════════
 
-/** 单步最大显示字符数(超长截断加省略号)。 */
+/** Número máximo de caracteres mostrados en un solo paso(Truncamiento extralargo más puntos suspensivos). */
 private const val STEP_NAME_MAX_CHARS = 8
 
 /**
- * 步骤行左侧状态图标列占用的横向空间(图标 20dp + 行间距 8dp)。
+ * El espacio horizontal ocupado por la columna del icono de estado en el lado izquierdo de la fila de pasos(Icono 20dp + interlineado 8dp).
  *
- * 产物卡要横向突破这段缩进、对齐外层任务卡左边缘,否则一张满宽卡片会被挤窄约 28dp,
- * 和内层留白叠在一起显得"卡片被压缩"。
+ * La tarjeta de producto debe atravesar esta muesca horizontalmente y alinearse con el borde izquierdo de la tarjeta de tarea exterior.,De lo contrario, una tarjeta de ancho completo quedará presionada en aproximadamente 28dp,
+ * Cuando se apila con el espacio en blanco interior, parece"La tarjeta está comprimida".
  */
 internal val STEP_ICON_COLUMN_WIDTH = 28.dp
 
 /**
- * 紧凑步骤行 — 折叠态显示,水平排列各步骤的"图标 名称"。
+ * fila compacta de escalones — pantalla plegada,Organizar los pasos horizontalmente."nombre del icono".
  *
- * - 全部完成 → "已完成 N 步"
- * - 进行中 → 每步 "✓/⏳/✗ 名称" 水平排列(箭头分隔)
- * - 有失败步骤 → 失败步骤红色标记
+ * - todo hecho → "N pasos completados"
+ * - En progreso → cada paso "✓/⏳/✗ Nombre" Organizar horizontalmente(flecha separada)
+ * - Hay pasos fallidos → Marca roja de pasos fallidos
  */
 @Composable
 private fun CompactStepRow(data: TaskCardData, modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
     if (data.steps.size < 2) return
 
-    // 全部到达终态:显示摘要
+    // Todos llegan al estado final.:Mostrar resumen
     if (data.isAllDone) {
         val failedCount = data.steps.count { it.status == TaskStepStatus.FAILED }
         val timedOutCount = data.timedOutSteps
@@ -653,14 +653,14 @@ private fun CompactStepRow(data: TaskCardData, modifier: Modifier = Modifier) {
         return
     }
 
-    // 进行中:步骤条
+    // En progreso:barra de paso
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         data.steps.forEachIndexed { index, step ->
-            // 步骤图标(成功/进行中/待定/失败/超时/取消)
+            // icono de paso(éxito/En progreso/Por determinar/falló/tiempo de espera/Cancelar)
             val (icon, tint) = when (step.status) {
                 TaskStepStatus.SUCCESS -> MuseIcons.circleCheck to MaterialTheme.statusColors.success
                 TaskStepStatus.RUNNING -> MuseIcons.circle to colorScheme.primary
@@ -676,7 +676,7 @@ private fun CompactStepRow(data: TaskCardData, modifier: Modifier = Modifier) {
                 tint = tint,
             )
             Spacer(Modifier.size(2.dp))
-            // 缩写名称
+            // Nombre abreviado
             Text(
                 text = if (step.title.length > STEP_NAME_MAX_CHARS) {
                     step.title.take(STEP_NAME_MAX_CHARS) + "…"
@@ -693,7 +693,7 @@ private fun CompactStepRow(data: TaskCardData, modifier: Modifier = Modifier) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // 步骤间箭头分隔(最后一步不加)
+            // Las flechas separan los pasos(No agregar el último paso)
             if (index < data.steps.size - 1) {
                 Icon(
                     imageVector = MuseIcons.arrowRight,

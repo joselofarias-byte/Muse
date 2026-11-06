@@ -4,51 +4,51 @@ import io.zer0.common.Logger
 import io.zer0.muse.data.session.MuseDb
 
 /**
- * `card_entities` 的备份读写收口。
+ * `card_entities` La interfaz de lectura y escritura de respaldo.
  *
- * ## 为什么这里没有列清单
+ * ## ¿Por qué no hay una lista aquí?
  *
- * 上一版走的是手写 SQL + 手写列清单（`CardEntityTable`），原因是 DAO 缺全量查询与清空。
- * 代价是实体加列时若忘了同步列清单，新列会在备份里静默丢失，只能靠反射测试拦。
- * 现在 [io.zer0.muse.data.card.CardEntityDao] 补齐了 `getAll()` / `insertAll()` /
- * `deleteAll()` / `count()`，读写全部回到 Room 生成的映射：列清单只有一个真源
- * （`CardEntity` 的 `@ColumnInfo`），加字段不需要再改备份侧任何文件。
+ * La versión anterior usaba SQL escrito a mano + lista escrita a mano (`CardEntityTable`), la razón es que DAO carece de consulta y compensación completas.
+ * El precio es que si olvida sincronizar la lista de columnas al agregar entidades, las nuevas columnas se perderán silenciosamente en la copia de seguridad y solo podrá confiar en las pruebas de reflexión para detenerlas.
+ * ahora [io.zer0.muse.data.card.CardEntityDao] Completado `getAll()` / `insertAll()` /
+ * `deleteAll()` / `count()`, toda la lectura y escritura regresa al mapeo generado por Room: solo hay una fuente verdadera para la lista
+ * (`CardEntity` de `@ColumnInfo`), agregar campos no requiere cambiar ningún archivo en el lado de la copia de seguridad.
  *
- * 这里只留三件 Room 给不了的事：批量与线格式之间的转换、停靠槽位预校验（让坏备份
- * 报出可读原因而不是 `UNIQUE constraint failed`）、以及恢复后的行数对账。
+ * Solo hay tres cosas que Room no puede ofrecer: conversión entre formatos por lotes y de línea, verificación previa de la ranura de acoplamiento (para permitir que se realicen copias de seguridad incorrectas).
+ * Cite una razón legible por humanos en lugar de `UNIQUE constraint failed`) y la conciliación del número de filas después de la recuperación.
  *
- * ## 事务
+ * ## negocios
  *
- * 全部 suspend，调用方负责包在 `db.withTransaction { }` 里（与其它实体的恢复路径同口径）。
- * 走 DAO 而不是 `openHelper.writableDatabase`：Room 会把 DAO 调用调度到事务的
- * 那条连接上，也照常触发表级失效通知，恢复后停靠区的 Flow 订阅会刷新。
+ * Todo suspendido, la persona que llama es responsable de envolver `db.withTransaction { }` (mismo calibre que las vías de recuperación de otras entidades).
+ * Opte por DAO en su lugar `openHelper.writableDatabase`:Room Enviará llamadas DAO a transacciones
+ * En esa conexión, la notificación de error a nivel de tabla también se activa como de costumbre y la suscripción de Flow en el área de acoplamiento se actualizará después de la recuperación.
  */
 
 /**
- * 恢复后对卡片做一次核对：行数不足即视为失败并抛出，让整个恢复事务回滚。
+ * Después de la recuperación, verifique la tarjeta: si el número de filas es insuficiente, se considerará un error y se descartará, lo que permitirá revertir toda la transacción de recuperación.
  *
- * 与 `BackupService` 的 B-34 对账分工：那边按 meta 声明做通用核对，这里只补一条
- * 卡片特有的、能直接指出问题来源的信息（停靠卡是否真落库）。
- * 取数失败不阻断导入，只记日志（与既有对账同口径）。
+ * con `BackupService` División de conciliación en B-34: Allá la verificación general se hace según la metadeclaración, aquí solo se agrega una.
+ * Información específica de la tarjeta que puede señalar directamente el origen del problema (si realmente falta la tarjeta de conexión).
+ * Si no se recuperan los datos, no se bloquea la importación, sino que solo se registra el registro (del mismo calibre que la conciliación existente).
  */
 internal suspend fun verifyCardEntitiesRestored(db: MuseDb, expected: Int) {
     if (expected <= 0) return
     val actual = runCatching { db.cardEntityDao().count() }
-        .onFailure { Logger.w("BackupService", "卡片入库对账取数失败: ${it.message}", it) }
+        .onFailure { Logger.w("BackupService", "No se pudo recuperar la conciliación de almacenamiento de tarjetas: ${it.message}", it) }
         .getOrNull() ?: return
     check(actual >= expected) {
-        "备份入库数不一致: cardEntities 声明 $expected, 实际入库 $actual"
+        "La cantidad de copias de seguridad almacenadas en la base de datos es inconsistente: cardEntities Declaración $expected, Almacenamiento real $actual"
     }
 }
 
 /**
- * 整表替换（单 JSON 恢复路径用）：先校验槽位，再清空，最后批量写回。
+ * Reemplazo completo de la tabla (para una única ruta de recuperación JSON): primero verifique las ranuras, luego bórrelas y finalmente escríbalas nuevamente en lotes.
  *
- * 校验放在清空之前 —— 事务回滚虽然也能兜住，但「先确认数据没坏再动手删」能让
- * 失败路径的日志更直接指向备份文件本身。清空是必须的：恢复语义是整体替换，
- * 不合并（与其它所有实体一致），否则旧卡会与恢复出来的卡共存在停靠区。
+ * El cheque se coloca antes de la compensación. —— Aunque se puede evitar la reversión de transacciones, "confirmar que los datos no están dañados antes de eliminarlos" puede
+ * El registro de la ruta fallida apunta más directamente al archivo de copia de seguridad. Se requiere vacío: la semántica de recuperación es un reemplazo completo,
+ * No fusionada (consistente con todas las demás entidades); de lo contrario, la tarjeta antigua coexistirá con la tarjeta recuperada en el área de acoplamiento.
  *
- * @return 实际写回的卡片数（供对账使用）。
+ * @return El número real de tarjetas devueltas (para fines de conciliación).
  */
 internal suspend fun MuseDb.replaceCardEntities(records: List<CardEntityRecord>): Int {
     val entities = records.map { it.toEntity() }
@@ -59,12 +59,12 @@ internal suspend fun MuseDb.replaceCardEntities(records: List<CardEntityRecord>)
 }
 
 /**
- * 追加写回一批卡片（NDJSON 流式恢复用，调用方已在恢复起点清空整表）。
+ * Escribe un lote adicional de tarjetas (NDJSON Para la recuperación de transmisión, la persona que llama ha borrado toda la tabla en el punto de inicio de la recuperación).
  *
- * 每批单独校验槽位：唯一索引在 SQLite 层会拒绝重复槽位，但那条错误只写
- * `UNIQUE constraint failed`，排障时看不出是备份数据坏了。跨批次重复也能被挡住，
- * 因为校验基于该批次的行，而跨批次重复会在插入时撞唯一索引 —— 那种情况属于
- * 备份文件自相矛盾，报约束错误比悄悄覆盖一张卡更好。
+ * Verifique las ranuras individualmente para cada lote: los índices únicos rechazarán las ranuras duplicadas en la capa SQLite, pero ese error solo escribe
+ * `UNIQUE constraint failed`, al solucionar problemas, no es obvio que los datos de la copia de seguridad estén dañados. También se pueden bloquear las duplicaciones entre lotes.
+ * Debido a que la verificación se basa en las filas del lote, y la repetición entre lotes alcanzará el índice único durante la inserción. —— Esa situación pertenece a
+ * Los archivos de respaldo se contradicen: informar un error de restricción es mejor que sobrescribir silenciosamente una tarjeta.
  */
 internal suspend fun MuseDb.appendCardEntities(records: List<CardEntityRecord>) {
     if (records.isEmpty()) return

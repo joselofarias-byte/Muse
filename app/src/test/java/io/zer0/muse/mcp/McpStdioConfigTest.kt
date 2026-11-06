@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P1-A: stdio 传输配置序列化与 SSRF 边界测试（纯逻辑）。
+ * P1-A: stdio Serialización de la configuración de transporte y prueba de límites SSRF (lógica pura).
  */
 class McpStdioConfigTest {
 
@@ -29,7 +29,7 @@ class McpStdioConfigTest {
 
     @Test
     fun legacyConfigWithoutCommandStillParses() {
-        // 旧配置 JSON（无 command 字段）向后兼容
+        // Configuración anterior JSON (sin campo de comando) compatible con versiones anteriores
         val legacy = """{"id":"old","name":"old","transportType":"STREAMABLE_HTTP","url":"https://example.com/mcp"}"""
         val decoded = AppJson.decodeFromString(McpServerConfig.serializer(), legacy)
         assertEquals("", decoded.command)

@@ -22,15 +22,15 @@ import java.io.File
 import java.util.UUID
 
 /**
- * v2.6.8: 数据出口的 card_state 清洗 —— 会话预览与 FTS 索引。
+ * v2.6.8: card_state limpieza de exportaciones de datos —— Vista previa de sesión e indexación FTS.
  *
- * 这两处原来是「读者里最靠后、影响最持久」的两个：
- *  - 会话预览（stripForDisplay）不认 card_state，列表里直接显示 `cardId=…`；
- *  - FTS 索引直接吃 content 原文，于是 `card_state`、`cardId=`、JSON 键值都能被搜到，
- *    搜出来的片段还是一段 JSON。
+ * Estos dos lugares resultaron ser los que “llegaron a los lectores más lejanos y tuvieron el impacto más duradero”:
+ *  - vista previa de la sesión (stripForDisplay) no reconoce card_state y lo muestra directamente en la lista. `cardId=…`;
+ *  - FTS El índice come el contenido original directamente, por lo que `card_state`,`cardId=`,JSON Se pueden buscar todos los valores clave.
+ *    El fragmento encontrado sigue siendo un fragmento de JSON.
  *
- * 现在两者分别走 displayContent / searchableContent。这条测试从真实数据库往返验证，
- * 不依赖调用方是否记得手动清洗。
+ * Ahora los dos van a displayContent/searchableContent respectivamente. Esta prueba verifica un viaje de ida y vuelta desde la base de datos real,
+ * No depende de si la persona que llama recuerda limpiar manualmente.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -45,8 +45,8 @@ class SessionRepositoryCardStateTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         previousFtsMode = MessageFtsRuntime.useFts5
-        // FTS4 分支才由 SessionRepository 手动写 ngram；FTS5 走 external content 触发器，
-        // 索引文本仍是 messages.content 原文（见报告里的取舍说明）。
+        // FTS4 Las ramas se escriben manualmente en ngram mediante SessionRepository;FTS5 Tome el disparador de contenido externo,
+        // El texto indexado sigue siendo el texto original del contenido del mensaje (consulte las instrucciones de compensación en el informe).
         MessageFtsRuntime.useFts5 = false
         database = Room.inMemoryDatabaseBuilder(context, MuseDb::class.java)
             .addCallback(
@@ -83,14 +83,14 @@ class SessionRepositoryCardStateTest {
             sessionId,
             UIMessage(
                 role = MessageRole.USER,
-                content = withCardState("把睡眠调到 6 小时"),
+                content = withCardState("Configurar el sueño en 6 horas"),
                 createdAt = System.currentTimeMillis(),
             ),
         )
 
         val preview = database.sessionDao().getById(sessionId)!!.lastMessagePreview
 
-        assertEquals("把睡眠调到 6 小时", preview)
+        assertEquals("Configurar el sueño en 6 horas", preview)
         assertFalse(preview.contains("card_state"))
         assertFalse(preview.contains("cardId="))
         assertFalse(preview.contains("hours"))
@@ -103,17 +103,17 @@ class SessionRepositoryCardStateTest {
             sessionId,
             UIMessage(
                 role = MessageRole.USER,
-                content = withCardState("把睡眠调到 6 小时"),
+                content = withCardState("Configurar el sueño en 6 horas"),
                 createdAt = System.currentTimeMillis(),
             ),
         )
 
         val indexed = ftsContentFor(messageId)
 
-        assertTrue("正文摘要仍应可检索", indexed.contains("睡眠"))
-        assertFalse("卡片状态标记不能进索引", indexed.contains("card"))
-        assertFalse("卡片身份不能进索引", indexed.contains("cardid"))
-        assertFalse("JSON 键值不能进索引", indexed.contains("hours"))
+        assertTrue("Los resúmenes de texto aún deben poder buscarse", indexed.contains("sueño"))
+        assertFalse("La etiqueta de estado de la tarjeta no se puede indexar", indexed.contains("card"))
+        assertFalse("La identidad de la tarjeta no se puede indexar", indexed.contains("cardid"))
+        assertFalse("JSON Los valores clave no se pueden indexar", indexed.contains("hours"))
     }
 
     @Test
@@ -123,13 +123,13 @@ class SessionRepositoryCardStateTest {
             sessionId,
             UIMessage(
                 role = MessageRole.USER,
-                content = "普通一句话",
+                content = "una frase común",
                 createdAt = System.currentTimeMillis(),
             ),
         )
 
-        assertEquals("普通一句话", database.sessionDao().getById(sessionId)!!.lastMessagePreview)
-        assertEquals("普通 通一 一句 句话 话", ftsContentFor(messageId).trim())
+        assertEquals("una frase común", database.sessionDao().getById(sessionId)!!.lastMessagePreview)
+        assertEquals("una frase común", ftsContentFor(messageId).trim())
     }
 
     private suspend fun newSession(tag: String): String {

@@ -8,17 +8,17 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * 音频时长探测器。
+ * Detector de duración del audio.
  *
- * 单独抽成一个接口是为了让存储层能在纯 JVM 单测里跑：真机/模拟器上用
- * [MediaMetadataDurationProbe]，测试里换成固定值。
+ * Se extrae una interfaz separada para permitir que la capa de almacenamiento se ejecute en una prueba única de JVM pura: máquina real/Utilizado en simulador
+ * [MediaMetadataDurationProbe], cambiado a un valor fijo en la prueba.
  */
 fun interface VoiceDurationProbe {
-    /** @return 时长（毫秒）；无法判定时返回 0 */
+    /** @return Duración (milisegundos); devuelto cuando no se puede determinar 0 */
     fun probeMs(file: File): Long
 }
 
-/** 用 Android 原生 [MediaMetadataRetriever] 读音频时长（不新增依赖）。 */
+/** Usar Android nativo [MediaMetadataRetriever] Duración de la lectura del audio (no se agregan nuevas dependencias). */
 object MediaMetadataDurationProbe : VoiceDurationProbe {
     private const val TAG = "MediaMetadataDurationProbe"
 
@@ -32,8 +32,8 @@ object MediaMetadataDurationProbe : VoiceDurationProbe {
                 ?.coerceAtLeast(0L)
                 ?: 0L
         }.getOrElse { e ->
-            // 探测失败不影响消息可用性：时长只是 UI 显示用的元数据
-            Logger.d(TAG, "音频时长探测失败: ${e.message}")
+            // La falla de detección no afecta la disponibilidad del mensaje: la duración son solo metadatos para la visualización de la interfaz de usuario
+            Logger.d(TAG, "Error en la detección de la duración del audio: ${e.message}")
             0L
         }
         runCatching { retriever.release() }
@@ -42,36 +42,36 @@ object MediaMetadataDurationProbe : VoiceDurationProbe {
 }
 
 /**
- * 语音存档端口。
+ * Puerto de archivo de voz.
  *
- * 工具层（`send_voice`）只用到「落盘 + 探测时长」两件事，抽成接口后单测不必落真实文件。
+ * capa de herramienta (`send_voice`) sólo usa dos cosas: "ubicación del disco + duración de la detección". Después de extraer la interfaz, no es necesario descargar el archivo real para realizar una prueba única.
  */
 interface VoiceMessageArchiver {
-    /** 见 [VoiceMessageStore.persist]。 */
+    /** ver [VoiceMessageStore.persist]. */
     suspend fun persist(tempFile: File, key: String): String?
 
-    /** 见 [VoiceMessageStore.probeDurationMs]。 */
+    /** ver [VoiceMessageStore.probeDurationMs]. */
     fun probeDurationMs(file: File): Long
 
-    /** 见 [VoiceMessageStore.delete]。 */
+    /** ver [VoiceMessageStore.delete]. */
     suspend fun delete(uri: String)
 }
 
 /**
- * 语音消息音频存储。
+ * Almacenamiento de audio de mensajes de voz.
  *
- * TTS 合成的音频原本落在 `cacheDir`（系统随时可能清理，播完即删），语音消息需要
- * 长期可回放的引用，所以由本类把成品搬进 `filesDir/voice_messages/`，数据库只存
- * 引用字符串（`file://` + 绝对路径），与图片落盘的做法一致。
+ * TTS El audio sintetizado originalmente cayó en `cacheDir`(El sistema puede limpiarse en cualquier momento y eliminarse después de reproducirlo). Los mensajes de voz requieren
+ * Referencia rejugable a largo plazo, por lo que esta clase traslada el producto terminado a `filesDir/voice_messages/`, la base de datos sólo almacena
+ * cadena entre comillas (`file://` + Ruta absoluta), consistente con el método de colocar imágenes en el disco.
  *
- * 文件命名取 [persist] 的 `key` 的内容哈希（默认前缀 16 位十六进制），因此：
- *  - 同一段文字重复合成时命中同名文件，直接覆盖，不会堆出多份等价音频；
- *  - 文件名不含用户文本，避免磁盘上出现可读的聊天内容。
+ * Nomenclatura de archivos [persist] de `key` hash de contenido (prefijo predeterminado de 16 dígitos hexadecimales), por lo que:
+ *  - Cuando el mismo texto se sintetiza repetidamente y se selecciona el archivo con el mismo nombre, se sobrescribirá directamente sin acumular múltiples copias de audio equivalente;
+ *  - Los nombres de archivos no contienen texto de usuario para evitar que el contenido del chat sea legible en el disco.
  *
- * 所有磁盘操作都在 [Dispatchers.IO] 上执行，方法本身可安全地在协程里直接调用。
+ * Todas las operaciones de disco son [Dispatchers.IO] Durante la ejecución, el método en sí se puede llamar de forma segura directamente en la rutina.
  *
- * @param storageDir 持久化目录（约定为 `filesDir/voice_messages/`）
- * @param durationProbe 时长探测器；单测可替换
+ * @param storageDir Directorio de persistencia (la convención es `filesDir/voice_messages/`)
+ * @param durationProbe detector de duración; La medición única se puede reemplazar.
  */
 class VoiceMessageStore(
     internal val storageDir: File,
@@ -79,15 +79,15 @@ class VoiceMessageStore(
 ) : VoiceMessageArchiver {
 
     /**
-     * 把合成得到的临时音频搬进持久目录。
+     * Mueva el audio temporal sintetizado a un directorio persistente.
      *
-     * @param tempFile TTS 写出的临时文件（调用方负责它原本的生命周期）
-     * @param key 内容键（消息 id 或文本哈希），决定存档文件名
-     * @return 存档引用（`file://` + 绝对路径）；源文件缺失/为空或落盘失败时返回 null
+     * @param tempFile TTS El archivo temporal escrito (la persona que llama es responsable de su ciclo de vida original)
+     * @param key Clave de contenido (identificación del mensaje o hash de texto) que determina el nombre del archivo comprimido
+     * @return cita de archivo (`file://` + camino absoluto); falta el archivo fuente/Devuelve cuando está vacío o no se puede realizar el pedido. null
      */
     override suspend fun persist(tempFile: File, key: String): String? = withContext(Dispatchers.IO) {
         if (!tempFile.isFile || tempFile.length() <= 0L) {
-            Logger.w(TAG, "语音落盘跳过：源文件不存在或为空 ${tempFile.name}")
+            Logger.w(TAG, "Grabación de voz omitida: el archivo fuente no existe o está vacío ${tempFile.name}")
             return@withContext null
         }
         val dir = ensureStorageDir() ?: return@withContext null
@@ -96,10 +96,10 @@ class VoiceMessageStore(
         val staging = File(dir, target.name + TMP_SUFFIX)
         runCatching {
             tempFile.copyTo(staging, overwrite = true)
-            if (target.exists() && !target.delete()) error("旧存档删除失败: ${target.name}")
-            if (!staging.renameTo(target)) error("改名失败: ${staging.name}")
+            if (target.exists() && !target.delete()) error("Error al eliminar el archivo antiguo: ${target.name}")
+            if (!staging.renameTo(target)) error("El cambio de nombre falló: ${staging.name}")
         }.onFailure { e ->
-            Logger.w(TAG, "语音落盘失败: ${e.message}")
+            Logger.w(TAG, "Error al colocar la voz: ${e.message}")
             runCatching { staging.delete() }
         }
         if (!target.isFile) return@withContext null
@@ -107,12 +107,12 @@ class VoiceMessageStore(
     }
 
     /**
-     * 把引用还原成本地文件。
+     * Restaurar referencias a archivos locales.
      *
-     * 只接受存档目录内的文件：历史数据里出现越界路径时按"不可解析"处理，
-     * 不会把任意本地路径当语音播出去。
+     * Acepte solo archivos en el directorio de archivo: presione cuando aparezca una ruta fuera de los límites en los datos históricos"No analizable"procesamiento,
+     * Ninguna ruta local se transmitirá como voz.
      *
-     * @return 文件不存在/引用非法时返回 null
+     * @return El archivo no existe/Devuelto cuando la referencia es ilegal. null
      */
     fun resolve(uri: String): File? {
         val raw = uri.trim().removePrefix(FILE_PREFIX).trim()
@@ -124,23 +124,23 @@ class VoiceMessageStore(
         return canonical.takeIf { it.isFile }
     }
 
-    /** 删除单条语音存档；引用非法或文件已不存在时静默忽略。 */
+    /** Eliminar un único archivo de voz; ignórelo silenciosamente si la referencia es ilegal o el archivo ya no existe. */
     override suspend fun delete(uri: String) {
         withContext(Dispatchers.IO) {
             val file = resolve(uri) ?: return@withContext
-            if (!file.delete()) Logger.w(TAG, "语音存档删除失败: ${file.name}")
+            if (!file.delete()) Logger.w(TAG, "Error al eliminar el archivo de voz: ${file.name}")
         }
     }
 
     /**
-     * 清理没有任何消息引用的存档（孤儿文件）。
+     * Limpiar archivos a los que no hace referencia ningún mensaje (archivos huérfanos).
      *
-     * 引用集合由调用方从数据库取（`MessageDao.getReferencedVoiceUris()`），
-     * 这样存储层不依赖数据库，也能在单测里直接验证。
-     * 落盘中断留下的 `.tmp` 暂存文件一并清掉。
+     * La persona que llama recupera la colección de referencia de la base de datos (`MessageDao.getReferencedVoiceUris()`),
+     * De esta forma, la capa de almacenamiento no depende de la base de datos y puede verificarse directamente en una única prueba.
+     * Restos de la interrupción de la colocación del disco `.tmp` Borren los archivos temporales juntos.
      *
-     * @param referencedUris 数据库里仍被引用的语音引用
-     * @return 删掉的文件数
+     * @param referencedUris Citas de discursos que todavía se citan en la base de datos.
+     * @return Número de archivos eliminados
      */
     suspend fun cleanupOrphans(referencedUris: Collection<String>): Int = withContext(Dispatchers.IO) {
         val files = storageDir.listFiles() ?: return@withContext 0
@@ -148,13 +148,13 @@ class VoiceMessageStore(
         files.count { file -> file.isFile && shouldDelete(file, keep) }
     }
 
-    /** 按引用探测时长；引用不可解析时返回 0。 */
+    /** La duración de la detección por referencia; devuelve 0 si la referencia no se puede resolver. */
     suspend fun durationMs(uri: String): Long = withContext(Dispatchers.IO) {
         val file = resolve(uri) ?: return@withContext 0L
         probeDurationMs(file)
     }
 
-    /** 按文件探测时长；失败返回 0（不会抛异常）。 */
+    /** Duración de la detección por archivo; devuelve 0 en caso de error (no se generará ninguna excepción). */
     override fun probeDurationMs(file: File): Long = runCatching { durationProbe.probeMs(file) }
         .getOrDefault(0L)
         .coerceAtLeast(0L)
@@ -171,7 +171,7 @@ class VoiceMessageStore(
 
     private fun ensureStorageDir(): File? {
         if (!storageDir.exists() && !storageDir.mkdirs()) {
-            Logger.w(TAG, "语音存档目录创建失败: ${storageDir.absolutePath}")
+            Logger.w(TAG, "Error al crear el directorio de archivos de voz: ${storageDir.absolutePath}")
             return null
         }
         return storageDir.takeIf { it.isDirectory }
@@ -180,7 +180,7 @@ class VoiceMessageStore(
     private fun sameFile(a: File, b: File): Boolean =
         runCatching { a.canonicalPath == b.canonicalPath }.getOrDefault(false)
 
-    /** 存档文件名 = key 的内容哈希 + 源文件扩展名（默认 wav）。 */
+    /** Nombre del archivo comprimido = key Hash de contenido + extensión de archivo fuente (wav predeterminado). */
     private fun fileNameFor(key: String, extension: String): String {
         val ext = extension.lowercase().filter { it.isLetterOrDigit() }.ifEmpty { DEFAULT_EXTENSION }
         return keyHash(key) + "." + ext
@@ -194,16 +194,16 @@ class VoiceMessageStore(
     private companion object {
         private const val TAG = "VoiceMessageStore"
 
-        /** 引用前缀，与图片落盘（MessageImageStore）保持同一种写法。 */
+        /** Prefijo de cotización y la imagen se coloca en el disco (MessageImageStore) mantiene la misma forma de escribir. */
         private const val FILE_PREFIX = "file://"
 
-        /** 落盘中转后缀，最终会被改名成正式文件。 */
+        /** El sufijo de transferencia eventualmente cambiará de nombre a documento formal. */
         private const val TMP_SUFFIX = ".tmp"
 
-        /** 无扩展名时的兜底（系统 TTS 写 wav，云端多数返回 mp3）。 */
+        /** El secreto cuando no hay extensión (el TTS del sistema escribe wav y la mayoría de los servidores en la nube devuelven mp3). */
         private const val DEFAULT_EXTENSION = "wav"
 
-        /** 哈希取前 16 位十六进制（64 bit），足够避免同一目录内碰撞。 */
+        /** El hash toma los primeros 16 dígitos hexadecimales (64 bit), suficiente para evitar colisiones dentro del mismo directorio. */
         private const val HASH_CHARS = 16
     }
 }

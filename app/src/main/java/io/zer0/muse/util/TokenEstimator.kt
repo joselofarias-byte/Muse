@@ -8,13 +8,13 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.common.resultOf
 
 /**
- * v1.55: 真实 token 估算器(基于 jtokkit BPE 编码)。
+ * v1.55: Estimador de tokens reales(Basado en la codificación jtokkit BPE).
  *
- * 使用 cl100k_base 编码(GPT-4/GPT-3.5 通用),对其他模型(DeepSeek/Claude/Gemini)
- * 为近似值,但远优于字符数启发式估算。
+ * Utilice la codificación cl100k_base(GPT-4/GPT-3.5 Universales),a otros modelos(DeepSeek/Claude/Gemini)
+ * es una aproximación,Pero mucho mejor que la estimación heurística del recuento de caracteres.
  *
- * EncodingRegistry 全局单例,懒加载(首次调用时初始化,约 50-100ms)。
- * 初始化失败时回退到启发式估算(中文 1.5 字/token,英文 4 字符/token)。
+ * EncodingRegistry Singleton global,Carga diferida(Inicializado en la primera llamada,aprox. 50-100ms).
+ * Recurrir a la estimación heurística cuando falla la inicialización(Chino 1,5 palabras/token,ingles 4 caracteres/token).
  */
 object TokenEstimator {
 
@@ -24,12 +24,12 @@ object TokenEstimator {
     @Volatile
     private var encoding: Encoding? = null
 
-    /** 视觉图片 token 估算(每张):Gemini ~258、OpenAI high-detail ~1105;取 1000 偏保守。 */
+    /** Estimación de token de imagen visual(cada uno):Gemini ~258,OpenAI high-detail ~1105;Tomar 1000 es conservador. */
     private const val IMAGE_TOKEN_ESTIMATE_PER_IMAGE = 1000
 
     private fun getEncoding(): Encoding? {
         if (encoding != null) return encoding
-        // v1.80 (L-TE1): 改用 resultOf,正确重抛 CancellationException(runCatching 会吞掉)
+        // v1.80 (L-TE1): Usar en su lugar resultOf,Lanzamiento correcto CancellationException(runCatching tragará)
         return resultOf {
             val r = Encodings.newDefaultEncodingRegistry()
             registry = r
@@ -40,27 +40,27 @@ object TokenEstimator {
     }
 
     /**
-     * 精确计算单段文本的 token 数(BPE 编码)。
-     * jtokkit 初始化失败时回退到启发式估算。
+     * Calcule con precisión la cantidad de tokens en un solo párrafo de texto(BPE codificación).
+     * jtokkit Recurrir a la estimación heurística cuando falla la inicialización.
      */
     fun estimate(text: String): Int {
         if (text.isBlank()) return 0
         val enc = getEncoding()
         if (enc != null) {
-            // v1.80 (L-TE1): 改用 resultOf + getOrNull 兜底(自定义 Result 无 getOrDefault)
+            // v1.80 (L-TE1): Utilice resultOf + getOrNull en su lugar para obtener la verdad(Resultado personalizado Ninguno getOrDefault)
             return resultOf { enc.countTokens(text) }.getOrNull() ?: fallbackEstimate(text)
         }
         return fallbackEstimate(text)
     }
 
     /**
-     * 估算一批工具定义的总 token 数。
+     * Calcule el número total de tokens definidos por un lote de herramientas.
      *
-     * 每次请求都要把完整 schema 发出去，工具越多这块越大。几十个工具就能吃掉上万 token，
-     * 而它和对话历史抢的是同一个窗口 —— 不扣它，压缩永远触发得太晚。
+     * Se debe enviar el esquema completo para cada solicitud. Cuantas más herramientas haya, mayor será el problema. Decenas de herramientas pueden consumir decenas de miles de tokens.
+     * Y toma la misma ventana que el historial de conversaciones. —— Sin él, la compresión siempre se activará demasiado tarde.
      *
-     * 结果按内容指纹缓存：同一批工具在一次会话里会被估算很多次，
-     * 每次都跑 BPE 编码是纯浪费。
+     * Los resultados se almacenan en caché según la huella digital del contenido: el mismo lote de herramientas se evaluará muchas veces en una sesión,
+     * Ejecutar la codificación BPE cada vez es un desperdicio.
      */
     fun estimateToolDefinitions(definitions: List<io.zer0.ai.core.ToolDefinition>): Int {
         if (definitions.isEmpty()) return 0
@@ -71,7 +71,7 @@ object TokenEstimator {
         return hit ?: computeToolDefinitionTokens(definitions).also { cached = fingerprint to it }
     }
 
-    /** 按 API 实际发送的形状拼：名字 + 描述 + 参数 schema，再补每个定义的固定外框开销。 */
+    /** Según la forma realmente enviada por la API: nombre + descripción + esquema de parámetros, y luego agregue la sobrecarga del marco fijo de cada definición. */
     private fun computeToolDefinitionTokens(definitions: List<io.zer0.ai.core.ToolDefinition>): Int {
         val text = buildString {
             definitions.forEach { def ->
@@ -83,18 +83,18 @@ object TokenEstimator {
         return estimate(text) + definitions.size * TOOL_DEFINITION_OVERHEAD_TOKENS
     }
 
-    /** 单个工具定义的外层包装开销（name/description/parameters 之外的固定字段）。 */
+    /** Sobrecubierta de envoltura exterior definida por una única herramienta (name/description/parameters campos fijos distintos de). */
     private const val TOOL_DEFINITION_OVERHEAD_TOKENS = 8
 
     @Volatile
     private var cached: Pair<Int, Int>? = null
 
     /**
-     * 估算消息列表 + system prompt 的总 token 数。
+     * Calcule la cantidad total de tokens en la lista de mensajes + aviso del sistema.
      *
-     * @param messages 对话历史(含 user/assistant/system/tool)
-     * @param systemPrompt 系统提示文本(SystemPromptAssembler 组装后),默认空
-     * @return token 数(BPE 精确或启发式回退)
+     * @param messages Historial de conversaciones(Contiene user/assistant/system/tool)
+     * @param systemPrompt Texto de aviso del sistema(SystemPromptAssembler Después del montaje),Vacío predeterminado
+     * @return token numero(BPE Retroceso preciso o heurístico)
      */
     fun estimate(
         messages: List<UIMessage>,
@@ -103,27 +103,27 @@ object TokenEstimator {
     ): Int {
         var total = estimate(systemPrompt)
         messages.forEach { msg -> total += (cache?.count(msg) ?: countMessage(msg)) }
-        // M6: 每条消息约 4 tokens 开销(OpenAI 协议每条消息的固定开销:role 标记 + 分隔符)
+        // M6: Aproximadamente 4 tokens por mensaje(OpenAI Gastos generales fijos por mensaje del protocolo.:role marca + delimitador)
         total += messages.size * PER_MESSAGE_OVERHEAD_TOKENS
         return total
     }
 
     /**
-     * 单条消息占用的 token（含思考过程、MOOD、反思、工具调用参数与图片）。
+     * El token ocupado por un solo mensaje (incluido el proceso de pensamiento,MOOD, reflexión, parámetros de llamada de herramientas e imágenes).
      *
-     * 抽出来是为了让 [MessageTokenCache] 能按消息缓存 —— 一次请求组装里同一批历史
-     * 会被估算好几遍（总预算、历史预算、超限判断、压缩后收益），每遍都跑一次 BPE。
+     * Sácalo para dejarlo [MessageTokenCache] Se puede almacenar en caché por mensaje —— Reúna el mismo lote de historial en una sola solicitud
+     * Se estimará varias veces (presupuesto total, presupuesto histórico, criterio de exceso de límite, ingresos después de la compresión) y se ejecutará BPE cada vez.
      */
     fun countMessage(msg: UIMessage): Int {
         var total = estimate(msg.content)
-        // 计入 assistant 的思考过程 / MOOD 腹稿 / 反思块(都会占用上下文)
+        // Incluido en el proceso de pensamiento del asistente/borrador de MOOD/bloque de reflexión(ocupará el contexto)
         msg.reasoning?.let { total += estimate(it) }
         msg.mood?.let { total += estimate(it) }
         msg.reflection?.let { total += estimate(it) }
-        // toolCalls 的 arguments 也算入(JSON 字符串)
+        // toolCalls Los argumentos de(JSON cuerda)
         msg.toolCalls?.forEach { tc -> total += estimate(tc.arguments) }
-        // 视觉图片(base64 / url)同样占用上下文;此前完全未计,导致视觉对话
-        // 预算系统性偏低 → AUTO_COMPRESS/占用圈失真,含图超长上下文可能撞 400。
+        // imagen visual(base64 / url)También retoma el contexto.;Nunca lo pensé antes,conducir al diálogo visual
+        // El presupuesto es sistemáticamente bajo → AUTO_COMPRESS/distorsión del círculo ocupado,Un contexto muy largo con imágenes puede llegar a 400.
         val imageCount = msg.imageBase64List.size + msg.imageUrls.size
         if (imageCount > 0) {
             total += imageCount * IMAGE_TOKEN_ESTIMATE_PER_IMAGE
@@ -134,8 +134,8 @@ object TokenEstimator {
     private const val PER_MESSAGE_OVERHEAD_TOKENS = 4
 
     /**
-     * 启发式回退(中文 1.5 字/token,英文 4 字符/token)。
-     * 仅在 jtokkit 初始化失败时使用。
+     * retroceso heurístico(Chino 1,5 palabras/token,ingles 4 caracteres/token).
+     * Solo se usa si falla la inicialización de jtokkit.
      */
     private fun fallbackEstimate(text: String): Int {
         var chineseCount = 0
@@ -154,45 +154,45 @@ object TokenEstimator {
     }
 }
 /**
- * 单条消息 token 计数的**身份缓存**。
+ * Recuento de tokens de un solo mensaje**Caché de identidad**.
  *
- * `UIMessage` 是不可变数据类，同一实例的计数必然相同；而一次请求组装里，
- * 同一批历史会被估算好几遍：
- *   - 总预算（messages）
- *   - 历史预算（去掉头部 SYSTEM）
- *   - 超限判断（去掉 prefix 再用一次）
- *   - 压缩后收益（compacted = prefix + 摘要 + recent，其中 prefix/recent 还是原实例）
+ * `UIMessage` Es una clase de datos inmutable y el recuento de la misma instancia debe ser el mismo; en una asamblea de solicitud,
+ * El mismo lote de historia se estimará varias veces:
+ *   - presupuesto total (messages)
+ *   - Presupuesto histórico (eliminar encabezado SISTEMA)
+ *   - Juicio sobre límite (eliminar el prefijo y usarlo nuevamente)
+ *   - Regreso después de la compresión (compacted = prefix + Resumen + reciente, donde prefijo/reciente sigue siendo la instancia original)
  *
- * 用 `IdentityHashMap` 而不是 `HashMap`：按内容哈希更快也省内存，但内容相等判定要
- * 逐字段比一遍长字符串，而我们把「同一实例」当作唯一可信的复用条件更安全。
- * 生命周期与一次 transform 相同，调用方新建一个即可，不跨请求共享。
+ * usar `IdentityHashMap` en lugar de `HashMap`: El hash basado en contenido es más rápido y ahorra memoria, pero la igualdad de contenido requiere
+ * Campo por campo es más largo que pasar cadena y consideramos que la "misma instancia" es la única condición de reutilización confiable que es más segura.
+ * El ciclo de vida es el mismo que el de una transformación. La persona que llama puede simplemente crear uno nuevo y no se compartirá entre solicitudes.
  */
 class MessageTokenCache {
 
     private val counts = java.util.IdentityHashMap<UIMessage, Int>()
 
     private companion object {
-        /** 上限见 [count]：超过就整体清空。 */
+        /** Ver el límite superior [count]: Si excede, se borrará todo el valor. */
         const val MAX_CACHED_MESSAGES = 512
     }
 
-    /** 命中次数（测试与诊断用）。 */
+    /** Número de aciertos (para fines de prueba y diagnóstico). */
     var hits: Int = 0
         private set
 
-    /** 未命中次数，等于真正跑了 BPE 的消息条数（测试与诊断用）。 */
+    /** La cantidad de errores es igual a la cantidad de mensajes que realmente ejecutaron BPE (para pruebas y diagnóstico). */
     var misses: Int = 0
         private set
 
     /**
-     * 取一条消息的 token 数（未命中时跑 BPE 并缓存）。
+     * Obtenga el número de token de un mensaje (ejecute BPE y almacene en caché si falla).
      *
-     * **线程安全**：`IdentityHashMap` 不是并发容器，并发 put 会让它结构损坏（可能死循环）。
-     * P25 把本缓存提升成 `ContextTokenUsage` 的进程级共享实例后，占用率刷新与提示词组装
-     * 会从不同线程同时进来 —— 所以这里必须加锁。
+     * **Seguridad del hilo**:`IdentityHashMap` No es un contenedor concurrente y la colocación concurrente dañará su estructura (posiblemente un bucle infinito).
+     * P25 Promocionar este caché a `ContextTokenUsage` Después de la instancia compartida a nivel de proceso, la tasa de ocupación se actualiza y se ensambla la palabra de aviso.
+     * Vendrá de diferentes hilos al mismo tiempo. —— Entonces esto debe estar bloqueado.
      *
-     * 锁只覆盖 map 读写：真正贵的 BPE 计算放在锁外，避免把不同线程的编码串行化。
-     * 代价是极端并发下同一条消息可能被算两次（结果一致，只是白算一次）。
+     * El bloqueo solo cubre la lectura y escritura de mapas: los cálculos BPE realmente costosos se colocan fuera del bloqueo para evitar serializar la codificación de diferentes subprocesos.
+     * El precio es que el mismo mensaje se puede contar dos veces en condiciones de concurrencia extrema (el resultado es el mismo, pero se cuenta una vez).
      */
     fun count(msg: UIMessage): Int {
         synchronized(counts) {
@@ -205,7 +205,7 @@ class MessageTokenCache {
         synchronized(counts) {
             misses += 1
             counts[msg] = computed
-            // 有界：按实例身份键控会拽住被替换掉的消息；超上限整体清空，宁可重算也不无限占内存。
+            // Delimitado: la clave por identidad de instancia contendrá el mensaje reemplazado; si se excede el límite superior, se borrará todo el mensaje. Es mejor recalcular que ocupar memoria ilimitada.
             if (counts.size > MAX_CACHED_MESSAGES) counts.clear()
         }
         return computed

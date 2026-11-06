@@ -9,14 +9,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
- * v1.137: 复杂自动化配置(条件触发、链式任务、多动作类型)。
+ * v1.137: Configuración automatizada compleja(Activación condicional, tareas en cadena, tipos de acciones múltiples).
  *
- * 以 JSON 形式持久化在 ScheduledTaskEntity 的扩展字段中,
- * 保持与旧版定时任务的向后兼容(空值 = 默认行为 = 总是执行 ai_prompt)。
+ * Persistente en formato JSON en el campo de extensión de ScheduledTaskEntity,
+ * Mantener la compatibilidad con versiones anteriores de tareas programadas(valor nulo = Comportamiento predeterminado = ejecutar siempre ai_prompt).
  */
 object AutomationConfig {
 
-    /** 条件类型。 */
+    /** Tipo de condición. */
     @Serializable
     data class Condition(
         @SerialName("type") val type: String = "always",
@@ -29,15 +29,15 @@ object AutomationConfig {
             const val CONTAINS = "contains"
             const val QUICK_NOTE_EXISTS = "quick_note_exists"
 
-            /** v1.0.17: 电量阈值条件,config["minLevel"] 为最低电量百分比(默认 20)。 */
+            /** v1.0.17: Condición de umbral de potencia,config["minLevel"] es el porcentaje mínimo de batería(Predeterminado 20). */
             const val BATTERY_LEVEL = "battery_level"
 
-            /** v1.0.17: 充电状态条件,config["mustCharging"] 为是否必须充电(默认 true)。 */
+            /** v1.0.17: Condiciones del estado de carga,config["mustCharging"] Si es necesario cargar(Predeterminado true). */
             const val CHARGING = "charging"
         }
     }
 
-    /** 动作配置。 */
+    /** Configuración de acciones. */
     @Serializable
     data class Action(
         @SerialName("type") val type: String = "ai_prompt",

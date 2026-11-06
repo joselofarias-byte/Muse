@@ -10,12 +10,12 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /**
- * v1.97: 二维码扫描器 — 用 ML Kit Barcode Scanning 从图片识别二维码。
+ * v1.97: Escáner de código QR — Utilice el escaneo de códigos de barras del kit ML para identificar códigos QR a partir de imágenes.
  *
- * 用户从相册选图片后,用此扫描器识别二维码内容。
- * 支持 QR_CODE 格式,识别后返回原始字符串。
+ * Después de que el usuario selecciona una imagen del álbum,Utilice este escáner para identificar el contenido del código QR.
+ * Admite formato QR_CODE,La cadena original se devuelve después del reconocimiento.
  *
- * 用法:
+ * Uso:
  * ```
  * val content = QrCodeScanner.scanFromBitmap(bitmap)
  * if (content != null && QrCodeGenerator.isProviderQr(content)) {
@@ -28,10 +28,10 @@ object QrCodeScanner {
     private const val TAG = "QrCodeScanner"
 
     /**
-     * 从 Bitmap 扫描二维码。
+     * Escanee el código QR de Bitmap.
      *
-     * @param bitmap 待识别的图片
-     * @return 第一个识别到的二维码内容;无识别结果或失败返回 null
+     * @param bitmap Imágenes para ser reconocidas
+     * @return El primer contenido de código QR reconocido;Sin resultado de reconocimiento o no devolución null
      */
     suspend fun scanFromBitmap(bitmap: Bitmap): String? {
         val image = InputImage.fromBitmap(bitmap, 0)
@@ -47,7 +47,7 @@ object QrCodeScanner {
                     cont.resume(content)
                 }
                 .addOnFailureListener { e ->
-                    Logger.w(TAG, "二维码扫描失败: ${e.message}")
+                    Logger.w(TAG, "Error al escanear el código QR: ${e.message}")
                     scanner.close()
                     cont.resume(null)
                 }

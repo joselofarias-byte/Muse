@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """
-check_row_text_width.py — Row 内文本未取宽（逐字换行 / 文本列塌陷）检查。
+check_row_text_width.py — Row El texto interno no está ampliado (ajuste de palabras/colapso de columnas de texto).
 
-## 为什么需要这条门禁
+## ¿Por qué necesitas este control de acceso?
 
-历史反复出现同一类线上问题：某行里的文本在放大字号（系统"显示大小 / 字体大小"）
-或窄窗口下被压成一列，每行只剩 1~4 个字，撑成几十行后被卡片裁掉
-（例：MCP 服务器列表行 `McpServerRow`、动作面板行 `MuseActionSheetRow`）。
+El mismo tipo de problema en línea ha aparecido repetidamente en la historia: el texto en una determinada línea aumenta el tamaño de fuente (el sistema"Tamaño de visualización/tamaño de fuente")
+O ser apretujado en una columna bajo una ventana estrecha, dejando sólo 1~4 Un personaje era estirado en docenas de líneas y luego cortado por la tarjeta.
+(Ejemplo:MCP fila de la lista de servidores `McpServerRow`, fila del panel de acciones `MuseActionSheetRow`).
 
-根因不是字号，而是结构：
-  - `Row` 的定宽子项（开关 / 按钮 / 图标 / 徽章）按自己需要的宽度优先测量；
-  - 承载文本的子项没有 `Modifier.weight(1f)`（或 `fillMaxWidth()`）→ 只拿到
-    "最小可用宽度"（中文最窄可到 1 个字），剩余宽度被定宽子项吃光；
-  - 文本又没有 `maxLines`/`overflow` 兜底，于是无限换行。
+La causa principal no es el tamaño de fuente, sino la estructura:
+  - `Row` Los subelementos de ancho fijo (interruptores/botones/iconos/insignias) se miden primero según el ancho que necesita;
+  - El niño que lleva el texto no tiene `Modifier.weight(1f)`(o `fillMaxWidth()`)→ solo tengo
+    "Ancho mínimo disponible"(El chino puede ser tan estrecho como 1 carácter), y el ancho restante lo come el hijo de ancho fijo;
+  - no hay texto `maxLines`/`overflow` No conozco el resultado final, por lo que puedes cambiar la línea infinitamente.
 
-判定：**行内有宽度竞争（≥2 个子项）时，承载文本的子项必须显式取宽**
-（`Modifier.weight(...)` / `fillMaxWidth()` / `fillMaxSize()` / 显式 `width(...)`），
-或至少有 `maxLines` 兜底（限行 + 省略号，不会撑成几十行）。
+Sentencia:**Hay competencia de ancho dentro de la fila (≥2 niño), el niño que lleva el texto debe ampliarse explícitamente**
+(`Modifier.weight(...)` / `fillMaxWidth()` / `fillMaxSize()` / explícito `width(...)`),
+o al menos tener `maxLines` Mantenga la línea final (líneas limitadas + puntos suspensivos, no se extenderá en docenas de líneas).
 
-豁免：单子项 Row（无宽度竞争）、FlowRow（本身就是流式换行容器）、
-槽位参数里的 Text（`label = { Text(...) }`，宽度由容器决定）。
+Exención: Fila de un solo elemento (sin competencia de ancho),FlowRow(en sí mismo un contenedor de envoltura de línea de transmisión),
+Texto en el parámetro de ranura (`label = { Text(...) }`, el ancho lo determina el contenedor).
 
-用法：
+Uso:
   py -3 ci/script/check_row_text_width.py
   py -3 ci/script/check_row_text_width.py --update-baseline
   py -3 ci/script/check_row_text_width.py --verbose
@@ -40,38 +40,38 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BASELINE_PATH = PROJECT_ROOT / "ci" / "baseline" / "row_text_width_baseline.txt"
 SCAN_ROOTS = ("app/src/main/java/io/zer0/muse/ui",)
 
-# 永久豁免：这些文件渲染的是**用户正文本身**（聊天 markdown 流式文本），
-# 多行是设计意图，加 maxLines 会截断用户内容。文件内的 UI 装饰（标题/标签）
-# 已在各自调用处自行限行，不再由本规则约束。
+# Exención permanente: estos archivos representan**cuerpo del usuario en sí**(texto de transmisión de rebajas de chat),
+# La intención del diseño son varias líneas; agregar maxLines truncará el contenido del usuario. Decoración de la interfaz de usuario dentro del archivo (título/etiqueta)
+# Han impuesto sus propias restricciones en sus respectivos lugares de llamadas y ya no están sujetos a estas reglas.
 EXEMPT_FILES = frozenset(
     {
         "app/src/main/java/io/zer0/muse/ui/markdown/MarkdownText.kt",
     }
 )
 
-# 行式容器（会开启一个 Row 作用域）。
-# 注意：`\bRow\s*\(` 不匹配 `MuseActionSheetRow(`（`n` 与 `R` 之间无词边界）；
-# 且必须排除声明与限定调用——`fun Row(` / `fun XxxRow(` / `.Row(` 都不是容器调用。
+# Contenedor de filas (abrirá un alcance de fila).
+# Nota:`\bRow\s*\(` no hay coincidencia `MuseActionSheetRow(`(`n` con `R` sin límites de palabras entre sí);
+# y debe excluir declaraciones y llamadas calificadas——`fun Row(` / `fun XxxRow(` / `.Row(` Ninguna de ellas son llamadas de contenedor.
 ROW_OPEN = re.compile(r"(?<!fun )(?<![\w.])(?<!fun \w)Row\s*\(|\bRowScope\b")
-# 自带横向 padding 的叶子行组件：作为子项时宽度由调用方给定，不再向内判定。
+# Componente de fila de hojas con relleno horizontal incorporado: cuando se usa como hijo, el ancho lo proporciona la persona que llama y ya no se determina hacia adentro.
 LEAF_ROW = re.compile(r"\bMuseActionSheetRow\s*\(")
-# 承载文本的组件
+# Componente que contiene texto.
 TEXT_CHILD = re.compile(
     r"\b(?:Text|BasicText|MuseActionSheetRow|MuseListItem|SettingsItemRow|"
     r"SettingsSwitchRow|SettingsItemRow)\s*\("
 )
-# 槽位参数里的 Text：不是行内直接子项
+# Texto en el parámetro de ranura: no es un hijo directo de la línea
 SLOT_LAMBDA = re.compile(r"[A-Za-z_]\w*\s*=\s*\{\s*(?:Text|BasicText)\s*\(")
-# 任何 Composable 调用（用于统计行内子项数）
+# Cualquier llamada Composable (usada para contar el número de hijos seguidos)
 CALL_OPEN = re.compile(r"\b([A-Z]\w*)\s*\(")
-# 取宽 / 限行写法
+# Escritura de línea de ancho/límite
 WIDTH_SAFE = re.compile(
     r"\.weight\s*\(|\.fillMaxWidth\s*\(|\.fillMaxSize\s*\(|"
     r"\.width\s*\(|\.widthIn\s*\(|\.requiredWidth\s*\("
 )
 LINES_SAFE = re.compile(r"\bmaxLines\s*=")
 
-# 非子项的关键字（语言结构 / 修饰符），不参与子项计数
+# Las palabras clave que no son subclaves (construcciones/modificadores del lenguaje) no participan en el recuento de subclaves
 NON_CHILD_CALLS = frozenset(
     {
         "Row", "Column", "Box", "FlowRow", "Spacer", "Surface", "Card", "when", "if",
@@ -88,7 +88,7 @@ def _strip_comment(line: str) -> str:
 
 
 def _extract_call(lines: list[str], start: int, max_lines: int = 40) -> tuple[str, int]:
-    """抽出一个完整调用（括号配平），返回 (文本, 最后一行下标)。"""
+    """Extraer una llamada completa (equilibrio de brackets), devolver (texto, Subíndice de última línea)."""
     buf: list[str] = []
     depth = 0
     seen_open = False
@@ -109,17 +109,17 @@ def _extract_call(lines: list[str], start: int, max_lines: int = 40) -> tuple[st
 
 
 def scan_file(path: Path) -> list[tuple[int, str]]:
-    """返回 [(行号, 行内容)]，每项是一处「行内有宽度竞争但文本未取宽」。"""
+    """Regresar [(Número de línea, contenido de la fila)], cada elemento es "hay competencia de ancho dentro de la línea pero el texto no está ampliado"."""
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError):
         return []
 
     findings: list[tuple[int, str]] = []
-    # 每个 Row 体一个条目：[体起始深度, 子项数, 未取宽文本, 已取宽但无限行的文本]
+    # Una entrada por cuerpo de fila:[profundidad inicial del cuerpo, Número de niños, Texto no ampliado, Texto ampliado pero con líneas ilimitadas.]
     scopes: list[list] = []
     depth = 0
-    pending_open = 0  # `Row(` 已出现、其体 `{` 未出现的括号层数
+    pending_open = 0  # `Row(` ha aparecido, su cuerpo `{` Número de niveles de brackets que no aparecen
     pending_row = False
     i = 0
 
@@ -135,18 +135,18 @@ def scan_file(path: Path) -> list[tuple[int, str]]:
             pending_open += line.count("(") - line.count(")")
             pending_row = True
         elif pending_row:
-            # Row 调用跨行：只累计后续行的括号差（不可重复统计首行的 `Row(`）
+            # Row Llamada entre filas: solo se acumulan las diferencias entre corchetes de las filas siguientes (las diferencias entre la primera fila y la primera fila no se pueden contar repetidamente) `Row(`)
             pending_open += line.count("(") - line.count(")")
 
         created_scope = False
         if pending_row:
             if "{" in line and pending_open <= 0:
-                # 体深度 = `{` 之后的深度（子项所在层级）
+                # profundidad del cuerpo = `{` Profundidad después de eso (el nivel del niño)
                 scopes.append([depth + 1, 0, [], []])
                 created_scope = True
                 pending_row = False
             elif opens > 0 and pending_open <= 0:
-                # `Row(...) {` 同行：`(` 已在本行闭合
+                # `Row(...) {` Compañeros:`(` Ya cerrado en nuestro banco.
                 scopes.append([depth + 1, 0, [], []])
                 created_scope = True
                 pending_row = False
@@ -158,17 +158,17 @@ def scan_file(path: Path) -> list[tuple[int, str]]:
             m = TEXT_CHILD.search(line)
             is_slot = bool(SLOT_LAMBDA.search(line))
             if m and not is_slot:
-                cur[1] += 1  # 文本子项
+                cur[1] += 1  # niño de texto
                 call_text, end_line = _extract_call(lines, i)
                 has_width = bool(WIDTH_SAFE.search(call_text))
                 has_lines = bool(LINES_SAFE.search(call_text))
                 if not has_width and not has_lines:
-                    # 既没取宽也没限行：放大字号时会被压成一列并撑高
+                    # No hay límite de ancho ni de fila: cuando se amplía el tamaño de la fuente, se presionará en una columna y se elevará.
                     cur[2].append((i + 1, raw.strip()))
                 elif has_width and not has_lines:
-                    # 取了宽但无限行：剩余宽度极小时仍会逐字换行
+                    # Seleccione líneas anchas pero ilimitadas: si el ancho restante es extremadamente pequeño, aún así se ajustará palabra por palabra
                     cur[3].append((i + 1, raw.strip()))
-                # 跳过整个调用体，但必须把体内花括号计入深度，否则后续作用域错位
+                # Omita todo el cuerpo de la llamada, pero las llaves dentro del cuerpo deben incluirse en la profundidad; de lo contrario, el alcance posterior quedará desalineado.
                 skipped = 0
                 for x in lines[i : end_line + 1]:
                     sx = _strip_comment(x)
@@ -187,14 +187,14 @@ def scan_file(path: Path) -> list[tuple[int, str]]:
                     break
 
         depth += opens - closes
-        # 本行刚创建的作用域不能在本行被弹出（`{` 已计入 depth）
+        # El alcance recién creado en esta fila no puede aparecer en esta fila (`{` ya incluido en profundidad)
         if not created_scope:
             while scopes and depth <= scopes[-1][0]:
                 scope = scopes.pop()
-                # 未取宽：需行内有宽度竞争（子项 ≥2）才算风险
+                # No ampliado: es necesario que haya competencia de ancho dentro de la fila (subelemento ≥2) se considera un riesgo
                 if scope[1] >= 2:
                     findings.extend(scope[2])
-                # 已取宽但无限行：任何情况都可能被压成一列，一律计风险
+                # Filas ampliadas pero ilimitadas: cualquier situación se puede comprimir en una columna, se calculan todos los riesgos
                 findings.extend(scope[3])
         i += 1
 
@@ -245,11 +245,11 @@ def load_baseline(path: Path) -> dict[str, int]:
 def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     out = [
-        "# Row 内文本未取宽基线（只降不升）",
-        "# 格式: <文件相对路径>:<允许处数>",
-        "# 收紧: py -3 ci/script/check_row_text_width.py --update-baseline",
-        "# 说明: 空基线 = 全仓零容忍。用户正文（ui/markdown/MarkdownText.kt）由脚本 EXEMPT_FILES 永久豁免，",
-        "#       卡片装饰（DataCardRenderer / RichContentCard 的标题与语言标签）已在调用处限行。",
+        "# Row El texto interior no toma una línea de base amplia (sólo desciende pero no sube)",
+        "# Formato: <Ruta relativa del archivo>:<Número de transacciones permitidas>",
+        "# apretar: py -3 ci/script/check_row_text_width.py --update-baseline",
+        "# Descripción: línea base vacía = Tolerancia cero para todas las posiciones. texto de usuario (ui/markdown/MarkdownText.kt) están permanentemente exentos por el script EXEMPT_FILES,",
+        "#       decoración de tarjetas (DataCardRenderer / RichContentCard El título y la etiqueta de idioma) han sido restringidos en el sitio de la llamada.",
         "",
     ]
     for file, hits in sorted(violations.items()):
@@ -258,7 +258,7 @@ def write_baseline(path: Path, violations: dict[str, list[tuple[int, str]]]) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Row 内文本未取宽检查")
+    parser = argparse.ArgumentParser(description="Row El texto interior no está ampliado ni marcado.")
     parser.add_argument("--baseline", type=Path, default=BASELINE_PATH)
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--verbose", action="store_true")
@@ -269,11 +269,11 @@ def main() -> int:
 
     if args.update_baseline:
         write_baseline(args.baseline, violations)
-        print(f"[row-text-width] baseline 已更新: {args.baseline}")
-        print(f"  共 {total} 处，分布 {len(violations)} 个文件")
+        print(f"[row-text-width] baseline actualizado: {args.baseline}")
+        print(f"  total {total} lugar, distribución {len(violations)} archivos")
         return 0
 
-    print(f"[row-text-width] 扫描 ui/: {total} 处 Row 内未取宽文本，分布 {len(violations)} 个文件")
+    print(f"[row-text-width] Escanear ui/: {total} El texto en Row no está ampliado ni distribuido. {len(violations)} archivos")
     if args.verbose:
         for file, hits in sorted(violations.items()):
             print(f"  {file}")
@@ -290,29 +290,29 @@ def main() -> int:
         current = len(hits)
         allowed = baseline.get(file, 0)
         if current > allowed:
-            failures.append(f"  {file}: {current} 处 (baseline {allowed}, 新增 {current - allowed})")
+            failures.append(f"  {file}: {current} en (baseline {allowed}, Nuevo {current - allowed})")
         elif current < allowed:
             improved.append(f"  {file}: {allowed} → {current}")
     for file in baseline:
         if file not in violations:
-            improved.append(f"  {file}: 已清零")
+            improved.append(f"  {file}: Borrado")
 
     if improved:
-        print("[row-text-width] 有改善，建议 --update-baseline 收紧:")
+        print("[row-text-width] Hay mejora, se recomienda ajustar --update-baseline:")
         for line in improved:
             print(line)
 
     if failures:
-        print("[row-text-width] FAILED — 新增「Row 内文本未取宽」写法:")
+        print("[row-text-width] FAILED — Nuevo texto de fila sin ancho:")
         for line in failures:
             print(line)
         print(
-            "修复方式: 给承载文本的子项加 Modifier.weight(1f)（取剩余宽度）或 Modifier.fillMaxWidth()；"
-            "必要时补 maxLines + overflow",
+            "como solucionarlo: Agregar al subelemento que contiene el texto. Modifier.weight(1f)(tome el ancho restante) o Modifier.fillMaxWidth();"
+            "Maquillar si es necesario maxLines + overflow",
         )
         return 1
 
-    print(f"[row-text-width] PASS — 无新增（存量 {total} 处按 baseline 豁免）")
+    print(f"[row-text-width] PASS — Sin nuevas incorporaciones (stock {total} (exento según línea base)")
     return 0
 
 

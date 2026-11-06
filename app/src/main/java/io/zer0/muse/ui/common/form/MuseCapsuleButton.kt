@@ -41,25 +41,25 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.huge
 
 /**
- * 胶囊形按钮 — 替代 Material3 [Button]/[OutlinedButton]/[TextButton]。
+ * botón de cápsula — sustituto Material3 [Button]/[OutlinedButton]/[TextButton].
  *
- * 视觉:全宽或 hug 内容、48dp 最小高度、24dp 圆角([MuseShapes.huge])、
- * 按压时轻微缩放(0.97x)并无涟漪。主按钮用品牌色/黑色背景 + 白字，
- * 次按钮用主题容器色 + 其反相色，文字按钮透明背景 + primary 色。
+ * Visión:contenido de ancho completo o abrazado,48dp altura mínima,24dp esquinas redondeadas([MuseShapes.huge]),
+ * Zoom ligeramente cuando se presiona(0.97x)No hay ondas. Color de marca para el botón principal./Fondo negro + texto blanco,
+ * El botón secundario usa el color del contenedor del tema + su color inverso, y el botón de texto usa un fondo transparente + color primario.
  *
- * 业务页面需要「图标 + 文字」「删除类红按钮」「进行中」三种形态时，
- * 一律用本组件的 [leadingIcon] / [destructive] / [loading]，不要退回原生按钮。
+ * Cuando la página comercial requiere tres formularios: "icono + texto", "eliminar botón rojo" y "en progreso",
+ * Utilice siempre este componente [leadingIcon] / [destructive] / [loading], no recurras al botón nativo.
  *
- * @param text 按钮文字
- * @param onClick 点击回调
- * @param modifier 修饰符
- * @param enabled 是否可点击
- * @param variant 按钮样式变体 [IosCapsuleButtonVariant.Primary]/[Secondary]/[Text]
- * @param fillWidth 是否填满可用宽度(默认 true)
- * @param leadingIcon 可选的前置图标
- * @param trailingIcon 可选的后置图标（选中勾选、状态指示等）
- * @param loading 进行中:显示小转圈并禁止点击
- * @param destructive 危险操作(删除/清除):容器走主题错误色，覆盖 [variant] 的底色
+ * @param text texto del botón
+ * @param onClick Haga clic en devolución de llamada
+ * @param modifier modificador
+ * @param enabled ¿Se puede hacer clic?
+ * @param variant Variaciones de estilo de botón [IosCapsuleButtonVariant.Primary]/[Secondary]/[Text]
+ * @param fillWidth Ya sea para llenar el ancho disponible(Predeterminado true)
+ * @param leadingIcon Icono frontal opcional
+ * @param trailingIcon Iconos de publicación opcionales (casilla de verificación, indicación de estado, etc.)
+ * @param loading En progreso:Mostrar círculos pequeños y desactivar clics
+ * @param destructive Operación peligrosa(Eliminar/Borrar):El contenedor tiene el color del tema incorrecto y está cubierto. [variant] color de fondo
  */
 @Composable
 fun MuseCapsuleButton(
@@ -82,8 +82,8 @@ fun MuseCapsuleButton(
         label = "capsuleBtnScale",
     )
 
-    // 主题色口径：主按钮走高饱和主题主色；次要按钮走低饱和主题容器色；
-    // destructive 覆盖前两者，走主题错误色（删除/清除类操作）。
+    // Calibre de color del tema: el botón principal adopta un color principal de tema muy saturado; los botones secundarios adoptan un color de contenedor de tema poco saturado;
+    // destructive Sobrescriba los dos primeros y tome el color incorrecto del tema (elimine/operaciones claras).
     val (backgroundColor, contentColor) = when {
         destructive -> MuseActionColors.dangerContainer to MuseActionColors.dangerContent
         variant == IosCapsuleButtonVariant.Primary -> MuseActionColors.container to MuseActionColors.content
@@ -93,9 +93,9 @@ fun MuseCapsuleButton(
     val transparentContainer = variant == IosCapsuleButtonVariant.Text && !destructive
 
     val clickable = enabled && !loading
-    // 进行中不是禁用：仍然显示为可用的高饱和外观，只是不接受点击。
-    // v1.0.92: 禁用态拆分背景/内容透明度 — 旧实现两者同乘低 alpha,
-    // 浅色主题下按钮显示为一个纯灰块、文字几乎不可见(用户反馈:翻译按钮禁用态像黑块)。
+    // En progreso no está deshabilitado: todavía aparece como una apariencia utilizable altamente saturada, simplemente no acepta clics.
+    // v1.0.92: Desactivar fondo dividido/Transparencia de contenido — En la implementación anterior, ambos multiplicados por el mismo bajo alpha,
+    // Bajo el tema claro, el botón aparece como un bloque gris sólido y el texto es casi invisible.(Comentarios de los usuarios:Botón de traducción deshabilitado como bloque negro).
     val containerAlpha = if (clickable || loading) 1f else MuseActionColors.disabledAlpha
     val contentAlpha = if (clickable || loading) 1f else 0.75f
 
@@ -157,7 +157,7 @@ fun MuseCapsuleButton(
                 ),
                 color = contentColor.copy(alpha = contentAlpha),
                 textAlign = TextAlign.Center,
-                // 胶囊按钮永远是单行：窄屏 / 大字号下宁可省略号，也不要把文字挤成竖排。
+                // Los botones de cápsula son siempre de una sola línea: en pantallas estrechas/tamaños de fuente grandes, es mejor usar elipses que comprimir el texto en filas verticales.
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,

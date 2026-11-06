@@ -1,60 +1,60 @@
 package io.zer0.muse.tools
 
 /**
- * 工具重试预算的说明文案。
+ * Copia de descripción del presupuesto de reintento de la herramienta.
  *
- * ## 为什么需要它
+ * ## por qué es necesario
  *
- * 助手自审第 15 条：「失败没有重试预算的可视化，我一次失败后就很保守，
- * 其实有些是可以安全重试的」。
+ * Ítem 15 de autoevaluación del asistente: "No se visualiza el presupuesto de reintento en caso de falla. Soy muy conservador después de una falla.
+ * De hecho, es seguro que algunos de ellos vuelvan a intentarlo”.
  *
- * 现状：提示词只写了「失败只按错误信息修正一次」，模型不知道这是第几次失败、
- * 还剩几次机会。于是第一次失败就倾向于放弃，把可修复的问题直接报给用户。
+ * Situación actual: la palabra indicadora solo dice "La falla solo debe corregirse una vez según el mensaje de error". El modelo no sabe cuántas veces ha fallado.
+ * Todavía quedan algunas posibilidades. Por lo tanto, tienden a darse por vencidos después del primer fallo e informar de los problemas solucionables directamente a los usuarios.
  *
- * 这里把「第几次 / 还剩几次 / 该不该继续」算成一行明确的话，和失败分类一起
- * 附在回执里。预算上限与提示词里的「最多 1 次」保持一致，不另立一套口径。
+ * Aquí, "Cuántas veces / Cuántas veces quedan / ¿Debemos continuar" se cuenta como una línea clara, junto con la clasificación de fallas?
+ * Adjunto al recibo. El límite superior del presupuesto es consistente con el "máximo 1 vez" en la palabra clave y no existe un conjunto de criterios separado.
  */
 object ToolRetryBudget {
 
     /**
-     * 单工具在本回合内的重试上限。
+     * El límite superior de reintentos para una sola herramienta en esta ronda.
      *
-     * 与提示词「失败只按错误信息修正一次」一致：首次失败后允许再试 1 次，
-     * 即同一工具最多失败 [MAX_RETRIES] + 1 次。
+     * Es coherente con la palabra clave "El error solo debe corregirse una vez según el mensaje de error": después del primer error, puede volver a intentarlo.
+     * Es decir, la misma herramienta falla como máximo. [MAX_RETRIES] + 1 veces.
      */
     const val MAX_RETRIES = 1
 
     /**
-     * 生成预算说明。
+     * Generar estado de cuenta presupuestario.
      *
-     * @param toolName 工具名（让模型知道这条预算针对哪个工具）
-     * @param attempt 这是第几次失败（从 1 开始）
-     * @param retryable 失败分类给出的可重试性
+     * @param toolName Nombre de la herramienta (indique al modelo para qué herramienta es este presupuesto)
+     * @param attempt Este es el número de fallas (comenzando desde 1)
+     * @param retryable Reintentación dada por la clasificación de fallas.
      */
     fun describe(toolName: String, attempt: Int, retryable: Boolean): String {
         val used = attempt.coerceAtLeast(1)
         val remaining = (MAX_RETRIES - (used - 1)).coerceAtLeast(0)
         return when {
             !retryable ->
-                "[重试预算] $toolName 第 $used 次失败；本次失败不可重试（见上方 kind），不要再调用同一工具。"
+                "[Reintentar presupuesto] $toolName No. $used Esto falló; este error no se puede volver a intentar (consulte el tipo anterior) y no vuelva a llamar a la misma herramienta."
             remaining > 0 ->
-                "[重试预算] $toolName 第 $used 次失败；还剩 $remaining 次重试机会 —— " +
-                    "确认能改对再试，不要把同一次失败重放。"
+                "[Reintentar presupuesto] $toolName No. $used falló; restante $remaining reintentar oportunidades —— " +
+                    "Asegúrate de poder corregirlo y vuelve a intentarlo. No repitas el mismo fracaso."
             else ->
-                "[重试预算] $toolName 第 $used 次失败；重试机会已用尽 —— " +
-                    "不要再调用同一工具，把真实原因和已尝试的做法告诉用户。"
+                "[Reintentar presupuesto] $toolName No. $used fallido; oportunidades de reintento agotadas —— " +
+                    "No vuelvas a llamar a la misma herramienta, cuéntale al usuario el verdadero motivo y lo que has probado."
         }
     }
 
     /**
-     * v2.6.7 fix (AUDIT F13): 把「本工具预算」与「整轮连续失败早停」两个口径合进同一句话。
+     * v2.6.7 fix (AUDIT F13): Combine los dos calibres de "presupuesto de esta herramienta" y "detención anticipada después de fallos consecutivos a lo largo de la ronda" en la misma frase.
      *
-     * 旧实现只看单工具计数：模型依次试 web_search → web_fetch → read_file 各失败一次时，
-     * 每次回执都说「还剩 1 次重试机会」，而 `ToolExecutionPolicy` 的连续失败阈值
-     * （maxConsecutiveFailures = 3）已经把循环判死了 —— 预算承诺与真实裁决不一致。
+     * La implementación anterior solo analizaba el recuento de herramientas individuales: los modelos se probaron secuencialmente web_search → web_fetch → read_file Cuando cada uno falla una vez,
+     * Cada vez que el recibo dice "Queda 1 oportunidad para volver a intentarlo", y `ToolExecutionPolicy` El umbral de falla continua de
+     * (maxConsecutiveFailures = 3) ya ha condenado a muerte el ciclo —— Las promesas presupuestarias son inconsistentes con las decisiones reales.
      *
-     * @param consecutiveFailures 本轮至今的跨工具连续失败次数
-     * @param abortThreshold 早停阈值
+     * @param consecutiveFailures Número de fallas consecutivas de herramientas cruzadas en esta ronda hasta la fecha
+     * @param abortThreshold Umbral de parada anticipada
      */
     fun describeWithRoundBudget(
         toolName: String,
@@ -67,9 +67,9 @@ object ToolRetryBudget {
         if (abortThreshold <= 0) return perTool
         val left = (abortThreshold - consecutiveFailures).coerceAtLeast(0)
         val roundLine = if (left <= 0) {
-            "[轮次预算] 本轮已连续失败 $consecutiveFailures 次（上限 $abortThreshold），不会再执行更多工具。"
+            "[presupuesto redondo] Esta ronda ha fracasado continuamente. $consecutiveFailures veces (límite superior $abortThreshold), no se ejecutarán más herramientas."
         } else {
-            "[轮次预算] 本轮已连续失败 $consecutiveFailures/$abortThreshold 次，再失败 $left 次将结束本轮。"
+            "[presupuesto redondo] Esta ronda ha fracasado continuamente. $consecutiveFailures/$abortThreshold veces, falló de nuevo $left Esto terminará la ronda."
         }
         return "$perTool\n$roundLine"
     }

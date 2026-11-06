@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>会话列表</title>
+    <title>Lista de conversación</title>
     <style id="theme-vars">
 /* @group-priority: primary, success, info, danger, accent */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
 
 /* =========================================================================
    Muse iOS — Design Library Tokens
-   Brand: Muse Laurel Green (月桂绿) · iOS Design Language
+   Brand: Muse Laurel Green (verde laurel) · iOS Design Language
    ========================================================================= */
 
 :root {
@@ -330,7 +330,7 @@
 
 /* ── Agent Plan Card ───────────────────────────────────────── */
 /* @anatomy
-   <span class="label">执行中</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent 计划</span> <span class="plan-progress">3/5</span>
+   <span class="label">ejecutando</span> <div class="plan-card executing"> <div class="plan-header"> <span class="plan-icon"></span> <span class="plan-title">Agent planear</span> <span class="plan-progress">3/5</span>
 */
 .plan-card { flex: 1; min-width: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-2); }
 .plan-card.executing { border-color: var(--primary-200); background: var(--color-primary-container); }
@@ -362,7 +362,7 @@
 
 /* ── Approval Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">低风险</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><svg class="aico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span class="atitle">请求批准</span><span class="atool">工具调用</span>
+   <span class="label">bajo riesgo</span><div class="acard low" data-evidence-sample="Pending Low Risk"><div class="ahd"><svg class="aico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span class="atitle">solicitar aprobación</span><span class="atool">llamada de herramienta</span>
 */
 .acard{flex:1;min-width:0;border-radius:var(--radius-card);padding:var(--space-4);border:1px solid;overflow:hidden}
 .acard.low{background:var(--primary-50);border-color:var(--primary-200)}
@@ -389,7 +389,7 @@
 
 /* ── Conversation List ─────────────────────────────────────── */
 /* @anatomy
-   <span class="label">默认</span>
+   <span class="label">Predeterminado</span>
 */
 .conv-list{width:100%;display:flex;flex-direction:column;gap:4px}
 .conv-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;background:transparent;cursor:pointer;transition:background .15s}
@@ -412,7 +412,7 @@
 
 /* ── Input Bar ─────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">默认</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">工具调用</button> <textarea placeholder="对话"></textarea> <button type="button" class="ib-btn ib-send">发送</button>
+   <span class="label">Predeterminado</span> <div class="inputbar" data-evidence-sample="default-text-mode"> <button type="button" class="ib-btn ib-tool">llamada de herramienta</button> <textarea placeholder="dialogo"></textarea> <button type="button" class="ib-btn ib-send">enviar</button>
 */
 .inputbar{display:flex;align-items:flex-end;gap:var(--space-2);width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));border:1px solid var(--hairline);border-radius:var(--radius-bubble);padding:var(--space-2) var(--space-3);min-height:49px;box-shadow:var(--shadow-2);box-sizing:border-box;}
 .inputbar textarea{flex:1;min-width:0;min-height:28px;max-height:132px;border:none;background:transparent;resize:none;outline:none;font-family:var(--font-body);font-size:var(--font-size-body-m);line-height:var(--line-height-body);color:var(--color-on-surface);padding:var(--space-1) 0;}
@@ -427,7 +427,7 @@
 
 /* ── Media Card ────────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">图像 · 生成中</span>
+   <span class="label">imagen · generando</span>
 */
 .mc{width:100%;background:var(--surface);border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-2);border:1px solid var(--hairline)}
 .mc-media{position:relative;aspect-ratio:16/9;background:var(--surface-container);display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -456,7 +456,7 @@
 
 /* ── Message Bubble ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">对话</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">帮我写一首关于秋天的短诗
+   <span class="label">dialogo</span> <div class="thread"> <div class="msg end"> <div class="bubble bubble-user">Ayúdame a escribir un poema corto sobre el otoño.
 */
 .msg{display:flex;flex-direction:column;gap:var(--space-1);max-width:85%;align-items:flex-start}
 .msg.end{align-self:flex-end;align-items:flex-end;max-width:var(--size-bubble-max)}
@@ -472,7 +472,7 @@
 
 /* ── Navigation Bar ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">大标题</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="返回"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button> <div class="nav-spacer">
+   <span class="label">titular</span> <div class="navbar navbar-large"> <div class="navbar-bar"> <button class="nav-btn" aria-label="Regresar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button> <div class="nav-spacer">
 */
 .navbar{display:flex;align-items:center;width:100%;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturation))}
 .navbar-inline{height:var(--size-navbar);padding:0 var(--space-4)}
@@ -514,7 +514,7 @@
 
 /* ── Thinking Card ─────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">折叠态</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">思考中</span>
+   <span class="label">estado plegado</span><div class="tc tc--collapsed" data-evidence-sample="collapsed"><span class="tc__label">Pensando</span>
 */
 .tc{background:var(--primary-50);border-radius:var(--radius-md);padding:11px 9px;border-left:2px solid var(--primary-300);flex:1;min-width:0}
 .tc--collapsed{display:inline-flex;align-items:center;gap:var(--space-2);border-left:none;flex:0 0 auto;cursor:pointer;transition:filter var(--duration-fast)}
@@ -530,7 +530,7 @@
 
 /* ── Tool Call Card ────────────────────────────────────────── */
 /* @anatomy
-   <span class="label">执行中</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">工具调用</span><span class="tc-status">执行中</span>
+   <span class="label">ejecutando</span><div class="tool-card" data-evidence-sample="Executing"><div class="tc-header"><span class="tc-icon active"><svg width="16" height="16" class="spin"><use href="#i-gear"/></svg></span><span class="tc-name">llamada de herramienta</span><span class="tc-status">ejecutando</span>
 */
 .tool-card{background:var(--color-surface-container);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:11px 10px;flex:1;min-width:0;box-sizing:border-box}
 .tool-card.danger{background:var(--color-error-container);border-color:var(--color-danger)}
@@ -816,12 +816,12 @@
         <header data-component="navigation-bar" class="navbar navbar-large nav-top">
             <div class="navbar-bar">
                 <div class="nav-spacer"></div>
-                <button type="button" class="nav-text-btn">编辑</button>
+                <button type="button" class="nav-text-btn">Editar</button>
             </div>
-            <h1 class="nav-title-large">对话</h1>
+            <h1 class="nav-title-large">dialogo</h1>
             <div class="search-bar">
                 <i data-lucide="search"></i>
-                <input type="text" placeholder="搜索" class="search-input" />
+                <input type="text" placeholder="Buscar" class="search-input" />
             </div>
         </header>
 
@@ -833,62 +833,62 @@
 
                 <!-- Item 1 — unread badge -->
                 <div class="conv-item">
-                    <div class="conv-avatar">缪</div>
+                    <div class="conv-avatar">Miao</div>
                     <div class="conv-content">
                         <div class="conv-title-row">
-                            <span class="conv-title">与缪斯聊聊</span>
-                            <span class="conv-time">下午 3:42</span>
+                            <span class="conv-title">Charla con la musa</span>
+                            <span class="conv-time">tarde 3:42</span>
                         </div>
-                        <span class="conv-preview">今天读到了一段很有意思的话…</span>
+                        <span class="conv-preview">Leí un pasaje muy interesante hoy.…</span>
                     </div>
                     <span class="conv-badge">3</span>
                 </div>
 
                 <!-- Item 2 -->
                 <div class="conv-item">
-                    <div class="conv-avatar avatar-coral">夜</div>
+                    <div class="conv-avatar avatar-coral">noche</div>
                     <div class="conv-content">
                         <div class="conv-title-row">
-                            <span class="conv-title">深夜随想</span>
-                            <span class="conv-time">昨天</span>
+                            <span class="conv-title">Pensamientos nocturnos</span>
+                            <span class="conv-time">ayer</span>
                         </div>
-                        <span class="conv-preview">月色真美，适合写点什么…</span>
+                        <span class="conv-preview">La luz de la luna es tan hermosa, adecuada para escribir algo.…</span>
                     </div>
                 </div>
 
                 <!-- Item 3 -->
                 <div class="conv-item">
-                    <div class="conv-avatar avatar-lavender">书</div>
+                    <div class="conv-avatar avatar-lavender">libro</div>
                     <div class="conv-content">
                         <div class="conv-title-row">
-                            <span class="conv-title">读书笔记</span>
-                            <span class="conv-time">周一</span>
+                            <span class="conv-title">notas de lectura</span>
+                            <span class="conv-time">lunes</span>
                         </div>
-                        <span class="conv-preview">《人间词话》的三重境界…</span>
+                        <span class="conv-preview">Los tres reinos de las "palabras humanas"…</span>
                     </div>
                 </div>
 
                 <!-- Item 4 -->
                 <div class="conv-item">
-                    <div class="conv-avatar avatar-amber">创</div>
+                    <div class="conv-avatar avatar-amber">crear</div>
                     <div class="conv-content">
                         <div class="conv-title-row">
-                            <span class="conv-title">缪斯·创作工坊</span>
-                            <span class="conv-time">9月3日</span>
+                            <span class="conv-title">musa·taller creativo</span>
+                            <span class="conv-time">9mes3dia</span>
                         </div>
-                        <span class="conv-preview">新诗初稿已完成，请查看…</span>
+                        <span class="conv-preview">Se ha completado el primer borrador del nuevo poema, por favor échale un vistazo.…</span>
                     </div>
                 </div>
 
                 <!-- Item 5 -->
                 <div class="conv-item">
-                    <div class="conv-avatar avatar-sage">灵</div>
+                    <div class="conv-avatar avatar-sage">espíritu</div>
                     <div class="conv-content">
                         <div class="conv-title-row">
-                            <span class="conv-title">灵感碎片</span>
-                            <span class="conv-time">8月28日</span>
+                            <span class="conv-title">fragmentos de inspiración</span>
+                            <span class="conv-time">8mes28dia</span>
                         </div>
-                        <span class="conv-preview">关于秋天的色彩收集…</span>
+                        <span class="conv-preview">Sobre la colección de colores de otoño.…</span>
                     </div>
                 </div>
 
@@ -896,7 +896,7 @@
 
             <!-- ── Section separator ── -->
             <div class="section-separator">
-                <span class="section-label">空状态预览</span>
+                <span class="section-label">Vista previa del estado vacío</span>
             </div>
 
             <!-- ── Empty state preview ── -->
@@ -904,11 +904,11 @@
                 <div class="empty-illustration">
                     <i data-lucide="leaf"></i>
                 </div>
-                <h2 class="empty-title">开始与缪斯对话</h2>
-                <p class="empty-body">点击右上角按钮新建会话</p>
+                <h2 class="empty-title">Inicia una conversación con tu musa.</h2>
+                <p class="empty-body">Haga clic en el botón en la esquina superior derecha para crear una nueva sesión.</p>
                 <a href="#" class="empty-cta">
                     <i data-lucide="plus"></i>
-                    新建会话
+                    Nueva sesión
                 </a>
             </section>
 
@@ -918,19 +918,19 @@
         <nav data-component="navigation-bar" class="tabbar tabbar-bottom">
             <a href="#" class="tab-item active">
                 <i data-lucide="message-circle" class="tab-icon"></i>
-                <span class="tab-label">对话</span>
+                <span class="tab-label">dialogo</span>
             </a>
             <a href="#" class="tab-item">
                 <i data-lucide="brain" class="tab-icon"></i>
-                <span class="tab-label">记忆</span>
+                <span class="tab-label">memoria</span>
             </a>
             <a href="#" class="tab-item">
                 <i data-lucide="book" class="tab-icon"></i>
-                <span class="tab-label">知识库</span>
+                <span class="tab-label">base de conocimientos</span>
             </a>
             <a href="#" class="tab-item">
                 <i data-lucide="settings" class="tab-icon"></i>
-                <span class="tab-label">设置</span>
+                <span class="tab-label">ajustes</span>
             </a>
         </nav>
     </div>

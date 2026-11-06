@@ -13,8 +13,8 @@ import io.zer0.muse.ui.HtmlPreviewScreen
 import io.zer0.muse.ui.common.feedback.MuseToast
 
 /**
- * v2.0.1: 产物打开宿主 — 富内容（HTML/SVG/Chart/Mermaid）走全屏浏览器形态，
- * 其余（代码/文本）走弹窗查看器。聊天页与产物中心共用同一分流。
+ * v2.0.1: El producto abre el host. — contenido rico (HTML/SVG/Chart/Mermaid) toma la forma de un navegador de pantalla completa,
+ * El resto (código/Texto) visor emergente. La página de chat y el centro de productos comparten el mismo flujo.
  */
 @Composable
 fun ArtifactOpenHost(artifact: ArtifactEntity?, onDismiss: () -> Unit) {
@@ -44,7 +44,7 @@ fun ArtifactOpenHost(artifact: ArtifactEntity?, onDismiss: () -> Unit) {
     }
 }
 
-/** 复制产物文本到剪贴板 + Toast 反馈（聊天页与产物中心共用）。 */
+/** Copie el texto del producto al portapapeles + brinde comentarios (página de chat compartida con el centro de productos). */
 internal fun copyArtifactText(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("Muse Artifact", text))

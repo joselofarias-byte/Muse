@@ -24,30 +24,30 @@ import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.common.icons.MuseIcons
 
 /**
- * 后台保持运行引导 — 检测当前 ROM 厂商,给出专属的设置路径。
+ * Sigue ejecutando el arranque en segundo plano. — Detectar el fabricante de ROM actual,Dale un camino de configuración único.
  *
- * 设计原则:
- *  - 被动入口:只在主动消息设置页提供,不主动弹窗打扰用户。
- *  - 主动消息/定时提醒依赖后台进程(进程被杀后由系统拉起),国内 ROM 默认
- *    禁止第三方应用自启动/后台活动,需要用户到系统设置里放行。
- *  - 部分厂商没有标准跳转 intent(如华为),引导用户手动操作 + 打开应用详情兜底。
+ * principios de diseño:
+ *  - entrada pasiva:Solo disponible en la página de configuración de mensajes activos,No moleste activamente a los usuarios con ventanas emergentes.
+ *  - mensajes no solicitados/Los recordatorios periódicos se basan en procesos en segundo plano(Una vez finalizado el proceso, el sistema lo detiene.),Predeterminado de ROM nacional
+ *    Evitar que las aplicaciones de terceros se inicien automáticamente/actividad de fondo,El usuario debe ir a la configuración del sistema para liberarlo.
+ *  - Algunos fabricantes no tienen saltos estándar. intent(Como Huawei),Guíe a los usuarios para realizar operaciones manuales + abrir detalles de la aplicación.
  */
 
-/** 厂商识别结果与引导内容。 */
+/** Resultados de identificación de proveedores y contenido de orientación. */
 data class KeepAliveGuide(
-    /** 品牌显示名,如"小米"。 */
+    /** Nombre para mostrar de la marca,Como por ejemplo"Xiaomi". */
     val brandName: String,
-    /** 引导步骤(用户手动操作路径)。 */
+    /** Pasos guiados(Ruta de operación del manual de usuario). */
     val steps: List<String>,
-    /** 尝试跳转系统设置;失败或无专用 intent 时回退应用详情页。返回是否成功发起跳转。 */
+    /** Intenta saltar a la configuración del sistema.;Regrese a la página de detalles de la aplicación cuando falle o no haya una intención dedicada. Devuelve si el salto se inició correctamente. */
     val openSystemSettings: (Context) -> Boolean,
 )
 
 /**
- * v2.0: 依次尝试候选组件跳转;全部失败回退应用详情页。
+ * v2.0: Pruebe los saltos de componentes candidatos en secuencia;Si todo falla, regrese a la página de detalles de la solicitud.
  *
- * 所有 startActivity 均带 FLAG_ACTIVITY_NEW_TASK — 从弹窗 ContextThemeWrapper
- * 出发的 startActivity 不带该标志会抛异常并被静默呑噬(用户表现为"点了不跳转")。
+ * Todas las actividades de inicio vienen con FLAG_ACTIVITY_NEW_TASK — desde la ventana emergente ContextThemeWrapper
+ * Iniciar startActivity sin este indicador generará una excepción y se consumirá en silencio.(El usuario se comporta como"No hay salto al hacer clic").
  */
 private fun attemptSettings(ctx: Context, candidates: List<ComponentName>, fallback: (Context) -> Boolean): Boolean {
     for (component in candidates) {
@@ -62,7 +62,7 @@ private fun attemptSettings(ctx: Context, candidates: List<ComponentName>, fallb
     return fallback(ctx)
 }
 
-/** 检测当前设备厂商并返回对应引导。 */
+/** Detecta el fabricante actual del dispositivo y devuelve el arranque correspondiente. */
 fun detectKeepAliveGuide(): KeepAliveGuide {
     val manufacturer = Build.MANUFACTURER.lowercase()
     val fallbackToDetails: (Context) -> Boolean = { ctx ->
@@ -77,21 +77,21 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
     }
     return when {
         manufacturer.contains("huawei") || manufacturer.contains("honor") -> KeepAliveGuide(
-            brandName = "华为",
+            brandName = "Huawei",
             steps = listOf(
-                "打开系统「设置」→「应用」→「应用启动管理」",
-                "找到 Muse，关闭「自动管理」，手动允许「自启动」「关联启动」「后台活动」",
-                "在「设置」→「电池」→「更多电池设置」中关闭「休眠时始终保持网络连接」的限制",
+                "Abra el sistema \"Configuración\"→\"Aplicación\"→\"Gestión de inicio de aplicaciones\"",
+                "Busque Muse, desactive la \"Administración automática\" y permita manualmente el \"Inicio automático\", el \"Inicio asociado\" y las \"Actividades en segundo plano\".",
+                "En \"Configuración\"→\"Batería\"→Desactive la restricción \"Permanecer siempre conectado a la red durante la hibernación\" en \"Más configuraciones de batería\"",
             ),
             openSystemSettings = fallbackToDetails,
         )
         manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco") ->
             KeepAliveGuide(
-                brandName = "小米",
+                brandName = "Xiaomi",
                 steps = listOf(
-                    "打开「设置」→「应用设置」→「应用管理」→ 找到 Muse",
-                    "开启「自启动」，在「省电策略」中选择「无限制」",
-                    "或直接跳转系统自启动管理页（下方按钮）",
+                    "Abra \"Configuración\"→\"Configuración de la aplicación\"→\"Gestión de aplicaciones\"→ encontró Muse",
+                    "Active \"Inicio automático\" y seleccione \"Ilimitado\" en \"Política de ahorro de energía\"",
+                    "O vaya directamente a la página de administración de inicio automático del sistema (botón a continuación)",
                 ),
                 openSystemSettings = { ctx ->
                     attemptSettings(
@@ -110,9 +110,9 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             KeepAliveGuide(
                 brandName = "OPPO",
                 steps = listOf(
-                    "打开「设置」→「应用」→「应用管理」→ 找到 Muse",
-                    "开启「自启动」，在「电池」→「耗电管理」中选择「允许后台运行」",
-                    "或直接跳转系统自启动管理页（下方按钮）",
+                    "Abra \"Configuración\"→\"Aplicación\"→\"Gestión de aplicaciones\"→ encontró Muse",
+                    "Active \"Inicio automático\" y vaya a \"Batería\"→Seleccione \"Permitir la ejecución en segundo plano\" en \"Administración del consumo de energía\".",
+                    "O vaya directamente a la página de administración de inicio automático del sistema (botón a continuación)",
                 ),
                 openSystemSettings = { ctx ->
                     attemptSettings(
@@ -138,9 +138,9 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
         manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> KeepAliveGuide(
             brandName = "vivo",
             steps = listOf(
-                "打开「设置」→「应用与权限」→「权限管理」→ 找到 Muse",
-                "开启「自启动」，在「电池」→「后台高耗电」中选择「允许后台运行」",
-                "或直接跳转系统自启动管理页（下方按钮）",
+                "Abra \"Configuración\"→\"Aplicaciones y permisos\"→\"Gestión de permisos\"→ encontró Muse",
+                "Active \"Inicio automático\" y vaya a \"Batería\"→Seleccione \"Permitir ejecución en segundo plano\" en \"Alto consumo de energía en segundo plano\".",
+                "O vaya directamente a la página de administración de inicio automático del sistema (botón a continuación)",
             ),
             openSystemSettings = { ctx ->
                 attemptSettings(
@@ -160,11 +160,11 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             },
         )
         else -> KeepAliveGuide(
-            brandName = "通用",
+            brandName = "Universales",
             steps = listOf(
-                "在系统设置中允许 Muse 的「自启动 / 后台运行」",
-                "在电池优化中把 Muse 设为「不限制」（下方按钮可直达）",
-                "不要使用「强行停止」，直接划掉最近任务即可",
+                "Permitir el \"inicio automático/ejecución en segundo plano\" de Muse en la configuración del sistema",
+                "Configure Muse en \"Sin restricciones\" en optimización de batería (accesible directamente desde el botón a continuación)",
+                "No utilices \"Forzar detención\", simplemente tacha la tarea más reciente",
             ),
             openSystemSettings = { ctx ->
                 val ok = runCatching {
@@ -182,7 +182,7 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
     }
 }
 
-/** 引导弹窗:品牌 + 步骤 + 跳转按钮。 */
+/** Ventana emergente de guía:Marca + Pasos + Botón de salto. */
 @Composable
 fun KeepAliveGuideDialog(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -236,6 +236,6 @@ fun KeepAliveGuideDialog(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     )
 }
 
-/** 记住厂商检测结果(进程内只检测一次)。 */
+/** Recuerde los resultados de las pruebas del fabricante.(Sólo se detecta una vez dentro del proceso.). */
 @Composable
 private fun rememberKeepAliveGuide(): KeepAliveGuide = androidx.compose.runtime.remember { detectKeepAliveGuide() }

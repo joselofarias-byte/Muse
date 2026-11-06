@@ -1,43 +1,43 @@
 package io.zer0.muse.ui.markdown
 
 /**
- * 结构感知的 Markdown 预览截断。
+ * Truncamiento de vista previa de Markdown según la estructura.
  *
- * 背景（审计 §11-9）：收藏卡片预览此前是 `body.take(280)` —— 纯字符级切口。
- * 后果有两类，都是渲染层才炸、数据层看不出来的：
- *  - 切在未闭合的 ``` 代码围栏里：围栏永远不闭合，后续内容整体变代码块；
- *  - 切在 `**`、`*`、`_`、`[N]` 这类成对标记中间：标记半截留在文本里，
- *    有时变成字面量星号，有时把后文整体吞成粗体/链接。
+ * Antecedentes (auditoría §11-9): La vista previa de la tarjeta de colección fue anteriormente `body.take(280)` —— Puros cortes a nivel de personaje.
+ * Hay dos tipos de consecuencias, las cuales son causadas por la capa de representación y la capa de datos no puede verlas:
+ *  - cortar sin cerrar ``` En la valla de código: la valla nunca se cierra y el contenido posterior se convierte en un bloque de código en su conjunto;
+ *  - Cortar `**`,`*`,`_`,`[N]` Este tipo de marca emparejada está en el medio: la marca está medio encerrada en el texto,
+ *    A veces se convierte en un asterisco literal y, a veces, todo el texto está en negrita./enlace.
  *
- * 这里的做法是两级：
- *  1. **按块聚合**：先按空行切段，逐段累加，到接近上限就停。整块保留意味着
- *     列表、引用、表格、代码块一般整段完整，不会出现"半个表格"。
- *  2. **尾部修复**：单块本身就超长时才在上限处硬切，切完再做一次"未闭合构造"
- *     修复（围栏 / 行内代码 / 成对强调符 / 方括号引用），宁可少显示几个字，
- *     也不把半截标记交给渲染器。
+ * El enfoque aquí es de dos niveles:
+ *  1. **Agregado por bloque**: Primero presione la línea en blanco para cortar en segmentos, acumule segmento por segmento y deténgase cuando esté cerca del límite superior. Reserva de bloque completo significa
+ *     Las listas, referencias, tablas y bloques de código generalmente están completos y no aparecerán."media mesa".
+ *  2. **Reparación de cola**: Solo corte con fuerza en el límite superior cuando la pieza individual sea demasiado larga y hágalo nuevamente después de cortar."estructura abierta"
+ *     Corrección (vallas/código en línea/énfasis emparejado/comillas entre corchetes), preferiría mostrar algunas palabras menos,
+ *     Tampoco da medias notas al renderizador.
  *
- * 纯函数、不依赖 Android，便于单测。
+ * Función pura, no dependiente de Android, fácil de realizar pruebas individuales.
  */
 object MarkdownPreviewTruncation {
 
-    /** 收藏卡片预览的长度上限。 */
+    /** Longitud máxima para vistas previas de tarjetas de colección. */
     const val DEFAULT_LIMIT: Int = 280
 
-    /** 省略号。放在这里而不是调用方，保证"截断"和"截断标记"永远同时出现或同时不出现。 */
+    /** Elipsis. Ponlo aquí en lugar de la persona que llama, garantizado."Truncar"y"marca de truncamiento"Siempre presente al mismo tiempo o no al mismo tiempo. */
     const val ELLIPSIS: String = "…"
 
-    /** 代码围栏行程标记：``` 或 ~~~。 */
+    /** Marcadores de viaje de la cerca del código:``` o ~~~. */
     private const val FENCE_MARK: String = "```"
 
-    /** 圈选里剔除尾部的标记，顺序有讲究：先长后短，避免 ** 被单个 * 提前处理。 */
+    /** Elimina las marcas de la cola en la selección del círculo. El orden es muy particular: largo primero y luego corto para evitar ** ser soltero * Procesar con antelación. */
     private val INLINE_MARKERS = listOf("**", "__", "*", "_", "[")
 
     /**
-     * 把 [text] 截到不超过 [limit] 字符的预览，并保证不切断 Markdown 结构。
+     * poner [text] corte no más de [limit] Vista previa de personajes sin cortar la estructura Markdown.
      *
-     * - 原文不超过 [limit]：原样返回（不加省略号）
-     * - 超长：返回 `前缀 + [ELLIPSIS]`
-     * - 结果不会落在未闭合代码围栏 / 行内代码 / 强调符 / 半个 `[N]` 中间
+     * - El texto original no excede [limit]:Devolver tal cual (sin puntos suspensivos)
+     * - Extra largo: volver `prefijo + [ELLIPSIS]`
+     * - El resultado no estará dentro de los límites de código abierto/código en línea/caracteres de énfasis/mitad `[N]` medio
      */
     fun preview(text: String, limit: Int = DEFAULT_LIMIT): String {
         val safeLimit = limit.coerceAtLeast(1)
@@ -46,7 +46,7 @@ object MarkdownPreviewTruncation {
 
     private fun truncated(text: String, limit: Int): String = repairOpenConstructs(collectBlocks(text, limit)).trimEnd() + ELLIPSIS
 
-    /** 按空行分块累加，返回不超过 [limit] 的整块前缀。第一块就超长时退化为硬切。 */
+    /** Acumule en bloques por líneas en blanco, no devuelva más de [limit] El prefijo del bloque completo. La primera pieza degeneró en un corte duro cuando era demasiado larga. */
     private fun collectBlocks(text: String, limit: Int): String {
         val blocks = mutableListOf<String>()
         val current = StringBuilder()
@@ -72,7 +72,7 @@ object MarkdownPreviewTruncation {
         }
     }
 
-    /** 硬切到 [limit] 字符，尽量落在换行边界上（表格行、列表项尤其明显）。 */
+    /** corte duro para [limit] Caracteres, intente caer en el límite del salto de línea (especialmente obvio en las filas de la tabla y los elementos de la lista). */
     private fun hardCut(text: String, limit: Int): String {
         val raw = limit.coerceAtMost(text.length)
         val lastNewline = text.lastIndexOf('\n', raw - 1)
@@ -81,9 +81,9 @@ object MarkdownPreviewTruncation {
     }
 
     /**
-     * 修复切完后的"未闭合构造"，让渲染器拿到的永远是自洽片段。
+     * Después de reparar y cortar"estructura abierta", para que el renderizador siempre obtenga fragmentos autoconsistentes.
      *
-     * 先砍代码围栏 —— 围栏内的 `**`、`[` 都是字面量，不该交给后面的行内检查。
+     * Primero corta la valla del código. —— dentro de la valla `**`,`[` Todos son valores literales y no deben enviarse a comprobaciones en línea posteriores.
      */
     private fun repairOpenConstructs(text: String): String {
         val withoutFence = closeCodeFence(text)
@@ -92,11 +92,11 @@ object MarkdownPreviewTruncation {
     }
 
     /**
-     * 代码围栏未闭合：从最后一个未闭合的开围栏处整段砍掉。
+     * La valla codificada no está cerrada: corte toda la sección de la última valla abierta no cerrada.
      *
-     * 选择"砍掉"而不是"补一个 ``` 收尾"：补围栏会把预览里最后半截代码当成
-     * 合法代码块渲染出来，看起来像是内容本身如此；砍掉更诚实，省略号已经告诉
-     * 用户还有下文。
+     * elegir"cortar"en lugar de"inventa uno ``` Refinamiento": Al parchear la valla, la última mitad del código en la vista previa se considerará como
+     * Los bloques de código legal se representan para parecerse al contenido mismo; cortarlo es más honesto, han dicho los puntos suspensivos
+     * El usuario tiene más que decir.
      */
     private fun closeCodeFence(text: String): String {
         var openIndex = -1
@@ -111,10 +111,10 @@ object MarkdownPreviewTruncation {
     }
 
     /**
-     * 砍掉最后一个"落单标记"之后的内容。
+     * corta el ultimo"marca de pedido"Lo que sigue.
      *
-     * 行内代码的反引号在原文上数（掩码会把它们盖掉），其余标记在掩码串上数 ——
-     * 掩码串与原文等长，下标可直接用于切原文。
+     * Las marcas de acento grave en el código en línea se cuentan encima del texto original (la máscara las cubrirá) y otras etiquetas se cuentan encima de la cadena enmascarada. ——
+     * La cadena de máscara tiene la misma longitud que el texto original y el subíndice se puede utilizar directamente para cortar el texto original.
      */
     private fun dropUnbalancedTail(text: String, marker: String): String {
         val masked = if (marker == "`") text else maskCodeAndEscapes(text)
@@ -122,7 +122,7 @@ object MarkdownPreviewTruncation {
         return if (cut > 0) text.substring(0, cut) else text
     }
 
-    /** 未配对标记的起始下标；-1 表示没有。`[` 按"后面还有没有 `]`"判断。 */
+    /** El índice inicial del marcador no emparejado;-1 Indica no.`[` prensa"¿Hay algo más tarde? `]`"juez. */
     private fun unbalancedIndex(masked: String, marker: String): Int {
         if (marker == "[") {
             val open = masked.lastIndexOf('[')
@@ -138,9 +138,9 @@ object MarkdownPreviewTruncation {
     }
 
     /**
-     * 把转义字符与行内代码替换成等长空格，保证下标与原文对齐。
+     * Reemplace los caracteres de escape y los códigos en línea con espacios de igual longitud para garantizar que los subíndices estén alineados con el texto original.
      *
-     * 不 masked 掉的话，代码段里的 `*` 会干扰配对计数，导致过度截断。
+     * Si no se elimina el enmascaramiento, el segmento de código `*` Puede interferir con el recuento de pares y provocar un truncamiento excesivo.
      */
     private fun maskCodeAndEscapes(text: String): String {
         val chars = text.toCharArray()
@@ -159,7 +159,7 @@ object MarkdownPreviewTruncation {
         return String(chars)
     }
 
-    /** 掩掉从 [start] 开始的一段反引号包裹的行内代码，返回步进长度。 */
+    /** cubrir de [start] El comienzo de un fragmento de código en línea entre comillas invertidas devuelve la longitud del paso. */
     private fun maskCodeSpan(text: String, chars: CharArray, start: Int): Int {
         var end = start
         while (end < chars.size && chars[end] == '`') end++

@@ -15,25 +15,25 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * 并发写入不丢更新：`updateMessages` 的 CAS 语义回归。
+ * Escrituras simultáneas sin perder actualizaciones:`updateMessages` Regresión semántica CAS.
  *
- * 背景：`ChatStateAccessor.updateMessages` 的实现是 `_messages.update(transform)`，
- * 冲突时用**最新值**重放 transform。CAS 只有在 transform 真正消费入参时才有意义——
- * `updateMessages { staleSnapshot }`（忽略入参）等于赋值，零保护。
+ * Antecedentes:`ChatStateAccessor.updateMessages` La implementación es `_messages.update(transform)`,
+ * Usado en conflicto**último valor**Reproducir transformación.CAS Sólo tiene sentido cuando la transformación realmente consume los parámetros de entrada.——
+ * `updateMessages { staleSnapshot }`(Ignorar parámetros de entrada) Igual a la asignación, protección cero.
  *
- * 本文件两层覆盖：
- *  1. 语义层：用真 CAS 的 StateFlow 夹具模拟「读快照后另一写者已写入」，锁住
- *     追加 / 按 id 改单条 / 过滤三类写入的合并语义，并反向锁住两种退化写法会丢数据。
- *  2. 接线层：断言两处生产文件确实以消费入参的形态写入（退回旧写法即失败）。
+ * Este documento cubre dos capas:
+ *  1. Capa semántica: utilice el dispositivo StateFlow de CAS real para simular "después de leer la instantánea, otro escritor ha escrito", bloquear
+ *     Agregar/cambiar una entrada única por ID/filtrar la semántica de combinación de tres tipos de escritura y bloquear de forma inversa los dos métodos de escritura degenerados, lo que provocará la pérdida de datos.
+ *  2. Capa de cableado: afirme que los dos archivos de producción están escritos en forma de parámetros de entrada del consumidor (volver al método de escritura anterior fallará).
  *
- * 为什么不做端到端：这些 transform 是 ChatViewModel / ChatGenerationController
- * 内联在超长方法里的 lambda，依赖完整 Android 仓储与流式状态，无法在不引入
- * Robolectric 全量夹具的前提下直接调用。语义层用等价 transform 锁契约，
- * 接线层锁生产代码形态，两者合起来覆盖「改错就红」。
+ * ¿Por qué no hacerlo de un extremo a otro? Estas transformaciones son ChatViewModel / ChatGenerationController
+ * La lambda en línea en el método súper largo se basa en el estado completo de almacenamiento y transmisión de Android, y no se puede introducir sin introducir
+ * Robolectric Convocatoria directa bajo la premisa de luminaria completa. La capa semántica bloquea el contrato con la transformación equivalente,
+ * El formulario del código de producción de bloqueo de la capa de cableado, los dos juntos cubren "corregir el error y ponerse rojo".
  */
 class ChatMessagesCasUpdateTest {
 
-    // ── 夹具：真 CAS 的 messages 容器 ───────────────────────────────
+    // ── Accesorio: contenedor de mensajes CAS verdadero ───────────────────────────────
 
     private class CasAccessor(initial: List<UIMessage> = emptyList()) : ChatStateAccessor {
         val flow = MutableStateFlow(initial)
@@ -51,26 +51,26 @@ class ChatMessagesCasUpdateTest {
 
     private fun msg(content: String, role: MessageRole = MessageRole.ASSISTANT): UIMessage = UIMessage(role = role, content = content)
 
-    // ── 追加类（A1 / A2） ──────────────────────────────────────────
+    // ── agregar clase (A1 / A2) ──────────────────────────────────────────
 
     @Test
     fun `append via CAS keeps writes that landed inside the window`() {
         val m1 = msg("base")
         val accessor = CasAccessor(listOf(m1))
-        // 写者 A 读快照（模拟 ChatViewModel 读 _messages.value 之后的时间窗）
+        // El escritor A lee la instantánea (simula la ventana de tiempo después de que ChatViewModel lee _messages.value)
         val staleSnapshot = accessor.messagesSnapshot
 
-        // 写者 B 在窗口内先追加（interlude 注入 / 断点恢复）
+        // El escritor B primero agrega (interlude recuperación de inyección/punto de interrupción)
         accessor.updateMessages { it + msg("interlude-b") }
 
-        // 写者 A 继续追加 —— 必须消费入参，否则 B 的追加被旧快照盖掉
+        // El escritor A continúa agregando —— Los parámetros de entrada deben consumirse; de lo contrario, la instantánea anterior sobrescribirá la adición de B.
         accessor.updateMessages { it + msg("interlude-a") }
 
         assertEquals(
             listOf("base", "interlude-b", "interlude-a"),
             accessor.messagesSnapshot.map { it.content },
         )
-        // 快照确实陈旧，证明这不是「没有并发」的空跑
+        // De hecho, la instantánea es antigua, lo que demuestra que no se trata de una ejecución vacía "sin concurrencia".
         assertEquals(listOf("base"), staleSnapshot.map { it.content })
     }
 
@@ -80,7 +80,7 @@ class ChatMessagesCasUpdateTest {
         val staleSnapshot = accessor.messagesSnapshot
 
         accessor.updateMessages { it + msg("interlude-b") }
-        // 退化写法：忽略入参 = 赋值，CAS 形同虚设
+        // Escritura degenerada: ignorar los parámetros de entrada = tarea,CAS en vano
         accessor.updateMessages { staleSnapshot + msg("interlude-a") }
 
         assertEquals(
@@ -90,32 +90,32 @@ class ChatMessagesCasUpdateTest {
         assertFalse(accessor.messagesSnapshot.any { it.content == "interlude-b" })
     }
 
-    // ── 按 id 改单条（A3 / A6 / A8） ────────────────────────────────
+    // ── Cambiar orden por id (A3 / A6 / A8) ────────────────────────────────
 
     @Test
     fun `targeted field update keeps fields written concurrently on the same message`() {
-        val target = msg("原文").copy(imageUrls = emptyList())
-        val other = msg("邻居", role = MessageRole.USER)
+        val target = msg("Texto original").copy(imageUrls = emptyList())
+        val other = msg("vecino", role = MessageRole.USER)
         val accessor = CasAccessor(listOf(target, other))
-        // 旧快照（如 translateMessage 开头的 target / finalize 的 finalAssistant）
+        // Instantáneas antiguas (como traducirMessage al comienzo del objetivo/finalización de finalAssistant)
         val staleTarget = accessor.messagesSnapshot.first { it.id == target.id }
 
-        // 窗口内另一写者给同一条消息补了媒体（生图 / 视频落盘）
+        // Otro escritor en la ventana agregó medios al mismo mensaje (ubicación de foto/video)
         accessor.updateMessages { list ->
             list.map { if (it.id == target.id) it.copy(imageUrls = listOf("https://cdn/x.png")) else it }
         }
 
-        // A3 形态：只 copy transformer / 翻译真正产出的字段
+        // A3 Formulario: solo copie el transformador/traduzca los campos de salida reales
         accessor.updateMessages { list ->
             list.map { m ->
                 if (m.id == staleTarget.id) {
-                    m.copy(translations = m.translations + ("中文" to "译文"))
+                    m.copy(translations = m.translations + ("chino" to "traducción"))
                 } else {
                     m
                 }
             }
         }
-        // A8 形态：只 copy 元数据字段
+        // A8 Formulario: copiar solo campos de metadatos
         accessor.updateMessages { list ->
             list.map { m ->
                 if (m.id == staleTarget.id) m.copy(durationMs = 1234L, promptTokens = 10) else m
@@ -124,16 +124,16 @@ class ChatMessagesCasUpdateTest {
 
         val merged = accessor.messagesSnapshot.first { it.id == target.id }
         assertEquals(listOf("https://cdn/x.png"), merged.imageUrls)
-        assertEquals("译文", merged.translations["中文"])
+        assertEquals("traducción", merged.translations["chino"])
         assertEquals(1234L, merged.durationMs)
         assertEquals(10, merged.promptTokens)
-        // 邻居消息不受影响
-        assertEquals("邻居", accessor.messagesSnapshot.first { it.id == other.id }.content)
+        // Los mensajes de vecinos no se ven afectados
+        assertEquals("vecino", accessor.messagesSnapshot.first { it.id == other.id }.content)
     }
 
     @Test
     fun `replacing the whole message with a stale object loses concurrent fields`() {
-        val target = msg("原文")
+        val target = msg("Texto original")
         val accessor = CasAccessor(listOf(target))
         val staleTarget = accessor.messagesSnapshot.first { it.id == target.id }
 
@@ -141,19 +141,19 @@ class ChatMessagesCasUpdateTest {
             list.map { if (it.id == target.id) it.copy(imageUrls = listOf("https://cdn/x.png")) else it }
         }
 
-        // A9 陷阱写法：用旧对象整体盖
+        // A9 Método de escritura trampa: use el objeto antiguo para cubrirlo en su totalidad
         accessor.updateMessages { list ->
-            list.map { if (it.id == target.id) staleTarget.copy(content = "改过") else it }
+            list.map { if (it.id == target.id) staleTarget.copy(content = "correcto") else it }
         }
 
         val merged = accessor.messagesSnapshot.first { it.id == target.id }
-        assertEquals("改过", merged.content)
-        assertTrue("整体替换旧对象必然丢窗口内媒体字段", merged.imageUrls.isEmpty())
+        assertEquals("correcto", merged.content)
+        assertTrue("Reemplazar el objeto antiguo en su totalidad inevitablemente perderá los campos multimedia en la ventana.", merged.imageUrls.isEmpty())
     }
 
     @Test
     fun `transformer output merged by field keeps media and metadata`() {
-        val target = msg("<mood>腹稿</mood>正文").copy(imageUrls = listOf("https://cdn/v.mp4"))
+        val target = msg("<mood>manuscrito</mood>Texto").copy(imageUrls = listOf("https://cdn/v.mp4"))
         val accessor = CasAccessor(listOf(target))
         val staleTarget = accessor.messagesSnapshot.first { it.id == target.id }
 
@@ -161,8 +161,8 @@ class ChatMessagesCasUpdateTest {
             list.map { if (it.id == target.id) it.copy(durationMs = 999L) else it }
         }
 
-        // A9 真实形态：transformer 产出 content/mood/reflection/moodSkin + 变体身份字段
-        val transformed = staleTarget.copy(content = "正文", mood = "腹稿")
+        // A9 Forma verdadera:transformer Contenido de salida/estado de ánimo/reflexión/moodSkin + campo de identidad variante
+        val transformed = staleTarget.copy(content = "Texto", mood = "manuscrito")
         accessor.updateMessages { list ->
             list.map {
                 if (it.id == staleTarget.id) {
@@ -183,48 +183,48 @@ class ChatMessagesCasUpdateTest {
         }
 
         val merged = accessor.messagesSnapshot.first { it.id == target.id }
-        assertEquals("正文", merged.content)
-        assertEquals("腹稿", merged.mood)
+        assertEquals("Texto", merged.content)
+        assertEquals("manuscrito", merged.mood)
         assertEquals(listOf("https://cdn/v.mp4"), merged.imageUrls)
         assertEquals(999L, merged.durationMs)
     }
 
-    // ── 过滤类（A7） ───────────────────────────────────────────────
+    // ── clase de filtro (A7) ───────────────────────────────────────────────
 
     @Test
     fun `context overflow rollback keeps messages appended inside the window`() {
         val placeholder = msg("")
-        val accessor = CasAccessor(listOf(msg("用户提问", MessageRole.USER), placeholder))
+        val accessor = CasAccessor(listOf(msg("Preguntas de usuario", MessageRole.USER), placeholder))
         val staleSnapshot = accessor.messagesSnapshot
 
-        // 窗口内新追加（工具卡片 / 子 agent interlude）
-        accessor.updateMessages { it + msg("窗口内追加") }
+        // Recién agregado en la ventana (tarjeta de herramientas/interludio de subagente)
+        accessor.updateMessages { it + msg("Agregar dentro de la ventana") }
 
-        // A7 形态：基于入参过滤，不是基于旧快照
+        // A7 Formulario: filtrado basado en parámetros de entrada, no basado en instantáneas antiguas
         accessor.updateMessages { list ->
             list.filterNot { m -> m.id == placeholder.id && m.content.isBlank() }
         }
 
         val contents = accessor.messagesSnapshot.map { it.content }
-        assertEquals(listOf("用户提问", "窗口内追加"), contents)
-        // 旧快照确实不含窗口内追加的消息
-        assertEquals(listOf("用户提问", ""), staleSnapshot.map { it.content })
+        assertEquals(listOf("Preguntas de usuario", "Agregar dentro de la ventana"), contents)
+        // La instantánea anterior no contiene mensajes adjuntos dentro de la ventana.
+        assertEquals(listOf("Preguntas de usuario", ""), staleSnapshot.map { it.content })
     }
 
     @Test
     fun `filter over a stale snapshot drops the window append`() {
         val placeholder = msg("")
-        val accessor = CasAccessor(listOf(msg("用户提问", MessageRole.USER), placeholder))
+        val accessor = CasAccessor(listOf(msg("Preguntas de usuario", MessageRole.USER), placeholder))
         val staleSnapshot = accessor.messagesSnapshot
 
-        accessor.updateMessages { it + msg("窗口内追加") }
-        // 退化写法：拿旧快照过滤后整体赋值
+        accessor.updateMessages { it + msg("Agregar dentro de la ventana") }
+        // Método de escritura degenerado: filtrar la instantánea anterior y asignar el valor general
         accessor.updateMessages { staleSnapshot.filterNot { m -> m.id == placeholder.id && m.content.isBlank() } }
 
-        assertFalse(accessor.messagesSnapshot.any { it.content == "窗口内追加" })
+        assertFalse(accessor.messagesSnapshot.any { it.content == "Agregar dentro de la ventana" })
     }
 
-    // ── 接线层：生产代码必须消费入参 ────────────────────────────────
+    // ── Capa de cableado: el código de producción debe consumir parámetros de entrada ────────────────────────────────
 
     private fun source(relative: String): String {
         val candidates = listOf(Path.of(relative), Path.of("app/$relative"))
@@ -258,7 +258,7 @@ class ChatMessagesCasUpdateTest {
         assertTrue(partialBody.contains("m.translations - targetLanguage"))
         assertFalse(partialBody.contains("_messages.value"))
 
-        val emptyBody = src.substringAfter("// 清掉空占位,改为错误提示").substringBefore("_state.update {")
+        val emptyBody = src.substringAfter("// Limpiar el espacio vacío,Cambiar al mensaje de error").substringBefore("_state.update {")
         assertTrue(emptyBody.contains("updateMessages { list ->"))
         assertFalse(emptyBody.contains("_messages.value"))
     }
@@ -286,7 +286,7 @@ class ChatMessagesCasUpdateTest {
     @Test
     fun `metadata writeback goes through CAS`() {
         val src = generationController()
-        val body = src.substringAfter("// A5: 生成元数据持久化").substringBefore("// 流式结束后刷新上下文")
+        val body = src.substringAfter("// A5: Generar persistencia de metadatos").substringBefore("// Actualizar el contexto después de que finalice la transmisión")
         assertTrue(body.contains("accessor.updateMessages { list ->"))
         assertTrue(body.contains("durationMs = durationMs"))
         assertFalse(body.contains("deps.stateStore.messages.value ="))
@@ -297,26 +297,26 @@ class ChatMessagesCasUpdateTest {
         val src = generationController()
         val body = src.substringAfter("val preservedAssistant =")
             .substringBefore("deps.sessionRepository.upsertMessage(sessionId, preservedAssistant)")
-        // 禁止用旧对象整体覆盖
+        // Está prohibido sobrescribir todo el objeto con el objeto antiguo.
         assertFalse(body.contains("preservedAssistant else it"))
         assertFalse(body.contains("deps.stateStore.messages.value ="))
-        // 只覆盖 transformer 真正产出的四个字段
+        // Cubra solo los cuatro campos realmente emitidos por el transformador.
         listOf(
             "content = preservedAssistant.content",
             "mood = preservedAssistant.mood",
             "reflection = preservedAssistant.reflection",
             "moodSkin = preservedAssistant.moodSkin",
-        ).forEach { assertTrue("缺少字段合并: $it", body.contains(it)) }
-        // 变体身份字段也必须写回（否则 transformer 重建对象后变体结构丢失）
+        ).forEach { assertTrue("Falta la combinación de campos: $it", body.contains(it)) }
+        // El campo de identidad de variante también se debe volver a escribir (de lo contrario, la estructura de variante se perderá después de reconstruir el objeto transformador)
         listOf(
             "variantGroupId = preservedAssistant.variantGroupId",
             "variantIndex = preservedAssistant.variantIndex",
             "variantCount = preservedAssistant.variantCount",
             "parentGroupId = preservedAssistant.parentGroupId",
-        ).forEach { assertTrue("缺少变体字段: $it", body.contains(it)) }
-        // 媒体字段不允许出现在合并列表里（它们来自入参最新值，不能被旧快照覆盖）
+        ).forEach { assertTrue("Falta campo de variación: $it", body.contains(it)) }
+        // Los campos multimedia no pueden aparecer en la lista de combinación (provienen del último valor del parámetro de entrada y no pueden sobrescribirse con instantáneas antiguas)
         listOf("imageUrls =", "imageBase64List =", "videoFileUri =").forEach {
-            assertFalse("不应覆盖媒体字段: $it", body.contains(it))
+            assertFalse("Los campos de medios no deben anularse: $it", body.contains(it))
         }
     }
 }

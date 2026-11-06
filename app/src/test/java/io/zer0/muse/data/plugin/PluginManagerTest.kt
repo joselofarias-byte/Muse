@@ -38,10 +38,10 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * B6-01: 外部插件安装/卸载/安全校验测试。
+ * B6-01: Instalación de complemento externo/Desinstalar/Prueba de verificación de seguridad.
  *
- * Phase 5 P0 追加：skill id 防碰撞编码与冲突拒绝、安装/更新/卸载的 skill 生命周期
- * 对账（卸载不再只依赖当前 manifest）、以及执行前基于重新验证 manifest 的入口校验。
+ * Phase 5 P0 Agregar:skill id Codificación anticolisión y rechazo de conflictos, instalación./actualizar/Ciclo de vida de habilidades desinstaladas
+ * Conciliación (la desinstalación ya no depende únicamente del manifiesto actual) y verificación de entrada basada en la revalidación del manifiesto antes de la ejecución.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -64,12 +64,12 @@ class PluginManagerTest {
         )
     }
 
-    // ── P0-9: 信任根可撤(与安装校验同一 store 实例) ──
+    // ── P0-9: La raíz de la confianza es revocable.(Misma instancia de tienda que la verificación de instalación.) ──
 
     @Test
     fun revokePublisher_removesTrustRoot() = runBlocking {
-        // 预置信任根文件(与 PluginTrustStore 持久化格式一致),验证 PluginManager
-        // 的 revokePublisher 走的是同一 store:撤销后 trustedPublishers 为空。
+        // Raíz preestablecida del archivo de confianza(Consistente con el formato de persistencia de PluginTrustStore),verificar PluginManager
+        // RevokePublisher va a la misma tienda: después de revocar TrustedPublishers está vacío.
         val trustFile = File(context.noBackupFilesDir, "muse_plugin_trust_roots.json")
         trustFile.parentFile?.mkdirs()
         val key = generateEcPublicKey()
@@ -86,8 +86,8 @@ class PluginManagerTest {
             assertEquals("publisher.test", manager.trustedPublishers()[0].publisherId)
 
             assertEquals("publisher.test", manager.revokePublisher("publisher.test"))
-            assertTrue("撤销后信任根列表应为空", manager.trustedPublishers().isEmpty())
-            assertEquals("重复撤销应返回 null", null, manager.revokePublisher("publisher.test"))
+            assertTrue("La lista de raíces confiables debe estar vacía después de la revocación", manager.trustedPublishers().isEmpty())
+            assertEquals("La operación de deshacer repetidamente debería regresar null", null, manager.revokePublisher("publisher.test"))
         } finally {
             trustFile.delete()
         }
@@ -110,7 +110,7 @@ class PluginManagerTest {
         val result = draftInstall(manager, file)
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("超过限制") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("excede el límite") == true)
         file.delete()
         Unit
     }
@@ -177,7 +177,7 @@ class PluginManagerTest {
 
     @Test
     fun uninstall_nonexistentPlugin_isHarmlessNoOp() = runBlocking {
-        // P5-4: 卸载不存在的插件必须是无害 no-op(不抛异常、不产生注册表脏数据)
+        // P5-4: La desinstalación de complementos inexistentes debe ser inofensiva no-op(No se lanzan excepciones ni se generan datos de registro sucios.)
         val dao = FakeSkillDao()
         val manager = PluginManager(context, SkillRepository(dao))
         manager.uninstall("never-installed")
@@ -206,13 +206,13 @@ class PluginManagerTest {
         )
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("sandboxed") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("espacio aislado") == true)
         assertTrue(manager.list().none { it.id == "untrusted-full-access" })
     }
 
     @Test
     fun install_acceptsAnyDeclaredCapabilityAfterSandboxOpening() = runBlocking {
-        // v2.x（沙盒放开）：能力不再按白名单拒绝，声明任意合法能力均可安装。
+        // v2.x(Versión Sandbox): Las capacidades ya no se niegan según la lista blanca y se indica que se puede instalar cualquier capacidad legal.
         val skillRepo = skillRepoMock()
         val manager = PluginManager(context, skillRepo)
         val zip = zip(
@@ -242,7 +242,7 @@ class PluginManagerTest {
 
     @Test
     fun install_rejectsInvalidCapabilityNameFormat() = runBlocking {
-        // 放开后仍校验能力名格式。
+        // Después del lanzamiento, el formato del nombre de la habilidad aún se verificará.
         val skillRepo = skillRepoMock()
         val manager = PluginManager(context, skillRepo)
         val zip = zip(
@@ -259,7 +259,7 @@ class PluginManagerTest {
         )
         val result = draftInstall(manager, zip)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("格式非法") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("formato del nombre de la capacidad") == true)
         assertTrue(manager.list().isEmpty())
     }
 
@@ -326,11 +326,11 @@ class PluginManagerTest {
         Unit
     }
 
-    // ── P0-1: skill id 防碰撞编码 + 安装时冲突拒绝 ─────────────────────────────
+    // ── P0-1: skill id Codificación anticolisión + rechazo de conflictos durante la instalación ─────────────────────────────
 
     @Test
     fun skillId_usesLengthPrefixSoUnderscoreValuesCannotCollide() {
-        // 旧编码会把两个不同的 (pluginId, toolName) 组合映射成同一个 id。
+        // La codificación antigua combinará dos diferentes (pluginId, toolName) La combinación se asigna a la misma identificación.
         assertEquals(
             PluginManager.legacySkillId("a_b", "c"),
             PluginManager.legacySkillId("a", "b_c"),
@@ -339,7 +339,7 @@ class PluginManagerTest {
         val first = PluginManager.skillId("a_b", "c")
         val second = PluginManager.skillId("a", "b_c")
         assertNotEquals(first, second)
-        // 长度前缀让 id 前缀可无歧义解码。
+        // El prefijo de longitud permite decodificar el prefijo de identificación sin ambigüedades.
         assertTrue(first.startsWith("plugin_3_a_b_"))
         assertTrue(second.startsWith("plugin_1_a_b_c"))
     }
@@ -351,7 +351,7 @@ class PluginManagerTest {
         val occupiedId = PluginManager.skillId("test-plugin", "hello")
         dao.rows[occupiedId] = SkillEntity(
             id = occupiedId,
-            name = "用户自定义 skill",
+            name = "Definido por el usuario skill",
             description = "",
             implementationKotlin = "custom_impl",
             category = "custom",
@@ -360,10 +360,10 @@ class PluginManagerTest {
         val result = draftInstall(manager, zip())
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("冲突") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("conflicto") == true)
         assertTrue(manager.list().isEmpty())
         assertFalse(File(context.filesDir, "plugins/test-plugin").exists())
-        // 已有 skill 不被覆盖。
+        // Las habilidades existentes no se sobrescribirán.
         assertEquals("custom_impl", dao.rows[occupiedId]?.implementationKotlin)
     }
 
@@ -387,11 +387,11 @@ class PluginManagerTest {
         val result = draftInstall(manager, zip(manifest = manifest))
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("重复") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("duplicado") == true)
         assertTrue(dao.rows.isEmpty())
     }
 
-    // ── P0-2: 安装/更新/卸载 skill 生命周期对账 ───────────────────────────────
+    // ── P0-2: Instalación/actualizar/Desinstalar la reconciliación del ciclo de vida de habilidades ───────────────────────────────
 
     @Test
     fun update_removesSkillsDroppedFromNewManifest() = runBlocking {
@@ -404,7 +404,7 @@ class PluginManagerTest {
         val byeId = PluginManager.skillId("test-plugin", "bye")
         assertEquals(setOf(helloId, byeId), dao.rows.keys)
 
-        // 旧编码时代注册的历史残留也要在更新时被迁移清理。
+        // Los restos históricos registrados en la antigua era de codificación también se migrarán y limpiarán durante la actualización.
         val legacyByeId = PluginManager.legacySkillId("test-plugin", "bye")
         dao.rows[legacyByeId] = ownedSkill(legacyByeId, "test-plugin", "bye")
 
@@ -428,7 +428,7 @@ class PluginManagerTest {
             draftInstall(manager, zip(manifest = pluginManifest("1.1.0", listOf("hello")))).isSuccess,
         )
 
-        // 模拟历史清理中断：当前 manifest（v1.1.0）已不含 bye，但旧 skill 仍在库中。
+        // Simular la interrupción de la limpieza del historial: manifiesto actual (v1.1.0) ya no contiene adiós, pero la antigua habilidad todavía está en la biblioteca.
         val legacyByeId = PluginManager.legacySkillId("test-plugin", "bye")
         dao.rows[legacyByeId] = ownedSkill(legacyByeId, "test-plugin", "bye")
 
@@ -444,11 +444,11 @@ class PluginManagerTest {
         val manager = PluginManager(context, SkillRepository(dao))
         assertTrue(draftInstall(manager, zip()).isSuccess)
 
-        // 同一 id 但并非本插件的实现（用户/内置 skill）：卸载必须保留。
+        // La misma identificación pero no la implementación de este complemento (usuario/Habilidad incorporada): Se debe conservar la desinstalación.
         val notOwnedId = PluginManager.legacySkillId("test-plugin", "hello")
         dao.rows[notOwnedId] = SkillEntity(
             id = notOwnedId,
-            name = "用户 skill",
+            name = "Usuario skill",
             description = "",
             implementationKotlin = "custom_impl",
             category = "custom",
@@ -459,7 +459,7 @@ class PluginManagerTest {
         assertEquals(setOf(notOwnedId), dao.rows.keys)
     }
 
-    // ── P0-3: 执行前使用重新验证后的 manifest ────────────────────────────────
+    // ── P0-3: Uso revalidado antes de la ejecución. manifest ────────────────────────────────
 
     @Test
     fun loadVerifiedPlugin_revalidatesManifestInsteadOfRegistryCache() = runBlocking {
@@ -470,7 +470,7 @@ class PluginManagerTest {
         val trusted = manager.installConfirmedFromFile(signed.file, preview, trustPublisher = true)
         assertTrue("install failed: ${trusted.exceptionOrNull()}", trusted.isSuccess)
 
-        // 篡改注册表缓存字段（模拟被污染的缓存/旧字段），执行路径必须忽略它。
+        // Manipulación de los campos de la caché del registro (simulando una caché contaminada)/campo antiguo), la ruta de ejecución debe ignorarlo.
         val registryFile = File(context.filesDir, "plugin_registry.json")
         val root = AppJson.parseToJsonElement(registryFile.readText()).jsonObject
         val plugins = root.getValue("plugins").jsonArray.map { element ->
@@ -487,11 +487,11 @@ class PluginManagerTest {
         assertEquals(listOf("network"), reloaded.findPlugin("verified-plugin")?.capabilities)
 
         val verified = requireNotNull(reloaded.loadVerifiedPlugin("verified-plugin"))
-        // capabilities/tools 来自磁盘重新验证的 manifest，而不是注册表缓存。
+        // capabilities/tools Manifiesto de la revalidación del disco, no del caché del registro.
         assertEquals(listOf("resource.read"), verified.capabilities)
         assertEquals(listOf("hello"), verified.tools.map { it.name })
         assertTrue(verified.entryCode.contains("function hello"))
-        // loadEntryCode 保持为薄包装，行为不变。
+        // loadEntryCode Manténgalo como una envoltura delgada y el comportamiento no cambia.
         assertEquals(verified.entryCode, reloaded.loadEntryCode("verified-plugin"))
         trustFile.delete()
         Unit
@@ -508,18 +508,18 @@ class PluginManagerTest {
 
         assertNotNull(manager.loadVerifiedFunction("function-gate", "hello"))
         assertNull(manager.loadVerifiedFunction("function-gate", "removedFunction"))
-        // 已禁用/未确认或内容不可验证时不返回执行视图。
+        // Discapacitado/La vista de ejecución no se devuelve cuando no hay confirmación o el contenido no es verificable.
         assertNull(manager.loadVerifiedFunction("missing-plugin", "hello"))
         trustFile.delete()
         Unit
     }
 
-    /** 真实 DAO 对未占用的 id 返回 null；relaxed mock 默认返回非空 mock，会误触发冲突检测。 */
+    /** Real DAO devuelve nulo para identificadores desocupados;relaxed mock De forma predeterminada, se devuelve un simulacro que no está vacío, lo que puede desencadenar la detección de conflictos por error. */
     private fun skillRepoMock(): SkillRepository = mockk<SkillRepository>(relaxed = true).also { repo ->
         coEvery { repo.getById(any()) } returns null
     }
 
-    /** installFromFile 已删除：以「先预览、后按禁用草稿安装」的现行入口等价替代。 */
+    /** installFromFile Eliminado: reemplazado con el equivalente actual de \"Vista previa primero, luego haga clic para deshabilitar el borrador de la instalación\". */
     private suspend fun draftInstall(manager: PluginManager, file: File): Result<PluginManager.InstalledPlugin> {
         val decision = manager.reviewFromFile(file)
         val preview = decision.getOrElse { error -> return Result.failure(error) }.preview
@@ -632,7 +632,7 @@ class PluginManagerTest {
         return file
     }
 
-    /** 内存版 SkillDao：让安装/更新/卸载的 skill 生命周期断言基于真实行状态。 */
+    /** Versión de memoria de SkillDao: instalemos/actualizar/Las afirmaciones del ciclo de vida de las habilidades desinstaladas se basan en el estado real de la fila. */
     private class FakeSkillDao : SkillDao {
         val rows = linkedMapOf<String, SkillEntity>()
 

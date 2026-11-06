@@ -1,10 +1,10 @@
 package io.zer0.muse.miniphone.data.db
 
 /**
- * 一个动作的来源方:本机用户、手机里的角色,或手机自己。
+ * La fuente de una acción.:Usuario local, rol en teléfono celular.,O el propio teléfono.
  *
- * 私信发送者、动态点赞者、动态评论者共用这一套取值,落库时统一存小写字符串。
- * [SYSTEM] 只用于私信里的系统提示(例如对方没有回应),不属于任何一方。
+ * Los remitentes de mensajes privados, los me gusta dinámicos y los comentaristas dinámicos comparten este conjunto de valores.,Las cadenas en minúsculas se almacenan de manera uniforme al iniciar sesión en la biblioteca.
+ * [SYSTEM] Solo se usa para mensajes del sistema en mensajes privados.(Por ejemplo, la otra parte no responde.),No pertenece a ningún partido.
  */
 enum class MpActorType(
     val value: String,
@@ -19,7 +19,7 @@ enum class MpActorType(
     }
 }
 
-/** 消息类型。 */
+/** Tipo de mensaje. */
 enum class MpMessageType(
     val value: String,
 ) {
@@ -35,10 +35,10 @@ enum class MpMessageType(
 }
 
 /**
- * 一条私信的发送状态。
+ * El estado de envío de un mensaje privado.
  *
- * 库里存整数(而不是枚举名),既有的行没有这一列,迁移时统一按「已发出」补齐:
- * 老数据都是发出过的消息,把它们标成发送中会让界面上凭空多出一排进行态。
+ * Almacenar números enteros en la biblioteca.(en lugar del nombre de la enumeración),La fila existente no tiene esta columna.,Al migrar, haga clic en "Problema" para completar el proceso.:
+ * Los datos antiguos son todos los mensajes que se han enviado.,Marcarlos como envío hará que aparezca de la nada una fila adicional de estado de progreso en la interfaz.
  */
 enum class MpMessageStatus(
     val value: Int,
@@ -53,7 +53,7 @@ enum class MpMessageStatus(
     }
 }
 
-/** 动态的来源:角色生成的,还是本机用户自己发的。 */
+/** fuente dinámica:personaje generado,Fue enviado por el propio usuario local. */
 enum class MpMomentSource(
     val value: String,
 ) {
@@ -66,7 +66,7 @@ enum class MpMomentSource(
     }
 }
 
-/** 相册条目的来源:角色生成图,或用户从外部导入。 */
+/** Fuente de las entradas del álbum:Diagrama de generación de personajes.,O el usuario importa desde fuera. */
 enum class MpAlbumSource(
     val value: String,
 ) {

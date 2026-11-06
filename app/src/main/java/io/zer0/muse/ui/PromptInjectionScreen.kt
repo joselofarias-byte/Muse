@@ -33,7 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow // v1.48 (h21): 名称/预览省略号
+import androidx.compose.ui.text.style.TextOverflow // v1.48 (h21): Nombre/Vista previa de elipses
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.zer0.muse.R
@@ -60,22 +60,22 @@ import io.zer0.muse.ui.theme.MuseShapes
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * Phase 8.5: PromptInjection(模式注入)管理页。
+ * Phase 8.5: PromptInjection(inyección de patrón)Página de gestión.
  *
- * 顶层: 全部 PromptInjection 条目列表(可新增/编辑/删除/启用切换)。
- * 编辑态: 单条 PromptInjection 表单(name/mode/displayName/content/priority/insertionPosition/enabled)。
+ * nivel superior: Lista de todas las entradas de PromptInjection(Se puede agregar/Editar/Eliminar/habilitar alternar).
+ * Estado de edición: Formulario de inyección rápida única(name/mode/displayName/content/priority/insertionPosition/enabled).
  *
- * 与 Lorebook 区别: PromptInjection 由用户在会话中切换"模式"触发,无需关键词匹配。
+ * Diferencias con el libro de historia: PromptInjection Cambiado a mitad de sesión por el usuario"modo"gatillo,No se requiere concordancia de palabras clave.
  */
 @Composable
 fun PromptInjectionScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // v1.97 (P1-1): 进入管理页时懒加载 PromptInjection 列表
+    // v1.97 (P1-1): Carga diferida de la lista PromptInjection al ingresar a la página de administración
     LaunchedEffect(Unit) { viewModel.refreshPromptInjections() }
     var editing by remember { mutableStateOf<PromptInjectionEntity?>(null) }
     var isNew by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<PromptInjectionEntity?>(null) }
-    // i18n: 预提取字符串资源,避免在 onClick 等非 Composable lambda 内调用 stringResource
+    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como onClick stringResource
     val newDefaultName = stringResource(R.string.prompt_injection_new_default_name)
     val promptInjectionModeMap = mapOf(
         "default" to stringResource(R.string.prompt_injection_mode_default),
@@ -191,7 +191,7 @@ private fun PromptInjectionCard(
     onToggleEnabled: () -> Unit,
     promptInjectionModeMap: Map<String, String>,
 ) {
-    // i18n: 预提取字符串资源,避免在 ifBlank/semantics 等非 Composable lambda 内调用 stringResource
+    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como ifBlank/semantics stringResource
     val unnamedText = stringResource(R.string.prompt_injection_unnamed)
     val disabledText = stringResource(R.string.prompt_injection_disabled)
     val enabledStateText = stringResource(R.string.prompt_injection_enabled_cd)
@@ -199,7 +199,7 @@ private fun PromptInjectionCard(
     val editCd = stringResource(R.string.prompt_injection_edit_cd)
     val deleteCd = stringResource(R.string.prompt_injection_delete_cd)
     val stateDesc = if (entry.enabled) enabledStateText else disabledStateText
-    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
+    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -237,7 +237,7 @@ private fun PromptInjectionCard(
                         } else {
                             MaterialTheme.colorScheme.outline
                         },
-                        // v1.48 (h21): 名称单行 + 省略号,防止长名撑破布局
+                        // v1.48 (h21): Nombre de una sola línea + elipses,Evite que los nombres largos rompan el diseño
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -261,7 +261,7 @@ private fun PromptInjectionCard(
                         text = entry.content.take(40).replace("\n", " "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // v1.48 (h21): 预览补 ellipsis(原仅 maxLines=1,无省略号会硬截断)
+                        // v1.48 (h21): Suplemento de vista previa ellipsis(Originalmente solo maxLines=1,Sin elipses, se producirá un truncamiento brusco.)
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -334,7 +334,7 @@ private fun PromptInjectionEditPage(
     var insertionPosition by rememberSaveable { mutableStateOf(initial.insertionPosition) }
     var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
 
-    // i18n: 预提取字符串资源,避免在 onClick 等非 Composable lambda 内调用 stringResource
+    // i18n: Precargar recursos de cadena,Evite llamar dentro de lambdas que no son componibles, como onClick stringResource
     val unnamedText = stringResource(R.string.prompt_injection_unnamed)
     val saveText = stringResource(R.string.prompt_injection_save)
     val newTitleText = stringResource(R.string.prompt_injection_new_title)
@@ -343,7 +343,7 @@ private fun PromptInjectionEditPage(
     val unsavedContent = stringResource(R.string.prompt_injection_unsaved_content)
     val discardText = stringResource(R.string.prompt_injection_discard)
 
-    // v1.48: 返回键拦截,避免误退丢失编辑
+    // v1.48: Intercepción de clave de retorno,Evite perder ediciones por error
     var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
     val hasUnsavedChanges = remember(name, mode, displayName, content, priority, insertionPosition, enabled) {
         name != initial.name || mode != initial.mode ||
@@ -380,7 +380,7 @@ private fun PromptInjectionEditPage(
                     MuseCapsuleButton(
                         text = saveText,
                         onClick = {
-                            // L-PID8: updatedAt 由 ViewModel.savePromptInjection 统一设置,此处不再重复
+                            // L-PID8: updatedAt Establecido uniformemente por ViewModel.savePromptInjection,No repetido aquí
                             val saved = initial.copy(
                                 name = name.trim().ifBlank { unnamedText },
                                 mode = mode,
@@ -418,7 +418,7 @@ private fun PromptInjectionEditPage(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // 模式选择(预置模式 + 自定义)
+            // Selección de modo(Modo preestablecido + personalizado)
             MuseDropdown(
                 value = mode,
                 onValueChange = { selected ->
@@ -455,15 +455,15 @@ private fun PromptInjectionEditPage(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             SectionLabel(stringResource(R.string.prompt_injection_section_behavior))
             MuseTextField(
-                // L-PID3: 限制最多 6 位数字(最大 999999),避免超长输入导致 toIntOrNull 溢出后静默回落 0
+                // L-PID3: Límite a 6 dígitos como máximo(máximo 999999),Evite entradas demasiado largas que hagan que toIntOrNull retroceda silenciosamente después del desbordamiento 0
                 value = priority,
                 onValueChange = { priority = it.filter(Char::isDigit).take(6) },
                 label = { Text(stringResource(R.string.prompt_injection_field_priority)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // L-PID2: 仅提供 before_system/after_system。PromptInjectionTransformer 不支持 before_last
-            // (其 when 分支仅显式处理 before_system,其余走 else=after_system);before_last 仅 Lorebook 支持。
+            // L-PID2: Sólo se proporciona before_system/after_system.PromptInjectionTransformer No compatible before_last
+            // (Es cuando la rama solo se maneja explícitamente before_system,el resto se va else=after_system);before_last Sólo apoyado por Lorebook.
             MuseDropdown(
                 value = insertionPosition,
                 onValueChange = { insertionPosition = it },

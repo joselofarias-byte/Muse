@@ -32,10 +32,10 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * `chat.send.quotedMessageId`：引用随消息一起发出去。
+ * `chat.send.quotedMessageId`: Las cotizaciones se envían con el mensaje.
  *
- * 引用真正落地走的是 App 自己的机制（`setReplyingTo` → 发送时正文按 `> …` 格式拼好），
- * 这里的假 ViewModel 照这个行为模拟，所以断言看到的是网页端将来渲染的那份数据。
+ * Lo que realmente entra en vigor es el mecanismo propio de la App (`setReplyingTo` → Botón de texto al enviar `> …` El formato está detallado),
+ * El ViewModel falso aquí simula este comportamiento, por lo que se afirma que lo que ve son los datos que la página web representará en el futuro.
  */
 class HostChatQuoteTest {
 
@@ -67,7 +67,7 @@ class HostChatQuoteTest {
         val messages: MutableStateFlow<List<UIMessage>>,
     )
 
-    /** 假 ViewModel：send() 按 App 的方式把 replyingTo 拼成 `> …` 前缀后追加一条用户消息。 */
+    /** Modelo de vista falso:send() Según la forma de la aplicación, deletree responder a en `> …` Agregue un mensaje de usuario después del prefijo. */
     private fun harness(
         initial: List<UIMessage>,
         entities: Map<String, MessageEntity>,
@@ -129,22 +129,22 @@ class HostChatQuoteTest {
 
     @Test
     fun `send with a valid quoted id carries the quoted body into the snapshot`() = runTest {
-        val quoted = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "被引用的原话")
+        val quoted = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "cita original")
         val harness = harness(listOf(quoted), mapOf(quoted.id.toString() to entity(quoted)))
 
         val connection = FakeConnection()
         val job = launch { harness.gateway.serve(connection.session) }
         advanceUntilIdle()
-        connection.incoming.send(Frame.Text(sendCommand("req-send", "我的回应", quoted.id.toString())))
+        connection.incoming.send(Frame.Text(sendCommand("req-send", "mi respuesta", quoted.id.toString())))
         advanceUntilIdle()
 
         val sent = harness.messages.value.last()
         assertEquals(MessageRole.USER, sent.role)
-        assertTrue("正文应带上 `> ` 引用块: ${sent.content}", sent.content.startsWith("> 被引用的原话"))
+        assertTrue("El texto debe ser llevado `> ` bloque de cotización: ${sent.content}", sent.content.startsWith("> cita original"))
         val snapshot = connection.events.lastOrNull { it.type == "state.snapshot" }
         val sentMessage = snapshot?.messages?.lastOrNull { it.id == sent.id.toString() }
-        assertEquals("被引用的原话", sentMessage?.quotedContent)
-        assertEquals("被引用的原话", snapshot?.messages?.last()?.quotedContent)
+        assertEquals("cita original", sentMessage?.quotedContent)
+        assertEquals("cita original", snapshot?.messages?.last()?.quotedContent)
 
         connection.incoming.close()
         advanceUntilIdle()
@@ -153,7 +153,7 @@ class HostChatQuoteTest {
 
     @Test
     fun `send with a quoted id from another session is refused and nothing is sent`() = runTest {
-        val foreign = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "别的会话")
+        val foreign = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "otras conversaciones")
         val harness = harness(
             listOf(foreign),
             mapOf(foreign.id.toString() to entity(foreign, sessionId = "another-session")),
@@ -163,13 +163,13 @@ class HostChatQuoteTest {
         val job = launch { harness.gateway.serve(connection.session) }
         advanceUntilIdle()
         val before = harness.messages.value.size
-        connection.incoming.send(Frame.Text(sendCommand("req-send", "想引用", foreign.id.toString())))
+        connection.incoming.send(Frame.Text(sendCommand("req-send", "quiero cotizar", foreign.id.toString())))
         advanceUntilIdle()
 
         val event = connection.events.firstOrNull { it.requestId == "req-send" }
         assertEquals("message_not_in_current_session", event?.error)
         verify(exactly = 0) { harness.chat.send() }
-        assertEquals("不该有新消息落库", before, harness.messages.value.size)
+        assertEquals("No se debe perder ninguna información nueva.", before, harness.messages.value.size)
 
         connection.incoming.close()
         advanceUntilIdle()
@@ -178,19 +178,19 @@ class HostChatQuoteTest {
 
     @Test
     fun `send without the field behaves like before`() = runTest {
-        val previous = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "上一轮")
+        val previous = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "última ronda")
         val harness = harness(listOf(previous), mapOf(previous.id.toString() to entity(previous)))
 
         val connection = FakeConnection()
         val job = launch { harness.gateway.serve(connection.session) }
         advanceUntilIdle()
-        connection.incoming.send(Frame.Text(sendCommand("req-send", "普通消息")))
+        connection.incoming.send(Frame.Text(sendCommand("req-send", "noticias generales")))
         advanceUntilIdle()
 
         val sent = harness.messages.value.last()
-        assertEquals("普通消息", sent.content)
+        assertEquals("noticias generales", sent.content)
         val snapshot = connection.events.lastOrNull { it.type == "state.snapshot" }
-        assertNull("没有引用就不该有引用块", snapshot?.messages?.last()?.quotedContent)
+        assertNull("No debería haber bloques de comillas sin comillas.", snapshot?.messages?.last()?.quotedContent)
         assertTrue(connection.events.any { it.type == "command.accepted" && it.requestId == "req-send" })
 
         connection.incoming.close()
@@ -198,10 +198,10 @@ class HostChatQuoteTest {
         job.join()
     }
 
-    /** 回归：`message.quote` 仍然回被引用消息的正文（短文本不被截断）。 */
+    /** Retorno:`message.quote` Aún así devuelve el texto del mensaje citado (el texto breve no se trunca). */
     @Test
     fun `message quote still returns the original content`() = runTest {
-        val quoted = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "被引用的原话")
+        val quoted = UIMessage(id = kotlin.uuid.Uuid.random(), role = MessageRole.ASSISTANT, content = "cita original")
         val harness = harness(listOf(quoted), mapOf(quoted.id.toString() to entity(quoted)))
 
         val connection = FakeConnection()
@@ -217,7 +217,7 @@ class HostChatQuoteTest {
 
         val event = connection.events.firstOrNull { it.requestId == "req-quote" }
         assertEquals("message.quote", event?.type)
-        assertEquals("被引用的原话", event?.content)
+        assertEquals("cita original", event?.content)
 
         connection.incoming.close()
         advanceUntilIdle()

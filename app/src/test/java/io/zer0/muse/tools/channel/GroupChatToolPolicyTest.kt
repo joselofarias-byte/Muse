@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** B8-03 / v2.x (B3): 群聊媒体工具进出策略测试。 */
+/** B8-03 / v2.x (B3): Prueba de estrategia de entrada y salida de herramienta de medios de chat grupal. */
 class GroupChatToolPolicyTest {
 
     private fun def(name: String) = ToolDefinition(
@@ -17,7 +17,7 @@ class GroupChatToolPolicyTest {
 
     @Test
     fun mediaFilterKeepsOnlyEnabledMediaTools() {
-        // v2.x 遗留收尾: generate_video 视频通道补齐后也放开,三个媒体工具均可用
+        // v2.x cierre del legado: generate_video El canal de vídeo también se publica una vez finalizado.,Hay tres herramientas multimedia disponibles
         val input = listOf(
             def("web_search"),
             def("generate_image"),
@@ -35,8 +35,8 @@ class GroupChatToolPolicyTest {
 
     @Test
     fun regularFilterDropsBlockedMediaAndHighRisk() {
-        // P1-11: 高风险工具必须被风险白名单挡住;媒体工具(generate_* 前缀 = SAFE)不在
-        // 常规工具过滤器里被移除(由 filterMediaTools 单独注入)。
+        // P1-11: Las herramientas de alto riesgo deben estar bloqueadas mediante listas blancas de riesgo;herramientas multimedia(generate_* prefijo = SAFE)aquí no
+        // Eliminado del filtro Herramientas generales(Inyectado por separado por filterMediaTools).
         val input = listOf(
             def("web_search"),
             def("generate_image"),
@@ -69,7 +69,7 @@ class GroupChatToolPolicyTest {
 
     @Test
     fun filtersHighRiskToolsFromDirectExecutionChannel() {
-        // P1-11: 群聊常规工具无审批,高风险工具必须被风险白名单挡在直执行通道外
+        // P1-11: Herramientas generales de chat grupal sin aprobación,Las listas blancas de riesgo deben bloquear la ejecución directa de instrumentos de alto riesgo
         val input = listOf(
             def("web_search"),
             def("send_sms"),

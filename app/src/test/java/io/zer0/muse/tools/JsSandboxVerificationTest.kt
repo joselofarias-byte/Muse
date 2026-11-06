@@ -6,39 +6,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 沙盒自检的两个环节：脚本必须交出返回值，解析必须能分辨“没返回值”和“内容不对”。
+ * Hay dos pasos en la autoprueba de la zona de pruebas: el script debe entregar el valor de retorno y el analizador debe poder distinguir“Sin valor de retorno”y“el contenido esta mal”.
  *
- * 这两件事之前同时错位：脚本没有 return，回调拿到 null，
- * 解析又把 null 当成“格式不对”，于是一个环境问题一直被报成解析失败。
+ * Estas dos cosas estaban fuera de lugar al mismo tiempo antes: el script no tenía retorno y la devolución de llamada era nula.
+ * El análisis nuevamente trata nulo como“Formato incorrecto”, por lo que se ha informado de un problema medioambiental como error de análisis.
  */
 class JsSandboxVerificationTest {
 
     @Test
-    fun `自检脚本必须显式返回结果`() {
-        // evaluateJavascript 取的是整个表达式的值；IIFE 里最后一句写成语句而非 return 时，
-        // 回调会收到 "null"，沙盒随后被判为不可用。
+    fun `Los scripts de autoprueba deben devolver resultados explícitamente`() {
+        // evaluateJavascript Se toma el valor de toda la expresión;IIFE Cuando la última oración se escribe como una declaración en lugar de retorno,
+        // La devolución de llamada recibirá "null", la zona de pruebas se considera posteriormente no disponible.
         assertTrue(
-            "VERIFY_JS 必须以 return 交出 JSON 字符串，否则 evaluateJavascript 只会拿到 null",
+            "VERIFY_JS Debe devolver la cadena JSON; de lo contrario, evaluaJavascript simplemente obtendrá null",
             JsSandbox.VERIFY_JS.contains("return JSON.stringify"),
         )
     }
 
     @Test
-    fun `没有返回值时报未返回结果`() {
+    fun `Cuando no hay ningún valor de retorno, no se devuelve ningún resultado`() {
         val (ok, issues) = JsSandbox.parseVerificationResult("null")
         assertFalse(ok)
-        assertEquals(listOf("自检未返回结果"), issues)
+        assertEquals(listOf("La autoprueba no arrojó resultados"), issues)
     }
 
     @Test
-    fun `空回调同样报未返回结果`() {
+    fun `Una devolución de llamada vacía tampoco informa que no se devolvió ningún resultado`() {
         val (ok, issues) = JsSandbox.parseVerificationResult(null)
         assertFalse(ok)
-        assertEquals(listOf("自检未返回结果"), issues)
+        assertEquals(listOf("La autoprueba no arrojó resultados"), issues)
     }
 
     @Test
-    fun `双重编码的自检结果能解析通过`() {
+    fun `Los resultados de la autoprueba codificados doblemente se pueden analizar y aprobar`() {
         val payload = """{"verified":true,"issues":[]}"""
         val (ok, issues) = JsSandbox.parseVerificationResult(encode(payload))
         assertTrue(ok)
@@ -46,20 +46,20 @@ class JsSandboxVerificationTest {
     }
 
     @Test
-    fun `未通过时带出具体原因`() {
+    fun `Proporcionar razones específicas del fracaso`() {
         val payload = """{"verified":false,"issues":["window_open_not_blocked"]}"""
         val (ok, issues) = JsSandbox.parseVerificationResult(encode(payload))
         assertFalse(ok)
         assertEquals(listOf("window_open_not_blocked"), issues)
     }
 
-    /** evaluateJavascript 回调拿到的是 JSON 编码后的字符串，这里复现那层编码。 */
+    /** evaluateJavascript Lo que obtiene la devolución de llamada es una cadena codificada en JSON, y esa codificación se reproduce aquí. */
     private fun encode(json: String): String = "\"" + json.replace("\"", "\\\"") + "\""
 
     @Test
-    fun `返回非对象时报解析失败而不是静默通过`() {
+    fun `Devuelve un no objeto cuando falla el análisis en lugar de pasar en silencio`() {
         val (ok, issues) = JsSandbox.parseVerificationResult("\"just a string\"")
         assertFalse(ok)
-        assertTrue(issues.single().startsWith("自检结果解析失败"))
+        assertTrue(issues.single().startsWith("Error en el análisis del resultado de la autoprueba"))
     }
 }

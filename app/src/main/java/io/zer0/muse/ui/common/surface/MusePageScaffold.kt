@@ -12,10 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 /**
- * 普通页面统一骨架。
+ * Las páginas ordinarias tienen un esqueleto unificado.
  *
- * topBar 默认认为调用方已经通过 [MuseTopBar] 处理状态栏；自定义顶栏可传
- * [topBarHandlesInsets] = false，由骨架代为处理。这样“谁负责 status bar”只有一处。
+ * topBar De forma predeterminada, se considera que la persona que llama ha pasado [MuseTopBar] Barra de estado del proceso; se puede pasar la barra superior personalizada
+ * [topBarHandlesInsets] = false, manejado por el esqueleto. De esta manera“quien es responsable status bar”Sólo hay un lugar.
  */
 @Composable
 fun MusePageScaffold(

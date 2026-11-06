@@ -11,32 +11,32 @@ import kotlinx.coroutines.flow.first
 import java.time.ZoneId
 import kotlin.random.Random
 
-/** 一轮后台生成的结果:发成了、跳过了、还是失败了。日志里能看到的判断,这里也能断言。 */
+/** Una ronda de resultados generados en segundo plano.:Fue exitoso, se omitió o falló. Sentencias que se pueden ver en el registro,También se puede afirmar aquí. */
 sealed interface MpMomentAutoOutcome {
-    /** 落库成功。 */
+    /** El depósito fue exitoso. */
     data class Published(val momentId: String, val characterId: String) : MpMomentAutoOutcome
 
-    /** 判定为不发,原因见 [reason]。 */
+    /** Juzgado como no enviado,ver la razón [reason]. */
     data class Skipped(val reason: MpMomentSkipReason) : MpMomentAutoOutcome
 
-    /** 判定为要发,但生成或落库失败;[reason] 是写进日志的取值。 */
+    /** Decidido a ser enviado,Pero la generación o biblioteca falló.;[reason] ¿Es el valor escrito en el registro? */
     data class Failed(val reason: String) : MpMomentAutoOutcome
 }
 
 /**
- * 「让角色自己发一条动态」的一轮完整流程。
+ * Un proceso completo de "dejar que el personaje publique una actualización".
  *
- * 顺序与 [MpMomentAutoPlan.decide] 一致:先过四道跳过判定,判完才挑角色、调宿主生成、落库。
- * 失败**不重试** —— WorkManager 下个周期自然会再来,一轮里重试只会把一次配额消耗变成三次。
+ * secuencia con [MpMomentAutoPlan.decide] consistente:Pase cuatro pases primero y sáltese el juicio.,Una vez completado el juicio, se selecciona el personaje, se ajusta la generación del anfitrión y el anfitrión se coloca en el inventario.
+ * falló**no lo vuelvas a intentar** —— WorkManager Naturalmente volverá en el próximo ciclo.,Volver a intentarlo solo convertirá el consumo de una cuota en tres en una ronda.
  *
- * 时间、时区、随机源都由调用方交进来(默认取系统值),于是这套流程能在测试里完整跑一遍:
- * 「该不该发」交给纯函数判,「发了之后库里多了什么」用真 Room 断言。
+ * La persona que llama entrega la hora, la zona horaria y la fuente aleatoria.(El valor predeterminado es el valor del sistema),Entonces este proceso se puede ejecutar completamente en la prueba.:
+ * "Debe enviarse o no" se deja al juez de función pura,"¿Qué hay más en la biblioteca después de enviarlo?" Utilice Room real para afirmar.
  *
- * 生成素材由 [material] 拼:最近聊过什么、上一条发过什么、现在几点,都不在本类里查。
+ * Material generado por [material] luchar:¿De qué has hablado recientemente, cuál fue tu última publicación, qué hora es ahora?,Ninguno de ellos se busca en esta categoría.
  *
- * @param now 时间源,默认系统时钟
- * @param random 随机源:一次概率骰子 + 挑哪个角色,测试可钉死
- * @param zone 判定「现在几点」用的时区
+ * @param now fuente de tiempo,Reloj del sistema predeterminado
+ * @param random fuente aleatoria:Dados de una oportunidad + qué personaje elegir,La prueba se puede clavar
+ * @param zone La zona horaria utilizada para determinar "qué hora es ahora"
  */
 class MpMomentAutoRunner(
     private val host: MiniPhoneHost,
@@ -48,7 +48,7 @@ class MpMomentAutoRunner(
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) {
 
-    /** 跑一轮。可失败但**不抛异常**:所有异常都归一成 [MpMomentAutoOutcome]。 */
+    /** Corre una ronda. Puede fallar pero**No lanzar excepción**:Todas las excepciones están normalizadas. [MpMomentAutoOutcome]. */
     suspend fun run(): MpMomentAutoOutcome {
         val at = now()
         val enabled = resultOf { store.isEnabled() }
@@ -76,42 +76,42 @@ class MpMomentAutoRunner(
         }
     }
 
-    /** 判定为不发:留一条能看出原因的日志,然后结束。 */
+    /** Juzgado como no enviado:Deje un registro que muestre el motivo.,Entonces se acabó. */
     private fun skip(reason: MpMomentSkipReason): MpMomentAutoOutcome {
-        Logger.d(TAG, "朋友圈定时跳过 | reason=${reason.value}")
+        Logger.d(TAG, "Saltar tiempo en Momentos | reason=${reason.value}")
         return MpMomentAutoOutcome.Skipped(reason)
     }
 
-    /** 挑角色 → 拼素材 → 让宿主生成 → 落库 → 记下这次的时间。任一步失败就收手。 */
+    /** Elige un papel → Reunir materiales → Deja que el anfitrión genere → Cayó en la biblioteca → Tome nota de la hora esta vez. Si algún paso falla, deténgase. */
     private suspend fun publish(characters: List<MpCharacter>, at: Long): MpMomentAutoOutcome {
         val character: MpCharacter = characters.random(random)
         val focus = MpMomentAutoPlan.hintFor(MpMomentAutoPlan.hourOf(at, zone))
         val hint = material.forMoment(character.id, focus)
-        Logger.d(TAG, "朋友圈定时生成 | characterId=${character.id} | focus=$focus")
+        Logger.d(TAG, "Los momentos se generan regularmente. | characterId=${character.id} | focus=$focus")
         val content = resultOf { host.composeMoment(character.id, hint) }
             .onError { msg, t -> fail("compose_error", t, msg) }
             .getOrNull()
         if (content.isNullOrBlank()) {
-            // 宿主已经把失败吞成 null 了;这里再记一笔「这一轮没结果」就收手,不重试
-            Logger.w(TAG, "朋友圈定时失败 | reason=compose_null")
+            // El anfitrión se ha tragado el fallo como nulo.;Simplemente haga una nota más aquí y diga "Esta ronda no tiene resultados" y luego deténgase.,no lo vuelvas a intentar
+            Logger.w(TAG, "Falló el tiempo de los momentos | reason=compose_null")
             return MpMomentAutoOutcome.Failed(FAIL_COMPOSE)
         }
         val moment = resultOf { repository.insertFromCharacter(character, content) }
             .onError { msg, t -> fail("insert_error", t, msg) }
             .getOrNull()
         if (moment == null) {
-            Logger.w(TAG, "朋友圈定时失败 | reason=empty_content")
+            Logger.w(TAG, "Falló el tiempo de los momentos | reason=empty_content")
             return MpMomentAutoOutcome.Failed(FAIL_INSERT)
         }
-        // 时间戳写失败不影响已经落库的动态:最多让下一轮少一次防抖保护
+        // La falla en la escritura de la marca de tiempo no afectará las dinámicas que se han incluido en la biblioteca.:Como máximo, se necesitará una protección antivibración menos para la siguiente ronda.
         resultOf { store.markGenerated(at) }
             .onError { msg, t -> fail("settings_write", t, msg) }
-        Logger.d(TAG, "朋友圈定时落库 | momentId=${moment.id} | len=${moment.content.length}")
+        Logger.d(TAG, "Los momentos se registran regularmente | momentId=${moment.id} | len=${moment.content.length}")
         return MpMomentAutoOutcome.Published(momentId = moment.id, characterId = character.id)
     }
 
     private fun fail(reason: String, throwable: Throwable?, message: String) {
-        Logger.w(TAG, "朋友圈定时失败 | reason=$reason | ${throwable?.message ?: message}", throwable)
+        Logger.w(TAG, "Falló el tiempo de los momentos | reason=$reason | ${throwable?.message ?: message}", throwable)
     }
 
     private companion object {

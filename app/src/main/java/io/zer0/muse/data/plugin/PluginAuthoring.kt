@@ -7,106 +7,106 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * 助手（大模型）起草插件的请求。
+ * Asistente (modelo grande) que redacta solicitudes de complementos.
  *
- * 模型只提交文本：JS 源码、工具声明与元数据；ZIP 包与 manifest 一律由宿主按
- * [PluginAuthoringRules] 构建，模型不产出任何二进制。构建出的包是**未签名草稿**，
- * 只有用户在插件管理页明确点头后，才会由本机作者密钥签名并启用。
+ * El modelo solo envía texto:JS Código fuente, declaraciones de herramientas y metadatos;ZIP El host siempre presiona los paquetes y manifiestos.
+ * [PluginAuthoringRules] Construyendo, el modelo no produce ningún binario. El paquete construido es**borrador sin firmar**,
+ * Solo será firmado y habilitado por la clave de autor nativa después de que el usuario asienta explícitamente a la página de administración del complemento.
  */
 data class AuthoredPluginRequest(
     val id: String,
     val name: String,
     val description: String,
     val version: String,
-    /** JS 入口源码；函数（工具实现）必须是顶层 `function` 声明。 */
+    /** JS Código fuente de entrada; La función (implementación de la herramienta) debe ser de nivel superior. `function` declaración. */
     val code: String,
-    /** 工具声明；函数名必须确实存在于 [code] 中。 */
+    /** Declaración de herramienta; El nombre de la función debe existir realmente en [code] en. */
     val tools: List<ToolDeclaration>,
-    /** 声明能力（v2.x 沙盒放开后仅校验名称格式，仅用于安装预览展示；默认不声明任何能力）。 */
+    /** declarar capacidad (v2.x Una vez que se lanza la zona de pruebas, solo se verifica el formato del nombre y solo se usa para la visualización de vista previa de la instalación; no se declaran capacidades de forma predeterminada). */
     val capabilities: List<String> = emptyList(),
 )
 
 /**
- * 助手起草插件的宿主侧规则（纯逻辑，便于单测）。
+ * El asistente redacta las reglas del lado del host del complemento (lógica pura, conveniente para pruebas individuales).
  *
- * 校验口径与 `tools/market-signer/sign.py` 一致：id/工具名/函数名形状、能力白名单，
- * 以及「manifest 声明的函数必须真的作为顶层函数写在入口代码里」。任何一条不通过都
- * 返回中文可读原因，且不产生任何落盘副作用（调用方在构建 ZIP 之前校验）。
+ * Calibre de calibración y `tools/market-signer/sign.py` Consistente:id/Nombre de la herramienta/Forma del nombre de la función, lista blanca de capacidades,
+ * y "manifest La función declarada realmente debe estar escrita en el código de entrada como una función de nivel superior". Si alguna de ellas falla,
+ * Devuelve un motivo legible en chino sin efectos secundarios (la persona que llama lo verifica antes de crear el ZIP).
  */
 object PluginAuthoringRules {
 
-    /** 入口代码大小上限；远低于 loader 的单文件/总解压上限，避免用巨大草稿挤占磁盘。 */
+    /** El límite superior del tamaño del código de entrada; mucho más pequeño que el archivo único del cargador/Límite de descompresión total para evitar ocupar el disco con grandes corrientes de aire. */
     const val MAX_CODE_BYTES = 256 * 1024
 
-    /** 单个草稿允许声明的工具数量上限。 */
+    /** El número máximo de herramientas que se pueden declarar en un solo borrador. */
     const val MAX_TOOLS = 32
 
-    /** 宿主固定入口文件名；模型不能自选入口路径。 */
+    /** El host tiene un nombre de archivo de entrada fijo; el modelo no puede elegir su propia ruta de entrada. */
     const val ENTRY_FILE = "main.js"
 
-    /** 校验请求；返回中文可读原因，null 表示通过。 */
+    /** Verificar la solicitud; devolver el motivo legible en chino,null Indica paso. */
     fun validate(request: AuthoredPluginRequest): String? {
         if (!PLUGIN_ID_REGEX.matches(request.id)) {
-            return "插件 id 非法: 只能包含小写字母、数字、下划线和连字符，且以字母或数字开头"
+            return "La identificación del complemento es ilegal: Solo puede contener letras minúsculas, números, guiones bajos y guiones, y comenzar con una letra o un número."
         }
         if (request.name.isBlank()) {
-            return "插件名称不能为空"
+            return "El nombre del complemento no puede estar vacío"
         }
         if (PluginVersion.parse(request.version) == null) {
-            return "插件版本号必须是语义化版本（如 1.0.0）: ${request.version}"
+            return "El número de versión del complemento debe ser una versión semántica (como 1.0.0): ${request.version}"
         }
         if (request.code.isBlank()) {
-            return "插件代码不能为空"
+            return "El código del complemento no puede estar vacío"
         }
         val codeBytes = request.code.toByteArray(Charsets.UTF_8).size
         if (codeBytes > MAX_CODE_BYTES) {
-            return "插件代码超过大小上限(${MAX_CODE_BYTES / 1024}KB): 当前 $codeBytes 字节"
+            return "El código del complemento excede el límite de tamaño(${MAX_CODE_BYTES / 1024}KB): actual $codeBytes bytes"
         }
         if (request.tools.isEmpty()) {
-            return "插件至少需要声明一个工具"
+            return "Los complementos deben declarar al menos una herramienta"
         }
         if (request.tools.size > MAX_TOOLS) {
-            return "插件工具数量超过上限($MAX_TOOLS): 当前 ${request.tools.size} 个"
+            return "El número de herramientas enchufables supera el límite superior($MAX_TOOLS): actual ${request.tools.size} un"
         }
         val duplicate = request.tools.groupBy { it.name }.entries.firstOrNull { it.value.size > 1 }
         if (duplicate != null) {
-            return "插件工具名重复: ${duplicate.key}"
+            return "Nombre de herramienta de complemento duplicado: ${duplicate.key}"
         }
         request.tools.forEach { tool ->
             if (!TOOL_NAME_REGEX.matches(tool.name)) {
-                return "工具名非法: ${tool.name}（只允许字母、数字、下划线和连字符，长度 1-64）"
+                return "El nombre de la herramienta es ilegal.: ${tool.name}(Solo se permiten letras, números, guiones bajos y guiones, longitud 1-64)"
             }
             if (!FUNCTION_NAME_REGEX.matches(tool.functionName)) {
-                return "工具函数名非法: ${tool.functionName}（只允许字母、数字、下划线和 $，且不能以数字开头）"
+                return "El nombre de la función de la herramienta es ilegal.: ${tool.functionName}(Solo letras, números, guiones bajos y el signo \$, y no puede comenzar con un número)"
             }
             if (!definesFunction(request.code, tool.functionName)) {
-                return "插件代码中没有定义工具函数 ${tool.functionName}（需要顶层 function 声明）"
+                return "No hay ninguna función de herramienta definida en el código del complemento. ${tool.functionName}(requiere declaración de función de nivel superior)"
             }
         }
-        // v2.x（沙盒放开）：能力不再按固定名单拒绝，仅校验名称格式合法。
+        // v2.x(Versión Sandbox): las habilidades ya no se rechazan según una lista fija, solo se verifica que el formato del nombre sea legal.
         val invalidCapability = request.capabilities.firstOrNull { !PluginSecurityGate.isValidCapabilityName(it) }
         if (invalidCapability != null) {
-            return "插件声明的能力名格式非法: $invalidCapability"
+            return "El formato del nombre de la capacidad declarado por el complemento es ilegal: $invalidCapability"
         }
         return null
     }
 
     /**
-     * 判断入口代码里是否存在顶层函数 [functionName]。
+     * Determinar si hay una función de nivel superior en el código de entrada [functionName].
      *
-     * 与 `tools/market-signer/sign.py` 的检查同口径：行首（或紧跟换行）到函数名之间
-     * 只允许空白与 `function` 关键字。模型常见的缩进函数声明不算顶层函数，
-     * 因为插件引擎只导出顶层函数。
+     * con `tools/market-signer/sign.py` El alcance de la verificación es el mismo: desde el principio de la línea (o inmediatamente después de una nueva línea) hasta el nombre de la función.
+     * Sólo espacios en blanco y `function` Palabras clave. Las declaraciones de funciones con sangría comunes en los modelos no cuentan como funciones de nivel superior.
+     * Porque el motor de complementos solo exporta funciones de nivel superior.
      */
     fun definesFunction(code: String, functionName: String): Boolean =
         Regex("(^|\n)[ \t]*function\\s+" + Regex.escape(functionName) + "\\s*\\(").containsMatchIn(code)
 
     /**
-     * 按模型请求构建 manifest。
+     * Construya un manifiesto por solicitud de modelo.
      *
-     * `trust` 固定 sandboxed、`kind` 固定 tool、入口固定 [ENTRY_FILE]；`enabled=true`
-     * 只表示「一旦确认就可以启用」，草稿阶段仍由安装路径强制禁用
-     * （PluginManager 只在 installationConfirmed 时才启用）。
+     * `trust` Zona de pruebas fija,`kind` Herramienta fija, entrada fija. [ENTRY_FILE];`enabled=true`
+     * Solo significa "se puede habilitar una vez confirmado", y la ruta de instalación aún deshabilita por la fuerza la etapa de borrador.
+     * (PluginManager Solo se habilita cuando se confirma la instalación).
      */
     fun manifestOf(request: AuthoredPluginRequest): PluginManifest = PluginManifest(
         id = request.id,
@@ -125,7 +125,7 @@ object PluginAuthoringRules {
         signature = null,
     )
 
-    /** 用宿主构建 ZIP 包；[extraFiles] 只用于重新打包已安装内容（签名启用路径）。 */
+    /** Cree un paquete ZIP con el host;[extraFiles] Solo se usa para reempaquetar contenido instalado (ruta habilitada para firma). */
     fun buildZip(manifest: PluginManifest, entryCode: String, extraFiles: Map<String, String> = emptyMap()): ByteArray {
         val output = ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->

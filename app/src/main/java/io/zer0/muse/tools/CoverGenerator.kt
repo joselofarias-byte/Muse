@@ -20,16 +20,16 @@ import okhttp3.Request
 import java.io.File
 
 /**
- * v1.0.53: AI 封面生成服务(封面工作流的生图链路)。
+ * v1.0.53: AI Servicio de generación de cobertura(Enlace de dibujo para flujo de trabajo de portada).
  *
- * 流程:
- *  1. 用 cover_generation 模板 + 文档标题/摘要渲染 LLM prompt 生成指令
- *  2. ChatService 生成封面绘图 prompt(英文,50 词内)
- *  3. ImageService.generate 生图(16:9,1536x640 或供应商最接近尺寸)
- *  4. OkHttp 下载结果 URL 到临时文件
- *  5. CoverLibraryRepository.registerGenerated 入库
+ * proceso:
+ *  1. Usar plantilla de generación de portada + título del documento/Resumen de representación de instrucciones de generación de mensajes de LLM
+ *  2. ChatService Generar dibujo de portada prompt(ingles,50 dentro de la palabra)
+ *  3. ImageService.generate imagen cruda(16:9,1536x640 o proveedor de tamaño más cercano)
+ *  4. OkHttp Descargar la URL del resultado en un archivo temporal
+ *  5. CoverLibraryRepository.registerGenerated Almacén
  *
- * 任一步失败返回 Error(调用方 Toast 提示),不留半成品。
+ * Volver si algún paso falla Error(Mensaje de brindis de la persona que llama),No queda ningún trabajo en progreso.
  */
 class CoverGenerator(
     private val context: Context,
@@ -38,7 +38,7 @@ class CoverGenerator(
     private val imageService: ImageService?,
     private val coverLibraryRepository: CoverLibraryRepository,
     private val okHttpClient: OkHttpClient,
-    /** v2.x: 辅助模型路由(封面 prompt 生成归「小工具」档;null 时保持默认行为,便于测试构造)。 */
+    /** v2.x: Enrutamiento de modelo auxiliar(El mensaje de portada se genera en un archivo \"widget\";null Mantenga el comportamiento predeterminado cuando,Construcciones fáciles de probar). */
     private val settingsRepository: io.zer0.muse.data.SettingsRepository? = null,
 ) {
 
@@ -49,23 +49,23 @@ class CoverGenerator(
         private const val MAX_PROMPT_TOKENS = 300
         private const val MAX_DOWNLOAD_BYTES = 20L * 1024 * 1024
 
-        /** R-UI-06/R-TEST-18: 空 LLM 输出降级为固定绘图指令,便于单元测试。 */
+        /** R-UI-06/R-TEST-18: Salida LLM vacía degradada a instrucciones de dibujo fijas,Facilita las pruebas unitarias. */
         internal fun resolveCoverPrompt(raw: String, title: String): String =
             raw.trim().ifBlank { "Minimal modern banner cover for: $title, no text, 16:9 aspect ratio" }
     }
 
     /**
-     * 生成封面并入库。
+     * Genera una portada y guárdala en la biblioteca.
      *
-     * @param title 文档标题(模板变量)
-     * @param description 文档摘要(模板变量,可空)
-     * @param locale 语言代码(模板 locale 回落)
-     * @return 入库后的 [CoverItem];失败返回 Error
+     * @param title Título del documento(Variables de plantilla)
+     * @param description Resumen del documento(Variables de plantilla,Disponible)
+     * @param locale código de idioma(Reserva de configuración regional de la plantilla)
+     * @return después del almacenamiento [CoverItem];Retorno del fracaso Error
      */
     suspend fun generateCover(title: String, description: String? = null, locale: String? = null): Result<CoverItem> =
         withContext(Dispatchers.IO) {
             resultOf {
-                // 1. 渲染模板 → LLM 生成封面 prompt
+                // 1. plantilla de renderizado → LLM Generar cobertura prompt
                 val directive = templateLoader.render(
                     name = COVER_TEMPLATE_NAME,
                     locale = locale,
@@ -76,7 +76,7 @@ class CoverGenerator(
                     fallback = "Generate a minimal modern banner cover image for a document titled: $title",
                 )
 
-                // v2.x: 封面 prompt 生成优先走辅助模型路由「小工具」档(留空回退主对话模型)
+                // v2.x: El mensaje de portada genera un archivo "gadget" que prioriza el enrutamiento del modelo auxiliar(Déjelo en blanco para regresar al modelo de diálogo principal.)
                 val routed = settingsRepository?.let { repo ->
                     runCatching {
                         io.zer0.muse.data.routing.UtilityModelRouter(repo)
@@ -86,7 +86,7 @@ class CoverGenerator(
                 val promptCompletion = chatService.completeText(
                     messages = listOf(
                         UIMessage(role = MessageRole.SYSTEM, content = directive),
-                        UIMessage(role = MessageRole.USER, content = "请生成封面图的英文绘图 prompt。"),
+                        UIMessage(role = MessageRole.USER, content = "Genere un mensaje de dibujo en inglés para la imagen de portada."),
                     ),
                     model = routed?.second,
                     providerConfig = routed?.first,
@@ -97,12 +97,12 @@ class CoverGenerator(
                     mode = ChatRequestMode.UTILITY,
                 )
                 val rawCoverPrompt = promptCompletion.text.trim()
-                // R-UI-06: 空 LLM 输出降级为固定绘图指令,不再抛 IllegalStateException。
+                // R-UI-06: Salida LLM vacía degradada a instrucciones de dibujo fijas,Ya no arroja IllegalStateException.
                 val coverPrompt = resolveCoverPrompt(rawCoverPrompt, title)
 
-                // 2. 生图
+                // 2. imagen cruda
                 val service = imageService
-                    ?: error("未配置绘图模型")
+                    ?: error("Modelo de dibujo no configurado")
                 val urls = service.generate(
                     prompt = coverPrompt,
                     params = ImageGenParams(
@@ -112,34 +112,34 @@ class CoverGenerator(
                         n = 1,
                     ),
                 )
-                if (urls.isEmpty()) error("生图结果为空")
+                if (urls.isEmpty()) error("El gráfico resultante está vacío.")
                 val url = urls.first()
 
-                // 3. 下载到临时文件
+                // 3. Descargar a archivo temporal
                 val tmpFile = downloadToTemp(url)
 
-                // 4. 入库(尺寸未知时传 0,registerGenerated 内部按文件实际处理)
+                // 4. Almacén(Tamaño desconocido 0,registerGenerated Procesamiento interno según documentos reales.)
                 val item = coverLibraryRepository.registerGenerated(
                     file = tmpFile,
                     width = 0,
                     height = 0,
                 ).getOrThrow()
 
-                // 5. 清理临时文件
+                // 5. Limpiar archivos temporales
                 runCatching { tmpFile.delete() }
                 item
             }.onError { msg, t ->
-                Logger.w(TAG, "封面生成失败: $msg", t)
+                Logger.w(TAG, "Falló la generación de portada: $msg", t)
             }
         }
 
-    /** 下载图片 URL 到 cache 临时文件(带大小与超时限制)。 */
+    /** Descargar la URL de la imagen para almacenar en caché el archivo temporal(Tamaño de banda y límites de tiempo de espera). */
     private suspend fun downloadToTemp(url: String): File = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(url).build()
         val response = okHttpClient.newCall(request).execute()
         response.use { resp ->
-            if (!resp.isSuccessful) error("下载封面失败: HTTP ${resp.code}")
-            val body = resp.body ?: error("下载封面失败: 空响应体")
+            if (!resp.isSuccessful) error("Error al descargar la portada: HTTP ${resp.code}")
+            val body = resp.body ?: error("Error al descargar la portada: cuerpo de respuesta vacío")
             val file = File.createTempFile("cover_dl_", ".img", context.cacheDir)
             body.byteStream().use { input ->
                 file.outputStream().use { output ->
@@ -151,7 +151,7 @@ class CoverGenerator(
                         total += read
                         if (total > MAX_DOWNLOAD_BYTES) {
                             runCatching { file.delete() }
-                            error("封面图片超过 ${MAX_DOWNLOAD_BYTES / 1024 / 1024}MB 限制")
+                            error("La imagen de portada excede ${MAX_DOWNLOAD_BYTES / 1024 / 1024}MB Límite")
                         }
                         output.write(buf, 0, read)
                     }

@@ -112,28 +112,28 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
-/** v1.x: 问候语个性化提醒通知 ID(与其它通知 ID 错开)。 */
+/** v1.x: Saludo Notificación de recordatorio personalizado ID(Escalonado de otros ID de notificación). */
 private const val GREETING_NOTIFY_ID = 1010
 
 /**
- * 任务中心页 —— 按设计稿重构为任务首页。
+ * Página del centro de tareas —— Reconstrúyalo en la página de inicio de la tarea de acuerdo con el borrador del diseño.
  *
- * 视觉结构:
- *  - 顶部大标题问候语 + 记忆数量副标题
- *  - 全局输入条:输入任何想法,右侧绿色圆形发送按钮
- *  - 已置顶:白色圆角卡片,状态圆点 + 标题 + 副标题 + 时间 + 箭头
- *  - 文件夹:文件夹图标 + 名称 + 数量
- *  - 最近:非置顶会话或空状态提示
- *  - 知识库:入口卡片,显示文档数量
+ * estructura visual:
+ *  - Saludo del título superior + subtítulo de cantidad de memoria
+ *  - Barra de entrada global:Introduzca cualquier idea,Botón de envío redondo verde a la derecha
+ *  - Fijado:tarjeta blanca con esquinas redondeadas,Punto de estado + título + subtítulo + hora + flecha
+ *  - carpeta:Icono de carpeta + nombre + cantidad
+ *  - Recientemente:Conversación no fijada o mensaje de estado vacío
+ *  - base de conocimientos:tarjeta de entrada,Mostrar número de documentos
  *
- * 所有原有功能保留:
- *  - 置顶、归档、文件夹、重命名、删除
- *  - 滑动删除(左滑) / 归档(右滑)
- *  - 长按菜单
+ * Todas las funciones originales conservadas.:
+ *  - Anclar, archivar, carpeta, cambiar nombre, eliminar
+ *  - Deslizar para eliminar(Desliza hacia la izquierda) / Archivo(Desliza hacia la derecha)
+ *  - Menú de pulsación larga
  */
-// 屏幕级组合函数:问候/输入条/搜索/置顶/文件夹/最近/知识库多分区分支,
-// 各分区已抽成 LazyListScope 扩展(recentSectionItems/searchResultSection 等),
-// 剩余分支为分区固有结构,按 GenerationHandler 先例豁免复杂度检测。
+// Función de composición a nivel de pantalla:Saludos/Barra de entrada/Buscar/fijar hacia arriba/carpeta/Recientemente/Rama multipartición de la base de conocimientos,
+// Cada partición ha sido encargada para la extensión LazyListScope(recentSectionItems/searchResultSection espera),
+// Las ramas restantes son estructuras específicas de partición.,Comprobaciones de complejidad exentas según el precedente de GenerationHandler.
 @Suppress("CyclomaticComplexMethod")
 @Composable
 fun ChatListScreen(
@@ -142,14 +142,14 @@ fun ChatListScreen(
     currentSessionId: String?,
     onSelect: (String) -> Unit,
     onCreate: () -> Unit,
-    /** v1.0.27: 从任务页输入框直接发送并创建新会话。 */
+    /** v1.0.27: Envíe y cree una nueva sesión directamente desde el cuadro de entrada de la página de tareas. */
     onCreateWithText: (String) -> Unit = {},
     onDelete: (String) -> Unit,
     onRename: (SessionEntity) -> Unit,
-    /** v1.48: 重命名(带新名字),修复旧实现传 session.title 导致重命名失效的 bug。 */
+    /** v1.48: Cambiar nombre(traer nuevo nombre),Se corrigió un error en la implementación anterior que causaba que fallara el cambio de nombre al pasar session.title. */
     onRenameTo: (SessionEntity, String) -> Unit = { s, _ -> onRename(s) },
     onTogglePinned: (String) -> Unit,
-    /** B7-05: 置顶会话拖拽排序后的新 id 顺序(松手即持久化)。 */
+    /** B7-05: Nuevo orden de identificación después de ordenar con arrastrar y soltar las sesiones fijadas(Persistencia tan pronto como lo dejas ir). */
     onReorderPinned: (List<String>) -> Unit = {},
     onMoveSessionToFolder: (String, String?) -> Unit,
     onCreateFolder: (String) -> Unit,
@@ -158,68 +158,68 @@ fun ChatListScreen(
     onToggleFolderExpanded: (String, Boolean) -> Unit,
     assistants: List<AssistantEntity> = emptyList(),
     currentAssistant: AssistantEntity? = null,
-    /** v0.45: 已归档会话列表(历史数据保留,当前 UI 不再展示归档入口)。 */
+    /** v0.45: Lista de conversaciones archivadas(Retención de datos históricos,La interfaz de usuario actual ya no muestra la entrada del archivo). */
     archivedSessions: List<SessionEntity> = emptyList(),
-    /** v0.45: 归档会话(主列表项长按菜单用)。 */
+    /** v0.45: Sesión de archivo(Menú de pulsación larga del elemento de la lista principal para). */
     onArchive: (String) -> Unit = {},
-    /** v0.45: 取消归档(归档列表项长按菜单用)。 */
+    /** v0.45: Desarchivar(Menú de pulsación larga del elemento de la lista de archivos para su uso). */
     onUnarchive: (String) -> Unit = {},
     onOpenScheduledTasks: () -> Unit = {},
     onOpenQuickNotes: () -> Unit = {},
-    /** v1.0.27: 打开快速翻译页。 */
+    /** v1.0.27: Abra la página de traducción rápida. */
     onOpenQuickTranslate: () -> Unit = {},
-    /** v1.0.27: 打开知识库页。 */
+    /** v1.0.27: Abra la página de la base de conocimientos. */
     onOpenKnowledgeBase: () -> Unit = {},
-    /** v2.0: 打开最近删除页。 */
+    /** v2.0: Abra la página eliminada recientemente. */
     onOpenRecentlyDeleted: () -> Unit = {},
-    /** Phase 1 WS5: 打开助手/角色管理页面(情感空状态 CTA 用)。 */
+    /** Phase 1 WS5: Asistente abierto/Página de gestión de roles(Uso de CTA en estado de vacío emocional). */
     onOpenAssistants: () -> Unit = {},
-    /** v2.x: 伙伴横排 — 以指定助手开新聊天(assistantId)。 */
+    /** v2.x: Socios horizontalmente — Abrir un nuevo chat con un asistente designado(assistantId). */
     onOpenAssistantChat: (String) -> Unit = {},
-    /** v1.72: 会话列表首次加载标志(避免闪空状态) */
+    /** v1.72: Primera bandera de carga de la lista de sesiones(Evite el estado flash) */
     isSessionsLoading: Boolean = false,
-    /** v1.0.62: 会话列表加载失败信息(null=正常)。 */
+    /** v1.0.62: Información de error de carga de la lista de sesiones(null=normales). */
     sessionsError: String? = null,
-    /** v1.0.62: 会话列表加载失败重试回调。 */
+    /** v1.0.62: Vuelva a intentar la devolución de llamada si falla la carga de la lista de sesiones. */
     onRetryLoadSessions: () -> Unit = {},
     modifier: Modifier = Modifier,
-    /** 元事实 DAO,用于首页显示记忆数量。 */
+    /** metahechos DAO,Se utiliza para mostrar el número de memoria en la página de inicio. */
     factDao: FactDao = koinInject(),
-    /** 知识库文档 DAO,用于首页显示文档数量。 */
+    /** Documentación de la base de conocimientos DAO,Se utiliza para mostrar la cantidad de documentos en la página de inicio. */
     knowledgeDocDao: KnowledgeDocDao = koinInject(),
-    /** v1.x: 问候语个性化提醒通知(每天一次) */
+    /** v1.x: Saludo Notificación de recordatorio personalizado(una vez al dia) */
     settings: SettingsRepository = koinInject(),
-    /** v1.x: 通知管理器 */
+    /** v1.x: administrador de notificaciones */
     notificationManager: MuseNotificationManager = koinInject(),
-    /** v1.x: 问候语个性化提醒生成器(LLM,失败回退规则版) */
+    /** v1.x: Generador de recordatorios personalizados de saludo(LLM,No volver a la versión de la regla) */
     greetingHintGenerator: GreetingHintGenerator = koinInject(),
-    /** v1.x: 首页前台补偿直接复用每日总结服务,不只依赖 WorkManager 延迟执行。 */
+    /** v1.x: La compensación de la recepción del hogar reutiliza directamente el servicio de resumen diario,No confíe únicamente en WorkManager para retrasar la ejecución. */
     dailySummaryService: DailySummaryService = koinInject(),
 ) {
-    // I3: 列表区独立错误边界,会话列表渲染数据构建失败只降级该区域
+    // I3: Listar límites de error independientes del área,La compilación de datos de representación de la lista de sesiones falló y solo degradó la región
     RegionErrorBoundary(
         regionName = "list",
         data = { sessions },
     ) {
-        // v1.69: 文件夹分组 UI — 新建文件夹对话框状态
+        // v1.69: Agrupación de carpetas UI — Nuevo estado del cuadro de diálogo de carpeta
         var showCreateFolderDialog by remember { mutableStateOf(false) }
         var newFolderName by remember { mutableStateOf("") }
 
-        // 首页数据:知识库文档数量
+        // Datos de la página de inicio:Número de documentos de la base de conocimientos
         var docCount by remember { mutableStateOf(0) }
-        // 问候语匹配用的近期记忆(主作用域,取最近 100 条;避免子助手角色扮演记忆混入提醒)
+        // Memoria reciente para emparejar saludos(alcance principal,Consigue los últimos 100 artículos;Evite que los recuerdos del juego de roles del subasistente se mezclen con recordatorios)
         var greetingFacts by remember { mutableStateOf<List<FactEntity>>(emptyList()) }
-        // v1.x: LLM 生成的个性化问候后缀(当天缓存,无则回退规则版)
+        // v1.x: LLM Sufijo de saludo personalizado generado(Almacenamiento en caché por el día,De lo contrario, recurra a la versión de reglas.)
         var greetingHint by remember { mutableStateOf<String?>(null) }
-        // v1.x: 每日总结由 Worker 写入 DataStore,生成后首页可实时接收
+        // v1.x: El resumen diario lo escribe el trabajador. DataStore,Después de la generación, la página de inicio se puede recibir en tiempo real.
         val dailySummary by settings.dailySummaryFlow.collectAsStateWithLifecycle(initialValue = null)
-        // v2.6.7 fix (AUDIT F8): 跨会话未完成待办数。
-        // Repository 的两个查询此前全仓零调用，现在在首页真实展示。
+        // v2.6.7 fix (AUDIT F8): El número de tareas pendientes pendientes entre sesiones.
+        // Repository Anteriormente, las dos consultas se mostraban completamente sin llamadas, pero ahora se muestran en la página de inicio.
         var openTodoSessionCount by remember { mutableStateOf(0) }
         val context = LocalContext.current
         LaunchedEffect(Unit) {
-            // 先投递系统兜底,再在前台直接生成当前时段;否则部分 ROM 会把 WorkManager
-            // 延迟很久,用户只看到“早上好/中午好/晚上好”而看不到后面的助手总结。
+            // Primer sistema de entrega para guardar dinero,Luego genere directamente el período actual en primer plano.;De lo contrario, algunas ROM WorkManager
+            // gran retraso,Los usuarios sólo ven“buenos dias/buen mediodía/buenas noches”No puedes ver el resumen del asistente al final.
             DailySummaryWorker.enqueueCatchUpIfDue(context, settings)
             withContext(Dispatchers.IO) {
                 try {
@@ -227,29 +227,29 @@ fun ChatListScreen(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Logger.w("ChatListScreen", "前台每日总结生成失败: ${e.message}", e)
+                    Logger.w("ChatListScreen", "Error al generar el resumen diario de recepción: ${e.message}", e)
                 }
             }
         }
         LaunchedEffect(Unit) {
-            // 审计修复 (8.8): 去掉内层 scope.launch — 原实现内层协程属于 rememberCoroutineScope,
-            // 不随 LaunchedEffect 取消(离开组合/翻页后仍在跑),且双重启动无意义。
+            // Reparación de auditoría (8.8): quitar la capa interna scope.launch — La implementación original de la rutina interna pertenece a rememberCoroutineScope,
+            // No cancelado con LaunchedEffect(abandonar el grupo/Sigue funcionando después de pasar la página.),Y el arranque dual no tiene sentido.
             runCatching { docCount = knowledgeDocDao.countUserVisible() }
-            // v2.6.7 fix (AUDIT F8): 统计还有未完成待办的会话数（跨会话台账）。
+            // v2.6.7 fix (AUDIT F8): Cuente el número de sesiones inacabadas (libro mayor de sesiones cruzadas).
             runCatching {
                 val repo =
                     org.koin.core.context.GlobalContext.get()
                         .get<io.zer0.muse.data.todo.SessionTodoRepository>()
                 openTodoSessionCount = repo.countSessionsWithOpenItems()
-            }.onFailure { Logger.w("ChatListScreen", "读取未完成待办数失败: ${it.message}") }
-            // 必须先拿到局部 facts 再生成,不能在同一协程里读取刚刚 set 的 Compose 状态。
+            }.onFailure { Logger.w("ChatListScreen", "No se pudo leer el recuento de tareas pendientes: ${it.message}") }
+            // Primero debe obtener datos locales antes de generar,El estado de redacción recién establecido no se puede leer en la misma rutina.
             val facts = runCatching { factDao.getAll("main").take(100) }.getOrElse {
-                Logger.w("ChatListScreen", "读取问候语记忆失败: ${it.message}")
+                Logger.w("ChatListScreen", "No se pudo leer la memoria de saludo: ${it.message}")
                 emptyList()
             }
             greetingFacts = facts
             var resolvedGreetingHint: String? = null
-            // v1.x: 个性化问候 — 缓存优先(当天),未命中则 LLM 生成,失败回退规则版。
+            // v1.x: Saludo personalizado — caché primero(ese dia),LLM generado en caso de error,Regrese a la versión de la regla si falla.
             runCatching {
                 val today = java.time.LocalDate.now().toString()
                 val cached = settings.getGreetingHintCache()
@@ -266,10 +266,10 @@ fun ChatListScreen(
                         settings.saveGreetingHintCache("$today|$hint")
                     }
                 }
-            }.onFailure { e -> Logger.w("ChatListScreen", "问候语生成失败: ${e.message}") }
-            // v1.x: 问候语个性化提醒通知 — 有近期事项且今天未通知过时,发一条通知让用户知道助手在关注他(每天最多一次)。
+            }.onFailure { e -> Logger.w("ChatListScreen", "Falló la generación del saludo: ${e.message}") }
+            // v1.x: Saludo Notificación de recordatorio personalizado — Hay asuntos recientes y caducará sin notificación hoy.,Envíe una notificación para informar al usuario que el asistente le está prestando atención.(Máximo una vez al día).
             runCatching {
-                // 同一 LaunchedEffect 内状态更新尚未回流,使用局部结果保证首次加载也能通知。
+                // Las actualizaciones de estado dentro del mismo LaunchedEffect aún no se han redistribuido,Utilice resultados locales para asegurarse de que también se notifique la primera carga.
                 val hint = resolvedGreetingHint ?: GreetingHelper.getMemoryHint(facts, res = context.resources)
                 if (hint != null) {
                     val today = java.time.LocalDate.now().toString()
@@ -285,11 +285,11 @@ fun ChatListScreen(
                         settings.saveLastGreetingNotifyDate(today)
                     }
                 }
-            }.onFailure { e -> Logger.w("ChatListScreen", "问候语提醒通知失败: ${e.message}") }
+            }.onFailure { e -> Logger.w("ChatListScreen", "Error en la notificación de recordatorio de saludo: ${e.message}") }
         }
 
-        // 当天是否已有会话：用于剔除「今天还没聊什么」这类与实际记录矛盾的问候语。
-        // DailySummaryService 在素材不足时会写这句，但素材不足不代表没聊。
+        // Si ha habido conversaciones ese día: Se utiliza para eliminar saludos como "Hoy no se ha hablado nada" que no coinciden con los registros reales.
+        // DailySummaryService Escribo esta frase cuando no tengo suficiente material, pero no tener suficiente material no significa que no haya diversión.
         val hasSessionToday = remember(sessions) {
             val startOfDay = java.time.LocalDate
                 .now()
@@ -299,7 +299,7 @@ fun ChatListScreen(
             sessions.any { it.updatedAt >= startOfDay }
         }
 
-        // v0.36 性能优化:缓存排序结果,避免每次重组都重新计算。
+        // v0.36 Optimización del rendimiento:Resultados de clasificación en caché,Evite recalcular cada reorganización.
         val displayedSessions by remember(sessions) {
             mutableStateOf(
                 sessions
@@ -314,15 +314,15 @@ fun ChatListScreen(
         val recent = remember(displayedSessions, expandedFolderIds) {
             displayedSessions.filter { !it.pinned && (it.folderId == null || it.folderId !in expandedFolderIds) }
         }
-        // B7-05: 拖拽期间的乐观顺序,收到 DB flow 更新后自动以 sessions 为准
+        // B7-05: Orden optimista durante el arrastre,Después de recibir la actualización del flujo de base de datos, se basará automáticamente en sesiones.
         var pinnedOrder by remember(sessions) { mutableStateOf(pinned.map { it.id }) }
         val orderedPinned = remember(pinned, pinnedOrder) {
             val byId = pinned.associateBy { it.id }
             pinnedOrder.mapNotNull { byId[it] } + pinned.filterNot { it.id in pinnedOrder }
         }
-        // U-7: 已归档视图开关(U-7 归档入口切换到此视图展示已归档会话)
+        // U-7: Cambio de vista archivada(U-7 El portal de archivo cambia a esta vista para mostrar conversaciones archivadas)
         var showArchived by remember { mutableStateOf(false) }
-        // U-22: 多选编辑模式开关 + 已选会话 id 集合
+        // U-22: Cambio de modo de edición de selección múltiple + conjunto de identificación de sesión seleccionada
         var editMode by remember { mutableStateOf(false) }
         var selectedIds by remember { mutableStateOf(setOf<String>()) }
 
@@ -337,7 +337,7 @@ fun ChatListScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = MusePaddings.screen),
             ) {
-                // v1.72: 首次加载时显示 loading,避免 DB emit 前闪"还没有任务"空状态
+                // v1.72: Se muestra en la primera carga loading,Evite flashear antes de que se emita DB"Aún no hay tareas"Estado vacío
                 if (isSessionsLoading) {
                     Column(
                         modifier = Modifier.weight(1f),
@@ -356,7 +356,7 @@ fun ChatListScreen(
                             .fillMaxWidth(),
                     )
                 } else if (showArchived) {
-                    // U-7: 已归档视图(带恢复按钮),由列表页工具行"已归档"入口进入
+                    // U-7: Vista archivada(Con botón de restauración),por fila de herramientas de página de lista"Archivado"entrada entrada
                     ArchivedSessionsList(
                         archived = archivedSessions,
                         onBack = { showArchived = false },
@@ -365,7 +365,7 @@ fun ChatListScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
                 } else if (editMode) {
-                    // U-22: 多选编辑模式(全选/删除/归档循环执行复用单条逻辑)
+                    // U-22: Modo de edición de selección múltiple(Seleccionar todo/Eliminar/La ejecución del ciclo de archivo reutiliza una única pieza de lógica)
                     ChatListEditMode(
                         sessions = displayedSessions,
                         selectedIds = selectedIds,
@@ -382,19 +382,19 @@ fun ChatListScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
                 } else {
-                    // v2.x: 回顾条数据 — 最近有消息的会话(点击直进)
+                    // v2.x: Revisar datos de la barra — Conversaciones con mensajes recientes(Haga clic para continuar)
                     val latestRecallSession = remember(sessions) {
                         sessions.maxByOrNull { it.updatedAt }?.takeIf { it.lastMessagePreview.isNotBlank() }
                     }
                     LazyColumn(
                         modifier = Modifier.weight(1f),
-                        // 前端修复 (性能-1): 移除全局 spacedBy,section 间距改为各区域
-                        // 首个 item 手动 padding(见 TaskSectionTitle / knowledge 入口),
-                        // 这样消息行可在 LazyColumn 顶层平铺且行间保持 0 间距,
-                        // 维持原"整组一张卡片"的外观(首末项圆角由 SectionGroupRow 提供)。
+                        // Correcciones en la interfaz (Rendimiento-1): Eliminar global spacedBy,section El espaciado cambió para cada área.
+                        // manual del primer elemento padding(Ver TaskSectionTitle/entrada de conocimiento),
+                        // De esta manera, las filas de mensajes se pueden colocar en mosaico encima de LazyColumn con 0 espacios entre filas.,
+                        // mantener el original"Todo un juego de cartas"apariencia(Los filetes del primer y último elemento los proporciona SecciónGroupRow).
                         contentPadding = PaddingValues(bottom = MusePaddings.listBottomClearance),
                     ) {
-                        // 问候标题
+                        // título del saludo
                         item(key = "greeting") {
                             GreetingHeader(
                                 facts = greetingFacts,
@@ -406,7 +406,7 @@ fun ChatListScreen(
                             )
                         }
 
-                        // v2.x: 伙伴横排 — 常用助手头像快捷入口(点击直进最近会话)
+                        // v2.x: Socios horizontalmente — Acceso rápido a los avatares de asistente más utilizados(Haga clic para ir directamente a conversaciones recientes)
                         if (assistants.any { it.enabled }) {
                             item(key = "partners_row") {
                                 PartnerRow(
@@ -418,7 +418,7 @@ fun ChatListScreen(
                             }
                         }
 
-                        // v2.x: 回顾条(候选A) — "上次和 X 聊到「…」",整条可点直进最近会话
+                        // v2.x: tira de revisión(candidatoA) — "La última vez que charlé con X, "…"",Puede hacer clic en el artículo completo para ir directamente a la última conversación.
                         if (latestRecallSession != null) {
                             item(key = "recall_bar") {
                                 RecallBar(
@@ -430,7 +430,7 @@ fun ChatListScreen(
                             }
                         }
 
-                        // 已置顶(标题 + 每条会话独立 item,平铺懒加载)
+                        // Fijado(Título + independiente para cada conversación item,Carga diferida de mosaicos)
                         if (pinned.isNotEmpty()) {
                             pinnedSectionItems(
                                 pinned = orderedPinned,
@@ -445,7 +445,7 @@ fun ChatListScreen(
                             )
                         }
 
-                        // 文件夹(标题 + 每个文件夹独立 item,平铺懒加载)
+                        // carpeta(Título + independiente para cada carpeta item,Carga diferida de mosaicos)
                         if (folders.isNotEmpty()) {
                             foldersSectionItems(
                                 folders = folders,
@@ -462,7 +462,7 @@ fun ChatListScreen(
                             )
                         }
 
-                        // 最近(标题 + 每条会话独立 item,平铺懒加载)
+                        // Recientemente(Título + independiente para cada conversación item,Carga diferida de mosaicos)
                         recentSectionItems(
                             recent = recent,
                             folders = folders,
@@ -475,7 +475,7 @@ fun ChatListScreen(
                             onCreate = onCreate,
                         )
 
-                        // 知识库
+                        // base de conocimientos
                         item(key = "section_knowledge") {
                             KnowledgeEntryCard(
                                 docCount = docCount,
@@ -488,7 +488,7 @@ fun ChatListScreen(
             }
         }
 
-        // v1.69: 新建文件夹对话框
+        // v1.69: Diálogo de nueva carpeta
         if (showCreateFolderDialog) {
             MuseDialog(
                 onDismissRequest = { showCreateFolderDialog = false },
@@ -512,26 +512,26 @@ fun ChatListScreen(
                 onDismiss = { showCreateFolderDialog = false },
             )
         }
-    } // I3: 列表区错误边界收尾
+    } // I3: Finalización del límite de error del área de lista
 }
 
-/** 顶部问候标题 + 日期行 + 个性化提醒。 */
-@Suppress("LongParameterList") // Compose 参数只能平铺；合并成对象会让预览/重组更糟
+/** Título de saludo superior + línea de fecha + recordatorio personalizado. */
+@Suppress("LongParameterList") // Compose Los parámetros sólo se pueden colocar en mosaico; fusionarlos en objetos hará que la vista previa/La reorganización es peor
 @Composable
 private fun GreetingHeader(
     facts: List<FactEntity>,
-    /** v1.x: LLM 生成的个性化后缀(非空时优先展示,未生成则回退规则版)。 */
+    /** v1.x: LLM Sufijo personalizado generado(Mostrar primero cuando no está vacío,Si no se genera, volverá a la versión de la regla.). */
     personalizedHint: String? = null,
-    /** v1.x: 最近一天内的每日总结,优先于事件记忆提示展示。 */
+    /** v1.x: Resumen diario del último día.,Priorice la presentación de señales de memoria sobre los eventos. */
     dailySummaryText: String? = null,
     dailySummaryDate: String? = null,
-    /** v2.6.7 fix (AUDIT F8): 还有未完成待办的会话数（跨会话台账）。 */
+    /** v2.6.7 fix (AUDIT F8): También está el número de sesiones inacabadas (libro mayor de sesiones cruzadas). */
     openTodoSessionCount: Int = 0,
-    /** 当天是否已有会话；为 true 时不展示「今天还没聊」这类空态问候。 */
+    /** Si ya hay conversaciones ese día; cuando sea verdadero, no se mostrarán saludos vacíos como \"no he conversado hoy\". */
     hasSessionToday: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    // I18N-01: 问候语经资源解析(测试路径仍可直接调 GreetingHelper 中文回退)。
+    // I18N-01: Saludos Análisis de recursos(La ruta de prueba aún puede ajustar directamente el respaldo chino de GreetingHelper).
     val resources = LocalContext.current.resources
     Column(
         modifier = modifier
@@ -539,8 +539,8 @@ private fun GreetingHeader(
             .padding(top = 8.dp, bottom = 4.dp),
     ) {
         val timeGreeting = GreetingHelper.getTimeGreeting(res = resources)
-        // 当天已有会话时，剔除「今天还没聊什么」这类空态话术：
-        // 它是素材不足时的模板，与下方真实的会话记录直接矛盾。
+        // Cuando ya haya conversaciones ese día, elimina palabras vacías como "Aún no hemos hablado de nada":
+        // Es una plantilla para cuando no hay suficiente material y contradice directamente la transcripción de la conversación real a continuación.
         val rawSummaryHint = GreetingHelper.getDailySummaryHint(dailySummaryText, dailySummaryDate)
         val dailySummaryHint = if (hasSessionToday && rawSummaryHint != null && looksLikeEmptyDayHint(rawSummaryHint)) {
             null
@@ -555,24 +555,24 @@ private fun GreetingHeader(
             ),
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // v2.x: 日期行(替代"熟悉度"记忆计数行)——"9月27日 星期六"
+        // v2.x: línea de fecha(sustituto"familiaridad"línea de recuento de memoria)——"9mes27dia sabado"
         Text(
             text = GreetingHelper.getDateLine(res = resources),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp),
         )
-        // 每日总结和近期提醒各占一行。
-        // v2.7（用户反馈）：总结行不再限行/截断 —— 展示层不做二次压缩，
-        //   让文本自然换行、向下排布（下方内容依次下移）。长度由生成侧
-        //   （DailySummaryService 的提示词与 maxTokens）控制，不在 UI 里硬切。
+        // El resumen diario y los recordatorios recientes ocupan cada uno una línea.
+        // v2.7(Comentarios de los usuarios): Las líneas de resumen ya no están restringidas/Truncar —— La capa de visualización no realiza compresión secundaria.
+        //   Deje que el texto se ajuste naturalmente y fluya hacia abajo (el contenido a continuación se mueve hacia abajo a su vez). La longitud es generada por
+        //   (DailySummaryService Control de palabras rápidas y maxTokens, no integrado en la interfaz de usuario.
         val reminderHint = GreetingHelper.compactGreetingText(
             personalizedHint ?: memoryHint,
             GreetingHelper.PERSONALIZED_HINT_MAX_LENGTH,
         )
-        // CHAT-16: 收敛问候文案 — 副标题不再重复标题的时段问候(如「晚上好，今天过得怎么样？」去重为「今天过得怎么样？」)
+        // CHAT-16: Copia del saludo de convergencia — El subtítulo ya no repite los saludos de época del título.(Por ejemplo, "Buenas noches, ¿cómo estás hoy?" Reemplázalo con "¿Cómo estás hoy?")
         val dedupedReminderHint = reminderHint?.let { hint ->
-            val stripped = hint.removePrefix(timeGreeting).trimStart('，', ',', ' ').trim()
+            val stripped = hint.removePrefix(timeGreeting).trimStart(',', ',', ' ').trim()
             stripped.ifBlank { null }
         }
         if (!dailySummaryHint.isNullOrBlank()) {
@@ -591,8 +591,8 @@ private fun GreetingHeader(
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
-        // v2.6.7 fix (AUDIT F8): 跨会话未完成待办提醒。
-        // 只在没有更紧急的个性化提醒时展示，避免首页堆两行。
+        // v2.6.7 fix (AUDIT F8): Recordatorios de tareas pendientes en todas las sesiones.
+        // Muestra solo cuando no haya más recordatorios personalizados urgentes para evitar tener dos filas en la página de inicio.
         val openTodoHint = GreetingHelper.getOpenTodoHint(openTodoSessionCount, res = resources)
         if (!openTodoHint.isNullOrBlank() &&
             dedupedReminderHint.isNullOrBlank() &&
@@ -609,10 +609,10 @@ private fun GreetingHeader(
 }
 
 /**
- * v2.x: 我的伙伴横排 — 常用助手(启用状态)头像快捷入口。
+ * v2.x: Mi pareja es horizontal — Asistentes de uso común(Estado habilitado)Entrada rápida de avatar.
  *
- * 点击助手头像 → 以该助手开一个新聊天(回顾条负责"继续上次",本入口负责"开新聊")。
- * 末尾"+"为加伙伴入口。
+ * Haz clic en el avatar del asistente. → Abrir un nuevo chat con el asistente(El artículo de revisión es responsable de"Continuar desde la última vez",Esta entrada es responsable de"Abrir un nuevo chat").
+ * fin"+"Entrada para agregar socios.
  */
 @Composable
 private fun PartnerRow(
@@ -636,7 +636,7 @@ private fun PartnerRow(
                     .padding(2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // v2.x: 统一助手头像组件(图片→Emoji→首字三级回退,与全 app 一致)
+                // v2.x: Componente de avatar asistente unificado(fotos→Emoji→Reserva de tres niveles de la primera palabra,Consistente con toda la aplicación.)
                 io.zer0.muse.ui.common.media.AssistantAvatar(
                     assistant = assistant,
                     avatarSize = 52.dp,
@@ -652,7 +652,7 @@ private fun PartnerRow(
                 )
             }
         }
-        // 末尾"+" — 加伙伴(打开助手管理)
+        // fin"+" — Añadir un socio(Abrir asistente de gestión)
         Column(
             modifier = Modifier
                 .clip(MuseShapes.medium)
@@ -684,7 +684,7 @@ private fun PartnerRow(
 }
 
 /**
- * v2.x: 回顾条(候选A) — "💬 上次和 X 聊到「…」",整条可点直进最近会话。
+ * v2.x: tira de revisión(candidatoA) — "💬 La última vez que charlé con X, "…"",Puede hacer clic en el artículo completo para ir directamente a la última conversación.
  */
 @Composable
 private fun RecallBar(session: SessionEntity, assistantName: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -699,14 +699,14 @@ private fun RecallBar(session: SessionEntity, assistantName: String?, onSelect: 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            // v2.x: 与"最近"列表卡平齐(全宽,去左右边距)
+            // v2.x: con"Recientemente"Lista de tarjetas al ras(ancho completo,eliminar los márgenes izquierdo y derecho)
             .clip(MuseShapes.medium)
             .background(MaterialTheme.colorScheme.surface)
             .clickable { onSelect(session.id) }
             .padding(horizontal = MusePaddings.screen, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // v2.3.2: 撤回预览的图标标记走 muse-icons + 尺寸令牌(原为 emoji + 硬编码 14.sp)
+        // v2.3.2: Deshacer los tokens de íconos de vista previa lejos de los íconos de musa + tokens de tamaño(Originalmente emoji + codificado 14.sp)
         Icon(
             imageVector = MuseIcons.chat,
             contentDescription = null,
@@ -715,8 +715,8 @@ private fun RecallBar(session: SessionEntity, assistantName: String?, onSelect: 
         )
         Spacer(Modifier.width(10.dp))
         Text(
-            // 不再 take(18)：硬切会断在半句话且无省略号（Ellipsis 也没机会触发），
-            // 交给单行 Ellipsis 按实际宽度决定截断位置。
+            // no más take(18): El corte brusco dividirá en media oración sin puntos suspensivos (Ellipsis No hay posibilidad de activarlo),
+            // Asigne a la línea única Ellipsis el ancho real para determinar la posición de truncamiento.
             text = stringResource(R.string.chat_list_recall_format, name, preview),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
@@ -733,19 +733,19 @@ private fun RecallBar(session: SessionEntity, assistantName: String?, onSelect: 
     }
 }
 
-/** 全局输入条:浅色圆角背景 + 占位文字 + 绿色圆形发送按钮。 */
+/** Barra de entrada global:Fondo redondeado claro + texto de marcador de posición + botón de envío redondo verde. */
 @Composable
 private fun TaskInputBar(onSend: (String) -> Unit, modifier: Modifier = Modifier) {
-    // 前端修复 (持久化-3): 输入内容改 rememberSaveable,旋转/进程重建不丢草稿
+    // Correcciones en la interfaz (persistencia-3): Cambiar el contenido de entrada rememberSaveable,rotar/Reconstrucción de procesos sin perder borradores
     var text by rememberSaveable { mutableStateOf("") }
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            // v1.137 B5: 56dp → 48dp,降低任务页输入栏高度
+            // v1.137 B5: 56dp → 48dp,Reducir la altura del campo de entrada en la página de tareas
             .heightIn(min = 48.dp),
-        // CHAT-12: 输入岛圆角统一走令牌(48dp 高下 pill=24dp 与 huge 一致,显式用 huge)
+        // CHAT-12: Ingrese a la ficha para caminar unificada de esquina redondeada de la isla(48dp Alto o bajo pill=24dp igual que enorme,Usado explícitamente huge)
         shape = MuseShapes.huge,
-        // v2.0: 底色加深(用户反馈过淡)——与输入框统一的自适应混色规则
+        // v2.0: Oscurecer el fondo(Los comentarios de los usuarios son demasiado débiles.)——Reglas de mezcla de colores adaptables unificadas con el cuadro de entrada
         color = androidx.compose.ui.graphics.lerp(
             MaterialTheme.colorScheme.surfaceVariant,
             MaterialTheme.colorScheme.onSurface,
@@ -780,7 +780,7 @@ private fun TaskInputBar(onSend: (String) -> Unit, modifier: Modifier = Modifier
                     }
                 },
             )
-            // CHAT-11: 发送按钮统一 — 48dp 触控 + 36dp 主色圆(与单聊输入栏一致)
+            // CHAT-11: Botón enviar unificado — 48dp Toque + círculo de color principal de 36 dp(Igual que el campo de entrada de chat único)
             Box(
                 modifier = Modifier
                     .size(MuseIconSizes.touchTarget)
@@ -816,9 +816,9 @@ private fun TaskInputBar(onSend: (String) -> Unit, modifier: Modifier = Modifier
 }
 
 /**
- * 前端修复 (性能-1): section 标题 — 原 TaskSectionCard 的标题部分拆为独立
- * LazyColumn item。顶部自带 sectionGap 间距(原由 LazyColumn spacedBy 提供),
- * 使各区域首个 item 间距与改造前保持一致。
+ * Correcciones en la interfaz (Rendimiento-1): section Título — La parte del título de la TaskSectionCard original se divide en independientes
+ * LazyColumn item. La parte superior viene con espacio entre secciones.(Proporcionado originalmente por LazyColumn spacedBy),
+ * Haga que el espaciado del primer elemento en cada área sea consistente con el anterior a la transformación.
  */
 @Composable
 private fun TaskSectionTitle(title: @Composable () -> Unit) {
@@ -829,8 +829,8 @@ private fun TaskSectionTitle(title: @Composable () -> Unit) {
             Box(
                 modifier = Modifier
                     .padding(
-                        // 与 CardGroup 的分组标题保持同一基准：对齐卡片边线，
-                        // 避免同屏出现「资料」与「最近」两条不同左边缘。
+                        // Mantenga la misma línea base que el título del grupo CardGroup: alinee los bordes de la tarjeta,
+                        // Evite tener dos bordes izquierdos diferentes de "Datos" y "Recientes" en la misma pantalla.
                         start = MusePaddings.screen,
                         top = MusePaddings.sectionGap,
                         bottom = MusePaddings.labelVerticalGap,
@@ -844,8 +844,8 @@ private fun TaskSectionTitle(title: @Composable () -> Unit) {
 }
 
 /**
- * 前端修复 (性能-1): 分组卡片行容器 — 首项上圆角、末项下圆角、中间直角,
- * 背景 + 细边框模拟原"整组一张圆角卡片"外观。行间 0 间距由调用方保证。
+ * Correcciones en la interfaz (Rendimiento-1): Contenedor de filas de tarjetas agrupadas — La esquina superior del primer elemento, la esquina inferior del último elemento y el ángulo medio derecho,
+ * Fondo + simulación de borde fino original"Un juego completo de cartas con esquinas redondeadas."Apariencia. La persona que llama garantiza el espacio cero entre líneas.
  */
 @Composable
 private fun SectionGroupRow(index: Int, total: Int, content: @Composable ColumnScope.() -> Unit) {
@@ -873,9 +873,9 @@ private fun SectionGroupRow(index: Int, total: Int, content: @Composable ColumnS
 }
 
 /**
- * 前端修复 (性能-1): 置顶会话区 — LazyColumn 顶层平铺。
- * 标题单独 item;每条会话独立 items(key=id) item,懒加载渲染。
- * 拖拽排序行为保持:行内局部偏移 + 松手后回调 onReorderPinned。
+ * Correcciones en la interfaz (Rendimiento-1): Área de conversación fijada — LazyColumn La capa superior está embaldosada.
+ * título solo item;Cada sesión es independiente. items(key=id) item,Representación de carga diferida.
+ * Se mantiene el comportamiento de clasificación por arrastre:Desplazamiento local dentro de la fila + devolución de llamada onReorderPinned después de soltarlo.
  */
 private fun LazyListScope.pinnedSectionItems(
     pinned: List<SessionEntity>,
@@ -914,8 +914,8 @@ private fun LazyListScope.pinnedSectionItems(
 }
 
 /**
- * 前端修复 (性能-1): 置顶单行(含拖拽把手) — 原 PinnedTasksCard forEachIndexed
- * 主体提取为独立行组件,index 语义与原来一致(组内位置),拖拽逻辑原样保留。
+ * Correcciones en la interfaz (Rendimiento-1): Línea fijada(Incluye asa de arrastre) — Originales PinnedTasksCard forEachIndexed
+ * Cuerpo extraído como componente de fila independiente.,index La semántica es consistente con el original.(posición dentro del grupo),La lógica de arrastrar y soltar permanece intacta.
  */
 @Composable
 private fun PinnedTaskRow(
@@ -1019,7 +1019,7 @@ private fun LazyListScope.recentSectionItems(
         }
     } else {
         itemsIndexed(recent, key = { _, session -> "recent_${session.id}" }) { index, session ->
-            // E5 (H4): 最近会话区列表项入场/位移动画
+            // E5 (H4): Entrada de elementos de la lista del área de conversación reciente/animación de desplazamiento
             Box(museAnimateItem()) {
                 SectionGroupRow(index = index, total = recent.size) {
                     TaskItem(
@@ -1041,7 +1041,7 @@ private fun LazyListScope.recentSectionItems(
     }
 }
 
-/** 空状态提示项(最近列表无数据时显示)。 */
+/** Elemento de mensaje de estado vacío(Se muestra cuando no hay datos en la lista reciente). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EmptyPromptItem(onClick: () -> Unit) {
@@ -1079,7 +1079,7 @@ private fun EmptyPromptItem(onClick: () -> Unit) {
     }
 }
 
-/** 单个任务项:视觉行 + 左滑删除 + 右滑归档 + 长按菜单。 */
+/** elemento de tarea única:Fila visual + deslizar hacia la izquierda para eliminar + deslizar hacia la derecha para archivar + menú de pulsación larga. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskItem(
@@ -1098,14 +1098,14 @@ private fun TaskItem(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
 
-    // 这些文案会在非 @Composable 回调中使用,提前获取避免编译错误。
-    // U-7: 归档反馈换用含恢复入口提示的文案,避免归档看似不可逆
+    // Estos textos se utilizarán en devoluciones de llamada que no sean @Composable.,Anticípese a tiempo para evitar errores de compilación.
+    // U-7: Los comentarios de archivo se reemplazan con redacción que contiene mensajes de entrada de recuperación,Evite que el archivado parezca irreversible
     val archivedToast = stringResource(R.string.chat_list_archived_toast)
     val deletedToast = stringResource(R.string.chat_list_deleted_toast)
     val pinToast = stringResource(
         if (session.pinned) R.string.chat_list_unpin else R.string.chat_list_pin,
     )
-    // U-7: 归档菜单反馈同样附带恢复提示
+    // U-7: Los comentarios del menú de archivo también incluyen consejos de recuperación.
     val archiveToast = stringResource(R.string.chat_list_archived_toast)
     val movedToast = stringResource(R.string.chat_list_move_ungrouped)
 
@@ -1198,8 +1198,8 @@ private fun TaskItem(
 
     SwipeToDismissBox(
         state = dismissState,
-        // P2-9（审计报告）: 左滑删除/右滑归档从屏幕边缘起手会被系统返回手势抢走，
-        // 这里把左右边缘声明为排除区，保证横滑意图优先。
+        // P2-9(informe de auditoría): Desliza hacia la izquierda para eliminar/Deslizar hacia la derecha para archivar desde el borde de la pantalla será arrebatado por el gesto de retorno del sistema.
+        // Aquí, los bordes izquierdo y derecho se declaran como áreas de exclusión para garantizar que las intenciones de deslizamiento horizontal tengan prioridad.
         modifier = modifier.horizontalGestureExclusion(),
         backgroundContent = {
             val direction = dismissState.dismissDirection
@@ -1266,11 +1266,11 @@ private fun TaskItem(
                     overflow = TextOverflow.Ellipsis,
                 )
                 val preview = InternalMarkupSanitizer.stripForDisplay(session.lastMessagePreview)
-                    // v2.0.1: 清洗 [artifact:...] 内部标记 — 列表预览不再露出 "…[artifact:7b7a65c4-…]"
+                    // v2.0.1: limpio [artifact:...] marca interna — La vista previa de la lista ya no está expuesta "…[artifact:7b7a65c4-…]"
                     .replace(Regex("""\[artifact:[0-9a-fA-F-]{36}\]"""), "")
                     .replace(Regex("\\s+"), " ")
                     .trim()
-                // U-21: 最近 24h 内有更新的会话预览轻微强调(加粗 + 深色),不再与旧会话视觉同权
+                // U-21: Vistas previas de sesiones actualizadas en las últimas 24 horas ligeramente resaltadas(negrita + oscuro),Ya no tiene los mismos permisos que el objeto visual de sesión anterior.
                 val isRecentlyUpdated = System.currentTimeMillis() - session.updatedAt < TimeUnit.HOURS.toMillis(24)
                 Text(
                     text = if (preview.isNotBlank()) preview else formatTaskStatus(session),
@@ -1291,8 +1291,8 @@ private fun TaskItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                // LAYOUT-01: 尾部元信息槽（时间 + 箭头）按内容宽度排布，这里只限行、不取宽：
-                // 给本行文本加 weight 会让内层 Row 吃掉外层行宽，把左侧标题列挤没。
+                // LAYOUT-01: El espacio de metainformación de cola (hora + flecha) está organizado de acuerdo con el ancho del contenido. Aquí solo se limita a líneas y no toma el ancho:
+                // Agregar peso a esta fila de texto hará que la fila interior se coma el ancho de la fila exterior, exprimiendo la columna de título izquierda.
                 Text(
                     text = formatTime(session.updatedAt),
                     style = MaterialTheme.typography.bodySmall,
@@ -1311,7 +1311,7 @@ private fun TaskItem(
     }
 }
 
-/** 长按底部动作菜单。 */
+/** Mantenga presionado el menú de acciones inferior. */
 @Composable
 private fun TaskActionSheet(
     session: SessionEntity,
@@ -1325,16 +1325,16 @@ private fun TaskActionSheet(
 ) {
     MuseBottomSheet(
         onDismissRequest = onDismiss,
-        // UI-FIX(贴边): 原来把水平内边距压成 0，标题和操作卡片直接顶到屏幕边。
+        // UI-FIX(verdugón): Resulta que el relleno horizontal se presiona a 0 y el título y la tarjeta de acción se empujan directamente al borde de la pantalla.
         horizontalPadding = MusePaddings.screen,
         bottomContentSpacing = 0.dp,
     ) {
-        // MuseBottomSheet 统一负责唯一的纵向滚动；这里不能再嵌套 verticalScroll，
-        // 否则 Android Compose 会以无限高度测量并直接崩溃。
+        // MuseBottomSheet Responsable uniforme del único desplazamiento vertical; verticalScroll no se puede anidar aquí.
+        // De lo contrario, Android Compose medirá a una altura infinita y fallará directamente.
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // 标题
+            // Título
             Text(
                 text = sessionTitleText(session),
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -1345,7 +1345,7 @@ private fun TaskActionSheet(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
-            // 置顶 / 取消置顶
+            // Anclar/desanclar
             MuseActionSheetRow(
                 icon = MuseIcons.pin,
                 text = stringResource(
@@ -1356,7 +1356,7 @@ private fun TaskActionSheet(
                     onDismiss()
                 },
             )
-            // 重命名
+            // Cambiar nombre
             MuseActionSheetRow(
                 icon = MuseIcons.edit,
                 text = stringResource(R.string.chat_list_rename),
@@ -1365,7 +1365,7 @@ private fun TaskActionSheet(
                     onDismiss()
                 },
             )
-            // 归档
+            // Archivo
             MuseActionSheetRow(
                 icon = MuseIcons.archive,
                 text = stringResource(R.string.chat_list_archive),
@@ -1374,7 +1374,7 @@ private fun TaskActionSheet(
                     onDismiss()
                 },
             )
-            // 删除
+            // Eliminar
             MuseActionSheetRow(
                 icon = MuseIcons.trash,
                 text = stringResource(R.string.action_delete),
@@ -1384,7 +1384,7 @@ private fun TaskActionSheet(
                     onDismiss()
                 },
             )
-            // 移动到文件夹
+            // Mover a la carpeta
             if (folders.isNotEmpty() || session.folderId != null) {
                 Spacer(Modifier.height(8.dp))
                 MuseDivider(startIndent = 0.dp)
@@ -1415,8 +1415,8 @@ private fun TaskActionSheet(
 }
 
 /**
- * 前端修复 (性能-1): 文件夹区 — LazyColumn 顶层平铺。
- * 标题单独 item;每个文件夹独立 items(key=id) item,懒加载渲染。
+ * Correcciones en la interfaz (Rendimiento-1): área de carpeta — LazyColumn La capa superior está embaldosada.
+ * título solo item;Cada carpeta es independiente. items(key=id) item,Representación de carga diferida.
  */
 private fun LazyListScope.foldersSectionItems(
     folders: List<FolderEntity>,
@@ -1469,7 +1469,7 @@ private fun LazyListScope.foldersSectionItems(
     }
 }
 
-/** 单个文件夹项:点击展开/收起 + 长按重命名/删除。 */
+/** elemento de carpeta única:Haga clic para ampliar/Contraer + pulsación larga para cambiar el nombre/borrar. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderItem(
@@ -1580,8 +1580,8 @@ private fun FolderItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // LAYOUT-01: 会话计数徽标只限行、不取宽（外层 Row 的标题列已 weight(1f)，
-            // 这里的尾部槽位再取宽会反过来把它挤没）
+            // LAYOUT-01: El logotipo de recuento de sesiones es solo de fila y no toma ancho (la columna de título de la fila exterior tiene weight(1f),
+            // Cualquier ancho más ancho de la ranura de la cola aquí, a su vez, la apretará)
             Text(
                 text = folder.sessionCount.toString(),
                 style = MaterialTheme.typography.bodyLarge,
@@ -1598,12 +1598,12 @@ private fun FolderItem(
     }
 }
 
-/** 文件夹长按菜单。 */
+/** Menú de carpeta con pulsación larga. */
 @Composable
 private fun FolderActionSheet(folder: FolderEntity, onDismiss: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     MuseBottomSheet(
         onDismissRequest = onDismiss,
-        // 文件夹长按菜单与会话长按菜单保持一致（标准屏幕边距）。
+        // El menú de pulsación larga de la carpeta permanece coherente con el menú de pulsación larga de la sesión (márgenes de pantalla estándar).
         horizontalPadding = MusePaddings.screen,
         bottomContentSpacing = 0.dp,
     ) {
@@ -1641,7 +1641,7 @@ private fun FolderActionSheet(folder: FolderEntity, onDismiss: () -> Unit, onRen
     }
 }
 
-/** 知识库入口卡片。空状态显示添加提示，有文档时显示知识库名称。 */
+/** Tarjeta de entrada a la base de conocimientos. El estado vacío muestra solicitudes para agregar y muestra el nombre de la base de conocimientos cuando hay documentos. */
 @Composable
 private fun KnowledgeEntryCard(docCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     CardGroup(
@@ -1659,7 +1659,7 @@ private fun KnowledgeEntryCard(docCount: Int, onClick: () -> Unit, modifier: Mod
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        // CHAT-16: 统一"+"样式 — 图标区固定 Book,仅在尾部保留一个操作箭头/加号
+                        // CHAT-16: unificar"+"estilo — Área de iconos arreglada Book,Mantenga solo una flecha de acción al final/signo más
                         imageVector = MuseIcons.book,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1688,8 +1688,8 @@ private fun KnowledgeEntryCard(docCount: Int, onClick: () -> Unit, modifier: Mod
             },
             trailingContent = {
                 Icon(
-                    // 统一用箭头：空状态下卡片文案已经写着「点击添加文档」，
-                    // 尾部再挂一个 `+` 等于同一个动作说了两遂。
+                    // Utilice las flechas de manera uniforme: en el estado vacío, la copia de la tarjeta ya dice "Haga clic para agregar documento".
+                    // Cuelga otro al final. `+` Es como decir la misma acción dos veces.
                     imageVector = MuseIcons.arrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.outline,
@@ -1701,8 +1701,8 @@ private fun KnowledgeEntryCard(docCount: Int, onClick: () -> Unit, modifier: Mod
 }
 
 /**
- * CHAT-16: 会话标题兜底 — 空标题或占位省略号("…")一律回退为「新会话」。
- * 历史导入数据可能把标题存成 "…",直接显示像坏数据。
+ * CHAT-16: Título de la conversación — Título vacío o puntos suspensivos de marcador de posición("…")Siempre recurra a "nueva sesión".
+ * Los datos históricos importados pueden guardar el título como "…",Se muestra directamente como datos incorrectos.
  */
 @Composable
 private fun sessionTitleText(session: SessionEntity): String {
@@ -1710,27 +1710,27 @@ private fun sessionTitleText(session: SessionEntity): String {
     return io.zer0.muse.data.session.displaySessionTitle(session.title, fallback)
 }
 
-/** 任务状态推断(后端暂无状态字段,由前端按活动度推断)。 */
+/** Inferencia del estado de la tarea(No hay ningún campo de estado en el backend.,Inferido por la actividad desde el front-end). */
 private enum class TaskStatus { IN_PROGRESS, PENDING, COMPLETED }
 
 private fun inferTaskStatus(session: SessionEntity, now: Long): TaskStatus {
-    // 空会话 / 仅创建无消息 -> 待确认
+    // Vaciar sesión / Crear solo sin mensajes -> Por confirmar
     if (session.lastMessagePreview.isBlank() || session.messageCount <= 0) return TaskStatus.PENDING
     val dayMillis = TimeUnit.DAYS.toMillis(1)
     val threeDays = dayMillis * 3
-    // 3 天内有更新且消息数 >=2 -> 进行中
+    // 3 Número de actualizaciones y mensajes en días >=2 -> En progreso
     val age = (now - session.updatedAt).coerceAtLeast(0L)
     if (age < threeDays && session.messageCount >= 2) return TaskStatus.IN_PROGRESS
-    // 超过 3 天未更新 -> 已完成
+    // No actualizado en más de 3 días. -> Completado
     if (age >= threeDays) return TaskStatus.COMPLETED
-    // 其余 -> 待确认
+    // el resto -> Por confirmar
     return TaskStatus.PENDING
 }
 
 @Composable
 private fun TaskStatusDot(session: SessionEntity) {
-    // 状态点只表达会话生命周期，不再把“未读”粗暴染成红色。
-    // 未读数量已经由进入会话后的跳转提示表达，列表红点会让普通新消息看起来像错误。
+    // El punto de estado solo expresa el ciclo de vida de la sesión y ya no“no leído”Toscamente teñido de rojo.
+    // El recuento de no leídos ya se expresa en el mensaje de salto después de ingresar a la conversación, y el punto rojo en la lista hará que los mensajes nuevos comunes parezcan errores.
     val status = remember(session.id, session.updatedAt, session.messageCount) {
         inferTaskStatus(session, System.currentTimeMillis())
     }
@@ -1763,7 +1763,7 @@ private fun formatTaskStatus(session: SessionEntity): String {
     }
 }
 
-// H-CL1: SimpleDateFormat 提为文件级 lazy val 复用
+// H-CL1: SimpleDateFormat Promover la reutilización diferida de val a nivel de archivo
 private val chatListSdf by lazy {
     SimpleDateFormat(MuseDateFormats.DATE_TIME_SHORT, Locale.getDefault())
 }
@@ -1785,8 +1785,8 @@ private fun formatTime(timestamp: Long): String {
 }
 
 /**
- * U-7: 列表工具行 — 提供"已归档"与"编辑(多选)"两个入口。
- * 归档入口解决归档无入口、不可逆问题;编辑入口解决复数会话逐条长按成本高的问题。
+ * U-7: fila de herramientas de lista — proporcionar"Archivado"con"Editar(opción múltiple)"Dos entradas.
+ * La entrada de archivos resuelve el problema de la no entrada y la irreversibilidad de los archivos;El portal de edición resuelve el problema del alto costo de hacer clic durante mucho tiempo en varias sesiones una por una.
  */
 @Composable
 private fun ListToolbarRow(archivedCount: Int, onOpenArchived: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier) {
@@ -1807,14 +1807,14 @@ private fun ListToolbarRow(archivedCount: Int, onOpenArchived: () -> Unit, onEdi
     }
 }
 
-/** U-7/U-22: 工具行动作按钮(图标 + 文案)。 */
+/** U-7/U-22: Botón de acción de fila de herramientas(Icono + Copiar). */
 @Composable
 private fun ChatListToolbarAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = MuseShapes.medium,
-        // v2.0: 工具行属于次级操作 — 从主色实心降为 tonal(低饱和容器),
-        // 避免与发送键/选中态抢视觉权重(原先两个实心胶囊过重)。
+        // v2.0: La fila de herramientas es una operación secundaria. — Desde el color principal sólido hasta tonal(recipiente de baja saturación),
+        // Evitar con clave de envío/El estado seleccionado gana peso visual(Las dos cápsulas sólidas originales eran demasiado pesadas.).
         color = MuseActionColors.tonalContainer,
         contentColor = MuseActionColors.tonalContent,
         modifier = Modifier.heightIn(min = 36.dp),
@@ -1840,8 +1840,8 @@ private fun ChatListToolbarAction(icon: androidx.compose.ui.graphics.vector.Imag
 }
 
 /**
- * U-7: 已归档会话视图。顶部返回 + 标题,列表项带"恢复"按钮,
- * 复用 [onUnarchive](HomeScreen 已绑定 setSessionArchived(id, false))。
+ * U-7: Vista de conversación archivada. Volver al principio + título,lista de elementos de la banda"restaurar"botón,
+ * Reutilizar [onUnarchive](HomeScreen Atado setSessionArchived(id, false)).
  */
 @Composable
 private fun ArchivedSessionsList(
@@ -1853,7 +1853,7 @@ private fun ArchivedSessionsList(
 ) {
     val restoreToast = stringResource(R.string.chat_list_restored_toast)
     Column(modifier = modifier.fillMaxWidth()) {
-        // 顶部:返回 + 标题
+        // arriba:volver + titulo
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1905,7 +1905,7 @@ private fun ArchivedSessionsList(
     }
 }
 
-/** U-7: 已归档会话行 — 标题 + 时间 + 恢复按钮。点击行进会话,点恢复取消归档。 */
+/** U-7: Línea de conversación archivada — Título + hora + botón de reanudar. Haga clic para avanzar en la conversación,Haga clic en Restaurar para cancelar el archivo. */
 @Composable
 private fun ArchivedSessionRow(session: SessionEntity, onRestore: () -> Unit, onSelect: () -> Unit) {
     Row(
@@ -1945,8 +1945,8 @@ private fun ArchivedSessionRow(session: SessionEntity, onRestore: () -> Unit, on
 }
 
 /**
- * U-22: 多选编辑模式。顶栏提供"全选/删除/归档/退出",
- * 删除/归档循环执行 [onDeleteSelected]/[onArchiveSelected](复用单条 onDelete/onArchive)。
+ * U-22: Modo de edición de selección múltiple. La barra superior proporciona"Seleccionar todo/Eliminar/Archivo/Salir",
+ * Eliminar/Ejecución del ciclo de archivo [onDeleteSelected]/[onArchiveSelected](Reutilizar solo onDelete/onArchive).
  */
 @Composable
 private fun ChatListEditMode(
@@ -2020,7 +2020,7 @@ private fun ChatListEditMode(
     }
 }
 
-/** U-22: 多选模式下单个会话行 — 勾选态 + 标题 + 时间,点击切换选中。 */
+/** U-22: Línea de conversación única en modo de selección múltiple — Estado comprobado + título + hora,Haga clic para alternar la selección. */
 @Composable
 private fun EditModeRow(session: SessionEntity, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -2070,7 +2070,7 @@ private fun EditModeRow(session: SessionEntity, selected: Boolean, onClick: () -
     }
 }
 
-/** U-22: 多选顶栏动作按钮。 */
+/** U-22: Botón de acción de selección múltiple de la barra superior. */
 @Composable
 private fun ChatListEditAction(label: String, enabled: Boolean, onClick: () -> Unit) {
     Text(
@@ -2088,18 +2088,18 @@ private fun ChatListEditAction(label: String, enabled: Boolean, onClick: () -> U
 }
 
 /**
- * 判断一句问候是否属于「今天还没聊」这类空态模板。
+ * Determina si un saludo pertenece a una plantilla vacía como "Aún no he hablado hoy".
  *
- * 这类文案由 [io.zer0.muse.schedule.DailySummaryService] 在当日素材不足时写入，
- * 与「素材不足」等价，并不代表用户今天真的没聊天。首页在当天已有会话时
- * 应把它藏起来，避免和自己的会话列表自相矛盾。
+ * Este tipo de copia está escrita por [io.zer0.muse.schedule.DailySummaryService] Escribe cuando no haya material suficiente para el día,
+ * Equivale a "material insuficiente", no significa que el usuario realmente no haya chateado hoy. Cuándo hay sesiones en la página de inicio hoy
+ * Manténgalo oculto para evitar conflictos con su propia lista de conversaciones.
  */
 private fun looksLikeEmptyDayHint(text: String): Boolean {
     val markers = listOf(
-        "今天还没聊",
-        "今天还没有",
-        "今天还没有新的对话",
-        "想到什么随时找我",
+        "No he hablado hoy todavía",
+        "Todavía no hoy",
+        "No hay nuevas conversaciones hoy.",
+        "Ven a mí en cualquier momento si se te ocurre algo.",
     )
     return markers.any { text.contains(it) }
 }

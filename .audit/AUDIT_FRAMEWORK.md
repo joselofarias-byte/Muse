@@ -1,81 +1,81 @@
-# Muse 全链路审查 — 共享框架与去重基线（2026-10-10）
+# Muse Revisión completa del enlace — Marco compartido y línea base de deduplicación (2026-10-10)
 
-所有审查子代理必读。目的：本轮是多链路穷尽式审查，重点是**找新问题**，
-避免重复上报历史台账里已记录或已修复的项。
+Una lectura obligada para todos los subagentes revisores. Propósito: Esta ronda es una revisión exhaustiva de múltiples enlaces, centrándose en**encontrar nuevas preguntas**,
+Evite reportar repetidamente elementos que hayan sido registrados o reparados en el libro histórico.
 
-## 审查纪律
+## revisar la disciplina
 
-1. **只报验证过的发现**。每条发现必须给出：文件路径:行号、代码证据（引用关键代码）、
-   影响场景、严重级别建议（P0/P1/P2）。不确定的写成"待验证假设"并说明验证方法。
-2. **不得上报以下"已知项"**（见各链路去重清单）。上报前先对照本文件与各链路清单。
-3. **以代码为准**。文档/注释与代码不一致本身可作为发现，但要标注"文档漂移"。
-4. **区分"缺陷"与"设计取舍"**。代码注释里明确声明过的取舍（如 ProcessWriteGate 是
-   volatile 写前检查不是互斥锁、渠道 at-least-once 语义、STRICT 下 ALWAYS_ALLOW 设计）
-   不算发现，除非你发现该取舍的边界被突破（例如声称"已修"的地方又复发了）。
-5. **不修改任何文件**。纯审查，产物只有审查报告。
-6. 每条发现给一个可信度（高=代码直接证据；中=静态推断待复现；低=理论风险）。
+1. **Informar solo hallazgos verificados**. Se debe proporcionar a cada descubrimiento: ruta del archivo:Número de línea, evidencia de código (citando código clave),
+   Escenarios de impacto, recomendaciones de nivel de gravedad (P0/P1/P2). Incierto se escribe como"hipótesis a probar"Y explique el método de verificación.
+2. **No se informará lo siguiente"Artículos conocidos"**(Consulte la lista de deduplicación de cada enlace). Antes de enviarlo, compare este documento con la lista de enlaces.
+3. **Sujeto a código**. Documentación/Las inconsistencias entre los comentarios y el código pueden servir como hallazgos en sí mismas, pero deben tenerse en cuenta."Deriva del documento".
+4. **distinguir"Defectos"con"Compensaciones de diseño"**. Las compensaciones se indican explícitamente en los comentarios del código (por ejemplo, ProcessWriteGate es
+   volatile Las comprobaciones de escritura previa no son bloqueos mutex, canalizan la semántica al menos una vez,STRICT Siguiente diseño ALWAYS_ALLOW)
+   No cuenta como un descubrimiento a menos que descubra que se cruzan los límites de la compensación (por ejemplo, afirmar"Fijo"Se repitió nuevamente).
+5. **No modifique ningún archivo**. Pura reseña, el producto es sólo el informe de reseña.
+6. A cada hallazgo se le asigna un nivel de confianza (alto=Evidencia directa de código; medio=Es necesario reproducir la inferencia estática; bajo=riesgo teórico).
 
-## 项目速览
+## Resumen del proyecto
 
-- Android AI 伴侣应用，Kotlin + Compose，六模块 + accessibility-provider + virtual-display-*。
-  主仓库 `E:\1Project\Muse\1muse`。模块：ai（Provider/Model/流式/工具协议）、app（UI/渠道/
-  工具/调度/数据）、memory（FactDb v15/MemoryDb v5）、common、material3、accessibility。
-- 版本线 2.5.1/251；MuseDb v110。最新发行版 v2.5.8（A2A 1.0、Tasker、插件 Hook、诊断导出、
-  插件沙盒放开、子代理超时 240s）。
-- 最近主线：ChatViewModel 拆分重构（7483→5145 行，S1-S5 提取到 coordinator/transformer）。
+- Android AI aplicación complementaria,Kotlin + Compose, seis módulos + accessibility-provider + virtual-display-*.
+  almacén principal `E:\1Project\Muse\1muse`. Módulo:ai(Provider/Model/transmisión/acuerdo de herramienta),app(UI/canal/
+  Herramientas/Programación/datos),memory(FactDb v15/MemoryDb v5),common,material3,accessibility.
+- línea de versión 2.5.1/251;MuseDb v110. Última versión v2.5.8 (A2A 1.0,Tasker, complemento Hook, exportación de diagnóstico,
+  Se lanza la zona de pruebas del complemento y el tiempo de espera del subagente es de 240 segundos).
+- Línea principal reciente:ChatViewModel Refactorización dividida (7483→5145 Está bien,S1-S5 Extraído al coordinador/transformador).
 
-## 全局已知项（任何链路不得重复上报）
+## Artículos conocidos mundialmente (ningún vínculo debe informarse repetidamente)
 
-1. **渠道外部发送 at-least-once**：外部平台已接受发送但本地完成状态落盘前崩溃可能重复发送；
-   工具副作用提交后 checkpoint 落盘前无法通用 exactly-once。设计边界，已明确声明。
-2. **ProcessWriteGate 是 volatile 写前检查**，不是互斥读写锁；恢复开始与单次 DAO 写之间的
-   极窄竞态已知；真实进程死亡/跨库回滚、WorkManager/Doze、实体设备验收仍缺（已知待验收）。
-3. **模拟器/实体设备、WorkManager/Doze instrumentation、真实 Provider/MCP/渠道网络矩阵验收缺失**
-   ——"缺设备验收"本身不算发现；只报代码层面可证实的缺陷。
-4. **Provider 旧 EventSource retry race 仍需独立 fixture 验证**（已知）。
-5. **五个非英语语言包各缺 101 个翻译**（已知）；报告里凡写"非中文/非英语语言包缺翻译"一律不算新发现。
-6. **detekt 结构性债务**（LargeClass/CyclomaticComplexMethod/LongParameterList/NestedBlockDepth，
-   台账 3497）与 ktlint/lint 存量告警——不算发现。
-7. **上下文压缩剩 8 条待排期**（HANDOFF §4.9 清单）、**devdocs 语义检索缺口已修**（BuiltInKnowledgeDocSeeder
-   ensureIndexed 已落地）、**主知识库页与 F-31 导入口径不一致、并入流式导入未做**（已知）。
-8. **MemoryDb 高版本归档无应用内浏览/恢复入口**（已知）。
-9. **TalkBack/主题对比度需设备或矩阵验证**（已知缺验证，不算新发现）。
-10. **AI 能力目录 schema**：`toolUse` 缺省 ≠ 不支持 的缺省语义已修（缺省=未声明按支持保留）；
-    只报新出现的目录/解析缺口。
-11. **安全已修**：webhook 默认关闭、飞书验签/QQ 签名缺失 fail-closed、TRUSTED 下 ui_* 审批、
-    加密云备份不静默降级明文、飞书加密 webhook 明确返回不支持、无障碍转储滤密码节点、
-    OAuth 日志脱敏、渠道工具风险真源 fail-closed。
-12. **插件沙盒放开是 v2.5.8 的产品决策**（fetch/XHR/WebSocket 与桥接全放行，导航仍禁，
-    file:// 与 content:// 仍隔离）——沙盒放开本身不算发现；但放开**实现里**的越权漏洞算。
-13. **诊断导出不记录消息正文与 API key、sessionId 哈希脱敏**是既定红线，检查其实现是否达标可以，
-    "缺日志"不算发现。
+1. **Enviar canal externo at-least-once**: La plataforma externa aceptó el envío, pero el estado de finalización local falla antes de que se coloque el estado de finalización local y puede enviarse repetidamente;
+   Una vez enviado el efecto secundario de la herramienta, el punto de control no se puede utilizar exactamente una vez antes de su lanzamiento. Límites del diseño, claramente establecidos.
+2. **ProcessWriteGate es un cheque volátil antes de escribir**, no es un bloqueo de lectura y escritura mutuamente excluyente; el tiempo entre el inicio de la recuperación y una única escritura DAO
+   Se conoce una condición de carrera extremadamente estrecha; el proceso real muere/Reversión entre bases de datos,WorkManager/Doze, Aún falta la aceptación del equipo físico (se sabe que es aceptado).
+3. **emulador/equipo físico,WorkManager/Doze instrumentation, Falta la aceptación de matriz de red de proveedor/MCP/canal real**
+   ——"Falta de aceptación del equipo."No es un descubrimiento en sí mismo; sólo se informan defectos verificables a nivel de código.
+4. **Provider La antigua carrera de reintento de EventSource todavía requiere una verificación independiente del dispositivo**(conocido).
+5. **A cinco paquetes de idiomas distintos del inglés les faltan 101 traducciones**(conocido); escrito en el informe"No chino/Faltan traducciones para paquetes de idiomas distintos del inglés"No es un descubrimiento nuevo en absoluto.
+6. **detekt deuda estructurada**(LargeClass/CyclomaticComplexMethod/LongParameterList/NestedBlockDepth,
+   Ledger 3497) y alarma de inventario klint/lint——No es un descubrimiento.
+7. **La compresión del contexto deja 8 elementos por programar**(HANDOFF §4.9 lista),**devdocs Se ha solucionado la brecha de recuperación semántica.**(BuiltInKnowledgeDocSeeder
+   ensureIndexed ha aterrizado),**La página principal de la base de conocimientos no coincide con el diámetro de importación del F-31 y no se ha realizado la integración en la importación en streaming.**(conocido).
+8. **MemoryDb No hay navegación dentro de la aplicación para archivos de versión alta/restaurar la entrada**(conocido).
+9. **TalkBack/El contraste del sujeto requiere verificación del dispositivo o de la matriz**(Se sabe que carece de verificación y no se considera un descubrimiento nuevo).
+10. **AI Catálogo de competencias schema**:`toolUse` Predeterminado ≠ Se ha corregido la semántica predeterminada de no admitir (predeterminada=No declarado reservado por soporte);
+    Informar solo de directorios nuevos/Analiza la brecha.
+11. **La seguridad ha sido arreglada.**:webhook Cerrado por defecto, verificación de firma Feishu/QQ Falta firma fallida cerrada,TRUSTED abajo ui_* aprobación,
+    La copia de seguridad cifrada en la nube no degrada silenciosamente el texto sin formato, el webhook cifrado Feishu devuelve explícitamente un nodo de contraseña de filtro de volcado sin barreras y no compatible.
+    OAuth La desensibilización de registros y el riesgo de herramientas de canal están cerrados ante fallos.
+12. **El lanzamiento del complemento Sandbox es una decisión de producto de la versión 2.5.8.**(fetch/XHR/WebSocket Todas las conexiones con el puente están permitidas, pero la navegación sigue deshabilitada.
+    file:// todavía aislado del contenido: //)——Dejar ir la caja de arena no es en sí mismo un descubrimiento; pero el dejar ir**En implementación**La laguna jurídica ultra vires cuenta.
+13. **La exportación de diagnóstico no registra el cuerpo del mensaje ni la clave API,sessionId Desensibilización al hachís**Es una línea roja fija. Está bien comprobar si su implementación cumple con los estándares.
+    "Registro faltante"No es un descubrimiento.
 
-## 已确认历史 P1 未解决项（HANDOFF §11 记录，可引用其编号，不算新发现，但可补充新证据）
+## Partidas abiertas históricas P1 confirmadas (HANDOFF §11 Registros, se pueden citar sus números, no es un descubrimiento nuevo, pero se pueden agregar nuevas evidencias)
 
-P1 #1/#3-6（预算、压缩计量、SSE、prompt cache、能力真源）、#11、#13-16/#18-19、#20-31
-（不含已修的 #7/#8/#10/#12）、#32/#34-41、#43-45、#47-48、#50；
-渠道剩余边界见全局已知 1；C3 两个 UI 扫描器探测能力不足；
-CDN 镜像 404 与证书续期属外部运维。
+P1 #1/#3-6(presupuesto, medición de compresión,SSE,prompt cache, la verdadera fuente de habilidad),#11,#13-16/#18-19,#20-31
+(Excluyendo los revisados #7/#8/#10/#12),#32/#34-41,#43-45,#47-48,#50;
+Para conocer el límite restante del canal, consulte Global conocido 1;C3 Capacidades de detección insuficientes de ambos escáneres de UI;
+CDN La duplicación 404 y la renovación de certificados son operaciones y mantenimiento externos.
 
-## 输出格式
+## Formato de salida
 
 ```markdown
-# <链路名> 审查报告
+# <nombre del enlace> informe de revisión
 
-## 摘要
-（3-5 句：审查范围、方法、总体结论）
+## Resumen
+(3-5 Frase: alcance de la revisión, métodos, conclusión general)
 
-## 发现清单
-### F1. <标题>（P1，可信度：高）
-- 位置：path/to/file.kt:123-145
-- 证据：<引用关键代码>
-- 影响：<什么场景下出什么问题>
-- 建议：<修复方向，一句话>
+## lista de descubrimiento
+### F1. <Título>(P1, credibilidad: alta)
+- Ubicación:path/to/file.kt:123-145
+- Evidencia:<Código clave de cotización>
+- Impacto:<¿Qué problema ocurre en qué escenario?>
+- Sugerencias:<Dirección de reparación, en una frase.>
 
 ...
 
-## 已知项核对
-（列出你核对过、确认不重复上报的历史项）
+## Comprobando elementos conocidos
+(Enumere los elementos históricos que haya verificado y confirmado que no se informarán repetidamente)
 ```
 
-发现按严重级别排序：P0（安全/数据丢失/崩溃）> P1（功能错误/可靠性）> P2（质量/体验）。
+Hallazgos ordenados por gravedad:P0(seguro/pérdida de datos/accidente)> P1(Error de función/confiabilidad)> P2(Calidad/experiencia).

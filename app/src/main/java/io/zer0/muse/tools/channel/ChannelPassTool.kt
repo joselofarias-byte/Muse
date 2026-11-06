@@ -4,34 +4,34 @@ import io.zer0.muse.tools.ToolRegistry
 import io.zer0.muse.tools.ToolRiskLevel
 
 /**
- * 群聊跳过工具 — Phone Session 模式下 agent 选择本轮不发言。
+ * Herramienta para omitir chat grupal — Phone Session En modo, el agente elige no hablar en esta ronda.
  *
- * 设计:
- *  - agent 必须在 channel_reply / channel_pass / channel_read_context 三者中
- *    至少调用一个表态,否则触发 repair attempt(重试 1 次)
- *  - 调用此工具即明确表态"本轮不发言",由调用方记录 activity
- *  - 可选 reason 参数,用于调试 / 审计为什么不发言
+ * diseño:
+ *  - agent debe estar en channel_reply / channel_pass / channel_read_context entre los tres
+ *    Llame al menos a una declaración,De lo contrario desencadenar repair attempt(Reintentar 1 vez)
+ *  - Llame a esta herramienta para dejar clara su postura"No hables esta ronda",Registrado por la persona que llama activity
+ *  - Parámetro de motivo opcional,Usado para depurar/auditar por qué no hablar
  *
- * 与 SkillExecutor 中已有的 channel_pass 区别:
- *  - SkillExecutor 版本:LLM 传 chatId/assistantId,主会话可调
- *  - 此版本:不接收 chatId/assistantId 参数,框架层绑定,
- *    只供群聊 Phone Session 使用
+ * Diferencia con el canal_pass existente en SkillExecutor:
+ *  - SkillExecutor versión:LLM pasar chatId/assistantId,Sesión principal ajustable
+ *  - esta versión:No acepta parámetros chatId/assistantId,Unión de capas de marco,
+ *    Solo para uso de sesión telefónica de chat grupal
  */
 class ChannelPassTool(
     private val onPass: suspend (reason: String?) -> Unit,
 ) {
 
     /**
-     * 工具定义。
+     * Definición de herramienta.
      *
-     * reason 为可选参数,LLM 可说明为什么不发言,便于调试与审计。
+     * reason es un parámetro opcional,LLM Puedo explicar por qué no hablas,Fácil de depurar y auditar.
      */
     fun toolDef() = ToolRegistry.ToolDef(
         name = "channel_pass",
-        description = "本轮选择不发言。如果你觉得没有必要回复,或想等其他成员先说,请调用此工具。" +
-            "你可以提供 reason 说明为什么不发言(可选)。",
+        description = "Elige no hablar en esta ronda. Si crees que no es necesario responder,O quieres esperar a que otros miembros hablen primero.,Por favor llame a esta herramienta." +
+            "Puedes dar una razón de por qué no hablas.(Opcional).",
         parameters = mapOf(
-            "reason" to "可选。不发言的原因,便于调试与审计",
+            "reason" to "Opcional. Razón para no hablar,Fácil de depurar y auditar",
         ),
         required = emptySet(),
         category = "built-in",
@@ -39,14 +39,14 @@ class ChannelPassTool(
     )
 
     /**
-     * 执行工具:取出可选的 reason,通过 [onPass] 回调通知调用方。
+     * herramienta de ejecución:sacar opcional reason,Pase [onPass] La devolución de llamada notifica a la persona que llama.
      *
-     * @param args 工具参数,LLM 传入的 arguments JSON 解析后的 map
-     * @return 执行结果字符串
+     * @param args Parámetros de la herramienta,LLM Los argumentos entrantes JSON analizados map
+     * @return Cadena de resultado de ejecución
      */
     suspend fun execute(args: Map<String, String>): String {
         val reason = args["reason"]?.trim()?.takeIf { it.isNotBlank() }
         onPass(reason)
-        return "已跳过本轮"
+        return "Esta ronda se ha saltado"
     }
 }

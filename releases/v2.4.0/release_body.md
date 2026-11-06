@@ -1,47 +1,47 @@
 # Muse v2.4.0
 
-这是一次从 v2.3 系列持续演进而来的大型更新，重点完成了手机 Agent、Node/npm 本地运行时、MCP 扩展、记忆与知识库可靠性、语音输入和对话恢复等多条核心链路的升级。
+Esta es una actualización a gran escala que continúa evolucionando a partir de la serie v2.3. Se centra en completar el Agente celular,Node/npm Cuando se ejecuta localmente,MCP Actualizaciones a múltiples enlaces principales, como expansión, memoria y confiabilidad de la base de conocimientos, entrada de voz y recuperación de diálogos.
 
-## 新能力
+## nuevas capacidades
 
-- **手机 Agent 全面增强**：从单步 UI 操作扩展到可观察、可验证、可恢复的多步骤手机工作流。Agent 可以读取控件树和屏幕状态，按文本或 resource-id 查找控件，支持滚动查找、点击后验证，并在失败或副作用不确定时停止自动重放。
-- **后台虚拟屏操作**：支持在独立虚拟屏中启动应用、读屏、点击、滑动、输入文字、发送按键和等待，不必占用用户当前前台；虚拟屏读屏会严格绑定 display，避免把主屏误当成后台屏。
-- **应用控制面**：新增列出应用、启动应用、打开应用设置、强停、清除数据和卸载等受控能力，按权限层级自动降级，并对系统应用、Muse 自身和危险操作设置安全边界。
-- **设备能力档案**：Agent 在行动前会先了解当前设备的无障碍、Shell、Root、截图、虚拟屏和 Node 能力，再选择合适的执行通道，减少盲目试错。
-- **Node/npm 本地沙盒**：应用内置 Node.js 与 npm 运行环境，可在 Muse 自己的沙盒中运行脚本、使用本地 npm 模块和处理文件/网络任务；高风险脚本仍受审批和超时限制。
-- **MCP stdio 与终端扩展**：MCP 除网络传输外支持本地 stdio server，内置文件系统、记忆图和顺序思考模板；终端也能直接使用应用内 Node 运行时。运行时自检覆盖 Node 执行、JavaScript、动态库、TLS、npm 和脚本链接等关键环节。
-- **知识库文件夹**：知识库支持类似文件管理器的虚拟文件夹，可以浏览、移动和按目录查看文档；ZIP 导入会保留压缩包内部目录结构。
+- **Mejora integral del Agente celular**: Amplíe desde operaciones de interfaz de usuario de un solo paso hasta flujos de trabajo celulares de varios pasos observables, verificables y recuperables.Agent Puede leer árboles de control y estados de pantalla, buscar controles por texto o ID de recurso, admitir búsquedas de desplazamiento, validación posterior al clic y detener la reproducción automática en caso de falla o efectos secundarios no especificados.
+- **Operación de pantalla virtual en segundo plano**: Admite iniciar aplicaciones, leer la pantalla, hacer clic, deslizar, ingresar texto, enviar pulsaciones de teclas y esperar en una pantalla virtual independiente sin ocupar el primer plano actual del usuario; La lectura de la pantalla en la pantalla virtual estará estrictamente vinculada a la pantalla para evitar confundir la pantalla principal con la pantalla de fondo.
+- **plano de control de aplicaciones**: capacidades controladas recientemente agregadas, como enumerar aplicaciones, iniciar aplicaciones, abrir configuraciones de aplicaciones, detención forzada, borrar datos y desinstalar, degradar automáticamente según los niveles de permiso y controlar aplicaciones del sistema.Muse Establezca límites de seguridad para usted y para las operaciones peligrosas.
+- **Perfil de capacidad del dispositivo**:Agent Antes de tomar medidas, primero comprenderá la accesibilidad del dispositivo actual,Shell,Root, capturas de pantalla, pantallas virtuales y capacidades de Nodo, y luego seleccione el canal de ejecución apropiado para reducir la prueba y el error ciegos.
+- **Node/npm caja de arena local**: La aplicación tiene entornos de ejecución Node.js y npm integrados. Puede ejecutar scripts, utilizar módulos npm locales y procesar archivos en el entorno limitado de Muse./Tareas de red; Los scripts de alto riesgo todavía están sujetos a aprobaciones y tiempos de espera.
+- **MCP stdio con extensión de terminal**:MCP Además de la transmisión por red, admite servidor stdio local, sistema de archivos integrado, gráfico de memoria y plantilla de pensamiento secuencial; el terminal también puede utilizar directamente el tiempo de ejecución del nodo en la aplicación. La autoprueba en tiempo de ejecución cubre la ejecución del nodo,JavaScript, biblioteca dinámica,TLS,npm y enlaces de scripts y otros enlaces clave.
+- **Carpeta de la base de conocimientos**: La base de conocimientos admite carpetas virtuales similares a los administradores de archivos, lo que le permite explorar, mover y ver documentos por directorio;ZIP La importación preservará la estructura de directorios internos del paquete comprimido.
 
-## 记忆与对话
+## memoria y dialogo
 
-- **助手记忆隔离**：不同助手默认使用自己的事实、编译记忆和近期上下文；全局记忆由助手级共享设置控制，减少“只和另一个助手说过却被新助手知道”的串记忆问题。
-- **记忆删除一致性**：事实、全文索引和记忆关系图谱边在同一事务中删除，避免删掉正文却留下搜索结果或关系边。
-- **记忆自动保存更可靠**：空响应、调用失败和 JSON 解析失败不会被误记为成功；失败会保留后续补跑机会，指纹窗口也与实际发送给模型的内容保持一致。
-- **长对话不再静默失忆**：改进滚动摘要、历史分块、工具回合压缩、摘要净收益判断和会话排序，保留关键助手说明与工具结果。
-- **消息恢复更安全**：outbox、用户消息和首个 generation checkpoint 的提交顺序更加严格；恢复和重试保持 messageId、计数、预览和更新时间幂等，避免重复生成或会话列表被错误顶到顶部。
-- **工具回合展示更连贯**：客户端工具调用后的续答不会重复堆叠同一轮思考元数据；时间间隔问题使用相邻真实用户消息的时间，而不是把模型思考或工具调用耗时当成用户等待时间。
+- **Aislamiento de memoria del asistente**: Diferentes asistentes utilizan sus propios datos, memoria compilada y contexto reciente de forma predeterminada; La memoria global está controlada por configuraciones compartidas a nivel de asistente, lo que reduce“Sólo se lo conté a otro asistente pero el nuevo asistente se enteró.”problema de memoria de cadena.
+- **Consistencia amnésica**: Los hechos, los índices de texto completo y los bordes del gráfico de relaciones de memoria se eliminan en la misma transacción para evitar eliminar el texto pero dejar resultados de búsqueda o bordes de relaciones.
+- **El ahorro automático de memoria es más confiable**: Las respuestas vacías, las llamadas fallidas y los fallos de análisis JSON no se registrarán erróneamente como éxitos; las fallas conservarán las oportunidades de recuperación posteriores y la ventana de huellas dactilares también será consistente con el contenido realmente enviado al modelo.
+- **Las largas conversaciones ya no conducen a una amnesia silenciosa**: Resumen de desplazamiento mejorado, fragmentación del historial, compresión de rondas de herramientas, juicio resumido de beneficios netos y clasificación de sesiones, conservando descripciones clave de asistentes y resultados de herramientas.
+- **La recuperación de mensajes es más segura**:outboxEl orden de envío de los mensajes de los usuarios y el punto de control de primera generación es más estricto; la recuperación y el reintento mantienen el ID del mensaje, el recuento, la vista previa y el tiempo de actualización idempotentes para evitar la generación repetida o que la lista de sesiones se coloque en la parte superior por error.
+- **La herramienta hace que la presentación sea más consistente**: La respuesta continua después de la llamada a la herramienta del cliente no acumulará repetidamente la misma ronda de metadatos de pensamiento; la pregunta sobre el intervalo de tiempo utiliza el tiempo de mensajes de usuarios reales adyacentes en lugar de tratar el tiempo dedicado a pensar en modelos o llamar a herramientas como tiempo de espera del usuario.
 
-## 知识库与 RAG
+## base de conocimientos y RAG
 
-- **混合检索回退**：向量检索失败或熔断时，优先从知识库 chunk 的 FTS/BM25 检索实际片段，不再只搜索文档预览，长文后半段也能被召回。
-- **文档隔离与安全过滤**：内部文档、定向文档范围和元数据过滤在向量、FTS 与回退路径保持一致；元数据读取失败时采用 fail-closed，避免内部资料意外注入上下文。
-- **流式索引可回滚**：索引替换中途失败、取消或维度不匹配时，旧索引尽量保留；已经开始替换后失败会清理 DB、FTS 和 HNSW 的部分结果，并同步重置文档索引状态。
-- **导入元数据完整**：导入成功后记录内容哈希和 embedding 配置，支持同内容跳过与模型切换检测；大文件哈希按读取分片增量计算，避免重新载入全文。
-- **注入预算一致**：知识片段的预算计算和真正写入 system prompt 的文本使用同一段截断内容，避免完整长 chunk 绕过预算挤压对话上下文。
+- **Respaldo de búsqueda mixta**: Cuando la recuperación del vector falla o se interrumpe, los fragmentos reales se recuperan primero del FTS/BM25 del fragmento de la base de conocimientos. En lugar de buscar únicamente vistas previas de documentos, también se puede recuperar la segunda mitad de documentos largos.
+- **Aislamiento de documentos y filtrado de seguridad.**: Documentos internos, ámbitos de documentos dirigidos y filtrado de metadatos en vectores.FTS Sea coherente con el camino alternativo; utilice el cierre fallido cuando la lectura de metadatos falle para evitar la inyección accidental de datos internos en el contexto.
+- **Los índices de transmisión se pueden revertir**: Cuando el reemplazo del índice falla, se cancela o las dimensiones no coinciden, el índice anterior se conservará tanto como sea posible; Si el reemplazo falla después de haber comenzado, se limpiará la base de datos.FTS y resultados parciales de HNSW, y simultáneamente restablece el estado del índice del documento.
+- **Importación de metadatos completada**: Registre el hash de contenido y la configuración de incrustación después de una importación exitosa, admita la detección de omisión y cambio de modelo del mismo contenido; El hash de archivos grandes se calcula en función del incremento del fragmento leído para evitar recargar el texto completo.
+- **El presupuesto de inyección es consistente**: El cálculo del presupuesto del fragmento de conocimiento y el texto realmente escrito en el mensaje del sistema utilizan el mismo contenido truncado para evitar que la parte larga y completa pase por alto el contexto del diálogo de reducción del presupuesto.
 
-## 语音与外部服务
+## Servicios de voz y externos
 
-- **语音识别生命周期统一**：Step、Whisper、DashScope 和 Realtime 控制器都支持幂等 dispose，释放后不会重新进入 Connecting 或启动假会话。
-- **语音结果不乱序**：分段 flush 与停止录音的最终 flush 共用串行锁，旧 controller 的迟到回调会被 generation 和实例身份校验丢弃；退出语音对话时会彻底取消监听。
-- **识别失败可恢复**：Whisper 分段失败会保留音频段并按上限重试，避免最终 flush 失败时静默丢掉最后一句；多句英文 transcript 之间也会保留可读空格。
-- **NewAPI / OpenAI 兼容服务诊断**：仅填写中转站域名时自动补齐常见 `/v1` API 路径；模型列表接口返回网页而不是 JSON 时，会明确提示检查 API 基址、代理路由和网页防护，而不是只显示解析失败。
-- **OAuth 与渠道安全**：OAuth 错误日志不再记录原始响应体；渠道媒体清理会保护仍被收件箱和历史消息引用的文件；渠道游标、对话和 Agent checkpoint 的恢复边界更加明确。
+- **Unificación del ciclo de vida del reconocimiento de voz.**:Step,Whisper,DashScope Tanto el controlador Realtime como el controlador Realtime admiten eliminación idempotente, que no volverá a conectarse ni iniciará una sesión falsa después del lanzamiento.
+- **Los resultados de voz no están desordenados**: La descarga segmentada comparte el bloqueo en serie con la descarga final que deja de grabar. Las devoluciones de llamada tardías del controlador anterior se descartarán mediante la generación y la verificación de identidad de la instancia; La monitorización se cancelará por completo al salir de la conversación de voz.
+- **Recuperable si falla el reconocimiento**:Whisper Si la segmentación falla, el segmento de audio se retendrá y se volverá a intentar de acuerdo con el límite superior para evitar descartar silenciosamente la última oración cuando falle la descarga final; También se conservarán espacios legibles entre varias transcripciones en inglés.
+- **NewAPI / OpenAI Diagnóstico de servicio compatible**: La finalización automática es común cuando solo se ingresa el nombre de dominio de la estación de transferencia. `/v1` API Camino; cuando la interfaz de la lista de modelos devuelve una página web en lugar de JSON, solicitará explícitamente verificar la dirección base de la API, el enrutamiento del proxy y la protección de la página web en lugar de simplemente mostrar un error de análisis.
+- **OAuth y seguridad del canal**:OAuth El registro de errores ya no registra el cuerpo de la respuesta original; la limpieza de medios del canal protege los archivos a los que todavía hace referencia la bandeja de entrada y los mensajes históricos; Los límites de recuperación de los cursores de canales, las conversaciones y los puntos de control de los agentes son más claros.
 
-## 体验与质量
+## Experiencia y calidad
 
-- 修复大字体或窄屏下 Row 文案被压成一两个字的布局问题，并加入 LAYOUT-01 门禁。
-- 补齐知识库、助手记忆、Agent 工作流、语音、工具权限、数据库迁移和恢复路径的回归测试。
-- 更新 Kotlin/Compose 代码质量门禁、基线和多语言检查；正式候选包已通过五条本地 lane、发布脚本门禁、签名校验和版本校验。
+- Se solucionó el problema de diseño por el cual la copia de fila se comprimía en una o dos palabras en fuentes grandes o pantallas estrechas, y se agregó control de acceso DISEÑO-01.
+- Base de conocimientos completa, asistente de memoria,Agent Pruebas de regresión de flujo de trabajo, voz, permisos de herramientas, migraciones de bases de datos y rutas de recuperación.
+- Puertas de calidad de código Kotlin/Compose actualizadas, líneas de base y comprobaciones en varios idiomas; el paquete candidato oficial ha pasado cinco carriles locales, puertas de script de lanzamiento, verificación de firma y verificación de versión.
 
 ---
 

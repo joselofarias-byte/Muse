@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    v2.2.1: 无障碍独立 Provider APK。
+    v2.2.1: APK de proveedor independiente accesible.
 
-    设计目标: 把无障碍服务从主应用拆出来独立分发 —— 主应用更新/重装/被杀时,
-    无障碍服务(系统托管的组件)不受影响,UI 自动化能力不掉线。
+    objetivos de diseño: Separe los servicios de accesibilidad de la aplicación principal y distribúyalos de forma independiente —— Actualización de la aplicación principal/Reinstalar/cuando lo matan,
+    Servicios de accesibilidad(Componentes gestionados por el sistema)no afectado,UI Las capacidades de automatización no se eliminan.
 
-    组成:
-     1. A11yProviderAccessibilityService — 无障碍服务本体(继承 :accessibility 共享实现),
-        由系统绑定,在系统设置中显示为独立的"Muse UI 自动化"授权项;
-     2. A11yBridgeService — AIDL 桥接服务,把同进程的服务实例通过
-        IAccessibilityProvider 暴露给同签名的 Muse 主应用(signature 级权限护栏)。
+    composición:
+     1. A11yProviderAccessibilityService — Ontología del servicio de accesibilidad(Heredar: implementación compartida de accesibilidad),
+        obligado por el sistema,Se muestra como independiente en la configuración del sistema."Muse UI Automatización"Artículos de autorización;
+     2. A11yBridgeService — AIDL servicio puente,Pasar la instancia de servicio del mismo proceso.
+        IAccessibilityProvider Expuesto a la aplicación principal de Muse con la misma firma.(signature Barandilla de permiso de nivel).
 
-    注意: 主应用的旧授权项(MuseAccessibilityService@主应用)与本 APK 的授权项并存,
-    迁移期双路绑定由主应用侧负责(provider 优先、应用内服务兜底)。
+    Nota: Derechos antiguos para la aplicación principal(MuseAccessibilityService@aplicación principal)Coexistiendo con los elementos de autorización de este APK,
+    La parte principal de la aplicación es responsable del enlace de doble ruta durante el período de migración.(provider Cobertura de servicio prioritario en la aplicación).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 签名级护栏:仅同签名的 Muse 主应用可绑定桥接服务 -->
+    <!-- Barandilla distintiva:Solo la aplicación principal de Muse con la misma firma puede vincular el servicio puente -->
     <permission
         android:name="io.zer0.muse.permission.A11Y_BRIDGE"
         android:protectionLevel="signature" />
@@ -26,7 +26,7 @@
         android:label="@string/a11y_provider_app_name"
         android:supportsRtl="true">
 
-        <!-- 无障碍服务:由系统绑定(exported=true + BIND_ACCESSIBILITY_SERVICE) -->
+        <!-- Servicios de accesibilidad:obligado por el sistema(exported=true + BIND_ACCESSIBILITY_SERVICE) -->
         <service
             android:name=".A11yProviderAccessibilityService"
             android:exported="true"
@@ -40,7 +40,7 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- AIDL 桥接服务:同签名主应用绑定 -->
+        <!-- AIDL servicio puente:Vincular con firma de la aplicación principal -->
         <service
             android:name=".A11yBridgeService"
             android:exported="true"

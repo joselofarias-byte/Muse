@@ -6,10 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 针对 [ToolCallArgsAccumulator] 的单测。
+ * Objetivo [ToolCallArgsAccumulator] prueba única.
  *
- * 复现 DeepSeek V4 等模型流式返回同一 tool call 时把 arguments 拆成多个完整 JSON 对象
- * （{"limit":20}{"query":"..."}）的问题，验证累积器合并字段而非拼接字符串。
+ * Reproduzca que cuando modelos como DeepSeek V4 transmiten y devuelven la misma llamada de herramienta, los argumentos se dividen en varios objetos JSON completos.
+ * ({"limit":20}{"query":"..."}), verifique que el acumulador fusione campos en lugar de concatenar cadenas.
  */
 class ToolCallArgsAccumulatorTest {
 
@@ -26,9 +26,9 @@ class ToolCallArgsAccumulatorTest {
     fun `concatenated json objects merge fields instead of string concat`() {
         val acc = ToolCallArgsAccumulator()
         acc.append("""{"limit":20}""")
-        acc.append("""{"query":"天气"}""")
+        acc.append("""{"query":"clima"}""")
         val merged = acc.current()
-        // 必须是单个合法 JSON 对象，两个字段都在
+        // Debe ser un único objeto JSON legal con ambos campos en
         assertTrue("got: $merged", acc.isValidJson())
         assertTrue(merged.contains("\"limit\""))
         assertTrue(merged.contains("\"query\""))
@@ -50,33 +50,33 @@ class ToolCallArgsAccumulatorTest {
 
     @Test
     fun `partial fragment then completed object merges`() {
-        // 首片是未闭合片段，次片补齐剩余（正常字符串增量，切在引号外）
+        // El primer fragmento es un fragmento no cerrado y el segundo fragmento está completo (incremento de cadena normal, cortado fuera de las comillas)
         val acc = ToolCallArgsAccumulator()
         acc.append("""{"query":"""")
-        acc.append("""北京天气"}""")
-        assertEquals("""{"query":"北京天气"}""", acc.current())
+        acc.append("""El tiempo en Pekín"}""")
+        assertEquals("""{"query":"El tiempo en Pekín"}""", acc.current())
         assertTrue(acc.isValidJson())
     }
 
     @Test
     fun `truncated final fragment reports invalid but keeps prefix`() {
-        // 最后一片被截断（{"query":"xxx 缺右括号），isValidJson=false
+        // Se corta la última pieza ({"query":"xxx Falta soporte derecho),isValidJson=false
         val acc = ToolCallArgsAccumulator()
-        acc.append("""{"query":"北京天气""")
+        acc.append("""{"query":"El tiempo en Pekín""")
         assertFalse(acc.isValidJson())
-        // 不抛异常，保留前缀供上层判断
+        // No se lanza ninguna excepción y el prefijo se reserva para el juicio del nivel superior.
         assertTrue(acc.current().startsWith("{"))
     }
 
     @Test
     fun `later object field overrides earlier same key`() {
         val acc = ToolCallArgsAccumulator()
-        acc.append("""{"query":"旧","limit":5}""")
-        acc.append("""{"query":"新"}""")
+        acc.append("""{"query":"viejo","limit":5}""")
+        acc.append("""{"query":"nuevo"}""")
         val raw = acc.current()
         assertTrue(acc.isValidJson())
-        // query 以后到的为准
-        assertTrue(raw.contains("\"query\":\"新\""))
+        // query Prevalecerá lo que llegue más tarde.
+        assertTrue(raw.contains("\"query\":\"nuevo\""))
         assertTrue(raw.contains("\"limit\""))
     }
 
@@ -96,27 +96,27 @@ class ToolCallArgsAccumulatorTest {
         acc.append("")
         acc.append("   ")
         assertEquals("", acc.current())
-        // 空累积器不算合法 JSON，但也不抛
+        // Un acumulador vacío no es JSON válido, pero no se arroja
         assertFalse(acc.isValidJson())
     }
 
     @Test
     fun `single complete object passes through`() {
         val acc = ToolCallArgsAccumulator()
-        acc.append("""{"query":"天气","max_results":5}""")
+        acc.append("""{"query":"clima","max_results":5}""")
         assertTrue(acc.isValidJson())
-        assertEquals("""{"query":"天气","max_results":5}""", acc.current())
+        assertEquals("""{"query":"clima","max_results":5}""", acc.current())
     }
 
     @Test
     fun `hasMergedObjects true after concatenated object fragments`() {
         val acc = ToolCallArgsAccumulator()
-        // 正常字符串增量阶段不应标记合并
+        // La fase de incremento de cadena normal no debe marcar la fusión
         acc.append("""{"query":""")
         assertFalse(acc.hasMergedObjects())
         acc.append("""x"}""")
         assertFalse(acc.hasMergedObjects())
-        // 两个完整对象分片才标记
+        // Dos objetos completos se marcan sólo cuando están fragmentados
         val acc2 = ToolCallArgsAccumulator()
         acc2.append("""{"limit":5}""")
         acc2.append("""{"query":"x"}""")

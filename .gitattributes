@@ -1,13 +1,13 @@
-# P1: 保护 shell 脚本在 Windows checkout 时保持 LF
-# （core.autocrlf=true 会把 .sh 转换为 CRLF，导致 WSL/bash 下无法执行）
+# P1: Proteger los scripts de shell para que no persistan en el pago de Windows LF
+# (core.autocrlf=true convertirá .sh a CRLF, lo que hará imposible su ejecución en WSL/bash)
 *.sh text eol=lf
 
-# v2.6.0 (AUD-BUILD-CI-F7): 锁住源代码行尾为 LF。
-# Windows 上 core.autocrlf 会让文本类文件以 CRLF 落盘，与仓库内既有 LF 文件
-# 混杂（实测 app/src/main 下 117 个 .kt 带 CRLF）。后果：
-#  - 整文件行尾切换产生海量 diff，掩盖真实改动；
-#  - ktlint/detekt baseline 按行号豁免，行尾不一致会放大行号漂移噪音。
-# 显式声明后，无论宿主 autocrlf 设置如何，检出与提交都统一为 LF。
+# v2.6.0 (AUD-BUILD-CI-F7): Bloquea las líneas del código fuente que terminan en LF.
+# Windows La ejecución de core.autocrlf hará que los archivos de texto se descarguen como CRLF, que coincidirán con los archivos LF existentes en el almacén.
+# Mixto (en realidad se midieron 117 archivos .kt con CRLF en app/src/main). Consecuencias:
+#  - Cambiar el final de las líneas en todo el archivo genera una enorme cantidad de diferencias, enmascarando los cambios reales;
+#  - ktlint/detekt baseline Las exenciones se basan en los números de línea. Los finales de línea inconsistentes amplificarán el ruido de deriva del número de línea.
+# Cuando se declaran explícitamente, los pagos y las confirmaciones se unifican en LF independientemente de la configuración de autocrlf del host.
 *.kt text eol=lf
 *.kts text eol=lf
 *.java text eol=lf

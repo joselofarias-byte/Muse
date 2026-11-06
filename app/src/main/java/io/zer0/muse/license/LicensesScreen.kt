@@ -48,20 +48,20 @@ import io.zer0.muse.ui.theme.MuseShapes
 import org.koin.compose.koinInject
 
 /**
- * Phase 13: 开源许可页。
+ * Phase 13: Página de licencias de código abierto.
  *
- * 设计(设置页"Open Source Licenses"):
- *  - TopAppBar 标题"开源许可"+ 返回箭头
- *  - 顶部统计卡: "Muse 使用 N 个开源依赖,均为 Apache 2.0 / MIT 协议"
- *  - 按协议分组的卡片:
- *    每组一张 Surface,组内是依赖列表(行式布局,点击进入协议全文)
- *  - 每个依赖行: 名称 + 版本 + 协议徽章 + "查看源码链接"右箭头
- *  - 点击协议组标题 → 弹窗显示完整协议文本(Monospace 字体,可滚动复制)
- *  - 点击链接 → 浏览器打开项目 URL
+ * diseño(página de configuración"Open Source Licenses"):
+ *  - TopAppBar Título"Licencia de código abierto"+ flecha de retorno
+ *  - tarjeta de estadísticas superior: "Muse Utilice N dependencias de código abierto,Ambos son licencia Apache 2.0/MIT"
+ *  - Tarjetas agrupadas por protocolo:
+ *    Una pieza por grupo Surface,Dentro del grupo hay una lista de dependencias.(diseño de fila,Haga clic para ingresar el texto completo del acuerdo.)
+ *  - Cada línea de dependencia: Nombre + Versión + Insignia de acuerdo + "Ver enlace del código fuente"flecha derecha
+ *  - Haga clic en el título del grupo de protocolos. → Una ventana emergente muestra el texto completo del acuerdo.(Monospace fuente,copia desplazable)
+ *  - haga clic en el enlace → Abrir proyecto en el navegador URL
  *
- * 数据:
- *  - 依赖清单来自 [LicenseRepository.loadManifest](assets/licenses/manifest.json)
- *  - 协议全文按需懒加载([LicenseRepository.loadLicenseText])
+ * datos:
+ *  - La lista de dependencias proviene de [LicenseRepository.loadManifest](assets/licenses/manifest.json)
+ *  - El texto completo del acuerdo se carga de forma diferida bajo demanda.([LicenseRepository.loadLicenseText])
  */
 @Composable
 fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInject()) {
@@ -75,8 +75,8 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
         manifest = repository.loadManifest()
     }
 
-    // M10: 用 LaunchedEffect 监听 showLicenseDialog 变化加载协议全文,
-    // 替代手动 launch,避免快速点击多个协议时协程竞态导致文本错位
+    // M10: Utilice LaunchedEffect para monitorear los cambios de showLicenseDialog y cargar el texto completo del acuerdo,
+    // Alternativa al manual launch,Evite la desalineación del texto causada por condiciones de carrera de rutina al hacer clic en múltiples protocolos rápidamente
     LaunchedEffect(showLicenseDialog) {
         val key = showLicenseDialog ?: return@LaunchedEffect
         dialogText = null
@@ -96,7 +96,7 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
     ) { innerPadding ->
         val m = manifest
         if (m == null) {
-            // 加载中
+            // Cargando
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -110,7 +110,7 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
             return@MusePageScaffold
         }
         if (m.dependencies.isEmpty()) {
-            // 解析失败 / manifest 为空
+            // El análisis falló/el manifiesto está vacío
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -119,7 +119,7 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
             ) {
                 MuseEmptyState(
                     icon = MuseIcons.info,
-                    title = "暂无许可数据",
+                    title = "Aún no hay datos de licencia",
                 )
             }
             return@MusePageScaffold
@@ -132,12 +132,12 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ── 顶部统计卡片 ──
+            // ── Tarjeta de estadísticas superior ──
             item {
                 HeaderSummary(manifest = m)
             }
 
-            // ── 按协议分组的依赖列表 ──
+            // ── Lista de dependencias agrupadas por protocolo ──
             m.groupedByLicense().forEach { (licenseId, entries) ->
                 item(key = "license_$licenseId") {
                     LicenseGroupSection(
@@ -147,27 +147,27 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
                             showLicenseDialog = licenseId to licenseId.toLicenseLabel()
                         },
                         onClickUrl = { url ->
-                            // M11: 用 resultOf 替代 runCatching,捕获 ActivityNotFoundException 后提示用户
+                            // M11: Utilice resultOf en su lugar runCatching,Preguntar al usuario después de detectar ActivityNotFoundException
                             resultOf {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 context.startActivity(intent)
                             }.onError { msg, t ->
-                                MuseToast.show("未找到可打开链接的应用")
+                                MuseToast.show("No se encontró ninguna aplicación para abrir el enlace.")
                             }
                         },
                     )
                 }
             }
 
-            // ── 底部说明 ──
+            // ── Descripción inferior ──
             item {
                 FooterNote()
             }
         }
     }
 
-    // 协议全文弹窗
+    // Ventana emergente de texto completo del acuerdo
     showLicenseDialog?.let { (licenseId, licenseLabel) ->
         LicenseTextDialog(
             title = licenseLabel,
@@ -182,7 +182,7 @@ fun LicensesScreen(onBack: () -> Unit, repository: LicenseRepository = koinInjec
 }
 
 /**
- * 顶部统计卡: App 名 + 依赖总数 + 简短说明。
+ * tarjeta de estadísticas superior: App Nombre + número total de dependencias + breve descripción.
  */
 @Composable
 private fun HeaderSummary(manifest: LicenseManifest) {
@@ -207,9 +207,9 @@ private fun HeaderSummary(manifest: LicenseManifest) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Muse 闭源商业发布,所有第三方依赖均为宽松协议" +
+                text = "Muse Lanzamiento comercial de código cerrado,Todas las dependencias de terceros son protocolos flexibles." +
                     "(Apache 2.0 / MIT / BSD / EPL-1.0)," +
-                    "无需开源我们的代码,仅需保留本声明。",
+                    "No es necesario abrir nuestro código,Sólo mantén esta declaración.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
             )
@@ -218,10 +218,10 @@ private fun HeaderSummary(manifest: LicenseManifest) {
 }
 
 /**
- * 单个协议的分组(Surface 容器 + 标题行 + 内部依赖列表)。
+ * Agrupación de un único protocolo(Surface Contenedor + fila de encabezado + lista de dependencias internas).
  *
- * 点击标题行 → 弹窗显示该协议全文。
- * 点击行内"查看源码"按钮 → 浏览器打开。
+ * Haga clic en la fila del título → Una ventana emergente muestra el texto completo del acuerdo.
+ * Haga clic dentro de la fila"Ver código fuente"botón → Se abre el navegador.
  */
 @Composable
 private fun LicenseGroupSection(
@@ -231,7 +231,7 @@ private fun LicenseGroupSection(
     onClickUrl: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // 协议组标题(可点击展开协议全文)
+        // Título del grupo de protocolo(Haga clic para ampliar el texto completo del acuerdo.)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -259,7 +259,7 @@ private fun LicenseGroupSection(
             }
             Spacer(Modifier.weight(1f))
             Text(
-                text = "查看协议",
+                text = "Ver acuerdo",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -271,7 +271,7 @@ private fun LicenseGroupSection(
             )
         }
 
-        // 依赖列表(卡片组,沿用 SettingsGroup 视觉)
+        // lista de dependencia(baraja de cartas,Heredar el objeto visual SettingsGroup)
         SettingsGroup {
             entries.forEachIndexed { index, entry ->
                 DependencyRow(
@@ -287,10 +287,10 @@ private fun LicenseGroupSection(
 }
 
 /**
- * 单个依赖行(在 SettingsGroup 内使用)。
+ * línea de dependencia única(Utilizado dentro del grupo de configuración).
  *
- * 布局: [名称 + 版本] [版权小字] [查看源码右箭头]
- * 点击整行 → 若有 URL 则打开;没有 URL 则不响应(避免误点反馈)。
+ * Diseño: [nombre + versión] [Letra pequeña de derechos de autor] [Ver fuente flecha derecha]
+ * Haga clic en toda la fila → Si hay una URL, ábrela.;Sin respuesta sin URL(Evite comentarios retrasados).
  */
 @Composable
 private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
@@ -303,7 +303,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            // 名称 + 版本号
+            // nombre + número de versión
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -319,7 +319,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
-            // 版权(单行省略,过长会自动 ... 截断)
+            // Derechos de autor(línea única omitida,Si es demasiado largo, se truncará automáticamente.)
             Text(
                 text = entry.copyright,
                 style = MaterialTheme.typography.bodySmall,
@@ -338,7 +338,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
         if (entry.hasUrl) {
             Icon(
                 imageVector = MuseIcons.externalLink,
-                contentDescription = "查看源码",
+                contentDescription = "Ver código fuente",
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(16.dp),
             )
@@ -347,7 +347,7 @@ private fun DependencyRow(entry: LicenseEntry, onClickUrl: (String) -> Unit) {
 }
 
 /**
- * 底部说明: 法务/隐私入口(v2.x 起为真实链接,此前为占位说明)。
+ * Descripción inferior: asuntos legales/Portal de privacidad(v2.x Comience como un enlace real,Anteriormente era una descripción de marcador de posición.).
  */
 @Composable
 private fun FooterNote() {
@@ -357,15 +357,15 @@ private fun FooterNote() {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            text = "如对协议有疑问,可查阅下方链接的完整声明。" +
-                "本页面数据每构建一次更新一次(generatedAt 标记时间)。",
+            text = "Si tienes preguntas sobre el acuerdo.,La declaración completa está disponible en el siguiente enlace." +
+                "Los datos de esta página se actualizan cada vez que se construye.(generatedAt marcar el tiempo).",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             listOf(
-                "项目主页" to "https://github.com/Zer0Qing/Muse",
-                "官网 museai.ltd" to "https://museai.ltd",
+                "Página de inicio del proyecto" to "https://github.com/Zer0Qing/Muse",
+                "Sitio web oficial museai.ltd" to "https://museai.ltd",
             ).forEach { (label, url) ->
                 Text(
                     text = label,
@@ -376,7 +376,7 @@ private fun FooterNote() {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
-                        }.onError { _, _ -> MuseToast.show("未找到可打开链接的应用") }
+                        }.onError { _, _ -> MuseToast.show("No se encontró ninguna aplicación para abrir el enlace.") }
                     },
                 )
             }
@@ -385,7 +385,7 @@ private fun FooterNote() {
 }
 
 /**
- * 协议全文弹窗 — 单按钮关闭,长文本可滚动。
+ * Ventana emergente de texto completo del acuerdo — cierre con un solo botón,El texto largo se puede desplazar.
  */
 @Composable
 private fun LicenseTextDialog(title: String, text: String?, isLoading: Boolean, onDismiss: () -> Unit) {
@@ -405,12 +405,12 @@ private fun LicenseTextDialog(title: String, text: String?, isLoading: Boolean, 
                         size = 24.dp,
                     )
                     text.isNullOrBlank() -> Text(
-                        text = "未找到该协议文本",
+                        text = "No se encontró el texto del acuerdo.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                     )
                     else -> Column(
-                        // v1.0.7 修复:去掉嵌套 verticalScroll(MuseDialog content 已自带滚动)
+                        // v1.0.7 Reparación:Quitar anidamiento verticalScroll(MuseDialog content Tiene desplazamiento incorporado)
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Text(

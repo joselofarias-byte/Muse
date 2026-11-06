@@ -9,24 +9,24 @@ import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
- * v1.104 P3: ScheduledTaskRunner 的 WorkManager 兜底。
+ * v1.104 P3: ScheduledTaskRunner El WorkManager tiene todos los detalles.
  *
- * ScheduledTaskRunner 协程轮询仅在 App 进程存活时有效,App 被杀后定时任务无法触发。
- * 本 Worker 通过 WorkManager 周期性调度(Android 最小周期 15 分钟),进程被杀也能由系统拉起执行。
+ * ScheduledTaskRunner El sondeo de rutina solo es efectivo cuando el proceso de la aplicación está activo,App Las tareas cronometradas no se pueden activar después de haber sido asesinado.
+ * Este trabajador se programa periódicamente a través de WorkManager(Android Periodo mínimo 15 minutos),Incluso si se finaliza un proceso, el sistema puede iniciarlo y ejecutarlo.
  *
- * doWork 调用 [ScheduledTaskRunner.tickOnceForWorker] 一次性扫描所有到期任务:
- *  - 通知渠道在 Worker 进程首次执行时幂等创建
- *  - executeTask 内部已用 resultOf 包裹 LLM 调用 / 写库 / 通知,任一失败都会记录 failed execution
+ * doWork llamar [ScheduledTaskRunner.tickOnceForWorker] Escanee todas las tareas pendientes a la vez:
+ *  - Los canales de notificación se crean de forma idempotente cuando el proceso de trabajo se ejecuta por primera vez.
+ *  - executeTask Internamente, resultOf se ha utilizado para encapsular llamadas de LLM/escribir bibliotecas/notificaciones.,Cualquier falla será registrada failed execution
  *
- * 设计取舍:
- *  - 不使用 setExpedited:任务可被 Doze 推迟,符合"省电"目标;定时任务本来就不是紧急实时
- *  - 不要求网络约束:无网时 LLM 调用会失败但被记录,下次 Worker 触发会重试到期任务
- *  - 返回 Result.success() 而非 retry:executeTask 内部已记录失败并推进 next_run_at,
- *    返回 retry 反而会让系统频繁重试一个本就无解的网络问题,更费电
+ * Compensaciones de diseño:
+ *  - Sin setExpedited: Doze puede posponer las tareas,conformarse a"Ahorra energía"objetivo;Las tareas programadas no son inherentemente urgentes ni en tiempo real
+ *  - No se requieren restricciones de red:Cuando no hay red, la llamada LLM fallará pero se registrará.,La próxima vez que se active el Trabajador, se volverá a intentar la tarea caducada.
+ *  - Regresar Result.success() En lugar de reintentar: ejecutar tarea, el error se registra internamente y se adelanta next_run_at,
+ *    Devolver el reintento hará que el sistema reintente con frecuencia un problema de red que no tiene solución.,Más consumo de electricidad
  *
- * Koin 拿依赖:WorkManager 默认跑在主进程,Worker 启动时 MuseApp.onCreate 已执行,
- * Koin 已初始化。若处于 Safe Mode(startKoin 失败),GlobalContext 为空,
- * 这里捕获异常返回 success 跳过本次,等下次启动恢复。
+ * Koin obtener dependencia:WorkManager Se ejecuta en el proceso principal de forma predeterminada.,Worker MuseApp.onCreate se ha ejecutado al inicio,
+ * Koin Inicializado. si en Safe Mode(startKoin falló),GlobalContext esta vacio,
+ * La excepción detectada aquí devuelve el éxito y esta vez se salta.,Espere a que se restablezca el próximo inicio.
  */
 class ScheduledTaskWorker(
     appContext: Context,
@@ -36,28 +36,28 @@ class ScheduledTaskWorker(
     override suspend fun doWork(): Result {
         val koin = resultOf { GlobalContext.get() }.getOrNull()
         if (koin == null) {
-            Logger.w(TAG, "Koin 未初始化(Safe Mode?),跳过本次 Worker 执行")
+            Logger.w(TAG, "Koin no inicializado(Safe Mode?),Omitir la ejecución de este trabajador")
             return Result.success()
         }
-        // v1.xxx: 后台调度总控 — 关闭时跳过执行体,周期调度本身仍保留,重新打开即恢复
+        // v1.xxx: Control maestro de programación backend — Omitir el cuerpo ejecutable al apagar,El calendario periódico en sí sigue siendo,Reabrir para restaurar
         val workEnabled =
             scheduleWorkEnabledOrFalse(
                 resultOf { koin.get<io.zer0.muse.data.SettingsRepository>()?.scheduleWorkEnabledFlow?.first() }
                     .getOrNull(),
             )
         if (!workEnabled) {
-            Logger.i(TAG, "后台调度总控已关闭,跳过本次执行")
+            Logger.i(TAG, "Se ha cerrado el control maestro de programación en segundo plano.,Saltar esta ejecución")
             return Result.success()
         }
         val runner = resultOf { koin.get<ScheduledTaskRunner>() }.getOrNull()
         if (runner == null) {
-            Logger.w(TAG, "ScheduledTaskRunner 解析失败,跳过本次 Worker 执行")
+            Logger.w(TAG, "ScheduledTaskRunner El análisis falló,Omitir la ejecución de este trabajador")
             return Result.success()
         }
         resultOf { runner.tickOnceForWorker() }
             .onError { msg, t -> Logger.w(TAG, "tickOnceForWorker failed: ${t?.message ?: msg}") }
-        // 不论内部是否成功,都返回 success:executeTask 已原子记录失败 + 推进 next_run_at,
-        // 返回 retry 会让 WorkManager 短时间内反复重试(默认 30 秒),反而更费电
+        // independientemente del éxito interno,Ambos devuelven éxito: la tarea ejecutada ha registrado atómicamente el error + avance next_run_at,
+        // Devolver el reintento hará que WorkManager lo vuelva a intentar repetidamente dentro de un corto período de tiempo.(Predeterminado 30 segundos),Al contrario, consume más electricidad.
         return Result.success()
     }
 

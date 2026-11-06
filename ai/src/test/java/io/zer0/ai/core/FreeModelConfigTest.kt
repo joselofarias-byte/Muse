@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-SEC-07: FreeModelConfig fallback key 可用性与解析测试。
+ * R-SEC-07: FreeModelConfig fallback key Pruebas de usabilidad y análisis.
  */
 class FreeModelConfigTest {
 

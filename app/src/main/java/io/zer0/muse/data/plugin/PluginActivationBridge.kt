@@ -8,30 +8,30 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * 插件激活事件派发。
+ * Envío de eventos de activación de complementos.
  *
- * `manifest.activationEvents` 此前只是一个被展示、从不派发的字段 —— 插件作者写了
- * `["onStartup"]`，以为启动时会被叫一次做初始化，实际什么都没发生，而且没有任何提示。
- * 这个桥把声明变成真的动作。
+ * `manifest.activationEvents` Anteriormente era sólo un campo que se mostraba y nunca se enviaba. —— El autor del complemento escribió
+ * `["onStartup"]`, pensé que se llamaría una vez para la inicialización al inicio, pero en realidad no pasó nada y no hubo ningún aviso.
+ * Este puente convierte las declaraciones en acciones reales.
  *
- * ## 支持的事件
+ * ## Eventos soportados
  *
- *  - `onStartup`：应用启动、或插件被启用时派发一次。插件入口需导出
- *    `onActivate(event)`（JS）或同名函数（Python），入参 `{ event: "onStartup" }`。
+ *  - `onStartup`: Se distribuye una vez cuando se inicia la aplicación o se habilita el complemento. La entrada del complemento debe exportarse
+ *    `onActivate(event)`(JS) o una función con el mismo nombre (Python), introduzca los parámetros `{ event: "onStartup" }`.
  *
- * `onCommand` / `onFileType` 目前**没有触发源**（斜杠命令是硬编码枚举，文件打开没有
- * 插件挂钩点）。它们的声明会被保留但不派发；安装页对此有明确说明，不假装支持。
+ * `onCommand` / `onFileType` Actualmente**sin fuente de activación**(El comando de barra diagonal es una enumeración codificada y la apertura del archivo no
+ * puntos de gancho del complemento). Sus declaraciones se conservan pero no se distribuyen; La página de instalación lo indica claramente y no pretende respaldarlo.
  *
- * ## 去重
+ * ## Eliminar duplicados
  *
- * 同一个 `<id>@<version>` 只激活一次。revisionFlow 在安装、启停、版本变化时都会发射，
- * 不记的话插件每次改配置就会被重新初始化一遍。插件被禁用或升级后记录自然失效
- * （记录集合每次按当前启用列表收窄），重新启用会再激活一次。
+ * el mismo `<id>@<version>` Activar sólo una vez.revisionFlow Se iniciará durante la instalación, el inicio y el apagado, y durante los cambios de versión.
+ * Si no lo recuerda, el complemento se reinicializará cada vez que se cambie la configuración. Naturalmente, los registros dejarán de ser válidos después de deshabilitar o actualizar el complemento.
+ * (La colección de registros se reduce cada vez según la lista habilitada actualmente) y al volver a habilitarla se activará nuevamente.
  *
- * ## 失败处理
+ * ## Manejo de fallas
  *
- * 激活失败只记日志。插件是可选能力，任何一个初始化出错都不该影响应用启动，
- * 也不该阻止其他插件激活。
+ * Solo se registran registros si falla la activación. Los complementos son capacidades opcionales y cualquier error de inicialización no debería afectar el inicio de la aplicación.
+ * Tampoco debería impedir que se activen otros complementos.
  */
 class PluginActivationBridge(
     private val context: Context,
@@ -41,28 +41,28 @@ class PluginActivationBridge(
 ) {
     private val invoker = PluginFunctionInvoker(context)
 
-    /** 已激活过的 `<id>@<version>`。 */
+    /** Ya activado `<id>@<version>`. */
     private val activatedKeys = HashSet<String>()
 
-    /** 启动订阅（由装配处调用一次）。 */
+    /** Iniciar la suscripción (convocada una vez por la asamblea). */
     fun start() {
         appScope.launch {
             pluginManager.revisionFlow.collect { dispatchStartup() }
         }
-        // revisionFlow 可能没有初始发射，首次同步单独跑一次。
+        // revisionFlow Es posible que no haya un inicio inicial y la primera sincronización se ejecute por separado.
         appScope.launch { dispatchStartup() }
     }
 
-    /** 对所有声明了 `onStartup` 且已启用的插件派发一次激活。 */
+    /** declarado a todos `onStartup` Y los complementos habilitados se distribuyen una vez para su activación. */
     suspend fun dispatchStartup() {
-        // 总开关关闭时不叫醒任何插件。已激活记录同时清空：重新打开时要能再激活一次。
+        // No se activará ningún complemento cuando el interruptor principal esté apagado. Los registros activados se borran al mismo tiempo: deben poder activarse nuevamente cuando se vuelvan a abrir.
         if (!settings.arePluginsGloballyEnabled()) {
             synchronized(activatedKeys) { activatedKeys.clear() }
-            Logger.i(TAG, "插件总开关关闭，跳过激活")
+            Logger.i(TAG, "El interruptor maestro enchufable se apaga y se omite la activación.")
             return
         }
         val plugins = pluginManager.list().filter { it.enabled && it.kind == KIND_TOOL }
-        // 只保留仍然存在的插件记录：被禁用/卸载的插件重新启用时要能再激活一次。
+        // Mantenga registros únicamente de los complementos que aún existen: deshabilitado/El complemento desinstalado debe poder activarse nuevamente cuando se vuelva a habilitar.
         val liveKeys = plugins.map { keyOf(it) }.toSet()
         synchronized(activatedKeys) { activatedKeys.retainAll(liveKeys) }
         plugins.forEach { activateIfNeeded(it) }
@@ -83,18 +83,18 @@ class PluginActivationBridge(
         }.getOrNull()
 
         when (result) {
-            null -> Logger.w(TAG, "插件激活异常: ${plugin.id}")
-            is SkillEngineResult.Success -> Logger.i(TAG, "插件已激活: ${plugin.id}")
-            is SkillEngineResult.Error -> Logger.w(TAG, "插件激活失败: ${plugin.id} — ${result.message}")
+            null -> Logger.w(TAG, "Excepción de activación de complemento: ${plugin.id}")
+            is SkillEngineResult.Success -> Logger.i(TAG, "El complemento está activado: ${plugin.id}")
+            is SkillEngineResult.Error -> Logger.w(TAG, "La activación del complemento falló: ${plugin.id} — ${result.message}")
         }
     }
 
     /**
-     * 判断这个插件此刻该不该激活；该激活时返回校验过的入口，否则 null。
+     * Determine si este complemento debe activarse en este momento; cuando se activa, devuelve la entrada verificada; de lo contrario, es nula.
      *
-     * 四个前置条件串在这里而不是平铺在 [activateIfNeeded] 里：
-     * 「没声明 onStartup」和「已经激活过」都是正常跳过，不应该和「激活失败」混在同一层，
-     * 否则日志会把前两种当成需要关注的事件。
+     * Las cuatro condiciones previas están encadenadas aquí en lugar de aplanadas en [activateIfNeeded] Aquí:
+     * "OnStartup no declarado" y "ya activado" se omiten normalmente y no deben mezclarse con "fallo de activación" en la misma capa.
+     * De lo contrario, el registro considerará los dos primeros como eventos que requieren atención.
      */
     private suspend fun resolveActivatable(
         plugin: PluginManager.InstalledPlugin,
@@ -102,14 +102,14 @@ class PluginActivationBridge(
     ): PluginManager.VerifiedPlugin? {
         synchronized(activatedKeys) { if (key in activatedKeys) return null }
 
-        // 声明在磁盘上的 manifest 里，不在注册表缓存里 —— 与所有执行路径保持一致。
+        // Declarado en el manifiesto en el disco, no en la caché del registro —— Consistente con todas las rutas de ejecución.
         val verified = resultOf { pluginManager.loadVerifiedPlugin(plugin.id) }.getOrNull() ?: run {
-            Logger.d(TAG, "插件激活跳过(入口校验失败): ${plugin.id}")
+            Logger.d(TAG, "Se omitió la activación del complemento(Error en la verificación de entrada): ${plugin.id}")
             return null
         }
         if (ACTIVATION_STARTUP !in verified.manifest.activationEvents) return null
 
-        // 先登记再执行：激活函数可能很慢，期间 revision 又变了不该重复跑。
+        // Regístrese primero y luego ejecútelo: la función de activación puede ser muy lenta y la revisión ha cambiado durante el período y no debe ejecutarse repetidamente.
         val registered = synchronized(activatedKeys) { activatedKeys.add(key) }
         return if (registered) verified else null
     }
@@ -119,16 +119,16 @@ class PluginActivationBridge(
     companion object {
         private const val TAG = "PluginActivation"
 
-        /** 只有工具类插件有可执行入口。 */
+        /** Sólo los complementos de herramientas tienen entradas ejecutables. */
         private const val KIND_TOOL = "tool"
 
-        /** 支持的激活事件：启动。 */
+        /** Eventos de activación admitidos: Inicio. */
         const val ACTIVATION_STARTUP = "onStartup"
 
-        /** 插件入口需要导出的激活函数名。 */
+        /** La entrada del complemento debe exportar el nombre de la función de activación. */
         const val ACTIVATION_FUNCTION = "onActivate"
 
-        /** 激活入参（参数数组 JSON，取首元素为函数入参）。 */
+        /** Active los parámetros de entrada (matriz de parámetros JSON, tome el primer elemento como parámetro de entrada de la función). */
         private const val STARTUP_ARGS = """[{"event":"onStartup"}]"""
     }
 }

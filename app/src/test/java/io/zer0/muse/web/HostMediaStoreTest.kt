@@ -10,10 +10,10 @@ import java.nio.file.Files
 import java.util.Base64
 
 /**
- * 媒体 token 账本与引用转换。
+ * Libro mayor de tokens de medios y conversión de citas.
  *
- * 覆盖三件事：允许目录内的文件才能拿到 token、同一文件重复下发复用同一 token、
- * LRU 越限后旧 token 失效；再加上裸 base64 的落盘与识别不出内容时的剔除。
+ * Cubre tres cosas: permitir que los archivos en el directorio obtengan tokens, volver a emitir el mismo archivo para reutilizar el mismo token,
+ * LRU Una vez superado el límite, el token antiguo deja de ser válido; además, la colocación de base64 desnuda y la eliminación cuando no se puede reconocer el contenido.
  */
 class HostMediaStoreTest {
 
@@ -25,7 +25,7 @@ class HostMediaStoreTest {
     private fun store(maxEntries: Int = HostMediaStore.DEFAULT_MAX_ENTRIES) =
         HostMediaStore(imageDir, voiceDir, maxEntries = maxEntries)
 
-    /** 写一个带媒体文件头的图片/音频文件,返回文件本身。 */
+    /** Escribir una imagen con un encabezado de archivo multimedia/archivo de audio,Devuelve el archivo en sí. */
     private fun mediaFile(dir: File, name: String, bytes: ByteArray = PNG_BYTES): File =
         File(dir, name).apply { writeBytes(bytes) }
 
@@ -57,7 +57,7 @@ class HostMediaStoreTest {
 
         val first = subject.tokenForFile("file://${file.absolutePath}")
         val second = subject.tokenForFile("file://${file.absolutePath}")
-        // 规范化后指向同一文件的另一种写法(带 ../)也必须命中同一条账。
+        // Otra forma de escribir para apuntar al mismo archivo después de la normalización.(traer ../)También debe afectar a la misma cuenta.
         val third = subject.tokenForFile("file://${imageDir.absolutePath}/../muse_images/same.bin")
 
         assertNotNull(first)
@@ -70,10 +70,10 @@ class HostMediaStoreTest {
         val secret = mediaFile(outsideDir, "prefs.xml", "<prefs/>".toByteArray())
         val subject = store()
 
-        assertNull("绝对路径直指媒体目录外", subject.tokenForFile("file://${secret.absolutePath}"))
-        assertNull("点点逃逸出媒体目录", subject.tokenForFile("file://${imageDir.absolutePath}/../shared_prefs/prefs.xml"))
-        assertNull("空白引用", subject.tokenForFile("   "))
-        assertNull("尚未落盘的文件", subject.tokenForFile("file://${File(imageDir, "not-written.png").absolutePath}"))
+        assertNull("La ruta absoluta apunta directamente fuera del directorio de medios.", subject.tokenForFile("file://${secret.absolutePath}"))
+        assertNull("Escapar del directorio de medios", subject.tokenForFile("file://${imageDir.absolutePath}/../shared_prefs/prefs.xml"))
+        assertNull("referencia en blanco", subject.tokenForFile("   "))
+        assertNull("Archivos que aún no se han colocado en el disco.", subject.tokenForFile("file://${File(imageDir, "not-written.png").absolutePath}"))
     }
 
     @Test
@@ -84,7 +84,7 @@ class HostMediaStoreTest {
         assertNotNull(token)
         assertTrue(file.delete())
 
-        assertNull("文件被清理后不该再解析出结果", subject.resolve(token!!))
+        assertNull("Una vez limpiado el archivo, los resultados ya no deberían analizarse.", subject.resolve(token!!))
     }
 
     @Test
@@ -96,7 +96,7 @@ class HostMediaStoreTest {
         assertNotNull(third)
         subject.tokenForFile(mediaFile(imageDir, "three.bin").absolutePath)
 
-        assertNull("越限后最久未用的 token 应失效", subject.resolve(first!!))
+        assertNull("El token que no se haya utilizado durante más tiempo después de exceder el límite debería dejar de ser válido.", subject.resolve(first!!))
         assertNotNull(subject.resolve(third!!))
     }
 
@@ -107,7 +107,7 @@ class HostMediaStoreTest {
         val second = subject.tokenForFile(mediaFile(imageDir, "two.bin").absolutePath)
         assertNotNull(first)
         assertNotNull(second)
-        // 读一次把 first 提到最近使用,再塞第三条时被淘汰的是 second。
+        // Lea una vez y mencione primero el usado recientemente.,Cuando se inserta el tercero, se elimina el segundo.
         subject.resolve(first!!)
         val third = subject.tokenForFile(mediaFile(imageDir, "three.bin").absolutePath)
 
@@ -136,10 +136,10 @@ class HostMediaStoreTest {
 
         val file = subject.resolve(token!!)
         assertNotNull(file)
-        assertTrue("落盘文件必须在图片目录内", file!!.parentFile == imageDir.canonicalFile)
-        assertTrue("落盘内容应与解码后的字节一致", PNG_BYTES.contentEquals(file.readBytes()))
-        // 文件名以消息 id 开头:删消息时 MessageImageStore 的 {messageId}_ 前缀扫描会连它一起清掉。
-        assertTrue("内联落盘文件应以归属消息 id 为前缀: ${file.name}", file.name.startsWith("${MESSAGE_ID}_"))
+        assertTrue("El archivo descargado debe estar en el directorio de imágenes.", file!!.parentFile == imageDir.canonicalFile)
+        assertTrue("El contenido del disco debe ser coherente con los bytes decodificados.", PNG_BYTES.contentEquals(file.readBytes()))
+        // El nombre del archivo comienza con la identificación del mensaje.:Al eliminar un mensaje, MessageImageStore {messageId}_ El escaneo de prefijos también lo borrará.
+        assertTrue("Los archivos desplegables en línea deben tener el prefijo del ID del mensaje atribuido.: ${file.name}", file.name.startsWith("${MESSAGE_ID}_"))
     }
 
     @Test
@@ -204,12 +204,12 @@ class HostMediaStoreTest {
         assertEquals("image/jpeg", HostMediaContentType.of(mediaFile(imageDir, "a.jpg", JPEG_BYTES)))
         assertEquals("image/gif", HostMediaContentType.of(mediaFile(imageDir, "a.gif", GIF_BYTES)))
         assertEquals("image/webp", HostMediaContentType.of(mediaFile(imageDir, "a.webp", WEBP_BYTES)))
-        // .bin 落盘的图片没有扩展名可用,只能靠文件头。
+        // .bin La imagen descargada no tiene extensión disponible.,Solo puede confiar en el encabezado del archivo.
         assertEquals("image/jpeg", HostMediaContentType.of(mediaFile(imageDir, "legacy.bin", JPEG_BYTES)))
         assertEquals("audio/mp4", HostMediaContentType.of(mediaFile(voiceDir, "a.m4a", M4A_BYTES)))
         assertEquals("audio/aac", HostMediaContentType.of(mediaFile(voiceDir, "a.aac", AAC_BYTES)))
         assertEquals("audio/mpeg", HostMediaContentType.of(mediaFile(voiceDir, "a.mp3", MP3_BYTES)))
-        // 认不出文件头时退到扩展名,不至于把 mp3 当二进制附件发出去。
+        // Volver a la extensión cuando no se reconoce el encabezado del archivo,No enviará mp3 como archivo adjunto binario.
         assertEquals("audio/mpeg", HostMediaContentType.of(mediaFile(voiceDir, "fallback.mp3", "junk".toByteArray())))
         assertEquals(
             HostMediaContentType.OCTET_STREAM,

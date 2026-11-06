@@ -17,27 +17,27 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Phase 8.9: WebDAV 客户端(基于 OkHttp)。
+ * Phase 8.9: WebDAV cliente(Basado en OkHttp).
  *
- * WebDAV 是 HTTP 扩展,通过特定方法(PUT/GET/MKCOL/PROPFIND/DELETE)操作云端文件。
- * 大多数网盘(Nutstore / NextCloud / ownCloud / Box / koofr)支持 WebDAV 协议。
+ * WebDAV es una extensión HTTP,por método específico(PUT/GET/MKCOL/PROPFIND/DELETE)Manipular archivos en la nube.
+ * La mayoría de los discos de red(Nutstore / NextCloud / ownCloud / Box / koofr)Soporta protocolo WebDAV.
  *
- * 支持操作:
- *  - PUT(上传文件)
- *  - GET(下载文件)
- *  - MKCOL(创建目录)
- *  - PROPFIND(检查存在/列目录)
- *  - DELETE(删除文件)
+ * Operaciones de apoyo:
+ *  - PUT(Subir archivos)
+ *  - GET(Descargar archivo)
+ *  - MKCOL(Crear directorio)
+ *  - PROPFIND(Comprobar existencia/directorio de lista)
+ *  - DELETE(Eliminar archivos)
  *
- * v1.132 扩展:新增 [testConnection] / [upload] (File) / [download] (File) / [list] / [mkdir],
- * 供 CloudBackupPage 直接调用,补齐云备份文件操作交互。
+ * v1.132 Expandir:Nuevo [testConnection] / [upload] (File) / [download] (File) / [list] / [mkdir],
+ * Para que CloudBackupPage llame directamente,Interacción completa con la operación de archivos de copia de seguridad en la nube.
  *
- * 认证: HTTP Basic Auth(username:password 编码为 Base64)。
+ * Certificación: HTTP Basic Auth(username:password codificado como Base64).
  *
- * @param baseUrl WebDAV 根 URL(如 https://dav.jianguoyun.com/dav/)
- * @param username 用户名
- * @param password 密码(应用专用密码)
- * @param client OkHttpClient(复用 named("chat"))
+ * @param baseUrl WebDAV raíz URL(Como por ejemplo https://dav.jianguoyun.com/dav/)
+ * @param username Nombre de usuario
+ * @param password Contraseña(Contraseña específica de la aplicación)
+ * @param client OkHttpClient(Reutilizar named("chat"))
  */
 class WebDavClient(
     private val baseUrl: String,
@@ -45,28 +45,28 @@ class WebDavClient(
     private val password: String,
     private val client: OkHttpClient,
 ) {
-    /** 构建完整 URL(baseUrl + 相对路径)。 */
+    /** Construcción completa URL(baseUrl + ruta relativa). */
     private fun buildUrl(remotePath: String): String {
         val base = baseUrl.trimEnd('/')
         val path = if (remotePath.startsWith("/")) remotePath else "/$remotePath"
         return base + path
     }
 
-    /** 构建 Basic Auth header。 */
+    /** Cree un encabezado de autenticación básica. */
     private fun authHeader(): String {
         val credentials = "$username:$password"
         return "Basic " + Base64.getEncoder().encodeToString(credentials.toByteArray())
     }
 
     /**
-     * 上传文件(PUT)。
-     * @param remotePath 远程路径(如 /muse/backup-2024-01-01.json)
-     * @param data 文件字节
-     * @param contentType MIME 类型
-     * @return true 成功
+     * Subir archivos(PUT).
+     * @param remotePath camino remoto(Como por ejemplo /muse/backup-2024-01-01.json)
+     * @param data bytes de archivo
+     * @param contentType MIME Tipo
+     * @return true éxito
      */
     fun putFile(remotePath: String, data: ByteArray, contentType: String = "application/json"): Boolean {
-        // 确保父目录存在(尝试 MKCOL,失败忽略 — 可能已存在)
+        // Asegúrese de que el directorio principal exista(intentarlo MKCOL,Ignorar en caso de fallo — puede que ya exista)
         val parentPath = remotePath.substringBeforeLast('/', "")
         if (parentPath.isNotEmpty()) {
             mkcol(parentPath)
@@ -80,9 +80,9 @@ class WebDavClient(
     }
 
     /**
-     * 下载文件(GET)。
-     * @param remotePath 远程路径
-     * @return 文件字节;null 失败
+     * Descargar archivo(GET).
+     * @param remotePath camino remoto
+     * @return bytes de archivo;null falló
      */
     fun getFile(remotePath: String): ByteArray? {
         val req = Request.Builder()
@@ -96,9 +96,9 @@ class WebDavClient(
     }
 
     /**
-     * 创建目录(MKCOL)。
-     * @param remotePath 目录路径
-     * @return true 成功(已存在返回 false 但不报错)
+     * Crear directorio(MKCOL).
+     * @param remotePath ruta del directorio
+     * @return true éxito(Existe devuelve falso pero no informa un error)
      */
     fun mkcol(remotePath: String): Boolean {
         val req = Request.Builder()
@@ -110,7 +110,7 @@ class WebDavClient(
     }
 
     /**
-     * 检查文件是否存在(PROPFIND Depth: 0)。
+     * Comprobar si el archivo existe(PROPFIND Depth: 0).
      */
     fun exists(remotePath: String): Boolean {
         val req = Request.Builder()
@@ -123,7 +123,7 @@ class WebDavClient(
     }
 
     /**
-     * 删除文件(DELETE)。
+     * Eliminar archivos(DELETE).
      */
     fun delete(remotePath: String): Boolean {
         val req = Request.Builder()
@@ -134,12 +134,12 @@ class WebDavClient(
         return execute(req, false) { resp -> resp.isSuccessful }
     }
 
-    // ── v1.132: 协程化 + File 直接读写 API(供 CloudBackupPage 使用) ─────
+    // ── v1.132: Coroutineización + Lectura y escritura directa de archivos. API(Para uso de CloudBackupPage) ─────
 
     /**
-     * v1.132: 测试连接是否可用(对根 URL 发 PROPFIND Depth:0)。
-     * 走 [Dispatchers.IO] 避免阻塞调用方。
-     * @return true 认证通过且服务端响应 2xx;false 网络异常或认证失败
+     * v1.132: Pruebe si la conexión está disponible(Enviar a la URL raíz PROPFIND Depth:0).
+     * ir [Dispatchers.IO] Evite bloquear a la persona que llama.
+     * @return true La autenticación pasó y el servidor respondió. 2xx;false Anomalía de la red o error de autenticación
      */
     suspend fun testConnection(): Boolean = withContext(Dispatchers.IO) {
         val req = Request.Builder()
@@ -152,13 +152,13 @@ class WebDavClient(
     }
 
     /**
-     * v1.132: 上传本地文件到远程路径(以流形式 PUT,避免大文件一次性读入内存)。
-     * @param localFile 本地文件
-     * @param remotePath 远程路径
-     * @return true 成功
+     * v1.132: Cargar archivos locales a la ruta remota(en forma de corriente PUT,Evite leer archivos grandes en la memoria a la vez).
+     * @param localFile archivo local
+     * @param remotePath camino remoto
+     * @return true éxito
      */
     suspend fun upload(localFile: File, remotePath: String): Boolean = withContext(Dispatchers.IO) {
-        // 确保父目录存在(忽略已存在错误)
+        // Asegúrese de que el directorio principal exista(Ignorar errores existentes)
         val parentPath = remotePath.substringBeforeLast('/', "")
         if (parentPath.isNotEmpty()) mkcol(parentPath)
         val req = Request.Builder()
@@ -170,10 +170,10 @@ class WebDavClient(
     }
 
     /**
-     * v1.132: 下载远程文件到本地路径(以流形式写入,避免大文件 OOM)。
-     * @param remotePath 远程路径
-     * @param localFile 本地目标文件(会被覆盖)
-     * @return true 成功
+     * v1.132: Descargar archivos remotos a la ruta local(Escribir como flujo,Evite archivos grandes OOM).
+     * @param remotePath camino remoto
+     * @param localFile archivo de objeto local(será sobrescrito)
+     * @return true éxito
      */
     suspend fun download(remotePath: String, localFile: File): Boolean = withContext(Dispatchers.IO) {
         val req = Request.Builder()
@@ -189,17 +189,17 @@ class WebDavClient(
                 localFile.outputStream().use { out -> body.byteStream().use { it.copyTo(out) } }
                 true
             }.getOrElse {
-                Logger.w("WebDavClient", "download 写入本地文件失败: ${it.message}")
+                Logger.w("WebDavClient", "download Error al escribir en el archivo local: ${it.message}")
                 false
             }
         }
     }
 
     /**
-     * v1.132: 列出远程目录下的文件(PROPFIND Depth:1,解析 WebDAV multistatus XML)。
-     * 仅返回文件项(过滤掉目录本身与子目录),供 [CloudBackupService.listBackups] 使用。
-     * @param remotePath 远程目录
-     * @return 文件列表;空表示目录为空或请求失败
+     * v1.132: Listar archivos en el directorio remoto(PROPFIND Depth:1,analizar WebDAV multistatus XML).
+     * Devolver solo elementos de archivo(Filtrar el directorio en sí y los subdirectorios),suministro [CloudBackupService.listBackups] Usar.
+     * @param remotePath directorio remoto
+     * @return lista de archivos;Vacío significa que el directorio está vacío o la solicitud falló
      */
     suspend fun list(remotePath: String): List<RemoteFile> = withContext(Dispatchers.IO) {
         val req = Request.Builder()
@@ -220,14 +220,14 @@ class WebDavClient(
     }
 
     /**
-     * v1.132: 创建目录(MKCOL)的协程版本,语义与 [mkcol] 一致。
-     * 已存在(405)视为成功。
+     * v1.132: Crear directorio(MKCOL)versión de rutina,Semántica y [mkcol] coherente.
+     * Ya existe(405)Considerado un éxito.
      */
     suspend fun mkdir(remotePath: String): Boolean = withContext(Dispatchers.IO) { mkcol(remotePath) }
 
-    // ── 工具方法 ──────────────────────────────────────────────────────
+    // ── Método de herramienta ──────────────────────────────────────────────────────
 
-    /** 执行请求并用 transform 提取结果,失败时返回 [defaultValue]。 */
+    /** Ejecute la solicitud y extraiga el resultado usando transform,Retorno del fracaso [defaultValue]. */
     private fun <T> execute(req: Request, defaultValue: T, transform: (okhttp3.Response) -> T): T {
         return resultOf {
             client.newCall(req).execute().use { resp ->
@@ -242,13 +242,13 @@ class WebDavClient(
     }
 
     /**
-     * v1.132: 解析 WebDAV PROPFIND multistatus XML,提取文件名 / 大小 / 修改时间。
-     * 用简易正则解析(避免引入 XML 解析依赖);对常见 NextCloud / 坚果云 / koofr 测试通过。
-     * 仅返回文件项(过滤掉与请求路径相同的 self 项,以及 resourcetype 为 collection 的子目录)。
+     * v1.132: analizar WebDAV PROPFIND multistatus XML,Extraiga el nombre/tamaño/hora de modificación del archivo.
+     * Utilice un análisis regular simple(Evite introducir dependencias de análisis XML);Se pasaron las pruebas comunes de NextCloud / Nut Cloud / koofr.
+     * Devolver solo elementos de archivo(Filtrar elementos propios que coincidan con la ruta de solicitud,y subdirectorios cuyo tipo de recurso es colección).
      */
     private fun parseMultistatus(xml: String, listUrl: String): List<RemoteFile> {
         val result = mutableListOf<RemoteFile>()
-        // 按 <D:href> 或 <d:href> 分块(不同服务大小写不一)
+        // prensa <D:href> o <d:href> fragmentación(Diferentes servicios tienen diferente capitalización.)
         val responseRegex = Regex("(?is)<(?:D|d):response>(.*?)</(?:D|d):response>")
         val hrefRegex = Regex("(?is)<(?:D|d):href>(.*?)</(?:D|d):href>")
         val collectionRegex = Regex("(?is)<(?:D|d):collection\\s*/>")
@@ -259,10 +259,10 @@ class WebDavClient(
         for (match in responseRegex.findAll(xml)) {
             val block = match.groupValues[1]
             val href = hrefRegex.find(block)?.groupValues?.get(1)?.trim() ?: continue
-            // 跳过目录本身(self 引用)
+            // Saltar el directorio en sí(self Cotización)
             val decoded = runCatching { java.net.URLDecoder.decode(href, "UTF-8") }.getOrDefault(href)
             if (decoded.trimEnd('/') == selfPath || decoded.trimEnd('/') == "$selfPath/") continue
-            // 跳过子目录(collection 标记)
+            // Saltar subdirectorios(collection marca)
             if (collectionRegex.containsMatchIn(block)) continue
             val name = decoded.substringAfterLast('/').ifBlank { continue }
             val size = sizeRegex.find(block)?.groupValues?.get(1)?.trim()?.toLongOrNull() ?: 0L
@@ -273,7 +273,7 @@ class WebDavClient(
         return result
     }
 
-    /** 解析 HTTP 日期(RFC 1123 / RFC 850 / asctime),失败返回 0。 */
+    /** Analizar fechas HTTP(RFC 1123 / RFC 850 / asctime),Devuelve 0 en caso de error. */
     private fun parseHttpDate(text: String): Long {
         val formats = listOf(
             "EEE, dd MMM yyyy HH:mm:ss zzz",
@@ -290,7 +290,7 @@ class WebDavClient(
         return 0L
     }
 
-    /** v1.132: PROPFIND 请求体,只请求 displayname / getcontentlength / getlastmodified / resourcetype。 */
+    /** v1.132: PROPFIND Cuerpo de la solicitud,Solicitar solo displayname / getcontentlength / getlastmodified / resourcetype. */
     private val PROPFIND_BODY: String = """
         <?xml version="1.0" encoding="utf-8"?>
         <D:propfind xmlns:D="DAV:">

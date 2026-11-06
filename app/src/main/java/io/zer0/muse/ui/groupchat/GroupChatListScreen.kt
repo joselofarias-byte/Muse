@@ -69,25 +69,25 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 群聊列表页 — 展示全部群聊,卡片点击进入详情。
+ * Página de lista de chat grupal — Mostrar todos los chats grupales,Haga clic en la tarjeta para ingresar los detalles.
  *
- * 设计(warm-paper 风格):
- *  - 顶部标题栏(标题 + 新建群聊按钮,不用 FAB)
- *  - LazyColumn 展示群聊卡片(群聊名 + 成员头像行 + 最新消息预览 + 时间)
- *  - 空状态:居中图标 + "还没有群聊" + "新建群聊"按钮
+ * diseño(warm-paper estilo):
+ *  - barra de título superior(Título + Nuevo botón de chat grupal,No hay necesidad FAB)
+ *  - LazyColumn Mostrar tarjeta de chat grupal(Nombre del chat grupal + fila de avatar del miembro + vista previa de las últimas noticias + hora)
+ *  - Estado vacío:icono central + "Aún no hay chat grupal" + "Crear un nuevo chat grupal"botón
  *
- * @param onOpenChat 点击群聊卡片回调(参数为 chatId)
- * @param viewModel 群聊 ViewModel
+ * @param onOpenChat Haga clic en la devolución de llamada de la tarjeta de chat grupal(Los parámetros son chatId)
+ * @param viewModel chat grupal ViewModel
  */
 @Composable
 fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // P2-1: 大屏(Expanded)下内容区居中限宽 720dp
+    // P2-1: pantalla grande(Expanded)Centrar el área de contenido inferior y limitar el ancho. 720dp
     val widthClass = rememberWindowWidthClass()
-    // 前端修复 (性能-4): 页面级共享时间 ticker — 单协程每 60s 广播一次
-    // 当前时间戳,所有群聊卡片共用;替代原先每张卡片一个 produceState 无限循环。
+    // Correcciones en la interfaz (Rendimiento-4): Tiempo para compartir a nivel de página ticker — Una sola corrutina se transmite cada 60 segundos.
+    // marca de tiempo actual,Compartido por todas las tarjetas de chat grupal;Reemplaza el bucle infinito original de un produceState por tarjeta.
     val timeTicker by produceState(initialValue = System.currentTimeMillis()) {
         while (true) {
             delay(60_000)
@@ -95,12 +95,12 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
         }
     }
 
-    // I3: 群聊列表数据异常时只降级当前 Tab,不影响首页其它区域。
+    // I3: Cuando los datos de la lista de chat grupal son anormales, solo se degradará el actual. Tab,No afecta a otras áreas de la página de inicio.
     RegionErrorBoundary(
         regionName = "groupChat",
         data = { state.chats },
     ) {
-        // P2-1: Box 包裹,Expanded 模式下居中限宽
+        // P2-1: Box paquete,Expanded Centrar y limitar el ancho en modo
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
@@ -117,15 +117,15 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
                     )
                     .navigationBarsPadding(),
             ) {
-                // v2.1: 移除独立标题栏(Tab 已标注"群聊"),直接展示列表
-                // v1.72: 首次加载时显示 loading,避免闪"还没有群聊"空状态
-                // CHAT-13/14: 三态统一走 MuseLoadingState / MuseEmptyState(此前裸 CircularProgressIndicator + 自绘磁贴)
+                // v2.1: Eliminar barra de título independiente(Tab marcado"chat grupal"),Mostrar lista directamente
+                // v1.72: Se muestra en la primera carga loading,evitar el flash"Aún no hay chat grupal"Estado vacío
+                // CHAT-13/14: Tres estados avanzan juntos MuseLoadingState / MuseEmptyState(CircularProgressIndicator previamente desnudo + mosaico autodibujado)
                 if (state.isChatsLoading) {
                     MuseLoadingState(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else if (state.chats.isEmpty()) {
-                    // 空状态:统一 MuseEmptyState,保留"新建群聊"操作入口
+                    // Estado vacío:unificar MuseEmptyState,Reservar"Crear un nuevo chat grupal"Entrada de operación
                     MuseEmptyState(
                         icon = MuseIcons.plus,
                         title = stringResource(R.string.groupchat_empty_hint),
@@ -144,7 +144,7 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        // v2.2: 页面标题"我的群聊"
+                        // v2.2: Título de la página"mi chat grupal"
                         item(key = "page_title") {
                             Text(
                                 text = stringResource(R.string.groupchat_list_title),
@@ -160,7 +160,7 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
                             items = state.chats,
                             key = { it.id },
                         ) { chat ->
-                            // E5 (H4): 群聊列表项入场/位移动画
+                            // E5 (H4): Entrada de elemento de la lista de chat grupal/animación de desplazamiento
                             Box(museAnimateItem()) {
                                 val memberIds = remember(chat.memberIdsJson) { viewModel.parseMemberIds(chat) }
                                 val members = remember(memberIds, state.assistants) {
@@ -180,7 +180,7 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
                                 )
                             }
                         }
-                        // v2.2: 底部"新建群聊"按钮(参考图:左侧绿色加号圆圈 + 居中绿色文字)
+                        // v2.2: abajo"Crear un nuevo chat grupal"botón(Imagen de referencia:Círculo verde con el signo más a la izquierda + texto verde en el centro)
                         item(key = "create_new") {
                             MuseCardPress(
                                 onClick = { showCreateDialog = true },
@@ -224,10 +224,10 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
         }
     }
 
-    // 新建群聊对话框
+    // Crear un nuevo cuadro de diálogo de chat grupal
     if (showCreateDialog) {
         CreateGroupChatDialog(
-            // Assistant.allowGroupChat 是成员候选开关;P2-6: 停用的助手不进入候选列表。
+            // Assistant.allowGroupChat ¿Es un cambio de candidato a miembro?;P2-6: Los asistentes desactivados no entran en la lista de candidatos.
             assistants = state.assistants.filter { it.allowGroupChat && it.enabled },
             teams = state.teams,
             onDismiss = { showCreateDialog = false },
@@ -235,7 +235,7 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
                 showCreateDialog = false
                 scope.launch {
                     val newChatId = viewModel.createChat(name, memberIds, teamId)
-                    // v2.x: 模板预置 — 创建后应用讨论模式与发言长度
+                    // v2.x: Ajustes preestablecidos de plantilla — Aplicar el modo de discusión y la duración del discurso después de la creación.
                     if (initMode != null || initLength != null) {
                         viewModel.updateChat(
                             chatId = newChatId,
@@ -250,14 +250,14 @@ fun GroupChatListScreen(onOpenChat: (String) -> Unit, viewModel: GroupChatViewMo
 }
 
 /**
- * v2.2: 群聊卡片 — 参考图样式(平铺成员头像 | 群名+发送者前缀消息 | 时间+箭头)。
+ * v2.2: Tarjeta de chat grupal — Estilo de dibujo de referencia(Avatares de miembros de mosaicos | Nombre del grupo+mensaje de prefijo del remitente | tiempo+flecha).
  */
 @Composable
 private fun GroupChatCard(
     chat: GroupChatEntity,
     members: List<AssistantEntity>,
     memberCount: Int,
-    /** 前端修复 (性能-4): 页面级共享 ticker 时间戳,用于相对时间刷新。 */
+    /** Correcciones en la interfaz (Rendimiento-4): Marca de tiempo del ticker compartido a nivel de página,Se utiliza para la actualización de tiempo relativo. */
     now: Long,
     viewModel: GroupChatViewModel,
     onClick: () -> Unit,
@@ -266,9 +266,9 @@ private fun GroupChatCard(
     onClearMemory: () -> Unit,
     onToggleArchive: (Boolean) -> Unit,
 ) {
-    // 异步加载最新消息预览。
-    // 前端修复 (性能-4): produceState 以 chat.id 为 key,协程只在首次组合 /
-    // chat.id 变化时启动;页面级 ticker 触发的重组不会重启该协程,不会重复查 DB。
+    // Cargue de forma asincrónica una vista previa de las últimas noticias.
+    // Correcciones en la interfaz (Rendimiento-4): produceState Tome chat.id como key,La corrutina recién se ensambla por primera vez. /
+    // chat.id Empezar con el cambio;La reorganización provocada por el ticker a nivel de página no reiniciará la rutina,La base de datos no se comprobará repetidamente.
     val latestMessage by produceState<GroupChatMessageEntity?>(
         initialValue = null,
         chat.id,
@@ -297,14 +297,14 @@ private fun GroupChatCard(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 左侧:成员头像平铺(最多4个,40dp,间距4dp)
+            // lado izquierdo:Mosaico de avatar de miembro(la mayoría4un,40dp,espaciado4dp)
             MemberAvatarRow(
                 members = members,
                 memberCount = memberCount,
                 avatarSize = MuseAvatarSize.list,
             )
             Spacer(Modifier.width(14.dp))
-            // 中间:群名 + 最新消息
+            // medio:Nombre del grupo + últimas noticias
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = chat.name,
@@ -323,7 +323,7 @@ private fun GroupChatCard(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            // 右侧:时间 + chevron
+            // lado derecho:tiempo + chevron
             Text(
                 text = formatRelativeTime(chat.updatedAt, now),
                 style = MaterialTheme.typography.labelSmall,
@@ -334,7 +334,7 @@ private fun GroupChatCard(
         }
     }
 
-    // 长按菜单:置顶/取消置顶、删除
+    // Menú de pulsación larga:fijar hacia arriba/Desanclar, eliminar
     if (showMenu) {
         MuseDialog(
             onDismissRequest = { showMenu = false },
@@ -350,7 +350,7 @@ private fun GroupChatCard(
                         variant = IosCapsuleButtonVariant.Text,
                         fillWidth = false,
                     )
-                    // v2.x: 归档/取消归档
+                    // v2.x: Archivo/Desarchivar
                     MuseCapsuleButton(
                         text = if (chat.isArchived) {
                             stringResource(
@@ -375,7 +375,7 @@ private fun GroupChatCard(
                         variant = IosCapsuleButtonVariant.Text,
                         fillWidth = false,
                     )
-                    // v1.0.72: 清空群聊记忆(风格残留清理,独立于主记忆系统)
+                    // v1.0.72: Borrar la memoria del chat grupal(Limpieza de residuos de estilo,Independiente del sistema de memoria principal)
                     MuseCapsuleButton(
                         text = stringResource(R.string.groupchat_clear_memory),
                         onClick = {
@@ -393,19 +393,19 @@ private fun GroupChatCard(
         )
     }
 
-    // v1.0.72: 清空群聊记忆确认
+    // v1.0.72: Borrar confirmación de memoria de chat grupal
     if (showClearMemoryConfirm) {
         MuseDialog(
             onDismissRequest = { showClearMemoryConfirm = false },
-            title = stringResource(R.string.groupchat_clear_memory), // 前端修复 (i18n-2)
+            title = stringResource(R.string.groupchat_clear_memory), // Correcciones en la interfaz (i18n-2)
             content = {
                 Text(
-                    text = stringResource(R.string.groupchat_clear_memory_confirm), // 前端修复 (i18n-2)
+                    text = stringResource(R.string.groupchat_clear_memory_confirm), // Correcciones en la interfaz (i18n-2)
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            confirmText = stringResource(R.string.groupchat_clear_memory_btn), // 前端修复 (i18n-2)
+            confirmText = stringResource(R.string.groupchat_clear_memory_btn), // Correcciones en la interfaz (i18n-2)
             onConfirm = {
                 showClearMemoryConfirm = false
                 onClearMemory()
@@ -415,7 +415,7 @@ private fun GroupChatCard(
         )
     }
 
-    // 删除确认
+    // Eliminar confirmación
     if (showDeleteConfirm) {
         MuseDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -439,7 +439,7 @@ private fun GroupChatCard(
 }
 
 /**
- * v2.2: 成员头像平铺行 — 最多显示4个,紧凑排列。
+ * v2.2: Fila de mosaicos de avatar de miembro — Mostrar más4un,Disposición compacta.
  */
 @Composable
 private fun MemberAvatarRow(members: List<AssistantEntity>, memberCount: Int, avatarSize: androidx.compose.ui.unit.Dp) {
@@ -482,7 +482,7 @@ private fun MemberAvatarRow(members: List<AssistantEntity>, memberCount: Int, av
 }
 
 /**
- * v2.2: 最新消息预览 — 发送者简称 + 冒号 + 内容。
+ * v2.2: Vista previa de las últimas noticias — Abreviatura del remitente + dos puntos + contenido.
  */
 @Composable
 private fun LatestMessagePreview(message: GroupChatMessageEntity?): String {
@@ -495,14 +495,14 @@ private fun LatestMessagePreview(message: GroupChatMessageEntity?): String {
 }
 
 /**
- * 格式化相对时间(刚刚 / N分钟前 / HH:mm / MM-dd)。
+ * Formatear tiempo relativo(Hace apenas / N minutos / HH:mm / MM-dd).
  *
- * 前端修复 (性能-4): now 由页面级共享 ticker 传入,卡片不再各自起
- * 60s 无限循环 produceState 协程;ticker 刷新时统一重算时间文本。
+ * Correcciones en la interfaz (Rendimiento-4): now Pasado por ticker compartido a nivel de página,Las tarjetas ya no se originan individualmente
+ * 60s Corrutina produceState de bucle infinito;ticker El texto de la hora se recalcula uniformemente al actualizar.
  */
 @Composable
 private fun formatRelativeTime(timestamp: Long, now: Long): String {
-    // v1.71: 用 remember 缓存 SimpleDateFormat(必须在条件分支之前调用)
+    // v1.71: Almacenamiento en caché con recordar SimpleDateFormat(Debe llamarse antes de la rama condicional.)
     val timeFmt = remember { SimpleDateFormat(MuseDateFormats.TIME_SHORT, Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat(MuseDateFormats.DATE_SHORT, Locale.getDefault()) }
     if (timestamp <= 0) return ""

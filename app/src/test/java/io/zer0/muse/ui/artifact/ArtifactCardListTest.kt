@@ -16,11 +16,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Phase 2: ArtifactCardList 超量折叠行为测试。
+ * Phase 2: ArtifactCardList Prueba de comportamiento de plegado excesivo.
  *
- * v2.1.0: 折叠阈值随产物卡范式调整(全宽大卡纵列,默认最多展示前 3 张);
- * 折叠文案改为资源字符串,按当前 locale 动态取,保证断言与渲染一致。
- * 屏幕宽度放宽到 1600dp,避免视图被裁切导致的假阴性。
+ * v2.1.0: El umbral de plegado se ajusta con el paradigma de la ficha de producto.(Columna de tarjeta grande de ancho completo,De forma predeterminada, se mostrarán un máximo de las 3 primeras imágenes.);
+ * Cambiar la copia plegable a cadena de recursos,Obtener dinámicamente según la ubicación actual,Asegúrese de que las afirmaciones sean coherentes con la representación.
+ * El ancho de la pantalla se amplía a 1600dp,Evite falsos negativos causados ​​por vistas recortadas.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "w1600dp-h1000dp-xhdpi")
@@ -29,7 +29,7 @@ class ArtifactCardListTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    /** 与渲染侧同一 locale 取折叠文案(不硬编码中文/英文)。 */
+    /** La copia plegada se obtiene en la misma ubicación que la parte renderizada.(No codifique chino/ingles). */
     private val context: Context = RuntimeEnvironment.getApplication()
 
     private fun moreText(hidden: Int): String = context.getString(R.string.artifact_more_count, hidden)
@@ -38,50 +38,50 @@ class ArtifactCardListTest {
         id = "artifact-$index",
         sessionId = "session-1",
         messageId = "message-1",
-        title = "产物$index",
+        title = "producto$index",
         type = "code",
         content = "val x = $index",
         language = "kotlin",
     )
 
     @Test
-    fun `超过三个时尾部显示折叠条`() {
+    fun `Cuando hay más de tres, se muestra una barra plegable al final`() {
         composeTestRule.setContent {
             MaterialTheme {
                 ArtifactCardList(artifacts = (1..7).map(::artifact), onArtifactClick = {})
             }
         }
-        composeTestRule.onNodeWithText("产物3").assertExists()
-        composeTestRule.onNodeWithText("产物4").assertDoesNotExist()
+        composeTestRule.onNodeWithText("producto3").assertExists()
+        composeTestRule.onNodeWithText("producto4").assertDoesNotExist()
         composeTestRule.onNodeWithText(moreText(4)).assertExists()
     }
 
     @Test
-    fun `点击折叠条后展开全部产物`() {
+    fun `Haga clic en la barra plegable para expandir todos los productos`() {
         composeTestRule.setContent {
             MaterialTheme {
                 ArtifactCardList(artifacts = (1..7).map(::artifact), onArtifactClick = {})
             }
         }
         composeTestRule.onNodeWithText(moreText(4)).performClick()
-        composeTestRule.onNodeWithText("产物4").assertExists()
-        composeTestRule.onNodeWithText("产物7").assertExists()
+        composeTestRule.onNodeWithText("producto4").assertExists()
+        composeTestRule.onNodeWithText("producto7").assertExists()
         composeTestRule.onNodeWithText(moreText(4)).assertDoesNotExist()
     }
 
     @Test
-    fun `三个及以内不显示折叠卡片`() {
+    fun `No muestre tarjetas dobladas si hay tres o menos`() {
         composeTestRule.setContent {
             MaterialTheme {
                 ArtifactCardList(artifacts = (1..3).map(::artifact), onArtifactClick = {})
             }
         }
-        composeTestRule.onNodeWithText("产物3").assertExists()
+        composeTestRule.onNodeWithText("producto3").assertExists()
         composeTestRule.onNodeWithText(moreText(1)).assertDoesNotExist()
     }
 
     @Test
-    fun `点击卡片回调对应产物`() {
+    fun `Haga clic en la tarjeta para recuperar el producto correspondiente`() {
         var clicked: ArtifactEntity? = null
         composeTestRule.setContent {
             MaterialTheme {
@@ -91,7 +91,7 @@ class ArtifactCardListTest {
                 )
             }
         }
-        composeTestRule.onNodeWithText("产物1").performClick()
+        composeTestRule.onNodeWithText("producto1").performClick()
         org.junit.Assert.assertEquals("artifact-1", clicked?.id)
     }
 }

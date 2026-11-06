@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * B2: ChannelToolFactory 群聊三件套集成面测试。
+ * B2: ChannelToolFactory Prueba de integración de tres piezas del chat grupal.
  *
- * 锁定 GroupChatScheduler 使用的产出契约:三件套定义名、执行器按名分派、
- * 以及 reply/pass/read_context 三条回调链路的参数语义(trim / 范围钳制 / 默认值)。
+ * Bloquear el contrato de salida utilizado por GroupChatScheduler:Nombre de definición del conjunto de tres piezas, asignación de ejecutor por nombre,
+ * Y la semántica de los parámetros de los tres enlaces de devolución de llamada respuesta/paso/read_context(trim / abrazadera de rango/predeterminado).
  */
 class ChannelToolFactoryTest {
 
@@ -24,19 +24,19 @@ class ChannelToolFactoryTest {
             contextProvider = { "ctx" },
         )
 
-        // 顺序:reply → pass → read_context
+        // orden:reply → pass → read_context
         assertEquals(
             listOf("channel_reply", "channel_pass", "channel_read_context"),
             defs.map { it.name },
         )
-        // 每个定义都有对应执行器(按名分派)
+        // Cada definición tiene un ejecutor correspondiente.(Asignar por nombre)
         assertEquals(defs.map { it.name }.toSet(), executors.keys)
-        // 参数 schema 不泄漏框架绑定字段(chatId/assistantId 不可由 LLM 传入)
+        // El esquema de parámetros no filtra campos vinculados al marco(chatId/assistantId No aprobado por LLM)
         val replySchema = defs.first { it.name == "channel_reply" }.parametersJsonSchema
         assertTrue(replySchema.contains("content"))
         assertTrue(!replySchema.contains("chatId"))
         assertTrue(!replySchema.contains("assistantId"))
-        // read_context 的 limit 声明为 integer
+        // read_context El límite se declara como integer
         val readSchema = defs.first { it.name == "channel_read_context" }.parametersJsonSchema
         assertTrue(readSchema.contains("limit"))
         assertTrue(readSchema.contains("integer"))
@@ -57,9 +57,9 @@ class ChannelToolFactoryTest {
         channelReply.invoke(mapOf("content" to "  hello group  "))
         assertEquals("hello group", reply)
 
-        // 空 content 不触发发送,返回错误文本(避免空气泡落库)
+        // El contenido vacío no activa el envío,Devolver texto de error(Evite que caigan burbujas de aire en la biblioteca.)
         reply = null
-        assertEquals("错误: content 不能为空", channelReply.invoke(emptyMap()))
+        assertEquals("error: content no puede estar vacío", channelReply.invoke(emptyMap()))
         assertNull(reply)
     }
 
@@ -75,8 +75,8 @@ class ChannelToolFactoryTest {
         )
         val channelPass = exec.getValue("channel_pass")
 
-        channelPass.invoke(mapOf("reason" to "  等别人先说  "))
-        assertEquals("等别人先说", reason)
+        channelPass.invoke(mapOf("reason" to "  Espera a que otros hablen primero.  "))
+        assertEquals("Espera a que otros hablen primero.", reason)
 
         channelPass.invoke(mapOf("reason" to "   "))
         assertNull(reason)
@@ -97,16 +97,16 @@ class ChannelToolFactoryTest {
         )
         val readContext = exec.getValue("channel_read_context")
 
-        // 缺省 limit → 20
+        // Predeterminado limit → 20
         assertEquals("hist-20", readContext.invoke(emptyMap()))
         assertEquals(20, seenLimit)
-        // 超上限钳到 50
+        // Sujetado más allá del límite superior 50
         readContext.invoke(mapOf("limit" to "999"))
         assertEquals(50, seenLimit)
-        // 低于下限钳到 1
+        // Abrazadera por debajo del límite inferior 1
         readContext.invoke(mapOf("limit" to "0"))
         assertEquals(1, seenLimit)
-        // 非法值回退默认 20
+        // El valor ilegal vuelve a caer por defecto 20
         readContext.invoke(mapOf("limit" to "abc"))
         assertEquals(20, seenLimit)
     }

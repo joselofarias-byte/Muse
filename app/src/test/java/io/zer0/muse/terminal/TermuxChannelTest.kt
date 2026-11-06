@@ -6,12 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.2.1 Termux 通道:结果解析与引导文案的防御性单测(纯 JVM)。
+ * v2.2.1 Termux canal:Análisis de resultados y prueba única defensiva de redacción orientativa.(puro JVM).
  */
 class TermuxChannelTest {
 
     @Test
-    fun `标准结果包解析`() {
+    fun `Análisis de paquetes de resultados estándar`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "hello", "stderr" to "", "exitCode" to 0, "err" to 0),
         )
@@ -22,7 +22,7 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `缺失字段安全兜底`() {
+    fun `Campos faltantes seguros y protegidos`() {
         val result = TermuxChannel.parseResultEntries(emptyMap())
         assertEquals(-1, result.exitCode)
         assertEquals("", result.stdout)
@@ -30,7 +30,7 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `errmsg 优先作为错误`() {
+    fun `errmsg Priorizar como error`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "", "stderr" to "", "exitCode" to 1, "err" to 5, "errmsg" to "allow-external-apps not configured"),
         )
@@ -39,9 +39,9 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `Termux 成功码 -1 不算错误`() {
-        // Termux 的 Errno.ERRNO_SUCCESS 就是 -1，旧实现把它当失败，
-        // 导致命令明明跑完了却报「Termux 服务错误码 -1」。
+    fun `Termux El código de éxito -1 no es un error`() {
+        // Termux Errno.ERRNO_SUCCESS es -1, la implementación anterior lo trataba como un error,
+        // Como resultado, el comando informó "Termux Código de error de servicio -1".
         val result = TermuxChannel.parseResultEntries(
             mapOf("stdout" to "hello", "stderr" to "", "exitCode" to 0, "err" to -1, "errmsg" to null),
         )
@@ -51,13 +51,13 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `errCode 非零而无 errmsg 时报错误码`() {
+    fun `errCode Código de error de informe distinto de cero y sin error`() {
         val result = TermuxChannel.parseResultEntries(mapOf("err" to 7))
         assertTrue(result.error!!.contains("7"))
     }
 
     @Test
-    fun `字符串数值兼容`() {
+    fun `Compatible con valores de cadena`() {
         val result = TermuxChannel.parseResultEntries(
             mapOf("exit_code" to "9", "errCode" to "0", "stdout" to "ok"),
         )
@@ -67,20 +67,20 @@ class TermuxChannelTest {
     }
 
     @Test
-    fun `未安装引导要点`() {
+    fun `Elementos esenciales de arranque no instalados`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.NotInstalled)
         assertTrue(text.contains("Termux"))
-        assertTrue(text.contains("安装"))
+        assertTrue(text.contains("no está instalado"))
     }
 
     @Test
-    fun `权限引导要点`() {
+    fun `Puntos clave de la guía de permisos`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.PermissionMissing)
-        assertTrue(text.contains("附加权限"))
+        assertTrue(text.contains("Permisos adicionales"))
     }
 
     @Test
-    fun `未配置引导含 allow-external-apps`() {
+    fun `No se incluye configuración de arranque allow-external-apps`() {
         val text = TermuxChannel.describe(TermuxChannel.Availability.NotConfigured("boom"))
         assertTrue(text.contains("allow-external-apps"))
         assertTrue(text.contains("boom"))

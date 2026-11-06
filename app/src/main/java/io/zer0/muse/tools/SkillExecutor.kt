@@ -20,104 +20,104 @@ import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 
 /**
- * Phase 8.8: Skill 执行器(Kotlin 直实现,不用 QuickJS)。
+ * Phase 8.8: Skill actuador(Kotlin Realización directa,No hay necesidad QuickJS).
  *
- * 根据 [SkillEntity.implementationKotlin] 路由到预定义的 Kotlin 函数执行。
- * 当前支持 4 个内置 skill:
- *  - read_file — 读取应用沙盒内文件
- *  - write_file — 写入应用沙盒内文件
- *  - http_get — HTTP GET 请求
- *  - http_post — HTTP POST 请求
+ * Según [SkillEntity.implementationKotlin] Ruta a la ejecución de la función Kotlin predefinida.
+ * Actualmente admite 4 integrados skill:
+ *  - read_file — Leer archivos en el entorno limitado de la aplicación
+ *  - write_file — Escribir archivos en el entorno limitado de la aplicación
+ *  - http_get — HTTP GET Solicitar
+ *  - http_post — HTTP POST Solicitar
  *
- * 设计原则:
- *  - 文件操作限定在应用沙盒(filesDir/cacheDir),避免越权读写
- *  - HTTP 请求设 30s 超时,响应体最大 1MB
- *  - 所有 IO 在 IO Dispatcher 执行
+ * principios de diseño:
+ *  - Las operaciones de archivos están restringidas al entorno limitado de la aplicación.(filesDir/cacheDir),Evite la lectura y escritura no autorizadas
+ *  - HTTP Solicitar tiempo de espera establecido en 30 segundos,Cuerpo de respuesta máximo 1MB
+ *  - Todas las IO se realizan en IO Dispatcher
  *
- * @param context 应用 Context(用于 filesDir / cacheDir)
- * @param client OkHttpClient(http_get / http_post 用,由 Koin 注入 named("chat"))
+ * @param context Solicitud Context(usado para filesDir / cacheDir)
+ * @param client OkHttpClient(http_get / http_post usar,Inyectado por Koin named("chat"))
  */
 class SkillExecutor(
     private val context: Context,
     private val client: OkHttpClient,
-    /** v0.24: web_search 用(可为 null,测试时不注入)。 */
+    /** v0.24: web_search usar(puede ser null,Sin inyección durante la prueba). */
     private val webSearchService: io.zer0.muse.web.WebSearchService? = null,
-    /** v0.24: knowledge_search 用(可为 null)。 */
+    /** v0.24: knowledge_search usar(puede ser null). */
     private val knowledgeDocDao: io.zer0.muse.data.knowledge.KnowledgeDocDao? = null,
-    /** v0.24: install_skill 用(可为 null,避免循环依赖)。 */
+    /** v0.24: install_skill usar(puede ser null,Evite las dependencias circulares). */
     private val skillRepository: io.zer0.muse.data.skill.SkillRepository? = null,
-    /** v0.46: delegate_agent 用 — 调子助手跑一轮 LLM。 */
+    /** v0.46: delegate_agent usar — Tune Assistant realiza una ronda de LLM. */
     private val chatService: ChatService,
-    /** v0.46: delegate_agent 用 — 根据 assistantId 取子助手配置。 */
+    /** v0.46: delegate_agent usar — Obtenga la configuración del subasistente basada en asistenteId. */
     private val assistantRepository: AssistantRepository,
-    /** v1.30: 群聊工具(channel_reply / channel_pass / channel_read_context)用。 */
+    /** v1.30: herramienta de chat grupal(channel_reply / channel_pass / channel_read_context)Usar. */
     private val groupChatRepository: GroupChatRepository? = null,
-    /** v1.54: knowledge_search 向量检索用(可为 null,降级到 LIKE 搜索)。 */
+    /** v1.54: knowledge_search Para búsqueda de vectores(puede ser null,Bajar a ME GUSTA la búsqueda). */
     private val ragService: io.zer0.muse.rag.RagService? = null,
-    /** v1.54: 获取 RAG 配置(用于向量检索的 embedding provider 选择)。 */
+    /** v1.54: Obtener configuración RAG(Selección de proveedor de incrustación para la recuperación de vectores). */
     private val ragConfigProvider: suspend () -> io.zer0.muse.rag.RagConfig = { io.zer0.muse.rag.RagConfig() },
-    /** v1.95: 表情包工具(list_stickers / send_sticker)用。 */
+    /** v1.95: herramienta de emoticonos(list_stickers / send_sticker)Usar. */
     private val stickerLibraryRepository: io.zer0.muse.data.sticker.StickerLibraryRepository? = null,
-    /** v1.???: generate_image 用。 */
+    /** v1.???: generate_image Usar. */
     private val imageService: io.zer0.ai.image.ImageService? = null,
     private val imageDrawConfigProvider: suspend () -> Pair<io.zer0.ai.core.ProviderConfig?, String?> = { null to null },
-    /** v1.200: 多 Agent 团队配置提供,用于 delegateAgent 处理 TEAM 目标。 */
+    /** v1.200: Configuración del equipo multiagente proporcionada,Utilizado por delegadoAgent para manejar objetivos de EQUIPO. */
     private val multiAgentConfigProvider: () -> io.zer0.muse.data.MultiAgentConfig = { io.zer0.muse.data.MultiAgentConfig() },
-    /** v1.201: LLM 综合评审聚合器,TeamWorkflowExecutor 的 LLM_REVIEW 策略时使用;为 null 时降级为 EXPERT_REVIEW。 */
+    /** v1.201: LLM Agregador de reseñas completo,TeamWorkflowExecutor La estrategia LLM_REVIEW se utiliza cuando;Se degrada a EXPERT_REVIEW cuando es nulo. */
     private val llmAggregator: LlmAggregator? = null,
-    /** v1.201: 委派暂停管理器,null 时跳过所有暂停点。 */
+    /** v1.201: Gestor de pausas delegado,null para omitir todos los puntos de pausa. */
     private val pauseManager: DelegationPauseManager? = null,
-    /** v1.201: 委派链路追踪器,null 时不记录链路。ChatViewModel 共享同一实例用于 UI 展示。 */
+    /** v1.201: Rastreador de enlaces delegados,null El enlace no está grabado.ChatViewModel Comparta la misma instancia para la presentación de la interfaz de usuario. */
     private val delegationChainTracker: DelegationChainTracker? = null,
-    /** v1.202: Agent 间私信仓库,用于委派完成后把结果回填为一条 sub-agent → main-agent 的 DM。
-     *  为 null 时不发送 DM(测试环境或未注入时降级)。 */
+    /** v1.202: Agent Almacén de mensajes privados,Se utiliza para rellenar el resultado en uno una vez completada la delegación. sub-agent → main-agent DM.
+     *  No enviar cuando sea nulo DM(Entorno de prueba o degradación cuando no se inyecta). */
     private val agentDmRepository: io.zer0.muse.data.agentdm.AgentDmRepository? = null,
-    /** v1.202: 异步委派结果回灌(非阻塞委派核心基础设施)。
-     *  为 null 时 nonBlocking=true 自动降级为阻塞模式。 */
+    /** v1.202: Comentarios sobre los resultados de la delegación asincrónica(Infraestructura central de delegación sin bloqueo).
+     *  cuando es nulo nonBlocking=true Bajar automáticamente al modo de bloqueo. */
     private val deferredResultStore: DeferredResultStore? = null,
-    /** v1.202: 子 agent 线程管理器(可续接的子 agent 会话线程,串行执行避免并发竞争)。
-     *  为 null 时 nonBlocking=true 自动降级为阻塞模式。 */
+    /** v1.202: Administrador de hilos de subagente(Hilo de sesión de agente secundario reanudable,La ejecución en serie evita la contención de simultaneidad).
+     *  cuando es nulo nonBlocking=true Bajar automáticamente al modo de bloqueo. */
     private val subagentThreadStore: io.zer0.muse.data.subagent.SubagentThreadStore? = null,
-    /** v1.0.53: 子 agent 全局并发限流器(Koin 注入)。所有委派入口(TeamWorkflowExecutor 并行节点 / delegateAgent nonBlocking / SubagentRunner)共享同一配额。 */
+    /** v1.0.53: Limitador de simultaneidad global de subagente(Koin inyectar). Todos los portales de delegación(TeamWorkflowExecutor nodo paralelo / delegateAgent nonBlocking / SubagentRunner)comparten la misma cuota. */
     private val agentConcurrencyLimiter: AgentConcurrencyLimiter,
-    /** v1.0.53 Phase 2: 工作流断点恢复日志(Koin 注入);null 时 TeamWorkflowExecutor 跳过 journal 读写。 */
+    /** v1.0.53 Phase 2: Registro de recuperación de puntos de interrupción del flujo de trabajo(Koin inyectar);null TeamWorkflowExecutor omite la lectura y escritura del diario. */
     private val journal: WorkflowJournal? = null,
     /**
-     * v1.0.53 Phase 5: GroupChatScheduler 懒加载 provider(避免与 SkillExecutor 循环依赖)。
+     * v1.0.53 Phase 5: GroupChatScheduler Carga diferida provider(Evite dependencias circulares con SkillExecutor).
      *
-     * agent_phone 工具触发 whisper 私聊时调用 [io.zer0.muse.schedule.GroupChatScheduler.launchWhisper]。
-     * 用 lambda 形式延迟解析:SkillExecutor 在 Koin 中先于 GroupChatScheduler 注册,
-     * 但 lambda 体内 get() 在工具实际执行时才解析,此时 GroupChatScheduler 已初始化完成。
+     * agent_phone Se llama cuando la herramienta activa un chat privado susurrado. [io.zer0.muse.schedule.GroupChatScheduler.launchWhisper].
+     * Análisis diferido utilizando la forma lambda:SkillExecutor Regístrese en Koin antes de GroupChatScheduler,
+     * Pero dentro de lambda get() Se analiza sólo cuando la herramienta se ejecuta realmente.,En este punto, GroupChatScheduler se ha inicializado.
      *
-     * 为 null 时(测试环境)agent_phone 工具返回"未配置"提示。
+     * cuando es nulo(entorno de prueba)agent_phone devoluciones de herramientas"No configurado"Consejos.
      */
     private val groupChatSchedulerProvider: (() -> io.zer0.muse.schedule.GroupChatScheduler?)? = null,
-    /** B6-01: 外部插件管理器(可为 null,测试环境不注入)。 */
+    /** B6-01: Administrador de complementos externo(puede ser null,El entorno de prueba no inyecta). */
     private val pluginManager: PluginManager? = null,
-    /** P1-3b: 文件/公共目录工具实现(可为 null,测试环境不注入)。 */
+    /** P1-3b: Archivo/Implementación de herramienta de directorio público(puede ser null,El entorno de prueba no inyecta). */
     private val fileTools: SkillFileToolsImpl? = null,
-    /** P1-3b: 搜索/HTTP 工具实现(可为 null,测试环境不注入)。 */
+    /** P1-3b: Buscar/HTTP Implementación de herramientas(puede ser null,El entorno de prueba no inyecta). */
     private val searchTools: SkillSearchToolsImpl? = null,
-    /** P1-3b: Skill 管理工具实现(可为 null,测试环境不注入)。 */
+    /** P1-3b: Skill Implementación de herramientas de gestión.(puede ser null,El entorno de prueba no inyecta). */
     private val managementTools: SkillManagementToolsImpl? = null,
-    /** P1-3b: 媒体/JS/插件工具实现(可为 null,测试环境不注入)。 */
+    /** P1-3b: medios de comunicación/JS/Implementación de herramientas de complemento(puede ser null,El entorno de prueba no inyecta). */
     private val mediaTools: SkillMediaToolsImpl? = null,
-    /** P1-3b: 翻译工具实现(可为 null,测试环境不注入)。 */
-    /** P1-3e: Agent 工作流/群聊工具实现(可为 null,测试环境不注入)。 */
+    /** P1-3b: Implementación de herramienta de traducción(puede ser null,El entorno de prueba no inyecta). */
+    /** P1-3e: Agent Flujo de trabajo/Implementación de herramienta de chat grupal(puede ser null,El entorno de prueba no inyecta). */
     private val agentTools: SkillAgentToolsImpl? = null,
-    /** P1-3e: delegateAgent 实现(可为 null,测试环境不注入)。 */
+    /** P1-3e: delegateAgent darse cuenta(puede ser null,El entorno de prueba no inyecta). */
     private val delegateTools: SkillDelegateAgentImpl? = null,
     private val translateTools: TranslateToolsImpl? = null,
-    /** 助手自写插件工具实现(可为 null,测试环境不注入)。 */
+    /** Implementación de la herramienta de complemento autoescrita del asistente(puede ser null,El entorno de prueba no inyecta). */
     private val pluginAuthoringTools: PluginAuthoringToolsImpl? = null,
 ) {
     /**
-     * 执行 skill。
-     * @param skill skill 实体(含 implementationKotlin 路由 key)
-     * @param argumentsJson LLM 传来的参数 JSON 字符串
-     * @param onProgress v0.49: 进度回调,在耗时工具(web_fetch/web_search/delegate_agent/install_skill)
-     *                   执行前调用,供 UI 在 TaskStep 上显示"正在搜索..."等进度文本。默认空实现,不破坏现有调用。
-     * @return 执行结果字符串
+     * Ejecutar habilidad.
+     * @param skill skill entidad(Contiene implementación de enrutamiento Kotlin key)
+     * @param argumentsJson LLM La cadena JSON del parámetro pasado
+     * @param onProgress v0.49: Devolución de llamada de progreso,herramientas que requieren mucho tiempo(web_fetch/web_search/delegate_agent/install_skill)
+     *                   Llamado antes de la ejecución.,Para que la interfaz de usuario se muestre en TaskStep"Buscando..."Esperando texto de progreso. Implementación vacía predeterminada,No interrumpe las llamadas existentes.
+     * @return Cadena de resultado de ejecución
      */
     suspend fun execute(
         skill: SkillEntity,
@@ -127,14 +127,14 @@ class SkillExecutor(
         sessionId: String = "default",
     ): String = withContext(Dispatchers.IO) {
         val args = ToolArgsParser.parse(argumentsJson, skill.id)
-        // H-SE1: 改用 resultOf{}(正确重抛 CancellationException),避免 runCatching 吞协程取消信号
+        // H-SE1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException),Evite runCatching al tragar señales de cancelación de rutina
         resultOf {
             when (skill.implementationKotlin) {
                 "read_file" -> fileTools?.execReadFile(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "write_file" -> fileTools?.execWriteFile(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "http_get" -> searchTools?.execHttpGet(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "http_post" -> searchTools?.execHttpPost(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // v0.24: 搜索与信息获取类
+                // v0.24: Búsqueda y adquisición de información.
                 "web_search" -> {
                     onProgress(context.getString(R.string.skill_progress_searching))
                     searchTools?.execWebSearch(args, turnKey) ?: context.getString(R.string.skill_impl_not_configured)
@@ -145,65 +145,65 @@ class SkillExecutor(
                 }
                 "knowledge_search" -> searchTools?.execKnowledgeSearch(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "arxiv_search" -> searchTools?.execArxivSearch(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // v0.24: 自我扩展(install_skill = LLM 生成 skill 定义入库)
+                // v0.24: autoexpansión(install_skill = LLM Generar definiciones de habilidades y almacenarlas en la base de datos.)
                 "install_skill" -> {
                     onProgress(context.getString(R.string.skill_progress_installing))
                     managementTools?.installSkill(args) ?: context.getString(R.string.skill_impl_not_configured)
                 }
-                // 助手自写插件:只产出未签名草稿,用户在插件管理里签名并启用后才可执行
+                // Complemento autoescrito del asistente:Sólo produce borradores sin firmar.,Solo se puede ejecutar después de que el usuario lo firme y lo habilite en la administración de complementos.
                 "author_plugin" -> {
                     onProgress(context.getString(R.string.plugin_author_progress))
                     pluginAuthoringTools?.authorPlugin(args) ?: context.getString(R.string.skill_impl_not_configured)
                 }
-                // v0.46: 多 Agent 协作(委托子助手执行任务)
+                // v0.46: Colaboración entre múltiples agentes(Delegar subasistentes para realizar tareas.)
                 "delegate_agent" -> {
                     onProgress(context.getString(R.string.skill_progress_delegating))
                     execDelegateAgent(args)
                 }
-                // v1.55: Agent 工作流(结构化任务计划)
+                // v1.55: Agent Flujo de trabajo(Planificación estructurada de tareas)
                 "task_plan" -> {
                     onProgress(context.getString(R.string.skill_progress_planning))
                     agentTools?.execTaskPlan(args, sessionId) ?: context.getString(R.string.skill_impl_not_configured)
                 }
                 "update_plan_step" -> agentTools?.execUpdatePlanStep(args, sessionId) ?: context.getString(R.string.skill_impl_not_configured)
-                // v1.30: 群聊工具(多 Agent 群聊中发言/跳过/读取上下文)
+                // v1.30: herramienta de chat grupal(Habla en un chat grupal de múltiples agentes/saltar/Leer contexto)
                 "channel_reply" -> agentTools?.execChannelReply(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "channel_pass" -> agentTools?.execChannelPass(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "channel_read_context" -> agentTools?.execChannelReadContext(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // v1.0.53 Phase 5: Agent Phone(主 agent 触发群聊成员私聊)
+                // v1.0.53 Phase 5: Agent Phone(El agente principal activa un chat privado entre los miembros del chat grupal.)
                 "agent_phone" -> {
                     onProgress(context.getString(R.string.skill_progress_whispering))
                     agentTools?.execAgentPhone(args) ?: context.getString(R.string.skill_impl_not_configured)
                 }
-                // 文件管理类
+                // Clase de gestión de archivos
                 "list_dir" -> fileTools?.execListDir(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "delete_file" -> fileTools?.execDeleteFile(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "file_exists" -> fileTools?.execFileExists(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // 公共目录与文件传输类
+                // Clases de transferencia de archivos y directorios públicos.
                 "file_download" -> fileTools?.execFileDownload(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "read_public_file" -> fileTools?.execReadPublicFile(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "save_to_downloads" -> fileTools?.execSaveToDownloads(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "list_public_files" -> fileTools?.execListPublicFiles(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // Skill 管理类
+                // Skill Gestión
                 "list_skills" -> managementTools?.listSkills(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "uninstall_skill" -> managementTools?.uninstallSkill(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "disable_skill" -> managementTools?.disableSkill(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "enable_skill" -> managementTools?.enableSkill(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "update_skill" -> managementTools?.updateSkill(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // v1.95: 表情包库工具
+                // v1.95: Herramienta de biblioteca de emoticonos
                 "list_stickers" -> mediaTools?.execListStickers(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "send_sticker" -> mediaTools?.execSendSticker(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // 新增工具
+                // Nuevas herramientas
                 "generate_image" -> {
                     onProgress(context.getString(R.string.skill_progress_generating_image))
                     mediaTools?.execGenerateImage(args) ?: context.getString(R.string.skill_impl_not_configured)
                 }
                 "translate" -> translateTools?.execTranslate(args) ?: context.getString(R.string.skill_impl_not_configured)
                 "generate_qr" -> mediaTools?.execGenerateQr(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // JS 沙盒:让 LLM 能在 Skill 体系里执行 JavaScript 代码
-                // (主入口为 ToolRegistry.execute_javascript,此处为 SkillExecutor 路由分支,供 skill 调用)
+                // JS caja de arena:Permitir que LLM ejecute código JavaScript en el sistema Skill
+                // (La entrada principal es ToolRegistry.execute_javascript,Aquí está la rama de enrutamiento de SkillExecutor.,Para llamadas de habilidad)
                 "execute_javascript" -> mediaTools?.execExecuteJavascript(args) ?: context.getString(R.string.skill_impl_not_configured)
-                // 提示词技能:不跑任何 Kotlin 实现,只把编码的指令文本交回模型(调用参数一律忽略)
+                // Habilidades de palabras rápidas:No ejecuta ninguna implementación de Kotlin,Devuelve sólo el texto de instrucción codificado al modelo.(Los parámetros de llamada siempre se ignoran)
                 else ->
                     if (SkillImporter.isPromptSkill(skill.implementationKotlin)) {
                         managementTools?.execPromptSkill(skill, args) ?: context.getString(R.string.skill_impl_not_configured)
@@ -214,32 +214,32 @@ class SkillExecutor(
                     }
             }
         }.onError { msg, t ->
-            Logger.e("SkillExecutor", "skill ${skill.id} 执行失败: $msg", t)
+            Logger.e("SkillExecutor", "skill ${skill.id} La ejecución falló: $msg", t)
         }.getOrNull() ?: context.getString(R.string.skill_exec_exception)
     }
 
-    /** v1.55: 供 ChatViewModel 读取活跃计划。 */
+    /** v1.55: Para que ChatViewModel lea la programación activa. */
     fun getActivePlans(): Map<String, io.zer0.muse.ui.taskcard.AgentPlan> = agentTools?.getActivePlans().orEmpty()
 
     fun getActivePlans(sessionId: String): Map<String, io.zer0.muse.ui.taskcard.AgentPlan> = agentTools?.getActivePlans(sessionId).orEmpty()
 
-    /** 将历史恢复的计划回灌给当前会话的 task_plan/update_plan_step 执行器。 */
+    /** Devuelva el plan de recuperación histórico al ejecutor task_plan/update_plan_step de la sesión actual. */
     fun restoreActivePlans(plans: Map<String, io.zer0.muse.ui.taskcard.AgentPlan>, sessionId: String = "default") {
         agentTools?.restoreActivePlans(plans, sessionId)
     }
 
     /**
-     * v2.6.4: 收尾未完成计划（把 PENDING / IN_PROGRESS 步骤落成 CANCELLED）。
-     * 工具循环退出时调用，保证计划卡不会永远停在中途。
+     * v2.6.4: Cierra el plan sin terminar (convierte el paso PENDIENTE / EN_PROGRESO en CANCELADO).
+     * Se llama cuando el bucle de herramientas sale para garantizar que la tarjeta del plan no se detenga en el medio para siempre.
      */
     fun settleUnfinishedPlans(sessionId: String = "default"): Map<String, io.zer0.muse.ui.taskcard.AgentPlan> =
         agentTools?.settleUnfinishedPlans(sessionId).orEmpty()
 
-    // v1.0.81: parseArgs 已抽取为 ToolArgsParser（可单测），不再在 SkillExecutor 内联。
+    // v1.0.81: parseArgs Extraído a ToolArgsParser (comprobable único) y ya no incluido en SkillExecutor.
 
-    // ── 内置 skill 实现 ──────────────────────────────────────────────────────
+    // ── Implementación de habilidades integradas ──────────────────────────────────────────────────────
 
-    /** 读取应用沙盒内文件(限定 filesDir / cacheDir 子路径)。 */
+    /** Leer archivos en el entorno limitado de la aplicación(Calificar subrutas filesDir / cacheDir). */
     private fun validatePublicUrl(url: String): Boolean {
         val uri =
             try {
@@ -249,7 +249,7 @@ class SkillExecutor(
             }
         val host = uri.host?.lowercase() ?: return false
         if (host == "localhost") return false
-        // 解析 DNS 后二次校验 IP(防 DNS rebinding):只要任一解析结果指向内网就拒绝
+        // Verificación secundaria después de la resolución DNS IP(protegerse contra DNS rebinding):Siempre que algún resultado del análisis apunte a la intranet, será rechazado.
         val addresses =
             try {
                 java.net.InetAddress.getAllByName(host)
@@ -257,30 +257,30 @@ class SkillExecutor(
                 return false
             }
         return addresses.all { addr ->
-            // IPv4 私网/回环/链路本地等由 InetAddress 内置方法覆盖
+            // IPv4 red privada/bucle invertido/Los métodos integrados de InetAddress anulan el enlace local, etc.
             if (addr.isLoopbackAddress || addr.isAnyLocalAddress ||
                 addr.isLinkLocalAddress || addr.isSiteLocalAddress ||
                 addr.isMulticastAddress
             ) {
                 return@all false
             }
-            // IPv6 私网 fc00::/7(InetAddress.isSiteLocalAddress 对 IPv6 返回 false,需手动判断)
+            // IPv6 red privada fc00::/7(InetAddress.isSiteLocalAddress Devoluciones para IPv6 false,Requiere juicio manual)
             if (addr is java.net.Inet6Address) {
                 val bytes = addr.address
-                // fc00::/7 的前 7 位是 1111110,即首字节范围 0xfc..0xfd
+                // fc00::/7 Los 7 primeros son 1111110,Es decir, el primer rango de bytes. 0xfc..0xfd
                 if ((bytes[0].toInt() and 0xFE) == 0xFC) return@all false
             }
             true
         }
     }
 
-    /** HTTP GET 请求。失败时(404/超时/连接失败)降级到搜索摘要;401/403 等业务错误不降级。 */
+    /** HTTP GET pedido. en el fracaso(404/tiempo de espera/La conexión falló)Bajar a fragmentos de búsqueda;401/403 Espere errores comerciales y no baje de categoría. */
 
     /**
-     * install_skill — LLM 自己生成 skill 定义并入库(Phase 2 自我扩展)。
+     * install_skill — LLM Genere definiciones de habilidades usted mismo y guárdelas en la biblioteca(Phase 2 autoexpansión).
      *
-     * LLM 输出 .skill.json 格式的 skill 定义字符串,经 [SkillImporter.parse] 校验后入库。
-     * 安全约束:implementationKotlin 必须是 4 个内置实现之一,不支持任意代码执行。
+     * LLM Genere la cadena de definición de habilidad en formato .skill.json,por [SkillImporter.parse] Almacenar después de la verificación.
+     * restricciones de seguridad:implementationKotlin Debe ser una de las 4 implementaciones integradas.,No se admite la ejecución de código arbitrario.
      */
     suspend fun delegateAgent(
         request: DelegationContract.DelegationRequest,
@@ -290,7 +290,7 @@ class SkillExecutor(
             ?: DelegationContract.DelegationResult(
                 requestId = request.requestId,
                 success = false,
-                error = "delegateAgent 未配置",
+                error = "delegateAgent No configurado",
                 metadata =
                 DelegationContract.DelegationResult.ResultMetadata(
                     startedAt = System.currentTimeMillis(),
@@ -301,31 +301,31 @@ class SkillExecutor(
     }
 
     /**
-     * v0.46: 多 Agent 协作 — 把任务委托给指定子助手执行。
+     * v0.46: Colaboración entre múltiples agentes — Delegue tareas a subayudantes designados para su ejecución.
      *
-     * LLM 通过 tool_call 触发,参数:
-     *  - assistantId: 子助手 id(必填,如 "researcher"/"writer" 等)
-     *  - task: 任务描述(必填,自然语言)
-     *  - context: 可选上下文(可选,补充信息)
+     * LLM Activado por tool_call,parámetros:
+     *  - assistantId: sub-asistente id(Requerido,Como por ejemplo "researcher"/"writer" espera)
+     *  - task: Descripción de la tarea(Requerido,lenguaje natural)
+     *  - context: contexto opcional(Opcional,Información complementaria)
      *
-     * 执行流程:
-     *  1. 根据 assistantId 从 AssistantRepository 取子助手配置
-     *  2. 用子助手的 systemPrompt + 任务描述构造消息列表
-     *  3. 调用 ChatService.completeText 跑一轮(temperature/maxTokens 用子助手配置)
-     *  4. 返回子助手生成的文本给主 LLM
+     * Proceso de ejecución:
+     *  1. Obtenga la configuración del subasistente de AssistantRepository según el asistenteId
+     *  2. Construya una lista de mensajes utilizando el sistemaPrompt + descripción de tarea del subayudante
+     *  3. Llame a ChatService.completeText y ejecute una ronda(temperature/maxTokens Configurar con el subasistente)
+     *  4. Devuelve el texto generado por el subasistente al menú principal. LLM
      *
-     * 注意:
-     *  - 子助手独立调用 LLM,不走主 launchStream 的流式回环
-     *  - 失败时返回错误信息字符串(主 LLM 能看到错误并决定是否重试)
-     *  - 不递归(子助手不能再调 delegate_agent,避免无限嵌套)
+     * Nota:
+     *  - Los subasistentes se llaman de forma independiente. LLM,Streaming loopback sin tomar el launchStream principal
+     *  - Devuelve una cadena de mensaje de error en caso de error.(El maestro LLM puede ver el error y decidir si intentarlo de nuevo.)
+     *  - No recursivo(El subasistente ya no se puede ajustar delegate_agent,Evite el anidamiento infinito)
      */
-    @Deprecated("使用 delegateAgent 替代", ReplaceWith("delegateAgent"))
+    @Deprecated("Utilice delegadoAgent en su lugar", ReplaceWith("delegateAgent"))
     private suspend fun execDelegateAgent(args: Map<String, String>): String {
-        // v1.202 改造 1: 统一委派入口 — execDelegateAgent 是 LLM tool_call "delegate_agent" 的入口,
-        // 但此前不通知 DelegationChainTracker,导致 LLM 委派在 UI 链路卡片中不可见。
-        // 现在委托到结构化 delegateAgent,自动获得链路追踪 + 暂停点 + DM 集成 + 子 agent 工具调用。
-        // 注意:execDelegateAgent 返回字符串(tool result),delegateAgent 返回 DelegationResult,
-        // 这里把 result.resultText 作为字符串返回。失败时返回 result.error 让主 LLM 看到错误。
+        // v1.202 Transformación 1: Entrada de delegación unificada — execDelegateAgent si LLM tool_call "delegate_agent" entrada,
+        // Pero no se dio ningún aviso antes. DelegationChainTracker,Causó que la delegación de LLM no fuera visible en las tarjetas de enlace de la interfaz de usuario.
+        // Ahora delega a estructurado delegateAgent,Obtenga automáticamente seguimiento de enlaces + puntos de pausa + integración de DM + llamadas a herramientas de subagente.
+        // Nota:execDelegateAgent cadena de retorno(tool result),delegateAgent Regresar DelegationResult,
+        // Aquí result.resultText se devuelve como una cadena. En caso de error, devuelva result.error para permitir que el LLM principal vea el error.
         val assistantId =
             args["assistantId"]?.trim()
                 ?: return context.getString(R.string.skill_missing_param_assistant_id)
@@ -334,19 +334,19 @@ class SkillExecutor(
                 ?: return context.getString(R.string.skill_missing_param_task)
         if (task.isBlank()) return context.getString(R.string.skill_task_blank)
         val contextInfo = args["context"]?.trim().orEmpty()
-        // timeout: 默认 60 秒;response_format: 默认 text,可选 json
+        // timeout: Predeterminado 60 segundos;response_format: Predeterminado text,Opcional json
         val timeoutSec = args["timeout"]?.toLongOrNull()?.coerceIn(1L, 600L) ?: 60L
         val responseFormat = args["response_format"]?.takeIf { it.isNotBlank() } ?: "text"
 
-        // 构造上下文消息(把可选 context 作为 USER 消息的额外段落)
+        // Construir mensaje de contexto(Trate el contexto opcional como un párrafo adicional en los mensajes de USUARIO)
         val contextMessages: List<UIMessage> =
             if (contextInfo.isNotBlank()) {
-                listOf(UIMessage(role = MessageRole.USER, content = "上下文:\n$contextInfo"))
+                listOf(UIMessage(role = MessageRole.USER, content = "contexto:\n$contextInfo"))
             } else {
                 emptyList()
             }
 
-        // 构造结构化 DelegationRequest,委托到 delegateAgent(自动走链路追踪/暂停/DM/工具调用)
+        // Estructuración de construcciones DelegationRequest,confiado a delegateAgent(Seguimiento automático de enlaces/pausa/DM/llamada de herramienta)
         val requestId = "delegate-toolcall-${System.currentTimeMillis()}-${(100..999).random()}"
         val request =
             DelegationContract.DelegationRequest(
@@ -366,23 +366,23 @@ class SkillExecutor(
             )
         val result = delegateAgent(request)
 
-        // 把 DelegationResult 转成字符串(tool result)
-        // 失败时返回错误字符串(主 LLM 能看到错误并决定是否重试)
+        // Convertir DelegationResult en cadena(tool result)
+        // Devuelve una cadena de error en caso de error(El maestro LLM puede ver el error y decidir si intentarlo de nuevo.)
         if (!result.success) {
             return result.error ?: context.getString(R.string.skill_unknown_error)
         }
         val resultText = result.resultText
-        // 取子助手名(从 metadata,若不可用则降级到 assistantId)
+        // Obtener el nombre del subasistente(de metadata,Si no está disponible, baje a assistantId)
         val assistantName = result.metadata.assistantName ?: assistantId
 
-        // response_format=json 时返回结构化 JSON,否则返回带前缀的文本
+        // response_format=json Retorno estructurado JSON,De lo contrario, devolverá el texto prefijado.
         return if (responseFormat.equals("json", ignoreCase = true)) {
             buildJsonObject {
                 put("assistantId", JsonPrimitive(assistantId))
                 put("assistantName", JsonPrimitive(assistantName))
                 put("result", JsonPrimitive(resultText))
                 put("success", JsonPrimitive(true))
-                // 非阻塞模式下附带 taskId/threadId,供主 LLM 后续查询
+                // Viene con modo sin bloqueo taskId/threadId,Consulta de seguimiento de LLM del proveedor
                 result.taskId?.let { put("taskId", JsonPrimitive(it)) }
                 result.threadId?.let { put("threadId", JsonPrimitive(it)) }
             }.toString()
@@ -394,29 +394,29 @@ class SkillExecutor(
         }
     }
 
-    // ── v1.55: Agent 工作流(结构化任务计划)──────────────────────────────
+    // ── v1.55: Agent Flujo de trabajo(Planificación estructurada de tareas)──────────────────────────────
 
-    // ── 文件管理类 ──────────────────────────────────────────────────────
+    // ── Clase de gestión de archivos ──────────────────────────────────────────────────────
 
-    /** list_dir — 列出目录下的文件和子目录(沙盒内)。 */
+    /** list_dir — Listar archivos y subdirectorios en un directorio(dentro de la caja de arena). */
 
-    // ── Skill 管理类 ────────────────────────────────────────────────────
+    // ── Skill Gestión ────────────────────────────────────────────────────
 
-    /** list_skills — 列出已安装的 Skill,可选按 category 筛选。 */
+    /** list_skills — Lista instalada Skill,Filtrado opcional por categoría. */
 
-    /** uninstall_skill — 卸载 Skill(按 id 删除,或按 name 查找后删除)。 */
+    /** uninstall_skill — Desinstalar Skill(Eliminar por identificación,O buscar por nombre y eliminar). */
     companion object {
         /**
-         * 预定义 skill 模板(首次启动时写入数据库)。
-         * v2.x: 启动 seed 走 SkillRepository.seedOrRefreshBuiltIn —
-         * 缺失则插入,已存在仅刷新定义字段(保留用户启停状态)。
+         * Plantillas de habilidades predefinidas(Escribir en la base de datos en el primer inicio).
+         * v2.x: Empieza a sembrar y listo. SkillRepository.seedOrRefreshBuiltIn —
+         * Si falta, inserte,El campo Actualizar sólo definición ya existe(Mantener el estado de inicio y detención del usuario).
          */
         val BUILT_IN_SKILLS: List<SkillEntity> =
             listOf(
                 SkillEntity(
                     id = "read_file",
-                    name = "读取文件",
-                    description = "读取应用沙盒内的文本文件。路径相对于 filesDir；大于 1MB 的文件自动分段返回，使用 offset_chars/length_chars 继续读取，不丢弃后续内容。",
+                    name = "leer archivo",
+                    description = "Lea archivos de texto dentro del entorno limitado de la aplicación. La ruta es relativa a filesDir; Los archivos de más de 1 MB se devuelven automáticamente en segmentos, utilizando offset_chars/length_chars para continuar leyendo sin descartar el contenido posterior.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -427,42 +427,42 @@ class SkillExecutor(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "相对于 filesDir 的文件路径,如 'notes/todo.txt'")
+                                        put("description", "Ruta del archivo relativa a filesDir,Como por ejemplo 'notes/todo.txt'")
                                     },
                                 )
                                 put(
                                     "offset",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,起始行号(从 0 开始),默认 0")
+                                        put("description", "Opcional,Número de línea inicial(Empezar desde 0),Predeterminado 0")
                                     },
                                 )
                                 put(
                                     "length",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,读取行数,默认 0=全部")
+                                        put("description", "Opcional,Número de líneas leídas,Predeterminado 0=Todos")
                                     },
                                 )
                                 put(
                                     "offset_chars",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,字符分页起点；读取超大文件的下一段时使用上次返回的游标")
+                                        put("description", "Opcional,Punto de partida de la paginación de caracteres; use el último cursor devuelto al leer la siguiente sección de un archivo muy grande")
                                     },
                                 )
                                 put(
                                     "length_chars",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,字符分页长度；每次最多返回 65536 字符")
+                                        put("description", "Opcional,Longitud de la página de caracteres; hasta 65536 caracteres devueltos cada vez")
                                     },
                                 )
                                 put(
                                     "encoding",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,文件编码,默认 utf-8(支持 utf-16)")
+                                        put("description", "Opcional,Codificación de archivos,Predeterminado utf-8(apoyo utf-16)")
                                     },
                                 )
                             },
@@ -475,8 +475,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "write_file",
-                    name = "写入文件",
-                    description = "写入文本到应用沙盒内的文件。路径相对于 filesDir。",
+                    name = "escribir archivo",
+                    description = "Escribe texto en un archivo dentro del entorno limitado de la aplicación. Las rutas son relativas a filesDir.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -487,28 +487,28 @@ class SkillExecutor(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "相对于 filesDir 的文件路径")
+                                        put("description", "Ruta del archivo relativa a filesDir")
                                     },
                                 )
                                 put(
                                     "content",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要写入的文本内容")
+                                        put("description", "El contenido del texto a escribir.")
                                     },
                                 )
                                 put(
                                     "append",
                                     buildJsonObject {
                                         put("type", "boolean")
-                                        put("description", "是否追加写入(默认 false 覆盖)")
+                                        put("description", "Si escribir adicionalmente(Anulación falsa predeterminada)")
                                     },
                                 )
                                 put(
                                     "create_dirs",
                                     buildJsonObject {
                                         put("type", "boolean")
-                                        put("description", "可选,是否自动创建父目录,默认 true")
+                                        put("description", "Opcional,Si se deben crear automáticamente directorios principales,Predeterminado true")
                                     },
                                 )
                             },
@@ -530,7 +530,7 @@ class SkillExecutor(
                 SkillEntity(
                     id = "http_get",
                     name = "HTTP GET",
-                    description = "发起 HTTP GET 请求并返回完整响应;长响应会保存到可分段读取的应用文件。",
+                    description = "Realiza una solicitud HTTP GET y devuelve una respuesta completa;Las respuestas largas se guardan en un archivo de aplicación que se puede leer por partes.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -541,21 +541,21 @@ class SkillExecutor(
                                     "url",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "请求 URL,http:// 或 https://")
+                                        put("description", "Solicitar URL,http:// o https://")
                                     },
                                 )
                                 put(
                                     "headers",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,请求头 JSON,如 {\"Authorization\":\"Bearer xxx\"}")
+                                        put("description", "Opcional,Encabezado de solicitud JSON,Como por ejemplo {\"Authorization\":\"Bearer xxx\"}")
                                     },
                                 )
                                 put(
                                     "timeout",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,超时秒数,默认 30")
+                                        put("description", "Opcional,Segundos de tiempo de espera,Predeterminado 30")
                                     },
                                 )
                             },
@@ -569,7 +569,7 @@ class SkillExecutor(
                 SkillEntity(
                     id = "http_post",
                     name = "HTTP POST",
-                    description = "发起 HTTP POST 请求并返回完整响应;长响应会保存到可分段读取的应用文件。",
+                    description = "Realiza una solicitud HTTP POST y devuelve una respuesta completa;Las respuestas largas se guardan en un archivo de aplicación que se puede leer por partes.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -582,7 +582,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "请求 URL",
+                                            "Solicitar URL",
                                         )
                                     },
                                 )
@@ -590,28 +590,28 @@ class SkillExecutor(
                                     "body",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "请求体内容")
+                                        put("description", "Solicitar contenido del cuerpo")
                                     },
                                 )
                                 put(
                                     "content_type",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "Content-Type,默认 application/json")
+                                        put("description", "Content-Type,Predeterminado application/json")
                                     },
                                 )
                                 put(
                                     "headers",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,请求头 JSON")
+                                        put("description", "Opcional,Encabezado de solicitud JSON")
                                     },
                                 )
                                 put(
                                     "timeout",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,超时秒数,默认 30")
+                                        put("description", "Opcional,Segundos de tiempo de espera,Predeterminado 30")
                                     },
                                 )
                             },
@@ -630,12 +630,12 @@ class SkillExecutor(
                     implementationKotlin = "http_post",
                     category = "http",
                 ),
-                // ── v0.24: 搜索与信息获取 ──────────────────────────────────────
+                // ── v0.24: Búsqueda y adquisición de información. ──────────────────────────────────────
                 SkillEntity(
                     id = "web_search",
-                    name = "网页搜索",
-                    // v1.0.75 fix (工具审查 01): 删冗余 time_period,补 date_range 使用指引
-                    description = "用配置好的搜索引擎(SearXNG/Tavily)搜索网页。返回标题、URL 和摘要。当用户问到需要最新信息的问题时调用此工具。使用时机: 用户问到需要最新/实时信息的问题(价格、版本、政策、行情、天气等),或你知识不确定时。需要限定时间时传 date_range(如用户说'最近一周',传 past_week)。不要使用: 常识性问题或用户已提供足够信息时;搜索结果不全时换关键词重搜,不要编造。",
+                    name = "búsqueda web",
+                    // v1.0.75 fix (Revisión de herramientas 01): Eliminar redundancia time_period,Pautas de uso complementarias de rango de fechas
+                    description = "Utilice el motor de búsqueda configurado(SearXNG/Tavily)Busca en la web. Título de retorno,URL y abstracto. Esta herramienta se llama cuando un usuario hace una pregunta que requiere la información más reciente. cuando usar: Los usuarios preguntaron sobre la necesidad de lo último/Problemas de información en tiempo real(Precio, versión, política, situación del mercado, climatología, etc.),O cuando tu conocimiento es incierto. Se requiere límite de tiempo date_range(Como dijo el usuario'la semana pasada',pasar past_week). no usar: Preguntas de sentido común o cuando el usuario ha proporcionado información suficiente;Si los resultados de la búsqueda están incompletos, cambie la palabra clave y busque nuevamente.,No lo inventes.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -646,14 +646,14 @@ class SkillExecutor(
                                     "query",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "必填,搜索关键词。中文用户问题直接用中文关键词,可加关键限定词提高精度")
+                                        put("description", "Requerido,Buscar palabras clave. Las preguntas de los usuarios chinos utilizan directamente palabras clave chinas,Se pueden agregar calificadores clave para mejorar la precisión.")
                                     },
                                 )
                                 put(
                                     "max_results",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,最大返回条数(1-10),默认 5")
+                                        put("description", "Opcional,Número máximo de artículos devueltos(1-10),Predeterminado 5")
                                     },
                                 )
                                 put(
@@ -662,7 +662,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "可选,限定结果时间范围,取值: past_day / past_week / past_month / past_year。用户提到'最近/最新/本周/本月'时填写,无时间要求时不填",
+                                            "Opcional,Limitar el rango de tiempo del resultado,valor: past_day / past_week / past_month / past_year. Usuario mencionado'Recientemente/Lo último/esta semana/este mes'Complete cuando,Dejar en blanco si no hay requisito de tiempo",
                                         )
                                     },
                                 )
@@ -676,8 +676,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "web_fetch",
-                    name = "网页抓取",
-                    description = "抓取指定 URL 的网页正文(自动去除 HTML 标签,返回纯文本)。用于读取 web_search 返回的 URL 全文内容。使用时机: 读取 web_search 返回的 URL 全文,或用户给出明确 URL 时。不要使用: 无 URL 时;页面需要登录/交互时说明无法获取,不要猜测内容。",
+                    name = "raspado web",
+                    description = "Obtener el texto de la página web de la URL especificada(Eliminar etiquetas HTML automáticamente,Devolver texto sin formato). Se utiliza para leer el contenido de texto completo de la URL devuelta por web_search. cuando usar: Lea el texto completo de la URL devuelta por web_search,O cuando el usuario proporciona una URL explícita. no usar: Cuando no hay URL;La página requiere iniciar sesión/La descripción no se puede obtener durante la interacción.,No adivines el contenido.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -688,14 +688,14 @@ class SkillExecutor(
                                     "url",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要抓取的网页 URL,http:// 或 https://")
+                                        put("description", "Páginas para rastrear URL,http:// o https://")
                                     },
                                 )
                                 put(
                                     "headers",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,请求头 JSON")
+                                        put("description", "Opcional,Encabezado de solicitud JSON")
                                     },
                                 )
                             },
@@ -708,10 +708,10 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "knowledge_search",
-                    name = "知识库搜索",
-                    // v1.0.75 fix (工具审查 01): 明确与 web_search 的边界,
-                    // 原"可能与已导入文档相关时优先调用"太模糊,模型先试本地再退搜索浪费轮次。
-                    description = "在用户主动导入的知识库文档中语义搜索(向量检索 + 标题/内容匹配)。仅当用户知识库中可能有答案时使用(如用户导入过资料、问'我之前存的文档里怎么说的')。通用事实、实时信息、网上能查到的问题一律用 web_search,不要先用本工具试探。用户问 muse app 自身功能(如怎么用深度思考/主动消息怎么设置)时,传 include_internal=true 可检索内置功能文档。",
+                    name = "Búsqueda de base de conocimientos",
+                    // v1.0.75 fix (Revisión de herramientas 01): Borrar límites con web_search,
+                    // Originales"Puede ser llamado primero cuando esté relacionado con documentos importados."demasiado borroso,El modelo intenta primero la búsqueda local y luego regresa a la búsqueda, desperdiciando rondas.
+                    description = "Búsqueda semántica en documentos de la base de conocimientos importados activamente por los usuarios.(Búsqueda vectorial + título/coincidencia de contenido). Úselo solo si puede haber una respuesta en la base de conocimientos del usuario.(Si el usuario ha importado datos y ha preguntado'¿Qué dice en el documento que guardé antes?'). Utilice datos generales, información en tiempo real y preguntas que se puedan encontrar en línea. web_search,No pruebes con esta herramienta primero. Los usuarios preguntan sobre las funciones propias de la aplicación muse(Cómo utilizar el pensamiento profundo/Cómo configurar mensajes activos)tiempo,pasar include_internal=true Se puede recuperar la documentación de funciones integradas.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -722,21 +722,21 @@ class SkillExecutor(
                                     "query",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "搜索关键词")
+                                        put("description", "Buscar palabras clave")
                                     },
                                 )
                                 put(
                                     "top_k",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,返回条数上限,默认 5")
+                                        put("description", "Opcional,Devuelve el límite superior del número de artículos.,Predeterminado 5")
                                     },
                                 )
                                 put(
                                     "threshold",
                                     buildJsonObject {
                                         put("type", "number")
-                                        put("description", "可选,相似度阈值(0-1 小数制,非满分 100),默认 0.3。低于阈值的过滤掉")
+                                        put("description", "Opcional,umbral de similitud(0-1 sistema decimal,Puntuación no perfecta 100),Predeterminado 0.3. Filtrar aquellos que están por debajo del umbral")
                                     },
                                 )
                                 put(
@@ -745,7 +745,7 @@ class SkillExecutor(
                                         put("type", "boolean")
                                         put(
                                             "description",
-                                            "可选,是否包含 muse app 内置功能文档,默认 false。仅在用户问 muse app 自身功能(如'怎么用深度思考''主动消息怎么设置')时传 true",
+                                            "Opcional,Si se debe incluir documentación de la función integrada de la aplicación muse,Por defecto es falso. Solo cuando el usuario le pide a la aplicación muse que funcione(Como por ejemplo'Cómo utilizar el pensamiento profundo''Cómo configurar mensajes activos')biografía del tiempo true",
                                         )
                                     },
                                 )
@@ -755,9 +755,9 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "可选,限定检索的文件夹(知识库内路径,如'合同'或'合同/2026')。" +
-                                                "每个文件夹是独立检索域,传入后只在该文件夹及其子文件夹内检索,不会串到其它文件夹。" +
-                                                "用户只想查某个文件夹时传入。",
+                                            "Opcional,Limitar carpetas de búsqueda(Camino dentro de la base de conocimiento,Como por ejemplo'contrato'o'contrato/2026')." +
+                                                "Cada carpeta es un dominio de búsqueda independiente.,Después de ingresar, busque únicamente dentro de la carpeta y sus subcarpetas.,No se vinculará a otras carpetas." +
+                                                "Se pasa cuando el usuario solo quiere comprobar una carpeta determinada.",
                                         )
                                     },
                                 )
@@ -771,8 +771,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "arxiv_search",
-                    name = "arXiv 论文搜索",
-                    description = "在 arXiv 搜索学术论文(计算机科学、物理、数学等)。返回论文标题、链接、发表日期和摘要。当用户问到学术研究、论文相关问题时调用。",
+                    name = "arXiv búsqueda de papel",
+                    description = "Buscar artículos académicos en arXiv(Informática, Física, Matemáticas, etc.). Devuelve el título del artículo, el enlace, la fecha de publicación y el resumen. Se llama cuando los usuarios hacen preguntas relacionadas con investigaciones y artículos académicos.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -783,35 +783,35 @@ class SkillExecutor(
                                     "query",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "搜索关键词(英文为佳),如 'transformer attention'")
+                                        put("description", "Buscar palabras clave(se prefiere el ingles),Como por ejemplo 'transformer attention'")
                                     },
                                 )
                                 put(
                                     "max_results",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,最大返回条数(1-10),默认 5")
+                                        put("description", "Opcional,Número máximo de artículos devueltos(1-10),Predeterminado 5")
                                     },
                                 )
                                 put(
                                     "category",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,学科分类,如 cs.AI/cs.CL")
+                                        put("description", "Opcional,Clasificación de materias,Como por ejemplo cs.AI/cs.CL")
                                     },
                                 )
                                 put(
                                     "date_from",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,起始日期(YYYY-MM-DD)")
+                                        put("description", "Opcional,fecha de inicio(YYYY-MM-DD)")
                                     },
                                 )
                                 put(
                                     "date_to",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,结束日期(YYYY-MM-DD)")
+                                        put("description", "Opcional,fecha de finalización(YYYY-MM-DD)")
                                     },
                                 )
                             },
@@ -822,11 +822,11 @@ class SkillExecutor(
                     implementationKotlin = "arxiv_search",
                     category = "search",
                 ),
-                // ── v0.24: 自我扩展 ─────────────────────────────────────────────
+                // ── v0.24: autoexpansión ─────────────────────────────────────────────
                 SkillEntity(
                     id = "install_skill",
-                    name = "安装 Skill",
-                    description = "让助手自己生成新的 skill 定义并安装到用户设备。skill_json 参数为 .skill.json 格式的 JSON 字符串。必填字段: id, name, description, category, implementationKotlin, parametersJson。category 取值: file/http/search/knowledge/system/agent/sticker/custom。implementationKotlin 必须是内置实现之一(read_file/write_file/http_get/http_post/web_search/web_fetch/knowledge_search/arxiv_search),不支持任意代码执行。安装后用户可在设置→Skill 中查看/启停。提示词技能:implementationKotlin 传 \"prompt\",指令文本放 prompt 字段(也接受 \"prompt:<文本>\" 形式;文本受注入黑名单与 8KB 上限约束)。提示词技能可被调用时传可选 input 参数:指令文本中的 {{input}} 占位符会被代入,无占位符时输入追加到指令末尾。",
+                    name = "Instalación Skill",
+                    description = "Deje que el asistente genere la nueva definición de habilidad e instálela en el dispositivo del usuario.skill_json El parámetro es una cadena JSON en formato .skill.json. Campos obligatorios: id, name, description, category, implementationKotlin, parametersJson.category valor: file/http/search/knowledge/system/agent/sticker/custom.implementationKotlin Debe ser una de las implementaciones integradas.(read_file/write_file/http_get/http_post/web_search/web_fetch/knowledge_search/arxiv_search),No se admite la ejecución de código arbitrario. Después de la instalación, los usuarios pueden configurar→Skill Ver en/Iniciar y detener. Habilidades de palabras rápidas:implementationKotlin pasar \"prompt\",El texto del comando se coloca en el campo de solicitud.(También aceptado \"prompt:<texto>\" forma;Texto sujeto a lista negra de inyección y límite de 8KB). El parámetro de entrada opcional se puede pasar cuando se puede llamar a la palabra habilidad.:en el texto del comando {{input}} Los marcadores de posición serán sustituidos,Si no hay ningún marcador de posición, la entrada se agrega al final del comando.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -839,7 +839,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "skill 定义 JSON 字符串(.skill.json 格式)。示例: {\"id\":\"fetch_weather\",\"name\":\"查询天气\",\"description\":\"查询城市天气\",\"parametersJson\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"url\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"implementationKotlin\":\"http_get\"}",
+                                            "skill Definir cadena JSON(.skill.json Formato). Ejemplo: {\"id\":\"fetch_weather\",\"name\":\"comprobar el clima\",\"description\":\"Consulta el clima de la ciudad\",\"parametersJson\":\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"url\\\":{\\\"type\\\":\\\"string\\\"}}}\",\"implementationKotlin\":\"http_get\"}",
                                         )
                                     },
                                 )
@@ -853,8 +853,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "author_plugin",
-                    name = "编写插件",
-                    description = "让助手自己编写一个带 JS 工具实现的插件。code 是 JS 入口源码（工具实现必须是顶层 function 声明），tools 是工具声明数组（每项含 name/description/parametersJson/requiredJson/functionName），可选 capabilities 只能取 resource.read/ui/ui.mood。本工具只生成【未签名草稿】：草稿已禁用、不可执行，助手不能调用；必须由用户在「设置 → 插件管理」中审阅工具清单与代码，点击「签名并启用」后才会由本机作者密钥签名生效。",
+                    name = "Escribir un complemento",
+                    description = "Deje que el asistente escriba un complemento implementado con herramientas JS.code Es el código fuente de entrada JS (la implementación de la herramienta debe ser la declaración de función de nivel superior),tools es una serie de declaraciones de herramientas (cada elemento contiene name/description/parametersJson/requiredJson/functionName), las capacidades opcionales solo pueden tomar recurso.read/ui/ui.mood. Esta herramienta solo genera [borrador sin firmar]: el borrador está deshabilitado, no es ejecutable y no se puede llamar al asistente; debe ser configurado por el usuario en \"Configuración\" → Revise la lista de herramientas y el código en \"Administración de complementos\" y haga clic en \"Firmar y activar\" antes de que la firma con la clave de autor local surta efecto.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -865,28 +865,28 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "插件 id:小写字母、数字、下划线、连字符,以字母或数字开头,如 'daily_summary'")
+                                        put("description", "ID del complemento: letras minúsculas, números, guiones bajos, guiones,Comience con una letra o un número,Como por ejemplo 'daily_summary'")
                                     },
                                 )
                                 put(
                                     "name",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "插件显示名,如 '每日总结'")
+                                        put("description", "Nombre para mostrar del complemento,Como por ejemplo 'resumen diario'")
                                     },
                                 )
                                 put(
                                     "description",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "插件用途说明")
+                                        put("description", "Descripción de uso del complemento")
                                     },
                                 )
                                 put(
                                     "version",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "语义化版本,如 '1.0.0'")
+                                        put("description", "versión semántica,Como por ejemplo '1.0.0'")
                                     },
                                 )
                                 put(
@@ -895,7 +895,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "JS 入口源码(≤256KB)。每个工具的 functionName 必须在源码里有顶层 function 声明,如 'function summarize(args) { return ...; }'",
+                                            "JS Código fuente de entrada(≤256KB). El nombre de función de cada herramienta debe tener una declaración de función de nivel superior en el código fuente.,Como por ejemplo 'function summarize(args) { return ...; }'",
                                         )
                                     },
                                 )
@@ -903,7 +903,7 @@ class SkillExecutor(
                                     "tools",
                                     buildJsonObject {
                                         put("type", "array")
-                                        put("description", "工具声明数组,与 manifest 的 tools 字段一致")
+                                        put("description", "matriz de declaración de herramientas,Consistente con el campo de herramientas del manifiesto.")
                                         put(
                                             "items",
                                             buildJsonObject {
@@ -928,7 +928,7 @@ class SkillExecutor(
                                         put("type", "array")
                                         put(
                                             "description",
-                                            "可选能力数组,取自白名单:resource.read / ui / ui.mood 与受控桥接能力(network / storage.read / storage.write / clipboard.read / clipboard.write / notify / device.info)，默认不声明",
+                                            "Matriz de habilidades opcional,Tomado de la lista blanca:resource.read / ui / ui.mood con capacidades de puente controladas(network / storage.read / storage.write / clipboard.read / clipboard.write / notify / device.info), no declarado por defecto",
                                         )
                                     },
                                 )
@@ -951,11 +951,11 @@ class SkillExecutor(
                     implementationKotlin = "author_plugin",
                     category = "system",
                 ),
-                // ── v0.46: 多 Agent 协作 ────────────────────────────────────────
+                // ── v0.46: Colaboración entre múltiples agentes ────────────────────────────────────────
                 SkillEntity(
                     id = "delegate_agent",
-                    name = "委托子助手",
-                    description = "把任务委托给指定子助手执行,用于多助手协作。传入 assistantId(助手 id)和 task(任务描述),可选 context(上下文)。子助手会用自己的人设和能力独立完成任务并返回结果。",
+                    name = "Subasistente delegado",
+                    description = "Delegar tareas a subasistentes designados para su ejecución.,Se utiliza para la colaboración con múltiples asistentes. entrante assistantId(asistente id)y task(Descripción de la tarea),Opcional context(contexto). El subasistente utilizará su propia personalidad y capacidades para completar la tarea de forma independiente y devolver los resultados.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -966,35 +966,35 @@ class SkillExecutor(
                                     "assistantId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "子助手 id,如 default / researcher / writer 等。可在助手管理页查看")
+                                        put("description", "sub-asistente id,Como por ejemplo default / researcher / writer Esperar. Se puede ver en la página de gestión del asistente.")
                                     },
                                 )
                                 put(
                                     "task",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要委托的任务描述,自然语言")
+                                        put("description", "Descripción de la tarea a delegar,lenguaje natural")
                                     },
                                 )
                                 put(
                                     "context",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选的补充上下文信息")
+                                        put("description", "Información contextual complementaria opcional")
                                     },
                                 )
                                 put(
                                     "timeout",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,超时秒数,默认 60")
+                                        put("description", "Opcional,Segundos de tiempo de espera,Predeterminado 60")
                                     },
                                 )
                                 put(
                                     "response_format",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,返回格式,text(默认)或 json")
+                                        put("description", "Opcional,Formato de devolución,text(Predeterminado)o json")
                                     },
                                 )
                             },
@@ -1013,11 +1013,11 @@ class SkillExecutor(
                     implementationKotlin = "delegate_agent",
                     category = "agent",
                 ),
-                // ── v1.30: 群聊工具 ─────────────────────────────────────────────
+                // ── v1.30: herramienta de chat grupal ─────────────────────────────────────────────
                 SkillEntity(
                     id = "channel_reply",
-                    name = "群聊发言",
-                    description = "在指定群聊中作为指定 agent 发送一条消息。传入 chatId(群聊 id)、assistantId(发言 agent id)和 body(消息正文)。消息会保存到群聊历史中,其他成员和用户可见。",
+                    name = "Discurso de chat grupal",
+                    description = "Envíe un mensaje como el agente especificado en el chat grupal especificado. entrante chatId(chat grupal id),assistantId(hablar agent id)y body(Texto del mensaje). El mensaje se guardará en el historial de chat grupal.,Visible para otros miembros y usuarios.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1028,21 +1028,21 @@ class SkillExecutor(
                                     "chatId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "群聊 id")
+                                        put("description", "chat grupal id")
                                     },
                                 )
                                 put(
                                     "assistantId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "发言的 agent id(assistantId)")
+                                        put("description", "hablando agent id(assistantId)")
                                     },
                                 )
                                 put(
                                     "body",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "消息正文内容")
+                                        put("description", "Contenido del texto del mensaje")
                                     },
                                 )
                             },
@@ -1064,8 +1064,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "channel_pass",
-                    name = "群聊跳过本轮",
-                    description = "在群聊轮转中跳过本轮发言(不发送消息)。传入 chatId(群聊 id)和 assistantId(agent id)。当 agent 认为当前无需自己发言时调用。",
+                    name = "El chat grupal se salta esta ronda",
+                    description = "Saltar hablar en el carrusel de chat grupal(no enviar mensaje). entrante chatId(chat grupal id)y assistantId(agent id). Se llama cuando el agente cree que no necesita hablar en ese momento.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1076,14 +1076,14 @@ class SkillExecutor(
                                     "chatId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "群聊 id")
+                                        put("description", "chat grupal id")
                                     },
                                 )
                                 put(
                                     "assistantId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "跳过发言的 agent id")
+                                        put("description", "saltar para hablar agent id")
                                     },
                                 )
                             },
@@ -1104,8 +1104,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "channel_read_context",
-                    name = "读取群聊上下文",
-                    description = "读取指定群聊的最近消息作为上下文。传入 chatId(群聊 id),可选 limit(条数上限,默认 20)。返回格式化的消息列表,包含发送者名、时间和内容。",
+                    name = "Leer el contexto del chat grupal",
+                    description = "Lea los últimos mensajes del chat grupal especificado como contexto. entrante chatId(chat grupal id),Opcional limit(Límite superior del número de artículos.,Predeterminado 20). Devuelve una lista de mensajes formateados,Contiene el nombre del remitente, la hora y el contenido.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1116,14 +1116,14 @@ class SkillExecutor(
                                     "chatId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "群聊 id")
+                                        put("description", "chat grupal id")
                                     },
                                 )
                                 put(
                                     "limit",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,读取条数上限(1-100),默认 20")
+                                        put("description", "Opcional,Número máximo de elementos leídos(1-100),Predeterminado 20")
                                     },
                                 )
                             },
@@ -1134,11 +1134,11 @@ class SkillExecutor(
                     implementationKotlin = "channel_read_context",
                     category = "agent",
                 ),
-                // ── v1.0.53 Phase 5: Agent Phone(主 agent 触发群聊成员私聊) ─────
+                // ── v1.0.53 Phase 5: Agent Phone(El agente principal activa un chat privado entre los miembros del chat grupal.) ─────
                 SkillEntity(
                     id = "agent_phone",
-                    name = "Agent 私聊",
-                    description = "在群聊中向指定 agent 发起私聊(whisper)。传入 chatId(群聊 id)、targetAssistantId(目标 agent id)和 message(私聊内容)。私聊消息仅目标 agent 可见,不参与群聊轮转上下文,且会持久化到独立会话账本(App 重启后可续接)。调用后立即返回,目标 agent 的回复异步到达群聊消息流。",
+                    name = "Agent chat privado",
+                    description = "Iniciar un chat privado con el agente especificado en el chat grupal(whisper). entrante chatId(chat grupal id),targetAssistantId(objetivo agent id)y message(Contenido de chat privado). Los mensajes de chat privados solo son visibles para el agente objetivo,No participar en el contexto de rotación del chat grupal,Y se mantendrá en el libro mayor de sesión independiente.(App Se puede continuar después de reiniciar). Regresar inmediatamente después de llamar,Las respuestas del agente objetivo llegan de forma asincrónica al flujo de mensajes del chat grupal.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1149,21 +1149,21 @@ class SkillExecutor(
                                     "chatId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "群聊 id(用于隔离 whisper 上下文)")
+                                        put("description", "chat grupal id(Se utiliza para aislar el contexto de susurro.)")
                                     },
                                 )
                                 put(
                                     "targetAssistantId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "目标 agent 的 id(assistantId)")
+                                        put("description", "agente objetivo id(assistantId)")
                                     },
                                 )
                                 put(
                                     "message",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "私聊消息正文")
+                                        put("description", "Texto de mensaje de chat privado")
                                     },
                                 )
                             },
@@ -1183,11 +1183,11 @@ class SkillExecutor(
                     implementationKotlin = "agent_phone",
                     category = "agent",
                 ),
-                // ── 文件管理类 ─────────────────────────────────────────────────
+                // ── Clase de gestión de archivos ─────────────────────────────────────────────────
                 SkillEntity(
                     id = "list_dir",
-                    name = "列出目录",
-                    description = "列出应用沙盒内指定目录下的文件和子目录。每行一个条目,文件夹前缀 [D],文件前缀 [F],末尾标注文件大小。路径相对于 filesDir。",
+                    name = "directorio de lista",
+                    description = "Enumere los archivos y subdirectorios en el directorio especificado dentro del entorno limitado de la aplicación. Una entrada por línea,prefijo de carpeta [D],prefijo de archivo [F],El tamaño del archivo está marcado al final. Las rutas son relativas a filesDir.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1198,7 +1198,7 @@ class SkillExecutor(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "相对于 filesDir 的目录路径,如 'notes' 或 ''(根目录)")
+                                        put("description", "Ruta del directorio relativa a filesDir,Como por ejemplo 'notes' o ''(directorio raíz)")
                                     },
                                 )
                             },
@@ -1211,8 +1211,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "delete_file",
-                    name = "删除文件",
-                    description = "删除应用沙盒内的文件或空目录。路径相对于 filesDir。删除非空目录会失败。支持批量删除(传 paths)。",
+                    name = "Eliminar archivos",
+                    description = "Elimine archivos o directorios vacíos dentro del entorno limitado de la aplicación. Las rutas son relativas a filesDir. La eliminación de un directorio que no esté vacío fallará. Admite eliminación por lotes(pasar paths).",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1223,14 +1223,14 @@ class SkillExecutor(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "相对于 filesDir 的文件或空目录路径(单个,与 paths 二选一)")
+                                        put("description", "Ruta de archivo o directorio vacío relativa a filesDir(soltero,Alternativa a los caminos)")
                                     },
                                 )
                                 put(
                                     "paths",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,批量删除的路径列表,逗号或换行分隔,如 'a.txt,b.txt'。与 path 二选一,优先于 path")
+                                        put("description", "Opcional,Lista de rutas para la eliminación por lotes,Separados por coma o nueva línea,Como por ejemplo 'a.txt,b.txt'. Elige uno de la ruta,tener prioridad sobre path")
                                     },
                                 )
                             },
@@ -1243,8 +1243,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "file_exists",
-                    name = "判断文件存在",
-                    description = "判断应用沙盒内指定路径的文件或目录是否存在。返回 exists 或 not_exists。路径相对于 filesDir。",
+                    name = "Determinar que el archivo existe",
+                    description = "Determine si existe el archivo o directorio en la ruta especificada en el entorno limitado de la aplicación. La devolución existe o no_existe. Las rutas son relativas a filesDir.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1255,7 +1255,7 @@ class SkillExecutor(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "相对于 filesDir 的路径")
+                                        put("description", "Ruta relativa a filesDir")
                                     },
                                 )
                             },
@@ -1266,11 +1266,11 @@ class SkillExecutor(
                     implementationKotlin = "file_exists",
                     category = "file",
                 ),
-                // ── 公共目录与文件传输 ─────────────────────────────────────────
+                // ── Directorio público y transferencia de archivos ─────────────────────────────────────────
                 SkillEntity(
                     id = "file_download",
-                    name = "下载文件",
-                    description = "从 URL 下载文件到应用沙盒。支持指定超时时间(默认 60 秒)。下载的文件保存在 filesDir 下指定相对路径,自动创建父目录。",
+                    name = "Descargar archivo",
+                    description = "Descargue un archivo desde una URL al entorno limitado de la aplicación. Admite un período de tiempo de espera especificado(Predeterminado 60 segundos). Los archivos descargados se guardan en la ruta relativa especificada en filesDir,Cree automáticamente directorios principales.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1281,21 +1281,21 @@ class SkillExecutor(
                                     "url",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "下载地址,http:// 或 https://")
+                                        put("description", "Descargar dirección,http:// o https://")
                                     },
                                 )
                                 put(
                                     "path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "保存到沙盒的相对路径(相对于 filesDir),如 'downloads/file.zip'")
+                                        put("description", "Ruta relativa para guardar en sandbox(relativo a filesDir),Como por ejemplo 'downloads/file.zip'")
                                     },
                                 )
                                 put(
                                     "timeout",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "可选,超时秒数,默认 60")
+                                        put("description", "Opcional,Segundos de tiempo de espera,Predeterminado 60")
                                     },
                                 )
                             },
@@ -1316,8 +1316,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "read_public_file",
-                    name = "读取公共文件",
-                    description = "通过 content:// URI 读取公共文件。可读取 list_public_files 返回的 URI(含 MediaStore URI),也可读用户分享/打开方式传入的 URI。返回文本内容(上限 1MB)。注:仅支持文本类文件,二进制文件可能乱码。",
+                    name = "Leer archivos públicos",
+                    description = "Leer archivos públicos a través de content:// URI. List_public_files legibles devueltos por URI(Contiene MediaStore URI),También puedes leer el uso compartido de usuarios./Abra el URI pasado. Devuelva contenido de texto(límite superior 1MB). Nota:Sólo admite archivos de texto,Los archivos binarios pueden estar confusos.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1330,7 +1330,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "文件 URI,如 list_public_files 输出的 uri=content://media/... 或 SAF 传入的 content://...",
+                                            "Archivo URI,Como resultado de list_public_files uri=content://media/... o SAF entrante content://...",
                                         )
                                     },
                                 )
@@ -1338,7 +1338,7 @@ class SkillExecutor(
                                     "encoding",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,文件编码,默认 utf-8")
+                                        put("description", "Opcional,Codificación de archivos,Predeterminado utf-8")
                                     },
                                 )
                             },
@@ -1351,8 +1351,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "save_to_downloads",
-                    name = "保存到下载目录",
-                    description = "保存文本内容或本地沙盒文件到系统 Download 目录。Android 10+ 通过 MediaStore 写入,Android 9 及以下直接写公共 Download 目录。传 file_path 时支持二进制文件转存(无需先 read_file 再写文本)。",
+                    name = "Guardar en el directorio de descargas",
+                    description = "Guarde el contenido de texto o los archivos locales de la zona de pruebas en el directorio de descargas del sistema.Android 10+ Escribiendo a través de MediaStore,Android 9 Y lo siguiente escribe directamente el directorio de descarga público. Admite volcado de archivos binarios al pasar file_path(No es necesario leer_archivo antes de escribir texto).",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1363,28 +1363,28 @@ class SkillExecutor(
                                     "content",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要保存的文本内容(与 file_path 二选一)")
+                                        put("description", "Contenido de texto que se guardará(Alternativa a file_path)")
                                     },
                                 )
                                 put(
                                     "file_path",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,沙盒内源文件路径(相对 filesDir),直接转存到 Download,支持二进制。与 content 二选一")
+                                        put("description", "Opcional,Ruta del archivo fuente dentro del entorno sandbox(relativamente filesDir),Transferir directamente a Download,Se admite binario. Elige uno del contenido")
                                     },
                                 )
                                 put(
                                     "filename",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "文件名,如 'notes.txt'")
+                                        put("description", "nombre de archivo,Como por ejemplo 'notes.txt'")
                                     },
                                 )
                                 put(
                                     "mime_type",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,MIME 类型,默认 text/plain。转存二进制时建议显式指定(如 image/png)")
+                                        put("description", "Opcional,MIME Tipo,Texto predeterminado/sin formato. Se recomienda especificar explícitamente al volcar archivos binarios.(Como por ejemplo image/png)")
                                     },
                                 )
                             },
@@ -1404,8 +1404,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "list_public_files",
-                    name = "列出公共目录",
-                    description = "列出指定公共目录(Downloads/Documents/Pictures/Music 等)的文件。通过 MediaStore 查询,返回文件名和大小。默认列 Downloads,最多 50 条,按修改时间倒序。",
+                    name = "Listar directorios públicos",
+                    description = "Listar directorios públicos especificados(Downloads/Documents/Pictures/Music espera)archivo. Consulta a través de MediaStore,Devuelve el nombre y el tamaño del archivo. Columna predeterminada Downloads,Máximo 50,Ordenar por hora de modificación en orden inverso.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1416,15 +1416,15 @@ class SkillExecutor(
                                     "directory",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,目录名,如 Downloads/Documents/Pictures/Music,默认 Downloads")
+                                        put("description", "Opcional,nombre del directorio,Como por ejemplo Downloads/Documents/Pictures/Music,Predeterminado Downloads")
                                     },
                                 )
                                 put(
                                     "limit",
                                     buildJsonObject {
-                                        // v1.52: 修正类型为 integer(原 string 与实际 parseIntOrNull 不匹配)
+                                        // v1.52: El tipo de corrección es integer(La cadena original no coincide con parseIntOrNull real)
                                         put("type", "integer")
-                                        put("description", "可选,最大返回条数,默认 50")
+                                        put("description", "Opcional,Número máximo de artículos devueltos,Predeterminado 50")
                                     },
                                 )
                             },
@@ -1435,11 +1435,11 @@ class SkillExecutor(
                     implementationKotlin = "list_public_files",
                     category = "file",
                 ),
-                // ── Skill 管理类 ───────────────────────────────────────────────
+                // ── Skill Gestión ───────────────────────────────────────────────
                 SkillEntity(
                     id = "list_skills",
-                    name = "列出 Skill",
-                    description = "列出已安装的全部 Skill,每行格式为 'id | name | category | enabled/disabled'。可选按 category 筛选。",
+                    name = "lista Skill",
+                    description = "Listar todos los instalados Skill,El formato de cada línea es 'id | name | category | enabled/disabled'. Filtrado opcional por categoría.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1450,7 +1450,7 @@ class SkillExecutor(
                                     "category",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,按分类筛选,如 file/http/search/knowledge/system/agent/skill")
+                                        put("description", "Opcional,Filtrar por categoría,Como por ejemplo file/http/search/knowledge/system/agent/skill")
                                     },
                                 )
                             },
@@ -1463,8 +1463,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "uninstall_skill",
-                    name = "卸载 Skill",
-                    description = "卸载(删除)已安装的 Skill。需传入 id 或 name(至少一个),优先用 id。删除后该 Skill 不再可用。",
+                    name = "Desinstalar Skill",
+                    description = "Desinstalar(Eliminar)Habilidad instalada. Necesita pasar id o name(al menos uno),Utilice la identificación primero. Después de la eliminación, la habilidad ya no está disponible.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1475,14 +1475,14 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要卸载的 skill id")
+                                        put("description", "Para ser desinstalado skill id")
                                     },
                                 )
                                 put(
                                     "name",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,按名称查找并卸载(id 未传时使用)")
+                                        put("description", "Opcional,Buscar por nombre y desinstalar(id Usado cuando no se transmite)")
                                     },
                                 )
                             },
@@ -1495,8 +1495,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "disable_skill",
-                    name = "禁用 Skill",
-                    description = "禁用已安装的 Skill(不删除,只置为不可用)。后续可通过启用恢复。需传入 id。",
+                    name = "Desactivar Skill",
+                    description = "desactivar instalado Skill(no borrar,Simplemente configúrelo como no disponible). Se puede restaurar más tarde habilitándolo. Es necesario pasar la identificación.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1507,7 +1507,7 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要禁用的 skill id")
+                                        put("description", "estar discapacitado skill id")
                                     },
                                 )
                             },
@@ -1520,8 +1520,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "enable_skill",
-                    name = "启用 Skill",
-                    description = "启用已安装的 Skill(与 disable_skill 对称)。需传入 id。内置技能允许启用;插件技能随插件启停,应到插件管理页操作,本工具会拒绝。",
+                    name = "habilitar Skill",
+                    description = "Habilitar instalado Skill(Simétrico con enable_skill). Es necesario pasar la identificación. Las habilidades integradas permiten habilitar;Las habilidades del complemento comienzan y terminan con el complemento,Debe ir a la página de administración de complementos para operar,Esta herramienta lo rechazará.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1532,7 +1532,7 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要启用的 skill id")
+                                        put("description", "estar habilitado skill id")
                                     },
                                 )
                             },
@@ -1545,8 +1545,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "update_skill",
-                    name = "更新 Skill",
-                    description = "更新用户自建 skill 的 name / description / parametersJson(JSON Schema 字符串)。提示词技能额外支持用 prompt 参数替换指令文本。只能改用户自己创建的 skill:内置保留 skill 与插件技能一律拒绝;更新内容仍走导入校验(保留 id/category 白名单/注入黑名单),更新后 id 不变且保持启用。",
+                    name = "actualizar Skill",
+                    description = "Actualizar habilidades creadas por el usuario name / description / parametersJson(JSON Schema cuerda). La habilidad de palabra de aviso además admite la sustitución del texto del comando con el parámetro de aviso. Solo se pueden modificar las habilidades creadas por los usuarios: se rechazarán las habilidades reservadas integradas y las habilidades complementarias.;El contenido actualizado aún se somete a verificación de importación.(Mantener lista blanca de ID/categoría/Inyectar lista negra),Después de la actualización, la identificación permanece sin cambios y permanece habilitada.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1557,35 +1557,35 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要更新的用户 skill id")
+                                        put("description", "Usuario para actualizar skill id")
                                     },
                                 )
                                 put(
                                     "name",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,新的显示名")
+                                        put("description", "Opcional,nuevo nombre para mostrar")
                                     },
                                 )
                                 put(
                                     "description",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,新的工具描述(模型据此决定是否调用)")
+                                        put("description", "Opcional,Nueva descripción de la herramienta(El modelo decide si llamar)")
                                     },
                                 )
                                 put(
                                     "parametersJson",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,新的参数 JSON Schema 字符串(提示词技能忽略此参数)")
+                                        put("description", "Opcional,Nueva cadena de esquema JSON de parámetro(Las habilidades con palabras rápidas ignoran este parámetro)")
                                     },
                                 )
                                 put(
                                     "prompt",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,仅提示词技能:新的指令文本(上限 8KB)")
+                                        put("description", "Opcional,Solo habilidades con palabras rápidas:nuevo texto de comando(límite superior 8KB)")
                                     },
                                 )
                             },
@@ -1596,11 +1596,11 @@ class SkillExecutor(
                     implementationKotlin = "update_skill",
                     category = "skill",
                 ),
-                // v1.55: Agent 工作流 — 结构化任务计划
+                // v1.55: Agent Flujo de trabajo — Planificación estructurada de tareas
                 SkillEntity(
                     id = "task_plan",
-                    name = "创建任务计划",
-                    description = "面对复杂多步骤任务时,先创建一个结构化计划再逐步执行。传入计划标题和步骤列表(每步含标题和描述)。计划会在用户界面显示为可追踪的检查清单。创建后按顺序执行各步骤,每完成一步调用 update_plan_step 更新状态。",
+                    name = "Crear plan de tareas",
+                    description = "Cuando se enfrenta a tareas complejas de varios pasos,Comience creando un plan estructurado y luego ejecútelo paso a paso. Pasar el título del plan y la lista de pasos(Cada paso incluye un título y una descripción.). El plan se muestra en la interfaz de usuario como una lista de verificación rastreable. Después de la creación, realice los pasos en orden.,Llame a update_plan_step para actualizar el estado después de completar cada paso.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1611,14 +1611,14 @@ class SkillExecutor(
                                     "title",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "计划标题,简述整体目标")
+                                        put("description", "Título del programa,Describe brevemente el objetivo general.")
                                     },
                                 )
                                 put(
                                     "steps",
                                     buildJsonObject {
                                         put("type", "array")
-                                        put("description", "步骤列表,按执行顺序排列")
+                                        put("description", "Lista de pasos,Dispuestos por orden de ejecución.")
                                         put(
                                             "items",
                                             buildJsonObject {
@@ -1630,14 +1630,14 @@ class SkillExecutor(
                                                             "title",
                                                             buildJsonObject {
                                                                 put("type", "string")
-                                                                put("description", "步骤标题(简短)")
+                                                                put("description", "título del paso(corto)")
                                                             },
                                                         )
                                                         put(
                                                             "description",
                                                             buildJsonObject {
                                                                 put("type", "string")
-                                                                put("description", "步骤详细描述,包括要做什么和预期结果")
+                                                                put("description", "Descripción detallada de los pasos.,Incluir qué hacer y resultados esperados.")
                                                             },
                                                         )
                                                     },
@@ -1657,8 +1657,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "update_plan_step",
-                    name = "更新计划步骤",
-                    description = "更新任务计划中某个步骤的状态。传入 planId 和 stepIndex(从0开始),以及新状态(done/failed/in_progress/skipped)和可选的结果摘要。",
+                    name = "Actualizar los pasos de planificación",
+                    description = "Actualizar el estado de un paso en un plan de tareas. Pasar planId y stepIndex(de0empezar),y nuevo estado(done/failed/in_progress/skipped)y resumen de resultados opcional.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1669,21 +1669,21 @@ class SkillExecutor(
                                     "planId",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "计划 id(task_plan 返回的 planId)")
+                                        put("description", "planear id(task_plan regresó planId)")
                                     },
                                 )
                                 put(
                                     "stepIndex",
                                     buildJsonObject {
                                         put("type", "integer")
-                                        put("description", "步骤索引(从 0 开始)")
+                                        put("description", "índice de pasos(Empezar desde 0)")
                                     },
                                 )
                                 put(
                                     "status",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "新状态:done(完成)/ failed(失败)/ in_progress(执行中)/ skipped(跳过)")
+                                        put("description", "nuevo estado:done(Completo)/ failed(falló)/ in_progress(ejecutando)/ skipped(saltar)")
                                     },
                                 )
                                 put(
@@ -1692,7 +1692,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "可选,步骤执行结果摘要",
+                                            "Opcional,Resumen de los resultados de la ejecución del paso.",
                                         )
                                     },
                                 )
@@ -1709,11 +1709,11 @@ class SkillExecutor(
                     implementationKotlin = "update_plan_step",
                     category = "agent",
                 ),
-                // ── v1.95: 表情包库工具 ─────────────────────────────────────────
+                // ── v1.95: Herramienta de biblioteca de emoticonos ─────────────────────────────────────────
                 SkillEntity(
                     id = "list_stickers",
-                    name = "列出表情包",
-                    description = "列出表情包库中可用的表情包(可按分类筛选)。仅当用户已上传表情包时可用。发送前先判断对话情绪:用户生气/难过时优先筛选安慰、可爱、治愈类分类;开心/兴奋时优先筛选庆祝、搞笑类分类。",
+                    name = "lista de memes",
+                    description = "Lista los emoticonos disponibles en la biblioteca de emoticones(Filtrar por categoría). Solo disponible si el usuario ha subido un meme. Determinar el estado de ánimo de la conversación antes de enviarla.:usuario enojado/Cuando estés triste, prioriza las categorías de consuelo, ternura y curación.;feliz/Cuando estés emocionado, prioriza las categorías de celebración y divertidas.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1724,7 +1724,7 @@ class SkillExecutor(
                                     "category",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,按分类筛选表情包(如 猫猫/狗子)。不传则列出全部;建议结合对话情绪传入合适分类")
+                                        put("description", "Opcional,Filtrar emoticonos por categoría(como los gatos/Gouzi). Si no se aprueba, enumere todos;Se recomienda combinar las emociones de la conversación en clasificaciones apropiadas.")
                                     },
                                 )
                             },
@@ -1737,8 +1737,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "send_sticker",
-                    name = "发送表情包",
-                    description = "向用户发送一个表情包。先用 list_stickers 查看可用表情包,再用此工具发送。选图原则:匹配对话情绪与语境,生气/难过时发安抚治愈类,开心时发庆祝搞笑类,避免在严肃话题中发过于沙雕的表情包。",
+                    name = "Enviar emoticones",
+                    description = "Enviar un emoticón al usuario. Primero use list_stickers para ver los emoticonos disponibles,Entonces utiliza esta herramienta para enviar. Principios de selección de imágenes.:Haga coincidir el estado de ánimo y el contexto de la conversación,enojado/Mensajes calmantes y curativos cuando estás triste.,Celebración y publicaciones divertidas cuando estás feliz.,Evite publicar memes tontos sobre temas serios.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1749,7 +1749,7 @@ class SkillExecutor(
                                     "id",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要发送的表情包 id(从 list_stickers 获取)")
+                                        put("description", "Emoticones para enviar id(Obtener de list_stickers)")
                                     },
                                 )
                             },
@@ -1760,11 +1760,11 @@ class SkillExecutor(
                     implementationKotlin = "send_sticker",
                     category = "sticker",
                 ),
-                // ── v1.???: 新增工具 ──────────────────────────────────────────────
+                // ── v1.???: Nuevas herramientas ──────────────────────────────────────────────
                 SkillEntity(
                     id = "generate_image",
-                    name = "生成图片",
-                    description = "根据文字描述生成图片。调用 AI 绘图模型(需配置 OpenAI 兼容绘图供应商)。返回图片 URL。使用时机: 用户要求生成图片/海报/封面时。不要使用: 未配置绘图模型时(会失败,应告知用户去设置配置);prompt 尽量用英文描述主体/风格/构图。",
+                    name = "Generar imágenes",
+                    description = "Genera imágenes basadas en descripciones de texto. Llame al modelo de dibujo AI(Requiere configuración de proveedor de dibujos compatible con OpenAI). Devuelve la URL de la imagen. cuando usar: Solicitudes de usuario para generar imágenes./cartel/Tiempo de cobertura. no usar: Cuando el modelo de dibujo no está configurado(fallará,Se debe informar a los usuarios para que establezcan la configuración.);prompt Intenta describir el tema en inglés./estilo/Composición.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1775,14 +1775,14 @@ class SkillExecutor(
                                     "prompt",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "图片描述,英文效果更佳,如 'a cute cat sitting on a sofa'")
+                                        put("description", "Descripción de la imagen,el ingles es mejor,Como por ejemplo 'a cute cat sitting on a sofa'")
                                     },
                                 )
                                 put(
                                     "size",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,图片尺寸,如 1024x1024/1792x1024/1024x1792,默认 1024x1024")
+                                        put("description", "Opcional,Tamaño de imagen,Como por ejemplo 1024x1024/1792x1024/1024x1792,Predeterminado 1024x1024")
                                     },
                                 )
                                 put(
@@ -1791,7 +1791,7 @@ class SkillExecutor(
                                         put("type", "string")
                                         put(
                                             "description",
-                                            "可选,参考图 URL 或 base64(用于图生图/图片编辑);非空时调用图生图端点。注意:LLM 无法访问用户本地相册,本地参考图由用户在工具审批卡片中从相册选择后注入,LLM 调用时无需也无法填入本参数",
+                                            "Opcional,URL de la imagen de referencia o base64(Se utiliza para hacer dibujos./edición de imágenes);Se llama al punto final del gráfico cuando no está vacío. Nota:LLM No se puede acceder al álbum de fotos local del usuario,El usuario inyecta la imagen de referencia local después de seleccionarla del álbum en la tarjeta de aprobación de la herramienta.,LLM Este parámetro no es obligatorio y no se puede completar al llamar",
                                         )
                                     },
                                 )
@@ -1805,8 +1805,8 @@ class SkillExecutor(
                 ),
                 SkillEntity(
                     id = "translate",
-                    name = "翻译",
-                    description = "把文本翻译成指定语言。可指定源语言(可选)和目标语言(必填)。使用 AI 模型进行高质量翻译。",
+                    name = "Traducción",
+                    description = "Traduce el texto al idioma especificado. Se puede especificar el idioma de origen(Opcional)y el idioma de destino(Requerido). Utilice modelos de IA para una traducción de alta calidad.",
                     parametersJson =
                     buildJsonObject {
                         put("type", "object")
@@ -1817,21 +1817,21 @@ class SkillExecutor(
                                     "text",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "要翻译的文本内容")
+                                        put("description", "Contenido del texto a traducir")
                                     },
                                 )
                                 put(
                                     "target_language",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "目标语言,如 中文/English/日本語/한국어")
+                                        put("description", "idioma de destino,Como los chinos/English/日本語/한국어")
                                     },
                                 )
                                 put(
                                     "source_language",
                                     buildJsonObject {
                                         put("type", "string")
-                                        put("description", "可选,源语言,如 中文/English/自動検出")
+                                        put("description", "Opcional,idioma de origen,Como los chinos/English/Lectura automática")
                                     },
                                 )
                             },
@@ -1850,36 +1850,36 @@ class SkillExecutor(
                     implementationKotlin = "translate",
                     category = "custom",
                 ),
-                // B-07: generate_qr 内置 skill 已下线 — 与本地工具 generate_qr_code 重复且语义冲突
-                // (skill 版返回 cacheDir 文件路径,本地版渲染 data URI 到对话)。保留本地版。
-                // implementationKotlin="generate_qr" 的 dispatch 仍保留,兼容已导入该 skill 的用户。
+                // B-07: generate_qr La habilidad incorporada está fuera de línea. — Duplicado y semánticamente conflictivo con la herramienta local generate_qr_code
+                // (skill La versión devuelve la ruta del archivo cacheDir,La versión local muestra el URI de datos en la conversación). Mantenga la versión local.
+                // implementationKotlin="generate_qr" El despacho queda,Compatible con usuarios que hayan importado esta habilidad.
             )
 
         /**
-         * B-32: 内置 skill 可路由实现集合 — 与 [execute] 内 when(implementationKotlin) 的
-         * 专属分支 key 一一对应(plugin: 前缀与未知 else 分支除外)。
+         * B-32: Colección de implementación enrutable de habilidades incorporada — con [execute] dentro when(implementationKotlin) de
+         * Correspondencia exclusiva con clave de sucursal uno a uno(plugin: Excepto prefijos y ramas desconocidas).
          *
-         * 供一致性护栏测试(见 app/src/test/.../tools/ToolRegistrySmokeTest.kt)遍历
-         * [BUILT_IN_SKILLS] 断言每个内置 skill 都能被 [execute] 路由到对应实现,
-         * 防止"新增内置 skill 却漏写 when 路由分支"或"分支被删"导致静默走 skill_unknown_impl。
+         * Para pruebas de conformidad de barandillas(ver app/src/test/.../tools/ToolRegistrySmokeTest.kt)atravesar
+         * [BUILT_IN_SKILLS] Afirmar que cada habilidad incorporada puede ser [execute] Ruta a la implementación correspondiente,
+         * prevenir"Se agregó una habilidad incorporada pero se perdió la rama al enrutar"o"rama eliminada"Hace que Skill_unknown_impl se camine en silencio.
          *
-         * 注意:generate_qr 属已下线实现(B-07),从此集排除;但 dispatch 分支仍保留以兼容旧数据。
-         * 此集合须与 [execute] 的 when 分支保持同步,集合仅用于测试护栏,不驱动路由。
+         * Nota:generate_qr Se ha implementado fuera de línea.(B-07),excluir de este conjunto;Pero la rama de envío permanece por compatibilidad con datos antiguos.
+         * Esta colección debe ser [execute] La rama cuando permanece sincronizada,La colección es sólo para probar barandillas.,No impulsa el enrutamiento.
          */
         internal val ROUTABLE_SKILL_IMPL: Set<String> =
             setOf(
-                // 文件
+                // Archivo
                 "read_file", "write_file", "list_dir", "delete_file", "file_exists",
-                // HTTP/搜索/信息
+                // HTTP/Buscar/información
                 "http_get", "http_post", "web_search", "web_fetch", "knowledge_search", "arxiv_search",
-                // 自我扩展/Agent/群聊
+                // autoexpansión/Agent/chat grupal
                 "install_skill", "author_plugin", "delegate_agent", "task_plan", "update_plan_step",
                 "channel_reply", "channel_pass", "channel_read_context", "agent_phone",
-                // 文件公共目录
+                // directorio público de archivos
                 "file_download", "read_public_file", "save_to_downloads", "list_public_files",
-                // Skill 管理
+                // Skill gestión
                 "list_skills", "uninstall_skill", "disable_skill", "enable_skill", "update_skill",
-                // 表情包/媒体/翻译/JS
+                // Emoticones/medios de comunicación/Traducción/JS
                 "list_stickers", "send_sticker", "generate_image", "translate", "execute_javascript",
             )
     }

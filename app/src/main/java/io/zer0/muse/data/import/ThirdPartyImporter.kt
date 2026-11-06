@@ -32,13 +32,13 @@ import java.util.zip.ZipInputStream
 import kotlin.uuid.Uuid
 
 /**
- * v1.61-A: 第三方数据导入结果。
+ * v1.61-A: Resultados de importación de datos de terceros.
  */
-// i18n 已评估(结构重构暂缓)— errors: List<String> 的填充已全部改用
-// context.getString(R.string.import_error_* / import_default_*),用户可见消息已本地化。
-// 进一步将 List<String> 改为 List<Int>(资源 ID)需同步改 ImportResult 结构 + UI 调用方
-// + 含参消息的 String.format,改动跨文件且含动态参数(e.message / skippedMessages),
-// 风险较大,暂缓。i18n 目标已达成,仅结构偏好延后。
+// i18n Evaluado(Suspendida la reorganización estructural)— errors: List<String> Todo el relleno ha sido reemplazado con
+// context.getString(R.string.import_error_* / import_default_*),Los mensajes visibles para el usuario están localizados.
+// más List<String> Cambiar a List<Int>(Recursos ID)Es necesario cambiar la estructura ImportResult + la persona que llama UI simultáneamente
+// + Contiene información de parámetros String.format,Los cambios abarcan archivos y contienen parámetros dinámicos.(e.message / skippedMessages),
+// Más riesgoso,Suspendido.i18n Meta alcanzada,Sólo se difieren las preferencias estructurales.
 data class ImportResult(
     val providersImported: Int = 0,
     val assistantsImported: Int = 0,
@@ -48,34 +48,34 @@ data class ImportResult(
 )
 
 /**
- * v1.61-A: 第三方数据导入器。
- * 支持 RikkaHub 和 Kelivo 两种备份格式。
+ * v1.61-A: Importador de datos de terceros.
+ * Admite los formatos de copia de seguridad RikkaHub y Kelivo.
  */
 object ThirdPartyImporter {
 
     private const val TAG = "ThirdPartyImporter"
 
-    // 解压安全限制已移除(用户需求:完整去除导入数据大小限制)。
-    // 保留极高的兜底值防止恶意 ZIP 炸弹,但正常用户不会触达。
-    private const val MAX_TOTAL_SIZE = 4L * 1024 * 1024 * 1024 // 4GB(兜底防炸弹)
-    private const val MAX_SINGLE_FILE = 1L * 1024 * 1024 * 1024 // 1GB(兜底防炸弹)
-    private const val MAX_FILE_COUNT = 100000 // 10万(兜底防炸弹)
+    // Se han eliminado las restricciones de seguridad a la descompresión.(Necesidades del usuario:Eliminar completamente el límite de tamaño de datos de importación).
+    // Preservar márgenes extremadamente altos para evitar bombas ZIP maliciosas,Pero los usuarios normales no lo alcanzarán.
+    private const val MAX_TOTAL_SIZE = 4L * 1024 * 1024 * 1024 // 4GB(Antibomba en el fondo de tu bolsillo)
+    private const val MAX_SINGLE_FILE = 1L * 1024 * 1024 * 1024 // 1GB(Antibomba en el fondo de tu bolsillo)
+    private const val MAX_FILE_COUNT = 100000 // 10millones(Antibomba en el fondo de tu bolsillo)
 
     /**
-     * v1.0.74 fix: 裸 JSON 导入的最大字节数(200MB)。
-     * ChatGPT 官方导出 conversations.json 常见 50-200MB,整文件 readBytes 三份拷贝
-     * 在 Android 堆(256MB-1GB)上会 OOM。超过此限明确报错,不进入崩溃。
+     * v1.0.74 fix: Número máximo de bytes para importación JSON simple(200MB).
+     * ChatGPT Conversaciones oficiales de exportación.json común 50-200MB,Tres copias del archivo completo readBytes
+     * En el montón de Android(256MB-1GB)Reunión OOM. Si se excede este límite, se informará claramente un error.,No entrar en accidente.
      */
     private const val MAX_JSON_IMPORT_BYTES = 200L * 1024 * 1024
 
     /**
-     * v2.4.6: ChatGPT 新版导出将会话分片为 conversations-000.json / conversations-001.json ...
-     * 匹配该命名(用于 zip 解包白名单与分片合并)。
+     * v2.4.6: ChatGPT La nueva exportación divide la sesión en conversations-000.json / conversations-001.json ...
+     * coincide con el nombre(Se utiliza para descomprimir listas blancas y fusionar fragmentos.).
      */
     private val CONVERSATIONS_SHARD_REGEX = Regex("conversations-\\d+\\.json", RegexOption.IGNORE_CASE)
 
     /**
-     * 自动检测备份格式并导入。
+     * Detecta automáticamente el formato de la copia de seguridad e importa.
      * @param backupUri SAF URI(backup_*.zip / kelivo_backup_*.zip / ChatGPT conversations.json)
      */
     suspend fun importFromUri(
@@ -87,7 +87,7 @@ object ThirdPartyImporter {
     ): ImportResult = withContext(Dispatchers.IO) {
         val ctx = context
 
-        // 流式复制到缓存文件,避免 readBytes() 把整个文件一次性读进内存导致 OOM。
+        // Copia en streaming al archivo de caché,evitar readBytes() Leer todo el archivo en la memoria a la vez provoca OOM.
         val tempFile = java.io.File.createTempFile("import_", ".tmp", context.cacheDir)
         try {
             val input = context.contentResolver.openInputStream(uri)
@@ -101,16 +101,16 @@ object ThirdPartyImporter {
                 tempFile.outputStream().use { output -> source.copyTo(output) }
             }
         } catch (e: Exception) {
-            Logger.w(TAG, "无法读取导入文件", e)
+            Logger.w(TAG, "No se puede leer el archivo de importación", e)
             tempFile.delete()
             return@withContext ImportResult(errors = listOf(context.getString(R.string.import_error_read_file_failed)))
         }
 
-        // v1.0.74: 判断是否 ZIP(PK 魔数)。非 ZIP 按裸文本尝试(ChatGPT conversations.json 等)。
+        // v1.0.74: Determinar si ZIP(PK numero magico). Pruebe sin ZIP con texto sin formato(ChatGPT conversations.json espera).
         val isZip = isZipFile(tempFile)
         if (!isZip) {
-            // v1.0.74 fix: 整文件 readBytes + 整树解析,大导出包(50-200MB)三份拷贝必 OOM。
-            // 加大小上限:超过限制明确报错,不进入 OOM 崩溃。
+            // v1.0.74 fix: ReadBytes de archivos completos + análisis de árboles completos,Gran paquete de exportación(50-200MB)Tres copias deben ser OOM.
+            // Aumentar límite de tamaño:Informar explícitamente un error cuando se excede el límite,Sin fallos de OOM.
             if (tempFile.length() > MAX_JSON_IMPORT_BYTES) {
                 val sizeMb = tempFile.length() / 1024 / 1024
                 tempFile.delete()
@@ -133,10 +133,10 @@ object ThirdPartyImporter {
             )
         }
 
-        // 审计修复 (6.7): zip 内文件解压到磁盘临时文件,不再全量驻留内存 map。
-        // 原实现 entries 全量驻留(ChatGPT 导出 conversations.json 几十 MB + 多张图),
-        // 兜底上限 4GB 远超 Android 进程堆,老机型导入必 OOM。
-        // 只保留需要的文件: settings.json / chats.json / conversations.json(任一)。
+        // Reparación de auditoría (6.7): zip Descomprima los archivos internos en archivos temporales del disco,El mapa de memoria ya no reside por completo.
+        // Las entradas de implementación originales se conservan en su totalidad.(ChatGPT Exportar conversaciones.json docenas de MB + varias imágenes),
+        // El límite superior de 4 GB supera con creces el montón de procesos de Android,Importar modelos antiguos requiere OOM.
+        // Guarde solo los archivos que necesita: settings.json / chats.json / conversations.json(cualquiera).
         val extracted = mutableMapOf<String, java.io.File>()
         var totalSize = 0L
         try {
@@ -144,19 +144,19 @@ object ThirdPartyImporter {
                 var entry = zis.nextEntry
                 while (entry != null) {
                     if (!entry.isDirectory) {
-                        // M-IMP2: 校验条目名,防止路径穿越
+                        // M-IMP2: Comprobar nombre de entrada,Evitar el cruce de caminos
                         if (entry.name.contains("..") || entry.name.startsWith("/")) {
-                            Logger.w(TAG, "跳过可疑路径条目: ${entry.name}")
+                            Logger.w(TAG, "Saltar entradas de rutas sospechosas: ${entry.name}")
                             entry = zis.nextEntry
                             continue
                         }
                         val name = entry.name.substringAfterLast('/')
-                        // v2.4.6: 支持 ChatGPT 新版分层导出 — 会话被拆成
-                        // conversations.json 或 conversations-000.json / conversations-001.json 分片。
+                        // v2.4.6: Admite exportación jerárquica de la nueva versión de ChatGPT — La sesión se divide en
+                        // conversations.json o fragmentos de conversaciones-000.json / conversaciones-001.json.
                         val keep = name == "settings.json" || name == "chats.json" ||
                             name.endsWith("conversations.json") || name == "conversations.json" ||
                             CONVERSATIONS_SHARD_REGEX.matches(name)
-                        // 单文件兜底限制:流式落盘,避免把大条目整体读入 Android 堆。
+                        // Límite de cobertura de una sola fila:Ubicación de transmisión,Evite leer entradas grandes en el montón de Android en su conjunto.
                         if (keep) {
                             val tmp = java.io.File.createTempFile("zip_${name}_", ".tmp", context.cacheDir)
                             try {
@@ -165,7 +165,7 @@ object ThirdPartyImporter {
                                 }
                                 totalSize += entryBytes
                                 if (totalSize > MAX_TOTAL_SIZE) {
-                                    throw IllegalStateException("解压内容总大小超过限制(${MAX_TOTAL_SIZE / 1024 / 1024 / 1024}GB)")
+                                    throw IllegalStateException("El tamaño total del contenido descomprimido supera el límite.(${MAX_TOTAL_SIZE / 1024 / 1024 / 1024}GB)")
                                 }
                                 extracted.remove(name)?.delete()
                                 extracted[name] = tmp
@@ -179,12 +179,12 @@ object ThirdPartyImporter {
                 }
             }
         } catch (e: IllegalStateException) {
-            Logger.w(TAG, "解压终止: ${e.message}")
+            Logger.w(TAG, "Descompresión terminada: ${e.message}")
             extracted.values.forEach { it.delete() }
             tempFile.delete()
             return@withContext ImportResult(errors = listOf(e.message ?: context.getString(R.string.import_error_unzip_size_exceeded)))
         } catch (e: Exception) {
-            Logger.w(TAG, "无法解压文件", e)
+            Logger.w(TAG, "No se puede descomprimir el archivo", e)
             extracted.values.forEach { it.delete() }
             tempFile.delete()
             return@withContext ImportResult(errors = listOf(context.getString(R.string.import_error_unzip_failed, e.message)))
@@ -192,14 +192,14 @@ object ThirdPartyImporter {
             tempFile.delete()
         }
 
-        // 判断格式:
-        //  - ChatGPT 导出: conversations.json(顶层数组或 {conversations: [...]})或新版分片 conversations-000.json ...
+        // Formato de sentencia:
+        //  - ChatGPT Exportar: conversations.json(matriz de nivel superior o {conversations: [...]})O nueva versión de fragmentación conversations-000.json ...
         //  - Kelivo: chats.json + settings.json
-        //  - RikkaHub: settings.json(且无 chats.json)
+        //  - RikkaHub: settings.json(y ninguno chats.json)
         val settingsFile = extracted["settings.json"]
         val chatsFile = extracted["chats.json"]
         val hasChats = chatsFile != null
-        // v2.4.6: 收集所有 conversations 文件(含分片),按名称排序(conversations.json 优先,分片次之)合并
+        // v2.4.6: Recoge todos los archivos de conversaciones(Contiene fragmentos),Ordenar por nombre(conversations.json Prioridad,La fragmentación viene después)fusionar
         val conversationFiles = extracted.entries
             .filter { it.key == "conversations.json" || it.key.endsWith("conversations.json") || CONVERSATIONS_SHARD_REGEX.matches(it.key) }
             .sortedBy { it.key }
@@ -208,8 +208,8 @@ object ThirdPartyImporter {
         try {
             val settingsJson = settingsFile?.let { it.readText() }
             val chatsJson = chatsFile?.let { it.readText() }
-            // v2.4.6: 多分片合并为单个 JSON 数组字符串(分片内容均为顶层数组)。
-            // 单分片时直接用原文本,避免额外拼接开销。
+            // v2.4.6: Fusionar varios fragmentos en una única cadena de matriz JSON(El contenido de los fragmentos son todos matrices de nivel superior.).
+            // Cuando utilice un solo fragmento, utilice el texto original directamente.,Evite empalmes adicionales por encima.
             val conversationsJson = if (conversationFiles.isEmpty()) {
                 null
             } else if (conversationFiles.size == 1) {
@@ -244,17 +244,17 @@ object ThirdPartyImporter {
                 )
             }
         } finally {
-            // 清理解压的临时文件
+            // Borrar archivos temporales descomprimidos
             extracted.values.forEach { it.delete() }
         }
     }
 
     /**
-     * v2.4.6: 合并 ChatGPT 新版导出的多个 conversations 分片。
+     * v2.4.6: Fusione varios fragmentos de conversaciones exportados por la nueva versión de ChatGPT.
      *
-     * 每个分片是顶层 JSON 数组,元素为单个会话对象;这里把它们拼成一个数组。
-     * 采用流式文本拼接:去掉每个分片首尾的方括号后以逗号相连,避免把整个大数组
-     * 解析成 JsonElement 再重组(2026-10 实测导出可达数十 MB,解析会指数级放大内存)。
+     * Cada fragmento es una matriz JSON de nivel superior,El elemento es un objeto de sesión única.;Aquí los juntamos en una matriz.
+     * Uso de empalme de texto en streaming:Elimine los corchetes al principio y al final de cada segmento y conéctelos con comas.,Evite poner todo el conjunto grande
+     * Analizar en JsonElement y reorganizar(2026-10 La exportación real medida puede alcanzar decenas de MB,El análisis aumentará la memoria exponencialmente).
      */
     internal fun mergeConversationShards(files: List<java.io.File>): String = buildString {
         append('[')
@@ -262,7 +262,7 @@ object ThirdPartyImporter {
         files.forEach { f ->
             val raw = f.readText().removePrefix("\uFEFF").trim()
             if (raw.isEmpty()) return@forEach
-            // 去掉最外层方括号
+            // Retire los corchetes exteriores
             val inner = when {
                 raw.startsWith("[") && raw.endsWith("]") -> raw.substring(1, raw.length - 1).trim()
                 else -> raw
@@ -275,7 +275,7 @@ object ThirdPartyImporter {
         append(']')
     }
 
-    /** v1.0.74: 判断文件是否为 ZIP(PK 魔数)。 */
+    /** v1.0.74: Determinar si el archivo es ZIP(PK numero magico). */
     private fun isZipFile(file: java.io.File): Boolean {
         return try {
             file.inputStream().use { input ->
@@ -290,7 +290,7 @@ object ThirdPartyImporter {
     }
 
     /**
-     * v1.0.74: 导入裸 JSON 文本(自动嗅探 ChatGPT / RikkaHub settings / Kelivo chats)。
+     * v1.0.74: Importar texto JSON desnudo(olfateo automático ChatGPT / RikkaHub settings / Kelivo chats).
      */
     private suspend fun importJsonText(
         context: Context,
@@ -305,11 +305,11 @@ object ThirdPartyImporter {
         val root = runCatching { AppJson.parseToJsonElement(text) }.getOrNull()
             ?: return ImportResult(errors = listOf(context.getString(R.string.import_error_parse_failed)))
         return when {
-            // ChatGPT: 顶层数组 或 含 conversations 字段
+            // ChatGPT: Matriz de nivel superior o campo que contiene conversaciones
             root is kotlinx.serialization.json.JsonArray ||
                 (root is kotlinx.serialization.json.JsonObject && root.containsKey("conversations")) ->
                 importConversationsJson(context, text, assistantRepo, sessionRepo)
-            // RikkaHub settings.json(有 providers/assistants)
+            // RikkaHub settings.json(si providers/assistants)
             root is kotlinx.serialization.json.JsonObject &&
                 (root.containsKey("providers") || root.containsKey("assistants")) ->
                 importRikkaHub(context, text, settings, assistantRepo)
@@ -317,8 +317,8 @@ object ThirdPartyImporter {
         }
     }
 
-    // ── RikkaHub 导入 ──
-    // RikkaHub 的 settings.json 是 Settings data class 的完整 JSON,含 providers 和 assistants
+    // ── RikkaHub importar ──
+    // RikkaHub settings.json es el conjunto completo de clases de datos de configuración JSON,Contiene proveedores y assistants
 
     private suspend fun importRikkaHub(
         context: Context,
@@ -333,7 +333,7 @@ object ThirdPartyImporter {
         try {
             val root = AppJson.parseToJsonElement(settingsJson).jsonObject
 
-            // 导入 Provider
+            // importar Provider
             val providersArr = root["providers"]?.jsonArray
             if (providersArr != null) {
                 for (providerElem in providersArr) {
@@ -353,7 +353,7 @@ object ThirdPartyImporter {
                         val baseUrl = providerObj["baseUrl"]?.jsonPrimitive?.contentOrNull ?: ""
                         val enabled = providerObj["enabled"]?.jsonPrimitive?.booleanOrNull ?: true
 
-                        // 解析模型列表
+                        // Analizar lista de modelos
                         val models = mutableListOf<Model>()
                         val modelsArr = providerObj["models"]?.jsonArray
                         if (modelsArr != null) {
@@ -405,7 +405,7 @@ object ThirdPartyImporter {
                 }
             }
 
-            // 导入助手
+            // Asistente de importación
             val assistantsArr = root["assistants"]?.jsonArray
             if (assistantsArr != null) {
                 for (asstElem in assistantsArr) {
@@ -438,7 +438,7 @@ object ThirdPartyImporter {
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w(TAG, "RikkaHub 备份解析失败", e)
+            Logger.w(TAG, "RikkaHub Error al analizar la copia de seguridad", e)
             errors.add(context.getString(R.string.import_error_rikka_parse_failed, e.message))
         }
 
@@ -449,9 +449,9 @@ object ThirdPartyImporter {
         )
     }
 
-    // ── ChatGPT 导出导入 ──
-    // ChatGPT 导出(settings → 邮箱 zip)的 conversations.json:
-    // 顶层是数组,每项 {title, create_time, update_time, mapping: {nodeId: {message: {author:{role}, content:{parts:[...]}, create_time}}, parent, children}}, current_node}
+    // ── ChatGPT Importación de exportación ──
+    // ChatGPT Exportar(settings → Correo electrónico zip)de conversations.json:
+    // El nivel superior es una matriz.,Cada artículo {title, create_time, update_time, mapping: {nodeId: {message: {author:{role}, content:{parts:[...]}, create_time}}, parent, children}}, current_node}
 
     internal suspend fun importChatGPT(
         context: Context,
@@ -473,13 +473,13 @@ object ThirdPartyImporter {
                     ?: return ImportResult(errors = listOf(context.getString(R.string.import_error_chatgpt_parse_failed)))
             }
 
-            // 默认助手(会话挂载用)
+            // Asistente predeterminado(Para montaje de sesión)
             val existingAssistantIds: Set<String> = assistantRepo.getAll().map { it.id }.toSet()
             val defaultAssistantId = existingAssistantIds.firstOrNull { it == "default" }
                 ?: existingAssistantIds.firstOrNull()
                 ?: "default"
 
-            // v1.0.74: GPT 节点解析用的局部结构(移到循环外,避免循环内局部类推断问题)
+            // v1.0.74: GPT Estructura local para análisis de nodos.(Salir del circuito,Evite problemas de inferencia de clases locales dentro de los bucles)
             data class NodeMsg(
                 val role: String,
                 val content: String,
@@ -499,15 +499,15 @@ object ThirdPartyImporter {
 
                     val mapping = convObj["mapping"]?.jsonObject ?: continue
 
-                    // v1.0.74 fix: 旧实现把 mapping 里所有节点(含废弃分支)平铺按时间排,
-                    // 分支/编辑过的对话顺序错乱。改为从 current_node 沿 parent 链回溯主分支。
-                    // 先解析所有节点(含 parent 映射)
+                    // v1.0.74 fix: La implementación anterior coloca todos los nodos en mapeo.(Contiene ramas abandonadas)Azulejos ordenados por tiempo,
+                    // rama/El diálogo editado no funciona. En su lugar, rastrea la rama principal desde current_node a lo largo de la cadena principal.
+                    // Analizar todos los nodos primero(Contiene mapeo principal)
                     val parsed = mutableMapOf<String, ParsedNode>()
                     for ((nodeId, nodeElem) in mapping) {
                         try {
                             val node = nodeElem.jsonObject
-                            // v1.0.74 fix: ChatGPT 导出大量字段是 JSON null(JsonNull 实例),
-                            // JsonNull.jsonObject 会抛异常导致误判"解析失败";统一用类型检查。
+                            // v1.0.74 fix: ChatGPT Exportar una gran cantidad de campos es JSON null(JsonNull Ejemplo),
+                            // JsonNull.jsonObject Lanzará una excepción que conducirá a un error de juicio."El análisis falló";Utilice la verificación de tipos de manera uniforme.
                             val parent = (node["parent"] as? kotlinx.serialization.json.JsonPrimitive)
                                 ?.contentOrNull
                             val msg = (node["message"] as? kotlinx.serialization.json.JsonObject)
@@ -526,7 +526,7 @@ object ThirdPartyImporter {
                                     parsed[nodeId] = ParsedNode(parent, null)
                                     continue
                                 }
-                            // 只保留 user / assistant(跳过 system / tool 内部消息,但保留 parent 链)
+                            // sólo mantener user / assistant(Saltar mensajes internos del sistema/herramienta,pero mantén la cadena principal)
                             if (role != "user" && role != "assistant") {
                                 parsed[nodeId] = ParsedNode(parent, null)
                                 continue
@@ -538,7 +538,7 @@ object ThirdPartyImporter {
                                 }
                             val contentType = (contentObj["content_type"] as? kotlinx.serialization.json.JsonPrimitive)
                                 ?.contentOrNull ?: "text"
-                            // 文本内容: parts 数组;其他类型(代码/多模态)取 text 字段或跳过
+                            // contenido del texto: parts matriz;Otros tipos(código/multimodal)Tomar campo de texto u omitir
                             val parts = contentObj["parts"] as? kotlinx.serialization.json.JsonArray
                             val text = if (parts != null) {
                                 parts.mapNotNull { p ->
@@ -553,16 +553,16 @@ object ThirdPartyImporter {
                                 (contentObj["text"] as? kotlinx.serialization.json.JsonPrimitive)
                                     ?.contentOrNull ?: ""
                             }
-                            // v1.0.74 fix: 空白正文节点(thoughts/reasoning_recap 等)也存 parent,保持链完整
+                            // v1.0.74 fix: Nodo de texto en blanco(thoughts/reasoning_recap espera)guardar también parent,Mantenga la cadena intacta
                             if (text.isBlank()) {
                                 parsed[nodeId] = ParsedNode(parent, null)
                                 continue
                             }
-                            // IMP-FIX: ChatGPT create_time 是秒级浮点。旧实现用 float 解析,
-                            // 2024+ 时间戳约 1.7e9 已超出 float 整数精确范围(2^24),多条消息会
-                            // 被舍入成同一秒 → 导入后消息顺序抖动。改用 double 保留亚秒精度。
+                            // IMP-FIX: ChatGPT create_time Es coma flotante en segundos. La antigua implementación analizada con float.,
+                            // 2024+ La marca de tiempo de aproximadamente 1.7e9 está fuera del rango exacto de un entero flotante(2^24),múltiples sesiones de mensajes
+                            // se redondea al mismo segundo → El orden de los mensajes tiembla después de la importación. Utilice double en su lugar para preservar la precisión de menos de un segundo.
                             val rawTime = msg["create_time"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-                            // 统一转毫秒;0 值保持原序
+                            // Convertir a milisegundos de manera uniforme;0 Los valores permanecen en el orden original.
                             val ts = if (rawTime > 0.0) (rawTime * 1000).toLong() else -1L
                             parsed[nodeId] = ParsedNode(
                                 parent = parent,
@@ -572,14 +572,14 @@ object ThirdPartyImporter {
                             throw ce
                         } catch (e: Exception) {
                             skippedMessages++
-                            Logger.w(TAG, "ChatGPT 消息节点解析失败: ${e.message}")
+                            Logger.w(TAG, "ChatGPT Falló el análisis del nodo de mensaje: ${e.message}")
                         }
                     }
 
-                    // 从 current_node 沿 parent 链回溯主分支(缺失时取 create_time 最大的叶节点)
+                    // Rastree la rama principal desde current_node a lo largo de la cadena principal(Si falta, tome el nodo hoja con el create_time más grande)
                     var cursor = convObj["current_node"]?.jsonPrimitive?.contentOrNull
                     if (cursor == null || !parsed.containsKey(cursor)) {
-                        // 无 current_node:取 create_time 最大的有消息节点
+                        // Ninguno current_node: toma el nodo de mensaje más grande con create_time
                         cursor = parsed.entries
                             .filter { it.value.msg != null }
                             .maxByOrNull { it.value.msg!!.createTime }
@@ -592,15 +592,15 @@ object ThirdPartyImporter {
                         branchIds.add(cursor)
                         cursor = parsed[cursor]?.parent
                     }
-                    branchIds.reverse() // 根 → 叶子
+                    branchIds.reverse() // raíz → hojas
 
                     val nodes = branchIds.mapNotNull { parsed[it]?.msg }
                     if (nodes.isEmpty()) continue
 
-                    // 0 时间戳节点保持相对顺序,其余按时间排序
+                    // 0 Los nodos de marca de tiempo mantienen un orden relativo,El resto están ordenados por tiempo.
                     val orderedNodes = nodes.sortedBy { it.createTime }
 
-                    // 创建会话(v2.x 导入预热:首轮全量补历史)
+                    // Crear sesión(v2.x Importar calentamiento:La primera ronda de la historia de reposición completa.)
                     val sessionId = sessionRepo.createSession(assistantId = defaultAssistantId, warmupPending = true)
                     sessionRepo.renameSession(sessionId, title)
                     conversationsCount++
@@ -630,7 +630,7 @@ object ThirdPartyImporter {
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w(TAG, "ChatGPT 导出解析失败", e)
+            Logger.w(TAG, "ChatGPT Error al analizar la exportación", e)
             errors.add(context.getString(R.string.import_error_chatgpt_parse_failed, e.message))
         }
 
@@ -646,9 +646,9 @@ object ThirdPartyImporter {
     }
 
     /**
-     * v1.0.90: conversations.json 这个文件名 ChatGPT 和 Claude 官方导出都在用。
-     * 之前一律送 importChatGPT，Claude 的导出没有 mapping 字段，会被静默跳过、返回 0 条。
-     * 改为按内容嗅探：条目含 chat_messages 且无 mapping 判为 Claude。
+     * v1.0.90: conversations.json Este nombre de archivo lo utilizan las exportaciones oficiales de ChatGPT y Claude.
+     * Envía siempre importChatGPT antes.Claude La exportación no tiene un campo de mapeo y se omitirá silenciosamente, devolviendo 0 elementos.
+     * Cambio en el rastreo de contenido: las entradas que contienen chat_messages y no tienen mapeo se consideran Claude.
      */
     private suspend fun importConversationsJson(
         context: Context,
@@ -668,7 +668,7 @@ object ThirdPartyImporter {
         }
     }
 
-    /** v1.0.90: 解析 ISO-8601 时间戳(Claude created_at，形如 2024-05-01T12:34:56.789012+00:00)，失败返回 0。 */
+    /** v1.0.90: Analizar marcas de tiempo ISO-8601(Claude created_at, con forma de 2024-05-01T12:34:56.789012+00:00), devuelve 0 en caso de error. */
     private fun parseIsoEpochMillis(raw: String?): Long {
         if (raw.isNullOrBlank()) return 0L
         return try {
@@ -683,11 +683,11 @@ object ThirdPartyImporter {
     }
 
     /**
-     * v1.0.90: Claude 官方导出(conversations.json)。
+     * v1.0.90: Claude Exportación oficial(conversations.json).
      *
-     * 顶层数组，每条会话 { uuid, name, created_at, chat_messages: [...] }，
-     * 消息为 { uuid, text, sender: "human"|"assistant", created_at }。
-     * 与 ChatGPT 不同，Claude 没有 mapping 分支树，数组顺序即消息顺序。
+     * Matriz de nivel superior, por sesión { uuid, name, created_at, chat_messages: [...] },
+     * El mensaje es { uuid, text, sender: "human"|"assistant", created_at }.
+     * A diferencia de ChatGPT,Claude No hay un árbol de ramas de mapeo, el orden de la matriz es el orden de los mensajes.
      */
     private suspend fun importClaude(
         context: Context,
@@ -742,12 +742,12 @@ object ThirdPartyImporter {
                             throw ce
                         } catch (e: Exception) {
                             skippedMessages++
-                            Logger.w(TAG, "Claude 消息解析失败: ${e.message}")
+                            Logger.w(TAG, "Claude Error al analizar el mensaje: ${e.message}")
                         }
                     }
                     if (parsed.isEmpty()) continue
 
-                    // v2.x 导入预热:首轮全量补历史
+                    // v2.x Importar calentamiento:La primera ronda de la historia de reposición completa.
                     val sessionId = sessionRepo.createSession(assistantId = defaultAssistantId, warmupPending = true)
                     sessionRepo.renameSession(sessionId, title)
                     conversationsCount++
@@ -772,7 +772,7 @@ object ThirdPartyImporter {
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w(TAG, "Claude 导出解析失败", e)
+            Logger.w(TAG, "Claude Error al analizar la exportación", e)
             errors.add(context.getString(R.string.import_error_chatgpt_parse_failed, e.message))
         }
 
@@ -787,9 +787,9 @@ object ThirdPartyImporter {
         )
     }
 
-    // ── Kelivo 导入 ──
-    // Kelivo 的 settings.json 是 SharedPreferences 键值对 JSON
-    // chats.json 包含 conversations 和 messages
+    // ── Kelivo importar ──
+    // Kelivo settings.json es un par clave-valor de SharedPreferences JSON
+    // chats.json Contiene conversaciones y messages
 
     private suspend fun importKelivo(
         context: Context,
@@ -902,7 +902,7 @@ object ThirdPartyImporter {
                 val conversationsArr = chatsRoot["conversations"]?.jsonArray
                 val messagesArr = chatsRoot["messages"]?.jsonArray
 
-                // 按会话分组消息
+                // Mensajes grupales por conversación
                 val messagesByConv = mutableMapOf<String, MutableList<UIMessage>>()
                 if (messagesArr != null) {
                     for (msgElem in messagesArr) {
@@ -930,18 +930,18 @@ object ThirdPartyImporter {
                             )
                             messagesByConv.getOrPut(convId) { mutableListOf() }.add(msg)
                         } catch (e: Exception) {
-                            // v1.71: 统计跳过的消息并记录日志,原静默吞导致用户不知道丢了哪些消息
+                            // v1.71: Cuente los mensajes omitidos y registre registros,La deglución silenciosa original hizo que los usuarios no supieran qué mensajes se perdieron.
                             skippedMessages++
-                            Logger.w(TAG, "Kelivo 消息解析失败已跳过", e)
+                            Logger.w(TAG, "Kelivo El análisis del mensaje falló y se omitió", e)
                         }
                     }
                 }
 
-                // 创建会话并导入消息
+                // Crear una conversación e importar mensajes
                 if (conversationsArr != null) {
-                    // H-IMP3: 预取所有已存在的 assistantId,用于校验/重映射 Kelivo 的 assistantId,
-                    // 避免会话引用到不存在的 assistant(悬空引用)。原导入逻辑直接透传 Kelivo
-                    // 的 assistantId,但该 id 在本项目不存在,导致 UI 无法加载助手信息。
+                    // H-IMP3: Precargar todos los existentes assistantId,para verificación/Remapeo de Kelivo assistantId,
+                    // Evite referencias de sesión a inexistentes. assistant(referencia colgante). La lógica de importación original se transmite directamente de forma transparente. Kelivo
+                    // de assistantId,Pero la identificación no existe en este proyecto.,Como resultado, la interfaz de usuario no puede cargar información del asistente.
                     val existingAssistantIds: Set<String> = assistantRepo.getAll().map { it.id }.toSet()
                     val defaultAssistantId = existingAssistantIds.firstOrNull { it == "default" }
                         ?: existingAssistantIds.firstOrNull()
@@ -954,25 +954,25 @@ object ThirdPartyImporter {
                             val title = convObj["title"]?.jsonPrimitive?.contentOrNull ?: context.getString(R.string.import_default_session_title)
                             val rawAssistantId = convObj["assistantId"]?.jsonPrimitive?.contentOrNull
 
-                            // H-IMP3: 校验 assistantId,不存在则尝试映射到本批次导入的 Kelivo 助手,
-                            // 仍不存在则回退到默认助手,杜绝悬空引用。
+                            // H-IMP3: verificar assistantId,Si no existe, intente asignarlo al asistente Kelivo importado en este lote.,
+                            // Si aún no existe, recurra al asistente predeterminado.,Evite las referencias colgantes.
                             val mappedAssistantId = rawAssistantId?.let { id ->
                                 when {
                                     existingAssistantIds.contains(id) -> id
                                     existingAssistantIds.contains("kelivo_$id") -> "kelivo_$id"
                                     else -> {
-                                        Logger.w(TAG, "Kelivo 会话 assistantId '$id' 不存在,回退默认助手")
+                                        Logger.w(TAG, "Kelivo sesión assistantId '$id' no existe,Volver al asistente predeterminado")
                                         defaultAssistantId
                                     }
                                 }
                             } ?: defaultAssistantId
 
-                            // v2.x 导入预热:首轮全量补历史
+                            // v2.x Importar calentamiento:La primera ronda de la historia de reposición completa.
                             val sessionId = sessionRepo.createSession(assistantId = mappedAssistantId, warmupPending = true)
                             sessionRepo.renameSession(sessionId, title)
                             conversationsCount++
 
-                            // 导入该会话的消息
+                            // Importar mensajes de esta conversación
                             val convMessages = messagesByConv[convId] ?: emptyList()
                             for (msg in convMessages) {
                                 sessionRepo.appendMessage(sessionId, msg)
@@ -989,7 +989,7 @@ object ThirdPartyImporter {
         } catch (ce: CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.w(TAG, "Kelivo 备份解析失败", e)
+            Logger.w(TAG, "Kelivo Error al analizar la copia de seguridad", e)
             errors.add(context.getString(R.string.import_error_kelivo_parse_failed, e.message))
         }
 

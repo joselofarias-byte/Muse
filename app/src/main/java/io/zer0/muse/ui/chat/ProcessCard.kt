@@ -48,30 +48,30 @@ import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.delay
 
 /**
- * 过程卡：正在做什么的一个整体视图。
+ * Tarjeta de Proceso: Una visión general de lo que se está haciendo.
  *
- * 分两层，与「点开才铺开细节」的阅读节奏一致：
+ * Está dividido en dos niveles, acorde con el ritmo de lectura de "haga clic para revelar detalles":
  *
- *  **一层（摘要，常显）**
- *   - 一枚正在变形的墨形（执行中）/ 完成态图标
- *   - 一句话说明当前在做什么（"正在搜索…" / "已完成 3 步"）
- *   - 步数与已用时长
- *   - 右侧展开箭头
+ *  **Una capa (resumen, siempre mostrada)**
+ *   - Una forma de tinta que se deforma (en progreso)/ Icono de estado hecho
+ *   - Una frase para describir lo que estás haciendo actualmente ("Buscando…" / "3 pasos completados")
+ *   - Recuento de pasos y tiempo transcurrido
+ *   - Expandir flecha a la derecha
  *
- *  **二层（展开）**
- *   - 每一轮的思考片段（如果有）
- *   - 工具步骤逐条列出：工具名、状态、单步耗时、结果摘要
- *   - 嵌套子步骤（团队 / 工作流下钻）再缩进一级
+ *  **Segundo piso (ampliado)**
+ *   - Piezas de pensamiento para cada ronda (si las hay)
+ *   - Los pasos de la herramienta se enumeran uno por uno: nombre de la herramienta, estado, tiempo de paso único y resumen de resultados.
+ *   - Subpasos anidados (desglose en equipo/flujo de trabajo) con sangría de un nivel más
  *
- * 配色跟随主题：
- *   - 卡底用 primaryContainer 低透明，与 MOOD 块同族但不相同
- *   - 计时与步数用 primary，强调「还在动」
- *   - 步骤状态色只区分成功/失败/进行中三档，不引入额外色板
+ * La combinación de colores sigue el tema:
+ *   - La base de la tarjeta utiliza un contenedor primario con baja transparencia, que es de la misma familia pero diferente del bloque MOOD.
+ *   - Use primario para cronometrar y contar pasos, enfatizando "aún en movimiento".
+ *   - El color del estado del paso solo distingue el éxito/falló/Tercera marcha en progreso, no se han introducido paletas de colores adicionales
  *
- * @param taskCard 工具步骤数据；null 时只显示摘要行（等待首个 token 等阶段）
- * @param progressText 兜底文案（视觉分析进度、OCR 进度等）
- * @param isActive 是否仍在执行，决定墨形动画与计时是否继续走
- * @param startedAt 起始时间戳，用于计时；null 时按首次组合时刻算
+ * @param taskCard datos de pasos de herramientas;null Sólo se muestra la línea de resumen (esperando la primera fase del token, etc.)
+ * @param progressText Redacción publicitaria consecutiva (análisis visual del progreso,OCR progreso, etc)
+ * @param isActive Si todavía se está ejecutando determina si la animación manuscrita y el tiempo continuarán.
+ * @param startedAt Marca de tiempo inicial, utilizada para cronometrar;null Calculado en base al tiempo de la primera combinación.
  */
 @Composable
 internal fun ProcessCard(
@@ -86,16 +86,16 @@ internal fun ProcessCard(
     val doneSteps = steps.count { it.status.isTerminal }
     val runningStep = steps.firstOrNull { it.status == TaskStepStatus.RUNNING }
 
-    // 展开状态：执行中默认收起（别遮挡正文），完成后也不自动弹开
+    // Estado expandido: colapsado de forma predeterminada durante la ejecución (no bloquea el texto) y no aparecerá automáticamente una vez finalizado.
     var expanded by remember(taskCard?.id) { mutableStateOf(false) }
 
     val scheme = MaterialTheme.colorScheme
-    // 与 MOOD 区分：MOOD 用 primaryContainer，过程卡用 secondaryContainer，
-    // 两者都在主题色系里，但一眼能看出是不同性质的块。
+    // Diferenciar del MOOD:MOOD Utilice el contenedor primario y la tarjeta de proceso utilice el contenedor secundario.
+    // Ambos están en el sistema de colores temáticos, pero a simple vista se puede ver que son bloques de diferente naturaleza.
     val containerColor = scheme.secondaryContainer.copy(alpha = 0.5f)
     val borderColor = scheme.secondary.copy(alpha = 0.2f)
 
-    // 计时：执行中每秒自增，结束时定格
+    // Tiempo: aumenta cada segundo durante la ejecución y se congela cuando termina
     val elapsedMs = rememberElapsed(startedAt ?: taskCard?.createdAt, isActive)
 
     val summaryText = resolveSummaryText(progressText, runningStep, doneSteps, totalSteps, isActive)
@@ -111,7 +111,7 @@ internal fun ProcessCard(
             .padding(horizontal = MusePaddings.screen, vertical = 3.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // ── 一层：摘要 ──
+            // ── Un nivel: resumen ──
             ProcessCardSummary(
                 summary =
                 ProcessSummary(
@@ -126,12 +126,12 @@ internal fun ProcessCard(
                 onToggle = { expanded = !expanded },
             )
 
-            // 进度条：只在执行中且有步骤时显示，完成态收起
+            // Barra de progreso: solo se muestra cuando la ejecución está en progreso y hay pasos, y se cierra cuando se completa
             if (isActive && totalSteps > 0) {
                 ProcessCardProgress(doneSteps = doneSteps, totalSteps = totalSteps)
             }
 
-            // ── 二层：细分 ──
+            // ── Segundo piso: subdivisión ──
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(animationSpec = tween(180)) + fadeIn(tween(180)),
@@ -143,19 +143,19 @@ internal fun ProcessCard(
     }
 }
 
-/** 摘要文案：优先用外部进度，其次当前步骤标题，最后是步数概况。 */
+/** Copia de resumen: utilice primero el progreso externo, seguido del título del paso actual y, finalmente, el resumen del paso. */
 private fun resolveSummaryText(progressText: String?, runningStep: TaskStep?, doneSteps: Int, totalSteps: Int, isActive: Boolean): String =
     when {
         progressText != null -> progressText
         runningStep != null ->
-            runningStep.title.ifBlank { runningStep.progressText.orEmpty() }.ifBlank { "执行中" }
-        totalSteps > 0 && doneSteps == totalSteps -> "已完成 $totalSteps 步"
-        totalSteps > 0 -> "已进行 $doneSteps / $totalSteps 步"
-        isActive -> "思考中"
-        else -> "已完成"
+            runningStep.title.ifBlank { runningStep.progressText.orEmpty() }.ifBlank { "ejecutando" }
+        totalSteps > 0 && doneSteps == totalSteps -> "Completado $totalSteps paso"
+        totalSteps > 0 -> "ya realizado $doneSteps / $totalSteps paso"
+        isActive -> "Pensando"
+        else -> "Completado"
     }
 
-/** 摘要行需要的全部信息，打成一个包，避免参数列表膨胀。 */
+/** Toda la información necesaria para la línea de resumen está agrupada en un solo paquete para evitar inflar la lista de parámetros. */
 private data class ProcessSummary(
     val text: String,
     val doneSteps: Int,
@@ -166,7 +166,7 @@ private data class ProcessSummary(
     val expanded: Boolean,
 )
 
-/** 一层：摘要行。 */
+/** Un nivel: fila de resumen. */
 @Composable
 private fun ProcessCardSummary(summary: ProcessSummary, onToggle: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
@@ -175,7 +175,7 @@ private fun ProcessCardSummary(summary: ProcessSummary, onToggle: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clickable(enabled = summary.totalSteps > 0, onClick = onToggle)
-            // 紧凑折叠态：这一行只回答「跑到哪了」，一行高度就够
+            // Estado plegado compacto: esta línea solo responde "¿A dónde fue?", Y la altura de una línea es suficiente
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -237,7 +237,7 @@ private fun ProcessCardSummary(summary: ProcessSummary, onToggle: () -> Unit) {
     }
 }
 
-/** 细进度条：只在执行中显示。 */
+/** Barra de progreso delgada: solo se muestra durante la ejecución. */
 @Composable
 private fun ProcessCardProgress(doneSteps: Int, totalSteps: Int) {
     val scheme = MaterialTheme.colorScheme
@@ -260,7 +260,7 @@ private fun ProcessCardProgress(doneSteps: Int, totalSteps: Int) {
     )
 }
 
-/** 二层：步骤列表容器。 */
+/** Segunda capa: contenedor de lista de pasos. */
 @Composable
 private fun ProcessStepList(steps: List<TaskStep>) {
     Column(
@@ -276,7 +276,7 @@ private fun ProcessStepList(steps: List<TaskStep>) {
 }
 
 /**
- * 单条步骤：状态点 + 标题 + 耗时 + 结果摘要；有子步骤时再缩进一层。
+ * Paso único: punto de estado + título + tiempo transcurrido + resumen de resultados; si hay subpasos, sangría un nivel.
  */
 @Composable
 private fun ProcessStepRow(step: TaskStep, depth: Int) {
@@ -306,7 +306,7 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
                     .background(statusColor),
             )
             Text(
-                text = step.title.ifBlank { step.toolName.ifBlank { "步骤" } },
+                text = step.title.ifBlank { step.toolName.ifBlank { "pasos" } },
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurface,
                 maxLines = 1,
@@ -322,13 +322,13 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
             }
             if (step.status == TaskStepStatus.RUNNING) {
                 Text(
-                    text = "进行中",
+                    text = "En progreso",
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.primary,
                 )
             }
         }
-        // 进度文案（RUNNING 时由工具回调更新）
+        // Copia de progreso (RUNNING actualizado por devolución de llamada de herramienta)
         step.progressText?.takeIf { it.isNotBlank() }?.let { progress ->
             Text(
                 text = progress,
@@ -339,7 +339,7 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
                 modifier = Modifier.padding(start = 14.dp),
             )
         }
-        // 结果摘要（终态时展示前两行）
+        // Resumen de resultados (muestra las dos primeras líneas en estado final)
         if (step.status.isTerminal && step.result.isNotBlank()) {
             Text(
                 text = step.result.lineSequence().take(2).joinToString(" ").take(120),
@@ -350,12 +350,12 @@ private fun ProcessStepRow(step: TaskStep, depth: Int) {
                 modifier = Modifier.padding(start = 14.dp),
             )
         }
-        // 子步骤再下钻一层
+        // Profundice un nivel más en subpasos
         step.subSteps.forEach { sub -> ProcessStepRow(step = sub, depth = depth + 1) }
     }
 }
 
-/** 计时：执行中每 500ms 刷新一次，结束后定格在最终值。 */
+/** Temporización: actualice cada 500 ms durante la ejecución y congele en el valor final una vez finalizada. */
 @Composable
 private fun rememberElapsed(startAt: Long?, isActive: Boolean): Long {
     if (startAt == null || startAt <= 0L) return 0L
@@ -370,7 +370,7 @@ private fun rememberElapsed(startAt: Long?, isActive: Boolean): Long {
     return (now - startAt).coerceAtLeast(0L)
 }
 
-/** 毫秒 → 人类可读：<1s 显示 0.x s，<60s 显示 x s，否则 m 分 s 秒。 */
+/** milisegundos → Legible por humanos:<1s Mostrar 0.x s,<60s Muestra x s, en caso contrario m minutos s segundos. */
 private fun formatElapsed(ms: Long): String = when {
     ms < 1000L -> "${ms}ms"
     ms < 60_000L -> String.format(java.util.Locale.US, "%.1fs", ms / 1000.0)

@@ -11,10 +11,10 @@ import java.security.MessageDigest
 import java.util.UUID
 
 /**
- * Room 按降级策略重建 MemoryDb 前，先在同目录生成可恢复快照。
+ * Room Antes de reconstruir MemoryDb de acuerdo con la estrategia de degradación, primero genere una instantánea recuperable en el mismo directorio.
  *
- * 主库与 WAL sidecar 会先复制到临时目录并校验字节一致，最后原子发布目录；
- * guard 不会移动或删除正在使用的数据库文件。
+ * La biblioteca principal y el sidecar WAL primero se copiarán al directorio temporal y verificarán que los bytes sean consistentes, y finalmente publicarán el directorio de forma atómica;
+ * guard Los archivos de bases de datos en uso no se moverán ni eliminarán.
  */
 internal object MemoryDbDowngradeGuard {
     private const val TAG = "MemoryDbDowngradeGuard"
@@ -96,7 +96,7 @@ internal object MemoryDbDowngradeGuard {
         }
 
         MemoryLegacyReset.mark(context, databaseName)
-        Logger.w(TAG, "MemoryDb v$storedVersion 已归档，准备打开 v$currentVersion")
+        Logger.w(TAG, "MemoryDb v$storedVersion Archivado y listo para abrir v$currentVersion")
         return archiveDirectory
     }
 
@@ -150,7 +150,7 @@ internal object MemoryDbDowngradeGuard {
             }
         }.onFailure { error ->
             // The original WAL and SHM are archived with the main file if checkpointing fails.
-            Logger.w(TAG, "WAL checkpoint 未完成，将与 sidecar 一起归档", error)
+            Logger.w(TAG, "WAL checkpoint No terminado, se archivará con sidecar.", error)
         }
     }
 

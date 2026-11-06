@@ -5,17 +5,17 @@ import "./primitives.css";
 
 export interface ErrorStateBoxProps {
   readonly message: string;
-  /** 传了才渲染「重试」。 */
+  /** Renderice \"Reintentar\" después de pasarlo. */
   readonly onRetry?: () => void;
-  /** 传了才渲染「关闭」。 */
+  /** \"Cerrar\" se representa sólo después de pasarlo. */
   readonly onDismiss?: () => void;
 }
 
 /**
- * 错误状态块（可重试）。
+ * Bloque de estado de error (reintentable).
  *
- * 对应 Compose 的 MuseErrorStateBox：圆形 error 色底（8%）+ error @60% 图标、
- * 居中 titleMedium 文案、下方一排胶囊按钮。尺寸走 iconEmpty(64) + screen*2 的外圈。
+ * Correspondiente a MuseErrorStateBox de Compose: fondo de color de error circular (8%)+ error @60% icono,
+ * Centra el títuloCopia mediana y una fila de botones de cápsula debajo. El tamaño va iconEmpty(64) + screen*2 el anillo exterior.
  */
 export function ErrorStateBox({ message, onRetry, onDismiss }: ErrorStateBoxProps) {
   const { t } = useI18n();

@@ -30,11 +30,11 @@ internal fun latestDueDailySummaryHour(currentMinutes: Int, configuredSlots: Col
     .maxOrNull()
 
 /**
- * 每日总结的唯一生成入口。
+ * La única forma de generar resúmenes diarios.
  *
- * Worker 和首页前台补偿都通过这里执行，避免“只投递了 WorkManager 但首页一直没有内容”
- * 以及同一个时点同时触发两次 LLM 请求。时点抢占仍由 SettingsRepository 的 DataStore
- * 事务保证，Mutex 负责同一进程内的快速串行化。
+ * Worker La compensación por la página de inicio y la recepción se ejecuta aquí para evitar“Solo se entregó WorkManager pero no hay contenido en la página de inicio.”
+ * Y active dos solicitudes de LLM al mismo tiempo. La preferencia en un momento dado todavía la maneja SettingsRepository DataStore
+ * garantía comercial,Mutex Responsable de la serialización rápida dentro del mismo proceso.
  */
 class DailySummaryService(
     private val settings: SettingsRepository,
@@ -48,8 +48,8 @@ class DailySummaryService(
     private val activeSlots = mutableSetOf<String>()
 
     /**
-     * 前台打开首页时，为当前已经到点的时段立即生成一次总结。
-     * 已经成功抢占过的时点不会重复生成；失败会释放抢占标记，允许下一次前台进入重试。
+     * Cuando se abre la página de inicio en la recepción, se genera inmediatamente un resumen del período actual que ha expirado.
+     * Los puntos de tiempo que se hayan adelantado con éxito no se regenerarán; Si falla, se liberará la marca de preferencia, lo que permitirá que el siguiente primer plano ingrese y vuelva a intentarlo.
      */
     suspend fun generateCurrentSlotIfDue(nowMillis: Long = System.currentTimeMillis()): Boolean = mutex.withLock {
         val now = java.util.Calendar.getInstance().apply { timeInMillis = nowMillis }
@@ -60,7 +60,7 @@ class DailySummaryService(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "读取每日总结时段失败,跳过前台补偿: ${e.message}", e)
+            Logger.w(TAG, "No se pudo leer el período de resumen diario,Saltar compensación de primer plano: ${e.message}", e)
             return@withLock false
         }
         val dueHour = latestDueDailySummaryHour(currentMinutes, configuredSlots)
@@ -72,7 +72,7 @@ class DailySummaryService(
         val summaryDate = DailySummaryWorker.summaryDateForTarget(targetDateText, dueHour)
         val completed = settings.isDailySummarySlotCompleted(slotKey)
         if (!completed && settings.isDailySummarySlotClaimed(slotKey) && slotKey !in activeSlots) {
-            // 进程可能在 claimed 后、保存前被杀；当前进程没有该时点的活跃任务时安全释放并重试。
+            // El proceso puede finalizar después de ser reclamado pero antes de guardarlo; cuando el proceso actual no tiene tareas activas en ese momento, es seguro liberarlo e intentarlo nuevamente.
             settings.releaseDailySummarySlot(slotKey)
         }
         val notificationsEnabled = try {
@@ -80,35 +80,35 @@ class DailySummaryService(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "读取每日总结通知开关失败,按关闭通知处理: ${e.message}", e)
+            Logger.w(TAG, "No se pudo leer el interruptor de notificación de resumen diario,Cerrar procesamiento de notificaciones: ${e.message}", e)
             dailySummaryNotificationsEnabledOrFalse(null)
         }
         generateForSlotLocked(slotKey, summaryDate, notificationsEnabled)
     }
 
-    /** Worker 和前台补偿共享的时点生成入口。 */
+    /** Worker Entrada de generación de puntos de tiempo compartida con la compensación de la recepción. */
     suspend fun generateForSlot(slotKey: String, summaryDate: LocalDate, notificationsEnabled: Boolean): Boolean = mutex.withLock {
         generateForSlotLocked(slotKey, summaryDate, notificationsEnabled)
     }
 
     private suspend fun generateForSlotLocked(slotKey: String, summaryDate: LocalDate, notificationsEnabled: Boolean): Boolean {
         if (settings.isDailySummarySlotCompleted(slotKey)) {
-            Logger.d(TAG, "每日总结时点已完成,跳过: $slotKey")
+            Logger.d(TAG, "Se ha completado el punto de tiempo del resumen diario,saltar: $slotKey")
             return true
         }
         var claimed = resultOf { settings.claimDailySummarySlot(slotKey) }
             .onError { message, throwable ->
-                Logger.w(TAG, "每日总结时点抢占失败($slotKey): ${throwable?.message ?: message}")
+                Logger.w(TAG, "Error en la preferencia del punto de tiempo del resumen diario($slotKey): ${throwable?.message ?: message}")
             }
             .getOrNull() ?: false
         if (!claimed && slotKey !in activeSlots && !settings.isDailySummarySlotCompleted(slotKey)) {
-            // claimed 只代表“曾经开始过”；若进程在保存前退出，当前进程没有活跃任务，
-            // 释放旧占位并重新抢占，避免一次崩溃永久吞掉该时段。
+            // claimed solo representa“alguna vez comenzó”;Si el proceso sale antes de guardar, el proceso actual no tiene tareas activas,
+            // Libere el espacio antiguo y vuelva a aprovecharlo para evitar que un accidente se trague permanentemente el período.
             settings.releaseDailySummarySlot(slotKey)
             claimed = resultOf { settings.claimDailySummarySlot(slotKey) }.getOrNull() ?: false
         }
         if (!claimed) {
-            Logger.d(TAG, "每日总结时点正在执行或已抢占,跳过: $slotKey")
+            Logger.d(TAG, "El punto de tiempo del resumen diario se está ejecutando o se ha adelantado,saltar: $slotKey")
             return false
         }
         activeSlots += slotKey
@@ -116,13 +116,13 @@ class DailySummaryService(
             val generated = resultOf {
                 generateAndDeliver(slotKey, summaryDate, notificationsEnabled)
             }.onError { message, throwable ->
-                Logger.w(TAG, "每日总结生成失败($slotKey): ${throwable?.message ?: message}")
+                Logger.w(TAG, "Error al generar el resumen diario($slotKey): ${throwable?.message ?: message}")
             }.getOrNull() == true
             if (!generated) {
-                // 只有未保存成功时才释放占位，避免一次瞬时错误永久吞掉该时点。
+                // Solo suelte el marcador de posición cuando no se pueda guardar para evitar un error transitorio que devore permanentemente ese momento.
                 resultOf { settings.releaseDailySummarySlot(slotKey) }
                     .onError { message, throwable ->
-                        Logger.w(TAG, "释放每日总结时点失败($slotKey): ${throwable?.message ?: message}")
+                        Logger.w(TAG, "No se pudo publicar el punto de tiempo del resumen diario($slotKey): ${throwable?.message ?: message}")
                     }
             }
             generated
@@ -136,53 +136,53 @@ class DailySummaryService(
         val dayStart = summaryDate.atStartOfDay(zone).toInstant().toEpochMilli()
         val dayEnd = summaryDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 
-        // 只取用户消息，避免把助手长回复重复灌入每日总结素材。
+        // Recupere únicamente los mensajes de los usuarios para evitar repetir las respuestas del subdirector en los materiales de resumen diarios.
         val todayMessages = withContext(Dispatchers.IO) {
             resultOf { sessionRepository.getUserMessagesBetween(dayStart, dayEnd, 40) }
                 .getOrNull()
                 ?: emptyList()
         }
-        // v17: 每日总结会把这些事实写进上下文,已出场(分数低于衰减阈值)的不参与注入。
+        // v17: Los resúmenes diarios ponen estos hechos en contexto,Apareció(La puntuación está por debajo del umbral de deterioro)no participa en la inyección.
         val facts = resultOf { factStore.getAll("main", includeSuppressed = false) }.getOrNull() ?: emptyList()
         val todayFacts = facts
             .sortedByDescending { it.createdAt }
             .take(30)
             .mapNotNull { fact ->
-                val timePart = fact.time?.takeIf { it.isNotBlank() }?.let { " (时间:$it)" } ?: ""
+                val timePart = fact.time?.takeIf { it.isNotBlank() }?.let { " (tiempo:$it)" } ?: ""
                 "${fact.fact}$timePart"
             }
 
-        // v2.x: 素材门槛 — 有效用户消息不足且无可用 fact 时,不硬写总结。
-        // 素材贫瘠时 LLM 会编出"算了,不纠结了"这类无信息量碎句(用户反馈),改走轻量问候模板。
+        // v2.x: Umbral de material — Cuando no hay suficiente información válida del usuario y no hay datos disponibles,No escribas un resumen duro.
+        // Cuando el material sea deficiente, LLM compilará"Olvídalo,No te preocupes más"Frases tan poco informativas(Comentarios de los usuarios),Utilice plantillas de saludo ligeras en su lugar.
         val effectiveUserCount = todayMessages.count { it.content.isNotBlank() }
         val summary = if (chatService != null &&
             (effectiveUserCount >= MIN_MESSAGES_FOR_SUMMARY || todayFacts.isNotEmpty())
         ) {
             generateSummary(chatService, todayMessages, todayFacts)
         } else {
-            Logger.i(TAG, "每日总结素材不足(有效消息=$effectiveUserCount, facts=${todayFacts.size}),使用轻量问候")
+            Logger.i(TAG, "Material de resumen diario insuficiente(mensaje válido=$effectiveUserCount, facts=${todayFacts.size}),Utilice saludos ligeros")
             lightGreeting()
         }
 
         if (summary.isNullOrBlank()) {
-            Logger.w(TAG, "每日总结生成结果为空,跳过")
+            Logger.w(TAG, "El resultado de la generación del resumen diario está vacío,saltar")
             return false
         }
 
-        // 先保存，再根据前后台和用户开关决定是否发送通知；首页永远能复用这份结果。
+        // Guárdelo primero y luego decida si desea enviar notificaciones según los cambios de usuario y de front-end; la página de inicio siempre puede reutilizar este resultado.
         settings.saveDailySummary(summaryDate.toString(), summary)
         settings.completeDailySummarySlot(slotKey)
         val manager = notificationManager
         if (manager == null) {
-            Logger.w(TAG, "MuseNotificationManager 未就绪,每日总结已保存但未发送通知")
+            Logger.w(TAG, "MuseNotificationManager No listo,Resumen diario guardado pero notificación no enviada")
             return true
         }
         if (manager.isAppForeground()) {
-            Logger.d(TAG, "每日总结:应用在前台,跳过通知(内容已保存,首页问候语可见)")
+            Logger.d(TAG, "resumen diario:Aplicación en primer plano,Saltar notificación(Contenido guardado,Saludo de la página de inicio visible)")
             return true
         }
         if (!notificationsEnabled) {
-            Logger.d(TAG, "每日总结已保存,推送开关关闭,首页问候语可见")
+            Logger.d(TAG, "Resumen diario guardado,El interruptor está apagado,Saludo de la página de inicio visible")
             return true
         }
         manager.notifyReminder(
@@ -191,40 +191,40 @@ class DailySummaryService(
             notificationId = DailySummaryWorker.NOTIF_ID_DAILY_SUMMARY,
             target = io.zer0.muse.notification.MuseNotificationTarget.Home,
         )
-        Logger.i(TAG, "每日总结已保存并推送: ${summary.take(40)}...")
+        Logger.i(TAG, "Resumen diario guardado y enviado: ${summary.take(40)}...")
         return true
     }
 
-    /** LLM 失败时的确定性本地总结，只使用真实素材。 */
+    /** LLM Resumen local determinista sobre el fallo, utilizando únicamente imágenes reales. */
     private suspend fun generateSummary(service: ChatService, todayMessages: List<UIMessage>, facts: List<String>): String? {
         val hasContent = todayMessages.isNotEmpty() || facts.isNotEmpty()
         val systemPrompt = if (hasContent) {
             """
-你是用户的陪伴助手。请根据真实素材写一条晚间今日小结。
-规则:口语、像朋友复盘;只挑 1 个最重要的重点;不编造未发生的事;输出 18-40 字;
-只输出一行正文,不要标题、前缀、引号、MOOD、反思或换行;
-不要提及聊天次数、消息条数等统计信息,不要用“记下”“记录”之类的词,直接说事情本身。
-素材不足以提炼重点时,只写一句自然的晚间问候,不要强行总结、不要复述素材原句。
+Eres el asistente acompañante del usuario. Por favor escriba un resumen de la tarde de hoy basado en material real.
+reglas:Inglés hablado, revisa como un amigo.;Elija solo 1 punto más importante;No inventes cosas que no sucedieron;Salida de 18 a 40 palabras;
+Solo genera una línea de texto,Sin títulos, prefijos, comillas,MOOD, reflexión o salto de línea;
+No menciones información estadística como número de chats, número de mensajes, etc.,no usar“escribir”“grabar”palabras como,Hablemos del asunto directamente.
+Cuando el material no es suficiente para refinar los puntos clave,Simplemente escribe un saludo vespertino natural.,No resuma ni repita con fuerza las oraciones originales del material.
             """.trimIndent()
         } else {
             """
-你是用户的陪伴助手。用户今天没有留下可用素材,请写一句自然的晚间问候。
-不要编造今天发生的事;可以问候或轻轻问一句过得怎么样;16 字以内;只输出一行正文。
+Eres el asistente acompañante del usuario. El usuario no ha dejado material disponible hoy,Por favor escriba un saludo vespertino natural.
+No inventes lo que pasó hoy;Puedes saludar o simplemente preguntar cómo estás.;16 Dentro de palabras;Sólo se genera una línea de texto.
             """.trimIndent()
         }
         val userContent = buildString {
             appendLine("<summary_material>")
             if (todayMessages.isNotEmpty()) {
-                appendLine("今天用户说的话(按时间顺序):")
+                appendLine("Lo que dijeron los usuarios hoy(en orden cronológico):")
                 todayMessages.forEach { message ->
                     appendLine("- ${message.content.replace('\n', ' ').take(120)}")
                 }
             }
             if (facts.isNotEmpty()) {
-                appendLine("用户近期事项(只有与今天相关或明确临近的事项才可提):")
+                appendLine("Eventos recientes del usuario(Mencione únicamente asuntos que sean relevantes para el momento actual o que sean claramente inminentes.):")
                 facts.take(10).forEach { appendLine("- $it") }
             }
-            if (!hasContent) appendLine("没有可用素材。")
+            if (!hasContent) appendLine("No hay imágenes disponibles.")
             appendLine("</summary_material>")
         }
         return resultOf {
@@ -244,45 +244,45 @@ class DailySummaryService(
                             ),
                         ),
                         temperature = 0.6f,
-                        // v2.7: 放宽到 96 —— 提示词目标 18-40 字，96 token 留足余量，
-                        // 不会因上限过紧把句子写一半就断（用户反馈总结被截断）。
+                        // v2.7: relajarse para 96 —— Palabras rápidas objetivo de 18 a 40 palabras,96 token Deja suficiente margen,
+                        // La oración no se cortará a la mitad porque el límite superior es demasiado ajustado (el resumen de comentarios de los usuarios se corta).
                         maxTokens = 96,
                     ).text.let { io.zer0.muse.transformer.stripThinkTags(it) }
                 }
             }
         }.onError { message, throwable ->
-            Logger.w(TAG, "每日总结 LLM 调用失败: ${throwable?.message ?: message}")
+            Logger.w(TAG, "Fallo de llamada de resumen diario LLM: ${throwable?.message ?: message}")
         }.getOrNull()?.let { raw ->
-            // v2.7: 只归一化 + 宽松安全上限，不做 24 字硬截断（长度由提示词/maxTokens 控制）。
+            // v2.7: Solo normalización + límite superior de seguridad flexible, sin truncamiento estricto de 24 caracteres (la longitud está determinada por la palabra emergente/maxTokens controlar).
             GreetingHelper.normalizeGreetingText(raw, SUMMARY_MAX_CHARS)
         } ?: buildLocalSummary(todayMessages, facts)
     }
 
     /**
-     * 素材不足时的轻量文案（不硬写总结）。
+     * Redacción ligera cuando no hay material suficiente (sin resumen escrito).
      *
-     * P1-8 修复（审计报告）: 旧实现按时段生成「早上好/中午好/晚上好」并**写死进摘要文本**，
-     * 而首页顶部的时段问候是实时算的 —— 于是晚上打开会看到
-     * 「晚上好」和摘要里的「中午好」同时出现，看起来像 bug。
+     * P1-8 Reparación (informe de auditoría): La implementación anterior generaba "Buenos días" por período de tiempo./buen mediodía/Buenas noches" y**Escribir texto de resumen muerto**,
+     * Los saludos de franja horaria en la parte superior de la página de inicio se calculan en tiempo real. —— Así que cuando lo abras por la noche, verás
+     * "Buenas noches" aparece al mismo tiempo que "Buenas tardes" en el resumen, lo que parece un error.
      *
-     * 摘要是一次生成、长期复用的，不该携带会过期的时段信息，只给内容本身。
+     * El resumen se genera una vez y se reutiliza durante mucho tiempo. No debe contener información sobre períodos de tiempo vencidos, solo el contenido en sí.
      */
-    private fun lightGreeting(): String = "今天还没聊什么，想到什么随时找我。"
+    private fun lightGreeting(): String = "No hay nada de qué hablar hoy, no dudes en ponerte en contacto conmigo cuando se te ocurra algo."
 
     private fun buildLocalSummary(todayMessages: List<UIMessage>, facts: List<String>): String {
-        // v1.0.92: 问候区定位为"助手快速提醒空间" —
-        // 旧文案("今天聊了N次,记下:XX")既做统计又出戏(用户反馈),已移除;
-        // 规则版只保留"值得提醒的内容"本身,直接说事情。
+        // v1.0.92: El área de saludo está situada como"Espacio de recordatorio rápido del asistente" —
+        // copia antigua("Charlé hoyNveces,escribir:XX")Tanto haciendo estadística como actuando.(Comentarios de los usuarios),Eliminado;
+        // La versión normal sólo conserva"Cosas que vale la pena recordar"mismo,Di las cosas directamente.
         val firstFact = facts.firstOrNull()
             ?.replace(Regex("\\s+"), " ")
             ?.trim()
             ?.take(20)
         val raw = when {
             !firstFact.isNullOrBlank() -> firstFact
-            todayMessages.any { it.content.isNotBlank() } -> "今天辛苦了，早点休息。"
-            else -> "今天还没有新的对话。"
+            todayMessages.any { it.content.isNotBlank() } -> "Has trabajado duro hoy, vete a la cama temprano."
+            else -> "No hay nuevas conversaciones hoy."
         }
-        return GreetingHelper.normalizeGreetingText(raw, SUMMARY_MAX_CHARS) ?: "今天还没有新的对话。"
+        return GreetingHelper.normalizeGreetingText(raw, SUMMARY_MAX_CHARS) ?: "No hay nuevas conversaciones hoy."
     }
 
     companion object {
@@ -290,24 +290,24 @@ class DailySummaryService(
         private const val GEN_TIMEOUT_MS = 60_000L
 
         /**
-         * v2.7: 总结的生成侧字数上限（提示词里的目标字数 + 这里的宽松硬上限）。
+         * v2.7: El número máximo de palabras en el lado de generación del resumen (el número objetivo de palabras en el mensaje + el límite estricto flexible aquí).
          *
-         * 用户反馈：总结老被截断，希望“不限字数但限制模型生成字数总数”。
-         * 展示层已不再截断；长度控制交给生成侧：
-         *  - 提示词明确要求 18-40 字（口语复盘，自然长度）
-         *  - maxTokens=96 给足够余量，但不会让模型写成长篇
-         *  - 这里只做宽松安全上限（展示层同样的 200），防止模型异常跑飞
+         * Comentarios de los usuarios: el resumen siempre se trunca, espero“No hay límite en el recuento de palabras, pero limita el número total de palabras generadas por el modelo.”.
+         * La capa de presentación ya no está truncada; El control de longitud se otorga al lado de la generación:
+         *  - La palabra clave claramente requiere entre 18 y 40 palabras (revisión oral, extensión natural)
+         *  - maxTokens=96 Da suficiente margen, pero no dejes que el modelo se convierta en un artículo largo.
+         *  - Aquí solo se usa un límite superior de seguridad flexible (el mismo 200 para la capa de visualización) para evitar que el modelo se escape de manera anormal.
          */
         private const val SUMMARY_MAX_CHARS = GreetingHelper.DAILY_SUMMARY_DISPLAY_SAFETY_LIMIT
 
-        /** v2.x: 硬写总结所需的最少有效用户消息数(低于此值且无 fact 时走轻量问候)。 */
+        /** v2.x: Número mínimo de mensajes de usuario válidos necesarios para un resumen escrito(Utilice saludos ligeros cuando esté por debajo de este valor y no haya ningún hecho.). */
         private const val MIN_MESSAGES_FOR_SUMMARY = 3
         private val SUMMARY_TITLES = listOf(
-            "今日小结",
-            "今天过得怎么样",
-            "睡前复盘一下",
-            "今天你聊了不少",
-            "今日回顾",
+            "resumen de hoy",
+            "¿Cómo estuvo tu día hoy?",
+            "Repaso antes de acostarse",
+            "Hablaste mucho hoy",
+            "La reseña de hoy",
         )
     }
 }

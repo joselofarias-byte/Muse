@@ -6,16 +6,16 @@ import org.junit.Test
 import java.util.Base64
 
 /**
- * v2.6.2（Codex 登录修复）: JWT claim 解析回归测试。
+ * v2.6.2(Codex Solución de inicio de sesión): JWT claim Analizar pruebas de regresión.
  *
- * 锁死两个 bug：
- *  1. `chatgpt_account_id` 嵌套在 `https://api.openai.com/auth` 命名空间下，
- *     不是顶层 —— 旧实现只读顶层，恒为 null，导致 ChatGPT-Account-ID 头从未写入。
- *  2. base64url payload 无 padding，旧实现未补齐，Android Base64 解码失败。
+ * Bloqueado dos errores:
+ *  1. `chatgpt_account_id` anidado en `https://api.openai.com/auth` Debajo del espacio de nombres,
+ *     No es la cima —— La implementación anterior solo leía el nivel superior y siempre era nula, lo que provocaba que el encabezado ChatGPT-Account-ID nunca se escribiera.
+ *  2. base64url payload Sin relleno, la implementación anterior no está rellena,Android Base64 La decodificación falló.
  */
 class ChatGptAccountIdParseTest {
 
-    /** 用给定 payload JSON 造一个假 JWT（签名段占位，解析不校验签名）。 */
+    /** Cree un JWT falso con la carga útil JSON dada (el segmento de firma es un marcador de posición, el análisis no verifica la firma). */
     private fun jwtOf(payloadJson: String): String {
         val header = """{"alg":"RS256","typ":"JWT"}"""
         fun b64(s: String): String = Base64.getUrlEncoder().withoutPadding().encodeToString(s.toByteArray(Charsets.UTF_8))
@@ -46,7 +46,7 @@ class ChatGptAccountIdParseTest {
 
     @Test
     fun `unpadded base64url payload decodes`() {
-        // 构造一个长度非 4 倍数的 payload，确保 padding 补齐生效
+        // Construya una carga útil cuya longitud no sea múltiplo de 4 para garantizar que el relleno surta efecto
         val jwt = jwtOf("""{"https://api.openai.com/auth":{"chatgpt_account_id":"x"}}""")
         assertEquals("x", parseChatGptAccountId(jwt))
     }

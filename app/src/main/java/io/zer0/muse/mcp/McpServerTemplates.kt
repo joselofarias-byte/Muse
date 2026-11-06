@@ -1,10 +1,10 @@
 package io.zer0.muse.mcp
 
 /**
- * MCP Server 配置模板。
+ * MCP Server Configurar plantillas.
  *
- * 模板只提供连接方式和用途提示,不内置第三方服务地址、账号或令牌。
- * 这样既能减少首次配置成本,也不会把某个厂商的 endpoint 当成永久契约。
+ * La plantilla solo proporciona métodos de conexión y consejos de uso.,No se incorporan direcciones, cuentas o tokens de servicios de terceros.
+ * Esto reduce los costos de configuración por primera vez.,El punto final de un determinado fabricante tampoco se considerará un contrato permanente.
  */
 data class McpServerTemplate(
     val id: String,
@@ -13,60 +13,60 @@ data class McpServerTemplate(
     val transportType: McpTransportType,
     val urlPlaceholder: String,
     val defaultHeaders: Map<String, String> = emptyMap(),
-    /** STDIO 模板的默认命令（transportType == STDIO 时使用）。 */
+    /** STDIO El comando predeterminado de la plantilla (transportType == STDIO cuando se utiliza). */
     val commandPlaceholder: String = "",
 )
 
 /**
- * 国内常用办公/知识库软件的 MCP 配置模板。
+ * oficina común doméstica/Plantilla de configuración de MCP para software de base de conocimientos.
  *
- * 其中“远程 MCP”可直接填写厂商提供的 HTTP endpoint；
- * “桥接”表示需要在电脑或服务器上运行一个 MCP adapter,再把它暴露为 SSE/Streamable HTTP。
+ * entre ellos“remoto MCP”Puede completar directamente el punto final HTTP proporcionado por el fabricante;
+ * “puente”Indica la necesidad de ejecutar un MCP adapter,Luego expóngalo como SSE/HTTP transmitible.
  */
 object McpServerTemplates {
     const val CUSTOM_ID = "custom"
 
     val custom = McpServerTemplate(
         id = CUSTOM_ID,
-        displayName = "自定义 MCP Server",
-        summary = "手动填写 endpoint、传输方式和授权信息",
+        displayName = "Personalizar MCP Server",
+        summary = "Complete manualmente la información de autorización, método de transmisión y punto final",
         transportType = McpTransportType.STREAMABLE_HTTP,
         urlPlaceholder = "https://server.example.com/mcp",
     )
 
     val all: List<McpServerTemplate> = listOf(
-        // P1-A: 本地 MCP（内置 Node 运行时，stdio 传输；首次运行需联网下载依赖包）
+        // P1-A: MCP nativo (tiempo de ejecución de nodo integrado,stdio Transmisión; la primera ejecución requiere una conexión a Internet para descargar los paquetes de dependencia)
         McpServerTemplate(
             id = "local_filesystem",
-            displayName = "本地文件系统",
-            summary = "本地 MCP：让 AI 读写手机上的文件夹（内置运行时）",
+            displayName = "sistema de archivos local",
+            summary = "MCP local: permita que AI lea y escriba carpetas en su teléfono (tiempo de ejecución integrado)",
             transportType = McpTransportType.STDIO,
             urlPlaceholder = "",
             commandPlaceholder = "npx -y @modelcontextprotocol/server-filesystem /sdcard/Documents",
         ),
         McpServerTemplate(
             id = "local_memory",
-            displayName = "记忆知识图",
-            summary = "本地 MCP：知识图谱式长期记忆（内置运行时）",
+            displayName = "Gráfico de conocimiento de la memoria",
+            summary = "MCP local: memoria a largo plazo basada en gráficos de conocimiento (tiempo de ejecución integrado)",
             transportType = McpTransportType.STDIO,
             urlPlaceholder = "",
             commandPlaceholder = "npx -y @modelcontextprotocol/server-memory",
         ),
         McpServerTemplate(
             id = "local_sequential_thinking",
-            displayName = "顺序思考",
-            summary = "本地 MCP：分步推理辅助（内置运行时）",
+            displayName = "pensar secuencialmente",
+            summary = "MCP nativo: asistencia de razonamiento paso a paso (tiempo de ejecución integrado)",
             transportType = McpTransportType.STDIO,
             urlPlaceholder = "",
             commandPlaceholder = "npx -y @modelcontextprotocol/server-sequential-thinking",
         ),
         McpServerTemplate(
             id = "feishu_remote",
-            displayName = "飞书知识库",
-            summary = "远程 MCP：搜索和读取飞书云文档",
+            displayName = "Base de conocimientos de Feishu",
+            summary = "MCP remoto: busque y lea documentos de Feishu Cloud",
             transportType = McpTransportType.STREAMABLE_HTTP,
-            urlPlaceholder = "粘贴飞书远程 MCP 服务地址",
-            // 默认只读,需要写入记忆时由用户主动在高级字段追加 update/create 工具。
+            urlPlaceholder = "Pegue la dirección del servicio MCP remoto de Feishu",
+            // Solo lectura predeterminada,Cuando es necesario escribir la memoria, el usuario puede agregar activamente herramientas de actualización/creación a los campos avanzados.
             defaultHeaders = mapOf(
                 "X-Lark-MCP-Allowed-Tools" to
                     "search-doc,fetch-doc,list-docs,fetch-file,get-comments",
@@ -74,41 +74,41 @@ object McpServerTemplates {
         ),
         McpServerTemplate(
             id = "feishu_cli_bridge",
-            displayName = "飞书 CLI 桥接",
-            summary = "本地 CLI 通过桌面桥接转成 HTTP/SSE",
+            displayName = "Puente CLI de Feishu",
+            summary = "CLI local a través de Desktop Bridge HTTP/SSE",
             transportType = McpTransportType.SSE,
-            urlPlaceholder = "http://电脑地址:端口/sse",
+            urlPlaceholder = "http://dirección de la computadora:puerto/sse",
         ),
         McpServerTemplate(
             id = "dingtalk_knowledge",
-            displayName = "钉钉知识库",
-            summary = "远程 MCP 或自建桥接：读取钉钉文档和知识库",
+            displayName = "Base de conocimientos de DingTalk",
+            summary = "MCP remoto o puente de construcción propia: lea la documentación y la base de conocimientos de DingTalk",
             transportType = McpTransportType.STREAMABLE_HTTP,
-            urlPlaceholder = "粘贴钉钉 MCP/桥接服务地址",
+            urlPlaceholder = "Pegue la dirección del servicio DingTalk MCP/Bridge",
         ),
         McpServerTemplate(
             id = "wecom_knowledge",
-            displayName = "企业微信知识库",
-            summary = "自建桥接：连接企业微信文档、群机器人或应用接口",
+            displayName = "Base de conocimientos de WeChat empresarial",
+            summary = "Puente de construcción propia: conéctese a documentos corporativos de WeChat, robots de grupo o interfaces de aplicaciones",
             transportType = McpTransportType.STREAMABLE_HTTP,
-            urlPlaceholder = "粘贴企业微信 MCP 桥接地址",
+            urlPlaceholder = "Pegue la dirección del puente empresarial WeChat MCP",
         ),
         McpServerTemplate(
             id = "yuque_knowledge",
-            displayName = "语雀知识库",
-            summary = "自建桥接：用语雀开放接口封装搜索和读取工具",
+            displayName = "Base de conocimientos Yuque",
+            summary = "Puente de construcción propia: utilice la interfaz abierta de Yuque para encapsular las herramientas de búsqueda y lectura",
             transportType = McpTransportType.STREAMABLE_HTTP,
-            urlPlaceholder = "粘贴语雀 MCP 桥接地址",
+            urlPlaceholder = "Pegue la dirección del puente Yuque MCP",
         ),
         McpServerTemplate(
             id = "tencent_docs",
-            displayName = "腾讯文档",
-            summary = "自建桥接：把腾讯文档检索接口暴露为 MCP",
+            displayName = "Documentos Tencent",
+            summary = "Puente de construcción propia: exponer la interfaz de recuperación de documentos de Tencent como MCP",
             transportType = McpTransportType.STREAMABLE_HTTP,
-            urlPlaceholder = "粘贴腾讯文档 MCP 桥接地址",
+            urlPlaceholder = "Pegue la dirección del puente MCP del documento Tencent",
         ),
     )
 
-    /** 按 id 查找模板,找不到时返回自定义模板。 */
+    /** Buscar plantilla por ID,Devuelve una plantilla personalizada si no se encuentra. */
     fun find(id: String): McpServerTemplate = all.firstOrNull { it.id == id } ?: custom
 }

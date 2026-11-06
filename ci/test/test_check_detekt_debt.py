@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_check_detekt_debt.py — check_detekt_debt.py 的单元测试。
+test_check_detekt_debt.py — check_detekt_debt.py pruebas unitarias.
 
-运行: py -3 ci/test/test_check_detekt_debt.py
+correr: py -3 ci/test/test_check_detekt_debt.py
 """
 
 import json
@@ -44,19 +44,19 @@ def test_within_cap_passes():
 def test_total_over_cap_fails():
     root, cap = make_env({"app": 10, "common": 5}, 13, {"app": 10, "common": 5})
     errors = check(root, cap)
-    assert len(errors) == 1 and "总量" in errors[0]
+    assert len(errors) == 1 and "deuda total" in errors[0]
 
 
 def test_module_over_cap_fails():
     root, cap = make_env({"app": 8, "common": 9}, 20, {"app": 10, "common": 5})
     errors = check(root, cap)
-    assert any("common" in e and "模块上限" in e for e in errors)
+    assert any("common" in e and "Límite de módulo" in e for e in errors)
 
 
 def test_missing_baseline_fails_closed():
     root, cap = make_env({}, 10, {"app": 4})
     errors = check(root, cap)
-    assert any("app" in error and "缺少 detekt baseline" in error for error in errors)
+    assert any("app" in error and "desaparecido detekt baseline" in error for error in errors)
 
 
 def test_baseline_without_current_issues_fails_closed():

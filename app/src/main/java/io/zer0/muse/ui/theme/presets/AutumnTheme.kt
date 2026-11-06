@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 5. 秋主题 (橙黄)
+// 5. Tema de otoño (naranja)
 // ─────────────────────────────────────────────────────────────────────────────
 private val AutumnPrimary = Color(0xFFE07A3F)
 private val AutumnPrimaryLightContainer = Color(0xFFFBE0CC)
@@ -33,10 +33,10 @@ val AutumnTheme = PresetTheme(
         onSecondaryContainer = Color(0xFF3A1A08),
         tertiary = AutumnPrimary,
         onTertiary = Color.White,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = AutumnPrimaryLightContainer,
         onTertiaryContainer = Color(0xFF3A1A08),
-        // M-2: surface 容器梯度,surfaceContainer 复用 AiBubble(橙调略深于 surface)。
+        // M-2: surface gradiente de contenedor,surfaceContainer Reutilizar AiBubble(El tono naranja es ligeramente más oscuro que surface).
         surfaceContainer = AutumnLightAiBubble,
         surfaceContainerLow = AutumnLightBg,
         surfaceContainerHigh = Color(0xFFEDE0D0),
@@ -70,10 +70,10 @@ val AutumnTheme = PresetTheme(
         onSecondaryContainer = AutumnOnPrimaryDark,
         tertiary = AutumnPrimary,
         onTertiary = AutumnOnPrimaryDark,
-        // M-1: tertiary 与 primary 同色,container/onContainer 同步引用 primary 容器色。
+        // M-1: tertiary Mismo color que el primario.,container/onContainer Sincronizar la referencia con el color del contenedor principal.
         tertiaryContainer = AutumnPrimaryDarkContainer,
         onTertiaryContainer = AutumnOnPrimaryDark,
-        // M-2: surface 容器梯度(深色越 high 越亮),surfaceContainer 复用 AiBubble。
+        // M-2: surface gradiente de contenedor(Cuanto más oscuro es el color, más brillante es),surfaceContainer Reutilizar AiBubble.
         surfaceContainer = AutumnDarkAiBubble,
         surfaceContainerLow = AutumnDarkBg,
         surfaceContainerHigh = Color(0xFF3A2C1C),

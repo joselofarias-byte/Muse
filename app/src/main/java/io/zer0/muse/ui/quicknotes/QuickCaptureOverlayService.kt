@@ -47,10 +47,10 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 /**
- * 快速记录系统悬浮窗。
+ * Ventana flotante del sistema de grabación rápida.
  *
- * 仅在用户主动开启悬浮窗开关并授予 SYSTEM_ALERT_WINDOW 后运行。
- * 折叠态是小胶囊,展开态是紧凑输入卡;标题栏可拖动,默认位于屏幕垂直中线。
+ * Solo se ejecuta después de que el usuario activa activamente el interruptor de ventana flotante y otorga SYSTEM_ALERT_WINDOW.
+ * El estado plegado es una pequeña cápsula.,El estado expandido es una tarjeta de entrada compacta.;La barra de título se puede arrastrar.,El valor predeterminado es la línea central vertical de la pantalla.
  */
 class QuickCaptureOverlayService : Service() {
 
@@ -77,10 +77,10 @@ class QuickCaptureOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // v2.2.0: Koin 未启动时优雅退场(与 ChatGenerationService 同款防御) —
-        // Safe Mode/进程异常恢复场景下 by inject 会崩 "KoinApplication has not been started"。
+        // v2.2.0: Koin Salir con gracia cuando no se haya iniciado(La misma defensa que ChatGenerationService) —
+        // Safe Mode/por inyección se bloqueará en el proceso escenario de recuperación anormal "KoinApplication has not been started".
         if (org.koin.core.context.GlobalContext.getOrNull() == null) {
-            Logger.w("QuickCaptureOverlayService", "Koin 未启动(Safe Mode?) — 停止悬浮窗服务")
+            Logger.w("QuickCaptureOverlayService", "Koin No iniciado(Safe Mode?) — Detener el servicio de ventana flotante")
             stopSelf()
             return
         }
@@ -94,7 +94,7 @@ class QuickCaptureOverlayService : Service() {
                 }
             } catch (t: Throwable) {
                 if (t is kotlin.coroutines.cancellation.CancellationException) throw t
-                Logger.w(TAG, "悬浮窗主题监听失败: ${t.message}")
+                Logger.w(TAG, "Error en la supervisión del tema de la ventana flotante: ${t.message}")
                 themeColors = QuickCaptureThemeColors.fallback(applicationContext)
                 applyThemeColors()
             }
@@ -110,7 +110,7 @@ class QuickCaptureOverlayService : Service() {
         return START_NOT_STICKY
     }
 
-    /** 等待持久化位置加载完成后再创建侧边条,避免先显示中线再跳回用户位置。 */
+    /** Espere a que se cargue la ubicación persistente antes de crear la barra lateral,Evite mostrar primero la línea central y luego volver a la posición del usuario. */
     private fun requestShowCollapsed() {
         collapsedShowRequested = true
         if (collapsedPositionReady) {
@@ -130,8 +130,8 @@ class QuickCaptureOverlayService : Service() {
         expanded = false
         removeOverlay()
         val colors = currentThemeColors()
-        // 与应用内侧滑把手保持同一语言:窄竖向胶囊 + Chevron 图标,不再显示单个汉字。
-        // 20dp 足够承载图标和触摸区域,比原来的 24dp 更贴边、更轻量。
+        // Mantenga el mismo idioma que el controlador deslizante interno de la aplicación.:Cápsula vertical estrecha + icono de Chevron,Ya no se muestran caracteres chinos individuales.
+        // 20dp Lo suficientemente grande como para albergar íconos y áreas táctiles,Más cercano y liviano que el 24dp original.
         val handleWidth = dp(20)
         val handleHeight = dp(64)
         val view = ImageButton(this).apply {
@@ -319,7 +319,7 @@ class QuickCaptureOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
-                        // 保留无障碍点击语义,同时复用拖动区域的点击回调。
+                        // Preservar la semántica de clic accesible,Al mismo tiempo, reutilice la devolución de llamada de clic del área arrastrada.
                         touchView.performClick()
                         onClick?.invoke()
                     } else {
@@ -339,10 +339,10 @@ class QuickCaptureOverlayService : Service() {
             overlayView = view
             windowParams = params
         } catch (e: SecurityException) {
-            Logger.w(TAG, "添加快速记录悬浮窗失败: ${e.message}")
+            Logger.w(TAG, "No se pudo agregar la ventana flotante de registro rápido: ${e.message}")
             stopSelf()
         } catch (e: RuntimeException) {
-            Logger.w(TAG, "快速记录悬浮窗窗口异常: ${e.message}")
+            Logger.w(TAG, "Registre rápidamente excepciones de ventanas flotantes: ${e.message}")
             stopSelf()
         }
     }
@@ -386,14 +386,14 @@ class QuickCaptureOverlayService : Service() {
         params.y = params.y.coerceIn(dp(8), (bounds.height() - height - dp(8)).coerceAtLeast(dp(8)))
     }
 
-    /** 根据归一化位置计算侧边条的 Y 坐标,适配不同屏幕尺寸。 */
+    /** Calcule la coordenada Y de la barra lateral según la posición normalizada,Adaptarse a diferentes tamaños de pantalla. */
     private fun collapsedPositionY(bounds: Rect, handleHeight: Int): Int {
         val minY = dp(8)
         val maxY = (bounds.height() - handleHeight - dp(8)).coerceAtLeast(minY)
         return minY + ((maxY - minY) * collapsedVerticalPositionFraction.coerceIn(0f, 1f)).roundToInt()
     }
 
-    /** 拖动结束后持久化侧边条位置,只写一次,不在 MOVE 事件中频繁访问 DataStore。 */
+    /** Conservar la posición de la barra lateral después de arrastrar,escribe solo una vez,No acceda al DataStore con frecuencia en eventos MOVE. */
     private fun saveCollapsedPosition() {
         if (expanded) return
         val params = windowParams ?: return
@@ -427,7 +427,7 @@ class QuickCaptureOverlayService : Service() {
         cornerRadius = radius.toFloat()
     }
 
-    /** 应用内侧滑把手的原生悬浮窗版本:右侧贴边,左侧圆角,颜色来自当前 Muse 主题。 */
+    /** Utilice la versión nativa de ventana flotante de la manija deslizante interior:verdugón derecho,esquina redondeada izquierda,Los colores provienen del tema actual de Muse. */
     private fun edgeHandleBackground(colors: QuickCaptureThemeColors): GradientDrawable = GradientDrawable().apply {
         setColor(withAlpha(colors.primary, 52))
         setCornerRadii(
@@ -447,7 +447,7 @@ class QuickCaptureOverlayService : Service() {
 
     private fun currentThemeColors(): QuickCaptureThemeColors = themeColors ?: QuickCaptureThemeColors.fallback(applicationContext)
 
-    /** 主题切换时更新当前 View,不重建窗口,避免输入内容和拖动位置丢失。 */
+    /** Actualizar actual al cambiar de tema View,No reconstruir la ventana,Evite perder el contenido de entrada y la posición de arrastre. */
     private fun applyThemeColors() {
         val colors = currentThemeColors()
         collapsedButton?.apply {

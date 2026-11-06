@@ -33,18 +33,18 @@ export interface HostSnapshot {
   readonly sessionId: string | undefined;
   readonly isStreaming: boolean;
   readonly approvals: readonly HostApproval[];
-  /** Host 声明的能力位；老 Host 不下发，保持 undefined（不是空数组）。 */
+  /** Host Bit de capacidad declarada; el antiguo Host no lo entregará y permanecerá indefinido (no una matriz vacía). */
   readonly capabilities: readonly string[] | undefined;
 }
 
 const EMPTY: HostSnapshot = { sessions: [], messages: [], sessionId: undefined, isStreaming: false, approvals: [], capabilities: undefined };
 
-/** memory.list 每页条数（Host 默认 30、上限 100）。 */
+/** memory.list Número de elementos por página (Host Predeterminado 30, límite superior 100). */
 const MEMORY_PAGE_SIZE = 30;
-/** knowledge.documents 每页条数（Host 默认 20、上限 50）。 */
+/** knowledge.documents Número de elementos por página (Host Predeterminado 20, límite superior 50). */
 const KNOWLEDGE_PAGE_SIZE = 20;
 
-/** 知识库列表的读取状态。 */
+/** El estado de lectura de la lista de la base de conocimientos. */
 export interface HostKnowledgeState {
   readonly bases: readonly HostKnowledgeBase[];
   readonly loading: boolean;
@@ -52,7 +52,7 @@ export interface HostKnowledgeState {
   readonly unsupported: boolean;
 }
 
-/** 某个知识库的文档（分页累积）。 */
+/** Documentos de una determinada base de conocimientos (acumulados en páginas). */
 export interface HostKnowledgeDocumentsState {
   readonly kbId: string | undefined;
   readonly items: readonly HostKnowledgeDocument[];
@@ -62,7 +62,7 @@ export interface HostKnowledgeDocumentsState {
   readonly unsupported: boolean;
 }
 
-/** 定时任务列表的读取状态。 */
+/** El estado de lectura de la lista de tareas programadas. */
 export interface HostTasksState {
   readonly items: readonly HostScheduledTask[];
   readonly loading: boolean;
@@ -70,7 +70,7 @@ export interface HostTasksState {
   readonly unsupported: boolean;
 }
 
-/** system.status 的读取状态。 */
+/** system.status estado de lectura. */
 export interface HostSystemState {
   readonly status: HostSystemStatus | undefined;
   readonly loading: boolean;
@@ -91,15 +91,15 @@ const EMPTY_DOCUMENTS: HostKnowledgeDocumentsState = {
 };
 const EMPTY_TASKS: HostTasksState = { items: [], loading: false, error: undefined, unsupported: false };
 
-/** 记忆页的数据：分页累积 + 当前是搜索还是列表。 */
+/** Datos de la página de memoria: acumulación de paginación + búsqueda o lista actual. */
 export interface HostMemoryState {
   readonly items: readonly HostMemoryItem[];
   readonly hasMore: boolean;
   readonly loading: boolean;
   readonly error: string | undefined;
-  /** 当前列表对应的搜索词；undefined 表示普通列表。 */
+  /** El término de búsqueda correspondiente a la lista actual;undefined Representa una lista normal. */
   readonly query: string | undefined;
-  /** Host 回了「不支持这个命令」：页面切成提示态。 */
+  /** Host Se respondió \"Este comando no es compatible\": la página pasó al estado de aviso. */
   readonly unsupported: boolean;
 }
 
@@ -112,12 +112,12 @@ const EMPTY_MEMORY: HostMemoryState = {
   unsupported: false,
 };
 
-/** 设置主页的请求状态：一次 settings.snapshot 的结果 + 正在请求 / 失败原因。 */
+/** Establezca el estado de la solicitud de la página de inicio: el resultado de una instantánea de configuración + motivo de solicitud/fallo. */
 export interface HostSettingsState {
-  /** 首次读取成功后才存在；失败时保留上一份，不把列表闪没。 */
+  /** Existe sólo después de que la primera lectura sea exitosa; cuando falla, se conserva la copia anterior y la lista no se borra. */
   readonly snapshot?: HostSettingsSnapshot;
   readonly loading: boolean;
-  /** 只在读取失败时填；写开关失败走 toast，不抢页面的错误位。 */
+  /** Sólo complete cuando la lectura falle; si el cambio de escritura falla, se utilizará el brindis y no se capturará el bit de error de la página. */
   readonly error?: string;
 }
 
@@ -134,31 +134,31 @@ function settingsLoading(current: HostSettingsState): HostSettingsState {
 export interface UseHostConnectionOptions {
   /** Surfaced as a toast; command failures must never be silent. */
   readonly onError: (message: string) => void;
-  /** 快照落地时回调（只用来记 perf 计时，不参与渲染）。 */
+  /** Se vuelve a llamar cuando llega la instantánea (solo se usa para registrar el tiempo de rendimiento, no participa en el renderizado). */
   readonly onSnapshot?: (() => void) | undefined;
-  /** 当前语言的翻译函数：错误文案与会话预览前缀要跟着界面语言走。 */
+  /** Función de traducción del idioma actual: la copia de error y el prefijo de vista previa de la sesión deben seguir el idioma de la interfaz. */
   readonly translate?: Translate | undefined;
 }
 
 export interface HostConnectionApi {
   readonly status: HostConnectionStatus;
-  /** 已发起的重连次数（连接成功后归零），界面用它显示「第 N 次」。 */
+  /** El número de reconexiones iniciadas (se restablece a cero después de una conexión exitosa), la interfaz lo usa para mostrar \"Enésima vez\". */
   readonly reconnectAttempt: number;
   /** False until the first state.snapshot arrives (avoids empty-state flicker). */
   readonly ready: boolean;
   readonly snapshot: HostSnapshot;
   /** Last-message preview per session id (only the part the snapshot does not carry). */
   readonly previews: Readonly<Record<string, string>>;
-  /** assistants.list 的结果：新建会话选助手、顶栏显示当前助手都用它。 */
+  /** assistants.list El resultado: se utiliza para seleccionar asistentes para nuevas sesiones y para mostrar los asistentes actuales en la barra superior. */
   readonly assistants: readonly HostAssistantSummary[];
-  /** providers.list 的结果：把 modelId 翻成可读的模型名。 */
+  /** providers.list Resultado: Traduzca modelId a un nombre de modelo legible. */
   readonly providers: readonly HostProviderSummary[];
-  /** settings.snapshot 的结果与请求状态（设置主页用）。 */
+  /** settings.snapshot Los resultados y el estado de la solicitud (para configurar la página de inicio). */
   readonly settings: HostSettingsState;
   readonly send: (command: Omit<HostCommand, "requestId">) => void;
   /**
-   * 乐观写：先发命令，Host 回 error 时执行 `onReject` 回滚并把原因交给 toast。
-   * `onAccepted` 拿得到 `command.accepted` 的载荷（如 message.delete 的 skippedMessageIds）。
+   * Escribe con optimismo: da órdenes primero,Host Ejecutado cuando se devuelve el error. `onReject` Retrocede y dale la razón a las tostadas.
+   * `onAccepted` Consíguelo `command.accepted` carga útil (como skippedMessageIds de message.delete).
    */
   readonly sendOptimistic: (
     command: Omit<HostCommand, "requestId">,
@@ -169,26 +169,26 @@ export interface HostConnectionApi {
   readonly requestSettings: () => void;
   readonly requestAssistants: () => void;
   readonly requestProviders: () => void;
-  /** 助手详情缓存（按 id）与「这个 Host 不支持详情」的标记。 */
+  /** Caché de detalles del asistente (por ID) y marca \"Este host no admite detalles\". */
   readonly assistantDetails: Readonly<Record<string, HostAssistantDetail>>;
   readonly assistantDetailUnsupported: boolean;
   readonly requestAssistantDetail: (assistantId: string) => void;
-  /** 记忆列表（分页累积）与请求入口。 */
+  /** Lista de memoria (acumulación paginada) y solicitud de entrada. */
   readonly memory: HostMemoryState;
   readonly requestMemory: (options?: { readonly query?: string | undefined; readonly cursor?: string | undefined; readonly reset?: boolean | undefined }) => void;
-  /** 知识库（列表 + 文档分页）与定时任务，全部只读。 */
+  /** La base de conocimientos (lista + paginación de documentos) y las tareas programadas son de solo lectura. */
   readonly knowledge: HostKnowledgeState;
   readonly knowledgeDocuments: HostKnowledgeDocumentsState;
   readonly tasks: HostTasksState;
   readonly requestKnowledge: () => void;
   readonly requestKnowledgeDocuments: (options: { readonly kbId: string; readonly cursor?: string | undefined; readonly reset?: boolean | undefined }) => void;
   readonly requestTasks: () => void;
-  /** 系统状态（存储/备份/平台能力）。 */
+  /** estado del sistema (almacenamiento/copia de seguridad/capacidades de la plataforma). */
   readonly system: HostSystemState;
   readonly requestSystemStatus: () => void;
-  /** 乐观改开关并发 settings.update；被 Host 拒绝时自动回滚。 */
+  /** Cambie de manera optimista la configuración de concurrencia.Actualice y desactive; retrocede automáticamente cuando es rechazado por el anfitrión. */
   readonly updateSetting: (key: string, enabled: boolean) => void;
-  /** 子页的通用写入：boolean / number / enum 文本统一走这里，失败原因交给 toast。 */
+  /** Escritura genérica de subpáginas:boolean / number / enum El texto va aquí de manera uniforme, y el motivo del fracaso se da para brindar. */
   readonly updateSettingValue: (key: string, value: string | number | boolean) => void;
   readonly retry: () => void;
 }
@@ -230,27 +230,27 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
   const [retryToken, setRetryToken] = useState(0);
   const connectionRef = useRef<HostConnection | undefined>(undefined);
   const pendingPreviews = useRef(new Map<string, string>());
-  /** 记忆分页/搜索的待回请求：requestId → 本次是重置还是追加。 */
+  /** paginación de memoria/Solicitudes de búsqueda pendientes:requestId → ¿Se restablece o se agrega esta vez? */
   const pendingMemory = useRef(new Map<string, { readonly reset: boolean; readonly query?: string | undefined }>());
-  /** 助手详情的待回请求：requestId → assistantId。 */
+  /** Solicitud pendiente de detalles del asistente:requestId → assistantId. */
   const pendingDetails = useRef(new Map<string, string>());
-  /** 知识库 / 文档 / 定时任务的待回请求：requestId → 用途。 */
+  /** Base de conocimientos/documentación/solicitudes pendientes de tareas programadas:requestId → Objetivo. */
   const pendingQueries = useRef(new Map<string, { readonly kind: "knowledge" | "documents" | "tasks" | "system"; readonly reset: boolean }>());
   const pendingSettings = useRef(new Set<string>());
   const pendingWrites = useRef(new Map<string, { key: string; previous: unknown }>());
-  /** 乐观消息写的回滚动作：requestId → 撤销函数。 */
+  /** Acción de reversión escrita por noticias optimistas:requestId → Deshacer función. */
   const pendingRollbacks = useRef(new Map<string, () => void>());
-  /** 乐观消息写的落地回调：requestId → 处理 command.accepted 载荷。 */
+  /** La devolución de llamada de implementación escrita con noticias optimistas:requestId → Manejar comando.carga útil aceptada. */
   const pendingAccepts = useRef(new Map<string, (event: HostEvent) => void>());
   const optionsRef = useRef(options);
-  // 当前语言的翻译器：错误文案跟着界面语言走；调用方没传就按 zh。
+  // Traductor para el idioma actual: el texto del error sigue el idioma de la interfaz; si la persona que llama no pasa, presione zh.
   const translateRef = useRef<Translate>(options.translate ?? createTranslator(DEFAULT_LOCALE));
   translateRef.current = options.translate ?? createTranslator(DEFAULT_LOCALE);
   const tt = useCallback(
     (key: MessageKey, params?: TranslateParams) => translateRef.current(key, params),
     [],
   );
-  // 读「最新设置」用：开关写入前要先知道上一份值才能回滚。
+  // Para leer la "última configuración": el conmutador necesita conocer el valor anterior antes de escribir para poder revertirlo.
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -263,7 +263,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     let unsubscribeEvents: (() => void) | undefined;
     let unsubscribeStatus: (() => void) | undefined;
     setStatus("reconnecting");
-    // 重连/重试后旧的设置快照作废，下一页读到的必须是新连接的数据。
+    // Reconectar/Después de volver a intentarlo, la instantánea de configuración anterior se invalidará y los datos leídos en la página siguiente deben ser los datos de la nueva conexión.
     setSettings(EMPTY_SETTINGS);
 
     void connectHost()
@@ -282,7 +282,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
           if (!active) return;
           if (event.type === "state.snapshot") {
             setReady(true);
-            // 合并：没变的消息复用旧对象，memo 才能真正生效（见 messageEqual.ts）。
+            // Fusionar: los mensajes sin cambios reutilizan objetos antiguos,memo para que realmente surta efecto (consulte messageEqual.ts).
             setSnapshot((current) => ({
               sessions: event.sessions ?? [],
               messages: mergeMessages(current.messages, event.messages ?? []),
@@ -385,7 +385,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
             return;
           }
           if (event.type === "command.accepted") {
-            // settings.update / 消息写落地。写失败会走 error 事件，这里只需清待办。
+            // settings.update / El mensaje está escrito en el suelo. Si la escritura falla, se producirá el evento de error. Aquí sólo necesita borrar la tarea pendiente.
             const accepted = event.requestId === undefined ? undefined : pendingAccepts.current.get(event.requestId);
             if (event.requestId !== undefined) {
               pendingWrites.current.delete(event.requestId);
@@ -397,7 +397,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
           }
           if (event.type === "error") {
             const requestId = event.requestId;
-            // 记忆 / 助手详情：失败就地显示，没实现就切成「暂不支持」提示，不弹 toast。
+            // Detalles de la memoria/Asistente: si falla, se mostrará en el acto. Si no se implementa, se cortará al mensaje "aún no es compatible" y el brindis no se reproducirá.
             const queryPending = requestId === undefined ? undefined : pendingQueries.current.get(requestId);
             if (requestId !== undefined && queryPending !== undefined) {
               pendingQueries.current.delete(requestId);
@@ -438,12 +438,12 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
             // Preview lookups are best effort: an older Host without history.page
             // must not spam the user with toasts.
             if (requestId !== undefined && pendingPreviews.current.delete(requestId)) return;
-            // 设置读取失败：交给页面的错误条 + 重试，不再叠一条 toast。
+            // Establecer error de lectura: muestra la barra de error de la página + inténtalo de nuevo, ya no apilas un brindis.
             if (requestId !== undefined && pendingSettings.current.delete(requestId)) {
               setSettings((current) => settingsWithError(current, describeHostError(event.error, tt("error.settingsRead"), tt)));
               return;
             }
-            // 写入失败（开关 / 数字 / 枚举都走这里）：回滚到写入前的值，并把 Host 给的原因说出来。
+            // Error de escritura (todos los cambios/números/enumeraciones van aquí): retroceda al valor antes de escribir e indique el motivo dado por el anfitrión.
             const rejected = requestId === undefined ? undefined : pendingWrites.current.get(requestId);
             if (requestId !== undefined && rejected !== undefined) {
               pendingWrites.current.delete(requestId);
@@ -456,7 +456,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
               optionsRef.current.onError(describeHostError(event.error, tt("error.settingsSave"), tt));
               return;
             }
-            // 消息写（删除 / 收藏）被拒：先回滚本地，再把 Host 给的原因说出来。
+            // Se rechaza la escritura de mensajes (eliminación/favorito): primero retroceda localmente y luego indique el motivo dado por el anfitrión.
             const rollback = requestId === undefined ? undefined : pendingRollbacks.current.get(requestId);
             if (requestId !== undefined && rollback !== undefined) {
               pendingRollbacks.current.delete(requestId);
@@ -546,29 +546,29 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
 
   const retry = useCallback(() => setRetryToken((token) => token + 1), []);
 
-  /** 拉一次助手列表：新建会话选助手、顶栏识别当前助手都靠它。 */
+  /** Abra la lista de asistentes una vez: se utiliza para seleccionar asistentes para nuevas sesiones e identificar al asistente actual en la barra superior. */
   const requestAssistants = useCallback(() => {
     const connection = connectionRef.current;
     if (!connection) return;
     try {
       connection.send({ type: "assistants.list", requestId: crypto.randomUUID() });
     } catch {
-      // 读失败不报错：助手名只是展示用的，不影响聊天。
+      // No se informará ningún error si falla la lectura: el nombre del asistente es solo para mostrar y no afecta el chat.
     }
   }, []);
 
-  /** 供应商/模型名：只用于把 modelId 显示成全名。 */
+  /** proveedor/Nombre del modelo: solo se usa para mostrar modelId como nombre completo. */
   const requestProviders = useCallback(() => {
     const connection = connectionRef.current;
     if (!connection) return;
     try {
       connection.send({ type: "providers.list", requestId: crypto.randomUUID() });
     } catch {
-      // 同上，纯展示。
+      // Igual que el anterior, únicamente para visualización.
     }
   }, []);
 
-  /** 助手详情：按 id 缓存，重复进去不再请求。 */
+  /** Detalles del asistente: caché por identificación, no más solicitudes después de entradas repetidas. */
   const requestAssistantDetail = useCallback((assistantId: string) => {
     const connection = connectionRef.current;
     if (!connection) return;
@@ -582,8 +582,8 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
   }, []);
 
   /**
-   * 记忆：带 query 走 memory.search，否则 memory.list；cursor 是上一页最后一条 id。
-   * 搜索不分页（契约里 memory.search 只接 query + limit）。
+   * Memoria: vaya a memoria.búsqueda con consulta; de lo contrario, memoria.lista;cursor Es la última identificación en la página anterior.
+   * La búsqueda no está paginada (memory.search en el contrato solo acepta consulta + límite).
    */
   const requestMemory = useCallback(
     (options?: { readonly query?: string | undefined; readonly cursor?: string | undefined; readonly reset?: boolean | undefined }) => {
@@ -614,7 +614,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     [tt],
   );
 
-  /** 知识库列表（只读）。 */
+  /** Lista de la base de conocimientos (solo lectura). */
   const requestKnowledge = useCallback(() => {
     const connection = connectionRef.current;
     if (!connection) return;
@@ -629,7 +629,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     }
   }, [tt]);
 
-  /** 某个知识库的文档：cursor 是上一页最后一条 id（默认每页 20，Host 上限 50）。 */
+  /** Documentación de una base de conocimientos:cursor Es la última identificación de la página anterior (el valor predeterminado es 20 por página,Host con un límite de 50). */
   const requestKnowledgeDocuments = useCallback(
     (options: { readonly kbId: string; readonly cursor?: string | undefined; readonly reset?: boolean | undefined }) => {
       const connection = connectionRef.current;
@@ -660,7 +660,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     [tt],
   );
 
-  /** 定时任务列表（只读）。 */
+  /** Lista de tareas programadas (solo lectura). */
   const requestTasks = useCallback(() => {
     const connection = connectionRef.current;
     if (!connection) return;
@@ -675,7 +675,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     }
   }, [tt]);
 
-  /** 系统状态（存储 / 备份 / 平台能力），只读。 */
+  /** Estado del sistema (almacenamiento/copia de seguridad/capacidades de plataforma), solo lectura. */
   const requestSystemStatus = useCallback(() => {
     const connection = connectionRef.current;
     if (!connection) return;
@@ -707,10 +707,10 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
   }, []);
 
   /**
-   * 设置写入：本地先改（乐观），Host 拒绝时回滚。
+   * Configuración de escritura: cambiar localmente primero (optimista),Host Revertir el rechazo.
    *
-   * 布尔仍以 `"true"` / `"false"` 字符串下发——Host 现有的 settings.update 就是按这两个字面量
-   * 解析布尔的；数字与枚举直接给原类型，由 Host 按该键声明的类型校验。
+   * booleano sigue siendo `"true"` / `"false"` Entrega de cuerdas——Host La configuración existente.update se basa en estos dos literales
+   * Analizar booleano; Los números y enumeraciones se asignan directamente al tipo original y se verifican mediante el tipo declarado por el Host de acuerdo con esta clave.
    */
   const updateSettingValue = useCallback((key: string, value: string | number | boolean) => {
     const connection = connectionRef.current;
@@ -733,7 +733,7 @@ export function useHostConnection(options: UseHostConnectionOptions): HostConnec
     }
   }, []);
 
-  /** 主页的开关行沿用旧入口，内部走同一套乐观更新 + 回滚。 */
+  /** La fila de cambios en la página de inicio sigue la entrada anterior y el mismo conjunto de actualizaciones optimistas + reversión se usa internamente. */
   const updateSetting = useCallback(
     (key: string, enabled: boolean) => updateSettingValue(key, enabled),
     [updateSettingValue],

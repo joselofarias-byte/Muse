@@ -46,27 +46,27 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
 /**
- * P2-2: 上游模型差异 Sheet。
+ * P2-2: Hoja de diferencias del modelo upstream.
  *
- * 在 ProviderEditPage 拉取上游模型后,对比本地 models 列表与上游返回的列表,
- * 分三类透明展示差异:
- *  - 上游新增(本地没有):可勾选添加
- *  - 已删除(本地有但上游没有):标记为「已删除(保留)」,可勾选移除
- *  - 保持一致:仅展示数量标题,不列出具体项(任务要求"一致:不显示")
+ * Después de que ProviderEditPage extrae el modelo ascendente,Compare la lista de modelos locales con la lista devuelta por upstream,
+ * Visualización transparente de diferencias en tres categorías.:
+ *  - aguas arriba nuevo(No disponible localmente):Se puede marcar para agregar
+ *  - Eliminado(Disponible localmente pero no en sentido ascendente):Marcar como "Eliminado(Reservar)",Se puede comprobar para eliminar
+ *  - ser consistente:Mostrar solo el título de la cantidad,No se enumeran artículos específicos(Requisitos de la misión"consistente:no mostrar")
  *
- * 顶部提供「全部添加新增」「全部移除已删除」批量按钮(用 Surface + clickable,
- * 非 Material3 Button);底部「应用所选变更」一次性提交勾选结果。
+ * Hay botones por lotes para "Agregar todo lo nuevo" y "Eliminar todo lo eliminado" en la parte superior.(usar Surface + clickable,
+ * no Material3 Button);"Aplicar cambios seleccionados" en la parte inferior envía los resultados de la verificación de una sola vez.
  *
- * 视觉风格:warm-paper,统一使用 [MuseShapes] / [MusePaddings] /
- * [MuseIconSizes] 等设计令牌;不使用 Material3 默认 Button / AlertDialog。
+ * estilo visual:warm-paper,Usar uniformemente [MuseShapes] / [MusePaddings] /
+ * [MuseIconSizes] Espere el token de diseño;No utilice el botón / AlertDialog predeterminado de Material3.
  *
- * 模型比较按 [Model.id] 字段(忽略大小写)。
+ * Prensa de comparación de modelos [Model.id] campo(ignorar caso).
  *
- * @param localModels 当前 Provider 本地保存的模型列表
- * @param upstreamModels 上游拉取返回的模型列表
- * @param onAdd 用户勾选要添加的新增模型,点击「应用」时回调
- * @param onRemove 用户勾选要移除的已删除模型,点击「应用」时回调
- * @param onDismiss 关闭 Sheet 回调(点击遮罩 / 返回键 / 应用完成后均会触发)
+ * @param localModels Lista de modelos guardados localmente por el proveedor actual
+ * @param upstreamModels Lista de modelos devueltos por extracción ascendente
+ * @param onAdd El usuario verifica el nuevo modelo que se agregará.,Devolución de llamada cuando se hace clic en "Aplicar"
+ * @param onRemove El usuario comprueba el modelo eliminado para eliminarlo,Devolución de llamada cuando se hace clic en "Aplicar"
+ * @param onDismiss Cerrar devolución de llamada de hoja(Se activará después de hacer clic en la máscara/tecla de retorno/finalización de la aplicación.)
  */
 @Composable
 fun ModelDiffSheet(
@@ -76,10 +76,10 @@ fun ModelDiffSheet(
     onRemove: (List<Model>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // 按 id(忽略大小写)做集合差异
+    // prensa id(ignorar caso)establece la diferencia
     val newModels = remember(localModels, upstreamModels) {
         val localLowerIds = localModels.map { it.id.lowercase() }.toHashSet()
-        // 上游若有多个 id 仅大小写不同的项,保留首次出现者(去重避免视觉重复)
+        // Si hay varios elementos de identificación en el sentido ascendente, solo las mayúsculas y las minúsculas son diferentes.,mantener la primera aparición(Elimine duplicados para evitar la duplicación visual)
         val seen = HashSet<String>()
         upstreamModels.filter {
             val key = it.id.lowercase()
@@ -100,12 +100,12 @@ fun ModelDiffSheet(
         localLowerIds.intersect(upstreamLowerIds).size
     }
 
-    // 勾选状态:addSelected 标记"待添加的新增模型",removeSelected 标记"待移除的已删除模型"
+    // Estado comprobado:addSelected marca"Se agregarán nuevos modelos",removeSelected marca"Modelos eliminados que se eliminarán"
     val addSelected = remember { mutableStateMapOf<String, Boolean>() }
     val removeSelected = remember { mutableStateMapOf<String, Boolean>() }
 
-    // 初始勾选:默认所有新增项与所有已删除项均预选("默认接受全部变更")
-    // 用 LaunchedEffect 一次性初始化,避免每次重组覆盖用户的取消操作
+    // control inicial:Todos los elementos nuevos y todos los elementos eliminados están preseleccionados de forma predeterminada("Aceptar todos los cambios de forma predeterminada")
+    // Inicialización única con LaunchedEffect,Evite anular la operación de cancelación del usuario con cada reorganización.
     LaunchedEffect(newModels, removedModels) {
         if (addSelected.isEmpty()) newModels.forEach { addSelected[it.id] = true }
         if (removeSelected.isEmpty()) removedModels.forEach { removeSelected[it.id] = true }
@@ -118,16 +118,16 @@ fun ModelDiffSheet(
     }
 
     MuseBottomSheet(onDismissRequest = onDismiss) {
-        // 注意：MuseBottomSheet 的内容区本身就是 verticalScroll 容器，
-        // 在里面用 fillMaxHeight(比例) 会拿到无界约束，按比例算高度不可靠。
-        // 这里改用固定高度，给内层 LazyColumn 的 weight(1f) 一个确定参照，
-        // 否则两层 weight 互相谦让，列表会塌成 0（表现为“只有按钮没有模型列表”）。
+        // Nota:MuseBottomSheet El área de contenido en sí es un contenedor de desplazamiento vertical,
+        // Úsalo dentro fillMaxHeight(proporción) Obtendrá restricciones ilimitadas, lo que es proporcionalmente muy poco confiable.
+        // Aquí usamos una altura fija para el LazyColumn interior. weight(1f) Una referencia definitiva,
+        // De lo contrario, las dos capas de peso serán humildes entre sí y la lista colapsará a 0 (como se muestra como“Sólo botones sin lista de modelos.”).
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 420.dp),
         ) {
-            // 标题区
+            // área de título
             Text(
                 text = stringResource(R.string.model_diff_title),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
@@ -135,9 +135,9 @@ fun ModelDiffSheet(
             )
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // 顶部批量操作行：「全部添加新增」+「全部移除已删除」
-            // 任务约束:用 Surface + clickable,不用 Material3 Button
-            // v1.0.79: 按钮切换语义 — 已全选时点击清空,未全选时点击全选(一键反选)
+            // Fila superior de operaciones por lotes: "Agregar todo nuevo"+"Eliminar todo lo eliminado"
+            // restricciones de tarea:usar Surface + clickable,No hay necesidad Material3 Button
+            // v1.0.79: Semántica de cambio de botón — Haga clic en Borrar cuando todos estén seleccionados,Haga clic en Seleccionar todo si no todos están seleccionados(Un clic para revertir la selección)
             val allNewSelected = newModels.isNotEmpty() && newModels.all { addSelected[it.id] == true }
             val allRemovedSelected = removedModels.isNotEmpty() && removedModels.all { removeSelected[it.id] == true }
             Row(
@@ -173,12 +173,12 @@ fun ModelDiffSheet(
             }
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // 主体列表区:用 weight(1f) 占满剩余空间,避免底部按钮被内容顶出可视区域
-            // v1.0.28 修复: 之前用固定 heightIn(max=340dp),在高分辨率/小屏手机上仍可能
-            // 因总内容高度超过 MuseBottomSheet 85% 限制而截断底部"应用所选变更"按钮。
-            // v1.0.29 修复: fill=false 改为默认 fill=true,确保在 MuseBottomSheet 的
-            // heightIn(max=0.85*screenHeight) 限制下,LazyColumn 始终只占用剩余空间,
-            // 底部"应用所选变更"按钮不会被顶出可视区域。
+            // Área de lista de temas:usar weight(1f) Ocupar el espacio restante,Evitar que el contenido empuje el botón inferior fuera del área visible
+            // v1.0.28 Reparación: Solía arreglar antes heightIn(max=340dp),en alta resolución/Todavía es posible en teléfonos de pantalla pequeña
+            // Parte inferior truncada porque la altura total del contenido excede el límite del 85% de MuseBottomSheet"Aplicar cambios seleccionados"botón.
+            // v1.0.29 Reparación: fill=false Cambiar a predeterminado fill=true,Asegúrate de que en MuseBottomSheet
+            // heightIn(max=0.85*screenHeight) bajo restricciones,LazyColumn Ocupa siempre solo el espacio restante,
+            // abajo"Aplicar cambios seleccionados"Los botones no saldrán del área visible.
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,7 +186,7 @@ fun ModelDiffSheet(
                 contentPadding = PaddingValues(vertical = MusePaddings.contentGap),
                 verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
             ) {
-                // 分组 1:上游新增
+                // Grupo 1: Nueva incorporación upstream
                 item {
                     DiffSectionHeader(
                         label = stringResource(R.string.model_diff_new, newModels.size),
@@ -214,7 +214,7 @@ fun ModelDiffSheet(
                     }
                 }
 
-                // 分组 2:已删除(本地保留,上游没有)
+                // Grupo 2: Eliminado(reserva local,Sin aguas arriba)
                 item {
                     DiffSectionHeader(
                         label = stringResource(R.string.model_diff_removed, removedModels.size),
@@ -243,7 +243,7 @@ fun ModelDiffSheet(
                     }
                 }
 
-                // 分组 3:保持一致(仅展示数量标题,不列出具体项 — 任务要求"一致:不显示")
+                // Grupo 3: Manténgase constante(Mostrar solo el título de la cantidad,No se enumeran artículos específicos — Requisitos de la misión"consistente:no mostrar")
                 item {
                     DiffSectionHeader(
                         label = stringResource(R.string.model_diff_unchanged, unchangedCount),
@@ -256,7 +256,7 @@ fun ModelDiffSheet(
             }
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // 底部「应用所选变更」按钮(用 Surface + clickable,非 Material3 Button)
+            // Botón "Aplicar cambios seleccionados" en la parte inferior(usar Surface + clickable,no Material3 Button)
             DiffActionButton(
                 modifier = Modifier.fillMaxWidth(),
                 label = stringResource(R.string.model_diff_apply),
@@ -285,10 +285,10 @@ fun ModelDiffSheet(
 }
 
 /**
- * 差异 Sheet 顶部 / 底部的胶囊按钮(用 Surface + clickable,非 Material3 Button)。
+ * Botones de cápsula de diferencia en la parte superior/inferior de la hoja(usar Surface + clickable,no Material3 Button).
  *
- * 设计按 [ProviderEditBottomBar] 的胶囊风格:warm-paper inverseSurface 主操作色,
- * 48dp 触摸目标,半透明灰显不可用态。
+ * botón de diseño [ProviderEditBottomBar] estilo cápsula:warm-paper inverseSurface Color de funcionamiento principal,
+ * 48dp tocar el objetivo,Translúcido y atenuado.
  */
 @Composable
 private fun DiffActionButton(
@@ -331,10 +331,10 @@ private fun DiffActionButton(
 }
 
 /**
- * 分组标题:左侧 [SectionLabel] 显示分组名(含数量),右侧 [FilterChip] 作分类徽标。
+ * Título del grupo:lado izquierdo [SectionLabel] Mostrar nombre del grupo(Incluyendo cantidad),lado derecho [FilterChip] Logotipo de clasificación.
  *
- * 任务要求"每组用 SectionLabel + FilterChip":SectionLabel 作为视觉标题,
- * FilterChip 作为分类徽标(不可点击,selected=true 固定),配合图标强化分类语义。
+ * Requisitos de la misión"para cada grupo SectionLabel + FilterChip":SectionLabel como título visual,
+ * FilterChip como logotipo de categoría(No se puede hacer clic,selected=true Fijo),Utilice iconos para mejorar la semántica de clasificación.
  */
 @Composable
 private fun DiffSectionHeader(label: String, chipText: String, chipIcon: ImageVector, chipColor: Color, chipTextColor: Color) {
@@ -346,7 +346,7 @@ private fun DiffSectionHeader(label: String, chipText: String, chipIcon: ImageVe
         SectionLabel(label)
         MuseChip(
             selected = true,
-            onClick = { /* 只读徽标,不响应点击 */ },
+            onClick = { /* Logotipo de solo lectura,No responde a los clics */ },
             label = chipText,
             leadingIcon = {
                 Icon(
@@ -360,7 +360,7 @@ private fun DiffSectionHeader(label: String, chipText: String, chipIcon: ImageVe
 }
 
 /**
- * 空分组提示文字。
+ * Texto de mensaje de grupo vacío.
  */
 @Composable
 private fun DiffEmptyHint(text: String) {
@@ -376,14 +376,14 @@ private fun DiffEmptyHint(text: String) {
 }
 
 /**
- * 单条模型差异行。
+ * Una única línea de diferencia de modelo.
  *
- * 视觉:warm-paper — 左侧勾选圆圈(选中态填充主色 + 对勾),
- * 中间模型 ID + 名称(副标题仅当与 id 不同时显示),右侧可选徽标(已删除项显示「已删除(保留)」)。
+ * Visión:warm-paper — Mira el círculo de la izquierda.(Rellene el estado seleccionado con el color principal + marca de verificación),
+ * ID del modelo intermedio + nombre(El subtítulo solo se muestra si es diferente de la identificación.),Logotipo opcional a la derecha(Los elementos eliminados muestran "Eliminados(Reservar)").
  *
- * @param selected 当前是否勾选(用于"待添加"或"待移除"标记)
- * @param badgeText 右侧徽标文字(可选,仅已删除项传入)
- * @param onToggle 点击行或勾选圈时触发
+ * @param selected ¿Está actualmente comprobado?(usado para"Para ser agregado"o"Para ser eliminado"marca)
+ * @param badgeText Texto del logotipo a la derecha(Opcional,Sólo se pasan los elementos eliminados)
+ * @param onToggle Se activa cuando se hace clic en una fila o se marca un círculo
  */
 @Composable
 private fun DiffModelRow(model: Model, selected: Boolean, onToggle: () -> Unit, badgeText: String? = null) {
@@ -398,7 +398,7 @@ private fun DiffModelRow(model: Model, selected: Boolean, onToggle: () -> Unit, 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
     ) {
-        // 左侧勾选圈(22dp 对勾圆圈)
+        // Marque el círculo a la izquierda(22dp círculo de marca de verificación)
         Box(
             modifier = Modifier
                 .size(22.dp)
@@ -422,7 +422,7 @@ private fun DiffModelRow(model: Model, selected: Boolean, onToggle: () -> Unit, 
             }
         }
 
-        // 中间:模型 ID + 名称
+        // medio:ID del modelo + nombre
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = model.id,
@@ -439,7 +439,7 @@ private fun DiffModelRow(model: Model, selected: Boolean, onToggle: () -> Unit, 
             }
         }
 
-        // 右侧徽标(已删除项显示「已删除(保留)」)
+        // Logotipo derecho(Los elementos eliminados muestran "Eliminados(Reservar)")
         if (badgeText != null) {
             Surface(
                 shape = MuseShapes.small,

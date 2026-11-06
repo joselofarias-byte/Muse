@@ -1,38 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="automation_settings_title">Automatización de UI</string>
-    <string name="automation_settings_subtitle">Permisos de lectura y operación de pantalla</string>
-    <string name="accessibility_service_description">Permite que Muse lea el contenido de la pantalla y simule toques, deslizamientos y otros gestos para automatizar tareas entre aplicaciones. Muse no ejecutará acciones sin tu confirmación.</string>
-    <string name="automation_permission_a11y">Automatización UI de Muse</string>
-    <string name="automation_settings_unavailable">No se pueden abrir los ajustes del sistema. Ábrelos manualmente para activar el permiso.</string>
-    <!-- Página de permisos de automatización de UI (v1.x): tarjetas de nivel, solicitud de Root y autoprueba -->
-    <string name="automation_settings_intro">Permite que Muse vea la pantalla y opere el dispositivo por ti, automatizando tareas entre aplicaciones</string>
-    <string name="automation_tier_level">Nivel %1$d</string>
-    <string name="automation_tier_accessibility">Servicio de accesibilidad</string>
-    <string name="automation_tier_accessibility_desc">Lee el contenido de la pantalla y simula toques y deslizamientos. Es el nivel más sencillo; recomendado.</string>
+    <string name="automation_settings_title">UI Automatización</string>
+    <string name="automation_settings_subtitle">Permisos de lectura y operación de pantalla.</string>
+    <string name="accessibility_service_description">Permite a Muse leer el contenido de la pantalla de cualquier aplicación (incluida la información confidencial mostrada por otras aplicaciones, como códigos de verificación, registros de chat, etc.) y simular gestos como clics y deslizamientos para la automatización de tareas de IA entre aplicaciones. Habilítelo solo cuando confíe;Muse No se realizarán operaciones de alto riesgo sin su confirmación.</string>
+    <string name="automation_permission_a11y">Muse UI Automatización</string>
+    <string name="automation_settings_unavailable">No se puede abrir la configuración del sistema,Vaya a la configuración del sistema para habilitar los permisos manualmente</string>
+    <!-- UI Página de permisos de automatización(v1.x): Tres capas de cartas,Root Solicitud de autorización y redacción de autotest -->
+    <string name="automation_settings_intro">Deje que Muse vea la pantalla y opere el dispositivo por usted, automatizando tareas entre aplicaciones</string>
+    <string name="automation_tier_level">No. %1$d capa</string>
+    <string name="automation_tier_accessibility">Servicios de accesibilidad</string>
+    <string name="automation_tier_accessibility_desc">Lea el contenido de la pantalla y simule hacer clic y deslizarse. El umbral es el más bajo y se recomienda habilitarlo.</string>
     <string name="automation_tier_shell">Shell (Shizuku)</string>
-    <string name="automation_tier_shell_desc">Comandos a nivel de sistema, capturas de pantalla e instalación silenciosa.</string>
-    <string name="automation_tier_root">Acceso Root</string>
-    <string name="automation_tier_root_desc">Control total del sistema y acceso a los datos de otras apps. Requiere un dispositivo rooteado.</string>
-    <string name="automation_action_enable">Activar</string>
-    <string name="automation_status_enabled">Activado</string>
-    <string name="automation_root_action_request">Solicitar acceso Root</string>
+    <string name="automation_tier_shell_desc">Comandos a nivel de sistema, capturas de pantalla, instalación silenciosa.</string>
+    <string name="automation_tier_root">Root Permisos</string>
+    <string name="automation_tier_root_desc">Control total del sistema con acceso a otros datos de la aplicación. Requiere que el dispositivo esté rooteado.</string>
+    <string name="automation_action_enable">abrir</string>
+    <string name="automation_status_enabled">Ya encendido</string>
+    <string name="automation_root_action_request">Solicitar permiso de root</string>
     <string name="automation_root_requesting">Solicitando…</string>
-    <string name="automation_root_fallback_action">Abrir Magisk / Ajustes de la app</string>
-    <string name="automation_root_granted">Acceso Root concedido</string>
-    <string name="automation_root_no_su">No se detectó el binario su en el dispositivo; el acceso Root no está disponible</string>
-    <string name="automation_root_timeout">Se agotó el tiempo de espera de la autorización Root. Inténtalo de nuevo</string>
-    <string name="automation_root_denied">Autorización Root denegada</string>
-    <string name="automation_root_failed">La solicitud de autorización Root falló. Inténtalo más tarde</string>
-    <string name="automation_test_action">Probar lectura de pantalla</string>
-    <string name="automation_test_running">Probando…</string>
-    <string name="automation_test_no_channel">✗ No hay ningún canal de automatización disponible. Activa primero Accesibilidad, Shizuku o Root</string>
-    <string name="automation_test_current_app">✓ App actual: %1$s</string>
-    <string name="automation_test_node_count">✓ Controles: %1$d</string>
-    <string name="automation_test_resolution">✓ Resolución: %1$dx%2$d</string>
-    <string name="automation_test_source">✓ Origen: %1$s</string>
-    <string name="automation_test_unknown">Desconocido</string>
-    <string name="automation_test_failed">Prueba fallida: %1$s</string>
-    <!-- ST-04: 屏幕读取自测的开发者诊断信息折叠标题 -->
-    <string name="automation_developer_info">Información de desarrollo</string>
+    <string name="automation_root_fallback_action">Abra Magisk/Configuración de la aplicación</string>
+    <string name="automation_root_granted">Arraigado</string>
+    <string name="automation_root_no_su">El dispositivo no detecta su y no puede obtener privilegios de root</string>
+    <string name="automation_root_timeout">Se agotó el tiempo de espera para la autorización de root, inténtelo de nuevo</string>
+    <string name="automation_root_denied">Root Autorización denegada</string>
+    <string name="automation_root_failed">Root La solicitud de autorización falló. Vuelva a intentarlo más tarde.</string>
+    <string name="automation_test_action">Lectura de pantalla de prueba</string>
+    <string name="automation_test_running">Bajo prueba…</string>
+    <string name="automation_test_no_channel">✗ Actualmente no hay ningún canal automatizado disponible. Primero habilite la accesibilidad.Shizuku o Root</string>
+    <string name="automation_test_current_app">✓ Aplicaciones actuales:%1$s</string>
+    <string name="automation_test_node_count">✓ Número de controles:%1$d</string>
+    <string name="automation_test_resolution">✓ Resolución:%1$dx%2$d</string>
+    <string name="automation_test_source">✓ Fuente de datos:%1$s</string>
+    <string name="automation_test_unknown">desconocido</string>
+    <string name="automation_test_failed">Prueba fallida:%1$s</string>
+    <!-- ST-04: La pantalla lee la información de diagnóstico del desarrollador para el título contraído de la autoprueba -->
+    <string name="automation_developer_info">Información del desarrollador</string>
 </resources>

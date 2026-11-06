@@ -670,7 +670,7 @@
     <string name="tool_resume_step">Executando %1$s (%2$d/%3$d)…</string>
     <string name="tts_not_ready">TTS está inicializando, tente novamente mais tarde</string>
     <string name="chat_list_reorder">Arraste para reordenar</string>
-    <!-- 前端修复 (i18n-3.x): 设置页搜索索引 SettingsEntry title i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Configurar el índice de búsqueda de páginas SettingsEntry title i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_screen_entry_tts_playback">Reprodução de voz TTS</string>
     <string name="settings_screen_entry_api_key">API Key</string>
     <string name="settings_screen_entry_archived">Conversas arquivadas</string>

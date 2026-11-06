@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 /**
- * v1.133: 知识库(KB)实体 — 支持多知识库与助手绑定。
+ * v1.133: base de conocimientos(KB)entidad — Admite la vinculación de múltiples bases de conocimientos y asistentes.
  *
- * 一个 KB 包含若干 [KnowledgeDocEntity],通过 [KnowledgeDocEntity.kbId] 关联。
- * 助手通过 [io.zer0.muse.data.assistant.AssistantEntity.knowledgeBaseIdsJson] 绑定一个或多个 KB。
+ * Una KB contiene varios [KnowledgeDocEntity],Pase [KnowledgeDocEntity.kbId] asociación.
+ * Pases de asistente [io.zer0.muse.data.assistant.AssistantEntity.knowledgeBaseIdsJson] Vincular uno o más KB.
  *
- * 默认 KB:id="default",name="默认知识库"。MIGRATION_38_39 会自动插入。
+ * Predeterminado KB:id="default",name="Base de conocimientos predeterminada".MIGRATION_38_39 se insertará automáticamente.
  */
 @Serializable
 @Entity(
@@ -31,15 +31,15 @@ data class KnowledgeBaseEntity(
     @ColumnInfo(name = "created_at", defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at", defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
     /**
-     * 该 KB 下的文档数 — 读取时由子查询实时计算(不再依赖双写维护,
-     * 避免导入/删除路径漏更新导致列表显示旧值)。写入列仅作旧库迁移兼容。
+     * Número de documentos bajo esta KB — Calculado en tiempo real por subconsultas durante la lectura.(No más dependencia del mantenimiento de doble escritura,
+     * evitar importar/La falta de actualizaciones al eliminar rutas hace que la lista muestre valores antiguos). Escribir columnas solo es compatible con migraciones de bases de datos antiguas.
      */
     @ColumnInfo(name = "doc_count", defaultValue = "0") val docCount: Int = 0,
 
-    // ── P2-2（审计报告）: 按 KB 覆盖检索参数（null = 继承全局）──
-    // 旧实现 RAG 配置是全局一份，不同库不能有不同 chunk/topK/阈值，
-    // 也不能给不同库配不同 embedding/rerank。这里以**可空覆盖字段**实现，
-    // 为空时完全保留原行为，不影响存量数据。
+    // ── P2-2(informe de auditoría): Anular los parámetros de recuperación por KB (null = Heredar global)──
+    // La configuración RAG de implementación anterior es una copia global y diferentes bibliotecas no pueden tener diferentes fragmentos/topK/umbrales.
+    // Tampoco es posible configurar diferentes incrustaciones/reclasificaciones para diferentes bibliotecas. aquí con**Campos de anulación que admiten valores NULL**darse cuenta,
+    // Cuando está vacío, el comportamiento original se conserva por completo y los datos existentes no se ven afectados.
     @ColumnInfo(name = "chunk_size_override") val chunkSizeOverride: Int? = null,
     @ColumnInfo(name = "chunk_overlap_override") val chunkOverlapOverride: Int? = null,
     @ColumnInfo(name = "top_k_override") val topKOverride: Int? = null,
@@ -85,7 +85,7 @@ interface KnowledgeBaseDao {
     @Query("SELECT COUNT(*) FROM knowledge_bases")
     suspend fun count(): Int
 
-    /** P0-10: 备份恢复用 — 全量清空。 */
+    /** P0-10: Para respaldo y recuperación — Borrar todo. */
     @Query("DELETE FROM knowledge_bases")
     suspend fun deleteAll()
 }

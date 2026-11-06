@@ -9,26 +9,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * P2-33: WebView 用的 SSRF 判定闸门 — 把「同步 DNS」从回调线程彻底移走。
+ * P2-33: WebView Puerta de decisión de la SSRF utilizada — Elimine completamente el "DNS sincronizado" del hilo de devolución de llamada.
  *
- * WebView 的 [android.webkit.WebViewClient] 回调分两类线程:
+ * WebView de [android.webkit.WebViewClient] Las devoluciones de llamada se dividen en dos tipos de hilos.:
  *  - [android.webkit.WebViewClient.onPageStarted] / [android.webkit.WebViewClient.shouldOverrideUrlLoading]
- *    在**主线程**回调,回调内部必须同步返回判定结果 — 在此发起 DNS 就是冷域名首屏 ANR 的根因;
- *  - [android.webkit.WebViewClient.shouldInterceptRequest] 在 WebView 后台线程回调,可同步解析。
+ *    en**hilo principal**devolución de llamada,La devolución de llamada debe devolver el resultado del juicio de forma sincrónica. — Iniciar DNS aquí es la causa principal del ANR de la primera pantalla del nombre de dominio frío.;
+ *  - [android.webkit.WebViewClient.shouldInterceptRequest] Devolución de llamada en el hilo de fondo de WebView,Se puede analizar sincrónicamente.
  *
- * 因此:
- *  - [isBlockedNow] 主线程安全:只消费 [SsrfGuard] 缓存;未命中(冷主机)时 fail-closed 立即拦截,
- *    并在后台线程解析补齐缓存([prewarm]);可选的 [onVerified] 在解析确认安全后回主线程重试该跳,
- *    所以冷域名不会永久卡住合法重定向,也不会阻塞主线程;
- *  - [isBlockedBlocking] 仅限已在后台线程的回调(shouldInterceptRequest)使用;
- *  - [isBlockedAsync] 供挂起调用方(navigate 主框架)等待后台解析结果 — 首次解析同样写入缓存。
+ * Por lo tanto:
+ *  - [isBlockedNow] Seguridad del hilo principal:solo consume [SsrfGuard] caché;señorita(anfitrión frío)Cuando se cierre por falla, intercepte inmediatamente,
+ *    Y analiza y completa el caché en el hilo de fondo.([prewarm]);Opcional [onVerified] Después de analizar y confirmar la seguridad, regrese al hilo principal y vuelva a intentar el salto.,
+ *    Por lo tanto, los nombres de dominio fríos no bloquearán permanentemente los redireccionamientos legales.,No bloqueará el hilo principal.;
+ *  - [isBlockedBlocking] Sólo devoluciones de llamada que ya están en hilos en segundo plano.(shouldInterceptRequest)uso;
+ *  - [isBlockedAsync] para suspender llamadas(navigate marco principal)Esperando resultados del análisis en segundo plano — El primer análisis también se escribe en la memoria caché.
  *
- * 安全语义保持不变:解析结果与判定结果严格一致,绝不「先放行再重新解析」;无法确认时一律拒绝。
+ * La semántica de seguridad permanece sin cambios:Los resultados del análisis son estrictamente consistentes con los resultados del juicio.,Nunca "libérelo primero y luego vuelva a analizarlo";Si no se puede confirmar, será rechazado.
  */
 internal class WebViewSsrfGate(
-    /** 后台预热协程作用域(生产:IO + SupervisorJob;测试可注入受控作用域)。 */
+    /** Alcance de la corrutina de calentamiento en segundo plano(producir:IO + SupervisorJob;Las pruebas se pueden inyectar en ámbitos controlados.). */
     private val prewarmScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-    /** 回调重试需要回到的回调线程(生产:主线程;测试:Unconfined 便于同步断言)。 */
+    /** El hilo de devolución de llamada al que debe regresar el reintento de devolución de llamada(producir:hilo principal;prueba:Unconfined Conveniente para afirmaciones sincrónicas). */
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val cachedVerdict: (String) -> Boolean? = SsrfGuard::cachedVerdictOrNull,
     private val resolveAsync: suspend (String) -> Boolean = SsrfGuard::isBlockedAsync,
@@ -36,18 +36,18 @@ internal class WebViewSsrfGate(
 ) {
 
     /**
-     * 挂起判定:解析发生在 [Dispatchers.IO](缓存命中的首次调用也在此写入缓存)。
-     * 供 [BrowserManager.navigate] 在主框架加载前等待判定 — 主线程只消费结果。
+     * decisión pendiente:El análisis ocurre en [Dispatchers.IO](La primera llamada que llega al caché también se escribe aquí en el caché.).
+     * suministro [BrowserManager.navigate] Espere la determinación antes de cargar el marco principal — El hilo principal solo consume los resultados.
      */
     suspend fun isBlockedAsync(url: String): Boolean = resolveAsync(url)
 
     /**
-     * 主线程安全的同步判定:只消费缓存,不发起 DNS。
+     * Decisión de sincronización segura del hilo principal:Solo consume caché,El DNS no se inicia.
      *
-     * 冷主机(缓存未命中)保守判为拦截,并后台预热;若解析确认安全且提供了 [onVerified],
-     * 则在 [callbackDispatcher] 上执行重试动作(仅一次,后续同主机命中缓存)。
+     * anfitrión frío(pérdida de caché)Juzgado conservadoramente como intercepción,Y calentarse de fondo;Si el análisis confirma que es seguro y proporciona [onVerified],
+     * luego en [callbackDispatcher] Ejecutar acción de reintento en(solo una vez,Visitas de caché posteriores en el mismo host).
      *
-     * @return true 表示本次应拦截。
+     * @return true Indica que esta vez debería ser interceptado.
      */
     fun isBlockedNow(url: String, onVerified: (() -> Unit)? = null): Boolean {
         cachedVerdict(url)?.let { return it }
@@ -59,6 +59,6 @@ internal class WebViewSsrfGate(
         return true
     }
 
-    /** 后台线程回调用的阻塞判定(shouldInterceptRequest);解析结果进缓存供主线程复用。 */
+    /** Determinación de bloqueo de devolución de llamada de subproceso en segundo plano(shouldInterceptRequest);Los resultados del análisis se almacenan en caché para que el hilo principal los reutilice. */
     fun isBlockedBlocking(url: String): Boolean = resolveBlocking(url)
 }

@@ -10,13 +10,13 @@ import io.zer0.muse.miniphone.data.db.entity.MpMessageEntity
 import io.zer0.muse.miniphone.ui.shell.UNTITLED_GROUP_NAME
 
 /**
- * 聊天页要展示的全部状态。
+ * Todos los estados se mostrarán en la página de chat.
  *
- * [messages] 是按时间正序(旧 → 新)的消息,列表渲染时再倒过来;
- * [items] 在消息之间插好了时间分隔,界面照它逐行画,不需要自己算相邻间隔。
+ * [messages] en orden cronológico(viejo → nuevo)noticias,Invertir la lista al renderizarla;
+ * [items] Insertar separación de tiempo entre mensajes.,La interfaz se dibuja línea por línea según ella.,No es necesario que usted mismo calcule los intervalos adyacentes.
  *
- * 群聊与私信共用这份状态:[isGroup] 决定顶栏叫什么、气泡旁要不要写发言人,
- * [members] 在群里才有内容(成员页与「谁说的」都读它)。私信里 [members] 恒为空。
+ * Los chats grupales y los mensajes privados comparten este estado.:[isGroup] Decide cómo llamar a la columna superior y si escribirás portavoz junto a la burbuja.,
+ * [members] Solo hay contenido en el grupo.(Léelo tanto en la página de miembros como en "Quién lo dijo"). en mensaje privado [members] Siempre vacío.
  */
 @Immutable
 data class ChatUiState(
@@ -24,58 +24,58 @@ data class ChatUiState(
     val characterId: String = "",
     val peerName: String = "",
     val peerAvatarUri: String? = null,
-    /** 这条会话是不是群聊。群里 [characterId] 只是第一个成员,发言人要看每条消息自己的。 */
+    /** ¿Esta conversación es un chat grupal? grupo [characterId] solo el primer miembro,El portavoz debe leer cada mensaje por sí mismo. */
     val isGroup: Boolean = false,
-    /** 建群时定下的群名;私信恒为空串。 */
+    /** El nombre del grupo establecido al crear el grupo.;Los mensajes privados son siempre cadenas vacías. */
     val groupTitle: String = "",
-    /** 群成员(只含角色,不含本机用户),按入群先后。 */
+    /** miembros del grupo(Solo roles,No incluye usuarios locales),Haga clic para unirse al grupo. */
     val members: List<ChatMemberUi> = emptyList(),
-    /** 宿主的全部角色:群成员管理里「还能加谁」从这里来(再排掉已在群里的)。 */
+    /** Todos los roles del anfitrión.:\"A quién más puedo agregar\" en la gestión de miembros del grupo viene de aquí(Luego excluye a los que ya están en el grupo.). */
     val characters: List<MpCharacter> = emptyList(),
-    /** 自己的昵称,空时界面用占位章兜底;用来画右侧头像的首字。 */
+    /** propio apodo,La interfaz espacio-temporal utiliza sellos de marcador de posición para revelar los detalles.;Se utiliza para dibujar las iniciales del avatar de la derecha. */
     val selfName: String = "",
     val selfAvatarUri: String? = null,
     val messages: List<ChatMessageUi> = emptyList(),
     val isGenerating: Boolean = false,
     /**
-     * 此刻正在打字的角色名与头像;null 表示没人在打字。
+     * El nombre y avatar del personaje que estoy escribiendo en este momento.;null Indica que nadie está escribiendo.
      *
-     * 群里两个人轮流接话时,「正在输入」要跟着当前这一个换:只写一句「对方正在输入」
-     * 会让人以为整个群同时回。私信里它等于对方自己。
+     * Cuando dos personas del grupo se turnan para contestar la llamada,"Introducir" debe sustituirse por el actual.:Simplemente escriba "La otra parte está escribiendo".
+     * Hará que la gente piense que todo el grupo responde al mismo tiempo. En los mensajes privados, es igual a la propia otra persona.
      */
     val typingName: String? = null,
     val typingAvatarUri: String? = null,
     /**
-     * 角色此刻在做什么;null 表示没在做事。
+     * ¿Qué está haciendo el personaje en este momento?;null Indica que no está haciendo nada.
      *
-     * 只在生成期间有值,文本落地后清空 —— 界面据此在气泡上方显示一行拟人化文案。
+     * Sólo tiene valor durante la generación.,Borra el texto después de que llegue al suelo. —— En consecuencia, la interfaz muestra una línea de copia antropomórfica encima de la burbuja.
      */
     val activity: MpActivityKind? = null,
     val hasMore: Boolean = false,
     val isLoadingMore: Boolean = false,
     /**
-     * 当前语音识别设置能不能把录音转成文字。
+     * Si la configuración actual de reconocimiento de voz puede convertir grabaciones en texto.
      *
-     * 进页时向宿主问一次;false 时输入栏把麦克风置灰,点了也只说一句为什么。
-     * 默认 true 是「还没问出结果」:先按能用画,否则每个用户进页都会先看到
-     * 一个灰麦克风再变亮,像刚坏过一下。
+     * Pregúntale al anfitrión una vez al ingresar a la página.;false Atenúa el micrófono en el campo de entrada.,Simplemente diga por qué después de realizar el pedido.
+     * El valor predeterminado verdadero es "Aún no se ha solicitado el resultado".:Presione primero para usar el dibujo.,De lo contrario, cada usuario que ingrese a la página la verá primero.
+     * Un micrófono gris vuelve a brillar,Como si acabara de romperse.
      */
     val voiceInputAvailable: Boolean = true,
 ) {
-    /** 顶栏标题:群里是群名,私信是对方名字。 */
+    /** Título de la columna superior:Grupo es el nombre del grupo.,El mensaje privado es el nombre de la otra parte. */
     val title: String get() = if (isGroup) groupTitle.ifBlank { UNTITLED_GROUP_NAME } else peerName
 
-    /** 群人数:成员行加上本机用户。私信不计。 */
+    /** Número de personas en el grupo.:Fila de miembro más usuario local. Los mensajes privados no se cuentan. */
     val memberCount: Int get() = if (isGroup) members.size + 1 else 0
 
-    /** 成员名字表:气泡旁写「谁说的」时按消息的 [ChatMessageUi.characterId] 查。 */
+    /** Lista de nombres de miembros:Pulsa el mensaje cuando esté escrito \"Quién dijo eso\" junto a la burbuja. [ChatMessageUi.characterId] Controlar. */
     val memberNames: Map<String, String> by lazy { members.associate { it.characterId to it.name } }
 
-    /** 消息 + 时间分隔,正序。每条消息只会带来一次构建,界面反复重组不重算。 */
+    /** mensaje + separación de tiempo,Secuencia positiva. Cada mensaje solo dará como resultado una compilación.,La interfaz se reorganiza repetidamente sin volver a calcularla. */
     val items: List<ChatItem> by lazy { buildChatItems(messages) }
 }
 
-/** 群里的一个成员。本机用户不在里面 —— 自己那侧用 [ChatUiState.selfName] 与头像。 */
+/** Un miembro del grupo. El usuario local no está en él. —— Úsalo por tu cuenta [ChatUiState.selfName] con avatar. */
 @Immutable
 data class ChatMemberUi(
     val characterId: String,
@@ -83,60 +83,60 @@ data class ChatMemberUi(
     val avatarUri: String? = null,
 )
 
-/** 聊天列表里某一侧的展示身份:名字 + 头像。自己与对方各一份。 */
+/** La identidad mostrada de un lado determinado en la lista de chat.:Nombre + avatar. Uno para usted y para la otra parte. */
 @Immutable
 data class ChatPersona(
     val name: String,
     val avatarUri: String? = null,
 )
 
-/** 一条消息在界面上的样子。 */
+/** Cómo se ve un mensaje en la interfaz. */
 @Immutable
 data class ChatMessageUi(
     val id: String,
-    /** 发言人:角色消息是发言那个角色,用户自己发的在群里是空串。 */
+    /** portavoz:El mensaje del rol es el personaje que habla.,La cadena enviada por el propio usuario está vacía en el grupo. */
     val characterId: String = "",
     val sender: MpActorType,
     val type: MpMessageType,
     val content: String,
-    /** 图片消息的本地文件路径;文本/系统消息为 null。 */
+    /** La ruta del archivo local del mensaje con imagen.;texto/El mensaje del sistema es nulo. */
     val mediaUri: String? = null,
-    /** 语音消息的时长(毫秒);0 表示未知,非语音消息恒为 0。 */
+    /** Duración del mensaje de voz(milisegundos);0 Indica desconocido,Los mensajes que no son de voz siempre son 0. */
     val voiceDurationMs: Long = 0L,
     val createdAt: Long,
-    /** 发送状态:自己发的消息才会停在「发送中」或「发送失败」,其余恒为「已发出」。 */
+    /** Enviar estado:Solo los mensajes que envíes se detendrán en \"Enviando\" o \"Envío fallido\",El resto siempre se \"emite\". */
     val status: MpMessageStatus = MpMessageStatus.SENT,
 ) {
-    /** 系统提示:居中小字,不带头像也不分左右。 */
+    /** Aviso del sistema:Fuentes pequeñas centradas,Sin avatar no hay distinción entre izquierda y derecha. */
     val isSystem: Boolean get() = type == MpMessageType.SYSTEM
 
-    /** 图片:气泡位置换成一张图,正文只当列表预览文案。 */
+    /** fotos:Cambiar la posición de la burbuja a una imagen.,El texto principal sólo se utiliza como copia de vista previa de la lista. */
     val isImage: Boolean get() = type == MpMessageType.IMAGE
 
-    /** 语音:气泡位置换成一条语音条,正文只当列表预览文案。 */
+    /** Voz:Cambia la posición de la burbuja a una barra de voz.,El texto principal sólo se utiliza como copia de vista previa de la lista. */
     val isVoice: Boolean get() = type == MpMessageType.VOICE
 
-    /** 自己发的:靠右。 */
+    /** Publicado por mi mismo:Manténgase a la derecha. */
     val isMine: Boolean get() = sender == MpActorType.USER && !isSystem
 
-    /** 发送失败:气泡旁边给一个能点的标记。 */
+    /** Envío fallido:Coloque una marca en la que se pueda hacer clic junto a la burbuja. */
     val hasFailed: Boolean get() = status == MpMessageStatus.FAILED
 
-    /** 还在路上:只给一行浅字,不遮住正文。 */
+    /** Todavía en camino:Proporciona solo una línea de caracteres superficiales.,No cubra el texto principal. */
     val isSending: Boolean get() = status == MpMessageStatus.SENDING
 
     /**
-     * 能不能重发。
+     * ¿Se puede reeditar?
      *
-     * 只认自己发的文本:重发走的是「再要一次回复」那条链,图片和语音都拿不出可重发的正文,
-     * 对角色说的话也不存在「重发」这个动作。
+     * Sólo reconoce mensajes de texto enviados por ti mismo:El reenvío toma el enlace "solicitar una respuesta más".,Ni la imagen ni la voz pueden producir un texto que pueda ser resentido.,
+     * No hay ninguna acción de "resentimiento" al hablar con un personaje.
      */
     val canResend: Boolean get() = isMine && type == MpMessageType.TEXT
 }
 
-/** 列表里的一行:要么是消息,要么是时间分隔。 */
+/** una fila en una lista:Cualquiera de las noticias,O separación del tiempo. */
 sealed interface ChatItem {
-    /** `LazyColumn` 的稳定键。 */
+    /** `LazyColumn` clave estable. */
     val key: String
 
     @Immutable
@@ -152,16 +152,16 @@ sealed interface ChatItem {
     ) : ChatItem
 }
 
-/** 相邻两条消息超过这个间隔就插一行时间。 */
+/** Cuando dos mensajes adyacentes exceden este intervalo, se inserta una línea de tiempo. */
 internal const val CHAT_TIME_GAP_MS: Long = 5 * 60_000L
 
-/** 一页消息条数。 */
+/** El número de mensajes en una página. */
 internal const val CHAT_PAGE_SIZE: Int = 30
 
 /**
- * 把正序消息摊成渲染行:第一条前面必插时间,之后每条与前一条差满 [CHAT_TIME_GAP_MS] 才插。
+ * Distribuya mensajes en orden en líneas de renderizado:La hora debe insertarse antes del primer elemento.,La diferencia entre cada elemento posterior y el anterior es total. [CHAT_TIME_GAP_MS] Simplemente inserte.
  *
- * 时间行的键里带上消息下标,同一毫秒的两条消息也不会撞键。
+ * Coloque el subíndice del mensaje en la clave de la línea de tiempo.,Dos mensajes en el mismo milisegundo no darán con la tecla.
  */
 internal fun buildChatItems(messages: List<ChatMessageUi>): List<ChatItem> {
     if (messages.isEmpty()) return emptyList()
@@ -178,7 +178,7 @@ internal fun buildChatItems(messages: List<ChatMessageUi>): List<ChatItem> {
     return items
 }
 
-/** 库里的一行 → 界面的一行。 */
+/** La línea de Curry → Una línea de interfaz. */
 internal fun MpMessageEntity.toChatMessageUi(): ChatMessageUi = ChatMessageUi(
     id = id,
     characterId = characterId,

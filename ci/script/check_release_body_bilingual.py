@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-check_release_body_bilingual.py — release_body 中英双写规范校验。
+check_release_body_bilingual.py — release_body Verificación de especificaciones de escritura tanto en chino como en inglés.
 
-规范(自 v2.3.0 起): `releases/v<版本>/release_body.md` 必须中英双写 —
-上段中文(发布原文), 独立一行 `---` 分隔, 下段英文, 标题形如 `# Muse vX.Y.Z (English)`。
-英文为忠实对译, 不引入中文段没有的信息, 段内不再夹中文。
+normativo(Desde v2.3.0): `releases/v<versión>/release_body.md` Debe estar escrito tanto en chino como en inglés. —
+Párrafo anterior en chino(Publicar texto original), linea independiente `---` separar, Próximo párrafo en inglés., El título está en la forma. `# Muse vX.Y.Z (English)`.
+El inglés es una traducción fiel., No introducir información que no esté incluida en el párrafo chino., No más caracteres chinos en el párrafo.
 
-本脚本校验(发布前运行):
-  1. 文件存在, 且存在 `(English)` 形式的英文段标题;
-  2. 英文段标题之前有独立一行 `---` 分隔符;
-  3. 中文段包含中文且非空;
-  4. 英文段包含英文内容、且不夹中文字符。
+Este script verifica(Ejecutar antes de publicar):
+  1. El archivo existe, y existir `(English)` Título del párrafo en inglés en el formulario.;
+  2. Hay una línea separada antes del título del párrafo en inglés. `---` delimitador;
+  3. El segmento chino contiene chino y no está vacío.;
+  4. El párrafo en inglés contiene contenido en inglés y no incluye caracteres chinos.
 
-用法:
+Uso:
     python ci/script/check_release_body_bilingual.py releases/v2.3.0/release_body.md
 
-退出码:
-    0 — 通过
-    1 — 不满足规范(CI/发布前检查失败)
+código de salida:
+    0 — Pase
+    1 — no cumple con las especificaciones(CI/Error en la comprobación previa a la publicación)
 """
 
 import argparse
@@ -25,72 +25,72 @@ import re
 import sys
 from pathlib import Path
 
-# 英文段标题: 1~3 级标题, 以 (English) 结尾
+# Título de la sección en inglés.: 1~3 título de nivel, a (English) finalizando
 ENGLISH_HEADING_RE = re.compile(r"^#{1,3}\s+.*\(English\)\s*$", re.MULTILINE)
-# 中文字符(CJK 统一表意文字基本区)
+# caracteres chinos(CJK Área básica ideográfica unificada)
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
-# 英文内容特征(连续 3 个以上拉丁字母)
+# Características del contenido en inglés.(3 o más letras latinas seguidas)
 LATIN_RE = re.compile(r"[A-Za-z]{3,}")
-# 分隔符(独立一行)
+# delimitador(linea independiente)
 SEPARATOR = "---"
 
-# 英文段允许出现的例外(极少数必须保留的原文缩写/专名;均为 ASCII, 此处留空备用)
+# Excepciones permitidas en párrafos en inglés.(Muy pocas abreviaturas originales que deben conservarse./nombre propio;todos son ASCII, Deje este espacio en blanco para usarlo más adelante.)
 ALLOWED_CJK_IN_ENGLISH: tuple[str, ...] = ()
 
 
 def check(path: Path) -> list[str]:
-    """执行校验, 返回问题列表(空列表 = 通过)。"""
+    """Realizar verificación, Volver a la lista de preguntas(lista vacía = Pase)."""
     if not path.exists():
-        return [f"文件不存在: {path}"]
+        return [f"El archivo no existe: {path}"]
     try:
         text = path.read_text(encoding="utf-8")
-    except Exception as e:  # noqa: BLE001 - 校验脚本, 统一转为失败信息
-        return [f"读取失败: {e}"]
+    except Exception as e:  # noqa: BLE001 - Guión de verificación, Conversión unificada a información de fallas
+        return [f"Error de lectura: {e}"]
 
     match = ENGLISH_HEADING_RE.search(text)
     if match is None:
-        return ["缺少英文段标题(应为 `# Muse vX.Y.Z (English)` 形式, 独立一行)"]
+        return ["Falta el título de la sección en inglés.(debería ser `# Muse vX.Y.Z (English)` forma, linea independiente)"]
 
     zh_part = text[: match.start()]
     en_part = text[match.end():]
 
     problems: list[str] = []
 
-    # 2. 分隔符: 英文段标题之前应有独立一行 ---
+    # 2. delimitador: Los títulos de los párrafos en inglés deben ir precedidos de una línea separada. ---
     zh_lines = [line.strip() for line in zh_part.splitlines()]
     if SEPARATOR not in zh_lines:
-        problems.append("英文段标题之前缺少独立一行 `---` 分隔符")
+        problems.append("Falta una línea separada antes del título del párrafo en inglés `---` delimitador")
 
-    # 3. 中文段
+    # 3. sección china
     if not CJK_RE.search(zh_part):
-        problems.append("中文段为空或缺少中文字符")
+        problems.append("El segmento chino está vacío o faltan caracteres chinos.")
 
-    # 4. 英文段
+    # 4. sección en inglés
     if not LATIN_RE.search(en_part):
-        problems.append("英文段为空或缺少英文内容")
+        problems.append("El párrafo en inglés está vacío o carece de contenido en inglés.")
     cjk_in_en = CJK_RE.findall(en_part)
     if cjk_in_en:
         for ch in set(cjk_in_en):
             if ch not in ALLOWED_CJK_IN_ENGLISH:
-                problems.append(f"英文段夹入中文字符 `{ch}`(英文段应为纯英文对译)")
+                problems.append(f"Párrafo en inglés intercalado con caracteres chinos `{ch}`(El párrafo en inglés debe ser una traducción pura al inglés.)")
                 break
 
     return problems
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="release_body 中英双写规范校验")
-    parser.add_argument("path", type=Path, help="release_body.md 路径, 如 releases/v2.3.0/release_body.md")
+    parser = argparse.ArgumentParser(description="release_body Verificación de especificaciones de doble escritura en chino e inglés.")
+    parser.add_argument("path", type=Path, help="release_body.md camino, Como por ejemplo releases/v2.3.0/release_body.md")
     args = parser.parse_args()
 
     problems = check(args.path)
     if problems:
-        print(f"FAIL: {args.path} 不满足中英双写规范:")
+        print(f"FAIL: {args.path} No cumple con las especificaciones de escritura dual en chino e inglés.:")
         for p in problems:
             print(f"  - {p}")
         return 1
 
-    print(f"PASS: {args.path} 中英双语格式完整(中文段 + 分隔符 + 英文段)")
+    print(f"PASS: {args.path} Formato bilingüe completo en chino e inglés.(Segmento chino + delimitador + segmento inglés)")
     return 0
 
 

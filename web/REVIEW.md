@@ -1,447 +1,447 @@
-# Muse Web Workspace - 端到端功能链路审查报告
+# Muse Web Workspace - Informe de revisión de enlaces funcionales de un extremo a otro
 
-> 审查日期: 2026-09-13
-> 审查范围: 完整 17 个模块/子模块
-> 项目路径: E:\1Project\Muse\1muse\web
+> Fecha de revisión: 2026-09-13
+> Alcance de la revisión: Completa 17 módulos/submódulo
+> Ruta del proyecto: E:\1Project\Muse\1muse\web
 
 ---
 
-## 执行摘要
+## resumen ejecutivo
 
-| 类别 | 状态 |
+| categoría | Estado |
 |------|------|
-| 整体架构 | ⚠️ 部分缺失 |
-| @muse/contracts | ✅ 完整 |
-| @muse/core | ⚠️ 部分缺失 |
-| @muse/provider | ⚠️ 部分缺失 |
-| @muse/database | ⚠️ 部分缺失 |
-| @muse/memory | ⚠️ 部分缺失 |
-| @muse/rag | ⚠️ 部分缺失 |
-| @muse/files | ✅ 完整 |
-| @muse/tools | ⚠️ 部分缺失 |
-| @muse/mcp | ✅ 完整 |
-| @muse/agents | ✅ 完整 |
-| @muse/jobs | ⚠️ 部分缺失 |
-| @muse/storage | ⚠️ 部分缺失 |
-| @muse/client | ⚠️ 部分缺失 |
-| @muse/api | ❌ 严重问题 |
-| @muse/admin | ⚠️ 部分缺失 |
-| @muse/worker | ❌ 严重问题 |
+| arquitectura general | ⚠️ Parcialmente desaparecido |
+| @muse/contracts | ✅ completo |
+| @muse/core | ⚠️ Parcialmente desaparecido |
+| @muse/provider | ⚠️ Parcialmente desaparecido |
+| @muse/database | ⚠️ Parcialmente desaparecido |
+| @muse/memory | ⚠️ Parcialmente desaparecido |
+| @muse/rag | ⚠️ Parcialmente desaparecido |
+| @muse/files | ✅ completo |
+| @muse/tools | ⚠️ Parcialmente desaparecido |
+| @muse/mcp | ✅ completo |
+| @muse/agents | ✅ completo |
+| @muse/jobs | ⚠️ Parcialmente desaparecido |
+| @muse/storage | ⚠️ Parcialmente desaparecido |
+| @muse/client | ⚠️ Parcialmente desaparecido |
+| @muse/api | ❌ problema grave |
+| @muse/admin | ⚠️ Parcialmente desaparecido |
+| @muse/worker | ❌ problema grave |
 
 ---
 
-## 1. 整体架构
+## 1. arquitectura general
 
-### 依赖图
+### gráfico de dependencia
 
 ```
 packages/
-  contracts → (无依赖)
+  contracts → (Sin dependencias)
   core → contracts
   provider → contracts, core
   database → contracts, core, memory, rag, files, jobs, storage
-  memory → (无依赖)
-  rag → (无依赖)
-  files → (无依赖)
+  memory → (Sin dependencias)
+  rag → (Sin dependencias)
+  files → (Sin dependencias)
   tools → contracts
   mcp → contracts, tools
-  agents → (无依赖)
-  jobs → (无依赖)
+  agents → (Sin dependencias)
+  jobs → (Sin dependencias)
   storage → contracts
 
 apps/
-  api → 所有 packages
+  api → todos packages
   client → contracts, core, provider
   admin → contracts
   worker → database, jobs
 ```
 
-### tsconfig.base.json 路径映射
+### tsconfig.base.json mapeo de ruta
 
-- `@muse/*` 已配置通配符映射，指向 `src/index.ts`
-- 构建顺序: contracts → core → provider → database → memory/rag/files → tools/mcp → agents → jobs → storage → client/admin/api/worker
+- `@muse/*` Mapeo de comodines configurado, apuntando a `src/index.ts`
+- Orden de construcción: contracts → core → provider → database → memory/rag/files → tools/mcp → agents → jobs → storage → client/admin/api/worker
 
-### 发现的问题
+### Problemas encontrados
 
-**[低] Build 产物引用链断裂**
+**[bajo] Build Cadena de referencia del producto rota**
 
-`database` 包声明依赖 `@muse/memory`, `@muse/rag`, `@muse/files`，但类型层面并未实际使用这些包导出的类型。`PostgresMemoryRepository`、`PostgresRagRepository`、`PostgresFileRepository` 直接从接口定义导入类型，导致构建时可能产生不必要的间接依赖。
+`database` El paquete declara dependencias `@muse/memory`, `@muse/rag`, `@muse/files`, pero los tipos exportados por estos paquetes en realidad no se utilizan a nivel de tipo.`PostgresMemoryRepository`,`PostgresRagRepository`,`PostgresFileRepository` La importación de tipos directamente desde definiciones de interfaz puede generar dependencias indirectas innecesarias durante la construcción.
 
-**文件**: `packages/database/package.json`
-**建议**: 明确声明为 peerDependencies 或直接移除声明
-
----
-
-## 2. @muse/contracts（契约层）
-
-### 状态: ✅ 完整
-
-所有关键类型定义完整：
-- `ChatMessage`: 包含 reasoning, toolCalls, imageUrls
-- `ChatStreamEvent`: 11 种事件类型全覆盖
-- `ProviderConfig`: 7 种 provider 类型
-- `ChatRequest`: 支持 byok/hosted transport
-- `ToolDefinition`: 含 riskLevel
-- `PushSubscriptionRecord`: Web Push 订阅记录
-- `WebCapabilities`: 含 detectWebCapabilities()
+**Archivo**: `packages/database/package.json`
+**Sugerencias**: Declararlo explícitamente como peerDependencies o eliminar la declaración directamente
 
 ---
 
-## 3. @muse/core（核心层）
+## 2. @muse/contracts(capa de contrato)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ✅ completo
 
-**[高] 循环依赖风险**
-
-`@muse/core` 导出 `AssistantRecord`，而 `@muse/database` 的 `PostgresAssistantCatalog` 从 `@muse/core` 导入该类型。同时 `@muse/database` 被 `@muse/core` 的测试或类型检查引用，形成潜在循环。
-
-**文件**: `packages/core/src/assistant.ts`, `packages/database/src/assistant.ts`
-**建议**: 将 `AssistantRecord` 移至 `@muse/contracts` 作为跨包共享类型
-
-**[中] InMemoryAssistantCatalog 未实现 ProviderSecretStore**
-
-`ChatRequest` 的 `secretRef` 字段未被任何地方消费。
-
-**文件**: `packages/core/src/chat.ts` L50-52
-**建议**: 补充 `ProviderSecretStore` 的实现或在 ChatRequest 中移除未使用的字段
+Todos los tipos de claves están completamente definidos:
+- `ChatMessage`: contiene reasoning, toolCalls, imageUrls
+- `ChatStreamEvent`: 11 Cobertura completa de tipos de eventos.
+- `ProviderConfig`: 7 tipo de proveedor
+- `ChatRequest`: apoyo byok/hosted transport
+- `ToolDefinition`: Contiene riskLevel
+- `PushSubscriptionRecord`: Web Push Registro de suscripción
+- `WebCapabilities`: Contiene detectWebCapabilities()
 
 ---
 
-## 4. @muse/provider（Provider 层）
+## 3. @muse/core(capa central)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ⚠️ Parcialmente desaparecido
 
-**[高] 缺少 deepseek 原生 SSE 解析器**
+**[alto] Riesgo de dependencia circular**
 
-`parseSseData()` 函数处理了 anthropic、openai_responses、gemini 三种特定协议，但 `deepseek` 类型被允许传入后走默认 OpenAI 分支。DeepSeek 的流式响应格式可能与 OpenAI 不同。
+`@muse/core` Exportar `AssistantRecord`, mientras `@muse/database` de `PostgresAssistantCatalog` de `@muse/core` Importa este tipo. al mismo tiempo `@muse/database` ser `@muse/core` referencia de prueba o verificación de tipo, creando un ciclo potencial.
 
-**文件**: `packages/provider/src/index.ts` L140-143
-**建议**: 为 DeepSeek 添加专用解析逻辑或明确文档说明其兼容 OpenAI 协议
+**Archivo**: `packages/core/src/assistant.ts`, `packages/database/src/assistant.ts`
+**Sugerencias**: voluntad `AssistantRecord` Mover a `@muse/contracts` Como tipo compartido entre paquetes
 
-**[中] SSE 帧分割逻辑存在边界情况**
+**[en] InMemoryAssistantCatalog No implementado ProviderSecretStore**
+
+`ChatRequest` de `secretRef` El campo no se consume en ninguna parte.
+
+**Archivo**: `packages/core/src/chat.ts` L50-52
+**Sugerencias**: suplemento `ProviderSecretStore` implementación o eliminación de campos no utilizados en ChatRequest
+
+---
+
+## 4. @muse/provider(Provider capa)
+
+### Estado: ⚠️ Parcialmente desaparecido
+
+**[alto] Falta el analizador SSE nativo de búsqueda profunda**
+
+`parseSseData()` La función maneja antropopic,openai_responses,gemini tres protocolos específicos, pero `deepseek` Se permite pasar tipos a la rama predeterminada de OpenAI.DeepSeek El formato de respuesta de transmisión puede diferir de OpenAI.
+
+**Archivo**: `packages/provider/src/index.ts` L140-143
+**Sugerencias**: Agregue lógica de análisis dedicada a DeepSeek o documente claramente su compatibilidad con el protocolo OpenAI
+
+**[en] SSE Hay casos extremos en la lógica de segmentación de cuadros**
 
 ```typescript
 const frames = buffer.split(/\r?\n\r?\n/);
 ```
 
-当 SSE 数据包含空行但不是分隔符时，可能导致帧错位。
+Cuando los datos SSE contienen líneas en blanco que no son delimitadores, pueden provocar una desalineación del marco.
 
-**文件**: `packages/provider/src/index.ts` L225
-**建议**: 使用成熟的 SSE 解析库如 `eventsource-parser`
+**Archivo**: `packages/provider/src/index.ts` L225
+**Sugerencias**: Utilice bibliotecas de análisis SSE maduras como `eventsource-parser`
 
 ---
 
-## 5. @muse/database（数据层）
+## 5. @muse/database(capa de datos)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ⚠️ Parcialmente desaparecido
 
-**[严重] push.ts SQL 覆盖推送 auth 值为固定常量**
+**[serio] push.ts SQL Anular el valor de autenticación de inserción a una constante fija**
 
 ```sql
 on conflict (user_id, endpoint) do update set
   p256dh = excluded.p256dh,
-  auth = <硬编码占位符>,  -- BUG: 应该是 excluded.auth
+  auth = <Marcadores de posición codificados>,  -- BUG: debería ser excluded.auth
   user_agent = excluded.user_agent,
   ...
 ```
 
-这导致每次推送订阅更新时，用户的 VAPID auth 密钥被覆盖为固定值，推送通知将全部失败。
+Esto daba como resultado que cada vez que se enviaba una actualización de suscripción, la clave de autenticación VAPID del usuario se sobrescribía a un valor fijo y todas las notificaciones automáticas fallaban.
 
-**文件**: `packages/database/src/push.ts` L12
-**风险**: P0 - 推送功能完全失效
-**建议**: 立即修复为 `auth = excluded.auth`
+**Archivo**: `packages/database/src/push.ts` L12
+**riesgo**: P0 - La función de empuje está completamente desactivada.
+**Sugerencias**: Fijar inmediatamente a `auth = excluded.auth`
 
-**[中] FileDescriptor sizeBytes 类型不一致**
+**[en] FileDescriptor sizeBytes Tipos inconsistentes**
 
-数据库使用 `bigint`，但 TypeScript 类型定义为 `number`。PostgreSQL bigint 超出 JavaScript SafeInteger 范围时会产生精度丢失。
+Uso de la base de datos `bigint`, pero el tipo TypeScript se define como `number`.PostgreSQL bigint La pérdida de precisión se produce cuando se excede el rango de JavaScript SafeInteger.
 
-**文件**: `packages/database/src/domains.ts` L35
-**建议**: 使用 `BigInt` 类型或在 ORM 层处理转换
+**Archivo**: `packages/database/src/domains.ts` L35
+**Sugerencias**: uso `BigInt` escribir o manejar la conversión en la capa ORM
 
-**[低] PostgresJobQueue 未实现 idempotencyKey 冲突检测**
+**[bajo] PostgresJobQueue idempotencyKey detección de conflictos no implementada**
 
-`PostgresJobQueue.enqueue()` 使用 `on conflict (idempotency_key) do update`，但返回的是第一个插入的行，不保证幂等性语义正确。
+`PostgresJobQueue.enqueue()` uso `on conflict (idempotency_key) do update`, pero se devuelve la primera fila insertada y no se garantiza que la semántica idempotente sea correcta.
 
-**文件**: `packages/database/src/jobs.ts` L14-18
-**建议**: 区分 INSERT 和 UPDATE 路径
-
----
-
-## 6. @muse/memory（记忆层）
-
-### 状态: ⚠️ 部分缺失
-
-**[中] MemoryStore.search() 不支持跨空间搜索**
-
-当 `spaceId` 为 `"default"` 时，搜索仅限于单个 space。没有提供 `listSpaces()` 或 `searchAcrossSpaces()` 方法。
-
-**文件**: `packages/memory/src/index.ts` L35-45
-**建议**: 添加 `search(accountId, query, assistantId, limit?)` 方法支持跨空间搜索
-
-**[低] decay() 逻辑与 search() 过滤条件不一致**
-
-`decay()` 降低重要性为 0，但 `search()` 过滤条件包含 `importance === 0` 的条目（只要有过期时间），可能导致已 decay 的事实仍被返回。
-
-**文件**: `packages/memory/src/index.ts` L55-66, L42-44
-**建议**: 调整 decay 逻辑，将重要性降为 0 的事实从搜索结果中排除
+**Archivo**: `packages/database/src/jobs.ts` L14-18
+**Sugerencias**: Distinguir entre las rutas INSERTAR y ACTUALIZAR
 
 ---
 
-## 7. @muse/rag（RAG 层）
+## 6. @muse/memory(capa de memoria)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ⚠️ Parcialmente desaparecido
 
-**[高] 只有词袋检索，无向量搜索**
+**[en] MemoryStore.search() La búsqueda entre espacios no es compatible**
 
-`searchChunks()` 仅使用简单的词频匹配，没有嵌入模型调用。注释说明 "vector provider can replace scoring later"，但当前实现无法支持语义搜索。
+cuando `spaceId` para `"default"` Cuando , la búsqueda se limita a un solo espacio. No proporcionado `listSpaces()` o `searchAcrossSpaces()` método.
 
-**文件**: `packages/rag/src/index.ts` L55-72
-**建议**: 至少预留嵌入接口，或集成轻量级向量库
+**Archivo**: `packages/memory/src/index.ts` L35-45
+**Sugerencias**: agregar `search(accountId, query, assistantId, limit?)` El método admite la búsqueda entre espacios.
 
-**[中] chunkText() 重叠窗口计算有边界 bug**
+**[bajo] decay() lógico Y search() Las condiciones del filtro son inconsistentes**
+
+`decay()` Reducir la importancia a 0, pero `search()` Los criterios de filtrado incluyen `importance === 0` entrada (siempre que tenga una fecha de vencimiento), puede causar que aún se devuelvan datos deteriorados.
+
+**Archivo**: `packages/memory/src/index.ts` L55-66, L42-44
+**Sugerencias**: Ajustar la lógica de decadencia para excluir de los resultados de búsqueda hechos cuya importancia cae a 0
+
+---
+
+## 7. @muse/rag(RAG capa)
+
+### Estado: ⚠️ Parcialmente desaparecido
+
+**[alto] Sólo búsqueda de bolsa de palabras, no búsqueda de vectores**
+
+`searchChunks()` Solo se utiliza una coincidencia de frecuencia de palabras simple, no se utilizan llamadas de modelo de incrustación. Notas "vector provider can replace scoring later", pero la implementación actual no puede admitir la búsqueda semántica.
+
+**Archivo**: `packages/rag/src/index.ts` L55-72
+**Sugerencias**: Al menos reserve una interfaz integrada o integre una biblioteca vectorial liviana
+
+**[en] chunkText() Los cálculos de ventanas superpuestas tienen límites bug**
 
 ```typescript
 current = current.slice(Math.max(0, current.length - overlapCharacters));
 ```
 
-当 `current` 长度小于 `overlapCharacters` 时，`slice` 会保留全部文本而非按预期截断。
+cuando `current` longitud menor que `overlapCharacters` cuando,`slice` El texto completo se conserva en lugar de truncarse como se esperaba.
 
-**文件**: `packages/rag/src/index.ts` L28
-**建议**: 修复为 `current = current.slice(Math.max(0, current.length - overlapCharacters)).trim()`
-
----
-
-## 8. @muse/files（文件层）
-
-### 状态: ✅ 完整
-
-`FileDescriptor` 接口、`validateUpload()`、`objectKey()`、`sanitizeDownloadName()` 实现完整。安全校验覆盖文件名注入、MIME 类型、大小限制。
+**Archivo**: `packages/rag/src/index.ts` L28
+**Sugerencias**: fijo a `current = current.slice(Math.max(0, current.length - overlapCharacters)).trim()`
 
 ---
 
-## 9. @muse/tools（工具层）
+## 8. @muse/files(Capa de archivo)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ✅ completo
 
-**[高] ToolRegistry 缺少工具参数执行沙箱**
-
-`validateJsonSchema()` 仅做类型检查，不限制参数值的大小或复杂度。`high` 风险工具（如 `write_file`）的参数可包含任意大字符串。
-
-**文件**: `packages/tools/src/index.ts` L23-40
-**建议**: 添加参数大小限制和复杂度过滤
-
-**[中] builtinTools 中 write_file 无访问控制**
-
-`write_file` 标记为 `high` 风险，但 `ToolRegistry.execute()` 未检查 accountId 与文件的关联关系。
-
-**文件**: `packages/tools/src/index.ts` L75-77
-**建议**: 在执行前验证文件所有权或添加权限中间件
+`FileDescriptor` interfaz,`validateUpload()`,`objectKey()`,`sanitizeDownloadName()` Lograr la plenitud. La verificación de seguridad cubre la inyección de nombres de archivos,MIME Restricciones de tipo y tamaño.
 
 ---
 
-## 10. @muse/mcp（MCP 层）
+## 9. @muse/tools(Capa de herramientas)
 
-### 状态: ✅ 完整
+### Estado: ⚠️ Parcialmente desaparecido
 
-URL 验证、私有地址拦截、工具命名空间化均实现完整。
+**[alto] ToolRegistry Falta el entorno de pruebas de ejecución de parámetros de herramienta**
+
+`validateJsonSchema()` Solo se realiza la verificación de tipos, no hay límite en el tamaño o la complejidad de los valores de los parámetros.`high` herramientas de riesgo (por ej. `write_file`) puede contener cadenas arbitrariamente grandes.
+
+**Archivo**: `packages/tools/src/index.ts` L23-40
+**Sugerencias**: Agregue límite de tamaño de parámetro y filtrado de complejidad
+
+**[en] builtinTools Sin control de acceso en write_file**
+
+`write_file` marcado como `high` riesgo pero `ToolRegistry.execute()` La asociación de accountId con el archivo no está marcada.
+
+**Archivo**: `packages/tools/src/index.ts` L75-77
+**Sugerencias**: Verifique la propiedad del archivo antes de la ejecución o agregue middleware de permisos
 
 ---
 
-## 11. @muse/agents（Agent 层）
+## 10. @muse/mcp(MCP capa)
 
-### 状态: ✅ 完整
+### Estado: ✅ completo
 
-状态机转换逻辑正确，terminal 状态不可逆。
+URL La autenticación, la interceptación de direcciones privadas y el espacio de nombres de herramientas se implementan por completo.
 
 ---
 
-## 12. @muse/jobs（作业层）
+## 11. @muse/agents(Agent capa)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ✅ completo
 
-**[中] InMemoryJobQueue 的 claim 逻辑不支持并发**
+La lógica de conversión de la máquina de estados es correcta,terminal El Estado es irreversible.
 
-多个 worker 同时 claim 可能拿到同一 job。需要分布式锁或数据库级别并发控制。
+---
 
-**文件**: `packages/jobs/src/index.ts` L30-34
-**建议**: Redis 实现已使用 Lua 脚本保证原子性，但 InMemory 版本需要加锁
+## 12. @muse/jobs(nivel de trabajo)
 
-**[低] JobWorker.runOnce() 未处理异常类型**
+### Estado: ⚠️ Parcialmente desaparecido
+
+**[en] InMemoryJobQueue La lógica de reclamo no admite la concurrencia**
+
+Varios trabajadores que presenten solicitudes al mismo tiempo pueden obtener el mismo trabajo. Requiere bloqueos distribuidos o control de simultaneidad a nivel de base de datos.
+
+**Archivo**: `packages/jobs/src/index.ts` L30-34
+**Sugerencias**: Redis La implementación ha utilizado scripts Lua para garantizar la atomicidad, pero la versión InMemory debe bloquearse.
+
+**[bajo] JobWorker.runOnce() Tipo de excepción no controlada**
 
 ```typescript
 catch (error) { await this.queue.fail(job.id, error instanceof Error ? error.message : "job failed"); }
 ```
 
-非 Error 对象会被转换为字符串 "job failed"，丢失上下文。
+Los objetos que no son de error se convierten en cadenas "job failed", perdiendo contexto.
 
-**文件**: `packages/jobs/src/index.ts` L85-87
-**建议**: 使用 `String(error)` 或保留原始类型
-
----
-
-## 13. @muse/storage（存储层）
-
-### 状态: ⚠️ 部分缺失
-
-**[高] S3ObjectStorage 缺少 TTL 自动清理**
-
-生成的预签名 URL 有效期 900 秒，但若上传失败，object 会一直残留。
-
-**文件**: `packages/storage/src/index.ts` L25-28
-**建议**: 添加 completed uploads 追踪表，定期清理孤儿对象
-
-**[中] InMemoryObjectStorage 不实际存储**
-
-开发模式下只返回 fake URL，不验证内容是否实际写入。
-
-**文件**: `packages/storage/src/index.ts` L44-48
-**建议**: 明确标注为 mock，生产环境强制要求 S3 配置
+**Archivo**: `packages/jobs/src/index.ts` L85-87
+**Sugerencias**: uso `String(error)` o mantener el tipo original
 
 ---
 
-## 14. @muse/client（React 前端）
+## 13. @muse/storage(capa de almacenamiento)
 
-### 状态: ⚠️ 部分缺失
+### Estado: ⚠️ Parcialmente desaparecido
 
-**[中] API Key 通过自定义头传输**
+**[alto] S3ObjectStorage Falta limpieza automática TTL**
+
+La URL prefirmada generada es válida durante 900 segundos, pero si la carga falla,object permanecerá.
+
+**Archivo**: `packages/storage/src/index.ts` L25-28
+**Sugerencias**: Agregue una tabla de seguimiento de cargas completadas y limpie los objetos huérfanos con regularidad
+
+**[en] InMemoryObjectStorage En realidad no almacenado**
+
+En modo de desarrollo, sólo se devuelve la URL falsa, sin verificar si el contenido está realmente escrito.
+
+**Archivo**: `packages/storage/src/index.ts` L44-48
+**Sugerencias**: Marcado explícitamente como simulado, la configuración de S3 es obligatoria para entornos de producción
+
+---
+
+## 14. @muse/client(React interfaz)
+
+### Estado: ⚠️ Parcialmente desaparecido
+
+**[en] API Key Transferir a través de encabezado personalizado**
 
 ```typescript
 headers.set("x-muse-provider-key", input.apiKey);
 ```
 
-自定义头在 CORS 预检中需要显式声明，但 `server.ts` 的 OPTIONS 响应中已包含该头，基本安全。不过建议改用标准 `Authorization` 头配合 Bearer 方案。
+Los encabezados personalizados deben declararse explícitamente en la verificación previa de CORS, pero `server.ts` Este encabezado ya está incluido en la respuesta de OPCIONES, que es básicamente segura. Sin embargo, se recomienda utilizar el estándar. `Authorization` Cabeza con esquema al portador.
 
-**文件**: `apps/client/src/api.ts` L187
-**建议**: 评估是否迁移到标准 auth 机制
+**Archivo**: `apps/client/src/api.ts` L187
+**Sugerencias**: Evaluar si se debe migrar al mecanismo de autenticación estándar
 
-**[中] HostConnection 重连逻辑有内存泄漏风险**
+**[en] HostConnection La lógica de reconexión tiene el riesgo de pérdidas de memoria**
 
 ```typescript
 socket.addEventListener("error", () => { ... }, { once: true });
 ```
 
-虽然使用 `{ once: true }`，但如果 `attachSocket` 被多次调用，旧 socket 的监听器不会被清理。
+Aunque usando `{ once: true }`, pero si `attachSocket` Llamado varias veces, el oyente del socket antiguo no se limpiará.
 
-**文件**: `apps/client/src/api.ts` L267-279
-**建议**: 在重新 attach 前移除旧监听器
+**Archivo**: `apps/client/src/api.ts` L267-279
+**Sugerencias**: Eliminar el oyente antiguo antes de volver a conectarlo
 
-**[中] 推送订阅缺少 VAPID 公钥验证**
+**[en] A la suscripción push le falta la verificación de clave pública VAPID**
 
-前端发送的推送订阅请求中，auth 字段使用了硬编码占位符。
+En la solicitud de suscripción push enviada por el front-end,auth Los campos utilizan marcadores de posición codificados.
 
-**文件**: `apps/client/src/api.ts` L174
-**建议**: 移除前端硬编码，改为从服务端获取 VAPID 配置
+**Archivo**: `apps/client/src/api.ts` L174
+**Sugerencias**: Elimine la codificación frontal y obtenga la configuración VAPID del servidor.
 
-**[低] 深色模式依赖 prefers-color-scheme**
+**[bajo] dependencia del modo oscuro prefers-color-scheme**
 
-CSS 使用媒体查询实现深色模式，但没有手动切换按钮。对于 PWA 应用，建议添加用户可控的切换。
+CSS El modo oscuro se implementa mediante consultas de medios, pero no hay un botón de alternancia manual. Para aplicaciones PWA, se recomienda agregar opciones controlables por el usuario.
 
-**文件**: `apps/client/src/styles.css` L135-156
-**建议**: 添加 `[data-theme="dark"]` 支持或切换按钮
+**Archivo**: `apps/client/src/styles.css` L135-156
+**Sugerencias**: agregar `[data-theme="dark"]` botón de soporte o alternancia
 
-**[低] Service Worker 注册无错误处理**
+**[bajo] Service Worker Registro sin manejo de errores**
 
 ```typescript
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
 ```
 
-SW 注册失败会被静默忽略。
+SW Los errores de registro se ignoran silenciosamente.
 
-**文件**: `apps/client/src/main.tsx` L485
-**建议**: 添加 catch 处理和用户提示
+**Archivo**: `apps/client/src/main.tsx` L485
+**Sugerencias**: Agregar manejo de capturas y mensajes de usuario
 
 ---
 
-## 15. @muse/api（API Server）
+## 15. @muse/api(API Server)
 
-### 状态: ❌ 严重问题
+### Estado: ❌ problema grave
 
-**[严重] 硬编码凭据泄露**
+**[serio] Se filtraron credenciales codificadas**
 
-以下位置存在硬编码的凭据/密钥（已通过 grep 验证）：
+Las credenciales codificadas existen en/Clave (verificada con grep):
 
-| 位置 | 行号 | 内容 |
+| ubicación | Número de línea | contenido |
 |------|------|------|
-| `apps/api/src/server.ts` | L71-72 | `bootstrapAdminPassword = <硬编码值>` |
-| `apps/api/src/runtime.ts` | L123-124 | `secretAccessKey = <硬编码值>` |
-| `packages/database/src/secrets.ts` | L36 | `hasSecret = <常量> !== null` (逻辑错误) |
+| `apps/api/src/server.ts` | L71-72 | `bootstrapAdminPassword = <valor codificado>` |
+| `apps/api/src/runtime.ts` | L123-124 | `secretAccessKey = <valor codificado>` |
+| `packages/database/src/secrets.ts` | L36 | `hasSecret = <constante> !== null` (error lógico) |
 
-**风险**: 任何拿到源码的人都能获取生产凭据
-**建议**: 立即迁移到环境变量或密钥管理服务
+**riesgo**: Cualquier persona con acceso al código fuente puede obtener credenciales de producción.
+**Sugerencias**: Migre ahora a una variable de entorno o un servicio de administración de claves
 
-**[严重] CORS 配置风险**
+**[serio] CORS Riesgo de asignación**
 
 ```typescript
 "access-control-allow-origin": allowedOrigin,
 "access-control-allow-credentials": "true",
 ```
 
-当 `allowedOrigin` 为 `*` 时，浏览器会拒绝携带凭证的请求。当前代码检查了 `WEB_ORIGIN` 环境变量，但默认值可能导致安全问题。
+cuando `allowedOrigin` para `*` , el navegador rechazará la solicitud que lleve las credenciales. Código actual verificado `WEB_ORIGIN` variables de entorno, pero los valores predeterminados pueden causar problemas de seguridad.
 
-**文件**: `apps/api/src/server.ts` L23-29
-**建议**: 强制要求生产环境设置 `WEB_ORIGIN`，拒绝 `*` 与 credentials 的组合
+**Archivo**: `apps/api/src/server.ts` L23-29
+**Sugerencias**: Configuración obligatoria del entorno de producción. `WEB_ORIGIN`, rechazar `*` Combinación con credenciales
 
-**[高] 会话令牌存储在 sessionStorage 而非 secure cookie**
+**[alto] El token de sesión se almacena en sessionStorage en lugar de secure cookie**
 
 ```typescript
 sessionStorage.setItem("muse.session", JSON.stringify(value));
 ```
 
-sessionStorage 可通过 XSS 读取。建议改用 HttpOnly + Secure + SameSite cookie。
+sessionStorage Legible a través de XSS. Se recomienda utilizar HttpOnly + Secure + SameSite cookie.
 
-**文件**: `apps/client/src/main.tsx` L437
-**建议**: 迁移至服务端 session cookie 机制
+**Archivo**: `apps/client/src/main.tsx` L437
+**Sugerencias**: Migrar al mecanismo de cookies de sesión del lado del servidor
 
-**[高] Admin audit log 仅内存存储**
+**[alto] Admin audit log Solo almacenamiento en memoria**
 
 ```typescript
 const adminAudit: Array<{...}> = [];
 ```
 
-服务重启后审计日志丢失，无法满足合规要求。
+Una vez reiniciado el servicio, los registros de auditoría se pierden y no se pueden cumplir los requisitos de cumplimiento.
 
-**文件**: `apps/api/src/server.ts` L73
-**建议**: 持久化到数据库或外部日志服务
+**Archivo**: `apps/api/src/server.ts` L73
+**Sugerencias**: Persistencia en la base de datos o servicio de registro externo
 
-**[高] 聊天流式响应缺少速率限制**
+**[alto] Falta el límite de tasa de respuesta de transmisión de chat**
 
 ```typescript
 const REQUEST_LIMIT = 30;
 const REQUEST_WINDOW_MS = 60_000;
 ```
 
-30 次/分钟的限流对于聊天场景过于宽松，可能导致成本失控。
+30 veces/El límite de minutos es demasiado flexible para escenarios de chat y puede hacer que los costos se salgan de control.
 
-**文件**: `apps/api/src/server.ts` L77-78
-**建议**: 根据 provider 类型和账户套餐实施分级限流
-
----
-
-## 16. @muse/admin（管理后台）
-
-### 状态: ⚠️ 部分缺失
-
-**[中] 管理端点与用户端点共用认证**
-
-管理员通过 `/api/v1/admin/*` 路由验证 `platform_admin` 角色，但登录接口是同一个 `/api/v1/auth/login`。没有独立的 admin 认证流程。
-
-**文件**: `apps/admin/src/main.tsx`
-**建议**: 考虑添加 admin-specific login 或双因素认证
-
-**[低] 套餐价格编辑无变更历史**
-
-调价操作仅记录在内存 audit log 中，不保留价格版本历史对比。
-
-**文件**: `apps/admin/src/main.tsx` L33-36
-**建议**: 展示价格变更前后对比
+**Archivo**: `apps/api/src/server.ts` L77-78
+**Sugerencias**: Implementar limitación actual jerárquica según el tipo de proveedor y el paquete de cuenta.
 
 ---
 
-## 17. @muse/worker（后台 Worker）
+## 16. @muse/admin(Experiencia en gestión)
 
-### 状态: ❌ 严重问题
+### Estado: ⚠️ Parcialmente desaparecido
 
-**[严重] 所有 job handler 为空实现**
+**[en] Los puntos finales de administración comparten la autenticación con los puntos finales de los usuarios**
+
+Administrador aprobado `/api/v1/admin/*` Verificación de ruta `platform_admin` función, pero la interfaz de inicio de sesión es la misma `/api/v1/auth/login`. No existe un proceso de autenticación de administrador independiente.
+
+**Archivo**: `apps/admin/src/main.tsx`
+**Sugerencias**: Considere agregar inicio de sesión específico de administrador o autenticación de dos factores
+
+**[bajo] La edición del precio del paquete no tiene historial de cambios**
+
+Las operaciones de ajuste de precios solo se registran en el registro de auditoría de memoria y las comparaciones históricas de versiones de precios no se conservan.
+
+**Archivo**: `apps/admin/src/main.tsx` L33-36
+**Sugerencias**: Mostrar comparación antes y después de los cambios de precios
+
+---
+
+## 17. @muse/worker(Trabajador de fondo)
+
+### Estado: ❌ problema grave
+
+**[serio] Todos los controladores de trabajos son implementaciones vacías.**
 
 ```typescript
 const worker = new JobWorker(queue, {
@@ -453,79 +453,79 @@ const worker = new JobWorker(queue, {
 });
 ```
 
-所有异步任务处理都是空函数，意味着：
-- 记忆提取不会执行
-- RAG 索引不会触发
-- 文档解析是空的
-- 媒体轮询不工作
-- 通知推送不发送
+Todo el procesamiento de tareas asincrónicas es una función vacía, lo que significa:
+- No se realizará la recuperación de la memoria.
+- RAG El índice no se activa
+- El análisis del documento está vacío.
+- Las encuestas de medios no funcionan
+- Las notificaciones push no se envían
 
-**文件**: `apps/worker/src/worker.ts` L17-22
-**风险**: 核心异步功能完全不可用
-**建议**: 实现各 handler 的业务逻辑
+**Archivo**: `apps/worker/src/worker.ts` L17-22
+**riesgo**: La funcionalidad asíncrona principal no está disponible en absoluto
+**Sugerencias**: Implementar la lógica de negocios de cada controlador.
 
-**[高] Worker 无健康检查和优雅退出**
+**[alto] Worker Sin controles de salud y salida elegante**
 
-没有 readiness probe，Kubernetes 等编排系统无法正确管理进程。
+No hay sonda de preparación,Kubernetes etc. El sistema de orquestación no puede gestionar el proceso correctamente.
 
-**文件**: `apps/worker/src/worker.ts` L30-35
-**建议**: 添加 `/health` 和 `/ready` 端点
+**Archivo**: `apps/worker/src/worker.ts` L30-35
+**Sugerencias**: agregar `/health` y `/ready` punto final
 
-**[中] Poll 间隔硬编码**
+**[en] Poll Intervalo codificado**
 
 ```typescript
 const intervalMs = Math.max(250, Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5000));
 ```
 
-默认 5 秒轮询对于高吞吐场景可能过于频繁。
+El sondeo predeterminado de 5 segundos puede ser demasiado frecuente para escenarios de alto rendimiento.
 
-**文件**: `apps/worker/src/worker.ts` L3
-**建议**: 根据负载动态调整或实现长轮询
-
----
-
-## 关键风险汇总
-
-### 高优先级（必须修复）
-
-1. **push.ts SQL 错误** - 推送 auth 被固定值覆盖，推送完全失效
-2. **硬编码凭据泄露** - S3 密钥和管理员密码硬编码在源码中
-3. **Worker handlers 为空** - 所有异步 job 处理逻辑缺失
-4. **CORS 配置风险** - 生产环境必须设置 WEB_ORIGIN
-
-### 中优先级（应该修复）
-
-5. **Provider 类型不一致** - contracts vs provider 实现
-6. **DeepSeek SSE 解析** - 需要专用处理器
-7. **Memory decay 逻辑** - 已 decay 的事实仍被返回
-8. **RAG 只有词袋检索** - 无法支持语义搜索
-9. **Session 存储安全** - 建议迁移到 httpOnly cookie
-
-### 低优先级（建议改进）
-
-10. **深色模式无手动切换**
-11. **Service Worker 错误处理**
-12. **文件上传孤儿清理**
-13. **健康检查端点泄露 requestId**
+**Archivo**: `apps/worker/src/worker.ts` L3
+**Sugerencias**: Ajuste dinámicamente según la carga o implemente un sondeo largo
 
 ---
 
-## 修复建议时间线
+## Resumen de riesgos clave
 
-| 阶段 | 任务 | 预估工时 |
+### Prioridad alta (debe arreglarse)
+
+1. **push.ts SQL error** - La autenticación de inserción se sobrescribe con un valor fijo y la inserción no es completamente válida.
+2. **Se filtraron credenciales codificadas** - S3 La clave y la contraseña de administrador están codificadas en el código fuente.
+3. **Worker handlers esta vacio** - Falta toda la lógica de procesamiento de trabajos asincrónicos
+4. **CORS Riesgo de asignación** - Se debe configurar el entorno de producción. WEB_ORIGIN
+
+### Prioridad media (debe arreglarse)
+
+5. **Provider Tipos inconsistentes** - contracts vs provider darse cuenta
+6. **DeepSeek SSE analizar** - Requiere procesador dedicado
+7. **Memory decay lógica** - Todavía se devuelven hechos deteriorados
+8. **RAG Sólo búsqueda de bolsa de palabras** - No se puede admitir la búsqueda semántica
+9. **Session Seguridad de almacenamiento** - Se recomienda migrar a httpOnly cookie
+
+### Prioridad baja (mejoras sugeridas)
+
+10. **Modo oscuro sin cambio manual**
+11. **Service Worker Manejo de errores**
+12. **Limpieza de carga de archivos huérfanos**
+13. **Se filtró el punto final de control de salud requestId**
+
+---
+
+## Corregir línea de tiempo sugerida
+
+| escenario | Tarea | Horas estimadas |
 |------|------|----------|
-| P0 | 修复 push.ts SQL 错误（推送失效） | 1h |
-| P0 | 移除所有硬编码凭据 | 2h |
-| P0 | 实现 Worker job handlers | 16h |
-| P1 | 修复 CORS 配置 | 1h |
-| P1 | 持久化 admin audit | 4h |
-| P1 | 实现 DeepSeek SSE 解析 | 4h |
-| P2 | Memory decay 逻辑修复 | 2h |
-| P2 | RAG 向量搜索接口预留 | 8h |
-| P2 | Session 迁移到 cookie | 8h |
-| P3 | 深色模式切换 | 2h |
-| P3 | SW 错误处理 | 1h |
+| P0 | Solucionar el error de SQL push.ts (fallo de inserción) | 1h |
+| P0 | Eliminar todas las credenciales codificadas | 2h |
+| P0 | darse cuenta Worker job handlers | 16h |
+| P1 | Arreglar la configuración de CORS | 1h |
+| P1 | persistencia admin audit | 4h |
+| P1 | Implementación del análisis DeepSeek SSE | 4h |
+| P2 | Memory decay arreglo lógico | 2h |
+| P2 | RAG Interfaz de búsqueda de vectores reservada | 8h |
+| P2 | Session Migrar a cookie | 8h |
+| P3 | Cambio de modo oscuro | 2h |
+| P3 | SW Manejo de errores | 1h |
 
 ---
 
-*审查完成*
+*Revisión completada*

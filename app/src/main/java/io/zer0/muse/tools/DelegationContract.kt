@@ -4,35 +4,35 @@ import io.zer0.ai.core.UIMessage
 import kotlinx.serialization.Serializable
 
 /**
- * v1.200: 结构化委派上下文与返回契约。
+ * v1.200: Contextos estructurados de delegación y contratos de retorno.
  *
- * 统一多 Agent 协作中"主助手 → 子助手/团队"的输入输出格式,
- * 使任务委派具备可追溯、可聚合、可隔离的能力。
+ * Unificación de la colaboración entre múltiples agentes"asistente principal → sub-asistente/equipo"formato de entrada y salida,
+ * Haga que la delegación de tareas pueda rastrearse, agregarse y aislarse.
  */
 object DelegationContract {
 
     /**
-     * 委派请求。
+     * Solicitud de delegación.
      *
-     * @param requestId 请求唯一 id,由调用方生成,用于链路追踪
-     * @param task 任务描述(自然语言)
-     * @param targetType 目标类型:assistant / team
-     * @param targetId 目标 assistantId 或 teamId
-     * @param parentSessionId 父会话 id,用于上下文隔离与结果回填
-     * @param contextMessages 携带的精简上下文消息列表(非完整聊天记录)
-     * @param attachments 附件/产物 id 列表,如 artifactIds / 文件路径
-     * @param timeoutSec 执行超时(秒)
-     * @param responseFormat 期望返回格式:text / json / markdown / code
-     * @param capabilityHints 期望子助手具备的能力标签(用于校验或自动路由)
-     * @param requireApproval 是否要求用户显式审批(高风险任务)
-     * @param metadata 扩展元数据
-     * @param threadId 子 agent 线程 ID(续接同一子 agent 时传入,首次委派不传由系统生成)
-     * @param access 权限档:read/write,省略时继承父会话
-     * @param nonBlocking 是否非阻塞模式(true=立即返回 taskId,子任务完成后回灌;false=阻塞等待)
-     * @param label 标签(展示用,不作为身份)
-     * @param callerAssistantId 发起委派的主 agent 的 assistantId,用于委派完成后通过
-     *        AgentDmRepository 把结果回填为一条 sub-agent → main-agent 的私信。
-     *        为 null(默认)时不发送 DM,保持与旧调用方兼容。
+     * @param requestId Solicitar único id,Generado por la persona que llama,para rastreo de enlaces
+     * @param task Descripción de la tarea(lenguaje natural)
+     * @param targetType tipo de objetivo:assistant / team
+     * @param targetId ID del asistente de destino o teamId
+     * @param parentSessionId sesión de padres id,Se utiliza para el aislamiento de contexto y el reabastecimiento de resultados.
+     * @param contextMessages Lista de mensajes de contexto reducida para llevar(Historial de chat incompleto)
+     * @param attachments Accesorios/Lista de identificación del producto,Como artefactoIds/ruta del archivo
+     * @param timeoutSec Tiempo de espera de ejecución(segundos)
+     * @param responseFormat Formato de devolución esperado:text / json / markdown / code
+     * @param capabilityHints Etiquetas de capacidad que se esperan de los subasistentes(Se utiliza para verificación o enrutamiento automático.)
+     * @param requireApproval Si se requiere la aprobación explícita del usuario(misión de alto riesgo)
+     * @param metadata metadatos extendidos
+     * @param threadId hilo de agente secundario ID(Pasado al continuar conectándose con el mismo subagente,La primera delegación no se pasa y es generada por el sistema.)
+     * @param access archivo de permiso:read/write,Hereda la sesión principal cuando se omite
+     * @param nonBlocking Ya sea en modo sin bloqueo(true=Regresar inmediatamente taskId,Realimentar después de completar la subtarea;false=bloqueo de espera)
+     * @param label etiqueta(para exhibición,no como una identidad)
+     * @param callerAssistantId El agente principal que inició la delegación. assistantId,Se utiliza para pasar después de completar la delegación.
+     *        AgentDmRepository Rellene el resultado en uno sub-agent → main-agent mensaje privado.
+     *        para null(Predeterminado)No enviado cuando DM,Mantenga la compatibilidad con personas que llaman anteriormente.
      */
     @Serializable
     data class DelegationRequest(
@@ -47,28 +47,28 @@ object DelegationContract {
         val responseFormat: ResponseFormat = ResponseFormat.TEXT,
         val capabilityHints: List<String> = emptyList(),
         val requireApproval: Boolean = false,
-        /** v1.201: 显式声明的暂停点列表,可选值: "before_start" / "after_each_member" / "on_intermediate"。
-         *  为空时由 PausePolicy 决定是否暂停;非空时优先级高于 PausePolicy。 */
+        /** v1.201: Una lista de puntos de pausa declarados explícitamente,Valor opcional: "before_start" / "after_each_member" / "on_intermediate".
+         *  Cuando está vacío, PausePolicy determina si se debe pausar;La prioridad es mayor que PausePolicy cuando no está vacía. */
         val pausePoints: List<String> = emptyList(),
         val metadata: RequestMetadata = RequestMetadata(),
-        /** 子 agent 线程 ID(续接同一子 agent 时传入,首次委派不传由系统生成)。 */
+        /** hilo de agente secundario ID(Pasado al continuar conectándose con el mismo subagente,La primera delegación no se pasa y es generada por el sistema.). */
         val threadId: String? = null,
-        /** 权限档:read/write,省略时继承父会话。 */
+        /** archivo de permiso:read/write,Cuando se omite, se hereda la sesión principal. */
         val access: String? = null,
-        /** 是否非阻塞模式(true=立即返回 taskId,子任务完成后回灌;false=阻塞等待)。 */
+        /** Ya sea en modo sin bloqueo(true=Regresar inmediatamente taskId,Realimentar después de completar la subtarea;false=bloqueo de espera). */
         val nonBlocking: Boolean = false,
-        /** 标签(展示用,不作为身份)。 */
+        /** etiqueta(para exhibición,no como una identidad). */
         val label: String? = null,
-        /** v1.202: 主 agent 的 assistantId,用于委派完成后通过 AgentDmRepository 回填结果私信。
-         *  默认 null 保持向后兼容(不发送 DM)。 */
+        /** v1.202: agente principal assistantId,Se utiliza para rellenar el mensaje privado del resultado a través de AgentDmRepository una vez completada la delegación.
+         *  El valor predeterminado es nulo para compatibilidad con versiones anteriores(no enviar DM). */
         val callerAssistantId: String? = null,
-        /** v1.0.53 Phase 2: 工作流 journal run id;TEAM 目标传入时复用,否则由 executor 生成。
-         *  调用方可从 DelegationResult.metadata.journalRunId 取回,用于失败后 resume 重试。 */
+        /** v1.0.53 Phase 2: Flujo de trabajo journal run id;TEAM Reutilizar cuando se pasa el objetivo,De lo contrario generado por el ejecutor.
+         *  La persona que llama puede recuperarlo de DelegationResult.metadata.journalRunId,Se utiliza para reanudar el reintento después de un error. */
         val journalRunId: String? = null,
-        /** v1.0.53 Phase 2: 是否从 journal 恢复(仅 TEAM 目标生效;true 时命中缓存的节点秒回)。 */
+        /** v1.0.53 Phase 2: Ya sea para restaurar desde el diario(Sólo funciona para objetivos de EQUIPO;true El nodo que llega al caché se devolverá en segundos.). */
         val resumeFromJournal: Boolean = false,
-        /** v1.0.53 Phase 3: token 预算上限(prompt + completion 合计);null=不限制。
-         *  仅最外层委派需设置;递归子委派(subRequest)应置 null 以继承父级 budget(通过 ThreadLocal 传递)。 */
+        /** v1.0.53 Phase 3: token límite presupuestario(prompt + completion total);null=Sin restricciones.
+         *  Sólo es necesario establecer la delegación más externa;Subdelegación recursiva(subRequest)Debe establecerse en nulo para heredar del padre budget(Pasado a través de ThreadLocal). */
         val tokenBudget: Int? = null,
     ) {
         enum class TargetType { ASSISTANT, TEAM }
@@ -87,18 +87,18 @@ object DelegationContract {
     }
 
     /**
-     * 委派结果。
+     * Delegar resultados.
      *
-     * @param requestId 对应请求 id
-     * @param success 是否成功
-     * @param resultText 结果文本(成功时的主要输出)
-     * @param error 错误信息(success=false 时非空)
-     * @param metadata 执行元数据(耗时/token/模型等)
-     * @param subResults 团队/工作流执行时,各成员子结果(扁平列表,用于聚合计算)
-     * @param artifacts 本次委派产生或引用的产物 id
-     * @param threadId 子 agent 线程 ID(首次委派时生成,可用于后续续接)
-     * @param taskId 异步任务 ID(非阻塞模式下返回,用于查询状态/取消)
-     * @param subResultTree 子结果树(团队工作流用,每个子节点的结果,用于 UI 树形展示)
+     * @param requestId Solicitud correspondiente id
+     * @param success ¿Tiene éxito?
+     * @param resultText texto del resultado(Resultado principal del éxito)
+     * @param error mensaje de error(success=false el tiempo no está vacío)
+     * @param metadata metadatos de ejecución(Consume mucho tiempo/token/Modelo etc)
+     * @param subResults equipo/Cuando se ejecuta el flujo de trabajo,Subresultados de cada miembro(lista plana,para cálculos agregados)
+     * @param artifacts Productos generados o referenciados por esta delegación id
+     * @param threadId hilo de agente secundario ID(Generado cuando se delega por primera vez,Se puede utilizar para extensiones posteriores.)
+     * @param taskId Tareas asincrónicas ID(Regresar en modo sin bloqueo,Se utiliza para consultar el estado./Cancelar)
+     * @param subResultTree árbol de subresultados(Flujo de trabajo del equipo,Resultados para cada nodo hijo,Se utiliza para la visualización del árbol de la interfaz de usuario)
      */
     @Serializable
     data class DelegationResult(
@@ -109,11 +109,11 @@ object DelegationContract {
         val metadata: ResultMetadata = ResultMetadata(),
         val subResults: List<DelegationResult> = emptyList(),
         val artifacts: List<String> = emptyList(),
-        /** 子 agent 线程 ID(首次委派时生成,可用于后续续接)。 */
+        /** hilo de agente secundario ID(Generado cuando se delega por primera vez,Se puede utilizar para extensiones posteriores.). */
         val threadId: String? = null,
-        /** 异步任务 ID(非阻塞模式下返回,用于查询状态/取消)。 */
+        /** Tareas asincrónicas ID(Regresar en modo sin bloqueo,Se utiliza para consultar el estado./Cancelar). */
         val taskId: String? = null,
-        /** 子结果树(团队工作流用,每个子节点的结果,用于 UI 树形展示)。 */
+        /** árbol de subresultados(Flujo de trabajo del equipo,Resultados para cada nodo hijo,Se utiliza para la visualización del árbol de la interfaz de usuario). */
         val subResultTree: List<SubResultNode>? = null,
     ) {
         @Serializable
@@ -125,20 +125,20 @@ object DelegationContract {
             val modelId: String? = null,
             val assistantId: String? = null,
             val assistantName: String? = null,
-            /** v1.0.53 Phase 2: 工作流 journal runId(供调用方 resume 重试用)。 */
+            /** v1.0.53 Phase 2: Flujo de trabajo journal runId(Para que la persona que llama continúe y vuelva a intentarlo.). */
             val journalRunId: String? = null,
         )
 
-        /** 是否存在可阅读的文本结果。 */
+        /** Si hay un resultado de texto legible. */
         val hasResultText: Boolean get() = resultText.isNotBlank()
 
-        /** 汇总自身与所有子结果的错误信息。 */
+        /** Resume los mensajes de error para sí mismo y para todos los subresultados. */
         fun collectErrors(): List<String> = buildList {
             if (!success && !error.isNullOrBlank()) add(error)
             subResults.forEach { addAll(it.collectErrors()) }
         }
 
-        /** 汇总所有子结果的文本(用于团队结果聚合)。 */
+        /** Resumir el texto de todos los subresultados.(Utilizado para la agregación de resultados del equipo.). */
         fun collectResultTexts(): List<String> = buildList {
             if (hasResultText) add(resultText)
             subResults.forEach { addAll(it.collectResultTexts()) }
@@ -146,11 +146,11 @@ object DelegationContract {
     }
 
     /**
-     * 子结果树节点(用于 UI 树形展示)。
+     * nodo del árbol de subresultados(Se utiliza para la visualización del árbol de la interfaz de usuario).
      *
-     * 与 [DelegationResult.subResults] 的区别:
-     *  - subResults 是扁平的 DelegationResult 列表,用于聚合计算
-     *  - SubResultNode 是递归树形结构,用于 UI 展示团队工作流成员的执行状态
+     * con [DelegationResult.subResults] la diferencia:
+     *  - subResults es una lista plana de DelegationResult,para cálculos agregados
+     *  - SubResultNode es una estructura de árbol recursiva,Se utiliza para que la interfaz de usuario muestre el estado de ejecución de los miembros del flujo de trabajo del equipo.
      */
     @Serializable
     data class SubResultNode(
@@ -162,14 +162,14 @@ object DelegationContract {
         val resultText: String? = null,
         val error: String? = null,
         val durationMs: Long = 0,
-        val children: List<SubResultNode> = emptyList(), // 递归子节点
+        val children: List<SubResultNode> = emptyList(), // nodo hijo recursivo
     )
 
     /**
-     * 团队工作流节点。
+     * Nodo de flujo de trabajo del equipo.
      *
-     * 用于描述团队内多 Agent 的执行顺序与依赖关系,
-     * 是后续串行/并行/条件分支编排的基础结构。
+     * Se utiliza para describir la secuencia de ejecución y las dependencias de múltiples agentes dentro del equipo.,
+     * es la serie posterior/paralelo/La estructura básica de la orquestación de ramas condicionales.
      */
     @Serializable
     data class TeamWorkflowNode(
@@ -184,7 +184,7 @@ object DelegationContract {
     }
 
     /**
-     * 团队工作流定义。
+     * Definición del flujo de trabajo del equipo.
      */
     @Serializable
     data class TeamWorkflow(
@@ -194,24 +194,24 @@ object DelegationContract {
         enum class AggregationStrategy { MERGE, VOTE, EXPERT_REVIEW, FIRST_SUCCESS, LLM_REVIEW }
     }
 
-    /** 把 [DelegationResult] 序列化为 JSON 字符串。 */
+    /** poner [DelegationResult] Serializado a una cadena JSON. */
     fun resultToJson(result: DelegationResult): String {
         return io.zer0.common.AppJson.encodeToString(DelegationResult.serializer(), result)
     }
 
-    /** 从 JSON 字符串解析 [DelegationResult]。 */
+    /** Analizar desde una cadena JSON [DelegationResult]. */
     fun resultFromJson(json: String): DelegationResult? {
         return runCatching {
             io.zer0.common.AppJson.decodeFromString(DelegationResult.serializer(), json)
         }.getOrNull()
     }
 
-    /** 把 [DelegationRequest] 序列化为 JSON 字符串。 */
+    /** poner [DelegationRequest] Serializado a una cadena JSON. */
     fun requestToJson(request: DelegationRequest): String {
         return io.zer0.common.AppJson.encodeToString(DelegationRequest.serializer(), request)
     }
 
-    /** 从 JSON 字符串解析 [DelegationRequest]。 */
+    /** Analizar desde una cadena JSON [DelegationRequest]. */
     fun requestFromJson(json: String): DelegationRequest? {
         return runCatching {
             io.zer0.common.AppJson.decodeFromString(DelegationRequest.serializer(), json)

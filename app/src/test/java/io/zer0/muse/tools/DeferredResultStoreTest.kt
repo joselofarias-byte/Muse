@@ -16,9 +16,9 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 审查修复 (2.0) 配套测试:
- * - B-33: resolve/fail 并发不丢条目(CAS 原子更新)
- * - A-15: abort 后 resolve/fail 拒绝回灌 + abort 取消登记的 Job
+ * Revisión de corrección (2.0) Prueba de soporte:
+ * - B-33: resolve/fail Concurrencia sin perder entradas(CAS Actualizaciones atómicas)
+ * - A-15: abort Después de resolver/fallar rechaza la recarga + cancelar cancela el registro Job
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DeferredResultStoreTest {
@@ -35,21 +35,21 @@ class DeferredResultStoreTest {
         Dispatchers.resetMain()
     }
 
-    // ── A-15: abort 语义 ────────────────────────────────────────────
+    // ── A-15: abort Semántica ────────────────────────────────────────────
 
     @Test
-    fun `abort 后 resolve 拒绝回灌`() = runTest {
+    fun `abort Rechazar después de resolver`() = runTest {
         val store = DeferredResultStore()
         store.defer("t1", "s1", null, null, "task")
         store.abort("t1")
-        store.resolve("t1", "结果")
+        store.resolve("t1", "resultado")
 
         assertEquals(0, store.consumeCompleted("s1").size)
         assertEquals(DeferredResultStore.TaskStatus.ABORTED, store.getTask("t1")?.status)
     }
 
     @Test
-    fun `abort 后 fail 拒绝回灌`() = runTest {
+    fun `abort Rechazar la recarga después de fallar`() = runTest {
         val store = DeferredResultStore()
         store.defer("t1", "s1", null, null, "task")
         store.abort("t1")
@@ -60,7 +60,7 @@ class DeferredResultStoreTest {
     }
 
     @Test
-    fun `abort 取消登记的后台 Job`() = runTest {
+    fun `abort Cancelar fondo de registro Job`() = runTest {
         val store = DeferredResultStore()
         var cancelled = false
         val job = Job()
@@ -68,45 +68,45 @@ class DeferredResultStoreTest {
         store.attachJob("t1", job)
         store.abort("t1")
 
-        assertTrue("abort 必须取消登记的后台 Job", cancelled)
+        assertTrue("abort Backstage que debe ser cancelado Job", cancelled)
     }
 
     @Test
-    fun `未中止任务 resolve 正常回灌`() = runTest {
+    fun `La tarea no se aborta resolver recarga normal`() = runTest {
         val store = DeferredResultStore()
         store.defer("t1", "s1", null, null, "task")
-        store.resolve("t1", "结果")
+        store.resolve("t1", "resultado")
 
         val consumed = store.consumeCompleted("s1")
         assertEquals(1, consumed.size)
-        assertEquals("结果", consumed[0].result)
+        assertEquals("resultado", consumed[0].result)
         assertEquals(DeferredResultStore.TaskStatus.RESOLVED, consumed[0].status)
     }
 
-    // ── B-33: 并发原子性 ────────────────────────────────────────────
+    // ── B-33: Atomicidad de concurrencia ────────────────────────────────────────────
 
     @Test
-    fun `并发 resolve 多个任务不丢条目`() = runTest {
+    fun `Resuelva simultáneamente múltiples tareas sin perder entradas`() = runTest {
         val store = DeferredResultStore()
         repeat(50) { i -> store.defer("t$i", "s1", null, null, "task$i") }
 
-        // 模拟多子任务并发完成:全部在各自协程中 resolve
+        // Simular la finalización simultánea de múltiples subtareas:Todos en sus respectivas corrutinas. resolve
         val jobs = (0 until 50).map { i ->
             launch(Dispatchers.IO) { store.resolve("t$i", "result$i") }
         }
         jobs.forEach { it.join() }
 
         val consumed = store.consumeCompleted("s1")
-        assertEquals("并发 resolve 后全部条目都应回灌", 50, consumed.size)
+        assertEquals("Todas las entradas deben devolverse después de una resolución simultánea", 50, consumed.size)
         assertEquals(
-            "结果内容不得丢失",
+            "El contenido del resultado no debe perderse.",
             (0 until 50).map { "result$it" }.toSet(),
             consumed.map { it.result }.toSet(),
         )
     }
 
     @Test
-    fun `并发 resolve 与 abort 竞争时已中止任务不出现`() = runTest {
+    fun `Las tareas abortadas no aparecen cuando la resolución concurrente compite con la cancelación`() = runTest {
         val store = DeferredResultStore()
         repeat(20) { i -> store.defer("t$i", "s1", null, null, "task$i") }
 
@@ -122,14 +122,14 @@ class DeferredResultStoreTest {
         jobs.forEach { it.join() }
 
         val consumed = store.consumeCompleted("s1")
-        // 只有奇数任务(未中止)应回灌
+        // Solo tareas impares(no abortado)Se debe recargar
         assertEquals(10, consumed.size)
         assertTrue(consumed.all { it.status == DeferredResultStore.TaskStatus.RESOLVED })
         assertFalse(consumed.any { it.taskId.removePrefix("t").toInt() % 2 == 0 })
     }
 
     @Test
-    fun `consumeCompleted 消费后不残留`() = runTest {
+    fun `consumeCompleted Sin residuos después del consumo`() = runTest {
         val store = DeferredResultStore()
         store.defer("t1", "s1", null, null, "task")
         store.resolve("t1", "r")

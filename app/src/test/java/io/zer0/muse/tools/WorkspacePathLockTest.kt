@@ -17,18 +17,18 @@ import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 路径锁本身的行为：按路径串行、跨路径并行、等锁超时、异常与取消都不留锁。
+ * El comportamiento del bloqueo de ruta en sí: serialización por ruta, paralelización entre rutas, tiempo de espera de bloqueo, excepción y cancelación no abandonarán el bloqueo.
  *
- * 这里不碰 Android 环境，锁是纯协程实现；工作区那一层的接线见
- * [WorkspaceEditConcurrencyTest]。
+ * El entorno de Android no se toca aquí, el bloqueo es una implementación de rutina pura; Vea el cableado a nivel del espacio de trabajo.
+ * [WorkspaceEditConcurrencyTest].
  */
 class WorkspacePathLockTest {
 
-    /** 记录同时处于临界区的最大数量。 */
+    /** Registre el número máximo de secciones críticas simultáneas. */
     private class ConcurrencyProbe {
         private val active = AtomicInteger(0)
 
-        /** 历史峰值。 */
+        /** pico histórico. */
         private val peak = AtomicInteger(0)
 
         val maxActive: Int get() = peak.get()
@@ -45,22 +45,22 @@ class WorkspacePathLockTest {
     }
 
     @Test
-    fun `同一文件的不同写法映射到同一把锁`() {
+    fun `Se asignan diferentes métodos de escritura del mismo archivo al mismo bloqueo`() {
         val lock = WorkspacePathLock()
         val base = lock.keyOf("main", "a.txt")
 
         assertEquals(base, lock.keyOf("main", "./a.txt"))
         assertEquals(base, lock.keyOf("main", "/a.txt"))
         assertEquals(base, lock.keyOf("main", "a.txt/"))
-        // 大小写不敏感的文件系统上这是同一个文件
+        // Este es el mismo archivo en un sistema de archivos que no distingue entre mayúsculas y minúsculas.
         assertEquals(base, lock.keyOf("main", "A.TXT"))
-        // 不同文件、不同挂载各自独立
+        // Diferentes archivos y diferentes montajes son independientes entre sí.
         assertNotEquals(base, lock.keyOf("main", "b.txt"))
         assertNotEquals(base, lock.keyOf("album", "a.txt"))
     }
 
     @Test
-    fun `同一路径的并发进入被串行化`() = runBlocking {
+    fun `Las entradas simultáneas en la misma ruta se serializan`() = runBlocking {
         val lock = WorkspacePathLock()
         val probe = ConcurrencyProbe()
         val done = AtomicInteger(0)
@@ -78,12 +78,12 @@ class WorkspacePathLockTest {
             }.awaitAll()
         }
 
-        assertEquals("同一文件不该有两个持有者", 1, probe.maxActive)
-        assertEquals("8 次调用都应完成", 8, done.get())
+        assertEquals("Un mismo archivo no debe tener dos titulares", 1, probe.maxActive)
+        assertEquals("8 Todas las llamadas deben completarse.", 8, done.get())
     }
 
     @Test
-    fun `不同路径互不阻塞`() = runBlocking {
+    fun `Los diferentes caminos no se bloquean entre sí`() = runBlocking {
         val lock = WorkspacePathLock()
         val probe = ConcurrencyProbe()
 
@@ -97,11 +97,11 @@ class WorkspacePathLockTest {
             }.awaitAll()
         }
 
-        assertTrue("不同文件应能并行,实际峰值=${probe.maxActive}", probe.maxActive > 1)
+        assertTrue("Diferentes archivos deberían poder ejecutarse en paralelo,pico real=${probe.maxActive}", probe.maxActive > 1)
     }
 
     @Test
-    fun `等锁超时给出明确错误并马上返回`() = runBlocking {
+    fun `Espere a que expire el tiempo de bloqueo, indique un error claro y regrese inmediatamente`() = runBlocking {
         val lock = WorkspacePathLock(acquireTimeoutMs = 100)
         val holding = CompletableDeferred<Unit>()
         val holder = launch(Dispatchers.Default) {
@@ -116,31 +116,31 @@ class WorkspacePathLockTest {
         val failure = runCatching { lock.withLock("main", "busy.txt", "busy.txt") { } }.exceptionOrNull()
         val elapsed = System.currentTimeMillis() - startedAt
 
-        assertTrue("应当是工作区 IO 错误,实际=$failure", failure is WorkspaceIoException)
+        assertTrue("Debería ser un error de IO en el espacio de trabajo,real=$failure", failure is WorkspaceIoException)
         assertTrue(
-            "错误文案要说明是等锁超时,实际=${failure?.message}",
-            failure?.message?.contains("等待文件锁超时") == true,
+            "El texto de error debe indicar que está esperando a que expire el tiempo de bloqueo.,real=${failure?.message}",
+            failure?.message?.contains("Esperando que se agote el tiempo de bloqueo del archivo") == true,
         )
-        assertTrue("不该等到持锁方结束才返回,实际等了 ${elapsed}ms", elapsed < 1_500)
+        assertTrue("No debes esperar hasta que se acabe el candado antes de regresar.,Realmente esperé ${elapsed}ms", elapsed < 1_500)
         holder.join()
     }
 
     @Test
-    fun `临界区抛异常后锁仍然释放`() = runBlocking {
+    fun `El bloqueo aún se libera después de que la sección crítica genera una excepción`() = runBlocking {
         val lock = WorkspacePathLock(acquireTimeoutMs = 500)
 
         val boom = runCatching {
             lock.withLock("main", "a.txt", "a.txt") { throw IllegalStateException("boom") }
         }
-        assertTrue("异常应原样上抛,实际=$boom", boom.exceptionOrNull() is IllegalStateException)
+        assertTrue("Las excepciones deben lanzarse tal cual,real=$boom", boom.exceptionOrNull() is IllegalStateException)
 
         var ran = false
         lock.withLock("main", "a.txt", "a.txt") { ran = true }
-        assertTrue("异常路径没释放锁:后续调用无法进入", ran)
+        assertTrue("La ruta de excepción no libera el bloqueo:Las llamadas posteriores no pueden entrar", ran)
     }
 
     @Test
-    fun `等待者被取消后锁仍然可用`() = runBlocking {
+    fun `El candado sigue disponible después de cancelar el servicio del camarero`() = runBlocking {
         val lock = WorkspacePathLock(acquireTimeoutMs = 200)
         val holding = CompletableDeferred<Unit>()
         val holder = launch(Dispatchers.Default) {
@@ -160,6 +160,6 @@ class WorkspacePathLockTest {
 
         var ran = false
         lock.withLock("main", "c.txt", "c.txt") { ran = true }
-        assertTrue("被取消的等待者把锁带走了", ran)
+        assertTrue("El camarero cancelado le quitó el candado.", ran)
     }
 }

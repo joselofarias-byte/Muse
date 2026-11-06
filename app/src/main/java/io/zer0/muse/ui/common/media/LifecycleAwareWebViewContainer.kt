@@ -11,58 +11,58 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 
 /**
- * v2.6.6: 持有“上次已加载的 HTML”的小容器。
+ * v2.6.6: mantener“último cargado HTML”recipiente pequeño.
  *
- * 用类包一层是为了让 `remember { ... }` 能跨重组保留可变状态
- * （直接 remember 一个 String 值会被重组时的参数变化重置，无法用于“是否变化”判定）。
+ * El propósito de utilizar una capa de paquete de clases es permitir `remember { ... }` Capacidad para preservar el estado mutable en todas las reorganizaciones.
+ * (El recuerdo directo de un valor de cadena se restablecerá mediante cambios de parámetros durante la reorganización y no se podrá utilizar“Ya sea para cambiar”sentencia).
  */
 private class LastLoadedHtml {
     var value: String? = null
 }
 
 /**
- * 生命周期感知的 WebView Composable 容器。
+ * Contenedor componible WebView compatible con el ciclo de vida.
  *
- * v1.88 已知限制修复: 替代项目中直接使用 `AndroidView { WebView(it) }` 的模式,
- * 统一为 [LifecycleAwareWebView],自动处理:
+ * v1.88 Correcciones de limitaciones conocidas: Usar directamente en proyectos alternativos. `AndroidView { WebView(it) }` modo,
+ * unificado como [LifecycleAwareWebView],Procesamiento automático:
  *
- *  - 创建 [LifecycleAwareWebView] 并注册到 [LocalLifecycleOwner];
- *  - ON_PAUSE / ON_RESUME 时自动暂停/恢复 JS 定时器与动画(暂停 [WebView.pauseTimers] /
- *    [WebView.onPause] / 恢复 [WebView.resumeTimers] / [WebView.onResume]);
- *  - ON_DESTROY 时销毁 WebView 并注销观察者;
- *  - Composable 离开组合时(宿主未销毁的场景)兜底 destroy + removeObserver,避免泄漏。
+ *  - crear [LifecycleAwareWebView] y regístrate para [LocalLifecycleOwner];
+ *  - ON_PAUSE / ON_RESUME Pausa automáticamente cuando/Restaurar temporizadores y animaciones JS(pausa [WebView.pauseTimers] /
+ *    [WebView.onPause] / restaurar [WebView.resumeTimers] / [WebView.onResume]);
+ *  - ON_DESTROY Destruya WebView y cancele el registro del observador cuando;
+ *  - Composable Al salir del grupo(Escenas donde el anfitrión no es destruido.)Ten todo en cuenta destroy + removeObserver,Evite fugas.
  *
- * 调用方只需关注业务配置:
- *  - [htmlContent] + [baseUrl]:自动调用 [WebView.loadDataWithBaseURL] 加载;
- *  - [javaScriptEnabled] / [domStorageEnabled]:常见 settings 开关;
- *  - [webViewClient]:自定义导航拦截(默认不拦截);
- *  - [onWebViewCreated]:创建后做额外 settings 配置或自定义加载逻辑;
- *  - [onPageFinished]:页面加载完成回调。
+ * La persona que llama solo debe prestar atención a la configuración empresarial.:
+ *  - [htmlContent] + [baseUrl]:llamada automática [WebView.loadDataWithBaseURL] Cargar;
+ *  - [javaScriptEnabled] / [domStorageEnabled]:Interruptores de configuración comunes;
+ *  - [webViewClient]:Interceptación de navegación personalizada(No interceptado por defecto);
+ *  - [onWebViewCreated]:Después de la creación, realice configuraciones adicionales o personalice la lógica de carga;
+ *  - [onPageFinished]:Devolución de llamada cuando se completa la carga de la página.
  *
- * 安全默认(覆盖原项目所有 WebView 使用点的通用配置):
- *  - 禁用文件/内容访问(防止 file:// 跨域读取);
- *  - 需用户手势播放媒体;
- *  - 背景透明(可由 [transparentBackground] 关闭)。
+ * valor predeterminado seguro(Configuración común que cubre todos los puntos de uso de WebView en el proyecto original.):
+ *  - Deshabilitar archivos/Acceso al contenido(Evitar lecturas entre dominios file://);
+ *  - Requiere gestos del usuario para reproducir medios;
+ *  - fondo transparente(puede ser [transparentBackground] cerrar).
  *
- * @param modifier Compose 修饰符
- * @param htmlContent 待加载的 HTML 内容;为 null 时不自动加载(由调用方在 [onWebViewCreated] 中加载)
- * @param baseUrl 加载 HTML 时的 base URL;`file:///android_asset/` 用于加载本地 assets 资源,
- *                null 表示无 base URL
- * @param mimeType 内容类型,默认 text/html
- * @param encoding 编码,默认 UTF-8
- * @param historyUrl 历史记录 URL,通常 null
- * @param javaScriptEnabled 是否启用 JavaScript,默认 false(SVG/HTML 卡片禁用,公式/图表启用)
- * @param domStorageEnabled 是否启用 DOM storage,默认 false
- * @param transparentBackground 是否将背景设为透明,默认 true
- * @param webViewClient 自定义 WebViewClient;不传则使用默认 WebViewClient(不拦截导航)
- * @param onWebViewCreated WebView 创建后回调,调用方可在此做额外 settings 配置或自定义加载
- * @param onWebViewReleased WebView 即将销毁前回调(对应 AndroidView 的 onRelease),
- *        调用方可在此清理对 WebView 的引用,避免持有已销毁实例
- * @param onPageFinished 页面加载完成回调
+ * @param modifier Compose modificador
+ * @param htmlContent Contenido HTML a cargar;No cargar automáticamente cuando sea nulo(por la persona que llama en [onWebViewCreated] cargando en)
+ * @param baseUrl Al cargar HTML base URL;`file:///android_asset/` Se utiliza para cargar recursos de activos locales.,
+ *                null significa ninguno base URL
+ * @param mimeType tipo de contenido,Predeterminado text/html
+ * @param encoding codificación,Predeterminado UTF-8
+ * @param historyUrl Historia URL,normalmente null
+ * @param javaScriptEnabled Ya sea para habilitar JavaScript,Predeterminado false(SVG/HTML Tarjeta inhabilitada,fórmula/Gráfico habilitado)
+ * @param domStorageEnabled Ya sea para habilitar DOM storage,Predeterminado false
+ * @param transparentBackground Si hacer que el fondo sea transparente,Predeterminado true
+ * @param webViewClient Personalizar WebViewClient;Si no se aprueba, se utilizará el valor predeterminado. WebViewClient(No interceptar la navegación)
+ * @param onWebViewCreated WebView Devolución de llamada después de la creación,La persona que llama puede realizar configuraciones adicionales o cargas personalizadas aquí
+ * @param onWebViewReleased WebView Devolución de llamada antes de la destrucción(Correspondiente a AndroidView onRelease),
+ *        La persona que llama puede limpiar la referencia a WebView aquí,Evite retener instancias destruidas
+ * @param onPageFinished Devolución de llamada completa de carga de página
  */
-// v2.6.7: 参数已达 13 个。这是 WebView 的统一包装点，参数是原生 WebSettings /
-// WebViewClient 的镜像；拆成配置对象会让 20+ 个调用点全部改写，
-// 收益不匹配风险。在此声明设计如此（与 ToolRegistrarBootstrapper 同口径）。
+// v2.6.7: Hay 13 parámetros. Este es el punto de empaquetado unificado de WebView y los parámetros son nativos. WebSettings /
+// WebViewClient espejo; la división en objetos de configuración hará que se reescriban los más de 20 puntos de llamada.
+// Los rendimientos no coinciden con los riesgos. Aquí se afirma que el diseño es así (mismo calibre que ToolRegistrarBootstrapper).
 @Suppress("LongParameterList")
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -81,24 +81,24 @@ fun LifecycleAwareWebViewContainer(
     onWebViewReleased: ((WebView) -> Unit)? = null,
     onPageFinished: ((WebView, String) -> Unit)? = null,
     /**
-     * v2.6.7: 是否允许 WebView 自身滚动。
+     * v2.6.7: Si se debe permitir que WebView se desplace por sí solo.
      *
-     * 聊天内联卡片一律 false：高度已由内容决定，再允许内部滚动就会
-     * 出现双重滚动（卡片内一个 + 聊天列表一个）与多余滚动条。
-     * 全屏预览等确实需要滚动的场景传 true。
+     * Las tarjetas de chat en línea siempre son falsas: la altura está determinada por el contenido y el desplazamiento interno
+     * Aparece doble desplazamiento (uno en la tarjeta + otro en la lista de chat) con barras de desplazamiento redundantes.
+     * Pase verdadero para escenas que realmente requieren desplazamiento, como la vista previa en pantalla completa.
      */
     scrollable: Boolean = false,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // v2.6.6: 记住上次已加载的 HTML，避免内容未变时重复 loadDataWithBaseURL。
-    // 必须用 remember 跨重组保留，否则每次重组重置 → 又变回每帧重载。
+    // v2.6.6: Recuerde el último HTML cargado para evitar repetir loadDataWithBaseURL cuando el contenido no haya cambiado.
+    // Recuerde debe usarse para conservarlo en todas las reorganizaciones; de lo contrario, se restablecerá cada vez que se reorganice. → Vuelve a recargar cada cuadro.
     val lastLoadedHtmlRef = remember { LastLoadedHtml() }
 
-    // 解析最终使用的 WebViewClient:
-    //  - 调用方提供则直接用;
-    //  - 否则若需要 onPageFinished,包装一个默认 client 转发回调;
-    //  - 否则用最简 WebViewClient。
+    // Analizar el final usado WebViewClient:
+    //  - Si lo proporciona la persona que llama, úselo directamente.;
+    //  - De lo contrario si es necesario onPageFinished,Envolver una devolución de llamada de reenvío de cliente predeterminada;
+    //  - De lo contrario, utilice el WebViewClient más simple.
     val effectiveClient = remember(webViewClient, onPageFinished) {
         when {
             webViewClient != null -> webViewClient
@@ -114,29 +114,29 @@ fun LifecycleAwareWebViewContainer(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            // 通过工厂创建 LifecycleAwareWebView 并自动绑定到当前 LifecycleOwner
+            // Cree LifecycleAwareWebView a través de fábrica y vincúlelo automáticamente al actual LifecycleOwner
             LifecycleAwareWebViewFactory.create(ctx, lifecycleOwner).apply {
                 settings.javaScriptEnabled = javaScriptEnabled
                 settings.domStorageEnabled = domStorageEnabled
-                // 安全默认:禁用文件/内容访问,需用户手势播放媒体
+                // valor predeterminado seguro:Deshabilitar archivos/Acceso al contenido,Requiere gestos del usuario para reproducir medios
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
                 settings.mediaPlaybackRequiresUserGesture = true
-                // v2.6.6 安全加固(所有卡片公共路径):
-                //  - 禁止文件/内容 URL 跨域读取(含 file:// 走 assets 的场景也已关);
-                //  - 禁止 JS 弹窗(window.alert/confirm/prompt)—— 模型产卡片可能滥用;
-                //  - 禁止混合内容与外部协议导航;
-                //  - 禁地理位置/数据库等非必要能力。
+                // v2.6.6 Refuerzo de seguridad(Camino común para todas las tarjetas.):
+                //  - Archivos prohibidos/Lectura de URL de contenido entre dominios(También se han desactivado los escenarios que contienen file:// para acceder a los activos.);
+                //  - Deshabilitar ventanas emergentes JS(window.alert/confirm/prompt)—— Se puede abusar de las tarjetas producidas con modelos;
+                //  - Se prohíbe la navegación por contenidos mixtos y protocolos externos.;
+                //  - Ubicación geográfica prohibida/Capacidades no esenciales como bases de datos.
                 settings.javaScriptCanOpenWindowsAutomatically = false
                 settings.setGeolocationEnabled(false)
                 settings.databaseEnabled = false
                 settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                // v2.6.7: 默认禁止 WebView 自身滚动与滚动条。
+                // v2.6.7: El desplazamiento y las barras de desplazamiento de WebView están deshabilitados de forma predeterminada.
                 //
-                // 卡片的高度已经由内容决定（外层把高度设成真实内容高），
-                // 若 WebView 仍可滚，就会出现“卡片里又一个可滚窗口”：
-                // 既多出一条竖向滚动条，又会吃掉外层消息列表的滑动手势。
-                // 需要滚动的场景（全屏预览）显式传 scrollable = true。
+                // La altura de la tarjeta ha sido determinada por el contenido (la capa exterior establece la altura a la altura del contenido real),
+                // Si aún se puede desplazar el WebView, aparecerá“Otra ventana desplazable en la tarjeta.”:
+                // No sólo tiene una barra de desplazamiento vertical adicional, sino que también consume el gesto de deslizamiento de la lista de mensajes exterior.
+                // Las escenas que requieren desplazamiento (vista previa en pantalla completa) se pasan explícitamente scrollable = true.
                 if (!scrollable) {
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
@@ -147,9 +147,9 @@ fun LifecycleAwareWebViewContainer(
                     setBackgroundColor(Color.TRANSPARENT)
                 }
                 this.webViewClient = effectiveClient
-                // 调用方自定义配置(自定义 settings / 自定义加载逻辑等)
+                // Configuración personalizada de la persona que llama(Configuraciones personalizadas/lógica de carga personalizada, etc.)
                 onWebViewCreated?.invoke(this)
-                // 加载 HTML 内容(htmlContent 为 null 时由调用方在 onWebViewCreated 中加载)
+                // Cargar contenido HTML(htmlContent Cuando es nulo, lo carga la persona que llama en onWebViewCreated)
                 if (htmlContent != null) {
                     lastLoadedHtmlRef.value = htmlContent
                     loadDataWithBaseURL(baseUrl, htmlContent, mimeType, encoding, historyUrl)
@@ -157,19 +157,19 @@ fun LifecycleAwareWebViewContainer(
             }
         },
         update = { webView ->
-            // v2.6.6: 内容未变时不重新加载 —— 原逻辑每次重组都 loadDataWithBaseURL,
-            // 流式渐进渲染下会导致每个 token 重载整个 WebView(卡死)。
-            // 只有 HTML 真正变化时才刷新。
+            // v2.6.6: No recargar cuando el contenido permanece sin cambios —— Cada vez que se reorganiza la lógica original. loadDataWithBaseURL,
+            // La transmisión de renderizado progresivo hará que cada token recargue todo el WebView(atascado).
+            // Actualice solo cuando el HTML realmente cambie.
             if (htmlContent != null && htmlContent != lastLoadedHtmlRef.value) {
                 lastLoadedHtmlRef.value = htmlContent
                 webView.loadDataWithBaseURL(baseUrl, htmlContent, mimeType, encoding, historyUrl)
             }
         },
         onRelease = { webview ->
-            // Composable 离开组合时调用(宿主未销毁的场景,如条件渲染切换):
-            //  - 通知调用方清理对 WebView 的引用(在 destroy 之前);
-            //  - 注销生命周期观察者,避免后续 ON_DESTROY 重复 destroy 已销毁实例;
-            //  - 兜底 destroy 释放 native 资源。
+            // Composable Llamado al salir de una combinación.(Escenas donde el anfitrión no es destruido.,Como el cambio de renderizado condicional):
+            //  - Notificar a la persona que llama para que limpie la referencia a WebView(antes de destruir);
+            //  - Dar de baja al observador del ciclo de vida,Evite la posterior destrucción repetida de ON_DESTROY de instancias ya destruidas;
+            //  - Destruir completamente libera recursos nativos.
             onWebViewReleased?.invoke(webview)
             if (webview is LifecycleAwareWebView) {
                 lifecycleOwner.lifecycle.removeObserver(webview)

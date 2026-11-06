@@ -1,23 +1,23 @@
 /**
- * 长消息列表的窗口化计算（纯函数）。
+ * Cálculo en ventana de listas de mensajes largas (función pura).
  *
- * 为什么选「滚动位置计算」而不是 IntersectionObserver：这里要的是**确定的索引区间**
- * （顶部 / 底部各要垫多高），滚动位置能直接算出可视首尾；IO 只能告诉你「某个哨兵可见了」，
- * 还得多挂两个哨兵元素、处理异步回调，反而绕。代价是行高只能估——所以用已渲染行的
- * 平均高度回填，偏差超过阈值才重算。
+ * ¿Por qué elegir "Cálculo de posición de desplazamiento" en lugar de IntersectionObserver? Lo que desea aquí es**Rango de índice determinado**
+ * (¿Qué altura debe tener la parte superior/inferior?) La posición de desplazamiento puede calcular directamente la cabeza y la cola visibles;IO Sólo puedo decirte "cierto centinela es visible",
+ * Hay dos elementos centinela más que colgar y devoluciones de llamada asincrónicas que manejar, lo cual es una pérdida de tiempo. El precio es alto y sólo se puede estimar.——Entonces usa la fila renderizada
+ * La altura promedio se completa y la desviación se vuelve a calcular solo cuando la desviación excede el umbral.
  */
 export const WINDOW_THRESHOLD = 150;
 export const WINDOW_OVERSCAN = 20;
-/** 还没量到任何行高时的兜底估值（一条消息 + 间距的常见高度）。 */
+/** Valoración del resultado final sin medir ninguna altura de línea (altura común de un mensaje + espaciado). */
 export const DEFAULT_ROW_HEIGHT = 72;
 
 export interface WindowPlan {
-  /** 是否真的启用了窗口化（条目不超过阈值时为 false，全部渲染）。 */
+  /** Si las ventanas están realmente habilitadas (falso si las entradas no superan el umbral, todas se representan). */
   readonly active: boolean;
-  /** 渲染 [start, end) 这一段。 */
+  /** renderizado [start, end) este párrafo. */
   readonly start: number;
   readonly end: number;
-  /** 顶部 / 底部等高占位的高度（px，用于保持滚动高度不跳）。 */
+  /** La altura de la ocupación de igual altura superior/inferior (px, utilizado para evitar que la altura del desplazamiento salte). */
   readonly topPad: number;
   readonly bottomPad: number;
 }
@@ -26,9 +26,9 @@ export interface WindowInput {
   readonly itemCount: number;
   readonly scrollTop: number;
   readonly viewportHeight: number;
-  /** 已渲染行的平均高度；0 表示还没量到。 */
+  /** Altura promedio de las filas renderizadas;0 Significa que aún no se ha medido. */
   readonly averageHeight: number;
-  /** 贴底时窗口锚在末尾（聊天默认在底部）。 */
+  /** Cuando se pega en la parte inferior, el ancla de la ventana está al final (el chat está en la parte inferior de forma predeterminada). */
   readonly pinnedToEnd: boolean;
   readonly threshold?: number;
   readonly overscan?: number;
@@ -71,7 +71,7 @@ export function planWindow(input: WindowInput): WindowPlan {
   };
 }
 
-/** 已渲染行的平均高度；没有可用行时返回 undefined。 */
+/** Altura promedio de las filas renderizadas; devuelve indefinido si no hay filas disponibles. */
 export function measureAverage(heights: readonly number[]): number | undefined {
   let total = 0;
   let used = 0;
@@ -83,7 +83,7 @@ export function measureAverage(heights: readonly number[]): number | undefined {
   return used === 0 ? undefined : total / used;
 }
 
-/** 行高估计要不要更新（默认 15% 死区，避免量一次抖一次）。 */
+/** Debe actualizarse la altura de la fila (el valor predeterminado es una zona muerta del 15 % para evitar fluctuaciones una vez medida). */
 export function shouldUpdateAverage(previous: number, next: number, tolerance = 0.15): boolean {
   if (!Number.isFinite(next) || next <= 0) return false;
   if (previous <= 0) return true;

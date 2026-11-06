@@ -68,16 +68,16 @@ import org.koin.androidx.compose.koinViewModel
 import java.util.UUID
 
 /**
- * P1-2: Worldbook(动态世界书)管理页。
+ * P1-2: Worldbook(Libro del mundo dinámico)Página de gestión.
  *
- * 顶层: 全部 Worldbook 条目列表(可新增/编辑/删除/启停)。
- * 编辑态: 单条 Worldbook 表单(基础信息 + 内容 + 高级注入配置)。
+ * nivel superior: Lista de todas las entradas del Worldbook(Se puede agregar/Editar/Eliminar/Iniciar y detener).
+ * Estado de edición: Formulario de libro mundial único(Información básica + contenidos + configuración avanzada de inyección).
  *
- * 与 LorebookScreen 的区别:
- *  - 支持 alwaysActive 常驻激活、scanDepth 多层扫描、isRegex 正则关键词
- *  - 支持 injectTarget(system/user/assistant) + injectPosition(prepend/append/at_depth) + insertionDepth
- *  - 支持 assistantId 绑定特定助手
- *  - 支持 SillyTavern World Info JSON 导入导出
+ * Diferencias con LorebookScreen:
+ *  - Admite activación de residentes siempre activos,scanDepth escaneo multicapa,isRegex Palabras clave habituales
+ *  - apoyo injectTarget(system/user/assistant) + injectPosition(prepend/append/at_depth) + insertionDepth
+ *  - Asistente de soporteId vinculado a un asistente específico
+ *  - Admite la importación y exportación de JSON de SillyTavern World Info
  */
 @Composable
 fun WorldBookScreen(onBack: () -> Unit, viewModel: WorldBookViewModel = koinViewModel()) {
@@ -106,7 +106,7 @@ fun WorldBookScreen(onBack: () -> Unit, viewModel: WorldBookViewModel = koinView
         return
     }
 
-    // 导入/导出反馈
+    // importar/Exportar comentarios
     LaunchedEffect(state.importMessage) {
         state.importMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -131,7 +131,7 @@ fun WorldBookScreen(onBack: () -> Unit, viewModel: WorldBookViewModel = koinView
                                         context,
                                         context.getString(R.string.worldbook_exported_to, file.absolutePath),
                                         Toast.LENGTH_LONG,
-                                    ).show() // 前端修复 (i18n-8)
+                                    ).show() // Correcciones en la interfaz (i18n-8)
                                 }
                             }
                         },
@@ -221,7 +221,7 @@ private fun WorldBookCard(entry: WorldBookEntryEntity, onEdit: () -> Unit, onDel
     val deleteCd = stringResource(R.string.worldbook_delete_cd)
     val alwaysActiveText = stringResource(R.string.worldbook_badge_always_active)
     val stateDesc = if (entry.enabled) enabledStateText else disabledStateText
-    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
+    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -352,7 +352,7 @@ private fun WorldBookEditPage(initial: WorldBookEntryEntity, isNew: Boolean, onB
     var content by rememberSaveable { mutableStateOf(initial.content) }
     var priority by rememberSaveable { mutableStateOf(initial.priority.toString()) }
     var caseSensitive by rememberSaveable { mutableStateOf(initial.caseSensitive) }
-    // v2.x: 全词匹配开关
+    // v2.x: Cambio de coincidencia de palabras completas
     var wholeWord by rememberSaveable { mutableStateOf(initial.wholeWord) }
     var isRegex by rememberSaveable { mutableStateOf(initial.isRegex) }
     var alwaysActive by rememberSaveable { mutableStateOf(initial.alwaysActive) }
@@ -491,7 +491,7 @@ private fun WorldBookEditPage(initial: WorldBookEntryEntity, isNew: Boolean, onB
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // v2.0.1: 注入目标/位置显示名本地化（value 保持 storage 存储键）。
+            // v2.0.1: inyectar objetivo/Localización del nombre para mostrar de la ubicación (value Conserve la clave de almacenamiento).
             val targetOptions = mutableListOf<Pair<String, String>>()
             for (t in WorldBookInjectTarget.entries) {
                 targetOptions += t.storage to stringResource(worldbookInjectTargetLabelRes(t))
@@ -538,7 +538,7 @@ private fun WorldBookEditPage(initial: WorldBookEntryEntity, isNew: Boolean, onB
                 onCheckedChange = { caseSensitive = it },
                 contentPadding = PaddingValues(0.dp),
             )
-            // v2.x: 全词匹配开关(仅子串模式生效;英文边界,CJK 自动退化)
+            // v2.x: Cambio de coincidencia de palabras completas(Sólo el modo de subcadena tiene efecto;frontera inglesa,CJK degradación automática)
             SettingsSwitchRow(
                 title = stringResource(R.string.worldbook_field_whole_word),
                 subtitle = stringResource(R.string.worldbook_field_whole_word_desc),
@@ -573,7 +573,7 @@ private fun WorldBookEditPage(initial: WorldBookEntryEntity, isNew: Boolean, onB
     }
 }
 
-/** v2.0.1: 注入目标本地化显示名（value 匹配仍用 storage 存储键）。 */
+/** v2.0.1: Inyecte el nombre para mostrar localizado de destino (value La coincidencia todavía usa la clave de almacenamiento). */
 @androidx.annotation.StringRes
 private fun worldbookInjectTargetLabelRes(target: WorldBookInjectTarget): Int = when (target) {
     WorldBookInjectTarget.SYSTEM -> R.string.worldbook_inject_target_system
@@ -581,7 +581,7 @@ private fun worldbookInjectTargetLabelRes(target: WorldBookInjectTarget): Int = 
     WorldBookInjectTarget.ASSISTANT -> R.string.worldbook_inject_target_assistant
 }
 
-/** v2.0.1: 注入位置本地化显示名（value 匹配仍用 storage 存储键）。 */
+/** v2.0.1: Nombre para mostrar localizado de la ubicación de inyección (value La coincidencia todavía usa la clave de almacenamiento). */
 @androidx.annotation.StringRes
 private fun worldbookInjectPositionLabelRes(position: WorldBookInjectPosition): Int = when (position) {
     WorldBookInjectPosition.PREPEND -> R.string.worldbook_inject_position_prepend

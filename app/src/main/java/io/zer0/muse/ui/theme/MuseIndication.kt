@@ -6,30 +6,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.node.DelegatableNode
 
 /**
- * 全局无涟漪按压指示器 — 按下时没有任何视觉覆盖。
+ * Indicador de prensa global sin ondas — No hay superposición visual cuando se presiona.
  *
- * 背景:此前全局使用 Material3 默认 ripple(圆形扩散遮罩)。其半径按"触摸点到组件
- * 最远角"计算,在整行宽卡片/列表行上点一下会扩散出覆盖大半张卡片的大灰圆,
- * 视觉噪音过大。产品决策:去掉所有圆形按压遮罩,按压反馈统一交给组件自绘
- * (例如弹窗按钮的按压缩放动画)。
+ * fondo:Anteriormente, Material3 se usaba globalmente de forma predeterminada. ripple(máscara de difusión circular). Su radio es"Punto de contacto con el componente
+ * esquina más alejada"calcular,Tarjetas en ancho de línea completo/Al hacer clic en la fila de la lista, se desplegará un gran círculo gris que cubrirá la mayor parte de la tarjeta.,
+ * Ruido visual excesivo. decisiones de producto:Quitar todas las máscaras de prensa circular.,La respuesta de la prensa se unifica y se entrega al componente para que lo dibuje por sí mismo.
+ * (Por ejemplo, la animación de compresión del botón emergente.).
  *
- * 由 MuseTheme 通过 `LocalIndication provides MuseNoRippleIndication` 全局注入;
- * M3 组件内部的 ripple 由同一层的 `LocalRippleConfiguration provides null` 关闭。
+ * Por MuseTheme `LocalIndication provides MuseNoRippleIndication` inyección global;
+ * M3 La ondulación dentro del componente se compone de la misma capa. `LocalRippleConfiguration provides null` Cerca.
  */
 object MuseNoRippleIndication : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode = NoOpIndicationNode()
 
-    // IndicationNodeFactory 把 equals/hashCode 声明为抽象成员(相等性参与 Compose 优化):
-    // 本工厂是单例,恒等比较;hashCode 用固定常量满足"同一工厂恒定"的契约。
+    // IndicationNodeFactory Declarar iguales/hashCode como miembros abstractos(La igualdad participa en la optimización de Compose):
+    // Esta fábrica es un singleton.,Comparación de identidad;hashCode Utilice constantes fijas para satisfacer"Misma constante de fábrica"contrato.
     override fun equals(other: Any?): Boolean = other === this
 
     override fun hashCode(): Int = 0x4D757365 // "Muse"
 }
 
 /**
- * 空实现 — 不绘制任何内容,仅占位满足 indication 协议。
+ * implementación vacía — no dibujes nada,Sólo los marcadores de posición cumplen el protocolo de indicación.
  *
- * 必须是每次 [MuseNoRippleIndication.create] 新建的实例:同一个 Modifier.Node
- * 不能被多处 attach(会违反 Node 生命周期契约)。
+ * debe ser cada vez [MuseNoRippleIndication.create] Nueva instancia:el mismo Modifier.Node
+ * No se puede utilizar en varios lugares. attach(Violará el contrato del ciclo de vida del nodo).
  */
 private class NoOpIndicationNode : Modifier.Node()

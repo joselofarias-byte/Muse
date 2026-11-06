@@ -11,10 +11,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 库结构自检:Room 能按实体定义建表并通过自身 schema 校验。
+ * Autoprueba de la estructura de la biblioteca:Room Capaz de crear tablas basadas en definiciones de entidades y pasar su propia verificación de esquema.
  *
- * 用内存库打开一次即可触发 Room 的 schema 校验(实体/列/索引与建表语句不一致会直接抛异常);
- * 这里再把 8 张表名和版本号逐个核对一遍,避免"能打开但表少了一张"。
+ * Abrirlo una vez con la biblioteca de memoria puede activar la verificación del esquema de Room(entidad/columna/Si el índice no es coherente con la declaración de creación de la tabla, se generará una excepción directamente.);
+ * Aquí nuevamente, verifique los 8 nombres de tablas y números de versión uno por uno.,evitar"Se puede abrir pero a la mesa le falta una hoja.".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -37,7 +37,7 @@ class MiniPhoneDbSchemaTest {
         val tables = tableNames()
 
         EXPECTED_TABLES.forEach { table ->
-            assertTrue("缺表 $table", tables.contains(table))
+            assertTrue("mesa faltante $table", tables.contains(table))
         }
         assertEquals(EXPECTED_TABLES.toSet(), tables)
     }

@@ -6,9 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-09: PII 脱敏与还原回归测试。
+ * R-TEST-09: PII Pruebas de regresión de desensibilización y reducción.
  *
- * 覆盖手机号(11 位/带空格)、邮箱、身份证(15/18 位)的 mask/unmask 往返。
+ * Cubrir el número de teléfono celular(11 poco/con espacios), correo electrónico, DNI(15/18 poco)El viaje de ida y vuelta enmascarar/desenmascarar.
  */
 class PiiGuardTest {
 
@@ -25,49 +25,49 @@ class PiiGuardTest {
             val (masked, matches) = PiiGuard.mask(input)
             assertFalse("masked=$masked input=$input", masked.contains(input))
             assertTrue("input=$input matches=${matches.size}", matches.isNotEmpty())
-            assertEquals("还原应与原文一致 input=$input", input, PiiGuard.unmask(masked, matches))
+            assertEquals("La restauración debe ser coherente con el texto original. input=$input", input, PiiGuard.unmask(masked, matches))
         }
     }
 
     @Test
     fun maskAndUnmaskKeepSurroundingText() {
-        val input = "手机 13800138000,邮箱 a@b.com"
+        val input = "teléfono celular 13800138000,Correo electrónico a@b.com"
         val (masked, matches) = PiiGuard.mask(input)
-        assertTrue(masked.contains("手机"))
-        assertTrue(masked.contains("邮箱"))
+        assertTrue(masked.contains("teléfono celular"))
+        assertTrue(masked.contains("Correo electrónico"))
         assertFalse(masked.contains("13800138000"))
         assertEquals(input, PiiGuard.unmask(masked, matches))
     }
 
-    // A-20: BANK_CARD 覆盖 16-19 位数字卡号(与 memory 版 CREDIT_CARD 对齐)。
+    // A-20: BANK_CARD Cubre números de tarjetas de 16 a 19 dígitos(Alineado con la versión de memoria CREDIT_CARD).
 
     @Test
     fun maskMasksBankCardOfSixteenToNineteenDigits() {
         val inputs = listOf(
-            "卡号 6222021234567890", // 16 位
-            "卡号 62220212345678901", // 17 位
-            "卡号 622202123456789012", // 18 位
-            "卡号 6222021234567890123", // 19 位
+            "Número de tarjeta 6222021234567890", // 16 poco
+            "Número de tarjeta 62220212345678901", // 17 poco
+            "Número de tarjeta 622202123456789012", // 18 poco
+            "Número de tarjeta 6222021234567890123", // 19 poco
         )
         for (input in inputs) {
-            val card = input.removePrefix("卡号 ").trim()
+            val card = input.removePrefix("Número de tarjeta ").trim()
             val (masked, matches) = PiiGuard.mask(input)
             assertFalse(
-                "A-20 未遮蔽 BANK_CARD: input=$input masked=$masked",
+                "A-20 desenmascarado BANK_CARD: input=$input masked=$masked",
                 masked.contains(card),
             )
             assertTrue(
-                "A-20 未检测到 BANK_CARD: input=$input matches=${matches.size}",
+                "A-20 no detectado BANK_CARD: input=$input matches=${matches.size}",
                 matches.any { it.type == PiiGuard.PiiType.BANK_CARD },
             )
-            assertEquals("还原应与原文一致 input=$input", input, PiiGuard.unmask(masked, matches))
+            assertEquals("La restauración debe ser coherente con el texto original. input=$input", input, PiiGuard.unmask(masked, matches))
         }
     }
 
     @Test
     fun maskMasksSixteenDigitBankCardBoundaryOnly() {
-        // 16 位卡号紧贴在非数字字符间应被遮蔽(边界保护,前后不能再有数字)。
-        val input = "卡 6222021234567890 尾"
+        // 16 Los números de tarjeta inmediatamente entre caracteres no numéricos deben estar ocultos.(protección fronteriza,No puede haber más números antes y después.).
+        val input = "Tarjeta 6222021234567890 cola"
         val (masked, matches) = PiiGuard.mask(input)
         assertFalse(masked.contains("6222021234567890"))
         assertTrue(matches.any { it.type == PiiGuard.PiiType.BANK_CARD })

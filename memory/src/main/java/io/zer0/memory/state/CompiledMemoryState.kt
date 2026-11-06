@@ -3,23 +3,23 @@ package io.zer0.memory.state
 import io.zer0.memory.format.RollingSummaryFormat
 
 /**
- * 编译产物状态管理。
+ * Compilar la gestión del estado del producto.
  *
- * 职责:
- *  - section body 规范化(去 <think> 块、去标题行、压多空行)
- *  - LLM 输出结果规范化(去围栏、去前置思考块)
- *  - reset 标记读写(记忆重置水印,过滤旧摘要)
+ * Responsabilidades:
+ *  - section body estandarizar(ir <think> bloquear, eliminar la línea de título, presionar varias líneas vacías)
+ *  - LLM Normalizar los resultados de salida(Deshazte de vallas y bloques prepensados.)
+ *  - reset Marcar leído y escrito(Marca de agua de restablecimiento de memoria,Filtrar resúmenes antiguos)
  */
 object CompiledMemoryState {
 
-    /** 编译产物文件名常量。 */
+    /** Compile la constante del nombre del archivo del producto. */
     val COMPILED_FILES = listOf("memory.md", "facts.md", "today.md", "week.md", "longterm.md")
 
-    // 2026-11-01 性能整改:这些正则原先在函数体里现场构造。
-    // normalizeSectionBody 每次调用要新建 3 个、stripLeadingHeadings 1 个、
-    // normalizeLlmOutput 3 个；而 readCompiledMemoryMarkdown 一次读会调
-    // normalizeSectionBody 四次（facts/today/week/longterm），叠加起来是每读一次
-    // 记忆就重新编译十几个 Pattern。全部提成常量后只编译一次。
+    // 2026-11-01 Mejoras de rendimiento:Estas regularidades se construyeron originalmente en el sitio dentro del cuerpo funcional.
+    // normalizeSectionBody Cada llamada necesita crear 3 nuevas.stripLeadingHeadings 1 uno,
+    // normalizeLlmOutput 3 ; y readCompiledMemoryMarkdown llamará al
+    // normalizeSectionBody cuatro veces (facts/today/week/longterm), superpuesto para leer una vez
+    // Simplemente recopile más de una docena de patrones de memoria. Todas las constantes se compilan solo una vez.
     private val JSON_STRING_ARRAY_RE =
         Regex("""^\s*\[\s*("(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")*)\s*]\s*$""", RegexOption.MULTILINE)
     private val JSON_QUOTED_RE = Regex(""""(?:[^"\\]|\\.)*"""")
@@ -32,22 +32,22 @@ object CompiledMemoryState {
     private val THINK_CLOSE_RE = Regex("</think(?:ing)?>", RegexOption.IGNORE_CASE)
 
     /**
-     * 规范化 section body:
-     *  - 去除 <think>...</think> 块(部分模型输出思考标签)
-     *  - 去除开头的前置 markdown 标题行(避免 LLM 输出 # 标题污染 assemble)
-     *    注意: 只去掉 body 开头的连续标题,保留正文中的子标题结构
-     *    (例如 facts 段内的 ### Work / ### Personal 子分类)
-     *  - 压缩多空行为单空行
-     *  - JSON 字符串数组 ["a","b"] 转 bullet list
+     * estandarizar section body:
+     *  - Quitar <think>...</think> bloquear(Etiqueta de pensamiento de salida del modelo parcial)
+     *  - Eliminar la línea principal del encabezado de rebajas al principio(Evite la contaminación del encabezado de salida LLM # assemble)
+     *    Nota: Solo elimine los títulos consecutivos que comiencen con el cuerpo.,Preservar la estructura de los subtítulos en el cuerpo del texto.
+     *    (Por ejemplo, en la sección de hechos ### Work / ### Personal subcategoría)
+     *  - Comprime varias líneas vacías en líneas únicas vacías
+     *  - JSON matriz de cadenas ["a","b"] girar bullet list
      */
     fun normalizeSectionBody(value: String): String {
         if (value.isEmpty()) return ""
         var s = value
         s = stripThinkTagBlocks(s)
-        // 只去掉 body 开头的连续标题行(前置标题),保留正文中的子标题结构。
-        // 遇到第一个非标题、非空行即停止剥离,后续内容原样保留。
+        // Elimine solo las líneas de encabezado consecutivas que comiencen con el cuerpo(pretítulo),Conserve la estructura de los subtítulos dentro del cuerpo del texto.
+        // Deje de eliminar cuando encuentre la primera línea que no esté en blanco ni sin título,El contenido posterior permanece tal cual.
         s = stripLeadingHeadings(s)
-        // JSON 字符串数组 → bullet list (["a","b"] → "- a\n- b")
+        // JSON matriz de cadenas → bullet list (["a","b"] → "- a\n- b")
         val jsonArrMatch = JSON_STRING_ARRAY_RE.find(s)
         if (jsonArrMatch != null) {
             val items = JSON_QUOTED_RE.findAll(jsonArrMatch.groupValues[1])
@@ -57,19 +57,19 @@ object CompiledMemoryState {
                 s = items.joinToString("\n") { "- $it" }
             }
         }
-        // 压缩 3+ 换行为 2 换行
+        // Compresión Envoltura de 3+ líneas Envoltura de 2 líneas
         s = s.replace(MANY_BLANK_LINES_RE, "\n\n")
         return s.trim()
     }
 
     /**
-     * 剥离开头的连续标题行(允许标题行之间有空行)。
-     * 遇到第一个非标题、非空行即停止,后续内容(含子标题)原样保留。
+     * Quita las líneas de encabezado consecutivas al principio.(Permitir líneas en blanco entre las líneas del encabezado).
+     * Deténgase cuando encuentre la primera línea que no esté en blanco ni sin título,Contenido de seguimiento(Contiene subtítulos)Déjalo como está.
      */
     private fun stripLeadingHeadings(value: String): String {
         val lines = value.split(LINE_BREAK_RE)
         var idx = 0
-        // 跳过开头的空行 + 标题行
+        // Saltar líneas vacías iniciales + líneas de encabezado
         while (idx < lines.size) {
             val line = lines[idx]
             if (line.isBlank()) {
@@ -86,33 +86,33 @@ object CompiledMemoryState {
     }
 
     /**
-     * 规范化 LLM 输出:
-     *  - 去除 ```markdown / ``` 围栏
-     *  - 去除前置 <think> 块
+     * Normalizar la salida de LLM:
+     *  - Quitar ```markdown / ``` valla
+     *  - eliminar prefijo <think> bloquear
      *  - trim
      */
     fun normalizeLlmResult(value: String, source: String = ""): String {
         if (value.isEmpty()) return ""
         var s = value
-        // 去 ```markdown\n...\n``` 围栏
+        // ir ```markdown\n...\n``` valla
         val fenceMatch = FENCED_BLOCK_RE.find(s)
         if (fenceMatch != null) s = fenceMatch.groupValues[1]
         s = stripThinkTagBlocks(s)
         return s.trim()
     }
 
-    /** 去除 <think>...</think> / <thinking>...</thinking> 块。 */
+    /** Quitar <think>...</think> / <thinking>...</thinking> bloquear. */
     fun stripThinkTagBlocks(value: String): String {
         if (value.isEmpty()) return ""
         var s = value
-        // 闭合块
+        // bloque cerrado
         s = s.replace(THINK_BLOCK_RE, "")
-        // 残留的开头未闭合块(部分模型只输出 <think> 开头)
+        // Bloque restante sin cerrar al principio(Algunos modelos solo emiten <think> comienzo)
         s = s.replace(THINK_OPEN_TAIL_RE, "")
         return s
     }
 
-    /** 检测是否有孤立的 <think> 开头标签(无闭合)。 */
+    /** Comprueba si hay algún huérfano <think> etiqueta de apertura(Sin cierre). */
     fun hasDanglingLeadingThinkTag(value: String): Boolean = THINK_OPEN_RE.containsMatchIn(value) &&
         !THINK_CLOSE_RE.containsMatchIn(value)
 }

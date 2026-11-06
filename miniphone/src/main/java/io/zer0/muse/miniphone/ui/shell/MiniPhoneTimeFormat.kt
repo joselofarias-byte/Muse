@@ -5,22 +5,22 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * 界面上的时间文本。
+ * Texto de hora en la interfaz.
  *
- * 相对时间只有 [relativeTimeOf] 一处实现:朋友圈、评论、消息列表都调它,不各写一套。
- * 状态栏与聊天页的时间分隔另有口径(要的是「几点」而不是「多久以前」),仍在下面这个对象里。
+ * El tiempo relativo es sólo [relativeTimeOf] Implementado en un solo lugar:Ajústalo en Momentos, comentarios y listas de mensajes,No escribas el propio de cada uno.
+ * Existe otro estándar para la separación temporal entre la barra de estado y la página de chat.(Lo que quieres es "a qué hora" en lugar de "hace cuánto tiempo".),Todavía en este objeto a continuación.
  */
 internal object MiniPhoneTimeFormat {
 
     private val clockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    /** 状态栏时钟:`HH:mm`。 */
+    /** reloj de la barra de estado:`HH:mm`. */
     fun clock(epochMs: Long): String = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).format(clockFormatter)
 
     /**
-     * 聊天页的时间分隔:"今天"只给时间,"昨天"与更早的日期带上日期。
+     * Separación de tiempo de la página de chat:"hoy"solo da tiempo,"ayer"Traiga la fecha con la fecha anterior.
      *
-     * 分隔行本来就是给"翻页时突然跳时间"做标记的,所以同一天不必写"今天"两字。
+     * Separar filas tiene como objetivo dar"El tiempo salta repentinamente al pasar las páginas."marcado,Entonces no es necesario escribir el mismo día."hoy"Dos palabras.
      */
     fun separator(epochMs: Long, now: Long = System.currentTimeMillis()): String {
         if (epochMs <= 0L) return ""
@@ -30,9 +30,9 @@ internal object MiniPhoneTimeFormat {
         val nowDate = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         return when {
             thenDate == nowDate -> clock
-            thenDate == nowDate.minusDays(1) -> "昨天 $clock"
-            thenDate.year == nowDate.year -> "${thenDate.monthValue} 月 ${thenDate.dayOfMonth} 日 $clock"
-            else -> "${thenDate.year} 年 ${thenDate.monthValue} 月 ${thenDate.dayOfMonth} 日 $clock"
+            thenDate == nowDate.minusDays(1) -> "ayer $clock"
+            thenDate.year == nowDate.year -> "${thenDate.monthValue} mes ${thenDate.dayOfMonth} dia $clock"
+            else -> "${thenDate.year} año ${thenDate.monthValue} mes ${thenDate.dayOfMonth} dia $clock"
         }
     }
 }
@@ -43,35 +43,35 @@ private const val HOUR_MS: Long = 60L * MINUTE_MS
 private val RelativeClock: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 /**
- * 相对时间:多久以前那件事。
+ * tiempo relativo:¿Cuánto tiempo hace que pasó eso?
  *
- * 六个分支,顺序即优先级:
- * 1. 一分钟内(含时间戳在未来)「刚刚」
- * 2. 一小时内「12 分钟前」
- * 3. 同一天「3 小时前」
- * 4. 昨天「昨天 21:30」
- * 5. 今年更早「10月28日 21:30」
- * 6. 跨年「2025年10月28日」—— 跨年只写日期,年份已经足够定位
+ * seis ramas,el orden es prioridad:
+ * 1. dentro de un minuto(con marca de tiempo en el futuro)"Justo ahora"
+ * 2. Dentro de una hora "12 hace minutos"
+ * 3. El mismo día "3 hace horas"
+ * 4. Ayer "Ayer 21:30"
+ * 5. A principios de este año "10mes28Domingo 21:30"
+ * 6. Nochevieja2025año10mes28dia—— Escribe la fecha solo en Nochevieja,El año es suficiente para posicionarse.
  *
- * 时间戳为 0(没有时间)返回空串,由调用方决定留白。日历部分按本地时区算:
- * 「昨天」是日历上的昨天,不是「24 小时以前」—— 凌晨看一小时的对话,它仍然属于昨天。
+ * La marca de tiempo es 0(no hay tiempo)Devolver cadena vacía,Déjelo en blanco a discreción de la persona que llama. La parte del calendario se calcula según la zona horaria local.:
+ * "Ayer" es ayer en el calendario,No "24 hace horas"—— Mira una hora de diálogo temprano en la mañana.,Todavía pertenece al ayer.
  *
- * @param now 作为「现在」的时间戳,默认系统时钟;测试用它钉死每一个分支
+ * @param now Como marca de tiempo del "ahora",Reloj del sistema predeterminado;Prueba cada rama con ella clavada.
  */
 internal fun relativeTimeOf(epochMs: Long, now: Long = System.currentTimeMillis()): String {
     if (epochMs <= 0L) return ""
     val diff = now - epochMs
-    if (diff < MINUTE_MS) return "刚刚"
-    if (diff < HOUR_MS) return "${diff / MINUTE_MS} 分钟前"
+    if (diff < MINUTE_MS) return "justo ahora"
+    if (diff < HOUR_MS) return "${diff / MINUTE_MS} hace minutos"
 
     val zone = ZoneId.systemDefault()
     val then = Instant.ofEpochMilli(epochMs).atZone(zone)
     val thenDate = then.toLocalDate()
     val nowDate = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
     return when {
-        thenDate == nowDate -> "${diff / HOUR_MS} 小时前"
-        thenDate == nowDate.minusDays(1) -> "昨天 ${then.format(RelativeClock)}"
-        thenDate.year == nowDate.year -> "${thenDate.monthValue}月${thenDate.dayOfMonth}日 ${then.format(RelativeClock)}"
-        else -> "${thenDate.year}年${thenDate.monthValue}月${thenDate.dayOfMonth}日"
+        thenDate == nowDate -> "${diff / HOUR_MS} hace horas"
+        thenDate == nowDate.minusDays(1) -> "ayer ${then.format(RelativeClock)}"
+        thenDate.year == nowDate.year -> "${thenDate.monthValue}mes${thenDate.dayOfMonth}dia ${then.format(RelativeClock)}"
+        else -> "${thenDate.year}año${thenDate.monthValue}mes${thenDate.dayOfMonth}dia"
     }
 }

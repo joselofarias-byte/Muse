@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 
-/** 骨架屏的延迟：加载快的时候不要闪一下骨架，超过这个时长才认为「真的在等」。 */
+/** Retraso de la pantalla del esqueleto: no muestres el esqueleto cuando la carga sea rápida. Sólo después de este tiempo se considera “realmente esperando”. */
 export const SKELETON_DELAY_MS = 300;
 
-/** 纯判定：等够时长才该显示骨架。 */
+/** Juicio puro: espere el tiempo suficiente antes de que se muestre el esqueleto. */
 export function isSkeletonDue(loading: boolean, waitedMs: number, delayMs: number = SKELETON_DELAY_MS): boolean {
   return loading && waitedMs >= delayMs;
 }
 
 /**
- * 「加载超过 delay 之后才显示骨架」的开关。
+ * Cambie a "Mostrar el esqueleto solo después de que la carga exceda el retraso".
  *
- * 数据通常在几百毫秒内就到，直接上骨架会闪一下反而更晃眼；这里只负责延迟可见性，
- * 数据到了就把定时器清掉。
+ * Los datos suelen llegar en unos pocos cientos de milisegundos. Si lo subes directamente al esqueleto, parpadeará y será más deslumbrante; Aquí solo somos responsables de la visibilidad retrasada.
+ * El temporizador se borra cuando llegan los datos.
  */
 export function useDelayedFlag(active: boolean, delayMs: number = SKELETON_DELAY_MS): boolean {
   const [due, setDue] = useState(false);

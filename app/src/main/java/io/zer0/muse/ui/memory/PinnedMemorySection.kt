@@ -21,9 +21,9 @@ import io.zer0.muse.ui.common.surface.MuseSurface
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * 置顶记忆管理区。
+ * Área de gestión de memoria anclada.
  *
- * 显示所有置顶记忆及移除按钮。
+ * Muestra todos los recuerdos anclados y el botón de eliminar.
  */
 @Composable
 fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRemove: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -47,9 +47,9 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
-                // v1.0.90 fix: 这里原来用 LazyColumn，但本组件是被塞进 MemoryScreen 的
-                // LazyColumn item 里的 —— 列表套列表时内层会拿到无限的"最大高度",
-                // 直接抛 IllegalStateException 崩溃。改成一屏内的普通展开（项目里同类问题的既有写法）。
+                // v1.0.90 fix: LazyColumn se usó originalmente aquí, pero este componente se incluyó en MemoryScreen
+                // LazyColumn item adentro —— Cuando una lista está anidada dentro de una lista, la capa interna será ilimitada"altura máxima",
+                // Lanza IllegalStateException directamente y falla. Cámbielo a una expansión normal dentro de una pantalla (la forma existente de escribir preguntas similares en el proyecto).
                 Column(
                     modifier = Modifier.padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -64,8 +64,8 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
-                                // (右侧是定宽删除按钮，记忆正文留 2 行可读内容)
+                                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
+                                // (A la derecha hay un botón de eliminación de ancho fijo que deja 2 líneas de contenido legible en el texto de la memoria.)
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )

@@ -8,17 +8,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * 一个会话的消息窗口:进页、首屏、向上翻页、未读清零。
+ * Una ventana de mensaje de sesión:Avance de página, primera pantalla, avance de página, borrado de no leídos.
  *
- * 游标就是已加载条数 —— 页内消息恒为最新的一段,更早的从它后面接着取。
- * 所以每次挪动窗口都在 [ChatMessageWriter] 那把闸里做:
- * 读游标与查询之间要是插进一条新消息,倒序窗口整体挪一位,这一页就会和前页重一条。
+ * El cursor es el número de elementos cargados. —— La información de la página es siempre la más reciente.,Tómalo antes por detrás.
+ * Así que cada vez que muevo la ventana, es [ChatMessageWriter] Entonces hazlo en la puerta.:
+ * Si se inserta un nuevo mensaje entre el cursor de lectura y la consulta,Mover toda la ventana de orden inverso una posición,Esta página será la misma que la página anterior.
  *
- * 会话行读出来时顺带把「是不是群、群名叫什么」写进状态:这两件事只在这里读得到,
- * 且与是否群无关的界面分支都靠它们。
+ * Cuando se lee la línea de conversación, en el estado se escribe "¿Es un grupo y cuál es el nombre del grupo?".:Estas dos cosas sólo se pueden leer aquí.,
+ * Y las ramas de la interfaz que no tienen nada que ver con si son un grupo o no dependen de ellas.
  *
- * @param state 界面状态;窗口相关的三个字段(messages / hasMore / isLoadingMore)由本类写
- * @param onThreadOpened 会话行读出来之后回调,界面据此补角色名、头像与群成员
+ * @param state Estado de la interfaz;Tres campos relacionados con la ventana.(messages / hasMore / isLoadingMore)escrito por esta clase
+ * @param onThreadOpened Devolución de llamada después de leer la línea de sesión,La interfaz completa el nombre del personaje, el avatar y los miembros del grupo en consecuencia.
  */
 internal class ChatPagingController(
     private val threadId: String,
@@ -30,12 +30,12 @@ internal class ChatPagingController(
     private val onThreadOpened: () -> Unit,
 ) {
 
-    /** 进页:取会话里的角色 id、清未读、拉最新一页。 */
+    /** página adelante:Obtenga la identificación del personaje en la sesión, borre la página no leída y extraiga la página más reciente. */
     fun open() {
         scope.launch { openThread() }
     }
 
-    /** 滚到顶时加载更早的一页。没有更多、或上一页还在路上,直接忽略。 */
+    /** Cargue una página anterior cuando se desplace hacia la parte superior. No hay más, o la página anterior aún está en camino,Simplemente ignóralo. */
     fun loadOlder() {
         val current = state.value
         if (!current.hasMore || current.isLoadingMore) return
@@ -44,10 +44,10 @@ internal class ChatPagingController(
     }
 
     /**
-     * 进页时清未读。
+     * Borre la página como no leída.
      *
-     * 同一个会话退出再进会复用同一个 ViewModel,[open] 不会重跑,
-     * 所以「进页清未读」不能只靠打开时那一次。
+     * Salir y volver a entrar a la misma sesión reutilizará la misma ViewModel,[open] No volverá a correr,
+     * Por lo tanto, "borrar páginas no leídas después de ingresar" no puede depender solo del momento en que las abra.
      */
     fun markRead() {
         scope.launch { threadDao.clearUnread(threadId) }
@@ -66,9 +66,9 @@ internal class ChatPagingController(
     }
 
     /**
-     * 首屏:倒序取一页再翻正;`hasMore` 只看这一页有没有取满。
+     * Por encima del pliegue:Tome una página en orden inverso y gírela hacia la derecha.;`hasMore` Sólo comprueba si esta página está llena.
      *
-     * 查询与写回界面在同一把闸里 —— 中途落进一条新消息,写回就会把它盖掉。
+     * Las interfaces de consulta y escritura reescrita están en la misma puerta. —— Un nuevo mensaje apareció a mitad de camino.,Escribirlo lo cubrirá.
      */
     private suspend fun loadFirstPage() = writer.withWriteLock {
         val page = messageDao.pageMessages(threadId, CHAT_PAGE_SIZE, offset = 0)
@@ -81,7 +81,7 @@ internal class ChatPagingController(
         }
     }
 
-    /** 更早的一页接在已加载的那段前面;游标同样在闸里读。 */
+    /** La página anterior continúa antes de la sección cargada.;El cursor también se lee en la puerta. */
     private suspend fun loadOlderPage() = writer.withWriteLock {
         val current = state.value
         val page = messageDao.pageMessages(threadId, CHAT_PAGE_SIZE, offset = current.messages.size)

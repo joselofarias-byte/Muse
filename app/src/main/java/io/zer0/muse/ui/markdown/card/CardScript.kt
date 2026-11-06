@@ -1,53 +1,53 @@
 package io.zer0.muse.ui.markdown.card
 
 /**
- * 卡片里唯一的一份脚本。
+ * El único guión en la tarjeta.
  *
- * ## 为什么必须只有一份
+ * ## ¿Por qué debe haber una sola copia?
  *
- * 旧实现同时注入两段各自带 `ResizeObserver` 的脚本：
- *  - 桥引导脚本尾部那个 IIFE（上报给 `MuseCardBridge`）
- *  - 独立的高度观测脚本（上报给 `MuseHeightSink`）
- * 两者观察同一个 body、各自防抖、各自判断要不要上报，然后一起改写宿主的高度状态。
- * 谁最后跑谁赢，而它们的时序不可预测 —— 这就是「卡片高度时好时坏、偶尔被裁」的根。
+ * La implementación anterior inyecta dos secciones al mismo tiempo, cada una con su propia `ResizeObserver` Guión:
+ *  - El IIFE al final del script de arranque del puente (reportado a `MuseCardBridge`)
+ *  - Guión de observación de altitud independiente (reportado a `MuseHeightSink`)
+ * Los dos observan el mismo cuerpo, realizan antivibraciones de forma independiente, deciden si informarlo por separado y luego reescriben juntos el estado de altitud del anfitrión.
+ * Quien corra último gana y su tiempo es impredecible. —— Ésta es la raíz de "la altura de la tarjeta fluctúa y ocasionalmente se corta".
  *
- * 现在：门面与观测分开职责，但**只有这一份**被注入，`CardRuntime` 是唯一装配点。
+ * Ahora: Fachada y Observación tienen responsabilidades separadas, pero**solo este**se inyecta,`CardRuntime` Es el único punto de reunión.
  *
- * ## 高度观测的取舍
+ * ## Compensaciones de observación a gran altitud
  *
- * 量 `body` 的 border-box，不量 `documentElement.scrollHeight`
- * （内容比视口矮时后者等于视口高，会把卡片抬到整屏）。
+ * cantidad `body` El cuadro fronterizo, no medido. `documentElement.scrollHeight`
+ * (Cuando el contenido es más corto que la ventana gráfica, esta última es igual a la altura de la ventana gráfica, lo que elevará la tarjeta a la pantalla completa).
  *
- * 变高即时上报（变高不会裁掉内容）；变矮要连续两次测量一致才相信
- * （避开折叠动画的中间态）。阈值 8px，滤掉亚像素抖动。
+ * Si crece, se informará inmediatamente (el contenido no se cortará si crece); si se acorta, se creerá sólo después de que dos mediciones consecutivas sean consistentes.
+ * (Evitar el estado intermedio de la animación de plegado). Umbral de 8 píxeles, filtra la fluctuación de subpíxeles.
  *
- * **绝不向 body 写 height / overflow** —— 一旦写，测量就变成了「自己影响自己」，
- * 宿主设高 → 视口变 → 测量变 → 再设高的回授环就成立。这条是硬约束。
+ * **Nunca escribas al cuerpo height / overflow** —— Una vez escrita, la medida se convierte en "uno mismo se afecta a sí mismo",
+ * Altura de configuración del anfitrión → Cambios en la ventana gráfica → cambio de medida → Si el bucle de retroalimentación se establece en un nivel más alto, se establecerá el bucle de retroalimentación. Ésta es una restricción difícil.
  */
 internal object CardScript {
 
-    /** 高度上报接口的全局名（由 CardRuntime 注册为 addJavascriptInterface）。 */
+    /** Nombre global de la interfaz altamente reportada (registrada por CardRuntime como addJavascriptInterface). */
     const val HEIGHT_SINK_NAME: String = "MuseHeightSink"
 
     /**
-     * 通知卡片「绑定数据变了」的那一句。宿主用 evaluateJavascript 执行它。
+     * La frase que notifica a la tarjeta que "los datos vinculantes han cambiado". El host lo ejecuta usando evaluaJavascript.
      *
-     * 只发信号、不发数据：卡片收到后自己走 `window.muse.getData()` 取值，
-     * 与轮询读的是同一条路径，所以两种模式的行为完全一致。
+     * Solo se envían señales, no se envían datos: después de recibir la tarjeta, se irá sola `window.muse.getData()` valor,
+     * La misma ruta se lee como sondeo, por lo que el comportamiento de los dos modos es exactamente el mismo.
      */
     const val DATA_EVENT_JS: String = "window.__museDataEvent&&window.__museDataEvent()"
 
-    /** 交互桥的全局名。 */
+    /** El nombre global del puente de interacción. */
     const val BRIDGE_NAME: String = "MuseCardBridge"
 
     /**
-     * 完整页面脚本。
+     * Guión de página completa.
      *
-     * 门面与观测是两段独立脚本：门面在无桥时会自己把能力标成 requires_host，
-     * 观测则恒定注入（无桥场景同样需要高度跟随）。
+     * La fachada y la observación son dos scripts independientes: cuando no hay puente, la fachada marcará sus capacidades como require_host.
+     * Las observaciones se inyectan constantemente (la escena sin puentes también requiere un alto grado de seguimiento).
      *
-     * 结果按进程缓存一次：脚本内容与卡片、主题、数据都无关，而它会被每张卡的
-     * 每次 HTML 装配调用。
+     * El resultado se almacena en caché una vez por proceso: el contenido del script no tiene nada que ver con la tarjeta, el tema o los datos, y cada tarjeta lo almacenará en caché.
+     * Cada llamada de ensamblaje HTML.
      */
     fun build(): String = BUILD
 
@@ -60,10 +60,10 @@ internal object CardScript {
     }
 
     /**
-     * `window.muse` 门面：卡片脚本调用宿主的唯一入口。
+     * `window.muse` Fachada: La única entrada para que los guiones de cartas llamen al anfitrión.
      *
-     * 无桥时也要定义，只是把能力如实标成 `requires_host` —— 卡片据此降级为静态展示，
-     * 而不是写完控件、点了才发现没人接。
+     * También es necesario definir cuando no hay puente, simplemente etiquetar la habilidad verazmente como `requires_host` —— Por lo tanto, la tarjeta pasa a ser una visualización estática.
+     * En lugar de terminar de escribir el control y hacer clic en él, descubre que nadie respondió.
      */
     private const val FACADE_JS: String = """
 (function(){
@@ -74,7 +74,7 @@ internal object CardScript {
   document.addEventListener('click', function(){ lastTap = Date.now(); }, true);
   document.addEventListener('touchend', function(){ lastTap = Date.now(); }, true);
 
-  // 身份只由宿主产生并注入；卡片端只读。
+  // La identidad solo la genera e inyecta el host; es de sólo lectura en el lado de la tarjeta.
   window.muse.cardId = null;
   if (bridge) { try { window.muse.cardId = bridge.getCardId(); } catch (e) { } }
 
@@ -94,7 +94,7 @@ internal object CardScript {
   }
   window.muse.capabilities = capability;
 
-  // 只允许在用户最近一次点击后的短暂窗口内回传，防止卡片加载时静默注入消息。
+  // Solo permita la devolución de datos dentro de una ventana corta después del último clic del usuario para evitar la inyección silenciosa de mensajes cuando la tarjeta está cargada.
   function withinGesture(){ return Date.now() - lastTap <= 1500; }
 
   window.muse.send = function(text, state){
@@ -110,9 +110,9 @@ internal object CardScript {
     try { bridge.sendWithData(body, payload); } catch (e) { }
   };
 
-  // 声明式回传：元素上写 data-m-invoke="要发的话"，点一下就走 send。
-  // 可选 data-m-state='{"k":1}' 带上结构化状态。
-  // 走 capture 阶段，这样卡片自己绑的 click 也拦不住它；preventDefault 避免整页跳转。
+  // Devolución de datos declarativa: escribir en el elemento data-m-invoke="Si quieres enviarlo", haz clic en enviar y listo.
+  // Opcional data-m-state='{"k":1}' Trae estado estructurado.
+  // Vaya a la etapa de captura para que el clic vinculado a la tarjeta no pueda detenerla;preventDefault Evite saltos de página completa.
   document.addEventListener('click', function(e){
     var node = e.target;
     while (node && node !== document && !(node.getAttribute && node.getAttribute('data-m-invoke'))) {
@@ -144,10 +144,10 @@ internal object CardScript {
     } catch (e) { return null; }
   };
 
-  // 数据订阅：桥只能被卡片调进来，宿主反向通知要靠 evaluateJavascript。
-  // 宿主支持推送时（本页由 CardRuntime 注入 __museDataPush）走事件，变化才触发；
-  // 不支持时才退回 800ms 轮询 —— 降级路径保留，避免非聊天场景（无 CardDataStore）
-  // 的卡片失去刷新能力。
+  // Suscripción de datos: solo se puede llamar al puente mediante la tarjeta, y la notificación inversa del host se basa en evaluarJavascript.
+  // Cuando el host admite push (esta página recibe __museDataPush mediante CardRuntime), se activará el evento y se activará el cambio;
+  // Volver al sondeo de 800 ms cuando no sea compatible —— Las rutas de degradación se conservan para evitar escenarios sin chat (sin CardDataStore)
+  // La tarjeta pierde la capacidad de actualizarse.
   window.muse.data = window.muse.data || {};
   var __museSubs = [];
   function __museRemove(entry){
@@ -157,7 +157,7 @@ internal object CardScript {
   function __museRead(entry){
     var raw;
     try { raw = window.muse.getData(); } catch (e) { return; }
-    // 只在值真的变了才回调：轮询与推送走同一口径，避免推送风暴下重复重绘。
+    // Vuelva a llamar solo cuando el valor realmente cambie: el sondeo y la inserción utilizan el mismo método para evitar volver a dibujar repetidamente durante las tormentas de inserción.
     if (raw === entry.last) return;
     entry.last = raw;
     var value = null;
@@ -169,14 +169,14 @@ internal object CardScript {
     var entry = { cb: cb, last: null, timer: null };
     __museSubs.push(entry);
     if (window.__museDataPush) {
-      // 订阅时补读一次：覆盖「订阅之前数据就已经存在」和「推送落在页面加载期间」两种情形。
+      // Lectura complementaria al suscribirse: cubre dos situaciones: "los datos ya existen antes de suscribirse" y "el empuje cae durante la carga de la página".
       setTimeout(function(){ __museRead(entry); }, 0);
       return function(){ __museRemove(entry); };
     }
     entry.timer = setInterval(function(){ __museRead(entry); }, 800);
     return function(){ clearInterval(entry.timer); __museRemove(entry); };
   };
-  // 宿主推送入口：只表示「可能变了」，取值仍走桥。
+  // Entrada push del host: solo significa "puede haber cambiado" y el valor sigue siendo un puente.
   window.__museDataEvent = function(){
     var snapshot = __museSubs.slice();
     for (var i = 0; i < snapshot.length; i++) __museRead(snapshot[i]);
@@ -185,17 +185,17 @@ internal object CardScript {
 """
 
     /**
-     * 高度观测。
+     * Altamente observado.
      *
-     * 与桥无关：没有交互桥的卡片同样需要高度跟随，只是不能回传。
-     * 这条独立性是旧实现踩过的坑 —— 当时高度上报挂在桥上，无桥路径完全没有观测。
+     * No tiene nada que ver con los puentes: las tarjetas sin puentes interactivos también deben seguirse con atención, pero no se pueden devolver.
+     * Esta independencia es un escollo que la antigua implementación ha pisado. —— En ese momento, el informe de altitud estaba colgado en el puente y no hubo ninguna observación en el camino libre del puente.
      */
     private fun observerJs(): String {
         return """
 (function(){
   if (window.__museHeightObserver) return;
   window.__museHeightObserver = true;
-  // 高度只走 height sink：桥只管回传，不管高度。
+  // La altura sólo va hacia la altura y se hunde: El puente sólo transmite hacia atrás, independientemente de la altura.
   var sink = (typeof MuseHeightSink !== 'undefined') ? MuseHeightSink : null;
   if (!sink) return;
 
@@ -207,13 +207,13 @@ internal object CardScript {
   function measure(){
     var b = document.body;
     if (!b) return 0;
-    // 视口还没建立时不要量：宽度接近 0 会让每个字单独折行，
-    // 量出来的高度是几千像素的假值，写进宿主就会把卡片撑成一屏空白。
+    // No mida antes de crear la ventana gráfica: un ancho cercano a 0 hará que cada palabra se ajuste de forma independiente.
+    // La altura medida es un valor falso de varios miles de píxeles, y escribirlo en el host ampliará la tarjeta hasta convertirla en una pantalla en blanco.
     if (window.innerWidth < 80 || window.innerHeight < 40) return 0;
     var box = b.getBoundingClientRect().height;
     var content = b.scrollHeight;
-    // 两者取大：盒子可能比内容矮（内容溢出），也可能因为 margin 折叠比内容高。
-    // 只信其中一个都会出错 —— 信盒子就裁内容，信内容就漏掉底部留白。
+    // Lo que sea mayor: el cuadro puede ser más corto que el contenido (el contenido se desborda) o puede ser más alto que el contenido porque el margen está colapsado.
+    // Creer en sólo uno de ellos será un error —— El contenido del buzón se corta y el contenido de la carta se deja en blanco en la parte inferior.
     var h = Math.max(box, content);
     if (h <= 0) h = b.offsetHeight;
     return Math.ceil(h);
@@ -243,10 +243,10 @@ internal object CardScript {
     timer = setTimeout(evaluate, 80);
   }
 
-  // 兜底补测：只在「还没量到任何高度」时才补。
-  // 每次 evaluate 都要 getBoundingClientRect + scrollHeight，等于强制一次布局；
-  // 卡片多、滚动进出频繁时，150/400/900 三个无条件定时器就是每个卡片实例 3 次多余布局。
-  // 首次成功上报之后 ResizeObserver 会继续负责后续变化，兜底没有存在价值。
+  // Prueba de recuperación en la parte inferior: sólo realice la prueba cuando "aún no se haya medido la altura".
+  // Cada vez que se evalúa se requiere getBoundingClientRect + scrollHeight, lo que equivale a forzar un diseño;
+  // Cuando hay muchas tarjetas y desplazamientos frecuentes hacia adentro y hacia afuera,150/400/900 Tres temporizadores incondicionales son tres diseños redundantes por instancia de tarjeta.
+  // Después del primer informe exitoso, ResizeObserver seguirá siendo responsable de los cambios posteriores y no tiene ningún valor encubrirlo.
   function fallback(){
     if (reported > 0) return;
     schedule();

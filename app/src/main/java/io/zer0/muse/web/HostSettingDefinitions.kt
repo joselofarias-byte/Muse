@@ -2,7 +2,7 @@ package io.zer0.muse.web
 
 import java.util.Locale
 
-/** 设置项的协议类型，字符串形式即下发给网页端的 `type`。 */
+/** El tipo de protocolo del elemento de configuración, en forma de cadena, se envía a la página web. `type`. */
 internal enum class HostSettingType(val wireName: String) {
     BOOLEAN("boolean"),
     NUMBER("number"),
@@ -11,30 +11,30 @@ internal enum class HostSettingType(val wireName: String) {
 }
 
 /**
- * 一个设置项的完整定义：键、类型、可写性、枚举候选（值 id → 显示名的字符串资源名）、数值范围。
+ * Definición completa de una configuración: clave, tipo, capacidad de escritura, candidatos de enumeración (valor id → Nombre para mostrar cadena nombre del recurso), rango de valores.
  *
- * 下发（[HostSettingValue]）与写入白名单都由这一份定义派生，不另维护键表：
- * 新增一项只改这里，白名单、校验、快照三处自动跟上。
+ * Problema ([HostSettingValue]) y la lista blanca de escritura se derivan de esta definición, y no se mantiene ninguna tabla de claves separada:
+ * Si agrega un elemento nuevo, cámbielo solo aquí y la lista blanca, la verificación y la instantánea seguirán automáticamente.
  */
 internal data class HostSettingDefinition(
     val key: String,
     val type: HostSettingType,
     /**
-     * 是否接受写入。false 表示只用于展示（当前音色名、是否已配置模型这类派生值），
-     * 往它写会被明确拒绝而不是静默丢弃。
+     * Ya sea para aceptar escrituras.false Indica que es solo para visualización (valores derivados como el nombre del timbre actual y si el modelo ha sido configurado),
+     * Escribirle será rechazado explícitamente en lugar de descartado silenciosamente.
      */
     val writable: Boolean = true,
-    /** enum 候选：值 id → 显示名的字符串资源名。 */
+    /** enum Candidato: valor id → El nombre del recurso de cadena del nombre para mostrar. */
     val options: List<Pair<String, String>> = emptyList(),
-    /** number 的下界/上界/步进（含边界）。 */
+    /** number límite inferior/límite superior/Paso (con límites). */
     val min: Double? = null,
     val max: Double? = null,
     val step: Double? = null,
-    /** text 的最大长度；0 表示不限。 */
+    /** text la longitud máxima;0 No indica límite. */
     val maxLength: Int = 0,
 ) {
 
-    /** 把外部提交的字符串按本项类型规范化；失败时带上可直接展示的原因。 */
+    /** Estandarizar cadenas enviadas externamente según este tipo; en caso de falla, proporcione un motivo que se pueda mostrar directamente. */
     fun parse(raw: String?): HostSettingParseResult {
         val text = raw?.trim().orEmpty()
         return when (type) {
@@ -78,7 +78,7 @@ internal data class HostSettingDefinition(
         return HostSettingParseResult.Ok(canonicalNumber(text, number))
     }
 
-    /** 回写用十进制文本：整数范围且值为整数时去掉小数点，避免 55 变成 55.0。 */
+    /** Escribir usando texto decimal: elimine el punto decimal cuando el valor sea un número entero en el rango de enteros para evitar que 55 se convierta en 55,0. */
     private fun canonicalNumber(text: String, number: Double): String {
         val integralRange = isIntegral(min) && isIntegral(max)
         return if (integralRange && number % 1.0 == 0.0) number.toInt().toString() else text
@@ -93,27 +93,27 @@ internal data class HostSettingDefinition(
     }
 }
 
-/** [HostSettingDefinition.parse] 的结果。 */
+/** [HostSettingDefinition.parse] resultado. */
 internal sealed interface HostSettingParseResult {
-    /** [canonical] 是按类型规范化后的字符串，原样交给仓储写入。 */
+    /** [canonical] Es una cadena estandarizada por tipo y entregada al almacén para su escritura tal como está. */
     data class Ok(val canonical: String) : HostSettingParseResult
 
     data class Rejected(val reason: String) : HostSettingParseResult
 }
 
 /**
- * 全部可下发 / 可写入的设置项。
+ * Todas las configuraciones entregables/escribibles.
  *
- * 列表顺序即网页端子页里的渲染顺序；分类靠键前缀（`chatPreferences.` / `mediaConfig.`）
- * 与常量名体现，不再单开一份“分类 → 键”的映射。
+ * El orden de la lista es el orden de representación en la página del terminal web; la clasificación depende del prefijo clave (`chatPreferences.` / `mediaConfig.`)
+ * Reflejado con el nombre constante, ya no es una copia separada.“Clasificación → clave”de cartografía.
  *
- * 只能读不能写的是派生值：`model.configured`（是否已配置模型）与
- * `mediaConfig.ttsVoiceName`（当前 TTS 音色名，网页端只展示）。它们仍然出现在
- * `values` 里，因为网页端要显示它们；写入白名单自然不含它们。
+ * Los valores derivados sólo se pueden leer pero no escribir:`model.configured`(si el modelo ha sido configurado) con
+ * `mediaConfig.ttsVoiceName`(El nombre del tono TTS actual solo se muestra en la página web). todavía aparecen en
+ * `values` , porque la página web necesita mostrarlos; Escribir la lista blanca, naturalmente, no los incluye.
  */
 internal object HostSettingDefinitions {
 
-    /** 外观：主题模式。 */
+    /** Apariencia: Modo temático. */
     private val THEME_MODE = HostSettingDefinition(
         key = "themeMode",
         type = HostSettingType.ENUM,
@@ -124,7 +124,7 @@ internal object HostSettingDefinitions {
         ),
     )
 
-    /** 外观：字号档。 */
+    /** Apariencia: Archivo de tamaño de fuente. */
     private val FONT_SIZE_SCALE = HostSettingDefinition(
         key = "fontSizeScale",
         type = HostSettingType.ENUM,
@@ -136,7 +136,7 @@ internal object HostSettingDefinitions {
         ),
     )
 
-    /** 外观：液态玻璃模式。 */
+    /** Aspecto: Modo vidrio líquido. */
     private val LIQUID_GLASS_MODE = HostSettingDefinition(
         key = "liquidGlassMode",
         type = HostSettingType.ENUM,
@@ -147,7 +147,7 @@ internal object HostSettingDefinitions {
         ),
     )
 
-    /** 外观：玻璃强度（0..100 整数百分比）。 */
+    /** Apariencia: Resistencia del vidrio (0..100 Porcentaje entero). */
     private val LIQUID_GLASS_STRENGTH = HostSettingDefinition(
         key = "liquidGlassStrength",
         type = HostSettingType.NUMBER,
@@ -160,7 +160,7 @@ internal object HostSettingDefinitions {
 
     private val HIGH_CONTRAST = HostSettingDefinition(key = "highContrast", type = HostSettingType.BOOLEAN)
 
-    /** 聊天：发送键（回车直接发 / 回车换行）。 */
+    /** Chat: Tecla Enviar (presione Enter para enviar directamente/Intro y avance de línea). */
     private val CHAT_ENTER_TO_SEND = HostSettingDefinition(
         key = HostSettingKeys.CHAT_ENTER_TO_SEND,
         type = HostSettingType.BOOLEAN,
@@ -181,13 +181,13 @@ internal object HostSettingDefinitions {
         type = HostSettingType.BOOLEAN,
     )
 
-    /** 聊天：强制返回思考（思考强度只在开启后生效）。 */
+    /** Chat: Obligado a volver a pensar (la intensidad del pensamiento solo surte efecto después de activarlo). */
     private val CHAT_FORCE_REASONING = HostSettingDefinition(
         key = "chatPreferences.forceReasoning",
         type = HostSettingType.BOOLEAN,
     )
 
-    /** 聊天：思考强度。 */
+    /** Charla: Piensa en la intensidad. */
     private val CHAT_REASONING_LEVEL = HostSettingDefinition(
         key = "chatPreferences.reasoningLevel",
         type = HostSettingType.ENUM,
@@ -201,7 +201,7 @@ internal object HostSettingDefinitions {
         ),
     )
 
-    /** 语音：TTS 引擎。候选与 App 的引擎菜单同一份（[io.zer0.muse.ui.speech.TtsManager.CLOUD_TTS_ENGINES]）。 */
+    /** Voz:TTS motor. El candidato es el mismo que el menú del motor de la aplicación ([io.zer0.muse.ui.speech.TtsManager.CLOUD_TTS_ENGINES]). */
     private val TTS_ENGINE = HostSettingDefinition(
         key = "mediaConfig.ttsEngine",
         type = HostSettingType.ENUM,
@@ -221,7 +221,7 @@ internal object HostSettingDefinitions {
         ),
     )
 
-    /** 语音：播报语速（0.5..2.0 倍，1.0 为正常）。 */
+    /** Voz: velocidad de transmisión de voz (0.5..2.0 veces,1.0 es normal). */
     private val TTS_SPEECH_RATE = HostSettingDefinition(
         key = "mediaConfig.ttsSpeechRate",
         type = HostSettingType.NUMBER,
@@ -230,7 +230,7 @@ internal object HostSettingDefinitions {
         step = 0.1,
     )
 
-    /** 语音：当前音色名，只展示。 */
+    /** Voz: nombre de voz actual, solo se muestra. */
     private val TTS_VOICE_NAME = HostSettingDefinition(
         key = "mediaConfig.ttsVoiceName",
         type = HostSettingType.TEXT,
@@ -248,42 +248,43 @@ internal object HostSettingDefinitions {
         type = HostSettingType.BOOLEAN,
     )
 
-    /** 记忆：总开关。 */
+    /** Memoria: Interruptor maestro. */
     private val MEMORY_ENABLED = HostSettingDefinition(key = HostSettingKeys.MEMORY, type = HostSettingType.BOOLEAN)
 
     /**
-     * 记忆：把通知内容自动记进记忆。
+     * Memoria: almacena automáticamente el contenido de las notificaciones en la memoria.
      *
-     * App 没有单独叫「自动保存」的开关，这一项是唯一由用户控制“自动入库”的真字段
-     * （记忆自动提取本身按对话轮次自动跑，无开关）。
+     * App No existe un interruptor separado llamado "Guardado automático", este es el único controlado por el usuario.“Almacenamiento automático”campo verdadero
+     * (La recuperación automática de la memoria se ejecuta automáticamente según la ronda de diálogo, sin cambio).
      */
     private val NOTIFICATION_MEMORY = HostSettingDefinition(
         key = "notificationMemoryEnabled",
         type = HostSettingType.BOOLEAN,
     )
 
-    /** 通用：界面语言。候选与 App 语言选择器一致（跟随系统 / 中 / 英 / 日 / 韩 / 俄）。 */
+    /** General: idioma de la interfaz. Los candidatos coinciden con el selector de idioma de la aplicación (Sistema de seguimiento/chino/inglés/japonés/coreano/ruso). */
     private val LANGUAGE = HostSettingDefinition(
         key = "language",
         type = HostSettingType.ENUM,
         options = listOf(
             "system" to "settings_theme_follow_system",
-            "zh" to "settings_theme_language_zh",
+            "es" to "settings_theme_language_es",
             "en" to "settings_theme_language_en",
+            "pt-rBR" to "settings_theme_language_pt",
             "ja" to "settings_theme_language_ja",
             "ko" to "settings_theme_language_ko",
             "ru" to "settings_theme_language_ru",
         ),
     )
 
-    /** 通用：是否已配置模型，派生值，只展示。 */
+    /** General: si el modelo ha sido configurado, valores derivados, solo se muestran. */
     private val MODEL_CONFIGURED = HostSettingDefinition(
         key = "model.configured",
         type = HostSettingType.BOOLEAN,
         writable = false,
     )
 
-    /** 全部值项，顺序即网页端子页渲染顺序。 */
+    /** El orden de todos los elementos de valor es el orden de representación de las páginas del terminal web. */
     val all: List<HostSettingDefinition> = listOf(
         THEME_MODE,
         FONT_SIZE_SCALE,
@@ -307,7 +308,7 @@ internal object HostSettingDefinitions {
         MODEL_CONFIGURED,
     )
 
-    /** 写入白名单：从 [all] 派生，与 `values` 同源，不另维护键表。 */
+    /** Escribir en la lista blanca: desde [all] derivado de, con `values` Misma fuente, no se mantiene ninguna tabla de claves separada. */
     val writableKeys: List<String> = all.filter { it.writable }.map { it.key }
 
     private val byKey: Map<String, HostSettingDefinition> = all.associateBy { it.key }

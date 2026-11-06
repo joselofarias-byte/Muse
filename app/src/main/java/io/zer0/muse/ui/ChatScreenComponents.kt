@@ -62,20 +62,20 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * v0.29 P0-1: 空聊天引导 — 轻量居中提示 + 建议 prompt 胶囊。
+ * v0.29 P0-1: guía de chat vacía — Mensaje centrado ligero + cápsula de mensaje de sugerencia.
  *
- * 设计(空状态):
- *  - 不覆盖全屏(Box + CenterAlignment,只占居中区域,不拦截 InputBar)
- *  - 居中品牌图标 + 一句引导语
- *  - 底部"不参考记忆"开关胶囊
- *  - v2.2.0: 移除建议 prompt 胶囊与"换一批"(按用户要求)
+ * diseño(Estado vacío):
+ *  - No cubre pantalla completa(Box + CenterAlignment,Ocupa solo la zona central,no interceptar InputBar)
+ *  - Ícono de marca centrado + oración principal
+ *  - abajo"Sin referencia a la memoria"cambiar la cápsula
+ *  - v2.2.0: Las sugerencias de eliminación indican cápsula con"Cambiar un lote"(Según los requisitos del usuario.)
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun EmptyChatGuide(
     modifier: Modifier = Modifier,
     assistant: io.zer0.muse.data.assistant.AssistantEntity? = null,
-    // v1.0.72: 本会话不参考记忆开关
+    // v1.0.72: Esta sesión no se refiere a cambios de memoria.
     ignoreMemory: Boolean = false,
     onToggleIgnoreMemory: (Boolean) -> Unit = {},
 ) {
@@ -84,7 +84,7 @@ internal fun EmptyChatGuide(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MusePaddings.screen),
     ) {
-        // 头像:助手有自定义头像(图片或 Emoji)用助手头像,否则用项目图标
+        // avatar:El asistente tiene un avatar personalizado.(fotos o Emoji)Usar avatar asistente,De lo contrario, utilice el icono del proyecto.
         val currentAssistant = assistant
         val avatarCd = if (currentAssistant != null) {
             stringResource(R.string.chat_avatar_assistant_cd)
@@ -121,16 +121,16 @@ internal fun EmptyChatGuide(
                 )
             }
         }
-        // 引导语
+        // Palabras introductorias
         Text(
             text = stringResource(R.string.chat_empty_guide_title),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // v2.2.0: 按用户要求移除建议 prompt 胶囊与"换一批"(保留下方"不参考记忆"开关)
+        // v2.2.0: Eliminar sugerencias mediante cápsula de solicitud de usuario con"Cambiar un lote"(manténgase abajo"Sin referencia a la memoria"cambiar)
 
-        // v1.0.72: 此条对话不参考记忆 — 开关式胶囊选项
-        // 开启后本会话不注入任何记忆(用户画像/置顶/长期记忆/群聊记忆/经验库),从零开始
+        // v1.0.72: Esta conversación no se refiere a la memoria. — Opción de cápsula encendida/apagada
+        // Después de abrir, no se inyectará ninguna memoria en esta sesión.(Retrato de usuario/fijar hacia arriba/memoria a largo plazo/Memoria de chat grupal/Biblioteca de experiencias),empezar desde cero
         Surface(
             onClick = { onToggleIgnoreMemory(!ignoreMemory) },
             shape = androidx.compose.foundation.shape.RoundedCornerShape(percent = 50),
@@ -145,7 +145,7 @@ internal fun EmptyChatGuide(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // 开关状态圆点(开启 = 实心主色,关闭 = 空心)
+                // punto de estado del interruptor(encender = color principal sólido,cerrar = hueco)
                 Box(
                     modifier = Modifier
                         .size(10.dp)
@@ -159,8 +159,8 @@ internal fun EmptyChatGuide(
                         ),
                 )
                 Text(
-                    // 圆点只是状态标记，文字里显式写出开/关，
-                    // 避免用户把灰点当成可点击控件而不确定当前状态。
+                    // Los puntos son solo marcadores de estado y la palabra "abierto" está escrita explícitamente en el texto./apagado,
+                    // Esto evita que los usuarios piensen en los puntos grises como controles en los que se puede hacer clic y no estén seguros del estado actual.
                     text = stringResource(
                         if (ignoreMemory) {
                             R.string.chat_ignore_memory_option_on
@@ -181,24 +181,24 @@ internal fun EmptyChatGuide(
 }
 
 /**
- * 任务 2B: shimmer 骨架屏气泡占位。
+ * Tarea 2B: marcador de posición de burbuja de pantalla de esqueleto brillante.
  *
- * v1.0.3 改进:
- *  - 顶部加三个跳动圆点 + "思考中"文字,给用户明确的语义反馈(原纯 shimmer 缺少文字提示)
- *  - 三行圆角条配合从左到右的扫光渐变,营造"AI 正在写"的呼吸感
- *  - "思考中"文字带脉冲呼吸动画(alpha 0.5↔1.0),比静态文字更有活力
- *  - 整体布局: [三点动画] / "思考中" / [三行 shimmer 条]
- * v1.0.4 改进:
- *  - 新增 [progressText] 参数,视觉分析阶段显示"正在分析图片 2/4…"等进度文字(替代"思考中")
+ * v1.0.3 mejorar:
+ *  - Agrega tres puntos saltadores en la parte superior + "Pensando"texto,Ofrezca a los usuarios comentarios semánticos claros(Al brillo original le faltan indicaciones de texto)
+ *  - Tres filas de esquinas redondeadas combinadas con un amplio degradado de izquierda a derecha,crear"AI escribiendo"sentido de la respiración
+ *  - "Pensando"Texto con animación de respiración por pulso.(alpha 0.5↔1.0),Más dinámico que el texto estático
+ *  - diseño general: [Animación de tres puntos.] / "Pensando" / [Tres filas de tiras brillantes.]
+ * v1.0.4 mejorar:
+ *  - Nuevo [progressText] parámetros,Visualización de la etapa de análisis visual"Analizando imágenes 2/4…"Esperando texto de progreso(sustituto"Pensando")
  */
 @Composable
 internal fun ThinkingBubble(progressText: String? = null) {
-    // 等待阶段只留两层：一枚正在变形的墨形 + 一句静止的文案。
+    // Solo quedan dos capas en la etapa de espera: una forma de tinta que se deforma + una copia estática.
     //
-    // 旧版是三层叠加（三个跳动的点、文字独立呼吸、三行扫光骨架条），三处都不再保留：
-    //  - 两个互不相干的循环周期叠在一起，是持续的视觉噪音；
-    //  - 骨架条暗示「马上会出现三行等宽文字」，而回复的长度与形状不可知，
-    //    首帧真文字进来时还会跳一下。
+    // La versión anterior es una superposición de tres capas (tres puntos de salto, respiración independiente del texto y tres líneas de barras de esqueleto amplias), y estos tres lugares ya no se conservan:
+    //  - Dos ciclos no relacionados se apilan para formar un ruido visual continuo;
+    //  - La barra de esqueleto implica que "pronto aparecerán tres líneas de texto de igual ancho" y se desconocen la longitud y la forma de la respuesta.
+    //    El primer cuadro de texto real también saltará cuando llegue.
     val reduced = MuseMotion.isReducedMotion()
     Row(
         modifier = Modifier
@@ -260,7 +260,7 @@ internal fun ImageGenerationPlaceholder() {
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // v1.0.4 (P2): 顶部三圆点跳动(复用 ThinkingBubble 同款动画,改 label 避免冲突)
+            // v1.0.4 (P2): Los tres puntos superiores saltan(Reutiliza la misma animación de ThinkingBubble,Cambiar etiqueta para evitar conflictos)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -337,7 +337,7 @@ internal fun ImageGenerationPlaceholder() {
     }
 }
 
-/** reduced-motion 下的图片/视频生成占位,保持语义但不运行 shimmer。 */
+/** reduced-motion Imágenes debajo/Marcador de posición de generación de vídeo,Mantiene la semántica pero no emite brillo. */
 @Composable
 private fun StaticGenerationPlaceholder(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Row(
@@ -375,11 +375,11 @@ private fun StaticGenerationPlaceholder(icon: androidx.compose.ui.graphics.vecto
 }
 
 /**
- * v1.0.4 (P1): 视频生成中占位卡片。
+ * v1.0.4 (P1): Tarjeta marcador de posición en generación de vídeo.
  *
- * 与 [ImageGenerationPlaceholder] 对称:圆角矩形 shimmer + 播放图标 + "正在生成视频,可能需要几十秒…"文案,
- * 让用户在聊天主流程内明确感知 LLM 调用 generate_video 工具时的长任务进度。
- * (execGenerateVideo 内部还会通过 updateAssistant 在助手消息气泡里同步"已等待 N 秒…",本占位是补充反馈)
+ * con [ImageGenerationPlaceholder] simetria:brillo de rectángulo redondeado + icono de reproducción + "Generando vídeo,Puede tardar decenas de segundos…"redacción,
+ * Permita que los usuarios perciban claramente el progreso de tareas largas cuando LLM llame a la herramienta generate_video dentro del proceso de chat principal.
+ * (execGenerateVideo Internamente, también se sincronizará en la burbuja de mensajes del asistente a través de updateAssistant."Esperó N segundos…",Este marcador de posición es para comentarios complementarios.)
  */
 @Composable
 internal fun VideoGenerationPlaceholder() {
@@ -450,11 +450,11 @@ internal fun VideoGenerationPlaceholder() {
 }
 
 /**
- * v1.0.4 (P1): 历史加载更多顶部占位条。
+ * v1.0.4 (P1): El historial carga más barras de marcador de posición superiores.
  *
- * 上滑触发 loadMoreHistory 后,LazyColumn 顶部插入此占位,让用户看到"正在加载更多历史…"反馈。
- * 与 [ThinkingBubble] 风格一致(三行圆角 shimmer 条 + 文案),但去掉圆点和气泡,做成顶部细条。
- * 占位在 isLoadingMore=true 时显示,加载完成(lastHistoryLoadCount > 0)后由 scrollToItem 移除。
+ * Después de deslizarse hacia arriba para activar la cargaMásHistoria,LazyColumn Inserta este marcador de posición en la parte superior,dejar que los usuarios vean"Cargando más historia…"comentario.
+ * con [ThinkingBubble] estilo consistente(Tres líneas de tiras brillantes redondeadas + redacción publicitaria),Pero quita los puntos y las burbujas.,Forme tiras finas encima.
+ * marcador de posición en isLoadingMore=true visualización de la hora,Cargando completada(lastHistoryLoadCount > 0)Posteriormente eliminado por scrollToItem.
  */
 @Composable
 internal fun HistoryLoadMorePlaceholder() {
@@ -509,7 +509,7 @@ internal fun HistoryLoadMorePlaceholder() {
     }
 }
 
-/** reduced-motion 下的历史加载静态提示。 */
+/** reduced-motion El mensaje estático de carga del historial a continuación. */
 @Composable
 private fun StaticHistoryLoadMorePlaceholder() {
     Row(
@@ -532,8 +532,8 @@ private fun StaticHistoryLoadMorePlaceholder() {
 }
 
 /**
- * 日期分隔线 — 细线 + 居中日期文字,用于消息列表跨天分组。
- * 当天消息显示“今天 HH:mm”,其他日期显示“MM-dd HH:mm”,颜色更淡。
+ * separador de fecha — línea delgada + texto de fecha centrado,Se utiliza para agrupar listas de mensajes por días.
+ * Pantalla de noticias de hoy“hoy HH:mm”,Otras fechas mostradas“MM-dd HH:mm”,El color es más claro.
  */
 @Composable
 internal fun DateSeparator(timestamp: Long) {
@@ -543,7 +543,7 @@ internal fun DateSeparator(timestamp: Long) {
         val timeSdf = java.text.SimpleDateFormat(MuseDateFormats.TIME_SHORT, java.util.Locale.getDefault())
         val timeText = timeSdf.format(java.util.Date(timestamp))
         if (isToday) {
-            "今天 $timeText"
+            "hoy $timeText"
         } else {
             val dateSdf = java.text.SimpleDateFormat(MuseDateFormats.DATE_TIME_SHORT, java.util.Locale.getDefault())
             dateSdf.format(java.util.Date(timestamp))
@@ -573,7 +573,7 @@ internal fun DateSeparator(timestamp: Long) {
 }
 
 /**
- * 判断两个时间戳是否在同一天。
+ * Determine si dos marcas de tiempo corresponden al mismo día.
  */
 internal fun isSameDay(ts1: Long, ts2: Long): Boolean {
     val cal1 = java.util.Calendar.getInstance().apply { timeInMillis = ts1 }
@@ -582,7 +582,7 @@ internal fun isSameDay(ts1: Long, ts2: Long): Boolean {
         cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
 }
 
-/** B7-01: 消息多选操作条 — 单聊/群聊共用统一组件(计划 A4)。 */
+/** B7-01: Barra de operación de selección múltiple de mensajes — charla privada/El chat grupal comparte componentes unificados(planear A4). */
 @Composable
 internal fun ChatSelectionBar(
     count: Int,
@@ -591,11 +591,11 @@ internal fun ChatSelectionBar(
     onDelete: () -> Unit,
     onExport: () -> Unit,
     onExit: () -> Unit,
-    /** v2.6.9（用户反馈）: 批量收藏选中的消息。 */
+    /** v2.6.9(comentarios de los usuarios): Colección de mensajes seleccionados en lotes. */
     onFavorite: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
+    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(
@@ -693,15 +693,15 @@ internal fun ChatSelectionBar(
 }
 
 /**
- * v2.6.9（用户反馈）: 「加载更早消息」入口条。
+ * v2.6.9(comentarios de los usuarios): Barra de entrada "Cargar mensajes anteriores".
  *
- * 用户反馈“翻页的小标志有的有有的没有，想看之前的消息看不了”——根因是历史上只在
- * isLoadingMore=true 时显示 shimmer 占位，也就是「已经触发加载」的瞬间才可见；
- * 平时顶部完全空白，用户不知道还能不能往上翻，也没有可点的东西。
+ * Comentarios de los usuarios“Hay algunos pequeños carteles para pasar páginas, otros no, y quiero ver los mensajes anteriores pero no puedo.”——La causa fundamental es que históricamente sólo en
+ * isLoadingMore=true El marcador de posición de brillo se muestra en este momento, es decir, solo es visible en el momento en que "se ha activado la carga";
+ * Por lo general, la parte superior está completamente en blanco y los usuarios no saben si pueden desplazarse hacia arriba y no hay nada en lo que hacer clic.
  *
- * 这里补一个**常驻的可点击入口**：只要还有更早历史就显示，
- * 点它或继续上滑都能加载。样式刻意做得比消息轻（细条 + 低对比文本），
- * 不抢正文视觉权重。
+ * Inventa uno aquí**Portal permanente en el que se puede hacer clic**: Se muestra siempre que haya un historial anterior,
+ * Haz clic en él o continúa deslizándote hacia arriba para cargar. El estilo es intencionalmente más claro que el mensaje (barras delgadas + texto de bajo contraste).
+ * No robes el peso visual del texto.
  */
 @Composable
 internal fun HistoryLoadMoreEntry(onClick: () -> Unit, modifier: Modifier = Modifier) {

@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-20: 绘图模型目录解析与默认值测试。
+ * R-TEST-20: Análisis del directorio del modelo de dibujo y prueba de valores predeterminados.
  */
 class ImageModelCatalogTest {
 

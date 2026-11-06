@@ -1,120 +1,120 @@
 package io.zer0.muse.tools
 
 /**
- * 工具权限解析器。
+ * Analizador de permisos de herramientas.
  *
- * 综合三要素决定一次工具调用是否需要审批:
- *  1. 当前会话的 [SessionPermissionMode]
- *  2. 工具自身的 [ToolRiskLevel]
- *  3. 用户针对该工具单独设置的 [ToolApprovalPolicy]
+ * Tres factores integrales determinan si una llamada de herramienta requiere aprobación:
+ *  1. de la sesión actual [SessionPermissionMode]
+ *  2. herramienta en sí [ToolRiskLevel]
+ *  3. Configurado individualmente por el usuario para esta herramienta [ToolApprovalPolicy]
  *
- * 优先级:单工具 ALWAYS_DENY / 参数硬拒绝 > 会话 TRUSTED > 会话 STRICT >
- * 单工具 ALWAYS_ALLOW > 会话 ASK 默认风险策略。
+ * prioridad:Herramienta única ALWAYS_DENY / Parámetro Denegación total > sesión TRUSTED > sesión STRICT >
+ * sola herramienta ALWAYS_ALLOW > Sesión ASK política de riesgo de impago.
  *
- * v1.0.52: ShellSandboxTool 保留独立规则型硬边界([isUnsafeCommand])。
- * 会话 TRUSTED 模式只跳过逐次审批,不绕过工具自身的沙箱、参数校验或执行器权限。
+ * v1.0.52: ShellSandboxTool Preservar límites rígidos regulares e independientes([isUnsafeCommand]).
+ * El modo de sesión CONFIANZA solo omite la aprobación paso a paso,No omite la propia zona de pruebas, la validación de parámetros ni los permisos de ejecutor de la herramienta.
  */
 object ToolPermissionResolver {
 
     init {
-        // v1.0.53: 注册内置参数化权限策略(open_url / execute_javascript)
+        // v1.0.53: Registrar políticas de permisos parametrizadas integradas(open_url / execute_javascript)
         ParamPolicies.registerBuiltIn()
     }
 
     /**
-     * v1.0.52: 危险可执行文件黑名单(规则型硬边界防线)。
+     * v1.0.52: Lista negra de archivos ejecutables peligrosos(Línea regular de defensa de la frontera dura).
      *
-     * execute_shell 调用中只要出现这些可执行文件名,[isUnsafeCommand] 即拒绝执行。
-     * 该只读 Shell 沙箱限制独立于用户选择的审批模式。
+     * execute_shell Siempre que estos nombres de archivos ejecutables aparezcan en la llamada,[isUnsafeCommand] Es decir, negativa a ejecutar.
+     * Esta restricción del entorno limitado del shell de solo lectura es independiente del modo de aprobación seleccionado por el usuario.
      *
-     * 收录依据(行动纪律 + 安全最佳实践):
-     *  - 文件删除/破坏:rm, rmdir, shred, mkfs
-     *  - 权限提升:sudo, su, doas
-     *  - 版本控制破坏:git(可 push --force / reset --hard 破坏仓库)
-     *  - 网络下载执行:curl, wget(可下载并执行恶意脚本)
-     *  - 包管理:apt, pip, npm, yarn, pnpm(可安装恶意包)
-     *  - 解释器/shell:bash, sh, zsh, fish, dash(可执行任意脚本)
-     *  - 进程管理:kill, killall, pkill(可终止关键进程)
-     *  - 权限变更:chmod, chown, chgrp(可破坏文件权限)
-     *  - 挂载/系统:mount, umount, reboot, shutdown, poweroff
-     *  - 调试/注入:strace, ltrace, ptrace, gdb(可窃取运行时数据)
+     * Base para la inclusión(Disciplina de acción + Mejores prácticas de seguridad):
+     *  - Eliminación de archivos/destruir:rm, rmdir, shred, mkfs
+     *  - Escalada de privilegios:sudo, su, doas
+     *  - control de versiones roto:git(si push --force / reset --hard Destruir almacén)
+     *  - Ejecución de descarga de red:curl, wget(Puede descargar y ejecutar scripts maliciosos)
+     *  - Gestión de paquetes:apt, pip, npm, yarn, pnpm(Puede instalar paquetes maliciosos)
+     *  - intérprete/shell:bash, sh, zsh, fish, dash(Puede ejecutar cualquier script)
+     *  - Gestión de procesos:kill, killall, pkill(Los procesos clave se pueden terminar)
+     *  - Cambios de permiso:chmod, chown, chgrp(Permisos de archivos destructibles)
+     *  - montar/sistema:mount, umount, reboot, shutdown, poweroff
+     *  - Depuración/inyectar:strace, ltrace, ptrace, gdb(Puede robar datos en tiempo de ejecución)
      */
     private val BLOCKED_EXECUTABLES: Set<String> = setOf(
-        // 文件删除/破坏
+        // Eliminación de archivos/destruir
         "rm", "rmdir", "shred", "mkfs",
-        // 权限提升
+        // Escalada de privilegios
         "sudo", "su", "doas",
-        // 版本控制
+        // control de versiones
         "git",
-        // 网络下载
+        // descarga de internet
         "curl", "wget",
-        // 包管理
+        // Gestión de paquetes
         "apt", "apt-get", "pip", "pip3", "npm", "yarn", "pnpm", "gem", "cargo",
-        // 解释器/shell
+        // intérprete/shell
         "bash", "sh", "zsh", "fish", "dash", "python", "python3", "perl", "ruby", "node",
-        // 进程管理
+        // Gestión de procesos
         "kill", "killall", "pkill",
-        // 权限变更
+        // Cambios de permiso
         "chmod", "chown", "chgrp",
-        // 挂载/系统
+        // montar/sistema
         "mount", "umount", "reboot", "shutdown", "poweroff",
-        // 调试/注入
+        // Depuración/inyectar
         "strace", "ltrace", "ptrace", "gdb",
-        // 重定向到执行
+        // Redirigir a ejecución
         "exec", "eval",
     )
 
     /**
-     * v1.0.52: 不安全的 Shell 语法正则(规则型硬边界防线)。
+     * v1.0.52: Regularización de sintaxis de shell insegura(Línea regular de defensa de la frontera dura).
      *
-     * 检测命令字符串中的危险语法字符,防止命令注入。与 [ShellSandboxTool.FORBIDDEN_CHARS]
-     * 互补(后者是逐字符集合,本正则覆盖更多场景):
-     *  - `\r` `\n`:换行注入(在第一条命令后注入第二条命令)
-     *  - `` ` ``:反引号命令替换
-     *  - `$`:变量展开/命令替换 `$(...)`
-     *  - `|`:管道(可管道到危险命令如 `| sh`)
-     *  - `;`:命令分隔符
-     *  - `&`:后台执行/命令分隔符 `&&`
-     *  - `<` `>`:重定向(可覆盖文件)
-     *  - `*` `?`:通配符(可意外匹配大量文件)
-     *  - `{` `}`:花括号展开(可构造复杂参数)
+     * Detectar caracteres de sintaxis peligrosos en cadenas de comandos,Prevenir la inyección de comandos. con [ShellSandboxTool.FORBIDDEN_CHARS]
+     * complementario(Esta última es una colección personaje por personaje.,Esta regla cubre más escenarios.):
+     *  - `\r` `\n`:inyección de nueva línea(Inyecte el segundo comando después del primer comando)
+     *  - `` ` ``:Reemplazo del comando de acento grave
+     *  - `$`:expansión variable/sustitución de comando `$(...)`
+     *  - `|`:tubo(Puede conectarse a comandos peligrosos como `| sh`)
+     *  - `;`:separador de comandos
+     *  - `&`:ejecución en segundo plano/separador de comandos `&&`
+     *  - `<` `>`:Redirigir(Archivos que se pueden sobrescribir)
+     *  - `*` `?`:comodín(Puede coincidir accidentalmente con una gran cantidad de archivos)
+     *  - `{` `}`:expansión de corsé(Se pueden construir parámetros complejos.)
      *
-     * 注意:本正则与 [ShellSandboxTool.FORBIDDEN_CHARS] 有重叠,这是故意的——
-     * 多层防御(defense in depth),任一层有 bug 时另一层仍能拦截。
+     * Nota:Esta regla es consistente con [ShellSandboxTool.FORBIDDEN_CHARS] Hay superposición,esto es intencional——
+     * Múltiples capas de defensa(defense in depth),Si alguna capa tiene un error, la otra capa aún puede bloquearlo.
      */
     private val UNSAFE_SHELL_SYNTAX: Regex = Regex("[\r\n`$|;&<>*?{}]")
 
     /**
-     * v1.0.52: 规则型硬边界防线 — 检测命令是否含危险可执行文件或不安全语法。
+     * v1.0.52: Línea regular de defensa de la frontera dura — Detecta si los comandos contienen archivos ejecutables peligrosos o sintaxis insegura.
      *
-     * 作为 shell 类工具(如 [ShellSandboxTool])的第一道防线,在白名单校验之前执行。
-     * 返回 true 时调用方必须立即拒绝执行,不进入后续权限/白名单流程。
+     * Como herramienta de concha(Como por ejemplo [ShellSandboxTool])primera línea de defensa,Ejecutado antes de la verificación de la lista blanca.
+     * La persona que llama debe rechazar inmediatamente la ejecución cuando se devuelve verdadero,No ingresar permisos posteriores/Proceso de lista blanca.
      *
-     * 设计原则(遵循行动纪律):
-     *  - 黑名单优先于白名单:先确认不是已知危险命令,再检查是否在白名单
-     *  - TRUSTED 模式允许工具直接执行,但 execute_shell 仍受本硬边界保护
-     *  - 与 [ShellSandboxTool] 的白名单 + [FORBIDDEN_CHARS] 互补,形成多层防御
+     * principios de diseño(Sigue la disciplina de la acción.):
+     *  - La lista negra tiene prioridad sobre la lista blanca:Primero asegúrese de que no sea un comando peligroso conocido.,Comprueba nuevamente si está en la lista blanca.
+     *  - TRUSTED El modo permite que las herramientas se ejecuten directamente,Pero ejecutar_shell todavía está protegido por este límite estricto.
+     *  - con [ShellSandboxTool] lista blanca + [FORBIDDEN_CHARS] complementario,Crea múltiples capas de defensa
      *
-     * v2.x: 第 0 步先跑 [ShellCommandBoundary.forbidReason] 的第一档 —— 通用 shell 的「绕不过的最小集」。
-     * 它补的是上面两个判据都看不到、但破坏力已足够拦下的那类命令(例如 `dd of=/dev/block/sda`
-     * 既不含禁用的语法字符,`dd` 也不在黑名单里)。这一步只增加拒绝,不放宽已有判据,所以
-     * execute_shell 现有行为不变。通用终端工具 [TerminalExecTool] 只用第一档,不用本函数 ——
-     * 否则管道、重定向、环境变量这些正常工作会被误杀。
+     * v2.x: Paso 0: ejecutar primero [ShellCommandBoundary.forbidReason] primera marcha —— El "conjunto mínimo inevitable" de proyectiles de uso general.
+     * Lo que complementa es el tipo de comando que no se puede ver según los dos criterios anteriores, pero el poder destructivo es suficiente para bloquearlo.(por ejemplo `dd of=/dev/block/sda`
+     * No contiene caracteres de sintaxis prohibidos.,`dd` Tampoco está en la lista negra). Este paso sólo aumenta el rechazo.,No relajar los criterios existentes.,entonces
+     * execute_shell El comportamiento existente permanece sin cambios. Herramientas terminales universales [TerminalExecTool] Utilice sólo la primera velocidad,No utilices esta función ——
+     * De lo contrario, el trabajo normal de canalizaciones, redirecciones y variables de entorno se interrumpirá accidentalmente.
      *
-     * @param command 待检查的命令字符串
-     * @return true 表示命令不安全,必须拒绝;false 表示通过硬边界,可进入后续校验
+     * @param command La cadena de comando a verificar
+     * @return true Indica que el comando no es seguro,debe negarse;false significa pasar un límite duro,Puede ingresar a la verificación posterior
      */
     fun isUnsafeCommand(command: String): Boolean {
         if (command.isBlank()) return false
-        // 0. 通用 shell 硬边界第一档:按真实破坏力判,不看字符串形状
+        // 0. Límite duro de caparazón universal primer nivel:Juicio basado en el verdadero poder destructivo,No mires la forma de la cuerda
         if (ShellCommandBoundary.forbidReason(command) != null) return true
-        // 1. 不安全语法字符检查(换行注入/命令替换/管道/重定向/通配符等)
+        // 1. Comprobación de caracteres de sintaxis insegura(inyección de nueva línea/sustitución de comando/tubo/Redirigir/Comodines, etc.)
         if (UNSAFE_SHELL_SYNTAX.containsMatchIn(command)) return true
-        // 2. 危险可执行文件检查:按空白分割后检查每个 token 的裸命令名
-        //    裸命令名 = 去掉路径前缀(/usr/bin/rm → rm)后的部分
+        // 2. Comprobación de archivos ejecutables peligrosos:Verifique el nombre del comando simple de cada token después de dividirlo por espacios en blanco
+        //    Nombre del comando desnudo = Eliminar prefijo de ruta(/usr/bin/rm → rm)la ultima parte
         val tokens = command.trim().split(Regex("\\s+"))
         for (token in tokens) {
-            // 取最后一段作为命令名(处理 /path/to/cmd 形式)
+            // Tome el último párrafo como nombre del comando.(Manejar el formulario /ruta/a/cmd)
             val bareName = token.substringAfterLast('/').lowercase()
             if (bareName in BLOCKED_EXECUTABLES) return true
         }
@@ -122,13 +122,13 @@ object ToolPermissionResolver {
     }
 
     /**
-     * 解析工具调用的初始审批状态。
+     * El estado de aprobación inicial de la llamada a la herramienta de análisis.
      *
-     * @param toolName 工具名
-     * @param risk 工具风险等级(UNKNOWN 时使用 [fallbackRiskFor] 推断)
-     * @param mode 当前会话权限模式
-     * @param perToolPolicy 用户对该工具设置的持久化策略,未设置为 null
-     * @param args v1.0.53: 工具参数,供参数化策略([ParamPolicies])判定
+     * @param toolName Nombre de la herramienta
+     * @param risk Nivel de riesgo de la herramienta(UNKNOWN usado cuando [fallbackRiskFor] inferencia)
+     * @param mode Modo de permiso de sesión actual
+     * @param perToolPolicy La política de persistencia establecida por el usuario para esta herramienta.,no configurado para null
+     * @param args v1.0.53: Parámetros de la herramienta,para estrategias parametrizadas([ParamPolicies])juicio
      */
     fun resolve(
         toolName: String,
@@ -137,39 +137,39 @@ object ToolPermissionResolver {
         perToolPolicy: ToolApprovalPolicy?,
         args: Map<String, Any?> = emptyMap(),
     ): ToolApprovalState {
-        // 第三方动态工具不接受「台账里写 SAFE」这一条:注册台账的缺省值就是 SAFE,
-        // 第三方工具一旦漏声明就会被当成免审工具,所以 SAFE 一律回落 NORMAL。
-        // 显式声明 HIGH 仍照旧生效 —— 这里只收紧,不降级。
+        // Las herramientas dinámicas de terceros no aceptan el elemento "Escribir SAFE en el libro mayor":El valor predeterminado para el libro mayor de registro es SAFE,
+        // Una vez que una herramienta de terceros no cumple con la declaración, se considerará una herramienta libre de revisión.,Por lo tanto, SEGURO siempre vuelve a NORMAL.
+        // La declaración explícita de ALTO todavía tiene efecto —— Sólo aprieta aquí,Sin degradación.
         val effectiveRisk = conservativeRisk(toolName, risk ?: fallbackRiskFor(toolName))
-        // 1. 用户显式禁用某工具时,任何模式都拒绝
+        // 1. Cuando el usuario desactiva explícitamente una herramienta,Cualquier modo es rechazado.
         if (perToolPolicy == ToolApprovalPolicy.ALWAYS_DENY) {
-            return ToolApprovalState.Denied("工具 $toolName 已被用户禁用")
+            return ToolApprovalState.Denied("Herramientas $toolName Inhabilitado por el usuario")
         }
 
-        // 参数级硬拒绝始终生效(例如 file:// URL / 危险 JS);TRUSTED 只绕过确认,
-        // 不绕过明确非法或危险参数的拒绝。
+        // Los rechazos firmes a nivel de parámetro siempre surten efecto(Por ejemplo, file://URL/ es peligroso JS);TRUSTED Sólo omitir confirmación,
+        // No omita el rechazo de parámetros explícitamente ilegales o peligrosos.
         val paramState = ParamPolicies.evaluate(toolName, args)
         if (paramState is ToolApprovalState.Denied) {
             return paramState
         }
 
-        // v1.x: TRUSTED = 用户明确选择所有工具免逐次确认。
-        // 保留上方显式禁用与参数硬拒绝；执行器自己的沙箱和权限检查不受影响。
+        // v1.x: TRUSTED = Los usuarios seleccionan explícitamente todas las herramientas sin tener que confirmar una tras otra.
+        // Deje intactos los argumentos explícitos de inhabilitación y negación tajante anteriores; Las propias comprobaciones de permisos y zona de pruebas del ejecutor no se ven afectadas.
         if (mode == SessionPermissionMode.TRUSTED) {
             return ToolApprovalState.Auto
         }
 
-        // v1.0.53: 参数化策略(返回非 null 时采用,覆盖静态风险判定)
-        // P0-8: 优先级修正 — 会话模式(STRICT)优先于"参数化 Auto":STRICT 下参数策略
-        // 只能收紧(Denied),不能放宽(Auto)。否则 open_url 的 http/https → Auto 会先于
-        // 模式判定返回,旁路 STRICT 的"外链一律审批"。参数化 Denied 仍最优先(收紧)。
-        // 优先级总序:ALWAYS_DENY > 参数化 Denied > STRICT 模式 > 参数化 Auto > 其他。
+        // v1.0.53: estrategia paramétrica(Se utiliza cuando se devuelve un valor no nulo,Anular la determinación de riesgo estático)
+        // P0-8: Corrección de prioridad — modo de sesión(STRICT)tener prioridad sobre"parametrización Auto":STRICT Estrategia de parámetros más bajos
+        // sólo se puede apretar(Denied),no se puede relajar(Auto). De lo contrario, open_url http/https → Auto precederá
+        // Retorno de juicio de modo,DESVIACIÓN ESTRICTA"Todos los enlaces externos serán aprobados.". El parámetro denegado todavía tiene prioridad(apretar).
+        // Orden general de prioridad:ALWAYS_DENY > parametrización Denied > STRICT modo > parametrización Auto > Otros.
         if (paramState != null && !(mode == SessionPermissionMode.STRICT && paramState is ToolApprovalState.Auto)) {
             return paramState
         }
 
-        // 2. 严格模式:安全工具之外全部审批;安全工具中若涉及外部应用/网络也审批
-        //    注:显式 ALWAYS_ALLOW 在下方优先于 STRICT 判定(用户显式放行的工具不再询问)
+        // 2. modo estricto:Aprobación para todo excepto herramientas de seguridad.;Si aplicaciones externas están involucradas en herramientas de seguridad./La red también aprueba
+        //    Nota:ALWAYS_ALLOW explícito tiene prioridad sobre la evaluación ESTRICTA a continuación(Las herramientas que el usuario publica explícitamente ya no preguntan)
         if (mode == SessionPermissionMode.STRICT && perToolPolicy != ToolApprovalPolicy.ALWAYS_ALLOW) {
             return if (effectiveRisk == ToolRiskLevel.SAFE && toolName in STRICT_SAFE_ALLOWLIST) {
                 ToolApprovalState.Auto
@@ -178,15 +178,15 @@ object ToolPermissionResolver {
             }
         }
 
-        // 3. 用户显式允许某工具时,任何模式下都直接放行。
-        //    v1.x 修复:原实现 ASK/STRICT 模式无视 ALWAYS_ALLOW,导致"始终允许工具"
-        //    勾选/按钮后下次调用仍弹审批卡(用户反馈不生效)。
-        //    显式策略是最强信号,优先级高于会话模式。
+        // 3. Cuando el usuario permite explícitamente una herramienta,Lanzamiento directo en cualquier modo.
+        //    v1.x Reparación:La implementación original del modo ASK/STRICT ignora ALWAYS_ALLOW,causa"Permitir siempre herramientas"
+        //    comprobar/Después de presionar el botón, la tarjeta de aprobación seguirá apareciendo la próxima vez que la llame.(Los comentarios de los usuarios no tienen efecto).
+        //    La estrategia explícita es la señal más fuerte,La prioridad es mayor que el modo de sesión.
         if (perToolPolicy == ToolApprovalPolicy.ALWAYS_ALLOW) {
             return ToolApprovalState.Auto
         }
 
-        // 4. 默认策略(按会话模式 + risk)
+        // 4. Política predeterminada(Por modo de sesión + risk)
         return when (mode) {
             SessionPermissionMode.TRUSTED -> ToolApprovalState.Auto
             SessionPermissionMode.ASK -> when (effectiveRisk) {
@@ -194,103 +194,103 @@ object ToolPermissionResolver {
                 ToolRiskLevel.NORMAL -> ToolApprovalState.Pending
                 ToolRiskLevel.HIGH -> ToolApprovalState.Pending
             }
-            SessionPermissionMode.STRICT -> ToolApprovalState.Pending // 上面已处理
+            SessionPermissionMode.STRICT -> ToolApprovalState.Pending // Lo anterior ha sido procesado.
         }
     }
 
     /**
-     * P0-3: 单一风险真源 — 显式表 [EXPLICIT_RISK_OVERRIDES] + 名称前缀推断的公开入口。
+     * P0-3: única fuente de riesgo — tabla explícita [EXPLICIT_RISK_OVERRIDES] + Entrada pública para la inferencia de prefijo de nombre.
      *
-     * 子代理 / 定时任务等无会话审批链路的过滤**必须**走本函数判定风险等级,
-     * 不得直接比较注册台账(ToolDef.riskLevel)的值 —— 注册值与显式表不一致时
-     * 以本函数为准,避免注册台账降级导致 HIGH 工具被免审批执行。
+     * Filtrado de subagentes/tareas programadas sin enlaces de aprobación de sesión**debe**Utilice esta función para determinar el nivel de riesgo,
+     * No se permite la comparación directa de los libros de registro.(ToolDef.riskLevel)valor —— Cuando el valor registrado es inconsistente con la tabla explícita
+     * Basado en esta función,Evite la degradación del libro de registro provocando que la herramienta ALTA se ejecute sin aprobación.
      *
-     * 第三方动态工具(插件 / MCP)不参与名字推断,直接 NORMAL,见 [fallbackRiskFor]。
+     * Herramientas dinámicas de terceros(complemento / MCP)No involucrado en la inferencia de nombres,directo NORMAL,ver [fallbackRiskFor].
      */
     fun riskLevelFor(toolName: String): ToolRiskLevel = fallbackRiskFor(toolName)
 
     /**
-     * 第三方动态注册工具的名字形态。
+     * La forma del nombre de la herramienta de registro dinámico de terceros.
      *
-     *  - 插件工具:`plugin_<len>_<pluginId>_<toolName>`(PluginManager.skillId)
-     *  - MCP 工具:`mcp_<serverId>__<toolName>`(McpRegistry.registerTools)
+     *  - Herramientas complementarias:`plugin_<len>_<pluginId>_<toolName>`(PluginManager.skillId)
+     *  - MCP Herramientas:`mcp_<serverId>__<toolName>`(McpRegistry.registerTools)
      *
-     * 两段的**末段**都由第三方自取:`get_diagnostics` 这种「听起来只读」的名字不代表
-     * 无副作用,`send_` / `delete_` 这种「听起来危险」的名字也不代表真危险。前缀由宿主
-     * 固定,所以前缀只是**来源标记**,不能当风险判据用。
+     * dos secciones**sección final**Todo recogido por un tercero.:`get_diagnostics` Este nombre que suena como "sólo lectura" no significa
+     * Sin efectos secundarios,`send_` / `delete_` Este nombre que "suena peligroso" no significa que sea realmente peligroso. prefijado por el anfitrión
+     * Fijo,Entonces el prefijo es solo**Etiqueta fuente**,No puede utilizarse como criterio de riesgo.
      *
-     * 内置的 `plugin_market_*` / `mcp_mgmt_*` 管理工具不符合这两种形态(前者第二段不是
-     * 长度数字,后者没有 `__` 分隔),仍按各自声明的等级走。
+     * incorporado `plugin_market_*` / `mcp_mgmt_*` Las herramientas de gestión no se ajustan a estas dos formas.(El segundo párrafo del primero no es
+     * número de longitud,Este último no `__` separar),Seguir procediendo según sus respectivos niveles declarados.
      */
     private val THIRD_PARTY_TOOL_NAME: Regex = Regex("^plugin_[0-9]+_.+|^mcp_.+__.+")
 
-    /** 该工具名是否来自第三方动态注册(插件 / MCP server)。 */
+    /** Si el nombre de la herramienta proviene del registro dinámico de terceros(complemento / MCP server). */
     internal fun isThirdPartyToolName(toolName: String): Boolean = THIRD_PARTY_TOOL_NAME.matches(toolName)
 
-    /** 第三方动态工具的 SAFE 判定一律收敛为 NORMAL;其余等级原样返回。
+    /** El juicio SEGURO de las herramientas dinámicas de terceros siempre converge en NORMAL;Los niveles restantes se devuelven sin cambios.
      *
-     * 口径分界（故意不一致,不是遗漏）：内置的 `mcp_mgmt_*` 不是第三方工具
-     * （[THIRD_PARTY_TOOL_NAME] 不匹配它),他们继续沿用注册台账里声明的等级;
-     * 对端的 `mcp_<server>__<tool>` 则一律强制 NORMAL。同理 `plugin_market_*` 走台账,
-     * `plugin_<len>_<id>_<tool>` 走 NORMAL。
+     * Demarcación de calibre (inconsistencia intencional,no omitido): incorporado `mcp_mgmt_*` No es una herramienta de terceros
+     * ([THIRD_PARTY_TOOL_NAME] no coincide),Siguen utilizando el nivel declarado en la cuenta de registro;
+     * extremo opuesto `mcp_<server>__<tool>` entonces NORMAL siempre es forzado. Misma razón `plugin_market_*` toma el libro mayor,
+     * `plugin_<len>_<id>_<tool>` VAYA NORMAL.
      */
     private fun conservativeRisk(toolName: String, declared: ToolRiskLevel): ToolRiskLevel =
         if (declared == ToolRiskLevel.SAFE && isThirdPartyToolName(toolName)) ToolRiskLevel.NORMAL else declared
 
     /**
-     * P0-3: 显式风险表只读访问(供一致性测试校验注册台账,单一真源)。
+     * P0-3: Acceso de solo lectura a la tabla de riesgos explícitos(Cuenta de registro para pruebas y verificación de coherencia.,única fuente de verdad).
      */
     internal fun explicitRiskTable(): Map<String, ToolRiskLevel> = EXPLICIT_RISK_OVERRIDES
 
     /**
-     * 对未在 [ToolRegistry] 注册的工具(如 Skill 工具 / MCP 工具)做风险等级兜底。
+     * no en [ToolRegistry] Herramientas registradas(Como herramienta de habilidad/herramienta MCP)Sea consciente de los niveles de riesgo.
      *
-     * v1.0.20: 改为"显式映射 + 名称前缀推断"双层兜底,覆盖项目内大量按命名规范命名的工具。
+     * v1.0.20: Cambiar a"Mapeo explícito + inferencia de prefijo de nombre"Fondo de doble capa,Cubre una gran cantidad de herramientas nombradas según las convenciones de nomenclatura dentro del proyecto.
      *
-     * 优先级:
-     *  0. 第三方动态工具(插件 / MCP):不做名字推断,直接 NORMAL
-     *  1. 显式映射表 [EXPLICIT_RISK_OVERRIDES](个别语义与命名前缀不一致的工具,如 open_url 归 HIGH)
-     *  2. 名称前缀推断(覆盖 read_/get_/list_/search_ 等只读族,send_/delete_ 等高危族)
-     *  3. 默认 NORMAL(未知工具保守按普通风险处理,ASK 模式下会询问)
+     * prioridad:
+     *  0. Herramientas dinámicas de terceros(complemento / MCP):Sin inferencia de nombre,directo NORMAL
+     *  1. Tabla de mapeo explícito [EXPLICIT_RISK_OVERRIDES](Algunas herramientas tienen semántica y prefijos de nombres inconsistentes,Si open_url regresa HIGH)
+     *  2. inferencia de prefijo de nombre(Anular read_/get_/list_/search_ y otras familias de solo lectura,send_/delete_ grupos de alto riesgo)
+     *  3. Predeterminado NORMAL(Las herramientas desconocidas se tratan de forma conservadora como riesgos ordinarios,ASK el modo preguntará)
      *
-     * 名字推断只对**内置**工具有效:那些名字写死在代码里,工具作者没有控制权。
-     * 插件与 MCP 工具的名字由第三方自取,一旦参与推断就能自己把外发调用命名成
-     * `get_diagnostics` 拿到 SAFE、在 ASK 模式下免审,所以它们的名字一律不参与推断。
+     * La inferencia de nombres solo es correcta**Incorporado**La herramienta funciona:Esos nombres están escritos en el código.,El autor de la herramienta no tiene control.
+     * Los nombres de los complementos y las herramientas MCP los eligen terceros.,Una vez que participe en la inferencia, podrá nombrar usted mismo la llamada saliente.
+     * `get_diagnostics` Obtenga SAFE y quede exento de revisión en modo PREGUNTAR,Por lo tanto, sus nombres no estarán involucrados en la inferencia.
      *
-     * 命名前缀归类依据:
+     * Clasificación de prefijos de nombres basada en:
      *  - SAFE:read_* / get_* / list_* / search_* / ping_* / dns_* / url_* / base64_* / hash_* /
-     *          generate_* / calculator / echo — 纯查询/编码/计算,无副作用
+     *          generate_* / calculator / echo — consulta pura/codificación/calcular,Sin efectos secundarios
      *  - NORMAL:set_* / update_* / create_* / add_* / toggle_* / open_* / share_* / speak_* /
      *          vibrate / scheduled_task_* / quick_note_* / resource_* / workspace_* / translate —
-     *          本地副作用但可逆
+     *          Efectos secundarios locales pero reversibles.
      *  - HIGH:send_* / delete_* / make_phone_call / toggle_wifi / toggle_bluetooth /
      *          toggle_flashlight / set_brightness / set_volume / set_alarm / set_timer /
      *          open_url / open_maps / send_email / send_sms / add_contact / add_calendar_event /
      *          pin_memory / unpin_memory / subagent_task / browser_* / execute_javascript —
-     *          不可逆/跨设备/资金或隐私影响
+     *          irreversibles/En todos los dispositivos/implicaciones de financiación o privacidad
      */
     private fun fallbackRiskFor(toolName: String): ToolRiskLevel {
-        // 0. 第三方动态工具(插件 / MCP)不做任何名字推断,一律保守 NORMAL。
-        //    它们的名字由第三方决定,`get_*` 可能是外发调用,`send_*` 也可能只是本地计算;
-        //    按名字给 SAFE 等于把审批权交给工具作者。判定必须在名字之前拦下。
+        // 0. Herramientas dinámicas de terceros(complemento / MCP)No se hace ninguna inferencia de nombre.,Siempre NORMAL.
+        //    Sus nombres son determinados por un tercero.,`get_*` Tal vez una llamada saliente,`send_*` O tal vez sea solo un cálculo local.;
+        //    Dar SAFE por su nombre otorga aprobación al autor de la herramienta. El juicio debe detenerse antes del nombre.
         if (isThirdPartyToolName(toolName)) return ToolRiskLevel.NORMAL
 
-        // 1. 显式映射优先(覆盖语义与命名前缀不一致的工具)
+        // 1. El mapeo explícito tiene prioridad(Anular herramientas cuya semántica sea inconsistente con los prefijos de nombres)
         EXPLICIT_RISK_OVERRIDES[toolName]?.let { return it }
 
-        // 2. 名称前缀推断(注意:HIGH 族中含 set_/open_/send_ 等更具体前缀,需先于 NORMAL 族匹配)
+        // 2. inferencia de prefijo de nombre(Nota:HIGH La familia contiene prefijos más específicos como set_/open_/send_,Primero es necesario coincidir con la familia NORMAL)
         return when {
-            // ── HIGH 族(更具体前缀,优先于 NORMAL 族匹配)──
+            // ── HIGH clan(prefijo más específico,Prefiero emparejamiento familiar NORMAL)──
             toolName.startsWith("send_") -> ToolRiskLevel.HIGH
             toolName.startsWith("delete_") -> ToolRiskLevel.HIGH
             toolName.startsWith("browser_") -> ToolRiskLevel.HIGH
-            // P3-3: UI 自动化工具(操控设备屏幕/读取 UI/截图),隐私与安全敏感,统一 HIGH
+            // P3-3: UI Herramientas de automatización(Manipular la pantalla del dispositivo/Leer interfaz de usuario/captura de pantalla),Privacidad y seguridad sensibles,unificar HIGH
             toolName.startsWith("ui_") -> ToolRiskLevel.HIGH
-            // L1-9: 原此处有 `toolName in HIGH_RISK_EXPLICIT_SET` 分支,但函数开头已
-            // `EXPLICIT_RISK_OVERRIDES[toolName]?.let { return it }`,走到这里必定不在表中,
-            // 而该 SET 全部条目均来自表 —— 分支永不成立,属死代码,连同 SET 一并删除。
+            // L1-9: Originalmente habia `toolName in HIGH_RISK_EXPLICIT_SET` rama,Pero la función comienza con
+            // `EXPLICIT_RISK_OVERRIDES[toolName]?.let { return it }`,Venir aquí definitivamente no estará en la lista.,
+            // Todas las entradas de este SET provienen de la tabla —— La sucursal nunca se establece,código muerto,Eliminar junto con SET.
 
-            // ── SAFE 族(纯查询/编码/计算)──
+            // ── SAFE clan(consulta pura/codificación/calcular)──
             toolName.startsWith("read_") -> ToolRiskLevel.SAFE
             toolName.startsWith("get_") -> ToolRiskLevel.SAFE
             toolName.startsWith("list_") -> ToolRiskLevel.SAFE
@@ -303,7 +303,7 @@ object ToolPermissionResolver {
             toolName.startsWith("generate_") -> ToolRiskLevel.SAFE
             toolName == "calculator" || toolName == "echo" -> ToolRiskLevel.SAFE
 
-            // ── NORMAL 族(本地副作用,可逆)──
+            // ── NORMAL clan(efectos secundarios locales,reversibles)──
             toolName.startsWith("set_") -> ToolRiskLevel.NORMAL
             toolName.startsWith("update_") -> ToolRiskLevel.NORMAL
             toolName.startsWith("create_") -> ToolRiskLevel.NORMAL
@@ -318,27 +318,27 @@ object ToolPermissionResolver {
             toolName.startsWith("workspace_") -> ToolRiskLevel.NORMAL
             toolName == "vibrate" || toolName == "translate" -> ToolRiskLevel.NORMAL
 
-            // 3. 未知工具保守按 NORMAL(ASK 模式会询问)
+            // 3. Herramienta desconocida presiona de forma conservadora NORMAL(ASK el modo preguntará)
             else -> ToolRiskLevel.NORMAL
         }
     }
 
     /**
-     * 显式风险等级映射 — 用于覆盖命名前缀推断的特例。
+     * Mapeo explícito de niveles de riesgo — Caso especial para anular la inferencia de prefijo con nombre.
      *
-     * 例如:
-     *  - open_url / open_maps 应归 HIGH(打开外部链接/地图,潜在隐私风险),
-     *    但 open_app / open_system_setting 归 NORMAL — 同为 open_ 前缀,语义不同,
-     *    必须显式区分
-     *  - set_brightness / set_volume / set_alarm / set_timer 应归 HIGH(不可逆系统状态),
-     *    但其他 set_* 归 NORMAL — 同为 set_ 前缀
-     *  - pin_memory / unpin_memory 归 HIGH(影响长期记忆,隐私敏感),
-     *    与 [io.zer0.muse.data.audit.AuditLogger] 的审计分类一致
-     *  - web_search / web_fetch / read_file 等查询工具归 SAFE
-     *  - write_file / pin_memory 等本地副作用工具归 NORMAL 或 HIGH
+     * por ejemplo:
+     *  - open_url / open_maps Pendiente HIGH(Abrir enlace externo/mapa,Riesgos potenciales para la privacidad),
+     *    Pero open_app/open_system_setting pertenece a NORMAL — Igual que el prefijo open_,Semántica diferente,
+     *    debe distinguirse explícitamente
+     *  - set_brightness / set_volume / set_alarm / set_timer Pendiente HIGH(estado irreversible del sistema),
+     *    Pero otros set_* volver NORMAL — Igual que set_ prefijo
+     *  - pin_memory / unpin_memory volver HIGH(Afecta la memoria a largo plazo,sensible a la privacidad),
+     *    con [io.zer0.muse.data.audit.AuditLogger] La clasificación de la auditoría es consistente.
+     *  - web_search / web_fetch / read_file Esperando a que vuelva la herramienta de consulta SAFE
+     *  - write_file / pin_memory etc. Las herramientas de efectos secundarios locales son NORMALES o HIGH
      */
     private val EXPLICIT_RISK_OVERRIDES: Map<String, ToolRiskLevel> = mapOf(
-        // SAFE 族显式(纯查询/读取)
+        // SAFE familia explícita(consulta pura/leer)
         "web_search" to ToolRiskLevel.SAFE,
         "web_fetch" to ToolRiskLevel.SAFE,
         "knowledge_search" to ToolRiskLevel.SAFE,
@@ -348,20 +348,20 @@ object ToolPermissionResolver {
         "current_status" to ToolRiskLevel.SAFE,
         "get_token_usage" to ToolRiskLevel.SAFE,
         "recall_experience" to ToolRiskLevel.SAFE,
-        // v2.0.1: 插件市场检索是只读查询
+        // v2.0.1: La búsqueda de mercado mediante complementos es una consulta de solo lectura
         "plugin_market_search" to ToolRiskLevel.SAFE,
 
-        // NORMAL 族显式(本地副作用,可逆)
+        // NORMAL familia explícita(efectos secundarios locales,reversibles)
         "write_file" to ToolRiskLevel.NORMAL,
         "http_post" to ToolRiskLevel.NORMAL,
-        // v2.6.10: 待办清单是 agent 自己的计划板 —— 只画在界面上,不写文件、
-        // 不碰设备。曾经归 NORMAL,ASK 模式下每次更新计划都要点一次同意,
-        // 30 秒不点就自动拒绝,整个任务编排被卡住。与 show_card 同口径归 SAFE。
+        // v2.6.10: La lista de tareas pendientes es el tablero de planificación del propio agente. —— Solo dibujado en la interfaz.,No escribas archivos,
+        // No toque el equipo. una vez regresado NORMAL,ASK En el modo, debe hacer clic en Aceptar cada vez que actualice el plan.,
+        // 30 Rechazado automáticamente en segundos,Todo el arreglo de tareas está estancado. El mismo calibre que show_card pertenece a SAFE.
         "todo_write" to ToolRiskLevel.SAFE,
-        // v2.6.10: 卡片是纯展示动作 —— 内容渲染在沙盒 WebView 里,不写文件、
-        // 不触外部应用、不跨设备。曾经归 NORMAL,后果是 ASK 模式下每张卡都要用户点
-        // 一次同意,30 秒不点就自动拒绝、卡片直接丢掉。用户看到的就是"卡片生不出来"。
-        // 与 render_data 同类同口径,归 SAFE。
+        // v2.6.10: Las cartas son puramente acciones de visualización. —— El contenido se representa en un WebView de espacio aislado,No escribas archivos,
+        // No toca aplicaciones externas ni dispositivos cruzados. una vez regresado NORMAL,La consecuencia es que cada tarjeta en modo ASK requiere que el usuario haga clic
+        // De acuerdo una vez,30 Se rechazará automáticamente en unos segundos y la tarjeta se desechará. Lo que ve el usuario es"La tarjeta no se puede producir.".
+        // Mismo calibre que render_data,Vaya SEGURO.
         "show_card" to ToolRiskLevel.SAFE,
         "render_data" to ToolRiskLevel.SAFE,
         "notify" to ToolRiskLevel.NORMAL,
@@ -369,20 +369,20 @@ object ToolPermissionResolver {
         "channel_reply" to ToolRiskLevel.NORMAL,
         "channel_pass" to ToolRiskLevel.NORMAL,
         "channel_read_context" to ToolRiskLevel.NORMAL,
-        // enable_skill 只改变本地启用位、可用 disable_skill 回滚,因此标记为 NORMAL。
+        // enable_skill Solo se cambia el bit de habilitación local y se puede revertir usando enable_skill,Por eso está marcado como NORMAL.
         "enable_skill" to ToolRiskLevel.NORMAL,
-        // v2.x: 发语音消息 —— 名字是 send_ 前缀(否则会被推成 HIGH),实际只是本地 TTS 合成
-        // 然后挂到自己消息上:不外发、不写用户目录。给 HIGH 会让每次发语音都弹审批卡。
+        // v2.x: Enviar mensaje de voz —— El nombre tiene el prefijo send_(De lo contrario, será empujado a HIGH),En realidad, solo síntesis TTS local.
+        // Luego cuélgalo en tu propio mensaje.:No enviado ni escrito en el directorio de usuarios. Si está configurado en ALTO, la tarjeta de aprobación aparecerá cada vez que envíe un mensaje de voz.
         "send_voice" to ToolRiskLevel.NORMAL,
 
-        // HIGH 族显式(不可逆/跨设备/隐私)
+        // HIGH familia explícita(irreversibles/En todos los dispositivos/Privacidad)
         "install_skill" to ToolRiskLevel.HIGH,
-        // v2.0.1: 安装市场插件 = 引入外部可执行代码,与 install_skill 同级
+        // v2.0.1: Instalar el complemento de mercado = Introduciendo código ejecutable externo,Mismo nivel que install_skill
         "plugin_market_install" to ToolRiskLevel.HIGH,
-        // v2.x: 插件生命周期变更(卸载/启停) — 与安装同口径,归 HIGH
+        // v2.x: Cambios en el ciclo de vida del complemento(Desinstalar/Iniciar y detener) — Mismo diámetro que la instalación.,volver HIGH
         "plugin_market_uninstall" to ToolRiskLevel.HIGH,
         "plugin_market_set_enabled" to ToolRiskLevel.HIGH,
-        // v2.x Agent 手机工具:分步控制、虚拟屏与跨应用隐私读取均为 HIGH。
+        // v2.x Agent herramientas moviles:El control de pasos, la pantalla virtual y la lectura de privacidad entre aplicaciones son ALTOS.
         "automation_workflow" to ToolRiskLevel.HIGH,
         "virtual_screen" to ToolRiskLevel.HIGH,
         "virtual_screen_input" to ToolRiskLevel.HIGH,
@@ -398,7 +398,7 @@ object ToolPermissionResolver {
         "app_force_stop" to ToolRiskLevel.HIGH,
         "app_clear_data" to ToolRiskLevel.HIGH,
         "app_uninstall" to ToolRiskLevel.HIGH,
-        // Root/Shizuku 设备操作与敏感读取必须走统一风险真源。
+        // Root/Shizuku La operación del equipo y la lectura sensible deben seguir la misma fuente real de riesgo.
         "settings_get" to ToolRiskLevel.HIGH,
         "settings_put" to ToolRiskLevel.HIGH,
         "network_toggle" to ToolRiskLevel.HIGH,
@@ -406,39 +406,39 @@ object ToolPermissionResolver {
         "list_packages" to ToolRiskLevel.HIGH,
         "logcat_tail" to ToolRiskLevel.HIGH,
         "input_inject" to ToolRiskLevel.HIGH,
-        // v2.x 自动化一期:设备命令行通道 — 可 tap/启动/改设置,归 HIGH
+        // v2.x Automatización Fase I:Canal de línea de comando del dispositivo — Se puede tocar/activar/Cambiar configuración,volver HIGH
         "device_shell" to ToolRiskLevel.HIGH,
-        // v2.x 终端一期:App 自身权限的沙盒终端 — 可增删应用文件,归 HIGH
+        // v2.x fase terminal uno:App Terminal sandbox con permisos propios — Los archivos de la aplicación se pueden agregar o eliminar,volver HIGH
         "terminal_exec" to ToolRiskLevel.HIGH,
-        // v2.2.1: Termux 通道 — 完整 Linux 环境可执行任意命令,归 HIGH
+        // v2.2.1: Termux canal — Entorno Linux completo para ejecutar comandos arbitrarios.,volver HIGH
         "termux_exec" to ToolRiskLevel.HIGH,
-        // v2.2.1: GUI Agent 环 — 可连续多步操作任意 App,归 HIGH
+        // v2.2.1: GUI Agent anillo — Puede realizar cualquier operación continua de varios pasos App,volver HIGH
         "ui_agent" to ToolRiskLevel.HIGH,
-        // v1.x: update_skill 与 install_skill 同级 — 二者都能改写助手后续要执行的 skill 定义;
-        // 内容仍经 SkillImporter 白名单/注入黑名单校验,且只允许修改用户自建 skill
+        // v1.x: update_skill Mismo nivel que install_skill — Ambos pueden reescribir la definición de habilidad que posteriormente ejecutará el asistente.;
+        // El contenido todavía está en la lista blanca de SkillImporter/Inyectar verificación de lista negra,Y solo se permite modificar los creados por el usuario. skill
         "update_skill" to ToolRiskLevel.HIGH,
-        // 助手自写插件:产出会被用户签名的代码,属自我扩展的高风险动作
+        // Complemento autoescrito del asistente:Producir código que será firmado por el usuario.,Movimiento autoexpandible y de alto riesgo
         "author_plugin" to ToolRiskLevel.HIGH,
         "delegate_agent" to ToolRiskLevel.HIGH,
-        // v1.0.52 P2-1: subagent_run 同步阻塞式独立子 agent,可调用多个工具,潜在副作用大
+        // v1.0.52 P2-1: subagent_run Niño independiente de bloqueo sincrónico agent,Se pueden llamar varias herramientas.,Posibles efectos secundarios
         "subagent_run" to ToolRiskLevel.HIGH,
         "execute_javascript" to ToolRiskLevel.HIGH,
         "execute_node_script" to ToolRiskLevel.HIGH,
         "workspace_write" to ToolRiskLevel.HIGH,
-        // v2.x: 局部替换同样是写盘，和 workspace_write 同级
+        // v2.x: El reemplazo parcial también se escribe en el disco, que está al mismo nivel que workspace_write.
         "workspace_edit" to ToolRiskLevel.HIGH,
         "workspace_delete" to ToolRiskLevel.HIGH,
         "workspace_mkdir" to ToolRiskLevel.HIGH,
         "workspace_move" to ToolRiskLevel.HIGH,
-        // open_ 前缀中归 HIGH 的特例外链
+        // open_ Cadena de excepción especial con ALTO en prefijo
         "open_url" to ToolRiskLevel.HIGH,
         "open_maps" to ToolRiskLevel.HIGH,
-        // set_ 前缀中归 HIGH 的系统状态变更
+        // set_ El estado del sistema cambia con ALTO en el prefijo
         "set_brightness" to ToolRiskLevel.HIGH,
         "set_volume" to ToolRiskLevel.HIGH,
         "set_alarm" to ToolRiskLevel.HIGH,
         "set_timer" to ToolRiskLevel.HIGH,
-        // 长期记忆 / 跨助手 / 通讯 归 HIGH
+        // Memoria a largo plazo / asistente cruzado / retorno de comunicación HIGH
         "pin_memory" to ToolRiskLevel.HIGH,
         "unpin_memory" to ToolRiskLevel.HIGH,
         "save_memory" to ToolRiskLevel.HIGH,
@@ -451,31 +451,31 @@ object ToolPermissionResolver {
     )
 
     /**
-     * 严格模式下仍自动允许的安全工具白名单。
+     * Lista blanca de herramientas de seguridad que todavía están permitidas automáticamente en modo estricto.
      *
-     * v1.0.20: 从 3 个扩展到所有只读工具,让 STRICT 模式下用户日常查询类调用
-     * 仍然顺畅(无需逐次审批),仅 NORMAL/HIGH 工具进入审批流程。
+     * v1.0.20: Ampliado de 3 a todas las herramientas de solo lectura,Permitir a los usuarios llamar a clases de consulta diarias en modo ESTRICTO
+     * Todavía suave(No es necesaria una aprobación paso a paso),Sólo las herramientas NORMAL/ALTA entran en el proceso de aprobación.
      *
-     * 覆盖范围:
+     * Cobertura:
      *  - get_*(get_current_time / get_weather / get_device_info / get_battery_info /
      *          get_location / get_storage_info / get_memory_info / get_display_info /
      *          get_cpu_info / get_sensors_list / get_brightness / get_volume /
      *          get_foreground_app / get_wifi_info / get_bluetooth_devices /
-     *          get_network_info / get_contacts_count 等)
-     *  - list_*(list_installed_apps / list_reminders / list_stickers 等)
-     *  - read_*(clipboard_read / workspace_read 等)
-     *  - search_*(quick_note_search / resource_search 等)
-     *  - 其他只读:calculator / echo / ping_host / dns_lookup / get_public_ip /
+     *          get_network_info / get_contacts_count espera)
+     *  - list_*(list_installed_apps / list_reminders / list_stickers espera)
+     *  - read_*(clipboard_read / workspace_read espera)
+     *  - search_*(quick_note_search / resource_search espera)
+     *  - Otros solo leen:calculator / echo / ping_host / dns_lookup / get_public_ip /
      *            url_encode / url_decode / base64_encode / base64_decode / hash_text /
      *            generate_uuid / random_number / json_pretty / generate_password /
      *            generate_qr_code / scheduled_task_list / scheduled_task_get_history /
      *            translate / quick_note_get / resource_get / workspace_list / workspace_grep
      *
-     * 注意:此处只放纯本地只读/查询/编码/计算工具。
-     * 任何写入、网络 POST、外部应用跳转、跨助手、浏览器自动化均不在此列。
+     * Nota:Aquí solo se coloca solo lectura local pura/Consulta/codificación/Herramientas de cálculo.
+     * Se excluyen todas las escrituras, POST de red, redirecciones de aplicaciones externas, asistentes cruzados y automatización del navegador.
      */
     private val STRICT_SAFE_ALLOWLIST: Set<String> = setOf(
-        // ── get_* 族(只读查询)──
+        // ── get_* clan(consulta de solo lectura)──
         "get_current_time",
         "get_weather",
         "get_device_info",
@@ -494,21 +494,21 @@ object ToolPermissionResolver {
         "get_network_info",
         "get_contacts_count",
         "get_public_ip",
-        // ── list_* 族(只读列举)──
+        // ── list_* clan(enumeración de solo lectura)──
         "list_installed_apps",
         "list_reminders",
         "list_stickers",
-        // ── read_* 族(只读读取)──
+        // ── read_* clan(leer solo leer)──
         "clipboard_read",
         "workspace_read",
         "workspace_grep",
         "memory_config_get",
-        // ── search_* 族(只读搜索)──
+        // ── search_* clan(Búsqueda de solo lectura)──
         "quick_note_search",
         "quick_note_list",
         "resource_search",
         "resource_list",
-        // ── 其他只读/计算/编码/查询 ──
+        // ── Otros solo leen/calcular/codificación/Consulta ──
         "calculator",
         "echo",
         "ping_host",
@@ -523,9 +523,9 @@ object ToolPermissionResolver {
         "json_pretty",
         "generate_password",
         "generate_qr_code",
-        // v2.6.10: 卡片只是展示,与 render_data 同为无副作用渲染,严格模式下也不该弹审批
+        // v2.6.10: Las tarjetas son solo para exhibición.,Igual que render_data para renderizado sin efectos secundarios,La aprobación no debe bloquearse en modo estricto
         "show_card",
-        // v2.6.10: 待办清单同样只是展示层,不产生任何设备副作用
+        // v2.6.10: La lista de tareas pendientes también es solo una capa de presentación.,No produce ningún efecto secundario del dispositivo.
         "todo_write",
         "scheduled_task_list",
         "scheduled_task_get_history",

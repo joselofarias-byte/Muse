@@ -2,26 +2,26 @@ package io.zer0.muse.ui.settings
 
 import io.zer0.muse.rag.EmbeddingService
 
-/** 当前生效的 embedding 后端摘要，供设置页展示。 */
+/** Un resumen del backend de inserción actualmente efectivo para mostrar en la página de configuración. */
 data class ActiveBackendSummary(
-    /** 主行文案：后端显示名与模型名，形如「本地关键词 · local-keyword-v1」。 */
+    /** Copia de la línea principal: nombre para mostrar del backend y nombre del modelo, en forma de \"palabras clave locales\" · local-keyword-v1”. */
     val primary: String,
-    /** 降级原因；未降级时为 null，调用方据此决定是否渲染告警行。 */
+    /** El motivo de la rebaja; si no se degrada, es nulo y la persona que llama decide si muestra la línea de advertencia en función de esto. */
     val warning: String?,
 )
 
-/** 主行里显示名与模型名之间的分隔符。 */
+/** El separador entre el nombre para mostrar y el nombre del modelo en la línea principal. */
 private const val PRIMARY_SEPARATOR = " · "
 
 /**
- * 把 [EmbeddingService.BackendState] 折算成设置页可直接渲染的两行文案。
+ * poner [EmbeddingService.BackendState] Convertido en dos líneas de copia que se pueden representar directamente en la página de configuración.
  *
- * 降级（[EmbeddingService.BackendState.degraded]=true）时一定给出非空 [ActiveBackendSummary.warning]：
- * 原因缺失时用 [degradedFallback] 兜底，避免"正在用别的后端"这件事重新变成静默状态。
+ * bajar de categoría ([EmbeddingService.BackendState.degraded]=true) debe dar no vacío [ActiveBackendSummary.warning]:
+ * Se utiliza cuando falta el motivo. [degradedFallback] Manténgase a salvo, evite"Usando otro backend"El asunto volvió a quedar en silencio.
  *
- * @param state 实际生效的后端快照；null 表示尚未解析过（还没跑过检索）
- * @param degradedFallback 降级但后端没给原因时的兜底文案（由调用方传入本地化字符串）
- * @return 摘要；[state] 为 null 时返回 null，调用方据此整块不渲染
+ * @param state La instantánea real del backend;null Indica que no ha sido analizado (aún no ha sido buscado)
+ * @param degradedFallback Texto detallado al degradar, pero el backend no proporciona un motivo (cadena localizada pasada por la persona que llama)
+ * @return resumen;[state] Si es nulo, devuelve nulo y la persona que llama no representará el bloque completo en consecuencia.
  */
 fun resolveActiveBackendSummary(
     state: EmbeddingService.BackendState?,

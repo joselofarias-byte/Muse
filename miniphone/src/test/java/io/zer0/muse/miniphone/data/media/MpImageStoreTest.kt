@@ -22,10 +22,10 @@ import java.io.IOException
 import java.nio.file.Files
 
 /**
- * 图片落盘:命名、去重、跳过读不到的源、超限重编码。
+ * Ubicación de la imagen:Denominación, deduplicación, omisión de fuentes ilegibles y grabación por encima de límites.
  *
- * 输入流由测试注入:真机上是 ContentResolver,这里换成一段字节,以便钉住「同一张图
- * 选两次只留一份」与「一张失败不影响别的」这两件真正会出问题的事。
+ * La prueba inyecta el flujo de entrada.:En la máquina real es ContentResolver,Cambie esto a un segmento de bytes.,Para fijar "la misma imagen
+ * "Elige dos veces y quédate sólo con una" y "el fracaso de una no afecta a las demás" son dos cosas que realmente pueden causar problemas.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -52,17 +52,17 @@ class MpImageStoreTest {
         val second = store.import(pickerUri("2"))
 
         assertNotNull(first)
-        assertEquals("同一份内容应该得到同一个路径", first, second)
+        assertEquals("El mismo contenido debe seguir el mismo camino.", first, second)
         val stored = directory.listFiles().orEmpty()
-        assertEquals("只应存一份文件", 1, stored.size)
-        assertTrue("文件名是内容摘要前 16 位 + 真实后缀", stored.single().name.matches(NAME_PATTERN))
+        assertEquals("Sólo se debe guardar un documento", 1, stored.size)
+        assertTrue("El nombre del archivo son los primeros 16 dígitos del resumen del contenido + el sufijo real.", stored.single().name.matches(NAME_PATTERN))
     }
 
     @Test
     fun unreadableSourceIsSkippedInsteadOfFailing() = runBlocking {
         val store = MpImageStore(
             directory = directory,
-            openStream = { throw IOException("原件已被删除") },
+            openStream = { throw IOException("El original ha sido eliminado.") },
         )
 
         assertNull(store.import(pickerUri("missing")))
@@ -86,11 +86,11 @@ class MpImageStoreTest {
 
         val path = requireNotNull(store.import(pickerUri("big")))
 
-        assertTrue("重编码后是 JPEG", path.endsWith(".jpg"))
+        assertTrue("Después de grabar es JPEG", path.endsWith(".jpg"))
         val stored = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, stored)
         assertEquals(1_600, maxOf(stored.outWidth, stored.outHeight))
-        assertEquals("宽高比保持不变", 800 * 1_600 / 2_000, minOf(stored.outWidth, stored.outHeight))
+        assertEquals("La relación de aspecto permanece sin cambios", 800 * 1_600 / 2_000, minOf(stored.outWidth, stored.outHeight))
     }
 
     @Test
@@ -109,7 +109,7 @@ class MpImageStoreTest {
 
     private fun pickerUri(id: String): Uri = Uri.parse("content://picker/$id")
 
-    /** 真 PNG:让尺寸读取与重编码走真实解码路径。 */
+    /** PNG verdadero: deje que la lectura y la recodificación del tamaño sigan la ruta de decodificación verdadera. */
     private fun pngBytes(width: Int, height: Int): ByteArray {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.WHITE)
@@ -120,10 +120,10 @@ class MpImageStoreTest {
     }
 
     private companion object {
-        /** 16 个十六进制字符 + 后缀。 */
+        /** 16 caracteres hexadecimales + sufijo. */
         val NAME_PATTERN = Regex("[0-9a-f]{16}\\.(png|jpg|gif|img)")
 
-        /** 与 MpImageStore 的默认阈值一致:测试里显式写出来,改默认值时这条会提醒。 */
+        /** Consistente con el umbral predeterminado de MpImageStore:Escríbalo explícitamente en la prueba.,Esto le recordará cuando cambie el valor predeterminado. */
         const val DEFAULT_COMPRESS_MIN_BYTES: Long = 8L * 1024 * 1024
     }
 }

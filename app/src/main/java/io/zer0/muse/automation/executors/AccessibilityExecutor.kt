@@ -22,14 +22,14 @@ import java.io.File
 import kotlin.coroutines.resume
 
 /**
- * 无障碍执行器 —— 第一层 UI 自动化。
+ * Actuador accesible —— Primera capa de automatización de la interfaz de usuario.
  *
- * 通过 [MuseAccessibilityService] 读取控件树 + dispatchGesture 注入手势。
- * 这是三层里门槛最低的一层(用户只需在系统设置里开启无障碍开关)。
+ * Pase [MuseAccessibilityService] Lea el árbol de control + despachoGesture para inyectar gestos.
+ * Este es el nivel más bajo entre los tres pisos.(Los usuarios solo necesitan activar el interruptor de accesibilidad en la configuración del sistema.).
  *
- * 局限:
- * - 自定义 Canvas/WebView 内的控件读不到(此时上层会降级到截屏+视觉模型)
- * - 手势是坐标级的,需要调用方结合 [ScreenInfo] 算出坐标
+ * limitaciones:
+ * - Los controles en Canvas/WebView personalizados no se pueden leer(En este momento, la capa superior se degradará a captura de pantalla.+modelo visual)
+ * - Los gestos son a nivel de coordenadas.,Requiere enlace de llamada [ScreenInfo] Calcular las coordenadas
  */
 class AccessibilityExecutor(
     private val context: Context,
@@ -42,19 +42,19 @@ class AccessibilityExecutor(
     override suspend fun isAvailable(): Boolean = service?.isAccessibilityServiceEnabled() == true
 
     /**
-     * v2.7: 同步可用性探测（不挂起）—— 供工具预检等需要“当下真实状态”的场景使用。
+     * v2.7: Sondas de disponibilidad síncronas (sin colgar)—— Para inspección previa de herramientas y otras necesidades“estado real actual”uso de la escena.
      *
-     * 无障碍可用性只是读一个 @Volatile 字段，无需挂起；拆出同步版本后，
-     * 工具预检可在非协程路径直接调用，不依赖启动时的缓存快照。
+     * La disponibilidad accesible consiste simplemente en leer un campo @Volatile sin suspenderlo; después de separar la versión sincronizada,
+     * La verificación previa de la herramienta se puede llamar directamente en rutas que no sean de rutina y no depende de instantáneas almacenadas en caché al inicio.
      */
     fun isAvailableSync(): Boolean = service?.isAccessibilityServiceEnabled() == true
 
-    // ── 屏幕读取 ──────────────────────────────────────────────
+    // ── lectura de pantalla ──────────────────────────────────────────────
 
     @Suppress("ReturnCount", "TooGenericExceptionCaught") // Screenshot is a best-effort platform boundary.
     override suspend fun screenshot(): ByteArray? {
-        // Android 14+ 的 AccessibilityService.takeScreenshot 不需要 MediaProjection、Shizuku 或 Root。
-        // 低版本仍返回 null,由 AutomationManager 继续尝试 Shell/Root。
+        // Android 14+ AccessibilityService.takeScreenshot no requiere MediaProjection,Shizuku O raíz.
+        // Las versiones inferiores aún regresan null,Continúe probando Shell/Root mediante AutomationManager.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
         val svc = service ?: return null
         return withContext(Dispatchers.IO) {
@@ -87,12 +87,12 @@ class AccessibilityExecutor(
             svc.rootInActiveWindow?.packageName?.toString()
         }
         try {
-            // B-33: collectNodes 遍历期间控件树可能被系统回收(AbandonedNodeException),
-            // 捕获后保留已收集的部分节点并记录日志,不向上抛导致整次读取失败崩溃。
+            // B-33: collectNodes El árbol de control puede ser reciclado por el sistema durante el recorrido.(AbandonedNodeException),
+            // Después de la captura, conserve algunos nodos recopilados y registre registros.,Si no se lanza hacia arriba, toda la lectura falla y falla.
             try {
                 collectNodes(root, nodes, depth = 0)
             } catch (e: Exception) {
-                Logger.w(TAG, "readScreen collectNodes 中断(返回部分结果): ${e.message}")
+                Logger.w(TAG, "readScreen collectNodes interrumpir(Devolver resultados parciales): ${e.message}")
             }
             return ScreenInfo(
                 packageName = pkg,
@@ -103,7 +103,7 @@ class AccessibilityExecutor(
                 source = "accessibility",
             )
         } finally {
-            // B-33: root 需显式 recycle 释放 native 资源,防内存泄漏。
+            // B-33: root Necesidad de reciclar explícitamente para liberar recursos nativos,Evite pérdidas de memoria.
             recycleNode(root, TAG)
         }
     }
@@ -117,7 +117,7 @@ class AccessibilityExecutor(
         }
     }
 
-    // ── 输入动作 ──────────────────────────────────────────────
+    // ── acción de entrada ──────────────────────────────────────────────
 
     override suspend fun tap(x: Int, y: Int): Boolean = dispatchClick(x, y)
 
@@ -162,8 +162,8 @@ class AccessibilityExecutor(
     }
 
     override suspend fun pressKey(keyCode: Int): Boolean {
-        // 无障碍无法直接注入 KeyEvent,降级到 Shell
-        // 但返回键/Home 键可以通过全局动作
+        // La accesibilidad no se puede inyectar directamente KeyEvent,bajar de categoría a Shell
+        // Pero la clave de retorno/Home Se puede acceder a las claves a través de acciones globales.
         return when (keyCode) {
             4 -> service?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) == true
             3 -> service?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) == true
@@ -189,7 +189,7 @@ class AccessibilityExecutor(
     override suspend fun openQuickSettings(): Boolean =
         service?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS) == true
 
-    // ── 内部实现 ──────────────────────────────────────────────
+    // ── implementación interna ──────────────────────────────────────────────
 
     private fun collectNodes(node: AccessibilityNodeInfo, out: MutableList<UiNode>, depth: Int) {
         if (depth > MAX_TREE_DEPTH) return
@@ -231,15 +231,15 @@ class AccessibilityExecutor(
     }
 
     /**
-     * B-33: 安全回收节点。无障碍控件树是高动态对象,节点可能在遍历/查询期间被系统自动回收
-     * (新版本由系统托管),显式 recycle 失败仅记日志,不阻断业务返回。
+     * B-33: Recicle nodos de forma segura. Los árboles de control de accesibilidad son objetos altamente dinámicos,Los nodos pueden estar atravesando/Reciclado automáticamente por el sistema durante la consulta.
+     * (La nueva versión está alojada en el sistema.),Registros de solo errores de reciclaje explícitos,No bloquee las devoluciones comerciales.
      */
     private fun recycleNode(node: AccessibilityNodeInfo?, tag: String) {
         if (node == null) return
         try {
             node.recycle()
         } catch (e: Exception) {
-            Logger.d(tag, "node.recycle 失败(可能已被系统回收): ${e.message}")
+            Logger.d(tag, "node.recycle falló(Puede haber sido reciclado por el sistema.): ${e.message}")
         }
     }
 
@@ -278,7 +278,7 @@ class AccessibilityExecutor(
         return dispatchGesture(svc, gesture)
     }
 
-    /** v2.x: 双指缩放 — 两指沿水平方向对称开合(同手势两条 stroke,起点时间一致)。 */
+    /** v2.x: Pellizcar para hacer zoom — Abrir y cerrar los dos dedos simétricamente en dirección horizontal.(Dos mismos gestos stroke,El horario de inicio es el mismo.). */
     private suspend fun dispatchPinch(centerX: Int, centerY: Int, startDistance: Int, endDistance: Int, durationMs: Long): Boolean {
         val svc = service ?: return false
         val startHalf = (startDistance / 2).coerceAtLeast(1).toFloat()
@@ -300,7 +300,7 @@ class AccessibilityExecutor(
         return dispatchGesture(svc, gesture)
     }
 
-    /** v2.x: 多段滑动 — 单指沿路径点逐个 lineTo(解锁图案/复杂拖拽)。 */
+    /** v2.x: Deslizamiento multisegmento — Punto a punto del camino con un dedo lineTo(patrón de desbloqueo/Arrastrar y soltar complejo). */
     private suspend fun dispatchSwipePath(points: List<Pair<Int, Int>>, durationMs: Long): Boolean {
         val svc = service ?: return false
         if (points.size < 2) return false
@@ -336,8 +336,8 @@ class AccessibilityExecutor(
         return try {
             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("auto_input", text))
-            // 粘贴需要 Shell 层的 input keyevent 配合 KEYCODE_PASTE,
-            // 这里只做剪贴板写入,返回 false 让上层降级
+            // Para pegar se requiere el evento clave de entrada de la capa Shell. KEYCODE_PASTE,
+            // Aquí solo se escribe en el portapapeles.,Devuelve falso para permitir que la capa superior baje de categoría
             false
         } catch (e: Exception) {
             false

@@ -1,68 +1,68 @@
 package io.zer0.ai.video
 
 /**
- * v1.137: 视频生成 Provider 统一接口。
+ * v1.137: Interfaz unificada del proveedor de generación de video.
  *
- * 重构目标:
- *  - 解耦 providerId 路由逻辑(交给 [VideoProviderRegistry] 按 specId / host / type 选择)
- *  - 统一异步任务模型:submit 返回 taskId(或同步结果),poll 查询状态
- *  - 支持异步 API(DashScope / MiniMax / Agnes)与同步 API(Kling 同步返回)两种形态
+ * Objetivos de refactorización:
+ *  - Desacoplamiento de la lógica de enrutamiento de ID de proveedor(entregar [VideoProviderRegistry] prensa specId / host / type elegir)
+ *  - Modelo de tarea asincrónica unificada:submit Regresar taskId(o sincronizar resultados),poll Estado de la consulta
+ *  - Soporte asincrónico API(DashScope / MiniMax / Agnes)sincronizar con API(Kling Retorno sincrónico)dos formas
  *
- * 每个 Provider 实现:
- *  - [submit]: 提交生成任务,返回 [VideoSubmitResult](异步 taskId 或同步 videoUrl)
- *  - [poll]: 查询任务状态,返回 [VideoPollResult]
+ * Cada proveedor implementa:
+ *  - [submit]: Enviar tarea de compilación,Regresar [VideoSubmitResult](TaskId asincrónico o sincrónico videoUrl)
+ *  - [poll]: Consultar el estado de la tarea,Regresar [VideoPollResult]
  *
- * Provider 不负责轮询调度 — 由 [VideoGenerationService] 统一执行自适应轮询。
+ * Provider No es responsable de la programación de las encuestas. — por [VideoGenerationService] El sondeo adaptativo se realiza de manera uniforme.
  */
 interface VideoProvider {
-    /** Provider 唯一标识(如 "kling" / "agnes" / "openai_video_generic")。 */
+    /** Provider identificador único(Como por ejemplo "kling" / "agnes" / "openai_video_generic"). */
     val providerId: String
 
-    /** 是否支持图生视频(单图)。 */
+    /** Ya sea para admitir el video de Tusheng(Imagen única). */
     val supportsImageToVideo: Boolean
 
-    /** 是否支持多图生视频(2+ 图)。 */
+    /** Ya sea para admitir videos de múltiples imágenes(2+ Figura). */
     val supportsMultiFrameToVideo: Boolean
 
     /**
-     * 提交视频生成任务。
+     * Envíe una tarea de generación de video.
      *
-     * @param request 生成请求(含 prompt / model / 参考图 / 凭证等)
+     * @param request Generar solicitud(Contiene aviso/modelo/dibujo de referencia/vale, etc.)
      * @return [VideoSubmitResult]:
-     *   - isAsync=true 时 taskId 非空,后续走 [poll] 轮询
-     *   - isAsync=false 时 videoUrl 非空(同步返回结果,无需轮询)
+     *   - isAsync=true Cuando el ID de tarea no está vacío,seguimiento [poll] sondeo
+     *   - isAsync=false cuando videoUrl no está vacío(Devolver resultados sincrónicamente,No es necesario realizar una encuesta)
      */
     suspend fun submit(request: VideoGenRequest): VideoSubmitResult
 
     /**
-     * 查询异步任务状态。
+     * Consultar el estado de las tareas asincrónicas.
      *
-     * 仅当 [submit] 返回 isAsync=true 时调用。
+     * solo si [submit] Regresar isAsync=true cuando lo llaman.
      *
-     * @param taskId 由 [submit] 返回的任务 ID
-     * @return [VideoPollResult],status=SUCCESS 时 videoUrl 非空
+     * @param taskId por [submit] Tareas devueltas ID
+     * @return [VideoPollResult],status=SUCCESS cuando videoUrl no está vacío
      */
     suspend fun poll(taskId: String): VideoPollResult
 }
 
 /**
- * 视频生成请求参数(Provider 无关)。
+ * Parámetros de solicitud de generación de video(Provider irrelevante).
  *
- * @param prompt 视频描述/提示词
- * @param model 模型 ID(如 kling-v1 / agnes-video-v2.0)
- * @param width 视频宽度(Agnes 默认 1152)
- * @param height 视频高度(Agnes 默认 768)
- * @param frameRate 帧率(Agnes 默认 24,范围 1-60)
- * @param numFrames 帧数(Agnes 必须是 8n+1,范围 [81, 441];默认 121 ≈ 5s@24fps)
- * @param referenceImages 参考图列表(data URI 或 URL):
- *   - 空 → 文生视频
- *   - 1 张 → 图生视频
- *   - 2+ 张 → 多图生视频(仅 Agnes 等支持)
- * @param apiKey Provider API Key(由 [VideoGenerationService] 从 ProviderConfig 注入)
- * @param baseUrl Provider 基础 URL(留空时由 Provider 取默认值)
- * @param videoGenerationsPath 视频生成端点路径(仅通用 OpenAI 兼容 Provider 使用)
- * @param duration 视频时长(秒,Kling 等使用;Agnes 通过 numFrames 推导)
- * @param resolution 分辨率字符串(如 "720p",Kling 等使用)
+ * @param prompt Descripción del vídeo/palabra rápida
+ * @param model modelo ID(Como por ejemplo kling-v1 / agnes-video-v2.0)
+ * @param width ancho del vídeo(Agnes Predeterminado 1152)
+ * @param height altura del vídeo(Agnes Predeterminado 768)
+ * @param frameRate Velocidad de fotogramas(Agnes Predeterminado 24,alcance 1-60)
+ * @param numFrames Marcos(Agnes debe ser 8n+1,alcance [81, 441];Predeterminado 121 ≈ 5s@24fps)
+ * @param referenceImages Lista de figuras de referencia(data URI o URL):
+ *   - vacío → Vídeo de Vicente
+ *   - 1 zhang → vídeo de tusheng
+ *   - 2+ zhang → Vídeo de DuoTuSheng(Sólo apoyado por Agnes, etc.)
+ * @param apiKey Provider API Key(por [VideoGenerationService] Inyectar desde ProviderConfig)
+ * @param baseUrl Provider Conceptos básicos URL(Si se deja en blanco, el Proveedor tomará el valor predeterminado.)
+ * @param videoGenerationsPath Ruta del punto final de generación de vídeo(Solo utilizado por proveedores generales compatibles con OpenAI)
+ * @param duration Duración del vídeo(segundos,Kling Esperando uso;Agnes Derivación a través de numFrames)
+ * @param resolution cadena de resolución(Como por ejemplo "720p",Kling Esperando uso)
  */
 data class VideoGenRequest(
     val prompt: String,
@@ -80,14 +80,14 @@ data class VideoGenRequest(
 )
 
 /**
- * 任务提交结果。
+ * Resultados del envío de tareas.
  *
- * @param taskId 异步任务 ID(isAsync=true 时非空)
- * @param videoUrl 同步返回的视频 URL(isAsync=false 时非空)
- * @param isAsync 是否为异步任务:
- *   - true → 调用方需轮询 [VideoProvider.poll] 直到 SUCCESS/FAILED
- *   - false → 已同步返回 videoUrl,无需轮询
- * @param modelName 提交时使用的模型名(用于 Agnes 等查询时需要 model_name 的场景)
+ * @param taskId Tareas asincrónicas ID(isAsync=true el tiempo no está vacío)
+ * @param videoUrl Sincronizar vídeo devuelto URL(isAsync=false el tiempo no está vacío)
+ * @param isAsync ¿Es una tarea asincrónica?:
+ *   - true → La persona que llama necesita sondear [VideoProvider.poll] hasta SUCCESS/FAILED
+ *   - false → Devuelto sincrónicamente videoUrl,No es necesario realizar una encuesta
+ * @param modelName El nombre del modelo que se utilizará al enviar(Se utiliza en escenarios donde se requiere model_name al consultar a Agnes, etc.)
  */
 data class VideoSubmitResult(
     val taskId: String? = null,
@@ -97,25 +97,25 @@ data class VideoSubmitResult(
 )
 
 /**
- * 任务轮询状态。
+ * Estado de sondeo de tareas.
  */
 enum class PollStatus {
-    /** 排队 / 处理中(继续轮询)。 */
+    /** En cola/procesando(Continuar encuestando). */
     PENDING,
 
-    /** 成功(视频已生成,videoUrl 非空)。 */
+    /** éxito(El vídeo ha sido generado.,videoUrl No vacío). */
     SUCCESS,
 
-    /** 失败(任务出错或被取消,errorMessage 非空)。 */
+    /** falló(Error o cancelación de tarea,errorMessage No vacío). */
     FAILED,
 }
 
 /**
- * 任务轮询结果。
+ * Resultados de la encuesta de tareas.
  *
- * @param status 任务状态
- * @param videoUrl 视频下载 URL(status=SUCCESS 时非空)
- * @param errorMessage 错误信息(status=FAILED 时非空)
+ * @param status Estado de la tarea
+ * @param videoUrl Descarga de vídeo URL(status=SUCCESS el tiempo no está vacío)
+ * @param errorMessage mensaje de error(status=FAILED el tiempo no está vacío)
  */
 data class VideoPollResult(
     val status: PollStatus,

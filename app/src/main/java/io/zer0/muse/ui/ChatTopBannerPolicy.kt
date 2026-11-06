@@ -1,19 +1,19 @@
 package io.zer0.muse.ui
 
 /**
- * 聊天页顶部横幅（互斥显示，同一时刻只有一个）。
+ * Banner en la parte superior de la página de chat (visualización mutuamente excluyente, solo uno a la vez).
  *
- * 优先级（高 → 低）：
- *  1. [ERROR] —— 错误必须最先被看到。v2.6.8 起错误压在压缩之上：
- *     压缩只是运行反馈，错误需要用户决策/知情，被压缩 Banner 遮挡会让错误
- *     "在后台悄悄过期"（旧的 5 秒自动消失叠加压缩遮挡，错误可能一次都没出现）。
- *  2. [COMPRESSION] —— 压缩/记忆更新进度，运行反馈，仅次于错误。
- *  3. [PENDING_TOOLS] —— 断点续传（未完成工具调用），需要用户选择恢复或丢弃。
- *  4. [NOT_CONFIGURED] —— 未配置模型服务的常驻轻提示。
- *  5. [NONE] —— 不显示任何横幅。
+ * Prioridad (alta → bajo):
+ *  1. [ERROR] —— Los errores hay que verlos primero.v2.6.8 El error ocurrió además de la compresión:
+ *     La compresión es solo ejecutar comentarios, los errores requieren la toma de decisiones del usuario/Tenga en cuenta que la oclusión de un banner comprimido puede provocar errores
+ *     "Expira silenciosamente en segundo plano."(La antigua oclusión de compresión superpuesta que desaparece automáticamente de 5 segundos, es posible que el error no aparezca ni una sola vez).
+ *  2. [COMPRESSION] —— Compresión/Progreso de actualización de la memoria, comentarios en ejecución, junto a errores.
+ *  3. [PENDING_TOOLS] —— Reanudar la descarga desde un punto de interrupción (la llamada a la herramienta no se completa) requiere que el usuario elija reanudar o descartar.
+ *  4. [NOT_CONFIGURED] —— La punta de luz residente para el servicio modelo no está configurada.
+ *  5. [NONE] —— No se muestra ningún banner.
  *
- * 互斥由本函数决定，UI 侧只做 `topBanner == X` 的显隐判断；新增横幅时
- * 必须在这里补一档并同步注释，不要在 Composable 里另加互斥条件。
+ * La exclusión mutua está determinada por esta función.UI solo lado `topBanner == X` Mostrar y ocultar juicio; al agregar un banner
+ * Debe agregar un archivo aquí y sincronizar los comentarios, no agregue condiciones adicionales mutuamente excluyentes en Composable.
  */
 internal enum class ChatTopBanner {
     ERROR,
@@ -29,7 +29,7 @@ internal fun resolveChatTopBanner(
     hasErrors: Boolean,
     isConfigured: Boolean,
 ): ChatTopBanner = when {
-    // 错误优先于压缩：压缩期间出错也必须立刻可见（错误可能决定用户是否还要等压缩）。
+    // Los errores tienen prioridad sobre la compresión: los errores durante la compresión también deben ser visibles inmediatamente (los errores pueden determinar si el usuario tiene que esperar hasta la compresión).
     hasErrors -> ChatTopBanner.ERROR
     isCompressing -> ChatTopBanner.COMPRESSION
     showPendingResume -> ChatTopBanner.PENDING_TOOLS
@@ -38,32 +38,32 @@ internal fun resolveChatTopBanner(
 }
 
 /**
- * 可恢复错误的自动消失阅读窗口（毫秒）。
+ * Ventana de lectura que desaparece automáticamente (milisegundos) para errores recuperables.
  *
- * 从 5 秒提到 15 秒：一条两行报错按常规阅读速度约 5 秒读完，再留出
- * 注意力切换（流式输出刚结束、视线还在消息区）的余量；同时又不足以让
- * 堆积的错误长期占住顶部。
+ * De 5 segundos a 15 segundos: un mensaje de error de dos líneas debe leerse en unos 5 segundos a velocidad de lectura normal y luego salir
+ * El margen para cambiar la atención (la emisión del streaming acaba de terminar y la mirada todavía está en el área del mensaje); al mismo tiempo, no basta con permitir
+ * Los errores acumulados ocupan la cima durante mucho tiempo.
  *
- * 计时不在 [addError] 那一刻启动，而是在错误真正成为顶部横幅之后启动
- * （见 [resolveErrorVisibility]）—— 否则压缩 Banner 挡住的 15 秒仍然白算。
+ * el reloj no esta ahi [addError] Inicie en ese momento, pero inicie después del error y en realidad se convierta en el banner superior.
+ * (Ver [resolveErrorVisibility])—— De lo contrario, los 15 segundos bloqueados por el Banner comprimido seguirán siendo en vano.
  */
 internal const val ERROR_AUTO_DISMISS_MS = 15_000L
 
 /**
- * 错误"等到真正可见"的兜底上限（毫秒）。
+ * error"espera hasta que sea realmente visible"El límite superior del límite (milisegundos).
  *
- * 自动消失只在该错误确实是顶部横幅显示者、且应用在前台时才开始读秒。
- * 若因任何原因迟迟不可见（长时间压缩、应用退到后台），最多等这么久就放弃
- * 这次自动消失 —— 宁可让用户手动关闭，也不让错误消失在没人看见的时刻。
+ * La desaparición automática solo comienza la cuenta regresiva cuando el error es en realidad el banner superior que se muestra y la aplicación está en primer plano.
+ * Si no es visible por algún motivo (compresión prolongada, la aplicación pasa a segundo plano), puede darse por vencido después de esperar tanto tiempo como máximo.
+ * Esta vez desaparecerá automáticamente. —— Es mejor dejar que el usuario lo cierre manualmente que dejar que el error desaparezca sin que nadie lo vea.
  */
 internal const val ERROR_VISIBLE_WAIT_MS = 60_000L
 
 /**
- * 需要用户决策、禁止自动消失的错误类别。
+ * Categorías de error que requieren la toma de decisiones del usuario y tienen prohibido desaparecer automáticamente.
  *
- * - [ChatErrorType.TOOL_ERROR]：工具执行失败，用户要决定重试/换方案/丢弃。
- * - [ChatErrorType.MODEL_ERROR]：模型侧返回异常，需要用户判断换模型还是改参数。
- * - [ChatErrorType.API_KEY]：凭证/余额问题，只能由用户去设置页处理。
+ * - [ChatErrorType.TOOL_ERROR]: La ejecución de la herramienta falla, el usuario debe decidir intentarlo nuevamente/Cambiar de plan/Desechar.
+ * - [ChatErrorType.MODEL_ERROR]: El lado del modelo devuelve una excepción, lo que requiere que el usuario decida si cambiar el modelo o cambiar los parámetros.
+ * - [ChatErrorType.API_KEY]:Certificado/Los problemas de saldo solo pueden ser manejados por el usuario en la página de configuración.
  */
 private val STICKY_ERROR_TYPES = setOf(
     ChatErrorType.TOOL_ERROR,
@@ -72,34 +72,34 @@ private val STICKY_ERROR_TYPES = setOf(
 )
 
 /**
- * 该错误是否允许自动消失。
+ * Si se permite que el error desaparezca automáticamente.
  *
- * 只有"可恢复 + 不属于需要用户决策的类别"才自动消失；其余一律常驻到用户关闭。
+ * solo"Recuperable + no entra en una categoría que requiere la toma de decisiones del usuario"desaparecerá automáticamente; el resto permanecerá hasta que el usuario los cierre.
  */
 internal fun shouldAutoDismissError(type: ChatErrorType, isRecoverable: Boolean): Boolean = isRecoverable && type !in STICKY_ERROR_TYPES
 
-/** 错误横幅在某一时刻的可见性判定结果。 */
+/** El resultado de la determinación de visibilidad del banner de error en un momento determinado. */
 internal enum class ErrorVisibility {
-    /** 还不能开始计时（不在前台，或被更高优先级横幅占位）。 */
+    /** El cronómetro aún no se puede iniciar (no está en primer plano ni está ocupado por un banner de mayor prioridad). */
     PENDING,
 
-    /** 用户此刻能看到这条错误横幅。 */
+    /** Los usuarios ahora pueden ver este banner de error. */
     VISIBLE,
 
-    /** 错误已经不在列表里（用户已关闭/已被清空），无需再计时。 */
+    /** El error ya no está en la lista (el usuario ha cerrado/ha sido borrado), no es necesario repetir el tiempo. */
     GONE,
 }
 
 /**
- * 判定某条错误当前是否"真的显示在用户眼前"。
+ * Determinar si hay un error actualmente."Realmente mostrado frente a los ojos del usuario.".
  *
- * 自动消失的计时必须以这个函数为闸门，不能只看 `addError` 的调用时刻。
- * 这里复用 [resolveChatTopBanner] 而不是直接判 `hasErrors`：横幅互斥规则
- * 以后若再调整（例如某类错误让位给别的横幅），计时逻辑自动跟着变，不会
- * 出现"策略改了、计时还在按旧规则跑"的两套口径。
+ * El momento de la desaparición automática debe utilizar esta función como puerta, y no puede simplemente mirar `addError` el tiempo de llamada.
+ * Reutilizar aquí [resolveChatTopBanner] en lugar de juzgar directamente `hasErrors`: Reglas de exclusión mutua de banners
+ * Si se realizan ajustes en el futuro (por ejemplo, cierto tipo de error da paso a otro banner), la lógica de sincronización cambiará automáticamente en consecuencia y no
+ * aparecer"La estrategia ha cambiado, pero el calendario sigue funcionando según las antiguas reglas."de dos juegos de calibres.
  *
- * 单出口写法：三个前置条件先归约成"现在能不能看得见"，只在最后返回一次。
- * 这样 `when` 里不会攒出多个 return，新增条件也只改前半段。
+ * Método de escritura de salida única: las tres condiciones previas se reducen primero a"¿Puedes verlo ahora?", regresó solo una vez al final.
+ * De esta manera `when` No habrá múltiples devoluciones y las nuevas condiciones solo cambiarán la primera mitad.
  */
 internal fun resolveErrorVisibility(
     errorStillPresent: Boolean,
@@ -114,7 +114,7 @@ internal fun resolveErrorVisibility(
         hasErrors = true,
         isConfigured = isConfigured,
     ) == ChatTopBanner.ERROR
-    // 已消失 → GONE；还在但用户此刻看不到（后台/被更高优先级横幅占用）→ PENDING。
+    // ha desaparecido → GONE; todavía está allí pero el usuario no puede verlo en este momento (fondo/ocupado por un banner de mayor prioridad)→ PENDING.
     val visible = errorStillPresent && appInForeground && bannerIsError
     return when {
         !errorStillPresent -> ErrorVisibility.GONE

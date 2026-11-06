@@ -5,12 +5,12 @@ data class AccountState(
     val userName: String = "",
     val loginAt: Long = 0L,
     val loginMethod: String = "",
-    /** 离线体验(游客)模式 — 跳过登录直接进入主界面,无服务器同步。 */
+    /** Experiencia sin conexión(turistas)modo — Omita el inicio de sesión y vaya directamente a la interfaz principal.,Sincronización sin servidor. */
     val isGuestMode: Boolean = false,
-    /** v2.x: 用户头像 URI(本地图片,空表示用首字母占位)。 */
+    /** v2.x: avatar de usuario URI(fotos locales,Vacío significa usar la primera letra como marcador de posición). */
     val avatarUri: String? = null,
 ) {
-    /** 是否已"通过"认证(登录或游客) — 用于路由判断 startDestination。 */
+    /** ¿Tienes"Pase"Certificación(Iniciar sesión o invitado) — Se utiliza para determinar la ruta startDestination. */
     val isAuthed: Boolean get() = isLoggedIn || isGuestMode
 
     companion object {

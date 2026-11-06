@@ -73,7 +73,7 @@
     <string name="lorebook_section_behavior">Comportamento</string>
     <string name="lorebook_field_priority">Prioridade (número maior = injetado primeiro)</string>
     <string name="lorebook_field_insertion_position">Posição de inserção</string>
-    <!-- ST-04: 注入位置选项用户可读文案 -->
+    <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
     <string name="lorebook_insertion_before_system">Antes do prompt do sistema</string>
     <string name="lorebook_insertion_after_system">Depois do prompt do sistema</string>
     <string name="lorebook_insertion_before_last">Antes da última mensagem</string>

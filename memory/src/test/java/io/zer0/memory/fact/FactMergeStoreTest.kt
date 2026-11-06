@@ -16,13 +16,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v19「多条合并成一条」存储层测试。
+ * v19Prueba de capa de almacenamiento "Fusionar varias tiras en una".
  *
- * 覆盖:
- *  - mergeFacts: 新事实落地、源行指向新行、召回只剩新行、列表/显式检索仍能看到源行
- *  - metadata 继承规则: 最高 importance、tags 去重、scope/space 沿用
- *  - unmergeFacts: 新事实消失、指向清空、召回恢复
- *  - 边界: 空列表 / 单条 / id 不存在 / 正文为空 / 归属不符 / 已合并行不再参与合并
+ * Portada:
+ *  - mergeFacts: Se implementa el nuevo hecho, la fila de origen apunta a la nueva fila y solo se recupera la nueva fila, la lista/Las búsquedas explícitas aún ven las líneas fuente
+ *  - metadata reglas de herencia: máxima importancia,tags Eliminar duplicados,scope/space heredar
+ *  - unmergeFacts: Los nuevos hechos desaparecen, los puntos se borran y se restablece el recuerdo.
+ *  - frontera: Lista vacía/una sola fila/la identificación no existe/el texto está vacío/la propiedad no coincide/las filas fusionadas ya no participarán en la fusión
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,52 +49,52 @@ class FactMergeStoreTest {
 
     @Test
     fun `mergeFacts creates aggregate fact and points every source at it`() = runTest {
-        val coffee = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"))
-        val office = store.add(FactStore.Fact(fact = "用户办公室在望京 SOHO"))
-        val cat = store.add(FactStore.Fact(fact = "用户养了一只叫团子的猫"))
+        val coffee = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
+        val office = store.add(FactStore.Fact(fact = "La oficina de usuarios está en Wangjing. SOHO"))
+        val cat = store.add(FactStore.Fact(fact = "El usuario tiene un gato llamado Tuanzi."))
 
-        val mergedText = "用户喜欢喝美式咖啡；办公室在望京 SOHO；养了一只叫团子的猫"
+        val mergedText = "Al usuario le gusta tomar café americano; su oficina está en Wangjing SOHO; tiene un gato llamado Tuanzi."
         val mergedId = store.mergeFacts(listOf(coffee, office, cat), mergedText)
 
-        assertNotNull("合并应返回新事实 id", mergedId)
+        assertNotNull("La fusión debería devolver nuevos hechos id", mergedId)
         val merged = store.getById(mergedId!!)!!
         assertEquals(mergedText, merged.fact)
-        assertNull("合并产物本身不再指向别的行", merged.mergedIntoId)
+        assertNull("El producto de fusión en sí ya no apunta a otras filas", merged.mergedIntoId)
 
-        // 每一条源行都指向新行
+        // Cada línea fuente apunta a una nueva línea.
         listOf(coffee, office, cat).forEach { id ->
-            assertEquals("源行 $id 应指向合并后的新行", mergedId, store.getById(id)!!.mergedIntoId)
+            assertEquals("fila de origen $id debería apuntar a la nueva línea fusionada", mergedId, store.getById(id)!!.mergedIntoId)
         }
 
-        // 反查聚合成员,供 UI 展示「由 3 条合并」
+        // Verificar miembros agregados,Para la visualización de la interfaz de usuario "fusionada a partir de 3 elementos"
         assertEquals(listOf(coffee, office, cat), store.getMergedChildren(mergedId).map { it.id })
 
-        // 自动召回只有合并后的新行
-        val recall = store.searchRelevantFacts("美式咖啡", limit = 8)
-        assertEquals("自动召回只应保留合并后的新行", listOf(mergedId), recall.map { it.id })
+        // Recuperar automáticamente solo las líneas nuevas fusionadas
+        val recall = store.searchRelevantFacts("americano", limit = 8)
+        assertEquals("La recuperación automática solo debería mantener las líneas nuevas fusionadas", listOf(mergedId), recall.map { it.id })
 
-        // 列表与显式检索仍能看到被合并的源行(用户要能查到自己合并过什么)
+        // Las listas y búsquedas explícitas aún ven filas de origen fusionadas(Los usuarios deben poder comprobar lo que han fusionado.)
         val listed = store.getByScopeAndSpace("main", "default")
-        assertTrue("源行应仍在列表里", listed.map { it.id }.containsAll(listOf(coffee, office, cat)))
-        val explicit = store.searchFullTextScoped("美式咖啡", scope = "main", spaceId = "default", limit = 8)
-        assertTrue("显式检索应能看到被合并的源行", explicit.any { it.id == coffee })
+        assertTrue("La fila de origen aún debería estar en la lista.", listed.map { it.id }.containsAll(listOf(coffee, office, cat)))
+        val explicit = store.searchFullTextScoped("americano", scope = "main", spaceId = "default", limit = 8)
+        assertTrue("Una búsqueda explícita debería ver las filas de origen fusionadas", explicit.any { it.id == coffee })
     }
 
     @Test
     fun `merged sources leave projection input but stay in lists`() = runTest {
-        val a = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"))
-        val b = store.add(FactStore.Fact(fact = "用户办公室在望京 SOHO"))
+        val a = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
+        val b = store.add(FactStore.Fact(fact = "La oficina de usuarios está en Wangjing. SOHO"))
 
-        val mergedId = store.mergeFacts(listOf(a, b), "用户喜欢喝美式咖啡；办公室在望京 SOHO")!!
+        val mergedId = store.mergeFacts(listOf(a, b), "A los usuarios les gusta beber café americano; la oficina está en Wangjing SOHO")!!
 
-        // 编译投影取数口径(includeSuppressed=false)只剩合并后的新行
+        // Compilar calibre de acceso a proyección(includeSuppressed=false)Solo quedan las nuevas filas fusionadas
         assertEquals(
             listOf(mergedId),
             store.getByScopeAndSpace("main", "default", includeSuppressed = false).map { it.id },
         )
         assertEquals(listOf(mergedId), store.getByScope("main", includeSuppressed = false).map { it.id })
         assertEquals(listOf(mergedId), store.getBySpace("default", includeSuppressed = false).map { it.id })
-        // 显式列表(默认参数)四条都在
+        // lista explícita(Parámetros predeterminados)los cuatro estan ahi
         assertEquals(3, store.getByScopeAndSpace("main", "default").size)
     }
 
@@ -102,8 +102,8 @@ class FactMergeStoreTest {
     fun `mergeFacts inherits highest importance and deduplicated tags`() = runTest {
         val first = dao.insert(
             FactEntity(
-                fact = "用户对青霉素过敏",
-                tags = """["健康","过敏"]""",
+                fact = "El usuario es alérgico a la penicilina.",
+                tags = """["salud","Alergia"]""",
                 createdAt = "2026-01-01T00:00:00Z",
                 importance = 2,
                 category = "medical",
@@ -114,8 +114,8 @@ class FactMergeStoreTest {
         )
         val second = dao.insert(
             FactEntity(
-                fact = "用户偏好清淡饮食",
-                tags = """["健康","饮食"]""",
+                fact = "El usuario prefiere una dieta ligera.",
+                tags = """["salud","dieta"]""",
                 createdAt = "2026-01-02T00:00:00Z",
                 importance = 1,
                 category = "general",
@@ -124,37 +124,37 @@ class FactMergeStoreTest {
             ),
         )
 
-        val mergedId = store.mergeFacts(listOf(first, second), "用户对青霉素过敏，偏好清淡饮食")!!
+        val mergedId = store.mergeFacts(listOf(first, second), "El usuario es alérgico a la penicilina y prefiere una dieta ligera.")!!
         val merged = store.getById(mergedId)!!
 
-        assertEquals("应取源里最高的 importance", 2, merged.importance)
-        assertEquals("tags 应合并去重且保持首次出现顺序", listOf("健康", "过敏", "饮食"), merged.tags)
-        assertEquals("category 取第一个非 general 的源", "medical", merged.category)
-        assertEquals("confidence 取源最高", 0.9f, merged.confidence, 0.001f)
-        assertEquals("源里有 user_explicit 则为 user_explicit", "user_explicit", merged.source)
-        assertEquals("time 取第一个非空", "2026-01-01T00:00", merged.time)
-        assertEquals("scope/space 沿用所选范围", "main", merged.scope)
+        assertEquals("Se debe tomar el más alto de la fuente. importance", 2, merged.importance)
+        assertEquals("tags Deben fusionarse para eliminar duplicados y mantener el orden de primera aparición.", listOf("salud", "Alergia", "dieta"), merged.tags)
+        assertEquals("category Tome la primera fuente no general.", "medical", merged.category)
+        assertEquals("confidence la fuente más alta", 0.9f, merged.confidence, 0.001f)
+        assertEquals("Si hay user_explicit en la fuente, es user_explicit", "user_explicit", merged.source)
+        assertEquals("time Obtener el primer no vacío", "2026-01-01T00:00", merged.time)
+        assertEquals("scope/space Heredar rango seleccionado", "main", merged.scope)
         assertEquals("default", merged.spaceId)
     }
 
     @Test
     fun `unmergeFacts removes aggregate and brings sources back to recall`() = runTest {
-        val a = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"))
-        val b = store.add(FactStore.Fact(fact = "用户办公室在望京 SOHO"))
-        val mergedId = store.mergeFacts(listOf(a, b), "用户喜欢喝美式咖啡；办公室在望京 SOHO")!!
+        val a = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
+        val b = store.add(FactStore.Fact(fact = "La oficina de usuarios está en Wangjing. SOHO"))
+        val mergedId = store.mergeFacts(listOf(a, b), "A los usuarios les gusta beber café americano; la oficina está en Wangjing SOHO")!!
 
-        assertTrue("撤销合并应成功", store.unmergeFacts(mergedId))
+        assertTrue("Deshacer la fusión debería tener éxito", store.unmergeFacts(mergedId))
 
-        assertNull("合并产物应从库里消失", store.getById(mergedId))
-        assertTrue("聚合成员集合应为空", store.getMergedChildren(mergedId).isEmpty())
+        assertNull("El producto fusionado debería desaparecer de la biblioteca.", store.getById(mergedId))
+        assertTrue("La colección de miembros agregados debe estar vacía", store.getMergedChildren(mergedId).isEmpty())
         listOf(a, b).forEach { id ->
             val fact = store.getById(id)!!
-            assertNull("源行 $id 的合并指向应被清空", fact.mergedIntoId)
+            assertNull("fila de origen $id El puntero de combinación debe estar borrado.", fact.mergedIntoId)
         }
-        // 召回恢复: 源行重新进入自动召回,合并文本不再出现
-        val recall = store.searchRelevantFacts("美式咖啡", limit = 8)
-        assertTrue("源行应重新进入自动召回", recall.any { it.id == a })
-        assertFalse("已撤销的合并文本不应再被召回", recall.any { it.id == mergedId })
+        // recuperación de recuperación: La fila de origen vuelve a entrar en la recuperación automática.,El texto combinado ya no aparece
+        val recall = store.searchRelevantFacts("americano", limit = 8)
+        assertTrue("La fila de origen debería volver a ingresar a la recuperación automática.", recall.any { it.id == a })
+        assertFalse("El texto combinado revocado ya no debería recuperarse", recall.any { it.id == mergedId })
         assertEquals(
             setOf(a, b),
             store.getByScopeAndSpace("main", "default", includeSuppressed = false).map { it.id }.toSet(),
@@ -163,50 +163,50 @@ class FactMergeStoreTest {
 
     @Test
     fun `mergeFacts can be undone for a single source`() = runTest {
-        val only = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"))
-        val mergedId = store.mergeFacts(listOf(only), "用户喜欢喝美式咖啡（早上）")!!
+        val only = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
+        val mergedId = store.mergeFacts(listOf(only), "Al usuario le gusta beber americano (mañana)")!!
 
         assertEquals(mergedId, store.getById(only)!!.mergedIntoId)
-        assertEquals(listOf(mergedId), store.searchRelevantFacts("美式咖啡", limit = 8).map { it.id })
+        assertEquals(listOf(mergedId), store.searchRelevantFacts("americano", limit = 8).map { it.id })
 
         assertTrue(store.unmergeFacts(mergedId))
         assertNull(store.getById(only)!!.mergedIntoId)
-        assertTrue(store.searchRelevantFacts("美式咖啡", limit = 8).any { it.id == only })
+        assertTrue(store.searchRelevantFacts("americano", limit = 8).any { it.id == only })
     }
 
     @Test
     fun `mergeFacts ignores empty input blank text and unknown ids`() = runTest {
-        val id = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"))
+        val id = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."))
         val before = store.size()
 
-        assertNull("空列表不应产生新事实", store.mergeFacts(emptyList(), "合并文本"))
-        assertNull("空正文不应产生新事实", store.mergeFacts(listOf(id), "   "))
-        assertNull("id 全部不存在时不应产生新事实", store.mergeFacts(listOf(999_999L), "合并文本"))
-        assertEquals("边界输入不应改动任何行", before, store.size())
-        assertNull("源行不应被标记", store.getById(id)!!.mergedIntoId)
+        assertNull("Una lista vacía no debería producir nuevos hechos", store.mergeFacts(emptyList(), "Fusionar texto"))
+        assertNull("El texto vacío no debería producir nuevos hechos.", store.mergeFacts(listOf(id), "   "))
+        assertNull("id No se deben crear nuevos hechos cuando ninguno de ellos existe.", store.mergeFacts(listOf(999_999L), "Fusionar texto"))
+        assertEquals("La entrada de límites no debe cambiar ninguna línea", before, store.size())
+        assertNull("Las líneas fuente no deben marcarse", store.getById(id)!!.mergedIntoId)
     }
 
     @Test
     fun `mergeFacts skips sources outside the requested scope and already merged rows`() = runTest {
-        val mainFact = store.add(FactStore.Fact(fact = "用户喜欢喝美式咖啡"), scope = "main")
-        val otherScope = store.add(FactStore.Fact(fact = "用户办公室在望京 SOHO"), scope = "assistant-A")
+        val mainFact = store.add(FactStore.Fact(fact = "A los usuarios les gusta tomar café americano."), scope = "main")
+        val otherScope = store.add(FactStore.Fact(fact = "La oficina de usuarios está en Wangjing. SOHO"), scope = "assistant-A")
 
         assertNull(
-            "选中的行全部落在别的作用域时不做任何改动",
-            store.mergeFacts(listOf(otherScope), "合并文本", scope = "main"),
+            "Si todas las líneas seleccionadas caen en otros ámbitos, no se realizarán cambios.",
+            store.mergeFacts(listOf(otherScope), "Fusionar texto", scope = "main"),
         )
-        assertNull("归属不符的行不应被标记", store.getById(otherScope)!!.mergedIntoId)
+        assertNull("Las filas con propiedad inconsistente no deben marcarse", store.getById(otherScope)!!.mergedIntoId)
 
-        // 混合选择: 只合并与主源同 scope + 同 space 的行
-        val second = store.add(FactStore.Fact(fact = "用户养了一只叫团子的猫"), scope = "main")
-        val mergedId = store.mergeFacts(listOf(mainFact, otherScope, second), "合并文本", scope = "main")!!
+        // Selección mixta: Solo combine líneas con el mismo alcance + mismo espacio que la fuente principal
+        val second = store.add(FactStore.Fact(fact = "El usuario tiene un gato llamado Tuanzi."), scope = "main")
+        val mergedId = store.mergeFacts(listOf(mainFact, otherScope, second), "Fusionar texto", scope = "main")!!
         assertEquals(listOf(mainFact, second), store.getMergedChildren(mergedId).map { it.id })
-        assertNull("跨作用域的行不参与合并", store.getById(otherScope)!!.mergedIntoId)
+        assertNull("Las filas de ámbito cruzado no se incluyen en la combinación", store.getById(otherScope)!!.mergedIntoId)
 
-        // 已合并过的行不再参与第二次合并(避免链式指向)
-        val third = store.add(FactStore.Fact(fact = "用户喜欢在周末爬山"), scope = "main")
-        val secondMerge = store.mergeFacts(listOf(mainFact, third), "合并文本二", scope = "main")!!
-        assertEquals("已合并行应被跳过", listOf(third), store.getMergedChildren(secondMerge).map { it.id })
-        assertEquals("已合并行仍指回第一次的合并产物", mergedId, store.getById(mainFact)!!.mergedIntoId)
+        // Las filas ya fusionadas ya no participarán en la segunda fusión(Evite señalar en cadena)
+        val third = store.add(FactStore.Fact(fact = "A los usuarios les gusta escalar montañas los fines de semana."), scope = "main")
+        val secondMerge = store.mergeFacts(listOf(mainFact, third), "Fusionar texto dos", scope = "main")!!
+        assertEquals("Se deben omitir las filas fusionadas", listOf(third), store.getMergedChildren(secondMerge).map { it.id })
+        assertEquals("Las filas fusionadas aún apuntan al primer producto fusionado", mergedId, store.getById(mainFact)!!.mergedIntoId)
     }
 }

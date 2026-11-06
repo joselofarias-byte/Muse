@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * ClawBot 长轮询的启动门禁 + 跟随渠道变化的起停判定。
+ * ClawBot Control de acceso de inicio de sondeo largo + determinación de inicio y parada después de cambios de canal.
  *
- * 老实现进程启动就无条件 restart(),没有渠道时循环 30 秒一条地空转写日志。修过之后
- * 必须两件事同时成立:没渠道时一次都不起,而且「停用再启用」仍旧收得到消息 ——
- * 后者靠的是 [weClawPollAction] 只在状态真正转移时动作(而不是一次性 decision)。
+ * El antiguo proceso de implementación comienza incondicionalmente. restart(),Cuando no hay canal, el registro se escribirá en el suelo y se vaciará en un bucle durante 30 segundos. Después de reparar
+ * Dos cosas deben ser ciertas al mismo tiempo.:Cuando no hay canal, no puedo permitírmelo ni una sola vez.,Y "desactivar y luego habilitar" todavía recibe el mensaje ——
+ * Este último se basa en [weClawPollAction] Sólo actuar cuando el estado realmente cambie.(en lugar de una sola vez decision).
  */
 class WeClawStartupGateTest {
 
@@ -42,7 +42,7 @@ class WeClawStartupGateTest {
                 listOf(ChannelConfig(id = "c2", platform = ChannelPlatform.TELEGRAM, enabled = true)),
             ),
         )
-        // 同一条配置里其它平台的渠道不能把 WECLAW 循环带起来
+        // Los canales en otras plataformas en la misma configuración no pueden hacer bucle en WECLAW
         assertTrue(
             weClawChannelAvailable(
                 listOf(
@@ -55,17 +55,17 @@ class WeClawStartupGateTest {
 
     @Test
     fun `same availability never triggers anything twice`() {
-        // 正在跑且仍有渠道:不能重启(否则每次配置读一遍就重建一次长轮询)
+        // Funcionando y todavía tiene canales.:No puedo reiniciar(De lo contrario, se reconstruirá el sondeo largo cada vez que se lea la configuración.)
         assertEquals(WeClawPollAction.NONE, weClawPollAction(available = true, running = true))
-        // 已经停且仍然没渠道:不能因为自己的订阅再把循环拉起来(防自触发)
+        // Se ha detenido y todavía no hay canal.:No puedes iniciar el ciclo nuevamente debido a tu propia suscripción.(Anti-autodisparo)
         assertEquals(WeClawPollAction.NONE, weClawPollAction(available = false, running = false))
     }
 
     @Test
     fun `disabling stops and re-enabling starts again`() {
-        // 停用 → 停
+        // desactivar → detenerse
         assertEquals(WeClawPollAction.STOP, weClawPollAction(available = false, running = true))
-        // 重新启用 → 起(停用再启用必须还能收到消息)
+        // Volver a habilitar → de(Aún debes recibir mensajes después de desactivar y reactivar)
         assertEquals(WeClawPollAction.START, weClawPollAction(available = true, running = false))
     }
 }

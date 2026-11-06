@@ -25,25 +25,25 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * A5: 消息信息弹层 — 即点即看 模型/时间/耗时/Token 用量。
+ * A5: Capa emergente de información del mensaje — Haga clic para ver el modelo/tiempo/Consume mucho tiempo/Token Dosificación.
  *
- * 数据来源(全部来自 [UIMessage],由 ChatViewModel 生成结束时回填,见 finalizeResponse):
- *  - [UIMessage.modelId] / [UIMessage.createdAt]:基础信息
- *  - [UIMessage.durationMs]:生成总耗时(含工具循环;中断路径也回填)
+ * fuente de datos(Todo de [UIMessage],Rellenado cuando lo genera ChatViewModel,ver finalizeResponse):
+ *  - [UIMessage.modelId] / [UIMessage.createdAt]:Información básica
+ *  - [UIMessage.durationMs]:Tiempo total necesario para generar(Con ciclo de herramienta;Los caminos interrumpidos también se rellenan)
  *  - [UIMessage.promptTokens] / [UIMessage.completionTokens] / [UIMessage.reasoningTokens] /
- *    [UIMessage.cachedTokens] / [UIMessage.cacheWriteTokens]:provider 实测值(流式 UsageDelta 末值)
+ *    [UIMessage.cachedTokens] / [UIMessage.cacheWriteTokens]:provider Valor real(Uso de streamingDelta último valor)
  *
- * 缓存分两行展示:[UIMessage.cachedTokens](读)与 [UIMessage.cacheWriteTokens](写)单价不同,
- * 合成一个「缓存」数字会让用户以为写入部分是便宜的。写入量为 0 或无实测时不占行。
+ * El caché se muestra en dos líneas.:[UIMessage.cachedTokens](leer)con [UIMessage.cacheWriteTokens](escribir)El precio unitario es diferente,
+ * Sintetizar un número de "caché" hace que el usuario piense que la parte de escritura es barata. Si la cantidad escrita es 0 o no hay una medición real, no se ocupará ninguna fila.
  *
- * Token 展示状态:
- *  - 有实测(任一分项非 null)→ 展示全部分项 + 「实测」标签
- *  - 无实测但为助手消息 → 本地估算占位(约 2 字符/token,与 StatsPage 同一启发式)+ 「估算」标签。
- *    业务原因:provider 未返回 usage 时(旧数据/不支持的网关/中断流)仍给用户一个数量级参考,
- *    用「估算」标签明示非官方值,不冒充实测。
- *  - 用户消息 → 「无生成数据」
+ * Token estado de visualización:
+ *  - Hay medidas reales(Cualquier subelemento no es null)→ Mostrar todos los artículos + etiqueta "Medida real"
+ *  - No hay prueba real, pero son noticias del asistente. → Ocupación estimada local(Aproximadamente 2 personajes/token,Misma heurística que StatsPage)+ Pestaña "Estimación".
+ *    razones comerciales:provider Cuando no se devuelve el uso(datos antiguos/Puerta de enlace no compatible/interrumpir el flujo)Todavía brinda a los usuarios una referencia de orden de magnitud.,
+ *    Utilice la etiqueta "estimación" para indicar valores no oficiales,No pretendas ser un probador.
+ *  - Mensajes de usuario → "No hay datos generados"
  *
- * 入口:MessageBubble 长按扩展菜单 / 桌面右键菜单的「消息信息」项。
+ * entrada:MessageBubble Mantenga presionado el elemento "Información del mensaje" en el menú extendido/menú contextual del escritorio.
  */
 @Composable
 fun MessageInfoSheet(msg: UIMessage, onDismiss: () -> Unit) {
@@ -84,7 +84,7 @@ fun MessageInfoSheet(msg: UIMessage, onDismiss: () -> Unit) {
             ) {
                 InfoRow(modelLabel, msg.modelId?.takeIf { it.isNotBlank() } ?: unknown)
                 InfoRow(timeLabel, timeText)
-                // 耗时:用户消息/旧数据为 null 时不展示该行
+                // Consume mucho tiempo:Mensajes de usuario/No mostrar la fila cuando los datos antiguos son nulos
                 msg.durationMs?.let { InfoRow(durationLabel, formatDuration(it)) }
 
                 Text(
@@ -98,7 +98,7 @@ fun MessageInfoSheet(msg: UIMessage, onDismiss: () -> Unit) {
                     InfoRow(completionLabel, "${msg.completionTokens ?: 0}", measuredTag)
                     InfoRow(reasoningLabel, "${msg.reasoningTokens ?: 0}", measuredTag)
                     InfoRow(cachedLabel, "${msg.cachedTokens ?: 0}", measuredTag)
-                    // 缓存写入单列：写入单价高于输入价，不能合进上一行的「缓存命中」
+                    // Escritura en caché en una sola columna: el precio unitario de escritura es mayor que el precio de entrada y no se puede combinar con el "acierto en caché" de la fila anterior.
                     (msg.cacheWriteTokens ?: 0).takeIf { it > 0 }?.let { writeTokens ->
                         InfoRow(cacheWriteLabel, "$writeTokens", measuredTag)
                     }
@@ -108,7 +108,7 @@ fun MessageInfoSheet(msg: UIMessage, onDismiss: () -> Unit) {
                         measuredTag,
                     )
                 } else if (msg.role == MessageRole.ASSISTANT && msg.content.isNotBlank()) {
-                    // 估算占位:provider 未返回 usage 时按正文长度粗估(约 2 字符/token)
+                    // Espacio estimado ocupado:provider Si no se devuelve el uso, se estimará aproximadamente en función de la longitud del texto.(Aproximadamente 2 personajes/token)
                     val estimated = (msg.content.length / 2).coerceAtLeast(1)
                     InfoRow(totalLabel, "$estimated", estimatedTag)
                 } else {
@@ -119,7 +119,7 @@ fun MessageInfoSheet(msg: UIMessage, onDismiss: () -> Unit) {
     )
 }
 
-/** 标签-值 行;有 [tag](实测/估算)时在值后追加小字标签。 */
+/** etiqueta-fila de valor;si [tag](Medición real/estimación)Al agregar una etiqueta de fuente pequeña después del valor. */
 @Composable
 private fun InfoRow(label: String, value: String, tag: String? = null) {
     Row(
@@ -130,7 +130,7 @@ private fun InfoRow(label: String, value: String, tag: String? = null) {
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            // LAYOUT-01: 标签取剩余宽度还不够 —— 剩余宽度极小时中文仍会逐字换行撑高整行,故一并限行。
+            // LAYOUT-01: El ancho restante de la etiqueta no es suficiente. —— Cuando el ancho restante es extremadamente pequeño, los caracteres chinos aún se ajustarán palabra por palabra para hacer que toda la línea sea más alta.,Por tanto, todos están restringidos.
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -139,7 +139,7 @@ private fun InfoRow(label: String, value: String, tag: String? = null) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            // LAYOUT-01: 值列限制为单行,防止长值反向把标签挤成一列。
+            // LAYOUT-01: Las columnas de valores están limitadas a una sola fila.,Evite que los valores largos comprima las etiquetas en una columna.
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -154,7 +154,7 @@ private fun InfoRow(label: String, value: String, tag: String? = null) {
     }
 }
 
-/** 生成耗时格式化: <1s 用 ms;<60s 用秒(1 位小数);否则 分+秒。 */
+/** Generar formato que requiere mucho tiempo: <1s usar ms;<60s Usa segundos(1 decimales);De lo contrario dividir+artículos de segunda clase. */
 private fun formatDuration(ms: Long): String = when {
     ms < 1_000L -> "$ms ms"
     ms < 60_000L -> String.format(Locale.US, "%.1f s", ms / 1000f)

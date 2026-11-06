@@ -1,53 +1,53 @@
 package io.zer0.memory.fact
 
 /**
- * v12: 事实去重 LLM 判定器 — 算法层(字符相似度/实体键)无法确定的模糊候选对,
- * 交由大模型判断是否为同一事实。算法层再完善也会有漏网之鱼,
- * 语义等价但表述差异大的两条事实(如"用户养了一只柯基" vs "他养了只柯基犬")
- * 只有模型能可靠识别。
+ * v12: Determinante de LLM de deduplicación de hechos — capa de algoritmo(Similitud de personajes/Clave de entidad)Pares de candidatos difusos indeterminados,
+ * Dejemos que el modelo grande determine si se trata del mismo hecho. No importa cuán perfecta sea la capa del algoritmo, todavía habrá peces que se escapen de la red.,
+ * Dos hechos que son semánticamente equivalentes pero que tienen expresiones muy diferentes(Como por ejemplo"El usuario tiene un corgi." vs "el tiene un corgi")
+ * Sólo el modelo puede identificarse de forma fiable.
  *
- * 设计:
- *  - 接口定义在 memory 模块,实现(LLM 调用)在 app 模块注入,memory 模块保持独立可测。
- *  - FactStore 仅在"同实体键有候选但文本判定失败"的低频场景调用,控制 token 消耗。
- *  - 判定结果带置信度,低置信时宁可不合并(宁漏不错)。
- *  - 实现方必须超时/异常降级为"不同一",不阻塞记忆写入主流程。
+ * diseño:
+ *  - La interfaz está definida en el módulo de memoria.,darse cuenta(LLM llamar)Inyectar en el módulo de la aplicación,memory Los módulos siguen siendo comprobables de forma independiente.
+ *  - FactStore solo en"Hay candidatos para la misma clave de entidad pero falla la determinación del texto"llamada de escena de baja frecuencia,Controlar el consumo de tokens.
+ *  - Resultados de juicio con confianza,Prefiere no fusionarse cuando la confianza es baja(Ning Le es bueno).
+ *  - El implementador debe expirar el tiempo de espera./La excepción se degrada a"No es lo mismo",No bloquea el proceso principal de escritura en memoria.
  */
 interface FactDedupJudge {
 
     /**
-     * 判定两条事实是否为同一事实。
+     * Determinar si dos hechos son el mismo hecho.
      *
-     * @param a 已有事实文本
-     * @param b 新事实文本
-     * @param entityKeyA 已有事实的实体键(可空)
-     * @param entityKeyB 新事实的实体键(可空)
-     * @return 判定结果;LLM 不可用/超时/解析失败时返回 same=false(宁可不合并)
+     * @param a Ya tengo texto de hechos.
+     * @param b nuevo texto de hecho
+     * @param entityKeyA Clave de entidad para el hecho existente(Disponible)
+     * @param entityKeyB Clave de entidad para hecho nuevo(Disponible)
+     * @return Resultado del juicio;LLM No disponible/tiempo de espera/Devuelto cuando falla el análisis same=false(Preferiría no fusionarse)
      */
     suspend fun judge(a: String, b: String, entityKeyA: String?, entityKeyB: String?): DedupVerdict
 }
 
 /**
- * 判定结果。
+ * Resultado del juicio.
  *
- * @param same true=同一事实(应合并),false=不同一(不合并)
- * @param confidence 置信度 0.0~1.0;same=true 且 confidence < 0.7 时调用方应保守处理
- * @param reason 简短理由(用于日志与后续审计)
+ * @param same true=mismo hecho(debería fusionarse),false=No es lo mismo(no fusionar)
+ * @param confidence confianza 0.0~1.0;same=true y confidence < 0.7 La persona que llama debe manejar esto de manera conservadora.
+ * @param reason breve razón(Se utiliza para el registro y la auditoría posterior.)
  */
 data class DedupVerdict(
     val same: Boolean,
     val confidence: Float = 0f,
     val reason: String = "",
 ) {
-    /** 高置信同一 — 可安全自动合并。 */
+    /** Alta confianza idéntica — Fusión segura y automática. */
     val highConfidenceSame: Boolean get() = same && confidence >= 0.7f
 
     companion object {
-        /** LLM 不可用/失败时的保守降级结果。 */
+        /** LLM No disponible/La rebaja conservadora resulta en caso de fracaso. */
         val NOT_SAME = DedupVerdict(same = false, confidence = 0f, reason = "judge unavailable")
     }
 }
 
-/** 无 LLM 时的默认实现(行为与未接入 judge 完全一致)。 */
+/** Implementación predeterminada sin LLM(El comportamiento es exactamente el mismo que cuando el juez no está conectado.). */
 object NoopFactDedupJudge : FactDedupJudge {
     override suspend fun judge(a: String, b: String, entityKeyA: String?, entityKeyB: String?): DedupVerdict = DedupVerdict.NOT_SAME
 }

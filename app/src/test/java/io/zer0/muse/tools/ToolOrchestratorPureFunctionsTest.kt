@@ -18,23 +18,23 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Phase 2.3.5: ToolOrchestrator 纯函数单元测试。
+ * Phase 2.3.5: ToolOrchestrator Pruebas unitarias funcionales puras.
  *
- * 覆盖范围(可见性已放宽为 internal 以便测试):
- *  - [ToolOrchestrator.extractWebSearchUrls] — 从 web_search 结果中提取 URL
- *  - [ToolOrchestrator.toolCallSignature] — 卡死检测签名(顺序无关)
- *  - [ToolOrchestrator.mergeToolArguments] — 审批阶段参数覆盖合并
- *  - [ToolOrchestrator.parseTaskPlanStepCount] — task_plan arguments 解析容错
- *  - [ToolOrchestrator.countTaskPlanSteps] — 多源(AgentPlan 缓存 / 历史消息)汇总
- *  - [ToolOrchestrator.computeMaxRounds] — 动态轮次计算 + hardCap 兜底
+ * Cobertura(La visibilidad se ha relajado a interna para realizar pruebas.):
+ *  - [ToolOrchestrator.extractWebSearchUrls] — Extracto de los resultados de web_search URL
+ *  - [ToolOrchestrator.toolCallSignature] — firma de detección atascada(El orden no importa)
+ *  - [ToolOrchestrator.mergeToolArguments] — Anulación y fusión de parámetros de etapa de aprobación
+ *  - [ToolOrchestrator.parseTaskPlanStepCount] — task_plan arguments Analizando la tolerancia a fallos
+ *  - [ToolOrchestrator.countTaskPlanSteps] — Múltiples fuentes(AgentPlan Mensajes de caché/historial)Resumen
+ *  - [ToolOrchestrator.computeMaxRounds] — Cálculo de ronda dinámica + hardCap
  *  - [ToolOrchestrator.truncatedToolCallsForBackfill] / [ToolOrchestrator.truncatedArgumentsToolResult]
- *    — 输出上限截断的工具参数如何构造回填内容
+ *    — Cómo construir contenido de relleno para parámetros de herramientas con truncamiento del límite superior de salida
  *
- * 注:仅测纯函数,不涉及 runLoop 的协程流程(后续可单独补 integration test)。
- * runLoop 涉及 ChatViewModel/Provider/ToolRegistry 多个组件,需要 mockk 整条链,
- * 投入产出比低,优先保证纯函数正确性。
+ * Nota:Sólo se prueban funciones puras,Proceso de rutina que no involucra runLoop(Se puede complementar por separado más adelante. integration test).
+ * runLoop Implica múltiples componentes de ChatViewModel/Provider/ToolRegistry,Necesito burlarse de toda la cadena.,
+ * Baja relación entrada-salida,Priorizar la corrección de las funciones puras.
  *
- * 运行方式: `./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorPureFunctionsTest*"`
+ * Modo de operación: `./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorPureFunctionsTest*"`
  */
 class ToolOrchestratorPureFunctionsTest {
 
@@ -44,7 +44,7 @@ class ToolOrchestratorPureFunctionsTest {
     @Before
     fun setUp() {
         mockSkillExecutor = mockk(relaxed = true)
-        // 纯函数测试:除 skillExecutor 外的依赖都不会被调用,直接 relaxed mock
+        // Pruebas de función pura:No se llamarán dependencias distintas a SkillExecutor,directo relaxed mock
         orchestrator = ToolOrchestrator(
             toolRegistry = mockk(relaxed = true),
             skillRepository = mockk(relaxed = true),
@@ -60,9 +60,9 @@ class ToolOrchestratorPureFunctionsTest {
     @Test
     fun `extractWebSearchUrls extracts single URL line`() {
         val result = """
-            搜索结果:
+            Resultados de la búsqueda:
             URL: https://example.com/article1
-            摘要: 示例文章
+            Resumen: Artículo de muestra
         """.trimIndent()
         val urls = orchestrator.extractWebSearchUrls(result)
         assertEquals(listOf("https://example.com/article1"), urls)
@@ -92,11 +92,11 @@ class ToolOrchestratorPureFunctionsTest {
     @Test
     fun `extractWebSearchUrls returns empty list when no URL lines`() {
         val result = """
-            搜索完成,未找到相关结果。
-            建议换用其他关键词。
+            Búsqueda completada,No se encontraron resultados relevantes.
+            Se recomienda utilizar otras palabras clave.
         """.trimIndent()
         val urls = orchestrator.extractWebSearchUrls(result)
-        assertTrue("无 URL 行时应返回空列表", urls.isEmpty())
+        assertTrue("Debería devolver una lista vacía cuando no hay filas de URL", urls.isEmpty())
     }
 
     @Test
@@ -104,14 +104,14 @@ class ToolOrchestratorPureFunctionsTest {
         val result = """
             URL: https://valid.com/1
             NOT-URL: https://invalid.com/x
-            普通 URL: https://also-invalid.com/y
+            ordinario URL: https://also-invalid.com/y
             URL:https://valid.com/2
         """.trimIndent()
         val urls = orchestrator.extractWebSearchUrls(result)
-        // 正则 ^\s*URL:\s*(.+)$ 要求行首(允许前导空白),严格匹配 "URL:" 前缀
-        // 第 4 行 "URL:https..." 中间无空格,仍应匹配(正则 \s* 允许 0 个空格)
+        // regular ^\s*URL:\s*(.+)$ Solicitar inicio de línea(Permitir espacios en blanco iniciales),coincidencia estricta "URL:" prefijo
+        // Línea 4 "URL:https..." Sin espacios entremedio,todavía debería coincidir(regular \s* Permitir 0 espacios)
         assertEquals(
-            "应只匹配行首的 'URL:' 前缀(忽略大小写敏感:正则未加 IGNORE_CASE,严格大写)",
+            "Sólo debe coincidir con el comienzo de la línea. 'URL:' prefijo(Ignorar la distinción entre mayúsculas y minúsculas:Regularidad no añadida IGNORE_CASE,Estrictamente mayúsculas)",
             listOf("https://valid.com/1", "https://valid.com/2"),
             urls,
         )
@@ -151,7 +151,7 @@ class ToolOrchestratorPureFunctionsTest {
         val tc2 = ToolCall(id = "call_1", name = "a", arguments = "{}")
         val tc3 = ToolCall(id = "call_2", name = "b", arguments = "{}")
         val sig = orchestrator.toolCallSignature(listOf(tc1, tc2, tc3))
-        // 应按 id 排序: call_1 → call_2 → call_3, 即 a|b|c
+        // Debe ordenarse por identificación: call_1 → call_2 → call_3, Eso es a|b|c
         assertEquals("""a({})|b({})|c({})""", sig)
     }
 
@@ -161,9 +161,9 @@ class ToolOrchestratorPureFunctionsTest {
         val tc2 = ToolCall(id = "call_2", name = "b", arguments = "{}")
         val sigOrder1 = orchestrator.toolCallSignature(listOf(tc1, tc2))
         val sigOrder2 = orchestrator.toolCallSignature(listOf(tc2, tc1))
-        // 同集合不同顺序应得相同签名(用于卡死检测,避免并行工具顺序抖动误判)
+        // El mismo conjunto pero en diferente orden debería tener la misma firma.(Utilizado para la detección de atascos,Evite errores de cálculo por fluctuación de secuencia de herramientas en paralelo)
         assertEquals(
-            "同集合不同顺序应得相同签名(避免并行工具顺序抖动误判卡死)",
+            "El mismo conjunto pero en diferente orden debería tener la misma firma.(Evite las fluctuaciones en la secuencia de herramientas paralelas y los errores de cálculo atascados)",
             sigOrder1,
             sigOrder2,
         )
@@ -173,18 +173,18 @@ class ToolOrchestratorPureFunctionsTest {
     fun `toolCallSignature distinguishes different arguments`() {
         val tc1 = ToolCall(id = "c1", name = "search", arguments = """{"q":"a"}""")
         val tc2 = ToolCall(id = "c1", name = "search", arguments = """{"q":"b"}""")
-        // 注: id 相同虽非正常场景,但用于验证 arguments 不同则签名不同
+        // Nota: id La misma escena aunque no normal.,Pero si los argumentos utilizados para la verificación son diferentes, la firma será diferente.
         val sig1 = orchestrator.toolCallSignature(listOf(tc1))
         val sig2 = orchestrator.toolCallSignature(listOf(tc2))
         assertTrue(
-            "参数不同时签名应不同(用于判定是否卡死)",
+            "La firma debe ser diferente cuando los parámetros son diferentes.(Se utiliza para determinar si está atascado.)",
             sig1 != sig2,
         )
     }
 
     // ── mergeToolArguments ──────────────────────────────────────────────
 
-    /** 解析 merged JSON 并返回指定字段的字符串值,断言失败时给出清晰错误。 */
+    /** Analiza JSON combinado y devuelve el valor de cadena del campo especificado,Dé errores claros cuando las afirmaciones fallen. */
     private fun jsonStringField(json: String, key: String): String? {
         val obj = AppJson.decodeFromString(JsonObject.serializer(), json)
         return obj[key]?.let { (it as? JsonPrimitive)?.content }
@@ -201,16 +201,16 @@ class ToolOrchestratorPureFunctionsTest {
     fun `mergeToolArguments overrides existing key`() {
         val original = """{"q":"kotlin","limit":10}"""
         val merged = orchestrator.mergeToolArguments(original, mapOf("limit" to "5"))
-        assertEquals("limit 应被覆盖为 5", "5", jsonStringField(merged, "limit"))
-        assertEquals("q 应保持 kotlin", "kotlin", jsonStringField(merged, "q"))
+        assertEquals("limit debe ser anulado como 5", "5", jsonStringField(merged, "limit"))
+        assertEquals("q debe mantenerse kotlin", "kotlin", jsonStringField(merged, "q"))
     }
 
     @Test
     fun `mergeToolArguments adds new key when not present`() {
         val original = """{"q":"kotlin"}"""
         val merged = orchestrator.mergeToolArguments(original, mapOf("lang" to "zh"))
-        assertEquals("新增 lang=zh", "zh", jsonStringField(merged, "lang"))
-        assertEquals("原 q 保留", "kotlin", jsonStringField(merged, "q"))
+        assertEquals("Nuevo lang=zh", "zh", jsonStringField(merged, "lang"))
+        assertEquals("Se conserva la q original", "kotlin", jsonStringField(merged, "q"))
     }
 
     @Test
@@ -233,9 +233,9 @@ class ToolOrchestratorPureFunctionsTest {
             invalidOriginal,
             mapOf("q" to "fallback"),
         )
-        // 原始 JSON 解析失败时,仅用 overrides 构造新 JSON
+        // Cuando falla el análisis JSON sin formato,Construir nuevo con solo anulaciones JSON
         assertEquals(
-            "原始 JSON 非法时应仅用 overrides 构造新 JSON",
+            "El nuevo JSON solo debe construirse con anulaciones cuando el JSON original no sea válido JSON",
             "fallback",
             jsonStringField(merged, "q"),
         )
@@ -276,21 +276,21 @@ class ToolOrchestratorPureFunctionsTest {
     fun `parseTaskPlanStepCount returns zero when steps field missing`() {
         val json = """{"other":"value"}"""
         val count = orchestrator.parseTaskPlanStepCount(json)
-        // 注: 源码逻辑,obj["steps"] 为 null 时 return 0(而不是 null)
-        assertEquals("无 steps 字段应返回 0", 0, count)
+        // Nota: Lógica del código fuente,obj["steps"] cuando es nulo return 0(en lugar de null)
+        assertEquals("No se debe devolver ningún campo de pasos 0", 0, count)
     }
 
     @Test
     fun `parseTaskPlanStepCount returns null for invalid json`() {
         val json = """not a json"""
         val count = orchestrator.parseTaskPlanStepCount(json)
-        assertNull("非法 JSON 应返回 null(容错)", count)
+        assertNull("Se debe devolver el JSON ilegal null(tolerancia a fallas)", count)
     }
 
     @Test
     fun `parseTaskPlanStepCount returns null for empty string`() {
         val count = orchestrator.parseTaskPlanStepCount("")
-        assertNull("空字符串应返回 null", count)
+        assertNull("Se debe devolver una cadena vacía null", count)
     }
 
     @Test
@@ -298,8 +298,8 @@ class ToolOrchestratorPureFunctionsTest {
         val json = """
             {
               "steps": [
-                {"title": "搜索", "description": "...", "status": "PENDING"},
-                {"title": "总结", "description": "...", "status": "PENDING"}
+                {"title": "Buscar", "description": "...", "status": "PENDING"},
+                {"title": "Resumen", "description": "...", "status": "PENDING"}
               ]
             }
         """.trimIndent()
@@ -311,7 +311,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `countTaskPlanSteps uses active plans from skillExecutor when available`() {
-        // SkillExecutor 内存中有活跃计划时优先使用
+        // SkillExecutor Usar prioridad cuando haya planes activos en la memoria
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "plan1" to AgentPlan(
                 id = "plan1",
@@ -324,7 +324,7 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(emptyList())
-        assertEquals("应优先用 SkillExecutor 的活跃计划步骤数", 3, count)
+        assertEquals("Número de pasos activos del plan que se deben priorizar utilizando SkillExecutor", 3, count)
     }
 
     @Test
@@ -345,12 +345,12 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(emptyList())
-        assertEquals("多个活跃计划的步骤数应累加", 3, count)
+        assertEquals("Se debe acumular el número de pasos para múltiples planes activos.", 3, count)
     }
 
     @Test
     fun `countTaskPlanSteps falls back to history messages when no active plans`() {
-        // SkillExecutor 无活跃计划时,从历史消息中解析 task_plan 工具调用
+        // SkillExecutor Cuando no hay ningún plan activo,Analizar llamadas a la herramienta task_plan a partir de mensajes históricos
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val messages = listOf(
             UIMessage(
@@ -366,12 +366,12 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(messages)
-        assertEquals("无活跃计划时应回退到历史消息解析", 4, count)
+        assertEquals("Cuando no hay un plan activo, recurrir al análisis histórico de mensajes", 4, count)
     }
 
     @Test
     fun `countTaskPlanSteps takes max step count across multiple task_plan calls`() {
-        // 多轮 task_plan 工具调用时取最大值(对应"最大计划复杂度")
+        // Tome el valor máximo al llamar a la herramienta task_plan en varias rondas(corresponder"Máxima complejidad de planificación")
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val messages = listOf(
             UIMessage(
@@ -398,7 +398,7 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(messages)
-        assertEquals("多轮 task_plan 应取最大步骤数", 3, count)
+        assertEquals("Varias rondas de task_plan deben tomar el número máximo de pasos", 3, count)
     }
 
     @Test
@@ -415,13 +415,13 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(messages)
-        assertEquals("非 task_plan 工具调用不应被计入", 0, count)
+        assertEquals("Las llamadas a herramientas que no sean de task_plan no deben contarse", 0, count)
     }
 
     @Test
     fun `countTaskPlanSteps ignores user role messages with tool_calls`() {
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
-        // 即使用户消息携带 tool_calls 字段(理论不该发生),也不应被计入
+        // Incluso si el mensaje del usuario lleva el campo tool_calls(La teoría no debería suceder.),ni se debe contar
         val messages = listOf(
             UIMessage(
                 role = MessageRole.USER,
@@ -436,7 +436,7 @@ class ToolOrchestratorPureFunctionsTest {
             ),
         )
         val count = orchestrator.countTaskPlanSteps(messages)
-        assertEquals("仅 ASSISTANT 角色的 task_plan 应被计入", 0, count)
+        assertEquals("Solo se debe contar task_plan para el rol de ASISTENTE", 0, count)
     }
 
     @Test
@@ -457,7 +457,7 @@ class ToolOrchestratorPureFunctionsTest {
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val maxRounds = orchestrator.computeMaxRounds(emptyList())
         assertEquals(
-            "无 task_plan 时应使用 DEFAULT_MAX_TOOL_ROUNDS",
+            "Debe usarse cuando no hay task_plan DEFAULT_MAX_TOOL_ROUNDS",
             DEFAULT_MAX_TOOL_ROUNDS,
             maxRounds,
         )
@@ -465,7 +465,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds returns steps_times_2_plus_5 for small plans`() {
-        // 3 步 → 3*2+5 = 11,未超过 HARD_CAP(25)
+        // 3 paso → 3*2+5 = 11,no más que HARD_CAP(25)
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "p1" to AgentPlan(
                 id = "p1",
@@ -483,8 +483,8 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds is capped by MAX_TOOL_ROUNDS_HARD_CAP`() {
-        // 步骤数足够多时,公式结果应被 HARD_CAP(25) 截断
-        // 30 步 → 30*2+5 = 65,但应被截为 25
+        // Cuando hay suficientes pasos,El resultado de la fórmula debe ser HARD_CAP(25) Truncar
+        // 30 paso → 30*2+5 = 65,pero debe truncarse a 25
         val manySteps = List(30) { idx ->
             AgentPlanStep(id = "s$idx", title = "step-$idx")
         }
@@ -493,7 +493,7 @@ class ToolOrchestratorPureFunctionsTest {
         )
         val maxRounds = orchestrator.computeMaxRounds(emptyList())
         assertEquals(
-            "公式结果超过 HARD_CAP 时应被截断为 ${MAX_TOOL_ROUNDS_HARD_CAP}",
+            "Los resultados de la fórmula que excedan HARD_CAP deben truncarse a ${MAX_TOOL_ROUNDS_HARD_CAP}",
             MAX_TOOL_ROUNDS_HARD_CAP,
             maxRounds,
         )
@@ -501,12 +501,12 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds respects caller-provided hardCap below HARD_CAP`() {
-        // 调用方传入 hardCap 小于计算值时,以 hardCap 为准(向后兼容 params.maxRounds)
+        // Cuando el hardCap pasado por la persona que llama es menor que el valor calculado,Sujeto a límite máximo(compatible con versiones anteriores params.maxRounds)
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val hardCap = 3
         val maxRounds = orchestrator.computeMaxRounds(emptyList(), hardCap = hardCap)
         assertEquals(
-            "hardCap 小于默认值时应取 hardCap",
+            "hardCap Se debe tomar cuando sea menor que el valor predeterminado. hardCap",
             hardCap,
             maxRounds,
         )
@@ -514,16 +514,16 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds uses larger of formula and hardCap when hardCap exceeds HARD_CAP`() {
-        // 调用方传入 hardCap 大于 HARD_CAP 时,仍受 HARD_CAP 限制(防死循环兜底)
-        // 注:无 task_plan 时 base=DEFAULT_MAX_TOOL_ROUNDS(10),min(10, 25, 100)=10
-        // 此处验证 hardCap > HARD_CAP 时不会被 hardCap 反向放大到 100
+        // Cuando la persona que llama pasa en hardCap mayor que HARD_CAP,Todavía sujeto a HARD_CAP(Bolsillo de circulación anti-muertos)
+        // Nota:Cuando no hay task_plan base=DEFAULT_MAX_TOOL_ROUNDS(10),min(10, 25, 100)=10
+        // Verificar aquí hardCap > HARD_CAP no será amplificado inversamente por hardCap para 100
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val maxRounds = orchestrator.computeMaxRounds(
             emptyList(),
-            hardCap = 100, // 远超 HARD_CAP
+            hardCap = 100, // Mucho más allá HARD_CAP
         )
         assertEquals(
-            "hardCap 超过 HARD_CAP 时不应被反向放大,以 base 和 HARD_CAP 中较小者为限",
+            "hardCap No se debe amplificar de forma inversa cuando se excede HARD_CAP,Hasta el menor de base y HARD_CAP",
             minOf(DEFAULT_MAX_TOOL_ROUNDS, MAX_TOOL_ROUNDS_HARD_CAP),
             maxRounds,
         )
@@ -531,7 +531,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds uses history task_plan when no active plans`() {
-        // 活跃计划为空但历史消息含 task_plan 工具调用时,应基于历史步骤数计算
+        // Cuando el plan activo está vacío pero el mensaje histórico contiene la llamada a la herramienta task_plan,Debe calcularse en función del número de pasos históricos.
         every { mockSkillExecutor.getActivePlans() } returns emptyMap()
         val messages = listOf(
             UIMessage(
@@ -546,14 +546,14 @@ class ToolOrchestratorPureFunctionsTest {
                 ),
             ),
         )
-        // 5 步 → 5*2+5 = 15
+        // 5 paso → 5*2+5 = 15
         val maxRounds = orchestrator.computeMaxRounds(messages)
         assertEquals(15, maxRounds)
     }
 
     @Test
     fun `computeMaxRounds prefers active plans over history`() {
-        // 同时有活跃计划和历史 task_plan 时,优先用活跃计划
+        // Cuando hay tanto un plan activo como un task_plan histórico,Priorizar planes activos
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "p1" to AgentPlan(
                 id = "p1",
@@ -574,11 +574,11 @@ class ToolOrchestratorPureFunctionsTest {
                 ),
             ),
         )
-        // 活跃计划 1 步 → 1*2+5 = 7,历史 5 步 → 5*2+5 = 15
-        // 应优先用活跃计划:7
+        // Plan activo 1 paso → 1*2+5 = 7,Historia 5 pasos → 5*2+5 = 15
+        // Los planes activos deben usarse primero:7
         val maxRounds = orchestrator.computeMaxRounds(messages)
         assertEquals(
-            "同时存在时应优先用 SkillExecutor 活跃计划而非历史消息",
+            "Cuando ambos existen, se debe usar primero el plan activo de SkillExecutor en lugar de los mensajes históricos.",
             7,
             maxRounds,
         )
@@ -586,7 +586,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds boundary - single step plan yields 7 rounds`() {
-        // 边界:1 步 → 1*2+5 = 7
+        // frontera:1 paso → 1*2+5 = 7
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "p1" to AgentPlan(
                 id = "p1",
@@ -600,7 +600,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds boundary - ten step plan yields hard cap`() {
-        // 边界:10 步 → 10*2+5 = 25,恰好等于 HARD_CAP,不应溢出
+        // frontera:10 paso → 10*2+5 = 25,exactamente igual a HARD_CAP,no debe desbordarse
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "p1" to AgentPlan(
                 id = "p1",
@@ -610,7 +610,7 @@ class ToolOrchestratorPureFunctionsTest {
         )
         val maxRounds = orchestrator.computeMaxRounds(emptyList())
         assertEquals(
-            "10 步 → 10*2+5=25,恰为 HARD_CAP,无溢出",
+            "10 paso → 10*2+5=25,exactamente HARD_CAP,sin desbordamiento",
             25,
             maxRounds,
         )
@@ -618,7 +618,7 @@ class ToolOrchestratorPureFunctionsTest {
 
     @Test
     fun `computeMaxRounds boundary - eleven step plan yields hard cap not 27`() {
-        // 边界:11 步 → 11*2+5 = 27,但应被截为 HARD_CAP=25
+        // frontera:11 paso → 11*2+5 = 27,pero debe truncarse a HARD_CAP=25
         every { mockSkillExecutor.getActivePlans() } returns mapOf(
             "p1" to AgentPlan(
                 id = "p1",
@@ -628,7 +628,7 @@ class ToolOrchestratorPureFunctionsTest {
         )
         val maxRounds = orchestrator.computeMaxRounds(emptyList())
         assertEquals(
-            "11 步 → 27,应被截为 HARD_CAP=25",
+            "11 paso → 27,debe truncarse a HARD_CAP=25",
             25,
             maxRounds,
         )
@@ -646,20 +646,20 @@ class ToolOrchestratorPureFunctionsTest {
         val calls = orchestrator.truncatedToolCallsForBackfill(
             listOf(
                 ToolCall("dup", "read_file", """{"path":"a.md"""),
-                // 同 id 重复:第二条必须换一个,否则 tool result 无法一一对应
+                // Duplicar con id:El segundo debe ser reemplazado.,De lo contrario, el resultado de la herramienta no puede corresponder uno a uno.
                 ToolCall("dup", "read_file", """{"path":"b.md"""),
-                // 上游没发 id
+                // No enviado aguas arriba id
                 ToolCall("", "write_file", """{"content":"""),
-                // 连工具名都没收到:无从描述也无从配对,整条丢弃
+                // Ni siquiera recibí el nombre de la herramienta.:No hay forma de describirlos o emparejarlos.,Desechar toda la pieza
                 ToolCall("tc-x", "", """{"a"""),
             ),
             round = 3,
         )
 
         assertEquals(listOf("read_file", "read_file", "write_file"), calls.map { it.name })
-        assertTrue("id 必须非空", calls.all { it.id.isNotBlank() })
-        assertEquals("id 不得重复", calls.size, calls.map { it.id }.distinct().size)
-        assertTrue("残缺参数一律不进回传历史", calls.all { it.arguments == "{}" })
+        assertTrue("id No debe estar vacío.", calls.all { it.id.isNotBlank() })
+        assertEquals("id Sin duplicados", calls.size, calls.map { it.id }.distinct().size)
+        assertTrue("Los parámetros incompletos no se ingresarán en el historial de devoluciones.", calls.all { it.arguments == "{}" })
     }
 
     @Test
@@ -671,9 +671,9 @@ class ToolOrchestratorPureFunctionsTest {
     fun `truncated tool result is valid json naming the truncated tool`() {
         val json = orchestrator.truncatedArgumentsToolResult("show\"card")
 
-        // 能被当作 JSON 解析 = 残缺参数没有被拼回给模型的内容里
+        // Se puede analizar como JSON = Los parámetros incompletos no se integran en el contenido del modelo.
         assertEquals("arguments_truncated_by_output_limit", jsonStringField(json, "error"))
         assertEquals("show\"card", jsonStringField(json, "tool"))
-        assertTrue(jsonStringField(json, "detail")!!.contains("重新发起"))
+        assertTrue(jsonStringField(json, "detail")!!.contains("Reinicie"))
     }
 }

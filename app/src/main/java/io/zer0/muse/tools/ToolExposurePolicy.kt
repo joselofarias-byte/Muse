@@ -3,16 +3,16 @@ package io.zer0.muse.tools
 import io.zer0.ai.core.ToolDefinition
 
 /**
- * 主对话工具暴露策略。
+ * Política de exposición de la herramienta de diálogo principal.
  *
- * 根据用户最新消息判断本轮是否关闭工具、是否把 tool_choice 设为 required;
- * 实际工具授权仍由 ToolPermissionResolver 决定。
+ * Determine si cerrar la herramienta en esta ronda y establecer tool_choice en required;
+ * La autorización real de la herramienta todavía está determinada por ToolPermissionResolver.
  */
 object ToolExposurePolicy {
     /**
-     * 判断当前请求是否适合关闭工具轮的重复推理。
+     * Razonamiento repetido para determinar si la solicitud actual es adecuada para cerrar la rueda de herramientas.
      *
-     * 简单、明确的工具请求不需要先写长篇思考或规划。
+     * Las solicitudes de herramientas simples y claras no requieren mucha reflexión o planificación antes de escribirlas.
      */
     fun isSimpleToolRequest(userText: String): Boolean {
         val text = userText.trim()
@@ -21,15 +21,15 @@ object ToolExposurePolicy {
     }
 
     /**
-     * 判断用户是否明确要求执行动作。
+     * Determine si el usuario solicitó explícitamente una acción.
      *
-     * 只有出现工具/动作意图时才把 OpenAI tool_choice 设为 required。
-     * 普通闲聊仍保持模型自由选择,避免为了“有工具”而调用无关工具。
+     * Solo aparecen herramientas/OpenAI tool_choice se establece en obligatorio solo cuando se pretende realizar la acción.
+     * El chat ordinario aún mantiene la selección de modelos gratuita.,evitar por“tener herramientas”Y llame a herramientas irrelevantes.
      */
 
     /**
-     * 用户明确要求只回答/列清单而不执行工具时，必须在请求层关闭工具。
-     * 这条判断不能交给模型提示词，否则模型仍可能自行发出 tool call。
+     * El usuario solicitó explícitamente solo respuesta./Al realizar un manifiesto sin ejecutar la herramienta, la herramienta debe cerrarse en el nivel de solicitud.
+     * Este juicio no se puede dar a la palabra de aviso del modelo; de lo contrario, el modelo aún puede emitir una llamada a la herramienta por sí solo.
      */
     fun shouldDisableTools(userText: String): Boolean {
         val normalized = userText.trim().lowercase()
@@ -41,9 +41,10 @@ object ToolExposurePolicy {
         if (tools.isEmpty() || shouldDisableTools(userText)) return false
         val normalized = userText.trim().lowercase()
         if (normalized.isBlank()) return false
-        // v2.6.2（工具审计）: 强发 required 前先确认存在匹配能力的工具 ——
-        // 旧实现只看关键词，相关工具被白名单/收窄过滤后会强迫模型从无关工具中选一个，
-        // 增加无意义 tool call。这里要求至少有一个暴露工具命中同一族（或存在 MCP 工具）。
+        if (tools.any { it.name.isNotBlank() && normalized.contains(it.name.lowercase()) }) return true
+        // v2.6.2(Auditoría de herramientas): Antes de forzarlo, confirme que exista una herramienta con capacidades coincidentes. ——
+        // La implementación anterior solo analizaba las palabras clave y las herramientas relacionadas estaban en la lista blanca./Reducir el filtro obligará al modelo a elegir una de las herramientas irrelevantes.
+        // Agregue una llamada de herramienta sin sentido. Esto requiere que al menos una herramienta expuesta pertenezca a la misma familia (o que exista una herramienta MCP).
         if (normalized.containsAny(EXPLICIT_TOOL_KEYWORDS)) {
             return hasMatchingExposedTool(normalized, tools)
         }
@@ -53,21 +54,21 @@ object ToolExposurePolicy {
             normalized.containsAny(MCP_ACTION_KEYWORDS)
     }
 
-    /** 暴露工具中是否存在与用户意图匹配的能力（同族命中 / 存在 MCP 工具）。 */
+    /** Expone la presencia o ausencia de capacidades en la herramienta que coinciden con la intención del usuario (accesos de hermanos/presencia de herramientas MCP). */
     private fun hasMatchingExposedTool(normalized: String, tools: List<ToolDefinition>): Boolean {
         val names = tools.mapTo(mutableSetOf()) { it.name }
         if (names.any { it.startsWith("mcp_") }) return true
         return TOOL_FAMILIES
-            .filter { family -> family.keywords.any { normalized.contains(it) } }
+            .filter { family -> family.keywords.any { normalized.contains(it.lowercase()) } }
             .any { family -> family.toolNames.any { it in names } }
     }
 
     /**
-     * v2.0: 判断用户是否明确要求执行动作(工具意图)。
+     * v2.0: Determinar si el usuario solicitó explícitamente una acción(intención instrumental).
      *
-     * 与 [isSimpleToolRequest] 不同:后者只描述"短句",用于工具收窄;
-     * 本函数供"是否压缩本轮思考/截断 maxTokens"判断,必须只在用户真正要动手时返回 true。
-     * 否则用户开着深度思考发一句"你好",思考会被误当成"工具轮的重复推理"而吞掉。
+     * con [isSimpleToolRequest] diferente:Este último sólo describe"frases cortas",para estrechamiento de herramientas;
+     * Esta función proporciona"Si comprimir esta ronda de pensamiento/Truncar maxTokens"juez,Solo debe devolver verdadero cuando el usuario realmente quiera realizar una acción.
+     * De lo contrario, el usuario empezará a pensar profundamente y enviará una frase."Hola",El pensamiento puede confundirse con"Rueda de herramientas Razonamiento repetitivo"Y trágalo.
      */
     fun isDirectToolRequest(userText: String, tools: List<ToolDefinition> = emptyList()): Boolean {
         val normalized = userText.trim().lowercase()
@@ -80,23 +81,23 @@ object ToolExposurePolicy {
     }
 
     /**
-     * 默认分层收窄(v2.x 工具瘦身阶段1,升级自 v2.0 简单请求收窄)。
+     * Limitación jerárquica predeterminada(v2.x Etapa de adelgazamiento de herramientas.1,Actualizado desde v2.0 reducción de solicitudes simples).
      *
-     * 工具面大于 [SIMPLE_TOOL_SUBSET_THRESHOLD] 时,按 [ToolCategories] 分层:
-     *  - CORE / STANDARD:恒发(模型能力底座与常开稳定工具);
-     *  - OPTIONAL:命中关键词族、本会话用过(粘性)、会话内已授权,或明确动作请求(宽松兜底)才发;
-     *  - GLOBAL:命中关键词族、本会话用过、会话内已授权才发(未授权/未命中不发);
-     *  - 未登记分类的工具(MCP / 插件 / 技能等)保持原可见性。
+     * La superficie de la herramienta es mayor que [SIMPLE_TOOL_SUBSET_THRESHOLD] tiempo,prensa [ToolCategories] en capas:
+     *  - CORE / STANDARD:Hengfa(Base de capacidad del modelo con herramienta de estabilización normalmente abierta);
+     *  - OPTIONAL:Haga clic en la familia de palabras clave, utilizada en esta sesión.(pegajoso), autorizado dentro de la sesión,o solicitud de acción explícita(Bolsillo suelto)Sólo entonces;
+     *  - GLOBAL:Enviar solo cuando se acceda a la familia de palabras clave, se utilice en esta sesión y se autorice en la sesión.(No autorizado/ningún golpe);
+     *  - Herramientas no registradas en categorías(MCP / Complementos/habilidades, etc.)Mantener la visibilidad original.
      *
-     * 小工具面(≤阈值)完全不动 — 助手显式配置的小清单优先语义保留。
-     * 纯关键词规则、无副作用,避免向量检索可能带来的不确定误召回。
+     * Superficie del dispositivo(≤umbral)Sin moverse en absoluto — Primero se conservan semánticamente pequeñas listas de configuraciones explícitas de ayudantes.
+     * Reglas puras de palabras clave, sin efectos secundarios,Evite retiros falsos e inciertos que puedan ser causados ​​por la recuperación de vectores.
      *
-     * @param stickyToolNames 本会话历史中已调用过的工具名(用过的工具后续轮次持续可见)
-     * @param authorizedToolNames 本会话内用户点过"本会话允许"的工具名集合
-     * @param loadedToolNames find_tools 动态装载的工具名(命中后持续可见)
-     * @param skillToolNames 本轮工具面里的技能名集合(技能未登记 ToolCategories 分类,
-     *        与 OPTIONAL 同口径收窄:需命中/装载/粘性/授权才发;MCP/插件等其它
-     *        未登记分类的动态工具仍保持既有可见性)
+     * @param stickyToolNames El nombre de la herramienta que se ha llamado en este historial de sesión.(Las herramientas utilizadas permanecerán visibles en rondas posteriores.)
+     * @param authorizedToolNames El usuario hizo clic en esta sesión."Esta sesión permite"Una colección de nombres de herramientas.
+     * @param loadedToolNames find_tools Nombre de la herramienta cargada dinámicamente(Continuamente visible después del golpe.)
+     * @param skillToolNames La colección de nombres de habilidades en esta ronda de herramientas.(La habilidad no está registrada en la clasificación ToolCategories,
+     *        Estrecho con el mismo diámetro que OPCIONAL:necesidad de golpear/cargar/pegajoso/Emitido sólo después de la autorización;MCP/Complementos y otros
+     *        Las herramientas dinámicas para categorías no registradas seguirán conservando su visibilidad actual.)
      */
     @Suppress("LongParameterList")
     fun filterToolsForRequest(
@@ -114,17 +115,17 @@ object ToolExposurePolicy {
             if (normalized.isBlank()) {
                 tools
             } else {
-                val matched = TOOL_FAMILIES.filter { family -> family.keywords.any { normalized.contains(it) } }
+                val matched = TOOL_FAMILIES.filter { family -> family.keywords.any { normalized.contains(it.lowercase()) } }
                 val familyAllowed = matched.flatMapTo(mutableSetOf()) { it.toolNames }
                 val dynamicAllowed = familyAllowed + stickyToolNames + authorizedToolNames + loadedToolNames
-                // 宽松兜底:明确动作请求且非简单短句 → OPTIONAL 长尾全放,避免多步任务中途缺工具
+                // Bolsillo suelto:Solicitud de acción clara y no una simple frase → OPTIONAL Liberar toda la cola larga,Evite perder herramientas a mitad de tareas de varios pasos
                 val optionalRelaxed = !isSimpleToolRequest(userText) && isDirectToolRequest(userText, tools)
                 tools.filter { tool ->
                     when (ToolCategories.categoryOf(tool.name)) {
-                        // 未登记分类(MCP / 插件 / 技能等动态工具):
-                        //  - 技能:与 OPTIONAL 同口径收窄(此前无条件放行,导致每个已启用技能
-                        //    每轮都随请求发出,是本项目工具 schema 占位的最大来源);
-                        //  - 其余(MCP / 插件)保持既有可见性。
+                        // Categoría no registrada(MCP / Herramientas dinámicas como complementos/habilidades):
+                        //  - Habilidades:Estrecho con el mismo diámetro que OPCIONAL(Anteriormente liberado incondicionalmente,Causa cada habilidad habilitada
+                        //    Enviado con solicitud en cada ronda.,Es la mayor fuente de marcadores de posición de esquemas de herramientas para este proyecto.);
+                        //  - el resto(MCP / complemento)Mantener la visibilidad existente.
                         null -> tool.name !in skillToolNames || tool.name in dynamicAllowed || optionalRelaxed
                         ToolCategory.CORE, ToolCategory.STANDARD, ToolCategory.LEGACY -> true
                         ToolCategory.OPTIONAL -> tool.name in dynamicAllowed || optionalRelaxed
@@ -135,7 +136,7 @@ object ToolExposurePolicy {
         }
     }
 
-    /** 工具族:关键词 → 相关工具集合。 */
+    /** Familia de herramientas:palabras clave → Colección de herramientas relacionadas. */
     private data class ToolFamily(val keywords: Set<String>, val toolNames: Set<String>)
 
     private const val SIMPLE_TOOL_SUBSET_THRESHOLD = 20
@@ -143,15 +144,15 @@ object ToolExposurePolicy {
     private val TOOL_FAMILIES =
         listOf(
             ToolFamily(
-                keywords = setOf("搜索", "搜一下", "查一下", "查资料", "联网", "最新", "新闻", "search", "latest news"),
+                keywords = setOf("Buscar", "Buscar", "Compruébalo", "Consultar información", "Redes", "Lo último", "Noticias", "search", "latest news"),
                 toolNames = setOf("web_search", "web_fetch", "parse_link"),
             ),
             ToolFamily(
-                keywords = setOf("天气", "气温", "下雨", "weather", "forecast"),
+                keywords = setOf("clima", "temperatura", "lloviendo", "weather", "forecast"),
                 toolNames = setOf("get_weather"),
             ),
             ToolFamily(
-                keywords = setOf("闹钟", "提醒", "倒计时", "日历", "日程", "reminder", "alarm", "timer", "calendar", "定位", "位置", "where"),
+                keywords = setOf("despertador", "recordatorio", "cuenta regresiva", "Calendario", "horario", "reminder", "alarm", "timer", "calendar", "Posicionamiento", "ubicación", "where"),
                 toolNames =
                 setOf(
                     "set_alarm",
@@ -166,7 +167,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("定时任务", "计划任务", "定期", "周期", "每天", "每周", "scheduled task", "schedule"),
+                keywords = setOf("tareas programadas", "Tareas programadas", "regularmente", "ciclo", "todos los dias", "semanal", "scheduled task", "schedule"),
                 toolNames =
                 setOf(
                     "scheduled_task_create",
@@ -178,11 +179,11 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("电量", "电池", "充电", "battery"),
+                keywords = setOf("poder", "bateria", "cargando", "battery"),
                 toolNames = setOf("get_battery_info", "screen_time"),
             ),
             ToolFamily(
-                keywords = setOf("内存", "存储", "屏幕参数", "分辨率", "cpu", "处理器", "传感器", "设备信息", "手机型号", "memory", "storage"),
+                keywords = setOf("memoria", "almacenamiento", "Parámetros de pantalla", "resolución", "cpu", "Procesador", "sensor", "Información del dispositivo", "modelo de teléfono celular", "memory", "storage"),
                 toolNames =
                 setOf(
                     "get_storage_info",
@@ -194,11 +195,11 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("蓝牙", "wifi", "无线网", "网络状态", "bluetooth"),
+                keywords = setOf("bluetooth", "wifi", "red inalámbrica", "estado de la red", "bluetooth"),
                 toolNames = setOf("get_wifi_info", "get_bluetooth_devices", "toggle_wifi", "toggle_bluetooth"),
             ),
             ToolFamily(
-                keywords = setOf("手电筒", "闪光灯", "亮度", "音量", "震动", "静音", "brightness", "volume", "flashlight", "vibrate"),
+                keywords = setOf("linterna", "destello", "brillo", "Volumen", "Vibración", "silenciar", "brightness", "volume", "flashlight", "vibrate"),
                 toolNames =
                 setOf(
                     "toggle_flashlight",
@@ -210,38 +211,38 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("装了哪些应用", "安装的应用", "应用列表", "最近通知", "通知栏", "系统设置", "installed apps"),
+                keywords = setOf("¿Qué aplicaciones están instaladas?", "Aplicaciones instaladas", "Lista de aplicaciones", "notificaciones recientes", "barra de notificaciones", "Configuración del sistema", "installed apps"),
                 toolNames = setOf("list_installed_apps", "get_recent_notifications", "open_system_setting"),
             ),
             ToolFamily(
-                keywords = setOf("打开应用", "启动应用", "open app", "launch app"),
+                keywords = setOf("Abrir aplicación", "Iniciar aplicación", "open app", "launch app"),
                 toolNames = setOf("open_app"),
             ),
             ToolFamily(
-                keywords = setOf("发短信", "发邮件", "打电话", "拨号", "send sms", "send email", "make a call"),
+                keywords = setOf("enviar mensaje de texto", "Enviar correo electrónico", "llamar", "marcar", "send sms", "send email", "make a call"),
                 toolNames = setOf("send_sms", "send_email", "make_phone_call"),
             ),
             ToolFamily(
-                keywords = setOf("导航", "地图", "去哪", "路线", "maps", "navigate to"),
+                keywords = setOf("Navegación", "mapa", "donde ir", "ruta", "maps", "navigate to"),
                 toolNames = setOf("open_maps"),
             ),
             ToolFamily(
-                keywords = setOf("联系人", "通讯录", "名片", "contact"),
+                keywords = setOf("Persona de contacto", "libreta de direcciones", "tarjeta de visita", "contact"),
                 toolNames = setOf("add_contact", "get_contacts_list", "get_contacts_count"),
             ),
             ToolFamily(
-                keywords = setOf("打开网址", "打开链接", "open url", "分享", "share"),
+                keywords = setOf("Abrir URL", "enlace abierto", "open url", "Compartir", "share"),
                 toolNames = setOf("open_url", "share_text"),
             ),
             ToolFamily(
-                keywords = setOf("剪贴板", "复制", "粘贴", "clipboard", "前台应用", "foreground"),
+                keywords = setOf("portapapeles", "Copiar", "Pegar", "clipboard", "Aplicación en primer plano", "foreground"),
                 toolNames = setOf("clipboard_read", "clipboard_write", "get_foreground_app"),
             ),
             ToolFamily(
                 keywords = setOf(
-                    "记忆", "记住", "记住这个", "回忆", "经验", "memory", "忘掉", "忘记", "forget",
-                    // v2.6.7 fix (AUDIT F4): 用户提长期要求（“以后别…”）应能带出偏好沉淀工具。
-                    "以后", "别再", "不要再", "习惯", "偏好", "preference",
+                    "memoria", "recuerda", "recuerda esto", "recuerdos", "experiencia", "memory", "olvidar", "olvidar", "forget",
+                    // v2.6.7 fix (AUDIT F4): Los usuarios realizan solicitudes a largo plazo (“Nunca más…”) debería resaltar la herramienta de precipitación de preferencia.
+                    "mas tarde", "no más", "no más", "hábito", "Preferencia", "preference",
                 ),
                 toolNames =
                 setOf(
@@ -257,10 +258,10 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                // v2.6.2（用户反馈）: 助手翻看其他会话 —— session_* 工具族
+                // v2.6.2(comentarios de los usuarios): El asistente hojea otras conversaciones —— session_* Familia de herramientas
                 keywords = setOf(
-                    "会话", "对话记录", "聊天记录", "历史会话", "另一个对话", "别的对话",
-                    "翻看", "翻一下", "之前聊", "之前说", "我们聊过", "session",
+                    "sesión", "Registro de conversación", "Historial de chat", "Sesión de historia", "otra conversación", "otras conversaciones", "conversaciones anteriores",
+                    "mirar a través", "dale la vuelta", "charlar antes", "dicho antes", "hablamos", "session",
                 ),
                 toolNames =
                 setOf(
@@ -273,7 +274,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("笔记", "速记", "知识库", "记一下", "note", "note down"),
+                keywords = setOf("Notas", "taquigrafía", "base de conocimientos", "Toma nota de ello", "note", "note down"),
                 toolNames =
                 setOf(
                     "quick_note_add",
@@ -286,7 +287,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("资源", "资源库", "资料库", "存个资源", "resource"),
+                keywords = setOf("Recursos", "Biblioteca de recursos", "Base de datos", "Guardar un recurso", "resource"),
                 toolNames =
                 setOf(
                     "resource_add",
@@ -297,11 +298,11 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("测试", "echo", "回显", "test tool"),
+                keywords = setOf("prueba", "echo", "eco", "test tool"),
                 toolNames = setOf("echo"),
             ),
             ToolFamily(
-                keywords = setOf("通知", "卡片", "进度", "todo", "提醒我", "喊我", "渲染", "render"),
+                keywords = setOf("Notificación", "tarjeta", "Progreso", "todo", "recuérdame", "llámame", "renderizado", "render"),
                 toolNames =
                 setOf(
                     "notify",
@@ -314,14 +315,14 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                // v2.x: token 用量自查 —— 用户问「花了多少 / 上下文还剩多少」时才需要它
+                // v2.x: token Autocontrol de dosis —— Sólo es necesario cuando el usuario pregunta "cuánto costó/cuánto contexto queda"
                 keywords = setOf(
-                    "token", "用量", "消耗", "花了多少", "用了多少", "上下文", "占用", "余额", "成本", "usage",
+                    "token", "Dosis", "consumir", "cuanto costó", "cuanto se uso", "contexto", "ocupar", "Saldo", "costo", "usage",
                 ),
                 toolNames = setOf("get_token_usage"),
             ),
             ToolFamily(
-                keywords = setOf("编码", "解码", "base64", "哈希", "uuid", "密码", "翻译", "translate", "encode", "decode", "hash"),
+                keywords = setOf("codificación", "decodificar", "base64", "picadillo", "uuid", "Contraseña", "Traducción", "translate", "encode", "decode", "hash"),
                 toolNames =
                 setOf(
                     "url_encode", "url_decode", "base64_encode", "base64_decode", "hash_text",
@@ -329,17 +330,17 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                // v2.x: 关键词里必须有「语音 / 发语音 / voice」—— find_tools 按空白/逗号切词后做 contains，
-                // 用户说“发个语音”“念给我听”才会把 send_voice 拉进当前会话工具面。
+                // v2.x: La palabra clave debe contener "voz/voz/voz"—— find_tools presione en blanco/Utilice comas para separar palabras y luego utilice contiene.
+                // Los usuarios dicen“enviar una voz”“Léelo para mí”Sólo entonces se incorporará send_voice a la herramienta de sesión actual.
                 keywords = setOf(
-                    "画图", "画", "图片", "生成图", "视频", "二维码", "朗读", "图像",
-                    "语音", "发语音", "念一下", "语音消息",
+                    "hacer un dibujo", "dibujar", "fotos", "Generar gráfico", "vídeo", "código qr", "leer en voz alta", "imagen",
+                    "Voz", "hacer una voz", "Léelo", "mensaje de voz",
                     "image", "video", "qr code", "voice",
                 ),
                 toolNames = setOf("generate_image", "generate_video", "generate_qr_code", "speak_text", "send_voice"),
             ),
             ToolFamily(
-                keywords = setOf("子代理", "群聊", "渠道", "表情包", "subagent", "channel"),
+                keywords = setOf("subagente", "chat grupal", "canal", "Emoticones", "subagent", "channel"),
                 toolNames =
                 setOf(
                     "subagent_task", "subagent_run", "subagent_close", "delegate_agent",
@@ -348,9 +349,9 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("文件", "文档", "pdf", "链接", "下载", "file", "document", "download"),
-                // v2.6.7 fix (AUDIT F4): read_user_file 是“读用户设备上的文件”的入口，
-                // 不补进本族时，说“读一下这个文件”带不出它。
+                keywords = setOf("Archivo", "Documentación", "pdf", "enlace", "Descargar", "file", "document", "download"),
+                // v2.6.7 fix (AUDIT F4): read_user_file si“Leer un archivo en el dispositivo del usuario”entrada,
+                // Cuando no complementas tu propio clan, dices“Leer este archivo”No puedo sacarlo.
                 toolNames =
                 setOf(
                     "read_file",
@@ -358,18 +359,18 @@ object ToolExposurePolicy {
                     "create_download",
                     "parse_pdf",
                     "parse_link",
-                    // v2.6.10 工具装载整改：技能侧文件工具之前漏登记，
-                    // 说「下载这个文件」命中不了同名能力。
+                    // v2.6.10 Rectificación de carga de herramientas: la herramienta de archivos del lado de habilidades no estaba registrada antes.
+                    // Al decir "Descargar este archivo" no se activará la capacidad con el mismo nombre.
                     "file_download",
                     "save_to_downloads",
                 ),
             ),
             ToolFamily(
-                keywords = setOf("ping", "dns", "公网 ip", "public ip"),
+                keywords = setOf("ping", "dns", "Red pública ip", "public ip"),
                 toolNames = setOf("ping_host", "dns_lookup", "get_public_ip"),
             ),
             ToolFamily(
-                keywords = setOf("工作区", "项目", "工程", "代码", "仓库", "脚本", "workspace"),
+                keywords = setOf("espacio de trabajo", "Proyecto", "Ingeniería", "código", "almacén", "guión", "workspace"),
                 toolNames =
                 setOf(
                     "workspace_list",
@@ -382,7 +383,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("浏览器", "网页", "打开网站", "网址", "browser", "webpage"),
+                keywords = setOf("Navegador", "pagina web", "Abrir sitio web", "URL", "browser", "webpage"),
                 toolNames =
                 setOf(
                     "browser_navigate",
@@ -396,7 +397,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("插件", "plugin"),
+                keywords = setOf("complemento", "plugin"),
                 toolNames =
                 setOf(
                     "plugin_market_search",
@@ -406,26 +407,26 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("终端", "命令行", "shell", "adb", "termux", "系统命令", "执行命令"),
+                keywords = setOf("terminales", "línea de comando", "shell", "adb", "termux", "Comandos del sistema", "ejecutar comando"),
                 toolNames = setOf("device_shell", "terminal_exec", "termux_exec"),
             ),
             ToolFamily(
-                // v2.6.1（用户反馈）: Python 请求此前不命中任何族。内置 Python 工具属 GLOBAL 分类，
-                // 未命中即不随请求发送，模型只看得到 terminal_exec / execute_shell，于是去 shell 里
-                // 寻找 python 解释器（内嵌运行时没有该命令、bin 为空），反复空转。
+                // v2.6.1(comentarios de los usuarios): Python La solicitud no afecta a ningún clan antes. Las herramientas integradas de Python pertenecen a la categoría GLOBAL,
+                // Si falta, no se enviará con la solicitud. El modelo solo ve terminal_exec/ejecutar_shell, así que vaya al shell.
+                // Busque el intérprete de Python (no existe tal comando cuando se ejecuta en línea,bin vacío), ralentí repetidamente.
                 keywords =
                 setOf(
-                    "脚本",
-                    "代码",
+                    "guión",
+                    "código",
                     "javascript",
                     "node",
-                    "js 脚本",
-                    "执行代码",
+                    "js guión",
+                    "Ejecutar código",
                     "script",
                     "python",
                     "python3",
-                    "python 脚本",
-                    "python脚本",
+                    "python guión",
+                    "pythonguión",
                 ),
                 toolNames =
                 setOf(
@@ -436,7 +437,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("系统设置", "settings", "日志", "logcat", "安装列表", "root 操作", "网络开关", "输入注入"),
+                keywords = setOf("Configuración del sistema", "settings", "Iniciar sesión", "logcat", "Lista de instalación", "root Operación", "conmutador de red", "Inyección de entrada"),
                 toolNames =
                 setOf(
                     "settings_get",
@@ -449,7 +450,7 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("屏幕", "界面", "当前应用", "前台应用", "读屏", "屏幕上", "screen content", "what's on screen"),
+                keywords = setOf("pantalla", "interfaz", "Solicitud actual", "Aplicación en primer plano", "leer pantalla", "en pantalla", "screen content", "what's on screen"),
                 toolNames =
                 setOf(
                     "ui_get_page_info",
@@ -463,8 +464,8 @@ object ToolExposurePolicy {
             ToolFamily(
                 keywords =
                 setOf(
-                    "自动点击", "点击屏幕", "点击按钮", "帮我点", "滑动屏幕",
-                    "界面操作", "屏幕操作", "输入文字", "按键", "无障碍",
+                    "clic automático", "toque la pantalla", "haga clic en el botón", "ayudame", "desliza la pantalla",
+                    "Operación de interfaz", "Operación de pantalla", "Introducir texto", "Botón", "Accesibilidad",
                     "auto click", "tap", "swipe", "accessibility",
                 ),
                 toolNames =
@@ -475,29 +476,33 @@ object ToolExposurePolicy {
                 ),
             ),
             ToolFamily(
-                keywords = setOf("自动操作", "自动化流程", "虚拟屏", "多步操作", "agent 操作", "virtual screen", "automation workflow"),
+                keywords = setOf("operación automática", "Proceso automatizado", "pantalla virtual", "operación de varios pasos", "agent Operación", "virtual screen", "automation workflow"),
                 toolNames = setOf("automation_workflow", "ui_agent", "virtual_screen", "virtual_screen_input"),
             ),
             ToolFamily(
-                keywords = setOf("连接器", "oauth", "connector"),
+                keywords = setOf("conector", "oauth", "connector"),
                 toolNames = setOf("connector_list", "call_connector"),
             ),
         )
 
-    private fun String.containsAny(values: Set<String>): Boolean = values.any { contains(it) }
+    private fun String.containsAny(values: Set<String>): Boolean {
+        val haystack = lowercase()
+        return values.any { haystack.contains(it.lowercase()) }
+    }
 
     private const val SIMPLE_REQUEST_MAX_CHARS = 120
 
     private val COMPLEXITY_KEYWORDS =
         setOf(
-            "为什么",
-            "分析",
-            "比较",
-            "方案",
-            "设计",
-            "解释",
-            "详细",
-            "规划",
+            "por qué",
+            "análisis",
+            "analiza",
+            "comparar",
+            "Planificar",
+            "diseño",
+            "explicar",
+            "Detallado",
+            "planificación",
             "how",
             "why",
             "analyze",
@@ -507,47 +512,48 @@ object ToolExposurePolicy {
         )
     private val NO_TOOL_KEYWORDS =
         setOf(
-            "不要调用任何工具", "不要调用工具", "不要使用任何工具", "不要使用工具",
-            "禁止调用工具", "禁止使用工具", "只列清单不要调用", "只列出清单不要调用",
-            "仅列清单", "仅列出清单", "不要执行工具", "不要执行任何工具",
+            "No llames a ninguna herramienta", "No llame a ninguna", "No llames a las herramientas", "No uses ninguna herramienta", "No uses herramientas",
+            "Deshabilitar herramientas de llamadas", "Herramientas prohibidas", "Solo haz una lista, no llames", "Solo lista, no llames",
+            "Solo haz una lista", "Sólo lista", "No ejecutar herramienta", "No ejecute ninguna herramienta",
             "do not call any tools", "don't call any tools", "do not use tools", "without using tools",
             "no tool calls", "no tools",
         )
     private val EXPLICIT_TOOL_KEYWORDS =
         setOf(
-            "调用",
-            "使用工具",
-            "执行",
-            "搜索",
-            "查资料",
-            "查一下",
-            "联网",
-            "最新",
-            "新闻",
-            "天气",
-            "记住",
-            "保存到记忆",
-            "设闹钟",
-            "设置提醒",
-            "倒计时",
-            "发短信",
-            "发邮件",
-            "打开应用",
-            "翻译",
-            "画图",
-            "生成图片",
-            "回显",
+            "llamar",
+            "hazlo",
+            "utilizar herramientas",
+            "ejecutar",
+            "Buscar",
+            "Consultar información",
+            "Compruébalo",
+            "Redes",
+            "Lo último",
+            "Noticias",
+            "clima",
+            "recuerda",
+            "guardar en la memoria",
+            "Configurar el despertador",
+            "Establecer recordatorio",
+            "cuenta regresiva",
+            "enviar mensaje de texto",
+            "Enviar correo electrónico",
+            "Abrir aplicación",
+            "Traducción",
+            "hacer un dibujo",
+            "Generar imágenes",
+            "eco",
             "echo",
             "calculator",
             "calculate",
             "current time",
             "what time",
         )
-    private val QUESTION_KEYWORDS = setOf("怎么", "如何", "什么是", "能不能", "是否", "为什么", "how", "what", "why")
+    private val QUESTION_KEYWORDS = setOf("como", "como", "que es", "puede", "Ya sea", "por qué", "how", "what", "why")
     private val MCP_ACTION_KEYWORDS =
         setOf(
-            "创建", "新建", "新增", "添加", "建立", "建一个", "查询", "查一下", "查找", "读取", "读一下",
-            "列出", "获取", "更新", "修改", "编辑", "删除", "提交", "同步", "发送", "发布", "写入",
+            "crear", "Nuevo", "Nuevo", "agregar", "crear", "construir uno", "Consulta", "Compruébalo", "encontrar", "leer", "léelo",
+            "lista", "Obtener", "actualizar", "Modificar", "Editar", "Eliminar", "Enviar", "sincronizar", "enviar", "publicar", "escribir",
             "create", "list", "get", "read", "update", "delete", "send", "open", "add", "edit", "publish", "sync",
         )
 }

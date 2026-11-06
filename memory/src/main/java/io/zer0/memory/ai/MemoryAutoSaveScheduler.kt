@@ -25,78 +25,78 @@ import kotlinx.serialization.json.Json
 import java.time.Instant
 
 /**
- * v1.0.52 P2-3: AI 驱动记忆自动管理。
+ * v1.0.52 P2-3: AI La memoria del conductor se gestiona automáticamente.
  *
- * 职责:
- *  - 定时分析对话历史,提取结构化记忆(实体/关系/更新/合并/画像)
- *  - 将分析结果落库(创建/更新/合并事实 + 建立知识图谱边)
- *  - 批量自动分类未分类记忆
+ * Responsabilidades:
+ *  - Análisis periódico del historial de conversaciones.,Recuperar la memoria estructurada(entidad/relación/actualizar/fusionar/retrato)
+ *  - Resultados del análisis de la tienda(crear/actualizar/Fusionar hechos + crear bordes de gráficos de conocimiento)
+ *  - Clasificación automática por lotes y memoria sin clasificar.
  *
- * 与 [io.zer0.memory.deep.DeepMemoryProcessor] 的区别:
- *  - DeepMemoryProcessor: 从摘要 diff 提取原子事实(daily pipeline,离线)
- *  - MemoryAutoSaveScheduler: 从完整对话提取结构化记忆(实时 autoSave,在线)
- *  两者互补:DeepMemory 做离线深度提取,AutoSave 做在线实时提取。
+ * con [io.zer0.memory.deep.DeepMemoryProcessor] la diferencia:
+ *  - DeepMemoryProcessor: Extraiga datos atómicos del resumen de diferencias(daily pipeline,Sin conexión)
+ *  - MemoryAutoSaveScheduler: Extraiga recuerdos estructurados de conversaciones completas(tiempo real autoSave,en línea)
+ *  Los dos se complementan:DeepMemory Realizar extracción de profundidad sin conexión,AutoSave Realice extracción en línea en tiempo real.
  *
- * 触发时机(由 ChatViewModel 调用):
- *  - 会话结束/切换时(notifySessionEndForCurrent),调用侧有 30s 同会话去重窗口
- *  - C-05: 修正注释 — 实际并非"每 N 轮"触发,AUTO_SAVE_TURN_INTERVAL 已不再作为触发条件
- *    (保留常量仅为兼容引用);分析失败时本调度器自动延迟补跑一次(绕过调用侧去重窗口)。
+ * tiempo de activación(Llamado por ChatViewModel):
+ *  - sesión terminada/Al cambiar(notifySessionEndForCurrent),Hay una ventana de deduplicación de 30 segundos en la misma sesión en el lado que llama.
+ *  - C-05: comentario correcto — En realidad no lo es"cada N rondas"gatillo,AUTO_SAVE_TURN_INTERVAL ya no se utiliza como condición desencadenante
+ *    (Mantenga constantes solo para referencias compatibles);Cuando el análisis falla, el programador retrasa automáticamente la ejecución de recuperación una vez.(Omitir la ventana de deduplicación del lado de la llamada).
  *
- * 并发控制:用 [Semaphore] 限制同时进行的分析任务(默认 1,避免 LLM 限流)。
+ * control de concurrencia:usar [Semaphore] Limitar las tareas de análisis simultáneas(Predeterminado 1,Evite la limitación de LLM).
  */
 class MemoryAutoSaveScheduler(
     private val factDbProvider: FactDbProvider,
     private val llmClient: MemoryLlmClient,
     private val scope: CoroutineScope,
     /**
-     * v2.6.2（用户反馈）: 记忆星座补边构建器。
+     * v2.6.2(comentarios de los usuarios): Constructor de complementos de constelaciones de memoria.
      *
-     * 会话结束抽取事实后，用确定性算法补齐事实间的边（实体键/同会话/同分类/语义近邻），
-     * 让星座连成网络。为 null 时跳过（测试降级）。
+     * Una vez finalizada la sesión y se extraen los hechos, se utiliza un algoritmo determinista para completar los bordes (claves de entidad) entre los hechos./Misma sesión/Misma categoria/vecino semántico),
+     * Dejemos que las constelaciones se conecten en una red. Omitir si es nulo (probar degradación).
      */
     private val edgeBuilder: MemoryEdgeBuilder? = null,
     /**
-     * v2.6.2: 语义近邻向量提供者（由 app 层注入 EmbeddingService）；
-     * null 表示跳过语义层（本地无 embedding 时）。
+     * v2.6.2: Proveedor de vectores vecinos semánticos (servicio de incorporación inyectado por la capa de aplicación);
+     * null Indica omitir la capa semántica (cuando no hay incrustación local).
      */
     private val semanticProvider: MemoryEdgeBuilder.SemanticProvider? = null,
     /**
-     * v2.6.2: LLM 深化开关提供者（读用户配置）；返回 true 时对弱边用大模型判定关系类型。
+     * v2.6.2: LLM Profundizar en el cambio de proveedor (leer la configuración del usuario); cuando devuelva verdadero, utilice un modelo grande para determinar el tipo de relación para los bordes débiles.
      */
     private val edgeEnhanceEnabled: (() -> Boolean)? = null,
 ) {
 
     companion object {
-        /** LLM 最大 token(memory extract 需要输出结构化 JSON,给足空间)。 */
+        /** LLM máximo token(memory extract Necesidad de generar resultados estructurados JSON,Dar suficiente espacio). */
         const val EXTRACT_MAX_TOKENS = 4096
 
-        /** 自动分类批量大小的上限。 */
+        /** Límite superior en el tamaño del lote de clasificación automática. */
         const val CATEGORIZE_BATCH_SIZE = 10
 
-        /** 自动分类 LLM 最大 token。 */
+        /** Clasifique automáticamente los tokens máximos de LLM. */
         const val CATEGORIZE_MAX_TOKENS = 2048
 
-        /** 对话历史最大条数(避免超长输入)。 */
+        /** Número máximo de conversaciones en el historial.(Evite entradas largas). */
         const val MAX_HISTORY_MESSAGES = 30
 
-        /** 对话历史单条最大字符数(截断超长消息)。 */
+        /** El número máximo de caracteres en un solo mensaje del historial de conversaciones.(Truncar mensajes muy largos). */
         const val MAX_MESSAGE_CHARS = 500
 
-        /** 已有事实预览最大条数(给 LLM 做去重参考)。 */
+        /** Número máximo de vistas previas de hechos existentes(Proporcionar una referencia para la deduplicación para LLM). */
         const val MAX_EXISTING_FACTS_PREVIEW = 20
 
-        /** 并发控制:同时只允许一个 autoSave 分析(避免 LLM 限流)。 */
+        /** control de concurrencia:Solo se permite un análisis de autoguardado a la vez(Evite la limitación de LLM). */
         const val MAX_CONCURRENT_ANALYSIS = 1
 
-        /** 触发 autoSave 的对话轮数间隔。 */
+        /** El intervalo de ronda de conversación que activa el guardado automático. */
         const val AUTO_SAVE_TURN_INTERVAL = 10
 
-        /** v2.6.2: 会话结束补边时视为“新事实”的最近条数。 */
+        /** v2.6.2: Cuando finaliza la sesión y se completa el margen, se considera como“nuevos hechos”el número más reciente. */
         private const val EDGE_NEW_FACTS_LIMIT = 20
     }
 
-    // 模型常把可选字段显式写成 null。coerceInputValues 会把 null 恢复为
-    // Kotlin 属性默认值，避免 mainProblem.title=null 让整份分析结果解析失败。
+    // Los modelos suelen escribir explícitamente campos opcionales como nulos.coerceInputValues restaurará nulo a
+    // Kotlin Valores predeterminados de propiedad, evitar mainProblem.title=null Deje que todo el resultado del análisis no se pueda analizar.
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -105,21 +105,21 @@ class MemoryAutoSaveScheduler(
     private val analysisSemaphore = Semaphore(MAX_CONCURRENT_ANALYSIS)
 
     /**
-     * v12 (T2-3): 已处理内容指纹缓存(进程内 LRU,同步访问)。
-     * 幂等键 = sessionId + 历史消息指纹(最后 20 条消息的 id+content 哈希)。
-     * 同一会话同一段历史只调一次 LLM 提取,防 AutoSave 与 DeepMemory 对同一内容
-     * 重复提取/双写;失败不更新指纹(保留补跑机会)。
+     * v12 (T2-3): Caché de huellas digitales de contenido procesado(En proceso LRU,Acceso sincrónico).
+     * claves idempotentes = sessionId + Huella histórica del mensaje(id+hash de contenido de los últimos 20 mensajes).
+     * Llame solo a la extracción de LLM una vez para la misma sesión y el mismo historial.,Evite que AutoSave y DeepMemory utilicen el mismo contenido
+     * Repetir extracción/doble escritura;Fallo no actualiza huella digital(Mantenga oportunidades para carreras de recuperación).
      */
     private val processedFingerprints = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 256
     }
 
     /**
-     * v12 (T2-3): 计算历史消息指纹 — 取最后 [MAX_HISTORY_MESSAGES] 条消息的
-     * (id + 与实际发给 LLM 的截断长度一致的 content) 哈希。id 相同且内容相同 → 同一段历史,幂等跳过。
+     * v12 (T2-3): Calcular huellas digitales de mensajes históricos — toma el ultimo [MAX_HISTORY_MESSAGES] mensaje
+     * (id + Consistente con la longitud de truncamiento realmente emitida a LLM content) Picadillo.id Idénticos y tienen el mismo contenido. → misma historia,Salto idempotente.
      *
-     * 指纹本身必须覆盖完整历史：LLM 输入仍受 [MAX_HISTORY_MESSAGES] 限制，
-     * 但更早消息被编辑时也要允许下一次 auto-save 重跑，避免把旧记忆永久判定为已处理。
+     * La propia huella dactilar debe cubrir el historial completo:LLM La entrada todavía está sujeta a [MAX_HISTORY_MESSAGES] restricciones,
+     * Sin embargo, cuando se edita un mensaje anterior, también se debe permitir la siguiente ejecución del guardado automático para evitar juzgar permanentemente la memoria anterior como procesada.
      */
     internal fun fingerprintHistory(history: List<UIMessage>): String {
         val digest = java.security.MessageDigest.getInstance("MD5")
@@ -136,7 +136,7 @@ class MemoryAutoSaveScheduler(
     }
 
     /**
-     * 分析结果统计(供调用方/日志观察)。
+     * Estadísticas de resultados de análisis(Para personas que llaman/Observación de registros).
      */
     data class AnalysisResult(
         val extracted: Int = 0,
@@ -147,15 +147,15 @@ class MemoryAutoSaveScheduler(
     )
 
     /**
-     * 调度自动保存(非阻塞,在 [scope] 中执行)。
+     * Programar guardado automático(sin bloqueo,en [scope] ejecutado en).
      *
-     * @param sessionId 会话 id
-     * @param history 对话历史(最近 N 条)
-     * @param assistantId 助手 id(决定使用哪个 FactDb,"default" 为主助手)
-     * @param spaceId 记忆空间 id
-     * @param scope 记忆作用域(通常与 assistantId 一致,主助手为 "main")
-     * @param model 目标模型,null 由实现侧默认
-     * @param locale 语言
+     * @param sessionId sesión id
+     * @param history Historial de conversaciones(Últimos N artículos)
+     * @param assistantId asistente id(decidir cuál usar FactDb,"default" asistente principal)
+     * @param spaceId espacio de memoria id
+     * @param scope alcance de la memoria(Generalmente lo mismo que asistenteId,El asistente principal es "main")
+     * @param model modelo objetivo,null Por defecto en el lado de la implementación
+     * @param locale Idioma
      */
     fun scheduleAutoSave(
         sessionId: String,
@@ -164,19 +164,19 @@ class MemoryAutoSaveScheduler(
         spaceId: String = "default",
         scope: String = "main",
         model: Model? = null,
-        locale: String = "zh-CN",
+        locale: String = "es",
     ) {
         if (history.isEmpty()) return
-        // v12 (T2-3): 幂等指纹 — 同一会话同一段历史已成功处理过则跳过,
-        // 防止同内容重复调 LLM 提取(与 DeepMemory 双写同一内容的场景)。
-        // 会话 id 可能在导入/多助手场景复用，幂等键必须包含记忆隔离维度。
+        // v12 (T2-3): Huella digital idempotente — Si la misma sesión y el mismo historial se han procesado correctamente, se omitirá.,
+        // Evite la extracción repetida de LLM del mismo contenido(Escenario de escritura doble del mismo contenido con DeepMemory).
+        // La identificación de la sesión se puede importar./Para reutilizar múltiples escenarios de asistente, la clave idempotente debe contener la dimensión de aislamiento de memoria.
         val fpKey = listOf(assistantId, scope, spaceId, sessionId).joinToString("|")
         val fp = fingerprintHistory(history)
         val alreadyProcessed = synchronized(processedFingerprints) {
             processedFingerprints[fpKey] == fp
         }
         if (alreadyProcessed) {
-            Logger.d("MemoryAutoSaveScheduler", "autoSave 幂等跳过(session=${sessionId.take(8)}…, 内容未变化)")
+            Logger.d("MemoryAutoSaveScheduler", "autoSave salto idempotente(session=${sessionId.take(8)}…, El contenido no ha cambiado.)")
             return
         }
         this.scope.launch {
@@ -185,63 +185,63 @@ class MemoryAutoSaveScheduler(
                     runAutoSave(sessionId, history, assistantId, spaceId, scope, model, locale)
                 }.onSuccess { result ->
                     if (result == null) {
-                        // v2.x（日志排障）: 未解析出分析是可预期失败（上游 content_filter /
-                        // 空响应 / JSON 解析失败），不记指纹（下次仍会处理），也不抛异常。
+                        // v2.x(Registro de solución de problemas): El análisis no resuelto es una falla esperada (aguas arriba content_filter /
+                        // La respuesta vacía/el análisis de JSON falló), la huella digital no se recordará (aún se procesará la próxima vez) y no se generará ninguna excepción.
                         Logger.w(
                             "MemoryAutoSaveScheduler",
-                            "autoSave 未解析出分析(可预期失败，不记指纹): session=${sessionId.take(8)}…",
+                            "autoSave Análisis no analizado(Fallo predecible, no se registran huellas dactilares): session=${sessionId.take(8)}…",
                         )
                     } else {
-                        // v12 (T2-3): 只有解析并落库成功才记录指纹；LLM 空响应/JSON 解析失败必须补跑。
+                        // v12 (T2-3): Las huellas dactilares se registrarán únicamente si el análisis y el almacenamiento son exitosos;LLM respuesta vacía/JSON Si el análisis falla, se debe realizar una ejecución de recuperación.
                         synchronized(processedFingerprints) { processedFingerprints[fpKey] = fp }
                         Logger.i(
                             "MemoryAutoSaveScheduler",
-                            "autoSave 完成(session=${sessionId.take(8)}…): " +
+                            "autoSave Completo(session=${sessionId.take(8)}…): " +
                                 "extracted=${result.extracted}, updated=${result.updated}, " +
                                 "merged=${result.merged}, links=${result.links}",
                         )
                     }
                 }.onError { msg, t ->
-                    Logger.w("MemoryAutoSaveScheduler", "autoSave 失败(session=${sessionId.take(8)}…): $msg", t)
-                    // v2.6.9: 配额/余额/鉴权类终态失败不排 30s 补跑。
-                    // 上游已在节流(日志里 agnes 的 "not asked again before 02:49" 就是上游文案),
-                    // 我们 30s 后再打一次只会继续吃 402。其余错误(网络抖动/限流/解析)保持原行为。
+                    Logger.w("MemoryAutoSaveScheduler", "autoSave falló(session=${sessionId.take(8)}…): $msg", t)
+                    // v2.6.9: Cuota/Saldo/Si el estado final de autenticación falla, no se programará una repetición de 30 segundos.
+                    // Upstream ya se está acelerando(Agnes en el registro "not asked again before 02:49" Es el redactor ascendente),
+                    // Si lo volvemos a presionar 30 segundos después, continuaremos obteniendo errores 402. restantes(Nerviosidad de la red/Limitación de corriente/analizar)Mantenga el comportamiento original.
                     if (FailureClassifier.isTerminalQuotaOrAuth(t)) {
                         Logger.w(
                             "MemoryAutoSaveScheduler",
-                            "autoSave 失败为配额/鉴权终态错误,不排补跑(重试只会继续吃 402/401): " +
+                            "autoSave falló por la cuota/Error final de autenticación,No programado para carreras de recuperación(Intentarlo de nuevo sólo seguirá comiendo. 402/401): " +
                                 "session=${sessionId.take(8)}…, kind=${FailureClassifier.classify(t)}",
                         )
                         return@onError
                     }
-                    // C-05: 失败后延迟补跑一次 — 调用侧( ChatViewModel)有 30s 同会话去重,
-                    // 失败后立即重试会被去重挡掉,记忆静默丢失;延迟 30s 绕过窗口补跑。
-                    // 注意:本方法参数 scope: String 会遮蔽同名字段,补跑协程须用
-                    // this@MemoryAutoSaveScheduler.scope(CoroutineScope) 显式引用。
+                    // C-05: Retrasar una ejecución de recuperación después de una falla — lado llamante( ChatViewModel)Tenga 30 segundos para deduplicar la misma sesión,
+                    // Si vuelve a intentarlo inmediatamente después del error, la deduplicación lo bloqueará.,La memoria se pierde en silencio.;Retrasa 30 segundos para pasar por alto la ventana y recuperar la carrera.
+                    // Nota:El parámetro alcance: Cadena de este método enmascarará el campo con el mismo nombre.,Se debe utilizar el procedimiento de respaldo.
+                    // this@MemoryAutoSaveScheduler.scope(CoroutineScope) Referencia explícita.
                     this@MemoryAutoSaveScheduler.scope.launch {
                         delay(30_000)
                         if (!this@MemoryAutoSaveScheduler.scope.isActive) return@launch
                         analysisSemaphore.withPermit {
                             resultOf {
                                 runAutoSave(sessionId, history, assistantId, spaceId, scope, model, locale)
-                                // v2.x（日志排障）: 同主路径 —— null 表示未解析出分析，不抛异常。
+                                // v2.x(Registro de solución de problemas): mismo camino principal —— null Indica que el análisis no se ha analizado y no se genera ninguna excepción.
                             }.onSuccess { retryResult ->
                                 if (retryResult == null) {
                                     Logger.w(
                                         "MemoryAutoSaveScheduler",
-                                        "autoSave 补跑未解析出分析(可预期失败): session=${sessionId.take(8)}…",
+                                        "autoSave La ejecución de compensación no pudo resolver el análisis(fracaso esperado): session=${sessionId.take(8)}…",
                                     )
                                 } else {
                                     synchronized(processedFingerprints) { processedFingerprints[fpKey] = fp }
                                     Logger.i(
                                         "MemoryAutoSaveScheduler",
-                                        "autoSave 补跑成功(session=${sessionId.take(8)}…): " +
+                                        "autoSave Carrera de maquillaje exitosa(session=${sessionId.take(8)}…): " +
                                             "extracted=${retryResult.extracted}, updated=${retryResult.updated}, " +
                                             "merged=${retryResult.merged}, links=${retryResult.links}",
                                     )
                                 }
                             }.onError { retryMsg, retryT ->
-                                Logger.w("MemoryAutoSaveScheduler", "autoSave 补跑仍失败(session=${sessionId.take(8)}…): $retryMsg", retryT)
+                                Logger.w("MemoryAutoSaveScheduler", "autoSave La ejecución de recuperación aún falla(session=${sessionId.take(8)}…): $retryMsg", retryT)
                             }
                         }
                     }
@@ -251,13 +251,13 @@ class MemoryAutoSaveScheduler(
     }
 
     /**
-     * 执行自动保存(内部 suspend 实现)。
+     * Realizar guardado automático(Implementación de suspensión interna).
      *
-     * 步骤:
-     *  1. 获取对应 assistantId 的 FactStore + MemoryLinkDao
-     *  2. 构建已有事实预览(供 LLM 去重参考)
-     *  3. 调 LLM 提取 ParsedAnalysis
-     *  4. applyAnalysis 落库
+     * pasos:
+     *  1. Obtenga el ID del asistente correspondiente FactStore + MemoryLinkDao
+     *  2. Cree una vista previa de los hechos existentes(Referencia para la deduplicación de LLM)
+     *  3. Ajustar la extracción de LLM ParsedAnalysis
+     *  4. applyAnalysis Cayó en la biblioteca
      */
     private suspend fun runAutoSave(
         sessionId: String,
@@ -271,7 +271,7 @@ class MemoryAutoSaveScheduler(
         val factStore = factDbProvider.getFactStore(assistantId)
         val linkDao = factDbProvider.getFactDb(assistantId).memoryLinkDao()
 
-        // 1. 构建已有事实预览(取最近 MAX_EXISTING_FACTS_PREVIEW 条)
+        // 1. Cree una vista previa de los hechos existentes(Obtenga los elementos MAX_EXISTING_FACTS_PREVIEW más recientes)
         val existingFacts = factStore.getByScopeAndSpace(scope, spaceId)
         val existingPreview = if (existingFacts.isEmpty()) {
             null
@@ -281,15 +281,15 @@ class MemoryAutoSaveScheduler(
             }
         }
 
-        // 2. 调 LLM 提取
+        // 2. Ajustar la extracción de LLM
         val analysis = extractEntities(history, existingPreview, model, locale)
             ?: return@withContext null
 
-        // 3. 落库
+        // 3. Cayó en la biblioteca
         val result = applyAnalysis(analysis, factStore, linkDao, sessionId, spaceId, scope, assistantId)
-        // v2.6.2（用户反馈）: 落库后补边 —— 让本次新增/更新的事实与存量连成网络。
-        // 增量策略：取“最近创建的一批事实”作为新事实（补边本就是增量的，不必精确追踪）。
-        // 失败不影响主流程。
+        // v2.6.2(comentarios de los usuarios): Maquilla los bordes después de dejar caer el inventario. —— Deja que esta nueva incorporación/Los hechos y las acciones actualizados están conectados en red.
+        // Estrategia incremental: tomar“Lote de hechos recientemente creado”Como un hecho nuevo (la ventaja suplementaria es incremental y no es necesario realizar un seguimiento preciso).
+        // El fallo no afecta el proceso principal.
         edgeBuilder?.let { builder ->
             runCatching {
                 val all = factStore.getByScopeAndSpace(scope, spaceId)
@@ -301,35 +301,35 @@ class MemoryAutoSaveScheduler(
                         scope = scope,
                         spaceId = spaceId,
                         semanticProvider = semanticProvider,
-                        // v2.6.2: LLM 深化开关（用户配置）
+                        // v2.6.2: LLM Interruptor de profundización (configuración de usuario)
                         llmEnhance = edgeEnhanceEnabled?.invoke() ?: false,
                         model = model,
                     )
                 }
-            }.onFailure { Logger.w("MemoryAutoSaveScheduler", "会话结束补边失败(不影响记忆): ${it.message}") }
+            }.onFailure { Logger.w("MemoryAutoSaveScheduler", "Error al aplicar parches al final de la sesión(No afecta la memoria): ${it.message}") }
         }
         result
     }
 
     /**
-     * AI 提取结构化实体(调用 LLM + JSON 解析)。
+     * AI Extraer entidades estructuradas(Llame al análisis LLM + JSON).
      *
-     * @param history 对话历史
-     * @param existingFactsPreview 已有事实预览(可选,去重参考)
-     * @param model 目标模型
-     * @param locale 语言
-     * @return 解析结果(null 表示解析失败)
+     * @param history Historial de conversaciones
+     * @param existingFactsPreview Vista previa de hechos ya disponible(Opcional,Referencia de deduplicación)
+     * @param model modelo objetivo
+     * @param locale Idioma
+     * @return Analizar resultados(null Indica un error de análisis)
      */
     suspend fun extractEntities(
         history: List<UIMessage>,
         existingFactsPreview: String?,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
     ): ParsedAnalysis? = withContext(Dispatchers.IO) {
         if (history.isEmpty()) return@withContext null
 
         val systemPrompt = MemoryExtractPrompt.buildSystemPrompt(locale, existingFactsPreview)
-        // S-05: 输入侧可逆掩码 — 历史文本中的 PII 以占位符外发,不离开设备
+        // S-05: Máscara reversible del lado de entrada — La PII en el texto histórico se exporta como marcadores de posición,sin salir del dispositivo
         val maskedInput = PiiGuard.mask(buildHistoryText(history, locale))
         val userContent = maskedInput.masked
 
@@ -344,34 +344,34 @@ class MemoryAutoSaveScheduler(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w("MemoryAutoSaveScheduler", "extractEntities LLM 调用失败: ${e.message}", e)
+            Logger.w("MemoryAutoSaveScheduler", "extractEntities LLM llamada fallida: ${e.message}", e)
             return@withContext null
         }
 
-        // S-05: 还原占位符后解析(落库时 FactStore.add 再做硬脱敏)
+        // S-05: Analizar después de restaurar el marcador de posición(Al soltar la biblioteca, haga FactStore.add y luego realice una desensibilización completa)
         val parsed = parseAnalysisResult(PiiGuard.unmask(raw, maskedInput.map))
             ?: return@withContext null
-        // v2.x: 示例泄漏防护 — 照抄提示词示例且对话未提及的条目直接剔除,不落库
+        // v2.x: Ejemplo de prevención de fugas — Las entradas que copian los ejemplos de palabras clave y no se mencionan en el diálogo se eliminan directamente.,No queda en el inventario.
         PromptExampleGuard.sanitize(parsed, userContent)
     }
 
     /**
-     * 解析 LLM 输出为 [ParsedAnalysis]。
+     * Analizar la salida de LLM es [ParsedAnalysis].
      *
-     * 容错处理:
-     *  - 去除 <think>...</think> 块
-     *  - 去除 ```json ... ``` 围栏
-     *  - 提取 JSON 对象(若不以 { 开头,扫描括号深度)
+     * Tolerancia a fallos:
+     *  - Quitar <think>...</think> bloquear
+     *  - Quitar ```json ... ``` valla
+     *  - Extraer objeto JSON(Si no { comienzo,Profundidad del soporte de escaneo)
      *
-     * internal 便于单元测试。
+     * internal Facilita las pruebas unitarias.
      */
     internal fun parseAnalysisResult(raw: String): ParsedAnalysis? {
         if (raw.isBlank()) return null
 
         var s = raw
-        // 1. 去 <think>...</think>
+        // 1. ir <think>...</think>
         s = s.replace(Regex("<think(?:ing)?>[\\s\\S]*?</think(?:ing)?>", RegexOption.IGNORE_CASE), "")
-        // 2. 去 ```json ... ``` 围栏
+        // 2. ir ```json ... ``` valla
         val fenceMatch = Regex("""```(?:json)?\s*\n([\s\S]*?)\n```""").find(s)
         if (fenceMatch != null) {
             s = fenceMatch.groupValues[1]
@@ -379,28 +379,28 @@ class MemoryAutoSaveScheduler(
             s = s.trim()
         }
 
-        // 3. 提取 JSON 对象
+        // 3. Extraer objeto JSON
         if (!s.startsWith("{")) {
             val candidate = findJsonObjectCandidate(s) ?: run {
-                Logger.w("MemoryAutoSaveScheduler", "未找到 JSON 对象 (rawLen=${raw.length})")
+                Logger.w("MemoryAutoSaveScheduler", "Objeto JSON no encontrado (rawLen=${raw.length})")
                 return null
             }
             s = candidate
         }
 
-        // 4. 解析
+        // 4. analizar
         return runCatching {
             json.decodeFromString(ParsedAnalysis.serializer(), s)
         }.getOrElse {
-            Logger.w("MemoryAutoSaveScheduler", "JSON 解析失败 (rawLen=${raw.length}): ${it.message}")
+            Logger.w("MemoryAutoSaveScheduler", "JSON El análisis falló (rawLen=${raw.length}): ${it.message}")
             null
         }
     }
 
     /**
-     * 将分析结果落库(创建/更新/合并事实 + 建立知识图谱边)。
+     * Resultados del análisis de la tienda(crear/actualizar/Fusionar hechos + crear bordes de gráficos de conocimiento).
      *
-     * @return 落库统计
+     * @return Estadísticas de visitas sin cita previa
      */
     suspend fun applyAnalysis(
         analysis: ParsedAnalysis,
@@ -416,7 +416,7 @@ class MemoryAutoSaveScheduler(
         var merged = 0
         var links = 0
 
-        // 1. 提取新实体 → 写入 facts(自动去重合并)
+        // 1. Extraer nuevas entidades → escribir facts(Deduplicación y fusión automáticas)
         if (analysis.extractedEntities.isNotEmpty()) {
             val facts = analysis.userFactsOnly()
                 .filter { it.content.isNotBlank() }
@@ -429,21 +429,21 @@ class MemoryAutoSaveScheduler(
                         category = entity.folderPath?.takeIf { it.isNotBlank() } ?: "general",
                         confidence = entity.credibility.coerceIn(0f, 1f),
                         source = "inferred",
-                        // v12: 提取阶段给出的实体归一化键,写入时按实体键精确去重
+                        // v12: Clave de normalización de la entidad proporcionada durante la fase de extracción.,Presione las teclas físicas para eliminar con precisión los duplicados al escribir
                         entityKey = entity.entityKey,
                     )
                 }
             extracted = if (facts.isEmpty()) 0 else factStore.addBatch(facts, scope, spaceId)
         }
 
-        // 2. 更新已有事实(按 matchTitle 模糊匹配)
+        // 2. Actualizar hechos existentes(Partido difuso por título de partido)
         if (analysis.updatedEntities.isNotEmpty()) {
             val existing = factStore.getByScopeAndSpace(scope, spaceId)
             for (update in analysis.updatedEntities) {
                 if (update.matchTitle.isBlank() || update.newContent.isBlank()) continue
                 val target = findFactByTitle(existing, update.matchTitle) ?: continue
-                // v2.6.2（记忆审计）: 正文/重要度/分类/标签在同一事务内原子写入，
-                // 避免三步分写导致后写覆盖或半更新。
+                // v2.6.2(auditoría de memoria): Texto/importancia/Clasificación/Las etiquetas se escriben de forma atómica dentro de la misma transacción,
+                // Evite la escritura en tres pasos que lleve a sobrescribir o semiactualizar después de escribir.
                 factStore.applyFieldUpdates(
                     id = target.id,
                     scope = scope,
@@ -461,7 +461,7 @@ class MemoryAutoSaveScheduler(
             }
         }
 
-        // 3. 合并相似记忆
+        // 3. Fusionar recuerdos similares
         if (analysis.mergedEntities.isNotEmpty()) {
             val existing = factStore.getByScopeAndSpace(scope, spaceId)
             for (merge in analysis.mergedEntities) {
@@ -470,7 +470,7 @@ class MemoryAutoSaveScheduler(
                     findFactByTitle(existing, title)
                 }
                 if (sources.isEmpty()) continue
-                // 创建合并后新事实
+                // Crear nuevos hechos combinados
                 val mergedFact = FactStore.Fact(
                     fact = merge.mergedContent,
                     sessionId = sessionId,
@@ -480,7 +480,7 @@ class MemoryAutoSaveScheduler(
                     source = "inferred",
                 )
                 factStore.add(mergedFact, scope, spaceId)
-                // 删除源事实(并清理关联的 links)
+                // Eliminar hecho fuente(y limpiar los asociados links)
                 sources.forEach { src ->
                     factStore.delete(src.id, assistantId, scope, spaceId)
                 }
@@ -488,7 +488,7 @@ class MemoryAutoSaveScheduler(
             }
         }
 
-        // 4. 建立知识图谱边
+        // 4. Crear bordes de gráficos de conocimiento
         if (analysis.links.isNotEmpty()) {
             val existing = factStore.getByScopeAndSpace(scope, spaceId)
             val now = Instant.now().toString()
@@ -508,10 +508,10 @@ class MemoryAutoSaveScheduler(
                     createdAt = now,
                 )
             }
-            // 审计修复 (C-07): 建链前用最新 facts 集合过滤已删除 id。
-            // 链接解析基于上方 [existing] 快照；快照之后至插入前，本分析的合并步骤（步骤 3）
-            // 或并发删除（UI/decay）可能已删掉 source/target，若直接插入会对已删事实留下孤儿边。
-            // 因此插入前重查一次当前存活 id 集合，拒绝指向已删除事实的边。
+            // Reparación de auditoría (C-07): Utilice la recopilación de datos más reciente para filtrar los identificadores eliminados antes de crear un enlace.
+            // La resolución del enlace se basa en lo anterior. [existing] Instantánea; fusionar el paso de este análisis (paso 3) después de la instantánea y antes de insertar
+            // o eliminación simultánea (UI/decay) puede haber eliminado el origen/destino, y la inserción directa dejaría bordes huérfanos de los hechos eliminados.
+            // Por lo tanto, el conjunto actual de identificadores supervivientes se vuelve a verificar antes de la inserción y los bordes que apuntan a hechos eliminados se rechazan.
             if (linkEntities.isNotEmpty()) {
                 val liveIds = factStore.getByScopeAndSpace(scope, spaceId).map { it.id }.toSet()
                 val aliveLinks = linkEntities.filter { it.sourceFactId in liveIds && it.targetFactId in liveIds }
@@ -522,7 +522,7 @@ class MemoryAutoSaveScheduler(
             }
         }
 
-        // 5. 用户画像更新(暂存为 category="profile" 的事实,后续可扩展独立存储)
+        // 5. Actualización del retrato del usuario(Guardado temporalmente como category="profile" el hecho,Almacenamiento independiente ampliable más adelante)
         if (!analysis.profileMarkdown.isNullOrBlank()) {
             val profileFact = FactStore.Fact(
                 fact = analysis.profileMarkdown,
@@ -546,24 +546,24 @@ class MemoryAutoSaveScheduler(
     }
 
     /**
-     * 自动分类未分类记忆(批量 AI 分类)。
+     * Clasificación automática de recuerdos no clasificados.(Clasificación de IA por lotes).
      *
-     * 找出 category 为 "general" 的事实,每批 [CATEGORIZE_BATCH_SIZE] 条,
-     * 调 LLM 分配 folderPath,更新到数据库。
+     * Buscar categoría como "general" el hecho,por lote [CATEGORIZE_BATCH_SIZE] Artículo,
+     * Ajustar la asignación de LLM folderPath,Actualización a la base de datos.
      *
-     * @param spaceId 记忆空间
-     * @param scope 记忆作用域
-     * @param assistantId 助手 id
-     * @param model 目标模型
-     * @param locale 语言
-     * @return 成功分类的事实数量
+     * @param spaceId espacio de memoria
+     * @param scope alcance de la memoria
+     * @param assistantId asistente id
+     * @param model modelo objetivo
+     * @param locale Idioma
+     * @return Número de hechos clasificados con éxito
      */
     suspend fun autoCategorizeMemories(
         spaceId: String = "default",
         scope: String = "main",
         assistantId: String = "default",
         model: Model? = null,
-        locale: String = "zh-CN",
+        locale: String = "es",
     ): Int = withContext(Dispatchers.IO) {
         val factStore = factDbProvider.getFactStore(assistantId)
         val all = factStore.getByScopeAndSpace(scope, spaceId)
@@ -586,7 +586,7 @@ class MemoryAutoSaveScheduler(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w("MemoryAutoSaveScheduler", "autoCategorize LLM 调用失败: ${e.message}", e)
+            Logger.w("MemoryAutoSaveScheduler", "autoCategorize LLM llamada fallida: ${e.message}", e)
             return@withContext 0
         }
 
@@ -600,14 +600,14 @@ class MemoryAutoSaveScheduler(
         count
     }
 
-    // ── 内部工具 ──────────────────────────────────────────────────────
+    // ── herramientas internas ──────────────────────────────────────────────────────
 
-    /** 构建对话历史文本(供 LLM 输入)。 */
+    /** Construir texto de historial de conversación(Para entrada LLM). */
     private fun buildHistoryText(history: List<UIMessage>, locale: String): String {
-        val isZh = locale.startsWith("zh")
-        val userLabel = if (isZh) "用户" else "User"
-        val assistantLabel = if (isZh) "助手" else "Assistant"
-        val titleLabel = if (isZh) "## 对话历史" else "## Conversation History"
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+        val userLabel = if (isZh) "Usuario" else "User"
+        val assistantLabel = if (isZh) "asistente" else "Assistant"
+        val titleLabel = if (isZh) "## Historial de conversaciones" else "## Conversation History"
 
         val recent = history.takeLast(MAX_HISTORY_MESSAGES)
         val sb = StringBuilder(titleLabel).append("\n\n")
@@ -615,8 +615,8 @@ class MemoryAutoSaveScheduler(
             val role = when (msg.role) {
                 io.zer0.ai.core.MessageRole.USER -> userLabel
                 io.zer0.ai.core.MessageRole.ASSISTANT -> assistantLabel
-                io.zer0.ai.core.MessageRole.TOOL -> if (isZh) "工具" else "Tool"
-                io.zer0.ai.core.MessageRole.SYSTEM -> if (isZh) "系统" else "System"
+                io.zer0.ai.core.MessageRole.TOOL -> if (isZh) "Herramientas" else "Tool"
+                io.zer0.ai.core.MessageRole.SYSTEM -> if (isZh) "sistema" else "System"
             }
             val content = msg.content.take(MAX_MESSAGE_CHARS)
             sb.append("**$role**: ").append(content).append("\n\n")
@@ -625,32 +625,32 @@ class MemoryAutoSaveScheduler(
     }
 
     /**
-     * 按标题模糊匹配事实(用于 updatedEntities/mergedEntities/links)。
-     * 优先精确匹配,其次包含匹配。
+     * Datos de coincidencia difusa por título(usado para updatedEntities/mergedEntities/links).
+     * Priorizar coincidencias exactas,El segundo contiene el partido.
      */
     private fun findFactByTitle(facts: List<FactStore.Fact>, title: String): FactStore.Fact? {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return null
-        // 1. 精确匹配(忽略大小写)
+        // 1. coincidencia exacta(ignorar caso)
         facts.firstOrNull { it.fact.equals(trimmed, ignoreCase = true) }?.let { return it }
-        // 2. 包含匹配(标题是事实的子串,或事实是标题的子串)
+        // 2. contiene coincidencias(el título es una subcadena de hecho,o hecho es una subcadena del título)
         facts.firstOrNull {
             it.fact.contains(trimmed, ignoreCase = true) || trimmed.contains(it.fact, ignoreCase = true)
         }?.let { return it }
-        // 3. 前 20 字前缀匹配
+        // 3. Coincidencias de prefijos de los primeros 20 caracteres
         val prefix = trimmed.take(20)
         facts.firstOrNull { it.fact.take(20).equals(prefix, ignoreCase = true) }?.let { return it }
         return null
     }
 
-    /** Float 重要度(0.0~1.0)→ Int 重要度(0/1/2)。 */
+    /** Float importancia(0.0~1.0)→ Int importancia(0/1/2). */
     private fun floatImportanceToInt(importance: Float): Int = when {
         importance >= 0.7f -> 2
         importance >= 0.4f -> 1
         else -> 0
     }
 
-    /** 扫描字符串找到 JSON 对象({ ... })的候选。 */
+    /** Escanear cadena para encontrar objeto JSON({ ... })candidato. */
     private fun findJsonObjectCandidate(s: String): String? {
         val start = s.indexOf('{')
         if (start < 0) return null
@@ -673,14 +673,14 @@ class MemoryAutoSaveScheduler(
         return null
     }
 
-    /** 自动分类结果项。 */
+    /** Clasifique automáticamente los elementos de resultados. */
     @kotlinx.serialization.Serializable
     private data class CategorizeItem(
         val title: String,
         val folderPath: String,
     )
 
-    /** 解析自动分类 LLM 输出。 */
+    /** Analizar la salida LLM de clasificación automática. */
     private fun parseCategorizeResult(raw: String): List<CategorizeItem>? {
         if (raw.isBlank()) return null
         var s = raw
@@ -702,7 +702,7 @@ class MemoryAutoSaveScheduler(
         return runCatching {
             json.decodeFromString(ListSerializer(CategorizeItem.serializer()), s)
         }.getOrElse {
-            Logger.w("MemoryAutoSaveScheduler", "categorize JSON 解析失败: ${it.message}")
+            Logger.w("MemoryAutoSaveScheduler", "categorize JSON El análisis falló: ${it.message}")
             null
         }
     }

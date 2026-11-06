@@ -8,9 +8,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
- * 工作流编排器。
+ * Orquestador de flujo de trabajo.
  *
- * 简化编排:并行 / 流水线 / 顺序,基于 Kotlin 协程。
+ * Simplifique la orquestación:Paralelo/canalización/secuencial,Basado en corrutinas de Kotlin.
  */
 class WorkflowOrchestrator {
 
@@ -24,20 +24,20 @@ class WorkflowOrchestrator {
         val outputs: Map<String, String>,
         val durationMs: Long,
         val errors: List<String> = emptyList(),
-        /** v1.0.53 Phase 3: 是否因 token 预算耗尽而跳过部分节点。 */
+        /** v1.0.53 Phase 3: Si se deben omitir algunos nodos debido al presupuesto de token agotado. */
         val budgetExhausted: Boolean = false,
     )
 
     /**
-     * 执行编排好的步骤列表。
+     * Siga la lista de pasos programada.
      *
-     * v1.0.53 Phase 3: 支持 token 预算硬上限。
-     *  - [budgetTokens] 非 null 时,每个节点执行前检查预算是否耗尽,耗尽则跳过并记录错误。
-     *  - 注意:[Step.Task] 的 action 是黑盒,本编排器无法自动累加 token 消耗;
-     *    如需精确控制,调用方应在 action 内部通过闭包捕获外部 [AgentTokenBudget] 实例并 accumulate,
-     *    然后通过 [budgetTokens] 传入同一上限,本方法会创建独立 budget 实例做框架级检查。
+     * v1.0.53 Phase 3: Límite máximo del presupuesto de tokens de soporte.
+     *  - [budgetTokens] Cuando no es nulo,Compruebe si el presupuesto está agotado antes de que se ejecute cada nodo,Si está agotado, omítalo y registre un error.
+     *  - Nota:[Step.Task] La acción es una caja negra.,Este orquestador no puede acumular automáticamente el consumo de tokens.;
+     *    Para un control preciso,La persona que llama debe capturar el exterior mediante un cierre dentro de la acción. [AgentTokenBudget] Instancias accumulate,
+     *    luego pasa [budgetTokens] Pasar en el mismo límite superior.,Este método creará una instancia de presupuesto independiente para la verificación a nivel de marco.
      *
-     * @param budgetTokens token 预算上限;null=不限制。
+     * @param budgetTokens token límite presupuestario;null=Sin restricciones.
      */
     suspend fun execute(steps: List<Step>, budgetTokens: Int? = null): Result = withContext(Dispatchers.IO) {
         val startMs = System.currentTimeMillis()
@@ -46,10 +46,10 @@ class WorkflowOrchestrator {
         val budget = AgentTokenBudget.of(budgetTokens)
         var budgetExhausted = false
         for (step in steps) {
-            // v1.0.53 Phase 3: 预算耗尽则跳过剩余节点
+            // v1.0.53 Phase 3: Si se agota el presupuesto, se omitirán los nodos restantes.
             if (budget?.isExhausted == true) {
                 budgetExhausted = true
-                errors.add("节点被跳过:token 预算耗尽(剩余 ${budget.remaining})")
+                errors.add("Se omite el nodo:token presupuesto agotado(restante ${budget.remaining})")
                 continue
             }
             executeStep(step, outputs, errors)

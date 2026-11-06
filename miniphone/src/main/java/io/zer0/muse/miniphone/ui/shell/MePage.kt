@@ -36,13 +36,13 @@ import io.zer0.muse.miniphone.data.db.MINI_PHONE_DB_VERSION
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 我页:本机用户的名片 + 入口 + 手机设置。
+ * mi pagina:Tarjeta de visita del usuario local + entrada + configuración del teléfono celular.
  *
- * 昵称与签名来自 [MpProfile];任一项缺失就给一句兜底文案,不留空白行。
- * 入口三项:我的朋友圈(只看自己发的)、清空聊天记录(二次确认)、版本信息。
- * 设置区两项:「自动发朋友圈」与「角色主动私信」,开关状态由外壳状态带进来。
+ * El apodo y la firma provienen de [MpProfile];Si falta algún elemento dame una breve explicación,No dejes líneas en blanco.
+ * Entrada tres artículos:mi circulo de amigos(Solo mira lo que publicas), borrar el historial de chat(Segunda confirmación), información de la versión.
+ * Dos elementos en el área de configuración.:"Enviar automáticamente a Momentos" y "Caracteres de mensajes privados activos",El estado del interruptor lo activa el estado del shell.
  *
- * @param appVersionName 宿主版本名;空串表示宿主没报,版本信息里就只写模块自己的版本
+ * @param appVersionName Nombre de la versión del host;Una cadena vacía indica que el anfitrión no ha informado,En la información de versión solo se escribe la versión propia del módulo.
  */
 @Composable
 internal fun MePage(
@@ -57,12 +57,12 @@ internal fun MePage(
     val dimens = MiniPhoneTheme.dimens
     val typography = MiniPhoneTheme.typography
     val shape = RoundedCornerShape(dimens.cardRadius)
-    // 清空是覆盖全部会话的动作,点一下就弹确认
+    // Borrar es una acción que cubre todas las sesiones.,Haga clic para confirmar
     var confirmingClear by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxSize()
-            // 卡片一多就装不下一屏:整页可滚,底部两行(清空 / 版本)才不会被裁掉
+            // Si hay demasiadas tarjetas, no caben en una pantalla.:Desplazable a página completa,dos filas inferiores(claro/versión)no me despedirán
             .verticalScroll(rememberScrollState())
             .padding(horizontal = dimens.pageMargin, vertical = 12.dp),
     ) {
@@ -145,18 +145,18 @@ internal fun MePage(
 }
 
 /**
- * 版本信息那一行显示什么。
+ * ¿Qué muestra la línea de información de la versión?
  *
- * 模块自己的库版本写在常量里,宿主版本是运行时的值 —— 两边都不在这里写死,
- * 宿主没报版本时只留前半段,不补一个假版本号。
+ * La versión de la biblioteca propia del módulo está escrita en constantes.,La versión del host es el valor del tiempo de ejecución. —— Ninguna de las partes lo descartará aquí.,
+ * Cuando el anfitrión no informe una versión, solo se conservará la primera mitad.,No agregue un número de versión falso.
  */
 internal fun miniPhoneVersionLabel(dbVersion: Int, appVersion: String): String {
-    val module = "小手机数据 v$dbVersion"
+    val module = "pequeños datos celulares v$dbVersion"
     val app = appVersion.trim()
-    return if (app.isEmpty()) module else "$module / 应用 $app"
+    return if (app.isEmpty()) module else "$module / Solicitud $app"
 }
 
-/** 设置区的一行:左边标题 + 说明,右边开关。两张设置卡长得一样,只是文案与回调不同。 */
+/** Una línea en el área de configuración.:Título + descripción a la izquierda,Interruptor derecho. Las dos tarjetas de configuración tienen el mismo aspecto,Es solo que la redacción publicitaria es diferente de la devolución de llamada. */
 @Composable
 private fun MeSettingRow(title: String, description: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, switchTag: String) {
     val colors = MiniPhoneTheme.colors
@@ -197,10 +197,10 @@ private fun MeSettingRow(title: String, description: String, checked: Boolean, o
 }
 
 /**
- * 入口行:标题 + 说明,右侧一个指向下一页的箭头。
+ * fila de entrada:título + descripción,Una flecha a la derecha apunta a la página siguiente.
  *
- * [onClick] 为 null 时整行不可点(版本信息就是纯展示),右侧也不再画箭头 ——
- * 画了箭头点不动,比不画更让人困惑。
+ * [onClick] Cuando es nulo, no se puede hacer clic en toda la línea.(La información de la versión es puramente para visualización.),No se dibujan más flechas en el lado derecho. ——
+ * Dibujé una flecha pero no se mueve.,Más confuso que no dibujar nada.
  */
 @Composable
 private fun MeEntryRow(
@@ -252,7 +252,7 @@ private fun MeEntryRow(
     }
 }
 
-/** 清空聊天记录前的确认:说清删的是什么、不能恢复、朋友圈不受影响。 */
+/** Confirmación antes de borrar el historial de chat:Deja en claro qué se eliminó, que no se puede restaurar y que tu círculo de amigos no se verá afectado. */
 @Composable
 private fun ClearChatsConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -309,21 +309,21 @@ private fun ClearChatsConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit
     }
 }
 
-private const val EMPTY_NICKNAME: String = "还没有昵称"
-private const val EMPTY_SIGNATURE: String = "这个人还没写签名"
-private const val AUTO_MOMENT_TITLE: String = "自动发朋友圈"
-private const val AUTO_MOMENT_DESCRIPTION: String = "关掉之后角色不再自己在后台发动态"
-private const val CHAT_PROACTIVE_TITLE: String = "角色主动私信"
-private const val CHAT_PROACTIVE_DESCRIPTION: String = "角色会偶尔主动找你说话，只在 08:00–22:00 之间，默认关闭"
-private const val MY_MOMENTS_TITLE: String = "我的朋友圈"
-private const val MY_MOMENTS_DESCRIPTION: String = "只看自己发过的动态,也可以接着发"
-private const val CLEAR_CHATS_TITLE: String = "清空聊天记录"
-private const val CLEAR_CHATS_DESCRIPTION: String = "删掉全部会话与消息,朋友圈不受影响"
-private const val VERSION_TITLE: String = "版本信息"
-private const val CLEAR_CHATS_DIALOG_TITLE: String = "清空聊天记录?"
-private const val CLEAR_CHATS_DIALOG_HINT: String = "所有会话和消息会被删除,无法恢复。朋友圈动态不会动。"
-private const val CANCEL_LABEL: String = "取消"
-private const val CLEAR_LABEL: String = "清空"
+private const val EMPTY_NICKNAME: String = "Aún no hay apodo"
+private const val EMPTY_SIGNATURE: String = "Esta persona aún no ha escrito su firma."
+private const val AUTO_MOMENT_TITLE: String = "Publicar automáticamente en Momentos"
+private const val AUTO_MOMENT_DESCRIPTION: String = "Después de desactivarlo, el personaje ya no publicará actualizaciones en segundo plano."
+private const val CHAT_PROACTIVE_TITLE: String = "Rol activo mensaje privado"
+private const val CHAT_PROACTIVE_DESCRIPTION: String = "El personaje ocasionalmente tomará la iniciativa de hablar contigo, sólo cuando 08:00–22:00 entre, cerrado por defecto"
+private const val MY_MOMENTS_TITLE: String = "mi circulo de amigos"
+private const val MY_MOMENTS_DESCRIPTION: String = "Mire solo las actualizaciones que ha publicado,También puedes enviarlo más tarde."
+private const val CLEAR_CHATS_TITLE: String = "Borrar historial de chat"
+private const val CLEAR_CHATS_DESCRIPTION: String = "Eliminar todas las conversaciones y mensajes,Los momentos no se ven afectados."
+private const val VERSION_TITLE: String = "Información de versión"
+private const val CLEAR_CHATS_DIALOG_TITLE: String = "Borrar historial de chat?"
+private const val CLEAR_CHATS_DIALOG_HINT: String = "Se eliminarán todas las conversaciones y mensajes.,No se puede recuperar. Las actualizaciones de Momentos no cambiarán."
+private const val CANCEL_LABEL: String = "Cancelar"
+private const val CLEAR_LABEL: String = "Borrar"
 private const val CHEVRON_TEXT: String = "›"
 
 private val SectionGap = 12.dp

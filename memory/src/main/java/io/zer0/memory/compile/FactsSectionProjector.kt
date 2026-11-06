@@ -3,41 +3,41 @@ package io.zer0.memory.compile
 import io.zer0.memory.fact.FactStore
 
 /**
- * D3-P2: FACTS 段确定性投影器。
+ * D3-P2: FACTS Proyector determinista de segmentos.
  *
- * 把 facts 表条目按稳定顺序渲染为"每行一条事实"的纯文本段。
- * 输出格式与既有 LLM 产物对齐（CompilePrompts.buildFactsPrompt:
- * "one fact per line, no bullet prefix, no headings"）。
+ * Representar las entradas de la tabla de hechos en orden estable como"Un hecho por línea"segmento de texto plano.
+ * El formato de salida está alineado con los productos LLM existentes (CompilePrompts.buildFactsPrompt:
+ * "one fact per line, no bullet prefix, no headings").
  *
- * 设计原则（D3 方案）：
- *  - 单一权威源：FACTS 段内容 100% 来自 facts 表，不再经 LLM 重新编译；
- *  - 编辑/删除即刻生效：投影即表值；
- *  - 预算克制：条数/字符/单条长度三重上限，超限按重要性截断。
+ * principios de diseño (D3 esquema):
+ *  - Fuente única autorizada:FACTS El contenido del segmento proviene 100 % de la tabla de hechos y LLM ya no lo vuelve a compilar;
+ *  - Editar/La eliminación tiene efecto inmediatamente: la proyección es el valor de la tabla;
+ *  - Restricción presupuestaria: número de artículos/personaje/Hay un triple límite superior para la longitud de una sola línea, y si excede el límite, se truncará según su importancia.
  */
 object FactsSectionProjector {
 
-    /** 投影配置。 */
+    /** Configuración de proyección. */
     data class Config(
-        /** 最多条数。 */
+        /** Número máximo de entradas. */
         val maxItems: Int = 40,
-        /** 最大字符数（超出按排序截断）。 */
+        /** Número máximo de caracteres (superando el truncamiento por clasificación). */
         val maxChars: Int = 1500,
-        /** 单条事实最大保留长度（超长条目截断，防单条挤爆预算）。 */
+        /** La duración máxima de retención de un solo hecho (las entradas extremadamente largas se truncan para evitar que un solo hecho sobrecargue el presupuesto). */
         val maxItemChars: Int = 120,
     )
 
     /**
-     * 投影渲染。
+     * Representación de proyección.
      *
-     * 排序：置顶（pinnedAt 非空）> importance 降序 > lastConfirmedAt/createdAt 降序。
-     * 输入应已由调用方过滤墓碑与过期条目（getByScopeAndSpace 已含过期过滤，
-     * 墓碑由 MemoryCompiler.filterTombstonedLines 处理）。
+     * Ordenar: arriba (pinnedAt no vacío)> importance orden descendente > lastConfirmedAt/createdAt Orden descendente.
+     * La persona que llama debería haber filtrado la entrada en busca de lápidas y entradas caducadas (getByScopeAndSpace Filtrado caducado incluido,
+     * Las lápidas son manejadas por MemoryCompiler.filterTombstonedLines).
      *
-     * v18: 被 supersedes 指向的旧记忆不投影 —— 行仍在库里（记忆页可见、可回退），
-     * 只是不写进上下文，避免模型同时收到两条互斥断言。指向方被删除后，
-     * 本集合自动不再包含它，旧记忆随之回到上下文，无需额外状态。
+     * v18: Los viejos recuerdos señalados por los reemplazantes no se proyectan —— La fila todavía está en la biblioteca (la página de memoria es visible y se puede revertir),
+     * Simplemente no lo escriba en el contexto para evitar que el modelo reciba dos afirmaciones mutuamente excluyentes al mismo tiempo. Una vez eliminada la parte señalante,
+     * La colección automáticamente ya no lo contiene y la memoria anterior vuelve al contexto sin estado adicional.
      *
-     * @return 每行一条事实的纯文本；无内容时返回空串
+     * @return Texto plano de un hecho por línea; devuelve una cadena vacía si no hay contenido
      */
     fun project(facts: List<FactStore.Fact>, config: Config = Config()): String {
         if (facts.isEmpty()) return ""

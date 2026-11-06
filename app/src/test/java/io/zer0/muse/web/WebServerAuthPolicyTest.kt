@@ -9,7 +9,7 @@ import org.junit.Test
 import java.util.Date
 
 /**
- * R-TEST-12: WebServer 登录限流与 JWT 签发/校验纯逻辑。
+ * R-TEST-12: WebServer Límite actual de inicio de sesión y emisión de JWT/Comprueba la lógica pura.
  */
 class WebServerAuthPolicyTest {
 

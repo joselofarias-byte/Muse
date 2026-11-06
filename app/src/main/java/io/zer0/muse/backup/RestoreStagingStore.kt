@@ -16,11 +16,11 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 /**
- * 恢复过程的持久化 staging/recovery point。
+ * El punto de puesta en escena/recuperación de persistencia del proceso de recuperación.
  *
- * staging 保存准备提交的目标备份，recovery 保存导入前快照。两者都位于
- * filesDir 私有目录，并通过 AtomicFileStore 写入，进程在跨数据库提交中途
- * 被杀后仍可由账本定位。这里不把文件路径或正文写入日志。
+ * staging Guarde la copia de seguridad de destino lista para su envío.recovery Guarde una instantánea previa a la importación. ambos estan ubicados
+ * filesDir Directorio privado y escrito a través de AtomicFileStore, el proceso se encuentra en medio de una confirmación entre bases de datos.
+ * Después de ser asesinado, el libro de contabilidad aún puede localizarlo. La ruta del archivo o el texto no se escriben aquí en el registro.
  */
 class RestoreStagingStore(context: Context) {
 
@@ -40,7 +40,7 @@ class RestoreStagingStore(context: Context) {
     fun readRecoveryPoint(entry: RestoreJournal.Entry): BackupService.Backup? = read(fileFor(entry.recoveryFileName))
 
     /**
-     * 将大体量 NDJSON 恢复点流式写入磁盘，不把正文拼成一个 JSON 字符串。
+     * Transmita grandes puntos de recuperación NDJSON al disco sin dividir el texto en una cadena JSON.
      */
     suspend fun writeRecoveryNdJson(entry: RestoreJournal.Entry, write: suspend (BufferedWriter) -> Unit) = withContext(Dispatchers.IO) {
         val target = fileFor(entry.recoveryFileName)
@@ -63,7 +63,7 @@ class RestoreStagingStore(context: Context) {
         }
     }
 
-    /** 在文件仍打开时消费 NDJSON 恢复点，避免把整个恢复点读入内存。 */
+    /** Consuma puntos de recuperación NDJSON mientras el archivo aún está abierto, evitando leer todo el punto de recuperación en la memoria. */
     suspend fun <T> readRecoveryNdJson(entry: RestoreJournal.Entry, read: suspend (Sequence<String>) -> T): T =
         withContext(Dispatchers.IO) {
             fileFor(entry.recoveryFileName)
@@ -71,14 +71,14 @@ class RestoreStagingStore(context: Context) {
                 .use { reader -> read(reader.lineSequence()) }
         }
 
-    /** 完成或放弃恢复后清除私有恢复副本；删除失败只记日志，不暴露文件内容。 */
+    /** Borre la copia de recuperación privada después de completar o abandonar la recuperación; si la eliminación falla, solo se registrará el registro y el contenido del archivo no quedará expuesto. */
     fun cleanup(entry: RestoreJournal.Entry) {
         listOf(entry.stagingFileName, entry.recoveryFileName)
             .filter(String::isNotBlank)
             .forEach { name ->
                 val file = fileFor(name)
                 if (file.exists() && !file.delete()) {
-                    Logger.w(TAG, "清理恢复副本失败: ${file.name}")
+                    Logger.w(TAG, "Error al limpiar la copia de recuperación: ${file.name}")
                 }
             }
         if (directory.exists() && directory.listFiles().isNullOrEmpty()) {
@@ -97,7 +97,7 @@ class RestoreStagingStore(context: Context) {
         return runCatching {
             json.decodeFromString(BackupService.Backup.serializer(), file.readText())
         }.onFailure {
-            Logger.w(TAG, "恢复副本解析失败: ${file.name}", it)
+            Logger.w(TAG, "Error al analizar la copia de recuperación: ${file.name}", it)
         }.getOrNull()
     }
 

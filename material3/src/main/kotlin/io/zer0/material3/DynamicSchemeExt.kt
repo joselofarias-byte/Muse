@@ -1,8 +1,8 @@
-// v1.97 gap7: DynamicScheme → Compose ColorScheme 桥接扩展。
+// v1.97 gap7: DynamicScheme → Compose ColorScheme Ampliación del puente.
 //
-// 将 material-color-utilities 的 DynamicScheme (HCT 色彩空间生成的方案)
-// 转换为 Compose Material3 的 ColorScheme,使 CustomTheme.generateColorScheme
-// 能直接产出可用的 ColorScheme 注入 MuseTheme。
+// Cambiar material-color-utilidades a DynamicScheme (HCT Esquema de generación de espacio de color.)
+// Convertir para componer material3 ColorScheme,hacer CustomTheme.generateColorScheme
+// Puede generar directamente ColorScheme utilizable e inyectar MuseTheme.
 
 package io.zer0.material3
 
@@ -13,16 +13,16 @@ import androidx.compose.ui.graphics.Color
 import dynamiccolor.DynamicScheme
 
 /**
- * 将 [DynamicScheme] 转换为 Compose Material3 的 [ColorScheme]。
+ * voluntad [DynamicScheme] Convertir para componer material3 [ColorScheme].
  *
- * DynamicScheme 的所有颜色属性都是 ARGB Int,这里逐字段映射到 Compose Color。
- * 根据 [DynamicScheme.isDark] 选择 [darkColorScheme] 或 [lightColorScheme] 构造器,
- * 保证 Material3 容器梯度(surfaceContainer 系列 / surfaceDim / surfaceBright)
- * 都正确填充。
+ * DynamicScheme Todas las propiedades de color de son ARGB Int,Esto se asigna a Compose Color campo por campo.
+ * Según [DynamicScheme.isDark] elegir [darkColorScheme] o [lightColorScheme] Constructor,
+ * Gradiente de contenedor Material3 garantizado(surfaceContainer Serie / surfaceDim / surfaceBright)
+ * Todo llenado correctamente.
  *
- * 注:DynamicScheme 还提供 primaryFixed / secondaryFixed / tertiaryFixed 等
- * "固定色"(Material3 Expressive 引入),但当前 Compose Material3 1.4.0-alpha04
- * 的 ColorScheme 尚未包含这些字段,故此处不映射;后续升级 Compose 版本后可补齐。
+ * Nota:DynamicScheme También disponible primaryFixed / secondaryFixed / tertiaryFixed espera
+ * "color fijo"(Material3 Expressive introducir),Pero actualmente Compose Material3 1.4.0-alpha04
+ * ColorScheme aún no contiene estos campos,Por lo tanto, no está mapeado aquí.;Se puede completar después de actualizar la versión de Compose más adelante.
  */
 fun DynamicScheme.toColorScheme(): ColorScheme {
     return if (isDark) buildDark() else buildLight()

@@ -413,7 +413,7 @@
     <string name="cloud_backup_type_webdav">WebDAV</string>
     <string name="settings_chat_expand_button">Mostrar botão de edição em tela cheia</string>
     <string name="settings_chat_expand_button_subtitle">Mostrar botão de edição em tela cheia à direita da barra de entrada</string>
-    <!-- 前端修复 (i18n-3.x): 楼层式上下文限制 i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): restricciones de contexto del piso i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_chat_floor_limiter">Limite de contexto por andares</string>
     <string name="settings_chat_floor_limiter_subtitle">Trata mensagens do usuário como andares, mantém os últimos N andares completos para evitar cortar no meio da conversa</string>
     <string name="settings_chat_tool_rounds">Limite de rodadas de ferramentas</string>
@@ -423,7 +423,7 @@
     <string name="settings_chat_floor_keep">Andares a manter</string>
     <string name="settings_chat_floor_keep_subtitle">Mensagens antigas além dessa contagem de andares são truncadas</string>
 
-    <!-- 前端修复 (i18n-3.x): 公共清空文案(表情包/群聊记忆共用) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Copia de compensación pública(Emoticones/Compartir memoria de chat grupal) -->
     <string name="settings_common_clear_all">Limpar tudo</string>
     <string name="settings_common_clear">Limpar</string>
     <string name="settings_chat_background_section">Aparência</string>

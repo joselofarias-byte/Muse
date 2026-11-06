@@ -1,28 +1,28 @@
 package io.zer0.muse.ui.chat
 
 /**
- * 尾部重叠折叠的最小长度:两个汉字重合多为巧合(「很好」/「好的」),二字及以上才认定为
- * 同一段文本的重复上报;英文按字符算,两个字符以上基本已是一个完整单词片段。
+ * Longitud mínima del pliegue superpuesto de la cola:La superposición de dos caracteres chinos es mayoritariamente una coincidencia.("Muy bueno"/"Está bien"),Sólo dos caracteres o más se reconocen como
+ * Informes repetidos del mismo texto.;Inglés por carácter,Más de dos caracteres son básicamente un fragmento de palabra completo.
  */
 private const val MIN_OVERLAP_CHARS = 2
 
 /**
- * 把一次 ASR 文本并入本轮累积文本。
+ * Fusiona un texto ASR con el texto acumulado de esta ronda.
  *
- * ASR 各 Provider 的回调语义是「本次会话到目前为止的完整文本」,而语音对话允许 ASR 会话
- * 自行结束(服务端静音收尾)后重开继续累积,于是同一条累积文本会同时收到:
- *  - 整段重发的完整文本(已包含先前内容)
- *  - 只包含本会话新增部分的文本
- *  - 同一句中间结果在增长(「今天天」→「今天天气」)
+ * ASR La semántica de devolución de llamada de cada Proveedor es "el texto completo de esta sesión hasta el momento".,mientras que las conversaciones de voz permiten conversaciones ASR
+ * Termina solo(Final silencioso del lado del servidor)Reabrir más tarde y seguir acumulando,Así se recibirá el mismo texto acumulado al mismo tiempo.:
+ *  - El texto completo de todo el párrafo vuelto a publicar.(Contenido anterior ya incluido.)
+ *  - Contiene solo texto de partes nuevas de esta conversación.
+ *  - El resultado intermedio de la misma frase va creciendo.("Hoy"→"El tiempo de hoy")
  *
- * 规则:
- *  - [incoming] 为空 → 返回 [accumulated]
- *  - [accumulated] 为空 → 返回 [incoming]
- *  - [incoming] 以 [accumulated] 开头 → 返回 [incoming](服务端给了完整文本)
- *  - [accumulated] 以 [incoming] 开头 → 返回 [accumulated](服务端重发了旧文本)
- *  - 其余 → 追加;两侧首尾有重叠时重叠段只保留一份
+ * reglas:
+ *  - [incoming] esta vacio → Regresar [accumulated]
+ *  - [accumulated] esta vacio → Regresar [incoming]
+ *  - [incoming] a [accumulated] comienzo → Regresar [incoming](El servidor dio el texto completo.)
+ *  - [accumulated] a [incoming] comienzo → Regresar [accumulated](El servidor resiente el texto antiguo.)
+ *  - el resto → anexar;Cuando hay superposición en ambos lados, solo se conservará una copia del segmento superpuesto.
  *
- * 首尾空白总是 trim,中文不补分隔符,仅当两侧都是 ASCII 字母数字(英文单词边界)时补一个空格。
+ * Los espacios en blanco iniciales y finales siempre son trim,El chino no añade separadores.,Sólo si ambos lados son alfanuméricos ASCII(Límites de palabras en inglés)Completa un espacio.
  */
 internal fun mergeTranscript(accumulated: String, incoming: String): String {
     val acc = accumulated.trim()
@@ -36,16 +36,16 @@ internal fun mergeTranscript(accumulated: String, incoming: String): String {
     }
 }
 
-/** 追加 [inc] 到 [acc]:两者首尾重叠的一段只保留一份。 */
+/** anexar [inc] llegar [acc]:Sólo se conserva una copia de la sección superpuesta. */
 private fun appendWithOverlap(acc: String, inc: String): String {
     val overlap = longestSuffixPrefixOverlap(acc, inc)
     if (overlap >= MIN_OVERLAP_CHARS) return acc + inc.substring(overlap)
-    // 中文没有词间空格,补了反而多一个字;只有英文单词边界才需要一个空格
+    // El chino no tiene espacios entre palabras.,Si lo agregas, habrá una palabra más.;Sólo los límites de palabras en inglés requieren un espacio
     val needsSpacer = acc.last().isAsciiWordChar() && inc.first().isAsciiWordChar()
     return if (needsSpacer) "$acc $inc" else acc + inc
 }
 
-/** [acc] 的后缀与 [inc] 的前缀重合的最长长度(同一段文本重复上报时的折叠长度)。 */
+/** [acc] sufijo con [inc] La longitud más larga de prefijos que se superponen.(La longitud de plegado cuando el mismo texto se informa repetidamente). */
 private fun longestSuffixPrefixOverlap(acc: String, inc: String): Int {
     for (len in minOf(acc.length, inc.length) downTo 1) {
         if (acc.regionMatches(acc.length - len, inc, 0, len)) return len

@@ -1,178 +1,178 @@
-# 渠道与后台可靠性 审查报告（链路 4）
+# Informe de revisión de confiabilidad de canal y backend (enlace 4)
 
-## 摘要
+## Resumen
 
-审查范围:`app/src/main/java/io/zer0/muse/channel/` 全部 24 个文件(五平台接收器/客户端/发送器/媒体),以及集成点 ChannelInbox 派发(ChannelAutoReply)、webhook 路由(web 包)、A2A/Tasker 入站、通知回传、channel_media 生命周期、MuseApp 启动/ON_STOP 观察者、ToolRegistry 渠道工具。方法:全文件通读 + 交叉 grep 验证调用方/生命周期/并发边界,所有发现均给出代码证据;DEDUPE_CHANNEL.md 末节 6 个探查方向与两条"先核实再引用"旧账(ON_STOP 停接收器、指数退避抖动)已逐条打开代码核实。
+Alcance de la revisión:`app/src/main/java/io/zer0/muse/channel/` Los 24 archivos(Receptor de cinco plataformas/cliente/transmisor/medios de comunicación),y punto de integración Despacho ChannelInbox(ChannelAutoReply),webhook enrutamiento(web paquete),A2A/Tasker Entrante, devolución de notificación,channel_media ciclo de vida,MuseApp empezar/ON_STOP observador,ToolRegistry Herramientas de canal. método:Lectura completa del archivo + cross grep para verificar la persona que llama/ciclo de vida/límite de concurrencia,Todos los hallazgos se proporcionan con evidencia de código.;DEDUPE_CHANNEL.md Seis direcciones de exploración y dos"Verificar antes de citar"cuentas antiguas(ON_STOP Detener el receptor, fluctuación de retroceso exponencial)La verificación del código se ha abierto uno por uno.
 
-总体结论:可靠派发主链(PENDING 落盘→PROCESSING 恢复→BLOCKED/退避)实现扎实,webhook 鉴权 fail-closed、媒体清理保护、压缩条件回写均与基线一致。但发现 **接收器循环存在多个"永久死亡且无自愈"路径**(P1)、**A2A 复用全局 ChatViewModel 与人机/并发 A2A 互相干扰**(P1);DEDUPE 重点问的两个问题有了确定性答案:①单渠道故障**不会永久饿死**其他渠道(队列会排空),但单消费者串行 + 100 槽跨平台共享收件箱会带来**分钟级延迟与 503 拒收**;②A2A/Tasker 入站**不共享** ChannelConversationStore(走 SessionRepository/ChatViewModel),无并发写冲突,但 A2A 自身有会话劫持问题。ON_STOP 停接收器未实现,退避抖动未实现(详见 F5)。
+Conclusión general:Distribución confiable de la cadena principal.(PENDING Realizar el pedido→PROCESSING restaurar→BLOCKED/retirarse)darse cuenta sólidamente,webhook La autenticación fallida, la protección de limpieza de medios y la reescritura de condiciones de compresión son consistentes con la línea base. pero encontrado **Hay múltiples bucles receptores."Muerte permanente y sin autocuración."camino**(P1),**A2A Reutilizar ChatViewModel global con hombre-máquina/A2A concurrente interfiere entre sí**(P1);DEDUPE Las dos preguntas clave tienen respuestas definitivas:①Fallo de un solo canal**No morirá de hambre para siempre**Otros canales(La cola se vaciará.),Pero la bandeja de entrada compartida multiplataforma de un solo consumidor en serie + 100 ranuras traerá**Retrasos de minutos y rechazos 503**;②A2A/Tasker entrante**no compartir** ChannelConversationStore(ir SessionRepository/ChatViewModel),No hay conflictos de escritura simultáneos,Pero A2A tiene su propio problema de secuestro de sesión.ON_STOP detener el receptor no implementado,La fluctuación de retroceso no está implementada(Ver detalles F5).
 
-发现分布:P0 × 0,P1 × 2,P2 × 9。
+encontrar distribución:P0 × 0,P1 × 2,P2 × 9.
 
-## 发现清单
+## lista de descubrimiento
 
-### F1. A2A 复用全局 ChatViewModel:与人机聊天及并发 A2A 互相干扰(结果错配/会话劫持)(P1,可信度:高)
+### F1. A2A Reutilizar ChatViewModel global: interfiere con el chat hombre-máquina y A2A concurrente(El resultado no coincide/secuestro de sesión)(P1,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:70-107`、`app/src/main/java/io/zer0/muse/web/WebServer.kt:614-660`
-- 证据:
+- ubicación:`app/src/main/java/io/zer0/muse/web/a2a/A2aHandler.kt:70-107`,`app/src/main/java/io/zer0/muse/web/WebServer.kt:614-660`
+- evidencia:
   ```kotlin
-  // A2aHandler.sendMessage —— chatViewModel 是 Koin single(全局唯一,与 UI 同实例)
-  chatViewModel.switchSession(requested)          // 直接切换用户当前会话
+  // A2aHandler.sendMessage —— chatViewModel si Koin single(Único a nivel mundial,Misma instancia que la interfaz de usuario)
+  chatViewModel.switchSession(requested)          // Cambiar directamente la sesión actual del usuario
   ...
   chatViewModel.updateInput(text)
-  chatViewModel.send()                            // 把文本送进全局输入框再发送
+  chatViewModel.send()                            // Envíe el texto al cuadro de entrada global y luego envíelo
   ...
   withTimeout(GENERATION_TIMEOUT_MS) { chatViewModel.state.first { !it.isStreaming } }
-  // 完成判定是"全局 isStreaming 回落",不是本任务维度的完成信号
+  // El juicio de finalización es"Respaldo global de isstreaming",No es una señal de finalización para esta dimensión de la tarea.
   val reply = sessionRepo.observeMessages(sessionId).first()
       .lastOrNull { it.role == ASSISTANT && it.content.isNotBlank() }?.content ?: ""
   ```
-  WebServer 的 `/a2a` 路由对每个请求开独立协程调用 `a2aHandler.sendMessage(params)`(WebServer.kt:659),无互斥、无队列。
-- 影响(三个可复现场景):
-  1. **人机干扰**:用户正在前台聊天时收到 A2A 调用 → `switchSession` 把全局当前会话切走,用户界面跳到另一个会话;A2A 文本还会经由全局 `updateInput` 写入共享输入状态。
-  2. **并发 A2A 错配**:两个 A2A SendMessage 并发到达,第二个的 `switchSession/createNewSession/send` 与第一个交错;两者的 `state.first { !it.isStreaming }` 都会在**任意一次**生成结束时被满足,第一个调用可能读到错误的(或空的)assistant 消息,却以 `COMPLETED` 返回。
-  3. **流式中误判**:用户正在流式生成时 A2A 进入,`streamingBefore=true` 跳过"等开始"直接等"结束",若 A2A 的 `send()` 实际未生效,会以用户那轮的尾部消息冒充本任务回复返回。
-  另外 `cancelTask(taskId)` 无任务维度校验,任何 taskId 都会 `chatViewModel.stop()` 停掉当前正在跑的(可能是用户自己的)生成(A2aHandler.kt:131-139)。
-- 建议:A2A 走独立无 UI 生成路径(与 TaskerTriggerReceiver 的 ChatService 单轮同构,或为 A2A 增加会话维度互斥 + 按 sessionId 订阅完成),`cancelTask` 只取消对应会话的任务;至少先加"A2A 串行互斥 + 有活跃 UI 生成时拒绝/排队"。
+  WebServer de `/a2a` El enrutador abre una llamada de rutina independiente para cada solicitud `a2aHandler.sendMessage(params)`(WebServer.kt:659),Sin exclusión mutua, sin cola.
+- influencia(Tres escenarios reproducibles):
+  1. **Interferencia hombre-máquina**:Llamada A2A recibida mientras el usuario chatea en primer plano → `switchSession` Cortar la sesión actual global,La interfaz de usuario salta a otra sesión;A2A El texto también pasa por el global. `updateInput` Escribir en estado de entrada compartido.
+  2. **Discrepancia A2A simultánea**:Dos mensajes A2A SendMessage llegan simultáneamente,el segundo `switchSession/createNewSession/send` intercalado con el primero;ambos `state.first { !it.isStreaming }` Estará allí**cualquier momento**está satisfecho al final de la generación,La primera llamada puede leer mal(o vacío)assistant noticias,pero con `COMPLETED` Devolver.
+  3. **Error de juicio en el streaming**:A2A entra mientras el usuario transmite la compilación,`streamingBefore=true` saltar"Espera para empezar"Sólo espera"fin",Si A2A `send()` En realidad no es efectivo,El último mensaje de la ronda del usuario se utilizará como respuesta a esta tarea.
+  Además `cancelTask(taskId)` Sin verificación de dimensión de tarea,Cualquier ID de tarea `chatViewModel.stop()` Detener lo que se está ejecutando actualmente(Puede ser propio del usuario.)generar(A2aHandler.kt:131-139).
+- Sugerencias:A2A Tome el camino de generación independiente de UI sin interfaz de usuario(Isomórfico a ChatService ronda única de TaskerTriggerReceiver,O agregue exclusión mutua de dimensión de sesión para completar la suscripción A2A + mediante sessionId),`cancelTask` Cancelar solo tareas correspondientes a la sesión;Al menos agrégalo primero"A2A Mutex serial + rechazar cuando hay generación de UI activa/cola".
 
-### F2. 接收器循环存在"永久死亡"路径,且进程内无任何重启兜底(P1,可信度:高)
+### F2. existe bucle receptor"muerte permanente"camino,Y no hay reinicio en el proceso.(P1,Credibilidad:alto)
 
-- 位置:
-  - `app/src/main/java/io/zer0/muse/channel/TelegramReceiver.kt:53-59, 93-98`(退出与 loadOffset 抛错)
-  - `app/src/main/java/io/zer0/muse/channel/ChannelStore.kt:22-30, 47-55`(load 失败/解密失败 → emptyList/空 secret)
-  - `app/src/main/java/io/zer0/muse/MuseApp.kt:153, 516-528`(appScope 携带 GlobalCoroutineExceptionHandler;restart 仅启动时一次)
-  - `app/src/main/java/io/zer0/muse/ui/settings/ChannelSettingsPage.kt:85-91`(唯一另一处 restart)
-- 证据:
+- ubicación:
+  - `app/src/main/java/io/zer0/muse/channel/TelegramReceiver.kt:53-59, 93-98`(Salir con error de lanzamiento de loadOffset)
+  - `app/src/main/java/io/zer0/muse/channel/ChannelStore.kt:22-30, 47-55`(load falló/Falló el descifrado → emptyList/vacío secret)
+  - `app/src/main/java/io/zer0/muse/MuseApp.kt:153, 516-528`(appScope llevar GlobalCoroutineExceptionHandler;restart Sólo una vez al inicio)
+  - `app/src/main/java/io/zer0/muse/ui/settings/ChannelSettingsPage.kt:85-91`(el único otro lugar restart)
+- evidencia:
   ```kotlin
-  // TelegramReceiver.pollLoop —— 拿不到启用配置就 return,循环退出
-  if (config == null) { Logger.i(TAG, "无启用中的 Telegram 渠道,接收循环退出"); return }
-  // cursor.channelId != config.id 时:
+  // TelegramReceiver.pollLoop —— Si no puede obtener la configuración habilitada, entonces return,salida de bucle
+  if (config == null) { Logger.i(TAG, "No hay canales activos de Telegram,recibir salida del bucle"); return }
+  // cursor.channelId != config.id tiempo:
   cursor = TelegramCursor(config.id, loadOffset(config.id))
   private fun loadOffset(channelId: String): Long? {
       ...
       return target.readText().trim().toLongOrNull()
-          ?: error("Telegram offset 文件格式无效")     // 在任何 try 之外抛出 → 整个 job 死亡
+          ?: error("Telegram offset Formato de archivo no válido")     // Tira fuera de cualquier intento. → todo el trabajo muere
   }
   ```
-  五个接收器完全同构:`connectLoop/pollLoop` 中 `config == null → return`。`config` 来自 `channelManager.refresh()` → `ChannelStore.load()`,后者 `runCatching { ... decrypt(it) }` 任何失败(文件读失败、`SecureKeyStore.decryptOrNull` 返回 null → decrypt 回退 "")都收敛为 `emptyList()`。job 由 `appScope`(SupervisorJob + GlobalCoroutineExceptionHandler)承载,**未捕获异常只记日志、job 终结、无人重启**;QQ/飞书/钉钉/WeClaw 循环体内虽对单次连接失败有 catch,但 `connectOnce` 里 `loadBuffer→restoreWeClawCursor→error("无法解密 WeClaw 同步游标")`(WeClawReceiver.kt:32-35, 125-129)等抛错点每次重试都复现。
-- 影响:
-  1. Telegram offset 文件一旦出现非数字内容(异常写入/人为破坏),接收循环**每次启动即死**,且永不自愈。
-  2. Keystore 失效类故障(部分机型清除锁屏凭据后 KeyStore 不可用)会让 `decrypt` 静默回退空串 → 所有平台 `appSecret.isBlank()` → **五条循环全部安静退出**,渠道整体失联;除非用户手动进设置页保存一次(但解密仍失败时同样退出)或杀进程重启(结果相同)。
-  3. 与群聊/定时任务不同,渠道接收器**没有 WorkManager 兜底**,也没有对 `config==null` 的重试/退避等待——进程被 ROM 杀掉后,渠道可用性只寄希望于下一次 WorkManager 拉起进程时的 Application.onCreate 副作用。
-- 建议:`config == null` 时不要 return,改为低频退避(如 30–60s)继续轮询,使"临时空列表/密钥暂不可用"可自愈;`loadOffset` 的格式错误走隔离+重置游标(丢一次游标好过死循环);job 死亡时由父级监督重启。
+  Cinco receptores son completamente isomorfos.:`connectLoop/pollLoop` en `config == null → return`.`config` de `channelManager.refresh()` → `ChannelStore.load()`,último `runCatching { ... decrypt(it) }` cualquier falla(La lectura del archivo falló,`SecureKeyStore.decryptOrNull` Regresar null → decrypt revertir "")todos convergen a `emptyList()`.job por `appScope`(SupervisorJob + GlobalCoroutineExceptionHandler)oso,**Las excepciones no detectadas sólo se registran,job Fin, nadie reinicia**;QQ/Feishu/DingTalk/WeClaw Aunque el cuerpo del bucle tiene un problema con una única falla de conexión, catch,pero `connectOnce` adentro `loadBuffer→restoreWeClawCursor→error("No se puede descifrar el cursor de sincronización de WeClaw")`(WeClawReceiver.kt:32-35, 125-129)Espere a que el punto de error vuelva a aparecer cada vez que vuelva a intentarlo.
+- influencia:
+  1. Telegram offset Una vez que aparece contenido no digital en un archivo(escritura de excepción/destrucción provocada por el hombre),recibir bucle**Muere cada vez que comienza.**,Y nunca se cura por sí solo.
+  2. Keystore Falla tipo falla(KeyStore no está disponible después de borrar las credenciales de la pantalla de bloqueo en algunos modelos)dejará `decrypt` Cadena vacía de respaldo silencioso → Todas las plataformas `appSecret.isBlank()` → **Los cinco bucles salen silenciosamente.**,El canal está completamente desconectado.;A menos que el usuario ingrese manualmente a la página de configuración y la guarde una vez(Sin embargo, se produce la misma salida cuando el descifrado sigue fallando.)O matar el proceso y reiniciarlo.(Mismo resultado).
+  3. chatear con grupo/Diferentes tareas programadas,receptor de canal**No hay WorkManager para realizar un seguimiento**,Tampoco está bien `config==null` reintentar/Retrocede y espera——Después de que la ROM elimine el proceso,La disponibilidad del canal solo depende del efecto secundario Application.onCreate la próxima vez que WorkManager inicie el proceso.
+- Sugerencias:`config == null` no lo hagas return,Cambiar a retroceso de baja frecuencia(Como por ejemplo 30–60s)Continuar encuestando,hacer"Lista vacía temporal/La clave no está disponible temporalmente"Puede autocurarse;`loadOffset` Los errores de formato se aíslan+Restablecer cursor(Es mejor perder el cursor una vez que tener un bucle infinito);job Los reinicios son supervisados ​​por los padres en caso de muerte.
 
-### F3. QQ WebSocket 无 RESUME 恢复:断连窗口内的事件静默丢失(P2,可信度:中)
+### F3. QQ WebSocket No hay recuperación de REANUDAR:Los eventos dentro de la ventana de desconexión se pierden silenciosamente(P2,Credibilidad:en)
 
-- 位置:`app/src/main/java/io/zer0/muse/channel/QqReceiver.kt:99-112, 145-171`
-- 证据:`connectOnce` 建立裸 WS 后只实现 op=10(Hello)/11(心跳 ACK)/0(dispatch)/7(重连)/9(无效会话);`lastSeq` 被采集(`obj["s"]... lastSeq.set(seq)`,:168-170)但**从未用于 op=6 RESUME**;断开后 `connectLoop` 固定 5s 后全新 Identify(QqReceiver.kt:79-83)。对比:Telegram 有持久化 offset(TelegramReceiver.kt:80-83)、WeClaw 有加密 buffer 持久化(WeClawReceiver.kt:96, 115)。
-- 影响:移动网络切换/服务端踢线等断连窗口内投递的消息,在无 RESUME 的全新会话里不会被 QQ 网关重放(平台语义),消息静默丢失;其他四平台在同等故障下都能靠游标/服务端重投 + inbox 去重找回。
-- 建议:实现 op=6 RESUME(lastSeq 已在手,缺 payload 与 session_id 保存),或至少在文档/基线里把"QQ 断连丢事件"标成已知边界。
+- ubicación:`app/src/main/java/io/zer0/muse/channel/QqReceiver.kt:99-112, 145-171`
+- evidencia:`connectOnce` Después de construir WS básico, solo implemente op=10(Hello)/11(latido del corazón ACK)/0(dispatch)/7(Reconectar)/9(Sesión no válida);`lastSeq` recogido(`obj["s"]... lastSeq.set(seq)`,:168-170)pero**nunca usado para op=6 RESUME**;Después de la desconexión `connectLoop` Nuevo después de arreglar 5s Identify(QqReceiver.kt:79-83). Contraste:Telegram tener perseverancia offset(TelegramReceiver.kt:80-83),WeClaw Persistencia del buffer cifrado(WeClawReceiver.kt:96, 115).
+- influencia:Cambio de red celular/Mensajes entregados dentro de la ventana de desconexión, como patadas del lado del servidor.,No será reproducido por la puerta de enlace QQ en una nueva sesión sin REANUDAR(semántica de plataforma),Los mensajes se pierden silenciosamente.;Las otras cuatro plataformas pueden confiar en el cursor bajo la misma falla./Reinversión del lado del servidor + deduplicación y recuperación de la bandeja de entrada.
+- Sugerencias:darse cuenta op=6 RESUME(lastSeq ya en la mano,Falta carga útil y session_id para guardar),O al menos en la documentación./línea de base"QQ Eventos intermitentes"Marcados como límites conocidos.
 
-### F4. 渠道三存储恢复失败即静默清零,无隔离备份(违反项目自家 quarantine 惯例)(P2,可信度:高)
+### F4. Si falla la recuperación del almacenamiento del canal tres, se borrará silenciosamente.,Sin respaldo de cuarentena(Violar las prácticas de cuarentena propias del proyecto.)(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/channel/ChannelInbox.kt:168-196`、`app/src/main/java/io/zer0/muse/channel/ChannelConversationStore.kt:70-84`、`app/src/main/java/io/zer0/muse/channel/WebhookEventDeduplicator.kt:45-50`
-- 证据:
+- ubicación:`app/src/main/java/io/zer0/muse/channel/ChannelInbox.kt:168-196`,`app/src/main/java/io/zer0/muse/channel/ChannelConversationStore.kt:70-84`,`app/src/main/java/io/zer0/muse/channel/WebhookEventDeduplicator.kt:45-50`
+- evidencia:
   ```kotlin
-  // ChannelInboxJournal.attach —— 解码失败仅记日志,继续用空列表;file 已置位,后续 record 会用新内容覆盖坏文件
-  }.onFailure { error -> Logger.w(TAG, "收件箱恢复失败: ${error.message}") }
-  // ChannelConversationStore.attach 同款
-  .onFailure { e -> Logger.w(TAG, "对话历史恢复失败: ${e.message}") }
-  // WebhookEventDeduplicator.loadEntries —— 解码失败/超容量直接 throw → attach 标记失败
+  // ChannelInboxJournal.attach —— Solo registros de fallas de decodificación,Continuar con la lista vacía;file conjunto,Los registros posteriores sobrescribirán el archivo defectuoso con contenido nuevo.
+  }.onFailure { error -> Logger.w(TAG, "Falló la recuperación de la bandeja de entrada: ${error.message}") }
+  // ChannelConversationStore.attach Mismo estilo
+  .onFailure { e -> Logger.w(TAG, "Error al recuperar el historial de conversaciones: ${e.message}") }
+  // WebhookEventDeduplicator.loadEntries —— Falló la decodificación/Super capacidad directa throw → attach Error al marcar
   require(loaded.size <= MAX_ENTRIES) { "Webhook event ledger exceeds its capacity" }
   ```
-  项目内已有 `AtomicFileStore.quarantine()`(AtomicFileStore.kt:47-65)与 DataStore 损坏备份(MuseSettingsDataStore)先例,这三处未使用。
-- 影响:JSON 真损坏(非撕裂写,如文件系统级错误/schema 不可逆漂移)时:①inbox 与 conversations 的 PENDING 队列、对话上下文**无声丢失**,首次新 record 落盘即覆盖坏文件;②去重账本不可用后,**所有带事件 ID 的入站 record 永久抛错**(ChannelInbox.kt:418-431 `error("Webhook event deduplication is unavailable...")`),webhook 恒 503、四条长轮询/长连接循环 5s 一次永久重试,只能清数据或重装才能恢复——fail-closed 方向正确,但缺少自愈出口。
-- 建议:attach 解码失败时 `AtomicFileStore.quarantine()` 保底再空启动;去重账本构造失败时同样隔离旧文件重建空账本(保留 fail-closed 只覆盖"恢复尝试失败后仍不可用"的场景)。
+  Ya en el proyecto `AtomicFileStore.quarantine()`(AtomicFileStore.kt:47-65)Copia de seguridad corrupta con DataStore(MuseSettingsDataStore)precedente,Estos tres lugares no se utilizan.
+- influencia:JSON realmente dañado(escritura sin lágrimas,Como errores a nivel del sistema de archivos./schema deriva irreversible)tiempo:①inbox Cola PENDIENTE con conversaciones, contexto de conversación**pérdida silenciosa**,La primera vez que se coloca un nuevo registro en el disco, se sobrescribirá el archivo defectuoso.;②Después de que el libro mayor de deduplicación no esté disponible,**Todos los registros entrantes con ID de eventos arrojan errores permanentemente**(ChannelInbox.kt:418-431 `error("Webhook event deduplication is unavailable...")`),webhook Heng 503, cuatro largas encuestas/Bucle de conexión largo 5 s, un reintento permanente,Solo se puede restaurar borrando datos o reinstalando——fail-closed dirección correcta,Pero falta una salida autorreparable.
+- Sugerencias:attach Cuando falla la decodificación `AtomicFileStore.quarantine()` Inicio garantizado y luego vacío.;Cuando falla la construcción del libro mayor de deduplicación, los archivos antiguos también se aíslan y se reconstruye el libro mayor vacío.(Dejar cerrado por error para anular únicamente"Aún no está disponible después de un intento fallido de recuperación"escena).
 
-### F5. 核实结果:ON_STOP 未停接收器、退避无抖动/无指数(DEDUPE 两条旧账均"未落地")(P2,可信度:高)
+### F5. Verificar resultados:ON_STOP El receptor no se detiene, no hay fluctuaciones durante el retroceso/Sin índice(DEDUPE Ambas cuentas antiguas son"aún no ha aterrizado")(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/MuseApp.kt:354-404`(ON_STOP 观察者只处理 ChatViewModel/memoryTicker/hooks,不触达五个 receiver);`grep` 全仓无任何 `receiver.stop()` 生产调用(仅各类自身 `fun stop()` 无人调用)。
-  退避现状:`ChannelInboxJournal.retryDelayMillis`(ChannelInbox.kt:476-479)指数退避封顶 5 分钟但**无抖动**;五个接收器重连/长轮询失败一律**固定 5s 常数**且无上限递增——`TelegramReceiver.kt:109`、`WeClawReceiver.kt:261`、`QqReceiver.kt:251`、`FeishuReceiver.kt:281`、`DingtalkReceiver.kt:190`。
-- 影响:①长时断网/平台故障期,五个循环以恒定 5s 频率打平台(电量 + 平台风控风险);②多设备/多实例同时重连有惊群效应(项目已有 `retryOnNetworkError` 的 0–30% 抖动先例,NetworkRetry.kt:46,未复用);③ON_STOP 不管理接收器本身是"渠道需 7×24 常驻"的合理取向,但与"无前台服务、无 WorkManager 兜底"叠加后,后台渠道存活率完全取决于 ROM。
-- 建议:接收器重连改为指数退避 + 抖动(复用 NetworkRetry);派发重试补抖动;评估渠道常驻前台服务或至少接入 WorkManager 拉活探测。
+- ubicación:`app/src/main/java/io/zer0/muse/MuseApp.kt:354-404`(ON_STOP Los observadores sólo manejan ChatViewModel/memoryTicker/hooks,sin tocar cinco receiver);`grep` Almacén lleno sin ningún `receiver.stop()` llamada de producción(solo los tipos mismos `fun stop()` nadie llama).
+  retirarse del status quo:`ChannelInboxJournal.retryDelayMillis`(ChannelInbox.kt:476-479)El retroceso exponencial tiene un límite de 5 minutos, pero**Sin nerviosismo**;Cinco receptores se vuelven a conectar/Las encuestas largas siempre fallan**Fijo 5s constante**Y no hay límite superior para el incremento.——`TelegramReceiver.kt:109`,`WeClawReceiver.kt:261`,`QqReceiver.kt:251`,`FeishuReceiver.kt:281`,`DingtalkReceiver.kt:190`.
+- influencia:①Desconexión prolongada/Tiempo de inactividad de la plataforma,Cinco ciclos para golpear la plataforma con una frecuencia constante de 5 segundos.(Riesgo de control de riesgos de potencia + plataforma);②Múltiples dispositivos/Varias instancias que se reconectan al mismo tiempo tienen un efecto de rebaño atronador.(El proyecto ya existe `retryOnNetworkError` de 0–30% Sacudir el precedente,NetworkRetry.kt:46,No reutilizado);③ON_STOP No gestionar el receptor en sí es"Necesidades del canal 7×24 permanente"orientación razonable,pero con"Sin servicio de recepción, sin WorkManager"Después de la superposición,La tasa de supervivencia del canal trasero depende completamente de la ROM.
+- Sugerencias:La reconexión del receptor se cambia a retroceso exponencial + fluctuación(Reutilizar NetworkRetry);Reintento de envío para compensar la inquietud;El canal de evaluación es un servicio front-end permanente o al menos conectado a WorkManager para activar la detección.
 
-### F6. 单消费者串行派发 + 100 槽跨平台共享收件箱:单渠道慢事件拖慢全平台,单渠道突发可致其他平台 503/拒收(P2,可信度:高;结论=已验证的设计现状 + 跨平台爆炸半径)
+### F6. Entrega en serie para un solo consumidor + bandeja de entrada compartida multiplataforma de 100 ranuras:Los eventos lentos en un solo canal ralentizan toda la plataforma,Los brotes en un solo canal pueden causar 503/rechazo en otras plataformas(P2,Credibilidad:alto;Conclusión=Estado de diseño probado + radio de explosión multiplataforma)
 
-- 位置:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:126-168, 380-408`、`app/src/main/java/io/zer0/muse/channel/ChannelInbox.kt:222, 268-280, 442-453`
-- 证据:dispatcher 是**全局单消费者** while 循环,`drainPending` 逐条处理直到队列空;单条事件最坏路径 = 5 轮 LLM×60s(`LLM_TIMEOUT_MS=60_000`,`MAX_TOOL_ROUNDS=5`,ChannelAutoReply.kt:816, 842)+ 工具调用无外层超时(`toolRegistry.executeFromJson` 直调,:598)+ 发送重试;`nextRetryDelayMillis` 在有 PROCESSING 项时恒返回 1s(ChannelInbox.kt:367-369),即慢处理期间循环以 1s 心跳空转但**不并行**。收件箱容量 `MAX_PENDING_ITEMS=100` 为**全平台共享**,超限 `throw ChannelInboxCapacityException()`(webhook → 503 平台重试;长轮询 → 5s 重试)。另外 `claimNextPending` 取 `indexOfFirst`,而 `retain` 把新事件**插到队首**(ChannelInbox.kt:223),积压时新消息反而先于旧消息被处理(LIFO)。
-- 影响(回答核心问题):单渠道故障**不会永久饿死**其他渠道(BLOCKED/退避保证队列排空,其它渠道消息最终被处理),但:①单条慢事件(模型慢/工具卡)可让**所有平台**的回复延迟数分钟;②单个活跃群聊突发可填满共享队列,令其他平台 webhook 收 503、长轮询反复拒绝;③积压场景下 LIFO 顺序使最早的用户等最久。
-- 建议:声明边界可保留,但建议:工具执行加外层超时;按平台/渠道做简单轮转(每轮从不同 platform 取件)或按渠道分桶并发;容量按平台配额。
+- ubicación:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:126-168, 380-408`,`app/src/main/java/io/zer0/muse/channel/ChannelInbox.kt:222, 268-280, 442-453`
+- evidencia:dispatcher si**consumidor único global** while bucle,`drainPending` Procese los elementos uno por uno hasta que la cola esté vacía;El peor camino de un solo evento. = 5 rueda LLM×60s(`LLM_TIMEOUT_MS=60_000`,`MAX_TOOL_ROUNDS=5`,ChannelAutoReply.kt:816, 842)+ Sin tiempo de espera de capa exterior para llamadas a herramientas(`toolRegistry.executeFromJson` melodía recta,:598)+ Enviar reintento;`nextRetryDelayMillis` Siempre regresa cuando hay un elemento PROCESANDO 1s(ChannelInbox.kt:367-369),Es decir, durante el procesamiento lento, el bucle está inactivo con un latido de 1 segundo pero**No paralelo**. Tamaño de la bandeja de entrada `MAX_PENDING_ITEMS=100` para**Compartido en todas las plataformas**,por encima del límite `throw ChannelInboxCapacityException()`(webhook → 503 Reintento de plataforma;encuesta larga → 5s Inténtalo de nuevo). Además `claimNextPending` tomar `indexOfFirst`,y `retain` poner nuevo evento**Salta al frente de la fila**(ChannelInbox.kt:223),Cuando se acumulan, los mensajes nuevos se procesan antes que los mensajes antiguos.(LIFO).
+- influencia(responder preguntas centrales):Fallo de un solo canal**No morirá de hambre para siempre**Otros canales(BLOCKED/El retroceso garantiza el vaciado de la cola,Los mensajes de otros canales eventualmente se procesan),pero:①Evento lento único(El modelo es lento./tarjeta de herramientas)Permitido**Todas las plataformas**Las respuestas se retrasan varios minutos.;②Una sola ráfaga de chat grupal activo puede llenar la cola compartida,Hacer que el webhook en otras plataformas reciba rechazos repetidos 503 y encuestas largas;③En el escenario de acumulación, el orden LIFO hace que los primeros usuarios esperen más.
+- Sugerencias:Declarar límites que deben preservarse,Pero se recomienda:Ejecución de herramienta más tiempo de espera de capa exterior;por plataforma/Rotación simple de canales.(Recoge objetos de diferentes plataformas en cada ronda.)O simultaneidad de depósitos por canal;La capacidad es por cuota de plataforma.
 
-### F7. 回发上下文令牌解密失败走无限 Retry 而非 BLOCKED,与 checkpoint 故障处理不一致(P2,可信度:高)
+### F7. El descifrado del token de contexto de devolución de datos falla y en su lugar se realiza un reintento infinito BLOCKED,Inconsistente con el manejo de fallas del punto de control(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:323-338` vs `:342-348, 416-418`
-- 证据:
+- ubicación:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:323-338` vs `:342-348, 416-418`
+- evidencia:
   ```kotlin
   val restored = when (inbound.platform) { ... restoreWeClawReplyContextToken(encrypted) ... }
   return restored?.let { ContextTokenOverride.Value(it) } ?: ContextTokenOverride.Unavailable
-  // Unavailable → HandleResult.Retry → retryDispatch → attemptCount 无上限,封顶 5 分钟一次,永不终止
+  // Unavailable → HandleResult.Retry → retryDispatch → attemptCount Sin límite superior,Limitado a 5 minutos,nunca termina
   ```
-  而 Agent checkpoint 不可读时显式转 `BLOCKED(CHECKPOINT_UNREADABLE)` 终态(ChannelAutoReply.kt:45-48, 347)。
-- 影响:Keystore 失效后,WeClaw/钉钉的带令牌入站事件以 5 分钟间隔**无限重试**(每次都重新解密失败),占住共享派发器节拍、刷日志;与"不可自动恢复转人工复核"的既有原则不一致。
-- 建议:令牌解密失败(非空白而是解密异常)归类为终态 BLOCKED(带错误码),与 checkpoint 同口径。
+  Cuando el punto de control del Agente es ilegible, se transfiere explícitamente a `BLOCKED(CHECKPOINT_UNREADABLE)` estado final(ChannelAutoReply.kt:45-48, 347).
+- influencia:Keystore Después del vencimiento,WeClaw/Eventos entrantes de DingTalk con tokens a intervalos de 5 minutos**reintentos infinitos**(El descifrado falla cada vez),Ocupar los registros de ritmo y actualización del despachador compartido;con"No se puede restaurar automáticamente a la revisión manual"son incompatibles con los principios existentes.
+- Sugerencias:Falló el descifrado del token(No en blanco pero excepción de descifrado)clasificado como estado final BLOCKED(con código de error),Mismo calibre que el puesto de control.
 
-### F8. 飞书 webhook 入站不解析 content JSON,模型收到原始 JSON 串;与长连接路径行为不一致(P2,可信度:高)
+### F8. El webhook entrante de Feishu no se analiza content JSON,El modelo recibe la cadena JSON sin formato.;Comportamiento inconsistente con rutas de conexión largas(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/web/WebhookDispatch.kt:70` vs `app/src/main/java/io/zer0/muse/channel/FeishuReceiver.kt:207-223`
-- 证据:
+- ubicación:`app/src/main/java/io/zer0/muse/web/WebhookDispatch.kt:70` vs `app/src/main/java/io/zer0/muse/channel/FeishuReceiver.kt:207-223`
+- evidencia:
   ```kotlin
-  // webhook 路径:text = message?.get("content")?.jsonPrimitive?.contentOrNull   ← content 本身是 JSON 字符串
-  // 长连接路径:parseTextContent(...) 解析 {"text": "..."} 并剥 @ 占位符
+  // webhook camino:text = message?.get("content")?.jsonPrimitive?.contentOrNull   ← content En sí misma es una cadena JSON
+  // largo camino de conexión:parseTextContent(...) analizar {"text": "..."} y quitar el marcador de posición @
   ```
-- 影响:开启 webhook 的飞书渠道,自动回复的"用户消息"是 `{"text":"你好"}` 这样的原始 JSON(图片则是 `{"image_key":"..."}`),既污染上下文也会让模型把 JSON 当正文复读;同为 FEISHU 平台两条入站路径行为分叉。
-- 建议:webhook 路径复用 `parseTextContent` 及消息类型占位映射。
+- influencia:Habilitar el canal webhook Feishu,respuesta automática"Mensajes de usuario"si `{"text":"Hola"}` tan original JSON(La imagen es `{"image_key":"..."}`),No solo contamina el contexto sino que también hace que el modelo lea JSON como texto.;Los comportamientos de dos rutas de entrada para la misma plataforma FEISHU divergen.
+- Sugerencias:webhook Reutilización de caminos `parseTextContent` Y mapeo de marcador de posición de tipo de mensaje.
 
-### F9. 发送失败重试后会话库保留第一次生成的回复,用户实际收到第二次的回复(上下文漂移)(P2,可信度:高)
+### F9. Después de que el envío falla y se vuelve a intentar, la biblioteca de conversaciones conserva la primera respuesta generada.,El usuario recibió la segunda respuesta.(deriva del contexto)(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:263-302` + `ChannelConversationStore.kt:114-136`
-- 证据:`sendPreparedReply` **先** `appendTurn(assistant, reply, dispatchId)` 再发送;发送失败 → Retry → 下轮 `prepareReply` 因 `preparedReply` 未持久化而**重新跑模型生成新文本** `reply'`;第二次 `appendTurn(assistant, reply', 同一 dispatchId)` 被 `channelDispatchTurnIdentity in recentDispatchTurnIds` 去重**跳过**(ChannelConversationStore.kt:118-119)。
-- 影响:重试成功后,对话上下文里是 reply(第一次),用户手机上收到的是 reply'(第二次);后续轮次模型基于未被用户看见的文本来延续对话,多轮后偏差累积。用户轮次有同样的 dispatchId 去重所以无重复(正确),仅 assistant 轮错位。
-- 建议:发送失败时把已生成回复也持久化为 preparedReply(回滚 assistant 轮次或先落 preparedReply 再入轮次),保证"所见即所存"。
+- ubicación:`app/src/main/java/io/zer0/muse/channel/ChannelAutoReply.kt:263-302` + `ChannelConversationStore.kt:114-136`
+- evidencia:`sendPreparedReply` **primero** `appendTurn(assistant, reply, dispatchId)` Enviar de nuevo;Envío fallido → Retry → próxima ronda `prepareReply` porque `preparedReply` no persistido**Vuelva a ejecutar el modelo para generar texto nuevo.** `reply'`;segunda vez `appendTurn(assistant, reply', mismo dispatchId)` ser `channelDispatchTurnIdentity in recentDispatchTurnIds` Eliminar duplicados**saltar**(ChannelConversationStore.kt:118-119).
+- influencia:Después de un reintento exitoso,El contexto de la conversación es reply(primera vez),Lo que recibe el usuario en su teléfono celular es reply'(segunda vez);El modelo de rondas posteriores continúa la conversación basándose en texto no visto por el usuario.,Las desviaciones se acumulan después de varias rondas. Las rondas de usuario tienen el mismo Id. de despacho para eliminar duplicados, de modo que no haya duplicaciones.(Correcto),Sólo la rueda auxiliar está desalineada.
+- Sugerencias:Cuando el envío falla, la respuesta generada también persiste como preparedReply(Revertir la ronda del asistente o soltar la respuesta preparada antes de ingresar a la ronda.),garantia"Lo que ves es lo que hay".
 
-### F10. Tasker 结果通知硬编码 policy="always",无视用户全局通知策略(P2,可信度:高)
+### F10. Tasker Notificación de resultados codificada policy="always",Ignorar la política de notificación global del usuario(P2,Credibilidad:alto)
 
-- 位置:`app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:103-110`、`app/src/main/java/io/zer0/muse/notification/MuseNotificationManager.kt:194-210`
-- 证据:`notifyChatCompletedWithPolicy(policy = "always", ...)`;而主链路把用户设置(`never/when_unfocused/always`)传入同一 API。
-- 影响:用户即使选择"从不通知",每次 Tasker 触发都会在 `chat_completed` 通道(IMPORTANCE_LOW)弹出通知。
-- 建议:改读用户策略,或在 Tasker 触发场景提供独立开关;另注意该通知无 POST_NOTIFICATIONS 权限检查(notify 静默丢弃,无用户可见反馈)。
+- ubicación:`app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:103-110`,`app/src/main/java/io/zer0/muse/notification/MuseNotificationManager.kt:194-210`
+- evidencia:`notifyChatCompletedWithPolicy(policy = "always", ...)`;El enlace principal configura al usuario.(`never/when_unfocused/always`)Pase la misma API.
+- influencia:Incluso si el usuario elige"nunca notificar",Cada vez que se activa Tasker estará en `chat_completed` canal(IMPORTANCE_LOW)Notificación emergente.
+- Sugerencias:Cambiar política de usuario,O proporcionar interruptores independientes en escenarios de activación de Tasker;Tenga en cuenta también que esta notificación no tiene verificación de permiso POST_NOTIFICATIONS.(notify descartar silenciosamente,No hay comentarios visibles del usuario).
 
-### F11. Tasker 入站无持久化队列:进程死亡/冻结即静默丢请求(P2,可信度:中)
+### F11. Tasker Cola entrante no persistente:El proceso muere/Congelar significa descartar solicitudes silenciosamente(P2,Credibilidad:en)
 
-- 位置:`app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:50-60, 63-80`
-- 证据:`goAsync()` + 自建 `CoroutineScope(SupervisorJob()+IO)` 跑最长 120s 的 LLM 调用;prompt 只存在于 Intent extra 与内存,无任何落盘。对比:渠道入站有 ChannelInbox 持久化队列。
-- 影响:后台进程在长 LLM 调用期间被冻结/杀掉(无前台服务保活),请求无声丢失,Tasker 侧得不到任何失败反馈(broadcast 已 finish 或进程死亡)。
-- 建议:入站即落盘(轻量队列或直接复用 ChannelInbox 模式),完成后回执;或至少缩短为快速失败 + 通知"触发失败"。
+- ubicación:`app/src/main/java/io/zer0/muse/intent/TaskerTriggerReceiver.kt:50-60, 63-80`
+- evidencia:`goAsync()` + autoconstruido `CoroutineScope(SupervisorJob()+IO)` Ejecute llamadas LLM por hasta 120 segundos;prompt Sólo existe en Intent extra y memoria.,Sin colocaciones. Contraste:El canal entrante tiene una cola de persistencia ChannelInbox.
+- influencia:Proceso en segundo plano congelado durante una larga llamada de LLM/matar(Manténgase vivo sin servicio de recepción),Solicitar pérdida silenciosa,Tasker No habrá comentarios de falla en el lateral.(broadcast Terminado o el proceso murió).
+- Sugerencias:Realizar pedidos al entrar(Cola ligera o reutilización directa del modo ChannelInbox),Recibo después de la finalización;O al menos abreviado para fallar rápido + notificación"El gatillo falló".
 
-### 附:低优先级备注(不计入发现)
+### adjunto:Notas de baja prioridad(No cuenta para el descubrimiento)
 
-- `FeishuPbbp2.decode` 对畸形长度字段无防御:`skipField` 的 `next + length.toInt()` 在 length 为超大值转 int 后为负,可使 `pos` 回退造成解析振荡,`copyOfRange` 越界依赖外层 `runCatching`(FeishuPbbp2.kt:98-104, 191-200)。对端是飞书服务端、攻击面小,建议补长度上界校验。
-- Telegram 重启瞬间新旧两个 pollLoop 可能并行 getUpdates ≤45s,触发 Telegram 409 冲突后 5s 自愈,可接受。
-- 媒体文件名 sanitize 已阻断路径穿越(`substringAfterLast('/')` + 时间戳前缀,WeClawReceiver.kt:200-203, 280-283);`channel_media` 清理保护集覆盖 inbox+对话引用( MuseApp.kt:301-320),但摘要压缩排出的旧轮次引用会在 30 天 TTL 后失效(设计内)。
+- `FeishuPbbp2.decode` No hay protección contra campos de longitud mal formados:`skipField` de `next + length.toInt()` Cuando la longitud es un valor muy grande y se convierte a int, se vuelve negativa.,disponible `pos` La reversión provoca oscilación en el análisis,`copyOfRange` Dependencia transfronteriza de la capa exterior `runCatching`(FeishuPbbp2.kt:98-104, 191-200). El par es el servidor Feishu y tiene una pequeña superficie de ataque.,Se recomienda complementar la verificación del límite superior de longitud.
+- Telegram En el momento del reinicio, los pollLoops nuevos y antiguos pueden ejecutarse en paralelo. getUpdates ≤45s,Activa Telegram 409 5 de autocuración después de un conflicto,Aceptable.
+- La desinfección del nombre del archivo multimedia ha bloqueado el recorrido de la ruta(`substringAfterLast('/')` + prefijo de marca de tiempo,WeClawReceiver.kt:200-203, 280-283);`channel_media` Conjunto de protección limpia anulación de bandeja de entrada+referencias de conversación( MuseApp.kt:301-320),Sin embargo, las referencias redondas antiguas expulsadas por la compresión de resumen caducarán después de 30 días TTL.(dentro del diseño).
 
-## DEDUPE_CHANNEL 重点方向核实结论
+## DEDUPE_CHANNEL Conclusiones clave de la verificación de la dirección.
 
-1. **五渠道接收器生命周期现状**:restart 仅两处(MuseApp.onCreate:516-528、ChannelSettingsPage:85-91);循环以"无启用配置即退出"自管理,无 ON_STOP/ON_START 联动、无前台服务、无 WorkManager 兜底 → 见 F2/F5。
-2. **ChannelInbox dispatcher 并发模型**:全局单消费者、跨平台串行,慢事件拖慢全平台但队列必排空(无永久饿死);100 槽容量全平台共享;claim 为 LIFO → 见 F6。
-3. **A2A/Tasker 与渠道入站的会话并发**:不共享 ChannelConversationStore(A2A 走 ChatViewModel+SessionRepository,Tasker 走 ChatService+SessionRepository),无同文件并发写;但 A2A 存在全局 ChatViewModel 劫持/并发错配 → 见 F1/F11。
-4. **webhook 慢 body deadline**:两条 webhook 路由(飞书/QQ)均经 `readLimitedRequestBody`(1MB/15s,WebhookRequestBody.kt:9-29, ChannelWebhookRoutes.kt:20-30, 67-77)——已全覆盖,闭环。
-5. **通知回传**:渠道自动回复不发本地通知(回复直达平台,设计内);Tasker 结果通知用 IMPORTANCE_LOW 通道但硬编码 always → F10。
-6. **channel_media 生命周期**:落盘 filesDir/channel_media(私有)、流式下载+上限保护+失败清理(WeClawClient.kt:303-352);清理器 30 天 TTL+512MB LRU+引用保护;缺口仅在 F4(存储恢复失败无隔离)与附注的压缩排出引用。
+1. **Estado actual del ciclo de vida del receptor de cinco canales**:restart solo dos lugares(MuseApp.onCreate:516-528,ChannelSettingsPage:85-91);Bucle con"Salir sin habilitar la configuración"autogestión,Sin enlace ON_STOP/ON_START, sin servicio front-end, sin cobertura de WorkManager → Ver F2/F5.
+2. **ChannelInbox dispatcher Modelo de concurrencia**:Consumidor único global, serialización multiplataforma,Los eventos lentos ralentizan toda la plataforma pero se debe vaciar la cola(Sin hambre permanente);100 La capacidad de las ranuras se comparte en todas las plataformas.;claim para LIFO → Ver F6.
+3. **A2A/Tasker Simultaneidad de sesión con canal entrante**:no compartir ChannelConversationStore(A2A ir ChatViewModel+SessionRepository,Tasker ir ChatService+SessionRepository),No hay escritura simultánea del mismo archivo.;Pero A2A hay un secuestro global de ChatViewModel/Discrepancia de simultaneidad → Consulte F1/F11.
+4. **webhook lento body deadline**:Dos rutas de webhook(Feishu/QQ)Todos los clásicos `readLimitedRequestBody`(1MB/15s,WebhookRequestBody.kt:9-29, ChannelWebhookRoutes.kt:20-30, 67-77)——Totalmente cubierto,Bucle cerrado.
+5. **Devolución de notificación**:La respuesta automática del canal no envía notificación local(Responder directamente a la plataforma,dentro del diseño);Tasker La notificación de resultados utiliza el canal IMPORTANCE_LOW pero está codificada always → F10.
+6. **channel_media ciclo de vida**:Realizar el pedido filesDir/channel_media(privado), descarga de transmisión+protección de tapa+limpieza fallida(WeClawClient.kt:303-352);Limpiador 30 días TTL+512MB LRU+protección ref;La brecha es sólo en F4(La recuperación del almacenamiento falla sin aislamiento)La compactación con anotaciones expulsa las referencias.
 
-## 已知项核对(确认不重复上报)
+## Comprobando elementos conocidos(Confirmar para no volver a informar)
 
-- **at-least-once 外发语义**(全局已知 1):`sendPreparedReply` 发送成功后才 `completeDispatch`,崩溃窗口重复发送——设计边界,未报。
-- **ProcessWriteGate volatile 语义**(全局已知 2):`persist()`/`claimEvent` 的写前检查(ChannelInbox.kt:426, 458;ChannelConversationStore.kt:213)与恢复期 1s 退避重试行为一致,未报。
-- **队列满拒绝 / PENDING 先落盘 / PROCESSING 恢复 / BLOCKED 不循环重试**(基线已确认):record→persist→claim 顺序(:222-230)、`recoverInterruptedDispatches`(:250-265)、`blockDispatch`(:316-328)均落实,未报。
-- **Telegram 整批入站才推进 offset**(基线已确认):TelegramReceiver.kt:66-89 逐条 record 成功后才 `saveOffset`,失败保留游标重试,闭环;仅存的"游标保存失败+>10min+>100 条历史淘汰"重放窗口过窄且被 inbox 匹配+去重账本双重缓解,未列为发现。
-- **WeClaw 游标/context token 加密持久化、写失败不推进**(基线已确认):WeClawReceiver.kt:96, 115-116, 21-41,闭环。
-- **QQ 绑定原 sourceEventId**(基线已确认):ChannelAutoReply.kt:277-291 + QqClient.replyContext(QqClient.kt:139-145)落实;60 分钟窗外回退主动消息正确,未报。
-- **恢复闸门 fail-closed / webhook 异常 503**(基线已确认):record 失败→503(ChannelWebhookRoutes.kt:44-49, 100-105)、恢复期 persist=false→check 抛错重试,闭环。
-- **渠道媒体清理保护**(基线已确认):MuseApp.kt:301-320,闭环。
-- **群聊 channel_reply/pass/read_context 与本链路无关**(GroupChatRepository 独立事务写,GroupChatRepository.kt:248-269),未报。
-- **安全已修项**(全局已知 11):webhook 默认关闭(ChannelModels.kt:34)、飞书加密回调 501(WebhookDispatch.kt:35-37)、QQ 签名/时间窗 fail-closed(WebhookAuthPolicy.kt:81-103)、钉钉 sessionWebhook 落盘脱敏(DingtalkReceiver.kt:22-27)、日志 PII 脱敏(Logger.kt:142-153),抽查达标,未报。
-- **真实平台矩阵验收缺失**(基线已知):未报;F3 的"QQ 无 RESUME 丢事件"基于平台公开语义标注可信度:中,建议真机验证。
+- **at-least-once semántica saliente**(Conocido mundialmente 1):`sendPreparedReply` Después de enviar con éxito `completeDispatch`,Ventana de bloqueo enviada repetidamente——límites de diseño,No reportado.
+- **ProcessWriteGate volatile Semántica**(Conocido mundialmente 2):`persist()`/`claimEvent` cheque previo a la escritura(ChannelInbox.kt:426, 458;ChannelConversationStore.kt:213)Consistente con el comportamiento de reintento de retroceso del período de recuperación 1,No reportado.
+- **Cola de rechazo completo / PENDIENTE de primera colocación / PROCESANDO recuperación / Reintento BLOQUEADO sin bucle**(Línea de base confirmada):record→persist→claim orden(:222-230),`recoverInterruptedDispatches`(:250-265),`blockDispatch`(:316-328)se implementan,No reportado.
+- **Telegram Sólo avance después de que todo el lote haya llegado. offset**(Línea de base confirmada):TelegramReceiver.kt:66-89 Sólo después de un registro exitoso uno por uno. `saveOffset`,No se pudo retener el cursor y volver a intentarlo,circuito cerrado;solo queda"Error al guardar el cursor+>10min+>100 eliminación histórica"La ventana de reproducción es demasiado estrecha y coincide con la bandeja de entrada.+Libro mayor duplicado doble relieve,No figura como descubrimiento.
+- **WeClaw Cursor/context token Persistencia cifrada, el error de escritura no avanza**(Línea de base confirmada):WeClawReceiver.kt:96, 115-116, 21-41,Bucle cerrado.
+- **QQ encuadernación original sourceEventId**(Línea de base confirmada):ChannelAutoReply.kt:277-291 + QqClient.replyContext(QqClient.kt:139-145)implementar;60 El mensaje activo de reversión de ventana de minutos es correcto,No reportado.
+- **Error de puerta de recuperación cerrada/excepción de webhook 503**(Línea de base confirmada):record falló→503(ChannelWebhookRoutes.kt:44-49, 100-105), período de recuperación persist=false→check Tira un error y vuelve a intentarlo.,Bucle cerrado.
+- **Protección de limpieza de medios de canal**(Línea de base confirmada):MuseApp.kt:301-320,Bucle cerrado.
+- **El chat grupal channel_reply/pass/read_context no tiene nada que ver con este enlace**(GroupChatRepository escritura independiente,GroupChatRepository.kt:248-269),No reportado.
+- **La seguridad ha sido arreglada.**(Conocido mundialmente 11):webhook Desactivado de forma predeterminada(ChannelModels.kt:34), devolución de llamada de cifrado Feishu 501(WebhookDispatch.kt:35-37),QQ firma/ventana de tiempo fail-closed(WebhookAuthPolicy.kt:81-103), sesión de DingTalkDesensibilización de webhook(DingtalkReceiver.kt:22-27), log desensibilización PII(Logger.kt:142-153),La inspección aleatoria cumple con los estándares,No reportado.
+- **Falta la aceptación de la matriz de plataforma real**(Se conoce la línea de base):No reportado;F3 de"QQ Ningún evento perdido de REANUDAR"Credibilidad de anotación semántica abierta basada en la plataforma:en,Se recomienda verificar con un dispositivo real.
 
-## 建议修复优先级
+## Prioridades de corrección sugeridas
 
-1. **F1**(A2A 会话隔离)——v2.5.8 已发行的功能,并发/人机共存必现错配。
-2. **F2**(接收器永久死亡路径)——可用性根因,改动小(config==null 退避等待 + loadOffset 容错)。
-3. **F6/F7**(派发器超时与 BLOCKED 口径)——共享队列下的体验与一致性。
+1. **F1**(A2A aislamiento de sesión)——v2.5.8 Funciones lanzadas,concurrencia/Cuando los humanos y las máquinas coexisten, inevitablemente habrá desajustes.
+2. **F2**(Ruta de muerte permanente del receptor)——causa raíz de usabilidad,Pequeños cambios(config==null Espera de retroceso + tolerancia a fallas de compensación de carga).
+3. **F6/F7**(Tiempo de espera del despachador y calibre BLOQUEADO)——Experiencia y consistencia bajo colas compartidas.

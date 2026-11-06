@@ -18,39 +18,39 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Phase 8.9: 第三方客户端配置导入器。
+ * Phase 8.9: Importador de configuración de clientes de terceros.
  *
- * 支持两种格式(自动嗅探,无需用户指定来源):
- *  - **CherryStudio**: 导出 JSON 含 `providers` 数组,字段为
- *    `id` / `name` / `apiHost` / `apiKey` / `models[]`(每项 `{id,name}` 或纯字符串)
- *  - **Chatbox**: 导出 JSON 含 `providers` 数组或 `settings.<providerId>` map,
- *    字段类似(`endpoint` 或 `apiHost` 作为 baseUrl)
+ * Soporta dos formatos(olfateo automático,No es necesario que el usuario especifique la fuente):
+ *  - **CherryStudio**: Exportar JSON con `providers` matriz,Los campos son
+ *    `id` / `name` / `apiHost` / `apiKey` / `models[]`(Cada artículo `{id,name}` o cuerda simple)
+ *  - **Chatbox**: Exportar JSON con `providers` matriz o `settings.<providerId>` map,
+ *    Los campos son similares(`endpoint` o `apiHost` como baseUrl)
  *
- * 设计:
- *  - 纯字符串/JSON 解析,不依赖任何外部 schema 库
- *  - 每个 Provider 转换为 [ProviderConfig] 并写入 [SettingsRepository.addProvider]
- *  - id 冲突时跳过(不覆盖已有 Provider)
- *  - 类型推断:baseUrl 含 `anthropic.com` → ANTHROPIC;含 `gemini`/`googleapis` → GEMINI;其他 → OPENAI
- *  - 不导入模型能力/视觉/流式标记(用户后续手动完善)
+ * diseño:
+ *  - cadena simple/JSON analizar,No depende de ninguna biblioteca de esquemas externa
+ *  - Cada proveedor se convierte a [ProviderConfig] y escribe [SettingsRepository.addProvider]
+ *  - id Saltar el conflicto(No sobrescribir existente Provider)
+ *  - inferencia de tipos:baseUrl Contiene `anthropic.com` → ANTHROPIC;Contiene `gemini`/`googleapis` → GEMINI;Otros → OPENAI
+ *  - No hay capacidad para importar modelos./Visión/marcado de transmisión(Posteriormente, los usuarios mejoran manualmente)
  *
- * 限制:
- *  - 不导入对话历史(CherryStudio/Chatbox 各自的会话格式与 muse 的 SessionEntity 不兼容)
- *  - 不导入 Assistant / QuickMessage / Lorebook 等高级配置(各客户端字段差异大)
- *  - CherryStudio 的 `isSystem` 标志忽略(已通过 id 冲突跳过处理)
+ * Límite:
+ *  - No importar el historial de conversaciones(CherryStudio/Chatbox Los respectivos formatos de sesión son incompatibles con SessionEntity de muse.)
+ *  - no importar Assistant / QuickMessage / Lorebook y otras configuraciones avanzadas(Los campos varían mucho entre los clientes.)
+ *  - CherryStudio de `isSystem` bandera ignorada(Procesamiento omitido por conflicto de identificación)
  *
- * @param settings muse 设置仓库(用于 addProvider)
+ * @param settings muse Configurar almacén(usado para addProvider)
  */
 class ConfigImporter(
     private val settings: SettingsRepository,
 ) {
 
     /**
-     * 导入结果。
-     * @param imported 成功导入的 Provider 数量
-     * @param skipped 跳过的 Provider 数量(id 冲突或字段缺失)
-     * @param providers 导入的 Provider 名称列表(用于 UI 提示)
-     * @param skippedProviders 问题7.5: 被跳过的 Provider 名称列表(id 冲突场景),
-     *   供 UI 弹提示"以下 Provider 已存在,已跳过:xxx"
+     * Importa los resultados.
+     * @param imported Número de proveedores importados correctamente
+     * @param skipped Número de proveedores omitidos(id Conflicto o campo faltante)
+     * @param providers Lista de nombres de proveedores importados(para indicaciones de la interfaz de usuario)
+     * @param skippedProviders pregunta7.5: Lista de nombres de proveedores que se deben omitir(id Escena de conflicto),
+     *   Proporcionar mensajes emergentes en la interfaz de usuario"El siguiente proveedor ya existe,saltado:xxx"
      */
     data class Result(
         val imported: Int,
@@ -60,14 +60,14 @@ class ConfigImporter(
     )
 
     /**
-     * 从 SAF URI 读取并导入配置。
-     * @return [Result];解析失败时 imported=0
+     * Leer e importar la configuración desde SAF URI.
+     * @return [Result];Cuando falla el análisis imported=0
      */
     suspend fun importFromUri(context: Context, uri: Uri): Result = withContext(Dispatchers.IO) {
-        // 大小限制已移除(用户需求:完整去除导入数据大小限制),保留 2GB 兜底防 OOM
+        // Límite de tamaño eliminado(Necesidades del usuario:Eliminar completamente el límite de tamaño de datos de importación),Mantenga 2 GB por seguridad OOM
         val text = resultOf {
             context.contentResolver.openInputStream(uri)?.use { input ->
-                val MAX_READ_BYTES = 2L * 1024 * 1024 * 1024 // 2GB 兜底
+                val MAX_READ_BYTES = 2L * 1024 * 1024 * 1024 // 2GB Ten todo en cuenta
                 val sb = StringBuilder()
                 val buffer = CharArray(8192)
                 var total = 0L
@@ -77,7 +77,7 @@ class ConfigImporter(
                         if (read <= 0) break
                         total += read
                         if (total > MAX_READ_BYTES) {
-                            error("文件过大,超过 ${MAX_READ_BYTES / 1024 / 1024 / 1024}GB 限制")
+                            error("Archivo demasiado grande,exceder ${MAX_READ_BYTES / 1024 / 1024 / 1024}GB Límite")
                         }
                         sb.append(buffer, 0, read)
                     }
@@ -86,20 +86,20 @@ class ConfigImporter(
             }
         }.getOrNull()
         if (text.isNullOrBlank()) {
-            Logger.w("ConfigImporter", "读取导入文件失败或内容为空")
+            Logger.w("ConfigImporter", "No se pudo leer el archivo de importación o el contenido está vacío")
             return@withContext Result(0, 0, emptyList())
         }
         importFromJson(text)
     }
 
     /**
-     * 从 JSON 字符串解析并导入 Provider。
-     * 自动嗅探 CherryStudio / Chatbox 格式。
+     * Analizar e importar proveedor desde una cadena JSON.
+     * Huele automáticamente los formatos CherryStudio/Chatbox.
      * @return [Result]
      */
     suspend fun importFromJson(jsonText: String): Result = withContext(Dispatchers.IO) {
         val root = resultOf { AppJson.parseToJsonElement(jsonText) }.getOrNull() ?: run {
-            Logger.w("ConfigImporter", "JSON 解析失败")
+            Logger.w("ConfigImporter", "JSON El análisis falló")
             return@withContext Result(0, 0, emptyList())
         }
         if (root !is JsonObject) return@withContext Result(0, 0, emptyList())
@@ -110,9 +110,9 @@ class ConfigImporter(
         var imported = 0
         var skipped = 0
         val names = mutableListOf<String>()
-        // 问题7.5: 记录因 id 冲突被跳过的 Provider 名称,供 UI 提示
+        // pregunta7.5: Registre el nombre del proveedor que se omitió debido a un conflicto de identificación,Proporcionar indicaciones de la interfaz de usuario
         val skippedNames = mutableListOf<String>()
-        // 取一次已存在的 provider id 集合,用于去重(id 冲突时跳过,不覆盖)
+        // Obtener una colección de ID de proveedor existente,Se utiliza para eliminar duplicados.(id Saltar el conflicto,No cubierto)
         val existingIds = settings.providersFlow.first().map { it.id }.toSet()
         for (raw in rawProviders) {
             val cfg = parseProvider(raw) ?: run {
@@ -120,16 +120,16 @@ class ConfigImporter(
                 continue
             }
             if (cfg.id in existingIds) {
-                // id 冲突 → 跳过(不覆盖)
+                // id conflicto → saltar(No cubierto)
                 skipped++
                 skippedNames += cfg.displayName
                 Logger.i("ConfigImporter", "Skip duplicate provider: ${cfg.id} (${cfg.displayName})")
                 continue
             }
-            // 问题7.4: apiKey 明文风险已由 SettingsRepository 内部消除 —
-            // addProvider → encodeProviders 已对每个 ProviderConfig.apiKey 调用
-            // SecureKeyStore.encrypt(Android Keystore AES-256-GCM),持久化层为密文。
-            // 此处无需额外加密,直接传入明文 apiKey 即可。
+            // pregunta7.4: apiKey El riesgo de texto claro ha sido eliminado internamente por SettingsRepository —
+            // addProvider → encodeProviders Llamado para cada ProviderConfig.apiKey
+            // SecureKeyStore.encrypt(Android Keystore AES-256-GCM),La capa de persistencia es texto cifrado.
+            // No se requiere cifrado adicional aquí,Simplemente pase la apiKey en texto plano directamente.
             settings.addProvider(cfg)
             imported++
             names += cfg.displayName
@@ -138,14 +138,14 @@ class ConfigImporter(
     }
 
     /**
-     * 从根对象提取 Provider JSON 对象列表。
-     * 支持三种结构:
-     *  - `providers: [...]`(CherryStudio / 新版 Chatbox)
-     *  - `settings: { <providerId>: { ... } }`(旧版 Chatbox)
-     *  - 直接是数组(部分导出格式)
+     * Extrae una lista de objetos JSON del proveedor del objeto raíz.
+     * Soporta tres estructuras.:
+     *  - `providers: [...]`(CherryStudio / nueva versión Chatbox)
+     *  - `settings: { <providerId>: { ... } }`(versión antigua Chatbox)
+     *  - Directamente una matriz(Algunos formatos de exportación)
      */
     private fun extractProviderList(root: JsonObject): List<JsonObject> {
-        // 1. root.providers 数组
+        // 1. root.providers matriz
         val providers = root["providers"]
         if (providers is JsonArray) {
             return providers.mapNotNull { it as? JsonObject }
@@ -153,16 +153,16 @@ class ConfigImporter(
         // 2. root.settings.<id> map
         val settingsObj = root["settings"]
         if (settingsObj is JsonObject) {
-            // 把 map 的 key 作为 provider id 注入对象
+            // Inyecte la clave del mapa en el objeto como la identificación del proveedor
             return settingsObj.entries.mapNotNull { (id, v) ->
                 if (v is JsonObject) mergeProviderId(v, id) else null
             }
         }
-        // 3. root 直接是数组(理论上 root 已是 JsonObject,这里兜底)
+        // 3. root Directamente una matriz(Teóricamente la raíz ya está JsonObject,Aquí está el resultado final)
         return emptyList()
     }
 
-    /** 把 map 的 key 合并到对象作为 id 字段(若对象无 id)。 */
+    /** Fusionar la clave del mapa en el objeto como campo de identificación(Si el objeto no tiene id). */
     private fun mergeProviderId(obj: JsonObject, id: String): JsonObject {
         val map = obj.toMutableMap()
         if (map["id"] == null) map["id"] = JsonPrimitive(id)
@@ -170,8 +170,8 @@ class ConfigImporter(
     }
 
     /**
-     * 把单个 Provider JSON 对象解析为 [ProviderConfig]。
-     * 兼容字段:
+     * Analizar un único objeto JSON de proveedor en [ProviderConfig].
+     * Campos compatibles:
      *  - id / name / displayName
      *  - apiHost / endpoint / baseUrl
      *  - apiKey / key
@@ -184,7 +184,7 @@ class ConfigImporter(
         val apiKey = strField(obj, "apiKey") ?: strField(obj, "key") ?: ""
         val type = inferType(baseUrl, id)
         val models = parseModels(obj["models"], id)
-        // 跳过完全无 apiKey 且无 models 的空 Provider(常见于未启用的内置项)
+        // Omita los vacíos sin apiKey ni modelos Provider(Comúnmente visto con elementos integrados que no están habilitados)
         if (apiKey.isBlank() && models.isEmpty()) return null
         return ProviderConfig(
             id = sanitizeId(id),
@@ -196,7 +196,7 @@ class ConfigImporter(
         )
     }
 
-    /** 根据 baseUrl / id 推断 Provider 类型。 */
+    /** El tipo de proveedor se infiere en función de baseUrl/id. */
     private fun inferType(baseUrl: String, id: String): ProviderType {
         val combined = (baseUrl + id).lowercase()
         return when {
@@ -207,8 +207,8 @@ class ConfigImporter(
     }
 
     /**
-     * 解析 models 字段。
-     * 支持:数组元素为 string / {id,name} / {id}。
+     * Analiza el campo de modelos.
+     * apoyo:Los elementos de la matriz son string / {id,name} / {id}.
      */
     private fun parseModels(element: JsonElement?, providerId: String): List<Model> {
         if (element !is JsonArray) return emptyList()
@@ -225,21 +225,21 @@ class ConfigImporter(
         }
     }
 
-    /** 从 JsonObject 取字符串字段(支持 JsonPrimitive.content)。 */
+    /** Obtener campo de cadena de JsonObject(apoyo JsonPrimitive.content). */
     private fun strField(obj: JsonObject, key: String): String? {
         val v = obj[key] ?: return null
         return (v as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
     }
 
     /**
-     * 把任意字符串转为合法 Provider id(避免路径分隔符/空格)。
-     * 保留字母数字 + 横杠 + 下划线 + 点,其余替换为下划线。
+     * Convierte cualquier cadena a legal Provider id(Evite los separadores de caminos/espacio).
+     * Mantener alfanumérico + guión + subrayado + punto,El resto se reemplaza con guiones bajos.
      */
     private fun sanitizeId(raw: String): String =
         raw.lowercase().replace(INVALID_ID_CHAR_REGEX, "_").take(64).ifBlank { "imported_${System.currentTimeMillis()}" }
 
     companion object {
-        // L6: 把 Regex 提到 companion object 复用,避免每次调用 sanitizeId 都新建实例
+        // L6: Reutilizar Regex como objeto complementario,Evite crear una nueva instancia cada vez que se llame a sanitizeId
         private val INVALID_ID_CHAR_REGEX = Regex("[^a-z0-9._-]")
     }
 }

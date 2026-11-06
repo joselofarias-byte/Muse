@@ -67,17 +67,17 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 /**
- * P2-9: 语音克隆页 — 全屏工具页。
+ * P2-9: Página de clonación de voz — Página de herramientas en pantalla completa.
  *
- * 布局:
- *  - MuseTopBar:返回 + 标题「语音克隆」
- *  - Provider 选择(FilterChip,当前仅 elevenlabs,后续可扩展)
- *  - API Key 输入框(OutlinedTextField + PasswordVisualTransformation)
- *  - 「克隆新语音」表单:语音名称输入 + 选择样本音频按钮 + 提交按钮(Surface + clickable)
- *  - 已克隆语音列表(LazyColumn):每行显示 name + voiceId + 删除按钮
+ * Diseño:
+ *  - MuseTopBar:Volver + Título "Clon de voz"
+ *  - Provider elegir(FilterChip,Actualmente solo elevenlabs,Se puede ampliar más tarde)
+ *  - API Key Cuadro de entrada(OutlinedTextField + PasswordVisualTransformation)
+ *  - Formulario "Clonar nueva voz":Entrada de nombre de voz + botón Seleccionar audio de muestra + botón Enviar(Surface + clickable)
+ *  - Clonar lista de voces(LazyColumn):Cada línea muestra nombre + ID de voz + botón de eliminar
  *
- * 设计令牌:[MuseShapes] / [MusePaddings],不使用 Material3 默认 Button / AlertDialog
- * (提交按钮用 Surface+clickable,删除确认弹窗用 [MuseDialog])。
+ * ficha de diseño:[MuseShapes] / [MusePaddings],No utilizar Material3 por defecto Button / AlertDialog
+ * (Para el botón enviar Surface+clickable,Eliminar ventana emergente de confirmación [MuseDialog]).
  */
 @Composable
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
@@ -87,13 +87,14 @@ fun VoiceCloningPage(
     elevenLabsProvider: ElevenLabsVoiceCloningProvider = koinInject(),
     fishProvider: FishAudioVoiceCloningProvider = koinInject(),
     settings: SettingsRepository = koinInject(),
-    /** v2.6.7 fix (AUDIT F21): 试听用。 */
+    /** v2.6.7 fix (AUDIT F21): Para uso de prueba. */
     ttsManager: TtsManager = koinInject(),
 ) {
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
 
-    // ── 表单状态(rememberSaveable 保证旋转/配置变更后保留;Uri 用 remember 避免序列化兼容问题)──
+    // ── estado del formulario(rememberSaveable Rotación garantizada/Conservar después de cambios de configuración;Uri Utilice recordar para evitar problemas de compatibilidad de serialización.)──
     var selectedProvider by rememberSaveable { mutableStateOf("elevenlabs") }
     var apiKey by rememberSaveable { mutableStateOf("") }
     var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
@@ -101,28 +102,28 @@ fun VoiceCloningPage(
     var selectedAudioUri by remember { mutableStateOf<Uri?>(null) }
     var selectedAudioLabel by rememberSaveable { mutableStateOf("") }
 
-    // ── 操作状态 ──
+    // ── estado de funcionamiento ──
     var isCloning by rememberSaveable { mutableStateOf(false) }
     var isLoadingList by rememberSaveable { mutableStateOf(false) }
     var isDeleting by rememberSaveable { mutableStateOf(false) }
     val voices = remember { mutableStateListOf<ClonedVoice>() }
 
-    // 删除确认弹窗状态(不使用 Material3 AlertDialog,使用 MuseDialog)
+    // Eliminar el estado de la ventana emergente de confirmación(No usado Material3 AlertDialog,uso MuseDialog)
     var voiceToDelete by remember { mutableStateOf<ClonedVoice?>(null) }
 
-    // ── 音频文件选择器(SAF OpenDocument,选 audio/* 类型)──
+    // ── Selector de archivos de audio(SAF OpenDocument,elegir audio/* Tipo)──
     val pickAudioLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri != null) {
             selectedAudioUri = uri
-            // 显示文件名(从 Uri 取 lastPathSegment 作为可读标识)
+            // Mostrar nombre de archivo(Obtenga lastPathSegment de Uri como identificador legible)
             selectedAudioLabel = uri.lastPathSegment?.substringAfterLast('/')
                 ?: uri.toString()
         }
     }
 
-    // ── 预提取 stringResource(非 Composable lambda 内不能直接调用)──
+    // ── captación previa stringResource(No se puede llamar directamente dentro de lambda no componible)──
     val strSuccess = stringResource(R.string.voice_cloning_success)
     val strKeySaved = stringResource(R.string.voice_cloning_key_saved)
     val strKeyFromProvider = stringResource(R.string.voice_cloning_key_from_provider)
@@ -130,9 +131,9 @@ fun VoiceCloningPage(
     val strEmpty = stringResource(R.string.voice_cloning_list_empty)
     val strDeleteConfirm = stringResource(R.string.voice_cloning_delete_confirm)
 
-    // v1.0.74 fix (前端审计 1.5): apiKey 每字符触发网络请求 → 500ms debounce。
-    // 原实现 LaunchedEffect(selectedProvider, apiKey) 里 apiKey 是实时输入态,
-    // 用户每敲一个字符都 listClonedVoices,输入卡顿且烧 API 配额。
+    // v1.0.74 fix (Auditoría inicial 1.5): apiKey Activar solicitud de red por carácter → 500ms debounce.
+    // Implementación original LaunchedEffect(selectedProvider, apiKey) Aquí apiKey es el estado de entrada en tiempo real.,
+    // Cada vez que el usuario escribe un carácter, listClonedVoices,Los retrasos en la entrada y la cuota de API se queman.
     LaunchedEffect(selectedProvider) {
         snapshotFlow { apiKey.trim() }
             .debounce(500)
@@ -141,7 +142,7 @@ fun VoiceCloningPage(
                     voices.clear()
                     return@collect
                 }
-                // 透传 apiKey 到 ElevenLabs provider(后续 provider 可扩展类似 setter)
+                // Transmitir transparentemente apiKey a ElevenLabs provider(Los proveedores posteriores se pueden ampliar como setter)
                 if (selectedProvider == "elevenlabs") {
                     elevenLabsProvider.apiKey = key
                 }
@@ -171,8 +172,8 @@ fun VoiceCloningPage(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // v1.132: 整页统一可滚动(表单 + 已克隆语音列表一起滚动),
-        // 不再让语音列表固定在底部钻毛一块区域
+        // v1.132: Toda la página se puede desplazar uniformemente.(Formulario + lista de voces clonadas desplazarse juntas),
+        // Ya no permite que la lista de voces se fije en un área aproximada en la parte inferior
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -183,7 +184,7 @@ fun VoiceCloningPage(
                 .padding(horizontal = MusePaddings.screen, vertical = MusePaddings.contentGap),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.sectionGap),
         ) {
-            // ── 服务商选择(FilterChip 行)──
+            // ── Selección de proveedor de servicios(FilterChip OK)──
             FormSection(label = stringResource(R.string.voice_cloning_provider)) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -199,7 +200,7 @@ fun VoiceCloningPage(
                 }
             }
 
-            // ── API Key 输入 ──
+            // ── API Key entrada ──
             FormSection(label = stringResource(R.string.voice_cloning_api_key)) {
                 MuseTextField(
                     value = apiKey,
@@ -214,7 +215,7 @@ fun VoiceCloningPage(
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
-                        // v1.132: 替换原 emoji(🙈/👁)为 Material Icons,与 ProviderSection 风格一致
+                        // v1.132: Reemplazar originales emoji(🙈/👁)para Material Icons,Consistente con el estilo ProviderSection
                         MuseTactileButton(
                             icon = if (apiKeyVisible) {
                                 MuseIcons.eyeOff
@@ -232,9 +233,9 @@ fun VoiceCloningPage(
                 )
             }
 
-            // ── 克隆新语音表单 ──
+            // ── Clonar nueva forma de voz ──
             FormSection(label = stringResource(R.string.voice_cloning_new_voice)) {
-                // 语音名称输入
+                // Entrada de nombre de voz
                 MuseTextField(
                     value = voiceName,
                     onValueChange = { voiceName = it },
@@ -253,7 +254,7 @@ fun VoiceCloningPage(
 
                 Spacer(Modifier.height(MusePaddings.contentGap))
 
-                // 选择样本音频按钮(Surface + clickable,不用 Material3 Button)
+                // Botón Seleccionar audio de muestra(Surface + clickable,No hay necesidad Material3 Button)
                 Surface(
                     shape = MuseShapes.medium,
                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -297,7 +298,7 @@ fun VoiceCloningPage(
 
                 Spacer(Modifier.height(MusePaddings.contentGap))
 
-                // 提交按钮(Surface + clickable,不用 Material3 Button)
+                // botón enviar(Surface + clickable,No hay necesidad Material3 Button)
                 Surface(
                     shape = MuseShapes.medium,
                     color = if (isCloning) {
@@ -326,7 +327,7 @@ fun VoiceCloningPage(
                             }
                             scope.launch {
                                 isCloning = true
-                                // 读音频文件 + base64 编码(必须在 IO 线程)
+                                // Leer archivo de audio + codificación base64(Debe estar en el hilo IO)
                                 val base64Result = withContext(Dispatchers.IO) {
                                     runCatching {
                                         context.contentResolver.openInputStream(uri)?.use {
@@ -351,7 +352,7 @@ fun VoiceCloningPage(
                                     return@launch
                                 }
 
-                                // 透传 apiKey 到 provider(防止用户刚改完未触发 LaunchedEffect)
+                                // Transmitir transparentemente apiKey a provider(Evitar que el usuario se active justo después de realizar cambios LaunchedEffect)
                                 if (selectedProvider == "elevenlabs") {
                                     elevenLabsProvider.apiKey = apiKey.trim()
                                 }
@@ -366,9 +367,9 @@ fun VoiceCloningPage(
                                     sampleAudioBase64 = base64,
                                 ).onSuccess { voiceId ->
                                     MuseToast.show(strSuccess, 2000)
-                                    // B6-04: 克隆成功自动设为当前 TTS 音色；手动模式下把输入框里的
-                                    // API Key 一并落库 —— 只写引擎与音色的结果是：音色看起来换上了，
-                                    // 云端合成却因 key 为空直接失败，静默回落系统 TTS。
+                                    // B6-04: Si la clonación tiene éxito, se establecerá automáticamente como el tono TTS actual; en modo manual, cambie el
+                                    // API Key almacenar juntos —— El resultado de simplemente escribir el motor y el timbre es: el timbre parece haber cambiado,
+                                    // La síntesis en la nube falló directamente porque la clave estaba vacía y silenciosamente volvió al TTS del sistema.
                                     var followProvider = false
                                     runCatching {
                                         val media = settings.mediaConfigFlow.first()
@@ -386,11 +387,11 @@ fun VoiceCloningPage(
                                             2500,
                                         )
                                     }
-                                    // 重置表单
+                                    // Restablecer formulario
                                     voiceName = ""
                                     selectedAudioUri = null
                                     selectedAudioLabel = ""
-                                    // 刷新列表
+                                    // Actualizar lista
                                     voiceCloningService.listClonedVoices(selectedProvider)
                                         .onSuccess { list ->
                                             voices.clear()
@@ -446,9 +447,9 @@ fun VoiceCloningPage(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(MusePaddings.contentGap))
 
-            // ── 已克隆语音列表(跟随上下滚动,不再固定底部)──
-            // v1.132: 改用 forEach 替代 LazyColumn(verticalScroll 内不能嵌套 LazyColumn),
-            // 让克隆语音列表与表单一起随整页滚动
+            // ── Clonar lista de voces(Sigue desplazándote hacia arriba y hacia abajo,Ya no hay fondo fijo)──
+            // v1.132: Utilice forEach en su lugar LazyColumn(verticalScroll No se puede anidar dentro LazyColumn),
+            // Haga que la lista de voces clonadas se desplace con el formulario como toda la página
             if (isLoadingList && voices.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -468,11 +469,11 @@ fun VoiceCloningPage(
                         .padding(vertical = MusePaddings.sectionGap),
                     contentAlignment = Alignment.Center,
                 ) {
-                    // ST-03: 空态统一 MuseEmptyState
+                    // ST-03: unidad del estado vacío MuseEmptyState
                     MuseEmptyState(title = strEmpty)
                 }
             } else {
-                // 列表标题
+                // título de la lista
                 Text(
                     text = stringResource(R.string.voice_cloning_list_title),
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -485,10 +486,10 @@ fun VoiceCloningPage(
                         voice = voice,
                         isDeleting = isDeleting,
                         onDelete = { voiceToDelete = voice },
-                        // v2.6.7 fix (AUDIT F21): 直接调 TtsManager.speakWithClonedVoice
-                        // —— 该方法早已实现但零调用。
+                        // v2.6.7 fix (AUDIT F21): Ajustar directamente TtsManager.speakWithClonedVoice
+                        // —— Este método ya se implementó pero no se realizaron ninguna llamada.
                         onPreview = {
-                            val sample = context.getString(R.string.tts_preview_sample_text)
+                            val sample = localizedResources.getString(R.string.tts_preview_sample_text)
                             runCatching {
                                 ttsManager.speakWithClonedVoice(
                                     text = sample,
@@ -499,7 +500,7 @@ fun VoiceCloningPage(
                             }.onFailure {
                                 scope.launch {
                                     MuseToast.show(
-                                        context.getString(R.string.tts_preview_failed, it.message),
+                                        localizedResources.getString(R.string.tts_preview_failed, it.message),
                                         3000,
                                     )
                                 }
@@ -512,7 +513,7 @@ fun VoiceCloningPage(
         }
     }
 
-    // ── 删除确认弹窗(MuseDialog,不用 Material3 AlertDialog)──
+    // ── Eliminar ventana emergente de confirmación(MuseDialog,No hay necesidad Material3 AlertDialog)──
     voiceToDelete?.let { target ->
         MuseDialog(
             onDismissRequest = { voiceToDelete = null },
@@ -554,7 +555,7 @@ fun VoiceCloningPage(
 }
 
 /**
- * 表单分组(标题 + 内容),与 VideoGenerationPage 风格一致。
+ * Agrupación de formularios(título + contenido),Coherente con el estilo VideoGenerationPage.
  */
 @Composable
 private fun FormSection(label: String, content: @Composable () -> Unit) {
@@ -570,15 +571,15 @@ private fun FormSection(label: String, content: @Composable () -> Unit) {
 }
 
 /**
- * 已克隆语音行 — 名称 + voiceId + 删除按钮。
+ * Clonar línea de voz — Nombre + ID de voz + botón de eliminar.
  */
 @Composable
-@Suppress("LongMethod") // 单行卡片：图标/文本/两个按钮同处更易读
+@Suppress("LongMethod") // Tarjeta de una sola línea: icono/texto/Tener dos botones en el mismo lugar facilita la lectura
 private fun ClonedVoiceRow(
     voice: ClonedVoice,
     isDeleting: Boolean,
     onDelete: () -> Unit,
-    /** v2.6.7 fix (AUDIT F21): 试听 —— 旧实现克隆完只能手动去媒体设置改 ttsVoice。 */
+    /** v2.6.7 fix (AUDIT F21): audición —— Después de clonar la implementación anterior, solo puede ir manualmente a la configuración de medios y cambiar ttsVoice. */
     onPreview: () -> Unit = {},
 ) {
     Surface(
@@ -593,7 +594,7 @@ private fun ClonedVoiceRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // 左侧:Person 图标
+            // lado izquierdo:Person icono
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
@@ -611,7 +612,7 @@ private fun ClonedVoiceRow(
                     )
                 }
             }
-            // 中间:名称 + voiceId
+            // medio:Nombre + voiceId
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = voice.name,
@@ -629,7 +630,7 @@ private fun ClonedVoiceRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // 右侧:试听 + 删除（v2.6.7 fix AUDIT F21: 补试听入口）
+            // lado derecho:Vista previa + Eliminar (v2.6.7 fix AUDIT F21: Entrada de audición suplementaria)
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
@@ -649,7 +650,7 @@ private fun ClonedVoiceRow(
                     )
                 }
             }
-            // 右侧:删除按钮(圆形 Surface + clickable,不用 IconButton + 默认 Material3 风格)
+            // lado derecho:boton borrar(redondo Surface + clickable,Sin IconButton + estilo Material3 predeterminado)
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
@@ -674,17 +675,17 @@ private fun ClonedVoiceRow(
 }
 
 /**
- * 克隆成功后要写回的 TTS 配置：引擎、音色，手动模式下连同输入框里的 API Key。
+ * La configuración de TTS se volverá a escribir después de una clonación exitosa: motor, tono y clave API en el cuadro de entrada en modo manual.
  *
- * 三件东西是一体的 —— 只写引擎与音色、不写 key，用户看到「克隆成功 + 已设为当前音色」，
- * 而云端合成其实因为 key 为空一直在回落系统 TTS。
+ * tres cosas son una —— Sólo se escriben el motor y el timbre, y la clave no está escrita. El usuario verá "Clonación exitosa + se ha establecido como timbre actual".
+ * De hecho, la síntesis en la nube ha estado recurriendo al sistema TTS porque la clave está vacía.
  *
- * 「跟随供应商配置」开启时 key 由供应商提供，这里不动 [MediaConfig.ttsApiKey]：
- * 把手填值写进去只会留一份切换回手动模式后才会用到、且未必有效的凭据。
+ * Cuando "Seguir la configuración del proveedor" está activado, la clave la proporciona el proveedor y no se mueve aquí. [MediaConfig.ttsApiKey]:
+ * Completar el valor de la mano solo dejará una credencial que se usará después de volver al modo manual y puede no ser válida.
  *
- * @param engine 克隆所用供应商（同时就是 TTS 引擎 id，避免把 voiceId 挂到别的引擎下）
- * @param voiceId 克隆返回的音色 id
- * @param apiKey 页面上输入的 API Key（手动模式下写入，前后空白去掉）
+ * @param engine Clonar el proveedor utilizado (también es el ID del motor TTS para evitar colgar el VoiceId en otros motores)
+ * @param voiceId Clonar el sonido devuelto id
+ * @param apiKey Clave API ingresada en la página (escrita en modo manual, sin los espacios iniciales y finales)
  */
 internal fun MediaConfig.afterVoiceClone(engine: String, voiceId: String, apiKey: String): MediaConfig = copy(
     ttsEngine = engine,

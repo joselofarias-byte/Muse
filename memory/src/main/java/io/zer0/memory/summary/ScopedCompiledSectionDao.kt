@@ -36,11 +36,11 @@ interface ScopedCompiledSectionDao {
     suspend fun deleteAll()
 
     /**
-     * 助手被删除时清掉该作用域的全部编译段落(所有 space)。
+     * Cuando se elimina el asistente, se borrarán todas las secciones compiladas en el alcance.(todos space).
      *
-     * 段落是按事实投影出来的产物,事实都删了却留着段落,记忆页与注入内容就会显示已删助手的旧记忆。
+     * Los párrafos son proyecciones de hechos.,Los hechos han sido eliminados pero los párrafos permanecen.,La página de memoria y el contenido inyectado mostrarán los viejos recuerdos del asistente eliminado.
      *
-     * @return 实际删除的行数
+     * @return número real de filas eliminadas
      */
     @Query("DELETE FROM compiled_sections_scoped WHERE scope = :scope")
     suspend fun deleteByScope(scope: String): Int

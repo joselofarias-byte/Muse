@@ -1,8 +1,8 @@
 /**
- * 会话操作的纯逻辑：重命名校验、删除确认文案、归档可见性、新建会话要不要先选助手。
+ * Lógica pura de las operaciones de la sesión: verificación de cambio de nombre, copia de confirmación de eliminación, visibilidad del archivo, si se debe seleccionar un asistente primero al crear una nueva sesión.
  *
- * 抽出来是为了能脱离 DOM 断言这些规则（尤其是「空名不允许」和删除文案里
- * 必须写清「会话与全部消息」）。
+ * Se extrae para poder hacer valer estas reglas sin DOM (especialmente "no se permiten nombres vacíos" y eliminar la redacción publicitaria).
+ * "La conversación y todos los mensajes" deben escribirse claramente).
  */
 export interface SessionLike {
   readonly id: string;
@@ -10,17 +10,17 @@ export interface SessionLike {
   readonly archived: boolean;
 }
 
-/** 重命名：只有空白也算空，不允许提交。 */
+/** Cambiar nombre: solo los espacios en blanco se consideran vacíos y no se permite el envío. */
 export function isRenameValid(draft: string): boolean {
   return draft.trim().length > 0;
 }
 
-/** 提交前把首尾空白去掉、中间连续空白压成一个空格。 */
+/** Antes de enviar, retire los espacios en blanco iniciales y finales y comprima los espacios en blanco continuos en el medio en un solo espacio. */
 export function normalizeSessionTitle(draft: string): string {
   return draft.trim().replace(/\s+/g, " ");
 }
 
-/** 归档会话默认隐藏，打开「显示归档」才出现。 */
+/** Las sesiones de archivo están ocultas de forma predeterminada y aparecen solo cuando \"Mostrar archivos\" está activado. */
 export function visibleSessions<T extends { readonly archived: boolean }>(
   sessions: readonly T[],
   showArchived: boolean,
@@ -28,12 +28,12 @@ export function visibleSessions<T extends { readonly archived: boolean }>(
   return showArchived ? sessions : sessions.filter((session) => !session.archived);
 }
 
-/** 助手多于一个才需要先选；一个或零个（还没读到）都直接建。 */
+/** Si hay más de un asistente, deberá seleccionarlo primero; Si hay uno o ningún asistente (aún no leído), puede crearlos directamente. */
 export function shouldAskAssistant(assistants: readonly { readonly id: string }[]): boolean {
   return assistants.length > 1;
 }
 
-/** 只有一个助手时把它带上；否则交给 Host 用默认助手。 */
+/** Tráelo cuando solo haya un ayudante; de lo contrario, deje que el anfitrión utilice el asistente predeterminado. */
 export function assistantIdForNewSession(assistants: readonly { readonly id: string }[]): string | undefined {
   return assistants.length === 1 ? assistants[0]?.id : undefined;
 }

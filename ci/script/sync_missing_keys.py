@@ -1,10 +1,10 @@
 """
-sync_missing_keys.py — 同步 locale 缺失 key。
+sync_missing_keys.py — Falta la clave en la configuración regional de sincronización.
 
-从基准 values/ 目录读取所有 strings_*.xml 的 key,
-对每个 values-<locale>/ 目录,补充缺失的 key(用基准中文值作为占位符)。
+Leer todo desde el directorio valores base/ strings_*.xml de key,
+para cada uno values-<locale>/ Directorio,falta suplemento key(Utilice el valor chino base como marcador de posición).
 
-用法:
+Uso:
     py -3 ci/script/sync_missing_keys.py [--res-dir app/src/main/res]
 """
 
@@ -12,16 +12,16 @@ import re
 import sys
 from pathlib import Path
 
-# 只提取 name 属性(与 check_localizations.py 一致)
+# Extrae solo el atributo de nombre(Igual que check_localizations.py)
 NAME_RE = re.compile(r'<string\s+name="([^"]+)"', re.IGNORECASE)
-# 提取完整的 <string ...>...</string> 元素(支持多行内容)
+# extraer completo <string ...>...</string> elemento(Admite contenido multilínea)
 FULL_STRING_RE = re.compile(r'<string\s+name="([^"]+)"[^>]*>.*?</string>', re.IGNORECASE | re.DOTALL)
 LOCALE_DIR_PREFIX = "values-"
 NON_LOCALE_SUFFIXES = ("v31", "night", "land", "port", "desk", "car", "television", "appliance", "watch")
 
 
 def extract_names(file_path: Path) -> set:
-    """从文件提取所有 string name(只返回 key 集合)。"""
+    """Extraer todo del archivo string name(Devolver sólo recogida de llaves)."""
     if not file_path.exists():
         return set()
     content = file_path.read_text(encoding="utf-8")
@@ -29,7 +29,7 @@ def extract_names(file_path: Path) -> set:
 
 
 def extract_full_elements(file_path: Path) -> dict:
-    """从文件提取 {key: full_xml_element} 映射(支持多行)。"""
+    """Extraer del archivo {key: full_xml_element} mapeo(Soporta múltiples líneas)."""
     if not file_path.exists():
         return {}
     content = file_path.read_text(encoding="utf-8")
@@ -41,7 +41,7 @@ def extract_full_elements(file_path: Path) -> dict:
 
 
 def sync_locale(locale_dir: Path, baseline_by_file: dict) -> int:
-    """同步单个 locale 目录,返回新增 key 数量。"""
+    """Sincronizar un único directorio local,Devuelve el número de claves nuevas."""
     added = 0
     for filename, baseline_strings in baseline_by_file.items():
         locale_file = locale_dir / filename
@@ -56,7 +56,7 @@ def sync_locale(locale_dir: Path, baseline_by_file: dict) -> int:
         else:
             content = '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n</resources>\n'
 
-        # 在 </resources> 前插入缺失的 key
+        # en </resources> indel anterior key
         insert_lines = []
         for key in sorted(missing_keys):
             if key in baseline_strings:
@@ -82,19 +82,19 @@ def sync_locale(locale_dir: Path, baseline_by_file: dict) -> int:
 def main():
     res_dir = Path("app/src/main/res").resolve()
     if not res_dir.exists():
-        print(f"ERROR: res 目录不存在: {res_dir}", file=sys.stderr)
+        print(f"ERROR: res El directorio no existe: {res_dir}", file=sys.stderr)
         sys.exit(2)
 
-    # 1. 读取基准 values/ 的所有 strings(完整元素)
+    # 1. Leer todos los valores base/ strings(elemento completo)
     default_dir = res_dir / "values"
     baseline_by_file = {}
     for xml_file in sorted(default_dir.glob("strings_*.xml")):
         baseline_by_file[xml_file.name] = extract_full_elements(xml_file)
 
     total_baseline = sum(len(v) for v in baseline_by_file.values())
-    print(f"基准目录: {default_dir}, 文件数: {len(baseline_by_file)}, key 总数: {total_baseline}")
+    print(f"Directorio de referencia: {default_dir}, Número de archivos: {len(baseline_by_file)}, key total: {total_baseline}")
 
-    # 2. 找到所有 locale 目录
+    # 2. Buscar todos los directorios locales
     locale_dirs = []
     for d in sorted(res_dir.iterdir()):
         if not d.is_dir() or not d.name.startswith(LOCALE_DIR_PREFIX):
@@ -104,10 +104,10 @@ def main():
             continue
         locale_dirs.append(d)
 
-    # 3. 同步每个 locale
+    # 3. Sincronizar cada locale
     for locale_dir in locale_dirs:
         added = sync_locale(locale_dir, baseline_by_file)
-        print(f"  {locale_dir.name}: 新增 {added} 个缺失 key")
+        print(f"  {locale_dir.name}: Nuevo {added} desaparecido key")
 
     print("\nDone.")
 

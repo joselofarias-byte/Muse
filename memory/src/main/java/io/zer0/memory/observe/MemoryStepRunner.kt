@@ -4,45 +4,45 @@ import kotlinx.coroutines.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * D3-P1: 记忆管线统一步骤运行器。
+ * D3-P1: Corredor de pasos unificado de canalización de memoria.
  *
- * 把 [io.zer0.memory.ticker.MemoryTicker] 的既有步骤(rollingSummary / compileDaily /
- * compileToday / rollDailyWindow / compileFacts / deepMemory 等)包成同一层,统一采集:
- *  - 所属阶段([MemoryStage])、步骤键、触发来源
- *  - 耗时、成功/失败结果
- *  - 失败分类([FailureKind],仅记录)
- *  - 每步累计计数(total/successes/failures)
+ * poner [io.zer0.memory.ticker.MemoryTicker] pasos existentes(rollingSummary / compileDaily /
+ * compileToday / rollDailyWindow / compileFacts / deepMemory espera)Envuelto en la misma capa,Colección unificada:
+ *  - etapa([MemoryStage]), tecla de paso, fuente de activación
+ *  - Consumo de tiempo, éxito/Resultado del fracaso
+ *  - Clasificación de fallas([FailureKind],Sólo iniciar sesión)
+ *  - Recuento acumulado por paso(total/successes/failures)
  *
- * 并同步上报既有健康体系([onStepSuccess]/[onStepFailure] → MemoryTicker 的
- * markSuccess/markFailure → healthFlow),不另起健康体系。
+ * y simultáneamente reportar al sistema de salud existente([onStepSuccess]/[onStepFailure] → MemoryTicker de
+ * markSuccess/markFailure → healthFlow),No construyas un nuevo sistema de salud.
  *
- * 行为契约(保证包装前后等价):
- *  - [CancellationException] 原样重抛,绝不吞掉协程取消信号;
- *  - 健康回调与日志写入都被 [runCatching] 保护,观测本身绝不改变控制流;
- *  - [HealthMode.NONE] 时完全不触碰健康体系(供 rollingSummary 这类"成功但无变化
- *    不应算成功"的特殊步骤使用,由调用方自行上报健康)。
+ * contrato conductual(Garantizar el mismo valor antes y después del embalaje):
+ *  - [CancellationException] Vuelva a lanzar como está,Nunca te tragues la señal de cancelación de rutina.;
+ *  - Las devoluciones de llamadas de salud y la escritura de registros son ambas. [runCatching] proteger,La observación en sí nunca cambia el flujo de control.;
+ *  - [HealthMode.NONE] Ningún contacto con el sistema de salud.(para rodarClase de resumen"Éxito pero sin cambios
+ *    no debe considerarse un éxito"pasos especiales para usar,La persona que llama informa de su salud por su cuenta.).
  */
 class MemoryStepRunner(
-    /** 步骤成功的健康上报;null 表示不上报(如无健康体系的环境)。 */
+    /** Pasos para realizar informes de salud exitosos;null Indica no informar(Un entorno sin un sistema sano). */
     private val onStepSuccess: ((String) -> Unit)? = null,
-    /** 步骤失败的健康上报;null 表示不上报。 */
+    /** Informes de estado de pasos fallidos;null Dijo que no informara. */
     private val onStepFailure: ((String, Throwable) -> Unit)? = null,
-    /** 管线运行日志;null 表示禁用观测(测试/无 filesDir 环境)。 */
+    /** Registro de operaciones de tubería;null Indica deshabilitar la observación.(prueba/Sin entorno filesDir). */
     private val pipelineLog: PipelineLog? = null,
-    /** 时钟,便于测试注入。 */
+    /** reloj,Facilita la inyección de prueba. */
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
 
-    /** 健康上报模式。 */
+    /** Modelo de informes de salud. */
     enum class HealthMode {
-        /** 成功/失败都上报到既有健康体系。 */
+        /** éxito/Las fallas se reportan al sistema de salud establecido. */
         AUTO,
 
-        /** 不上报,由调用方自行决定(用于 changed 语义特殊的步骤)。 */
+        /** No informar,a discreción de la persona que llama(Pasos con semántica especial para cambios.). */
         NONE,
     }
 
-    /** 单次运行结果。 */
+    /** Resultados de una sola ejecución. */
     sealed interface StepResult<out T> {
         data class Success<T>(val value: T, val durationMs: Long) : StepResult<T>
         data class Failure(val error: Throwable, val kind: FailureKind, val durationMs: Long) : StepResult<Nothing>
@@ -50,17 +50,17 @@ class MemoryStepRunner(
 
     private val counters = ConcurrentHashMap<String, StepCounters>()
 
-    /** 读取某步的累计计数(不存在时返回零值)。 */
+    /** Leer el recuento acumulado de un paso.(Devuelve cero si no está presente). */
     fun countersOf(stepKey: String): StepCounters = counters[stepKey] ?: StepCounters()
 
-    /** 全部步骤计数快照。 */
+    /** Instantánea de todos los recuentos de pasos. */
     fun snapshotCounters(): Map<String, StepCounters> = counters.toMap()
 
     /**
-     * D3-P1: 直接记录一次"成功"(不包 block)。
+     * D3-P1: grabar directamente"éxito"(No incluido block).
      *
-     * 供既有 try/catch 结构的调用方使用——调用方维持自己精细的控制流,
-     * 只借用运行器的累计计数与管线日志;健康上报由调用方自理。
+     * Para uso de personas que llaman a estructuras try/catch existentes——La persona que llama mantiene su propio flujo de control detallado,
+     * Tomar prestado únicamente el recuento acumulado y los registros de canalización del corredor;Los informes de salud los maneja la propia persona que llama.
      */
     fun recordSuccess(
         stepKey: String,
@@ -81,7 +81,7 @@ class MemoryStepRunner(
     }
 
     /**
-     * D3-P1: 直接记录一次"失败"(不包 block);失败分类仅记录,不改控制流。
+     * D3-P1: grabar directamente"falló"(No incluido block);Registros solo de clasificación de fallas,El flujo de control no cambia.
      */
     fun recordFailure(
         stepKey: String,
@@ -103,15 +103,15 @@ class MemoryStepRunner(
     }
 
     /**
-     * 运行一个步骤。
+     * Corre un paso.
      *
-     * @param stepKey 步骤键(与 MemoryTicker.STEP_KEYS 对齐)
-     * @param stage 所属阶段(仅标注)
-     * @param trigger 触发来源
-     * @param scope 记忆作用域(可空)
-     * @param spaceId 记忆空间(可空)
-     * @param health 健康上报模式(默认 AUTO)
-     * @param detailOf 由成功结果派生附加说明(如 rollingSummary 的 changed/unchanged)
+     * @param stepKey clave de paso(Alineado con MemoryTicker.STEP_KEYS)
+     * @param stage etapa(Sólo etiqueta)
+     * @param trigger fuente de disparo
+     * @param scope alcance de la memoria(Disponible)
+     * @param spaceId espacio de memoria(Disponible)
+     * @param health Modo de informe de salud(Predeterminado AUTO)
+     * @param detailOf Instrucciones adicionales derivadas de resultados exitosos.(Como RollingSummary's changed/unchanged)
      */
     @Suppress("TooGenericExceptionCaught")
     suspend fun <T> run(
@@ -140,7 +140,7 @@ class MemoryStepRunner(
             }
             StepResult.Success(value, duration)
         } catch (e: CancellationException) {
-            // 协程取消是终态,原样重抛(不记录为步骤失败)
+            // La cancelación de rutina es el estado final.,Vuelva a lanzar como está(No registrado como error de paso)
             throw e
         } catch (e: Throwable) {
             val duration = clock() - start
@@ -168,7 +168,7 @@ class MemoryStepRunner(
     } ?: StepCounters()
 }
 
-/** 单步累计计数。 */
+/** Recuento acumulativo de un solo paso. */
 data class StepCounters(
     val total: Int = 0,
     val successes: Int = 0,

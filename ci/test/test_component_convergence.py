@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-test_component_convergence.py — check_component_convergence.py 的单元测试。
+test_component_convergence.py — check_component_convergence.py pruebas unitarias.
 
-运行: py -3 ci/test/test_component_convergence.py
+correr: py -3 ci/test/test_component_convergence.py
 """
 
 import json
@@ -102,14 +102,14 @@ def test_new_file_over_baseline_fails():
     scans = scan_ui(root)
     old_only = [s for s in scans if s.file.endswith("Old.kt")]
     failures, _ = evaluate(scans, baseline_from(old_only))
-    assert any("New.kt" in f and "新增文件" in f for f in failures), failures
+    assert any("New.kt" in f and "Agregar nuevo archivo" in f for f in failures), failures
 
 
 def test_wildcard_growth_fails():
     root = make_root({"A.kt": "import androidx.compose.material3.*\n"})
     scans = scan_ui(root)
     failures, _ = evaluate(scans, baseline_from([]))
-    assert any("通配导入" in f for f in failures), failures
+    assert any("importación comodín" in f for f in failures), failures
 
 
 def test_symbols_snapshot_mismatch_fails():
@@ -118,7 +118,7 @@ def test_symbols_snapshot_mismatch_fails():
     baseline = baseline_from(scans)
     baseline["symbols"] = ["Card"]
     failures, _ = evaluate(scans, baseline)
-    assert any("symbols" in f for f in failures), failures
+    assert any("símbolos" in f for f in failures), failures
 
 
 def test_update_baseline_refuses_increase():
@@ -129,7 +129,7 @@ def test_update_baseline_refuses_increase():
         path.write_text(json.dumps(baseline_from([])), encoding="utf-8")
         code = update_baseline(path, scans, allow_increase=False)
         assert code == 1, code
-        assert json.loads(path.read_text(encoding="utf-8"))["files"] == {}, "基线不应被写入"
+        assert json.loads(path.read_text(encoding="utf-8"))["files"] == {}, "La línea de base no debe escribirse"
 
 
 def test_missing_ui_dir_fails():
@@ -138,7 +138,7 @@ def test_missing_ui_dir_fails():
         scan_ui(root)
     except FileNotFoundError:
         return
-    raise AssertionError("UI 目录缺失时应抛 FileNotFoundError")
+    raise AssertionError("UI Debería lanzarse cuando falta el directorio. FileNotFoundError")
 
 
 if __name__ == "__main__":

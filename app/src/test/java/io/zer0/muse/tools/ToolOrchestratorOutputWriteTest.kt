@@ -28,15 +28,15 @@ import java.io.File
 import kotlin.uuid.Uuid
 
 /**
- * Phase 3: 工具输出落盘超时/降级测试。
+ * Phase 3: Tiempo de espera de colocación del disco de salida de herramienta/Pruebas de degradación.
  *
- * 覆盖:
- *  - 超长输出正常落盘(路径 + read_file 引用出现在回填结果中);
- *  - 落盘超时 → 降级为内存截断(带明确提示),工具循环不被磁盘 IO 阻塞;
- *  - 落盘异常 → 降级为内存截断;
- *  - 未超长输出完全不落盘(默认行为不变)。
+ * Portada:
+ *  - La salida extra larga se coloca normalmente en el disco.(La ruta + referencia read_file aparece en los resultados de reposición);
+ *  - Tiempo de espera de colocación → degradar al truncamiento de la memoria(con recordatorio claro),El bucle de herramientas no está bloqueado por el disco IO;
+ *  - Colocación anormal → degradar al truncamiento de la memoria;
+ *  - La salida no es demasiado larga y no se cae del disco en absoluto.(Comportamiento predeterminado sin cambios).
  *
- * 运行: ./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorOutputWriteTest*"
+ * correr: ./gradlew :app:testDebugUnitTest --tests "*ToolOrchestratorOutputWriteTest*"
  */
 class ToolOrchestratorOutputWriteTest {
 
@@ -75,7 +75,7 @@ class ToolOrchestratorOutputWriteTest {
         coordinator = mockk(relaxed = true)
         every { coordinator.isToolResultSuccess(any()) } answers {
             val result = firstArg<String>()
-            !result.contains("error") && !result.startsWith("[超时]")
+            !result.contains("error") && !result.startsWith("[tiempo de espera]")
         }
         every {
             coordinator.markTaskStepRunningIfNotPaused(any(), any(), any(), any())
@@ -175,8 +175,8 @@ class ToolOrchestratorOutputWriteTest {
     fun `oversized output is written to disk and referenced in result`() = runBlocking {
         val content = runWithOutput("read_file", bigOutput, orchestrator())
 
-        assertTrue(content.contains("[完整结果已保存"))
-        assertTrue(content.contains("[完整输出已保存到:"))
+        assertTrue(content.contains("[Resultados completos guardados"))
+        assertTrue(content.contains("[El resultado completo se ha guardado en:"))
         assertTrue(content.contains("offset_chars"))
         val files = File(tempFolder.root, TOOL_OUTPUTS_DIR).listFiles()
         assertEquals(1, files?.size)
@@ -190,14 +190,14 @@ class ToolOrchestratorOutputWriteTest {
 
         val content = runWithOutput("terminal_exec", output, orchestrator())
 
-        assertTrue(content.contains("[完整结果已保存"))
-        assertTrue("命令的结论在末尾，必须保留", content.contains("FAILED: 3 tests failed"))
+        assertTrue(content.contains("[Resultados completos guardados"))
+        assertTrue("La conclusión del comando está al final y debe conservarse.", content.contains("FAILED: 3 tests failed"))
         assertTrue(content.contains("exit=1"))
         assertFalse(
-            "头部进度日志不该占预览",
+            "El registro de progreso del encabezado no debe ocupar la vista previa.",
             content.contains(progress.take(TOOL_RESULT_PREVIEW_CHARS)),
         )
-        assertTrue(content.contains("结果末尾的预览"))
+        assertTrue(content.contains("vista previa al final de los resultados"))
     }
 
     @Test
@@ -206,22 +206,22 @@ class ToolOrchestratorOutputWriteTest {
 
         val content = runWithOutput("read_file", output, orchestrator())
 
-        assertTrue("文件类结果开头更有用，必须保留", content.contains("HEADER: schema version 3"))
-        assertTrue(content.contains("[完整结果已保存"))
+        assertTrue("Los resultados de la clase de archivo son más útiles al principio y deben conservarse", content.contains("HEADER: schema version 3"))
+        assertTrue(content.contains("[Resultados completos guardados"))
     }
 
     @Test
     fun `pagination notice reports total length of a spilled tool result`() = runBlocking {
         val content = runWithOutput("read_file", bigOutput, orchestrator())
 
-        assertTrue(content.contains("共 ${bigOutput.length} 字符"))
+        assertTrue(content.contains("total ${bigOutput.length} personaje"))
         assertTrue(content.contains("offset_chars=0"))
         assertTrue(content.contains("length_chars=$TOOL_OUTPUT_READ_PAGE_CHARS"))
     }
 
     @Test
     fun `large result is passed whole when current context has room`() = runBlocking {
-        val output = "用户 API 返回".repeat(8_000)
+        val output = "Devoluciones de API de usuario".repeat(8_000)
         val content = runWithOutput(
             toolName = "read_file",
             output = output,
@@ -243,12 +243,12 @@ class ToolOrchestratorOutputWriteTest {
 
         val content = runWithOutput("read_file", bigOutput, orchestrator)
 
-        assertTrue("应保留工具原始输出", content.startsWith(bigOutput))
-        assertTrue("应明确说明未能建立文件副本", content.contains("落盘超时"))
-        assertFalse(content.contains("[完整输出已保存到:"))
-        // 工具循环不被 60s 慢写阻塞(超时 20ms 后回传完整内存结果)
+        assertTrue("Se debe conservar el resultado original de la herramienta.", content.startsWith(bigOutput))
+        assertTrue("La falta de creación de una copia del documento debe indicarse claramente.", content.contains("tiempo de espera de colocación"))
+        assertFalse(content.contains("[El resultado completo se ha guardado en:"))
+        // El bucle de herramientas no está bloqueado por la escritura lenta de 60 segundos(El resultado completo de la memoria se devolverá después de un tiempo de espera de 20 ms.)
         assertTrue(
-            "落盘超时应快速降级,实际耗时=${System.currentTimeMillis() - startedAt}ms",
+            "El tiempo de espera para realizar pedidos debe reducirse rápidamente,Consumo de tiempo real=${System.currentTimeMillis() - startedAt}ms",
             System.currentTimeMillis() - startedAt < 5_000,
         )
     }
@@ -261,15 +261,15 @@ class ToolOrchestratorOutputWriteTest {
 
         val content = runWithOutput("read_file", bigOutput, orchestrator)
 
-        assertTrue("应保留工具原始输出", content.startsWith(bigOutput))
-        assertTrue(content.contains("落盘失败"))
-        assertFalse(content.contains("[完整输出已保存到:"))
+        assertTrue("Se debe conservar el resultado original de la herramienta.", content.startsWith(bigOutput))
+        assertTrue(content.contains("La salida completa falló"))
+        assertFalse(content.contains("[El resultado completo se ha guardado en:"))
     }
 
     @Test
     fun `small output never touches disk`() = runBlocking {
         val orchestrator = orchestrator(
-            writer = { _, _ -> throw AssertionError("小输出不应写盘") },
+            writer = { _, _ -> throw AssertionError("La salida pequeña no debe escribirse en el disco") },
         )
 
         val content = runWithOutput("echo", "small", orchestrator)

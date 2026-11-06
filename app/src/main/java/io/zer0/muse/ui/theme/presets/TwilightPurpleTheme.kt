@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 10. 暮紫韵 (Twilight Purple) theme — 优雅紫调,暮色天空的渐变意象
+// 10. Mu Ziyun (Twilight Purple) theme — Tono morado elegante,Imagen degradada del cielo crepuscular
 // ─────────────────────────────────────────────────────────────────────────────
 private val TwilightPrimary = Color(0xFF6B5CA5)
 private val TwilightPrimaryLightContainer = Color(0xFFE8E0F5)

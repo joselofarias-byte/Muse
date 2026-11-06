@@ -11,12 +11,12 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 
 /**
- * 消息发送 outbox 实体(持久化发送队列)。
+ * Mensaje enviado a la entidad de la bandeja de salida(Cola de envío persistente).
  *
- * 解决"用户刚点击发送就退出 App,进程被系统杀死导致消息丢失"的问题:
- * - [enqueueSend] 时同步写入 outbox,保证进程被杀后仍可恢复
- * - 消费端成功启动 [launchStream] 后删除对应 outbox 记录
- * - App 启动时扫描残留 outbox 记录,重新投递到发送队列
+ * resolver"El usuario sale justo después de hacer clic en enviar App,El proceso es cancelado por el sistema provocando la pérdida de mensajes."pregunta:
+ * - [enqueueSend] escritura sincrónica outbox,Asegúrese de que el proceso aún se pueda recuperar después de ser eliminado.
+ * - El lado del consumidor comenzó con éxito [launchStream] Luego elimine el registro de la bandeja de salida correspondiente.
+ * - App Escanear registros residuales de la bandeja de salida al iniciar,Volver a enviar a la cola de envío
  */
 @Entity(
     tableName = "message_outbox",
@@ -62,11 +62,11 @@ interface MessageOutboxDao {
     @Query("SELECT COUNT(*) FROM message_outbox")
     suspend fun count(): Int
 
-    /** 软删除会话时同步清理残留发送任务，阻止启动恢复再次写入。 */
+    /** Al eliminar temporalmente una sesión, las tareas de envío restantes se limpian sincrónicamente para evitar que la recuperación de inicio vuelva a escribir. */
     @Query("DELETE FROM message_outbox WHERE sessionId = :sessionId")
     suspend fun deleteBySession(sessionId: String)
 
-    /** P0-10: 备份恢复用 — 全量清空。 */
+    /** P0-10: Para respaldo y recuperación — Borrar todo. */
     @Query("DELETE FROM message_outbox")
     suspend fun deleteAll()
 }

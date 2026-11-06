@@ -9,7 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Host Mode WebSocket 命令与快照协议的序列化回归测试。 */
+/** Host Mode WebSocket Pruebas de regresión de serialización de protocolos de comando e instantáneas. */
 class HostWebSocketProtocolTest {
 
     @Test
@@ -18,7 +18,7 @@ class HostWebSocketProtocolTest {
             type = "chat.send",
             requestId = "req-1",
             sessionId = "session-1",
-            text = "你好，Muse",
+            text = "hola,Muse",
         )
 
         val decoded = AppJson.decodeFromString<HostCommand>(AppJson.encodeToString(command))
@@ -28,7 +28,7 @@ class HostWebSocketProtocolTest {
 
     @Test
     fun `chat send SSRF policy rejects private and metadata URLs`() {
-        assertTrue(SsrfGuard.hasBlockedUrlInText("请访问 http://127.0.0.1:8080/admin"))
+        assertTrue(SsrfGuard.hasBlockedUrlInText("Por favor visita http://127.0.0.1:8080/admin"))
         assertTrue(SsrfGuard.hasBlockedUrlInText("http://169.254.169.254/latest/meta-data/"))
         assertTrue(SsrfGuard.hasBlockedUrlInText("http://[fd00::1]/secret"))
         assertTrue(SsrfGuard.hasBlockedUrlInText("http://2130706433/"))
@@ -36,7 +36,7 @@ class HostWebSocketProtocolTest {
 
     @Test
     fun `chat send SSRF policy permits public URL`() {
-        assertFalse(SsrfGuard.hasBlockedUrlInText("请参考 https://8.8.8.8/docs"))
+        assertFalse(SsrfGuard.hasBlockedUrlInText("Por favor consulte https://8.8.8.8/docs"))
     }
 
     @Test
@@ -46,17 +46,17 @@ class HostWebSocketProtocolTest {
             sessionId = "session-1",
             isStreaming = true,
             sessions = listOf(
-                HostSession("session-1", "测试会话", "default", 123L, archived = false, pinned = true),
+                HostSession("session-1", "sesión de prueba", "default", 123L, archived = false, pinned = true),
             ),
             messages = listOf(
-                HostMessage("message-1", "assistant", "你好", reasoning = "思考", createdAt = 124L),
+                HostMessage("message-1", "assistant", "Hola", reasoning = "pensar", createdAt = 124L),
             ),
         )
 
         val decoded = AppJson.decodeFromString<HostEvent>(AppJson.encodeToString(event))
 
         assertEquals(event, decoded)
-        assertTrue(decoded.messages.single().reasoning == "思考")
+        assertTrue(decoded.messages.single().reasoning == "pensar")
         assertTrue(decoded.sessions.single().pinned)
     }
 }

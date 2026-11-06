@@ -1,30 +1,30 @@
-# 链路 3：数据层 / 备份恢复 / 迁移 — 去重基线
+# Enlace 3: Capa de datos/recuperación de copia de seguridad/migración — Línea base de deduplicación
 
-## 已确认修复（不得再报）
-- 删除事实原子性：facts+FTS+memory_links 同一 FactDb 事务，墓碑/编译投影事务后派生。
-- 记忆自动保存指纹：失败/空响应/解析失败不写指纹；指纹窗口与 MAX_MESSAGE_CHARS 一致。
-- conversation_events 稳定 eventId 幂等（唯一索引）；批量恢复检查 Room IGNORE 返回值，冲突→恢复事务失败回滚。
-- 对话发送恢复不变量：upsertGenerationCheckpointAndDeleteOutbox 同一 Room 事务；恢复前按 userMessageId 检查残留 checkpoint；appendMessage 幂等（不重复递增 messageCount、不刷新 preview/updatedAt）。
-- shadow 事件串行器 ConversationShadowEventSequencer（session/turn/generation 串行）。
-- 定时任务：执行历史/next_run_at/last_run_at/retry_count 同一事务。
-- 计划任务/群聊/主动消息/朋友圈/MemoryTicker/自动备份快照的 ProcessWriteGate 写点全覆盖（AUD-20261006-* 系列）。
-- MemoryDb 高版本降级：header/version 检查 → 临时目录复制 → SHA-256 → quick_check → 原子发布。
-- P1 #7（硬删三条路径清图片）、#8（restore/rollback 显式清 generation_checkpoints）、#10（MemoryDb 降级归档）、#12（迁移门禁纳入 MemoryDb）已修。
-- 备份 v4 文件型存储空备份判断与兼容语义；恢复点流式落盘。
-- 增量向量索引 ensureIndexed（is_internal 文档，contentHash/chunkCount 判断）。
-- RAG 六轮审计修复：fail-closed 内部文档隔离、流式索引失败清理+状态清零、contentHash 全入口写入、FTS 关键词兜底（chunks 优先+自愈）、注入预算=实际 snippet。
+## Confirmado para ser reparado (no hay más informes)
+- Eliminar la atomicidad del hecho:facts+FTS+memory_links Misma transacción de FactDb, lápida/Derivado después de compilar la transacción proyectada.
+- La memoria guarda automáticamente las huellas dactilares: falló/respuesta vacía/Si el análisis falla, no se escribirá la huella digital; la ventana de huellas digitales es consistente con MAX_MESSAGE_CHARS.
+- conversation_events EventId estable idempotente (índice único); sala de verificación de recuperación por lotes IGNORAR valor de retorno, conflicto→La transacción de recuperación falla y se revierte.
+- Diálogo de envío de invariantes de recuperación:upsertGenerationCheckpointAndDeleteOutbox La misma transacción de Habitación; verifique el punto de control residual mediante userMessageId antes de la recuperación;appendMessage Idempotente (sin incrementos repetidos de messageCount, sin actualización de vista previa/actualizadoAt).
+- shadow Conversación del serializador de eventosShadowEventSequencer(session/turn/generation serie).
+- Tareas programadas: historial de ejecución/next_run_at/last_run_at/retry_count misma transacción.
+- Tareas programadas/chat grupal/mensajes no solicitados/Momentos/MemoryTicker/Los puntos de escritura de ProcessWriteGate para instantáneas de respaldo automático están completamente cubiertos (AUD-20261006-* serie).
+- MemoryDb Bajar de versión superior:header/version comprobar → Copia de directorio temporal → SHA-256 → quick_check → Liberación atómica.
+- P1 #7(Elimine por completo tres rutas para borrar la imagen),#8(restore/rollback Explícitamente claro generación_checkpoints),#10(MemoryDb degradar archivo),#12(Migrar el control de acceso a MemoryDb) Corregido.
+- Copia de seguridad v4 almacenamiento de tipo de archivo juicio de copia de seguridad vacío y semántica de compatibilidad; los puntos de recuperación se transmiten al disco.
+- Índice de vector incremental asegurarIndexed(is_internal documentación,contentHash/chunkCount sentencia).
+- RAG Seis rondas de reparaciones de auditoría:fail-closed Aislamiento de documentos internos, limpieza de fallas del índice de transmisión+Estado borrado,contentHash Escritura de entrada completa,FTS Palabras clavechunks Prioridad+Autocuración), inyección de presupuesto=Fragmento real.
 
-## 已知未解决（可引用编号补充新证据）
-- MemoryDb 高版本归档无应用内浏览/恢复界面（已知）。
-- 主知识库页与 F-31 页导入口径不一致、并入流式导入未做（已知）。
-- PDF/DOCX/PPTX/XLSX/EPUB/OCR 仍受 DocumentParser 1MB/页数/ZIP entry 保护，超大结构化文档首轮索引可能不完整（已知）。
-- P1 #20-31 数据层相关未修项（#20…#19 参照全局清单）。
-- HNSW 持久化的维度/模型指纹与耐久性仍有残余问题（#11 部分修复：临时文件+rename 已有，剩余维度已知）。
+## Se sabe que no está resuelto (se pueden agregar nuevas pruebas citando el número)
+- MemoryDb No hay navegación dentro de la aplicación para archivos de versión alta/Interfaz de recuperación (conocida).
+- Los diámetros de importación de la página principal de la base de conocimientos y la página del F-31 son inconsistentes y no se ha realizado la integración en la importación en tiempo real (se sabe).
+- PDF/DOCX/PPTX/XLSX/EPUB/OCR Todavía sujeto a DocumentParser 1 MB/página/ZIP entry Protección, la indexación de primera ronda de documentos estructurados de gran tamaño puede estar incompleta (conocido).
+- P1 #20-31 Elementos no revisados ​​relacionados con la capa de datos (#20…#19 Consulte la lista global).
+- HNSW La dimensión de la persistencia/Todavía existen problemas residuales con las huellas dactilares del modelo y la durabilidad (#11 Solución parcial: archivos temporales+rename Ya se conocen las dimensiones restantes).
 
-## 本链路重点探查方向
-1. **MuseDb v107→v110 迁移链**：新增实体的迁移正确性、新 DAO/索引与迁移声明一致性、check_migration_coverage 覆盖；Fresh install vs 升级路径差异。
-2. **A2A 会话落库**：A2A 触发的对话轮次落到哪个会话？与主链路会话/渠道会话的隔离与冲突；Tasker 结果落库的会话归属。
-3. 诊断导出的数据收集是否会包含数据库片段（如崩溃日志里的 SQL 参数）。
-4. 插件 Hook 持久化（hooks 声明解析/存储）与插件市场数据的迁移/版本兼容。
-5. 大体积会话（长会话树/多附件）下的批量查询分页边界——近两月大量修过"partial-page 合并"，找**同类模式的其他分页点**（比如 artifact/渠道历史/记忆浏览）是否还有未处理的页边界。
-6. 自动备份 VACUUM INTO 快照链路：三个 DB 一致性窗口、写闸门复查是否覆盖所有写点。
+## La dirección de exploración clave de este enlace.
+1. **MuseDb v107→v110 cadena migratoria**: Corrección de la migración de nuevas entidades, coherencia del nuevo DAO/índice y declaración de migración,check_migration_coverage cubrir;Fresh install vs Diferencias en las rutas de actualización.
+2. **A2A Menú desplegable de sesión**:A2A ¿En qué conversación cae el diálogo desencadenado? Sesión con enlace principal/Aislamiento y conflicto de sesiones de canal;Tasker La sesión descartada resultante pertenece a la base de datos.
+3. Si la recopilación de datos exportados de diagnóstico incluirá fragmentos de la base de datos (como parámetros SQL en los registros de fallos).
+4. Persistencia del gancho del complemento (hooks Análisis de declaraciones/Almacenamiento) y migración de datos de mercado de complementos/Versión compatible.
+5. Tamaño de sesión grande (árbol de sesión largo/Límite de paginación de consultas por lotes en varios archivos adjuntos)——Se han realizado muchas reparaciones en los últimos dos meses."partial-page fusionar", encontrar**Otros puntos de localización en el mismo modo.**(por ejemplo, historial de artefactos/canales/exploración de memoria) si hay límites de página sin procesar.
+6. Copia de seguridad automática VACUUM INTO enlace de instantánea: tres ventanas de coherencia de base de datos, revisión de puerta de escritura para ver si todos los puntos de escritura están cubiertos.

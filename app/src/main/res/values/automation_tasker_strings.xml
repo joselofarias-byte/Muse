@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="automation_tasker_title">Tasker / 外部自动化触发</string>
-    <string name="automation_tasker_desc">允许其他应用发送广播触发一次文本补全；不会授予工具权限，但可能消耗模型额度。</string>
+    <string name="automation_tasker_title">Tasker / Activador de automatización externo</string>
+    <string name="automation_tasker_desc">Permite que otras aplicaciones envíen transmisiones para activar la finalización de texto; No se otorgarán permisos de herramientas, pero se podrán consumir créditos de modelo.</string>
 </resources>

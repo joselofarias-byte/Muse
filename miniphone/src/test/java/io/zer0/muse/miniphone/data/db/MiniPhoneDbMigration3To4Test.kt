@@ -21,13 +21,13 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 3 → 4 迁移:老会话与消息逐行保留,会话行多出群聊标记与群名,成员表从这一版起存在且可写。
+ * 3 → 4 Migrar:Las conversaciones y mensajes antiguos se conservan línea por línea.,Hay más etiquetas de chat grupal y nombres de grupos en la línea de conversación.,La tabla de miembros existe y se puede escribir a partir de esta versión.
  *
- * 照导出的 3.json 造一个与真机同形的 v3 库(建表语句、索引、room_master_table 身份哈希都按 schema 写),
- * 里面塞两条会话(一条置顶)与三条消息,再让 Room 带着迁移链打开它。
+ * Utilice el 3.json exportado para crear una biblioteca v3 con la misma forma que la máquina real.(Crear declaraciones de tabla, índices,room_master_table Los hashes de identidad se escriben según el esquema.),
+ * Dos conversaciones están metidas en el interior.(Uno clavado en la cima)con tres mensajes,Luego deja que Room lo abra con la cadena de migración.
  *
- * 断言分四层:Room 能打开并通过 schema 校验(说明新列与新表和实体对得上)、
- * 旧行与旧列原样保留、新列的默认值真的落在 0 与空串上、成员表能写入并按入群顺序读回。
+ * Hay cuatro niveles de afirmaciones.:Room Se puede abrir y pasar la verificación del esquema.(Explique que las nuevas columnas coinciden con las nuevas tablas y entidades.),
+ * Las filas y columnas antiguas se conservan tal como están, los valores predeterminados de las nuevas columnas realmente caen en 0 y la cadena vacía, y la tabla de miembros se puede escribir y volver a leer en el orden en que se ingresó en el grupo.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -54,27 +54,27 @@ class MiniPhoneDbMigration3To4Test {
         try {
             runBlocking {
                 val threads = db.threadDao().observeThreads().first()
-                assertEquals("会话一条不少,顺序不变", listOf(PINNED_THREAD_ID, PLAIN_THREAD_ID), threads.map { it.id })
-                assertEquals("置顶标记跟着行一起留下来", true, threads.first().pinned)
-                assertEquals("未读数不能丢", 3, threads.first().unreadCount)
-                assertEquals("预览文案不能丢", "第 2 句", threads.first().lastMessagePreview)
+                assertEquals("muchas conversaciones,El orden permanece sin cambios.", listOf(PINNED_THREAD_ID, PLAIN_THREAD_ID), threads.map { it.id })
+                assertEquals("La etiqueta pin permanece con la línea.", true, threads.first().pinned)
+                assertEquals("Las lecturas no leídas no se pueden descartar.", 3, threads.first().unreadCount)
+                assertEquals("No pierdas la copia preliminar", "Oración 2", threads.first().lastMessagePreview)
 
-                assertTrue("老会话都落在私信这一侧", threads.none { it.isGroup })
-                assertEquals("老会话没有群名", listOf("", ""), threads.map { it.title })
+                assertTrue("Todas las conversaciones antiguas caen en el lado de los mensajes privados.", threads.none { it.isGroup })
+                assertEquals("La sesión anterior no tiene nombre de grupo.", listOf("", ""), threads.map { it.title })
 
                 assertEquals(
-                    "消息按会话各自保留",
+                    "Los mensajes se retienen por sesión.",
                     listOf("legacy-1", "legacy-2"),
                     db.messageDao().observeMessages(PINNED_THREAD_ID).first().map { it.id },
                 )
-                assertEquals("另一个会话的消息也还在", 1, db.messageDao().countInThread(PLAIN_THREAD_ID))
-                assertEquals("库版本继续往后走,跑到当前版本", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
+                assertEquals("Los mensajes de la otra conversación siguen ahí.", 1, db.messageDao().countInThread(PLAIN_THREAD_ID))
+                assertEquals("La versión de la biblioteca continúa avanzando.,Ejecutar a la versión actual", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
             }
         } finally {
             db.close()
         }
-        assertEquals("群标记列带默认值 0", "0", columnDefault(file, table = "mp_thread", column = "isGroup"))
-        assertEquals("群名列带默认值空串", "''", columnDefault(file, table = "mp_thread", column = "title"))
+        assertEquals("Columna de etiqueta de grupo con valor predeterminado 0", "0", columnDefault(file, table = "mp_thread", column = "isGroup"))
+        assertEquals("Columna de nombre de grupo con valor predeterminado cadena vacía", "''", columnDefault(file, table = "mp_thread", column = "title"))
     }
 
     @Test
@@ -89,13 +89,13 @@ class MiniPhoneDbMigration3To4Test {
         runBlocking {
             val db = openMigrated(name)
             try {
-                // 升级前没有这张表;升级后它要能当群成员表用
+                // No existía tal tabla antes de la actualización.;Después de la actualización, debe poder usarse como una tabla de miembros de grupo.
                 db.threadDao().upsert(
                     MpThreadEntity(
                         id = GROUP_THREAD_ID,
                         characterId = "c-second",
                         isGroup = true,
-                        title = "阿远、小满、我",
+                        title = "Ayuan, Xiaoman, yo",
                     ),
                 )
                 db.threadMemberDao().upsertAll(
@@ -106,16 +106,16 @@ class MiniPhoneDbMigration3To4Test {
                 )
 
                 val members = db.threadMemberDao().observeMembers(GROUP_THREAD_ID).first()
-                assertEquals("成员按入群先后读回", listOf("c-first", "c-second"), members.map { it.characterId })
+                assertEquals("Los miembros presionan para unirse al grupo y leen uno tras otro.", listOf("c-first", "c-second"), members.map { it.characterId })
                 assertEquals(2, db.threadMemberDao().countInThread(GROUP_THREAD_ID))
-                assertEquals("群行是群会话", true, db.threadDao().getThread(GROUP_THREAD_ID)?.isGroup)
-                assertEquals("群名跟着行", "阿远、小满、我", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
+                assertEquals("La línea de grupo es una conversación de grupo.", true, db.threadDao().getThread(GROUP_THREAD_ID)?.isGroup)
+                assertEquals("Sigue el nombre del grupo", "Ayuan, Xiaoman, yo", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
             } finally {
                 db.close()
             }
         }
-        assertEquals("成员表带 threadId 索引", true, indexNames(file, table = "mp_thread_member").contains("index_mp_thread_member_threadId"))
-        assertTrue("旧表还在", tableNames(file).containsAll(listOf("mp_thread", "mp_message")))
+        assertEquals("Tabla de miembros indexada por threadId", true, indexNames(file, table = "mp_thread_member").contains("index_mp_thread_member_threadId"))
+        assertTrue("El viejo reloj todavía está ahí.", tableNames(file).containsAll(listOf("mp_thread", "mp_message")))
     }
 
     @Test
@@ -130,18 +130,18 @@ class MiniPhoneDbMigration3To4Test {
         runBlocking {
             val db = openMigrated(name)
             try {
-                // 升级后再建的群,characterId 落第一个成员;按角色找私信时不能命中它
+                // Grupo creado después de la actualización,characterId El primer miembro en caer.;No puedes presionarlo cuando buscas mensajes privados por carácter.
                 db.threadDao().upsert(
                     MpThreadEntity(
                         id = GROUP_THREAD_ID,
                         characterId = CHARACTER_ID,
                         isGroup = true,
-                        title = "老会话里的人和另一个人",
+                        title = "Persona y otra persona en una vieja conversación.",
                     ),
                 )
 
-                assertNotNull("老私信还在", db.threadDao().findThreadByCharacter(CHARACTER_ID))
-                assertEquals("群不冒充这个人的私信", PINNED_THREAD_ID, db.threadDao().findThreadByCharacter(CHARACTER_ID)?.id)
+                assertNotNull("El viejo mensaje privado sigue ahí.", db.threadDao().findThreadByCharacter(CHARACTER_ID))
+                assertEquals("No pretendas ser el mensaje privado de esta persona", PINNED_THREAD_ID, db.threadDao().findThreadByCharacter(CHARACTER_ID)?.id)
                 assertFalse(db.threadDao().findThreadByCharacter(CHARACTER_ID)?.isGroup ?: true)
             } finally {
                 db.close()
@@ -149,10 +149,10 @@ class MiniPhoneDbMigration3To4Test {
         }
     }
 
-    /** 按 3.json 原样造一个 v3 库,并写入两条会话与三条消息。 */
+    /** Cree una biblioteca v3 como 3.json,Y escribe dos conversaciones y tres mensajes. */
     private fun createVersion3Database(file: File) {
         val schema = JSONObject(readAsset(SCHEMA_ASSET)).getJSONObject("database")
-        assertEquals("基线必须是 v3", 3, schema.getInt("version"))
+        assertEquals("La línea base debe ser v3", 3, schema.getInt("version"))
         val legacy = SQLiteDatabase.openOrCreateDatabase(file, null)
         try {
             val entities = schema.getJSONArray("entities")
@@ -169,26 +169,26 @@ class MiniPhoneDbMigration3To4Test {
             for (index in 0 until setup.length()) {
                 legacy.execSQL(setup.getString(index))
             }
-            // 一条置顶会话 + 一条未置顶会话;未置顶那条的消息更晚,迁移后顺序不能变
+            // Una conversación fijada + una conversación no fijada;El mensaje que no fue fijado en la parte superior será más tarde.,El orden no se puede cambiar después de la migración.
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
-                    "VALUES ('$PINNED_THREAD_ID', '$CHARACTER_ID', 1, 3, '第 2 句', 2000, 0)",
+                    "VALUES ('$PINNED_THREAD_ID', '$CHARACTER_ID', 1, 3, 'Oración 2', 2000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
-                    "VALUES ('$PLAIN_THREAD_ID', 'c-other', 0, 0, '别的一句话', 9000, 0)",
+                    "VALUES ('$PLAIN_THREAD_ID', 'c-other', 0, 0, 'otra palabra', 9000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('legacy-1', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'character', 'text', '第 1 句', 1000, 0)",
+                    "VALUES ('legacy-1', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'character', 'text', 'Oración 1', 1000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('legacy-2', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'user', 'text', '第 2 句', 2000, 0)",
+                    "VALUES ('legacy-2', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'user', 'text', 'Oración 2', 2000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('other-1', '$PLAIN_THREAD_ID', 'c-other', 'character', 'text', '别的一句话', 9000, 0)",
+                    "VALUES ('other-1', '$PLAIN_THREAD_ID', 'c-other', 'character', 'text', 'otra palabra', 9000, 0)",
             )
             legacy.version = 3
         } finally {

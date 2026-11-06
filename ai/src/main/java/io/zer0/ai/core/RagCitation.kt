@@ -3,35 +3,35 @@ package io.zer0.ai.core
 import kotlinx.serialization.Serializable
 
 /**
- * v1.133: RAG 引用 — 用于在 ChatUI 中渲染"这段回答引用了哪些文档"。
+ * v1.133: RAG Cotización — Para renderizar en ChatUI"¿Qué documentos se citan en esta respuesta?".
  *
- * 由 [io.zer0.muse.rag.RagService.buildInjectionContextWithCitations] 返回,
- * ChatViewModel 注入到 [UIMessage.ragCitations] 字段,
- * MessageBubble 渲染为可点击的引用 chip(点击展开 snippet,长按跳转文档详情)。
+ * por [io.zer0.muse.rag.RagService.buildInjectionContextWithCitations] Regresar,
+ * ChatViewModel inyectar en [UIMessage.ragCitations] campo,
+ * MessageBubble Representado como una cotización en la que se puede hacer clic chip(Haga clic para ampliar snippet,Mantenga presionado para saltar a los detalles del documento.).
  *
- * 放在 ai.core 包下(而非 muse.rag)是为了让 [UIMessage] 能直接引用,
- * 避免反向依赖(ai 模块不应依赖 app 模块)。
+ * Colóquelo debajo del paquete ai.core(en vez de muse.rag)es dejar [UIMessage] Se puede cotizar directamente,
+ * Evite las dependencias inversas(ai Los módulos no deben depender del módulo de la aplicación.).
  */
 @Serializable
 data class RagCitation(
-    /** 引用编号(从 1 开始,对应 system prompt 中的 [1] [2] ...)。 */
+    /** Número de referencia(empezar desde 1,Corresponde al mensaje del sistema en [1] [2] ...). */
     val index: Int,
     val docId: String,
     val docTitle: String,
     val chunkId: String,
     val chunkIndex: Int,
-    /** 命中片段(前 200 字,用于 chip 展开预览)。 */
+    /** fragmento de golpe(primeras 200 palabras,para ampliar la vista previa del chip). */
     val snippet: String,
-    /** 检索分数(向量相似度 / RRF 分数 / Rerank 分数,取决于路径)。 */
+    /** Puntuación de búsqueda(Similitud de vectores/puntuación RRF/puntuación de reclasificación,depende del camino). */
     val score: Float,
-    /** v1.133: 命中类型(vector / hybrid / rerank / keyword_fallback)。 */
+    /** v1.133: tipo de golpe(vector / hybrid / rerank / keyword_fallback). */
     val matchType: String,
     /**
-     * v1.133: 是否为内部文档(预置开发文档 devdoc 等)。
+     * v1.133: ¿Es un documento interno?(Documentos de desarrollo preestablecidos devdoc, etc.).
      *
-     * 由 [io.zer0.muse.rag.RagService] 在构造 RagCitation 时从 [io.zer0.muse.data.knowledge.KnowledgeDocEntity]
-     * 传入,统一替代原 `docId.startsWith("devdoc-")` 硬编码判断。
-     * 默认 false 保持向后兼容(旧序列化数据反序列化时取默认值)。
+     * por [io.zer0.muse.rag.RagService] Al construir RagCitation a partir de [io.zer0.muse.data.knowledge.KnowledgeDocEntity]
+     * entrante,Reemplazo unificado original `docId.startsWith("devdoc-")` Juicios codificados.
+     * Falso predeterminado para mantener la compatibilidad con versiones anteriores(Los datos serializados antiguos toman el valor predeterminado al deserializarlos.).
      */
     val isInternal: Boolean = false,
 )

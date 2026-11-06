@@ -16,32 +16,32 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Phase 2.2: FactDb 迁移测试范例。
+ * Phase 2.2: FactDb Ejemplo de prueba de migración.
  *
- * 验证 [FactDb.MIGRATION_7_8] 的行为:
- *  - 历史数据迁移后 scope 字段默认为 "main"(向后兼容)
- *  - scope 索引存在
- *  - 已有列内容迁移后完整保留
+ * verificar [FactDb.MIGRATION_7_8] comportamiento:
+ *  - Después de la migración de datos históricos, el campo de alcance por defecto es "main"(compatible con versiones anteriores)
+ *  - scope El índice existe
+ *  - El contenido de la columna existente se conserva intacto después de la migración.
  *
- * 推进到 v9+ 时,可按本文件追加 migrate8To9() 用例。
+ * Al avanzar a v9+,Puedes agregar este archivo migrate8To9() Casos de uso.
  *
- * 运行方式: `./gradlew :memory:testDebugUnitTest --tests "*FactDbMigrationTest*"`
+ * Modo de operación: `./gradlew :memory:testDebugUnitTest --tests "*FactDbMigrationTest*"`
  *
- * 实现说明 (2026-07-28 修复):
- *  原 MigrationTestHelper 在 Room 2.8 + Robolectric 下抛 IllegalArgumentException
- *  ("driver configured to open 'X' but 'path/X' was requested",issue 325404127)。
- *  改用直接 FrameworkSQLiteOpenHelper 创建 v7 schema 数据库,然后通过
- *  Room.databaseBuilder + addMigrations 触发迁移并验证数据。
+ * Instrucciones de implementación (2026-07-28 Reparación):
+ *  MigrationTestHelper original lanzado en la habitación 2.8 + Robolectric IllegalArgumentException
+ *  ("driver configured to open 'X' but 'path/X' was requested",issue 325404127).
+ *  Utilice FrameworkSQLiteOpenHelper directo en su lugar para crear una base de datos de esquema v7,luego pasa
+ *  Room.databaseBuilder + addMigrations Desencadene la migración y valide los datos.
  *
- *  v7 schema 严格对齐 memory/schemas/io.zer0.memory.fact.FactDb/7.json:
+ *  v7 schema alineación estricta memory/schemas/io.zer0.memory.fact.FactDb/7.json:
  *  - id INTEGER PRIMARY KEY AUTOINCREMENT
- *  - tags / importance / category / confidence / source / last_hit_at 均带 DEFAULT
- *  - 索引名: idx_facts_time / idx_facts_session / idx_facts_importance / idx_facts_category
+ *  - tags / importance / category / confidence / source / last_hit_at cinturón uniforme DEFAULT
+ *  - Nombre del índice: idx_facts_time / idx_facts_session / idx_facts_importance / idx_facts_category
  *
- * R-DOC-01: 测试数据库改用 Files.createTempDirectory,避免在仓库根目录 cwd 泄漏 facts_test.db。
+ * R-DOC-01: Probar la base de datos en su lugar Files.createTempDirectory,Evite filtrar Facts_test.db en el repositorio raíz cwd.
  */
 @RunWith(AndroidJUnit4::class)
-@Config(sdk = [33]) // Robolectric: 用 API 33 的 SQLite 实现,兼容 minSdk 26
+@Config(sdk = [33]) // Robolectric: Implementación de SQLite usando API 33,compatibles minSdk 26
 class FactDbMigrationTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
@@ -61,8 +61,8 @@ class FactDbMigrationTest {
     }
 
     /**
-     * v7 schema 的 CREATE TABLE — 严格对齐 7.json 中的 createSql。
-     * 注意:id 是 AUTOINCREMENT,tags/importance/category/confidence/source/last_hit_at 都有 DEFAULT。
+     * v7 schema de CREATE TABLE — Alinee estrictamente createSql en 7.json.
+     * Nota:id si AUTOINCREMENT,tags/importance/category/confidence/source/last_hit_at Todos tienen PREDETERMINADO.
      */
     private val V7_CREATE_FACTS = """
         CREATE TABLE IF NOT EXISTS `facts` (
@@ -83,7 +83,7 @@ class FactDbMigrationTest {
     """.trimIndent()
 
     /**
-     * v7 schema 的 FTS4 表 — 对齐 7.json:
+     * v7 schema La mesa FTS4 — Alineación 7.json:
      *   CREATE VIRTUAL TABLE ... USING FTS4(`fact_id` INTEGER NOT NULL, `content_ngram` TEXT NOT NULL)
      */
     private val V7_CREATE_FTS = """
@@ -94,7 +94,7 @@ class FactDbMigrationTest {
     """.trimIndent()
 
     /**
-     * v7 schema 的 4 个索引 — 对齐 7.json 中的 indices 字段。
+     * v7 schema 4 índices de — Alinee el campo de índices en 7.json.
      */
     private val V7_INDICES = listOf(
         "CREATE INDEX IF NOT EXISTS `idx_facts_time` ON `facts` (`time`)",
@@ -118,7 +118,7 @@ class FactDbMigrationTest {
                     }
 
                     override fun onUpgrade(db: androidx.sqlite.db.SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-                        // 由 Room migration 接管
+                        // Asumido por la migración de habitaciones
                     }
                 })
                 .build(),
@@ -131,7 +131,7 @@ class FactDbMigrationTest {
                 importance, category, confidence, source,
                 expires_at, last_confirmed_at, last_hit_at
             ) VALUES (
-                1, '用户偏好深色模式', '["preference"]', NULL, NULL, '2026-07-28T00:00:00Z',
+                1, 'Modo oscuro de preferencia del usuario', '["preference"]', NULL, NULL, '2026-07-28T00:00:00Z',
                 1, 'preference', 0.9, 'user_explicit',
                 NULL, NULL, NULL
             )
@@ -144,9 +144,9 @@ class FactDbMigrationTest {
             FactDb::class.java,
             dbFile.absolutePath,
         )
-            // v1.0.56: 补全 7→10 迁移链(Room 需要完整路径;此前只注册 7_8,
-            //   测试建库后实际要求迁到当前版本 10;v1.0.62 延续到 11)
-            // v12: 延续到 12(实体归一化键列);v13: 延续到 13(修订记录表)
+            // v1.0.56: completo 7→10 cadena migratoria(Room ruta completa requerida;Anteriormente solo registrado 7_8,
+            //   Una vez creada la base de datos de prueba, el requisito real es migrar a la versión actual. 10;v1.0.62 continuar 11)
+            // v12: continuar 12(Columna de clave de normalización de entidad);v13: continuar 13(registro de revisión)
             .addMigrations(
                 FactDb.MIGRATION_7_8,
                 FactDb.MIGRATION_8_9,
@@ -165,15 +165,15 @@ class FactDbMigrationTest {
             .build()
 
         db.openHelper.writableDatabase.query("SELECT scope FROM facts WHERE id = 1").use { cursor ->
-            assertTrue("期望查询到 1 行迁移后的历史数据", cursor.moveToFirst())
-            assertEquals("历史事实的 scope 应默认为 main", "main", cursor.getString(0))
-            assertTrue("应只有 1 行", cursor.isLast)
+            assertTrue("Espere consultar 1 fila de datos históricos después de la migración", cursor.moveToFirst())
+            assertEquals("El alcance de los hechos históricos debería por defecto ser main", "main", cursor.getString(0))
+            assertTrue("Solo debe haber 1 fila", cursor.isLast)
         }
 
         db.openHelper.writableDatabase
             .query("SELECT name FROM sqlite_master WHERE type='index' AND name='index_facts_scope'")
             .use { cursor ->
-                assertTrue("index_facts_scope 索引应存在", cursor.moveToFirst())
+                assertTrue("index_facts_scope El índice debería existir", cursor.moveToFirst())
             }
 
         db.close()
@@ -206,7 +206,7 @@ class FactDbMigrationTest {
                 importance, category, confidence, source,
                 expires_at, last_confirmed_at, last_hit_at
             ) VALUES (
-                42, '生日: 1990-05-20', '["identity","event"]', '1990-05-20T00:00:00Z',
+                42, 'cumpleaños: 1990-05-20', '["identity","event"]', '1990-05-20T00:00:00Z',
                 'session-abc', '2026-07-28T10:00:00Z',
                 2, 'identity', 1.0, 'user_explicit',
                 '2027-07-28T00:00:00Z', '2026-07-28T11:00:00Z', '2026-07-28T12:00:00Z'
@@ -220,8 +220,8 @@ class FactDbMigrationTest {
             FactDb::class.java,
             dbFile.absolutePath,
         )
-            // v1.0.56: 补全 7→10 迁移链(Room 需要完整路径)
-            // v12: 延续到 12(实体归一化键列);v13: 延续到 13(修订记录表)
+            // v1.0.56: completo 7→10 cadena migratoria(Room ruta completa requerida)
+            // v12: continuar 12(Columna de clave de normalización de entidad);v13: continuar 13(registro de revisión)
             .addMigrations(
                 FactDb.MIGRATION_7_8,
                 FactDb.MIGRATION_8_9,
@@ -246,7 +246,7 @@ class FactDbMigrationTest {
             """.trimIndent(),
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
-            assertEquals("生日: 1990-05-20", cursor.getString(0))
+            assertEquals("cumpleaños: 1990-05-20", cursor.getString(0))
             assertEquals(2, cursor.getInt(1))
             assertEquals("identity", cursor.getString(2))
             assertEquals(1.0f, cursor.getFloat(3), 0.001f)
@@ -254,21 +254,21 @@ class FactDbMigrationTest {
             assertEquals("2027-07-28T00:00:00Z", cursor.getString(5))
             assertEquals("2026-07-28T11:00:00Z", cursor.getString(6))
             assertEquals("2026-07-28T12:00:00Z", cursor.getString(7))
-            assertEquals("main", cursor.getString(8)) // 新增字段,默认值
+            assertEquals("main", cursor.getString(8)) // Agregar nuevo campo,Valor predeterminado
         }
 
         db.close()
     }
 
     /**
-     * v12: 老用户从 v11 升级 — entity_key 列新增,历史数据完整保留。
-     * 用户安装新版本后记忆数据必须正常: 现有事实不丢、字段不变、新列可空。
+     * v12: Los usuarios antiguos actualizan desde v11 — entity_key Columna agregada,Los datos históricos se mantienen intactos.
+     * Después de que el usuario instala la nueva versión, los datos de la memoria deben ser normales: Los datos existentes no se pierden, los campos permanecen sin cambios y las columnas nuevas pueden dejarse vacías.
      */
     @Test
     fun migrate11To12_addsEntityKeyColumnPreservingData() {
         val dbFile = newDbFile()
         val factory = FrameworkSQLiteOpenHelperFactory()
-        // v11 schema: facts + fts + 全部旧列(pinned_at 最后)
+        // v11 schema: facts + fts + Todas las columnas antiguas(pinned_at finalmente)
         val V11_CREATE_FACTS = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -328,10 +328,10 @@ class FactDbMigrationTest {
                         db.execSQL(V11_CREATE_FTS)
                         db.execSQL(V11_CREATE_SPACES)
                         db.execSQL(V11_CREATE_LINKS)
-                        // v9 索引
+                        // v9 índice
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_facts_scope` ON `facts` (`scope`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_facts_space_id` ON `facts` (`space_id`)")
-                        // v7 索引 — 完整 schema 必须包含,否则迁移后 Room 校验失败
+                        // v7 índice — El esquema completo debe contener,De lo contrario, la verificación de la sala falla después de la migración.
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_time` ON `facts` (`time`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_session` ON `facts` (`session_id`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_importance` ON `facts` (`importance`)")
@@ -349,7 +349,7 @@ class FactDbMigrationTest {
                 .build(),
         ).writableDatabase
 
-        // 模拟老用户已有 2 条记忆(含置顶)与 1 条 FTS 索引
+        // El usuario antiguo simulado ya tiene 2 recuerdos.(Contiene fijado)con 1 índice FTS
         helper.execSQL(
             """
             INSERT INTO facts (
@@ -358,7 +358,7 @@ class FactDbMigrationTest {
                 expires_at, last_confirmed_at, last_hit_at,
                 scope, space_id, pinned_at
             ) VALUES (
-                1, '用户喜欢深色模式', '["preference"]', NULL, NULL, '2026-08-01T00:00:00Z',
+                1, 'A los usuarios les encanta el modo oscuro', '["preference"]', NULL, NULL, '2026-08-01T00:00:00Z',
                 1, 'preference', 0.9, 'user_explicit',
                 NULL, NULL, '2026-08-10T00:00:00Z',
                 'main', 'default', '2026-08-15T00:00:00Z'
@@ -373,7 +373,7 @@ class FactDbMigrationTest {
                 expires_at, last_confirmed_at, last_hit_at,
                 scope, space_id, pinned_at
             ) VALUES (
-                2, '下周三交论文初稿', '["学业","计划"]', '2026-08-26T09:00:00Z', 'sess-x', '2026-08-18T10:00:00Z',
+                2, 'El primer borrador del artículo deberá entregarse el próximo miércoles.', '["estudios","planear"]', '2026-08-26T09:00:00Z', 'sess-x', '2026-08-18T10:00:00Z',
                 1, 'goal', 1.0, 'user_explicit',
                 '2026-08-27T00:00:00Z', NULL, NULL,
                 'main', 'work', NULL
@@ -381,11 +381,11 @@ class FactDbMigrationTest {
             """.trimIndent(),
         )
         helper.execSQL(
-            "INSERT INTO facts_fts(fact_id, content_ngram) VALUES (1, '用户 喜欢 深色 模式'), (2, '下周 周三 交论 论文 初稿')",
+            "INSERT INTO facts_fts(fact_id, content_ngram) VALUES (1, 'A los usuarios les gusta el modo oscuro'), (2, 'El miércoles de la próxima semana, se entregará el primer borrador del artículo.')",
         )
         helper.close()
 
-        // 触发 11→12 迁移
+        // gatillo 11→12 Migrar
         val db = Room.databaseBuilder(context, FactDb::class.java, dbFile.absolutePath)
             .addMigrations(
                 FactDb.MIGRATION_11_12,
@@ -401,63 +401,63 @@ class FactDbMigrationTest {
             .build()
         db.openHelper.writableDatabase
 
-        // 1. entity_key 列存在
+        // 1. entity_key La columna existe
         db.openHelper.writableDatabase.query("PRAGMA table_info(facts)").use { cursor ->
             val columns = mutableListOf<String>()
             while (cursor.moveToNext()) columns.add(cursor.getString(1))
-            assertTrue("entity_key 列应存在", "entity_key" in columns)
+            assertTrue("entity_key La columna debería existir", "entity_key" in columns)
         }
 
-        // 2. 历史数据完整保留(含 scope/space_id/pinned_at/expires_at/last_hit_at)
+        // 2. Mantenga intactos los datos históricos(Contiene scope/space_id/pinned_at/expires_at/last_hit_at)
         db.openHelper.writableDatabase.query(
             """
             SELECT fact, importance, scope, space_id, pinned_at, expires_at, last_hit_at, entity_key
             FROM facts WHERE id = 1
             """.trimIndent(),
         ).use { cursor ->
-            assertTrue("老数据应保留", cursor.moveToFirst())
-            assertEquals("用户喜欢深色模式", cursor.getString(0))
+            assertTrue("Los datos antiguos deben conservarse.", cursor.moveToFirst())
+            assertEquals("A los usuarios les encanta el modo oscuro", cursor.getString(0))
             assertEquals(1, cursor.getInt(1))
             assertEquals("main", cursor.getString(2))
             assertEquals("default", cursor.getString(3))
             assertEquals("2026-08-15T00:00:00Z", cursor.getString(4))
-            assertNull("expires_at 为 NULL", cursor.getString(5))
+            assertNull("expires_at para NULL", cursor.getString(5))
             assertEquals("2026-08-10T00:00:00Z", cursor.getString(6))
-            assertNull("老数据 entity_key 为 NULL(待反思任务回填)", cursor.getString(7))
+            assertNull("La antigua clave_entidad de datos es NULL(Para completar con tareas de reflexión.)", cursor.getString(7))
         }
 
-        // 3. 第二条(work 空间)同样保留
+        // 3. Artículo 2(work espacio)También reservado
         db.openHelper.writableDatabase.query("SELECT space_id, expires_at FROM facts WHERE id = 2").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("work", cursor.getString(0))
             assertEquals("2026-08-27T00:00:00Z", cursor.getString(1))
         }
 
-        // 4. 索引 idx_facts_entity_key 已建
+        // 4. Se ha creado el índice idx_facts_entity_key
         db.openHelper.writableDatabase.query(
             "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_facts_entity_key'",
         ).use { cursor ->
-            assertTrue("idx_facts_entity_key 索引应存在", cursor.moveToFirst())
+            assertTrue("idx_facts_entity_key El índice debería existir", cursor.moveToFirst())
         }
 
-        // 5. v13: fact_revisions 表已建(空表)
+        // 5. v13: fact_revisions La tabla ha sido creada.(mesa vacia)
         db.openHelper.writableDatabase.query(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='fact_revisions'",
         ).use { cursor ->
-            assertTrue("fact_revisions 表应存在", cursor.moveToFirst())
+            assertTrue("fact_revisions la tabla debería existir", cursor.moveToFirst())
         }
 
         db.close()
     }
 
     /**
-     * v13: 老用户从 v12 升级 — fact_revisions 表新增,原 facts 数据无损。
+     * v13: Los usuarios antiguos actualizan desde v12 — fact_revisions mesa nueva,Los datos de los hechos originales están intactos.
      */
     @Test
     fun migrate12To13_addsRevisionsTablePreservingFacts() {
         val dbFile = newDbFile()
         val factory = FrameworkSQLiteOpenHelperFactory()
-        // v12 schema: facts(含 entity_key) + fts + spaces + links
+        // v12 schema: facts(Contiene entity_key) + fts + spaces + links
         val V12_CREATE_FACTS = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -518,7 +518,7 @@ class FactDbMigrationTest {
                         db.execSQL(V12_CREATE_FTS)
                         db.execSQL(V12_CREATE_SPACES)
                         db.execSQL(V12_CREATE_LINKS)
-                        // v12 schema 完整索引 — 全部 7 个 facts 索引 + 关联表索引,否则迁移后 Room 校验失败
+                        // v12 schema índice completo — Índice de los 7 hechos + índice de tabla de asociaciones,De lo contrario, la verificación de la sala falla después de la migración.
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_time` ON `facts` (`time`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_session` ON `facts` (`session_id`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `idx_facts_importance` ON `facts` (`importance`)")
@@ -547,10 +547,10 @@ class FactDbMigrationTest {
                 expires_at, last_confirmed_at, last_hit_at,
                 scope, space_id, pinned_at, entity_key
             ) VALUES (
-                1, '张三喜欢摄影', '["preference"]', NULL, NULL, '2026-08-01T00:00:00Z',
+                1, 'A Zhang San le gusta la fotografía', '["preference"]', NULL, NULL, '2026-08-01T00:00:00Z',
                 1, 'preference', 0.9, 'user_explicit',
                 NULL, NULL, '2026-08-10T00:00:00Z',
-                'main', 'default', NULL, '张三'
+                'main', 'default', NULL, 'Zhang San'
             )
             """.trimIndent(),
         )
@@ -570,30 +570,30 @@ class FactDbMigrationTest {
             .build()
         db.openHelper.writableDatabase
 
-        // fact_revisions 表存在
+        // fact_revisions la mesa existe
         db.openHelper.writableDatabase.query(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='fact_revisions'",
         ).use { cursor ->
-            assertTrue("fact_revisions 表应存在", cursor.moveToFirst())
+            assertTrue("fact_revisions la tabla debería existir", cursor.moveToFirst())
         }
 
-        // 原 facts 数据无损(含 entity_key)
+        // Los datos de hechos originales no tienen pérdidas.(Contiene entity_key)
         db.openHelper.writableDatabase.query(
             "SELECT fact, importance, entity_key FROM facts WHERE id = 1",
         ).use { cursor ->
-            assertTrue("facts 数据应保留", cursor.moveToFirst())
-            assertEquals("张三喜欢摄影", cursor.getString(0))
+            assertTrue("facts Los datos deben conservarse", cursor.moveToFirst())
+            assertEquals("A Zhang San le gusta la fotografía", cursor.getString(0))
             assertEquals(1, cursor.getInt(1))
-            assertEquals("张三", cursor.getString(2))
+            assertEquals("Zhang San", cursor.getString(2))
         }
 
         db.close()
     }
 
     /**
-     * I-AUDIT: 补 FactDb 3→7 迁移回归(此前仅覆盖 7→8/11→12/12→13)。
-     * v3 只有 6 列(无 importance/category/confidence/source/expires_at/last_hit_at/last_confirmed_at)+ 无 FTS,
-     * 一路迁到当前版本应:新增列齐全、FTS 建表、历史数据无损、默认值正确。
+     * I-AUDIT: suplemento FactDb 3→7 regresión migratoria(Anteriormente solo estaba cubierto 7→8/11→12/12→13).
+     * v3 solo 6 columnas(Ninguno importance/category/confidence/source/expires_at/last_hit_at/last_confirmed_at)+ Ninguno FTS,
+     * Migrar completamente a la versión actual debería:Completar nuevas columnas,FTS La creación de tablas, los datos históricos no tienen pérdidas y los valores predeterminados son correctos.
      */
     @Test
     fun migrateFromV3_addsColumnsAndFtsPreservingData() {
@@ -627,7 +627,7 @@ class FactDbMigrationTest {
 
         helper.execSQL(
             "INSERT INTO facts (id, fact, tags, time, session_id, created_at) " +
-                "VALUES (1, '爱吃辣', '[\"偏好\"]', NULL, NULL, '2026-01-01T00:00:00Z')",
+                "VALUES (1, 'Me encanta la comida picante', '[\"Preferencia\"]', NULL, NULL, '2026-01-01T00:00:00Z')",
         )
         helper.close()
 
@@ -646,31 +646,31 @@ class FactDbMigrationTest {
             .allowMainThreadQueries()
             .build()
 
-        // 1. 3→7 新增列齐全
+        // 1. 3→7 Completar nuevas columnas
         db.openHelper.writableDatabase.query("PRAGMA table_info(facts)").use { cursor ->
             val cols = mutableListOf<String>()
             while (cursor.moveToNext()) cols.add(cursor.getString(1))
-            assertTrue("importance 列应存在", "importance" in cols)
-            assertTrue("category 列应存在", "category" in cols)
-            assertTrue("confidence 列应存在", "confidence" in cols)
-            assertTrue("source 列应存在", "source" in cols)
-            assertTrue("expires_at 列应存在", "expires_at" in cols)
-            assertTrue("last_confirmed_at 列应存在", "last_confirmed_at" in cols)
-            assertTrue("last_hit_at 列应存在", "last_hit_at" in cols)
-            assertTrue("scope 列应存在", "scope" in cols)
+            assertTrue("importance La columna debería existir", "importance" in cols)
+            assertTrue("category La columna debería existir", "category" in cols)
+            assertTrue("confidence La columna debería existir", "confidence" in cols)
+            assertTrue("source La columna debería existir", "source" in cols)
+            assertTrue("expires_at La columna debería existir", "expires_at" in cols)
+            assertTrue("last_confirmed_at La columna debería existir", "last_confirmed_at" in cols)
+            assertTrue("last_hit_at La columna debería existir", "last_hit_at" in cols)
+            assertTrue("scope La columna debería existir", "scope" in cols)
         }
 
-        // 2. FTS 表已建
+        // 2. FTS La tabla ha sido creada.
         db.openHelper.writableDatabase.query(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='facts_fts'",
-        ).use { cursor -> assertTrue("facts_fts 表应存在", cursor.moveToFirst()) }
+        ).use { cursor -> assertTrue("facts_fts la tabla debería existir", cursor.moveToFirst()) }
 
-        // 3. 历史数据无损 + 默认值正确
+        // 3. Los datos históricos no tienen pérdidas + el valor predeterminado es correcto
         db.openHelper.writableDatabase.query(
             "SELECT fact, importance, category, confidence, source, scope FROM facts WHERE id = 1",
         ).use { cursor ->
-            assertTrue("v3 存量事实应保留", cursor.moveToFirst())
-            assertEquals("爱吃辣", cursor.getString(0))
+            assertTrue("v3 Los datos del inventario deben conservarse.", cursor.moveToFirst())
+            assertEquals("Me encanta la comida picante", cursor.getString(0))
             assertEquals(0, cursor.getInt(1))
             assertEquals("general", cursor.getString(2))
             assertEquals(1.0f, cursor.getFloat(3), 0.001f)
@@ -693,8 +693,8 @@ class FactDbMigrationTest {
     }
 
     /**
-     * v17: 老用户从 v16 升级 —— 衰减分数落库,历史行初始化成 [MemoryConfig.baseImportance](10.0),
-     * 而不是 0:0 分会让所有旧记忆在第一轮结算里集体出场,等于升级即“失忆”。
+     * v17: Los usuarios antiguos actualizan desde v16 —— Biblioteca de caída de fracciones de desintegración,La fila del historial se inicializa para [MemoryConfig.baseImportance](10.0),
+     * En lugar de un resultado de 0:0, todos los viejos recuerdos aparecerán colectivamente en la primera ronda de acuerdo.,igual a una mejora“amnesia”.
      */
     @Test
     fun migrate16To17_initializesPersistedScoreForLegacyRows() {
@@ -718,26 +718,26 @@ class FactDbMigrationTest {
             INSERT INTO facts (id, fact, tags, time, session_id, created_at, importance, category,
                 confidence, source, expires_at, last_confirmed_at, last_hit_at, hit_count,
                 scope, space_id, pinned_at, entity_key)
-            VALUES (7, '用户喜欢喝美式咖啡', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 0, 'preference',
+            VALUES (7, 'A los usuarios les gusta tomar café americano.', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 0, 'preference',
                 1.0, 'user_explicit', NULL, NULL, NULL, 3,
-                'main', 'default', NULL, '用户')
+                'main', 'default', NULL, 'Usuario')
             """.trimIndent(),
         )
 
         FactDb.MIGRATION_16_17.migrate(helper)
 
         helper.query("SELECT score, score_updated_at, suppressed_at FROM facts WHERE id = 7").use { cursor ->
-            assertTrue("历史事实应保留", cursor.moveToFirst())
-            assertEquals("旧记忆分数应初始化为 baseImportance(非 0)", 10.0f, cursor.getFloat(0), 0.001f)
-            assertTrue("首轮结算前不写结算时间", cursor.isNull(1))
-            assertTrue("升级后不应立刻出场", cursor.isNull(2))
+            assertTrue("Los hechos históricos deben preservarse.", cursor.moveToFirst())
+            assertEquals("La puntuación de memoria antigua debe inicializarse como baseImportance(no 0)", 10.0f, cursor.getFloat(0), 0.001f)
+            assertTrue("No anote el tiempo de liquidación antes de la primera ronda de liquidación.", cursor.isNull(1))
+            assertTrue("No deberías aparecer inmediatamente después de actualizar.", cursor.isNull(2))
         }
         helper.close()
     }
 
     /**
-     * v18: 老用户从 v17 升级 —— `supersedes_id` 是可空新增列,历史行一律为 NULL,
-     * 即“不取代任何记忆”: 编译段的取舍与召回行为与升级前完全一致。
+     * v18: Los usuarios antiguos actualizan desde v17 —— `supersedes_id` ¿Es posible agregar una nueva columna?,La historia es siempre NULL,
+     * Eso es“No reemplaza ninguna memoria”: El comportamiento de selección y recuperación de las secciones compiladas es exactamente el mismo que antes de la actualización.
      */
     @Test
     fun migrate17To18_leavesLegacyRowsWithoutSupersedes() {
@@ -761,26 +761,26 @@ class FactDbMigrationTest {
             INSERT INTO facts (id, fact, tags, time, session_id, created_at, importance, category,
                 confidence, source, expires_at, last_confirmed_at, last_hit_at, hit_count,
                 scope, space_id, pinned_at, entity_key, score, score_updated_at, suppressed_at)
-            VALUES (9, '用户喜欢喝美式咖啡', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 0, 'preference',
+            VALUES (9, 'A los usuarios les gusta tomar café americano.', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 0, 'preference',
                 1.0, 'user_explicit', NULL, NULL, NULL, 3,
-                'main', 'default', NULL, '用户', 7.5, NULL, NULL)
+                'main', 'default', NULL, 'Usuario', 7.5, NULL, NULL)
             """.trimIndent(),
         )
 
         FactDb.MIGRATION_17_18.migrate(helper)
 
         helper.query("SELECT fact, score, supersedes_id FROM facts WHERE id = 9").use { cursor ->
-            assertTrue("历史事实应保留", cursor.moveToFirst())
-            assertEquals("升级不改变事实内容", "用户喜欢喝美式咖啡", cursor.getString(0))
-            assertEquals("升级不改变已落库的衰减分数", 7.5f, cursor.getFloat(1), 0.001f)
-            assertTrue("历史行不取代任何记忆", cursor.isNull(2))
+            assertTrue("Los hechos históricos deben preservarse.", cursor.moveToFirst())
+            assertEquals("La actualización no cambia el contenido real", "A los usuarios les gusta tomar café americano.", cursor.getString(0))
+            assertEquals("La actualización no cambia la puntuación de deterioro de la biblioteca eliminada", 7.5f, cursor.getFloat(1), 0.001f)
+            assertTrue("La línea histórica no reemplaza ningún recuerdo.", cursor.isNull(2))
         }
         helper.close()
     }
 
     /**
-     * v19: 老用户从 v18 升级 —— `merged_into_id` 是可空新增列,历史行一律为 NULL,
-     * 即“未被合并”: 召回、投影、列表行为与升级前完全一致。
+     * v19: Los usuarios antiguos actualizan desde v18 —— `merged_into_id` ¿Es posible agregar una nueva columna?,La historia es siempre NULL,
+     * Eso es“No fusionado”: El comportamiento de recuperación, proyección y lista es exactamente el mismo que antes de la actualización.
      */
     @Test
     fun migrate18To19_leavesLegacyRowsUnmerged() {
@@ -804,20 +804,20 @@ class FactDbMigrationTest {
             INSERT INTO facts (id, fact, tags, time, session_id, created_at, importance, category,
                 confidence, source, expires_at, last_confirmed_at, last_hit_at, hit_count,
                 scope, space_id, pinned_at, entity_key, score, score_updated_at, suppressed_at, supersedes_id)
-            VALUES (11, '用户喜欢喝美式咖啡', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 1, 'preference',
+            VALUES (11, 'A los usuarios les gusta tomar café americano.', '[]', NULL, NULL, '2026-05-01T00:00:00Z', 1, 'preference',
                 1.0, 'user_explicit', NULL, NULL, NULL, 2,
-                'main', 'default', NULL, '用户', 8.5, NULL, NULL, NULL)
+                'main', 'default', NULL, 'Usuario', 8.5, NULL, NULL, NULL)
             """.trimIndent(),
         )
 
         FactDb.MIGRATION_18_19.migrate(helper)
 
         helper.query("SELECT fact, importance, supersedes_id, merged_into_id FROM facts WHERE id = 11").use { cursor ->
-            assertTrue("历史事实应保留", cursor.moveToFirst())
-            assertEquals("升级不改变事实内容", "用户喜欢喝美式咖啡", cursor.getString(0))
-            assertEquals("升级不改变已落库的重要度", 1, cursor.getInt(1))
-            assertTrue("历史行不带取代指向", cursor.isNull(2))
-            assertTrue("历史行“未被合并”", cursor.isNull(3))
+            assertTrue("Los hechos históricos deben preservarse.", cursor.moveToFirst())
+            assertEquals("La actualización no cambia el contenido real", "A los usuarios les gusta tomar café americano.", cursor.getString(0))
+            assertEquals("La actualización no cambia la importancia de las bibliotecas eliminadas", 1, cursor.getInt(1))
+            assertTrue("Línea histórica sin puntero de reemplazo", cursor.isNull(2))
+            assertTrue("linea de historia“No fusionado”", cursor.isNull(3))
         }
         helper.close()
     }
@@ -825,7 +825,7 @@ class FactDbMigrationTest {
     private companion object {
         const val DB_NAME = "facts_test.db"
 
-        /** v16 的 facts 表结构(与 schemas/16.json 一致,不含 v17 新增列)。 */
+        /** v16 La estructura de la tabla de hechos.(Consistente con esquemas/16.json,No incluye columnas nuevas v17). */
         val V16_FACTS = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -849,7 +849,7 @@ class FactDbMigrationTest {
             )
         """.trimIndent()
 
-        /** v17 的 facts 表结构(与 schemas/17.json 一致,含衰减三列,不含 supersedes_id)。 */
+        /** v17 La estructura de la tabla de hechos.(Consistente con esquemas/17.json,Tres columnas con atenuación.,no contiene supersedes_id). */
         val V17_FACTS = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -876,7 +876,7 @@ class FactDbMigrationTest {
             )
         """.trimIndent()
 
-        /** v18 的 facts 表结构(与 schemas/18.json 一致,含 supersedes_id,不含 merged_into_id)。 */
+        /** v18 La estructura de la tabla de hechos.(Consistente con esquemas/18.json,Contiene supersedes_id,no contiene merged_into_id). */
         val V18_FACTS = """
             CREATE TABLE IF NOT EXISTS `facts` (
                 `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,

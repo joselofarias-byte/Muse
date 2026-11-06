@@ -69,15 +69,15 @@ import org.koin.compose.koinInject
 import kotlin.uuid.Uuid
 
 /**
- * 助手列表页 —— 全量重写。
+ * Página de lista de asistentes —— Completamente reescrito.
  *
- * 设计要点:
- *  - 大标题 MuseTopBar,右侧导入角色卡入口
- *  - 暖白背景,白色圆角卡片分组
- *  - 长期记忆入口独立 CardGroup
- *  - 助手列表 CardGroup:头像 + 名称 + 当前状态绿点 + 系统提示预览 + 更多菜单
- *  - 操作区 CardGroup:新建助手 / 导入 SillyTavern 角色卡
- *  - 所有按压反馈走 color-fade + 轻触觉,无 Material 涟漪
+ * Puntos de diseño:
+ *  - titular MuseTopBar,Entrada de tarjeta de personaje de importación a la derecha
+ *  - fondo blanco cálido,Agrupación de tarjetas de esquinas redondeadas blancas.
+ *  - Entrada a la memoria a largo plazo independiente CardGroup
+ *  - Lista de asistentes CardGroup: avatar + nombre + estado actual punto verde + vista previa del mensaje del sistema + más menús
+ *  - Área de operación CardGroup: Nuevo asistente/Importar tarjeta de personaje de SillyTavern
+ *  - Todos los comentarios de prensa se desvanecen y se tocan ligeramente,Sin ondulaciones materiales
  */
 @Composable
 fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewModel: ChatViewModel = koinViewModel()) {
@@ -85,24 +85,24 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
     val repo: AssistantRepository = koinInject()
     val settings: SettingsRepository = koinInject()
     val defaultAssistantId by settings.defaultAssistantIdFlow.collectAsStateWithLifecycle(initialValue = "default")
-    // 前端修复 (持久化-2): Boolean 弹窗态改 rememberSaveable
+    // Correcciones en la interfaz (persistencia-2): Boolean Cambio de estado de la ventana emergente rememberSaveable
     var showDefaultAssistantPicker by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // 前端修复 (持久化-2): AssistantEntity 无法直接 saveable,改为存 id(String) 再查找
+    // Correcciones en la interfaz (persistencia-2): AssistantEntity no puede directamente saveable,Cambiar para guardar id(String) Buscar de nuevo
     var actionSheetAssistantId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleteTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var exportTargetId by rememberSaveable { mutableStateOf<String?>(null) }
-    // v2.x: 待确认导入的角色卡(解析完成,用户确认后才写入)
+    // v2.x: Tarjeta de personaje por confirmar para importación.(Análisis completado,Escribe solo después de que el usuario confirme)
     var pendingImportCard by remember { mutableStateOf<AssistantCardExporter.ParsedCard?>(null) }
 
-    // 前端修复 (持久化-2): 由保存的 id 反查实体(列表来自 ViewModel state,进程重建后仍可恢复;
-    // id 找不到时反查为 null,弹窗自然不显示,安全降级)
+    // Correcciones en la interfaz (persistencia-2): Entidad de verificación inversa por identificación guardada(Lista de ViewModel state,El proceso aún se puede recuperar después de la reconstrucción.;
+    // id Si no lo encuentra, busque como null,La ventana emergente, naturalmente, no se mostrará.,Bajada segura)
     val actionSheetAssistant = actionSheetAssistantId?.let { id -> state.assistants.find { it.id == id } }
     val deleteTarget = deleteTargetId?.let { id -> state.assistants.find { it.id == id } }
     val exportTarget = exportTargetId?.let { id -> state.assistants.find { it.id == id } }
 
-    // i18n: 预提取字符串资源
+    // i18n: Precargar recursos de cadena
     val screenTitle = stringResource(R.string.assistant_screen_title)
     val importCardCd = stringResource(R.string.assistant_import_card_cd)
     val importPreviewTitle = stringResource(R.string.assistant_import_preview_title)
@@ -134,7 +134,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
     val defaultAssistantPickerTitle = stringResource(R.string.assistant_default_picker_title)
     val defaultAssistantHint = stringResource(R.string.assistant_default_hint)
 
-    // 导出角色卡 launcher(SAF CreateDocument,.muse-assistant 文件)
+    // Exportar tarjeta de personaje launcher(SAF CreateDocument,.muse-assistant Archivo)
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri ->
@@ -149,7 +149,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
         }
     }
 
-    // 导入角色卡 launcher(SAF OpenDocument) — v2.x: 先解析再弹预览确认,确认后才写入
+    // Importar cartas de personajes launcher(SAF OpenDocument) — v2.x: Analizar primero y luego obtener una vista previa y confirmar,Escribir después de la confirmación
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -168,7 +168,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
         }
     }
 
-    // v2.x: 外部点开角色包文件(.muse-assistant)→ 解析并弹预览确认
+    // v2.x: Haga clic externamente para abrir el archivo del paquete de personajes.(.muse-assistant)→ Analizar y obtener una vista previa para confirmar
     val pendingExternalCardUri by AssistantCardImportBridge.pendingUri.collectAsStateWithLifecycle()
     LaunchedEffect(pendingExternalCardUri) {
         val uri = pendingExternalCardUri ?: return@LaunchedEffect
@@ -184,7 +184,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
             .onFailure { MuseToast.show(context.getString(R.string.assistant_toast_import_failed, it.message ?: ""), 3500) }
     }
 
-    // 导入 SillyTavern 角色卡 launcher
+    // Importar tarjetas de personajes de SillyTavern launcher
     val importSillyTavernLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -214,7 +214,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                 AssistantEntity(
                     id = newId,
                     name = context.getString(R.string.assistant_new_default_name),
-                    // v1.0.51: 新建助手预填默认 prompt(从 assets 加载,带 locale 回落)
+                    // v1.0.51: Nuevo asistente precarga predeterminado prompt(Carga desde activos,respaldo con la configuración regional)
                     systemPrompt = repo.loadDefaultPrompt(),
                     createdAt = now,
                     updatedAt = now,
@@ -265,9 +265,9 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
             contentPadding = PaddingValues(vertical = MusePaddings.sectionGap),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.sectionGap),
         ) {
-            // 助手列表
+            // lista de asistentes
             if (state.isAssistantsLoading) {
-                // v2.x: 动效补齐 — 骨架屏入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — Entrada a la pantalla esqueleto(ficha animateItem)
                 item {
                     Box(museAnimateItem()) {
                         Column(
@@ -281,7 +281,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     }
                 }
             } else {
-                // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
                 item {
                     Box(museAnimateItem()) {
                         CardGroup(
@@ -312,7 +312,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     }
                 }
 
-                // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+                // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
                 item {
                     Box(museAnimateItem()) {
                         CardGroup(
@@ -390,8 +390,8 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     }
                 }
 
-                // 操作区:仅在已有助手时显示,避免空状态重复"新建"
-                // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+                // área de operación:Sólo se muestra si hay un asistente.,Evite la duplicación de estados vacíos."Nuevo"
+                // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
                 if (state.assistants.isNotEmpty()) {
                     item {
                         Box(museAnimateItem()) {
@@ -502,7 +502,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
         )
     }
 
-    // 操作菜单(MuseDialog)
+    // Menú de operación(MuseDialog)
     actionSheetAssistant?.let { assistant ->
         val currentIndex = state.assistants.indexOf(assistant)
         val canMoveUp = currentIndex > 0
@@ -513,7 +513,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
             title = assistant.name.ifBlank { unnamedText },
             content = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // 头部头像
+                    // avatar de cabeza
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -525,7 +525,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                     }
                     Spacer(Modifier.size(12.dp))
 
-                    // 上移
+                    // subir
                     if (canMoveUp) {
                         ActionMenuRow(
                             icon = MuseIcons.arrowUp,
@@ -534,7 +534,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                             onClick = {
                                 scope.launch {
                                     val upper = state.assistants[currentIndex - 1]
-                                    // P2-7: 交换真实 sortIndex,而非把列表下标当 sortIndex 写回(≥3 项会错乱)
+                                    // P2-7: intercambiar verdad sortIndex,En lugar de escribir el subíndice de la lista como sortIndex(≥3 Los artículos se confundirán)
                                     repo.upsert(
                                         assistant.copy(
                                             sortIndex = upper.sortIndex,
@@ -553,7 +553,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                         )
                     }
 
-                    // 下移
+                    // bajar
                     if (canMoveDown) {
                         ActionMenuRow(
                             icon = MuseIcons.arrowDown,
@@ -562,7 +562,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                             onClick = {
                                 scope.launch {
                                     val lower = state.assistants[currentIndex + 1]
-                                    // P2-7: 交换真实 sortIndex,而非把列表下标当 sortIndex 写回
+                                    // P2-7: intercambiar verdad sortIndex,En lugar de escribir el subíndice de la lista como sortIndex
                                     repo.upsert(
                                         assistant.copy(
                                             sortIndex = lower.sortIndex,
@@ -581,7 +581,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                         )
                     }
 
-                    // 克隆
+                    // clonar
                     ActionMenuRow(
                         icon = MuseIcons.copy,
                         contentDescription = cloneCd,
@@ -592,7 +592,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                         },
                     )
 
-                    // U-26: 启用/停用(停用后从候选列表隐藏,不影响既有会话)
+                    // U-26: habilitar/desactivar(Ocultarse de la lista de candidatos después de la desactivación,No afecta las sesiones existentes.)
                     ActionMenuRow(
                         icon = if (assistant.enabled) MuseIcons.eyeOff else MuseIcons.eye,
                         contentDescription = stringResource(
@@ -607,7 +607,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                         },
                     )
 
-                    // 导出角色卡
+                    // Exportar tarjeta de personaje
                     ActionMenuRow(
                         icon = MuseIcons.upload,
                         contentDescription = exportCardCd,
@@ -622,8 +622,8 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
                         },
                     )
 
-                    // 删除（v2.6.2: 自带/默认助手也可删 —— 底层已有「自动把默认指针切给另一个助手」保护，
-                    // 仅当只剩一个助手时才拦下。旧实现用 `id != "default"` 把入口藏了，用户无法删除自带助手。）
+                    // Eliminar (v2.6.2: Trae el tuyo/El asistente predeterminado también se puede eliminar —— La capa inferior tiene la protección de "cambiar automáticamente el puntero predeterminado a otro asistente".
+                    // Sólo deténgase si solo queda un asistente. Para implementación anterior `id != "default"` La entrada está oculta y los usuarios no pueden eliminar el asistente integrado. )
                     ActionMenuRow(
                         icon = MuseIcons.trash,
                         contentDescription = deleteCd,
@@ -642,18 +642,18 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
         )
     }
 
-    // 删除确认对话框
+    // Eliminar cuadro de diálogo de confirmación
     deleteTarget?.let { target ->
         ConfirmDeleteDialog(
             title = deleteDialogTitle,
             itemName = target.name,
-            // MEM-04: 点名助手 + 说明后果(其独立记忆库会被删除;已属于它的对话保留但失去绑定)
+            // MEM-04: Nombra al asistente + explica las consecuencias(Su banco de memoria independiente será eliminado.;Las conversaciones que ya le pertenecían permanecen pero pierden sus vínculos.)
             consequence = stringResource(R.string.assistant_delete_consequence),
             onConfirm = {
-                // v2.x（用户反馈）: 默认助手也可删（条件保护）——
-                // ① 至少保留两个助手；
-                // ② 删除的是默认助手（id=default 或默认指针指向的）时，
-                //    自动把默认指针切到另一个助手，避免"无默认可用"。
+                // v2.x(comentarios de los usuarios): El asistente predeterminado también se puede eliminar (protección condicional)——
+                // ① Mantener al menos dos asistentes;
+                // ② Lo que se elimina es el asistente predeterminado (id=default o el puntero predeterminado apunta a),
+                //    Cambie automáticamente el puntero predeterminado a otro asistente para evitar"No hay valores predeterminados disponibles".
                 scope.launch {
                     val all = repo.getAll()
                     if (all.size < 2) {
@@ -677,7 +677,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
         )
     }
 
-    // v2.x: 导入预览确认对话框(解析完成后弹出,确认才写入)
+    // v2.x: Cuadro de diálogo de confirmación de vista previa de importación(Aparece una vez completado el análisis.,Escribir después de la confirmación)
     pendingImportCard?.let { card ->
         MuseDialog(
             onDismissRequest = { pendingImportCard = null },
@@ -723,7 +723,7 @@ fun AssistantScreen(onBack: () -> Unit, onOpenDetail: (String) -> Unit, viewMode
 }
 
 /**
- * "当前"状态指示器:绿色小圆点 + 文字,用于标识当前选中助手。
+ * "actual"indicador de estado:Punto verde + texto,Se utiliza para identificar al asistente seleccionado actualmente.
  */
 @Composable
 private fun CurrentIndicator(text: String, modifier: Modifier = Modifier) {
@@ -754,7 +754,7 @@ private fun CurrentIndicator(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * 操作菜单行:图标 + 文字,无边框,整行可点。
+ * Línea del menú de acciones:icono + texto,Sin fronteras,Se puede hacer clic en toda la fila.
  */
 @Composable
 private fun ActionMenuRow(
@@ -794,7 +794,7 @@ private fun ActionMenuRow(
 }
 
 /**
- * 右箭头指示器,与 CardGroup / 列表项风格一致。
+ * indicador de flecha derecha,Coherente con el estilo de elemento de lista/grupo de tarjetas.
  */
 @Composable
 private fun ChevronRight(modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {

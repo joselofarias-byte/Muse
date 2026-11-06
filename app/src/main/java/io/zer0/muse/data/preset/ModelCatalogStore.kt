@@ -14,45 +14,45 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * P1 模型目录（本地可维护）。
+ * P1 Directorio de modelos (mantenible localmente).
  *
- * 目标：解决 PresetProviders.kt 硬编码模型清单过期、上下文/能力不准的问题。
+ * Objetivo: resolver el contexto y la caducidad del manifiesto del modelo codificado de PresetProviders.kt/El problema de la capacidad inexacta.
  *
- * 三层数据：
- * 1. 内置默认：由 [builtinEntries] 提供（随版本发布，代码内默认）。
- * 2. 云端目录：由 [cloudCatalog] 提供的 [io.zer0.ai.core.ModelCatalog]（app 层注入，
- *    数据来自 `assets/model-catalog.json` 或远端缓存）拍平而来。**只对齐供应商模型清单**，
- *    声明式供应商（如 Codex）预设 models 为空时，其清单完全由云端目录决定。
- * 3. 用户覆盖：`filesDir/model_catalog/user_models.json`，用户手动修正过的字段。
- * 4. 远端目录：`filesDir/model_catalog/remote_models.json`，由 [refreshRemote] 从 [remoteUrl] 拉取。
- *    **默认关闭**：[remoteUrl] 为空串时不发任何网络请求，也不会应用远端层。
+ * Tres capas de datos:
+ * 1. Valor predeterminado incorporado: por [builtinEntries] Proporcionado (publicado con la versión, predeterminado en el código).
+ * 2. Directorio de la nube: por [cloudCatalog] proporcionado [io.zer0.ai.core.ModelCatalog](app inyección de capa,
+ *    Los datos provienen de `assets/model-catalog.json` o caché remoto) aplanado.**Alinear solo la lista de modelos de proveedores**,
+ *    Los modelos de proveedores declarativos (como Codex) se vacían de forma predeterminada y su inventario está determinado completamente por el directorio de la nube.
+ * 3. Cobertura de usuarios:`filesDir/model_catalog/user_models.json`, campos corregidos manualmente por el usuario.
+ * 4. Directorio remoto:`filesDir/model_catalog/remote_models.json`, por [refreshRemote] de [remoteUrl] Jalar.
+ *    **Desactivado de forma predeterminada**:[remoteUrl] Cuando es una cadena vacía, no se enviará ninguna solicitud de red y no se aplicará la capa remota.
  *
- * 合并规则（用户优先）：
- * - 合并优先级：用户 > 云端 > 远端 > 内置（字段级，高层只覆盖自己声明过的非空字段）。
- * - 同一 providerId + modelId：用户覆盖字段优先，未覆盖字段回退高层，最后回退内置。
- * - 用户新增模型：保留；builtInRemoved=true 表示该层隐藏模型。
+ * Fusionar reglas (prioridad de usuario):
+ * - Prioridad de fusión: usuarios > nube > extremo lejano > Integrado (nivel de campo, el nivel alto solo cubre los campos no nulos declarados por él mismo).
+ * - Mismo proveedorId + modeloId: los campos cubiertos por el usuario tienen prioridad, los campos descubiertos vuelven al nivel alto y, finalmente, vuelven al nivel integrado.
+ * - Modelo añadido por el usuario: reservado;builtInRemoved=true Indica el modelo oculto de esta capa.
  *
- * 任意一层缺失/失败都不影响上一层：远端拉取失败时保留已有缓存与内置目录，
- * 只记日志（静默回退）。
+ * Falta alguna capa/El error no afectará a la capa anterior: si la extracción remota falla, se conservarán la caché existente y el directorio integrado.
+ * Solo iniciar sesión (reversión silenciosa).
  */
 class ModelCatalogStore(
     private val context: Context,
     /**
-     * 远端模型目录 URL（JSON，格式见 [RemoteCatalog]）。
+     * URL del directorio de modelo remoto (JSON, ver formato [RemoteCatalog]).
      *
-     * 空串 = 未启用（默认值）：[refreshRemote] 立即返回且不发任何网络请求，
-     * [entries] 也不会应用远端层。启用场景需由调用方显式传入 URL。
+     * cadena vacía = No habilitado (predeterminado):[refreshRemote] Regrese inmediatamente sin realizar ninguna solicitud de red,
+     * [entries] La capa remota tampoco se aplicará. Habilitar un escenario requiere que la persona que llama pase explícitamente la URL.
      */
     private val remoteUrl: String = "",
     /**
-     * 云端模型目录提供者（惰性、同步）。
+     * Proveedor de catálogo de modelos en la nube (perezoso, sincrónico).
      *
-     * 返回 app 层由 [io.zer0.muse.data.catalog.ModelCatalogRepository] 加载的
-     * [io.zer0.ai.core.ModelCatalog]（内置 asset 或远端缓存）。
-     * 为 null / 返回空库时不启用该层。
+     * Devolver capa de aplicación por [io.zer0.muse.data.catalog.ModelCatalogRepository] cargado
+     * [io.zer0.ai.core.ModelCatalog](Activo integrado o caché remoto).
+     * No habilite esta capa cuando sea nula/devuelva una biblioteca vacía.
      *
-     * v2.6.0：模型清单（含 Codex 等 OAuth 供应商的最新模型）以云端目录为准，
-     * **不在代码内预置** —— 发布新目录只需替换服务端 JSON。
+     * v2.6.0: La lista de modelos (incluidos los modelos más recientes de proveedores de OAuth como Codex) está sujeta al directorio de la nube.
+     * **No preestablecido en el código** —— La publicación de un nuevo catálogo simplemente reemplaza el JSON del lado del servidor.
      */
     private val cloudCatalog: (() -> io.zer0.ai.core.ModelCatalog)? = null,
 ) {
@@ -84,8 +84,8 @@ class ModelCatalogStore(
     )
 
     /**
-     * 远端目录文档格式(JSON)：schemaVersion / publishedAt / items 三段，
-     * 与内置/用户覆盖共用 [ModelCatalogEntry]，字段级合并。
+     * Formato de documento de directorio remoto(JSON):schemaVersion / publishedAt / items tres secciones,
+     * con incorporado/Anulación de usuario compartida [ModelCatalogEntry], fusión a nivel de campo.
      */
     @Serializable
     data class RemoteCatalog(
@@ -100,34 +100,34 @@ class ModelCatalogStore(
     private val userOverridesFile: File
         get() = File(catalogDir, "user_models.json")
 
-    /** 远端目录本地缓存(拉取成功后落盘)。 */
+    /** Caché local del directorio remoto(Realice el pedido después de realizar un extracción exitosa). */
     private val remoteCatalogFile: File
         get() = File(catalogDir, "remote_models.json")
 
     @Volatile
     private var userCache: UserOverrides? = null
 
-    /** 远端目录内存缓存(null 表示未加载或不存在)。 */
+    /** Caché de memoria del directorio remoto(null Indica no cargado o no existe). */
     @Volatile
     private var remoteCache: RemoteCatalog? = null
 
     /**
-     * 云端目录拍平缓存，按 [io.zer0.ai.core.ModelCatalog.publishedAt] 失效。
+     * Para aplanar el caché del directorio de la nube, presione [io.zer0.ai.core.ModelCatalog.publishedAt] Inválido.
      *
-     * 避免每次模型投影都重新遍历上千条目录条目。
+     * Evite volver a recorrer miles de entradas de directorio cada vez que se proyecta el modelo.
      */
     @Volatile
     private var cloudEntriesCache: Pair<String, List<ModelCatalogEntry>>? = null
 
-    /** 远端目录是否已尝试读取磁盘(避免反复 IO / 反复记录解析失败日志)。 */
+    /** Si el directorio remoto ha intentado leer el disco(Evite registros repetidos de errores de análisis y E/S repetidos). */
     @Volatile
     private var remoteLoaded: Boolean = false
 
     /**
-     * 内置默认模型目录（随版本发布）。
+     * Directorio de modelo predeterminado incorporado (publicado con la versión).
      *
-     * 只覆盖主流/常用模型，字段缺失时 UI 显示“未收录/未知”，
-     * 不强行猜测，避免把错误上下文发给 Provider。
+     * Solo cubre la corriente principal/Modelos de uso común, la interfaz de usuario se muestra cuando faltan campos“No incluido/desconocido”,
+     * No fuerce las conjeturas y evite enviar un contexto de error al proveedor.
      */
     fun builtinEntries(): List<ModelCatalogEntry> = buildList {
         // OpenAI
@@ -169,46 +169,46 @@ class ModelCatalogStore(
         // DeepSeek
         add(entry("deepseek", "deepseek-chat", "DeepSeek Chat", 64_000, 8_192, tools = true))
         add(entry("deepseek", "deepseek-reasoner", "DeepSeek Reasoner", 64_000, 8_192, reasoning = true))
-        // 通义
+        // significado general
         add(entry("qwen", "qwen-plus", "Qwen Plus", 131_072, 8_192, tools = true))
         add(entry("qwen", "qwen-max", "Qwen Max", 32_000, 8_192, vision = true, tools = true))
-        // 智谱
+        // espectro de sabiduría
         add(entry("zhipu", "glm-4-plus", "GLM-4 Plus", 128_000, 8_192, tools = true))
         add(entry("zhipu", "glm-4-flash", "GLM-4 Flash", 128_000, 8_192, tools = true))
         // Kimi
         add(entry("moonshot", "kimi-k2", "Kimi K2", 128_000, 16_384, tools = true))
         add(entry("moonshot", "kimi-k2.7", "Kimi K2.7", 256_000, 16_384, tools = true, reasoning = true))
-        // 豆包
+        // bolsa de frijol
         add(entry("doubao", "doubao-pro-32k", "Doubao Pro 32K", 32_000, 4_096, tools = true))
         // xAI
         add(entry("xai", "grok-4", "Grok 4", 256_000, 32_768, vision = true, tools = true))
         add(entry("xai", "grok-4-heavy", "Grok 4 Heavy", 256_000, 32_768, vision = true, tools = true, reasoning = true))
-        // Ollama 本地常见模型
+        // Ollama Modelos locales comunes
         add(entry("ollama", "llama3.1", "Llama 3.1", 128_000, null, tools = true))
         add(entry("ollama", "qwen2.5", "Qwen 2.5", 131_072, null, tools = true))
-        // SiliconFlow 免费常用
+        // SiliconFlow Gratis y de uso común
         add(entry("siliconflow", "deepseek-ai/DeepSeek-V3", "DeepSeek V3", 64_000, 8_192, tools = true))
         add(entry("siliconflow", "Qwen/Qwen2.5-7B-Instruct", "Qwen 2.5 7B", 131_072, 8_192, tools = true))
     }
 
     /**
-     * 返回内置 + 用户覆盖合并后的完整目录。
+     * Devuelve el directorio completo después de la combinación de anulaciones de usuario integradas.
      *
-     * @param providerId 为空返回全部；非空只返回该供应商。
+     * @param providerId Si está vacío, se devolverá todo; si no está vacío, sólo se devolverá al proveedor.
      */
     fun entries(providerId: String? = null): List<ModelCatalogEntry> {
         val merged = merge(builtinEntries(), loadRemoteEntries(), cloudEntries(), loadUserOverrides())
         return merged.filter { providerId == null || it.providerId.equals(providerId, ignoreCase = true) }
     }
 
-    /** 按 providerId + modelId 精确查询（含远端与用户覆盖）。 */
+    /** Consulta exacta basada en Id. de proveedor + Id. de modelo (incluida la cobertura remota y de usuario). */
     fun find(providerId: String, modelId: String): ModelCatalogEntry? =
         entries(providerId).firstOrNull { it.modelId.equals(modelId, ignoreCase = true) }
 
-    /** 远端目录是否启用（未配置 URL 时为 false，不会发起任何网络请求）。 */
+    /** Si el directorio remoto está habilitado (falso cuando no se configura ninguna URL, no se iniciará ninguna solicitud de red). */
     fun isRemoteEnabled(): Boolean = remoteUrl.isNotBlank()
 
-    /** 当前生效的远端目录（缓存优先）；未启用/缺失/解析失败返回 null。 */
+    /** El directorio remoto actualmente efectivo (prioridad de caché); no habilitado/desaparecido/Devuelve nulo si falla el análisis. */
     fun remoteCatalog(): RemoteCatalog? {
         if (remoteUrl.isBlank()) return null
         remoteCache?.let { return it }
@@ -217,7 +217,7 @@ class ModelCatalogStore(
         if (!remoteCatalogFile.exists()) return null
         val loaded = runCatching {
             AppJson.decodeFromString(RemoteCatalog.serializer(), remoteCatalogFile.readText())
-        }.onFailure { Logger.w(TAG, "远端模型目录解析失败,按空处理", it) }.getOrNull()
+        }.onFailure { Logger.w(TAG, "Error al analizar el directorio del modelo remoto,Procesar como vacío", it) }.getOrNull()
         remoteCache = loaded
         return loaded
     }
@@ -225,10 +225,10 @@ class ModelCatalogStore(
     private fun loadRemoteEntries(): List<ModelCatalogEntry> = remoteCatalog()?.items.orEmpty()
 
     /**
-     * 云端目录层（来自 [io.zer0.muse.data.catalog.ModelCatalogRepository]，assets/远端）。
+     * Capa de directorio en la nube (desde [io.zer0.muse.data.catalog.ModelCatalogRepository],assets/remoto).
      *
-     * 把 `providers: providerId → (modelId → 能力)` 的嵌套结构拍平成 store 的扁平条目。
-     * 按 [io.zer0.ai.core.ModelCatalog.publishedAt] 缓存，目录刷新后自动重算。
+     * poner `providers: providerId → (modelId → Habilidad)` La estructura anidada se aplana para formar entradas planas de la tienda.
+     * prensa [io.zer0.ai.core.ModelCatalog.publishedAt] Caché, recalcula automáticamente después de actualizar el directorio.
      */
     private fun cloudEntries(): List<ModelCatalogEntry> {
         val catalog = cloudCatalog?.invoke()
@@ -240,7 +240,7 @@ class ModelCatalogStore(
         }
     }
 
-    /** 把嵌套的能力目录拍平成 store 的扁平条目。 */
+    /** Aplane los directorios de capacidades anidados en entradas planas para la tienda. */
     private fun flattenCatalog(catalog: io.zer0.ai.core.ModelCatalog): List<ModelCatalogEntry> = buildList {
         for ((providerId, models) in catalog.providers) {
             for ((modelId, entry) in models) {
@@ -261,52 +261,52 @@ class ModelCatalogStore(
     }
 
     /**
-     * 从 [remoteUrl] 拉取远端目录并落盘缓存。
+     * de [remoteUrl] Extraiga el directorio remoto y guárdelo en caché.
      *
-     * - 未配置 URL（[isRemoteEnabled]=false）时立即返回，**不发任何网络请求**（默认关闭）；
-     * - 网络/解析失败：保留现有缓存与内置目录，仅记日志（静默回退）；
-     * - [publishedAt] 与当前一致且非 [forceFresh] 时不重复写盘。
+     * - URL no configurada ([isRemoteEnabled]=false), regresar inmediatamente,**No realices ninguna solicitud de red.**(desactivado de forma predeterminada);
+     * - red/Fallo de análisis: conserve el caché existente y los directorios integrados, solo registre (reversión silenciosa);
+     * - [publishedAt] consistente con la actualidad y no [forceFresh] El disco no se escribirá repetidamente.
      */
     suspend fun refreshRemote(forceFresh: Boolean = false): RemoteRefreshResult = withContext(Dispatchers.IO) {
         val url = remoteUrl.trim()
         if (url.isEmpty()) {
-            return@withContext RemoteRefreshResult(enabled = false, ok = false, updated = false, message = "远端目录未启用")
+            return@withContext RemoteRefreshResult(enabled = false, ok = false, updated = false, message = "El directorio remoto no está habilitado")
         }
         val text = try {
             httpGet(url)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "远端目录拉取失败: ${e.message}")
+            Logger.w(TAG, "No se pudo extraer el directorio remoto: ${e.message}")
             null
         }
         if (text.isNullOrBlank()) {
-            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "网络请求失败")
+            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "Error en la solicitud de red")
         }
         val parsed = runCatching {
             AppJson.decodeFromString(RemoteCatalog.serializer(), text)
-        }.onFailure { Logger.w(TAG, "远端目录格式不合法: ${it.message}") }.getOrNull()
+        }.onFailure { Logger.w(TAG, "El formato del directorio remoto es ilegal.: ${it.message}") }.getOrNull()
         if (parsed == null || parsed.items.isEmpty()) {
-            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "远端目录为空或格式不合法")
+            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "El directorio remoto está vacío o tiene un formato no válido.")
         }
         val currentPublished = remoteCatalog()?.publishedAt.orEmpty()
         if (!forceFresh && currentPublished.isNotBlank() && currentPublished == parsed.publishedAt) {
-            return@withContext RemoteRefreshResult(enabled = true, ok = true, updated = false, message = "已是最新(${parsed.publishedAt})")
+            return@withContext RemoteRefreshResult(enabled = true, ok = true, updated = false, message = "Ya lo ultimo(${parsed.publishedAt})")
         }
         runCatching {
             catalogDir.mkdirs()
             remoteCatalogFile.writeText(text)
             remoteCache = parsed
             remoteLoaded = true
-            Logger.i(TAG, "远端模型目录已更新: ${parsed.publishedAt}, ${parsed.items.size} 条")
+            Logger.i(TAG, "El directorio de modelos remotos ha sido actualizado.: ${parsed.publishedAt}, ${parsed.items.size} Artículo")
         }.onFailure { e ->
-            Logger.w(TAG, "远端模型目录写入失败: ${e.message}")
-            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "写入缓存失败")
+            Logger.w(TAG, "No se pudo escribir en el directorio del modelo remoto: ${e.message}")
+            return@withContext RemoteRefreshResult(enabled = true, ok = false, updated = false, message = "Falló la escritura en caché")
         }
-        RemoteRefreshResult(enabled = true, ok = true, updated = true, message = "已更新到 ${parsed.publishedAt}")
+        RemoteRefreshResult(enabled = true, ok = true, updated = true, message = "ha sido actualizado a ${parsed.publishedAt}")
     }
 
-    /** 远端目录状态摘要（设置页/诊断用）。 */
+    /** Resumen del estado del directorio remoto (página de configuración/con fines de diagnóstico). */
     fun remoteStatus(): RemoteStatus {
         val catalog = remoteCatalog()
         return RemoteStatus(
@@ -332,10 +332,10 @@ class ModelCatalogStore(
     }
 
     /**
-     * 将目录条目投影到运行时模型列表。
+     * Entradas del directorio del proyecto en la lista de modelos de tiempo de ejecución.
      *
-     * 现有 Provider 模型会应用目录元数据；目录中的用户新增模型也会进入列表。
-     * 这样“模型目录里维护了”与“模型选择器/请求实际使用了”保持同一份数据。
+     * Los metadatos del catálogo se aplicarán a los modelos de proveedores existentes; Los modelos agregados por el usuario en el catálogo también se incluirán en la lista.
+     * De esta manera“Mantenido en el directorio de modelos.”con“selector de modelo/La solicitud fue realmente utilizada.”Mantén los mismos datos.
      */
     fun mergeIntoModels(providerId: String, models: List<Model>, runtimeProviderId: String = providerId): List<Model> {
         val catalogEntries = entries(providerId)
@@ -346,14 +346,14 @@ class ModelCatalogStore(
             for (model in models) {
                 val entry = catalogEntries[keyOf(providerId, model.id)]
                 if (entry?.builtInRemoved == true) continue
-                // 保留运行时 Provider 身份（例如 preset_openai），只用目录 providerId 做匹配。
+                // Conserve la identidad del proveedor de tiempo de ejecución (por ejemplo, preset_openai) y utilice únicamente el ID del proveedor del directorio para realizar coincidencias.
                 result[model.id.trim().lowercase()] = model.applyCatalogEntry(entry)
             }
         }
         for (entry in catalogEntries.values) {
             val key = entry.modelId.trim().lowercase()
-            // 跳过：目录中标记删除、已被现有模型覆盖，或非权威供应商里未由用户显式新增的目录条目
-            // （后者只参与上方字段覆盖，不凭目录新增模型，避免灌入该供应商全部历史模型）。
+            // Omitir: entradas de catálogo marcadas para su eliminación, sobrescritas por modelos existentes o entradas de catálogo de proveedores no autorizados que no han sido agregadas explícitamente por el usuario
+            // (Este último sólo participa en la cobertura de campo anterior y no agrega nuevos modelos basados ​​en el catálogo para evitar completar todos los modelos históricos del proveedor).
             val skip = entry.builtInRemoved || result.containsKey(key) || (!adoptCatalogFully && !entry.userEdited)
             if (skip) continue
             result[key] = entry.toModel(runtimeProviderId)
@@ -362,9 +362,9 @@ class ModelCatalogStore(
     }
 
     /**
-     * 保存用户对某个模型的字段修改。
+     * Guarde las modificaciones de campo del usuario en un modelo.
      *
-     * 只写入用户显式修改的字段；内置其他字段继续回退。
+     * Sólo se escriben los campos modificados explícitamente por el usuario; otros campos incorporados continúan retrocediendo.
      */
     @Synchronized
     fun saveUserOverride(providerId: String, modelId: String, patch: ModelCatalogEntry): ModelCatalogEntry {
@@ -400,7 +400,7 @@ class ModelCatalogStore(
         return merged
     }
 
-    /** 用户删除内置模型（目录中隐藏，不破坏内置数据）。 */
+    /** El usuario elimina el modelo integrado (oculto en el directorio, sin destruir los datos integrados). */
     @Synchronized
     fun removeModel(providerId: String, modelId: String) {
         val overrides = loadUserOverrides()
@@ -417,7 +417,7 @@ class ModelCatalogStore(
         persistUserOverrides(UserOverrides(items = newList, updatedAt = System.currentTimeMillis()))
     }
 
-    /** 恢复内置默认（移除该模型的所有用户覆盖）。 */
+    /** Restaura los valores predeterminados integrados (elimina todas las anulaciones de usuario para este modelo). */
     @Synchronized
     fun resetModel(providerId: String, modelId: String) {
         val overrides = loadUserOverrides()
@@ -427,7 +427,7 @@ class ModelCatalogStore(
         persistUserOverrides(UserOverrides(items = newList, updatedAt = System.currentTimeMillis()))
     }
 
-    /** 用户手动新增一个目录中不存在的模型。 */
+    /** El usuario agrega manualmente un modelo que no existe en el directorio. */
     @Synchronized
     fun addUserModel(providerId: String, modelId: String, displayName: String? = null): ModelCatalogEntry = saveUserOverride(
         providerId,
@@ -439,13 +439,13 @@ class ModelCatalogStore(
         ),
     )
 
-    /** 导出当前合并目录为 JSON（备份/分享用）。 */
+    /** Exporte el directorio de combinación actual como JSON (copia de seguridad/para compartir). */
     fun exportJson(): String = AppJson.encodeToString(
         ListSerializer(ModelCatalogEntry.serializer()),
         entries(),
     )
 
-    /** 导入目录 JSON（仅更新用户覆盖；内置仍由代码提供）。 */
+    /** Importar catálogo JSON (solo actualiza las anulaciones del usuario; las funciones integradas aún se proporcionan mediante código). */
     @Synchronized
     @Suppress("CyclomaticComplexMethod")
     fun importJson(json: String): Boolean {
@@ -464,7 +464,7 @@ class ModelCatalogStore(
                 ),
             )
         }.onFailure { e ->
-            Logger.w(TAG, "模型目录导入失败", e)
+            Logger.w(TAG, "Error al importar el catálogo de modelos", e)
         }.isSuccess
     }
 
@@ -489,10 +489,10 @@ class ModelCatalogStore(
     )
 
     /**
-     * 三层合并（优先级：用户 > 远端 > 内置）。
+     * Fusión de tres niveles (Prioridad: Usuario > extremo lejano > incorporado).
      *
-     * 同 key 字段级合并：高层只覆盖自己声明过的非空字段；
-     * `builtInRemoved=true` 表示该层隐藏此模型（用户删除优先于其他层）。
+     * Fusionar con el nivel de campo clave: la capa de alto nivel solo cubre los campos no nulos declarados por ella misma;
+     * `builtInRemoved=true` Indica que esta capa oculta este modelo (la eliminación del usuario tiene prioridad sobre otras capas).
      */
     private fun merge(
         builtin: List<ModelCatalogEntry>,
@@ -508,7 +508,7 @@ class ModelCatalogStore(
         return result.values.toList()
     }
 
-    /** 把一层覆盖（远端/用户）原地应用到已合并表。 */
+    /** Cubra la capa (remota/usuario) se aplica in situ a la tabla fusionada. */
     private fun applyLayer(target: LinkedHashMap<String, ModelCatalogEntry>, layer: List<ModelCatalogEntry>) {
         layer.forEach { entry ->
             val key = keyOf(entry.providerId, entry.modelId)
@@ -553,15 +553,15 @@ class ModelCatalogStore(
         supportsVision = supportsVision ?: false,
         supportsStreaming = supportsStreaming ?: true,
         supportsVideo = supportsVideo ?: false,
-        // issue #3.1 补丁（用户反馈）: 上游**未声明**能力时，不要写死成纯文本。
+        // issue #3.1 Parches (comentarios de los usuarios): aguas arriba**No declarado**Cuando se trata de capacidades, no las escriba en texto plano.
         //
-        // 旧实现：inputModalities ?: setOf("text")。后果是中转站拉回来的、确实支持识图的
-        // 原生模型（如带 openrouter/ 前缀的 gpt-4o）被固化成纯文本，模型清单里永远
-        // 不会出现它，也没法开视觉辅助。
+        // Implementación anterior:inputModalities ?: setOf("text"). El resultado es que la estación de transferencia lo retiró y admite el reconocimiento de imágenes.
+        // Los modelos nativos (como gpt-4o con openrouter/ prefijo) se solidifican en texto plano y siempre estarán en la lista de modelos.
+        // No aparecerá y no hay forma de activar la ayuda visual.
         //
-        // 改为：未声明 → 留空集，交给 ModelRegistry.enhanceModel 按 modelId 推断；
-        // 推断不出时下游的 supportsVisionInput() 仍返回 false，行为不变。
-        // 上游**明确声明** text 的（size==1 且包含 text）保持原样，不推翻上游。
+        // Cambiar a: No declarado → Deje el conjunto vacío y déselo a ModelRegistry.enhanceModel para inferir por modelId;
+        // No se puede inferir el tiempo aguas abajo supportsVisionInput() Todavía devuelve falso y el comportamiento no cambia.
+        // aguas arriba**declaración clara** text de (size==1 y contiene texto) permanece como está, sin anular el anterior.
         inputModalities = inputModalities ?: emptySet(),
         outputModalities = outputModalities ?: setOf("text"),
         visionCapabilities = visionCapabilities,
@@ -598,7 +598,7 @@ class ModelCatalogStore(
         }.onSuccess {
             userCache = UserOverrides(items = it)
         }.getOrElse { e ->
-            Logger.w(TAG, "用户模型覆盖解析失败,按空处理", e)
+            Logger.w(TAG, "Error en el análisis de anulación del modelo de usuario,Procesar como vacío", e)
             emptyList()
         }
     }
@@ -609,7 +609,7 @@ class ModelCatalogStore(
             userOverridesFile.writeText(AppJson.encodeToString(UserOverrides.serializer(), overrides))
             userCache = overrides
         }.onFailure { e ->
-            Logger.w(TAG, "用户模型覆盖写入失败", e)
+            Logger.w(TAG, "Error de escritura de sobrescritura del modelo de usuario", e)
         }
     }
 
@@ -623,31 +623,31 @@ class ModelCatalogStore(
         private const val TAG = "ModelCatalogStore"
 
         /**
-         * 目录权威供应商：模型清单完全由云端目录决定，忽略预设/已持久化的旧模型列表。
+         * Proveedor autorizado del catálogo: la lista de modelos está completamente determinada por el catálogo en la nube, ignorando los ajustes preestablecidos/Lista de modelos antiguos que se han conservado.
          *
-         * 用途：供应商的可用模型随服务端策略变化（如 Codex 的 ChatGPT 订阅模型时常
-         * 退役/新增），预设里写死的清单容易过期。对这类供应商，以云端目录为准，
-         * 发布新目录只需替换服务端 JSON。
+         * Propósito: Los modelos disponibles del proveedor cambian con las políticas del lado del servidor (como el modelo de suscripción ChatGPT del Codex que a menudo
+         * jubilado/Recién agregado), la lista codificada de forma predeterminada es fácil de caducar. Para dichos proveedores prevalecerá el directorio en la nube.
+         * La publicación de un nuevo catálogo simplemente reemplaza el JSON del lado del servidor.
          *
-         * 键为**目录 providerId**（连字符命名，见 [CatalogProviderIds]）。
+         * La clave es**Directorio providerId**(Nombres con guiones, ver [CatalogProviderIds]).
          */
         val CATALOG_AUTHORITATIVE_PROVIDERS: Set<String> = setOf("openai-codex-oauth")
 
-        /** 远端目录拉取超时（连接/读取，毫秒）。 */
+        /** Tiempo de espera de extracción del directorio remoto (conexión/lectura, milisegundos). */
         private const val REMOTE_TIMEOUT_MS = 10_000
     }
 }
 
-/** 远端目录拉取结果。 */
+/** Resultados de extracción de directorio remoto. */
 data class RemoteRefreshResult(
-    /** 远端层是否启用（未配置 URL 时为 false，未发任何请求）。 */
+    /** Si la capa remota está habilitada (falso cuando no se configura ninguna URL, no se envía ninguna solicitud). */
     val enabled: Boolean,
     val ok: Boolean,
     val updated: Boolean,
     val message: String,
 )
 
-/** 远端目录状态摘要。 */
+/** Resumen del estado del directorio remoto. */
 data class RemoteStatus(
     val enabled: Boolean,
     val url: String,

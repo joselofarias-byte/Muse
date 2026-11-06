@@ -413,7 +413,7 @@
     <string name="cloud_backup_type_webdav">웹DAV</string>
     <string name="settings_chat_expand_button">전체 화면 편집 버튼 표시</string>
     <string name="settings_chat_expand_button_subtitle">입력란 오른쪽에 전체 화면 편집 버튼 표시</string>
-    <!-- 前端修复 (i18n-3.x): 楼层式上下文限制 i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): restricciones de contexto del piso i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_chat_floor_limiter">층 기반 컨텍스트 제한</string>
     <string name="settings_chat_floor_limiter_subtitle">사용자 메시지를 층으로 간주하고 최근 N층 전체를 유지하여 대화 중간에 잘리는 것을 방지</string>
     <string name="settings_chat_tool_rounds">도구 라운드 상한</string>
@@ -423,7 +423,7 @@
     <string name="settings_chat_floor_keep">유지할 층 수</string>
     <string name="settings_chat_floor_keep_subtitle">이 층수를 초과하는 이전 메시지는 잘립니다</string>
 
-    <!-- 前端修复 (i18n-3.x): 公共清空文案(表情包/群聊记忆共用) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Copia de compensación pública(Emoticones/Compartir memoria de chat grupal) -->
     <string name="settings_common_clear_all">모두 비우기</string>
     <string name="settings_common_clear">비우기</string>
     <string name="settings_chat_background_section">모양</string>

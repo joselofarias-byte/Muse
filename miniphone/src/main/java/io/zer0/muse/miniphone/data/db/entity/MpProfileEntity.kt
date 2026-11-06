@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * 本机用户在小手机里的资料。全库只存一行,主键固定为 [SINGLE_ROW_ID]。
+ * La información del usuario local en el pequeño teléfono celular. Solo se almacena una línea en toda la biblioteca.,La clave principal se fija en [SINGLE_ROW_ID].
  */
 @Entity(tableName = "mp_profile")
 data class MpProfileEntity(

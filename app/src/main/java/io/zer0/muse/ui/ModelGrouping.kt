@@ -3,11 +3,11 @@ package io.zer0.muse.ui
 import java.util.Locale
 
 /**
- * 模型分组工具 — 按 id 前缀正则将模型归入语义族(GPT / Claude / Gemini 等)。
+ * Herramientas de agrupación de modelos — Clasifique el modelo en una familia semántica según la regularidad del prefijo de identificación.(GPT / Claude / Gemini espera).
  *
- * 把散乱的长模型列表收拢为有限的若干族,配合折叠 UI 让用户在 50+ 模型时仍能快速找到目标。
+ * Recopile listas de modelos largas y dispersas en un número limitado de familias.,Junto con la interfaz de usuario plegable, los usuarios pueden encontrar rápidamente el objetivo incluso cuando hay más de 50 modelos.
  *
- * 分组规则(按 id 前缀正则匹配,大小写不敏感;前缀后必须是分隔符 [-_.] 或结尾):
+ * Reglas de agrupación(Coincidencia regular por prefijo de identificación,No distingue entre mayúsculas y minúsculas;El prefijo debe ir seguido de un delimitador. [-_.] o terminar):
  *  - GPT:        gpt / openai / o1 / o3 / o4
  *  - Claude:     claude / opus / sonnet / haiku
  *  - Gemini:     gemini
@@ -16,24 +16,24 @@ import java.util.Locale
  *  - Qwen:       qwen / qwq
  *  - Doubao:     doubao / skylark
  *  - GLM:        glm / chatglm
- *  - Yi:         yi(零一万物)
- *  - Baichuan:   baichuan(百川)
- *  - Hunyuan:    hunyuan / yuan(腾讯混元)
+ *  - Yi:         yi(cero una cosa)
+ *  - Baichuan:   baichuan(Baichuan)
+ *  - Hunyuan:    hunyuan / yuan(Tencent Hunyuan)
  *  - Mistral:    mistral / mixtral / codestral / pixtral / magistral
  *  - MiniMax:    minimax / abab
  *  - Grok:       grok
  *  - Embeddings: embedding / embed
- *  - Other:      其余
+ *  - Other:      el resto
  *
- * 注:前缀匹配要求"前缀后是分隔符(-,_,.)或结尾",避免 "o1" 误匹配 "o123"、
- * "gpt" 误匹配 "gptxyz" 等长前缀误判。
- * v1.134 P2-3: 新增 Yi / Baichuan / Hunyuan 三组国产模型分组。
+ * Nota:Requisitos de coincidencia de prefijos"El prefijo va seguido de un separador.(-,_,.)o terminar",evitar "o1" No coincide "o123",
+ * "gpt" No coincide "gptxyz" Error de cálculo de prefijos de igual longitud.
+ * v1.134 P2-3: Nuevo Yi / Baichuan / Hunyuan Se agrupan tres grupos de modelos domésticos.
  */
 
 /**
- * 分组规则:组名 → 前缀正则。
- * 正则形如 `^(?:前缀1|前缀2|...)(?:[-._]|$)`,从前缀开始匹配,
- * 后续必须是分隔符(-,_,.)或字符串结尾。
+ * Reglas de agrupación:Nombre del grupo → Prefijo regular.
+ * La forma regular es como `^(?:prefijo1|prefijo2|...)(?:[-._]|$)`,Coincidencia a partir del prefijo,
+ * Debe ir seguido de un delimitador.(-,_,.)o final de la cuerda.
  */
 private val GROUP_RULES: List<Pair<String, Regex>> = listOf(
     "GPT" to Regex("^(?:gpt|openai|o[134])(?:[-._]|$)", RegexOption.IGNORE_CASE),
@@ -44,7 +44,7 @@ private val GROUP_RULES: List<Pair<String, Regex>> = listOf(
     "Qwen" to Regex("^(?:qwen|qwq)(?:[-._]|$)", RegexOption.IGNORE_CASE),
     "Doubao" to Regex("^(?:doubao|skylark)(?:[-._]|$)", RegexOption.IGNORE_CASE),
     "GLM" to Regex("^(?:glm|chatglm)(?:[-._]|$)", RegexOption.IGNORE_CASE),
-    // v1.134 P2-3: 国产模型分组扩展(零一万物 / 百川 / 腾讯混元)
+    // v1.134 P2-3: Expansión del grupo de modelos nacionales(Cero una cosa / Baichuan / Tencent Hunyuan)
     "Yi" to Regex("^(?:yi)(?:[-._]|$)", RegexOption.IGNORE_CASE),
     "Baichuan" to Regex("^(?:baichuan)(?:[-._]|$)", RegexOption.IGNORE_CASE),
     "Hunyuan" to Regex("^(?:hunyuan|yuan)(?:[-._]|$)", RegexOption.IGNORE_CASE),
@@ -58,8 +58,8 @@ private val GROUP_RULES: List<Pair<String, Regex>> = listOf(
 )
 
 /**
- * 分组展示顺序(未列出的组按字母序排在最后)。
- * 与 [GROUP_RULES] 顺序一致,末尾追加 "Other" 兜底组。
+ * Orden de visualización del grupo(Los grupos que no aparecen en la lista se ordenan alfabéticamente al final).
+ * con [GROUP_RULES] El orden es consistente,Agregar al final "Other" El grupo de bolsillo.
  */
 val MODEL_GROUP_ORDER: List<String> = listOf(
     "GPT", "Claude", "Gemini", "DeepSeek", "Kimi", "Qwen", "Doubao",
@@ -68,13 +68,13 @@ val MODEL_GROUP_ORDER: List<String> = listOf(
 )
 
 /**
- * 按模型 id 返回其所属族名(如 "GPT" / "Claude" / "Other")。
+ * Devuelve el apellido al que pertenece según la identificación del modelo.(Como por ejemplo "GPT" / "Claude" / "Other").
  *
- * 匹配逻辑:对模型 id 从前缀开始正则匹配,要求前缀后紧跟分隔符(-,_,.)或字符串结尾,
- * 避免 "o1" 误匹配 "o123"、"gpt" 误匹配 "gptxyz" 等。
+ * lógica coincidente:Haga coincidir la identificación del modelo regularmente comenzando desde el prefijo,Requiere un prefijo seguido de un delimitador(-,_,.)o final de la cuerda,
+ * evitar "o1" No coincide "o123","gpt" No coincide "gptxyz" Esperar.
  *
- * @param modelId 模型 id(大小写不敏感)
- * @return 分组名,未匹配规则时返回 "Other"
+ * @param modelId modelo id(No distingue entre mayúsculas y minúsculas)
+ * @return Nombre del grupo,Devuelto cuando no coincide ninguna regla "Other"
  */
 fun groupFor(modelId: String): String {
     return GROUP_RULES.firstOrNull { (_, regex) ->
@@ -83,10 +83,10 @@ fun groupFor(modelId: String): String {
 }
 
 /**
- * 将模型 id 列表按 [groupFor] 分组,组内保持原顺序,组间按 [MODEL_GROUP_ORDER] 排序。
+ * Cambie la lista de identificación del modelo por [groupFor] grupo,Mantener el orden original dentro del grupo.,Presione entre grupos [MODEL_GROUP_ORDER] Clasificar.
  *
- * @param modelIds 模型 id 列表(已按 Provider 内部顺序排列)
- * @return 有序的 (组名, 该组模型 id 列表) 键值对
+ * @param modelIds Lista de identificación del modelo(Ya ordenados por orden interno del proveedor)
+ * @return ordenado (Nombre del grupo, Lista de identificadores de modelo para este grupo) par clave-valor
  */
 fun groupModels(modelIds: List<String>): List<Pair<String, List<String>>> {
     val byGroup: Map<String, List<String>> = modelIds.groupBy { groupFor(it) }

@@ -1,51 +1,51 @@
-Muse v2.6.0 功能版。
+Muse v2.6.0 Versión funcional.
 
-> 本版更新日志覆盖自 v2.5.8 发布以来的全部改动（含未单独发布的 v2.5.9 内容）。
+> Esta versión del registro de cambios cubre todos los cambios desde el lanzamiento de la versión 2.5.8 (incluido el contenido de la versión 2.5.9 que no se ha publicado por separado).
 
-## 新功能
+## nuevas características
 
-- **GPT 账号登录（Codex OAuth）**：支持用 ChatGPT 账号一键登录（浏览器授权 + PKCE），自动注入 ChatGPT-Account-ID 请求头，直连 `chatgpt.com/backend-api/codex` 使用订阅额度，无需 API Key；并支持一键直达授权页。统一修复 xAI / GitHub 等一键 OAuth 登录（补全公开 client_id、Device Flow 验证码弹窗）。
-- **Codex 模型清单接云端目录**：Codex 可用模型以云端模型目录为准（不再在应用内预置），跟随官方退役/新增自动更新。
-- **生成式卡片（show_card）**：助手可在对话里直接生成可交互卡片（图表、仪表盘、流程/对比图、可玩组件），本版补全了卡片渲染器。
-- **Tasker 外部自动化入口**：默认关闭；设置页可显式启用外部广播触发一轮文本补全，并提示可能消耗模型额度。不会授予本地工具权限。
-- **消息快捷操作可配置**：Via 式定制菜单，全量动作池 + 有序启用列表（复制/思考/翻译/分享/重新生成/删除等）。
-- **备份可选包含供应商密钥**：备份时可选是否包含供应商 API 密钥。
-- **平台自检工具**：新增 `platform_selfcheck`，助手可自查运行环境与能力就绪状态。
-- **诊断增强**：设置页「导出诊断信息」覆盖生成链路环形缓冲；工具调用首片异常时记录原始片段，便于排查上游格式异常。
+- **GPT Inicio de sesión de cuenta (Codex OAuth)**: Admite inicio de sesión con un clic con cuenta ChatGPT (autorización del navegador + PKCE), inyecta automáticamente el encabezado de solicitud ChatGPT-Account-ID, conexión directa `chatgpt.com/backend-api/codex` Utilice la cuota de suscripción sin clave API; y admite acceso directo con un clic a la página de autorización. Solución unificada para xAI/GitHub y otros inicios de sesión OAuth con un solo clic (completa el client_id público,Device Flow ventana emergente del código de verificación).
+- **Codex La lista de modelos está conectada al directorio de la nube.**:Codex Los modelos disponibles están sujetos al directorio de modelos en la nube (ya no está preestablecido en la aplicación) y se retirarán según la versión oficial./Se agregaron actualizaciones automáticas.
+- **Tarjetas generativas (show_card)**: El asistente puede generar tarjetas interactivas (gráficos, paneles, procesos) directamente en la conversación./Imágenes comparativas, componentes jugables), esta versión completa el renderizador de tarjetas.
+- **Tasker Portal de automatización externo**: Desactivado de forma predeterminada; la página de configuración puede habilitar explícitamente la transmisión externa para activar una ronda de finalización de texto y solicitar que se puedan consumir los créditos del modelo. No se otorgarán permisos de herramientas locales.
+- **Operaciones de acceso directo a mensajes configurables**:Via Menú personalizado, grupo de acciones completo + lista de activación ordenada (copiar/pensar/Traducción/Compartir/regenerar/eliminar, etcétera).
+- **Las copias de seguridad incluyen opcionalmente claves de proveedor**: Opcional si se incluye la clave API del proveedor al realizar la copia de seguridad.
+- **Herramienta de autoprueba de plataforma**: Nuevo `platform_selfcheck`, el asistente puede autoverificar el entorno operativo y el estado de preparación de la capacidad.
+- **mejora diagnóstica**: La "Exportación de información de diagnóstico" en la página de configuración cubre la generación del búfer de anillo de enlace; cuando la herramienta llama a la excepción de la primera pieza, registra el fragmento original para facilitar la resolución de problemas de excepciones de formato ascendentes.
 
-## 重要修复
+## Correcciones importantes
 
-- **A2A 远程对话隔离**：远程请求不再切换前台聊天或调用本地设备工具；context/task 隔离，多轮文本对话仍可继续，取消只影响对应请求。
-- **A2A 安全加固**：全局“批准全部”位不再作用于非焦点会话，堵住远程静默执行高风险设备工具的路径。
-- **Tasker 广播安全防线**：入口默认关闭 + 长度上限 + 限频，降低外部广播被滥用的成本。
-- **Agent 助手切换不生效**：修复 Agent 房间恢复时错误回退到其他助手的旧会话，切换助手后房间归属现在正确。
-- **默认助手保护**：默认助手不再可被直接删除；删除其他助手时指针自动切换，且重启后不会“复活”已删除的默认助手。
-- **模型能力标签**：自建/中转站供应商不再被目录误标“不支持图像”，显示为未知而非错误结论。
-- **供应商测试按钮误报**：两级探测（模型列表失败降级健康检查），错误信息不再截断。
-- **报错信息可展开、可复制**：长错误支持展开阅读与长按复制。
-- **Termux 授权跳转**：授权失败多级回退并给出指引提示。
-- **Responses API 空消息**：修复部分上游返回空 content 时的 400 死循环。
-- **消息气泡**：有背景图时长文本保留气泡底色；深色壁纸下正文自动反色提升可读性。
-- **知识库检索结果**：不再以正文气泡形式出现在聊天前端。
-- **通知监听页**：修复筛选与按钮截断问题。
-- **编辑按钮越权**：编辑按钮不再出现在助手消息（含卡片）下方，只应出现在用户自己发的消息上。
+- **A2A Aislamiento de conversación remota**: Las solicitudes remotas ya no cambian los chats en primer plano ni llaman a las herramientas del dispositivo local;context/task De forma aislada, aún pueden continuar múltiples rondas de conversaciones de texto y la cancelación solo afecta a las solicitudes correspondientes.
+- **A2A Refuerzo de seguridad**: mundial“Aprobar todo”El bit ya no actúa en sesiones no enfocadas, bloqueando el camino hacia la ejecución silenciosa remota de herramientas de dispositivos de alto riesgo.
+- **Tasker Línea de seguridad de transmisión**: La entrada está cerrada de forma predeterminada + límite superior de longitud + límite de frecuencia, lo que reduce el costo del abuso de la transmisión externa.
+- **Agent El cambio de asistente no tiene efecto**: Se corrigió el error cuando la sala del Agente se restaura y regresa a la sesión anterior de otros asistentes. La propiedad de la sala ahora es correcta después de cambiar de asistente.
+- **Protección de asistente predeterminada**: El asistente predeterminado ya no se puede eliminar directamente; el puntero cambia automáticamente al eliminar otros asistentes y no cambiará después de reiniciar.“resurrección”Se eliminó el ayudante predeterminado.
+- **Etiqueta de capacidad del modelo**: autoconstruido/Los proveedores de estaciones de transferencia ya no aparecen mal etiquetados en el directorio“Imagen no compatible”, mostrado como una conclusión desconocida y no falsa.
+- **Botón de prueba del proveedor falso positivo**: Detección de dos niveles (la lista de modelos no degrada la verificación de estado), la información de error ya no se trunca.
+- **La información de error se puede ampliar y copiar.**: Los errores largos admiten lectura ampliada y pulsación larga para copiar.
+- **Termux Salto de autorización**: Avisos de orientación y respaldo de varios niveles si falla la autorización.
+- **Responses API mensaje vacío**: Se corrigió el bucle infinito 400 cuando algunas fuentes ascendentes devolvían contenido vacío.
+- **burbuja de mensaje**: Cuando hay una imagen de fondo, el texto conserva el color de fondo de las burbujas; el texto principal se invierte automáticamente bajo un fondo de pantalla oscuro para mejorar la legibilidad.
+- **Resultados de búsqueda de la base de conocimientos**: Ya no aparece como una burbuja de texto en la interfaz del chat.
+- **Página de escucha de notificaciones**: Se corrigieron problemas de filtrado y truncamiento de botones.
+- **El botón Editar anula la autoridad**: El botón de edición ya no aparece debajo de los mensajes del asistente (incluidas las tarjetas) y solo debería aparecer en los mensajes enviados por el propio usuario.
 
-### 深度审查修复（本轮新增）
+### Correcciones de revisión en profundidad (nuevas en esta ronda)
 
-- **数据一致性 / 并发**：断点恢复与前台刷新写入消息改走原子 CAS，压缩完成后不再把已切走会话的水位线写进全局（修串会话）；切换助手房间引用计数先增后减，避免误释放在用会话；导入备份补入库后真实行数核对。
-- **RAG 可靠性**：内置功能文档索引比对 embedding 模型指纹；embedding 指纹改用稳定维度口径，消除因猜测维度导致的 HNSW 索引冷启动重建。
-- **渠道可靠性**：Telegram 游标损坏不再终结接收循环；回发令牌解密失败转终态（不再无限重试）；飞书 webhook 入站解析 content JSON（与长连接路径一致）；自动回复先发送成功再记历史（修上下文漂移）；Tasker 结果通知改读用户全局策略；渠道存储损坏隔离。
-- **备份可靠性**：知识库文件夹接入 NDJSON 恢复与快照，修复“恢复即丢文件夹”。
-- **记忆可靠性**：记忆自动保存“未解析出分析”不再抛异常。
-- **工具与 UI**：修复工具嵌套对象参数（如 render_data 的 data）被当作转义字符串导致的解析失败；审批暂停态离开时正确复位；全屏编辑页补 imePadding。
-- **CI / 工程健康**：源码行尾统一 LF（消除基线行号漂移噪音）；detekt 台账同步实测；NOTICE 补齐漏列依赖；统一 22 个 Robolectric 测试的 SDK 配置，根治全量跑随机失败。
-- **提示词体系**：非中文语言（日/韩/西/葡/俄）不再回落到中文提示词，改为回落英文；群聊 MOOD 复用单聊模板（旧版两处定义已漂移）；子代理提示词跟随应用语言（旧版硬编码中文输出）；内置场景模板正文接入本地化资源；修复记忆抽取/滚动摘要的中英规则漂移。
+- **Coherencia/simultaneidad de datos**: Los mensajes de escritura de recuperación de punto de interrupción y actualización de primer plano se cambian a CAS atómico. Una vez completada la compresión, el nivel de agua de la sesión de corte ya no se escribe en el global (modificar sesión de cadena); el recuento de referencia de la sala del asistente de conmutación se aumenta primero y luego se disminuye para evitar liberar accidentalmente la sesión activa; el número de fila real se verifica después de importar la copia de seguridad y agregarla a la biblioteca.
+- **RAG Fiabilidad**: Función incorporada de comparación de índice de documentos que incorpora la huella digital del modelo;embedding La huella digital se cambia a un calibre de dimensión estable para eliminar la reconstrucción de arranque en frío del índice HNSW causada por adivinar las dimensiones.
+- **confiabilidad del canal**:Telegram El daño del cursor ya no termina el bucle de recepción; si no se descifra el token de devolución, se vuelve al estado final (ya no hay reintentos infinitos); El webhook entrante de Feishu analiza el contenido JSON (consistente con la ruta de conexión larga); las respuestas automáticas se envían correctamente antes de registrar el historial (corregir la desviación del contexto);Tasker La notificación del resultado es cambiar la política global del usuario; el almacenamiento del canal está dañado y aislado.
+- **Fiabilidad de la copia de seguridad**: Acceso a la carpeta de la base de conocimientos Recuperación e instantánea de NDJSON, reparación“Recuperar carpetas perdidas”.
+- **confiabilidad de la memoria**:Memoria guardada automáticamente“Análisis no analizado”No se lanzan más excepciones.
+- **Herramientas y UI**: Se corrigió el error de análisis causado por el tratamiento de los parámetros de objetos anidados de la herramienta (como los datos de render_data) como cadenas de escape; reinicio correcto al salir del estado de pausa de aprobación; imePadding agregado a la página de edición de pantalla completa.
+- **CI / Ingeniería Salud**: Unifique LF al final de las líneas del código fuente (elimine el ruido de deriva del número de línea de referencia);detekt Sincronización del libro mayor y medición real;NOTICE Complete las dependencias que faltan; unifique las configuraciones del SDK de 22 pruebas Robolectric para eliminar fallas aleatorias en todas las ejecuciones.
+- **Sistema de palabras rápidas**: Idioma no chino (japonés/Corea/Oeste/portugués/Rusia) ya no recurre a las palabras clave en chino, sino que recurre al inglés; el chat grupal MOOD reutiliza plantillas de chat individuales (dos definiciones en la versión anterior han cambiado); las palabras del mensaje del subagente siguen el idioma de la aplicación (versión antigua codificada en chino); el texto de la plantilla de escena incorporada está conectado a recursos localizados; Se repara la extracción de memoria./Deriva de las reglas chino-inglesas para los resúmenes continuos.
 
-## 体验改进
+## Mejoras en la experiencia
 
-- **生成式卡片可直接渲染**：助手用 show_card 生成的图表/仪表盘/可交互界面现在能在对话里真正渲染（此前只显示工具参数原文）；卡片内脚本也能通过 data 绑定读取数据。
-- 消息快捷操作全部可配置，全关时不再留空行；思考复制默认关闭、删除消息带二次确认，减少误触。
-- ChatViewModel 拆分重构（工具循环/压缩编排/审批/恢复独立模块），降低后续维护成本。
+- **Las tarjetas generativas se pueden renderizar directamente**: Gráfico generado por el asistente usando show_card/Panel de control/Las interfaces interactivas ahora se pueden representar en conversaciones (anteriormente solo se mostraba el texto original de los parámetros de la herramienta); Los scripts integrados en la tarjeta también pueden leer datos mediante enlace de datos.
+- Todas las operaciones de acceso directo a mensajes son configurables y ya no quedan líneas en blanco cuando están completamente cerradas; La copia de pensamiento está cerrada de forma predeterminada y la eliminación de mensajes tiene una segunda confirmación para reducir los toques accidentales.
+- ChatViewModel Refactorización dividida (bucle de herramientas)/Disposición de compresión/Aprobación/Restaurar módulos independientes) para reducir los costes de mantenimiento posteriores.
 
 ---
 

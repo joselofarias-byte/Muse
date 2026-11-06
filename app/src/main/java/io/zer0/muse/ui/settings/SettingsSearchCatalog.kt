@@ -22,33 +22,33 @@ import io.zer0.muse.ui.navigation.TerminalRoute
 import io.zer0.muse.ui.navigation.ToolsScreenRoute
 
 /**
- * 搜索索引里的一条记录。
+ * Busque un registro en el índice.
  *
- * 索引覆盖两类入口：分类页里能看到的条目（来自 [SettingsCatalog]），以及只做搜索直达、
- * 不出现在分类页更深一层的页内设置在 [SettingsSearchExtras] 里的条目。
- * [group] 永远是 14 个一级分类之一，界面上用它拼面包屑。
+ * El índice cubre dos tipos de entradas: entradas que se pueden ver en la página de categorías (desde [SettingsCatalog]), y solo búsqueda directa,
+ * No aparezca en las páginas más profundas de la página de categorías. Establecer en [SettingsSearchExtras] entradas en.
+ * [group] Siempre es una de las 14 categorías de primer nivel, que se utiliza para crear rutas de navegación en la interfaz.
  */
 data class SettingsSearchRecord(
     @StringRes val titleRes: Int,
     val keywords: List<String>,
     val group: SettingsGroupKind,
     val action: SettingsEntryAction,
-    /** 结果行的图标：条目自带图标，只做搜索直达的页内设置用所属分类的图标。 */
+    /** Icono de la fila de resultados: la entrada tiene su propio icono. Sólo se utilizará el ícono de la categoría a la que se dirige la búsqueda para configurar el ícono en la página. */
     val icon: ImageVector,
 )
 
-/** 面包屑分隔符：分类 › 条目。 */
+/** Separador de migas de pan: clasificación › entrada. */
 const val SETTINGS_BREADCRUMB_SEPARATOR: String = " › "
 
-/** 拼搜索结果里的面包屑（分类在前，条目在后）。 */
+/** Rutas de navegación en los resultados de búsqueda (categorías primero, elementos al final). */
 fun settingsBreadcrumb(groupTitle: String, entryTitle: String): String =
     groupTitle + SETTINGS_BREADCRUMB_SEPARATOR + entryTitle
 
 /**
- * 按关键词过滤搜索索引。
+ * Filtre el índice de búsqueda por palabra clave.
  *
- * 标题、分类名、关键词三处任一命中即可；[titleOf] / [groupTitleOf] 把资源解析交给调用方，
- * 这样同一份过滤逻辑在界面（stringResource）与测试（真资源）里都能跑。
+ * Simplemente presione cualquiera de los tres lugares: título, nombre de categoría y palabras clave;[titleOf] / [groupTitleOf] Deje la resolución de recursos a la persona que llama,
+ * De esta forma, la misma lógica de filtrado se muestra en la interfaz (stringResource) y la prueba (recursos reales) se pueden ejecutar.
  */
 fun filterSettingsSearch(
     records: List<SettingsSearchRecord>,
@@ -65,7 +65,7 @@ fun filterSettingsSearch(
     }
 }
 
-/** 搜索索引：分类清单里的条目 + 只做搜索直达的页内设置。 */
+/** Índice de búsqueda: elementos en la lista de categorías + solo configuraciones en la página para búsqueda directa. */
 object SettingsSearchCatalog {
 
     val records: List<SettingsSearchRecord> =
@@ -83,10 +83,10 @@ object SettingsSearchCatalog {
 }
 
 /**
- * 只出现在搜索索引里的设置。
+ * Configuraciones que solo aparecen en el índice de búsqueda.
  *
- * 这些是某个页面里的具体设置项（字号、流式响应、检索模型等），用户会直接搜它们，
- * 但它们不该在分类页里跟「能点进去的页面」平级，所以不进入 [SettingsCatalog]。
+ * Estas son configuraciones específicas en una página determinada (tamaño de fuente, respuesta de transmisión, modelo de recuperación, etc.) y los usuarios las buscarán directamente.
+ * Pero no deben estar al mismo nivel que las "páginas en las que se puede hacer clic" en la página de categorías, por lo que no se ingresan. [SettingsCatalog].
  */
 internal object SettingsSearchExtras {
 
@@ -96,7 +96,7 @@ internal object SettingsSearchExtras {
             SettingsGroupKind.APPEARANCE,
             SettingsEntryAction.Navigate(SettingsAppearanceRoute),
             listOf(
-                "主题", "配色", "深色", "浅色", "暗黑", "AMOLED", "颜色", "zhuti", "peise", "shense",
+                "Tema", "combinación de colores", "oscuro", "color claro", "oscuro", "AMOLED", "color", "zhuti", "peise", "shense",
                 "qianse", "anhe", "yase", "zt", "ps", "ss", "qs",
             ),
         ),
@@ -104,62 +104,62 @@ internal object SettingsSearchExtras {
             R.string.settings_screen_entry_font_size,
             SettingsGroupKind.APPEARANCE,
             SettingsEntryAction.Navigate(SettingsAppearanceRoute),
-            listOf("字号", "字体大小", "字体", "大小", "ziti", "zihao", "ztdx", "zt"),
+            listOf("Tamaño de fuente", "tamaño de fuente", "fuente", "tamaño", "ziti", "zihao", "ztdx", "zt"),
         ),
         record(
             R.string.settings_screen_entry_theme_mode,
             SettingsGroupKind.APPEARANCE,
             SettingsEntryAction.Navigate(SettingsAppearanceRoute),
-            listOf("主题模式", "浅色", "深色", "跟随系统", "zhutimoshi", "qianse", "shense", "genshixitong", "ztms", "qs", "ss", "gsxt"),
+            listOf("modo tema", "color claro", "oscuro", "Sigue el sistema", "zhutimoshi", "qianse", "shense", "genshixitong", "ztms", "qs", "ss", "gsxt"),
         ),
         record(
             R.string.settings_theme_dynamic_color,
             SettingsGroupKind.APPEARANCE,
             SettingsEntryAction.Navigate(SettingsAppearanceRoute),
-            listOf("动态取色", "取色", "壁纸", "dongtaiquse", "quse", "dtqs", "qs", "bz"),
+            listOf("Selección de color dinámica", "Elige color", "fondo de pantalla", "dongtaiquse", "quse", "dtqs", "qs", "bz"),
         ),
         record(
             R.string.settings_screen_entry_scheduled_theme,
             SettingsGroupKind.APPEARANCE,
             SettingsEntryAction.Navigate(SettingsAppearanceRoute),
-            listOf("定时切换", "自动切换", "深色模式", "dingshiqiehuan", "zidongqiehuan", "shensemoshi", "dsqh", "zdqh", "ssms"),
+            listOf("Conmutación programada", "Conmutación automática", "modo oscuro", "dingshiqiehuan", "zidongqiehuan", "shensemoshi", "dsqh", "zdqh", "ssms"),
         ),
         record(
             R.string.settings_screen_entry_tts_playback,
             SettingsGroupKind.VOICE,
             SettingsEntryAction.Navigate(SettingsMediaRoute),
-            listOf("TTS", "tts", "语音播报", "朗读", "文字转语音", "TextToSpeech", "yuyinbobao", "langdu", "wenzi", "yybb", "ld"),
+            listOf("TTS", "tts", "Transmisión de voz", "leer en voz alta", "texto a voz", "TextToSpeech", "yuyinbobao", "langdu", "wenzi", "yybb", "ld"),
         ),
         record(
             R.string.settings_screen_entry_tts_speed,
             SettingsGroupKind.VOICE,
             SettingsEntryAction.Navigate(SettingsMediaRoute),
-            listOf("TTS", "语速", "音高", "yusu", "yingao", "ys", "yg"),
+            listOf("TTS", "velocidad al hablar", "tono", "yusu", "yingao", "ys", "yg"),
         ),
         record(
             R.string.settings_media_tts_voice_selector,
             SettingsGroupKind.VOICE,
             SettingsEntryAction.Navigate(SettingsMediaRoute),
-            listOf("声音", "语音", "voice", "shengyin", "yuyin", "sy", "yy"),
+            listOf("sonido", "Voz", "voice", "shengyin", "yuyin", "sy", "yy"),
         ),
         record(
             R.string.settings_screen_entry_api_key,
             SettingsGroupKind.MODELS,
             SettingsEntryAction.Navigate(SettingsModelRoute),
-            listOf("API Key", "密钥", "key", "token", "凭证", "apiKey", "miyao", "pingzheng"),
+            listOf("API Key", "clave", "key", "token", "vale", "apiKey", "miyao", "pingzheng"),
         ),
         record(
             R.string.muse_plugins_manage,
             SettingsGroupKind.MODELS,
             SettingsEntryAction.Navigate(PluginManageRoute),
-            listOf("插件管理", "外部插件", "muse-plugin", "插件包", "导入插件", "chajian", "plugin", "daoruchajian", "cjb", "cjgl"),
+            listOf("Gestión de complementos", "complemento externo", "muse-plugin", "Paquete de complemento", "Complemento de importación", "chajian", "plugin", "daoruchajian", "cjb", "cjgl"),
         ),
         record(
             R.string.settings_memory_page_title,
             SettingsGroupKind.MEMORY,
             SettingsEntryAction.Navigate(SettingsMemoryConfigRoute),
             listOf(
-                "记忆", "记忆配置", "记忆设置", "记忆系统", "memory", "jiyi", "jiyipeizhi",
+                "memoria", "configuración de memoria", "configuración de memoria", "sistema de memoria", "memory", "jiyi", "jiyipeizhi",
                 "jiyishezhi", "jiyixitong", "jy", "jypz", "jysz",
             ),
         ),
@@ -167,62 +167,62 @@ internal object SettingsSearchExtras {
             R.string.settings_memory_custom_compress_prompt,
             SettingsGroupKind.MEMORY,
             SettingsEntryAction.Navigate(SettingsTaskRoutingRoute),
-            listOf("压缩", "压缩提示词", "上下文压缩", "自定义提示词", "yasuo", "yasuotishici", "shangwen", "ystc", "ys"),
+            listOf("Compresión", "Palabras rápidas comprimidas", "Compresión de contexto", "Palabras de aviso personalizadas", "yasuo", "yasuotishici", "shangwen", "ystc", "ys"),
         ),
         record(
             R.string.settings_screen_entry_memory_toggle,
             SettingsGroupKind.MEMORY,
             SettingsEntryAction.Navigate(SettingsMemoryConfigRoute),
-            listOf("记忆", "开关", "启用记忆系统", "jiyi", "kaiguan", "qiyong", "jy", "kg", "qyjy"),
+            listOf("memoria", "cambiar", "Habilitar sistema de memoria", "jiyi", "kaiguan", "qiyong", "jy", "kg", "qyjy"),
         ),
         record(
             R.string.settings_screen_entry_rag_model,
             SettingsGroupKind.MEMORY,
             SettingsEntryAction.Navigate(SettingsRagRoute),
-            listOf("检索模型", "RAG模型", "相似度", "jiansuomoxing", "ragmoxing", "xiangsidu", "jsmx", "ragmx", "xsd"),
+            listOf("Recuperar modelo", "RAGmodelo", "Similitud", "jiansuomoxing", "ragmoxing", "xiangsidu", "jsmx", "ragmx", "xsd"),
         ),
         record(
             R.string.settings_screen_entry_chunking,
             SettingsGroupKind.MEMORY,
             SettingsEntryAction.Navigate(SettingsRagRoute),
-            listOf("分段", "分块", "策略", "fenduan", "fenkuai", "celve", "fd", "fk", "cl"),
+            listOf("segmentación", "fragmentación", "Estrategia", "fenduan", "fenkuai", "celve", "fd", "fk", "cl"),
         ),
         record(
             R.string.connector_page_title,
             SettingsGroupKind.CONNECTION,
             SettingsEntryAction.Navigate(ConnectorSettingsRoute),
-            listOf("连接器", "授权", "OAuth", "connector", "oauth", "shouquan", "lianjieqi", "sjq", "lqq", "sq"),
+            listOf("conector", "Autorizar", "OAuth", "connector", "oauth", "shouquan", "lianjieqi", "sjq", "lqq", "sq"),
         ),
         record(
             R.string.settings_mcp_title,
             SettingsGroupKind.CONNECTION,
             SettingsEntryAction.Navigate(SettingsMcpRoute),
-            listOf("MCP", "服务器", "ModelContextProtocol", "fuwuqi", "fwq"),
+            listOf("MCP", "servidor", "ModelContextProtocol", "fuwuqi", "fwq"),
         ),
         record(
             R.string.terminal_title,
             SettingsGroupKind.TOOLS,
             SettingsEntryAction.Navigate(TerminalRoute),
-            listOf("终端", "命令行", "shell", "terminal", "zhongduan", "minglinghang"),
+            listOf("terminales", "línea de comando", "shell", "terminal", "zhongduan", "minglinghang"),
         ),
         record(
             R.string.settings_web_search_engine,
             SettingsGroupKind.TOOLS,
             SettingsEntryAction.Navigate(SettingsWebSearchRoute),
-            listOf("搜索引擎", "Bing", "Jina", "SearXNG", "sousuoyinqing", "ssyq"),
+            listOf("motor de búsqueda", "Bing", "Jina", "SearXNG", "sousuoyinqing", "ssyq"),
         ),
         record(
             R.string.settings_screen_entry_tool_approval,
             SettingsGroupKind.TOOLS,
             SettingsEntryAction.Navigate(ToolsScreenRoute),
-            listOf("工具批准", "批准模式", "自动批准", "gongjupizhun", "pizhunmoshi", "zidongpizhun", "gjpz", "pzms", "zdpz"),
+            listOf("aprobación de herramienta", "Modo de aprobación", "Aprobación automática", "gongjupizhun", "pizhunmoshi", "zidongpizhun", "gjpz", "pzms", "zdpz"),
         ),
         record(
             R.string.settings_memory_keep_awake,
             SettingsGroupKind.ASSISTANTS,
             SettingsEntryAction.Navigate(SettingsAgentRoute),
             listOf(
-                "保持唤醒", "唤醒", "wakelock", "不休眠", "常亮", "keep awake", "baochihuanxing",
+                "mantente despierto", "despierta", "wakelock", "no dormir", "Siempre encendido", "keep awake", "baochihuanxing",
                 "huanxing", "buxiumian", "changliang", "bchx", "hx", "bxm", "cl",
             ),
         ),
@@ -231,7 +231,7 @@ internal object SettingsSearchExtras {
             SettingsGroupKind.ASSISTANTS,
             SettingsEntryAction.Navigate(SettingsAgentRoute),
             listOf(
-                "开机自启", "自启", "自启动", "开机", "boot", "auto launch", "BootReceiver",
+                "Iniciar automáticamente al arrancar", "auto inicio", "auto inicio", "Encendido", "boot", "auto launch", "BootReceiver",
                 "kaijiziqi", "ziqi", "zidong", "kaiji", "kjzq", "zq", "zdd", "kj",
             ),
         ),
@@ -239,62 +239,62 @@ internal object SettingsSearchExtras {
             R.string.settings_screen_entry_collab,
             SettingsGroupKind.ASSISTANTS,
             SettingsEntryAction.Navigate(SettingsAgentRoute),
-            listOf("协作", "多助手", "团队", "xiezhuo", "duozhushou", "tuandui", "xz", "dzs", "td"),
+            listOf("colaboración", "Múltiples asistentes", "equipo", "xiezhuo", "duozhushou", "tuandui", "xz", "dzs", "td"),
         ),
         record(
             R.string.settings_chat_streaming,
             SettingsGroupKind.CHAT,
             SettingsEntryAction.Navigate(SettingsChatRoute),
-            listOf("流式", "流式响应", "实时输出", "liushi", "liushixiangying", "shishishuchu", "ls", "lsxy", "sssc"),
+            listOf("transmisión", "Respuesta de transmisión", "salida en tiempo real", "liushi", "liushixiangying", "shishishuchu", "ls", "lsxy", "sssc"),
         ),
         record(
             R.string.settings_screen_entry_enter_send,
             SettingsGroupKind.CHAT,
             SettingsEntryAction.Navigate(SettingsChatRoute),
-            listOf("回车发送", "回车", "发送", "huichefasong", "huiche", "fasong", "hcfs", "hc", "fs"),
+            listOf("Entra para enviar", "Entrar", "enviar", "huichefasong", "huiche", "fasong", "hcfs", "hc", "fs"),
         ),
         record(
             R.string.settings_screen_entry_auto_scroll,
             SettingsGroupKind.CHAT,
             SettingsEntryAction.Navigate(SettingsChatRoute),
-            listOf("自动滚动", "滚动", "zidonggundong", "gundong", "zdgd", "gd"),
+            listOf("desplazamiento automático", "desplazarse", "zidonggundong", "gundong", "zdgd", "gd"),
         ),
         record(
             R.string.chat_deep_thinking_cd,
             SettingsGroupKind.CHAT,
             SettingsEntryAction.Navigate(SettingsChatRoute),
-            listOf("深度思考", "默认深度思考", "shendusikao", "morethorough", "sds", "sdsz"),
+            listOf("pensamiento profundo", "Pensamiento profundo por defecto", "shendusikao", "morethorough", "sds", "sdsz"),
         ),
         record(
             R.string.settings_screen_entry_timestamps,
             SettingsGroupKind.CHAT,
             SettingsEntryAction.Navigate(SettingsChatRoute),
-            listOf("时间戳", "24小时", "timestamp", "shijianchuo", "24xiaoshi", "sjc"),
+            listOf("Marca de tiempo", "24horas", "timestamp", "shijianchuo", "24xiaoshi", "sjc"),
         ),
         record(
             R.string.settings_screen_entry_proxy_switch,
             SettingsGroupKind.CONNECTION,
             SettingsEntryAction.Navigate(SettingsProxyRoute),
-            listOf("代理", "开关", "Proxy", "daili", "kaiguan", "dl", "kg"),
+            listOf("agente", "cambiar", "Proxy", "daili", "kaiguan", "dl", "kg"),
         ),
         record(
             R.string.settings_backup_cloud_title,
             SettingsGroupKind.DATA_STORAGE,
             SettingsEntryAction.Navigate(SettingsCloudBackupRoute),
-            listOf("云备份", "备份", "S3", "WebDAV", "yunbeifen", "beifen", "ybf", "bf"),
+            listOf("Copia de seguridad en la nube", "copia de seguridad", "S3", "WebDAV", "yunbeifen", "beifen", "ybf", "bf"),
         ),
         record(
             R.string.diagnostic_export_title,
             SettingsGroupKind.DEVELOPER,
             SettingsEntryAction.Action(SettingsActionId.EXPORT_DIAGNOSTICS),
-            listOf("诊断", "导出", "日志", "diagnostic", "export", "zhenduan", "daochu", "rizhi", "zd", "dc", "rz"),
+            listOf("Diagnóstico", "Exportar", "Iniciar sesión", "diagnostic", "export", "zhenduan", "daochu", "rizhi", "zd", "dc", "rz"),
         ),
         record(
             R.string.settings_component_gallery,
             SettingsGroupKind.DEVELOPER,
             SettingsEntryAction.Navigate(ComponentGalleryRoute),
             listOf(
-                "组件", "画廊", "component gallery", "组件演示", "预览", "设计系统",
+                "componentes", "galería", "component gallery", "Demostración de componentes", "Vista previa", "sistema de diseño",
                 "zujian", "hualang", "zujiandemo", "yulan", "shejixitong",
             ),
         ),

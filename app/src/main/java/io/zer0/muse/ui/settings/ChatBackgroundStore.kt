@@ -8,30 +8,30 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * v2.6.2（用户反馈）: 聊天背景图片落盘工具 —— 三层背景（会话/助手/全局）共用。
+ * v2.6.2(comentarios de los usuarios): Herramienta de colocación de imágenes de fondo del chat —— Fondo de tres capas (sesión/asistente/global) compartido.
  *
- * 为什么必须落盘：背景图若以 base64 存进 DataStore Preferences，每次 edit 全量重写，
- * 设置文件膨胀、冷启动变慢、还有 ANR 风险。这里统一压缩后写 filesDir，
- * DataStore 只存 "file://..." 路径字符串。
+ * Por qué se debe descargar: si la imagen de fondo se almacena en las Preferencias de DataStore como base64, se reescribirá por completo cada vez que se edite.
+ * Inflamación del archivo de instalación, arranques en frío lentos y riesgo de ANR. Aquí, filesDir se escribe después de una compresión unificada.
+ * DataStore sólo mantener "file://..." Cadena de ruta.
  *
- * 压缩策略：长边上限 1920，JPEG 质量 82（体积与观感的平衡点，壁纸类图片够用）。
+ * Estrategia de compresión: gorra de lado largo 1920,JPEG Calidad 82 (un equilibrio entre tamaño y apariencia, suficiente para papeles pintados).
  */
 internal object ChatBackgroundStore {
 
     private const val MAX_SIDE = 1920
     private const val JPEG_QUALITY = 82
 
-    /** 全局默认背景文件名（保持旧版兼容）。 */
+    /** Nombre de archivo de fondo predeterminado global (para mantener la compatibilidad heredada). */
     private const val GLOBAL_FILE = "chat_background.jpg"
 
     /**
-     * 把用户选中的图片压缩落盘，返回 "file://" 开头的路径；失败返回 null。
+     * Comprima la imagen seleccionada por el usuario y suéltela en el disco, luego regrese "file://" El camino inicial; devuelve nulo en caso de error.
      *
-     * @param slot 落盘文件名（不含扩展名）。全局/助手/会话各用不同 slot，
-     *   避免互相覆盖；传 null 用全局默认名（兼容旧行为）。
-     * @param unique 是否在文件名后追加时间戳（v2.6.2）。
-     *   同一个 slot 重新选图时，若路径不变，SmartImage 会命中旧缓存而不刷新；
-     *   追加时间戳使路径每次不同，强制重新加载。旧文件会被清掉。
+     * @param slot Nombre del archivo en el disco (excluyendo la extensión). situación general/asistente/Cada sesión utiliza un espacio diferente,
+     *   Evite sobrescribir unos a otros; pase null para usar el nombre predeterminado global (compatible con el comportamiento anterior).
+     * @param unique Si se debe agregar una marca de tiempo después del nombre del archivo (v2.6.2).
+     *   Al volver a seleccionar la misma ranura, si la ruta permanece sin cambios,SmartImage Llegará al caché antiguo sin actualizarlo;
+     *   Agregar una marca de tiempo hace que la ruta sea diferente cada vez, lo que obliga a una recarga. Se borrarán los archivos antiguos.
      */
     fun saveFromUri(context: Context, uri: Uri, slot: String? = null, unique: Boolean = false): String? = runCatching {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -54,7 +54,7 @@ internal object ChatBackgroundStore {
         } else {
             base
         }
-        // 清理同 slot 的旧文件（含带时间戳的历史文件），避免无限堆积
+        // Limpie archivos antiguos en la misma ranura (incluidos archivos históricos con marcas de tiempo) para evitar una acumulación infinita
         runCatching {
             val stem = base.substringBeforeLast('.')
             context.filesDir.listFiles()?.forEach { f ->
@@ -68,7 +68,7 @@ internal object ChatBackgroundStore {
         "file://" + target.absolutePath
     }.getOrNull()
 
-    /** 删除某个 slot 对应的背景文件（清除背景时调用，包含带时间戳的历史文件）。 */
+    /** Elimine el archivo de fondo correspondiente a una ranura (llamado al borrar el fondo, incluidos los archivos de historial con marcas de tiempo). */
     fun deleteSlot(context: Context, slot: String?) {
         runCatching {
             val base = if (slot.isNullOrBlank()) GLOBAL_FILE else "$slot.jpg"
@@ -80,12 +80,12 @@ internal object ChatBackgroundStore {
         }
     }
 
-    /** 会话级背景文件 slot。 */
+    /** Ranura para archivos de fondo a nivel de sesión. */
     fun sessionSlot(sessionId: String): String = "chat_bg_session_${sessionId.sanitized()}"
 
-    /** 助手级背景文件 slot。 */
+    /** Ranura para archivos de fondo de nivel asistente. */
     fun assistantSlot(assistantId: String): String = "chat_bg_assistant_${assistantId.sanitized()}"
 
-    /** 文件名安全化：只保留字母数字下划线连字符。 */
+    /** Seguridad del nombre de archivo: mantenga solo guiones bajos alfanuméricos. */
     private fun String.sanitized(): String = replace(Regex("[^A-Za-z0-9_-]"), "_")
 }

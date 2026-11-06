@@ -11,17 +11,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.x（技术债项目 C）：签名 payload 白名单化的守护测试。
+ * v2.x(Proyecto de deuda técnica C): prueba de demonios incluidos en la lista blanca de carga útil firmada.
  *
- * 三个关键保证：
- *  1. 白名单覆盖 PluginManifest 全部字段（字段集变化时此测试提醒同步维护）
- *  2. 白名单过滤对"全字段在白名单内"的 manifest 输出与直接序列化逐字节一致
- *     （存量包验签兼容性）
- *  3. 白名单之外的新字段会被剔除（新增字段默认不参与签名）
+ * Tres garantías clave:
+ *  1. La lista blanca cubre todos los campos de PluginManifest (esta prueba recuerda el mantenimiento sincrónico cuando cambia el conjunto de campos)
+ *  2. par de filtros de lista blanca"Todos los campos están en la lista blanca."La salida del manifiesto es consistente byte por byte con la serialización directa.
+ *     (Compatibilidad de verificación del paquete de stock)
+ *  3. Se eliminarán los campos nuevos fuera de la lista blanca (los campos nuevos no participarán en la firma de forma predeterminada)
  */
 class SignedManifestFieldCoverageTest {
 
-    /** PluginManifest 顶层全部字段名（与序列化器声明序一致）。 */
+    /** PluginManifest Todos los nombres de campos de nivel superior (en el mismo orden que la declaración del serializador). */
     private val allManifestFields = setOf(
         "id", "name", "version", "description", "author", "minAppVersion",
         "entry", "kind", "trust", "hidden", "capabilities", "permissions",
@@ -31,17 +31,17 @@ class SignedManifestFieldCoverageTest {
 
     @Test
     fun `whitelist covers all current manifest fields`() {
-        // 用一个"全默认值可编码"的 manifest 序列化，看实际输出字段
+        // usar un"Se pueden codificar todos los valores predeterminados"Serialización de manifiesto, consulte los campos de salida reales
         val manifest = PluginManifest(id = "t", name = "T")
         val encoded = AppJson.encodeToString(PluginManifest.serializer(), manifest)
         val keys = AppJson.parseToJsonElement(encoded).jsonObject.keys
-        // AppJson.encodeDefaults=true：所有非 NEVER 字段都会出现
+        // AppJson.encodeDefaults=true: Aparecerán todos los campos que no sean NUNCA.
         keys.forEach { key ->
-            assertTrue("manifest 字段 '$key' 不在白名单中——若为新增字段，确认是否需要签名保护", key in PluginSecurityGate.SIGNED_TOP_LEVEL_FIELDS)
+            assertTrue("manifest campo '$key' No en la lista blanca——Si es un campo nuevo, confirme si se requiere protección de firma.", key in PluginSecurityGate.SIGNED_TOP_LEVEL_FIELDS)
         }
-        // 反向：白名单里不应有 manifest 已不存在的字段（改名/删除时提醒清理）
+        // Inversa: no debe haber campos en el manifiesto que ya no existan en la lista blanca (renombrados/Recordatorio para limpiar al eliminar)
         PluginSecurityGate.SIGNED_TOP_LEVEL_FIELDS.forEach { field ->
-            assertTrue("白名单字段 '$field' 已不存在于 PluginManifest，请同步清理", field in allManifestFields)
+            assertTrue("campos de la lista blanca '$field' Ya no existe en PluginManifest, límpielo simultáneamente.", field in allManifestFields)
         }
     }
 
@@ -55,8 +55,8 @@ class SignedManifestFieldCoverageTest {
         )
         val direct = AppJson.encodeToString(PluginManifest.serializer(), manifest)
         val viaWhitelist = PluginSecurityGate.signedManifestJson(manifest)
-        // JsonObject.toString 与 Json.encodeToString 的对象输出格式一致（均为紧凑无空格）
-        // 这里做语义等价 + 字节对比双重断言：若字节不一致说明编码格式漂移，需要排查
+        // JsonObject.toString El formato de salida del objeto de Json.encodeToString es consistente (tanto compacto como sin espacios)
+        // Aquí hacemos una doble afirmación de equivalencia semántica + comparación de bytes: si los bytes son inconsistentes, significa que el formato de codificación se ha desviado y es necesario verificarlo.
         assertEquals(
             AppJson.parseToJsonElement(direct).jsonObject,
             AppJson.parseToJsonElement(viaWhitelist).jsonObject,
@@ -68,7 +68,7 @@ class SignedManifestFieldCoverageTest {
     fun `fields outside whitelist are stripped from payload`() {
         val manifest = PluginManifest(id = "t", name = "T")
         val direct = AppJson.encodeToString(PluginManifest.serializer(), manifest)
-        // 模拟未来新增字段：往 JSON 里塞一个白名单外的字段，过滤后必须被剔除
+        // Simule nuevos campos en el futuro: inserte un campo fuera de la lista blanca en JSON, que debe eliminarse después del filtrado
         val withNewField = Json.parseToJsonElement(direct).jsonObject
         val mutated = buildJsonObject {
             withNewField.forEach { (k, v) -> put(k, v) }
@@ -82,7 +82,7 @@ class SignedManifestFieldCoverageTest {
             }
         }
         assertFalse(filtered.toString().contains("futureField"))
-        // 语义上与原 manifest 相同（剔除新增字段后）
+        // Semánticamente igual que el manifiesto original (después de eliminar los nuevos campos)
         assertEquals(AppJson.parseToJsonElement(direct).jsonObject, filtered)
     }
 }

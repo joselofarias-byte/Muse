@@ -7,20 +7,20 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
- * v2.x: 群聊记忆仓库 — 封装 [GroupChatMemoryDao],暴露 suspend 方法。
+ * v2.x: Almacén de memoria de chat grupal — Encapsulación [GroupChatMemoryDao],Exponer el método de suspensión.
  *
- * 职责:
- *  - 写入群聊记忆([saveSummary])——由 GroupChatScheduler 在 agent 完成回复后调用,
- *    把本轮群聊对话摘要写入独立 fact store,**不**写入助手主记忆系统。
- *  - 读取群聊记忆([getByAssistantAndChat])——由 SystemPromptAssembler 按"当前群聊"注入到
- *    system prompt,用 `<group_chat_memory>` 标签与主记忆 `<long_term_memory>` 区分。
- *  - 清理([cleanupOlderThan])——定期清理过期/陈旧记忆。
+ * Responsabilidades:
+ *  - Escribir en la memoria del chat grupal([saveSummary])——Llamado por GroupChatScheduler después de que el agente completa su respuesta,
+ *    Escribe el resumen de esta conversación de chat grupal de forma independiente. fact store,**No**Escribe en el sistema de memoria principal del asistente.
+ *  - Leer la memoria del chat grupal([getByAssistantAndChat])——Presionado por SystemPromptAssembler"Chat grupal actual"inyectar en
+ *    system prompt,usar `<group_chat_memory>` Etiquetas y memoria principal `<long_term_memory>` Distinguir.
+ *  - limpiar([cleanupOlderThan])——La limpieza periódica caduca/Viejos recuerdos.
  *
- * 与主记忆系统([io.zer0.memory] 模块)的关系:
- *  - 完全独立:不共享表、不共享 LLM 调用、不共享编译管道
- *  - 仅通过 SystemPromptAssembler 在 prompt 层面"叠加",不互相写入
+ * con sistema de memoria principal([io.zer0.memory] módulo)relación:
+ *  - completamente independiente:Sin tablas compartidas, sin llamadas LLM compartidas, sin canales de compilación compartidos
+ *  - Sólo en el nivel de solicitud a través de SystemPromptAssembler"Superposición",No se escriban
  *
- * 所有 DB 操作包裹在 [Dispatchers.IO] 中,通过 [resultOf] 容错。
+ * Todas las operaciones de base de datos están envueltas en [Dispatchers.IO] en,Pase [resultOf] Tolerancia a fallos.
  */
 class GroupChatMemoryRepository(
     private val dao: GroupChatMemoryDao,
@@ -28,24 +28,24 @@ class GroupChatMemoryRepository(
 
     private val TAG = "GroupChatMemRepo"
 
-    /** B-18: 同 (群聊, agent) 摘要去重窗口(30 分钟)。 */
+    /** B-18: Lo mismo (chat grupal, agent) Ventana de deduplicación resumida(30 minutos). */
     private companion object {
         const val DEDUP_WINDOW_MS = 30L * 60 * 1000
     }
 
     /**
-     * 写入一条群聊记忆摘要。
+     * Escribe un resumen de la memoria del chat grupal.
      *
-     * 审查修复 (2.0 B-18): 写入前按时间窗口去重 — 群聊轮转中每个 agent 每轮发言都触发
-     * 一次 saveSummary,短时间窗口内累积近 10 条高度相似摘要,注入侧线性膨胀;
-     * 同一 (群聊, agent) 在 [dedupWindowMs] 内已有摘要则跳过(返回既有摘要)。
+     * Revisión de corrección (2.0 B-18): Deduplicación según ventana de tiempo antes de escribir — Cada agente en la rotación del chat grupal se activa cada vez que habla.
+     * una vez saveSummary,Casi 10 resúmenes muy similares acumulados en un corto período de tiempo,Expansión lineal del lado de inyección;
+     * mismo (chat grupal, agent) en [dedupWindowMs] Si ya existe un resumen, omítelo.(Devolver resumen existente).
      *
-     * @param groupChatId 群聊 id
-     * @param assistantId 助手 id
-     * @param summary 摘要文本(LLM 生成或简单截取)
-     * @param expiresAt 可选过期时间戳,null 表示永不过期
-     * @param dedupWindowMs 去重窗口(毫秒),默认 30 分钟
-     * @return 新写入的记忆实体(去重命中时返回既有实体)
+     * @param groupChatId chat grupal id
+     * @param assistantId asistente id
+     * @param summary texto resumido(LLM Generar o simplemente interceptar)
+     * @param expiresAt Marca de tiempo de vencimiento opcional,null significa que nunca caduca
+     * @param dedupWindowMs Ventana de deduplicación(milisegundos),Predeterminado 30 minutos
+     * @return Entidad de memoria recién escrita(Devolver la entidad existente al eliminar visitas duplicadas)
      */
     suspend fun saveSummary(
         groupChatId: String,
@@ -56,10 +56,10 @@ class GroupChatMemoryRepository(
     ): GroupChatMemoryEntity = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val latest = resultOf { dao.getByAssistantAndChat(assistantId, groupChatId, 1) }
-            .onError { msg, t -> Logger.w(TAG, "群聊记忆去重查询失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "Error en la consulta de deduplicación de memoria de chat grupal: $msg", t) }
             .getOrNull()?.firstOrNull()
         if (latest != null && now - latest.createdAt < dedupWindowMs) {
-            // B-18: 窗口内已有摘要,跳过重复写入(轮转各成员发言产生的摘要高度相似)
+            // B-18: Ya hay un resumen en la ventana.,Saltar escrituras duplicadas(Los resúmenes generados al rotar el discurso de cada miembro son muy similares.)
             return@withContext latest
         }
         val memory = GroupChatMemoryEntity(
@@ -71,74 +71,74 @@ class GroupChatMemoryRepository(
             expiresAt = expiresAt,
         )
         resultOf { dao.insert(memory) }
-            .onError { msg, t -> Logger.w(TAG, "写入群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo escribir en la memoria del chat grupal: $msg", t) }
         memory
     }
 
     /**
-     * 取指定助手最近 N 条群聊记忆(按 createdAt 降序)。
+     * Obtenga los recuerdos de chat grupal N más recientes del asistente designado(Orden descendente por creado en).
      *
-     * **A-09 修复后仅供兼容**:不限定群聊,会把该助手在**所有**群聊的摘要混回一起,
-     * 是"跨群记忆串台"的读取根因之一。SystemPromptAssembler 的 prompt 注入一律改走
-     * [getByAssistantAndChat](限定当前群聊),本方法不再用于注入。
+     * **A-09 Reparado solo por compatibilidad**:No hay límite para el chat grupal,pondrá al asistente en**todos**Resumen de chats grupales mezclados nuevamente,
+     * si"Diafonía de memoria entre grupos"Una de las causas fundamentales de la lectura.SystemPromptAssembler Se cambiarán todas las inyecciones inmediatas.
+     * [getByAssistantAndChat](Limitar el chat grupal actual),Este método ya no se utiliza para inyección.
      */
     suspend fun getByAssistant(assistantId: String, limit: Int = 10): List<GroupChatMemoryEntity> = withContext(Dispatchers.IO) {
         resultOf { dao.getByAssistant(assistantId, limit) }
-            .onError { msg, t -> Logger.w(TAG, "读取群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo leer la memoria del chat grupal: $msg", t) }
             .getOrNull() ?: emptyList()
     }
 
     /**
-     * 取指定助手在**指定群聊**最近 N 条群聊记忆(按 createdAt 降序)。
+     * Obtenga el asistente especificado en**Especificar chat grupal**Recuerdos recientes de chat grupal N(Orden descendente por creado en).
      *
-     * **A-09 修复**:带群聊隔离的注入读取,供 SystemPromptAssembler 只注入当前群聊的记忆。
+     * **A-09 Reparación**:Lectura de inyección con aislamiento de chat grupal,Para que SystemPromptAssembler inyecte solo la memoria del chat grupal actual.
      */
     suspend fun getByAssistantAndChat(assistantId: String, groupChatId: String, limit: Int = 10): List<GroupChatMemoryEntity> =
         withContext(Dispatchers.IO) {
             resultOf { dao.getByAssistantAndChat(assistantId, groupChatId, limit) }
-                .onError { msg, t -> Logger.w(TAG, "读取群聊记忆失败: $msg", t) }
+                .onError { msg, t -> Logger.w(TAG, "No se pudo leer la memoria del chat grupal: $msg", t) }
                 .getOrNull() ?: emptyList()
         }
 
-    /** 取指定群聊的全部记忆(供群聊详情页展示)。 */
+    /** Obtenga todos los recuerdos del chat grupal especificado(Para mostrar la página de detalles del chat grupal). */
     suspend fun getByGroupChat(groupChatId: String): List<GroupChatMemoryEntity> = withContext(Dispatchers.IO) {
         resultOf { dao.getByGroupChat(groupChatId) }
-            .onError { msg, t -> Logger.w(TAG, "读取群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo leer la memoria del chat grupal: $msg", t) }
             .getOrNull() ?: emptyList()
     }
 
     /**
-     * 清理 [days] 天前的群聊记忆(默认 30 天)。
-     * 供定期清理任务调用,避免记忆无限膨胀。
+     * limpiar [days] Recuerdos del chat grupal de hace días(Predeterminado 30 días).
+     * Llamado para tareas de limpieza periódicas.,Evite la expansión ilimitada de la memoria.
      */
     suspend fun cleanupOlderThan(days: Int = 30) = withContext(Dispatchers.IO) {
         val before = System.currentTimeMillis() - days * 86_400_000L
         resultOf { dao.deleteOlderThan(before) }
-            .onError { msg, t -> Logger.w(TAG, "清理群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo borrar la memoria del chat grupal: $msg", t) }
     }
 
-    /** 删除指定群聊的全部记忆(群聊删除时级联调用)。 */
+    /** Eliminar todos los recuerdos del chat grupal especificado(Llamada en cascada cuando se elimina el chat grupal). */
     suspend fun deleteByGroupChat(groupChatId: String) = withContext(Dispatchers.IO) {
         resultOf { dao.deleteByGroupChat(groupChatId) }
-            .onError { msg, t -> Logger.w(TAG, "删除群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo eliminar la memoria del chat grupal: $msg", t) }
     }
 
-    /** v1.0.72: 查询全部群聊记忆(记忆中心展示)。 */
+    /** v1.0.72: Consultar todos los recuerdos del chat grupal(pantalla del centro de memoria). */
     suspend fun getAll(): List<GroupChatMemoryEntity> = withContext(Dispatchers.IO) {
         resultOf { dao.getAll() }
-            .onError { msg, t -> Logger.w(TAG, "读取全部群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudieron leer todos los recuerdos del chat grupal: $msg", t) }
             .getOrNull() ?: emptyList()
     }
 
-    /** v1.0.72: 删除单条群聊记忆(记忆中心单条删除)。 */
+    /** v1.0.72: Eliminar una única memoria de chat grupal(Eliminar un solo elemento en el centro de memoria). */
     suspend fun deleteById(id: String) = withContext(Dispatchers.IO) {
         resultOf { dao.deleteById(id) }
-            .onError { msg, t -> Logger.w(TAG, "删除单条群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo eliminar la memoria del chat de un solo grupo: $msg", t) }
     }
 
-    /** v1.0.72: 清空全部群聊记忆(记忆中心一键清空)。 */
+    /** v1.0.72: Borrar todos los recuerdos del chat grupal(Limpia el centro de memoria con un clic). */
     suspend fun deleteAll() = withContext(Dispatchers.IO) {
         resultOf { dao.deleteAll() }
-            .onError { msg, t -> Logger.w(TAG, "清空全部群聊记忆失败: $msg", t) }
+            .onError { msg, t -> Logger.w(TAG, "No se pudieron borrar todos los recuerdos del chat grupal: $msg", t) }
     }
 }

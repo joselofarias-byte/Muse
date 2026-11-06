@@ -41,11 +41,11 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 群聊的落库、选人与节奏。
+ * La ubicación, selección y ritmo del chat grupal.
  *
- * 用真 Room(内存库):「谁说了什么」「谁先落库」都是从这里读出来的断言。
- * 宿主用替身记录每次被叫的是谁、当时看到的历史、库里已经有多少条消息 ——
- * 串行与停顿只能这样证明。
+ * Úsalo de verdad Room(banco de memoria):"Quién dijo qué" y "quién lo dejó caer primero" son afirmaciones que se leen desde aquí.
+ * El anfitrión utiliza un sustituto para registrar a quién se llama cada vez, el historial visto en ese momento y cuántos mensajes hay en la biblioteca. ——
+ * La serialización y el estancamiento sólo pueden probarse de esta manera.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -75,17 +75,17 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 2)
 
-        viewModel.send("大家早")
+        viewModel.send("Buenos dias a todos")
 
         val state = awaitState(viewModel) { it.messages.size == 3 && !it.isGenerating }
         val stored = storedMessages()
 
-        assertEquals("自己那条不记角色", listOf(""), stored.filter { it.sender == MpActorType.USER }.map { it.characterId })
-        assertEquals("两条回复都记着发言角色", host.calls.toSet(), stored.filter { it.sender == MpActorType.CHARACTER }.map { it.characterId }.toSet())
+        assertEquals("no recuerdo el papel", listOf(""), stored.filter { it.sender == MpActorType.USER }.map { it.characterId })
+        assertEquals("Ambas respuestas recuerdan el papel de orador.", host.calls.toSet(), stored.filter { it.sender == MpActorType.CHARACTER }.map { it.characterId }.toSet())
         assertTrue(state.isGroup)
-        assertEquals("阿远、小满", state.groupTitle)
-        assertEquals(listOf("阿远", "小满"), state.members.map { it.name })
-        assertEquals("顶栏人数含自己", 3, state.memberCount)
+        assertEquals("Ayuan, Xiaoman", state.groupTitle)
+        assertEquals(listOf("Ayuan", "Xiaoman"), state.members.map { it.name })
+        assertEquals("El número de personas en la columna superior te incluye a ti.", 3, state.memberCount)
     }
 
     @Test
@@ -96,8 +96,8 @@ class MiniPhoneGroupChatViewModelTest {
         val state = awaitState(viewModel) { it.members.size == 3 }
 
         assertEquals(listOf("c1", "c2", "c-gone"), state.members.map { it.characterId })
-        assertEquals(listOf("阿远", "小满", "已注销的角色"), state.members.map { it.name })
-        assertEquals("少了一个人也还是三行 + 自己", 4, state.memberCount)
+        assertEquals(listOf("Ayuan", "Xiaoman", "Rol desconectado"), state.members.map { it.name })
+        assertEquals("Incluso si falta una persona, seguimos siendo Sanxing + yo", 4, state.memberCount)
     }
 
     @Test
@@ -107,11 +107,11 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 5)
 
-        viewModel.send("大家晚上好")
+        viewModel.send("buenas noches a todos")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size >= 3 }
-        assertEquals("一条消息最多两个人接", 2, host.calls.size)
-        assertEquals("不能是同一个人说两遍", 2, host.calls.distinct().size)
+        assertEquals("Un máximo de dos personas pueden recibir un mensaje.", 2, host.calls.size)
+        assertEquals("No lo puede decir dos veces la misma persona", 2, host.calls.distinct().size)
         assertEquals(2, storedMessages().count { it.sender == MpActorType.CHARACTER })
     }
 
@@ -122,17 +122,17 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 5)
 
-        viewModel.send("小满你在吗")
+        viewModel.send("Xiaoman, ¿estás ahí?")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size >= 3 }
-        assertTrue("点名的人必回: ${host.calls}", host.calls.contains("c2"))
+        assertTrue("Cualquier persona nombrada debe responder.: ${host.calls}", host.calls.contains("c2"))
         assertEquals(2, host.calls.size)
     }
 
     @Test
     fun aNamedMemberPlusTheRecentSpeakerAreExactlyTheTwo() = runBlocking {
         seedGroup(memberIds = FIVE_MEMBER_IDS)
-        // 阿岑刚说过话:点名的阿岑不会,但小满被点名,阿岑是最近发言者
+        // Azen acaba de decir algo:Azen no pasará lista.,Pero Xiaoman fue nombrado,Atzen fue el orador más reciente.
         db.messageDao().insert(
             MpMessageEntity(
                 id = "recent-1",
@@ -140,7 +140,7 @@ class MiniPhoneGroupChatViewModelTest {
                 characterId = "c4",
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "我先说一句",
+                content = "Déjame decir algo primero",
                 createdAt = NOW_BASE - 1_000L,
             ),
         )
@@ -148,29 +148,29 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 5)
 
-        viewModel.send("小满你怎么看")
+        viewModel.send("Xiaoman, ¿qué opinas?")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size >= 4 }
-        assertEquals("点名的在前,最近说话的补上", listOf("c2", "c4"), host.calls)
+        assertEquals("Los nombrados primero,Complementar a los que hablaron recientemente.", listOf("c2", "c4"), host.calls)
     }
 
     @Test
     fun theSecondSpeakerSeesTheFirstOnesWordsPrefixedWithTheirName() = runBlocking {
         seedGroup()
-        val host = CastHost(answerOf = { characterId -> if (characterId == "c1") "在的" else "我也在" })
+        val host = CastHost(answerOf = { characterId -> if (characterId == "c1") "en" else "yo también estoy aquí" })
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 2)
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size == 3 }
         val first = host.calls[0]
         val second = host.calls[1]
-        val firstReply = if (first == "c1") "在的" else "我也在"
+        val firstReply = if (first == "c1") "en" else "yo también estoy aquí"
         val seenBySecond = requireNotNull(host.histories[second])
         assertEquals(
-            "后说话的人看得到前一个人说的话,而且带着名字",
-            "${nameOf(first)}：$firstReply",
+            "La persona que habla después puede ver lo que dijo la persona que le precede.,y con un nombre",
+            "${nameOf(first)}:$firstReply",
             seenBySecond.last().content,
         )
         assertEquals(MpActorType.CHARACTER, seenBySecond.last().sender)
@@ -184,17 +184,17 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host)
         readyGroup(viewModel, 2)
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
         awaitCalls(host, 1)
-        // 同一句话又提交了一次(手抖、重试):不再起一轮
-        viewModel.send("在吗")
+        // Se volvió a presentar la misma sentencia.(Manos temblorosas, inténtalo de nuevo.):No más rondas
+        viewModel.send("¿Está ahí?")
         awaitDuplicateSettled()
 
         gate.complete(Unit)
         awaitState(viewModel) { !it.isGenerating && it.messages.size >= 3 }
 
-        assertEquals("只跑一轮应答", 2, host.calls.size)
-        assertEquals("两条用户消息都落库了", 2, storedMessages().count { it.sender == MpActorType.USER })
+        assertEquals("Sólo una ronda de respuesta", 2, host.calls.size)
+        assertEquals("Ambos mensajes de usuario se han perdido.", 2, storedMessages().count { it.sender == MpActorType.USER })
     }
 
     @Test
@@ -206,13 +206,13 @@ class MiniPhoneGroupChatViewModelTest {
         val viewModel = createViewModel(host, pause = { storedAtPause += db.messageDao().countInThread(GROUP_THREAD_ID) })
         readyGroup(viewModel, 3)
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size == 3 }
-        assertEquals("两个角色之间只停一次", 1, storedAtPause.size)
-        assertEquals("停顿发生时第一条回复已经落库", 2, storedAtPause.single())
-        assertEquals("第一个人开始时只有用户那条,第二个人开始时多了第一条回复", listOf(1, 2), storedAtCall)
-        assertEquals("两个人各叫一次", 2, host.calls.size)
+        assertEquals("Detente solo una vez entre dos personajes.", 1, storedAtPause.size)
+        assertEquals("La primera respuesta ya se abandonó cuando se produce la pausa.", 2, storedAtPause.single())
+        assertEquals("La primera persona comienza solo con el nombre del usuario.,La segunda persona comienza con la primera respuesta.", listOf(1, 2), storedAtCall)
+        assertEquals("Dos personas llaman cada una una vez", 2, host.calls.size)
     }
 
     @Test
@@ -225,49 +225,49 @@ class MiniPhoneGroupChatViewModelTest {
         viewModel = createViewModel(host)
         readyGroup(viewModel, 2)
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
         awaitCalls(host, 1)
 
-        assertEquals("第一个人开口时界面上写的是他的名字", listOf(nameOf(host.calls.single())), typingNames)
+        assertEquals("Cuando la primera persona habla, su nombre aparece escrito en la interfaz.", listOf(nameOf(host.calls.single())), typingNames)
 
         gate.complete(Unit)
         awaitState(viewModel) { !it.isGenerating && it.messages.size == 3 }
-        assertNull("一轮结束后不再挂着谁在打字", viewModel.uiState.value.typingName)
+        assertNull("Ya no tendrás que preguntarte quién estaba escribiendo después de una ronda.", viewModel.uiState.value.typingName)
     }
 
     @Test
     fun renamingUpdatesTheTitleAndStopsAutoRenaming() = runBlocking {
-        seedGroup(memberIds = listOf("c1", "c2"), title = "阿远、小满")
+        seedGroup(memberIds = listOf("c1", "c2"), title = "Ayuan, Xiaoman")
         val viewModel = createViewModel(CastHost())
         readyGroup(viewModel, 2)
 
-        viewModel.groupAdmin.renameGroup("  周末小队 ")
+        viewModel.groupAdmin.renameGroup("  equipo de fin de semana ")
 
-        val renamed = awaitState(viewModel) { state -> state.groupTitle == "周末小队" }
-        assertEquals("界面上的群名跟着换", "周末小队", renamed.groupTitle)
-        assertTrue("库里写入了「改过名」", db.threadDao().getThread(GROUP_THREAD_ID)?.titleCustomized ?: false)
+        val renamed = awaitState(viewModel) { state -> state.groupTitle == "equipo de fin de semana" }
+        assertEquals("El nombre del grupo en la interfaz se cambiará en consecuencia.", "equipo de fin de semana", renamed.groupTitle)
+        assertTrue("Curry escribió \"nombre cambiado\"", db.threadDao().getThread(GROUP_THREAD_ID)?.titleCustomized ?: false)
 
         viewModel.groupAdmin.addMembers(listOf("c3"))
         val afterAdd = awaitState(viewModel) { state -> state.members.size == 3 }
-        assertEquals("改过名之后不再自动重算", "周末小队", afterAdd.groupTitle)
+        assertEquals("Una vez cambiado el nombre, ya no se volverá a calcular automáticamente.", "equipo de fin de semana", afterAdd.groupTitle)
     }
 
     @Test
     fun addingPeopleRecalculatesTheDefaultTitle() = runBlocking {
-        seedGroup(memberIds = listOf("c1", "c2"), title = "阿远、小满")
+        seedGroup(memberIds = listOf("c1", "c2"), title = "Ayuan, Xiaoman")
         val viewModel = createViewModel(CastHost())
         readyGroup(viewModel, 2)
 
         viewModel.groupAdmin.addMembers(listOf("c2", "c3"))
 
         val state = awaitState(viewModel) { current -> current.members.size == 3 }
-        assertEquals("重复与已在群里的不算新人", listOf("c1", "c2", "c3"), state.members.map { it.characterId })
-        assertEquals("默认名跟着重算", "阿远、小满、阿吾", state.groupTitle)
+        assertEquals("Las personas duplicadas que ya están en el grupo no se consideran personas nuevas.", listOf("c1", "c2", "c3"), state.members.map { it.characterId })
+        assertEquals("Nombre predeterminado seguido de recálculo", "Ayuan, Xiaoman, Awu", state.groupTitle)
     }
 
     @Test
     fun removingSomeoneUpdatesTheMembersButKeepsTheirWords() = runBlocking {
-        seedGroup(memberIds = listOf("c1", "c2", "c3"), title = "阿远、小满、阿吾")
+        seedGroup(memberIds = listOf("c1", "c2", "c3"), title = "Ayuan, Xiaoman, Awu")
         db.messageDao().insert(
             MpMessageEntity(
                 id = "said-1",
@@ -275,7 +275,7 @@ class MiniPhoneGroupChatViewModelTest {
                 characterId = "c2",
                 sender = MpActorType.CHARACTER,
                 type = MpMessageType.TEXT,
-                content = "我说过的",
+                content = "Yo dije",
                 createdAt = NOW_BASE - 1_000L,
             ),
         )
@@ -286,8 +286,8 @@ class MiniPhoneGroupChatViewModelTest {
 
         val state = awaitState(viewModel) { current -> current.members.size == 2 }
         assertEquals(listOf("c1", "c3"), state.members.map { it.characterId })
-        assertEquals("他说过的话还在", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
-        assertEquals("默认名跟着剩下的人重算", "阿远、阿吾", state.groupTitle)
+        assertEquals("Lo que dijo sigue ahí", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
+        assertEquals("El nombre predeterminado se volverá a calcular con las personas restantes.", "Ayuan, Awu", state.groupTitle)
     }
 
     @Test
@@ -311,12 +311,12 @@ class MiniPhoneGroupChatViewModelTest {
         val host = CastHost()
         val viewModel = createViewModel(host, threadId = "t-dm")
 
-        viewModel.send("在吗")
+        viewModel.send("¿Está ahí?")
 
         awaitState(viewModel) { !it.isGenerating && it.messages.size == 2 }
-        assertEquals("私信只有一个人接", listOf("c1"), host.calls)
+        assertEquals("Sólo una persona puede contestar el mensaje privado.", listOf("c1"), host.calls)
         val stored = db.messageDao().observeMessages("t-dm").first()
-        assertEquals("私信里自己那句也记会话角色", "c1", stored.first { it.sender == MpActorType.USER }.characterId)
+        assertEquals("También recuerdo el papel conversacional de mi frase en el mensaje privado.", "c1", stored.first { it.sender == MpActorType.USER }.characterId)
     }
 
     private fun createViewModel(
@@ -352,7 +352,7 @@ class MiniPhoneGroupChatViewModelTest {
         )
     }
 
-    private suspend fun seedGroup(memberIds: List<String> = listOf("c1", "c2"), title: String = "阿远、小满") {
+    private suspend fun seedGroup(memberIds: List<String> = listOf("c1", "c2"), title: String = "Ayuan, Xiaoman") {
         db.threadDao().upsert(
             MpThreadEntity(
                 id = GROUP_THREAD_ID,
@@ -374,12 +374,12 @@ class MiniPhoneGroupChatViewModelTest {
     private suspend fun awaitState(viewModel: MiniPhoneChatViewModel, predicate: (ChatUiState) -> Boolean): ChatUiState =
         withTimeout(TIMEOUT_MS) { viewModel.uiState.first(predicate) }
 
-    /** 等宿主被叫到第 [count] 次:落库是异步的,发完消息那一瞬还没开始生成。 */
+    /** Espere hasta que llamen al anfitrión [count] veces:El registro es asincrónico,En el momento en que se envía el mensaje no ha comenzado a generarse. */
     private suspend fun awaitCalls(host: CastHost, count: Int) = withTimeout(TIMEOUT_MS) {
         while (host.calls.size < count) delay(POLL_MS)
     }
 
-    /** 等重复提交被认出来:第二条用户消息直接落到「已发出」,没有自己的应答轮。 */
+    /** Espere a que se reconozcan los envíos duplicados:El segundo mensaje de usuario cae directamente en \"Enviado\",No tiene su propia rueda de respuestas. */
     private suspend fun awaitDuplicateSettled() = withTimeout(TIMEOUT_MS) {
         while (true) {
             val mine = storedMessages().filter { it.sender == MpActorType.USER }.sortedBy { it.createdAt }
@@ -389,10 +389,10 @@ class MiniPhoneGroupChatViewModelTest {
     }
 
     /**
-     * 等成员名单到位再发消息。
+     * Espere hasta que la lista de miembros esté lista antes de enviar un mensaje.
      *
-     * 成员表与角色名单是两条独立的流:名字还没到时点名匹配不出来,先等它们都到齐,
-     * 下面那些断言才说明的是选人规则,而不是「碰上了哪一秒的状态」。
+     * La lista de miembros y la lista de roles son dos corrientes independientes.:El pase de lista no se puede igualar antes de que llegue el nombre.,Espera hasta que lleguen todos primero.,
+     * Las siguientes afirmaciones ilustran las reglas de selección.,En lugar de "qué estado ocurrió en ese segundo".
      */
     private suspend fun readyGroup(viewModel: MiniPhoneChatViewModel, size: Int): ChatUiState = withTimeout(TIMEOUT_MS) {
         viewModel.uiState.first { state ->
@@ -409,23 +409,23 @@ class MiniPhoneGroupChatViewModelTest {
         const val POLL_MS: Long = 10L
 
         val CAST: List<MpCharacter> = listOf(
-            MpCharacter(id = "c1", name = "阿远"),
-            MpCharacter(id = "c2", name = "小满"),
-            MpCharacter(id = "c3", name = "阿吾"),
-            MpCharacter(id = "c4", name = "阿岑"),
-            MpCharacter(id = "c5", name = "阿迟"),
+            MpCharacter(id = "c1", name = "Ayuan"),
+            MpCharacter(id = "c2", name = "Xiaoman"),
+            MpCharacter(id = "c3", name = "Awu"),
+            MpCharacter(id = "c4", name = "azen"),
+            MpCharacter(id = "c5", name = "Ah Chi"),
         )
         val FIVE_MEMBER_IDS: List<String> = CAST.map { it.id }
     }
 }
 
 /**
- * 会记事的宿主:谁被叫了、看到什么历史、第几次被叫时库里已经有多少条消息。
+ * Un anfitrión que recuerda cosas.:Quién fue llamado, qué historia se vio y cuántos mensajes tenía Curry cuando lo llamaron por primera vez.
  *
- * [gate] 用来把一轮生成卡在半路:测试要在这时候看界面状态、或者再提交一条消息。
+ * [gate] Se utiliza para detener una ronda de generación atrapada en el medio.:La prueba debe verificar el estado de la interfaz o enviar otro mensaje en este momento.
  */
 private class CastHost(
-    private val answerOf: (String) -> String? = { "好" },
+    private val answerOf: (String) -> String? = { "bueno" },
     private val gate: CompletableDeferred<Unit>? = null,
     private val onCall: suspend (String, List<MpChatTurn>) -> Unit = { _, _ -> },
 ) : MiniPhoneHost {
@@ -436,7 +436,7 @@ private class CastHost(
 
     override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(CAST)
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇"))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi"))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         calls += characterId
@@ -459,11 +459,11 @@ private class CastHost(
 
     private companion object {
         val CAST: List<MpCharacter> = listOf(
-            MpCharacter(id = "c1", name = "阿远"),
-            MpCharacter(id = "c2", name = "小满"),
-            MpCharacter(id = "c3", name = "阿吾"),
-            MpCharacter(id = "c4", name = "阿岑"),
-            MpCharacter(id = "c5", name = "阿迟"),
+            MpCharacter(id = "c1", name = "Ayuan"),
+            MpCharacter(id = "c2", name = "Xiaoman"),
+            MpCharacter(id = "c3", name = "Awu"),
+            MpCharacter(id = "c4", name = "azen"),
+            MpCharacter(id = "c5", name = "Ah Chi"),
         )
     }
 }

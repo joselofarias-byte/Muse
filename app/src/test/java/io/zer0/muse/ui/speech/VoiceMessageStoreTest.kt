@@ -12,11 +12,11 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * [VoiceMessageStore] 行为测试（纯 JVM，不依赖 Android 音频栈）。
+ * [VoiceMessageStore] Pruebas de comportamiento (JVM pura, sin dependencia de la pila de audio de Android).
  *
- * 时长探测通过 [VoiceDurationProbe] 注入固定值，因此不触碰 MediaMetadataRetriever。
- * 覆盖：落盘/解析往返、同键复用、源文件缺失降级、越界引用拒绝、删除单条、
- * 孤儿清理（含落盘中断留下的 .tmp）。
+ * Detección de duración superada [VoiceDurationProbe] Inyecta un valor fijo para que no se toque MediaMetadataRetriever.
+ * Cobertura: Colocación/Análisis de ida y vuelta, reutilización de la misma clave, falta de degradación del archivo fuente, rechazo de referencia fuera de límites, eliminación de un solo elemento,
+ * Limpieza huérfana (incluido el .tmp dejado por la interrupción de la descarga del disco).
  */
 class VoiceMessageStoreTest {
 
@@ -36,13 +36,13 @@ class VoiceMessageStoreTest {
 
         val uri = store.persist(source, "msg-1")
 
-        assertNotNull("落盘应成功", uri)
-        assertTrue("引用应是 file:// 形式，实际 $uri", uri!!.startsWith("file://"))
+        assertNotNull("La colocación debe ser exitosa.", uri)
+        assertTrue("La referencia debe tener el formato file://, que en realidad $uri", uri!!.startsWith("file://"))
         val stored = store.resolve(uri)
-        assertNotNull("引用应能解析回文件", stored)
-        assertEquals("内容应与临时文件一致", "audio-bytes", stored!!.readText())
-        assertEquals("存档应在 store 目录内", storeDir(store), stored.parentFile)
-        assertTrue("源文件保留（清理由调用方负责）", source.exists())
+        assertNotNull("La referencia debe resolverse nuevamente en el archivo.", stored)
+        assertEquals("El contenido debe ser coherente con el archivo temporal.", "audio-bytes", stored!!.readText())
+        assertEquals("El archivo debe estar en el directorio de la tienda.", storeDir(store), stored.parentFile)
+        assertTrue("Archivos fuente retenidos (la limpieza es responsabilidad de la persona que llama)", source.exists())
     }
 
     @Test
@@ -52,18 +52,18 @@ class VoiceMessageStoreTest {
         val first = store.persist(tempAudio(content = "v1"), "same-text")
         val second = store.persist(tempAudio(content = "v2"), "same-text")
 
-        assertEquals("同键应命中同一存档引用", first, second)
-        assertEquals("目录里只应有一个文件", 1, storeDir(store).listFiles()!!.size)
-        assertEquals("重复合成应覆盖为最新内容", "v2", store.resolve(second!!)!!.readText())
+        assertEquals("La misma clave debería llegar a la misma referencia de archivo.", first, second)
+        assertEquals("Sólo debe haber un archivo en el directorio.", 1, storeDir(store).listFiles()!!.size)
+        assertEquals("Las composiciones duplicadas deben sobrescribirse con el contenido más reciente.", "v2", store.resolve(second!!)!!.readText())
     }
 
     @Test
     fun persistReturnsNullWhenSourceMissingOrEmpty() = runBlocking {
         val store = store()
 
-        assertNull("源文件不存在应降级为 null", store.persist(File(tmp.root, "nope.wav"), "k1"))
-        assertNull("空文件应降级为 null", store.persist(tempAudio(content = ""), "k2"))
-        assertFalse("源文件不可用时不应建出存档目录", storeDir(store).exists())
+        assertNull("El archivo fuente no existe y debe degradarse a null", store.persist(File(tmp.root, "nope.wav"), "k1"))
+        assertNull("Los archivos vacíos deben degradarse a null", store.persist(tempAudio(content = ""), "k2"))
+        assertFalse("No se deben crear directorios de archivo cuando los archivos fuente no están disponibles", storeDir(store).exists())
     }
 
     @Test
@@ -71,14 +71,14 @@ class VoiceMessageStoreTest {
         val store = store()
         val uri = store.persist(tempAudio(), "msg-2")!!
 
-        assertEquals("空串不可解析", null, store.resolve(""))
-        assertEquals("纯空白不可解析", null, store.resolve("   "))
+        assertEquals("La cadena vacía no se puede analizar", null, store.resolve(""))
+        assertEquals("Los espacios en blanco puros no son analizables", null, store.resolve("   "))
 
         val outside = File(tmp.newFolder(), "outside.wav").apply { writeText("x") }
-        assertNull("store 目录外的路径不应被当成语音", store.resolve("file://" + outside.absolutePath))
+        assertNull("store Las rutas fuera del directorio no deben tratarse como voz.", store.resolve("file://" + outside.absolutePath))
 
         store.delete(uri)
-        assertNull("文件已删除时应返回 null", store.resolve(uri))
+        assertNull("Debe devolverse cuando el archivo haya sido eliminado. null", store.resolve(uri))
     }
 
     @Test
@@ -89,9 +89,9 @@ class VoiceMessageStoreTest {
 
         store.delete(drop)
 
-        assertNull("目标文件应被删除", store.resolve(drop))
-        assertNotNull("其他存档不受影响", store.resolve(keep))
-        store.delete(drop) // 再删一次不应抛异常
+        assertNull("El archivo de destino debe eliminarse", store.resolve(drop))
+        assertNotNull("Otros archivos no se ven afectados", store.resolve(keep))
+        store.delete(drop) // Eliminarlo nuevamente no debería generar una excepción.
     }
 
     @Test
@@ -103,10 +103,10 @@ class VoiceMessageStoreTest {
 
         val removed = store.cleanupOrphans(listOf(keep))
 
-        assertEquals("应删掉 1 个孤儿存档 + 1 个 .tmp", 2, removed)
-        assertNotNull("被引用的存档必须保留", store.resolve(keep))
-        assertNull("无引用的存档应被清理", store.resolve(orphan))
-        assertEquals("目录里应只剩被引用的那一个", 1, storeDir(store).listFiles()!!.size)
+        assertEquals("1 guardado huérfano + 1 debe eliminarse .tmp", 2, removed)
+        assertNotNull("Los archivos referenciados deben conservarse.", store.resolve(keep))
+        assertNull("Los archivos sin referencia deben limpiarse", store.resolve(orphan))
+        assertEquals("Sólo se debe dejar en el directorio el referenciado.", 1, storeDir(store).listFiles()!!.size)
     }
 
     @Test
@@ -114,17 +114,17 @@ class VoiceMessageStoreTest {
         val store = store(probe = VoiceDurationProbe { file -> file.length() * 10 })
         val uri = store.persist(tempAudio(content = "0123456789"), "duration-key")!!
 
-        assertEquals("时长应来自探测器", 100L, store.durationMs(uri))
-        assertEquals("引用不可解析时时长为 0", 0L, store.durationMs("file:///nowhere/missing.wav"))
+        assertEquals("La duración debe provenir del detector.", 100L, store.durationMs(uri))
+        assertEquals("El plazo durante el cual la referencia no puede resolverse es 0", 0L, store.durationMs("file:///nowhere/missing.wav"))
     }
 
     @Test
     fun probeFailureDegradesToZero() {
         val store = store(probe = VoiceDurationProbe { error("decoder exploded") })
 
-        assertEquals("探测器抛异常时时长应为 0", 0L, store.probeDurationMs(tempAudio()))
+        assertEquals("La duración durante la cual el detector lanza una excepción debe ser 0", 0L, store.probeDurationMs(tempAudio()))
     }
 
-    /** store 目录（构造参数为 internal，测试直接读）。 */
+    /** store Directorio (el parámetro de construcción es interno y la prueba lo lee directamente). */
     private fun storeDir(store: VoiceMessageStore): File = store.storageDir
 }

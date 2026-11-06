@@ -4,30 +4,30 @@ import io.zer0.common.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * v1.132: 上游模型列表缓存 — 避免反复进入 Provider 编辑页都打一次网络。
+ * v1.132: Caché de lista de modelos ascendentes — Evite ingresar repetidamente a la página de edición del proveedor e intentar conectarse a la red.
  *
- * 设计要点(文件级缓存 + 内存缓存):
- *  - 内存缓存(进程级单例),按 [CacheKey] 索引
- *  - 5 分钟 TTL,过期后下次拉取强制刷新
- *  - 命中且未过期时直接返回,跳过网络请求
- *  - [forceFresh] 参数允许 UI 手动刷新绕过缓存
- *  - [invalidate] 在 Provider 配置变更(改 apiKey/baseUrl/删除)时调用
- *  - 缓存键指纹:providerId + baseUrl + apiKey 末 4 位 + type(任一变化即失效)
+ * Puntos de diseño(Caché a nivel de archivo + caché de memoria):
+ *  - caché de memoria(Singleton a nivel de proceso),prensa [CacheKey] índice
+ *  - 5 minutos TTL,Después del vencimiento, la siguiente extracción forzará una actualización.
+ *  - Devolver directamente cuando sea golpeado y no haya caducado,Saltar solicitudes de red
+ *  - [forceFresh] El parámetro permite la actualización manual de la interfaz de usuario para omitir el caché
+ *  - [invalidate] Configurar cambios en el proveedor(Cambiar apiKey/baseUrl/eliminar)llamado cuando
+ *  - Huella digital de clave de caché:providerId + baseUrl + apiKey últimos 4 dígitos + type(Cualquier cambio invalidará el)
  *
- * 缓存对象 [CachedModels] 持有 [models] 和 [fetchedAt](ms 时间戳)。
- * 容量上限 32,超限淘汰最旧条目(防止异常累积)。
+ * Objeto de caché [CachedModels] mantener [models] y [fetchedAt](ms Marca de tiempo).
+ * Límite de capacidad 32,La entrada más antigua será eliminada si supera el límite.(Prevenir la acumulación anormal).
  *
- * 注意:本缓存仅缓存"上游原始返回"的模型列表;
- * 调用方仍需对结果做 [ModelRegistry.enrich] 以补全能力/模态/上下文窗口。
+ * Nota:Este caché solo almacena en caché"retorno original aguas arriba"lista de modelos;
+ * La persona que llama todavía necesita hacer algo con el resultado. [ModelRegistry.enrich] para completar la habilidad/modal/Ventana de contexto.
  */
 object ModelListCache {
 
     private const val TAG = "ModelListCache"
 
-    /** 缓存 TTL(毫秒)。5 分钟内重复拉取直接返回缓存。 */
+    /** caché TTL(milisegundos).5 Las extracciones repetidas en cuestión de minutos regresarán directamente al caché. */
     private const val CACHE_TTL_MS = 5L * 60 * 1000
 
-    /** 最大缓存条目数,超限淘汰最旧(防止异常累积)。 */
+    /** Número máximo de entradas de caché,El mayor se elimina si supera el límite.(Prevenir la acumulación anormal). */
     private const val MAX_ENTRIES = 32
 
     private data class CacheKey(
@@ -45,8 +45,8 @@ object ModelListCache {
     private val cache = ConcurrentHashMap<CacheKey, CachedModels>()
 
     /**
-     * 生成 [CacheKey] — baseUrl/apiKey 变化即视为新条目,自动失效旧缓存。
-     * apiKey 只取末 4 位作为指纹(避免完整 key 留存内存)。
+     * generar [CacheKey] — baseUrl/apiKey Los cambios se consideran nuevas entradas.,Invalida automáticamente los cachés antiguos.
+     * apiKey Tome solo los últimos 4 dígitos como huella digital.(Evite retener la clave completa en la memoria.).
      */
     private fun keyOf(config: ProviderConfig): CacheKey {
         val base = config.resolvedBaseUrl()
@@ -60,9 +60,9 @@ object ModelListCache {
     }
 
     /**
-     * 查询缓存。命中且未过期返回 [List];否则返回 null。
+     * Caché de consultas. Golpeado y devuelto sin caducidad [List];De lo contrario, devuelve nulo.
      *
-     * @param forceFresh true 时强制视为未命中(UI 手动刷新场景)
+     * @param forceFresh true se ve obligada a ser considerada una señorita(UI Actualizar manualmente la escena)
      */
     fun get(config: ProviderConfig, forceFresh: Boolean = false): List<Model>? {
         if (forceFresh) return null
@@ -78,15 +78,15 @@ object ModelListCache {
     }
 
     /**
-     * 写入缓存。容量超 [MAX_ENTRIES] 时淘汰最旧条目。
+     * Escribir caché. La capacidad excede [MAX_ENTRIES] Se elimina la entrada más antigua.
      */
     fun put(config: ProviderConfig, models: List<Model>) {
         val key = keyOf(config)
-        // 审计修复 (7.9): 容量淘汰的读-改-写加锁 — 原实现 ConcurrentHashMap 上
-        // size 检查 + sortedBy + remove 非原子,并发 put 可能误删刚写入条目或重复淘汰。
+        // Reparación de auditoría (7.9): Capacidad de lectura obsoleta-cambiar-escribir bloqueo — La implementación original es ConcurrentHashMap
+        // size marcar + ordenado por + eliminar no atómico,La colocación simultánea puede eliminar accidentalmente solo las entradas escritas o eliminarlas repetidamente.
         synchronized(cache) {
             cache[key] = CachedModels(models = models, fetchedAt = System.currentTimeMillis())
-            // 容量淘汰:超过上限时删除最旧条目
+            // Retiro de capacidad:Eliminar las entradas más antiguas cuando se exceda el límite superior
             if (cache.size > MAX_ENTRIES) {
                 cache.entries
                     .sortedBy { it.value.fetchedAt }
@@ -97,7 +97,7 @@ object ModelListCache {
     }
 
     /**
-     * 失效指定 Provider 的缓存(配置变更/删除时调用)。
+     * Invalidar el caché del proveedor especificado(Cambios de configuración/Llamado al eliminar).
      */
     fun invalidate(providerId: String) {
         val keysToRemove = cache.keys.filter { it.providerId == providerId }
@@ -108,7 +108,7 @@ object ModelListCache {
     }
 
     /**
-     * 清空全部缓存(全局重置时调用,如退出登录/切换账号)。
+     * Borrar todo el caché(Llamado durante el reinicio global,Como cerrar sesión/Cambiar de cuenta).
      */
     fun clear() {
         val n = cache.size

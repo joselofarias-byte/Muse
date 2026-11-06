@@ -17,150 +17,150 @@ class GreetingHelperTest {
     )
 
     @Test
-    fun `时间段问候语边界稳定`() {
-        assertEquals("早上好", GreetingHelper.getTimeGreeting(5))
-        assertEquals("早上好", GreetingHelper.getTimeGreeting(10))
-        assertEquals("中午好", GreetingHelper.getTimeGreeting(11))
-        assertEquals("中午好", GreetingHelper.getTimeGreeting(13))
-        assertEquals("下午好", GreetingHelper.getTimeGreeting(14))
-        assertEquals("下午好", GreetingHelper.getTimeGreeting(17))
-        assertEquals("晚上好", GreetingHelper.getTimeGreeting(18))
-        assertEquals("晚上好", GreetingHelper.getTimeGreeting(22))
-        assertEquals("深夜了", GreetingHelper.getTimeGreeting(23))
-        assertEquals("深夜了", GreetingHelper.getTimeGreeting(0))
+    fun `Límite de saludo de período de tiempo estable`() {
+        assertEquals("buenos dias", GreetingHelper.getTimeGreeting(5))
+        assertEquals("buenos dias", GreetingHelper.getTimeGreeting(10))
+        assertEquals("buen mediodía", GreetingHelper.getTimeGreeting(11))
+        assertEquals("buen mediodía", GreetingHelper.getTimeGreeting(13))
+        assertEquals("buenas tardes", GreetingHelper.getTimeGreeting(14))
+        assertEquals("buenas tardes", GreetingHelper.getTimeGreeting(17))
+        assertEquals("buenas noches", GreetingHelper.getTimeGreeting(18))
+        assertEquals("buenas noches", GreetingHelper.getTimeGreeting(22))
+        assertEquals("es tarde en la noche", GreetingHelper.getTimeGreeting(23))
+        assertEquals("es tarde en la noche", GreetingHelper.getTimeGreeting(0))
     }
 
     @Test
-    fun `记忆有明天考试时问候语优先用考试提醒`() {
+    fun `Si recuerdas los saludos para el examen de mañana, puedes usarlos primero como recordatorios del examen`() {
         val today = LocalDate.of(2026, 8, 7)
         val tomorrow = today.plusDays(1).toString()
-        val facts = listOf(fact("用户明天要参加英语四级考试", time = tomorrow))
+        val facts = listOf(fact("mañana tienes un examen", time = tomorrow))
 
         val greeting = GreetingHelper.buildGreeting(facts, hour = 20, date = today)
 
-        // 个性化优先:包含考试,不出现节气/节日
-        assertTrue("应包含考试提醒: $greeting", greeting.contains("考试"))
-        assertTrue("不应再显示节气: $greeting", !greeting.contains("立秋"))
-        assertTrue("长度应受控: $greeting", greeting.length <= 40)
-        // 第二人称:展示给用户的内容不应出现"用户"
-        assertTrue("应使用第二人称: $greeting", !greeting.contains("用户"))
+        // Personalización primero:Contiene examen,No aparecen términos solares./fiesta
+        assertTrue("Se deben incluir recordatorios de exámenes.: $greeting", greeting.contains("exame"))
+        assertTrue("Los términos solares ya no deberían mostrarse: $greeting", !greeting.contains("Principios de otoño"))
+        assertTrue("Se debe controlar la longitud: $greeting", greeting.length <= 40)
+        // segunda persona:El contenido mostrado a los usuarios no debería aparecer."Usuario"
+        assertTrue("Usa segunda persona: $greeting", !greeting.contains("Usuario"))
     }
 
     @Test
-    fun `记忆有航班时生成出行提醒`() {
+    fun `Generar recordatorios de viaje cuando haya vuelos en la memoria`() {
         val today = LocalDate.of(2026, 8, 7)
         val tomorrow = today.plusDays(1).toString()
-        val facts = listOf(fact("明天上午的航班去上海出差", time = tomorrow))
+        val facts = listOf(fact("Tengo un vuelo a Shanghai mañana por la mañana para un viaje de negocios.", time = tomorrow))
 
         val hint = GreetingHelper.getMemoryHint(facts, today)
 
         assertNotNull(hint)
-        assertTrue("应包含航班: $hint", hint!!.contains("航班"))
+        assertTrue("Los vuelos deberían incluirse.: $hint", hint!!.contains("viaje"))
     }
 
     @Test
-    fun `无近期事项时节气节日随机且只选一个`() {
-        val today = LocalDate.of(2026, 8, 7) // 明天 8.8 立秋
+    fun `Cuando no hay eventos recientes, los términos solares y festivales son aleatorios y solo se selecciona uno`() {
+        val today = LocalDate.of(2026, 8, 7) // Mañana 8.8 Comienzo de Otoño
         val greeting = GreetingHelper.buildGreeting(emptyList(), hour = 20, date = today)
 
-        assertTrue("应带时间问候: $greeting", greeting.startsWith("晚上好"))
-        // 只允许一个后缀(随机选节气或节日,不能同时拼两个)
-        val extras = greeting.removePrefix("晚上好，")
-        assertTrue("后缀应只有一条: $greeting", !extras.contains("，"))
+        assertTrue("Tómate el tiempo para saludar: $greeting", greeting.startsWith("buenas noches"))
+        // Sólo se permite un sufijo(Seleccione aleatoriamente un período solar o un día festivo,No se puede luchar contra dos al mismo tiempo.)
+        val extras = greeting.removePrefix("buenas noches,")
+        assertTrue("Sólo debe haber un sufijo: $greeting", !extras.contains(","))
     }
 
     @Test
-    fun `无记忆无节气节日时只有问候`() {
-        val today = LocalDate.of(2026, 8, 10) // 无节气无节日
+    fun `Sin recuerdos, sin términos solares, sólo saludos durante las fiestas`() {
+        val today = LocalDate.of(2026, 8, 10) // Sin estaciones, sin festivales
         val greeting = GreetingHelper.buildGreeting(emptyList(), hour = 9, date = today)
-        assertEquals("早上好", greeting)
+        assertEquals("buenos dias", greeting)
     }
 
     @Test
-    fun `生日在明天时提示生日`() {
+    fun `Informar cumpleaños cuando el cumpleaños sea mañana`() {
         val today = LocalDate.of(2026, 8, 7)
-        val facts = listOf(fact("用户的生日是8月8日"))
+        val facts = listOf(fact("El cumpleaños del usuario es 8/8"))
         val hint = GreetingHelper.getMemoryHint(facts, today)
         assertNotNull(hint)
-        assertTrue("应提示生日: $hint", hint!!.contains("生日"))
+        assertTrue("Se debe indicar el cumpleaños: $hint", hint!!.contains("cumplea"))
     }
 
     @Test
-    fun `3天外的事件不提示`() {
+    fun `3No hay recordatorios para eventos fuera del cielo`() {
         val today = LocalDate.of(2026, 8, 7)
         val far = today.plusDays(5).toString()
-        val facts = listOf(fact("用户要参加考试", time = far))
+        val facts = listOf(fact("El usuario quiere realizar el examen.", time = far))
         assertNull(GreetingHelper.getMemoryHint(facts, today))
     }
 
     @Test
-    fun `最近的每日总结会跟在时间问候后`() {
+    fun `El resumen diario más reciente seguirá al saludo de la hora`() {
         val today = LocalDate.of(2026, 8, 10)
         val greeting = GreetingHelper.buildGreeting(
             facts = emptyList(),
             hour = 9,
             date = today,
-            dailySummary = "今天你完成了接口排查，也记下了明天的会议。",
+            dailySummary = "Hoy completó la solución de problemas de la interfaz y también anotó la reunión de mañana.",
             dailySummaryDate = today.toString(),
         )
 
-        assertTrue("应保留时间问候: $greeting", greeting.startsWith("早上好，"))
-        assertTrue("应带上每日总结事项: $greeting", greeting.contains("完成了接口排查"))
+        assertTrue("Se debe reservar tiempo para los saludos.: $greeting", greeting.startsWith("buenos dias"))
+        assertTrue("Debe traer elementos de resumen diario: $greeting", greeting.contains("solución de problemas de la interfaz"))
     }
 
     @Test
-    fun `每日总结不再按单行预算截断,只受宽松安全上限约束`() {
+    fun `Los resúmenes diarios ya no están truncados por una sola línea de presupuesto,Sólo sujeto a un límite superior de seguridad flojo`() {
         val today = LocalDate.of(2026, 8, 10)
-        val raw = "今天我们完成了接口排查并记录了多个待办事项还讨论了后续安排。"
+        val raw = "Hoy completamos la solución de problemas de la interfaz, registramos varias tareas pendientes y discutimos los arreglos de seguimiento."
         val summary = GreetingHelper.getDailySummaryHint(
             raw,
             today.toString(),
             today,
         )
         assertNotNull(summary)
-        // v2.7: 展示层不再硬压到 24 字；短文本应原样保留（仅归一化）
-        assertTrue("正常长度的总结不应被截断: $summary", summary!!.length > GreetingHelper.DAILY_SUMMARY_HINT_MAX_LENGTH)
-        assertTrue("应完整保留原文", summary.contains("讨论了后续安排"))
-        // 仅受宽松安全上限约束
+        // v2.7: Las capas de presentación ya no se limitan a 24 caracteres; El texto breve debe dejarse como está (solo normalizado).
+        assertTrue("Los resúmenes de extensión normal no deben truncarse: $summary", summary!!.length > GreetingHelper.DAILY_SUMMARY_HINT_MAX_LENGTH)
+        assertTrue("El texto original debe mantenerse intacto.", summary.contains("arreglos de seguimiento"))
+        // Sujeto únicamente a un límite superior de seguridad flexible
         assertTrue(summary.length <= GreetingHelper.DAILY_SUMMARY_DISPLAY_SAFETY_LIMIT)
 
         val hint = GreetingHelper.getMemoryHint(
             listOf(
                 fact(
-                    "用户明天要参加英语四级考试并准备相关资料",
+                    "El usuario realizará el examen CET-4 mañana y preparará los materiales pertinentes.",
                     time = today.plusDays(1).toString(),
                 ),
             ),
             today,
         )
         assertNotNull(hint)
-        // 近期事项提示仍是单行短提示，保留 18 字预算
+        // Los recordatorios de eventos recientes siguen siendo breves recordatorios de una sola línea, con un presupuesto de 18 caracteres.
         assertTrue(hint!!.length <= GreetingHelper.PERSONALIZED_HINT_MAX_LENGTH)
     }
 
     @Test
-    fun `异常超长的每日总结仍受安全上限保护`() {
+    fun `Los resúmenes diarios anormalmente largos todavía están protegidos por límites de seguridad`() {
         val today = LocalDate.of(2026, 8, 10)
-        val huge = "很长的总结".repeat(100)
+        val huge = "resumen muy largo".repeat(100)
         val summary = GreetingHelper.getDailySummaryHint(huge, today.toString(), today)
         assertNotNull(summary)
         assertTrue(
-            "极端长文应被安全上限拦住: ${summary!!.length}",
+            "Los artículos extremadamente largos deben bloquearse mediante límites de seguridad.: ${summary!!.length}",
             summary.length <= GreetingHelper.DAILY_SUMMARY_DISPLAY_SAFETY_LIMIT + 1,
         )
     }
 
     @Test
-    fun `超过一天的每日总结不应继续显示`() {
+    fun `Los resúmenes diarios de más de un día no deberían seguir mostrándose`() {
         val today = LocalDate.of(2026, 8, 10)
         val greeting = GreetingHelper.buildGreeting(
             facts = emptyList(),
             hour = 9,
             date = today,
-            dailySummary = "这是前天的旧总结",
+            dailySummary = "Este es un viejo resumen de ayer.",
             dailySummaryDate = today.minusDays(2).toString(),
         )
 
-        assertEquals("早上好", greeting)
+        assertEquals("buenos dias", greeting)
     }
 }

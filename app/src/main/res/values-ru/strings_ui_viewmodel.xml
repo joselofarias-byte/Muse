@@ -73,7 +73,7 @@
     <string name="lorebook_section_behavior">Поведение</string>
     <string name="lorebook_field_priority">Приоритет (большее число = вводится первым)</string>
     <string name="lorebook_field_insertion_position">Положение вставки</string>
-    <!-- ST-04: 注入位置选项用户可读文案 -->
+    <!-- ST-04: Inyecte opciones de ubicación con una copia legible por el usuario -->
     <string name="lorebook_insertion_before_system">Перед системным промптом</string>
     <string name="lorebook_insertion_after_system">После системного промпта</string>
     <string name="lorebook_insertion_before_last">Перед последним сообщением</string>

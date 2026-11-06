@@ -15,19 +15,19 @@ import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 删除确认对话框(删除确认)— 全站**唯一**的删除确认组件(MEM-04)。
+ * Eliminar cuadro de diálogo de confirmación(Eliminar confirmación)— Todo el sitio**solo**Eliminar componente de confirmación(MEM-04).
  *
- * 统一句式(三行制):
- *  1. 标题:动作(如"删除 Lorebook")
- *  2. `确定删除「{对象名}」?` — **点名对象**
- *  3. 后果说明 [consequence] — 说明"删了会怎样";未提供时退化为通用"此操作不可撤销。"
- * 主键固定 destructive(error 红),次键为取消。
+ * estructura de oración unificada(Sistema de tres líneas):
+ *  1. Título:acción(Como por ejemplo"Eliminar Lorebook")
+ *  2. `Confirmar para eliminar "{nombre del objeto}"?` — **Objetos con nombre**
+ *  3. Declaración de consecuencias [consequence] — Descripción"¿Qué pasará si lo borro?";Degenera a genérico cuando no se proporciona"Esta acción no se puede deshacer."
+ * clave primaria fija destructive(error rojo),El botón secundario es Cancelar.
  *
- * MEM-04 统一说明:此前三套措辞并存 —— 本组件([R.string.common_confirm_delete_message])、
- * `MemoryScreen` 的 `memory_delete_confirm_message`、`MomentCard` 的 `moment_delete_confirm`;
- * 现在后两处也改用本组件并各自给出点名文案 + 后果说明,不再各写一套句式。
+ * MEM-04 Explicación unificada:Los tres conjuntos de textos anteriores coexistieron —— este componente([R.string.common_confirm_delete_message]),
+ * `MemoryScreen` de `memory_delete_confirm_message`,`MomentCard` de `moment_delete_confirm`;
+ * Ahora, los dos últimos lugares también utilizan este componente y proporcionan una copia de nomenclatura y una explicación de las consecuencias, respectivamente.,No más escribir un conjunto de patrones de oraciones cada uno.
  *
- * 用法:
+ * Uso:
  * ```kotlin
  * ConfirmDeleteDialog(
  *     title = stringResource(R.string.assistant_delete_title),
@@ -38,11 +38,11 @@ import io.zer0.muse.ui.theme.MusePaddings
  * )
  * ```
  *
- * @param title 对话框标题(如"删除 Lorebook")
- * @param itemName 被删除项名称(**必须点名**,显示在"确定删除「X」?")
- * @param onConfirm 确认删除回调(已包含删除逻辑 + 关闭对话框)
- * @param onDismiss 取消回调(关闭对话框)
- * @param consequence 后果说明(点名对象后必填,如"其对话与记忆也会删除");为空时用通用文案
+ * @param title Título del diálogo(Como por ejemplo"Eliminar Lorebook")
+ * @param itemName Nombre del elemento eliminado(**debe ser nombrado**,Mostrado en"Confirmar para eliminar "X"?")
+ * @param onConfirm Confirmar eliminación de devolución de llamada(Eliminar lógica incluida + cerrar diálogo)
+ * @param onDismiss Cancelar devolución de llamada(Cerrar diálogo)
+ * @param consequence Declaración de consecuencias(Requerido después de nombrar el objeto.,Como por ejemplo"También se eliminarán sus conversaciones y recuerdos.");Utilice texto genérico cuando esté vacío
  */
 @Composable
 fun ConfirmDeleteDialog(title: String, itemName: String, onConfirm: () -> Unit, onDismiss: () -> Unit, consequence: String? = null) {

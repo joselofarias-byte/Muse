@@ -3,9 +3,9 @@ package io.zer0.muse.ui.chat
 private const val QUOTE_PREFIX = "> "
 
 /**
- * 从 content 开头解析引用块。
+ * Analice el bloque citado desde el principio del contenido.
  *
- * 返回 Pair<引用内容(去前缀), 正文>。若无引用前缀则返回 null to content。
+ * Regresar Pair<Contenido de la cotización(eliminar prefijo), Texto>. Si no hay ningún prefijo de referencia, se devuelve nulo al contenido.
  */
 fun parseQuotedContent(content: String): Pair<String?, String> {
     val lines = content.lines()
@@ -16,7 +16,7 @@ fun parseQuotedContent(content: String): Pair<String?, String> {
         quoteLines.add(lines[i].removePrefix(QUOTE_PREFIX))
         i++
     }
-    // 跳过引用后的空行
+    // Saltar líneas vacías después de las comillas
     while (i < lines.size && lines[i].isBlank()) {
         i++
     }
@@ -27,9 +27,9 @@ fun parseQuotedContent(content: String): Pair<String?, String> {
 }
 
 /**
- * 把引用内容与正文拼接为持久化格式。
+ * Concatene el contenido citado con el texto principal en un formato persistente.
  *
- * 格式:每行引用内容前加 "> ",后接空行与正文。
+ * Formato:Antes de cada línea de cita, agregue "> ",Seguido de una línea en blanco y texto.
  */
 fun buildQuotedContent(quote: String, body: String): String {
     val trimmedQuote = quote.trim()

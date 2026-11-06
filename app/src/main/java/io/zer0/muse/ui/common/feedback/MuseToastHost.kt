@@ -29,29 +29,29 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.huge
 
 /**
- * MuseToast 渲染宿主 — 放在根 Composable 中,观察 [MuseToast] 状态。
+ * MuseToast Renderizar host — colocado en la raíz Composable,observar [MuseToast] estado.
  *
- * 当 MuseToast.show() 被调用时,顶部滑入一个半透明胶囊提示,
- * 超时后自动滑出消失。
+ * cuando MuseToast.show() cuando lo llaman,Una punta de cápsula translúcida se desliza hacia la parte superior.,
+ * Se deslizará automáticamente y desaparecerá después del tiempo de espera.
  *
- * 视觉:
- *  - 深色半透明背景(暗色主题下更明显)
- *  - 白色文字
- *  - 胶囊圆角(24dp)
- *  - 顶部居中悬浮,不遮挡输入区域
+ * Visión:
+ *  - Fondo oscuro translúcido(Más obvio bajo el tema oscuro)
+ *  - texto blanco
+ *  - esquinas redondeadas de la cápsula(24dp)
+ *  - Centro superior flotante,No bloquea el área de entrada.
  */
 @Composable
 fun MuseToastHost() {
     val toastData by MuseToast.message.collectAsState()
-    // 应用级 Toast 宿主常驻,无需随页面 Lifecycle 启停,保持普通 collectAsState。
+    // Residente del host Toast a nivel de aplicación,No es necesario comenzar y detenerse en la página Ciclo de vida,Mantenga CollectAsState normal.
 
-    // M-MTH1: 缓存上一次非空的 toast 文本。
-    // 退出动画期间 toastData 已被 clear 为 null,若直接用 toastData?.text 会渲染空文本,
-    // 导致滑出动画看到空白胶囊。用 remember 保留最后一次的文本,退出动画仍显示原文本。
+    // M-MTH1: Almacene en caché el último texto del sistema que no esté vacío.
+    // ToastData ha sido borrado para null,Si se usa directamente toastData?.text mostrará texto vacío,
+    // Hace que la animación deslizable muestre una cápsula en blanco. Utilice recordar para conservar el último texto.,Al salir de la animación aún se muestra el texto original.
     var lastText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(toastData) {
-        // v1.74: 局部变量捕获避免 !!(委托属性无法 smart-cast)
+        // v1.74: Evitación de captura de variables locales !!(Las propiedades delegadas no pueden smart-cast)
         val data = toastData
         if (data != null) {
             lastText = data.text
@@ -62,15 +62,15 @@ fun MuseToastHost() {
 
     AnimatedVisibility(
         visible = toastData != null,
-        // v2.6.7: Toast 改成 "就地长出"（缩放 + 淡入），不再整屏上移。
-        // 提示条本来就该在弹出位置直接出现，整屏滑入会抢走视线焦点。
+        // v2.6.7: Toast Cambiar a "crecer en el acto"(zoom + aparición gradual), ya no mueve toda la pantalla hacia arriba.
+        // La barra de aviso debería aparecer directamente en la posición emergente. Si se desliza por toda la pantalla, robará el foco de atención.
         enter = MuseMotion.scaleFadeEnter(initialScale = 0.94f),
         exit = MuseMotion.scaleFadeExit(),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // M-MTH2: 60.dp 硬编码 → statusBars inset,适配刘海/状态栏高度差异。
+                // M-MTH2: 60.dp codificado → statusBars inset,Adecuado para flequillo/Diferencia de altura de la barra de estado.
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
             contentAlignment = Alignment.TopCenter,
         ) {
@@ -78,8 +78,8 @@ fun MuseToastHost() {
                 shape = MuseShapes.huge,
                 color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.92f),
                 shadowElevation = MuseElevation.modal,
-                // M-MTH3: liveRegion = Polite, toast 文本变化时 TalkBack 自动朗读,
-                // 对标原生 Toast 的无障碍朗读行为(不打断用户当前操作,空闲时朗读)。
+                // M-MTH3: liveRegion = Polite, toast TalkBack habla automáticamente cuando cambia el texto,
+                // Comparación del comportamiento de lectura sin barreras de Toast nativo(No interrumpir la operación actual del usuario.,Lee en voz alta en tu tiempo libre).
                 modifier = Modifier
                     .padding(horizontal = MusePaddings.largeGap)
                     .semantics { liveRegion = LiveRegionMode.Polite },

@@ -16,13 +16,13 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * 设置条目里「页内动作」的执行器。
+ * Establezca el ejecutor de la "acción en la página" en la entrada.
  *
- * 检查更新、导出诊断这两类动作需要 Context、协程与进度状态，放在一个地方维护；
- * 设置首页的搜索结果与分类页共用它，点击行为不会两处各写一遍。
+ * Estos dos tipos de acciones, verificar actualizaciones y exportar diagnósticos, requieren contexto, rutina y estado de progreso, que se mantienen en un solo lugar;
+ * Configure los resultados de la búsqueda en la página de inicio para compartirlos con la página de categorías, de modo que el comportamiento del clic no se escriba en ambos lugares.
  */
 data class SettingsActionHost(
-    /** 正在执行的动作（按钮显示进度圈）；空闲为 null。 */
+    /** Acción en curso (botón que muestra el círculo de progreso); inactivo es nulo. */
     val busyAction: SettingsActionId?,
     val run: (SettingsActionId) -> Unit,
 )
@@ -30,6 +30,7 @@ data class SettingsActionHost(
 @Composable
 internal fun rememberSettingsActionHost(): SettingsActionHost {
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val updateNotifier: UpdateNotifier = koinInject()
     val scope = rememberCoroutineScope()
     var busyAction by remember { mutableStateOf<SettingsActionId?>(null) }
@@ -45,17 +46,17 @@ internal fun rememberSettingsActionHost(): SettingsActionHost {
                         busyAction = null
                     }
                     when (result) {
-                        is UpdateCheckResult.NewVersion -> MuseToast.show(context.getString(R.string.update_found_new))
-                        UpdateCheckResult.UpToDate -> MuseToast.show(context.getString(R.string.update_already_latest))
+                        is UpdateCheckResult.NewVersion -> MuseToast.show(localizedResources.getString(R.string.update_found_new))
+                        UpdateCheckResult.UpToDate -> MuseToast.show(localizedResources.getString(R.string.update_already_latest))
                         is UpdateCheckResult.Failed -> MuseToast.show(
-                            context.getString(R.string.settings_about_update_check_failed, result.message),
+                            localizedResources.getString(R.string.settings_about_update_check_failed, result.message),
                         )
                         UpdateCheckResult.Skipped -> Unit
                     }
                 }
             }
 
-            // 导出包含 WorkManager 队列查询与 zip 写入，放到协程里等结果，不阻塞点击回调。
+            // La exportación incluye consultas de cola de WorkManager y escritura zip, y las coloca en la rutina para esperar los resultados sin bloquear la devolución de llamada de clic.
             SettingsActionId.EXPORT_DIAGNOSTICS -> scope.launch { DiagnosticExporter.share(context) }
         }
     }

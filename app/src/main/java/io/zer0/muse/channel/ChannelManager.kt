@@ -12,10 +12,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * v1.0.92: 渠道管理器 — 配置 CRUD + 发送分发。
+ * v1.0.92: Administrador de canales — Configurar CRUD + distribución de envío.
  *
- * v1 范围(发送侧):把 Muse 的文本推送到飞书 / QQ 等平台;
- * 接收侧(事件长连接 / webhook)与配置 UI、LLM 工具分步推进。
+ * v1 alcance(lado emisor):Envíe el texto de Muse a Feishu/QQ y otras plataformas;
+ * lado receptor(Conexión larga del evento / webhook)y interfaz de usuario de configuración,LLM Las herramientas se avanzan paso a paso.
  */
 class ChannelManager(context: Context) {
 
@@ -26,7 +26,7 @@ class ChannelManager(context: Context) {
     val channels: StateFlow<List<ChannelConfig>> = _channels.asStateFlow()
 
     init {
-        // 启动自检：媒体能力声明缺字段在这里就炸，不留到用户发图时。
+        // Iniciar autoprueba: los campos que faltan en la declaración de capacidad de medios se desglosan aquí y no se dejan hasta que el usuario envía una imagen.
         validateChannelCapabilities()
     }
 
@@ -38,17 +38,17 @@ class ChannelManager(context: Context) {
         ChannelPlatform.DINGTALK to DingtalkChannelSender(),
     )
 
-    /** 该平台的媒体能力表。 */
+    /** Tabla de capacidades multimedia de la plataforma. */
     fun mediaCapabilitiesOf(platform: ChannelPlatform): io.zer0.muse.channel.MediaCapabilities = platform.capabilities.mediaCapabilities
 
-    /** 加载持久化配置(应用启动或页面进入时调用)。 */
+    /** Cargar configuración de persistencia(Se llama cuando se inicia la aplicación o se ingresa a la página.). */
     suspend fun refresh() {
         mutex.withLock {
             _channels.value = store.load()
         }
     }
 
-    /** 新增/更新配置并持久化。 */
+    /** Nuevo/Actualice la configuración y consérvela. */
     suspend fun upsert(config: ChannelConfig) {
         mutex.withLock {
             val updated = _channels.value.filterNot { it.id == config.id } + config
@@ -57,7 +57,7 @@ class ChannelManager(context: Context) {
         }
     }
 
-    /** 删除配置。 */
+    /** Eliminar configuración. */
     suspend fun remove(id: String) {
         mutex.withLock {
             val updated = _channels.value.filterNot { it.id == id }
@@ -67,9 +67,9 @@ class ChannelManager(context: Context) {
     }
 
     /**
-     * 向指定渠道发送文本;所有失败都收敛为结果对象,不抛异常。
+     * Enviar texto al canal especificado;Todos los fallos convergen en objetos resultantes.,No se lanza ninguna excepción.
      *
-     * [targetOverride] 供自动回复"回发到消息来源"使用(见 [ChannelSender.sendText])。
+     * [targetOverride] para respuestas automáticas"Publicar de nuevo a la fuente"uso(ver [ChannelSender.sendText]).
      */
     suspend fun sendText(channelId: String, text: String, targetOverride: String? = null): ChannelSendResult =
         sendTextWithOptions(channelId, text, ChannelSendOptions(targetOverride = targetOverride))
@@ -78,10 +78,10 @@ class ChannelManager(context: Context) {
         val config = _channels.value.firstOrNull { it.id == channelId }
         val sender = config?.let { senders[it.platform] }
         val result = when {
-            config == null -> ChannelSendResult(false, "渠道不存在: $channelId")
-            !config.enabled -> ChannelSendResult(false, "渠道已停用: ${config.name.ifBlank { channelId }}")
-            text.isBlank() -> ChannelSendResult(false, "发送内容为空")
-            sender == null -> ChannelSendResult(false, "平台未支持: ${config.platform}")
+            config == null -> ChannelSendResult(false, "El canal no existe: $channelId")
+            !config.enabled -> ChannelSendResult(false, "El canal esta desactivado: ${config.name.ifBlank { channelId }}")
+            text.isBlank() -> ChannelSendResult(false, "Enviar contenido está vacío")
+            sender == null -> ChannelSendResult(false, "Plataforma no compatible: ${config.platform}")
             else -> sender.sendText(
                 config,
                 text,
@@ -90,10 +90,10 @@ class ChannelManager(context: Context) {
                 options.sourceEventIdOverride,
                 options.sourceEventSequenceOverride,
             ).fold(
-                onSuccess = { ChannelSendResult(true, "已发送到 ${config.name.ifBlank { config.platform.name }}") },
+                onSuccess = { ChannelSendResult(true, "Enviado a ${config.name.ifBlank { config.platform.name }}") },
                 onFailure = { error ->
-                    Logger.w(TAG, "渠道发送失败: ${error.message}")
-                    ChannelSendResult(false, error.message ?: "发送失败")
+                    Logger.w(TAG, "Error al enviar el canal: ${error.message}")
+                    ChannelSendResult(false, error.message ?: "Envío fallido")
                 },
             )
         }
@@ -101,21 +101,21 @@ class ChannelManager(context: Context) {
     }
 
     /**
-     * v2.0.1: 凭证检测 — 按平台调用一次只读接口验证凭据可用;返回可展示的成功信息。
-     * 微信(iLink)无可独立检测的凭据(扫码绑定即验证)。
+     * v2.0.1: Detección de credenciales — Llame a la interfaz de solo lectura una vez por plataforma para verificar que las credenciales estén disponibles;Devuelve información de éxito visualizable.
+     * WeChat(iLink)Sin credenciales detectables de forma independiente(Escanear código para vincular y verificar).
      */
     suspend fun validate(config: ChannelConfig): Result<String> = withContext(Dispatchers.IO) {
         when (config.platform) {
             ChannelPlatform.FEISHU -> runCatching { FeishuChannelSender().fetchToken(config) }
-                .mapCatching { "tenant_access_token 获取成功" }
+                .mapCatching { "tenant_access_token conseguir el éxito" }
             ChannelPlatform.QQ -> QqClient.fetchAccessToken(config.appId.trim(), config.appSecret.trim())
-                .map { "access_token 获取成功" }
+                .map { "access_token conseguir el éxito" }
             ChannelPlatform.DINGTALK ->
                 DingtalkClient
                     .fetchAccessToken(config.appId.trim(), config.appSecret.trim(), config.dingtalkApiBase)
-                    .map { "access_token 获取成功" }
+                    .map { "access_token conseguir el éxito" }
             ChannelPlatform.TELEGRAM -> TelegramClient.getMe(config.appSecret.trim())
-            ChannelPlatform.WECLAW -> Result.success("微信渠道由扫码绑定完成,无需单独检测")
+            ChannelPlatform.WECLAW -> Result.success("El canal WeChat se completa escaneando el código QR y vinculándolo.,No se requieren pruebas separadas")
         }
     }
 

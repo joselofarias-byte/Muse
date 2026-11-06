@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * v1.0.53: 子 agent 线程 DAO。
+ * v1.0.53: Hilo de agente secundario DAO.
  */
 @Dao
 interface SubagentThreadDao {
@@ -29,11 +29,11 @@ interface SubagentThreadDao {
     @Query("DELETE FROM subagent_threads WHERE threadId = :threadId")
     suspend fun delete(threadId: String)
 
-    /** P0-10: 备份导出用 — 全量读取。 */
+    /** P0-10: Para copia de seguridad y exportación — Leer completo. */
     @Query("SELECT * FROM subagent_threads")
     suspend fun getAll(): List<SubagentThreadEntity>
 
-    /** P0-10: 备份恢复用 — 全量清空。 */
+    /** P0-10: Para respaldo y recuperación — Borrar todo. */
     @Query("DELETE FROM subagent_threads")
     suspend fun deleteAll()
 }

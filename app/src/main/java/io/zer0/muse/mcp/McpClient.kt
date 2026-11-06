@@ -40,16 +40,16 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Phase 9.5 (M3): MCP 协议数据类。
+ * Phase 9.5 (M3): MCP Clase de datos de protocolo.
  *
- * 按 MCP 规范:
+ * Según la especificación MCP:
  * - 2024-11-05: https://spec.modelcontextprotocol.io/spec/2024-11-05/
  * - 2025-03-26: https://spec.modelcontextprotocol.io/spec/2025-03-26/
  *
- * JSON-RPC 2.0 协议:
- * - 请求: {jsonrpc:"2.0", id, method, params?}
- * - 响应: {jsonrpc:"2.0", id, result? | error?}
- * - 通知: {jsonrpc:"2.0", method, params?}(无 id)
+ * JSON-RPC 2.0 Acuerdo:
+ * - Solicitar: {jsonrpc:"2.0", id, method, params?}
+ * - respuesta: {jsonrpc:"2.0", id, result? | error?}
+ * - Notificación: {jsonrpc:"2.0", method, params?}(Ninguno id)
  */
 
 @Serializable
@@ -63,20 +63,20 @@ data class McpTool(
 data class McpToolCallResult(
     val content: List<JsonElement> = emptyList(),
     val isError: Boolean = false,
-    /** MCP 2025-03-26 可选的结构化工具结果,部分 server 只在这里返回业务数据。 */
+    /** MCP 2025-03-26 Resultados de herramientas estructuradas opcionales,Algunos servidores solo devuelven datos comerciales aquí. */
     val structuredContent: JsonElement? = null,
 )
 
 /**
- * Phase 11.1.2: MCP Resource(MCP 2025-03-26 spec § Resources)。
+ * Phase 11.1.2: MCP Resource(MCP 2025-03-26 spec § Resources).
  *
- * Resource 是 server 暴露的被动资源(带 URI),由用户/客户端选择注入对话 context。
- * 与 Tool 的区别:Tool 是 LLM 主动调用,Resource 是用户被动选择。
+ * Resource Es un recurso pasivo expuesto por el servidor.(traer URI),por usuario/El cliente elige inyectar el contexto de la conversación.
+ * Diferencias con la herramienta:Tool LLM lo convoca activamente.,Resource Es una elección pasiva del usuario.
  *
- * @param uri 资源唯一标识(如 file:///doc.md / db://schema/users)
- * @param name 资源名(用户可读)
- * @param description 描述(可选)
- * @param mimeType MIME 类型(可选,如 text/markdown / application/json)
+ * @param uri Identificador único de recurso(Como por ejemplo file:///doc.md / db://schema/users)
+ * @param name Nombre del recurso(legible por el usuario)
+ * @param description Descripción(Opcional)
+ * @param mimeType MIME Tipo(Opcional,Como por ejemplo text/markdown / application/json)
  */
 @Serializable
 data class McpResource(
@@ -87,12 +87,12 @@ data class McpResource(
 )
 
 /**
- * Phase 11.1.2: MCP Resource 内容(resources/read 响应)。
+ * Phase 11.1.2: MCP Resource contenido(resources/read respuesta).
  *
- * @param uri 资源 URI
- * @param mimeType MIME 类型(可选)
- * @param text 文本内容(与 blob 二选一)
- * @param blob 二进制内容 base64 编码(与 text 二选一)
+ * @param uri Recursos URI
+ * @param mimeType MIME Tipo(Opcional)
+ * @param text contenido del texto(alternativa a la burbuja)
+ * @param blob Contenido binario codificado en base64.(Alternativa al texto)
  */
 @Serializable
 data class McpResourceContent(
@@ -103,14 +103,14 @@ data class McpResourceContent(
 )
 
 /**
- * Phase 11.1.2: MCP Prompt(MCP 2025-03-26 spec § Prompts)。
+ * Phase 11.1.2: MCP Prompt(MCP 2025-03-26 spec § Prompts).
  *
- * Prompt 是 server 暴露的快捷指令模板,用户点击触发后返回一组 messages,
- * 作为新对话起点或插入当前对话。
+ * Prompt ¿La plantilla de comando de acceso directo está expuesta por el servidor?,Devuelve un grupo después de que el usuario hace clic en el disparador messages,
+ * Sirve como punto de partida para una nueva conversación o inserta en la conversación actual.
  *
- * @param name prompt 唯一名(用作 prompts/get 的 key)
- * @param description 描述(可选)
- * @param arguments 参数列表(可选,用户填写后传入 prompts/get)
+ * @param name prompt nombre único(Usado como indicaciones/obtener key)
+ * @param description Descripción(Opcional)
+ * @param arguments Lista de parámetros(Opcional,Pasar después de que el usuario complete prompts/get)
  */
 @Serializable
 data class McpPrompt(
@@ -119,7 +119,7 @@ data class McpPrompt(
     val arguments: List<McpPromptArgument> = emptyList(),
 )
 
-/** Prompt 参数定义。 */
+/** Prompt Definición de parámetros. */
 @Serializable
 data class McpPromptArgument(
     val name: String,
@@ -128,10 +128,10 @@ data class McpPromptArgument(
 )
 
 /**
- * Phase 11.1.2: MCP Prompt 内容(prompts/get 响应)。
+ * Phase 11.1.2: MCP Prompt contenido(prompts/get respuesta).
  *
- * @param description 描述(可选)
- * @param messages 消息列表(role + content),作为对话起点
+ * @param description Descripción(Opcional)
+ * @param messages Lista de mensajes(role + content),como punto de partida para la conversación
  */
 @Serializable
 data class McpPromptResult(
@@ -140,10 +140,10 @@ data class McpPromptResult(
 )
 
 /**
- * Prompt 消息(role + content)。
+ * Prompt noticias(role + content).
  *
  * @param role user / assistant / system
- * @param content 消息内容(JsonObject,可能为 {type:"text",text:"..."} 等多种形态)
+ * @param content Contenido del mensaje(JsonObject,puede ser {type:"text",text:"..."} y otras formas)
  */
 @Serializable
 data class McpPromptMessage(
@@ -152,11 +152,11 @@ data class McpPromptMessage(
 )
 
 /**
- * 等待 SSE 首个 endpoint 事件。
+ * Espere el primer evento de punto final de SSE.
  *
- * EventSource 失败时监听器会关闭 channel。直接调用 [ReceiveChannel.receive]
- * 会抛 ClosedReceiveChannelException,而“服务端断开”只是普通连接失败,不能让
- * MCP 后台协程把整个应用带崩。
+ * EventSource El oyente cerrará el canal en caso de fallo. llamar directamente [ReceiveChannel.receive]
+ * puede tirar ClosedReceiveChannelException,y“Servidor desconectado”Sólo un error de conexión normal,no puedo dejar
+ * MCP La rutina en segundo plano bloquea toda la aplicación.
  */
 internal suspend fun awaitSseEndpoint(channel: ReceiveChannel<String>, timeoutMs: Long): String? = withTimeoutOrNull(timeoutMs) {
     channel.receiveCatching().getOrNull()
@@ -169,37 +169,37 @@ internal data class McpServerInfo(
 )
 
 /**
- * Phase 9.5 (M3): MCP Client。
+ * Phase 9.5 (M3): MCP Client.
  *
- * 职责:
- *  1. 建立 SSE / StreamableHTTP 连接,完成 initialize 握手
- *  2. 提供 [listTools] / [callTool] suspend API(对标 MCP tools/list、tools/call)
- *  3. 自动重连(指数退避:base * 2^attempt,上限 30s,达到 [McpServerConfig.maxReconnectAttempts] 转 FAILED)
- *  4. 暴露 [state] StateFlow 供 UI 观察连接状态
+ * Responsabilidades:
+ *  1. Establecer conexión SSE / StreamableHTTP,Completar el protocolo de enlace de inicialización
+ *  2. proporcionar [listTools] / [callTool] suspend API(Herramientas/lista de MCP de referencia,tools/call)
+ *  3. Reconectarse automáticamente(retroceso exponencial:base * 2^attempt,límite superior 30s,alcanzar [McpServerConfig.maxReconnectAttempts] girar FAILED)
+ *  4. expuesto [state] StateFlow Para que la interfaz de usuario observe el estado de la conexión
  *
- * 协议实现:
- *  - initialize 请求带 protocolVersion(2025-03-26 / 2024-11-05,server 自行选择兼容版本)
- *  - Initialized 通知在 initialize 响应后发送(MCP 要求的握手第二步)
- *  - tools/list 响应解析为 [McpTool] 列表
- *  - tools/call 请求带 name + arguments(JsonObject),响应解析为 [McpToolCallResult]
+ * Implementación del protocolo:
+ *  - initialize Solicitud para traer protocolVersion(2025-03-26 / 2024-11-05,server Elige tu propia versión compatible)
+ *  - Initialized Las notificaciones se envían después de la respuesta de inicialización.(MCP El segundo paso del apretón de manos requerido.)
+ *  - tools/list La respuesta resuelve [McpTool] lista
+ *  - tools/call Solicitud para traer name + arguments(JsonObject),La respuesta resuelve [McpToolCallResult]
  *
- * 传输实现:
- *  - [SseTransport]: EventSource 接收 server→client 事件,POST 到 server 告知的 endpoint
- *  - [StreamableHttpTransport]: 单一 endpoint POST,响应可能是 JSON 或 SSE 流
+ * Implementación de transmisión:
+ *  - [SseTransport]: EventSource recibir server→client evento,POST Notificado por el servidor endpoint
+ *  - [StreamableHttpTransport]: soltero endpoint POST,La respuesta puede ser una secuencia JSON o SSE
  *
- * 线程模型:
- *  - 所有网络 IO 在 Dispatchers.IO
- *  - 状态变更通过 MutableStateFlow,线程安全
- *  - 请求-响应配对用 ConcurrentHashMap<id, Channel<JsonObject>>(支持并发请求)
+ * Modelo de roscado:
+ *  - Todas las E/S de la red en Dispatchers.IO
+ *  - Cambio de estado aprobado MutableStateFlow,Seguridad del hilo
+ *  - Solicitar-Para emparejamiento de respuestas ConcurrentHashMap<id, Channel<JsonObject>>(Admitir solicitudes simultáneas)
  *
- * 独立编写(按 MCP 官方规范),Apache 2.0。
+ * Escrito de forma independiente(Según especificaciones oficiales de MCP),Apache 2.0.
  */
 class McpClient(
     private val config: McpServerConfig,
     private val client: OkHttpClient = McpClient.defaultClient,
-    /** Phase 10.4: SettingsRepository 注入(OAuth 启用时用于 token 持久化;null 走静态 token)。 */
+    /** Phase 10.4: SettingsRepository inyectar(OAuth Se utiliza para la persistencia del token cuando está habilitado;null Ir estático token). */
     private val settings: io.zer0.muse.data.SettingsRepository? = null,
-    /** P1-A: 应用上下文（stdio 传输解析内置运行时路径用；其他传输可为 null）。 */
+    /** P1-A: contexto de la aplicación (stdio Se utiliza para rutas de ejecución integradas de resolución de transporte; puede ser nulo para otros transportes). */
     private val appContext: android.content.Context? = null,
 ) : AutoCloseable {
 
@@ -210,64 +210,64 @@ class McpClient(
     private val _state = MutableStateFlow(McpConnectionState.DISCONNECTED)
     val state: StateFlow<McpConnectionState> = _state.asStateFlow()
 
-    /** 当前 SSE 连接(用于 close 时取消)。 */
+    /** Conexión SSE actual(Cancelar cuando se usa con cerrar). */
     @Volatile
     private var eventSource: EventSource? = null
 
-    /** P1-A: stdio 传输(本地子进程)。 */
+    /** P1-A: stdio transmisión(proceso secundario local). */
     @Volatile
     private var stdioTransport: McpStdioTransport? = null
 
-    /** SSE 传输模式下的 POST endpoint(server 通过 endpoint 事件告知)。 */
+    /** SSE en modo transferencia POST endpoint(server Notificado a través de un evento de punto final). */
     @Volatile
     private var postEndpoint: String? = null
 
     /**
-     * Streamable HTTP 会话 ID。
+     * Streamable HTTP ID de sesión.
      *
-     * MCP 2025-03-26 允许 server 在 initialize 响应的
-     * `Mcp-Session-Id` 响应头中分配会话,后续 tools/list、tools/call 等请求必须
-     * 原样带回该请求头。没有这个头时,很多 server 会让握手看似成功,但后续请求返回
-     * 404/400,模型最终就拿不到任何 MCP 工具。
+     * MCP 2025-03-26 Permitir que el servidor responda durante la inicialización
+     * `Mcp-Session-Id` Asignar sesión en el encabezado de respuesta,Herramientas/lista de seguimiento、tools/call Debe esperar la solicitud.
+     * Recupere el encabezado de la solicitud tal como está. Cuando no existe tal cabeza,Muchos servidores harán que el apretón de manos parezca exitoso.,Pero las solicitudes posteriores regresan.
+     * 404/400,El modelo termina sin recibir ninguna herramienta MCP.
      */
     @Volatile
     private var streamableSessionId: String? = null
 
-    /** initialize 协商出的 MCP 协议版本,后续 HTTP 请求按 server 选择的版本发送。 */
+    /** initialize Versión del protocolo MCP negociada,Las solicitudes HTTP posteriores se envían según la versión seleccionada por el servidor. */
     @Volatile
     private var negotiatedProtocolVersion: String = PROTOCOL_VERSION
 
-    /** server 终止会话后,下一次请求需要重新 initialize。 */
+    /** server Después de terminar la sesión,Es necesario reinicializar la siguiente solicitud. */
     @Volatile
     private var streamableSessionInvalidated = false
 
-    /** Streamable HTTP 会话恢复互斥，避免并发请求重复 initialize。 */
+    /** Streamable HTTP La recuperación de sesión es mutuamente excluyente para evitar inicializaciones repetidas para solicitudes simultáneas. */
     private val streamableSessionRecoveryMutex = Mutex()
 
-    /** 每次真正更换 Streamable HTTP session 时递增，用于让并发请求复用同一轮恢复结果。 */
+    /** Se incrementa cada vez que se reemplaza realmente la sesión HTTP Streamable, lo que se utiliza para permitir que solicitudes simultáneas reutilicen la misma ronda de resultados de recuperación. */
     private val streamableSessionGeneration = AtomicLong(0)
 
-    /** 最近一次传输层失败摘要,只保存状态码/网络类别,不保存响应正文或凭证。 */
+    /** Resumen de la falla más reciente de la capa de transporte,Guardar solo el código de estado/Categoría de red,El cuerpo de la respuesta o las credenciales no se guardan. */
     @Volatile
     private var lastTransportFailure: String? = null
 
-    /** 服务端信息(initialize 响应里返回)。 */
+    /** Información del servidor(initialize Volver en respuesta). */
     @Volatile
     private var serverInfo: McpServerInfo? = null
 
-    /** 重连次数(成功连接后重置)。 */
+    /** Número de reconexiones(Restablecer después de una conexión exitosa). */
     @Volatile
     private var reconnectAttempts = 0
 
-    /** 是否已主动 close(区分主动关闭 vs 网络断开,主动 close 不触发重连)。 */
+    /** ¿Has tomado la iniciativa? close(Distinguir entre apagado activo y desconexión de red,El cierre activo no desencadena la reconexión). */
     @Volatile
     private var closed = false
 
-    /** Phase 10.4: OAuth token 内存缓存(从 settings 加载,refresh 后更新)。 */
+    /** Phase 10.4: OAuth token caché de memoria(Cargar desde la configuración,refresh Actualizar más tarde). */
     @Volatile
     private var oauthToken: McpTokenInfo? = null
 
-    /** 飞书 TAT 内存缓存(短期 token,真实凭证仍保存在 SettingsRepository 的加密 token key 中)。 */
+    /** Memoria caché Feishu TAT(corto plazo token,Las credenciales reales todavía se almacenan en la clave token cifrada del repositorio de configuración.). */
     @Volatile
     private var feishuTenantToken: McpTokenInfo? = null
 
@@ -277,48 +277,48 @@ class McpClient(
     private val feishuTenantTokenClient = McpFeishuTenantTokenClient()
     private val feishuRefreshMutex = Mutex()
 
-    /** Phase 10.4: 当前 PKCE pair(startOAuthFlow 生成,completeOAuthFlow 消费)。 */
+    /** Phase 10.4: actual PKCE pair(startOAuthFlow generar,completeOAuthFlow consumo). */
     @Volatile
     private var pendingPkce: McpOAuthFlow.PkcePair? = null
 
-    /** Phase 10.4: 是否启用 OAuth。 */
+    /** Phase 10.4: Ya sea para habilitar OAuth. */
     private val oauthEnabled: Boolean get() = config.oauthConfig.enabled && settings != null
 
     /**
-     * Phase 9.5 (P3-2): tools/list_changed 通知回调。
+     * Phase 9.5 (P3-2): tools/list_changed Devolución de llamada de notificación.
      *
-     * 当 server 发出 `notifications/tools/list_changed`(MCP 2025-03-26 §Tools)时触发,
-     * 由 [McpRegistry] 注入实现:重新拉取 tools/list 并重新注册到 ToolRegistry。
+     * Cuando el servidor emite `notifications/tools/list_changed`(MCP 2025-03-26 §Tools)desencadenado cuando,
+     * por [McpRegistry] Implementación de inyección:Vuelva a extraer herramientas/lista y vuelva a registrarse en ToolRegistry.
      *
-     * 解耦设计:McpClient 不依赖 Registry,仅通过回调上抛事件,保持依赖方向单一。
-     * 回调在 [handleNotification] 的 IO 协程上下文执行,实现方应避免长时间阻塞
-     * (Registry 端会 launch 独立协程做实际拉取)。
+     * Diseño desacoplado:McpClient no depende de Registry,Lanzar eventos solo a través de devoluciones de llamada,Mantenga las dependencias en una dirección.
+     * Devolución de llamada al [handleNotification] La ejecución del contexto de rutina IO,Los implementadores deben evitar bloquear durante largos períodos de tiempo.
+     * (Registry El cliente lanzará una rutina independiente para realizar la extracción real.).
      */
     @Volatile
     var onToolsListChanged: (() -> Unit)? = null
 
     /**
-     * P2-24: 自动重连成功回调(仅在 RECONNECTING 后的重连成功时触发,首次连接不触发)。
-     * Registry 据此同步连接状态并重新拉取工具(断开期间 server 工具集可能变化)。
-     * 回调在连接协程上下文执行,实现方应避免长时间阻塞(Registry 端会 launch 独立协程)。
+     * P2-24: Devolución de llamada exitosa de reconexión automática(Solo se activa cuando la reconexión después de RECONECTAR es exitosa,La primera conexión no se activa.).
+     * Registry Sincronice el estado de la conexión en consecuencia y vuelva a tirar de la herramienta(El conjunto de herramientas del servidor puede cambiar durante la desconexión).
+     * La devolución de llamada se ejecuta en el contexto de la rutina de conexión.,Los implementadores deben evitar bloquear durante largos períodos de tiempo.(Registry La terminal lanzará la corrutina independiente.).
      */
     @Volatile
     var onReconnected: (() -> Unit)? = null
 
-    /** B3-09: prompts/list_changed 通知回调(无缓存时仅作刷新信号)。 */
+    /** B3-09: prompts/list_changed devolución de llamada de notificación(Cuando no hay caché, solo se utilizan señales de actualización.). */
     @Volatile
     var onPromptsListChanged: (() -> Unit)? = null
 
-    /** B3-09: resources/list_changed 通知回调(无缓存时仅作刷新信号)。 */
+    /** B3-09: resources/list_changed devolución de llamada de notificación(Cuando no hay caché, solo se utilizan señales de actualización.). */
     @Volatile
     var onResourcesListChanged: (() -> Unit)? = null
 
     /**
-     * 启动 MCP client。建立连接 + initialize 握手。
-     * 失败则触发重连流程(若 [McpServerConfig.autoReconnect] 为 true)。
+     * Inicie el cliente MCP. Establecer conexión + inicializar el protocolo de enlace.
+     * Si falla, se activará el proceso de reconexión.(si [McpServerConfig.autoReconnect] para true).
      */
     fun start() {
-        // M-MCP4: synchronized 保护 check-then-launch,避免竞态导致重复连接
+        // M-MCP4: synchronized proteger check-then-launch,Evite condiciones de carrera que conduzcan a conexiones duplicadas
         synchronized(this) {
             if (closed) return
             if (_state.value != McpConnectionState.DISCONNECTED &&
@@ -332,15 +332,15 @@ class McpClient(
     }
 
     /**
-     * 同步建立连接 + initialize 握手。
-     * 在 IO 协程里调用。失败触发 [scheduleReconnect]。
+     * Establecer conexión sincrónicamente + inicializar el protocolo de enlace.
+     * Llamado en la rutina IO. Activador de falla [scheduleReconnect].
      *
-     * Phase 10.4: OAuth 启用时,先确保 token 有效(加载/refresh);无 token 或 refresh 失败
-     * 转 NEEDS_AUTH 状态(等 UI 调 [startOAuthFlow] 引导用户授权)。
+     * Phase 10.4: OAuth Cuando está habilitado,Primero asegúrese de que el token sea válido.(Cargar/refresh);Ningún token o actualización falló
+     * Ir al estado NEEDS_AUTH(Espere el ajuste de la interfaz de usuario [startOAuthFlow] Guiar a los usuarios para que autoricen).
      */
     /**
-     * C-25: OAuth 回调 URI 日志脱敏 — 只留 scheme://host/path,丢弃 query
-     * (query 含授权 code / state,整条入日志会泄漏授权码)。
+     * C-25: OAuth Enmascaramiento del registro de URI de devolución de llamada — solo quédate scheme://host/path,descartar query
+     * (query Con autorización code / state,Todo el registro de entrada filtrará el código de autorización.).
      */
     private fun sanitizeRedirectUriForLog(uri: String): String = runCatching {
         val u = java.net.URI(uri)
@@ -353,7 +353,7 @@ class McpClient(
         } catch (ce: kotlinx.coroutines.CancellationException) {
             throw ce
         } catch (e: Exception) {
-            Logger.e(TAG, "[${config.name}] MCP 连接流程异常,已转入重连/失败状态", e)
+            Logger.e(TAG, "[${config.name}] MCP Proceso de conexión anormal,Transferido a reconexión/estado de falla", e)
             if (!closed && _state.value != McpConnectionState.FAILED) {
                 scheduleReconnect()
             }
@@ -362,7 +362,7 @@ class McpClient(
 
     private suspend fun connectInternal() {
         _state.value = McpConnectionState.CONNECTING
-        // 每次新建 Streamable HTTP 连接都必须从 initialize 重新取得会话 ID。
+        // Cada vez que se crea una nueva conexión HTTP Streamable, se debe volver a obtener el ID de sesión desde la inicialización.
         streamableSessionId = null
         negotiatedProtocolVersion = PROTOCOL_VERSION
         streamableSessionInvalidated = false
@@ -371,16 +371,16 @@ class McpClient(
         } else {
             "url=${config.url}"
         }
-        Logger.d(TAG, "[${config.name}] 连接中 transport=${config.transportType} $endpointDesc")
+        Logger.d(TAG, "[${config.name}] Conectando transport=${config.transportType} $endpointDesc")
 
-        // Phase 10.4: OAuth 模式下先校验 token
+        // Phase 10.4: OAuth Verificar primero en modo token
         if (oauthEnabled && !ensureValidToken()) {
-            Logger.w(TAG, "[${config.name}] OAuth token 无效或未授权,转 NEEDS_AUTH")
+            Logger.w(TAG, "[${config.name}] OAuth token Inválido o no autorizado,girar NEEDS_AUTH")
             _state.value = McpConnectionState.NEEDS_AUTH
             return
         }
         if (config.feishuAuth.enabled && !ensureFeishuTenantToken()) {
-            Logger.w(TAG, "[${config.name}] 飞书 TAT 获取失败,进入重连/失败状态")
+            Logger.w(TAG, "[${config.name}] La adquisición de Feishu TAT fracasó,Entrar en reconexión/estado de falla")
             scheduleReconnect()
             return
         }
@@ -395,14 +395,14 @@ class McpClient(
             val wasReconnect = reconnectAttempts > 0
             reconnectAttempts = 0
             _state.value = McpConnectionState.CONNECTED
-            Logger.i(TAG, "[${config.name}] 已连接,server=${serverInfo?.name}:${serverInfo?.version}")
-            // P2-24: 重连成功后通知 Registry 同步状态并刷新工具(首次连接走 connectServer 的 registerTools)
+            Logger.i(TAG, "[${config.name}] Conectado,server=${serverInfo?.name}:${serverInfo?.version}")
+            // P2-24: Después de una reconexión exitosa, notifique al Registro sobre el estado de sincronización y actualice la herramienta.(Utilice connectServer para la primera conexión registerTools)
             if (wasReconnect) {
                 runCatching { onReconnected?.invoke() }
-                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onReconnected 回调异常: ${e.message}") }
+                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onReconnected Excepción de devolución de llamada: ${e.message}") }
             }
         } else {
-            Logger.w(TAG, "[${config.name}] 连接失败")
+            Logger.w(TAG, "[${config.name}] La conexión falló")
             scheduleReconnect()
         }
     }
@@ -410,48 +410,48 @@ class McpClient(
     // ── Phase 10.4: OAuth 2.1 PKCE ───────────────────────────────────────────
 
     /**
-     * 确保 OAuth token 有效:加载缓存 → 检查过期 → refresh。
-     * @return true 表示当前有有效 token;false 表示未授权 / refresh 失败(需重新授权)
+     * Asegúrese de que el token de OAuth sea válido:cargar caché → cheque vencido → refresh.
+     * @return true Indica que actualmente hay una válida token;false Indica no autorizado/actualización fallida(Requiere reautorización)
      */
     private suspend fun ensureValidToken(forceRefresh: Boolean = false): Boolean {
         if (!oauthEnabled) return true
-        // 首次加载:从 DataStore 读缓存
+        // primera carga:Leer caché desde DataStore
         if (oauthToken == null) {
             oauthToken = settings?.getMcpToken(config.id)
         }
-        val token = oauthToken ?: return false // 未授权
-        // M-MCP2: forceRefresh=true 时强制 refresh(用于请求收到 401 后重试)
+        val token = oauthToken ?: return false // No autorizado
+        // M-MCP2: forceRefresh=true obligatorio refresh(Se utiliza para solicitar volver a intentarlo después de recibir 401.)
         if (!forceRefresh && token.isValid()) return true
-        // 过期 → 尝试 refresh
+        // Caducado → intentarlo refresh
         if (!token.canRefresh()) {
             settings?.clearMcpToken(config.id)
             oauthToken = null
             return false
         }
-        Logger.d(TAG, "[${config.name}] OAuth token 过期,尝试 refresh")
+        Logger.d(TAG, "[${config.name}] OAuth token Caducado,intentarlo refresh")
         val newToken = McpOAuthFlow.refreshAccessToken(config.oauthConfig, token.refreshToken)
         if (newToken == null) {
-            Logger.w(TAG, "[${config.name}] OAuth refresh 失败,需重新授权")
+            Logger.w(TAG, "[${config.name}] OAuth refresh falló,Requiere reautorización")
             settings?.clearMcpToken(config.id)
             oauthToken = null
             return false
         }
         oauthToken = newToken
         settings?.saveMcpToken(config.id, newToken)
-        Logger.i(TAG, "[${config.name}] OAuth token refreshed,新有效期至 ${newToken.expiresAt}")
+        Logger.i(TAG, "[${config.name}] OAuth token refreshed,El nuevo período de validez es ${newToken.expiresAt}")
         return true
     }
 
     /**
-     * 确保飞书 tenant_access_token 有效。
+     * Asegúrese de que Feishu tenant_access_token sea válido.
      *
-     * 与 MCP OAuth 分开处理:飞书 TAT 没有 refresh_token,过期后用 app_id +
-     * app_secret 重新换取。短期 TAT 持久化到已有加密 token 存储,但永远不写日志。
+     * Manejado por separado de MCP OAuth:Feishu TAT No refresh_token,Usar después de la caducidad app_id +
+     * app_secret Intercambiar de nuevo. El TAT a corto plazo se conserva en el almacenamiento de tokens cifrados existente.,Pero nunca escribas un diario.
      */
     private suspend fun ensureFeishuTenantToken(forceRefresh: Boolean = false): Boolean {
         if (!config.feishuAuth.enabled) return true
         if (!feishuAuthEnabled) {
-            Logger.w(TAG, "[${config.name}] 飞书自动刷新已启用,但 App ID/App Secret 或 SettingsRepository 缺失")
+            Logger.w(TAG, "[${config.name}] La actualización automática de Feishu está habilitada,Pero falta el ID de la aplicación/Secreto de la aplicación o el Repositorio de configuración")
             return false
         }
         return feishuRefreshMutex.withLock {
@@ -465,18 +465,18 @@ class McpClient(
                 ?: return@withLock false
             feishuTenantToken = token
             settings?.saveMcpToken(config.id, token)
-            Logger.i(TAG, "[${config.name}] 飞书 TAT 已刷新,有效期至 ${token.expiresAt}")
+            Logger.i(TAG, "[${config.name}] Feishu TAT ha sido actualizado,Válido hasta ${token.expiresAt}")
             true
         }
     }
 
-    /** 飞书 token 剩余不足 30 分钟时刷新,避免多设备频繁换 token 互相失效。 */
+    /** El token Feishu se actualiza cuando quedan menos de 30 minutos.,Esto evita que varios dispositivos cambien tokens con frecuencia y provoquen que los demás dejen de ser válidos. */
     private fun McpTokenInfo.isUsableForFeishu(now: Long = System.currentTimeMillis()): Boolean =
         accessToken.isNotBlank() && (expiresAt == 0L || expiresAt > now + FEISHU_REFRESH_MARGIN_MS)
 
     /**
-     * 构造请求头:静态 headers + authToken + OAuth Bearer(OAuth 优先级最高)。
-     * OAuth token 由 [ensureValidToken] 预先刷新到 [oauthToken],此方法仅读取。
+     * Encabezado de solicitud de construcción:estático headers + authToken + OAuth Bearer(OAuth máxima prioridad).
+     * OAuth token por [ensureValidToken] actualizar previamente a [oauthToken],Este método sólo lee.
      */
     private fun resolvedAuthHeaders(): Map<String, String> {
         val headers = config.resolvedHeaders().toMutableMap()
@@ -490,9 +490,9 @@ class McpClient(
     }
 
     /**
-     * Phase 10.4: 启动 OAuth 授权流程(由 UI 调用)。
+     * Phase 10.4: Iniciar el proceso de autorización de OAuth(Llamado por la interfaz de usuario).
      *
-     * @return 授权 URL(用 Intent.ACTION_VIEW 打开浏览器);null 表示 OAuth 未启用
+     * @return Autorizar URL(Abra el navegador con Intent.ACTION_VIEW);null Indica que OAuth no está habilitado
      */
     fun startOAuthFlow(): String? {
         if (!oauthEnabled) return null
@@ -502,62 +502,62 @@ class McpClient(
     }
 
     /**
-     * Phase 10.4: 完成 OAuth 授权流程(浏览器回调后调用)。
+     * Phase 10.4: Completa el proceso de autorización de OAuth(Llamado después de la devolución de llamada del navegador).
      *
-     * @param redirectUri 回调 URI(含 code + state 参数)
-     * @return true 成功(token 已持久化,可调 [start] 重连);false 失败(state 不匹配 / 交换失败)
+     * @param redirectUri devolución de llamada URI(Contiene código + parámetros de estado.)
+     * @return true éxito(token persistido,Ajustable [start] Reconectar);false falló(state Ninguna coincidencia/intercambio falló)
      */
     suspend fun completeOAuthFlow(redirectUri: String): Boolean {
         val pkce = pendingPkce ?: run {
-            Logger.w(TAG, "[${config.name}] completeOAuthFlow 但无 pending PKCE pair")
+            Logger.w(TAG, "[${config.name}] completeOAuthFlow pero no pending PKCE pair")
             return false
         }
         val parsed = McpOAuthFlow.parseRedirectCallback(redirectUri, config.oauthConfig.redirectUri)
         if (parsed == null) {
-            // C-25: 回调 URI 含 code/state,整条入日志会泄漏授权码 — 只记 scheme://host/path
-            Logger.w(TAG, "[${config.name}] OAuth 回调解析失败: ${sanitizeRedirectUriForLog(redirectUri)}")
+            // C-25: El URI de devolución de llamada contiene code/state,Todo el registro de entrada filtrará el código de autorización. — Solo recuerda scheme://host/path
+            Logger.w(TAG, "[${config.name}] OAuth Error al analizar la devolución de llamada: ${sanitizeRedirectUriForLog(redirectUri)}")
             return false
         }
         val (code, state) = parsed
         if (state != pkce.state) {
-            Logger.w(TAG, "[${config.name}] OAuth state 不匹配: expected=${pkce.state}, got=$state")
+            Logger.w(TAG, "[${config.name}] OAuth state no hay coincidencia: expected=${pkce.state}, got=$state")
             return false
         }
         val token = McpOAuthFlow.exchangeCodeForToken(config.oauthConfig, code, pkce.verifier)
         if (token == null) {
-            Logger.w(TAG, "[${config.name}] OAuth token 交换失败")
+            Logger.w(TAG, "[${config.name}] OAuth token Error en el intercambio")
             return false
         }
         oauthToken = token
         settings?.saveMcpToken(config.id, token)
         pendingPkce = null
-        Logger.i(TAG, "[${config.name}] OAuth 授权成功,token 有效期至 ${token.expiresAt}")
+        Logger.i(TAG, "[${config.name}] OAuth Autorización exitosa,token Válido hasta ${token.expiresAt}")
         return true
     }
 
-    /** Phase 10.4: 撤销 OAuth 授权(清 token + PKCE,转 NEEDS_AUTH)。 */
+    /** Phase 10.4: Revocar la autorización de OAuth(claro token + PKCE,girar NEEDS_AUTH). */
     suspend fun revokeOAuth() {
         oauthToken = null
         pendingPkce = null
         settings?.clearMcpToken(config.id)
         _state.value = McpConnectionState.NEEDS_AUTH
-        Logger.i(TAG, "[${config.name}] OAuth 授权已撤销")
+        Logger.i(TAG, "[${config.name}] OAuth Autorización revocada")
     }
 
-    /** Phase 10.4: 是否需要 OAuth 授权(NEEDS_AUTH 状态 + OAuth 启用)。 */
+    /** Phase 10.4: Si se requiere autorización de OAuth(NEEDS_AUTH Estado + OAuth habilitado). */
     fun needsOAuth(): Boolean = oauthEnabled && _state.value == McpConnectionState.NEEDS_AUTH
 
-    // ── SSE 传输 ──────────────────────────────────────────────────────────────
+    // ── SSE transmisión ──────────────────────────────────────────────────────────────
 
     /**
-     * SSE 传输连接(MCP 2024-11-05):
-     *  1. EventSource 连到 [McpServerConfig.url],接收 server→client 事件
-     *  2. 首个事件通常是 endpoint 事件(data: <POST endpoint URL>),
-     *     告知 client 后续请求 POST 到哪个 URL
-     *  3. initialize 请求通过 POST 发送,响应通过 SSE 事件返回
+     * SSE conexión de transporte(MCP 2024-11-05):
+     *  1. EventSource conectado a [McpServerConfig.url],recibir server→client evento
+     *  2. El primer evento suele ser el evento del punto final.(data: <POST endpoint URL>),
+     *     Dígale al cliente dónde PUBLICAR solicitudes posteriores. URL
+     *  3. initialize Las solicitudes se envían vía POST,Las respuestas se devuelven a través de eventos SSE
      */
     private suspend fun connectSse(): Boolean {
-        // H-MCP1: 重连时先取消旧 eventSource,避免资源泄漏与响应错配
+        // H-MCP1: Al volver a conectarse, cancele el antiguo eventSource,Evite fugas de recursos y discrepancias en las respuestas
         eventSource?.cancel()
         eventSource = null
 
@@ -575,43 +575,43 @@ class McpClient(
         val listener = object : EventSourceListener() {
             override fun onOpen(eventSource: EventSource, response: Response) {
                 if (!response.isSuccessful) {
-                    Logger.w(TAG, "[${config.name}] SSE 连接 HTTP ${response.code}")
+                    Logger.w(TAG, "[${config.name}] SSE conectar HTTP ${response.code}")
                     firstEventChannel.close()
                     eventSource.cancel()
                 }
             }
 
             override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
-                // MCP 2024-11-05: 首个事件 type="endpoint",data 是 POST URL
+                // MCP 2024-11-05: primer evento type="endpoint",data si POST URL
                 if (type == "endpoint" && !gotEndpoint) {
                     gotEndpoint = true
                     postEndpoint = resolvePostUrl(data)
                     Logger.d(TAG, "[${config.name}] SSE endpoint: $postEndpoint")
                     firstEventChannel.trySend("endpoint")
                 } else {
-                    // 普通事件: data 是 JSON-RPC 响应/通知
+                    // eventos ordinarios: data es una respuesta JSON-RPC/Notificación
                     handleSseEvent(data)
                 }
             }
 
             override fun onClosed(eventSource: EventSource) {
-                Logger.w(TAG, "[${config.name}] SSE 连接关闭")
+                Logger.w(TAG, "[${config.name}] SSE conexión cerrada")
                 if (!closed) scheduleReconnect()
             }
 
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                // v1.113: 区分"协程主动取消"与"真实网络故障"。
-                // OkHttp 在 Call.cancel() 时抛 IOException("Canceled"),此时不应触发重连。
+                // v1.113: distinguir"Coroutine cancela proactivamente"con"Fallo real de la red".
+                // OkHttp en Call.cancel() lanzamiento de tiempo IOException("Canceled"),La reconexión no debería activarse en este momento.
                 if (closed || !scope.isActive) {
                     firstEventChannel.close()
                     return
                 }
                 if (t is java.io.IOException && t.message == "Canceled") {
-                    Logger.d(TAG, "[${config.name}] SSE 被 Call.cancel() 取消,不重连")
+                    Logger.d(TAG, "[${config.name}] SSE ser Call.cancel() Cancelar,Sin reconexión")
                     firstEventChannel.close()
                     return
                 }
-                Logger.w(TAG, "[${config.name}] SSE 连接失败: ${t?.message ?: response?.code}")
+                Logger.w(TAG, "[${config.name}] SSE La conexión falló: ${t?.message ?: response?.code}")
                 firstEventChannel.close()
                 if (!closed) scheduleReconnect()
             }
@@ -619,28 +619,28 @@ class McpClient(
 
         eventSource = sseFactory.newEventSource(request, listener)
 
-        // 等 endpoint 事件(L-MCP2: 超时提取为常量)
+        // Esperar evento de punto final(L-MCP2: Tiempo de espera extraído como constante)
         val gotEp = awaitSseEndpoint(firstEventChannel, SSE_ENDPOINT_TIMEOUT_MS)
         firstEventChannel.close()
         if (gotEp == null || postEndpoint == null) {
             eventSource?.cancel()
             return false
         }
-        // M-MCP1: 校验 postEndpoint 与 config.url 同源,防止 Open Redirect
+        // M-MCP1: Verifique que postEndpoint y config.url tengan el mismo origen,prevenir Open Redirect
         val ep = postEndpoint ?: return false
         if (!isSameOrigin(ep, config.url)) {
-            Logger.w(TAG, "[${config.name}] SSE endpoint 与 server 不同源: $ep vs ${config.url},拒绝连接")
+            Logger.w(TAG, "[${config.name}] SSE endpoint Origen diferente al servidor: $ep vs ${config.url},Conexión rechazada")
             eventSource?.cancel()
             eventSource = null
             postEndpoint = null
             return false
         }
 
-        // 发 initialize 请求
+        // Enviar solicitud de inicialización
         return sendInitialize()
     }
 
-    /** SSE 事件处理:解析 JSON-RPC 消息,按 response / notification / server request 分发。 */
+    /** SSE manejo de eventos:Analizar mensajes JSON-RPC,prensa response / notification / server request Distribuir. */
     private fun handleSseEvent(data: String) {
         if (data.isBlank()) return
         val obj = runCatching {
@@ -651,7 +651,7 @@ class McpClient(
         val methodEl = obj["method"]
 
         if (idEl == null) {
-            // 无 id: notification(必须有 method)
+            // Ninguno id: notification(debe tener method)
             val method = (methodEl as? JsonPrimitive)?.content ?: return
             val params = obj["params"] as? JsonObject ?: buildJsonObject {}
             handleNotification(method, params)
@@ -660,68 +660,68 @@ class McpClient(
 
         val id = (idEl as? JsonPrimitive)?.content?.toLongOrNull()
         if (id == null) {
-            Logger.w(TAG, "[${config.name}] 收到无效 id 的消息: ${data.take(200)}")
+            Logger.w(TAG, "[${config.name}] Se recibió un mensaje de identificación no válido: ${data.take(200)}")
             return
         }
 
         if (methodEl != null) {
-            // 有 id 且有 method: server→client request(支持 ping,未知方法返回 MethodNotFound)
+            // Hay una identificación y hay method: server→client request(apoyo ping,Devuelve el método desconocido MethodNotFound)
             val method = (methodEl as? JsonPrimitive)?.content
             handleServerRequest(id, method)
             return
         }
 
-        // 有 id 无 method: response,匹配 pending channel
+        // Sí identificación Ninguna method: response,partido pending channel
         val channel = pendingRequests.remove(id) ?: return
         channel.trySend(obj)
         channel.close()
     }
 
     /**
-     * v1.0.47 P4 / Phase 9.5 (P3-2): 处理 server→client notification(无 id)。
+     * v1.0.47 P4 / Phase 9.5 (P3-2): Proceso server→client notification(Ninguno id).
      *
-     * 支持的 notification(MCP 2025-03-26):
-     *  - `notifications/tools/list_changed`: 工具列表变更,触发 [onToolsListChanged] 回调,
-     *    由 Registry 重新拉取 tools/list 并重新注册。
-     *  - `notifications/prompts/list_changed`: prompt 列表变更(记录日志,后续接入)。
-     *  - `notifications/resources/list_changed`: 资源列表变更(记录日志,后续接入)。
-     *  - `notifications/initialized`: 握手完成通知(忽略,client 主动发)。
-     *  - `notifications/progress`: 长任务进度(记录日志)。
-     *  - 其他: 记录日志。
+     * apoyado notification(MCP 2025-03-26):
+     *  - `notifications/tools/list_changed`: Cambios en la lista de herramientas,gatillo [onToolsListChanged] devolución de llamada,
+     *    Vuelva a extraer las herramientas/lista del Registro y vuelva a registrarlas.
+     *  - `notifications/prompts/list_changed`: prompt cambios de lista(registrando,acceso posterior).
+     *  - `notifications/resources/list_changed`: Cambios en la lista de recursos(registrando,acceso posterior).
+     *  - `notifications/initialized`: Notificación de finalización del protocolo de enlace(ignorar,client Toma la iniciativa de enviar).
+     *  - `notifications/progress`: progreso de tarea largo(registrando).
+     *  - Otros: Mantenga un registro.
      *
-     * 回调安全:[onToolsListChanged] 调用包裹在 runCatching 中,避免 Registry 端异常
-     * 影响后续 notification 处理(如 SSE 流中多个事件)。
+     * seguridad de devolución de llamada:[onToolsListChanged] La llamada está envuelta en runCatching,Evite excepciones del lado del registro
+     * Afecta el procesamiento de notificaciones posteriores(Como múltiples eventos en el flujo SSE).
      */
     private fun handleNotification(method: String, params: JsonObject) {
-        Logger.i(TAG, "收到 notification: $method (params=${params.toString().take(200)})")
+        Logger.i(TAG, "recibido notification: $method (params=${params.toString().take(200)})")
         when (method) {
             "notifications/tools/list_changed" -> {
-                // 触发 Registry 重新拉取工具;回调内会 launch 独立协程,不阻塞此处
+                // Activar la herramienta de extracción del Registro;Se lanzará una rutina independiente dentro de la devolución de llamada.,No bloquees aquí
                 runCatching { onToolsListChanged?.invoke() }
-                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onToolsListChanged 回调异常: ${e.message}") }
+                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onToolsListChanged Excepción de devolución de llamada: ${e.message}") }
             }
             "notifications/prompts/list_changed" -> {
                 runCatching { onPromptsListChanged?.invoke() }
-                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onPromptsListChanged 回调异常: ${e.message}") }
+                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onPromptsListChanged Excepción de devolución de llamada: ${e.message}") }
             }
             "notifications/resources/list_changed" -> {
                 runCatching { onResourcesListChanged?.invoke() }
-                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onResourcesListChanged 回调异常: ${e.message}") }
+                    .onFailure { e -> Logger.w(TAG, "[${config.name}] onResourcesListChanged Excepción de devolución de llamada: ${e.message}") }
             }
             "notifications/progress",
             -> {
-                // 已记录日志,进度通知无本地缓存
+                // registrado,La notificación de progreso no tiene caché local
             }
             "notifications/initialized" -> {
-                // client 主动发出的握手通知,server 不应回发;忽略
+                // client Notificación de apretón de manos no solicitado,server No debería volver a publicar;ignorar
             }
             else -> {
-                Logger.d(TAG, "[${config.name}] 未处理的 notification: $method")
+                Logger.d(TAG, "[${config.name}] sin procesar notification: $method")
             }
         }
     }
 
-    /** SSE 传输模式下的 POST 请求(initialize / tools/list / tools/call 等)。 */
+    /** SSE Solicitud POST en modo transporte(initialize / tools/list / tools/call espera). */
     private suspend fun postSseRequest(jsonRpc: String, retryOn401: Boolean = true): JsonObject? {
         val endpoint = postEndpoint ?: return null
         if (config.feishuAuth.enabled && !ensureFeishuTenantToken()) return null
@@ -734,14 +734,14 @@ class McpClient(
             .post(jsonRpc.toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
-        // SSE 模式下,POST 请求通常返回 202(响应通过 SSE 事件回来)
-        // 但有些 server 直接返回 JSON 响应(非标准但常见)
+        // SSE modo,POST La solicitud suele regresar. 202(Las respuestas llegan a través de eventos de ESS)
+        // Pero algunos servidores devuelven directamente respuestas JSON.(No estándar pero común)
         return withContext(Dispatchers.IO) {
             try {
                 client.newCall(request).execute().use { resp ->
-                    // M-MCP2: 收到 401 时强制 refresh token 并重试一次
+                    // M-MCP2: Forzar el token de actualización al recibir 401 y volver a intentarlo
                     if (resp.code == 401 && retryOn401 && (oauthEnabled || feishuAuthEnabled)) {
-                        Logger.w(TAG, "[${config.name}] POST 收到 401,尝试刷新认证凭证后重试")
+                        Logger.w(TAG, "[${config.name}] POST recibido 401,Intente actualizar las credenciales de autenticación y vuelva a intentarlo.")
                         val refreshed = if (oauthEnabled) {
                             ensureValidToken(forceRefresh = true)
                         } else {
@@ -757,7 +757,7 @@ class McpClient(
                         if (body.isNotBlank() && body.trimStart().startsWith("{")) {
                             runCatching { AppJson.decodeFromString(JsonObject.serializer(), body) }.getOrNull()
                         } else {
-                            null // 202 Accepted,等 SSE 事件
+                            null // 202 Accepted,Espere eventos SSE
                         }
                     } else {
                         lastTransportFailure = "MCP HTTP ${resp.code}"
@@ -767,19 +767,19 @@ class McpClient(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: java.io.IOException) {
-                // v1.113: 协程取消导致的 IOException("Canceled") 不应触发重连逻辑
+                // v1.113: Causado por la cancelación de la rutina. IOException("Canceled") La lógica de reconexión no debe activarse
                 if (closed || e.message == "Canceled") {
-                    Logger.d(TAG, "[${config.name}] POST 请求被取消,不重连")
+                    Logger.d(TAG, "[${config.name}] POST Solicitud cancelada,Sin reconexión")
                     return@withContext null
                 }
-                Logger.w(TAG, "[${config.name}] POST 请求 IO 异常: ${e.message}")
+                Logger.w(TAG, "[${config.name}] POST Solicitar excepción de IO: ${e.message}")
                 lastTransportFailure = "MCP network request failed"
                 null
             }
         }
     }
 
-    /** 解析 SSE endpoint 事件 data(可能是相对路径,如 /messages?session_id=xxx)。 */
+    /** Analizar eventos de punto final de SSE data(Quizás un camino relativo,Como por ejemplo /messages?session_id=xxx). */
     private fun resolvePostUrl(data: String): String {
         val trimmed = data.trim()
         return runCatching {
@@ -792,7 +792,7 @@ class McpClient(
         }.getOrDefault(trimmed)
     }
 
-    /** M-MCP1: 校验两个 URL 是否同源(scheme + host + port 一致)。 */
+    /** M-MCP1: Verificar si dos URL tienen el mismo origen(scheme + host + port consistente). */
     private fun isSameOrigin(url1: String, url2: String): Boolean {
         return try {
             val u1 = url1.toHttpUrl()
@@ -803,24 +803,24 @@ class McpClient(
         }
     }
 
-    // ── StreamableHTTP 传输 ───────────────────────────────────────────────────
+    // ── StreamableHTTP transmisión ───────────────────────────────────────────────────
 
     /**
-     * StreamableHTTP 传输连接(MCP 2025-03-26):
-     *  1. POST initialize 到 [McpServerConfig.url],Accept: application/json, text/event-stream
-     *  2. 响应可能是单个 JSON(非流式)或 SSE 流(流式)
-     *  3. 解析响应,完成握手
+     * StreamableHTTP conexión de transporte(MCP 2025-03-26):
+     *  1. POST initialize llegar [McpServerConfig.url],Accept: application/json, text/event-stream
+     *  2. La respuesta puede ser una sola JSON(sin transmisión)o flujo SSE(transmisión)
+     *  3. Analizar respuesta,apretón de manos completo
      *
-     * 与 SSE 不同,StreamableHTTP 无需保持长连接 — 每个请求独立 POST。
-     * 若 server 返回 SSE,则在 SSE 流结束前保持连接。
+     * A diferencia de la ESS,StreamableHTTP No es necesario mantener una conexión larga — Cada solicitud se PUBLICA de forma independiente.
+     * Si el servidor regresa SSE,La conexión permanece abierta hasta que finaliza la transmisión SSE.
      */
     private suspend fun connectStreamableHttp(): Boolean {
         return sendInitialize()
     }
 
     /**
-     * StreamableHTTP 请求:POST JSON-RPC,响应可能是 JSON 或 SSE。
-     * 解析响应,返回 JsonObject(单次响应)或从 SSE 流聚合最后一个事件。
+     * StreamableHTTP Solicitar:POST JSON-RPC,La respuesta puede ser JSON o SSE.
+     * Analizar respuesta,Regresar JsonObject(respuesta única)O agregue el último evento de una transmisión SSE.
      */
     private suspend fun postStreamableRequest(jsonRpc: String, retryOn401: Boolean = true): JsonObject? {
         if (config.feishuAuth.enabled && !ensureFeishuTenantToken()) return null
@@ -841,9 +841,9 @@ class McpClient(
         return withContext(Dispatchers.IO) {
             try {
                 client.newCall(request).execute().use { resp ->
-                    // M-MCP2: 收到 401 时强制 refresh token 并重试一次
+                    // M-MCP2: Forzar el token de actualización al recibir 401 y volver a intentarlo
                     if (resp.code == 401 && retryOn401 && (oauthEnabled || feishuAuthEnabled)) {
-                        Logger.w(TAG, "[${config.name}] StreamableHTTP 收到 401,尝试刷新认证凭证后重试")
+                        Logger.w(TAG, "[${config.name}] StreamableHTTP recibido 401,Intente actualizar las credenciales de autenticación y vuelva a intentarlo.")
                         val refreshed = if (oauthEnabled) {
                             ensureValidToken(forceRefresh = true)
                         } else {
@@ -872,8 +872,8 @@ class McpClient(
                         )
                         return@use null
                     }
-                    // initialize 通常是第一个 Streamable HTTP 请求,但规范允许 server
-                    // 在后续响应更新会话 ID,因此每次响应都读取并覆盖本地缓存。
+                    // initialize Generalmente la primera solicitud HTTP Streamable,Pero la especificación permite server
+                    // Sesión de actualización en respuestas posteriores. ID,Entonces cada respuesta lee y sobrescribe el caché local.
                     resp.header("Mcp-Session-Id")?.takeIf { it.isNotBlank() }?.let { sessionId ->
                         if (streamableSessionId != sessionId) {
                             streamableSessionGeneration.incrementAndGet()
@@ -889,14 +889,14 @@ class McpClient(
                     val body = resp.body.string()
                     when {
                         contentType.contains("text/event-stream") -> {
-                            // SSE 流: 解析 data: 行,取最后一个 JSON 事件
+                            // SSE fluir: Analizar datos: filas,Obtener el último evento JSON
                             parseSseResponse(body)
                         }
                         contentType.contains("application/json") -> {
                             runCatching { AppJson.decodeFromString(JsonObject.serializer(), body) }.getOrNull()
                         }
                         else -> {
-                            // 兜底: 尝试当 JSON 解析
+                            // Ten todo en cuenta: Pruebe cuando se analiza JSON
                             if (body.isNotBlank() && body.trimStart().startsWith("{")) {
                                 runCatching { AppJson.decodeFromString(JsonObject.serializer(), body) }.getOrNull()
                             } else {
@@ -908,7 +908,7 @@ class McpClient(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: java.io.IOException) {
-                Logger.w(TAG, "[${config.name}] StreamableHTTP 请求 IO 异常: ${e.message}")
+                Logger.w(TAG, "[${config.name}] StreamableHTTP Solicitar excepción de IO: ${e.message}")
                 lastTransportFailure = "MCP network request failed"
                 null
             }
@@ -916,15 +916,15 @@ class McpClient(
     }
 
     /**
-     * 解析 SSE 响应体(纯文本 data: 行)。
-     * v1.0.47 P4: 遍历所有事件 — notification 立即调用 handleNotification,
-     * response 记录并返回最后一个(避免被 notification 覆盖)。
+     * Analizar el cuerpo de respuesta SSE(datos de texto plano: fila).
+     * v1.0.47 P4: Iterar a través de todos los eventos — notification llama ahora handleNotification,
+     * response Graba y devuelve el último(Evite ser sobrescrito por notificación).
      */
     private fun parseSseResponse(body: String): JsonObject? {
         var lastResponse: JsonObject? = null
         val sb = StringBuilder()
 
-        // 处理单个已解析 JSON 事件:按类型分发
+        // Manejar un único evento JSON analizado:Distribuir por tipo
         fun processEvent(text: String) {
             val json = runCatching {
                 AppJson.decodeFromString(JsonObject.serializer(), text)
@@ -933,19 +933,19 @@ class McpClient(
             val idEl = json["id"]
             val methodEl = json["method"]
             when {
-                // notification(无 id,有 method):立即分发
+                // notification(Ninguno id,si method):Distribuir inmediatamente
                 idEl == null && methodEl != null -> {
                     val method = (methodEl as? JsonPrimitive)?.content ?: return
                     val params = json["params"] as? JsonObject ?: buildJsonObject {}
                     handleNotification(method, params)
                 }
-                // server→client request(有 id 且有 method):支持 ping,未知方法返回 MethodNotFound
+                // server→client request(Hay una identificación y hay method):apoyo ping,Devuelve el método desconocido MethodNotFound
                 idEl != null && methodEl != null -> {
                     val method = (methodEl as? JsonPrimitive)?.content
                     val id = (idEl as? JsonPrimitive)?.content?.toLongOrNull()
                     if (id != null) handleServerRequest(id, method)
                 }
-                // response(有 id,无 method):记录并返回最后一个
+                // response(si id,Ninguno method):Graba y devuelve el último
                 else -> {
                     lastResponse = json
                 }
@@ -954,7 +954,7 @@ class McpClient(
 
         for (line in body.lines()) {
             if (line.startsWith("data:")) {
-                // L-MCP4: 按 SSE 规范,多行 data 用 \n 连接
+                // L-MCP4: Según la especificación SSE,Para datos de varias líneas \n conectar
                 if (sb.isNotEmpty()) sb.append('\n')
                 sb.append(line.removePrefix("data:").trim())
             } else if (line.isBlank() && sb.isNotEmpty()) {
@@ -962,22 +962,22 @@ class McpClient(
                 sb.clear()
             }
         }
-        // 处理末尾未以空行结束的情况
+        // Manejar situaciones donde el final no termina con una línea en blanco
         if (sb.isNotEmpty()) {
             processEvent(sb.toString())
         }
         return lastResponse
     }
 
-    // ── JSON-RPC 请求 ─────────────────────────────────────────────────────────
+    // ── JSON-RPC Solicitar ─────────────────────────────────────────────────────────
 
-    /** 发送 initialize 请求 + initialized 通知,完成握手。 */
+    /** Enviar solicitud de inicialización + notificación inicializada,Apretón de manos completo. */
     /**
-     * P1-A: stdio 传输连接 — 启动本地 MCP server 子进程并完成 initialize 握手。
+     * P1-A: stdio conexión de transporte — Inicie el subproceso del servidor MCP local y complete el protocolo de enlace de inicialización.
      */
     private suspend fun connectStdio(): Boolean {
         val ctx = appContext ?: run {
-            Logger.w(TAG, "[${config.name}] stdio 连接缺少应用上下文")
+            Logger.w(TAG, "[${config.name}] stdio Falta el contexto de la aplicación de conexión")
             return false
         }
         stdioTransport?.stop()
@@ -997,10 +997,10 @@ class McpClient(
     }
 
     /**
-     * P1-A: stdio 消息分流。
-     *  - 有 id 且有 method → server→client 请求（回包走 sendResponse）
-     *  - 有 id → 请求响应（投递到 pendingRequests）
-     *  - 无 id → 通知（走 [handleNotification]）
+     * P1-A: stdio Desvío de mensajes.
+     *  - Hay una identificación y hay method → server→client Solicitud (devolver paquete sendResponse)
+     *  - si id → Solicitar respuesta (entregada a Solicitudes pendientes)
+     *  - Ninguno id → Notificar (ir [handleNotification])
      */
     private fun handleStdioMessage(json: JsonObject) {
         val id = (json["id"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
@@ -1015,9 +1015,9 @@ class McpClient(
         }
     }
 
-    /** P1-A: stdio 进程退出 — 非主动关闭时走重连。 */
+    /** P1-A: stdio Salidas de proceso — Vuelva a conectarse cuando no esté cerrado activamente. */
     private fun handleStdioExit(code: Int) {
-        Logger.w(TAG, "[${config.name}] stdio 进程退出: code=$code")
+        Logger.w(TAG, "[${config.name}] stdio Salidas de proceso: code=$code")
         stdioTransport = null
         if (!closed) scheduleReconnect()
     }
@@ -1032,12 +1032,12 @@ class McpClient(
                 "params",
                 buildJsonObject {
                     put("protocolVersion", PROTOCOL_VERSION)
-                    // v1.0.47 P4: 声明 sampling 能力(允许 server 请求客户端 LLM)
+                    // v1.0.47 P4: Declarar capacidades de muestreo(Permitir al servidor solicitar al cliente LLM)
                     put(
                         "capabilities",
                         buildJsonObject {
                             put("sampling", buildJsonObject {})
-                            // v1.0.47 P4: 声明 roots 能力(允许 server 访问客户端文件系统根)
+                            // v1.0.47 P4: Declarar capacidad de raíces(Permitir que el servidor acceda a la raíz del sistema de archivos del cliente)
                             put(
                                 "roots",
                                 buildJsonObject {
@@ -1059,9 +1059,9 @@ class McpClient(
         val response = sendRequest(id, request, allowSessionRecovery = allowSessionRecovery) ?: return false
         logJsonRpcError("initialize", response)
 
-        // 解析 serverInfo
+        // analizar serverInfo
         val result = response["result"] as? JsonObject
-        // L-MCP3: 读取 server 返回的 protocolVersion 并记录
+        // L-MCP3: Lea la versión del protocolo devuelta por el servidor y regístrela
         val serverProtocolVersion = (result?.get("protocolVersion") as? JsonPrimitive)?.content
         if (serverProtocolVersion != null) {
             negotiatedProtocolVersion = serverProtocolVersion
@@ -1075,27 +1075,27 @@ class McpClient(
             )
         }
 
-        // 仅有一个没有 error 的 JSON-RPC 外壳不代表握手成功;必须确认 result
-        // 存在,否则后续 tools/list 会在“假 CONNECTED”状态下静默变成空工具集。
+        // Sólo un shell JSON-RPC sin errores no significa que el protocolo de enlace haya sido exitoso;Debe confirmar result
+        // existir,De lo contrario, las herramientas/listas posteriores estarán en“falso CONNECTED”El juego de herramientas se vacía silenciosamente.
         if (response["error"] != null || result == null) return false
-        // 发 initialized 通知(无 id)
+        // Enviar notificación inicializada(Ninguno id)
         sendNotification("notifications/initialized")
         return true
     }
 
     /**
-     * tools/list:列出 server 暴露的所有工具。
-     * @return 工具列表;失败返回空列表
+     * tools/list:Enumere todas las herramientas expuestas por el servidor.
+     * @return Lista de herramientas;Devuelve una lista vacía en caso de error.
      */
     suspend fun listTools(): List<McpTool> = withContext(Dispatchers.IO) {
         listToolsOrNull() ?: emptyList()
     }
 
     /**
-     * tools/list 的可空版本。
+     * tools/list Una versión que acepta valores NULL de .
      *
-     * 空列表是 MCP server 的合法结果,不能和 HTTP/JSON-RPC 失败混为一谈;
-     * Registry 需要据此决定是否允许聊天继续等待工具注册。
+     * La lista vacía es un resultado legal del servidor MCP.,No confundir con fallas de HTTP/JSON-RPC;
+     * Registry En función de esto, debe decidir si permite que el chat continúe esperando el registro de la herramienta.
      */
     suspend fun listToolsOrNull(): List<McpTool>? = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) return@withContext null
@@ -1119,10 +1119,10 @@ class McpClient(
     }
 
     /**
-     * tools/call:调用指定工具。
-     * @param name 工具名
-     * @param arguments 参数(JsonObject)
-     * @return 调用结果;失败返回 isError=true 的空结果
+     * tools/call:Llame a la herramienta especificada.
+     * @param name Nombre de la herramienta
+     * @param arguments parámetros(JsonObject)
+     * @return Resultado de la llamada;Retorno del fracaso isError=true resultado vacío
      */
     suspend fun callTool(name: String, arguments: JsonObject): McpToolCallResult = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) {
@@ -1185,10 +1185,10 @@ class McpClient(
         runCatching {
             AppJson.decodeFromString(McpToolCallResult.serializer(), rawResultJson)
         }.getOrElse { decodeError ->
-            // v1.0.79 (D-2): 解析失败不再静默丢弃 — 保留原始 result JSON 作为错误详情回传,
-            // 并记录日志。此前 getOrDefault(isError=true 空结果) 会把 server 的错误原因
-            // 全部吞掉,模型拿不到失败原因无法自我纠正。
-            Logger.w(TAG, "[${config.id}] tools/call 结果解析失败: ${decodeError.message}")
+            // v1.0.79 (D-2): Los errores de análisis ya no se descartan silenciosamente — Mantenga el resultado original JSON y devuélvalo como detalles del error,
+            // Y registre el registro. anteriormente getOrDefault(isError=true Resultado vacío) La causa del error del servidor será
+            // trágalo todo,El modelo no puede corregirse a sí mismo sin conocer la causa del fallo.
+            Logger.w(TAG, "[${config.id}] tools/call Error al analizar el resultado: ${decodeError.message}")
             McpToolCallResult(
                 isError = true,
                 content = listOf(
@@ -1204,9 +1204,9 @@ class McpClient(
     // ── Phase 11.1.2: resources / prompts ───────────────────────────────────
 
     /**
-     * Phase 11.1.2: resources/list — 列出 server 暴露的所有资源。
+     * Phase 11.1.2: resources/list — Enumere todos los recursos expuestos por el servidor.
      *
-     * @return 资源列表;失败返回空列表
+     * @return Lista de recursos;Devuelve una lista vacía en caso de error.
      */
     suspend fun listResources(): List<McpResource> = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) return@withContext emptyList()
@@ -1229,10 +1229,10 @@ class McpClient(
     }
 
     /**
-     * Phase 11.1.2: resources/read — 读取指定资源内容。
+     * Phase 11.1.2: resources/read — Lea el contenido del recurso especificado.
      *
-     * @param uri 资源 URI(resources/list 返回的 uri 字段)
-     * @return 资源内容列表(可能多个,如目录资源返回多个文件);失败返回空列表
+     * @param uri Recursos URI(resources/list Campo uri devuelto)
+     * @return Lista de contenido de recursos(Posiblemente múltiples,Si un recurso de directorio devuelve varios archivos);Devuelve una lista vacía en caso de error.
      */
     suspend fun readResource(uri: String): List<McpResourceContent> = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) return@withContext emptyList()
@@ -1261,9 +1261,9 @@ class McpClient(
     }
 
     /**
-     * Phase 11.1.2: prompts/list — 列出 server 暴露的所有 prompt 模板。
+     * Phase 11.1.2: prompts/list — Enumere todas las plantillas de mensajes expuestas por el servidor.
      *
-     * @return prompt 列表;失败返回空列表
+     * @return prompt lista;Devuelve una lista vacía en caso de error.
      */
     suspend fun listPrompts(): List<McpPrompt> = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) return@withContext emptyList()
@@ -1286,11 +1286,11 @@ class McpClient(
     }
 
     /**
-     * Phase 11.1.2: prompts/get — 获取指定 prompt 的消息内容。
+     * Phase 11.1.2: prompts/get — Obtenga el contenido del mensaje del mensaje especificado.
      *
-     * @param name prompt 名(prompts/list 返回的 name 字段)
-     * @param arguments 参数(name→value),对应 [McpPrompt.arguments]
-     * @return prompt 消息列表;失败返回空 messages
+     * @param name prompt nombre(prompts/list El campo de nombre devuelto)
+     * @param arguments parámetros(name→value),corresponder [McpPrompt.arguments]
+     * @return prompt Lista de mensajes;Retornar vacío en caso de falla messages
      */
     suspend fun getPrompt(name: String, arguments: Map<String, String> = emptyMap()): McpPromptResult = withContext(Dispatchers.IO) {
         if (_state.value != McpConnectionState.CONNECTED) {
@@ -1324,7 +1324,7 @@ class McpClient(
         }.getOrDefault(McpPromptResult())
     }
 
-    /** M-MCP5: 记录 JSON-RPC error 响应(code + message),避免静默丢弃。 */
+    /** M-MCP5: Registro de respuestas de error JSON-RPC(code + message),Evite el descarte silencioso. */
     private fun logJsonRpcError(context: String, response: JsonObject?) {
         val error = response?.get("error") as? JsonObject ?: return
         val code = (error["code"] as? JsonPrimitive)?.content
@@ -1333,8 +1333,8 @@ class McpClient(
     }
 
     /**
-     * B3-09: 处理 server→client request。
-     * ping 返回空 result,未知方法返回 JSON-RPC MethodNotFound。
+     * B3-09: Proceso server→client request.
+     * ping Volver vacío result,El método desconocido devuelve JSON-RPC MethodNotFound.
      */
     private fun handleServerRequest(id: Long, method: String?) {
         scope.launch {
@@ -1361,7 +1361,7 @@ class McpClient(
         }
     }
 
-    /** 发送 JSON-RPC 响应(用于 server→client request 的回包)。 */
+    /** Enviar respuesta JSON-RPC(usado para server→client request paquete de devolución). */
     private suspend fun sendResponse(response: JsonObject) {
         val jsonStr = AppJson.encodeToString(response)
         when (config.transportType) {
@@ -1372,8 +1372,8 @@ class McpClient(
     }
 
     /**
-     * 发送 JSON-RPC 请求,等待响应(带超时)。
-     * SSE 模式:POST 后等 SSE 事件;StreamableHTTP:直接拿响应。
+     * Enviar solicitud JSON-RPC,Esperando respuesta(con tiempo de espera).
+     * SSE modo:POST Espere los eventos SSE más tarde;StreamableHTTP:Obtenga la respuesta directamente.
      */
     private suspend fun sendRequest(id: Long, request: JsonObject, allowSessionRecovery: Boolean = true): JsonObject? {
         val jsonStr = AppJson.encodeToString(request)
@@ -1389,17 +1389,17 @@ class McpClient(
                 withTimeoutOrNull(timeoutMs) { postStreamableRequest(jsonStr) }
             }
             McpTransportType.SSE -> {
-                // SSE 模式:注册 pending channel,POST 请求,等 SSE 事件回来
+                // SSE modo:Registrarse pending channel,POST Solicitar,Espere a que vuelva el evento SSE
                 val channel = Channel<JsonObject>(Channel.CONFLATED)
                 pendingRequests[id] = channel
                 try {
                     withTimeoutOrNull(timeoutMs) {
-                        // POST 请求(server 可能直接返回响应,也可能通过 SSE 事件)
+                        // POST Solicitar(server Puede devolver la respuesta directamente,Posiblemente también a través de eventos SSE)
                         val directResponse = postSseRequest(jsonStr)
                         if (directResponse != null) {
                             directResponse
                         } else {
-                            // 等 SSE 事件
+                            // Espere eventos SSE
                             channel.receiveCatching().getOrNull()
                         }
                     }
@@ -1408,7 +1408,7 @@ class McpClient(
                 }
             }
             McpTransportType.STDIO -> {
-                // P1-A: 注册 pending channel -> 写 stdin -> 等 stdout 行响应
+                // P1-A: Registrarse pending channel -> escribir stdin -> Espere a que responda la línea estándar
                 val channel = Channel<JsonObject>(Channel.CONFLATED)
                 pendingRequests[id] = channel
                 try {
@@ -1440,7 +1440,7 @@ class McpClient(
                     true
                 } else if (streamableSessionInvalidated) {
                     streamableSessionInvalidated = false
-                    Logger.i(TAG, "[${config.name}] MCP session 已失效,重新 initialize 后重试原请求")
+                    Logger.i(TAG, "[${config.name}] MCP session Caducado,Vuelva a intentar la solicitud original después de reinicializar")
                     sendInitialize(allowSessionRecovery = false)
                 } else {
                     false
@@ -1453,7 +1453,7 @@ class McpClient(
         return response
     }
 
-    /** 发送 JSON-RPC 通知(无 id,无响应)。 */
+    /** Enviar notificaciones JSON-RPC(Ninguno id,Sin respuesta). */
     private suspend fun sendNotification(method: String) {
         val request = buildJsonObject {
             put("jsonrpc", "2.0")
@@ -1467,11 +1467,11 @@ class McpClient(
         }
     }
 
-    // ── 重连 ──────────────────────────────────────────────────────────────────
+    // ── Reconectar ──────────────────────────────────────────────────────────────────
 
     /**
-     * 指数退避重连:base * 2^attempt,上限 30s。
-     * 达到 [McpServerConfig.maxReconnectAttempts] 转 FAILED 状态。
+     * Reconexión de retroceso exponencial:base * 2^attempt,Límite superior 30 s.
+     * alcanzar [McpServerConfig.maxReconnectAttempts] Cambie al estado FALLADO.
      */
     private fun scheduleReconnect() {
         if (closed) return
@@ -1480,7 +1480,7 @@ class McpClient(
             return
         }
         if (reconnectAttempts >= config.maxReconnectAttempts) {
-            Logger.w(TAG, "[${config.name}] 超过最大重连次数 ${config.maxReconnectAttempts},转 FAILED")
+            Logger.w(TAG, "[${config.name}] Se superó el número máximo de reconexiones ${config.maxReconnectAttempts},girar FAILED")
             _state.value = McpConnectionState.FAILED
             return
         }
@@ -1491,7 +1491,7 @@ class McpClient(
             RECONNECT_MAX_DELAY_MS,
         )
         reconnectAttempts++
-        Logger.d(TAG, "[${config.name}] 第 $reconnectAttempts 次重连,${delayMs}ms 后重试")
+        Logger.d(TAG, "[${config.name}] No. $reconnectAttempts reconexión,${delayMs}ms Vuelve a intentarlo más tarde")
 
         scope.launch {
             delay(delayMs)
@@ -1499,9 +1499,9 @@ class McpClient(
         }
     }
 
-    // ── 生命周期 ─────────────────────────────────────────────────────────────
+    // ── ciclo de vida ─────────────────────────────────────────────────────────────
 
-    /** 主动关闭连接(不触发重连)。 */
+    /** Cerrar activamente la conexión(No activa la reconexión). */
     override fun close() {
         closed = true
         _state.value = McpConnectionState.DISCONNECTED
@@ -1519,18 +1519,18 @@ class McpClient(
         const val TAG = "McpClient"
         const val PROTOCOL_VERSION = "2025-03-26"
 
-        // L-MCP2: 超时/重连魔法数字提取为常量
+        // L-MCP2: tiempo de espera/Recablear números mágicos extraídos como constantes
         const val SSE_ENDPOINT_TIMEOUT_MS = 5_000L
         const val RECONNECT_MAX_DELAY_MS = 30_000L
         const val FEISHU_REFRESH_MARGIN_MS = 30 * 60 * 1000L
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         val defaultClient = io.zer0.ai.core.ProxyProvider.applyTo(OkHttpClient.Builder())
             .connectTimeout(15, TimeUnit.SECONDS)
-            // v1.114 修复: SSE 长连接场景 readTimeout 60s 偏短(服务端长时间无数据会被误断),
-            //   与 chat client 一致改为 120s
+            // v1.114 Reparación: SSE Escenario de conexión larga readTimeout 60s es demasiado corto(Si el servidor no tiene datos durante mucho tiempo, se desconectará accidentalmente.),
+            //   Consistente con el cliente de chat cambiado a 120s
             .readTimeout(120, TimeUnit.SECONDS)
-            // v1.114 修复: SSE 会话可能持续很久(MCP 工具调用 / 长推理),callTimeout 60s 会强制中断整个会话;
-            //   0 表示无限制,由 readTimeout / pingInterval 控制活性
+            // v1.114 Reparación: SSE Las sesiones pueden durar mucho tiempo.(MCP Llamadas a herramientas/razonamiento largo),callTimeout 60s Interrumpirá con fuerza toda la sesión.;
+            //   0 significa ilimitado,Vida controlada por readTimeout / pingInterval
             .callTimeout(0, TimeUnit.SECONDS)
             .pingInterval(30, TimeUnit.SECONDS)
             .build()

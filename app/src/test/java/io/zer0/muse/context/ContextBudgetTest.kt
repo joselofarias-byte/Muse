@@ -6,17 +6,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * M4.3: 统一上下文预算测试 — 分区上限、头部保留截断、截断注记可诊断。
+ * M4.3: Pruebas de presupuesto de contexto unificado — Los límites de partición, el truncamiento que preserva el encabezado y las anotaciones de truncamiento son diagnósticos.
  */
 class ContextBudgetTest {
 
     @Test
     fun `text within limit passes through unchanged`() {
         val budget = ContextBudget()
-        val result = budget.clamp(ContextSection.LONG_TERM_MEMORY, "短文本")
+        val result = budget.clamp(ContextSection.LONG_TERM_MEMORY, "texto corto")
         assertFalse(result.truncated)
-        assertEquals("短文本", result.text)
-        assertEquals(3, result.originalChars)
+        assertEquals("texto corto", result.text)
+        assertEquals("texto corto".length, result.originalChars)
     }
 
     @Test
@@ -26,27 +26,27 @@ class ContextBudgetTest {
         val result = budget.clamp(ContextSection.LONG_TERM_MEMORY, big)
         assertTrue(result.truncated)
         assertEquals(30_000, result.originalChars)
-        // 保留头部
+        // mantener el encabezado
         assertTrue(result.text.startsWith("m".repeat(1_000)))
-        // 注记包含分区、原始长度与上限,可诊断
-        assertTrue(result.text.contains("分区=LONG_TERM_MEMORY"))
-        assertTrue(result.text.contains("原始 30000"))
-        assertTrue(result.text.contains("上限 24000"))
+        // La anotación incluye partición, longitud original y límite superior.,Diagnosticable
+        assertTrue(result.text.contains("Partición=LONG_TERM_MEMORY"))
+        assertTrue(result.text.contains("originales 30000"))
+        assertTrue(result.text.contains("límite superior de caracteres 24000"))
     }
 
     @Test
     fun `attachment clamping keeps user text intact in buildSendText`() {
-        // 用户输入在拼接顺序最后,不得被附件截断吞掉
+        // La entrada del usuario está al final de la secuencia de empalme.,No debe ser truncado ni absorbido por archivos adjuntos.
         val budget = ContextBudget(
             mapOf(ContextSection.ATTACHMENT_TEXT to 100),
         )
         val docs = listOf("d".repeat(200))
-        val raw = "用户的问题"
-        // 模拟 buildSendText 的行为(真实函数在 app 模块,这里验证预算语义)
+        val raw = "Preguntas de usuario"
+        // Simular el comportamiento de buildSendText(La función real está en el módulo de la aplicación.,Verifique la semántica del presupuesto aquí)
         val clampedDoc = budget.clampText(ContextSection.ATTACHMENT_TEXT, docs.joinToString("\n\n---\n\n"))
         val send = "$clampedDoc\n\n---\n\n$raw"
         assertTrue(send.endsWith(raw))
-        assertTrue(send.contains("内容已按上下文预算截断"))
+        assertTrue(send.contains("El contenido ha sido truncado por el presupuesto contextual."))
     }
 
     @Test
@@ -61,17 +61,17 @@ class ContextBudgetTest {
     @Test
     fun `default limits cover every section`() {
         ContextSection.entries.forEach { section ->
-            assertTrue("分区 $section 应有默认上限", ContextBudget.DEFAULT_LIMITS.containsKey(section))
+            assertTrue("Partición $section Debería haber un límite superior predeterminado", ContextBudget.DEFAULT_LIMITS.containsKey(section))
         }
     }
 
     @Test
     fun `vision description clamp bounds injected descriptions`() {
         val budget = ContextBudget()
-        val big = "图里是".repeat(10_000) // 30_000 字符
+        val big = "Tuli es".repeat(10_000) // 30_000 personaje
         val result = budget.clamp(ContextSection.VISION_DESCRIPTION, big)
         assertTrue(result.truncated)
-        // 审查修复(P2)回归:注记计入预算,结果总长不得超过配置上限
+        // Revisión de corrección(P2)Regresar:Nota incluida en el presupuesto,La longitud total de los resultados no debe exceder el límite de configuración.
         assertTrue(result.text.length <= 12_000)
     }
 
@@ -80,7 +80,7 @@ class ContextBudgetTest {
         val budget = ContextBudget(mapOf(ContextSection.RELEVANT_MEMORY to 500))
         val result = budget.clamp(ContextSection.RELEVANT_MEMORY, "x".repeat(10_000))
         assertTrue(result.truncated)
-        assertTrue("实际长度 ${result.text.length}", result.text.length <= 500)
-        assertTrue(result.text.contains("内容已按上下文预算截断"))
+        assertTrue("longitud real ${result.text.length}", result.text.length <= 500)
+        assertTrue(result.text.contains("El contenido ha sido truncado por el presupuesto contextual."))
     }
 }

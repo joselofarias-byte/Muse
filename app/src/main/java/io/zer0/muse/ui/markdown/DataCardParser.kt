@@ -4,16 +4,16 @@ import io.zer0.common.AppJson
 import kotlinx.serialization.Serializable
 
 /**
- * v1.0.53: 对话数据卡片解析(对应 show_card 工具)。
+ * v1.0.53: Análisis de tarjetas de datos de diálogo.(Corresponde a la herramienta show_card).
  *
- * 消息内容中的 ```card 代码块:
+ * en el contenido del mensaje ```card bloque de código:
  * ```
  * ```card
- * {"type":"bar","title":"本周消息量","labels":["一","二","三"],"values":[12,30,18]}
+ * {"type":"bar","title":"Volumen de noticias esta semana","labels":["uno","dos","tres"],"values":[12,30,18]}
  * ```
  * ```
  *
- * 解析失败返回 null(渲染层降级为原样显示代码块)。
+ * Devolver si falla el análisis null(La capa de renderizado se degrada para mostrar bloques de código tal como están).
  */
 @Serializable
 data class DataCard(
@@ -35,9 +35,9 @@ object DataCardParser {
     private const val CARD_BLOCK_START = "```card"
 
     /**
-     * 从 markdown 文本中提取第一个 ```card 块并解析。
+     * Extrae el primero del texto de rebajas. ```card bloquear y analizar.
      *
-     * @return 解析成功返回 [DataCard];无卡片块/格式非法/数据不合法返回 null
+     * @return Analizando devoluciones exitosamente [DataCard];Sin bloques de cartas/Formato ilegal/Los datos se devuelven ilegalmente. null
      */
     fun parse(markdown: String): DataCard? {
         val startIdx = markdown.indexOf(CARD_BLOCK_START)
@@ -52,7 +52,7 @@ object DataCardParser {
         return parseJson(jsonText)
     }
 
-    /** 从纯 JSON 解析(供测试与独立调用)。 */
+    /** Analizar desde JSON simple(Para pruebas y llamadas independientes). */
     fun parseJson(jsonText: String): DataCard? {
         val card = runCatching {
             AppJson.decodeFromString(DataCard.serializer(), jsonText)
@@ -60,6 +60,6 @@ object DataCardParser {
         return if (card.isValid) card else null
     }
 
-    /** 检测文本是否包含卡片块(渲染分流用)。 */
+    /** Detectar si el texto contiene bloques de tarjetas(Para renderizar descarga). */
     fun containsCardBlock(markdown: String): Boolean = markdown.contains(CARD_BLOCK_START)
 }

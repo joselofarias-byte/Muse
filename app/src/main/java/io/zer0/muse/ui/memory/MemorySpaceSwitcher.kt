@@ -48,15 +48,15 @@ import io.zer0.muse.ui.theme.semiLarge
 import org.koin.androidx.compose.koinViewModel
 
 /**
- * v1.0.52 P2-2: 记忆空间切换器(横向滚动 MuseChip 列表)。
+ * v1.0.52 P2-2: Conmutador de espacio de memoria(Desplácese horizontalmente por la lista de MuseChip).
  *
- * 显示所有 Space,用户点击切换当前 Space。
- * 切换后 MemoryViewModel.selectSpace 会持久化到 SettingsRepository,
- * 并触发 loadAll 重新按 spaceId 过滤事实列表。
+ * Mostrar todo Space,El usuario hace clic para cambiar el espacio actual.
+ * Después de cambiar, MemoryViewModel.selectSpace persistirá en SettingsRepository,
+ * Y active loadAll para volver a filtrar la lista de hechos por spaceId.
  *
- * 与 [io.zer0.muse.ui.MemoryScreen.ScopeFilterChipRow] 的区别:
- *  - Space 切换器:按场景隔离(工作/生活/学习),与 Scope 正交
- *  - Scope 筛选器:按 Agent 隔离(主助手/子助手)
+ * con [io.zer0.muse.ui.MemoryScreen.ScopeFilterChipRow] la diferencia:
+ *  - Space conmutador:Aislar por escena(trabajo/vida/aprender),Ortogonal al alcance
+ *  - Scope filtrar:Cuarentena por agente(asistente principal/sub-asistente)
  */
 @Composable
 fun SpaceSwitcherRow(spaces: List<MemorySpaceEntity>, selectedSpaceId: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -85,13 +85,13 @@ fun SpaceSwitcherRow(spaces: List<MemorySpaceEntity>, selectedSpaceId: String, o
 }
 
 /**
- * v1.0.52 P2-2: 记忆空间管理页面 — Space 的 CRUD 界面。
+ * v1.0.52 P2-2: Página de gestión del espacio de memoria — Space Interfaz CRUD.
  *
- * 功能:
- *  - 展示所有 Space 列表(含事实数量)
- *  - 创建新 Space(顶部 + 按钮)
- *  - 重命名 Space(点击编辑图标)
- *  - 删除 Space(默认 Space 不可删除,删除前事实迁回默认)
+ * Función:
+ *  - Mostrar lista de todos los espacios(Contiene el número de hechos.)
+ *  - crear nuevo Space(botón superior +)
+ *  - Cambiar nombre Space(Haga clic en el icono de edición)
+ *  - Eliminar Space(El espacio predeterminado no se puede eliminar,Mover los datos a los valores predeterminados antes de eliminarlos)
  */
 @Composable
 fun MemorySpaceManageScreen(onBack: () -> Unit, viewModel: MemorySpaceViewModel = koinViewModel()) {
@@ -121,7 +121,7 @@ fun MemorySpaceManageScreen(onBack: () -> Unit, viewModel: MemorySpaceViewModel 
                 .padding(padding),
         ) {
             itemsIndexed(spaces, key = { _, it -> it.id }) { index, space ->
-                // v2.x: 动效补齐 — 空间列表条目入场/重排过渡(上移/下移会带动画)
+                // v2.x: Finalización del efecto de movimiento — Admisión de entrada a la lista de espacios/Reorganizar la transición(subir/Bajar traerá animación.)
                 Box(museAnimateItem()) {
                     SpaceRow(
                         space = space,
@@ -150,7 +150,7 @@ fun MemorySpaceManageScreen(onBack: () -> Unit, viewModel: MemorySpaceViewModel 
             }
         }
 
-        // 操作反馈
+        // Comentarios de operación
         operationMessage?.let { msg ->
             MuseSurface(
                 modifier = Modifier.padding(padding),
@@ -172,7 +172,7 @@ fun MemorySpaceManageScreen(onBack: () -> Unit, viewModel: MemorySpaceViewModel 
                         style = MaterialTheme.typography.bodyMedium,
                         color = MuseActionColors.neutralContent,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
+                        // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -217,7 +217,7 @@ private fun SpaceRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
 ) {
-    // v2.x 统一化: 行内动作收敛为「更多」菜单(防止窄屏文本列被多个按钮挤压)
+    // v2.x unificación: Las acciones en línea convergen en el menú "Más"(Evite que las columnas de texto de la pantalla estrechas sean comprimidas por varios botones)
     val moreCd = stringResource(R.string.settings_mcp_more)
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(

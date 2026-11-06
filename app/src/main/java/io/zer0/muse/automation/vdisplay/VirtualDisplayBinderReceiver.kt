@@ -7,26 +7,26 @@ import io.zer0.common.Logger
 import io.zer0.muse.vdproto.VdContract
 
 /**
- * v2.2.1 虚拟屏:服务端 Binder 手递手接收器(exported=true)。
+ * v2.2.1 pantalla virtual:Receptor mano a mano Binder del lado del servidor(exported=true).
  *
- * 服务端进程以 shell uid 运行,经 AMS 广播(定向到本应用包)送出 binder。
- * 只有 action 与宿主包名同时匹配才接受,防止第三方伪造。
+ * El proceso del servidor se ejecuta como uid de shell.,Transmisión vía AMS(Directo a este paquete de aplicación)Enviar carpeta.
+ * Solo se acepta si la acción coincide tanto con el nombre del paquete de host como con el nombre del paquete de host.,Prevenir la falsificación por parte de terceros.
  */
 class VirtualDisplayBinderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != VdContract.ACTION_BINDER) return
         val host = intent.getStringExtra(VdContract.EXTRA_HOST_PACKAGE)
         if (host != context.packageName) {
-            Logger.w(TAG, "忽略来源不匹配的虚拟屏 binder 广播: host=$host")
+            Logger.w(TAG, "Ignorar transmisiones de carpetas de pantalla virtuales de fuentes no coincidentes: host=$host")
             return
         }
         val binder = intent.extras?.getBinder(VdContract.EXTRA_BINDER) ?: return
         val handoffToken = intent.getStringExtra(VdContract.EXTRA_HANDOFF_TOKEN)
         if (!VirtualDisplayBinderRegistry.accept(binder, handoffToken)) {
-            Logger.w(TAG, "忽略 token 不匹配的虚拟屏 binder 广播")
+            Logger.w(TAG, "Ignorar transmisiones de carpetas de pantalla virtuales con tokens no coincidentes")
             return
         }
-        Logger.i(TAG, "虚拟屏服务端 binder 已就位")
+        Logger.i(TAG, "La carpeta del servidor de pantalla virtual está en su lugar.")
     }
 
     companion object {

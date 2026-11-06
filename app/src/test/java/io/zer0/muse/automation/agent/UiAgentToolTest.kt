@@ -32,15 +32,15 @@ class UiAgentToolTest {
 
         val description = registry.listTools().first { it.name == "ui_agent" }.description
 
-        assertTrue(description.contains("截图可能包含聊天或账号等敏感信息"))
-        assertTrue(description.contains("发送到所选视觉模型分析"))
+        assertTrue(description.contains("información confidencial como chat o cuenta"))
+        assertTrue(description.contains("enviará al modelo visual seleccionado para su análisis"))
     }
 
     @Test
     fun `runner failure is an error outcome for the outer Agent loop`() = runBlocking {
         val runner = mockk<UiAgentRunner>()
         coEvery { runner.run(any(), any(), any(), any(), any()) } returns
-            UiAgentRunner.RunResult(false, "视觉辅助未启用")
+            UiAgentRunner.RunResult(false, "La ayuda visual no está habilitada")
         val registry = registry()
         UiAgentTool(runner).register(registry)
 
@@ -51,7 +51,7 @@ class UiAgentToolTest {
         )
 
         assertTrue(outcome.isError)
-        assertTrue(outcome.content.contains("任务未完成"))
+        assertTrue(outcome.content.contains("Tarea no completada"))
         assertEquals(false, outcome.details["finished"])
         assertTrue(orchestratorText.startsWith("Error:"))
         assertFalse(ToolResultJudge.isSuccess(orchestratorText))
@@ -62,7 +62,7 @@ class UiAgentToolTest {
     fun `finished Agent interaction remains a successful outcome`() = runBlocking {
         val runner = mockk<UiAgentRunner>()
         coEvery { runner.run(any(), any(), any(), any(), any()) } returns
-            UiAgentRunner.RunResult(true, "已观察并报告")
+            UiAgentRunner.RunResult(true, "observado y reportado")
         val registry = registry()
         UiAgentTool(runner).register(registry)
 
@@ -73,7 +73,7 @@ class UiAgentToolTest {
         )
 
         assertFalse(outcome.isError)
-        assertTrue(outcome.content.contains("任务结束"))
+        assertTrue(outcome.content.contains("Misión terminada"))
         assertEquals(true, outcome.details["finished"])
         assertTrue(ToolResultJudge.isSuccess(orchestratorText))
     }

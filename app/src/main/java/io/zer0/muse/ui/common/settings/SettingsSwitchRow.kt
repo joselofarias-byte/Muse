@@ -39,21 +39,21 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * 带开关的设置项行 — 左侧图标 + 标题 + 副标题,右侧 Switch。
+ * Fila de elementos de configuración con interruptores — Icono izquierdo + título + subtítulo,Interruptor derecho.
  *
- * 对齐系统设置开关的视觉。
- * CMP-09: 全项目开关行唯一实现(原通用 `SwitchRow` 已删除并全部迁到此处);
- * 图标可空、副标题可空,两者的形态差异只由参数表达,不再有第二套组件。
+ * Alinee el interruptor de configuración del sistema visualmente.
+ * CMP-09: Única implementación de la línea de conmutación en todo el proyecto.(Ex gerente general `SwitchRow` Eliminado y movido todo aquí.);
+ * El icono puede estar vacío y el subtítulo puede estar vacío.,La diferencia morfológica entre ambos solo se expresa mediante parámetros.,No más segundos conjuntos de componentes.
  *
- * @param icon 左侧图标(null 则不显示)
- * @param title 主标题
- * @param subtitle 副标题(null 则不显示)
- * @param checked 开关状态
- * @param onCheckedChange 开关切换回调
- * @param contentPadding 行内容内边距。默认 [MusePaddings.cardInner],与
- *   [SettingsGroup] / [SettingsItemRow] 内的行对齐;全宽表单(自身已加
- *   `MusePaddings.screen` 水平边距、与 `MuseTextField` 同列)传 `PaddingValues(0.dp)`,
- *   避免二次缩进。
+ * @param icon icono izquierdo(null no se mostrará)
+ * @param title título principal
+ * @param subtitle subtítulo(null no se mostrará)
+ * @param checked estado del interruptor
+ * @param onCheckedChange cambiar de devolución de llamada
+ * @param contentPadding Relleno de contenido de fila. Predeterminado [MusePaddings.cardInner],con
+ *   [SettingsGroup] / [SettingsItemRow] alineación de líneas dentro;formulario de ancho completo(Añadido a sí mismo
+ *   `MusePaddings.screen` Márgenes horizontales y `MuseTextField` Misma columna)pasar `PaddingValues(0.dp)`,
+ *   Evite la doble sangría.
  */
 @Composable
 fun SettingsSwitchRow(
@@ -109,8 +109,8 @@ fun SettingsSwitchRow(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                // LAYOUT-01: 标题限行。仅 weight 取宽不够 —— 剩余宽度极小时仍会逐字换行撑高整行，
-                // 由外层卡片裁掉(线上事故形态)。限 1 行 + 省略号是最后一道兜底。
+                // LAYOUT-01: El título está restringido. Sólo el ancho del peso no es suficiente. —— Cuando el ancho restante es extremadamente pequeño, el ajuste palabra por palabra hará que toda la línea sea más alta.
+                // Cortar de tarjeta exterior(Patrones de accidentes en línea). El límite de 1 línea + puntos suspensivos es el último recurso.
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

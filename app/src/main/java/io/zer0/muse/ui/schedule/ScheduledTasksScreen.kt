@@ -109,11 +109,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v1.104: 把 5 字段 Cron 表达式转为人类可读的中文描述。
+ * v1.104: Convierta la expresión Cron de 5 campos en una descripción china legible por humanos.
  *
- * 覆盖常见模式:每天/每小时/每分钟/工作日/周末/指定星期/指定日期。
- * 不覆盖的复杂表达式返回 null(UI 不显示描述,回退到原始表达式)。
- * 字段顺序:minute hour day-of-month month day-of-week
+ * Cubrir patrones comunes:todos los dias/cada hora/por minuto/jornada laboral/fin de semana/Especificar semana/Especifique la fecha.
+ * Expresiones complejas devueltas sin anular null(UI No mostrar descripción,recurrir a la expresión original).
+ * Orden de campo:minute hour day-of-month month day-of-week
  */
 private fun describeCron(expr: String, res: Resources): String? {
     val parts = expr.trim().split(Regex("\\s+"))
@@ -136,42 +136,42 @@ private fun describeCron(expr: String, res: Resources): String? {
         return "$hh:$mm"
     }
 
-    // 每天 H:M
+    // todos los dias H:M
     if (dom == "*" && month == "*" && dow == "*" && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-")) {
         return res.getString(R.string.schedule_cron_daily, fmtTime(hour, minute))
     }
-    // 每小时 M 分
+    // M minutos por hora
     if (hour == "*" && dom == "*" && month == "*" && dow == "*" && minute != "*" && !minute.contains("-")) {
         return res.getString(R.string.schedule_cron_hourly, minute)
     }
-    // 每分钟
+    // por minuto
     if (minute == "*" && hour == "*" && dom == "*" && month == "*" && dow == "*") {
         return res.getString(R.string.schedule_cron_every_minute)
     }
-    // 工作日 H:M(dow = 1-5)
+    // jornada laboral H:M(dow = 1-5)
     if (dom == "*" && month == "*" && dow == "1-5" && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-")) {
         return res.getString(R.string.schedule_cron_workday, fmtTime(hour, minute))
     }
-    // 周末 H:M(dow = 0,6 或 6,0)
+    // fin de semana H:M(dow = 0,6 o 6,0)
     if (dom == "*" && month == "*" && (dow == "0,6" || dow == "6,0") && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-")) {
         return res.getString(R.string.schedule_cron_weekend, fmtTime(hour, minute))
     }
-    // 指定星期 H:M(dow 是单个数字或逗号列表)
+    // Especificar semana H:M(dow es un solo número o una lista de comas)
     if (dom == "*" && month == "*" && dow != "*" && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-")) {
         val dayNames = dow.split(",").mapNotNull { weekdayName(it.trim()) }
         if (dayNames.isNotEmpty()) {
-            return res.getString(R.string.schedule_cron_weekdays, dayNames.joinToString("、"), fmtTime(hour, minute))
+            return res.getString(R.string.schedule_cron_weekdays, dayNames.joinToString(","), fmtTime(hour, minute))
         }
     }
-    // 每月指定日 H:M
+    // día designado de cada mes H:M
     if (dom != "*" && month == "*" && dow == "*" && minute != "*" && hour != "*" && !minute.contains("-") && !hour.contains("-") && !dom.contains("-")) {
         return res.getString(R.string.schedule_cron_monthly, dom, fmtTime(hour, minute))
     }
     return null
 }
 
-// M-SC2 修复: interval 原先直接显示英文值(once/hourly/daily/weekly/cron),
-// 现统一映射为中文标签,避免用户看到原始枚举值
+// M-SC2 Reparación: interval Originalmente el valor en inglés se mostraba directamente(once/hourly/daily/weekly/cron),
+// Ahora mapeo unificado a etiquetas chinas,Evitar que los usuarios vean el valor de enumeración original
 @Composable
 private fun intervalToLabel(interval: String): String = when (interval) {
     "once" -> stringResource(R.string.schedule_interval_once)
@@ -183,8 +183,8 @@ private fun intervalToLabel(interval: String): String = when (interval) {
 }
 
 /**
- * U-13: CALL_TOOL 动作的常见工具速填模板(帮用户在高级页避免手写内部 toolId/JSON)。
- * 仅收录稳定、公开的公共工具(对应 ToolRegistry.BUILT_IN_TOOL_IDS),不含高风险工具。
+ * U-13: CALL_TOOL Herramientas comunes para la acción Plantillas de llenado rápido(Ayude a los usuarios a evitar escribir a mano dentro de la página avanzada toolId/JSON).
+ * Incluir solo herramientas públicas estables y abiertas(corresponder ToolRegistry.BUILT_IN_TOOL_IDS),No contiene herramientas de alto riesgo.
  */
 private data class ToolTemplate(
     val id: String,
@@ -193,10 +193,10 @@ private data class ToolTemplate(
 )
 
 private val TOOL_TEMPLATES = listOf(
-    ToolTemplate("clipboard_read", "读取剪贴板", "{}"),
-    ToolTemplate("get_current_time", "获取当前时间", "{\"timezone\":\"Asia/Shanghai\"}"),
-    ToolTemplate("calculator", "计算", "{\"expression\":\"1+2*3\"}"),
-    ToolTemplate("browser_navigate", "打开网页", "{\"url\":\"https://example.com\"}"),
+    ToolTemplate("clipboard_read", "leer portapapeles", "{}"),
+    ToolTemplate("get_current_time", "Obtener la hora actual", "{\"timezone\":\"Asia/Shanghai\"}"),
+    ToolTemplate("calculator", "calcular", "{\"expression\":\"1+2*3\"}"),
+    ToolTemplate("browser_navigate", "Abrir página web", "{\"url\":\"https://example.com\"}"),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -212,9 +212,9 @@ fun ScheduledTasksScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    // v1.48: h13 initialValue 用 null,首次进入显示加载态而非闪空状态
-    // ST-01: DAO Flow 加错误捕获 + 重试。loadError 独立于 produceState,
-    // producer 仅在 retryKey 变化时重启,避免在 producer 内写 loadError 触发重组死循环。
+    // v1.48: h13 initialValue usar null,Ingresar al estado de carga por primera vez en lugar de mostrar el estado
+    // ST-01: DAO Flow Agregar captura de error + reintento.loadError independiente de produceState,
+    // producer Reinicie solo cuando cambie retryKey,Evite escribir loadError en el productor para desencadenar un bucle infinito de reorganización.
     var tasksRetryKey by remember { mutableStateOf(0) }
     var tasksLoadError by remember { mutableStateOf<String?>(null) }
     val tasks by produceState<List<ScheduledTaskEntity>?>(null, tasksRetryKey) {
@@ -227,7 +227,7 @@ fun ScheduledTasksScreen(
             tasksLoadError = e.message ?: context.getString(R.string.common_load_failed)
         }
     }
-    // 助手列表(用于新建/编辑任务时选择执行助手)
+    // lista de asistentes(para nuevo/Seleccione el asistente de ejecución al editar una tarea)
     val assistants by assistantRepository.observeAll.collectAsStateWithLifecycle(initialValue = emptyList())
     var showCreate by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<ScheduledTaskEntity?>(null) }
@@ -240,7 +240,7 @@ fun ScheduledTasksScreen(
                 onBack = onBack,
                 largeTitle = true,
                 actions = {
-                    // 后台唤醒状态:后台调度不可见时,用户只能靠猜。只读面板,不改动任何调度。
+                    // estado de alerta de fondo:Cuando la programación en segundo plano es invisible,Los usuarios sólo pueden adivinar. panel de solo lectura,Sin cambios de programación.
                     IconButton(onClick = { showWakeDiagnostics = true }) {
                         Icon(
                             MuseIcons.gauge,
@@ -251,7 +251,7 @@ fun ScheduledTasksScreen(
             )
         },
         floatingActionButton = {
-            // L-SC5: 使用 MuseFloatingButton,与应用风格一致
+            // L-SC5: uso MuseFloatingButton,Consistente con el estilo de la aplicación.
             MuseFloatingButton(
                 icon = MuseIcons.plus,
                 onClick = { showCreate = true },
@@ -261,7 +261,7 @@ fun ScheduledTasksScreen(
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         val tasksList = tasks
-        // ST-01: 加载失败错误态 + 重试(仅在无数据时显示,避免与已有列表重叠)
+        // ST-01: Cargando estado de error fallido + inténtalo de nuevo(Sólo se muestra si no hay datos,Evite la superposición con listas existentes)
         if (tasksLoadError != null && tasksList == null) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -276,7 +276,7 @@ fun ScheduledTasksScreen(
                 )
             }
         } else if (tasksList == null) {
-            // v1.48: h13 首次加载显示居中加载指示器
+            // v1.48: h13 Mostrar indicador de carga centrada en la primera carga
             Column(
                 Modifier.fillMaxSize().padding(innerPadding),
                 verticalArrangement = Arrangement.Center,
@@ -331,7 +331,7 @@ fun ScheduledTasksScreen(
         }
     }
 
-    // 新建任务弹窗
+    // Nueva ventana emergente de tarea
     if (showCreate) {
         TaskDialog(
             existingTask = null,
@@ -345,7 +345,7 @@ fun ScheduledTasksScreen(
             },
         )
     }
-    // 编辑任务弹窗(传入现有 task 时预填字段)
+    // Editar ventana emergente de tarea(Complete previamente los campos al pasar una tarea existente)
     taskToEdit?.let { editing ->
         TaskDialog(
             existingTask = editing,
@@ -374,19 +374,19 @@ private fun TaskCard(
     onEdit: (ScheduledTaskEntity) -> Unit,
     onDelete: () -> Unit,
 ) {
-    // P1-7: 任务项可展开,展示最近 5 次执行历史
+    // P1-7: Los elementos de la tarea se pueden ampliar,Mostrar el historial de las últimas 5 ejecuciones
     var expanded by rememberSaveable(task.id) { mutableStateOf(initiallyExpanded) }
     var executions by remember { mutableStateOf<List<ScheduledTaskExecutionEntity>>(emptyList()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    // U-25: "查看全部历史"对话框状态
+    // U-25: "Ver historial completo"estado de diálogo
     var showAllHistory by remember { mutableStateOf(false) }
     var allHistory by remember { mutableStateOf<List<ScheduledTaskExecutionEntity>>(emptyList()) }
-    // "立即执行"按钮的执行中状态(调试用,调用 ScheduledTaskRunner.executeTask)
+    // "Ejecutar inmediatamente"El estado de ejecución del botón.(para depurar,llamar ScheduledTaskRunner.executeTask)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var executing by remember { mutableStateOf(false) }
 
-    // 展开时加载最近 20 条执行记录(U-25: 由原来 5 条提高到 20 条)
+    // Cargue los últimos 20 registros de ejecución al expandir(U-25: Aumentó de 5 a 20)
     LaunchedEffect(task.id, expanded) {
         if (expanded) {
             executions = executionDao.queryByTaskId(task.id).take(20)
@@ -401,7 +401,7 @@ private fun TaskCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
-            // 头部:状态图标砖 + 名称/内容 + 启停开关(点击整行展开执行历史)
+            // cabeza:icono de estado ladrillo + nombre/Contenido + interruptor de inicio/parada(Haga clic en toda la fila para expandir el historial de ejecución)
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -444,7 +444,7 @@ private fun TaskCard(
                 MuseSwitch(checked = task.enabled, onCheckedChange = onToggle)
             }
 
-            // 元信息徽标行:周期 / 下次执行 / 上次执行
+            // Línea de logotipo de metainformación:Ciclo/próxima ejecución/última ejecución
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -470,7 +470,7 @@ private fun TaskCard(
 
             Spacer(Modifier.size(10.dp))
 
-            // 操作行:立即执行 / 编辑 / 删除 / 历史展开
+            // linea de operacion:Ejecutar inmediatamente/editar/eliminar/expansión del historial
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -494,11 +494,11 @@ private fun TaskCard(
                                 executing = true
                                 resultOf { runner.executeTask(task) }
                                 executing = false
-                                // 执行完成后若已展开,刷新执行历史
+                                // Si se ha ampliado una vez completada la ejecución,Actualizar el historial de ejecución
                                 if (expanded) {
                                     executions = executionDao.queryByTaskId(task.id).take(20)
                                 }
-                                // U-25: toast 本次执行结果摘要(成功/失败 + 输出预览)
+                                // U-25: toast Resumen de resultados de esta ejecución(éxito/Fallo + vista previa de salida)
                                 val latest = resultOf { executionDao.queryByTaskId(task.id) }.getOrNull()?.firstOrNull()
                                 val msg = if (latest == null) {
                                     context.getString(R.string.schedule_executed)
@@ -555,12 +555,12 @@ private fun TaskCard(
                 }
             }
 
-            // P1-7: 展开时显示最近执行历史(时间 + 状态图标 + 回复摘要),失败任务红色标记
+            // P1-7: Mostrar el historial de ejecución reciente cuando se expanda(Hora + icono de estado + resumen de respuesta),Marca roja de tarea fallida
             if (expanded) {
                 ExecutionHistorySection(
                     executions = executions,
                     initiallyExpandLatest = initiallyExpanded,
-                    // U-25: 查看全部历史(查询上限 100 条)
+                    // U-25: Ver historial completo(Límite de consulta: 100 artículos)
                     onViewAll = {
                         scope.launch {
                             allHistory = executionDao.queryAllByTaskId(task.id)
@@ -571,7 +571,7 @@ private fun TaskCard(
             }
         }
     }
-    // U-25: 全部执行历史对话框
+    // U-25: Cuadro de diálogo de todo el historial de ejecución
     if (showAllHistory) {
         MuseDialog(
             onDismissRequest = { showAllHistory = false },
@@ -584,8 +584,8 @@ private fun TaskCard(
                         color = MaterialTheme.colorScheme.outline,
                     )
                 } else {
-                    // v2.0.1 fix（真机崩溃）: MuseDialog 内容区自带 verticalScroll —
-                    // 此处不得再嵌套滚动容器(内层会拿到无限高度约束,实测必崩)。
+                    // v2.0.1 fix(La máquina real falla): MuseDialog El área de contenido viene con verticalScroll —
+                    // No se permite anidar más contenedores de desplazamiento aquí(La capa interior tendrá la restricción de altura infinita.,La prueba real colapsará).
                     Column(Modifier.fillMaxWidth()) {
                         allHistory.forEach { exec ->
                             ExecutionRow(execution = exec)
@@ -613,7 +613,7 @@ private fun TaskCard(
 }
 
 /**
- * 任务元信息小胶囊:周期 / 下次执行 / 上次执行的统一视觉。
+ * Cápsula de metainformación de tareas:Visión unificada de ciclo/próxima ejecución/última ejecución.
  */
 @Composable
 private fun TaskMetaChip(text: String, highlighted: Boolean = false) {
@@ -637,18 +637,18 @@ private fun TaskMetaChip(text: String, highlighted: Boolean = false) {
 }
 
 /**
- * P1-7: 执行历史区域。
+ * P1-7: Área de historial de ejecución.
  *
- * 在任务卡展开后渲染最近 5 次执行记录。每条记录包含:
- *  - 状态图标(成功 CheckCircle / 失败 Error)
- *  - 执行时间
- *  - 回复摘要(成功)或错误信息(失败),失败用红色标记
+ * Procese los últimos 5 registros de ejecución después de expandir la tarjeta de tareas. Cada registro contiene:
+ *  - icono de estado(Círculo de verificación de éxito/fracaso Error)
+ *  - tiempo de ejecución
+ *  - Resumen de respuesta(éxito)o mensaje de error(falló),Los fallos están marcados en rojo.
  */
 @Composable
 private fun ExecutionHistorySection(
     executions: List<ScheduledTaskExecutionEntity>,
     initiallyExpandLatest: Boolean = false,
-    /** U-25: 非空时显示"查看全部历史"入口。 */
+    /** U-25: Se muestra cuando no está vacío"Ver historial completo"entrada. */
     onViewAll: (() -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -675,7 +675,7 @@ private fun ExecutionHistorySection(
                 )
             }
         }
-        // U-25: 查看全部历史入口
+        // U-25: Ver todas las entradas históricas
         if (onViewAll != null && executions.isNotEmpty()) {
             Spacer(Modifier.size(4.dp))
             Text(
@@ -694,12 +694,12 @@ private fun ExecutionHistorySection(
 @Composable
 private fun ExecutionRow(execution: ScheduledTaskExecutionEntity, initiallyExpanded: Boolean = false) {
     val failed = execution.status == "failed"
-    // 错过的轮次:这一轮没有正常跑完,不能拿「执行成功」的勾显示
+    // rondas perdidas:Esta ronda no terminó normalmente.,No se puede mostrar la marca de verificación "ejecución exitosa"
     val missed = execution.status == ScheduledTaskRunner.STATUS_MISSED
     val summary = if (failed) execution.errorMessage else execution.replySummary
     val canExpand = summary.length > 120
     var expanded by rememberSaveable(execution.id) { mutableStateOf(initiallyExpanded) }
-    // L-SC3 修复: 用 MuseDateFormats.DATE_TIME_FULL_SEC 令牌替代硬编码 "MM-dd HH:mm:ss"
+    // L-SC3 Reparación: Reemplace la codificación con el token MuseDateFormats.DATE_TIME_FULL_SEC "MM-dd HH:mm:ss"
     val fmt = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL_SEC, Locale.getDefault()) }
     val iconTint = when {
         failed -> MaterialTheme.colorScheme.error
@@ -733,7 +733,7 @@ private fun ExecutionRow(execution: ScheduledTaskExecutionEntity, initiallyExpan
         )
         Spacer(Modifier.size(8.dp))
         Column {
-            // 时间 + 失败时整行用红色强调
+            // Hora + Toda la línea se resalta en rojo en caso de falla
             val timeColor = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
             Text(
                 text = fmt.format(Date(execution.executedAt)),
@@ -764,7 +764,7 @@ private fun ExecutionRow(execution: ScheduledTaskExecutionEntity, initiallyExpan
 }
 
 /**
- * v1.137: 新建/编辑任务弹窗(支持条件触发、多动作类型、链式任务)。
+ * v1.137: Nuevo/Editar ventana emergente de tarea(Admite activación condicional, múltiples tipos de acciones y tareas en cadena).
  */
 @Composable
 private fun TaskDialog(
@@ -777,14 +777,14 @@ private fun TaskDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 基础字段
+    // Campos básicos
     var name by rememberSaveable { mutableStateOf(existingTask?.name ?: "") }
     var prompt by rememberSaveable { mutableStateOf(existingTask?.prompt ?: "") }
     var assistantId by rememberSaveable { mutableStateOf(existingTask?.assistantId ?: "default") }
     var interval by rememberSaveable { mutableStateOf(existingTask?.interval ?: "daily") }
     var cronExpr by rememberSaveable { mutableStateOf(existingTask?.cronExpr ?: "") }
 
-    // 自动化字段
+    // Campos de automatización
     val initialCondition =
         remember(existingTask?.conditionJson) { existingTask?.conditionJson?.toCondition() ?: AutomationConfig.Condition() }
     var conditionType by rememberSaveable { mutableStateOf(initialCondition.type) }
@@ -812,7 +812,7 @@ private fun TaskDialog(
 
     var nextTaskIds by rememberSaveable { mutableStateOf(existingTask?.nextTaskIdsJson?.toIdsList() ?: emptyList()) }
     var chainCandidates by remember { mutableStateOf<List<io.zer0.muse.data.schedule.TaskIdName>>(emptyList()) }
-    // v1.0.17: 全量任务映射,用于链式任务循环检测(DFS 遍历 nextTaskIdsJson)
+    // v1.0.17: Mapeo completo de tareas,Se utiliza para la detección de bucles de tareas en cadena.(DFS atravesar nextTaskIdsJson)
     var allTasksMap by remember { mutableStateOf<Map<String, ScheduledTaskEntity>>(emptyMap()) }
     LaunchedEffect(existingTask?.id) {
         chainCandidates = dao.listChainCandidates(existingTask?.id ?: "")
@@ -831,14 +831,14 @@ private fun TaskDialog(
         ?: if (assistantId == "default" || assistantId.isBlank()) stringResource(R.string.schedule_default_assistant) else assistantId
 
     val nextRunPreview = remember(interval, cronExpr) {
-        // 预览与落库同口径:一次性任务没有「下次」,不显示预览
+        // La vista previa es del mismo calibre que la biblioteca desplegable.:No existe una "próxima vez" para tareas únicas,No mostrar vista previa
         ScheduledTaskRunner.computeNextRun(interval, cronExpr.trim(), System.currentTimeMillis())
             .takeIf { it > 0 }
     }
     val previewFmt = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, Locale.getDefault()) }
     val previewText = nextRunPreview?.let { stringResource(R.string.schedule_next_run_preview, previewFmt.format(Date(it))) }
 
-    // 未保存修改检测
+    // Detección de modificaciones no guardadas
     var showDiscardConfirm by rememberSaveable { mutableStateOf(false) }
     val initialName = remember(existingTask?.name) { existingTask?.name ?: "" }
     val initialPrompt = remember(existingTask?.prompt) { existingTask?.prompt ?: "" }
@@ -887,8 +887,8 @@ private fun TaskDialog(
                     assistants = assistants,
                     onSelect = { assistantId = it },
                 )
-                // v1.0.28: 改用 FlowRow 自动换行,避免 5 个选项在横向 Row 中空间不足
-                // 导致"自定义 Cron"等长文本竖排崩坏。
+                // v1.0.28: Utilice FlowRow para el ajuste automático de líneas en su lugar,Evite que 5 opciones se queden sin espacio en la fila horizontal
+                // causa"Personalizar Cron"El texto de igual longitud se contrae verticalmente.
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -959,7 +959,7 @@ private fun TaskDialog(
                         }
                     }
                     if (cronExpr.isNotBlank()) {
-                        val desc = remember(cronExpr) { describeCron(cronExpr.trim(), context.resources) } // 前端修复 (i18n-5)
+                        val desc = remember(cronExpr) { describeCron(cronExpr.trim(), context.resources) } // Correcciones en la interfaz (i18n-5)
                         if (desc != null) {
                             Text(
                                 text = desc,
@@ -977,7 +977,7 @@ private fun TaskDialog(
                     )
                 }
 
-                // v1.137: 高级自动化配置
+                // v1.137: Configuración automatizada avanzada
                 MuseCapsuleButton(
                     text = stringResource(if (showAdvanced) R.string.schedule_hide_advanced else R.string.schedule_show_advanced),
                     onClick = { showAdvanced = !showAdvanced },
@@ -1019,13 +1019,13 @@ private fun TaskDialog(
                         candidates = chainCandidates,
                         selectedIds = nextTaskIds,
                         onSelectionChange = { newIds ->
-                            // v1.0.17: 链式任务循环检测 — 勾选新任务时检查是否会形成环
+                            // v1.0.17: Detección de bucle de tareas en cadena — Compruebe si se formará un bucle al seleccionar una nueva tarea
                             val currentTaskId = existingTask?.id ?: ""
                             val addedId = newIds.firstOrNull { it !in nextTaskIds }
                             if (addedId != null && currentTaskId.isNotBlank() &&
                                 hasChainCycle(addedId, currentTaskId, allTasksMap)
                             ) {
-                                MuseToast.show(context.getString(R.string.schedule_chain_cycle_error)) // 前端修复 (i18n-5)
+                                MuseToast.show(context.getString(R.string.schedule_chain_cycle_error)) // Correcciones en la interfaz (i18n-5)
                             } else {
                                 nextTaskIds = newIds
                             }
@@ -1048,7 +1048,7 @@ private fun TaskDialog(
                 errorMessage = errContentRequired
                 return@MuseDialog
             }
-            // U-13: CALL_TOOL 动作前置校验 — 工具 ID 非空 + 参数必须是合法 JSON
+            // U-13: CALL_TOOL Comprobación previa de la acción — El ID de herramienta no está vacío + los parámetros deben ser legales JSON
             if (actionType == AutomationConfig.Action.CALL_TOOL) {
                 if (toolId.isBlank()) {
                     errorMessage = context.getString(R.string.schedule_err_tool_id_required)
@@ -1060,7 +1060,7 @@ private fun TaskDialog(
                 if (parseError != null) {
                     errorMessage = context.getString(
                         R.string.schedule_err_tool_params_invalid,
-                        parseError.message ?: "JSON 语法错误",
+                        parseError.message ?: "JSON error de sintaxis",
                     )
                     return@MuseDialog
                 }
@@ -1068,8 +1068,8 @@ private fun TaskDialog(
             val now = System.currentTimeMillis()
             val cronValue = if (interval == "cron") cronExpr.trim() else ""
             if (interval == "cron") {
-                // cron 表达式非法时仍要拦在保存前;ScheduledTaskRunner 对非法值只降级成
-                // 「无下次执行」,静默保存会把用户语法错误变成一个跑一次就消失的任务。
+                // cron Si la expresión es ilegal, aún así debe bloquearse antes de guardarla.;ScheduledTaskRunner Los valores ilegales sólo se degradan a
+                // "No hay próxima ejecución",El guardado silencioso convierte los errores de sintaxis del usuario en una tarea que se ejecuta una vez y desaparece.
                 val parsed = runCatching { CronExpression.parse(cronValue) }.getOrNull()
                 if (parsed == null) {
                     errorMessage = errCronInvalid
@@ -1171,7 +1171,7 @@ private fun TaskDialog(
 }
 
 /**
- * 助手选择器:展示当前选中助手名称,点击展开下拉菜单选择,绑定 assistantId。
+ * Selector de ayuda:Mostrar el nombre del asistente seleccionado actualmente,Haga clic para expandir la selección del menú desplegable,Vincular ID del asistente.
  */
 @Composable
 private fun AssistantSelector(selectedName: String, assistants: List<AssistantEntity>, onSelect: (String) -> Unit) {
@@ -1227,13 +1227,13 @@ private fun AssistantSelector(selectedName: String, assistants: List<AssistantEn
                         headlineContent = {
                             Column {
                                 Text(a.name.ifBlank { a.id })
-                                // v1.0.17: 能力标签 — 模型名 + 绑定工具数
+                                // v1.0.17: Etiqueta de capacidad — Nombre del modelo + número de herramientas de encuadernación.
                                 val toolCount = runCatching {
                                     AppJson.decodeFromString<List<String>>(a.toolIdsJson).size
                                 }.getOrNull() ?: 0
-                                val modelLabel = a.modelId ?: stringResource(R.string.schedule_default_model) // 前端修复 (i18n-5)
+                                val modelLabel = a.modelId ?: stringResource(R.string.schedule_default_model) // Correcciones en la interfaz (i18n-5)
                                 Text(
-                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount), // 前端修复 (i18n-5)
+                                    stringResource(R.string.schedule_assistant_tools, modelLabel, toolCount), // Correcciones en la interfaz (i18n-5)
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.outline,
                                 )
@@ -1247,14 +1247,14 @@ private fun AssistantSelector(selectedName: String, assistants: List<AssistantEn
 }
 
 /**
- * v1.137: 条件触发配置区。
+ * v1.137: Área de configuración del disparador condicional.
  *
- * 支持选择条件类型并填写对应参数:
- *  - always: 无条件执行
- *  - network_available: 有可用网络时执行
- *  - time_range: 在指定小时范围内执行
- *  - contains: task.prompt 包含指定关键词时执行
- *  - quick_note_exists: 存在匹配标签/关键词的快速记录时执行
+ * Admite seleccionar tipos de condiciones y completar los parámetros correspondientes:
+ *  - always: Ejecutar incondicionalmente
+ *  - network_available: Ejecutado cuando la red está disponible.
+ *  - time_range: Ejecutar dentro del rango de horas especificado
+ *  - contains: task.prompt Ejecutado cuando se incluye la palabra clave especificada
+ *  - quick_note_exists: Existe una etiqueta coincidente/Ejecutado durante la grabación rápida de palabras clave.
  */
 @Composable
 private fun AutomationConditionSection(
@@ -1352,13 +1352,13 @@ private fun AutomationConditionSection(
 }
 
 /**
- * v1.137: 动作配置区。
+ * v1.137: Área de configuración de acciones.
  *
- * 支持选择动作类型并填写对应参数:
- *  - ai_prompt: 调用 AI 执行 prompt(默认)
- *  - create_quick_note: 创建一条快速记录
- *  - call_tool: 调用指定工具
- *  - notify: 发送通知
+ * Admite seleccionar tipos de acciones y completar los parámetros correspondientes:
+ *  - ai_prompt: Llame a AI para ejecutar prompt(Predeterminado)
+ *  - create_quick_note: Crea un registro rápido
+ *  - call_tool: Llame a la herramienta especificada
+ *  - notify: Enviar notificación
  */
 @Composable
 private fun AutomationActionSection(
@@ -1450,7 +1450,7 @@ private fun AutomationActionSection(
                     placeholder = { Text(stringResource(R.string.schedule_action_tool_params_placeholder)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
                 )
-                // U-13: 常见工具速填模板(选中自动填入工具 ID 与示例参数)
+                // U-13: Plantillas de llenado rápido de herramientas comunes(Verifique el ID de la herramienta Autocompletar y los parámetros de muestra)
                 var showToolTemplates by remember { mutableStateOf(false) }
                 Box {
                     Surface(
@@ -1481,7 +1481,7 @@ private fun AutomationActionSection(
                         }
                     }
                 }
-                // U-13: 高级工具说明,引导用户优先用 AI 描述
+                // U-13: Descripción de la herramienta avanzada,Guíe a los usuarios para que prioricen el uso de descripciones de IA
                 Text(
                     text = stringResource(R.string.schedule_tool_advanced_hint),
                     style = MaterialTheme.typography.labelSmall,
@@ -1508,9 +1508,9 @@ private fun AutomationActionSection(
 }
 
 /**
- * v1.0.17: 检测从 taskId 出发沿 nextTaskIdsJson 链是否能回到 targetId(形成环)。
+ * v1.0.17: Compruebe si puede regresar comenzando desde taskId y siguiendo la cadena nextTaskIdsJson targetId(formar un anillo).
  *
- * DFS 遍历后续任务链,若途中遇到 targetId 则说明加入该任务会形成循环链。
+ * DFS Atravesar cadenas de tareas posteriores,Si encuentra targetId en el camino, significa que unirse a la tarea formará una cadena circular.
  */
 private fun hasChainCycle(
     taskId: String,
@@ -1530,9 +1530,9 @@ private fun hasChainCycle(
 }
 
 /**
- * v1.137: 链式任务配置区。
+ * v1.137: Área de configuración de tareas en cadena.
  *
- * 从候选任务列表多选后续任务,当前任务成功执行后会触发这些任务立即执行。
+ * Selección múltiple de tareas posteriores de la lista de tareas candidatas,La ejecución exitosa de la tarea actual desencadenará la ejecución inmediata de estas tareas.
  */
 @Composable
 private fun AutomationChainSection(candidates: List<TaskIdName>, selectedIds: List<String>, onSelectionChange: (List<String>) -> Unit) {
@@ -1567,18 +1567,18 @@ private fun AutomationChainSection(candidates: List<TaskIdName>, selectedIds: Li
     }
 }
 
-// ── 后台唤醒状态 ─────────────────────────────────────────────────────
-// 定时任务「一次都没跑」时,应用自己的执行历史里不会留下任何痕迹:
-// 没有唤醒 → 没有执行记录 → 用户在任务页只看到「上次执行」停在很久以前。
-// 唯一能回答「系统到底有没有排这次唤醒」的就是 WorkManager 队列本身,
-// 所以这里把队列原样摊开(状态 / 下次运行 / 系统停跑原因),并给一份可复制的纯文本快照。
-// 只读:不注册、不取消、不重排任何任务。
+// ── estado de alerta de fondo ─────────────────────────────────────────────────────
+// Cuando la tarea programada "no se ejecutó ni una sola vez",No quedará ningún rastro en el historial de ejecución de la propia aplicación.:
+// sin despertar → Sin registro de ejecución → En la página de tareas, el usuario sólo ve que la "Última ejecución" se detuvo hace mucho tiempo.
+// Lo único que puede responder "si el sistema ha programado este despertar" es la propia cola de WorkManager.,
+// Así que aquí la cola está distribuida tal como está.(Estado/próxima ejecución/motivo del cierre del sistema),Y proporcione una instantánea reproducible de solo texto.
+// solo lectura:Sin registro, sin cancelación, sin reprogramación de ninguna tarea.
 
 /**
- * 后台唤醒状态面板。
+ * Panel de estado de activación en segundo plano.
  *
- * 数据源是 WorkManager 队列本身(见 [BackgroundWakeDiagnostics]):定时任务「一次都没跑」时,
- * 应用自己的执行历史里不会留下任何痕迹,只有这里能回答「系统到底有没有排这次唤醒」。
+ * La fuente de datos es la propia cola de WorkManager.(ver [BackgroundWakeDiagnostics]):Cuando la tarea programada "no se ejecutó ni una sola vez",
+ * No quedará ningún rastro en el historial de ejecución de la propia aplicación.,Sólo aquí se puede responder "si el sistema ha programado este despertar".
  */
 @Composable
 private fun BackgroundWakeSheet(onDismiss: () -> Unit) {
@@ -1643,7 +1643,7 @@ private fun BackgroundWakeSheet(onDismiss: () -> Unit) {
     }
 }
 
-/** 顶部环境事实:总控开关、电池优化豁免、WorkManager 是否可用。 */
+/** Principales datos medioambientales:Interruptor de control maestro, exención de optimización de la batería,WorkManager está disponible. */
 @Composable
 private fun WakeDiagnosticsHeader(report: WakeDiagnostics) {
     val statusColors = MaterialTheme.statusColors
@@ -1686,7 +1686,7 @@ private fun WakeDiagnosticsHeader(report: WakeDiagnostics) {
     }
 }
 
-/** 单条任务:类型 + 状态 + 下次运行 + 重试次数 + 系统停跑原因。 */
+/** Tarea única:Tipo + estado + siguiente ejecución + número de reintentos + motivo del apagado del sistema. */
 @Composable
 private fun WakeEntryRow(entry: WakeWorkEntry) {
     val statusColors = MaterialTheme.statusColors
@@ -1803,7 +1803,7 @@ private fun wakeStateColor(state: WakeState, colors: MuseStatusColors): Color = 
     WakeState.UNKNOWN -> colors.neutral
 }
 
-/** 面板里给用户看的本地时间;快照里的时间由 [BackgroundWakeDiagnostics.formatSnapshot] 固定格式输出。 */
+/** La hora local mostrada al usuario en el panel.;El tiempo en la instantánea está dado por [BackgroundWakeDiagnostics.formatSnapshot] Salida en formato fijo. */
 private fun formatWakeTime(millis: Long?): String? = millis?.let { at ->
     SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, Locale.getDefault()).format(Date(at))
 }

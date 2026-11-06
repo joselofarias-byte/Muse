@@ -1,34 +1,34 @@
 package io.zer0.muse.feature
 
 /**
- * v2.6.7: 功能开关 —— 未成熟功能的统一显隐闸门。
+ * v2.6.7: interruptor de función —— Puerta unificada de manifestación y ocultamiento de funciones inmaduras.
  *
- * 为什么用编译期常量而不是运行时设置：
- *  - 运行时开关（如 `miniPhoneEnabledFlow`）对用户可见、可绕过，隐藏不彻底；
- *  - 编译期常量能让 R8 把不可达分支裁掉，产物里连入口代码都不剩；
- *  - "之后再加回来"只需把常量改回 true，**代码一行不删**。
+ * ¿Por qué utilizar constantes en tiempo de compilación en lugar de configuraciones en tiempo de ejecución?
+ *  - Conmutadores de tiempo de ejecución (como `miniPhoneEnabledFlow`) es visible para los usuarios, se puede omitir y no está completamente oculto;
+ *  - Las constantes en tiempo de compilación permiten que R8 elimine las ramas inalcanzables, sin dejar ningún código de entrada en el producto;
+ *  - "Añádelo más tarde"Simplemente cambie la constante a verdadera,**No elimines ni una sola línea de código**.
  *
- * 约定：所有对外入口（首页菜单、设置条目、导航图路由注册）都必须过这里，
- * 不能只藏 UI 而留着路由 —— 否则通过 deep link / 恢复导航仍能进入。
+ * Acuerdo: todas las entradas externas (menú de inicio, elementos de configuración, registro de ruta del mapa de navegación) deben pasar por aquí.
+ * No puedes simplemente ocultar la interfaz de usuario y mantener la ruta —— De lo contrario, aún puedes ingresar a través de un enlace profundo/restaurar la navegación.
  */
 object FeatureFlags {
     /**
-     * 小手机（MiniPhone）完整功能。
+     * pequeño teléfono celular (MiniPhone) funcionalidad completa.
      *
-     * v2.6.6 关闭过一轮（当时 UI 与交互未定稿）；v2.6.12 起已重写为独立模块
-     * （`:miniphone`，自带数据库与美术体系），重新对外开放。
+     * v2.6.6 Cerrado por una ronda (la interfaz de usuario y la interacción no estaban finalizadas en ese momento);v2.6.12 ha sido reescrito como un módulo independiente
+     * (`:miniphone`, con su propia base de datos y sistema artístico), reabierto al mundo exterior.
      */
     const val MINI_PHONE: Boolean = true
 
     /**
-     * 小手机是否在首页与设置分类页露出入口。
+     * Si el teléfono celular pequeño muestra la entrada en la página de inicio y en la página de categoría de configuración.
      *
-     * 与本功能本身的存放分开：[MINI_PHONE] 控制模块与路由是否存在，
-     * 这一项只控制“看不看得见”。半成品阶段不给主推入口，
-     * 搜索仍能命中、链接仍能进入，模块照常打进包里。
+     * Separado del almacenamiento de esta función en sí:[MINI_PHONE] Si el módulo de control y el enrutamiento existen,
+     * Este artículo sólo controla“No puedo ver ni ver”. En la etapa de producto semiacabado no existe entrada para el empujón principal.
+     * Aún se puede realizar la búsqueda, aún se puede ingresar el enlace y aún se puede empaquetar el módulo en el paquete como de costumbre.
      */
     const val MINI_PHONE_ENTRY: Boolean = false
 
-    /** 小手机内嵌的"AI 朋友圈"（Moments）。依赖 [MINI_PHONE]。 */
+    /** Integrado en teléfonos celulares pequeños"AI Momentos"(Moments). depender de [MINI_PHONE]. */
     const val MOMENTS: Boolean = MINI_PHONE
 }

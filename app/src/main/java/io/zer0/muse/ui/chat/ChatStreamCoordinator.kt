@@ -38,21 +38,21 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.uuid.Uuid
 
 /**
- * v1.131: <think>...</think> 标签正则已迁移到 io.zer0.muse.util.MusePatterns.THINK_TAG_REGEX。
+ * v1.131: <think>...</think> La etiqueta regex se ha migrado a io.zer0.muse.util.MusePatterns.THINK_TAG_REGEX.
  */
 
 /**
- * v2.6.x: 本轮上下文窗口口径的**单一出口**。
+ * v2.6.x: El calibre de la ventana de contexto circular actual**salida única**.
  *
- * 背景:UI 侧 [io.zer0.muse.ui.ChatUiState.contextMaxTokens] 由
- * `ChatViewModel.refreshContextInfo` 按**全局选中模型**算出。实际请求可能因会话覆盖 /
- * 助手绑定走另一个模型 —— 此时 90% 激进截断、1.35 倍硬拦截、预热与压缩预算都会按
- * **另一个模型**的窗口计算(小窗口模型被当成大窗口 → 超限 400;大窗口模型被当成小窗口
- * → 无谓压缩、丢失上下文)。
+ * fondo:UI lado [io.zer0.muse.ui.ChatUiState.contextMaxTokens] por
+ * `ChatViewModel.refreshContextInfo` prensa**Modelo seleccionado globalmente**Descúbrelo. Las solicitudes reales pueden ser anuladas por sesión /
+ * El asistente se une a otro modelo. —— En este punto, 90% de truncamiento agresivo,1.35 Los presupuestos de intercepción dura, calentamiento y compresión serán todos
+ * **otro modelo**cálculo de ventana(El modelo de ventana pequeña se trata como una ventana grande. → por encima del límite 400;Los modelos de ventanas grandes se tratan como ventanas pequeñas.
+ * → Compresión innecesaria, pérdida de contexto.).
  *
- * 这里优先用本轮 [StreamRunState.effectiveModel] 的窗口;模型未声明时用
- * [ModelContextWindowRegistry] 按 id 兜底;都拿不到才回退到调用方传入的
- * [fallbackTokens](即 UI 侧按全局模型算出的值,保持旧行为)。
+ * Se da prioridad al uso de esta ronda aquí. [StreamRunState.effectiveModel] ventana;Se utiliza cuando el modelo no está declarado.
+ * [ModelContextWindowRegistry] Averigüe por identificación;Si no puede obtenerlo, recurrirá al que le pasó la persona que llama.
+ * [fallbackTokens](Es decir, el valor calculado a partir del modelo global en el lado de la interfaz de usuario.,mantener el viejo comportamiento).
  */
 internal fun effectiveContextWindowTokens(model: Model?, fallbackTokens: Int): Int {
     val declared = model?.contextWindow?.takeIf { it > 0 }
@@ -62,40 +62,40 @@ internal fun effectiveContextWindowTokens(model: Model?, fallbackTokens: Int): I
 }
 
 /**
- * 本轮请求实际绑定的模型与 Provider（[ChatStreamCoordinator.resolveModelBinding] 的返回值）。
+ * El modelo realmente vinculado a esta ronda de solicitudes es el mismo que el del Proveedor ([ChatStreamCoordinator.resolveModelBinding] valor de retorno).
  *
- * 把“请求的 provider/model”与“解析后真正可用的 Model”放在同一个值里，
- * 让上下文窗口口径（[effectiveContextWindowTokens]）与工具/视觉路由共用同一份解析结果。
+ * poner“Solicitado provider/model”con“Qué está realmente disponible después del análisis Model”Ponlo en el mismo valor,
+ * dejar que la ventana de contexto calibre ([effectiveContextWindowTokens]) y herramientas/El enrutamiento visual comparte los mismos resultados de análisis.
  */
 internal data class GenerationModelBinding(
     val requestedProviderId: String?,
     val requestedModelId: String?,
-    /** 解析后真正要发给上游的模型（已应用激活 Provider 优先 + 三态兜底）。 */
+    /** Después del análisis, el modelo se envía realmente al nivel ascendente (se ha aplicado prioridad de proveedor activada + copia de seguridad de tres estados). */
     val model: Model?,
-    /** 与 [model] 对应的 Provider 配置（已应用助手级自定义 header/body 覆盖）。 */
+    /** con [model] Configuración del proveedor correspondiente (con anulaciones personalizadas de encabezado/cuerpo de nivel auxiliar aplicadas). */
     val providerConfig: io.zer0.ai.core.ProviderConfig?,
 )
 
 /**
- * v1.105 阶段 3: 从 ChatViewModel 抽离的流式辅助 Coordinator。
+ * v1.105 Etapa 3: Coordinador auxiliar de streaming extraído de ChatViewModel.
  *
- * 职责:
- *  - detachStreaming: 切页/切会话时脱离流式 UI(不停止后台生成)
- *  - notifySessionEndForCurrent: 通知 MemoryTicker 当前 session 结束
- *  - updateAssistant: 流式过程中更新 assistant 消息(含 mood/reflection/think 标签提取)
- *  - persistCurrentAssistant: 周期性落盘(流中进度持久化)
- *  - persistInterruptedAssistant: 标记 [已中断] 并把部分回复落盘
- *  - extractThinkContent / extractTagContent: 字符串标签提取工具
+ * Responsabilidades:
+ *  - detachStreaming: Cortar páginas/Desactivar la transmisión al cambiar de sesión UI(No detener la generación de fondo)
+ *  - notifySessionEndForCurrent: Notificar a MemoryTicker que la sesión actual finaliza
+ *  - updateAssistant: Actualizar mensajes del asistente durante la transmisión(Contiene extracción de etiquetas de estado de ánimo/reflexión/pensamiento)
+ *  - persistCurrentAssistant: Colocación periódica(Persistencia del progreso en el flujo)
+ *  - persistInterruptedAssistant: marca [interrumpido] Y poner parte de la respuesta en el mercado.
+ *  - extractThinkContent / extractTagContent: Herramienta de extracción de etiquetas de cadena
  *
- * launchStream 主体(835 行)因捕获大量局部变量且与 ChatViewModel 多个字段强耦合,
- * 保留在 ChatViewModel 中,通过本 Coordinator 调用辅助方法。
+ * launchStream sujeto(835 OK)Debido a la captura de una gran cantidad de variables locales y al fuerte acoplamiento con múltiples campos de ChatViewModel,
+ * Permanecer en ChatViewModel,Llame al método auxiliar a través de este Coordinador.
  */
-// A5: LargeClass 豁免 — 类体 LOC 恰在 detekt 600 阈值边界(历史体量已接近上限,
-// A5 为 persistInterruptedAssistant 补 1 个 durationMs 参数即越线)。拆分属独立重构任务,
-// 与本功能无关,暂以注释说明豁免(先例: ToolOrchestrator @Suppress("LongParameterList"))。
-// v2.x: LongParameterList 一并豁免 — 本类构造参数早已超过阈值(15 个),此前未报是因为
-// 上限刚好卡在边界;新增 checkpointReader(上下文检查点读取)使其显式越线。它注入的是既有依赖,
-// 不是新引入的耦合,拆分构造参数属于与本次功能无关的重构。
+// A5: LargeClass exención — El LOC del cuerpo de clase está exactamente en el límite del umbral detekt 600(El volumen histórico se acerca al límite superior,
+// A5 Agregar un parámetro de duraciónMs a persistInterruptedAssistant cruzará la línea.). Dividir en tareas de refactorización independientes,
+// Nada que ver con esta función.,Explicación de la exención por el momento.(precedente: ToolOrchestrator @Suppress("LongParameterList")).
+// v2.x: LongParameterList exento por completo — Este tipo de parámetro constructivo ya ha superado el umbral(15 un),No se informó antes porque
+// El límite superior está atrapado en la frontera.;Nuevo checkpointReader(Lectura del punto de control de contexto)Haz que cruce explícitamente la línea. Inyecta dependencias existentes.,
+// No es un acoplamiento recién introducido,Dividir los parámetros de construcción es una refactorización que no tiene nada que ver con esta función.
 @Suppress("LargeClass", "LongParameterList")
 class ChatStreamCoordinator(
     private val accessor: ChatStateAccessor,
@@ -113,23 +113,23 @@ class ChatStreamCoordinator(
     private val promptInjectionRepository: PromptInjectionRepository,
     private val transformerPipeline: TransformerPipeline,
     private val checkpointReader: io.zer0.memory.summary.ContextCheckpointReader,
-    // P1-1: Hook 注册表 — 在管道执行后调用 PromptFinalizeHook
+    // P1-1: Hook Registro — Llamado después de la ejecución de la canalización PromptFinalizeHook
     private val hookRegistry: io.zer0.muse.hook.HookRegistry? = null,
-    // v2.6.2（用户反馈）: 工具审批策略存储 —— 用于把用户显式禁用的工具
-    // 从发给模型的 schema 中剔除（之前只挡执行，模型每轮仍看到并调用，被拒后重试）。
+    // v2.6.2(comentarios de los usuarios): Almacenamiento de políticas de aprobación de herramientas —— Herramientas para deshabilitar usuarios explícitamente
+    // Elimínelo del esquema enviado al modelo (anteriormente solo bloqueaba la ejecución, el modelo aún lo ve y lo llama en cada ronda, y vuelve a intentarlo después de ser rechazado).
     private val toolConfigStore: io.zer0.muse.tools.ToolConfigStore? = null,
 ) {
 
     /**
-     * v2.7 性能：流式刷新的派生结果缓存。
+     * v2.7 Rendimiento: caché de resultados derivados para actualizaciones de transmisión.
      *
-     * 流式期间 content 只追加不重写，所以「标签标记是否存在」「mood 提取结果」
-     * 「reasoning 的标签剥离结果」在首次算出后都不再变化。
-     * 原先这些每帧都对全文跑一次正则，长回复时是主要卡顿源。
+     * Durante la transmisión, el contenido solo se agrega y no se reescribe, por lo que "si la etiqueta existe"mood Extraer resultados
+     * 「reasoning Los "resultados de eliminación de etiquetas" no cambiarán después del primer cálculo.
+     * Originalmente, estas regularizaciones se ejecutaban en el texto completo de cada cuadro, lo que era la principal fuente de retraso durante las respuestas largas.
      */
     private val streamFlushCache = StreamFlushCache()
 
-    /** MOOD/MOD 的两种标签写法，正文与 reasoning 通道共用。 */
+    /** MOOD/MOD Hay dos formas de escribir etiquetas: se comparte el cuerpo principal y el canal de razonamiento. */
     private fun containsMoodMarker(text: String): Boolean = text.contains("<mood>", ignoreCase = true) ||
         text.contains("[mood]", ignoreCase = true) ||
         text.contains("<mod>", ignoreCase = true) ||
@@ -137,58 +137,58 @@ class ChatStreamCoordinator(
 
     private val tag = "ChatVM"
 
-    // 切会话后旧生成仍会继续落库，但不会再命中当前 UI 消息列表。
-    // 对同一个 detached assistant 限频日志，避免每个流式 chunk 都刷一条 warning/debug。
+    // Después de cambiar de sesión, la generación anterior seguirá incluyéndose en la biblioteca, pero ya no aparecerá en la lista de mensajes de la interfaz de usuario actual.
+    // Limite los registros de frecuencia para el mismo asistente independiente para evitar escribir una advertencia/depuración para cada fragmento de transmisión.
     private val missingAssistantLogAt = java.util.concurrent.ConcurrentHashMap<Uuid, Long>()
 
     /**
-     * v1.0.27 Phase 4-A.2: 表情包工具名常量,与 ChatViewModel 的同名集合保持一致。
-     * sticker 概率控制时,未命中则从 tools 过滤掉这两个工具。
+     * v1.0.27 Phase 4-A.2: Constantes de nombre de herramienta de paquete de expresión,Consistente con la colección ChatViewModel del mismo nombre.
+     * sticker Tiempo de control de probabilidad,Si no se golpean, estas dos herramientas se filtran de las herramientas.
      */
     private val stickerToolIds = setOf("list_stickers", "send_sticker")
 
     /**
-     * v1.0.27 Phase 4-A.2: id 列表 JSON 解析辅助。
-     * 与 ChatViewModel.parseIdList 保持一致的语义,避免跨类调用。
+     * v1.0.27 Phase 4-A.2: id Enumere el asistente de análisis JSON.
+     * Semántica consistente con ChatViewModel.parseIdList,Evite las llamadas entre clases.
      */
     private fun parseIdList(json: String): List<String> = runCatching { idListJson.decodeFromString<List<String>>(json) }
         .getOrDefault(emptyList())
 
-    // ── 流式状态控制 ──────────────────────────────────────────────────
+    // ── Control del estado de transmisión ──────────────────────────────────────────────────
 
     /**
-     * v1.97: 切页/切会话/切 Tab 时脱离流式 UI,不停止后台生成。
+     * v1.97: Cortar páginas/Cambiar de sesión/Salga de la transmisión al cambiar de pestaña UI,No detiene la generación de fondo.
      *
-     * 与 stop() 的区别:
-     * - stop():用户主动停止,取消 SSE 连接 + 生成协程
-     * - detachStreaming():切页触发,生成闭包继续在 appScope 运行
-     *   - updateAssistant 因 index==-1 静默跳过(不更新错误会话的 messages)
-     *   - persistCurrentAssistant 用 builder 内容直接落盘(不依赖 _state.messages)
-     *   - 通知仍正常更新(notificationManager 不依赖 _state)
-     *   - 切回原会话时从 DB 加载最新内容(含中间落盘)+ 恢复 isStreaming
+     * con stop() la diferencia:
+     * - stop():El usuario se detiene activamente,Cancelar conexión SSE + generar corrutina
+     * - detachStreaming():Gatillo de corte de página,El cierre generado continúa ejecutándose en appScope
+     *   - updateAssistant porque index==-1 Saltar en silencio(No actualizar la sesión de error messages)
+     *   - persistCurrentAssistant Utilice contenido de creación para colocarlo directamente en el mercado(no depende de _state.messages)
+     *   - Las notificaciones siguen actualizándose normalmente.(notificationManager no depende de _state)
+     *   - Cargue el contenido más reciente de la base de datos al volver a la sesión original(Incluye placa de caída intermedia)+ restaurar isStreaming
      */
     fun detachStreaming() {
         accessor.update { it.copy(isStreaming = false) }
     }
 
     /**
-     * 通知 ticker 当前 session 结束(fire-and-forget)。
+     * Notificar al ticker que la sesión actual finaliza(fire-and-forget).
      *
-     * Phase 8.5 修复: 原实现用 `runBlocking { settings.getSelectedModel() }` 在主线程阻塞,
-     * onCleared / createNewSession / switchSession 调用时会 ANR。
-     * 改为:model 传 null(MemoryTicker 内部 launchTracked 异步执行,能处理 null model
-     * 的降级场景),完全去掉 runBlocking。
+     * Phase 8.5 Reparación: Implementación original `runBlocking { settings.getSelectedModel() }` Bloquear en el hilo principal,
+     * onCleared / createNewSession / switchSession ANR ocurre cuando se llama.
+     * Cambiar a:model pasar null(MemoryTicker LaunchTracked interno se ejecuta de forma asincrónica,puede manejar null model
+     * escenario de degradación),Elimine runBlocking por completo.
      */
     fun notifySessionEndForCurrent() {
-        // v1.136: Agent 模式用 agentSessionId,任务模式用 currentSessionId
+        // v1.136: Agent Para el modo agentSessionId,Para el modo misión currentSessionId
         val state = accessor.snapshot
         val sessionId =
             (if (state.isAgentMode) state.agentSessionId else state.currentSessionId)
                 ?: return
         val fallbackMessages = accessor.messagesSnapshot
         if (fallbackMessages.isNotEmpty()) {
-            // onCleared 时 viewModelScope 即将取消;MemoryTicker 用自己的 application scope fire-and-forget
-            // model 传 null,MemoryTicker 内部降级用默认模型
+            // onCleared cuando viewModelScope está a punto de cancelarse;MemoryTicker usa el tuyo application scope fire-and-forget
+            // model pasar null,MemoryTicker La degradación interna utiliza el modelo predeterminado
             memoryTicker.notifySessionEndFromProvider(
                 sessionId,
                 messagesProvider = {
@@ -205,43 +205,43 @@ class ChatStreamCoordinator(
         }
     }
 
-    // ── 消息更新 ──────────────────────────────────────────────────────
+    // ── Actualización de noticias ──────────────────────────────────────────────────────
 
     /**
-     * 流式过程中更新 assistant 消息。
+     * Actualiza los mensajes del asistente durante la transmisión.
      *
-     * v1.42: 性能优化开关。
-     * - true(流式中):走快速路径,跳过 mood/reflection/think 正则剥离;
-     *   只在 content 中确实出现相关标签时才降级到完整提取。
-     * - false(默认,流式结束或非流式更新):执行完整标签提取与合并,得到最终展示内容。
+     * v1.42: Interruptor de optimización del rendimiento.
+     * - true(Transmisión):Toma el camino rápido,Saltar el estado de ánimo/reflexión/pensar en desnudarse regularmente;
+     *   Sólo baje a extracción completa si la etiqueta relevante aparece en el contenido.
+     * - false(Predeterminado,Finalización de la transmisión o actualización sin transmisión):Realizar extracción y fusión completa de etiquetas,Obtenga el contenido de la presentación final.
      *
-     * v1.80 (M-CVM3): 性能权衡说明 —— 这里用 messages.toMutableList() 做 O(n) 全列表复制,
-     * 在流式高频更新(每 40 字符)下有一定开销。理论上改用 PersistentList 可避免复制,
-     * 但会牵动 ChatUiState.messages 类型与全部消费方(改动大、风险高)。
-     * 当前消息量级(通常 < 数百条)下 O(n) 复制可接受,权衡后保留 toMutableList 方案。
+     * v1.80 (M-CVM3): Compensaciones de rendimiento explicadas —— Usado aquí messages.toMutableList() hacer O(n) Copiar lista completa,
+     * Actualizaciones de alta frecuencia en streaming(cada 40 caracteres)Hay una cierta cantidad de gastos generales. En teoría, cambiar a PersistentList puede evitar la copia,
+     * Pero afectará al tipo ChatUiState.messages y a todos los consumidores.(Grandes cambios, altos riesgos).
+     * Nivel de mensaje actual(normalmente < cientos)abajo O(n) Copia aceptable,En definitiva, mantenga la solución toMutableList.
      */
     fun updateAssistant(
         id: Uuid,
         content: String,
         reasoning: String? = null,
         imageBase64List: List<String>? = null,
-        // v1.80 (M-CVM4): 新增 imageUrls 参数,允许在一次 state 更新中同时刷新图片 URL,
-        // 避免调用方在 updateAssistant 之后再单独更新 messages(双重列表复制 + 双次 state 写入)。
+        // v1.80 (M-CVM4): Parámetro imageUrls agregado,Permitir que las imágenes se actualicen simultáneamente en una actualización de estado URL,
+        // Evite que la persona que llama actualice por separado después de updateAssistant messages(Copia de lista doble + escritura de doble estado).
         imageUrls: List<String>? = null,
-        // v1.135: 支持助手消息附加生成的视频 URL,MessageBubble 据此渲染可播放视频卡片。
+        // v1.135: Video generado con archivo adjunto de mensaje del asistente de soporte URL,MessageBubble Renderice una tarjeta de video reproducible en consecuencia.
         videoFileUri: String? = null,
         isStreaming: Boolean = false,
     ) {
         val messages = accessor.messagesSnapshot
         val index = messages.indexOfFirst { it.id == id }
-        // v1.0.21: index==-1 时静默跳过,不 fallback 追加。
-        // v1.125 的 fallback append 会导致切会话后后台生成把旧会话的流式内容
-        // 追加到新会话的消息列表中,造成跨会话消息污染(用户消息变助手消息的根因)。
-        // 后台生成的持久化走 persistCurrentAssistant(msg=...) 直接落盘,不依赖 _state.messages。
-        // 切回原会话时从 DB 加载最新内容(含中间落盘),不会丢失数据。
-        // v1.0.72: 加日志 — 排查"生成图片/视频后前台不显示"(消息 id 不匹配时静默丢失更新)
-        // B-26: 切会话后后台生成每 50ms 打一条 warning = 日志风暴;持久化走
-        // persistCurrentAssistant(msg=...) 落盘兜底,前台刷新从 DB 加载,这里降级为 debug。
+        // v1.0.21: index==-1 saltar en silencio,No se adjunta ninguna alternativa.
+        // v1.125 El anexo alternativo hará que el fondo genere el contenido de transmisión de la sesión anterior después de cambiar de sesión.
+        // Agregar a la lista de mensajes de una nueva conversación,Provocando contaminación de mensajes entre sesiones(La causa fundamental de que los mensajes de los usuarios se conviertan en mensajes del asistente).
+        // Persistencia generada en segundo plano. persistCurrentAssistant(msg=...) Colocación directa,No depende de _state.messages.
+        // Cargue el contenido más reciente de la base de datos al volver a la sesión original(Incluye placa de caída intermedia),No se perderán datos.
+        // v1.0.72: Agregar registro — solución de problemas"Generar imágenes/La recepción no aparece después del vídeo."(Actualizaciones perdidas silenciosamente cuando los ID de los mensajes no coinciden)
+        // B-26: Después de cambiar de sesión, el fondo genera un mensaje cada 50 ms. warning = tormenta de troncos;La persistencia va
+        // persistCurrentAssistant(msg=...) Da el paso,Cargas de actualización en primer plano desde la base de datos,Bajar de categoría para depurar aquí.
         if (index == -1) {
             val now = System.currentTimeMillis()
             val previous = missingAssistantLogAt.put(id, now)
@@ -254,10 +254,10 @@ class ChatStreamCoordinator(
                     }
                 Logger.d(
                     tag,
-                    "updateAssistant 跳过 detached assistant: id=${id.toString().take(8)}, " +
+                    "updateAssistant saltar detached assistant: id=${id.toString().take(8)}, " +
                         "displayedSession=$displayedSession, " +
                         "contentLength=${content.length}, hasImage=${!imageBase64List.isNullOrEmpty() || !imageUrls.isNullOrEmpty()}, " +
-                        "后台生成仍由目标会话落库",
+                        "La sesión de destino aún descarta la generación de fondo",
                 )
             }
             return
@@ -265,17 +265,17 @@ class ChatStreamCoordinator(
         missingAssistantLogAt.remove(id)
         val msg = messages[index]
 
-        // v2.7: 同一消息的流式缓存；切消息或内容变短时自动作废。
+        // v2.7: Caché de transmisión del mismo mensaje; se invalida automáticamente cuando el mensaje o contenido se vuelve más corto.
 
         streamFlushCache.begin(id.toString(), content.length)
 
         if (!isStreaming) streamFlushCache.invalidateDerived()
 
-        // v1.42: 快速路径 — 流式过程中绝大多数 chunk 不含特殊标签,直接按索引更新,避免遍历全列表与正则。
-        // v1.0.90: 检测口径从"完整开标签"改为"标签名标记" —— 模型只吐半个标签(<mood)
-        // 或孤立闭标签(</mood>、</think>)时，旧逻辑误判为普通正文走快速路径，
-        // 标签原文就上屏了。凡命中标记一律走完整清洗路径。
-        // v2.7: 命中过就不再重扫全文（正文只追加，已有标记不会消失）。
+        // v1.42: camino rápido — La mayoría de los fragmentos del proceso de transmisión no contienen etiquetas especiales.,Actualizar directamente por índice,Evite recorrer listas completas y expresiones regulares.
+        // v1.0.90: El calibre de detección oscila entre"Abrir etiqueta completamente"Cambiar a"Etiqueta de nombre de etiqueta" —— La modelo solo escupe media etiqueta.(<mood)
+        // o etiqueta de cierre aislada(</mood>,</think>)En este momento, la vieja lógica juzga erróneamente que el texto ordinario toma el camino rápido.
+        // El texto de la etiqueta original aparece en la pantalla. Siempre que llegue a la marca, siga el camino de limpieza completo.
+        // v2.7: Si hay un resultado, no se volverá a escanear el texto completo (el texto sólo se agregará, las marcas existentes no desaparecerán).
 
         val hasSpecialTags =
 
@@ -296,14 +296,14 @@ class ChatStreamCoordinator(
             return
         }
 
-        // 完整路径:流式结束或 content 含特殊标签时,执行 mood/reflection/think 提取。
+        // camino completo:Cuando finaliza la transmisión o el contenido contiene etiquetas especiales,Realizar extracción de estado de ánimo/reflexión/pensamiento.
         val contentAfterMood = content
-        // 无论模型使用 mood 还是 mod、尖括号还是方括号，都先收集到同一个可折叠字段。
-        // 正文稍后由 InternalMarkupSanitizer 统一剥离，避免“标签消失但 mood 也没保存”。
-        // v2.7: mood 块闭合后结果不再变化，复用上次提取结果，避免每帧全文正则。
+        // Independientemente de si el modelo utiliza humor o mod, corchetes angulares o corchetes, primero se recopila el mismo campo plegable.
+        // Posteriormente, InternalMarkupSanitizer elimina uniformemente el texto para evitar“La etiqueta desaparece pero el ánimo tampoco se salva.”.
+        // v2.7: mood El resultado no cambia después de cerrar el bloque y el último resultado de extracción se reutiliza para evitar la regularización de texto completo de cada cuadro.
 
         val moodContent = streamFlushCache.mood(content) { InternalMarkupSanitizer.extractMood(it) }
-        // B6-02: moodfx 独立解析,不与应用自带 <mood> 串台
+        // B6-02: moodfx análisis independiente,No incluido con la aplicación <mood> cruzar
         val (moodSkinContent, contentAfterMoodSkin) =
             if (contentAfterMood.contains("<moodfx>", ignoreCase = true)) {
                 MoodSkinParser.extract(contentAfterMood)
@@ -318,23 +318,23 @@ class ChatStreamCoordinator(
             }
         val (cleanContentRaw, thinkContent) = extractThinkContent(contentAfterReflection)
         val cleanContent = InternalMarkupSanitizer.stripForDisplay(cleanContentRaw)
-        // v1.0.73: mood 兜底 — 模型(尤其深度思考)可能把 <mood> 腹稿写进思考通道
-        // (reasoning_content),而正文 content 里没有。此时从 reasoning 里提取 mood,
-        // 让 mood 块照常显示;提取后从 reasoning 中剥掉该块(思考里不再重复展示)。
+        // v1.0.73: mood Ten todo en cuenta — modelo(pensamiento especialmente profundo)puede poner <mood> El manuscrito está escrito en el canal del pensamiento.
+        // (reasoning_content),No hay contenido en el texto principal. Extraído del razonamiento en este momento. mood,
+        // Deje que el bloque de estado de ánimo se muestre como de costumbre.;Quitar el trozo del razonamiento después de la extracción.(No lo volveré a mostrar en mis pensamientos.).
         var effectiveMood = moodContent
         var effectiveReasoningInput = reasoning
         if (effectiveMood == null && !reasoning.isNullOrBlank() && containsMoodMarker(reasoning)
         ) {
             effectiveMood = InternalMarkupSanitizer.extractMood(reasoning)
-            // reasoning 里可能同时有 <mood> 和 <think>;只移除 mood 块，不能把
-            // mood 正文当成 reasoning 继续展示。
+            // reasoning Puede haber ambos <mood> y <think>;Sólo elimina el bloqueo del estado de ánimo, no el
+            // mood El texto principal continúa mostrándose como razonamiento.
             effectiveReasoningInput =
                 InternalMarkupSanitizer.stripContainerTags(
                     InternalMarkupSanitizer.stripMoodBlocks(reasoning),
                 )
         }
-        // v2.x: MOOD 调试出口 — 提取结果/来源/预览,以及"有标记但解析不出"的告警,
-        // 便于出问题时在 logcat 中用 MoodDebug 过滤定位(不再只能靠猜)。
+        // v2.x: MOOD salida de depuración — Extraer resultados/Fuente/Vista previa,y"Hay una marca pero no se puede analizar."alarma,
+        // Es conveniente utilizar MoodDebug para filtrar y localizar en logcat cuando ocurren problemas.(No más adivinanzas).
         if (!isStreaming) {
             if (effectiveMood != null) {
                 Logger.d(
@@ -350,13 +350,13 @@ class ChatStreamCoordinator(
                 )
             }
         }
-        // v1.62 修复:reasoning 重复问题。
-        // 旧逻辑把 existingReasoning + newReasoning + thinkContent 三者拼接,
-        // 导致 finalize 时翻倍(existingReasoning==newReasoning)、
-        // <think> 标签模式线性增长(每次 ContentDelta 都拼接 thinkContent)。
-        // 新逻辑:reasoning 参数非空时直接覆盖(来自 ReasoningDelta 累积,已是完整值);
-        // reasoning 参数为 null 时,用 thinkContent(content 中 <think> 提取)作为 fallback;
-        // 两者都无时保留 msg.reasoning。
+        // v1.62 Reparación:reasoning Repita la pregunta.
+        // vieja lógica existingReasoning + newReasoning + thinkContent Empalme de los tres,
+        // Provoca que se duplique al finalizar(existingReasoning==newReasoning),
+        // <think> El modo de etiqueta crece linealmente(Cada vez que se empalma ContentDelta thinkContent).
+        // nueva lógica:reasoning Si el parámetro no está vacío, se sobrescribirá directamente.(Acumulado de ReasoningDelta,Ya es un valor completo);
+        // reasoning Cuando el parámetro es nulo,usar thinkContent(content en <think> Extracto)como fallback;
+        // Ninguno conserva el mensaje.razonamiento.
         val combinedReasoning =
             when {
                 !effectiveReasoningInput.isNullOrBlank() ->
@@ -383,15 +383,15 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * 审查修复 (2.0 A-03): 原子追加媒体 — 读-改-合写全部在 updateMessages 的 CAS 变换内完成。
+     * Revisión de corrección (2.0 A-03): Medios adjuntos atómicos — leer-cambiar-Toda la coescritura se realiza dentro de la transformación CAS de updateMessages.
      *
-     * 与 [updateAssistant] 的区别:updateAssistant 先读 messagesSnapshot 再整体替换,
-     * 同轮并行生图工具(如"生成两张图")各自基于旧快照构造 newMessages,后写者覆盖先写者,
-     * 先完成者的 imageUrls 丢失。本方法把"取已有 imageUrls → 追加 → distinct"移入变换,
-     * CAS 竞争时 StateFlow.update 会用最新值重放变换,保证并行追加互不丢失。
+     * con [updateAssistant] la diferencia:updateAssistant Lea la instantánea de los mensajes primero y luego reemplácela por completo,
+     * Herramienta de generación de gráficos paralelos en la misma ronda.(Como por ejemplo"Generar dos imágenes")Cada uno está construido en base a una instantánea antigua. newMessages,El escritor posterior sobrescribe al escritor anterior.,
+     * Las URL de imagen del primer completador se pierden. Este método pone"Tomar existente imageUrls → anexar → distinct"Pasar a la transformación,
+     * CAS En caso de competencia, StateFlow.update reproducirá la transformación con el valor más reciente,Asegúrese de que los anexos paralelos no se pierdan entre sí.
      *
-     * 注意:本方法不做 mood/think 标签提取 — 媒体追加的 content 均为本地生成的纯文本占位,
-     * 不含模型标签,与 updateAssistant 完整路径对无标签内容的处理等价。
+     * Nota:Este método no extrae etiquetas de estado de ánimo/pensamiento. — El contenido adjunto a los medios son todos marcadores de posición de texto sin formato generados localmente.,
+     * Sin etiquetas de modelo,Equivalente al manejo de rutas completas de updateAssistant para contenido sin etiquetar.
      */
     fun appendMediaToAssistant(
         id: Uuid,
@@ -426,13 +426,13 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * v1.43: 周期性落盘 — 把当前 assistant 消息的流中进度持久化到数据库,
-     * 让切页/后台后的新 ViewModel 能从 DB 恢复最新内容。
-     * 不提取产物(产物只在流式结束后提取),也不附加 citation(流式中 pending)。
+     * v1.43: Colocación periódica — Conservar el progreso del flujo de mensajes del asistente actual en la base de datos,
+     * cortemos paginas/El nuevo ViewModel detrás de escena puede restaurar el contenido más reciente de la base de datos.
+     * Sin extracción de producto(Los productos solo se extraen después de que se completa el flujo.),Ni adjunto citation(Transmisión pending).
      *
-     * v1.97 (P1-2): 周期性落盘用 skipFts=true 跳过 FTS 重建(toNgram 对长文本开销大)。
-     * 流式结束后最终落盘(直接 upsertMessage)会同步 FTS;中断走 persistInterruptedAssistant 也同步。
-     * 若 app 崩溃导致 FTS 漂移,下次启动 ensureFtsIndexConsistent 会自动 rebuild。
+     * v1.97 (P1-2): Para colocación periódica skipFts=true Saltar la reconstrucción de FTS(toNgram Caro para textos largos).
+     * Ubicación final después de que finalice la transmisión(directo upsertMessage)Estará sincronizado FTS;Las interrupciones van a persistInterruptedAssistant y también se sincronizan.
+     * Si la aplicación falla y el FTS se desvía,sureFtsIndexConsistent se reconstruirá automáticamente la próxima vez que se inicie.
      */
     suspend fun persistCurrentAssistant(
         sessionId: String,
@@ -440,80 +440,80 @@ class ChatStreamCoordinator(
         msg: UIMessage? = null,
         addError: (ChatErrorType, String) -> Unit,
     ) {
-        // v1.97: msg 参数用于切页后 _state.messages 已切换到新会话、原 assistantId 不在其中的场景。
-        // 生成闭包用 builder 构造 UIMessage 传入,绕过 _state.messages 查找,确保中间落盘不中断。
+        // v1.97: msg El parámetro se utiliza en el escenario en el que _state.messages se cambió a una nueva sesión después del corte de página y el ID del asistente original no está en él.
+        // Genere cierre y use el constructor para construir UIMessage y pasarlo,Omitir la búsqueda de _state.messages,Asegúrese de que la bandeja no quede interrumpida en el medio.
         val current = msg ?: accessor.messagesSnapshot.firstOrNull { it.id == assistantId } ?: return
-        // v1.0.54: 工具轮空占位(content/reasoning/图片全空)不落库 — 工具轮消息无用户可见内容,
-        //   落库后重启加载会残留空消息(用户看到"空的对话 UI")。
+        // v1.0.54: Adiós herramienta(content/reasoning/Todas las imágenes están vacías.)No queda en el inventario. — El mensaje de la rueda de herramientas no tiene contenido visible para el usuario,
+        //   Los mensajes vacíos permanecerán al reiniciar la carga después de eliminar la biblioteca.(los usuarios ven"conversación vacía UI").
         if (current.content.isBlank() && current.reasoning.isNullOrBlank() &&
             current.imageBase64List.isEmpty() && current.imageUrls.isEmpty()
         ) {
             return
         }
         if (ProcessWriteGate.restoring) {
-            Logger.w(tag, "备份恢复进行中，跳过流式助手快照写入")
+            Logger.w(tag, "Restauración de copia de seguridad en progreso, se omitió la escritura de instantáneas de Streaming Assistant")
             return
         }
-        // v1.80 (L-CVM4): 用 NonCancellable 包裹持久化,确保 ViewModel 销毁/协程取消时仍能落盘
-        // 直接挂起等待写入结束，保证最终 upsert 不会被更早的异步快照覆盖。
+        // v1.80 (L-CVM4): Envolver persistencia con NonCancellable,Asegúrese de que ViewModel esté destruido/Aún se pueden realizar pedidos cuando se cancela la rutina
+        // Espere directamente a que se complete la escritura para asegurarse de que una instantánea asincrónica anterior no sobrescriba la inserción final.
         withContext(NonCancellable) {
             try {
                 sessionRepository.upsertMessage(sessionId, current, skipFts = true)
             } catch (e: Exception) {
                 Logger.e(tag, "persistCurrentAssistant failed", e)
-                // v1.65: 助手持久化失败给用户反馈
-                addError(ChatErrorType.UNKNOWN, "助手状态保存失败: ${e.message ?: "未知错误"}")
+                // v1.65: Comentarios al usuario si falla la persistencia del asistente
+                addError(ChatErrorType.UNKNOWN, "No se pudo guardar el estado del asistente: ${e.message ?: "error desconocido"}")
             }
         }
     }
 
     /**
-     * v1.80 (M-CVM2): 标记当前 assistant 消息为 [已中断] 并把部分回复落盘。
+     * v1.80 (M-CVM2): Marcar el mensaje actual del asistente como [interrumpido] Y poner parte de la respuesta en el mercado.
      *
-     * 在流式被取消(用户点停止/切会话)或异常中断时调用,确保已接收的内容不随 ViewModel 销毁丢失。
-     * 持久化用 [NonCancellable] 包裹,保证协程被取消时仍能完成 DB 写入
-     * (否则 suspend 调用在已取消协程中会立即抛 CancellationException,落盘失败)。
+     * Cancelado durante la transmisión(El usuario hace clic en detener/Cambiar de sesión)O llamado cuando una excepción interrumpe,Asegúrese de que el contenido recibido no se pierda cuando se destruya ViewModel.
+     * Por la perseverancia [NonCancellable] paquete,Asegúrese de que la escritura de la base de datos aún pueda completarse cuando se cancele la rutina
+     * (De lo contrario, la llamada de suspensión en la rutina cancelada arrojará inmediatamente CancellationException,Colocación fallida).
      *
-     * A-12/A-14: 只允许标记"本轮生成的消息" —
-     *  - [partialMsg] 由调用方用流式 builder 构造(优先)
-     *  - 否则仅在 [expectedAssistantId] 命中快照时使用该消息(流式 UI 已写入的部分内容)
-     *  - 两者都拿不到时直接返回,绝不回退到"最后一条非空 assistant 消息"
-     *    (那可能是旧的已完成回复,会被永久追加 [已中断];切会话后还可能跨会话落库)。
+     * A-12/A-14: Sólo se permiten etiquetas"Mensajes generados en esta ronda" —
+     *  - [partialMsg] Construido por la persona que llama utilizando un generador de transmisión(Prioridad)
+     *  - De lo contrario sólo en [expectedAssistantId] Este mensaje se utiliza cuando se accede a una instantánea.(Parte de lo que ha escrito la UI de streaming)
+     *  - Si no puede conseguir ninguno de los dos, regrese directamente.,Nunca vuelvas a caer"El último mensaje del asistente no vacío."
+     *    (Esa podría ser una respuesta antigua y completa.,se agregará permanentemente [interrumpido];Después de cambiar de sesión, la base de datos puede descartarse entre sesiones.).
      */
     suspend fun persistInterruptedAssistant(
         sessionId: String,
         partialMsg: UIMessage? = null,
         expectedAssistantId: Uuid? = null,
-        /** A5: 中断时已流过的耗时(毫秒),随 [已中断] 消息落库供信息弹层展示。 */
+        /** A5: tiempo transcurrido en el momento de la interrupción(milisegundos),Seguir [interrumpido] Los mensajes se colocan en la biblioteca para mostrar información en ventanas emergentes. */
         durationMs: Long? = null,
     ) {
-        // v1.97: partialMsg 参数用于切页后 _state.messages 已切换到新会话的场景。
-        // 生成闭包用 builder 构造 UIMessage 传入,绕过 _state.messages 查找。
+        // v1.97: partialMsg El parámetro se utiliza en el escenario en el que _state.messages se ha cambiado a una nueva sesión después de cortar la página.
+        // Genere cierre y use el constructor para construir UIMessage y pasarlo,Omita la búsqueda de _state.messages.
         val partial =
             partialMsg ?: expectedAssistantId?.let { id ->
                 accessor.messagesSnapshot.firstOrNull { it.id == id }
             } ?: return
-        // A-14: 本轮没有任何可保留内容(首 token 前被取消)时不写 [已中断] 空消息,
-        // 避免生成占位残留;有媒体时仍保留(图片/视频生成中被打断)。
+        // A-14: No hay nada que retener en esta ronda.(Cancelado antes del primer token)no escribas a veces [interrumpido] mensaje vacío,
+        // Evite generar residuos de marcadores de posición;Conservar cuando haya medios disponibles(fotos/Se interrumpió la generación de vídeo.).
         if (partial.content.isBlank() && partial.reasoning.isNullOrBlank() &&
             partial.imageUrls.isEmpty() && partial.imageBase64List.isEmpty() && partial.videoFileUri == null
         ) {
             return
         }
         if (ProcessWriteGate.restoring) {
-            Logger.w(tag, "备份恢复进行中，跳过中断助手快照写入")
+            Logger.w(tag, "Restauración de copia de seguridad en curso, omitiendo la escritura de instantáneas del asistente de interrupción")
             return
         }
-        val interruptedMsg = partial.copy(content = partial.content + "\n\n[已中断]", durationMs = durationMs)
-        // v1.0.74 fix: 此前 partialMsg != null(切页/生成闭包场景)一律不更新 UI,
-        // 导致用户停止生成后当次会话内看不到 [已中断] 标记、"继续生成"按钮不出现。
-        // 改为:消息仍在当前会话列表就更新 UI(正常停止场景),不在则跳过(切页防污染)。
+        val interruptedMsg = partial.copy(content = partial.content + "\n\n[interrumpido]", durationMs = durationMs)
+        // v1.0.74 fix: anteriormente partialMsg != null(Cortar páginas/Generar escenarios de cierre)Nunca actualizar UI,
+        // Como resultado, el usuario no puede verlo en la sesión actual después de detener la generación. [interrumpido] marca,"continuar generando"El botón no aparece.
+        // Cambiar a:Actualiza el mensaje mientras todavía está en la lista de conversaciones actual. UI(Escenario de parada normal),Saltar si no está presente(Cortar páginas para evitar la contaminación.).
         if (partialMsg == null || accessor.messagesSnapshot.any { it.id == partial.id }) {
             accessor.updateMessages { messages ->
                 messages.map { if (it.id == interruptedMsg.id) interruptedMsg else it }
             }
         }
-        // NonCancellable: 协程已取消时仍完成落盘
+        // NonCancellable: La realización del pedido aún se completa aunque la corrutina haya sido cancelada.
         withContext(NonCancellable) {
             try {
                 sessionRepository.upsertMessage(sessionId, interruptedMsg)
@@ -523,22 +523,22 @@ class ChatStreamCoordinator(
         }
     }
 
-    // ── 字符串处理工具 ────────────────────────────────────────────────
+    // ── Herramientas de procesamiento de cuerdas ────────────────────────────────────────────────
 
     /**
-     * v1.23: 从 assistant 流式 content 中提取 `<think>...</think>` 思考链。
+     * v1.23: Extracto del contenido de transmisión del asistente `<think>...</think>` Cadena de pensamiento.
      *
-     * - 完整标签:直接抽出内容并移出正文。
-     * - 未闭合标签(流式中常见):把 `<think>` 之后的内容暂存到 reasoning,
-     *   正文只保留标签之前的内容,避免 raw tag 直接显示在气泡里。
-     * - 忽略大小写,兼容 `<Think>` 等变体。
+     * - etiqueta completa:Extraiga el contenido directamente y sáquelo del texto principal.
+     * - Etiqueta no cerrada(Común en streaming):poner `<think>` El contenido posterior se almacena temporalmente en reasoning,
+     *   El cuerpo sólo conserva el contenido antes de la etiqueta.,Evite mostrar etiquetas sin formato directamente en burbujas.
+     * - ignorar caso,compatibles `<Think>` Variantes.
      *
-     * @return Pair<清理后的正文, 提取出的思考内容(null 表示无)>
+     * @return Pair<Texto limpio, Contenido de pensamiento extraído(null significa ninguno)>
      */
     /**
-     * 当前这批请求会带上的工具定义占用。
+     * El lote actual de solicitudes estará ocupado por definiciones de herramientas.
      *
-     * 取不到就当 0：工具清单属于增强项，不能因为它拿不到就让预算算不出来。
+     * Si no puede obtenerlo, trátelo como 0: la lista de herramientas es un elemento de mejora y el presupuesto no se puede calcular simplemente porque no está disponible.
      */
     private fun toolDefinitionTokens(): Int = runCatching {
         io.zer0.muse.util.TokenEstimator.estimateToolDefinitions(
@@ -558,7 +558,7 @@ class ChatStreamCoordinator(
             match = MusePatterns.THINK_TAG_REGEX.find(remaining)
         }
 
-        // 处理流式过程中标签尚未闭合的情况
+        // Manejar la situación en la que la etiqueta no se ha cerrado durante la transmisión.
         val openIdx =
             listOf("<think>", "<thinking>")
                 .map { remaining.indexOf(it, ignoreCase = true) }
@@ -596,9 +596,9 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * v1.42: 通用标签内容提取辅助(用于 mood/reflection)。
+     * v1.42: Asistencia general para la extracción de contenido de etiquetas(usado para mood/reflection).
      *
-     * 与 MoodTagTransformer 保持一致的逻辑,但只在确认含标签时调用,避免流式中高频正则。
+     * Lógica consistente con MoodTagTransformer,Pero solo me llamaron al confirmar la etiqueta.,Evite la regularización de alta frecuencia en el streaming.
      */
     private fun extractTagContent(input: String, tagName: String): Pair<String, String?> {
         if (!input.contains("<$tagName>", ignoreCase = true)) return input to null
@@ -611,8 +611,8 @@ class ChatStreamCoordinator(
             remaining = remaining.removeRange(match.range)
             match = regex.find(remaining)
         }
-        // v1.0.74 fix: 未闭合标签(模型输出被截断时常见)提取不到,标签头会残留为裸文本。
-        // 与 MoodTagTransformer 一致,剥掉残留的标签头字符。
+        // v1.0.74 fix: Etiqueta no cerrada(Común cuando la salida del modelo está truncada)No se puede extraer,Los encabezados de las etiquetas permanecerán como texto sin formato.
+        // Consistente con MoodTagTransformer,Quite los caracteres restantes del encabezado de la etiqueta.
         if (remaining.contains("<$tagName>", ignoreCase = true) &&
             !remaining.contains("</$tagName>", ignoreCase = true)
         ) {
@@ -621,17 +621,17 @@ class ChatStreamCoordinator(
         return remaining.trim() to sb.toString().trim().ifBlank { null }
     }
 
-    // ── Phase A: 历史准备 ────────────────────────────────────────────
+    // ── Phase A: preparación de historia ────────────────────────────────────────────
 
     /**
-     * v1.0.27 Phase 4-A.2: 从 ChatViewModel 抽取的历史准备逻辑。
+     * v1.0.27 Phase 4-A.2: Lógica de preparación del historial extraída de ChatViewModel.
      *
-     * 读取 Assistant 配置 / 推理等级 / 温度 / ExperimentsConfig / contextSize,
-     * 清理孤儿 tool_call,按 contextSize 截断历史。
+     * Leer configuración/nivel de inferencia/temperatura del asistente / ExperimentsConfig / contextSize,
+     * Limpiar a los huérfanos tool_call,Truncar el historial por contextSize.
      */
     internal suspend fun prepareHistory(state: StreamRunState) {
         with(state) {
-            // 通知:启动流式进度通知(LOW importance,不发声)
+            // Notificación:Iniciar la transmisión de notificaciones de progreso(LOW importance,silencioso)
             sessionTitle = accessor.snapshot.sessions
                 .firstOrNull { it.id == sessionId }?.title ?: appContext.getString(R.string.chat_new_session)
             runCatching {
@@ -641,17 +641,17 @@ class ChatStreamCoordinator(
                     true,
                     io.zer0.muse.notification.MuseNotificationTarget.Session(sessionId),
                 )
-            }.onFailure { Logger.w("ChatVM", "启动进度通知失败: ${it.message}") }
-            // v1.133: RAG 检索引用列表,流式结束后附加到 assistant 消息
+            }.onFailure { Logger.w("ChatVM", "No se pudo iniciar la notificación de progreso: ${it.message}") }
+            // v1.133: RAG Recuperar lista de referencias,Adjunto al mensaje del asistente después de que finaliza la transmisión
             pendingRagCitations = emptyList()
-            // Phase 8.2: 取 Assistant 配置(找不到则用默认助手)
+            // Phase 8.2: Obtener configuración del Asistente(Si no lo encuentra, use el asistente predeterminado)
             assistant = accessor.snapshot.currentAssistant
                 ?: assistantRepository.getById("default")
-            // v1.136: 用户/助手请求的推理等级
-            // v1.0.47 P5-6: deepThinkingEnabled 时使用用户选择的级别(默认 HIGH),不再硬编码 HIGH
-            // v2.6.1（用户反馈）: 全局「强制思考」优先 —— 打开后无条件使用指定强度,
-            //   不再被助手级 reasoningLevel=OFF/AUTO 压掉;模型不支持推理时
-            //   由下方 reasoningLevel 归一自动降级为 AUTO,不会 400。
+            // v1.136: Usuario/El nivel de razonamiento solicitado por el asistente.
+            // v1.0.47 P5-6: deepThinkingEnabled Utilice el nivel seleccionado por el usuario cuando(Predeterminado HIGH),No más codificación HIGH
+            // v2.6.1(comentarios de los usuarios): Prioridad global del "pensamiento forzado" —— Utilice la intensidad especificada incondicionalmente después de la apertura.,
+            //   ya no es nivel de asistente reasoningLevel=OFF/AUTO presione hacia fuera;Cuando el modelo no soporta la inferencia
+            //   La normalización del nivel de razonamiento a continuación se degrada automáticamente a AUTO,N° 400.
             val chatPrefs = accessor.snapshot.chatPreferences
             requestedReasoningLevel =
                 when {
@@ -663,22 +663,22 @@ class ChatStreamCoordinator(
                             .let { level -> if (level == ReasoningLevel.AUTO) ReasoningLevel.OFF else level }
                     } ?: ReasoningLevel.OFF
                 }
-            // 全局温度回退
+            // Retroceso de la temperatura global
             effectiveTemperature = assistant?.temperature
                 ?: accessor.snapshot.chatPreferences.globalTemperature
-            // v2.6.x: 本轮实际模型/Provider 绑定在**准备阶段**就固定下来(单一出口
-            // [resolveModelBinding])。放在这里是因为后续所有"上下文窗口"判定
-            // (预热 token 预算 / 发送前 90% 截断 / 1.35 倍硬拦截 / 压缩预算)
-            // 都必须按本轮实际请求的模型算,而不是按 UI 侧全局选中模型算。
-            // 降级日志留给 resolveToolsAndModel 输出，避免同一轮刷两条相同告警。
+            // v2.6.x: Modelo real de esta ronda./Provider atado en**etapa de preparación**solo arreglalo(salida única
+            // [resolveModelBinding]). Lo pongo aquí porque todo el seguimiento."ventana contextual"juicio
+            // (Presupuesto de token de calentamiento / 90% de truncamiento antes del envío / 1,35 veces interceptación dura / presupuesto de compresión)
+            // Todos los cálculos deben basarse en el modelo realmente solicitado en esta ronda.,En lugar de seleccionar el modelo globalmente en el lado de la interfaz de usuario.
+            // El registro de degradación se deja para resolverToolsAndModel como salida para evitar generar dos alarmas idénticas en la misma ronda.
             val binding = resolveModelBinding(state, logBindingIssues = false)
             effectiveModel = binding.model?.let { ModelRegistry.enhanceModel(it) }
             effectiveProviderConfig = binding.providerConfig
-            // v0.32 实验性:读取 ExperimentsConfig
+            // v0.32 Experimental:leer ExperimentsConfig
             experiments =
                 runCatching { settings.experimentsCache }
                     .getOrDefault(ExperimentsConfig())
-            // v0.32 实验性 debugMode:重置 debugInfo,启动计时器与计数器
+            // v0.32 Modo de depuración experimental: restablecer debugInfo,Iniciar temporizadores y contadores
             if (experiments.debugMode) {
                 accessor.update { it.copy(debugInfo = null) }
                 Logger.d(
@@ -689,7 +689,7 @@ class ChatStreamCoordinator(
             }
             streamStartedAt = System.currentTimeMillis()
 
-            // v0.32 实验性 longMemoryCompression:context 截断阈值减半
+            // v0.32 LongMemoryCompression experimental: umbral de truncamiento de contexto reducido a la mitad
             contextSize = assistant?.contextMessageSize?.coerceAtLeast(1) ?: 20
             if (experiments.longMemoryCompression) {
                 contextSize = (contextSize / 2).coerceAtLeast(5)
@@ -698,16 +698,16 @@ class ChatStreamCoordinator(
                 }
             }
 
-            // v2.x 导入预热:外部导入/备份恢复会话首轮 —— 全量历史优先(见 WarmupHistory)
+            // v2.x Importar calentamiento:importación externa/Primera ronda de sesión de recuperación de copias de seguridad —— Historia completa primero(ver WarmupHistory)
             warmupActive = sessionRepository.getSessionById(sessionId)?.warmupPending == true
-            // 去掉占位 assistant;预热轮改用 DB 全量 + 尚未落库的新消息(按 id 去重)
+            // Quitar marcador de posición assistant;La ronda de calentamiento cambia a DB a todo volumen + nuevas noticias que aún no se han publicado(Eliminar duplicados por id)
             val messagesExceptPlaceholder =
                 if (warmupActive) {
                     warmupFullHistory(sessionId)
                 } else {
                     accessor.messagesSnapshot.dropLast(1)
                 }
-            // v1.0.2: 防御性清理孤儿 tool_call
+            // v1.0.2: Limpieza defensiva de huérfanos tool_call
             rawHistory =
                 messagesExceptPlaceholder.filterIndexed { index, msg ->
                     if (msg.role == MessageRole.ASSISTANT && !msg.toolCalls.isNullOrEmpty()) {
@@ -719,14 +719,14 @@ class ChatStreamCoordinator(
             if (rawHistory.size < messagesExceptPlaceholder.size) {
                 Logger.w(
                     "ChatViewModel",
-                    "清理孤儿 tool_call: ${messagesExceptPlaceholder.size - rawHistory.size} 条 assistant 消息被丢弃",
+                    "Limpiar a los huérfanos tool_call: ${messagesExceptPlaceholder.size - rawHistory.size} Los mensajes del asistente fueron descartados.",
                 )
             }
-            // 会话检查点合并：把"已压缩边界之前"的助手侧内容替换为检查点摘要。
-            // 必须放在截断之前 —— 这样按条数的裁剪作用于已压缩后的历史；也必须放在 transformer
-            // 管道之前 —— 摘要要与最终请求里的消息同源，不能只影响压缩器自己看到的那份。
+            // Fusión de punto de control de sesión: poner"Antes de los límites comprimidos"El contenido del lado del asistente se reemplaza con un resumen del punto de control.
+            // Debe colocarse antes del truncamiento. —— Este tipo de recorte basado en la cantidad de elementos se aplica al historial comprimido; también debe colocarse en transformer
+            // antes del oleoducto —— El resumen debe tener el mismo origen que el mensaje de la solicitud final y no puede afectar únicamente al que ve el propio compresor.
             rawHistory = applySessionCheckpoint(sessionId, rawHistory)
-            // v1.x: 工具依赖感知截断;预热轮改为 token 预算截断(全量优先)
+            // v1.x: Truncamiento consciente de la dependencia de la herramienta;La ronda de preparación se cambia a un truncamiento simbólico del presupuesto.(Prioridad de cantidad total)
             truncatedHistory =
                 if (warmupActive) {
                     val budget =
@@ -750,11 +750,11 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * v2.x: 把会话检查点合并进历史（"压缩后的上下文"生效点）。
+     * v2.x: Fusionar el punto de control de la sesión en el historial ("contexto comprimido"punto efectivo).
      *
-     * 读取检查点 → 校验它引用的边界消息仍在历史里（不在就作废，见 ContextCheckpointReader）→
-     * 用摘要替换边界之前的助手侧内容。任何异常都不阻断生成：压缩失败最多是上下文长一点，
-     * 绝不能因为读检查点失败而让整轮对话发不出去。
+     * leer punto de control → Verifique que el mensaje de límite al que hace referencia todavía esté en el historial (no será válido si ya no está allí, consulte ContextCheckpointReader)→
+     * Reemplace el contenido del lado auxiliar antes del borde con un resumen. Cualquier excepción no bloquea la generación: la falla de compresión es, como mucho, un contexto más largo,
+     * Nunca permita que toda la ronda de diálogo no se envíe debido a una falla al leer el punto de control.
      */
     private suspend fun applySessionCheckpoint(sessionId: String, history: List<UIMessage>): List<UIMessage> {
         if (history.isEmpty()) return history
@@ -829,9 +829,9 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * v2.x 导入预热:首轮全量历史 = DB 全量有效消息 + UI 快照中尚未落库的新消息(按 id 去重)。
+     * v2.x Importar calentamiento:Historia completa de la primera ronda = DB Todos los mensajes válidos + mensajes nuevos en la instantánea de la interfaz de usuario que aún no se han incluido en la biblioteca(Eliminar duplicados por id).
      *
-     * DB 读取失败时退回 UI 窗口快照(尽力而为,不阻断生成)。
+     * DB Volver a la instantánea de la ventana de la interfaz de usuario cuando falla la lectura(haz tu mejor esfuerzo,No bloquear la generación).
      */
     private suspend fun warmupFullHistory(sessionId: String): List<UIMessage> {
         val uiSnapshot = accessor.messagesSnapshot.dropLast(1)
@@ -850,16 +850,16 @@ class ChatStreamCoordinator(
         return if (pendingUi.isEmpty()) dbHistory else dbHistory + pendingUi
     }
 
-    // ── Phase F: PII 遮蔽 ────────────────────────────────────────────
+    // ── Phase F: PII cubrir ────────────────────────────────────────────
 
     /**
-     * v1.0.27 Phase 4-A.2: 从 ChatViewModel 抽取的 PII 遮蔽逻辑。
+     * v1.0.27 Phase 4-A.2: Lógica de enmascaramiento de PII extraída de ChatViewModel.
      *
-     * 发送给 LLM 前对最新一条 USER 消息做敏感信息遮蔽,
-     * AI 回复中出现的占位符在写入 UI / DB 前用 unmaskPii 还原。
-     * 仅遮蔽最新用户消息(保守策略,避免误检历史消息中的正常数字);
-     * 工具调用循环内 conversationHistory 中保留占位符,确保下一轮 LLM 仍看到一致上下文。
-     * piiMatches 与 unmaskPii 已在 [StreamRunState] 中声明,catch 块可访问。
+     * Enmascare información confidencial en el último mensaje de USUARIO antes de enviarlo a LLM,
+     * AI Los marcadores de posición presentes en las respuestas se restauran con unmaskPii antes de escribir en UI/DB.
+     * Bloquear solo los últimos mensajes de usuario(estrategia conservadora,Evite la detección falsa de números normales en mensajes históricos);
+     * Marcador de posición retenido en el historial de conversaciones dentro del bucle de llamada de herramienta,Asegúrese de que la próxima ronda de LLM todavía vea un contexto consistente.
+     * piiMatches Ya con unmaskPii [StreamRunState] Declaración en,catch El bloque es accesible.
      */
     internal suspend fun applyPiiGuard(state: StreamRunState) {
         with(state) {
@@ -881,12 +881,12 @@ class ChatStreamCoordinator(
         }
     }
 
-    // ── Phase G: 视觉辅助 ────────────────────────────────────────────
+    // ── Phase G: ayuda visual ────────────────────────────────────────────
 
     /**
-     * M2.8: 视觉前置检查诊断日志 — 记录能力注册表三态快照(known/visionInput),
-     * 便于排查"上游误标视觉能力 → 中转站 400"类问题。
-     * 独立成函数:prepareVisionContext 复杂度已顶格,新增分支须外移。
+     * M2.8: Registro de diagnóstico visual previo a la inspección — Instantánea de tres estados del registro de capacidad de registro(known/visionInput),
+     * Fácil de solucionar problemas"Capacidades visuales de etiquetado incorrecto ascendentes → estación de transferencia 400"tipo de problema.
+     * función independiente:prepareVisionContext La complejidad ha sido superada,Las nuevas sucursales deben trasladarse al extranjero.
      */
     private fun visionPreflightDiagnostics(model: Model?, modelSupportsVision: Boolean, historyImageCount: Int): String {
         val snapshot =
@@ -903,11 +903,11 @@ class ChatStreamCoordinator(
     }
 
     /**
-     * v1.0.27 Phase 4-A.2: 从 ChatViewModel 抽取的视觉辅助逻辑。
+     * v1.0.27 Phase 4-A.2: Lógica de asistencia visual extraída de ChatViewModel.
      *
-     * 当前模型不支持视觉时,通过视觉模型分析图片并注入描述。
-     * 无论视觉分析成功或失败,都必须清空原消息的 imageBase64List,
-     * 否则后续 streamChat 仍会向不支持视觉的模型发送图片,导致中转站返回 HTTP 400。
+     * Cuando el modelo actual no soporta la visión,Analice imágenes e inyecte descripciones a través de modelos visuales.
+     * Si el análisis visual tiene éxito o fracasa,Los mensajes originales deben borrarse. imageBase64List,
+     * De lo contrario, el streamChat posterior seguirá enviando imágenes a modelos que no admiten visión.,Hace que el relé devuelva HTTP 400.
      */
     internal suspend fun prepareVisionContext(state: StreamRunState) {
         with(state) {
@@ -921,15 +921,15 @@ class ChatStreamCoordinator(
                         conversationHistory[idx].role == MessageRole.USER &&
                             conversationHistory[idx].imageBase64List.isNotEmpty()
                     }
-                Logger.i("ChatVM", "视觉辅助[条件满足]: userImageIndexes=${userImageIndexes.size}")
+                Logger.i("ChatVM", "ayuda visual[condiciones cumplidas]: userImageIndexes=${userImageIndexes.size}")
                 if (userImageIndexes.isNotEmpty()) {
                     val lastIdx = userImageIndexes.last()
                     val lastUserMsg = conversationHistory[lastIdx]
                     val imageCount = lastUserMsg.imageBase64List.size
                     Logger.i(
                         "ChatVM",
-                        "视觉辅助[触发]: model=${effectiveModelLocal.id} supportsVision=false " +
-                            "图片数=$imageCount 历史待清理=${userImageIndexes.size - 1}",
+                        "ayuda visual[gatillo]: model=${effectiveModelLocal.id} supportsVision=false " +
+                            "Número de fotos=$imageCount Historia por limpiar=${userImageIndexes.size - 1}",
                     )
                     MuseToast.show(appContext.getString(R.string.vision_analysis_starting))
                     val prepareResult =
@@ -972,7 +972,7 @@ class ChatStreamCoordinator(
                         }
                     conversationHistory[lastIdx] =
                         lastUserMsg.copy(
-                            // M4.3: 视觉描述注入受统一 ContextBudget 上限约束(截断可诊断)
+                            // M4.3: La inyección de descripción visual está sujeta a un límite superior de ContextBudget unificado(El truncamiento es diagnóstico)
                             content =
                             io.zer0.muse.context.ContextBudget().clampText(
                                 io.zer0.muse.context.ContextSection.VISION_DESCRIPTION,
@@ -981,11 +981,11 @@ class ChatStreamCoordinator(
                             imageBase64List = prepareResult.images,
                         )
                     if (prepareResult.success) {
-                        Logger.i("ChatVM", "视觉辅助[成功]: 已注入 ${prepareResult.descriptionCount} 条视觉描述")
+                        Logger.i("ChatVM", "ayuda visual[éxito]: inyectado ${prepareResult.descriptionCount} descripción visual")
                         MuseToast.show(appContext.getString(R.string.vision_analysis_done, prepareResult.descriptionCount))
                     } else {
                         val failDetail = prepareResult.text.take(200)
-                        Logger.w("ChatVM", "视觉辅助[失败]: prepare 降级,详情=$failDetail")
+                        Logger.w("ChatVM", "ayuda visual[falló]: prepare Rebajar,Detalles=$failDetail")
                         MuseToast.show(appContext.getString(R.string.err_chat_vision_fallback))
                     }
 
@@ -1000,41 +1000,41 @@ class ChatStreamCoordinator(
                             conversationHistory[idx] = histMsg.copy(imageBase64List = emptyList())
                             Logger.d(
                                 "ChatVM",
-                                "视觉辅助: 已清空历史消息 #$idx 的 ${histMsg.imageBase64List.size} 张图片" +
-                                    "(避免直达纯文本模型)",
+                                "ayuda visual: Mensajes del historial borrados #$idx de ${histMsg.imageBase64List.size} fotos" +
+                                    "(Evite ir directamente al modelo de texto plano)",
                             )
                         }
                     }
                 } else {
-                    Logger.i("ChatVM", "视觉辅助[跳过]: userImageIndexes 为空,未找到带图片的 USER 消息")
+                    Logger.i("ChatVM", "ayuda visual[saltar]: userImageIndexes esta vacio,Mensaje de USUARIO con imagen no encontrada")
                 }
             } else {
                 Logger.i(
                     "ChatVM",
-                    "视觉辅助[跳过]: effectiveModel 为空或模型支持视觉,不触发视觉辅助 " +
+                    "ayuda visual[saltar]: effectiveModel Está vacío o el modelo admite visualización.,No activa ayudas visuales. " +
                         "effectiveModel=${effectiveModel?.id} supportsVisionInput=$modelSupportsVision",
                 )
             }
         }
     }
 
-    // ── Phase C+D: Transformer 管道 ──────────────────────────────────
+    // ── Phase C+D: Transformer tubo ──────────────────────────────────
 
     /**
-     * v1.0.27 Phase 4-A.2: 从 ChatViewModel 抽取的 Transformer 管道逻辑。
+     * v1.0.27 Phase 4-A.2: Lógica de canalización del transformador extraída de ChatViewModel.
      *
-     * 1. 预查询 Assistant 绑定的 Lorebook 条目
-     * 2. 预查询当前模式对应的 PromptInjection 条目
-     * 3. 读取用户画像(userNickname / assistantName)注入模板变量
-     * 4. 构造 TransformContext,关闭已由 SystemPromptAssembler 接管的 memory/time reminder
-     * 5. 执行 transformerPipeline.execute(prefixMessages + truncatedHistory, context)
-     * 6. 保存 context 供后续 applyVisualTransform / applyOnGenerationFinish 复用
+     * 1. Consulta previa de las entradas del Lorebook vinculadas al Asistente
+     * 2. Consulta previa de la entrada PromptInjection correspondiente al modo actual
+     * 3. Leer retrato de usuario(userNickname / assistantName)Inyectar variables de plantilla
+     * 4. estructura TransformContext,Cierre el sistema que ha sido asumido por SystemPromptAssembler memory/time reminder
+     * 5. ejecutar transformerPipeline.execute(prefixMessages + truncatedHistory, context)
+     * 6. Guarde el contexto para su posterior reutilización mediante applyVisualTransform / applyOnGenerationFinish
      */
     internal suspend fun applyTransformers(state: StreamRunState) {
         with(state) {
-            // Phase 8.1 H1: Transformer 管道(职责收敛:Assembler 接管 system 提示后,
-            // MemoryInjection / TimeReminder 改为禁用,只保留 Lorebook/PromptInjection/Template/ThinkTag)
-            // Phase 8.5: 预查询 Assistant 绑定的 Lorebook 条目
+            // Phase 8.1 H1: Transformer tubo(convergencia de responsabilidades:Assembler Después de hacerse cargo del mensaje del sistema,
+            // MemoryInjection / TimeReminder Deshabilitado en su lugar,sólo mantener Lorebook/PromptInjection/Template/ThinkTag)
+            // Phase 8.5: Consulta previa de las entradas del Lorebook vinculadas al Asistente
             val lorebookIds = assistant?.let { parseIdList(it.lorebookIdsJson) } ?: emptyList()
             val lorebookEntries: List<LorebookEntity> =
                 if (lorebookIds.isNotEmpty()) {
@@ -1043,8 +1043,8 @@ class ChatStreamCoordinator(
                 } else {
                     emptyList()
                 }
-            // Phase 8.5: 预查询当前模式对应的 PromptInjection 条目。
-            // default 也是有效模式：助手显式绑定的注入项不能因为当前模式是 default 就被吞掉。
+            // Phase 8.5: Realice una consulta previa de la entrada PromptInjection correspondiente al modo actual.
+            // default Modo también válido: las inyecciones vinculadas explícitamente por el asistente no se pueden tragar solo porque el modo actual es el predeterminado.
             val currentMode = accessor.snapshot.currentMode
             val injIds = assistant?.let { parseIdList(it.modeInjectionIdsJson) } ?: emptyList()
             val modeInjections: List<PromptInjectionEntity> =
@@ -1058,7 +1058,7 @@ class ChatStreamCoordinator(
                     resultOf { promptInjectionRepository.getEnabledByMode(currentMode) }
                         .getOrNull() ?: emptyList()
                 }
-            // v1.97: 读取用户画像,把 user_nickname / assistant_name 注入模板变量
+            // v1.97: Leer retrato de usuario,Inyecte apodo_usuario / nombre_asistente en las variables de la plantilla
             val userProfile = resultOf { settings.getUserProfile() }.getOrNull()
             val assistantName =
                 userProfile?.assistantName
@@ -1082,35 +1082,35 @@ class ChatStreamCoordinator(
                         // Phase 8.5
                         "lorebook_entries" to lorebookEntries,
                         "prompt_injections" to modeInjections,
-                        // v1.97: 助手级正则规则(预解析,供 RegexMessageTransformer 使用)
+                        // v1.97: Reglas regulares de nivel asistente(preparar,Para uso de RegexMessageTransformer)
                         "regex_rules" to (
                             assistant?.let {
                                 io.zer0.muse.transformer.RegexTransformer.parseRules(it)
                             } ?: emptyList()
                             ),
-                        // v1.97: 模板变量 — 用户昵称与助手名(供 {{user}} / {{char}} 等)
+                        // v1.97: Variables de plantilla — Apodo de usuario y nombre del asistente(suministro {{user}} / {{char}} espera)
                         "user_nickname" to userNickname,
                         "assistant_name" to assistantName,
-                        // v2.x: 调试开关透传(供 MoodTag 等 transformer 输出诊断日志)
+                        // v2.x: Transmisión transparente del interruptor de depuración.(Para transformadores como MoodTag para generar registros de diagnóstico)
                         "debug_mode" to experiments.debugMode,
-                        // v0.25: 长上下文压缩 — 默认启用,20 条触发,保留最近 15 条
-                        // v0.32 实验性 longMemoryCompression:阈值从 20 降到 10,更早触发摘要压缩
-                        // v2.3.2: 预热轮跳过压缩 — 预热的设计目的就是"全量历史优先"(见 WarmupHistory),
-                        // 首轮再压缩会把刚装载的历史摘要掉,重新引入"导入会话首轮近乎失忆"的老问题,
-                        // 且白等一次压缩调用(最多 20s 首字延迟)。
+                        // v0.25: Compresión de contexto largo — Habilitado por defecto,20 gatillo de barra,Conserva los últimos 15 artículos
+                        // v0.32 LongMemoryCompression experimental: umbral reducido de 20 a 10,Activar la compresión del resumen antes
+                        // v2.3.2: La rueda de precalentamiento salta la compresión — El propósito del precalentamiento es"Historia completa primero"(ver WarmupHistory),
+                        // La primera ronda de recompresión resumirá el historial recién cargado.,Reintroducción"Casi amnesia en la primera ronda de sesión de importación"viejo problema,
+                        // Espere una llamada de compresión en vano(Retraso de la primera palabra de hasta 20 segundos).
                         "compress_enabled" to !warmupActive,
-                        // v1.138: 修复 compress_threshold < compress_keep_recent 导致压缩无法触发。
-                        // X-5: 阈值/保留数改引 CompressionPolicy 单一真源（与 Transformer 默认值同源，
-                        // 避免"改一处不生效"）；longMemoryCompression 模式更早触发但保留条数仍 < 阈值。
+                        // v1.138: Reparación compress_threshold < compress_keep_recent Como resultado, no se puede activar la compresión.
+                        // X-5: umbral/Fuente única de verdad de la Política de compresión reservada (mismo origen que el valor predeterminado de Transformer,
+                        // evitar"Cambiar un lugar no tendrá efecto");longMemoryCompression El modo se activa antes pero el número de elementos retenidos aún es < límite.
                         "compress_threshold" to
                             io.zer0.muse.transformer.CompressionPolicy.threshold(experiments.longMemoryCompression),
                         "compress_keep_recent" to
                             io.zer0.muse.transformer.CompressionPolicy.keepRecent(experiments.longMemoryCompression),
-                        // 触发压缩的 token 预算。
+                        // El presupuesto simbólico que desencadena la compresión.
                         //
-                        // 不再是「窗口 × 固定比例」：那个口径把系统提示、工具定义、输出预留当成常数，
-                        // 而它们恰恰随功能增长。工具多开几个，同一条历史可能就从「没超」变成「超了」。
-                        // 这里先扣掉输出预留与安全余量，剩下的才是历史额度。
+                        // Ya no es una "ventana" × "Proporción fija": ese calibre trata las indicaciones del sistema, las definiciones de herramientas y las reservas de salida como constantes.
+                        // Y simplemente crecen con la funcionalidad. Si abre más herramientas, el mismo historial puede cambiar de "no superado" a "superado".
+                        // Aquí primero se deducen la reserva de producción y el margen de seguridad, y el resto es la cuota histórica.
                         "compress_char_budget" to
                             WarmupHistory.compressTokenBudgetFor(
                                 contextMaxTokens = effectiveContextWindowTokens(
@@ -1122,12 +1122,12 @@ class ChatStreamCoordinator(
                             ),
                     ),
                 )
-            // v2.3.2: 原「流式 Compaction UI」整块删除 —— 复核确认 CompactionState 有 3 处写入、
-            // **0 处读取**(UI 从未接入),属死代码;删掉后"取消/异常时卡在 Compacting"的隐患一并消失。
+            // v2.3.2: La "IU de Streaming Compaction" original se elimina en su totalidad. —— Revise y confirme que CompactionState esté escrito en 3 lugares,
+            // **0 Leer en**(UI nunca conectado),código muerto;Después de la eliminación"Cancelar/atascado cuando es anormal Compacting"Todos los peligros ocultos desaparecen.
             transformedMessages = transformerPipeline.execute(prefixMessages + truncatedHistory, context)
 
-            // P1-1: 调用 PromptFinalizeHook — 在管道执行后、发送给 LLM 前做最终修改
-            // 典型用途: 楼层式上下文限制(P1-4)、Worldbook 关键词触发注入(P1-2)
+            // P1-1: llamar PromptFinalizeHook — Realice cambios finales después de la ejecución del proceso pero antes de enviarlos a LLM
+            // Usos típicos: restricciones de contexto del piso(P1-4),Worldbook Inyección de desencadenador de palabras clave(P1-2)
             if (hookRegistry != null) {
                 val finalizeEvent =
                     io.zer0.muse.hook.PromptFinalizeEvent(
@@ -1146,36 +1146,36 @@ class ChatStreamCoordinator(
                     }
                 transformedMessages = finalizeResult.preparedHistory
             }
-            // v1.x: 三钩子接入 — 保存 context,供后续 applyVisualTransform / applyOnGenerationFinish 复用
+            // v1.x: acceso con triple gancho — guardar context,Para su posterior reutilización mediante applyVisualTransform / applyOnGenerationFinish
             transformContext = context
         }
     }
 
-    // ── Phase E: 工具定义 + 模型解析 ──────────────────────────────────
+    // ── Phase E: Definición de herramientas + análisis de modelos. ──────────────────────────────────
 
     /**
-     * v1.0.27 Phase 4-A.2: 从 ChatViewModel 抽取的工具与模型解析逻辑。
+     * v1.0.27 Phase 4-A.2: Herramientas y lógica de análisis de modelos extraídas de ChatViewModel.
      *
-     * 1. 按 Assistant.toolIdsJson 过滤本地工具定义
-     * 2. 加载启用的 Skills(按 Assistant.skillIdsJson 过滤)转为 ToolDefinition
-     * 3. 概率控制 sticker 工具暴露
-     * 4. 按 name 去重(本地工具优先于 Skill)
-     * 5. 解析 effectiveModel 与 effectiveProviderConfig(per-assistant 优先,回退全局)
-     * 6. 工具模型路由:C-12 — 仅工具轮使用 toolModel(state.toolModel),主模型
-     *   effectiveModel 固定为主对话模型(可能支持视觉),最终回复轮切回主模型
-     * 7. 推理等级降级:effectiveModel 不支持推理时,降到 AUTO/OFF
-     * 8. conversationHistory 初始化为 transformedMessages 的可变副本
+     * 1. Filtrar definiciones de herramientas locales por Assistant.toolIdsJson
+     * 2. Carga habilitada Skills(Filtrar por Assistant.skillIdsJson)convertir a ToolDefinition
+     * 3. Herramienta de etiqueta de control de probabilidad expuesta
+     * 4. Eliminar duplicados por nombre(Las herramientas locales tienen prioridad sobre Skill)
+     * 5. Analizar modelo efectivo con effectiveProviderConfig(per-assistant Prioridad,Retroceder globalmente)
+     * 6. Enrutamiento del modelo de herramienta:C-12 — Uso exclusivo de la rueda de herramientas toolModel(state.toolModel),modelo maestro
+     *   effectiveModel Corregido como modelo de diálogo principal.(Puede apoyar la visión),El ciclo de recuperación final vuelve al modelo principal.
+     * 7. Rebaja del nivel de razonamiento:effectiveModel Cuando el razonamiento no es compatible,hasta AUTO/OFF
+     * 8. conversationHistory Inicializado como una copia mutable de mensajes transformados
      */
     internal suspend fun resolveToolsAndModel(state: StreamRunState) {
         with(state) {
-            // 助手扩展页的工具选择必须真正影响聊天能力;空列表保留旧版语义(全部内置工具),
-            // 这样历史助手和新建助手不会突然失去能力。非空列表才按助手白名单过滤。
+            // La selección de herramientas para la extensión del asistente realmente debe afectar las capacidades de chat;Las listas vacías conservan la semántica heredada(Todas las herramientas integradas),
+            // De esta manera, el asistente histórico y el nuevo asistente no perderán repentinamente sus capacidades. La lista blanca del asistente solo filtra las listas que no están vacías.
             val configuredToolIds = assistant?.let { parseIdList(it.toolIdsJson).toSet() }.orEmpty()
             val configuredMcpServerIds = assistant?.let { parseIdList(it.mcpServerIdsJson).toSet() }.orEmpty()
             val configuredSkillIds = assistant?.let { parseIdList(it.skillIdsJson).toSet() }.orEmpty()
-            // v2.6.2（用户反馈）: 用户显式禁用的工具（ALWAYS_DENY）从 schema 一并剔除。
-            // 旧行为只在执行层拒绝（ToolPermissionResolver），模型每轮仍看到工具 → 调 → 被拒
-            // → 下一轮又调，形成“关了还在调”的死循环。与白名单同源，在暴露层就拦下。
+            // v2.6.2(comentarios de los usuarios): Herramientas explícitamente deshabilitadas por el usuario (ALWAYS_DENY) se eliminan del esquema por completo.
+            // El comportamiento anterior solo fue rechazado en el nivel de ejecución (ToolPermissionResolver), el modelo todavía ve la herramienta en cada ronda. → sintonizar → rechazado
+            // → La siguiente ronda se ajusta nuevamente para formar“Apagado y todavía ajustando”Un bucle infinito. Tiene el mismo origen que la lista blanca y está bloqueado en la capa de exposición.
             val deniedToolNames =
                 toolConfigStore?.policiesFlow?.firstOrNull()
                     ?.filterValues { it == io.zer0.muse.tools.ToolApprovalPolicy.ALWAYS_DENY }
@@ -1191,17 +1191,17 @@ class ChatStreamCoordinator(
                     ),
                 )
 
-            // Phase 8.8: 加载已启用且被当前助手绑定的 Skills 并转为 ToolDefinition;
-            // 空 skillIdsJson 同样兼容旧助手,表示使用全部全局启用 Skills。
-            // 审计修复 (A-04/A-05/A-06): 定义与执行不得分裂 —
-            // ① 与本地工具同名的 skill 从启用列表剔除:去重时定义保留了本地版
-            //   (见下方 distinctBy),执行路由 skillMap 优先,若 skill 仍在 map 里,
-            //   就会"LLM 看到本地定义、实际执行 skill 实现"(generate_image 不渲染图片、
-            //   read_file 双语义、参数集不一致)。
-            // ② channel_* 群聊三件套仅在群聊上下文由 ChannelToolFactory 注入,
-            //   主会话 skillMap 必须剔除,否则主会话 LLM 可用 skill 版以任意 agent
-            //   身份向任意群聊发言(绕过 ChannelToolFactory 的身份绑定防护)。
-            // 两条规则写在 ToolSchemaRules:提示词工具索引与计数入口也用它,不要在本处内联。
+            // Phase 8.8: Cargar habilidades habilitadas vinculadas al asistente actual y convertirlas a ToolDefinition;
+            // SkillIdsJson vacío también es compatible con asistentes antiguos,Indica el uso de todas las habilidades habilitadas globalmente.
+            // Reparación de auditoría (A-04/A-05/A-06): La definición y la ejecución no deben estar separadas —
+            // ① Las habilidades con el mismo nombre que las herramientas locales se eliminan de la lista habilitada:Al realizar la deduplicación, la definición conserva la versión local.
+            //   (Ver abajo distinctBy),Ejecute primero el mapa de habilidades de enrutamiento,Si la habilidad todavía está en el mapa,
+            //   voluntad"LLM Ver la definición local y ejecutar la implementación de la habilidad."(generate_image No renderices imágenes,
+            //   read_file Semántica dual, conjuntos de parámetros inconsistentes).
+            // ② channel_* ChannelToolFactory solo inyecta el chat grupal de tres piezas en el contexto del chat grupal,
+            //   Se debe eliminar el SkillMap de la sesión principal.,De lo contrario, la sesión maestra LLM está disponible en la versión de habilidad con cualquier agent
+            //   Identidad para hablar en cualquier chat grupal.(Omitir la protección vinculante de identidad de ChannelToolFactory).
+            // Hay dos reglas escritas en ToolSchemaRules: la herramienta de palabras rápidas que indexa y cuenta entradas también la usa,No te alinees aquí.
             val localToolNames = toolRegistry.listTools().map { it.name }.toSet()
             val enabledSkills =
                 io.zer0.muse.tools.ToolSchemaRules.selectSkills(
@@ -1209,19 +1209,19 @@ class ChatStreamCoordinator(
                     localToolNames,
                     io.zer0.muse.tools.ToolSchemaRules.Criteria(configuredSkillIds = configuredSkillIds),
                 )
-            // 缓存 skill id → SkillEntity 映射,工具执行时用
+            // caché skill id → SkillEntity mapeo,Se utiliza al ejecutar la herramienta.
             skillMap = enabledSkills.associateBy { it.id }
-            // v2.x 工具瘦身阶段4:技能默认与 OPTIONAL 同口径收窄，find_tools 必须能
-            // 把技能也搜出来并装载，否则收窄 = 功能回退。按**当前会话**登记技能目录，
-            // 避免会话交错时全局字段互相覆盖导致跨会话技能泄露。
+            // v2.x Etapa de adelgazamiento de herramientas.4:De forma predeterminada, las habilidades se reducen al mismo calibre que OPCIONAL.find_tools debe poder
+            // Busque las habilidades y cárguelas; de lo contrario, se reducirán. = Reversión funcional. prensa**sesión actual**Registrar directorio de habilidades,
+            // Evite la fuga de habilidades entre sesiones causada por campos globales que se cubren entre sí cuando las sesiones están intercaladas.
             val skillSearchDefs =
                 enabledSkills
                     .filter { it.id !in stickerToolIds }
                     .map { sk ->
-                        // 风险等级只作目录元数据:该条目仅进 find_tools 检索目录,
-                        // 不登记审批台账(不在 toolDefs 里,getToolRiskLevel 查不到)。
-                        // 但技能本身是可执行体,名字由用户/插件自取,不能按"听起来只读"
-                        // 声明 SAFE;给 NORMAL 使元数据与技能的真实可执行性一致。
+                        // El nivel de riesgo solo se utiliza como metadatos del directorio.:Esta entrada solo ingresa al directorio de búsqueda find_tools,
+                        // No registrar el libro de aprobaciones(No en toolDefs,getToolRiskLevel no puedo encontrar).
+                        // Pero la habilidad en sí es el ejecutable.,Nombre por usuario/Recogida automática enchufable,no puedo presionar"suena solo lectura"
+                        // Declaración SAFE;Dé NORMAL para que los metadatos sean consistentes con la verdadera ejecutabilidad de la habilidad.
                         ToolRegistry.ToolDef(
                             name = sk.id,
                             description = sk.description,
@@ -1231,28 +1231,28 @@ class ChatStreamCoordinator(
                         )
                     }
             toolRegistry.setSearchableSkills(state.sessionId, skillSearchDefs)
-            // v2.6.1: 同步登记本会话的“助手可见工具名”——find_tools 据此收窄检索目录，
-            // 不再对白名单外的工具空头承诺“下一轮可用”（那类工具在下面的白名单过滤阶段
-            // 就被裁掉，执行时只会报 not exposed in this turn）。
-            // 用 registeredToolDefs（已过白名单 + 已含 find_tools 特例）最准。
+            // v2.6.1: Registra esta sesión de forma sincrónica“Nombre de la herramienta visible del asistente”——find_tools En consecuencia, el directorio de búsqueda se reduce,
+            // No más promesas vacías para herramientas fuera de la lista blanca“Próxima ronda disponible”(Ese tipo de herramienta se encuentra en la etapa de filtrado de lista blanca a continuación.
+            // será despedido y solo será reportado durante la ejecución not exposed in this turn).
+            // Es más preciso utilizar ToolDefs registrados (incluido el caso especial en la lista blanca + find_tools).
             toolRegistry.setVisibleTools(state.sessionId, registeredToolDefs.map { it.name }.toSet() + enabledSkills.map { it.id })
-            // v1.116: 表情包概率控制 — 读取设置缓存,决定本轮是否向 LLM 暴露 sticker 工具。
-            // stickerEnabled=false:完全不暴露 list_stickers / send_sticker
-            // stickerEnabled=true:按 stickerSendProbability 概率掷骰子,命中才暴露
-            // 这样 LLM 只能在概率命中时看到工具,实现了用户设置的概率控制
-            // v1.0.52: 情绪调制 — 检测最近对话情绪,情绪强烈时放大暴露概率(封顶 100%),
-            // 中性对话保持用户设置的基线概率。
-            // v1.0.54: 表情包功能已弃用 — 工具永不暴露(UI 已关闭,数据保留)
+            // v1.116: Control de probabilidad del paquete de expresiones — Leer caché de configuración,Decida si exponer la herramienta de calcomanías a LLM en esta ronda.
+            // stickerEnabled=false:no expuesto en absoluto list_stickers / send_sticker
+            // stickerEnabled=true:Tirar dados con pegatinaEnviarProbabilidad probabilidad,Expuesto sólo después del golpe.
+            // De esta manera, LLM solo puede ver la herramienta cuando golpea con probabilidad.,Control de probabilidad implementado establecido por los usuarios.
+            // v1.0.52: modulación del estado de ánimo — Detectar el sentimiento de conversaciones recientes,La probabilidad de exposición se amplifica cuando las emociones son fuertes(tapado 100%),
+            // El diálogo neutral mantiene la probabilidad base establecida por el usuario.
+            // v1.0.54: La función de emoticones ha quedado obsoleta. — Las herramientas nunca están expuestas(UI Cerrado,Retención de datos)
             val stickerToolsEnabled = false
             val skillToolDefs =
                 enabledSkills.map { sk ->
-                    // v1.0.53: send_sticker 动态注入概率引导 — 让模型真正按用户设置的概率发贴纸
-                    //   (概率控制只决定"工具是否暴露",发不发由模型判断;显式告知概率后
-                    //   模型会按此概率主动调用,100% 时每次合适回复都会尝试发)。
+                    // v1.0.53: send_sticker Guía de probabilidad de inyección dinámica — Deje que el modelo emita pegatinas según la probabilidad establecida por el usuario.
+                    //   (El control de probabilidad sólo determina"¿Está la herramienta expuesta?",El envío o no lo determina el modelo.;Después de decir explícitamente la probabilidad
+                    //   El modelo llamará activamente de acuerdo con esta probabilidad.,100% Intentaremos enviar todas las respuestas apropiadas.).
                     val stickerProbHint =
                         if (sk.id == "send_sticker") {
-                            " 用户设置的表情包发送概率为 ${settings.stickerSendProbabilityCache}%(在设置中调整)。" +
-                                "概率 ≥ 50% 时请在合适的回复中主动调用本工具发送表情包;概率 = 100% 时每次回复都应尝试发送。"
+                            " La probabilidad de enviar emoticonos establecida por el usuario es ${settings.stickerSendProbabilityCache}%(Ajustar en la configuración)." +
+                                "probabilidad ≥ 50% Tome la iniciativa de llamar a esta herramienta en la respuesta adecuada para enviar emoticones.;probabilidad = 100% Se debe intentar enviar cada respuesta."
                         } else {
                             ""
                         }
@@ -1262,22 +1262,22 @@ class ChatStreamCoordinator(
                         parametersJsonSchema = normalizeSkillSchema(sk.parametersJson),
                     )
                 }.filter { def ->
-                    // 概率未命中时过滤掉 sticker 相关工具
+                    // Filtre pegatinas cuando no se cumpla la probabilidad Herramientas relacionadas
                     if (stickerToolsEnabled) true else def.name !in stickerToolIds
                 }
-            // v1.0.4 修复 HTTP 400 "Tool names must be unique":
-            // `generate_image` 同时被注册为 ToolRegistry 内置工具(P2-23 起由
-            // MediaGenToolsRegistrar 在启动时注册,此前是 ChatViewModel.registerMediaTools)
-            // 和 SkillExecutor.BUILT_IN_SKILLS 中的 Skill,默认助手同时启用两份,
-            // 直接拼接会发出重复 tools,DeepSeek/中转站严格校验工具名唯一性会返回 400。
-            // 这里按 name 去重,ToolDef(本地工具实现)优先保留,同名 Skill 被丢弃。
+            // v1.0.4 Reparación HTTP 400 "Tool names must be unique":
+            // `generate_image` También registrado como herramienta incorporada de ToolRegistry(P2-23 Origen
+            // MediaGenToolsRegistrar Regístrate al inicio,Anteriormente era ChatViewModel.registerMediaTools)
+            // y en SkillExecutor.BUILT_IN_SKILLS Skill,Por defecto, dos asistentes están habilitados al mismo tiempo,
+            // El empalme directo emitirá duplicados tools,DeepSeek/La estación de transferencia devolverá 400 al verificar estrictamente la unicidad del nombre de la herramienta.
+            // Haga clic aquí para eliminar duplicados,ToolDef(Implementación de herramientas locales)Reserva prioritaria,La Habilidad con el mismo nombre se descarta.
             val allToolDefs = (registeredToolDefs + skillToolDefs).distinctBy { it.name }
-            // 单一快照同时确定模型可见 definitions 与执行路由(Local > Skill)。
+            // Una única instantánea determina simultáneamente las definiciones visibles del modelo y las rutas de ejecución.(Local > Skill).
             routeSnapshot = io.zer0.muse.tools.RouteTable.snapshot(registeredToolDefs, enabledSkills)
             tools = routeSnapshot.definitions
-            // M4.3: 工具 schema 总量预算观测 —— 仅记录告警,不静默裁剪:
-            // 静默移除工具会让模型"看不到能力就不会调用"(功能性回退),是否裁剪属
-            // 产品决策,需要显式的意图筛选/全集测试路径配套(M3 已有全集路径)。
+            // M4.3: Esquema de herramienta de observación del presupuesto total. —— Sólo registra alarmas,Sin recortes silenciosos:
+            // Quitar la herramienta silenciosamente hará que el modelo"Si no puedes ver la habilidad, no la llamarás."(respaldo funcional),Ya sea para recortar
+            // decisiones de producto,Requiere filtrado de intención explícito/Paquete completo de ruta de prueba(M3 Ya tiene el camino a la colección completa.).
             val schemaTotalChars = allToolDefs.sumOf { it.description.length + it.parametersJsonSchema.length }
             val schemaBudget =
                 io.zer0.muse.context.ContextBudget
@@ -1290,31 +1290,31 @@ class ChatStreamCoordinator(
                 )
             }
 
-            // v2.6.x: 模型绑定统一走 [resolveModelBinding]（与 prepareHistory 阶段
-            // 解析上下文窗口用的是**同一个函数**，避免“窗口按 A 模型算、请求发给 B 模型”）。
+            // v2.6.x: El enlace del modelo está unificado [resolveModelBinding](Con etapa prepareHistory
+            // Se utiliza la ventana de contexto de análisis.**misma funcion**, evitar“La ventana se calcula en base al modelo A y la solicitud se envía al modelo B.”).
             val allProviders = accessor.snapshot.providers
             val binding = resolveModelBinding(state)
             val resolvedModel = binding.model
             val assistantProviderConfig = binding.providerConfig
 
-            // v1.60-A: 工具模型路由 — 工具调用轮次优先使用用户配置的轻量 toolModel
-            // v1.0.53: per-assistant 优先 — 助手自己配了 toolModelId 时用它,否则回退全局 toolModelId
-            // v2.x: 新增辅助模型绑定(带 provider)优先 — 用户在「小工具模型」绑定后精确命中该渠道,
-            //       旧全局 toolModelId 降为兜底(迁移完成后一般已清空)。
+            // v1.60-A: Enrutamiento del modelo de herramienta — Las rondas de llamadas de herramientas utilizan preferentemente un peso ligero configurado por el usuario. toolModel
+            // v1.0.53: per-assistant Prioridad — Úselo cuando el asistente configure el propio toolModelId,De lo contrario, recurra al nivel global. toolModelId
+            // v2.x: Se agregó enlace de modelo auxiliar.(traer provider)Prioridad — El usuario golpea con precisión el canal después de vincular el "modelo de dispositivo",
+            //       El antiguo toolModelId global se reduce al final.(Una vez completada la migración, generalmente se borra.).
             val utilityBinding = runCatching { settings.utilityModelBindingFlow.firstOrNull() }.getOrNull()
             val assistantToolModelId = accessor.snapshot.currentAssistant?.toolModelId?.takeIf { it.isNotBlank() }
             val utilityBoundModelId = utilityBinding?.modelId?.takeIf { it.isNotBlank() }
             val toolModelId = assistantToolModelId ?: utilityBoundModelId ?: accessor.snapshot.toolModelId
-            // v2.x: 绑定命中的 provider id(助手级/旧键路径为 null,走原有"主模型 provider 优先"策略)
+            // v2.x: golpe vinculante provider id(nivel asistente/El antiguo camino clave es null,Sigue el camino original"El proveedor del modelo principal tiene prioridad"Estrategia)
             val boundProviderId =
                 utilityBinding?.providerId
                     ?.takeIf { assistantToolModelId == null && utilityBoundModelId == toolModelId }
-            // v1.0.53: 解析时主模型 provider 优先 — 同一模型 id 可能存在于多个 provider,
-            //   直接 flatMap.firstOrNull 会匹配到无关 provider(如 kimi-k2.6 匹配到 opencode 的),
-            //   导致 Agent 模式跨 provider 跳变。先找主模型所在 provider,找不到再全局兜底。
+            // v1.0.53: Al analizar, el proveedor del modelo principal tiene prioridad. — La misma identificación de modelo puede existir en múltiples provider,
+            //   Directamente flatMap.firstOrNull coincidirá con irrelevante provider(Por ejemplo, kimi-k2.6 coincide con código abierto),
+            //   Hace que el modo Agente salte entre proveedores. Primero encuentre dónde está el modelo principal. provider,No puedo encontrar ninguna pista sobre toda la situación.
             val toolModel: Model? =
                 toolModelId?.let { tid ->
-                    // v2.x: 绑定路径 — 按绑定的 provider 精确命中
+                    // v2.x: camino vinculante — Golpe exacto por parte del proveedor vinculado
                     val fromBinding =
                         boundProviderId?.let { pid ->
                             allProviders.firstOrNull { it.id == pid }?.models?.firstOrNull { it.id == tid }
@@ -1332,27 +1332,27 @@ class ChatStreamCoordinator(
                 toolModel?.let { m ->
                     allProviders.firstOrNull { it.id == m.providerId }
                 }
-            // v1.0.53: 工具模型可用性 — 助手显式配置的工具模型允许任意 provider;
-            //   回退全局的工具模型要求与主模型同 provider,避免 Agent 模式跨 provider 跳变
-            //   (主对话走 tokenrhythm、工具轮却跳 opencode 的割裂观感)。
+            // v1.0.53: Disponibilidad de modelo de herramienta — El modelo de herramienta configurado explícitamente por el ayudante permite arbitraria provider;
+            //   El modelo de herramienta global para la reversión debe ser el mismo que el modelo principal. provider,Evite que el modo Agente salte entre proveedores
+            //   (El diálogo principal usa tokenrhythm, pero la rueda de herramientas usa código abierto. Una apariencia y sensación fragmentadas.).
             val toolModelUsable =
                 toolModel != null && (
                     assistantToolModelId != null ||
-                        // v2.x: 新绑定显式带 provider,允许工具轮跨 provider(用户已精确指定渠道)
+                        // v2.x: nueva banda explícita vinculante provider,Permita que las ruedas de herramientas se extiendan provider(El usuario ha especificado con precisión el canal.)
                         boundProviderId != null ||
                         resolvedModel == null ||
                         toolModel.providerId == resolvedModel.providerId
                     )
-            // C-12: 主模型固定为主对话模型(可能支持视觉),不再被 toolModel 整体替换。
-            //  effectiveModel 直接参与视觉辅助判定(prepareVisionContext)与最终回复轮路由,
-            //  避免"工具启用 + 配置 toolModel"后所有轮次都走 toolModel、主模型视觉被降级为文本描述。
+            // C-12: El modelo principal se fija como modelo de diálogo principal.(Puede apoyar la visión),Ya no es completamente reemplazado por toolModel.
+            //  effectiveModel Participar directamente en el juicio de ayuda visual.(prepareVisionContext)Enrutamiento con ronda de respuesta final,
+            //  evitar"Habilitación de herramientas + configuración toolModel"Después de que todas las rondas pasan por el modelo de herramienta, la visión del modelo principal se degrada a una descripción de texto.
             val rawEffectiveModel = resolvedModel
-            // v1.135: 用 ModelRegistry 增强模型能力识别,解决 opencode-go/ 等前缀导致
-            // supportsVision / supportsReasoning 误判的问题。ChatService 内部也会再增强一次。
+            // v1.135: Utilice ModelRegistry para mejorar la identificación de capacidades del modelo,Resuelve el problema causado por prefijos como opencode-go/
+            // supportsVision / supportsReasoning El problema del error de juicio.ChatService El interior también será mejorado nuevamente.
             effectiveModel = rawEffectiveModel?.let { ModelRegistry.enhanceModel(it) }
             effectiveProviderConfig = assistantProviderConfig
-            // C-12: 工具模型仅在"工具轮"使用(上一轮结果含 toolCalls 的续接轮,
-            //  由 streamRound 按 round>1 判定);最终回复轮切回主模型,保留主模型的视觉能力。
+            // C-12: El modelo de herramienta sólo está disponible en"rueda de herramientas"uso(Ronda de continuación del resultado de la última ronda que contiene llamadas a herramientas,
+            //  Presionado por streamRound round>1 juicio);El ciclo de recuperación final vuelve al modelo principal.,Preservar las capacidades visuales del modelo principal.
             this.toolModel = if (toolModelUsable) toolModel?.let { ModelRegistry.enhanceModel(it) } else null
             this.toolProviderConfig =
                 if (toolModelUsable) {
@@ -1361,8 +1361,8 @@ class ChatStreamCoordinator(
                     null
                 }
 
-            // v1.136: 若当前模型不支持推理,将推理等级降级到 AUTO/OFF。
-            // 避免向非推理模型发送 reasoning_effort 导致简单问题过度思考,或对不支持的模型返回 400。
+            // v1.136: Si el modelo actual no admite la inferencia,Bajar el nivel de inferencia a AUTO/OFF.
+            // Evite enviar razonamiento_esfuerzo a modelos que no razonan, lo que provoca que se piense demasiado en problemas simples.,O devuelva 400 para modelos no compatibles.
             val effectiveModelForReasoning = effectiveModel
             reasoningLevel =
                 if (effectiveModelForReasoning != null && !effectiveModelForReasoning.supportsReasoning()) {
@@ -1371,32 +1371,32 @@ class ChatStreamCoordinator(
                     requestedReasoningLevel
                 }
 
-            // 累积的对话历史(含工具调用结果,每轮可能追加 assistant+tool 消息)
+            // Historial de conversaciones acumulativo(Contiene resultados de llamadas a herramientas,Se pueden agregar mensajes de asistente + herramienta en cada ronda)
             conversationHistory = transformedMessages.toMutableList()
 
-            // 工具 schema 与助手扩展白名单同源;弱工具模型不会再被额外裁剪计划/委派工具。
-            // 实际执行失败仍由工具循环和权限层处理。
+            // El esquema de la herramienta tiene el mismo origen que la lista blanca de extensiones del asistente.;Los modelos de herramientas débiles ya no estarán programados para recorte adicional/Herramientas de delegación.
+            // Los errores de ejecución reales todavía son manejados por el bucle de herramientas y la capa de permisos.
         }
     }
 
     /**
-     * v1.52: per-assistant 模型解析 — 助手配置了 modelId 则用助手专属模型,
-     * 否则回退到全局 selectedModelId,再否则兜底到激活 Provider 首个模型。
-     * 同时解析模型所属的 ProviderConfig,确保跨 Provider 的助手模型也能正确路由。
+     * v1.52: per-assistant Análisis de modelos — Si el asistente está configurado con modelId, se utilizará el modelo exclusivo del asistente.,
+     * De lo contrario, recurra a global selectedModelId,De lo contrario, vaya hasta el final para activar el primer modelo del Proveedor.
+     * También analiza el modelo al que pertenece. ProviderConfig,Asegúrese de que los modelos auxiliares de todos los proveedores también se enruten correctamente.
      *
-     * v2.6.x: 从 [resolveToolsAndModel] 内联块提取为**无副作用**的单一出口。
-     * 动机:上下文窗口口径（90% 激进截断 / 1.35 倍硬拦截 / 预热与压缩预算）
-     * 必须在 `prepareHistory` 阶段就知道本轮实际模型，而那时工具链还没解析。
-     * 把解析抽成函数后，两处共用同一份逻辑，不会出现“两套模型解析”。
+     * v2.6.x: de [resolveToolsAndModel] El bloque en línea se extrae como**Sin efectos secundarios**salida única.
+     * motivación:apertura de la ventana de contexto (90% Intercepción agresiva/intercepción dura 1,35x/presupuesto de calentamiento y compresión)
+     * debe estar en `prepareHistory` El modelo real de esta ronda se conoce en este momento, pero la cadena de herramientas aún no se ha analizado en ese momento.
+     * Después de extraer el análisis en una función, los dos lugares comparten la misma lógica y no aparecerán.“Análisis de dos conjuntos de modelos.”.
      *
-     * @param logBindingIssues 是否输出绑定降级日志（prepare 阶段传 false，
-     *   仍由 [resolveToolsAndModel] 的调用点输出，避免同一轮刷两条相同告警）
+     * @param logBindingIssues Ya sea para generar el registro de degradación vinculante (prepare Pasa falso en el escenario,
+     *   todavía por [resolveToolsAndModel] Salida de pulsador para evitar dos alarmas idénticas en la misma ronda)
      */
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     internal fun resolveModelBinding(state: StreamRunState, logBindingIssues: Boolean = true): GenerationModelBinding {
         val assistant = state.assistant
         val allProviders = accessor.snapshot.providers
-        // v1.0.79 (F-1): 会话内手动切换的模型优先于助手专属模型
+        // v1.0.79 (F-1): Los modelos que se cambian manualmente dentro de una sesión tienen prioridad sobre los modelos específicos del asistente
         val taskRouteModel = state.taskRouteSelection?.modelId?.takeIf { it.isNotBlank() }
         val taskRouteProvider = state.taskRouteSelection?.providerId?.takeIf { it.isNotBlank() }
         val sessionOverride =
@@ -1414,16 +1414,16 @@ class ChatStreamCoordinator(
             sessionOverride
                 ?: assistant?.modelId?.takeIf { it.isNotBlank() }
                 ?: state.fallbackModelId
-        // 会话手动切换的 Provider 与模型须成对优先，不能继续拿助手或全局 Provider 覆盖它。
+        // El proveedor y el modelo para el cambio de sesión manual deben emparejarse primero y los asistentes o proveedores globales no pueden anularlos.
         val assistantProviderId =
             sessionProviderOverride
                 ?: assistant?.providerId?.takeIf { it.isNotBlank() }
                 ?: state.fallbackProviderId
-        // v2.6.9: 模型绑定三态判定(见 resolveRequestedModelBinding)。
-        // 原写法 `models.none { it.id == assistantModelId }` 在 models 为空列表时恒为 true,
-        // 把「模型列表尚未拉取/拉取失败」误判成「模型不存在」并降级到兜底模型
-        // (真机表现为会话被换到 GLM-4-9B,该模型工具调用畸形,卡片生成直接失败)。
-        // 现在:列表为空 → 列表未就绪,保留请求绑定不降级;列表非空且不含 → 真缺失,走原兜底。
+        // v2.6.9: Modelo de decisión vinculante para los tres Estados(ver resolveRequestedModelBinding).
+        // Escritura original `models.none { it.id == assistantModelId }` Siempre cuando los modelos son una lista vacía true,
+        // "La lista de modelos aún no ha sido eliminada"/"La extracción falló" se juzga erróneamente como "el modelo no existe" y se degrada a un modelo de cobertura.
+        // (La máquina real muestra que la sesión ha cambiado a GLM-4-9B,La herramienta modelo llama a la malformación.,La generación de la tarjeta falla directamente).
+        // ahora:La lista está vacía → Lista no lista,Preservar el enlace de la solicitud sin degradar;La lista no está vacía y no contiene → Realmente desaparecido,Tome la ruta original.
         val requestedBinding =
             resolveRequestedModelBinding(allProviders, assistantProviderId, assistantModelId)
         if (logBindingIssues && requestedBinding.missing) {
@@ -1436,7 +1436,7 @@ class ChatStreamCoordinator(
                     "sessionId=${state.sessionId}, assistantId=${assistant?.id ?: "-"}",
             )
         } else if (logBindingIssues && requestedBinding.listNotReady) {
-            // 模型列表未就绪:不是缺失,不能据此降级。保留可排查性,但不打 W 级告警。
+            // Lista de modelos no lista:No falta,Esto no se puede utilizar para bajar de categoría. Preservar la depuración,Pero no se emitirá ninguna alarma de nivel W.
             Logger.i(
                 "ChatVM",
                 "requested model binding kept, model list not fetched yet: " +
@@ -1447,15 +1447,15 @@ class ChatStreamCoordinator(
         }
         val resolvedModel: Model? =
             if (assistantModelId != null && assistantProviderId != null) {
-                // 精确命中 → 原模型;列表未就绪 → 按请求 id 构造占位绑定(不降级);
-                // 真缺失 → null,交给下方兜底链(与原行为一致)。
+                // golpe preciso → modelo original;Lista no lista → Construir enlace de marcador de posición por ID de solicitud(Sin degradación);
+                // Realmente desaparecido → null,Déjalo en la cadena de bolsillo de abajo.(consistente con el comportamiento original).
                 requestedBinding.model
             } else {
-                // v1.0.53+: 激活 Provider 优先 — 助手只配了 modelId（未配 providerId）时，
-                // 优先在激活 Provider 的模型里找同 id，避免多个 provider 存在同 id 模型
-                // （如 deepseek-v4-flash 同时存在于 opencode-go 与官方渠道）时 flatMap 全局匹配
-                // 命中非激活 provider，导致“切了 Provider 聊天请求仍走旧渠道”。
-                // 激活 Provider 找不到（如助手绑定的是该 Provider 没有的模型）才全局兜底。
+                // v1.0.53+: Activar proveedor primero — Cuando el asistente solo está equipado con modelId (no proveedorId),
+                // Priorice buscar la misma identificación en el modelo que activa el Proveedor para evitar múltiples proveedores con el mismo modelo de identificación.
+                // (Por ejemplo, deepseek-v4-flash existe tanto en el canal opencode-go como en el canal oficial) coincidencia global de flatMap
+                // Causas de golpear a un proveedor no activado“Después de cambiar de proveedor, las solicitudes de chat aún pasan por el canal anterior.”.
+                // Si no se puede encontrar el Proveedor activado (por ejemplo, el asistente está vinculado a un modelo que no existe en el Proveedor), entonces se cubrirá toda la situación.
                 assistantModelId?.let { aid ->
                     val inActive =
                         allProviders.firstOrNull { it.id == activeProviderId }
@@ -1463,22 +1463,22 @@ class ChatStreamCoordinator(
                     inActive ?: allProviders.flatMap { it.models }.firstOrNull { it.id == aid }
                 }
             } ?: accessor.snapshot.selectedModelId?.let { sid ->
-                // 与上面相同的激活 Provider 优先策略
+                // La misma estrategia de prioridad del proveedor de activación que la anterior
                 val inActive =
                     allProviders.firstOrNull { it.id == activeProviderId }
                         ?.models?.firstOrNull { it.id == sid }
                 inActive ?: allProviders.flatMap { it.models }.firstOrNull { it.id == sid }
             }
-                // 兜底:selectedModelId 为 null 且 assistant 未配 modelId 时,
-                // 优先用激活 Provider 的首个模型,避免跨 Provider 误选其他 provider 的模型。
-                // v1.0.28 修复: 之前用 allProviders.firstOrNull 不考虑激活 provider,
-                // 在多 provider 场景下会误选 SiliconFlow 免费模型(若 SiliconFlow 排在 allProviders 前面)。
-                // 场景:用户切到 OpenCode 但未点选具体模型(让默认选首个),应选 OpenCode 的首个模型,
-                // 而非 SiliconFlow 的 GLM-4-9B。
+                // Ten todo en cuenta:selectedModelId Cuando es nulo y el asistente no está equipado con modelId,
+                // Priorizar el primer modelo que active el Proveedor,Evite la selección entre proveedores de modelos de otros proveedores por error.
+                // v1.0.28 Reparación: Anteriormente, se usaba allProviders.firstOrNull y no se consideraba para la activación. provider,
+                // El modelo gratuito de SiliconFlow se selecciona por error en escenarios de múltiples proveedores(Si SiliconFlow está clasificado por delante de todos los proveedores).
+                // escena:El usuario cambia a OpenCode pero no hace clic en un modelo específico(Deje que el primero esté seleccionado por defecto),El primer modelo que se debe seleccionar para OpenCode,
+                // En lugar del GLM-4-9B de SiliconFlow.
                 ?: allProviders.firstOrNull { it.id == activeProviderId && it.models.isNotEmpty() }?.let { p ->
                     p.models.firstOrNull()
                 }
-                // 二级兜底:激活 Provider 无模型(如未拉取/未填 apiKey),才退回首个有模型的 provider
+                // Cobertura de segundo nivel:Activar proveedor sin modelo(Si no se tira/No completado apiKey),Sólo entonces devolví el primero con un modelo. provider
                 ?: allProviders.firstOrNull { it.models.isNotEmpty() }?.let { p ->
                     p.models.firstOrNull()
                 }
@@ -1498,14 +1498,14 @@ class ChatStreamCoordinator(
         )
     }
 
-    /** 将助手高级页配置的自定义 headers/body 接入实际 Provider 请求。 */
+    /** Integre los encabezados/cuerpo personalizados configurados en la página avanzada del asistente en la solicitud real del Proveedor. */
     private fun applyAssistantRequestOverrides(
         provider: io.zer0.ai.core.ProviderConfig,
         assistant: io.zer0.muse.data.assistant.AssistantEntity?,
     ): io.zer0.ai.core.ProviderConfig {
-        // Responses API 的 specific 必须保留 OpenAI.useResponseApi 等协议字段;
-        // 助手高级自定义请求目前只对 Chat Completions Provider 生效,避免把 Responses
-        // 配置替换成 Custom 后静默改协议。
+        // Responses API Se deben conservar los campos de protocolo específicos como OpenAI.useResponseApi;
+        // La solicitud de personalización avanzada del Asistente actualmente solo tiene efecto para el Proveedor de finalización de chat,evitar poner Responses
+        // Reemplace la configuración con Personalizada y cambie silenciosamente el protocolo.
         if (assistant == null || provider.type != io.zer0.ai.core.ProviderType.OPENAI) return provider
         val headers = assistantRepository.parseCustomHeaders(assistant)
         val bodies = assistantRepository.parseCustomBodies(assistant)
@@ -1532,12 +1532,12 @@ class ChatStreamCoordinator(
 }
 
 /**
- * 规范化 Skill 参数 schema。
+ * Normalizar el esquema de parámetros de habilidades.
  *
- * OpenAI 兼容 API 要求函数参数必须是 JSON Schema 的 `{"type":"object",...}` 结构。
- * 外部插件包（如 pelle-d-umore）可能把参数写成空 `{}`（无 type 字段），
- * 直接透传会被上游拒绝（HTTP 400: schema must be a JSON Schema of type object）。
- * 空对象 / 空串 / 缺 type 时统一补成标准空对象 schema。
+ * OpenAI La compatibilidad de API requiere que los parámetros de la función estén en el esquema JSON `{"type":"object",...}` estructura.
+ * Los paquetes de complementos externos (como pelle-d-umore) pueden escribir parámetros como vacíos `{}`(sin campo de tipo),
+ * La transmisión transparente directa será rechazada por el upstream (HTTP 400: schema must be a JSON Schema of type object).
+ * Cuando falta el objeto vacío/cadena vacía/tipo, se completará el esquema de objeto vacío estándar.
  */
 private fun normalizeSkillSchema(raw: String): String {
     if (raw.isBlank()) return """{"type":"object","properties":{}}"""

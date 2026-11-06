@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
 
-/** 每日总结四个固定时点的时间计算测试。 */
+/** Resuma la prueba de cálculo del tiempo en cuatro puntos horarios fijos todos los días. */
 class DailySummaryScheduleTest {
 
     private fun calendar(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long = Calendar.getInstance().apply {
@@ -23,8 +23,8 @@ class DailySummaryScheduleTest {
         )
         expected.forEach { (slot, delayExpected) ->
             val delay = DailySummaryWorker.computeDelayToNextTarget(now, slot.first, slot.second)
-            assertTrue("${slot.first}:${slot.second} 延迟应为正数", delay > 0)
-            assertEquals("${slot.first}:${slot.second} 延迟错误", delayExpected, delay)
+            assertTrue("${slot.first}:${slot.second} El retraso debe ser positivo.", delay > 0)
+            assertEquals("${slot.first}:${slot.second} error de retraso", delayExpected, delay)
         }
     }
 

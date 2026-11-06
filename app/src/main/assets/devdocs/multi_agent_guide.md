@@ -1,88 +1,88 @@
-<!-- devdoc: 内部开发文档,不向用户展示,LLM 通过 knowledge_search 查询 -->
-# 多 Agent 协作完整指南
+<!-- devdoc: Documentación de desarrollo interno.,No se muestra a los usuarios,LLM Consulta a través de Knowledge_search -->
+# Una guía completa para la colaboración entre múltiples agentes
 
-> 触发场景: 用户问"多个助手怎么一起用""能委托任务给别的助手吗""群聊是什么""怎么让助手们讨论"时,参考本文档据实回答。
-> 本文档基于源码 AgentRouter.kt / AgentToolsRegistrar.kt / GroupChatScheduler.kt / GroupChatScreen.kt 的真实实现。
+> escena desencadenante: Usuario preguntó"Cómo utilizar varios asistentes juntos""¿Puedo delegar tareas a otros asistentes?""¿Qué es el chat grupal?""Cómo conseguir que los asistentes hablen"tiempo,Consulte este documento y responda con sinceridad.
+> Este documento está basado en el código fuente. AgentRouter.kt / AgentToolsRegistrar.kt / GroupChatScheduler.kt / GroupChatScreen.kt verdadera realización.
 
-## 一、概述
+## 1. Descripción general
 
-Muse 支持多个助手(Agent)协作:
-1. **delegate_agent 委托**: 当前助手把任务委托给另一个助手跑一轮 LLM,拿结果继续
-2. **群聊(GroupChat)**: 多个助手在频道里轮流发言讨论,用户可加入
-3. **DM**: 两个助手的私聊
+Muse Admite múltiples asistentes(Agent)colaboración:
+1. **delegate_agent confiar**: El asistente actual delega la tarea a otro asistente para que corra durante una ronda. LLM,Continuar con los resultados
+2. **chat grupal(GroupChat)**: Varios asistentes se turnan para hablar y discutir en el canal.,Los usuarios pueden unirse
+3. **DM**: Chat privado entre dos asistentes.
 
-## 二、delegate_agent 委托机制
+## 2.delegate_agent mecanismo de delegación
 
-### 调用方式(LLM 视角)
+### método de llamada(LLM perspectiva)
 ```
-delegate_agent(task = "帮我算一下预算", agent = "财务助手")
+delegate_agent(task = "Ayúdame a calcular el presupuesto.", agent = "asistente financiero")
 ```
-- **task**: 委托的任务描述(完整上下文)
-- **agent**: 目标助手 id(从系统提示的助手清单里选)
+- **task**: Descripción de la tarea delegada(contexto completo)
+- **agent**: asistente de gol id(Seleccionar de la lista de asistentes solicitada por el sistema)
 
-### 流程
-1. 当前助手调用 delegate_agent,指定目标助手
-2. 目标助手用**自己的** systemPrompt/模型/记忆/工具跑一轮
-3. 结果返回给当前助手,当前助手整合后回复用户
+### proceso
+1. Llamada de ayuda actual delegate_agent,ayudante objetivo
+2. Para asistente de destino**propio** systemPrompt/modelo/memoria/Las herramientas funcionan durante una ronda.
+3. El resultado se devuelve al asistente actual.,Responder al usuario después de integrar el asistente actual
 
-### 要点
-- 委托给专业助手(如翻译/代码/文案),发挥各自人格优势
-- task 要写清上下文,目标助手看不到当前对话
-- 结果回传后如实整合,不篡改子助手结论
-- 子助手隔离子会话,不注入主对话长期记忆(避免递归)
+### Puntos principales
+- Confiar a asistentes profesionales(como se traduce/código/redacción),Dar rienda suelta a las fortalezas de su propia personalidad.
+- task Escribe el contexto claramente.,El asistente objetivo no puede ver la conversación actual
+- Una vez que se devuelvan los resultados, se integrarán verazmente.,No altere las conclusiones del subasistente
+- Sub-asistente subsesión de aislamientos,No inyecta el diálogo principal en la memoria a largo plazo.(evitar la recursividad)
 
-## 三、群聊(GroupChat)
+## 3. Chat grupal(GroupChat)
 
-### 3.1 类型
-| 类型 | 说明 |
+### 3.1 Tipo
+| Tipo | Descripción |
 |---|---|
-| DM | 两个助手私聊 |
-| Group | 多人群组(≥3 人) |
+| DM | Dos asistentes charlando en privado. |
+| Group | Grupo multijugador(≥3 gente) |
 
-### 3.2 创建
-1. 首页群聊 Tab → 新建
-2. 选参与助手(2+ 个)
-3. 选类型(DM/Group)
-4. 创建后助手机器人自动开始发言
+### 3.2 crear
+1. Chat grupal en casa Tab → Nuevo
+2. Asistente de suscripción(2+ un)
+3. Seleccionar tipo(DM/Group)
+4. Después de la creación, el robot asistente comienza a hablar automáticamente.
 
-### 3.3 发言调度(GroupChatScheduler)
-- 助手轮流发言,由调度器决定发言顺序(轮转/响应)
-- 用户可加入频道发言(@某助手可定向)
-- invokeAgent / vote / summary 等调度模式
+### 3.3 programación de discursos(GroupChatScheduler)
+- Los asistentes se turnan para hablar.,El planificador determina el orden de los discursos.(rotación/respuesta)
+- Los usuarios pueden unirse al canal para hablar.(@Se puede dirigir a un asistente.)
+- invokeAgent / vote / summary Esperando el modo de programación
 
-### 3.4 群聊工具三件套(LLM 视角)
-| 工具 | 用途 |
+### 3.4 Conjunto de herramientas de chat grupal de tres piezas(LLM perspectiva)
+| Herramientas | Propósito |
 |---|---|
-| channel_reply | 发言(身份绑定当前助手,参数含发言内容) |
-| channel_pass | 跳过本轮(无话可说时) |
-| channel_read_context | 读更多历史上下文 |
+| channel_reply | hablar(Asistente actual de vinculación de identidad,Los parámetros incluyen contenido de voz.) |
+| channel_pass | Saltate esta ronda(Cuando no tienes nada que decir) |
+| channel_read_context | Leer más contexto histórico |
 
-注意: channel_* 工具只在群聊上下文可用;主会话中不可调用(防身份冒用)。
+Nota: channel_* Herramienta solo disponible en contexto de chat grupal;No se puede llamar en la sesión principal(Prevenir la suplantación de identidad).
 
-## 四、Agent 专属模型(resolveAssistantModel)
+## Cuatro.Agent modelo exclusivo(resolveAssistantModel)
 
-- 每个助手可配置专属模型(modelId+providerId)
-- 群聊发言/委托/投票时,目标助手用自己配置的模型
-- 未配置则用全局默认模型
+- Cada asistente puede configurar su propio modelo(modelId+providerId)
+- Discurso de chat grupal/confiar/al votar,El asistente de destino utiliza su propio modelo configurado.
+- Si no se configura, se utilizará el modelo predeterminado global.
 
-## 五、@mention 与定向
+## 5.@mention y orientación
 
-- 群聊中 @某助手 → 该助手被点名,优先回应
-- 用户发言可 @ 多个助手
+- En el chat grupal @algún asistente → El asistente fue nombrado.,respuesta prioritaria
+- Los usuarios pueden hablar con varios asistentes.
 
-## 六、常见问题 Q&A
+## 6. Preguntas frecuentes Q&A
 
-1. **"怎么创建多个助手"**: 设置 → 助手 → 新建,配置人格/模型/白名单。
-2. **"怎么让助手帮我查资料再回答"**: 委托给擅长搜索的助手,或当前助手直接用 web_search(委托非必需)。
-3. **"群聊助手不说话"**: 检查助手是否启用、模型是否可用;channel_pass 是正常的(无话可说时跳过)。
-4. **"子助手能看到我的聊天记录吗"**: 看不到完整记录,只收到委托 task;长期记忆也是隔离的。
-5. **"怎么把群聊结果保存"**: 群聊消息落库,可回看;重要结论可让助手总结。
-6. **"主助手能委派给群聊吗"**: 不能直接;委托是点到点的单助手任务。
+1. **"Cómo crear múltiples asistentes"**: ajustes → asistente → Nuevo,Configurar personalidad/modelo/Lista blanca.
+2. **"¿Cómo le pido al asistente que me ayude a buscar información y luego responder la pregunta?"**: Confíelo a un asistente que sepa buscar,O utilizar el asistente actual directamente web_search(No se requiere delegación).
+3. **"El asistente de chat grupal no habla"**: Verifique si el asistente está habilitado y el modelo está disponible;channel_pass es normal(Salta cuando no tengas nada que decir).
+4. **"¿Puede el subasistente ver mi historial de chat?"**: No puedo ver el registro completo,Sólo recibió la comisión. task;La memoria a largo plazo también está segregada.
+5. **"Cómo guardar los resultados del chat grupal"**: Los mensajes de chat grupal se almacenan en la base de datos.,Se puede ver atrás;Un asistente puede resumir las conclusiones importantes.
+6. **"¿Se puede delegar al asistente principal a los chats grupales?"**: no directamente;La delegación es una tarea de punto a punto con un solo asistente.
 
-## 七、LLM 调用要点
+## 7.LLM Puntos de llamada
 
-- 需要专业分工时用 delegate_agent(不是所有任务都值得委托,简单问题自己答)
-- 群聊里必须用 channel_* 三件套发言,不要输出游离文本
-- 委托任务写清背景/目标/期望格式,减少来回
-- 群聊发言简短有观点,不刷屏
-- 用户 @ 你时优先回应
+- Se utiliza cuando se requiere una división profesional del trabajo. delegate_agent(No vale la pena delegar todas las tareas,Responde preguntas sencillas tú mismo)
+- Debe usarse en el chat grupal. channel_* discurso de tres piezas,No generar texto perdido
+- Anota los antecedentes de la tarea encomendada./objetivo/formato esperado,Reducir ida y vuelta
+- Los discursos de chat grupal son breves y con puntos de vista.,No deslices la pantalla
+- Responde primero cuando el usuario @ tú

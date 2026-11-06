@@ -12,18 +12,18 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * v2.7 扩展运行时（Python）：Python 脚本执行工具（execute_python_script）。
+ * v2.7 Tiempo de ejecución extendido (Python):Python Herramienta de ejecución de scripts (execute_python_script).
  *
- * 在内置 Python 运行时中执行 Python 脚本：完整标准库（含 ssl/sqlite3/ctypes 等
- * C 扩展）、文件读写、网络。可 `import` 运行时 site-packages 区
- * （filesDir/muse-python/lib/python3.14/site-packages）中的第三方纯 Python 包。
+ * Ejecute scripts de Python en el tiempo de ejecución de Python integrado: biblioteca estándar completa (incluidos ssl/sqlite3/ctypes, etc.)
+ * C extensión), lectura y escritura de archivos, red. si `import` Área de paquetes de sitio en tiempo de ejecución
+ * (filesDir/muse-python/lib/python3.14/site-packages).
  *
- * 与 [NodeScriptTool]（execute_node_script）同构：高风险工具，ASK / STRICT 模式
- * 要求审批；TRUSTED 模式依用户明确选择免确认。
+ * con [NodeScriptTool](execute_node_script) Isomorfismo: herramientas de alto riesgo,ASK / STRICT modo
+ * solicitar aprobación;TRUSTED El modo está sujeto a la selección explícita del usuario sin confirmación.
  *
- * 返回结构（JSON，与 execute_node_script / execute_javascript 对齐）：
- *  - result: string — 脚本 `result` 变量的 JSON 字符串形式
- *  - logs: array — print 输出行数组
+ * estructura de retorno (JSON, alineado con ejecutar_node_script / ejecutar_javascript):
+ *  - result: string — guión `result` Forma de cadena JSON de variable
+ *  - logs: array — print Matriz de filas de salida
  *  - error: string | null
  */
 object PythonScriptTool {
@@ -36,15 +36,15 @@ object PythonScriptTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = TOOL_NAME,
-        description = "在内置 Python 3.14 运行时中执行 Python 脚本(完整标准库:ssl/sqlite3/" +
-            "ctypes/json/re 等;文件读写、网络;可 import 第三方纯 Python 包)。" +
-            "把要返回的结果赋给变量 result。返回 JSON(result/logs/error)。超时默认 30 秒。" +
-            "这是运行 Python 的唯一入口:内置运行时没有 python/python3 命令,别用 " +
-            "terminal_exec/execute_shell 去找解释器或翻 bin 目录(那里是空的);" +
-            "脚本内需要起子进程时用 sys.executable 或 os.environ['MUSE_PYTHON_BIN']。",
+        description = "Ejecute scripts de Python en el tiempo de ejecución integrado de Python 3.14(Biblioteca estándar completa:ssl/sqlite3/" +
+            "ctypes/json/re espera;Lectura y escritura de archivos, red.;Puede importar paquetes de Python puros de terceros)." +
+            "Asigne el resultado que se devolverá a la variable resultado. Regresar JSON(result/logs/error). El tiempo de espera predeterminado es 30 segundos." +
+            "Este es el único punto de entrada para ejecutar Python.:No hay ningún comando python/python3 en el tiempo de ejecución integrado,No lo uses " +
+            "terminal_exec/execute_shell Encuentre el intérprete o explore el directorio bin(esta vacio ahi);" +
+            "Cuando necesite iniciar un proceso en el script, use sys.executable o os.environ['MUSE_PYTHON_BIN'].",
         parameters = mapOf(
-            "code" to "必填,Python 脚本代码(可 import 标准库;结果赋给变量 result)",
-            "timeout_ms" to "可选,超时毫秒数,默认 30000,最大 300000",
+            "code" to "Requerido,Python código de secuencia de comandos(Biblioteca estándar importable;Asignar resultado a variable result)",
+            "timeout_ms" to "Opcional,Tiempo de espera en milisegundos,Predeterminado 30000,máximo 300000",
         ),
         required = setOf("code"),
         category = "built-in",
@@ -56,21 +56,21 @@ object PythonScriptTool {
         val code = args["code"].orEmpty()
         val timeoutMs = args["timeout_ms"]?.toLongOrNull()?.coerceIn(1L, MAX_TIMEOUT_MS) ?: DEFAULT_TIMEOUT_MS
         return when {
-            code.isBlank() -> errorJson("参数 code 缺失或为空")
-            code.length > MAX_SCRIPT_CHARS -> errorJson("脚本超过最大长度($MAX_SCRIPT_CHARS 字符)")
+            code.isBlank() -> errorJson("Falta el código de parámetro o está vacío")
+            code.length > MAX_SCRIPT_CHARS -> errorJson("El guión supera la longitud máxima($MAX_SCRIPT_CHARS personaje)")
             else -> formatResultJson(evaluate(context, code, timeoutMs))
         }
     }
 
-    /** 共享执行路径（供直接脚本工具与手机 Agent 工作流复用）。 */
+    /** Rutas de ejecución compartidas (para reutilización mediante herramientas de script directas y flujos de trabajo de agentes celulares). */
     suspend fun evaluate(context: Context, code: String, timeoutMs: Long = DEFAULT_TIMEOUT_MS): SkillEngineResult {
         return when {
-            code.isBlank() -> SkillEngineResult.Error("参数 code 缺失或为空")
-            code.length > MAX_SCRIPT_CHARS -> SkillEngineResult.Error("脚本超过最大长度($MAX_SCRIPT_CHARS 字符)")
+            code.isBlank() -> SkillEngineResult.Error("Falta el código de parámetro o está vacío")
+            code.length > MAX_SCRIPT_CHARS -> SkillEngineResult.Error("El guión supera la longitud máxima($MAX_SCRIPT_CHARS personaje)")
             else -> {
-                // 确保运行时数据（stdlib）已解压；首次调用会解压一次。
+                // Garantizar los datos en tiempo de ejecución (stdlib) ha sido descomprimido; se descomprimirá una vez cuando se llame por primera vez.
                 PythonRuntime.ensureData(context).getOrElse { e ->
-                    return SkillEngineResult.Error("Python 运行时数据未就绪: ${e.message}")
+                    return SkillEngineResult.Error("Python Los datos de tiempo de ejecución no están listos: ${e.message}")
                 }
                 PythonSkillEngine(context).eval(
                     script = code,
@@ -87,7 +87,7 @@ object PythonScriptTool {
         is SkillEngineResult.Error -> errorJson(result.message, result.consoleLogs)
     }
 
-    /** 同步桥接（适配 ToolRegistry 的 `(Map<String,String>) -> String` 签名）。 */
+    /** Puente síncrono (adaptado a ToolRegistry `(Map<String,String>) -> String` firma). */
     fun executeFromArgs(args: Map<String, String>, context: Context): String = runBlocking {
         execute(context, args)
     }
@@ -106,7 +106,7 @@ object PythonScriptTool {
 }
 
 /**
- * v2.7 扩展运行时（Python）：Python 脚本执行工具注册器。
+ * v2.7 Tiempo de ejecución extendido (Python):Python Registrador de herramientas de ejecución de scripts.
  */
 class PythonScriptToolRegistrar(
     private val toolRegistry: ToolRegistry,

@@ -4,21 +4,21 @@ import io.zer0.ai.core.UIMessage
 import io.zer0.muse.transformer.TransformContext
 
 /**
- * P1-1: Skill Hook 基础接口。
+ * P1-1: Skill Hook Interfaz básica.
  *
- * 所有 Hook 都实现此接口,通过 [HookRegistry] 注册后参与 AI 对话流程。
- * 与既有 [io.zer0.muse.transformer.Transformer] 的边界:
- *  - Transformer 管"消息列表变形"(transform/visualTransform/onGenerationFinish)
- *  - SkillHook 管"流程拦截/追加/生命周期事件"(更广维度的介入点)
+ * Todos los Hooks implementan esta interfaz,Pase [HookRegistry] Regístrese para participar en el proceso de conversación sobre IA.
+ * con existente [io.zer0.muse.transformer.Transformer] el límite de:
+ *  - Transformer tubo"Deformación de la lista de mensajes"(transform/visualTransform/onGenerationFinish)
+ *  - SkillHook tubo"Interceptación de procesos/anexar/eventos del ciclo de vida"(Una dimensión más amplia de los puntos de intervención)
  *
- * 设计原则:
- *  - 优先级排序: priority 数值越大越先执行(与 Lorebook priority DESC 对齐)
- *  - 幂等可重入: 同一 Hook 可能被多次调用,实现方需保证幂等
- *  - 容错: 单个 Hook 抛异常不阻断主流程,由 [HookRegistry] 捕获并记录
+ * principios de diseño:
+ *  - Priorización: priority Cuanto mayor sea el valor, antes se ejecutará.(Alinearse con la prioridad DESC del Lorebook)
+ *  - Idempotente y reentrante: El mismo Hook puede ser llamado varias veces,Los implementadores deben garantizar la idempotencia
+ *  - tolerancia a fallas: Un solo Hook lanza una excepción sin bloquear el proceso principal,por [HookRegistry] capturar y grabar
  *
- * @property id 唯一标识(用于注册/注销/调试)
- * @property priority 优先级(数值越大越先执行,默认 50)
- * @property enabled 是否启用( false 的 Hook 不参与执行)
+ * @property id identificador único(para el registro/Cerrar sesión/Depuración)
+ * @property priority prioridad(Cuanto mayor sea el valor, antes se ejecutará.,Predeterminado 50)
+ * @property enabled Ya sea para habilitar( false El Hook no participa en la ejecución.)
  */
 interface SkillHook {
     val id: String
@@ -27,16 +27,16 @@ interface SkillHook {
 }
 
 // ════════════════════════════════════════════════════════════════
-// 1. 应用生命周期 Hook
+// 1. Ciclo de vida de la aplicación Hook
 // ════════════════════════════════════════════════════════════════
 
 /**
- * 应用生命周期 Hook — 响应 App 的创建/前后台切换。
+ * Ciclo de vida de la aplicación Hook — Creación de aplicaciones responsivas/Cambia entre delante y detrás.
  *
- * 典型场景:
- *  - 初始化第三方 SDK
- *  - 上报启动事件
- *  - 前台恢复连接 / 后台释放资源
+ * Escenario típico:
+ *  - Inicializar tercero SDK
+ *  - Informar evento de inicio
+ *  - Restaurar la conexión en primer plano/liberar recursos en segundo plano
  */
 interface AppLifecycleHook : SkillHook {
     suspend fun onAppCreate() {}
@@ -45,28 +45,28 @@ interface AppLifecycleHook : SkillHook {
 }
 
 // ════════════════════════════════════════════════════════════════
-// 2. 消息处理 Hook
+// 2. Procesamiento de mensajes Hook
 // ════════════════════════════════════════════════════════════════
 
 /**
- * 消息处理 Hook — 介入用户消息发送和 AI 消息渲染。
+ * Procesamiento de mensajes Hook — Involucrado en la mensajería de usuario y la representación de mensajes de IA.
  *
- * 与 Transformer.visualTransform 的区别:
- *  - visualTransform 处理"已生成的消息列表"做 UI 显示转换
- *  - MessageProcessingPlugin 在"发送前/渲染前"做拦截/修改
+ * Diferencias con Transformer.visualTransform:
+ *  - visualTransform Proceso"Lista de mensajes generados"Realizar conversión de visualización de UI
+ *  - MessageProcessingPlugin en"antes de enviar/antes de renderizar"hacer intercepción/Modificar
  */
 interface MessageProcessingPlugin : SkillHook {
     /**
-     * 用户消息发送前调用。
-     * @return 修改后的消息内容;返回 null 表示拦截该消息(不发送)
+     * Se llama antes de enviar el mensaje del usuario.
+     * @return Contenido del mensaje modificado;Devuelve nulo para interceptar el mensaje.(no enviar)
      */
     suspend fun onUserMessageSend(message: String): String? {
         return message
     }
 
     /**
-     * AI 消息渲染前调用(可做最终内容修改,如脱敏/格式化)。
-     * @return 修改后的内容
+     * AI Llamado antes de la representación del mensaje.(Puede realizar modificaciones finales al contenido.,como la desensibilización/Formato).
+     * @return Contenido modificado
      */
     suspend fun onAssistantMessageRender(content: String): String {
         return content
@@ -74,11 +74,11 @@ interface MessageProcessingPlugin : SkillHook {
 }
 
 // ════════════════════════════════════════════════════════════════
-// 3. Prompt 流水线 Hook
+// 3. Prompt línea de montaje Hook
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Prompt 组装上下文 — 传给 SystemPromptComposeHook 的上下文数据。
+ * Prompt Contexto de montaje — Datos de contexto pasados ​​a SystemPromptComposeHook.
  */
 data class PromptContext(
     val assistantId: String?,
@@ -88,13 +88,13 @@ data class PromptContext(
 )
 
 /**
- * 系统提示组装 Hook — 在 SystemPromptAssembler 组装完系统提示后调用。
+ * Montaje de indicaciones del sistema Hook — Se llama después de que SystemPromptAssembler haya ensamblado el indicador del sistema.
  *
- * 典型场景:
- *  - Worldbook 的 alwaysActive 条目注入
- *  - 动态追加指令(如基于时间/位置的场景感知)
+ * Escenario típico:
+ *  - Worldbook La entrada siempre activa se inyecta en
+ *  - Instrucciones de adición dinámica(basado en el tiempo/Conciencia de la escena de ubicación)
  *
- * @return 追加到系统提示末尾的内容(空串表示不追加)
+ * @return Contenido agregado al final del mensaje del sistema(Una cadena vacía significa que no se agrega)
  */
 interface SystemPromptComposeHook : SkillHook {
     suspend fun afterComposeSystemPrompt(context: PromptContext): String {
@@ -103,16 +103,16 @@ interface SystemPromptComposeHook : SkillHook {
 }
 
 /**
- * 工具清单组装 Hook — 在工具列表组装后调用,可过滤/排序/追加。
+ * Conjunto de lista de herramientas Hook — Se llama después de que se haya reunido la lista de herramientas.,filtrable/ordenar/Añadir.
  *
- * 典型场景:
- *  - 根据上下文动态启用/禁用某些工具
- *  - 注入自定义工具描述
+ * Escenario típico:
+ *  - Habilitado dinámicamente según el contexto/Deshabilitar ciertas herramientas
+ *  - Inyectar descripción de herramienta personalizada
  */
 interface ToolPromptComposeHook : SkillHook {
     /**
-     * @param tools 当前工具列表
-     * @return 修改后的工具列表
+     * @param tools Lista de herramientas actual
+     * @return Lista de herramientas revisada
      */
     suspend fun filterToolPromptItems(tools: List<ToolPromptItem>): List<ToolPromptItem> {
         return tools
@@ -120,7 +120,7 @@ interface ToolPromptComposeHook : SkillHook {
 }
 
 /**
- * 工具清单条目(简化模型,供 Hook 操作)。
+ * Elementos de la lista de herramientas(Modelo simplificado,Para operación de gancho).
  */
 data class ToolPromptItem(
     val name: String,
@@ -130,7 +130,7 @@ data class ToolPromptItem(
 )
 
 /**
- * Prompt 最终化事件 — 发送给模型前的最后修改机会。
+ * Prompt evento de finalización — Última oportunidad para revisar antes de enviar al modelo.
  */
 data class PromptFinalizeEvent(
     val preparedHistory: List<UIMessage>,
@@ -140,22 +140,22 @@ data class PromptFinalizeEvent(
 )
 
 /**
- * Prompt 最终化结果。
+ * Prompt Finaliza el resultado.
  */
 data class PromptFinalizeResult(
     val preparedHistory: List<UIMessage>,
 )
 
 /**
- * Prompt 最终化 Hook — 在消息列表发送给模型前调用。
+ * Prompt finalizar Hook — Se llama antes de que se envíe la lista de mensajes al modelo.
  *
- * 与 Transformer.transform 的区别:
- *  - transform 在管道中早期执行,处理原始消息
- *  - PromptFinalizeHook 在管道之后、发送之前执行,可基于最终状态做截断/注入
+ * Diferencias con Transformer.transform:
+ *  - transform Ejecutar temprano en el proceso,Procesar el mensaje original
+ *  - PromptFinalizeHook Ejecutar después de la canalización y antes de enviar.,Se puede truncar según el estado final./inyectar
  *
- * 典型场景:
- *  - 楼层式上下文限制(P1-4): 截断超出楼层限制的历史消息
- *  - Worldbook 关键词触发注入(P1-2): 扫描最近 N 层 USER 消息,注入匹配条目
+ * Escenario típico:
+ *  - restricciones de contexto del piso(P1-4): Truncar mensajes históricos que superen los límites mínimos
+ *  - Worldbook Inyección de desencadenador de palabras clave(P1-2): Escanea los últimos N niveles de mensajes de USUARIO,Inyectar entradas coincidentes
  */
 interface PromptFinalizeHook : SkillHook {
     suspend fun beforeFinalizePrompt(event: PromptFinalizeEvent): PromptFinalizeResult {
@@ -164,22 +164,22 @@ interface PromptFinalizeHook : SkillHook {
 }
 
 // ════════════════════════════════════════════════════════════════
-// 4. 工具生命周期 Hook
+// 4. Ciclo de vida de la herramienta Hook
 // ════════════════════════════════════════════════════════════════
 
 /**
- * 工具调用动作枚举。
+ * Enumeración de la acción de la llamada de la herramienta.
  */
 sealed class ToolCallAction {
-    /** 允许执行 */
+    /** permitir la ejecución */
     object Allow : ToolCallAction()
 
-    /** 拦截执行,返回自定义结果给 LLM */
+    /** Ejecución de interceptación,Devolver resultados personalizados a LLM */
     data class Block(val reason: String, val fakeResult: String? = null) : ToolCallAction()
 }
 
 /**
- * 工具执行结果(简化模型)。
+ * Resultados de ejecución de herramientas(Modelo simplificado).
  */
 data class ToolExecutionResult(
     val toolName: String,
@@ -189,57 +189,57 @@ data class ToolExecutionResult(
 )
 
 /**
- * 工具生命周期 Hook — 介入工具调用的各阶段。
+ * Ciclo de vida de la herramienta Hook — Intervenir en varias etapas de la invocación de la herramienta.
  *
- * 典型场景:
- *  - 审计日志: 记录每次工具调用
- *  - 权限二次校验: 基于上下文拦截高风险调用
- *  - 结果后处理: 对工具输出做脱敏/格式化
+ * Escenario típico:
+ *  - Registro de auditoría: Registre cada llamada de herramienta
+ *  - Segunda verificación de permiso: Bloquee llamadas de alto riesgo según el contexto
+ *  - Postprocesamiento de resultados: Desensibilizar la salida de la herramienta/Formato
  */
 interface ToolLifecycleHook : SkillHook {
     /**
-     * 工具调用请求时调用,可拦截。
-     * @return [ToolCallAction.Allow] 放行; [ToolCallAction.Block] 拦截
+     * Se llama cuando la herramienta llama a una solicitud.,Puede ser interceptado.
+     * @return [ToolCallAction.Allow] liberar; [ToolCallAction.Block] interceptar
      */
     suspend fun onToolCallRequested(toolName: String, params: Map<String, Any>): ToolCallAction {
         return ToolCallAction.Allow
     }
 
     /**
-     * 权限检查完成后调用。
+     * Se llama después de que se completa la verificación de permisos.
      */
     suspend fun onToolPermissionChecked(toolName: String, approved: Boolean) {}
 
     /**
-     * 工具执行完成后调用。
+     * Se llama después de que se completa la ejecución de la herramienta.
      */
     suspend fun onToolExecutionResult(result: ToolExecutionResult) {}
 }
 
 // ════════════════════════════════════════════════════════════════
-// 5. 摘要生成 Hook
+// 5. Generación de resumen Hook
 // ════════════════════════════════════════════════════════════════
 
 /**
- * 摘要生成 Hook — 介入对话压缩/摘要生成的各阶段。
+ * Generación de resumen Hook — compresión del diálogo de intervención/Etapas de generación de resúmenes.
  *
- * 典型场景:
- *  - 自定义摘要提示词
- *  - 摘要结果后处理(如提取关键决策点)
- *  - 基于摘要触发记忆固化
+ * Escenario típico:
+ *  - Palabras de resumen personalizadas
+ *  - Postprocesamiento de resultados resumidos(Como extraer puntos de decisión clave.)
+ *  - Activar la solidificación de la memoria según el resumen.
  */
 interface SummaryGenerateHook : SkillHook {
     /**
-     * 准备摘要提示词前调用,可修改待压缩的历史消息。
-     * @return 修改后的历史消息
+     * Llamado antes de preparar palabras de resumen,Los mensajes históricos a comprimir se pueden modificar.
+     * @return Mensaje histórico modificado
      */
     suspend fun beforePrepareSummaryPrompt(history: List<UIMessage>): List<UIMessage> {
         return history
     }
 
     /**
-     * 摘要生成后调用,可修改最终摘要内容。
-     * @return 修改后的摘要
+     * Se llama después de generar el resumen.,El contenido del resumen final se puede modificar.
+     * @return Resumen revisado
      */
     suspend fun afterGenerateSummary(summary: String): String {
         return summary

@@ -55,7 +55,7 @@
     <string name="skill_delegate_failed">Не удалось вызвать помощника %1$s: %2$s</string>
     <string name="skill_delegate_timeout">Тайм-аут вызова помощника %1$s истек (%2$d с)</string>
     <string name="skill_delegate_empty">Вспомогательный помощник %1$s вернул пустое содержимое.</string>
-    <string name="skill_delegate_done">「%1$s」выполнил делегированную задачу:</string>
+    <string name="skill_delegate_done">「%1$s"выполнил делегированную задачу:</string>
     <string name="skill_delegate_max_depth">Глубина вложенности делегата превысила предел (%1$d), дальнейшее вложение запрещено.</string>
     <string name="skill_task_blank">задача не может быть пустой</string>
     <string name="skill_title_blank">заголовок не может быть пустым</string>
@@ -399,7 +399,7 @@
     <string name="skill_update_validate_failed">Не удалось пройти проверку обновления: %1$s</string>
     <string name="skill_updated">Скилл обновлён: %1$s(id=%2$s)</string>
 
-    <!-- 应用控制（app_* 工具）：结果回给模型，措辞需自解释 -->
+    <!-- Control de aplicaciones (app_* Herramienta): Los resultados se devuelven al modelo y la redacción debe explicarse por sí misma. -->
     <string name="app_control_need_app_arg">Укажите название приложения или имя пакета.</string>
     <string name="app_control_launch_action">запустить</string>
     <string name="app_control_settings_action">открыть настройки</string>

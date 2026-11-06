@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** 回归锁定设置页唯一滚动容器的有限高度策略。 */
+/** Regrese a la estrategia de altura limitada del contenedor de desplazamiento único en la página de configuración de bloqueo. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SettingsSubPagesTest {

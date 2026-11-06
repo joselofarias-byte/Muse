@@ -104,13 +104,13 @@ import org.koin.compose.koinInject
 import java.io.File
 
 /**
- * 统一「插件管理」页（v1.0.62）。
+ * Unifique la página "Administración de complementos" (v1.0.62).
  *
- * 合并两类插件：
- *  - 外部插件（.muse-plugin / ZIP 包）：PluginManager 管理，工具注册进 skills 表由 SkillExecutor 执行
- *  - Provider 插件（JSON 配置）：ProviderPluginRegistry 管理，可转为供应商配置
+ * Combina dos tipos de complementos:
+ *  - Complementos externos (.muse-plugin / ZIP paquete):PluginManager SkillExecutor ejecuta la gestión y el registro de herramientas en la tabla de habilidades
+ *  - Provider complemento (JSON configuración):ProviderPluginRegistry Gestión, se puede convertir a configuración de proveedor.
  *
- * 导入入口统一：自动识别文件类型（ZIP 头 PK → 外部插件；JSON → Provider 插件）。
+ * Entrada de importación unificada: identifica automáticamente los tipos de archivos (ZIP cabeza PK → complementos externos;JSON → Provider complemento).
  */
 @Composable
 fun PluginManagePage(onBack: () -> Unit) {
@@ -125,42 +125,42 @@ fun PluginManagePage(onBack: () -> Unit) {
     var providerPlugins by remember { mutableStateOf(registry.list()) }
     var importing by remember { mutableStateOf(false) }
 
-    /** UI-FIX: 插件页三档层级 —— 0 已安装 / 1 市场 / 2 信任管理。 */
+    /** UI-FIX: Tres niveles de páginas de complementos —— 0 Instalado / 1 Mercado / 2 Gestión de Fideicomisos. */
     var pluginTab by rememberSaveable { mutableIntStateOf(0) }
-    // v2.6.13: 插件总开关。关闭后所有插件工具/Hook/激活都不执行，但安装与配置保留。
+    // v2.6.13: Interruptor maestro enchufable. Después de cerrar todas las herramientas complementarias/Hook/No se realiza ninguna activación, pero se conservan la instalación y la configuración.
     val pluginsEnabled by settings.pluginsGloballyEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     var pendingExternalInstall by remember { mutableStateOf<PendingExternalInstall?>(null) }
     var pendingDeleteExternal by remember { mutableStateOf<PluginManager.InstalledPlugin?>(null) }
     var pendingDeleteProvider by remember { mutableStateOf<ProviderPlugin?>(null) }
 
-    /** 待用户确认“签名并启用”的助手自写草稿；确认前不会签名、不会写信任根。 */
+    /** Esperando confirmación del usuario“Firmar y habilitar”El asistente escribe el borrador por sí solo; no firmará ni escribirá la raíz de confianza antes de la confirmación. */
     var pendingSignDraft by remember { mutableStateOf<PluginManager.InstalledPlugin?>(null) }
 
-    // ── Phase 5: 插件市场（签名目录浏览 + 一键安装）──
-    // 目录 URL / 信任根保存在 DataStore；仓库缓存目录与已接受 sequence，拒绝回退与过期。
-    // v2.0.1: 市场组件改注入 Koin 单例 — 与后台工具(plugin_market_search/install)共享
-    // 同一份目录缓存与已接受 sequence，避免双实例导致回退防护出现分叉。
+    // ── Phase 5: Mercado de complementos (exploración del directorio de firmas + instalación con un solo clic)──
+    // La URL del directorio/raíz de confianza se almacena en el DataStore; el almacén almacena en caché el directorio y la secuencia aceptada, rechazando el respaldo y la caducidad.
+    // v2.0.1: El componente de mercado se reinyecta en el singleton de Koin — y herramientas de backend(plugin_market_search/install)Compartir
+    // Se utilizan la misma caché de directorio y la misma secuencia aceptada para evitar la bifurcación de la protección alternativa causada por instancias duales.
     val marketTrustRoots: PluginMarketTrustRoots = koinInject()
     val marketSettings = marketTrustRoots.settings
     val marketRepository: PluginCatalogRepository = koinInject()
     val catalogRootKeys by marketTrustRoots.keys.collectAsStateWithLifecycle()
-    // 信任根变更后重建协调器：目录验签必须始终使用当前配置的信任根。
+    // Reconstrucción del coordinador después de un cambio de raíz de confianza: la verificación de firma del directorio siempre debe utilizar la raíz de confianza configurada actualmente.
     val marketCoordinator = remember(marketRepository, catalogRootKeys) {
         PluginInstallCoordinator(
             trustRootKeys = catalogRootKeys,
             lastAcceptedSequence = { catalogId -> marketRepository.lastAcceptedSequence(catalogId) },
         )
     }
-    // 下载只写入应用私有缓存 staging，绝不直接写入插件目录。
+    // Las descargas solo se escriben en la caché privada de la aplicación, nunca directamente en el directorio del complemento.
     val marketDownloadClient = remember(context) {
         PluginDownloadClient(stagingDir = File(context.cacheDir, "plugin_market_staging"))
     }
     val marketInstaller = remember(pluginManager) { PluginMarketInstaller(pluginManager) }
 
-    /** null = 设置读取中；空串 = 明确未配置。 */
+    /** null = Se están leyendo los ajustes; cadena vacía = Explícitamente no configurado. */
     var catalogUrl by remember { mutableStateOf<String?>(null) }
 
-    /** 用户自定义的目录地址；空表示正在使用内置官方目录。 */
+    /** Dirección de directorio definida por el usuario; vacío significa que se está utilizando el directorio oficial incorporado. */
     var catalogUrlOverride by remember { mutableStateOf("") }
     var marketEntries by remember { mutableStateOf<List<PluginCatalogEntry>>(emptyList()) }
     var marketRefreshing by remember { mutableStateOf(false) }
@@ -168,17 +168,17 @@ fun PluginManagePage(onBack: () -> Unit) {
     var showMarketSettings by remember { mutableStateOf(false) }
     var marketInstall by remember { mutableStateOf<MarketInstallJob?>(null) }
     var marketInstallJob by remember { mutableStateOf<Job?>(null) }
-    // 市场网格里点开的那张卡（null = 未打开详情）
+    // La tarjeta hizo clic en la cuadrícula del mercado (null = Detalles no abiertos)
     var marketDetailEntry by remember { mutableStateOf<PluginCatalogEntry?>(null) }
 
-    /** 待确认的回滚请求：插件 id 与目标版本。 */
+    /** Solicitud de reversión pendiente: ID del complemento y versión de destino. */
     var rollbackRequest by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    // ── P0-9: 信任管理(撤销入口)──
-    /** 信任的发行者列表(与安装校验同一 trust store 实例)。 */
+    // ── P0-9: gestión de confianza(Retirar entrada)──
+    /** Lista de editores de confianza(La misma instancia del almacén de confianza que la verificación de instalación). */
     var trustedPublishers by remember { mutableStateOf(pluginManager.trustedPublishers()) }
 
-    /** 待确认撤销的发行者 id。 */
+    /** La identificación del emisor para la cual se debe confirmar la revocación. */
     var revokePublisherId by remember { mutableStateOf<String?>(null) }
 
     fun refreshMarketCatalog() {
@@ -205,12 +205,12 @@ fun PluginManagePage(onBack: () -> Unit) {
         }
     }
 
-    /** 丢弃尚未确认的 staged 包；已提交安装的包不在这里删除。 */
+    /** Descartar los paquetes preparados que aún no hayan sido confirmados; Los paquetes que se han enviado para su instalación no se eliminan aquí. */
     fun discardMarketPlan() {
         marketInstall?.plan?.let { marketInstaller.discard(it) }
     }
 
-    /** 仅当 [entryId] 仍是当前安装任务时更新阶段；旧协程不得覆盖新任务状态。 */
+    /** solo si [entryId] La fase de actualización es mientras la tarea de instalación actual aún está en progreso; la antigua rutina no debe sobrescribir el nuevo estado de la tarea. */
     fun updateMarketInstall(
         entryId: String,
         phase: MarketInstallPhase,
@@ -234,7 +234,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         marketInstall = null
     }
 
-    /** 下载 → 安全审查 → 生成安装计划；此时只展示预览，尚未写入插件目录。 */
+    /** Descargar → autorización de seguridad → Generar el plano de instalación; En este momento solo se muestra la vista previa y el directorio del complemento aún no se ha escrito. */
     fun startMarketInstall(entry: PluginCatalogEntry) {
         marketInstallJob?.cancel()
         discardMarketPlan()
@@ -282,11 +282,11 @@ fun PluginManagePage(onBack: () -> Unit) {
                     entryId = entry.id,
                     phase = MarketInstallPhase.AwaitingConfirm,
                     plan = plan,
-                    // 未知发行者必须由用户在确认框里显式点“信任发行者并安装”。
+                    // El usuario debe hacer clic explícitamente en los editores desconocidos en el cuadro de confirmación.“Confía en el editor e instala”.
                     trustPublisher = plan.preview.signatureStatus ==
                         PluginSecurityGate.SignatureStatus.VALID_UNTRUSTED,
                 )
-                // 该任务已被新的安装请求取代：计划不会展示，立即清理 staged 包。
+                // Esta tarea ha sido reemplazada por una nueva solicitud de instalación: el plan no se mostrará, limpie el paquete preparado inmediatamente.
                 if (!shown) marketInstaller.discard(plan)
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -298,13 +298,13 @@ fun PluginManagePage(onBack: () -> Unit) {
                     ),
                 )
             } finally {
-                // 未生成计划（下载/审查/校验失败或取消）时清理 staged 包。
+                // Plan no generado (descargar/revisión/Limpie el paquete preparado cuando la verificación falle o se cancele).
                 if (!planCreated) runCatching { staged?.delete() }
             }
         }
     }
 
-    /** 用户确认后二次校验并原子提交；未知发行者的信任标志在计划生成时就已固定。 */
+    /** Después de que el usuario confirma, se verifica dos veces y se envía de forma atómica; la marca de confianza del emisor desconocido se fija cuando se genera el plan. */
     fun confirmMarketInstall() {
         val pending = marketInstall ?: return
         val plan = pending.plan ?: return
@@ -333,7 +333,7 @@ fun PluginManagePage(onBack: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        // 先读取信任根再加载缓存：缓存校验必须使用当前配置的信任根。
+        // Lea primero la raíz de confianza y luego cargue la caché: la verificación de la caché debe utilizar la raíz de confianza actualmente configurada.
         marketTrustRoots.reload()
         val url = marketSettings.catalogUrl()
         catalogUrl = url
@@ -344,12 +344,12 @@ fun PluginManagePage(onBack: () -> Unit) {
         if (url.isNotBlank()) refreshMarketCatalog()
     }
 
-    /** 统一导入：PK 头 → 外部插件包；否则按 JSON Provider 插件处理。 */
+    /** Importación unificada:PK cabeza → Paquete de complemento externo; de lo contrario, lo procesa el complemento JSON Provider. */
     suspend fun importFromUri(uri: Uri) {
         withContext(Dispatchers.IO) {
-            // P2-28: 大小限流 — 外部插件包由 PluginManager.withTempPluginFile 的
-            // copyLimited(MAX_PLUGIN_PACKAGE_BYTES) 限流;Provider JSON 由下方复制阶段
-            // 1MB 限流 + registry.loadFromFile 内置上限双保险,杜绝 OOM。
+            // P2-28: Límite de tamaño — Los paquetes de complementos externos los proporciona PluginManager.withTempPluginFile
+            // copyLimited(MAX_PLUGIN_PACKAGE_BYTES) Limitación de corriente;Provider JSON Copiar etapas desde abajo
+            // 1MB Limitación actual + registro.loadFromFile seguro doble de límite superior incorporado,Eliminar OOM.
             val header = runCatching {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     byteArrayOf(input.read().toByte(), input.read().toByte())
@@ -383,7 +383,7 @@ fun PluginManagePage(onBack: () -> Unit) {
             }
             val tempFile = File(context.cacheDir, "plugin_import_${System.nanoTime()}.json")
             try {
-                // P2-28: 复制阶段同样限流,超大 JSON 在写盘前就拒绝,避免缓存被灌爆 + OOM
+                // P2-28: La fase de replicación también es limitada.,JSON de gran tamaño rechazado antes de escribir en el disco,Evite la inundación de caché + OOM
                 val maxJsonBytes = io.zer0.ai.plugin.ProviderPluginRegistry.MAX_PROVIDER_JSON_BYTES
                 var total = 0L
                 context.contentResolver.openInputStream(uri)?.use { input ->
@@ -470,7 +470,7 @@ fun PluginManagePage(onBack: () -> Unit) {
             ),
             verticalArrangement = Arrangement.spacedBy(MusePaddings.tightGap),
         ) {
-            // UI-FIX: 顶部分档 —— 已安装 / 市场 / 信任管理，不再把三块竖堆成一条长列表
+            // UI-FIX: agrupamiento superior —— Instalado/Mercado/Gestión de confianza, ya no apilar tres piezas en una lista larga
             item {
                 Box(
                     modifier = Modifier
@@ -490,8 +490,8 @@ fun PluginManagePage(onBack: () -> Unit) {
                     )
                 }
             }
-            // v2.6.13: 插件总开关。放在分档上方而不是埋在某个 tab 里 ——
-            // 它的作用是「插件出问题时能一键止损」，用户不该先找到对的页签才能用。
+            // v2.6.13: Interruptor maestro enchufable. Colóquelo encima de la subcategoría en lugar de enterrarlo en una pestaña. ——
+            // Su función es "detener pérdidas con un clic cuando hay un problema con el complemento". Los usuarios no deben encontrar la pestaña correcta antes de usarla.
             item {
                 Row(
                     modifier = Modifier
@@ -520,7 +520,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                 }
             }
             if (pluginTab == 1) {
-                // ── 插件市场区（Phase 5）──
+                // ── Área de mercado de complementos (Phase 5)──
                 item {
                     Row(
                         modifier = Modifier
@@ -533,7 +533,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f),
-                            // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下被右侧刷新/更多按钮挤成一列
+                            // LAYOUT-01: Row El texto interior se amplía + se limita a una línea para evitar que se actualice a la derecha cuando se amplía el tamaño de fuente./Más botones apretados en una fila
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -556,7 +556,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                     }
                 }
                 when {
-                    // 设置读取中：既不显示“未配置”，也不假装目录可用。
+                    // Cargando configuración: no se muestra ninguna“No configurado”, ni pretender que el directorio esté disponible.
                     catalogUrl == null -> item { MarketLoadingRow() }
                     catalogUrl.isNullOrBlank() -> item {
                         MuseEmptyState(
@@ -586,9 +586,9 @@ fun PluginManagePage(onBack: () -> Unit) {
                         marketError?.let { reason ->
                             item { MarketErrorRow(reason = reason, onRetry = { refreshMarketCatalog() }) }
                         }
-                        // 两列网格：每排两张插件卡，点开进详情页再安装（原大列表太占地方）。
-                        // 注意不用 LazyVerticalGrid：它会嵌进当前 LazyColumn 造成无界高度崩溃，
-                        // 这里按「每排两格」成对排布，视觉等价且结构安全。
+                        // Cuadrícula de dos columnas: hay dos tarjetas enchufables en cada fila. Haga clic para ingresar a la página de detalles y luego instálela (la lista grande original ocupa demasiado espacio).
+                        // Tenga cuidado de no utilizar LazyVerticalGrid: incrustará el LazyColumn actual y provocará un colapso de altura ilimitado.
+                        // En este caso, están dispuestas en parejas según "dos celdas por fila", lo que es visualmente equivalente y estructuralmente seguro.
                         items(marketEntries.chunked(2), key = { "market_row_${it.first().id}" }) { pair ->
                             Row(
                                 modifier = Modifier
@@ -614,7 +614,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                     }
                 }
 
-                // ── P0-9: 信任管理(信任的发行者 / 目录信任根)──
+                // ── P0-9: gestión de confianza(Emisores confiables/Directorio Raíz de confianza)──
             }
             if (pluginTab == 2) {
                 item { SectionHeader(stringResource(R.string.muse_plugins_trust_title)) }
@@ -665,7 +665,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                                     onRemove = {
                                         scope.launch {
                                             marketSettings.removeCatalogRootKey(keyId)
-                                            // P0-9: 目录根撤销后清空市场缓存条目,避免旧信任根验证的条目残留
+                                            // P0-9: Borrar entradas de caché de mercado después de la revocación de la raíz del directorio,Evite restos de antiguas entradas de verificación de raíz de confianza
                                             marketRepository.clearCache()
                                             marketTrustRoots.reload()
                                             marketEntries = emptyList()
@@ -681,7 +681,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                 }
             }
             if (pluginTab == 0) {
-                // ── 外部插件区 ──
+                // ── Área de complementos externos ──
                 item { SectionHeader(stringResource(R.string.muse_plugins_external)) }
                 if (importing && externalPlugins.isEmpty()) {
                     item {
@@ -751,7 +751,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                                 null
                             },
                             onDelete = { pendingDeleteExternal = plugin },
-                            // 助手起草的未签名草稿：只有本机作者密钥签名并启用后才可执行。
+                            // Borradores sin firmar realizados por el Asistente: solo se pueden ejecutar si están firmados y habilitados con la clave de autor nativa.
                             onSignAndEnable = if (
                                 plugin.signatureStatus == PluginSecurityGate.SignatureStatus.UNSIGNED &&
                                 !plugin.installationConfirmed
@@ -768,7 +768,7 @@ fun PluginManagePage(onBack: () -> Unit) {
                     }
                 }
 
-                // ── Provider 插件区 ──
+                // ── Provider Área de complementos ──
                 item {
                     Spacer(Modifier.height(MusePaddings.contentGap))
                     SectionHeader(stringResource(R.string.provider_plugins_title))
@@ -793,7 +793,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         }
     }
 
-    // 外部插件安装确认：展示能力、工具和摘要后才能提交安装。
+    // Confirmación de instalación del complemento externo: la instalación solo se puede enviar después de demostrar capacidades, herramientas y resúmenes.
     pendingExternalInstall?.let { pending ->
         val preview = pending.preview
         val unknownAuthor = stringResource(R.string.muse_plugins_unknown_author)
@@ -851,7 +851,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // 助手自写草稿的「签名并启用」确认：展示插件身份与工具清单，用户点头才签名并写信任根。
+    // Confirmación de "Firmar y activar" del borrador escrito por el asistente: muestra la identidad del complemento y la lista de herramientas, y el usuario asiente antes de firmar y escribir la raíz de confianza.
     pendingSignDraft?.let { target ->
         val noTools = stringResource(R.string.muse_plugins_none)
         MuseDialog(
@@ -908,7 +908,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // 市场安装确认：预览能力/工具/发行者/指纹后，才进行二次校验与原子提交。
+    // Confirmación de instalación en el mercado: capacidades de vista previa/Herramientas/Emisor/Después de la toma de huellas dactilares, se realiza una verificación secundaria y un envío atómico.
     val marketPlan = marketInstall?.plan
     if (marketPlan != null && marketInstall?.phase == MarketInstallPhase.AwaitingConfirm) {
         val preview = marketPlan.preview
@@ -928,7 +928,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // 市场安装进度：提交阶段禁用关闭，避免把原子提交误报成取消。
+    // Progreso de la instalación del mercado: deshabilite el apagado durante la fase de envío para evitar informar erróneamente el envío atómico como cancelación.
     if (marketInstall?.phase == MarketInstallPhase.Installing) {
         MuseDialog(
             onDismissRequest = {},
@@ -942,7 +942,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // 市场目录设置：默认使用安装包内置的官方目录，这里只处理“自定义覆盖”。
+    // Configuración del directorio de Market: de forma predeterminada, se utiliza el directorio oficial integrado en el paquete de instalación. Esto sólo se procesa aquí.“Cobertura personalizada”.
     marketDetailEntry?.let { entry ->
         val detailId = entry.id
         MarketEntryDetailSheet(
@@ -960,7 +960,7 @@ fun PluginManagePage(onBack: () -> Unit) {
     if (showMarketSettings) {
         var urlInput by remember { mutableStateOf(catalogUrlOverride) }
         var keyIdInput by remember {
-            // 内置官方信任根不可覆盖，因此 keyId 初值只取用户自己追加的那把。
+            // La raíz de confianza oficial incorporada no se puede anular, por lo que el valor inicial de keyId solo toma el agregado por el usuario.
             mutableStateOf(
                 (catalogRootKeys.keys - PluginMarketDefaults.catalogRootKeys.keys)
                     .firstOrNull()
@@ -1029,7 +1029,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         }
     }
 
-    // 回滚确认：回滚会重新校验历史副本的签名与内容摘要，失败不会改变当前版本。
+    // Confirmación de reversión: la reversión volverá a verificar la firma y el resumen de contenido de la copia histórica. El error no cambiará la versión actual.
     rollbackRequest?.let { (pluginId, version) ->
         MuseDialog(
             onDismissRequest = { rollbackRequest = null },
@@ -1061,7 +1061,7 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // P0-9: 撤销发行者信任确认 — 撤销后该发行者的插件将被自动禁用,须再次明确信任才能恢复。
+    // P0-9: Revocar la confirmación del fideicomiso del emisor — Después de la revocación, los complementos del editor se desactivarán automáticamente.,Es necesario reafirmar la confianza antes de poder restablecerla.
     revokePublisherId?.let { publisherId ->
         MuseDialog(
             onDismissRequest = { revokePublisherId = null },
@@ -1086,14 +1086,14 @@ fun PluginManagePage(onBack: () -> Unit) {
         )
     }
 
-    // 外部插件删除确认
+    // Confirmación de eliminación del complemento externo
     pendingDeleteExternal?.let { target ->
         MuseDialog(
             onDismissRequest = { pendingDeleteExternal = null },
             title = stringResource(R.string.provider_plugins_delete),
             content = {
                 Text(
-                    // ST-02: 点名 + 后果 + 可撤销(重新导入)
+                    // ST-02: Nombre + consecuencia + revocable(Reimportar)
                     text = stringResource(R.string.provider_plugins_delete_confirm_named, target.name),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1110,14 +1110,14 @@ fun PluginManagePage(onBack: () -> Unit) {
             destructive = true,
         )
     }
-    // Provider 插件删除确认
+    // Provider Confirmación de eliminación del complemento
     pendingDeleteProvider?.let { target ->
         MuseDialog(
             onDismissRequest = { pendingDeleteProvider = null },
             title = stringResource(R.string.provider_plugins_delete),
             content = {
                 Text(
-                    // ST-02: 点名 + 后果 + 可撤销(重新导入)
+                    // ST-02: Nombre + consecuencia + revocable(Reimportar)
                     text = stringResource(R.string.provider_plugins_delete_confirm_named, target.displayName),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1151,20 +1151,21 @@ private fun SectionHeader(title: String) {
     )
 }
 
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 private fun InstalledPluginRow(
     plugin: PluginManager.InstalledPlugin,
     onToggle: () -> Unit,
     onConfirm: (() -> Unit)?,
     onDelete: () -> Unit,
-    /** 未签名草稿的「签名并启用」入口；null 表示该行不提供（非草稿或已确认）。 */
+    /** Entrada \"Firmar y activar\" para borradores sin firmar;null Indica que la línea no está disponible (ni borrador ni confirmada). */
     onSignAndEnable: (() -> Unit)? = null,
-    /** 可回滚到的历史版本；null 表示没有可回退的副本。 */
+    /** Versiones históricas a las que se puede retroceder;null Indica que no hay réplicas para revertir. */
     rollbackVersion: String? = null,
     onRollback: (String) -> Unit = {},
-    /** B7-01: 插件配置项(声明+当前值)；为 null 表示该插件未声明配置或无法读取 manifest。 */
+    /** B7-01: Elementos de configuración del complemento(Declaración+valor actual); nulo significa que el complemento no declara una configuración o que el manifiesto no se puede leer. */
     configEntries: List<Pair<ConfigItem, JsonElement?>>? = null,
-    /** v1.0.92: 插件 UI 面板 HTML;null 表示未声明。(调用方预加载,避免行内读盘) */
+    /** v1.0.92: Panel de interfaz de usuario del complemento HTML;null Indica no declarado.(Precarga de llamadas,Evite la lectura de discos en línea) */
     panelHtml: String? = null,
     onConfigChanged: suspend (String, JsonElement) -> Unit = { _, _ -> },
 ) {
@@ -1186,7 +1187,7 @@ private fun InstalledPluginRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    // ST-04: 面向用户只显示版本/工具数;插件 id/指纹/sha256 收进「开发者信息」折叠区
+                    // ST-04: Mostrar solo la versión a los usuarios/Número de herramientas;ID del complemento/huella digital/sha256 En el área plegable "Información del desarrollador"
                     text = stringResource(R.string.plugin_summary_brief, plugin.version, plugin.tools.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1241,7 +1242,7 @@ private fun InstalledPluginRow(
                     variant = IosCapsuleButtonVariant.Secondary,
                 )
             } else if (onSignAndEnable != null) {
-                // 助手自写草稿：签名并启用是本行唯一能把它变成可执行的入口。
+                // El asistente escribe el borrador: firmarlo y activarlo es la única forma de hacerlo ejecutable.
                 MuseCapsuleButton(
                     text = stringResource(R.string.muse_plugins_sign_enable_action),
                     onClick = onSignAndEnable,
@@ -1278,7 +1279,7 @@ private fun InstalledPluginRow(
                 variant = IosCapsuleButtonVariant.Secondary,
             )
         }
-        // 回滚入口：只有存在「非当前版本」的历史副本时才出现；真正的校验在回滚时重做。
+        // Entrada de reversión: aparece solo cuando hay una copia histórica de la "versión no actual"; la verificación real se rehace durante la reversión.
         rollbackVersion?.let { version ->
             MuseCapsuleButton(
                 text = stringResource(R.string.muse_plugins_rollback_action, version),
@@ -1287,7 +1288,7 @@ private fun InstalledPluginRow(
                 variant = IosCapsuleButtonVariant.Secondary,
             )
         }
-        // ST-04: 开发者信息默认折叠 — id/发布者指纹/内容摘要仅供排查,不打扰普通用户
+        // ST-04: La información del desarrollador está colapsada de forma predeterminada. — id/Huella digital del editor/El resumen del contenido es solo para revisión.,No molesta a los usuarios comunes
         var showDevInfo by remember { mutableStateOf(false) }
         Row(
             modifier = Modifier
@@ -1301,7 +1302,7 @@ private fun InstalledPluginRow(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: 折叠头取宽 + 限行，防被右侧 chevron 图标挤成一列
+                // LAYOUT-01: Utilice el ancho del encabezado plegado + limite las filas para evitar que el ícono de galón a la derecha lo apriete en una fila.
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1345,7 +1346,7 @@ private fun InstalledPluginRow(
                 }
             }
         }
-        // v1.0.92: 插件 UI 面板 — 声明 uiPanel 的插件提供只读自定义界面
+        // v1.0.92: Panel de interfaz de usuario del complemento — Los complementos que declaran uiPanel proporcionan interfaces personalizadas de solo lectura
         if (panelHtml != null) {
             var showPanel by remember { mutableStateOf(false) }
             Row(
@@ -1360,7 +1361,7 @@ private fun InstalledPluginRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 同上，折叠头限 1 行
+                    // LAYOUT-01: Igual que arriba, el encabezado plegado está limitado a 1 línea
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1387,7 +1388,7 @@ private fun InstalledPluginRow(
                 )
             }
         }
-        // B7-01: 插件配置表单 — 仅当插件声明了配置项且已启用时才显示
+        // B7-01: Formulario de configuración del complemento — Solo se muestra si el complemento declara un elemento de configuración y está habilitado
         if (!configEntries.isNullOrEmpty()) {
             val configScope = rememberCoroutineScope()
             var showConfig by remember { mutableStateOf(false) }
@@ -1403,7 +1404,7 @@ private fun InstalledPluginRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 同上，折叠头限 1 行
+                    // LAYOUT-01: Igual que arriba, el encabezado plegado está limitado a 1 línea
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1446,7 +1447,7 @@ private fun signatureStatusLabel(status: PluginSecurityGate.SignatureStatus): St
     PluginSecurityGate.SignatureStatus.UNSUPPORTED -> stringResource(R.string.muse_plugins_signature_unsupported)
 }
 
-/** B7-01: 单个配置字段行 —— 按 manifest 声明类型渲染(string/boolean/number/select)。 */
+/** B7-01: Fila de campo de configuración única —— Representar por tipo de declaración de manifiesto(string/boolean/number/select). */
 @Composable
 private fun ConfigFieldRow(item: ConfigItem, currentValue: JsonElement?, onChanged: (JsonElement) -> Unit) {
     Column(
@@ -1466,7 +1467,7 @@ private fun ConfigFieldRow(item: ConfigItem, currentValue: JsonElement?, onChang
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: 配置字段名取宽 + 限行，防被右侧开关挤成一列
+                        // LAYOUT-01: Configure el nombre del campo con ancho + límite de fila para evitar que el interruptor de la derecha lo comprima en una columna.
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1489,7 +1490,7 @@ private fun ConfigFieldRow(item: ConfigItem, currentValue: JsonElement?, onChang
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: 同上，配置字段名限 1 行
+                        // LAYOUT-01: Igual que arriba, configure el límite de nombre de campo en 1 línea
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1530,7 +1531,7 @@ private fun ConfigFieldRow(item: ConfigItem, currentValue: JsonElement?, onChang
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        // LAYOUT-01: 同上，配置字段名限 1 行
+                        // LAYOUT-01: Igual que arriba, configure el límite de nombre de campo en 1 línea
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1645,7 +1646,7 @@ private fun PluginCard(plugin: ProviderPlugin, onDelete: () -> Unit, onConvert: 
     }
 }
 
-/** 市场安装任务阶段；Failed 携带面向用户的原因。 */
+/** Etapa de tarea de instalación de mercado;Failed Llevar motivos de cara al usuario. */
 private sealed interface MarketInstallPhase {
     data object Downloading : MarketInstallPhase
     data object Preparing : MarketInstallPhase
@@ -1654,12 +1655,12 @@ private sealed interface MarketInstallPhase {
     data class Failed(val reason: String) : MarketInstallPhase
 }
 
-/** 一次市场安装的 UI 状态；[plan] 只在下载+审查+计划全部成功后存在。 */
+/** El estado de la interfaz de usuario de una instalación de mercado;[plan] solo descargando+revisión+Existe después de que todos los planes tengan éxito. */
 private data class MarketInstallJob(
     val entryId: String,
     val phase: MarketInstallPhase,
     val plan: PluginInstallPlan? = null,
-    /** 未知发行者的显式信任标志；生成计划时固定，确认时按原值提交。 */
+    /** Indicador de confianza explícito para emisor desconocido; fijo al generar el plan, comprometido con el valor original al confirmar. */
     val trustPublisher: Boolean = false,
 )
 
@@ -1707,7 +1708,7 @@ private fun MarketErrorRow(reason: String, onRetry: () -> Unit) {
     }
 }
 
-/** 目录版本低于已安装版本时不允许安装：降级会被版本策略拒绝，界面不应给出死路入口。 */
+/** No se permite la instalación cuando la versión del directorio es inferior a la versión instalada: la política de versiones rechazará la degradación y la interfaz no debería dar un callejón sin salida. */
 private fun isDowngrade(installedVersion: String?, catalogVersion: String): Boolean {
     val installed = installedVersion?.let(PluginVersion::parse) ?: return false
     val candidate = PluginVersion.parse(catalogVersion) ?: return false
@@ -1715,7 +1716,7 @@ private fun isDowngrade(installedVersion: String?, catalogVersion: String): Bool
 }
 
 /**
- * 市场网格卡片 —— 图标 + 名称 + 版本/发行者 + 状态，点开进详情页。
+ * Tarjetas de cuadrícula de mercado —— Icono + Nombre + Versión/Editor + Estado, haga clic para ingresar a la página de detalles.
  */
 @Composable
 private fun MarketEntryCell(
@@ -1775,7 +1776,7 @@ private fun MarketEntryCell(
     }
 }
 
-/** 卡片上的状态行（下载中 / 安装中 / 已安装 / 失败 / 可安装）。 */
+/** Línea de estado en la tarjeta (Descargando / Instalando / Instalado / Fallido / Instalable). */
 @Composable
 private fun MarketEntryStateLine(entryVersion: String, installedVersion: String?, phase: MarketInstallPhase?) {
     val (label, color) = when {
@@ -1805,7 +1806,7 @@ private fun MarketEntryStateLine(entryVersion: String, installedVersion: String?
 }
 
 /**
- * 市场插件详情面板 —— 完整信息 + 安装/取消/重试动作。
+ * Panel de detalles del complemento de mercado —— Información completa + instalación/Cancelar/Vuelva a intentar la acción.
  */
 @Composable
 private fun MarketEntryDetailSheet(
@@ -1860,7 +1861,7 @@ private fun MarketEntryDetailSheet(
     }
 }
 
-/** 安装动作行（网格卡片与详情面板共用）。 */
+/** Instalar fila de acción (compartida entre la tarjeta de cuadrícula y el panel de detalles). */
 @Composable
 private fun MarketInstallActions(
     entryVersion: String,
@@ -1944,7 +1945,7 @@ private fun MarketInstallActions(
                 modifier = Modifier.weight(1f),
             )
             isDowngrade(installedVersion, entryVersion) -> Text(
-                // 目录版本低于已安装版本：安装会被版本策略拒绝，不给死路入口。
+                // La versión del directorio es inferior a la versión instalada: la instalación será rechazada por la política de versiones y no se permitirá ningún callejón sin salida.
                 text = stringResource(R.string.muse_plugins_market_downgrade_blocked, installedVersion.orEmpty()),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1965,7 +1966,7 @@ private fun MarketInstallActions(
     }
 }
 
-/** P0-9: 信任的发行者行 — 展示 id + 指纹,提供撤销入口。 */
+/** P0-9: Línea de editor confiable — Mostrar identificación + huella digital,Proporciona una entrada de revocación. */
 @Composable
 private fun TrustedPublisherRow(publisherId: String, fingerprint: String, onRevoke: () -> Unit) {
     Row(
@@ -2000,7 +2001,7 @@ private fun TrustedPublisherRow(publisherId: String, fingerprint: String, onRevo
     }
 }
 
-/** P0-9: 目录信任根行 — 展示 keyId,提供移除入口(内置根不可移除)。 */
+/** P0-9: línea raíz de confianza del directorio — mostrar keyId,Proporcionar acceso de eliminación(La raíz incorporada no es extraíble). */
 @Composable
 private fun CatalogRootKeyRow(keyId: String, onRemove: () -> Unit) {
     Row(
@@ -2027,7 +2028,7 @@ private fun CatalogRootKeyRow(keyId: String, onRemove: () -> Unit) {
     }
 }
 
-/** 安装确认预览：能力 / 工具 / 发行者指纹 / 签名状态；市场与本地导入共用同一份内容。 */
+/** Vista previa de confirmación de instalación: Capacidades/Herramientas/Huella digital del editor/Estado de la firma; El mercado y la importación local comparten el mismo contenido. */
 @Composable
 private fun PluginInstallPreviewContent(preview: PluginSecurityGate.InstallPreview) {
     val unknownAuthor = stringResource(R.string.muse_plugins_unknown_author)
@@ -2052,7 +2053,7 @@ private fun PluginInstallPreviewContent(preview: PluginSecurityGate.InstallPrevi
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // 运行时必须写在摘要里：JS 与 Python 的隔离强度不同，用户有权知道自己在授权什么。
+        // El tiempo de ejecución debe escribirse en el resumen:JS A diferencia del poder de aislamiento de Python, los usuarios tienen derecho a saber qué están autorizando.
         Text(
             text = stringResource(R.string.muse_plugins_runtime_label, preview.runtime),
             style = MaterialTheme.typography.labelSmall,
@@ -2067,9 +2068,9 @@ private fun PluginInstallPreviewContent(preview: PluginSecurityGate.InstallPrevi
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // 声明与权限是两件事，但界面上挨在一起很容易被读成「它只需要这些权限」。
-        // 实际执行时能力声明不构成约束（放开是有意的，收紧会让一批忘声明的插件直接坏掉），
-        // 所以这里只把语义说清，不假装它是一道安全边界。
+        // Los reclamos y los permisos son dos cosas diferentes, pero colocados uno al lado del otro en la interfaz es fácil leer "solo requiere estos permisos".
+        // Las declaraciones de capacidad no constituyen restricciones durante la ejecución real (la relajación es intencional, el ajuste hará que un lote de complementos que no han sido declarados se rompan directamente),
+        // Así que aquí simplemente aclaramos la semántica y no pretendemos que sea un límite seguro.
         Text(
             text = stringResource(R.string.muse_plugins_capabilities_disclaimer),
             style = MaterialTheme.typography.labelSmall,

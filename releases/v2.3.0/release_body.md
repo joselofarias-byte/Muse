@@ -1,25 +1,25 @@
 # Muse v2.3.0
 
-以"长任务体验"为核心的修复版：多步骤任务不再被中途打断，长对话与大量工具操作之后，助手依然记得你们聊过什么；并修复了记忆可能被清空的严重问题。建议所有用户升级。
+a"Larga experiencia en tareas"La versión principal reparada: las tareas de varios pasos ya no se interrumpen a mitad de camino. Después de largas conversaciones y una gran cantidad de operaciones con herramientas, el asistente aún recuerda de qué habló; y se ha solucionado un problema grave en el que se podía borrar la memoria. Se recomienda a todos los usuarios actualizar.
 
-## 重要修复
+## Correcciones importantes
 
-- **记忆不再丢失**：修复了重启后事实记忆可能被清空的问题；设备备份中若存有被清理的数据，升级后会自动找回。今后记忆不再随启动丢失。
-- **长任务不再"失忆"**：连续执行大量工具步骤后，助手仍记得之前的对话，可以接着之前的上下文继续。
-- **偶发长等待修复**：为历史压缩等后台处理增加超时保护，消除少数情况下"消息迟迟不出"的长时间等待。
+- **Los recuerdos ya no se pierden.**: Se solucionó el problema de que la memoria factual se pudiera borrar después de reiniciar; Si hay datos borrados en la copia de seguridad del dispositivo, se recuperarán automáticamente después de la actualización. La memoria ya no se perderá al iniciar en el futuro.
+- **No más tareas largas"amnesia"**: Después de ejecutar una gran cantidad de pasos de herramienta seguidos, el asistente aún recuerda la conversación anterior y puede continuar con el contexto anterior.
+- **A veces hay que esperar mucho para reparar**: Agregue protección de tiempo de espera para el procesamiento en segundo plano, como la compresión histórica, para eliminar algunos casos."La noticia se ha retrasado."larga espera.
 
-## 新能力
+## nuevas capacidades
 
-- **工具轮次放开**：默认不限轮次（也可在 设置 → 聊天 中限制），复杂任务一次做完；异常循环保护依然生效。
-- **工具权限透明化**：需要 Shizuku / Root、无障碍或 Termux 的工具会显示就绪状态，未授权时立即给出明确提示，而不是执行到一半莫名失败。
-- **提示词技能支持输入**：自定义提示词技能可接收输入文本并代入指令。
-- **知识库搜索更可控**：搜索结果阈值真正生效，未命中时提供诊断信息。
+- **Liberación de giro de herramienta**: No hay límite de rondas de forma predeterminada (también se puede configurar en → (limitado en el chat), las tareas complejas se pueden completar a la vez; La protección de bucle anormal aún está vigente.
+- **Permisos de herramientas transparentes**: Las herramientas que requieren Shizuku/Root, accesibilidad o Termux mostrarán el estado listo y darán un mensaje claro de inmediato si no están autorizadas, en lugar de fallar inexplicablemente a mitad de la ejecución.
+- **La habilidad de palabra rápida admite la entrada**: La habilidad de palabra rápida personalizada puede recibir texto de entrada e instrucciones sustitutas.
+- **La búsqueda en la base de conocimientos es más controlable**: El umbral de resultados de búsqueda realmente entra en vigor y se proporciona información de diagnóstico sobre los errores.
 
-## 体验改进
+## Mejoras en la experiencia
 
-- 消息渠道卡片重新排版：长名称与长账号不再挤成一团。
-- 闹钟 / 倒计时修复：补齐系统权限声明，此前会被系统拦截；失败时给出明确反馈。
-- 长记忆条目支持点击展开查看全文。
+- La tarjeta del canal de mensajes se ha reorganizado: los nombres largos y los números de cuenta largos ya no están agrupados.
+- Reparación de alarma/cuenta regresiva: complete la declaración de permiso del sistema, que el sistema habría interceptado antes; dar retroalimentación clara cuando falla.
+- Las entradas de memoria largas admiten hacer clic para expandir y ver el texto completo.
 
 ---
 

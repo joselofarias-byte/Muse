@@ -39,26 +39,26 @@ import io.zer0.muse.ui.theme.semiLarge
 import kotlin.math.abs
 
 /**
- * 胶囊形 Tab 选择器。
+ * Selector de pestañas de cápsula.
  *
- * 设计稿中首页(任务/Agent/群聊)、搜索页(Sessions/Messages/Settings)、
- * 助手详情(Basic/Prompt/Extensions/Memory/Advanced)均使用此组件。
+ * Página de inicio en borrador de diseño(Tarea/Agent/chat grupal), página de búsqueda(Sessions/Messages/Settings),
+ * Detalles del asistente(Basic/Prompt/Extensions/Memory/Advanced)Todos usan este componente.
  *
- * 样式:surfaceVariant 凹槽容器(20dp 圆角),选中项白色凸起(16dp 圆角) + 阴影。
+ * estilo:surfaceVariant contenedor estriado(20dp esquinas redondeadas),Elemento seleccionado blanco elevado(16dp esquinas redondeadas) + sombra.
  *
- * v1.137 B3: 真正实现滑动/点按动效分离。
- *  - 用户拖拽([isDragging] = true):指示器颜色随手指连续插值(lerp),实时跟踪 pager 偏移,
- *    无 tween,手指移到哪指示器跟到哪。
- *  - 点击切换([isDragging] = false):用 200ms tween 平滑过渡,有"弹"的质感。
- *  - 调用方通过 [isDragging] 区分:HomeScreen 在 onSelect 时设 clickAnimating=true,
- *    isScrollInProgress 结束时清除,从而区分用户拖拽和 animateScrollToPage。
+ * v1.137 B3: realmente deslizarse/Haga clic para separar la animación.
+ *  - Arrastre del usuario([isDragging] = true):El color del indicador se interpola continuamente con el dedo(lerp),Seguimiento del desplazamiento del buscapersonas en tiempo real,
+ *    Ninguno tween,El indicador sigue dondequiera que se mueva el dedo.
+ *  - Haga clic para cambiar([isDragging] = false):Transiciones suaves con interpolación de 200 ms,si"bomba"textura.
+ *  - la persona que llama pasa [isDragging] distinguir:HomeScreen Establecer en onSelect clickAnimating=true,
+ *    isScrollInProgress Borrar cuando termine,Esto diferencia entre arrastre del usuario y animateScrollToPage.
  *
- * @param tabs Tab 标签文本列表
- * @param selectedIndex 当前选中索引
- * @param onSelect 选中回调(参数为新索引)
+ * @param tabs Tab Lista de texto de etiqueta
+ * @param selectedIndex Índice actualmente seleccionado
+ * @param onSelect Seleccionar devolución de llamada(El parámetro es el nuevo índice.)
  * @param modifier Modifier
- * @param pageOffset pager 偏移分数(连续跟踪手指滑动);null 时回退到 tween 动画(默认)
- * @param isDragging 用户是否正在拖拽 pager(仅拖拽时用连续跟踪;点击动画/静止时用 tween)
+ * @param pageOffset pager Puntuación de compensación(Seguimiento continuo de deslizamientos de dedos);null Recurrir a la animación de interpolación(Predeterminado)
+ * @param isDragging Si el usuario está arrastrando pager(Utilice el seguimiento continuo solo al arrastrar;haga clic en animación/Se utiliza cuando está parado tween)
  */
 @Composable
 fun MuseCapsuleTab(
@@ -72,8 +72,8 @@ fun MuseCapsuleTab(
     val useContinuous = pageOffset != null && isDragging
     val fractionalIndex = pageOffset?.let { selectedIndex + it } ?: selectedIndex.toFloat()
 
-    // UI-FIX A: 选中态实心（黑底白字）；未选中用不透明中性底。
-    // 不再用 0 alpha 淡入淡出，避免按压/滑动时出现半透明遮罩感。
+    // UI-FIX A: El estado seleccionado es sólido (texto blanco sobre fondo negro); el estado no seleccionado es opaco y neutral.
+    // No más desvanecimientos con 0 alfa para evitar presionar/Al deslizarse aparece una sensación de enmascaramiento translúcido.
     val selectedBg = MuseActionColors.container
     val unselectedBg = MuseActionColors.neutralContainer
     val selectedText = MuseActionColors.content
@@ -84,8 +84,8 @@ fun MuseCapsuleTab(
         color = MuseActionColors.neutralContainer,
         modifier = modifier
             .widthIn(min = (tabs.size * 60).dp)
-            // UI-FIX: 48dp 视觉高度在移动端顶栏显得过高(用户反馈"按键太高");
-            // 收到 40dp 视觉高度,行内触摸区仍由外层 Row 的更大命中域兜底。
+            // UI-FIX: 48dp La altura visual aparece demasiado alta en la barra superior del celular(Comentarios de los usuarios"Botones demasiado altos");
+            // Reciba una altura visual de 40 dp,El área de toque dentro de la fila todavía está cubierta por el área de golpe más grande de la fila exterior.
             .heightIn(min = 40.dp, max = 44.dp),
     ) {
         Row(
@@ -97,8 +97,8 @@ fun MuseCapsuleTab(
         ) {
             tabs.forEachIndexed { index, label ->
                 val isSelected = selectedIndex == index
-                // B3: 拖拽时直接根据 fractionalIndex 计算"选中度"(0~1),无延迟;
-                // 点击/静止时用 animateFloatAsState 平滑过渡,有 tween 质感。
+                // B3: Calcule directamente en función del índice fraccionario al arrastrar"Selectividad"(0~1),Sin demora;
+                // Haga clic/Utilice animateFloatAsState para suavizar las transiciones cuando esté parado,Tiene una textura de interpolación.
                 val directFraction = (1f - abs(fractionalIndex - index)).coerceIn(0f, 1f)
                 val animatedFraction by animateFloatAsState(
                     targetValue = if (isSelected) 1f else 0f,
@@ -109,7 +109,7 @@ fun MuseCapsuleTab(
 
                 val bgColor = lerp(unselectedBg, selectedBg, fraction)
                 val textColor = lerp(unselectedText, selectedText, fraction)
-                // v1.0.75 fix (CI hardcoded-cjk): 选中态文案走资源(Composable 上下文取值,semantics lambda 内复用)
+                // v1.0.75 fix (CI hardcoded-cjk): Recursos de redacción seleccionados(Composable valor de contexto,semantics lambda Multiplexación interna)
                 val selectedSuffix = stringResource(R.string.settings_selected_suffix)
                 val interactionSource = remember(index) { MutableInteractionSource() }
 
@@ -120,15 +120,15 @@ fun MuseCapsuleTab(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        // v1.0.74 fix (前端审计 3.7): 用 selected 语义替代拼进 contentDescription,
-                        // TalkBack 能读"已选中"关系而非字符串拼接。
+                        // v1.0.74 fix (Auditoría inicial 3.7): Utilice semántica seleccionada en lugar de ortografía contentDescription,
+                        // TalkBack puede leer"seleccionado"relaciones en lugar de concatenación de cadenas.
                         .semantics {
                             selected = isSelected
-                            // v1.0.75 fix (CI hardcoded-cjk): 选中态文案走资源(Composable 外取值)
+                            // v1.0.75 fix (CI hardcoded-cjk): Recursos de redacción seleccionados(Composable valor externo)
                             contentDescription = if (selectedIndex == index) "$label$selectedSuffix" else label
                         }
-                        // 胶囊已经有自绘选中态，不能再叠加 Material 默认 ripple；
-                        // 默认 bounded ripple 在深色遮罩下会表现为白色横条。
+                        // La cápsula ya tiene un estado seleccionado de autodibujo y no se puede superponer con la ondulación predeterminada del Material;
+                        // De forma predeterminada, las ondas delimitadas aparecen como barras horizontales blancas debajo de una máscara oscura.
                         .clickable(
                             interactionSource = interactionSource,
                             indication = null,
@@ -146,7 +146,7 @@ fun MuseCapsuleTab(
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             ),
                             color = textColor,
-                            // CHAT-17: 长标签(俄/葡语)单行省略,不再换行/截断破坏胶囊高度
+                            // CHAT-17: etiqueta larga(Rusia/portugués)línea única omitida,No más saltos de línea/Truncar la altura de la cápsula destruida.
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             softWrap = false,

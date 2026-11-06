@@ -19,17 +19,17 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * P0-3 回归:工具风险等级三处台账一致性护栏。
+ * P0-3 Regresar:Barandillas de coherencia del libro mayor de nivel de riesgo tres de la herramienta.
  *
- * 三份台账:
- *  1. 注册台账 — 各 Registrar 注册 ToolDef 时的 riskLevel 字段
- *  2. 显式风险表 — [ToolPermissionResolver.explicitRiskTable](唯一真源)
- *  3. 运行时解析 — [ToolPermissionResolver.riskLevelFor](显式表 + 前缀推断)
+ * tres libros mayores:
+ *  1. Registrar cuenta — El campo RiskLevel cuando cada registrador registra ToolDef
+ *  2. tabla de riesgo explícito — [ToolPermissionResolver.explicitRiskTable](la única fuente verdadera)
+ *  3. Análisis en tiempo de ejecución — [ToolPermissionResolver.riskLevelFor](Tabla explícita + inferencia de prefijo)
  *
- * 约束:
- *  - 任何在显式风险表中出现的工具,注册台账不得低于表内等级(尤其 HIGH 不能被降级为 NORMAL,
- *    否则子代理 / 定时任务 / TRUSTED 模式会绕过审批);
- *  - riskLevelFor 对已知高风险工具必须解析为 HIGH,与注册值无关。
+ * restricción:
+ *  - Cualquier instrumento que aparezca en una tabla de riesgo explícita.,La cuenta de registro no debe ser inferior al nivel de la tabla.(En particular, HIGH no se puede degradar a NORMAL,
+ *    De lo contrario, el subagente/tarea programada/modo CONFIABLE omitirá la aprobación);
+ *  - riskLevelFor Las herramientas conocidas de alto riesgo deben analizarse como HIGH,No tiene nada que ver con el valor registrado.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -38,38 +38,38 @@ class ToolRiskLedgerConsistencyTest {
     private fun buildLedger(): ToolRegistry {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val registry = ToolRegistry(context)
-        // 与 App 启动链路一致地实例化注册器(见 ToolRegistrarBootstrapper 的注册器清单)。
-        // 覆盖必须显式:构造失败的注册器要列进 UNAVAILABLE_REGISTRARS,两边都没有的注册器会让本测试失败——
-        // 否则台账覆盖会随重构悄悄缩水,一致性护栏就形同不存在。
+        // Crear una instancia del registrador coherente con el enlace de inicio de la aplicación(Consulte ToolRegistrarBootstrapper para obtener una lista de registradores.).
+        // Las anulaciones deben ser explícitas:Los registros que no se pudieron construir deben enumerarse UNAVAILABLE_REGISTRARS,Un registrador que falte en ambos hará que esta prueba falle——
+        // De lo contrario, la cobertura del libro mayor se reducirá silenciosamente con la reconstrucción.,Las barreras de coherencia simplemente no existen.
         val unavailable = mutableListOf<String>()
         REGISTRARS.forEach { (name, build) ->
             runCatching { build(context, registry) }.onFailure { unavailable += name }
         }
         val unexpected = unavailable - UNAVAILABLE_REGISTRARS
         assertTrue(
-            "以下注册器无法实例化,风险台账出现覆盖缺口(若刻意为请加入 UNAVAILABLE_REGISTRARS 并写明理由):\n" +
+            "No se puede crear una instancia del siguiente registrador,Hay una brecha de cobertura en el libro de riesgos.(Si está interesado, agregue UNAVAILABLE_REGISTRARS y escriba el motivo.):\n" +
                 unexpected.joinToString("\n"),
             unexpected.isEmpty(),
         )
         assertTrue(
-            "注册器覆盖过少(${REGISTRARS.size - unavailable.size}/${REGISTRARS.size}),台账护栏已退化",
+            "La cobertura del registrador es demasiado baja(${REGISTRARS.size - unavailable.size}/${REGISTRARS.size}),La barandilla del libro mayor se ha deteriorado.",
             REGISTRARS.size - unavailable.size >= 12,
         )
-        // pin_memory / unpin_memory 由 AgentToolsRegistrar 动态注册,静态 toolDef 直接并入台账
+        // pin_memory / unpin_memory Registrado dinámicamente por AgentToolsRegistrar,ToolDef estático se fusiona directamente con el libro mayor
         registry.register(PinMemoryTool.toolDef()) { PinMemoryTool.execute(emptyMap(), mockk()) }
         registry.register(UnpinMemoryTool.toolDef()) { UnpinMemoryTool.execute(emptyMap(), mockk()) }
         return registry
     }
 
     private companion object {
-        /** 未纳入构造的注册器:每项都必须有理由,避免覆盖被静默削减。 */
+        /** Registrador no construido:Debe haber una razón para todo,Evite que la cobertura se corte silenciosamente. */
         val UNAVAILABLE_REGISTRARS: Set<String> = setOf("AgentToolsRegistrar")
 
         /**
-         * 与 `ToolRegistrarBootstrapper` 的注册器清单保持一致的构造表。
+         * con `ToolRegistrarBootstrapper` La lista de registros mantiene una tabla de constructores consistente.
          *
-         * 只构造(注册发生在各 Registrar 的 init{});本测试只关心注册出来的 ToolDef 名字与风险等级,
-         * 不执行任何工具,所以依赖重的用 relaxed mock 即可。
+         * Construir solo(La inscripción se produce en la sede de cada Registrador. init{});Esta prueba solo se preocupa por el nombre registrado de ToolDef y el nivel de riesgo.,
+         * No se ejecutan herramientas,Entonces, si tiene grandes dependencias, simplemente use un simulacro relajado.
          */
         val REGISTRARS: List<Pair<String, (Context, ToolRegistry) -> Unit>> = listOf(
             "EncodingToolsRegistrar" to { c, r -> EncodingToolsRegistrar(c, r) },
@@ -108,7 +108,7 @@ class ToolRiskLedgerConsistencyTest {
             "PdfVisionToolsRegistrar" to { c, r ->
                 PdfVisionToolsRegistrar(r, mockk(relaxed = true), c, c.filesDir)
             },
-            // P2-23: 媒体生成工具(图片/视频/二维码),原由 ChatViewModel 注册
+            // P2-23: herramientas de generación de medios(fotos/vídeo/código qr),Registrado originalmente por ChatViewModel
             "MediaGenToolsRegistrar" to { c, r ->
                 MediaGenToolsRegistrar(
                     r,
@@ -122,11 +122,11 @@ class ToolRiskLedgerConsistencyTest {
                     ),
                 )
             },
-            // v2.0: OAuth 连接器工具(connector_list / call_connector)
+            // v2.0: OAuth herramienta conectora(connector_list / call_connector)
             "ConnectorToolsRegistrar" to { _, r ->
                 ConnectorToolsRegistrar(r, mockk(relaxed = true))
             },
-            // v2.0.1: 插件市场工具(plugin_market_search / plugin_market_install)
+            // v2.0.1: Herramienta de mercado de complementos(plugin_market_search / plugin_market_install)
             "PluginMarketToolsRegistrar" to { _, r ->
                 PluginMarketToolsRegistrar(r, mockk(relaxed = true))
             },
@@ -146,7 +146,7 @@ class ToolRiskLedgerConsistencyTest {
             .sorted()
 
         assertTrue(
-            "注册台账与显式风险表不一致(注册值低于唯一真源,会导致子代理/定时任务/TRUSTED 绕过审批):\n" +
+            "El libro de registro es inconsistente con la tabla de riesgo explícita(El valor de registro es inferior al de One True Source,resultará en subagentes/tareas programadas/TRUSTED Omitir aprobación):\n" +
                 mismatches.joinToString("\n"),
             mismatches.isEmpty(),
         )
@@ -168,7 +168,7 @@ class ToolRiskLedgerConsistencyTest {
             "pin_memory", "unpin_memory", "make_phone_call",
         )
         for (name in highNames) {
-            assertEquals("$name 必须解析为 HIGH", ToolRiskLevel.HIGH, ToolPermissionResolver.riskLevelFor(name))
+            assertEquals("$name debe ser analizado como HIGH", ToolRiskLevel.HIGH, ToolPermissionResolver.riskLevelFor(name))
         }
     }
 

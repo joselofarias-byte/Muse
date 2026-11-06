@@ -5,12 +5,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 定时任务巡检的等待时长。
+ * El tiempo de espera para la inspección de la tarea programada.
  *
- * 旧实现是固定 60s 空转：没有到期任务也每分钟醒一次，每次还要 GlobalContext 查找 +
- * DataStore 读 + 两条 DB 查询。改成「按最近到期时间睡，但**只允许比 60s 短**」之后，
- * 这里把边界钉死 —— 尤其"不能睡得比 60s 更久"这条：新建一个 5 秒后执行的任务时，
- * 固定轮询本来最多也就等 60s，睡更久就是行为回退。
+ * La implementación anterior tiene un tiempo de inactividad fijo de 60 segundos: se activa una vez por minuto si no hay tareas caducadas y es necesario buscar GlobalContext cada vez. +
+ * DataStore Leer + dos consultas de base de datos. Cámbielo a "Dormir según el último tiempo de vencimiento, pero**Solo se permiten menores de 60 años.**"Después de eso,
+ * Clava la frontera aquí —— especialmente"No puedo dormir más de 60 años"Este artículo: Al crear una nueva tarea que se ejecutará en 5 segundos,
+ * El sondeo fijo solo puede esperar 60 segundos como máximo. Dormir más tiempo es una regresión conductual.
  */
 class ScheduledTaskPollDelayTest {
 
@@ -39,7 +39,7 @@ class ScheduledTaskPollDelayTest {
     @Test
     fun `near_due_task_sleeps_exactly_until_then`() {
         assertEquals(10_000L, delay(now + 10_000))
-        // 到期时间只差 1ms：仍要尊重下限，不能 0 延迟空转
+        // El tiempo de vencimiento está a solo 1 ms: aún se debe respetar el límite inferior y no se permite el ralentí con 0 retraso.
         assertEquals(minDelay, delay(now + 1))
     }
 
@@ -54,8 +54,8 @@ class ScheduledTaskPollDelayTest {
         val probes = listOf(-100_000L, 0L, 1L, 500L, 1_000L, 59_999L, 60_000L, 3_600_000L)
         probes.forEach { offset ->
             val value = delay(now + offset)
-            assertTrue("延迟必须 ≥ 下限：offset=$offset value=$value", value >= minDelay)
-            assertTrue("延迟必须 ≤ 轮询上限：offset=$offset value=$value", value <= poll)
+            assertTrue("El retraso es necesario ≥ Límite inferior:offset=$offset value=$value", value >= minDelay)
+            assertTrue("El retraso es necesario ≤ Límite de sondeo:offset=$offset value=$value", value <= poll)
         }
     }
 }

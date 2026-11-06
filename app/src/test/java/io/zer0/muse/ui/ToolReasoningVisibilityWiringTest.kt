@@ -21,8 +21,8 @@ class ToolReasoningVisibilityWiringTest {
                 "src/main/java/io/zer0/muse/ui/MessageBubble.kt",
                 "app/src/main/java/io/zer0/muse/ui/MessageBubble.kt",
             )
-        val reasoningBlock = source.substringAfter("// Phase 8.3: 推理过程折叠卡片")
-            .substringBefore("// 与 mood/reasoning 块同构")
+        val reasoningBlock = source.substringAfter("// Phase 8.3: Tarjetas plegables de proceso de razonamiento")
+            .substringBefore("// Isomórfico al estado de ánimo/bloqueo de razonamiento")
         assertTrue(reasoningBlock.contains("if (chatPrefs.showReasoning"))
         assertFalse(reasoningBlock.contains("!isToolRoundMessage"))
     }
@@ -34,17 +34,17 @@ class ToolReasoningVisibilityWiringTest {
                 "src/main/java/io/zer0/muse/ui/ToolRunCard.kt",
                 "app/src/main/java/io/zer0/muse/ui/ToolRunCard.kt",
             )
-        // v2.6.7: 展开区已从 ToolRunCard 抽到 ToolRunExpandedRows（LongMethod 整改），
-        // 旧写法「注释之后的全文」会跨到下一个函数里导致误判。
-        // 改为把作用域限定在抽出的那个函数内，断言强度不变。
-        // 展开区现在会调用 ProcessStepItem / ProcessStepState（定义在它下面），
-        // 所以边界改为「到下一个顶层函数前」，不再把边界钉在 ToolRunHeaderRow
-        // ——后者已不再是紧随其后的那个函数。
+        // v2.6.7: El área de expansión se ha extraído de ToolRunCard a ToolRunExpandedRows (LongMethod rectificación),
+        // La antigua forma de escribir "texto completo después de los comentarios" saltará a la siguiente función y provocará errores de juicio.
+        // En su lugar, limite el alcance a la función extraída y la fuerza de la afirmación permanecerá sin cambios.
+        // El área expandida ahora llama ProcessStepItem / ProcessStepState (definido debajo),
+        // Entonces, el límite se cambia a "antes de la siguiente función de nivel superior" y el límite ya no está fijado a ToolRunHeaderRow
+        // ——Esta última ya no es la función que le sigue.
         val reasoningBlock =
             source.substringAfter("private fun ToolRunExpandedRows")
                 .substringBefore("\ninternal data class ProcessTally")
-        // 思考条目现在走 ProcessStepItem 的可折叠壳，锚点跟着新实现走；
-        // 真正要守住的仍然是「不截断」：思考正文不得出现行数上限或省略号。
+        // Los elementos Think ahora siguen el caparazón plegable de ProcessStepItem y los puntos de anclaje siguen la nueva implementación;
+        // Lo que realmente hay que tener en cuenta es "no truncamiento": no debería haber un límite superior en el número de líneas o elipses en el texto reflexivo.
         assertTrue(reasoningBlock.contains("chat_process_thinking_done"))
         assertFalse(reasoningBlock.contains("maxLines = 6"))
         assertFalse(
@@ -61,9 +61,9 @@ class ToolReasoningVisibilityWiringTest {
             )
         val groupingBlock = source.substringAfter("ChatDisplayGrouper.group(visibleMessages)")
             .substringBefore(".filterIsInstance")
-        // v2.6.10: 判据放宽为「没有最终正文就算过程」——
-        // 纯思考消息也要并入过程流水（与平台侧的 thinking/tool_group 同级）。
-        // 这里守住两点：① 仍要求「无正文」；② 过程来源要么是工具、要么是思考。
+        // v2.6.10: Se flexibiliza el criterio a "cuenta como un proceso sin el texto final"——
+        // Los mensajes de pensamiento puro también deben incorporarse al flujo del proceso (el mismo nivel que el pensamiento/grupo_herramientas en el lado de la plataforma).
+        // Tenga en cuenta dos puntos aquí:① Aún se requiere "Sin texto";② La fuente del proceso son las herramientas o el pensamiento.
         assertTrue(groupingBlock.contains("displayContent"))
         assertTrue(groupingBlock.contains("isBlank()"))
         assertTrue(groupingBlock.contains("msg.toolCallInfo != null"))

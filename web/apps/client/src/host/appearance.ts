@@ -1,13 +1,13 @@
 /**
- * 外观（主题模式 / 字号缩放）的纯逻辑与 DOM 应用。
+ * Lógica pura y aplicación DOM de apariencia (modo de tema/escala de tamaño de fuente).
  *
- * 三态主题：
- *  - `system`：`data-theme="system"`，样式交给 `prefers-color-scheme` 媒体查询；
- *  - `light` / `dark`：`data-theme` 直接写死，CSS 里属性选择器优先于媒体查询。
- * 字号四档写成 `data-font-scale`，CSS 据此设定 `--text-scale`，所有排版令牌乘这个倍率。
+ * Tema de los tres estados:
+ *  - `system`:`data-theme="system"`, el estilo se entrega a `prefers-color-scheme` consultas de los medios;
+ *  - `light` / `dark`:`data-theme` Solo escríbelo hasta la muerte,CSS Los selectores de atributos tienen prioridad sobre las consultas de medios.
+ * Escrito en cuatro tamaños de fuente. `data-font-scale`,CSS Establecer en consecuencia `--text-scale`, todos los tokens de composición tipográfica se multiplican por este multiplicador.
  *
- * 应用函数只依赖一个极小的 target 结构，便于脱离浏览器断言；
- * 真实 DOM 的接线在 [documentAppearanceTarget]。
+ * La función de la aplicación solo se basa en una estructura de destino muy pequeña, lo cual es conveniente para romper con las afirmaciones del navegador;
+ * El cableado del DOM real es [documentAppearanceTarget].
  */
 export type ThemeMode = "system" | "light" | "dark";
 export type FontScale = "small" | "medium" | "large" | "xlarge";
@@ -16,7 +16,7 @@ export type ResolvedScheme = "light" | "dark";
 export const THEME_MODES: readonly ThemeMode[] = ["system", "light", "dark"];
 export const FONT_SCALES: readonly FontScale[] = ["small", "medium", "large", "xlarge"];
 
-/** 四档倍率：0.9 / 1.0 / 1.1 / 1.2。只乘在字号与行高上，不做整体缩放。 */
+/** Cuatro niveles de aumento:0.9 / 1.0 / 1.1 / 1.2. Solo multiplica el tamaño de fuente y el alto de línea, sin escala general. */
 export const FONT_SCALE_FACTOR: Readonly<Record<FontScale, number>> = {
   small: 0.9,
   medium: 1,
@@ -32,7 +32,7 @@ export function isFontScale(value: unknown): value is FontScale {
   return typeof value === "string" && (FONT_SCALES as readonly string[]).includes(value);
 }
 
-/** 读主题模式：不认识的值当作「没给」，由调用方退回 system。 */
+/** Modo de lectura de tema: los valores desconocidos se tratan como \"no proporcionados\" y la persona que llama los devuelve al sistema. */
 export function readThemeMode(value: unknown): ThemeMode | undefined {
   if (typeof value === "boolean") return value ? "dark" : "light";
   if (typeof value !== "string") return undefined;
@@ -41,8 +41,8 @@ export function readThemeMode(value: unknown): ThemeMode | undefined {
 }
 
 /**
- * 读字号档位：除了四个档位名，也接受数字倍率（Host 的 display.fontSizeScale 历史上是 "1"
- * 这种字符串），按最接近的一档归一。
+ * Lectura de engranajes de tamaño de fuente: además de los cuatro nombres de engranajes, también acepta ampliación digital (Host Históricamente, display.fontSizeScale era "1"
+ * Estas cadenas) están normalizadas al archivo más cercano.
  */
 export function readFontScale(value: unknown): FontScale | undefined {
   if (typeof value === "string") {
@@ -63,29 +63,29 @@ export function readFontScale(value: unknown): FontScale | undefined {
   return best;
 }
 
-/** system 跟着系统走，其余强制。 */
+/** system Simplemente sigue el sistema y fuerza el resto. */
 export function resolveScheme(mode: ThemeMode, prefersDark: boolean): ResolvedScheme {
   if (mode === "system") return prefersDark ? "dark" : "light";
   return mode;
 }
 
-/** theme-color 用当前 scheme 的 surface 令牌值（浅色 / 深色两套）。 */
+/** theme-color Utilice el valor del token de superficie del esquema actual (conjuntos claros/oscuros). */
 export function themeColorFor(scheme: ResolvedScheme, read: (token: string) => string): string {
   return read(`--muse-color-scheme-${scheme}-surface`).trim();
 }
 
 export interface AppearanceTarget {
-  /** `document.documentElement.dataset`：写 data-theme / data-font-scale。 */
+  /** `document.documentElement.dataset`:Escribir tema-datos/escala-fuente-datos. */
   readonly dataset: Record<string, string | undefined>;
-  /** `<meta name="theme-color">`：写成当前 scheme 的 surface 色。 */
+  /** `<meta name="theme-color">`: escrito como el color de superficie del esquema actual. */
   readonly meta?: { content: string } | undefined;
-  /** 读 CSS 变量当前值；拿不到时返回空串。 */
+  /** Leer el valor actual de la variable CSS; Devuelve una cadena vacía si no se puede obtener. */
   readonly readToken?: ((token: string) => string) | undefined;
 }
 
 /**
- * 应用外观：先写属性（样式立刻生效），再更新 theme-color。
- * 返回解析后的 scheme，调用方可以据此做别的事（或只管返回值做断言）。
+ * Aspecto de la aplicación: primero escriba los atributos (el estilo entrará en vigor inmediatamente) y luego actualice el color del tema.
+ * Se devuelve el esquema analizado y la persona que llama puede hacer otras cosas basándose en él (o simplemente hacer afirmaciones sobre el valor de retorno).
  */
 export function applyAppearance(
   target: AppearanceTarget,
@@ -103,7 +103,7 @@ export function applyAppearance(
   return scheme;
 }
 
-/** 真实 DOM 的 target：属性写到 <html>，theme-color 写到 meta。 */
+/** El objetivo: el atributo del DOM real está escrito en <html>,theme-color Escribe en meta. */
 export function documentAppearanceTarget(doc: Document): AppearanceTarget {
   const meta = doc.querySelector('meta[name="theme-color"]');
   const view = doc.defaultView;

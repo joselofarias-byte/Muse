@@ -1,34 +1,34 @@
 package io.zer0.ai.core
 
 /**
- * v1.73: AI Provider HTTP 客户端共享默认值 — 三个 Provider(OpenAI / Gemini / Anthropic)
- * 原先各自硬编码 OkHttp 超时(30s connect / 300s read / 0s callTimeout),数值重复且
- * 修改需同步三处易遗漏。集中此处便于统一调优。
+ * v1.73: AI Provider HTTP Valores predeterminados compartidos por el cliente — tres Provider(OpenAI / Gemini / Anthropic)
+ * Originalmente, cada uno tenía tiempos de espera de OkHttp codificados(30s connect / 300s read / 0s callTimeout),Los valores se repiten y
+ * Las modificaciones deben sincronizarse en tres lugares que son fáciles de pasar por alto. Centralice aquí para una sintonización unificada.
  *
- * v1.52 调整背景:深度思考(reasoning)模型可能长时间不出 token,readTimeout 提高到 300s;
- * callTimeout=0 不设总超时,流式靠取消信号。
+ * v1.52 Ajustar fondo:pensamiento profundo(reasoning)Es posible que el modelo no se lance durante mucho tiempo. token,readTimeout elevar a 300s;
+ * callTimeout=0 Sin tiempo de espera total,La transmisión se basa en la cancelación de señales.
  */
 object ProviderHttpDefaults {
-    /** OkHttp 连接超时(秒)。 */
+    /** OkHttp Tiempo de espera de conexión(segundos). */
     const val CONNECT_TIMEOUT_SEC = 30L
 
-    /** OkHttp 读取超时(秒)— 提高以适应深度思考模型长任务。 */
+    /** OkHttp Tiempo de espera de lectura(segundos)— Mejorar para dar cabida a modelos de pensamiento profundo para tareas largas. */
     const val READ_TIMEOUT_SEC = 300L
 
-    /** OkHttp 写入超时(秒)— 多模态 base64 请求体较大,默认 60s。 */
+    /** OkHttp escribir tiempo de espera(segundos)— El cuerpo de la solicitud multimodal base64 es grande,60 por defecto. */
     const val WRITE_TIMEOUT_SEC = 60L
 
-    /** OkHttp 总调用超时(秒)— 0 表示不设总超时,流式靠取消信号。 */
-    /** OkHttp 总调用超时(秒)— R-AI-03: 10 分钟兜底,极端挂起不再无限等待。 */
+    /** OkHttp Tiempo de espera total de llamada(segundos)— 0 Indica que no hay tiempo de espera total,La transmisión se basa en la cancelación de señales. */
+    /** OkHttp Tiempo de espera total de llamada(segundos)— R-AI-03: 10 Minutos para guardar,El bloqueo extremo ya no espera indefinidamente. */
     const val CALL_TIMEOUT_SEC = 600L
 
     /**
-     * v2.5.1: 流式专用总超时(秒)。
+     * v2.5.1: Tiempo de espera total específico de la transmisión(segundos).
      *
-     * 用户实测: glm-5.3 等深度思考模型在中转站上思考期(10min+)不吐任何 delta,
-     * 共享 client 的 600s callTimeout 把整个流硬杀,回复被截断。
-     * 流式改为不设总超时(0):静默挂起仍由 readTimeout(300s) 抓住,
-     * 用户取消由 abortSignal 兑底 —— 两者已覆盖全部异常路径。
+     * Prueba real del usuario: glm-5.3 Espere a que se considere el modelo de pensamiento profundo en la estación de transferencia.(10min+)no vomites nada delta,
+     * El callTimeout de 600 del cliente compartido acabará con toda la transmisión.,Respuesta truncada.
+     * La transmisión se cambia a sin tiempo de espera total(0):La suspensión silenciosa todavía la realiza readTimeout(300s) atrapar,
+     * La cancelación del usuario es manejada por abortSignal —— Ambos han cubierto todos los caminos anormales.
      */
     const val STREAM_CALL_TIMEOUT_SEC = 0L
 }

@@ -13,7 +13,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * R-TEST-20: 视频 Provider 注册中心路由、覆盖与 host 提取测试。
+ * R-TEST-20: Pruebas de enrutamiento, cobertura y extracción de host del centro de registro de proveedores de video.
  */
 class VideoProviderRegistryTest {
 

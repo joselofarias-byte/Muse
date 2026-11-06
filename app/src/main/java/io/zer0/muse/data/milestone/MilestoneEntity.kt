@@ -6,12 +6,12 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * Phase 2 2B: 里程碑实体 — 记录用户与 AI 伙伴的关系里程碑。
+ * Phase 2 2B: entidad hito — Registre hitos en la relación de un usuario con un socio de IA.
  *
- * type: "auto" (系统自动触发) / "manual" (用户手动创建)
- * condition: 触发条件标识符 (e.g. "first_message", "day_7", "msg_100")
- * triggerValue: 触发时的实际值 (e.g. 消息数, 天数)
- * dismissedAt: 用户关闭时间 (null = 未关闭)
+ * type: "auto" (El sistema se activa automáticamente) / "manual" (Creado manualmente por el usuario)
+ * condition: Identificador de condición de activación (e.g. "first_message", "day_7", "msg_100")
+ * triggerValue: Valor real cuando se activa (e.g. Número de mensajes, días)
+ * dismissedAt: Hora de cierre del usuario (null = no cerrado)
  */
 @Serializable
 @Entity(tableName = "milestones")

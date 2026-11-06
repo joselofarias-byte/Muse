@@ -19,7 +19,7 @@ class QqMsgIdCacheTest {
         assertEquals(1, firstAttempt?.sequence)
         assertEquals(firstAttempt, retry)
         assertEquals("newer-message", regularSend?.messageId)
-        // 空串不是有效事件身份，应回退到缓存，而不是塔成 null 把可用的 msg_id 一起丢掉。
+        // La cadena vacía no es una identidad de evento válida y debe devolverse a la caché en lugar de ser nula y descartar juntos el msg_id disponible.
         assertEquals("newer-message", missingSource?.messageId)
     }
 

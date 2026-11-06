@@ -1,9 +1,9 @@
 package io.zer0.muse.web
 
 /**
- * 设置主页需要的运行时值。
+ * Establezca los valores de tiempo de ejecución necesarios para la página de inicio.
  *
- * 只装渲染要用的东西:少量只读展示值 + 常用开关的当前状态 + 子页表单用的原始值表。
+ * Instale sólo lo necesario para el renderizado.:Una pequeña cantidad de valores de visualización de solo lectura + el estado actual de los interruptores de uso común + una tabla de valores sin procesar para formularios de subpágina.
  */
 internal data class HostSettingsValues(
     val language: String = "",
@@ -12,20 +12,20 @@ internal data class HostSettingsValues(
     val themeId: String = "",
     val toggles: Map<String, Boolean> = emptyMap(),
     /**
-     * 子页表单的原始值，键同 [HostSettingDefinitions.all]。
+     * El valor original del formulario de subpágina, con la misma clave que [HostSettingDefinitions.all].
      *
-     * 一律用字符串承载（布尔 `true`/`false`，数字十进制文本），与写入时的字符串口径一致，
-     * 快照里的类型信息由定义表提供，不需要在这里再造一套类型。
+     * Siempre llevado como una cadena (booleano `true`/`false`, texto decimal numérico), consistente con el calibre de la cadena cuando se escribe,
+     * La información de tipo en la instantánea la proporciona la tabla de definición y no es necesario volver a crear un conjunto de tipos aquí.
      */
     val raw: Map<String, String> = emptyMap(),
 )
 
 /**
- * 设置的读写口子。
+ * Configure el puerto de lectura y escritura.
  *
- * 写入是「键 + 已按类型规范化的字符串」：键必须在 [HostSettingDefinitions.writableKeys] 内、
- * 值必须通过该项的类型校验，这两件事在 [HostSettingsCommands] 里完成；到了这一层只剩
- * 按键分发到 SettingsRepository 的对应方法，浏览器提交的字符串不会原样进仓库。
+ * La escritura es "clave + cadena normalizada por tipo": la clave debe estar en [HostSettingDefinitions.writableKeys] dentro,
+ * El valor debe pasar la verificación de tipo del artículo, estas dos cosas son [HostSettingsCommands] terminado; solo en este nivel
+ * La clave se distribuye al método correspondiente de SettingsRepository. La cadena enviada por el navegador no se ingresará en el almacén tal como está.
  */
 internal interface HostSettingsAccess {
     suspend fun readValues(): HostSettingsValues
@@ -40,15 +40,15 @@ internal sealed class HostSettingsUpdateResult {
 }
 
 /**
- * settings.snapshot / settings.update 的实现。
+ * settings.snapshot / settings.update realización.
  *
- * 白名单、类型、范围、枚举取值全部由 [HostSettingDefinitions] 这一份定义决定：
- * 下发清单与可写键集合同源，校验与写入共用同一份类型信息，不会出现「快照里有、写不进去」
- * 或「能写进去、快照里看不到」的漂移。
+ * Los valores de lista blanca, tipo, rango y enumeración están representados por [HostSettingDefinitions] Esta definición determina:
+ * La lista de entrega y el conjunto de claves grabables tienen la misma fuente. La verificación y la escritura comparten el mismo tipo de información, por lo que no habrá "está en la instantánea pero no se puede escribir".
+ * O la deriva "se puede escribir, pero no se puede ver en las instantáneas".
  *
- * 快照里的 `title` / `desc` / `groupTitle` / 枚举候选显示名都是已本地化文本，由
- * [HostSettingsStrings] 按当前应用语言解析后下发；资源名（`titleKey` / `descKey` / 分组 `key`）
- * 继续保留在协议里作为稳定标识。网页端因此不需要维护第二份文案。
+ * en instantánea `title` / `desc` / `groupTitle` / Los nombres para mostrar de los candidatos enumerados son todos texto localizado, representado por
+ * [HostSettingsStrings] Analizado de acuerdo con el idioma de la aplicación actual y luego emitido; nombre del recurso (`titleKey` / `descKey` / grupo `key`)
+ * Continúe en el protocolo como identificador estable. Por lo tanto, la página web no necesita mantener una segunda copia.
  */
 internal class HostSettingsCommands(
     private val access: HostSettingsAccess,
@@ -98,7 +98,7 @@ internal class HostSettingsCommands(
         }
     }
 
-    /** 拼成协议里的一项：值 + 类型 + 本地化候选。 */
+    /** Escrito en un elemento del protocolo: valor + tipo + candidato de localización. */
     private fun HostSettingDefinition.toProtocol(raw: Map<String, String>, language: String): HostSettingValue =
         HostSettingValue(
             key = key,
@@ -113,7 +113,7 @@ internal class HostSettingsCommands(
             step = step,
         )
 
-    /** 取不到值时布尔按 false 回填，其余留空——和 toggles 的兜底同口径。 */
+    /** Cuando no se puede obtener el valor, el valor booleano se rellena con falso y el resto se deja en blanco.——Mismo calibre que la parte inferior de los interruptores. */
     private fun HostSettingDefinition.defaultWireValue(): String =
         if (type == HostSettingType.BOOLEAN) "false" else ""
 
@@ -122,10 +122,10 @@ internal class HostSettingsCommands(
         return copy(checked = toggles[toggleKey] ?: false)
     }
 
-    /** 填本地化文本。解析不到就留空——宁可少一行字也不把资源名当文案显示。 */
+    /** Complete el texto localizado. Si no se puede analizar, déjelo en blanco.——Sería mejor perder una línea que mostrar el nombre del recurso como redacción publicitaria. */
     private fun HostSettingsEntry.withLocalizedText(language: String): HostSettingsEntry = copy(
         title = strings.resolve(titleKey, language).orEmpty(),
-        // 没声明 descKey 的条目(说明由运行时拼,如代理状态)不下发说明。
+        // No hay entrada con descKey declarada(Las instrucciones están detalladas en el tiempo de ejecución.,como el estado de proxy)No se emitieron instrucciones.
         desc = descKey?.let { key -> strings.resolve(key, language) },
     )
 }

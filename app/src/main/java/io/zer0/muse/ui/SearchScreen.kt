@@ -65,24 +65,24 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * v0.45: 独立全局搜索页。
+ * v0.45: Página de búsqueda global independiente.
  *
- * 从首页右上角搜索按钮进入,右滑入场。功能:
- *  - 顶部搜索框(自动聚焦)
- *  - 无输入:大面积空白空状态 + 热门搜索建议 chip
- *  - 有输入(v2.x: 顶部 Tab 切换"会话/消息内容"):
- *      - Tab=会话:展示会话标题/最后预览匹配结果
- *      - Tab=消息内容:展示消息内容匹配结果(FTS4/LIKE + 关键词黄色高亮),
- *        点击跳转对应会话并传 messageId 用于滚动定位 + 短暂高亮
+ * Ingrese desde el botón de búsqueda en la esquina superior derecha de la página de inicio,Desliza hacia la derecha para ingresar. Función:
+ *  - cuadro de búsqueda superior(enfoque automático)
+ *  - Sin entrada:Gran área de estado vacío + sugerencias de búsqueda populares chip
+ *  - hay entrada(v2.x: Cambio de pestaña superior"sesión/Contenido del mensaje"):
+ *      - Tab=sesión:Mostrar título de la sesión/Vista previa final de los resultados coincidentes
+ *      - Tab=Contenido del mensaje:Mostrar resultados de coincidencia del contenido del mensaje(FTS4/LIKE + Resaltado amarillo de palabra clave),
+ *        Haga clic para saltar a la sesión correspondiente y pase messageId para posicionamiento de desplazamiento + resaltado breve
  *
- * 数据源:
- *  - Tab=会话:对 state.sessions 做内存 contains 过滤
- *  - Tab=消息内容:走 [ChatViewModel.searchMessageContent](SessionRepository.searchMessageContentFlow,
- *    FTS4 snippet + LIKE 兜底)
+ * fuente de datos:
+ *  - Tab=sesión:La memoria de ejecución contiene filtrado en state.sessions
+ *  - Tab=Contenido del mensaje:ir [ChatViewModel.searchMessageContent](SessionRepository.searchMessageContentFlow,
+ *    FTS4 snippet + LIKE Ten todo en cuenta)
  *
- * v2.x: 新增 [onOpenMessage] 回调,Tab=消息内容 点击消息项时触发,
- * MainActivity 据此 switchSession + setTargetMessage 后回到 HOME,
- * ChatScreen 监听 targetMessageId 滚动定位 + 短暂高亮。
+ * v2.x: Nuevo [onOpenMessage] devolución de llamada,Tab=Contenido del mensaje Se activa cuando se hace clic en el elemento del mensaje,
+ * MainActivity En consecuencia, switchSession + setTargetMessage y luego regrese a HOME,
+ * ChatScreen Supervise el posicionamiento de desplazamiento de targetMessageId + resaltado breve.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,26 +90,26 @@ fun SearchScreen(
     onBack: () -> Unit,
     onOpenSession: (String) -> Unit,
     /**
-     * v2.x: Tab=消息内容 点击消息项跳转回调。
-     * @param sessionId 目标会话 id
-     * @param messageId 目标消息 id(用于 ChatScreen 滚动定位)
-     * @param query 搜索关键词(用于 MessageBubble 内文本高亮)
+     * v2.x: Tab=Contenido del mensaje Haga clic en el elemento del mensaje para saltar a la devolución de llamada.
+     * @param sessionId sesión objetivo id
+     * @param messageId mensaje objetivo id(Para posicionamiento de desplazamiento de ChatScreen)
+     * @param query Buscar palabras clave(Se utiliza para resaltar texto dentro de MessageBubble)
      */
     onOpenMessage: (sessionId: String, messageId: String, query: String) -> Unit = { _, _, _ -> },
     viewModel: ChatViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val query = state.searchQuery
-    // v2.x: 当前搜索 Tab(0=会话, 1=消息内容)
+    // v2.x: Búsqueda actual Tab(0=sesión, 1=Contenido del mensaje)
     val searchTab = state.searchTab
     val focusRequester = remember { FocusRequester() }
 
-    // 自动聚焦搜索框
-    // v1.0.74 fix: 等一帧再请求,避免焦点系统未就绪时崩溃(华为 Android 10 实测)
+    // Cuadro de búsqueda de enfoque automático
+    // v1.0.74 fix: Espere un fotograma antes de solicitar,Evite fallas cuando el sistema de enfoque no esté listo(Prueba real de Huawei Android 10)
     io.zer0.muse.ui.common.focus.SafeAutoFocusEffect(focusRequester)
 
-    // 输入变化时(去抖 300ms)更新查询并触发搜索
-    // v2.x: 根据 searchTab 切换走 searchSessions() 或 searchMessageContent()
+    // Cuando la entrada cambia(rebote 300ms)Actualizar consulta y activar búsqueda
+    // v2.x: Cambiar según la pestaña de búsqueda searchSessions() o searchMessageContent()
     LaunchedEffect(query, searchTab) {
         if (query.isNotBlank()) {
             delay(300)
@@ -127,7 +127,7 @@ fun SearchScreen(
     MusePageScaffold(
         topBarHandlesInsets = false,
         topBar = {
-            // 凹槽式搜索栏:Surface 凹槽 + 搜索图标 + BasicTextField + 取消文字
+            // Barra de búsqueda ranurada:Surface Groove + Icono de búsqueda + Campo de texto básico + Cancelar texto
             Surface(
                 color = MaterialTheme.colorScheme.background,
                 modifier = Modifier
@@ -198,7 +198,7 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // v2.x: 有输入时显示胶囊 Tab 切换(会话 / 消息内容)
+            // v2.x: Mostrar cápsula al ingresar Alternar pestaña(Contenido de la conversación/mensaje)
             if (query.isNotBlank()) {
                 MuseCapsuleTab(
                     tabs = listOf(
@@ -214,7 +214,7 @@ fun SearchScreen(
             }
 
             if (query.isBlank()) {
-                // 无输入:大面积空白空状态
+                // Sin entrada:Gran área de espacio vacío.
                 EmptySearchState(
                     onSuggestionClick = { suggestion ->
                         viewModel.updateSearchQuery(suggestion)
@@ -230,7 +230,7 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (searchTab == 0) {
-                        // Tab=会话:会话标题/预览匹配 + 消息内容匹配
+                        // Tab=sesión:Título de la sesión/Vista previa de coincidencia + coincidencia de contenido del mensaje
                         SearchResults(
                             query = query,
                             sessions = state.sessions,
@@ -243,7 +243,7 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
-                        // Tab=消息内容:展示 FTS4 snippet 结果,点击跳转传 messageId
+                        // Tab=Contenido del mensaje:Mostrar resultados de fragmentos de FTS4,Haga clic para saltar a transferir messageId
                         MessageSearchResults(
                             query = query,
                             messageResults = state.messageResults,
@@ -260,7 +260,7 @@ fun SearchScreen(
     }
 }
 
-/** 无输入空状态:居中灰色搜索图标 + 提示 + 建议词 chip。 */
+/** Estado vacío sin entrada:Ícono de búsqueda gris centrado + sugerencia + chip de palabras sugeridas. */
 @Composable
 private fun EmptySearchState(onSuggestionClick: (String) -> Unit, modifier: Modifier = Modifier) {
     Box(
@@ -283,7 +283,7 @@ private fun EmptySearchState(onSuggestionClick: (String) -> Unit, modifier: Modi
                 color = MaterialTheme.colorScheme.outline,
             )
             Spacer(Modifier.height(24.dp))
-            // 热门搜索建议 chip(基于会话/消息内容,不含设置项)
+            // Sugerencias de búsqueda populares chip(basado en sesión/Contenido del mensaje,No contiene elementos de configuración)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -305,7 +305,7 @@ private fun EmptySearchState(onSuggestionClick: (String) -> Unit, modifier: Modi
     }
 }
 
-/** Tab=会话 搜索结果:会话标题/预览匹配 + 消息内容匹配(参考图样式)。 */
+/** Tab=Resultados de búsqueda de conversaciones:Título de la sesión/Vista previa de coincidencia + coincidencia de contenido del mensaje(Estilo de dibujo de referencia). */
 @Composable
 private fun SearchResults(
     query: String,
@@ -318,7 +318,7 @@ private fun SearchResults(
     onOpenMessage: (sessionId: String, messageId: String, query: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // v1.0.62: 统一错误态优先于 loading/空态展示,避免断网时误报“无结果”
+    // v1.0.62: El estado de error unificado tiene prioridad sobre la visualización del estado de carga/vacío,Evite falsas alarmas al desconectarse“Sin resultados”
     if (searchError != null) {
         MuseErrorStateBox(
             message = searchError,
@@ -327,7 +327,7 @@ private fun SearchResults(
         )
         return
     }
-    // M-SS1: 用 remember 缓存过滤结果,避免每次 recomposition 重复计算(原实现每次都重新 filter)
+    // M-SS1: Filtrar resultados usando recordar caché,Evite cálculos repetidos para cada recomposición.(La implementación original se reinicia cada vez. filter)
     val matchedSessions = remember(sessions, query) {
         filterSearchSessions(sessions, query)
     }
@@ -335,7 +335,7 @@ private fun SearchResults(
 
     val hasAny = matchedSessions.isNotEmpty() || uniqueMessageResults.isNotEmpty()
 
-    // 搜索中且无结果:居中 loading
+    // Buscando y sin resultados:centro loading
     if (!hasAny && isSearching) {
         Box(
             modifier = modifier,
@@ -356,7 +356,7 @@ private fun SearchResults(
         return
     }
 
-    // 无匹配结果
+    // No hay resultados coincidentes
     if (!hasAny && !isSearching) {
         Box(
             modifier = modifier,
@@ -387,7 +387,7 @@ private fun SearchResults(
             vertical = 8.dp,
         ),
     ) {
-        // 会话结果 section
+        // resultados de la sesión section
         if (matchedSessions.isNotEmpty()) {
             item(key = "section_sessions") { SectionTitle(stringResource(R.string.search_section_sessions)) }
             itemsIndexed(
@@ -395,9 +395,9 @@ private fun SearchResults(
                 key = { index, session -> "session_${session.id}_$index" },
             ) { _, session ->
                 Box(modifier = museAnimateItem()) {
-                    // 标题不能只用 ifBlank 兜底：像「...」这类无意义内容不算空，
-                    // 会原样渲染成一个省略号，用户看不出是哪条会话。
-                    // 这里要求至少两个非标点字符，否则回退到预览首句。
+                    // No puedes usar ifBlank simplemente para cubrir el título: algo como "..."Este contenido sin sentido no se considera vacío,
+                    // Se representará como puntos suspensivos y el usuario no podrá saber qué conversación es.
+                    // Aquí se requieren al menos dos caracteres que no sean de puntuación; de lo contrario, volverá a la primera oración de la vista previa.
                     val rawTitle = session.title.trim()
                     val meaningfulTitle = rawTitle.takeIf { candidate ->
                         candidate.count { it.isLetterOrDigit() } >= 2
@@ -419,7 +419,7 @@ private fun SearchResults(
                 }
             }
         }
-        // 消息内容 section(FTS 结果)
+        // Contenido del mensaje section(FTS resultado)
         if (uniqueMessageResults.isNotEmpty()) {
             item(key = "section_messages") { SectionTitle(stringResource(R.string.search_section_messages)) }
             itemsIndexed(
@@ -451,7 +451,7 @@ private fun SectionTitle(title: String) {
     )
 }
 
-/** 会话结果项:左侧聊天气泡图标 + 标题 + 副标题(预览/来源 · 相对时间)。 */
+/** Elementos de resultados de la sesión:Ícono de burbuja de chat + título + subtítulo a la izquierda(Vista previa/Fuente · tiempo relativo). */
 @Composable
 private fun SessionResultRow(title: String, preview: String, updatedAt: Long, onClick: () -> Unit) {
     val context = LocalContext.current
@@ -503,18 +503,18 @@ private fun SessionResultRow(title: String, preview: String, updatedAt: Long, on
     }
 }
 
-// ── v2.x: Tab=消息内容 搜索结果展示 ──────────────────────────────────
+// ── v2.x: Tab=Contenido del mensaje Visualización de resultados de búsqueda ──────────────────────────────────
 
 /**
- * v2.x: Tab=消息内容 搜索结果列表。
+ * v2.x: Tab=Contenido del mensaje Lista de resultados de búsqueda.
  *
- * 展示 [SearchResult] 列表(会话标题 + 内容片段(高亮)+ 时间),
- * 点击调用 [onOpenMessage] 跳转对应会话并传 messageId 用于滚动定位 + 短暂高亮。
+ * mostrar [SearchResult] lista(Título de la sesión + fragmento de contenido(Resaltar)+ tiempo),
+ * Haga clic para llamar [onOpenMessage] Salte a la sesión correspondiente y pase messageId para posicionamiento de desplazamiento + resaltado breve.
  *
- * 片段高亮:[SearchResult.contentSnippet] 由 FTS4 snippet() 生成,匹配 token 以 [ ] 包裹,
- * [buildHighlightedSnippet] 解析后给匹配部分加半透明黄色背景。
+ * resaltado del clip:[SearchResult.contentSnippet] por FTS4 snippet() generar,Coincidir token con [ ] paquete,
+ * [buildHighlightedSnippet] Después del análisis, agregue un fondo amarillo translúcido a la parte correspondiente.
  *
- * 空结果 + 搜索中:居中 loading;空结果 + 非搜索中:无匹配提示。
+ * Resultados vacíos + Buscando:centro loading;Resultados vacíos + no buscar:No hay mensaje coincidente.
  */
 @Composable
 private fun MessageSearchResults(
@@ -526,7 +526,7 @@ private fun MessageSearchResults(
     onOpenMessage: (sessionId: String, messageId: String, query: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // v1.0.62: 统一错误态优先于 loading/空态展示
+    // v1.0.62: El estado de error unificado tiene prioridad sobre la visualización del estado de carga/vacío
     if (searchError != null) {
         MuseErrorStateBox(
             message = searchError,
@@ -535,7 +535,7 @@ private fun MessageSearchResults(
         )
         return
     }
-    // 无结果 + 搜索中:居中大号 loading + 文案
+    // Sin resultados + Buscando:Carga centrada de gran tamaño + redacción publicitaria
     if (messageResults.isEmpty() && isSearching) {
         Box(
             modifier = modifier,
@@ -556,7 +556,7 @@ private fun MessageSearchResults(
         return
     }
 
-    // 无结果 + 非搜索中:无匹配提示
+    // Sin resultados + sin buscar:No hay mensaje coincidente
     if (messageResults.isEmpty() && !isSearching) {
         Box(
             modifier = modifier,
@@ -588,7 +588,7 @@ private fun MessageSearchResults(
             vertical = 8.dp,
         ),
     ) {
-        // 搜索中时顶部显示小号 loading + 文案(结果已有但仍在追加)
+        // Al buscar, se muestra un pequeño número en la parte superior cargando + redacción(El resultado ya está disponible pero aún se está adjuntando.)
         if (isSearching) {
             item(key = "loading") {
                 Row(
@@ -613,7 +613,7 @@ private fun MessageSearchResults(
             uniqueMessageResults,
             key = { index, result -> "msg_content_${result.messageId}_$index" },
         ) { _, result ->
-            // 任务 2:Tab=消息内容结果项 — 优先用原文提取前后 2 句上下文 + 关键词高亮
+            // Tarea 2:Tab=Elemento de resultado del contenido del mensaje — Priorice el uso del texto original para extraer el contexto de las dos oraciones antes y después + resaltado de palabras clave
             MessageSearchResultRow(
                 sessionTitle = result.sessionTitle,
                 content = result.content,
@@ -641,22 +641,22 @@ internal fun uniqueSearchResults(results: List<io.zer0.muse.data.session.SearchR
     results.distinctBy { it.messageId }
 
 /**
- * 任务 2:统一的消息搜索结果行(Tab=会话/消息内容 共用)。
+ * Tarea 2: filas de resultados de búsqueda de mensajes unificados(Tab=sesión/Contenido del mensaje compartido).
  *
- * 展示:
- *  - 顶部行:会话名(左侧,权重 1f + 省略号)+ 时间(右侧,labelSmall)
- *  - 底部:前后 2 句上下文,匹配关键词半透明黄色背景 + 加粗高亮
+ * mostrar:
+ *  - fila superior:nombre de la sesión(lado izquierdo,Peso 1f + puntos suspensivos)+ tiempo(lado derecho,labelSmall)
+ *  - abajo:2 oraciones antes y después del contexto,Coincidir palabra clave con fondo amarillo translúcido + resaltado en negrita
  *
- * 上下文来源优先级:
- *  1. [content](原文)非空 → 用 [extractContext] 提取前后 2 句,用 [buildHighlightedText] 高亮 query
- *  2. 否则(FTS4 snippet 路径)→ 用 [fallbackSnippet],用 [buildHighlightedSnippet] 解析 [xxx] 标记
+ * Prioridad de fuente de contexto:
+ *  1. [content](Texto original)No vacío → usar [extractContext] Extrae 2 oraciones antes y después.,usar [buildHighlightedText] Resaltar query
+ *  2. De lo contrario(FTS4 snippet camino)→ usar [fallbackSnippet],usar [buildHighlightedSnippet] analizar [xxx] marca
  *
- * @param sessionTitle 会话标题
- * @param content 消息原文(可能为空 — FTS4 snippet 路径不返回原文时)
- * @param fallbackSnippet FTS4 snippet 含 [xxx] 标记的片段(content 为空时用)
- * @param query 搜索关键词(用于高亮)
- * @param timestamp 消息创建时间戳
- * @param onClick 点击回调(跳转对应会话 + 滚动到 messageId)
+ * @param sessionTitle Título de la sesión
+ * @param content mensaje original(puede estar vacío — FTS4 snippet Cuando la ruta no vuelve al texto original)
+ * @param fallbackSnippet FTS4 snippet Contiene [xxx] fragmento etiquetado(content Usado cuando está vacío)
+ * @param query Buscar palabras clave(para resaltar)
+ * @param timestamp Marca de tiempo de creación del mensaje
+ * @param onClick Haga clic en devolución de llamada(Saltar a la conversación correspondiente + desplazarse hasta messageId)
  */
 @Composable
 private fun MessageSearchResultRow(
@@ -667,7 +667,7 @@ private fun MessageSearchResultRow(
     timestamp: Long,
     onClick: () -> Unit,
 ) {
-    // 任务 2:优先用原文提取前后 2 句上下文,无原文时用 FTS4 snippet([xxx] 标记)
+    // Tarea 2: Priorizar el uso del texto original para extraer el contexto de las dos oraciones antes y después,Se utiliza cuando no hay texto original disponible. FTS4 snippet([xxx] marca)
     val displayText = remember(content, fallbackSnippet, query) {
         if (content.isNotBlank()) {
             extractContext(content, query, sentencesAround = 2)
@@ -675,8 +675,8 @@ private fun MessageSearchResultRow(
             fallbackSnippet
         }
     }
-    // 任务 2:高亮 — 原文可用时直接用 query 高亮;否则解析 FTS4 snippet 的 [xxx] 标记
-    // v1.0.52: 高亮色从主题状态色读取,不再硬编码裸色
+    // Tarea 2: resaltar — Cuando el texto original esté disponible, utilice directamente la consulta para resaltarlo.;De lo contrario, analice los fragmentos de FTS4 [xxx] marca
+    // v1.0.52: El color de resaltado se lee desde el color de estado del tema.,No más codificación de colores nude
     val highlightColor = MaterialTheme.statusColors.highlight
     val annotatedText = remember(displayText, content, query, highlightColor) {
         if (content.isNotBlank()) {
@@ -696,7 +696,7 @@ private fun MessageSearchResultRow(
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
         ) {
-            // 顶部行:会话名 + 时间(右侧)
+            // fila superior:Nombre de la sesión + hora(lado derecho)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -718,7 +718,7 @@ private fun MessageSearchResultRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // 任务 2:前后 2 句上下文 + 关键词高亮(maxLines=3 容纳更长上下文)
+            // Tarea 2: contexto de 2 oraciones + resaltado de palabras clave(maxLines=3 acomodar un contexto más largo)
             if (annotatedText.isNotEmpty()) {
                 Text(
                     text = annotatedText,
@@ -734,24 +734,24 @@ private fun MessageSearchResultRow(
 }
 
 /**
- * 任务 2:从 [content] 原文提取匹配 [query] 所在句的前后 [sentencesAround] 句上下文。
+ * Tarea 2: Desde [content] Extracción y comparación del texto original. [query] antes y después de la frase [sentencesAround] contexto de la oración.
  *
- * 按 [。！？.!?\n] 切句(保留分隔符),找到匹配所在句后取前后各 [sentencesAround] 句拼接。
- * 匹配位置找不到时回退取前 (2*sentencesAround+1) 句。
+ * prensa [. ! ?.!?\n] cortar oraciones(mantener separador),Después de encontrar la oración correspondiente, toma las palabras antes y después. [sentencesAround] Empalme de oraciones.
+ * Cuando no se encuentre la posición coincidente, retroceda al punto anterior. (2*sentencesAround+1) oración.
  *
- * 用于搜索结果项展示上下文,让用户在点击前判断是否为目标消息。
+ * Se utiliza para el contexto de visualización del elemento de resultado de búsqueda,Permita que los usuarios determinen si es el mensaje de destino antes de hacer clic.
  */
-/** 句末标点切句正则(中文 。！？ + ASCII .!? + 换行),零宽断言保留分隔符在句尾。 */
+/** Puntuación regular al final de las oraciones.(Chino. ! ? + ASCII .!? + nueva línea),Las aserciones de ancho cero dejan el delimitador al final de la oración. */
 private val SENTENCE_SPLIT_REGEX = "(?<=[。！？.!?\n])".toRegex()
 
 private fun extractContext(content: String, query: String, sentencesAround: Int = 2): String {
     if (content.isBlank()) return ""
-    // 按句末标点切句,保留分隔符在句尾
+    // Cortar oraciones según la puntuación al final de la oración.,Mantener delimitadores al final de las oraciones.
     val sentences = content.split(SENTENCE_SPLIT_REGEX).filter { it.isNotBlank() }
     if (sentences.isEmpty()) return content.take(200)
 
     val matchIdx = content.indexOf(query, ignoreCase = true)
-    // 找到匹配所在句的索引(逐句累加长度,直到覆盖 matchIdx)
+    // Encuentra el índice de la oración coincidente.(Acumular longitud oración por oración,hasta cubrir matchIdx)
     var matchSentenceIdx = 0
     if (matchIdx >= 0) {
         var pos = 0
@@ -771,9 +771,9 @@ private fun extractContext(content: String, query: String, sentencesAround: Int 
 }
 
 /**
- * 任务 2:把 [text] 中所有匹配 [query] 的子串(大小写不敏感)用半透明黄色背景 + 加粗高亮。
+ * Tarea 2: Poner [text] todos los partidos en [query] subcadena de(No distingue entre mayúsculas y minúsculas)Resalta con fondo amarillo translúcido + negrita.
  *
- * 用于搜索结果项展示原文上下文时高亮关键词。
+ * Se utiliza para resaltar palabras clave cuando los elementos de resultados de búsqueda muestran el contexto del texto original.
  */
 private fun buildHighlightedText(text: String, query: String, highlightColor: Color): AnnotatedString {
     if (query.isBlank()) return buildAnnotatedString { append(text) }
@@ -797,18 +797,18 @@ private fun buildHighlightedText(text: String, query: String, highlightColor: Co
 }
 
 /**
- * v2.x: 把 FTS4 snippet 的 [xxx] 标记转换为 AnnotatedString,
- * 匹配部分加半透明黄色背景(Color(0x66FFEB3B))。
+ * v2.x: Pon el fragmento de FTS4 [xxx] marcado convertido a AnnotatedString,
+ * Pieza a juego más fondo amarillo translúcido.(Color(0x66FFEB3B)).
  *
- * snippet() 生成片段格式:"前缀[匹配]后缀",可能含多个 [xxx] 段。
- * 解析时把 [ ] 标记剥离,在原匹配文本上应用 SpanStyle。
+ * snippet() Generar formato de fragmento:"prefijo[partido]sufijo",Puede contener múltiples [xxx] segmento.
+ * Al analizar [ ] eliminación de marcas,Aplica SpanStyle al texto coincidente original.
  */
 private fun buildHighlightedSnippet(snippet: String, highlightColor: Color): AnnotatedString = buildAnnotatedString {
     var i = 0
     while (i < snippet.length) {
         val start = snippet.indexOf('[', i)
         if (start < 0) {
-            // 剩余全部为普通文本
+            // El resto es todo texto normal.
             append(snippet.substring(i))
             break
         }
@@ -817,7 +817,7 @@ private fun buildHighlightedSnippet(snippet: String, highlightColor: Color): Ann
         }
         val end = snippet.indexOf(']', start)
         if (end < 0) {
-            // 未闭合的 '[' 原样输出,避免吞字符
+            // abierto '[' Salida tal cual,Evite tragar personajes
             append(snippet.substring(start))
             break
         }
@@ -829,10 +829,10 @@ private fun buildHighlightedSnippet(snippet: String, highlightColor: Color): Ann
     }
 }
 
-/** v2.x: 格式化时间戳为相对时间(刚刚 / N分钟前 / 今天 HH:mm / 昨天 / MM-dd)。 */
+/** v2.x: Dar formato a la marca de tiempo como tiempo relativo(Justo / Hace N minutos / Hoy HH:mm / Ayer / MM-dd). */
 private fun formatSearchTimestamp(timestamp: Long, context: Context): String = formatSearchRelativeTime(timestamp, context)
 
-/** 搜索列表相对时间格式化(今天 HH:mm / 昨天 / MM-dd)。 */
+/** Formato de tiempo relativo de la lista de búsqueda(Hoy HH:mm / Ayer / MM-dd). */
 private fun formatSearchRelativeTime(timestamp: Long, context: Context): String {
     if (timestamp <= 0) return ""
     val now = System.currentTimeMillis()

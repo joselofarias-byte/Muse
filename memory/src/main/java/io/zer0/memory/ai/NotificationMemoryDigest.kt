@@ -14,31 +14,31 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * v2.6.2（用户反馈）: 通知 → 记忆 梳理器。
+ * v2.6.2(comentarios de los usuarios): Notificación → Organizador de memoria.
  *
- * 背景:用户希望助手「自己知道」收到的通知（如快递到达、日程提醒、订单状态），
- * 并能在主动消息里自然提起。通知监听已采集数据，但此前从未进入记忆管道。
+ * fondo:El usuario espera que el asistente "conozca" las notificaciones recibidas (como la llegada del mensajero, recordatorios de horarios, estado del pedido),
+ * Y se puede mencionar de forma natural en los mensajes activos. Notifique al oyente que se han recopilado datos, pero que nunca antes habían entrado en la canalización de la memoria.
  *
- * 职责:
- *  1. 接收一段时间窗口内的通知快照
- *  2. 交给大工具模型（[MemoryLlmClient]，由 app 层路由到 UtilityTier.LARGE）
- *     做梳理 / 整合 / 去重 / 价值判断
- *  3. 只把「值得记」的结构化事实写入 [FactStore]（写入侧再做一次相似度去重）
+ * Responsabilidades:
+ *  1. Reciba una instantánea de las notificaciones dentro de un período de tiempo
+ *  2. Entregar al modelo de gran herramienta ([MemoryLlmClient], enrutado por la capa de aplicación a UtilityTier.LARGE)
+ *     Clasificar/integrar/eliminar duplicaciones/juicio de valor
+ *  3. Escriba sólo hechos estructurados que sean "dignos de recordar" [FactStore](Haga otra deduplicación de similitud en el lado de la escritura)
  *
- * 设计要点:
- *  - **筛选而非全量**:营销推送 / 新闻 / 点赞等噪音不落库，否则记忆检索质量崩坏。
- *    用户可要求「记更多」，故筛选倾向偏宽松（事件类、生活类、约定类都记），
- *    但纯噪音仍剔除。
- *  - **时效**:只处理 [windowMs] 窗口内的通知，避免把三天前的旧闻当新闻提。
- *  - **幂等**:同一批通知内容指纹（通知键集合）只处理一次，防止重复落库。
- *  - 通知事实标记 `source = "notification"`，便于用户单独识别与清理。
+ * Puntos de diseño:
+ *  - **Filtrar en lugar de cantidad completa**:Ruidos como mensajes de marketing, noticias o me gusta deben mantenerse fuera de la biblioteca; de lo contrario, la calidad de la recuperación de la memoria colapsará.
+ *    Los usuarios pueden solicitar "recordar más", por lo que la tendencia de filtrado es flexible (se recuerdan todos los eventos, la vida y las citas).
+ *    Pero aún así se elimina el ruido puro.
+ *  - **límite de tiempo**:solo manejar [windowMs] Las notificaciones en la ventana evitan mencionar como noticia noticias antiguas de hace tres días.
+ *  - **idempotente**:El mismo lote de huellas digitales del contenido de la notificación (conjunto de claves de notificación) solo se procesa una vez para evitar que se caiga repetidamente en la base de datos.
+ *  - marca de hecho de notificación `source = "notification"`, facilitando a los usuarios identificarlos y limpiarlos individualmente.
  */
 class NotificationMemoryDigest(
     private val factDbProvider: FactDbProvider,
     private val llmClient: MemoryLlmClient,
 ) {
 
-    /** 单条通知（由 app 层从通知监听服务投影而来，避免 memory 模块依赖 app）。 */
+    /** Una única notificación (proyectada desde el servicio de escucha de notificaciones por la capa de aplicación para evitar que el módulo de memoria dependa de la aplicación). */
     @Serializable
     data class NotificationInput(
         val packageName: String,
@@ -48,7 +48,7 @@ class NotificationMemoryDigest(
         val timestamp: Long,
     )
 
-    /** 梳理结果。 */
+    /** Ordena los resultados. */
     @Serializable
     data class DigestResult(
         val extracted: Int = 0,
@@ -62,23 +62,23 @@ class NotificationMemoryDigest(
         coerceInputValues = true
     }
 
-    /** 并发控制:同一时刻只跑一次通知梳理（LLM 调用较贵）。 */
+    /** control de concurrencia:Ejecute solo la combinación de notificaciones una vez al mismo tiempo (LLM Llamar es más caro). */
     private val mutex = Mutex()
 
-    /** 已处理的通知批次指纹（进程内 LRU，防止同一批通知反复梳理）。 */
+    /** Huellas digitales del lote de notificaciones procesadas (LRU en proceso para evitar la combinación repetida del mismo lote de notificaciones). */
     private val processedFingerprints = object : LinkedHashMap<String, Boolean>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > MAX_FINGERPRINTS
     }
 
     /**
-     * 梳理一批通知并写入记忆。
+     * Clasifique un lote de notificaciones y guárdelas en la memoria.
      *
-     * @param notifications 通知快照（调用方已按时间窗口过滤）
-     * @param scope 记忆作用域（助手 id；"main" 表示主助手）
-     * @param spaceId 记忆空间
-     * @param model 大工具模型（null 时由 MemoryLlmClient 回退主链路模型）
-     * @param locale 语言
-     * @return 梳理统计
+     * @param notifications Instantánea de notificación (la persona que llama se filtra por ventana de tiempo)
+     * @param scope ámbito de memoria(helperid;"main" Indica el asistente principal)
+     * @param spaceId espacio de memoria
+     * @param model Modelo de herramienta grande (null Cuando MemoryLlmClient vuelve al modelo de enlace principal)
+     * @param locale Idioma
+     * @return Combinando estadísticas
      */
     @Suppress("TooGenericExceptionCaught")
     suspend fun digest(
@@ -86,13 +86,13 @@ class NotificationMemoryDigest(
         scope: String = "main",
         spaceId: String = "default",
         model: Model? = null,
-        locale: String = "zh-CN",
+        locale: String = "es",
     ): DigestResult = mutex.withLock {
-        if (notifications.isEmpty()) return@withLock DigestResult(skipped = true, reason = "无通知")
+        if (notifications.isEmpty()) return@withLock DigestResult(skipped = true, reason = "Sin notificación")
         val fingerprint = fingerprintOf(notifications)
         synchronized(processedFingerprints) {
             if (processedFingerprints.containsKey(fingerprint)) {
-                return@withLock DigestResult(skipped = true, reason = "该批通知已梳理")
+                return@withLock DigestResult(skipped = true, reason = "Este lote de notificaciones ha sido solucionado.")
             }
         }
 
@@ -118,16 +118,16 @@ class NotificationMemoryDigest(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.w(TAG, "通知梳理 LLM 调用失败: ${e.message}", e)
-            return@withLock DigestResult(skipped = true, reason = "LLM 调用失败")
+            Logger.w(TAG, "Fallo de llamada de LLM de tarjeta de notificación: ${e.message}", e)
+            return@withLock DigestResult(skipped = true, reason = "LLM llamada fallida")
         }
         val parsed = parseResult(raw)
         if (parsed == null || parsed.facts.isEmpty()) {
             markProcessed(fingerprint)
-            return@withLock DigestResult(skipped = true, reason = "无可记内容")
+            return@withLock DigestResult(skipped = true, reason = "nada que recordar")
         }
 
-        // 落库:source=notification,便于用户识别与清理；写入侧再做相似度去重。
+        // Cayó en la biblioteca:source=notification,Es conveniente para los usuarios identificar y limpiar; La deduplicación por similitud se realiza en el lado de la escritura.
         val entries = parsed.facts
             .filter { it.isNotBlank() }
             .take(MAX_FACTS_PER_BATCH)
@@ -142,11 +142,11 @@ class NotificationMemoryDigest(
                 )
             }
         val inserted = runCatching { factStore.addBatch(entries, scope, spaceId) }
-            .onFailure { Logger.w(TAG, "通知事实落库失败: ${it.message}", it) }
+            .onFailure { Logger.w(TAG, "Notificación de entrada fallida en la base de datos: ${it.message}", it) }
             .getOrDefault(0)
 
         markProcessed(fingerprint)
-        Logger.i(TAG, "通知梳理完成: 输入 ${notifications.size} 条 → 落库 $inserted 条")
+        Logger.i(TAG, "Clasificación de notificaciones completada: entrada ${notifications.size} Artículo → Cayó en la biblioteca $inserted Artículo")
         DigestResult(extracted = inserted)
     }
 
@@ -163,7 +163,7 @@ class NotificationMemoryDigest(
     }
 
     private fun buildUserContent(notifications: List<NotificationInput>): String = buildString {
-        appendLine("## 最近收到的通知")
+        appendLine("## Notificaciones recientes")
         appendLine()
         notifications.sortedBy { it.timestamp }.forEach { n ->
             val app = n.appLabel.ifBlank { n.packageName }
@@ -171,7 +171,7 @@ class NotificationMemoryDigest(
         }
     }
 
-    /** 解析 LLM 输出:期望 `{"facts": ["...", "..."]}`。容错去围栏/think。 */
+    /** Analizar la salida de LLM:Expectativa `{"facts": ["...", "..."]}`. Tolerancia a fallos/think. */
     internal fun parseResult(raw: String): DigestJson? {
         val s0 = raw.replace(Regex("<think(?:ing)?>[\\s\\S]*?</think(?:ing)?>", RegexOption.IGNORE_CASE), "")
         val fence = Regex("""```(?:json)?\s*\n([\s\S]*?)\n```""").find(s0)
@@ -183,7 +183,7 @@ class NotificationMemoryDigest(
             s = s.substring(start, end + 1)
         }
         return runCatching { json.decodeFromString(DigestJson.serializer(), s) }
-            .onFailure { Logger.w(TAG, "通知梳理 JSON 解析失败: ${it.message}") }
+            .onFailure { Logger.w(TAG, "Error de análisis JSON de tarjeta de notificación: ${it.message}") }
             .getOrNull()
     }
 
@@ -198,16 +198,16 @@ class NotificationMemoryDigest(
         private const val MAX_FINGERPRINTS = 50
 
         /**
-         * 构建 system prompt。
+         * Indicador del sistema de compilación.
          *
-         * 用户要求「记更多」，故筛选倾向偏宽松：事件 / 生活 / 约定 / 待办都记；
-         * 仅剔除纯营销噪音。要求输出结构化短句（一条一个独立事实），便于后续去重与检索。
+         * Los usuarios requieren "memorizar más", por lo que la tendencia de filtrado es flexible: recordar eventos/vida/acuerdos/tareas pendientes;
+         * Simplemente elimine el puro ruido de marketing. Es necesario generar oraciones cortas estructuradas (un hecho independiente) para facilitar la deduplicación y recuperación posteriores.
          */
-        internal fun buildSystemPrompt(locale: String = "zh-CN", existingPreview: String? = null): String {
-            val isZh = locale.startsWith("zh")
+        internal fun buildSystemPrompt(locale: String = "es", existingPreview: String? = null): String {
+            val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
             val existingSection = if (!existingPreview.isNullOrBlank()) {
                 if (isZh) {
-                    "\n## 已有记忆（避免重复）\n\n$existingPreview\n"
+                    "\n## Ya recordado (para evitar duplicaciones)\n\n$existingPreview\n"
                 } else {
                     "\n## Existing memories (avoid duplicates)\n\n$existingPreview\n"
                 }
@@ -216,31 +216,31 @@ class NotificationMemoryDigest(
             }
             return if (isZh) {
                 """
-你是一个记忆整理助手。用户希望助手「记得」他手机上收到的通知，并能在之后自然提起。
-下面给你用户最近收到的一批通知，请从中提炼值得长期记住的事实。
+Eres un organizador de recuerdos. El usuario quiere que el asistente "recuerde" las notificaciones recibidas en su teléfono y pueda mencionarlas más tarde de forma natural.
+A continuación se muestra un lote de notificaciones que los usuarios han recibido recientemente. Extraiga los hechos que valga la pena recordar durante mucho tiempo.
 
 $existingSection
-## 值得记的（尽量多记）
-- 快递/物流、订单状态、外卖进度
-- 日程提醒、会议、约会、航班车次
-- 账单/缴费/还款提醒、金额与截止日期
-- 健康提醒（吃药、体检、运动）
-- 验证码、预约确认、取件码等有时效的具体信息
-- 用户与他人的约定、待办事项
+## Vale la pena recordar (recuerde tantos como sea posible)
+- expreso/Logística, estado del pedido, progreso de la comida para llevar.
+- Programar recordatorios, reuniones, citas, vuelos.
+- factura/pagar/Recordatorio de pago, importe y plazo
+- Recordatorios de salud (medicación, examen físico, ejercicio)
+- Códigos de verificación, confirmaciones de citas, códigos de recogida y otra información urgente
+- Acuerdos y tareas pendientes entre usuarios y otros
 
-## 不值得记的（剔除）
-- 纯营销推广、广告、优惠券推送
-- 新闻资讯、天气播报（除非用户明显关心）
-- 社交点赞、关注、评论提醒
-- 系统更新、App 版本提示
+## No vale la pena recordarlo (eliminado)
+- Promoción de marketing pura, publicidad, promoción de cupones.
+- Información de noticias, informes meteorológicos (a menos que al usuario obviamente le importe)
+- Me gusta en redes sociales, seguimientos y recordatorios de comentarios
+- actualizaciones del sistema,App Consejos de versión
 
-## 输出要求
-- 每条事实用一句独立的、自足的中文短句表达（脱离上下文也能看懂）
-- 合并同一事项的多条通知（如同一快递的多次更新只记最终状态）
-- 与「已有记忆」重复的不要重复输出
-- 只输出 JSON，不要任何额外说明或 markdown 围栏：
-{"facts": ["事实1", "事实2"]}
-如果整批通知都不值得记，返回 {"facts": []}
+## Requisitos de salida
+- Cada hecho se expresa en una frase china independiente y autosuficiente (se puede entender sin contexto)
+- Fusionar múltiples notificaciones del mismo asunto (como múltiples actualizaciones de la misma entrega urgente, solo se registra el estado final)
+- No genere duplicados de la "memoria existente"
+- Simplemente genere JSON sin descripciones adicionales ni barreras de rebajas:
+{"facts": ["hechos1", "hechos2"]}
+Si no vale la pena recordar todo el lote de notificaciones, regrese {"facts": []}
                 """.trimIndent()
             } else {
                 """

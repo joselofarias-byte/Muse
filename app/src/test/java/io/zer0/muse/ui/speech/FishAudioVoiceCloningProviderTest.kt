@@ -4,11 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * B8-05: Fish Audio 语音克隆服务地址归一化测试。
+ * B8-05: Fish Audio Prueba de normalización de direcciones del servicio de clonación de voz.
  *
- * v2.6.1 (#3): 克隆端点与 TTS 端点不同域 —— 克隆走 https://api.fish.audio/model,
- * TTS 走 https://api.fish.audio/v1/tts。归一化需剥掉用户从 TTS 配置带过来的 /v1 后缀,
- * 否则会请求并不存在的 /v1/voices（用户实测报错根因）。
+ * v2.6.1 (#3): El punto final clonado es de un dominio diferente al del punto final TTS —— clonar https://api.fish.audio/model,
+ * TTS Utilice el sufijo /v1 que trae la configuración TTS https://api.fish.audio/v1/tts。,
+ * De lo contrario, se solicitará /v1/voices, que no existe (la causa principal del error informado por los usuarios).
  */
 class FishAudioVoiceCloningProviderTest {
 

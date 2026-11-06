@@ -65,18 +65,18 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Phase 8.3: 跨会话收藏夹页。
+ * Phase 8.3: Página de favoritos entre sesiones.
  *
- * - 数据源: [ChatViewModel.state.favoriteMessages](observeAllFavorites 聚合的全部收藏消息)
- * - 列表项: 角色 + 模型 + 时间戳 + 内容预览(结构感知截断)+ 取消收藏按钮
- * - 内容渲染: 直接用 [MarkdownText](支持代码块/链接点击/列表等),保证与聊天页一致
- * - 取消收藏: 调 [ChatViewModel.toggleFavorite],乐观更新 + DB 同步
+ * - fuente de datos: [ChatViewModel.state.favoriteMessages](observeAllFavorites Agregados todos los mensajes de colección.)
+ * - elemento de la lista: Personaje + modelo + marca de tiempo + vista previa de contenido(truncamiento consciente de la estructura)+ Cancelar botón favorito
+ * - Representación de contenido: Usar directamente [MarkdownText](Bloques de código de soporte/clic en el enlace/Lista, etc.),Garantizado para ser consistente con la página de chat.
+ * - Cancelar favoritos: sintonizar [ChatViewModel.toggleFavorite],Actualización optimista + sincronización DB
  *
- * 设计: warm-paper 卡片样式(圆角 12dp,surfaceVariant 背景),与 SettingsScreen 卡片一致。
+ * diseño: warm-paper estilo de tarjeta(esquinas redondeadas 12dp,surfaceVariant fondo),De acuerdo con la tarjeta SettingsScreen.
  *
- * §11 收敛后只有**一套**分组:用户自定义 tag(favoriteTag 列)。
- * 预设分类对话框已移除(预设 chip 行在 U-20 被砍后,预设值只剩内部 token 裸奔在 UI)。
- * 存量 `__group_*__` 值读取时映射成本地化文案(见 [favoriteTagLabel]),不单独建迁移。
+ * §11 Después de la convergencia, sólo**un conjunto**grupo:Definido por el usuario tag(favoriteTag columna).
+ * Se ha eliminado el cuadro de diálogo de clasificación predeterminado.(Línea de chip predeterminada después de cortar el U-20,El valor predeterminado es sólo el token interno que se ejecuta desnudo en UI).
+ * Valores `__group_*__` Cuando se lee el valor, se asigna a una copia localizada.(ver [favoriteTagLabel]),No cree la migración por separado.
  */
 @Composable
 fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel()) {
@@ -84,14 +84,14 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
     val staleFavoriteIds by viewModel.staleFavoriteIds.collectAsStateWithLifecycle()
     val dateFormat = remember { SimpleDateFormat(MuseDateFormats.DATE_TIME_FULL, Locale.getDefault()) }
 
-    // v1.104 U7: 长按/点分组按钮时弹"设置分组"对话框的目标消息
+    // v1.104 U7: Pulsación larga/Aparece al hacer clic en el botón de grupo."Configurar grupos"El mensaje de destino del cuadro de diálogo.
     var tagEditTarget by remember { mutableStateOf<UIMessage?>(null) }
 
-    // v2.6.2（用户反馈）: 点击卡片 → 全屏原文预览（此前 onClick 被分组对话框占用，
-    // 用户“没法点开看完整原文”）。
+    // v2.6.2(comentarios de los usuarios): Haga clic en la tarjeta → Vista previa del texto original en pantalla completa (anteriormente, onClick estaba ocupado por el cuadro de diálogo de grupo,
+    // Usuario“No puedo hacer clic para leer el texto completo.”).
     var fullTextTarget by remember { mutableStateOf<UIMessage?>(null) }
 
-    // 当前 filter 下显示的收藏列表(本地过滤,不影响 state.favoriteMessages 全量)
+    // La lista de favoritos que se muestra bajo el filtro actual.(filtrado local,No afecta el volumen total de state.favoriteMessages)
     val visibleFavorites = remember(state.favoriteMessages, state.favoriteTagFilter) {
         when (state.favoriteTagFilter) {
             null -> state.favoriteMessages
@@ -110,10 +110,10 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            // U-20: 只保留自定义 tag 行分级筛选。
-            // §11-1: 预设分组对话框已移除 —— 它写的就是 `__group_*__` 内部 token,
-            // 而预设 chip 行不存在,导致 token 直接裸在自定义 tag 行里。现在分组只有一条入口:
-            // 卡片上的"设置分组"按钮 → 用户自己输入的分组名。
+            // U-20: Conserve únicamente filas de etiquetas personalizadas para el filtrado jerárquico.
+            // §11-1: Se ha eliminado el cuadro de diálogo de agrupación predeterminado. —— Lo que escribe es `__group_*__` interno token,
+            // Y la fila de chips predeterminada no existe.,Como resultado, el token se expone directamente en la línea de etiqueta personalizada. Ahora solo hay una entrada al grupo.:
+            // en la tarjeta"Configurar grupos"botón → El nombre del grupo ingresado por el usuario.
             if (state.favoriteMessages.isNotEmpty()) {
                 val tagCounts = remember(state.favoriteMessages) {
                     state.favoriteMessages.groupBy { it.favoriteTag }.mapValues { it.value.size }
@@ -127,7 +127,7 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
                     onFilterChange = { viewModel.setFavoriteTagFilter(it) },
                 )
             }
-            // v1.77: 首次加载时显示 loading,避免闪空状态
+            // v1.77: Se muestra en la primera carga loading,Evite el estado flash
             if (state.isFavoritesLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -136,7 +136,7 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
                     MuseSpinner()
                 }
             } else if (state.favoritesError != null) {
-                // ST-01: 收藏列表加载失败错误态 + 重试
+                // ST-01: Estado de error fallido al cargar la lista de favoritos + inténtelo de nuevo
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
@@ -158,7 +158,7 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
                     )
                 }
             } else if (visibleFavorites.isEmpty()) {
-                // v1.104 U7: 该分组下无收藏(区别于"完全没有收藏")
+                // v1.104 U7: No hay favoritos en este grupo.(diferente de"No hay favoritos en absoluto")
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
@@ -186,7 +186,7 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
                                 isStaleVariant = msg.id in staleFavoriteIds,
                                 onUnfavorite = { viewModel.toggleFavorite(msg.id) },
                                 onLongClick = { tagEditTarget = msg },
-                                // v2.6.2: 点击看完整原文；分组入口是卡片内按钮
+                                // v2.6.2: Haga clic para leer el texto completo; la entrada del grupo es el botón en la tarjeta
                                 onClick = { fullTextTarget = msg },
                                 onGroupClick = { tagEditTarget = msg },
                             )
@@ -197,7 +197,7 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
         }
     }
 
-    // v1.104 U7: 设置分组对话框（§11-1 收敛后唯一的写入口：用户自定义 tag）
+    // v1.104 U7: Establecer diálogo de agrupación (§11-1 El único puerto de escritura después de la convergencia: etiqueta definida por el usuario)
     tagEditTarget?.let { msg ->
         FavoriteTagEditDialog(
             currentTag = msg.favoriteTag,
@@ -209,28 +209,28 @@ fun FavoritesScreen(onBack: () -> Unit, viewModel: ChatViewModel = koinViewModel
         )
     }
 
-    // v2.6.2（用户反馈）: 全屏原文预览 —— 点击收藏卡片打开，可滚动看完整内容。
+    // v2.6.2(comentarios de los usuarios): Vista previa del texto original en pantalla completa —— Haga clic en la tarjeta favorita para abrirla y desplácese para ver el contenido completo.
     fullTextTarget?.let { msg ->
         FavoriteFullTextDialog(message = msg, dateFormat = dateFormat, onDismiss = { fullTextTarget = null })
     }
 }
 
 /**
- * 收藏星标的选中态视觉（§11-8）。
+ * El estado visual seleccionado de la estrella de colección (§11-8).
  *
- * MuseIcons 里收藏只有一枚实心 `star`，没有 `starOutline`，而本项目不允许为了这个
- * 状态新增图标资源。所以选中/未选中靠三档既有能力区分，不靠换图标：
- *  1. 图标 tint：已收藏 = primary（主题强调色），未收藏 = outline（中性色）
- *  2. 按钮容器：有底色按钮用 [MuseIconContainer.Tonal] 表达"开着"（实心圆底）
- *  3. 直接画 Icon 的地方（朋友圈筛选）额外降 alpha 到 [FAVORITE_STAR_IDLE_ALPHA]
- * 三档叠加后深浅主题下都能一眼看出开/关，且不用新画一枚描边星。
+ * MuseIcons Sólo hay una pieza sólida en la colección. `star`, no `starOutline`, y este proyecto no permite esto
+ * Recurso de icono de estado agregado. Entonces selecciona/Si no está seleccionado, se puede distinguir por la capacidad de tres marchas, sin cambiar el icono:
+ *  1. Tono de icono: Favorito = primary(color de acento del tema), no recopilado = outline(color neutro)
+ *  2. Contenedor de botones: para botones con color de fondo [MuseIconContainer.Tonal] expresar"abierto"(fondo redondo sólido)
+ *  3. Cuando el icono se dibuja directamente (filtrado de momentos), el alfa se reduce adicionalmente a [FAVORITE_STAR_IDLE_ALPHA]
+ * Una vez superpuestos los tres niveles, se puede ver de un vistazo entre los temas claros y oscuros./Cierra sin dibujar una nueva estrella de trazo.
  *
- * 原先四处写的是 `if (x) MuseIcons.star else MuseIcons.star`，两个分支取同一枚图标，
- * 等于状态位没参与渲染，只靠文案和容器色碰巧区分。
+ * Lo que originalmente estaba escrito en todas partes fue `if (x) MuseIcons.star else MuseIcons.star`, dos ramas toman el mismo icono,
+ * Esto significa que los bits de estado no participan en la representación y solo se distinguen por la coincidencia del color de redacción y del contenedor.
  */
 internal const val FAVORITE_STAR_IDLE_ALPHA = 0.45f
 
-/** 收藏星标颜色：选中 = 主题强调色，未选中 = 中性 outline。 */
+/** Color de estrella favorito: seleccionado = Color de acento del tema, sin marcar = Contorno neutro. */
 @Composable
 internal fun favoriteStarTint(selected: Boolean): Color = if (selected) {
     MaterialTheme.colorScheme.primary
@@ -238,18 +238,18 @@ internal fun favoriteStarTint(selected: Boolean): Color = if (selected) {
     MaterialTheme.colorScheme.outline
 }
 
-/** 收藏星标透明度：只给直接画 Icon 的场景用（MuseTactileButton 不透传图标 alpha）。 */
+/** Transparencia de estrella de colección: solo se usa en escenas donde el ícono se dibuja directamente (MuseTactileButton No hay icono de paso alfa). */
 internal fun favoriteStarAlpha(selected: Boolean): Float = if (selected) 1f else FAVORITE_STAR_IDLE_ALPHA
 
 /**
- * 收藏分组的展示文案。
+ * Mostrar copia para grupos de colección.
  *
- * §11-1: 历史数据里存过 `__group_inspiration__` 这类内部 token(v2.0 预设分类落库的)。
- * 预设 chip 行在 U-20 被移除后这些串就直接显示在筛选行与卡片上。这里在**读取时**
- * 映射成字符串资源,不做数据迁移:
- *  - 存量值仍能作为筛选键命中(筛选用的是原始值,不是展示文案)
- *  - 用户重新命名一次,新的就是普通自定义 tag
- *  - 不在 migrate 里写中文(迁移跑在非 UI 层,拿不到 locale)
+ * §11-1: Guardado en datos históricos `__group_inspiration__` Este tipo de interna token(v2.0 Las categorías predeterminadas están incluidas en la biblioteca.).
+ * De forma predeterminada, después de eliminar U-20 de la fila de chips, estas cadenas se muestran directamente en la fila de filtro y en la tarjeta. aquí en**al leer**
+ * Asignar a recurso de cadena,Sin migración de datos:
+ *  - El valor de las acciones aún se puede utilizar como clave de filtro.(El filtrado utiliza el valor original.,No mostrar copia)
+ *  - El usuario cambia el nombre una vez,Lo nuevo es la personalización normal. tag
+ *  - No escribas chino en migrar(La migración se ejecuta en la capa que no es UI,no puedo conseguirlo locale)
  */
 @Composable
 private fun favoriteTagLabel(tag: String): String = when (tag) {
@@ -261,11 +261,11 @@ private fun favoriteTagLabel(tag: String): String = when (tag) {
 }
 
 /**
- * v1.104 U7: 顶部 FilterChip 行 — 横向滚动,显示"全部 / 未分组 / 各 tag"。
+ * v1.104 U7: Fila superior de FilterChip — Desplazamiento horizontal,mostrar"Todo/Desagrupado/Cada tag".
  *
- * - "全部"永远显示,选中时 state.favoriteTagFilter = null
- * - "未分组"仅当存在 favoriteTag=null 的收藏时显示,选中时 filter = FAVORITE_TAG_UNGROUPED
- * - 各 tag 由 state.favoriteTags 提供,DAO 已去 NULL / 去重 / 升序
+ * - "Todos"mostrar siempre,Cuando se selecciona state.favoriteTagFilter = null
+ * - "No agrupado"solo si existe favoriteTag=null Se muestra cuando se marca como favorito,Cuando se selecciona filter = FAVORITE_TAG_UNGROUPED
+ * - Cada etiqueta es proporcionada por state.favoriteTags,DAO Se eliminó NULL / Deduplicación / Orden ascendente
  */
 @Composable
 private fun FavoriteTagFilterRow(
@@ -307,12 +307,12 @@ private fun FavoriteTagFilterRow(
 }
 
 /**
- * v1.104 U7: 设置分组对话框。
+ * v1.104 U7: Configure el cuadro de diálogo de agrupación.
  *
- * - 输入框初始值 = currentTag(可空)
- * - 确定按钮:把输入框值传给 onConfirm(trim 后空字符串视为 null = 移到未分组)
- * - 清除分组按钮(仅当 currentTag 非空时显示):直接传 null 给 onConfirm
- * - 取消按钮:关闭对话框,不改任何东西
+ * - Valor inicial del cuadro de entrada = currentTag(Disponible)
+ * - botón Aceptar:Pase el valor del cuadro de entrada a onConfirm(trim La cadena vacía se trata como null = Mover a desagrupado)
+ * - boton borrar grupo(Solo se muestra si currentTag no está vacío):Pasar nulo directamente a onConfirm
+ * - Botón cancelar:Cerrar diálogo,no cambies nada
  */
 @Composable
 private fun FavoriteTagEditDialog(currentTag: String?, onConfirm: (String?) -> Unit, onDismiss: () -> Unit) {
@@ -345,10 +345,10 @@ private fun FavoriteTagEditDialog(currentTag: String?, onConfirm: (String?) -> U
 }
 
 /**
- * 单条收藏消息卡片。
+ * Tarjeta de mensaje favorito único.
  *
- * v1.104 U7: 加 onLongClick 回调,长按弹"设置分组"对话框;
- * 若 message.favoriteTag 非空,卡片底部显示分组标签。
+ * v1.104 U7: Agregar devolución de llamada onLongClick,Mantenga presionado para reproducir"Configurar grupos"cuadro de diálogo;
+ * Si message.favoriteTag no está vacío,Las etiquetas de agrupación aparecen en la parte inferior de la tarjeta.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("LongMethod", "LongParameterList")
@@ -358,10 +358,10 @@ private fun FavoriteCard(
     dateFormat: SimpleDateFormat,
     onUnfavorite: () -> Unit,
     onLongClick: () -> Unit,
-    /** §11-4: 该收藏属于变体组里已被新版本取代的旧行。 */
+    /** §11-4: Esta colección pertenece a una fila antigua de un grupo de variantes que ha sido reemplazada por una nueva versión. */
     isStaleVariant: Boolean = false,
     onClick: () -> Unit = {},
-    /** v2.6.2: 分组入口（移到卡片内按钮，把点击让给“看原文”）。 */
+    /** v2.6.2: Entrada de grupo (muévete al botón de la tarjeta y dale al clic para“Leer el texto original”). */
     onGroupClick: () -> Unit = {},
 ) {
     val roleLabel = when (message.role) {
@@ -386,7 +386,7 @@ private fun FavoriteCard(
         color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // 顶部行: 角色标签 + 模型 + 时间 + 取消收藏按钮
+            // fila superior: Etiqueta de personaje + modelo + hora + botón cancelar favorito
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -417,8 +417,8 @@ private fun FavoriteCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    // §11-4: 该收藏是变体组里已被新版本取代的旧行 —— 如实告知,
-                    // 不擅自换成最新版(换行会让取消收藏落到一条未收藏的行上)。
+                    // §11-4: Esta colección es una fila antigua en un grupo de variantes que ha sido reemplazada por una nueva versión. —— decir la verdad,
+                    // No cambie a la última versión sin autorización(Los saltos de línea harán que los no favoritos caigan en una línea de no favoritos).
                     if (isStaleVariant) {
                         Text(
                             text = stringResource(R.string.favorites_stale_variant_badge),
@@ -433,8 +433,8 @@ private fun FavoriteCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    // LAYOUT-01: 尾部元信息槽（时间 + 收藏按钮）按内容宽度排布，只限行不取宽，
-                    // 否则内层 Row 会吃掉外层行宽、把左侧角色/模型标签挤成竖排。
+                    // LAYOUT-01: El espacio de metainformación final (hora + botón favorito) está organizado según el ancho del contenido, solo en filas y no en ancho.
+                    // De lo contrario, la fila interior consumirá el ancho de la fila exterior y el carácter izquierdo./Las etiquetas de los modelos se comprimen verticalmente.
                     Text(
                         text = dateFormat.format(Date(message.createdAt)),
                         style = MaterialTheme.typography.labelSmall,
@@ -446,13 +446,13 @@ private fun FavoriteCard(
                         icon = MuseIcons.star,
                         onClick = onUnfavorite,
                         contentDescription = stringResource(R.string.favorites_unfavorite_cd),
-                        // §11-8: 收藏页里每一张卡都是已收藏，星标走选中态视觉（主色 + 实心圆底），
-                        // 不再写死 secondary 色 —— 统一取 [favoriteStarTint] 一处口径。
+                        // §11-8: Se han recopilado todas las cartas de la página de colección y la marca de estrella está seleccionada visualmente (color principal + fondo redondo sólido).
+                        // No más colores secundarios intensos —— tomar uniformemente [favoriteStarTint] Un calibre.
                         tint = favoriteStarTint(selected = true),
                         container = MuseIconContainer.Tonal,
                         size = MuseIconSizes.touchTarget,
                     )
-                    // v2.6.2: 分组入口（原来占用整卡点击，现缩小为小按钮）
+                    // v2.6.2: Entrada de grupo (originalmente ocupaba todo el clic de la tarjeta, ahora reducido a un pequeño botón)
                     MuseTactileButton(
                         icon = MuseIcons.bookmark,
                         onClick = onGroupClick,
@@ -463,10 +463,10 @@ private fun FavoriteCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            // 内容预览: 结构感知截断到约 280 字(§11-9)。
-            // v2.6.8: 先走展示出口再截断 —— 否则卡片消息的预览里会冒出 cardId/JSON。
-            // 先用 take(280) 硬切会切断代码围栏 / 成对强调符 / [N] 引用,
-            // 未闭合围栏会让省略号之后的全部内容渲染成代码块。
+            // Vista previa del contenido: Consciente de la estructura truncado a aproximadamente 280 palabras(§11-9).
+            // v2.6.8: Tome la salida de la pantalla primero y luego córtela. —— De lo contrario, cardId/JSON aparecerá en la vista previa del mensaje de la tarjeta.
+            // Usar primero take(280) El corte duro corta las barreras de código/caracteres de énfasis emparejados / [N] Cotización,
+            // Al abrir la valla, todo lo que está después de los puntos suspensivos se representa como un bloque de código.
             val body = io.zer0.muse.transformer.InternalMarkupSanitizer.displayContent(message.content)
             val preview = remember(body) { MarkdownPreviewTruncation.preview(body) }
             MarkdownText(
@@ -474,10 +474,10 @@ private fun FavoriteCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),
-                // Phase 8.4: UrlCitation — 收藏夹预览也支持 [N] 引用点击
+                // Phase 8.4: UrlCitation — La vista previa de favoritos también es compatible [N] Haga clic en cotizar
                 citationUrls = message.citationUrls,
             )
-            // v1.104 U7: 卡片底部显示分组标签(若有)
+            // v1.104 U7: Mostrar etiquetas de agrupación en la parte inferior de la tarjeta(Si es así)
             message.favoriteTag?.takeIf { it.isNotBlank() }?.let { tag ->
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -491,9 +491,9 @@ private fun FavoriteCard(
 }
 
 /**
- * v2.6.2（用户反馈）: 收藏原文全屏预览。
+ * v2.6.2(comentarios de los usuarios): Recopile la vista previa en pantalla completa del texto original.
  *
- * 点击收藏卡片打开，滚动展示完整正文（不截断），复用聊天页同款 MarkdownText 渲染。
+ * Haga clic en la tarjeta favorita para abrirla, desplácese para mostrar el texto completo (sin truncamiento) y reutilice la misma representación de MarkdownText que la página de chat.
  */
 @Composable
 private fun FavoriteFullTextDialog(message: UIMessage, dateFormat: SimpleDateFormat, onDismiss: () -> Unit) {
@@ -530,7 +530,7 @@ private fun FavoriteFullTextDialog(message: UIMessage, dateFormat: SimpleDateFor
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                // 完整正文，可滚动（不截断）
+                // Texto completo, desplazable (no truncado)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

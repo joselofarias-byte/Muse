@@ -37,7 +37,7 @@ class SkillMediaToolsImplTest {
         assertFalse(image.contains("Exception"))
     }
 
-    /** Phase 5 P0: 旧 skill 记录指向已被 manifest 移除的函数时，必须在进入 JS 沙盒前拒绝。 */
+    /** Phase 5 P0: Los registros de habilidades antiguos que apunten a funciones que el manifiesto ha eliminado deben rechazarse antes de ingresar al entorno limitado de JS. */
     @Test
     fun pluginTool_rejectsFunctionRemovedFromManifestBeforeSandbox() = runBlocking {
         val manager = mockk<PluginManager>(relaxed = true)
@@ -67,6 +67,6 @@ class SkillMediaToolsImplTest {
             "{}",
         )
 
-        assertTrue(output.contains("已移除") || output.contains("校验失败"))
+        assertTrue(output.contains("la herramienta se eliminó") || output.contains("verificación de entrada del complemento falló"))
     }
 }

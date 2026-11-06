@@ -5,16 +5,16 @@ import kotlinx.serialization.Serializable
 import java.security.SecureRandom
 
 /**
- * Phase 8.11: 嵌入式 Web 服务器配置。
+ * Phase 8.11: Configuración del servidor web integrado.
  *
- * - [enabled]: 是否启动 Web 服务器；设置页保存配置时会立即应用，进程冷启动时也会自动恢复
- * - [port]: 监听端口(默认 8765,避免与常见服务冲突)
- * - [password]: 登录密码(空字符串表示首次启动时生成随机密码)
- * - [pin]: 6 位数字 PIN,Web 端首次访问需输入(空字符串表示首次启动时生成)
+ * - [enabled]: Ya sea para iniciar el servidor web; la configuración se aplicará inmediatamente cuando la página de configuración la guarde y se restaurará automáticamente cuando el proceso se inicie en frío.
+ * - [port]: puerto de escucha(Predeterminado 8765,Evitar conflictos con servicios comunes)
+ * - [password]: Contraseña de inicio de sesión(Una cadena vacía significa que se genera una contraseña aleatoria en el primer arranque)
+ * - [pin]: 6 dígitos PIN,Web Al acceder al terminal por primera vez es necesario introducir(Una cadena vacía indica que se genera en el primer inicio)
  *
- * 持久化: SettingsRepository DataStore,JSON 整存整取。
- * 安全: R-SEC-03 起 JWT 使用独立随机签名密钥 [jwtSecret],不再复用用户密码。
- * PIN 校验通过后签发 JWT,与密码登录复用同一鉴权体系。
+ * persistencia: SettingsRepository DataStore,JSON Depósito y retiro completos.
+ * seguro: R-SEC-03 Iniciar JWT usando una clave de firma aleatoria independiente [jwtSecret],Las contraseñas de los usuarios ya no se reutilizan.
+ * PIN Emitido después de pasar la verificación. JWT,Reutilice el mismo sistema de autenticación que el inicio de sesión con contraseña.
  */
 @Serializable
 data class WebServerConfig(
@@ -22,21 +22,21 @@ data class WebServerConfig(
     val port: Int = DEFAULT_PORT,
     val password: String = "",
     val pin: String = "",
-    /** R-SEC-03: 独立 JWT 签名密钥(32 字节随机值,与用户密码分离)。 */
+    /** R-SEC-03: Clave de firma JWT independiente(32 Valor aleatorio de bytes,Separado de la contraseña del usuario). */
     val jwtSecret: String = "",
-    /** R-SEC-03: 是否允许局域网访问;false 时仅绑定 127.0.0.1 且 CORS 仅本机来源。 */
+    /** R-SEC-03: Si se debe permitir el acceso a LAN;false Cuando se vincula solo 127.0.0.1 y solo origen nativo CORS. */
     val allowLan: Boolean = false,
     /**
-     * v2.x: 是否启用 HTTPS(自签证书)。
-     * 默认 false,保持既有 HTTP 行为不变;启用后由 Netty 引擎配 sslConnector,
-     * WebSocket 同步走 wss,Cookie secure=true。
+     * v2.x: Ya sea para habilitar HTTPS(certificado autofirmado).
+     * Predeterminado false,Mantener el comportamiento HTTP existente sin cambios;Cuando está habilitado, lo configura el motor Netty. sslConnector,
+     * WebSocket Caminar sincrónicamente wss,Cookie secure=true.
      */
     val httpsEnabled: Boolean = false,
 ) {
     /**
-     * H8: 返回 password/pin 已加密(走 [SecureKeyStore.encrypt])的副本,
-     * 供持久化前调用。空值原样保留(不加密空值)。
-     * 按 [io.zer0.muse.data.ProxyConfig.encrypted] 模式。
+     * H8: La contraseña/PIN de retorno está encriptado(ir [SecureKeyStore.encrypt])copia de,
+     * Por llamar antes que la perseverancia. Los valores nulos se dejan como están.(No cifrar valores nulos).
+     * prensa [io.zer0.muse.data.ProxyConfig.encrypted] modo.
      */
     suspend fun encrypted(): WebServerConfig = copy(
         password = SecureKeyStore.encrypt(password),
@@ -45,9 +45,9 @@ data class WebServerConfig(
     )
 
     /**
-     * H8: 返回 password/pin 已解密(走 [SecureKeyStore.decrypt])的副本,
-     * 供从持久化层读出后调用。旧版明文由 decrypt 透传(兼容)。
-     * 按 [io.zer0.muse.data.ProxyConfig.decrypted] 模式。
+     * H8: Devolver contraseña/PIN descifrado(ir [SecureKeyStore.decrypt])copia de,
+     * Se llama después de leer desde la capa de persistencia. El antiguo texto sin formato se transmite de forma transparente mediante descifrado.(compatibles).
+     * prensa [io.zer0.muse.data.ProxyConfig.decrypted] modo.
      */
     suspend fun decrypted(): WebServerConfig = copy(
         password = SecureKeyStore.decrypt(password),
@@ -56,15 +56,15 @@ data class WebServerConfig(
     )
 
     companion object {
-        /** 默认端口(避开 8080/3000 等常见开发端口)。 */
+        /** Puerto predeterminado(Evite puertos de desarrollo comunes como 8080/3000). */
         const val DEFAULT_PORT = 8765
 
-        /** 随机密码字符集(去掉易混淆字符 0/O/1/l/I)。 */
+        /** Conjunto de caracteres de contraseña aleatorios(Eliminar caracteres confusos 0/O/1/l/I). */
         private val PASSWORD_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789".toCharArray()
 
-        /** 生成 8 位随机密码(首次启用时用)。H6: 使用 SecureRandom 替代 Math.random()。 */
+        /** Generar contraseña aleatoria de 8 dígitos(Se utiliza al activar por primera vez.).H6: Utilice SecureRandom en su lugar Math.random(). */
 
-        /** R-SEC-03: 生成 32 字节随机 JWT 签名密钥(Base64 URL 安全无填充)。 */
+        /** R-SEC-03: Genere una clave de firma JWT aleatoria de 32 bytes(Base64 URL Seguro sin relleno). */
         fun generateRandomJwtSecret(): String {
             val bytes = ByteArray(32)
             SecureRandom().nextBytes(bytes)
@@ -80,14 +80,14 @@ data class WebServerConfig(
         }
 
         /**
-         * 生成 6 位数字 PIN(首位 1-9,避免前导零导致显示与输入混淆)。
-         * H7: 使用 SecureRandom 替代 Math.random(),消除截断偏差(L3)。
+         * Generar 6 dígitos PIN(primer lugar 1-9,Evite los ceros a la izquierda que pueden causar confusión entre la visualización y la entrada.).
+         * H7: Utilice SecureRandom en su lugar Math.random(),Eliminar el sesgo de truncamiento(L3).
          *
-         * [random] 默认用 [SecureRandom];单测可注入固定种子的 [java.util.Random] 锁住行为。
+         * [random] Usado por defecto [SecureRandom];Las semillas fijas se pueden inyectar en una sola prueba. [java.util.Random] Comportamiento de bloqueo.
          */
         fun generateRandomPin(random: java.util.Random = SecureRandom()): String {
             val sb = StringBuilder(PIN_LENGTH)
-            // 首位 1-9,避免前导零
+            // primer lugar 1-9,evitar los ceros a la izquierda
             sb.append(1 + random.nextInt(9))
             repeat(PIN_LENGTH - 1) {
                 sb.append(random.nextInt(10))
@@ -95,7 +95,7 @@ data class WebServerConfig(
             return sb.toString()
         }
 
-        /** PIN 固定长度。 */
+        /** PIN Longitud fija. */
         const val PIN_LENGTH = 6
     }
 }

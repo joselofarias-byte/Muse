@@ -1,30 +1,30 @@
 package io.zer0.muse.proactive
 
 /**
- * 发送概率闸。
+ * Enviar puerta de probabilidad.
  *
- * 位置在「所有硬闸都通过之后、真正生成之前」：先按概率放弃，再决定花不花这次
- * 模型调用。反过来（先生成再掷骰子）会让被概率放弃的那一轮白烧一次调用。
+ * La posición es "después de que hayan pasado todas las puertas difíciles y antes de que se genere realmente": ríndete primero según la probabilidad y luego decide si gastar este tiempo.
+ * Llamada modelo. Lo contrario (generar primero y luego tirar los dados) resultará en una llamada desperdiciada para la ronda que probabilísticamente se abandonó.
  *
- * 概率是用户可见的配置，所以语义必须守恒：
+ * Las probabilidades son configuraciones visibles para el usuario, por lo que se debe conservar la semántica:
  *
- *  - 100 = 通过即发（与没有这道闸完全一致）
- *  - 0   = 永不发送（保留判定日志，便于排查）
- *  - 50  = 一半概率
+ *  - 100 = Inmediatamente después de pasar (exactamente lo mismo que no tener esta puerta)
+ *  - 0   = Nunca envíe (conserve el registro de evaluación para solucionar problemas fácilmente)
+ *  - 50  = media probabilidad
  *
- * 随机源不在这里：调用方把一次 `0..99` 的掷骰结果传进来，
- * 生产用真随机，测试给固定值。这个类因此没有状态、没有副作用，可以直接断言。
+ * La fuente de la aleatoriedad no está aquí: la persona que llama la pone una vez `0..99` El resultado de la tirada de dados llega,
+ * Utilice aleatoriedad verdadera para la producción y valores fijos para las pruebas. Por lo tanto, esta clase no tiene estado ni efectos secundarios y puede afirmarse directamente.
  */
 object ProactiveSendProbability {
 
-    /** 掷骰范围上界（不含）。 */
+    /** El límite superior del rango de lanzamiento de dados (exclusivo). */
     const val ROLL_BOUND = 100
 
     /**
-     * 这次掷骰是否应当发送。
+     * Si se debe enviar este rollo.
      *
-     * @param sendProbability 用户配置的发送概率，超出 0..100 的脏值按边界处理。
-     * @param rollPercent 一次 0..99 的掷骰结果。
+     * @param sendProbability Probabilidad de envío configurada por el usuario; los valores sucios que superan 0...100 se manejan como límites.
+     * @param rollPercent Un rollo de 0..99.
      */
     fun allows(sendProbability: Int, rollPercent: Int): Boolean {
         val probability = sendProbability.coerceIn(0, ROLL_BOUND)

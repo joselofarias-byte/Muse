@@ -12,7 +12,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** `assistants.detail` 的载荷投影测试。 */
+/** `assistants.detail` prueba de proyección de carga. */
 class HostAssistantDetailCommandsTest {
 
     private val workDir = Files.createTempDirectory("host-assistant-detail").toFile()
@@ -23,8 +23,8 @@ class HostAssistantDetailCommandsTest {
     private fun mediaLinks() = HostMediaLinks(HostMediaStore(imageDir, voiceDir, avatarDir))
 
     private fun assistant(
-        personaDefinition: String = "冷静、话少的写作搭档。",
-        systemPrompt: String = "你叫 Muse。".repeat(12),
+        personaDefinition: String = "Un compañero de escritura tranquilo y que habla en voz baja.",
+        systemPrompt: String = "Tu nombre es Muse.".repeat(12),
     ) = AssistantEntity(
         id = "default",
         name = "Muse",
@@ -39,7 +39,7 @@ class HostAssistantDetailCommandsTest {
         systemPrompt = systemPrompt,
         personaDefinition = personaDefinition,
         toolIdsJson = """["read_file","web_search","memory_search"]""",
-        summary = "灵感伙伴",
+        summary = "compañero de inspiración",
         avatarImageUrl = "file://${File(avatarDir, "muse.png").apply { writeBytes(PNG_BYTES) }.absolutePath}",
     )
 
@@ -59,8 +59,8 @@ class HostAssistantDetailCommandsTest {
         val detail = requireNotNull(event.assistantDetail)
         assertEquals("default", detail.id)
         assertEquals("Muse", detail.name)
-        assertEquals("灵感伙伴", detail.description)
-        assertTrue("头像应换成媒体路由: ${detail.avatarUri}", detail.avatarUri!!.startsWith(HostMediaLinks.MEDIA_PATH_PREFIX))
+        assertEquals("compañero de inspiración", detail.description)
+        assertTrue("El avatar debería ser reemplazado por enrutamiento de medios.: ${detail.avatarUri}", detail.avatarUri!!.startsWith(HostMediaLinks.MEDIA_PATH_PREFIX))
         assertEquals("gpt-4o", detail.modelId)
         assertEquals("preset_openai", detail.providerId)
         assertEquals(0.7f, detail.temperature!!, 0.0001f)
@@ -69,15 +69,15 @@ class HostAssistantDetailCommandsTest {
         assertEquals(32, detail.contextMessageSize)
         assertEquals("HIGH", detail.reasoningLevel)
         assertEquals(3, detail.toolCount)
-        assertEquals("冷静、话少的写作搭档。", detail.personaSummary)
+        assertEquals("Un compañero de escritura tranquilo y que habla en voz baja.", detail.personaSummary)
         assertFalse(detail.personaTruncated)
-        assertEquals("你叫 Muse。".repeat(12).length, detail.systemPromptLength)
+        assertEquals("Tu nombre es Muse.".repeat(12).length, detail.systemPromptLength)
         assertFalse(detail.enabled)
     }
 
     @Test
     fun `detail never ships the system prompt body`() {
-        val prompt = "只属于提示词正文的句子。"
+        val prompt = "Oraciones que sólo pertenecen al texto de la palabra pauta."
 
         val event = HostReadCommands.assistantDetailEvent(
             assistant = assistant(systemPrompt = prompt),
@@ -86,7 +86,7 @@ class HostAssistantDetailCommandsTest {
         )
 
         val wire = AppJson.encodeToString(event)
-        assertFalse("提示词正文不该出现在回执里: $wire", wire.contains(prompt))
+        assertFalse("El texto del aviso no debe aparecer en el recibo.: $wire", wire.contains(prompt))
         assertEquals(prompt.length, event.assistantDetail!!.systemPromptLength)
     }
 
@@ -106,7 +106,7 @@ class HostAssistantDetailCommandsTest {
 
     @Test
     fun `an over long persona is truncated to the summary limit`() {
-        val persona = "人设第一句。".repeat(200)
+        val persona = "La primera frase del diseño de personajes.".repeat(200)
 
         val event = HostReadCommands.assistantDetailEvent(
             assistant = assistant(personaDefinition = persona),
@@ -115,8 +115,8 @@ class HostAssistantDetailCommandsTest {
         )
 
         val detail = requireNotNull(event.assistantDetail)
-        assertTrue("人设摘要应被截断到 500 字以内,实际 ${detail.personaSummary.length}", detail.personaSummary.length <= 500)
-        assertTrue("截断后应保留开头", persona.startsWith(detail.personaSummary))
+        assertTrue("El resumen de caracteres debe truncarse a 500 palabras o menos.,real ${detail.personaSummary.length}", detail.personaSummary.length <= 500)
+        assertTrue("El comienzo debe conservarse después del truncamiento.", persona.startsWith(detail.personaSummary))
         assertTrue(detail.personaTruncated)
     }
 

@@ -9,10 +9,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * P1-3b 拆域：天气工具注册器。
+ * P1-3b Desdominio: Registrador de herramientas meteorológicas.
  *
- * 从 ToolRegistry.kt 抽出的 get_weather（wttr.in 查询），
- * 只依赖 Context 字符串资源与标准网络库。
+ * get_weather() extraído de ToolRegistry.ktwttr.in consulta),
+ * Solo se basa en recursos de cadenas de contexto y bibliotecas de red estándar.
  */
 class WeatherToolsRegistrar(
     private val context: Context,
@@ -26,8 +26,8 @@ class WeatherToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_weather",
-                description = "获取天气信息。通过城市名查询当前天气、温度、湿度、风速等。",
-                parameters = mapOf("location" to "必填,城市名,支持中英文,如 Beijing/上海/London"),
+                description = "Obtener información meteorológica. Consulta el clima actual, temperatura, humedad, velocidad del viento, etc. por nombre de ciudad.",
+                parameters = mapOf("location" to "Requerido,nombre de la ciudad,Soporte chino e inglés,Como Beijing/Shanghai/London"),
                 required = setOf("location"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -62,7 +62,7 @@ class WeatherToolsRegistrar(
                     R.string.tool_weather_result,
                     areaName, desc, temp, feelsLike, humidity, windSpeed,
                 )
-            }.onError { msg, _ -> Logger.w("WeatherTools", "查天气失败: $msg") }
+            }.onError { msg, _ -> Logger.w("WeatherTools", "No se pudo verificar el clima: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_weather_failed, location)
         }
     }

@@ -3,20 +3,20 @@ package io.zer0.muse.ui.chat
 import io.zer0.muse.tools.SessionPermissionMode
 
 /**
- * AUD-20261011-A2A-ALLOWALL: 工具审批的会话模式判定(纯函数,可单测)。
+ * AUD-20261011-A2A-ALLOWALL: Determinación del modo de sesión para la aprobación de herramientas.(función pura,Se puede probar individualmente).
  *
- * 关键安全口径:[allowAllToolsThisRun] 是**进程级** UI 状态位
- * (用户在任意审批卡勾选"本次开启期间批准全部"后置 true),只能代表"用户当前正看着、
- * 且愿意对眼前这次放行"。它只在 [displayedSessionId] 与请求会话 [sessionId] 一致
- * (即用户正看着该会话)时才升级为 TRUSTED。
+ * calibre de seguridad crítico:[allowAllToolsThisRun] si**nivel de proceso** UI bit de estado
+ * (El usuario verifica cualquier tarjeta de aprobación."Aprobar todo durante este período de apertura"trasero true),sólo puede representar"El usuario está actualmente mirando
+ * Y dispuesto a dejar ir este tiempo". es solo en [displayedSessionId] Conversación con solicitud. [sessionId] consistente
+ * (es decir, el usuario está viendo la sesión.)Sólo entonces se actualiza a CONFIANZA.
  *
- * 否则(A2A 远程请求切走的会话 / A2A 新建会话 / 后台继续生成)回落到该会话自己的
- * 权限模式 —— 默认 ASK 下 HIGH 风险工具仍会走审批卡或 30s 超时拒绝,
- * 不会在无人在屏幕前静默执行 device_shell / app_clear_data / ui_agent。
+ * De lo contrario(A2A Solicitud remota para cambiar la sesión / Nueva sesión A2A / Continuar generando en segundo plano)Regresar a la propia sesión.
+ * modo de permiso —— Con la opción PREGUNTAR predeterminada, las herramientas de ALTO riesgo seguirán recibiendo una tarjeta de aprobación o serán rechazadas con un tiempo de espera de 30 segundos.,
+ * No se ejecutará en silencio cuando no haya nadie frente a la pantalla. device_shell / app_clear_data / ui_agent.
  *
- * @param displayedSessionId 用户当前正查看的会话(无焦点时为 null)
- * @param focusedMode 焦点会话的会话权限模式
- * @param persistedModeProvider 取非焦点会话自身的持久化模式
+ * @param displayedSessionId La sesión que el usuario está viendo actualmente.(Cuando no hay enfoque, es null)
+ * @param focusedMode Modo de permiso de sesión para sesión enfocada
+ * @param persistedModeProvider Obtenga el modo de persistencia de la propia sesión no enfocada
  */
 internal suspend fun resolveApprovalMode(
     allowAllToolsThisRun: Boolean,

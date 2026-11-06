@@ -3,12 +3,12 @@ package io.zer0.muse.web
 import java.text.Normalizer
 
 /**
- * 联网搜索 query 规范化。
+ * Normalización de consultas de búsqueda en Internet.
  *
- * LLM 有时会把思考过程里的检索表达式原样塞进 query，例如：
- * `""ornith1.5-35ba3b”模型 OR model"`。
- * 畸形引号会让 Bing 把整段当成错误的短语/操作符表达式，结果完全失真。
- * 这里只清理格式噪声，保留关键词和正常的 OR 等检索词。
+ * LLM A veces, la expresión de búsqueda en el proceso de pensamiento se inserta en la consulta tal como está, por ejemplo:
+ * `""ornith1.5-35ba3b”modelo OR model"`.
+ * Las comillas mal formadas harán que Bing trate todo el párrafo como una frase incorrecta/Expresión del operador, el resultado está completamente distorsionado.
+ * Aquí solo limpiamos el ruido del formato, conservando las palabras clave y el OR normal y otros términos de búsqueda.
  */
 object WebSearchQueryNormalizer {
 
@@ -16,31 +16,30 @@ object WebSearchQueryNormalizer {
     private val INVISIBLE = Regex("[\\u200B-\\u200D\\uFEFF]")
 
     /**
-     * 口语化/客套前缀与提问套话 — 搜索引擎对它们零收益,反而稀释关键词。
-     * 仅当 query 较长(像一句话而非关键词串)时才剔除,短 keyword 不动。
+     * coloquial/Prefijos educados y fórmulas de preguntas — Los motores de búsqueda no obtienen ningún beneficio de ellos,En cambio, diluye las palabras clave.
+     * Sólo si la consulta es más larga(Como una oración en lugar de una cadena de palabras clave)Eliminar sólo cuando,La palabra clave corta no se mueve.
      */
     private val LEADING_FILLERS = listOf(
-        "请问", "请帮我", "帮我", "帮我查", "帮我搜索", "帮我搜", "麻烦", "麻烦你",
-        "能不能", "可不可以", "可以帮我", "我想知道", "我想了解", "你知道", "我问问",
-        "查一下", "查查", "搜索一下", "搜一下", "有没有", "有哪些", "什么是", "怎么",
+        "Disculpe", "por favor ayudame", "ayudame", "compruébalo por mí", "buscame", "Ayúdame a buscar", "problema", "molestarte",
+        "puede", "¿Es posible?", "puede ayudarme", "quiero saber", "quiero saber", "ya sabes", "pregunto",
+        "Compruébalo", "comprobar", "Buscar", "Buscar", "¿Hay alguna", "¿Qué hay allí?", "que es", "como",
         "please", "can you", "could you", "i want to know", "i wonder", "tell me",
     )
 
     private val TRAILING_FILLERS = listOf(
-        "吗",
-        "呢",
-        "吧",
-        "啊",
-        "呀",
-        "谢谢",
-        "谢谢你",
-        "多谢",
+        "todavía",
+        "barra",
+        "ah",
+        "si",
+        "gracias",
+        "gracias",
+        "gracias",
     )
 
-    /** 超过该长度才做"口语提炼",避免把正常短 query 误删。 */
+    /** Sólo hazlo si excede esta longitud."refinamiento del lenguaje hablado",Evite eliminar accidentalmente consultas cortas normales. */
     private const val REFINE_MIN_LENGTH = 12
 
-    /** 提炼后的 query 长度上限(超出按词边界截断)。 */
+    /** El límite superior de la longitud de la consulta refinada.(Truncar más allá del límite de la palabra). */
     private const val REFINE_MAX_LENGTH = 64
 
     fun normalize(raw: String): String {
@@ -55,8 +54,8 @@ object WebSearchQueryNormalizer {
             .replace(WHITESPACE, " ")
             .trim()
 
-        // 引号数量不成对，或模型把整条 query 包成了多层引号时，
-        // 去掉 ASCII 双引号，避免搜索引擎进入错误的短语解析状态。
+        // Cuando el número de comillas no está emparejado o el modelo envuelve toda la consulta en varias capas de comillas,
+        // Elimine las comillas dobles ASCII para evitar que los motores de búsqueda introduzcan un estado de análisis de frases incorrecto.
         val quoteCount = query.count { it == '"' }
         if (quoteCount % 2 != 0 || query.startsWith('"') || query.endsWith('"')) {
             query = query.replace("\"", "")
@@ -66,42 +65,42 @@ object WebSearchQueryNormalizer {
     }
 
     /**
-     * 查询提炼 — 把"像一句话"的 query 收敛为关键词串,改善搜索精准度。
+     * Refinamiento de consultas — poner"como una frase"La consulta converge en una cadena de palabras clave.,Mejorar la precisión de la búsqueda.
      *
-     * 设计原则:
-     *  1. 保守 — 只在 query 明显偏长(≥ [REFINE_MIN_LENGTH] 字符)时启用;
-     *     短 keyword(如 "DeepSeek V4 Flash 模型")原样保留;
-     *  2. 只剔口语噪声 — 去句首客套/提问套话、句末语气词,不做分词/去停用词
-     *     (中文停用词误删风险高,宁可保守);
-     *  3. 超长截断 — 超过 [REFINE_MAX_LENGTH] 时按词边界截断,防整段被当 query。
+     * principios de diseño:
+     *  1. conservador — Sólo cuando la consulta es obviamente más larga(≥ [REFINE_MIN_LENGTH] personaje)habilitado cuando;
+     *     corto keyword(Como por ejemplo "DeepSeek V4 Flash modelo")Déjalo como está;
+     *  2. Eliminar solo el ruido hablado — Deshazte de las palabras amables al principio de las frases./Clichés de preguntas, partículas modales al final de la oración,sin participio/eliminar palabras vacías
+     *     (Existe un alto riesgo de eliminación accidental de palabras vacías en chino,Prefiero ser conservador);
+     *  3. Truncamiento extralargo — exceder [REFINE_MAX_LENGTH] truncar en los límites de las palabras,Evite que todo el párrafo se utilice como consulta.
      *
-     * 注意:本函数幂等 — refine(refine(x)) == refine(x)。
+     * Nota:Esta función es idempotente. — refine(refine(x)) == refine(x).
      */
     fun refine(raw: String): String {
         var query = normalize(raw)
         if (query.length < REFINE_MIN_LENGTH) return query
 
-        // 1. 去句首填充词(循环,处理叠加,如"请问帮我查一下")
+        // 1. Eliminar palabras de relleno del comienzo de las oraciones.(bucle,Manejo de superposiciones,Como por ejemplo"Por favor compruébalo por mí")
         var changed = true
         while (changed) {
             changed = false
             for (filler in LEADING_FILLERS) {
                 if (query.startsWith(filler, ignoreCase = true) && query.length > filler.length) {
-                    query = query.substring(filler.length).trimStart(' ', ',', '，', '。', '?', '？', ':', '：')
+                    query = query.substring(filler.length).trimStart(' ', ',', ',', '.', '?', '?', ':', ':')
                     changed = true
                 }
             }
         }
 
-        // 2. 去句末语气词(单个字符,去一层即可)
+        // 2. Eliminar partículas modales al final de las oraciones.(carácter único,Solo ve a un nivel)
         for (filler in TRAILING_FILLERS) {
             if (query.endsWith(filler) && query.length > filler.length) {
-                query = query.dropLast(filler.length).trimEnd(' ', ',', '，', '。', '?', '？')
+                query = query.dropLast(filler.length).trimEnd(' ', ',', ',', '.')
                 break
             }
         }
 
-        // 3. 超长按词边界截断
+        // 3. Truncar en el límite de la palabra para longitudes extremadamente largas
         if (query.length > REFINE_MAX_LENGTH) {
             val cut = query.take(REFINE_MAX_LENGTH)
             val boundary = cut.lastIndexOf(' ')

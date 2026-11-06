@@ -1,11 +1,11 @@
 package io.zer0.muse.data.assistant
 
 /**
- * 删除 Provider 后清理 Assistant 的显式模型绑定。
+ * Limpie el enlace de modelo explícito del Asistente después de eliminar el Proveedor.
  *
- * Assistant 的 providerId/modelId 是成对的事实引用；Provider 被删除后保留其中
- * 任一字段都会让后续解析命中不存在的配置。这里清掉整对绑定，允许调用方回退
- * 到全局模型或重新选择可用 Provider。
+ * Assistant El ID de proveedor/ID de modelo son pares de referencias de hechos;Provider retenido después de ser eliminado
+ * Cualquiera de los campos hará que el análisis posterior alcance una configuración que no existe. Borre todo el par de enlaces aquí, permitiendo a la persona que llama retroceder
+ * Vaya al modelo global o vuelva a seleccionar un proveedor disponible.
  */
 internal fun clearProviderBindings(assistants: List<AssistantEntity>, deletedProviderId: String): List<AssistantEntity> =
     assistants.map { assistant ->

@@ -30,13 +30,13 @@ import io.zer0.muse.miniphone.ui.theme.MiniPhoneColors
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 消息长按菜单。
+ * Mensajes menú de pulsación larga.
  *
- * 用自己画的浮层而不是 Material 的默认菜单:底色、圆角、字号都取本模块的 token,
- * 与气泡、卡片同一套质感,深色下也不会突然白一块。
+ * Utilice su propia capa flotante en lugar del menú predeterminado de Material:El color de fondo, las esquinas redondeadas y el tamaño de fuente se toman de este módulo. token,
+ * Misma textura que las burbujas y las tarjetas.,No se volverá blanco de repente ni siquiera bajo colores oscuros.
  *
- * 位置以本组件所在的父布局为准(调用方把它放在消息那一行里):
- * 优先贴在那一行上方,上方放不下就翻到下方;左右与消息所在一侧对齐。
+ * La posición se basa en el diseño principal donde se encuentra este componente.(La persona que llama lo pone en la línea de mensajes.):
+ * Priorizar pegar encima de esa línea,Si no cabe en la parte superior, gíralo hacia abajo.;Alinee a izquierda y derecha con el lado donde está el mensaje.
  */
 @Composable
 internal fun ChatMessageMenu(
@@ -96,7 +96,7 @@ internal fun ChatMessageMenu(
     }
 }
 
-/** 删除一条消息前的确认。只确认一次,确认后本机就删掉。 */
+/** Confirmación antes de eliminar un mensaje. Confirmar solo una vez,Después de la confirmación, la máquina se eliminará. */
 @Composable
 internal fun ChatDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -128,14 +128,14 @@ internal fun ChatDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Uni
                 horizontalArrangement = Arrangement.End,
             ) {
                 DialogAction(
-                    label = "取消",
+                    label = "Cancelar",
                     color = colors.textSecondary,
                     tag = MiniPhoneChatTags.DELETE_CANCEL,
                     onClick = onDismiss,
                 )
                 Spacer(Modifier.width(8.dp))
                 DialogAction(
-                    label = "删除",
+                    label = "Eliminar",
                     color = colors.unreadDot,
                     tag = MiniPhoneChatTags.DELETE_CONFIRM,
                     onClick = onConfirm,
@@ -145,7 +145,7 @@ internal fun ChatDeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Uni
     }
 }
 
-/** 确认框里的一个文字按钮:无底、留足按压面积。 */
+/** Un botón de texto en el cuadro de confirmación.:Sin fondo, dejando suficiente área de presión. */
 @Composable
 private fun DialogAction(label: String, color: Color, tag: String, onClick: () -> Unit) {
     Text(
@@ -160,7 +160,7 @@ private fun DialogAction(label: String, color: Color, tag: String, onClick: () -
     )
 }
 
-/** 危险动作(删除)用砖红,其余用主字色。 */
+/** acción peligrosa(Eliminar)Usa rojo ladrillo,Usa el color principal para el resto. */
 private fun ChatMenuAction.colorIn(colors: MiniPhoneColors) = if (this == ChatMenuAction.DELETE) colors.unreadDot else colors.textPrimary
 
 private val MenuWidth = 132.dp
@@ -168,5 +168,5 @@ private val MenuGap = 6.dp
 private val DialogWidth = 280.dp
 private val DialogActionHeight = 36.dp
 
-private const val DELETE_TITLE: String = "删除这条消息?"
-private const val DELETE_HINT: String = "只从这台手机的聊天记录里删掉,会话本身不受影响。"
+private const val DELETE_TITLE: String = "Eliminar este mensaje?"
+private const val DELETE_HINT: String = "Elimínelo solo del historial de chat de este teléfono,La sesión en sí no se ve afectada."

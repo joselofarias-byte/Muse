@@ -18,20 +18,20 @@ import kotlinx.coroutines.flow.first
 import java.io.IOException
 
 /**
- * 应用更新通知器 — 协调 [UpdateChecker] 与 [SettingsRepository]/[MuseNotificationManager]。
+ * Notificador de actualización de aplicaciones — coordinar [UpdateChecker] con [SettingsRepository]/[MuseNotificationManager].
  *
- * 行为:
- *  - 从 [SettingsRepository.lastUpdateCheckTimeFlow] 读上次检查时间,间隔不足 24 小时则跳过
- *    (forceCheck=true 时强制)
- *  - 调用 [UpdateChecker.checkLatestRelease] 拉取最新 Release
- *  - 与当前 versionName 语义比较,发现新版本时:
- *      · 把 [UpdateChecker.ReleaseInfo] 序列化为 JSON 缓存到
- *        [SettingsRepository.latestReleaseInfoFlow](供 UI Banner 读取)
- *      · 通过 [MuseNotificationManager] 已有渠道发通知(复用 CHANNEL_CHAT_COMPLETED)
- *  - 检查完毕更新 lastUpdateCheckTime
+ * comportamiento:
+ *  - de [SettingsRepository.lastUpdateCheckTimeFlow] Leer la hora del último control,Saltar si el intervalo es inferior a 24 horas
+ *    (forceCheck=true obligatorio)
+ *  - llamar [UpdateChecker.checkLatestRelease] Tira lo último Release
+ *  - Comparar con la semántica actual del nombre de la versión,Cuando se descubre una nueva versión:
+ *      · poner [UpdateChecker.ReleaseInfo] Serializado en JSON almacenado en caché en
+ *        [SettingsRepository.latestReleaseInfoFlow](Para que se lea el banner de la interfaz de usuario)
+ *      · Pase [MuseNotificationManager] Ya tengo canales para enviar notificaciones.(Reutilizar CHANNEL_CHAT_COMPLETED)
+ *  - Buscar actualizaciones lastUpdateCheckTime
  *
- * @param settings 全局配置仓库
- * @param checker GitHub Releases 检查器
+ * @param settings Almacén de configuración global
+ * @param checker GitHub Releases inspector
  */
 sealed interface UpdateCheckResult {
     data class NewVersion(val release: UpdateChecker.ReleaseInfo) : UpdateCheckResult
@@ -40,7 +40,7 @@ sealed interface UpdateCheckResult {
     data object Skipped : UpdateCheckResult
 }
 
-/** 将网络查询结果转换为 UI 可消费的明确状态；纯逻辑便于测试。 */
+/** Convertir los resultados de la consulta de red en un estado explícito consumible por la interfaz de usuario; Lógica pura para pruebas fáciles. */
 internal fun classifyUpdateResult(currentVersion: String, result: io.zer0.common.Result<UpdateChecker.ReleaseInfo>): UpdateCheckResult {
     val release = result.getOrNull() ?: return UpdateCheckResult.Failed(
         (result as? io.zer0.common.Result.Error)?.message ?: "unknown",
@@ -58,13 +58,13 @@ class UpdateNotifier(
 ) {
 
     /**
-     * 检查并通知更新。
+     * Consulta y recibe notificaciones de las actualizaciones.
      *
-     * @param context 用于读取 versionName + 发通知
-     * @param forceCheck true 时跳过 24 小时间隔检查(用户手动触发时使用)
+     * @param context Se utiliza para leer el nombre de la versión + enviar notificación
+     * @param forceCheck true Omita la verificación de intervalo de 24 horas cuando(Se utiliza cuando el usuario lo activa manualmente)
      */
     suspend fun checkAndNotify(context: Context, forceCheck: Boolean = false): UpdateCheckResult {
-        // 用户可在设置中关闭自动检查;手动检查(forceCheck=true)仍允许
+        // Los usuarios pueden desactivar el registro automático en la configuración;Verificación manual(forceCheck=true)todavía permitido
         val enabled = settings.updateCheckEnabledFlow.firstSafe() ?: true
         val allowedByInterval = forceCheck || (enabled && shouldCheck())
         if (!forceCheck && !enabled) {
@@ -79,7 +79,7 @@ class UpdateNotifier(
         }
     }
 
-    /** 两个手动入口共用此方法，统一缓存写入与预期网络/持久化错误映射。 */
+    /** Dos entradas manuales comparten este método para unificar las escrituras de caché y la red esperada./Mapeo de errores persistentes. */
     suspend fun checkManually(context: Context): UpdateCheckResult = try {
         checkAndNotify(context, forceCheck = true)
     } catch (cancelled: CancellationException) {
@@ -90,7 +90,7 @@ class UpdateNotifier(
     }
 
     private suspend fun performCheck(context: Context): UpdateCheckResult {
-        // 记录检查时间(无论是否成功,避免失败时反复重试导致打 GitHub API 频次过高)
+        // Tiempo récord de inspección(ya sea exitoso o no,Evite volver a intentarlo repetidamente cuando el error provoque llamadas excesivamente frecuentes a la API de GitHub.)
         settings.saveLastUpdateCheckTime(System.currentTimeMillis())
         val currentVersion = getCurrentVersionName(context)
         val outcome = classifyUpdateResult(currentVersion, checker.checkLatestRelease())
@@ -101,7 +101,7 @@ class UpdateNotifier(
             }
             UpdateCheckResult.Skipped -> outcome
             UpdateCheckResult.UpToDate -> {
-                // 当前版本 >= 最新版本,清空缓存的 ReleaseInfo(Banner 不再展示)
+                // Versión actual >= última versión,Borrar caché ReleaseInfo(Banner No volver a mostrar)
                 settings.saveLatestReleaseInfo(null)
                 Logger.i(TAG, "already up to date: current=$currentVersion")
                 outcome
@@ -109,7 +109,7 @@ class UpdateNotifier(
             is UpdateCheckResult.NewVersion -> {
                 val release = outcome.release
                 Logger.i(TAG, "new version found: current=$currentVersion, latest=${release.tagName}")
-                // 缓存 ReleaseInfo,UI 通过 latestReleaseInfoFlow 渲染 Banner
+                // caché ReleaseInfo,UI Representado a través de LatestReleaseInfoFlow Banner
                 settings.saveLatestReleaseInfo(
                     AppJson.encodeToString(UpdateChecker.ReleaseInfo.serializer(), release),
                 )
@@ -120,7 +120,7 @@ class UpdateNotifier(
     }
 
     /**
-     * 判断距离上次检查是否已超过 24 小时。
+     * Determina si han pasado más de 24 horas desde el último control.
      */
     private suspend fun shouldCheck(): Boolean {
         val lastTime = settings.lastUpdateCheckTimeFlow.firstSafe() ?: 0L
@@ -130,11 +130,11 @@ class UpdateNotifier(
     }
 
     /**
-     * 显示"发现新版本"通知 — 复用 MuseNotificationManager 的 CHANNEL_CHAT_COMPLETED 渠道。
+     * mostrar"nueva versión encontrada"Notificación — Reutilice el canal CHANNEL_CHAT_COMPLETED de MuseNotificationManager.
      *
-     * 通知标题:"发现新版本"
-     * 通知正文:"<tagName> 已发布,点击查看详情"
-     * 点击跳转 MainActivity(由用户在应用内点 Banner 完成 APK 下载/查看详情)。
+     * Título de la notificación:"nueva versión encontrada"
+     * Texto de notificación:"<tagName> Publicado,Haga clic para ver detalles"
+     * Haz clic para saltar MainActivity(El usuario hace clic en el Banner dentro de la aplicación para completar la descarga del APK./Ver detalles).
      */
     private fun notifyNewVersion(context: Context, release: UpdateChecker.ReleaseInfo) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
@@ -161,20 +161,20 @@ class UpdateNotifier(
     companion object {
         private const val TAG = "UpdateNotifier"
 
-        /** 通知 ID(避免与 MuseNotificationManager 现有 ID 冲突,选 9000 段)。 */
+        /** Notificación ID(Evite conflictos con el ID existente de MuseNotificationManager,Seleccione 9000 segmentos). */
         private const val NOTIF_ID_NEW_VERSION = 9001
 
-        /** 自动检查最小间隔:24 小时。 */
+        /** Verificar automáticamente el intervalo mínimo:24 horas. */
         private const val CHECK_INTERVAL_MILLIS = 24L * 60 * 60 * 1000
 
         /**
-         * 便捷方法:语义版本比较 — 委托给 [UpdateChecker.compareVersions]。
+         * método de conveniencia:Comparación de versiones semánticas — confiado a [UpdateChecker.compareVersions].
          */
         fun compareVersions(current: String, latest: String): Int = UpdateChecker.compareVersions(current, latest)
 
         /**
-         * v1.0.72: 读取当前应用 versionName(从 private 提升为 companion,供 UI 静态调用)。
-         * 读取失败返回 "0",保证后续比较可执行。
+         * v1.0.72: Leer la solicitud actual versionName(Promovido de privado a companion,Para que la interfaz de usuario llame estáticamente).
+         * Devoluciones de errores de lectura "0",Asegúrese de que las comparaciones posteriores sean ejecutables.
          */
         fun getCurrentVersionName(context: Context): String {
             return resultOf {
@@ -192,17 +192,17 @@ class UpdateNotifier(
         }
 
         /**
-         * 官网下载页 — 应用内所有下载/更新出口统一指向这里。
+         * Página de descarga del sitio web oficial. — Todas las descargas dentro de la aplicación./Actualice las exportaciones para que apunten aquí.
          *
-         * 「立即下载」为什么先落到官网而不是直接给 APK 直链：官网会用当前 Release 的资产列表
-         * 按机型给出对应架构的按钮，用户点一下即从 GitHub 资产直链下载；应用内自己判断架构
-         * 反而容易选错包（尤其 32/64 位混杂的机器）。官网下载页不自己存安装包。
+         * ¿Por qué "Descargar ahora" va primero al sitio web oficial en lugar de vincularse directamente al APK? El sitio web oficial utilizará la lista de recursos de la versión actual.
+         * Se proporciona un botón correspondiente a la arquitectura según el modelo, y el usuario puede descargarlo directamente desde el enlace del activo de GitHub con un clic; juzgue la arquitectura usted mismo dentro de la aplicación
+         * Por el contrario, es fácil seleccionar el paquete incorrecto (especialmente en máquinas mixtas de 32/64 bits). La página de descarga del sitio web oficial no almacena el paquete de instalación en sí.
          */
         const val OFFICIAL_DOWNLOAD_PAGE = "https://museai.ltd/download/"
 
         /**
-         * 构造用于打开官网下载页的 [Intent](ACTION_VIEW)。
-         * 调用方负责 startActivity / chooser。
+         * Construya un método utilizado para abrir la página de descarga del sitio web oficial. [Intent](ACTION_VIEW).
+         * La persona que llama es responsable de startActivity/chooser.
          */
         fun buildOfficialDownloadIntent(): Intent = Intent(Intent.ACTION_VIEW, Uri.parse(OFFICIAL_DOWNLOAD_PAGE))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -210,8 +210,8 @@ class UpdateNotifier(
 }
 
 /**
- * Flow.first() 的便捷包装 — 失败时返回 null,避免上游异常传播(用于读取设置项的简单场景)。
- * CancellationException 仍向上抛(协程取消不可吞)。
+ * Flow.first() Embalaje conveniente — Retorno del fracaso null,Evite la propagación de excepciones ascendentes(Escenario simple para leer elementos de configuración.).
+ * CancellationException Todavía tirando hacia arriba(La cancelación de rutina no se puede tragar).
  */
 private suspend fun <T> Flow<T>.firstSafe(): T? = try {
     first()

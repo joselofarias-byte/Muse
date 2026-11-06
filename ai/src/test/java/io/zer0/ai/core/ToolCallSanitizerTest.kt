@@ -76,32 +76,32 @@ class ToolCallSanitizerTest {
         assertTrue(preview.contains("browser_type"))
     }
 
-    // ── v2.6.7: 模型把正文写进 function.name 的保护 ──────────────────
+    // ── v2.6.7: El modelo escribe el texto en la protección de function.name ──────────────────
 
     /**
-     * 实测日志：GLM-4-9B 返回 name="好的，子奇！我会创建一个交互式图表…show_card"。
-     * 旧实现只查 isNotBlank()，这条调用会一路通过清洗、进审批、被当成工具执行，
-     * 最终以“未知工具”失败，用户感知就是“卡片根本生成不了”。
+     * Registro de mediciones reales:GLM-4-9B Regresar name="¡Está bien, Ziqi! Crearé un gráfico interactivo.…show_card".
+     * La implementación anterior solo verifica isNotBlank(), esta convocatoria pasará por la limpieza, aprobación y ejecución como herramienta.
+     * Finalmente con“herramienta desconocida”Fallo, la percepción del usuario es“La tarjeta no se puede generar en absoluto.”.
      */
     @Test
     fun `chinese prose in tool name is rejected when no tool list is available`() {
         val tc = ToolCall(
             id = "1",
-            name = "好的，子奇！我会创建一个简单的交互式图表来展示不同水果的数量。请稍等，我马上为你生成。show_card",
+            name = "¡Está bien, Ziqi! Crearé un gráfico interactivo simple que muestre las cantidades de diferentes frutas. Espere un momento, lo generaré para usted de inmediato.show_card",
             arguments = """{"title":"x"}""",
         )
         assertFalse(ToolCallSanitizer.isValidName(tc.name))
         assertFalse(ToolCallSanitizer.isValid(tc))
-        // 没有工具名单时不猜，避免把正文里的英文单词当成工具名执行。
+        // No adivine cuando no hay una lista de herramientas y evite ejecutar palabras en inglés en el texto como nombres de herramientas.
         assertTrue(ToolCallSanitizer.sanitize(listOf(tc)).isEmpty())
     }
 
-    // ── v2.6.10: 正文污染的工具名要能还原 ──────────────────────────
+    // ── v2.6.10: Los nombres de herramientas que causan contaminación del texto deben poder restaurarse ──────────────────────────
 
     /**
-     * 实测日志（agnes 网关）：模型把整句台词和函数名连成一串提交，
-     * name = "Sure, I can help with that. ... Please hold on a moment.show_card"（len=135）。
-     * 旧行为整条丢弃，用户看到“参数格式异常，请重新描述”，重试还是同样的结果。
+     * Registro de medición real (agnes Puerta de enlace): el modelo concatena la línea completa y el nombre de la función en una cadena y la envía.
+     * name = "Sure, I can help with that. ... Please hold on a moment.show_card"(len=135).
+     * Todo el comportamiento anterior se descarta y el usuario ve“El formato del parámetro es anormal; descríbalo nuevamente.”y vuelve a intentarlo con el mismo resultado.
      */
     @Test
     fun `prose plus known tool name is salvaged`() {
@@ -133,7 +133,7 @@ class ToolCallSanitizerTest {
             name = "Please hold on a moment",
             arguments = "{}",
         )
-        // 末尾 "moment" 形态合法，但不在名单里，不能当工具执行。
+        // fin "moment" El formulario es legal, pero no está en la lista y no puede usarse como herramienta.
         assertTrue(ToolCallSanitizer.sanitize(listOf(tc), setOf("show_card")).isEmpty())
     }
 
@@ -153,7 +153,7 @@ class ToolCallSanitizerTest {
     fun `tool name with spaces or punctuation is rejected`() {
         assertFalse(ToolCallSanitizer.isValidName("web search"))
         assertFalse(ToolCallSanitizer.isValidName("web.search"))
-        assertFalse(ToolCallSanitizer.isValidName("web搜索"))
+        assertFalse(ToolCallSanitizer.isValidName("web_búsqueda"))
     }
 
     @Test

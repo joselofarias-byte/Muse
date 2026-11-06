@@ -93,96 +93,96 @@ import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext
 
 /**
- * 应用唯一 Activity。
+ * Actividad solo de la aplicación.
  *
- * 职责:
- *  - 安装 SplashScreen(warm-paper 背景 + muse logo)
- *  - 申请运行时权限(POST_NOTIFICATIONS / 录音 / 存储)
- *  - 注册 NavHost,装配所有页面路由(见 [io.zer0.muse.ui.MuseRoutes])
- *  - 处理分享/Deep Link Intent(把外部文本/图片投递到 ChatViewModel)
- *  - 监听主题/字号变更,应用到 MuseTheme
+ * Responsabilidades:
+ *  - Instalación SplashScreen(warm-paper fondo + muse logo)
+ *  - Solicitar permisos de tiempo de ejecución(POST_NOTIFICATIONS / Grabación/Almacenamiento)
+ *  - Registrarse NavHost,Reúna todas las rutas de la página.(ver [io.zer0.muse.ui.MuseRoutes])
+ *  - manejar compartir/Deep Link Intent(poner texto externo/Fotos entregadas a ChatViewModel)
+ *  - Escuchar tema/Cambio de tamaño de fuente,aplicar a MuseTheme
  *
- * 页面过渡动画:首页 Tab 之间用 fade,详情页用右滑入/左滑出(滑动式 push 过渡)。
+ * Animación de transición de página:Página de inicio utilizada entre pestañas fade,Deslízate hacia la derecha en la página de detalles/Desliza hacia la izquierda(transición de empuje deslizante).
  */
 
 class MainActivity : ComponentActivity() {
 
-    /** Phase 8.10: 分享/Deep Link 处理器(SAF 解析需 Context)。 */
+    /** Phase 8.10: Compartir/Deep Link Procesador(SAF Análisis requerido Context). */
     private val shareIntentHandler: ShareIntentHandler by lazy {
         ShareIntentHandler(applicationContext)
     }
 
-    /** Phase 8.10: 当前待消费的 Intent 处理结果(由 NavGraph 观察)。 */
+    /** Phase 8.10: El resultado del procesamiento de la intención actual que se va a consumir.(Observado por NavGraph). */
     private var pendingShareResult by mutableStateOf<ShareIntentHandler.ShareResult>(
         ShareIntentHandler.ShareResult.None,
     )
 
-    /** 通知权限申请 launcher(Android 13+ 必需 POST_NOTIFICATIONS 运行时权限)。 */
+    /** Solicitud de permiso de notificación launcher(Android 13+ Permiso de tiempo de ejecución POST_NOTIFICATIONS requerido). */
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             Logger.i("MainActivity", "POST_NOTIFICATIONS granted=$granted")
         }
 
     /**
-     * v1.102: 在 attachBaseContext 中用存储的 language 偏好包装 Context。
+     * v1.102: Ajuste el contexto con la preferencia de idioma almacenada en adjuntoBaseContext.
      *
-     * Compose 的 [androidx.compose.ui.res.stringResource] 读的是 Activity 的 Resources,
-     * 其 Configuration 由 baseContext 决定。[androidx.appcompat.app.AppCompatDelegate.setApplicationLocales]
-     * 在 ComponentActivity(非 AppCompatActivity)上 Android 12 及以下的 backport 不生效,
-     * 因此这里手动用 [android.content.Context.createConfigurationContext] 覆盖 Configuration。
+     * Compose de [androidx.compose.ui.res.stringResource] La lectura es de la actividad. Resources,
+     * Su configuración está determinada por baseContext.[androidx.appcompat.app.AppCompatDelegate.setApplicationLocales]
+     * en ComponentActivity(no AppCompatActivity)Backport no tiene efecto en Android 12 y versiones anteriores,
+     * Entonces aquí usamos manual. [android.content.Context.createConfigurationContext] Anular la configuración.
      *
-     * [recreate] 会创建新的 Activity 实例并重新调用 attachBaseContext,
-     * 自动读取最新的 language 偏好,无需在 Compose 里处理(避免之前的死循环)。
+     * [recreate] Se creará una nueva instancia de Actividad y se llamará nuevamente attachBaseContext,
+     * Leer automáticamente la última preferencia de idioma,No es necesario tratarlo en Compose(Evita el bucle infinito anterior.).
      *
-     * runBlocking 读 DataStore:仅启动/recreate 时各一次,DataStore 有内存缓存,< 2ms。
+     * runBlocking Leer DataStore: solo iniciar/recreate una vez cada vez,DataStore Tiene memoria caché,< 2ms.
      */
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(wrapWithLanguage(newBase))
     }
 
     private fun wrapWithLanguage(base: android.content.Context): android.content.Context {
-        // Koin 在 Application.onCreate 启动,attachBaseContext 在其后执行,此时已可用。
+        // Koin Iniciado en Application.onCreate,attachBaseContext ejecutar después,Disponible en este momento.
         val settings = GlobalContext.getOrNull()?.get<SettingsRepository>() ?: return base
-        // v1.131: 改用 SharedPreferences 同步缓存,消除主线程 runBlocking 读 DataStore 的 ANR 风险。
-        // 历史 DataStore 值会在 SettingsRepository.init 中异步迁移到 SP,首次冷启动可能短暂返回默认值,
-        // 但下次启动即正确,可接受(用户感知不到语言切换的差异)。
+        // v1.131: Utilice SharedPreferences para sincronizar el caché en su lugar,Elimine el riesgo ANR de la ejecución del hilo principal, bloqueando la lectura del almacén de datos.
+        // Los valores históricos de DataStore se migran de forma asincrónica a SP,El primer arranque en frío puede volver brevemente a los valores predeterminados.,
+        // Pero será correcto la próxima vez que lo inicies.,aceptable(Los usuarios no perciben la diferencia en el cambio de idioma).
         val lang = settings.getLanguageSync()
-        // I4: 语言解析收敛到 AppLocales,system/未知返回 null(跟随系统)。
+        // I4: El análisis del lenguaje converge a AppLocales,system/Regreso desconocido null(Sigue el sistema).
         val locale = io.zer0.muse.util.AppLocales.parse(lang) ?: return base
-        // v1.133: 复制当前 Configuration 并覆盖 locale,避免修改全局 Configuration。
-        // 同时显式设置 layoutDirection,避免某些 RTL/LTR 边界场景。
+        // v1.133: Copie la configuración actual y sobrescríbala locale,Evite modificar la configuración global.
+        // También establecido explícitamente layoutDirection,Evite ciertos escenarios de límites RTL/LTR.
         val config = android.content.res.Configuration(base.resources.configuration)
         config.setLocale(locale)
-        // v1.133: setLayoutDirection 兜底,部分 ROM 上 setLocale 不联动 layoutDirection
+        // v1.133: setLayoutDirection Ten todo en cuenta,setLocale no está vinculado en algunas ROM layoutDirection
         config.setLayoutDirection(locale)
-        // v1.133: 用 createConfigurationContext 创建新 Context。
-        // 额外调用 resources.updateConfiguration 兜底,部分国产 ROM(MIUI/EMUI)对
-        // createConfigurationContext 的 locale 应用不稳定,需要 updateConfiguration 强制刷新。
+        // v1.133: Cree un nuevo contexto con createConfigurationContext.
+        // Llamadas adicionales a resources.updateConfiguration para averiguarlo,Parcialmente hecho en China ROM(MIUI/EMUI)si
+        // createConfigurationContext La aplicación local es inestable.,Se requiere UpdateConfiguration para forzar una actualización.
         val newContext = base.createConfigurationContext(config)
         try {
             val wrappedResources = newContext.resources
             wrappedResources.updateConfiguration(config, wrappedResources.displayMetrics)
         } catch (e: Exception) {
-            // updateConfiguration 在部分新版本被标记 deprecated 但仍可用,容错忽略
+            // updateConfiguration Algunas versiones nuevas están marcadas como obsoletas pero aún están disponibles,tolerancia a fallos ignorada
         }
         return newContext
     }
 
-    // v2.6.2 fix（用户反馈）: 系统深浅色即时跟随。
-    // 注意：不能读 LocalConfiguration.current.uiMode —— RuntimeLocaleProvider 会用
-    // `LocalConfiguration provides config` 盖掉它（那份 config 是语言快照，
-    // 只在 lang 变化时重建，系统切深浅色不会更新）。
-    // 这里直接监听系统 uiMode 变化，与 Compose 配置层解耦。
+    // v2.6.2 fix(comentarios de los usuarios): Los colores claros y oscuros del sistema aparecen instantáneamente.
+    // Nota: no puedo leer LocalConfiguration.current.uiMode —— RuntimeLocaleProvider usará
+    // `LocalConfiguration provides config` Sobrescríbalo (esa configuración es una instantánea del idioma,
+    // Solo se reconstruye cuando cambia el idioma y el sistema no se actualizará si cambia entre colores oscuros y claros).
+    // Aquí, los cambios de uiMode del sistema se monitorean directamente y se desacoplan de la capa de configuración de Compose.
     //
-    // v2.6.2 hotfix（用户反馈「打开就崩」）: 必须 by lazy —— 普通属性初始化器会在
-    // Activity 构造期执行，那时 attachBaseContext 可能尚未完成，
-    // applicationContext 可能不可用，导致 onCreate 之前就崩。
+    // v2.6.2 hotfix(Comentarios de los usuarios "Se bloquea al abrir"): debe by lazy —— Los inicializadores de propiedad ordinarios estarían en
+    // Activity Ejecutado durante la construcción, es posible que adjuntoBaseContext no se complete en ese momento.
+    // applicationContext Es posible que no esté disponible, lo que hace que onCreate falle antes.
     private val systemDarkState by lazy {
         androidx.compose.runtime.mutableStateOf(isSystemNightMode(this))
     }
 
-    // v2.6.2 fix: uiMode 变化（系统深浅色/夜间模式）时刷新状态。
-    // Manifest 的 configChanges 含 uiMode，Activity 不重建，必须手动通知 Compose。
+    // v2.6.2 fix: uiMode Cambiar (sistema de color oscuro y claro)/Modo nocturno) estado de actualización.
+    // Manifest Los configChanges contienen uiMode,Activity Sin reconstruir, Compose debe ser notificado manualmente.
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         systemDarkState.value =
@@ -190,27 +190,27 @@ class MainActivity : ComponentActivity() {
             android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 
-    // Activity 启动初始化(系统栏/安全模式/通知权限/字体/主题等)为屏幕级固有聚合结构,
-    // 行数恰超 detekt LongMethod 阈值 1,拆分反损可读性
+    // Activity Iniciar inicialización(barra del sistema/modo seguro/Permisos de notificación/fuente/Temas, etc.)es una estructura de agregación inherente a nivel de pantalla,
+    // El número de filas supera ligeramente el umbral de detekt LongMethod 1,La inversión dividida daña la legibilidad
     @Suppress("LongMethod")
     override fun onCreate(savedInstanceState: Bundle?) {
-        // v1.7: 必须在 super.onCreate 之前安装系统 SplashScreen
+        // v1.7: El sistema debe instalarse antes de super.onCreate SplashScreen
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 全局关闭系统自动填充：聊天输入岛会被 autofill 误判为可填充字段，
-        // 于是系统在输入区上方画一排填充建议，并弹出气泡遮挡消息正文。
-        // 本应用没有任何账号/密码/地址表单语义，关闭后无功能损失。
+        // Desactivar el autocompletar del sistema globalmente: las islas de entrada de chat se considerarán erróneamente campos que se pueden completar mediante el autocompletar.
+        // Entonces, el sistema dibuja una fila de sugerencias de relleno encima del área de entrada y muestra burbujas para cubrir el texto del mensaje.
+        // Esta aplicación no tiene ninguna cuenta./Contraseña/Semántica del formulario de dirección, sin pérdida de funcionalidad después del cierre.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             window.decorView.importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         }
 
-        // v1.7: 控制 SplashScreen 显示时长,应用初始化完成后保持 1.2s 再退出
+        // v1.7: Controlar la duración de la visualización de SplashScreen,Una vez completada la inicialización de la aplicación, espere 1,2 segundos y luego salga.
         var splashReady by mutableStateOf(false)
         splashScreen.setKeepOnScreenCondition { !splashReady }
 
-        // 申请 POST_NOTIFICATIONS 运行时权限(Android 13+ 必需,否则通知不显示)
+        // Solicitar permiso de tiempo de ejecución POST_NOTIFICATIONS(Android 13+ requerido,De lo contrario no se mostrará la notificación.)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED
@@ -218,7 +218,7 @@ class MainActivity : ComponentActivity() {
                 notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        // Phase 8.10: 处理 Safe Mode(上次崩溃)→ 跳过完整启动,仅显示崩溃提示
+        // Phase 8.10: Proceso Safe Mode(último accidente)→ Saltar arranque completo,Mostrar sólo mensajes de fallo
         if (MuseCrashHandler.checkSafeMode(applicationContext)) {
             Logger.w("MainActivity", "Safe mode active — last crash detected")
             splashReady = true
@@ -229,10 +229,10 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        // Phase 8.10: 处理启动 Intent(分享/Deep Link/桌面小部件)
-        // Phase 12: 桌面小部件快捷启动优先于分享/Deep Link 解析
-        // M4: shareIntentHandler.handle() 已改为 suspend,在协程中异步处理,避免阻塞主线程
-        // Launcher 快捷方式优先级最高:与 widget/share 不冲突(基于 action,而非 extra/data)
+        // Phase 8.10: inicio de procesamiento Intent(Compartir/Deep Link/widgets de escritorio)
+        // Phase 12: El inicio rápido del widget de escritorio tiene prioridad sobre el uso compartido/Deep Link analizar
+        // M4: shareIntentHandler.handle() ha sido cambiado a suspend,Procesamiento asincrónico en corrutinas,Evite bloquear el hilo principal.
+        // Launcher Los atajos tienen la máxima prioridad:No entra en conflicto con el widget/compartir(Basado en action,en vez de extra/data)
         val shortcutResult = shortcutActionResult(intent)
         val widgetResult = widgetActionResult(intent)
         when {
@@ -242,11 +242,11 @@ class MainActivity : ComponentActivity() {
                 pendingShareResult = shareIntentHandler.handle(intent)
             }
         }
-        // v1.91-hotfix: 防御性检查 — Koin 可能因进程未重启(例如 SafeModeScreen 清除 flag
-        // 后仅 finishAffinity 未杀进程,或 startKoin 本身失败)而未初始化。
-        // 此时 by inject() 会触发 SynchronizedLazyImpl.getValue → GlobalContext.get()
-        // → 崩溃 "KoinApplication has not been started"。
-        // 检测到 Koin 未启动时走 Safe Mode 路径,避免崩溃并引导用户恢复。
+        // v1.91-hotfix: control defensivo — Koin Puede ser porque el proceso no se ha reiniciado(Por ejemplo, SafeModeScreen borrado flag
+        // Después de terminar, Affinity no mata el proceso.,o el propio startKoin falla)y no inicializado.
+        // En este momento by inject() activará SynchronizedLazyImpl.getValue → GlobalContext.get()
+        // → colapsar "KoinApplication has not been started".
+        // Tome la ruta del Modo seguro cuando se detecte que Koin no está iniciado,Evite fallas y guíe a los usuarios hacia la recuperación.
         if (GlobalContext.getOrNull() == null) {
             Logger.e("MainActivity", "Koin not started — showing SafeModeScreen (process not restarted or startKoin failed)")
             splashReady = true
@@ -258,9 +258,9 @@ class MainActivity : ComponentActivity() {
             return
         }
         val settings: SettingsRepository by inject()
-        // v1.102: locale 应用由 attachBaseContext + wrapWithLanguage 处理(覆盖所有 Android 版本),
-        // 不再在 onCreate 里调用 applyLanguage(setApplicationLocales 在 ComponentActivity 上
-        // Android 12 及以下 backport 不生效)。
+        // v1.102: locale La aplicación es manejada por adjuntoBaseContext + wrapWithLanguage(Cubre todas las versiones de Android),
+        // Ya no se llama a onCreate applyLanguage(setApplicationLocales en ComponentActivity
+        // Android 12 y los siguientes backports no tienen efecto).
 
         setContent {
             val startupReady by (application as MuseApp).startupReady.collectAsStateWithLifecycle()
@@ -274,13 +274,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } else {
-                // I4: 语言热切换 — 收集语言流,经 RuntimeLocaleProvider 覆盖 Compose 资源,
-                // 切换语言仅重组 UI,不重建 Activity(冷启动初始语言仍由 attachBaseContext 保证)。
+                // I4: Cambio de idioma en caliente — Recopilar flujos de idiomas,Anulación de recursos de Compose a través de RuntimeLocaleProvider,
+                // Cambiar idioma solo reestructurar UI,no reconstruir Activity(El lenguaje inicial de arranque en frío todavía está garantizado por adjuntoBaseContext).
                 val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = "system")
                 RuntimeLocaleProvider(lang = language) {
-                    // v2.6.2 fix（用户反馈）: 系统深浅色 —— 不读 LocalConfiguration
-                    // （会被 RuntimeLocaleProvider 的语言快照覆盖），改用 Activity 层
-                    // 监听 onConfigurationChanged 的 systemDarkState。
+                    // v2.6.2 fix(comentarios de los usuarios): Sistema de colores claros y oscuros. —— no leer LocalConfiguration
+                    // (Será sobrescrito por la instantánea del idioma de RuntimeLocaleProvider), use la capa Actividad en su lugar
+                    // Escuche systemDarkState de onConfigurationChanged.
                     val systemDark = systemDarkState.value
                     val themeMode by settings.themeModeFlow.collectAsStateWithLifecycle(initialValue = "system")
                     val darkTheme = when (themeMode) {
@@ -288,24 +288,24 @@ class MainActivity : ComponentActivity() {
                         "dark" -> true
                         else -> systemDark
                     }
-                    // 修复:initialValue 改为 "mono" 与 SettingsRepository.themeIdFlow 默认值一致,
-                    // 避免冷启动时首帧渲染 warm_paper 主题、随后切换到 mono 造成主题闪烁。
+                    // Reparación:initialValue Cambiar a "mono" Consistente con el valor predeterminado de SettingsRepository.themeIdFlow,
+                    // Evite renderizar el tema Warm_paper en el primer fotograma durante el inicio en frío y luego cambiar a mono, lo que provocará que el tema parpadee.
                     val themeId by settings.themeIdFlow.collectAsStateWithLifecycle(initialValue = AppearanceSettingsStore.DEFAULT_THEME_ID)
-                    // v1.0.92: 深色模式独立主题已下线 — 固定空串(跟随亮色主题的暗色版),不再读存量值
-                    // v1.65: 动态取色开关(Android 12+,代码早已就绪,此前未传参导致永远不可用)
+                    // v1.0.92: El tema independiente del modo oscuro ha estado desconectado — Cadena vacía fija(Sigue la versión oscura del tema claro.),No más lectura de valores de acciones
+                    // v1.65: Interruptor de selección de color dinámico(Android 12+,El código ya está listo.,Los parámetros no se han pasado antes y nunca estarán disponibles.)
                     val dynamicColor by settings.dynamicColorFlow.collectAsStateWithLifecycle(initialValue = false)
                     val fontSizeScale by settings.fontSizeScaleFlow.collectAsStateWithLifecycle(initialValue = "medium")
-                    // v1.97 gap7: 用户自定义主题列表 — 基于种子色生成 ColorScheme,
-                    // 在 MuseTheme 中作为动态色与预设主题之间的回退层
+                    // v1.97 gap7: Lista de temas definidos por el usuario — Generar según el color de la semilla. ColorScheme,
+                    // Se utiliza como capa alternativa entre colores dinámicos y temas predeterminados en MuseTheme.
                     val customThemes by settings.customThemesFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-                    // H5: 高对比主题开关(增强前景/背景对比,面向弱视用户)
+                    // H5: Cambio de tema de alto contraste(Mejorar las perspectivas/contraste de fondo,Para usuarios con baja visión)
                     val highContrast by settings.highContrastFlow.collectAsStateWithLifecycle(initialValue = false)
-                    // E2: 自定义正文字体 — 路径→FontFamily 加载在 remember 中缓存(同步磁盘 IO 避免重复)
+                    // E2: Fuente de texto personalizada — camino→FontFamily Cargar caché en recordar(Sincronice el disco IO para evitar duplicaciones)
                     val customFontPath by settings.customFontPathFlow.collectAsStateWithLifecycle(initialValue = null)
                     val bodyFontFamily by remember(customFontPath) { mutableStateOf(loadCustomFontFamily(customFontPath)) }
-                    // I4: 语言热切换后 Compose 资源已由 RuntimeLocaleProvider 覆盖,
-                    // 不再需要 recreate;冷启动初始语言仍由 attachBaseContext 保证。
-                    // v2.5.0: 液态玻璃配置全局快照 —— 全应用悬浮表面(顶栏岛/输入岛/按钮/气泡)消费。
+                    // I4: Los recursos de redacción han sido cubiertos por RuntimeLocaleProvider después del cambio de idioma en caliente,
+                    // ya no es necesario recreate;La inicialización del arranque en frío todavía está garantizada por adjuntoBaseContext.
+                    // v2.5.0: Instantánea global de la configuración del vidrio líquido —— Todas las superficies suspendidas de aplicación.(isla dinglan/entra a la isla/botón/Burbujas)consumo.
                     val glassModeRaw by settings.liquidGlassModeFlow.collectAsStateWithLifecycle(initialValue = "off")
                     val glassStrength by settings.liquidGlassStrengthFlow.collectAsStateWithLifecycle(initialValue = 55)
                     val glassConfig = io.zer0.muse.ui.theme.LiquidGlassConfig(
@@ -313,9 +313,9 @@ class MainActivity : ComponentActivity() {
                         strength = glassStrength / 100f,
                         mode = io.zer0.muse.ui.theme.LiquidGlassConfig.modeFrom(glassModeRaw),
                     )
-                    // v2.6: 玻璃背景源下放到各页面内部(见 ChatScreen 只包背景图/渐变),
-                    // 全局只下发配置。若全局层包住整个 NavGraph,会与内部玻璃组件形成
-                    // 渲染递归 → RenderThread 栈溢出(SIGSEGV)。
+                    // v2.6: La fuente de fondo de cristal se coloca dentro de cada página.(Ver ChatScreen solo incluye imágenes de fondo/gradiente),
+                    // Sólo la configuración se entrega globalmente. Si la capa global cubre todo NavGraph,se formará con componentes internos de vidrio
+                    // recursión de renderizado → RenderThread desbordamiento de pila(SIGSEGV).
                     androidx.compose.runtime.CompositionLocalProvider(
                         io.zer0.muse.ui.theme.LocalLiquidGlass provides glassConfig,
                         io.zer0.muse.ui.theme.LocalLayerBackdrop provides null,
@@ -331,12 +331,12 @@ class MainActivity : ComponentActivity() {
                             bodyFontFamily = bodyFontFamily,
                             highContrast = highContrast,
                         ) {
-                            // v1.56: Compose 渲染异常由 MuseCrashHandler(Thread.UncaughtExceptionHandler)兜底,
-                            // logComposeException 方法已就绪,待未来 Compose 版本提供 RuntimeExceptionHandler API 后接入。
+                            // v1.56: Compose Excepción de representación causada por MuseCrashHandler(Thread.UncaughtExceptionHandler)Ten todo en cuenta,
+                            // logComposeException El método está listo,Se accederá a él después de que se proporcione la API RuntimeExceptionHandler en futuras versiones de Compose.
                             Box(modifier = Modifier.fillMaxSize()) {
-                                // v2.6: 玻璃背景层已下放到各页面内部(如 ChatScreen 只包背景图/渐变),
-                                // 全局层不再注册 backdrop。
-                                // 原因:若全局层包住整个 NavGraph,会与内部玻璃组件形成渲染递归 → 栈溢出。
+                                // v2.6: La capa de fondo de cristal se ha movido dentro de cada página.(Por ejemplo, ChatScreen solo incluye imágenes de fondo./gradiente),
+                                // La capa global ya no se registra como fondo.
+                                // Razón:Si la capa global cubre todo NavGraph,Creará recursividad en el renderizado con componentes internos de vidrio. → Desbordamiento de pila.
                                 MuseNavGraph(
                                     pendingShareResult = pendingShareResult,
                                     onPendingIntentConsumed = {
@@ -347,20 +347,20 @@ class MainActivity : ComponentActivity() {
                                 MuseToastHost()
                             }
                         }
-                    } // CompositionLocalProvider(液态玻璃开关)
+                    } // CompositionLocalProvider(interruptor de vidrio líquido)
                 } // RuntimeLocaleProvider
             }
         }
     }
 
-    /** Phase 8.10: 处理 onNewIntent(应用已在后台,新分享/Deep Link 到达)。 */
+    /** Phase 8.10: Proceso onNewIntent(La aplicación está en segundo plano.,nueva acción/Deep Link llegar). */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // P2-10（审计报告）: 旧实现未调 setIntent()，导致 getIntent() 永远返回启动时的旧 intent。
-        // 深链进入页面后「点添加 Provider 无响应」就是这个原因 —— 后续读 intent 拿到的是旧数据。
+        // P2-10(informe de auditoría): La implementación anterior no se ha ajustado. setIntent(), llevando a getIntent() Siempre devuelve la intención anterior al inicio.
+        // Esta es la razón por la cual "no hay respuesta al hacer clic en Agregar proveedor" después de ingresar a la página a través de un enlace profundo. —— Los intentos de lectura posteriores obtienen datos antiguos.
         setIntent(intent)
-        // M5: shareIntentHandler.handle() 已改为 suspend,在协程中异步处理,避免阻塞主线程
-        // Launcher 快捷方式优先级最高:与 widget/share 不冲突
+        // M5: shareIntentHandler.handle() ha sido cambiado a suspend,Procesamiento asincrónico en corrutinas,Evite bloquear el hilo principal.
+        // Launcher Los atajos tienen la máxima prioridad:No entra en conflicto con el widget/compartir
         val shortcutResult = shortcutActionResult(intent)
         val widgetResult = widgetActionResult(intent)
         when {
@@ -373,11 +373,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Launcher 长按快捷方式:根据 Intent.action 判断是否来自 shortcuts.xml。
+     * Launcher Atajo de pulsación larga:Determine si proviene de shorts.xml según Intent.action.
      *
-     * shortcuts.xml 中的静态快捷方式点击后,系统会用 intent 中声明的 action 启动 MainActivity。
-     * 这里把 action 映射到 [ShareIntentHandler.ShareResult],复用既有 pendingShareResult 流水线,
-     * 由 MuseNavGraph 中的 LaunchedEffect 消费并导航到对应页面。
+     * shortcuts.xml Después de hacer clic en el acceso directo estático en,El sistema iniciará MainActivity con la acción declarada en la intención.
+     * Aquí la acción se asigna a [ShareIntentHandler.ShareResult],Reutilizar la canalización pendienteShareResult existente,
+     * Consumido por LaunchedEffect en MuseNavGraph y navegado a la página correspondiente.
      */
     private fun shortcutActionResult(intent: Intent?): ShareIntentHandler.ShareResult? {
         val action = intent?.action ?: return null
@@ -386,39 +386,39 @@ class MainActivity : ComponentActivity() {
             ShareIntentHandler.ACTION_TRANSLATE -> ShareIntentHandler.ShareResult.OpenTranslate
             ShareIntentHandler.ACTION_VOICE_INPUT -> ShareIntentHandler.ShareResult.StartVoiceInput
             ShareIntentHandler.ACTION_SETTINGS -> ShareIntentHandler.ShareResult.OpenSettings
-            // v1.0.18: 快速记录快捷方式
+            // v1.0.18: Acceso directo a grabación rápida
             ShareIntentHandler.ACTION_QUICK_NOTES -> ShareIntentHandler.ShareResult.OpenQuickNotes
             else -> null
         }
     }
 
-    /** Phase 12: 桌面小部件快捷启动 — 检查 widget_action extra。 */
+    /** Phase 12: Inicio rápido del widget de escritorio — Consulte widget_action adicional. */
     private fun widgetActionResult(intent: Intent?): ShareIntentHandler.ShareResult? = ShareIntentHandler.parseWidgetAction(intent)
 }
 
 /**
- * v0.22 重写: 主导航 — 顶部 Tab 架构。
+ * v0.22 reescribir: Navegación principal — Estructura de la pestaña superior.
  *
- * 架构变更:
- *  - 移除 Drawer(侧边栏全是 bug)
- *  - 首页改为 [HomeScreen](startDestination = HOME)
- *  - HomeScreen 顶部胶囊 Tab: 会话 / Agent
- *  - 左上角头像 → 设置中心
- *  - 设置/助手/记忆等通过路由跳转(slide-in 动画,滑动式 push 过渡)
+ * Cambios de arquitectura:
+ *  - Quitar Drawer(La barra lateral es todo bug)
+ *  - La página de inicio cambió a [HomeScreen](startDestination = HOME)
+ *  - HomeScreen Pestaña cápsula superior: Sesión / Agent
+ *  - avatar de la esquina superior izquierda → Centro de configuración
+ *  - ajustes/asistente/Memoria, etc. salta a través del enrutamiento(slide-in animación,transición de empuje deslizante)
  *
- * 路由列表:
- *  - HOME (首页): 顶部 Tab 导航(会话列表 + Agent 聊天)
- *  - CHAT_DETAIL: 聊天详情页(保留,可通过路由直接访问)
- *  - SETTINGS: 设置页
- *  - ASSISTANTS: 助手管理
- *  - MEMORY: 记忆系统
- *  - FAVORITES / LOREBOOKS / QUICK_MESSAGES / PROMPT_INJECTIONS / SKILLS: 子页面
+ * Lista de rutas:
+ *  - HOME (pagina de inicio): Navegación de la pestaña superior(Lista de conversaciones + Chat de agente)
+ *  - CHAT_DETAIL: Página de detalles del chat(Reservar,Acceso directo mediante enrutamiento)
+ *  - SETTINGS: página de configuración
+ *  - ASSISTANTS: Asistente de dirección
+ *  - MEMORY: sistema de memoria
+ *  - FAVORITES / LOREBOOKS / QUICK_MESSAGES / PROMPT_INJECTIONS / SKILLS: subpágina
  */
 @Composable
 private fun MuseNavGraph(
     pendingShareResult: ShareIntentHandler.ShareResult = ShareIntentHandler.ShareResult.None,
     onPendingIntentConsumed: () -> Unit = {},
-    /** v1.7: 由外部传入的 SplashScreen 就绪回调,NavGraph 初始化完成后延迟触发。 */
+    /** v1.7: Devolución de llamada lista para SplashScreen pasada desde afuera,NavGraph Activación retrasada una vez completada la inicialización. */
     onSplashReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -428,9 +428,9 @@ private fun MuseNavGraph(
     val settings: SettingsRepository = koinInject()
     val scope = rememberCoroutineScope()
 
-    // P2-17: SYSTEM(默认)ASR 走系统语音识别 Intent 的 launcher。
-    // 语音快捷方式在 SYSTEM 下此前调用流式 API 路径为空实现,静默无响应;
-    // 这里负责弹出系统识别对话框,并把识别文本回填到输入框。
+    // P2-17: SYSTEM(Predeterminado)ASR Utilice el iniciador de la intención de reconocimiento de voz del sistema.
+    // El atajo de voz se implementó previamente en SISTEMA llamando a la ruta API de transmisión que estaba vacía.,Silencioso y sin respuesta;
+    // Esto es responsable de hacer aparecer el cuadro de diálogo de identificación del sistema.,Y rellene el texto reconocido en el cuadro de entrada.
     val systemSpeechLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -440,14 +440,14 @@ private fun MuseNavGraph(
         }
     }
 
-    // v1.7: Provider 列表(原用于判断首次引导,v1.131 引导已移除,保留用于其他用途)
+    // v1.7: Provider lista(Originalmente utilizado para determinar el primer arranque.,v1.131 El arranque ha sido eliminado.,Reservado para otros usos)
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val chatPreferences by settings.chatPreferencesFlow.collectAsStateWithLifecycle(
         initialValue = ChatPreferences(),
     )
 
-    // H2: settings 加载门控 — 等 providersFlow 首次 emit 后再组合 NavHost,
-    // 避免首帧空列表导致 NavHost 用错误状态组合。NavHost 仅在首次组合读取 startDestination
+    // H2: settings puerta de carga — Espere a que los proveedoresFlow emitan por primera vez antes de volver a ensamblarlo. NavHost,
+    // Evite una lista vacía en el primer cuadro que haga que NavHost se combine con el estado incorrecto.NavHost Leer solo en la primera combinación startDestination
     var providersLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         settings.providersFlow.first()
@@ -455,16 +455,16 @@ private fun MuseNavGraph(
     }
     val settingsReady = providersLoaded
 
-    // 开机引导:首次启动时显示引导页,完成后进入主界面
-    // 老用户兼容:已有 Provider 配置的跳过完整引导
+    // bota de arranque:Mostrar página de inicio en el primer inicio,Una vez completado, ingrese a la interfaz principal.
+    // Compatible con usuarios antiguos:Omitir el inicio completo si el proveedor ya está configurado
     val onboardingShown by settings.onboardingShownFlow.collectAsStateWithLifecycle(initialValue = true)
     var onboardingCompleted by rememberSaveable { mutableStateOf(false) }
     val showOnboarding = settingsReady && !onboardingShown && !onboardingCompleted
     val quickCaptureEnabled by settings.quickCaptureEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
     val quickCaptureOverlayEnabled by settings.quickCaptureOverlayEnabledFlow.collectAsStateWithLifecycle(initialValue = false)
 
-    // v1.7: 系统 SplashScreen 由 MainActivity 的 keepOnScreenCondition 控制,
-    // 这里只负责在 NavHost 初始化 1.2s 后把条件放开。
+    // v1.7: System SplashScreen está controlado por keepOnScreenCondition de MainActivity,
+    // Esto solo es responsable de liberar la condición 1.2 segundos después de que se inicializa NavHost.
     var splashDelayDone by remember { mutableStateOf(false) }
     val splashDelayMillis = MuseMotion.duration(1200)
     LaunchedEffect(splashDelayMillis) {
@@ -473,9 +473,9 @@ private fun MuseNavGraph(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // P2-13: 桌面端全局快捷键 — Ctrl+, 打开设置,Esc 退出当前页(popBackStack)
-        // 仅在物理键盘 + Expanded 窗口下生效;Esc 在根页(HOME)上 popBackStack 返回 false,
-        // 不会退出 App,系统返回键语义一致
+        // P2-13: Teclas de acceso directo globales de escritorio — Ctrl+, Abrir configuración,Esc Salir de la página actual(popBackStack)
+        // Solo tiene efecto bajo teclado físico + ventana expandida;Esc en la página raíz(HOME)Regresar en popBackStack false,
+        // no saldrá App,La semántica de la clave de retorno del sistema es consistente
         val desktopShortcutsEnabled = rememberDesktopShortcutsEnabled()
         Box(
             modifier = Modifier
@@ -484,12 +484,12 @@ private fun MuseNavGraph(
                     if (!desktopShortcutsEnabled) return@onKeyEvent false
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                     when {
-                        // Ctrl+,: 打开设置(对齐 VS Code / Slack 等桌面应用习惯)
+                        // Ctrl+,: Abrir configuración(Alinear VS Code/Slack y otros hábitos de aplicaciones de escritorio)
                         event.key == DesktopShortcuts.OPEN_SETTINGS && event.isCtrlPressed -> {
                             navController.navigate(SettingsRoute)
                             true
                         }
-                        // Esc: 退出当前页(等价于系统返回键)
+                        // Esc: Salir de la página actual(Equivalente a la clave de retorno del sistema)
                         event.key == DesktopShortcuts.CLOSE -> {
                             navController.popBackStack()
                             true
@@ -498,7 +498,7 @@ private fun MuseNavGraph(
                     }
                 },
         ) {
-            // v1.x: 应用锁功能已移除(产品决策),不再订阅 appPin/biometric 设置
+            // v1.x: Se eliminó la función de bloqueo de aplicaciones.(decisiones de producto),Ya no te suscribes a la aplicaciónPin/configuración biométrica
             LaunchedEffect(splashDelayDone, settingsReady) {
                 if (splashDelayDone && settingsReady) {
                     onSplashReady()
@@ -523,24 +523,24 @@ private fun MuseNavGraph(
                 }
             }
 
-            // v1.27: 不再依赖登录态重建 NavHost,直接使用固定导航图
-            // H2: settings 加载完成后再组合 NavHost,确保 startDestination 用真实 providers/onboardingShown
+            // v1.27: Ya no depende de la reconstrucción del estado de inicio de sesión NavHost,Utilice el mapa de navegación fijo directamente
+            // H2: settings Combinar después de completar la carga NavHost,Asegúrese de que startDestination utilice real providers/onboardingShown
             if (settingsReady) {
-                // 开机引导页:首次启动且未完成引导时,全屏覆盖显示引导
+                // Página de inicio:Cuando se inicia por primera vez y el arranque no se ha completado,Guía de visualización de cobertura de pantalla completa
                 if (showOnboarding) {
                     OnboardingScreen(
                         onComplete = { onboardingCompleted = true },
                     )
                 } else {
-                    // Phase 8.10: 消费分享/Deep Link 结果
+                    // Phase 8.10: compartir el consumo/Deep Link resultado
                     LaunchedEffect(pendingShareResult) {
                         val result = pendingShareResult
 
-                        // v2.6.7: 语音输入的统一入口 —— Launcher 快捷方式与桌面小组件
-                        // 「快速语音输入」共用这一条，避免两处各写一份、行为漂移。
+                        // v2.6.7: Portal unificado para entrada de voz —— Launcher Accesos directos y widgets de escritorio
+                        // "Quick Voice Input" comparte este artículo para evitar escribir una copia en cada lugar y derivar comportamientos.
                         fun launchVoiceInput() {
-                            // P2-17: SYSTEM(默认)/文件模式无流式 ASR 实现,直接调用会静默无响应;
-                            // 改走系统语音识别 Intent(SpeechInput),识别文本回填输入框。
+                            // P2-17: SYSTEM(Predeterminado)/Modo de archivo sin implementación de ASR de transmisión,Las llamadas directas serán silenciosas y no responderán.;
+                            // Cambiar al sistema de reconocimiento de voz Intent(SpeechInput),Reconocer el cuadro de entrada de relleno de texto.
                             if (sharedViewModel.shouldUseApiRecording()) {
                                 sharedViewModel.startStreamingAsr()
                             } else if (io.zer0.muse.ui.speech.SpeechInput.isAvailable(context)) {
@@ -550,7 +550,7 @@ private fun MuseNavGraph(
                                     ),
                                 )
                             } else {
-                                // 无可用语音识别器时给明确提示,不再静默
+                                // Dar un mensaje claro cuando no haya ningún reconocedor de voz disponible,No más silencio
                                 io.zer0.muse.ui.common.feedback.MuseToast.show(
                                     context.getString(R.string.asr_system_unavailable),
                                 )
@@ -572,22 +572,22 @@ private fun MuseNavGraph(
                                 sharedViewModel.openSessionFromNotification(result.sessionId)
                             }
                             is ShareIntentHandler.ShareResult.NewSession -> {
-                                // 小组件带了助手就用它,否则走设置里的默认助手。
+                                // Si el widget tiene un asistente, úsalo,De lo contrario, utilice el asistente predeterminado en la configuración.
                                 sharedViewModel.createNewSession(assistantIdOverride = result.assistantId)
                                 navController.navigate(HomeRoute) {
                                     popUpTo(HomeRoute) { inclusive = false }
                                     launchSingleTop = true
                                 }
-                                // v2.6.7: 「快速语音输入」小组件新建会话后立即开麦。
-                                // 此前它和「新对话」按钮发的是同一个 action，点了只开会话、
-                                // 根本不开语音 —— 名不副实。
+                                // v2.6.7: El widget "Entrada rápida de voz" abre el micrófono inmediatamente después de crear una nueva sesión.
+                                // Anteriormente, enviaba la misma acción que el botón "Nueva conversación". Al hacer clic en él solo se abrió la conversación.
+                                // No actives la voz en absoluto —— No es digno de su nombre.
                                 if (result.startVoice) launchVoiceInput()
                             }
                             is ShareIntentHandler.ShareResult.OpenAssistants -> {
                                 navController.navigate(AssistantsRoute)
                             }
                             is ShareIntentHandler.ShareResult.ImportAssistantCard -> {
-                                // v2.x: 角色包导入 — URI 交给助手页的导入预览对话框消费
+                                // v2.x: Importación del paquete de personajes — URI Déjelo en el cuadro de diálogo de vista previa de importación de la página del asistente para su consumo.
                                 AssistantCardImportBridge.offer(result.uri)
                                 navController.navigate(AssistantsRoute)
                             }
@@ -644,11 +644,11 @@ private fun MuseNavGraph(
                             is ShareIntentHandler.ShareResult.OpenKnowledgeBases -> {
                                 navController.navigate(KnowledgeBaseManageRoute)
                             }
-                            // Launcher 快捷方式:打开翻译页
+                            // Launcher atajo:Abrir página de traducción
                             is ShareIntentHandler.ShareResult.OpenTranslate -> {
                                 navController.navigate(TranslateRoute)
                             }
-                            // Launcher 快捷方式:进入主页并触发语音输入
+                            // Launcher atajo:Vaya a la página de inicio y active la entrada de voz
                             is ShareIntentHandler.ShareResult.StartVoiceInput -> {
                                 navController.navigate(HomeRoute) {
                                     popUpTo(HomeRoute) { inclusive = false }
@@ -656,24 +656,24 @@ private fun MuseNavGraph(
                                 }
                                 launchVoiceInput()
                             }
-                            // v1.0.18: Launcher 快捷方式:打开快速记录页
+                            // v1.0.18: Launcher atajo:Abra la página de registro rápido
                             is ShareIntentHandler.ShareResult.OpenQuickNotes -> {
                                 navController.navigate(QuickNotesRoute)
                             }
                             ShareIntentHandler.ShareResult.None -> Unit
                         }
-                        // 一次性消费通知/Deep Link 事件，确保连续点击同类通知也能重新导航。
+                        // Notificación única de consumo/Deep Link evento para garantizar que los clics continuos en notificaciones similares también puedan redirigirse.
                         if (result != ShareIntentHandler.ShareResult.None) {
                             onPendingIntentConsumed()
                         }
                     }
 
-                    // v1.131: 首次启动引导已移除,直接进入主页
+                    // v1.131: Se ha eliminado el primer arranque.,Ir directamente a la página de inicio
                     val startDestination = HomeRoute
 
-                    // 返回交给 NavHost 自带的 Navigation Compose 回调：
-                    // 子页面由导航栈回退，根页面没有可回退栈时交给 Activity 默认行为退出。
-                    // 页面级 BackHandler、Dialog 和 Popup 仍按 Compose 的内层优先级先消费。
+                    // Regrese a la devolución de llamada de Navigation Compose que viene con NavHost:
+                    // La pila de navegación revierte la subpágina. Cuando la página raíz no tiene una pila de reversión, se entrega a la Actividad para que salga de forma predeterminada.
+                    // BackHandler a nivel de página,Dialog y Popup todavía se consumen primero según la prioridad interna de Compose.
 
                     NavHost(
                         navController = navController,
@@ -681,14 +681,14 @@ private fun MuseNavGraph(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background),
-                        // 默认过渡与各子 NavGraph 复用同一套 helper，避免根图和二级图的
-                        // 时长/位移/淡入淡出语义漂移。
+                        // La transición predeterminada reutiliza el mismo conjunto de ayudas con cada sub-NavGraph para evitar la confusión entre el gráfico raíz y el gráfico secundario.
+                        // duración/Desplazamiento/Desvanecerse la deriva semántica.
                         enterTransition = { MuseTransitions.horizontalPushEnter() },
                         exitTransition = { MuseTransitions.horizontalPushExit() },
                         popEnterTransition = { MuseTransitions.horizontalPopEnter() },
                         popExitTransition = { MuseTransitions.horizontalPushPopExit() },
                     ) {
-                        // P0-3: NavGraph 子图抽取 — 66 个 composable 拆分到 4 个域文件
+                        // P0-3: NavGraph Extracción de subgrafos — 66 Una división componible en 4 archivos de dominio
                         chatNavGraph(
                             navController = navController,
                             sharedViewModel = sharedViewModel,
@@ -706,11 +706,11 @@ private fun MuseNavGraph(
                             sharedViewModel = sharedViewModel,
                         )
                     }
-                } // 关闭 else(showOnboarding) 分支
+                } // cerrar else(showOnboarding) rama
             }
 
-            // 高频入口:在 Muse 内任何页面从右侧边缘左滑,唤起快速记录侧滑面板。
-            // 不申请悬浮窗权限,也不覆盖引导页,避免与系统手势冲突。
+            // Entrada de alta frecuencia:Desliza el dedo hacia la izquierda desde el borde derecho de cualquier página en Muse,Evoca un registro rápido del panel deslizante.
+            // No solicitar permiso de ventana flotante,Tampoco sobrescribe la página de inicio.,Evite conflictos con los gestos del sistema.
             QuickCaptureEdgeOverlay(
                 enabled = settingsReady &&
                     !showOnboarding &&
@@ -718,19 +718,19 @@ private fun MuseNavGraph(
                     !quickCaptureOverlayEnabled,
                 viewModel = quickNotesViewModel,
             )
-        } // 关闭 P2-13 内层 onKeyEvent Box
+        } // Cerrar la capa interior P2-13 onKeyEvent Box
     }
 }
 
 /**
- * v2.6.2: 读取当前系统是否处于夜间模式。
+ * v2.6.2: Lea si el sistema actual está en modo nocturno.
  *
- * 用 Application 的 resources（系统配置），不依赖 Activity 或 Compose 的
- * LocalConfiguration（后者会被语言热切换的覆盖层替换）。
+ * Utilice los recursos de la aplicación (configuración del sistema), no confíe en Actividad o Redactar
+ * LocalConfiguration(Este último será reemplazado por una superposición para el cambio de idioma).
  */
 private fun isSystemNightMode(context: android.content.Context): Boolean {
-    // v2.6.2 hotfix: 防御 applicationContext 在 Activity 极早期不可用的情况，
-    // 读不到就当作浅色，绝不抛异常（否则启动即崩且看不到崩溃页）。
+    // v2.6.2 hotfix: Para evitar que applicationContext no esté disponible en la etapa inicial de la Actividad,
+    // Si no se puede leer, trátelo como un color claro y nunca genere una excepción (de lo contrario, fallará al iniciar y no se podrá ver la página de falla).
     val appContext = runCatching { context.applicationContext }.getOrNull() ?: context
     val uiMode = runCatching { appContext.resources.configuration.uiMode }.getOrNull()
         ?: return false
@@ -739,21 +739,21 @@ private fun isSystemNightMode(context: android.content.Context): Boolean {
 }
 
 /**
- * I4: 运行时语言热切换 — 覆盖 Compose 的 [LocalContext]/[LocalConfiguration],
- * 语言变化时仅重组 UI,不重建 Activity。
+ * I4: Cambio en caliente del idioma en tiempo de ejecución — Anular Compose [LocalContext]/[LocalConfiguration],
+ * Reorganizar solo cuando el idioma cambie UI,No reconstruir la actividad.
  *
- * 以 Application 级系统配置为基准(attachBaseContext 只包 Activity 基资源,
- * applicationContext 始终是系统配置),因此无论从哪种语言切回 "system" 都能正确恢复。
- * stringResource 在 Compose 1.7 直接读 LocalContext.current.resources,故覆盖 LocalContext
- * 为新 locale 的 ContextWrapper(applicationContext 透传,系统服务/launcher 均不受影响;
- * 依赖 Activity 身份的 as? Activity 调用点数量有限且均有兜底)。
- * ROM 兜底: 与 wrapWithLanguage 一致,额外 updateConfiguration 强制刷新 locale。
+ * Basado en la configuración del sistema a nivel de aplicación(attachBaseContext Solo incluye recursos base de actividad,
+ * applicationContext Siempre configuración del sistema),Así que no importa a qué idioma vuelvas a cambiar "system" se puede restaurar correctamente.
+ * stringResource Leer directamente en Compose 1.7 LocalContext.current.resources,Por lo tanto cubrir LocalContext
+ * para el nuevo local ContextWrapper(applicationContext paso a través,Servicios del sistema/launcher no están afectados;
+ * Dependiente de la identidad de la actividad as? Activity El número de puntos de llamada es limitado y todos están cubiertos.).
+ * ROM Ten todo en cuenta: Consistente con wrapWithLanguage,La configuración de actualización adicional fuerza la actualización local.
  */
 @Composable
 private fun RuntimeLocaleProvider(lang: String, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    // 覆盖 LocalContext 时显式透传 Activity Result 宿主,否则聊天页的
-    // rememberLauncherForActivityResult 在进入 ChatScreen 时会直接崩溃。
+    // Pasar explícitamente el host del resultado de la actividad al anular LocalContext,De lo contrario, la página de chat
+    // rememberLauncherForActivityResult Se bloquea directamente al ingresar a ChatScreen.
     val activityResultRegistryOwner = checkNotNull(LocalActivityResultRegistryOwner.current) {
         "MainActivity requires an ActivityResultRegistryOwner"
     }
@@ -772,12 +772,12 @@ private fun RuntimeLocaleProvider(lang: String, content: @Composable () -> Unit)
         try {
             wrapped.resources.updateConfiguration(config, wrapped.resources.displayMetrics)
         } catch (e: Exception) {
-            // updateConfiguration 在部分新版本被标记 deprecated 但仍可用,容错忽略
+            // updateConfiguration Algunas versiones nuevas están marcadas como obsoletas pero aún están disponibles,tolerancia a fallos ignorada
         }
-        // v2.7: 包一层，使这个非 Activity context 启动 Activity 时自动补 NEW_TASK。
-        //   否则 Compose 文本选择菜单的「处理文字」项（以及其它从 LocalContext 启动
-        //   Activity 的调用点）会抛 AndroidRuntimeException 崩溃（用户实测）。
-        //   语言行为不变（base 仍带目标 locale）。
+        // v2.7: Envuelva una capa para que NEW_TASK se agregue automáticamente cuando este contexto que no es de Actividad inicie la Actividad.
+        //   De lo contrario, el elemento "Procesar texto" del menú de selección Redactar texto (y otros iniciados desde LocalContext
+        //   Activity El punto de llamada) generará AndroidRuntimeException y fallará (prueba real del usuario).
+        //   El comportamiento del lenguaje permanece sin cambios (base Aún con la configuración regional de destino).
         io.zer0.muse.util.LocaleContextWrapper.wrap(wrapped)
     }
     CompositionLocalProvider(

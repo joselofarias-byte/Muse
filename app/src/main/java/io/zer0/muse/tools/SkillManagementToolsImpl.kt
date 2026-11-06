@@ -15,12 +15,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * P1-3b 拆域：Skill 管理工具实现（install/list/uninstall/disable/enable/update）。
- * 由 SkillExecutor 委托调用。
+ * P1-3b Deslocalización:Skill Implementación de herramientas de gestión (install/list/uninstall/disable/enable/update).
+ * Llamado por el delegado de SkillExecutor.
  *
- * 另负责提示词技能(prompt skill)的执行入口 [execPromptSkill]：
- * 该类型不跑 Kotlin 实现，只把 `implementationKotlin = "prompt:<文本>"` 中编码的
- * 用户指令原样交回模型（见 [SkillImporter.PROMPT_PREFIX]）。
+ * También responsable de las habilidades verbales rápidas.(prompt skill)entrada de ejecución [execPromptSkill]:
+ * Este tipo no ejecuta la implementación de Kotlin, solo `implementationKotlin = "prompt:<texto>"` codificado
+ * Las instrucciones de uso devuelven el modelo sin cambios (ver [SkillImporter.PROMPT_PREFIX]).
  */
 class SkillManagementToolsImpl(
     private val context: Context,
@@ -68,22 +68,22 @@ class SkillManagementToolsImpl(
         if (filtered.isEmpty()) {
             return context.getString(R.string.skill_no_category_skill, category)
         }
-        val header = "共 ${all.size} 个 skill(内置 $builtInCount 个,用户安装 $userCount 个)"
+        val header = "total ${all.size} un skill(Incorporado $builtInCount un,Instalación de usuario $userCount un)"
         val body =
             filtered.joinToString("\n") { s ->
-                val source = if (s.id in builtInIds) "[内置]" else "[用户]"
+                val source = if (s.id in builtInIds) "[Incorporado]" else "[Usuario]"
                 "${s.id} | ${s.name} | ${s.category} | ${if (s.enabled) "enabled" else "disabled"} $source"
             }
         return "$header\n$body"
     }
 
     /**
-     * uninstall_skill — 卸载用户安装的 skill。
+     * uninstall_skill — Desinstale la habilidad instalada por el usuario.
      *
-     * 归属校验(与 [updateSkill]/[enableSkill] 对齐):
-     *  - [SkillImporter.RESERVED_IDS] 内置保留 id 一律拒绝 —— 内置技能只能禁用,不能卸载;
-     *  - `implementationKotlin` 以 `plugin:` 开头或 `category == "plugin"` 的插件技能拒绝 ——
-     *    插件技能随插件卸载,单独删除会造成"插件启用但工具消失"。
+     * cheque de pertenencia(con [updateSkill]/[enableSkill] Alineación):
+     *  - [SkillImporter.RESERVED_IDS] Los ID reservados integrados siempre se rechazan —— Las habilidades integradas solo se pueden desactivar,No se puede desinstalar;
+     *  - `implementationKotlin` a `plugin:` comienzo o `category == "plugin"` Habilidades de complemento rechazadas ——
+     *    Las habilidades del complemento se desinstalan con el complemento,Eliminarlo solo causará"Complemento habilitado pero la herramienta desaparece".
      */
     suspend fun uninstallSkill(args: Map<String, String>): String {
         val repo = skillRepository ?: return context.getString(R.string.skill_uninstall_not_configured)
@@ -107,11 +107,11 @@ class SkillManagementToolsImpl(
     }
 
     /**
-     * disable_skill — 禁用用户安装的 skill。
+     * disable_skill — Deshabilite las habilidades instaladas por el usuario.
      *
-     * 归属校验:
-     *  - 内置保留技能允许禁用(它们本就是内置在用,用户可手动关闭,见 [enableSkill]);
-     *  - 插件拥有的技能拒绝 —— 插件技能随插件启停,单独禁用会绕过插件管理页的生命周期校验。
+     * cheque de pertenencia:
+     *  - Las habilidades reservadas integradas permiten deshabilitar(Están incorporados,El usuario puede cerrar manualmente,ver [enableSkill]);
+     *  - Se rechazan las habilidades propiedad de los complementos —— Las habilidades del complemento comienzan y terminan con el complemento,Deshabilitarlo por sí solo omitirá la verificación del ciclo de vida de la página de administración de complementos.
      */
     suspend fun disableSkill(args: Map<String, String>): String {
         val repo = skillRepository ?: return context.getString(R.string.skill_disable_not_configured)
@@ -125,13 +125,13 @@ class SkillManagementToolsImpl(
     }
 
     /**
-     * enable_skill — 启用指定 skill(与 [disableSkill] 对称)。
+     * enable_skill — Habilitar especificado skill(con [disableSkill] simetria).
      *
-     * 归属约束:
-     *  - 内置保留技能允许启用(它们本就是内置在用,只存在被用户手动关闭的情况);
-     *  - 插件拥有的技能(implementationKotlin 以 `plugin:` 开头或 category == "plugin")拒绝 ——
-     *    插件技能随插件启停,单独启用会绕过插件管理页的生命周期校验;
-     *  - 其它未知 id 直接返回未找到。
+     * Restricciones de pertenencia:
+     *  - Las habilidades de retención incorporadas permiten habilitar(Están incorporados,Sólo el usuario puede cerrarlo manualmente.);
+     *  - Habilidades que poseen los complementos(implementationKotlin a `plugin:` comienzo o category == "plugin")rechazar ——
+     *    Las habilidades del complemento comienzan y terminan con el complemento,Habilitarlo por sí solo omitirá la verificación del ciclo de vida de la página de administración del complemento.;
+     *  - Otros identificadores desconocidos devolverán directamente no encontrado.
      */
     suspend fun enableSkill(args: Map<String, String>): String {
         val repo = skillRepository ?: return context.getString(R.string.skill_enable_not_configured)
@@ -145,18 +145,18 @@ class SkillManagementToolsImpl(
     }
 
     /**
-     * update_skill — 迭代助手自己创建的用户 skill。
+     * update_skill — Iterar sobre las habilidades del usuario creadas por el propio asistente.
      *
-     * 允许更新 name / description / parametersJson;提示词技能额外允许用 `prompt`
-     * 参数替换指令文本。
+     * Permitir actualizaciones name / description / parametersJson;También se permite el uso de habilidades con palabras rápidas. `prompt`
+     * Texto del comando de reemplazo de parámetros.
      *
-     * 归属约束(不属于用户的一律拒绝,理由用中文返回给模型):
-     *  - [SkillImporter.RESERVED_IDS] 内置保留 id;
-     *  - `implementationKotlin` 以 `plugin:` 开头或 `category == "plugin"` 的插件技能。
+     * Restricciones de pertenencia(Aquellos que no pertenezcan al usuario serán rechazados.,El motivo se devuelve al modelo en chino.):
+     *  - [SkillImporter.RESERVED_IDS] retención incorporada id;
+     *  - `implementationKotlin` a `plugin:` comienzo o `category == "plugin"` Habilidades de complemento.
      *
-     * 安全约束:更新内容不直接写库,先经 [SkillImporter.validateForUpdate] 走与安装
-     * 完全相同的校验(保留 id / category 白名单 / 实现白名单 / 注入黑名单 / prompt 上限)。
-     * 更新成功后 id 不变、强制保持启用。
+     * restricciones de seguridad:El contenido actualizado no se escribe directamente en la biblioteca.,Xi'an Jing [SkillImporter.validateForUpdate] Ve e instala
+     * exactamente el mismo cheque(Reservar ID/categoría lista blanca/implementar lista blanca/inyectar lista negra/indicar límite superior).
+     * Una vez que la actualización se realiza correctamente, la identificación permanece sin cambios y se ve obligada a permanecer habilitada.
      */
     suspend fun updateSkill(args: Map<String, String>): String {
         val repo = skillRepository ?: return context.getString(R.string.skill_update_not_configured)
@@ -185,7 +185,7 @@ class SkillManagementToolsImpl(
             return context.getString(R.string.skill_update_no_fields)
         }
 
-        // 提示词技能无参数:parametersJson / requiredJson 固定为空,忽略调用方传入的 parametersJson
+        // La habilidad de palabra rápida no tiene parámetros:parametersJson / requiredJson Fijado al vacio,Ignorar la llamada entrante parametersJson
         val validated =
             SkillImporter.validateForUpdate(
                 id = existing.id,
@@ -213,11 +213,11 @@ class SkillManagementToolsImpl(
     }
 
     /**
-     * 执行提示词技能:把指令文本交回模型,不执行任何 Kotlin 实现。
+     * Ejecutar habilidad de palabra rápida:Devolver el texto de instrucciones al modelo.,No se implementa ninguna implementación de Kotlin.
      *
-     * 文本带 `[技能指令]` 标注,明确区分于系统指令。
-     * v2.x: 支持可选 `input` 参数 — 指令文本含 [PROMPT_INPUT_PLACEHOLDER](或 [PROMPT_ARGS_PLACEHOLDER])时
-     * 替换为输入;无占位符时把输入追加到指令末尾;其余参数忽略。
+     * tira de texto `[comando de habilidad]` marca,Claramente distinguido de los comandos del sistema.
+     * v2.x: Soporte opcional `input` parámetros — El texto del comando contiene [PROMPT_INPUT_PLACEHOLDER](o [PROMPT_ARGS_PLACEHOLDER])tiempo
+     * Reemplazar con entrada;Si no hay ningún marcador de posición, agregue la entrada al final de la instrucción.;Los parámetros restantes se ignoran.
      */
     fun execPromptSkill(skill: SkillEntity, args: Map<String, String> = emptyMap()): String {
         val text = SkillImporter.decodePromptText(skill.implementationKotlin)?.trim()
@@ -229,19 +229,19 @@ class SkillManagementToolsImpl(
                 input.isEmpty() -> text
                 hasPlaceholder ->
                     text.replace(PROMPT_INPUT_PLACEHOLDER, input).replace(PROMPT_ARGS_PLACEHOLDER, input)
-                else -> text + "\n\n输入:\n" + input
+                else -> text + "\n\nentrada:\n" + input
             }
         return context.getString(R.string.skill_prompt_instruction_result, skill.name, skill.id, rendered)
     }
 
     private companion object {
-        /** 插件技能的 implementationKotlin 前缀(与 PluginManager 的 "plugin:<pluginId>:<fn>" 约定一致)。 */
+        /** implementaciónPrefijo de Kotlin para habilidades de complemento(con Administrador de complementos "plugin:<pluginId>:<fn>" Acuerdo consistente). */
         const val PLUGIN_IMPLEMENTATION_PREFIX = "plugin:"
 
-        /** v2.x: 提示词技能输入占位符。 */
+        /** v2.x: Marcador de posición de entrada de habilidad de palabra rápida. */
         const val PROMPT_INPUT_PLACEHOLDER = "{{input}}"
 
-        /** v2.x: 提示词技能输入占位符(别名,习惯写法)。 */
+        /** v2.x: Marcador de posición de entrada de habilidad de palabra rápida(Alias,escritura habitual). */
         const val PROMPT_ARGS_PLACEHOLDER = "{{args}}"
     }
 
@@ -252,16 +252,16 @@ class SkillManagementToolsImpl(
             resultOf {
                 AppJson.decodeFromString(JsonObject.serializer(), jsonText)
             }.onError { msg, throwable ->
-                val errorKind = if (throwable is SerializationException) "格式错误" else "非预期异常"
+                val errorKind = if (throwable is SerializationException) "Error de formato" else "excepción inesperada"
                 jsonErrorMsg = msg
-                Logger.w("SkillManagement", "install_skill JSON 解析失败($errorKind, ${throwable?.javaClass?.simpleName}): $msg")
+                Logger.w("SkillManagement", "install_skill JSON El análisis falló($errorKind, ${throwable?.javaClass?.simpleName}): $msg")
             }.getOrNull()
         if (raw == null) {
-            return "JSON 格式错误: ${jsonErrorMsg ?: "无法解析"}。请检查字段引号、冒号、括号是否匹配。"
+            return "JSON Error de formato: ${jsonErrorMsg ?: "No se puede analizar"}. Compruebe si las comillas, los dos puntos y los corchetes coinciden."
         }
         for (field in requiredFields) {
             if (field !in raw) {
-                return "缺少必需字段: $field。必需字段: name, description, category, implementationKotlin, parametersJson"
+                return "Falta campo obligatorio: $field. Campos obligatorios: name, description, category, implementationKotlin, parametersJson"
             }
         }
         for (field in requiredFields) {
@@ -269,13 +269,13 @@ class SkillManagementToolsImpl(
             if (element !is JsonPrimitive || !element.isString) {
                 val actualType =
                     when (element) {
-                        is JsonPrimitive -> if (element.isString) "字符串" else "数字/布尔"
-                        is JsonObject -> "对象"
-                        is JsonArray -> "数组"
+                        is JsonPrimitive -> if (element.isString) "cuerda" else "numeros/Booleano"
+                        is JsonObject -> "objeto"
+                        is JsonArray -> "matriz"
                         is JsonNull -> "null"
-                        else -> "未知"
+                        else -> "desconocido"
                     }
-                return "字段 $field 类型错误: 期望字符串,实际为 $actualType"
+                return "campo $field error de tipo: esperar cadena,En realidad $actualType"
             }
         }
         return null

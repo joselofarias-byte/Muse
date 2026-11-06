@@ -6,24 +6,24 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 主动等级的单测。
+ * Prueba única de nivel activo.
  *
- * 这套档位控制两件不同的事：一天能说几条（floor/cap），以及**能说什么**（allowedKinds）。
- * 后者长期没有消费方 —— 枚举上写着「安静档只说该说的事」，实际调度层从不过滤，
- * 于是选了安静的用户照样收到分享与里程碑。这里把语义钉死，避免再退回那个状态。
+ * Este conjunto de engranajes controla dos cosas diferentes: cuántas cosas puedes decir en un día (floor/cap), y**¿Qué se puede decir?**(allowedKinds).
+ * Este último no tiene el lado del consumidor desde hace mucho tiempo. —— La enumeración dice "Los archivos silenciosos solo dicen lo que hay que decir", pero la capa de programación real nunca filtra.
+ * Por lo tanto, los usuarios que eligieron silencio aún podrán compartir y obtener hitos. La semántica está clavada aquí para evitar volver a ese estado.
  */
 class ProactiveIntensityTest {
 
     @Test
-    fun `安静档只允许说具体的事`() {
+    fun `Sólo se permite decir cosas específicas en modo silencioso`() {
         assertTrue(ProactiveIntensity.QUIET.allows(ThoughtKind.REMINDER))
-        assertFalse("安静档不该主动分享", ProactiveIntensity.QUIET.allows(ThoughtKind.SHARE))
-        assertFalse("安静档不该报关系节点", ProactiveIntensity.QUIET.allows(ThoughtKind.MILESTONE))
-        assertFalse("安静档不该主动关心寒暄", ProactiveIntensity.QUIET.allows(ThoughtKind.CARE))
+        assertFalse("Los archivos silenciosos no deben compartirse activamente", ProactiveIntensity.QUIET.allows(ThoughtKind.SHARE))
+        assertFalse("Los archivos silenciosos no deben informar nodos de relación", ProactiveIntensity.QUIET.allows(ThoughtKind.MILESTONE))
+        assertFalse("No deberías preocuparte activamente por las conversaciones triviales durante los momentos de tranquilidad.", ProactiveIntensity.QUIET.allows(ThoughtKind.CARE))
     }
 
     @Test
-    fun `偶尔被想到档允许接话与关心但不容分享`() {
+    fun `De vez en cuando, se me recuerda que puedo recibir llamadas y atención, pero no puedo compartir`() {
         assertTrue(ProactiveIntensity.RESERVED.allows(ThoughtKind.FOLLOW_UP))
         assertTrue(ProactiveIntensity.RESERVED.allows(ThoughtKind.CARE))
         assertFalse(ProactiveIntensity.RESERVED.allows(ThoughtKind.SHARE))
@@ -31,20 +31,20 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `标准及以上不限制类型`() {
+    fun `Estándar y superiores no limitan el tipo`() {
         listOf(
             ProactiveIntensity.STANDARD,
             ProactiveIntensity.ACTIVE,
             ProactiveIntensity.CLINGY,
         ).forEach { level ->
             ThoughtKind.entries.forEach { kind ->
-                assertTrue("${level.name} 应当允许 ${kind.name}", level.allows(kind))
+                assertTrue("${level.name} debería estar permitido ${kind.name}", level.allows(kind))
             }
         }
     }
 
     @Test
-    fun `每日条数上限按档位分别是 3 8 15 30 与不限`() {
+    fun `El número máximo diario de artículos es 3, 8, 15, 30 e ilimitado según el nivel`() {
         assertEquals(3, ProactiveIntensity.QUIET.cap)
         assertEquals(8, ProactiveIntensity.RESERVED.cap)
         assertEquals(15, ProactiveIntensity.STANDARD.cap)
@@ -55,7 +55,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `只有安静档要求在有事时才开口`() {
+    fun `Sólo el modo silencioso requiere que hables cuando sucede algo`() {
         assertTrue(ProactiveIntensity.QUIET.onlyWhenNeeded)
         assertFalse(ProactiveIntensity.RESERVED.onlyWhenNeeded)
         assertFalse(ProactiveIntensity.STANDARD.onlyWhenNeeded)
@@ -64,7 +64,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `按档位过滤候选能砍掉该档位不该说的类型`() {
+    fun `Filtrar candidatos por equipo puede eliminar tipos que no deberían mencionarse en ese equipo`() {
         val ledger = listOf(
             thought(id = "t1", kind = ThoughtKind.REMINDER),
             thought(id = "t2", kind = ThoughtKind.SHARE),
@@ -83,7 +83,7 @@ class ProactiveIntensityTest {
     }
 
     @Test
-    fun `非法档位名回落到默认`() {
+    fun `Los nombres de equipos ilegales vuelven a los predeterminados`() {
         assertEquals(ProactiveIntensity.DEFAULT, ProactiveIntensity.fromName("NOT_A_LEVEL"))
         assertEquals(ProactiveIntensity.DEFAULT, ProactiveIntensity.fromName(null))
         assertEquals(ProactiveIntensity.QUIET, ProactiveIntensity.fromName("QUIET"))
@@ -93,7 +93,7 @@ class ProactiveIntensityTest {
         id = id,
         assistantId = "a1",
         kind = kind.name,
-        seed = "测试用",
+        seed = "para probar",
         weight = 0.5f,
     )
 }

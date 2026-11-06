@@ -17,8 +17,8 @@ import io.zer0.muse.tools.script.WebViewSkillEngine
 import io.zer0.muse.ui.qrcode.QrCodeGenerator
 
 /**
- * P1-3b 拆域：Skill 媒体/JS/插件工具实现（从 SkillExecutor.kt 迁移）。
- * 由 SkillExecutor 委托调用。
+ * P1-3b Deslocalización:Skill medios de comunicación/JS/Implementación de herramienta de complemento (migrada desde SkillExecutor.kt).
+ * Llamado por el delegado de SkillExecutor.
  */
 class SkillMediaToolsImpl(
     private val context: Context,
@@ -27,10 +27,10 @@ class SkillMediaToolsImpl(
     private val imageDrawConfigProvider: suspend () -> Pair<ProviderConfig?, String?> = { null to null },
     private val pluginManager: PluginManager?,
     /**
-     * 插件总开关（默认开启）。
+     * Interruptor maestro enchufable (habilitado de forma predeterminada).
      *
-     * 用 lambda 而不是直接依赖 SettingsRepository：这个类被很多地方构造（含测试），
-     * 加一个可选依赖比改全部构造点安全；与 [imageDrawConfigProvider] 同型。
+     * Utilice lambda en lugar de depender directamente de SettingsRepository: esta clase se construye en muchos lugares (incluidas las pruebas).
+     * Agregar una dependencia opcional es más seguro que cambiar todos los puntos de construcción; y [imageDrawConfigProvider] Mismo tipo.
      */
     private val pluginsGloballyEnabled: suspend () -> Boolean = { true },
 ) {
@@ -39,57 +39,57 @@ class SkillMediaToolsImpl(
         val repo = stickerLibraryRepository
             ?: return context.getString(R.string.skill_sticker_not_configured)
         val category = args["category"]?.takeIf { it.isNotBlank() }
-        // v1.0.54: 无 category 参数时只返回分类概览(分类名 + 数量),
-        //   不再全量列出每个表情包 — 表情包多时全量列表可达数万字符,
-        //   被 Agent Loop 截断后模型看不到后面的分类,不敢调用 send_sticker。
+        // v1.0.54: Si no hay ningún parámetro de categoría, solo se devolverá la descripción general de la categoría.(Nombre de la categoría + cantidad),
+        //   Ya no enumera todos los emoticonos en su totalidad — Cuando hay muchos emoticonos, la lista completa puede llegar a decenas de miles de caracteres.,
+        //   Después de ser truncado por Agent Loop, el modelo no puede ver las clasificaciones posteriores.,No te atrevas a llamar a send_sticker.
         if (category == null) {
             val cats = repo.listCategories()
             if (cats.isEmpty()) return context.getString(R.string.skill_sticker_list_empty)
             val sb = StringBuilder()
-            sb.appendLine("共 ${cats.size} 个分类:")
+            sb.appendLine("total ${cats.size} categorias:")
             cats.forEach { c ->
                 val cnt = repo.listStickers(c).size
-                sb.appendLine("[$c]( $cnt 个)")
+                sb.appendLine("[$c]( $cnt un)")
             }
-            // 助手自审第 16 条：分类名必须严格匹配清单，猜错就失效，而且没有
-            // 「这个语境适合什么」的推荐。这里按语境给一份对照，让模型从
-            // 「当前对话是什么情绪」直接映射到分类，而不是先猜再回来查。
+            // Asistente de Autoevaluación Artículo 16: El nombre de la categoría debe coincidir estrictamente con la lista. Si adivina mal, no será válido y no habrá
+            // Recomendaciones sobre "¿qué es apropiado para este contexto?" Aquí hay una comparación según el contexto, para que el modelo pueda comenzar desde
+            // "¿Cuál es la emoción de la conversación actual?" Se asigna directamente a la clasificación, en lugar de adivinar primero y luego volver a verificar.
             appendCategoryGuide(cats, sb)
-            sb.append("请调用 list_stickers 并传入 category 参数查看某个分类的具体表情包,然后调用 send_sticker 发送。")
+            sb.append("Llame a list_stickers y pase el parámetro de categoría para ver los emoticones específicos de una determinada categoría.,Luego llame a send_sticker para enviar.")
             return sb.toString()
         }
         val items = repo.listStickers(category)
         if (items.isEmpty()) {
-            // 分类名猜错时给候选，而不是一句「空」—— 否则模型只能再猜一次。
+            // Si el nombre de la categoría se adivina incorrectamente, proporcione el candidato en lugar de "vacío"—— De lo contrario, el modelo sólo podrá volver a adivinar.
             val cats = repo.listCategories()
             return if (cats.isEmpty()) {
                 context.getString(R.string.skill_sticker_list_empty)
             } else {
                 buildString {
-                    appendLine("分类 \"$category\" 下没有表情包（分类名必须与清单完全一致）。")
-                    appendLine("现有分类: ${cats.joinToString("、")}")
-                    append("请从中选一个准确的分类名重新调用 list_stickers。")
+                    appendLine("Clasificación \"$category\" No hay emoticones a continuación (el nombre de la categoría debe ser exactamente el mismo que el de la lista).")
+                    appendLine("Categorías existentes: ${cats.joinToString(",")}")
+                    append("Seleccione un nombre de categoría preciso y vuelva a llamar a list_stickers.")
                 }
             }
         }
         val sb = StringBuilder()
-        // v1.0.54: 分类列表限制展示前 20 个 — 分类内贴纸可能上百个,全量输出会被截断,
-        //   模型看不到完整列表就反复查 list_stickers,死循环不调 send_sticker。
+        // v1.0.54: La lista de categorías se limita a mostrar los primeros 20 elementos — Puede haber cientos de pegatinas en la categoría.,La salida completa se truncará,
+        //   Si el modelo no puede ver la lista completa, verifíquela repetidamente. list_stickers,Bucle infinito sin ajustar send_sticker.
         val shown = items.take(20)
-        sb.appendLine("共 ${items.size} 个表情包(分类: $category),以下为前 ${shown.size} 个:")
+        sb.appendLine("total ${items.size} emoticones(Clasificación: $category),Lo siguiente es lo anterior ${shown.size} un:")
         shown.forEach { item ->
             sb.appendLine("[${item.category}] ${item.fileName} (id=${item.id})")
         }
-        sb.append("请从以上列表中选择一个合适的 id,立即调用 send_sticker 发送,不要重复查询列表。")
+        sb.append("Seleccione uno adecuado de la lista anterior id,Llame a send_sticker inmediatamente para enviar,No repita las listas de consultas.")
         return sb.toString()
     }
 
     /**
-     * 按语境给分类对照表。
+     * Un cuadro comparativo de clasificaciones según contexto.
      *
-     * 分类名是用户自定义的（「开心」「沙雕」「猫猫」…），没法硬编码映射，
-     * 所以按关键词把分类归到几种常见对话情绪下。认不出的分类不硬塞，
-     * 只提示「其余分类按名称自行判断」—— 猜错映射比不给更糟。
+     * Los nombres de las categorías están definidos por el usuario ("Feliz", "Escultura de arena", "Gato Gato"…), no hay forma de codificar el mapeo,
+     * Por lo tanto, las categorías se clasifican en varias emociones de conversación comunes según las palabras clave. No impongas categorías irreconocibles;
+     * Sólo indica "El resto de las categorías se juzgan por sus nombres".—— Adivinar el mapeo incorrecto es peor que no darlo en absoluto.
      */
     private fun appendCategoryGuide(categories: List<String>, sb: StringBuilder) {
         sb.append(buildCategoryGuide(categories))
@@ -111,7 +111,7 @@ class SkillMediaToolsImpl(
         val prompt = args["prompt"]?.takeIf { it.isNotBlank() }
             ?: return context.getString(R.string.skill_missing_param_prompt)
         val size = args["size"]?.takeIf { it.isNotBlank() } ?: "1024x1024"
-        // v1.136: Skill 可显式指定 model,未指定时由 ImageService 按 ProviderSpecificConfig / Catalog 兜底
+        // v1.136: Skill Se puede especificar explícitamente model,Si no se especifica, ImageService se encargará de ello según ProviderSpecificConfig/Catálogo
         val (drawProviderConfig, configModelId) = imageDrawConfigProvider()
         val model = args["model"]?.takeIf { it.isNotBlank() } ?: configModelId ?: ""
         val referenceImage = args["reference_image"]?.takeIf { it.isNotBlank() }
@@ -129,7 +129,7 @@ class SkillMediaToolsImpl(
             )
             if (urls.isEmpty()) return@resultOf context.getString(R.string.skill_image_no_result, prompt)
             context.getString(R.string.skill_image_generated, prompt, urls.joinToString("\n"))
-        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_image 失败: $msg") }
+        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_image falló: $msg") }
             .getOrNull() ?: context.getString(R.string.skill_image_failed, prompt)
     }
 
@@ -147,49 +147,49 @@ class SkillMediaToolsImpl(
             }
             bitmap.recycle()
             context.getString(R.string.skill_qr_generated, file.absolutePath)
-        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_qr 失败: $msg") }
+        }.onError { msg, _ -> Logger.w("SkillExecutor", "generate_qr falló: $msg") }
             .getOrNull() ?: context.getString(R.string.skill_qr_gen_failed)
     }
 
     suspend fun execExecuteJavascript(args: Map<String, String>): String {
         val code = args["code"]?.takeIf { it.isNotBlank() }
-            ?: return """{"result":"","logs":[],"error":"参数 code 缺失或为空"}"""
+            ?: return """{"result":"","logs":[],"error":"Falta el código de parámetro o está vacío"}"""
         val timeoutMs = args["timeout_ms"]?.toLongOrNull()?.coerceIn(1L, 60_000L) ?: 10000L
-        // 初始化 JsSandbox(幂等)— 注入 Application Context
+        // inicialización JsSandbox(idempotente)— inyectar Application Context
         JsSandbox.init(context)
 
         val input = kotlinx.serialization.json.buildJsonObject {
             put("code", kotlinx.serialization.json.JsonPrimitive(code))
             put("timeout_ms", kotlinx.serialization.json.JsonPrimitive(timeoutMs.toString()))
         }
-        // 委托给 CodeExecutionTool.execute(suspend)— 复用统一的参数解析与结果序列化逻辑
+        // confiado a CodeExecutionTool.execute(suspend)— Reutilizar el análisis de parámetros unificado y la lógica de serialización de resultados
         val output = CodeExecutionTool.execute(input)
         return output.toString()
     }
 
     suspend fun execPluginTool(skill: SkillEntity, argumentsJson: String): String {
         if (!pluginsGloballyEnabled()) {
-            return "插件已被全局停用（设置 → 工具与扩展 → 插件总开关）"
+            return "El complemento ha sido desactivado globalmente (configuración → Herramientas y extensiones → Interruptor maestro enchufable)"
         }
         val parts = skill.implementationKotlin.split(":")
-        if (parts.size < 3) return "插件工具路由格式错误: ${skill.implementationKotlin}"
+        if (parts.size < 3) return "Error de formato de enrutamiento de herramienta complementaria: ${skill.implementationKotlin}"
         val pluginId = parts[1]
         val functionName = parts[2]
-        val manager = pluginManager ?: return "插件未安装: $pluginId"
-        val plugin = manager.findPlugin(pluginId) ?: return "插件未安装: $pluginId"
-        if (!plugin.enabled) return "插件已禁用: ${plugin.name}"
-        // P0: capabilities/tools/entryCode 一律来自磁盘重新验证后的 manifest，
-        // 不再信任 InstalledPlugin.capabilities 等注册表缓存；并在进入 JS 沙盒前
-        // 拒绝已被新 manifest 移除/改名的 functionName。
+        val manager = pluginManager ?: return "Complemento no instalado: $pluginId"
+        val plugin = manager.findPlugin(pluginId) ?: return "Complemento no instalado: $pluginId"
+        if (!plugin.enabled) return "Complemento deshabilitado: ${plugin.name}"
+        // P0: capabilities/tools/entryCode Siempre proviene del manifiesto después de la nueva verificación del disco.
+        // Las cachés de registro como InstalledPlugin.capabilities ya no son de confianza; y antes de ingresar al sandbox JS
+        // Las denegaciones han sido eliminadas por el nuevo manifiesto./Nombre de función renombrado.
         val verified = manager.loadVerifiedFunction(pluginId, functionName)
-            ?: return "插件入口校验失败或工具已移除: $pluginId/$functionName"
+            ?: return "La verificación de entrada del complemento falló o la herramienta se eliminó: $pluginId/$functionName"
 
         val configJson = manager.getPluginConfigJson(verified.manifest)
         val argsJson = "[" + argumentsJson.ifBlank { "{}" } + "]"
 
-        // v2.7: 按 manifest.runtime 分派执行引擎。
-        //  - python：内置 Python 运行时（无 WebView 沙盒，子进程隔离）
-        //  - 其余（默认 js）：WebView V8 沙盒 + __bridge__ 桥接
+        // v2.7: Los motores de ejecución se envían mediante manifest.runtime.
+        //  - python: Tiempo de ejecución de Python integrado (sin zona de pruebas WebView, aislamiento de procesos secundarios)
+        //  - Descanso (js predeterminado):WebView V8 caja de arena + puente __bridge__
         if (verified.manifest.runtime.equals("python", ignoreCase = true)) {
             return execPythonPluginTool(
                 pluginId = pluginId,
@@ -201,8 +201,8 @@ class SkillMediaToolsImpl(
         }
 
         JsSandbox.init(context)
-        // C-30: 传入 pluginId 作为 scopeKey,使熔断状态与 localStorage 按插件隔离,
-        //   一个插件死循环超时不会熔断/影响其他插件与内置 JS 工具。
+        // C-30: Pase el ID del complemento como scopeKey,Haga que los disyuntores estén aislados del almacenamiento local mediante un complemento,
+        //   El bucle infinito de un complemento no se interrumpirá cuando expire el tiempo de espera/Influya en otros complementos y herramientas JS integradas.
         return when (
             val result = WebViewSkillEngine().callFunction(
                 verified.entryCode,
@@ -214,11 +214,11 @@ class SkillMediaToolsImpl(
         ) {
             is SkillEngineResult.Success -> {
                 val value = result.valueJson
-                // F-17 + v2.2.1 大沙盒；v2.x（沙盒放开）：桥接动作**默认全放行**。
-                // 之前严格按 manifest 声明能力逐项放行，过于保守：插件作者忘了声明就调不到。
-                // 现改为：动作不设门槛，但**保留两类底线**（这两项是正确性而非保守）：
-                //  1. fs_* 仍锁定在插件自己的沙盒目录(workspace/plugins/<pluginId>)，防路径逃逸；
-                //  2. http_* 仍走 SSRF 防护（拒内网/本地地址）。
+                // F-17 + v2.2.1 Gran arenero;v2.x(Sandbox Unleashed): acción puente**Lanzamiento completo por defecto**.
+                // En el pasado, las capacidades se publicaban una por una estrictamente de acuerdo con la declaración del manifiesto, lo cual era demasiado conservador: si el autor del complemento olvidaba declararlo, no se podía ajustar.
+                // Ahora se cambia a: No hay umbral para acciones, pero**Mantenga dos tipos de resultados finales**(Estos dos elementos son corrección más que conservadurismo):
+                //  1. fs_* Todavía bloqueado en el propio directorio sandbox del complemento(workspace/plugins/<pluginId>), evitar el escape del camino;
+                //  2. http_* Todavía uso protección SSRF (rechazo de red interna)/dirección local).
                 val allowedBridgeActions = SkillBridge.ALL_ACTIONS
                 val bridgeHost = SkillBridge.Host(
                     context = context,
@@ -232,9 +232,9 @@ class SkillMediaToolsImpl(
                             value.ifBlank { "null" }
                         }
                     }
-                    // 桥接请求的执行结果作为技能返回值直接返回给 LLM
+                    // El resultado de la ejecución de la solicitud de puente se devuelve directamente a LLM
                     is SkillBridge.HandleResult.Output -> bridge.json
-                    // 桥接解析/执行失败（含 action 不支持）→ 返回错误对象，避免脚本以为成功
+                    // Resolución de puente/La ejecución falló (incluida la acción no admitida)→ Devuelve un objeto de error para evitar que el script piense que fue exitoso
                     is SkillBridge.HandleResult.Failure ->
                         kotlinx.serialization.json.buildJsonObject {
                             put("error", kotlinx.serialization.json.JsonPrimitive(bridge.message))
@@ -244,23 +244,23 @@ class SkillMediaToolsImpl(
             is SkillEngineResult.Error -> {
                 if (JsSandbox.isCircuitBrokenFor(pluginId)) {
                     resultOf { manager.setEnabled(pluginId, false) }
-                        .onError { msg, _ -> Logger.w("SkillMediaToolsImpl", "自动禁用插件失败: $msg") }
-                    "插件已自动禁用: JS 沙盒连续超时，请稍后重试"
+                        .onError { msg, _ -> Logger.w("SkillMediaToolsImpl", "Falló la desactivación automática de complementos: $msg") }
+                    "El complemento se ha desactivado automáticamente: JS El tiempo de espera del entorno de pruebas se ha agotado continuamente. Vuelva a intentarlo más tarde."
                 } else {
-                    "插件工具执行失败: ${result.message}"
+                    "Error al ejecutar la herramienta de complemento: ${result.message}"
                 }
             }
         }
     }
 
     /**
-     * v2.7: 执行 Python 插件工具。
+     * v2.7: Ejecute la herramienta de complemento de Python.
      *
-     * 与 JS 分支的差异：
-     *  - 无 WebView 沙盒，也无 __bridge__ 桥接（Python 子进程自身已有完整能力，
-     *    文件读写/网络/标准库直接用；高风险仍由插件工具的整体审批链兜底）；
-     *  - 首次调用前确保 Python 运行时数据（stdlib/CA bundle）已就绪。
-     *  - 返回值直接作为工具结果（字符串）；返回非字符串时 JSON 序列化。
+     * Diferencias con la rama JS:
+     *  - Sin zona de pruebas WebView, sin puente __bridge__ (Python El proceso hijo en sí tiene capacidades completas,
+     *    Lectura y escritura de archivos/red/La biblioteca estándar se utiliza directamente; los riesgos elevados todavía están cubiertos por la cadena de aprobación general de la herramienta plug-in);
+     *  - Asegúrese de que los datos del tiempo de ejecución de Python antes de la primera llamada (stdlib/CA bundle) está listo.
+     *  - El valor de retorno se devuelve directamente como resultado de la herramienta (una cadena); La serialización JSON se utiliza cuando se devuelven elementos que no son cadenas.
      */
     private suspend fun execPythonPluginTool(
         pluginId: String,
@@ -271,7 +271,7 @@ class SkillMediaToolsImpl(
     ): String {
         val dataReady = io.zer0.muse.runtime.PythonRuntime.ensureData(context)
         if (dataReady.isFailure) {
-            return "Python 运行时未就绪: ${dataReady.exceptionOrNull()?.message}"
+            return "Python No listo en tiempo de ejecución: ${dataReady.exceptionOrNull()?.message}"
         }
         return when (
             val result = PythonSkillEngine(context).callPluginFunction(
@@ -287,14 +287,14 @@ class SkillMediaToolsImpl(
             }.getOrElse {
                 result.valueJson.ifBlank { "null" }
             }
-            is SkillEngineResult.Error -> "插件工具执行失败: ${result.message}"
+            is SkillEngineResult.Error -> "Error al ejecutar la herramienta de complemento: ${result.message}"
         }
     }
     companion object {
         /**
-         * 生成语境对照段。纯函数，便于单测。
+         * Generar segmentos de comparación contextual. Función pura, conveniente para pruebas individuales.
          *
-         * @return 空串表示没有任何分类命中关键词（此时不输出这一段）
+         * @return Una cadena vacía indica que ninguna categoría coincide con la palabra clave (este párrafo no se publica en este momento)
          */
         internal fun buildCategoryGuide(categories: List<String>): String {
             val guide = STICKER_MOOD_KEYWORDS.mapNotNull { (mood, keys) ->
@@ -305,9 +305,9 @@ class SkillMediaToolsImpl(
             val covered = guide.flatMap { it.second }.toSet()
             val rest = categories.filterNot { it in covered }
             return buildString {
-                appendLine("按当前对话情绪挑分类:")
-                guide.forEach { (mood, cats) -> appendLine("- $mood → ${cats.joinToString("、")}") }
-                if (rest.isNotEmpty()) appendLine("- 其余分类按名称自行判断: ${rest.joinToString("、")}")
+                appendLine("Elija categorías según el estado de ánimo de la conversación actual:")
+                guide.forEach { (mood, cats) -> appendLine("- $mood → ${cats.joinToString(",")}") }
+                if (rest.isNotEmpty()) appendLine("- El resto de categorías se pueden juzgar por su nombre.: ${rest.joinToString(",")}")
                 appendLine()
             }
         }
@@ -315,19 +315,19 @@ class SkillMediaToolsImpl(
 }
 
 /**
- * 表情包分类的语境关键词表。
+ * Tabla de palabras clave contextuales para la clasificación de emoji.
  *
- * 分类名由用户自定义，这里只做「关键词命中」的弱匹配：命中就归到对应情绪下，
- * 没命中就留给模型按名称判断。宁可少给建议，也不要给错映射。
+ * El nombre de la categoría lo personaliza el usuario. Aquí sólo se realiza una coincidencia débil de "aciertos de palabras clave": los aciertos se clasificarán según las emociones correspondientes.
+ * Los aciertos faltantes se dejan al modelo para que los juzgue por su nombre. Es mejor dar menos consejos que dar un mapeo incorrecto.
  */
 private val STICKER_MOOD_KEYWORDS: List<Pair<String, List<String>>> = listOf(
-    "开心/庆祝" to listOf("开心", "庆祝", "高兴", "快乐", "happy", "celebration", "party"),
-    "安慰/治愈" to listOf("安慰", "治愈", "抱抱", "温暖", "comfort", "hug", "healing"),
-    "难过/低落" to listOf("难过", "哭", "低落", "伤心", "sad", "cry"),
-    "生气/吐槽" to listOf("生气", "愤怒", "吐槽", "白眼", "angry", "annoyed"),
-    "搞笑/沙雕" to listOf("搞笑", "沙雕", "魔性", "funny", "meme", "silly"),
-    "可爱/卖萌" to listOf("可爱", "卖萌", "萌", "cute", "kawaii"),
-    "鼓励/加油" to listOf("鼓励", "加油", "打气", "cheer", "encourage"),
-    "无奈/摆烂" to listOf("无奈", "摆烂", "躺平", "sigh", "shrug"),
-    "晚安/睡觉" to listOf("晚安", "睡", "困", "goodnight", "sleep"),
+    "feliz/celebrar" to listOf("feliz", "celebrar", "feliz", "feliz", "happy", "celebration", "party"),
+    "comodidad/curar" to listOf("comodidad", "curar", "abrazo", "cálido", "comfort", "hug", "healing"),
+    "triste/abajo" to listOf("triste", "llorar", "abajo", "triste", "sad", "cry"),
+    "enojado/quejarse" to listOf("enojado", "enojado", "quejarse", "poner los ojos en blanco", "angry", "annoyed"),
+    "divertido/escultura de arena" to listOf("divertido", "escultura de arena", "naturaleza demoniaca", "funny", "meme", "silly"),
+    "lindo/actuar lindo" to listOf("lindo", "actuar lindo", "lindo", "cute", "kawaii"),
+    "animar/vamos" to listOf("animar", "vamos", "anímate", "cheer", "encourage"),
+    "indefenso/Mostrado" to listOf("indefenso", "Mostrado", "acostarse", "sigh", "shrug"),
+    "buenas noches/dormir" to listOf("buenas noches", "dormir", "somnoliento", "goodnight", "sleep"),
 )

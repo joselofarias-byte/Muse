@@ -20,11 +20,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 
-// E4 (前端专项 H8): 通用 Tooltip — 桌面 hover 显示气泡提示。
-// 移动端触摸不产生 PointerEventType.Enter/Exit 事件,天然不触发,无需平台判断。
-// 自研而非 material3 TooltipBox:项目 material3 为 1.4.0-alpha04 实验线,
-// TooltipBox 为 ExperimentalMaterial3Api 且样式与项目 Muse 设计语言不一致。
-// 定位:BottomCenter + 负 Y 偏移使气泡整体浮于锚点内容上方 6dp 处。
+// E4 (Especialización front-end H8): Universales Tooltip — Al pasar el cursor sobre el escritorio se muestran sugerencias de burbujas.
+// El toque celular no genera eventos PointerEventType.Enter/Exit,Naturalmente no desencadenante,No se requiere juicio de plataforma.
+// Caja de herramientas de desarrollo propio en lugar de material3: Project material3 es la línea experimental 1.4.0-alpha04,
+// TooltipBox es ExperimentalMaterial3Api y el estilo no coincide con el lenguaje de diseño del proyecto Muse.
+// Posicionamiento:BottomCenter + Un desplazamiento Y negativo hace que la burbuja flote 6 dp por encima del contenido del ancla.
 @Composable
 internal fun MuseTooltip(text: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }

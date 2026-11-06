@@ -107,6 +107,8 @@
     <string name="settings_theme_preview_hello">Hello</string>
     <string name="settings_theme_preview_reply">Hi! How can I help you?</string>
     <string name="settings_theme_language">Language</string>
+    <string name="settings_theme_language_es">Spanish</string>
+    <string name="settings_theme_language_pt">Portuguese</string>
     <string name="settings_theme_language_zh">Chinese</string>
     <string name="settings_theme_language_en">English</string>
     <string name="settings_theme_language_ja">Japanese</string>
@@ -519,7 +521,7 @@
     <string name="settings_theme_custom_color_s">Saturation</string>
     <string name="settings_theme_custom_color_l">Lightness</string>
 
-    <!-- 前端修复 (i18n-3.x): Proactive message section i18n -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Proactive message section i18n -->
     <string name="settings_agent_dm_subtitle">View private messages between Agents</string>
     <string name="settings_agent_agent_only">Agent sessions only</string>
     <string name="settings_agent_agent_only_subtitle">When enabled, only Agent assistants send proactive messages; task sessions do not</string>
@@ -685,11 +687,11 @@
     <string name="settings_asr_group_transcription">File transcription</string>
     <string name="settings_chat_typography_section">Typography</string>
     <string name="settings_chat_message_font_size">Message text size</string>
-    <string name="settings_chat_message_font_size_subtitle">Scale message text, default 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Scale message text, default 100%%</string>
     <string name="settings_chat_letter_spacing">Letter spacing</string>
     <string name="settings_chat_letter_spacing_subtitle">Adjust character spacing</string>
 
-    <!-- 补齐 strict=en 门禁缺口 -->
+    <!-- completo strict=en brecha de acceso -->
     <string name="settings_memory_conversation_recall">Allow recalling original conversation text</string>
     <string name="settings_memory_conversation_recall_subtitle">When enabled, summaries and fact extraction read the full conversation on demand instead of only the currently loaded messages</string>
     <string name="assistant_kb_scope_whole"> (all)</string>

@@ -6,9 +6,9 @@ import androidx.room.PrimaryKey
 import io.zer0.muse.miniphone.data.db.MpActorType
 
 /**
- * 动态评论。
+ * Comentarios dinámicos.
  *
- * [parentId] 为空表示直接评论动态;不为空表示回复同一动态下的另一条评论。
+ * [parentId] Vacío significa comentar directamente la noticia.;Si no está vacío, significa responder a otro comentario bajo la misma actualización.
  */
 @Entity(
     tableName = "mp_moment_comment",

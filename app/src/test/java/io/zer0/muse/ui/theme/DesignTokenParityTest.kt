@@ -19,37 +19,37 @@ import java.io.File
 import kotlin.math.abs
 
 /**
- * Web 端设计令牌与 Android 端 Kotlin 常量的漂移检测。
+ * Web Detección de deriva de tokens de diseño del extremo y constantes de Kotlin del lado de Android.
  *
- * 单一来源是 `web/apps/client/src/design/tokens.json`（Web 侧读取它，
- * 由 `src/design/token-css.ts` 生成 `--muse-*` CSS 变量）。Android 侧的权威值仍是
- * `ui/theme` 目录下的 Kotlin 文件里的常量。任何一侧单改（改颜色、改字号、改圆角、改动效时长）
- * 都会让本测试变红——这就是它的唯一职责，不做业务断言。
+ * Una sola fuente es `web/apps/client/src/design/tokens.json`(Web lado para leerlo,
+ * por `src/design/token-css.ts` generar `--muse-*` CSS variables).Android El valor autoritario del equipo sigue siendo
+ * `ui/theme` Constantes en archivos Kotlin en el directorio. Modificación única en cualquier lado (cambiar color, cambiar tamaño de fuente, cambiar esquinas redondeadas, cambiar duración)
+ * hará que esta prueba se vuelva roja——Esa es su única responsabilidad, no hacer afirmaciones comerciales.
  *
- * 覆盖范围：全部颜色（含默认预设主题的 colorScheme 槽位）、完整字号阶梯（字号/行高/字重/
- * 字距）、全部圆角、全部动效时长与位移比例、间距、高程、图标尺寸、组件专属几何。
+ * Cobertura: todos los colores (incluida la ranura colorScheme del tema predeterminado predeterminado), escala de tamaño de fuente completa (tamaño de fuente/altura de fila/Peso de fuente/
+ * Kerning), todas las esquinas redondeadas, toda la duración de la animación y las relaciones de desplazamiento, espaciado, elevación, tamaño del icono y geometría específica del componente.
  *
- * 注意：`colors.web.*` 是 Web 外壳的历史色板（SaaS 暖米色布局），Android 侧没有对应
- * 常量，因此只做键集守卫、不逐值比对；`motion.easings` 的贝塞尔控制点在 Compose 的
- * Easing 对象上读不回来，同样只做键集守卫。
+ * Nota:`colors.web.*` es una paleta de colores histórica de web shells (SaaS diseño beige cálido),Android No hay un lado correspondiente
+ * Constante, por lo que solo se realiza la protección del conjunto de claves y no se realiza ninguna comparación valor por valor;`motion.easings` Los puntos de control de Bezier en Compose
+ * Easing El objeto no se puede volver a leer y solo realiza protección del conjunto de claves.
  */
 class DesignTokenParityTest {
 
     private val tokens: JsonObject by lazy { loadTokens() }
 
-    // ── 加载 ────────────────────────────────────────────────────────────
+    // ── Cargar ────────────────────────────────────────────────────────────
 
     @Test
     fun `tokens json is reachable from the repository root`() {
         val file = File(repoRoot(), TOKENS_RELATIVE_PATH)
         assertTrue(
-            "找不到 Web 设计令牌文件：${file.absolutePath}（当前工作目录 ${File(".").absolutePath}）。" +
-                "请确认 tokens.json 仍在 ${TOKENS_RELATIVE_PATH}，不要静默跳过本测试。",
+            "Archivo de token de diseño web no encontrado:${file.absolutePath}(Directorio de trabajo actual ${File(".").absolutePath})." +
+                "Confirme que tokens.json todavía está ahí ${TOKENS_RELATIVE_PATH}, no te saltes esta prueba en silencio.",
             file.isFile,
         )
     }
 
-    // ── 颜色 ────────────────────────────────────────────────────────────
+    // ── color ────────────────────────────────────────────────────────────
 
     @Test
     fun `palette colours match the kotlin palette`() {
@@ -131,8 +131,8 @@ class DesignTokenParityTest {
 
     @Test
     fun `derived scheme veils are derived from their scheme colour`() {
-        // alpha 来源见 tokens.json 的 colors.scheme._note（MuseDivider 13% / MuseListItem 6% /
-        // SectionLabel 80% / CardGroup 标题 85% / MuseSwitch 拇指内圈 20%）。
+        // alpha Para conocer la fuente, consulte colores.scheme._note de tokens.json (MuseDivider 13% / MuseListItem 6% /
+        // SectionLabel 80% / CardGroup Título 85% / Círculo interior del pulgar de MuseSwitch 20%).
         assertVeil("light", "dividerHairline", WarmPaperTheme.lightScheme.onSurface, 0.13)
         assertVeil("light", "pressedVeil", WarmPaperTheme.lightScheme.onSurface, 0.06)
         assertVeil("light", "onSurfaceVeil80", WarmPaperTheme.lightScheme.onSurface, 0.80)
@@ -184,7 +184,7 @@ class DesignTokenParityTest {
         assertKeySet("colors.web.alpha", setOf("light", "dark"))
     }
 
-    // ── 字号阶梯 ────────────────────────────────────────────────────────
+    // ── Escala de tamaño de fuente ────────────────────────────────────────────────────────
 
     @Test
     fun `type scale matches MuseTypography`() {
@@ -207,7 +207,7 @@ class DesignTokenParityTest {
         ).forEach { (key, style) -> assertTextStyle(key, style) }
     }
 
-    // ── 圆角 ────────────────────────────────────────────────────────────
+    // ── esquinas redondeadas ────────────────────────────────────────────────────────────
 
     @Test
     fun `corner radii match MuseCornerRadius`() {
@@ -224,13 +224,13 @@ class DesignTokenParityTest {
             "mega" to MuseCornerRadius.MEGA,
         ).forEach { (key, value) -> assertNumber("radii.$key", value.toDouble()) }
         assertEquals(
-            "圆角 pill 应为百分比圆角 ${MuseCornerRadius.PILL}%",
+            "La pastilla de esquinas redondeadas debe estar redondeada en porcentaje. ${MuseCornerRadius.PILL}%",
             "${MuseCornerRadius.PILL}%",
             tokens.text("radii.pill"),
         )
     }
 
-    // ── 动效 ────────────────────────────────────────────────────────────
+    // ── animación ────────────────────────────────────────────────────────────
 
     @Test
     fun `motion durations and distances match MuseAnimation`() {
@@ -266,7 +266,7 @@ class DesignTokenParityTest {
         )
     }
 
-    // ── 间距 / 高程 / 图标 ──────────────────────────────────────────────
+    // ── espaciado/elevación/icono ──────────────────────────────────────────────
 
     @Test
     fun `spacing tokens match MusePaddings`() {
@@ -348,7 +348,7 @@ class DesignTokenParityTest {
 
     @Test
     fun `component geometry matches the compose components`() {
-        // 卡片：MusePaddings.cardInner / cardGap / contentGap / dividerThickness、MuseCornerRadius。
+        // Tarjeta:MusePaddings.cardInner / cardGap / contentGap / dividerThickness,MuseCornerRadius.
         assertNumber("component.card.innerPaddingX", paddingX(MusePaddings.cardInner))
         assertNumber("component.card.innerPaddingY", paddingY(MusePaddings.cardInner))
         assertNumber("component.card.groupGap", MusePaddings.cardGap.value.toDouble())
@@ -357,26 +357,26 @@ class DesignTokenParityTest {
         assertNumber("component.card.groupRadius", MuseCornerRadius.LARGE_CARD.toDouble())
         assertNumber("component.card.borderWidth", MusePaddings.dividerThickness.value.toDouble())
 
-        // 列表行：MuseListItemSizes（原先字面量在组件默认参数里）+ MusePaddings.screen / inputPadding。
+        // Fila de lista:MuseListItemSizes(El literal original estaba en los parámetros predeterminados del componente)+ MusePaddings.screen / inputPadding.
         assertNumber("component.listRow.minHeight", MuseListItemSizes.minHeight.value.toDouble())
         assertNumber("component.listRow.minHeightCompact", MuseListItemSizes.compactMinHeight.value.toDouble())
         assertNumber("component.listRow.paddingX", MusePaddings.screen.value.toDouble())
         assertNumber("component.listRow.paddingY", MusePaddings.inputPadding.value.toDouble())
 
-        // 开关：MuseSwitchSizes。
+        // Cambiar:MuseSwitchSizes.
         assertNumber("component.switch.trackWidth", MuseSwitchSizes.trackWidth.value.toDouble())
         assertNumber("component.switch.trackHeight", MuseSwitchSizes.trackHeight.value.toDouble())
         assertNumber("component.switch.thumbSize", MuseSwitchSizes.thumbSize.value.toDouble())
         assertNumber("component.switch.trackInset", MuseSwitchSizes.trackPadding.value.toDouble())
 
-        // 按钮：胶囊 48（MuseIconSizes.touchTarget）+ 24（MuseShapes.huge = MuseCornerRadius.SHEET）
-        // + 0.97（MuseCapsuleButtonSizes）；普通按钮 40（MuseDialogSizes.buttonVisualHeight）。
+        // Botón: Cápsula 48 (MuseIconSizes.touchTarget)+ 24(MuseShapes.huge = MuseCornerRadius.SHEET)
+        // + 0.97(MuseCapsuleButtonSizes); Botón ordinario 40 (MuseDialogSizes.buttonVisualHeight).
         assertNumber("component.button.capsuleMinHeight", MuseIconSizes.touchTarget.value.toDouble())
         assertNumber("component.button.capsuleRadius", MuseCornerRadius.SHEET.toDouble())
         assertNumber("component.button.capsulePressScale", MuseCapsuleButtonSizes.pressScale.toDouble())
         assertNumber("component.button.minHeight", MuseDialogSizes.buttonVisualHeight.value.toDouble())
 
-        // 气泡：MuseBubbleStyles / MuseCornerRadius / MusePaddings.bubbleInner / messageGap。
+        // Burbujas:MuseBubbleStyles / MuseCornerRadius / MusePaddings.bubbleInner / messageGap.
         assertNumber("component.bubble.maxWidthRatio", MuseBubbleStyles.MAX_WIDTH_FRACTION.toDouble())
         assertNumber("component.bubble.radius", MuseCornerRadius.CARD.toDouble())
         assertNumber("component.bubble.tailRadius", MuseCornerRadius.BUBBLE_TAIL.toDouble())
@@ -384,7 +384,7 @@ class DesignTokenParityTest {
         assertNumber("component.bubble.innerPaddingY", paddingY(MusePaddings.bubbleInner))
         assertNumber("component.bubble.gap", MusePaddings.messageGap.value.toDouble())
 
-        // 输入岛（InputBar）：高度由 48dp 触控区决定，内/外边距取 MusePaddings.inputIsland*。
+        // Ingrese a la isla (InputBar): La altura está determinada por el área táctil de 48 dp./Toma el margen exterior MusePaddings.inputIsland*.
         assertNumber("component.inputBar.height", MuseIconSizes.touchTarget.value.toDouble())
         assertNumber("component.inputBar.innerPaddingX", MusePaddings.inputIslandInnerHorizontal.value.toDouble())
         assertNumber("component.inputBar.innerPaddingY", MusePaddings.inputIslandRowVertical.value.toDouble())
@@ -392,8 +392,8 @@ class DesignTokenParityTest {
         assertNumber("component.inputBar.outerPaddingY", MusePaddings.inputIslandVertical.value.toDouble())
         assertNumber("component.inputBar.bottomGap", MusePaddings.inputIslandBottomGap.value.toDouble())
 
-        // 顶栏（MuseTopBar）：行内边距 = chipInnerTight，标题内边距 = bubbleInner；
-        // 高度是推导值（行上下 1×2 + 标题上下 8×2 + titleLarge 行高 26 = 44），不另存字面量。
+        // barra superior (MuseTopBar): margen en línea = chipInnerTight, relleno de título = bubbleInner;
+        // La altura es un valor derivado (filas arriba y abajo 1×2 + Título arriba y abajo 8×2 + titleLarge altura de fila 26 = 44), no guarde el literal.
         assertNumber("component.topBar.rowPaddingX", paddingX(MusePaddings.chipInnerTight))
         assertNumber("component.topBar.rowPaddingY", paddingY(MusePaddings.chipInnerTight))
         assertNumber("component.topBar.titlePaddingX", paddingX(MusePaddings.bubbleInner))
@@ -405,10 +405,10 @@ class DesignTokenParityTest {
                 MuseTypography.titleLarge.lineHeight.value.toDouble(),
         )
 
-        // 触控目标：MusePaddings.touchTarget 委托 MuseIconSizes.touchTarget。
+        // Objetivo táctil:MusePaddings.touchTarget Delega MuseIconSizes.touchTarget.
         assertNumber("component.touchTarget", MuseIconSizes.touchTarget.value.toDouble())
 
-        // 头像三档：MuseAvatarSize。
+        // Avatar tres niveles:MuseAvatarSize.
         assertNumber("component.avatar.inline", MuseAvatarSize.inline.value.toDouble())
         assertNumber("component.avatar.list", MuseAvatarSize.list.value.toDouble())
         assertNumber("component.avatar.detail", MuseAvatarSize.detail.value.toDouble())
@@ -442,22 +442,22 @@ class DesignTokenParityTest {
         assertKeySet("component.avatar", setOf("inline", "list", "detail"))
     }
 
-    // ── 断言工具 ────────────────────────────────────────────────────────
+    // ── Herramientas de afirmación ────────────────────────────────────────────────────────
 
     private fun assertColor(path: String, color: Color) {
         val android = color.hexString()
         val web = tokens.text(path).trim().uppercase()
-        assertEquals("颜色令牌 $path 漂移：Android=$android, tokens.json=$web", android, web)
+        assertEquals("ficha de color $path Deriva:Android=$android, tokens.json=$web", android, web)
     }
 
     private fun assertVeil(mode: String, key: String, source: Color, alpha: Double) {
         val path = "colors.scheme.$mode.$key"
         val parts = parseRgba(tokens.text(path))
         val argb = source.toArgb()
-        assertEquals("$path 的红色分量应派生自 ${source.hexString()}", argb shr 16 and 0xFF, parts[0].toInt())
-        assertEquals("$path 的绿色分量应派生自 ${source.hexString()}", argb shr 8 and 0xFF, parts[1].toInt())
-        assertEquals("$path 的蓝色分量应派生自 ${source.hexString()}", argb and 0xFF, parts[2].toInt())
-        assertTrue("$path 的 alpha 应为 $alpha，实际 ${parts[3]}", abs(parts[3] - alpha) <= 0.005)
+        assertEquals("$path El componente rojo de debe derivarse de ${source.hexString()}", argb shr 16 and 0xFF, parts[0].toInt())
+        assertEquals("$path El componente verde de debería derivarse de ${source.hexString()}", argb shr 8 and 0xFF, parts[1].toInt())
+        assertEquals("$path El componente azul de debe derivarse de ${source.hexString()}", argb and 0xFF, parts[2].toInt())
+        assertTrue("$path El alfa de debería ser $alpha, real ${parts[3]}", abs(parts[3] - alpha) <= 0.005)
     }
 
     private fun assertTextStyle(key: String, style: TextStyle) {
@@ -469,49 +469,49 @@ class DesignTokenParityTest {
         }
     }
 
-    /** PaddingValues 的水平内边距（Compose 只暴露 calculate*Padding）。 */
+    /** PaddingValues acolchado horizontal (Compose solo expuesto calculate*Padding). */
     private fun paddingX(values: PaddingValues): Double =
         values.calculateLeftPadding(LayoutDirection.Ltr).value.toDouble()
 
-    /** PaddingValues 的垂直内边距。 */
+    /** PaddingValues acolchado vertical. */
     private fun paddingY(values: PaddingValues): Double = values.calculateTopPadding().value.toDouble()
 
     private fun assertNumber(path: String, expected: Double, tolerance: Double = 0.0001) {
         val actual = tokens.number(path)
-        assertEquals("令牌 $path 漂移：Android=$expected, tokens.json=$actual", expected, actual, tolerance)
+        assertEquals("ficha $path Deriva:Android=$expected, tokens.json=$actual", expected, actual, tolerance)
     }
 
     private fun assertKeySet(path: String, expected: Set<String>) {
-        val node = tokens.at(path) as? JsonObject ?: throw AssertionError("tokens.json 的 $path 不是对象")
+        val node = tokens.at(path) as? JsonObject ?: throw AssertionError("tokens.json de $path No es un objeto")
         val actual = node.keys.filterNot { it.startsWith("_") }.toSet()
-        assertEquals("令牌键集 $path 与预期不一致（新增/删除令牌需同步本测试）", expected, actual)
+        assertEquals("Conjunto de claves simbólicas $path No como se esperaba (nuevo/Eliminar el token requiere sincronizar esta prueba)", expected, actual)
     }
 
     private fun JsonObject.at(path: String): JsonElement {
         var node: JsonElement = this
         for (segment in path.split('.')) {
-            val current = node as? JsonObject ?: throw AssertionError("tokens.json 的 $path 不是对象（$segment 处）")
-            node = current[segment] ?: throw AssertionError("tokens.json 缺少 $path")
+            val current = node as? JsonObject ?: throw AssertionError("tokens.json de $path no es un objeto ($segment (en)")
+            node = current[segment] ?: throw AssertionError("tokens.json desaparecido $path")
         }
         return node
     }
 
     private fun JsonObject.number(path: String): Double {
         val primitive = at(path) as? JsonPrimitive
-        return primitive?.doubleOrNull ?: throw AssertionError("tokens.json 的 $path 不是数字")
+        return primitive?.doubleOrNull ?: throw AssertionError("tokens.json de $path no es un numero")
     }
 
     private fun JsonObject.text(path: String): String {
         val primitive = at(path) as? JsonPrimitive
-        return primitive?.content ?: throw AssertionError("tokens.json 的 $path 不是字符串")
+        return primitive?.content ?: throw AssertionError("tokens.json de $path no una cuerda")
     }
 
     private fun Color.hexString(): String = "#%06X".format(toArgb() and 0xFFFFFF)
 
     private fun parseRgba(value: String): List<Double> {
-        val match = rgbaPattern.find(value.trim()) ?: throw AssertionError("tokens.json 中的 $value 不是 rgba() 值")
+        val match = rgbaPattern.find(value.trim()) ?: throw AssertionError("tokens.json en $value No rgba() valor")
         val parts = match.groupValues[1].split(',').map { it.trim().toDouble() }
-        if (parts.size != 4) throw AssertionError("rgba() 需要 4 个分量，实际 $value")
+        if (parts.size != 4) throw AssertionError("rgba() Requiere 4 porciones, reales $value")
         return parts
     }
 
@@ -519,15 +519,15 @@ class DesignTokenParityTest {
         val file = File(repoRoot(), TOKENS_RELATIVE_PATH)
         if (!file.isFile) {
             throw AssertionError(
-                "找不到 Web 设计令牌文件：${file.absolutePath}（当前工作目录 ${File(".").absolutePath}）。" +
-                    "本测试不允许静默跳过：请确认 tokens.json 位于仓库根的 $TOKENS_RELATIVE_PATH。",
+                "Archivo de token de diseño web no encontrado:${file.absolutePath}(Directorio de trabajo actual ${File(".").absolutePath})." +
+                    "Esta prueba no permite la omisión silenciosa: confirme que tokens.json esté ubicado en la raíz del almacén. $TOKENS_RELATIVE_PATH.",
             )
         }
         return Json.parseToJsonElement(file.readText()).jsonObjectSafely()
     }
 
     private fun JsonElement.jsonObjectSafely(): JsonObject = this as? JsonObject
-        ?: throw AssertionError("tokens.json 顶层必须是对象")
+        ?: throw AssertionError("tokens.json El nivel superior debe ser un objeto.")
 
     private fun repoRoot(): File {
         val start = File(System.getProperty("user.dir") ?: ".").absoluteFile
@@ -537,8 +537,8 @@ class DesignTokenParityTest {
             current = current.parentFile
         }
         throw AssertionError(
-            "找不到仓库根：从 $start 向上任何一层都没有 $TOKENS_RELATIVE_PATH。" +
-                "请从仓库根或 app 模块目录运行单元测试。",
+            "Raíz del repositorio no encontrada: de $start Ninguno en ningún nivel hacia arriba $TOKENS_RELATIVE_PATH." +
+                "Ejecute pruebas unitarias desde la raíz del repositorio o el directorio del módulo de la aplicación.",
         )
     }
 

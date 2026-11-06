@@ -6,18 +6,18 @@ import io.zer0.muse.data.AtomicFileStore
 import kotlinx.serialization.Serializable
 import java.io.File
 
-/** 一个已保留历史版本的元数据；用于回滚前的再校验与 UI 展示。 */
+/** Un metadato que ha conservado versiones históricas; Se utiliza para volver a verificar y mostrar la interfaz de usuario antes de la reversión. */
 @Serializable
 data class RetainedVersionRecord(
     val version: String,
     val publisherId: String,
     val publisherKeyFingerprint: String,
-    /** 保留时的内容摘要；回滚前重算比对，防止历史副本被替换。 */
+    /** Resumen del contenido cuando se conserva; recalcular la comparación antes de la reversión para evitar que se reemplacen las copias históricas. */
     val contentSha256: String,
     val retainedAtEpochMs: Long,
 )
 
-/** 已保留的历史版本：元数据 + 可重新校验的包目录。 */
+/** Versiones históricas conservadas: metadatos + directorio de paquetes verificable. */
 data class RetainedPluginVersion(
     val pluginId: String,
     val record: RetainedVersionRecord,
@@ -27,15 +27,15 @@ data class RetainedPluginVersion(
 }
 
 /**
- * 插件历史版本库。
+ * Biblioteca de versiones históricas del complemento.
  *
- * 只保存**已通过验签与内容校验**的历史包副本，供用户主动回滚；它不参与执行，
- * 也不出现在插件列表里。回滚时调用方必须重新走一遍签名与内容校验，本类不做信任判断。
+ * guardar solo**Verificación de firma y contenido aprobada.**Una copia del paquete histórico para que los usuarios puedan revertirlo activamente; no participa en la ejecución.
+ * Tampoco aparece en la lista de complementos. Al retroceder, la persona que llama debe pasar nuevamente por la verificación de firma y contenido. Esta clase no hace juicios de confianza.
  *
- * 目录布局（刻意放在插件目录之外，避免被插件的文件遍历逻辑当成包内文件）：
+ * Diseño del directorio (colocado deliberadamente fuera del directorio del complemento para evitar que la lógica transversal de archivos del complemento lo considere un archivo de paquete):
  * ```
- * <root>/<pluginId>/<version>/meta.json   元数据
- * <root>/<pluginId>/<version>/files/...   包内文件副本
+ * <root>/<pluginId>/<version>/meta.json   Metadatos
+ * <root>/<pluginId>/<version>/files/...   Copia de archivos en paquete.
  * ```
  */
 class PluginVersionStore(
@@ -43,7 +43,7 @@ class PluginVersionStore(
     private val maxRetained: Int = DEFAULT_MAX_RETAINED,
 ) {
 
-    /** 保留一个已安装版本的副本；同版本重复保留会覆盖旧副本。 */
+    /** Guarde una copia de la versión instalada; conservar la misma versión nuevamente sobrescribirá la copia anterior. */
     fun retain(
         pluginId: String,
         version: String,
@@ -53,33 +53,33 @@ class PluginVersionStore(
     ): Result<Unit> = runCatching {
         requireValidId(pluginId)
         requireValidVersion(version)
-        require(sourceDirectory.isDirectory) { "源插件目录不存在" }
-        require(record.version == version) { "元数据版本与保留版本不一致" }
-        require(record.contentSha256.length == 64) { "内容摘要格式非法" }
+        require(sourceDirectory.isDirectory) { "El directorio del complemento fuente no existe" }
+        require(record.version == version) { "La versión de metadatos no coincide con la versión reservada" }
+        require(record.contentSha256.length == 64) { "El formato del resumen de contenido es ilegal." }
 
         root.mkdirs()
         val target = versionDirectory(pluginId, version)
         val staging = File(pluginIdDirectory(pluginId), ".staging_${version}_${System.nanoTime()}")
         staging.deleteRecursively()
         val filesTarget = File(staging, FILES_DIR)
-        require(filesTarget.mkdirs()) { "无法创建版本副本目录" }
+        require(filesTarget.mkdirs()) { "No se puede crear el directorio de copia de la versión" }
         copyPackageFiles(sourceDirectory, filesTarget)
         AtomicFileStore.writeText(
             File(staging, META_FILE),
             AppJson.encodeToString(RetainedVersionRecord.serializer(), record.copy(retainedAtEpochMs = nowEpochMs)),
         )
 
-        // 同版本已存在时先移除旧副本，再整体改名就位；改名失败不会留下半份副本。
+        // Si ya existe la misma versión, elimine primero la copia anterior y luego cámbiele el nombre; si el cambio de nombre falla, no quedará la mitad de la copia.
         target.deleteRecursively()
         if (!staging.renameTo(target)) {
             staging.copyRecursively(target, overwrite = true)
             staging.deleteRecursively()
         }
         prune(pluginId)
-        Logger.i(TAG, "已保留插件历史版本: $pluginId@$version")
+        Logger.i(TAG, "Se ha conservado la versión del historial del complemento.: $pluginId@$version")
     }
 
-    /** 已保留版本，按版本号从新到旧。 */
+    /** Versiones retenidas, ordenadas por número de versión, de la más nueva a la más antigua. */
     fun list(pluginId: String): List<RetainedPluginVersion> {
         val dir = pluginIdDirectory(pluginId)
         val versions = dir.listFiles().orEmpty()
@@ -98,19 +98,19 @@ class PluginVersionStore(
             requireValidId(pluginId)
             requireValidVersion(version)
             versionDirectory(pluginId, version).deleteRecursively()
-        }.onFailure { Logger.w(TAG, "删除历史版本失败: $pluginId@$version", it) }
+        }.onFailure { Logger.w(TAG, "No se pudo eliminar la versión histórica: $pluginId@$version", it) }
     }
 
     fun deleteAll(pluginId: String) {
         runCatching { pluginIdDirectory(pluginId).deleteRecursively() }
-            .onFailure { Logger.w(TAG, "删除插件历史版本失败: $pluginId", it) }
+            .onFailure { Logger.w(TAG, "No se pudo eliminar la versión histórica del complemento: $pluginId", it) }
     }
 
-    /** 只保留最新的 [maxRetained] 个版本，超出部分按旧到新删除。 */
+    /** Solo mantén lo último [maxRetained] versiones, las partes sobrantes se eliminarán de la más antigua a la más nueva. */
     fun prune(pluginId: String) {
         val retained = list(pluginId)
         retained.drop(maxRetained).forEach { stale ->
-            Logger.i(TAG, "清理过期历史版本: ${stale.pluginId}@${stale.version}")
+            Logger.i(TAG, "Limpiar versiones históricas caducadas: ${stale.pluginId}@${stale.version}")
             stale.directory.deleteRecursively()
         }
     }
@@ -124,7 +124,7 @@ class PluginVersionStore(
         if (!files.isDirectory) return@runCatching null
         RetainedPluginVersion(pluginId, record, files)
     }.getOrElse { error ->
-        Logger.w(TAG, "历史版本记录损坏，跳过: ${directory.name}", error)
+        Logger.w(TAG, "El registro de la versión histórica está dañado y omitido.: ${directory.name}", error)
         null
     }
 
@@ -145,17 +145,17 @@ class PluginVersionStore(
     private fun versionDirectory(pluginId: String, version: String): File = File(pluginIdDirectory(pluginId), version)
 
     private fun requireValidId(pluginId: String) {
-        require(ID_REGEX.matches(pluginId)) { "插件 id 非法: $pluginId" }
+        require(ID_REGEX.matches(pluginId)) { "La identificación del complemento es ilegal: $pluginId" }
     }
 
     private fun requireValidVersion(version: String) {
-        require(PluginVersion.parse(version) != null) { "版本号非法: $version" }
+        require(PluginVersion.parse(version) != null) { "Número de versión ilegal: $version" }
     }
 
     companion object {
         private const val TAG = "PluginVersionStore"
 
-        /** 默认保留最近 3 个版本，够回滚一次且不会无界增长。 */
+        /** De forma predeterminada, se conservan las 3 versiones más recientes, lo que es suficiente para una reversión y no crecerá ilimitadamente. */
         const val DEFAULT_MAX_RETAINED = 3
 
         private const val META_FILE = "meta.json"

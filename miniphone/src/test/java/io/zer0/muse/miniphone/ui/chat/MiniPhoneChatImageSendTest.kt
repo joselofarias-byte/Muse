@@ -41,10 +41,10 @@ import java.io.IOException
 import java.nio.file.Files
 
 /**
- * 发图回路:多选各落一条、顺序不乱、不触发角色回复、坏图跳过。
+ * Circuito de fotos:Se realizarán múltiples selecciones una por una, el orden no se desordenará, no se activará la recuperación del personaje y se omitirán las imágenes malas.
  *
- * 用真 Room 与真落盘目录,只有输入流是假的 —— 「库里到底有没有这三条、路径指的
- * 是不是刚写下的那份文件」只能这么验。
+ * Utilice la sala real y el directorio del disco real,Sólo el flujo de entrada es falso —— "¿Curry tiene estos tres caminos?
+ * ¿Es el documento que acabo de escribir? Esto sólo se puede verificar.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -79,15 +79,15 @@ class MiniPhoneChatImageSendTest {
         viewModel.sendImages(listOf(uriOf("a"), uriOf("b"), uriOf("c")))
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 3 }
-        assertEquals("三张图各一条", 3, state.messages.size)
+        assertEquals("Tres imágenes, una cada una.", 3, state.messages.size)
         assertTrue(
-            "都是用户发的图片",
+            "Estas son todas las imágenes publicadas por los usuarios.",
             state.messages.all { it.sender == MpActorType.USER && it.type == MpMessageType.IMAGE },
         )
-        assertEquals("顺序与选择一致", listOf("a", "b", "c"), storedPayloads(state))
-        assertEquals("三条各存一份文件", 3, directory.listFiles().orEmpty().size)
-        assertEquals("发图不请求角色回复", 0, host.callCount)
-        assertFalse("没有生成中的提示", state.isGenerating)
+        assertEquals("El orden es consistente con la selección.", listOf("a", "b", "c"), storedPayloads(state))
+        assertEquals("Conserve un documento para cada uno de los tres elementos.", 3, directory.listFiles().orEmpty().size)
+        assertEquals("Publica una foto sin pedir respuesta al personaje.", 0, host.callCount)
+        assertFalse("No hay indicaciones para generar", state.isGenerating)
     }
 
     @Test
@@ -98,7 +98,7 @@ class MiniPhoneChatImageSendTest {
         viewModel.sendImages(listOf(uriOf("ok"), uriOf(BAD_ID)))
 
         val state = awaitChat(viewModel) { chat -> chat.messages.size == 1 }
-        assertEquals("坏的那张直接跳过", listOf("ok"), storedPayloads(state))
+        assertEquals("Sólo salta el malo.", listOf("ok"), storedPayloads(state))
     }
 
     @Test
@@ -108,7 +108,7 @@ class MiniPhoneChatImageSendTest {
 
         viewModel.sendImages(listOf(uriOf(BAD_ID)))
 
-        // 给它足够时间跑完一轮:坏图不应留下任何痕迹
+        // Dale tiempo suficiente para completar una ronda.:Las malas imágenes no deberían dejar rastro.
         delay(NO_CHANGE_WAIT_MS)
         val state = viewModel.uiState.value
         assertEquals(0, state.messages.size)
@@ -120,7 +120,7 @@ class MiniPhoneChatImageSendTest {
         seedThread()
         val host = RecordingHost()
         val viewModel = createViewModel(host)
-        val file = File(directory, "from-character.jpg").apply { writeBytes("角色发的图".toByteArray()) }
+        val file = File(directory, "from-character.jpg").apply { writeBytes("Imágenes publicadas por personajes.".toByteArray()) }
 
         viewModel.insertCharacterImage(THREAD_ID, CHARACTER_ID, file.absolutePath)
 
@@ -129,7 +129,7 @@ class MiniPhoneChatImageSendTest {
         assertEquals(MpActorType.CHARACTER, message.sender)
         assertEquals(MpMessageType.IMAGE, message.type)
         assertEquals(file.absolutePath, message.mediaUri)
-        assertEquals("种子不发请求", 0, host.callCount)
+        assertEquals("La semilla no envía la solicitud.", 0, host.callCount)
         assertEquals(file.absolutePath, db.messageDao().getMessage(message.id)?.mediaUri)
     }
 
@@ -139,10 +139,10 @@ class MiniPhoneChatImageSendTest {
         val withAvatar = createViewModel(RecordingHost(avatarUri = AVATAR_URI))
 
         val state = awaitChat(withAvatar) { chat -> chat.selfAvatarUri != null }
-        assertEquals("子奇", state.selfName)
+        assertEquals("Ziqi", state.selfName)
         assertEquals(AVATAR_URI, state.selfAvatarUri)
 
-        // 空白头像当成没设置:界面回落到首字圆章
+        // Un avatar en blanco se considera no configurado:La interfaz vuelve al sello redondo inicial.
         val blankAvatar = createViewModel(RecordingHost(avatarUri = " "))
         val blank = awaitChat(blankAvatar) { chat -> chat.selfName.isNotEmpty() }
         assertNull(blank.selfAvatarUri)
@@ -176,10 +176,10 @@ class MiniPhoneChatImageSendTest {
         )
     }
 
-    /** 选择器给出的 uri 内容就是它的最后一段:落盘文件的字节能反证选择顺序。 */
+    /** El contenido del uri dado por el selector es su último segmento.:Los bytes del archivo descargado pueden refutar el orden de selección. */
     private fun openStream(uri: Uri): ByteArrayInputStream {
         val id = uri.lastPathSegment.orEmpty()
-        if (id == BAD_ID) throw IOException("原件已被删除")
+        if (id == BAD_ID) throw IOException("El original ha sido eliminado.")
         return ByteArrayInputStream(id.toByteArray())
     }
 
@@ -208,7 +208,7 @@ class MiniPhoneChatImageSendTest {
     }
 }
 
-/** 只记调用次数的宿主:发图不该走到这里。 */
+/** Un anfitrión que solo recuerda el número de llamadas:Publicar fotografías no debería haber llegado tan lejos. */
 private class RecordingHost(
     private val avatarUri: String? = null,
 ) : MiniPhoneHost {
@@ -217,9 +217,9 @@ private class RecordingHost(
     var callCount: Int = 0
         private set
 
-    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "阿离")))
+    override fun observeCharacters(): Flow<List<MpCharacter>> = flowOf(listOf(MpCharacter(id = "c1", name = "ali")))
 
-    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "子奇", avatarUri = avatarUri))
+    override fun observeProfile(): Flow<MpProfile> = flowOf(MpProfile(nickname = "Ziqi", avatarUri = avatarUri))
 
     override fun respond(characterId: String, history: List<MpChatTurn>): Flow<MpReplyEvent> = flow {
         callCount += 1

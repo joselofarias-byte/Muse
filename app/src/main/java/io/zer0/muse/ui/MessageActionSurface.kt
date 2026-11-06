@@ -1,10 +1,10 @@
 package io.zer0.muse.ui
 
 /**
- * 消息操作面板的互斥状态。
+ * Estado mutuamente excluyente del panel de acción del mensaje.
  *
- * 使用单一状态替代 showActionMenu/showExtendedMenu/showLanguageSubmenu 三个 Boolean，
- * 从而保证精简菜单、完整菜单和语言菜单不会同时出现。
+ * Utilice un solo estado en su lugar showActionMenu/showExtendedMenu/showLanguageSubmenu tres booleanos,
+ * Esto garantiza que el menú condensado, el menú completo y el menú de idiomas no aparecerán al mismo tiempo.
  */
 enum class MessageActionSurface {
     Hidden,

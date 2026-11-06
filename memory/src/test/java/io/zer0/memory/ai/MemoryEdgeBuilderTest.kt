@@ -5,14 +5,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.6.2（用户反馈）: 记忆星座补边构建器的回归测试。
+ * v2.6.2(comentarios de los usuarios): Pruebas de regresión del constructor de complementos de constelaciones de memoria.
  *
- * 用内存 fake 的 MemoryLinkDao 验证三层补边（实体键/同会话/同分类）确实产出边，
- * 且无向去重、幂等（重复跑不重复插入）。
+ * Utilice MemoryLinkDao de Memory Fake para verificar el borde suplementario de tres capas (clave de entidad/Misma sesión/Misma categoría) produce bordes,
+ * Y no tiene dirección para eliminar duplicados y es idempotente (las ejecuciones repetidas no repiten las inserciones).
  */
 class MemoryEdgeBuilderTest {
 
-    /** 记录插入的最小 fake DAO（只实现补边用到的两个方法）。 */
+    /** Registre el DAO falso mínimo insertado (implemente solo los dos métodos utilizados para complementar los bordes). */
     private class FakeLinkDao : MemoryLinkDao {
         val inserted = mutableListOf<MemoryLinkEntity>()
         override suspend fun insert(link: MemoryLinkEntity): Long {
@@ -63,11 +63,11 @@ class MemoryEdgeBuilderTest {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
         val facts = listOf(
-            fact(1, "张三喜欢咖啡", entityKey = "张三"),
-            fact(2, "张三住在北京", entityKey = "张三"),
+            fact(1, "A Zhang San le gusta el café", entityKey = "Zhang San"),
+            fact(2, "Zhang San vive en Beijing", entityKey = "Zhang San"),
         )
         val result = builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
-        assertTrue("同实体键应产生边", result.entityEdges >= 1)
+        assertTrue("Las mismas claves de entidad deberían producir bordes", result.entityEdges >= 1)
         assertTrue(dao.inserted.isNotEmpty())
     }
 
@@ -76,11 +76,11 @@ class MemoryEdgeBuilderTest {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
         val facts = listOf(
-            fact(1, "今天开会讨论了预算", sessionId = "s1", category = "event"),
-            fact(2, "预算定为十万", sessionId = "s1", category = "event"),
+            fact(1, "Tuvimos una reunión hoy para discutir el presupuesto.", sessionId = "s1", category = "event"),
+            fact(2, "El presupuesto se fija en cien mil", sessionId = "s1", category = "event"),
         )
         val result = builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
-        assertTrue("同会话应产生边", result.sessionEdges >= 1)
+        assertTrue("La misma sesión debería generar aristas.", result.sessionEdges >= 1)
     }
 
     @Test
@@ -88,11 +88,11 @@ class MemoryEdgeBuilderTest {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
         val facts = listOf(
-            fact(1, "买了个键盘", category = "shopping"),
-            fact(2, "买了个鼠标", category = "shopping"),
+            fact(1, "compré un teclado", category = "shopping"),
+            fact(2, "compré un ratón", category = "shopping"),
         )
         val result = builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
-        assertTrue("同分类 + 时间接近应产生边", result.categoryEdges >= 1)
+        assertTrue("Misma categoría + hora de cierre debería generar bordes", result.categoryEdges >= 1)
     }
 
     @Test
@@ -100,21 +100,21 @@ class MemoryEdgeBuilderTest {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
         val facts = listOf(
-            fact(1, "张三喜欢咖啡", entityKey = "张三"),
-            fact(2, "张三住在北京", entityKey = "张三"),
+            fact(1, "A Zhang San le gusta el café", entityKey = "Zhang San"),
+            fact(2, "Zhang San vive en Beijing", entityKey = "Zhang San"),
         )
         builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
         val afterFirst = dao.inserted.size
-        // 第二次跑：已有边应被去重跳过
+        // Segunda ejecución: los bordes existentes deben omitirse mediante la deduplicación
         builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
-        assertTrue("重复补边不应新增", dao.inserted.size == afterFirst)
+        assertTrue("No se deben agregar bordes duplicados", dao.inserted.size == afterFirst)
     }
 
     @Test
     fun `no edges when single fact`() = kotlinx.coroutines.runBlocking {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
-        val facts = listOf(fact(1, "唯一事实"))
+        val facts = listOf(fact(1, "el único hecho"))
         val result = builder.buildEdges(newFacts = facts, existingFacts = facts, scope = "main", spaceId = "default")
         assertTrue(result.total == 0)
     }
@@ -124,10 +124,10 @@ class MemoryEdgeBuilderTest {
         val dao = FakeLinkDao()
         val builder = MemoryEdgeBuilder(dao)
         val facts = listOf(
-            fact(1, "买了键盘", category = "shopping", createdAt = "2026-10-10T10:00:00Z"),
-            fact(2, "开会讨论", category = "work", createdAt = "2026-10-16T10:00:00Z"),
+            fact(1, "compré un teclado", category = "shopping", createdAt = "2026-10-10T10:00:00Z"),
+            fact(2, "Reunión para discutir", category = "work", createdAt = "2026-10-16T10:00:00Z"),
         )
         val result = builder.buildEdges(newFacts = listOf(facts[0]), existingFacts = facts, scope = "main", spaceId = "default")
-        assertTrue("不同分类 + 时间远不应产生边", result.total == 0)
+        assertTrue("Una clasificación diferente + tiempo no debería producir aristas", result.total == 0)
     }
 }

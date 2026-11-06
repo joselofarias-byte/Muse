@@ -3,7 +3,7 @@ package io.zer0.muse.tools
 import io.zer0.muse.notification.MuseNotificationManager
 
 /**
- * notify 工具。
+ * notify Herramientas.
  *
  * Lets the AI proactively send notifications to the user.
  * Only used when the user explicitly asks for reminders/notifications,
@@ -13,10 +13,10 @@ object NotifyTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "notify",
-        description = "向用户发送通知。适用场景:" +
-            "- 用户说「提醒我 xxx」或「xxx 的时候告诉我」" +
-            "- 巡检任务发现需要用户注意的问题" +
-            "一切正常、没有异常时不要调用。",
+        description = "Enviar notificaciones a los usuarios. Escenarios aplicables:" +
+            "- El usuario dice \"recuérdame xxx\" o \"xxx Dime cuando" +
+            "- Las tareas de inspección identifican problemas que requieren la atención del usuario." +
+            "No lo llames cuando todo es normal y no hay excepciones.",
         parameters = mapOf(
             "title" to "Required. Notification title (brief).",
             "body" to "Required. Notification content.",
@@ -37,7 +37,7 @@ object NotifyTool {
         }
         val priority = args["priority"]?.trim()?.lowercase() ?: "normal"
         return try {
-            // 使用已有的通知渠道
+            // Utilice los canales de notificación existentes
             notificationManager.notifyChatCompleted(title, body)
             "Notification sent: '$title' (priority: $priority)."
         } catch (e: Exception) {

@@ -13,24 +13,24 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * P2-3 拆域：MCP / 视觉 / 备份 / 通知 / 更新 / Web / 记忆基础设施注册独立模块。
+ * P2-3 Deslocalización:MCP / Visual/Copia de seguridad/Notificaciones/Actualizaciones/Web/Módulo independiente de registro de infraestructura de memoria.
  */
 val appInfraModule = module {
 
-    // Phase 9.5 (M3): MCP server 注册器(管理多个 McpClient,桥接 ToolRegistry)
-    // v1.0.79 (C-3): 注入 AssistantRepository — MCP 连接成功后自动绑定到主助手扩展
+    // Phase 9.5 (M3): MCP server registrador(Administrar múltiples McpClient,puente ToolRegistry)
+    // v1.0.79 (C-3): inyectar AssistantRepository — MCP Vincularse automáticamente a la extensión del asistente principal después de una conexión exitosa
     single { io.zer0.muse.mcp.McpRegistry(get(), get(), androidContext(), get()) }
 
-    // Phase 5-I / Phase 7: 备份导出/导入服务(含 memory.db + facts.db)
-    // Phase 8.9: 增加云备份/余额查询依赖
+    // Phase 5-I / Phase 7: Exportación de copia de seguridad/Servicios de importación(Contiene memory.db + facts.db)
+    // Phase 8.9: Agregar copia de seguridad en la nube/La consulta de saldo depende de
 
-    // v1.135-A: 视觉辅助结果缓存(session 级 + sidecar 持久化)
+    // v1.135-A: Almacenamiento en caché de resultados de ayuda visual(session nivel + persistencia sidecar)
     single { io.zer0.muse.vision.VisionCache(androidContext()) }
 
-    // v1.25: 视觉辅助桥接器(让纯文本模型通过视觉模型"看到"图片)
+    // v1.25: Puente de asistencia visual(Pasar un modelo de texto plano a través de un modelo visual"ver"fotos)
     single { io.zer0.muse.vision.VisionBridge(get(), get(), get()) }
 
-    /** 跨 MuseDb/MemoryDb/FactDb/DataStore 恢复阶段账本。 */
+    /** Libro mayor en la etapa de recuperación de MuseDb/MemoryDb/FactDb/DataStore. */
     single { io.zer0.muse.backup.RestoreJournal(androidContext()) }
     single { io.zer0.muse.backup.RestoreStagingStore(androidContext()) }
     single {
@@ -40,30 +40,30 @@ val appInfraModule = module {
         )
     }
 
-    // Phase 8.9: 云备份服务(S3/WebDAV 派发)
-    // v1.0.4 (P3-8): 移除 BalanceService Koin 注册 — 该类从未被业务代码调用,
-    // ProviderSection.kt 内联实现了带本地化错误反馈的余额查询,BalanceService 为死代码,已删除。
+    // Phase 8.9: Servicio de respaldo en la nube(S3/WebDAV distribuir)
+    // v1.0.4 (P3-8): Eliminar el registro de BalanceService Koin — Esta clase nunca es llamada por código comercial.,
+    // ProviderSection.kt Consulta de saldo con comentarios de errores localizados implementados en línea,BalanceService código hasta la muerte,Eliminado.
     single { io.zer0.muse.backup.CloudBackupService(get(named("chat"))) }
-    // Phase 8.9: CherryStudio/Chatbox 配置导入
+    // Phase 8.9: CherryStudio/Chatbox Importación de configuración
     single { io.zer0.muse.importer.ConfigImporter(get()) }
 
-    // 用量流水：每次模型请求一行，统计页直接聚合本表。
+    // Flujo de uso: cada vez que el modelo solicita una fila, la página de estadísticas agrega directamente esta tabla.
     single { io.zer0.muse.data.stats.UsageRecorder(get<io.zer0.muse.data.session.MuseDb>().usageRecordDao()) }
 
-    // Phase 8.10: 通知管理器(3 渠道:chat_completed/live_update/web_server)
+    // Phase 8.10: administrador de notificaciones(3 canal:chat_completed/live_update/web_server)
     single { io.zer0.muse.notification.MuseNotificationManager(androidContext()) }
 
-    // v1.133: GitHub Release 更新检查 — 复用 named("chat") OkHttpClient(已应用用户代理配置)
+    // v1.133: GitHub Release Comprobación de actualización — Reutilizar named("chat") OkHttpClient(Configuración del agente de usuario aplicada)
     single { io.zer0.muse.update.UpdateChecker(get(named("chat"))) }
-    // v1.133: 更新通知器(协调 UpdateChecker + SettingsRepository + MuseNotificationManager)
+    // v1.133: Notificador de actualización(coordinar UpdateChecker + SettingsRepository + MuseNotificationManager)
     single { io.zer0.muse.update.UpdateNotifier(get(), get()) }
 
-    // Phase 8.11: mDNS 服务发现(NSD 局域网服务注册)
+    // Phase 8.11: mDNS descubrimiento de servicios(NSD Registro del servicio LAN)
     single { io.zer0.muse.web.MdnsService(androidContext()) }
-    // Phase 8.11: 嵌入式 Web 服务器(Ktor CIO + JWT + mDNS)
-    // 末尾两个参数是记忆只读命令的数据源(全局 FactStore + 分库提供者),与记忆页同一套路由;
-    // 再往后是知识/自动化两个分类页的只读数据源(知识库三张表 + embedding 服务 + 定时任务两张表)。
-    // 系统状态只读命令的数据源(应用体积 / 备份 / 自动化能力位 / 电量)。
+    // Phase 8.11: Servidor web integrado(Ktor CIO + JWT + mDNS)
+    // Los dos últimos parámetros son la fuente de datos del comando de solo lectura de la memoria.(Global FactStore + proveedor de repositorio),El mismo conjunto de rutas que la página de memoria.;
+    // Luego viene el conocimiento/Automatizar fuentes de datos de solo lectura para páginas de dos categorías(Tres tablas de base de conocimientos + servicio de incorporación + dos tablas de tareas programadas).
+    // Fuente de datos para comandos de solo lectura del estado del sistema(Tamaño de la aplicación/copia de seguridad/capacidades de automatización/potencia).
     single<io.zer0.muse.web.HostSystemStatusSource> {
         io.zer0.muse.web.AndroidHostSystemStatusSource(
             context = androidContext(),
@@ -79,23 +79,23 @@ val appInfraModule = module {
         )
     }
 
-    // Phase 8.4: Web 搜索服务(独立 OkHttpClient,避免与 SSE 长连接互相影响)
-    // Phase 8.5 修复:加 qualifier 区分;config 改为懒加载,避免主线程 runBlocking
-    // v1.39: 用 @Volatile 缓存而非 runBlocking,消除主线程 ANR
+    // Phase 8.4: Web Servicio de búsqueda(independiente OkHttpClient,Evite la interacción con conexiones largas SSE)
+    // Phase 8.5 Reparación:Agregar calificador para distinguir;config Cambiar a carga diferida,evitar el hilo principal runBlocking
+    // v1.39: Utilice la caché @Volatile en su lugar runBlocking,Eliminar hilo principal ANR
     single(named("webSearch")) {
-        // v2.6.9: 代理已改由动态 ProxyProvider 接管（createWebSearchClient 内部装
-        // ProxySelector），这里不再需要读 proxyConfig 局部变量。
+        // v2.6.9: En su lugar, el proxy ha sido asumido por un ProxyProvider dinámico (createWebSearchClient Decoración de interiores
+        // ProxySelector), no es necesario leer la variable local proxyConfig aquí.
         createWebSearchClient()
     }
     single<WebSearchService> {
-        // config 不在 Koin 初始化时同步读取(避免主线程 ANR),交给 CompositeWebSearchService 懒加载
+        // config No leer sincrónicamente en la inicialización de Koin(evitar el hilo principal ANR),Déjelo en manos de CompositeWebSearchService para una carga diferida
         CompositeWebSearchService(get(named("webSearch")), WebSearchConfig())
     }
 
-    // MemoryTicker: 在 app 模块注册(需 SettingsRepository 与 memory 开关)
-    // v0.32: 透传 getConfig 闭包,让用户的 MemoryConfig(tokenBudget/decay/threshold 等)
-    //         真正影响记忆行为;闭包每次都读 settings.memoryConfigCache(@Volatile,零阻塞),
-    //         而不是在构造时缓存,保证用户改完设置页立即生效。
+    // MemoryTicker: Regístrese en el módulo de la aplicación(Requiere ajustesRepositorio y conmutadores de memoria)
+    // v0.32: Pasar transparentemente el cierre getConfig,Deja que el usuario MemoryConfig(tokenBudget/decay/threshold espera)
+    //         Realmente afecta el comportamiento de la memoria.;Los cierres se leen cada vez. settings.memoryConfigCache(@Volatile,Bloqueo cero),
+    //         en lugar de almacenar en caché en el momento de la construcción,Asegúrese de que el usuario cambie la página de configuración para que surta efecto inmediatamente.
     single {
         val settings = get<SettingsRepository>()
         val assistants = get<io.zer0.muse.data.assistant.AssistantRepository>()
@@ -105,7 +105,7 @@ val appInfraModule = module {
             compiler = get(),
             deepProcessor = get(),
             dailyStateDao = get(),
-            // Phase 3: 暂无记忆重置水印
+            // Phase 3: Aún no hay marca de agua para restablecer la memoria
             getResetAt = { null },
             isMemoryEnabled = { settings.isMemoryEnabled() },
             scope = get(),
@@ -114,11 +114,11 @@ val appInfraModule = module {
                 getCurrentSpaceId = { settings.currentSpaceIdFlow.first() },
             ),
             factStore = get(),
-            // v12 (T3-1): 记忆反思任务 — 每日整理(回填实体键/合并重复/矛盾检测/晋升)
+            // v12 (T3-1): tarea de reflexión de la memoria — Clasificación diaria(Rellenar claves de entidad/fusionar duplicados/Detección de contradicciones/promoción)
             reflectionRunner = get(),
-            // v1.0.92: LLM 记忆整合 — 每日规则去重后,把语义重复的相似簇交给大模型合并
+            // v1.0.92: LLM integración de memoria — Después de eliminar duplicados de las reglas diarias,Proporcionar grupos similares semánticamente repetidos a modelos grandes para fusionarlos.
             factConsolidator = get(),
-            // D3-P1: 管线运行日志(观测层) — 落盘 filesDir/memory/pipeline_log.jsonl
+            // D3-P1: Registro de operaciones de tubería(capa de observación) — Realizar el pedido filesDir/memory/pipeline_log.jsonl
             pipelineLog = io.zer0.memory.observe.PipelineLog.create(
                 java.io.File(androidContext().filesDir, "memory"),
             ),
@@ -136,9 +136,9 @@ val appInfraModule = module {
             },
         )
     }
-    // v1.0.92: LLM 记忆整合器(手动"整理记忆"与每日自动整合共用同一实现)
+    // v1.0.92: LLM Consolidador de memoria(manuales"organizar la memoria"Comparte la misma implementación con integración automática diaria.)
     single { io.zer0.memory.fact.LlmFactConsolidator(get()) }
-    // 会话/助手删除时的记忆清理(摘要/检查点/事实/编译产物/群聊记忆/矛盾清单)
+    // sesión/Limpieza de memoria cuando se elimina el asistente(Resumen/punto de control/hechos/compilar producto/Memoria de chat grupal/lista de contradicciones)
     single {
         io.zer0.muse.data.memory.SessionMemoryCleanup(
             summaryDao = get(),
@@ -150,7 +150,7 @@ val appInfraModule = module {
             contradictionStore = get(),
         )
     }
-    // v1.0.51: 存量记忆迁移 — 升级后首次启动补跑历史 session 的 rollingSummary
+    // v1.0.51: Migración de memoria de stock — Iniciar la sesión del historial de copias de seguridad por primera vez después de la actualización rollingSummary
     single {
         io.zer0.muse.data.MemoryBackfillMigration(
             sessionRepository = get(),
@@ -159,7 +159,7 @@ val appInfraModule = module {
         )
     }
 
-    // v2.6.2（用户反馈）: 通知 → 记忆 后台梳理调度
+    // v2.6.2(comentarios de los usuarios): Notificación → Clasificación y programación del fondo de la memoria
     single {
         io.zer0.muse.data.NotificationMemoryScheduler(
             settings = get(),
@@ -169,7 +169,7 @@ val appInfraModule = module {
         )
     }
 
-    // v2.6.2（记忆审计）: 群聊记忆 / Agent 私信定期清理
+    // v2.6.2(auditoría de memoria): La memoria del chat grupal/los mensajes privados del agente se limpian periódicamente
     single {
         io.zer0.muse.data.MemoryHousekeepingScheduler(
             settings = get(),
@@ -179,20 +179,20 @@ val appInfraModule = module {
         )
     }
 
-    // v1.0.52 P2-3: AI 驱动记忆自动管理(对话中实时提取实体/关系/合并/分类)
+    // v1.0.52 P2-3: AI Gestión automática de la memoria del disco(Extraiga entidades en tiempo real durante las conversaciones./relación/fusionar/Clasificación)
     single {
         io.zer0.memory.ai.MemoryAutoSaveScheduler(
             factDbProvider = get(),
             llmClient = get(),
             scope = get(),
-            // v2.6.2（用户反馈）: 会话结束补边（让星座连成网络）
+            // v2.6.2(comentarios de los usuarios): Finalice la sesión para complementar los bordes (deje que las constelaciones se conecten en una red)
             edgeBuilder = get(),
-            // 语义近邻向量提供者 —— 复用 RAG 的 EmbeddingService（可能失败，补边层已容错）
+            // Proveedor de vectores vecinos semánticos —— Reutilice EmbeddingService de RAG (puede fallar, la capa de borde es tolerante a fallas)
             semanticProvider = io.zer0.memory.ai.MemoryEdgeBuilder.SemanticProvider { texts ->
                 val cfg = get<io.zer0.muse.data.SettingsRepository>().getRagConfig()
                 get<io.zer0.muse.rag.EmbeddingService>().getProvider(cfg).embed(texts)
             },
-            // v2.6.2: LLM 深化开关 —— 读用户配置（默认关）
+            // v2.6.2: LLM profundizar el interruptor —— Leer configuración de usuario (desactivado por defecto)
             edgeEnhanceEnabled = {
                 get<io.zer0.muse.data.SettingsRepository>().memoryGraphConfigCache.aiEnhanceEnabled
             },

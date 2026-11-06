@@ -9,10 +9,10 @@ internal fun readBackupFileStores(paths: Iterable<String>, read: (name: String) 
 }
 
 /**
- * 恢复文件型备份存储的 fail-fast 边界。
+ * Límites a prueba de fallas para restaurar el almacenamiento de respaldo basado en archivos.
  *
- * 文件型存储与三个 Room 库共享同一个跨存储恢复账本；任何一个白名单文件写失败
- * 都必须向上传播，才能触发 [BackupService] 的 recovery point 回滚。
+ * El almacenamiento de archivos comparte el mismo libro de recuperación de almacenamiento cruzado con tres bibliotecas de Room; falla la escritura en cualquier archivo incluido en la lista blanca
+ * Todo debe propagarse hacia arriba para activar [BackupService] El punto de recuperación se revierte.
  */
 internal suspend fun restoreBackupFileStores(
     stores: Map<String, String>,

@@ -6,19 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 用户反馈「获得主动控制节奏能力后，一条主动消息都不发了」的回归测试。
+ * Pruebas de regresión basadas en comentarios de los usuarios de que "después de obtener la capacidad de controlar activamente el ritmo, no se enviaron mensajes activos".
  *
- * 覆盖四处：
- *  1. 免打扰时段 ↔ 允许窗口的映射往返（保存再打开，起止不互换）
- *  2. 允许窗口为空 / 与引擎静默时段全重合的诊断
- *  3. ScoreEngine 拦截原因可复现（因子 + 阈值 + verdict）
- *  4. shouldSend 缺失 / 解析失败的区分（见 ProactiveDecisionParserTest）
+ * Cubriendo cuatro áreas:
+ *  1. No molestar periodo ↔ Permitir el mapeo de ventanas de ida y vuelta (guardar y luego abrir, el inicio y el final no se intercambian)
+ *  2. Diagnósticos que permiten que la ventanilla esté vacía/coincidiendo con el periodo de silencio del motor
+ *  3. ScoreEngine El motivo de la interceptación es reproducible (factor + umbral + veredicto)
+ *  4. shouldSend Distinción de análisis faltante/fallida (consulte ProactiveDecisionParserTest)
  */
 class QuietHoursWindowTest {
 
-    // ── 1. 往返：语义映射必须严格互逆 ────────────────────────────────
+    // ── 1. Ida y vuelta: el mapeo semántico debe ser estrictamente recíproco ────────────────────────────────
 
-    /** 默认配置：允许 08-22 → 免打扰 22-08。 */
+    /** Configuración predeterminada: Permitir 08-22 → No molestar 22-08. */
     @Test
     fun `default allowed window maps to quiet hours 22 to 8`() {
         val quiet = QuietHoursWindow.AllowedWindow(8, 22).toQuietHours()
@@ -26,7 +26,7 @@ class QuietHoursWindowTest {
         assertEquals(8, quiet.endHour)
     }
 
-    /** 免打扰 22-08 → 允许 08-22。 */
+    /** no molestar 22-08 → Permitido el 22-08. */
     @Test
     fun `quiet hours 22 to 8 maps back to allowed 8 to 22`() {
         val allowed = QuietHoursWindow.QuietHours(22, 8).toAllowed()
@@ -35,43 +35,43 @@ class QuietHoursWindowTest {
     }
 
     /**
-     * 关键回归：用户在弹窗里保存一次，起止不得互换。
+     * Regresión clave: el usuario guarda una vez en la ventana emergente y el inicio y el final no se pueden intercambiar.
      *
-     * 旧实现把「免打扰」和「允许」两个方向散落在 UI 里（初值取 allowedHourEnd、
-     * 保存时写回 allowedHourEnd = s），一次保存要跨两次反向映射。
-     * 本测试锁住「读出来 → 原样写回 → 再读出来」这个环是恒等的。
+     * La implementación anterior dispersó las dos direcciones de "No molestar" y "Permitir" en la interfaz de usuario (el valor inicial es permitidoHoraEnd,
+     * Escribir al guardar allowedHourEnd = s), un guardado requiere dos asignaciones inversas.
+     * Esta prueba bloquea "leer en voz alta → Escribe como está → Léelo de nuevo. Este anillo es idéntico.
      */
     @Test
     fun `saving the dialog unchanged does not swap start and end`() {
         val stored = QuietHoursWindow.AllowedWindow(startHour = 8, endHour = 22)
 
-        // 打开弹窗：读出免打扰时段
+        // Abrir ventana emergente: Lea en voz alta el período de no molestar
         val dialog = stored.toQuietHours()
         assertEquals(22, dialog.startHour)
         assertEquals(8, dialog.endHour)
 
-        // 用户没动滑块，直接保存：把免打扰时段写回允许窗口
+        // El usuario no movió el control deslizante y guardó directamente: escribiendo el período de no molestar en la ventana permitida
         val rewritten = dialog.toAllowed()
 
-        assertEquals("保存后允许开始不应被改动", 8, rewritten.startHour)
-        assertEquals("保存后允许结束不应被改动", 22, rewritten.endHour)
-        assertFalse("默认配置不应变成空窗口", rewritten.isEmpty)
+        assertEquals("Permitir el inicio después de guardar y no debe cambiarse", 8, rewritten.startHour)
+        assertEquals("El final permitido después de guardar no debe cambiarse", 22, rewritten.endHour)
+        assertFalse("La configuración predeterminada no debería convertirse en una ventana vacía.", rewritten.isEmpty)
     }
 
-    /** 所有 24×24 组合下映射都严格互逆，不只是默认值那一组。 */
+    /** todos 24×24 Las asignaciones bajo la combinación son estrictamente recíprocas, no solo el grupo de valores predeterminado. */
     @Test
     fun `mapping is involutive for every hour pair`() {
         for (start in 0..23) {
             for (end in 0..23) {
                 val allowed = QuietHoursWindow.AllowedWindow(start, end)
                 val roundTripped = allowed.toQuietHours().toAllowed()
-                assertEquals("start=$start end=$end 往返后 start 变了", start, roundTripped.startHour)
-                assertEquals("start=$start end=$end 往返后 end 变了", end, roundTripped.endHour)
+                assertEquals("start=$start end=$end comienzo cambiado después del viaje de ida y vuelta", start, roundTripped.startHour)
+                assertEquals("start=$start end=$end final cambiado después del viaje de ida y vuelta", end, roundTripped.endHour)
             }
         }
     }
 
-    /** 用户把免打扰调成 23-07，存下来应是允许 07-23（跨夜免打扰）。 */
+    /** El usuario ha ajustado No molestar al 23-07 y la configuración guardada debería permitir 07-23 (No molestar durante la noche). */
     @Test
     fun `editing quiet hours writes the complementary allowed window`() {
         val edited = QuietHoursWindow.QuietHours(startHour = 23, endHour = 7)
@@ -79,7 +79,7 @@ class QuietHoursWindowTest {
 
         assertEquals(7, allowed.startHour)
         assertEquals(23, allowed.endHour)
-        // 允许 07-23 应覆盖 17 个小时，且包含白天、不含深夜
+        // Permitir del 23 al 7 debe cubrir 17 horas, incluido el día y excluyendo la noche
         assertEquals(16, allowed.hours().size)
         assertTrue(7 in allowed.hours())
         assertTrue(22 in allowed.hours())
@@ -87,9 +87,9 @@ class QuietHoursWindowTest {
         assertFalse(3 in allowed.hours())
     }
 
-    // ── 2. 空窗口诊断 ──────────────────────────────────────────────
+    // ── 2. Diagnóstico de ventana vacía ──────────────────────────────────────────────
 
-    /** 起止相同 = 空窗口 = 永远不会发送。 */
+    /** Mismo comienzo y final = ventana vacia = Nunca enviado. */
     @Test
     fun `equal start and end is an empty window`() {
         assertTrue(QuietHoursWindow.AllowedWindow(9, 9).isEmpty)
@@ -97,14 +97,14 @@ class QuietHoursWindowTest {
         assertTrue(QuietHoursWindow.QuietHours(9, 9).isEmptyAllowed)
     }
 
-    /** 非空窗口才覆盖小时。 */
+    /** Sólo las ventanas no vacías cubren el horario. */
     @Test
     fun `non empty windows cover hours correctly`() {
         assertEquals(14, QuietHoursWindow.AllowedWindow(8, 22).hours().size)
-        assertEquals(8, QuietHoursWindow.AllowedWindow(22, 6).hours().size) // 跨夜 22-06
+        assertEquals(8, QuietHoursWindow.AllowedWindow(22, 6).hours().size) // a través de la noche 22-06
     }
 
-    /** 允许 23-06 整段落在引擎静默时段（22-08）内 → 结构上永不发送。 */
+    /** Permita que todo el segmento 23-06 esté en el período de silencio del motor (22-08) dentro → Estructuralmente nunca se envió. */
     @Test
     fun `allowed window fully inside engine quiet hours is detected`() {
         assertTrue(
@@ -116,7 +116,7 @@ class QuietHoursWindowTest {
         )
     }
 
-    /** 允许 22-08 与引擎静默时段完全一致 → 同样是结构上永不发送。 */
+    /** Permita que 22-08 coincida exactamente con el período de silencio del motor. → Lo mismo estructuralmente nunca se envía. */
     @Test
     fun `allowed window equal to engine quiet hours is detected`() {
         assertTrue(
@@ -128,7 +128,7 @@ class QuietHoursWindowTest {
         )
     }
 
-    /** 正常白天窗口不该被误判。 */
+    /** No se debe juzgar mal la ventana diurna normal. */
     @Test
     fun `daytime allowed window is not flagged as shadowed`() {
         assertFalse(
@@ -140,7 +140,7 @@ class QuietHoursWindowTest {
         )
     }
 
-    /** 空窗口不参与「被遮蔽」判定（已由 isEmpty 单独表达，避免重复报警）。 */
+    /** Las ventanas vacías no participan en la determinación de la \"oclusión\" (isEmpty lo ha expresado por separado para evitar alarmas repetidas). */
     @Test
     fun `empty allowed window is not reported as shadowed`() {
         assertFalse(
@@ -153,7 +153,7 @@ class QuietHoursWindowTest {
     }
 
     private companion object {
-        /** 引擎的静默时段。与产品默认一致，测试不依赖具体实现类的常量。 */
+        /** El período de silencio del motor. De acuerdo con el valor predeterminado del producto, las pruebas no se basan en constantes de clases de implementación específicas. */
         const val ENGINE_QUIET_START = 22
         const val ENGINE_QUIET_END = 8
     }

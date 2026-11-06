@@ -7,31 +7,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 插话取件判定（selectSteeringMessages）。
+ * Juicio de recogida de interrupción (selectSteeringMessages).
  *
- * 核心是防跨会话污染：把属于别的会话的排队消息当成插话注入，会让用户在对话里看到
- * 自己没说过的话，而那句话还会成为模型后续推理的依据。所以归属不明的条目一律不取，
- * 留在队列里走原有发送路径 —— 漏取只是晚一步，错取是数据污染。
+ * El objetivo principal es evitar la contaminación entre sesiones: inyectar mensajes en cola que pertenecen a otras sesiones como interrupciones permitirá a los usuarios verlos en la conversación.
+ * Si usted no ha dicho nada, esa frase se convertirá en la base del razonamiento posterior del modelo. Por lo tanto, no se aceptarán inscripciones cuyo propietario sea desconocido.
+ * Permanezca en la cola y tome la ruta de envío original —— Perderse algo es sólo un paso tardío; tomarlo mal es contaminación de datos.
  */
 class SteeringMessageSelectionTest {
 
     @Test
     fun `only messages enqueued in the same session are steerable`() {
         val queue = listOf(
-            PendingMessage("A 会话的话", sessionId = SESSION_A),
-            PendingMessage("B 会话的话", sessionId = SESSION_B),
+            PendingMessage("A palabras conversacionales", sessionId = SESSION_A),
+            PendingMessage("B palabras conversacionales", sessionId = SESSION_B),
         )
 
         val selected = selectSteeringMessages(queue, SESSION_A)
 
-        assertEquals(listOf("A 会话的话"), selected.map { it.text })
+        assertEquals(listOf("A palabras conversacionales"), selected.map { it.text })
     }
 
     @Test
     fun `message with unknown session is not steerable`() {
         val queue = listOf(
-            PendingMessage("入队时没有会话", sessionId = null),
-            PendingMessage("旧数据没这个字段", sessionId = null),
+            PendingMessage("Sin sesión al hacer cola", sessionId = null),
+            PendingMessage("Los datos antiguos no tienen este campo.", sessionId = null),
         )
 
         assertTrue(selectSteeringMessages(queue, SESSION_A).isEmpty())
@@ -40,11 +40,11 @@ class SteeringMessageSelectionTest {
     @Test
     fun `message with images is not steerable even in the same session`() {
         val queue = listOf(
-            PendingMessage("带图的消息", images = listOf("base64"), sessionId = SESSION_A),
-            PendingMessage("纯文本", sessionId = SESSION_A),
+            PendingMessage("mensaje con imagenes", images = listOf("base64"), sessionId = SESSION_A),
+            PendingMessage("texto plano", sessionId = SESSION_A),
         )
 
-        assertEquals(listOf("纯文本"), selectSteeringMessages(queue, SESSION_A).map { it.text })
+        assertEquals(listOf("texto plano"), selectSteeringMessages(queue, SESSION_A).map { it.text })
     }
 
     @Test

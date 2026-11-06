@@ -4,28 +4,28 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * 文本截断工具。
+ * Herramienta de truncamiento de texto.
  *
- * ## 为什么需要"保头部 + 保尾部"
+ * ## por qué es necesario"Protege la cabeza + protege la cola"
  *
- * 只留头部的截断（`text.take(n)`）对工具结果和报错是**丢关键信息**：日志的错误行、
- * 命令的输出结论、代码的返回语句往往在末尾。压缩上下文时按单条截断，如果只留头部，
- * 模型看到的永远是"调用开始了"却看不到"结果是什么"。
+ * Deje solo el truncamiento de la cabeza (`text.take(n)`) para los resultados de la herramienta y los informes de errores son**Perder información clave**: La línea de error del registro,
+ * La conclusión de salida del comando y la declaración de retorno del código suelen estar al final. Al comprimir el contexto, truncarlo en una sola línea. Si sólo queda el encabezado,
+ * Lo que ve el modelo es siempre"llamada iniciada"pero no puedo ver"cual es el resultado".
  *
- * ## UTF-8 安全
+ * ## UTF-8 seguro
  *
- * 按**字节**切分并对齐字符边界。按 Java/Kotlin 的 `Char` 下标切分会在代理对（emoji、
- * 部分 CJK 扩展区）中间切断，产生孤立代理字符——下游 JSON 序列化直接失败。
+ * prensa**bytes**Divida y alinee los límites de los personajes. Por Java/Kotlin `Char` La división de subíndices se realizará en la pareja sustituta (emoji,
+ * Parte del área de extensión CJK) está cortada por la mitad, lo que da como resultado personajes sustitutos huérfanos.——La serialización JSON descendente falla directamente.
  */
 object TextTruncation {
 
-    /** 默认：头部保留比例（其余留给尾部）。 */
+    /** Predeterminado: la cabeza conserva la proporción (el resto se deja para la cola). */
     private const val DEFAULT_HEAD_RATIO = 0.4
 
-    /** 默认：尾部保留比例。 */
+    /** Valor predeterminado: mantener la relación de cola. */
     private const val DEFAULT_TAIL_RATIO = 0.4
 
-    /** 截断结果。[truncated]=false 表示原文未超限、原样返回。 */
+    /** Trunca el resultado.[truncated]=false Significa que el texto original no excede el límite y se devuelve tal cual. */
     data class Result(
         val text: String,
         val truncated: Boolean,
@@ -34,10 +34,10 @@ object TextTruncation {
     )
 
     /**
-     * 超过 [maxLength] 时保留头尾、中间以省略标记替代。
+     * exceder [maxLength] Al conservar la cabeza, la cola y el medio, reemplácelos con las marcas omitidas.
      *
-     * @param maxLength 触发截断的长度上限（按字符计；内部按 UTF-8 字节安全切分）
-     * @param marker 省略标记的生成方式（默认给出省略了多少字符，便于模型判断信息量）
+     * @param maxLength El límite superior de la longitud que desencadena el truncamiento (en caracteres; segmentación internamente segura basada en bytes UTF-8)
+     * @param marker Cómo se generan las etiquetas omitidas (la cantidad de caracteres omitidos se proporciona de forma predeterminada para facilitar que el modelo determine la cantidad de información)
      */
     fun headTail(text: String, maxLength: Int, marker: (Int, Int) -> String = ::defaultMarker): Result =
         if (maxLength <= 0 || text.length <= maxLength) {
@@ -49,7 +49,7 @@ object TextTruncation {
             val tail = text.takeLastSurrogateSafe(tailLength)
             val omitted = text.length - head.length - tail.length
             if (omitted <= 0) {
-                // 上限极小导致头尾重叠：退化为纯头部截断，至少不产生重复内容
+                // El límite superior extremadamente pequeño conduce a una superposición de la cabeza y la cola: degenera en un truncamiento de cabeza puro, al menos no se genera contenido duplicado.
                 val only = text.takeSurrogateSafe(maxLength)
                 Result(only, truncated = true, text.length, text.length - only.length)
             } else {
@@ -62,16 +62,16 @@ object TextTruncation {
             }
         }
 
-    /** 便捷入口：只要截断后的文本。 */
+    /** Entrada conveniente: solo texto truncado. */
     fun headTailText(text: String, maxLength: Int): String = headTail(text, maxLength).text
 
     /**
-     * 超过 [maxLength] 时只保留尾部，开头以省略标记替代。
+     * exceder [maxLength] Sólo se conserva la cola y el comienzo se reemplaza por una marca de omisión.
      *
-     * 用于「结论在最后」的内容：命令输出、构建日志、测试报告。这类文本开头是进度日志，
-     * 真正要看的是最后几行的报错、失败用例与退出状态；按头部截断等于留住了最不重要的部分。
+     * Contenido utilizado para la "conclusión al final": salida de comandos, registros de compilación, informes de prueba. Este tipo de texto comienza con un registro de progreso,
+     * Lo que realmente importa es el informe de errores, el caso de uso fallido y el estado de salida en las últimas líneas; truncar por cabeza significa retener la parte menos importante.
      *
-     * @param maxLength 触发截断的长度上限（按字符计；切分不破坏代理对）
+     * @param maxLength Longitud máxima (en caracteres) que desencadena el truncamiento; el corte no destruye los pares sustitutos.
      */
     fun tail(text: String, maxLength: Int, marker: (Int, Int) -> String = ::defaultTailMarker): Result {
         if (maxLength <= 0 || text.length <= maxLength) {
@@ -87,19 +87,19 @@ object TextTruncation {
         )
     }
 
-    /** 便捷入口：只要保留尾部后的文本。 */
+    /** Entrada conveniente: simplemente guarde el texto después del avance. */
     fun tailText(text: String, maxLength: Int): String = tail(text, maxLength).text
 
-    /** 默认省略标记：写明省略量与原文长度，避免模型误以为看到的就是全部。 */
+    /** Marca de omisión predeterminada: indica la cantidad de omisión y la extensión del texto original para evitar que el modelo piense erróneamente que lo que ve lo es todo. */
     private fun defaultMarker(omitted: Int, original: Int): String =
-        "\n\n[... 已省略 $omitted 字（原文 $original 字）...]\n\n"
+        "\n\n[... Omitido $omitted palabra (texto original $original palabras)...]\n\n"
 
-    /** 尾部截断的省略标记：省略的是开头，标记放在最前，保留的尾部紧随其后。 */
+    /** Marca de puntos suspensivos truncados en la cola: la marca omitida está al principio y la marca se coloca primero, seguida de la cola retenida. */
     private fun defaultTailMarker(omitted: Int, original: Int): String =
-        "[... 已省略开头 $omitted 字（原文 $original 字），以下为末尾部分 ...]\n\n"
+        "[... Comienzo omitido $omitted palabra (texto original $original palabras), la siguiente es la parte final ...]\n\n"
 
     /**
-     * 从头取 [count] 个字符，且不切断代理对（高位代理后紧跟低位代理才成对）。
+     * Tomar desde cero [count] caracteres sin cortar el par sustituto (el sustituto alto es seguido por el sustituto bajo para formar un par).
      */
     private fun String.takeSurrogateSafe(count: Int): String {
         if (count >= length) return this
@@ -108,7 +108,7 @@ object TextTruncation {
     }
 
     /**
-     * 从尾取 [count] 个字符，且不从代理对中间开始。
+     * Tomar de la cola [count] caracteres y no comienza en el medio de la pareja sustituta.
      */
     private fun String.takeLastSurrogateSafe(count: Int): String {
         if (count >= length) return this

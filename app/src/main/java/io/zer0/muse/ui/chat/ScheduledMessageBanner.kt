@@ -28,10 +28,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Phase 3 3E: 定时消息横幅 — 在聊天页顶部显示 scheduled message 状态。
+ * Phase 3 3E: Banner de mensaje cronometrado — Muestra el estado de los mensajes programados en la parte superior de la página de chat.
  *
- * @param pendingMessages 当前待发送的定时消息列表
- * @param onCancel 取消某条定时消息的回调
+ * @param pendingMessages Lista de mensajes programados que se enviarán actualmente
+ * @param onCancel Cancelar la devolución de llamada de un mensaje programado
  */
 @Composable
 fun ScheduledMessageBanner(pendingMessages: List<PendingMessage>, onCancel: (String) -> Unit = {}, modifier: Modifier = Modifier) {

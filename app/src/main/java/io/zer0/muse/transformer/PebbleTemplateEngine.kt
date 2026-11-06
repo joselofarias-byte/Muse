@@ -4,77 +4,77 @@ import io.zer0.common.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Phase 9.2 (M22): 轻量 Pebble 兼容模板引擎(独立实现,零依赖)。
+ * Phase 9.2 (M22): Motor de plantillas ligero compatible con Pebble(Implementación independiente,Cero dependencias).
  *
- * 按 Pebble 公开文档的语法规范,自实现子集,不引入 Pebble 依赖
- * (Pebble 是 JVM 库,Android 上不兼容且会增加 APK 体积)。
+ * Según la especificación de sintaxis de los documentos públicos de Pebble.,subconjunto autoimplementable,No introducir dependencias de Pebble
+ * (Pebble es una biblioteca JVM,Android Incompatible y aumentará el tamaño del APK).
  *
- * 支持语法(对标 Pebble 子集):
- *  - 变量: {{ var }} / {{ user.name }}(点号路径访问 Map)
- *  - 字面量: 'string' / "string" / 123 / 1.5 / true / false / null
- *  - 过滤器(管道链式):
- *      {{ var | upper }}                  转大写
- *      {{ var | lower }}                  转小写
- *      {{ var | length }}                 长度(CharSequence/Collection/Map)
- *      {{ var | default('foo') }}         为 null/空时回退
- *      {{ var | trim }}                   去首尾空白
- *      {{ list | join(', ') }}            用分隔符连接
- *      {{ var | replace('a', 'b') }}      替换
- *      {{ var | capitalize }}             首字母大写
- *      {{ list | first }} / {{ list | last }}  取首/尾
- *  - 条件:
+ * Sintaxis de soporte(Subconjunto de guijarros de referencia):
+ *  - variable: {{ var }} / {{ user.name }}(Acceso a la ruta del número de punto Map)
+ *  - literal: 'string' / "string" / 123 / 1.5 / true / false / null
+ *  - filtrar(cadena de tubo):
+ *      {{ var | upper }}                  Convertir a mayúsculas
+ *      {{ var | lower }}                  Convertir a minúsculas
+ *      {{ var | length }}                 longitud(CharSequence/Collection/Map)
+ *      {{ var | default('foo') }}         Retorno cuando es nulo/vacío
+ *      {{ var | trim }}                   Eliminar los espacios en blanco iniciales y finales
+ *      {{ list | join(', ') }}            Unirse con delimitador
+ *      {{ var | replace('a', 'b') }}      reemplazar
+ *      {{ var | capitalize }}             Poner en mayúscula la primera letra
+ *      {{ list | first }} / {{ list | last }}  toma el primero/cola
+ *  - Condiciones:
  *      {% if cond %}...{% elif cond2 %}...{% else %}...{% endif %}
- *      条件表达式: ==  !=  >  <  >=  <=  and  or  not
- *      测试: x is defined / x is empty / x is null / x is even / x is odd
- *      否定测试: x is not empty
- *  - 循环:
+ *      expresión condicional: ==  !=  >  <  >=  <=  and  or  not
+ *      prueba: x is defined / x is empty / x is null / x is even / x is odd
+ *      prueba negativa: x is not empty
+ *  - bucle:
  *      {% for item in items %}...{% endfor %}
- *      loop 上下文变量:
- *        {{ loop.index }}    1-based 序号
- *        {{ loop.index0 }}   0-based 序号
- *        {{ loop.first }}    是否首个
- *        {{ loop.last }}     是否末个
- *        {{ loop.length }}   总长度
- *  - 注释: {# comment #}(丢弃不输出)
+ *      loop variables de contexto:
+ *        {{ loop.index }}    1-based número de serie
+ *        {{ loop.index0 }}   0-based número de serie
+ *        {{ loop.first }}    ¿Es el primero?
+ *        {{ loop.last }}     ¿Es el último?
+ *        {{ loop.length }}   longitud total
+ *  - Comentario: {# comment #}(Descartar sin salida)
  *
- * 用法:
+ * Uso:
  * ```
  * val engine = PebbleTemplateEngine()
  * val out = engine.render(
- *     "你好 {{ name }},今天 {% if weather == 'rain' %}下雨{% else %}晴{% endif %}",
+ *     "Hola {{ name }},hoy {% if weather == 'rain' %}lloviendo{% else %}claro{% endif %}",
  *     mapOf("name" to "Alice", "weather" to "rain"),
  * )
- * // → "你好 Alice,今天下雨"
+ * // → "Hola Alice,esta lloviendo hoy"
  * ```
  *
- * 设计原则:
- *  - 零依赖(纯 Kotlin,不引入 Pebble/Jinja 库)
- *  - 安全(模板沙箱,无反射无代码执行)
- *  - 简洁(单文件 ~700 行)
- *  - Pebble 语法兼容(便于用户按 Pebble 文档)
+ * principios de diseño:
+ *  - Cero dependencias(puro Kotlin,No importar la biblioteca Pebble/Jinja)
+ *  - seguro(Caja de arena de plantilla,Sin reflexión ni ejecución de código.)
+ *  - conciso(archivo único ~700 OK)
+ *  - Pebble Compatible con sintaxis(Facilite a los usuarios hacer clic en documentos de Pebble)
  *
- * 安全防护(M-TPL1/M-TPL2/M-PE1):
- *  - AST 缓存: 相同模板字符串只 lex+parse 一次(M-TPL1)
- *  - 迭代次数上限: for 循环最多迭代 MAX_ITERATIONS 次(M-TPL2,DoS 防护)
- *  - 嵌套深度上限: Parser/Evaluator 嵌套不超过 MAX_NESTING_DEPTH 层(M-PE1,StackOverflow 防护)
+ * Protección de seguridad(M-TPL1/M-TPL2/M-PE1):
+ *  - AST caché: La misma cadena de plantilla solo es lex+parse una vez(M-TPL1)
+ *  - Número máximo de iteraciones: for El bucle se repite como máximo MAX_ITERACIONES veces(M-TPL2,DoS protección)
+ *  - Límite de profundidad de anidación: Parser/Evaluator No anidar más de MAX_NESTING_DEPTH niveles(M-PE1,StackOverflow protección)
  *
- * 排坑:
- *  - Lexer 用贪婪匹配 {{ }} / {% %} / {# #},不支持嵌套
- *  - 表达式解析用递归下降,优先级: or < and < not < is < compare < filter < primary
- *  - 变量路径用点号访问 Map;非 Map 对象返回 null(不反射)
- *  - truthy 规则: null/空/0/false → false,其他 → true
+ * pozo de pai:
+ *  - Lexer Utilice coincidencias codiciosas {{ }} / {% %} / {# #},No se admite el anidamiento
+ *  - Análisis de expresiones mediante descenso recursivo,prioridad: or < and < not < is < compare < filter < primary
+ *  - Se accede a las rutas variables mediante notación de puntos. Map;Objeto que no es de mapa devuelto null(No reflectante)
+ *  - truthy reglas: null/vacío/0/false → false,Otros → true
  */
 class PebbleTemplateEngine {
 
-    // M-TPL1: AST 缓存,以模板字符串为 key,避免每轮重新 lex+parse
+    // M-TPL1: AST caché,Tome la cadena de plantilla como key,Evite volver a lex+parse
     private val astCache = ConcurrentHashMap<String, List<Node>>()
 
     /**
-     * 渲染模板。
+     * Plantilla de renderizado.
      *
-     * @param template 模板字符串
-     * @param context  变量映射(支持嵌套 Map,如 mapOf("user" to mapOf("name" to "Alice")))
-     * @return 渲染后的字符串
+     * @param template cadena de plantilla
+     * @param context  mapeo de variables(Anidamiento de soporte Map,Como por ejemplo mapOf("user" to mapOf("name" to "Alice")))
+     * @return Cadena renderizada
      */
     fun render(template: String, context: Map<String, Any?>): String {
         val ast = astCache.computeIfAbsent(template) {
@@ -86,35 +86,35 @@ class PebbleTemplateEngine {
 }
 
 // ============================================================================
-// 常量(M-TPL2/M-PE1 安全上限)
+// constante(M-TPL2/M-PE1 límite superior de seguridad)
 // ============================================================================
 
-/** M-PE1: Parser/Evaluator 最大嵌套深度,防止深层嵌套 StackOverflow。 */
+/** M-PE1: Parser/Evaluator Profundidad máxima de anidación,Evite StackOverflow profundamente anidado. */
 private const val MAX_NESTING_DEPTH = 50
 
-/** M-TPL2: for 循环最大迭代次数,防止 DoS。 */
+/** M-TPL2: for Número máximo de iteraciones de bucle,Prevenir DoS. */
 private const val MAX_ITERATIONS = 10000
 
 // ============================================================================
-// Lexer — 词法分析
+// Lexer — Análisis léxico
 // ============================================================================
 
 private enum class TokenType { TEXT, VAR, TAG }
 
-// L-PE9: Token 携带行号,Parser 报错时附带
+// L-PE9: Token llevar número de línea,Parser Incluido al informar un error
 private data class Token(val type: TokenType, val content: String, val line: Int)
 
 /**
- * 把模板字符串拆成 Token 列表。
- * - TEXT: 纯文本(原样输出)
- * - VAR: `{{ expr }}`(表达式求值后输出)
- * - TAG: `{% statement %}`(控制流,不输出)
- * - 注释 `{# ... #}` 直接丢弃
+ * Divida la cadena de plantilla en una lista de tokens.
+ * - TEXT: texto plano(Salida tal cual)
+ * - VAR: `{{ expr }}`(Salida después de la evaluación de la expresión)
+ * - TAG: `{% statement %}`(controlar el flujo,Sin salida)
+ * - Comentario `{# ... #}` Descartar directamente
  */
 private class Lexer(private val src: String) {
     private val out = mutableListOf<Token>()
     private var i = 0
-    private var line = 1 // L-PE9: 行号追踪(1-based)
+    private var line = 1 // L-PE9: Seguimiento del número de línea(1-based)
 
     fun tokenize(): List<Token> {
         val text = StringBuilder()
@@ -132,7 +132,7 @@ private class Lexer(private val src: String) {
                 }
                 match("{#") -> {
                     flushText(text)
-                    readUntil("#}") // 注释丢弃
+                    readUntil("#}") // Comentario descartado
                 }
                 else -> {
                     if (src[i] == '\n') line++
@@ -152,22 +152,22 @@ private class Lexer(private val src: String) {
         return true
     }
 
-    // L-PE8: 识别字符串字面量内的定界符,跳过引号内的 }} / %} / #}
+    // L-PE8: Identificar delimitadores dentro de cadenas literales,omitir citas }} / %} / #}
     private fun readUntil(end: String): String {
         val start = i
         while (i + end.length <= src.length && src.substring(i, i + end.length) != end) {
             val c = src[i]
             if (c == '\'' || c == '"') {
-                // 跳过字符串字面量(不识别引号内的定界符)
+                // Saltar literales de cadena(No se reconocen los delimitadores entre comillas)
                 val quote = c
-                i++ // 消耗开头引号
+                i++ // Consumir citas de apertura
                 while (i < src.length && src[i] != quote) {
                     if (src[i] == '\n') line++
                     if (src[i] == '\\' && i + 1 < src.length) i += 2 else i++
                 }
                 if (i < src.length) {
                     if (src[i] == '\n') line++
-                    i++ // 消耗结尾引号
+                    i++ // Consumir cotizaciones finales
                 }
             } else {
                 if (c == '\n') line++
@@ -188,28 +188,28 @@ private class Lexer(private val src: String) {
 }
 
 // ============================================================================
-// AST 节点
+// AST nodo
 // ============================================================================
 
 private sealed class Node {
-    /** 纯文本节点。 */
+    /** Nodo de texto plano. */
     data class Text(val text: String) : Node()
 
-    /** 表达式输出节点。 */
+    /** Nodo de salida de expresión. */
     data class Output(val expr: Expr) : Node()
 
     /**
-     * if/elif/else 条件节点。
-     * - branches 是 (条件?, body) 列表,条件为 null 表示 else 分支
-     * - 求值时按顺序找第一个条件为真的分支,执行其 body
+     * if/elif/else nodo de condición.
+     * - branches si (Condiciones?, body) lista,Si la condición es nula, significa otra rama.
+     * - Al evaluar, encuentre la primera rama cuya condición sea verdadera en orden.,ejecutar su body
      */
     data class If(val branches: List<Pair<Expr?, List<Node>>>) : Node()
 
     /**
-     * for 循环节点。
-     * - item 是循环变量名
-     * - list 是待迭代表达式(需为 Iterable)
-     * - body 是循环体(可访问 item 和 loop 变量)
+     * for Nodo de bucle.
+     * - item es el nombre de la variable del bucle
+     * - list es la expresión que se va a iterar(Necesito ser Iterable)
+     * - body es el cuerpo del bucle(Variables de elementos y bucles accesibles)
      */
     data class For(val item: String, val list: Expr, val body: List<Node>) : Node()
 
@@ -218,46 +218,46 @@ private sealed class Node {
 }
 
 private sealed class Expr {
-    /** 字面量(字符串/数字/布尔/null)。 */
+    /** literal(cuerda/numeros/Booleano/null). */
     data class Literal(val value: Any?) : Expr()
 
-    /** 变量路径(如 user.name → ["user", "name"])。 */
+    /** ruta variable(Como por ejemplo user.name → ["user", "name"]). */
     data class Var(val path: List<String>) : Expr()
 
-    /** 过滤器调用(input | filter_name(args))。 */
+    /** filtrar llamada(input | filter_name(args)). */
     data class Filter(val input: Expr, val name: String, val args: List<Expr>) : Expr()
 
-    /** 二元运算(==/!=/>/</>=/<=/and/or)。 */
+    /** operaciones binarias(==/!=/>/</>=/<=/and/or). */
     data class Binary(val op: String, val left: Expr, val right: Expr) : Expr()
 
-    /** 一元运算(not)。 */
+    /** Operaciones unarias(not). */
     data class Unary(val op: String, val operand: Expr) : Expr()
 
-    /** 测试(is defined / is empty / is null / is even / is odd)。 */
+    /** prueba(is defined / is empty / is null / is even / is odd). */
     data class Test(val operand: Expr, val name: String, val negated: Boolean) : Expr()
 }
 
 // ============================================================================
-// Parser — 语法分析(递归下降)
+// Parser — análisis de sintaxis(descenso recursivo)
 // ============================================================================
 
 /**
- * 把 Token 列表解析为 AST 节点列表。
- * - 顶层调用 parse() 返回 List<Node>
- * - parseNodes(stopOn) 解析到 stopOn 关键字时返回(用于 if/for 嵌套)
+ * Analice la lista de tokens en una lista de nodos AST.
+ * - llamada de alto nivel parse() Regresar List<Node>
+ * - parseNodes(stopOn) Devuelto cuando se analiza la palabra clave stopOn(para si/para anidar)
  *
- * M-PE1: 嵌套深度追踪,超过 MAX_NESTING_DEPTH 抛 IllegalStateException。
+ * M-PE1: Trazado de profundidad anidado,Superar MAX_NESTING_DEPTH genera IllegalStateException.
  */
 private class Parser(private val tokens: List<Token>) {
     private var i = 0
-    private var depth = 0 // M-PE1: 嵌套深度追踪
+    private var depth = 0 // M-PE1: Trazado de profundidad anidado
 
     fun parse(): List<Node> = parseNodes(stopOn = null)
 
     private fun parseNodes(stopOn: ((String) -> Boolean)?): List<Node> {
         depth++
         if (depth > MAX_NESTING_DEPTH) {
-            throw IllegalStateException("模板嵌套深度超过上限($MAX_NESTING_DEPTH)")
+            throw IllegalStateException("La profundidad de anidamiento de la plantilla supera el límite superior($MAX_NESTING_DEPTH)")
         }
         try {
             val nodes = mutableListOf<Node>()
@@ -277,18 +277,18 @@ private class Parser(private val tokens: List<Token>) {
                         if (stopOn != null && stopOn(keyword)) return nodes
                         when (keyword) {
                             "if" -> {
-                                i++ // 消耗 if token
+                                i++ // consumir if token
                                 nodes.add(parseIf(t))
                             }
                             "for" -> {
-                                i++ // 消耗 for token
+                                i++ // consumir for token
                                 nodes.add(parseFor(t))
                             }
                             "set" -> {
                                 i++
                                 nodes.add(parseSet(t))
                             }
-                            else -> throw IllegalStateException("未知模板标签: $keyword (行 ${t.line}, 完整内容: ${t.content})")
+                            else -> throw IllegalStateException("Etiqueta de plantilla desconocida: $keyword (OK ${t.line}, contenido completo: ${t.content})")
                         }
                     }
                 }
@@ -299,32 +299,32 @@ private class Parser(private val tokens: List<Token>) {
         }
     }
 
-    /** 解析 if/elif/else/endif 块。i 已消耗 if token。 */
+    /** Analizar bloques if/elif/else/endif.i El token if se ha consumido. */
     private fun parseIf(ifToken: Token): Node.If {
         val branches = mutableListOf<Pair<Expr?, List<Node>>>()
-        // if 分支
+        // if rama
         val ifCond = ExprParser(ifToken.content.removePrefix("if").trim()).parse()
         val ifBody = parseNodes(stopOn = { it == "elif" || it == "else" || it == "endif" })
         branches.add(ifCond to ifBody)
 
-        // elif / else / endif 分支关键字处理
+        // elif / else / endif Procesamiento de palabras clave de rama
         while (i < tokens.size && tokens[i].type == TokenType.TAG) {
             val content = tokens[i].content
             val kw = content.split(WHITESPACE_REGEX).first()
             when (kw) {
                 "elif" -> {
-                    i++ // 消耗 elif token
+                    i++ // consumir elif token
                     val cond = ExprParser(content.removePrefix("elif").trim()).parse()
                     val body = parseNodes(stopOn = { it == "elif" || it == "else" || it == "endif" })
                     branches.add(cond to body)
                 }
                 "else" -> {
-                    i++ // 消耗 else token
+                    i++ // consumir else token
                     val body = parseNodes(stopOn = { it == "endif" })
                     branches.add(null to body)
                 }
                 "endif" -> {
-                    i++ // 消耗 endif token
+                    i++ // consumir endif token
                     break
                 }
                 else -> break
@@ -333,15 +333,15 @@ private class Parser(private val tokens: List<Token>) {
         return Node.If(branches)
     }
 
-    /** 解析 for/endfor 块。i 已消耗 for token。 */
+    /** Analizar bloques para/finalizar.i porque el token se ha consumido. */
     private fun parseFor(forToken: Token): Node.For {
-        // 语法: for <var> in <expr>
+        // Gramática: for <var> in <expr>
         val m = FOR_REGEX.matchEntire(forToken.content)
-            ?: throw IllegalStateException("无效 for 语法 (行 ${forToken.line}): ${forToken.content}")
+            ?: throw IllegalStateException("No válido para la sintaxis (OK ${forToken.line}): ${forToken.content}")
         val item = m.groupValues[1]
         val listExpr = ExprParser(m.groupValues[2].trim()).parse()
         val body = parseNodes(stopOn = { it == "endfor" })
-        // 消耗 endfor
+        // consumir endfor
         if (i < tokens.size && tokens[i].type == TokenType.TAG && tokens[i].content.startsWith("endfor")) {
             i++
         }
@@ -365,23 +365,23 @@ private class Parser(private val tokens: List<Token>) {
     }
 
     companion object {
-        // L-PE3: Regex 抽到 companion object 常量,避免重复编译
+        // L-PE3: Regex Extraer la constante del objeto complementario,Evite la compilación repetida
         val WHITESPACE_REGEX = Regex("\\s+")
         val FOR_REGEX = Regex("""for\s+(\w+)\s+in\s+(.+)""", RegexOption.DOT_MATCHES_ALL)
     }
 }
 
 // ============================================================================
-// ExprParser — 表达式解析(递归下降,优先级 climbing)
+// ExprParser — Análisis de expresiones(descenso recursivo,prioridad climbing)
 // ============================================================================
 
 /**
- * 表达式解析器。
+ * Analizador de expresiones.
  *
- * 优先级(从低到高):
- *   or  <  and  <  not  <  is(test)  <  compare(==/!=/>/</>=/<=)  <  filter(|)  <  primary(由低到高)
+ * prioridad(de menor a mayor):
+ *   or  <  and  <  not  <  is(test)  <  compare(==/!=/>/</>=/<=)  <  filter(|)  <  primary(de menor a mayor)
  *
- * 例:`a == b or c is empty and not d`
+ * Ejemplo:`a == b or c is empty and not d`
  *   → or(and(is(c, empty, _), not(d)), ==(a, b))
  */
 private class ExprParser(private val src: String) {
@@ -391,7 +391,7 @@ private class ExprParser(private val src: String) {
         val e = parseOr()
         skipSpace()
         if (pos < src.length) {
-            throw IllegalStateException("表达式未消费完: 剩余 '${src.substring(pos)}'")
+            throw IllegalStateException("La expresión no se ha consumido.: restante '${src.substring(pos)}'")
         }
         return e
     }
@@ -444,13 +444,13 @@ private class ExprParser(private val src: String) {
         var left = parsePrimary()
         skipSpace()
         while (pos < src.length && src[pos] == '|') {
-            pos++ // 消耗 |
+            pos++ // consumir |
             skipSpace()
             val name = readWord()
             val args = mutableListOf<Expr>()
             skipSpace()
             if (pos < src.length && src[pos] == '(') {
-                pos++ // 消耗 (
+                pos++ // consumir (
                 skipSpace()
                 while (pos < src.length && src[pos] != ')') {
                     args.add(parsePrimary())
@@ -460,7 +460,7 @@ private class ExprParser(private val src: String) {
                         skipSpace()
                     }
                 }
-                if (pos < src.length && src[pos] == ')') pos++ // 消耗 )
+                if (pos < src.length && src[pos] == ')') pos++ // consumir )
             }
             left = Expr.Filter(left, name, args)
             skipSpace()
@@ -470,23 +470,23 @@ private class ExprParser(private val src: String) {
 
     private fun parsePrimary(): Expr {
         skipSpace()
-        if (pos >= src.length) throw IllegalStateException("表达式意外结束")
+        if (pos >= src.length) throw IllegalStateException("La expresión terminó inesperadamente")
         val c = src[pos]
-        // 字符串字面量
+        // literal de cadena
         if (c == '\'' || c == '"') return Expr.Literal(readString())
-        // 数字字面量
+        // literal numérico
         if (c.isDigit() || (c == '-' && pos + 1 < src.length && src[pos + 1].isDigit())) {
             return Expr.Literal(readNumber())
         }
-        // 括号分组
+        // agrupación de corchetes
         if (c == '(') {
-            pos++ // 消耗 (
+            pos++ // consumir (
             val e = parseOr()
             skipSpace()
-            if (pos < src.length && src[pos] == ')') pos++ // 消耗 )
+            if (pos < src.length && src[pos] == ')') pos++ // consumir )
             return e
         }
-        // 关键字 / 变量路径
+        // ruta de palabra clave/variable
         val word = peekWord()
         when (word) {
             "true" -> {
@@ -506,31 +506,31 @@ private class ExprParser(private val src: String) {
             pos += word.length
             val path = mutableListOf(word)
             while (pos < src.length && src[pos] == '.') {
-                pos++ // 消耗 .
+                pos++ // consumir .
                 val seg = readWord()
                 path.add(seg)
             }
             return Expr.Var(path)
         }
-        throw IllegalStateException("无法解析表达式: '${src.substring(pos)}'")
+        throw IllegalStateException("No se puede analizar la expresión: '${src.substring(pos)}'")
     }
 
-    // ---- 辅助函数 ----
+    // ---- Función auxiliar ----
 
     private fun skipSpace() {
         while (pos < src.length && src[pos].isWhitespace()) pos++
     }
 
-    // L-PE7: 删除 peek() 和 peek(offset) 死代码
+    // L-PE7: Eliminar peek() y peek(offset) código muerto
 
-    /** 看当前单词(不消费),单词 = 字母/数字/下划线。 */
+    /** mira la palabra actual(No consumir),palabra = letras/numeros/Subrayar. */
     private fun peekWord(): String {
         var j = pos
         while (j < src.length && (src[j].isLetterOrDigit() || src[j] == '_')) j++
         return src.substring(pos, j)
     }
 
-    /** 读一个单词(消费),单词 = 字母/数字/下划线。 */
+    /** leer una palabra(consumo),palabra = letras/numeros/Subrayar. */
     private fun readWord(): String {
         skipSpace()
         val start = pos
@@ -540,11 +540,11 @@ private class ExprParser(private val src: String) {
 
     private fun readString(): String {
         val quote = src[pos]
-        pos++ // 消耗开头引号
+        pos++ // Consumir citas de apertura
         val sb = StringBuilder()
         while (pos < src.length && src[pos] != quote) {
             if (src[pos] == '\\' && pos + 1 < src.length) {
-                // 转义:\' → '  \" → "  \\ → \  \n → 换行  \t → tab
+                // escapar:\' → '  \" → "  \\ → \  \n → nueva línea  \t → tab
                 pos++
                 when (src[pos]) {
                     'n' -> sb.append('\n')
@@ -556,11 +556,11 @@ private class ExprParser(private val src: String) {
             }
             pos++
         }
-        if (pos < src.length) pos++ // 消耗结尾引号
+        if (pos < src.length) pos++ // Consumir cotizaciones finales
         return sb.toString()
     }
 
-    // L-PE2: 遇第二个点即停止数字解析(原实现允许多个小数点)
+    // L-PE2: Detenga el análisis digital cuando encuentre el segundo punto.(La implementación original permitía múltiples puntos decimales.)
     private fun readNumber(): Number {
         val start = pos
         if (src[pos] == '-') pos++
@@ -573,7 +573,7 @@ private class ExprParser(private val src: String) {
         return if (hasDot) s.toDouble() else s.toLong()
     }
 
-    /** 匹配关键字(单词边界,避免 'and' 匹配 'android')。 */
+    /** Coincidencia de palabra clave(límites de palabras,evitar 'and' partido 'android'). */
     private fun matchKeyword(kw: String): Boolean {
         skipSpace()
         val word = peekWord()
@@ -598,19 +598,19 @@ private class ExprParser(private val src: String) {
 }
 
 // ============================================================================
-// Evaluator — 求值
+// Evaluator — evaluar
 // ============================================================================
 
 /**
- * 用上下文对 AST 求值,返回渲染后的字符串。
- * - 支持 for 循环时通过 scopeStack 压入循环变量作用域
- * - 变量查找从内层 scope 向外层
+ * Evaluar AST con contexto,Devuelve la cadena renderizada.
+ * - Admite impulsar el alcance de la variable de bucle a través de alcanceStack cuando se realiza un bucle
+ * - Búsqueda de variables desde el ámbito interior al ámbito exterior
  *
- * M-PE1: 嵌套深度追踪,超过 MAX_NESTING_DEPTH 抛 IllegalStateException。
+ * M-PE1: Trazado de profundidad anidado,Superar MAX_NESTING_DEPTH genera IllegalStateException.
  */
 private class Evaluator(root: Map<String, Any?>) {
     private val scopeStack = ArrayDeque<Map<String, Any?>>()
-    private var depth = 0 // M-PE1: 嵌套深度追踪
+    private var depth = 0 // M-PE1: Trazado de profundidad anidado
 
     init {
         scopeStack.addLast(root)
@@ -625,7 +625,7 @@ private class Evaluator(root: Map<String, Any?>) {
     private fun evalNode(n: Node, sb: StringBuilder) {
         depth++
         if (depth > MAX_NESTING_DEPTH) {
-            throw IllegalStateException("模板求值嵌套深度超过上限($MAX_NESTING_DEPTH)")
+            throw IllegalStateException("La profundidad de anidamiento de la evaluación de la plantilla supera el límite superior($MAX_NESTING_DEPTH)")
         }
         try {
             when (n) {
@@ -633,7 +633,7 @@ private class Evaluator(root: Map<String, Any?>) {
                 is Node.Set -> {
                     val value = evalExpr(n.value)
                     if (scopeStack.isNotEmpty()) {
-                        // 原地修改最内层作用域,避免破坏 for 循环引用
+                        // Modificar el alcance más interno en su lugar,Evite romper con las referencias de bucle
                         val inner = scopeStack.removeLast()
                         val mutable = if (inner is MutableMap) inner else inner.toMutableMap()
                         mutable[n.name] = value
@@ -654,10 +654,10 @@ private class Evaluator(root: Map<String, Any?>) {
                     if (list is Iterable<*>) {
                         val allItems = list.toList()
                         val totalLen = allItems.size
-                        // M-TPL2: 限制最大迭代次数,防止 DoS
+                        // M-TPL2: Limitar el número máximo de iteraciones.,prevenir DoS
                         val truncated = totalLen > MAX_ITERATIONS
                         if (truncated) {
-                            Logger.w("PebbleTemplateEngine", "for 循环迭代次数($totalLen)超过上限($MAX_ITERATIONS),已截断")
+                            Logger.w("PebbleTemplateEngine", "for Número de iteraciones del bucle($totalLen)Superar el límite superior($MAX_ITERATIONS),truncado")
                         }
                         val items = if (truncated) allItems.take(MAX_ITERATIONS) else allItems
                         val len = items.size
@@ -698,7 +698,7 @@ private class Evaluator(root: Map<String, Any?>) {
 
     private fun resolveVar(path: List<String>): Any? {
         if (path.isEmpty()) return null
-        // 第一段:从内层 scope 向外查
+        // primer párrafo:Verifique desde el alcance interior hacia el exterior.
         var cur: Any? = null
         var found = false
         for (scope in scopeStack.reversed()) {
@@ -709,7 +709,7 @@ private class Evaluator(root: Map<String, Any?>) {
             }
         }
         if (!found) return null
-        // 后续段:点号访问 Map
+        // párrafo siguiente:Acceso al número de punto Map
         for (k in path.drop(1)) {
             cur = when (cur) {
                 is Map<*, *> -> cur[k]
@@ -723,7 +723,7 @@ private class Evaluator(root: Map<String, Any?>) {
     private fun evalBinary(op: String, l: Any?, r: Any?): Any? = when (op) {
         "and" -> truthy(l) && truthy(r)
         "or" -> truthy(l) || truthy(r)
-        // Phase 12 修复:Number 统一用 toDouble() 比较,否则 Int vs Long 用 equals 会返回 false
+        // Phase 12 Reparación:Number Para uso unificado toDouble() comparar,De lo contrario, Int vs Long usando iguales volverá false
         "==" -> if (l is Number && r is Number) l.toDouble() == r.toDouble() else l == r
         "!=" -> if (l is Number && r is Number) l.toDouble() != r.toDouble() else l != r
         ">", "<", ">=", "<=" -> compareNums(op, l, r)
@@ -773,8 +773,8 @@ private class Evaluator(root: Map<String, Any?>) {
             is Array<*> -> input.size
             else -> 0
         }
-        // L-PE5: 与 Pebble 语义有差异。Pebble 的 default 仅对 null/undefined 回退;
-        // 本实现对 null/空字符串/空集合都回退(向后兼容现有模板,改动语义可能破坏已有模板)
+        // L-PE5: Diferencias en semántica de Pebble.Pebble El respaldo predeterminado solo para nulo/indefinido;
+        // Esta implementación maneja cadenas nulas/vacías./Se devuelven las colecciones vacías.(Compatible con versiones anteriores de plantillas existentes,Cambiar la semántica puede romper las plantillas existentes)
         "default" -> if (input == null || input == "" || (input is Collection<*> && input.isEmpty())) {
             args.firstOrNull()
         } else {
@@ -793,7 +793,7 @@ private class Evaluator(root: Map<String, Any?>) {
             is Array<*> -> input.lastOrNull()
             else -> null
         }
-        // L-PE6: CharSequence 按 char 迭代 join
+        // L-PE6: CharSequence Iterar por carácter join
         "join" -> when (input) {
             is Iterable<*> -> input.joinToString(args.firstOrNull()?.toString() ?: ", ") { it?.toString() ?: "" }
             is Array<*> -> input.joinToString(args.firstOrNull()?.toString() ?: ", ") { it?.toString() ?: "" }
@@ -814,7 +814,7 @@ private class Evaluator(root: Map<String, Any?>) {
             is CharSequence -> input.reversed()
             else -> input
         }
-        // L-PE4: Number 优先数值比较,非数字再回退字符串比较
+        // L-PE4: Number Priorizar la comparación numérica,Comparación de cadenas no numéricas y luego alternativas
         "sort" -> (input as? List<*>)?.sortedWith { a, b ->
             val an = a as? Number
             val bn = b as? Number
@@ -824,7 +824,7 @@ private class Evaluator(root: Map<String, Any?>) {
                 (a?.toString() ?: "").compareTo(b?.toString() ?: "")
             }
         }
-        else -> input // 未知过滤器原样返回
+        else -> input // Los filtros desconocidos se devuelven sin cambios
     }
 
     private fun truthy(v: Any?): Boolean = when (v) {
@@ -842,7 +842,7 @@ private class Evaluator(root: Map<String, Any?>) {
         null -> ""
         is Boolean -> if (v) "true" else "false"
         is Number -> {
-            // 整数去掉 .0 后缀
+            // Eliminar el sufijo .0 del número entero
             val d = v.toDouble()
             if (d == d.toLong().toDouble()) d.toLong().toString() else d.toString()
         }

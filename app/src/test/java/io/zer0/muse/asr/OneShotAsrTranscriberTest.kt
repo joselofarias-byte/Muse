@@ -7,60 +7,60 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 一次性转写器的响应解析与端点拼接。
+ * Análisis de respuestas y empalme de puntos finales para transcriptores únicos.
  *
- * 两条纯函数单独钉住:没有 text 字段、text 是空白,都算「没听清」——
- * 把一段空字符串填进输入框,用户只会以为麦克风坏了。
+ * Dos funciones puras están fijadas por separado.:Sin campo de texto,text esta en blanco,Se considera “no escuché con claridad”——
+ * Complete una cadena vacía en el cuadro de entrada,El usuario simplemente pensará que el micrófono está roto.
  */
 class OneShotAsrTranscriberTest {
 
     @Test
-    fun `响应里没有 text 字段时返回 null`() {
+    fun `Devuelto cuando no hay ningún campo de texto en la respuesta null`() {
         assertNull(parseOneShotTranscription("""{"duration":1.2,"task":"transcribe"}"""))
     }
 
     @Test
-    fun `text 全是空白时返回 null`() {
+    fun `text Devuelve cuando todos están en blanco null`() {
         assertNull(parseOneShotTranscription("""{"text":"   \n\t "}"""))
     }
 
     @Test
-    fun `text 为空串时返回 null`() {
+    fun `text Devuelve cuando es una cadena vacía null`() {
         assertNull(parseOneShotTranscription("""{"text":""}"""))
     }
 
     @Test
-    fun `text 是 JSON null 时返回 null`() {
+    fun `text Devuelve cuando JSON es nulo null`() {
         assertNull(parseOneShotTranscription("""{"text":null}"""))
     }
 
     @Test
-    fun `text 不是字符串时返回 null`() {
+    fun `text Devuelve si no es una cadena null`() {
         assertNull(parseOneShotTranscription("""{"text":42}"""))
     }
 
     @Test
-    fun `响应不是 JSON 时返回 null`() {
+    fun `Devuelto cuando la respuesta no es JSON null`() {
         assertNull(parseOneShotTranscription("<html><body>502 Bad Gateway</body></html>"))
     }
 
     @Test
-    fun `空响应体返回 null`() {
+    fun `Devolver cuerpo de respuesta vacío null`() {
         assertNull(parseOneShotTranscription(""))
     }
 
     @Test
-    fun `正常响应取出去掉首尾空白的文本`() {
-        assertEquals("今天下午三点开会", parseOneShotTranscription("""{"text":"  今天下午三点开会 \n"}"""))
+    fun `La respuesta normal es eliminar el texto con espacios en blanco al principio y al final`() {
+        assertEquals("Habrá una reunión a las tres de la tarde.", parseOneShotTranscription("""{"text":"  Habrá una reunión a las tres de la tarde. \n"}"""))
     }
 
     @Test
-    fun `多余字段不影响解析`() {
-        assertEquals("好", parseOneShotTranscription("""{"text":"好","language":"zh","segments":[]}"""))
+    fun `Los campos adicionales no afectan el análisis`() {
+        assertEquals("bueno", parseOneShotTranscription("""{"text":"bueno","language":"zh","segments":[]}"""))
     }
 
     @Test
-    fun `配到 v1 的 baseUrl 不重复拼版本段`() {
+    fun `La baseUrl asignada a v1 no duplica el segmento ortográfico`() {
         assertEquals(
             "https://api.openai.com/v1/audio/transcriptions",
             oneShotTranscriptionUrl("https://api.openai.com/v1"),
@@ -72,7 +72,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `裸域名补上 v1 与端点路径`() {
+    fun `El nombre de dominio simple se complementa con v1 y la ruta del punto final`() {
         assertEquals(
             "https://asr.example.com/v1/audio/transcriptions",
             oneShotTranscriptionUrl("https://asr.example.com"),
@@ -80,7 +80,7 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `直接粘完整端点时原样使用`() {
+    fun `Úselo como está cuando pegue directamente el punto final completo`() {
         assertEquals(
             "https://asr.example.com/audio/transcriptions",
             oneShotTranscriptionUrl("https://asr.example.com/audio/transcriptions"),
@@ -88,14 +88,14 @@ class OneShotAsrTranscriberTest {
     }
 
     @Test
-    fun `只有 Whisper 兼容引擎配上 key 才判为支持`() {
+    fun `Se considera que solo son compatibles los motores con llave compatibles con Whisper`() {
         assertTrue(AsrConfig(provider = AsrProviderType.OPENAI_WHISPER, apiKey = "sk-x").supportsFileTranscription())
         assertTrue(AsrConfig(provider = AsrProviderType.AGNES, apiKey = "sk-x").supportsFileTranscription())
-        assertFalse("没填 key 就连请求都发不出去", AsrConfig(provider = AsrProviderType.OPENAI_WHISPER).supportsFileTranscription())
+        assertFalse("Incluso la solicitud no se puede enviar sin completar la clave.", AsrConfig(provider = AsrProviderType.OPENAI_WHISPER).supportsFileTranscription())
     }
 
     @Test
-    fun `流式与异步引擎即便有 key 也不支持整段转写`() {
+    fun `Los motores de streaming y asincrónicos no admiten el párrafo completo, incluso si tienen una clave`() {
         val unsupported = listOf(
             AsrProviderType.SYSTEM,
             AsrProviderType.DASHSCOPE,
@@ -106,14 +106,14 @@ class OneShotAsrTranscriberTest {
 
         unsupported.forEach { provider ->
             assertFalse(
-                "$provider 没有 /audio/transcriptions 端点,不该被判为支持",
+                "$provider Sin punto final /audio/transcripciones,no debe considerarse como un apoyo",
                 AsrConfig(provider = provider, apiKey = "sk-x").supportsFileTranscription(),
             )
         }
     }
 
     @Test
-    fun `baseUrl 不是 http 时判为不支持`() {
+    fun `baseUrl Si no es http, se considerará no compatible`() {
         assertFalse(
             AsrConfig(
                 provider = AsrProviderType.OPENAI_WHISPER,

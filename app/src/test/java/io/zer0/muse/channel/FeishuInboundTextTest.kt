@@ -4,36 +4,36 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * AUD-CHANNEL-F8: 飞书 webhook 入站必须解析 content JSON,与长连接路径同口径。
+ * AUD-CHANNEL-F8: El webhook entrante de Feishu debe analizarse content JSON,Mismo diámetro que la ruta de conexión larga.
  *
- * 原 webhook 路径直接取 message.content 原始串({"text":"你好"})当正文,
- * 模型收到 JSON 并可能复读;长连接路径则会解析并剥 @ 占位符。
+ * La ruta del webhook original toma directamente la cadena original de message.content({"text":"Hola"})cuando el texto,
+ * El modelo recibe el JSON y puede volver a leerlo.;Las rutas de conexión largas se analizarán y se eliminarán los marcadores de posición @.
  */
 class FeishuInboundTextTest {
 
     @Test
     fun `text content json is parsed to plain text`() {
         val out = FeishuReceiver.parseFeishuMessageText(
-            content = """{"text":"你好"}""",
+            content = """{"text":"Hola"}""",
             messageType = "text",
         )
-        assertEquals("你好", out)
+        assertEquals("Hola", out)
     }
 
     @Test
     fun `at placeholder is stripped`() {
         val out = FeishuReceiver.parseFeishuMessageText(
-            content = """{"text":"@_user_1 在吗"}""",
+            content = """{"text":"@_user_1 ¿Está ahí?"}""",
             messageType = "text",
         )
-        assertEquals("在吗", out)
+        assertEquals("¿Está ahí?", out)
     }
 
     @Test
     fun `non-text message types map to placeholders`() {
-        assertEquals("[图片]", FeishuReceiver.parseFeishuMessageText("""{"image_key":"x"}""", "image"))
-        assertEquals("[语音]", FeishuReceiver.parseFeishuMessageText("""{"file_key":"x"}""", "audio"))
-        assertEquals("[文件]", FeishuReceiver.parseFeishuMessageText("""{"file_key":"x"}""", "file"))
+        assertEquals("[fotos]", FeishuReceiver.parseFeishuMessageText("""{"image_key":"x"}""", "image"))
+        assertEquals("[Voz]", FeishuReceiver.parseFeishuMessageText("""{"file_key":"x"}""", "audio"))
+        assertEquals("[Archivo]", FeishuReceiver.parseFeishuMessageText("""{"file_key":"x"}""", "file"))
     }
 
     @Test

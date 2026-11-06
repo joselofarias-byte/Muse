@@ -15,14 +15,14 @@ import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
 
 /**
- * v1.105 阶段 1: 从 ChatViewModel 抽离的音频(TTS / ASR)Coordinator。
+ * v1.105 Etapa 1: Audio extraído de ChatViewModel(TTS / ASR)Coordinator.
  *
- * 职责:
- *  - toggleTts / stopTts: 文本转语音
- *  - 流式 ASR Controller 管理(getOrCreateAsrController / start / stop / cancel / dispose)
+ * Responsabilidades:
+ *  - toggleTts / stopTts: texto a voz
+ *  - Gestión del controlador Streaming ASR(getOrCreateAsrController / start / stop / cancel / dispose)
  *  - saveAsrConfig / shouldUseApiRecording
  *
- * 持有 [asrController] 和 [asrBaseText] 两个可变状态(原 ChatViewModel 字段迁移过来)。
+ * mantener [asrController] y [asrBaseText] Dos estados mutables(Se migran los campos originales de ChatViewModel.).
  */
 class ChatAudioCoordinator(
     private val accessor: ChatStateAccessor,
@@ -31,7 +31,7 @@ class ChatAudioCoordinator(
     private val context: Context,
 ) {
 
-    /** v1.91: 流式 ASR Controller 实例(懒创建,Provider 切换时重建)。 */
+    /** v1.91: Instancia de controlador ASR de transmisión por secuencias(creación perezosa,Provider Reconstruir en el interruptor). */
     private var asrController: ASRController? = null
     private var asrControllerConfig: AsrConfig? = null
     private var asrStateJob: Job? = null
@@ -39,11 +39,11 @@ class ChatAudioCoordinator(
     // Monotonic session guard: late callbacks from a disposed/replaced controller must not mutate current UI/input.
     private var asrGeneration: Long = 0L
 
-    /** v1.91: 录音前输入框文本快照(用于结果拼接与取消时恢复)。 */
+    /** v1.91: Instantánea del texto del cuadro de entrada antes de grabar(Se utiliza para empalmar resultados y recuperar al cancelar). */
     private var asrBaseText = ""
     private var lastAsrTranscript = ""
 
-    /** Phase 8.7: 切换 TTS 朗读(同条消息停止,不同消息开始新朗读)。 */
+    /** Phase 8.7: Alternar lectura TTS(detener el mismo mensaje,Iniciar una nueva lectura con un mensaje diferente). */
     fun toggleTts(messageId: Uuid, content: String, reportError: (String) -> Unit) {
         val current = accessor.snapshot.speakingMessageId
         if (current == messageId) {
@@ -51,10 +51,10 @@ class ChatAudioCoordinator(
         } else {
             val utteranceId = messageId.toString()
             accessor.coroutineScope.launch {
-                // P1-2: 长文朗读接入流式 TTS — speakStream 按句合成/播放(云端双 Channel 流水线),
-                // flushStream 冲刷尾部残句;与 [TtsManager.speak] 的串行分片朗读互为备选路径。
+                // P1-2: Streaming de acceso a lectura de textos largos TTS — speakStream Síntesis frase por frase/jugar(Canalización de doble canal en la nube),
+                // flushStream Lave las oraciones restantes al final.;con [TtsManager.speak] Los fragmentos seriales se leen entre sí como caminos alternativos.
                 if (content.isBlank()) {
-                    reportError(context.getString(R.string.speech_tts_engine_not_ready)) // CONS-05: 硬编码中文迁移到字符串资源
+                    reportError(context.getString(R.string.speech_tts_engine_not_ready)) // CONS-05: Migración de chino codificado a recursos de cadena
                     return@launch
                 }
                 ttsManager.speakStream(content, utteranceId)
@@ -63,22 +63,22 @@ class ChatAudioCoordinator(
         }
     }
 
-    /** Phase 8.7: 停止当前朗读(切换会话/退出页面时调用)。 */
+    /** Phase 8.7: Detener la lectura actual(Cambiar de sesión/Llamado al salir de la página.). */
     fun stopTts() {
         ttsManager.stop()
     }
 
     /**
-     * v1.91: 创建或复用 ASRController(根据当前 asrConfig)。
-     * - SYSTEM / DASHSCOPE_FILE 返回 null(走旧路径)
-     * - DASHSCOPE / STEP / OPENAI_WHISPER / OPENAI_REALTIME / AGNES 创建对应流式 Controller,并启动状态观察协程
+     * v1.91: Crear o reutilizar ASRController(Según la corriente asrConfig).
+     * - SYSTEM / DASHSCOPE_FILE Regresar null(sigue el viejo camino)
+     * - DASHSCOPE / STEP / OPENAI_WHISPER / OPENAI_REALTIME / AGNES Crear el flujo correspondiente Controller,E iniciar la rutina de observación de estado.
      */
     private fun getOrCreateAsrController(): ASRController? {
         val cfg = accessor.snapshot.asrConfig
         val supportsStreaming = cfg.provider != AsrProviderType.SYSTEM &&
             cfg.provider != AsrProviderType.DASHSCOPE_FILE
         if (!supportsStreaming || cfg.apiKey.isBlank()) {
-            // Provider 切回系统识别或清空 API Key 时,旧 Controller 不能继续占用麦克风/网络。
+            // Provider Al volver al reconocimiento del sistema o borrar la clave API,El antiguo Mando ya no puede ocupar el micrófono/red.
             if (asrController != null || asrStateJob != null) {
                 asrGeneration++
                 asrStateJob?.cancel()
@@ -119,7 +119,7 @@ class ChatAudioCoordinator(
         return controller
     }
 
-    /** v1.91: 开始流式录音识别。 */
+    /** v1.91: Inicie el reconocimiento de grabación en streaming. */
     fun startStreamingAsr() {
         val controller = getOrCreateAsrController() ?: return
         if (controller.state.value.isRecording) return
@@ -143,14 +143,14 @@ class ChatAudioCoordinator(
     }
 
     /**
-     * 语音对话模式专用:开始流式录音,识别文本通过 [onTranscript] 回调给调用方,
-     * 不写入输入框(语音对话模式不走 InputBar 文本流)。
+     * Dedicado al modo de conversación de voz.:Iniciar la grabación en streaming,Reconocer texto a través de [onTranscript] devolución de llamada a la persona que llama,
+     * No escriba en el cuadro de entrada(El modo de diálogo de voz no utiliza el flujo de texto de la barra de entrada).
      *
-     * 与 [startStreamingAsr] 的区别:
-     *  - [startStreamingAsr]:transcript 回填到 input 字段,用户可编辑后手动发送
-     *  - [startVoiceConversationListening]:transcript 通过回调上报,由 ViewModel 自动发送
+     * con [startStreamingAsr] la diferencia:
+     *  - [startStreamingAsr]:transcript Rellenar en el campo de entrada,Los usuarios pueden editar y enviar manualmente
+     *  - [startVoiceConversationListening]:transcript Informe mediante devolución de llamada,Enviado automáticamente por ViewModel
      *
-     * @param onTranscript 实时识别文本回调(主线程,含中间与最终结果)
+     * @param onTranscript Reconocimiento en tiempo real de devoluciones de llamadas de texto(hilo principal,Incluyendo resultados intermedios y finales.)
      */
     fun startVoiceConversationListening(onTranscript: (String) -> Unit) {
         val controller = getOrCreateAsrController() ?: return
@@ -163,12 +163,12 @@ class ChatAudioCoordinator(
         }
     }
 
-    /** 语音对话模式专用:停止录音,等待最后一段结果返回后切回 Idle。 */
+    /** Dedicado al modo de conversación de voz.:dejar de grabar,Espere a que regrese el último resultado y luego vuelva a estar inactivo. */
     fun stopVoiceConversationListening() {
         asrController?.stop()
     }
 
-    /** 退出/中断语音对话：丢弃最后收尾回调，避免停止后迟到 transcript 复活到 UI。 */
+    /** Salir/Interrumpir el diálogo de voz: descarte la devolución de llamada de cierre final para evitar que la transcripción tardía vuelva a aparecer en la interfaz de usuario después de detenerse. */
     fun cancelVoiceConversationListening() {
         asrGeneration++
         asrStateJob?.cancel()
@@ -179,15 +179,15 @@ class ChatAudioCoordinator(
         accessor.update { it.copy(asrState = ASRState()) }
     }
 
-    /** v1.91: 停止流式录音,等待最后结果。 */
+    /** v1.91: Detener la grabación en streaming,A la espera de resultados finales. */
     fun stopStreamingAsr() {
         asrController?.stop()
     }
 
-    /** v1.91: 取消流式录音(恢复原始输入框文本)。 */
+    /** v1.91: Cancelar grabación de transmisión(Restaurar el texto del cuadro de entrada original). */
     fun cancelStreamingAsr() {
-        // 取消不能走 stop():stop 会 flush 最后一段音频,其异步回调可能在用户上滑取消后
-        // 又把识别文字写回输入框。直接释放当前 Controller,下一次录音按配置重建。
+        // No puedo salir si se cancela stop():stop Vaciará la última pieza de audio.,Su devolución de llamada asincrónica puede ocurrir después de que el usuario desliza hacia arriba para cancelar.
+        // Luego escriba el texto reconocido nuevamente en el cuadro de entrada. Libera directamente la corriente. Controller,La siguiente grabación se reconstruye según lo configurado.
         asrGeneration++
         asrStateJob?.cancel()
         asrStateJob = null
@@ -199,7 +199,7 @@ class ChatAudioCoordinator(
             val restored = if (lastAsrTranscript.isNotEmpty() && current.endsWith(lastAsrTranscript)) {
                 current.removeSuffix(lastAsrTranscript).trimEnd()
             } else {
-                // 用户在录音期间继续输入时，保留当前输入，不使用过期快照覆盖。
+                // Cuando el usuario continúa escribiendo durante la grabación, la entrada actual se conserva y no se sobrescribe con instantáneas caducadas.
                 current
             }
             lastAsrTranscript = ""
@@ -207,7 +207,7 @@ class ChatAudioCoordinator(
         }
     }
 
-    /** v1.91: 释放 ASR Controller(会话切换/ViewModel 销毁时)。 */
+    /** v1.91: liberar ASR Controller(Cambio de sesión/ViewModel cuando destruido). */
     fun disposeAsr() {
         asrGeneration++
         asrStateJob?.cancel()
@@ -218,7 +218,7 @@ class ChatAudioCoordinator(
         accessor.update { it.copy(asrState = ASRState()) }
     }
 
-    /** Phase 9.3 (M2): 保存 ASR 配置(Settings 页编辑后调用)。 */
+    /** Phase 9.3 (M2): Guardar configuración ASR(Settings Llamado después de editar la página.). */
     fun saveAsrConfig(config: AsrConfig) {
         accessor.coroutineScope.launch {
             resultOf { settings.saveAsrConfig(config) }
@@ -226,10 +226,10 @@ class ChatAudioCoordinator(
     }
 
     /**
-     * Phase 9.3 (M2): 判断当前是否应走 API 录音路径(而非系统 Intent)。
-     * - true: 任意非 SYSTEM / 非文件转录 Provider,即使缺 key 也必须走 API 路径，
-     *   由 getOrCreateAsrController 把“缺少 key”明确展示给用户，而不是悄悄降级到另一套系统识别。
-     * - false: SYSTEM 或 DASHSCOPE_FILE(文件转录不属于输入栏实时录音)。
+     * Phase 9.3 (M2): Determinar si la ruta de grabación API se debe tomar actualmente(en lugar de sistema Intent).
+     * - true: Cualquier transcripción que no sea de SISTEMA o de archivos Provider,Incluso si falta la clave, debe seguir la ruta API.
+     *   Por getOrCreateAsrController“desaparecido key”Muéstrelo claramente a los usuarios en lugar de degradar silenciosamente el reconocimiento de otro sistema.
+     * - false: SYSTEM o DASHSCOPE_FILE(La transcripción de archivos no pertenece a la grabación en tiempo real del campo de entrada).
      */
     fun shouldUseApiRecording(): Boolean {
         val p = accessor.snapshot.asrConfig.provider

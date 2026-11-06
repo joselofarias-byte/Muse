@@ -1,23 +1,23 @@
 # Muse v2.3.1
 
-本次以知识库导入与稳定性为主：压缩包可以直接导入并自动建库，大文件导入不再闪退或卡住；同时修复了崩溃日志面板为空、Agent 页偶发串会话等问题。
+Esta vez, la atención se centra en la importación y la estabilidad de la base de conocimientos: los paquetes comprimidos se pueden importar directamente y la base de datos se crea automáticamente, y las importaciones de archivos grandes ya no fallan ni se atascan; al mismo tiempo, el panel de registro de fallos está vacío y el problema está solucionado.Agent Problemas como el enhebrado ocasional de sesiones en páginas.
 
-## 重要修复
+## Correcciones importantes
 
-- **44MB 压缩包导入闪退**：修复了根因——压缩包与二进制文件此前被当作纯文本读取并建立索引。现在压缩包会被正确识别，不再闪退；其他二进制文件在主知识库页也会被拦下并给出提示，不再把乱码内容写进知识库。
-- **崩溃日志面板与导出为空**：崩溃日志此前读错了目录，升级后历史崩溃记录会正常显示并可导出。
-- **Agent 页偶发串会话**：快速切换会话或助手时，不再出现"另一个会话的内容闪现"。
-- **导入成功但仍显示"0 篇文档"**：知识库文档数改为实时统计，导入或删除后立即显示正确。
-- **大文件导入卡住界面**：文档分块的 CPU 与磁盘操作移出主线程，导入过程中界面保持可用。
+- **44MB Fallo al importar paquete comprimido**: Se corrigió la causa raíz——Anteriormente, los archivos y binarios se leían e indexaban como texto sin formato. Ahora el paquete comprimido será reconocido correctamente y ya no fallará; Otros archivos binarios también se bloquearán en la página principal de la base de conocimientos y se mostrará un mensaje, y el contenido confuso ya no se escribirá en la base de conocimientos.
+- **El panel de registro de fallos y la exportación están vacíos**: El registro de fallos se leyó antes desde el directorio incorrecto. Después de la actualización, los registros históricos de fallos se mostrarán normalmente y se podrán exportar.
+- **Agent Página sesión esporádica**: ya no aparece al cambiar rápidamente de sesión o asistente"El contenido de otra conversación parpadea".
+- **La importación fue exitosa pero aún se muestra"0 documentos"**: La cantidad de documentos de la base de conocimientos se ha cambiado a estadísticas en tiempo real y se mostrarán correctamente inmediatamente después de la importación o eliminación.
+- **Interfaz atascada de importación de archivos grandes**: Las operaciones de CPU y disco de fragmentación de documentos se eliminan del hilo principal y la interfaz permanece disponible durante el proceso de importación.
 
-## 新能力
+## nuevas capacidades
 
-- **压缩包直接导入**：在知识库管理页选择 zip，应用会自动解压、以压缩包名新建知识库，并逐个导入其中的文档（支持 md / txt / csv / json / log / pdf / docx / doc / epub / pptx）。目录、隐藏文件与 macOS 元数据会自动跳过，单次最多处理 500 个条目。
+- **Importar directamente el paquete comprimido**: Seleccione zip en la página de administración de la base de conocimientos, la aplicación se descomprimirá automáticamente, creará una nueva base de conocimientos con el nombre del paquete comprimido e importará los documentos uno por uno (compatible md / txt / csv / json / log / pdf / docx / doc / epub / pptx). Los directorios, archivos ocultos y metadatos de macOS se omiten automáticamente, hasta un máximo de 500 entradas procesadas a la vez.
 
-## 体验改进
+## Mejoras en la experiencia
 
-- **下载与更新入口统一**：首页的更新提示与 设置 → 关于 里的下载按钮，现在都打开官网下载页，国内直连更稳。
-- 补齐终端、群聊、工具与搜索相关文案在 7 种语言（中文 / 英文 / 西班牙文 / 日文 / 韩文 / 葡萄牙文 / 俄文）下的翻译。
+- **Entrada unificada de descarga y actualización**: Indicaciones y configuraciones de actualización de la página de inicio → Con respecto al botón de descarga en , ahora todos abren la página de descarga del sitio web oficial y la conexión directa nacional es más estable.
+- Completé la traducción de la terminal, el chat grupal, la herramienta y la copia relacionada con la búsqueda en 7 idiomas (chino/inglés/español/japonés/coreano/portugués/ruso).
 
 ---
 

@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 时间分隔的插入规则:第一条必有,之后按 5 分钟断一次。
+ * Reglas de inserción separadas por tiempo:El primero debe ser,Luego cortar cada 5 minutos.
  *
- * 单独测这一条,是因为它决定「列表里多出来的行」—— 差一秒就该插、差一秒就不该插,
- * 靠界面去测太贵了。
+ * Prueba este solo,Porque determina "filas adicionales en la lista"—— Un segundo antes de insertarlo, un segundo antes de insertarlo,
+ * Es demasiado caro depender de las pruebas de interfaz.
  */
 class ChatTimelineTest {
 

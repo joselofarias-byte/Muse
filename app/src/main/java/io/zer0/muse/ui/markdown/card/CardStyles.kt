@@ -1,33 +1,33 @@
 package io.zer0.muse.ui.markdown.card
 
 /**
- * 卡片的默认视觉词汇。
+ * El vocabulario visual predeterminado para las tarjetas.
  *
- * 卡片里的样式一律走这里的类名和 [CardTheme] 的变量，不写内联 CSS、不写字面色。
- * 这样做的好处不是"整洁"，而是让模型不必每次从零发明版式：给它一组名字，
- * 它只要挑名字，出的东西就稳定。
+ * Los estilos en la tarjeta siempre usan el nombre de la clase y [CardTheme] Las variables no escriben CSS en línea ni colores literales.
+ * La ventaja de esto no es"limpio", pero para evitar que el modelo tenga que inventar el diseño desde cero cada vez: asígnele un conjunto de nombres,
+ * Sólo necesita elegir un nombre y la salida será estable.
  *
- * 三层结构：
+ * Estructura de tres capas:
  *
- *  - [BASE_CSS] 排版件：标题、正文、小节、指标、表格、引用块、图片框
- *  - [CONTROLS_CSS] 控件：按钮、输入、滑杆、选择、标签页
- *  - [LAYOUT_CSS] 骨架：阅读容器与安全区
+ *  - [BASE_CSS] Partes de composición tipográfica: título, texto, secciones, indicadores, tablas, bloques de citas, cuadros de imágenes.
+ *  - [CONTROLS_CSS] Controles: botones, entradas, controles deslizantes, selecciones, pestañas
+ *  - [LAYOUT_CSS] Esqueleto: Lectura de contenedores y zonas seguras
  */
 internal object CardStyles {
 
-    /** 一次性拼好，避免每次渲染重复拼接。 */
+    /** Júntelo de una sola vez para evitar empalmes repetidos para cada renderizado. */
     val ALL: String by lazy { LAYOUT_CSS + BASE_CSS + CONTROLS_CSS }
 
     /**
-     * 骨架：阅读容器与右上安全区。
+     * Esqueleto: contenedor de lectura y zona segura superior derecha.
      *
-     * 安全区是硬约束：右上 100×40 留给宿主控件，正文、图表、按钮都不进这块。
-     * 装饰性背景可以铺，那是唯一例外。
+     * La zona segura es una restricción difícil: arriba a la derecha 100×40 Déjelo en manos del control del host. El texto, los gráficos y los botones no entran en esta área.
+     * Se pueden colocar fondos decorativos, pero esta es la única excepción.
      */
     private const val LAYOUT_CSS = """
-/* body 的高度由内容决定，不参与视口分配。
-   卡片里常见的 height:100% / min-height:100vh 会让 body 恒等于视口，
-   高度测量随之失效 —— 外面看到的是「内容只有一小块，下面一大片空白」。 */
+/* body La altura está determinada por el contenido y no participa en la asignación de la ventana gráfica.
+   La altura común: 100% / min-height:100vh en las tarjetas hará que el cuerpo sea igual a la ventana gráfica.
+   La medida de altura deja de ser válida. —— Lo que se ve desde fuera es "sólo hay una pequeña parte del contenido y hay un gran espacio en blanco debajo". */
 html,body{height:auto !important;min-height:0 !important;}
 html,body{overflow:visible;}
 .m-shell{
@@ -39,7 +39,7 @@ html,body{overflow:visible;}
 .m-narrow{padding-left:var(--muse-s3);padding-right:var(--muse-s3);}
 """
 
-    /** 排版件。 */
+    /** Piezas tipográficas. */
     private const val BASE_CSS = """
 .m-eyebrow{
   margin:0 0 var(--muse-s2);
@@ -163,7 +163,7 @@ html,body{overflow:visible;}
 }
 """
 
-    /** 控件。外观由这里给，值接口一律用原生元素。 */
+    /** controles. La apariencia se proporciona aquí y la interfaz de valor siempre utiliza elementos nativos. */
     private const val CONTROLS_CSS = """
 .m-button{
   all:unset;display:inline-flex;align-items:center;justify-content:center;gap:6px;
@@ -265,7 +265,7 @@ html,body{overflow:visible;}
 }
 """
 
-    /** 窄屏下的收缩。 */
+    /** Encogimiento en pantallas estrechas. */
     private const val NARROW: String = """
 @media (max-width:360px){
   .m-shell{padding:var(--muse-s2) var(--muse-s3) var(--muse-s3);}
@@ -276,11 +276,11 @@ html,body{overflow:visible;}
 """
 
     /**
-     * 完整样式表。
+     * Hoja de estilo completa.
      *
-     * 与主题无关的常量样式：`ALL` 与 `NARROW` 都是编译期字面量，拼接结果恒定。
-     * 早先每次调用都重新 `ALL + NARROW` —— 每张卡片实例在组合期各分配一份十几 KB 的
-     * 相同字符串，同一屏多张卡片就是多份副本。改成进程级惰性求值后只留一份。
+     * Estilos constantes independientes del tema:`ALL` con `NARROW` Todos son literales en tiempo de compilación y el resultado del empalme es constante.
+     * Cada llamada anterior re- `ALL + NARROW` —— A cada instancia de tarjeta se le asigna una copia de más de diez KB durante el período de combinación.
+     * La misma cadena y varias tarjetas en la misma pantalla son copias múltiples. Después de cambiar a evaluación diferida a nivel de proceso, solo queda una copia.
      */
     private val FULL: String by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ALL + NARROW }
 

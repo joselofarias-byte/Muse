@@ -11,7 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/** 子进程环境：CPU 核数必须显式注入，否则内置 Node 只能靠 libuv 自己猜。 */
+/** Entorno de proceso hijo:CPU El número central debe inyectarse explícitamente; de ​​lo contrario, el nodo integrado solo puede confiar en libuv para adivinarlo. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MuseRuntimeEnvTest {
@@ -23,10 +23,10 @@ class MuseRuntimeEnvTest {
         context.applicationInfo.nativeLibraryDir = File(context.cacheDir, "native-libs").absolutePath
         val env = MuseRuntime.buildEnv(context)
         val raw = env[MuseRuntime.ENV_CPU_COUNT]
-        assertNotNull("buildEnv 必须注入 MUSE_CPU_COUNT", raw)
+        assertNotNull("buildEnv debe ser inyectado MUSE_CPU_COUNT", raw)
         val value = requireNotNull(raw).toInt()
-        assertTrue("CPU 核数必须为正，实际 $value", value > 0)
-        assertEquals("应与 Java 侧可用处理器数一致", MuseRuntime.childCpuCount().toString(), raw)
+        assertTrue("CPU El número de auditoría debe ser positivo y el número real $value", value > 0)
+        assertEquals("Debe ser coherente con la cantidad de procesadores disponibles en el lado de Java.", MuseRuntime.childCpuCount().toString(), raw)
     }
 
     @Test

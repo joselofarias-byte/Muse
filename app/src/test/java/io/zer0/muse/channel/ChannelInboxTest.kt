@@ -134,7 +134,7 @@ class ChannelInboxTest {
                 inbound(source, "hello"),
             ),
         )
-        // 存储已改为按条目分片：断言必须覆盖全部分片，而不是旧单文件。
+        // El almacenamiento se ha cambiado para que esté fragmentado por entrada: las aserciones deben cubrir todo el fragmento, en lugar del antiguo archivo único.
         assertFalse(persistedText().contains(plaintextToken))
         val claimed = journal.claimNextPending()!!
         assertTrue(journal.savePreparedReply(claimed.dispatchId, "same reply"))
@@ -253,7 +253,7 @@ class ChannelInboxTest {
     }
 
 
-    /** 全部分片文件的文本（旧单文件不存在也不报错）。 */
+    /** El texto de todos los archivos fragmentados (no se informará ningún error si el archivo único antiguo no existe). */
     private fun persistedText(): String {
         val dir = File(directory, ChannelInbox.INBOX_DIR_NAME)
         val shards = dir.listFiles().orEmpty().filter { it.isFile }

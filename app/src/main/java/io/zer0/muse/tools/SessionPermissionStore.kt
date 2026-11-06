@@ -13,14 +13,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * 会话级权限模式持久化。
+ * Persistencia del modo de permiso a nivel de sesión.
  *
- * 按 sessionId 存储当前会话的工具权限模式,切换会话时自动恢复。
+ * Almacene el modo de permiso de herramienta de la sesión actual por sessionId,Se reanuda automáticamente al cambiar de sesión.
  *
- * v1.x: 新增"本会话允许"临时缓存([sessionAllowedTools])— 内存态,不持久化,
- * 会话切换/结束时自动失效。提供"始终允许"(持久)与"批准本次"(单次)之间的中间地带:
- * 用户在审批卡片点击"本会话允许"后,该工具在本会话内不再弹审批卡片,
- * 切换会话或冷启动后自动回到询问状态。
+ * v1.x: Nuevo"Esta sesión permite"caché temporal([sessionAllowedTools])— estado de memoria,No persistente,
+ * Cambio de sesión/Caduca automáticamente al final. proporcionar"siempre permitido"(duradero)con"Aprobar esto"(soltero)término medio entre:
+ * El usuario hace clic en la tarjeta de aprobación."Esta sesión permite"después,Esta herramienta ya no mostrará la tarjeta de aprobación en esta sesión.,
+ * Vuelva automáticamente al estado de consulta después de cambiar de sesión o iniciar en frío.
  */
 class SessionPermissionStore(private val context: Context) {
 
@@ -32,10 +32,10 @@ class SessionPermissionStore(private val context: Context) {
     }
 
     /**
-     * 会话级临时允许缓存:sessionId → 已允许工具名集合。
+     * Se permite el almacenamiento en caché temporal a nivel de sesión:sessionId → Se permite la recopilación de nombres de herramientas.
      *
-     * 纯内存态([Volatile] + [Synchronized] 保护),不持久化到 DataStore,
-     * App 进程死亡自然丢失。切换会话时由调用方(ChatViewModel)显式清除旧会话条目。
+     * Estado de memoria pura([Volatile] + [Synchronized] proteger),no persistió en DataStore,
+     * App El proceso se pierde naturalmente cuando muere. Por la persona que llama al cambiar de sesión(ChatViewModel)Borre explícitamente las entradas de sesiones antiguas.
      */
     @Volatile
     private var sessionAllowedTools: Map<String, Set<String>> = emptyMap()
@@ -49,18 +49,18 @@ class SessionPermissionStore(private val context: Context) {
         val modes: Map<String, SessionPermissionMode> = emptyMap(),
     )
 
-    /** 全部会话权限模式流。 */
+    /** Todo el modo de permisos de sesión fluye. */
     val modesFlow: Flow<Map<String, SessionPermissionMode>> =
         context.permissionDataStore.data.map { prefs ->
             parseModes(prefs).modes
         }
 
-    /** 读取指定会话的权限模式,未设置时返回 [defaultMode](默认 ASK)。 */
+    /** Leer el modo de permiso de la sesión especificada.,Devuelve si no está configurado [defaultMode](Predeterminado ASK). */
     suspend fun getMode(sessionId: String, defaultMode: SessionPermissionMode = SessionPermissionMode.ASK): SessionPermissionMode {
         return modesFlow.first()[sessionId] ?: defaultMode
     }
 
-    /** 设置指定会话的权限模式。 */
+    /** Establece el modo de permiso para la sesión especificada. */
     suspend fun setMode(sessionId: String, mode: SessionPermissionMode) {
         context.permissionDataStore.edit { prefs ->
             val current = parseModes(prefs).modes.toMutableMap()
@@ -69,7 +69,7 @@ class SessionPermissionStore(private val context: Context) {
         }
     }
 
-    /** 清除指定会话的权限设置(会话删除时调用)。 */
+    /** Borrar la configuración de permisos para una sesión específica(Llamado cuando se elimina la sesión.). */
     suspend fun clearMode(sessionId: String) {
         context.permissionDataStore.edit { prefs ->
             val current = parseModes(prefs).modes.toMutableMap()
@@ -79,30 +79,30 @@ class SessionPermissionStore(private val context: Context) {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // v1.x: 会话级临时允许缓存(内存态,不持久化)
+    // v1.x: Se permite el almacenamiento en caché temporal a nivel de sesión(estado de memoria,No persistente)
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * 判断某工具在当前会话是否已临时允许(本会话不再问)。
+     * Determinar si una herramienta ha sido permitida temporalmente en la sesión actual(No vuelvas a preguntar en esta conversación.).
      *
-     * @return true 表示用户此前在本会话内点过"本会话允许",应直接 Auto 执行不再弹审批卡片
+     * @return true Indica que el usuario ha hecho clic en esta sesión antes"Esta sesión permite",Auto debe ejecutarse directamente sin que aparezca la tarjeta de aprobación.
      */
     fun isAllowedThisSession(sessionId: String, toolName: String): Boolean {
         return sessionAllowedTools[sessionId]?.contains(toolName) == true
     }
 
     /**
-     * 读取指定会话的临时允许工具名集合(工具暴露分层用);无记录时为空集。
+     * Leer el conjunto temporal de nombres de herramientas permitidos para la sesión especificada(Herramientas para exponer capas.);Es un conjunto vacío cuando no hay registros.
      *
-     * v2.x 工具瘦身阶段1:已授权的工具(GLOBAL 类)在后续请求中维持可见。
+     * v2.x Etapa de adelgazamiento de herramientas.1:Herramientas autorizadas(GLOBAL clase)Permanezca visible en solicitudes posteriores.
      */
     fun allowedToolsThisSession(sessionId: String): Set<String> = sessionAllowedTools[sessionId].orEmpty()
 
     /**
-     * 把工具加入当前会话的临时允许集合。
+     * Agrega la herramienta al conjunto temporal permitido para la sesión actual.
      *
-     * 由 ChatViewModel 在用户点击"本会话允许"按钮时调用。
-     * 仅影响本会话,切换会话/冷启动后自动失效(由 [clearSession] 或进程死亡清理)。
+     * Por ChatViewModel al hacer clic en el usuario"Esta sesión permite"Se llama cuando se presiona el botón.
+     * Sólo afecta a esta sesión,Cambiar de sesión/Falla automáticamente después del arranque en frío(por [clearSession] O procesar la limpieza de la muerte).
      */
     @Synchronized
     fun allowToolForSession(sessionId: String, toolName: String) {
@@ -114,9 +114,9 @@ class SessionPermissionStore(private val context: Context) {
     }
 
     /**
-     * 清除指定会话的临时允许集合。
+     * Borra el conjunto temporal permitido para la sesión especificada.
      *
-     * 由 ChatViewModel 在切换会话/新建会话时对旧会话调用,实现"会话结束自动失效"。
+     * Por ChatViewModel al cambiar de sesión/Llamado en la sesión anterior al crear una nueva sesión.,darse cuenta"Caduca automáticamente al final de la sesión".
      */
     @Synchronized
     fun clearSession(sessionId: String) {
@@ -127,7 +127,7 @@ class SessionPermissionStore(private val context: Context) {
     }
 
     /**
-     * 清除全部会话的临时允许集合(应用进程级清理用,通常不需要,进程死亡自然丢失)。
+     * Borrar el conjunto temporal permitido para todas las sesiones(Para limpieza a nivel de proceso de aplicación,Generalmente no es necesario,Muerte del proceso y pérdida natural.).
      */
     @Synchronized
     fun clearAllSessions() {

@@ -5,21 +5,21 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlin.coroutines.CoroutineContext
 
 /**
- * v0.53: 全局协程异常处理器(企业级容错)。
+ * v0.53: Manejador de excepciones de rutina global(Tolerancia a fallos a nivel empresarial).
  *
- * 防止协程内未捕获异常导致应用崩溃。
- * 异常会被记录到日志,不会传播到默认线程 UncaughtExceptionHandler。
+ * Evite que las excepciones no detectadas en la rutina provoquen que la aplicación falle.
+ * Se registrarán las excepciones,No se propagará al hilo predeterminado UncaughtExceptionHandler.
  *
- * 用法:
+ * Uso:
  * ```
  * viewModelScope.launch(GlobalCoroutineExceptionHandler) { ... }
- * // 与 dispatcher 组合:
+ * // Combinado con despachador:
  * viewModelScope.launch(AppDispatchers.io + GlobalCoroutineExceptionHandler) { ... }
  * ```
  *
- * 注意:本处理器只兜底"未被 try-catch 捕获"的异常。
- * 已被业务代码 try-catch 的异常不会触发本处理器。
- * CancellationException 不会触发本处理器(协程取消语义由 coroutines 框架处理)。
+ * Nota:Este procesador solo cubre el resultado final"No atrapado por try-catch"excepción.
+ * Las excepciones que han sido detectadas mediante intento de código comercial no activarán este controlador.
+ * CancellationException Este procesador no se activará(La semántica de cancelación de corrutinas es manejada por el marco de corrutinas.).
  */
 val GlobalCoroutineExceptionHandler = CoroutineExceptionHandler { _: CoroutineContext, throwable ->
     Logger.e("Coroutine", "Uncaught coroutine exception", throwable)

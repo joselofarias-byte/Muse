@@ -29,11 +29,11 @@ import org.robolectric.annotation.Config
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * 时间轴卡片删除链路：长按 → 动作面板 → 二次确认 → 按底层条目删除。
+ * Enlace para eliminar la tarjeta de la línea de tiempo: pulsación larga → panel de acción → Segunda confirmación → Eliminar por entrada subyacente.
  *
- * 时间轴卡片只带展示字段，删的是哪一条全靠 [TimelineItem.itemId] / [TimelineItem.scope]
- * 还原；摘要卡片还要落到正确的会话上。所以这里断言的是「传给删除的实际参数」，
- * 不是「界面上少了一行」。
+ * Las tarjetas de línea de tiempo solo tienen campos de visualización, todo depende de cuál se elimine. [TimelineItem.itemId] / [TimelineItem.scope]
+ * Restaurar; la tarjeta de resumen también debe corresponder a la sesión correcta. Entonces, lo que se afirma aquí es "el parámetro real pasado para eliminar",
+ * No es "falta una línea en la interfaz".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -74,7 +74,7 @@ class MemoryTimelineDeleteTest {
         composeTestRule.onNodeWithText(FACT_CONTENT).performTouchInput { longClick() }
         composeTestRule.onNodeWithText(context.getString(R.string.memory_menu_delete)).performClick()
 
-        // 二次确认出现，此时还没有删除
+        // Aparece una segunda confirmación, pero aún no se ha eliminado.
         composeTestRule.onNodeWithText(context.getString(R.string.memory_delete_confirm_title)).assertExists()
         assertEquals("confirm is required before a fact is deleted", 0, factDeletes.get().size)
 
@@ -148,7 +148,7 @@ class MemoryTimelineDeleteTest {
             }
         }
 
-        // 点批量删除先弹确认，不直接落库
+        // Haga clic para eliminar en lotes y confirme primero sin colocarlo directamente en la base de datos.
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_delete)).performClick()
         assertNull("bulk delete must not run before confirmation", deleted.get())
         composeTestRule.onNodeWithText(context.getString(R.string.memory_bulk_delete_confirm_title)).assertExists()
@@ -156,11 +156,11 @@ class MemoryTimelineDeleteTest {
             .onNodeWithText(context.getString(R.string.memory_bulk_delete_consequence, picked.size))
             .assertExists()
 
-        // 取消不删
+        // Cancelar sin borrar
         composeTestRule.onNodeWithText(context.getString(R.string.common_cancel)).performClick()
         assertNull("cancelling must delete nothing", deleted.get())
 
-        // 再来一次，确认后才删，且两条 id 都在
+        // Hágalo de nuevo, elimínelo después de la confirmación y ambas identificaciones estarán ahí.
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.action_delete)).performClick()
         composeTestRule.onNodeWithText(context.getString(R.string.common_delete)).performClick()
 
@@ -168,9 +168,9 @@ class MemoryTimelineDeleteTest {
     }
 
     /**
-     * 拼出与 MemoryScreen 相同的接线：卡片长按开面板，面板确认后经 [routeMemoryItemAction] 删除。
+     * Deletree el mismo cableado que MemoryScreen: presione y mantenga presionada la tarjeta para abrir el panel y confirme con el panel. [routeMemoryItemAction] borrar.
      *
-     * 刻意复用生产组件而不是另写一套假界面 —— 面板、确认框、分派三处任何一处接错这里都会红。
+     * Reutilizar deliberadamente componentes de producción en lugar de escribir una interfaz falsa —— Si el panel, el cuadro de confirmación y el envío están conectados incorrectamente, el lugar estará en rojo.
      */
     private fun setTimeline(
         card: TimelineItem,

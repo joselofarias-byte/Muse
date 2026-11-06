@@ -9,37 +9,37 @@ import java.io.File
 import java.util.UUID
 
 /**
- * 备份恢复阶段账本。
+ * Libro mayor de fases de respaldo y recuperación.
  *
- * Muse 的会话库、记忆库、事实库和 DataStore 无法共享一个事务；本账本
- * 记录跨存储恢复当前走到哪一步，使下次启动能够识别未完成恢复，而不是
- * 把半恢复状态误认为正常完成。它不保存备份正文或任何敏感值。
+ * Muse La biblioteca de sesión, la biblioteca de memoria, la biblioteca de hechos y el DataStore no pueden compartir una transacción; este libro mayor
+ * Registre el paso actual de la recuperación entre almacenamientos para que el próximo inicio pueda identificar la recuperación inconclusa en lugar de
+ * Confundir el estado de semi-recuperación con la finalización normal. No guarda el cuerpo de la copia de seguridad ni ningún valor confidencial.
  */
 class RestoreJournal(context: Context) {
 
     private val file = File(context.filesDir, FILE_NAME)
 
-    /** 当前恢复状态；文件不存在表示没有进行中的恢复。 */
+    /** Estado de recuperación actual; la ausencia del archivo significa que no hay recuperación en curso. */
     fun read(): Entry? = if (!file.exists()) {
         null
     } else {
         runCatching { AppJson.decodeFromString(Entry.serializer(), file.readText()) }
             .onFailure { error ->
-                Logger.w(TAG, "恢复账本解析失败: ${error.message}", error)
+                Logger.w(TAG, "Falló el análisis del libro mayor de recuperación: ${error.message}", error)
                 AtomicFileStore.quarantine(file, "restore_journal_parse")
             }
             .getOrNull()
     }
 
-    /** 是否存在尚未完成的恢复；供启动自检和诊断页使用。 */
+    /** Si hay una recuperación pendiente; utilizado por las páginas de diagnóstico y autoprueba de inicio. */
     fun hasIncompleteRestore(): Boolean = read()?.phase?.let { phase ->
         phase != Phase.COMPLETED
     } == true
 
-    /** 返回尚未完成的恢复记录，供启动层展示具体阶段。 */
+    /** Devuelve registros de recuperación inacabados para que la capa de inicio muestre etapas específicas. */
     fun incompleteEntry(): Entry? = read()?.takeUnless { it.phase == Phase.COMPLETED }
 
-    /** 创建一次新的恢复记录。 */
+    /** Cree un nuevo registro de recuperación. */
     @Synchronized
     fun begin(restoreId: String, sourceHash: String, backupVersion: Int, recoveryFormat: RecoveryFormat = RecoveryFormat.JSON): Entry =
         update(
@@ -53,7 +53,7 @@ class RestoreJournal(context: Context) {
             ),
         )
 
-    /** 更新恢复阶段和已完成的存储。 */
+    /** Actualice las etapas de recuperación y el almacenamiento completado. */
     @Synchronized
     fun advance(entry: Entry, phase: Phase, completedStores: Set<Store> = entry.completedStores, failureReason: String? = null): Entry =
         update(
@@ -65,7 +65,7 @@ class RestoreJournal(context: Context) {
             ),
         )
 
-    /** 标记恢复成功并删除账本，避免旧状态影响下一次启动。 */
+    /** Marque la recuperación como exitosa y elimine el libro mayor para evitar que el estado anterior afecte el próximo inicio. */
     @Synchronized
     fun complete(entry: Entry) {
         val completed = entry.copy(
@@ -74,11 +74,11 @@ class RestoreJournal(context: Context) {
         )
         update(completed)
         if (!file.delete()) {
-            Logger.w(TAG, "恢复完成但账本删除失败: ${file.absolutePath}")
+            Logger.w(TAG, "Recuperación completada pero falla la eliminación del libro mayor: ${file.absolutePath}")
         }
     }
 
-    /** 标记恢复失败并保留账本供诊断；调用方负责决定是否回滚。 */
+    /** Marcar los errores de recuperación y conservar el libro de contabilidad para realizar diagnósticos; la persona que llama es responsable de decidir si realizar la reversión. */
     @Synchronized
     fun fail(entry: Entry, error: Throwable): Entry = advance(
         entry = entry,
@@ -95,12 +95,12 @@ class RestoreJournal(context: Context) {
     @Serializable
     data class Entry(
         val restoreId: String,
-        /** 只保存源数据摘要，不保存备份正文。 */
+        /** Solo se guarda el resumen de los datos de origen y no se guarda el texto de la copia de seguridad. */
         val sourceHash: String,
         val backupVersion: Int,
-        /** 恢复副本的私有文件名前缀，不含用户数据。旧账本缺失时由 restoreId 兼容。 */
+        /** El prefijo del nombre del archivo privado de la copia de recuperación, sin datos del usuario. Compatible por recoveryId cuando falta el libro mayor antiguo. */
         val artifactId: String = restoreId,
-        /** 恢复点正文格式；旧账本默认单 JSON。 */
+        /** Formato de texto del punto de recuperación; El libro mayor antiguo tiene como valor predeterminado JSON. */
         val recoveryFormat: RecoveryFormat = RecoveryFormat.JSON,
         val phase: Phase,
         val completedStores: Set<Store> = emptySet(),
@@ -108,7 +108,7 @@ class RestoreJournal(context: Context) {
         val createdAt: Long = System.currentTimeMillis(),
         val updatedAt: Long = System.currentTimeMillis(),
     ) {
-        /** staging/recovery 文件名只由内部随机标识构成，不能穿越目录。 */
+        /** staging/recovery El nombre del archivo se compone únicamente de identificadores aleatorios internos y no puede atravesar directorios. */
         val stagingFileName: String get() = "target-$artifactId.json"
         val recoveryFileName: String
             get() = "recovery-$artifactId.${if (recoveryFormat == RecoveryFormat.NDJSON) "ndjson" else "json"}"

@@ -4,11 +4,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-UI-F13: 删除会话必须同步清理 TodoTool 的会话待办快照。
+ * AUD-UI-F13: La eliminación de una sesión debe borrar simultáneamente la instantánea del trabajo pendiente de sesión de TodoTool.
  *
- * TodoTool.sessionTodos 是单例 ConcurrentHashMap,原实现只在 execute() 写入、
- * getTodos/clearSession 读取,而 clearSession 全仓 0 调用 → 每个用过 todo_write
- * 的会话都留一份 TodoList 在内存,且已删会话仍可经 getTodos 读到。
+ * TodoTool.sessionTodos es un singleton ConcurrentHashMap,La implementación original está solo en execute() escribir,
+ * getTodos/clearSession leer,Y se llama a clearSession con la posición completa 0 → cada usado todo_write
+ * Cada sesión mantiene una copia de TodoList en la memoria.,Y las conversaciones eliminadas aún se pueden leer a través de getTodos.
  */
 class SessionTodoCleanupTest {
 
@@ -18,10 +18,10 @@ class SessionTodoCleanupTest {
     fun `delete session clears session todos`() {
         val src = source()
         val start = src.indexOf("fun deleteSession(")
-        assertTrue("未找到 deleteSession", start >= 0)
+        assertTrue("no encontrado deleteSession", start >= 0)
         val body = src.substring(start, (start + 3000).coerceAtMost(src.length))
         assertTrue(
-            "删除会话必须清理 TodoTool 待办快照",
+            "Eliminar una sesión debe limpiar la instantánea de tareas pendientes de TodoTool",
             body.contains("TodoTool.clearSession(sessionId)"),
         )
     }

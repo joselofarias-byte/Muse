@@ -23,16 +23,16 @@ import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
 
 /**
- * v1.105 阶段 2: 从 ChatViewModel 抽离的杂项 Coordinator。
+ * v1.105 Fase 2: Coordinador varios extraído de ChatViewModel.
  *
- * 合并 4 个低耦合职责域(各自方法数不多,单独建类收益不大):
- *  - 文件夹分组 CRUD(createFolder / renameFolder / deleteFolder / toggleFolderExpanded / moveSessionToFolder / togglePinned)
- *  - 搜索(updateSearchQuery / search / clearSearch)
- *  - 收藏操作(toggleFavorite / setMessageFavoriteTag / setFavoriteTagFilter / deleteMessage)
- *  - 管理页 CRUD(Lorebook / PromptInjection / QuickMessage 的 refresh/save/delete)
+ * Fusionar 4 áreas de responsabilidad de bajo acoplamiento(No hay muchos métodos para cada uno.,No se obtienen muchos beneficios creando una categoría sola):
+ *  - Agrupación de carpetas CRUD(createFolder / renameFolder / deleteFolder / toggleFolderExpanded / moveSessionToFolder / togglePinned)
+ *  - Buscar(updateSearchQuery / search / clearSearch)
+ *  - Operación de cobranza(toggleFavorite / setMessageFavoriteTag / setFavoriteTagFilter / deleteMessage)
+ *  - página de gestión CRUD(Lorebook / PromptInjection / QuickMessage de refresh/save/delete)
  *
- * 这些方法不调用 ChatViewModel 的核心流式方法(detachStreaming / launchStream / refreshContextInfo),
- * 只读写 state + 调 repository,适合统一委托。
+ * Estos métodos no llaman a los métodos de transmisión principales de ChatViewModel.(detachStreaming / launchStream / refreshContextInfo),
+ * Estado de solo lectura y escritura + sintonización repository,Adecuado para puesta en marcha unificada.
  */
 class ChatMiscCoordinator(
     private val accessor: ChatStateAccessor,
@@ -47,9 +47,9 @@ class ChatMiscCoordinator(
 
     private val tag = "ChatVM"
 
-    // ── 文件夹分组 CRUD ──────────────────────────────────────────────────
+    // ── Agrupación de carpetas CRUD ──────────────────────────────────────────────────
 
-    /** 新建文件夹。 */
+    /** Crea una nueva carpeta. */
     fun createFolder(name: String, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             resultOf { folderRepository.createFolder(name) }
@@ -57,7 +57,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 重命名文件夹。 */
+    /** Cambie el nombre de la carpeta. */
     fun renameFolder(id: String, name: String, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             resultOf { folderRepository.renameFolder(id, name) }
@@ -65,7 +65,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 删除文件夹(关联会话移到未分组)。 */
+    /** eliminar carpeta(Las conversaciones relacionadas se movieron a desagrupadas). */
     fun deleteFolder(id: String, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             resultOf {
@@ -77,14 +77,14 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 切换文件夹展开/折叠状态。 */
+    /** Cambiar expansión de carpeta/estado plegado. */
     fun toggleFolderExpanded(id: String, expanded: Boolean) {
         accessor.coroutineScope.launch {
             resultOf { folderRepository.setExpanded(id, expanded) }
         }
     }
 
-    /** 移动会话到文件夹(folderId=null = 移到未分组)。 */
+    /** Mover sesión a la carpeta(folderId=null = Mover a desagrupado). */
     fun moveSessionToFolder(sessionId: String, folderId: String?, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             resultOf { folderRepository.moveSessionToFolder(sessionId, folderId) }
@@ -100,7 +100,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** P0-1 修复: 切换会话置顶状态。 */
+    /** P0-1 Reparación: Alternar estado superior de la conversación. */
     fun togglePinned(sessionId: String, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             val session = accessor.snapshot.sessions.find { it.id == sessionId } ?: return@launch
@@ -109,7 +109,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** B7-05: 置顶会话拖拽排序持久化。 */
+    /** B7-05: Persistencia de clasificación de arrastrar y soltar de la sesión superior. */
     fun reorderPinnedSessions(ids: List<String>, reportError: (String) -> Unit) {
         accessor.coroutineScope.launch {
             resultOf { sessionRepository.reorderPinnedSessions(ids) }
@@ -117,9 +117,9 @@ class ChatMiscCoordinator(
         }
     }
 
-    // ── 搜索 ─────────────────────────────────────────────────────────────
+    // ── Buscar ─────────────────────────────────────────────────────────────
 
-    /** 更新搜索框文本。空文本时清空结果。 */
+    /** Actualizar el texto del cuadro de búsqueda. Resultados vacíos cuando el texto está vacío. */
     fun updateSearchQuery(query: String) {
         accessor.update { it.copy(searchQuery = query) }
         if (query.isBlank()) {
@@ -135,7 +135,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 执行搜索。空查询忽略。 */
+    /** Realizar una búsqueda. Las consultas vacías se ignoran. */
     fun search() {
         val query = accessor.snapshot.searchQuery.trim()
         if (query.isEmpty()) return
@@ -170,14 +170,14 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 清空搜索状态。 */
+    /** Borrar estado de búsqueda. */
     fun clearSearch() {
         accessor.update {
             it.copy(
                 searchQuery = "",
                 searchResults = emptyList(),
                 isSearching = false,
-                // v2.x: 同步清空消息内容搜索结果(切回会话 Tab 时也清空,避免残留)
+                // v2.x: Borrar sincrónicamente los resultados de búsqueda del contenido del mensaje(También se borra al volver a la pestaña de sesión,evitar residuos)
                 messageResults = emptyList(),
                 isSearchingMessages = false,
                 searchError = null,
@@ -185,19 +185,19 @@ class ChatMiscCoordinator(
         }
     }
 
-    // ── v2.x: 消息内容搜索(Tab=1) ──────────────────────────────────────
+    // ── v2.x: Búsqueda de contenido de mensajes(Tab=1) ──────────────────────────────────────
 
-    /** v2.x: 切换搜索页 Tab(0=会话, 1=消息内容)。 */
+    /** v2.x: Cambiar página de búsqueda Tab(0=sesión, 1=Contenido del mensaje). */
     fun switchSearchTab(tab: Int) {
         accessor.update { it.copy(searchTab = tab, searchError = null) }
     }
 
     /**
-     * v2.x: 执行消息内容搜索(FTS4 + snippet,失败回退 LIKE)。
+     * v2.x: Realizar búsqueda de contenido de mensajes(FTS4 + snippet,Repliegue ante el fracaso LIKE).
      *
-     * 与 [search] 区别:走 [SessionRepository.searchMessageContentFlow](直接返回 snippet 片段),
-     * 结果存入 [io.zer0.muse.ui.ChatUiState.messageResults],供 SearchScreen Tab=1 展示。
-     * 空查询清空结果。
+     * con [search] diferencia:ir [SessionRepository.searchMessageContentFlow](Devolver fragmento de fragmento directamente),
+     * El resultado se almacena en [io.zer0.muse.ui.ChatUiState.messageResults],suministro SearchScreen Tab=1 mostrar.
+     * Una consulta vacía borra los resultados.
      */
     fun searchMessageContent() {
         val query = accessor.snapshot.searchQuery.trim()
@@ -217,7 +217,7 @@ class ChatMiscCoordinator(
                     detail = appContext.getString(R.string.err_chat_network_timeout)
                 }
             } catch (t: Throwable) {
-                // v1.x: 协程取消(跳转/退出搜索页)必须重抛,不显示为搜索失败
+                // v1.x: Cancelación de rutina(saltar/Salir de la página de búsqueda)Hay que volver a lanzarlo.,No se muestra porque la búsqueda falló
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Logger.w(tag, "Message content search failed: ${t.message}")
                 failed = true
@@ -239,15 +239,15 @@ class ChatMiscCoordinator(
     }
 
     /**
-     * v2.x: 设置目标消息(从搜索结果点击跳转用)。
+     * v2.x: Establecer mensaje de destino(Haga clic para saltar desde los resultados de búsqueda).
      *
-     * ChatScreen 进入会话后会读取 [io.zer0.muse.ui.ChatUiState.targetMessageId]
-     * 滚动到该消息,并依据 [io.zer0.muse.ui.ChatUiState.highlightedMessageId]
-     * 短暂高亮。滚动定位完成后由 [consumeTargetMessage] 清空 targetMessageId;
-     * 高亮持续约 2.5s 后由 [clearHighlightedMessage] 清空。
+     * ChatScreen Se leerá después de ingresar a la sesión. [io.zer0.muse.ui.ChatUiState.targetMessageId]
+     * Desplázate hasta el mensaje,y basado en [io.zer0.muse.ui.ChatUiState.highlightedMessageId]
+     * Resalte brevemente. Una vez completado el posicionamiento del desplazamiento, el [consumeTargetMessage] Borrar targetMessageId;
+     * El resaltado dura unos 2,5 segundos y luego [clearHighlightedMessage] Vacío.
      *
-     * @param messageId 目标消息 id(null = 清空状态)
-     * @param query 搜索关键词(用于 MessageBubble 内文本高亮,null = 不高亮文本)
+     * @param messageId mensaje objetivo id(null = estado claro)
+     * @param query Buscar palabras clave(Se utiliza para resaltar texto dentro de MessageBubble,null = No resaltar texto)
      */
     fun setTargetMessage(messageId: String?, query: String?) {
         accessor.update {
@@ -259,12 +259,12 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** v2.x: 消费目标消息 id(滚动定位完成后调用,避免重复触发滚动)。 */
+    /** v2.x: Consumir mensajes objetivo id(Se llama después de completar el posicionamiento del desplazamiento.,Evite activar el desplazamiento repetidamente). */
     fun consumeTargetMessage() {
         accessor.update { it.copy(targetMessageId = null) }
     }
 
-    /** v2.x: 清空高亮消息 id(高亮窗口期结束后调用,停止高亮闪烁)。 */
+    /** v2.x: Borrar mensajes resaltados id(Se llama después de que finaliza el período de la ventana resaltada.,Deja de parpadear el resaltado). */
     fun clearHighlightedMessage() {
         accessor.update {
             it.copy(
@@ -274,19 +274,19 @@ class ChatMiscCoordinator(
         }
     }
 
-    // ── 收藏操作 ─────────────────────────────────────────────────────────
+    // ── Operación de cobranza ─────────────────────────────────────────────────────────
 
-    /** 切换消息收藏状态(乐观更新 + 失败回滚)。 */
+    /** Cambiar el estado de la recopilación de mensajes(Actualizaciones optimistas + reversión en caso de falla). */
     fun toggleFavorite(messageId: Uuid) {
         val target = resolveFavoriteTarget(messageId) ?: return
         setFavorite(messageId, !target.favorite)
     }
 
     /**
-     * 把收藏状态设成指定值（幂等：已是目标状态时不再写库，也不报错）。
+     * Establezca el estado de la colección en el valor especificado (idempotente: cuando ya esté en el estado de destino, ya no escribirá en la biblioteca y no se informará ningún error).
      *
-     * 与 [toggleFavorite] 的区别是不翻转，供外部入口（网页端长按菜单）直接指定“收藏/取消收藏”。
-     * 目标不在当前消息列表也不在收藏列表时（跨会话删除后的残留引用），照样写库，只是没有乐观更新。
+     * con [toggleFavorite] La diferencia es que no se voltea y se puede especificar directamente mediante una entrada externa (menú presionado prolongadamente en la página web).“Colección/Cancelar favoritos”.
+     * Cuando el objetivo no está en la lista de mensajes actual ni en la lista de favoritos (referencias residuales después de la eliminación entre sesiones), la base de datos aún se escribe, pero no hay una actualización optimista.
      */
     fun setFavorite(messageId: Uuid, favorite: Boolean) {
         val target = resolveFavoriteTarget(messageId)
@@ -301,11 +301,11 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** Phase 8.5 修复: 先查当前会话 messages,找不到再查 favoriteMessages(跨会话收藏列表)。 */
+    /** Phase 8.5 Reparación: Primero verifique la sesión actual messages,No lo encuentro, compruébalo de nuevo. favoriteMessages(Lista de favoritos entre sesiones). */
     private fun resolveFavoriteTarget(messageId: Uuid): UIMessage? = accessor.messagesSnapshot.firstOrNull { it.id == messageId }
         ?: accessor.snapshot.favoriteMessages.firstOrNull { it.id == messageId }
 
-    /** 收藏/取消收藏的乐观更新(消息列表 + 收藏列表两处同时改)。 */
+    /** Colección/Actualización optimista para cancelar favoritos(La lista de mensajes + la lista de favoritos se pueden modificar simultáneamente). */
     private fun applyFavoriteState(messageId: Uuid, target: UIMessage, newFav: Boolean) {
         accessor.updateMessages { list -> list.map { if (it.id == messageId) it.copy(favorite = newFav) else it } }
         accessor.update { st ->
@@ -322,15 +322,15 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** 计算收藏列表的展示顺序(DAO 口径:createdAt 降序)。回滚插回时用它保持位置。 */
+    /** Calcular el orden de visualización de la lista de favoritos(DAO Calibre:createdAt orden descendente). Utilícelo para mantener la posición al hacer retroceder el inserto. */
     private fun sortedFavorites(list: List<UIMessage>): List<UIMessage> = list.sortedByDescending { it.createdAt }
 
     /**
-     * 收藏写库失败的回滚。
+     * Recopile la reversión de la escritura fallida de la base de datos.
      *
-     * 旧实现回滚时去列表里找那条消息,找不到就什么也不做 —— 而取消收藏的回滚正好是
-     * "列表里已经没有它"的那种分支,图标就永远停在错误状态。这里直接用 [target] 快照
-     * 复原,不依赖当前列表内容。
+     * Al revertir la implementación anterior, vaya a la lista para buscar el mensaje.,Si no lo encuentras, no hagas nada. —— Y la reversión de la cancelación del cobro es exactamente
+     * "ya no esta en la lista"esa rama de,El icono siempre permanece en estado de error. Úselo directamente aquí [target] Instantánea
+     * recuperar,No depende del contenido de la lista actual.
      */
     private fun rollbackFavoriteState(messageId: Uuid, target: UIMessage, attemptedFav: Boolean) {
         val restored = !attemptedFav
@@ -356,12 +356,12 @@ class ChatMiscCoordinator(
     }
 
     /**
-     * v2.6.9: 批量收藏的结果反馈。
+     * v2.6.9: Comentarios sobre los resultados de la recopilación por lotes.
      *
-     * 区分三种情形，避免“点了没反应”：
-     *  - 全部已收藏（重复点）
-     *  - 全部新增成功
-     *  - 部分成功
+     * Distinguir entre tres situaciones y evitar“Se hizo clic pero no hubo respuesta.”:
+     *  - Todos han sido recolectados (puntos de repetición)
+     *  - Todo agregado exitosamente
+     *  - Parcialmente exitoso
      */
     fun reportBatchFavorite(added: Int, total: Int) {
         val msg = when {
@@ -374,7 +374,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** v1.104 U7: 设置收藏分组标签(null = 移到未分组)。 */
+    /** v1.104 U7: Establecer etiquetas de grupos favoritos(null = Mover a desagrupado). */
     fun setMessageFavoriteTag(messageId: Uuid, tag: String?) {
         val target = accessor.snapshot.favoriteMessages.firstOrNull { it.id == messageId } ?: return
         val oldTag = target.favoriteTag
@@ -408,20 +408,20 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** v1.104 U7: 设置当前收藏夹的分组筛选条件。 */
+    /** v1.104 U7: Establezca las condiciones del filtro de agrupación para los favoritos actuales. */
     fun setFavoriteTagFilter(tag: String?) {
         accessor.update { it.copy(favoriteTagFilter = tag) }
     }
 
     /**
-     * 批量收藏:整批走与 [toggleFavorite] 同一条写入路径。
+     * Colección por lotes:Camina con todo el lote [toggleFavorite] La misma ruta de escritura.
      *
-     * 此前 ViewModel 里另写了一段"直调 repository + 手改两个列表"的实现,
-     * 与单条 toggle 走的三份状态(messages / favoriteMessages / 缓存失效)
-     * 各自为政,失败时也没有回滚。这里把批量路径收敛成循环调 [toggleOne],
-     * 一条消息只有一种收藏/取消语义。
+     * Anteriormente, escribí otro párrafo en ViewModel."Ajustar directamente el repositorio + modificar manualmente las dos listas"realización,
+     * Tres estados con un solo cambio(messages / favoriteMessages / invalidación de caché)
+     * hacer lo suyo,No hay retroceso en caso de fracaso. Aquí, la ruta por lotes converge en un ajuste cíclico. [toggleOne],
+     * Un mensaje tiene solo una colección./Semántica de cancelación.
      *
-     * @return 实际新收藏成功的条数(已收藏的不重复计数,也不重复写库)
+     * @return Número real de nuevas colecciones exitosas(Recuento único de favoritos,No vuelvas a escribir la biblioteca)
      */
     suspend fun favoriteMessages(messageIds: List<Uuid>): Int = messageIds.count { id ->
         val target = accessor.messagesSnapshot.firstOrNull { it.id == id }
@@ -430,7 +430,7 @@ class ChatMiscCoordinator(
         !target.favorite && toggleOne(id)
     }
 
-    /** [toggleFavorite] 的挂起版实现:同一套乐观更新 + 失败回滚,供批量路径复用。 */
+    /** [toggleFavorite] Implementación de la versión suspendida.:Mismo conjunto de actualizaciones optimistas + reversión en caso de falla,Para la reutilización de rutas por lotes. */
     private suspend fun toggleOne(messageId: Uuid): Boolean {
         val target = resolveFavoriteTarget(messageId) ?: return false
         val newFav = !target.favorite
@@ -443,12 +443,12 @@ class ChatMiscCoordinator(
             .isSuccess
     }
 
-    /** v1.48: 删除单条消息(乐观更新 + 失败回滚)。 */
+    /** v1.48: Eliminar un solo mensaje(Actualizaciones optimistas + reversión en caso de falla). */
     fun deleteMessage(messageId: Uuid) {
         if (accessor.messagesSnapshot.none { it.id == messageId }) return
         val idStr = messageId.toString()
-        // v1.0.80 (T-4): 级联删除 UI 上的子消息(assistant 回复),与 DB 级联删除一致,
-        // 否则删 user 消息后其回复残留在列表,切回会话才消失(闪烁/错位)。
+        // v1.0.80 (T-4): Eliminación en cascada de mensajes infantiles en la interfaz de usuario(assistant Responder),Consistente con la eliminación en cascada de base de datos,
+        // De lo contrario, tras eliminar el mensaje del usuario, su respuesta permanecerá en la lista.,Desaparecerá después de volver a la sesión.(intermitente/Dislocación).
         val removedIds = collectCascadeIds(messageId)
         val removedList = accessor.messagesSnapshot.filter { it.id in removedIds }
         accessor.updateMessages { messages -> messages.filterNot { it.id in removedIds } }
@@ -456,7 +456,7 @@ class ChatMiscCoordinator(
             resultOf {
                 sessionRepository.deleteMessage(idStr)
             }.onError { msg, t ->
-                // 回滚: 把被删消息按 createdAt 插回原位,不覆盖删除后新 append 的消息。
+                // revertir: Inserte el mensaje eliminado nuevamente en su posición original según creado en,Los mensajes recién agregados después de la eliminación no se sobrescriben.
                 val rolled = accessor.messagesSnapshot.toMutableList()
                 removedList.sortedBy { it.createdAt }.forEach { removedMsg ->
                     val idx = rolled.indexOfFirst { it.createdAt > removedMsg.createdAt }
@@ -479,11 +479,11 @@ class ChatMiscCoordinator(
     }
 
     /**
-     * U-16: 删除目标消息及其后全部消息(截断语义,文档 §4「连同后续删除」)。
+     * U-16: Eliminar el mensaje de destino y todos los mensajes posteriores(semántica de truncamiento,Documentación §4"Junto con la eliminación posterior").
      *
-     * 与 [deleteMessage] 的区别:后者仅删除该消息与其树级回复;本方法删除
-     * createdAt >= 目标消息的全部消息(无论父子关系),数据层走 sessionRepository.truncateFrom
-     * (事务内同步清 FTS 与生成检查点)。乐观更新 + 失败回滚,与单条删除行为一致。
+     * con [deleteMessage] la diferencia:Este último sólo elimina el mensaje y sus respuestas a nivel de árbol.;Este método elimina
+     * createdAt >= Todos los mensajes del mensaje de destino.(independientemente de la relación padre-hijo),La capa de datos va sessionRepository.truncateFrom
+     * (Compensación sincrónica de FTS y generación de puntos de control dentro de una transacción). Actualizaciones optimistas + reversión en caso de falla,Consistente con el comportamiento de eliminación única.
      */
     fun deleteMessagesFrom(messageId: Uuid, sessionId: String) {
         val target = accessor.messagesSnapshot.firstOrNull { it.id == messageId } ?: return
@@ -496,7 +496,7 @@ class ChatMiscCoordinator(
             resultOf {
                 sessionRepository.truncateFrom(sessionId, fromCreatedAt)
             }.onError { msg, t ->
-                // 回滚: 把被删消息按 createdAt 插回原位,不覆盖删除后新 append 的消息。
+                // revertir: Inserte el mensaje eliminado nuevamente en su posición original según creado en,Los mensajes recién agregados después de la eliminación no se sobrescriben.
                 val rolled = accessor.messagesSnapshot.toMutableList()
                 removedList.sortedBy { it.createdAt }.forEach { removedMsg ->
                     val idx = rolled.indexOfFirst { it.createdAt > removedMsg.createdAt }
@@ -519,13 +519,13 @@ class ChatMiscCoordinator(
     }
 
     /**
-     * v1.0.80 (T-4): 收集要级联删除的消息 id(防环 BFS)。
+     * v1.0.80 (T-4): Recopilar mensajes que se conectarán en cascada para su eliminación. id(Anti-anillo BFS).
      *
-     * B-15: DB 侧 [SessionRepository.deleteMessage] 用 messageDao.getChildrenByParentId 以
-     * `parentGroupId = :parentId OR parentMessageId = :parentId` 关联子回复;UI 快照
-     * (UIMessage)仅暴露 parentGroupId(新数据等于父消息 id,等价于 parentMessageId 关联)。
-     * 为覆盖以"变体组"挂载的回复(DB 会删而旧逻辑漏删 UI),遍历时除按消息 id 匹配
-     * parentGroupId 外,同时把被删消息的 variantGroupId 作为父引用,避免幽灵消息残留。
+     * B-15: DB lado [SessionRepository.deleteMessage] Utilice messageDao.getChildrenByParentId para
+     * `parentGroupId = :parentId OR parentMessageId = :parentId` Subrespuesta relacionada;UI Instantánea
+     * (UIMessage)exponer solo parentGroupId(Los nuevos datos equivalen al mensaje principal id,Equivalente a la asociación parentMessageId).
+     * para cubrir con"grupo variante"respuesta montada(DB Se eliminará pero la lógica anterior no se eliminará. UI),Excepto la coincidencia por ID de mensaje al atravesar
+     * parentGroupId afuera,Al mismo tiempo, utilice el VariantGroupId del mensaje eliminado como referencia principal.,Evite los residuos de mensajes fantasma.
      */
     private fun collectCascadeIds(root: Uuid): Set<Uuid> {
         val result = linkedSetOf<Uuid>()
@@ -541,26 +541,26 @@ class ChatMiscCoordinator(
                 snapshot.firstOrNull { it.id == id }?.variantGroupId?.let(::add)
             }
             snapshot.forEach { msg ->
-                // v2.5.2: 同时考虑显式父消息引用(parentMessageId) ——
-                // 工具展示消息挂在其所属助手消息下,删除助手时需一并带走。
+                // v2.5.2: Considere también las referencias explícitas a mensajes para padres.(parentMessageId) ——
+                // El mensaje en pantalla de la herramienta se cuelga debajo del mensaje del asistente al que pertenece.,Al eliminar el asistente, debes llevarlo contigo.
                 val parentRef = msg.parentGroupId ?: msg.parentMessageId
                 if (parentRef != null && parentRef in refs && msg.id !in result) {
                     queue.add(msg.id)
                 }
             }
         }
-        // v2.5.2 存量兼底: 旧数据里的工具展示消息没有父关联（字段是本轮才补的），
-        // 上面按 parent 找不到。抽出独立方法处理，保持本函数可读。
+        // v2.5.2 Tanto el stock como el fondo: El mensaje que muestra la herramienta en los datos antiguos no tiene asociación principal (los campos solo se agregan en esta ronda).
+        // No se puede encontrar presionando padre arriba. Extraiga un método independiente para el procesamiento y mantenga esta función legible.
         appendTrailingOrphanToolDisplays(ordered = snapshot.sortedBy { it.createdAt }, result = result)
 
         return result
     }
 
     /**
-     * v2.5.2: 存量孤儿工具卡片兼底。
+     * v2.5.2: Tarjeta y base de herramientas huérfanas de stock.
      *
-     * 从任一被删消息向后扫，遇到下一条 USER 消息停止；把中间「无父关联且带工具载荷」
-     * 的展示消息一并加入删除集，清掉历史遗留的孤儿卡片。
+     * Escanee hacia atrás desde cualquier mensaje eliminado y deténgase cuando encuentre el siguiente mensaje del USUARIO; elimine "sin asociación principal y carga de herramientas" en el medio
+     * Los mensajes en pantalla también se agregan al conjunto de eliminación para borrar las tarjetas huérfanas que quedan del historial.
      */
     private fun appendTrailingOrphanToolDisplays(ordered: List<io.zer0.ai.core.UIMessage>, result: MutableSet<Uuid>) {
         if (ordered.isEmpty() || result.isEmpty()) return
@@ -576,9 +576,9 @@ class ChatMiscCoordinator(
         }
     }
 
-    // ── 管理页 CRUD: Lorebook / PromptInjection / QuickMessage ───────────
+    // ── página de gestión CRUD: Lorebook / PromptInjection / QuickMessage ───────────
 
-    /** v1.97: 懒加载全部 Lorebook 条目。 */
+    /** v1.97: Carga diferida de todas las entradas del Lorebook. */
     fun refreshLorebooks() {
         accessor.coroutineScope.launch {
             try {
@@ -587,8 +587,8 @@ class ChatMiscCoordinator(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // ST-01: 世界书列表加载失败 → 记录错误态,供 LorebookScreen 展示与重试
-                Logger.w(tag, "refreshLorebooks 失败: ${e.message}", e)
+                // ST-01: No se pudo cargar la lista mundial de libros → Estado de error de registro,Para mostrar LorebookScreen y reintentar
+                Logger.w(tag, "refreshLorebooks falló: ${e.message}", e)
                 accessor.update { it.copy(lorebooksError = e.message ?: appContext.getString(R.string.common_load_failed)) }
             }
         }
@@ -608,7 +608,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** v1.97: 懒加载全部 PromptInjection 条目。 */
+    /** v1.97: Carga diferida de todas las entradas de PromptInjection. */
     fun refreshPromptInjections() {
         accessor.coroutineScope.launch {
             val list = promptInjectionRepository.observeAll().first()
@@ -630,7 +630,7 @@ class ChatMiscCoordinator(
         }
     }
 
-    /** v1.97: 懒加载全部 QuickMessage 条目。 */
+    /** v1.97: Carga diferida de todas las entradas de QuickMessage. */
     fun refreshAllQuickMessages() {
         accessor.coroutineScope.launch {
             val list = quickMessageRepository.observeAll().first()

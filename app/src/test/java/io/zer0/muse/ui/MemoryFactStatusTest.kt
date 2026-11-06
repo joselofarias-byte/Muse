@@ -8,11 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 记忆状态徽章的判定规则。
+ * Reglas de juicio para insignias de estado de memoria.
  *
- * 列表里「已合并 / 已出场 / 被取代」三条各自独立，一条记忆可能同时命中；
- * 判定写错只有两种代价：漏标（用户以为它还在用）和误标（用户以为它已经不用了），
- * 所以这里把三种来源和一次跨分库同号的陷阱都钉住。
+ * Los tres elementos "fusionados/aparecidos/reemplazados" en la lista son independientes entre sí y se puede acceder a una memoria al mismo tiempo;
+ * Sólo hay dos costos por juzgar una escritura incorrecta: etiquetado incorrecto (los usuarios piensan que todavía está en uso) y etiquetado incorrecto (los usuarios piensan que ya no se usa).
+ * Por lo tanto, las tres fuentes y la trampa de compartir el mismo número entre sucursales al mismo tiempo quedan fijadas aquí.
  */
 class MemoryFactStatusTest {
 
@@ -39,7 +39,7 @@ class MemoryFactStatusTest {
         assertFalse(status.merged)
         assertFalse(status.suppressed)
         assertFalse(status.superseded)
-        assertFalse("一条正常记忆不该被标成不生效", status.isInactive)
+        assertFalse("Una memoria normal no debe marcarse como inválida", status.isInactive)
     }
 
     @Test
@@ -72,11 +72,11 @@ class MemoryFactStatusTest {
 
     @Test
     fun sameIdInAnotherScopeIsNotSuperseded() {
-        // 主库与子助手分库的 fact.id 各自自增,7 号在两库里都存在。
-        // 只有子助手库里那条被取代时,主库 7 号不能跟着被标成「被取代」。
+        // Se incrementa el fact.id de la biblioteca principal y de la biblioteca secundaria.,7 El número existe en ambas bibliotecas.
+        // Cuando solo se reemplaza el de la biblioteca del subasistente,La biblioteca principal nº 7 no podrá marcarse entonces como "reemplazada".
         val keys = setOf(memoryFactKey("assistant-a", 7L))
 
-        assertFalse("跨分库同号不能误判成被取代", statusOf(scope = "main", supersededKeys = keys).superseded)
+        assertFalse("No se puede considerar erróneamente que el mismo número en todas las sucursales está siendo reemplazado.", statusOf(scope = "main", supersededKeys = keys).superseded)
         assertTrue(statusOf(scope = "assistant-a", supersededKeys = keys).superseded)
     }
 
@@ -98,8 +98,8 @@ class MemoryFactStatusTest {
     fun memoryItemProjectsSameFlags() {
         val item = MemoryItem(
             id = "7",
-            title = "喜欢咖啡",
-            content = "喜欢咖啡",
+            title = "como el cafe",
+            content = "como el cafe",
             source = "Fact",
             scope = "main",
             mergedIntoId = 42L,
@@ -113,8 +113,8 @@ class MemoryFactStatusTest {
 
     @Test
     fun itemsWithoutFactStatusStayQuiet() {
-        // Summary / Compile / Experience 层没有这三个概念,默认值不能凭空造出徽章。
-        val item = MemoryItem(id = "s1", title = "会话摘要", content = "…", source = "Summary")
+        // Summary / Compile / Experience La capa no tiene estos tres conceptos.,Los valores predeterminados no pueden crear una insignia de la nada.
+        val item = MemoryItem(id = "s1", title = "Resumen de la sesión", content = "…", source = "Summary")
 
         assertFalse(item.status.isInactive)
         assertNull(item.mergedIntoId)

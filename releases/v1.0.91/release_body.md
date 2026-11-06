@@ -1,13 +1,13 @@
 # Muse v1.0.91
 
-本版修复两个影响使用的缺陷，建议 v1.0.90 用户升级。
+Esta versión corrige dos defectos que afectan el uso. Se recomienda que los usuarios de la versión 1.0.90 actualicen.
 
-## 修复
+## Reparación
 
-- **记忆页闪退**：当记忆里存在置顶条目时，打开记忆页会直接崩溃，现已修复。
-- **添加自定义供应商时页面显示异常**：进入该页面后，顶部分段页签占满整屏、配置表单不可见，导致无法完成填写与保存；现已恢复正常。
+- **La página de memoria falla**: Cuando hay un elemento fijado en la memoria, al abrir la página de la memoria se bloqueará directamente. Esto se ha solucionado.
+- **La página se muestra de forma anormal al agregar un proveedor personalizado**: Después de ingresar a esta página, la pestaña de la sección superior ocupa toda la pantalla y el formulario de configuración es invisible, por lo que es imposible completarlo y guardarlo; ahora ha vuelto a la normalidad.
 
-## 说明
+## Descripción
 
-- 本版不包含新功能，仅修复上述问题。
-- 与 v1.0.90 同签名，可直接覆盖安装，数据不受影响。
+- Esta versión no contiene nuevas funciones, sólo soluciona los problemas anteriores.
+- Tiene la misma firma que v1.0.90 y se puede sobrescribir e instalar directamente sin afectar los datos.

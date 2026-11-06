@@ -14,46 +14,46 @@ import io.zer0.muse.accessibility.IAccessibilityProvider
 import io.zer0.muse.automation.executors.MuseAccessibilityService
 
 /**
- * P3-3: 无障碍服务客户端 — 双路绑定(独立 Provider 优先,应用内服务兜底)。
+ * P3-3: Cliente del Servicio de Accesibilidad — Encuadernación bidireccional(Se prefiere proveedor independiente,Servicios en la aplicación).
  *
- * v2.2.1 起无障碍服务支持两种承载方式:
- *  1. **独立 Provider APK**(io.zer0.muse.a11y,签名级 AIDL 桥):
- *     - 无障碍服务组件脱离主应用生命周期,主应用更新/重装不打断授权;
- *     - 通过 bindService 绑定其 [A11yBridgeService] 获取 [IAccessibilityProvider] 代理;
- *  2. **应用内服务**(MuseAccessibilityService,静态实例):
- *     - 旧版授权路径,未安装 Provider 时兜底;已授权用户无感继续使用。
+ * v2.2.1 El servicio de accesibilidad admite dos métodos de alojamiento:
+ *  1. **independiente Provider APK**(io.zer0.muse.a11y,Puente AIDL de nivel de firma):
+ *     - Los componentes del servicio de accesibilidad están separados del ciclo de vida principal de la aplicación.,Actualización de la aplicación principal/La reinstalación no interrumpe la autorización.;
+ *     - Vincularlo a través de bindService [A11yBridgeService] Obtener [IAccessibilityProvider] agente;
+ *  2. **Servicios en la aplicación**(MuseAccessibilityService,instancia estática):
+ *     - Ruta de autorización de la versión anterior,Cuando el proveedor no está instalado;Los usuarios autorizados pueden seguir usándolo sin preocupaciones.
  *
- * 调用路由([withProvider]):Provider 代理可用且已授权 → 走跨进程 AIDL;
- * 否则回落到应用内静态实例。任一来源失败均返回安全默认值(false / ""),不抛异常。
+ * ruta de llamada([withProvider]):Provider El agente está disponible y autorizado. → A lo largo del proceso AIDL;
+ * De lo contrario, recurra a la instancia estática en la aplicación. Los valores predeterminados seguros se devuelven en caso de falla de cualquier fuente(false / ""),No se lanza ninguna excepción.
  *
- * 职责:
- *  1. 检查无障碍服务是否已在系统设置中启用([isEnabled],涵盖两份授权记录)
- *  2. 暴露 UI 操作 API(getPageInfo/click/swipe/setText/screenshot 等)
- *  3. 引导用户前往 [openAccessibilitySettings] 启用服务
+ * Responsabilidades:
+ *  1. Compruebe si los servicios de accesibilidad están habilitados en la configuración del sistema([isEnabled],Cubre dos registros de autorización.)
+ *  2. Exponer operaciones de UI API(getPageInfo/click/swipe/setText/screenshot espera)
+ *  3. Guiar a los usuarios a [openAccessibilitySettings] Habilitar servicio
  *
- * 调用前提:
- *  - 用户必须在「设置 → 无障碍」中授权启用对应服务(独立 Provider 或应用内服务)
- *  - 未授权或服务未运行时,所有 UI 操作返回安全默认值
+ * premisa de llamada:
+ *  - Los usuarios deben ir a Configuración → Autorizar el servicio correspondiente en "Accesibilidad"(Proveedor independiente o servicio en la aplicación)
+ *  - Cuando no está autorizado o el servicio no está funcionando,Todas las operaciones de la interfaz de usuario devuelven valores predeterminados seguros
  */
 class AccessibilityClient(private val context: Context) {
     companion object {
         private const val TAG = "AccessibilityClient"
 
-        /** 主 App 清单中注册的稳定服务类名,用于匹配系统授权记录。 */
+        /** Nombre de clase de servicio estable registrado en el manifiesto principal de la aplicación,Se utiliza para hacer coincidir los registros de autorización del sistema. */
         val SERVICE_CLASS_NAME: String = MuseAccessibilityService::class.java.name
 
-        /** v2.2.1: 无障碍独立 Provider 的包名(发布/安装检测与包可见性共用)。 */
+        /** v2.2.1: El nombre del paquete del proveedor independiente de accesibilidad.(publicar/La detección de instalación se comparte con la visibilidad del paquete.). */
         const val PROVIDER_PACKAGE = "io.zer0.muse.a11y"
 
-        /** v2.2.1: 独立 Provider 的 AIDL 桥接服务组件(签名级权限护栏)。 */
+        /** v2.2.1: Componente de servicio puente AIDL independiente del proveedor(Barandilla de permisos a nivel de firma). */
         const val PROVIDER_BRIDGE_CLASS = "io.zer0.muse.a11y.A11yBridgeService"
 
-        /** v2.2.1: 独立 Provider 的无障碍服务组件(用于系统授权记录匹配)。 */
+        /** v2.2.1: Componente de servicio de accesibilidad independiente del proveedor(Se utiliza para comparar registros de autorización del sistema). */
         const val PROVIDER_SERVICE_CLASS = "io.zer0.muse.a11y.A11yProviderAccessibilityService"
 
         /**
-         * 判断系统返回的服务信息是否是目标无障碍服务。
-         * 部分 ROM 会把类名返回成相对名或不带包名前缀的短名,这里统一展开。
+         * Determine si la información de servicio devuelta por el sistema es el servicio de accesibilidad de destino.
+         * Algunas ROM devolverán el nombre de la clase como un nombre relativo o un nombre corto sin el prefijo del nombre del paquete.,Unificado aquí.
          */
         internal fun matchesServiceInfo(
             serviceInfo: ServiceInfo?,
@@ -66,8 +66,8 @@ class AccessibilityClient(private val context: Context) {
         }
 
         /**
-         * 兼容读取 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES 的结果。
-         * 使用纯字符串解析,不依赖 OEM 对 AccessibilityManager 列表实现的一致性。
+         * Leer compatible Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES resultado.
+         * Utilice análisis de cadenas simples,No depende de la implementación OEM de la lista AccessibilityManager para mantener la coherencia.
          */
         internal fun containsEnabledService(
             rawValue: String?,
@@ -96,12 +96,12 @@ class AccessibilityClient(private val context: Context) {
         }
     }
 
-    // ── 独立 Provider 绑定(v2.2.1) ────────────────────────────────────────────
+    // ── Enlace de proveedor independiente(v2.2.1) ────────────────────────────────────────────
 
-    /** AIDL 代理(onServiceConnected 后置值;binder 死亡/断连时清空)。 */
+    /** AIDL agente(onServiceConnected Valor de publicación;binder muerte/Borrar cuando está desconectado). */
     @Volatile private var providerProxy: IAccessibilityProvider? = null
 
-    /** 是否已发起过绑定(避免重复 bindService;绑定失败后复位)。 */
+    /** ¿Se ha iniciado la vinculación?(evitar la duplicación bindService;Restablecer después de un error de vinculación). */
     @Volatile private var providerBindRequested = false
 
     private val providerConnection =
@@ -117,7 +117,7 @@ class AccessibilityClient(private val context: Context) {
                         },
                         0,
                     )
-                }.onFailure { Logger.w(TAG, "监听 Provider binder 死亡失败: ${it.message}") }
+                }.onFailure { Logger.w(TAG, "Error en la supervisión de la muerte de la carpeta del proveedor: ${it.message}") }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -130,13 +130,13 @@ class AccessibilityClient(private val context: Context) {
             }
         }
 
-    /** 独立 Provider APK 是否已安装(未装时仍可用应用内服务)。 */
+    /** ¿Está instalado el APK del proveedor independiente?(Los servicios dentro de la aplicación todavía están disponibles cuando no están instalados). */
     fun isProviderInstalled(): Boolean = runCatching {
         @Suppress("DEPRECATION")
         context.packageManager.getPackageInfo(PROVIDER_PACKAGE, 0)
     }.isSuccess
 
-    /** 发起一次 Provider 绑定(幂等;仅当 APK 已安装)。 */
+    /** Iniciar un enlace de proveedor(idempotente;Sólo si APK está instalado). */
     private fun ensureProviderBound() {
         if (providerBindRequested) return
         if (!isProviderInstalled()) return
@@ -147,17 +147,17 @@ class AccessibilityClient(private val context: Context) {
                 runCatching {
                     context.bindService(intent, providerConnection, Context.BIND_AUTO_CREATE)
                 }.onFailure {
-                    Logger.w(TAG, "绑定独立 Provider 失败: ${it.message}")
+                    Logger.w(TAG, "No se pudo vincular al proveedor independiente: ${it.message}")
                 }.getOrDefault(false)
             if (ok) providerBindRequested = true
         }
     }
 
-    // ── 状态查询 ──────────────────────────────────────────────────────────────
+    // ── Consulta de estado ──────────────────────────────────────────────────────────────
 
     /**
-     * 无障碍服务是否已在系统设置中启用。
-     * 独立 Provider 或应用内服务任一被授权即返回 true(迁移期两套授权并存)。
+     * Si los servicios de accesibilidad están habilitados en la configuración del sistema.
+     * Devuelve cuando se autoriza el proveedor independiente o el servicio en la aplicación true(Durante el periodo migratorio conviven dos conjuntos de autorizaciones).
      */
     fun isEnabled(): Boolean = isServiceEnabledInSystem(context.packageName, SERVICE_CLASS_NAME) ||
         isServiceEnabledInSystem(PROVIDER_PACKAGE, PROVIDER_SERVICE_CLASS)
@@ -171,8 +171,8 @@ class AccessibilityClient(private val context: Context) {
                         matchesServiceInfo(info.resolveInfo?.serviceInfo, packageName, className)
                     } == true
             }.onFailure {
-                // 部分定制 ROM 对无障碍服务列表访问会抛异常,继续走 Secure 设置回退。
-                Logger.w(TAG, "读取系统无障碍服务列表失败: ${it.message}")
+                // Algunas ROM personalizadas generarán una excepción al acceder a la lista de servicios de accesibilidad.,Continúe hasta Reserva de configuración segura.
+                Logger.w(TAG, "No se pudo leer la lista de servicios de accesibilidad del sistema: ${it.message}")
             }.getOrDefault(false)
         if (managerResult) return true
 
@@ -183,12 +183,12 @@ class AccessibilityClient(private val context: Context) {
                     Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
                 )
             }.onFailure {
-                Logger.w(TAG, "读取已启用无障碍服务设置失败: ${it.message}")
+                Logger.w(TAG, "No se pudo leer la configuración del servicio de accesibilidad habilitada: ${it.message}")
             }.getOrNull()
         return containsEnabledService(rawEnabledServices, packageName, className)
     }
 
-    /** 当前是否已连接(独立 Provider 或应用内服务的任一实例可用)。 */
+    /** ¿Está actualmente conectado?(Disponible como proveedor independiente o como cualquier instancia del servicio en la aplicación). */
     fun isConnected(): Boolean {
         ensureProviderBound()
         val remoteConnected =
@@ -198,7 +198,7 @@ class AccessibilityClient(private val context: Context) {
         return remoteConnected || MuseAccessibilityService.instance?.isAccessibilityServiceEnabled() == true
     }
 
-    // ── UI 操作 API(双路路由,失败返回安全默认值) ────────────────────────────
+    // ── UI Operación API(Enrutamiento dual,Volver a valores predeterminados seguros en caso de falla) ────────────────────────────
 
     suspend fun getPageInfo(): String = withProvider(defaultOnError = "") { it.getUiHierarchy() }
 
@@ -219,25 +219,25 @@ class AccessibilityClient(private val context: Context) {
         withProvider(defaultOnError = false) { it.takeScreenshot(path, format) }
 
     /**
-     * v2.6.13: 当前服务是否真的拿到了截图能力。
+     * v2.6.13: Si el servicio actual realmente tiene la capacidad de realizar capturas de pantalla.
      *
-     * 旧实现叫 screenshotCapabilityFailed()，靠“反射写隐藏字段是否抛错”反推；
-     * 那个字段在 AOSP 里不存在，所以它永远返回 true，而工具层看到的就是“无法截屏”。
-     * 现在直接问系统上报的 capability 位。
+     * La antigua implementación se llamó screenshotCapabilityFailed(), confiar en“Si la escritura reflexiva de campos ocultos genera un error”contrarrestar;
+     * Ese campo no existe en AOSP, por lo que siempre devuelve verdadero, y lo que ve la capa de herramienta es“No se puede tomar captura de pantalla”.
+     * Ahora pregunte directamente el bit de capacidad informado por el sistema.
      *
-     * Provider 路径（独立进程）拿不到本地 serviceInfo，按可用处理；真调用失败会返回错误码。
+     * Provider Si la ruta (proceso independiente) no puede obtener la información del servicio local, se procesará como disponible; si la llamada falla, se devolverá un código de error.
      */
     suspend fun canTakeScreenshot(): Boolean = MuseAccessibilityService.instance?.canTakeScreenshot() ?: true
 
     suspend fun currentActivityName(): String = withProvider(defaultOnError = "") { it.getCurrentActivityName() }
 
-    // ── 内部工具 ──────────────────────────────────────────────────────────────
+    // ── herramientas internas ──────────────────────────────────────────────────────────────
 
     /**
-     * 双路路由调用:
-     *  1. 独立 Provider 代理可用且其服务已连接 → 跨进程 AIDL 调用;
-     *  2. 否则回落应用内静态实例;
-     *  3. 均不可用或调用异常时返回 [defaultOnError](不抛出,保证工具链稳定)。
+     * Llamada de enrutamiento bidireccional:
+     *  1. El proxy del proveedor independiente está disponible y su servicio está conectado → Llamadas AIDL de procesos cruzados;
+     *  2. De lo contrario, recurra a la instancia estática en la aplicación.;
+     *  3. No hay ninguno disponible o se devuelve una excepción al llamar [defaultOnError](no tirar,Garantizar la estabilidad de la cadena de herramientas).
      */
     private suspend fun <T> withProvider(defaultOnError: T, block: (A11yOps) -> T): T {
         ensureProviderBound()
@@ -246,21 +246,21 @@ class AccessibilityClient(private val context: Context) {
             if (remoteEnabled) {
                 val result = runCatching { block(RemoteOps(proxy)) }
                 result.getOrNull()?.let { return it }
-                // binder 死亡/远程异常:清空以便下次重绑,回落应用内服务
+                // binder muerte/excepción remota:Bórralo para poder volver a vincularlo la próxima vez.,Servicio alternativo en la aplicación
                 providerProxy = null
                 providerBindRequested = false
-                Logger.w(TAG, "Provider 调用失败,回落应用内服务: ${result.exceptionOrNull()?.message}")
+                Logger.w(TAG, "Provider llamada fallida,Servicio alternativo en la aplicación: ${result.exceptionOrNull()?.message}")
             }
         }
 
         val service = MuseAccessibilityService.instance ?: return defaultOnError
         return runCatching { block(LocalOps(service)) }.getOrElse { e ->
-            Logger.w(TAG, "服务调用失败: ${e.message}")
+            Logger.w(TAG, "Error en la llamada de servicio: ${e.message}")
             defaultOnError
         }
     }
 
-    /** 内部操作面 — 屏蔽「独立 Provider(AIDL 代理)」与「应用内服务(静态实例)」差异。 */
+    /** superficie operativa interna — Bloquear la \"independencia\" Provider(AIDL agente)” y “servicios en la aplicación(instancia estática)\"Diferencia. */
     internal interface A11yOps {
         fun isAccessibilityServiceEnabled(): Boolean
 
@@ -283,7 +283,7 @@ class AccessibilityClient(private val context: Context) {
         fun takeScreenshot(path: String, format: String): Boolean
     }
 
-    /** 应用内服务实现(同进程静态实例)。 */
+    /** Implementación de servicios en la aplicación(Mismo proceso de instancia estática). */
     private class LocalOps(private val service: MuseAccessibilityService) : A11yOps {
         override fun isAccessibilityServiceEnabled(): Boolean = service.isAccessibilityServiceEnabled()
 
@@ -307,7 +307,7 @@ class AccessibilityClient(private val context: Context) {
         override fun takeScreenshot(path: String, format: String): Boolean = service.takeScreenshot(path, format)
     }
 
-    /** 独立 Provider 实现(跨进程 AIDL;performGlobalAction ←→ execGlobalAction 名称映射)。 */
+    /** Implementación de proveedor independiente(Proceso cruzado AIDL;performGlobalAction ←→ execGlobalAction mapeo de nombres). */
     private class RemoteOps(private val provider: IAccessibilityProvider) : A11yOps {
         override fun isAccessibilityServiceEnabled(): Boolean = provider.isAccessibilityServiceEnabled
 
@@ -331,7 +331,7 @@ class AccessibilityClient(private val context: Context) {
         override fun takeScreenshot(path: String, format: String): Boolean = provider.takeScreenshot(path, format)
     }
 
-    /** 打开系统无障碍设置页(引导用户启用服务)。 */
+    /** Abra la página de configuración de accesibilidad del sistema(Guiar a los usuarios para habilitar los servicios.). */
     fun openAccessibilitySettings() {
         val intent =
             android.content.Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {

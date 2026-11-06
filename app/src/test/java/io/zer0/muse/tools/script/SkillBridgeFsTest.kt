@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** v2.2.1: 大沙盒文件动作的路径安全与基本读写。 */
+/** v2.2.1: Seguridad de ruta y lectura y escritura básica de acciones de archivos de espacio aislado de gran tamaño. */
 class SkillBridgeFsTest {
 
     private fun newRoot(): File {
@@ -19,9 +19,9 @@ class SkillBridgeFsTest {
     @Test
     fun `write read list delete roundtrip`() {
         val root = newRoot()
-        val bytes = SkillBridgeFs.write(root, "notes/a.txt", "hello 沙盒")
+        val bytes = SkillBridgeFs.write(root, "notes/a.txt", "hello caja de arena")
         assertTrue(bytes > 0)
-        assertEquals("hello 沙盒", SkillBridgeFs.read(root, "notes/a.txt"))
+        assertEquals("hello caja de arena", SkillBridgeFs.read(root, "notes/a.txt"))
         val entries = SkillBridgeFs.list(root, "notes")
         assertEquals(1, entries.size)
         assertEquals("a.txt", entries[0].name)
@@ -40,7 +40,7 @@ class SkillBridgeFsTest {
             } catch (e: SkillBridgeFs.BridgeFsException) {
                 rejected = true
             }
-            assertTrue("应拒绝路径: $bad", rejected)
+            assertTrue("El camino debe ser rechazado.: $bad", rejected)
         }
     }
 

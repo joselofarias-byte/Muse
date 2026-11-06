@@ -8,7 +8,7 @@ import org.junit.Test
 class PiiEngineTest {
     @Test
     fun appEngineRoundTripsAndPreservesOffsets() {
-        val input = "手机 13800138000,邮箱 a@b.com"
+        val input = "teléfono celular 13800138000,Correo electrónico a@b.com"
         val (masked, matches) = PiiEngine.maskApp(input)
         assertFalse(masked.contains("13800138000"))
         assertTrue(matches.any { it.type == PiiEngine.AppType.PHONE })
@@ -25,7 +25,7 @@ class PiiEngineTest {
 
     @Test
     fun memoryEngineRemovesResidualTokensAfterUnmask() {
-        val masked = PiiEngine.maskMemory("电话 13800138000")
+        val masked = PiiEngine.maskMemory("telefono 13800138000")
         val restored = PiiEngine.unmaskMemory("[PHONE_1] [PHONE_2]", masked.map)
         assertTrue(restored.contains("13800138000"))
         assertFalse(restored.contains("[PHONE_2]"))

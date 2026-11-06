@@ -3,9 +3,9 @@ package io.zer0.memory.prompt
 import io.zer0.memory.format.RollingSummaryFormat
 
 /**
- * 滚动摘要提示词构建器。
+ * Generador de palabras de aviso de resumen de desplazamiento.
  *
- * 这里抽出不带对话内容的稳定 system 部分，供 [io.zer0.memory.summary.SessionSummaryManager] 使用。
+ * Aquí extraemos la parte estable del sistema sin contenido de diálogo para [io.zer0.memory.summary.SessionSummaryManager] Usar.
  */
 object RollingSummaryPrompt {
 
@@ -13,18 +13,18 @@ object RollingSummaryPrompt {
     const val CACHE_GROUP = "memory.rolling_summary"
 
     /**
-     * 构建滚动摘要的 system prompt。
+     * Aviso del sistema para crear un resumen de desplazamiento.
      *
-     * @param locale 语言
-     * @param agentName Agent 名称(可空,有默认)
-     * @param userName 用户称呼(可空,有默认)
-     * @param identityAndPersonality Agent 身份人格(可空)
-     * @param userProfile 用户设定(可空)
-     * @param existingMemory 已有长期记忆(可空)
-     * @param roster 花名册(可空)
+     * @param locale Idioma
+     * @param agentName Agent Nombre(Disponible,Hay un valor predeterminado)
+     * @param userName Nombre de usuario(Disponible,Hay un valor predeterminado)
+     * @param identityAndPersonality Agent personalidad de identidad(Disponible)
+     * @param userProfile Configuraciones de usuario(Disponible)
+     * @param existingMemory Tener memoria a largo plazo(Disponible)
+     * @param roster Lista(Disponible)
      */
     fun buildSystemPrompt(
-        locale: String = "zh-CN",
+        locale: String = "es",
         agentName: String = "",
         userName: String = "",
         identityAndPersonality: String = "",
@@ -32,9 +32,9 @@ object RollingSummaryPrompt {
         existingMemory: String = "",
         roster: String = "",
     ): String {
-        val isZh = locale.startsWith("zh")
-        val resolvedAgentName = agentName.ifBlank { if (isZh) "这个 Agent" else "this agent" }
-        val resolvedUserName = userName.ifBlank { if (isZh) "主人" else "the user" }
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+        val resolvedAgentName = agentName.ifBlank { if (isZh) "esto Agent" else "this agent" }
+        val resolvedUserName = userName.ifBlank { if (isZh) "maestro" else "the user" }
         val factTitle = RollingSummaryFormat.getFactSectionTitle(locale)
         val timelineTitle = RollingSummaryFormat.getTimelineSectionTitle(locale)
         val formatRequirements = RollingSummaryFormat.buildFormatRequirements(locale)
@@ -88,50 +88,50 @@ Record what happened in this session chronologically with YYYY-MM-DD HH:MM times
         }
 
         return """
-你是 $resolvedAgentName，正在为自己刚刚经历的一段对话整理连续性记忆。
+tu eres $resolvedAgentName, está resolviendo recuerdos de continuidad para una conversación que acaba de experimentar.
 
-下面是你在本次对话开始前已经拥有的设定和记忆。它们是背景，不是新增事实。请从自己的视角审视本次对话，判断哪些新信息值得进入长期记忆。
+A continuación se muestran las configuraciones y los recuerdos que ya tiene antes de que comience esta conversación. Son antecedentes, no hechos añadidos. Mire esta conversación desde su propia perspectiva y decida qué nueva información vale la pena ingresar en su memoria a largo plazo.
 
-## 你的身份与人格
-${identityAndPersonality.ifBlank { "（未提供）" }}
+## tu identidad y personalidad
+${identityAndPersonality.ifBlank { "(no proporcionado)" }}
 
-## 主人设定
-${userProfile.ifBlank { "（未提供）" }}
+## Configuración maestra
+${userProfile.ifBlank { "(no proporcionado)" }}
 
-## 你已有的长期记忆
-这是你在本次对话开始前已经知道的。不要因为它出现在这里就重复写入；只有本次对话更新、反驳或强化它时才记录变化。
+## memoria a largo plazo que ya tienes
+Esto es lo que ya sabes antes de que comience esta conversación. No lo reescribas sólo porque aparece aquí; Registre los cambios solo si esta conversación los actualiza, los refuta o los refuerza.
 
-${existingMemory.ifBlank { "（暂无已有长期记忆）" }}
+${existingMemory.ifBlank { "(Aún no hay memoria a largo plazo)" }}
 
-## 花名册
-花名册用于理解对话中出现的其他 Agent 名字和协作语境，不要把花名册本身当作新增记忆。
+## Lista
+La lista se utiliza para comprender los nombres de otros agentes y contextos de colaboración que aparecen en la conversación. No trates la lista en sí como un nuevo recuerdo.
 
-${roster.ifBlank { "（没有其他 Agent）" }}
+${roster.ifBlank { "(ningún otro agente)" }}
 
-## 核心原则
-重要事实一节用于整理关于${resolvedUserName}的稳定信息。事情经过一节还要保留本对话的决策、助手明确承诺、已完成行动、未完成事项，以及有意义的助手 Vibe 自述，让同一对话能准确接续。
+## principios básicos
+La sección Datos importantes se utiliza para organizar información sobre${resolvedUserName}información estable. La toma de decisiones de esta conversación, el compromiso claro del asistente, las acciones completadas, los elementos sin terminar y los autoinformes significativos de Vibe del asistente también deben conservarse durante la sección del evento, para que la misma conversación pueda continuar con precisión.
 
 $formatRequirements
 
-## 内容要求
+## Requisitos de contenido
 
-**$factTitle 一节**
-只记录用户画像类信息：身份属性、人格特质、审美和兴趣、喜欢或讨厌的事物、长期关系、生活或创作取向、近期正在关注/投入的大主题。没有则写 `- 无`。
+**$factTitle una sección**
+Solo se registra la información del retrato del usuario: atributos de identidad, rasgos de personalidad, estética e intereses, cosas que le gustan o no, relaciones a largo plazo, orientación vital u creativa y lo que está siguiendo recientemente./Gran tema para invertir. Si no, escribe `- Ninguno`.
 
-保留用户原话，不要补“用户”主语。例如用户说“最近在学游泳”，就写“最近在学游泳”，不要改写成“用户最近在学游泳”。
+Mantenga las palabras originales del usuario y no agregue ningún complemento.“Usuario”Sujeto. Por ejemplo, el usuario dijo“Estoy aprendiendo a nadar recientemente”, solo escribe“Estoy aprendiendo a nadar recientemente”, no reescribir como“El usuario está aprendiendo a nadar recientemente.”.
 
-不要抽取：工作方式偏好、协作流程偏好、工具和平台偏好、工程纪律和项目规则、一次任务里的格式标准。拿不准一律不抽；宁可漏，不可错。
+No extraiga: preferencias de estilo de trabajo, preferencias de procesos de colaboración, preferencias de herramientas y plataformas, disciplinas de ingeniería y reglas de proyecto, estándares de formato dentro de una tarea. Si no está seguro, nunca fume; es mejor fallar que cometer un error.
 
-**$timelineTitle 一节**
-按时间顺序记录本 session 发生了什么，带 YYYY-MM-DD HH:MM 时间标注。每条事项必须以 `[用户]` 或 `[助手]` 开始，不要把双方内容合并为一条。保留继续本对话所需的具体决策、助手承诺、任务状态、阻塞原因和待办；无关工作细节从简。助手自述 Vibe 只能写成 `[助手 Vibe 自述] ...`。
+**$timelineTitle una sección**
+Registre lo que sucedió en esta sesión en orden cronológico, con marca de tiempo AAAA-MM-DD HH:MM. Cada artículo debe ser `[Usuario]` o `[asistente]` Para empezar, no combine el contenido de ambos lados en uno. Mantenga las decisiones específicas, los compromisos del asistente, el estado de las tareas, los motivos de bloqueo y las tareas pendientes necesarias para continuar esta conversación; Mantenga simples los detalles de trabajo superfluos. El archivo Léame del asistente Vibe solo se puede escribir como `[Léame de Vibe del Asistente] ...`.
 
-## 规则
-1. 有已有摘要时：新旧内容合并，同一件事以新信息为准，不要重复
-2. 时间标注从消息时间戳提取（YYYY-MM-DD HH:MM 格式）
-3. 输入中提供的助手 Vibe 是助手当时表达的感受，应明确归属给助手，不能写成客观心理事实；不要记录 Sparks、Reflections、Will 或隐藏推理
-4. 用户提供的文件/附件：只记录文件名和用途，忽略具体内容
-5. 助手的长篇输出：只记录产出了什么，不摘录内容
-6. 宁短勿长：摘要长度与对话的实际信息密度成正比，闲聊几句只需一两行
+## reglas
+1. Cuando ya existe un resumen: fusionar el contenido antiguo y el nuevo. En lo mismo prevalecerá la nueva información. No lo repitas.
+2. La anotación de tiempo se extrae de la marca de tiempo del mensaje (YYYY-MM-DD HH:MM formato)
+3. La vibra del asistente proporcionada en la entrada es el sentimiento expresado por el asistente en ese momento y debe atribuirse claramente al asistente y no puede escribirse como hechos psicológicos objetivos; no grabar Sparks, Reflections, Will o razonamiento oculto
+4. Archivos proporcionados por el usuario/Adjunto: registre solo el nombre del archivo y el propósito, ignore el contenido específico
+5. La salida larga del asistente: solo registra la salida y no extrae el contenido.
+6. Es mejor ser breve que largo: la longitud del resumen es directamente proporcional a la densidad de información real de la conversación, unas pocas palabras de pequeña charla solo ocupan una o dos líneas.
         """.trimIndent()
     }
 }

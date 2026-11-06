@@ -10,33 +10,33 @@ import io.zer0.common.Logger
 import io.zer0.common.resultOf
 
 /**
- * 提醒闹钟的统一排期入口。
+ * Entrada de programación unificada para despertadores recordatorios.
  *
- * 提醒工具（`schedule_reminder`）与快速记录页的提醒共用这里，避免三处 AlarmManager
- * 调用各自实现、行为漂移。
+ * herramienta de recordatorio (`schedule_reminder`) se comparte aquí con el recordatorio en la página de registro rápido para evitar tres cosas AlarmManager
+ * Llame a cada implementación y desviación de comportamiento.
  *
- * 排期策略：
- *  - 有精确闹钟权限时用 `setExactAndAllowWhileIdle`，到点准时触发；
- *  - 没有权限时降级到 `setAndAllowWhileIdle`（非精确，可能延迟数分钟），保证「会响」，
- *    而不是像以前那样直接失败、把用户委托的提醒悄悄丢掉。
- *  - 系统拒绝排期（抛异常）时返回 false，并把失败原因通过 [ReminderEntry.scheduleError] 记到条目上。
+ * Estrategia de programación:
+ *  - Se utiliza cuando tienes permisos de alarma precisos. `setExactAndAllowWhileIdle`, disparar a tiempo;
+ *  - Bajar de categoría a `setAndAllowWhileIdle`(no es exacto, puede retrasarse varios minutos), se garantiza que "sonará",
+ *    En lugar de fallar directa y silenciosamente, desechar el recordatorio encargado por el usuario como antes.
+ *  - Cuando el sistema rechaza la programación (lanza una excepción), devuelve falso y pasa el motivo del error. [ReminderEntry.scheduleError] Márcalo en la entrada.
  */
 object ReminderAlarmScheduler {
 
     private const val TAG = "ReminderAlarmScheduler"
 
-    /** 单次排期结果。 */
+    /** Resultado de programación único. */
     data class ScheduleResult(
         val scheduled: Boolean,
-        /** 是否用的是精确闹钟（false 表示已降级为非精确，可能延迟）。 */
+        /** Si está utilizando un despertador preciso (false La representación se ha rebajado a imprecisa y puede retrasarse). */
         val exact: Boolean,
-        /** 是否需要引导用户去开启「闹钟和提醒」权限。 */
+        /** ¿Necesita guiar a los usuarios para que activen el permiso \"Despertador y recordatorio\"? */
         val needsExactPermission: Boolean,
-        /** 失败时的可读原因，成功为 null。 */
+        /** Una razón legible por humanos en caso de fracaso, nula en caso de éxito. */
         val error: String? = null,
     )
 
-    /** 当前是否具备精确闹钟权限（API < 31 视为始终具备）。 */
+    /** Si actualmente tiene el permiso preciso para el despertador (API < 31 considerado siempre disponible). */
     fun canScheduleExact(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -44,12 +44,12 @@ object ReminderAlarmScheduler {
     }
 
     /**
-     * 跳到系统的「闹钟和提醒」授权页，让用户手动开启精确闹钟权限。
+     * Vaya a la página de autorización "Despertador y recordatorio" del sistema para permitir a los usuarios habilitar manualmente permisos precisos de despertador.
      *
-     * 优先用 `ACTION_REQUEST_SCHEDULE_EXACT_ALARM`；个别 ROM 没有该页面时退回应用详情页，
-     * 保证用户总能到达一个能改权限的地方。
+     * prioridad `ACTION_REQUEST_SCHEDULE_EXACT_ALARM`;Si algunas ROM no tienen esta página, volverán a la página de detalles de la aplicación.
+     * Asegúrese de que los usuarios siempre puedan llegar a un lugar donde puedan cambiar los permisos.
      *
-     * @return 是否成功拉起某个系统页面
+     * @return Si una página del sistema se abrió correctamente
      */
     fun requestExactAlarmPermission(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
@@ -61,14 +61,14 @@ object ReminderAlarmScheduler {
         for (intent in candidates) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             val ok = resultOf { context.startActivity(intent) }
-                .onError { msg, _ -> Logger.w(TAG, "打开精确闹钟设置页失败: $msg") }
+                .onError { msg, _ -> Logger.w(TAG, "No se pudo abrir la página de configuración de alarma precisa: $msg") }
                 .isSuccess
             if (ok) return true
         }
         return false
     }
 
-    /** 拼接触发提醒用的 PendingIntent（与 [ReminderAlarmReceiver] 约定一致）。 */
+    /** PendingIntent para recordatorio de activación de empalme (con [ReminderAlarmReceiver] acuerdo). */
     private fun buildPendingIntent(
         context: Context,
         id: String,
@@ -93,9 +93,9 @@ object ReminderAlarmScheduler {
     }
 
     /**
-     * 排期一条提醒。
+     * Programe un recordatorio.
      *
-     * @param isCatchUp 补发场景（提醒时间已过）：标题加「(补)」，并且仍然走精确/降级同一套逻辑。
+     * @param isCatchUp Escena de reedición (ha pasado el tiempo del recordatorio): Agregar "(suplemento)”y aún así ir con precisión/Degradar el mismo conjunto de lógica.
      */
     fun schedule(
         context: Context,
@@ -117,7 +117,7 @@ object ReminderAlarmScheduler {
                     am.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
                 }
             } else {
-                // 无精确闹钟权限：降级为非精确排期，保证提醒「会响」，只是可能晚几分钟。
+                // Sin permiso de alarma preciso: cambie a una programación no precisa, asegurando que el recordatorio "sonará", pero puede llegar con unos minutos de retraso.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
                 } else {
@@ -129,7 +129,7 @@ object ReminderAlarmScheduler {
                 exact = exactAvailable,
                 needsExactPermission = !exactAvailable,
             )
-        }.onError { msg, _ -> Logger.w(TAG, "排期提醒失败: id=$id, $msg") }
+        }.onError { msg, _ -> Logger.w(TAG, "Error en el recordatorio de programación: id=$id, $msg") }
             .getOrNull()
             ?: ScheduleResult(
                 scheduled = false,
@@ -139,7 +139,7 @@ object ReminderAlarmScheduler {
             )
     }
 
-    /** 取消一条提醒的闹钟（不影响其它条目的 PendingIntent）。 */
+    /** Cancela la alarma para un recordatorio (no afecta el PendingIntent de otros elementos). */
     fun cancel(context: Context, id: String) {
         resultOf {
             val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -152,6 +152,6 @@ object ReminderAlarmScheduler {
             val pi = PendingIntent.getBroadcast(context, id.hashCode(), intent, flags)
             am.cancel(pi)
             pi.cancel()
-        }.onError { msg, _ -> Logger.w(TAG, "取消提醒闹钟失败: id=$id, $msg") }
+        }.onError { msg, _ -> Logger.w(TAG, "No se pudo cancelar el despertador recordatorio: id=$id, $msg") }
     }
 }

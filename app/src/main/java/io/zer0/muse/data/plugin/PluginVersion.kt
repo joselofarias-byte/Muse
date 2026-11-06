@@ -1,20 +1,20 @@
 package io.zer0.muse.data.plugin
 
 /**
- * 插件版本号（语义化版本，SemVer 2.0 的 precedence 规则）。
+ * Número de versión del complemento (versión semántica,SemVer 2.0 reglas de precedencia).
  *
- * 用于三件事：
- *  - 拒绝安装比已安装版本更旧的包（降级保护，回滚走显式入口）；
- *  - 比较 manifest 的 `minAppVersion` 与当前 App 版本；
- *  - 目录与包之间的版本一致性判断，以及回滚目标的查找。
+ * Se utiliza para tres cosas:
+ *  - Negarse a instalar paquetes anteriores a la versión instalada (protección de degradación, reversión y entrada explícita);
+ *  - Comparar manifiestos `minAppVersion` con la versión actual de la aplicación;
+ *  - Juicio de coherencia de versiones entre directorios y paquetes, y búsqueda de objetivos de reversión.
  *
- * 构建元数据（`+build`）不参与比较，符合 SemVer 规范。
+ * Crear metadatos (`+build`) no participa en la comparación y cumple con la especificación SemVer.
  */
 data class PluginVersion(
     val major: Int,
     val minor: Int,
     val patch: Int,
-    /** 预发布标识（`1.0.0-rc.1` 中的 `rc`, `1`）；空表示正式版本。 */
+    /** Logotipo de prelanzamiento (`1.0.0-rc.1` en `rc`, `1`); vacío indica la versión oficial. */
     val prerelease: List<String> = emptyList(),
 ) : Comparable<PluginVersion> {
 
@@ -25,7 +25,7 @@ data class PluginVersion(
         return comparePrerelease(prerelease, other.prerelease)
     }
 
-    /** 正式版本（无预发布标识）。 */
+    /** Versión oficial (sin designación previa al lanzamiento). */
     val isStable: Boolean get() = prerelease.isEmpty()
 
     override fun toString(): String = buildString {
@@ -35,9 +35,9 @@ data class PluginVersion(
 
     companion object {
         /**
-         * 解析语义化版本；不合法返回 null（调用方据此拒绝而不是猜一个版本）。
+         * Analizar la versión semántica; devuelve nulo si es ilegal (la persona que llama rechaza en lugar de adivinar una versión).
          *
-         * 与目录校验使用同一套形状：`主.次.修订` + 可选 `-预发布` + 可选 `+构建`。
+         * Utilice el mismo conjunto de formas que la validación de directorio:`Señor.veces.revisión` + Opcional `-prelanzamiento` + Opcional `+construir`.
          */
         private val PATTERN =
             Regex("^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$")
@@ -51,7 +51,7 @@ data class PluginVersion(
                 .takeIf { it.isNotEmpty() }
                 ?.split('.')
                 .orEmpty()
-            // 数字型预发布标识不允许前导零（SemVer 规范），非法一律判为不合法版本。
+            // Los identificadores numéricos previos al lanzamiento no permiten ceros a la izquierda (SemVer Standard), cualquier versión ilegal se considerará ilegal.
             if (prerelease.any { it.length > 1 && it.startsWith("0") && it.all(Char::isDigit) }) return null
             return PluginVersion(major, minor, patch, prerelease)
         }
@@ -59,7 +59,7 @@ data class PluginVersion(
 }
 
 private fun comparePrerelease(first: List<String>, second: List<String>): Int {
-    // 有预发布标识的版本优先级更低（1.0.0-rc < 1.0.0）。
+    // Las versiones con una designación previa al lanzamiento tienen una prioridad más baja (1.0.0-rc < 1.0.0).
     if (first.isEmpty() && second.isEmpty()) return 0
     if (first.isEmpty()) return 1
     if (second.isEmpty()) return -1
@@ -70,7 +70,7 @@ private fun comparePrerelease(first: List<String>, second: List<String>): Int {
         val rightNumber = right.toIntOrNull()
         val result = when {
             leftNumber != null && rightNumber != null -> compareValues(leftNumber, rightNumber)
-            leftNumber != null -> -1 // 数字标识优先级低于字母标识
+            leftNumber != null -> -1 // Los identificadores numéricos tienen menor prioridad que los identificadores de letras
             rightNumber != null -> 1
             else -> left.compareTo(right)
         }

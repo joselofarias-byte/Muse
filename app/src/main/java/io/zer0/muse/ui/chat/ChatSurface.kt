@@ -1,22 +1,22 @@
 package io.zer0.muse.ui.chat
 
 /**
- * 聊天页所处的界面形态。
+ * La forma de interfaz de la página de chat.
  *
- * 为什么用枚举而不是继续堆 Boolean：
- * `ChatScreen` 已有 `isAgentMode` 参数，再加一个 `isMiniPhoneMode` 就会出现
- * 两个互斥且可能同时为 true 的开关，分支组合数翻倍且无法在类型层约束。
- * 这里把"形态"收敛成单一枚举，新增形态只需加一个 case，分支必须显式覆盖。
+ * ¿Por qué utilizar la enumeración en lugar del booleano continuo del montón?
+ * `ChatScreen` Ya `isAgentMode` parámetros, agregue uno más `isMiniPhoneMode` aparecerá
+ * Dos cambios mutuamente excluyentes que pueden ser verdaderos al mismo tiempo duplican el número de combinaciones de ramas y no pueden restringirse a nivel de tipo.
+ * poner aquí"forma"Para converger en una única enumeración, solo es necesario agregar nuevos formularios con un caso y las ramas deben cubrirse explícitamente.
  *
- * - [FULL]：完整页面。任务列表 push 进来的普通对话详情页，自带返回岛与顶栏。
- * - [AGENT]：Agent Tab 嵌入模式。由 `HomeScreen` 提供顶栏与三点菜单，
- *   会话 id 走 `agentSessionId` 分支，与任务会话完全隔离。
- * - [MINI_PHONE]：小手机内嵌模式。微信风格顶栏（头像 + 名称 + 返回），
- *   会话 id 仍走 `currentSessionId`（小手机会话是普通 session，不是 agent session），
- *   返回回到小手机而不是主 App 会话列表。
+ * - [FULL]: Página completa. La página de detalles de la conversación común incluida en la lista de tareas viene con una isla de retorno y una barra superior.
+ * - [AGENT]:Agent Tab Modo integrado. por `HomeScreen` Proporcionar barra superior y menú de tres puntos.
+ *   ID de sesión ir `agentSessionId` Sucursales, completamente aisladas de las sesiones de tareas.
+ * - [MINI_PHONE]: Modo integrado de teléfono celular pequeño. Barra superior estilo WeChat (avatar + nombre + retorno),
+ *   la identificación de la sesión todavía aparece `currentSessionId`(La pequeña sesión de teléfono celular es una sesión normal, no una sesión de agente),
+ *   Regrese al teléfono pequeño en lugar de a la lista principal de sesiones de la aplicación.
  *
- * 注意：[MINI_PHONE] 只改外壳与导航，不改生成链路、工具装配、权限判定——
- * 那些由会话自身属性决定，换形态不应产生行为差异。
+ * Nota:[MINI_PHONE] Solo se cambian el shell y la navegación, y los enlaces generados, la instalación de herramientas y la determinación de permisos no se modifican.——
+ * Están determinadas por las propiedades de la sesión misma, y ​​cambiar la forma no debería producir diferencias de comportamiento.
  */
 enum class ChatSurface {
     FULL,
@@ -24,9 +24,9 @@ enum class ChatSurface {
     MINI_PHONE,
     ;
 
-    /** 是否由外部容器提供顶栏（此时 `ChatScreen` 不画自己的顶栏）。 */
+    /** Si la barra superior es proporcionada por un contenedor externo (en este caso `ChatScreen` no dibuja su propia barra superior). */
     val hidesOwnTopBar: Boolean get() = this == AGENT
 
-    /** 是否属于小手机内嵌形态。 */
+    /** Si pertenece a la forma integrada de pequeños teléfonos celulares. */
     val isMiniPhone: Boolean get() = this == MINI_PHONE
 }

@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import io.zer0.muse.R
 import io.zer0.muse.ui.theme.*
 
-// 11. 琥珀金 (Amber Gold) theme — 暖琥珀色调,日落金光
+// 11. oro ámbar (Amber Gold) theme — tono ámbar cálido,luz dorada del atardecer
 // ─────────────────────────────────────────────────────────────────────────────
 private val AmberPrimary = Color(0xFFB8860B)
 private val AmberPrimaryLightContainer = Color(0xFFF5E8C8)

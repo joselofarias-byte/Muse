@@ -17,13 +17,13 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * v2.2.1 虚拟屏:服务端实现。
+ * v2.2.1 pantalla virtual:Implementación del lado del servidor.
  *
- * 唯一持有 VirtualDisplay 强引用的地方 —— 只要本进程存活,虚拟屏不会被回收。
- * 截图走"显示屏 surface 直连 ImageReader"(无编码器、无镜像屏):创建虚拟屏时把
- * ImageReader 的 surface 直接作为显示屏输出面,requestScreenshot 抓最新一帧转 JPEG。
+ * El único lugar que tiene una fuerte referencia a VirtualDisplay —— Mientras este proceso sobreviva,La pantalla virtual no se reciclará.
+ * Toma una captura de pantalla y listo"Conexión directa de la superficie de visualización ImageReader"(Sin codificador, sin pantalla espejo):Al crear una pantalla virtual, ponga
+ * ImageReader La superficie se utiliza directamente como superficie de salida de la pantalla.,requestScreenshot Capture el último fotograma y conviértalo a JPEG.
  *
- * 生命周期:idle watcher 15s 无调用即退出(主应用侧负责按需重启)。
+ * ciclo de vida:idle watcher 15s Salir sin llamar(El lado principal de la aplicación es responsable de reiniciar a pedido.).
  */
 public final class ServerService extends IVirtualDisplayService.Stub {
 
@@ -45,7 +45,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         this.displayManager = createDisplayManager(context);
     }
 
-    // ── IVirtualDisplayService 契约 ─────────────────────────────────────────
+    // ── IVirtualDisplayService contrato ─────────────────────────────────────────
 
     @Override
     public synchronized int ensureDisplay(int width, int height, int dpi) {
@@ -137,9 +137,9 @@ public final class ServerService extends IVirtualDisplayService.Stub {
                 Main.log("launchApp: no launcher activity for " + packageName);
                 return false;
             }
-            // --activity-multiple-task(FLAG_ACTIVITY_MULTIPLE_TASK): 强制在目标虚拟屏开新任务。
-            // 只用 --display 时,已存在的任务会被“复用”回原屏(task reuse),应用根本进不了虚拟屏。
-            // 注:本框架无 --activity-new-task 选项(am 会报 Unknown option)。
+            // --activity-multiple-task(FLAG_ACTIVITY_MULTIPLE_TASK): Fuerza la apertura de una nueva tarea en la pantalla virtual de destino.
+            // Solo cuando se usa --display,Las tareas existentes serán“Reutilizar”Volver a la pantalla original(task reuse),La aplicación no puede ingresar a la pantalla virtual en absoluto.
+            // Nota:Este marco no tiene la opción --actividad-nueva-tarea(am Informe Unknown option).
             String command = "am start --display " + id
                     + " --activity-multiple-task -n " + component;
             String output = execShellCapture(command);
@@ -172,12 +172,12 @@ public final class ServerService extends IVirtualDisplayService.Stub {
     @Override
     public byte[] requestScreenshot(int id) {
         touch();
-        // v2.6.7 fix (AUDIT F26): 不要把阻塞等待放在全域锁里。
+        // v2.6.7 fix (AUDIT F26): No coloque esperas de bloqueo en bloqueos globales.
         //
-        // 旧实现整个方法 synchronized，内部靠 Thread.sleep(20) 轮询最多 1 秒；
-        // 这一秒内同一锁上的 ensureDisplay / createDisplay / launchApp /
-        // destroyDisplay 全部排队，Agent 连续截图（GUI 环每步都截）时
-        // 表现为“整个自动化卡住”。现在只在取 DisplayState 时要锁。
+        // La implementación anterior de todo el método está sincronizada y la implementación interna Thread.sleep(20) El sondeo tarda hasta 1 segundo;
+        // La misma cerradura fue cerrada en este segundo. ensureDisplay / createDisplay / launchApp /
+        // destroyDisplay Todos alineados,Agent Capturas de pantalla continuas (GUI El bucle se corta en cada paso)
+        // Se muestra como“Toda la automatización atascada”. Ahora el bloqueo solo es necesario al recuperar DisplayState.
         DisplayState state;
         synchronized (this) {
             state = displays.get(id);
@@ -200,7 +200,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
                 return null;
             }
             byte[] jpeg = imageToJpeg(image);
-            // 锁已释放，但显示可能在此期间被销毁：检查一次，避免向已死屏返回帧。
+            // El bloqueo se liberó, pero es posible que la pantalla se haya destruido mientras tanto: verifique una vez para evitar que los fotogramas regresen a una pantalla muerta.
             synchronized (this) {
                 if (!displays.containsKey(id)) return null;
             }
@@ -216,7 +216,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
                 try {
                     image.close();
                 } catch (Throwable ignored) {
-                    // 关闭失败不影响已生成的帧。
+                    // No cerrar no afecta los fotogramas generados.
                 }
             }
         }
@@ -228,7 +228,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         return true;
     }
 
-    // ── 生命周期 ────────────────────────────────────────────────────────────
+    // ── ciclo de vida ────────────────────────────────────────────────────────────
 
     public void startIdleWatcher() {
         Handler handler = new Handler(Looper.getMainLooper());
@@ -245,9 +245,9 @@ public final class ServerService extends IVirtualDisplayService.Stub {
     }
 
     /**
-     * 周期性重发布 binder(每 5s)。服务端空闲 15s 自退,所以重发次数有界。
-     * 目的:宿主进程可能晚于服务端启动/重启(instrument/崩溃),单次广播会丢;
-     * 重发让注册表在任何启动顺序下都能收敛。注意:广播不刷新 lastActiveAt。
+     * Reedición periódica binder(cada 5s). El servidor se cerrará automáticamente después de estar inactivo durante 15 segundos.,Entonces el número de reintentos está limitado.
+     * propósito:El proceso del host puede comenzar más tarde que el servidor./Reiniciar(instrument/colapsar),Se perderá una sola transmisión.;
+     * El reenvío permite que el registro converja en cualquier secuencia de inicio. Nota:La transmisión no actualiza lastActiveAt.
      */
     public void startPublishLoop(String hostPackage, String handoffToken) {
         Handler handler = new Handler(Looper.getMainLooper());
@@ -295,7 +295,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         }
     }
 
-    // ── 内部工具 ────────────────────────────────────────────────────────────
+    // ── herramientas internas ────────────────────────────────────────────────────────────
 
     private static DisplayManager createDisplayManager(FakeContext context) throws Exception {
         Class<?> cls = Class.forName("android.hardware.display.DisplayManager");
@@ -315,8 +315,8 @@ public final class ServerService extends IVirtualDisplayService.Stub {
     }
 
     /**
-     * flags 按版本加。部分位值是 @SystemApi(不在公共 SDK jar 中,编译期不可引用),
-     * 这里用与 framework 一致的位字面量;PUBLIC/PRESENTATION/OWN_CONTENT_ONLY 走公共常量。
+     * flags Agregar por versión. El valor posicional parcial es @SystemApi(No en el frasco público del SDK,No se puede hacer referencia a él en tiempo de compilación.),
+     * Aquí usamos literales de bits consistentes con el marco.;PUBLIC/PRESENTATION/OWN_CONTENT_ONLY Tome constantes públicas.
      */
     private static int computeFlags() {
         int flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC
@@ -338,7 +338,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         return flags;
     }
 
-    /** 虚拟屏 IME 策略设为 LOCAL(键盘显示在虚拟屏上);失败仅记日志。 */
+    /** La política IME de la pantalla virtual está configurada en LOCAL(El teclado se muestra en la pantalla virtual.);El error sólo se registra. */
     private static void applyImePolicy(int id) {
         try {
             Class<?> windowManagerGlobal = Class.forName("android.view.WindowManagerGlobal");
@@ -372,7 +372,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         return (value + 15) / 16 * 16;
     }
 
-    /** 以 shell 身份执行单条命令,返回合并输出(stdout+stderr);异常返回错误文本。 */
+    /** Ejecutar un solo comando como shell,Devolver salida combinada(stdout+stderr);La excepción devuelve un texto de error. */
     private static String execShellCapture(String command) {
         try {
             Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", command});
@@ -390,7 +390,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         }
     }
 
-    /** 解析 launcher 活动(pkg/.Act 或 pkg/com.full.Act);解析失败返回 null。 */
+    /** Actividad del iniciador de análisis(pkg/.Act o pkg/com.full.Act);Devuelve nulo si falla el análisis. */
     private static String resolveLauncherComponent(String packageName) {
         try {
             Process process = Runtime.getRuntime().exec(new String[] {
@@ -413,7 +413,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
             if (component == null) {
                 return null;
             }
-            // 防注入:组件名只允许包名/活动名字符
+            // Antiinyección:Los nombres de los componentes solo permiten nombres de paquetes/Caracteres del nombre de la actividad
             if (!component.matches("[a-zA-Z0-9_.]+/[a-zA-Z0-9_.$]+")) {
                 return null;
             }
@@ -444,7 +444,7 @@ public final class ServerService extends IVirtualDisplayService.Stub {
         return out.toByteArray();
     }
 
-    /** RGBA_8888 ImageReader 帧 → JPEG 字节(含 rowStride padding 处理与体积护栏)。 */
+    /** RGBA_8888 ImageReader marco → JPEG bytes(Incluye acolchado RowStride y barandillas volumétricas.). */
     private static byte[] imageToJpeg(Image image) {
         Image.Plane plane = image.getPlanes()[0];
         int width = image.getWidth();

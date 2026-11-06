@@ -3,8 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('ci-scripts', 'lanes', 'static', 'unit', 'debug')]
     [string] $Lane,
-    # P4-9: 消费 pr_check 的 lanes 输出 — CI 传入受影响作用域(逗号分隔)。
-    # 为空 = 未知/全量(tag、push、本地),所有脚本都跑,保持向后兼容。
+    # P4-9: Consume la salida de carriles de pr_check — CI Pasar en el ámbito afectado(separados por comas).
+    # esta vacio = desconocido/cantidad total(tag,push, local),Todos los scripts se ejecutan,Mantener la compatibilidad con versiones anteriores.
     [string] $ChangedScopes = ''
 )
 
@@ -16,9 +16,9 @@ $python = if (Get-Command python3 -ErrorAction SilentlyContinue) { 'python3' } e
 $gradle = if ($IsWindows -and (Test-Path './gradlew.bat')) { './gradlew.bat' } else { './gradlew' }
 $skipReleaseGuards = @('-PreleaseSkipVersionCheck=true', '-PreleaseSkipKeystoreCheck=true')
 
-# Windows 中文控制台默认 GBK:部分脚本会打印 ⚠/✓/✗(不在 GBK 字符集内),
-# 未设该项时 python 直接抛 UnicodeEncodeError 让整条 lane 失败
-# (2026-09-29 实测:check_repo_hygiene.py / check_localizations.py 会中招)。统一强制 UTF-8。
+# Windows La consola china tiene por defecto GBK: algunos scripts se imprimirán ⚠/✓/✗(No en el juego de caracteres GBK),
+# Cuando este elemento no está configurado, Python arroja directamente UnicodeEncodeError y hace que falle todo el carril.
+# (2026-09-29 Medición real:check_repo_hygiene.py / check_localizations.py Caerá en el truco). Unity aplica UTF-8.
 $env:PYTHONIOENCODING = 'utf-8'
 
 function Invoke-Checked {
@@ -38,8 +38,8 @@ function Invoke-Checked {
 
 switch ($Lane) {
     'ci-scripts' {
-        # 逐文件独立执行:python 一次只把第一个文件当 __main__ 运行,
-        # 多文件同进程会让后面的测试文件静默跳过(假绿)。
+        # Ejecutar archivo por archivo de forma independiente:python Ejecute solo el primer archivo como __main__ a la vez,
+        # Varios archivos en el mismo proceso omitirán silenciosamente los archivos de prueba posteriores(verde falso).
         @(
             'ci/test/test_pr_check.py',
             'ci/test/test_engineering_discipline.py',
@@ -51,31 +51,31 @@ switch ($Lane) {
             'ci/test/test_check_localizations.py',
             'ci/test/test_repo_hygiene.py',
             'ci/test/test_migration_coverage.py',
-            # CMP-11 / I18N-02 / A11Y-03 护栏脚本的单测
+            # CMP-11 / I18N-02 / A11Y-03 Prueba única de script de barandilla
             'ci/test/test_component_convergence.py',
             'ci/test/test_translation_residue.py',
             'ci/test/test_font_scale_clipping.py',
-            # LAYOUT-01 护栏脚本的单测
+            # LAYOUT-01 Prueba única de script de barandilla
             'ci/test/test_row_text_width.py'
         ) | ForEach-Object {
             Invoke-Checked $python @($_)
         }
     }
     'lanes' {
-        # tag 发布没有 PR base；与 origin/main 比较会把已发布提交误报为整批变更。
-        # tag 仍执行下面全部仓库质量脚本，只跳过只对 PR 变更有意义的路由分析。
+        # tag Los lanzamientos no tienen una base de relaciones públicas; La comparación con origen/principal informará erróneamente las confirmaciones publicadas como lotes de cambios.
+        # tag Aún así, ejecute todos los scripts de calidad del repositorio a continuación, omitiendo solo el análisis de ruta que solo sea significativo para los cambios de relaciones públicas.
         if ($env:GITHUB_REF_TYPE -ne 'tag') {
             Invoke-Checked $python @('ci/script/pr_check.py', '--base', 'origin/main', '--output', 'json')
         } else {
             Write-Host 'tag build: skip PR diff routing, keep repository lane checks'
         }
-        # P4-9: 按 pr_check 作用域路由 — 只跑受影响类别;未传作用域(=全量)全部跑。
+        # P4-9: Ruta por alcance pr_check — Ejecute solo las categorías afectadas;No se pasó ningún alcance(=cantidad total)Todos corren.
         $scopes = @()
         if (-not [string]::IsNullOrWhiteSpace($ChangedScopes)) {
             $scopes = $ChangedScopes.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
         }
         function Test-ScopeAny([string[]]$Need) {
-            if ($scopes.Count -eq 0) { return $true }  # 未知 → 全跑
+            if ($scopes.Count -eq 0) { return $true }  # desconocido → carrera completa
             foreach ($n in $Need) { if ($scopes -contains $n) { return $true } }
             return $false
         }
@@ -86,7 +86,7 @@ switch ($Lane) {
                 Write-Host "skip $Name (no affected scope in $($Need -join '/'))"
             }
         }
-        # 快速卫生检查:无论变更什么都要跑
+        # Control de salud rápido:No importa qué cambios se realicen, ejecute
         @(
             'check_repo_hygiene.py',
             'check_engineering_discipline.py',
@@ -101,24 +101,24 @@ switch ($Lane) {
         Invoke-LaneScript 'check_icon_content_description.py' @('android_jvm', 'android_resources', 'android_full')
         Invoke-LaneScript 'check_touch_target.py' @('android_jvm', 'android_resources', 'android_full')
         Invoke-LaneScript 'check_horizontal_inset.py' @('android_jvm', 'android_resources', 'android_full')
-        # LAYOUT-01: Row 内文本未取宽(逐字换行/文本列塌陷) — 纯词法扫描 ui/ 下的 .kt
+        # LAYOUT-01: Row El texto interior no está ampliado.(Ajuste de línea palabra por palabra/Columna de texto colapsada) — Escaneo léxico puro bajo ui/ .kt
         Invoke-LaneScript 'check_row_text_width.py' @('android_jvm', 'android_resources', 'android_full')
-        # v2.6.3: 禁止把 % 占位符字面量当格式化参数传给字符串资源。
-        # v2.6.2 的必崩回归（设置→聊天整页 IllegalFormatConversionException）
-        # 类型合法、lint/编译器都拓不到,只有真机组合期才炸,所以必须门禁。
+        # v2.6.3: Está prohibido pasar % de literales de marcador de posición como parámetros de formato para recursos de cadena.
+        # v2.6.2 El inevitable regreso de (establecimiento→Chat de página completa IllegalFormatConversionException)
+        # El tipo es legal,lint/El compilador no puede encontrarlo.,Sólo explota durante el período de combinación de la máquina real.,Por eso el control de acceso es necesario.
         Invoke-LaneScript 'check_string_resource_args.py' @('android_jvm', 'android_resources', 'android_full')
     }
     'static' {
         Invoke-Checked $gradle (@(
             'detekt',
             'ktlintCheck',
-            # P4-1: 真 lint Kotlin 源(AGP9 下 ktlint-gradle 只查 .kts)。
-            # 各模块 ktlintKotlinSourceCheck 用官方 CLI 扫 .kt,首跑自动生成 ktlint-baseline.xml(已入库),
-            # 之后新增问题即失败;check_ktlint_report.py 再断言各模块报告非空且记录了真实 lint 文件数。
+            # P4-1: Fuente Kotlin de pelusa verdadera(AGP9 Descargue ktlint-gradle y verifique solo .kts).
+            # Escanee cada módulo ktlintKotlinSourceCheck con la CLI oficial .kt,Generado automáticamente para la primera ejecución ktlint-baseline.xml(Ya en stock),
+            # Agregar nuevas preguntas después no funcionará.;check_ktlint_report.py Luego, afirme que el informe de cada módulo no está vacío y registra la cantidad real de archivos lint.
             'ktlintKotlinSourceCheck',
             'lintDebug',
             'koverXmlReport',
-            # P4-5: 覆盖率门禁补全 — common/accessibility/material3 补上 minBound 并纳入校验
+            # P4-5: Finalización del control de acceso a la cobertura — common/accessibility/material3 Añade minBound e inclúyelo en la verificación.
             ':ai:koverCachedVerifyDebug',
             ':memory:koverCachedVerifyDebug',
             ':app:koverCachedVerifyDebug',
@@ -126,14 +126,14 @@ switch ($Lane) {
             ':accessibility:koverCachedVerifyDebug',
             ':material3:koverCachedVerifyDebug'
         ) + $skipReleaseGuards)
-        # P4-2: detekt 债务上限断言(总量 + 单模块双围栏,禁止新增;按批次清理后手动调低 cap)
+        # P4-2: detekt afirmación del techo de deuda(Valla doble total + módulo individual,Se prohíben nuevas incorporaciones.;Bajar manualmente después de la limpieza por lotes cap)
         Invoke-Checked $python @('ci/script/check_detekt_debt.py')
         Invoke-Checked $python @('ci/script/check_ktlint_report.py')
-        # CMP-11: 组件收敛护栏 — ui/** 直接引用 M3 交互控件只降不升(基线外新文件即失败)
+        # CMP-11: Barandilla de convergencia de componentes — ui/** Citar directamente el control interactivo M3 sólo lo reducirá pero no lo aumentará.(Los archivos nuevos fuera de la línea base fallarán)
         Invoke-Checked $python @('ci/script/check_component_convergence.py')
-        # I18N-02: 非中文语言包 CJK 残留只降不升(基线全 0,高于基线即失败)
+        # I18N-02: El paquete de idioma distinto del chino, CJK, solo permanece degradado pero no actualizado(Línea de base completa 0,Por encima de la línea de base significa fracaso)
         Invoke-Checked $python @('ci/script/check_translation_residue.py')
-        # A11Y-03: 大字体裁切护栏 — 承载文本的固定高度(>=32dp)只降不升(基线全 0)
+        # A11Y-03: Barandilla de corte de fuente grande — Altura fija para contener texto.(>=32dp)Solo cayendo pero no subiendo(Línea de base completa 0)
         Invoke-Checked $python @('ci/script/check_font_scale_clipping.py')
     }
     'unit' {
@@ -143,7 +143,7 @@ switch ($Lane) {
             ':ai:testDebugUnitTest',
             ':common:testDebugUnitTest',
             ':accessibility:testDebugUnitTest',
-            # P4-4: material3 此前漏在单测 lane 之外
+            # P4-4: material3 Anteriormente, se filtró fuera del carril de prueba único.
             ':material3:testDebugUnitTest'
         ) + $skipReleaseGuards)
     }

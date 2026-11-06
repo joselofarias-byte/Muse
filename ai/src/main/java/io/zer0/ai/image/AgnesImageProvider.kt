@@ -32,32 +32,32 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * v1.0.18: Agnes AI 图片生成 Provider。
+ * v1.0.18: Agnes AI Proveedor de generación de imágenes.
  *
- * 实现要点:
- *  - 端点: POST {baseUrl}/images/generations(baseUrl 默认 https://apihub.agnes-ai.com/v1)
- *  - 鉴权: Authorization: Bearer ${apiKey}
- *  - 请求体: { model, prompt, size, extra_body: { response_format: "b64_json", image: [...] } }
- *  - 尺寸映射: 比例("1:1" 等)→ 固定像素值;直接像素值若在支持集合内也接受。
- *  - 默认模型: agnes-image-2.1-flash
- *  - supportsImageEdit = true(通过 extra_body.image 传参考图)
- *  - supportsAsync = false(同步返回)
- *  - 响应解析: data[i].b64_json → base64, data[i].url → url;两者均兼容。
- *  - 错误处理: HTTP 非 2xx 解析 err.error.message。
+ * Puntos de implementación:
+ *  - punto final: POST {baseUrl}/images/generations(baseUrl Predeterminado https://apihub.agnes-ai.com/v1)
+ *  - Autenticación: Authorization: Bearer ${apiKey}
+ *  - Cuerpo de la solicitud: { model, prompt, size, extra_body: { response_format: "b64_json", image: [...] } }
+ *  - mapeo de tamaño: proporción("1:1" espera)→ Valor de píxel fijo;También se aceptan valores de píxeles directos si están dentro del conjunto de soporte.
+ *  - Modelo predeterminado: agnes-image-2.1-flash
+ *  - supportsImageEdit = true(Pase la imagen de referencia a través de extra_body.image)
+ *  - supportsAsync = false(Retorno sincrónico)
+ *  - Análisis de respuesta: data[i].b64_json → base64, data[i].url → url;Ambos son compatibles.
+ *  - Manejo de errores: HTTP Análisis no 2xx de err.error.message.
  *
- * 与 OpenAI 兼容路径的关键差异:
- *  - 不走 /images/edits 端点,图生图通过 extra_body.image 字段传入同一 /images/generations;
- *  - response_format 放在 extra_body 内而非请求体顶层;
- *  - size 接受比例(如 "3:2"),由本 provider 映射为像素值后下发。
+ * Diferencias clave con la ruta de compatibilidad de OpenAI:
+ *  - No vayas al punto final /images/edits,La imagen se pasa a través del campo extra_body.image. /images/generations;
+ *  - response_format Colóquelo dentro de extra_body en lugar de en la parte superior del cuerpo de la solicitud.;
+ *  - size ratio de aceptación(Como por ejemplo "3:2"),Este proveedor lo asigna a un valor de píxel y luego lo envía.
  */
 class AgnesImageProvider(
     private val client: OkHttpClient,
     private val keyRotationFactory: (ProviderConfig) -> ProviderKeyRotation = { ProviderKeyRotation(it) },
     /**
-     * G4: http(s) 参考图下载前的 SSRF 预校验器(返回 true 表示放行,false 拒绝该 URL)。
-     * ai 模块不依赖 app 的 SsrfGuard(模块方向 app→ai),由 app 层 Koin 装配注入
-     * (SsrfBridgeModule 注册 SsrfGuard.refImageUrlValidator 为 [RefImageUrlValidator]);
-     * null 时各分支回退旧行为(http(s) 直接下载、无逐跳校验),保持未接入状态。
+     * G4: http(s) Verificador previo de la SSRF antes de descargar la imagen de referencia(Devuelve verdadero para indicar lanzamiento,false rechazar el URL).
+     * ai El módulo no depende de la aplicación. SsrfGuard(Orientación del módulo app→ai),Inyectado por el ensamblaje Koin de la capa de aplicación
+     * (SsrfBridgeModule Registre SsrfGuard.refImageUrlValidator para [RefImageUrlValidator]);
+     * null Cuando cada rama revierte el comportamiento anterior(http(s) Descarga directa, sin verificación salto a salto),Permanece desconectado.
      */
     private val referenceImageUrlValidator: RefImageUrlValidator? = null,
 ) : ImageProvider {
@@ -80,11 +80,11 @@ class AgnesImageProvider(
         val modelId = request.model.takeIf { it.isNotBlank() } ?: DEFAULT_MODEL_ID
         val size = resolveSize(request.size)
         val refImages = request.referenceImages
-            // G4: 注入 SSRF 校验器 — http(s) 参考图下载前先过 SsrfGuard(由 app 装配传入)
+            // G4: Inyectar validador SSRF — http(s) Imágenes de referencia antes de descargar. SsrfGuard(Pasado por el ensamblado de la aplicación)
             .map { resolveReferenceImage(it, referenceImageUrlValidator) }
             .takeIf { it.isNotEmpty() }
 
-        // extra_body 放 response_format 与参考图
+        // extra_body Poner Response_Format con imagen de referencia.
         val body = buildJsonObject {
             put("model", modelId)
             put("prompt", request.prompt)
@@ -101,7 +101,7 @@ class AgnesImageProvider(
 
         Logger.i(TAG, "submit: model=$modelId size=$size refs=${refImages?.size ?: 0}")
 
-        // T1.2: 多 Key 轮换 — 用 effective key 构造 header;429 时切下一个 key 重试
+        // T1.2: Rotación de múltiples claves — Construido con clave efectiva header;429 Corta la siguiente clave y vuelve a intentarlo.
         val keyRotation = keyRotationFactory(config)
         fun buildHttpRequest(apiKey: String): Request = Request.Builder()
             .url(url)
@@ -113,9 +113,9 @@ class AgnesImageProvider(
         try {
             val initialResp = exec(buildHttpRequest(keyRotation.effectiveApiKey()))
             var resp = initialResp
-            // T1.2: 429 限流时切到下一个 key 重试一次(仅多 key 场景)
+            // T1.2: 429 Cuando la corriente sea limitada, cambie a la siguiente tecla e inténtelo de nuevo.(Solo escenarios de múltiples claves)
             if (resp.code == 429 && keyRotation.switchToNextKey()) {
-                Logger.i(TAG, "agnes image 429, 切换到下一个 key 重试")
+                Logger.i(TAG, "agnes image 429, Cambie a la siguiente clave e inténtelo de nuevo")
                 resp.close()
                 resp = exec(buildHttpRequest(keyRotation.effectiveApiKey()))
             }
@@ -141,7 +141,7 @@ class AgnesImageProvider(
                     Logger.w(TAG, "agnes image HTTP ${r.code}")
                     error(msg)
                 }
-                // B-03: contentLength 未知(chunked)时同样限长 — 流式读取,超限即中断
+                // B-03: contentLength desconocido(chunked)mismo límite de tiempo — lectura en streaming,Interrumpir si se excede el límite
                 val (respBody, overLimit) = ProviderHttpSupport.readBodyCappedStreaming(r, MAX_RESPONSE_BODY_BYTES)
                 if (overLimit) {
                     error(ErrorCode.IMAGE_RESPONSE_TOO_LARGE.toMessage(MAX_RESPONSE_BODY_BYTES / 1024 / 1024))
@@ -162,12 +162,12 @@ class AgnesImageProvider(
     }
 
     override suspend fun poll(taskId: String): ImagePollResult {
-        // Agnes 同步返回,不会走到此分支;兜底返回 FAILED。
-        error("Agnes 图片生成不支持异步任务: $taskId")
+        // Agnes Retorno sincrónico,No iré a esta sucursal.;Volver a FALLADO.
+        error("Agnes La generación de imágenes no admite tareas asincrónicas.: $taskId")
     }
 
     /**
-     * 解析响应中的图片列表,同时兼容 b64_json 与 url 两种返回格式。
+     * Analizar la lista de imágenes en la respuesta.,Es compatible con los formatos b64_json y de retorno de URL.
      */
     internal fun parseResponseImages(body: String): List<GeneratedImage> {
         val root = json.parseToJsonElement(body).jsonObject
@@ -175,13 +175,13 @@ class AgnesImageProvider(
             ?: return emptyList()
         return data.mapNotNull { item ->
             val obj = item.jsonObject
-            // B-01 (生图链路): 只接受字符串标量 — JSON null / 数字 / 布尔
-            // (JsonPrimitive.content 对非字符串原样返回,如 "123"/"true")一律过滤,
-            // 否则拼出 "data:image/png;base64,123" 假图;字面量 "null" 字符串也过滤。
+            // B-01 (Enlace de imagen sin formato): Sólo acepta cadenas escalares — JSON null / Número/Booleano
+            // (JsonPrimitive.content Devuelve no cadenas tal como están,Como por ejemplo "123"/"true")Siempre filtrar,
+            // De lo contrario, deletrea "data:image/png;base64,123" foto falsa;literal "null" Las cadenas también se filtran.
             val b64 = (obj["b64_json"] as? JsonPrimitive)
                 ?.takeIf { it.isString }
                 ?.content?.takeIf { it.isNotBlank() && it != "null" }
-            // B-01: url 必须是 http(s) 或 data:image/ 前缀,过滤裸字符串/相对路径
+            // B-01: url debe ser http(s) o datos:imagen/prefijo,Filtrar cuerdas desnudas/ruta relativa
             val url = (obj["url"] as? JsonPrimitive)
                 ?.takeIf { it.isString }
                 ?.content?.takeIf { it.startsWith("http") || it.startsWith("data:image/") }
@@ -190,7 +190,7 @@ class AgnesImageProvider(
     }
 
     /**
-     * 尝试解析 Agnes 风格错误响应 {"error":{"message":"..."}} 或顶层 {"message":"..."}。
+     * Intente analizar las respuestas de error del estilo Agnes {"error":{"message":"..."}} o nivel superior {"message":"..."}.
      */
     internal fun parseApiErrorMessage(body: String): String? {
         if (body.isBlank()) return null
@@ -220,23 +220,23 @@ class AgnesImageProvider(
     companion object {
         private const val TAG = "AgnesImageProvider"
 
-        /** B-03: 图片响应体上限 20MB(与 OpenAI 版一致)。 */
+        /** B-03: Límite del cuerpo de respuesta de imagen 20MB(Consistente con la versión OpenAI). */
         private const val MAX_RESPONSE_BODY_BYTES = 20 * 1024 * 1024
 
-        /** Provider 唯一标识。 */
+        /** Provider Identificador único. */
         const val PROVIDER_ID = "agnes"
 
-        /** 默认基础 URL(对齐 PresetProviders.ENDPOINT_AGNES)。 */
+        /** Base predeterminada URL(Alineación PresetProviders.ENDPOINT_AGNES). */
         const val DEFAULT_BASE_URL = "https://apihub.agnes-ai.com/v1"
 
-        /** 默认模型 ID。 */
+        /** ID de modelo predeterminado. */
         const val DEFAULT_MODEL_ID = "agnes-image-2.1-flash"
 
         /**
-         * 比例 → 像素尺寸映射(8 种)。
+         * proporción → Mapeo de tamaño de píxel(8 especie).
          *
-         * 4:3 / 3:4 采用 1.5K 像素总量
-         * (1152x896 / 896x1152),与 3:2 / 2:3 保持视觉一致性。
+         * 4:3 / 3:4 Usando un total de 1,5K píxeles
+         * (1152x896 / 896x1152),Mantenga la coherencia visual con 3:2 / 2:3.
          */
         val SIZE_RATIOS: Map<String, String> = mapOf(
             "1:1" to "1024x1024",
@@ -249,21 +249,21 @@ class AgnesImageProvider(
             "2:3" to "768x1152",
         )
 
-        /** 支持的像素尺寸集合(用于直接像素值校验)。 */
+        /** Conjunto de tamaños de píxeles admitidos(Se utiliza para la verificación directa del valor de los píxeles.). */
         val SUPPORTED_SIZES: Set<String> = SIZE_RATIOS.values.toSet()
 
         /**
-         * 解析 size 参数:
-         *  - 比例("1:1" 等)→ 映射为像素值;
-         *  - 直接像素值("1024x1024")→ 在支持集合内则原样返回,否则报错;
-         *  - 空值 → 默认 3:2。
+         * Analizando el parámetro de tamaño:
+         *  - proporción("1:1" espera)→ Asignar al valor de píxel;
+         *  - valor de píxel directo("1024x1024")→ Si está dentro de la colección de manutención, se devolverá tal cual.,De lo contrario se informará un error.;
+         *  - valor nulo → Predeterminado 3:2.
          */
         fun resolveSize(size: String?): String {
             if (size.isNullOrBlank()) return SIZE_RATIOS.getValue("3:2")
             val trimmed = size.trim()
-            // 比例
+            // proporción
             SIZE_RATIOS[trimmed]?.let { return it }
-            // 直接像素值
+            // valor de píxel directo
             if (trimmed.matches(Regex("^\\d+x\\d+$", RegexOption.IGNORE_CASE))) {
                 if (trimmed.lowercase() in SUPPORTED_SIZES) return trimmed.lowercase()
                 error(ErrorCode.IMAGE_UNSUPPORTED_MODEL.toMessage("agnes size=$trimmed"))
@@ -272,14 +272,14 @@ class AgnesImageProvider(
         }
 
         /**
-         * 把参考图引用归一化为 base64(无 data: 前缀)。
-         * 支持:data:image URI(剥离前缀)、http/https URL(下载后转 base64)、本地 file 路径。
+         * Normalizar las referencias de imágenes de referencia a base64(Ninguno dato: prefijo).
+         * apoyo:data:image URI(prefijo de tira),http/https URL(Descargar y transferir base64), ruta del archivo local.
          *
-         * G4: [urlValidator] — http(s) 参考图下载前的 SSRF 预校验(每跳都过)。
-         * ai 模块不依赖 app 的 SsrfGuard(模块方向 app→ai),校验器由 app 层注入
+         * G4: [urlValidator] — http(s) Verificación previa de la SSRF antes de descargar la imagen de referencia(Pasó cada salto).
+         * ai El módulo no depende de la aplicación. SsrfGuard(Orientación del módulo app→ai),Los validadores se inyectan desde la capa de la aplicación.
          * (SsrfGuard.refImageUrlValidator → [RefImageUrlValidator]);
-         * 返回 false 表示该 URL 命中内网/保留地址,拒绝请求。
-         * null 时回退旧行为(直接下载,无逐跳校验),保持未接入状态。
+         * Devolver falso indica que la URL llega a la intranet/dirección reservada,Rechazar la solicitud.
+         * null revertir el viejo comportamiento(Descarga directa,Sin verificación salto a salto),Permanece desconectado.
          */
         suspend fun resolveReferenceImage(ref: String, urlValidator: RefImageUrlValidator? = null): String {
             val trimmed = ref.trim()
@@ -288,19 +288,19 @@ class AgnesImageProvider(
                     trimmed.substringAfter("base64,", "").ifBlank { trimmed }
                 }
                 trimmed.startsWith("http://", true) || trimmed.startsWith("https://", true) -> {
-                    // G4: 注入校验器非空时下载前先过 SSRF 校验(内网/保留地址 → 拒绝);
-                    // 未注入(null)时回退旧行为直接下载。
+                    // G4: Cuando el verificador de inyección no está vacío, SSRF debe verificarlo antes de descargarlo.(Intranet/dirección reservada → rechazar);
+                    // No inyectado(null)Vuelva al comportamiento anterior al descargar directamente.
                     if (urlValidator != null && !urlValidator.isAllowed(trimmed)) {
                         error(ErrorCode.IMAGE_INVALID_URI.toMessage("ssrf_blocked"))
                     }
-                    // 审计修复 (6.3): 带超时的流式下载 + 边读边限制大小。
-                    // 原实现 openStream().readBytes() 无超时(服务端挂起时 IO 线程永久占用),
-                    // 且先全量读进内存才查 10MB 上限(超大远程文件直接 OOM)。
+                    // Reparación de auditoría (6.3): Descarga de streaming con tiempo de espera + límite de tamaño durante la lectura.
+                    // Implementación original openStream().readBytes() Sin tiempo de espera(Cuando el servidor se cuelga, el subproceso IO está permanentemente ocupado),
+                    // Y primero lea la cantidad total en la memoria antes de verificar el límite superior de 10 MB.(Archivos remotos muy grandes directamente OOM).
                     val url = java.net.URL(trimmed)
                     var conn = url.openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 10_000
                     conn.readTimeout = 30_000
-                    // G4: 关闭自动跟随重定向,每跳重过 SSRF 校验(防 302 跳向内网)
+                    // G4: Desactivar redireccionamientos de seguimiento automático,Cada salto pasa nuevamente la verificación SSRF(Evitar que 302 salte a la intranet)
                     conn.instanceFollowRedirects = false
                     conn.setRequestProperty("User-Agent", "Muse/1.0")
                     try {
@@ -314,7 +314,7 @@ class AgnesImageProvider(
                             conn.disconnect()
                             val redirectUrl = java.net.URL(url, location)
                             currentUrl = redirectUrl.toExternalForm()
-                            // G4: 注入校验器非空时每跳重定向目标重过 SSRF 校验(防 302 跳向内网)
+                            // G4: Cuando el verificador de inyección no está vacío, cada objetivo de redirección de salto vuelve a pasar la verificación SSRF.(Evitar que 302 salte a la intranet)
                             if (urlValidator != null && !urlValidator.isAllowed(currentUrl)) {
                                 error(ErrorCode.IMAGE_INVALID_URI.toMessage("ssrf_blocked"))
                             }
@@ -359,7 +359,7 @@ class AgnesImageProvider(
             }
         }
 
-        /** 参考图大小上限 10MB(对齐 ImageService 旧实现)。 */
+        /** Tamaño máximo de imagen de referencia 10MB(Alinear la implementación anterior de ImageService). */
         private const val MAX_REF_IMAGE_BYTES = 10L * 1024 * 1024
     }
 }

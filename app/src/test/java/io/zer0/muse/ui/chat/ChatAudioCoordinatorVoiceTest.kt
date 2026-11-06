@@ -21,12 +21,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * P5-2(部分): 语音协调器纯判定层测试。
+ * P5-2(parte): Prueba pura a nivel de decisión del coordinador de voz.
  *
- * 守护 P2-17 — 语音输入快捷方式在 SYSTEM(默认)下是否静默无响应:
- * 任意非 SYSTEM / 非文件转录 Provider 必须走 API 录音路径(缺 key 也要向用户
- * 显式报错,而不是悄悄降级到系统识别)。其余状态机/TTS 生命周期深度测试依赖
- * Robolectric,已在 memory 模块启用而 app 模块未启用,留作后续工程项。
+ * proteger P2-17 — Acceso directo de entrada de voz en SYSTEM(Predeterminado)Si es silencioso y no responde:
+ * Cualquier proveedor que no sea de SISTEMA o de transcripción de archivos debe tomar la ruta de grabación API(Incluso si falta la clave, el usuario debe
+ * Informe de errores explícitos,En lugar de bajar silenciosamente al reconocimiento del sistema). Resto de la máquina de estados/TTS Pruebas en profundidad del ciclo de vida de las dependencias.
+ * Robolectric,Habilitado en el módulo de memoria pero no habilitado en el módulo de aplicación,Reservado para proyectos posteriores.
  */
 class ChatAudioCoordinatorVoiceTest {
 
@@ -96,7 +96,7 @@ class ChatAudioCoordinatorVoiceTest {
             AsrProviderType.OPENAI_REALTIME,
             AsrProviderType.AGNES,
         ).forEach { p ->
-            assertTrue("$p 应走 API 录音路径(P2-17)", coordinator(p).shouldUseApiRecording())
+            assertTrue("$p Deberías tomar la ruta de grabación API(P2-17)", coordinator(p).shouldUseApiRecording())
         }
     }
 }

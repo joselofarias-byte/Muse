@@ -54,9 +54,9 @@ import io.zer0.muse.ui.navigation.WorkspaceRoute
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 设置一级分类。
+ * Establecer una clasificación de primer nivel.
  *
- * 设置首页只列这 14 类，每类的条目在分类页里；声明顺序即首页从上到下的顺序。
+ * Configure la página de inicio para que enumere solo estas 14 categorías, y las entradas de cada categoría están en la página de categorías; el orden de declaración es el orden de arriba a abajo en la página de inicio.
  */
 enum class SettingsGroupKind {
     ASSISTANTS,
@@ -76,10 +76,10 @@ enum class SettingsGroupKind {
 }
 
 /**
- * 设置条目的稳定标识。
+ * Establece la identidad estable de la entrada.
  *
- * 只用于识别条目（渲染 key、测试断言、运行时状态的按条目覆盖），显示文案在
- * [SettingsEntrySpec.titleRes] 里。声明顺序与清单里的展示顺序一致。
+ * Solo se utiliza para identificar elementos (claves de representación, afirmaciones de prueba, cobertura por elemento del estado de tiempo de ejecución), mostrar copia en
+ * [SettingsEntrySpec.titleRes] adentro. El orden de declaración es el mismo que el orden de presentación en la lista.
  */
 enum class SettingsEntryId {
     USER_PROFILE,
@@ -132,66 +132,66 @@ enum class SettingsEntryId {
     AUDIT_LOG,
 }
 
-/** 条目在设置仓库里对应的开关键；写回逻辑集中在 [writeToggle]。 */
+/** La entrada corresponde a la tecla de encendido/apagado en el almacén de configuración; la lógica de reescritura se concentra en [writeToggle]. */
 enum class SettingsToggleKey {
     PII_GUARD,
 }
 
-/** 不跳转、由界面直接执行的条目动作。 */
+/** Las acciones de los elementos se ejecutan directamente mediante la interfaz sin saltar. */
 enum class SettingsActionId {
     CHECK_UPDATE,
     EXPORT_DIAGNOSTICS,
 }
 
 /**
- * 条目被点击时做什么。
+ * Qué hacer cuando se hace clic en el elemento.
  *
- * 三种形态覆盖设置页全部入口：进入某个页面、翻一个开关、执行一个动作。
+ * Tres formularios cubren todas las entradas a la página de configuración: ingresar a una página, girar un interruptor y realizar una acción.
  */
 sealed interface SettingsEntryAction {
-    /** 跳到目标路由（类型安全路由对象）。 */
+    /** Saltar a la ruta de destino (objeto de enrutamiento con seguridad de tipos). */
     data class Navigate(val route: Any) : SettingsEntryAction
 
-    /** 开关条目：读哪条流由 [flow] 声明，写回由 [SettingsToggleKey] 决定。 */
+    /** Cambiar entrada: qué flujo lee [flow] declaración, respuesta escrita por [SettingsToggleKey] decisión. */
     data class Toggle(
         val key: SettingsToggleKey,
         val flow: (SettingsRepository) -> Flow<Boolean>,
     ) : SettingsEntryAction
 
-    /** 页内动作（检查更新、导出诊断等），具体实现由界面传入的回调承接。 */
+    /** Las acciones en la página (buscar actualizaciones, exportar diagnósticos, etc.) se implementan específicamente mediante devoluciones de llamada pasadas desde la interfaz. */
     data class Action(val id: SettingsActionId) : SettingsEntryAction
 }
 
-/** 设置条目声明。 */
+/** Establecer declaración de artículo. */
 data class SettingsEntrySpec(
     val id: SettingsEntryId,
     @StringRes val titleRes: Int,
-    /** 说明文案；由运行时拼出的说明（如代理状态）为 null。 */
+    /** Copia de descripción; nulo para descripciones detalladas en el tiempo de ejecución (como el estado del agente). */
     @StringRes val descRes: Int? = null,
     val icon: ImageVector,
     val action: SettingsEntryAction,
-    /** 搜索关键词（中文近义词 + 拼音首字母）；空表示只靠标题命中。 */
+    /** Palabras clave de búsqueda (sinónimos chinos + iniciales Pinyin); vacío significa visitas basadas únicamente en títulos. */
     val keywords: List<String> = emptyList(),
     /**
-     * 是否在分类页列出来。
+     * Ya sea para incluirlo en la página de categorías.
      *
-     * 关掉后只是“不给入口”：分类页不渲染，搜索仍能命中，直接跳转仍可用。
-     * 用于功能尚未打磨完、暂不主推但不想拆掉的情形。
+     * Después de apagarlo, es sólo“sin entrada”: La página de categorías no se representa, la búsqueda aún se puede realizar y el salto directo aún está disponible.
+     * Se utiliza cuando las funciones aún no han sido pulidas y aún no están promocionadas pero no se quieren desmantelar.
      */
     val browseVisible: Boolean = true,
 )
 
 /**
- * 分类页里的一张卡片。
+ * Una tarjeta en una página de categoría.
  *
- * 分类需要再分段时才给 [labelRes]；目前的 14 个分类都是整类一张不带标题的卡片。
+ * Solo délo cuando sea necesario subdividir la clasificación. [labelRes];Las 14 categorías actuales son todas categorías de una tarjeta sin título.
  */
 data class SettingsSectionSpec(
     @StringRes val labelRes: Int? = null,
     val entries: List<SettingsEntrySpec>,
 )
 
-/** 设置一级分类声明：标题、一句话说明、图标与其下的条目。 */
+/** Establezca una declaración de clasificación de primer nivel: título, descripción de una oración, ícono y los elementos debajo de él. */
 data class SettingsGroupSpec(
     val kind: SettingsGroupKind,
     @StringRes val titleRes: Int,
@@ -199,16 +199,16 @@ data class SettingsGroupSpec(
     val icon: ImageVector,
     val sections: List<SettingsSectionSpec>,
 ) {
-    /** 该分类的全部条目，按分区与声明顺序展开。 */
+    /** Todas las entradas de esta categoría se expanden en orden de partición y declaración. */
     val entries: List<SettingsEntrySpec>
         get() = sections.flatMap { it.entries }
 }
 
 /**
- * 设置入口的唯一声明清单。
+ * Establece la lista de declaraciones únicas de la entrada.
  *
- * 首页（14 个分类）、分类页（该类条目）、搜索索引（全量条目）都从这里取数据，
- * 三者不会再各自维护一份顺序或标题。
+ * Inicio (14 categorías), páginas de categorías (entradas de esta categoría) e índices de búsqueda (todas las entradas) obtienen datos de aquí.
+ * Los tres ya no mantendrán cada uno una secuencia o título.
  */
 object SettingsCatalog {
 
@@ -226,7 +226,7 @@ object SettingsCatalog {
                     MuseIcons.user,
                     SettingsEntryAction.Navigate(UserProfileEditRoute),
                     keywords = listOf(
-                        "用户画像", "用户资料", "我的资料", "个人资料", "昵称", "头像", "profile",
+                        "Retrato de usuario", "Perfil de usuario", "mi información", "datos personales", "Apodo", "avatar", "profile",
                         "yonghuhuaxiang", "yonghuziliao", "ziliao", "nicheng", "touxiang", "yhhx", "yhzl", "zl", "nc", "tx",
                     ),
                 ),
@@ -236,7 +236,7 @@ object SettingsCatalog {
                     R.string.settings_screen_assistant_desc,
                     MuseIcons.atom,
                     SettingsEntryAction.Navigate(AssistantsRoute),
-                    keywords = listOf("助手", "assistant", "角色", "人设", "zhushou", "juese", "renshe", "zs", "js", "rs"),
+                    keywords = listOf("asistente", "assistant", "papel", "Personalidad", "zhushou", "juese", "renshe", "zs", "js", "rs"),
                 ),
                 entry(
                     SettingsEntryId.ASSISTANT_RESOURCES,
@@ -245,7 +245,7 @@ object SettingsCatalog {
                     MuseIcons.stars,
                     SettingsEntryAction.Navigate(SettingsAssistantResourcesRoute),
                     keywords = listOf(
-                        "助手资源", "收藏夹", "世界书", "快捷消息", "模式注入", "Skills", "技能", "zhushouziyuan",
+                        "Recursos asistentes", "Favoritos", "libro mundial", "mensaje rapido", "inyección de patrón", "Skills", "Habilidades", "zhushouziyuan",
                         "shoucangjia", "shijieshu", "kuaijiexiaoxi", "moshizhur", "jineng", "zszy",
                         "scj", "sjs", "kjxx", "mszr", "jn",
                     ),
@@ -256,7 +256,7 @@ object SettingsCatalog {
                     R.string.settings_screen_agent_desc,
                     MuseIcons.users,
                     SettingsEntryAction.Navigate(SettingsAgentRoute),
-                    keywords = listOf("Agent", "代理", "智能体", "自主", "daili", "zhinengti", "zizhu", "dl", "znt"),
+                    keywords = listOf("Agent", "agente", "agente", "Autonomía", "daili", "zhinengti", "zizhu", "dl", "znt"),
                 ),
             ),
         ),
@@ -273,9 +273,9 @@ object SettingsCatalog {
                     MuseIcons.chat,
                     SettingsEntryAction.Navigate(SettingsChatRoute),
                     keywords = listOf(
-                        "聊天", "对话", "消息", "输入", "发送", "liaotian", "duihua", "xiaoxi", "shuru",
-                        "fasong", "lt", "dh", "xx", "全屏编辑", "展开", "气泡", "阴影", "模型", "MOOD", "思维链",
-                        "快捷键", "引用回复",
+                        "charlar", "dialogo", "noticias", "entrada", "enviar", "liaotian", "duihua", "xiaoxi", "shuru",
+                        "fasong", "lt", "dh", "xx", "Edición de pantalla completa", "Expandir", "Burbujas", "sombra", "modelo", "MOOD", "cadena de pensamiento",
+                        "Teclas de acceso directo", "Cotización Responder",
                     ),
                 ),
                 entry(
@@ -285,7 +285,7 @@ object SettingsCatalog {
                     MuseIcons.image,
                     SettingsEntryAction.Navigate(StickerSettingsRoute),
                     keywords = listOf(
-                        "表情包", "表情", "贴纸", "表情包库", "sticker", "emoji", "biaoqingbao",
+                        "Emoticones", "expresión", "pegatinas", "biblioteca de emoticonos", "sticker", "emoji", "biaoqingbao",
                         "biaoqing", "tiezhi", "biaoqingbaoku", "bq", "tq", "bqbk",
                     ),
                 ),
@@ -296,7 +296,7 @@ object SettingsCatalog {
                     MuseIcons.bulb,
                     SettingsEntryAction.Navigate(QuickNotesRoute),
                     keywords = listOf(
-                        "快速记录", "速记", "笔记", "quick note", "note", "记录", "kuaisujilu", "suji", "biji", "jilu", "ksjl", "sj", "bj", "jl",
+                        "registro rápido", "taquigrafía", "Notas", "quick note", "note", "grabar", "kuaisujilu", "suji", "biji", "jilu", "ksjl", "sj", "bj", "jl",
                     ),
                 ),
             ),
@@ -314,8 +314,8 @@ object SettingsCatalog {
                     MuseIcons.provider,
                     SettingsEntryAction.Navigate(SettingsModelRoute),
                     keywords = listOf(
-                        "供应商", "模型", "provider", "API", "密钥", "gongyingshang", "moxing", "miyao",
-                        "gys", "mx", "my", "绘图", "Agnes", "DALL-E", "绘图供应商",
+                        "proveedor", "modelo", "provider", "API", "clave", "gongyingshang", "moxing", "miyao",
+                        "gys", "mx", "my", "Dibujo", "Agnes", "DALL-E", "proveedor de dibujo",
                     ),
                 ),
                 entry(
@@ -325,7 +325,7 @@ object SettingsCatalog {
                     MuseIcons.taskRouting,
                     SettingsEntryAction.Navigate(SettingsTaskRoutingRoute),
                     keywords = listOf(
-                        "辅助模型", "任务路由", "路由", "小工具", "大工具", "视觉", "模型", "主对话模型", "默认模型",
+                        "Modelo auxiliar", "Enrutamiento de tareas", "enrutamiento", "artilugio", "grandes herramientas", "Visión", "modelo", "Modelo de diálogo principal", "Modelo predeterminado",
                         "fuzhumoxing", "renwuluyou", "luyou", "xiaogongju", "dagongju", "shijue",
                         "moxing", "zhuduihua", "moren", "fzmx", "rwly", "ly", "xgj", "dgj", "sj",
                         "mx", "zdh", "mr",
@@ -338,7 +338,7 @@ object SettingsCatalog {
                     MuseIcons.affiliate,
                     SettingsEntryAction.Navigate(PluginManageRoute),
                     keywords = listOf(
-                        "插件管理", "供应商插件", "插件", "插件包", "provider plugin", "chajian",
+                        "Gestión de complementos", "Complemento de proveedor", "complemento", "Paquete de complemento", "provider plugin", "chajian",
                         "chajianbao", "gongyingshangchajian", "cj", "cjb",
                     ),
                 ),
@@ -356,7 +356,7 @@ object SettingsCatalog {
                     R.string.settings_screen_tools_desc,
                     MuseIcons.wrench,
                     SettingsEntryAction.Navigate(ToolsScreenRoute),
-                    keywords = listOf("工具", "AI工具", "ToolRegistry", "tool", "插件", "gongju", "AIgongju", "chajian", "gj", "AIgj", "cj"),
+                    keywords = listOf("Herramientas", "AIHerramientas", "ToolRegistry", "tool", "complemento", "gongju", "AIgongju", "chajian", "gj", "AIgj", "cj"),
                 ),
                 entry(
                     SettingsEntryId.PERMISSION_WIZARD,
@@ -364,7 +364,7 @@ object SettingsCatalog {
                     R.string.permission_wizard_desc,
                     MuseIcons.shieldCheck,
                     SettingsEntryAction.Navigate(SettingsPermissionWizardRoute),
-                    keywords = listOf("权限", "向导", "无障碍", "Shizuku", "Root", "quanxian", "xiangdao", "wuzhangai", "qx", "xd", "wza"),
+                    keywords = listOf("Permisos", "mago", "Accesibilidad", "Shizuku", "Root", "quanxian", "xiangdao", "wuzhangai", "qx", "xd", "wza"),
                 ),
                 entry(
                     SettingsEntryId.WEB_SEARCH,
@@ -373,7 +373,7 @@ object SettingsCatalog {
                     MuseIcons.globe,
                     SettingsEntryAction.Navigate(SettingsWebSearchRoute),
                     keywords = listOf(
-                        "联网搜索", "搜索", "web search", "网络搜索", "在线搜索", "lianwang", "sousuo",
+                        "búsqueda en internet", "Buscar", "web search", "búsqueda web", "Buscar en línea", "lianwang", "sousuo",
                         "wangluosousuo", "zaixiansousuo", "lwss", "ss", "wlss", "zxss",
                     ),
                 ),
@@ -392,7 +392,7 @@ object SettingsCatalog {
                     MuseIcons.microphone,
                     SettingsEntryAction.Navigate(SettingsMediaRoute),
                     keywords = listOf(
-                        "语音播报", "媒体", "录音", "语音", "播报", "yuyinbobao",
+                        "Transmisión de voz", "medios de comunicación", "Grabación", "Voz", "transmitir", "yuyinbobao",
                         "meiti", "luyin", "yuyin", "bobao", "mt", "ly", "yy", "bb",
                     ),
                 ),
@@ -403,7 +403,7 @@ object SettingsCatalog {
                     MuseIcons.microphone,
                     SettingsEntryAction.Navigate(SettingsAsrRoute),
                     keywords = listOf(
-                        "ASR", "asr", "语音识别", "speech", "转文字", "识别语音", "yuyinshibie", "zhuanwenzi",
+                        "ASR", "asr", "reconocimiento de voz", "speech", "Convertir texto", "reconocer el habla", "yuyinshibie", "zhuanwenzi",
                         "shibieyuyin", "yysb", "zwz", "sbyy",
                     ),
                 ),
@@ -414,7 +414,7 @@ object SettingsCatalog {
                     MuseIcons.play,
                     SettingsEntryAction.Navigate(VoiceCloningRoute),
                     keywords = listOf(
-                        "语音克隆", "克隆", "音色", "声音复刻", "voice clone", "yuyinkelong",
+                        "Clonación de voz", "clonar", "timbre", "reproducción de sonido", "voice clone", "yuyinkelong",
                         "kelong", "yinse", "shengyinfuke", "yykl", "kl", "ys",
                     ),
                 ),
@@ -433,7 +433,7 @@ object SettingsCatalog {
                     MuseIcons.video,
                     SettingsEntryAction.Navigate(VideoGenerationRoute),
                     keywords = listOf(
-                        "视频生成", "图片生成", "绘图", "生成图片", "文生图", "生成视频", "video gen",
+                        "generación de vídeo", "Generación de imágenes", "Dibujo", "Generar imágenes", "Cuadro vicenciano", "Generar vídeo", "video gen",
                         "image gen", "shipinshengcheng", "tupianshengcheng", "huitu", "shengchengtupian",
                         "wenshengtu", "spsc", "tpsc", "ht",
                     ),
@@ -445,7 +445,7 @@ object SettingsCatalog {
                     MuseIcons.image,
                     SettingsEntryAction.Navigate(SettingsVisionRoute),
                     keywords = listOf(
-                        "视觉辅助", "视觉", "图片理解", "看图", "OCR", "视觉模型", "shijue",
+                        "ayuda visual", "Visión", "Comprensión de imágenes", "mira la foto", "OCR", "modelo visual", "shijue",
                         "tupianlijie", "kantu", "shijuefuzhu", "shijuemoxing", "sj", "tplj", "kt",
                     ),
                 ),
@@ -456,7 +456,7 @@ object SettingsCatalog {
                     MuseIcons.languages,
                     SettingsEntryAction.Navigate(TranslateRoute),
                     keywords = listOf(
-                        "翻译", "translate", "语言", "互译", "源语言", "目标语言", "fanyi",
+                        "Traducción", "translate", "Idioma", "Traducción", "idioma de origen", "idioma de destino", "fanyi",
                         "yuyan", "huyi", "yuanyuyan", "mubiaoyuyan", "fy", "yy",
                     ),
                 ),
@@ -475,7 +475,7 @@ object SettingsCatalog {
                     MuseIcons.atom,
                     SettingsEntryAction.Navigate(SettingsMemoryRoute),
                     keywords = listOf(
-                        "记忆", "长期记忆", "memory", "遗忘", "回忆", "记忆空间", "jiyi", "changqijiyi", "yiwang",
+                        "memoria", "memoria a largo plazo", "memory", "olvidar", "recuerdos", "espacio de memoria", "jiyi", "changqijiyi", "yiwang",
                         "huiyi", "jiyikongjian", "jy", "cqjy", "yw", "hy", "kj",
                     ),
                 ),
@@ -486,7 +486,7 @@ object SettingsCatalog {
                     MuseIcons.book,
                     SettingsEntryAction.Navigate(SettingsRagRoute),
                     keywords = listOf(
-                        "RAG", "知识库", "rag", "检索", "向量", "文档", "zhishiku", "jiansuo",
+                        "RAG", "base de conocimientos", "rag", "Buscar", "Vector", "Documentación", "zhishiku", "jiansuo",
                         "xiangliang", "wendang", "zsk", "js", "xl", "wd",
                     ),
                 ),
@@ -505,7 +505,7 @@ object SettingsCatalog {
                     MuseIcons.link,
                     SettingsEntryAction.Navigate(ConnectionCenterRoute),
                     keywords = listOf(
-                        "连接中心", "连接", "渠道", "MCP", "插件", "权限",
+                        "centro de conexion", "conectar", "canal", "MCP", "complemento", "Permisos",
                         "lianjie", "lianjiezhongxin", "qudao", "chajian", "quanxian", "mcp",
                     ),
                 ),
@@ -516,7 +516,7 @@ object SettingsCatalog {
                     MuseIcons.wifi,
                     SettingsEntryAction.Navigate(ChannelSettingsRoute),
                     keywords = listOf(
-                        "消息渠道", "渠道", "平台互通", "桥接", "社交平台", "飞书", "QQ", "微信", "IM",
+                        "canal de mensajes", "canal", "Interoperabilidad de plataformas", "puente", "plataforma social", "Feishu", "QQ", "WeChat", "IM",
                         "channel", "feishu", "bridge", "xiaoxi", "qidao", "weixin", "xxqd",
                         "pingtaihutong", "qiaojie",
                     ),
@@ -528,12 +528,12 @@ object SettingsCatalog {
                     MuseIcons.router,
                     SettingsEntryAction.Navigate(SettingsWebAccessRoute),
                     keywords = listOf(
-                        "网页版", "网页", "Web 服务", "Web 服务器", "浏览器", "局域网", "二维码", "扫一扫",
-                        "扫码", "手机访问", "PIN", "上网地址",
+                        "Versión web", "pagina web", "Web servicio", "Web servidor", "Navegador", "LAN", "código qr", "Escanear",
+                        "código de escaneo", "Acceso celular", "PIN", "dirección de internet",
                         "wangyeban", "wangye", "liulanqi", "juyuwang", "erweima", "saoyisao", "sao",
                         "shoujifangwen", "pin", "web",
                     ),
-                    // 本版暂不主推：服务端与页面都能用，只是不在分类页给入口，搜索仍能命中。
+                    // Esta versión no se recomienda por el momento: se puede usar tanto en el servidor como en la página, pero no se proporciona como una entrada en la página de categoría y la búsqueda aún puede llegar a ella.
                     browseVisible = false,
                 ),
                 entry(
@@ -542,16 +542,16 @@ object SettingsCatalog {
                     R.string.settings_screen_mcp_desc,
                     MuseIcons.plug,
                     SettingsEntryAction.Navigate(SettingsMcpRoute),
-                    keywords = listOf("MCP", "mcp", "服务器", "Model Context Protocol", "工具协议", "fuwuqi", "gongjixieyi", "fwq", "gjxy"),
+                    keywords = listOf("MCP", "mcp", "servidor", "Model Context Protocol", "protocolo de herramienta", "fuwuqi", "gongjixieyi", "fwq", "gjxy"),
                 ),
-                // 代理条目的说明由运行时按当前配置拼（未启用 / type host:port），清单里不给固定文案。
+                // La descripción de la entrada del proxy está escrita por la configuración actual en tiempo de ejecución (/type host:port is not enable) y no hay ninguna copia fija en el manifiesto.
                 entry(
                     SettingsEntryId.PROXY,
                     R.string.proxy_title,
                     null,
                     MuseIcons.proxy,
                     SettingsEntryAction.Navigate(SettingsProxyRoute),
-                    keywords = listOf("代理", "proxy", "网络", "VPN", "HTTP代理", "daili", "wangluo", "dl", "wl"),
+                    keywords = listOf("agente", "proxy", "red", "VPN", "HTTPagente", "daili", "wangluo", "dl", "wl"),
                 ),
             ),
         ),
@@ -568,7 +568,7 @@ object SettingsCatalog {
                     MuseIcons.bell,
                     SettingsEntryAction.Navigate(SettingsProactiveRoute),
                     keywords = listOf(
-                        "主动消息", "主动", "推送", "定时发送", "proactive", "zhudongxiaoxi", "zhudong",
+                        "mensajes no solicitados", "Toma la iniciativa", "empujar", "Enviar regularmente", "proactive", "zhudongxiaoxi", "zhudong",
                         "tuisong", "dingshifasong", "zdxx", "zd", "ts",
                     ),
                 ),
@@ -579,7 +579,7 @@ object SettingsCatalog {
                     MuseIcons.clock,
                     SettingsEntryAction.Navigate(ScheduledTasksRoute),
                     keywords = listOf(
-                        "定时任务", "定时", "计划任务", "scheduled", "task", "cron", "dingshirenwu",
+                        "tareas programadas", "Sincronización", "Tareas programadas", "scheduled", "task", "cron", "dingshirenwu",
                         "dingshi", "jihuarenwu", "dsrw", "ds", "jhrw",
                     ),
                 ),
@@ -590,7 +590,7 @@ object SettingsCatalog {
                     MuseIcons.bell,
                     SettingsEntryAction.Navigate(NotificationListenerRoute),
                     keywords = listOf(
-                        "通知监听", "通知", "NotificationListener", "通知权限", "tongzhijianting", "tongzhi",
+                        "escucha de notificaciones", "Notificación", "NotificationListener", "Permisos de notificación", "tongzhijianting", "tongzhi",
                         "tongzhiquanxian", "tzjl", "tz", "tzqx",
                     ),
                 ),
@@ -600,7 +600,7 @@ object SettingsCatalog {
                     R.string.automation_settings_subtitle,
                     MuseIcons.computer,
                     SettingsEntryAction.Navigate(SettingsAutomationRoute),
-                    keywords = listOf("UI自动化", "自动操作", "屏幕读取", "手势", "zidonghua", "zidongcaozuo", "pingmu", "shoushi"),
+                    keywords = listOf("UIAutomatización", "operación automática", "lectura de pantalla", "gesto", "zidonghua", "zidongcaozuo", "pingmu", "shoushi"),
                 ),
                 entry(
                     SettingsEntryId.KEEP_ALIVE,
@@ -609,7 +609,7 @@ object SettingsCatalog {
                     MuseIcons.battery,
                     SettingsEntryAction.Navigate(KeepAliveSettingsRoute),
                     keywords = listOf(
-                        "常驻后台", "保活", "后台", "电池优化", "自启动", "通知文案",
+                        "Tras bastidores permanente", "mantener vivo", "detrás del escenario", "Optimización de la batería", "auto inicio", "copia del aviso",
                         "changzhu", "baohuo", "houtai", "dianchi", "zhiqidong",
                         "czy", "bh", "ht", "dc", "zqd",
                     ),
@@ -629,8 +629,8 @@ object SettingsCatalog {
                     MuseIcons.palette,
                     SettingsEntryAction.Navigate(SettingsAppearanceRoute),
                     keywords = listOf(
-                        "外观", "显示", "界面", "字号", "字体", "waiguan", "xianshi", "jiemian", "zihao",
-                        "ziti", "wg", "xs", "jm", "zt", "主题", "圆角", "启动页", "引导", "壁纸",
+                        "Apariencia", "mostrar", "interfaz", "Tamaño de fuente", "fuente", "waiguan", "xianshi", "jiemian", "zihao",
+                        "ziti", "wg", "xs", "jm", "zt", "Tema", "esquinas redondeadas", "pagina de inicio", "guía", "fondo de pantalla",
                     ),
                 ),
                 entry(
@@ -640,10 +640,10 @@ object SettingsCatalog {
                     MuseIcons.deviceMobile,
                     SettingsEntryAction.Navigate(MiniPhoneRoute),
                     keywords = listOf(
-                        "小手机", "内置手机", "手机", "miniphone", "mini phone", "xiaoshouji",
+                        "pequeño teléfono celular", "Teléfono celular incorporado", "teléfono celular", "miniphone", "mini phone", "xiaoshouji",
                         "neizhishouji", "shouji", "xsj", "sj",
                     ),
-                    // 本版暂不主推：模块与路由完整保留，只是不在分类页与首页给入口，搜索仍能命中。
+                    // Esta versión no se recomienda por el momento: los módulos y el enrutamiento se conservan por completo, pero la entrada no se proporciona en la página de categorías ni en la página de inicio, y la búsqueda aún puede llegar a ella.
                     browseVisible = false,
                 ),
             ),
@@ -661,7 +661,7 @@ object SettingsCatalog {
                     MuseIcons.database,
                     SettingsEntryAction.Navigate(DataManagementRoute),
                     keywords = listOf(
-                        "数据管理", "数据", "存储", "清理", "缓存", "shujuguanli", "shuju", "cunchu", "qingli",
+                        "Gestión de datos", "datos", "almacenamiento", "limpiar", "caché", "shujuguanli", "shuju", "cunchu", "qingli",
                         "huancun", "sjgl", "sj", "cc", "ql", "hc",
                     ),
                 ),
@@ -672,7 +672,7 @@ object SettingsCatalog {
                     MuseIcons.folder,
                     SettingsEntryAction.Navigate(WorkspaceRoute),
                     keywords = listOf(
-                        "工作区", "文件管理", "workspace", "文件", "目录", "gongzuoqu", "wenjianguanli",
+                        "espacio de trabajo", "Gestión de archivos", "workspace", "Archivo", "Directorio", "gongzuoqu", "wenjianguanli",
                         "wenjian", "mulu", "gzq", "wjgl", "wj", "ml",
                     ),
                 ),
@@ -683,7 +683,7 @@ object SettingsCatalog {
                     MuseIcons.cloud,
                     SettingsEntryAction.Navigate(SettingsDataRoute),
                     keywords = listOf(
-                        "备份", "云备份", "cloud", "backup", "S3", "WebDAV", "同步",
+                        "copia de seguridad", "Copia de seguridad en la nube", "cloud", "backup", "S3", "WebDAV", "sincronizar",
                         "beifen", "yunbeifen", "tongbu", "bf", "ybf", "tb",
                     ),
                 ),
@@ -693,7 +693,7 @@ object SettingsCatalog {
                     R.string.settings_screen_data_import_desc,
                     MuseIcons.cloudUpload,
                     SettingsEntryAction.Navigate(SettingsDataImportRoute),
-                    keywords = listOf("数据导入", "导入", "import", "恢复数据", "shujudaoru", "daoru", "huifushuju", "sjdr", "dr", "hfsj"),
+                    keywords = listOf("Importación de datos", "importar", "import", "Recuperar datos", "shujudaoru", "daoru", "huifushuju", "sjdr", "dr", "hfsj"),
                 ),
                 entry(
                     SettingsEntryId.ARCHIVED_CHATS,
@@ -701,7 +701,7 @@ object SettingsCatalog {
                     R.string.settings_screen_archived_desc,
                     MuseIcons.archive,
                     SettingsEntryAction.Navigate(ArchivedChatsRoute),
-                    keywords = listOf("归档", "archive", "已归档", "guidang", "gd"),
+                    keywords = listOf("Archivo", "archive", "Archivado", "guidang", "gd"),
                 ),
             ),
         ),
@@ -721,7 +721,7 @@ object SettingsCatalog {
                         flow = { repository -> repository.piiGuardEnabledFlow },
                     ),
                     keywords = listOf(
-                        "PII", "隐私", "脱敏", "遮蔽", "手机号", "邮箱", "身份证", "pii", "yinsi", "tuomin", "zhebi", "shenfenzheng",
+                        "PII", "Privacidad", "Desensibilización", "cubrir", "Número de teléfono celular", "Correo electrónico", "tarjeta de identificación", "pii", "yinsi", "tuomin", "zhebi", "shenfenzheng",
                     ),
                 ),
                 entry(
@@ -730,7 +730,7 @@ object SettingsCatalog {
                     R.string.settings_screen_security_desc,
                     MuseIcons.lock,
                     SettingsEntryAction.Navigate(SettingsSecurityRoute),
-                    keywords = listOf("分享", "导出", "分享模板", "share", "fenxiang", "daochu", "fx", "dc"),
+                    keywords = listOf("Compartir", "Exportar", "Compartir plantilla", "share", "fenxiang", "daochu", "fx", "dc"),
                 ),
             ),
         ),
@@ -747,7 +747,7 @@ object SettingsCatalog {
                     MuseIcons.school,
                     SettingsEntryAction.Navigate(SettingsTutorialRoute),
                     keywords = listOf(
-                        "教程", "新手", "引导", "tutorial", "帮助", "jiaocheng", "xinshou", "yindao", "bangzhu", "jc", "xs", "yd", "bz",
+                        "Tutorial", "novato", "guía", "tutorial", "ayuda", "jiaocheng", "xinshou", "yindao", "bangzhu", "jc", "xs", "yd", "bz",
                     ),
                 ),
                 entry(
@@ -756,7 +756,7 @@ object SettingsCatalog {
                     R.string.settings_screen_about_desc,
                     MuseIcons.info,
                     SettingsEntryAction.Navigate(SettingsAboutRoute),
-                    keywords = listOf("关于", "版本", "about", "信息", "guanyu", "banben", "xinxi", "gy", "bb", "xx"),
+                    keywords = listOf("Acerca de", "versión", "about", "información", "guanyu", "banben", "xinxi", "gy", "bb", "xx"),
                 ),
                 entry(
                     SettingsEntryId.CHECK_UPDATE,
@@ -764,7 +764,7 @@ object SettingsCatalog {
                     R.string.settings_screen_check_update_desc,
                     MuseIcons.refresh,
                     SettingsEntryAction.Action(SettingsActionId.CHECK_UPDATE),
-                    keywords = listOf("检查更新", "更新", "update", "版本", "升级", "jianchagengxin", "gengxin", "shengji", "jcgc", "gx", "sj"),
+                    keywords = listOf("Buscar actualizaciones", "actualizar", "update", "versión", "Mejora", "jianchagengxin", "gengxin", "shengji", "jcgc", "gx", "sj"),
                 ),
             ),
         ),
@@ -781,7 +781,7 @@ object SettingsCatalog {
                     MuseIcons.chartBar,
                     SettingsEntryAction.Navigate(StatsRoute),
                     keywords = listOf(
-                        "统计", "使用统计", "stats", "热力图", "数据", "tongji",
+                        "Estadísticas", "estadísticas de uso", "stats", "mapa de calor", "datos", "tongji",
                         "shiyongtongji", "relitu", "shuju", "tj", "sytj", "rlt", "sj",
                     ),
                 ),
@@ -791,7 +791,7 @@ object SettingsCatalog {
                     R.string.settings_screen_experiments_desc,
                     MuseIcons.flask,
                     SettingsEntryAction.Navigate(SettingsExperimentsRoute),
-                    keywords = listOf("实验性", "实验", "experimental", "beta", "试验", "shiyanxing", "shiyan", "syx", "sy"),
+                    keywords = listOf("Experimental", "experimentar", "experimental", "beta", "prueba", "shiyanxing", "shiyan", "syx", "sy"),
                 ),
                 entry(
                     SettingsEntryId.DEBUG_LOG,
@@ -799,7 +799,7 @@ object SettingsCatalog {
                     R.string.settings_screen_debug_log_desc,
                     MuseIcons.bug,
                     SettingsEntryAction.Navigate(DebugRoute),
-                    keywords = listOf("调试", "日志", "debug", "log", "Logger", "tiaoshi", "rizhi", "ts", "rz"),
+                    keywords = listOf("Depuración", "Iniciar sesión", "debug", "log", "Logger", "tiaoshi", "rizhi", "ts", "rz"),
                 ),
                 entry(
                     SettingsEntryId.CRASH_REPORT,
@@ -807,7 +807,7 @@ object SettingsCatalog {
                     R.string.settings_screen_desc_crash_report,
                     MuseIcons.shieldCheck,
                     SettingsEntryAction.Navigate(SettingsCrashReportRoute),
-                    keywords = listOf("崩溃", "崩溃上报", "crash", "报告", "诊断", "bengkui", "baogao", "zhenduan", "bk", "bg", "zd"),
+                    keywords = listOf("colapsar", "Informe de fallos", "crash", "informe", "Diagnóstico", "bengkui", "baogao", "zhenduan", "bk", "bg", "zd"),
                 ),
                 entry(
                     SettingsEntryId.AUDIT_LOG,
@@ -816,7 +816,7 @@ object SettingsCatalog {
                     MuseIcons.history,
                     SettingsEntryAction.Navigate(AuditLogRoute),
                     keywords = listOf(
-                        "审计", "日志", "audit", "操作记录", "审计日志", "shenji",
+                        "auditoría", "Iniciar sesión", "audit", "Registro de operación", "Registro de auditoría", "shenji",
                         "rizhi", "caozuojilu", "shenjirizhi", "sj", "rz", "czjl", "sjrz",
                     ),
                 ),
@@ -824,10 +824,10 @@ object SettingsCatalog {
         ),
     )
 
-    /** 全部条目，按首页分类顺序与分类内顺序展开。 */
+    /** Todos los artículos se expanden según el orden de clasificación en la página de inicio y el orden dentro de la categoría. */
     val entries: List<SettingsEntrySpec> = groups.flatMap { it.entries }
 
-    /** 按分类取声明；分类是枚举，必然存在。 */
+    /** Tome la declaración por categoría; la categoría es una enumeración y debe existir. */
     fun group(kind: SettingsGroupKind): SettingsGroupSpec = groups.first { it.kind == kind }
 
     private fun group(

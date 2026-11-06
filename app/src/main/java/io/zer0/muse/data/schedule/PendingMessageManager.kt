@@ -18,14 +18,14 @@ import kotlinx.serialization.builtins.ListSerializer
 private val Context.pendingMessageStore: DataStore<Preferences> by preferencesDataStore(name = "pending_messages")
 
 /**
- * Phase 3 3E: 定时消息管理器 — 存储待发送的定时消息,到期后自动发送。
+ * Phase 3 3E: Administrador de mensajes programados — Almacenar mensajes programados para enviar,Enviado automáticamente después del vencimiento.
  *
- * 用法:
- * 1. 用户长按发送按钮 → 选择时间 → 调用 [scheduleMessage]
- * 2. ScheduledTaskRunner 的轮询循环调用 [checkAndDeliver] 检查到期消息
- * 3. UI 通过 [pendingMessagesFlow] 显示 "Message scheduled for HH:MM" 横幅
+ * Uso:
+ * 1. El usuario mantiene presionado el botón enviar → Seleccionar hora → llamar [scheduleMessage]
+ * 2. ScheduledTaskRunner El bucle de sondeo llama [checkAndDeliver] Comprobar mensajes de caducidad
+ * 3. UI Pase [pendingMessagesFlow] mostrar "Message scheduled for HH:MM" pancarta
  */
-/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
+/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class PendingMessageManager(
@@ -39,7 +39,7 @@ class PendingMessageManager(
     }
 
     /**
-     * 待发送消息列表 Flow(供 UI 显示横幅)。
+     * Lista de mensajes a enviar Flow(Para que la interfaz de usuario muestre un banner).
      */
     val pendingMessagesFlow: Flow<List<PendingMessage>> = store.data.mapDistinct { prefs ->
         val json = prefs[KEY_PENDING_MESSAGES] ?: return@mapDistinct emptyList()
@@ -52,12 +52,12 @@ class PendingMessageManager(
     }
 
     /**
-     * 安排一条定时消息。
+     * Programe un mensaje programado.
      *
-     * @param content 消息文本
-     * @param sessionId 目标会话 ID
-     * @param assistantId 助手 ID
-     * @param sendAtMillis 计划发送时间(毫秒时间戳)
+     * @param content texto del mensaje
+     * @param sessionId sesión objetivo ID
+     * @param assistantId asistente ID
+     * @param sendAtMillis tiempo de entrega planificado(marca de tiempo de milisegundos)
      */
     suspend fun scheduleMessage(content: String, sessionId: String, assistantId: String, sendAtMillis: Long): PendingMessage {
         val msg = PendingMessage(
@@ -86,7 +86,7 @@ class PendingMessageManager(
     }
 
     /**
-     * 取消一条定时消息。
+     * Cancelar un mensaje programado.
      */
     suspend fun cancelMessage(messageId: String) {
         store.edit { prefs ->
@@ -106,9 +106,9 @@ class PendingMessageManager(
     }
 
     /**
-     * 检查并返回所有到期的消息(从存储中移除并返回)。
+     * Verificar y devolver todos los mensajes caducados(Retirar del almacenamiento y devolver).
      *
-     * 由 ScheduledTaskRunner 的轮询循环调用,返回的消息由调用方负责发送。
+     * Llamado por el ciclo de sondeo de ScheduledTaskRunner,La persona que llama es responsable de enviar el mensaje devuelto.
      */
     suspend fun drainDueMessages(): List<PendingMessage> {
         val now = System.currentTimeMillis()
@@ -139,7 +139,7 @@ class PendingMessageManager(
     }
 
     /**
-     * 获取所有待发送消息(不修改存储)。
+     * Obtener todos los mensajes pendientes(No modificar el almacenamiento).
      */
     suspend fun getAllPending(): List<PendingMessage> {
         val json = store.data.first()[KEY_PENDING_MESSAGES] ?: return emptyList()
@@ -152,7 +152,7 @@ class PendingMessageManager(
 }
 
 /**
- * 待发送的定时消息。
+ * Mensajes programados para enviar.
  */
 @Serializable
 data class PendingMessage(

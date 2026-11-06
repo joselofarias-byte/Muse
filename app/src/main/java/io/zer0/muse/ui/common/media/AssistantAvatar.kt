@@ -26,11 +26,11 @@ import io.zer0.muse.data.assistant.AssistantEntity
 import kotlin.math.roundToInt
 
 /**
- * v0.25: 助手头像统一渲染组件。
+ * v0.25: Componente de renderizado unificado de avatar asistente.
  *
- * 优先级:① 图片头像(avatarImageUrl)→ ② Emoji 头像(avatarEmoji)→ ③ 名称首字母
+ * prioridad:① avatar de imagen(avatarImageUrl)→ ② Emoji avatar(avatarEmoji)→ ③ iniciales
  *
- * 用法:`AssistantAvatar(assistant = entity, avatarSize = 40.dp)`
+ * Uso:`AssistantAvatar(assistant = entity, avatarSize = 40.dp)`
  */
 internal fun assistantAvatarImageRequest(context: android.content.Context, imageUrl: String, sizePx: Int): ImageRequest {
     val boundedSize = sizePx.coerceAtLeast(1)
@@ -48,24 +48,24 @@ internal fun assistantAvatarImageRequest(context: android.content.Context, image
 fun AssistantAvatar(
     assistant: AssistantEntity,
     modifier: Modifier = Modifier,
-    // L-AA3: 参数名 size → avatarSize,避免与 Modifier.size 同名遮蔽导致调用方/内部引用混淆。
+    // L-AA3: Nombre del parámetro size → avatarSize,Evite el sombreado con el mismo nombre que Modifier.size, lo que hace que la persona que llama/Confusión de referencias internas.
     avatarSize: androidx.compose.ui.unit.Dp = 40.dp,
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
     val avatarSizePx = (avatarSize.value * density.density).roundToInt().coerceAtLeast(1)
-    // stringResource 需在 @Composable 直接调用位置提取,不能在 semantics{} 内使用。
+    // stringResource Debe extraerse en la ubicación de llamada directa de @Composable,no puedo estar ahí semantics{} Para uso interno.
     val avatarCd = stringResource(R.string.common_avatar_cd, assistant.name)
     when {
-        // ① 图片头像(可能是 content:// URI 或文件路径)
+        // ① avatar de imagen(Puede ser content:// URI o ruta de archivo)
         assistant.hasImageAvatar() -> {
-            // v0.36 性能优化:缓存 ImageRequest,避免每次重组都重建 Coil 请求对象。
+            // v0.36 Optimización del rendimiento:caché ImageRequest,Evite reconstruir el objeto de solicitud Coil en cada reorganización.
             val model = remember(assistant.avatarImageUrl, avatarSizePx) {
                 assistantAvatarImageRequest(ctx, assistant.avatarImageUrl, avatarSizePx)
             }
-            // M-AA1: 用 SubcomposeAsyncImage 替代 AsyncImage,通过 error slot 处理加载失败。
-            // 旧实现加载失败时显示空白 surfaceVariant 背景;现在 fallback 到首字母,
-            // 保证头像始终有可辨识内容(联系人头像加载失败回退首字母)。
+            // M-AA1: Utilice SubcomposeAsyncImage en su lugar AsyncImage,Manejar fallas de carga a través de la ranura de error.
+            // La implementación anterior muestra una superficie en blanco. Fondo variante cuando falla la carga.;ahora recurrir a la letra inicial,
+            // Asegúrate de que tu avatar siempre tenga contenido identificable(El avatar de contacto no se carga y devuelve la letra inicial).
             SubcomposeAsyncImage(
                 model = model,
                 contentDescription = assistant.name,
@@ -83,8 +83,8 @@ fun AssistantAvatar(
                     )
                 },
                 error = {
-                    // 用户显式设置过图片但文件失效时,优先回退 Emoji/首字母,
-                    // 而不是只显示主题色块,避免“头像消失”的观感。
+                    // Cuando el usuario ha configurado explícitamente una imagen pero el archivo no es válido,Priorizar el recurso a Emoji/letras iniciales,
+                    // En lugar de simplemente mostrar el bloque de color del tema,evitar“avatar desaparece”percepción.
                     if (assistant.avatarEmoji.isNotBlank()) {
                         Text(
                             text = assistant.avatarEmoji,
@@ -100,15 +100,15 @@ fun AssistantAvatar(
                 },
             )
         }
-        // ② Emoji 头像
+        // ② Emoji avatar
         assistant.avatarEmoji.isNotBlank() -> {
             Box(
                 modifier = modifier
                     .size(avatarSize)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    // M-AA2: 加 contentDescription 语义(mergeDescendants 合并子 Text),
-                    // TalkBack 朗读为"X 的头像",旧实现仅朗读 Emoji 字符,语义不明确。
+                    // M-AA2: Agregar semántica de descripción de contenido(mergeDescendants Fusión Text),
+                    // TalkBack Leer en voz alta como"X avatar",La implementación anterior solo hablaba caracteres Emoji.,La semántica no está clara.
                     .semantics(mergeDescendants = true) {
                         contentDescription = avatarCd
                     },
@@ -120,15 +120,15 @@ fun AssistantAvatar(
                 )
             }
         }
-        // ③ 名称首字母
+        // ③ iniciales
         else -> {
             Box(
                 modifier = modifier
                     .size(avatarSize)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    // M-AA2: 加 contentDescription 语义(mergeDescendants 合并子 Text),
-                    // TalkBack 朗读为"X 的头像"。
+                    // M-AA2: Agregar semántica de descripción de contenido(mergeDescendants Fusión Text),
+                    // TalkBack Leer en voz alta como"X avatar".
                     .semantics(mergeDescendants = true) {
                         contentDescription = avatarCd
                     },

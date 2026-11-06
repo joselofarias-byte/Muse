@@ -5,19 +5,19 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 /**
- * P2-3 拆域：ToolOrchestrator / 对话树快照 / ChatViewModel 注册独立模块。
+ * P2-3 Deslocalización:ToolOrchestrator / Instantánea del árbol de diálogo/módulo independiente registrado ChatViewModel.
  */
 val appChatModule = module {
 
-    // Phase 8.2 / 8.4 / 8.5 / 8.6 / 8.7 / 8.8 / 9.1: ChatViewModel 注入 20 个依赖
-    // v0.30-a: 新增 systemPromptAssembler
-    // v1.43: 新增 chatGenerationManager / artifactRepository / appContext
+    // Phase 8.2 / 8.4 / 8.5 / 8.6 / 8.7 / 8.8 / 9.1: ChatViewModel Inyectar 20 dependencias
+    // v0.30-a: Nuevo systemPromptAssembler
+    // v1.43: Nuevo chatGenerationManager / artifactRepository / appContext
     // (chat/settings/ticker/session/image/doc/tool/assistant/webSearch/lorebook/quickMsg/promptInj/ocr/tts/skillRepo/skillExec/folder/notification/assembler/generation/artifacts/context/audit/sessionPermission)
-    // v1.92: 改为 single — 应用级单例,切页/切路由不销毁,生成不中断。
-    // 用 viewModel{} 绑定到 NavBackStackEntry,从 CHAT_DETAIL 返回时 onCleared 会
-    // 把流式内容 update 到已销毁 ViewModel 的 _state,新实例看不到 → 感知"中断"。
-    // 改为 single{} + koinInject() 后所有页面共享同一实例,生成继续更新同一 _state。
-    // B2-04: 统一 ToolOrchestrator 单例(accessor/taskCardCoordinator 由 runLoop 调用方传入)
+    // v1.92: Cambiar a single — Singleton de nivel de aplicación,Cortar páginas/Las rutas de corte no se destruyen.,La generación es ininterrumpida.
+    // usar viewModel{} unirse a NavBackStackEntry,Al regresar de CHAT_DETAIL onCleared
+    // Actualice el contenido de la transmisión al ViewModel destruido _state,No se pueden ver nuevas instancias → Percepción"interrumpir".
+    // Cambiar a single{} + koinInject() Posteriormente, todas las páginas comparten la misma instancia.,La compilación continúa actualizando el mismo _state.
+    // B2-04: Unificar herramientaOrquestador singleton(accessor/taskCardCoordinator Pasado por la persona que llama runLoop)
     single {
         io.zer0.muse.tools.ToolOrchestrator(
             toolRegistry = get(),
@@ -28,25 +28,25 @@ val appChatModule = module {
             context = androidContext(),
             hookRegistry = get(),
             auditLogger = get(),
-            // F-08: Agent Run 收据内存账本
+            // F-08: Agent Run Libro mayor de memoria de recibos
             agentRunTracker = get(),
-            // v1.x: 会话级浏览器注册表(与 UI 胶囊共享同一实例)
+            // v1.x: Registro del navegador a nivel de sesión(Comparte la misma instancia con la cápsula UI.)
             browserManagerRegistry = get(),
-            // 统一生成/工具执行资源注册表
+            // Generación unificada/Registro de recursos de ejecución de herramientas
             executionRegistry = get(),
         )
     }
 
-    // F-08: Agent Run 收据内存账本(每次工具执行写入,供调试/审计展示)
+    // F-08: Agent Run Libro mayor de memoria de recibos(Cada vez que la herramienta realiza una escritura,para depurar/Visualización de auditoría)
     single { io.zer0.muse.data.audit.AgentRunTracker() }
 
-    // P0 对话树选择快照存储(分支选择跨重启恢复)
+    // P0 Árbol de diálogo para seleccionar almacenamiento de instantáneas(Recuperación de selección de sucursal entre reinicios)
     single { io.zer0.muse.data.chat.ConversationTreeSnapshotStore(androidContext()) }
 
     single {
         ChatViewModel(
-            // v2.x: checkpointReader 用命名参数注入 —— 后面 40 个依赖是按位置排列的，
-            // 中间插参数会让它们整体错位（把 A 传给 B 的字段），命名注入可避免这种事故。
+            // v2.x: checkpointReader Inyectar con parámetros nombrados —— Las siguientes 40 dependencias están ordenadas por puesto.
+            // Insertar parámetros en el medio hará que estén completamente fuera de lugar (los campos pasan de A a B). La inyección nombrada puede evitar este accidente.
             get(), get(), get(), get(),
             checkpointReader = get(),
             get(), get(), get(), get(), get(),
@@ -56,36 +56,36 @@ val appChatModule = module {
             get(), get(),
             // v1.202: deferredResultStore + subagentThreadStore
             get(), get(),
-            // v1.x: ConversationSessionManager(会话级引用计数 + idle 清理)
+            // v1.x: ConversationSessionManager(Recuento de referencias a nivel de sesión + limpieza inactiva)
             get(),
-            // P1-1: HookRegistry(注入 ToolOrchestrator + 消息处理 Hook)
+            // P1-1: HookRegistry(Inject ToolOrchestrator + procesamiento de mensajes Hook)
             get(),
-            // v1.0.52 P2-3: MemoryAutoSaveScheduler(AI 记忆自动保存)
+            // v1.0.52 P2-3: MemoryAutoSaveScheduler(AI Memoria guardada automáticamente)
             get(),
-            // B0-08: MilestoneChecker(里程碑触发)
+            // B0-08: MilestoneChecker(disparador de hito)
             get(),
-            // B2-04: ToolOrchestrator(Koin 单例)
+            // B2-04: ToolOrchestrator(Koin singleton)
             get(),
-            // B2-04: ToolApprovalRouter(子代理审批桥接)
+            // B2-04: ToolApprovalRouter(Puente de aprobación de subagente)
             get(),
-            // P0 对话树选择快照存储
+            // P0 Árbol de diálogo para seleccionar almacenamiento de instantáneas
             treeSnapshotStore = get(),
-            // v1.x: 会话级浏览器实例注册表
+            // v1.x: Registro de instancias de navegador a nivel de sesión
             browserManagerRegistry = get(),
-            // v1.x: 工具审批策略存储(与 AppToolModule 单例一致,避免 DataStore 双实例)
+            // v1.x: Almacenamiento de políticas de aprobación de herramientas(Consistente con el singleton de AppToolModule,Evite las instancias duales de DataStore)
             toolConfigStore = get(),
-            // MCP 注册表:首条消息前等待助手绑定的 server 完成 tools/list
+            // MCP Registro:Espere a que se complete el servidor vinculado por el asistente antes de enviar el primer mensaje. tools/list
             mcpRegistry = get(),
-            // 统一生成/工具执行资源注册表
+            // Generación unificada/Registro de recursos de ejecución de herramientas
             executionRegistry = get(),
-            // P2-23: 媒体生成工具实现(AppKoinModule 单例) —
-            // ChatViewModel 初始化时向它安装 ChatMediaGenHost(生成结果写回助手消息)
+            // P2-23: Implementación de herramienta de generación de medios.(AppKoinModule singleton) —
+            // ChatViewModel Instalarlo durante la inicialización ChatMediaGenHost(Generar resultados escritos en el mensaje de ayuda.)
             mediaGenTools = get(),
-            // v2.x: 委员会 — 群聊调度器/仓库(与群聊页共享同一单例)
+            // v2.x: comité — Programador de chat grupal/almacén(Comparte el mismo singleton con la página de chat grupal.)
             groupChatScheduler = get(),
             groupChatRepository = get(),
             conversationSummaryManager = get(),
-            // v2.6.7: 关系仓库（放在最末尾，命名传参不影响前面的位置参数）
+            // v2.6.7: Almacén relacional (colocado al final, los parámetros con nombre no afectarán los parámetros posicionales anteriores)
             relationshipRepository = getOrNull(),
         )
     }

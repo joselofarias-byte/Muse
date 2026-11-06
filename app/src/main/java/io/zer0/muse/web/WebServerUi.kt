@@ -1,17 +1,17 @@
 package io.zer0.muse.web
 
 /**
- * WebServer 根路径 UI（单页应用：PIN 登录 → 会话列表 → 消息只读浏览）。
- * 纯内嵌 HTML/CSS/JS，无外部依赖，移动端/桌面浏览器均可使用。
- * 鉴权走 Cookie（登录接口自动种 httpOnly Cookie，前端无需管理 token）。
+ * WebServer UI de ruta raíz (aplicación de una sola página:PIN Iniciar sesión → Lista de conversación → Los mensajes son de sólo lectura).
+ * HTML/CSS/JS puramente integrado, sin dependencias externas, terminal celular/Disponible en navegadores de escritorio.
+ * Utilice cookies para la autenticación (la interfaz de inicio de sesión coloca automáticamente cookies httpOnly y la interfaz no necesita administrar tokens).
  *
- * 视觉遵循 Muse mono 主题设计语言：纯黑白极简，跟随系统深浅色
- * （浅色：白底黑字；深色：纯黑底白字，卡片 #1C1C1E）。
+ * La visión sigue el lenguaje de diseño del tema mono de Muse: puro minimalismo en blanco y negro, siguiendo los colores claros y oscuros del sistema.
+ * (Color claro: texto negro sobre fondo blanco; color oscuro: texto blanco sobre fondo negro sólido, tarjeta n.° 1C1C1E).
  */
 object WebServerUi {
 
     const val INDEX_HTML: String = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -36,13 +36,13 @@ object WebServerUi {
 body{background:var(--bg);color:var(--ink);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
 .wrap{max-width:680px;margin:0 auto;padding:20px 16px 40px}
 a{color:var(--ink)}
-/* ── 顶栏 ── */
+/* ── barra superior ── */
 .top{display:flex;align-items:center;gap:8px;padding:4px 0 18px;border-bottom:1px solid var(--line)}
 .top .logo{font-size:17px;font-weight:700;letter-spacing:.2px}
 .top .sp{flex:1}
 .top button{background:none;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
 .top button:hover{background:var(--surface)}
-/* ── 登录 ── */
+/* ── Iniciar sesión ── */
 .login{max-width:340px;margin:18vh auto 0;text-align:center}
 .login .brand{font-size:21px;font-weight:700;margin-bottom:4px}
 .login .sub{color:var(--muted);font-size:13px;margin-bottom:30px}
@@ -52,7 +52,7 @@ a{color:var(--ink)}
 .login .btn:disabled{opacity:.4}
 .login .err{color:var(--err);font-size:13px;margin-top:12px;min-height:18px}
 .login .tip{color:var(--dim);font-size:11.5px;margin-top:24px}
-/* ── 会话列表 ── */
+/* ── Lista de conversación ── */
 .list{display:flex;flex-direction:column}
 .item{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:13px 2px;cursor:pointer;color:var(--ink);font-family:inherit}
 .item:last-child{border-bottom:none}
@@ -62,7 +62,7 @@ a{color:var(--ink)}
 .item .p{color:var(--muted);font-size:12.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .m{color:var(--dim);font-size:11px;margin-top:4px}
 .empty{color:var(--dim);text-align:center;padding:48px 0;font-size:13px}
-/* ── 消息（对齐 App：用户右黑底白字，AI 左浅灰底）── */
+/* ── Mensaje (Aplicación de alineación: texto blanco con fondo negro a la derecha del usuario,AI Fondo gris claro izquierdo)── */
 .msg{display:flex;margin:14px 0;gap:8px}
 .msg .av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
 .msg.user{flex-direction:row-reverse}
@@ -81,7 +81,7 @@ a{color:var(--ink)}
 .msg .rs{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto;width:100%}
 .back{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12.5px;margin-bottom:4px;padding:6px 0;font-family:inherit}
 .back:hover{color:var(--ink)}
-/* ── 设置 ── */
+/* ── ajustes ── */
 .settings h2{font-size:13px;font-weight:600;color:var(--muted);margin:22px 0 8px;letter-spacing:.3px}
 .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:11px 2px}
 .row .n{font-weight:600;font-size:13.5px}
@@ -95,41 +95,41 @@ a{color:var(--ink)}
 #send-btn.stop{background:var(--err);border-color:var(--err);color:#fff}
 .host-state{color:var(--ok);font-size:11px;margin-left:6px}
 .hide{display:none!important}
-/* F-43: 旧内嵌诊断页是资源缺失时的兜底,顶部醒目提示用户与正式 React 界面有差异 */
+/* F-43: La antigua página de diagnóstico incorporada es un comodín cuando faltan recursos,Un recordatorio destacado en la parte superior recuerda a los usuarios que existe una diferencia entre la interfaz oficial de React y la interfaz oficial de React. */
 .legacy-notice{background:var(--err);color:#fff;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;margin-bottom:16px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- F-43: 旧内嵌页仅在 React assets 缺失时兜底展示,醒目提示用户升级 Muse App -->
-  <div class="legacy-notice">网页控制台已升级，请升级 Muse App 到最新版本以使用新版界面。当前为旧版兼容页。</div>
+  <!-- F-43: Las páginas en línea antiguas solo se muestran cuando faltan recursos de React,Recuerde rápidamente a los usuarios que actualicen Muse App -->
+  <div class="legacy-notice">La consola web ha sido actualizada. Actualice la aplicación Muse a la última versión para utilizar la nueva interfaz. Actualmente una página de compatibilidad heredada.</div>
 
-  <!-- 登录页 -->
+  <!-- Página de inicio de sesión -->
   <div id="view-login" class="login">
     <div class="brand">Muse</div>
-    <div class="sub">输入手机端设置页生成的 6 位 PIN</div>
+    <div class="sub">Ingrese los 6 dígitos generados en la página de configuración del celular PIN</div>
     <input id="pin" type="password" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
-    <button id="login-btn" class="btn">连接</button>
+    <button id="login-btn" class="btn">conectar</button>
     <div id="login-err" class="err"></div>
-    <div class="tip">仅限本机与已授权的局域网设备访问</div>
+    <div class="tip">Acceso solo a esta máquina y a dispositivos LAN autorizados</div>
   </div>
 
-  <!-- 主界面 -->
+  <!-- Interfaz principal -->
   <div id="view-main" class="hide">
     <div class="top">
       <span class="logo">Muse</span>
       <span class="sp"></span>
-      <button id="btn-new">新对话</button>
-      <button id="btn-refresh">刷新</button>
-      <button id="btn-settings">设置</button>
-      <button id="btn-logout">退出</button>
+      <button id="btn-new">nueva conversación</button>
+      <button id="btn-refresh">Actualizar</button>
+      <button id="btn-settings">ajustes</button>
+      <button id="btn-logout">Salir</button>
     </div>
     <div id="page-sessions"></div>
     <div id="page-messages" class="hide"></div>
     <div id="composer" class="hide">
-      <textarea id="message-input" rows="2" placeholder="写点什么…"></textarea>
-      <button id="send-btn">发送</button>
+      <textarea id="message-input" rows="2" placeholder="escribe algo…"></textarea>
+      <button id="send-btn">enviar</button>
     </div>
     <div id="page-settings" class="hide"></div>
   </div>
@@ -142,7 +142,7 @@ var $=function(id){return document.getElementById(id)};
 var state={view:"login",session:null};
 var hostMode=true;
 
-/* ── 视图切换 ── */
+/* ── Ver cambio ── */
 function show(v){
   state.view=v;
   $("view-login").classList.toggle("hide",v!=="login");
@@ -175,37 +175,37 @@ function api(path){
   });
 }
 
-/* ── Host Mode：手机 Muse 是唯一运行时，网页只展示快照并发送命令 ── */
+/* ── Host Mode: Mobile Muse es el único motor de ejecución, la página web solo muestra instantáneas y envía comandos ── */
 var hostSocket=null;
 var hostState={sessions:[],sessionId:null,messages:[],isStreaming:false};
 function hostSend(command){
-  if(!hostSocket||hostSocket.readyState!==WebSocket.OPEN){throw new Error("Host 尚未连接")}
+  if(!hostSocket||hostSocket.readyState!==WebSocket.OPEN){throw new Error("Host Aún no conectado")}
   hostSocket.send(JSON.stringify(command));
 }
 function renderHostMessages(){
-  var h="<button class='back' onclick='window.__backList()'>← 返回</button>";
-  if(!hostState.messages.length) h+='<div class="empty">暂无消息</div>';
+  var h="<button class='back' onclick='window.__backList()'>← Regresar</button>";
+  if(!hostState.messages.length) h+='<div class="empty">Aún no hay noticias</div>';
   hostState.messages.forEach(function(m){
     var isUser=m.role==="USER"||m.role==="user";
     h+="<div class='msg "+(isUser?"user":"ai")+"'>"+
-      "<div class='av'>"+(isUser?"我":m.role==="tool"?"T":"M")+"</div><div class='body'>";
+      "<div class='av'>"+(isUser?"yo":m.role==="tool"?"T":"M")+"</div><div class='body'>";
     if(m.reasoning) h+="<div class='rs'>"+esc(m.reasoning)+"</div>";
     h+="<div class='b'>"+inlineMd(m.content||"")+"</div>";
     h+="<div class='meta'>"+(m.modelId?esc(m.modelId)+" · ":"")+fmtTime(m.createdAt)+"</div></div></div>";
   });
   $("page-messages").innerHTML=h;
   $("composer").classList.remove("hide");
-  $("send-btn").textContent=hostState.isStreaming?"停止":"发送";
+  $("send-btn").textContent=hostState.isStreaming?"detenerse":"enviar";
   $("send-btn").classList.toggle("stop",hostState.isStreaming);
   $("send-btn").disabled=!hostState.isStreaming&&!$("message-input").value.trim();
 }
 function renderHostSessions(){
   var list=hostState.sessions;
-  if(!list.length){$("page-sessions").innerHTML='<div class="empty">暂无会话</div>';return}
+  if(!list.length){$("page-sessions").innerHTML='<div class="empty">Aún no hay sesión</div>';return}
   var h="<div class='list'>";
   list.forEach(function(s){
     h+="<button class='item' onclick='window.__hostOpenSession(\""+esc(s.id)+"\")'>"+
-      "<div class='t'>"+esc(s.title||"未命名")+(s.pinned?"<span class='pin'>置顶</span>":"")+"</div>"+
+      "<div class='t'>"+esc(s.title||"Sin nombre")+(s.pinned?"<span class='pin'>fijar hacia arriba</span>":"")+"</div>"+
       "<div class='m'>"+fmtTime(s.updatedAt)+"</div></button>";
   });
   h+="</div>";
@@ -231,77 +231,77 @@ window.__hostOpenSession=function(id){hostState.sessionId=id;show("messages");ho
 function loadHost(){connectHost()}
 window.__backList=function(){show("sessions");renderHostSessions()};
 
-/* ── 登录 ── */
+/* ── Iniciar sesión ── */
 function doLogin(){
   var pin=$("pin").value.trim();
-  if(pin.length!==6){$("login-err").textContent="请输入 6 位 PIN";return}
+  if(pin.length!==6){$("login-err").textContent="Por favor ingrese 6 dígitos PIN";return}
   $("login-btn").disabled=true;$("login-err").textContent="";
   fetch("/api/auth/pin-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:pin})})
     .then(function(r){
-      if(!r.ok){return r.json().then(function(j){throw new Error(j.message||"PIN 错误")})}
+      if(!r.ok){return r.json().then(function(j){throw new Error(j.message||"PIN error")})}
       return r.json();
     })
     .then(function(){ $("pin").value=""; loadHost(); })
-    .catch(function(e){ $("login-err").textContent=e.message||"连接失败"; })
+    .catch(function(e){ $("login-err").textContent=e.message||"La conexión falló"; })
     .finally(function(){ $("login-btn").disabled=false; });
 }
 $("login-btn").onclick=doLogin;
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin()});
 
-/* ── 会话列表 ── */
+/* ── Lista de conversación ── */
 function loadSessions(){
   show("sessions");
-  $("page-sessions").innerHTML='<div class="loading">加载中…</div>';
+  $("page-sessions").innerHTML='<div class="loading">Cargando…</div>';
   api("/api/sessions").then(function(list){
-    if(!list||!list.length){$("page-sessions").innerHTML='<div class="empty">暂无会话</div>';return}
+    if(!list||!list.length){$("page-sessions").innerHTML='<div class="empty">Aún no hay sesión</div>';return}
     var h="<div class='list'>";
     list.forEach(function(s){
       h+="<div class='item' onclick='window.__openSession(\""+s.id+"\")'>"
-        +"<div class='t'>"+esc(s.title||"未命名")+(s.pinned?"<span class='pin'>置顶</span>":"")+"</div>"
+        +"<div class='t'>"+esc(s.title||"Sin nombre")+(s.pinned?"<span class='pin'>fijar hacia arriba</span>":"")+"</div>"
         +"<div class='p'>"+esc(s.lastMessagePreview||"")+"</div>"
         +"<div class='m'>"+fmtTime(s.updatedAt||s.createdAt)+"</div></div>";
     });
     h+="</div>";
     $("page-sessions").innerHTML=h;
-  }).catch(function(e){$("page-sessions").innerHTML='<div class="empty">加载失败：'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-sessions").innerHTML='<div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
 }
 window.__openSession=function(id){
   state.session=id;
   show("messages");
-  $("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← 返回</button><div class="loading">加载中…</div>';
+  $("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="loading">Cargando…</div>';
   api("/api/sessions/"+encodeURIComponent(id)+"/messages").then(function(msgs){
-    if(!msgs||!msgs.length){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← 返回</button><div class="empty">暂无消息</div>';return}
-    var h="<button class='back' onclick='window.__backList()'>← 返回</button>";
+    if(!msgs||!msgs.length){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="empty">Aún no hay noticias</div>';return}
+    var h="<button class='back' onclick='window.__backList()'>← Regresar</button>";
     msgs.forEach(function(m){
       var isUser=m.role==="USER"||m.role==="user";
       h+="<div class='msg "+(isUser?"user":"ai")+"'>"
-        +"<div class='av'>"+(isUser?"我":"M")+"</div><div class='body'>";
+        +"<div class='av'>"+(isUser?"yo":"M")+"</div><div class='body'>";
       if(m.reasoning)h+="<div class='rs'>"+esc(m.reasoning)+"</div>";
       h+="<div class='b'>"+inlineMd(m.content||"")+"</div>";
       h+="<div class='meta'>"+(m.modelId?esc(m.modelId)+" · ":"")+fmtTime(m.createdAt)+"</div></div></div>";
     });
     $("page-messages").innerHTML=h;
-  }).catch(function(e){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← 返回</button><div class="empty">加载失败：'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-messages").innerHTML='<button class="back" onclick="window.__backList()">← Regresar</button><div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
 };
 window.__backList=function(){show("sessions");renderHostSessions()};
 
-/* ── 设置 ── */
+/* ── ajustes ── */
 function loadSettings(){
   show("settings");
-  $("page-settings").innerHTML='<div class="loading">加载中…</div>';
+  $("page-settings").innerHTML='<div class="loading">Cargando…</div>';
   api("/api/settings").then(function(s){
-    var h="<h2>当前模型</h2>"
-      +"<div class='row'><div><div class='n'>"+esc(s.selectedModelId||"未选择")+"</div><div class='d'>Provider: "+esc(s.activeProviderId||"无")+"</div></div></div>"
-      +"<h2>模型供应商</h2>";
-    if(!s.providers||!s.providers.length)h+='<div class="empty">暂无供应商</div>';
+    var h="<h2>modelo actual</h2>"
+      +"<div class='row'><div><div class='n'>"+esc(s.selectedModelId||"No seleccionado")+"</div><div class='d'>Provider: "+esc(s.activeProviderId||"Ninguno")+"</div></div></div>"
+      +"<h2>proveedor modelo</h2>";
+    if(!s.providers||!s.providers.length)h+='<div class="empty">Aún no hay proveedor</div>';
     s.providers.forEach(function(p){
-      h+="<div class='row'><div><div class='n'>"+esc(p.name)+"</div><div class='d'>"+esc(p.type)+" · "+p.modelCount+" 个模型</div></div><span class='badge "+(p.enabled?"on":"")+"'>"+(p.enabled?"启用":"停用")+"</span></div>";
+      h+="<div class='row'><div><div class='n'>"+esc(p.name)+"</div><div class='d'>"+esc(p.type)+" · "+p.modelCount+" modelos</div></div><span class='badge "+(p.enabled?"on":"")+"'>"+(p.enabled?"habilitar":"desactivar")+"</span></div>";
     });
     $("page-settings").innerHTML=h;
-  }).catch(function(e){$("page-settings").innerHTML='<div class="empty">加载失败：'+esc(e.message)+'</div>'});
+  }).catch(function(e){$("page-settings").innerHTML='<div class="empty">Error al cargar:'+esc(e.message)+'</div>'});
 }
 
-/* ── 顶栏按钮 ── */
+/* ── Botón de la barra superior ── */
 $("btn-new").onclick=function(){if(hostSocket)hostSend({type:"session.new",requestId:crypto.randomUUID()})};
 $("btn-refresh").onclick=function(){if(hostMode){hostSend({type:"state.sync",requestId:crypto.randomUUID()});return} if(state.view==="sessions")loadSessions();else if(state.view==="messages"&&state.session)window.__openSession(state.session);else if(state.view==="settings")loadSettings()};
 $("btn-settings").onclick=loadSettings;
@@ -315,11 +315,11 @@ $("send-btn").onclick=function(){
   hostSend({type:"chat.send",sessionId:hostState.sessionId,text:text,requestId:crypto.randomUUID()});
 };
 $("btn-logout").onclick=function(){
-  // A-10: token Cookie 为 httpOnly,JS 无法删除,必须调用服务端 /api/auth/logout 让其下发过期 Set-Cookie。
+  // A-10: token Cookie para httpOnly,JS no se puede eliminar,El servidor debe llamar a /api/auth/logout para permitirle emitir Set-Cookie vencidas.
   fetch("/api/auth/logout",{method:"POST"}).catch(function(e){ console.warn("logout request failed", e); }).finally(function(){ show("login"); });
 };
 
-/* ── 初始 ── */
+/* ── inicial ── */
 api("/api/sessions").then(function(){loadHost()}).catch(function(){show("login")});
 })();
 </script>

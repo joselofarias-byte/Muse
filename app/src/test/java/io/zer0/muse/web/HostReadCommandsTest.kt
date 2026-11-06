@@ -14,7 +14,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** assistants.list / providers.list / sessions.detail 的载荷投影测试。 */
+/** assistants.list / providers.list / sessions.detail prueba de proyección de carga. */
 class HostReadCommandsTest {
 
     private val workDir = Files.createTempDirectory("host-read-commands").toFile()
@@ -35,7 +35,7 @@ class HostReadCommandsTest {
 
         assertEquals(HostReadCommands.TYPE_ASSISTANTS, event.type)
         assertEquals("req-1", event.requestId)
-        assertTrue("空库应回空数组而不是报错", event.assistants.isEmpty())
+        assertTrue("Las bibliotecas vacías deberían devolver matrices vacías en lugar de informar errores.", event.assistants.isEmpty())
         assertNull(event.error)
     }
 
@@ -58,13 +58,13 @@ class HostReadCommandsTest {
         val first = event.assistants.first()
         assertEquals("default", first.id)
         assertEquals("Muse", first.name)
-        assertTrue("头像应换成媒体路由: ${first.avatarUri}", first.avatarUri!!.startsWith(HostMediaLinks.MEDIA_PATH_PREFIX))
+        assertTrue("El avatar debería ser reemplazado por enrutamiento de medios.: ${first.avatarUri}", first.avatarUri!!.startsWith(HostMediaLinks.MEDIA_PATH_PREFIX))
         assertEquals(
             avatar.canonicalFile,
             store.resolve(first.avatarUri!!.removePrefix(HostMediaLinks.MEDIA_PATH_PREFIX)),
         )
         assertTrue(first.isDefault)
-        // 无头像的助手用 null 表示,不编空字符串。
+        // Los asistentes sin avatares están representados por nulo.,Las cadenas vacías no se compilan.
         assertNull(event.assistants[1].avatarUri)
         assertTrue(!event.assistants[1].isDefault)
     }
@@ -75,7 +75,7 @@ class HostReadCommandsTest {
             assistants = listOf(
                 AssistantEntity(id = "http", name = "Remote", avatarImageUrl = "https://cdn.example.com/a.png"),
                 AssistantEntity(id = "gone", name = "Gone", avatarImageUrl = "file://${File(avatarDir, "nope.png").absolutePath}"),
-                // 系统内置头像：安卓资源地址，浏览器取不到。
+                // Avatar integrado en el sistema: dirección de recursos de Android, que el navegador no puede obtener.
                 AssistantEntity(
                     id = "builtin",
                     name = "Builtin",
@@ -88,8 +88,8 @@ class HostReadCommandsTest {
         )
 
         assertEquals("https://cdn.example.com/a.png", event.assistants[0].avatarUri)
-        assertNull("文件不存在时给 null，前端退回首字", event.assistants[1].avatarUri)
-        assertNull("内置资源地址浏览器取不到", event.assistants[2].avatarUri)
+        assertNull("Si el archivo no existe, se devolverá nulo y la interfaz devolverá el primer carácter.", event.assistants[1].avatarUri)
+        assertNull("El navegador no puede recuperar la dirección del recurso integrado", event.assistants[2].avatarUri)
     }
 
     @Test
@@ -140,7 +140,7 @@ class HostReadCommandsTest {
     fun `session detail carries metadata and message count`() {
         val session = SessionEntity(
             id = "session-1",
-            title = "测试会话",
+            title = "sesión de prueba",
             createdAt = 100L,
             updatedAt = 200L,
             assistantId = "default",
@@ -151,7 +151,7 @@ class HostReadCommandsTest {
 
         val detail = requireNotNull(event.sessionDetail)
         assertEquals("session-1", detail.id)
-        assertEquals("测试会话", detail.title)
+        assertEquals("sesión de prueba", detail.title)
         assertEquals("default", detail.assistantId)
         assertTrue(detail.archived)
         assertEquals(100L, detail.createdAt)

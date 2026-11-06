@@ -445,7 +445,7 @@
     <string name="slash_command_reset_busy">Não é possível redefinir durante a geração, pare primeiro</string>
     <string name="slash_command_archive_done">Sessão arquivada</string>
     <string name="chat_agent_tab_title">Agent</string>
-    <!-- 前端修复 (i18n-3.x): 表情包批量删除/清空 i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Eliminación por lotes de emoticones/Borrar i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_sticker_batch_done">Concluído</string>
     <string name="settings_sticker_batch_delete">Exclusão em lote</string>
     <string name="settings_sticker_delete_selected">Excluir %1$d itens selecionados</string>
@@ -464,7 +464,7 @@
     <string name="chat_tool_card_open">Ver cartão</string>
     <string name="chat_update_compress">Comprimir contexto</string>
     <string name="chat_ignore_memory_option">Esta conversa não usará a memória</string>
-    <!-- A5: 消息信息弹层(模型/耗时/Token 用量) -->
+    <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
     <string name="msg_info_title">Informações da mensagem</string>
     <string name="msg_info_model">Modelo</string>
     <string name="msg_info_time">Hora</string>
@@ -480,7 +480,7 @@
     <string name="msg_info_estimated">Estimado</string>
     <string name="msg_info_no_data">Sem dados de geração</string>
     <string name="msg_info_unknown">Desconhecido</string>
-    <!-- A1: 会话内查找(聊天页就地查找框) -->
+    <!-- A1: Buscar dentro de una sesión(Cuadro de búsqueda local en la página de chat) -->
     <string name="chat_find_in_conversation">Buscar na conversa</string>
     <string name="chat_find_placeholder">Pesquisar nesta conversa</string>
     <string name="chat_find_count">%1$d de %2$d</string>
@@ -488,7 +488,7 @@
     <string name="chat_find_prev">Anterior</string>
     <string name="chat_find_next">Próxima</string>
     <string name="chat_find_close">Fechar busca</string>
-    <!-- C2: 会话列表即时搜索 -->
+    <!-- C2: Búsqueda instantánea de la lista de conversaciones -->
 
     <string name="chat_pending_queue_title">Pendentes</string>
     <string name="chat_pending_count">%1$d itens</string>
@@ -570,7 +570,7 @@
     <string name="chat_token_output">Saída</string>
     <string name="chat_token_prompt">Prompt</string>
 
-    <!-- 上下文压缩分隔线（仅界面展示，不进模型上下文） -->
+    <!-- Divisor de compresión de contexto (solo se muestra en la interfaz, no se ingresa en el contexto del modelo) -->
     <string name="chat_context_divider_title">Contexto compactado</string>
     <string name="chat_context_divider_title_count">Contexto compactado · %1$d mensagens resumidas</string>
     <string name="chat_context_divider_hint_collapsed">Toque para ver as mensagens originais</string>
@@ -581,7 +581,7 @@
     <string name="moment_visibility_title">Visível para</string>
     <string name="moment_visibility_public">Todos</string>
     <string name="diary_perspective_character">Visão do personagem: este diário é escrito por ele/ela</string>
-    <!-- v2.6.7: 工具执行被全局暂停时的可见提示（否则用户只看到"已暂停"却不知为何） -->
+    <!-- v2.6.7: Aviso visible cuando la ejecución de la herramienta se pausa globalmente (de lo contrario, el usuario solo ve"suspendido"Pero no sé por qué) -->
     <string name="chat_tool_paused_banner">A execução de ferramentas está pausada, então não serão executadas.</string>
     <string name="chat_tool_paused_banner_action">Configurações</string>
     <string name="settings_chat_show_assistant_name">Mostrar nome do assistente</string>

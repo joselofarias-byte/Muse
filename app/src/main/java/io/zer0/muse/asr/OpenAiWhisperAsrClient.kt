@@ -37,42 +37,42 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 通用 OpenAI Whisper 兼容 ASR Controller(与本项目 [StepAsrController] 架构一致)。
+ * Compatible con OpenAI Whisper universal ASR Controller(con este proyecto [StepAsrController] Arquitectura consistente).
  *
- * 适配任何提供 `POST {baseUrl}/audio/transcriptions` 端点的服务商:
- *  - OpenAI 官方(https://api.openai.com/v1)
- *  - Groq / DeepInfra / Together 等兼容平台
- *  - Agnes 等中转站(用户在 [AsrConfig.baseUrl] 自定义)
+ * Se adapta a cualquier oferta `POST {baseUrl}/audio/transcriptions` Proveedor de servicios de punto final:
+ *  - OpenAI oficial(https://api.openai.com/v1)
+ *  - Groq / DeepInfra / Together y otras plataformas compatibles
+ *  - Agnes Esperando estación de transferencia(El usuario está en [AsrConfig.baseUrl] Personalizar)
  *
- * 真流式 WebSocket 由 OpenAI 官方提供(见 [OpenAiRealtimeAsrController]),
- * 多数中转站只支持 multipart 文件上传,因此本 Controller 采用与 [StepAsrController] 相同的
- * 分段批量策略:
- *  - 录音期间 PCM 累积到缓冲区
- *  - 按时间阈值(默认 30s)或字节阈值(6MB)触发 flush
- *  - 每次 flush:PCM -> WAV -> HTTP multipart POST -> 解析响应 -> 回调 onTranscriptChange
- *  - [stop] 时做最后一次 flush,等 flushJob 完成才切 Idle
- *  - 串行 flushJob 避免并发乱序
- *  - 可选 [AsrConfig.vadEnabled] 启用本地 VAD,静音超过阈值自动触发 flush(模拟句子分割)
+ * OpenAI proporciona oficialmente WebSocket de transmisión real(ver [OpenAiRealtimeAsrController]),
+ * La mayoría de las estaciones de transferencia solo admiten la carga de archivos de varias partes,Por lo tanto, este Responsable adopta [StepAsrController] lo mismo
+ * Estrategia por lotes de puesta en escena:
+ *  - PCM acumulado en el buffer durante la grabación
+ *  - por umbral de tiempo(Predeterminado 30s)o umbral de bytes(6MB)gatillo flush
+ *  - cada vez flush:PCM -> WAV -> HTTP multipart POST -> Analizar respuesta -> devolución de llamada onTranscriptChange
+ *  - [stop] hazlo por última vez flush,Espere a que se complete el trabajo de descarga antes de cortar. Idle
+ *  - FlushJob en serie evita el desorden simultáneo
+ *  - Opcional [AsrConfig.vadEnabled] Habilitar local VAD,Se activa automáticamente cuando el silencio excede el umbral flush(Simular segmentación de oraciones)
  *
- * 请求(multipart/form-data):
- *  - file: 音频文件(wav 格式,PCM 16-bit)
- *  - model: 模型名(默认 whisper-1)
- *  - language: 语种(可选,ISO-639-1 如 zh/en/ja)
- *  - prompt: 热词/上下文提示(可选,Whisper 用此提升专有名词识别率)
- *  - response_format: text(默认,直接返回纯文本)或 json(含 text 字段)
+ * Solicitar(multipart/form-data):
+ *  - file: archivo de audio(wav Formato,PCM 16-bit)
+ *  - model: Nombre del modelo(Predeterminado whisper-1)
+ *  - language: Idioma(Opcional,ISO-639-1 Como por ejemplo zh/en/ja)
+ *  - prompt: palabras calientes/sugerencias contextuales(Opcional,Whisper Utilice esto para mejorar la tasa de reconocimiento de sustantivos propios)
+ *  - response_format: text(Predeterminado,Devolver texto sin formato directamente)o json(Contiene campo de texto)
  *
- * 响应(JSON):
- *  - { "text": "识别文本" }
- * 或 response_format=text 时直接返回纯文本。
+ * respuesta(JSON):
+ *  - { "text": "Reconocer texto" }
+ * o response_format=text Devuelve texto sin formato directamente.
  *
- * @param config ASR 配置(必须有 apiKey;baseUrl 空时用默认 https://api.openai.com/v1)
- * @param sharedClient 可注入共享 OkHttpClient
+ * @param config ASR Configuración(debe tener apiKey;baseUrl Usar valor predeterminado cuando esté vacío https://api.openai.com/v1)
+ * @param sharedClient Compartir inyectables OkHttpClient
  */
 class OpenAiWhisperAsrController(
     private val config: AsrConfig,
     sharedClient: OkHttpClient? = null,
-    // v2.7: 与 DashScope / Realtime Controller 对齐——面向用户的错误文案走资源。
-    // 必需参数：不做可空兜底，退回空串会把错误信息直接吞掉，比硬编码更糟。
+    // v2.7: Alinear con DashScope/Controlador en tiempo real——Recursos de redacción de errores de cara al usuario.
+    // Parámetros requeridos: Si no lo haces, te quedarás con las manos vacías. Devolver una cadena vacía tragará el mensaje de error directamente, lo cual es peor que codificar.
     private val appContext: Context,
 ) : ASRController {
 
@@ -95,24 +95,24 @@ class OpenAiWhisperAsrController(
     private val flushMutex = Mutex()
     private var onTranscriptChange: ((String) -> Unit)? = null
 
-    // PCM 缓冲区(bufferLock 同步拷贝与重置)
+    // PCM buffer(bufferLock Copia y reinicio sincrónicos)
     private val pcmBuffer = ByteArrayOutputStream()
     private val bufferLock = Any()
     private var totalTranscript = StringBuilder()
     private var consecutiveFlushFailures = 0
 
-    // 分段阈值:30 秒或 6MB 先到先触发
+    // Umbral de segmentación:30 segundos o 6 MB, lo que ocurra primero
     private val segmentDurationMs = SEGMENT_DURATION_MS
     private val maxSegmentBytes = MAX_SEGMENT_BYTES
     private var segmentStartElapsedMs = 0L
 
-    // 可选本地 VAD(静音超过阈值自动 flush,模拟句子分割)
+    // Local opcional VAD(Silenciar automáticamente cuando supera el umbral flush,Simular segmentación de oraciones)
     private var vadDetector: VadDetector? = null
 
     override fun start(onTranscriptChange: ((String) -> Unit)?) {
         if (isDisposed.get() || _state.value.isRecording) return
         if (config.apiKey.isBlank()) {
-            Logger.w(TAG, "OpenAI Whisper ASR 未配置 apiKey")
+            Logger.w(TAG, "OpenAI Whisper ASR No configurado apiKey")
             _state.update { it.copy(status = ASRStatus.Error, errorMessage = appContext.getString(R.string.asr_error_no_apikey)) }
             return
         }
@@ -124,7 +124,7 @@ class OpenAiWhisperAsrController(
         }
         flushJob = null
         consecutiveFlushFailures = 0
-        // VAD 初始化(仅在 config.vadEnabled 时启用)
+        // VAD inicialización(Solo habilitado si config.vadEnabled)
         vadDetector = if (config.vadEnabled) {
             VadDetector(
                 threshold = config.vadThreshold,
@@ -149,7 +149,7 @@ class OpenAiWhisperAsrController(
         recordJob = scope.launch(Dispatchers.IO) {
             val capture = AsrAudioCapture.create(config.sampleRate, TAG)
             if (capture == null) {
-                setError("麦克风初始化失败,请检查权限或录音设备")
+                setError("Falló la inicialización del micrófono,Por favor verifique los permisos o el dispositivo de grabación.")
                 return@launch
             }
             val recorder = capture.recorder
@@ -163,31 +163,31 @@ class OpenAiWhisperAsrController(
                 while (coroutineContext[Job]?.isActive == true) {
                     val read = recorder.read(buffer, 0, buffer.size)
                     if (read > 0) {
-                        // 1. 计算振幅 -> 更新 state(归一化 0-1f)
+                        // 1. Calcular amplitud -> actualizar state(normalización 0-1f)
                         val amplitude = AudioAmplitude.calculateRmsAmplitude(buffer, read)
                         _state.update { it.copy(amplitudes = it.amplitudes.appendAmplitude(amplitude)) }
 
-                        // 2. 喂给 VAD(若启用),静音超过阈值时强制 flush(模拟句子分割)
+                        // 2. alimentar VAD(Si está habilitado),El silencio se fuerza cuando se supera el umbral. flush(Simular segmentación de oraciones)
                         val vadTriggered = vadDetector?.processFrame(buffer, read, amplitude) == true
 
-                        // 3. 累积到 pcmBuffer(bufferLock 同步),判断分段阈值
+                        // 3. acumulado hasta pcmBuffer(bufferLock sincronizar),Determinar el umbral de segmentación
                         val shouldFlush = synchronized(bufferLock) {
                             pcmBuffer.write(buffer, 0, read)
                             val elapsed = SystemClock.elapsedRealtime() - segmentStartElapsedMs
-                            // VAD 触发:仅当缓冲区有足够数据时才 flush,避免过短段
+                            // VAD gatillo:Sólo si el buffer tiene suficientes datos flush,Evite los párrafos cortos
                             val vadFlush = vadTriggered && pcmBuffer.size() >= MIN_VAD_FLUSH_BYTES
                             pcmBuffer.size() >= maxSegmentBytes || elapsed >= segmentDurationMs || vadFlush
                         }
-                        // 4. 超阈值 -> 触发 flush(串行,不阻塞录音循环)
+                        // 4. súper umbral -> gatillo flush(de serie,No bloquea el bucle de grabación.)
                         if (shouldFlush) {
                             triggerFlush()
                         }
                     } else if (read == 0) {
                         delay(10L)
                     } else if (read < 0) {
-                        Logger.w(TAG, "AudioRecord.read 错误: $read")
+                        Logger.w(TAG, "AudioRecord.read error: $read")
                         if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                            setError("AudioRecord 读取错误: $read")
+                            setError("AudioRecord error de lectura: $read")
                         }
                         break
                     }
@@ -195,9 +195,9 @@ class OpenAiWhisperAsrController(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Logger.w(TAG, "录音失败: ${e.message}")
+                Logger.w(TAG, "Error de grabación: ${e.message}")
                 if (shouldReportAsrCaptureFailure(_state.value.status, coroutineContext[Job]?.isActive == true)) {
-                    setError(e.message ?: "录音失败")
+                    setError(e.message ?: "Error de grabación")
                 }
             } finally {
                 releaseRecorder()
@@ -206,8 +206,8 @@ class OpenAiWhisperAsrController(
     }
 
     /**
-     * 触发一次 flush(串行):同一时刻只允许一个 flushJob 运行,避免后发先至导致结果乱序。
-     * PCM 拷贝与 buffer 重置在 [bufferLock] 内完成,HTTP 请求在锁外执行。
+     * disparar una vez flush(de serie):Sólo se permite ejecutar un FlushJob al mismo tiempo,Evite que los resultados de último llegado primero en ser atendidos estén desordenados.
+     * PCM Copiar y restablecer el búfer en [bufferLock] completado dentro de,HTTP La solicitud se ejecutó fuera de la cerradura.
      */
     private fun triggerFlush() {
         if (flushJob?.isActive == true) return
@@ -216,16 +216,16 @@ class OpenAiWhisperAsrController(
                 resultOf { flushSegment() }
                     .onError { message, throwable ->
                         val error = throwable?.message ?: message
-                        Logger.w(TAG, "分段 flush 失败: $error")
-                        setError("语音识别分段失败: $error")
+                        Logger.w(TAG, "Error al vaciar el segmento: $error")
+                        setError("La segmentación del reconocimiento de voz falló: $error")
                     }
             }
         }
     }
 
     /**
-     * 取出当前缓冲区里的 PCM,转 WAV 后 POST 到 {baseUrl}/audio/transcriptions。
-     * 识别结果追加到 [totalTranscript] 并通过 onTranscriptChange 回调。
+     * Sacar el buffer actual PCM,Convierta a WAV y luego POST a {baseUrl}/audio/transcriptions.
+     * Los resultados del reconocimiento se adjuntan a [totalTranscript] Y pase la devolución de llamada onTranscriptChange.
      */
     private suspend fun flushSegment() {
         val pcmCopy = synchronized(bufferLock) {
@@ -236,9 +236,9 @@ class OpenAiWhisperAsrController(
             bytes
         }
 
-        // 最短段过滤:PCM < 3200 bytes(100ms @ 16kHz 16bit mono)跳过,避免 400 错误
+        // filtro de segmento más corto:PCM < 3200 bytes(100ms @ 16kHz 16bit mono)saltar,Evita los errores 400
         if (pcmCopy.size < MIN_SEGMENT_BYTES) {
-            Logger.d(TAG, "跳过 flush:PCM 过短(${pcmCopy.size} bytes)")
+            Logger.d(TAG, "Saltar descarga: PCM demasiado corto(${pcmCopy.size} bytes)")
             return
         }
 
@@ -254,9 +254,9 @@ class OpenAiWhisperAsrController(
             consecutiveFlushFailures++
             if (consecutiveFlushFailures < MAX_CONSECUTIVE_FLUSH_FAILURES) {
                 prependToBuffer(pcmCopy)
-                Logger.w(TAG, "识别失败,回写 ${pcmCopy.size} 字节待下次重试(连续失败 $consecutiveFlushFailures)")
+                Logger.w(TAG, "El reconocimiento falló,escribir de nuevo ${pcmCopy.size} Bytes que se volverán a intentar la próxima vez(fracasos consecutivos $consecutiveFlushFailures)")
             } else {
-                Logger.w(TAG, "连续识别失败 $consecutiveFlushFailures 次,丢弃该段 ${pcmCopy.size} 字节")
+                Logger.w(TAG, "Fallo de reconocimiento continuo $consecutiveFlushFailures veces,descartar este segmento ${pcmCopy.size} bytes")
                 consecutiveFlushFailures = 0
             }
         }
@@ -272,14 +272,14 @@ class OpenAiWhisperAsrController(
     }
 
     /**
-     * 调用 OpenAI Whisper 兼容端点识别一段 WAV 音频。
+     * Llame al punto final compatible con OpenAI Whisper para identificar una pieza de audio WAV.
      *
-     * multipart form 字段:
-     *  - file: wav 音频
-     *  - model: 模型名(默认 whisper-1)
-     *  - language: 语种(可选)
-     *  - prompt: 热词拼接(可选,Whisper 用此提升专有名词识别率)
-     *  - response_format: json(便于解析)
+     * multipart form campo:
+     *  - file: wav Audio
+     *  - model: Nombre del modelo(Predeterminado whisper-1)
+     *  - language: Idioma(Opcional)
+     *  - prompt: Empalme de palabras calientes(Opcional,Whisper Utilice esto para mejorar la tasa de reconocimiento de sustantivos propios)
+     *  - response_format: json(Fácil de analizar)
      */
     private suspend fun recognizeSegment(wavBytes: ByteArray): String? = withContext(Dispatchers.IO) {
         val wavBody = wavBytes.toRequestBody("audio/wav".toMediaType())
@@ -304,12 +304,12 @@ class OpenAiWhisperAsrController(
             .build()
         var lastError: String? = null
         var retryableResponse = true
-        // F-34: 断线重连 — 网络/5xx/429 失败按指数退避补发同一段音频,上限 RECONNECT_MAX_ATTEMPTS。
+        // F-34: Desconectar y volver a conectar — red/5xx/429 Si falla, el mismo segmento de audio se retransmitirá según un retroceso exponencial.,Límite superior RECONNECT_MAX_ATTEMPTS.
         for (attempt in 0 until AsrConstants.RECONNECT_MAX_ATTEMPTS) {
             try {
                 val result = client.newCall(request).execute().use { resp: Response ->
                     if (!resp.isSuccessful) {
-                        lastError = "识别服务 HTTP ${resp.code}: ${resp.message}"
+                        lastError = "servicio de identificación HTTP ${resp.code}: ${resp.message}"
                         Logger.w(TAG, "Whisper ASR HTTP ${resp.code}: ${resp.message}")
                         if (!isRetryableAsrHttpStatus(resp.code)) {
                             retryableResponse = false
@@ -325,14 +325,14 @@ class OpenAiWhisperAsrController(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: java.io.IOException) {
-                lastError = e.message ?: "网络连接失败"
-                Logger.w(TAG, "Whisper ASR 请求失败(attempt=${attempt + 1}): ${e.message}")
+                lastError = e.message ?: "La conexión de red falló"
+                Logger.w(TAG, "Whisper ASR Solicitud fallida(attempt=${attempt + 1}): ${e.message}")
             }
             if (attempt + 1 < AsrConstants.RECONNECT_MAX_ATTEMPTS) {
                 delay(AsrConstants.HTTP_RETRY_BACKOFF_MS * (attempt + 1))
             }
         }
-        lastError?.let { setError("语音识别失败: $it") }
+        lastError?.let { setError("Error en el reconocimiento de voz: $it") }
         null
     }
 
@@ -348,18 +348,18 @@ class OpenAiWhisperAsrController(
     }
 
     /**
-     * 解析 transcription 响应,提取 text 字段。
+     * Analizar la respuesta de transcripción,Extraer campo de texto.
      * - response_format=json: { "text": "..." }
-     * - response_format=text: 直接是纯文本(回退兼容)
+     * - response_format=text: Texto directamente sin formato(Compatibilidad alternativa)
      */
     private fun parseTranscriptionResponse(body: String): String? {
-        // 先尝试 JSON 解析
+        // Pruebe primero el análisis JSON
         val fromJson = resultOf {
             val obj = Json.parseToJsonElement(body) as? JsonObject
             (obj?.get("text") as? JsonPrimitive)?.content
         }.getOrNull()
         if (!fromJson.isNullOrBlank()) return fromJson
-        // 回退:响应可能直接是纯文本(response_format=text)
+        // revertir:La respuesta puede ser directamente texto plano.(response_format=text)
         return body.takeIf { it.isNotBlank() }
     }
 
@@ -368,7 +368,7 @@ class OpenAiWhisperAsrController(
         _state.update { it.copy(status = ASRStatus.Stopping) }
         recordJob?.cancel()
         releaseRecorder()
-        // 最后一次 flush:等当前 flushJob 完成后直接调用 flushSegment(绕过 triggerFlush 的并发检查)
+        // La última descarga: llame directamente después de que se complete el trabajo de descarga actual flushSegment(Omitir la verificación de concurrencia de triggerFlush)
         scope.launch(Dispatchers.IO) {
             try {
                 flushJob?.join()
@@ -376,8 +376,8 @@ class OpenAiWhisperAsrController(
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Logger.w(TAG, "最终 flush 失败: ${e.message}")
-                setError(e.message ?: "Whisper ASR 最终 flush 失败")
+                Logger.w(TAG, "La descarga final falló: ${e.message}")
+                setError(e.message ?: "Whisper ASR La descarga final falló")
             } finally {
                 _state.update { it.afterAsrStop() }
             }
@@ -414,16 +414,16 @@ class OpenAiWhisperAsrController(
         private const val TAG = "OpenAiWhisperAsrController"
         private const val DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
-        /** 分段时间阈值:30 秒触发一次 flush。 */
+        /** Umbral de tiempo fraccionado:30 Active la descarga una vez por segundo. */
         private const val SEGMENT_DURATION_MS = 30_000L
 
-        /** 分段字节阈值:6MB 触发 flush(提前量,避免单段过大)。 */
+        /** Umbral de bytes de fragmento:6MB gatillo flush(plazo de entrega,Evite segmentos individuales que sean demasiado grandes). */
         private const val MAX_SEGMENT_BYTES = 6 * 1024 * 1024
 
-        /** 最短段字节数:16kHz/16bit/mono 下 100ms = 3200 bytes,短于此值跳过避免 400。 */
+        /** Número mínimo de bytes en el segmento:16kHz/16bit/mono abajo 100ms = 3200 bytes,Saltos más cortos que esto evitan 400. */
         private const val MIN_SEGMENT_BYTES = 3200
 
-        /** VAD 触发 flush 的最短段字节数:避免过短段(500ms = 16000 bytes)。 */
+        /** VAD El número mínimo de bytes en el segmento que activa el vaciado.:Evite los párrafos cortos(500ms = 16000 bytes). */
         private const val MIN_VAD_FLUSH_BYTES = 16000
         private const val MAX_CONSECUTIVE_FLUSH_FAILURES = 3
     }

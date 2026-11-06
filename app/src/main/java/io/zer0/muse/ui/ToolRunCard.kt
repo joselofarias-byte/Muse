@@ -34,32 +34,32 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * 操作组卡 —— 把**连续的工具调用**聚合为一张卡。
+ * Tarjeta de grupo de operación —— poner**Llamadas continuas a herramientas**agregados en una sola tarjeta.
  *
- * - 折叠态(默认):一行摘要(执行了 N 个操作 + 工具名链);
- * - 展开态:逐个复用 [ToolCallCard],与单条工具调用的细节展示保持一致。
+ * - estado plegado(Predeterminado):resumen de una línea(N operaciones realizadas + cadena de nombres de herramientas);
+ * - estado expandido:Reutilizar uno por uno [ToolCallCard],Sea coherente con la visualización detallada de una única llamada de herramienta.
  *
- * 分组由 [io.zer0.muse.ui.chat.ChatDisplayGrouper] 决定;渲染接入见 ChatScreen ——
- * 组首条渲染本卡,组内其余条不渲染(消息索引保持不变,滚动/高亮无需调整)。
+ * Agrupado por [io.zer0.muse.ui.chat.ChatDisplayGrouper] decidir;Acceso a renderizado ver ChatScreen ——
+ * La primera representación de esta tarjeta en el grupo.,Las barras restantes del grupo no se renderizan.(El índice de mensajes permanece sin cambios,desplazarse/No es necesario ajustar los aspectos más destacados).
  */
 @Composable
 internal fun ToolRunCard(
     msgs: List<UIMessage>,
     modifier: Modifier = Modifier,
     /**
-     * v2.6.7 fix（卡片审计）: 卡片回传处理器。
+     * v2.6.7 fix(Auditoría de tarjeta): Procesador de devolución de tarjetas.
      *
-     * 旧实现不传此参数，导致分组操作卡里的 show_card 没有交互桥：
-     * 同一张卡单独出现能点、连续 ≥2 个工具调用被分组后就不能点。
-     * 参数为 (messageId, action)，由调用方统一实现。
+     * La implementación anterior no pasa este parámetro, lo que da como resultado show_card en la tarjeta de operación del grupo sin un puente interactivo:
+     * Si la misma carta aparece sola, se podrá puntuar consecutivamente. ≥2 Una vez que se ha agrupado una llamada de herramienta, no se puede hacer clic en ella.
+     * Los parámetros son (messageId, action), implementado uniformemente por la persona que llama.
      */
     onCardAction: ((messageId: String, action: io.zer0.muse.ui.markdown.CardAction) -> Unit)? = null,
-    /** 本组的实时状态（是否在跑 / 在跑什么 / 哪一步在思考）。 */
+    /** El estado en tiempo real de este grupo (si se está ejecutando/qué se está ejecutando/en qué paso está pensando). */
     live: ToolRunLiveState = ToolRunLiveState(),
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val toolInfos = msgs.mapNotNull { it.toolCallInfo }
-    // v2.0.1: 纯思考组也要渲染（过程折叠），仅完全空组才跳过
+    // v2.0.1: También se representan grupos de pensamiento puro (plegado de proceso) y solo se omiten los grupos completamente vacíos.
     if (msgs.isEmpty()) return
 
     Surface(
@@ -75,8 +75,8 @@ internal fun ToolRunCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // 折叠态只留一行回看：运行中的实时状态已经移到输入栏上方的扁条，
-                    // 这里再撑 12dp 上下内边距纯属浪费屏幕。
+                    // Solo queda una línea en el estado plegado para su revisión: el estado de ejecución en tiempo real se ha movido a la barra plana sobre el campo de entrada.
+                    // Admitir aquí un relleno superior e inferior de 12 dp es un desperdicio de pantalla.
                     .padding(horizontal = 12.dp, vertical = 7.dp),
             ) {
                 ToolRunHeaderRow(msgs = msgs, toolInfos = toolInfos, expanded = expanded)
@@ -97,31 +97,31 @@ internal fun ToolRunCard(
 }
 
 /**
- * 过程组的「实时状态」。
+ * El "estado en tiempo real" del grupo de procesos.
  *
- * 打包成一个对象而不是三个参数：卡片构造参数已经贴着静态检查阈值，
- * 而这三项语义上本来就是一回事（这一组现在是不是活的、在干什么）。
+ * Empaquetado en un objeto en lugar de tres parámetros: los parámetros de construcción de la tarjeta ya están adjuntos al umbral de verificación estática,
+ * Estos tres elementos son semánticamente lo mismo (si este grupo está vivo y qué están haciendo ahora).
  */
 internal data class ToolRunLiveState(
-    /** 本组是否还在跑（只有当前流式的那一组为 true）。 */
+    /** Si este grupo todavía se está ejecutando (solo el grupo de transmisión actual es verdadero). */
     val isActive: Boolean = false,
-    /** 当前工具进度文案（如「正在执行 browser_navigate…」）。 */
+    /** Copia del progreso de la herramienta actual (como \"Ejecutando browser_navigate…”). */
     val progressMessage: String? = null,
-    /** 当前正在流式的那条消息 id，用于判定哪一步在「思考中」。 */
+    /** El ID del mensaje que se está transmitiendo actualmente se utiliza para determinar qué paso está \"bajo consideración\". */
     val activeMessageId: String? = null,
 )
 
 /**
- * 第二排：它现在正在干什么。
+ * Segunda fila: ¿Qué está haciendo ahora?
  *
- * 这一排是「活的状态」，不是「干完之后的清单」。所以：
- *  - 有工具进度文案 → 原样显示（「正在执行 browser_navigate…」）
- *  - 没进度但在想事 → 显示思考文字的最新一段（单行、取尾部）
- *  - 两者都没有 → 「思考中…」
- *  - 整组跑完了 → 这一排整个不出现
+ * Esta fila es un "estado de vida", no una "lista terminada". Entonces:
+ *  - Redacción de progreso de la herramienta → Mostrar tal cual ("Ejecutando browser_navigate…")
+ *  - No hay avances pero estoy pensando en algo. → Muestra el último párrafo del texto pensado (una sola línea, toma la cola)
+ *  - tampoco → "Pensando…"
+ *  - Todo el grupo ha terminado de correr. → Esta fila no aparece en absoluto.
  *
- * 跑完后为什么不留一行：上面已经写了工具数/思考数/总耗时，
- * 再挂一串 `a -> b -> c` 的工具名只是执行日志，既不是状态，也没人读。
+ * ¿Por qué no dejar una línea después de ejecutarla? El número de herramienta ya está escrito arriba./Piensa en los números/tiempo total invertido,
+ * Cuelga otra cuerda `a -> b -> c` El nombre de la herramienta es solo el registro de ejecución, ni estado ni legible.
  */
 @Composable
 private fun ToolRunLiveRow(
@@ -145,17 +145,17 @@ private fun ToolRunLiveRow(
     )
 }
 
-/** 实时状态最多展示多少字。一行大约能装这么多，超了取尾部。 */
+/** El número máximo de palabras mostradas en estado de tiempo real. Una línea puede contener aproximadamente esta cantidad, si se excede alguna, tome la cola. */
 private const val LIVE_STATUS_CHARS = 90
 
-/** 把换行/连续空白压成单个空格的匹配式：状态行每帧都算，不现编。 */
+/** poner salto de línea/Una fórmula coincidente que comprime espacios en blanco consecutivos en un solo espacio: la línea de estado se cuenta en cada fotograma y no se edita sobre la marcha. */
 private val whitespaceRun = Regex("\\s+")
 
 /**
- * 正在思考的单行预览。
+ * Vista previa de una línea de lo que estoy pensando.
  *
- * 取**尾部**：这是流式输出，最新那句才是它此刻在想的事，
- * 而且标签跟着动才看得出还在跑。
+ * tomar**cola**: Esta es la salida de transmisión. La última frase es en lo que está pensando en este momento.
+ * Y sólo cuando la etiqueta se mueve parece que todavía está ejecutándose.
  */
 private fun thinkingPreview(raw: String?): String? {
     val flat = raw.orEmpty().replace(whitespaceRun, " ").trim()
@@ -164,12 +164,12 @@ private fun thinkingPreview(raw: String?): String? {
 }
 
 /**
- * 算出当前应显示的活动文本。
+ * Descubra el texto activo que debería mostrarse actualmente.
  *
- * 思考取**尾部**：这是流式输出，最新那句才是它现在在想的事，
- * 而且标签在动才能看出“还在跑”。
- * 思考文字没落进消息时（刚发请求、首 token 未到）给一个占位词，
- * 否则这排会忽隐忽现，像卡住了。
+ * Piensa en tomar**cola**: Esta es la salida de transmisión. La última frase es en lo que está pensando ahora.
+ * Y solo puedes verlo cuando la etiqueta se está moviendo.“Todavía corriendo”.
+ * Cuando el texto pensado no cae en el mensaje (la solicitud acaba de enviarse y el primer token no ha llegado), se proporciona un marcador de posición.
+ * De lo contrario, la fila parpadeará hacia adentro y hacia afuera, como si estuviera atascada.
  */
 private fun resolveLiveActivity(
     msgs: List<UIMessage>,
@@ -188,10 +188,10 @@ private fun resolveLiveActivity(
 }
 
 /**
- * v2.6.7: 分组操作卡的展开区。
+ * v2.6.7: El área de expansión de la tarjeta de operación grupal.
  *
- * 从 [ToolRunCard] 抽出 —— 原函数已超 detekt LongMethod 阈值，
- * 且此处是它唯一随时间持续变长的部分（每次给卡片加交互参数都长一截）。
+ * de [ToolRunCard] sacar —— La función original ha superado el umbral de detekt LongMethod,
+ * Y esta es la única parte que continúa creciendo con el tiempo (cada vez que agrega parámetros interactivos a la tarjeta, crece un poco más).
  */
 @Composable
 private fun ToolRunExpandedRows(
@@ -215,9 +215,9 @@ private fun ToolRunExpandedRows(
                 val info = m.toolCallInfo
                 val reasoningText = m.reasoning
                 if (info != null) {
-                    // 每个工具各占一张可折叠行，默认收起 —— 与平台侧的
-                    // thinkingBlock / toolIndicator 保持同一节奏：
-                    // 组是折叠的，组内每一项也各自折叠，避免一次铺开几十行。
+                    // Cada herramienta ocupa una fila plegable, que está contraída de forma predeterminada. —— con plataforma lateral
+                    // thinkingBlock / toolIndicator Mantén el mismo ritmo:
+                    // Los grupos se pliegan y cada elemento del grupo también se pliega individualmente para evitar que se extiendan docenas de líneas a la vez.
                     ProcessStepItem(
                         title = info.toolName,
                         state = ProcessStepState(
@@ -241,10 +241,10 @@ private fun ToolRunExpandedRows(
                         )
                     }
                 } else if (reasoningText?.isNotBlank() == true) {
-                    // 思考也走同一套可折叠行，但要多做两件事：
-                    //  1. 标题按状态说话 —— 还在想就写「思考中…」，别用完成时态
-                    //  2. 摘要行下面给一行正文预览，否则一轮四次思考就是四行「思考完成」，
-                    //     想看清它想了什么必须逐个点开
+                    // Piensa en el mismo conjunto de filas plegables, pero haz dos cosas más:
+                    //  1. El título habla por estado —— Si todavía estás pensando en ello, simplemente escribe "Pensando en ello"…”, no uses el tiempo perfecto
+                    //  2. Debajo de la línea de resumen, proporcione una línea de vista previa del texto; de lo contrario, una ronda de cuatro reflexiones serán cuatro líneas de "Pensamiento completado".
+                    //     Si quieres ver claramente lo que está pensando, tienes que hacer clic en ellos uno por uno.
                     val thinkingNow = live.isActive && m.id.toString() == live.activeMessageId
                     ProcessStepItem(
                         title = stringResource(
@@ -255,10 +255,10 @@ private fun ToolRunExpandedRows(
                             },
                         ),
                         state = ProcessStepState(
-                            // 只在「正在思考」时给预览：历史思考各自挂一行会把列表撑散，
-                            // 而且它想出来的东西已经进正文了，再挂一行只是噪音。
+                            // Sólo dé una vista previa al "pensar": cada pensamiento histórico se dividirá en una línea, que extenderá la lista.
+                            // Además, lo que se le ocurrió ya se ha incorporado al texto principal, y otra línea es sólo ruido.
                             detailLine = if (thinkingNow) thinkingPreview(reasoningText) else null,
-                            // 标题会在「思考中」和「思考完成」之间变，折叠 key 必须用稳定值
+                            // El título cambiará entre "Pensamiento" y "Pensamiento completado", y la clave plegable debe usar un valor estable.
                             itemKey = "think_${m.id}",
                         ),
                         modifier = Modifier.fillMaxWidth(),
@@ -285,13 +285,13 @@ private fun ToolRunExpandedRows(
 }
 
 /**
- * 一组过程消息的统计口径（对齐平台侧 processFold 的三个计数）。
+ * El calibre estadístico de un conjunto de mensajes de proceso (alineados con los tres recuentos de ProcessFold del lado de la plataforma).
  *
- * - toolCount：实际调用的工具次数
- * - thinkingCount：带思考内容但有独立段的次数（同一段只算一次）
- * - unsuccessfulCount：已完成但失败的工具次数
+ * - toolCount: El número real de llamadas a herramientas.
+ * - thinkingCount: El número de veces con contenido pensado pero párrafos independientes (el mismo párrafo solo se cuenta una vez)
+ * - unsuccessfulCount: Número de veces que la herramienta se completó pero falló
  *
- * 第一层摘要只依赖这三个数，展开区才看细节。
+ * El resumen de primer nivel solo se basa en estos tres números y solo puede ver los detalles en el área ampliada.
  */
 internal data class ProcessTally(
     val toolCount: Int,
@@ -319,37 +319,37 @@ internal data class ProcessTally(
 }
 
 /**
- * [ProcessStepItem] 的次要状态。
+ * [ProcessStepItem] estatus secundario.
  *
- * 合成一个对象是为了让单步折叠行的入参保持在静态检查阈值内；
- * 调用方按需填字段，不用的留空。
+ * Se sintetiza un objeto para mantener los parámetros de entrada de la línea de plegado de un solo paso dentro del umbral de verificación estática;
+ * La persona que llama completa los campos según sea necesario y los deja en blanco si no es necesario.
  */
 internal data class ProcessStepState(
     val subtitle: String? = null,
     val isFailed: Boolean = false,
     val trailing: String? = null,
     /**
-     * 摘要行下面单独一行正文预览（单行截断）。
+     * Una línea separada de vista previa de texto debajo de la línea de resumen (truncamiento de una sola línea).
      *
-     * 与 [subtitle] 的区别：subtitle 与标题同行平分宽度，塞不下长文本；
-     * 思考预览需要独立一行，否则标题会被挤没。
+     * con [subtitle] La diferencia:subtitle Comparte el mismo ancho que el título y no cabe en texto largo;
+     * Tenga en cuenta que la vista previa debe estar en su propia línea; de lo contrario, el título quedará desplazado.
      */
     val detailLine: String? = null,
-    /** 折叠状态的稳定 key。不传则回退到标题，但标题会变时务必传。 */
+    /** Clave estable para estado colapsado. Si no se aprueba, volverá al título, pero se debe aprobar cuando el título cambie. */
     val itemKey: String? = null,
 )
 
 /**
- * 过程组内的单步可折叠行。
+ * Filas plegables de un solo paso dentro de grupos de procesos.
  *
- * 平台侧的做法是：组本身折叠，组内每一项（一次思考、一次工具调用）也各自折叠，
- * 摘要行常显、正文点击才出。这样一轮跑十几个工具时，展开组不会变成几十行墙。
+ * El enfoque en el lado de la plataforma es: el grupo en sí se pliega, y cada elemento del grupo (un pensamiento, una llamada de herramienta) también se pliega por separado.
+ * La línea abstracta siempre se muestra y el texto principal se muestra solo cuando se hace clic. De esta manera, cuando se ejecutan una docena de herramientas en una ronda, el grupo expandido no se convertirá en docenas de filas de paredes.
  *
- * @param title 摘要行主文案（工具名 / 「思考中…」）
- * @param subtitle 可选的次要说明（失败原因片段等）
- * @param isFailed 是否失败态（摘要行用错误色）
- * @param trailing 可选的尾部信息（耗时等）
- * @param content 展开后的正文
+ * @param title Redacción principal de línea abstracta (nombre de la herramienta / "Pensamiento"…")
+ * @param subtitle Descripción secundaria opcional (fragmento del motivo del fallo, etc.)
+ * @param isFailed Si se trata de un estado de falla (la línea de resumen está en color de error)
+ * @param trailing Información de cola opcional (consumo de tiempo, etc.)
+ * @param content Texto ampliado
  */
 @Composable
 private fun ProcessStepItem(
@@ -362,8 +362,8 @@ private fun ProcessStepItem(
     val isFailed = state.isFailed
     val trailing = state.trailing
     val detailLine = state.detailLine
-    // key 优先用调用方给的稳定值：思考项标题会在「思考中」和「思考完成」之间变，
-    // 拿标题当 key 会让用户刚展开的项在跑完那一刻自己折回去。
+    // key Se da prioridad al valor estable dado por la persona que llama: el título del elemento de pensamiento cambiará entre "Pensamiento" y "Pensamiento completado".
+    // El uso del título como clave hará que el elemento que el usuario acaba de expandir se pliegue hacia atrás en el momento en que finalice.
     var expanded by rememberSaveable(state.itemKey ?: title) { mutableStateOf(false) }
     Column(modifier = modifier) {
         Row(
@@ -375,7 +375,7 @@ private fun ProcessStepItem(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(
-                // 失败仍是警告三角（状态优先于类型），正常时按这一步的动作类型给图标。
+                // El fallo sigue siendo un triángulo de advertencia (el estado tiene prioridad sobre el tipo). Normalmente presione el ícono de tipo de acción para este paso.
                 imageVector = if (isFailed) MuseIcons.alertTriangle else processIconFor(title),
                 contentDescription = null,
                 tint = if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -414,7 +414,7 @@ private fun ProcessStepItem(
                 modifier = Modifier.size(14.dp),
             )
         }
-        // 正文预览：不展开也能看到这一步在干什么
+        // Vista previa del texto: puede ver lo que hace este paso sin expandirlo.
         if (!detailLine.isNullOrBlank()) {
             Text(
                 text = detailLine,
@@ -440,15 +440,15 @@ private fun ProcessStepItem(
 }
 
 /**
- * v2.6.7: 分组操作卡的摘要头部（图标 + 数量 + 失败标记 + 总耗时 + 折叠箭头）。
+ * v2.6.7: Encabezado de resumen de tarjetas de operaciones agrupadas (icono + cantidad + marca de falla + tiempo total empleado + flecha de colapso).
  *
- * 从 [ToolRunCard] 抽出：头部本身就是一块独立语义，
- * 也让主函数的 LongMethod 回到阈值内。
+ * de [ToolRunCard] Extracción: el encabezado en sí es una pieza de semántica independiente,
+ * También devuelva el LongMethod de la función principal dentro del umbral.
  */
 @Composable
 private fun ToolRunHeaderRow(msgs: List<UIMessage>, toolInfos: List<io.zer0.ai.core.ToolCallInfo>, expanded: Boolean) {
-    // 第一层摘要：干了多少事、想了多少次、失败几次，一眼可见。
-    // 展开后才看具体每一步 —— 与平台侧的两层结构一致。
+    // Resumen de primer nivel: Puedes ver de un vistazo cuántas cosas has hecho, cuántas veces lo has pensado y cuántas veces has fallado.
+    // Vea cada paso en detalle después de desplegarlo. —— Consistente con la estructura de dos pisos del lado de la plataforma.
     val tally = ProcessTally.of(msgs)
     val counts = buildList {
         if (tally.toolCount > 0) {
@@ -480,7 +480,7 @@ private fun ToolRunHeaderRow(msgs: List<UIMessage>, toolInfos: List<io.zer0.ai.c
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        // 有失败步骤时给个警告标志,折叠态也能一眼看到
+        // Dar una señal de advertencia cuando hay un paso fallido,También puedes verlo plegado de un vistazo.
         if (tally.unsuccessfulCount > 0) {
             Icon(
                 imageVector = MuseIcons.alertTriangle,
@@ -489,8 +489,8 @@ private fun ToolRunHeaderRow(msgs: List<UIMessage>, toolInfos: List<io.zer0.ai.c
                 modifier = Modifier.size(14.dp),
             )
         }
-        // 折叠态显示本组工具的总执行耗时：用户能直接判断
-        // “慢在工具还是慢在模型”，不用展开就能看到。
+        // El estado plegado muestra el tiempo total de ejecución de este grupo de herramientas: los usuarios pueden juzgar directamente
+        // “¿Es la lentitud de la herramienta o la lentitud del modelo?”, puedes verlo sin expandirlo.
         val totalDurationMs = toolInfos.mapNotNull { it.durationMs }.sum()
         if (totalDurationMs > 0) {
             Text(
@@ -510,10 +510,10 @@ private fun ToolRunHeaderRow(msgs: List<UIMessage>, toolInfos: List<io.zer0.ai.c
 }
 
 /**
- * 工具执行耗时的可读格式化。
+ * La herramienta realiza un formateo legible que requiere mucho tiempo.
  *
- * 小于 1 秒显示毫秒（如 `320ms`），否则显示秒（一位小数，如 `1.8s`），
- * 超过一分钟显示分秒（如 `1m20s`）。保持短小，不抢工具名与摘要的视觉重心。
+ * Muestra milisegundos de menos de 1 segundo (p. ej. `320ms`), de lo contrario muestra segundos (un decimal, como `1.8s`),
+ * Muestra minutos y segundos durante un minuto (p. ej. `1m20s`). Sea breve y no quite el enfoque visual del nombre de la herramienta y del resumen.
  */
 internal fun formatToolDuration(durationMs: Long): String = when {
     durationMs < 1000L -> "${durationMs}ms"

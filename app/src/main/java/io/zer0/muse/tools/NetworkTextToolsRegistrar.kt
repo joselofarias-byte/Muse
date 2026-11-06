@@ -10,10 +10,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
 /**
- * P1-3b 拆域：网络/文本工具注册器。
+ * P1-3b Desterritorialización: Red/Registrador de herramientas de texto.
  *
- * 从 ToolRegistry.kt 抽出的 ping_host / dns_lookup / get_public_ip / json_pretty / generate_password，
- * 只依赖 Context 字符串资源与标准网络/序列化库。
+ * Extraído de ToolRegistry.kt ping_host / dns_lookup / get_public_ip / json_pretty / generate_password,
+ * Confíe únicamente en recursos de cadenas de contexto y redes estándar/Biblioteca de serialización.
  */
 class NetworkTextToolsRegistrar(
     private val context: Context,
@@ -27,10 +27,10 @@ class NetworkTextToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "ping_host",
-                description = "Ping 指定的域名或 IP,测试网络可达性。",
+                description = "Ping nombre de dominio especificado o IP,Probar la accesibilidad de la red.",
                 parameters = mapOf(
-                    "host" to "必填,目标域名或 IP,如 baidu.com",
-                    "timeout_ms" to "可选,超时毫秒数,默认 3000",
+                    "host" to "Requerido,nombre de dominio de destino o IP,Como por ejemplo baidu.com",
+                    "timeout_ms" to "Opcional,Tiempo de espera en milisegundos,Predeterminado 3000",
                 ),
                 required = setOf("host"),
                 category = "built-in",
@@ -53,15 +53,15 @@ class NetworkTextToolsRegistrar(
                         "$timeout",
                     )
                 }
-            }.onError { msg, _ -> Logger.w("NetworkTools", "Ping 失败: $msg") }
+            }.onError { msg, _ -> Logger.w("NetworkTools", "Ping falló: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_ping_host_failed, host)
         }
 
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "dns_lookup",
-                description = "解析域名对应的所有 IP 地址(A 记录)。",
-                parameters = mapOf("host" to "必填,目标域名,如 google.com"),
+                description = "Resolver todas las direcciones IP correspondientes al nombre de dominio.(A grabar).",
+                parameters = mapOf("host" to "Requerido,nombre de dominio de destino,Como por ejemplo google.com"),
                 required = setOf("host"),
                 category = "built-in",
                 riskLevel = ToolRiskLevel.SAFE,
@@ -79,14 +79,14 @@ class NetworkTextToolsRegistrar(
                         context.getString(R.string.tool_dns_lookup_result, host, ips.size, ips.joinToString("\n"))
                     }
                 }
-            }.onError { msg, _ -> Logger.w("NetworkTools", "DNS 解析失败: $msg") }
+            }.onError { msg, _ -> Logger.w("NetworkTools", "DNS El análisis falló: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_dns_lookup_failed, host)
         }
 
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "get_public_ip",
-                description = "获取当前设备的公网 IP 地址。",
+                description = "Obtenga la dirección IP pública del dispositivo actual.",
                 parameters = emptyMap(),
                 required = emptySet(),
                 category = "built-in",
@@ -110,17 +110,17 @@ class NetworkTextToolsRegistrar(
                     }
                     context.getString(R.string.tool_public_ip_failed)
                 }
-            }.onError { msg, _ -> Logger.w("NetworkTools", "获取公网 IP 失败: $msg") }
+            }.onError { msg, _ -> Logger.w("NetworkTools", "No se pudo obtener la IP pública: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_public_ip_failed)
         }
 
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "json_pretty",
-                description = "将 JSON 字符串格式化为易读形式(美化/压缩)。",
+                description = "Formatee la cadena JSON en un formato legible por humanos(embellecer/Compresión).",
                 parameters = mapOf(
-                    "json" to "必填,要格式化的 JSON 字符串",
-                    "indent" to "可选,true/false 是否展开缩进,默认 true",
+                    "json" to "Requerido,La cadena JSON a formatear",
+                    "indent" to "Opcional,true/false Ya sea para expandir la sangría,Predeterminado true",
                 ),
                 required = setOf("json"),
                 category = "built-in",
@@ -138,20 +138,20 @@ class NetworkTextToolsRegistrar(
                 }
                 val element = Json.parseToJsonElement(input)
                 prettyJson.encodeToString(JsonElement.serializer(), element)
-            }.onError { msg, _ -> Logger.w("NetworkTools", "JSON 格式化失败: $msg") }
+            }.onError { msg, _ -> Logger.w("NetworkTools", "JSON Error de formato: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_json_pretty_failed)
         }
 
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "generate_password",
-                description = "生成随机密码。可指定长度和是否包含大小写字母、数字、符号。",
+                description = "Genera una contraseña aleatoria. Puede especificar la longitud y si contiene letras mayúsculas y minúsculas, números y símbolos.",
                 parameters = mapOf(
-                    "length" to "可选,密码长度,默认 16,范围 4-64",
-                    "uppercase" to "可选,true/false 包含大写字母,默认 true",
-                    "lowercase" to "可选,true/false 包含小写字母,默认 true",
-                    "digits" to "可选,true/false 包含数字,默认 true",
-                    "symbols" to "可选,true/false 包含特殊符号,默认 true",
+                    "length" to "Opcional,Longitud de la contraseña,Predeterminado 16,alcance 4-64",
+                    "uppercase" to "Opcional,true/false Contiene letras mayúsculas,Predeterminado true",
+                    "lowercase" to "Opcional,true/false Contiene letras minúsculas,Predeterminado true",
+                    "digits" to "Opcional,true/false Contiene números,Predeterminado true",
+                    "symbols" to "Opcional,true/false Contiene símbolos especiales,Predeterminado true",
                 ),
                 required = emptySet(),
                 category = "built-in",

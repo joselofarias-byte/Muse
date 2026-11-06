@@ -8,179 +8,179 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * LlmBudget token 截断边界测试(补充 memory 模块已有测试)。
+ * LlmBudget token prueba de límites truncados(Se ha probado el módulo de memoria suplementaria.).
  *
- * 重点覆盖任务要求的边界场景:
- *  - 空消息列表 / 空文本
- *  - 单条消息未超限 → 原样返回
- *  - 多条消息总 token 超限 → 截断并保留头部内容
- *  - 边界:token 数刚好等于 maxTokens
- *  - 边界:单条消息已超 maxTokens
+ * Centrarse en cubrir los escenarios de límites requeridos por las tareas.:
+ *  - Lista de mensajes vacía/texto vacío
+ *  - Un solo mensaje no supera el límite → Volver como está
+ *  - El número total de tokens en varios mensajes supera el límite. → Truncar y mantener el contenido del encabezado
+ *  - frontera:token El número es exactamente igual a maxTokens
+ *  - frontera:Un solo mensaje ha superado maxTokens
  *
- * 注:[LlmBudget.truncateToTokenBudget] 接收单个 String(记忆 markdown),
- * 非 List<UIMessage>。此处"多条消息"指拼接后的多段文本,验证截断行为。
+ * Nota:[LlmBudget.truncateToTokenBudget] recibir soltero String(memoria markdown),
+ * no List<UIMessage>. aquí"múltiples mensajes"Se refiere a múltiples fragmentos de texto después de empalmar.,Verifique el comportamiento de truncamiento.
  *
- * 截断语义:实现保留文本**头部**(前 N 个 token),尾部追加 "…(memory truncated)" 标记。
+ * semántica de truncamiento:Implementar texto retenido**cabeza**(N superior token),Agregar al final "…(memory truncated)" marca.
  */
 class LlmBudgetTest {
 
-    // ── 空文本 / 空消息列表 ─────────────────────────────────────────────
+    // ── Texto vacío/lista de mensajes vacía ─────────────────────────────────────────────
 
     @Test
-    fun `空文本返回空`() {
+    fun `El texto vacío vuelve vacío`() {
         assertEquals("", LlmBudget.truncateToTokenBudget("", 100))
     }
 
     @Test
-    fun `空文本 budget 为 0 也返回空`() {
+    fun `El presupuesto de texto vacío es 0 y también devuelve vacío`() {
         assertEquals("", LlmBudget.truncateToTokenBudget("", 0))
     }
 
     @Test
-    fun `空白文本不截断`() {
-        // 空白文本 token 数为 0,不会超限
+    fun `El texto en blanco no se trunca`() {
+        // El número de tokens de texto en blanco es 0,No excederá el límite
         val result = LlmBudget.truncateToTokenBudget("   ", 10)
         assertEquals("   ", result)
     }
 
-    // ── 单条消息未超限 ──────────────────────────────────────────────────
+    // ── Un solo mensaje no supera el límite ──────────────────────────────────────────────────
 
     @Test
-    fun `单条消息未超限返回原文`() {
+    fun `Un solo mensaje no supera el límite Volver al texto original`() {
         val text = "Hello World"
         val result = LlmBudget.truncateToTokenBudget(text, 1000)
         assertEquals(text, result)
     }
 
     @Test
-    fun `budget 远大于文本 token 数时返回原文`() {
-        val text = "这是一段简短的文本"
+    fun `budget Si es mucho mayor que la cantidad de tokens de texto, se devolverá el texto original`() {
+        val text = "Este es un texto corto."
         val result = LlmBudget.truncateToTokenBudget(text, 10000)
         assertEquals(text, result)
     }
 
-    // ── 多条消息总 token 超限,验证从头部截断 ────────────────────────────
+    // ── El número total de tokens en varios mensajes supera el límite.,Validar truncamiento desde head ────────────────────────────
 
     @Test
-    fun `多条消息拼接后超限被截断并追加标记`() {
-        // 模拟多条记忆消息拼接
+    fun `Después de unir varios mensajes, se truncan y se marcan cuando superan el límite`() {
+        // Simular la unión de múltiples mensajes de memoria.
         val text = buildString {
-            appendLine("记忆1:用户喜欢编程")
-            appendLine("记忆2:用户使用 Kotlin")
-            appendLine("记忆3:用户在开发 Android 应用")
-            appendLine("记忆4:用户的项目名叫 Muse")
-            appendLine("记忆5:用户喜欢深色主题")
-            appendLine("记忆6:用户使用 TRAE IDE")
-            appendLine("记忆7:用户喜欢喝咖啡")
-            appendLine("记忆8:用户的工作时间是 9-18")
+            appendLine("memoria1:A los usuarios les encanta programar")
+            appendLine("memoria2:Uso del usuario Kotlin")
+            appendLine("memoria3:Usuarios que desarrollan aplicaciones de Android")
+            appendLine("memoria4:Nombre del proyecto del usuario Muse")
+            appendLine("memoria5:A los usuarios les gustan los temas oscuros")
+            appendLine("memoria6:Uso del usuario TRAE IDE")
+            appendLine("memoria7:A los usuarios les gusta tomar café.")
+            appendLine("memoria8:El horario laboral del usuario es 9-18")
         }
-        // 设一个很小的 budget(2 token),强制截断
+        // Establecer un muy pequeño budget(2 token),truncamiento forzado
         val result = LlmBudget.truncateToTokenBudget(text, 2)
-        assertTrue("截断结果应包含标记: $result", result.contains("(memory truncated)"))
-        assertTrue("截断结果应比原文短", result.length < text.length)
+        assertTrue("Los resultados truncados deben contener etiquetas: $result", result.contains("(memory truncated)"))
+        assertTrue("El resultado truncado debe ser más corto que el texto original.", result.length < text.length)
     }
 
     @Test
-    fun `截断后保留头部内容`() {
-        // 验证截断后结果以原文开头开始(头部被保留)
-        val text = "第一段内容比较长用于测试截断行为. 第二段内容同样很长用于验证尾部被移除."
+    fun `Mantener el contenido del encabezado después del truncamiento`() {
+        // Verifique que el resultado después del truncamiento comience desde el principio del texto original(la cabeza esta reservada)
+        val text = "El primer párrafo es relativamente largo y se utiliza para probar el comportamiento de truncamiento.. El segundo párrafo también es muy largo y sirve para comprobar que se ha quitado la cola.."
         val result = LlmBudget.truncateToTokenBudget(text, 3)
-        // 截断后应以原文的前几个字符开头
-        assertTrue("截断后应保留头部: result='$result'", result.startsWith(text.take(3)))
-        // 应包含截断标记
+        // Después del truncamiento, debería comenzar con los primeros caracteres del texto original.
+        assertTrue("El encabezado debe conservarse después del truncamiento: result='$result'", result.startsWith(text.take(3)))
+        // debe contener marcadores de truncamiento
         assertTrue(result.contains("(memory truncated)"))
     }
 
     @Test
-    fun `多条消息截断后头部消息内容存在`() {
-        val msg1 = "第一条记忆非常重要需要保留"
-        val msg2 = "第二条记忆也很重要"
-        val msg3 = "第三条记忆可以丢弃"
+    fun `El contenido del mensaje de encabezado existe después de que se truncan varios mensajes`() {
+        val msg1 = "El primer recuerdo es muy importante de conservar."
+        val msg2 = "El segundo recuerdo también es importante."
+        val msg3 = "El tercer recuerdo se puede descartar."
         val text = "$msg1\n$msg2\n$msg3"
-        // 用较大但不足以容纳全部的 budget
+        // use más grande pero no lo suficientemente grande para acomodar a todos budget
         val totalTokens = TokenEstimator.estimate(text)
         val budget = (totalTokens / 2).coerceAtLeast(1)
         val result = LlmBudget.truncateToTokenBudget(text, budget)
-        // 头部内容(msg1 的前几个字)应存在
-        assertTrue("截断后应保留第一条消息的头部: $result", result.contains(msg1.take(3)))
+        // Contenido del encabezado(msg1 las primeras palabras de)debería existir
+        assertTrue("El encabezado del primer mensaje debe conservarse después del truncamiento.: $result", result.contains(msg1.take(3)))
     }
 
-    // ── 边界:刚好等于 maxTokens ────────────────────────────────────────
+    // ── frontera:exactamente igual a maxTokens ────────────────────────────────────────
 
     @Test
-    fun `token 数刚好等于 budget 时返回原文`() {
+    fun `token Volver al texto original cuando el número sea exactamente igual al presupuesto`() {
         val text = "Hello World"
-        // 用 TokenEstimator 测量精确 token 数(BPE 与 LlmBudget 同源 cl100k_base)
+        // Utilice TokenEstimator para medir la cantidad exacta de tokens(BPE Mismo origen que LlmBudget cl100k_base)
         val exactTokens = TokenEstimator.estimate(text)
-        assertTrue("测试文本 token 数应 > 0", exactTokens > 0)
-        // budget 刚好等于 token 数
+        assertTrue("El número de token del texto de prueba debe > 0", exactTokens > 0)
+        // budget Exactamente igual al número de tokens
         val result = LlmBudget.truncateToTokenBudget(text, exactTokens)
-        assertEquals("token 数 == budget 时应返回原文", text, result)
-        assertFalse("不应包含截断标记", result.contains("(memory truncated)"))
+        assertEquals("token numero == budget debe volver al texto original", text, result)
+        assertFalse("no debe contener marcadores de truncamiento", result.contains("(memory truncated)"))
     }
 
     @Test
-    fun `token 数刚好等于 budget 加 1 时被截断`() {
+    fun `token Truncado cuando el número es exactamente igual al presupuesto más 1`() {
         val text = "Hello World This Is A Test"
         val exactTokens = TokenEstimator.estimate(text)
-        // budget 比 token 数少 1,应触发截断
+        // budget Menos que la cantidad de tokens 1,debería desencadenar el truncamiento
         val result = LlmBudget.truncateToTokenBudget(text, exactTokens - 1)
-        assertTrue("budget = tokens - 1 时应截断: $result", result.contains("(memory truncated)"))
+        assertTrue("budget = tokens - 1 debe ser truncado: $result", result.contains("(memory truncated)"))
     }
 
-    // ── 边界:单条消息已超 maxTokens ────────────────────────────────────
+    // ── frontera:Un solo mensaje ha superado maxTokens ────────────────────────────────────
 
     @Test
-    fun `单条消息超 maxTokens 时被截断`() {
+    fun `Un solo mensaje se trunca cuando excede maxTokens`() {
         val text = "This is a very long single message that definitely exceeds the token budget " +
             "and should be truncated with the memory truncated marker appended at the end"
         val result = LlmBudget.truncateToTokenBudget(text, 3)
-        assertTrue("单条超限消息应被截断: $result", result.contains("(memory truncated)"))
-        assertTrue("截断后应比原文短", result.length < text.length)
+        assertTrue("Los mensajes únicos que exceden el límite deben truncarse: $result", result.contains("(memory truncated)"))
+        assertTrue("El texto truncado debe ser más corto que el original.", result.length < text.length)
     }
 
     @Test
-    fun `单条超长消息截断后保留头部 token`() {
+    fun `Un único mensaje muy largo se trunca y se conserva el encabezado token`() {
         val text = "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
         val result = LlmBudget.truncateToTokenBudget(text, 2)
-        // 头部前几个字符应保留
-        assertTrue("应保留头部: $result", result.isNotEmpty())
-        assertTrue("应包含截断标记", result.contains("(memory truncated)"))
+        // Se deben conservar los primeros caracteres del encabezado.
+        assertTrue("Se debe conservar la cabeza.: $result", result.isNotEmpty())
+        assertTrue("debe contener marcadores de truncamiento", result.contains("(memory truncated)"))
     }
 
-    // ── budget 为 0 或负数(不限制) ────────────────────────────────────
+    // ── budget es 0 o negativo(sin limite) ────────────────────────────────────
 
     @Test
-    fun `budget 为 0 返回原文(不限制)`() {
+    fun `budget Volver al texto original para 0(sin limite)`() {
         val text = "Hello World"
         assertEquals(text, LlmBudget.truncateToTokenBudget(text, 0))
     }
 
     @Test
-    fun `budget 为负数返回原文(不限制)`() {
+    fun `budget Devuelve el texto original para números negativos(sin limite)`() {
         val text = "Hello World"
         assertEquals(text, LlmBudget.truncateToTokenBudget(text, -1))
     }
 
-    // ── 中文文本截断 ───────────────────────────────────────────────────
+    // ── Truncamiento de texto chino ───────────────────────────────────────────────────
 
     @Test
-    fun `中文超长文本截断正确`() {
-        val text = "你好世界这是一段很长的中文文本用于测试截断功能是否正常工作" +
-            "追加更多中文内容确保超过预算限制触发截断逻辑"
+    fun `El texto chino muy largo está truncado correctamente`() {
+        val text = "Hola mundo Este es un texto largo en chino que se utiliza para probar si la función de truncamiento funciona correctamente." +
+            "Agregar más contenido chino garantiza que la lógica de truncamiento se active cuando se exceda el límite de presupuesto"
         val result = LlmBudget.truncateToTokenBudget(text, 3)
-        assertTrue("中文截断应包含标记: $result", result.contains("(memory truncated)"))
+        assertTrue("El truncamiento chino debe incluir etiquetas.: $result", result.contains("(memory truncated)"))
     }
 
-    // ── withReasoningHeadroom 边界 ─────────────────────────────────
+    // ── withReasoningHeadroom frontera ─────────────────────────────────
 
     @Test
-    fun `withReasoningHeadroom null 模型返回原值`() {
+    fun `withReasoningHeadroom null El modelo devuelve el valor original`() {
         assertEquals(4096, LlmBudget.withReasoningHeadroom(4096, null))
     }
 
     @Test
-    fun `withReasoningHeadroom 非 reasoning 模型返回原值`() {
+    fun `withReasoningHeadroom Los modelos sin razonamiento devuelven valores originales`() {
         val model = io.zer0.ai.core.Model(
             id = "gpt-4o",
             name = "GPT-4o",
@@ -191,7 +191,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `withReasoningHeadroom reasoning 模型增加缓冲且不超过上限`() {
+    fun `withReasoningHeadroom reasoning El modelo aumenta el buffer sin exceder el límite superior`() {
         val model = io.zer0.ai.core.Model(
             id = "o1-preview",
             name = "O1 Preview",
@@ -200,28 +200,28 @@ class LlmBudgetTest {
             maxOutputTokens = 32768,
         )
         val result = LlmBudget.withReasoningHeadroom(4096, model)
-        assertTrue("reasoning 模型应增加缓冲: $result", result > 4096)
-        assertTrue("不应超过模型上限: $result", result <= 32768)
-        // 验证缓冲值 = 4096 + DEFAULT_REASONING_HEADROOM_TOKENS(1024)
+        assertTrue("reasoning El modelo debería aumentar el almacenamiento en búfer: $result", result > 4096)
+        assertTrue("No debe exceder el límite superior del modelo.: $result", result <= 32768)
+        // Verificar el valor del búfer = 4096 + DEFAULT_REASONING_HEADROOM_TOKENS(1024)
         assertEquals(4096 + LlmBudget.DEFAULT_REASONING_HEADROOM_TOKENS, result)
     }
 
     @Test
-    fun `withReasoningHeadroom 缓冲超过模型上限时 clamp`() {
-        // visibleMaxTokens + buffer > maxOutputTokens 时应 clamp 到 maxOutputTokens
+    fun `withReasoningHeadroom Cuando el búfer excede el límite superior del modelo clamp`() {
+        // visibleMaxTokens + buffer > maxOutputTokens debe sujetarse a maxOutputTokens
         val model = io.zer0.ai.core.Model(
             id = "o3-mini",
             name = "O3 Mini",
             providerId = "openai",
             contextWindow = 128000,
-            maxOutputTokens = 5000, // 小于 visibleMaxTokens + 1024
+            maxOutputTokens = 5000, // menos que visibleMaxTokens + 1024
         )
         val result = LlmBudget.withReasoningHeadroom(4096, model)
-        assertEquals("应 clamp 到 maxOutputTokens", 5000, result)
+        assertEquals("debe sujetarse a maxOutputTokens", 5000, result)
     }
 
     @Test
-    fun `withReasoningHeadroom reasoning 模型无 maxOutputTokens 时不 clamp`() {
+    fun `withReasoningHeadroom reasoning No cuando el modelo no tiene maxOutputTokens clamp`() {
         val model = io.zer0.ai.core.Model(
             id = "deepseek-r1",
             name = "DeepSeek R1",
@@ -234,7 +234,7 @@ class LlmBudgetTest {
     }
 
     @Test
-    fun `withReasoningHeadroom 识别各种 reasoning 模型 id`() {
+    fun `withReasoningHeadroom Identificar varios modelos de razonamiento id`() {
         val reasoningIds = listOf("o1-preview", "o3-mini", "o4-mini", "model-thinking", "reasoning-v1", "deepseek-r1")
         for (id in reasoningIds) {
             val model = io.zer0.ai.core.Model(
@@ -245,7 +245,7 @@ class LlmBudgetTest {
                 maxOutputTokens = 32768,
             )
             val result = LlmBudget.withReasoningHeadroom(4096, model)
-            assertTrue("$id 应被识别为 reasoning 模型(buffer > 4096): $result", result > 4096)
+            assertTrue("$id Debe ser reconocido como un modelo de razonamiento.(buffer > 4096): $result", result > 4096)
         }
     }
 }

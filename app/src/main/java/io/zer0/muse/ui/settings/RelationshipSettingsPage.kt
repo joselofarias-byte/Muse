@@ -40,14 +40,14 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v2.6.7（P1-1）: 角色关系设置页。
+ * v2.6.7(P1-1): Página de configuración de relaciones de roles.
  *
- * 让用户能显式定义"我和这个角色是什么关系"，并调节他主动找你的频率。
- * 此前关系完全不存在——所有角色"同等地位、同样粘人"，主动私信是写死的
- * 40% 概率，与聊了多久毫无关系。
+ * Permitir a los usuarios definir explícitamente"¿Cuál es mi relación con este personaje?"y ajusta la frecuencia con la que toma la iniciativa para encontrarte.
+ * Antes no había ninguna relación.——Todos los roles"Mismo estatus, mismo apego", el mensaje privado proactivo está escrito.
+ * 40% La probabilidad no tiene nada que ver con cuánto duró la conversación.
  *
- * 亲密度只读展示（由真实互动自动累加），用户可改的是：关系标签、意愿档位、
- * 是否允许主动私信、每日上限。
+ * La intimidad es una visualización de solo lectura (acumulada automáticamente a partir de interacciones reales). Lo que el usuario puede cambiar es: etiqueta de relación, nivel de voluntad,
+ * Ya sea para permitir mensajes privados activos y límite diario.
  */
 @Composable
 fun RelationshipSettingsPage(onBack: () -> Unit) {
@@ -109,7 +109,7 @@ fun RelationshipSettingsPage(onBack: () -> Unit) {
     }
 }
 
-/** 列表副标题：「关系标签 · 亲密度」；未设置时显示提示文案。 */
+/** Subtítulo de la lista: \"Etiquetas de relación · \"Intimidad\"; muestra el texto del mensaje cuando no está configurado. */
 @Composable
 private fun relationshipSubtitle(relationship: AssistantRelationshipEntity?): String {
     val unset = stringResource(R.string.settings_relationship_unset)
@@ -131,7 +131,7 @@ private fun RelationshipEditDialog(
 ) {
     var label by remember { mutableStateOf(initial.relationLabel) }
     var level by remember { mutableStateOf(initial.proactiveLevel) }
-    // v2.6.9: 单角色私信开关 + 每日上限（字段早已存在，UI 一直没接）
+    // v2.6.9: Cambio de mensaje privado de función única + límite diario (el campo ya existe,UI Nunca respondí)
     var proactiveEnabled by remember { mutableStateOf(initial.proactiveEnabled) }
     var dailyLimitText by remember { mutableStateOf(initial.dailyProactiveLimit.toString()) }
 
@@ -196,8 +196,8 @@ private fun RelationshipEditDialog(
                     }
                 }
 
-                // v2.6.9: 单角色开关 —— 关掉后这个角色不再主动私信，
-                // 但手动聊天、朋友圈互动不受影响。
+                // v2.6.9: interruptor de función única —— Después de desactivarlo, este personaje ya no tomará la iniciativa de enviar mensajes privados.
+                // Sin embargo, las interacciones del chat manual y del círculo de amigos no se verán afectadas.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -227,7 +227,7 @@ private fun RelationshipEditDialog(
                     )
                 }
 
-                // v2.6.9: 每日主动上限（0 = 不限）
+                // v2.6.9: Límite superior activo diario (0 = Sin límite)
                 Text(
                     text = stringResource(R.string.settings_relationship_daily_limit),
                     style = MaterialTheme.typography.labelMedium,
@@ -259,7 +259,7 @@ private fun RelationshipEditDialog(
     )
 }
 
-/** 亲密度可读标签。 */
+/** Etiqueta legible de intimidad. */
 @Composable
 private fun affinityLabel(affinity: Int): String = when {
     affinity >= 80 -> stringResource(R.string.settings_relationship_affinity_close)

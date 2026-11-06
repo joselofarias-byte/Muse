@@ -8,10 +8,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * 「这一轮该不该发」的纯判定。
+ * Un puro juicio de "¿debería hacerse esta ronda?"
  *
- * 这里不涉及 Room、不发网络、不读系统时钟:时间点与时区都由测试给出,
- * 于是「23 点该跳过」「距上次 30 分钟该跳过」这类边界可以被钉死。
+ * No hay espacio involucrado, ni distribución de red, ni lectura del reloj del sistema.:El momento y la zona horaria los proporciona la prueba.,
+ * Entonces "23 Se pueden fijar límites como "haga clic para omitir" y "debería omitir 30 minutos desde la última vez".
  */
 class MpMomentAutoPlanTest {
 
@@ -63,14 +63,14 @@ class MpMomentAutoPlanTest {
 
     @Test
     fun switchOffSkipsBeforeAnythingElse() {
-        // 开关关着时,即便时间、概率、角色都满足也不发
+        // Cuando el interruptor está apagado,Incluso si se cumplen el tiempo, la probabilidad y el rol, no sucederá.
         val state = decide(at(14), enabled = false)
         assertEquals(MpMomentAutoDecision.Skip(MpMomentSkipReason.DISABLED), state)
     }
 
     @Test
     fun quietHoursWinOverOtherReasons() {
-        // 23 点且距上次 10 分钟:应当先报安静时段,而不是 too_soon
+        // 23 Haga clic y 10 minutos desde la última vez.:Las horas de silencio deben informarse primero,en lugar de too_soon
         val state = decide(at(23), lastGeneratedAtMillis = at(22, minute = 50))
         assertEquals(MpMomentAutoDecision.Skip(MpMomentSkipReason.QUIET_HOURS), state)
     }
@@ -85,10 +85,10 @@ class MpMomentAutoPlanTest {
 
     @Test
     fun hintFollowsTheHourOfDay() {
-        assertTrue(MpMomentAutoPlan.hintFor(9).startsWith("早上"))
-        assertTrue(MpMomentAutoPlan.hintFor(12).startsWith("中午"))
-        assertTrue(MpMomentAutoPlan.hintFor(15).startsWith("下午"))
-        assertTrue(MpMomentAutoPlan.hintFor(20).startsWith("晚上"))
+        assertTrue(MpMomentAutoPlan.hintFor(9).startsWith("mañana"))
+        assertTrue(MpMomentAutoPlan.hintFor(12).startsWith("mediodía"))
+        assertTrue(MpMomentAutoPlan.hintFor(15).startsWith("tarde"))
+        assertTrue(MpMomentAutoPlan.hintFor(20).startsWith("noche"))
     }
 
     private fun decide(

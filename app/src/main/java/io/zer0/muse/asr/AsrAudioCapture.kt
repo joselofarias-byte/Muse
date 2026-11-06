@@ -7,10 +7,10 @@ import android.media.MediaRecorder
 import io.zer0.common.Logger
 
 /**
- * 统一创建麦克风录音器。
+ * Crea una grabadora de micrófono en unidad.
  *
- * 不同 ROM 对 VOICE_COMMUNICATION 音源支持不一致；按“语音识别 -> 通话 -> 默认麦克风”
- * 顺序尝试，避免某个设备只拒绝单一音源就让整个 ASR 链路不可用。
+ * Diferentes ROM tienen soporte inconsistente para fuentes de audio VOICE_COMMUNICATION; prensa“reconocimiento de voz -> llamar -> Micrófono predeterminado”
+ * Pruébelos secuencialmente para evitar que un dispositivo rechace una única fuente de audio y haga que todo el enlace ASR no esté disponible.
  */
 internal object AsrAudioCapture {
     data class Session(
@@ -21,7 +21,7 @@ internal object AsrAudioCapture {
     @SuppressLint("MissingPermission")
     fun create(sampleRate: Int, tag: String): Session? {
         if (sampleRate !in 8_000..48_000) {
-            Logger.w(tag, "不支持的 ASR 采样率: $sampleRate")
+            Logger.w(tag, "Frecuencia de muestreo ASR no compatible: $sampleRate")
             return null
         }
         val minBuffer = try {
@@ -31,11 +31,11 @@ internal object AsrAudioCapture {
                 AudioFormat.ENCODING_PCM_16BIT,
             )
         } catch (e: IllegalArgumentException) {
-            Logger.w(tag, "获取 AudioRecord 缓冲区失败: ${e.message}", e)
+            Logger.w(tag, "No se pudo obtener el búfer AudioRecord: ${e.message}", e)
             return null
         }
         if (minBuffer <= 0) {
-            Logger.w(tag, "AudioRecord 缓冲区大小无效: $minBuffer")
+            Logger.w(tag, "AudioRecord Tamaño de búfer no válido: $minBuffer")
             return null
         }
         val bufferSize = (minBuffer * 2)
@@ -57,10 +57,10 @@ internal object AsrAudioCapture {
                     bufferSize * 2,
                 )
             } catch (e: SecurityException) {
-                Logger.w(tag, "AudioRecord 音源 $source 被拒绝: ${e.message}")
+                Logger.w(tag, "AudioRecord fuente de sonido $source rechazado: ${e.message}")
                 null
             } catch (e: IllegalArgumentException) {
-                Logger.w(tag, "AudioRecord 音源 $source 参数无效: ${e.message}")
+                Logger.w(tag, "AudioRecord fuente de sonido $source Parámetro no válido: ${e.message}")
                 null
             }
             if (recorder != null) {
@@ -70,7 +70,7 @@ internal object AsrAudioCapture {
                 recorder.release()
             }
         }
-        Logger.w(tag, "所有 AudioRecord 音源均初始化失败")
+        Logger.w(tag, "Todas las fuentes de AudioRecord no pudieron inicializarse")
         return null
     }
 }

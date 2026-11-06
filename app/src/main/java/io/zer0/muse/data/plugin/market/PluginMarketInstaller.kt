@@ -5,15 +5,15 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * 市场安装计划的确认提交入口。
+ * Portal de envío de confirmación de planos de instalación en el mercado.
  *
- * 用户确认预览后，本类执行最后一轮校验再委托 [PluginManager] 原子提交：
- *  1. 计划未过期（防“确认很久以前的旧包”）；
- *  2. staged 包仍存在且 zip 摘要与计划绑定的目录摘要一致（防确认前替换文件）；
- *  3. [PluginManager.installConfirmedFromFile] 重新解析包、重算内容摘要并与预览比对，
- *     未知发行者仍必须显式 `trustPublisher = true`，未签名/篡改包一律拒绝。
+ * Después de que el usuario confirma la vista previa, esta clase realiza la ronda final de verificación antes de delegar [PluginManager] Compromiso atómico:
+ *  1. El plan no ha caducado (lo que impide“Verifique paquetes antiguos de hace mucho tiempo”);
+ *  2. staged El paquete todavía existe y el resumen zip es consistente con el resumen del directorio que se planea vincular (para evitar el reemplazo de archivos antes de la confirmación);
+ *  3. [PluginManager.installConfirmedFromFile] Vuelva a analizar el paquete, vuelva a calcular el resumen de contenido y compárelo con la vista previa,
+ *     Los editores desconocidos aún deben ser explícitos `trustPublisher = true`, sin firmar/Los paquetes manipulados serán rechazados.
  *
- * 任何一步失败都不会写入插件目录；失败只发生在 staging（应用私有缓存）。
+ * Fallar en cualquier paso no escribirá en el directorio del complemento; El error solo ocurre en la preparación (caché privado de la aplicación).
  */
 internal class PluginMarketInstaller(
     private val pluginManager: PluginManager,
@@ -22,14 +22,14 @@ internal class PluginMarketInstaller(
 
     suspend fun confirmAndInstall(plan: PluginInstallPlan, trustPublisher: Boolean): Result<PluginManager.InstalledPlugin> {
         if (plan.isExpired(nowEpochMs())) {
-            return Result.failure(IllegalStateException("安装确认已过期，请重新下载"))
+            return Result.failure(IllegalStateException("La confirmación de instalación ha caducado, descárguela nuevamente"))
         }
         if (!plan.stagedFile.isFile) {
-            return Result.failure(IllegalStateException("插件包不存在，请重新下载"))
+            return Result.failure(IllegalStateException("El paquete del complemento no existe, descárguelo nuevamente"))
         }
         val actual = sha256Hex(plan.stagedFile)
         if (!actual.equals(plan.artifactSha256, ignoreCase = true)) {
-            return Result.failure(IllegalStateException("插件包在确认后发生变化，请重新下载"))
+            return Result.failure(IllegalStateException("El paquete del complemento ha cambiado después de la confirmación; descárguelo nuevamente"))
         }
         return pluginManager.installConfirmedFromFile(
             file = plan.stagedFile,
@@ -38,7 +38,7 @@ internal class PluginMarketInstaller(
         )
     }
 
-    /** 删除安装计划持有的 staged 包；只允许删除下载命名规则内的文件。 */
+    /** Eliminar los paquetes preparados retenidos por el plan de instalación; sólo se permiten eliminar archivos dentro de las reglas de nomenclatura de descarga. */
     fun discard(plan: PluginInstallPlan) {
         val staged = plan.stagedFile
         if (staged.name != PluginDownloadClient.stagedFileName(plan.entry)) return

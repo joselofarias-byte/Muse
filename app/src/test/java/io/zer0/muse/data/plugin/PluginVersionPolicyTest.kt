@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 版本策略测试：降级、发行者血缘、未签名覆盖、minAppVersion。 */
+/** Pruebas de estrategia de versión: degradación, linaje del editor, cobertura sin firmar,minAppVersion. */
 class PluginVersionPolicyTest {
 
     private val appVersion = "1.0.89"
@@ -37,7 +37,7 @@ class PluginVersionPolicyTest {
     )
 
     private fun rejected(decision: PluginVersionDecision): String {
-        assertTrue("期望拒绝，实际放行", decision is PluginVersionDecision.Reject)
+        assertTrue("Espere rechazo, en realidad libere", decision is PluginVersionDecision.Reject)
         return (decision as PluginVersionDecision.Reject).reason
     }
 
@@ -61,9 +61,9 @@ class PluginVersionPolicyTest {
     @Test
     fun downgradeIsRejectedUnlessExplicitlyAllowed() {
         val decision = PluginVersionPolicy.evaluate(candidate(version = "0.9.0"), installed("1.0.0"), appVersion)
-        assertTrue(rejected(decision).contains("降级"))
+        assertTrue(rejected(decision).contains("degradación"))
 
-        // 回滚入口显式放行。
+        // La entrada de reversión se libera explícitamente.
         assertEquals(
             PluginVersionDecision.Allow,
             PluginVersionPolicy.evaluate(
@@ -82,14 +82,14 @@ class PluginVersionPolicyTest {
             installed(),
             appVersion,
         )
-        assertTrue(rejected(otherKey).contains("发行者"))
+        assertTrue(rejected(otherKey).contains("editor"))
 
         val otherId = PluginVersionPolicy.evaluate(
             candidate(publisherId = "someone-else"),
             installed(),
             appVersion,
         )
-        assertTrue(rejected(otherId).contains("发行者"))
+        assertTrue(rejected(otherId).contains("editor"))
     }
 
     @Test
@@ -99,7 +99,7 @@ class PluginVersionPolicyTest {
             installed(),
             appVersion,
         )
-        assertTrue(rejected(decision).contains("未签名"))
+        assertTrue(rejected(decision).contains("sin firmar"))
     }
 
     @Test
@@ -116,7 +116,7 @@ class PluginVersionPolicyTest {
 
     @Test
     fun localAuthorInstallMayBeReplacedByNewDraftForIteration() {
-        // 助手迭代自己写的插件：本机作者签名的安装允许被新草稿覆盖（草稿仍需用户再签名）。
+        // El asistente itera sobre complementos escritos por él mismo: las instalaciones firmadas por el autor nativo pueden ser sobrescritas por nuevos borradores (el usuario aún debe volver a firmar los borradores).
         assertEquals(
             PluginVersionDecision.Allow,
             PluginVersionPolicy.evaluate(
@@ -126,7 +126,7 @@ class PluginVersionPolicyTest {
                 localAuthorPublisherId = "local-author",
             ),
         )
-        // 但没有传本机作者身份时仍然拒绝（默认关闭，避免误放宽）。
+        // Sin embargo, se sigue rechazando cuando no se aprueba la autoría local (cerrado por defecto para evitar relajaciones accidentales).
         assertTrue(
             rejected(
                 PluginVersionPolicy.evaluate(
@@ -134,9 +134,9 @@ class PluginVersionPolicyTest {
                     installed(version = "1.0.0", publisherId = "local-author", signed = true),
                     appVersion,
                 ),
-            ).contains("未签名"),
+            ).contains("sin firmar"),
         )
-        // 第三方已签名安装依然不能被草稿覆盖。
+        // Las instalaciones firmadas por terceros aún no se pueden sobrescribir con borradores.
         assertTrue(
             rejected(
                 PluginVersionPolicy.evaluate(
@@ -145,7 +145,7 @@ class PluginVersionPolicyTest {
                     appVersion,
                     localAuthorPublisherId = "local-author",
                 ),
-            ).contains("未签名"),
+            ).contains("sin firmar"),
         )
     }
 
@@ -156,14 +156,14 @@ class PluginVersionPolicyTest {
             null,
             appVersion,
         )
-        assertTrue(rejected(decision).contains("App 版本"))
+        assertTrue(rejected(decision).contains("versión de la aplicación"))
     }
 
     @Test
     fun malformedVersionsAreRejectedInsteadOfGuessed() {
         assertTrue(
             rejected(PluginVersionPolicy.evaluate(candidate(version = "1.0"), null, appVersion))
-                .contains("语义化版本"),
+                .contains("versión semántica"),
         )
         assertTrue(
             rejected(PluginVersionPolicy.evaluate(candidate(minAppVersion = "latest"), null, appVersion))
@@ -173,19 +173,19 @@ class PluginVersionPolicyTest {
 
     @Test
     fun prereleaseUpgradeOverStableIsRejectedAsDowngrade() {
-        // 1.0.0-rc.1 < 1.0.0：预发布版本覆盖正式版本同样属于降级。
+        // 1.0.0-rc.1 < 1.0.0: Una versión preliminar que cubra la versión oficial también es una degradación.
         val decision = PluginVersionPolicy.evaluate(
             candidate(version = "1.0.0-rc.1"),
             installed("1.0.0"),
             appVersion,
         )
-        assertTrue(rejected(decision).contains("降级"))
+        assertTrue(rejected(decision).contains("degradación"))
     }
 
     @Test
     fun devBuildSkipsMinAppVersionButKeepsOtherChecks() {
-        // 本地构建的占位版本号比任何插件要求都小，卡在门槛上只会挡住调试；
-        // 但降级、签名这些校验仍然生效。
+        // El número de versión del marcador de posición creado localmente es menor que cualquier requisito de complemento, y quedarse atascado en el umbral solo bloqueará la depuración;
+        // Sin embargo, verificaciones como la degradación y la firma siguen siendo efectivas.
         val allowed = PluginVersionPolicy.evaluate(
             candidate(minAppVersion = "9.9.9"),
             null,
@@ -198,6 +198,6 @@ class PluginVersionPolicyTest {
             installed("1.0.0"),
             PluginVersionPolicy.DEV_SENTINEL_VERSION,
         )
-        assertTrue(rejected(downgrade).contains("降级"))
+        assertTrue(rejected(downgrade).contains("degradación"))
     }
 }

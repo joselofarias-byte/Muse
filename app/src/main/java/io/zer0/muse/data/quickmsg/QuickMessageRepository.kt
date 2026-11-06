@@ -5,22 +5,22 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /**
- * QuickMessage 仓库 — Phase 8.5。
+ * QuickMessage almacén — Phase 8.5.
  */
 class QuickMessageRepository(
     private val dao: QuickMessageDao,
 ) {
-    // L-PID5: 加 distinctUntilChanged,避免上游无意义重复发射触发 UI 重绘。
+    // L-PID5: agregar distinctUntilChanged,Evite emisiones repetidas sin sentido desde aguas arriba que activen el rediseño de la interfaz de usuario.
     fun observeAll(): Flow<List<QuickMessageEntity>> = dao.observeAll().distinctUntilChanged()
 
     fun observeForAssistant(assistantId: String): Flow<List<QuickMessageEntity>> =
         dao.observeForAssistant(assistantId).distinctUntilChanged()
 
     /**
-     * 观察当前助手可用的快捷消息。
+     * Observe los mensajes rápidos disponibles para el asistente actual.
      *
-     * 全局快捷消息始终可用;助手级快捷消息在绑定列表非空时按 id 过滤。
-     * 空绑定列表保留历史语义,继续显示该助手下全部快捷消息,避免老数据升级后突然消失。
+     * Los mensajes rápidos globales siempre están disponibles;Los mensajes de acceso directo a nivel de asistente se filtran por identificación cuando la lista de enlaces no está vacía.
+     * La lista de enlaces vacía conserva la semántica histórica,Continuar mostrando todos los mensajes de acceso directo en el asistente,Evite que los datos antiguos desaparezcan repentinamente después de la actualización.
      */
     fun observeForAssistant(assistantId: String, boundIds: List<String>): Flow<List<QuickMessageEntity>> {
         val ids = boundIds.map(String::trim).filter(String::isNotBlank).toSet()
@@ -46,21 +46,21 @@ class QuickMessageRepository(
     suspend fun delete(id: String) = dao.deleteById(id)
 
     /**
-     * 渲染快捷消息模板: 替换 {{input}} / {{clipboard}} / {{date}} 变量。
-     * - {{input}}: 当前输入框内容(若为空则替换为空串)
-     * - {{clipboard}}: 系统剪贴板内容
-     * - {{date}}: 当前日期(yyyy-MM-dd)
+     * Representar una plantilla de mensaje rápido: reemplazar {{input}} / {{clipboard}} / {{date}} variables.
+     * - {{input}}: Contenido actual del cuadro de entrada(Si está vacío, reemplácelo con una cadena vacía.)
+     * - {{clipboard}}: Contenido del portapapeles del sistema
+     * - {{date}}: fecha actual(yyyy-MM-dd)
      *
-     * Phase 8.5 修复: 用正则一次性匹配所有变量,避免顺序替换导致用户输入中的
-     * `{{date}}` 等占位符被二次替换。原实现 `template.replace("{{input}}", input).replace("{{date}}", date)`
-     * 会让模板="翻译: {{input}}" + 用户输入="今天是 {{date}}" 错误变成 "翻译: 今天是 2026-07-04"。
+     * Phase 8.5 Reparación: Utilice expresiones regulares para hacer coincidir todas las variables a la vez,Evite sustituciones secuenciales que causen errores en la entrada del usuario
+     * `{{date}}` El marcador de posición se reemplaza dos veces. Implementación original `template.replace("{{input}}", input).replace("{{date}}", date)`
+     * hará la plantilla="Traducción: {{input}}" + entrada del usuario="hoy es {{date}}" El error se convierte "Traducción: hoy es 2026-07-04".
      *
-     * L-QM1: 正则允许可选空格,匹配 {{ input }} / {{input }} / {{ input}} 等变体。
+     * L-QM1: Regex permite espacios opcionales,partido {{ input }} / {{input }} / {{ input}} Variantes.
      *
-     * L-QM2 设计权衡: 渲染逻辑放在 Repository 而非独立 Renderer/Util。原因:
-     *  - 渲染依赖运行时上下文(input/clipboard/date),且仅 Repository 的调用方(ChatViewModel)
-     *    持有这些上下文;抽成独立 Util 仍需传入相同参数,收益有限。
-     *  - 当前仅 QuickMessage 一处使用,无复用需求;若后续 PromptTemplate 也需自动渲染,再抽公共 Renderer。
+     * L-QM2 compensaciones de diseño: La lógica de renderizado se coloca en el Repositorio en lugar del Renderer/Util independiente. Razón:
+     *  - El renderizado depende del contexto del tiempo de ejecución(input/clipboard/date),Y solo las personas que llaman al Repositorio(ChatViewModel)
+     *    mantener estos contextos;La Util independiente aún necesita pasar los mismos parámetros.,Las ganancias son limitadas.
+     *  - Actualmente solo se usa en un lugar: QuickMessage,No se requiere reutilización;Si el PromptTemplate posterior también necesita renderizarse automáticamente,Luego dibuja el renderizador público.
      */
     fun renderTemplate(
         template: String,
@@ -74,7 +74,7 @@ class QuickMessageRepository(
             "clipboard" to clipboard,
             "date" to date,
         )
-        // L-QM1: \s* 允许变量名两侧可选空格
+        // L-QM1: \s* Permitir espacios opcionales en ambos lados de los nombres de las variables.
         val pattern = Regex("""\{\{\s*(input|clipboard|date)\s*\}\}""")
         return pattern.replace(template) { match ->
             replacements[match.groupValues[1]] ?: match.value

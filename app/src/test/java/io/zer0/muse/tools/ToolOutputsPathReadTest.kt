@@ -14,10 +14,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * read_file 对工具输出目录的路径口径。
+ * read_file La ruta al directorio de salida de la herramienta.
  *
- * 回执同时给了挂载形式 `tool_outputs:/x.txt` 与相对形式 `tool_outputs/x.txt`，
- * 两种写法都必须读到同一份文件；相对形式曾经因为多拼一层前缀而永远撞不上。
+ * El recibo también incluye el formulario de montaje. `tool_outputs:/x.txt` forma relativa `tool_outputs/x.txt`,
+ * Ambos métodos de escritura deben leer el mismo archivo; la forma relativa solía tener una capa adicional de prefijos y nunca podía chocar.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,7 +29,7 @@ class ToolOutputsPathReadTest {
     private fun prepareFile(): File {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val dir = File(context.filesDir, TOOL_OUTPUTS_DIR).apply { mkdirs() }
-        return File(dir, "capture.txt").apply { writeText("完整输出内容", Charsets.UTF_8) }
+        return File(dir, "capture.txt").apply { writeText("Contenido de salida completo", Charsets.UTF_8) }
     }
 
     @Test
@@ -41,7 +41,7 @@ class ToolOutputsPathReadTest {
             ApplicationProvider.getApplicationContext(),
             tempFolder.newFolder("workspace"),
         )
-        assertEquals("完整输出内容", result)
+        assertEquals("Contenido de salida completo", result)
     }
 
     @Test
@@ -53,7 +53,7 @@ class ToolOutputsPathReadTest {
             ApplicationProvider.getApplicationContext(),
             tempFolder.newFolder("workspace"),
         )
-        assertEquals("完整输出内容", result)
-        assertTrue("不该报路径不存在: $result", !result.contains("文件不存在"))
+        assertEquals("Contenido de salida completo", result)
+        assertTrue("No debe informar que la ruta no existe.: $result", !result.contains("El archivo no existe"))
     }
 }

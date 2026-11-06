@@ -1,99 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- ===== DebugScreen.kt ===== -->
-    <!-- 清空确认弹窗 -->
-    <string name="debug_clear_logs_title">清空调试日志</string>
-    <string name="debug_clear_logs_confirm">确认清空全部 %1$d 条日志？此操作不可撤销。</string>
-    <string name="debug_action_clear">清空</string>
-    <string name="debug_cleared_toast">已清空</string>
+    <!-- Borrar ventana emergente de confirmación -->
+    <string name="debug_clear_logs_title">Borrar registro de depuración</string>
+    <string name="debug_clear_logs_confirm">Confirmar para borrar todo %1$d ¿Un tronco? Esta acción no se puede deshacer.</string>
+    <string name="debug_action_clear">Borrar</string>
+    <string name="debug_cleared_toast">Borrado</string>
 
-    <!-- 复制日志 -->
-    <string name="debug_no_logs_to_copy">当前无日志可复制</string>
-    <string name="debug_logs_copied_toast">已复制 %1$d 条日志到剪贴板</string>
+    <!-- Copiar registro -->
+    <string name="debug_no_logs_to_copy">Actualmente no hay registros para copiar</string>
+    <string name="debug_logs_copied_toast">copiado %1$d iniciar sesión en el portapapeles</string>
 
-    <!-- 导出日志 -->
-    <string name="debug_export_failed_no_logs">导出失败：暂无日志或目录未初始化</string>
-    <string name="debug_export_failed_no_uri">导出失败：无法获取文件 URI</string>
-    <string name="debug_share_log_chooser">分享调试日志</string>
+    <!-- Exportar registro -->
+    <string name="debug_export_failed_no_logs">Falló la exportación: no hay registros o el directorio no se inicializó</string>
+    <string name="debug_export_failed_no_uri">Error al exportar: no se puede obtener el archivo URI</string>
+    <string name="debug_share_log_chooser">Compartir registros de depuración</string>
 
-    <!-- 顶部栏 / 标题 -->
-    <string name="debug_screen_title">调试日志</string>
-    <string name="debug_cd_resume_follow">继续跟随</string>
-    <string name="debug_cd_pause_follow">暂停跟随</string>
-    <string name="debug_cd_crash_logs">崩溃日志</string>
-    <string name="debug_cd_analytics">本地数据分析</string>
-    <string name="debug_cd_db_integrity">数据库完整性</string>
-    <string name="debug_cd_clear">清空</string>
-    <string name="debug_cd_export">导出</string>
-    <string name="debug_cd_copy">复制</string>
+    <!-- Barra superior/título -->
+    <string name="debug_screen_title">registro de depuración</string>
+    <string name="debug_cd_resume_follow">continuar siguiendo</string>
+    <string name="debug_cd_pause_follow">Pausa para seguir</string>
+    <string name="debug_cd_crash_logs">registro de fallos</string>
+    <string name="debug_cd_analytics">Análisis de datos locales</string>
+    <string name="debug_cd_db_integrity">Integridad de la base de datos</string>
+    <string name="debug_cd_clear">Borrar</string>
+    <string name="debug_cd_export">Exportar</string>
+    <string name="debug_cd_copy">Copiar</string>
 
-    <!-- 日志计数 -->
-    <string name="debug_log_count">共 %1$d 条</string>
-    <string name="debug_log_count_paused_suffix"> · 已暂停跟随</string>
+    <!-- Recuento de registros -->
+    <string name="debug_log_count">total %1$d Artículo</string>
+    <string name="debug_log_count_paused_suffix"> · Lo siguiente ha sido suspendido.</string>
 
-    <!-- 过滤器行 -->
-    <string name="debug_level_label">等级</string>
-    <string name="debug_keyword_label">关键字</string>
+    <!-- fila de filtro -->
+    <string name="debug_level_label">nivel</string>
+    <string name="debug_keyword_label">Palabras clave</string>
 
-    <!-- 空状态 -->
-    <string name="debug_empty_title">暂无日志</string>
-    <string name="debug_empty_subtitle">Logger 调用的日志会在此实时显示</string>
+    <!-- Estado vacío -->
+    <string name="debug_empty_title">Aún no hay registros</string>
+    <string name="debug_empty_subtitle">Logger El registro de llamadas se mostrará en tiempo real aquí</string>
 
-    <!-- 崩溃日志面板 CrashLogSheet -->
-    <string name="debug_crash_log_title">崩溃日志</string>
-    <string name="debug_export_zip_and_share">导出 ZIP 并分享</string>
-    <string name="debug_loading_crash_logs">正在读取崩溃日志…</string>
-    <string name="debug_no_crash_logs">暂无崩溃日志\n\n应用未崩溃过，或日志已被自动清理（保留最近 5 份）。</string>
-    <string name="debug_crash_log_count">共 %1$d 份（按时间倒序，仅保留最近 5 份）</string>
-    <string name="debug_cd_share_crash_log">分享此条日志</string>
-    <string name="debug_loading">正在读取…</string>
-    <string name="debug_crash_preview_truncated">仅显示前 %1$d 字符，完整内容请通过分享按钮导出查看。</string>
+    <!-- Panel de registro de fallos CrashLogSheet -->
+    <string name="debug_crash_log_title">registro de fallos</string>
+    <string name="debug_export_zip_and_share">Exportar ZIP y compartir</string>
+    <string name="debug_loading_crash_logs">Leyendo el registro de fallos…</string>
+    <string name="debug_no_crash_logs">Aún no hay registro de fallos\n\nLa aplicación no ha fallado o los registros se han limpiado automáticamente (se conservan las 5 copias más recientes).</string>
+    <string name="debug_crash_log_count">total %1$d copias (en orden cronológico inverso, sólo se conservan las 5 copias más recientes)</string>
+    <string name="debug_cd_share_crash_log">Comparte esta publicación</string>
+    <string name="debug_loading">leyendo…</string>
+    <string name="debug_crash_preview_truncated">Mostrar solo antes %1$d Personajes, utilicen el botón compartir para exportar y ver el contenido completo.</string>
 
-    <!-- 崩溃日志分享(非 Composable 工具函数,使用 context.getString) -->
-    <string name="debug_export_failed_no_crash_logs">导出失败：暂无崩溃日志</string>
-    <string name="debug_share_crash_zip_chooser">分享崩溃日志 ZIP</string>
-    <string name="debug_share_failed_no_uri">分享失败：无法获取文件 URI</string>
-    <string name="debug_share_crash_log_chooser">分享崩溃日志</string>
+    <!-- Compartir registros de fallos(Funciones de utilidad no componibles,uso context.getString) -->
+    <string name="debug_export_failed_no_crash_logs">Error al exportar: aún no hay registro de fallos</string>
+    <string name="debug_share_crash_zip_chooser">Compartir registro de fallos ZIP</string>
+    <string name="debug_share_failed_no_uri">Error al compartir: no se puede obtener el archivo URI</string>
+    <string name="debug_share_crash_log_chooser">Compartir registro de fallos</string>
 
-    <!-- 本地数据分析面板 AnalyticsSheet -->
-    <string name="debug_analytics_title">本地数据分析</string>
-    <string name="debug_loading_analytics">正在读取分析数据…</string>
-    <string name="debug_analytics_load_failed">无法读取分析数据</string>
-    <string name="debug_metric_dau_today">DAU 今日</string>
-    <string name="debug_metric_mau_month">MAU 本月</string>
-    <string name="debug_metric_total_sessions">总会话数</string>
-    <string name="debug_metric_total_messages">总消息数</string>
-    <string name="debug_metric_launch_count">启动次数</string>
-    <string name="debug_metric_crash_count">崩溃次数</string>
+    <!-- Panel de análisis de datos locales AnalyticsSheet -->
+    <string name="debug_analytics_title">Análisis de datos locales</string>
+    <string name="debug_loading_analytics">Leer datos de análisis…</string>
+    <string name="debug_analytics_load_failed">No se pueden leer los datos del análisis</string>
+    <string name="debug_metric_dau_today">DAU hoy</string>
+    <string name="debug_metric_mau_month">MAU este mes</string>
+    <string name="debug_metric_total_sessions">Sesiones totales</string>
+    <string name="debug_metric_total_messages">Número total de mensajes</string>
+    <string name="debug_metric_launch_count">Número de salidas</string>
+    <string name="debug_metric_crash_count">recuento de accidentes</string>
     <string name="debug_metric_crash_count_value">%1$d (%2$s)</string>
-    <string name="debug_status_first_chat">首次对话完成</string>
-    <string name="debug_status_memory_adopted">记忆系统采用</string>
-    <string name="debug_status_last_active">最近活跃日期</string>
-    <string name="debug_value_yes">是</string>
-    <string name="debug_value_no">否</string>
+    <string name="debug_status_first_chat">Primera conversación completada</string>
+    <string name="debug_status_memory_adopted">Usos del sistema de memoria</string>
+    <string name="debug_status_last_active">Última fecha activa</string>
+    <string name="debug_value_yes">si</string>
+    <string name="debug_value_no">No</string>
 
-    <!-- 留存卡片 -->
-    <string name="debug_retention_title">留存（自首次启动）</string>
-    <string name="debug_retention_d1">次日(D1)</string>
-    <string name="debug_retention_d7">7 日(D7)</string>
-    <string name="debug_retention_d30">30 日(D30)</string>
+    <!-- mantener la tarjeta -->
+    <string name="debug_retention_title">Retenido (desde el primer lanzamiento)</string>
+    <string name="debug_retention_d1">día siguiente(D1)</string>
+    <string name="debug_retention_d7">7 dia(D7)</string>
+    <string name="debug_retention_d30">30 dia(D30)</string>
 
-    <!-- 功能使用 -->
-    <string name="debug_feature_usage_top">功能使用 Top 10</string>
-    <string name="debug_no_feature_usage">暂无功能使用记录</string>
+    <!-- Uso de funciones -->
+    <string name="debug_feature_usage_top">Uso de funciones Top 10</string>
+    <string name="debug_no_feature_usage">Aún no hay registro de uso de funciones</string>
 
-    <!-- 数据库完整性面板 DbIntegritySheet -->
-    <string name="debug_db_integrity_title">数据库完整性</string>
-    <string name="debug_loading_db_integrity">正在读取最近检查记录…</string>
-    <string name="debug_db_status_ok">数据库正常</string>
-    <string name="debug_db_status_error">数据库异常</string>
-    <string name="debug_db_size_label">DB 大小：%1$s</string>
-    <string name="debug_db_check_time_label">检查时间：%1$s</string>
-    <string name="debug_no_details">（无详情）</string>
-    <string name="debug_db_error_advice">建议：请从「设置 → 备份与恢复」恢复最近一次自动备份，或导出关键会话后重新安装应用。</string>
-    <string name="debug_integrity_check_passed">完整性检查通过</string>
-    <string name="debug_integrity_check_failed">完整性检查异常，请查看详情</string>
-    <string name="debug_checking">正在检查…</string>
-    <string name="debug_check_now">立即检查</string>
-    <string name="debug_no_check_record">暂无检查记录\n\n点击下方按钮立即执行一次完整性检查。</string>
+    <!-- Panel de integridad de la base de datos DbIntegritySheet -->
+    <string name="debug_db_integrity_title">Integridad de la base de datos</string>
+    <string name="debug_loading_db_integrity">Leer registros de cheques recientes…</string>
+    <string name="debug_db_status_ok">La base de datos es normal.</string>
+    <string name="debug_db_status_error">Excepción de base de datos</string>
+    <string name="debug_db_size_label">DB Tamaño:%1$s</string>
+    <string name="debug_db_check_time_label">Hora de consulta:%1$s</string>
+    <string name="debug_no_details">(sin detalles)</string>
+    <string name="debug_db_error_advice">Sugerencia: vaya a Configuración → Copia de seguridad y restauración" para restaurar la copia de seguridad automática más reciente o exportar sesiones clave y reinstalar la aplicación.</string>
+    <string name="debug_integrity_check_passed">Se pasó el control de integridad</string>
+    <string name="debug_integrity_check_failed">Excepción de verificación de integridad, consulte los detalles</string>
+    <string name="debug_checking">comprobando…</string>
+    <string name="debug_check_now">Compruébalo ahora</string>
+    <string name="debug_no_check_record">Aún no hay registro de inspección\n\nHaga clic en el botón a continuación para realizar una verificación de integridad ahora.</string>
 </resources>

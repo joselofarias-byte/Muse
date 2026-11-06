@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-DB-05: messages_fts DDL 选择与 FTS5 查询词转换测试。
+ * R-DB-05: messages_fts DDL Seleccione y consulte FTS5 pruebas de conversión de palabras.
  */
 class MessageFtsDdlTest {
 
@@ -35,7 +35,7 @@ class MessageFtsDdlTest {
 
     @Test
     fun `toFts5MatchQuery quotes phrases and escapes quotes`() {
-        assertEquals("\"你好世界\"", MessageFtsManager.toFts5MatchQuery("你好世界"))
+        assertEquals("\"hola\" \"mundo\"", MessageFtsManager.toFts5MatchQuery("hola mundo"))
         assertEquals("\"hello\" \"world\"", MessageFtsManager.toFts5MatchQuery("hello  world"))
         assertEquals("\"a\" \"\"\"quote\"\"\"", MessageFtsManager.toFts5MatchQuery("a \"quote\""))
         assertEquals("", MessageFtsManager.toFts5MatchQuery("   "))

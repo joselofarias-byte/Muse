@@ -10,10 +10,10 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * P1-3b 拆域：日历工具注册器。
+ * P1-3b Desdominio: registrador de herramientas de calendario.
  *
- * 从 ToolRegistry.kt 抽出的 calendar_today / add_calendar_event，
- * 自带日期格式 ThreadLocal，不依赖 ToolRegistry 内部状态。
+ * calendar_today/add_calendar_event extraído de ToolRegistry.kt,
+ * Tiene su propio formato de fecha ThreadLocal y no depende del estado interno de ToolRegistry.
  */
 class CalendarToolsRegistrar(
     private val context: Context,
@@ -27,10 +27,10 @@ class CalendarToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "calendar_today",
-                description = "获取今日日历事件列表。需要 READ_CALENDAR 权限。",
+                description = "Obtenga una lista de los eventos del calendario de hoy. Requiere permiso READ_CALENDAR.",
                 parameters = mapOf(
-                    "date" to "可选,指定日期 YYYY-MM-DD,默认今天",
-                    "days" to "可选,查询未来几天,默认 0=只今天",
+                    "date" to "Opcional,Especificar fecha YYYY-MM-DD,Predeterminado hoy",
+                    "days" to "Opcional,Consulta los próximos días.,Predeterminado 0=Sólo hoy",
                 ),
                 required = emptySet(),
                 category = "built-in",
@@ -118,14 +118,14 @@ class CalendarToolsRegistrar(
         toolRegistry.register(
             ToolRegistry.ToolDef(
                 name = "add_calendar_event",
-                description = "向系统日历添加一个新事件。需要 WRITE_CALENDAR 权限。",
+                description = "Agrega un nuevo evento al calendario del sistema. Requiere permiso WRITE_CALENDAR.",
                 parameters = mapOf(
-                    "title" to "必填,事件标题",
-                    "start_time" to "必填,开始时间 ISO 8601 或 yyyy-MM-dd HH:mm,如 2026-07-10 09:00",
-                    "end_time" to "可选,结束时间,默认开始时间+1小时",
-                    "description" to "可选,事件描述",
-                    "location" to "可选,地点",
-                    "all_day" to "可选,true/false,默认 false",
+                    "title" to "Requerido,título del evento",
+                    "start_time" to "Requerido,Hora de inicio ISO 8601 o yyyy-MM-dd HH:mm,Como por ejemplo 2026-07-10 09:00",
+                    "end_time" to "Opcional,tiempo final,Hora de inicio predeterminada+1horas",
+                    "description" to "Opcional,descripción del evento",
+                    "location" to "Opcional,ubicación",
+                    "all_day" to "Opcional,true/false,Predeterminado false",
                 ),
                 required = setOf("title", "start_time"),
                 category = "built-in",
@@ -167,7 +167,7 @@ class CalendarToolsRegistrar(
                 } else {
                     context.getString(R.string.tool_calendar_add_failed_perm)
                 }
-            }.onError { msg, _ -> Logger.w("CalendarTools", "添加日历事件失败: $msg") }
+            }.onError { msg, _ -> Logger.w("CalendarTools", "No se pudo agregar el evento del calendario: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_calendar_add_failed)
         }
     }

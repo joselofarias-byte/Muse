@@ -1,10 +1,10 @@
 package io.zer0.ai.core
 
 /**
- * Provider 与模型的稳定联合引用。
+ * Provider Referencias conjuntas estables con modelos.
  *
- * Muse 的旧设置仍分别保存 providerId 和 modelId；本类型提供统一的可序列化文本形式，
- * 供日志、缓存和后续配置迁移使用。模型 ID 本身允许包含 `/`，因此只切分第一个分隔符。
+ * Muse La configuración anterior de todavía guarda el ID del proveedor y el ID del modelo por separado; este tipo proporciona un formulario de texto serializable unificado,
+ * Se utiliza para registrar, almacenar en caché y migraciones de configuración posteriores. El ID del modelo en sí puede contener `/`, por lo que solo se divide el primer delimitador.
  */
 data class ModelReference(
     val providerId: String,
@@ -15,11 +15,11 @@ data class ModelReference(
         require(modelId.isNotBlank()) { "modelId must not be blank" }
     }
 
-    /** 返回稳定的 `providerId/modelId` 引用。 */
+    /** retorno estable `providerId/modelId` Cita. */
     fun asString(): String = "$providerId/$modelId"
 
     companion object {
-        /** 解析 `providerId/modelId`，裸模型 ID 不会被猜测归属。 */
+        /** analizar `providerId/modelId`, la identificación del modelo desnudo no será una atribución adivinada. */
         fun parse(raw: String?): ModelReference? {
             val value = raw?.trim().orEmpty()
             val separator = value.indexOf('/')
@@ -29,7 +29,7 @@ data class ModelReference(
             return if (provider.isBlank() || model.isBlank()) null else ModelReference(provider, model)
         }
 
-        /** 从已解析模型生成稳定联合引用。 */
+        /** Generar referencias de unión estables a partir de modelos resueltos. */
         fun of(model: Model): ModelReference = ModelReference(model.providerId, model.id)
     }
 }

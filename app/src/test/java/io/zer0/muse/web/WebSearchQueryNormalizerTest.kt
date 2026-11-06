@@ -7,14 +7,14 @@ class WebSearchQueryNormalizerTest {
     @Test
     fun `removes malformed smart quotes and outer ascii quotes`() {
         assertEquals(
-            "ornith1.5-35ba3b 模型 OR model",
-            WebSearchQueryNormalizer.normalize("\"\"ornith1.5-35ba3b”模型 OR model\""),
+            "ornith1.5-35ba3b modelo OR model",
+            WebSearchQueryNormalizer.normalize("\"\"ornith1.5-35ba3b”modelo OR model\""),
         )
     }
 
     @Test
     fun `keeps a normal query unchanged`() {
-        assertEquals("DeepSeek V4 Flash 模型", WebSearchQueryNormalizer.normalize("DeepSeek V4 Flash 模型"))
+        assertEquals("DeepSeek V4 Flash modelo", WebSearchQueryNormalizer.normalize("DeepSeek V4 Flash modelo"))
     }
 
     @Test
@@ -29,34 +29,34 @@ class WebSearchQueryNormalizerTest {
 
     @Test
     fun `refine keeps short keyword queries unchanged`() {
-        assertEquals("DeepSeek V4 Flash 模型", WebSearchQueryNormalizer.refine("DeepSeek V4 Flash 模型"))
+        assertEquals("DeepSeek V4 Flash modelo", WebSearchQueryNormalizer.refine("DeepSeek V4 Flash modelo"))
     }
 
     @Test
     fun `refine strips conversational lead-in from long queries`() {
         assertEquals(
-            "最近有什么好看的科幻电影推荐",
-            WebSearchQueryNormalizer.refine("请问帮我查一下最近有什么好看的科幻电影推荐"),
+            "¿Podrías ayudarme a ver alguna buena recomendación de películas",
+            WebSearchQueryNormalizer.refine("¿Podrías ayudarme a ver alguna buena recomendación de películas de ciencia ficción recientemente?"),
         )
     }
 
     @Test
     fun `refine strips trailing modal particle`() {
         assertEquals(
-            "北京到上海高铁需要多长时间",
-            WebSearchQueryNormalizer.refine("北京到上海高铁需要多长时间呢"),
+            "¿Cuánto tarda el tren de alta velocidad de Pekín a Shanghái?",
+            WebSearchQueryNormalizer.refine("¿Cuánto tarda el tren de alta velocidad de Pekín a Shanghái? gracias"),
         )
     }
 
     @Test
     fun `refine is idempotent`() {
-        val once = WebSearchQueryNormalizer.refine("麻烦帮我搜索一下 2026 年新能源汽车销量排行")
+        val once = WebSearchQueryNormalizer.refine("Ayúdenme a buscar el ranking de ventas de vehículos de nuevas energías en 2026.")
         assertEquals(once, WebSearchQueryNormalizer.refine(once))
     }
 
     @Test
     fun `refine truncates over long query at word boundary`() {
-        val long = "请" + " keyword".repeat(20).trim()
+        val long = "por favor" + " keyword".repeat(20).trim()
         val refined = WebSearchQueryNormalizer.refine(long)
         assert(refined.length <= 64) { "refined too long: ${refined.length}" }
     }

@@ -4,59 +4,59 @@ import java.math.BigInteger
 import java.security.MessageDigest
 
 /**
- * v2.0: Ed25519 核心(纯 Kotlin / BigInteger 实现) — 供 webhook 验签使用。
+ * v2.0: Ed25519 núcleo(Implementación pura de Kotlin/BigInteger) — Se utiliza para la verificación de la firma del webhook.
  *
- * 实现范围(RFC 8032 最小集):
- *  - [seedToPublicKey]: 32 字节种子派生 32 字节公钥;
- *  - [sign]: 确定性签名(挑战响应);
- *  - [verify]: 验签(事件推送防篡改)。
+ * Alcance de implementación(RFC 8032 conjunto mínimo):
+ *  - [seedToPublicKey]: 32 Semilla de bytes para derivar una clave pública de 32 bytes;
+ *  - [sign]: Firma determinista(respuesta al desafío);
+ *  - [verify]: Verificación(Empuje de eventos a prueba de manipulaciones).
  *
- * 不引入外部密码学依赖,保证低版本 Android 可用;
- * 正确性由官方测试向量单测覆盖(见 Ed25519Test)。
+ * No se introducen dependencias criptográficas externas.,Asegúrese de que haya versiones inferiores de Android disponibles;
+ * La corrección está cubierta por la prueba única de vector de prueba oficial(ver Ed25519Test).
  */
 internal object Ed25519 {
 
-    // ── 常量 ──────────────────────────────────────────────────────────
-    /** p = 2^255 - 19。 */
+    // ── constante ──────────────────────────────────────────────────────────
+    /** p = 2^255 - 19. */
     private val P: BigInteger =
         BigInteger.TWO.pow(255) - BigInteger.valueOf(19)
 
-    /** L = 2^252 + 27742317777372353535851937790883648493(群阶)。 */
+    /** L = 2^252 + 27742317777372353535851937790883648493(Nivel de grupo). */
     private val L: BigInteger =
         BigInteger.TWO.pow(252) +
             BigInteger("27742317777372353535851937790883648493")
 
-    /** d = -121665/121666 mod p。 */
+    /** d = -121665/121666 mod p. */
     private val D: BigInteger =
         BigInteger.valueOf(-121665).mod(P)
             .multiply(BigInteger.valueOf(121666).modInverse(P))
             .mod(P)
 
-    /** 2 * d(点加用)。 */
+    /** 2 * d(Haga clic para agregar). */
     private val D2: BigInteger = D.multiply(BigInteger.TWO).mod(P)
 
-    /** sqrt(-1) mod p(解 x 时的修正因子)。 */
+    /** sqrt(-1) mod p(Factores de corrección al resolver para x). */
     private val SQRT_M1: BigInteger =
         BigInteger.TWO.modPow(P.subtract(BigInteger.ONE).divide(BigInteger.valueOf(4)), P)
 
-    /** 基点 y = 4/5 mod p。 */
+    /** punto base y = 4/5 mod p. */
     private val BASE_Y: BigInteger =
         BigInteger.valueOf(4).multiply(BigInteger.valueOf(5).modInverse(P)).mod(P)
 
-    /** 基点 x(取偶数解)。 */
+    /** punto base x(Obtenga una solución uniforme). */
     private val BASE_X: BigInteger = recoverX(BASE_Y, signBit = 0)
-        ?: error("Ed25519 基点恢复失败")
+        ?: error("Ed25519 La recuperación del punto base falló")
 
     private val BASE = Point(BASE_X, BASE_Y, BigInteger.ONE, BASE_X.multiply(BASE_Y).mod(P))
     private val IDENTITY = Point(BigInteger.ZERO, BigInteger.ONE, BigInteger.ONE, BigInteger.ZERO)
 
     private val SHA512 = ThreadLocal.withInitial { MessageDigest.getInstance("SHA-512") }
 
-    // ── 公开 API ──────────────────────────────────────────────────────
+    // ── publico API ──────────────────────────────────────────────────────
 
-    /** 32 字节种子 → 32 字节公钥。 */
+    /** 32 semilla de bytes → 32 Clave pública de bytes. */
     fun seedToPublicKey(seed: ByteArray): ByteArray {
-        require(seed.size == 32) { "seed 必须为 32 字节" }
+        require(seed.size == 32) { "seed Debe tener 32 bytes" }
         val h = sha512(seed)
         val a = clamp(h.copyOfRange(0, 32))
         val aScalar = leToInt(a)
@@ -64,12 +64,12 @@ internal object Ed25519 {
     }
 
     /**
-     * 确定性签名(RFC 8032)。
+     * Firma determinista(RFC 8032).
      *
-     * @return 64 字节签名(R || s)
+     * @return 64 Firma de bytes(R || s)
      */
     fun sign(seed: ByteArray, message: ByteArray): ByteArray {
-        require(seed.size == 32) { "seed 必须为 32 字节" }
+        require(seed.size == 32) { "seed Debe tener 32 bytes" }
         val h = sha512(seed)
         val aScalar = leToInt(clamp(h.copyOfRange(0, 32)))
         val prefix = h.copyOfRange(32, 64)
@@ -82,7 +82,7 @@ internal object Ed25519 {
         return rEncoded + intToLe(s)
     }
 
-    /** 验签:公钥 32 字节,签名 64 字节,message 任意长度。 */
+    /** Verificación:Clave pública 32 bytes,Firma 64 bytes,message Cualquier longitud. */
     fun verify(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
         if (publicKey.size != 32 || signature.size != 64) return false
         val a = decodePoint(publicKey) ?: return false
@@ -90,13 +90,13 @@ internal object Ed25519 {
         val s = leToInt(signature.copyOfRange(32, 64))
         if (s >= L) return false
         val k = leToInt(sha512(signature.copyOfRange(0, 32), publicKey, message)).mod(L)
-        // 校验:s·B == R + k·A
+        // verificar:s·B == R + k·A
         val left = encodePoint(scalarMult(BASE, s))
         val right = encodePoint(pointAdd(r, scalarMult(a, k)))
         return left.contentEquals(right)
     }
 
-    /** 把任意长度口令补足/截断为 32 字节种子(重复拼接到 ≥32 后取前 32)。 */
+    /** Contraseñas completas de cualquier longitud/Truncado a semilla de 32 bytes(Repita el empalme para ≥32 Después de tomar el frente 32). */
     fun seedFromSecret(secret: String): ByteArray {
         var s = secret
         while (s.toByteArray(Charsets.UTF_8).size < 32) {
@@ -105,7 +105,7 @@ internal object Ed25519 {
         return s.toByteArray(Charsets.UTF_8).copyOf(32)
     }
 
-    // ── 曲线运算(扩展坐标) ────────────────────────────────────────────
+    // ── Operación de curva(Coordenadas extendidas) ────────────────────────────────────────────
 
     private data class Point(val x: BigInteger, val y: BigInteger, val z: BigInteger, val t: BigInteger)
 
@@ -138,7 +138,7 @@ internal object Ed25519 {
         return result
     }
 
-    /** 由 y 恢复 x;signBit 指定 x 的奇偶(0 偶 / 1 奇);无解返回 null。 */
+    /** restaurado por y x;signBit especifica la paridad de x(0 par / 1 impar);Devuelve nulo si no hay solución. */
     private fun recoverX(y: BigInteger, signBit: Int): BigInteger? {
         val y2 = y.multiply(y).mod(P)
         val numerator = y2.subtract(BigInteger.ONE).mod(P)
@@ -158,7 +158,7 @@ internal object Ed25519 {
         return x
     }
 
-    /** 点 → 32 字节(小端 y + 顶位存 x 奇偶)。 */
+    /** punto → 32 bytes(Little endian y + almacenes de bits superiores x paridad). */
     private fun encodePoint(point: Point): ByteArray {
         val zInv = point.z.modInverse(P)
         val x = point.x.multiply(zInv).mod(P)
@@ -175,7 +175,7 @@ internal object Ed25519 {
         return out
     }
 
-    /** 32 字节 → 点;无效编码返回 null。 */
+    /** 32 bytes → punto;La codificación no válida devuelve nulo. */
     private fun decodePoint(bytes: ByteArray): Point? {
         if (bytes.size != 32) return null
         val yBytes = bytes.copyOf()
@@ -187,9 +187,9 @@ internal object Ed25519 {
         return Point(x, y, BigInteger.ONE, x.multiply(y).mod(P))
     }
 
-    // ── 工具 ──────────────────────────────────────────────────────────
+    // ── Herramientas ──────────────────────────────────────────────────────────
 
-    /** RFC 8032 clamp(清低 3 位、清最高位、置次高位)。 */
+    /** RFC 8032 clamp(Borre los 3 bits inferiores, borre el bit más alto y establezca el segundo bit más alto.). */
     private fun clamp(h: ByteArray): ByteArray {
         h[0] = (h[0].toInt() and 248).toByte()
         h[31] = (h[31].toInt() and 63).toByte()
@@ -204,13 +204,13 @@ internal object Ed25519 {
         return digest.digest()
     }
 
-    /** 小端字节 → 非负整数。 */
+    /** pequeño byte endian → Entero no negativo. */
     private fun leToInt(bytes: ByteArray): BigInteger {
         val be = bytes.reversedArray()
         return BigInteger(1, be)
     }
 
-    /** 非负整数 → 32 字节小端。 */
+    /** entero no negativo → 32 Bytes little endian. */
     private fun intToLe(value: BigInteger): ByteArray {
         val out = ByteArray(32)
         var t = value

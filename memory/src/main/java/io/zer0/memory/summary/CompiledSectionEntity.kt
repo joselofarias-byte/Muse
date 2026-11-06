@@ -6,12 +6,12 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * 编译产物段落(memory 目录下的 .md 文件 → Room)。
+ * Compilar sección de producto(memory Archivo .md en el directorio → Room).
  *
- * 4 个固定 section: facts / today / week / longterm。
- * assemble 时拼接为 memory.md 注入 system prompt。
+ * 4 fijo section: facts / today / week / longterm.
+ * assemble Al empalmar en Memory.md, inyecte el mensaje del sistema.
  *
- * Phase 7: @Serializable 用于备份导出/导入。
+ * Phase 7: @Serializable para exportación de respaldo/Importar.
  */
 @Serializable
 @Entity(tableName = "compiled_sections")

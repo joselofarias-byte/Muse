@@ -11,14 +11,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * 静态快照缓存 key 的读写一致性。
+ * Coherencia de lectura y escritura de claves de caché de instantáneas estáticas.
  *
- * 读取端（本包的 buildSystemPromptForStream）与写入端（ChatViewModel.refreshContextInfo）
- * 共用 [ChatGenerationController.computeFullSnapshotKey]，只要有一侧漏传 sessionId，
- * 两侧 key 就永不相等 —— 表现是每次进会话后的首条消息都整份重建静态快照。
+ * El final de lectura (buildSystemPromptForStream de este paquete) y el final de escritura (ChatViewModel.refreshContextInfo)
+ * compartir [ChatGenerationController.computeFullSnapshotKey], siempre que un lado pierda el ID de sesión,
+ * Las claves de ambos lados nunca serán iguales. —— El rendimiento es que el primer mensaje después de cada sesión se reconstruye completamente en una instantánea estática.
  *
- * 同时钉住 buildStaticSnapshot 的 sessionId：它决定「跨会话衔接」能否排除当前会话自己，
- * 漏传会把本轮对话尾巴当成「上一个会话」再注入一遍。
+ * Al mismo tiempo, fije el ID de sesión de buildStaticSnapshot: determina si la "conexión entre sesiones" puede excluir la sesión actual.
+ * Un pase perdido insertará el final de la conversación actual como la "conversación anterior".
  */
 class SnapshotCacheKeyParityTest {
 
@@ -81,7 +81,7 @@ class SnapshotCacheKeyParityTest {
         assertTrue(writeArgs.contains("sessionId = effSessionId,"))
     }
 
-    /** 该文件是 CRLF，片段锚点必须取单行、不能带换行，否则匹配不到。 */
+    /** El archivo es CRLF y el punto de anclaje del fragmento debe ser una sola línea sin saltos de línea; de lo contrario, no coincidirá. */
     private fun between(text: String, start: String, end: String): String {
         val from = text.indexOf(start)
         check(from >= 0) { "anchor not found: $start" }

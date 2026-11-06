@@ -8,22 +8,22 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * P2-32: 矛盾记忆清单持久化(按 scope+spaceId 分 key 的 JSON 文件)。
+ * P2-32: Persistencia de listas de recuerdos en conflicto(Archivo JSON codificado por alcance + spaceId).
  *
- * [MemoryReflectionRunner] 每日检测到矛盾断言后写入,记忆中心读取展示并允许
- * 用户逐条确认/清除 — 解决此前"矛盾检测只打日志"的空转问题。
+ * [MemoryReflectionRunner] Escrito después de que se detecte una afirmación contradictoria diaria,El centro de memoria lee la pantalla y permite
+ * El usuario confirma artículo por artículo/Borrar — Resuelto antes"Registros solo de detección de conflictos"problema de ralentí.
  */
 class MemoryContradictionStore(private val file: File) {
 
     /**
-     * v2.6.2（记忆审计）: 读写互斥锁。
+     * v2.6.2(auditoría de memoria): Leer y escribir mutex.
      *
-     * 旧实现是“读改写”且无锁、无原子替换 —— 每日反思写入与 UI 清除并发时后写者
-     * 覆盖前写者；进程中断还可能留下半截 JSON（随后 readAll 静默回退空列表，数据丢失）。
+     * La antigua implementación era“leer-reescribir”Y sin cerraduras, sin reemplazo atómico —— Reflexión diaria sobre la escritura y la simultaneidad de la limpieza de la interfaz de usuario
+     * Sobrescriba al escritor anterior; la interrupción del proceso también puede dejar la mitad del JSON (luego readAll revierte silenciosamente la lista vacía y se pierden los datos).
      */
     private val mutex = kotlinx.coroutines.sync.Mutex()
 
-    /** 一对互相矛盾的记忆文本。 */
+    /** Un par de textos de memoria contradictorios. */
     @Serializable
     data class ContradictionPair(val a: String, val b: String)
 
@@ -33,7 +33,7 @@ class MemoryContradictionStore(private val file: File) {
     @Serializable
     private data class StoreData(val entries: List<Entry> = emptyList())
 
-    /** 覆盖保存指定 scope+space 的矛盾清单。 */
+    /** Sobrescriba y guarde la lista de conflictos del ámbito + espacio especificado. */
     suspend fun save(scope: String, spaceId: String, pairs: List<Pair<String, String>>) = mutex.withLock {
         withContext(Dispatchers.IO) {
             val key = keyOf(scope, spaceId)
@@ -44,17 +44,17 @@ class MemoryContradictionStore(private val file: File) {
         }
     }
 
-    /** 读取指定 scope+space 的矛盾清单。 */
+    /** Lea la lista de conflictos para el ámbito+espacio especificado. */
     suspend fun list(scope: String, spaceId: String): List<ContradictionPair> = withContext(Dispatchers.IO) {
         readAll().entries.firstOrNull { it.key == keyOf(scope, spaceId) }?.pairs ?: emptyList()
     }
 
     /**
-     * 清掉某 scope 在全部 space 下的矛盾清单(助手删除时用)。
+     * Borrar la lista de conflictos de un determinado alcance en todos los espacios.(Se utiliza cuando el asistente elimina).
      *
-     * key 形如 `scope|space`,按 `scope|` 前缀精确匹配 scope 段,不会误删名字前缀相同的其他 scope。
+     * key en forma de `scope|space`,prensa `scope|` El prefijo coincide exactamente con el segmento de alcance,Otros ámbitos con el mismo prefijo de nombre no se eliminarán por error.
      *
-     * @return 被移除的条目数
+     * @return Número de elementos eliminados
      */
     suspend fun clearScope(scope: String): Int = mutex.withLock {
         withContext(Dispatchers.IO) {
@@ -69,7 +69,7 @@ class MemoryContradictionStore(private val file: File) {
         }
     }
 
-    /** 用户确认后清除其中一对矛盾。 */
+    /** Una vez que el usuario confirma, se elimina una de las contradicciones. */
     suspend fun removePair(scope: String, spaceId: String, pair: ContradictionPair) = mutex.withLock {
         withContext(Dispatchers.IO) {
             val all = readAll()
@@ -91,11 +91,11 @@ class MemoryContradictionStore(private val file: File) {
 
     private fun write(data: StoreData) {
         file.parentFile?.mkdirs()
-        // v2.6.2: 原子写入 — 先写临时文件再 rename，避免进程中断留下半截 JSON。
+        // v2.6.2: escrituras atómicas — Escriba primero el archivo temporal y luego cámbiele el nombre para evitar la interrupción del proceso y dejar la mitad del JSON.
         val tmp = File(file.parentFile, "${file.name}.tmp")
         tmp.writeText(AppJson.encodeToString(StoreData.serializer(), data))
         if (!tmp.renameTo(file)) {
-            // rename 失败（目标已存在/跨卷）→ 回退直接写，并清理临时文件
+            // rename falló (el objetivo ya existe)/entre volúmenes)→ Recurra a la escritura directa y limpie archivos temporales
             file.writeText(tmp.readText())
             tmp.delete()
         }

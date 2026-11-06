@@ -1,6 +1,6 @@
 package io.zer0.memory.compile
 
-// NOTE-i18n: section 标题(重要事实/今天等)参与 LLM 输出解析契约,需契约与文案分离架构改动后才能提取。
+// NOTE-i18n: section Título(hechos importantes/esperando hoy)Participar en el contrato de análisis de salida de LLM,Solo se puede extraer después de que se separen el contrato y la redacción y se cambie la estructura.
 
 import io.zer0.ai.core.Model
 import io.zer0.common.Logger
@@ -23,44 +23,44 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
- * 记忆编译器。
+ * Compilador de memoria.
  *
- * 四块独立编译 + assemble:
- *  - compileToday: 当天 sessions 摘要 → today.md(Room)
- *  - compileDaily: 已结束那天的 today 草稿/摘要 → daily/{date}.md(文件)
- *  - assembleWeekFromDaily: daily/ 目录最近 N 条纯文件装配 → week.md(零 LLM)
- *  - compileWeek: 兼容入口,优先 assembleWeekFromDaily,无 daily 文件时回退到旧 LLM 路径
- *  - compileLongterm: week/daily 内容 fold 进 longterm.md(每日一次)
- *  - compileFacts: 30 天摘要的 facts 段 → facts.md
- *  - rollDailyWindow: 滚出窗口的 daily 条目 fold 进 longterm 后删除源文件
- *  - assemble: 四块拼接成 memory.md(同步,不调 LLM)
+ * Cuatro bloques se compilan de forma independiente. + assemble:
+ *  - compileToday: Resumen de sesiones del día. → today.md(Room)
+ *  - compileDaily: hoy borrador para el día terminado/Resumen → daily/{date}.md(Archivo)
+ *  - assembleWeekFromDaily: daily/ Los ensamblajes de archivos puros N más recientes del directorio → week.md(cero LLM)
+ *  - compileWeek: Entrada compatible,Prioridad assembleWeekFromDaily,Recurrir a la antigua ruta LLM cuando no existe ningún archivo diario
+ *  - compileLongterm: week/daily El contenido se dobla en longterm.md(una vez al dia)
+ *  - compileFacts: 30 sección de hechos del resumen del día → facts.md
+ *  - rollDailyWindow: Elimine el archivo fuente después de desplegar la entrada diaria de la ventana y plegarla a largo plazo.
+ *  - assemble: cuatro piezas empalmadas en memory.md(sincronizar,desafinado LLM)
  *
- * 每块都有指纹缓存: 输入没变就跳过 LLM 调用。
- * 空 sessions 不写指纹(避免 rolling 失败期被指纹锁死)。
+ * Cada bloque tiene un caché de huellas dactilares.: Omita la llamada LLM si la entrada no ha cambiado.
+ * Las sesiones vacías no escriben huellas dactilares.(Evite quedar bloqueado por huellas dactilares durante el período de falla continua).
  */
-/** D3-P2: 候选吸收的单行长度上限(超长行视为段落,不入表)。 */
+/** D3-P2: Longitud máxima de línea única para la absorción del candidato(Las líneas extralargas se tratan como párrafos.,No incluido en la lista). */
 private const val MAX_ABSORB_LINE_CHARS = 200
 
 class MemoryCompiler(
     private val sectionDao: CompiledSectionDao,
     private val llmClient: MemoryLlmClient,
-    /** v6: 文件化输出,为 null 时不写文件(便于测试)。 */
+    /** v6: Salida documentada,Si es nulo, no escriba el archivo.(Fácil de probar). */
     private val fileWriter: MemoryFileWriter? = null,
     /**
-     * 审计修复 (S-04): 删除墓碑源(FactStore)。
+     * Reparación de auditoría (S-04): Eliminar fuente de desecho(FactStore).
      *
-     * 用户删除记忆后,已删事实不得从会话摘要重新编译时"复活"。compileFacts/
-     * compileToday 按 [FactStore.getTombstones] 过滤输入与输出。为 null 时过滤禁用。
+     * Después de que el usuario borra la memoria.,Los hechos eliminados no deben volver a compilarse del resumen de la sesión."resurrección".compileFacts/
+     * compileToday prensa [FactStore.getTombstones] Filtrar entrada y salida. El filtrado está deshabilitado cuando es nulo.
      */
     private val factStore: FactStore? = null,
-    /** v3: scoped 编译产物；null 时保留旧测试/兼容路径。 */
+    /** v3: scoped Compilar productos;null mantener pruebas antiguas/Caminos compatibles. */
     private val scopedSectionDao: io.zer0.memory.summary.ScopedCompiledSectionDao? = null,
     private val compileContext: MemoryCompileContext = MemoryCompileContext(),
     /** Resolve assistant-local facts and tombstones for scoped compile targets. */
     private val factDbProvider: FactDbProvider? = null,
 ) {
 
-    /** 四块 section key。 */
+    /** Teclas de cuatro secciones. */
     enum class Section(val key: String) {
         FACTS("facts"),
         TODAY("today"),
@@ -74,11 +74,11 @@ class MemoryCompiler(
     }
 
     /**
-     * 编译结果。
-     * v1.0.51: 新增 FAILED — LLM 调用失败或返回空响应时使用。
-     *   - COMPILED: 成功编译并写入
-     *   - SKIPPED: 指纹命中,无需编译(安全)
-     *   - FAILED: LLM 失败或空响应,不写入,不标记 checkpoint,下次重试
+     * Resultados de la compilación.
+     * v1.0.51: Nuevo FAILED — LLM Se utiliza cuando la llamada falla o devuelve una respuesta vacía.
+     *   - COMPILED: Compilado y escrito con éxito.
+     *   - SKIPPED: golpe de huella digital,No es necesario compilar(seguro)
+     *   - FAILED: LLM Fracaso o respuesta vacía,no escribas,No marcado checkpoint,Inténtalo de nuevo la próxima vez
      */
     enum class Result { COMPILED, SKIPPED, FAILED }
 
@@ -181,7 +181,7 @@ class MemoryCompiler(
         }
     }
 
-    /** 读取某块当前内容。 */
+    /** Leer el contenido actual de un bloque. */
     suspend fun readSection(section: Section): String = withContext(Dispatchers.IO) {
         readStoredSection(section.key)?.content ?: ""
     }
@@ -190,7 +190,7 @@ class MemoryCompiler(
         readStoredSection(section.key, target)?.content ?: ""
     }
 
-    /** 按显式 scope + space 读取，供 system prompt 注入避免依赖全局默认槽位。 */
+    /** Lea de acuerdo con el alcance explícito + espacio para la inyección del aviso del sistema para evitar depender de la ranura predeterminada global. */
     suspend fun readSection(section: Section, scope: String, spaceId: String): String = withContext(Dispatchers.IO) {
         val normalizedScope = scope.ifBlank { "main" }
         val normalizedSpace = spaceId.ifBlank { "default" }
@@ -204,15 +204,15 @@ class MemoryCompiler(
     }
 
     /**
-     * 在已编译摘要里按词做子串扫描。
+     * Realice un escaneo de subcadenas palabra por palabra en el resumen compilado.
      *
-     * 读的是与 system prompt 注入同一份内容(按 scope + space 取,旧副本作回落),
-     * 并同样剔除墓碑行 —— 用户删过的内容不得因为“摘要里还有”被检索回来。
+     * Lo que se lee es el mismo contenido inyectado por el sistema.(Presione alcance + espacio para obtener,Revertir la copia antigua),
+     * Y también quitar la fila de lápidas. —— El contenido eliminado por los usuarios no debe eliminarse debido a“También en abstracto”recuperado.
      *
-     * @param query 用户查询串
-     * @param scope 记忆作用域
-     * @param spaceId 记忆空间
-     * @param limit 最多返回几条
+     * @param query Cadena de consulta del usuario
+     * @param scope alcance de la memoria
+     * @param spaceId espacio de memoria
+     * @param limit Número máximo de artículos devueltos
      */
     suspend fun searchCompiledSections(
         query: String,
@@ -231,21 +231,21 @@ class MemoryCompiler(
     }
 
     /**
-     * v1.0.53: 是否存在任何已编译 section。
-     * 用于 daily pipeline 进度校验:旧版 updateContent 是 UPDATE 语义,
-     * 表初始为空时写入静默丢失,但 daily_state 仍记录完成 → 需重置进度重跑。
+     * v1.0.53: Si hay secciones compiladas.
+     * Se utiliza para la verificación diaria del progreso de la tubería.:El contenido de actualización heredado tiene semántica de ACTUALIZAR,
+     * Las escrituras se pierden silenciosamente cuando la tabla está inicialmente vacía,Pero daily_state todavía registra la finalización → Es necesario restablecer el progreso y ejecutarlo nuevamente.
      */
     suspend fun hasAnyCompiledSection(): Boolean = withContext(Dispatchers.IO) {
         scopedSectionDao?.getAll()?.isNotEmpty() == true || sectionDao.getAll().isNotEmpty()
     }
 
-    // ─── S-04: 删除墓碑过滤(防已删事实从摘要复活) ───
+    // ─── S-04: Quitar filtro de lápida(Evitar que los hechos eliminados se recuperen del resumen) ───
 
     /**
-     * S-04: 过滤命中墓碑的文本行(逐行规范化子串匹配)。
-     * 墓碑为空时原样返回(零开销路径)。
-     * 审查修复 (2.0 B-07): 匹配逻辑下沉到 [FactStore.filterTombstonedLines]
-     * (空白压缩 + 标点剥离双通道),本方法保留签名与可见性兼容测试。
+     * S-04: Filtrar líneas de texto que llegan a lápidas(Coincidencia de subcadenas normalizadas línea por línea).
+     * Si la lápida está vacía, se devolverá tal cual.(camino de costo cero).
+     * Revisión de corrección (2.0 B-07): La lógica de coincidencia se reduce a [FactStore.filterTombstonedLines]
+     * (Compresión de espacios en blanco + eliminación de puntuación de doble canal),Este método preserva las pruebas de compatibilidad de firma y visibilidad.
      */
     internal fun filterTombstonedLines(text: String, tombstones: List<String>): String = FactStore.filterTombstonedLines(text, tombstones)
 
@@ -284,14 +284,14 @@ class MemoryCompiler(
     }
 
     /**
-     * S-04: 立即从已编译的各注入段剔除命中墓碑的内容。
+     * S-04: Elimine inmediatamente los resultados de desecho de cada segmento inyectado compilado.
      *
-     * 用户在记忆页删除事实后调用(FactStore.delete 已记墓碑),无需等待下次
-     * 定时编译 — 删除即刻对注入生效。返回是否有内容被剔除。
+     * Se llama después de que el usuario elimina un hecho de la página de memoria.(FactStore.delete Lápida marcada),No hay necesidad de esperar a la próxima
+     * Compilación cronometrada — La eliminación tiene efecto inmediatamente después de la inyección. Devuelve si se ha eliminado algún contenido.
      *
-     * 审查修复 (2.0 A-05): 覆盖全部注入段 — 此前只清 FACTS 段,而 TODAY/WEEK/
-     * LONGTERM 同样注入 system prompt(week 由 daily 文件零 LLM 装配、longterm
-     * 由 fold 产生,均不过滤墓碑),用户删除的隐私会持续残留。
+     * Revisión de corrección (2.0 A-05): Cubrir todas las secciones de inyección. — Anteriormente solo se borraba el segmento FACTS,y TODAY/WEEK/
+     * LONGTERM también inyectar system prompt(week Montado por el archivo diario cero LLM,longterm
+     * generado por pliegue,No filtrar lápidas),La privacidad eliminada por los usuarios seguirá existiendo.
      */
     suspend fun purgeTombstonedFacts(target: MemoryCompileTarget? = null): Boolean = withContext(Dispatchers.IO) {
         val resolvedTarget = effectiveTarget(target)
@@ -302,10 +302,10 @@ class MemoryCompiler(
             val current = readSection(section, resolvedTarget)
             val filtered = filterTombstonedLines(current, tombstones)
             if (filtered != current) {
-                // 指纹置 null,保证下次编译重新合并(而非 SKIPPED)
+                // Configuración de huellas dactilares null,Se garantiza que se volverá a fusionar la próxima vez que se compile(en vez de SKIPPED)
                 updateStoredContent(section.key, filtered, null, Instant.now().toString(), resolvedTarget)
                 val removedCount = countRemovedLines(current, filtered)
-                Logger.i("MemoryCompiler", "purgeTombstonedFacts: ${section.key} 剔除 $removedCount 行")
+                Logger.i("MemoryCompiler", "purgeTombstonedFacts: ${section.key} sacrificio $removedCount OK")
                 removedAny = true
             }
         }
@@ -318,11 +318,11 @@ class MemoryCompiler(
         return (beforeLines - afterLines).coerceAtLeast(0)
     }
 
-    /** 读取四块拼装后的 memory.md(注入 system prompt 用)。
-     *  审查修复 (2.0 A-05): 注入读路径统一按墓碑过滤 — 兜底任何未及时 purge 的段,
-     *  已删内容不会泄漏进 system prompt(双通道匹配见 FactStore.filterTombstonedLines)。 */
+    /** Lea las cuatro piezas ensambladas. memory.md(Aviso de uso del sistema de inyección).
+     *  Revisión de corrección (2.0 A-05): Las rutas de lectura de inyección se filtran uniformemente mediante lápidas — Purgar cualquier segmento que no se haya purgado a tiempo,
+     *  El contenido eliminado no se filtrará system prompt(Coincidencia de doble canal ver FactStore.filterTombstonedLines). */
     suspend fun readCompiledMemoryMarkdown(
-        locale: String = "zh-CN",
+        locale: String = "es",
         scope: String? = null,
         spaceId: String? = null,
         target: MemoryCompileTarget? = null,
@@ -343,22 +343,22 @@ class MemoryCompiler(
             filterTombstonedLines(read(Section.LONGTERM), tombstones),
         )
         val md = assembleCompiledMarkdown(facts, today, week, longterm, locale)
-        // v6: 同时输出到文件系统,便于调试和备份
+        // v6: Salida simultánea al sistema de archivos.,Fácil de depurar y realizar copias de seguridad
         fileWriter?.writeMemoryMd(md, locale, resolvedTarget)
         md
     }
 
     /**
-     * 编译 today: 当天 sessions → today.md。
+     * Compilar hoy: hoy sessions → today.md.
      */
     suspend fun compileToday(
         summaryManager: SessionSummaryManager,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         timeZone: String = io.zer0.memory.time.TimeContext.DEFAULT_TIMEZONE,
         /**
-         * A-19: 主助手 id — 非 null 时只编译主助手(及无归属旧数据)的摘要,
-         * 子助手会话摘要不得串台进入主助手注入的"今天"段。
+         * A-19: asistente principal id — Cuando no es nulo, solo se compila el asistente principal.(y datos antiguos sin dueño)Resumen de,
+         * Los resúmenes de las sesiones del subasistente no deben serializarse con los inyectados por el asistente principal."hoy"segmento.
          */
         mainAssistantId: String? = null,
         target: MemoryCompileTarget? = null,
@@ -374,7 +374,7 @@ class MemoryCompiler(
         )
 
         if (sessions.isEmpty()) {
-            // 空 sessions: 清空内容,不写指纹
+            // Sesiones vacías: Borrar contenido,Sin huellas dactilares
             val current = readSection(Section.TODAY, target ?: MemoryCompileTarget(assistantId = assistantId))
             if (current.isNotEmpty()) {
                 updateStoredContent(Section.TODAY.key, "", null, Instant.now().toString(), target)
@@ -382,8 +382,8 @@ class MemoryCompiler(
             return@withContext Result.COMPILED
         }
 
-        // 指纹: sessions 的 (id, updated_at) 拼接 md5
-        // S-04: 墓碑并入指纹 — 用户删除事实后指纹变化,强制重编剔除已删内容
+        // huella digital: sessions de (id, updated_at) empalme md5
+        // S-04: Lápidas incorporadas a las huellas dactilares — La huella digital cambia después de que el usuario elimina datos,Reedición forzada para eliminar contenido eliminado
         val tombstones = loadTombstones(effectiveTarget(target, assistantId))
         val fpKeys = sessions.joinToString("\n") { "${it.sessionId}:${it.updatedAt}" } +
             "\nT:" + tombstones.joinToString("|")
@@ -393,7 +393,7 @@ class MemoryCompiler(
             return@withContext Result.SKIPPED
         }
 
-        // S-04: 输入按墓碑过滤,已删事实不出现在 today 候选里
+        // S-04: Filtro de entrada por lápida,Los hechos eliminados no aparecen en los candidatos de hoy.
         val sessionInput = sessions.joinToString("\n\n---\n\n") { filterTombstonedLines(it.summary, tombstones) }
         if (sessionInput.isBlank()) {
             val current = readSection(Section.TODAY, target ?: MemoryCompileTarget(assistantId = assistantId))
@@ -402,12 +402,12 @@ class MemoryCompiler(
             }
             return@withContext Result.COMPILED
         }
-        // v1.0.51: 注入当前 facts,让 LLM 知道哪些事实已记录,避免 today 里重复
+        // v1.0.51: inyectar corriente facts,Informe al LLM qué hechos se han registrado.,Evite la repetición en el día de hoy.
         val currentFacts = readSection(Section.FACTS, target ?: MemoryCompileTarget(assistantId = assistantId)).trim()
         val input = if (currentFacts.isNotBlank()) {
-            val isZh = locale.startsWith("zh")
+            val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
             val factsLabel = if (isZh) {
-                "## 已记录的重要事实(供参考,不要在 today 里重复)"
+                "## hechos materiales registrados(como referencia,No repita en hoy)"
             } else {
                 "## Already Recorded Facts (for reference, do not repeat in today)"
             }
@@ -424,31 +424,31 @@ class MemoryCompiler(
                 maxTokens = 450,
             )
         }.onError { msg, t ->
-            // v1.78 (M1): 记录 LLM 失败原因,避免静默吞异常
-            Logger.w("MemoryCompiler", "compileToday LLM 调用失败: $msg", t)
+            // v1.78 (M1): Registrar el motivo del fracaso del LLM,Evite excepciones silenciosas
+            Logger.w("MemoryCompiler", "compileToday LLM llamada fallida: $msg", t)
         }.getOrNull() ?: return@withContext Result.FAILED
 
-        // v1.0.51: 空响应防御 — LLM 返回空/纯标签时不覆盖已有内容,返回 FAILED 供下次重试
+        // v1.0.51: Defensa de respuesta nula — LLM Volver vacío/Cuando se utilizan etiquetas puras, el contenido existente no se sobrescribirá.,Devolver FALLADO para el próximo reintento
         val normalized = CompiledMemoryState.normalizeLlmResult(result, "compileToday")
         if (normalized.isBlank()) {
-            Logger.w("MemoryCompiler", "compileToday: LLM 返回空响应,保留旧内容,返回 FAILED")
+            Logger.w("MemoryCompiler", "compileToday: LLM Devolver respuesta vacía,Mantener contenido antiguo,Regresar FAILED")
             return@withContext Result.FAILED
         }
-        // v2.6.2（记忆审计）: 读写必须使用同一 target —— 旧实现读用 target、写漏传，
-        // 导致子助手/非默认 Space 的编译结果写到运行时默认槽位。
+        // v2.6.2(auditoría de memoria): La lectura y la escritura deben utilizar el mismo target —— La implementación anterior utiliza destino para lectura y falla para escritura.
+        // resultados en sub-ayudante/Los resultados de la compilación del espacio no predeterminado se escriben en la ranura predeterminada del tiempo de ejecución.
         updateStoredContent(Section.TODAY.key, normalized, fp, Instant.now().toString(), target)
         Result.COMPILED
     }
 
     /**
-     * 编译已结束那天 → memory/daily/{date}.md。
+     * El día que terminó la recopilación. → memory/daily/{date}.md.
      *
-     * v6.1: 输入优先使用前一天最终版 today 草稿([yesterdayTodayDraft])。
-     * 草稿缺失时回退到当天 session 摘要编译,保证升级首日/状态丢失时数据不丢。
-     * 当天没有任何内容时不产文件(零占位)。
+     * v6.1: Ingrese prioridad para usar la versión final del borrador de hoy el día anterior([yesterdayTodayDraft]).
+     * Cuando falte el borrador, recurra a la compilación del resumen de la sesión del día actual.,Primer día de actualización garantizado/Los datos no se pierden cuando se pierde el estado.
+     * No se generarán archivos cuando no haya contenido ese día.(Ocupación cero).
      *
-     * @param logicalDate 要编译的逻辑日(yyyy-MM-dd),一般为昨天
-     * @param yesterdayTodayDraft 前一天 Room today 段的最终草稿,可为 null
+     * @param logicalDate día lógico para compilar(yyyy-MM-dd),Generalmente ayer
+     * @param yesterdayTodayDraft Borrador final del segmento Room Today del día anterior,puede ser null
      */
     @Suppress("LongParameterList")
     suspend fun compileDaily(
@@ -456,11 +456,11 @@ class MemoryCompiler(
         logicalDate: String,
         yesterdayTodayDraft: String? = null,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         timeZone: String = io.zer0.memory.time.TimeContext.DEFAULT_TIMEZONE,
         /**
-         * 审查修复 (2.0 B-09): 主助手 id — 兜底路径(无 today 草稿时按 session 摘要编译)
-         * 只取主助手摘要,子助手摘要不得经 daily → week → longterm 链串台进主助手注入。
+         * Revisión de corrección (2.0 B-09): asistente principal id — camino sucio(Compilar por resumen de sesión cuando no hay borrador de hoy)
+         * Obtenga solo el resumen del asistente principal,No se debe aprobar el resumen del subasistente. daily → week → longterm La plataforma de cadena se inyecta en el asistente principal.
          */
         mainAssistantId: String? = null,
         target: MemoryCompileTarget? = null,
@@ -477,7 +477,7 @@ class MemoryCompiler(
             .toInstant()
         val dayEnd = dayStart.plus(1, ChronoUnit.DAYS)
 
-        // 优先使用 yesterday 的 today 草稿;缺失则回落到当天 session 摘要
+        // Priorizar el uso del borrador de ayer de hoy;Si falta, volverá al resumen de la sesión del día actual.
         val input = when {
             !yesterdayTodayDraft.isNullOrBlank() -> yesterdayTodayDraft.trim()
             else -> {
@@ -491,7 +491,7 @@ class MemoryCompiler(
                     fileWriter.deleteDailyMd(logicalDate, target)
                     return@withContext Result.COMPILED
                 }
-                // B-09: 兜底路径同样过滤墓碑 — 已删内容不得进入 daily → week → longterm 注入链
+                // B-09: El camino inferior también filtra las lápidas. — No se permite la entrada de contenido eliminado daily → week → longterm cadena de inyección
                 val tombstones = loadTombstones(effectiveTarget(target, assistantId))
                 sessions.joinToString("\n\n---\n\n") { filterTombstonedLines(it.summary, tombstones) }
             }
@@ -514,19 +514,19 @@ class MemoryCompiler(
                 userContent = input,
                 model = model,
                 temperature = 0.3f,
-                // v1.0.51: 100 → 250 — 100 token 对中文约 50-70 字,作为一天的定稿过短,
-                // 会导致 daily → week → longterm 链路丢失过多细节。
-                // 250 token 约 120-175 字,与 week 的 1200 字符窗口(6天 × 200字)匹配
+                // v1.0.51: 100 → 250 — 100 token Alrededor de 50 a 70 palabras en chino,Como un día es demasiado corto para finalizar,
+                // conducirá a daily → week → longterm El enlace pierde demasiados detalles.
+                // 250 token Alrededor de 120-175 palabras,Ventana de 1200 caracteres con semana.(6dia × 200palabra)partido
                 maxTokens = 250,
             )
         }.onError { msg, t ->
-            Logger.w("MemoryCompiler", "compileDaily($logicalDate) LLM 调用失败: $msg", t)
+            Logger.w("MemoryCompiler", "compileDaily($logicalDate) LLM llamada fallida: $msg", t)
         }.getOrNull() ?: return@withContext Result.FAILED
 
-        // v1.0.51: 空响应防御 — 不写空 daily 文件,返回 FAILED 供下次重试
+        // v1.0.51: Defensa de respuesta nula — No escribas archivos diarios vacíos.,Devolver FALLADO para el próximo reintento
         val normalized = CompiledMemoryState.normalizeLlmResult(result, "compileDaily")
         if (normalized.isBlank()) {
-            Logger.w("MemoryCompiler", "compileDaily($logicalDate): LLM 返回空响应,返回 FAILED")
+            Logger.w("MemoryCompiler", "compileDaily($logicalDate): LLM Devolver respuesta vacía,Regresar FAILED")
             return@withContext Result.FAILED
         }
         fileWriter.writeDailyMd(logicalDate, normalized, target)
@@ -535,8 +535,8 @@ class MemoryCompiler(
     }
 
     /**
-     * 从 daily/ 目录纯文件装配 week.md(零 LLM)。
-     * 取最近 N 天日记条目按日期正序拼接,超长时从最老条目截断。
+     * Ensamblando archivos simples desde el directorio diario/ week.md(cero LLM).
+     * Obtenga los últimos N días de entradas del diario y concatenelos en orden de fecha positivo,Truncar desde la entrada más antigua si es demasiado larga.
      */
     suspend fun assembleWeekFromDaily(
         maxDays: Int = MemoryFileWriter.DAILY_WINDOW_RETENTION_DAYS,
@@ -544,7 +544,7 @@ class MemoryCompiler(
         target: MemoryCompileTarget? = null,
     ): Result = withContext(Dispatchers.IO) {
         if (fileWriter == null) {
-            // 无文件 writer 时清空 week 段,避免残留旧内容
+            // Borrar el segmento de la semana cuando no hay ningún escritor de archivos,Evite dejar atrás contenido antiguo
             val current = readStoredSection(Section.WEEK.key, target)?.content ?: ""
             if (current.isNotEmpty()) {
                 updateStoredContent(Section.WEEK.key, "", null, Instant.now().toString(), target)
@@ -572,13 +572,13 @@ class MemoryCompiler(
     }
 
     /**
-     * 编译 week: 优先从 daily/ 目录零 LLM 装配;
-     * 无 daily 文件时回退到旧路径(按 7 天 session 摘要 LLM 编译),保证升级首日有内容。
+     * Compilar para la semana: priorizar el ensamblaje LLM cero del directorio diario;
+     * Volver a la ruta anterior cuando no hay un archivo diario(Compilado por el resumen de sesiones de 7 días LLM),Contenido garantizado el primer día de actualización.
      */
     suspend fun compileWeek(
         summaryManager: SessionSummaryManager,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         timeZone: String = io.zer0.memory.time.TimeContext.DEFAULT_TIMEZONE,
         target: MemoryCompileTarget? = null,
     ): Result = withContext(Dispatchers.IO) {
@@ -589,7 +589,7 @@ class MemoryCompiler(
             if (currentWeek.isNotBlank()) return@withContext assembledResult
         }
 
-        // 回退路径:无 daily 文件时按 7 天 session 摘要 LLM 编译(旧行为)
+        // camino alternativo:Compile con el resumen de sesión de 7 días LLM cuando no hay un archivo diario(viejo comportamiento)
         val now = Instant.now()
         val zone = io.zer0.memory.time.TimeContext.resolveTimeZone(timeZone)
         val logicalDay = io.zer0.memory.time.TimeContext.logicalDayFor(now, zone)
@@ -627,13 +627,13 @@ class MemoryCompiler(
                 maxTokens = 600,
             )
         }.onError { msg, t ->
-            Logger.w("MemoryCompiler", "compileWeek LLM 调用失败: $msg", t)
+            Logger.w("MemoryCompiler", "compileWeek LLM llamada fallida: $msg", t)
         }.getOrNull() ?: return@withContext Result.FAILED
 
-        // v1.0.51: 空响应防御 — 不覆盖已有 week,不写指纹(避免锁死),返回 FAILED 供下次重试
+        // v1.0.51: Defensa de respuesta nula — No sobrescribir existente week,Sin huellas dactilares(evitar el encierro),Devolver FALLADO para el próximo reintento
         val normalized = CompiledMemoryState.normalizeLlmResult(result, "compileWeek")
         if (normalized.isBlank()) {
-            Logger.w("MemoryCompiler", "compileWeek: LLM 返回空响应,保留旧内容,返回 FAILED")
+            Logger.w("MemoryCompiler", "compileWeek: LLM Devolver respuesta vacía,Mantener contenido antiguo,Regresar FAILED")
             return@withContext Result.FAILED
         }
         updateStoredContent(Section.WEEK.key, normalized, fp, Instant.now().toString(), target)
@@ -641,12 +641,12 @@ class MemoryCompiler(
     }
 
     /**
-     * 把滚出 N 日窗口的 daily 条目 fold 进 longterm,成功后删除源文件;
-     * 失败的条目保留在 daily/ 目录,交给下一轮重试,不静默丢弃。
+     * Doble las entradas diarias sacadas de la ventana de días N en longterm,Eliminar el archivo fuente después del éxito;
+     * Las entradas fallidas permanecen en el directorio diario/,Pasarlo a la siguiente ronda para volver a intentarlo.,No descartado en silencio.
      */
     suspend fun rollDailyWindow(
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         referenceDate: String = LocalDate.now().toString(),
         target: MemoryCompileTarget? = null,
     ): Result = withContext(Dispatchers.IO) {
@@ -658,8 +658,8 @@ class MemoryCompiler(
         }
 
         val result = foldIntoLongTerm(roll.combinedContent, model, locale, target)
-        // v1.0.51: 仅 COMPILED 时删除源文件 — FAILED 时保留供下次重试,SKIPPED(指纹命中)时
-        //   longterm 已包含相同内容,可安全删除
+        // v1.0.51: Eliminar el archivo fuente solo si está COMPILADO — FAILED reservado para el próximo reintento,SKIPPED(golpe de huella digital)tiempo
+        //   longterm Ya contiene el mismo contenido.,seguro para eliminar
         if (result == Result.COMPILED || result == Result.SKIPPED) {
             fileWriter.deleteDailyFiles(roll.folded, target)
         }
@@ -667,16 +667,16 @@ class MemoryCompiler(
     }
 
     /**
-     * 编译 longterm: week.md fold 进 longterm.md。
-     * fingerprint = fingerprint(weekContent),week 没变就跳过。
+     * Compilar a largo plazo: Week.md plegarlo en longterm.md.
+     * fingerprint = fingerprint(weekContent),week Si no hay cambios, omítelo.
      */
-    suspend fun compileLongterm(model: Model?, locale: String = "zh-CN", target: MemoryCompileTarget? = null): Result =
+    suspend fun compileLongterm(model: Model?, locale: String = "es", target: MemoryCompileTarget? = null): Result =
         foldIntoLongTerm(readStoredSection(Section.WEEK.key, target)?.content ?: "", model, locale, target)
 
     private suspend fun foldIntoLongTerm(
         newContent: String,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         target: MemoryCompileTarget? = null,
     ): Result = withContext(Dispatchers.IO) {
         val trimmed = newContent.trim()
@@ -689,15 +689,15 @@ class MemoryCompiler(
         }
 
         val prevLongterm = (readStoredSection(Section.LONGTERM.key, target)?.content ?: "").trim()
-        // 审查修复 (B-21): 截断上限 2000 → 4000,减轻长期知识不可逆丢弃。
-        // 每次 fold 时旧内容最多保留 4000 字符,给新内容留足 LLM 输出空间
-        // (maxTokens=600 约 2400 字符);被裁剪部分附到"裁剪记录"日志,便于追溯丢失知识。
-        // 取舍说明见任务报告: 未改动 buildLongtermPrompt 的 LLM 契约,仅提高上限 + 记录裁剪。
+        // Revisión de corrección (B-21): límite superior de truncamiento 2000 → 4000,Mitigar el descarte irreversible de conocimientos de largo plazo.
+        // Mantenga hasta 4000 caracteres de contenido antiguo en cada pliegue,Deje suficiente espacio en la salida de LLM para contenido nuevo
+        // (maxTokens=600 Alrededor de 2400 caracteres);La parte recortada se adjunta a"Registro de cultivos"Iniciar sesión,Rastree fácilmente el conocimiento perdido.
+        // Consulte el informe de tareas para obtener instrucciones sobre compensaciones.: Contrato LLM de buildLongtermPrompt sin cambios,Solo subir tapa + recorte de registro.
         val prevLongtermCapped = if (prevLongterm.length > 4000) {
             val trimmedTail = prevLongterm.takeLast(prevLongterm.length - 4000)
             Logger.d(
                 "MemoryCompiler",
-                "foldIntoLongTerm: 截断旧 longterm(${prevLongterm.length} → 4000 chars),丢失 ${trimmedTail.length} chars: ${trimmedTail.take(
+                "foldIntoLongTerm: truncar viejo longterm(${prevLongterm.length} → 4000 chars),perdido ${trimmedTail.length} chars: ${trimmedTail.take(
                     500,
                 )}…",
             )
@@ -705,13 +705,13 @@ class MemoryCompiler(
         } else {
             prevLongterm
         }
-        val isZh = locale.startsWith("zh")
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         val input = if (prevLongtermCapped.isNotBlank()) {
-            val prevLabel = if (isZh) "## 上一份长期情况" else "## Previous long-term context"
-            val newLabel = if (isZh) "## 新沉淀内容" else "## Newly settled content"
+            val prevLabel = if (isZh) "## Última situación a largo plazo" else "## Previous long-term context"
+            val newLabel = if (isZh) "## Nuevo contenido depositado" else "## Newly settled content"
             "$prevLabel\n\n$prevLongtermCapped\n\n$newLabel\n\n$trimmed"
         } else {
-            val newLabel = if (isZh) "## 新沉淀内容" else "## Newly settled content"
+            val newLabel = if (isZh) "## Nuevo contenido depositado" else "## Newly settled content"
             "$newLabel\n\n$trimmed"
         }
 
@@ -724,13 +724,13 @@ class MemoryCompiler(
                 maxTokens = 600,
             )
         }.onError { msg, t ->
-            Logger.w("MemoryCompiler", "foldIntoLongTerm LLM 调用失败: $msg", t)
+            Logger.w("MemoryCompiler", "foldIntoLongTerm LLM llamada fallida: $msg", t)
         }.getOrNull() ?: return@withContext Result.FAILED
 
-        // v1.0.51: 空响应防御 — 不覆盖已有 longterm,不写指纹(避免锁死),返回 FAILED
+        // v1.0.51: Defensa de respuesta nula — No sobrescribir existente longterm,Sin huellas dactilares(evitar el encierro),Regresar FAILED
         val normalized = CompiledMemoryState.normalizeLlmResult(result, "compileLongterm")
         if (normalized.isBlank()) {
-            Logger.w("MemoryCompiler", "foldIntoLongTerm: LLM 返回空响应,保留旧内容,返回 FAILED")
+            Logger.w("MemoryCompiler", "foldIntoLongTerm: LLM Devolver respuesta vacía,Mantener contenido antiguo,Regresar FAILED")
             return@withContext Result.FAILED
         }
         updateStoredContent(Section.LONGTERM.key, normalized, fp, Instant.now().toString(), target)
@@ -738,27 +738,27 @@ class MemoryCompiler(
     }
 
     /**
-     * 编译 facts: 30 天摘要的 facts 段 → facts.md。
-     * 不用指纹(每次都跑,但输入包含 prevFacts,LLM 自行合并)。
+     * Compile los hechos: sección de hechos del resumen de 30 días → facts.md.
+     * No se requieren huellas dactilares(Corre cada vez,Pero la entrada contiene prevFacts,LLM Fusiónate).
      *
-     * v0.32: 接入 [MemoryConfig.compileThreshold] —— 按 session 年龄计算衰减分数,
-     * 分数低于阈值的 session 的 fact 段不进入 LLM 输入(低分记忆被过滤)。
-     * 默认 [MemoryConfig] 下默认阈值 4.5 < 默认 baseImportance 10,30 天内不会过滤,
-     * 等价于旧行为;用户调高阈值或调低 baseImportance 才会生效。
+     * v0.32: Acceso [MemoryConfig.compileThreshold] —— Calcular la puntuación de deterioro por edad de la sesión,
+     * El segmento de hechos de la sesión con una puntuación inferior al umbral no ingresa en la entrada LLM(Se filtran los recuerdos de baja puntuación).
+     * Predeterminado [MemoryConfig] umbral predeterminado más bajo 4.5 < Predeterminado baseImportance 10,30 No se filtrará en unos días.,
+     * Equivalente al antiguo comportamiento;Solo tendrá efecto si el usuario aumenta el umbral o reduce la importancia base.
      *
-     * @param config 记忆配置(由 [io.zer0.memory.ticker.MemoryTicker] 透传)
+     * @param config configuración de memoria(por [io.zer0.memory.ticker.MemoryTicker] paso a través)
      */
-    // v2.6.2: 增加 spaceId 过滤后函数体达到 80 行(阈值边界)，且分支数上升；与既有
-    // CyclomaticComplexMethod 豁免同因(编译管道职责集中)，按项目惯例按点豁免。
+    // v2.6.2: Después de agregar spaceId, el cuerpo de la función alcanza las 80 líneas después del filtrado.(límite umbral), y aumenta el número de sucursales; comparado con el existente
+    // CyclomaticComplexMethod Exención por la misma causa(Responsabilidades del proceso de compilación centralizado), exentos punto por punto según la práctica del proyecto.
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     suspend fun compileFacts(
         summaryManager: SessionSummaryManager,
         model: Model?,
-        locale: String = "zh-CN",
+        locale: String = "es",
         config: MemoryConfig = MemoryConfig(),
         /**
-         * A-19: 主助手 id — 非 null 时只编译主助手(及无归属旧数据)的摘要,
-         * 子助手会话摘要不得串台进入主助手注入的"重要事实"段。
+         * A-19: asistente principal id — Cuando no es nulo, solo se compila el asistente principal.(y datos antiguos sin dueño)Resumen de,
+         * Los resúmenes de las sesiones del subasistente no deben serializarse con los inyectados por el asistente principal."hechos importantes"segmento.
          */
         mainAssistantId: String? = null,
         target: MemoryCompileTarget? = null,
@@ -767,10 +767,10 @@ class MemoryCompiler(
         val resolvedTarget = effectiveTarget(target, assistantId)
         val store = factStoreFor(resolvedTarget)
         val now = Instant.now()
-        // L4: 这里用绝对时间 now-30d 而非逻辑日对齐(与 compileWeek 不同)。
-        // 原因: compileFacts 是 30 天的滑动窗口,窗口长(30 天),跨日边界归属偏差
-        // 在大窗口下影响可忽略;而 compileWeek 窗口仅 7 天,跨日边界偏差相对更大,
-        // 故 compileWeek 用 logicalDay.rangeStart 对齐 04:00 切日。此处无需对齐。
+        // L4: Aquí, se utiliza el tiempo absoluto ahora-30d en lugar de la alineación lógica del día.(A diferencia de la semana de compilación).
+        // Razón: compileFacts es una ventana deslizante de 30 días,longitud de la ventana(30 dia),Sesgo de atribución de límites entre días
+        // El impacto es insignificante en grandes ventanales.;Y la ventana de compilación de la semana es de solo 7 días.,Las desviaciones de los límites entre días son relativamente mayores,
+        // Por lo tanto, compileWeek usa logicDay.rangeStart para alinear el día a las 04:00. Aquí no se requiere alineación.
         val thirtyDaysAgo = now.minus(30, ChronoUnit.DAYS)
         val sessions = summaryManager.getSummariesInRange(
             start = thirtyDaysAgo,
@@ -779,14 +779,14 @@ class MemoryCompiler(
             spaceId = resolvedTarget.normalizedSpaceId,
         )
 
-        // 从每个摘要提取 facts 段
-        // v0.32: 同时按 (updatedAt 年龄 + config) 计算分数,过滤掉低于 compileThreshold 的 session
-        // S-04: 墓碑过滤 — 已删事实从旧产物/摘要候选/LLM 输出三路剔除,防"复活"
+        // Extraiga el segmento de hechos de cada resumen.
+        // v0.32: Presione simultáneamente (updatedAt edad + config) Calcular fracciones,Filtre los siguientes: compileThreshold session
+        // S-04: Filtrado de lápidas — Datos eliminados del producto antiguo./candidato abstracto/LLM Eliminación de salida de tres vías,protegerse contra"resurrección"
         val tombstones = loadTombstones(resolvedTarget)
         val rawPrevFacts = readSection(Section.FACTS, target ?: MemoryCompileTarget(assistantId = assistantId)).trim()
         val prevFacts = filterTombstonedLines(rawPrevFacts, tombstones)
         if (prevFacts != rawPrevFacts) {
-            // 删除即刻生效: 先剔除旧编译产物,无需等待 LLM 重编
+            // La eliminación tiene efecto inmediatamente: Elimine primero los productos compilados antiguos,No es necesario esperar a la reprogramación de LLM
             updateStoredContent(Section.FACTS.key, prevFacts, null, Instant.now().toString(), target)
         }
 
@@ -803,30 +803,30 @@ class MemoryCompiler(
                     skippedByThreshold++
                     continue
                 }
-                // S-04: 摘要事实段内命中墓碑的行剔除;全被剔除则该摘要不进入候选
+                // S-04: Eliminación de filas que llega a la lápida dentro de la sección de hechos resumidos;Si se eliminan todos, el resumen no se incluirá en la lista de candidatos.
                 val filtered = filterTombstonedLines(text, tombstones)
                 if (filtered.isBlank()) continue
                 factParts.add(filtered)
             }
         }
         if (skippedByThreshold > 0) {
-            // v1.78 (M2): 记录被阈值过滤的 session 数,便于调试 compileThreshold 配置
+            // v1.78 (M2): Registre el número de sesiones filtradas por el umbral,Conveniente configuración de umbral de compilación de depuración
             Logger.d("MemoryCompiler", "compileFacts: $skippedByThreshold sessions skipped by threshold")
         }
 
         if (factParts.isEmpty()) {
-            // 没有新事实: 保留旧 facts(已按墓碑过滤;全部被删时上方已清空)
+            // no hay hechos nuevos: mantener viejo facts(Filtrado por lápida;Cuando se eliminan todos, se borra la parte superior.)
             return@withContext Result.COMPILED
         }
 
-        val isZh = locale.startsWith("zh")
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         val newFacts = factParts.joinToString("\n")
         val combined = if (prevFacts.isNotBlank()) {
-            val existingLabel = if (isZh) "## 现有 Facts" else "## Existing Facts"
-            val newLabel = if (isZh) "## 新增候选 Facts" else "## New Candidate Facts"
+            val existingLabel = if (isZh) "## existente Facts" else "## Existing Facts"
+            val newLabel = if (isZh) "## Agregar candidato Facts" else "## New Candidate Facts"
             "$existingLabel\n\n$prevFacts\n\n$newLabel\n\n$newFacts"
         } else {
-            val newLabel = if (isZh) "## 新增候选 Facts" else "## New Candidate Facts"
+            val newLabel = if (isZh) "## Agregar candidato Facts" else "## New Candidate Facts"
             "$newLabel\n\n$newFacts"
         }
 
@@ -839,46 +839,46 @@ class MemoryCompiler(
                 maxTokens = 300,
             )
         }.onError { msg, t ->
-            // v1.78 (M1): 记录 LLM 失败原因
-            Logger.w("MemoryCompiler", "compileFacts LLM 调用失败: $msg", t)
+            // v1.78 (M1): Registrar el motivo del fracaso del LLM
+            Logger.w("MemoryCompiler", "compileFacts LLM llamada fallida: $msg", t)
         }.getOrNull() ?: return@withContext Result.FAILED
 
-        // v1.0.51: 空响应防御 — 不覆盖已有 facts,返回 FAILED 供下次重试
+        // v1.0.51: Defensa de respuesta nula — No sobrescribir existente facts,Devolver FALLADO para el próximo reintento
         val normalized = CompiledMemoryState.normalizeLlmResult(result, "compileFacts")
         if (normalized.isBlank()) {
-            Logger.w("MemoryCompiler", "compileFacts: LLM 返回空响应,保留旧 facts,返回 FAILED")
+            Logger.w("MemoryCompiler", "compileFacts: LLM Devolver respuesta vacía,mantener viejo facts,Regresar FAILED")
             return@withContext Result.FAILED
         }
-        // S-04: LLM 输出再过滤一遍(防 LLM 复述已删事实)
+        // S-04: LLM Filtrar la salida nuevamente(Evite que LLM vuelva a contar hechos eliminados)
         val filteredResult = filterTombstonedLines(normalized, tombstones)
         updateStoredContent(Section.FACTS.key, filteredResult, null, Instant.now().toString(), resolvedTarget)
-        // D3-P2: 候选吸收 + 确定性投影 — LLM 产物先作为候选补录进表(防摘要孤儿丢失),
-        // 随后 FACTS 段由 facts 表投影覆盖(编辑/删除即刻一致)。
+        // D3-P2: Absorción de candidatos + proyección determinista — LLM Los productos se introducen primero en la tabla como candidatos.(Prevenir la pérdida de huérfanos de digestión),
+        // Luego, el segmento HECHOS se superpone con la proyección de la tabla de hechos.(Editar/Eliminar inmediatamente).
         store?.let { scopedStore ->
             val scope = resolvedTarget.normalizedScope
             val spaceId = resolvedTarget.normalizedSpaceId
             resultOf { absorbFactLines(filteredResult, scope, spaceId, tombstones, scopedStore) }
             resultOf { scopedStore.getByScopeAndSpace(scope, spaceId) }
                 .onSuccess { resultOf { reconcileFactsSectionWithStore(it, resolvedTarget) } }
-                .onError { msg, t -> Logger.w("MemoryCompiler", "compileFacts 投影失败(保留 LLM 产物): ${t?.message ?: msg}") }
+                .onError { msg, t -> Logger.w("MemoryCompiler", "compileFacts Proyección fallida(Mantenga los productos LLM): ${t?.message ?: msg}") }
         }
         Result.COMPILED
     }
 
     /**
-     * D3-P2: FACTS 段与 facts 表收敛 — 对账升级为「确定性投影」。
+     * D3-P2: FACTS Los segmentos convergen con la tabla de hechos. — La conciliación se actualiza a "proyección determinista".
      *
-     * 流程:
-     *  1) 吸收: 当前段中不在事实表的行(编译产物孤儿)补录进表(防投影后丢失);
-     *  2) 投影: 用最新表数据渲染 FACTS 段(每行一条,与既有 LLM 产物格式对齐)。
+     * proceso:
+     *  1) absorber: Filas del segmento actual que no están en la tabla de hechos(Compilar producto huérfano)Entrada complementaria en la tabla(Prevenir pérdidas después de la proyección);
+     *  2) proyección: Representar segmentos de FACTS con los datos de tabla más recientes(uno por línea,Alineado con los formatos de productos LLM existentes).
      *
-     * 至此"编辑/删除/新增"均在下一轮投影即刻一致;v12 的逐行对账语义退役,
-     * 墓碑过滤仍作为吸收/投影的输入过滤保留(S-04)。
+     * hasta ahora"Editar/Eliminar/Nuevo"son inmediatamente consistentes en la siguiente ronda de proyección;v12 Retiro de la semántica de conciliación línea por línea,
+     * El filtrado Tombstone todavía actúa como absorbente/Conservas de filtrado de entrada proyectada(S-04).
      *
-     * v18: 两段的取数口径不同 —— 吸收看全表(否则出场记忆会被当成产物孤儿重新补录),
-     * 投影只看“在场且未被取代”的行(投影结果就是注入给模型的 FACTS 段)。
+     * v18: Las aperturas numéricas de las dos secciones son diferentes. —— Absorber ver tabla completa(De lo contrario, la memoria de aparición se tratará como un producto huérfano y se volverá a registrar.),
+     * Sólo proyección“presente y no reemplazado”de filas(El resultado de la proyección es el segmento FACTS inyectado en el modelo.).
      *
-     * @return 1 = 段内容有更新;0 = 无变化(含空表/无内容)
+     * @return 1 = El contenido de la sección ha sido actualizado.;0 = Sin cambios(Contiene tabla vacía/Sin contenido)
      */
     suspend fun reconcileFactsSectionWithStore(facts: List<io.zer0.memory.fact.FactStore.Fact>, target: MemoryCompileTarget? = null): Int =
         withContext(Dispatchers.IO) {
@@ -888,7 +888,7 @@ class MemoryCompiler(
             val spaceId = resolvedTarget.normalizedSpaceId
             val store = factStoreFor(resolvedTarget)
 
-            // 1) 吸收段孤儿(factStore 可用时;墓碑命中行跳过,防"删除复活")
+            // 1) Absorber huérfanos(factStore Cuando esté disponible;Se omitió la línea de impacto de Tombstone,protegerse contra"Eliminar resurrección")
             if (store != null) {
                 val currentForAbsorb = readSection(Section.FACTS, resolvedTarget)
                 if (currentForAbsorb.isNotBlank()) {
@@ -896,10 +896,10 @@ class MemoryCompiler(
                 }
             }
 
-            // 2) 投影(factStore 可用时重查最新表;否则退回传入快照,兼容无 store 场景)
-            //    v18: 投影就是注入内容,取数用 includeSuppressed=false —— 已出场(分数低于阈值)
-            //    与已被取代的旧记忆都不写进上下文。吸收那一段不受影响:它自己查全表([absorbFactLines]),
-            //    所以出场/被取代的行不会被当成“孤儿”重新补录。
+            // 2) proyección(factStore Vuelva a verificar la tabla más reciente cuando esté disponible;De lo contrario, recurra a la instantánea entrante,Compatible con escenarios fuera de la tienda)
+            //    v18: Proyectar significa inyectar contenido,Para tomar números includeSuppressed=false —— Apareció(puntuación por debajo del umbral)
+            //    Los viejos recuerdos que han sido reemplazados no se escriben en el contexto. El período de absorción no se ve afectado.:Busca toda la tabla por sí solo.([absorbFactLines]),
+            //    Así que aparece/Las líneas reemplazadas no se tratan como“Huérfano”Vuelva a grabar.
             val source = if (store != null) {
                 resultOf { store.getByScopeAndSpace(scope, spaceId, includeSuppressed = false) }
                     .getOrNull() ?: return@withContext 0
@@ -910,7 +910,7 @@ class MemoryCompiler(
             if (source.isEmpty()) {
                 if (current.isBlank()) return@withContext 0
                 clearStoredByKey(Section.FACTS.key, Instant.now().toString(), resolvedTarget)
-                Logger.i("MemoryCompiler", "FACTS 段已清空: 事实表为空(scope=$scope, space=$spaceId)")
+                Logger.i("MemoryCompiler", "FACTS Segmento borrado: La tabla de hechos está vacía(scope=$scope, space=$spaceId)")
                 return@withContext 1
             }
             val projected = FactsSectionProjector.project(
@@ -919,12 +919,12 @@ class MemoryCompiler(
             if (projected.isBlank()) {
                 if (current.isBlank()) return@withContext 0
                 clearStoredByKey(Section.FACTS.key, Instant.now().toString(), target)
-                Logger.i("MemoryCompiler", "FACTS 段已清空: 全部事实被墓碑过滤(scope=$scope, space=$spaceId)")
+                Logger.i("MemoryCompiler", "FACTS Segmento borrado: Todos los datos filtrados por lápidas(scope=$scope, space=$spaceId)")
                 return@withContext 1
             }
             if (projected.trim() == current.trim()) return@withContext 0
-            // 用 @Insert(REPLACE) 而非 updateContent(UPSERT 语法在部分测试 SQLite 版本报错);
-            // REPLACE 对无外键的 compiled_sections 语义一致(冲突时删除重建)。
+            // usar @Insert(REPLACE) en vez de updateContent(UPSERT Error de sintaxis informado en la versión SQLite durante la prueba parcial);
+            // REPLACE Semántica consistente para secciones_compiladas sin claves externas(Eliminar y reconstruir en caso de conflicto).
             upsertStored(
                 key = Section.FACTS.key,
                 content = projected,
@@ -932,19 +932,19 @@ class MemoryCompiler(
                 now = Instant.now().toString(),
                 target = resolvedTarget,
             )
-            Logger.i("MemoryCompiler", "FACTS 段确定性投影: ${projected.lines().size} 条 / ${projected.length} 字符")
+            Logger.i("MemoryCompiler", "FACTS proyección determinista de segmento: ${projected.lines().size} Artículo / ${projected.length} personaje")
             1
         }
 
     /**
-     * D3-P2: 把文本行中不在事实表的条目补录进表(防"仅在编译产物、未入表"的事实
-     * 在投影后丢失 — 摘要孤儿的兼容补丁)。
+     * D3-P2: Agregar a la tabla entradas en la fila de texto que no están en la tabla de hechos(protegerse contra"Sólo en el producto compilado, no incluido en la tabla."el hecho
+     * perdido después de la proyección — Resumen del parche de compatibilidad huérfano).
      *
-     * 过滤: 空行 / # 标题行 / 墓碑命中行(防删除复活) / 超长行(> [MAX_ABSORB_LINE_CHARS]
-     * 视为段落弃用);去 "- " 前缀;与表内条目归一化等价的行跳过(防重复)。
-     * 吸收条目的 source = "compiled",继承 scope/space。
+     * filtrar: Línea vacía / # línea de título / línea de acierto de lápida(Resurrección anti-eliminación) / fila extra larga(> [MAX_ABSORB_LINE_CHARS]
+     * Tratar como párrafo obsoleto);ir "- " prefijo;Se omiten las filas que equivalen a la normalización de las entradas de la tabla.(Anti-duplicación).
+     * entradas absorbentes source = "compiled",Heredar alcance/espacio.
      *
-     * @return 实际吸收条数
+     * @return Número real de tiras absorbidas
      */
     private suspend fun absorbFactLines(text: String, scope: String, spaceId: String, tombstones: List<String>, store: FactStore?): Int {
         store ?: return 0
@@ -966,15 +966,15 @@ class MemoryCompiler(
                     spaceId = spaceId,
                 )
             }.onSuccess { absorbed++ }
-                .onError { msg, t -> Logger.w("MemoryCompiler", "候选吸收失败: ${t?.message ?: msg}") }
+                .onError { msg, t -> Logger.w("MemoryCompiler", "La aceptación del candidato falló: ${t?.message ?: msg}") }
         }
         if (absorbed > 0) {
-            Logger.i("MemoryCompiler", "FACTS 候选吸收: $absorbed 条编译产物事实补录入表")
+            Logger.i("MemoryCompiler", "FACTS absorción candidata: $absorbed Tabla de entrada del suplemento de hechos del producto de compilación de artículos")
         }
         return absorbed
     }
 
-    /** v12: 归一化相等比较(去主语 + 大小写 + 全半角 + 空白,用于产物行与 facts 表条目匹配)。 */
+    /** v12: Comparación de igualdad normalizada(Eliminar asunto + mayúsculas y minúsculas + ancho completo + espacio en blanco,Se utiliza para unir filas de productos con entradas de la tabla de hechos.). */
     private fun normalizedEq(a: String, b: String): Boolean {
         val na = normalizeLine(a)
         val nb = normalizeLine(b)
@@ -983,7 +983,7 @@ class MemoryCompiler(
 
     private fun normalizeLine(text: String): String {
         return text.trim().lowercase()
-            .replace(Regex("^(用户|我|他|她|这个用户|the user|i am|he is|she is)\\s*"), "")
+            .replace(Regex("^(usuario|yo|el|ella|este usuario|the user|i am|he is|she is)\\s*"), "")
             .trim()
             .toHalfWidth()
             .replace(whiteSpaceRe, " ")
@@ -991,8 +991,8 @@ class MemoryCompiler(
     }
 
     /**
-     * v12: 全角转半角(字母/数字/常用符号),用于产物行与 facts 表条目跨写法匹配。
-     * 全角空格(U+3000)转为普通空格,由 whiteSpaceRe 统一压缩。
+     * v12: Ángulo completo a medio ángulo(letras/numeros/Símbolos comunes),Se utiliza para realizar coincidencias de escritura cruzada entre filas de productos y entradas de la tabla de hechos.
+     * espacio de ancho completo(U+3000)Convertir a espacios normales,Compresión unificada por whiteSpaceRe.
      */
     private fun String.toHalfWidth(): String {
         val sb = StringBuilder(length)
@@ -1007,25 +1007,25 @@ class MemoryCompiler(
         return sb.toString()
     }
 
-    /** v12: 压缩连续空白(产物行匹配用)。 */
+    /** v12: Comprimir espacios en blanco consecutivos(Coincidencia de filas de productos). */
     private val whiteSpaceRe = Regex("\\s+")
 
-    /** 清空所有编译产物(记忆重置用)。 */
+    /** Borrar todos los productos compilados(Para restablecer la memoria). */
     suspend fun clearAll() = withContext(Dispatchers.IO) {
         clearStoredAll(Instant.now().toString())
     }
 
     /**
-     * P2: 清空指定 section 的内容(用于记忆页 UI 删除 Compile 层单段)。
-     * 不删除行,只把 content/fingerprint 清空,保持下次编译可直接 upsert。
+     * P2: Borrar el contenido de la sección especificada.(Se utiliza para recordar la interfaz de usuario de la página para eliminar un segmento único de la capa de compilación.).
+     * No eliminar filas,Solo contenido claro/huella digital,Mantenga upsert directamente para la próxima compilación.
      */
     suspend fun clearSection(section: Section) = withContext(Dispatchers.IO) {
         clearStoredByKey(section.key, Instant.now().toString())
     }
 
     /**
-     * P2: 直接写入指定 section 的内容(用于记忆页 UI 编辑 Compile 层单段)。
-     * 清空 fingerprint,使下次定时编译能正常重新生成。
+     * P2: Escribe directamente el contenido de la sección especificada.(Se utiliza para la edición de la interfaz de usuario de la página de memoria. Compilar segmento único de capa.).
+     * Borrar fingerprint,Para que la próxima compilación programada se pueda regenerar normalmente.
      */
     suspend fun writeSection(section: Section, content: String) = withContext(Dispatchers.IO) {
         upsertStored(
@@ -1036,9 +1036,9 @@ class MemoryCompiler(
         )
     }
 
-    /** P2-33: 按显式 scope + space 直接写入指定 section(记忆页按当前选中 scope/space 编辑用)。
-     *  原 writeSection 依赖编译上下文的 currentScope/currentSpaceId(默认 main/default),
-     *  子助手/其他 space 的编译段被 UI 编辑时写错槽位,与注入读路径(带 scope/space)错位。 */
+    /** P2-33: Presione alcance explícito + espacio para escribir directamente lo especificado section(La página de memoria se edita según el ámbito/espacio seleccionado actualmente.).
+     *  La sección de escritura original depende del contexto de compilación. currentScope/currentSpaceId(Predeterminado main/default),
+     *  sub-asistente/La sección de compilación de otros espacios se escribió en la ranura incorrecta cuando la interfaz de usuario la editó.,con ruta de lectura inyectada(traer scope/space)Dislocación. */
     suspend fun writeSection(section: Section, content: String, scope: String, spaceId: String) = withContext(Dispatchers.IO) {
         upsertStored(
             key = section.key,
@@ -1052,14 +1052,14 @@ class MemoryCompiler(
         )
     }
 
-    /** 拼装 memory.md(4 个 ## 标题段,空段写占位符)。 */
-    private fun assembleCompiledMarkdown(facts: String, today: String, week: String, longterm: String, locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
-        val empty = if (isZh) "（暂无）" else "(none)"
-        val factsTitle = if (isZh) "重要事实" else "Key facts"
-        val todayTitle = if (isZh) "今天" else "Today"
-        val weekTitle = if (isZh) "本周早些时候" else "Earlier this week"
-        val longtermTitle = if (isZh) "长期情况" else "Long-term context"
+    /** montar memory.md(4 ## párrafo de título,Marcador de posición de escritura de segmento vacío). */
+    private fun assembleCompiledMarkdown(facts: String, today: String, week: String, longterm: String, locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
+        val empty = if (isZh) "(Ninguno todavía)" else "(none)"
+        val factsTitle = if (isZh) "hechos importantes" else "Key facts"
+        val todayTitle = if (isZh) "hoy" else "Today"
+        val weekTitle = if (isZh) "a principios de esta semana" else "Earlier this week"
+        val longtermTitle = if (isZh) "situación a largo plazo" else "Long-term context"
         val section = { title: String, content: String ->
             "## $title\n\n${content.ifBlank { empty }}"
         }
@@ -1077,8 +1077,8 @@ class MemoryCompiler(
     }
 
     /**
-     * 把 session 的 updatedAt(ISO 字符串)换算成距 [now] 的天数。
-     * 解析失败或时间反转时返回 0(等价于"刚发生",score 最高,不会被阈值过滤)。
+     * poner sesión updatedAt(ISO cuerda)Convertir a distancia [now] número de días.
+     * Devuelto cuando falla el análisis o se invierte el tiempo 0(equivalente a"acaba de pasar",score más alto,No se filtrará por umbral).
      */
     private fun ageInDays(updatedAtIso: String, now: Instant): Float {
         val updated = runCatching { Instant.parse(updatedAtIso) }.getOrNull() ?: return 0f

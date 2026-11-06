@@ -19,23 +19,23 @@ import io.zer0.muse.ui.theme.MuseCornerRadius
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * AI 回复后的建议气泡。
+ * AI Burbuja de sugerencia después de la respuesta.
  *
- * 在 AI 回复消息下方展示最多 3 个建议回复,用户点击即可快速发送。
- * 背景使用 `primaryContainer@42% alpha` (light) / `white@8% alpha` (dark),
- * 圆角 16dp, 内边距 12×8dp。
+ * Muestra hasta 3 respuestas sugeridas debajo del mensaje de respuesta de IA,Los usuarios pueden enviar rápidamente con un solo clic.
+ * uso de fondo `primaryContainer@42% alpha` (light) / `white@8% alpha` (dark),
+ * esquinas redondeadas 16dp, relleno 12×8dp.
  *
- * 用法:
+ * Uso:
  * ```
  * SuggestionBubbles(
- *     suggestions = listOf("继续", "详细解释", "换个方式"),
+ *     suggestions = listOf("continuar", "Explicación detallada", "cambiar el camino"),
  *     onSuggestionClick = { text -> onSend(text) },
  * )
  * ```
  *
- * @param suggestions 建议文本列表 (最多取前 3 个)
- * @param onSuggestionClick 点击建议回调
- * @param modifier 修饰符
+ * @param suggestions Lista de textos sugeridos (Toma como máximo los 3 primeros.)
+ * @param onSuggestionClick Haga clic en devolución de llamada de sugerencia
+ * @param modifier modificador
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

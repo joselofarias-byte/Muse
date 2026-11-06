@@ -9,10 +9,10 @@ import io.zer0.muse.transformer.stripThinkTags
 import kotlinx.coroutines.flow.first
 
 /**
- * A2A 独立文本生成路径：不引用 ChatViewModel/UI 状态，也不暴露工具。
+ * A2A Ruta de generación de texto independiente: no hace referencia al estado de ChatViewModel/UI y no expone herramientas.
  *
- * 使用 handler-owned Agent session 的有限历史 + 默认助手 prompt/preset，
- * 单轮调用 ChatService.completeText(tools=null)。设备工具只允许本机 UI 交互路径触发。
+ * Historial limitado de uso de la sesión del Agente propiedad del controlador + mensaje auxiliar/preestablecido predeterminado,
+ * Llamada de ronda única ChatService.completeText(tools=null). Las herramientas del dispositivo solo permiten que se activen rutas de interacción de la interfaz de usuario nativa.
  */
 internal class A2aHeadlessGenerator(
     private val chatService: ChatService,

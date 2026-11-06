@@ -16,12 +16,12 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 2 → 3 迁移:老库里的会话与消息逐行保留,置顶列从这一版起带 SQL 默认值 0。
+ * 2 → 3 Migrar:Las conversaciones y mensajes del viejo Curry se conservan línea por línea.,Las columnas fijas tienen el valor predeterminado de SQL 0 a partir de esta versión.
  *
- * 先用导出的 2.json 造一个与真机同形的 v2 库(建表语句、索引、room_master_table 身份哈希都按 schema 写),
- * 里面塞两条会话(一条已置顶)与几条消息,再让 Room 带着迁移链打开它。
- * 断言分三层:Room 能打开并通过 schema 校验(说明重建后的表与实体对得上)、
- * 行与列原样保留、置顶列在新写入不带它时落 0。
+ * Primero use el 2.json exportado para crear una biblioteca v2 que sea la misma que la máquina real.(Crear declaraciones de tabla, índices,room_master_table Los hashes de identidad se escriben según el esquema.),
+ * Dos conversaciones están metidas en el interior.(Un elemento ha sido fijado en la parte superior.)con varios mensajes,Luego deja que Room lo abra con la cadena de migración.
+ * Hay tres niveles de afirmaciones.:Room Se puede abrir y pasar la verificación del esquema.(Muestra que la tabla reconstruida y la entidad coinciden.),
+ * Las filas y columnas se dejan intactas y la columna superior se restablece a 0 en nuevas escrituras sin ella.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -48,24 +48,24 @@ class MiniPhoneDbMigration2To3Test {
         try {
             runBlocking {
                 val threads = db.threadDao().observeThreads().first()
-                assertEquals("会话一条不少", listOf(PINNED_THREAD_ID, PLAIN_THREAD_ID), threads.map { it.id })
-                assertEquals("置顶标记跟着行一起留下来", true, threads.first().pinned)
-                assertEquals("未读数不能丢", 3, threads.first().unreadCount)
-                assertEquals("预览文案不能丢", "第 2 句", threads.first().lastMessagePreview)
-                assertEquals("未置顶那行还是未置顶", false, threads.last().pinned)
+                assertEquals("muchas conversaciones", listOf(PINNED_THREAD_ID, PLAIN_THREAD_ID), threads.map { it.id })
+                assertEquals("La etiqueta pin permanece con la línea.", true, threads.first().pinned)
+                assertEquals("Las lecturas no leídas no se pueden descartar.", 3, threads.first().unreadCount)
+                assertEquals("No pierdas la copia preliminar", "Oración 2", threads.first().lastMessagePreview)
+                assertEquals("La fila que no se ha fijado en la parte superior todavía no está fijada en la parte superior.", false, threads.last().pinned)
 
                 assertEquals(
-                    "消息按会话各自保留",
+                    "Los mensajes se retienen por sesión.",
                     listOf("legacy-1", "legacy-2"),
                     db.messageDao().observeMessages(PINNED_THREAD_ID).first().map { it.id },
                 )
-                assertEquals("另一个会话的消息也还在", 1, db.messageDao().countInThread(PLAIN_THREAD_ID))
-                assertEquals("库版本继续往后走,跑到当前版本", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
+                assertEquals("Los mensajes de la otra conversación siguen ahí.", 1, db.messageDao().countInThread(PLAIN_THREAD_ID))
+                assertEquals("La versión de la biblioteca continúa avanzando.,Ejecutar a la versión actual", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
             }
         } finally {
             db.close()
         }
-        assertEquals("置顶列带默认值 0", "0", columnDefault(file, table = "mp_thread", column = "pinned"))
+        assertEquals("Columna superior con valor predeterminado 0", "0", columnDefault(file, table = "mp_thread", column = "pinned"))
     }
 
     @Test
@@ -80,25 +80,25 @@ class MiniPhoneDbMigration2To3Test {
         val db = openMigrated(name)
         try {
             runBlocking {
-                // 不带 pinned 的写入:旧代码路径、手工 SQL 都靠这个默认值落到「未置顶」
+                // Escribir sin fijar:Las rutas de código antiguas y el SQL manual están "no fijados" por este valor predeterminado.
                 db.openHelper.writableDatabase.execSQL(
                     "INSERT INTO mp_thread (id, characterId, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
                         "VALUES ('fresh', 'c-fresh', 0, NULL, 7000, 0)",
                 )
                 assertEquals(false, db.threadDao().getThread("fresh")?.pinned)
-                // 置顶开关能改写
+                // El interruptor superior se puede reescribir
                 db.threadDao().setPinned("fresh", true)
                 assertEquals(true, db.threadDao().getThread("fresh")?.pinned)
-                // 重建过表之后,靠索引的那条查询照样能走
+                // Después de reconstruir la mesa,La consulta basada en el índice aún se puede ejecutar.
                 assertEquals(PINNED_THREAD_ID, db.threadDao().findThreadByCharacter(CHARACTER_ID)?.id)
             }
         } finally {
             db.close()
         }
-        assertEquals("重建后索引还在", true, indexNames(file).contains("index_mp_thread_lastMessageAt"))
+        assertEquals("El índice sigue ahí después de la reconstrucción.", true, indexNames(file).contains("index_mp_thread_lastMessageAt"))
     }
 
-    /** 按 2.json 原样造一个 v2 库,并写入两条会话与三条消息。 */
+    /** Cree una biblioteca v2 como 2.json,Y escribe dos conversaciones y tres mensajes. */
     private fun createVersion2Database(file: File) {
         val schema = JSONObject(readAsset(SCHEMA_ASSET)).getJSONObject("database")
         val legacy = SQLiteDatabase.openOrCreateDatabase(file, null)
@@ -117,26 +117,26 @@ class MiniPhoneDbMigration2To3Test {
             for (index in 0 until setup.length()) {
                 legacy.execSQL(setup.getString(index))
             }
-            // 一条置顶会话 + 一条未置顶会话;未置顶那条的消息更晚,迁移后顺序不能变
+            // Una conversación fijada + una conversación no fijada;El mensaje que no fue fijado en la parte superior será más tarde.,El orden no se puede cambiar después de la migración.
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
-                    "VALUES ('$PINNED_THREAD_ID', '$CHARACTER_ID', 1, 3, '第 2 句', 2000, 0)",
+                    "VALUES ('$PINNED_THREAD_ID', '$CHARACTER_ID', 1, 3, 'Oración 2', 2000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted) " +
-                    "VALUES ('$PLAIN_THREAD_ID', 'c-other', 0, 0, '别的一句话', 9000, 0)",
+                    "VALUES ('$PLAIN_THREAD_ID', 'c-other', 0, 0, 'otra palabra', 9000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('legacy-1', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'character', 'text', '第 1 句', 1000, 0)",
+                    "VALUES ('legacy-1', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'character', 'text', 'Oración 1', 1000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('legacy-2', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'user', 'text', '第 2 句', 2000, 0)",
+                    "VALUES ('legacy-2', '$PINNED_THREAD_ID', '$CHARACTER_ID', 'user', 'text', 'Oración 2', 2000, 0)",
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('other-1', '$PLAIN_THREAD_ID', 'c-other', 'character', 'text', '别的一句话', 9000, 0)",
+                    "VALUES ('other-1', '$PLAIN_THREAD_ID', 'c-other', 'character', 'text', 'otra palabra', 9000, 0)",
             )
             legacy.version = 2
         } finally {

@@ -19,10 +19,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * 4 → 5 迁移:老群原样保留,新列 titleCustomized 落在 0(没被用户改过名)。
+ * 4 → 5 Migrar:El antiguo grupo permanece como está.,El nuevo título de la columna Personalizado se incluye en 0(El usuario no le ha cambiado el nombre).
  *
- * 照导出的 4.json 造一个与真机同形的 v4 库(建表语句、索引、room_master_table 身份哈希都按 schema 写),
- * 里面放一条有群名、有成员、有消息的群,再让 Room 带着迁移链打开它。
+ * Utilice el 4.json exportado para crear una biblioteca v4 con la misma forma que la máquina real(Crear declaraciones de tabla, índices,room_master_table Los hashes de identidad se escriben según el esquema.),
+ * Ponga un nombre de grupo, miembros y mensajes en él.,Luego deja que Room lo abra con la cadena de migración.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,26 +49,26 @@ class MiniPhoneDbMigration4To5Test {
         try {
             runBlocking {
                 val threads = db.threadDao().observeThreads().first()
-                assertEquals("会话一条不少", listOf(GROUP_THREAD_ID, DM_THREAD_ID), threads.map { it.id })
+                assertEquals("muchas conversaciones", listOf(GROUP_THREAD_ID, DM_THREAD_ID), threads.map { it.id })
 
                 val group = requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID))
-                assertTrue("群标记跟着留下来", group.isGroup)
-                assertEquals("群名跟着留下来", "阿远、小满", group.title)
-                assertFalse("老群没有「用户改过名」的记录,一律当没改过", group.titleCustomized)
+                assertTrue("La etiqueta de grupo se queda contigo", group.isGroup)
+                assertEquals("El nombre del grupo se queda atrás.", "Ayuan, Xiaoman", group.title)
+                assertFalse("No hay ningún registro de \"usuario cambiando de nombre\" en el grupo anterior,Actúa siempre como si nada hubiera cambiado.", group.titleCustomized)
 
                 assertEquals(
-                    "成员表也不动",
+                    "La lista de miembros tampoco se mueve",
                     listOf("c1", "c2"),
                     db.threadMemberDao().membersOf(GROUP_THREAD_ID).map { it.characterId },
                 )
-                assertEquals("消息还在", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
-                assertEquals("库版本升到 5", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
-                assertEquals("这一版就是 5", 5, MINI_PHONE_DB_VERSION)
+                assertEquals("La noticia sigue ahí.", 1, db.messageDao().countInThread(GROUP_THREAD_ID))
+                assertEquals("La versión de la biblioteca se actualiza a 5", MINI_PHONE_DB_VERSION, db.openHelper.readableDatabase.version)
+                assertEquals("Esta versión es 5", 5, MINI_PHONE_DB_VERSION)
             }
         } finally {
             db.close()
         }
-        assertEquals("新列带默认值 0", "0", columnDefault(file, table = "mp_thread", column = "titleCustomized"))
+        assertEquals("nueva columna con valor predeterminado 0", "0", columnDefault(file, table = "mp_thread", column = "titleCustomized"))
     }
 
     @Test
@@ -83,25 +83,25 @@ class MiniPhoneDbMigration4To5Test {
         runBlocking {
             val db = openMigrated(name)
             try {
-                // 升级后按新语义写入:改名即置 1,没改过的老群仍为 0
-                db.threadDao().updateTitle(GROUP_THREAD_ID, "周末小队", customized = true)
+                // Escriba según la nueva semántica después de la actualización:Cambiar nombre y lugar 1,El antiguo grupo que no ha cambiado sigue 0
+                db.threadDao().updateTitle(GROUP_THREAD_ID, "equipo de fin de semana", customized = true)
                 db.threadDao().upsert(
-                    MpThreadEntity(id = "fresh-group", characterId = "c1", isGroup = true, title = "新群"),
+                    MpThreadEntity(id = "fresh-group", characterId = "c1", isGroup = true, title = "nuevo grupo"),
                 )
 
                 assertTrue(requireNotNull(db.threadDao().getThread(GROUP_THREAD_ID)).titleCustomized)
-                assertFalse("新建的群默认没改过名", requireNotNull(db.threadDao().getThread("fresh-group")).titleCustomized)
-                assertEquals("改名真的写进去了", "周末小队", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
+                assertFalse("Al grupo recién creado no se le ha cambiado el nombre de forma predeterminada.", requireNotNull(db.threadDao().getThread("fresh-group")).titleCustomized)
+                assertEquals("El cambio de nombre está realmente escrito en él.", "equipo de fin de semana", db.threadDao().getThread(GROUP_THREAD_ID)?.title)
             } finally {
                 db.close()
             }
         }
     }
 
-    /** 按 4.json 原样造一个 v4 库,并写入一条群、一条私信、两行成员与一条群消息。 */
+    /** Cree una biblioteca v4 como 4.json,Y escribe un grupo, un mensaje privado, dos líneas de integrantes y un mensaje grupal. */
     private fun createVersion4Database(file: File) {
         val schema = JSONObject(readAsset(SCHEMA_ASSET)).getJSONObject("database")
-        assertEquals("基线必须是 v4", 4, schema.getInt("version"))
+        assertEquals("La línea base debe ser v4", 4, schema.getInt("version"))
         val legacy = SQLiteDatabase.openOrCreateDatabase(file, null)
         try {
             val entities = schema.getJSONArray("entities")
@@ -120,11 +120,11 @@ class MiniPhoneDbMigration4To5Test {
             }
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted, " +
-                    "isGroup, title) VALUES ('$GROUP_THREAD_ID', 'c1', 0, 2, '晚上见', 3000, 0, 1, '阿远、小满')",
+                    "isGroup, title) VALUES ('$GROUP_THREAD_ID', 'c1', 0, 2, 'Nos vemos por la tarde', 3000, 0, 1, 'Ayuan, Xiaoman')",
             )
             legacy.execSQL(
                 "INSERT INTO mp_thread (id, characterId, pinned, unreadCount, lastMessagePreview, lastMessageAt, muted, " +
-                    "isGroup, title) VALUES ('$DM_THREAD_ID', 'c1', 0, 0, '在吗', 1000, 0, 0, '')",
+                    "isGroup, title) VALUES ('$DM_THREAD_ID', 'c1', 0, 0, '¿Está ahí?', 1000, 0, 0, '')",
             )
             legacy.execSQL(
                 "INSERT INTO mp_thread_member (threadId, characterId, joinedAt) VALUES ('$GROUP_THREAD_ID', 'c1', 1)",
@@ -134,7 +134,7 @@ class MiniPhoneDbMigration4To5Test {
             )
             legacy.execSQL(
                 "INSERT INTO mp_message (id, threadId, characterId, sender, type, content, createdAt, status) " +
-                    "VALUES ('legacy-1', '$GROUP_THREAD_ID', 'c2', 'character', 'text', '晚上见', 3000, 0)",
+                    "VALUES ('legacy-1', '$GROUP_THREAD_ID', 'c2', 'character', 'text', 'Nos vemos por la tarde', 3000, 0)",
             )
             legacy.version = 4
         } finally {

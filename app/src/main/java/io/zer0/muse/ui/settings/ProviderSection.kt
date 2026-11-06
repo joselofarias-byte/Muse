@@ -50,15 +50,15 @@ import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.launch
 
 /**
- * v1.133: 供应商批量健康检测状态(列表头部"全部检测"按钮触发)。
+ * v1.133: Estado de verificación del estado del lote del proveedor(encabezado de lista"Todas las pruebas"disparador de botón).
  *
- * - [Idle]: 未测试(默认),不显示状态 chip
- * - [Testing]: 检测进行中(显示 CircularProgressIndicator)
- * - [Success]: 检测通过(显示延迟 ms,绿色 ✓)
- * - [Failed]: 检测失败(显示错误简述,红色 ✗)
+ * - [Idle]: No probado(Predeterminado),No mostrar estado chip
+ * - [Testing]: Pruebas en progreso(mostrar CircularProgressIndicator)
+ * - [Success]: Prueba superada(retraso de visualización ms,verde ✓)
+ * - [Failed]: Error de detección(Mostrar descripción del error,rojo ✗)
  *
- * 与 [ModelTestStatus] 区分:本状态针对整个 provider 的 /models 端点连通性,
- * 不发真实 chat 消息;且携带延迟数据用于排序/对比。
+ * con [ModelTestStatus] distinguir:Este estado es para la conectividad del punto final /models de todo el proveedor.,
+ * No envíes mensajes de chat reales;Y llevar datos retrasados para clasificarlos/Contraste.
  */
 sealed class ProviderTestStatus {
     data object Idle : ProviderTestStatus()
@@ -68,13 +68,13 @@ sealed class ProviderTestStatus {
 }
 
 /**
- * Provider 列表 section — 分组列表。
+ * Provider lista section — Lista agrupada.
  *
- * 用 [SettingsGroup] 包裹所有 Provider,每个 Provider 一行。
- * 行内左侧品牌图标、中间名称与类型、右侧启用/禁用状态标签 + 右箭头。
+ * usar [SettingsGroup] Empaquetar todo Provider,Una línea por Proveedor.
+ * Ícono de marca en el lado izquierdo de la línea, nombre y tipo en el medio, habilitado en el lado derecho/Deshabilitar etiqueta de estado + flecha derecha.
  *
- * v1.133: 新增 [testStatuses] / [isTestingAll] / [onTestAll] 用于"全部检测"批量并发
- * 健康检查(按 [ProviderEditPage] 的 testConnection 单测逻辑,提升为批量并发)。
+ * v1.133: Nuevo [testStatuses] / [isTestingAll] / [onTestAll] usado para"Todas las pruebas"simultaneidad por lotes
+ * chequeo de salud(prensa [ProviderEditPage] La lógica de prueba única testConnection,Promocionar a simultaneidad por lotes).
  */
 internal fun LazyListScope.providerListSection(
     providers: List<ProviderConfig>,
@@ -84,7 +84,7 @@ internal fun LazyListScope.providerListSection(
     onDelete: (String) -> Unit,
     onAddProvider: () -> Unit = {},
     onScanQr: () -> Unit = {},
-    // v1.133: 批量健康检测(列表头部"全部检测"按钮触发)
+    // v1.133: Pruebas de salud por lotes(encabezado de lista"Todas las pruebas"disparador de botón)
     testStatuses: Map<String, ProviderTestStatus> = emptyMap(),
     isTestingAll: Boolean = false,
     onTestAll: () -> Unit = {},
@@ -97,7 +97,7 @@ internal fun LazyListScope.providerListSection(
         )
     }
 
-    // 按 category 分组渲染(官方 / 中转站 / 自定义)
+    // Renderizado agrupado por categoría(Oficial / Estación de Transferencia / Personalizado)
     val officialProviders = providers.filter { it.category == io.zer0.ai.core.ProviderCategory.OFFICIAL }
     val relayProviders = providers.filter { it.category == io.zer0.ai.core.ProviderCategory.RELAY }
     val customProviders = providers.filter { it.category == io.zer0.ai.core.ProviderCategory.CUSTOM }
@@ -123,11 +123,11 @@ internal fun LazyListScope.providerListSection(
         return
     }
 
-    // P2-1: Provider 冲突检测 — 在列表顶部展示警告卡片(仅当存在重复配置时)
+    // P2-1: Provider detección de conflictos — Mostrar tarjeta de advertencia en la parte superior de la lista(Sólo si hay configuraciones duplicadas)
     item { ModelCatalogRow() }
     item { ProviderCollisionWarning(providers) }
 
-    // "添加 Provider" 入口 —— 置顶（用户反馈：自定义分组多时每次都要滚到底）
+    // "agregar Provider" entrada —— Quédese en la parte superior (comentarios de los usuarios: cuando hay muchos grupos personalizados, debe desplazarse hasta la parte inferior cada vez)
     item {
         SettingsGroup(
             modifier = Modifier.padding(top = MusePaddings.itemGap),
@@ -153,7 +153,7 @@ internal fun LazyListScope.providerListSection(
                     fontWeight = FontWeight.Medium,
                 )
             }
-            // v1.97: 扫描二维码导入 Provider
+            // v1.97: Escanea el código QR para importar Provider
             SettingsGroupDivider()
             Row(
                 modifier = Modifier
@@ -179,7 +179,7 @@ internal fun LazyListScope.providerListSection(
         }
     }
 
-    // 官方厂商分组
+    // Agrupación oficial de fabricantes.
     if (officialProviders.isNotEmpty()) {
         item { ProviderCategoryHeader(stringResource(R.string.settings_provider_category_official), officialProviders.size) }
         item {
@@ -199,7 +199,7 @@ internal fun LazyListScope.providerListSection(
         }
     }
 
-    // 中转站分组
+    // Agrupación de estaciones de transferencia
     if (relayProviders.isNotEmpty()) {
         item { ProviderCategoryHeader(stringResource(R.string.settings_provider_category_relay), relayProviders.size) }
         item {
@@ -219,7 +219,7 @@ internal fun LazyListScope.providerListSection(
         }
     }
 
-    // 自定义分组
+    // Agrupación personalizada
     if (customProviders.isNotEmpty()) {
         item { ProviderCategoryHeader(stringResource(R.string.settings_provider_category_custom), customProviders.size) }
         item {
@@ -243,16 +243,16 @@ internal fun LazyListScope.providerListSection(
 }
 
 /**
- * P2-1: Provider 冲突(重复配置)警告卡片。
+ * P2-1: Provider conflicto(Configuración duplicada)tarjeta de advertencia.
  *
- * 调用 [ProviderCollisionDetector.detect] 检测当前 provider 列表中的重复配置,
- * 仅当检测到冲突时渲染警告卡片。卡片样式:
- *  - 形状:[MuseShapes.medium] 圆角
- *  - 背景:MaterialTheme.colorScheme.errorContainer
- *  - 图标:MuseIcons.alertTriangle(着色 onErrorContainer)
- *  - 文案:provider_collision_warning(带冲突数量 %1$d)
+ * llamar [ProviderCollisionDetector.detect] Detectar configuraciones duplicadas en la lista de proveedores actual,
+ * La tarjeta de advertencia solo se muestra cuando se detecta un conflicto. estilo de tarjeta:
+ *  - forma:[MuseShapes.medium] esquinas redondeadas
+ *  - fondo:MaterialTheme.colorScheme.errorContainer
+ *  - icono:MuseIcons.alertTriangle(colorear onErrorContainer)
+ *  - redacción:provider_collision_warning(Número de conflictos %1$d)
  *
- * 仅提示,不展开详情,不阻断用户操作。
+ * Sólo aviso,No ampliar detalles,No bloquear las operaciones del usuario.
  */
 @Composable
 private fun ProviderCollisionWarning(providers: List<ProviderConfig>) {
@@ -311,9 +311,9 @@ private fun ProviderCategoryHeader(title: String, count: Int) {
 }
 
 /**
- * 模型能力目录行 —— 展示当前目录版本,并支持手动拉取更新。
+ * Fila del catálogo de capacidades del modelo —— Mostrar la versión actual del directorio,Y admite actualizaciones manuales.
  *
- * 目录来源见 [ModelCatalogRepository]:缓存优先,拉取失败退回内置 asset。
+ * Para fuentes del catálogo, consulte [ModelCatalogRepository]:caché primero,Si la extracción falla, se devolverá el activo integrado.
  */
 @Composable
 private fun ModelCatalogRow() {
@@ -322,6 +322,7 @@ private fun ModelCatalogRow() {
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
 
     Row(
         modifier = Modifier
@@ -341,7 +342,7 @@ private fun ModelCatalogRow() {
                     append(formatCatalogTimestamp(status.publishedAt))
                     append(" · ")
                     append(
-                        context.getString(
+                        localizedResources.getString(
                             R.string.settings_model_catalog_counts,
                             status.providerCount,
                             status.modelCount,
@@ -384,11 +385,11 @@ internal fun ProviderRow(
     config: ProviderConfig,
     isActive: Boolean,
     onEdit: () -> Unit,
-    // 激活(设为当前供应商)与删除 —— 此前 providerListSection 收下这两个回调却从不使用,
-    // 导致供应商列表既不能激活也不能删除。
+    // activar(Establecer como proveedor actual)y borrar —— Anteriormente, proveedorListSection aceptaba estas dos devoluciones de llamada pero nunca las usaba.,
+    // Como resultado, la lista de proveedores no se puede activar ni eliminar.
     onActivate: () -> Unit,
     onDelete: () -> Unit,
-    // v1.133: 批量健康检测状态(由列表头部"全部检测"按钮触发,写入后行内显示)
+    // v1.133: Estado de verificación de estado del lote(por cabeza de lista"Todas las pruebas"disparador de botón,Mostrar en línea después de escribir)
     testStatus: ProviderTestStatus = ProviderTestStatus.Idle,
 ) {
     var actionsOpen by remember { mutableStateOf(false) }
@@ -402,14 +403,14 @@ internal fun ProviderRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
     ) {
-        // 左侧:品牌 logo 砖(线性图标/字标,圆角方形)
+        // lado izquierdo:ladrillo del logotipo de la marca(Icono lineal/marca denominativa,cuadrado redondeado)
         ProviderLogo(
             type = config.type,
             name = config.displayName,
             size = 44.dp,
         )
 
-        // 中间:名称 + 类型
+        // medio:nombre + tipo
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = config.displayName.ifBlank { config.id },
@@ -445,7 +446,7 @@ internal fun ProviderRow(
                 ProviderTestStatusChip(testStatus)
             }
         }
-        // 整行点击进入编辑，右侧只留一个独立操作入口，状态不再挤占标题。
+        // Haga clic en toda la fila para ingresar a la edición, dejando solo una entrada de operación independiente en el lado derecho y el estado ya no desplazará el título.
         Box {
             MuseTactileButton(
                 icon = MuseIcons.moreVertical,
@@ -490,18 +491,18 @@ internal fun ProviderRow(
 }
 
 /**
- * v1.133: 供应商列表头部 — section 标题 + "全部检测"按钮。
+ * v1.133: Encabezado de lista de proveedores — section Título + "Todas las pruebas"botón.
  *
- * 替代原 [SectionLabel] 单文本。检测进行中按钮内显示 CircularProgressIndicator,
- * 点击触发 [onTestAll] 并发测试所有已配置的供应商。
+ * sustituto original [SectionLabel] Texto único. Se muestra en el botón de detección en curso. CircularProgressIndicator,
+ * Haga clic en el disparador [onTestAll] Pruebe todos los proveedores configurados simultáneamente.
  *
- * 按 UI:
+ * prensa UI:
  * ```
  * Row {
- *     Text("Provider 列表")
+ *     Text("Provider lista")
  *     Spacer(Modifier.weight(1f))
  *     if (testing) { CircularProgressIndicator(...) }
- *     TextButton(onClick = onTestAll) { Text("全部检测") }
+ *     TextButton(onClick = onTestAll) { Text("Todas las pruebas") }
  * }
  * ```
  */
@@ -515,7 +516,7 @@ private fun ProviderListHeader(totalCount: Int, isTestingAll: Boolean, onTestAll
     ) {
         SectionLabel(stringResource(R.string.settings_provider_list_title))
         Spacer(Modifier.weight(1f))
-        // v1.133: 检测进行中显示转圈(尺寸 14dp,与按钮文字高度匹配)
+        // v1.133: La detección está en curso y se muestra el círculo.(Tamaño 14dp,Coincide mucho con el texto del botón)
         if (isTestingAll) {
             MuseSpinner(
                 size = 14.dp,
@@ -534,12 +535,12 @@ private fun ProviderListHeader(totalCount: Int, isTestingAll: Boolean, onTestAll
 }
 
 /**
- * v1.133: 单个供应商检测结果 chip。
+ * v1.133: Chip de resultados de pruebas de un solo proveedor.
  *
- * - [ProviderTestStatus.Idle]: 不渲染(保持行内整洁)
- * - [ProviderTestStatus.Testing]: 小转圈 + "检测中"
- * - [ProviderTestStatus.Success]: 绿色 ✓ + "{latency} ms"(展示延迟)
- * - [ProviderTestStatus.Failed]: 红色 ✗ + "失败"(短文案,详情点入编辑页查看)
+ * - [ProviderTestStatus.Idle]: no renderizar(Mantén el lugar ordenado)
+ * - [ProviderTestStatus.Testing]: pequeño círculo + "Bajo detección"
+ * - [ProviderTestStatus.Success]: verde ✓ + "{latency} ms"(Retraso de visualización)
+ * - [ProviderTestStatus.Failed]: rojo ✗ + "falló"(copia corta,Para más detalles, haga clic en la página de edición para ver)
  */
 @Composable
 private fun ProviderTestStatusChip(status: ProviderTestStatus) {
@@ -619,10 +620,10 @@ private fun ProviderTestStatusChip(status: ProviderTestStatus) {
 }
 
 /**
- * 把后端返回的 ISO 时间戳格式化为本地可读日期。
+ * Formatee las marcas de tiempo ISO devueltas por el backend como fechas legibles localmente.
  *
- * 上游给的是 2026-09-30T06:11:52.268Z 这类字符串，直接展示会让用户看到一串
- * 带 T 和 Z 的机器格式。解析失败时回退到原串，避免整行为空。
+ * El upstream proporciona cadenas como 2026-09-30T06:11:52.268Z. La visualización directa permitirá a los usuarios ver una cadena
+ * Formato de máquina con T y Z. Cuando falla el análisis, recurra a la cadena original para evitar vaciar toda la línea.
  */
 private fun formatCatalogTimestamp(raw: String): String {
     if (raw.isBlank()) return "—"

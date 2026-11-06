@@ -9,155 +9,155 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 /**
- * Muse 设计令牌 — 动画系统。
+ * Muse ficha de diseño — Sistema de animación.
  *
- * 提供全局统一的动画时长、缓动曲线、阴影规格与触觉反馈语义方法,
- * 与已有的 [MusePaddings] / [MuseCornerRadius] / [MuseElevation] / [MuseIconSizes] 互补,
- * 共同构成完整的设计令牌体系。
+ * Proporciona duración de animación globalmente unificada, curva de suavizado, especificaciones de sombras y métodos semánticos de retroalimentación táctil.,
+ * con existente [MusePaddings] / [MuseCornerRadius] / [MuseElevation] / [MuseIconSizes] complementario,
+ * Juntos forman un sistema de tokens de diseño completo.
  *
- * 设计说明:
- *  - 触觉交互:按压时 200ms easeOutCubic 颜色渐变
- *  - Material 3 Expressive: 弹性动效 expressive motion scheme
- *  - Apple HIG: 触觉反馈分级 (light / medium / heavy)
+ * descripción del diseño:
+ *  - interacción táctil:200 ms facilidad de gradiente de color OutCubic cuando se presiona
+ *  - Material 3 Expressive: Animación flexible expressive motion scheme
+ *  - Apple HIG: Calificación de retroalimentación táctil (light / medium / heavy)
  */
 object MuseAnimation {
 
-    // ── 形态指示器 ──────────────────────────────────────────────────
+    // ── indicador de patrón ──────────────────────────────────────────────────
     /**
-     * 黇形一个完整形态循环的时长：叶 → 星 → 环 → 回叶。
+     * Duración de un ciclo morfológico completo de Yunnan: hoja → estrella → anillo → Hojas traseras.
      *
-     * 3.6s 是三个形态各占到足够停顿、又不至于让等待显得漫的长度。
+     * 3.6s Cada una de las tres formas ocupa una pausa suficiente sin que la espera parezca larga.
      */
     const val GLYPH_CYCLE_MS = 3600
 
-    /** 星芒形态下游走光绕轮廓一周的时长。独立于形态循环，两者周期成非整数比。 */
+    /** El período de tiempo que la luz descendente viaja alrededor del contorno de un patrón de explosión estelar. Independientemente del ciclo morfológico, los períodos de los dos están en una proporción no entera. */
     const val GLYPH_TRAVEL_MS = 1600
 
-    // ── 时长令牌 ──────────────────────────────────────────────────────
-    /** 极快过渡 (120ms): 微交互 — 图标切换 / 状态指示灯。 */
+    // ── ficha de duración ──────────────────────────────────────────────────────
+    /** Transición extremadamente rápida (120ms): microinteracción — Indicador de estado/alternancia de icono. */
     const val FAST_MS = 120
 
-    /** 快速过渡 (180ms): 简单状态切换 — 按钮颜色 / 开关。 */
+    /** Transición rápida (180ms): Cambio de estado simple — Color del botón/interruptor. */
     const val FAST_NORMAL_MS = 180
 
-    /** 标准过渡 (240ms): 卡片展开 / 面板切换。 */
+    /** Transición estándar (240ms): Ampliación de tarjeta/cambio de panel. */
     const val NORMAL_MS = 240
 
-    /** 按压反馈标准 (200ms): 按压颜色渐变。 */
+    /** Estándar de retroalimentación de prensa (200ms): Presione el degradado de color. */
     const val TACTILE_MS = 200
 
-    /** 慢速过渡 (320ms): 页面转场 / BottomSheet 弹出。 */
+    /** transición lenta (320ms): Ventana emergente de transición de página/hoja inferior. */
     const val SLOW_MS = 320
 
-    /** 极慢过渡 (400ms): 大面积布局重组 / 主题切换渐变。 */
+    /** Transición muy lenta (400ms): Reorganización del diseño de áreas grandes/gradiente de cambio de tema. */
     const val EXTRA_SLOW_MS = 400
 
-    // v2.0: 全局循环动效整体减速 1.5x(更大的毫秒值 = 更慢的转动/闪烁),
-    // 覆盖加载转圈、思考点、shimmer、录音/群聊/委托脉冲;有限交互过渡不变。
-    /** 循环动画-标准 (900ms): 打字点 / 麦克风脉冲。 */
+    // v2.0: Desaceleración general de la animación del bucle global 1.5x(Valor de milisegundos más grande = rotación más lenta/intermitente),
+    // Cubre círculos de carga, puntos de pensamiento,shimmer, grabando/chat grupal/Pulso delegado;Las transiciones de interacción limitadas no cambian.
+    /** animación en bucle-Estándar (900ms): Punto de escritura/pulso del micrófono. */
     const val LOOP_NORMAL_MS = 900
 
-    /** 循环动画-慢 (1200ms): 状态点脉冲 / 录音波形 / 委托链脉冲。 */
+    /** animación en bucle-lento (1200ms): Pulso de punto de estado/forma de onda de grabación/pulso de cadena de comisión. */
     const val LOOP_SLOW_MS = 1200
 
-    /** 循环动画-极慢 (1800ms): shimmer 占位 / 通话脉冲 / 旋转加载。 */
+    /** animación en bucle-Extremadamente lento (1800ms): shimmer Marcador de posición/Pulso de conversación/Carga de rotación. */
     const val LOOP_EXTRA_SLOW_MS = 1800
 
-    // v1.0.16: 导航过渡档位(280-300ms,介于 NORMAL 与 SLOW 之间)
-    /** 导航横向过渡 (280ms): NavGraph push/pop 水平滑动。 */
+    // v1.0.16: Equipo de transición de navegación(280-300ms,entre NORMAL y LENTO)
+    /** Transición horizontal de navegación (280ms): NavGraph push/pop Deslizar horizontalmente. */
     const val NAV_HORIZONTAL_MS = 280
 
-    /** 导航纵向进入 (300ms): NavGraph 垂直进入。 */
+    /** Entrada vertical de navegación (300ms): NavGraph Ingrese verticalmente. */
     const val NAV_VERTICAL_ENTER_MS = 300
 
-    /** 导航纵向退出 (280ms): NavGraph 垂直退出。 */
+    /** Salida vertical de navegación (280ms): NavGraph Salga verticalmente. */
     const val NAV_VERTICAL_EXIT_MS = 280
 
-    // ── v2.6.7 动效重置: 进场/退场时长分离 ─────────────────────────────
-    // 对标 kelivo: 进场 360ms / 退场 280ms。退场必须比进场短 ——
-    // 用户不想等一个已经决定离开的东西慢慢消失。
-    /** 页面入场 (360ms): 比退场长，让新内容有时间 "站定"。 */
+    // ── v2.6.7 Restablecer animación: Entra al mercado/Separación de duración de salida ─────────────────────────────
+    // Kelivo de referencia: entrada 360ms / salida 280ms. La salida debe ser más corta que la entrada. ——
+    // Los usuarios no quieren esperar a que algo que ha decidido irse se desvanezca lentamente.
+    /** Admisión de página (360ms): Más largo que la salida para dar tiempo a contenido nuevo. "quedarse quieto". */
     const val ENTER_MS = 360
 
-    /** 页面退场 (280ms): 短于入场，离开不该拖沓。 */
+    /** Salida de página (280ms): A falta de entrar, no debes retrasar la salida. */
     const val EXIT_MS = 280
 
-    /** 内容块入场 (260ms): 列表项 / 卡片 / 提示条。 */
+    /** Admisión de bloque de contenido (260ms): Enumere elementos/tarjetas/información sobre herramientas. */
     const val CONTENT_ENTER_MS = 260
 
-    /** 内容块退场 (200ms): 短于入场。 */
+    /** Salida del bloque de contenido (200ms): Más corto que la admisión. */
     const val CONTENT_EXIT_MS = 200
 
-    // ── v2.6.7 动效重置: 位移距离 ─────────────────────────────────────
-    // 旧实现让页面走满整屏(比例 1.0)或半屏(0.5)，配 easeOutCubic 就是
-    // "先猛冲一步再拖回来"，读感是 "抽出来"。kelivo 全仓位移在 2%~8%。
-    /** 页面转场位移比例（1/12 ≈ 8%）: 横向 push/pop 用。 */
+    // ── v2.6.7 Restablecer animación: Distancia de desplazamiento ─────────────────────────────────────
+    // La implementación anterior hacía que la página ocupara toda la pantalla.(proporción 1.0)o media pantalla(0.5), con facilidadOutCubic es
+    // "Da un paso adelante y luego arrástralo hacia atrás.", el sentido de lectura es "Sácalo".kelivo Toda la posición se traslada a 2%~8%.
+    /** Relación de desplazamiento de transición de página (1/12 ≈ 8%): Se utiliza para empujar/pop horizontal. */
     const val SLIDE_FRACTION_PAGE = 1f / 12f
 
-    /** 次要层位移比例（1/16 ≈ 6%）: 被覆盖的根页退场、pop 回场用。 */
+    /** Relación de desplazamiento de capa menor (1/16 ≈ 6%): La página raíz cubierta sale,pop Para volver a jugar. */
     const val SLIDE_FRACTION_SECONDARY = 1f / 16f
 
-    /** 内容块位移比例（1/20 = 5%）: 提示条 / 卡片 / 浮动元素。 */
+    /** Relación de desplazamiento de bloques de contenido (1/20 = 5%): Barra de punta/tarjeta/elemento flotante. */
     const val SLIDE_FRACTION_CONTENT = 1f / 20f
 
-    // v1.0.16: 错峰入场递增步长
+    // v1.0.16: Aumento del tamaño del paso para entrada escalonada
     //
-    // v2.6.7: 180ms → 28ms，并且必须封顶（见 [STAGGER_MAX_INDEX]）。
-    // 旧值的问题: 180ms 是 kelivo（16~20ms）的一个数量级以上，
-    // 且调用点普遍写 `index * STAGGER_STEP_MS` 不封顶 ——
-    // 第 10 项要等 1.8s，第 20 项要等 3.6s，表现为 "越往下越卡"。
-    /** 错峰入场步长 (28ms): 列表项逐条入场的 delay 递增值。 */
+    // v2.6.7: 180ms → 28ms, y debe estar tapado (ver [STAGGER_MAX_INDEX]).
+    // Problema con los viejos valores.: 180ms es kelivo(16~20ms) más de un orden de magnitud,
+    // Y el pulsador generalmente está escrito `index * STAGGER_STEP_MS` Sin límite ——
+    // El décimo elemento tiene que esperar 1,8 segundos y el vigésimo elemento tiene que esperar 3,6 segundos. El rendimiento es el siguiente. "Cuanto más bajas, más atascado te quedas.".
+    /** Tamaño del paso de entrada escalonado (28ms): El valor de incremento de retraso para que los elementos de la lista ingresen uno por uno. */
     const val STAGGER_STEP_MS = 28
 
-    /** 错峰参与的最大序号: 超过此值的项共用同一 delay，避免深列表等待。 */
+    /** Número de secuencia máximo para la participación máxima escalonada: Los elementos que superan este valor comparten el mismo retraso para evitar largas esperas en la lista. */
     const val STAGGER_MAX_INDEX = 6
 
-    // ── 缓动曲线令牌 ──────────────────────────────────────────────────
+    // ── Token de curva de flexibilización ──────────────────────────────────────────────────
     /**
-     * 标准缓动 (easeOutCubic):
-     * 快入慢出,模拟触觉交互的自然减速感。
+     * Flexibilización estándar (easeOutCubic):
+     * Entrada rápida y salida lenta,Simula la sensación natural de desaceleración de las interacciones táctiles.
      */
     val EaseOutCubic: Easing = CubicBezierEasing(0.33f, 1.0f, 0.68f, 1.0f)
 
     /**
-     * 弹性回弹 (easeOutBack): 略微超过终点后回弹,
-     * 用于卡片入场 / 元素弹出等需要"活力感"的场景。
+     * rebote elástico (easeOutBack): Rebote tras superar ligeramente el punto final,
+     * Se utiliza para entrada de tarjeta/elemento emergente, etc."sensación de vitalidad"escena.
      */
     val EaseOutBack: Easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f)
 
     /**
-     * Material 3 标准缓动: 通用过渡曲线,用于页面切换 / 元素移动。
-     * 等同于 [FastOutSlowInEasing],此处命名统一令牌接口。
+     * Material 3 Flexibilización estándar: Curva de transición universal,Se utiliza para cambiar de página/movimiento de elementos.
+     * equivalente a [FastOutSlowInEasing],La interfaz del token unificado se nombra aquí.
      */
     val Standard: Easing = FastOutSlowInEasing
 
     /**
-     * 加速曲线 (easeInCubic): 慢入快出,用于元素离场 / 退出动画。
+     * curva de aceleración (easeInCubic): Entrando lento y saliendo rápido,Se utiliza para la animación de salida/salida de elementos.
      */
     val EaseInCubic: Easing = CubicBezierEasing(0.32f, 0.0f, 0.67f, 0.0f)
 
     /**
-     * v2.x: Material 3 Expressive 强调曲线 — 大位移/强调过渡场景
-     * (motion-scheme 的 emphasized 规格,供面板/大容器转场引用)。
+     * v2.x: Material 3 Expressive enfatizar las curvas — gran desplazamiento/Énfasis en escenas de transición.
+     * (motion-scheme Las especificaciones mejoradas,panel de suministro/Referencia de transición de contenedores grandes).
      */
     val Emphasized: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
 
     /**
-     * v2.6.7: "先长出来再稳住" 曲线 — 对标 kelivo 的 `Cubic(0.2, 0.8, 0.2, 1)`。
+     * v2.6.7: "Déjalo crecer primero y luego estabilízalo." Curva — Evaluación comparativa de Kelivo `Cubic(0.2, 0.8, 0.2, 1)`.
      *
-     * 前 20% 时间走完 80% 路程，剩余时间缓慢收敛。用于尺寸变化
-     * （[androidx.compose.animation.animateContentSize]）与展开类动效：
-     * 读感是内容 "生长" 出来，而不是被瞬间撞开。
+     * El primer 20% del tiempo cubre el 80% de la distancia y el tiempo restante converge lentamente. para cambios de talla
+     * ([androidx.compose.animation.animateContentSize]) y animación de expansión:
+     * El sentido de la lectura es el contenido. "crecer" Sal en lugar de ser derribado instantáneamente.
      *
-     * 与 [EaseOutCubic] 的区别: EaseOutCubic 中后段仍有明显推进，
-     * 适合位移；本曲线末段几乎静止，适合 "尺寸/裁切" 这种
-     * 终点必须稳住的场景。
+     * con [EaseOutCubic] la diferencia: EaseOutCubic Todavía hay avances significativos en las etapas intermedia y posterior,
+     * Adecuado para desplazamiento; La sección final de esta curva es casi estacionaria, adecuada para "Tamaño/Cortar" este tipo de
+     * Una escena donde el punto final debe ser estable.
      */
     val GrowEase: Easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1.0f)
 
     /**
-     * v2.x: 弹性弹簧规格沉淀 — 按压缩放/卡片回弹场景的物理参数
-     * (原散落各处手写 spring(MediumBouncy, StiffnessMedium);新代码从这里取)。
+     * v2.x: Precipitación de especificación de resorte elástico — Presione para comprimir/Parámetros físicos de la escena del rebote de la tarjeta.
+     * (Escritura original esparcida por todas partes. spring(MediumBouncy, StiffnessMedium);El nuevo código se toma de aquí.).
      */
     fun bouncySpring(): SpringSpec<Float> = SpringSpec(
         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -166,77 +166,77 @@ object MuseAnimation {
 }
 
 /**
- * Muse 设计令牌 — 阴影统一说明 (CMP-01)。
+ * Muse ficha de diseño — Descripción unificada de la sombra (CMP-01).
  *
- * 阴影/高程只保留一套语义刻度 [MuseElevation](tonalElevation 与 shadowElevation 共用),
- * 各档用途:
- *  - none(0) / micro(0.5): 无层次 / 紧贴表面
- *  - low(1) / card(1):     列表项 / 卡片默认
- *  - medium(2):            输入岛 / 浮动条 shadowElevation
- *  - high(4):              选中项 / 强调卡片
- *  - modal(8):             对话框 / BottomSheet
- * 历史两套同名不同值的 [MuseShadow] 已删除,调用方统一改用 [MuseElevation]。
+ * sombra/La elevación conserva solo un conjunto de escalas semánticas [MuseElevation](tonalElevation Compartido con sombraElevación),
+ * Finalidad de cada archivo:
+ *  - none(0) / micro(0.5): Sin capas / cerca de la superficie
+ *  - low(1) / card(1):     Valor predeterminado de elemento de lista/tarjeta
+ *  - medium(2):            Isla de entrada/barra flotante shadowElevation
+ *  - high(4):              Artículo seleccionado/Tarjeta destacada
+ *  - modal(8):             cuadro de diálogo / BottomSheet
+ * Hay dos conjuntos históricos con el mismo nombre y valores diferentes. [MuseShadow] Eliminado,La persona que llama usa uniformemente [MuseElevation].
  */
 
 /**
- * Muse 设计令牌 — 触觉反馈语义封装。
+ * Muse ficha de diseño — Encapsulación semántica de retroalimentación háptica.
  *
- * 将 Compose [HapticFeedback] 的原始 API 包装为语义化方法,
- * 调用方无需关心底层 [HapticFeedbackType] 选型,也无需关心开关读取。
+ * voluntad Compose [HapticFeedback] La API original está envuelta en métodos semánticos.,
+ * La persona que llama no necesita preocuparse por el subyacente [HapticFeedbackType] Selección,Tampoco hay necesidad de preocuparse por la lectura del interruptor.
  *
- * 用法:
+ * Uso:
  * ```
  * val haptic = LocalHapticFeedback.current
- * // 列表项点击
+ * // Haga clic en el elemento de la lista
  * MuseHaptics.soft(haptic)
- * // 按钮 / 开关
+ * // botón/interruptor
  * MuseHaptics.light(haptic)
- * // 发送消息
+ * // enviar mensaje
  * MuseHaptics.medium(haptic)
- * // 删除 / 危险操作
+ * // Eliminar/operación peligrosa
  * MuseHaptics.heavy(haptic)
  * ```
  *
- * 偏好开关接入(v1.0.14):
- *  - [enabled] 字段由 [io.zer0.muse.MuseApp] 启动时订阅
- *    [io.zer0.muse.data.SettingsRepository.chatPreferencesFlow] 同步,
- *    用户在「设置 → 聊天行为 → 触感反馈」切换后,所有 [MuseHaptics] 调用立即生效。
- *  - 调用方无需自行读取开关,直接调用语义方法即可。
- *  - 线程安全:[enabled] 为 @Volatile,所有触觉调用都在 UI 线程,无并发风险。
+ * Acceso al interruptor de preferencia(v1.0.14):
+ *  - [enabled] El campo consta de [io.zer0.muse.MuseApp] Suscríbete al inicio
+ *    [io.zer0.muse.data.SettingsRepository.chatPreferencesFlow] sincronizar,
+ *    Usuario en "Configuración" → comportamiento de chat → Después de cambiar "retroalimentación háptica",todos [MuseHaptics] La convocatoria surte efecto inmediatamente.
+ *  - La persona que llama no necesita leer el interruptor en sí.,Simplemente llame al método semántico directamente.
+ *  - Seguridad del hilo:[enabled] para @Volatile,Todas las llamadas hápticas están en el hilo de la interfaz de usuario.,Sin riesgo de complicaciones.
  */
 object MuseHaptics {
-    /** 触觉总开关,默认 true(与 ChatPreferences.hapticFeedback 默认值一致)。 */
+    /** Interruptor maestro táctil,Predeterminado true(Consistente con el valor predeterminado de ChatPreferences.hapticFeedback). */
     @Volatile
     private var enabled: Boolean = true
 
-    /** 由 MuseApp 启动时调用,把用户偏好同步到总开关。 */
+    /** Llamado por MuseApp cuando se inició,Sincronice las preferencias del usuario con el interruptor maestro. */
     fun setEnabled(value: Boolean) {
         enabled = value
     }
 
-    /** 轻触: 列表项点击 / 卡片展开 / 滑块等日常交互。 */
+    /** toque: Interacciones diarias como clic en elementos de lista/expansión de tarjeta/control deslizante. */
     fun soft(haptic: HapticFeedback) {
         if (enabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
-    /** 轻击: 按钮点击 / 开关切换 / 菜单项选择。 */
+    /** toque: Clic de botón/cambio de interruptor/selección de elemento de menú. */
     fun light(haptic: HapticFeedback) {
         if (enabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
-    /** 中等: 长按 / 发送消息 / 滑动触发删除/归档 / 确认操作。 */
+    /** medio: Mantenga presionado/enviar mensaje/deslizar para activar la eliminación/Archivar/confirmar operaciones. */
     fun medium(haptic: HapticFeedback) {
         if (enabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
-    /** 强击: 删除 / 危险操作确认。
-     * v1.0.74 fix (前端审计 3.3): 原与 medium 同为 LongPress,危险操作与普通点击
-     * 触觉无差别。改用 Confirm(Android 13+ 有明确确认感,低版本系统自动降级)。
+    /** fuerte ataque: Borrar/confirmación de operación peligrosa.
+     * v1.0.74 fix (Auditoría inicial 3.3): Originalmente igual que medio. LongPress,Operaciones peligrosas y clics comunes
+     * No hay diferencia en el tacto. Usar en su lugar Confirm(Android 13+ Tener un claro sentido de confirmación.,El sistema de versión inferior se degrada automáticamente).
      */
     fun heavy(haptic: HapticFeedback) {
-        // v1.0.74 fix (前端审计 3.3): 当前 Compose 版本可用触觉档位有限
-        // (仅 TextHandleMove/LongPress),heavy 用双次 LongPress 模拟更强确认感,
-        // 与 medium 单次 LongPress 形成差异。
+        // v1.0.74 fix (Auditoría inicial 3.3): La versión actual de Compose tiene engranajes táctiles limitados disponibles.
+        // (solo TextHandleMove/LongPress),heavy Utilice doble LongPress para simular una sensación de confirmación más fuerte,
+        // Diferencia con LongPress simple medio.
         if (enabled) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

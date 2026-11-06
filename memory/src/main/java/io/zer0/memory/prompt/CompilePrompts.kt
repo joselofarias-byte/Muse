@@ -1,16 +1,16 @@
 package io.zer0.memory.prompt
 
 /**
- * 编译提示词构建器。
+ * Compile el generador de palabras rápidas.
  *
- * 提供四块独立编译（today / daily / week / longterm）与 editable facts 的 system prompt。
- * 输出统一为纯文本（无 markdown 标题），由 [CompiledMemoryState.normalizeLlmResult] 规范化。
+ * Proporciona cuatro compilaciones independientes (today / daily / week / longterm) con un mensaje del sistema de datos editable.
+ * La salida se unifica en texto plano (sin encabezados de rebajas), mediante [CompiledMemoryState.normalizeLlmResult] Normalización.
  */
 object CompilePrompts {
 
-    /** compile today: 当天 sessions → today.md */
-    fun buildTodayPrompt(locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
+    /** compile today: ese dia sessions → today.md */
+    fun buildTodayPrompt(locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         if (!isZh) {
             return """
 Condense today's conversation summaries into a short list of the user's current state and broad themes.
@@ -37,33 +37,33 @@ Output 3 to 5 coarse events, 1 to 2 sentences each, at most 180 words. Keep quie
             """.trimIndent()
         }
         return """
-请把今天的对话摘要整理成一份“用户近况与大主题清单”。
+Por favor, prepare un resumen de la conversación de hoy.“Estado del usuario y lista de temas principales”.
 
-提炼原则：
-- 同一主题或项目的多次往返归并成一条，不逐条记流水账
-- 时间用主时段（“上午/傍晚”或粗略 HH:MM 区间），不需要精确到分钟
-- 长期记忆的首要任务是维护用户模型：优先记录用户是谁、喜欢什么、在意什么、最近关注什么
-- 工作内容只保留到大主题层级：写用户最近投入的领域/项目/主题，不写内部细节
+Principios de refinación:
+- Se combinan varios viajes de ida y vuelta sobre el mismo tema o proyecto en uno y no se registran cuentas corrientes una por una.
+- El tiempo utiliza el período principal (“mañana/tarde”o intervalo aproximado HH:MM), no es necesario que sea preciso al minuto
+- La tarea principal de la memoria a largo plazo es mantener el modelo de usuario: dando prioridad a registrar quién es el usuario, qué le gusta, qué le importa y a qué ha prestado atención recientemente.
+- El contenido del trabajo sólo se conserva hasta el nivel de los grandes temas: escriba sobre las áreas en las que los usuarios han invertido recientemente./Proyecto/Tema, no escribas detalles internos.
 
-可以记录：
-- 身份、性格、审美、兴趣、喜欢或讨厌的事物
-- 当前投入的大主题，例如“正在筹备搬家”“最近开始学游泳”“本周在写论文初稿”
-- 生活、创作、关系或长期关注方向的变化
+Puede grabar:
+- Identidad, personalidad, estética, intereses, cosas que te gustan o no te gustan.
+- Grandes temas en los que se invierte actualmente, como“Preparándose para mudarse”“Recientemente comencé a aprender a nadar.”“Trabajando en el primer borrador de un artículo esta semana.”
+- Cambios en la vida, creatividad, relaciones o enfoque a largo plazo.
 
-不要记录：
-- 执行步骤、文件名、工具、命令、检查顺序、协作偏好、工作细节
-- 单次任务中的方法论选择、工具偏好、格式要求、术语规则
-- 具体子问题、具体方案、具体改法、具体测试或发布流程
-- 助手产出的具体内容（“生成了一篇关于 X 的文章”就够了，不摘录正文）
-- 来回修改、重试、被打断又恢复等过程波动
+No iniciar sesión:
+- Pasos de ejecución, nombres de archivos, herramientas, comandos, orden de inspección, preferencias de colaboración, detalles del trabajo
+- Opciones metodológicas, preferencias de herramientas, requisitos de formato, reglas terminológicas en una sola tarea
+- Subproblemas específicos, soluciones específicas, cambios específicos, pruebas específicas o procesos de lanzamiento
+- El contenido específico generado por el asistente (“Generó un artículo sobre X.”Ya es suficiente, no hay extractos del texto)
+- Fluctuaciones del proceso, como modificaciones de ida y vuelta, reintentos, interrupciones y recuperación, etc.
 
-输出 3 到 5 条粗颗粒事件，每条 1 到 2 句，最多 300 字。一天平淡就写短。不要输出 Markdown 标题，不要以 #、##、### 开头；直接输出正文列表或段落。
+Genere de 3 a 5 eventos generales, de 1 a 2 oraciones cada uno, hasta 300 palabras. Si el día es aburrido, escribe breve. No genere títulos de Markdown, no comience con #,##,### Comienzo; generar directamente la lista de texto o párrafo.
         """.trimIndent()
     }
 
-    /** compile daily: 已结束那天的 today 草稿/摘要 → daily/{date}.md */
-    fun buildDailyPrompt(locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
+    /** compile daily: hoy borrador para el día terminado/Resumen → daily/{date}.md */
+    fun buildDailyPrompt(locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         if (!isZh) {
             return """
 Condense that day's timeline entries or final today draft into a two-to-three-sentence diary entry.
@@ -82,25 +82,25 @@ Output only two to three sentences, at most 30 words; keep quiet days shorter. D
             """.trimIndent()
         }
         return """
-你会收到这一天的时间线条目或最终版“今日草稿”，请把它蒸馏成两三句话的简短日记条目。
+Recibirás una entrada de la línea de tiempo o una versión final para este día.“El borrador de hoy.”, resúmalo en una breve entrada de diario de dos o tres oraciones.
 
-定位：这是给一周概览用的一条记录，不是详细日志。读的人只需要一眼看出这一天大致发生了什么、用户在关注什么。
+Posicionamiento: este es un registro para una descripción general de una semana, no un registro detallado. Los lectores solo necesitan ver de un vistazo qué sucedió ese día y a qué están prestando atención los usuarios.
 
-提炼原则：
-- 同一主题或项目的多次往返归并成一条
-- 保留粗时间感，例如“上午”“傍晚”或一个代表性 HH:MM；不要写成无时间锚点的主题标签
-- 长期记忆的首要任务是维护用户模型：优先记录用户是谁、喜欢什么、在意什么、这天关注什么
-- 工作内容只保留到大主题层级
+Principios de refinación:
+- Múltiples viajes de ida y vuelta para el mismo tema o proyecto se fusionan en uno
+- Mantener un sentido aproximado del tiempo, p.“mañana”“tarde”O un representante HH:MM; no lo escribas como un hashtag sin un ancla de tiempo
+- La tarea principal de la memoria a largo plazo es mantener el modelo de usuario: priorizar el registro de quién es el usuario, qué le gusta, qué le importa y a qué presta atención hoy.
+- El contenido del trabajo solo se conserva hasta el nivel del gran tema.
 
-不要记录执行步骤、文件名、工具、命令、检查顺序、协作偏好、工作细节，也不要记录方法论选择、工具偏好、格式要求、具体子问题、具体方案、具体改法、测试或发布流程、助手产出的具体内容，以及来回修改、重试、被打断又恢复等过程波动。
+No registre pasos de ejecución, nombres de archivos, herramientas, comandos, orden de verificación, preferencias de colaboración, detalles de trabajo, ni registre opciones metodológicas, preferencias de herramientas, requisitos de formato, subproblemas específicos, soluciones específicas, modificaciones específicas, procesos de prueba o lanzamiento, salida de contenido específico por parte del asistente, así como fluctuaciones de procesos como modificaciones de ida y vuelta, reintentos, interrupciones y recuperación.
 
-只输出两三句话，最多 60 字；平淡的一天写得更短。不要输出日期抬头（调用方会加上），不要使用 Markdown 标题。
+Genere solo dos o tres oraciones, hasta 60 palabras; más corto en un día normal. No genere encabezados de fecha (la persona que llama los agregará) y no utilice encabezados de Markdown.
         """.trimIndent()
     }
 
-    /** compile week: 7 天滑动窗口 sessions → week.md */
-    fun buildWeekPrompt(locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
+    /** compile week: 7 ventana corredera de día sessions → week.md */
+    fun buildWeekPrompt(locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         if (!isZh) {
             return """
 Condense the past 7 days of conversation summaries into a weekly overview of the user's broad themes.
@@ -120,26 +120,26 @@ Record only what the user broadly focused on and what important changes happened
             """.trimIndent()
         }
         return """
-请把过去 7 天的对话摘要整理成一份“本周用户主题概要”。
+Por favor, recopile un resumen de las conversaciones de los últimos 7 días.“Resumen de temas de usuarios esta semana”.
 
-定位：这一层已经是粗线条记录，不是“每天发生的事”的集合，而是再归纳一层——用户这一周大致在关注什么、投入什么、发生了什么重要变化。
+Posicionamiento: Esta capa ya está grabada en líneas gruesas, no“cosas que pasan todos los dias”la colección de——A qué están prestando atención los usuarios esta semana, en qué están invirtiendo y qué cambios importantes se han producido.
 
-层级：
-- 长期记忆的首要任务是维护用户模型：用户是谁、喜欢什么、在意什么、最近关注什么
-- 工作内容只保留到大主题层级
-- 持续性的关注主题（“本周持续关注 X”“这几天主要在做 Y”）放最前
-- 够分量的个人近况、创作主题、关系变化、兴趣变化次之
-- 时间用模糊表述（“周初/前几天/这两天”），不留精确时间戳
+Nivel:
+- La tarea principal de la memoria a largo plazo es mantener el modelo del usuario: quién es el usuario, qué le gusta, qué le importa y a qué ha prestado atención recientemente.
+- El contenido del trabajo solo se conserva hasta el nivel del gran tema.
+- Temas de preocupación actuales (“Estén atentos esta semana X”“Estoy haciendo esto principalmente estos días. Y”) poner primero
+- Suficiente estatus personal, temas creativos, cambios en las relaciones y cambios en los intereses, seguidos de
+- El tiempo se expresa vagamente (“Zhou temprano/hace unos dias/estos dos dias”), sin dejar una marca de tiempo precisa
 
-明确不要保留：执行步骤、文件名、工具、命令、检查顺序、协作偏好、工作细节；具体子问题、具体方案、具体改法、测试或发布流程；任务中的方法论、工具、格式选择；单次对话内的来回修改与临时决定；助手的具体产出；不重要的杂事。
+Deje en claro que no debe retener: pasos de ejecución, nombres de archivos, herramientas, comandos, orden de verificación, preferencias de colaboración, detalles del trabajo; subproblemas específicos, soluciones específicas, modificaciones específicas, procesos de prueba o lanzamiento; metodologías, herramientas y opciones de formato en las tareas; modificaciones de ida y vuelta y decisiones ad hoc dentro de una sola conversación; salidas específicas de los asistentes; tareas sin importancia.
 
-只记录“用户这一周大致关注什么、发生了什么重要变化”。输出 3 到 5 条本周主题/事件，最多 400 字，不要使用 Markdown 标题。
+grabar solo“A qué suelen prestar atención los usuarios esta semana y qué cambios importantes se han producido”. Salida de 3 a 5 temas para la semana./Evento, máximo 400 palabras, no utilice títulos Markdown.
         """.trimIndent()
     }
 
-    /** compile longterm: week.md fold 进 longterm.md */
-    fun buildLongtermPrompt(locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
+    /** compile longterm: week.md fold entrar longterm.md */
+    fun buildLongtermPrompt(locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         if (!isZh) {
             return """
 Fold this week's additions into the existing long-term context.
@@ -156,23 +156,23 @@ Output 3 to 6 long-term attributes or themes, at most 240 words, without Markdow
             """.trimIndent()
         }
         return """
-把本周新增内容折叠进已有的长期情况。
+Incorpore las nuevas incorporaciones de esta semana a situaciones existentes a largo plazo.
 
-长期情况是最稳定的一层，记录持久的身份、性格、审美、价值观和长期关注主题；不记录短暂近况或任务细节。
+La situación a largo plazo es la capa más estable y registra identidad, personalidad, estética, valores y preocupaciones a largo plazo duraderos; no registra situaciones a corto plazo ni detalles de tareas.
 
-原则：
-- 把新增内容合并进已有长期情况，不重复
-- 只保留持久、稳定的用户属性
-- 丢弃短暂近况（它属于 today/week 层）
-- 同一主题以新信息为准
+Principios:
+- Incorporar contenido nuevo en situaciones existentes a largo plazo sin duplicaciones.
+- Conserve únicamente atributos de usuario persistentes y estables
+- Descartar el historial breve (pertenece a la capa de hoy/semana)
+- El mismo tema está sujeto a nueva información.
 
-输出 3 到 6 条长期属性/主题，最多 400 字，不要使用 Markdown 标题。
+Salida 3 a 6 atributos a largo plazo/Tema, máximo 400 palabras, no utilice títulos Markdown.
         """.trimIndent()
     }
 
-    /** compile facts: 30 天摘要的 facts 段 → facts.md */
-    fun buildFactsPrompt(locale: String = "zh-CN"): String {
-        val isZh = locale.startsWith("zh")
+    /** compile facts: 30 sección de hechos del resumen del día → facts.md */
+    fun buildFactsPrompt(locale: String = "es"): String {
+        val isZh = locale.let { it.startsWith("es") || it.startsWith("zh") }
         if (!isZh) {
             return """
 Merge new candidate facts into the existing facts list.
@@ -189,20 +189,20 @@ Output the merged list, at most 100 words, without Markdown headings.
             """.trimIndent()
         }
         return """
-把新增候选 facts 合并进现有 facts。
+Fusionar nuevos hechos candidatos con hechos existentes.
 
-原则：
-- 每条 fact 必须原子：一行一条
-- 合并重复项并保留原始表述；不要补“用户”主语
-- 两条事实只差主语时，保留更短、不带主语的版本
-- 丢弃短暂事实（任务级、一次性事件）
-- 只保留持久的用户画像事实：身份、偏好、长期关注
-- 格式：一行一条，无 bullet 前缀，无标题
+Principios:
+- Cada hecho debe ser atómico: uno por línea
+- Fusionar duplicados y conservar la representación original; no complementar“Usuario”Asunto
+- Cuando la única diferencia entre dos hechos es el tema, conserve la versión más corta sin el tema.
+- Descartar hechos efímeros (nivel de tarea, eventos únicos)
+- Mantenga solo datos persistentes del perfil del usuario: identidad, preferencias, atención a largo plazo.
+- Formato: una línea por línea, sin prefijo de viñetas, sin título
 
-输出合并后的列表，最多 200 字，不要使用 Markdown 标题。
+Genere la lista combinada, hasta 200 palabras, y no utilice encabezados de Markdown.
         """.trimIndent()
     }
 
-    /** compile editable facts: 增量水位线版,同 compileFacts 但语义是"可信基础" */
-    fun buildEditableFactsPrompt(locale: String = "zh-CN"): String = buildFactsPrompt(locale)
+    /** compile editable facts: Versión de línea de flotación incremental,Igual que compileFacts pero la semántica es"base confiable" */
+    fun buildEditableFactsPrompt(locale: String = "es"): String = buildFactsPrompt(locale)
 }

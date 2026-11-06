@@ -12,17 +12,17 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * P1-3b 拆域：系统/设备工具实现（从 ToolRegistry.kt 迁移）。
- * 由 SystemToolsRegistrar 注册到 ToolRegistry。
+ * P1-3b Desdomainización: Sistema/Implementación de herramientas de dispositivo (migrada desde ToolRegistry.kt).
+ * Registrado en ToolRegistry por SystemToolsRegistrar.
  */
 class SystemToolsImpl(private val context: Context) {
     private val fmtTimeMin = ThreadLocal.withInitial { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    // ── 系统控制与邮件工具实现(5 个)──────────────────────────────────────
+    // ── Implementación de herramientas de control de sistemas y correo electrónico.(5 un)──────────────────────────────────────
 
     /**
-     * 打开系统设置页:支持通过 category 跳转到具体设置项(wifi/bluetooth/display 等)。
-     * app_settings 分类会附带本应用包名,直达应用详情页。无需运行时权限。
+     * Abra la página de configuración del sistema:Admite saltar a elementos de configuración específicos a través de una categoría(wifi/bluetooth/display espera).
+     * app_settings La categoría irá acompañada del nombre del paquete de la aplicación.,Vaya directamente a la página de detalles de la solicitud. No se requieren permisos de tiempo de ejecución.
      */
     suspend fun execOpenSystemSetting(args: Map<String, String>): String {
         val category = args["category"] ?: "settings"
@@ -40,7 +40,7 @@ class SystemToolsImpl(private val context: Context) {
                 "storage" -> action = android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS
                 "security" -> action = android.provider.Settings.ACTION_SECURITY_SETTINGS
                 "date_time" -> action = android.provider.Settings.ACTION_DATE_SETTINGS
-                // 默认打开设置主页
+                // La página de inicio de configuración se abre de forma predeterminada.
             }
             if (category == "app_settings") {
                 data = android.net.Uri.fromParts("package", context.packageName, null)
@@ -55,10 +55,10 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * A-02: toggle 类工具统一参数解析 — 兼容 action(on/off/status) 与 enabled(true/false)。
+     * A-02: toggle Análisis de parámetros unificados de herramienta de clase. — compatibles action(on/off/status) con enabled(true/false).
      *
-     * 两者都未提供时返回 "status"(只读查询)。不做"翻转"——Android 10+ 无法程序化
-     * 翻转 WiFi/蓝牙开关,如实返回状态引导,删除工具描述中的"翻转"承诺。
+     * Devuelve cuando no se proporciona ninguno de los dos "status"(consulta de solo lectura). no lo hagas"voltear"——Android 10+ no se puede programar
+     * Activa el interruptor WiFi/Bluetooth,Devolver la guía de estado con sinceridad,Quitar de la descripción de la herramienta"voltear"Compromiso.
      */
     private fun resolveToggleAction(args: Map<String, String>): String {
         val action = args["action"]?.lowercase()
@@ -71,9 +71,9 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * 开关 WiFi:Android 10+ 无法直接 toggle(WifiManager.setWifiEnabled 已废弃)。
-     * action=status 读取当前状态;action=on/off 跳 WiFi 设置页让用户手动操作。
-     * 需 ACCESS_WIFI_STATE(读状态,普通权限,无需运行时申请)。
+     * Cambiar WiFi: Android 10+ no puede directamente toggle(WifiManager.setWifiEnabled En desuso).
+     * action=status Leer el estado actual;action=on/off Vaya a la página de configuración de WiFi para permitir a los usuarios operar manualmente.
+     * necesidad ACCESS_WIFI_STATE(estado de lectura,Permisos normales,No se requiere aplicación de tiempo de ejecución).
      */
     suspend fun execToggleWifi(args: Map<String, String>): String {
         val action = resolveToggleAction(args)
@@ -85,7 +85,7 @@ class SystemToolsImpl(private val context: Context) {
                 if (enabled) context.getString(R.string.tool_wifi_status_on) else context.getString(R.string.tool_wifi_status_off)
             }
             "on", "off" -> {
-                // Android 10+ 无法直接开关,跳设置页
+                // Android 10+ No se puede cambiar directamente,Saltar a la página de configuración
                 val intent = android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).apply {
                     flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
                 }
@@ -97,11 +97,11 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * 开关蓝牙:action=status 读状态;action=on 跳设置页(Android 10+ 无法直接开启);
-     * action=off 直接调用 BluetoothAdapter.disable()(需 BLUETOOTH_ADMIN 权限)。
+     * Activar y desactivar Bluetooth:action=status estado de lectura;action=on Saltar a la página de configuración(Android 10+ No se puede abrir directamente);
+     * action=off llamar directamente BluetoothAdapter.disable()(Requiere permiso BLUETOOTH_ADMIN).
      *
-     * M-TR4: Android 10+ 的 "off" 分支也跳转蓝牙设置页(与 wifi 行为对称),
-     * 因为 BluetoothAdapter.disable() 在 Android 10+ 静默失败(不抛异常但不生效)。
+     * M-TR4: Android 10+ de "off" La rama también salta a la página de configuración de Bluetooth.(Comportamiento simétrico al wifi.),
+     * porque BluetoothAdapter.disable() Falla silenciosamente en Android 10+(No lanza una excepción pero no surte efecto).
      */
     @SuppressLint("MissingPermission")
     suspend fun execToggleBluetooth(args: Map<String, String>): String {
@@ -115,7 +115,7 @@ class SystemToolsImpl(private val context: Context) {
                 if (enabled) context.getString(R.string.tool_bluetooth_status_on) else context.getString(R.string.tool_bluetooth_status_off)
             }
             "on" -> {
-                // Android 10+ 无法直接开启,跳设置页
+                // Android 10+ No se puede abrir directamente,Saltar a la página de configuración
                 val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).apply {
                     flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
                 }
@@ -123,7 +123,7 @@ class SystemToolsImpl(private val context: Context) {
                 context.getString(R.string.tool_bluetooth_on_redirect)
             }
             "off" -> {
-                // M-TR4: Android 10+ 的 disable() 静默失败,跳设置页让用户手动关闭
+                // M-TR4: Android 10+ de disable() falla silenciosamente,Vaya a la página de configuración para permitir a los usuarios cerrarla manualmente
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).apply {
                         flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
@@ -146,12 +146,12 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * 发送邮件:通过 ACTION_SENDTO + mailto: 打开邮件应用,预填收件人/主题/正文。
-     * 多个收件人用逗号分隔。无邮件应用时返回错误提示。
+     * Enviar correo electrónico:Abra la aplicación de correo mediante ACTION_SENDTO + mailto:,Destinatarios precargados/Tema/Texto.
+     * Separe varios destinatarios con comas. Se devuelve un mensaje de error cuando no hay ninguna aplicación de correo.
      */
     suspend fun execSendEmail(args: Map<String, String>): String {
         val to = args["to"] ?: return context.getString(R.string.tool_error_missing_to)
-        // L-TR9: 校验收件人邮箱格式(简单正则,多收件人逐个校验)
+        // L-TR9: Verificar el formato de correo electrónico del destinatario(sencillo regular,Verifique varios destinatarios uno por uno)
         val recipients = to.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (recipients.isEmpty()) return context.getString(R.string.tool_email_recipients_empty)
         val invalid = recipients.filter { !MusePatterns.EMAIL_REGEX.matches(it) }
@@ -176,8 +176,8 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * 获取电池信息:电量百分比(BATTERY_PROPERTY_CAPACITY)+ 充电状态(isCharging)。
-     * 无需运行时权限(BatteryManager 系统服务可直接读取)。
+     * Obtener información de la batería:Porcentaje de batería(BATTERY_PROPERTY_CAPACITY)+ estado de carga(isCharging).
+     * No se requieren permisos de tiempo de ejecución(BatteryManager Los servicios del sistema se pueden leer directamente.).
      */
     suspend fun execGetBatteryInfo(_args: Map<String, String>): String {
         val batteryManager = context.getSystemService(android.content.Context.BATTERY_SERVICE)
@@ -192,8 +192,8 @@ class SystemToolsImpl(private val context: Context) {
     }
 
     /**
-     * P2: 获取最近收到的应用通知。
-     * 依赖 MuseNotificationListenerService 静态采集;未授权时返回引导提示。
+     * P2: Reciba notificaciones de aplicaciones recibidas recientemente.
+     * Depende de la colección estática MuseNotificationListenerService;Regrese al indicador de inicio cuando no esté autorizado.
      */
     suspend fun execGetRecentNotifications(args: Map<String, String>): String {
         val limit = args["limit"]?.toIntOrNull()?.takeIf { it > 0 } ?: 20
@@ -219,7 +219,7 @@ class SystemToolsImpl(private val context: Context) {
         }
     }
 
-    /** 打开 URL:校验 scheme 后用系统浏览器打开。 */
+    /** Abra la URL: verifique el esquema y ábralo con el navegador del sistema. */
     suspend fun execOpenUrl(args: Map<String, String>): String {
         val url = args["url"]?.takeIf { it.isNotBlank() }
             ?: return context.getString(R.string.tool_missing_param_url)
@@ -232,11 +232,11 @@ class SystemToolsImpl(private val context: Context) {
         return resultOf {
             context.startActivity(intent)
             context.getString(R.string.tool_url_opened, url)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开 URL 失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir la URL: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_url_failed, url)
     }
 
-    /** 列出已安装应用,支持过滤、限制数量、是否包含系统应用。 */
+    /** Listar aplicaciones instaladas,Admite filtrado, limitación del número y si se incluyen aplicaciones del sistema. */
     suspend fun execListInstalledApps(args: Map<String, String>): String {
         val filter = args["filter"]?.takeIf { it.isNotBlank() }?.lowercase()
         val limit = args["limit"]?.toIntOrNull()?.takeIf { it > 0 } ?: 20
@@ -256,11 +256,11 @@ class SystemToolsImpl(private val context: Context) {
                 if (count >= limit) break
             }
             if (count == 0) context.getString(R.string.tool_installed_apps_empty) else sb.toString().trimEnd()
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "列出已安装应用失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudieron enumerar las aplicaciones instaladas: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取当前网络连接信息。 */
+    /** Obtenga información de conexión de red actual. */
     suspend fun execGetNetworkInfo(_args: Map<String, String>): String {
         val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
             as android.net.ConnectivityManager
@@ -268,12 +268,12 @@ class SystemToolsImpl(private val context: Context) {
         val caps = activeNetwork?.let { cm.getNetworkCapabilities(it) }
         val connected = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         val type = when {
-            caps == null -> "无网络"
+            caps == null -> "Sin red"
             caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "蜂窝数据"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "datos celulares"
             caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) -> "VPN"
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "以太网"
-            else -> "其他"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
+            else -> "Otros"
         }
         val metered = cm.isActiveNetworkMetered
         return context.getString(
@@ -284,20 +284,20 @@ class SystemToolsImpl(private val context: Context) {
         )
     }
 
-    // ── v1.136: 批量新增系统/设备/编码工具 ───────────────────────────────────
+    // ── v1.136: Agregar sistemas en lotes/Equipo/herramientas de codificación ───────────────────────────────────
 
-    /** 获取内部存储空间信息。 */
+    /** Obtenga información sobre el espacio de almacenamiento interno. */
     suspend fun execGetStorageInfo(_args: Map<String, String>): String {
         return resultOf {
             val stat = android.os.StatFs(context.filesDir.path)
             val total = stat.totalBytes
             val free = stat.freeBytes
             context.getString(R.string.tool_storage_info, formatBytes(total), formatBytes(total - free), formatBytes(free))
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取存储信息失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener la información de almacenamiento: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取内存(RAM)信息。 */
+    /** obtener memoria(RAM)información. */
     suspend fun execGetMemoryInfo(_args: Map<String, String>): String {
         return resultOf {
             val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
@@ -310,11 +310,11 @@ class SystemToolsImpl(private val context: Context) {
                 formatBytes(info.threshold),
                 if (info.lowMemory) context.getString(R.string.tool_yes) else context.getString(R.string.tool_no),
             )
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取内存信息失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener información de la memoria: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取屏幕分辨率、密度、刷新率。 */
+    /** Obtenga resolución de pantalla, densidad y frecuencia de actualización. */
     @Suppress("DEPRECATION")
     suspend fun execGetDisplayInfo(_args: Map<String, String>): String {
         return resultOf {
@@ -330,21 +330,21 @@ class SystemToolsImpl(private val context: Context) {
                 metrics.density,
                 refreshRate,
             )
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取屏幕信息失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener información de la pantalla: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取 CPU 型号与核心数。 */
+    /** Obtenga el modelo de CPU y la cantidad de núcleos. */
     suspend fun execGetCpuInfo(_args: Map<String, String>): String {
         return resultOf {
-            val processor = readProcCpuField("Hardware") ?: readProcCpuField("Processor") ?: "未知"
+            val processor = readProcCpuField("Hardware") ?: readProcCpuField("Processor") ?: "desconocido"
             val cores = Runtime.getRuntime().availableProcessors()
             context.getString(R.string.tool_cpu_info, processor, cores)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取 CPU 信息失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener información de la CPU: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取设备传感器列表。 */
+    /** Obtenga la lista de sensores del dispositivo. */
     suspend fun execGetSensorsList(args: Map<String, String>): String {
         val limit = args["limit"]?.toIntOrNull()?.takeIf { it > 0 } ?: 30
         return resultOf {
@@ -356,11 +356,11 @@ class SystemToolsImpl(private val context: Context) {
                 sb.appendLine(context.getString(R.string.tool_sensors_item, it.name, it.vendor, it.version))
             }
             sb.toString().trimEnd()
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取传感器列表失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener la lista de sensores: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取当前屏幕亮度与模式。 */
+    /** Obtenga el brillo y el modo de pantalla actual. */
     suspend fun execGetBrightness(_args: Map<String, String>): String {
         return resultOf {
             val cr = context.contentResolver
@@ -372,13 +372,13 @@ class SystemToolsImpl(private val context: Context) {
                 context.getString(R.string.tool_brightness_manual)
             }
             context.getString(R.string.tool_brightness_info, brightness, modeLabel)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取亮度失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener brillo: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_brightness_failed, "")
     }
 
     /**
-     * A-03: 设置系统屏幕亮度 — 支持 auto=true 启用自动亮度(忽略 value)。
-     * auto 缺省时按 value(0-255)写手动亮度;均未提供时返回参数错误。
+     * A-03: Establecer el brillo de la pantalla del sistema — apoyo auto=true Habilitar brillo automático(ignorar value).
+     * auto De forma predeterminada, presione value(0-255)Escribir brillo manual;Si no se proporciona ninguno, se devuelve un error de parámetro.
      */
     suspend fun execSetBrightness(args: Map<String, String>): String {
         if (args["auto"].equals("true", ignoreCase = true)) {
@@ -389,7 +389,7 @@ class SystemToolsImpl(private val context: Context) {
                     android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC,
                 )
                 context.getString(R.string.tool_brightness_auto_set)
-            }.onError { msg, _ -> Logger.w("ToolRegistry", "启用自动亮度失败: $msg") }
+            }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo habilitar el brillo automático: $msg") }
                 .getOrNull() ?: context.getString(R.string.tool_brightness_failed, "auto")
         }
         val value = args["value"]?.toIntOrNull()?.coerceIn(0, 255)
@@ -401,21 +401,21 @@ class SystemToolsImpl(private val context: Context) {
                 value,
             )
             context.getString(R.string.tool_brightness_set, value)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "设置亮度失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo configurar el brillo: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_brightness_failed, value.toString())
     }
 
-    /** 获取指定音频流音量。 */
+    /** Obtenga el volumen de transmisión de audio especificado. */
     suspend fun execGetVolume(args: Map<String, String>): String {
         val (streamType, streamLabel) = resolveAudioStream(args["stream"])
         return resultOf {
             val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
             context.getString(R.string.tool_volume_info, streamLabel, am.getStreamVolume(streamType), am.getStreamMaxVolume(streamType))
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取音量失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener el volumen: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 设置指定音频流音量。 */
+    /** Establece el volumen de transmisión de audio especificado. */
     suspend fun execSetVolume(args: Map<String, String>): String {
         val (streamType, streamLabel) = resolveAudioStream(args["stream"])
         val rawValue = args["value"]?.toIntOrNull()
@@ -427,11 +427,11 @@ class SystemToolsImpl(private val context: Context) {
             val index = if (isPercent) (rawValue * max / 100).coerceIn(0, max) else rawValue.coerceIn(0, max)
             am.setStreamVolume(streamType, index, android.media.AudioManager.FLAG_SHOW_UI)
             context.getString(R.string.tool_volume_set, streamLabel, index, max)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "设置音量失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo configurar el volumen: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 开关手电筒。A-02: 支持 enabled 参数;status 返回本会话最后已知状态(如实,不再恒"是")。 */
+    /** Enciende y apaga la linterna.A-02: Parámetro habilitado para soporte;status Devuelve el último estado conocido de esta sesión.(sinceramente,ya no es permanente"si"). */
     suspend fun execToggleFlashlight(args: Map<String, String>): String {
         val action = resolveToggleAction(args)
         return resultOf {
@@ -459,16 +459,16 @@ class SystemToolsImpl(private val context: Context) {
                 }
                 else -> context.getString(R.string.tool_flashlight_invalid_action)
             }
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "手电筒操作失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "Error en la operación de la linterna: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_flashlight_unavailable)
     }
 
     companion object {
-        /** A-02: 本进程内手电筒最后已知状态(null = 本会话尚未操作过,如实报告未知)。 */
+        /** A-02: El último estado conocido de la linterna en este proceso.(null = Esta sesión aún no ha sido operada.,Informe verazmente desconocido). */
         private var lastFlashlightOn: Boolean? = null
     }
 
-    /** 控制设备振动。 */
+    /** Controlar la vibración del dispositivo. */
     @Suppress("DEPRECATION")
     suspend fun execVibrate(args: Map<String, String>): String {
         val duration = args["duration_ms"]?.toLongOrNull()?.coerceIn(1, 3000) ?: 300
@@ -483,11 +483,11 @@ class SystemToolsImpl(private val context: Context) {
                 vibrator.vibrate(duration)
             }
             context.getString(R.string.tool_vibrate, duration)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "振动失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "La vibración falló: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_installed_apps_failed)
     }
 
-    /** 获取当前/最近前台应用包名。 */
+    /** Ponte al día/El nombre del paquete de aplicación en primer plano más reciente. */
     suspend fun execGetForegroundApp(_args: Map<String, String>): String {
         return resultOf {
             val usm = context.getSystemService(android.content.Context.USAGE_STATS_SERVICE)
@@ -496,12 +496,12 @@ class SystemToolsImpl(private val context: Context) {
             val start = end - 60_000
             val stats = usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, start, end)
             val recent = stats?.maxByOrNull { it.lastTimeUsed }
-            context.getString(R.string.tool_foreground_app, recent?.packageName ?: "未知")
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取前台应用失败: $msg") }
+            context.getString(R.string.tool_foreground_app, recent?.packageName ?: "desconocido")
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener la aplicación en primer plano: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_foreground_app_unknown)
     }
 
-    /** 获取当前连接的 WiFi 信息。 */
+    /** Obtenga información WiFi conectada actual. */
     @Suppress("DEPRECATION")
     suspend fun execGetWifiInfo(_args: Map<String, String>): String {
         return resultOf {
@@ -509,18 +509,18 @@ class SystemToolsImpl(private val context: Context) {
 
             @Suppress("DEPRECATION")
             val info = wm.connectionInfo
-            val ssid = info.ssid?.removeSurrounding("\"") ?: "未知"
-            val bssid = info.bssid ?: "未知"
+            val ssid = info.ssid?.removeSurrounding("\"") ?: "desconocido"
+            val bssid = info.bssid ?: "desconocido"
             val level = android.net.wifi.WifiManager.calculateSignalLevel(info.rssi, 5)
 
             @Suppress("DEPRECATION")
             val ip = android.text.format.Formatter.formatIpAddress(info.ipAddress)
             context.getString(R.string.tool_wifi_info, ssid, bssid, level, ip)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取 WiFi 信息失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener información de WiFi: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_wifi_unavailable)
     }
 
-    /** 获取已配对蓝牙设备列表。 */
+    /** Obtenga la lista de dispositivos Bluetooth emparejados. */
     @Suppress("DEPRECATION")
     suspend fun execGetBluetoothDevices(_args: Map<String, String>): String {
         return resultOf {
@@ -539,15 +539,15 @@ class SystemToolsImpl(private val context: Context) {
                 sb.appendLine()
                 sb.appendLine(context.getString(R.string.tool_bluetooth_header, devices.size))
                 devices.forEach {
-                    sb.appendLine(context.getString(R.string.tool_bluetooth_item, it.name ?: "未知", it.address))
+                    sb.appendLine(context.getString(R.string.tool_bluetooth_item, it.name ?: "desconocido", it.address))
                 }
                 sb.toString().trimEnd()
             }
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "获取蓝牙设备失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo obtener el dispositivo Bluetooth: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_bluetooth_unsupported)
     }
 
-    /** 打开拨号界面并预填手机号。 */
+    /** Abra la interfaz de marcación y complete previamente el número de teléfono celular. */
     suspend fun execMakePhoneCall(args: Map<String, String>): String {
         val phone = args["phone"]?.takeIf { it.isNotBlank() }
             ?: return context.getString(R.string.tool_phone_call_missing)
@@ -557,11 +557,11 @@ class SystemToolsImpl(private val context: Context) {
         return resultOf {
             context.startActivity(intent)
             context.getString(R.string.tool_phone_call_opened, phone)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开拨号失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir el acceso telefónico: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_url_failed, phone)
     }
 
-    /** 打开地图应用。 */
+    /** Abre la aplicación Mapas. */
     suspend fun execOpenMaps(args: Map<String, String>): String {
         val query = args["query"]
         val lat = args["lat"]
@@ -580,13 +580,13 @@ class SystemToolsImpl(private val context: Context) {
         return resultOf {
             context.startActivity(intent)
             context.getString(R.string.tool_maps_opened, uri)
-        }.onError { msg, _ -> Logger.w("ToolRegistry", "打开地图失败: $msg") }
+        }.onError { msg, _ -> Logger.w("ToolRegistry", "No se pudo abrir el mapa: $msg") }
             .getOrNull() ?: context.getString(R.string.tool_open_url_failed, uri)
     }
 
-    // ── 辅助函数 ─────────────────────────────────────────────────────────────
+    // ── Función auxiliar ─────────────────────────────────────────────────────────────
 
-    /** 把字节数格式化为人类可读字符串。 */
+    /** Formatee una cantidad de bytes en una cadena legible por humanos. */
     fun formatBytes(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
@@ -599,7 +599,7 @@ class SystemToolsImpl(private val context: Context) {
         return String.format(Locale.getDefault(), "%.2f %s", value, units[unitIndex])
     }
 
-    /** 从 /proc/cpuinfo 读取指定字段。 */
+    /** Lea los campos especificados de /proc/cpuinfo. */
     fun readProcCpuField(key: String): String? {
         return try {
             java.io.File("/proc/cpuinfo").useLines { lines ->
@@ -617,7 +617,7 @@ class SystemToolsImpl(private val context: Context) {
         }
     }
 
-    /** 解析音频流类型。 */
+    /** Analiza el tipo de transmisión de audio. */
     fun resolveAudioStream(name: String?): Pair<Int, String> {
         return when (name?.lowercase()) {
             "ring", "ringtone" -> android.media.AudioManager.STREAM_RING to context.getString(R.string.tool_volume_stream_ring)
@@ -647,7 +647,7 @@ class SystemToolsImpl(private val context: Context) {
         val sb = StringBuilder(context.getString(R.string.tool_screen_time_header))
         val pm = context.packageManager
         for (stat in sorted.take(10)) {
-            // M-TR1: 改用 resultOf{}(正确重抛 CancellationException)
+            // M-TR1: Usar en su lugar resultOf{}(Lanzamiento correcto CancellationException)
             val name = resultOf {
                 pm.getApplicationLabel(pm.getApplicationInfo(stat.packageName, 0)).toString()
             }.getOrNull() ?: stat.packageName

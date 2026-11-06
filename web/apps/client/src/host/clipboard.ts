@@ -1,10 +1,10 @@
 /**
- * 把文本写进剪贴板。
+ * Escribir texto en el portapapeles.
  *
- * Host 页面是局域网 `http://` 打开的，不是 secure context：Chrome / Safari 在这种来源下
- * 根本不暴露 `navigator.clipboard`。所以先走异步 Clipboard API（本机 localhost、HTTPS 部署），
- * 失败或缺失再退到「隐藏 textarea + execCommand」这条老路——它仍会在用户手势的同步调用里工作。
- * 返回 false 表示两条路都没成，调用方必须把失败说出来，不能假装复制成功。
+ * Host La página es una red de área local. `http://` Contexto abierto, no seguro:Chrome / Safari bajo esta fuente
+ * No expuesto en absoluto `navigator.clipboard`. Así que primero vaya con la API del Portapapeles asíncrona (localhost nativo,HTTPS implementación),
+ * Si falla o falta, volverá a la ruta anterior de "ocultar área de texto + execCommand".——Seguirá funcionando dentro de llamadas sincrónicas a gestos de usuario.
+ * Devolver falso significa que ninguna de las rutas tiene éxito. La persona que llama debe informar el error y no puede pretender que la copia se realizó correctamente.
  */
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   if (text.length === 0) return false;
@@ -14,7 +14,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
       await clipboard.writeText(text);
       return true;
     } catch {
-      // 权限被拒（非用户手势、页面失焦）时继续走下面的兜底。
+      // Si se deniega el permiso (gesto de no usuario, página desenfocada), continúe con los pasos a continuación.
     }
   }
   if (typeof document === "undefined") return false;
@@ -42,7 +42,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
       try {
         previous.focus();
       } catch {
-        // 焦点还不回原来的元素不影响复制结果本身。
+        // Devolver el foco al elemento original no afecta el resultado de la copia en sí.
       }
     }
   }

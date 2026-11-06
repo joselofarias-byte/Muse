@@ -32,25 +32,25 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.pill
 
 /**
- * 统一空状态组件,所有列表页空态复用。
+ * Unificar componentes de estado vacío,Todas las páginas de la lista están multiplexadas en estado vacío.
  *
- * v1.0.20 视觉升级:
- *  - 图标从冷灰裸图标改为暖色圆形背景容器(primary 8% 底 + primary 50% 图标)
- *  - 营造柔和的暖调质感
- *  - 保持参数签名不变,20 处调用方零改动
+ * v1.0.20 Actualización visual:
+ *  - El ícono cambió de un ícono desnudo gris frío a un contenedor de fondo redondo y cálido(primary 8% Ícono inferior + principal 50%)
+ *  - Crea una textura suave y cálida.
+ *  - Mantener la firma del parámetro sin cambios,20 Cero cambios para la persona que llama
  *
- * v1.0.23 入场微动效:
- *  - 渐入 + 上滑(20px)过渡,提升状态页精致度
- *  - 使用 [MuseAnimation.NORMAL_MS](240ms)+ [MuseAnimation.EaseOutCubic] 曲线,
- *    与卡片按压、面板切换节奏一致
- *  - 首帧延迟 1 帧(LaunchedEffect 触发),确保 AnimatedVisibility 正确执行 enter 转场
+ * v1.0.23 Efecto de micromovimiento de admisión.:
+ *  - Fundido + deslizar hacia arriba(20px)Transición,Mejorar la sofisticación de la página de estado
+ *  - uso [MuseAnimation.NORMAL_MS](240ms)+ [MuseAnimation.EaseOutCubic] Curva,
+ *    Consistente con el ritmo de presión de la tarjeta y cambio de panel.
+ *  - Primer fotograma retrasado 1 fotograma(LaunchedEffect gatillo),Asegúrese de que AnimatedVisibility realice la transición de entrada correctamente
  *
- * @param icon 顶部图标(默认收件箱,空数据语义)
- * @param title 标题文案
- * @param subtitle 副标题文案(可选,灰色说明)
- * @param actionText 操作按钮文案(可选,提供后与 [onAction] 一同显示)
- * @param onAction 操作按钮回调(可选)
- * @param modifier 修饰符
+ * @param icon icono superior(Bandeja de entrada predeterminada,semántica de datos vacíos)
+ * @param title Copia del título
+ * @param subtitle copia de subtítulos(Opcional,Descripción gris)
+ * @param actionText Copiar botón de acción(Opcional,Provisto de [onAction] Mostrar juntos)
+ * @param onAction Devolución de llamada del botón de acción(Opcional)
+ * @param modifier modificador
  */
 @Composable
 fun MuseEmptyState(
@@ -61,8 +61,8 @@ fun MuseEmptyState(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    // v1.0.23: 首次组合时触发 enter 转场(AnimatedVisibility 初始 visible=true 不触发动画,
-    // 必须从 false → true 跳变才会播放 enter)。
+    // v1.0.23: Activar la transición de entrada cuando se combina por primera vez(AnimatedVisibility inicial visible=true No se activa ninguna animación,
+    // debe comenzar desde false → true Sonará cuando salte. enter).
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -72,8 +72,8 @@ fun MuseEmptyState(
             animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS, easing = MuseAnimation.EaseOutCubic),
         ) + slideInVertically(
             animationSpec = MuseMotion.tween(MuseAnimation.NORMAL_MS, easing = MuseAnimation.EaseOutCubic),
-            // v2.6.7: 位移收到 5%。原为高度一半（50%），对空态这类大块内容
-            // 表现为"整块被抽上来"；空态应当柔和小幅上浮。
+            // v2.6.7: El desplazamiento recibió el 5%. Originalmente la mitad de la altura (50%), para grandes piezas de contenido, como estados vacíos
+            // Se muestra como"Toda la pieza fue levantada"; El estado corto debe aumentar suave y ligeramente.
             initialOffsetY = { (it * MuseAnimation.SLIDE_FRACTION_CONTENT).toInt() },
         ),
     ) {
@@ -84,14 +84,14 @@ fun MuseEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
         ) {
-            // 小图标（不再用大圆圈包裹）
+            // Iconos pequeños (ya no envueltos en un círculo grande)
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(MuseIconSizes.iconLarge), // 32dp
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), // 灰色
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), // gris
             )
-            // 标题
+            // Título
             if (title.isNotBlank()) {
                 Text(
                     text = title,
@@ -99,7 +99,7 @@ fun MuseEmptyState(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // 副标题
+            // subtítulo
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
@@ -108,7 +108,7 @@ fun MuseEmptyState(
                     textAlign = TextAlign.Center,
                 )
             }
-            // 操作按钮（如果有）
+            // Botón de acción (si lo hay)
             if (actionText != null && onAction != null) {
                 Button(
                     onClick = onAction,

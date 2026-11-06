@@ -8,59 +8,59 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 主动消息单飞闸的单测。
+ * Prueba única de puerta volante única de mensaje activo.
  *
- * 这里只测「同一时刻能不能有两轮巡检」以及「尝试记录何时该留、何时该撤」，
- * 判定时机、生成、落库都不在这个类的职责里，混进来会让失败原因难以定位。
+ * Aquí sólo probamos "si puede haber dos rondas de inspecciones al mismo tiempo" y "tratamos de registrar cuándo quedarse y cuándo retirarse".
+ * La determinación del tiempo, la generación y el almacenamiento no se encuentran entre las responsabilidades de esta clase. Mezclarlo hará que sea difícil localizar la causa de la falla.
  *
- * 这套约束的失败模式是「用户收到两条几乎一样的消息」，
- * 不会抛异常、不会打错误日志，所以必须由测试盯着。
+ * El modo de falla de este conjunto de restricciones es "el usuario recibe dos mensajes casi idénticos".
+ * No se generarán excepciones ni se registrarán registros de errores, por lo que la prueba debe monitorearlo.
  */
 class ProactiveCycleGuardTest {
 
     @Test
-    fun `同一时刻只允许一轮进入`() {
+    fun `Sólo se permite una entrada al mismo tiempo`() {
         val guard = ProactiveCycleGuard()
         val first = guard.tryEnter(now = 1_000L)
 
-        assertNotNull("第一次进入应当拿到凭据", first)
-        assertNull("上一轮还在跑时第二次进入必须被拒", guard.tryEnter(now = 1_100L))
+        assertNotNull("Debes obtener credenciales al ingresar por primera vez.", first)
+        assertNull("La segunda inscripción mientras la ronda anterior aún esté en curso deberá ser rechazada.", guard.tryEnter(now = 1_100L))
         assertTrue(guard.isInFlight)
     }
 
     @Test
-    fun `退出之后下一轮可以进入`() {
+    fun `Después de salir, puedes ingresar a la siguiente ronda`() {
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!
         guard.leave(entry, sent = false)
 
         assertFalse(guard.isInFlight)
-        assertNotNull("上一轮结束后应当放行", guard.tryEnter(now = 2_000L))
+        assertNotNull("Debería ser liberado después de la ronda anterior.", guard.tryEnter(now = 2_000L))
     }
 
     @Test
-    fun `凭据里带出上一轮的尝试时间`() {
+    fun `Las credenciales resaltan el tiempo de intento de la última ronda`() {
         val guard = ProactiveCycleGuard()
         val first = guard.tryEnter(now = 1_000L)!!
         guard.markAttempt(1_500L)
         guard.leave(first, sent = true)
 
         val second = guard.tryEnter(now = 2_000L)
-        assertEquals("本轮自己的进入时间", 2_000L, second?.enteredAt)
-        assertEquals("判定要问的是上一轮什么时候试的", 1_500L, second?.previousAttemptAt)
+        assertEquals("Tu propio tiempo de entrada en esta ronda.", 2_000L, second?.enteredAt)
+        assertEquals("La pregunta a determinar es ¿cuándo fue la última ronda de pruebas?", 1_500L, second?.previousAttemptAt)
     }
 
     @Test
-    fun `首轮的上一轮尝试时间是零`() {
+    fun `El tiempo del último intento en la primera ronda fue cero`() {
         val guard = ProactiveCycleGuard()
         assertEquals(0L, guard.tryEnter(now = 1_000L)?.previousAttemptAt)
     }
 
     @Test
-    fun `发出了消息的那一轮留下尝试痕迹`() {
-        // 「这一轮还在跑」和「这一轮跑过」是两件事。
-        // 发出去之后若把尝试时间清掉，刚发过的那一轮在判定层就等于没发生过，
-        // 下一轮立刻又会通过时机闸 —— 这正是重复发送的成因。
+    fun `La ronda en la que se envió el mensaje deja huellas de intentos`() {
+        // "Seguir corriendo esta ronda" y "corriendo esta ronda" son dos cosas diferentes.
+        // Si el tiempo de prueba se borra después del envío, la ronda recién enviada se tratará como si nunca hubiera sucedido en la capa de juicio.
+        // La siguiente ronda pasará inmediatamente por la puerta de cronometraje. —— Esto es exactamente lo que provoca el envío duplicado.
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!
         guard.markAttempt(1_200L)
@@ -70,9 +70,9 @@ class ProactiveCycleGuardTest {
     }
 
     @Test
-    fun `没发出去的那一轮回滚尝试痕迹`() {
-        // 模型说没什么可接的、生成失败、落库失败 —— 这些都没有产生消息，
-        // 留着尝试记录只会白白压住下一次复查。
+    fun `Rastros de la ronda no enviada de intentos de reversión`() {
+        // El modelo dice que no hay nada que conectar, la generación falla y la base de datos no se elimina. —— Ninguno de estos produjo mensajes,
+        // Mantener registros de los intentos sólo servirá para retrasar el próximo reexamen.
         val guard = ProactiveCycleGuard()
         val first = guard.tryEnter(now = 1_000L)!!
         guard.markAttempt(1_100L)
@@ -83,14 +83,14 @@ class ProactiveCycleGuardTest {
         guard.leave(second, sent = false)
 
         assertEquals(
-            "回滚到上一轮成功发送的那次，而不是清成 0",
+            "Retroceder a la última ronda de transmisión exitosa en lugar de borrarla 0",
             1_100L,
             guard.tryEnter(now = 9_000L)?.previousAttemptAt,
         )
     }
 
     @Test
-    fun `被拒的触发不推进尝试时间`() {
+    fun `Los disparadores rechazados no avanzan el tiempo de intento`() {
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!
         guard.markAttempt(1_200L)
@@ -98,13 +98,13 @@ class ProactiveCycleGuardTest {
         assertNull(guard.tryEnter(now = 5_000L))
         guard.leave(entry, sent = true)
 
-        // 被拒的那次没有真的跑，不能算作「上一轮」。
+        // El tiempo rechazado en realidad no transcurrió y no puede contarse como la "última ronda".
         assertEquals(1_200L, guard.tryEnter(now = 9_000L)?.previousAttemptAt)
     }
 
     @Test
-    fun `未登记的轮次不会伪造尝试时间`() {
-        // 在免打扰 / 额度不足处就被拦下的轮次不会走到生成，也就不会 markAttempt。
+    fun `Las rondas no registradas no falsificarán los tiempos de intento`() {
+        // Las rondas que estén bloqueadas durante No molestar/Crédito insuficiente no se generarán y no habrá ningún intento de marca.
         val guard = ProactiveCycleGuard()
         val entry = guard.tryEnter(now = 1_000L)!!
         guard.leave(entry, sent = false)

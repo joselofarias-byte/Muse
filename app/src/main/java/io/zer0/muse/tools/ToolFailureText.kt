@@ -6,34 +6,34 @@ import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 
 /**
- * v2.2.1: 工具失败反馈统一措辞。
+ * v2.2.1: Redacción uniforme para información sobre fallos de herramientas.
  *
- * 动机:此前网络类工具的失败信息只带一句 `e.message`,模型经常看到"连接失败: timeout"
- * 这类无法自我纠正的模糊描述。统一助手把**请求地址**与**失败阶段**(超时/域名解析/TLS)
- * 一并写进结果,让模型(以及日志)能直接定位问题。
+ * motivación:Hasta ahora, el mensaje de fallo de las herramientas de red sólo contenía una frase. `e.message`,A menudo se ven modelos"La conexión falló: timeout"
+ * Descripciones tan vagas no pueden corregirse por sí solas. asistente unificado**Solicitar dirección**con**etapa de falla**(tiempo de espera/Resolución de nombres de dominio/TLS)
+ * Escribir los resultados juntos,deja que el modelo(y registros)Puede localizar directamente el problema.
  *
- * 使用方:SkillBridge(http_get/http_post)、SkillSearchToolsImpl(HTTP GET/POST 技能)。
- * MCP 调用的失败反馈在 McpRegistry 内联(需附带 serverId,措辞不同)。
+ * Usuario:SkillBridge(http_get/http_post),SkillSearchToolsImpl(HTTP GET/POST Habilidades).
+ * MCP Los comentarios de fallas para las llamadas están en línea en McpRegistry(Necesita estar adjunto serverId,redactado de manera diferente).
  */
 internal object ToolFailureText {
 
     /**
-     * 组合 HTTP 类失败的可见文案。
+     * Copia visible de combinación fallida de clases HTTP.
      *
-     * @param prefix 动作名(如 "HTTP GET"、"http_post")
-     * @param url 目标地址(原样透出,便于模型/用户核对)
-     * @param cause 原始异常;null 视作未知网络异常
+     * @param prefix Nombre de la acción(Como por ejemplo "HTTP GET","http_post")
+     * @param url dirección de destino(revelado tal como es,Fácil de modelar/Verificación de usuario)
+     * @param cause excepción original;null Tratado como anomalía de red desconocida
      */
     fun httpFailure(prefix: String, url: String, cause: Throwable?): String = when (cause) {
         is SocketTimeoutException, is InterruptedIOException ->
-            "$prefix 超时(连接或读取): $url"
+            "$prefix tiempo de espera(conectar o leer): $url"
         is UnknownHostException ->
-            "$prefix 域名解析失败: $url"
+            "$prefix Falló la resolución del nombre de dominio: $url"
         is SSLException ->
-            "$prefix TLS 握手失败: $url"
+            "$prefix TLS El apretón de manos falló: $url"
         null ->
-            "$prefix 请求失败: $url → 未知网络异常"
+            "$prefix Solicitud fallida: $url → Anomalía de red desconocida"
         else ->
-            "$prefix 请求失败: $url → ${cause.message ?: cause.javaClass.simpleName}"
+            "$prefix Solicitud fallida: $url → ${cause.message ?: cause.javaClass.simpleName}"
     }
 }

@@ -7,7 +7,7 @@ import androidx.room.Query
 import io.zer0.muse.miniphone.data.db.entity.MpDiaryEntity
 import kotlinx.coroutines.flow.Flow
 
-/** 日记的读写:一天一条,按 `yyyy-MM-dd` 主键 upsert。 */
+/** Lectura y escritura del diario.:Una pieza al día,prensa `yyyy-MM-dd` Inserción de clave primaria. */
 @Dao
 interface MpDiaryDao {
     @Query("SELECT * FROM mp_diary WHERE date = :date LIMIT 1")

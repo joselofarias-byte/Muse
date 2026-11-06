@@ -5,16 +5,16 @@ import androidx.room.Query
 import androidx.room.SkipQueryVerification
 
 /**
- * R-DB-05: messages_fts raw FTS DAO。
+ * R-DB-05: messages_fts raw FTS DAO.
  *
- * messages_fts 不在 @Database entities 列表(Room KSP 无法为 FTS5/raw vtable 做 schema
- * 校验),因此与 KnowledgeChunkFtsDao 一致,所有方法使用 @SkipQueryVerification。
+ * messages_fts No en la lista de entidades @Database(Room KSP No puedo hacerlo para FTS5/raw vtable schema
+ * verificar),Muy consistente con KnowledgeChunkFtsDao,Todos los métodos utilizan @SkipQueryVerification.
  */
 @Dao
 @Suppress("TooManyFunctions")
 interface MessageFtsDao {
 
-    /** FTS4 ngram 全文搜索(JOIN messages + sessions)。 */
+    /** FTS4 ngram Búsqueda de texto completo(JOIN messages + sessions). */
     @SkipQueryVerification
     @Query(
         """
@@ -58,7 +58,7 @@ interface MessageFtsDao {
     )
     suspend fun searchFtsInSession(matchQuery: String, sessionId: String, limit: Int): List<MessageSearchJoin>
 
-    /** FTS5 原文全文搜索(JOIN messages rowid + sessions)。 */
+    /** FTS5 Búsqueda de texto completo original(JOIN messages rowid + sessions). */
     @SkipQueryVerification
     @Query(
         """
@@ -102,22 +102,22 @@ interface MessageFtsDao {
     )
     suspend fun searchFts5InSession(matchQuery: String, sessionId: String, limit: Int): List<MessageSearchJoin>
 
-    /** 插入 FTS4 ngram 索引。 */
+    /** Inserte el índice de ngram FTS4. */
     @SkipQueryVerification
     @Query("INSERT INTO messages_fts(message_id, content_ngram) VALUES(:messageId, :contentNgram)")
     suspend fun insertFts(messageId: String, contentNgram: String)
 
-    /** 删除指定消息的 FTS 索引。 */
+    /** Elimine el índice FTS para el mensaje especificado. */
     @SkipQueryVerification
     @Query("DELETE FROM messages_fts WHERE message_id = :messageId")
     suspend fun deleteFts(messageId: String)
 
-    /** 删除指定会话全部消息的 FTS 索引。 */
+    /** Elimine el índice FTS de todos los mensajes en la sesión especificada. */
     @SkipQueryVerification
     @Query("DELETE FROM messages_fts WHERE message_id IN (SELECT id FROM messages WHERE sessionId = :sessionId)")
     suspend fun deleteFtsBySession(sessionId: String)
 
-    /** 删除指定会话内 createdAt >= fromCreatedAt 的消息 FTS 索引。 */
+    /** Eliminar la sesión especificada createdAt >= fromCreatedAt Índice de mensajes FTS. */
     @SkipQueryVerification
     @Query(
         """
@@ -129,17 +129,17 @@ interface MessageFtsDao {
     )
     suspend fun deleteFtsBySessionAndCreatedAt(sessionId: String, fromCreatedAt: Long)
 
-    /** 清空 FTS 索引(rebuild 用)。 */
+    /** Borrar índice FTS(rebuild usar). */
     @SkipQueryVerification
     @Query("DELETE FROM messages_fts")
     suspend fun clearFts()
 
-    /** messages_fts 表行数(ensureFtsIndexConsistent 比较用)。 */
+    /** messages_fts Número de filas de la tabla(ensureFtsIndexConsistent Más útil). */
     @SkipQueryVerification
     @Query("SELECT COUNT(*) FROM messages_fts")
     suspend fun countFts(): Int
 
-    /** FTS5 external content 全量重建索引。 */
+    /** FTS5 external content Reconstruya completamente el índice. */
     @SkipQueryVerification
     @Query("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')")
     suspend fun rebuildFts5()

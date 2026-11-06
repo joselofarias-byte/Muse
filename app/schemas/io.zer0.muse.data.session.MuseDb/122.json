@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 122,
-    "identityHash": "f862aa82ea374e185ee345e9de0ebe62",
+    "identityHash": "d1913291daf6a24401a64d59dc956271",
     "entities": [
       {
         "tableName": "sessions",
@@ -2377,7 +2377,7 @@
       },
       {
         "tableName": "experiences",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `category` TEXT NOT NULL DEFAULT '通用', `tagsJson` TEXT NOT NULL DEFAULT '[]', `source` TEXT NOT NULL DEFAULT 'manual', `sessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `category` TEXT NOT NULL DEFAULT 'Universales', `tagsJson` TEXT NOT NULL DEFAULT '[]', `source` TEXT NOT NULL DEFAULT 'manual', `sessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -2402,7 +2402,7 @@
             "columnName": "category",
             "affinity": "TEXT",
             "notNull": true,
-            "defaultValue": "'通用'"
+            "defaultValue": "'Universales'"
           },
           {
             "fieldPath": "tagsJson",
@@ -4722,7 +4722,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f862aa82ea374e185ee345e9de0ebe62')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd1913291daf6a24401a64d59dc956271')"
     ]
   }
 }

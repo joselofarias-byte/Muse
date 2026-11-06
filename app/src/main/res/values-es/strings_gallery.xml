@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="gallery_title">Galería de componentes</string>
-    <string name="gallery_subtitle">Todos los componentes de la biblioteca en todas sus formas. Los nombres de variante siguen el vocabulario del código.</string>
-    <string name="gallery_font_scale">Escala de texto</string>
-    <string name="gallery_group_buttons">Botones</string>
-    <string name="gallery_group_icon_buttons">Botones de icono</string>
+    <string name="gallery_subtitle">La visualización morfológica de todos los componentes en la biblioteca de componentes se utiliza para la aceptación y alineación; Los nombres de las variantes siguen el vocabulario del código.</string>
+    <string name="gallery_font_scale">Archivo de tamaño de fuente</string>
+    <string name="gallery_group_buttons">botón</string>
+    <string name="gallery_group_icon_buttons">botón icono</string>
     <string name="gallery_group_inputs">Entrada y selección</string>
-    <string name="gallery_group_settings">Filas de ajustes</string>
-    <string name="gallery_group_surfaces">Contenedores</string>
-    <string name="gallery_group_states">Estados</string>
-    <string name="gallery_group_overlays">Diálogos y paneles</string>
-    <string name="gallery_group_misc">Multimedia y otros</string>
-    <string name="gallery_state_loading">En curso</string>
+    <string name="gallery_group_settings">establecer línea</string>
+    <string name="gallery_group_surfaces">recipiente</string>
+    <string name="gallery_group_states">comentarios de estado</string>
+    <string name="gallery_group_overlays">Ventanas emergentes y paneles</string>
+    <string name="gallery_group_misc">Medios y otros</string>
+    <string name="gallery_state_loading">En progreso</string>
     <string name="gallery_state_disabled">Desactivado</string>
     <string name="settings_component_gallery">Galería de componentes</string>
-    <string name="settings_component_gallery_desc">Revisa todos los componentes de la biblioteca</string>
-    <string name="settings_component_gallery_keywords">componente,componentes,galería,galeria,interfaz,ui</string>
+    <string name="settings_component_gallery_desc">Aceptación morfológica de todos los componentes en la biblioteca de componentes.</string>
+    <string name="settings_component_gallery_keywords">Componentes, Biblioteca de componentes, Galería, Especificación de componentes, Aceptación de componentes,zujian,zujianku,hualang,zj,zjk,hl</string>
 </resources>

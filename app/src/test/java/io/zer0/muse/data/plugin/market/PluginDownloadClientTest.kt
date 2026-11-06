@@ -19,8 +19,8 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
- * 市场下载客户端定向测试：通过受控出口（MockWebServer + 注入 DNS/地址策略）确认
- * “摘要匹配才落盘、失败不写入 staging，更不写入插件目录”的行为。
+ * Prueba dirigida al cliente de descarga de mercado: mediante salida controlada (MockWebServer + Inyectar DNS/Política de direcciones) Confirmar
+ * “El resumen se guardará en el disco sólo si coincide. Si falla, no se escribirá en la prueba, y mucho menos en el directorio del complemento.”comportamiento.
  */
 class PluginDownloadClientTest {
 
@@ -64,7 +64,7 @@ class PluginDownloadClientTest {
         val result = client().download(entry(sha256("expected-bytes")))
 
         assertFalse(result.success)
-        assertTrue(result.error.orEmpty().contains("摘要"))
+        assertTrue(result.error.orEmpty().contains("resumen"))
         assertTrue(staging.listFiles().isNullOrEmpty())
     }
 

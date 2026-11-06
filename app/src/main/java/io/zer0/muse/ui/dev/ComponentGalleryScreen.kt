@@ -100,15 +100,15 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.ui.theme.semiLarge
 
 /**
- * 组件画廊 — 组件库的验收页。
+ * Galería de componentes — Página de aceptación de la biblioteca de componentes.
  *
- * 目的：把 `ui/common` 里每个组件的全部形态并排渲染出来，一眼看清是否统一。
- * 新页面作者从这里抄；改组件后也在这里复核。
+ * Propósito: poner `ui/common` Todas las formas de cada componente se representan una al lado de la otra, para que puedas ver si están unificadas de un vistazo.
+ * El autor de la nueva página la copiará desde aquí; Después de cambiar los componentes, también lo revisará aquí.
  *
- * 说明：
- * - 变体名（Primary / Secondary / Text / Tonal / Solid …）沿用代码里的词汇，不翻译。
- * - 字号档用 [LocalDensity] 覆盖 fontScale，用于检查放大字号下的截断和挤压。
- * - 覆盖层（弹窗/面板/菜单）用按钮真实触发，看到的就是实际渲染。
+ * Descripción:
+ * - Nombre de la variante (Primary / Secondary / Text / Tonal / Solid …) utiliza el vocabulario del código sin traducción.
+ * - Para archivos de tamaño de fuente [LocalDensity] Anule fontScale para comprobar si hay truncamiento y aplastamiento en tamaños de fuente ampliados.
+ * - Superposición (ventana emergente/panel/Menú) en realidad se activa con botones, y lo que ves es la representación real.
  */
 @Composable
 fun ComponentGalleryScreen(onBack: () -> Unit) {
@@ -307,7 +307,7 @@ private fun GalleryDemoBody(text: String) {
     )
 }
 
-/** 分组：小节标题 + 一张卡片容器。 */
+/** Agrupación: Título de sección + contenedor de tarjeta. */
 @Composable
 private fun GallerySection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap)) {
@@ -601,7 +601,7 @@ private fun SettingsRowsSection() {
     }
 }
 
-/** 设置行容器：与 SettingsGroup 同形（Surface + Column），但用未废弃的 MuseSurface。 */
+/** Contenedor de fila de configuración: la misma forma que el grupo de configuración (Surface + Column), pero utilice MuseSurface, que ya no está en desuso. */
 @Composable
 private fun GalleryCard(content: @Composable ColumnScope.() -> Unit) {
     MuseSurface(

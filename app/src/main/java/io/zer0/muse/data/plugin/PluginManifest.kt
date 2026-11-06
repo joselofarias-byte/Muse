@@ -8,30 +8,30 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
- * 插件配置项类型。
+ * Tipo de elemento de configuración de complemento.
  *
- * string / boolean / number / select 四种基础类型覆盖绝大多数插件配置场景。
+ * string / boolean / number / select Los cuatro tipos básicos cubren la mayoría de los escenarios de configuración de complementos.
  */
 @Serializable
 enum class ConfigItemType {
-    /** 自由文本输入。 */
+    /** Entrada de texto libre. */
     string,
 
-    /** 布尔开关。 */
+    /** Conmutador booleano. */
     boolean,
 
-    /** 数字输入（整数或浮点数）。 */
+    /** Entrada numérica (número entero o de punto flotante). */
     number,
 
-    /** 下拉枚举选择；[SelectConfigItem.options] 提供候选值。 */
+    /** Selección de enumeración desplegable;[SelectConfigItem.options] Proporcionar valores candidatos. */
     select,
 }
 
 /**
- * 下拉选择的候选值描述。
+ * Descripción de los valores candidatos para la selección desplegable.
  *
- * @param value 实际写入配置的值（LLM/JS 看到的值）
- * @param label 展示给用户的标签（可为空，回退到 [value]）
+ * @param value El valor realmente escrito en la configuración (LLM/JS valor visto)
+ * @param label Etiqueta que se muestra al usuario (puede estar vacía, recurrir a [value])
  */
 @Serializable
 data class SelectOption(
@@ -40,13 +40,13 @@ data class SelectOption(
 )
 
 /**
- * 单个配置项声明（来自 manifest.contributes.configuration）。
+ * Una declaración de elemento de configuración única (de manifest.contributes.configuration).
  *
- * @param key        唯一标识符，LLM 调用 host.getConfig(key) 时使用
- * @param type       值类型
- * @param defaultVal 用户未手动设置时的默认值
- * @param description 用途说明（LLM 据此决定是否调用及如何传参）
- * @param options      仅 type=select 时有意义；其他类型忽略
+ * @param key        identificador único,LLM llamar host.getConfig(key) usado cuando
+ * @param type       tipo de valor
+ * @param defaultVal Valor predeterminado cuando el usuario no lo establece manualmente
+ * @param description Instrucciones de uso (LLM Determine si llamar y cómo pasar parámetros en función de esto)
+ * @param options      solo type=select significativo; otros tipos son ignorados
  */
 @Serializable
 data class ConfigItem(
@@ -58,11 +58,11 @@ data class ConfigItem(
 )
 
 /**
- * 外部插件发行者签名 envelope。
+ * Sobre de firma del editor del complemento externo.
  *
- * [publicKey] 和 [signature] 均为无换行的标准 Base64：公钥是 X.509
- * SubjectPublicKeyInfo，签名是 `SHA256withECDSA` 的 DER 编码。公钥只描述
- * 发行者身份，不代表信任；是否信任由 Android 私有存储中的本地信任根决定。
+ * [publicKey] y [signature] Ambos son Base64 estándar sin nuevas líneas: la clave pública es X.509
+ * SubjectPublicKeyInfo, la firma es `SHA256withECDSA` Codificación DER. La clave pública solo describe
+ * La identidad del editor no implica confianza; La confianza está determinada por la raíz de confianza local en el almacenamiento privado de Android.
  */
 @Serializable
 data class PluginSignature(
@@ -73,10 +73,10 @@ data class PluginSignature(
 )
 
 /**
- * 插件清单。
+ * Lista de complementos.
  *
- * 每个插件通过 manifest 声明元数据、能力、激活事件、入口文件和工具列表。
- * 外部 `.muse-plugin` / ZIP 包必须包含本清单；`PluginManifest.BUILT_IN` 仅作内置能力展示。
+ * Cada complemento declara metadatos, capacidades, eventos de activación, archivos de entrada y listas de herramientas a través del manifiesto.
+ * externo `.muse-plugin` / ZIP El paquete debe contener esta lista;`PluginManifest.BUILT_IN` Solo para mostrar capacidades integradas.
  */
 @Serializable
 data class PluginManifest(
@@ -84,78 +84,78 @@ data class PluginManifest(
     val name: String,
     val version: String = "0.1.0",
     val description: String = "",
-    /** 作者/来源。 */
+    /** Autor/Fuente. */
     val author: String = "",
-    /** 最低兼容 App 版本(语义化版本,当前不做强制阻断,保留字段供未来校验)。 */
+    /** Versión mínima compatible de la aplicación(versión semántica,Actualmente no existe ningún bloqueo forzado.,Reservar campos para verificación futura). */
     val minAppVersion: String = "1.0.0",
-    /** JS 入口文件名(相对包根目录,默认 main.js)。 */
+    /** JS Nombre del archivo de entrada(relativo a la raíz del paquete,Predeterminado main.js). */
     val entry: String = "main.js",
     /**
-     * v2.7 插件运行时：`js`（默认，WebView V8 沙盒）或 `python`（内置 Python 运行时）。
+     * v2.7 Cuando el complemento se está ejecutando:`js`(Por defecto,WebView V8 caja de arena) o `python`(Tiempo de ejecución de Python integrado).
      *
-     * 为 `python` 时 [entry] 应指向 `.py` 文件，[tools] 的 [ToolDeclaration.functionName]
-     * 对应 Python 入口模块内定义的函数（接受一个 dict 参数）。
-     * 签名兼容约束：默认值不参与序列化（@EncodeDefault(NEVER)）——
-     * 存量已签名市场包 manifest 不含此字段，若默认值被编码会让验签失败
-     * （与 hooks/toolCards 同理由，参见 v2.0.0 教训）。
+     * para `python` tiempo [entry] debería señalar a `.py` archivos,[tools] de [ToolDeclaration.functionName]
+     * Corresponde a la función definida en el módulo de entrada de Python (acepta un parámetro dict).
+     * Restricciones de compatibilidad de firmas: los valores predeterminados no participan en la serialización (@EncodeDefault(NEVER))——
+     * El manifiesto del paquete de mercado firmado existente no contiene este campo. Si el valor predeterminado está codificado, la verificación de la firma fallará.
+     * (El mismo motivo que los ganchos/toolCards, consulte las lecciones aprendidas de la v2.0.0).
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val runtime: String = "js",
-    /** 插件类型: tool / ui-skin / provider。 */
+    /** Tipo de complemento: tool / ui-skin / provider. */
     val kind: String = "tool",
-    /** 信任级别: 内置插件可使用 full-access；外部 ZIP 必须为 sandboxed。 */
+    /** nivel de confianza: Los elementos integrados están disponibles con acceso completo; Los ZIP externos deben estar en un espacio aislado. */
     val trust: String = "sandboxed",
-    /** 是否在 UI 隐藏。 */
+    /** Ya sea para ocultarse en la interfaz de usuario. */
     val hidden: Boolean = false,
-    /** 声明的能力 (resource.read / network / storage.read / storage.write / clipboard.read /
-     *  clipboard.write / notify / device.info / ui / ui.mood / ui.skin)。 */
+    /** capacidades declaradas (resource.read / network / storage.read / storage.write / clipboard.read /
+     *  clipboard.write / notify / device.info / ui / ui.mood / ui.skin). */
     val capabilities: List<String> = emptyList(),
-    /** 声明的权限(与 capabilities 对齐,额外用于恶意清单校验)。 */
+    /** Permisos declarados(Alinearse con las capacidades,Uso adicional para verificación de listas maliciosas). */
     val permissions: List<String> = emptyList(),
-    /** 激活事件: onStartup / onCommand / onFileType。 */
+    /** evento de activación: onStartup / onCommand / onFileType. */
     val activationEvents: List<String> = listOf("onStartup"),
     /**
-     * v2.x（插件 Hook 体系 MVP）：插件要挂接的 Hook 点。
-     * 现支持："prompt_finalize"（提示词定稿前改写历史）。
-     * 签名兼容约束：默认值**不参与 JSON 序列化**（@EncodeDefault(NEVER)，与
-     * toolCards 同理由）—— 存量签名的市场包 manifest 不含此字段，若空列表参与
-     * 编码会让所有存量包验签失败。
+     * v2.x(Plug-in Hook System MVP): El punto de gancho al que se conectará el complemento.
+     * Ahora soporta:"prompt_finalize"(Sugerencias de palabras para reescribir la historia antes de finalizar).
+     * Restricciones de compatibilidad de firmas: valor predeterminado**No participa en la serialización JSON.**(@EncodeDefault(NEVER), con
+     * toolCards Misma razón)—— El manifiesto del paquete de mercado firmado existente no contiene este campo. Si se utiliza la lista vacía,
+     * La codificación hará que todos los paquetes existentes no superen la verificación de firma.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val hooks: List<String> = emptyList(),
-    /** 是否已启用。 */
+    /** Si está habilitado. */
     val enabled: Boolean = true,
-    /** 插件暴露的工具列表(LLM 可调用,注册时加 pluginId 前缀)。 */
+    /** Lista de herramientas expuestas por el complemento(LLM invocable,Agregue el prefijo pluginId al registrarse). */
     val tools: List<ToolDeclaration> = emptyList(),
-    /** 发行者签名 envelope；旧包缺失该字段时按未签名处理，不自动信任。 */
+    /** Sobre firmado por el editor; Los paquetes antiguos a los que les falta este campo se tratan como no firmados y no son de confianza automáticamente. */
     val signature: PluginSignature? = null,
     /**
-     * 插件声明的配置项列表。
+     * Lista de elementos de configuración declarados por el complemento.
      *
-     * 宿主在插件管理页按此 schema 渲染配置表单；运行时插件可通过
-     * host.getConfig(key) 读取用户填写的值（默认值或已保存的自定义值）。
-     * 旧插件 manifest 不含此字段时回退为空列表，向后完全兼容。
+     * El host presenta el formulario de configuración de acuerdo con este esquema en la página de administración del complemento; en tiempo de ejecución, el complemento puede pasar
+     * host.getConfig(key) Lea el valor ingresado por el usuario (valor predeterminado o valor personalizado guardado).
+     * Cuando el antiguo manifiesto del complemento no contiene este campo, vuelve a una lista vacía, que es totalmente compatible con versiones anteriores.
      */
     val contributes: PluginContributes? = null,
     /**
-     * v1.0.92: 插件 UI 面板 — 插件包内 HTML 文件的相对路径(如 "ui/panel.html")。
+     * v1.0.92: Panel de interfaz de usuario del complemento — Ruta relativa al archivo HTML dentro del paquete del complemento(Como por ejemplo "ui/panel.html").
      *
-     * 声明后,插件管理页提供"打开面板"入口,以只读方式渲染该界面；
-     * 用于贡献自定义看板/报表等界面。旧插件不含此字段时不受影响。
+     * Después de la declaración,Proporcionado por la página de administración de complementos"panel abierto"entrada,Renderice la interfaz en modo de solo lectura;
+     * Se utiliza para contribuir con tableros personalizados./Interfaz de informe. Los complementos antiguos que no contienen este campo no se ven afectados.
      */
     val uiPanel: String? = null,
     /**
-     * v2.0: 插件工具卡 — 工具名 → 卡片 HTML 文件相对路径(如 "cards/stock.html")。
+     * v2.0: Tarjeta de herramientas enchufable — Nombre de la herramienta → Ruta relativa del archivo HTML de la tarjeta(Como por ejemplo "cards/stock.html").
      *
-     * 声明后,该插件工具的调用卡在聊天里提供"查看卡片"入口,
-     * 以只读方式渲染 HTML;调用参数与结果经 window.__TOOL_CARD__ 注入。
+     * Después de la declaración,La tarjeta de visita de esta herramienta complementaria se proporciona en el chat."ver tarjeta"entrada,
+     * Renderizar en modo de solo lectura HTML;Los parámetros de llamada y los resultados se inyectan a través de window.__TOOL_CARD__.
      *
-     * 签名兼容约束：默认值**不参与 JSON 序列化**（@EncodeDefault(NEVER)，与
-     * 已发布市场包的发行者签名载荷保持字节级一致）；声明非空值时会完整参与签名
-     * 与内容摘要。新增任何可选字段必须沿用同一规则 —— 默认值一旦进入序列化，
-     * 所有存量签名的包会立刻验签失败（v2.0.0 曾因空 toolCards 被编码，导致
-     * 官方市场全部插件报"发行者签名与插件内容不匹配"）。改字段集时必须同步
-     * tools/market-signer/sign.py 并重跑 MarketSigningFixtureTest。
+     * Restricciones de compatibilidad de firmas: valor predeterminado**No participa en la serialización JSON.**(@EncodeDefault(NEVER), con
+     * La carga útil de la firma del editor de los paquetes de mercado publicados permanece constante a nivel de bytes); cuando se declaran valores no nulos, estarán completamente involucrados en la firma
+     * con resumen de contenido. Cualquier campo opcional nuevo debe seguir las mismas reglas. —— Una vez que el valor predeterminado ingresa a la serialización,
+     * Todos los paquetes firmados existentes fallarán inmediatamente en la verificación de firma (v2.0.0 Se codificaron tarjetas de herramientas vacías, lo que resultó en
+     * Mercado oficial de todos los informes de complementos."La firma del editor no coincide con el contenido del complemento"). Al cambiar el conjunto de campos, se debe sincronizar.
+     * tools/market-signer/sign.py Y vuelva a ejecutar MarketSigningFixtureTest.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val toolCards: Map<String, String> = emptyMap(),
@@ -164,35 +164,35 @@ data class PluginManifest(
         val BUILT_IN: List<PluginManifest> = listOf(
             PluginManifest(
                 id = "image-gen",
-                name = "图片生成",
-                description = "支持 OpenAI DALL-E / Gemini Imagen 图片生成",
+                name = "Generación de imágenes",
+                description = "apoyo OpenAI DALL-E / Gemini Imagen Generación de imágenes",
                 trust = "full-access",
                 capabilities = listOf("network", "resource.write"),
             ),
             PluginManifest(
                 id = "beautify",
-                name = "审美增强",
-                description = "Markdown 渲染美化、封面风格说明",
+                name = "mejora estética",
+                description = "Markdown Representación y embellecimiento, descripción del estilo de portada.",
                 capabilities = listOf("resource.read"),
             ),
             PluginManifest(
                 id = "media",
-                name = "媒体处理",
-                description = "音频/视频/文档解析与处理",
+                name = "Procesamiento de medios",
+                description = "Audio/vídeo/Análisis y procesamiento de documentos.",
                 capabilities = listOf("resource.read", "resource.write"),
             ),
             PluginManifest(
                 id = "mcp-bridge",
-                name = "MCP 桥接",
-                description = "Model Context Protocol 外部连接器",
+                name = "MCP puente",
+                description = "Model Context Protocol conector externo",
                 trust = "full-access",
                 capabilities = listOf("network"),
                 activationEvents = listOf("onStartup"),
             ),
             PluginManifest(
                 id = "office",
-                name = "办公工具",
-                description = "PDF/文档/表格处理",
+                name = "herramientas de oficina",
+                description = "PDF/Documentación/Procesamiento de formularios",
                 capabilities = listOf("resource.read", "resource.write"),
             ),
         )
@@ -200,12 +200,12 @@ data class PluginManifest(
 }
 
 /**
- * 插件 manifest 的组合/扩展声明块。
+ * Combinación de manifiestos de complementos/Ampliar bloque de declaración.
  *
- * 当前只支持 configuration 子块；未来可扩展 UI 皮肤、事件监听等声明。
+ * Actualmente sólo se admite el subbloque de configuración; Las máscaras de interfaz de usuario, la escucha de eventos y otras declaraciones se pueden ampliar en el futuro.
  */
 @Serializable
 data class PluginContributes(
-    /** 配置项列表，每项对应一个用户可调整的参数。 */
+    /** Lista de elementos de configuración, cada elemento corresponde a un parámetro ajustable por el usuario. */
     val configuration: List<ConfigItem> = emptyList(),
 )

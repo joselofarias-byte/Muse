@@ -14,7 +14,7 @@ class ToolArgValidatorTest {
             parameters = mapOf(),
             required = required,
             parameterTypes = parameterTypes,
-            // 只用于参数校验，从不执行。
+            // Solo se usa para verificación de parámetros y nunca se ejecuta.
             riskLevel = ToolRiskLevel.SAFE,
         )
 

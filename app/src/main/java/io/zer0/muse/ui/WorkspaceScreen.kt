@@ -73,68 +73,69 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * P2-7: 工作区文件管理器 UI。
+ * P2-7: Interfaz de usuario del administrador de archivos del espacio de trabajo.
  *
- * 结构:
- *  - 顶部 [MuseTopBar]:当前路径(根目录显示"工作区",子目录显示当前目录名 + 返回上级)
- *  - 中间 [LazyColumn]:目录在前/文件在后,每条 [WorkspaceManager.WorkspaceEntry]
- *    点击目录进入子目录;点击文件弹 [MuseDialog] 显示内容;
- *    长按弹 [MuseDialog] 操作菜单(删除 / 重命名 / 复制路径)
- *  - 底部 [MuseFloatingButton]:弹出"新建"对话框
- *    (新建文件 / 新建文件夹 二选一)
- *  - 空目录展示 [MuseEmptyState]
+ * estructura:
+ *  - arriba [MuseTopBar]:camino actual(visualización del directorio raíz"espacio de trabajo",Los subdirectorios muestran el nombre del directorio actual + regresan al nivel anterior)
+ *  - medio [LazyColumn]:directorio primero/El archivo está detrás,cada uno [WorkspaceManager.WorkspaceEntry]
+ *    Haga clic en el directorio para ingresar al subdirectorio.;Haga clic en el archivo para que aparezca [MuseDialog] Mostrar contenido;
+ *    Mantenga presionado para reproducir [MuseDialog] Menú de operación(Eliminar/renombrar/copiar ruta)
+ *  - abajo [MuseFloatingButton]:aparecer"Nuevo"cuadro de diálogo
+ *    (Nuevo archivo/Nueva carpeta Elige uno de los dos)
+ *  - Visualización de directorio vacío [MuseEmptyState]
  *
- * 路径安全由 [WorkspaceManager.resolveSafe] 严格保证,UI 仅展示其返回结果。
+ * La seguridad del camino es proporcionada por [WorkspaceManager.resolveSafe] Garantía estricta,UI Sólo se muestran los resultados devueltos.
  *
- * @param onBack 返回回调(由 NavHost 注入,点击 TopBar 返回箭头触发)
+ * @param onBack devolución de llamada(Inyectado por NavHost,Haga clic en la flecha de retorno de la barra superior para activar)
  */
 @Composable
 fun WorkspaceScreen(
     onBack: () -> Unit,
-    /** v2.0.1: 打开产物中心（顶栏入口）。 */
+    /** v2.0.1: Abra el centro de productos (entrada de la barra superior). */
     onOpenArtifacts: () -> Unit = {},
 ) {
     val workspaceManager: WorkspaceManager = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val widthClass = rememberWindowWidthClass()
 
-    // 当前所在目录的相对路径(空串 = 根目录)
-    // 前端修复 (持久化-1): currentPath 改 rememberSaveable,旋转/进程重建不丢当前目录
+    // Ruta relativa al directorio actual(cadena vacía = directorio raíz)
+    // Correcciones en la interfaz (persistencia-1): currentPath cambiar rememberSaveable,rotar/La reconstrucción del proceso no pierde el directorio actual.
     var currentPath by rememberSaveable { mutableStateOf("") }
-    // 当前目录下的条目列表
-    // 前端修复 (持久化-1): WorkspaceEntry 为自定义复杂类型,列表无法直接 saveable,保持 remember(重建后由 reload() 重新加载)
+    // Lista de entradas en el directorio actual
+    // Correcciones en la interfaz (persistencia-1): WorkspaceEntry Para tipos complejos personalizados,La lista no puede ser directamente saveable,mantener remember(Después de la reconstrucción por reload() recargar)
     var entries by remember { mutableStateOf<List<WorkspaceManager.WorkspaceEntry>>(emptyList()) }
     var isLoading by rememberSaveable { mutableStateOf(false) }
     var isImporting by rememberSaveable { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
-    // 弹窗状态
-    // 前端修复 (持久化-1): 弹窗目标均为复杂对象类型(WorkspaceEntry?/CreateType?),无法直接 saveable,保持 remember;
-    // 弹窗属临时交互态,进程重建后自动关闭可接受
-    // 查看文件内容弹窗
+    // Estado emergente
+    // Correcciones en la interfaz (persistencia-1): Los objetivos emergentes son todos tipos de objetos complejos(WorkspaceEntry?/CreateType?),no puede directamente saveable,mantener remember;
+    // La ventana emergente es un estado interactivo temporal.,El apagado automático después de la reconstrucción del proceso es aceptable
+    // Ver ventana emergente de contenido del archivo
     var viewingEntry by remember { mutableStateOf<WorkspaceManager.WorkspaceEntry?>(null) }
-    // v2.0.1: PDF 文档预览目标（pdf.js 全屏渲染）
+    // v2.0.1: PDF Destino de vista previa del documento (pdf.js renderizado a pantalla completa)
     var docPreviewEntry by remember { mutableStateOf<WorkspaceManager.WorkspaceEntry?>(null) }
     var viewingContent by remember { mutableStateOf<String?>(null) }
     var viewingLoading by rememberSaveable { mutableStateOf(false) }
-    // 长按操作菜单弹窗
+    // Ventana emergente del menú de operación de pulsación larga
     var menuEntry by remember { mutableStateOf<WorkspaceManager.WorkspaceEntry?>(null) }
-    // 删除确认弹窗
+    // Eliminar ventana emergente de confirmación
     var deleteEntry by remember { mutableStateOf<WorkspaceManager.WorkspaceEntry?>(null) }
-    // 重命名弹窗
+    // Cambiar nombre de ventana emergente
     var renameEntry by remember { mutableStateOf<WorkspaceManager.WorkspaceEntry?>(null) }
-    // 新建弹窗(类型:文件 / 文件夹)
+    // Nueva ventana emergente(Tipo:Archivo/Carpeta)
     var createDialog by remember { mutableStateOf<CreateType?>(null) }
-    // 挂载表与挂载管理弹窗
+    // Tabla de montaje y ventana emergente de gestión de montaje
     var mounts by remember { mutableStateOf<List<WorkspaceMount>>(emptyList()) }
     var mountSheetOpen by remember { mutableStateOf(false) }
 
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     /**
-     * 重新加载当前目录内容。
-     * 每次进入子目录 / 增删改后调用,确保 UI 与文件系统一致。
+     * Vuelva a cargar el contenido del directorio actual.
+     * Se llama cada vez que se ingresa a un subdirectorio/agrega, elimina o modifica,Asegúrese de que la interfaz de usuario sea coherente con el sistema de archivos.
      */
     fun reload() {
         scope.launch {
@@ -158,7 +159,7 @@ fun WorkspaceScreen(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
         if (uris.isNotEmpty()) {
-            // 文件选择器返回后固定目标目录,避免用户在复制期间切换目录导致文件落错位置。
+            // Directorio de destino fijo después de que regresa el selector de archivos,Esto evita que los usuarios cambien de directorio durante la copia y provoquen que los archivos caigan en la ubicación incorrecta.
             val targetDirectory = currentPath
             scope.launch {
                 isImporting = true
@@ -186,7 +187,7 @@ fun WorkspaceScreen(
         }
     }
 
-    // 挂载表：进入页面时读一次，增删后再刷新。
+    // Tabla de montaje: lea una vez al ingresar a la página y actualice después de agregar y eliminar.
     LaunchedEffect(Unit) {
         mounts = workspaceManager.mounts()
     }
@@ -199,7 +200,7 @@ fun WorkspaceScreen(
     val currentMount = mounts.firstOrNull { it.id == currentMountId }
     val currentReadOnly = currentMount?.isReadOnly == true
 
-    // 选一个目录作为新挂载：拿持久化授权再登记。
+    // Seleccione un directorio como nuevo montaje: obtenga la autorización persistente y regístrese nuevamente.
     val mountDirectoryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
@@ -236,9 +237,9 @@ fun WorkspaceScreen(
         }
     }
 
-    // 审计修复 (3.1): 进入页面 / 切换目录时重新加载。
-    // 加载逻辑直接内联进 LaunchedEffect,currentPath 变化时旧协程会被自动取消,
-    // 避免先发的 listDir 晚返回后覆盖新目录的加载结果。
+    // Reparación de auditoría (3.1): Recargar al ingresar a la página/cambiar de directorio.
+    // La lógica de carga está directamente incorporada LaunchedEffect,currentPath Cuando se produzcan cambios, la antigua rutina se cancelará automáticamente.,
+    // Evite que el listDir inicial sobrescriba el resultado de la carga del nuevo directorio después de regresar tarde.
     LaunchedEffect(currentPath) {
         isLoading = true
         errorMsg = null
@@ -255,7 +256,7 @@ fun WorkspaceScreen(
         isLoading = false
     }
 
-    // 计算当前目录显示名(根目录 = "工作区",挂载根 = 挂载名,子目录 = 最末段名)
+    // Calcular el nombre para mostrar del directorio actual(directorio raíz = "espacio de trabajo",Montar raíz = Nombre de montaje,subdirectorio = Nombre del último párrafo)
     val currentName = when {
         currentPath.isEmpty() -> stringResource(R.string.workspace_title)
         currentPath.endsWith(":/") || currentPath.endsWith(":") ->
@@ -287,13 +288,13 @@ fun WorkspaceScreen(
                         contentDescription = stringResource(R.string.workspace_import_file),
                         enabled = !isImporting && !currentReadOnly,
                     )
-                    // v2.0.1: 产物中心入口
+                    // v2.0.1: Entrada al centro de productos
                     MuseTactileButton(
                         icon = MuseIcons.fileText,
                         onClick = onOpenArtifacts,
                         contentDescription = stringResource(R.string.artifact_center_title),
                     )
-                    // 子目录下额外提供"返回根目录"快捷按钮
+                    // adicionalmente disponible en el subdirectorio"Volver al directorio raíz"botón de acceso directo
                     if (currentPath.isNotEmpty()) {
                         MuseTactileButton(
                             icon = MuseIcons.arrowLeft,
@@ -391,7 +392,7 @@ fun WorkspaceScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
                     ) {
-                        // 当前目录非根时,首项展示"返回上级"
+                        // Cuando el directorio actual no es la raíz,primera pantalla"Volver al nivel anterior"
                         if (currentPath.isNotEmpty()) {
                             item(key = "__parent__") {
                                 ParentRow(onClick = { currentPath = parentPath(currentPath) })
@@ -403,14 +404,14 @@ fun WorkspaceScreen(
                                 dateFormat = dateFormat,
                                 onClick = {
                                     if (entry.isDirectory) {
-                                        // 进入子目录
+                                        // Ingrese al subdirectorio
                                         currentPath = entry.relativePath
                                     } else {
-                                        // v2.0.1: PDF 走文档预览（pdf.js），其余保持文本弹窗
+                                        // v2.0.1: PDF Ir a la vista previa del documento (pdf.js), y el resto siguen siendo ventanas emergentes de texto.
                                         if (entry.relativePath.endsWith(".pdf", ignoreCase = true)) {
                                             docPreviewEntry = entry
                                         } else {
-                                            // 读取文件内容(在弹窗内展示)
+                                            // Leer el contenido del archivo(Mostrar en ventana emergente)
                                             viewingEntry = entry
                                             viewingContent = null
                                             viewingLoading = true
@@ -433,7 +434,7 @@ fun WorkspaceScreen(
         }
     }
 
-    // 文件内容查看弹窗
+    // Ventana emergente de vista de contenido del archivo
     viewingEntry?.let { entry ->
         MuseDialog(
             onDismissRequest = {
@@ -442,8 +443,8 @@ fun WorkspaceScreen(
             },
             title = entry.name,
             content = {
-                // 注:不使用内部 verticalScroll(MuseDialog 已在外层提供滚动容器,
-                // 嵌套滚动会触发 IllegalStateException — 见项目记忆)
+                // Nota:No utilice interna verticalScroll(MuseDialog Se ha proporcionado un contenedor de desplazamiento en la capa exterior.,
+                // Se activará el desplazamiento anidado IllegalStateException — Ver memoria del proyecto)
                 when {
                     viewingLoading -> {
                         Box(
@@ -458,7 +459,7 @@ fun WorkspaceScreen(
                         }
                     }
                     viewingContent != null -> {
-                        // 长文件内容靠 MuseDialog 外层 verticalScroll 滚动展示
+                        // El contenido de archivos largos se desplaza y se muestra utilizando el desplazamiento vertical externo de MuseDialog.
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MuseShapes.small,
@@ -485,7 +486,7 @@ fun WorkspaceScreen(
         )
     }
 
-    // v2.0.1: PDF 文档预览（pdf.js 全屏渲染）
+    // v2.0.1: PDF Vista previa del documento (pdf.js renderizado a pantalla completa)
     docPreviewEntry?.let { entry ->
         io.zer0.muse.ui.artifact.DocPreviewDialog(
             fileName = entry.name,
@@ -494,7 +495,7 @@ fun WorkspaceScreen(
         )
     }
 
-    // 长按操作菜单弹窗
+    // Ventana emergente del menú de operación de pulsación larga
     menuEntry?.let { entry ->
         MuseDialog(
             onDismissRequest = { menuEntry = null },
@@ -538,7 +539,7 @@ fun WorkspaceScreen(
         )
     }
 
-    // 删除确认弹窗
+    // Eliminar ventana emergente de confirmación
     deleteEntry?.let { entry ->
         MuseDialog(
             onDismissRequest = { deleteEntry = null },
@@ -557,7 +558,7 @@ fun WorkspaceScreen(
                 scope.launch {
                     when (val r = workspaceManager.delete(target.relativePath)) {
                         is WorkspaceManager.OpResult.Success -> {
-                            // 审计修复 (8.10): 原用 common_confirm("确定")文案错误
+                            // Reparación de auditoría (8.10): uso original common_confirm("OK")Errores de redacción
                             MuseToast.show(context.getString(R.string.chat_list_deleted_toast))
                             reload()
                         }
@@ -571,7 +572,7 @@ fun WorkspaceScreen(
         )
     }
 
-    // 重命名弹窗
+    // Cambiar nombre de ventana emergente
     renameEntry?.let { entry ->
         var newName by remember(entry.relativePath) { mutableStateOf(entry.name) }
         MuseDialog(
@@ -589,12 +590,12 @@ fun WorkspaceScreen(
             confirmText = stringResource(R.string.common_confirm),
             onConfirm = {
                 val name = newName.trim()
-                // 名称为空或包含非法字符(/ 或 ..)时弹提示且不关闭弹窗
+                // El nombre está vacío o contiene caracteres no válidos(/ o ..)Aparecen mensajes emergentes de vez en cuando y no cierra la ventana emergente
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(localizedResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
-                // 名称未变直接关闭弹窗,不执行 IO
+                // Cierra la ventana emergente sin cambiar el nombre.,No ejecutado IO
                 if (name == entry.name) {
                     renameEntry = null
                     return@MuseDialog
@@ -616,7 +617,7 @@ fun WorkspaceScreen(
         )
     }
 
-    // 新建文件 / 文件夹弹窗
+    // Nueva ventana emergente de archivo/carpeta
     if (mountSheetOpen) {
         MuseDialog(
             onDismissRequest = { mountSheetOpen = false },
@@ -678,7 +679,7 @@ fun WorkspaceScreen(
                             runCatching { mountDirectoryLauncher.launch(null) }
                                 .onFailure {
                                     MuseToast.show(
-                                        context.getString(R.string.workspace_mount_failed, it.message),
+                                        localizedResources.getString(R.string.workspace_mount_failed, it.message),
                                     )
                                 }
                         },
@@ -717,7 +718,7 @@ fun WorkspaceScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     )
-                    // 快捷按钮:在新建文件弹窗内提供切换到"新建文件夹"的快捷操作
+                    // botón de acceso directo:En la ventana emergente de nuevo archivo, cambie a"Crear nueva carpeta"operaciones de acceso directo
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -741,7 +742,7 @@ fun WorkspaceScreen(
             onConfirm = {
                 val name = newName.trim()
                 if (name.isEmpty() || name.contains('/') || name.contains("..")) {
-                    MuseToast.show(context.getString(R.string.workspace_file_name))
+                    MuseToast.show(localizedResources.getString(R.string.workspace_file_name))
                     return@MuseDialog
                 }
                 val target = if (currentPath.isEmpty()) name else "$currentPath/$name"
@@ -762,19 +763,19 @@ fun WorkspaceScreen(
     }
 }
 
-// ── 内部辅助组件与函数 ──────────────────────────────────────────────────────
+// ── Componentes y funciones auxiliares internos ──────────────────────────────────────────────────────
 
 /**
- * 新建类型(文件 / 文件夹)。
+ * Nuevo tipo(Archivo/Carpeta).
  */
 private enum class CreateType { FILE, FOLDER }
 
 /**
- * 计算父目录的相对路径。根目录的父仍是空串。
+ * Calcule la ruta relativa del directorio principal. El padre del directorio raíz sigue siendo la cadena vacía.
  */
 private fun parentPath(path: String): String {
     if (path.isEmpty()) return ""
-    // 带挂载前缀时只在挂载内部退一级，到挂载根再退就回到默认工作区。
+    // Cuando se proporciona un prefijo de montaje, solo retrocede un nivel dentro del montaje y luego regresa a la raíz del montaje para regresar al espacio de trabajo predeterminado.
     val prefixEnd = path.indexOf(":/")
     if (prefixEnd >= 0) {
         val rest = path.substring(prefixEnd + 2)
@@ -788,9 +789,9 @@ private fun parentPath(path: String): String {
 }
 
 /**
- * 从授权 URI 里取一个可读的目录名。
+ * Obtenga un nombre de directorio legible por humanos del URI de autorización.
  *
- * 目录 URI 的最后一段形如 `primary:DCIM/Camera`，取冒号后最末一级。
+ * El último segmento del URI del directorio se parece a `primary:DCIM/Camera`, tome el último nivel después de los dos puntos.
  */
 private fun mountLabelFromUri(uri: android.net.Uri): String {
     val raw = uri.lastPathSegment?.substringAfterLast(':')?.trim().orEmpty()
@@ -799,9 +800,9 @@ private fun mountLabelFromUri(uri: android.net.Uri): String {
 }
 
 /**
- * 由目录名生成一个合法且不重复的挂载标识。
+ * Genere una ID de montaje legal y única a partir del nombre del directorio.
  *
- * 标识只允许小写字母、数字、下划线与连字符，且以字母开头。
+ * En el logotipo solo se permiten letras minúsculas, números, guiones bajos y guiones, y debe comenzar con una letra.
  */
 private fun nextMountId(label: String, taken: Set<String>): String {
     val base = label.lowercase()
@@ -821,7 +822,7 @@ private fun nextMountId(label: String, taken: Set<String>): String {
 }
 
 /**
- * 把文本复制到系统剪贴板(用于"复制路径"操作)。
+ * Copiar texto al portapapeles del sistema(usado para"copiar ruta"Operación).
  */
 private fun copyToClipboard(context: Context, text: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE)
@@ -830,7 +831,7 @@ private fun copyToClipboard(context: Context, text: String) {
 }
 
 /**
- * "返回上级"行(只在子目录下显示)。
+ * "Volver al nivel anterior"OK(Sólo se muestra en subdirectorios).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -865,9 +866,9 @@ private fun ParentRow(onClick: () -> Unit) {
 }
 
 /**
- * 工作区条目行(目录 / 文件)。
+ * Fila de entrada del espacio de trabajo(directorio/archivo).
  *
- * 点击进入子目录或查看文件内容;长按弹操作菜单。
+ * Haga clic para ingresar a un subdirectorio o ver el contenido del archivo;Mantenga presionado para que aparezca el menú de operación.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -893,7 +894,7 @@ private fun WorkspaceEntryRow(
                 .padding(MusePaddings.cardInner),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 类型图标(目录/文件)放在圆形背景中,提升视觉层次
+            // icono de tipo(Directorio/Archivo)colocado sobre un fondo circular,Mejorar la jerarquía visual
             val icon = if (entry.isDirectory) MuseIcons.folder else MuseIcons.fileText
             val iconTint = if (entry.isDirectory) {
                 MaterialTheme.colorScheme.primary
@@ -938,7 +939,7 @@ private fun WorkspaceEntryRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // 文件类型额外显示编辑图标,提示可查看
+            // Los tipos de archivos muestran iconos de edición adicionales,Solicitar ver
             if (!entry.isDirectory) {
                 MuseTactileButton(
                     icon = MuseIcons.edit,
@@ -952,7 +953,7 @@ private fun WorkspaceEntryRow(
 }
 
 /**
- * 长按菜单中的单个操作行。
+ * Mantenga presionada una fila de acción única en el menú.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -992,7 +993,7 @@ private fun MenuActionRow(
 }
 
 /**
- * 新建弹窗内的"文件/文件夹"快捷切换胶囊。
+ * Crear una nueva ventana emergente"Archivo/carpeta"Cambie rápidamente de cápsulas.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1031,6 +1032,6 @@ private fun QuickSwitchChip(icon: androidx.compose.ui.graphics.vector.ImageVecto
 }
 
 /**
- * 字节数格式化为人类可读字符串(B/KB/MB)。
+ * Número de bytes formateados en una cadena legible por humanos(B/KB/MB).
  */
 private fun formatSize(bytes: Long): String = FileSizeFormatter.format(bytes)

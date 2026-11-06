@@ -9,7 +9,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/** D3-P1: 步骤运行器测试(计数 / 日志 / run 包装与取消语义)。 */
+/** D3-P1: prueba de corredor de pasos(Semántica de cancelación y empaquetado de recuento/registro/ejecución). */
 class MemoryStepRunnerTest {
 
     @get:Rule
@@ -32,10 +32,10 @@ class MemoryStepRunnerTest {
 
         val lines = logFile().readLines().filter { it.isNotBlank() }
         assertEquals(2, lines.size)
-        assertTrue("首行应为成功记录: ${lines[0]}", lines[0].contains("\"ok\":true"))
+        assertTrue("La primera línea debe ser un historial de éxito.: ${lines[0]}", lines[0].contains("\"ok\":true"))
         assertTrue(lines[0].contains("compileFacts"))
         assertTrue(lines[1].contains("\"ok\":false"))
-        assertTrue("失败分类应记录: ${lines[1]}", lines[1].contains("RETRYABLE"))
+        assertTrue("La clasificación de fallas debe registrarse: ${lines[1]}", lines[1].contains("RETRYABLE"))
     }
 
     @Test
@@ -62,7 +62,7 @@ class MemoryStepRunnerTest {
         } catch (e: CancellationException) {
             thrown = true
         }
-        assertTrue("取消应原样重抛", thrown)
-        assertEquals("取消不应记为失败", 0, runner.countersOf("x").failures)
+        assertTrue("La cancelación debe volver a lanzarse tal como está.", thrown)
+        assertEquals("La cancelación no debe registrarse como un fracaso.", 0, runner.countersOf("x").failures)
     }
 }

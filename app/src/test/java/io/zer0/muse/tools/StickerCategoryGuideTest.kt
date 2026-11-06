@@ -5,16 +5,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 表情包分类推荐的测试。
+ * Una prueba para la recomendación de clasificación de emoji.
  *
- * 助手自审第 16 条：「表情包分类名必须严格匹配清单，猜错就失效，而且没有
- * 『这个语境适合什么』的推荐」。
+ * Artículo 16 del autoexamen del asistente: "El nombre de la categoría del paquete de emoticonos debe coincidir estrictamente con la lista. Si adivina mal, no será válido. Y no hay
+ * "¿Qué es adecuado para este contexto?" Recomendaciones.
  *
- * 这里钉住两件事：
- *  1. 分类概览带语境对照（从对话情绪直接映射到分类）
- *  2. 分类名猜错时返回候选清单，而不是一句「空」
+ * Aquí se clavan dos cosas:
+ *  1. Descripción general de la clasificación con comparación contextual (mapeo directo del sentimiento conversacional a la clasificación)
+ *  2. Cuando el nombre de la categoría se adivina incorrectamente, se devuelve una lista de candidatos en lugar de "vacía".
  *
- * 纯函数测试：不构造 Repository，不碰磁盘。
+ * Prueba de función pura: no se construye ningún repositorio ni se toca ningún disco.
  */
 class StickerCategoryGuideTest {
 
@@ -22,41 +22,41 @@ class StickerCategoryGuideTest {
 
     @Test
     fun `known moods are mapped to matching categories`() {
-        val out = guide(listOf("开心", "难过", "沙雕"))
+        val out = guide(listOf("feliz", "triste", "escultura de arena"))
 
-        assertTrue(out.contains("开心/庆祝"))
-        assertTrue(out.contains("难过/低落"))
-        assertTrue(out.contains("搞笑/沙雕"))
+        assertTrue(out.contains("feliz/celebrar"))
+        assertTrue(out.contains("triste/abajo"))
+        assertTrue(out.contains("divertido/escultura de arena"))
     }
 
     @Test
     fun `unmatched categories are listed as judge-by-name instead of being dropped`() {
-        val out = guide(listOf("开心", "猫猫图", "工作梗"))
+        val out = guide(listOf("feliz", "ilustración de gato", "memes de trabajo"))
 
-        assertTrue("认不出的分类要列出来，不能悄悄丢掉", out.contains("其余分类按名称自行判断"))
-        assertTrue(out.contains("猫猫图"))
-        assertTrue(out.contains("工作梗"))
+        assertTrue("Las categorías que sean irreconocibles deben enumerarse y no pueden descartarse silenciosamente.", out.contains("El resto de categorías se pueden juzgar por su nombre."))
+        assertTrue(out.contains("ilustración de gato"))
+        assertTrue(out.contains("memes de trabajo"))
     }
 
     @Test
     fun `no matching category yields empty guide rather than a misleading one`() {
-        assertEquals("一个都不认识时不要硬塞建议", "", guide(listOf("分类甲", "分类乙")))
+        assertEquals("No hagas sugerencias con calzador cuando no conoces a nadie.", "", guide(listOf("Categoría A", "Categoría B")))
     }
 
     @Test
     fun `english category names are matched case insensitively`() {
         val out = guide(listOf("Happy", "SAD"))
 
-        assertTrue(out.contains("开心/庆祝"))
-        assertTrue(out.contains("难过/低落"))
+        assertTrue(out.contains("feliz/celebrar"))
+        assertTrue(out.contains("triste/abajo"))
     }
 
     @Test
     fun `a category matching multiple moods appears under each`() {
-        val out = guide(listOf("开心治愈"))
+        val out = guide(listOf("feliz curar"))
 
-        assertTrue("同时含「开心」和「治愈」，两边都该出现", out.contains("开心/庆祝"))
-        assertTrue(out.contains("安慰/治愈"))
+        assertTrue("Contiene \"feliz\" y \"curar\" al mismo tiempo, ambos deberían aparecer", out.contains("feliz/celebrar"))
+        assertTrue(out.contains("comodidad/curar"))
     }
 
     @Test

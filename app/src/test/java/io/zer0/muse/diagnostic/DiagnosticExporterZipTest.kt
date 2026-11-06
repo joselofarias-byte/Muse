@@ -13,14 +13,14 @@ import java.io.File
 import java.util.zip.ZipFile
 
 /**
- * 诊断导出包的打包内容验证。
+ * Verificación del contenido del embalaje para paquetes de exportación de diagnóstico.
  *
- * 重点不是 zip 格式,而是「用户点一下导出,后台唤醒状态也会一起过来」这条链路:
- * [DiagnosticExporter.buildDiagnosticZip] 必须把 background-work.txt 放进包里,
- * 且内容是 [io.zer0.muse.schedule.BackgroundWakeDiagnostics.formatSnapshot] 的快照文本。
+ * El punto no es el formato zip.,Más bien, "el usuario hace clic para exportar,El estado de alerta de fondo también se unirá". Este enlace:
+ * [DiagnosticExporter.buildDiagnosticZip] Background-work.txt debe colocarse en el paquete.,
+ * y el contenido es [io.zer0.muse.schedule.BackgroundWakeDiagnostics.formatSnapshot] Texto de instantánea.
  *
- * 采集本身在测试环境必然失败(没有 Koin、WorkManager 未初始化),这正好覆盖
- * 「采集失败不影响整包导出」这条降级路径。
+ * La colección en sí inevitablemente fallará en el entorno de prueba.(Sin moneda,WorkManager no inicializado),Esto solo cubre
+ * "El error de recopilación no afecta la exportación completa del paquete", esta ruta de degradación.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -37,17 +37,17 @@ class DiagnosticExporterZipTest {
     @Test
     fun `diagnostic zip carries the background work snapshot`() = runBlocking {
         val zip = DiagnosticExporter.buildDiagnosticZip(context)
-        assertNotNull("诊断 zip 打包失败", zip)
+        assertNotNull("Diagnosticar fallas en el empaque zip", zip)
         val entries = entriesOf(zip!!)
         try {
-            assertTrue("缺少设备信息", entries.containsKey("device-info.txt"))
-            assertTrue("缺少后台唤醒快照", entries.containsKey("background-work.txt"))
+            assertTrue("Falta información del dispositivo", entries.containsKey("device-info.txt"))
+            assertTrue("Falta una instantánea de activación en segundo plano", entries.containsKey("background-work.txt"))
             val snapshot = entries.getValue("background-work.txt")
-            assertTrue("快照缺少表头", snapshot.startsWith("# Muse 后台唤醒快照"))
-            assertTrue("快照缺少任务计数", snapshot.contains("work_count="))
-            // 采集失败时仍然要有一行说明,而不是一个空文件
+            assertTrue("A la instantánea le falta el encabezado", snapshot.startsWith("# Muse Instantánea de activación en segundo plano"))
+            assertTrue("A la instantánea le falta el recuento de tareas", snapshot.contains("work_count="))
+            // Aún debería haber una línea de explicación cuando falla la recopilación.,en lugar de un archivo vacío
             assertTrue(
-                "采集失败时快照应有 work_manager_error 或任务行",
+                "Las instantáneas deben tener work_manager_error o líneas de tarea cuando falla la recopilación",
                 snapshot.contains("work_manager_error=") || snapshot.contains(" | kind="),
             )
         } finally {

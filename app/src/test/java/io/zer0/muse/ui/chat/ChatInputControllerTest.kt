@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** 内存实现的 [ChatStateAccessor],供 Controller 纯逻辑测试。 */
+/** implementado en la memoria [ChatStateAccessor],Para pruebas de lógica pura del controlador. */
 private class FakeAccessor(initial: ChatUiState) : ChatStateAccessor {
     private val state = MutableStateFlow(initial)
     override val snapshot: ChatUiState get() = state.value
@@ -45,28 +45,28 @@ class ChatInputControllerTest {
 
     @Test
     fun `updateInput does not mark typing as draft`() {
-        // v2.6.7: 这是用户反馈的直接回归——“打什么字进去它都会显示是草稿”。
-        // 输入就是输入，不是草稿状态；只有从持久化恢复的内容才算草稿。
-        // 草稿标记不再点亮，hasDraft 保持进入时的值（false）。
+        // v2.6.7: Este es un retroceso directo a los comentarios de los usuarios.——“Lo que escribas aparecerá como un borrador.”.
+        // La entrada es entrada, no estado de borrador; sólo el contenido restaurado desde la persistencia cuenta como borrador.
+        // La marca de borrador ya no se ilumina,hasDraft Mantenga el valor en la entrada (false).
         val (controller, accessor) = controller(
             ChatUiState(inputState = ChatInputState(input = "x", hasDraft = false, inputHistoryIndex = 0)),
         )
         controller.updateInput("y")
         assertEquals("y", accessor.snapshot.input)
-        assertFalse("用户键入不应点亮草稿标记", accessor.snapshot.hasDraft)
+        assertFalse("El usuario que escribe no debería iluminar los marcadores de borrador", accessor.snapshot.hasDraft)
         assertEquals(null, accessor.snapshot.inputHistoryIndex)
     }
 
     @Test
     fun `updateInput preserves restored draft flag`() {
-        // 从持久化恢复的草稿（hasDraft=true）在用户继续编辑时不应被当成“新输入”而洗掉，
-        // 也不应反过来把普通输入升格为草稿——两边都保持各管各的。
+        // Borradores restaurados desde la persistencia (hasDraft=true) no debe ser tratado como“nueva entrada”Y lávalo,
+        // Los aportes ordinarios tampoco deberían convertirse en borrador.——Ambas partes se ocupan de sus propios asuntos.
         val (controller, accessor) = controller(
-            ChatUiState(inputState = ChatInputState(input = "恢复的草稿", hasDraft = true)),
+            ChatUiState(inputState = ChatInputState(input = "Borrador restaurado", hasDraft = true)),
         )
-        controller.updateInput("恢复的草稿改")
-        assertEquals("恢复的草稿改", accessor.snapshot.input)
-        assertTrue("仍是草稿内容", accessor.snapshot.hasDraft)
+        controller.updateInput("Cambios de borrador restaurados")
+        assertEquals("Cambios de borrador restaurados", accessor.snapshot.input)
+        assertTrue("Todavía un borrador", accessor.snapshot.hasDraft)
     }
 
     @Test
@@ -76,8 +76,8 @@ class ChatInputControllerTest {
         )
         controller.updateInput("")
         assertEquals("", accessor.snapshot.input)
-        // v2.6.7: 清空输入不再改动草稿标记（草稿的生死由持久化层管，不由键入管）。
-        assertTrue("清空文本不重置草稿来源标记", accessor.snapshot.hasDraft)
+        // v2.6.7: Borrar la entrada ya no cambiará la marca del borrador (la vida y muerte del borrador la gestiona la capa de persistencia, no la entrada).
+        assertTrue("Borrar texto no restablece la etiqueta de origen del borrador", accessor.snapshot.hasDraft)
     }
 
     @Test
@@ -140,7 +140,7 @@ class ChatInputControllerTest {
         assertEquals(Triple("hi", listOf("p"), "s1"), sent)
     }
 
-    // ── P0-7: 待发队列"单独发送"护栏 ──
+    // ── P0-7: cola de espera"Enviar por separado"barandilla ──
 
     @Test
     fun `sendPendingSend in agent mode uses agent session id`() {
@@ -155,7 +155,7 @@ class ChatInputControllerTest {
         )
         controller.sendPendingSend(0)
         assertTrue(accessor.snapshot.sendQueue.isEmpty())
-        // P0-7: Agent 模式必须发到 agentSessionId,不得串到任务会话
+        // P0-7: Agent El patrón debe ser enviado a agentSessionId,No cruzar a la sesión de tareas
         assertEquals(Triple("agent msg", emptyList<String>(), "agent-session"), sent)
     }
 
@@ -171,8 +171,8 @@ class ChatInputControllerTest {
             onSend = { _, _, _ -> sent = true },
         )
         controller.sendPendingSend(0)
-        // P0-7: 流式中禁止"单独发送"(会 cancel 当前生成),消息保留在队列
-        assertFalse("流式中单独发送不得触发发送", sent)
-        assertEquals("流式中单独发送不得出队", 1, accessor.snapshot.sendQueue.size)
+        // P0-7: Deshabilitado durante la transmisión"Enviar por separado"(cancelará la compilación actual),El mensaje permanece en cola
+        assertFalse("El envío solo durante la transmisión no debe activar el envío", sent)
+        assertEquals("Los envíos únicos en streaming no se pueden quitar de la cola.", 1, accessor.snapshot.sendQueue.size)
     }
 }

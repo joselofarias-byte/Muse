@@ -34,35 +34,35 @@ import java.io.File
 import java.util.UUID
 
 /**
- * 角色的旁路文本生成端口。
+ * Omitir el puerto de generación de texto para caracteres.
  *
- * [AppMiniPhoneHost] 只做「按角色组装素材」与「清理模型输出」两件事，
- * 一次完整的 LLM 调用交给本端口；生产实现见 [MomentChainTextGenerator]。
- * 抽成端口是为了单测能注入假实现，不必真发网络请求（与 [VoiceSynthesizer] 同一个理由）。
+ * [AppMiniPhoneHost] Sólo haga dos cosas: "Reunir materiales según los personajes" y "Limpiar la salida del modelo".
+ * Una llamada LLM completa se transfiere a este puerto; ver la implementación de producción [MomentChainTextGenerator].
+ * El propósito de extraer el puerto es inyectar una implementación falsa en una sola prueba sin enviar realmente una solicitud de red (similar a [VoiceSynthesizer] por el mismo motivo).
  */
 fun interface MiniPhoneTextGenerator {
 
     /**
-     * @param assistant 角色身份（人设 / 世界书 / 提示词注入绑定的来源）
-     * @param material 交给模型的素材正文
-     * @param maxTokens 本次生成的 token 上限
-     * @return 模型原始输出（think 标签尚未剥离）；失败返回 null
+     * @param assistant Identidad del personaje (diseño de personajes/libro mundial/fuente de enlace de inyección rápida de palabras)
+     * @param material El texto del material entregado al modelo.
+     * @param maxTokens El límite superior del token generado esta vez.
+     * @return Modelo de salida bruta (think La etiqueta aún no ha sido quitada); retornos en caso de fracaso null
      */
     suspend fun generate(assistant: AssistantEntity?, material: String, maxTokens: Int): String?
 }
 
 /**
- * [MiniPhoneTextGenerator] 的宿主实现：走小手机既有的一条生成链路。
+ * [MiniPhoneTextGenerator] Implementación de host: utilice un enlace generado existente del pequeño teléfono celular.
  *
- * 与旁路生成链路内部同形 —— [MiniContextBuilder] 组装人格
- * （基础人格 / 世界书 / 记忆 / 用户画像 / 提示词注入 / think 标签剥离），再交给
- * [ChatService.completeText] 一次性取完整回复。旁路生成没有会话历史，所以不碰
- * `ChatViewModel` 与对话相关 Transformer。
+ * Internamente idéntico al enlace de generación de bypass. —— [MiniContextBuilder] Personalidad ensamblada
+ * (Personalidad básica / libro mundial / memoria / retrato de usuario / inyección rápida de palabras / eliminación de etiquetas de pensamiento) y luego entréguelo
+ * [ChatService.completeText] Obtenga la respuesta completa de inmediato. La generación de omisión no tiene historial de sesión, por lo que no se toca
+ * `ChatViewModel` Transformador relacionado con el diálogo.
  *
- * 采样参数跟角色走：角色绑了模型就用它自己的供应商与模型，温度 / topP 取角色设置，
- * 没绑或绑定的模型已被删掉时回落到默认模型。
+ * Los parámetros de muestreo siguen al personaje: si el personaje está vinculado a un modelo, utilizará su propio proveedor y modelo. Temperature/topP toma la configuración de los caracteres.
+ * Vuelva al modelo predeterminado cuando no esté vinculado o se haya eliminado el modelo vinculado.
  *
- * [chatService] 为空（模型未配置）时一律返回 null，不抛异常。
+ * [chatService] Cuando está vacío (el modelo no está configurado), siempre devolverá nulo y no se generará ninguna excepción.
  */
 class MomentChainTextGenerator(
     private val chatService: ChatService?,
@@ -73,7 +73,7 @@ class MomentChainTextGenerator(
     override suspend fun generate(assistant: AssistantEntity?, material: String, maxTokens: Int): String? {
         val service = chatService ?: return null
         val messages = resultOf { contextBuilder.buildMessages(assistant = assistant, userContent = material) }
-            .onError { msg, t -> Logger.w(TAG, "组装角色上下文失败: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo ensamblar el contexto del rol: ${t?.message ?: msg}") }
             .getOrNull()
             ?: return null
         val binding = resolveBinding(assistant)
@@ -88,38 +88,38 @@ class MomentChainTextGenerator(
                 maxTokens = maxTokens,
             ).text
         }.onError { msg, t ->
-            Logger.w(TAG, "旁路文本生成失败: ${t?.message ?: msg}")
+            Logger.w(TAG, "Error al omitir la generación de texto: ${t?.message ?: msg}")
         }.getOrNull()
     }
 
     /**
-     * 角色自己绑的模型与供应商。
+     * Los personajes se vinculan a modelos y proveedores.
      *
-     * 绑了 `providerId` 就精确命中那一家；只绑了 `modelId` 时先看激活供应商，再跨供应商找。
-     * 解析不到（没绑 / 供应商或模型被删）返回 null，调用方交回给默认模型。
+     * Atado `providerId` Simplemente golpea esa casa con precisión; solo atar `modelId` Primero mire al proveedor de activación y luego a todos los proveedores.
+     * Si no se puede analizar (no se elimina ningún enlace/proveedor o modelo), se devuelve nulo y la persona que llama regresa al modelo predeterminado.
      */
     private suspend fun resolveBinding(assistant: AssistantEntity?): ModelBinding? {
         val modelId = assistant?.modelId?.takeIf { it.isNotBlank() } ?: return null
         val providerId = assistant.providerId?.takeIf { it.isNotBlank() }
         val providers = resultOf { settings.providersFlow.first() }
-            .onError { msg, t -> Logger.w(TAG, "读取供应商列表失败: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo leer la lista de proveedores: ${t?.message ?: msg}") }
             .getOrNull()
             .orEmpty()
         val model = findModel(providers, providerId, modelId)
         if (model == null) {
-            Logger.w(TAG, "角色绑定的模型不可用(provider=${providerId ?: "-"}, model=$modelId)，回退默认模型")
+            Logger.w(TAG, "El modelo vinculado a caracteres no está disponible(provider=${providerId ?: "-"}, model=$modelId), recurrir al modelo predeterminado")
             return null
         }
         val provider = providers.firstOrNull { it.id == model.providerId }
             ?: providerId?.let { id -> providers.firstOrNull { it.id == id } }
         if (provider == null) {
-            Logger.w(TAG, "角色绑定的模型没有可用供应商(provider=${providerId ?: "-"})，回退默认模型")
+            Logger.w(TAG, "El modelo vinculado a roles no tiene proveedor disponible(provider=${providerId ?: "-"}), recurrir al modelo predeterminado")
             return null
         }
         return ModelBinding(model = model, providerConfig = provider)
     }
 
-    /** 按 providerId → 激活供应商 → 全部供应商的顺序找模型。 */
+    /** prensa providerId → Activar proveedor → Encuentra modelos en orden de todos los proveedores. */
     private suspend fun findModel(providers: List<ProviderConfig>, providerId: String?, modelId: String): Model? {
         if (providerId != null) {
             providers.firstOrNull { it.id == providerId }
@@ -147,12 +147,12 @@ class MomentChainTextGenerator(
 }
 
 /**
- * 一次文本生成的内部步骤：找角色、拼素材、调生成端口、清理输出。
+ * Los pasos internos de una generación de texto: encontrar caracteres, ensamblar materiales, ajustar el puerto de generación y limpiar la salida.
  *
- * 这些成员原先都平铺在 [AppMiniPhoneHost] 里，宿主被接口方法、语音与映射挤得看不清主线；
- * 拆出来之后宿主只留接口方法与委托，这里也只管"生成一段文本"这一条链，不持有可写状态。
+ * Estos miembros fueron originalmente dispuestos en la [AppMiniPhoneHost] Aquí, el anfitrión está tan lleno de métodos de interfaz, voz y mapeo que la línea principal no se puede ver con claridad;
+ * Después de eliminarlo, el host solo retiene los métodos y delegados de la interfaz, y aquí solo nos preocupamos por ellos."generar un texto"Esta cadena no tiene un estado de escritura.
  *
- * 生成类方法一律不抛异常：失败归一成 null，由宿主决定发 [MpReplyEvent.Failed] 还是返回空。
+ * Los métodos de clase generados nunca arrojan excepciones: el error se devuelve a nulo y el host decide lanzar una excepción. [MpReplyEvent.Failed] Todavía regresa vacío.
  */
 internal class MiniPhoneTextComposer(
     private val assistantRepository: AssistantRepository,
@@ -160,29 +160,29 @@ internal class MiniPhoneTextComposer(
     private val contextBuilder: MiniContextBuilder,
 ) {
 
-    /** 读取角色；读不到（不存在 / 异常）都返回 null。 */
+    /** Lea el papel; si no se puede leer (no existe/excepción), se devolverá nulo. */
     suspend fun findAssistant(characterId: String): AssistantEntity? =
         resultOf { assistantRepository.getById(characterId) }
-            .onError { msg, t -> Logger.w(TAG, "读取角色失败: id=$characterId, ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo leer el rol: id=$characterId, ${t?.message ?: msg}") }
             .getOrNull()
 
-    /** 动态素材：动态口吻，单条正文，不配图。 */
+    /** Materiales dinámicos: tono dinámico, texto único, sin imágenes. */
     suspend fun composeMoment(assistant: AssistantEntity, hint: String?): String? =
         generate(assistant, momentMaterial(hint), MAX_TOKENS_MOMENT)?.let(::cleanOutput)
 
-    /** 主动私信素材：同一个角色人格、同一个生成链路，只把任务换成「直接开口说一句话」。 */
+    /** Material de mensaje privado activo: la misma personalidad de personaje, el mismo enlace generacional, pero cambia la tarea a \"solo di una palabra\". */
     suspend fun composeProactiveMessage(assistant: AssistantEntity, hint: String?): String? =
         generate(assistant, proactiveChatMaterial(hint), MAX_TOKENS_PROACTIVE_CHAT)?.let(::cleanOutput)
 
-    /** 私信素材：把模块交来的对话拼成「人格系统提示 + 最近几轮」。 */
+    /** Material de mensaje privado: concatene el diálogo entregado por el módulo en \"Mensajes del sistema de personalidad + Rondas recientes\". */
     suspend fun buildConversation(assistant: AssistantEntity, history: List<MpChatTurn>): List<UIMessage> {
-        // 系统提示不是角色说过的话,图片/语音行没有文本 —— 两者都不进上下文
+        // El sistema indica que esto no es lo que dijo el personaje.,fotos/La línea de voz no tiene texto —— Ninguno entra en el contexto.
         val turns = history
             .filter { it.sender != MpActorType.SYSTEM && it.content.isNotBlank() }
             .takeLast(MAX_HISTORY_TURNS)
         val lastUser = turns.lastOrNull { it.sender == MpActorType.USER } ?: return emptyList()
-        // 复用同一条人格组装链:世界书 / 提示词注入按最后一条用户消息取关键词;
-        // 私信是唯一有语音出口的路径,顺带把语音标记约定加进系统指令
+        // Reutilizar la misma cadena de ensamblaje de personalidad.:Libro mundial/Inyección rápida de palabras: obtenga palabras clave basadas en el último mensaje del usuario;
+        // La mensajería privada es la única forma de tener una salida de voz,Por cierto, agregue la convención de marcas de voz al comando del sistema.
         val built = resultOf {
             contextBuilder.buildMessages(
                 assistant = assistant,
@@ -190,13 +190,13 @@ internal class MiniPhoneTextComposer(
                 voiceMessageEnabled = true,
             )
         }
-            .onError { msg, t -> Logger.w(TAG, "组装角色上下文失败: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "No se pudo ensamblar el contexto del rol: ${t?.message ?: msg}") }
             .getOrNull()
             ?: return emptyList()
         return built.takeWhile { it.role == MessageRole.SYSTEM } + turns.map { it.toUIMessage() }
     }
 
-    /** 剥掉 think 标签、系统标记与包裹引号;剥完为空视为没有结果。 */
+    /** Quite las etiquetas de pensamiento, las etiquetas del sistema y las citas envolventes;Si está vacío después de la extracción, se considerará que no hay resultado. */
     fun cleanOutput(raw: String): String? =
         stripSystemMarks(stripThinkTags(raw)).trim()
             .removeSurrounding("\"")
@@ -204,8 +204,8 @@ internal class MiniPhoneTextComposer(
             .takeIf { it.isNotBlank() }
 
     /**
-     * 剥掉模型自作主张加的系统标记:MOOD 整行、`[mood]…[/mood]` / `<mood>…</mood>` 段、
-     * 行尾 `（心情：…）` 这类括号尾巴。只删明确的标记,不动正文。
+     * Quite las etiquetas del sistema agregadas por el propio modelo:MOOD línea completa,`[mood]…[/mood]` / `<mood>…</mood>` sección,
+     * final de línea `(Estado de ánimo:…)` Este tipo de cola de soporte. Eliminar solo etiquetas claras,No muevas el texto.
      */
     private fun stripSystemMarks(text: String): String {
         if (text.isBlank()) return text
@@ -224,14 +224,14 @@ internal class MiniPhoneTextComposer(
         return result
     }
 
-    /** 超时（[GENERATION_TIMEOUT_MS]）与失败都归一成 null，不向调用方抛。 */
+    /** tiempo de espera ([GENERATION_TIMEOUT_MS]) y el error se devuelven a nulo y no se envían a la persona que llama. */
     private suspend fun generate(assistant: AssistantEntity, material: String, maxTokens: Int): String? {
-        // 实际额度取「角色 maxTokens」与「场景上限」的较小者:角色填了多少都不该把一句话放成几百 token
+        // La cantidad real es la menor entre "maxTokens de rol" y "límite superior del escenario":No importa cuánto desempeñes el papel, no debes poner cientos en una oración. token
         val budget = assistant.maxTokens?.takeIf { it > 0 }?.let { minOf(it, maxTokens) } ?: maxTokens
         return resultOf {
             withTimeoutOrNull(GENERATION_TIMEOUT_MS) { textGenerator.generate(assistant, material, budget) }
         }.onError { msg, t ->
-            Logger.w(TAG, "角色文本生成失败: ${t?.message ?: msg}")
+            Logger.w(TAG, "Falló la generación de texto de caracteres: ${t?.message ?: msg}")
         }.getOrNull()
     }
 
@@ -240,39 +240,39 @@ internal class MiniPhoneTextComposer(
         content = content,
     )
 
-    /** 动态素材：动态口吻，单条正文，不配图。 */
+    /** Materiales dinámicos: tono dinámico, texto único, sin imágenes. */
     private fun momentMaterial(hint: String?): String = buildString {
         appendLine("<moment_task>")
-        appendLine("请以你自己的身份发一条朋友圈动态。")
+        appendLine("Por favor, publica una publicación en Moments como tú mismo.")
         appendHint(hint)
         appendLine("</moment_task>")
         appendLine()
         appendLine("<style>")
-        appendLine("- 口语自然，30-80 字，像真人在分享自己的生活。")
-        appendLine("- 这不是回复任何人，是你自己发的动态。")
-        appendLine("- 不要输出 MOOD、情绪值、好感度、状态栏、系统标签、括号动作、旁白、时间戳、引号、#话题。")
-        appendLine("- 不要客服腔、不要 AI 自我介绍。")
-        appendLine("- 只输出正文本身，不要前缀、解释或配图说明。")
+        appendLine("- Hablado con naturalidad,30-80 Palabras, como personas reales compartiendo sus vidas.")
+        appendLine("- Esta no es una respuesta para nadie, es una actualización publicada por usted mismo.")
+        appendLine("- No muestre MOOD, valor de opinión, preferencia, barra de estado, etiqueta del sistema, acción entre corchetes, narración, marca de tiempo, comillas,#tema.")
+        appendLine("- Sin charlas de servicio al cliente ni presentación personal de la IA.")
+        appendLine("- Imprima únicamente el texto en sí, sin prefijos, explicaciones ni ilustraciones.")
         appendLine("</style>")
     }
 
-    /** 主动私信素材:同一个角色人格、同一个生成链路,只把任务换成「直接开口说一句话」。 */
+    /** Materiales activos de mensajes privados.:La misma personalidad de carácter, el mismo vínculo generacional.,Simplemente cambie la tarea a \"solo diga una palabra\". */
     private fun proactiveChatMaterial(hint: String?): String = buildString {
         appendLine("<chat_task>")
-        appendLine("请主动给用户发一条私信。")
+        appendLine("Tome la iniciativa de enviar un mensaje privado al usuario.")
         appendHint(hint)
         appendLine("</chat_task>")
         appendLine()
         appendLine("<style>")
-        appendLine("- 以角色第一人称，直接对用户开口，一到两句话。")
-        appendLine("- 这不是回复任何人，是你主动开口说的话。")
-        appendLine("- 不要输出 MOOD、情绪值、好感度、状态栏、系统标签、括号动作、旁白、时间戳、引号、#话题。")
-        appendLine("- 不要 markdown、不要客服腔。")
-        appendLine("- 只输出正文本身。")
+        appendLine("- Habla directamente con el usuario en la primera persona del personaje, una o dos frases.")
+        appendLine("- Esto no es una respuesta a nadie, es algo que usted tomó la iniciativa de decir.")
+        appendLine("- No muestre MOOD, valor de opinión, preferencia, barra de estado, etiqueta del sistema, acción entre corchetes, narración, marca de tiempo, comillas,#tema.")
+        appendLine("- Sin rebajas, sin acento en el servicio al cliente.")
+        appendLine("- Sólo se emite el texto en sí.")
         appendLine("</style>")
     }
 
-    /** 模块拼好的素材原样接进去：上下文在前，最后一句是这一条要写什么。 */
+    /** Los materiales recopilados a partir de los módulos están conectados tal como están: el contexto es lo primero y la última oración es lo que se escribirá en este artículo. */
     private fun StringBuilder.appendHint(hint: String?) {
         hint?.takeIf { it.isNotBlank() }?.lineSequence()?.forEach { line -> appendLine(line) }
     }
@@ -280,40 +280,40 @@ internal class MiniPhoneTextComposer(
     private companion object {
         private const val TAG = "MiniPhoneTextComposer"
 
-        /** 一句话生成的上限：超时当失败处理（旁路生成不该拖住界面）。 */
+        /** El límite superior de la generación de una oración: la falla se manejará cuando se agote el tiempo de espera (la generación de omisión no debe retrasar la interfaz). */
         private const val GENERATION_TIMEOUT_MS = 15_000L
 
         private const val MAX_TOKENS_MOMENT = 200
 
-        /** 主动私信只要一两句:额度压小,避免写成一整封信。 */
+        /** Un mensaje privado proactivo solo requiere una o dos frases:El límite es pequeño.,Evite escribir una carta completa. */
         private const val MAX_TOKENS_PROACTIVE_CHAT = 120
 
-        /** 私信只带最近几轮:更早的内容对一句话回复没有帮助,只会吃上下文预算。 */
+        /** Los mensajes privados solo traen las rondas más recientes.:El contenido anterior no es útil para una respuesta de una sola frase.,Sólo se comerá el presupuesto contextual. */
         private const val MAX_HISTORY_TURNS = 20
 
-        /** MOOD 开头的整行:模型把状态栏写成了正文的一部分。 */
+        /** MOOD toda la línea comenzando con:El modelo escribe la barra de estado como parte del texto. */
         private val MOOD_LINE = Regex("""^\s*MOOD\s*[:：].*$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
 
-        /** `[mood]…[/mood]` 与 `<mood>…</mood>` 包裹的段。 */
+        /** `[mood]…[/mood]` con `<mood>…</mood>` Segmentos envueltos. */
         private val MOOD_BLOCK = Regex("""[\[<]\s*mood\s*[\]>][\s\S]*?[\[<]\s*/\s*mood\s*[\]>]""", RegexOption.IGNORE_CASE)
 
-        /** 行尾/句末的「（心情：…）」括号尾巴。 */
-        private val MOOD_TAIL = Regex("""[（(]\s*心情\s*[:：][^）)\n]*[）)]""")
+        /** final de línea/\"(Estado de ánimo:…)\" cola del soporte. */
+        private val MOOD_TAIL = Regex("""[((]\s*estado de ánimo\s*[::][^))\n]*[))]""")
     }
 }
 
 /**
- * 小手机宿主侧的实现：通讯录取现有助手、用户资料取设置里的用户画像，
- * 生成走 [MiniPhoneTextGenerator]，语音走宿主已有的 TTS 合成与语音存档。
+ * Implementación en el lado del host de teléfonos celulares pequeños: comunicación y adquisición de asistentes existentes, adquisición de perfiles de usuario de retratos de usuarios en la configuración,
+ * Generar y caminar [MiniPhoneTextGenerator], la voz utiliza la síntesis TTS y el archivo de voz existentes del anfitrión.
  *
- * 边界（与 [MiniPhoneHost] 的约定一致）：
- * - 只读宿主数据，不写任何一张表；
- * - 生成类方法不抛异常：私信走 [MiniPhoneToolTurnRunner]，失败发 [MpReplyEvent.Failed]；
- * - 语音是唯一会落盘的产物，且只经 [VoiceMessageArchiver] 写进语音存档目录。
+ * frontera (con [MiniPhoneHost] acuerdo):
+ * - Lea solo los datos del host y no escriba en ninguna tabla;
+ * - Generar método de clase sin lanzar excepción: enviar mensaje privado [MiniPhoneToolTurnRunner], no se pudo enviar [MpReplyEvent.Failed];
+ * - La voz es el único producto que se comercializará y sólo podrá comercializarse [VoiceMessageArchiver] Escriba en el directorio de archivos de voz.
  *
- * 文本生成的具体步骤在 [MiniPhoneTextComposer] 里，本类只保留接口实现、语音与映射。
+ * Los pasos específicos de la generación de texto están en [MiniPhoneTextComposer] Aquí, esta clase solo conserva la implementación de la interfaz, la voz y el mapeo.
  *
- * @param cacheDir TTS 临时文件的落地目录（合成完成后必定删除）
+ * @param cacheDir TTS El directorio de inicio de archivos temporales (debe eliminarse una vez completada la síntesis)
  */
 class AppMiniPhoneHost(
     private val assistantRepository: AssistantRepository,
@@ -332,14 +332,14 @@ class AppMiniPhoneHost(
         contextBuilder = contextBuilder,
     )
 
-    /** 用户录音的一次性转写:与流式识别共用同一份语音设置,不共用采集链路。 */
+    /** Transcripción única de grabaciones de usuarios.:Comparte la misma configuración de voz que el reconocimiento de streaming,No compartas el enlace de la colección. */
     private val voiceTranscriber = OneShotAsrTranscriber(settingsRepository)
 
     override fun observeCharacters(): Flow<List<MpCharacter>> =
         assistantRepository.observeAll
             .map { assistants -> assistants.map { it.toMpCharacter() } }
             .catch { t ->
-                Logger.w(TAG, "读取角色列表失败，按空通讯录处理: ${t.message}")
+                Logger.w(TAG, "No se pudo leer la lista de funciones, tratada como libreta de direcciones vacía: ${t.message}")
                 emit(emptyList())
             }
 
@@ -347,7 +347,7 @@ class AppMiniPhoneHost(
         settingsRepository.userProfileFlow
             .map { it.toMpProfile() }
             .catch { t ->
-                Logger.w(TAG, "读取用户资料失败，按空资料处理: ${t.message}")
+                Logger.w(TAG, "No se pudieron leer los datos del usuario, tratados como datos vacíos: ${t.message}")
                 emit(MpProfile(nickname = ""))
             }
 
@@ -367,7 +367,7 @@ class AppMiniPhoneHost(
                 emit(event)
                 return@collect
             }
-            // 文本要拆:标记内的段落合成语音,其余照常当文本发;剥完是空的就是「这句没说出口」
+            // Es necesario dividir el texto.:Sintetizar discurso para párrafos dentro de etiquetas,El resto se enviará como mensaje de texto como de costumbre.;Después de despegarlo, está vacío y significa "esta frase no se ha pronunciado".
             val script = textComposer.cleanOutput(event.content)
             if (script == null) emit(MpReplyEvent.Failed) else emitVoiceScript(script) { synthesizeVoice(it, null) }
         }
@@ -387,46 +387,46 @@ class AppMiniPhoneHost(
         if (text.isBlank()) return null
         val tempFile = File(cacheDir, "$VOICE_TEMP_PREFIX${UUID.randomUUID()}$VOICE_TEMP_EXTENSION")
         return try {
-            // 取消原样抛出（resultOf 内部重抛 CancellationException），其余异常归一成 null
+            // Cancelar lanzamientos tal cual (resultOf CancellationException se vuelve a generar internamente) y otras excepciones se normalizan null
             resultOf { synthesizeToArchive(text, emotion, tempFile) }
-                .onError { msg, t -> Logger.w(TAG, "语音合成流程异常: ${t?.message ?: msg}") }
+                .onError { msg, t -> Logger.w(TAG, "Proceso anormal de síntesis del habla.: ${t?.message ?: msg}") }
                 .getOrNull()
         } finally {
-            // 成功/失败/取消三条路径都删临时文件（存档已是独立副本）
+            // éxito/falló/Cancele la eliminación de archivos temporales en las tres rutas (el archivo es una copia independiente)
             tempFile.delete()
         }
     }
 
     /**
-     * 用户录的一段语音转文字。
+     * Un discurso grabado por el usuario se convierte en texto.
      *
-     * 只在用户已经配好语音识别（手填或跟随供应商）时才有结果;读设置、解析供应商、
-     * 发请求、解析响应全在 [OneShotAsrTranscriber] 里,这里只做转发,不让模块看见任何协议细节。
+     * Los resultados solo están disponibles si el usuario ha sido configurado para reconocimiento de voz (completar manualmente o seguir al proveedor);Leer configuraciones, analizar proveedores,
+     * Envíe solicitudes y analice respuestas, todo en un solo lugar [OneShotAsrTranscriber] adentro,Aquí solo se realiza el reenvío,No permita que el módulo vea ningún detalle del protocolo.
      */
     override suspend fun transcribeVoice(wavBytes: ByteArray): String? =
         voiceTranscriber.transcribe(wavBytes)
 
     /**
-     * 录音输入能不能用:判据与转写器实际会不会发请求完全一致。
+     * ¿Se puede utilizar la entrada de grabación?:El criterio es exactamente el mismo que si el transcriptor realmente enviará una solicitud.
      *
-     * 注释与解析都复用 [OneShotAsrTranscriber]:不在这里重写一套条件,
-     * 否则两边的「支持」与「真的能转」早晚会走偏。
+     * Tanto la anotación como el análisis se reutilizan. [OneShotAsrTranscriber]:No reescribas un conjunto de condiciones aquí,
+     * De lo contrario, tarde o temprano el "apoyo" y la "realidad capaz" de ambas partes se descarriarán.
      */
     override suspend fun supportsVoiceTranscription(): Boolean = voiceTranscriber.supportsTranscription()
 
-    /** 宿主版本名:取自应用自己的构建信息,不在这里写死。 */
+    /** Nombre de la versión del host:Tomado de la información de compilación de la propia aplicación.,No lo escribas hasta la muerte aquí. */
     override fun appVersionName(): String = BuildConfig.VERSION_NAME
 
-    /** 合成 → 落盘 → 探测时长。任一步失败返回 null。 */
+    /** síntesis → Realizar el pedido → Duración de la detección. Devuelve nulo si falla algún paso. */
     private suspend fun synthesizeToArchive(text: String, emotion: String?, tempFile: File): Pair<String, Long>? {
         val outcome = resultOf { voiceSynthesizer.synthesizeTo(text, tempFile, emotion) }
-            .onError { msg, t -> Logger.w(TAG, "语音合成失败: ${t?.message ?: msg}") }
+            .onError { msg, t -> Logger.w(TAG, "La síntesis de voz falló: ${t?.message ?: msg}") }
             .getOrNull()
-        // 回落系统音色也算合成出来了（音频可用），只有彻底失败才放弃
+        // El sonido del sistema de respaldo también se sintetiza (el audio está disponible). Solo ríndete si falla por completo.
         if (outcome == null || outcome is TtsSynthResult.Failure) return null
-        // key 稳定：同文本同情绪重复合成命中同一存档文件
+        // key Estable: el mismo texto y la misma emoción se sintetizan repetidamente y se guardan en el mismo archivo.
         val uri = voiceStore.persist(tempFile, text + VOICE_KEY_SEPARATOR + (emotion ?: "")) ?: return null
-        // 时长只给界面显示用，探测不出来（0）也照常返回
+        // La duración solo se utiliza para la visualización de la interfaz y no se puede detectar (0) también regresa como de costumbre
         return uri to voiceStore.probeDurationMs(tempFile)
     }
 
@@ -437,7 +437,7 @@ class AppMiniPhoneHost(
         tagline = taglineOf(),
     )
 
-    /** 一句话人设：优先人格定义首行，其次整段人设首行；都没有就是空串。 */
+    /** Diseño de personajes de una oración: se da prioridad a la primera línea de la definición de personalidad, seguida de la primera línea de todo el párrafo del diseño de personajes; si no se incluye ninguno, la cadena está vacía. */
     private fun AssistantEntity.taglineOf(): String {
         val source = personaDefinition.ifBlank { systemPrompt }
         return source.lineSequence()
@@ -451,7 +451,7 @@ class AppMiniPhoneHost(
         nickname = userNickName?.trim().orEmpty(),
         avatarUri = avatarUri?.takeIf { it.isNotBlank() },
         signature = bio?.trim()?.takeIf { it.isNotBlank() },
-        // 壁纸与动态封面由小手机自己维护，宿主侧暂不提供
+        // Los fondos de pantalla y las portadas dinámicas los mantiene el propio teléfono celular y no los proporciona el host.
         wallpaperUri = "",
         coverImageUri = "",
     )
@@ -461,11 +461,11 @@ class AppMiniPhoneHost(
 
         private const val TAGLINE_MAX_CHARS = 60
 
-        /** 与既有语音消息一致的临时文件命名与扩展名。 */
+        /** Nombres de archivos temporales y extensiones coherentes con los mensajes de voz existentes. */
         private const val VOICE_TEMP_PREFIX = "miniphone-voice-"
         private const val VOICE_TEMP_EXTENSION = ".wav"
 
-        /** 语音存档 key 的分隔符：与 `send_voice` 同构，保证同文本同情绪命中同一份音频。 */
+        /** Delimitador de clave de archivo de voz: y `send_voice` El isomorfismo asegura que el mismo texto y la misma emoción lleguen al mismo audio. */
         private const val VOICE_KEY_SEPARATOR = "\u0000"
     }
 }

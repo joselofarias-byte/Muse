@@ -14,7 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 徽章与详情说明真的渲染出来了才算完成 —— 只测判定函数测不到「列表里看不看得见」。
+ * La insignia y los detalles no están completos hasta que se renderizan. —— Sólo la función de juicio no puede detectar "lo que es invisible en la lista".
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -39,8 +39,8 @@ class MemoryStatusBadgeUiTest {
         superseded: Boolean = false,
     ): MemoryItem = MemoryItem(
         id = "7",
-        title = "喜欢咖啡",
-        content = "喜欢咖啡",
+        title = "como el cafe",
+        content = "como el cafe",
         source = "Fact",
         scope = "main",
         mergedIntoId = mergedIntoId,
@@ -68,7 +68,7 @@ class MemoryStatusBadgeUiTest {
 
     @Test
     fun rowWithAllThreeStatesShowsAllBadges() {
-        // 三种状态互相独立：全中时一个都不能被吞掉，只是次要的会画得更淡。
+        // Los tres estados son independientes entre sí: cuando todos están dentro, ninguno de ellos podrá ser tragado, pero el secundario se dibujará más ligero.
         factRow(factItem(mergedIntoId = 42L, suppressed = true, superseded = true))
 
         composeTestRule.onNodeWithText(context.getString(R.string.memory_status_superseded)).assertExists()
@@ -84,8 +84,8 @@ class MemoryStatusBadgeUiTest {
         composeTestRule.setContent {
             MaterialTheme {
                 FactEditDialog(
-                    title = "编辑记忆",
-                    initialContent = "喜欢咖啡",
+                    title = "Editar memoria",
+                    initialContent = "como el cafe",
                     statusNote = note,
                     onDismiss = {},
                     onConfirm = { _, _ -> },

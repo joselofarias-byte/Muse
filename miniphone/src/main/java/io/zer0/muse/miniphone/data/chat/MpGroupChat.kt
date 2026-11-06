@@ -9,37 +9,37 @@ import io.zer0.muse.miniphone.data.db.entity.MpThreadEntity
 import io.zer0.muse.miniphone.data.db.entity.MpThreadMemberEntity
 import java.util.UUID
 
-/** 群名长度上限:再长顶栏就放不下了,超出的部分直接截掉。 */
+/** Longitud máxima del nombre del grupo:Si el riel superior es más largo, no podrá acomodarlo.,La parte sobrante se corta directamente. */
 internal const val GROUP_TITLE_MAX_LENGTH: Int = 20
 
-/** 移完之后至少还要剩下的成员数:一个人都没有的群没人能开口。 */
+/** Al menos el número de miembros restantes después de que se complete la mudanza.:En un grupo sin nadie nadie puede hablar. */
 internal const val MIN_GROUP_MEMBERS_AFTER_REMOVE: Int = 1
 
 /**
- * 群名的写法:去掉首尾空白,超过 [GROUP_TITLE_MAX_LENGTH] 个字就截断。
+ * Cómo escribir el nombre del grupo:Eliminar espacios en blanco iniciales y finales,exceder [GROUP_TITLE_MAX_LENGTH] Trunca cada carácter.
  *
- * 全空时返回空串,由调用方当成「不许保存」—— 没有名字的群在列表里没法认。
+ * Devuelve una cadena vacía cuando todo está vacío,La persona que llama lo trata como "no se permite guardar"—— Los grupos sin nombre no se pueden reconocer en la lista.
  */
 internal fun normalizeGroupTitle(raw: String): String = raw.trim().take(GROUP_TITLE_MAX_LENGTH)
 
-/** 一个群至少要有两个角色:一个人不成群,那本来就该走私信。 */
+/** Un grupo debe tener al menos dos personajes.:Una persona no forma un grupo.,Entonces la carta debería haber sido pasada de contrabando. */
 internal const val MIN_GROUP_MEMBERS: Int = 2
 
-/** 群名里名字之间的分隔符。 */
-internal const val GROUP_TITLE_SEPARATOR: String = "、"
+/** El separador entre nombres en un nombre de grupo. */
+internal const val GROUP_TITLE_SEPARATOR: String = ","
 
-/** 群名里最多逐个列几个人名;超过这个数就收成「阿远、小满等 5 人」。 */
+/** El nombre del grupo puede contener como máximo algunos nombres de personas, uno por uno.;Si excede este número, obtendrá \"Ayuan, Xiaoman y otras 5 personas\". */
 internal const val GROUP_TITLE_MAX_NAMES: Int = 3
 
 /**
- * 群名:成员名字按选择顺序拼起来。
+ * Nombre del grupo:Los nombres de los miembros se detallan en el orden de selección.
  *
- * 只拼角色名 —— 本机用户不是成员行,顶栏的「（N）」才是把「角色数 + 1」算进去的那个数,
- * 两套口径不要混在一起解释。
- * 人数多的时候不逐个列:超过 [GROUP_TITLE_MAX_NAMES] 个人就取前两个加「等 N 人」,
- * 这里的 N 是全部角色数(不含本机用户),与列表、建群页上选中的那几个人对得上。
- * 群名在建立那一刻定下来,不随后续成员变化重算。没有名字的成员直接跳过,
- * 不留下多余的分隔符;一个名字都没有时返回空串,由界面退化成「群聊」。
+ * Solo deletrea el nombre del personaje —— El usuario local no es miembro de la fila.,"( en la barra superiorN)" es el número que tiene en cuenta "número de caracteres + 1",
+ * No mezcle los dos conjuntos de calibres y explíquelos juntos.
+ * Cuando hay mucha gente, no hacer fila una por una.:exceder [GROUP_TITLE_MAX_NAMES] Personalmente, tomo los dos primeros y agrego "esperando a N personas".,
+ * Aquí N es el número total de caracteres.(No incluye usuarios locales),Haga coincidir los seleccionados en la lista y la página de creación de grupos.
+ * El nombre del grupo se determina en el momento de la creación.,No se volverá a calcular tras cambios posteriores de membresía. Los miembros sin nombre se omiten directamente.,
+ * No dejes separadores adicionales;Devuelve una cadena vacía si no hay nombre,La interfaz ha degenerado en un "chat grupal".
  */
 internal fun groupTitleOf(memberNames: List<String>): String {
     val names = memberNames.map(String::trim).filter(String::isNotEmpty)
@@ -48,68 +48,68 @@ internal fun groupTitleOf(memberNames: List<String>): String {
     return names.take(GROUP_TITLE_TAIL_NAMES).joinToString(GROUP_TITLE_SEPARATOR) + groupTitleTailOf(names.size)
 }
 
-/** 收口写法里的「等 N 人」——N 是全部角色数。 */
-internal fun groupTitleTailOf(personCount: Int): String = "等 $personCount 人"
+/** \"Esperando a N personas\" escrito con la boca cerrada——N es el número de todos los caracteres. */
+internal fun groupTitleTailOf(personCount: Int): String = "espera $personCount gente"
 
-/** 收口时逐个列出来的名字个数。 */
+/** El número de nombres enumerados uno por uno al cerrar. */
 private const val GROUP_TITLE_TAIL_NAMES: Int = 2
 
-/** 「完成」键能不能按:选够 [MIN_GROUP_MEMBERS] 个角色才算数。 */
+/** ¿Se puede presionar el botón \"Finalizar\"?:Elige lo suficiente [MIN_GROUP_MEMBERS] Sólo cuenta un personaje. */
 internal fun canCreateGroup(selectedCount: Int): Boolean = selectedCount >= MIN_GROUP_MEMBERS
 
 /**
- * 建群。
+ * Construye un grupo.
  *
- * 抽成接口的理由与 [MpConversationActions] 一样:外壳 ViewModel 的测试不该为一次委托开一个 Room 库。
+ * El motivo para extraer la interfaz es [MpConversationActions] Lo mismo:Las pruebas que shell ViewModel no deberían abrir una biblioteca Room para un delegado.
  */
 interface MpGroupActions {
     /**
-     * 建一个群会话并写入成员,返回新会话 id;选项不够两人时不建,返回 null。
+     * Crea una sesión de grupo y escribe a los miembros.,Volver a nueva sesión id;Si no hay suficientes opciones para dos personas, no se construirá.,Devuelve nulo.
      *
-     * @param memberIds 成员角色 id,顺序就是群里的顺序
-     * @param title 群名,由调用方按 [groupTitleOf] 拼好
+     * @param memberIds Rol de miembro id,El orden es el orden en el grupo.
+     * @param title Nombre del grupo,Presionado por la persona que llama [groupTitleOf] Ponlo junto
      */
     suspend fun createGroup(memberIds: List<String>, title: String): String?
 
     /**
-     * 改群名。空名不写,超长截断(见 [normalizeGroupTitle]);写入后这个群不再自动重算群名。
+     * Cambie el nombre del grupo. No escribas un nombre vacío,Truncamiento extralargo(ver [normalizeGroupTitle]);Este grupo ya no volverá a calcular automáticamente el nombre del grupo después de escribir.
      *
-     * @return 真的写进去了才为 true
+     * @return Sólo si realmente lo escribes true
      */
     suspend fun renameGroup(threadId: String, title: String): Boolean
 
     /**
-     * 往群里加人。已经在群里的人自动跳过。
+     * Añade personas al grupo. Las personas que ya están en el grupo serán omitidas automáticamente.
      *
-     * @param autoTitle 群名还没被用户改过时要新拼的群名;已经改过就传 null,一个字不动
-     * @return 真的加进去了才为 true
+     * @param autoTitle Es necesario volver a escribir el nombre del grupo cuando el usuario no lo haya cambiado.;Si se ha modificado, cárguelo. null,Sin mover una palabra
+     * @return Es por eso que realmente lo agregué true
      */
     suspend fun addMembers(threadId: String, characterIds: List<String>, autoTitle: String?): Boolean
 
     /**
-     * 把一个人移出群。只剩一个人时不允许移 —— 群里总得留一个能说话的角色。
+     * Eliminar a una persona del grupo. No está permitido moverse cuando solo queda una persona. —— Debe haber un personaje en el grupo que pueda hablar.
      *
-     * @param autoTitle 与 [addMembers] 同义:没改过名的群跟着成员重算,改过的保持不动
-     * @return 真的移出去了才为 true
+     * @param autoTitle con [addMembers] sinónimo:Los grupos cuyos nombres no hayan sido cambiados se recalcularán según los integrantes.,Lo que ha cambiado permanece sin cambios
+     * @return Sólo si realmente lo sacas true
      */
     suspend fun removeMember(threadId: String, characterId: String, autoTitle: String?): Boolean
 
     /**
-     * 解散群:成员行、这个会话的全部消息、会话本身一起删掉,同一个事务。
+     * disolver el grupo:Las filas de miembros, todos los mensajes de esta conversación y la conversación misma se eliminan juntos.,misma transacción.
      *
-     * @return 真的删了才为 true
+     * @return realmente tuve que borrarlo true
      */
     suspend fun disbandGroup(threadId: String): Boolean
 }
 
 /**
- * 建群的写入:一条群会话 + 若干成员行,同一个事务。
+ * Escribir para crear un grupo:Una conversación grupal + varias líneas de miembros,misma transacción.
  *
- * 两样东西必须一起出现:只有会话没有成员,群名对不上人;只有成员没有会话,列表里看不见。
- * 会话行的 characterId 落第一个成员 —— 群聊要找人开口时用的就是它。
+ * Dos cosas deben aparecer juntas.:Solo sesión sin miembros,El nombre del grupo no coincide con la persona.;Solo miembros, sin sesiones,No puedo verlo en la lista.
+ * El ID de carácter de la línea de sesión es el primer miembro. —— Esto es lo que usas cuando quieres encontrar a alguien con quien hablar en un chat grupal.
  *
- * @param now 时间源,默认取系统时钟;测试用它钉死入群时间
- * @param newId 会话 id 生成器,默认 UUID
+ * @param now fuente de tiempo,El valor predeterminado es el reloj del sistema;Pruébelo y utilícelo para determinar el tiempo para unirse al grupo.
+ * @param newId generador de identificación de sesión,Predeterminado UUID
  */
 class MpGroupChatStore(
     private val db: MiniPhoneDb,
@@ -135,7 +135,7 @@ class MpGroupChatStore(
                     title = title,
                 ),
             )
-            // joinedAt 逐行加一:同一批入群的人按选择顺序排队,成员页的顺序因此稳定
+            // joinedAt Añade una línea por línea:Las personas que se unan al mismo grupo harán cola en el orden de selección.,Por lo tanto, el orden de las páginas de miembros es estable.
             memberDao.upsertAll(
                 members.mapIndexed { index, characterId ->
                     MpThreadMemberEntity(threadId = threadId, characterId = characterId, joinedAt = createdAt + index)
@@ -162,7 +162,7 @@ class MpGroupChatStore(
             .distinct()
             .filterNot { characterId -> characterId in existing }
         if (fresh.isEmpty()) return false
-        // 新人排到最后:入群时间要比现有成员都晚,否则成员页的顺序会乱
+        // Los recién llegados son los últimos:Unirse al grupo más tarde que los miembros existentes,De lo contrario, el orden de las páginas de miembros se alterará.
         val joinedAt = maxOf(now(), (existingRows.maxOfOrNull { member -> member.joinedAt } ?: 0L) + 1)
         db.withTransaction {
             memberDao.upsertAll(
@@ -178,13 +178,13 @@ class MpGroupChatStore(
     override suspend fun removeMember(threadId: String, characterId: String, autoTitle: String?): Boolean {
         val thread = groupThreadOrNull(threadId) ?: return false
         val members = memberDao.membersOf(threadId)
-        // 移完至少还得留一个人:一个人都没有的群,没人能开口
+        // Al menos una persona debe quedarse atrás una vez finalizada la mudanza.:Un grupo sin nadie,nadie puede hablar
         if (members.size <= MIN_GROUP_MEMBERS_AFTER_REMOVE) return false
         if (members.none { member -> member.characterId == characterId }) return false
         val remaining = members.filterNot { member -> member.characterId == characterId }
         db.withTransaction {
             memberDao.deleteMember(threadId, characterId)
-            // 被移出的正好是「找他开口」的那个:换成剩下的第一个,群里才有回话的人
+            // El que fue removido resultó ser el que "habló con él":Reemplácelo con el primero restante.,Sólo las personas del grupo pueden responder.
             if (thread.characterId == characterId) {
                 threadDao.updateCharacter(threadId, remaining.first().characterId)
             }
@@ -203,7 +203,7 @@ class MpGroupChatStore(
         return true
     }
 
-    /** 只有群会话能改、能加、能踢、能解散;私信走到这里一律当没这回事。 */
+    /** Solo se pueden modificar, agregar, expulsar y descartar conversaciones grupales;Si el mensaje privado llega hasta este punto, será ignorado. */
     private suspend fun groupThreadOrNull(threadId: String): MpThreadEntity? =
         threadDao.getThread(threadId)?.takeIf { thread -> thread.isGroup }
 }

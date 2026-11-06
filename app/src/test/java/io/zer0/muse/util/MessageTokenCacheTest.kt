@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 消息级 token 计数缓存。
+ * Caché de recuento de tokens a nivel de mensaje.
  *
- * 背景：一次请求组装里同一批历史会被估算好几遍（总预算、历史预算、超限判断、
- * 压缩后收益），每遍都对每条消息跑一次 cl100k BPE。缓存按**实例身份**复用，
- * 这里锁三件事：数值与原实现一致、同一实例只算一次、换了实例必须重算。
+ * Antecedentes: el mismo lote de historial en un conjunto de solicitudes se estimará varias veces (presupuesto total, presupuesto histórico, juicio por exceso de límite,
+ * ganancia posterior a la compresión), ejecutando cl100k BPE en cada mensaje en cada pasada. prensa de caché**Identidad de instancia**reutilizar,
+ * Aquí están bloqueadas tres cosas: el valor es consistente con la implementación original, la misma instancia solo se cuenta una vez y debe recalcularse si se cambia la instancia.
  */
 class MessageTokenCacheTest {
 
@@ -21,64 +21,64 @@ class MessageTokenCacheTest {
     @Test
     fun `numbers_match_uncached_estimate`() {
         val messages = listOf(
-            msg("你好，帮我总结一下这份文档"),
-            msg("好的，我从三个角度来说明……", MessageRole.ASSISTANT),
-            msg("继续"),
+            msg("Hola, ayúdame a resumir este documento."),
+            msg("Bien, déjame explicarlo desde tres ángulos.……", MessageRole.ASSISTANT),
+            msg("continuar"),
         )
         val uncached = TokenEstimator.estimate(messages)
         val cached = TokenEstimator.estimate(messages, cache = MessageTokenCache())
-        assertEquals("缓存不得改变估算结果", uncached, cached)
+        assertEquals("El almacenamiento en caché no debe alterar las estimaciones", uncached, cached)
     }
 
     @Test
     fun `each_message_is_counted_once_per_cache`() {
-        val messages = (1..20).map { msg("第 $it 条历史内容，长度适中用于触发编码") }
+        val messages = (1..20).map { msg("No. $it pieza de contenido histórico, de longitud adecuada para activar la codificación") }
         val cache = MessageTokenCache()
 
         TokenEstimator.estimate(messages, cache = cache)
-        assertEquals("第一遍应全部未命中", 20, cache.misses)
+        assertEquals("Todos deberían fallar en el primer pase.", 20, cache.misses)
         assertEquals(0, cache.hits)
 
-        // 第二遍：同一批实例（历史预算、超限判断走的就是这条）
+        // Segundo paso: el mismo lote de ejemplos (este es el camino utilizado para el presupuesto histórico y el juicio por exceso de límite)
         TokenEstimator.estimate(messages, cache = cache)
-        assertEquals("第二遍不得再跑 BPE", 20, cache.misses)
-        assertEquals("第二遍应全部命中", 20, cache.hits)
+        assertEquals("No vuelvas a correr por segunda vez. BPE", 20, cache.misses)
+        assertEquals("El segundo pase debería dar en el blanco.", 20, cache.hits)
     }
 
     @Test
     fun `sub_list_reuses_parent_counts`() {
-        // dropWhile / drop 产出的子列表元素与父列表是同一批实例，必须命中缓存。
-        val system = msg("系统提示", MessageRole.SYSTEM)
-        val messages = listOf(system) + (1..5).map { msg("历史 $it") }
+        // dropWhile / drop Los elementos de la sublista de salida son el mismo lote de instancias que la lista principal y deben llegar al caché.
+        val system = msg("Aviso del sistema", MessageRole.SYSTEM)
+        val messages = listOf(system) + (1..5).map { msg("historia $it") }
         val cache = MessageTokenCache()
 
         TokenEstimator.estimate(messages, cache = cache)
         val afterFirst = cache.misses
         TokenEstimator.estimate(messages.dropWhile { it.role == MessageRole.SYSTEM }, cache = cache)
 
-        assertEquals("子列表不应产生新的未命中", afterFirst, cache.misses)
+        assertEquals("Las sublistas no deberían producir nuevos errores", afterFirst, cache.misses)
     }
 
     @Test
     fun `different_instances_are_counted_separately`() {
         val cache = MessageTokenCache()
-        val first = msg("相同内容")
-        val second = msg("相同内容")
+        val first = msg("Mismo contenido")
+        val second = msg("Mismo contenido")
 
         val a = TokenEstimator.estimate(listOf(first), cache = cache)
         val b = TokenEstimator.estimate(listOf(second), cache = cache)
 
-        assertEquals("内容相同、实例不同也必须得到同一数值", a, b)
-        assertEquals("实例不同应各自计数", 2, cache.misses)
+        assertEquals("Se debe obtener el mismo valor incluso si el contenido es el mismo y las instancias son diferentes.", a, b)
+        assertEquals("Los diferentes casos deben contarse por separado.", 2, cache.misses)
     }
 
     @Test
     fun `counted_value_covers_reasoning_tool_calls_and_images`() {
-        val plain = msg("内容")
+        val plain = msg("contenido")
         val rich = UIMessage(
             role = MessageRole.ASSISTANT,
-            content = "内容",
-            reasoning = "思考过程".repeat(10),
+            content = "contenido",
+            reasoning = "proceso de pensamiento".repeat(10),
             toolCalls = listOf(
                 io.zer0.ai.core.ToolCall(
                     id = "call-1",
@@ -89,18 +89,18 @@ class MessageTokenCacheTest {
             imageUrls = listOf("https://example.com/a.png"),
         )
         assertTrue(
-            "含思考/工具/图片的消息必须显著多于纯文本",
+            "Contiene pensamiento/Herramientas/Las imágenes deben tener mucho más mensaje que el texto sin formato.",
             TokenEstimator.countMessage(rich) > TokenEstimator.countMessage(plain) + 900,
         )
     }
 
     @Test
     fun `concurrent use does not corrupt the map`() {
-        // P25 把这个缓存提升成进程级共享实例，占用率刷新与提示词组装会从不同线程同时进来。
-        // IdentityHashMap 并发 put 会让结构损坏（可能死循环），这里用多线程压一遍。
+        // P25 Promueva este caché a una instancia compartida a nivel de proceso, y la actualización de ocupación y el ensamblaje de palabras del mensaje provendrán de diferentes subprocesos al mismo tiempo.
+        // IdentityHashMap La colocación concurrente dañará la estructura (posiblemente un bucle infinito), así que use subprocesos múltiples para hacerlo nuevamente.
         val cache = MessageTokenCache()
         val messages = (1..50).map { i ->
-            UIMessage(role = MessageRole.USER, content = "并发测试消息 $i".repeat(20))
+            UIMessage(role = MessageRole.USER, content = "Mensajes de prueba simultáneos $i".repeat(20))
         }
         val expected = messages.map { TokenEstimator.countMessage(it) }
         val errors = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
@@ -109,7 +109,7 @@ class MessageTokenCacheTest {
                 try {
                     repeat(200) { round ->
                         val index = (round + Thread.currentThread().hashCode()) % messages.size
-                        check(cache.count(messages[index]) == expected[index]) { "计数不一致" }
+                        check(cache.count(messages[index]) == expected[index]) { "Conteos inconsistentes" }
                     }
                 } catch (t: Throwable) {
                     errors.add(t)
@@ -118,6 +118,6 @@ class MessageTokenCacheTest {
         }
         threads.forEach { it.start() }
         threads.forEach { it.join(20_000) }
-        assertTrue("并发访问不应抛异常: ${errors.firstOrNull()}", errors.isEmpty())
+        assertTrue("El acceso simultáneo no debería generar excepciones: ${errors.firstOrNull()}", errors.isEmpty())
     }
 }

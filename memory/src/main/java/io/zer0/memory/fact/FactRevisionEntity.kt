@@ -6,17 +6,17 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * v13 (T4-1): 事实修订记录 — 关键记忆的变更历史,支持审计与回滚。
+ * v13 (T4-1): expediente de revisión de hechos — Cambiar el historial de recuerdos clave,Admite auditoría y reversión.
  *
- * 记录条件(FactStore 写入时判定):
- *  - 重要性 ≥ 1(重要/关键事实)的 update 与合并
- *  - 或实体键命中(同实体合并)的合并操作
- * 普通事实(importance=0)的日常更新不记录,避免表膨胀。
+ * Condiciones de grabación(FactStore Determinar al escribir):
+ *  - importancia ≥ 1(importante/hechos clave)actualizar y fusionar
+ *  - o pulsación de tecla física(fusionarse con entidad)operación de fusión
+ * hechos ordinarios(importance=0)Las actualizaciones diarias no se registran,Evite la hinchazón de la mesa.
  *
- * 用途:
- *  - 用户可查看某条记忆的演变历史
- *  - 合并/更新误操作后可回滚到旧值
- *  - 反思任务合并时保留被合并方原文(可追溯)
+ * Propósito:
+ *  - Los usuarios pueden ver el historial de evolución de una determinada memoria.
+ *  - fusionar/Puede volver al valor anterior después de un error de actualización.
+ *  - Al fusionar tareas de reflexión, conserve el texto original de la parte fusionada(rastreable)
  */
 @Entity(
     tableName = "fact_revisions",
@@ -29,23 +29,23 @@ data class FactRevisionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
-    /** 被修改的事实 id(facts.id,不加外键避免级联损耗)。 */
+    /** hechos modificados id(facts.id,No agregue claves externas para evitar pérdidas en cascada). */
     @ColumnInfo(name = "fact_id")
     val factId: Long,
 
-    /** 修改前内容(可为空: 新增合并无旧值场景)。 */
+    /** Contenido antes de la modificación(Puede ser nulo: Se agregó un nuevo escenario de fusión sin el valor anterior.). */
     @ColumnInfo(name = "old_content")
     val oldContent: String,
 
-    /** 修改后内容。 */
+    /** Contenido modificado. */
     @ColumnInfo(name = "new_content")
     val newContent: String,
 
-    /** 变更时间 ISO 8601。 */
+    /** Fecha de cambio ISO 8601. */
     @ColumnInfo(name = "changed_at")
     val changedAt: String,
 
-    /** 变更原因(update/merge/reflection 等)。 */
+    /** Razón del cambio(update/merge/reflection espera). */
     @ColumnInfo(name = "reason")
     val reason: String,
 )

@@ -21,14 +21,14 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * 把一段完整录音转成文字的一次性转写器。
+ * Un transcriptor de una sola vez que convierte una grabación completa en texto.
  *
- * 录音不在这一层:调用方采完 PCM、封好 WAV 再把字节交过来,这里只管「一段音频进,一句话出」。
- * 连接参数一律取自用户的语音识别设置,并走 [SpeechProviderResolver] 解析 —— 开了
- * 「跟随供应商配置」的用户,录音与流式识别用的是同一套地址与凭据。
+ * La grabación no está en este nivel.:La persona que llama recoge el PCM, sella el WAV y luego entrega los bytes.,Aquí solo nos centramos en "una entrada de audio".,Dígalo en una frase."
+ * Los parámetros de conexión siempre se toman de la configuración de reconocimiento de voz del usuario.,y vete [SpeechProviderResolver] analizar —— Abierto
+ * Usuarios de "Seguir configuración de proveedor",La identificación de grabación y transmisión utiliza el mismo conjunto de direcciones y credenciales.
  *
- * 与流式控制器相反,这里没有增量、没有分段、没有重试:一次请求对应一句话,
- * 任何一步失败都当作「没听清」返回 null,不向调用方抛异常。
+ * Contrario de controlador de flujo,Sin incrementos, sin puesta en escena, sin reintentos:Una solicitud corresponde a una frase.,
+ * Si algún paso falla, se devolverá como "no escuché con claridad". null,No lanza una excepción a la persona que llama.
  */
 class OneShotAsrTranscriber(
     private val settings: SettingsRepository,
@@ -36,15 +36,15 @@ class OneShotAsrTranscriber(
 ) {
 
     /**
-     * 把 [wavBytes] 整段转成文字。
+     * poner [wavBytes] Convierte todo el párrafo en texto.
      *
-     * @return 去掉首尾空白的文本;引擎不支持、未配置识别服务、请求失败、响应里没有可用文本都返回 null。
+     * @return Eliminar el texto en blanco inicial y final;Si el motor no lo admite, el servicio de reconocimiento no está configurado, la solicitud falla o no hay texto disponible en la respuesta, se devolverá nulo.
      */
     suspend fun transcribe(wavBytes: ByteArray): String? {
         if (wavBytes.isEmpty()) return null
         val config = effectiveConfig() ?: return null
         if (!config.supportsFileTranscription()) {
-            Logger.w(TAG, "当前识别引擎(${config.provider})不提供整段音频转写端点")
+            Logger.w(TAG, "Motor de reconocimiento actual(${config.provider})No se proporciona el punto final de transcodificación de audio completo")
             return null
         }
         val base = config.baseUrl.ifBlank { config.defaultBaseUrl().ifBlank { DEFAULT_BASE_URL } }
@@ -57,34 +57,34 @@ class OneShotAsrTranscriber(
     }
 
     /**
-     * 当前设置能不能把整段音频转成文字。
+     * ¿Puede la configuración actual convertir todo el audio en texto?
      *
-     * 与 [transcribe] 共用同一份解析结果与同一个判据 —— 说支持就必须真的会发请求，
-     * 不能说支持却在 [transcribe] 里当场返回 null。
+     * con [transcribe] Compartir el mismo resultado de análisis y el mismo criterio —— Para decir soporte, debes poder realizar solicitudes.
+     * No puedo decir que el apoyo esté ahí, pero [transcribe] Devuelve nulo en el acto.
      */
     suspend fun supportsTranscription(): Boolean = effectiveConfig()?.supportsFileTranscription() == true
 
-    /** 读一次设置,把「跟随供应商」解析进配置;没配 apiKey 就没有可用的识别服务。 */
+    /** Leer la configuración una vez,Analizar \"Seguir proveedor\" en la configuración;Sin apiKey, no hay servicio de identificación disponible. */
     private suspend fun effectiveConfig(): AsrConfig? {
         val config = settings.asrConfigFlow.first()
         val providers = settings.providersFlow.first()
         val resolved = SpeechProviderResolver.resolveAsr(config, providers)
         if (resolved.isProviderFallback) {
-            Logger.w(TAG, "跟随供应商配置不可用(${resolved.fallbackReason}),录音转写改用手填配置")
+            Logger.w(TAG, "Seguir la configuración del proveedor no está disponible(${resolved.fallbackReason}),La transcripción de la grabación cambió a configuración manual.")
         }
         val effective = config.withResolvedEndpoint(resolved)
         if (effective.apiKey.isBlank()) {
-            Logger.w(TAG, "语音识别未配置 apiKey,跳过录音转写")
+            Logger.w(TAG, "El reconocimiento de voz no está configurado apiKey,Saltar transcripción de grabación")
             return null
         }
         return effective
     }
 
     /**
-     * POST `{baseUrl}/audio/transcriptions`(multipart/form-data)。
+     * POST `{baseUrl}/audio/transcriptions`(multipart/form-data).
      *
-     * 表单只有三项:音频文件、模型、`response_format=json`;不带 language,
-     * 语种交给服务端自己判断,免得用户没选语种时被按中文强转一段外文。
+     * Sólo hay tres elementos en el formulario.:archivos de audio, modelos,`response_format=json`;sin language,
+     * El idioma lo decide el servidor.,Esto evita que los usuarios se vean obligados a presionar chino para transferir un texto extranjero cuando no han seleccionado un idioma.
      */
     private suspend fun requestTranscription(url: String, apiKey: String, model: String, wavBytes: ByteArray): String? =
         withContext(Dispatchers.IO) {
@@ -102,17 +102,17 @@ class OneShotAsrTranscriber(
             try {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        Logger.w(TAG, "录音转写失败: HTTP ${response.code} ${response.message}")
+                        Logger.w(TAG, "Error en la transcripción de la grabación: HTTP ${response.code} ${response.message}")
                         return@withContext null
                     }
                     val text = parseOneShotTranscription(response.body?.string().orEmpty())
-                    if (text == null) Logger.w(TAG, "录音转写响应里没有可用文本(HTTP ${response.code})")
+                    if (text == null) Logger.w(TAG, "No hay texto disponible en la respuesta transcrita grabada(HTTP ${response.code})")
                     text
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IOException) {
-                Logger.w(TAG, "录音转写请求异常: ${e.message}")
+                Logger.w(TAG, "Excepción de solicitud de transcripción de grabación: ${e.message}")
                 null
             }
         }
@@ -120,7 +120,7 @@ class OneShotAsrTranscriber(
     private companion object {
         private const val TAG = "OneShotAsrTranscriber"
 
-        /** 与既有 Whisper 客户端同一个兜底地址:用户既没手填也没跟随供应商时用官方端点。 */
+        /** Misma dirección que el cliente Whisper existente:Utilice el punto final oficial cuando el usuario no lo complete manualmente ni siga al proveedor. */
         private const val DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
         private const val FILE_NAME = "voice.wav"
@@ -130,11 +130,11 @@ class OneShotAsrTranscriber(
 }
 
 /**
- * 解析转写响应里的 `text` 字段。
+ * Analizar la respuesta transcrita `text` campo.
  *
- * 只认 JSON 里的字符串 text:字段缺失、不是字符串、trim 后为空、响应根本不是 JSON,
- * 一律返回 null。这里不做「响应是纯文本就整段拿走」的兜底 —— `response_format=json`
- * 下那多半是一段报错页面,当成识别结果填进输入框比什么都不填更糟。
+ * Reconocer solo cadenas en texto JSON: falta el campo y no es una cadena.trim El resultado está vacío y la respuesta no lo es en absoluto. JSON,
+ * Siempre devuelve nulo. Aquí no hay garantía de que "si la respuesta es texto sin formato, se eliminará el párrafo completo". —— `response_format=json`
+ * La siguiente es probablemente una página de error.,Completar el cuadro de entrada como resultado del reconocimiento es peor que no completar nada.
  */
 internal fun parseOneShotTranscription(body: String): String? = runCatching {
     val obj = Json.parseToJsonElement(body) as? JsonObject
@@ -143,14 +143,14 @@ internal fun parseOneShotTranscription(body: String): String? = runCatching {
 }.getOrNull()
 
 /**
- * 只有真能接 `POST {baseUrl}/audio/transcriptions` 的引擎才认整段音频。
+ * Sólo si realmente puedes soportarlo `POST {baseUrl}/audio/transcriptions` El motor reconoce todo el audio.
  *
- * 其余引擎各走各的路:系统 Intent 没有 HTTP 端点、DashScope 是 wss 实时与异步文件转录、
- * Step 把音频塞进 chat 请求、Realtime 是 wss 流式 —— 拿着它们的 apiKey 去拼
- * `/audio/transcriptions` 只会得到一个必败的请求。所以支持与否看引擎类型,不看 apiKey 真不真。
+ * El resto de motores toman caminos separados.:La intención del sistema no tiene un punto final HTTP,DashScope ¿Wss es una transcripción de archivos asincrónica y en tiempo real?
+ * Step Insertar audio en la solicitud de chat,Realtime es transmisión wss —— Tome su apiKey para deletrear
+ * `/audio/transcriptions` Sólo recibirás una solicitud perdedora. Entonces, si es compatible o no depende del tipo de motor.,No es cierto sin mirar apiKey.
  *
- * 还需 apiKey 非空且 baseUrl 是 http(s):这两个条件缺一个,[OneShotAsrTranscriber.transcribe]
- * 也会在发请求前就返回 null。
+ * También se requiere que apiKey no esté vacía y baseUrl esté http(s):Falta una de estas dos condiciones.,[OneShotAsrTranscriber.transcribe]
+ * También devolverá nulo antes de enviar la solicitud.
  */
 internal fun AsrConfig.supportsFileTranscription(): Boolean {
     if (provider != AsrProviderType.OPENAI_WHISPER && provider != AsrProviderType.AGNES) return false
@@ -160,10 +160,10 @@ internal fun AsrConfig.supportsFileTranscription(): Boolean {
 }
 
 /**
- * 拼出转写端点。
+ * Deletrea el punto final de la transliteración.
  *
- * 与既有 Whisper 客户端同一套规则:配到 `/v1` 就不重复拼版本段,
- * 用户把完整端点粘进设置里也照样能用。
+ * El mismo conjunto de reglas que el cliente Whisper existente:asignado a `/v1` No repetir la versión ortográfica,
+ * Los usuarios aún pueden usarlo pegando el punto final completo en la configuración.
  */
 internal fun oneShotTranscriptionUrl(baseUrl: String): String {
     val base = baseUrl.trimEnd('/')
@@ -174,7 +174,7 @@ internal fun oneShotTranscriptionUrl(baseUrl: String): String {
     }
 }
 
-/** 转写用的 HTTP 客户端:超时与既有 ASR 客户端取同一组常量,并继承宿主的代理设置。 */
+/** Cliente HTTP para transcribir:El tiempo de espera toma el mismo conjunto de constantes que el cliente ASR existente,Y herede la configuración del proxy del host. */
 private fun defaultClient(): OkHttpClient = ProxyProvider.applyTo(OkHttpClient.Builder())
     .connectTimeout(AsrConstants.CONNECT_TIMEOUT_SEC, TimeUnit.SECONDS)
     .readTimeout(AsrConstants.READ_TIMEOUT_SEC, TimeUnit.SECONDS)

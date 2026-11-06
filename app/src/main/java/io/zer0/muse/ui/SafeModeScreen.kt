@@ -57,32 +57,32 @@ import io.zer0.muse.ui.theme.MuseShapes
 import io.zer0.muse.util.ShareIntentHelper
 
 /**
- * v2.0+: Safe Mode 极简 UI(上次崩溃后展示)。
+ * v2.0+: Safe Mode minimalista UI(Mostrado después del último accidente).
  *
- * 极简恢复界面,使用 muse 设计 token 体系:
- *  - 顶部:警告图标(MuseIcons.alertTriangle) + "上次启动崩溃" 标题
- *  - 中部:崩溃时间 + 崩溃堆栈摘要(垂直滚动,等宽字体)
- *  - 底部:垂直排列的操作按钮(MuseCardPress 触觉风格,无涟漪)
- *    a) 继续正常启动 — 清除 Safe Mode 标记并杀进程冷启动
- *    b) 查看完整崩溃日志 — 通过 Intent 分享崩溃日志文件
- *    c) 清除所有数据并重启 — ActivityManager.clearApplicationUserData
- *    d) 复制崩溃信息 — 复制到剪贴板
+ * Interfaz de recuperación minimalista,Utilice Muse para diseñar un sistema de fichas.:
+ *  - arriba:icono de advertencia(MuseIcons.alertTriangle) + "Fallo en el último inicio" Título
+ *  - céntrico:Tiempo de falla + resumen de la pila de fallas(desplazamiento vertical,fuente monoespaciada)
+ *  - abajo:Botones de acción dispuestos verticalmente(MuseCardPress estilo táctil,sin ondulaciones)
+ *    a) Continúe comenzando normalmente — Borrar el indicador de Modo seguro y finalizar el proceso para un arranque en frío
+ *    b) Ver registro de fallos completo — Compartir archivos de registro de fallos mediante intención
+ *    c) Borrar todos los datos y reiniciar — ActivityManager.clearApplicationUserData
+ *    d) Copiar información sobre fallos — copiar al portapapeles
  *
- * 设计约束:
- *  - 不依赖 Koin(崩溃可能就是 Koin 启动失败),全部使用 MuseCrashHandler 静态方法
- *  - 崩溃信息从 SharedPreferences 读取(safe_mode_pending + crash_time + crash_trace),
- *    SP 为空时回退到崩溃日志文件 readLatestCrashLog
- *  - warm-paper 风格由外层 MuseTheme 提供(见 MainActivity 调用处),此处使用 MaterialTheme.colorScheme
+ * restricciones de diseño:
+ *  - no depende de Koin(El bloqueo puede deberse a una falla en el inicio de Koin.),Todos usan métodos estáticos de MuseCrashHandler
+ *  - La información sobre fallos se lee desde SharedPreferences(safe_mode_pending + crash_time + crash_trace),
+ *    SP Volver al archivo de registro de fallos cuando esté vacío readLatestCrashLog
+ *  - warm-paper El estilo lo proporciona el MuseTheme exterior.(Ver el sitio de llamadas de MainActivity),usado aquí MaterialTheme.colorScheme
  */
 @Composable
 fun SafeModeScreen() {
     val context = LocalContext.current
 
-    // v1.141 F2: 崩溃恢复引导 — 展示数据完好说明与云端备份恢复路径
+    // v1.141 F2: arranque de recuperación de fallos — Mostrar instrucciones de integridad de datos y rutas de recuperación y copia de seguridad en la nube.
     var showRecoveryGuide by remember { mutableStateOf(false) }
     var showClearDataConfirm by remember { mutableStateOf(false) }
 
-    // 优先从 SP 读取结构化崩溃信息(v2.0+),为空时回退到崩溃日志文件
+    // Priorizar la lectura de información estructurada sobre fallos del SP(v2.0+),Volver al archivo de registro de fallos cuando esté vacío
     val crashTime = remember { MuseCrashHandler.getCrashTime(context) }
     val crashTrace = remember {
         MuseCrashHandler.getCrashTrace(context) ?: MuseCrashHandler.readLatestCrashLog(context)
@@ -104,26 +104,26 @@ fun SafeModeScreen() {
         ) {
             Spacer(Modifier.height(MusePaddings.sectionGap))
 
-            // ── 顶部:警告图标 + 标题 ────────────────────────────────────────
+            // ── arriba:icono de advertencia + título ────────────────────────────────────────
             WarningHeader()
 
             Spacer(Modifier.height(MusePaddings.sectionGap))
 
-            // ── 中部:崩溃信息卡片 ──────────────────────────────────────────
+            // ── céntrico:Tarjeta de información sobre accidentes ──────────────────────────────────────────
             CrashInfoCard(crashTime = crashTime, crashTrace = crashTrace)
 
             Spacer(Modifier.height(MusePaddings.sectionGap))
 
-            // ── 底部:操作按钮(垂直排列,MuseCardPress 触觉风格) ──────────────
+            // ── abajo:Botón de acción(disposición vertical,MuseCardPress estilo táctil) ──────────────
             ActionButtons(
                 crashTrace = crashTrace,
                 onContinueNormal = {
-                    // 清除 Safe Mode 标记(文件 flag + SP 持久化层)
+                    // Borrar indicador de modo seguro(Bandera de archivo + capa de persistencia SP)
                     MuseCrashHandler.clearSafeModeFlag(context)
-                    // v1.91-hotfix 经验:必须杀进程!recreate() 仅重建 Activity,
-                    // Application.onCreate 不会再次执行 → startKoin 不被调用
-                    // → MainActivity by inject() 崩溃 "KoinApplication has been started"。
-                    // 杀进程后系统下次冷启动会重新走 Application.onCreate → startKoin 正常执行。
+                    // v1.91-hotfix experiencia:Debe matar el proceso!recreate() Reconstruir solo Activity,
+                    // Application.onCreate no será ejecutado nuevamente → startKoin no llamado
+                    // → MainActivity by inject() colapsar "KoinApplication has been started".
+                    // Después de finalizar el proceso, el sistema se reiniciará la próxima vez que se inicie en frío. Application.onCreate → startKoin Ejecutar normalmente.
                     (context as? Activity)?.finishAffinity()
                     android.os.Process.killProcess(android.os.Process.myPid())
                 },
@@ -137,7 +137,7 @@ fun SafeModeScreen() {
         }
     }
 
-    // v1.141 F2: 崩溃恢复引导对话框(纯文案引导,不依赖 Koin)
+    // v1.141 F2: Cuadro de diálogo de inicio de recuperación de fallas(Orientación pura sobre redacción publicitaria,no depende de Koin)
     if (showRecoveryGuide) {
         MuseDialog(
             onDismissRequest = { showRecoveryGuide = false },
@@ -180,9 +180,9 @@ fun SafeModeScreen() {
 }
 
 /**
- * 顶部警告图标 + "上次启动崩溃" 标题。
+ * icono de advertencia superior + "Fallo en el último inicio" título.
  *
- * 圆形 errorContainer 背景 + Warning outline 图标,对齐系统警告样式。
+ * error redondo Fondo del contenedor + icono de contorno de advertencia,Alinear los estilos de advertencia del sistema.
  */
 @Composable
 private fun WarningHeader() {
@@ -220,7 +220,7 @@ private fun WarningHeader() {
 }
 
 /**
- * 中部崩溃信息卡片 — 崩溃时间 + 堆栈摘要(等宽字体 + 垂直滚动)。
+ * Tarjeta central de información sobre accidentes — Tiempo de caída + resumen de pila(Fuente monoespaciada + desplazamiento vertical).
  */
 @Composable
 private fun CrashInfoCard(crashTime: String?, crashTrace: String?) {
@@ -232,7 +232,7 @@ private fun CrashInfoCard(crashTime: String?, crashTrace: String?) {
         Column(
             modifier = Modifier.padding(MusePaddings.cardInner),
         ) {
-            // 崩溃时间行
+            // Línea de tiempo del accidente
             if (!crashTime.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -250,7 +250,7 @@ private fun CrashInfoCard(crashTime: String?, crashTrace: String?) {
                 }
                 Spacer(Modifier.height(MusePaddings.contentGap))
             }
-            // 崩溃堆栈摘要
+            // Resumen de la pila de fallos
             Text(
                 text = stringResource(R.string.safe_mode_stack_trace_label),
                 style = MaterialTheme.typography.labelMedium,
@@ -273,11 +273,11 @@ private fun CrashInfoCard(crashTime: String?, crashTrace: String?) {
 }
 
 /**
- * 操作按钮组(垂直排列,每个按钮使用 MuseCardPress 触觉风格)。
+ * grupo de botones de acción(disposición vertical,Utilice el estilo táctil MuseCardPress para cada botón).
  *
- * 每个按钮:图标 + 标题文字,左对齐,无涟漪按压反馈,对齐系统列表项。
+ * cada botón:Icono + texto del título,alineado a la izquierda,Comentarios de prensa sin fluctuaciones,Alinear elementos de la lista del sistema.
  */
-// 6 个回调参数为操作按钮组固有结构(每个按钮一个动作),拆分反损可读性
+// 6 Los parámetros de devolución de llamada son la estructura inherente del grupo de botones de operación.(Una acción por botón),La inversión dividida daña la legibilidad
 @Suppress("LongParameterList")
 @Composable
 private fun ActionButtons(
@@ -292,7 +292,7 @@ private fun ActionButtons(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
     ) {
-        // a) 继续正常启动 — primary 强调色
+        // a) Continúe comenzando normalmente — primary color de acento
         SafeModeActionButton(
             icon = MuseIcons.refresh,
             label = stringResource(R.string.safe_mode_continue_normal),
@@ -301,7 +301,7 @@ private fun ActionButtons(
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onClick = onContinueNormal,
         )
-        // a2) v1.141 F2: 数据恢复引导 — tertiary 强调色,崩溃后引导恢复路径
+        // a2) v1.141 F2: guía de recuperación de datos — tertiary color de acento,Ruta de recuperación de arranque después de un fallo
         SafeModeActionButton(
             icon = MuseIcons.cloudDownload,
             label = stringResource(R.string.safe_mode_data_recovery),
@@ -310,7 +310,7 @@ private fun ActionButtons(
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             onClick = onShowRecoveryGuide,
         )
-        // b) 查看完整崩溃日志
+        // b) Ver registro de fallos completo
         SafeModeActionButton(
             icon = MuseIcons.fileText,
             label = stringResource(R.string.safe_mode_view_full_log),
@@ -320,7 +320,7 @@ private fun ActionButtons(
             onClick = onViewFullLog,
             enabled = !crashTrace.isNullOrBlank(),
         )
-        // c) 清除所有数据并重启 — error 强调色,危险操作
+        // c) Borrar todos los datos y reiniciar — error color de acento,Operación peligrosa
         SafeModeActionButton(
             icon = MuseIcons.wand,
             label = stringResource(R.string.safe_mode_clear_data_restart),
@@ -329,7 +329,7 @@ private fun ActionButtons(
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             onClick = onClearData,
         )
-        // d) 复制崩溃信息
+        // d) Copiar información sobre fallos
         SafeModeActionButton(
             icon = MuseIcons.copy,
             label = stringResource(R.string.safe_mode_copy_crash_info),
@@ -343,14 +343,14 @@ private fun ActionButtons(
 }
 
 /**
- * 单个 Safe Mode 操作按钮 — MuseCardPress 包装,左侧图标 + 文字。
+ * Botón de acción de modo seguro único — MuseCardPress embalaje,Icono + texto a la izquierda.
  *
- * @param icon 图标
- * @param label 按钮文字
- * @param containerColor 背景色
- * @param contentColor 文字和图标颜色
- * @param onClick 点击回调
- * @param enabled 是否可点击(禁用时降低透明度并吞掉点击事件)
+ * @param icon icono
+ * @param label texto del botón
+ * @param containerColor color de fondo
+ * @param contentColor Colores de texto e íconos
+ * @param onClick Haga clic en devolución de llamada
+ * @param enabled ¿Se puede hacer clic?(Reducir la transparencia y tragar eventos de clic cuando esté deshabilitado)
  */
 @Composable
 private fun SafeModeActionButton(
@@ -403,10 +403,10 @@ private fun SafeModeActionButton(
 }
 
 /**
- * 通过 Intent 分享崩溃日志文件(txt)。
+ * Compartir archivos de registro de fallos mediante intención(txt).
  *
- * 优先取最新一份崩溃日志文件,通过 FileProvider 暴露 URI,
- * 用 ACTION_SEND 分享给外部应用(邮件 / 文件管理 / 聊天应用等)。
+ * Obtenga primero el archivo de registro de fallos más reciente,Expuesto a través de FileProvider URI,
+ * Compartir con aplicaciones externas usando ACTION_SEND(Aplicación de correo/gestión de archivos/chat, etc.).
  */
 private fun shareCrashLog(context: Context) {
     val logs = MuseCrashHandler.listCrashLogs(context)
@@ -439,24 +439,24 @@ private fun shareCrashLog(context: Context) {
 }
 
 /**
- * 清除应用全部数据并重启。
+ * Borre todos los datos de la aplicación y reinicie.
  *
- * API 19+: ActivityManager.clearApplicationUserData 系统级清除(files / databases / SP / cache),
- *           自动杀进程,下次启动相当于全新安装。
- * 旧设备 fallback:手动删除核心目录后杀进程。
+ * API 19+: ActivityManager.clearApplicationUserData Limpieza a nivel del sistema(files / databases / SP / cache),
+ *           Matar proceso automáticamente,El próximo inicio equivale a una nueva instalación.
+ * Respaldo del dispositivo antiguo: elimine manualmente el directorio principal y luego finalice el proceso.
  */
 private fun clearApplicationData(context: Context) {
-    Logger.w("SafeModeScreen", "clearApplicationData — 用户主动清除全部数据")
+    Logger.w("SafeModeScreen", "clearApplicationData — El usuario borra activamente todos los datos")
     val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
     if (am != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
         @Suppress("DEPRECATION")
         val cleared = am.clearApplicationUserData()
         if (cleared) {
-            // 系统会自动杀进程,这里兜底防返回
+            // El sistema finalizará automáticamente el proceso.,Manténgase a salvo aquí para evitar el regreso.
             (context as? Activity)?.finishAffinity()
             android.os.Process.killProcess(android.os.Process.myPid())
         } else {
-            // 用户取消或失败,fallback 到手动清理
+            // Usuario cancelado o fallido,fallback a la limpieza manual
             manualClearData(context)
         }
     } else {
@@ -464,7 +464,7 @@ private fun clearApplicationData(context: Context) {
     }
 }
 
-/** 旧设备 / clearApplicationUserData 失败时的手动清理 fallback。 */
+/** Dispositivos antiguos/limpieza manual alternativa cuando falla clearApplicationUserData. */
 private fun manualClearData(context: Context) {
     runCatching {
         context.filesDir.deleteRecursively()
@@ -476,20 +476,20 @@ private fun manualClearData(context: Context) {
 }
 
 /**
- * 复制崩溃信息(时间 + 堆栈)到剪贴板。
+ * Copiar información sobre fallos(tiempo + pila)al portapapeles.
  */
 private fun copyCrashInfo(context: Context, crashTime: String?, crashTrace: String?) {
     val text = buildString {
         if (!crashTime.isNullOrBlank()) {
-            appendLine("崩溃时间: $crashTime")
+            appendLine("tiempo de choque: $crashTime")
             appendLine()
         }
         if (!crashTrace.isNullOrBlank()) {
-            appendLine("崩溃堆栈:")
+            appendLine("pila de choque:")
             append(crashTrace)
         }
         if (isEmpty()) {
-            append("(无崩溃信息)")
+            append("(Sin información sobre accidentes)")
         }
     }
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

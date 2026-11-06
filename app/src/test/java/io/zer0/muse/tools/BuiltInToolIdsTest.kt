@@ -4,17 +4,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 默认助手能看到哪些内置工具的回归测试。
+ * ¿Qué pruebas de regresión de herramientas integradas puede ver el asistente predeterminado?
  *
- * [ToolRegistry.BUILT_IN_TOOL_IDS] 同时是「新装助手的能力集」与「老用户助手的补全来源」
- * （见 AssistantRepository 的迁移逻辑），所以漏登记会让某类工具在聊天里彻底不可见——
- * 曾经 MCP 管理工具就是这样：registry 里注册了，但不在内置列表里，默认助手看不到。
+ * [ToolRegistry.BUILT_IN_TOOL_IDS] Al mismo tiempo, es "el conjunto de capacidades del asistente recién instalado" y "la fuente complementaria del asistente para usuarios antiguos".
+ * (Consulte la lógica de migración de AssistantRepository), por lo que faltar el registro hará que ciertos tipos de herramientas sean completamente invisibles en el chat.——
+ * Esta solía ser la herramienta de gestión de MCP:registry Está registrado, pero no está en la lista integrada y el asistente predeterminado no puede verlo.
  */
 class BuiltInToolIdsTest {
 
     @Test
     fun mcpManagementToolsAreExposedToTheDefaultAssistant() {
-        // 与 McpRegistry.registerManagementTools 注册的名字一一对应。
+        // Correspondencia uno a uno con el nombre registrado por McpRegistry.registerManagementTools.
         val mcpManagementTools = listOf(
             "mcp_mgmt_list",
             "mcp_mgmt_configure",
@@ -25,7 +25,7 @@ class BuiltInToolIdsTest {
 
         mcpManagementTools.forEach { tool ->
             assertTrue(
-                "内置工具列表缺少 $tool，默认助手在聊天里将无法调用它",
+                "Falta la lista de herramientas integradas $tool, el asistente predeterminado no podrá llamarlo en el chat",
                 ToolRegistry.BUILT_IN_TOOL_IDS.contains(tool),
             )
         }
@@ -33,14 +33,14 @@ class BuiltInToolIdsTest {
 
     @Test
     fun scriptRuntimesAreExposedToTheDefaultAssistant() {
-        // v2.6.1 回归: 内置运行时工具必须登记在 BUILT_IN_TOOL_IDS——
-        // 它是默认助手 toolIdsJson 白名单的来源,漏登记会在 resolveToolsAndModel
-        // 阶段就被过滤掉(优先于 ToolExposurePolicy 关键词族),find_tools 装载也绕不过。
-        // 曾经 execute_python_script 就是这种情形: 注册了运行时、模型却完全看不到该工具,
-        // 只能去 shell/Node 里找解释器(用户实测反复空转)。
+        // v2.6.1 Regresar: Las herramientas de ejecución integradas deben registrarse en BUILT_IN_TOOL_IDS——
+        // Es la fuente de la lista blanca de herramientas auxiliares predeterminadas IdsJson.,La inscripción faltante estará en resolveToolsAndModel
+        // el escenario se filtra(Prioriza la familia de palabras clave ToolExposurePolicy),find_tools La carga tampoco se puede omitir.
+        // Este fue el caso de ejecutar_python_script: El tiempo de ejecución y el modelo están registrados pero la herramienta no es visible en absoluto.,
+        // Sólo puedes encontrar el intérprete en shell/Node(Ralentí repetido medido por los usuarios).
         listOf("execute_javascript", "execute_node_script", "execute_python_script").forEach { tool ->
             assertTrue(
-                "内置工具列表缺少 $tool，默认助手在聊天里将无法调用它",
+                "Falta la lista de herramientas integradas $tool, el asistente predeterminado no podrá llamarlo en el chat",
                 ToolRegistry.BUILT_IN_TOOL_IDS.contains(tool),
             )
         }
@@ -48,8 +48,8 @@ class BuiltInToolIdsTest {
 
     @Test
     fun appControlToolsAreExposedToTheDefaultAssistant() {
-        // v2.6.2 回归: 应用控制工具集（AppControlTools 注册）此前漏登记分类和白名单，
-        // 导致默认助手完全看不到它们（不是恒发，是不可见）——用户想"让 AI 帮我开个 App"做不到。
+        // v2.6.2 Regresar: Conjunto de herramientas de control de aplicaciones (AppControlTools Registro) Me perdí categorías de registro y listas blancas antes,
+        // Como resultado, el asistente predeterminado no puede verlos en absoluto (no Hengfa, pero es invisible)——los usuarios quieren"Deja que AI me abra uno App"No puedo hacerlo.
         listOf(
             "app_list",
             "app_launch",
@@ -59,7 +59,7 @@ class BuiltInToolIdsTest {
             "app_uninstall",
         ).forEach { tool ->
             assertTrue(
-                "内置工具列表缺少 $tool，默认助手在聊天里将无法调用它",
+                "Falta la lista de herramientas integradas $tool, el asistente predeterminado no podrá llamarlo en el chat",
                 ToolRegistry.BUILT_IN_TOOL_IDS.contains(tool),
             )
         }
@@ -68,7 +68,7 @@ class BuiltInToolIdsTest {
     @Test
     fun builtInToolIdsAreUniqueAndNonBlank() {
         val ids = ToolRegistry.BUILT_IN_TOOL_IDS
-        assertTrue("内置工具列表不应有空白 id", ids.none { it.isBlank() })
-        assertTrue("内置工具列表不应有重复 id", ids.distinct().size == ids.size)
+        assertTrue("No debería haber espacios vacíos en la lista de herramientas integradas. id", ids.none { it.isBlank() })
+        assertTrue("La lista de herramientas integradas no debería tener duplicados. id", ids.distinct().size == ids.size)
     }
 }

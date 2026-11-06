@@ -11,11 +11,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 设置搜索索引的结构与命中锁定。
+ * Configure la estructura del índice de búsqueda y presione bloquear.
  *
- * 索引由分类清单里的 48 项加上「只做搜索直达」的页内设置组成，全部记录都必须挂在
- * 14 个一级分类之一上：搜索结果靠这个分类名拼面包屑，缺了它用户就不知道自己会被带到哪。
- * 这里用真实资源跑一遍过滤与面包屑，键名改了、分组搬了都会断出来。
+ * El índice consta de 48 elementos en la lista de categorías más la configuración en la página de "solo búsqueda directa". Todos los registros deben colgarse
+ * 14 En una de las categorías de primer nivel: los resultados de la búsqueda se basan en el nombre de esta categoría para crear rutas de navegación. Sin él, los usuarios no sabrán adónde los llevarán.
+ * Aquí, utilizamos recursos reales para ejecutar filtrado y rutas de navegación. Si se cambia el nombre de la clave o se mueve el grupo, se romperá.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -28,12 +28,12 @@ class SettingsSearchIndexTest {
 
     @Test
     fun `index covers the settings catalog and extra deep links`() {
-        assertTrue("索引至少要覆盖分类清单里的 48 项", records.size >= SettingsCatalog.entries.size)
+        assertTrue("El índice debe cubrir al menos 48 elementos de la lista de clasificación.", records.size >= SettingsCatalog.entries.size)
 
         val catalogTitles = SettingsCatalog.entries.map { it.titleRes }
         catalogTitles.forEach { titleRes ->
             assertTrue(
-                "分类清单里的条目「${text(titleRes)}」没有进搜索索引",
+                "Artículos en la lista de categorías \"${text(titleRes)}\"No incluido en el índice de búsqueda",
                 records.any { it.titleRes == titleRes },
             )
         }
@@ -45,7 +45,7 @@ class SettingsSearchIndexTest {
             val title = text(record.titleRes)
             val hits = search(title)
             assertTrue(
-                "搜「$title」找不到这条记录（分组 ${record.group}）",
+                "Buscar \"$title\"No se puede encontrar este registro (agrupado ${record.group})",
                 hits.contains(record),
             )
         }
@@ -61,15 +61,15 @@ class SettingsSearchIndexTest {
                 entryTitle = text(record.titleRes),
             )
             val firstSegment = breadcrumb.substringBefore(SETTINGS_BREADCRUMB_SEPARATOR)
-            assertTrue("面包屑必须以分类名开头: $breadcrumb", allowed.contains(firstSegment))
+            assertTrue("Las rutas de navegación deben comenzar con el nombre de la categoría.: $breadcrumb", allowed.contains(firstSegment))
             assertTrue(
-                "面包屑第二段必须是条目名: $breadcrumb",
+                "El segundo párrafo de la ruta de navegación debe ser el nombre del elemento.: $breadcrumb",
                 breadcrumb.substringAfter(SETTINGS_BREADCRUMB_SEPARATOR) == text(record.titleRes),
             )
         }
     }
 
-    /** 渲染组 == 索引组：分类页里看到的每一项，索引里的归属必须与清单一致。 */
+    /** grupo de renderizado == Grupo de índice: para cada elemento visto en la página de categoría, la atribución en el índice debe ser coherente con la lista. */
     @Test
     fun `catalog entries are indexed under their declared group`() {
         SettingsCatalog.entries.forEach { entry ->
@@ -77,7 +77,7 @@ class SettingsSearchIndexTest {
                 group.entries.any { it.id == entry.id }
             }
             assertTrue(
-                "条目「${text(entry.titleRes)}」在索引里没有挂在「${text(declared.titleRes)}」下",
+                "Entrada \"${text(entry.titleRes)}\"no figura en el índice\"${text(declared.titleRes)}\"abajo",
                 records.any { it.titleRes == entry.titleRes && it.group == declared.kind },
             )
         }
@@ -86,27 +86,27 @@ class SettingsSearchIndexTest {
     @Test
     fun `moved entries are indexed in their new categories`() {
         assertEquals(
-            "代理应挂在「连接」下",
+            "El agente debe estar colgado en \"Conexiones\".",
             SettingsGroupKind.CONNECTION,
             records.single { it.titleRes == R.string.proxy_title }.group,
         )
         assertEquals(
-            "分享与安全应挂在「隐私与安全」下",
+            "El uso compartido y la seguridad deben aparecer en \"Privacidad y seguridad\".",
             SettingsGroupKind.PRIVACY_SECURITY,
             records.single { it.titleRes == R.string.settings_screen_share }.group,
         )
         assertEquals(
-            "PII 守护应挂在「隐私与安全」下",
+            "PII El guardia debe aparecer en \"Privacidad y seguridad\".",
             SettingsGroupKind.PRIVACY_SECURITY,
             records.single { it.titleRes == R.string.settings_screen_pii_guard }.group,
         )
         assertEquals(
-            "数据管理应挂在「数据与备份」下",
+            "La gestión de datos debe aparecer en \"Datos y copia de seguridad\".",
             SettingsGroupKind.DATA_STORAGE,
             records.single { it.titleRes == R.string.data_management_entry }.group,
         )
         assertEquals(
-            "统计应挂在「开发者」下",
+            "Las estadísticas deben colgarse en \"Desarrollador\"",
             SettingsGroupKind.DEVELOPER,
             records.single { it.titleRes == R.string.settings_screen_stats }.group,
         )
@@ -115,13 +115,13 @@ class SettingsSearchIndexTest {
     @Test
     fun `web access entry is indexed in the connection group`() {
         val record = records.single { it.titleRes == R.string.settings_screen_web_access }
-        assertEquals("网页版访问必须挂在「连接」分类下", SettingsGroupKind.CONNECTION, record.group)
-        assertTrue("网页版访问必须可点进页面", record.action is SettingsEntryAction.Navigate)
+        assertEquals("El acceso a la versión web debe ser en la categoría \"Conexión\"", SettingsGroupKind.CONNECTION, record.group)
+        assertTrue("Para acceder a la versión web, debe poder hacer clic en la página.", record.action is SettingsEntryAction.Navigate)
 
-        listOf("网页版", "二维码", "局域网").forEach { keyword ->
-            assertTrue("关键词「$keyword」缺失，搜索命中不到", record.keywords.contains(keyword))
+        listOf("Versión web", "código qr", "LAN").forEach { keyword ->
+            assertTrue("Palabras clave \"$keyword\"Falta, la búsqueda no puede acertar", record.keywords.contains(keyword))
         }
-        assertTrue("拼音关键词缺失", record.keywords.contains("wangyeban"))
+        assertTrue("Faltan palabras clave pinyin", record.keywords.contains("wangyeban"))
     }
 
     @Test
@@ -130,7 +130,7 @@ class SettingsSearchIndexTest {
         val hits = search(groupTitles.getValue(chatGroup))
         val chatRecords = records.filter { it.group == chatGroup }
 
-        assertTrue("按「${groupTitles.getValue(chatGroup)}」搜应当列出该分类的全部条目", hits.containsAll(chatRecords))
+        assertTrue("Presione \"${groupTitles.getValue(chatGroup)}\"La búsqueda debe enumerar todas las entradas de esta categoría.", hits.containsAll(chatRecords))
     }
 
     private fun search(query: String): List<SettingsSearchRecord> = filterSettingsSearch(

@@ -56,17 +56,17 @@ import io.zer0.muse.ui.theme.MuseShapes
 import kotlinx.coroutines.launch
 
 /**
- * v2.0 重设计: 语音识别(ASR)设置。
+ * v2.0 rediseñar: reconocimiento de voz(ASR)ajustes.
  *
- * 旧版把 7 个 Provider 铺成胶囊墙 + 每个字段一个"保存"按钮,信息密度低、主次不分。
- * 新版结构:
- *  1. 引擎卡片 — 一眼看到当前识别引擎与用途,点"更换"弹出底部选择面板;
- *  2. 连接 — API Key / baseUrl / 模型,一个"保存连接设置"统一提交;
- *  3. 识别 — 采样率 / 语言 / 热词 / VAD / 标点等,一个"保存识别设置"统一提交;
- *  4. 文件转录 — 仅 DashScope 文件模式显示,一个"保存转录设置"。
+ * La versión anterior disponía de 7 proveedores en paredes de cápsulas + uno para cada campo."guardar"botón,La densidad de información es baja y no hay distinción entre información primaria y secundaria.
+ * Nueva estructura de versión:
+ *  1. tarjeta de motor — Vea los motores y usos de reconocimiento actuales de un vistazo,punto"Reemplazar"Abre el panel de selección inferior.;
+ *  2. conectar — API Key / baseUrl / modelo,uno"Guardar configuración de conexión"Presentación unificada;
+ *  3. identificar — Tasa de muestreo/idioma/palabras calientes/VAD/puntuación, etc.,uno"Guardar configuración de reconocimiento"Presentación unificada;
+ *  4. Transcripción de documentos — El modo de archivo DashScope solo muestra,uno"Guardar configuración de transcripción".
  */
 @Composable
-@Suppress("LongMethod", "CyclomaticComplexMethod") // 一个设置页：字段按顺序排开比拆成多个只有一处的小函数更好读
+@Suppress("LongMethod", "CyclomaticComplexMethod") // Una página de configuración: es más fácil de leer si los campos están organizados en orden en lugar de dividirse en múltiples funciones pequeñas con un solo lugar.
 internal fun AsrSection(
     asrConfig: AsrConfig,
     settings: SettingsRepository,
@@ -76,8 +76,8 @@ internal fun AsrSection(
     val context = LocalContext.current
     var enginePickerOpen by remember { mutableStateOf(false) }
 
-    // 切换 Provider 时,若仍保留上一个 Provider 的默认模型,请求会带错模型名;
-    // 只有用户明确改过自定义模型时才保留,否则切到目标 Provider 的默认模型。
+    // Al cambiar de proveedor,Si aún conserva el modelo predeterminado del Proveedor anterior,La solicitud traerá el nombre del modelo incorrecto.;
+    // Solo se conserva si el usuario cambia explícitamente el modelo personalizado,De lo contrario, cambie al modelo predeterminado del proveedor de destino.
     fun configForProvider(provider: AsrProviderType): AsrConfig {
         val next = asrConfig.copy(provider = provider)
         val knownDefaults = AsrProviderType.values()
@@ -101,7 +101,7 @@ internal fun AsrSection(
         modifier = Modifier.padding(top = 4.dp),
     )
 
-    // ---- 引擎卡片 ----
+    // ---- tarjeta de motor ----
     Spacer(Modifier.size(MusePaddings.itemGap))
     Surface(
         onClick = { enginePickerOpen = true },
@@ -145,7 +145,7 @@ internal fun AsrSection(
     }
 
     if (asrConfig.provider != AsrProviderType.SYSTEM) {
-        // ---- 连接 ----
+        // ---- conectar ----
         SectionLabel(stringResource(R.string.settings_asr_group_connection))
         SettingsGroup(modifier = Modifier.padding(top = 4.dp)) {
             var asrApiKey by remember(asrConfig.provider) { mutableStateOf(asrConfig.apiKey) }
@@ -158,12 +158,12 @@ internal fun AsrSection(
             val needsBaseUrl = asrConfig.provider == AsrProviderType.OPENAI_WHISPER ||
                 asrConfig.provider == AsrProviderType.OPENAI_REALTIME ||
                 asrConfig.provider == AsrProviderType.AGNES
-            // DashScope 实时识别走内置 wss 端点,供应商地址不参与:该引擎下不提供跟随开关
+            // DashScope Identificación en tiempo real de puntos finales wss integrados,La dirección del proveedor no participa.:Este motor no proporciona un interruptor de seguimiento.
             val followAvailable = asrConfig.provider != AsrProviderType.DASHSCOPE
-            // 只有在引擎支持且用户真的开了开关时,跟随后才生效
+            // Sólo cuando el motor lo soporta y el usuario realmente enciende el interruptor.,Entrará en vigor después de seguir
             val followActive = followAvailable && asrConfig.followProvider
 
-            // 跟随供应商配置：开启后 API Key / 接口地址取自供应商，模型在同一供应商的模型里手选
+            // Siga la configuración del proveedor: una vez habilitada, la clave API/dirección de interfaz se toma del proveedor y el modelo se selecciona manualmente del modelo del mismo proveedor.
             if (followAvailable) {
                 SettingsSwitchRow(
                     icon = MuseIcons.cloud,
@@ -209,7 +209,7 @@ internal fun AsrSection(
                         providers.forEach { provider ->
                             MuseListItem(
                                 onClick = {
-                                    // 换供应商时清空模型选择，避免带着上一个供应商的模型发请求
+                                    // Borre la selección de modelo al cambiar de proveedor para evitar enviar solicitudes con el modelo del proveedor anterior.
                                     scope.launch {
                                         settings.saveAsrConfig(
                                             asrConfig.copy(providerId = provider.id, modelId = ""),
@@ -230,7 +230,7 @@ internal fun AsrSection(
                     .padding(MusePaddings.cardInner),
                 verticalArrangement = Arrangement.spacedBy(MusePaddings.itemGap),
             ) {
-                // 跟随时凭据由供应商提供，手填值保留但不可编辑
+                // El proveedor proporciona las credenciales al realizar el seguimiento y los valores completados manualmente se conservan, pero no se pueden editar.
                 if (!followActive && asrConfig.apiKey.isBlank()) {
                     InlineError(stringResource(R.string.asr_missing_api_key_error))
                 }
@@ -270,7 +270,7 @@ internal fun AsrSection(
                 }
                 SaveRow(stringResource(R.string.settings_asr_save_connection)) {
                     scope.launch {
-                        // 模型不在这里提交：它由下面的模型行自己写入
+                        // El modelo no se envía aquí: está escrito en la línea del modelo debajo de sí misma.
                         settings.saveAsrConfig(
                             asrConfig.copy(
                                 apiKey = asrApiKey.trim(),
@@ -282,12 +282,12 @@ internal fun AsrSection(
                 }
             }
 
-            // ---- 模型：候选来自供应商，这里只负责选一个 ----
+            // ---- Modelo: Los candidatos provienen de proveedores, aquí solo nos encargamos de seleccionar uno ----
             SettingsGroupDivider()
             val modelProvider = remember(providers, asrConfig.providerId) {
                 SpeechModelPicker.candidateProvider(providers, asrConfig.providerId)
             }
-            // 跟随时模型存在 modelId，手动模式存在 model
+            // El modelId existe cuando se sigue y el modo manual existe. model
             val currentModelId = if (SpeechModelPicker.asrFollowActive(asrConfig)) {
                 asrConfig.modelId
             } else {
@@ -305,7 +305,7 @@ internal fun AsrSection(
             )
         }
 
-        // ---- 识别 ----
+        // ---- identificar ----
         SectionLabel(stringResource(R.string.settings_asr_group_recognition))
         SettingsGroup(modifier = Modifier.padding(top = 4.dp)) {
             SettingsItemRow(
@@ -367,7 +367,7 @@ internal fun AsrSection(
                 }
             }
 
-            // VAD(除 SYSTEM / OPENAI_REALTIME 外显示;OPENAI_REALTIME 走服务端 VAD)
+            // VAD(Mostrar excepto SISTEMA/OPENAI_REALTIME;OPENAI_REALTIME Ir al servidor VAD)
             if (asrConfig.provider != AsrProviderType.OPENAI_REALTIME) {
                 SettingsGroupDivider()
                 SettingsSwitchRow(
@@ -416,8 +416,8 @@ internal fun AsrSection(
                     }
                 }
             } else {
-                // v2.0: OPENAI_REALTIME 的 VAD 由服务端处理,原实现整行隐藏,
-                // 用户不知道为何没有开关;补一条说明行。
+                // v2.0: OPENAI_REALTIME El VAD es manejado por el servidor.,La implementación original era ocultar toda la fila.,
+                // El usuario se pregunta por qué no hay ningún interruptor;Añade una línea de explicación.
                 SettingsGroupDivider()
                 Text(
                     text = stringResource(R.string.settings_asr_vad_realtime_note),
@@ -429,7 +429,7 @@ internal fun AsrSection(
                 )
             }
 
-            // DashScope 高级字段(仅 DASHSCOPE / DASHSCOPE_FILE 显示)
+            // DashScope Campos avanzados(Solo se muestra DASHSCOPE / DASHSCOPE_FILE)
             if (asrConfig.provider == AsrProviderType.DASHSCOPE ||
                 asrConfig.provider == AsrProviderType.DASHSCOPE_FILE
             ) {
@@ -456,7 +456,7 @@ internal fun AsrSection(
             }
         }
 
-        // ---- 文件转录(仅 DASHSCOPE_FILE) ----
+        // ---- Transcripción de documentos(solo DASHSCOPE_FILE) ----
         if (asrConfig.provider == AsrProviderType.DASHSCOPE_FILE) {
             SectionLabel(stringResource(R.string.settings_asr_group_transcription))
             SettingsGroup(modifier = Modifier.padding(top = 4.dp)) {
@@ -516,7 +516,7 @@ internal fun AsrSection(
         }
     }
 
-    // ---- 引擎选择面板 ----
+    // ---- Panel de selección de motor ----
     if (enginePickerOpen) {
         MuseBottomSheet(onDismissRequest = { enginePickerOpen = false }) {
             Text(
@@ -539,7 +539,7 @@ internal fun AsrSection(
     }
 }
 
-/** 引擎选择面板中的单个 Provider 行:图标砖 + 名称 + 描述 + 选中勾。 */
+/** Una única fila de Proveedor en el panel de selección de motor:Bloque de iconos + nombre + descripción + marca de verificación. */
 @Composable
 private fun EnginePickerRow(provider: AsrProviderType, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -575,7 +575,7 @@ private fun EnginePickerRow(provider: AsrProviderType, selected: Boolean, onClic
     }
 }
 
-/** Provider 图标砖 — 主色浅底圆角方块 + 线性图标。 */
+/** Provider icono de ladrillo — Color principal cuadrado redondeado inferior claro + icono lineal. */
 @Composable
 private fun EngineIconTile(provider: AsrProviderType, size: androidx.compose.ui.unit.Dp) {
     Box(
@@ -594,7 +594,7 @@ private fun EngineIconTile(provider: AsrProviderType, size: androidx.compose.ui.
     }
 }
 
-/** 保存按钮行 — 右对齐,避免每个字段一个保存按钮占满纵向空间。 */
+/** guardar fila de botones — Alinear a la derecha,Evite que un botón de guardar por campo ocupe espacio vertical. */
 @Composable
 private fun SaveRow(text: String, onClick: () -> Unit) {
     Row(
@@ -643,7 +643,7 @@ private fun asrProviderIcon(provider: AsrProviderType): ImageVector = when (prov
 }
 
 /**
- * 表单内联错误提示条。
+ * Barra de mensajes de error en línea del formulario.
  */
 @Composable
 private fun InlineError(message: String) {

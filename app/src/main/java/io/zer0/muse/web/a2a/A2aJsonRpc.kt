@@ -8,14 +8,14 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * AUD-20261011-A2A-PROTOCOL: JSON-RPC 信封解析与 task id 取值的纯逻辑(可单测)。
+ * AUD-20261011-A2A-PROTOCOL: JSON-RPC Lógica pura de análisis de sobres y valor de identificación de tarea(Se puede probar individualmente).
  *
- * 与 [A2aHandler] 的分工:本对象只负责"报文 → 结构判定",
- * 不触碰 ChatViewModel/会话,便于在无 Android 环境下锁定协议语义。
+ * con [A2aHandler] división del trabajo:Este objeto sólo es responsable de"mensaje → Determinación de la estructura",
+ * No toque ChatViewModel/sesión,Facilita el bloqueo de la semántica del protocolo sin Android.
  */
 internal object A2aJsonRpc {
 
-    /** 一次请求的结构判定结果。 */
+    /** El resultado del juicio de estructura de una solicitud. */
     data class Decision(
         val method: String? = null,
         val envelopeId: JsonElement? = null,
@@ -25,11 +25,11 @@ internal object A2aJsonRpc {
     )
 
     /**
-     * 解析并判定 JSON-RPC 请求。
+     * Analiza y evalúa solicitudes JSON-RPC.
      *
-     * 区分两类失败（JSON-RPC 2.0）：
-     *  - 报文不是合法 JSON → PARSE_ERROR(-32700)
-     *  - 合法 JSON 但缺 method（结构非法）→ INVALID_REQUEST(-32600)
+     * Distinguir entre dos tipos de fallo (JSON-RPC 2.0):
+     *  - El mensaje no es legal. JSON → PARSE_ERROR(-32700)
+     *  - JSON legal pero falta método (estructura ilegal)→ INVALID_REQUEST(-32600)
      */
     @Suppress("ReturnCount")
     fun classify(raw: String): Decision {
@@ -56,9 +56,9 @@ internal object A2aJsonRpc {
     }
 
     /**
-     * 取 task id：优先 A2A 规范的 `params.id`，回退信封 id（兼容 v2.5.8 旧调用）。
+     * Obtener identificación de tarea: priorizar la especificación A2A `params.id`, ID de sobre alternativo (compatible con llamadas antiguas v2.5.8).
      *
-     * 旧实现只读信封 id —— 按规范把 task id 放进 params 的客户端永远取不回任务。
+     * Antigua implementación de sobres de sólo lectura id —— El cliente que coloca la identificación de la tarea en los parámetros de acuerdo con la especificación nunca podrá recuperar la tarea.
      */
     fun taskIdFrom(params: JsonElement?, envelopeId: JsonElement?): String? {
         val fromParams = (params as? JsonObject)

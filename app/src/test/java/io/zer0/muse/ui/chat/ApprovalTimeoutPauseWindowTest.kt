@@ -17,12 +17,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 审批倒计时冻结/恢复的时序回归(全部走 runTest 虚拟时钟,不用真实等待)。
+ * Cuenta regresiva de aprobación congelada/Regresión temporal restaurada(Todo el reloj virtual runTest,No hay necesidad de esperar realmente).
  *
- * 钉住三件事:
- *  1. 冻结期间时间不走 —— 暂停 5 分钟回来,不会凭空多出一次超时;
- *  2. 恢复后从剩余时长继续 —— 已经走掉的部分不退还,也不重置回 30 秒;
- *  3. 冻结期间被外部处理(批准/拒绝、审批从注册表注销)时立即收尾,不留悬挂协程。
+ * Fijar tres cosas:
+ *  1. El tiempo no se mueve durante el período de congelación. —— Haz una pausa de 5 minutos y vuelve.,No habrá un tiempo muerto adicional de la nada.;
+ *  2. Reanudar desde la duración restante —— Las piezas que hayan sido retiradas no serán devueltas.,Tampoco se reinicia a 30 segundos.;
+ *  3. Procesado externamente durante la congelación(aprobar/Rechazo, aprobación y baja en el registro)Terminar inmediatamente,No quedan corrutinas pendientes.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ApprovalTimeoutPauseWindowTest {
@@ -39,7 +39,7 @@ class ApprovalTimeoutPauseWindowTest {
                 awaitOutcome = { slice -> withTimeoutOrNull(slice) { awaitCancellation() } },
             )
         assertEquals(ApprovalWaitOutcome.TimedOut, outcome)
-        assertEquals("未冻结时仍是原来的 30 秒", TIMEOUT_MS, testScheduler.currentTime - startedAt)
+        assertEquals("Siguen siendo los 30 segundos originales cuando no están congelados.", TIMEOUT_MS, testScheduler.currentTime - startedAt)
     }
 
     @Test
@@ -59,17 +59,17 @@ class ApprovalTimeoutPauseWindowTest {
             }
         advanceTimeBy(FIVE_MINUTES_MS)
         runCurrent()
-        assertNull("冻结期间不应出现终局", outcome)
-        assertTrue("冻结期间协程应仍在等待", job.isActive)
+        assertNull("El final del juego no debería ocurrir durante la congelación.", outcome)
+        assertTrue("La corrutina aún debería estar esperando durante el período de congelación.", job.isActive)
 
         val resumedAt = testScheduler.currentTime
         paused = false
         advanceUntilIdle()
         assertEquals(ApprovalWaitOutcome.TimedOut, outcome)
-        // 恢复时可能正好排着一个冻结期间的探活段,所以允许一个步长的误差;关键是没重置成 30 秒。
+        // Puede haber exactamente un período de exploración durante el período de congelación alineado durante la recuperación.,Entonces se permite un error en el tamaño del paso;La clave no se restablece a 30 segundos.
         val elapsedAfterResume = testScheduler.currentTime - resumedAt
-        assertTrue("恢复后不应短于原剩余时长($elapsedAfterResume)", elapsedAfterResume >= TIMEOUT_MS)
-        assertTrue("恢复后应只剩原剩余时长,误差不超过一个探活段($elapsedAfterResume)", elapsedAfterResume <= TIMEOUT_MS + STEP_MS)
+        assertTrue("Después de la recuperación, no debe ser más corto que el tiempo restante original.($elapsedAfterResume)", elapsedAfterResume >= TIMEOUT_MS)
+        assertTrue("Después de la restauración, solo debe quedar el tiempo restante original.,El error no supera una sección de detección.($elapsedAfterResume)", elapsedAfterResume <= TIMEOUT_MS + STEP_MS)
     }
 
     @Test
@@ -87,7 +87,7 @@ class ApprovalTimeoutPauseWindowTest {
                         awaitOutcome = { slice -> withTimeoutOrNull(slice) { awaitCancellation() } },
                     )
             }
-        // 先在前台走掉 20 秒,再离开 5 分钟,回来时只应剩 10 秒。
+        // Aléjese primero en la recepción durante 20 segundos.,Dejar otros 5 minutos,Solo deberían quedar 10 segundos cuando regreses.
         advanceTimeBy(20_000L)
         runCurrent()
         assertNull(outcome)
@@ -103,8 +103,8 @@ class ApprovalTimeoutPauseWindowTest {
         assertEquals(ApprovalWaitOutcome.TimedOut, outcome)
         val elapsedAfterResume = testScheduler.currentTime - resumedAt
         val expectedRemaining = TIMEOUT_MS - 20_000L
-        assertTrue("恢复后不应短于已消耗外的剩余时长($elapsedAfterResume)", elapsedAfterResume >= expectedRemaining)
-        assertTrue("剩下 10 秒,不应被重置成 30 秒($elapsedAfterResume)", elapsedAfterResume <= expectedRemaining + STEP_MS)
+        assertTrue("El tiempo restante después de la recuperación no debe ser menor que el tiempo invertido.($elapsedAfterResume)", elapsedAfterResume >= expectedRemaining)
+        assertTrue("quedan 10 segundos,No se debe restablecer a 30 segundos.($elapsedAfterResume)", elapsedAfterResume <= expectedRemaining + STEP_MS)
     }
 
     @Test
@@ -133,7 +133,7 @@ class ApprovalTimeoutPauseWindowTest {
             ApprovalWaitOutcome.Resolved(ToolApprovalState.Denied("denied from another path")),
             outcome,
         )
-        assertFalse("外部处理后协程不应继续等待", job.isActive)
+        assertFalse("La corrutina no debe seguir esperando después del procesamiento externo.", job.isActive)
     }
 
     @Test
@@ -156,11 +156,11 @@ class ApprovalTimeoutPauseWindowTest {
         runCurrent()
         assertNull(outcome)
 
-        // 会话被删 / 生成被停:注册表里已经没有这个审批,不会再有结论回来。
+        // Sesión eliminada/generación detenida:Esta aprobación ya no existe en el registro.,No habrá ninguna conclusión a la que regresar.
         registered = false
         advanceUntilIdle()
         assertEquals(ApprovalWaitOutcome.Abandoned, outcome)
-        assertFalse("不应留下永不结束的协程", job.isActive)
+        assertFalse("No deberías dejar corrutinas que nunca terminan.", job.isActive)
     }
 
     @Test
@@ -180,7 +180,7 @@ class ApprovalTimeoutPauseWindowTest {
             }
         advanceTimeBy(PAUSE_BUDGET_MS * 2)
         runCurrent()
-        assertNull("折叠阅读属用户主动行为,不受暂停预算约束", outcome)
+        assertNull("Plegar y leer es un comportamiento activo del usuario,No sujeto a presupuesto suspendido", outcome)
         assertTrue(job.isActive)
 
         folded = false
@@ -199,14 +199,14 @@ class ApprovalTimeoutPauseWindowTest {
                 isStillRegistered = { true },
                 awaitOutcome = { slice -> withTimeoutOrNull(slice) { awaitCancellation() } },
             )
-        assertEquals("用户一直不回来时仍要收尾", ApprovalWaitOutcome.TimedOut, outcome)
+        assertEquals("Si el usuario nunca regresa, aún tienes que terminar el trabajo.", ApprovalWaitOutcome.TimedOut, outcome)
         assertEquals(PAUSE_BUDGET_MS, testScheduler.currentTime - startedAt)
     }
 
     @Test
     fun `remote session nobody is watching still ends as a denial after the freeze window`() = runTest {
-        // A2A / 后台生成:该会话从未显示给用户(displayedSessionId 全程不是它),冻结判据恒为真。
-        // 时间窗口可以放宽到冻结上限,结论不能变:到头来仍是超时拒绝,不是放行、不是悬挂。
+        // A2A / Generación de fondo:La sesión nunca fue mostrada al usuario.(displayedSessionId Todo el proceso no es así),El criterio de congelación siempre es cierto.
+        // La ventana de tiempo se puede relajar hasta el límite de congelación.,La conclusión no se puede cambiar.:Al final, todavía se agotó el tiempo y se rechazó.,No liberado, no suspendido.
         val startedAt = testScheduler.currentTime
         val outcome =
             awaitApprovalOutcome(
@@ -227,14 +227,14 @@ class ApprovalTimeoutPauseWindowTest {
                 isStillRegistered = { true },
                 awaitOutcome = { slice -> withTimeoutOrNull(slice) { awaitCancellation() } },
             )
-        assertEquals("无人审阅时必须拒绝,只是拒绝来得晚", ApprovalWaitOutcome.TimedOut, outcome)
-        assertFalse("不得以放行收尾", outcome is ApprovalWaitOutcome.Resolved)
-        assertEquals("等到的是冻结窗口,既不是 30 秒也不是永久", PAUSE_BUDGET_MS, testScheduler.currentTime - startedAt)
+        assertEquals("Debe rechazarse si nadie lo está revisando.,Es que el rechazo llegó demasiado tarde.", ApprovalWaitOutcome.TimedOut, outcome)
+        assertFalse("No termines con la liberación.", outcome is ApprovalWaitOutcome.Resolved)
+        assertEquals("Esperando la ventana de congelación,Ni 30 segundos ni para siempre.", PAUSE_BUDGET_MS, testScheduler.currentTime - startedAt)
     }
 
     @Test
     fun `session left in the background still ends as a denial after the freeze window`() = runTest {
-        // 同一条会话(焦点没变),但应用退到后台 —— 另一条冻结路径,同样只放宽窗口不改结论。
+        // misma conversación(El enfoque no ha cambiado),Pero la aplicación pasa a un segundo plano. —— otro camino congelado,Asimismo, sólo amplía la ventana pero no cambia la conclusión.
         val outcome =
             awaitApprovalOutcome(
                 timeoutMs = TIMEOUT_MS,
@@ -255,7 +255,7 @@ class ApprovalTimeoutPauseWindowTest {
                 awaitOutcome = { slice -> withTimeoutOrNull(slice) { awaitCancellation() } },
             )
         assertEquals(ApprovalWaitOutcome.TimedOut, outcome)
-        assertFalse("不得以放行收尾", outcome is ApprovalWaitOutcome.Resolved)
+        assertFalse("No termines con la liberación.", outcome is ApprovalWaitOutcome.Resolved)
     }
 
     @Test

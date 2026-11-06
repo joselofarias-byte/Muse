@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/** RestoreJournal 的阶段持久化和完成清理测试。 */
+/** RestoreJournal Persistencia de la etapa y finalización de las pruebas de limpieza. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class RestoreJournalTest {

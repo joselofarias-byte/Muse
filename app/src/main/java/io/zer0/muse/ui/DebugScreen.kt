@@ -1,12 +1,12 @@
 package io.zer0.muse.ui
 
-// ST-01 → ST-09: 错误态覆盖说明(上一轮"本页无需错误态"结论过窄,已补齐)。
-//  - 日志列表:数据源 DebugLogStore.getAll() 为纯内存读取(buffer.toList()),轮询无 DB/网络可失败步骤,
-//    因此列表本身不设 loading/error 分支;
-//  - 数据库完整性面板(DbIntegritySheet):数据源 IntegrityChecker.getLatestStatus() 为 Room 查询,
-//    会抛异常 → 该面板统一 MuseLoadingState + MuseErrorStateBox(失败可重试);
-//  - 导出失败:DebugLogStore.exportToFile() 返回 null 时 toast(debug_export_failed_no_logs),
-//    FileProvider.getUriForFile 失败也 toast(debug_export_failed_no_uri)。
+// ST-01 → ST-09: Descripción de la cobertura del estado de error(última ronda"Esta página no requiere un estado de error."La conclusión es demasiado estrecha.,Completado).
+//  - Lista de registros:fuente de datos DebugLogStore.getAll() Para lectura pura de memoria(buffer.toList()),Sondear ningún paso de DB/red fallido,
+//    Por lo tanto, la lista en sí no tiene ramas de carga/error.;
+//  - Panel de integridad de la base de datos(DbIntegritySheet):fuente de datos IntegrityChecker.getLatestStatus() Consulta por habitación,
+//    Lanzará una excepción → El panel unifica MuseLoadingState + MuseErrorStateBox(Reintentar si falla);
+//  - Exportación fallida:DebugLogStore.exportToFile() Cuando se devuelve nulo toast(debug_export_failed_no_logs),
+//    FileProvider.getUriForFile El fracaso también toast(debug_export_failed_no_uri).
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
@@ -86,31 +86,31 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 调试日志页 — 支持查看、过滤、导出。
+ * Página de registro de depuración — Admite visualización, filtrado y exportación.
  *
- * 功能:
- *  - 顶部 MuseTopBar 标题"调试日志" + 返回按钮 + 操作区(暂停/继续、导出、清空)
- *  - 过滤器行:等级下拉(ALL/ERROR/WARN/INFO/DEBUG) + Tag 搜索 + 关键字搜索
- *  - 主体 LazyColumn 展示日志,每条可展开查看完整消息 + stack trace
- *  - 自动滚动到底部(最新日志);新日志到达时若用户在底部则继续跟随,
- *    否则停在原位置;暂停按钮可冻结滚动
+ * Función:
+ *  - Título superior de MuseTopBar"registro de depuración" + Botón Atrás + área de operación(pausa/Continuar, exportar, borrar)
+ *  - fila de filtro:nivel desplegable(ALL/ERROR/WARN/INFO/DEBUG) + Tag Búsqueda + búsqueda de palabras clave
+ *  - Registro de visualización del cuerpo principal LazyColumn,Cada mensaje se puede ampliar para ver el mensaje completo. + stack trace
+ *  - Desplazarse automáticamente hacia abajo(Último registro);Si el usuario está en la parte inferior cuando llega un nuevo registro, el usuario continuará siguiéndolo.,
+ *    De lo contrario, deténgase en la posición original.;El botón de pausa congela el desplazamiento
  *
- * 数据源:[DebugLogStore.getAll] 每 500ms 轮询一次。日志由 [Logger.sink] 推送。
+ * fuente de datos:[DebugLogStore.getAll] Encuesta cada 500 ms. Iniciar sesión por [Logger.sink] empujar.
  *
- * @param onBack 返回回调(由 NavHost 注入)
+ * @param onBack devolución de llamada(Inyectado por NavHost)
  */
 @Composable
 fun DebugScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    // ── 过滤器状态 ───────────────────────────────────────────────────────
-    // 等级过滤:ALL 表示不过滤;其余值与 DebugLogStore.LEVELS 对齐
+    // ── estado del filtro ───────────────────────────────────────────────────────
+    // Filtrado de niveles:ALL Indica que no hay filtrado;Los valores restantes están alineados con DebugLogStore.LEVELS
     var levelFilter by remember { mutableStateOf("ALL") }
     var tagQuery by remember { mutableStateOf("") }
     var keywordQuery by remember { mutableStateOf("") }
 
-    // ── 滚动状态 ───────────────────────────────────────────────────────
-    // paused:用户主动暂停跟随;atBottom:用户当前是否在底部(用于判断是否自动跟随)
+    // ── estado de desplazamiento ───────────────────────────────────────────────────────
+    // paused:El usuario pausa activamente el seguimiento;atBottom:Si el usuario se encuentra actualmente en la parte inferior(Se utiliza para determinar si se debe seguir automáticamente)
     var paused by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val atBottom by remember {
@@ -120,19 +120,19 @@ fun DebugScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── 日志数据(轮询 DebugLogStore) ──────────────────────────────────
+    // ── Datos de registro(sondeo DebugLogStore) ──────────────────────────────────
     var allLogs by remember { mutableStateOf<List<DebugLogEntry>>(emptyList()) }
     LaunchedEffect(Unit) {
-        // 首次立即拉一次,避免空白闪烁
+        // Tira de él inmediatamente por primera vez.,Evite el parpadeo de los espacios en blanco
         allLogs = DebugLogStore.getAll()
-        // 之后每 500ms 轮询;Logger 是高频路径,500ms 在体验和性能间取平衡
+        // Encuesta cada 500 ms a partir de entonces;Logger es el camino de alta frecuencia,500ms Logre un equilibrio entre experiencia y rendimiento
         while (true) {
             delay(500)
             allLogs = DebugLogStore.getAll()
         }
     }
 
-    // 应用过滤器(在 Composable 侧做,避免 DebugLogStore 维护过滤状态)
+    // Aplicar filtro(Hazlo en el lado Composable,Evite que DebugLogStore mantenga el estado de filtrado)
     val filteredLogs by remember(levelFilter, tagQuery, keywordQuery, allLogs) {
         derivedStateOf {
             val tagTrim = tagQuery.trim()
@@ -149,28 +149,28 @@ fun DebugScreen(onBack: () -> Unit) {
         }
     }
 
-    // ── 自动滚动逻辑 ───────────────────────────────────────────────────
-    // filteredLogs 变化时:若未暂停且用户在底部,滚动到最后一条
+    // ── Lógica de desplazamiento automático ───────────────────────────────────────────────────
+    // filteredLogs Al cambiar:Si no está en pausa y el usuario está en la parte inferior,Desplazarse hasta el último elemento
     LaunchedEffect(filteredLogs.size) {
         if (!paused && atBottom && filteredLogs.isNotEmpty()) {
-            // 用 scrollToItem 而非 animateScrollToItem,新日志高频到达时动画会卡顿
+            // Utilice scrollToItem en su lugar animateScrollToItem,La animación se congelará cuando lleguen nuevos registros con alta frecuencia.
             listState.scrollToItem(filteredLogs.lastIndex)
         }
     }
-    // 首次进入:滚动到底部展示最新日志
+    // entrada por primera vez:Desplácese hasta la parte inferior para mostrar los registros más recientes
     LaunchedEffect(Unit) {
         if (allLogs.isNotEmpty()) {
             listState.scrollToItem(allLogs.lastIndex)
         }
     }
-    // 监听 atBottom 变化:用户手动滚到底部时自动恢复跟随(等同取消暂停)
+    // Monitorear los cambios en la parte inferior:Reanudar automáticamente el seguimiento cuando el usuario se desplaza manualmente hasta el final(Lo mismo que cancelar la suspensión.)
     LaunchedEffect(Unit) {
         snapshotFlow { atBottom }.collect { bottom ->
             if (bottom && paused) paused = false
         }
     }
 
-    // ── 清空确认弹窗 ───────────────────────────────────────────────────
+    // ── Borrar ventana emergente de confirmación ───────────────────────────────────────────────────
     var showClearDialog by remember { mutableStateOf(false) }
     if (showClearDialog) {
         MuseDialog(
@@ -178,7 +178,7 @@ fun DebugScreen(onBack: () -> Unit) {
             title = stringResource(R.string.debug_clear_logs_title),
             content = { Text(stringResource(R.string.debug_clear_logs_confirm, DebugLogStore.size())) },
             confirmText = stringResource(R.string.debug_action_clear),
-            destructive = true, // ST-02: 清空日志为不可撤销操作,确认按钮用 error 红色
+            destructive = true, // ST-02: Borrar el registro es una operación irreversible.,Botón de confirmación en color rojo de error
             onConfirm = {
                 DebugLogStore.clear()
                 allLogs = emptyList()
@@ -189,28 +189,28 @@ fun DebugScreen(onBack: () -> Unit) {
         )
     }
 
-    // ── 展开状态:记录当前展开的 entry(用 timestamp+tag+message 作 key,简单近似唯一) ──
+    // ── estado expandido:Registre el actualmente expandido entry(Utilice marca de tiempo+etiqueta+mensaje como key,Simple y aproximadamente único.) ──
     var expandedKey by remember { mutableStateOf<String?>(null) }
 
-    // ── 崩溃日志面板(P1-4:把 MuseCrashHandler 已有但未 UI 化的崩溃日志列表/导出能力透出)
-    //  - 入口:MuseTopBar 上的 History 图标
-    //  - 面板内列出 listCrashLogs() 全部崩溃日志文件,可展开查看内容、单条分享、一键打包 ZIP 分享
+    // ── Panel de registro de fallos(P1-4:Coloque la lista de registro de fallos existente pero no basada en la interfaz de usuario de MuseCrashHandler/Capacidad de exportación revelada)
+    //  - entrada:MuseTopBar Icono de historial activado
+    //  - Listado en el panel listCrashLogs() Todos los archivos de registro de fallos,Se puede ampliar para ver contenido, compartir elementos individuales y compartir paquetes ZIP con un solo clic.
     var showCrashSheet by remember { mutableStateOf(false) }
     if (showCrashSheet) {
         CrashLogSheet(onDismiss = { showCrashSheet = false })
     }
 
-    // ── 本地数据分析面板(P3-2:把 LocalAnalyticsTracker 已采集但未 UI 化的指标透出)
-    //  - 入口:MuseTopBar 上的 Analytics 图标
-    //  - 面板内展示 DAU/MAU/总会话/总消息/启动次数/崩溃率 + D1/D7/D30 留存 + 功能使用 Top 10
+    // ── Panel de análisis de datos locales(P3-2:Exponer los indicadores recopilados por LocalAnalyticsTracker pero no basados en UI)
+    //  - entrada:MuseTopBar Icono de análisis activado
+    //  - Mostrar DAU/MAU/sesiones totales en el panel/noticias generales/Número de salidas/Tasa de accidentes + retención D1/D7/D30 + uso de funciones Top 10
     var showAnalyticsSheet by remember { mutableStateOf(false) }
     if (showAnalyticsSheet) {
         AnalyticsSheet(onDismiss = { showAnalyticsSheet = false })
     }
 
-    // ── 数据库完整性面板(P3-3:把 IntegrityChecker 已有但未 UI 化的完整性检查结果透出)
-    //  - 入口:MuseTopBar 上的 HealthAndSafety 图标
-    //  - 面板内展示最近一次完整性检查结果(状态 / DB 大小 / 时间)+ "立即检查"按钮
+    // ── Panel de integridad de la base de datos(P3-3:Exponer los resultados de la verificación de integridad existente de IntegrityChecker pero no basados en la interfaz de usuario)
+    //  - entrada:MuseTopBar Icono de salud y seguridad encendido
+    //  - Los últimos resultados de la verificación de integridad se muestran en el panel.(Estado/tamaño de base de datos/hora)+ "Compruébalo ahora"botón
     var showDbIntegritySheet by remember { mutableStateOf(false) }
     if (showDbIntegritySheet) {
         DbIntegritySheet(onDismiss = { showDbIntegritySheet = false })
@@ -229,7 +229,7 @@ fun DebugScreen(onBack: () -> Unit) {
         onShowCrashLogs = { showCrashSheet = true },
         onShowAnalytics = { showAnalyticsSheet = true },
         onShowDbIntegrity = { showDbIntegritySheet = true },
-        // v1.0.4 (P3-7): 一键复制当前过滤后的日志到剪贴板(纯文本),便于内测用户粘贴反馈
+        // v1.0.4 (P3-7): Copie el registro filtrado actual al portapapeles con un clic(texto plano),Conveniente para que los usuarios de pruebas internas peguen comentarios
         onCopy = {
             if (filteredLogs.isEmpty()) {
                 MuseToast.show(context.getString(R.string.debug_no_logs_to_copy))
@@ -285,9 +285,9 @@ fun DebugScreen(onBack: () -> Unit) {
 }
 
 /**
- * Scaffold 包装 — 把状态从主 Composable 抽离,使布局可预览/可测试。
+ * Scaffold embalaje — Separar estado del Composable principal,Hacer que el diseño sea previsualizable/Comprobable.
  *
- * 单独 private 是因为外部无需直接调用。
+ * Privado por separado porque no es necesario llamarlo directamente desde el exterior.
  */
 @Composable
 private fun ScaffoldLayout(
@@ -317,7 +317,7 @@ private fun ScaffoldLayout(
                 title = stringResource(R.string.debug_screen_title),
                 onBack = onBack,
                 actions = {
-                    // 暂停/继续跟随按钮
+                    // pausa/botón continuar siguiendo
                     MuseTactileButton(
                         icon = if (paused) MuseIcons.play else MuseIcons.pause,
                         onClick = onTogglePause,
@@ -332,37 +332,37 @@ private fun ScaffoldLayout(
                             MaterialTheme.colorScheme.onSurface
                         },
                     )
-                    // 崩溃日志入口(P1-4):展示 MuseCrashHandler 已落盘的崩溃日志列表 + 一键打包 ZIP 分享
+                    // Entrada del registro de fallos(P1-4):Mostrar la lista de registros de fallos de MuseCrashHandler que se ha descargado + compartir ZIP de empaquetado con un solo clic
                     MuseTactileButton(
                         icon = MuseIcons.history,
                         onClick = onShowCrashLogs,
                         contentDescription = stringResource(R.string.debug_cd_crash_logs),
                     )
-                    // 本地数据分析入口(P3-2):展示 LocalAnalyticsTracker 已采集的 DAU/MAU/留存/功能使用
+                    // Portal de análisis de datos locales(P3-2):Mostrar el DAU/MAU/retención recopilado por LocalAnalyticsTracker/Uso de funciones
                     MuseTactileButton(
                         icon = MuseIcons.chartLine,
                         onClick = onShowAnalytics,
                         contentDescription = stringResource(R.string.debug_cd_analytics),
                     )
-                    // 数据库完整性入口(P3-3):展示 IntegrityChecker 最近一次 PRAGMA integrity_check 结果
+                    // Portal de integridad de la base de datos(P3-3):Mostrar los últimos resultados de PRAGMA IntegrityChecker IntegrityChecker
                     MuseTactileButton(
                         icon = MuseIcons.shieldCheck,
                         onClick = onShowDbIntegrity,
                         contentDescription = stringResource(R.string.debug_cd_db_integrity),
                     )
-                    // v1.0.4 (P3-7): 复制按钮 — 把当前过滤后的日志复制到剪贴板(纯文本)
+                    // v1.0.4 (P3-7): botón copiar — Copie el registro filtrado actual al portapapeles(texto plano)
                     MuseTactileButton(
                         icon = MuseIcons.copy,
                         onClick = onCopy,
                         contentDescription = stringResource(R.string.debug_cd_copy),
                     )
-                    // 导出按钮
+                    // botón exportar
                     MuseTactileButton(
                         icon = MuseIcons.share,
                         onClick = onExport,
                         contentDescription = stringResource(R.string.debug_cd_export),
                     )
-                    // 清空按钮
+                    // boton borrar
                     MuseTactileButton(
                         icon = MuseIcons.trash,
                         onClick = onClear,
@@ -371,10 +371,10 @@ private fun ScaffoldLayout(
                 },
             )
 
-            // 顶部栏与过滤器行之间的间距
+            // Espaciado entre la barra superior y la fila de filtros
             Spacer(Modifier.height(MusePaddings.contentGap))
 
-            // ── 过滤器行 ───────────────────────────────────────────────
+            // ── fila de filtro ───────────────────────────────────────────────
             FilterRow(
                 levelFilter = levelFilter,
                 onLevelChange = onLevelChange,
@@ -384,10 +384,10 @@ private fun ScaffoldLayout(
                 onKeywordChange = onKeywordChange,
             )
 
-            // 过滤器行与日志计数之间的间距
+            // Espaciado entre la fila del filtro y el recuento de registros
             Spacer(Modifier.height(MusePaddings.contentGap))
 
-            // ── 日志计数 ───────────────────────────────────────────────
+            // ── Recuento de registros ───────────────────────────────────────────────
             Text(
                 text = stringResource(R.string.debug_log_count, logs.size) +
                     if (paused) stringResource(R.string.debug_log_count_paused_suffix) else "",
@@ -396,10 +396,10 @@ private fun ScaffoldLayout(
                 modifier = Modifier.padding(horizontal = MusePaddings.screen),
             )
 
-            // 计数与日志列表之间的间距(至少 8.dp,避免与 LazyColumn 贴合过紧)
+            // Espaciado entre el recuento y la lista de registros(al menos 8.dp,Evite ajustar LazyColumn demasiado apretado)
             Spacer(Modifier.height(MusePaddings.contentGap))
 
-            // ── 日志列表 ───────────────────────────────────────────────
+            // ── Lista de registros ───────────────────────────────────────────────
             if (logs.isEmpty()) {
                 EmptyLogs()
             } else {
@@ -414,8 +414,8 @@ private fun ScaffoldLayout(
                 ) {
                     items(
                         items = logs,
-                        // v1.0.28: 用全局自增 id 作为 key,避免同毫秒同内容日志
-                        // (如 MemoryFileWriter 并发触发)key 冲突导致 IllegalArgumentException 崩溃
+                        // v1.0.28: Utilice la identificación global de incremento automático como key,Evite registros con el mismo contenido en el mismo milisegundo
+                        // (Como la activación concurrente de MemoryFileWriter)key El conflicto provoca un bloqueo con IllegalArgumentException
                         key = { entry -> entry.id },
                     ) { entry ->
                         val entryKey = entry.id.toString()
@@ -423,7 +423,7 @@ private fun ScaffoldLayout(
                             entry = entry,
                             expanded = expandedKey == entryKey,
                             onClick = { onToggleExpand(entryKey) },
-                            // v1.0.4 (P3-7): 关键字高亮 — 用户在搜索框输入的关键字在消息中高亮显示
+                            // v1.0.4 (P3-7): resaltado de palabras clave — Las palabras clave ingresadas por el usuario en el cuadro de búsqueda se resaltan en el mensaje
                             highlight = keywordQuery.trim(),
                         )
                     }
@@ -434,7 +434,7 @@ private fun ScaffoldLayout(
 }
 
 /**
- * 过滤器行:等级下拉 + Tag 搜索 + 关键字搜索(横向滚动避免窄屏挤压)。
+ * fila de filtro:Menú desplegable de niveles + Búsqueda de etiquetas + Búsqueda de palabras clave(El desplazamiento horizontal evita apretar en pantallas estrechas).
  */
 @Composable
 private fun FilterRow(
@@ -445,7 +445,7 @@ private fun FilterRow(
     keywordQuery: String,
     onKeywordChange: (String) -> Unit,
 ) {
-    // ALL + 全部等级;MuseDropdown 期望 List<Pair<value, displayText>>
+    // ALL + Todos los niveles;MuseDropdown Expectativa List<Pair<value, displayText>>
     val levelOptions = buildList {
         add("ALL" to "ALL")
         DebugLogStore.LEVELS.forEach { add(it to it) }
@@ -456,9 +456,9 @@ private fun FilterRow(
             .horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 横向滚动起始留白(与屏幕水平边距对齐)
+        // El desplazamiento horizontal comienza con un espacio en blanco(Alinear con los márgenes horizontales de la pantalla)
         Spacer(Modifier.width(MusePaddings.screen))
-        // 等级下拉(固定宽度,避免横向滚动时占位过多)
+        // nivel desplegable(ancho fijo,Evite ocupar demasiado espacio al desplazarse horizontalmente)
         MuseDropdown(
             value = levelFilter,
             onValueChange = onLevelChange,
@@ -489,13 +489,13 @@ private fun FilterRow(
             },
             modifier = Modifier.width(180.dp),
         )
-        // 横向滚动末尾留白,避免最后一个控件贴右边缘
+        // Deje un espacio en blanco al final del desplazamiento horizontal,Evite que el último control toque el borde derecho.
         Spacer(Modifier.width(MusePaddings.screen))
     }
 }
 
 /**
- * 空状态:无日志或无匹配项时展示。
+ * Estado vacío:Se muestra cuando no hay registros ni coincidencias.
  */
 @Composable
 private fun EmptyLogs() {
@@ -527,34 +527,34 @@ private fun EmptyLogs() {
 }
 
 /**
- * 单条日志条目。点击切换展开/折叠。
+ * Entrada de registro única. Haga clic para alternar para expandir/Doblar.
  *
- * 展开后显示完整消息(无 maxLines)和 throwable stack trace(若有)。
- * 折叠时消息最多 2 行,末尾省略号。
+ * Ampliar para mostrar el mensaje completo(Ninguno maxLines)y throwable stack trace(Si es así).
+ * Mensaje máximo 2 líneas cuando está contraído,Elipsis al final.
  */
 @Composable
 private fun LogEntryItem(
     entry: DebugLogEntry,
     expanded: Boolean,
     onClick: () -> Unit,
-    // v1.0.4 (P3-7): 关键字高亮 — 非空时在 message 中以黄色背景高亮所有匹配子串
+    // v1.0.4 (P3-7): resaltado de palabras clave — Cuando no esté vacío, resalte todas las subcadenas coincidentes en el mensaje con un fondo amarillo
     highlight: String = "",
 ) {
     val timeStr = remember(entry.timestamp) {
         SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date(entry.timestamp))
     }
-    // v1.0.52: 语义状态色替代硬编码,深色模式自动切亮档
+    // v1.0.52: Colores de estado semánticos en lugar de codificación rígida,El modo oscuro cambia automáticamente al modo brillante
     val statusColors = MaterialTheme.statusColors
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val levelColor = remember(entry.level, statusColors) { levelColor(entry.level, statusColors) }
-    // v1.0.4 (P3-7): 把 message 构建为带高亮的 AnnotatedString
+    // v1.0.4 (P3-7): Construir mensaje como resaltado AnnotatedString
     val messageAnnotated = remember(entry.message, highlight, statusColors, onSurfaceColor) {
         buildAnnotatedString {
             if (highlight.isEmpty()) {
                 append(entry.message)
                 return@buildAnnotatedString
             }
-            // 大小写不敏感查找:遍历所有匹配位置,用 yellow background + black text 高亮
+            // Búsqueda que no distingue entre mayúsculas y minúsculas:Atraviesa todas las posiciones coincidentes,usar yellow background + black text Resaltar
             val text = entry.message
             var idx = 0
             val lowerText = text.lowercase(Locale.US)
@@ -589,7 +589,7 @@ private fun LogEntryItem(
         Column(
             modifier = Modifier.padding(MusePaddings.cardInner),
         ) {
-            // 第一行:时间 + 等级标签 + Tag
+            // primera linea:etiqueta de tiempo + nivel + Tag
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = timeStr,
@@ -611,8 +611,8 @@ private fun LogEntryItem(
                 )
             }
             Spacer(Modifier.height(MusePaddings.tightGap))
-            // 第二行:消息(折叠时 2 行省略,展开时全量)
-            // v1.0.4 (P3-7): 用 messageAnnotated 渲染,支持关键字高亮
+            // segunda linea:noticias(2 líneas omitidas cuando está doblado,Volumen completo cuando se expande)
+            // v1.0.4 (P3-7): Representado con mensajeAnotado,Admite resaltado de palabras clave
             Text(
                 text = messageAnnotated,
                 style = MaterialTheme.typography.bodySmall,
@@ -621,7 +621,7 @@ private fun LogEntryItem(
                 maxLines = if (expanded) Int.MAX_VALUE else 2,
                 overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis,
             )
-            // 展开后:throwable stack trace(若有)
+            // Después de desplegar:throwable stack trace(Si es así)
             AnimatedVisibility(
                 visible = expanded && !entry.throwable.isNullOrEmpty(),
                 enter = MuseMotion.expandFadeEnter(),
@@ -651,9 +651,9 @@ private fun LogEntryItem(
 }
 
 /**
- * 等级标签胶囊(彩色背景 + 等级首字母)。
+ * Cápsulas con etiqueta de grado(Fondo colorido + iniciales de grado.).
  *
- * 颜色约定:ERROR 红 / WARN 橙 / INFO 蓝 / DEBUG 灰。
+ * convención de color:ERROR Rojo / WARN naranja / INFO azul / DEBUG gris.
  */
 @Composable
 private fun LevelChip(level: String, color: Color) {
@@ -672,10 +672,10 @@ private fun LevelChip(level: String, color: Color) {
 }
 
 /**
- * 把等级字符串映射为展示颜色。
+ * Cadenas de nivel de mapa para mostrar colores.
  *
- * v1.0.52: 颜色来源改为 [MuseStatusColors](由 Composable 调用方从主题读取后传入),
- * 深色模式自动使用亮档色,避免深底上深红/深蓝不可读。
+ * v1.0.52: La fuente de color cambió a [MuseStatusColors](Pasado después de haber sido leído del tema por la persona que llama a Composable),
+ * El modo oscuro utiliza automáticamente colores más brillantes,Evite los rojos intensos en bases profundas/El azul oscuro es ilegible.
  */
 private fun levelColor(level: String, colors: MuseStatusColors): Color {
     return when (level) {
@@ -690,23 +690,23 @@ private fun levelColor(level: String, colors: MuseStatusColors): Color {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════════════
-// P3-3:数据库完整性面板 — 把 IntegrityChecker 已有但未 UI 化的检查结果透出
+// P3-3:Panel de integridad de la base de datos — Exponer los resultados de verificación existentes pero no basados en la interfaz de usuario de IntegrityChecker
 //
-//  数据源:IntegrityChecker.getLatestStatus() → DbIntegrityLogEntity?
-//  触发检查:IntegrityChecker.checkAndLog() → Boolean(同步等待结果)
-//  落盘:每次检查结果写入 db_integrity_log 表,自动保留最近 30 条
+//  fuente de datos:IntegrityChecker.getLatestStatus() → DbIntegrityLogEntity?
+//  Verificación de gatillo:IntegrityChecker.checkAndLog() → Boolean(Espere los resultados sincrónicamente)
+//  Realizar el pedido:Cada resultado de la verificación se escribe en la tabla db_integrity_log,Conservar automáticamente los últimos 30 elementos
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * 数据库完整性底部面板。
+ * Panel inferior de integridad de la base de datos.
  *
- * 展示内容:
- *  - 最近一次检查结果:状态(ok / error)+ DB 大小 + 检查时间 + 详情
- *  - "立即检查"按钮:触发 [IntegrityChecker.checkAndLog],显示 loading + 结果
- *  - 异常状态显示备份提示(引导用户从自动备份恢复)
+ * Mostrar contenido:
+ *  - Resultados del último examen.:Estado(ok / error)+ DB Tamaño + Hora de verificación + Detalles
+ *  - "Compruébalo ahora"botón:gatillo [IntegrityChecker.checkAndLog],Mostrar cargando + resultados
+ *  - Mostrar mensajes de respaldo en estado anormal(Guíe a los usuarios para que restauren desde copias de seguridad automáticas)
  *
- * ST-09: 该面板是 DebugScreen 内唯一的可失败数据源(Room 查询),
- * 因此加载态统一 [MuseLoadingState],读取失败统一 [MuseErrorStateBox] + 重试按钮。
+ * ST-09: Este panel es la única fuente de datos fallida dentro de DebugScreen(Room Consulta),
+ * Por tanto, el estado de carga está unificado. [MuseLoadingState],Fallo de lectura unificada [MuseErrorStateBox] + Botón Reintentar.
  */
 @Composable
 private fun DbIntegritySheet(onDismiss: () -> Unit) {
@@ -717,12 +717,12 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
     var latest by remember { mutableStateOf<DbIntegrityLogEntity?>(null) }
     var loading by remember { mutableStateOf(true) }
     var checking by remember { mutableStateOf(false) }
-    // ST-09: 读取失败原因 + 重试键(重试时 key 变化触发重跑 LaunchedEffect)
+    // ST-09: Leer motivo del error + botón de reintento(Al volver a intentarlo, los cambios clave desencadenan una nueva ejecución. LaunchedEffect)
     var loadError by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableStateOf(0) }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
 
-    // 打开时拉一次最近状态(失败给可读原因 + 重试,不再裸转圈/静默)
+    // Obtenga el último estado una vez al abrir(Fallar con motivo legible + reintentar,No más vueltas desnudas/silencio)
     LaunchedEffect(reloadKey) {
         loading = true
         loadError = null
@@ -749,7 +749,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
-                // LAYOUT-01: Row 内文本取宽 + 限行，防放大字号下逐字换行
+                // LAYOUT-01: Row Ancho del texto interno + límite de línea, evita el ajuste de línea palabra por palabra al ampliar el tamaño de fuente
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -759,11 +759,11 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
 
         when {
             loading -> {
-                // ST-09: 统一加载态组件(替代裸 Text "正在加载")
+                // ST-09: Carga unificada de componentes con estado.(alternativa desnuda Text "Cargando")
                 MuseLoadingState(message = stringResource(R.string.debug_loading_db_integrity))
             }
             loadError != null -> {
-                // ST-09: 读取失败 → 可读原因 + 重试
+                // ST-09: Error de lectura → Motivo legible + reintento
                 MuseErrorStateBox(
                     message = loadError.orEmpty(),
                     onRetry = {
@@ -775,7 +775,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
             else -> {
                 latest?.let { entity ->
                     val isOk = entity.status.equals("ok", ignoreCase = true)
-                    // ── 状态卡片:圆形图标 + 状态文字 + DB 大小 + 检查时间 ────────
+                    // ── tarjeta de estado:Icono de círculo + texto de estado + tamaño de base de datos + hora de verificación ────────
                     Surface(
                         shape = MuseShapes.large,
                         color = if (isOk) {
@@ -851,7 +851,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
                         }
                     }
 
-                    // ── 异常时显示详情 + 备份提示 ─────────────────────────────
+                    // ── Mostrar detalles + sugerencias de respaldo cuando ocurren excepciones ─────────────────────────────
                     if (!isOk) {
                         Spacer(Modifier.height(MusePaddings.contentGap))
                         Surface(
@@ -882,7 +882,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
 
                     Spacer(Modifier.height(MusePaddings.contentGap))
 
-                    // ── 立即检查按钮 ─────────────────────────────────────────
+                    // ── Botón comprobar ahora ─────────────────────────────────────────
                     MuseCapsuleButton(
                         text = if (checking) {
                             stringResource(R.string.debug_checking)
@@ -893,7 +893,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
                             if (checking) return@MuseCapsuleButton
                             scope.launch {
                                 checking = true
-                                // ST-09: 检查本身可能抛(Room/PRAGMA 异常)→ 捕获后给可读原因,不再让 checking 卡死
+                                // ST-09: El cheque en sí puede arrojar(Room/PRAGMA anormal)→ Dar una razón legible después de la captura.,No más comprobaciones atascadas
                                 val result = runCatching { checker.checkAndLog() }
                                 latest = runCatching { checker.getLatestStatus() }.getOrNull()
                                 checking = false
@@ -920,7 +920,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } ?: run {
-                    // 无任何检查记录(首次使用 / 表为空)
+                    // Sin registro de inspección(Primer uso / la mesa está vacía)
                     Text(
                         text = stringResource(R.string.debug_no_check_record),
                         style = MaterialTheme.typography.bodyMedium,
@@ -937,7 +937,7 @@ private fun DbIntegritySheet(onDismiss: () -> Unit) {
                             if (checking) return@MuseCapsuleButton
                             scope.launch {
                                 checking = true
-                                // ST-09: 同"有记录"分支 — 首次检查失败也给可读原因 + 重试
+                                // ST-09: Lo mismo"Hay un registro"rama — El error en la primera verificación también proporciona un motivo legible + reintento
                                 val result = runCatching { checker.checkAndLog() }
                                 latest = runCatching { checker.getLatestStatus() }.getOrNull()
                                 checking = false

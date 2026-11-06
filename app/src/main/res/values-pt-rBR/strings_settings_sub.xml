@@ -503,7 +503,7 @@
     <string name="settings_theme_custom_color_h">Matiz</string>
     <string name="settings_theme_custom_color_s">Saturação</string>
     <string name="settings_theme_custom_color_l">Leveza</string>
-    <!-- 前端修复 (i18n-3.x): 主动消息配置区 i18n(临时复制中文,后续补译) -->
+    <!-- Correcciones en la interfaz (i18n-3.x): Área de configuración de mensajes activos i18n(Copiar temporalmente chino,Traducción posterior) -->
     <string name="settings_agent_dm_subtitle">Ver mensagens diretas entre Agents</string>
     <string name="settings_agent_agent_only">Apenas chats do Agent</string>
     <string name="settings_agent_agent_only_subtitle">Quando ativado, apenas os assistentes Agent enviam mensagens proativas; sessões de tarefa não</string>
@@ -661,7 +661,7 @@
     <string name="settings_asr_group_transcription">Transcrição de arquivos</string>
     <string name="settings_chat_typography_section">Tipografia</string>
     <string name="settings_chat_message_font_size">Tamanho do texto</string>
-    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%</string>
+    <string name="settings_chat_message_font_size_subtitle">Ajusta o tamanho do texto, padrão 100%%</string>
     <string name="settings_chat_letter_spacing">Espaçamento entre letras</string>
     <string name="settings_chat_letter_spacing_subtitle">Ajusta o espaço entre caracteres</string>
     <string name="assistant_kb_scope_whole"> (tudo)</string>

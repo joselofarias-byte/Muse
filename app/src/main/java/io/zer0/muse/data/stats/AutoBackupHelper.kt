@@ -19,21 +19,21 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * v1.107 自动备份助手。
+ * v1.107 Asistente de respaldo automático.
  *
- * F-26(功能完善度审查): 将三个核心数据库打包为 ZIP 备份到内部存储 `backups/` 子目录,
- * 覆盖会话/消息(muse.db)、记忆摘要/编译产物(memory.db)、元事实(facts.db),
- * 并记录每次备份结果到 [auto_backup_log][AutoBackupLogEntity] 表,用于备份历史查看与恢复。
+ * F-26(Revisión de integridad funcional): Haga una copia de seguridad de las tres bases de datos principales como ZIP en el almacenamiento interno `backups/` subdirectorio,
+ * Anular sesión/noticias(muse.db), resumen de memoria/compilar producto(memory.db), metahechos(facts.db),
+ * Y registre cada resultado de la copia de seguridad en [auto_backup_log][AutoBackupLogEntity] mesa,Se utiliza para ver y recuperar el historial de copias de seguridad.
  *
- * 备份策略(由 WorkManager 周期任务驱动):
- *  - 频率: 每日 1 次(只在实际有新消息时才真正复制);
- *  - 保留: 最近 [DEFAULT_KEEP_COUNT] 份,超出自动清理最旧的;
- *  - 路径: `getDatabasePath("muse.db").parentFile/backups/`,包名 `muse_backup_yyyyMMdd_HHmmss.zip`。
+ * Estrategia de respaldo(Impulsado por tareas periódicas de WorkManager):
+ *  - Frecuencia: 1 vez por día(Solo replicar cuando realmente haya un mensaje nuevo);
+ *  - Reservar: Recientemente [DEFAULT_KEEP_COUNT] porción,Limpia automáticamente los más antiguos;
+ *  - camino: `getDatabasePath("muse.db").parentFile/backups/`,nombre del paquete `muse_backup_yyyyMMdd_HHmmss.zip`.
  *
- * @param autoBackupLogDao 备份日志 DAO
- * @param context 用于获取数据库路径
- * @param messageDao 用于备份时记录消息总数
- * @param settings 用于导出/恢复设置快照(设置项随自动备份一起走)
+ * @param autoBackupLogDao Registro de respaldo DAO
+ * @param context Se utiliza para obtener la ruta de la base de datos.
+ * @param messageDao Se utiliza para registrar el número total de mensajes durante la copia de seguridad.
+ * @param settings para exportar/Restaurar instantánea de configuración(Los elementos de configuración van con copia de seguridad automática)
  */
 class AutoBackupHelper(
     private val autoBackupLogDao: AutoBackupLogDao,
@@ -45,54 +45,54 @@ class AutoBackupHelper(
     companion object {
         private const val TAG = "AutoBackupHelper"
 
-        /** 备份文件前缀。 */
+        /** Prefijo del archivo de copia de seguridad. */
         private const val BACKUP_FILE_PREFIX = "muse_backup_"
 
-        /** 备份文件后缀。 */
+        /** Sufijo del archivo de copia de seguridad. */
         private const val BACKUP_FILE_SUFFIX = ".zip"
 
-        /** 备份子目录名。 */
+        /** Nombre del subdirectorio de copia de seguridad. */
         private const val BACKUP_DIR_NAME = "backups"
 
-        /** 备份包内各数据库条目名。 */
+        /** El nombre de cada entrada de la base de datos en el paquete de respaldo. */
         const val ENTITY_MUSE_DB = "muse.db"
         const val ENTITY_MEMORY_DB = "memory.db"
         const val ENTITY_FACTS_DB = "facts.db"
 
         /**
-         * v2.6.x: 设置快照条目名。
+         * v2.6.x: Establezca el nombre de la entrada de la instantánea.
          *
-         * 手动导出与云备份一直包含设置快照,而每日自动备份此前只打包三个数据库,
-         * 用户从「最近备份记录」一键恢复后设置会丢。这里把设置也并入自动备份包,
-         * 口径与手动导出保持一致:只含非敏感白名单键(不含供应商密钥等凭据)。
-         * 旧备份包没有这个条目时,恢复侧按“无设置快照”兼容处理。
+         * Las exportaciones manuales y las copias de seguridad en la nube siempre incluyen instantáneas de configuración,La copia de seguridad automática diaria anteriormente solo incluía tres bases de datos,
+         * La configuración se perderá después de que el usuario restaure desde el "Registro de copia de seguridad reciente" con un solo clic. Aquí la configuración también se incorpora al paquete de copia de seguridad automática.,
+         * El calibre sigue siendo el mismo que el de la exportación manual.:Contiene solo claves de lista blanca no confidenciales(No incluye credenciales como claves de proveedor.).
+         * Cuando el paquete de respaldo antiguo no tiene esta entrada,Restaurar prensa lateral“Sin instantánea de configuración”Procesamiento compatible.
          */
         const val ENTITY_SETTINGS = "settings.json"
 
-        /** 默认保留的备份数。 */
+        /** El número predeterminado de copias de seguridad que se conservarán. */
         private const val DEFAULT_KEEP_COUNT = 7
     }
 
     /**
-     * 执行一次备份。
+     * Realizar una copia de seguridad.
      *
-     * 步骤:
-     *  1. 对三个数据库(muse.db/memory.db/facts.db)分别执行 `VACUUM INTO`
-     *     生成一致性快照(含 WAL 中未 checkpoint 部分);
-     *  2. 将快照打包为 `muse_backup_yyyyMMdd_HHmmss.zip` 存入 backups/;
-     *  3. 记录备份结果(路径、大小、消息总数)到 auto_backup_log。
+     * pasos:
+     *  1. para tres bases de datos(muse.db/memory.db/facts.db)Ejecutar por separado `VACUUM INTO`
+     *     Genere instantáneas consistentes(Contiene la parte no controlada de WAL);
+     *  2. Empaquetar la instantánea como `muse_backup_yyyyMMdd_HHmmss.zip` Depósito backups/;
+     *  3. Registrar los resultados de la copia de seguridad(Ruta, tamaño, número total de mensajes.)a auto_backup_log.
      *
-     * 在 [AppDispatchers.io] 上执行。任一步骤异常时记录失败日志并返回 false,不向上抛出。
+     * en [AppDispatchers.io] ejecutar en. Cuando algún paso es anormal, el registro de fallas se registra y se devuelve. false,No lanzado hacia arriba.
      *
-     * @return true 表示备份成功
+     * @return true Indica que la copia de seguridad se realizó correctamente
      */
     suspend fun backupNow(): Boolean = withContext(AppDispatchers.io) {
-        // B-7: 备份恢复(文件级替换 DB)窗口内不再触发自动备份,避免对正在替换的库做 VACUUM。
+        // B-7: Copia de seguridad y restauración(Reemplazo de nivel de archivo DB)La copia de seguridad automática ya no se activa dentro de la ventana,Evite hacer VACUUM en la biblioteca que se está reemplazando.
         if (io.zer0.common.ProcessWriteGate.restoring) {
-            Logger.w(TAG, "backupNow: 备份恢复进行中,跳过本次自动备份")
+            Logger.w(TAG, "backupNow: Restauración de copia de seguridad en curso,Saltar esta copia de seguridad automática")
             return@withContext false
         }
-        Logger.i(TAG, "backupNow: 开始备份")
+        Logger.i(TAG, "backupNow: Iniciar copia de seguridad")
         val now = System.currentTimeMillis()
 
         val backupDir = ensureBackupDir()
@@ -105,34 +105,34 @@ class AutoBackupHelper(
             return@withContext false
         }
 
-        // 1. 各库生成一致性快照到临时目录
+        // 1. Cada biblioteca genera instantáneas consistentes en directorios temporales.
         val staging = File(context.cacheDir, "auto_backup_staging_$now")
         staging.mkdirs()
         val snapshotFiles = mutableListOf<Pair<String, File>>()
         for (name in dbNames) {
             if (io.zer0.common.ProcessWriteGate.restoring ||
-                backupBlocksRestore("数据库快照")
+                backupBlocksRestore("Instantánea de la base de datos")
             ) {
                 return@withContext false
             }
             val dbFile = context.getDatabasePath(name)
             if (!dbFile.exists()) continue
             val snap = File(staging, name)
-            // 旧版只备份 muse.db;新逻辑对缺失库跳过,不视为失败
+            // Copia de seguridad solo de la versión anterior muse.db;La nueva lógica omite las bibliotecas faltantes,No se considera un fracaso
             if (vacuumInto(dbFile, snap)) {
                 snapshotFiles.add(name to snap)
             } else {
-                Logger.w(TAG, "backupNow: $name 快照失败,跳过该库计入部分成功")
+                Logger.w(TAG, "backupNow: $name La instantánea falló,Omitir esta biblioteca cuenta como éxito parcial")
             }
         }
 
-        // 1b. v2.6.x: 导出设置快照(与手动导出/云备份同口径的非敏感白名单)。
-        // 失败不阻断备份(与单个库快照失败同语义),仅记日志。
+        // 1b. v2.6.x: Exportar instantánea de configuración(con exportación manual/Lista blanca no confidencial del mismo calibre que la copia de seguridad en la nube).
+        // El fallo no bloquea la copia de seguridad(La misma semántica que el error en la instantánea de una sola biblioteca),Simplemente inicie sesión.
         writeSettingsSnapshot(staging)?.let { snapshotFiles.add(ENTITY_SETTINGS to it) }
 
-        // 2. 打包
+        // 2. paquete
         if (io.zer0.common.ProcessWriteGate.restoring ||
-            backupBlocksRestore("备份压缩包")
+            backupBlocksRestore("Paquete comprimido de respaldo")
         ) {
             return@withContext false
         }
@@ -140,19 +140,19 @@ class AutoBackupHelper(
         val target = File(backupDir, "$BACKUP_FILE_PREFIX$timestamp$BACKUP_FILE_SUFFIX")
         val zipped = zipSnapshots(snapshotFiles, target)
 
-        // 3. 清理临时快照
+        // 3. Limpiar instantáneas temporales
         staging.deleteRecursively()
 
         if (zipped) {
             if (io.zer0.common.ProcessWriteGate.restoring ||
-                backupBlocksRestore("备份结果")
+                backupBlocksRestore("Resultados de la copia de seguridad")
             ) {
                 return@withContext false
             }
             val messageCount = try {
                 messageDao.countMessages().toLong()
             } catch (e: Exception) {
-                Logger.w(TAG, "backupNow: 读取消息总数失败: ${e.message}", e)
+                Logger.w(TAG, "backupNow: No se pudo leer el número total de mensajes: ${e.message}", e)
                 0L
             }
             logResult(
@@ -165,7 +165,7 @@ class AutoBackupHelper(
             )
             Logger.i(
                 TAG,
-                "backupNow: 备份成功 -> ${target.absolutePath} (${target.length()} bytes, dbs=${snapshotFiles.size})",
+                "backupNow: Copia de seguridad exitosa -> ${target.absolutePath} (${target.length()} bytes, dbs=${snapshotFiles.size})",
             )
         } else {
             logResult(
@@ -180,11 +180,11 @@ class AutoBackupHelper(
     }
 
     /**
-     * 把当前设置快照写为备份包内的 JSON 条目。
+     * Escribe una instantánea de la configuración actual como una entrada JSON dentro del paquete de respaldo.
      *
-     * 只含 [SettingsRepository.exportSettingsSnapshot] 的非敏感白名单键（不含供应商密钥、
-     * 云备份凭据等——这些依赖设备级 SecureKeyStore，跨设备无法解密）。
-     * 导出失败时返回 null，由调用方跳过该条目。
+     * Contiene sólo [SettingsRepository.exportSettingsSnapshot] claves de lista blanca no confidenciales (excluidas claves de proveedores,
+     * Credenciales de respaldo en la nube y más——Estos dependen de SecureKeyStore a nivel de dispositivo y no se pueden descifrar entre dispositivos).
+     * Si la exportación falla, se devuelve null y la persona que llama omite la entrada.
      */
     private suspend fun writeSettingsSnapshot(staging: File): File? {
         if (io.zer0.common.ProcessWriteGate.restoring) return null
@@ -199,13 +199,13 @@ class AutoBackupHelper(
             )
             target
         }.getOrElse {
-            Logger.w(TAG, "backupNow: 设置快照导出失败,跳过: ${it.message}")
+            Logger.w(TAG, "backupNow: Error al exportar la instantánea de configuración,saltar: ${it.message}")
             null
         }
     }
 
     /**
-     * 把多个数据库快照打包为 zip。
+     * Empaquete varias instantáneas de bases de datos en un zip.
      */
     private fun zipSnapshots(snapshotFiles: List<Pair<String, File>>, target: File): Boolean {
         if (snapshotFiles.isEmpty()) return false
@@ -221,7 +221,7 @@ class AutoBackupHelper(
             }
             true
         }.getOrElse {
-            Logger.e(TAG, "zipSnapshots: 打包失败: ${it.message}", it)
+            Logger.e(TAG, "zipSnapshots: Error de embalaje: ${it.message}", it)
             target.delete()
             false
         }
@@ -229,31 +229,31 @@ class AutoBackupHelper(
 
     private fun backupBlocksRestore(operation: String): Boolean {
         if (!io.zer0.common.ProcessWriteGate.restoring) return false
-        Logger.w(TAG, "备份恢复进行中，跳过自动备份${operation}写入")
+        Logger.w(TAG, "Copia de seguridad y restauración en curso, copia de seguridad automática omitida${operation}escribir")
         return true
     }
 
     /**
-     * 清理旧备份文件与日志,仅保留最近 [keepCount] 份。
+     * Limpiar registros y archivos de copia de seguridad antiguos,Mantenga solo el más reciente [keepCount] parte.
      *
-     * 文件按文件名时间戳降序保留(兼容旧版 .db 单文件备份);日志表同步调用 [AutoBackupLogDao.trim]。
-     * 在 [AppDispatchers.io] 上执行。
+     * Los archivos se mantienen en orden descendente según la marca de tiempo del nombre del archivo.(Compatible con versiones anteriores de copia de seguridad de un solo archivo .db);Llamada de sincronización de tabla de registro [AutoBackupLogDao.trim].
+     * en [AppDispatchers.io] ejecutar en.
      *
-     * @param keepCount 保留份数,默认 [DEFAULT_KEEP_COUNT]
+     * @param keepCount Guarde copias,Predeterminado [DEFAULT_KEEP_COUNT]
      */
     suspend fun trimOldBackups(keepCount: Int = DEFAULT_KEEP_COUNT) = withContext(AppDispatchers.io) {
         val backupDir = ensureBackupDir()
         if (backupDir == null) {
-            Logger.w(TAG, "trimOldBackups: 备份目录不可用")
+            Logger.w(TAG, "trimOldBackups: El directorio de respaldo no está disponible")
             return@withContext
         }
 
-        // L-14: 优先按文件名解析的时间戳排序(文件名固定为 muse_backup_yyyyMMdd_HHmmss.{zip,db}),
-        // lastModified 仅作为兜底,防止系统时钟异常时删除顺序错误
+        // L-14: Priorizar la clasificación por marca de tiempo de resolución de nombre de archivo(El nombre del archivo se fija en muse_backup_yyyyMMdd_HHmmss.{zip,db}),
+        // lastModified Sólo como una cubierta,Evite errores de secuencia de eliminación cuando el reloj del sistema sea anormal
         val files = backupDir.listFiles { f ->
             f.isFile && f.name.startsWith(BACKUP_FILE_PREFIX)
         }?.sortedByDescending { f ->
-            // 尝试从文件名解析时间戳作为排序键
+            // Intente analizar la marca de tiempo del nombre del archivo como clave de clasificación
             val ts = f.name.substringAfterLast('_').substringBefore('.').toLongOrNull()
             ts ?: f.lastModified()
         } ?: emptyList()
@@ -265,44 +265,44 @@ class AutoBackupHelper(
                 if (f.delete()) {
                     deleted++
                 } else {
-                    Logger.w(TAG, "trimOldBackups: 删除失败 ${f.absolutePath}")
+                    Logger.w(TAG, "trimOldBackups: Error al eliminar ${f.absolutePath}")
                 }
             } catch (e: Exception) {
-                Logger.w(TAG, "trimOldBackups: 删除异常 ${f.absolutePath}", e)
+                Logger.w(TAG, "trimOldBackups: Eliminar excepción ${f.absolutePath}", e)
             }
         }
 
         try {
             autoBackupLogDao.trim(keepCount)
         } catch (e: Exception) {
-            Logger.w(TAG, "trimOldBackups: 清理日志表失败: ${e.message}", e)
+            Logger.w(TAG, "trimOldBackups: No se pudo borrar la tabla de registro: ${e.message}", e)
         }
 
-        Logger.i(TAG, "trimOldBackups: 保留 $keepCount 份,删除 $deleted 个旧备份文件")
+        Logger.i(TAG, "trimOldBackups: Reservar $keepCount porción,Eliminar $deleted archivos de copia de seguridad antiguos")
     }
 
     /**
-     * 获取(必要时创建)备份目录;无法获取或创建时返回 null。
+     * Obtener(Crear si es necesario)Directorio de respaldo;Devuelve nulo si no se puede obtener ni crear.
      */
     private fun ensureBackupDir(): File? {
         val dbFile = context.getDatabasePath("muse.db")
         val parent = dbFile.parentFile ?: return null
         val backupDir = File(parent, BACKUP_DIR_NAME)
         if (!backupDir.exists() && !backupDir.mkdirs()) {
-            Logger.w(TAG, "ensureBackupDir: 创建备份目录失败 ${backupDir.absolutePath}")
+            Logger.w(TAG, "ensureBackupDir: No se pudo crear el directorio de respaldo ${backupDir.absolutePath}")
             return null
         }
         return backupDir
     }
 
     /**
-     * 审计修复 (0.4): 用 VACUUM INTO 生成一致性备份快照。
+     * Reparación de auditoría (0.4): Utilice VACUUM INTO para generar instantáneas de respaldo consistentes.
      *
-     * VACUUM INTO 会生成一个包含当前库全部已提交数据(含 WAL 中未 checkpoint 部分)的
-     * 全新数据库文件,且不阻塞写入连接;替代"PASSIVE checkpoint + 复制主库"的旧方案
-     * (后者在活跃写事务时丢帧、且从不复制 -wal/-shm,备份是旧状态)。
+     * VACUUM INTO Se generará un archivo que contiene todos los datos enviados de la biblioteca actual.(Contiene la parte no controlada de WAL)de
+     * Nuevo archivo de base de datos,y no bloquea las conexiones de escritura;sustituto"PASSIVE checkpoint + Copiar la biblioteca principal"viejo esquema
+     * (Este último descarta fotogramas durante transacciones de escritura activas y nunca se replica. -wal/-shm,La copia de seguridad es un estado antiguo).
      *
-     * @return true 表示备份成功
+     * @return true Indica que la copia de seguridad se realizó correctamente
      */
     private fun vacuumInto(dbFile: File, target: File): Boolean {
         var conn: SQLiteDatabase? = null
@@ -312,14 +312,14 @@ class AutoBackupHelper(
                 null,
                 SQLiteDatabase.OPEN_READWRITE,
             )
-            // VACUUM INTO 路径中的单引号需转义
+            // VACUUM INTO Es necesario evitar las comillas simples en la ruta.
             val escaped = target.absolutePath.replace("'", "''")
             conn.execSQL("VACUUM INTO '$escaped'")
-            Logger.d(TAG, "vacuumInto: 一致性快照已生成 ${target.absolutePath} (${target.length()} bytes)")
+            Logger.d(TAG, "vacuumInto: Se ha generado una instantánea de coherencia. ${target.absolutePath} (${target.length()} bytes)")
             return true
         } catch (e: Exception) {
-            Logger.e(TAG, "vacuumInto: 生成快照失败: ${e.message}", e)
-            // VACUUM INTO 失败(旧设备/权限)时回退:先强制 checkpoint 再复制主库
+            Logger.e(TAG, "vacuumInto: No se pudo generar la instantánea: ${e.message}", e)
+            // VACUUM INTO falló(equipo viejo/Permisos)revertir:Forzar el punto de control primero y luego copiar la biblioteca principal
             return runCatching {
                 conn?.rawQuery("PRAGMA wal_checkpoint(FULL)", null)?.use { it.moveToFirst() }
                 conn?.close()
@@ -327,27 +327,27 @@ class AutoBackupHelper(
                 dbFile.copyTo(target, overwrite = true)
                 true
             }.getOrElse {
-                Logger.e(TAG, "vacuumInto: 回退复制也失败: ${it.message}", it)
+                Logger.e(TAG, "vacuumInto: La replicación de reversión también falló: ${it.message}", it)
                 false
             }
         } finally {
             try {
                 conn?.close()
             } catch (e: Exception) {
-                Logger.w(TAG, "vacuumInto: 关闭连接失败: ${e.message}", e)
+                Logger.w(TAG, "vacuumInto: No se pudo cerrar la conexión: ${e.message}", e)
             }
         }
     }
 
     /**
-     * 写入一条备份结果日志。写日志本身失败时仅记录错误,不影响主流程。
+     * Escriba un registro de resultados de copia de seguridad. Solo se registran errores cuando falla la escritura del registro.,No afecta el proceso principal.
      *
-     * @param success 是否成功
-     * @param path 备份文件绝对路径
-     * @param size 备份文件大小(字节)
-     * @param now 时间戳
-     * @param error 失败时的错误信息(成功时传空串)
-     * @param messageCount 备份时消息总数
+     * @param success ¿Tiene éxito?
+     * @param path Ruta absoluta del archivo de copia de seguridad
+     * @param size Tamaño del archivo de respaldo(bytes)
+     * @param now Marca de tiempo
+     * @param error Mensaje de error en caso de falla(Pase una cadena vacía en caso de éxito)
+     * @param messageCount Número total de mensajes durante la copia de seguridad
      */
     private suspend fun logResult(success: Boolean, path: String, size: Long, now: Long, error: String, messageCount: Long = 0L) {
         try {
@@ -362,7 +362,7 @@ class AutoBackupHelper(
                 ),
             )
         } catch (e: Exception) {
-            Logger.e(TAG, "logResult: 写入备份日志失败", e)
+            Logger.e(TAG, "logResult: No se pudo escribir el registro de respaldo", e)
         }
     }
 }

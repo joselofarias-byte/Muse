@@ -1,11 +1,11 @@
 package io.zer0.muse.automation.vdisplay
 
 /**
- * 虚拟屏兼容 display 的进程内 lease 台账。
+ * La pantalla virtual es compatible con la cuenta de arrendamiento en proceso de la pantalla.
  *
- * 多个可恢复 workflow 可以引用同一个 `ensureDisplay` 屏幕，但任一 workflow
- * 释放时不能直接销毁其他 workflow 仍在使用的 display。只有最后一个 owner
- * 释放时，调用方才应执行远端 destroy。
+ * Varios flujos de trabajo reanudables pueden hacer referencia al mismo `ensureDisplay` pantalla, pero tampoco workflow
+ * Las pantallas que todavía se utilizan en otros flujos de trabajo no se pueden destruir directamente al liberarlas. solo el ultimo owner
+ * Cuando se libera, la persona que llama debe ejecutar la destrucción remota.
  */
 class VirtualDisplayLeaseRegistry {
 
@@ -15,8 +15,8 @@ class VirtualDisplayLeaseRegistry {
 
     @Synchronized
     fun acquire(runId: String, displayId: Int): Boolean {
-        require(runId.isNotBlank()) { "runId 不能为空" }
-        require(displayId >= 0) { "displayId 无效" }
+        require(runId.isNotBlank()) { "runId no puede estar vacío" }
+        require(displayId >= 0) { "displayId Inválido" }
 
         val previous = displayByRun[runId]
         if (previous == displayId) return true
@@ -34,9 +34,9 @@ class VirtualDisplayLeaseRegistry {
     }
 
     /**
-     * 释放一个 run 对 display 的引用。
+     * Libera una referencia de ejecución para mostrar.
      *
-     * @return true 表示该 display 已无其他 owner，调用方可以销毁远端 display。
+     * @return true Indica que la pantalla no tiene otro propietario y la persona que llama puede destruir la pantalla remota.
      */
     @Synchronized
     fun release(runId: String, displayId: Int): Boolean {

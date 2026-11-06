@@ -1,31 +1,31 @@
 package io.zer0.ai.core
 
 /**
- * v1.0.18: 免费模型配置。
+ * v1.0.18: Configuración de modelo gratuita.
  *
- * 用户未填 API Key 时,使用内置 SiliconFlow 免费额度访问指定模型。
+ * Cuando el usuario no completa la clave API,Utilice créditos gratuitos de SiliconFlow integrados para acceder a los modelos designados.
  *
- * 策略：
- *  - host 含 siliconflow 且 modelId 在白名单且用户 key 为空 → 用 fallback key
- *  - 用户一旦填了自己的 key 就走用户 key,fallback 不再生效
+ * Estrategia:
+ *  - host Contiene silicioflow y modelId está en la lista blanca y la clave de usuario está vacía → usar fallback key
+ *  - Una vez que el usuario complete su clave, se cerrará la sesión del usuario. key,fallback Ya no está en vigor
  *
- * 工程说明：
- *  - 本对象放在 ai 模块而非 app/data/preset,因为 [OpenAIProvider] 在 ai 模块
- *    需要直接调用 [resolveApiKey];ai 模块不依赖 app 模块,反向依赖会破坏分层。
- *  - [FALLBACK_API_KEY] 用 "PLACEHOLDER" 占位,实际发布时由 CI/CD 注入真实 key。
- *    app 模块 build.gradle.kts 已开启 buildConfig = true,后续可通过 BuildConfig 注入;
- *    现阶段仅占位,fallback 解析会因 "PLACEHOLDER" 字符串被 [resolveApiKey] 拒绝返回 null,
- *    退化到原 apiKey 行为(空串或允许 allowMissingApiKey 的 Provider 仍可调远程 /models)。
+ * Descripción del proyecto:
+ *  - Este objeto se coloca en el módulo ai en lugar de app/data/preset,porque [OpenAIProvider] en el módulo ai
+ *    Necesito llamar directamente [resolveApiKey];ai El módulo no depende del módulo de la aplicación.,Las dependencias inversas rompen las capas.
+ *  - [FALLBACK_API_KEY] usar "PLACEHOLDER" Marcador de posición,La clave real la inyecta CI/CD durante el lanzamiento real.
+ *    app El módulo build.gradle.kts está habilitado buildConfig = true,Inyección posterior a través de BuildConfig;
+ *    Actualmente solo está ocupado,fallback Analiza la causa "PLACEHOLDER" La cuerda es [resolveApiKey] negarse a regresar null,
+ *    Regresar al comportamiento original de apiKey(Una cadena vacía o un proveedor que permita permitirMissingApiKey aún puede ajustar el control remoto /models).
  */
 object FreeModelConfig {
 
-    /** 仅此内部供应商允许使用无 Key 的免费额度 fallback。 */
+    /** La reserva de crédito gratuita sin llave solo se permite para este proveedor interno. */
     const val FREE_PROVIDER_ID = "preset_siliconflow_free"
 
     /**
-     * SiliconFlow 免费模型白名单。
+     * SiliconFlow Lista blanca de modelos gratuita.
      *
-     * 这些模型在 SiliconFlow 平台免费公开，供未配置 key 的用户直接使用。
+     * Estos modelos están disponibles públicamente en la plataforma SiliconFlow de forma gratuita y pueden ser utilizados directamente por usuarios que no hayan configurado una clave.
      */
     val FREE_MODEL_IDS: Set<String> = setOf(
         "THUDM/GLM-4-9B-0414",
@@ -33,36 +33,36 @@ object FreeModelConfig {
     )
 
     /**
-     * 内置 fallback API key。
+     * Clave API alternativa incorporada.
      *
-     * 注入路径(ai/build.gradle.kts 已配置 buildConfigField)：
-     *  1. 命令行 -PFREE_MODEL_KEY=xxx
-     *  2. local.properties 的 FREE_MODEL_KEY 字段(已被 .gitignore 忽略)
-     *  3. 环境变量 FREE_MODEL_KEY
-     *  4. 均未设置时回退 "PLACEHOLDER"(fallback 机制不生效)
+     * Ruta de inyección(ai/build.gradle.kts configurado buildConfigField):
+     *  1. línea de comando -PFREE_MODEL_KEY=xxx
+     *  2. local.properties El campo FREE_MODEL_KEY(Ignorado por .gitignore)
+     *  3. variables de entorno FREE_MODEL_KEY
+     *  4. Retroceso cuando ninguno de los dos está configurado "PLACEHOLDER"(fallback El mecanismo no surte efecto.)
      */
     val FALLBACK_API_KEY: String = getFallbackKey()
 
     /**
-     * SiliconFlow base url(与 [io.zer0.muse.data.preset.SiliconFlowFreeModels.BASE_URL] 一致)。
+     * SiliconFlow base url(con [io.zer0.muse.data.preset.SiliconFlowFreeModels.BASE_URL] consistente).
      */
     const val SILICONFLOW_BASE_URL: String = "https://api.siliconflow.cn/v1"
 
     /**
-     * UI 引导提示文案:当用户选择 SiliconFlow 供应商且未填 key 时展示。
+     * UI Copia del mensaje de orientación:Se muestra cuando el usuario selecciona el proveedor de SiliconFlow y no completa la clave.
      */
     const val FREE_PROVIDER_HINT: String =
-        "免登录可用免费模型(GLM-4-9B / Qwen3-8B),填写 API Key 解锁更多模型"
+        "Modelos gratuitos disponibles sin iniciar sesión(GLM-4-9B / Qwen3-8B),Complete la clave API para desbloquear más modelos"
 
     /**
-     * 检查指定的 provider + model 是否符合免费模型条件。
+     * Comprueba si el proveedor + modelo especificado es elegible para modelos gratuitos.
      *
-     * @param providerId 仅 [FREE_PROVIDER_ID] 或已迁移的隐藏旧供应商允许使用内置免费额度
-     * @param baseUrl 供应商 base url
-     * @param modelId 模型 id
-     * @param userApiKey 用户配置的 API key(空串表示未配置)
-     * @param hiddenFromSettings 旧版本复制出的免费预置也可通过迁移标记保留能力
-     * @return 如果符合条件返回 fallback key,否则返回 null
+     * @param providerId solo [FREE_PROVIDER_ID] o los proveedores heredados ocultos migrados permiten créditos gratuitos integrados
+     * @param baseUrl proveedor base url
+     * @param modelId modelo id
+     * @param userApiKey Usuario configurado API key(Cadena vacía significa no configurado)
+     * @param hiddenFromSettings Los ajustes preestablecidos gratuitos copiados de versiones anteriores también pueden conservar capacidades a través de etiquetas de migración
+     * @return Devolución si se cumplen las condiciones fallback key,De lo contrario regresar null
      */
     fun resolveApiKey(
         providerId: String,
@@ -74,7 +74,7 @@ object FreeModelConfig {
         val providerAllowed = providerId == FREE_PROVIDER_ID || hiddenFromSettings
         val hostAllowed = extractHost(baseUrl)?.contains(HOST_MARKER) == true
         val modelAllowed = FREE_MODEL_IDS.any { it.equals(modelId, ignoreCase = true) }
-        // 用户已配置自己的 key 时完全跳过 fallback,走用户 key。
+        // Saltar completamente cuando el usuario ya haya configurado su propia clave fallback,Tome la clave de usuario.
         return FALLBACK_API_KEY.takeIf {
             providerAllowed &&
                 userApiKey.isBlank() &&
@@ -85,15 +85,15 @@ object FreeModelConfig {
     }
 
     /**
-     * R-SEC-07: fallback key 是否可用(非空且非占位符)。
+     * R-SEC-07: fallback key ¿Está disponible?(No está vacío ni es un marcador de posición.).
      */
     fun isFallbackKeyAvailable(): Boolean = FALLBACK_API_KEY.isNotBlank() && FALLBACK_API_KEY != "PLACEHOLDER"
 
     /**
-     * 判断指定 provider 是否是免费模型 provider(SiliconFlow 且用户未填 key)。
+     * Determinar si el proveedor especificado es un modelo gratuito provider(SiliconFlow y el usuario no ha rellenado key).
      *
-     * 供 [OpenAIProvider.listModels] 在入口处判断:为 true 时直接返回预设的免费模型列表,
-     * 不调远程 /models(避免因无 key 而 401 失败)。
+     * suministro [OpenAIProvider.listModels] Juez en la entrada:Cuando es verdadero, devuelve directamente la lista de modelos libres preestablecidos,
+     * Sin ajuste remoto /models(Evite el fallo 401 por falta de clave).
      */
     fun isFreeProvider(providerId: String, baseUrl: String, userApiKey: String, hiddenFromSettings: Boolean = false): Boolean =
         (providerId == FREE_PROVIDER_ID || hiddenFromSettings) &&
@@ -109,10 +109,10 @@ object FreeModelConfig {
     }
 
     /**
-     * 从 BuildConfig 读取 fallback key,未注入时回退 "PLACEHOLDER"。
+     * Leer desde BuildConfig fallback key,Retroceso cuando no se inyecta "PLACEHOLDER".
      *
-     * ai 模块 build.gradle.kts 已开启 buildConfig 并通过 buildConfigField
-     * 注入 FREE_MODEL_KEY(优先级: -P 参数 > local.properties > 环境变量 > PLACEHOLDER)。
+     * ai El módulo build.gradle.kts tiene buildConfig activado y aprobado buildConfigField
+     * inyectar FREE_MODEL_KEY(prioridad: -P parámetros > local.properties > variables de entorno > PLACEHOLDER).
      */
     private fun getFallbackKey(): String {
         return try {

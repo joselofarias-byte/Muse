@@ -60,16 +60,16 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v1.0.53: 封面库管理页(封面工作流)。
+ * v1.0.53: Portada de la página de gestión de la biblioteca(cubrir el flujo de trabajo).
  *
- * 功能:
- *  - 网格展示全部封面(3 列)
- *  - 点击选中(高亮边框),底部"使用此封面"回调 [onPick]
- *  - 长按删除(确认对话框)
- *  - FAB 从相册导入(SAF)
+ * Función:
+ *  - La cuadrícula muestra todas las portadas.(3 columna)
+ *  - Haga clic para seleccionar(Resaltar borde),abajo"usa esta cubierta"devolución de llamada [onPick]
+ *  - Mantenga presionado para eliminar(Diálogo de confirmación)
+ *  - FAB Importar desde álbum de fotos(SAF)
  *
- * @param onBack 返回回调
- * @param onPick 选中封面回调(参数为封面文件路径);null 表示仅管理不选择
+ * @param onBack devolución de llamada
+ * @param onPick Seleccionar devolución de llamada de portada(El parámetro es la ruta del archivo de portada.);null Indica sólo gestión y no selección.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -142,7 +142,7 @@ fun CoverManagerScreen(onBack: () -> Unit, onPick: ((String) -> Unit)? = null) {
         },
     ) { paddingValues ->
         if (covers.isEmpty() && !importing) {
-            // 空态
+            // Estado vacío
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -201,7 +201,7 @@ fun CoverManagerScreen(onBack: () -> Unit, onPick: ((String) -> Unit)? = null) {
         }
     }
 
-    // 底部"使用此封面"栏(仅选择模式显示)
+    // abajo"usa esta cubierta"barra(Mostrar solo en modo de selección)
     if (onPick != null && selectedId != null) {
         val selected = covers.firstOrNull { it.id == selectedId }
         if (selected != null) {
@@ -230,7 +230,7 @@ fun CoverManagerScreen(onBack: () -> Unit, onPick: ((String) -> Unit)? = null) {
         }
     }
 
-    // 删除确认对话框
+    // Eliminar cuadro de diálogo de confirmación
     pendingDelete?.let { item ->
         MuseDialog(
             onDismissRequest = { pendingDelete = null },
@@ -253,7 +253,7 @@ fun CoverManagerScreen(onBack: () -> Unit, onPick: ((String) -> Unit)? = null) {
 }
 
 /**
- * 封面网格项 — 16:5 横幅裁切 + 选中高亮边框 + 删除角标。
+ * cubrir elemento de rejilla — 16:5 Recortar banner + seleccionar borde resaltado + eliminar marca de esquina.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -293,7 +293,7 @@ private fun CoverGridItem(
                 .fillMaxWidth()
                 .height(88.dp),
         )
-        // 删除角标(点击删除)
+        // Eliminar insignia(Haga clic en eliminar)
         if (isSelected) {
             Icon(
                 imageVector = MuseIcons.trash,

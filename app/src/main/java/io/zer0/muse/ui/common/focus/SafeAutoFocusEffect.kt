@@ -9,16 +9,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
 /**
- * v1.0.74 fix: 安全的自动聚焦 — 解决华为 Android 10 上偶发崩溃
- * `IllegalStateException: FocusRequester is not initialized`。
+ * v1.0.74 fix: Enfoque automático seguro — Resolviendo fallas ocasionales en Huawei Android 10
+ * `IllegalStateException: FocusRequester is not initialized`.
  *
- * 崩溃根因:在 LaunchedEffect 里立即 requestFocus(),但目标组件可能尚未组合完成:
- *  - LazyColumn item 的内容在 measure 阶段才组合(延迟组合),而 LaunchedEffect
- *    在 composition applyChanges 后立即启动 → focusRequester modifier 还没 attach
- *  - 条件渲染分支(isSearching 等)与 effect 的生命周期不同步 → 竞态窗口
+ * Causa fundamental del colapso:Inmediatamente en LaunchedEffect requestFocus(),Sin embargo, es posible que los componentes de destino aún no estén ensamblados.:
+ *  - LazyColumn item Los contenidos de se combinan en la etapa de medida.(combinación de retardo),y LaunchedEffect
+ *    Comienza inmediatamente después de aplicar los cambios de composición. → focusRequester modifier todavía no attach
+ *  - Rama de representación condicional(isSearching espera)No sincronizado con el ciclo de vida del efecto. → ventana de carrera
  *
- * 修复:先等一帧(确保上一帧的 measure/组合全部完成、modifier 已 attach),
- * 再请求焦点;仍失败则静默跳过(不崩溃,下次交互自然聚焦)。
+ * Reparación:Espere un fotograma primero(Asegúrese de que todas las medidas/combinaciones del cuadro anterior estén completas,modifier Ya attach),
+ * Solicitar enfoque nuevamente;Si aún falla, se omitirá silenciosamente.(no choques,Enfoque natural para la próxima interacción).
  */
 @Composable
 fun SafeAutoFocusEffect(focusRequester: FocusRequester) {
@@ -28,10 +28,10 @@ fun SafeAutoFocusEffect(focusRequester: FocusRequester) {
     }
 }
 
-/** 同上,但可由调用方控制触发条件(需要读其他状态时用)。
- * v1.0.74 fix (前端审计 3.8): 原 LaunchedEffect(Unit) 只求值一次 condition,
- * 若首帧条件为 false(如搜索态稍后才置真)之后永远不会聚焦。
- * 改用 snapshotFlow 观察,条件变 true 时聚焦。
+/** Igual que arriba,Pero las condiciones desencadenantes pueden ser controladas por la persona que llama.(Úselo cuando necesite leer otro estado).
+ * v1.0.74 fix (Auditoría inicial 3.8): Originales LaunchedEffect(Unit) Solo evaluado una vez condition,
+ * Si la primera condición del marco es false(Si el estado de búsqueda se establece en verdadero más adelante)Después de eso, nunca vuelve a enfocarse.
+ * Utilice snapshotFlow para observar en su lugar,Concéntrese cuando la condición se haga realidad.
  */
 @Composable
 fun SafeAutoFocusEffect(condition: () -> Boolean, focusRequester: FocusRequester) {

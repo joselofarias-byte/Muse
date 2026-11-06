@@ -12,23 +12,23 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
- * v1.97 gap7: 用户自定义主题 — 基于种子色生成完整 ColorScheme。
+ * v1.97 gap7: Tema definido por el usuario — Genere un ColorScheme completo basado en el color de la semilla.
  *
- * 用户在设置页选择 1~3 个种子色(primary 必填,secondary/tertiary 可选),
- * 调用 [generateColorScheme] 时通过 Material Color Utilities 的 HCT 色彩空间
- * 与 Variant.TONAL_SPOT 算法(Android 12+ 壁纸动态色同款)自动派生完整配色。
+ * El usuario selecciona en la página de configuración. 1~3 color de semilla(primary Requerido,secondary/tertiary Opcional),
+ * llamar [generateColorScheme] Espacio de color HCT a través de Material Color Utilities
+ * con algoritmo Variant.TONAL_SPOT(Android 12+ Fondo de pantalla color dinámico mismo estilo.)La coincidencia de colores completa se deriva automáticamente.
  *
- * 持久化:序列化为 JSON 存入 DataStore Preferences(见 SettingsRepository.customThemesFlow)。
- * 与 [PresetTheme] 的区别:PresetTheme 是手工调校的固定 ColorScheme;CustomTheme 由算法生成,
- * 用户只需选种子色,无需理解 ColorScheme 的 50+ 字段。
+ * persistencia:Serializar a JSON y guardar DataStore Preferences(ver SettingsRepository.customThemesFlow).
+ * con [PresetTheme] la diferencia:PresetTheme Se fija mediante ajuste manual. ColorScheme;CustomTheme Generado algorítmicamente,
+ * Los usuarios solo necesitan seleccionar el color de la semilla.,No es necesario comprender los más de 50 campos de ColorScheme.
  *
- * 实现说明:既有实现 CustomTheme.kt(Apache 2.0)。
+ * Instrucciones de implementación:Implementación existente CustomTheme.kt(Apache 2.0).
  *
- * @param id 唯一标识(自动生成 UUID)
- * @param name 用户可见名称(允许空串,UI 显示时回退"未命名")
- * @param primaryColorArgb 主种子色 ARGB(默认月桂绿,与 muse 品牌色一致)
- * @param secondaryColorArgb 次种子色,null 表示由 primary 自动派生
- * @param tertiaryColorArgb 三级种子色,null 表示由 primary 自动派生
+ * @param id identificador único(Generado automáticamente UUID)
+ * @param name Nombre visible del usuario(Permitir cadena vacía,UI Retroceso cuando se muestra"Sin nombre")
+ * @param primaryColorArgb color principal de la semilla ARGB(Verde laurel predeterminado,Consistente con los colores de la marca Muse.)
+ * @param secondaryColorArgb color secundario de la semilla,null Indica que se deriva automáticamente del primario.
+ * @param tertiaryColorArgb Color de semilla de tercer nivel,null Indica que se deriva automáticamente del primario.
  */
 @Serializable
 @OptIn(ExperimentalUuidApi::class)
@@ -40,21 +40,21 @@ data class CustomTheme(
     val tertiaryColorArgb: Long? = null,
 ) {
     /**
-     * 基于种子色生成 [dark] 或浅色模式的完整 [ColorScheme]。
+     * Generar según el color de la semilla. [dark] o completo en modo ligero [ColorScheme].
      *
-     * 算法链:
-     *  1. 主种子色 → [Hct.fromInt] 得到 HCT 色彩空间表示
-     *  2. 用 [ColorSpecs] 按 spec 版本派生 6 个 TonalPalette
+     * cadena de algoritmos:
+     *  1. color principal de la semilla → [Hct.fromInt] Obtenga representación del espacio de color HCT
+     *  2. usar [ColorSpecs] Derivar 6 por versión de especificación TonalPalette
      *     (primary/secondary/tertiary/neutral/neutralVariant/error)
-     *  3. 若 secondary/tertiary 显式指定,用 [TonalPalette.fromInt] 覆盖对应 palette
-     *  4. 组装 [DynamicScheme] → 调用 [toColorScheme] 扩展转换为 Compose ColorScheme
+     *  3. Si se especifica explícitamente secundario/terciario,usar [TonalPalette.fromInt] Correspondencia de cobertura palette
+     *  4. montar [DynamicScheme] → llamar [toColorScheme] La expansión se convierte en Compose ColorScheme
      *
-     * 使用 Variant.TONAL_SPOT — 与 Android 12+ 壁纸动态色使用的同一 variant,
-     * 保证生成结果与系统级动态色风格一致。contrastLevel=0.0 表示标准对比度
-     * (设计规范基线,-1 为最低对比度,1 为最高对比度)。
+     * uso Variant.TONAL_SPOT — El mismo que se usa para los colores dinámicos del fondo de pantalla de Android 12+ variant,
+     * Asegúrese de que los resultados generados sean coherentes con el estilo de color dinámico a nivel del sistema.contrastLevel=0.0 Indica contraste estándar
+     * (línea base de especificación de diseño,-1 es el contraste más bajo,1 para mayor contraste).
      *
-     * @param dark true 生成深色 ColorScheme,false 生成浅色
-     * @return 完整的 Compose Material3 ColorScheme(含 surfaceContainer 梯度与 fixed 色)
+     * @param dark true generar colores oscuros ColorScheme,false generar color de luz
+     * @return completo Compose Material3 ColorScheme(Contiene gradiente de contenedor de superficie y color fijo.)
      */
     fun generateColorScheme(dark: Boolean): ColorScheme {
         val sourceHct = Hct.fromInt(primaryColorArgb.toInt())
@@ -70,7 +70,7 @@ data class CustomTheme(
             platform,
             contrastLevel,
         )
-        // secondary/tertiary 未指定时,由 primary 自动派生(默认行为,与系统动态色一致)
+        // secondary/tertiary Cuando no se especifica,Derivado automáticamente de primario(Comportamiento predeterminado,Consistente con el color dinámico del sistema.)
         val secondaryPalette = if (secondaryColorArgb != null) {
             TonalPalette.fromInt(secondaryColorArgb.toInt())
         } else {
@@ -131,11 +131,11 @@ data class CustomTheme(
 
     companion object {
         /**
-         * 默认主种子色 — 月桂绿(与 muse 品牌色一致)。
-         * v1.0.74 fix (前端审计 3.10): 原值 0xFF2D8C5F 是旧版 LaurelGreen,
-         * Color.kt v1.0.21 已改为 #2A7A55,此处同步对齐避免自定义主题默认色漂移。
+         * Color de semilla principal predeterminado — verde laurel(Consistente con los colores de la marca Muse.).
+         * v1.0.74 fix (Auditoría inicial 3.10): El valor original 0xFF2D8C5F es la versión anterior. LaurelGreen,
+         * Color.kt v1.0.21 ha sido cambiado a #2A7A55,La alineación sincrónica aquí evita la desviación del color predeterminado del tema personalizado.
          *
-         * 用 ARGB Long 表示(高 8 位 alpha=0xFF),避免 Int 负数表示带来的混淆。
+         * Representado por ARGB Long(Alto 8 bits alpha=0xFF),Evite la confusión causada por la representación negativa de números Int.
          */
         const val DEFAULT_PRIMARY_ARGB: Long = 0xFF2A7A55L
     }

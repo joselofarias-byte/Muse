@@ -28,10 +28,10 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
- * v0.32: 实验性功能页。
+ * v0.32: Página de funciones experimentales.
  *
- * 默认全部关闭,用户主动开启后才会启用对应实验性功能。
- * 顶部有醒目提示告诉用户这些功能可能不稳定。
+ * Todos están cerrados por defecto.,La función experimental correspondiente se habilitará solo después de que el usuario la active activamente.
+ * Un mensaje destacado en la parte superior indica a los usuarios que estas funciones pueden ser inestables.
  */
 @Composable
 fun ExperimentsSettingsPage(onBack: () -> Unit) {

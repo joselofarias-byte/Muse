@@ -16,9 +16,9 @@ import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 
 /**
- * 插件市场设置测试：官方目录内置、可被覆盖但信任根不可被削弱。
+ * Prueba de configuración del mercado de complementos: directorio oficial incorporado, se puede sobrescribir pero la raíz de confianza no se puede debilitar.
  *
- * 遵循 Store 测试约定：每个用例先清掉上一个用例留下的覆盖与自定义信任根，保证顺序无关。
+ * Siga la convención de prueba de la Tienda: cada caso de uso primero borra la cobertura y la raíz de confianza personalizada que dejó el caso de uso anterior para garantizar que el orden sea irrelevante.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -50,7 +50,7 @@ class PluginMarketSettingsTest {
         assertEquals(PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
     }
 
-    // ── P0-9: 目录信任根可撤 ──
+    // ── P0-9: La raíz del directorio de confianza es revocable ──
 
     @Test
     fun removeCatalogRootKey_removesUserRootOnly() = runBlocking {
@@ -61,7 +61,7 @@ class PluginMarketSettingsTest {
 
         settings.removeCatalogRootKey("user-root")
 
-        assertEquals("自定义信任根撤销后应只剩内置根", PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
+        assertEquals("Después de revocar la raíz de confianza personalizada, solo debe permanecer la raíz integrada", PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
     }
 
     @Test
@@ -71,7 +71,7 @@ class PluginMarketSettingsTest {
         val builtinId = PluginMarketDefaults.catalogRootKeys.keys.first()
         settings.removeCatalogRootKey(builtinId)
 
-        assertEquals("内置官方信任根不可移除", PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
+        assertEquals("La raíz de confianza oficial incorporada no se puede eliminar", PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
     }
 
     @Test
@@ -81,7 +81,7 @@ class PluginMarketSettingsTest {
         settings.saveCatalogUrl("https://mirror.example.com/catalog.json")
         assertEquals("https://mirror.example.com/catalog.json", settings.catalogUrl())
         assertEquals("https://mirror.example.com/catalog.json", settings.catalogUrlOverride())
-        // 覆盖目录不影响官方信任根：它始终参与验签。
+        // Sobrescribir el directorio no afecta la raíz de confianza oficial: siempre participa en la verificación de firmas.
         assertEquals(PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())
 
         settings.resetCatalogUrl()
@@ -96,7 +96,7 @@ class PluginMarketSettingsTest {
             PluginMarketDefaults.CATALOG_ROOT_KEY_ID,
             generatedPublicKey(),
         )
-        assertTrue("内置 keyId 必须拒绝写入", replaced.isFailure)
+        assertTrue("El keyId incorporado debe denegar la escritura.", replaced.isFailure)
 
         settings.removeCatalogRootKey(PluginMarketDefaults.CATALOG_ROOT_KEY_ID)
         assertEquals(PluginMarketDefaults.catalogRootKeys, settings.catalogRootKeys())

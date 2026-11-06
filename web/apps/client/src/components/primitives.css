@@ -1,11 +1,11 @@
 /* =====================================================================
-   Muse 组件基元样式
+   Muse Estilo primitivo del componente
    ---------------------------------------------------------------------
-   对齐 Compose 端规格（MuseScaffold / MuseTopBar / MuseListItem /
+   Alinear especificación lateral de redacción (MuseScaffold / MuseTopBar / MuseListItem /
    MuseDivider / SectionLabel / CardGroup / MuseSwitch / MuseCapsuleButton /
-   气泡形状），所有取值都来自 src/design/tokens.json 生成的 `--muse-*`
-   变量。这一层只做一件事：把「明/暗两套 scheme 令牌」收敛成语义变量
-   `--ui-*`，组件规则只引用 `--ui-*` 与 `--muse-*`。
+   Forma de burbuja), todos los valores se generan desde src/design/tokens.json `--muse-*`
+   variables. Esta capa solo hace una cosa: poner "Ming/Los dos conjuntos oscuros de tokens de esquema convergen en variables semánticas
+   `--ui-*`, las reglas de los componentes solo hacen referencia `--ui-*` con `--muse-*`.
    ===================================================================== */
 
 :root {
@@ -32,19 +32,19 @@
   --ui-error-ink: color-mix(in srgb, var(--ui-error) 60%, transparent);
   --ui-switch-track-off: var(--muse-color-scheme-light-switch-track-off);
   --ui-shadow: var(--muse-color-scheme-light-shadow);
-  /* 字体栈只在 styles.css 的 :root 定义一次（与手机 App 同一套系统无衬线） */
+  /* La pila de fuentes solo se define una vez en: raíz de estilos.css (el mismo sistema sans-serif que la aplicación celular) */
   --ui-font: var(--font-ui);
   --ui-safe-top: env(safe-area-inset-top, 0px);
   --ui-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* 明/暗两套 scheme 收敛成语义变量 `--ui-*`。
-   三态主题：
-     — 未强制（data-theme="system" 或无属性）：跟 prefers-color-scheme
-     — data-theme="light"：强制浅色（下面的暗色媒体查询会跳过）
-     — data-theme="dark"：强制深色
-   暗色声明写了两遍（媒体查询一遍、属性一遍），CSS 没有更好的复用手段；
-   check-appearance.mjs 会逐条比对这两块，防止漂。 */
+/* Ming/Los dos esquemas oscuros convergen en variables semánticas `--ui-*`.
+   Tema de los tres estados:
+     — No obligatorio (data-theme="system" o ningún atributo): seguido de prefers-color-scheme
+     — data-theme="light": Forzar color claro (se omitirá la siguiente consulta de medios oscuros)
+     — data-theme="dark": Forzar color oscuro
+   La declaración oscura se escribe dos veces (una para la consulta de medios y otra para los atributos).CSS No existe mejor método de reutilización;
+   check-appearance.mjs Compararé estas dos piezas pieza por pieza para evitar desviaciones. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --ui-surface: var(--muse-color-scheme-dark-surface);
@@ -71,7 +71,7 @@
   }
 }
 
-/* 强制深色：与上面那块逐条一致（check-appearance.mjs 会比对） */
+/* Color oscuro forzado: consistente con el anterior (check-appearance.mjs Se comparará) */
 :root[data-theme="dark"] {
   --ui-surface: var(--muse-color-scheme-dark-surface);
   --ui-surface-card: var(--muse-color-scheme-dark-surface-container-low);
@@ -141,8 +141,8 @@
   flex: 0 0 auto;
   padding: 0 var(--muse-space-screen) calc(var(--ui-safe-bottom) + var(--muse-space-content-gap));
 }
-/* 固定定位的手机壳（.host-root）里，屏幕要撑满剩余高度，而不是被内容撑高：
-   否则 .muse-screen-body 的 overflow 失效，长列表会被外层裁掉。 */
+/* Funda para teléfono celular de posicionamiento fijo (.host-root), la pantalla debe ocupar la altura restante, en lugar de estar sostenida por el contenido:
+   De lo contrario, el desbordamiento de .muse-screen-body no será válido y la capa exterior cortará la lista larga. */
 .muse-screen.is-fill { flex: 1 1 auto; min-height: 0; }
 
 /* ── TopBar ────────────────────────────────────────────────────────── */
@@ -230,8 +230,8 @@
 }
 .muse-listrow.is-interactive { cursor: pointer; }
 .muse-listrow.is-interactive:active { background: var(--ui-press-veil); }
-/* MuseListItem：leading 与文字间距 = screen(16)，文字与 trailing 间距 = contentGap(8)，
-   标题与副标题之间无额外间距。 */
+/* MuseListItem:leading espacio entre texto = screen(16), texto y espaciado final = contentGap(8),
+   No hay espacio adicional entre el título y el subtítulo. */
 .muse-listrow-leading {
   display: inline-flex;
   flex: 0 0 auto;
@@ -267,7 +267,7 @@
   color: var(--ui-on-surface-variant);
 }
 .muse-listrow-chevron { color: var(--ui-outline); }
-/* MuseDivider：0.5dp 发丝线，起始缩进 = 16 内边距 + 24 图标 + 16 间距（= 56，见 MuseDivider.startIndent）。 */
+/* MuseDivider:0.5dp línea del cabello, sangría inicial = 16 relleno + 24 iconos + 16 espacios (= 56, consulte MuseDivider.startIndent). */
 .muse-listrow-divider {
   position: absolute;
   right: 0;
@@ -279,7 +279,7 @@
   background: var(--ui-divider);
 }
 
-/* ── Switch（轨道 51×31、拇指 27、内缩 2） ──────────────────────────── */
+/* ── Switch(órbita 51×31, pulgar 27, retracción 2) ──────────────────────────── */
 .muse-switch {
   position: relative;
   display: inline-flex;
@@ -325,7 +325,7 @@
     )
   );
 }
-/* 开启态拇指内圈：primary @20%（MuseSwitch drawCircle 装饰）。 */
+/* Abrir el círculo interior del pulgar:primary @20%(MuseSwitch drawCircle decoración). */
 .muse-switch.is-on .muse-switch-track::after {
   position: absolute;
   top: 50%;
@@ -339,7 +339,7 @@
 }
 .muse-switch:disabled { cursor: not-allowed; opacity: var(--muse-color-alpha-action-disabled); }
 
-/* ── CapsuleButton（48dp 高、24dp 圆角、按压 0.97x） ────────────────── */
+/* ── CapsuleButton(48dp alto,24dp Filete, presione 0,97x) ────────────────── */
 .muse-capsule {
   position: relative;
   display: inline-flex;
@@ -369,8 +369,8 @@
 .muse-capsule.is-secondary { color: var(--ui-on-primary-container); background: var(--ui-primary-container); }
 .muse-capsule:active:not(:disabled) { transform: scale(var(--muse-component-button-capsule-press-scale)); }
 .muse-capsule:disabled { cursor: not-allowed; background: transparent; }
-/* v1.0.92 口径：禁用态容器 0.38、文字 0.75 —— 不直接把 alpha 描到 content 上，
-   而是用一层半透明容器，文字只降到 0.75，浅色主题下不会变成一块黑。 */
+/* v1.0.92 Calibre: contenedor deshabilitado 0.38, texto 0.75 —— No dibujes alfa directamente al contenido,
+   En su lugar, use una capa de contenedor translúcido, el texto solo se reduce a 0,75 y no se convertirá en un bloque negro bajo el tema claro. */
 .muse-capsule:disabled::before {
   position: absolute;
   z-index: 0;
@@ -383,7 +383,7 @@
 .muse-capsule.is-secondary:disabled::before { background: var(--ui-primary-container); }
 .muse-capsule:disabled .muse-capsule-label { opacity: var(--muse-color-alpha-action-content-disabled); }
 
-/* ── Bubble（主体 20dp + 尾巴角 6dp，最大宽度比由 MuseBubbleStyles 给） ── */
+/* ── Bubble(Cuerpo 20 dp + esquina trasera 6 dp, relación de ancho máxima proporcionada por MuseBubbleStyles) ── */
 .muse-bubble {
   display: grid;
   gap: var(--muse-space-tight-gap);
@@ -426,7 +426,7 @@
   padding-top: var(--muse-space-tiny-gap);
 }
 
-/* ── 设置项图标（圆形药丸底 + 描边图标，对齐 MuseSettingsIcon） ─────── */
+/* ── Ícono de configuración (parte inferior de la pastilla redonda + ícono de trazo, alineado con MuseSettingsIcon) ─────── */
 .muse-settings-icon {
   display: inline-grid;
   place-items: center;
@@ -441,10 +441,10 @@
   height: var(--muse-icons-icon-small);
 }
 
-/* ── 分组堆叠（CardGroup 之间的纵向间距 = cardGap 20dp） ───────────── */
+/* ── pila de grupo (CardGroup espacio vertical entre = cardGap 20dp) ───────────── */
 .muse-stack { display: grid; gap: var(--muse-space-card-gap); align-content: start; }
 
-/* ── 骨架条（扫光） ──────────────────────────────────────────────── */
+/* ── Tira de esqueleto (barrido) ──────────────────────────────────────────────── */
 .muse-skeleton {
   display: block;
   width: 55%;
@@ -466,7 +466,7 @@
   to { background-position: -150% 0; }
 }
 
-/* ── 错误状态块（ErrorStateBox） ───────────────────────────────────── */
+/* ── bloque de estado de error (ErrorStateBox) ───────────────────────────────────── */
 .muse-error-box {
   display: grid;
   justify-items: center;

@@ -1,28 +1,28 @@
 /**
- * Muse 插件：数学工具箱
+ * Muse Complemento: Caja de herramientas matemáticas
  *
- * 运行契约（宿主 WebViewSkillEngine）：
- *  - 每个工具函数接收一个参数对象，如 function mathEval(args)，args.expr；
- *  - 返回值是普通对象，宿主会自动 JSON 序列化后交给模型；
- *  - 出错时返回 { error: "原因" }，宿主会把这类结果标记为失败。
+ * Ejecute el contrato (alojado por WebViewSkillEngine):
+ *  - Cada función de utilidad recibe un objeto de parámetro, como function mathEval(args),args.expr;
+ *  - El valor de retorno es un objeto normal y el host lo serializará JSON automáticamente y se lo entregará al modelo;
+ *  - Devolución en caso de error { error: "Razón" }, el anfitrión marcará dichos resultados como fracasos.
  *
- * 本插件是纯本地计算：不联网、不读写文件、不做动态代码求值。
- * 表达式求值由自带的词法分析 + 递归下降解析器完成，只允许白名单内的运算符、常量与函数。
- * 大整数进制转换用逐位字符串运算实现（不依赖 BigInt，兼容旧 WebView）。
+ * Este complemento es puramente informático local: sin conexión a Internet, sin lectura y escritura de archivos, y sin evaluación dinámica de código.
+ * La evaluación de expresiones se completa con el análisis léxico incorporado + analizador de descenso recursivo, que solo permite operadores, constantes y funciones en la lista blanca.
+ * La conversión de base de enteros grandes se implementa mediante operaciones de cadena bit a bit (no depende de BigInt, es compatible con el antiguo WebView).
  */
 
-/** 输入上限：避免异常输入在 10s 的 JS 沙盒超时内拖垮 WebView。 */
+/** Límite superior de entrada: evite que una entrada anormal destruya WebView dentro del tiempo de espera de 10 segundos del entorno limitado de JS. */
 var MATH_MAX_EXPRESSION_LENGTH = 2000;
 var MATH_MAX_LIST_LENGTH = 1000;
 var MATH_MAX_BASE_INPUT_LENGTH = 2048;
-var MATH_MAX_FACTORIZE = 1000000000000; /* 1e12，试除法在此规模内可控 */
+var MATH_MAX_FACTORIZE = 1000000000000; /* 1e12, el método de división de prueba es controlable dentro de esta escala */
 var MATH_SAFE_INTEGER = 9007199254740991;
 
 var MATH_BASE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 var MATH_PRECEDENCE = { "+": 1, "-": 1, "*": 2, "/": 2, "%": 2, "^": 4 };
 var MATH_NUMERIC_PATTERN = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 
-/** 内置常量。 */
+/** Constantes incorporadas. */
 var MATH_CONSTANTS = {
     pi: Math.PI,
     e: Math.E,
@@ -30,7 +30,7 @@ var MATH_CONSTANTS = {
     phi: (1 + Math.sqrt(5)) / 2
 };
 
-/** 内置函数（全部是纯函数；参数非法导致的 NaN 会在求值阶段被拦截）。 */
+/** Funciones integradas (todas las funciones puras; NaN causado por parámetros ilegales serán interceptados durante la fase de evaluación). */
 var MATH_FUNCTIONS = {
     abs: Math.abs,
     sqrt: Math.sqrt,
@@ -54,7 +54,7 @@ var MATH_FUNCTIONS = {
     hypot: Math.hypot
 };
 
-/** 名称列表（错误提示里给模型可用清单）。 */
+/** Lista de nombres (la lista de modelos disponibles en el mensaje de error). */
 function mathNamesOf(table) {
     var names = [];
     for (var key in table) {
@@ -63,23 +63,23 @@ function mathNamesOf(table) {
     return names.sort();
 }
 
-/* ────────────────────────────── 表达式求值 ────────────────────────────── */
+/* ────────────────────────────── Evaluación de expresiones ────────────────────────────── */
 
-/** 把中文/全角输入规范化成 ASCII 数学写法，顺手把 ** 视作幂运算符。 */
+/** poner chino/La entrada de ancho completo está normalizada en escritura matemática ASCII, lo que facilita ** Tratado como un operador de energía. */
 function mathNormalizeText(text) {
     var out = "";
     for (var i = 0; i < text.length; i++) {
         var ch = text.charAt(i);
-        if (ch >= "０" && ch <= "９") out += String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
-        else if (ch === "（") out += "(";
-        else if (ch === "）") out += ")";
+        if (ch >= "0" && ch <= "9") out += String.fromCharCode(ch.charCodeAt(0) - 0xfee0);
+        else if (ch === "(") out += "(";
+        else if (ch === ")") out += ")";
         else if (ch === "×" || ch === "·" || ch === "＊") out += "*";
-        else if (ch === "÷" || ch === "／") out += "/";
-        else if (ch === "－" || ch === "−" || ch === "—") out += "-";
-        else if (ch === "＋") out += "+";
-        else if (ch === "％") out += "%";
+        else if (ch === "÷" || ch === "/") out += "/";
+        else if (ch === "-" || ch === "−" || ch === "—") out += "-";
+        else if (ch === "+") out += "+";
+        else if (ch === "%") out += "%";
         else if (ch === "＾") out += "^";
-        else if (ch === "，") out += ",";
+        else if (ch === ",") out += ",";
         else if (ch === "．") out += ".";
         else if (ch === "\u00a0" || ch === "\u3000" || ch === "\u200b") out += " ";
         else out += ch;
@@ -87,7 +87,7 @@ function mathNormalizeText(text) {
     return out;
 }
 
-/** 词法分析：数字（含小数、科学计数法）、名称、运算符、括号、逗号。 */
+/** Análisis léxico: números (incluidos decimales, notación científica), nombres, operadores, paréntesis, comas. */
 function mathTokenize(text) {
     var tokens = [];
     var index = 0;
@@ -123,7 +123,7 @@ function mathTokenize(text) {
                     continue;
                 }
                 if (digitCh === ".") {
-                    if (dots > 0) return { error: "数字里出现了多个小数点（位置 " + (index + 1) + "）" };
+                    if (dots > 0) return { error: "Aparecen varios puntos decimales en el número (posición " + (index + 1) + ")" };
                     dots++;
                     index++;
                     continue;
@@ -131,7 +131,7 @@ function mathTokenize(text) {
                 break;
             }
             var literal = text.slice(start, index);
-            if (literal === ".") return { error: "单独的小数点不是合法数字（位置 " + (start + 1) + "）" };
+            if (literal === ".") return { error: "Un solo punto decimal no es un número legal (posición " + (start + 1) + ")" };
             var expCh = text.charAt(index);
             if (expCh === "e" || expCh === "E") {
                 var probe = index + 1;
@@ -151,7 +151,7 @@ function mathTokenize(text) {
                 }
             }
             var value = parseFloat(literal);
-            if (isNaN(value)) return { error: "无法解析数字: " + literal };
+            if (isNaN(value)) return { error: "No se puede analizar el número: " + literal };
             tokens.push({ type: "number", value: value, text: literal, pos: start });
             continue;
         }
@@ -161,17 +161,17 @@ function mathTokenize(text) {
             tokens.push({ type: "name", value: text.slice(nameStart, index), pos: nameStart });
             continue;
         }
-        return { error: "非法字符 '" + ch + "'（位置 " + (index + 1) + "）" };
+        return { error: "personajes ilegales '" + ch + "'(ubicación " + (index + 1) + ")" };
     }
     return { tokens: tokens };
 }
 
 /**
- * 递归下降解析（返回 AST）：
+ * Análisis de descenso recursivo (devolviendo AST):
  *   expression := term (('+' | '-') term)*
  *   term       := unary (('*' | '/' | '%') unary)*
  *   unary      := ('+' | '-') unary | power
- *   power      := primary ('^' unary)?         // 右结合，且 -2^2 = -(2^2)
+ *   power      := primary ('^' unary)?         // asociativo derecho, y -2^2 = -(2^2)
  *   primary    := number | constant | name '(' args ')' | '(' expression ')'
  */
 function mathParse(tokens) {
@@ -240,8 +240,8 @@ function mathParse(tokens) {
     function parsePrimary() {
         var token = peek();
         if (!token) {
-            if (openParens > 0) return { error: "括号不匹配：缺少 " + openParens + " 个右括号 ')'" };
-            return { error: "表达式不完整：末尾缺少数字或括号" };
+            if (openParens > 0) return { error: "No coinciden los soportes: falta " + openParens + " soporte derecho ')'" };
+            return { error: "Expresión incompleta: falta un número o un paréntesis al final" };
         }
         if (token.type === "number") {
             pos++;
@@ -254,7 +254,7 @@ function mathParse(tokens) {
             if (inner.error) return inner;
             var closing = peek();
             if (!closing || closing.type !== "op" || closing.value !== ")") {
-                return { error: "括号不匹配：缺少右括号 ')'（对应位置 " + (token.pos + 1) + " 的左括号）" };
+                return { error: "No coinciden los corchetes: falta el corchete de cierre ')'(ubicación correspondiente " + (token.pos + 1) + " paréntesis izquierdo)" };
             }
             pos++;
             openParens--;
@@ -267,7 +267,7 @@ function mathParse(tokens) {
             var isCall = after && after.type === "op" && after.value === "(";
             if (isCall) {
                 if (!Object.prototype.hasOwnProperty.call(MATH_FUNCTIONS, lower)) {
-                    return { error: "未知函数: " + token.value + "（可用函数: " + mathNamesOf(MATH_FUNCTIONS).join(", ") + "）" };
+                    return { error: "función desconocida: " + token.value + "(Funciones disponibles: " + mathNamesOf(MATH_FUNCTIONS).join(", ") + ")" };
                 }
                 pos++;
                 openParens++;
@@ -282,7 +282,7 @@ function mathParse(tokens) {
                         if (arg.error) return arg;
                         callArgs.push(arg.node);
                         var separator = peek();
-                        if (!separator) return { error: "括号不匹配：函数 " + lower + " 缺少右括号 ')'" };
+                        if (!separator) return { error: "Los paréntesis no coinciden: función " + lower + " falta soporte de cierre ')'" };
                         if (separator.type === "op" && separator.value === ",") {
                             pos++;
                             continue;
@@ -292,7 +292,7 @@ function mathParse(tokens) {
                             openParens--;
                             break;
                         }
-                        return { error: "函数 " + lower + " 的参数之间需要逗号分隔" };
+                        return { error: "función " + lower + " Los parámetros deben estar separados por comas." };
                     }
                 }
                 return { node: { kind: "call", name: lower, args: callArgs } };
@@ -300,9 +300,9 @@ function mathParse(tokens) {
             if (Object.prototype.hasOwnProperty.call(MATH_CONSTANTS, lower)) {
                 return { node: { kind: "const", name: lower } };
             }
-            return { error: "未知名称: " + token.value + "（可用常量: " + mathNamesOf(MATH_CONSTANTS).join(", ") + "）" };
+            return { error: "nombre desconocido: " + token.value + "(Constantes disponibles: " + mathNamesOf(MATH_CONSTANTS).join(", ") + ")" };
         }
-        return { error: "无法解析的内容: " + token.value + "（位置 " + (token.pos + 1) + "）" };
+        return { error: "Contenido no analizable: " + token.value + "(ubicación " + (token.pos + 1) + ")" };
     }
 
     var parsed = parseExpression();
@@ -310,21 +310,21 @@ function mathParse(tokens) {
     if (pos < tokens.length) {
         var extra = tokens[pos];
         if (extra.type === "op" && extra.value === ")") {
-            return { error: "括号不匹配：多了一个右括号 ')'（位置 " + (extra.pos + 1) + "）" };
+            return { error: "No coinciden los soportes: soporte extra derecho ')'(ubicación " + (extra.pos + 1) + ")" };
         }
-        return { error: "表达式含多余内容: '" + (extra.text !== undefined ? extra.text : extra.value) + "'（位置 " + (extra.pos + 1) + "）" };
+        return { error: "La expresión contiene contenido redundante.: '" + (extra.text !== undefined ? extra.text : extra.value) + "'(ubicación " + (extra.pos + 1) + ")" };
     }
     return parsed;
 }
 
-/** 求值：只接受有限数；除零、定义域外、溢出都转成明确错误。 */
+/** Evaluación: Sólo se aceptan números finitos; la división por cero, fuera de dominio y desbordamiento se convierten en errores explícitos. */
 function mathEvaluate(node) {
     if (node.kind === "num") return { value: node.value };
     if (node.kind === "const") return { value: MATH_CONSTANTS[node.name] };
     if (node.kind === "unary") {
         var operand = mathEvaluate(node.operand);
         if (operand.error) return operand;
-        return mathCheckValue(-operand.value, "一元负号的结果");
+        return mathCheckValue(-operand.value, "El resultado de un signo unario negativo.");
     }
     if (node.kind === "call") {
         var values = [];
@@ -337,9 +337,9 @@ function mathEvaluate(node) {
         try {
             outcome = MATH_FUNCTIONS[node.name].apply(null, values);
         } catch (e) {
-            return { error: "函数 " + node.name + " 调用失败: " + (e && e.message ? e.message : e) };
+            return { error: "función " + node.name + " llamada fallida: " + (e && e.message ? e.message : e) };
         }
-        return mathCheckValue(outcome, "函数 " + node.name + " 的结果");
+        return mathCheckValue(outcome, "función " + node.name + " el resultado");
     }
     if (node.kind === "bin") {
         var left = mathEvaluate(node.left);
@@ -353,28 +353,28 @@ function mathEvaluate(node) {
         else if (node.op === "-") value = a - b;
         else if (node.op === "*") value = a * b;
         else if (node.op === "/") {
-            if (b === 0) return { error: "除以零：除数不能为 0" };
+            if (b === 0) return { error: "División por cero: el divisor no puede ser 0" };
             value = a / b;
         } else if (node.op === "%") {
-            if (b === 0) return { error: "取模运算的除数不能为 0" };
+            if (b === 0) return { error: "El divisor de la operación de módulo no puede ser 0" };
             value = a % b;
         } else if (node.op === "^") {
             value = Math.pow(a, b);
         } else {
-            return { error: "未知运算符: " + node.op };
+            return { error: "operador desconocido: " + node.op };
         }
-        return mathCheckValue(value, "运算符 " + node.op + " 的结果");
+        return mathCheckValue(value, "operador " + node.op + " el resultado");
     }
-    return { error: "表达式结构异常" };
+    return { error: "Excepción de estructura de expresión" };
 }
 
 function mathCheckValue(value, label) {
-    if (typeof value !== "number" || isNaN(value)) return { error: label + "不是有效数字（可能超出定义域）" };
-    if (!isFinite(value)) return { error: label + "溢出（超出数值范围）" };
+    if (typeof value !== "number" || isNaN(value)) return { error: label + "No es un número válido (puede estar fuera del dominio)" };
+    if (!isFinite(value)) return { error: label + "Desbordamiento (fuera del rango numérico)" };
     return { value: value };
 }
 
-/** 规范化输出：结构标准化 + 去掉多余括号，字面量保持原样。 */
+/** Salida normalizada: normalización de la estructura + eliminación de paréntesis redundantes, manteniendo los literales como están. */
 function mathRender(node, minPrecedence) {
     var text;
     var precedence;
@@ -407,17 +407,17 @@ function mathRender(node, minPrecedence) {
 }
 
 function mathEval(args) {
-    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
+    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
     var expr = args.expr;
-    if (typeof expr !== "string") return { error: "expr 必须是字符串" };
+    if (typeof expr !== "string") return { error: "expr debe ser una cuerda" };
     var trimmed = expr.trim();
-    if (trimmed.length === 0) return { error: "expr 不能为空" };
+    if (trimmed.length === 0) return { error: "expr no puede estar vacío" };
     if (trimmed.length > MATH_MAX_EXPRESSION_LENGTH) {
-        return { error: "expr 过长（上限 " + MATH_MAX_EXPRESSION_LENGTH + " 字符）" };
+        return { error: "expr Demasiado largo (límite superior " + MATH_MAX_EXPRESSION_LENGTH + " personajes)" };
     }
     var lexed = mathTokenize(mathNormalizeText(trimmed));
     if (lexed.error) return { error: lexed.error };
-    if (lexed.tokens.length === 0) return { error: "expr 中没有可解析的内容" };
+    if (lexed.tokens.length === 0) return { error: "expr No hay contenido analizable en" };
     var parsed = mathParse(lexed.tokens);
     if (parsed.error) return { error: parsed.error };
     var evaluated = mathEvaluate(parsed.node);
@@ -425,14 +425,14 @@ function mathEval(args) {
     return {
         result: evaluated.value,
         expression: mathRender(parsed.node, 0),
-        note: "支持 + - * / % ^（或 **）、括号、一元正负号、小数与科学计数法；常量 " +
-            mathNamesOf(MATH_CONSTANTS).join("/") + "；函数 " + mathNamesOf(MATH_FUNCTIONS).join("/") + "。"
+        note: "apoyo + - * / % ^(o **), paréntesis, signos unarios, decimales y notación científica; constantes " +
+            mathNamesOf(MATH_CONSTANTS).join("/") + "; función " + mathNamesOf(MATH_FUNCTIONS).join("/") + "."
     };
 }
 
-/* ────────────────────────────── 进制转换 ────────────────────────────── */
+/* ────────────────────────────── Conversión de bases ────────────────────────────── */
 
-/** 任意进制数字串 → 十进制数字串（逐位乘加，支持任意长度整数）。 */
+/** Cadena de dígitos arbitrarios → Cadena de dígitos decimales (multiplicación y suma de dígitos, admite números enteros de cualquier longitud). */
 function mathBaseToDecimal(digitValues, base) {
     var decimal = [0];
     for (var i = 0; i < digitValues.length; i++) {
@@ -452,7 +452,7 @@ function mathBaseToDecimal(digitValues, base) {
     return text;
 }
 
-/** 十进制数字串 → 目标进制数字串（逐位短除法）。 */
+/** Cadena de dígitos decimales → Cadena de dígitos de la base de destino (división corta por dígitos). */
 function mathDecimalToBase(decimalText, base) {
     if (decimalText === "0" || decimalText === "") return "0";
     var digits = [];
@@ -474,16 +474,16 @@ function mathDecimalToBase(decimalText, base) {
 }
 
 function baseConvert(args) {
-    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
+    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
     var raw = args.value;
-    if (raw === undefined || raw === null || raw === "") return { error: "value 不能为空" };
+    if (raw === undefined || raw === null || raw === "") return { error: "value no puede estar vacío" };
     if (typeof raw === "number") {
         if (isNaN(raw) || !isFinite(raw) || raw % 1 !== 0) {
-            return { error: "value 为数字时必须是有限整数，超大整数请用字符串传入" };
+            return { error: "value Cuando es un número, debe ser un número entero limitado. Si el número entero es muy grande, utilice una cadena para pasarlo." };
         }
         raw = String(raw);
     }
-    if (typeof raw !== "string") return { error: "value 必须是字符串或整数" };
+    if (typeof raw !== "string") return { error: "value Debe ser una cadena o un número entero" };
 
     var fromParsed = mathParseBase(args.fromBase, "fromBase");
     if (fromParsed.error) return { error: fromParsed.error };
@@ -498,23 +498,23 @@ function baseConvert(args) {
     } else if (text.charAt(0) === "+") {
         text = text.slice(1);
     }
-    if (text.length === 0) return { error: "value 没有有效数字" };
+    if (text.length === 0) return { error: "value sin dígitos significativos" };
     if (text.length > MATH_MAX_BASE_INPUT_LENGTH) {
-        return { error: "value 过长（上限 " + MATH_MAX_BASE_INPUT_LENGTH + " 位）" };
+        return { error: "value Demasiado largo (límite superior " + MATH_MAX_BASE_INPUT_LENGTH + " poco)" };
     }
     var lower = text.toLowerCase();
     if (fromParsed.value === 16 && lower.indexOf("0x") === 0) lower = lower.slice(2);
     else if (fromParsed.value === 2 && lower.indexOf("0b") === 0) lower = lower.slice(2);
     else if (fromParsed.value === 8 && lower.indexOf("0o") === 0) lower = lower.slice(2);
-    if (lower.length === 0) return { error: "value 没有有效数字" };
-    if (lower.indexOf(".") >= 0) return { error: "暂不支持小数转换，请只传入整数" };
+    if (lower.length === 0) return { error: "value sin dígitos significativos" };
+    if (lower.indexOf(".") >= 0) return { error: "La conversión decimal aún no es compatible; pase solo números enteros." };
 
     var digitValues = [];
     for (var i = 0; i < lower.length; i++) {
         var value = MATH_BASE_DIGITS.indexOf(lower.charAt(i));
-        if (value < 0) return { error: "非法字符 '" + text.charAt(i) + "'（" + fromParsed.value + " 进制只允许 0-9 与 a-z）" };
+        if (value < 0) return { error: "personajes ilegales '" + text.charAt(i) + "'(" + fromParsed.value + " El sistema base sólo permite 0-9 y a-z)" };
         if (value >= fromParsed.value) {
-            return { error: "数字 '" + text.charAt(i) + "' 超出 " + fromParsed.value + " 进制的范围（最大数字 " + MATH_BASE_DIGITS.charAt(fromParsed.value - 1) + "）" };
+            return { error: "numeros '" + text.charAt(i) + "' más allá " + fromParsed.value + " Rango base (número máximo " + MATH_BASE_DIGITS.charAt(fromParsed.value - 1) + ")" };
         }
         digitValues.push(value);
     }
@@ -528,70 +528,70 @@ function baseConvert(args) {
         toBase: toParsed.value,
         digits: converted.length,
         negative: negative,
-        note: "输出用大写字母；输入不区分大小写，支持 0x/0b/0o 前缀与任意长度整数（不含小数）。"
+        note: "La salida utiliza letras mayúsculas; La entrada no distingue entre mayúsculas y minúsculas y admite prefijos 0x/0b/0o y números enteros de cualquier longitud (excluidos decimales)."
     };
 }
 
 function mathParseBase(raw, label) {
     var value = raw;
     if (typeof value === "string") {
-        if (!/^\s*[+-]?\d+\s*$/.test(value)) return { error: label + " 必须是整数" };
+        if (!/^\s*[+-]?\d+\s*$/.test(value)) return { error: label + " Debe ser un número entero" };
         value = parseInt(value, 10);
     }
     if (typeof value !== "number" || isNaN(value) || value % 1 !== 0) {
-        return { error: label + " 必须是整数" };
+        return { error: label + " Debe ser un número entero" };
     }
-    if (value < 2 || value > 36) return { error: label + " 必须在 2..36 之间（当前 " + value + "）" };
+    if (value < 2 || value > 36) return { error: label + " Debe estar entre 2..36 (actualmente " + value + ")" };
     return { value: value };
 }
 
-/* ────────────────────────────── 数论 ────────────────────────────── */
+/* ────────────────────────────── teoría de números ────────────────────────────── */
 
-/** 把「数字数组 / 逗号或空白分隔的字符串」解析为数字列表。 */
+/** Analice \"matriz de números/cadena separada por comas o espacios en blanco\" en una lista de números. */
 function mathParseNumberList(raw, label) {
     var items;
-    if (raw === undefined || raw === null) return { error: label + " 不能为空" };
+    if (raw === undefined || raw === null) return { error: label + " no puede estar vacío" };
     if (typeof raw === "number") items = [raw];
     else if (Array.isArray(raw)) items = raw.slice();
     else if (typeof raw === "string") {
         var text = raw.trim();
-        if (text.length === 0) return { error: label + " 不能为空字符串" };
-        items = text.split(/[\s,，;；、]+/).filter(function (token) { return token.length > 0; });
+        if (text.length === 0) return { error: label + " No puede ser una cadena vacía" };
+        items = text.split(/[\s,,;;,]+/).filter(function (token) { return token.length > 0; });
     } else {
-        return { error: label + " 必须是数字数组或分隔符字符串" };
+        return { error: label + " Debe ser una matriz numérica o una cadena delimitadora." };
     }
-    if (items.length === 0) return { error: label + " 至少要有一个数字" };
+    if (items.length === 0) return { error: label + " Debe haber al menos un número" };
     if (items.length > MATH_MAX_LIST_LENGTH) {
-        return { error: label + " 元素过多（上限 " + MATH_MAX_LIST_LENGTH + " 个）" };
+        return { error: label + " Demasiados elementos (límite superior " + MATH_MAX_LIST_LENGTH + " )" };
     }
     var values = [];
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
         if (typeof item === "number") {
-            if (isNaN(item) || !isFinite(item)) return { error: "第 " + (i + 1) + " 个数字不是有限数" };
+            if (isNaN(item) || !isFinite(item)) return { error: "No. " + (i + 1) + " los números no son finitos" };
             values.push(item);
             continue;
         }
         if (typeof item !== "string" || !MATH_NUMERIC_PATTERN.test(item.trim())) {
-            return { error: "第 " + (i + 1) + " 项不是合法数字: " + String(item) };
+            return { error: "No. " + (i + 1) + " El artículo no es un número legal.: " + String(item) };
         }
         var parsed = parseFloat(item);
-        if (isNaN(parsed) || !isFinite(parsed)) return { error: "第 " + (i + 1) + " 个数字超出范围" };
+        if (isNaN(parsed) || !isFinite(parsed)) return { error: "No. " + (i + 1) + " números fuera de rango" };
         values.push(parsed);
     }
     return { values: values };
 }
 
-/** 把数字列表收紧为整数列表。 */
+/** Convierta la lista de números en una lista de números enteros. */
 function mathParseIntegerList(raw, label) {
     var parsed = mathParseNumberList(raw, label);
     if (parsed.error) return parsed;
     for (var i = 0; i < parsed.values.length; i++) {
         if (parsed.values[i] % 1 !== 0) {
-            return { error: "第 " + (i + 1) + " 个数字不是整数: " + parsed.values[i] };
+            return { error: "No. " + (i + 1) + " los numeros no son enteros: " + parsed.values[i] };
         }
         if (Math.abs(parsed.values[i]) > MATH_SAFE_INTEGER) {
-            return { error: "第 " + (i + 1) + " 个整数超出安全范围（|n| ≤ 2^53-1）" };
+            return { error: "No. " + (i + 1) + " números enteros fuera del rango seguro (|n| ≤ 2^53-1)" };
         }
     }
     return parsed;
@@ -608,7 +608,7 @@ function mathGcdPair(a, b) {
     return a;
 }
 
-/** 最小公倍数；溢出安全整数范围时返回 NaN。 */
+/** Mínimo común múltiplo; devuelve NaN si excede el rango de enteros seguros. */
 function mathLcmPair(a, b) {
     if (a === 0 || b === 0) return 0;
     var gcd = mathGcdPair(a, b);
@@ -629,7 +629,7 @@ function mathIsPrime(n) {
     return true;
 }
 
-/** 质因数分解（试除法，返回 [{prime, exponent}]）。 */
+/** Factorización prima (división de prueba, rendimientos [{prime, exponent}]). */
 function mathFactorize(n) {
     var factors = [];
     var remaining = n;
@@ -651,9 +651,9 @@ function mathFactorize(n) {
 }
 
 function numberTheory(args) {
-    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
+    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
     var mode = typeof args.mode === "string" ? args.mode.trim().toLowerCase() : "";
-    if (mode.length === 0) return { error: "mode 不能为空，必须是 gcd/lcm/factorize/is_prime 之一" };
+    if (mode.length === 0) return { error: "mode No puede estar vacío, debe ser uno de gcd/lcm/factorize/is_prime" };
     var parsed = mathParseIntegerList(args.numbers, "numbers");
     if (parsed.error) return { error: parsed.error };
     var numbers = parsed.values;
@@ -666,7 +666,7 @@ function numberTheory(args) {
             } else {
                 accumulator = mathLcmPair(accumulator, numbers[i]);
                 if (isNaN(accumulator)) {
-                    return { error: "最小公倍数超出安全整数范围（2^53-1），请减少数量或改用更小的数字" };
+                    return { error: "El mínimo común múltiplo está fuera del rango de enteros seguros (2^53-1), reduzca la cantidad o utilice un número menor en su lugar" };
                 }
             }
         }
@@ -674,19 +674,19 @@ function numberTheory(args) {
             result: accumulator,
             mode: mode,
             numbers: numbers,
-            note: mode === "gcd" ? "结果为非负最大公约数；gcd(0, 0) = 0。" : "结果为非负最小公倍数；任一数为 0 时结果为 0。"
+            note: mode === "gcd" ? "El resultado es un máximo común divisor no negativo;gcd(0, 0) = 0." : "El resultado es el mínimo común múltiplo no negativo; si algún número es 0, el resultado es 0."
         };
     }
 
     if (mode === "factorize" || mode === "is_prime") {
         if (numbers.length !== 1) {
-            return { error: mode + " 只接受一个整数（当前收到 " + numbers.length + " 个）" };
+            return { error: mode + " Sólo acepta un número entero (actualmente recibido " + numbers.length + " )" };
         }
         var target = numbers[0];
         if (Math.abs(target) > MATH_MAX_FACTORIZE) {
-            return { error: "数值过大（上限 " + MATH_MAX_FACTORIZE + "），请换用更小的整数" };
+            return { error: "El valor es demasiado grande (límite superior " + MATH_MAX_FACTORIZE + "), utilice un número entero más pequeño en su lugar" };
         }
-        if (target < 0) return { error: "只支持非负整数（当前 " + target + "）" };
+        if (target < 0) return { error: "Sólo se admiten números enteros no negativos (actualmente " + target + ")" };
         if (mode === "is_prime") {
             var prime = mathIsPrime(target);
             return {
@@ -694,7 +694,7 @@ function numberTheory(args) {
                 mode: "is_prime",
                 number: target,
                 divisors: prime ? [1, target] : mathSmallDivisors(target),
-                note: "判定使用试除法，结果确定。"
+                note: "El método de división de prueba se utiliza para determinar el resultado."
             };
         }
         if (target === 0 || target === 1) {
@@ -704,7 +704,7 @@ function numberTheory(args) {
                 expression: String(target),
                 isPrime: false,
                 number: target,
-                note: "0 与 1 没有质因数分解。"
+                note: "0 No hay factorización prima con 1."
             };
         }
         var factors = mathFactorize(target);
@@ -723,10 +723,10 @@ function numberTheory(args) {
         };
     }
 
-    return { error: "不支持的 mode: " + args.mode + "（可用 gcd/lcm/factorize/is_prime）" };
+    return { error: "No compatible mode: " + args.mode + "(gcd/lcm/factorize/is_prime disponible)" };
 }
 
-/** 小整数的全部正因数（仅用于 is_prime=false 时的提示，规模受 MATH_MAX_FACTORIZE 限制）。 */
+/** Todos los factores positivos de números enteros pequeños (sólo para is_prime=false mensaje, el tamaño está limitado por MATH_MAX_FACTORIZE). */
 function mathSmallDivisors(n) {
     var divisors = [];
     if (n < 1) return divisors;
@@ -739,10 +739,10 @@ function mathSmallDivisors(n) {
     return divisors.length > 64 ? divisors.slice(0, 64) : divisors;
 }
 
-/* ────────────────────────────── 统计 ────────────────────────────── */
+/* ────────────────────────────── Estadísticas ────────────────────────────── */
 
 function stats(args) {
-    if (!args || typeof args !== "object") return { error: "参数必须是对象" };
+    if (!args || typeof args !== "object") return { error: "El parámetro debe ser un objeto." };
     var parsed = mathParseNumberList(args.numbers, "numbers");
     if (parsed.error) return { error: parsed.error };
     var values = parsed.values.slice();
@@ -783,6 +783,6 @@ function stats(args) {
             variance: variance,
             sampleStddev: Math.sqrt(sampleVariance)
         },
-        note: "stddev/variance 为总体标准差与方差（除以 n）；sampleStddev 为样本标准差（除以 n-1）；median 为排序后中位数。"
+        note: "stddev/variance es la desviación estándar y la varianza de la población (dividida por n);sampleStddev es la desviación estándar de la muestra (dividida por n-1);median es la mediana después de la clasificación."
     };
 }

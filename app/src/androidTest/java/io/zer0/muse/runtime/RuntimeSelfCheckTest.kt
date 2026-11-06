@@ -8,22 +8,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** 版本号形状：vX.Y.Z 或 X.Y.Z。只验证能输出版本，不绑定具体版本。 */
+/** Forma del número de versión:vX.Y.Z o X.Y.Z. Solo se verifica la versión que se puede generar y no se vincula ninguna versión específica. */
 private val NODE_VERSION_SHAPE = Regex("""^v?\d+\.\d+\.\d+""")
 
 /**
- * P0 打样自检：内置 Node 运行时全链路验证（模拟器 / 真机 connected 测试）。
+ * P0 Autoprueba de revisión: verificación de enlace completo en tiempo de ejecución de nodo incorporada (prueba conectada a un simulador/máquina real).
  *
- * 覆盖链路：
- *  t1 二进制存在（nativeLibraryDir 落盘）
- *  t2 exec 成功（W^X 绕行验证） + node -v
- *  t3 JS 求值
- *  t4 动态库加载（zlib / crypto / ICU）
- *  t5 网络 + TLS（libssl / libcrypto / CA）
- *  t6 assets 数据解压（npm）
- *  t7 npm 执行
+ * Enlace de cobertura:
+ *  t1 binario existe (nativeLibraryDir colocación)
+ *  t2 exec éxito (W^X Omitir verificación) + node -v
+ *  t3 JS evaluar
+ *  t4 Carga dinámica de biblioteca (zlib / crypto / ICU)
+ *  t5 Red + TLS (libssl / libcrypto / CA)
+ *  t6 assets Descompresión de datos (npm)
+ *  t7 npm ejecutar
  *
- * 运行：
+ * Ejecutar:
  *  ./gradlew :app:connectedDebugAndroidTest \
  *    -Pandroid.testInstrumentationRunnerArguments.class=io.zer0.muse.runtime.RuntimeSelfCheckTest
  */
@@ -35,8 +35,8 @@ class RuntimeSelfCheckTest {
     @Test
     fun t1_nodeBinaryExists() {
         val node = MuseRuntime.nodeBinary(ctx)
-        assertTrue("node 应存在于 nativeLibraryDir: ${node.absolutePath}", node.isFile)
-        assertTrue("node 大小异常: ${node.length()}", node.length() > 10_000_000L)
+        assertTrue("node debería existir en nativeLibraryDir: ${node.absolutePath}", node.isFile)
+        assertTrue("node tamaño anormal: ${node.length()}", node.length() > 10_000_000L)
     }
 
     @Test
@@ -44,7 +44,7 @@ class RuntimeSelfCheckTest {
         runBlocking {
             val r = MuseRuntime.execNode(ctx, listOf("-v"), timeoutMs = 20_000)
             assertEquals("stderr=${r.stderr} timedOut=${r.timedOut}", 0, r.exitCode)
-            assertTrue("输出异常: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
+            assertTrue("Excepción de salida: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
         }
     }
 
@@ -70,7 +70,7 @@ class RuntimeSelfCheckTest {
             """.trimIndent()
             val r = MuseRuntime.execNode(ctx, listOf("-e", js), timeoutMs = 30_000)
             assertEquals("stderr=${r.stderr}", 0, r.exitCode)
-            assertTrue("输出异常: ${r.stdout}", r.stdout.contains("deps-ok"))
+            assertTrue("Excepción de salida: ${r.stdout}", r.stdout.contains("deps-ok"))
         }
     }
 
@@ -90,8 +90,8 @@ class RuntimeSelfCheckTest {
     fun t6_npmDataExtract() {
         runBlocking {
             val res = MuseRuntime.ensureData(ctx)
-            assertTrue("解压失败: ${res.exceptionOrNull()?.message}", res.isSuccess)
-            assertTrue("npm-cli.js 应存在", MuseRuntime.npmCli(ctx).isFile)
+            assertTrue("La descompresión falló: ${res.exceptionOrNull()?.message}", res.isSuccess)
+            assertTrue("npm-cli.js debería existir", MuseRuntime.npmCli(ctx).isFile)
         }
     }
 
@@ -105,14 +105,14 @@ class RuntimeSelfCheckTest {
                 timeoutMs = 120_000,
             )
             assertEquals("stderr=${r.stderr}", 0, r.exitCode)
-            assertTrue("npm 版本输出异常: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
+            assertTrue("npm Excepción de salida de versión: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
         }
     }
 
     @Test
     fun t8_symlinkExec() {
         runBlocking {
-            // P1 前置验证：runtime/bin/node 符号链接可被 exec（npm/npx 名字解析基础）
+            // P1 Verificación previa:runtime/bin/node Los enlaces simbólicos pueden ser ejecutivos (npm/npx Conceptos básicos de resolución de nombres)
             val bin = MuseRuntime.binDir(ctx).apply { mkdirs() }
             val link = java.io.File(bin, "node")
             link.delete()
@@ -123,30 +123,30 @@ class RuntimeSelfCheckTest {
                 timeoutMs = 20_000,
             )
             assertEquals("stderr=${r.stderr}", 0, r.exitCode)
-            assertTrue("输出异常: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
+            assertTrue("Excepción de salida: ${r.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r.stdout.trim()))
         }
     }
 
     @Test
     fun t10_shimNameResolutionAndShebang() {
         runBlocking {
-            // P1-B 冒烟：sh 内按名字调 node/npm（名称映射）+ shebang 脚本直接执行（npx .bin 场景）
+            // P1-B Humo:sh Llamar a nodo/npm por nombre (mapeo de nombres)+ shebang El script se ejecuta directamente (npx .bin escena)
             MuseRuntime.ensureData(ctx).getOrThrow()
 
             val r1 = MuseRuntime.exec(ctx, listOf("/system/bin/sh", "-c", "node -v"), timeoutMs = 20_000)
             assertEquals("stderr=${r1.stderr}", 0, r1.exitCode)
-            assertTrue("输出: ${r1.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r1.stdout.trim()))
+            assertTrue("salida: ${r1.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r1.stdout.trim()))
 
             val r2 = MuseRuntime.exec(ctx, listOf("/system/bin/sh", "-c", "npm -v"), timeoutMs = 60_000)
             assertEquals("stderr=${r2.stderr}", 0, r2.exitCode)
-            assertTrue("输出: ${r2.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r2.stdout.trim()))
+            assertTrue("salida: ${r2.stdout}", NODE_VERSION_SHAPE.containsMatchIn(r2.stdout.trim()))
 
             val script = java.io.File(MuseRuntime.binDir(ctx), "hello-tool")
             script.writeText("#!/usr/bin/env node\nconsole.log('shebang-ok', 6*7);\n")
             script.setExecutable(true, false)
             val r3 = MuseRuntime.exec(ctx, listOf("/system/bin/sh", "-c", script.absolutePath), timeoutMs = 20_000)
             assertEquals("stderr=${r3.stderr}", 0, r3.exitCode)
-            assertTrue("输出: ${r3.stdout}", r3.stdout.contains("shebang-ok 42"))
+            assertTrue("salida: ${r3.stdout}", r3.stdout.contains("shebang-ok 42"))
         }
     }
 }

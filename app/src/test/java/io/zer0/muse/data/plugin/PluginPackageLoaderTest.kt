@@ -16,10 +16,10 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * Phase 4: 声明式 ui-skin 插件包加载分支测试。
+ * Phase 4: Prueba de rama de carga del paquete del complemento ui-skin declarativo.
  *
- * 覆盖:无 tools 的 ui-skin 包可以加载并解析 skin.json、包内不得出现 JS、
- * 缺少/非法皮肤资源必须拒绝,以及非法 schema/对比度在消费侧回退内置 default。
+ * Portada:El paquete ui-skin sin herramientas puede cargar y analizar skin.json, y JS no debe aparecer en el paquete.
+ * desaparecido/Hay que rechazar los recursos cutáneos ilegales,Y el esquema/contraste ilegal vuelve al valor predeterminado incorporado en el lado del consumidor.
  */
 class PluginPackageLoaderTest {
 
@@ -84,7 +84,7 @@ class PluginPackageLoaderTest {
         val loaded = (result as PluginPackageLoader.Result.Ok).package_
         assertEquals(PluginSecurityGate.UI_SKIN_KIND, loaded.manifest.kind)
         assertTrue(loaded.manifest.tools.isEmpty())
-        // 声明式包没有可执行入口
+        // Los paquetes declarativos no tienen entrada ejecutable
         assertEquals("", loaded.entryCode)
         assertEquals("night-skin", loaded.skin?.id)
         assertEquals(validStyle.surfaceArgb, loaded.skin?.light?.get(BubbleRole.USER)?.surfaceArgb)
@@ -110,7 +110,7 @@ class PluginPackageLoaderTest {
 
         val result = PluginPackageLoader.loadFromZip(zip)
 
-        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("可执行工具"))
+        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("herramientas ejecutables"))
     }
 
     @Test
@@ -133,7 +133,7 @@ class PluginPackageLoaderTest {
     fun uiSkinPackageWithUnparsableSkinResourceIsRejected() {
         val result = PluginPackageLoader.loadFromZip(packageZip(skinJson = "{ not json"))
 
-        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("解析失败"))
+        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("El análisis falló"))
     }
 
     @Test
@@ -156,7 +156,7 @@ class PluginPackageLoaderTest {
             val loaded = (PluginPackageLoader.loadFromZip(packageZip(skinJson = json)) as PluginPackageLoader.Result.Ok).package_
             val resolved = BubbleSkinResolver.resolve(loaded.skin, BubbleRole.USER, darkTheme = false)
 
-            // 皮肤本身被加载,但渲染解析回退内置 default,消息正文不受影响
+            // La piel misma está cargada.,Pero el respaldo del análisis de renderizado está incorporado default,El cuerpo del mensaje no se ve afectado.
             assertEquals("builtin-default", resolved.sourceSkinId)
             assertEquals(
                 BubbleSkinResolver.defaultSkin(darkTheme = false).light.getValue(BubbleRole.USER),
@@ -176,7 +176,7 @@ class PluginPackageLoaderTest {
 
         val result = PluginPackageLoader.loadFromZip(withoutTools)
 
-        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("未声明任何工具"))
+        assertTrue((result as PluginPackageLoader.Result.Err).reason.contains("No se declaran herramientas"))
     }
 
     @Test
@@ -196,11 +196,11 @@ class PluginPackageLoaderTest {
         assertFalse(loaded.manifest.tools.isEmpty())
     }
 
-    // ── v2.7: Python 运行时 ──
+    // ── v2.7: Python tiempo de ejecución ──
     //
-    // 这三条盯的是「能装上」与「装得上但跑不了」之间的缝隙：
-    // 执行端早就支持 python，但解包白名单与入口校验只认 .js，
-    // 于是 python 插件在安装阶段就被静默丢掉入口文件，报错却只说「缺少入口文件」。
+    // Estos tres puntos se centran en la brecha entre "se puede instalar" y "se puede instalar pero no huir":
+    // El final de la ejecución ha sido compatible con Python durante mucho tiempo, pero la lista blanca de descomprimido y la verificación de entrada solo reconocen .js.
+    // Por lo tanto, el complemento de Python descarta silenciosamente el archivo de entrada durante la fase de instalación y el informe de error solo dice "falta el archivo de entrada".
 
     private fun pythonManifest(entry: String = "main.py"): PluginManifest = PluginManifest(
         id = "py-plugin",
@@ -222,7 +222,7 @@ class PluginPackageLoaderTest {
 
         val loaded = (PluginPackageLoader.loadFromZip(zip) as PluginPackageLoader.Result.Ok).package_
 
-        assertTrue("python 插件的入口代码必须能读出来", loaded.entryCode.contains("def hello"))
+        assertTrue("python El código de entrada del complemento debe ser legible.", loaded.entryCode.contains("def hello"))
     }
 
     @Test
@@ -235,7 +235,7 @@ class PluginPackageLoaderTest {
         val result = PluginPackageLoader.loadFromZip(zip)
 
         val reason = (result as PluginPackageLoader.Result.Err).reason
-        assertTrue("错误要指向真正的原因（运行时与入口不匹配）: $reason", reason.contains("python"))
+        assertTrue("El error debería apuntar a la causa real (el tiempo de ejecución no coincide con la entrada): $reason", reason.contains("python"))
     }
 
     @Test

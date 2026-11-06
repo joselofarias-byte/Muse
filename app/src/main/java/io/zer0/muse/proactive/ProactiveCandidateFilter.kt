@@ -5,21 +5,21 @@ import io.zer0.muse.data.proactive.ProactiveIntensity
 import io.zer0.muse.data.proactive.ThoughtKind
 
 /**
- * 从牵挂账本里挑出这一轮可以拿给模型的候选。
+ * Seleccione candidatos del libro de preocupaciones que puedan presentarse al modelo en esta ronda.
  *
- * 两道过滤，原因各不相同：
- *  - 主动等级：安静档只允许「该说的事」，闲聊不在名单里
- *  - 历史反馈：用户对某类消息从来不感冒，就别再拿它去烦人
+ * Dos filtros, por diferentes motivos:
+ *  - Nivel activo: el modo silencioso solo permite "cosas que hay que decir", la pequeña charla no está incluida en la lista
+ *  - Comentarios históricos: los usuarios nunca están interesados ​​en ciertos tipos de mensajes, así que no los moleste con ellos.
  *
- * 单拎出来是因为这两道规则都是纯判断，不需要模型也不需要库；
- * 埋在巡检的生成阶段里，就只能靠真跑一轮才能验证。
+ * Lo seleccioné porque estas dos reglas son juicios puros y no requieren modelos ni bibliotecas;
+ * Enterrado en la etapa de inspección de generación, solo puede verificarse realizando una ejecución real.
  */
 object ProactiveCandidateFilter {
 
     /**
-     * @param candidates 账本里所有 OPEN 的牵挂
-     * @param intensity 用户选的主动等级
-     * @param bannedKinds 历史反馈判定为「不感兴趣」的类型
+     * @param candidates Todas las inquietudes ABIERTAS en el libro mayor
+     * @param intensity Nivel activo seleccionado por el usuario
+     * @param bannedKinds Tipos juzgados como "no interesados" por la retroalimentación histórica
      */
     fun select(
         candidates: List<PendingThoughtEntity>,

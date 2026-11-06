@@ -6,19 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * HookRegistry 分桶口径回归测试。
+ * HookRegistry Pruebas de regresión del calibre del balde.
  *
- * 背景:注册侧过去按实现类入桶(`hook::class`),派发侧按接口查询,
- * 两侧口径不一致导致所有 Hook 链永远取到空表,且不抛任何异常
- * —— 世界书注入、楼层裁剪、插件 prompt_finalize、设备能力档案
- * 四套功能因此静默失效过一段时间。这类错误没有异常可抓,只能靠断言盯着。
+ * fondo:En el lado del registro, ingrese el depósito según la clase de implementación.(`hook::class`),Presione la consulta de interfaz en el lado de despacho,
+ * Los calibres inconsistentes en ambos lados hacen que todas las cadenas Hook siempre obtengan tablas vacías.,sin lanzar ninguna excepción
+ * —— Inyección de libros mundiales, recorte de piso, complemento Prompt_finalize, archivo de capacidad del equipo
+ * Por lo tanto, los cuatro conjuntos de funciones se han desactivado silenciosamente durante un período de tiempo. No hay ninguna excepción a detectar para este tipo de error.,Sólo puedes confiar en la afirmación y la mirada.
  */
 class HookRegistryTest {
 
     private class ComposeHook(override val id: String, override val priority: Int = 50) :
         SystemPromptComposeHook
 
-    /** 同时实现两个接口的实现类,用于验证「一个实例进多个桶」。 */
+    /** Clase de implementación que implementa dos interfaces al mismo tiempo.,Se utiliza para verificar que \"una instancia ingresa a varios depósitos\". */
     private class DualHook(override val id: String) : SystemPromptComposeHook, PromptFinalizeHook
 
     private class DisabledHook(override val id: String) : PromptFinalizeHook {

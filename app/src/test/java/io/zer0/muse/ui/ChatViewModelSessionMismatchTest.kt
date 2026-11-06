@@ -49,6 +49,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
@@ -72,23 +73,23 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * ChatViewModel session mismatch 回滚逻辑单元测试(H1 修复点)。
+ * ChatViewModel session mismatch Revertir pruebas de unidades lógicas(H1 Puntos de reparación).
  *
- * 测试场景:用户发送消息后、Channel 消费者处理请求前切换了会话,
- * 此时 req.sessionId 与当前 currentSessionId 不一致(mismatch),
- * 消费者应:
- *  1. 移除 enqueueSend 添加的乐观 user/assistant 消息
- *  2. 重置 isStreaming / isWaitingFirstToken
- *  3. 不向错误会话调用 sessionRepository.appendMessage
- *  4. 不启动 launchStream(不向错误会话发送 HTTP 请求)
+ * escenario de prueba:Después de que el usuario envía el mensaje,Channel El consumidor cambió de sesión antes de procesar la solicitud.,
+ * En este momento, req.sessionId no coincide con currentSessionId(mismatch),
+ * Los consumidores deberían:
+ *  1. Eliminar mensajes optimistas de usuario/asistente agregados por enqueueSend
+ *  2. restablecer isStreaming / isWaitingFirstToken
+ *  3. No llamar a sesión de error sessionRepository.appendMessage
+ *  4. no comienza launchStream(No enviar solicitud HTTP a la sesión de error)
  *
- * 实现要点:
- *  - ChatViewModel 构造依赖多达 30 个,全部用 MockK relaxed mock 注入
- *  - appContext 用 Robolectric 真实 Context(ToolConfigStore 需要 SharedPreferences)
- *  - 用 StandardTestDispatcher 控制 viewModelScope 协程调度,确保
- *    "发送 → 切换会话 → 消费者处理"的时序可控
- *  - 通过 ChatStateAccessor.update{} 直接设置 currentSessionId,模拟 switchSession 效果
- *  - chatGenerationManager.launchGeneration 被 mock 为 no-op,跳过流式逻辑
+ * Puntos de implementación:
+ *  - ChatViewModel Construir dependencias hasta 30.,Todo inyectado con MockK relajado.
+ *  - appContext Realista con Robolectric Context(ToolConfigStore necesitar SharedPreferences)
+ *  - Utilice StandardTestDispatcher para controlar el envío de rutinas de viewModelScope,asegurar
+ *    "enviar → Cambiar de sesión → procesamiento del consumidor"El tiempo es controlable.
+ *  - Pase ChatStateAccessor.update{} Establecer directamente currentSessionId,Simular efecto switchSession
+ *  - chatGenerationManager.launchGeneration es burlado como no-op,Saltar la lógica de transmisión
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -97,7 +98,7 @@ class ChatViewModelSessionMismatchTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    // ── 全部依赖 mock(relaxed = true 让未 stub 的方法返回默认值) ──
+    // ── Todo depende de mock(relaxed = true Permitir que los métodos no modificados devuelvan valores predeterminados) ──
     private val chatService: ChatService = mockk(relaxed = true)
     private val settings: SettingsRepository = mockk(relaxed = true)
     private val memoryTicker: MemoryTicker = mockk(relaxed = true)
@@ -144,8 +145,8 @@ class ChatViewModelSessionMismatchTest {
         appContext = ApplicationProvider.getApplicationContext()
         outboxPersisted = CompletableDeferred()
 
-        // stub 关键 Flow 返回 emptyFlow,避免 init 中的 collect 触发副作用
-        // (observeSessions 返回空流 → 不会自动创建/切换会话)
+        // stub Retorno de flujo clave emptyFlow,Evite que la recopilación en init desencadene efectos secundarios
+        // (observeSessions Devolver flujo vacío → no se creará automáticamente/Cambiar de sesión)
         every { sessionRepository.observeSessions() } returns emptyFlow()
         every { settings.providerConfigFlow } returns emptyFlow()
         every { settings.providersFlow } returns emptyFlow()
@@ -157,15 +158,15 @@ class ChatViewModelSessionMismatchTest {
         every { delegationChainTracker.chains } returns MutableStateFlow<Map<String, DelegationChainTracker.ChainNode>>(emptyMap())
         every { delegationPauseManager.activePauses } returns MutableStateFlow<Map<String, DelegationPauseManager.PauseRequest>>(emptyMap())
         every { chatGenerationManager.activeGeneration } returns MutableStateFlow<ChatGenerationManager.ActiveGeneration?>(null)
-        // fcc18f6: ChatViewModel 改为观察 activeGenerations(多会话并发生成),
-        // 测试 stub 须同步提供复数版本, 否则 relaxed mockk 收集时抛 KotlinNothingValueException
+        // fcc18f6: ChatViewModel observar en su lugar activeGenerations(Generación concurrente multisesión),
+        // Los resguardos de prueba deben proporcionar versiones en plural simultáneamente, De lo contrario, se lanzará un simulacro relajado al recoger KotlinNothingValueException
         every { chatGenerationManager.activeGenerations } returns MutableStateFlow(emptyMap())
         every { visionBridge.progressFlow } returns MutableStateFlow(VisionProgress(idle = true, index = 0, total = 0))
         every { deferredResultStore.completedTasks } returns MutableStateFlow(emptyMap())
         every { deferredResultStore.tasks } returns MutableStateFlow(emptyMap())
         coEvery { subagentThreadStore.listActiveThreads() } returns emptyList()
 
-        // appendMessage 默认成功返回
+        // appendMessage El valor predeterminado regresa exitosamente
         coEvery { sessionRepository.appendMessage(any(), any()) } returns "msg-id"
         coEvery { sessionRepository.insertOutbox(any()) } coAnswers {
             outboxPersisted.complete(Unit)
@@ -179,7 +180,7 @@ class ChatViewModelSessionMismatchTest {
         Dispatchers.resetMain()
     }
 
-    /** 构造 ChatViewModel,注入全部 mock 依赖。 */
+    /** estructura ChatViewModel,Inyecte todas las dependencias simuladas. */
     private fun createViewModel(): ChatViewModel = ChatViewModel(
         chatService = chatService,
         settings = settings,
@@ -222,78 +223,95 @@ class ChatViewModelSessionMismatchTest {
     )
 
     /**
-     * 让 init 中 launch 的协程跑完(emptyFlow 的 collect 立即完成,
-     * channel 消费者 suspend 在空 channel 上等待)。
+     * Deje que la rutina de inicio en init termine de ejecutarse(emptyFlow La recogida se completa inmediatamente.,
+     * channel El consumidor suspende esperas en un canal vacío).
      */
     private fun runInitCoroutines() {
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
-    // ── 测试用例 ────────────────────────────────────────────────────────
+    // Outbox writes run on Dispatchers.IO, outside the virtual test scheduler.
+    private fun awaitSessionRollback() = runBlocking {
+        withTimeout(5_000) {
+            outboxPersisted.await()
+            while (viewModel.state.value.isStreaming) {
+                testDispatcher.scheduler.advanceUntilIdle()
+                delay(10)
+            }
+        }
+    }
+
+    // ── caso de prueba ────────────────────────────────────────────────────────
 
     @Test
-    fun `发送消息时切换会话,乐观消息被移除`() = runTest(testDispatcher) {
+    fun `Cambiar de sesión al enviar un mensaje,Se eliminan las noticias optimistas`() = runTest(testDispatcher) {
         runInitCoroutines()
 
-        // 设置当前会话 A + 输入文本
+        // Establecer sesión actual A + texto de entrada
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
-        // 发送消息(enqueueSend 同步执行乐观更新 + trySend 入队)
+        // enviar mensaje(enqueueSend Ejecute sincrónicamente la actualización optimista + trySend en cola)
         viewModel.send()
 
-        // 验证乐观更新:user + assistant 占位消息已加入列表
+        // Validar actualizaciones optimistas:user + assistant El mensaje de marcador de posición se ha agregado a la lista.
         val stateAfterSend = viewModel.state.value
-        assertEquals("乐观更新后应有 2 条消息", 2, viewModel.messages.value.size)
+        assertEquals("Debería haber 2 mensajes después de la actualización optimista.", 2, viewModel.messages.value.size)
         assertEquals(MessageRole.USER, viewModel.messages.value[0].role)
         assertEquals(MessageRole.ASSISTANT, viewModel.messages.value[1].role)
 
-        // 模拟切换到会话 B(在消费者处理请求前)
+        // Simular cambio de sesión B(Antes de que el consumidor atienda la solicitud)
         viewModel.update { it.copy(currentSessionId = "session-B") }
 
-        // 让 channel 消费者处理请求(此时 currentSessionId=B ≠ req.sessionId=A)
+        // Deje que el consumidor del canal maneje la solicitud.(En este momento currentSessionId=B ≠ req.sessionId=A)
         advanceUntilIdle()
 
-        // 验证乐观消息已被移除
+        awaitSessionRollback()
+
+        // Verifique que el mensaje optimista haya sido eliminado
         val stateAfterRollback = viewModel.state.value
-        assertEquals("session mismatch 回滚后消息列表应为空", 0, viewModel.messages.value.size)
+        assertEquals("session mismatch La lista de mensajes debe estar vacía después de la reversión", 0, viewModel.messages.value.size)
     }
 
     @Test
-    fun `session mismatch 后 isStreaming 和 isWaitingFirstToken 被重置`() = runTest(testDispatcher) {
+    fun `session mismatch después de restablecer isStreaming y isWaitingFirstToken`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
         viewModel.send()
 
-        // 发送后进入流式状态
-        assertTrue("发送后应处于 isStreaming", viewModel.state.value.isStreaming)
-        assertTrue("发送后应处于 isWaitingFirstToken", viewModel.state.value.isWaitingFirstToken)
+        // Ingrese al estado de transmisión después de enviar
+        assertTrue("Después de enviarlo debería estar en isStreaming", viewModel.state.value.isStreaming)
+        assertTrue("Después de enviarlo debería estar en isWaitingFirstToken", viewModel.state.value.isWaitingFirstToken)
 
-        // 切换会话触发 mismatch
+        // Activador de cambio de sesión mismatch
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
 
-        // 验证流式标志被重置
-        assertFalse("mismatch 回滚后 isStreaming 应为 false", viewModel.state.value.isStreaming)
-        assertFalse("mismatch 回滚后 isWaitingFirstToken 应为 false", viewModel.state.value.isWaitingFirstToken)
+        awaitSessionRollback()
+
+        // Verificar que la bandera de transmisión esté restablecida
+        assertFalse("mismatch Después de la reversión, isStreaming debería ser false", viewModel.state.value.isStreaming)
+        assertFalse("mismatch Después de la reversión, isWaitingFirstToken debería ser false", viewModel.state.value.isWaitingFirstToken)
     }
 
     @Test
-    fun `session mismatch 后不会向错误会话调用 appendMessage`() = runTest(testDispatcher) {
+    fun `session mismatch no será llamado a la sesión de error después appendMessage`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
         viewModel.send()
 
-        // 切换到会话 B,使 req.sessionId=A 与 currentSessionId=B 不匹配
+        // cambiar a sesión B,hacer req.sessionId=A con currentSessionId=B no hay coincidencia
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
 
-        // 验证 appendMessage 从未被调用(不向错误会话写入消息)
+        awaitSessionRollback()
+
+        // Verifique que nunca se llame a appendMessage(No escriba mensajes en la sesión de error.)
         coVerify(exactly = 0) { sessionRepository.appendMessage(any(), any()) }
     }
 
     @Test
-    fun `session mismatch 后不会启动 launchStream`() = runTest(testDispatcher) {
+    fun `session mismatch no comenzará después launchStream`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
@@ -302,31 +320,33 @@ class ChatViewModelSessionMismatchTest {
         viewModel.update { it.copy(currentSessionId = "session-B") }
         advanceUntilIdle()
 
-        // launchGeneration 是 launchStream 的入口;mismatch 时不应调用
-        // 注:launchGeneration 非 suspend,用 verify 而非 coVerify
+        awaitSessionRollback()
+
+        // launchGeneration Es la entrada a launchStream.;mismatch no debe ser llamado cuando
+        // Nota:launchGeneration no suspend,Utilice verificar en lugar de coVerify
         verify(exactly = 0) {
             chatGenerationManager.launchGeneration(any(), any(), any(), any(), any())
         }
     }
 
     @Test
-    fun `session 匹配时正常调用 appendMessage 并启动流式`() = runTest(testDispatcher) {
+    fun `session Cuando coincida, llame a appendMessage normalmente y comience a transmitir`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
         viewModel.send()
 
-        // 不切换会话,让消费者正常处理(sessionId 匹配)
+        // No cambiar de sesión,Deje que los consumidores lo manejen normalmente(sessionId partido)
         advanceUntilIdle()
         withTimeout(5_000) { outboxPersisted.await() }
-        // outboxReady 在 Dispatchers.IO 完成后,消费者 continuation 回到测试 dispatcher。
+        // outboxReady Después de que se complete Dispatchers.IO,La continuación del consumidor devuelve el despachador de prueba.
         advanceUntilIdle()
 
-        // 验证 appendMessage 被调用一次,且 sessionId 正确
+        // Verifique que appendMessage se llame una vez,Y el ID de sesión es correcto.
         coVerify(exactly = 1) { sessionRepository.appendMessage("session-A", any()) }
 
-        // 验证 launchGeneration 被调用(进入流式)
-        // 注:launchGeneration 非 suspend,用 verify 而非 coVerify
+        // Verifique que se llame a launchGeneration(Ingresar a la transmisión)
+        // Nota:launchGeneration no suspend,Utilice verificar en lugar de coVerify
         verify(atLeast = 1) {
             chatGenerationManager.launchGeneration(
                 sessionId = "session-A",
@@ -339,58 +359,60 @@ class ChatViewModelSessionMismatchTest {
     }
 
     @Test
-    fun `发送空文本且无图片时不触发乐观更新`() = runTest(testDispatcher) {
+    fun `La actualización optimista no se activa cuando se envía texto vacío y sin imagen`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "   ") }
         viewModel.send()
 
-        // 空输入应直接 return,不添加消息
+        // La entrada vacía debe ser directamente return,No se agregó ningún mensaje
         assertEquals(0, viewModel.messages.value.size)
         assertFalse(viewModel.state.value.isStreaming)
     }
 
     @Test
-    fun `isStreaming 为 true 时再次 send 不会重复入队`() = runTest(testDispatcher) {
+    fun `isStreaming Cuando sea cierto, el envío nuevamente no se repetirá en la cola`() = runTest(testDispatcher) {
         runInitCoroutines()
 
         viewModel.update { it.copy(currentSessionId = "session-A", input = "hello") }
         viewModel.send()
 
-        // 第一次发送后 isStreaming=true
+        // Después del primer envío isStreaming=true
         assertTrue(viewModel.state.value.isStreaming)
         val firstMsgCount = viewModel.messages.value.size
 
-        // 再次设置输入并发送(应被 isStreaming 守卫拦截)
+        // Configure la entrada nuevamente y envíe(Debería ser interceptado por el guardia de isStreaming.)
         viewModel.update { it.copy(input = "second message") }
         viewModel.send()
 
-        // 消息数不应增加
+        // El número de mensajes no debe aumentar.
         assertEquals(firstMsgCount, viewModel.messages.value.size)
     }
 
     @Test
-    fun `Agent 模式下 mismatch 使用 agentSessionId 判断`() = runTest(testDispatcher) {
+    fun `Agent En el modo de discrepancia, agentSessionId se utiliza para determinar`() = runTest(testDispatcher) {
         runInitCoroutines()
 
-        // Agent 模式:isAgentMode=true, agentSessionId=session-A
+        // Agent modo:isAgentMode=true, agentSessionId=session-A
         viewModel.update {
             it.copy(isAgentMode = true, agentSessionId = "agent-session-A", input = "hello")
         }
         viewModel.send()
 
-        // 验证乐观更新
+        // Validar actualizaciones optimistas
         assertEquals(2, viewModel.messages.value.size)
 
-        // 切换 agentSessionId 模拟 Agent Tab 切换
+        // Cambiar agentSessionId Simular cambio de pestaña Agente
         viewModel.update { it.copy(agentSessionId = "agent-session-B") }
         advanceUntilIdle()
 
-        // 验证乐观消息被移除
+        awaitSessionRollback()
+
+        // Verificar que se eliminen los mensajes optimistas
         assertEquals(0, viewModel.messages.value.size)
         assertFalse(viewModel.state.value.isStreaming)
 
-        // 验证不向错误会话调用 appendMessage
+        // Validar no llamar a una sesión incorrecta appendMessage
         coVerify(exactly = 0) { sessionRepository.appendMessage(any(), any()) }
     }
 
@@ -427,7 +449,7 @@ class ChatViewModelSessionMismatchTest {
         }
 
         assertTrue("an interrupted SSE translation must surface a failure", completedState.errors.isNotEmpty())
-        // v2.4.6: 译文挂在源消息的 translations 上(不再另开助手消息)
+        // v2.4.6: La traducción se cuelga de las traducciones del mensaje fuente.(No más mensajes de apertura del asistente)
         val partialSource = viewModel.messages.value.first { it.id == source.id }
         assertTrue(partialSource.translations.values.firstOrNull()?.endsWith("partial translation") == true)
         coVerify(exactly = 0) { sessionRepository.appendMessage("session-A", any()) }
@@ -469,7 +491,7 @@ class ChatViewModelSessionMismatchTest {
         withTimeout(5_000) {
             viewModel.state.first { !it.isTranslating && it.translatingMessageId == null }
         }
-        // v2.4.6: 译文挂在源消息的 translations 上(不再另开助手消息)
+        // v2.4.6: La traducción se cuelga de las traducciones del mensaje fuente.(No más mensajes de apertura del asistente)
         val partialSource = viewModel.messages.value.first { it.id == source.id }
         assertTrue(partialSource.translations.values.firstOrNull()?.endsWith("partial translation") == true)
         coVerify(exactly = 0) { sessionRepository.appendMessage("session-A", any()) }

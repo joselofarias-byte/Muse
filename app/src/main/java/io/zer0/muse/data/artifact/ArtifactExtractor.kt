@@ -5,37 +5,37 @@ import io.zer0.muse.R
 import kotlin.uuid.Uuid
 
 /**
- * 从 AI 回复内容中抽取 `<artifact>` 标签,生成 [ArtifactEntity] 列表,
- * 并把原标签替换为占位符 `[artifact:{id}]` 供 UI 渲染卡片。
+ * Extraído del contenido de respuesta de IA `<artifact>` etiqueta,generar [ArtifactEntity] lista,
+ * y reemplace la etiqueta original con el marcador de posición `[artifact:{id}]` Para que la interfaz de usuario represente tarjetas.
  *
- * - 标签名大小写不敏感
- * - type 缺省时默认 "document"
- * - language 可选
- * - 支持内容跨多行、属性间任意空白
+ * - Los nombres de las etiquetas no distinguen entre mayúsculas y minúsculas
+ * - type El valor predeterminado es el predeterminado "document"
+ * - language Opcional
+ * - Admite contenido que abarca varias líneas y cualquier espacio en blanco entre atributos
  */
 object ArtifactExtractor {
 
     /**
-     * 匹配 `<artifact ...>...</artifact>`,忽略大小写且内容可跨行。
+     * partido `<artifact ...>...</artifact>`,Se ignoran las mayúsculas y minúsculas y el contenido puede abarcar líneas.
      *
-     * L13 已知限制: 属性段用 `[^>]*` 匹配,当属性值含 > 时(如 title="a>b")正则会提前截断,
-     * 实际 LLM 输出罕见;如需精确解析应改用 XML/HTML 解析器,但项目不引入额外依赖,暂保持正则方案。
+     * L13 Limitaciones conocidas: Para la sección de atributos `[^>]*` partido,Cuando el valor del atributo contiene > tiempo(Como por ejemplo title="a>b")La expresión regular regular se truncará por adelantado,
+     * La producción real de LLM es rara;Para un análisis preciso, utilice un analizador XML/HTML en su lugar,Pero el proyecto no introduce dependencias adicionales.,Mantenga el plan habitual por ahora.
      */
     private val artifactTagRegex = Regex(
         """<artifact\b([^>]*)>(.*?)</artifact>""",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
 
-    /** 匹配单个属性 `name="value"` 或 `name='value'`,忽略大小写。 */
+    /** Coincidir con un solo atributo `name="value"` o `name='value'`,Se ignora el caso. */
     private val attrRegex = Regex(
         """\b(title|type|language)\s*=\s*["']([^"']*)["']""",
         RegexOption.IGNORE_CASE,
     )
 
     /**
-     * 抽取产物并替换占位符。
+     * Extraiga el producto y reemplace el marcador de posición.
      *
-     * @return Pair(替换后的内容, 产物实体列表)
+     * @return Pair(Contenido reemplazado, Lista de entidades de producto)
      */
     fun extractArtifacts(
         sessionId: String,
@@ -46,7 +46,7 @@ object ArtifactExtractor {
         val artifacts = mutableListOf<ArtifactEntity>()
         var replaced = content
 
-        // 从后往前替换,避免前面替换改变后续 match 的索引
+        // Reemplazar de atrás hacia adelante,Evitar sustituciones anteriores cambiando el índice de partidos posteriores
         val matches = artifactTagRegex.findAll(content).toList()
         if (matches.isEmpty()) return content to emptyList()
 

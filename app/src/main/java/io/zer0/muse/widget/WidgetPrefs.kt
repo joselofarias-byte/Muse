@@ -4,11 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * 小组件按实例持久化用户选择的助手。
+ * El widget conserva el ayudante seleccionado por el usuario por instancia.
  *
- * 键带 appWidgetId:同一桌面可以放多个小组件,各选各的助手。
- * 读取方用 [MuseChatWidget]/[MuseQuickWidget] 里 `provideGlance` 拿到的 GlanceId
- * 换出 appWidgetId 后按实例取,不要用「取第一个实例」的近似做法。
+ * Clave con appWidgetId: se pueden colocar varios widgets en el mismo escritorio,Cada uno elige a su propio asistente.
+ * para leer [MuseChatWidget]/[MuseQuickWidget] adentro `provideGlance` Lo tengo GlanceId
+ * Cambie el appWidgetId y recupérelo por instancia,No utilice la aproximación de "tomar la primera instancia".
  */
 object WidgetPrefs {
     private const val PREFS_NAME = "muse_widget_prefs"

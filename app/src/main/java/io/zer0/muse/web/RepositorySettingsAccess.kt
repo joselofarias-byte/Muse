@@ -4,11 +4,11 @@ import io.zer0.muse.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 /**
- * [HostSettingsAccess] 的 SettingsRepository 实现。
+ * [HostSettingsAccess] La implementación del repositorio de configuración.
  *
- * 读取用各 flow 的当前值;写入按键分发到对应的 save 方法。键到 setter 的映射集中在这里,
- * 新增 [HostSettingDefinitions] 里的可写项必须同时在这里给出落地方式,
- * 否则写入会抛 [IllegalArgumentException]（宁可报错,也不要静默丢弃一次已受理的写）。
+ * Leer el valor actual de cada flujo.;Las claves de escritura se distribuyen al método de guardado correspondiente. El mapeo de claves para setters se concentra aquí.,
+ * Nuevo [HostSettingDefinitions] Los elementos grabables también deben proporcionar el método de aterrizaje aquí.,
+ * De lo contrario, escribir arrojará [IllegalArgumentException](Prefiero informar un error,Tampoco descarte silenciosamente una escritura aceptada).
  */
 internal class RepositorySettingsAccess(private val settings: SettingsRepository) : HostSettingsAccess {
 
@@ -76,7 +76,7 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
         }
     }
 
-    /** 外观 / 通用 / 记忆 / 隐私这类标量项。 */
+    /** Términos escalares como Apariencia/General/Memoria/Privacidad. */
     private suspend fun writeScalar(key: String, value: String) {
         val flag = value == "true"
         when (key) {
@@ -97,7 +97,7 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
         }
     }
 
-    /** chatPreferences.* —— 一次函数式更新只改一个字段,避免整份回写覆盖并发修改。 */
+    /** chatPreferences.* —— Una actualización funcional solo cambia un campo,Evite la reescritura completa sobrescribiendo modificaciones simultáneas. */
     private suspend fun writeChatPreference(key: String, value: String) {
         settings.updateChatPreferences { prefs ->
             when (key) {
@@ -114,7 +114,7 @@ internal class RepositorySettingsAccess(private val settings: SettingsRepository
         }
     }
 
-    /** mediaConfig.* —— 媒体配置是整份对象,读当前值改一个字段再写回。 */
+    /** mediaConfig.* —— La configuración de medios es el objeto completo.,Lea el valor actual, cambie un campo y vuelva a escribirlo. */
     private suspend fun writeMediaConfig(key: String, value: String) {
         val current = settings.mediaConfigFlow.first()
         val updated = when (key) {

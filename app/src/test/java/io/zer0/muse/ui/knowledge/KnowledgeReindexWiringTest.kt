@@ -12,14 +12,14 @@ class KnowledgeReindexWiringTest {
         val source = File("src/main/java/io/zer0/muse/ui/knowledge/KnowledgeScreen.kt").readText()
 
         assertFalse(
-            "长文档的 doc.content 可能只是预览，单文档重索引必须走原始内容恢复链路",
+            "El contenido doc. de un documento extenso puede ser solo una vista previa. La reindexación de un solo documento debe utilizar el enlace de recuperación de contenido original.",
             source.contains("ragService.indexDocument(doc.id, doc.content"),
         )
     }
 
     @Test
     fun `knowledge importers use persistable document access`() {
-        // v2.4.6: 知识库管理页已与 KnowledgeScreen 合并为同一页,只查合并后的单页。
+        // v2.4.6: La página de administración de la base de conocimientos se ha fusionado con KnowledgeScreen en la misma página.,Busque únicamente en la página única fusionada.
         val screen = File("src/main/java/io/zer0/muse/ui/knowledge/KnowledgeScreen.kt").readText()
 
         assertFalse(screen.contains("ActivityResultContracts.GetContent()"))

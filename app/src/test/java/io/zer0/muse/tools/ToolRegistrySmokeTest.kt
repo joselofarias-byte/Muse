@@ -12,26 +12,26 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * v1.x: 全工具烟雾测试 — 遍历 ToolRegistry 已注册的全部内置工具。
+ * v1.x: Prueba de humo de herramienta completa — Recorra todas las herramientas integradas registradas en ToolRegistry.
  *
- * 设计(区分两类工具,解决 Robolectric 环境挂起):
+ * diseño(Distinguir entre dos tipos de herramientas.,Resolviendo el bloqueo del entorno Robolectric):
  *
- * 1. 安全工具([SAFE_EXECUTE_TOOLS]):纯 Kotlin/计算/无 Android 系统服务依赖,
- *    在测试线程直接执行,断言"不崩溃 + 返回非空"。这是工具链路的真实健康线。
- *    - echo / calculator / 编解码 / 哈希 / 随机数 / 时间等
+ * 1. herramientas de seguridad([SAFE_EXECUTE_TOOLS]):Kotlin puro/Computación/Sin dependencias de servicios del sistema Android,
+ *    Ejecutar directamente en el hilo de prueba.,afirmar"No fallar + devolver no nulo". Esta es la verdadera línea de salud de la cadena de herramientas.
+ *    - echo / calculator / Códec/Hash/Número aleatorio/Hora, etc.
  *
- * 2. 系统依赖工具(其余全部):依赖真实 Android 服务(WebView 内核 / TTS 引擎 /
- *    闹钟调度 / 电话短信 / ContentProvider / 网络),Robolectric 无真机能力,
- *    若执行会同步阻塞(历史卡死根因:withTimeoutOrNull 无法中断阻塞线程)。
- *    这类只验证「注册存在 + 入口可达」,运行时健康由真机冒烟覆盖。
+ * 2. Herramientas de dependencia del sistema(todo el resto):Confíe en servicios reales de Android(WebView Motor kernel/TTS /
+ *    Programación de alarmas/SMS de teléfono/Proveedor de contenido/Red),Robolectric Sin capacidad real de la máquina,
+ *    Si se ejecuta, se bloqueará sincrónicamente.(Causa fundamental del estancamiento histórico:withTimeoutOrNull No se puede interrumpir el hilo de bloqueo).
+ *    Este tipo sólo verifica "existencia registrada + entrada accesible",La salud en tiempo de ejecución está cubierta por el humo real de la máquina.
  *
- * v1.0.72 修复史:
- *  - 第一版:全部工具 executeFromJson → 系统工具阻塞,测试卡死 17 分钟。
- *  - 第二版:withTimeoutOrNull 包协程 → 对同步阻塞无效,仍卡死。
- *  - 第三版:独立线程 + Future.get(超时) → Robolectric 主线程被 get 阻塞,
- *    工具内 Dispatchers.Main 永久排队,大量误超时。
- *  - 第四版(本版):安全/系统工具分组,安全工具主线程直跑(快且稳),
- *    系统工具仅注册校验。烟雾测试永不卡死,回归能即时暴露。
+ * v1.0.72 historia de la restauración:
+ *  - primera edición:Todas las herramientas executeFromJson → Herramientas del sistema bloqueadas,La prueba estuvo estancada durante 17 minutos.
+ *  - segunda edición:withTimeoutOrNull Corrutina del paquete → No válido para bloqueo sincrónico,Todavía estancado.
+ *  - tercera edición:hilo independiente + Future.get(tiempo de espera) → Robolectric El hilo principal está bloqueado por get,
+ *    Dispatchers.Main está permanentemente en cola en la herramienta,Muchos tiempos de espera falsos.
+ *  - cuarta edición(Esta edición):seguro/Agrupación de herramientas del sistema,El hilo principal de la herramienta de seguridad se ejecuta directamente(Rápido y estable),
+ *    Las herramientas del sistema solo registran la verificación. La prueba de humo nunca se atasca,Las devoluciones pueden quedar expuestas al instante.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -46,8 +46,8 @@ class ToolRegistrySmokeTest {
     }
 
     /**
-     * 安全工具逐个执行:不崩溃 + 返回非空。
-     * 每工具 5s 协程超时兜底(防御未来新增工具意外阻塞)。
+     * Las herramientas de seguridad se ejecutan una por una.:No falla + devuelve un valor no nulo.
+     * Tiempo de espera de rutina de 5 segundos para cada herramienta(Evite el bloqueo accidental de nuevas herramientas en el futuro).
      */
     @Test
     fun `safe tools execute without crash and return non-empty result`() = runBlocking {
@@ -58,139 +58,139 @@ class ToolRegistrySmokeTest {
                     registry.executeFromJson(name, "{}")
                 }
             } catch (e: Throwable) {
-                failures += "$name 抛异常: ${e.message}"
+                failures += "$name Lanzar excepción: ${e.message}"
                 continue
             }
             if (result == null) {
-                failures += "$name 执行超时(阻塞)"
+                failures += "$name Tiempo de espera de ejecución(bloqueando)"
             } else if (result.isBlank()) {
-                failures += "$name 返回空串"
+                failures += "$name Devolver cadena vacía"
             }
         }
         assertTrue(
-            "安全工具未通过烟雾测试:\n${failures.joinToString("\n")}",
+            "La herramienta de seguridad no pasa la prueba de humo:\n${failures.joinToString("\n")}",
             failures.isEmpty(),
         )
     }
 
     /**
-     * v2.6.1: 助手可见集登记表——find_tools 据此收窄检索目录。
-     * 未登记（null）表示不限制；登记后按集合过滤；清除后回到 null。
+     * v2.6.1: Formulario de registro del conjunto visible del asistente——find_tools En consecuencia, el directorio de búsqueda se reduce.
+     * No registrado (null) significa sin límite; filtrar por colección después del registro; volver a nulo después de borrar.
      */
     @Test
     fun `visible tools registry is session scoped and defaults to unrestricted`() {
-        assertTrue("未登记时应为 null（不限制）", registry.visibleTools("vs_session") == null)
+        assertTrue("Debe ser nulo cuando no está registrado (sin límite)", registry.visibleTools("vs_session") == null)
         registry.setVisibleTools("vs_session", setOf("echo", "calculator"))
         assertTrue(
-            "登记后应只含声明的工具",
+            "El registro solo debe contener herramientas declaradas.",
             registry.visibleTools("vs_session") == setOf("echo", "calculator"),
         )
-        assertTrue("其他会话不受影响", registry.visibleTools("vs_other") == null)
+        assertTrue("Otras sesiones no se ven afectadas.", registry.visibleTools("vs_other") == null)
         registry.clearVisibleTools("vs_session")
-        assertTrue("清除后回到未登记（不限制）", registry.visibleTools("vs_session") == null)
+        assertTrue("Después de la limpieza, regrese a no registrado (ilimitado)", registry.visibleTools("vs_session") == null)
     }
 
     /**
-     * 全部内置工具静态表完整性 + ToolRegistry 自身运行时注册校验。
+     * Toda la herramienta integrada de integridad de la tabla estática + verificación de registro en tiempo de ejecución propia de ToolRegistry.
      *
-     * B-32 关键改动:不再"静态表互查"(原实现 registered 直接取 BUILT_IN_TOOL_IDS 同一静态常量)。
-     * 拆成两层:
-     *  1. 运行时层(ToolRegistry(context) 自身 init{} 注册的工具)必须真实出现在 listTools()
-     *     —— 验证 ToolRegistry 的 CodeExecutionTool / BrowserAutomationTool 自注册链路有效,
-     *     且每个运行时 ToolDef 的 name/description 非空。
-     *  2. 静态层:BUILT_IN_TOOL_IDS 声明的全部内置工具必须被分入 SAFE/SYSTEM 分组表,
-     *     防止录入静态表却漏分组(原测试已覆盖,保留)。
+     * B-32 Cambios clave:no más"Consulta mutua de tabla estática"(La implementación original registrada directamente toma la misma constante estática de BUILT_IN_TOOL_IDS).
+     * dividir en dos capas:
+     *  1. capa de tiempo de ejecución(ToolRegistry(context) mismo init{} Herramientas registradas)realmente debe aparecer listTools()
+     *     —— Verifique que el enlace de autorregistro CodeExecutionTool/BrowserAutomationTool de ToolRegistry sea válido,
+     *     Y el nombre/descripción de cada ToolDef en tiempo de ejecución no está vacío.
+     *  2. capa estática:BUILT_IN_TOOL_IDS Todas las herramientas integradas declaradas deben agruparse en la tabla de agrupación SAFE/SYSTEM.,
+     *     Evite que se pierdan agrupaciones al ingresar a tablas estáticas(La prueba original ha sido cubierta.,Reservar).
      *
-     * 说明:其余内置工具由各 Registrar 在 App 启动时经 Koin 注入 toolRegistry 注册
-     * (见 ToolRegistrarBootstrapper),裸构造 ToolRegistry(context) 不会触发它们,
-     * 故这里无法对全部静态 id 做运行时包含断言;其注册健康由 App 启动路径覆盖。
+     * Descripción:Cada registrador registra las herramientas integradas restantes a través del Registro de herramientas de inyección de Koin cuando se inicia la aplicación.
+     * (ver ToolRegistrarBootstrapper),estructura desnuda ToolRegistry(context) no los activará,
+     * Por lo tanto, no es posible realizar afirmaciones de inclusión en tiempo de ejecución para todos los ID estáticos.;El estado de su registro queda anulado por la ruta de inicio de la aplicación.
      */
     @Test
     fun `all built-in tools are registered and reachable`() = runBlocking {
         val staticIds = io.zer0.muse.tools.ToolRegistry.BUILT_IN_TOOL_IDS.toSet()
-        assertTrue("静态表声明应至少 20 个内置工具,实际 ${staticIds.size}", staticIds.size >= 20)
+        assertTrue("La declaración de tabla estática debe tener al menos 20 herramientas integradas,real ${staticIds.size}", staticIds.size >= 20)
 
-        // B-32: 从真实 ToolRegistry(context) 读运行时 listTools()(返回实际注册的 ToolDef)
+        // B-32: de la realidad ToolRegistry(context) leer tiempo de ejecución listTools()(Devolver el registrado real ToolDef)
         val runtimeDefs = registry.listTools()
-        assertTrue("运行时未注册任何工具", runtimeDefs.isNotEmpty())
+        assertTrue("No hay herramientas registradas en tiempo de ejecución.", runtimeDefs.isNotEmpty())
         val runtimeNames = runtimeDefs.map { it.name }.toSet()
 
-        // 运行时定义完整性:每个 ToolDef 必须 name/description 非空(定义存在)
+        // Integridad de la definición del tiempo de ejecución:Cada ToolDef debe tener un nombre/descripción que no esté vacío(definir la existencia)
         val malformed = runtimeDefs.filter { it.name.isBlank() || it.description.isBlank() }
             .map { "name='${it.name}' desc='${it.description}'" }
-        assertTrue("运行时存在 name/description 为空的工具定义:\n$malformed", malformed.isEmpty())
+        assertTrue("Hay una definición de herramienta con nombre/descripción vacíos en tiempo de ejecución.:\n$malformed", malformed.isEmpty())
 
-        // ToolRegistry 自身 init{} 注册的工具必须真实出现在运行时 listTools()(非自证)
+        // ToolRegistry mismo init{} Las herramientas registradas deben aparecer en tiempo de ejecución. listTools()(No autocertificado)
         val selfRegistered = SELF_REGISTERED_IN_TOOL_REGISTRY
         val missingFromRuntime = selfRegistered.filterNot { it in runtimeNames }
         assertTrue(
-            "ToolRegistry 自身应注册以下工具但 listTools() 未返回(init 逻辑漂移):\n$missingFromRuntime",
+            "ToolRegistry Debe registrar las siguientes herramientas usted mismo, pero listTools() No devuelto(init deriva lógica):\n$missingFromRuntime",
             missingFromRuntime.isEmpty(),
         )
 
-        // 静态层:安全工具 + 系统工具 = 全部静态内置工具,防止录入静态表却漏分组
+        // capa estática:Herramientas de seguridad + Herramientas del sistema = Todas las herramientas estáticas integradas,Evite que se pierdan agrupaciones al ingresar a tablas estáticas
         val all = SAFE_EXECUTE_TOOLS + SYSTEM_ONLY_TOOLS
         val unregistered = all.filterNot { it in staticIds }
-        assertTrue("分组表中出现非内置工具:\n$unregistered", unregistered.isEmpty())
+        assertTrue("Las herramientas no integradas aparecen en la tabla de agrupación:\n$unregistered", unregistered.isEmpty())
 
-        // 防止分组遗漏:BUILT_IN_TOOL_IDS 中既不在安全也不在系统组的 → 分组表过期,必须报错
+        // Evitar grupos faltantes:BUILT_IN_TOOL_IDS ni en el grupo de seguridad ni en el del sistema → La tabla de agrupación expiró,Se debe informar un error.
         val missingFromGroups = staticIds.filterNot { it in all }
         assertTrue(
-            "以下工具不在分组表中(请更新 SAFE_EXECUTE_TOOLS / SYSTEM_ONLY_TOOLS):\n$missingFromGroups",
+            "Las siguientes herramientas no están en la tabla agrupada.(por favor actualiza SAFE_EXECUTE_TOOLS / SYSTEM_ONLY_TOOLS):\n$missingFromGroups",
             missingFromGroups.isEmpty(),
         )
-        // B-32: 运行时额外注册(不在静态表)仅做提示,不视为失败(Registrar/MCP 可动态注册)。
+        // B-32: Registro adicional en tiempo de ejecución(no en tabla estática)Sólo un recordatorio,No se considera un fracaso(Registrar/MCP Se puede registrar dinámicamente).
         val runtimeExtras = runtimeNames - staticIds
         if (runtimeExtras.isNotEmpty()) {
-            println("[info] 运行时额外注册工具(动态/Registrar/MCP): $runtimeExtras")
+            println("[info] Herramientas de registro adicionales en tiempo de ejecución(Dinámico/Registrar/MCP): $runtimeExtras")
         }
     }
 
     /**
-     * B-32: 内置 skill 工具一致性护栏 — "定义存在 + execute 可路由"烟雾覆盖。
+     * B-32: Barandillas de coherencia de herramientas de habilidades integradas — "La definición existe + ejecutar es enrutable"Cobertura de humo.
      *
-     * 遍历 [SkillExecutor.BUILT_IN_SKILLS]:
-     *  1. 定义存在:每个内置 skill 必须是有效定义(id/name/description 非空,parametersJson 为合法 JSON)。
-     *  2. execute 可路由:implementationKotlin 必须命中 SkillExecutor.execute 的 when 专属分支
-     *     (即 ∈ [SkillExecutor.ROUTABLE_SKILL_IMPL]),否则会静默落 skill_unknown_impl。
+     * atravesar [SkillExecutor.BUILT_IN_SKILLS]:
+     *  1. definir la existencia:Cada habilidad incorporada debe ser una definición válida(id/name/description No vacío,parametersJson ser legal JSON).
+     *  2. execute enrutable:implementationKotlin Debe acceder a la rama exclusiva when de SkillExecutor.execute
+     *     (Eso es ∈ [SkillExecutor.ROUTABLE_SKILL_IMPL]),De lo contrario, Skill_unknown_impl se eliminará silenciosamente.
      *
-     * 排除已下线的 generate_qr(B-07),避免"内置 skill 全集可路由"断言误伤。
+     * Excluir los que no están conectados generate_qr(B-07),evitar"Se puede enrutar el conjunto completo de habilidades integradas"Supuesta lesión accidental.
      */
     @Test
     fun `all built-in skill tools are defined and routable`() {
         val skills = io.zer0.muse.tools.SkillExecutor.BUILT_IN_SKILLS
-        // B-07: generate_qr 内置 skill 已下线,从"可路由全集"断言中排除(dispatch 分支仍保留兼容旧数据)
+        // B-07: generate_qr La habilidad incorporada está fuera de línea.,de"Conjunto completo ruteable"excluir de la afirmación(dispatch Las sucursales siguen siendo compatibles con datos antiguos)
         val decommissioned = setOf("generate_qr")
         val definitionsBroken = mutableListOf<String>()
         val notRoutable = mutableListOf<String>()
 
         for (skill in skills) {
             if (skill.id in decommissioned) continue
-            // 1. 定义存在 — 有效 SkillEntity
+            // 1. definir la existencia — válido SkillEntity
             if (skill.id.isBlank() || skill.name.isBlank() || skill.description.isBlank() ||
                 !isValidJsonObject(skill.parametersJson)
             ) {
                 definitionsBroken += "${skill.id}(name='${skill.name}', desc=${skill.description.length}, params=${skill.parametersJson})"
                 continue
             }
-            // 2. execute 可路由 — implementationKotlin 命中 execute 的 when 专属分支
+            // 2. execute enrutable — implementationKotlin Presione la rama exclusiva de ejecutar cuando
             if (skill.implementationKotlin !in SkillExecutor.ROUTABLE_SKILL_IMPL) {
                 notRoutable += "${skill.id} → implementationKotlin='${skill.implementationKotlin}'"
             }
         }
 
         assertTrue(
-            "以下内置 skill 定义缺失/损坏(请检查 SkillExecutor.BUILT_IN_SKILLS):\n${definitionsBroken.joinToString("\n")}",
+            "Falta la siguiente definición de habilidad integrada/dañado(por favor revisa SkillExecutor.BUILT_IN_SKILLS):\n${definitionsBroken.joinToString("\n")}",
             definitionsBroken.isEmpty(),
         )
         assertTrue(
-            "以下内置 skill 无法被 SkillExecutor.execute 路由(implementationKotlin 不在 ROUTABLE_SKILL_IMPL," +
-                "会静默走 skill_unknown_impl):\n${notRoutable.joinToString("\n")}",
+            "SkillExecutor.execute no puede enrutar las siguientes habilidades integradas(implementationKotlin aquí no ROUTABLE_SKILL_IMPL," +
+                "caminará en silencio skill_unknown_impl):\n${notRoutable.joinToString("\n")}",
             notRoutable.isEmpty(),
         )
     }
 
-    /** B-32: 判断字符串是否为合法的 JSON 对象(用于校验 skill 定义存在)。 */
+    /** B-32: Determine whether the string is a legal JSON object(Se utiliza para verificar que existe la definición de habilidad.). */
     private fun isValidJsonObject(json: String): Boolean {
         return runCatching {
             io.zer0.common.AppJson.decodeFromString(
@@ -201,7 +201,7 @@ class ToolRegistrySmokeTest {
     }
 
     /**
-     * 核心工具必须注册(回归保护: 注册表被误删时立刻暴露)。
+     * Las herramientas principales deben estar registradas.(protección de devolución: Immediately exposed when the registry is accidentally deleted).
      */
     @Test
     fun `registry contains all documented built-in tool ids`() {
@@ -217,19 +217,19 @@ class ToolRegistrySmokeTest {
             "translate",
         )
         val missing = required.filterNot { it in names }
-        assertTrue("缺少核心工具: $missing", missing.isEmpty())
+        assertTrue("Faltan herramientas básicas: $missing", missing.isEmpty())
     }
 
     companion object {
-        /** 安全工具单工具超时(毫秒)。 */
+        /** Tiempo de espera de la herramienta de hoja de herramientas de seguridad(milisegundos). */
         private const val SAFE_TOOL_TIMEOUT_MS = 5_000L
 
         /**
-         * B-32: ToolRegistry 自身 init{} 注册的内置工具(与 ToolRegistry.init 一一对应)。
+         * B-32: ToolRegistry mismo init{} Herramientas integradas registradas(Correspondencia uno a uno con ToolRegistry.init).
          *
-         * CodeExecutionTool(execute_javascript)+ BrowserAutomationTool(browser_* 6 件套)。
-         * 其余内置工具由各 Registrar 经 Koin 在 App 启动时注入注册(见本类顶部测试注释)。
-         * 此集合用于"从真实 ToolRegistry(context).listTools() 读运行时注册"互验。
+         * CodeExecutionTool(execute_javascript)+ BrowserAutomationTool(browser_* 6 conjunto de piezas).
+         * The rest of the built-in tools are injected and registered by each Registrar via Koin when the App starts.(Vea los comentarios de la prueba en la parte superior de esta clase.).
+         * Esta colección se utiliza para"de la realidad ToolRegistry(context).listTools() Leer el registro de tiempo de ejecución"Verificación mutua.
          */
         val SELF_REGISTERED_IN_TOOL_REGISTRY: List<String> = listOf(
             "execute_javascript",
@@ -244,123 +244,123 @@ class ToolRegistrySmokeTest {
         )
 
         /**
-         * 安全工具:纯计算/无系统服务,Robolectric 可真实执行。
-         * 新增纯逻辑工具时加入此表(并在 SYSTEM_ONLY_TOOLS 中移除)。
+         * herramientas de seguridad:cálculo puro/Sin servicio del sistema,Robolectric Realmente implementable.
+         * Agregue esta tabla cuando agregue herramientas de lógica pura(y eliminado en SYSTEM_ONLY_TOOLS).
          */
         val SAFE_EXECUTE_TOOLS: List<String> = listOf(
-            // 纯计算
+            // cálculo puro
             "echo", "calculator",
-            // 编解码/哈希
+            // Códec/picadillo
             "url_encode", "url_decode", "base64_encode", "base64_decode",
             "hash_text", "generate_uuid", "random_number", "generate_password",
             "json_pretty",
-            // 时间(纯 LocalDateTime)
+            // tiempo(puro LocalDateTime)
             "get_current_time",
         )
 
         /**
-         * 系统依赖工具:Robolectric 下不执行(执行会阻塞/无真实能力)。
-         * 真机回归由 instrumentation 冒烟覆盖。
-         * 新增系统工具时加入此表(保持与 SAFE_EXECUTE_TOOLS 并集 = BUILT_IN_TOOL_IDS)。
+         * Herramientas de dependencia del sistema:Robolectric No ejecutado la próxima vez(La ejecución bloqueará/ninguna habilidad real).
+         * Real machine return covered by instrumentation smoke.
+         * Agregue esta tabla cuando agregue nuevas herramientas del sistema(Mantener unión con SAFE_EXECUTE_TOOLS = BUILT_IN_TOOL_IDS).
          */
         val SYSTEM_ONLY_TOOLS: List<String> = listOf(
-            // 网络
+            // red
             "get_weather", "get_network_info", "get_public_ip", "ping_host", "dns_lookup",
-            // 剪贴板/日历/闹钟
+            // portapapeles/Calendario/despertador
             "clipboard_read", "clipboard_write", "screen_time", "calendar_today",
             "add_calendar_event", "set_alarm", "set_timer", "schedule_reminder",
             "cancel_reminder", "list_reminders",
-            // 系统/设备
+            // sistema/Equipo
             "open_app", "share_text", "get_location", "get_device_info",
             "get_contacts_count", "get_contacts_list", "send_sms", "add_contact",
             "open_system_setting", "toggle_wifi", "toggle_bluetooth", "send_email",
             "get_battery_info", "get_recent_notifications", "open_url",
             "list_installed_apps",
-            // v1.136 系统/设备/编码
+            // v1.136 sistema/Equipo/codificación
             "get_storage_info", "get_memory_info", "get_display_info", "get_cpu_info",
             "get_sensors_list", "get_brightness", "set_brightness", "get_volume",
             "set_volume", "toggle_flashlight", "vibrate", "get_foreground_app",
             "get_wifi_info", "get_bluetooth_devices", "make_phone_call", "open_maps",
-            // 资源库/快速记录(依赖 Room DB,Robolectric 需额外配置,归系统组)
+            // Biblioteca de recursos/registro rápido(depender de Room DB,Robolectric Requiere configuración adicional,pertenece al grupo del sistema)
             "resource_add", "resource_list", "resource_search", "resource_get",
             "resource_delete", "quick_note_add", "quick_note_list",
             "quick_note_get", "quick_note_update", "quick_note_delete", "quick_note_pin",
             // TTS
             "speak_text",
-            // 媒体生成(依赖网络 + 供应商)
+            // generación de medios(Depender de la red + proveedores)
             "generate_image", "generate_video", "generate_qr_code",
-            // v2.x: 发语音消息(依赖 TTS 引擎 + 文件系统,Robolectric 下不执行)
+            // v2.x: Enviar mensaje de voz(Depende del motor TTS + sistema de archivos,Robolectric No ejecutado la próxima vez)
             "send_voice",
-            // 表情包(依赖 SkillExecutor)
+            // Emoticones(depender de SkillExecutor)
             "list_stickers", "send_sticker",
-            // 记忆/经验(依赖 DB + LLM)
+            // memoria/experiencia(depender de DB + LLM)
             "pin_memory", "unpin_memory", "recall_experience", "record_experience",
-            // 记忆系统参数(依赖 DataStore)
+            // Parámetros del sistema de memoria(depender de DataStore)
             "memory_config_get", "memory_config_set",
-            // 用量统计(依赖 Room 聚合查询,Robolectric 下无真实数据)
+            // Estadísticas de uso(Depende de la consulta de agregación de habitaciones,Robolectric No hay datos reales a continuación)
             "get_token_usage",
-            // 工作区内容搜索(依赖文件系统)
+            // Búsqueda de contenido del espacio de trabajo(Depende del sistema de archivos)
             "workspace_grep",
-            // v2.6.11: 挂载改造新增的两个工作区工具(依赖文件系统 + SAF)
+            // v2.6.11: Se agregaron dos nuevas herramientas de espacio de trabajo a la transformación de montaje.(Depende del sistema de archivos + SAF)
             "workspace_copy", "workspace_mounts",
-            // v2.6.7 fix (AUDIT F4): 本批新增的两个内置工具必须归组，
-            // 否则 BUILT_IN_TOOL_IDS 与分组表并集不再相等。
-            // read_user_file 依赖 SAF + UI 回调；remember_preference 依赖 DataStore。
+            // v2.6.7 fix (AUDIT F4): Las dos nuevas herramientas integradas en este lote deben agruparse.
+            // De lo contrario, BUILT_IN_TOOL_IDS y la unión de la tabla de agrupación ya no son iguales.
+            // read_user_file Confíe en las devoluciones de llamada de SAF + UI;remember_preference Depende del almacén de datos.
             "read_user_file", "remember_preference",
             "todo_write", "show_card", "render_data", "notify", "current_status", "subagent_task",
             "update_card_data",
-            // JS 沙盒(WebView)
+            // JS caja de arena(WebView)
             "execute_javascript",
-            // P1-C: Node 脚本(内置运行时,Robolectric 下不执行)
+            // P1-C: Node guión(Tiempo de ejecución incorporado,Robolectric No ejecutado la próxima vez)
             "execute_node_script",
-            // 浏览器(headless WebView)
+            // Navegador(headless WebView)
             "browser_navigate", "browser_click", "browser_type", "browser_extract",
             "browser_scroll_bottom", "browser_get_html", "browser_snapshot",
-            // 消息渠道(网络依赖)
+            // canal de mensajes(dependencia de la red)
             "send_channel_message", "channel_list",
-            // OAuth 连接器(网络依赖)
+            // OAuth conector(dependencia de la red)
             "connector_list", "call_connector",
-            // 工作区文件(依赖文件系统)
+            // archivo de espacio de trabajo(Depende del sistema de archivos)
             "workspace_list", "workspace_read", "workspace_write", "workspace_edit", "workspace_delete",
             "workspace_mkdir", "workspace_move",
-            // 定时任务(依赖 DB)
+            // tareas programadas(depender de DB)
             "scheduled_task_create", "scheduled_task_list", "scheduled_task_update",
             "scheduled_task_delete", "scheduled_task_execute", "scheduled_task_get_history",
-            // 翻译(依赖网络 + LLM)
+            // Traducción(Depende de la red + LLM)
             "translate",
-            // MCP 管理(McpRegistry 注册,依赖网络与连接状态;Robolectric 下不执行)
+            // MCP gestión(McpRegistry Registrarse,Depende del estado de la red y de la conexión;Robolectric No ejecutado la próxima vez)
             "mcp_mgmt_list", "mcp_mgmt_configure", "mcp_mgmt_remove",
             "mcp_mgmt_bind_assistant", "mcp_mgmt_reconnect",
-            // 文件/链接/文档(依赖文件系统与网络)
+            // Archivo/enlace/Documentación(Depende del sistema de archivos y la red.)
             "read_file", "create_download", "parse_link", "parse_pdf",
             // v2.0: Root-level system tools
             "settings_get", "settings_put", "am_start", "list_packages", "logcat_tail", "input_inject",
-            // 记忆检索 / 子 agent / 主动消息愿望
+            // Deseo de recuperación de memoria/subagente/mensaje activo
             "search_memory", "search_conversation", "subagent_run", "subagent_close", "proactive_message_wish",
-            // v2.x: 记忆写入/删除 + 工具库检索 + 插件市场(依赖 DB/注册表/网络)
+            // v2.x: escritura de memoria/Eliminar + búsqueda de biblioteca de herramientas + mercado de complementos(Depende de la base de datos/registro/red)
             "save_memory", "delete_memory", "find_tools",
             "plugin_market_search", "plugin_market_install",
             "plugin_market_uninstall", "plugin_market_set_enabled",
-            // v2.x 自动化一期:设备命令行通道(分层执行,无授权时拒绝)
+            // v2.x Automatización Fase I:Canal de línea de comando del dispositivo(Ejecución jerárquica,Rechazar sin autorización)
             "device_shell",
-            // v2.x 终端一期:应用沙盒终端命令
+            // v2.x fase terminal uno:Aplicar comandos de terminal sandbox
             "terminal_exec",
-            // v2.x 扩展运行时:内置 Node 沙盒自检(只读;依赖运行时,Robolectric 下不执行)
+            // v2.x Tiempo de ejecución extendido:Autoprueba integrada de la zona de pruebas de Node(solo lectura;Depende del tiempo de ejecución,Robolectric No ejecutado la próxima vez)
             "runtime_selfcheck",
-            // v2.7 扩展运行时:Python 脚本执行(依赖内置运行时,Robolectric 下不执行)
+            // v2.7 Tiempo de ejecución extendido:Python Ejecución de script(Confíe en el tiempo de ejecución integrado,Robolectric No ejecutado la próxima vez)
             "execute_python_script",
-            // v2.2.1: Termux 通道(完整 Linux 环境命令;运行时注册,Robolectric 下不执行)
+            // v2.2.1: Termux canal(Comandos completos del entorno Linux;Registro de tiempo de ejecución,Robolectric No ejecutado la próxima vez)
             "termux_exec",
-            // v2.2.1: GUI Agent 环(视觉驱动多步操作;运行时由初始器注册,Robolectric 下不执行)
+            // v2.2.1: GUI Agent anillo(Operaciones de varios pasos impulsadas por la visión;Registrado por el inicializador en tiempo de ejecución,Robolectric No ejecutado la próxima vez)
             "ui_agent",
-            // v2.6.2: 应用控制工具集(AppControlTools 注册;依赖 Android App 上下文,Robolectric 下不执行)
+            // v2.6.2: Conjunto de herramientas de control de aplicaciones(AppControlTools Registrarse;Depende del contexto de la aplicación de Android,Robolectric No ejecutado la próxima vez)
             "app_list", "app_launch", "app_settings",
             "app_force_stop", "app_clear_data", "app_uninstall",
-            // v2.6.2: 知识库管理 + 会话管理（KnowledgeManageTools / SessionManageTools）
+            // v2.6.2: Gestión de base de conocimientos + gestión de sesiones (KnowledgeManageTools / SessionManageTools)
             "knowledge_list_docs", "knowledge_delete_doc", "knowledge_create_kb", "knowledge_delete_kb",
             "knowledge_read_doc",
             "session_list", "session_read", "session_rename", "session_move_folder", "session_archive", "session_delete",
-            // v2.6.2: 技能管理 + 助手自管理（SkillManageTools / AssistantManageTools）
+            // v2.6.2: Gestión de habilidades + autogestión asistente (SkillManageTools / AssistantManageTools)
             "skill_manage_list", "skill_manage_toggle", "skill_manage_delete",
             "assistant_manage_list", "assistant_manage_create", "assistant_manage_update_persona", "assistant_manage_delete",
         )

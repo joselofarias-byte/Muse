@@ -39,10 +39,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * v2.0.1: 渠道对话页 — 按渠道查看各联系人的对话记录与上下文状态。
+ * v2.0.1: Página de conversación del canal — Ver el historial de conversaciones y el estado contextual de cada contacto por canal.
  *
- * 数据源:[ChannelConversationStore](与自动回复同一份存储);
- * 每个联系人一段对话,支持展开查看最近消息,可"重启上下文"(清空该对话历史与摘要)。
+ * fuente de datos:[ChannelConversationStore](Almacenado en la misma copia que la respuesta automática.);
+ * Una conversación por contacto,Ampliación de soporte para ver noticias recientes,si"reiniciar contexto"(Borrar el historial y el resumen de la conversación).
  */
 @Composable
 fun ChannelConversationsScreen(
@@ -58,8 +58,8 @@ fun ChannelConversationsScreen(
             .sortedByDescending { (_, conversation) -> conversation.updatedAt }
     }
     var resetTarget by remember { mutableStateOf<String?>(null) }
-    // 最近一次失败的派发：错误码此前只落库不展示，用户只能猜“它为什么不回”。
-    // 群聊里「不在群里」和「被动回复超时」的处置完全不同，必须显出来。
+    // La última entrega fallida: anteriormente el código de error solo se registraba y no se mostraba, y los usuarios sólo podían adivinarlo.“¿Por qué no responde?”.
+    // El manejo de "no en el grupo" y "tiempo de espera de respuesta pasiva" en los chats grupales es completamente diferente y debe mostrarse.
     val inbox by ChannelInbox.messages.collectAsStateWithLifecycle()
     val lastFailure = remember(inbox, channelId) {
         inbox
@@ -78,7 +78,7 @@ fun ChannelConversationsScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        // v2.0.1: 沿用设置域既有防抖模式(BoxWithConstraints 收口有限高度)。
+        // v2.0.1: Heredar el modo antivibración existente en el campo de configuración(BoxWithConstraints Altura de cierre limitada).
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -128,7 +128,7 @@ fun ChannelConversationsScreen(
     )
 }
 
-/** 重启上下文确认。抽出只为控制主函数长度，逻辑本身没分支。 */
+/** Reiniciar la confirmación del contexto. La extracción es solo para controlar la duración de la función principal y la lógica en sí no tiene ramas. */
 @Composable
 private fun ResetContextDialog(target: String?, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     val from = target ?: return
@@ -145,10 +145,10 @@ private fun ResetContextDialog(target: String?, onConfirm: (String) -> Unit, onD
 }
 
 /**
- * 单个联系人的入口卡。
+ * Tarjeta de entrada para un solo contacto.
  *
- * 只回答三件事：谁、最后说了什么、什么时候。正文详情点进去看 ——
- * 摊在列表里既读不出上下文，也把列表变成一堵字墙。
+ * Responda sólo tres cosas: quién, qué se dijo por última vez y cuándo. Haga clic para ver los detalles del texto. ——
+ * Distribuirlo en una lista hace imposible leer el contexto y convierte la lista en un muro de palabras.
  */
 @Composable
 private fun ConversationCard(
@@ -192,7 +192,7 @@ private fun ConversationCard(
                         text = stringResource(R.string.channel_conversation_reset),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
-                        // LAYOUT-01: 右侧动作是定宽短标注(剩余宽度已归左侧联系人名的 weight),限 1 行兜底。
+                        // LAYOUT-01: La acción de la derecha es el dimensionamiento corto de ancho fijo.(El ancho restante se ha asignado al nombre del contacto a la izquierda. weight),Limitado a 1 línea.
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
@@ -216,19 +216,19 @@ private fun ConversationCard(
 }
 
 /**
- * 联系人 id 展示美化。
+ * Embellecimiento de la pantalla de identificación de contacto.
  *
- * 群目标存成 `group:<openid>`，直接显示会带前缀且超长，
- * 这里把前缀转成可读标签并对长 id 保留首尾。
+ * Almacenamiento de destino de grupo `group:<openid>`, la visualización directa tendrá un prefijo y será demasiado larga.
+ * Aquí, el prefijo se convierte en una etiqueta legible y se conservan el principio y el final de la identificación larga.
  */
 internal fun prettifyContactLabel(raw: String): String {
     val isGroup = raw.startsWith("group:")
     val core = raw.removePrefix("group:")
     val shown = if (core.length <= 20) core else core.take(10) + "…" + core.takeLast(6)
-    return if (isGroup) "群 $shown" else shown
+    return if (isGroup) "grupo $shown" else shown
 }
 
-/** 最近一次发送失败提示。放列表最上方，因为它是"为什么它不回"的直接答案。 */
+/** El último envío falló. Pon la lista en la parte superior porque es"¿Por qué no responde?"respuesta directa. */
 @Composable
 private fun FailureBanner(message: String) {
     Text(
@@ -239,7 +239,7 @@ private fun FailureBanner(message: String) {
     )
 }
 
-/** 空态。单独成函数只是为了不让主函数继续变长。 */
+/** Estado vacío. Convertirla en una función separada es solo para evitar que la función principal se alargue. */
 @Composable
 private fun EmptyHint() {
     Text(
@@ -250,7 +250,7 @@ private fun EmptyHint() {
     )
 }
 
-/** 最后一条消息的预览。 */
+/** Vista previa del último mensaje. */
 @Composable
 private fun LastTurnPreview(turn: ChannelConversationStore.Turn?) {
     val current = turn ?: return
@@ -265,7 +265,7 @@ private fun LastTurnPreview(turn: ChannelConversationStore.Turn?) {
         text = stringResource(
             R.string.channel_conversation_turn_line,
             roleLabel,
-            current.text.ifBlank { "[附件]" },
+            current.text.ifBlank { "[Accesorios]" },
         ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -275,7 +275,7 @@ private fun LastTurnPreview(turn: ChannelConversationStore.Turn?) {
     )
 }
 
-/** 更早对话的滚动摘要。 */
+/** Un resumen desplazable de conversaciones anteriores. */
 @Composable
 private fun SummaryLine(summary: String) {
     Text(

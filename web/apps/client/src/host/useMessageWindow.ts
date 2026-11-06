@@ -4,24 +4,24 @@ import { measureAverage, planWindow, shouldUpdateAverage, type WindowPlan } from
 interface UseMessageWindowOptions {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly itemCount: number;
-  /** 贴底时窗口锚在末尾（聊天默认在底部）。 */
+  /** Cuando se pega en la parte inferior, el ancla de la ventana está al final (el chat está en la parte inferior de forma predeterminada). */
   readonly pinnedToEnd: boolean;
-  /** 会话变化等需要重新量的时机。 */
+  /** Cuando cambia la sesión, etc., es necesario volver a medir la medición. */
   readonly resetKey: string;
 }
 
 /**
- * 长列表窗口化：按滚动位置算出要渲染的区间，两端用等高占位撑住总高度。
+ * Ventanas de listas largas: calcule el intervalo que se representará en función de la posición de desplazamiento y utilice marcadores de posición de igual altura en ambos extremos para soportar la altura total.
  *
- * 行高只能估：渲染后量一次已渲染行的平均高度，偏差超过 15% 才更新估计（带死区，
- * 避免量一次抖一次）。条目不超过阈值时 plan.active 为 false，调用方照常全量渲染。
+ * La altura de las filas solo se puede estimar: mida la altura promedio de las filas renderizadas una vez después de renderizar y solo actualice la estimación si la desviación excede el 15 % (con zona muerta,
+ * Evite medir y agitar cada vez). Cuando las entradas no superan el umbral, plan.active es falso y la persona que llama se muestra en su totalidad como de costumbre.
  */
 export function useMessageWindow({ scrollRef, itemCount, pinnedToEnd, resetKey }: UseMessageWindowOptions): WindowPlan {
   const [metrics, setMetrics] = useState({ top: 0, height: 0 });
   const averageRef = useRef(0);
   const [averageTick, setAverageTick] = useState(0);
 
-  // 滚动：rAF 节流，只记位置与视口高度；容器尺寸变化也要重算。
+  // desplazarse:rAF Para acelerar, sólo se recuerdan la posición y la altura de la ventana gráfica; Los cambios en el tamaño del contenedor también deben recalcularse.
   useEffect(() => {
     const element = scrollRef.current;
     if (element === null) return;
@@ -54,11 +54,11 @@ export function useMessageWindow({ scrollRef, itemCount, pinnedToEnd, resetKey }
         averageHeight: averageRef.current,
         pinnedToEnd,
       }),
-    // averageTick 是「估算值刚变过」的信号，ref 本身不会触发重算。
+    // averageTick Es una señal de que "la estimación acaba de cambiar".ref No desencadena un recálculo por sí solo.
     [itemCount, metrics, pinnedToEnd, averageTick],
   );
 
-  // 渲染后量一次行高；偏差够大才更新估计并重算窗口。
+  // Mida la altura de la fila una vez después del renderizado; actualice la estimación y vuelva a calcular la ventana solo cuando la desviación sea lo suficientemente grande.
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (element === null) return;

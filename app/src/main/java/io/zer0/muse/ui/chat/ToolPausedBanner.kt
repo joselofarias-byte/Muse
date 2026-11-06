@@ -21,17 +21,17 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * v2.6.7: 工具执行被全局暂停时的聊天页横幅。
+ * v2.6.7: Banner de la página de chat cuando la ejecución de la herramienta se pausa globalmente.
  *
- * 背景（用户反馈）: 打开设置里的「暂停工具执行」后，每个工具都返回
- * "工具 xxx 已暂停，本轮未执行真实操作"、耗时 0ms，一轮下来 12 步全"失败"。
- * 用户视角非常像"联网坏了 / 工具挂了"，而真相是一个设置开关。
+ * Antecedentes (comentarios de los usuarios): Después de activar "Pausar la ejecución de la herramienta" en la configuración, cada herramienta regresa
+ * "La herramienta xxx ha sido suspendida y no se han realizado operaciones reales en esta ronda.", tarda 0 ms y completa 12 pasos en una ronda"falló".
+ * La perspectiva del usuario es muy similar a"Internet no funciona/la herramienta no funciona", y la verdad es un interruptor de configuración.
  *
- * 这个横幅只做两件事:
- *  1. 说明白现在不会真的执行工具；
- *  2. 给一键恢复出口，不必再翻两层设置。
+ * Este banner solo hace dos cosas:
+ *  1. Deje en claro que la herramienta no se ejecutará realmente ahora;
+ *  2. Restaure las exportaciones con un solo clic, eliminando la necesidad de pasar por dos niveles de configuración.
  *
- * 故意不做成警告色：这是用户自己的选择，不是错误。
+ * No poner deliberadamente un color de advertencia: es una elección del usuario, no un error.
  */
 @Composable
 fun ToolPausedBanner(onResume: () -> Unit = {}, modifier: Modifier = Modifier) {

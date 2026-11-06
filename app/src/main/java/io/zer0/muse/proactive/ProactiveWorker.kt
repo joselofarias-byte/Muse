@@ -10,19 +10,19 @@ import kotlinx.coroutines.flow.first
 import org.koin.core.context.GlobalContext
 
 /**
- * 主动消息的 WorkManager 兜底（重建版）。
+ * Backend de WorkManager para mensajes proactivos (versión reconstruida).
  *
- * 与旧 Worker 的关键区别是**职责变了**：旧 Worker 每次被拉起都可能触发两次 LLM 调用，
- * 所以「App 被杀 + 每 15 分钟唤醒」本身就是一笔持续开销。
+ * La diferencia clave con el antiguo trabajador es**Las responsabilidades han cambiado.**: El antiguo trabajador puede activar dos llamadas LLM cada vez que se activa.
+ * Entonces "App Asesinados + despertados cada 15 minutos" es en sí mismo un gasto continuo.
  *
- * 新设计里 Worker 只是一只闹钟：它调 [ProactiveScheduler.runCycle]，
- * 而 runCycle 的前半段（总控 → 开关 → 选助手 → 关系 → 清理 → 记账 → 四问判定）
- * 全是本地操作。绝大多数唤醒会在「账本为空」或「时机不对」处直接返回，
- * 一次网络请求都不会发。
+ * En el nuevo diseño, Worker es sólo un despertador: configura [ProactiveScheduler.runCycle],
+ * La primera mitad de runCycle (control general → cambiar → Seleccionar asistente → relación → limpiar → contabilidad → Cuatro preguntas para determinar)
+ * Todas las operaciones locales. La mayoría de los despertares volverán directamente cuando el "libro mayor esté vacío" o "el momento no sea el correcto".
+ * No se enviará ni una sola solicitud de red.
  *
- * 15 分钟是 WorkManager 的周期下限，绕不过。但既然唤醒是免费的，
- * 这个下限就不再是成本问题，只剩精度问题 —— 而精度由 IMMEDIATE 类牵挂的
- * 时效窗口兜底（窗口足够宽，不需要精确到分钟）。
+ * 15 Los minutos son el límite inferior del ciclo de WorkManager y no se pueden eludir. Pero como despertarse es gratis,
+ * Este límite inferior ya no es una cuestión de coste, sino sólo una cuestión de precisión. —— Y la precisión está a cargo de la clase INMEDIATA.
+ * La ventana de antigüedad es completa (la ventana es lo suficientemente amplia y no necesita ser precisa al minuto).
  */
 class ProactiveWorker(
     appContext: Context,
@@ -39,18 +39,18 @@ class ProactiveWorker(
             ?.let { resultOf { it.get<ProactiveScheduler>() }.getOrNull() }
 
         when {
-            koin == null -> Logger.w(TAG, "Koin 未初始化(Safe Mode?)，跳过本次 Worker")
-            !workEnabled -> Logger.i(TAG, "后台调度总控已关闭，跳过本次执行")
-            scheduler == null -> Logger.w(TAG, "ProactiveScheduler 解析失败，跳过本次 Worker")
-            // 进程内正好有一轮在跑时，这次唤醒没有意义：那一轮跑完就会重新判定时机，
-            // 本次挤进去只会在「刚说过话」上再判一次，白读一次配置。
-            scheduler.isCycleInFlight -> Logger.i(TAG, "进程内巡检正在进行，跳过本次 Worker")
+            koin == null -> Logger.w(TAG, "Koin no inicializado(Safe Mode?), saltate esta vez Worker")
+            !workEnabled -> Logger.i(TAG, "El control maestro de programación en segundo plano se ha cerrado y se omitirá esta ejecución.")
+            scheduler == null -> Logger.w(TAG, "ProactiveScheduler El análisis falló, omita esta vez Worker")
+            // Cuando hay exactamente una ronda en marcha en el proceso, este despertar no tiene sentido: el cronometraje se volverá a juzgar una vez finalizada esa ronda.
+            // Esta vez, si ingresa, solo será juzgado nuevamente por "Recién hablado" y la configuración se leerá en vano.
+            scheduler.isCycleInFlight -> Logger.i(TAG, "La inspección en proceso está en progreso, omita esta vez Worker")
             else -> resultOf { scheduler.runCycle(ProactiveScheduler.TRIGGER_WORKER) }
-                .onError { msg, t -> Logger.w(TAG, "巡检失败: ${t?.message ?: msg}") }
+                .onError { msg, t -> Logger.w(TAG, "La inspección falló: ${t?.message ?: msg}") }
         }
 
-        // 一律返回 success：主动消息不是必须送达的任务，
-        // 返回 retry 会让系统在 30 秒内反复重试一个本就无解的问题。
+        // Siempre devuelva el éxito: los mensajes activos no son tareas que deban entregarse.
+        // Devolver el reintento hará que el sistema reintente repetidamente un problema sin solución en 30 segundos.
         return Result.success()
     }
 

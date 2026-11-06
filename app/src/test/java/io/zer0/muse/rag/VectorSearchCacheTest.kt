@@ -8,18 +8,18 @@ import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 向量缓存：交替的检索条件不得互相打穿。
+ * Caché vectorial: las condiciones de búsqueda alternativas no deben penetrar entre sí.
  *
- * 背景：库里 ≤2000 chunk 时会把向量整表载入并缓存。旧实现只留**一份**，键随时变；
- * 而实际使用中最常见的是「不带过滤（主对话走全库）」与「某个固定过滤（@mention / 定向）」
- * 交替出现 —— 单条目缓存会在这两者之间来回整表重载。
+ * Antecedentes: curry ≤2000 chunk Se cargará y almacenará en caché toda la tabla de vectores. La antigua implementación sólo queda**una porción**, la clave cambia en cualquier momento;
+ * Los más comunes en el uso real son "sin filtrado (el diálogo principal usa toda la base de datos)" y "un filtro fijo (@mention / Orientación)
+ * aparecer alternativamente —— El almacenamiento en caché de una sola entrada recargará toda la tabla de un lado a otro entre los dos.
  *
- * 这里用两种过滤条件交替，断言：
- *  - A → B → A 之后，A 不应再次整表载入；
- *  - 条目上限生效（不会无界增长成内存黑洞）。
+ * Aquí, se utilizan alternativamente dos condiciones de filtro para afirmar:
+ *  - A → B → A Después de eso,A No se debe volver a cargar toda la tabla;
+ *  - El límite superior de entradas entra en vigor (no crecerá ilimitadamente hasta convertirse en un agujero negro de memoria).
  *
- * 注意：定向检索（docIds）在注入 `chunkPageByDocIdsProvider` 时走分页路径、根本不进缓存，
- * 所以这里用 metadata 过滤（生产未注入 metadata provider，正会落到缓存路径）。
+ * Nota: Búsqueda dirigida (docIds) inyectando `chunkPageByDocIdsProvider` Cuando se utiliza la ruta de paginación, no se almacenará en caché en absoluto.
+ * Por lo tanto, aquí se utiliza el filtrado de metadatos (el proveedor de metadatos no se inyecta en producción y caerá en la ruta del caché).
  */
 class VectorSearchCacheTest {
 
@@ -65,15 +65,15 @@ class VectorSearchCacheTest {
 
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
         val afterFirst = provider.rowsLoaded.get()
-        assertTrue("首次必须整表载入", afterFirst >= 20)
+        assertTrue("Se debe cargar toda la tabla por primera vez.", afterFirst >= 20)
 
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("b"))
         val afterSecond = provider.rowsLoaded.get()
-        assertTrue("换一个过滤条件需要另载一次（缓存只按条件区分）", afterSecond > afterFirst)
+        assertTrue("Cambiar una condición de filtro requiere cargarlo nuevamente (la caché solo se diferencia por condición)", afterSecond > afterFirst)
 
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
         assertEquals(
-            "A → B → A 之后 A 必须命中缓存，不得再整表载入",
+            "A → B → A Después de eso, A debe acceder al caché y no puede volver a cargar la tabla completa.",
             afterSecond,
             provider.rowsLoaded.get(),
         )
@@ -88,7 +88,7 @@ class VectorSearchCacheTest {
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
         val rows = provider.rowsLoaded.get()
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
-        assertEquals("同一条件重复查询不得重载", rows, provider.rowsLoaded.get())
+        assertEquals("No se deben sobrecargar consultas repetidas con las mismas condiciones.", rows, provider.rowsLoaded.get())
     }
 
     @Test
@@ -100,11 +100,11 @@ class VectorSearchCacheTest {
         listOf("a", "b", "c", "d").forEach { tag ->
             service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf(tag))
         }
-        // 上限 2：再回到最早的 "a" 必然需要重载（证明没有无界增长）
+        // Límite superior 2: volver al principio "a" La sobrecarga es necesaria (lo que demuestra que no existe un crecimiento ilimitado)
         val before = provider.rowsLoaded.get()
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
-        assertTrue("超出上限后最旧条目应被淘汰", provider.rowsLoaded.get() > before)
-        assertTrue("条目上限应为 2", VectorSearchService.MAX_CACHE_ENTRIES == 2)
+        assertTrue("Las entradas más antiguas deben eliminarse una vez superado el límite superior.", provider.rowsLoaded.get() > before)
+        assertTrue("El límite de entrada debe ser 2", VectorSearchService.MAX_CACHE_ENTRIES == 2)
     }
 
     @Test
@@ -117,6 +117,6 @@ class VectorSearchCacheTest {
         val rows = provider.rowsLoaded.get()
         service.invalidateCache()
         service.search(query, topK = 3, threshold = -1f, metadataFilter = filterOf("a"))
-        assertTrue("失效后必须重新载入", provider.rowsLoaded.get() > rows)
+        assertTrue("Debe recargarse después del vencimiento.", provider.rowsLoaded.get() > rows)
     }
 }

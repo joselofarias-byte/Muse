@@ -6,14 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 任务卡步骤摘要的测试。
+ * Prueba del resumen de pasos de la tarjeta de tareas.
  *
- * 用户反馈「一个卡里面展示的卡片和别处不一样、还有挤压」：截图里 show_card 步骤的标题
- * 下面跟着一段被截断的原始 JSON(`{"title":"vinyl_music_player","code":"<style>...`)。
- * 根因是步骤摘要一律取 `args.take(200)`，而 show_card 的参数就是整份 HTML。
- * 这里钉住：卡片类工具的摘要必须是卡片标题，不是参数原文。
+ * Comentarios de los usuarios "Las tarjetas que se muestran en una tarjeta son diferentes de las de otros lugares y están exprimidas": el título del paso show_card en la captura de pantalla
+ * Lo que sigue es un original truncado. JSON(`{"title":"vinyl_music_player","code":"<style>...`).
+ * La causa raíz es el resumen de pasos. `args.take(200)`, y el parámetro de show_card es el HTML completo.
+ * Fijado aquí: el resumen de herramientas tipo tarjeta debe ser el título de la tarjeta, no el texto original del parámetro.
  *
- * 纯 JVM 测试（不启 Robolectric）：被测的是摘要决策本身，不需要 Android 运行时。
+ * Prueba pura de JVM (sin Robolectric habilitado): lo que se prueba es la decisión resumida en sí, no se requiere ningún tiempo de ejecución de Android.
  */
 class TaskCardStepDetailTest {
 
@@ -26,8 +26,8 @@ class TaskCardStepDetailTest {
         val out = detail("show_card", args)
 
         assertEquals("vinyl_music_player", out)
-        assertFalse("步骤摘要不能是原始 JSON,实际: $out", out.contains("\"code\""))
-        assertFalse("步骤摘要不能是 HTML,实际: $out", out.contains("<style>"))
+        assertFalse("El resumen de pasos no puede ser original JSON,real: $out", out.contains("\"code\""))
+        assertFalse("El resumen de pasos no puede ser HTML,real: $out", out.contains("<style>"))
     }
 
     @Test
@@ -46,7 +46,7 @@ class TaskCardStepDetailTest {
 
         val out = detail("show_card", """{"title":"$longTitle","code":"<div>x</div>"}""")
 
-        assertTrue("摘要应截断,实际长度 ${out.length}", out.length <= 60)
+        assertTrue("El resumen debe truncarse,longitud real ${out.length}", out.length <= 60)
     }
 
     @Test
@@ -56,7 +56,7 @@ class TaskCardStepDetailTest {
 
     @Test
     fun `ordinary tools still show their arguments as detail`() {
-        val args = """{"query":"今日天气"}"""
+        val args = """{"query":"El clima de hoy"}"""
 
         assertEquals(args, detail("web_search", args))
     }
@@ -72,10 +72,10 @@ class TaskCardStepDetailTest {
     fun `delegate agent detail stays the delegated task`() {
         val out = TaskCardData.stepDetailFor(
             "delegate_agent",
-            """{"assistantId":"a1","task":"帮我整理这周的会议纪要"}""",
-            TaskCardData.DelegateAgentArgs("a1", "帮我整理这周的会议纪要"),
+            """{"assistantId":"a1","task":"Ayúdame a organizar las actas de la reunión de esta semana."}""",
+            TaskCardData.DelegateAgentArgs("a1", "Ayúdame a organizar las actas de la reunión de esta semana."),
         )
 
-        assertEquals("帮我整理这周的会议纪要", out)
+        assertEquals("Ayúdame a organizar las actas de la reunión de esta semana.", out)
     }
 }

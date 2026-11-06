@@ -20,10 +20,10 @@ import okhttp3.Response
 import org.jsoup.Jsoup
 
 /**
- * 百度网页搜索兜底。
+ * La búsqueda web de Baidu te lo dice todo.
  *
- * 国内 Android 网络环境下，Bing/Jina/SearXNG 可能同时被重定向、鉴权或路由阻断；
- * 百度页面在这类网络里通常仍可访问。这里仅解析公开结果页，不上传用户查询之外的数据。
+ * En el entorno de red nacional de Android,Bing/Jina/SearXNG Puede bloquearse mediante redirección, autenticación o enrutamiento al mismo tiempo;
+ * Por lo general, todavía se puede acceder a las páginas de Baidu en dichas redes. Aquí solo se analiza la página de resultados pública y no se cargan datos distintos de las consultas de los usuarios.
  */
 private fun Response.searchDiagnostic(): String {
     var redirects = 0
@@ -94,7 +94,7 @@ class SearXNGProvider(
     override val name: String = "SearXNG"
 
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> = withContext(AppDispatchers.io) {
-        // H-WS1: 用 resultOf 替代 runCatching,避免吞 CancellationException
+        // H-WS1: Utilice resultOf en su lugar runCatching,evitar tragar CancellationException
         resultOf {
             val url = "$endpoint/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}" +
                 "&format=json&categories=general&language=zh-CN"
@@ -102,9 +102,9 @@ class SearXNGProvider(
                 .header("User-Agent", "muse/1.0 (Android LLM client)")
                 .header("Accept", "application/json")
                 .get().build()
-            // M-WS2: 用 executeAsync(enqueue + suspendCancellableCoroutine)替代阻塞 execute()
+            // M-WS2: usar executeAsync(enqueue + suspendCancellableCoroutine)bloqueo alternativo execute()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("SearXNG", "search failed: ${resp.searchDiagnostic()}")
@@ -114,7 +114,7 @@ class SearXNGProvider(
                 parseResults(body, maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("SearXNG", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -140,13 +140,13 @@ class SearXNGProvider(
 }
 
 /**
- * Tavily provider — AI 搜索 API(https://tavily.com),需 API key。
+ * Tavily provider — AI Buscar API(https://tavily.com),Requiere clave API.
  *
- * 协议: POST https://api.tavily.com/search
- * 请求体: { "api_key": "...", "query": "...", "max_results": N, "search_depth": "basic" }
- * 返回: { results: [{ title, url, content, score }] }
+ * Acuerdo: POST https://api.tavily.com/search
+ * Cuerpo de la solicitud: { "api_key": "...", "query": "...", "max_results": N, "search_depth": "basic" }
+ * Regresar: { results: [{ title, url, content, score }] }
  *
- * API key 在 settings 配置。无 key 时直接返回空列表。
+ * API key Configurar en ajustes. Cuando no hay ninguna clave, se devuelve directamente una lista vacía.
  */
 class TavilyProvider(
     private val client: OkHttpClient,
@@ -160,14 +160,14 @@ class TavilyProvider(
             Logger.w("Tavily", "no API key configured, skip")
             return@withContext emptyList()
         }
-        // H-WS1: 用 resultOf 替代 runCatching,避免吞 CancellationException
+        // H-WS1: Utilice resultOf en su lugar runCatching,evitar tragar CancellationException
         resultOf {
-            // Phase 8.5 修复: 用 buildJsonObject 构造请求体,避免手动拼接 JSON 字符串的转义 bug。
-            // 原实现只对 query 的双引号做了 replace,但:
-            //  1. apiKey 未转义(若含 " 或 \ 会破坏 JSON)
-            //  2. query 的反斜杠未转义(原 `\` 会被吃掉)
-            //  3. 换行/制表符等控制字符未转义(JSON 字符串不允许字面控制字符)
-            // 改用 kotlinx.serialization 的 buildJsonObject,所有字符串转义由序列化库处理。
+            // Phase 8.5 Reparación: Utilice buildJsonObject para construir el cuerpo de la solicitud,Evite escapar de errores al concatenar manualmente cadenas JSON.
+            // La implementación original solo se ocupaba de las comillas dobles de la consulta. replace,pero:
+            //  1. apiKey sin escapar(Si está incluido " o \ destruirá JSON)
+            //  2. query Las barras invertidas no se escapan.(Originales `\` será comido)
+            //  3. nueva línea/Los caracteres de control, como las pestañas, no tienen escape.(JSON Las cadenas no permiten caracteres de control literal)
+            // Utilice kotlinx.serialization en su lugar buildJsonObject,Todo el escape de cadenas es manejado por la biblioteca de serialización.
             val payload = kotlinx.serialization.json.buildJsonObject {
                 put("api_key", kotlinx.serialization.json.JsonPrimitive(apiKey))
                 put("query", kotlinx.serialization.json.JsonPrimitive(query))
@@ -179,9 +179,9 @@ class TavilyProvider(
                 .header("Accept", "application/json")
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
-            // M-WS2: 用 executeAsync(enqueue + suspendCancellableCoroutine)替代阻塞 execute()
+            // M-WS2: usar executeAsync(enqueue + suspendCancellableCoroutine)bloqueo alternativo execute()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Tavily", "search failed: ${resp.searchDiagnostic()}")
@@ -191,7 +191,7 @@ class TavilyProvider(
                 parseResults(body, maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Tavily", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -217,24 +217,24 @@ class TavilyProvider(
 }
 
 /**
- * v1.135: Auto 搜索 Provider — 多引擎 fallback + 低质量结果检测。
+ * v1.135: Auto Buscar Provider — Respaldo multimotor + detección de resultados de baja calidad.
  *
- * 设计:
- *  - 按优先级依次尝试多个 provider,遇到空结果/低质量/异常则自动换下一个
- *  - 检测日期计算器、词典/百科释义等低质量结果并跳过
- *  - 最终结果去重、按查询相关性排序
+ * diseño:
+ *  - Pruebe varios en orden de prioridad provider,Se encontró un resultado vacío./baja calidad/Si hay una excepción, automáticamente cambiará a la siguiente.
+ *  - Detectar calculadora de fecha, diccionario/Se omiten las explicaciones de la enciclopedia y otros resultados de baja calidad.
+ *  - Los resultados finales se deduplican y se ordenan por relevancia de la consulta.
  *
- * Provider 优先级:
- *  1. 用户配置了 API key 的商用 provider(Tavily/Brave/Serper/Zhipu/Bocha/Metaso/Exa/Firecrawl/Perplexity)
- *  2. 免费/免 key provider: Bing → Jina → SearXNG
+ * Provider prioridad:
+ *  1. El usuario ha configurado la clave API comercial provider(Tavily/Brave/Serper/Zhipu/Bocha/Metaso/Exa/Firecrawl/Perplexity)
+ *  2. gratis/Gratis key provider: Bing → Jina → SearXNG
  */
 /**
- * DeepSeek 搜索 API 的预设描述。
+ * DeepSeek Busque la descripción predeterminada de la API.
  *
- * POST /v1/tools/search，返回 { results: [{ title, url, summary, ... }] }。
- * 形态与 [GenericSearchProvider] 完全吻合，所以不单独写类，直接复用通用适配器。
+ * POST /v1/tools/search, regresar { results: [{ title, url, summary, ... }] }.
+ * forma y [GenericSearchProvider] Combina perfectamente, por lo que en lugar de escribir una clase separada, reutilizamos directamente el adaptador universal.
  *
- * need_content=false：官方 summary 本身已有 600-800 字，再取整页 content 会撑爆上下文。
+ * need_content=false: El resumen oficial en sí ya tiene entre 600 y 800 palabras, y ocupar toda la página de contenido abrumará el contexto.
  */
 internal val DEEPSEEK_SEARCH_ENGINE =
     CustomSearchEngine(
@@ -246,7 +246,7 @@ internal val DEEPSEEK_SEARCH_ENGINE =
         resultsPath = "results",
         titlePath = "title",
         urlPath = "url",
-        // summary 比 snippet 更完整，取不到时再回落
+        // summary Más completo que el fragmento, recurra cuando no esté disponible
         snippetPath = "summary",
         enabled = true,
     )
@@ -260,7 +260,7 @@ class AutoWebSearchService(
     @Volatile
     private var config: WebSearchConfig = config
 
-    /** 运行时更新配置,同步替换内部状态。 */
+    /** Actualizar la configuración en tiempo de ejecución,Reemplace sincrónicamente el estado interno. */
     fun updateConfig(newConfig: WebSearchConfig) {
         synchronized(this) {
             config = newConfig
@@ -268,7 +268,7 @@ class AutoWebSearchService(
     }
 
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> {
-        // 全局限速预检查
+        // Comprobación previa del límite de velocidad global
         if (!SearchRateLimiter.await(name)) {
             throw SearchRateLimitException(
                 cause = "$name rate-limited (await=false)",
@@ -289,7 +289,7 @@ class AutoWebSearchService(
         for (provider in chain) {
             val providerName = provider.name
             try {
-                // 单 provider 限速预检查
+                // Verificación previa del límite de velocidad de un solo proveedor
                 if (!SearchRateLimiter.await(providerName)) {
                     attempts.add("$providerName: rate-limited")
                     continue
@@ -317,7 +317,7 @@ class AutoWebSearchService(
             }
         }
 
-        // 全部 fallback 均失败或低质量:返回第一次拿到的低质量结果兜底,避免完全空手
+        // Todas las alternativas fallaron o fueron de baja calidad.:Vuelva a los resultados de baja calidad que obtuvo por primera vez,Evite ir completamente con las manos vacías
         if (firstLowQualityResults != null) {
             Logger.w("AutoWebSearch", "query='$query' all low-quality, returning first attempt. attempts=$attempts")
             return normalizeResults(query, firstLowQualityResults, maxResults)
@@ -330,15 +330,15 @@ class AutoWebSearchService(
     private fun buildProviderChain(cfg: WebSearchConfig): List<WebSearchService> {
         val chain = mutableListOf<WebSearchService>()
 
-        // v2.6.10: 用户自定义引擎排最前。
-        // 这是他自己配的检索服务，比任何内置抓取都更贴近需求；
-        // 停用的引擎保留配置但不进链路。
+        // v2.6.10: Los motores definidos por el usuario ocupan el primer lugar.
+        // Este es su propio servicio de recuperación, que se acerca más a las necesidades que cualquier rastreador integrado;
+        // Un motor desactivado conserva su configuración pero no ingresa al enlace.
         cfg.customEngines
             .filter { it.enabled && it.endpoint.isNotBlank() }
             .forEach { engine -> chain.add(GenericSearchProvider(client, engine)) }
 
-        // 用户配置的搜索 API 优先于免费抓取。apiKeys 是新格式，apiKey 是旧格式；
-        // 旧格式仅在 providerName 指向该 provider 时回退，避免把一个 key 误发给其他供应商。
+        // Las API de búsqueda configuradas por el usuario tienen prioridad sobre los rastreos gratuitos.apiKeys es un nuevo formato,apiKey es el formato antiguo;
+        // El formato antiguo solo recurre cuando nombreProveedor apunta al proveedor, para evitar enviar accidentalmente una clave a otros proveedores.
         fun keyFor(provider: String): String = cfg.apiKeys[provider].orEmpty().ifBlank {
             cfg.apiKey.takeIf { cfg.providerName.equals(provider, ignoreCase = true) }.orEmpty()
         }
@@ -355,11 +355,11 @@ class AutoWebSearchService(
         addIfConfigured("Exa") { ExaSearchProvider(client, it) }
         addIfConfigured("Firecrawl") { FirecrawlProvider(client, it) }
         addIfConfigured("Jina") { JinaProvider(client, it) }
-        // v2.6.10: DeepSeek 搜索同样接进 Auto 链
+        // v2.6.10: DeepSeek La búsqueda también accede a la cadena Auto
         keyFor("DeepSeek").takeIf { it.isNotBlank() }?.let { key ->
             chain.add(GenericSearchProvider(client, DEEPSEEK_SEARCH_ENGINE.copy(apiKey = key)))
         }
-        // 自托管 SearXNG 属于用户自己的搜索服务，优先于公共免费抓取。
+        // SearXNG autohospedado es un servicio de búsqueda propiedad del usuario que tiene prioridad sobre el rastreo público gratuito.
         if (cfg.endpoint.isNotBlank() && cfg.providerName.equals("SearXNG", ignoreCase = true)) {
             chain.add(SearXNGProvider(client, cfg.endpoint))
         }
@@ -367,16 +367,16 @@ class AutoWebSearchService(
             chain.add(TavilyProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.tavily.com" }))
         }
 
-        // 最后才走免费 HTTP 抓取。这里不启动 Android WebView，也不使用手机浏览器内核。
+        // Finalmente opte por el rastreo HTTP gratuito. Android WebView no se inicia aquí ni se utiliza el kernel del navegador celular.
         chain.add(BingProvider(client))
         chain.add(BaiduProvider(client))
 
-        // 允许高级用户关闭自动 fallback；默认开启，普通用户无需配置即可使用整条免费链。
+        // Permitir que los usuarios avanzados desactiven el respaldo automático; está habilitado de forma predeterminada y los usuarios normales pueden utilizar toda la cadena gratuita sin configuración.
         return if (cfg.fallbackEnabled) chain else chain.take(1)
     }
 
     companion object {
-        /** 已知低质量域名(日期计算器、单位换算等工具站)。 */
+        /** Dominios conocidos de baja calidad(Calculadora de fecha, conversión de unidades y otras estaciones de herramientas). */
         private val LOW_QUALITY_DOMAINS = setOf(
             "timeanddate.com",
             "datecalculator.org",
@@ -388,10 +388,10 @@ class AutoWebSearchService(
             "timedatecalc.com",
         )
 
-        /** 中文词典/释义类站点关键词。 */
-        private val DICTIONARY_PATTERNS = listOf("zdic.net", "汉典", "字典", "词典", "基本解释", "汉语意思")
+        /** diccionario chino/Palabras clave del sitio de interpretación. */
+        private val DICTIONARY_PATTERNS = listOf("zdic.net", "Código Han", "diccionario", "Diccionario", "Explicación básica", "significado chino")
 
-        /** 日期计算器类关键词。 */
+        /** Palabras clave de la calculadora de fechas. */
         private val DATE_CALC_PATTERNS = listOf(
             "date calculator",
             "days calculator",
@@ -411,19 +411,19 @@ class AutoWebSearchService(
             val lowerSnippet = result.snippet.lowercase()
             val combined = "$lowerTitle $lowerSnippet $lowerUrl"
 
-            // 日期/时间/年龄等计算器站点
+            // Fecha/tiempo/sitio de calculadora de edad
             if (DATE_CALC_PATTERNS.any { combined.contains(it) }) return true
             if (LOW_QUALITY_DOMAINS.any { lowerUrl.contains(it) }) return true
 
-            // 中文查询时,词典/汉典/释义类结果通常不相关(除非用户明确查词)
+            // Al consultar en chino,Diccionario/Código Han/Parafrasear los resultados suele ser irrelevante(A menos que el usuario busque palabras explícitamente)
             if (hasCjk(query) && DICTIONARY_PATTERNS.any { combined.contains(it) }) return true
 
             return false
         }
 
         /**
-         * 判断一组结果是否整体低质量。
-         * 启发式:top 3 条中至少有 2 条命中低质量规则,则认为该 provider 当前查询结果不可用。
+         * Determinar si un conjunto de resultados es de baja calidad en general.
+         * heurístico:top 3 Al menos 2 de las entradas cumplen con las reglas de baja calidad.,Se considera que los resultados de la consulta actual del proveedor no están disponibles.
          */
         private fun isLikelyLowQualityResults(query: String, results: List<WebSearchResult>): Boolean {
             if (results.isEmpty()) return true
@@ -432,7 +432,7 @@ class AutoWebSearchService(
             return lowQualityCount >= 2
         }
 
-        /** 计算结果与查询的相关性得分,用于排序。 */
+        /** Calcular la puntuación de relevancia del resultado para la consulta.,utilizado para clasificar. */
         private fun scoreResult(query: String, result: WebSearchResult): Int {
             val terms = query.split(Regex("\\s+")).filter { it.length > 1 }
             val lowerTitle = result.title.lowercase()
@@ -449,7 +449,7 @@ class AutoWebSearchService(
         }
 
         /**
-         * 规范化结果:过滤空字段、去重、移除低质量、按相关性排序、截断。
+         * Resultados normalizados:Filtrar campos vacíos, deduplicar, eliminar baja calidad, ordenar por relevancia, truncar.
          */
         private fun normalizeResults(query: String, results: List<WebSearchResult>, maxResults: Int): List<WebSearchResult> = results
             .asSequence()
@@ -463,10 +463,10 @@ class AutoWebSearchService(
 }
 
 /**
- * 复合搜索服务 — 根据 provider 名分发到具体实现。
+ * Servicio de búsqueda compuesta — Distribuido a implementaciones específicas según el nombre del proveedor.
  *
- * 由 [WebSearchConfig] 驱动:settings 里配置 providerName / apiKey / endpoint,
- * 切换 provider 时重新构造底层实例(避免持有 stale client)。
+ * por [WebSearchConfig] conducir:settings Configuración providerName / apiKey / endpoint,
+ * Reconstruir la instancia subyacente al cambiar de proveedor(evitar sostener stale client).
  */
 class CompositeWebSearchService(
     private val client: OkHttpClient,
@@ -475,9 +475,9 @@ class CompositeWebSearchService(
     override val name: String get() = config.providerName
 
     /**
-     * 当前生效的 config 与具体 provider。
-     * Phase 8.5 修复:用 `@Volatile var config` + 同步 `updateConfig`,
-     * 替代原 `by lazy` 只算一次 + updateConfig 空实现,使运行时切换 provider 生效。
+     * La configuración actualmente efectiva y el proveedor específico.
+     * Phase 8.5 Reparación:usar `@Volatile var config` + sincronizar `updateConfig`,
+     * sustituto original `by lazy` Contado solo una vez + implementación vacía updateConfig,Habilite el cambio de proveedor de tiempo de ejecución para que surta efecto.
      */
     @Volatile
     private var config: WebSearchConfig = config
@@ -486,7 +486,7 @@ class CompositeWebSearchService(
     private var delegate: WebSearchService = buildDelegate(config)
 
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> {
-        // 限速预检查：退避期内直接抛 SearchRateLimitException，不发起请求，避免反复撞 429/402 被封禁
+        // Verificación previa del límite de velocidad: lanza SearchRateLimitException directamente durante el período de suspensión sin iniciar una solicitud para evitar colisiones repetidas con la prohibición de 429/402.
         if (!SearchRateLimiter.await(name)) {
             throw SearchRateLimitException(
                 cause = "$name rate-limited (await=false)",
@@ -496,7 +496,7 @@ class CompositeWebSearchService(
         return delegate.search(query, maxResults)
     }
 
-    /** 切换配置(运行时改 provider/apiKey/endpoint)。同步重建 delegate,避免 stale client。 */
+    /** Configuración del interruptor(Cambiar en tiempo de ejecución provider/apiKey/endpoint). Reconstrucción sincrónica delegate,Evite los clientes obsoletos. */
     fun updateConfig(newConfig: WebSearchConfig) {
         synchronized(this) {
             config = newConfig
@@ -508,17 +508,17 @@ class CompositeWebSearchService(
 
     companion object {
         /**
-         * 根据配置构造对应的搜索 Provider(供测试按钮直接调用,绕过限速与 stale config)。
-         * 使用 UI 中最新的 WebSearchConfig,直接实例化对应 Provider,不经过 Composite 层。
+         * Construir la búsqueda correspondiente según la configuración. Provider(Para que el botón de prueba llame directamente,Evite los límites de velocidad con stale config).
+         * Utilice lo último en interfaz de usuario WebSearchConfig,correspondencia de instanciación directa Provider,No atraviesa la capa Composite.
          */
         fun buildDelegate(client: OkHttpClient, cfg: WebSearchConfig): WebSearchService {
             return when (cfg.providerName) {
-                // v1.135: Auto 多引擎 fallback
+                // v1.135: Auto multimotor fallback
                 "Auto" -> AutoWebSearchService(client, cfg)
                 "Bing" -> BingProvider(client)
                 "Jina" -> JinaProvider(client, cfg.apiKey)
-                // M-WS3: 自定义 API — 按 apiKey 是否非空二次分发:
-                //  有 apiKey 走 Tavily 兼容接口,无 apiKey 走 SearXNG 兼容接口(原先无条件映射到 SearXNG,忽略 apiKey)
+                // M-WS3: Personalizar API — Distribución secundaria basada en si apiKey no está vacía:
+                //  Hay una interfaz compatible con apiKey y Tavily,Utilice la interfaz compatible con SearXNG sin apiKey(Originalmente asignado incondicionalmente a SearXNG,ignorar apiKey)
                 "Custom API" ->
                     if (cfg.apiKey.isNotBlank()) {
                         TavilyProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.tavily.com" })
@@ -527,9 +527,9 @@ class CompositeWebSearchService(
                     }
                 "SearXNG" -> SearXNGProvider(client, cfg.endpoint.ifBlank { "https://searx.be" })
                 "Tavily" -> TavilyProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.tavily.com" })
-                // v1.97: 新增搜索 provider
+                // v1.97: Agregar búsqueda provider
                 "Zhipu" -> ZhipuSearchProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://open.bigmodel.cn/api/paas/v4" })
-                // v2.6.10: DeepSeek 搜索 —— 复用通用适配器
+                // v2.6.10: DeepSeek Buscar —— Reutilizar el adaptador universal
                 "DeepSeek" ->
                     GenericSearchProvider(
                         client,
@@ -541,9 +541,9 @@ class CompositeWebSearchService(
                 "Metaso" -> MetasoSearchProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://metaso.cn/api/v1" })
                 "Exa" -> ExaSearchProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.exa.ai" })
                 "Firecrawl" -> FirecrawlProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.firecrawl.dev/v1" })
-                // Perplexity AI 搜索 API(sonar-pro 模型 + citations)
+                // Perplexity AI Buscar API(sonar-pro modelo + citations)
                 "Perplexity" -> PerplexitySearchProvider(client, cfg.apiKey, cfg.endpoint.ifBlank { "https://api.perplexity.ai" })
-                // 默认用 Bing HTTP(免费,无需 API key)
+                // Usado por defecto Bing HTTP(gratis,No es necesario API key)
                 else -> BingProvider(client)
             }
         }
@@ -551,22 +551,22 @@ class CompositeWebSearchService(
 }
 
 /**
- * v0.33: Bing HTML 搜索 Provider (v1.131 优化版)。
+ * v0.33: Bing HTML Buscar Provider (v1.131 Versión optimizada).
  *
- * 实现:GET https://www.bing.com/search?q={query} (真实 Bing HTML 抓取)
- * - 无需 API key,通过 HTML 抓取 + Jsoup 解析
- * - 关键技巧:
- *   1) Cookie `SRCHHPGUSR=ULSR=1&SRCHLANG=zh-CN` + `_SS=...` 让 Bing 返回稳定可解析的 HTML
- *   2) URL 加 `mkt=zh-CN&setlang=zh-CN&ensearch=1` 避免地区重定向到 cn.bing.com
- *   3) 使用桌面 Chrome UA + 完整请求头,模拟桌面浏览器以拿到带 b_algo 结果块的 HTML
- *   4) 多级 snippet 选择器兜底(.b_caption p → .b_lineclamp4 → .b_focusTextLarge),
- *      应对 Bing HTML 多种结果块结构
- *   5) 跳过非自然结果块(b_algo b_algo_default 之外的 b_ans / b_card 旁路)
- * - 用 Jsoup 解析(OkHttp 请求以保持与现有 client 一致的代理/超时配置)
+ * darse cuenta:GET https://www.bing.com/search?q={query} (Raspado HTML de Bing real)
+ * - No es necesario API key,Obtención a través de HTML + Análisis con Jsoup
+ * - Consejos clave:
+ *   1) Cookie `SRCHHPGUSR=ULSR=1&SRCHLANG=zh-CN` + `_SS=...` Deje que Bing regrese estable y analizable HTML
+ *   2) URL agregar `mkt=zh-CN&setlang=zh-CN&ensearch=1` Evite redireccionamientos regionales a cn.bing.com
+ *   3) Uso de Chrome UA de escritorio + encabezados de solicitud completos,Emule navegadores de escritorio para obtener resultados con bloques b_algo HTML
+ *   4) Selector de fragmentos de varios niveles(.b_caption p → .b_lineclamp4 → .b_focusTextLarge),
+ *      Lidiando con las diversas estructuras de bloques de resultados de Bing HTML
+ *   5) Saltar bloques de resultados no naturales(b_algo b_algo_default b_ans / b_card bypass)
+ * - Analizar con Jsoup(OkHttp Solicitud para mantener un proxy consistente con un cliente existente/Configuración de tiempo de espera)
  *
- * 解析规则:
- *  - 主选择器: `li.b_algo:not(.b_algo_default):not(.b_card)` 取自然结果块
- *  - 标题链接: `h2 > a`(主) / `h2 a`(兜底)
+ * reglas de análisis:
+ *  - selector principal: `li.b_algo:not(.b_algo_default):not(.b_card)` Tome el bloque de resultados naturales
+ *  - enlace del título: `h2 > a`(Señor) / `h2 a`(Ten todo en cuenta)
  *  - snippet: `.b_caption p` / `.b_caption .b_paractl` / `.b_lineclamp4` / `.b_focusTextLarge`
  */
 class BingProvider(
@@ -574,7 +574,7 @@ class BingProvider(
 ) : WebSearchService {
     override val name: String = "Bing"
 
-    /** 使用中国区入口的 HTTP HTML 搜索；不启动 Android WebView。 */
+    /** Utilice la búsqueda HTTP HTML del portal de China; No inicie Android WebView. */
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> = withContext(AppDispatchers.io) {
         resultOf {
             val encoded = java.net.URLEncoder.encode(query, "UTF-8")
@@ -617,15 +617,15 @@ class BingProvider(
 }
 
 /**
- * Jina AI Reader Search Provider — 基于 Jina AI Reader Search API(https://s.jina.ai/)。
+ * Jina AI Reader Search Provider — Basado en Jina AI Reader Search API(https://s.jina.ai/).
  *
- * 协议: POST https://s.jina.ai/
- *  - 请求头: Authorization: Bearer {apiKey}(可选,无 key 走免费层但有速率限制)
- *  - 请求体 JSON: {"q": query, "num": maxResults}
- *  - 响应 JSON: {"data": [{"title", "url", "description", "content"}]}
+ * Acuerdo: POST https://s.jina.ai/
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey}(Opcional,Sin clave, nivel gratuito pero con límite de tarifa)
+ *  - Cuerpo de la solicitud JSON: {"q": query, "num": maxResults}
+ *  - respuesta JSON: {"data": [{"title", "url", "description", "content"}]}
  *
- * snippet 取 description,为空则用 content 前 200 字兜底。
- * 无需 API key 也能用(免费层有速率限制),apiKey 为空时不带 Authorization 头。
+ * snippet tomar description,Si está vacío, utilice las primeras 200 palabras del contenido para resumir.
+ * Se puede utilizar sin una clave API(El nivel gratuito tiene límites de tarifas),apiKey Vacío sin encabezado de Autorización.
  */
 class JinaProvider(
     private val client: OkHttpClient,
@@ -672,7 +672,7 @@ class JinaProvider(
             val obj = item as? JsonObject ?: return@mapNotNull null
             val title = obj["title"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
             val link = obj["url"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-            // snippet 优先取 description,为空则用 content 前 200 字兜底
+            // snippet tener prioridad description,Si está vacío, utilice las primeras 200 palabras del contenido para obtener los detalles.
             val description = obj["description"]?.jsonPrimitive?.contentOrNull.orEmpty()
             val content = obj["content"]?.jsonPrimitive?.contentOrNull.orEmpty()
             val snippet = if (description.isNotBlank()) description else content.take(200)
@@ -687,12 +687,12 @@ class JinaProvider(
 }
 
 /**
- * v1.97: 智谱搜索 Provider — 智谱 AI web_search API。
+ * v1.97: Búsqueda del espectro de sabiduría Provider — API de búsqueda web Zhipu AI.
  *
- * 协议: POST https://open.bigmodel.cn/api/paas/v4/web_search
- *  - 请求头: Authorization: Bearer {apiKey}
- *  - 请求体: {"search_query": query, "num": maxResults}
- *  - 响应: {"search_result": [{"title", "link", "content"}]}
+ * Acuerdo: POST https://open.bigmodel.cn/api/paas/v4/web_search
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey}
+ *  - Cuerpo de la solicitud: {"search_query": query, "num": maxResults}
+ *  - respuesta: {"search_result": [{"title", "link", "content"}]}
  */
 class ZhipuSearchProvider(
     private val client: OkHttpClient,
@@ -717,7 +717,7 @@ class ZhipuSearchProvider(
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Zhipu", "search failed: ${resp.searchDiagnostic()}")
@@ -726,7 +726,7 @@ class ZhipuSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Zhipu", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -752,11 +752,11 @@ class ZhipuSearchProvider(
 }
 
 /**
- * v1.97: Brave Search Provider — Brave 搜索 API。
+ * v1.97: Brave Search Provider — Brave API de búsqueda.
  *
- * 协议: GET https://api.search.brave.com/res/v1/web/search?q={query}&count={max}
- *  - 请求头: X-Subscription-Token: {apiKey}
- *  - 响应: {"web": {"results": [{"title", "url", "description"}]}}
+ * Acuerdo: GET https://api.search.brave.com/res/v1/web/search?q={query}&count={max}
+ *  - Encabezado de solicitud: X-Subscription-Token: {apiKey}
+ *  - respuesta: {"web": {"results": [{"title", "url", "description"}]}}
  */
 class BraveSearchProvider(
     private val client: OkHttpClient,
@@ -778,7 +778,7 @@ class BraveSearchProvider(
                 .header("X-Subscription-Token", apiKey)
                 .get().build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Brave", "search failed: ${resp.searchDiagnostic()}")
@@ -787,7 +787,7 @@ class BraveSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Brave", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -814,12 +814,12 @@ class BraveSearchProvider(
 }
 
 /**
- * v1.97: Serper Search Provider — Google 搜索 API(serper.dev)。
+ * v1.97: Serper Search Provider — Google Buscar API(serper.dev).
  *
- * 协议: POST https://google.serper.dev/search
- *  - 请求头: X-API-KEY: {apiKey}
- *  - 请求体: {"q": query, "num": maxResults}
- *  - 响应: {"organic": [{"title", "link", "snippet"}]}
+ * Acuerdo: POST https://google.serper.dev/search
+ *  - Encabezado de solicitud: X-API-KEY: {apiKey}
+ *  - Cuerpo de la solicitud: {"q": query, "num": maxResults}
+ *  - respuesta: {"organic": [{"title", "link", "snippet"}]}
  */
 class SerperSearchProvider(
     private val client: OkHttpClient,
@@ -844,7 +844,7 @@ class SerperSearchProvider(
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Serper", "search failed: ${resp.searchDiagnostic()}")
@@ -853,7 +853,7 @@ class SerperSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Serper", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -879,12 +879,12 @@ class SerperSearchProvider(
 }
 
 /**
- * v1.97: 博查搜索 Provider — 博查 AI 搜索 API。
+ * v1.97: búsqueda de bochas Provider — API de búsqueda de IA de Bocha.
  *
- * 协议: POST https://api.bochaai.com/v1/web-search
- *  - 请求头: Authorization: Bearer {apiKey}
- *  - 请求体: {"query": query, "count": maxResults, "summary": true}
- *  - 响应: {"data": {"webPages": {"value": [{"name", "url", "summary"}]}}}
+ * Acuerdo: POST https://api.bochaai.com/v1/web-search
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey}
+ *  - Cuerpo de la solicitud: {"query": query, "count": maxResults, "summary": true}
+ *  - respuesta: {"data": {"webPages": {"value": [{"name", "url", "summary"}]}}}
  */
 class BochaSearchProvider(
     private val client: OkHttpClient,
@@ -910,7 +910,7 @@ class BochaSearchProvider(
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Bocha", "search failed: ${resp.searchDiagnostic()}")
@@ -919,7 +919,7 @@ class BochaSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Bocha", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -948,12 +948,12 @@ class BochaSearchProvider(
 }
 
 /**
- * v1.97: 秘塔搜索 Provider — 秘塔 AI 搜索 API。
+ * v1.97: Búsqueda de la torre secreta Provider — API de búsqueda de IA de Secret Tower.
  *
- * 协议: POST https://metaso.cn/api/v1/search
- *  - 请求头: Authorization: Bearer {apiKey}
- *  - 请求体: {"q": query, "num": maxResults}
- *  - 响应: {"data": {"results": [{"title", "url", "content"}]}}
+ * Acuerdo: POST https://metaso.cn/api/v1/search
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey}
+ *  - Cuerpo de la solicitud: {"q": query, "num": maxResults}
+ *  - respuesta: {"data": {"results": [{"title", "url", "content"}]}}
  */
 class MetasoSearchProvider(
     private val client: OkHttpClient,
@@ -978,7 +978,7 @@ class MetasoSearchProvider(
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Metaso", "search failed: ${resp.searchDiagnostic()}")
@@ -987,7 +987,7 @@ class MetasoSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Metaso", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -1014,12 +1014,12 @@ class MetasoSearchProvider(
 }
 
 /**
- * v1.97: Exa Search Provider — Exa AI 搜索 API。
+ * v1.97: Exa Search Provider — Exa AI API de búsqueda.
  *
- * 协议: POST https://api.exa.ai/search
- *  - 请求头: Authorization: Bearer {apiKey}
- *  - 请求体: {"query": query, "numResults": maxResults, "contents": {"text": {"maxCharacters": 300}}}
- *  - 响应: {"results": [{"title", "url", "text"}]}
+ * Acuerdo: POST https://api.exa.ai/search
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey}
+ *  - Cuerpo de la solicitud: {"query": query, "numResults": maxResults, "contents": {"text": {"maxCharacters": 300}}}
+ *  - respuesta: {"results": [{"title", "url", "text"}]}
  */
 class ExaSearchProvider(
     private val client: OkHttpClient,
@@ -1055,7 +1055,7 @@ class ExaSearchProvider(
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Exa", "search failed: ${resp.searchDiagnostic()}")
@@ -1064,7 +1064,7 @@ class ExaSearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Exa", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -1090,10 +1090,10 @@ class ExaSearchProvider(
 }
 
 /**
- * Firecrawl 搜索 provider。
+ * Firecrawl Proveedor de búsqueda.
  *
- * 协议: POST {endpoint}/search,请求体为 JSON。
- * 需要 API key。支持网页抓取与搜索。
+ * Acuerdo: POST {endpoint}/search,El cuerpo de la solicitud es JSON.
+ * Requiere clave API. Admite rastreo y búsqueda web.
  */
 class FirecrawlProvider(
     private val client: OkHttpClient,
@@ -1103,7 +1103,7 @@ class FirecrawlProvider(
     override val name: String = "Firecrawl"
 
     override suspend fun search(query: String, maxResults: Int): List<WebSearchResult> = withContext(AppDispatchers.io) {
-        // H-WS1: 用 resultOf 替代 try/catch,避免吞 CancellationException,与其他 provider 一致
+        // H-WS1: Utilice resultOf en su lugar try/catch,evitar tragar CancellationException,Consistente con otros proveedores
         resultOf {
             val payload = buildJsonObject {
                 put("query", JsonPrimitive(query))
@@ -1118,7 +1118,7 @@ class FirecrawlProvider(
                 .build()
 
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) return@use emptyList()
                 val body = resp.body.string()
@@ -1142,7 +1142,7 @@ class FirecrawlProvider(
                 }
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Firecrawl", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -1150,21 +1150,21 @@ class FirecrawlProvider(
 }
 
 /**
- * Perplexity Search Provider — Perplexity AI 搜索 API。
+ * Perplexity Search Provider — Perplexity AI API de búsqueda.
  *
- * 协议: POST https://api.perplexity.ai/chat/completions
- *  - 请求头: Authorization: Bearer {apiKey},Content-Type: application/json
- *  - 请求体: { "model": "sonar-pro",
+ * Acuerdo: POST https://api.perplexity.ai/chat/completions
+ *  - Encabezado de solicitud: Authorization: Bearer {apiKey},Content-Type: application/json
+ *  - Cuerpo de la solicitud: { "model": "sonar-pro",
  *              "messages": [{ "role": "user", "content": query }],
  *              "return_citations": true,
  *              "return_images": false }
- *  - 响应: { "choices": [{ "message": { "content": "..." } }],
+ *  - respuesta: { "choices": [{ "message": { "content": "..." } }],
  *           "citations": ["url1", "url2", ...] }
  *
- * Perplexity 返回 AI 生成答案 + 引用 URL 列表,本 provider 把每个引用 URL 包装为一条
- * [WebSearchResult],snippet 取 message.content(截断 300 字),source = "Perplexity"。
- * 无引用但 AI 给出答案时降级为单条结果(标题 "Perplexity AI"),保留答案作为 snippet。
- * 需要 API Key(在 settings 配置),无 key 时直接返回空列表。
+ * Perplexity Devolver respuestas generadas por IA + lista de URL de referencia,Este proveedor envuelve cada URL de referencia en un
+ * [WebSearchResult],snippet tomar message.content(Truncado a 300 palabras),source = "Perplexity".
+ * Sin referencia, pero rebajado a un único resultado cuando la IA da la respuesta(Título "Perplexity AI"),Mantenga la respuesta como un fragmento.
+ * necesitar API Key(Configurar en ajustes),Cuando no hay ninguna clave, se devuelve directamente una lista vacía.
  */
 class PerplexitySearchProvider(
     private val client: OkHttpClient,
@@ -1178,9 +1178,9 @@ class PerplexitySearchProvider(
             Logger.w("Perplexity", "no API key configured, skip")
             return@withContext emptyList()
         }
-        // H-WS1: 用 resultOf 替代 runCatching,避免吞 CancellationException
+        // H-WS1: Utilice resultOf en su lugar runCatching,evitar tragar CancellationException
         resultOf {
-            // 用 buildJsonObject 构造请求体,字符串转义由序列化库处理
+            // Utilice buildJsonObject para construir el cuerpo de la solicitud,El escape de cadenas lo maneja la biblioteca de serialización.
             val payload = kotlinx.serialization.json.buildJsonObject {
                 put("model", kotlinx.serialization.json.JsonPrimitive("sonar-pro"))
                 put(
@@ -1202,9 +1202,9 @@ class PerplexitySearchProvider(
                 .header("Authorization", "Bearer $apiKey")
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build()
-            // M-WS2: 用 executeAsync(enqueue + suspendCancellableCoroutine)替代阻塞 execute()
+            // M-WS2: usar executeAsync(enqueue + suspendCancellableCoroutine)bloqueo alternativo execute()
             client.executeAsync(req).use { resp ->
-                // 429/402 限速检测：标记 provider 并抛 SearchRateLimitException（由 onError 重抛到 UI）
+                // 429/402 Detección de límite de velocidad: marcar el proveedor y lanzar SearchRateLimitException (reenviado a la interfaz de usuario mediante onError)
                 SearchRateLimiter.assertNotRateLimited(name, resp)
                 if (!resp.isSuccessful) {
                     Logger.w("Perplexity", "search failed: ${resp.searchDiagnostic()}")
@@ -1213,7 +1213,7 @@ class PerplexitySearchProvider(
                 parseResults(resp.body.string(), maxResults)
             }
         }.onError { _, t ->
-            // 限速异常向上抛，供 UI 给用户友好提示；其余异常照旧吞掉返回空列表
+            // Las excepciones al límite de velocidad se muestran hacia arriba para que la interfaz de usuario proporcione indicaciones fáciles de usar; otras excepciones todavía se tragan y se devuelve una lista vacía.
             if (t is SearchRateLimitException) throw t
             Logger.w("Perplexity", "search error", t)
         }.getOrNull() ?: emptyList()
@@ -1222,19 +1222,19 @@ class PerplexitySearchProvider(
     private fun parseResults(body: String, max: Int): List<WebSearchResult> {
         val json = Json { ignoreUnknownKeys = true }
         val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return emptyList()
-        // 取 AI 生成的答案内容(choices[0].message.content)
+        // Obtenga la respuesta al contenido generado por IA(choices[0].message.content)
         val choices = root["choices"] as? JsonArray ?: return emptyList()
         val firstChoice = choices.firstOrNull() as? JsonObject ?: return emptyList()
         val messageObj = firstChoice["message"] as? JsonObject ?: return emptyList()
         val content = messageObj["content"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val snippet = if (content.length > 300) content.take(300) + "…" else content
-        // 引用 URL 列表(citations[].url 在响应里直接是字符串数组)
+        // Lista de URL de referencia(citations[].url Directamente en la respuesta hay una serie de cadenas.)
         val citations = (root["citations"] as? JsonArray)
             ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             ?.filter { it.isNotBlank() }
             ?: emptyList()
         return when {
-            // 每条引用 URL 包装为一条结果,snippet 共用 AI 答案(截断 300 字)
+            // Cada URL de referencia se incluye en un resultado.,snippet Comparte respuestas de IA(Truncado a 300 palabras)
             citations.isNotEmpty() -> citations.take(max).map { url ->
                 WebSearchResult(
                     title = extractTitle(url),
@@ -1243,15 +1243,15 @@ class PerplexitySearchProvider(
                     source = name,
                 )
             }
-            // 无引用时直接返回空列表,避免构造 url="" 的无效结果污染下游
+            // Cuando no hay ninguna referencia, se devuelve directamente una lista vacía.,evitar la construcción url="" Los resultados no válidos contaminan aguas abajo
             else -> {
-                Logger.d("WebSearchService", "Perplexity 无引用结果")
+                Logger.d("WebSearchService", "Perplexity No hay resultados de citas")
                 emptyList()
             }
         }
     }
 
-    /** 从 URL 提取 host 作为标题(无 host 时回退为 "Perplexity Citation")。 */
+    /** Extraer el host de la URL como encabezado(Cuando no hay ningún host, recurra a "Perplexity Citation"). */
     private fun extractTitle(url: String): String {
         return runCatching {
             val host = java.net.URI(url).host

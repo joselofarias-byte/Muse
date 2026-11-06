@@ -4,47 +4,47 @@ import io.zer0.common.Logger
 import java.io.File
 
 /**
- * v2.x 遗留收尾:filesDir/channel_media/ 清理器。
+ * v2.x cierre del legado:filesDir/channel_media/ Limpiador.
  *
- * 背景:微信入站视频/文件落盘到 filesDir/channel_media/ 后,此目录此前无任何清理机制,
- * 长期使用会持续增长。消息对媒体的引用只存在于 [ChannelInbox] / [ChannelConversationStore]
- * (滚动保留、可能被清空),无法可靠判定"某文件是否仍被引用",因此采用保守策略:
- *  - TTL 兜底:最后修改早于 [DEFAULT_TTL_MS](30 天)的文件一律删除,足够长的冷却窗口防误删;
- *  - 体积上限:剩余文件总大小超过 [DEFAULT_MAX_TOTAL_BYTES] 时,按 LRU(最久未修改)淘汰到上限内。
+ * fondo:Vídeo entrante de WeChat/Después de colocar el archivo en filesDir/channel_media/,Este directorio no tiene ningún mecanismo de limpieza previo.,
+ * Continuará creciendo con el uso a largo plazo. Las referencias de mensajes a medios existen sólo en [ChannelInbox] / [ChannelConversationStore]
+ * (Desplazamiento retenido, puede borrarse),no se puede determinar de manera confiable"Si todavía se hace referencia a un archivo",Así que adopta una estrategia conservadora.:
+ *  - TTL Ten todo en cuenta:última modificación antes [DEFAULT_TTL_MS](30 dia)Todos los archivos serán eliminados.,Ventana de enfriamiento lo suficientemente larga para evitar la eliminación accidental;
+ *  - Límite de volumen:El tamaño total de los archivos restantes supera [DEFAULT_MAX_TOTAL_BYTES] tiempo,prensa LRU(No modificado durante mucho tiempo)Eliminado hasta el límite superior.
  *
- * 两者取并集(任一命中即删)。启动时调用即可(见 MuseApp.onCreate)。
+ * unión de los dos(Eliminar cualquier golpe). Solo llámalo al inicio(ver MuseApp.onCreate).
  *
- * [selectForDeletion] 为纯函数(便于单测),文件 IO 包装在 [cleanup]。
+ * [selectForDeletion] es una función pura(Conveniente para pruebas individuales),El archivo IO está envuelto en [cleanup].
  */
 object ChannelMediaCleaner {
 
     private const val TAG = "ChannelMediaCleaner"
 
     /**
-     * TTL 兜底:30 天。
+     * TTL Ten todo en cuenta:30 Días.
      *
-     * 选 30 天而非更短,是因为无法判定消息引用关系 —— 足够长的 TTL 保证正常回看的旧媒体
-     * 不被误删,只在明显"陈旧"时才回收。
+     * Elija 30 días en lugar de menos,Es porque no se puede determinar la relación de referencia del mensaje. —— TTL lo suficientemente largo para garantizar la reproducción normal de medios antiguos
+     * No eliminado accidentalmente,solo en obvio"obsoleto"Sólo entonces se recicla.
      */
     const val DEFAULT_TTL_MS: Long = 30L * 24 * 60 * 60 * 1000
 
-    /** 目录总大小上限:512MB(约可容纳数十个大视频;超出后按 LRU 淘汰)。 */
+    /** Tamaño máximo total del directorio:512MB(Puede acomodar aproximadamente docenas de videos grandes;Después de exceder, presione LRU para eliminar). */
     const val DEFAULT_MAX_TOTAL_BYTES: Long = 512L * 1024 * 1024
 
-    /** 单文件元信息(清理判定输入)。 */
+    /** Metainformación de un solo archivo(Limpiar la entrada de juicio). */
     data class FileMeta(val path: String, val lastModified: Long, val size: Long)
 
     /**
-     * 纯函数:按策略选出待删除文件路径(不触碰文件系统,便于单测)。
+     * función pura:Seleccione la ruta del archivo que se eliminará según la política(No toques el sistema de archivos.,Conveniente para pruebas individuales).
      *
-     * 1. TTL 轮:`now - lastModified > ttlMs` 的文件全部选中(剩余候选转入第 2 轮)。
-     * 2. 体积轮:剩余候选按 `lastModified` 升序(最久未修改优先)累加,超 [maxTotalBytes] 的删除。
+     * 1. TTL rueda:`now - lastModified > ttlMs` Todos los archivos están seleccionados.(Los candidatos restantes pasan a la segunda ronda).
+     * 2. rueda de volumen:botones candidatos restantes `lastModified` orden ascendente(Se da prioridad a los que llevan más tiempo sin modificarse.)acumular,súper [maxTotalBytes] de eliminación.
      *
-     * @param files 当前目录下的文件元信息
-     * @param now 当前时间戳(毫秒)
-     * @param ttlMs TTL 阈值(毫秒)
-     * @param maxTotalBytes 剩余文件总字节上限
-     * @return 待删除文件路径列表(去重)
+     * @param files Metainformación del archivo en el directorio actual
+     * @param now marca de tiempo actual(milisegundos)
+     * @param ttlMs TTL umbral(milisegundos)
+     * @param maxTotalBytes Bytes totales máximos de archivos restantes
+     * @return Lista de rutas de archivos que se eliminarán(Eliminar duplicados)
      */
     fun selectForDeletion(
         files: List<FileMeta>,
@@ -79,9 +79,9 @@ object ChannelMediaCleaner {
     }
 
     /**
-     * 扫描 [dir] 下的文件,按 [selectForDeletion] 策略删除,返回删除数量。
+     * Escanear [dir] archivos bajo,prensa [selectForDeletion] Eliminación de políticas,Devuelve el número de eliminaciones.
      *
-     * 目录不存在或读取失败时静默返回 0(不抛异常,避免影响启动流程)。
+     * Regresa silenciosamente si el directorio no existe o no se puede leer. 0(No lanzar excepción,Evite interrumpir el proceso de inicio).
      */
     fun cleanup(
         dir: File,
@@ -99,7 +99,7 @@ object ChannelMediaCleaner {
         for (path in victims) {
             runCatching { if (File(path).delete()) deleted++ }
         }
-        if (deleted > 0) Logger.i(TAG, "channel_media 清理:删除 $deleted 个文件")
+        if (deleted > 0) Logger.i(TAG, "channel_media limpiar:Eliminar $deleted archivos")
         return deleted
     }
 }

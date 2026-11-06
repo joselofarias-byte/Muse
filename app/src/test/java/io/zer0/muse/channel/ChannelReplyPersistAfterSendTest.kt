@@ -4,11 +4,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-CHANNEL-F9: 自动回复必须先发送成功、再记入会话历史。
+ * AUD-CHANNEL-F9: La respuesta automática debe enviarse correctamente antes de quedar registrada en el historial de conversaciones.
  *
- * 原实现先 appendTurn(assistant, reply) 再发送:发送失败→Retry→下轮重新生成
- * 新文本 reply',第二次 appendTurn 因 dispatchId 去重被跳过 → 会话库存的是第一次
- * 文本,而用户实际收到第二次,上下文漂移。
+ * original primero appendTurn(assistant, reply) Enviar de nuevo:Envío fallido→Retry→Regenerar la siguiente ronda
+ * nuevo texto reply',El segundo appendTurn se omite debido a la deduplicación de despachoId. → El inventario de sesiones es la primera vez.
+ * texto,Y el usuario realmente recibe el segundo,Deriva del contexto.
  */
 class ChannelReplyPersistAfterSendTest {
 
@@ -18,20 +18,20 @@ class ChannelReplyPersistAfterSendTest {
     fun `assistant turn is appended only after successful send`() {
         val src = source()
         val fnStart = src.indexOf("private suspend fun sendPreparedReply(")
-        assertTrue("未找到 sendPreparedReply", fnStart >= 0)
+        assertTrue("no encontrado sendPreparedReply", fnStart >= 0)
         val fnEnd = src.indexOf("private sealed interface HandleResult", fnStart)
         val body = src.substring(fnStart, if (fnEnd > fnStart) fnEnd else src.length)
 
         val appendIdx = body.indexOf("ChannelConversationStore.appendTurn")
         val sendIdx = body.indexOf("channelManager.sendTextWithOptions")
-        assertTrue("appendTurn 必须存在", appendIdx >= 0)
-        assertTrue("sendTextWithOptions 必须存在", sendIdx >= 0)
+        assertTrue("appendTurn debe existir", appendIdx >= 0)
+        assertTrue("sendTextWithOptions debe existir", sendIdx >= 0)
         assertTrue(
-            "appendTurn 必须在发送成功分支之后(不能先写历史再发送)",
+            "appendTurn Debe enviarse después de enviar una rama exitosa(No se puede escribir el historial primero y luego enviarlo.)",
             appendIdx > sendIdx,
         )
         assertTrue(
-            "appendTurn 应位于 result.ok 成功分支内",
+            "appendTurn Debe estar ubicado dentro de la rama de éxito de result.ok",
             body.indexOf("if (!result.ok)") < appendIdx,
         )
     }

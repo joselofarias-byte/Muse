@@ -28,22 +28,22 @@ import io.zer0.muse.ui.theme.MusePaddings
 import io.zer0.muse.ui.theme.MuseShapes
 
 /**
- * 底部菜单 / 动作面板的统一下拉行（v2.x 统一化）。
+ * Fila desplegable unificada para el menú inferior/panel de acción (v2.x unificación).
  *
- * 提炼自聊天列表长按菜单（原 private ActionSheetRow），用于 MuseDialog /
- * 底部菜单中的可点击动作行：全宽 + 圆角浅底 + 可选图标 + 左对齐文本。
+ * Extraído del menú de pulsación larga de la lista de chat (anteriormente ActionSheetRow privado), utilizado para MuseDialog /
+ * Fila de acción en la que se puede hacer clic en el menú inferior: ancho completo + fondo redondeado poco profundo + icono opcional + texto alineado a la izquierda.
  *
- * 同族使用方（都应保持本组件样式，不再各自实现）：
- *  - 聊天列表长按菜单
- *  - MCP 服务器「更多」菜单
- *  - 主题 / 记忆空间 / 小手机设置 等设置行的「更多」菜单
+ * Usuarios de la misma familia (todos deben mantener el estilo de este componente y ya no implementar su propia implementación):
+ *  - Lista de chat menú de pulsación larga
+ *  - MCP Menú "Más" del servidor
+ *  - El menú "Más" de la fila de configuración, como Tema/Espacio de memoria/Configuración de teléfono pequeño
  *
- * @param text 动作文案
- * @param modifier 修饰符
- * @param icon 可选图标（null 时仅文本）
- * @param contentColor 前景色（危险动作传 colorScheme.error）
- * @param enabled 是否可点（false 时降透明度且不响应点击）
- * @param onClick 点击回调（放末位，支持尾随 lambda）
+ * @param text redacción de acciones
+ * @param modifier modificador
+ * @param icon Icono opcional (null solo texto)
+ * @param contentColor Color de primer plano (pase colorScheme.error para acciones peligrosas)
+ * @param enabled ¿Está disponible (false La transparencia cae y no responde a los clics)
+ * @param onClick Haga clic en devolución de llamada (coloque al final, admite lambda final)
  */
 @Composable
 fun MuseActionSheetRow(
@@ -85,8 +85,8 @@ fun MuseActionSheetRow(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = effectiveColor,
-            // LAYOUT-01: 取剩余宽度 + 限行。动作行是 Row(图标 + 文案)，文案若不取宽，在放大字号
-            // (系统"显示大小")或窄窗口下会被图标挤成一列、逐字换行 —— 与 MCP 服务器行同源。
+            // LAYOUT-01: Tome el ancho restante + límite de línea. La línea de acción es Row(Icono + Copiar), si la copia no es más ancha, aumenta el tamaño de la fuente
+            // (sistema"tamaño de pantalla")O en una ventana estrecha, los íconos se agruparán en una columna y las palabras se agruparán palabra por palabra. —— Mismo origen que la fila del servidor MCP.
             modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

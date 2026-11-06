@@ -1,10 +1,10 @@
 package io.zer0.muse.data.proactive
 
 /**
- * 主动消息的反馈学习。
+ * Aprendizaje por retroalimentación para mensajes proactivos.
  *
- * 与评分无关：这里只处理「用户回了/划掉了」之后亲密度怎么变，
- * 以及哪一类内容长期不受欢迎。发送判定本身不再依赖它。
+ * No tiene nada que ver con calificaciones: aquí solo tratamos ", respondió el usuario./¿Cómo cambiará el nivel de intimidad después de tacharlo?
+ * Y qué tipo de contenido es crónicamente impopular. La propia decisión de envío ya no depende de ello.
  */
 object ProactiveLearning {
 
@@ -16,15 +16,15 @@ object ProactiveLearning {
         OutcomeState.PENDING -> 0f
     }
 
-    /** 应用一次反馈后的新亲密度。 */
+    /** Nuevo nivel de intimidad después de aplicar la retroalimentación una vez. */
     fun applyOutcome(intimacy: Float, state: OutcomeState): Float =
         (intimacy + intimacyDelta(state)).coerceIn(0f, 1f)
 
     /**
-     * 某类型是否已经「不怎么受欢迎」。
+     * Si un género se ha vuelto "menos popular".
      *
-     * 判据刻意保守（至少要发过 4 条、且划掉率过半），
-     * 避免样本太少就下结论 —— 误判的代价是永久关掉一类有意义的主动消息。
+     * Los criterios son deliberadamente conservadores (se deben haber publicado al menos 4 elementos y más de la mitad de ellos tachados).
+     * Evite sacar conclusiones basadas en muy pocas muestras —— El precio del error de juicio es cerrar permanentemente un tipo de noticias proactivas significativas.
      */
     fun isKindUnpopular(dismissed: Int, total: Int): Boolean =
         total >= 4 && dismissed * 2 > total

@@ -11,13 +11,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 工具审批策略存储测试。
+ * Prueba de almacenamiento de políticas de aprobación de herramientas.
  *
- * 关键契约：**未配置 ≠ 用户显式允许**。数据层必须能区分这两种状态，
- * 否则审批主路径会把「没配置过」当成「用户已放行」，ASK/STRICT 模式下
- * 按风险等级应有的审批会被整段跳过（历史缺陷）。
+ * Contratos clave:**No configurado ≠ El usuario permite explícitamente**. La capa de datos debe poder distinguir entre estos dos estados,
+ * De lo contrario, la ruta de aprobación principal considerará "no configurado" como "el usuario ha sido liberado".ASK/STRICT modo
+ * Las aprobaciones debidas según el nivel de riesgo se omitirán por completo (defecto histórico).
  *
- * DataStore 在同一测试进程内共享，因此每个用例使用不同的工具名保证隔离。
+ * DataStore Compartido dentro del mismo proceso de prueba, por lo que cada caso de uso utiliza un nombre de herramienta diferente para garantizar el aislamiento.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,7 +29,7 @@ class ToolConfigStoreTest {
     @Test
     fun unconfiguredToolHasNoExplicitPolicy() = runBlocking {
         assertNull(store.getConfiguredPolicy("probe_unconfigured"))
-        // 兼容访问器仍返回「默认放行」语义，但审批主路径不应使用它做判定。
+        // Los descriptores de acceso compatibles aún devuelven la semántica de "versión predeterminada", pero la ruta principal de aprobación no debería usarla para tomar decisiones.
         assertEquals(ToolApprovalPolicy.ALWAYS_ALLOW, store.getPolicy("probe_unconfigured"))
         assertEquals(ToolApprovalState.Auto, store.resolveApprovalState("probe_unconfigured"))
     }
@@ -58,7 +58,7 @@ class ToolConfigStoreTest {
 
     @Test
     fun unconfiguredToolStillRequiresApprovalUnderAskMode() = runBlocking {
-        // 生产路径的接线契约：未配置 → null → 判定器按模式+风险等级决定。
+        // Contrato de cableado para ruta de producción: no configurado → null → Determinador por modo+Determinado por el nivel de riesgo.
         val policy = store.getConfiguredPolicy("probe_ask_high")
         assertEquals(
             ToolApprovalState.Pending,
@@ -82,7 +82,7 @@ class ToolConfigStoreTest {
 
     @Test
     fun explicitAllowStillBypassesApprovalInAskMode() = runBlocking {
-        // 用户点过「始终允许」之后必须继续免打扰，这条语义不能被上面的修复破坏。
+        // Los usuarios deben continuar sin molestar después de hacer clic en "Permitir siempre". Esta semántica no puede ser destruida por la solución anterior.
         store.setPolicy("probe_allow_bypass", ToolApprovalPolicy.ALWAYS_ALLOW)
         val policy = store.getConfiguredPolicy("probe_allow_bypass")
 

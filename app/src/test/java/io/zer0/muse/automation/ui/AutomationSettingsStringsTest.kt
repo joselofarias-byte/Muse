@@ -11,11 +11,11 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * UI 自动化权限页字符串资源测试。
+ * UI Prueba automatizada de recursos de cadenas de páginas de permisos.
  *
- * 1. 默认语言下所有页面文案 key 都能解析且非空(含带位置参数的格式化文案);
- * 2. 每个语言目录都声明了完整 key —— 缺翻译时 Android 会静默回退到中文默认值,
- *    只断言 getString 非空无法发现,所以直接检查各 values-&#42; 目录的 XML。
+ * 1. Todas las claves de copia de página en el idioma predeterminado se pueden analizar y no están vacías.(Contiene copia formateada con parámetros posicionales.);
+ * 2. Cada directorio de idiomas se declara completo. key —— Android volverá silenciosamente al chino predeterminado cuando falte la traducción,
+ *    Solo afirme que getString no es nulo y no se puede encontrar,Así que revisa cada uno directamente values-&#42; XML para el directorio.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -23,7 +23,7 @@ class AutomationSettingsStringsTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
-    /** 页面直接引用的全部字符串资源 key。 */
+    /** Todas las claves de recursos de cadena a las que hace referencia directamente la página. */
     private val pageKeys = listOf(
         R.string.automation_settings_title,
         R.string.automation_settings_intro,
@@ -59,7 +59,7 @@ class AutomationSettingsStringsTest {
         R.string.automation_orchestration_action,
     )
 
-    /** 需要文案的 key 名(资源名),用于逐语言目录的存在性检查。 */
+    /** Nombre clave de redacción requerida(Nombre del recurso),Se utiliza para comprobar la existencia de directorios por idioma. */
     private val pageKeyNames = listOf(
         "automation_settings_title",
         "automation_settings_intro",
@@ -109,7 +109,7 @@ class AutomationSettingsStringsTest {
     fun `every page string resolves to non blank text`() {
         pageKeys.forEach { id ->
             val name = context.resources.getResourceName(id)
-            assertTrue("字符串 $name 解析为空", context.getString(id).isNotBlank())
+            assertTrue("cuerda $name resuelve vaciar", context.getString(id).isNotBlank())
         }
     }
 
@@ -128,10 +128,10 @@ class AutomationSettingsStringsTest {
     fun `every locale directory declares all page keys`() {
         val resRoot = listOf(File("src/main/res"), File("app/src/main/res"))
             .firstOrNull { it.isDirectory }
-            ?: error("找不到 res 目录,当前工作目录: ${File(".").absolutePath}")
+            ?: error("directorio res no encontrado,directorio de trabajo actual: ${File(".").absolutePath}")
         localeDirs.forEach { locale ->
             val dir = File(resRoot, locale)
-            assertTrue("缺少语言目录: ${dir.path}", dir.isDirectory)
+            assertTrue("Falta directorio de idiomas: ${dir.path}", dir.isDirectory)
             val declared = dir.listFiles { file -> file.extension == "xml" }
                 .orEmpty()
                 .flatMap { file ->
@@ -142,7 +142,7 @@ class AutomationSettingsStringsTest {
                 }
                 .toSet()
             val missing = pageKeyNames.filterNot { it in declared }
-            assertTrue("$locale 缺少字符串: $missing", missing.isEmpty())
+            assertTrue("$locale Cadena faltante: $missing", missing.isEmpty())
         }
     }
 }

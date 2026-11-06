@@ -33,16 +33,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 
 /**
- * 输入栏上方的过程扁条。
+ * La barra plana del proceso encima del campo de entrada.
  *
- * 为什么要有它：一轮任务里工具卡在消息流中会占掉大半屏，可它折叠时其实只回答
- * 一个问题——「现在在干什么」。这件事用一个扁条就能说清，而且不挤压正在读的内容。
+ * Por qué la necesitamos: Durante una misión, cuando la herramienta se atasca en el flujo de mensajes, ocupará la mitad de la pantalla, pero cuando está plegada, solo responde preguntas.
+ * una pregunta——"¿Qué estás haciendo ahora?" Esto se puede explicar en una barra plana sin desplazar lo que estás leyendo.
  *
- * 分工：
- *  - 扁条：只说「此刻」，随任务结束消失
- *  - 消息流里的过程卡：留作事后回看
+ * División del trabajo:
+ *  - Bian Tiao: Simplemente di "en este momento" y desaparece cuando finalice la tarea.
+ *  - Tarjetas de proceso en el flujo de mensajes: reservadas para revisión posterior
  *
- * 点击扁条弹出本轮步骤明细，而不是就地展开 —— 就地展开会把输入栏顶上去。
+ * Haga clic en la barra plana para que aparezcan los detalles de la ronda actual de pasos en lugar de expandirlos en el acto. —— Al expandirse en su lugar, el campo de entrada se empujará hacia arriba.
  */
 @Composable
 internal fun ActiveProcessBar(
@@ -54,8 +54,8 @@ internal fun ActiveProcessBar(
     if (records.isEmpty() && progressMessage.isNullOrBlank() && subagent.isEmpty) return
     val scheme = MaterialTheme.colorScheme
     val latest = records.lastOrNull()
-    // 子任务排第一：它是唯一会跨轮次持续存在的执行态，其余都是「这一轮」的事。
-    // 其次说「此刻正在跑的那一件事」，最后才退回整批的数量描述。
+    // La subtarea ocupa el primer lugar: es el único estado de ejecución que persistirá durante las rondas, el resto son "esta ronda".
+    // A continuación, hable sobre "lo que se está ejecutando en este momento" y finalmente devuelva la descripción de la cantidad de todo el lote.
     val running = records.lastOrNull { it.finishedAt == null } ?: latest
     val statusText = when {
         subagent.count > 0 -> stringResource(R.string.chat_process_subagent_running, subagent.count)
@@ -71,8 +71,8 @@ internal fun ActiveProcessBar(
         border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.5f)),
         modifier = Modifier
             .fillMaxWidth()
-            // 上下只留 2dp：多条扁条同时出现时，间距由列表统一给，
-            // 每条各自撑开会在两条之间留出一条明显空档。
+            // Deje solo 2 dp arriba y abajo: cuando aparecen varias barras planas al mismo tiempo, el espaciado lo proporciona la lista de manera uniforme.
+            // Separar cada tira dejará un espacio claro entre las dos tiras.
             .padding(horizontal = MusePaddings.screen, vertical = 2.dp)
             .clickable(onClick = onExpand),
     ) {
@@ -120,10 +120,10 @@ internal fun ActiveProcessBar(
 }
 
 /**
- * 本轮步骤明细。
+ * Detalles de los pasos para esta ronda.
  *
- * 用 sheet 而不是就地展开：就地展开会把输入栏顶上去，而用户点这个条的时刻
- * 往往正在打字。
+ * Utilice una hoja en lugar de una expansión in situ: la expansión in situ empujará la barra de entrada hacia arriba y cuando el usuario haga clic en esta barra
+ * A menudo escribiendo.
  */
 @Composable
 internal fun ActiveProcessSheet(
@@ -171,7 +171,7 @@ internal fun ActiveProcessSheet(
     }
 }
 
-/** 单条工具记录：序号 + 名称 + 耗时 + 结果摘要。 */
+/** Registro único de herramienta: número de serie + nombre + tiempo empleado + resumen de resultados. */
 @Composable
 private fun ProcessRecordRow(record: ToolCallRecord, index: Int) {
     val scheme = MaterialTheme.colorScheme
@@ -184,7 +184,7 @@ private fun ProcessRecordRow(record: ToolCallRecord, index: Int) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(
-                // 同一条记录：成功用动作类型图标，失败用警告三角（状态压过类型）。
+                // El mismo registro: el ícono del tipo de acción se usa para el éxito y el triángulo de advertencia se usa para el fracaso (el estado supera al tipo).
                 imageVector = if (record.isSuccess) processIconFor(record.toolName) else MuseIcons.alertTriangle,
                 contentDescription = null,
                 tint = if (record.isSuccess) scheme.primary else scheme.error,
@@ -221,7 +221,7 @@ private fun ProcessRecordRow(record: ToolCallRecord, index: Int) {
     }
 }
 
-/** 把工具名翻成人话：委派 / 运行命令 / 普通工具。 */
+/** Traduzca los nombres de las herramientas a palabras humanas: delegar/ejecutar comando/herramienta común. */
 @Composable
 private fun describeProcess(record: ToolCallRecord): String {
     val name = record.toolName
@@ -236,22 +236,22 @@ private fun describeProcess(record: ToolCallRecord): String {
     }
 }
 
-/** 子 Agent 委派类工具：名字里带这些片段的都算。 */
+/** Herramientas de delegación de subagentes: se cuentan todos aquellos que tienen estos fragmentos en sus nombres. */
 private fun isDelegateTool(name: String): Boolean {
     val n = name.lowercase()
     return n.contains("subagent") || n.contains("delegate") || n.contains("agent_discuss") || n.contains("ask_agent")
 }
 
-/** 命令执行类工具。 */
+/** Herramientas de ejecución de comandos. */
 private fun isCommandTool(name: String): Boolean {
     val n = name.lowercase()
     return n.contains("exec_command") || n.contains("run_command") || n.contains("termux") || n == "shell"
 }
 
 /**
- * 从委派参数里抠出助手名。
+ * Extraiga el nombre del asistente de los parámetros de delegación.
  *
- * 只做浅层提取：参数可能是 JSON，字典序不稳定，拿不到就返回 null 让调用方退回工具名。
+ * Realice únicamente una extracción superficial: el parámetro puede ser JSON y el orden lexicográfico es inestable. Si no se puede obtener, se devolverá nulo para permitir que la persona que llama devuelva el nombre de la herramienta.
  */
 private fun extractDelegateTarget(arguments: String): String? =
     listOf("assistant_name", "assistant", "agent", "name", "target").firstNotNullOfOrNull { key ->
@@ -267,7 +267,7 @@ private fun extractDelegateTarget(arguments: String): String? =
         }
     }
 
-/** 一条后台子任务：谁在跑 + 取消。 */
+/** Una subtarea en segundo plano: quién se ejecuta + cancelada. */
 @Composable
 private fun SubagentRow(label: String, onCancel: () -> Unit) {
     val scheme = MaterialTheme.colorScheme

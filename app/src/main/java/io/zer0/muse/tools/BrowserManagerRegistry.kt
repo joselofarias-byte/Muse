@@ -6,37 +6,37 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 浏览器实例注册表(P2-21 合并后)。
+ * Registro de instancias del navegador(P2-21 Después de la fusión).
  *
- * 原实现「每个会话独立 BrowserManager」与 ToolRegistry/UI 胶囊共享的全局单例并存,
- * 造成浏览器双实例:主会话工具循环写在私有注册表上、子代理/定时任务写在 ToolRegistry
- * 的全局单例上,状态分叉且 UI 胶囊观察不到。现统一为**全局唯一 BrowserManager**:
- *  - [getForSession] 返回共享实例,并登记该会话"已使用浏览器"(驱动 UI 胶囊显隐)
- *  - 所有执行路径(主循环/子代理/定时任务)命中同一 WebView 状态,UI 实时可看
- *  - 会话删除只需 [closeSession] 取消登记,不再释放底层共享实例
+ * La implementación original de "BrowserManager independiente para cada sesión" coexiste con el singleton global compartido por la cápsula ToolRegistry/UI.,
+ * Causa doble instancia del navegador.:El bucle de la herramienta de sesión principal escribe en el registro privado, el subagente/Las tareas programadas están escritas en ToolRegistry
+ * en el singleton global,El estado está bifurcado y la cápsula de la interfaz de usuario no lo puede observar. Ahora unificado como**Único a nivel mundial BrowserManager**:
+ *  - [getForSession] Devolver instancia compartida,y registrar la sesión"Navegador ya utilizado"(Mostrar y ocultar la cápsula de la interfaz de usuario de Drive)
+ *  - Todas las rutas de ejecución(bucle principal/subagente/tareas programadas)Presione el mismo estado de WebView,UI Visible en tiempo real
+ *  - La eliminación de la sesión solo requiere [closeSession] Cancelar registro,La instancia compartida subyacente ya no se publica
  */
 class BrowserManagerRegistry(
     private val context: Context,
-    /** P2-21: 全局唯一浏览器实例(与 ToolRegistry/UI 胶囊共享)。null = 自建(独立/测试环境)。 */
+    /** P2-21: Instancia de navegador única a nivel mundial(Compartido con la cápsula ToolRegistry/UI).null = autoconstruido(independiente/entorno de prueba). */
     private val sharedManager: BrowserManager? = null,
 ) {
 
     private val lock = Any()
 
-    /** 实际使用的浏览器实例:全仓共享,避免状态分叉。 */
+    /** Ejemplos de navegadores reales utilizados:Compartir almacén completo,Evite las bifurcaciones estatales. */
     private val manager: BrowserManager = sharedManager ?: BrowserManager(context)
 
-    // 已使用浏览器的会话 id 集合(驱动 UI 胶囊显示;WebView 状态本身全局共享)
+    // Colección de identificadores de sesión de navegadores usados.(Pantalla de cápsula de interfaz de usuario de conducción;WebView El Estado mismo es compartido globalmente.)
     private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
 
-    /** 已使用浏览器的会话 id 集合。 */
+    /** Una colección de identificadores de sesión para navegadores usados. */
     val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
 
     /**
-     * 获取(或登记)指定会话的浏览器实例 — 返回全局共享实例并登记该会话。
+     * Obtener(o registrarse)Instancia del navegador para la sesión especificada — Devuelve la instancia compartida global y registra la sesión.
      *
-     * P2-21: 不再按会话新建 WebView;任何会话/子代理/定时任务的浏览器工具调用
-     * 都操作同一实例,消除「会话级 vs 全局单例」的状态分叉。
+     * P2-21: Ya no crear nuevos por sesión WebView;cualquier sesión/subagente/Llamada a la herramienta del navegador para tareas programadas
+     * Ambos operan en la misma instancia.,Eliminar la bifurcación estatal de "nivel de sesión versus singleton global".
      */
     fun getForSession(sessionId: String): BrowserManager {
         synchronized(lock) {
@@ -45,20 +45,20 @@ class BrowserManagerRegistry(
         }
     }
 
-    /** 若会话已登记使用浏览器则返回共享实例(不登记),否则 null。供 UI 判断胶囊显隐。 */
+    /** Si la sesión se registra usando el navegador, se devuelve la instancia compartida(No registrado),En caso contrario nulo. Utilizado por la interfaz de usuario para determinar si la cápsula está visible u oculta. */
     fun getIfActive(sessionId: String?): BrowserManager? {
         if (sessionId == null) return null
         synchronized(lock) { return if (sessionId in _activeSessionIds.value) manager else null }
     }
 
-    /** 注销指定会话的浏览器登记(会话删除时调用;不关闭共享实例)。 */
+    /** Cerrar sesión en el registro del navegador para una sesión específica(Llamado cuando se elimina la sesión.;No cerrar instancia compartida). */
     fun closeSession(sessionId: String) {
         synchronized(lock) {
             _activeSessionIds.value = _activeSessionIds.value - sessionId
         }
     }
 
-    /** 清空全部会话登记(进程退出/设置清理时调用;共享实例由 Koin 生命周期管理)。 */
+    /** Borrar todos los registros de sesión(Salidas de proceso/Llamado al configurar la limpieza;Las instancias compartidas son administradas por el ciclo de vida de Koin.). */
     fun closeAll() {
         synchronized(lock) {
             _activeSessionIds.value = emptySet()

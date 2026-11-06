@@ -6,22 +6,22 @@ import android.os.Bundle
 import java.lang.ref.WeakReference
 
 /**
- * v2.6.0: 应用级 Activity 追踪。
+ * v2.6.0: Seguimiento de actividad a nivel de aplicación.
  *
- * 背景（用户反馈：OpenAI 一键登录报「无法获取 Activity 上下文」）：
- * 部分 Compose 容器下 `LocalContext` 既不指向 Activity，也可能被多层
- * ContextWrapper 包裹，单纯沿 baseContext 回溯仍可能拿不到 —— 而 Auth Code
- * Flow 必须用真实 Activity 启动浏览器 Intent（startActivity）。
+ * Antecedentes (comentarios de los usuarios:OpenAI Informes de inicio de sesión con un clic "No se puede obtener el contexto de actividad"):
+ * Debajo de algunos contenedores de redacción `LocalContext` No apunta a una actividad ni puede ser utilizada por varias capas.
+ * ContextWrapper Paquete, es posible que aún no pueda obtenerlo simplemente rastreando el contexto baseContext —— y Auth Code
+ * Flow El Intent del navegador debe iniciarse con una Actividad real (startActivity).
  *
- * 因此在 Application 上注册生命周期回调，始终记住当前处于 resumed 的
- * Activity 作为兜底：`Context.findActivity()` 回溯失败时返回它。
+ * Por lo tanto, registre la devolución de llamada del ciclo de vida en la Aplicación y recuerde siempre la reanudación actual.
+ * Activity Como respaldo:`Context.findActivity()` Devuélvalo cuando falle el rastreo.
  */
 object CurrentActivityTracker : Application.ActivityLifecycleCallbacks {
 
     @Volatile
     private var resumed: WeakReference<Activity>? = null
 
-    /** 最近一次 resumed 的 Activity（可能为 null，如全后台）。 */
+    /** La actividad reanudada más recientemente (puede ser nula, como el fondo completo). */
     fun current(): Activity? = resumed?.get()
 
     fun install(app: Application) {

@@ -33,6 +33,6 @@
     <string name="automation_test_source">✓ Source: %1$s</string>
     <string name="automation_test_unknown">Unknown</string>
     <string name="automation_test_failed">Test failed: %1$s</string>
-    <!-- ST-04: 屏幕读取自测的开发者诊断信息折叠标题 -->
+    <!-- ST-04: La pantalla lee la información de diagnóstico del desarrollador para el título contraído de la autoprueba -->
     <string name="automation_developer_info">Developer info</string>
 </resources>

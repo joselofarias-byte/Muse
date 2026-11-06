@@ -19,10 +19,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * AUD-20261011-A2A-HEADLESS（REPORT_MASTER batch 3）：A2A 不得驱动 UI ChatViewModel。
+ * AUD-20261011-A2A-HEADLESS(REPORT_MASTER batch 3):A2A No debe controlar UI ChatViewModel.
  *
- * 这条路径是修复会话劫持/并发串台/cancel 误伤的根因：A2A 用 handler-owned Agent session +
- * ChatService.completeText，tools=null；用户前台 ChatViewModel 完全不参与。
+ * Esta ruta es para solucionar el secuestro de sesión./serialización concurrente/cancel Causas fundamentales de las lesiones accidentales:A2A usar handler-owned Agent session +
+ * ChatService.completeText,tools=null; La interfaz de usuario ChatViewModel no participa en absoluto.
  */
 class A2aHeadlessGeneratorTest {
 

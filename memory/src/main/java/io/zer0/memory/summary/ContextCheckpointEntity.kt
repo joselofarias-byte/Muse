@@ -6,38 +6,38 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
- * 上下文检查点 —— 会话压缩（context compaction）的持久化产物。
+ * punto de control de contexto —— compresión de sesión (context compaction) producto persistente.
  *
- * ## 为什么需要它
+ * ## por qué es necesario
  *
- * 压缩如果只改内存里的消息列表，会有三个后果：重新打开会话就回到全量历史（等于没压）、
- * 每次重载都要再花一次摘要调用、以及"压缩"在用户眼里只是插了一条消息而不是一次上下文重置。
- * 把压缩结果落成一条**有边界指针的会话事件**，才能让"压缩后的上下文"成为稳定事实。
+ * Si la compresión solo cambia la lista de mensajes en la memoria, habrá tres consecuencias: al reabrir la sesión se volverá al historial completo (lo que equivale a no comprimir),
+ * Cada recarga requiere otra llamada de resumen y"Compresión"A los ojos del usuario, se inserta un mensaje en lugar de un restablecimiento de contexto.
+ * Coloque los resultados de la compresión en una línea.**Eventos de sesión con punteros acotados**, para que"contexto comprimido"convertirse en un hecho estable.
  *
- * ## 边界指针为什么用 seq 而不是消息 id 集合
+ * ## ¿Por qué utilizar seq en lugar de la colección de ID de mensaje para el puntero de límite?
  *
- * 消息表已有单调递增的 `seq` 列。以 `covered_seq`（"覆盖到最后一条消息的 seq"）为边界：
- *  - 组装上下文只需 `seq > covered_seq` 一个条件，不必携带 id 集合；
- *  - 旧消息被删除/编辑不会让边界整体失效（id 集合会）；
- *  - 跨进程稳定，重开应用依然成立。
+ * La tabla de mensajes ya tiene un aumento monótono. `seq` columnas. a `covered_seq`("Cubierto hasta el último mensaje. seq") es el límite:
+ *  - Para armar el contexto simplemente `seq > covered_seq` No es necesario que una condición lleve un conjunto de identificación;
+ *  - Los mensajes antiguos se eliminan/La edición no invalidará el borde en su totalidad (id reunión);
+ *  - Es estable en todos los procesos y sigue siendo válido al reiniciar la aplicación.
  *
- * [lastCoveredMessageId] 与 [coveredCount] 仅作**一致性校验**：边界当刻最后一条消息的 id 与
- * 覆盖条数。读回时若该 id 已不存在，说明历史被改动过，检查点应作废并重新生成（见 DAO 使用方）。
+ * [lastCoveredMessageId] con [coveredCount] Sólo para**control de coherencia**: El ID del último mensaje en el momento límite y
+ * Número de tiras de cobertura. Si la identificación ya no existe al volver a leer, significa que el historial se ha modificado y el punto de control debe invalidarse y regenerarse (consulte Uso de DAO).
  *
- * ## 滚动而非追加
+ * ## desplazarse en lugar de agregar
  *
- * 每个会话只保留一条检查点（[sessionId] 主键，覆盖式 upsert）：新一次压缩把"旧检查点 + 新增区间"
- * 一起改写成新检查点。结构上杜绝"摘要套摘要"层层叠加。
+ * Sólo se mantiene un punto de control por sesión ([sessionId] Clave principal, sobrescritura de inserción): nueva compresión"Antiguo punto de control + nuevo intervalo"
+ * Reescritos juntos en un nuevo punto de control. Prevenir estructuralmente"resumen conjunto abstracto"Capas sobre capas.
  *
- * @property coveredSeq 已并入检查点的最后一条消息的 seq；组装上下文时只取 seq 大于它的消息
- * @property lastCoveredMessageId 边界当刻最后一条消息 id（一致性校验用，可为空字符串）
- * @property coveredCount 已覆盖的消息条数（审计/展示用）
- * @property summary 检查点正文（结构化格式，见 ContextCheckpointFormat）
- * @property tokensBefore 压缩前上下文 token 估算
- * @property tokensAfter 压缩后上下文 token 估算
- * @property strategy 产出方式：summary(模型摘要) / local(零请求本地重建) / truncate(硬截断)
- * @property reason 触发原因：auto(占用率) / manual(用户手动) / midrun(生成中途接缝)
- * @property updatedAt 写入时间（epoch millis）
+ * @property coveredSeq seq del último mensaje que se ha incorporado al checkpoint; solo los mensajes con una secuencia mayor que la que se toman al ensamblar el contexto
+ * @property lastCoveredMessageId La identificación del último mensaje en el momento del límite (utilizado para verificar la coherencia, puede ser una cadena vacía)
+ * @property coveredCount Número de mensajes cubiertos (auditoría/para exhibición)
+ * @property summary Texto del punto de control (formato estructurado, consulte ContextCheckpointFormat)
+ * @property tokensBefore Estimación del token de contexto antes de la compresión.
+ * @property tokensAfter Estimación del token de contexto después de la compresión.
+ * @property strategy Método de salida:summary(Resumen del modelo) / local(Reconstrucción local sin solicitud) / truncate(Truncamiento duro)
+ * @property reason Motivo desencadenante:auto(Tasa de ocupación) / manual(manual de usuario) / midrun(Crear costuras a mitad de camino)
+ * @property updatedAt escribir tiempo (epoch millis)
  */
 @Serializable
 @Entity(tableName = "context_checkpoints")
@@ -56,10 +56,10 @@ data class ContextCheckpointEntity(
     val coveredCount: Int = 0,
 
     /**
-     * 累计并入摘要的消息总条数（滚动累加，仅用于界面展示"已压缩多少条"）。
+     * El número total de mensajes incorporados al resumen (acumulación continua, solo para visualización de interfaz)"¿Cuántos elementos se han comprimido?").
      *
-     * 与 [coveredCount] 的区别：[coveredCount] 是本次压缩新并入的条数（审计/校验用），
-     * 这里是历史累计值，语义随时间单调增长，适合展示。
+     * con [coveredCount] La diferencia:[coveredCount] ¿Es el número de elementos recién fusionados en esta compresión (auditoría)?/para verificación),
+     * Aquí está el valor acumulado histórico. La semántica aumenta de forma monótona con el tiempo, lo que es adecuado para su visualización.
      */
     @ColumnInfo(name = "total_covered_count", defaultValue = "0")
     val totalCoveredCount: Int = 0,
@@ -85,26 +85,26 @@ data class ContextCheckpointEntity(
     @ColumnInfo(name = "space_id", defaultValue = "default")
     val spaceId: String = "default",
 ) {
-    /** 压缩净省下的 token（可能为 0 或负值，读回方自行决定如何展示）。 */
+    /** El token guardado por compresión (puede ser 0 o un valor negativo, el lector decide cómo mostrarlo). */
     val savedTokens: Int get() = (tokensBefore - tokensAfter).coerceAtLeast(0)
 
     companion object {
-        /** 模型摘要产出。 */
+        /** Salida resumida del modelo. */
         const val STRATEGY_SUMMARY = "summary"
 
-        /** 零模型请求的本地重建产出。 */
+        /** Salida de reconstrucción local para solicitudes de modelo cero. */
         const val STRATEGY_LOCAL = "local"
 
-        /** 硬截断产出（摘要不可用时的最后一道防线）。 */
+        /** Salida truncada dura (última línea de defensa cuando los resúmenes no están disponibles). */
         const val STRATEGY_TRUNCATE = "truncate"
 
-        /** 占用率触发。 */
+        /** Activador de ocupación. */
         const val REASON_AUTO = "auto"
 
-        /** 用户手动触发。 */
+        /** Activado manualmente por el usuario. */
         const val REASON_MANUAL = "manual"
 
-        /** 生成过程中每轮接缝触发。 */
+        /** La costura se activa en cada ronda durante la generación. */
         const val REASON_MIDRUN = "midrun"
     }
 }

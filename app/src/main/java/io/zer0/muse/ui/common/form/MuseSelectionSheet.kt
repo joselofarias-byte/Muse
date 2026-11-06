@@ -24,10 +24,10 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 统一的选择/浏览型底部面板。
+ * elección unificada/Panel inferior navegable.
  *
- * 适合供应商、模型、语言、排序等需要浏览多个选项的场景。
- * 业务页面只提供内容，不再重复实现标题、关闭按钮和面板容器。
+ * Adecuado para escenarios en los que es necesario explorar múltiples opciones, como proveedores, modelos, idiomas, clasificación, etc.
+ * Las páginas comerciales solo proporcionan contenido y ya no necesitan implementar títulos, botones de cierre y contenedores de paneles repetidamente.
  */
 @Composable
 fun MuseSelectionSheet(
@@ -57,8 +57,8 @@ fun MuseSelectionSheet(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
-                    // LAYOUT-01: 共享组件标题取宽 + 限行（保留最多 2 行，不激进截断），
-                    // 防放大字号下被右侧关闭按钮挤成一列
+                    // LAYOUT-01: Ancho del título del componente compartido + límite de línea (conserve como máximo 2 líneas, sin truncamiento agresivo),
+                    // El tamaño de fuente anti-ampliación se comprime en una fila con el botón de cerrar a la derecha
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

@@ -1,5 +1,5 @@
-// Composable 按 Compose 约定用 PascalCase 命名，与 detekt 的 kotlin 命名规则冲突；
-// 沿用项目既有做法（见 MusePopover.kt / MuseFloatingActionMenu.kt）在文件级豁免。
+// Composable Según la convención Compose, PascalCase se utiliza para nombrar, lo que entra en conflicto con las reglas de denominación de kotlin de detekt;
+// Siga las prácticas establecidas del proyecto (consulte MusePopover.kt / MuseFloatingActionMenu.kt) para conocer las exenciones a nivel de archivo.
 @file:Suppress("FunctionNaming")
 
 package io.zer0.muse.ui.chat
@@ -27,22 +27,22 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 对话流里的"上下文已压缩"分隔线。
+ * en el flujo de conversación"El contexto está comprimido."Divisor.
  *
- * ## 它表达什么
+ * ## que expresa
  *
- * 这条线以上的对话已经并入摘要：**模型不再逐条看到它们**。界面仍然保留原文（点一下可展开），
- * 因为用户需要能回看自己说过什么——但默认收起，让压缩后的会话看起来像"从新上下文继续"，
- * 而不是"中间插了一段摘要"。
+ * La conversación sobre esta línea se ha fusionado en el resumen:**El modelo ya no los ve artículo por artículo.**. La interfaz aún conserva el texto original (haga clic para expandir),
+ * Porque los usuarios necesitan poder recordar lo que dijeron.——Pero está contraído de forma predeterminada, por lo que la sesión comprimida parece"Continuar desde el nuevo contexto",
+ * en lugar de"Se inserta un resumen en el medio.".
  *
- * ## 与摘要消息的区别
+ * ## Diferencias con los mensajes de resumen
  *
- * 真正发给模型的摘要是 `[COMPRESSED]` 开头的 SYSTEM 消息（见 ContextCheckpointMerge）；
- * 本条只是界面锚点，不参与任何请求组装。
+ * El resumen realmente enviado al modelo es `[COMPRESSED]` Mensaje del SISTEMA al principio (ver ContextCheckpointMerge);
+ * Este artículo es solo un ancla de interfaz y no participa en ningún ensamblaje de solicitudes.
  *
- * @param totalCovered 累计并入摘要的条数；0 表示未知（旧检查点），此时不显示条数
- * @param expanded 老消息当前是否展开
- * @param onToggle 点击切换展开/收起
+ * @param totalCovered El número acumulado de artículos incorporados al resumen;0 Indica desconocido (punto de control antiguo), el número de entradas no se muestra en este momento
+ * @param expanded Si el mensaje anterior está actualmente expandido
+ * @param onToggle Haga clic para alternar para expandir/cerrar
  */
 @Composable
 fun ChatContextDivider(totalCovered: Int, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
@@ -78,8 +78,8 @@ fun ChatContextDivider(totalCovered: Int, expanded: Boolean, onToggle: () -> Uni
                 tint = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.size(14.dp),
             )
-            // 文案长度随语言与条数变化（德语/俄语明显更长），给足宽度并限行，
-            // 避免在窄屏放大字号下逐字换行。
+            // La extensión de la copia varía según el idioma y el número de artículos (alemán/El ruso es significativamente más largo), dando suficiente ancho y limitando la línea,
+            // Evite ajustar líneas palabra por palabra con tamaños de fuente ampliados en pantallas estrechas.
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,

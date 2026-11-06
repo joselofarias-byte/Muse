@@ -42,7 +42,7 @@ class AutomationWorkflowResumeTest {
 
             assertFalse(first.isError)
             assertFalse(resumed.isError)
-            assertTrue(resumed.content.contains("已从工作流断点恢复"))
+            assertTrue(resumed.content.contains("Reanudado desde el punto de interrupción del flujo de trabajo"))
         } finally {
             directory.deleteRecursively()
         }
@@ -72,7 +72,7 @@ class AutomationWorkflowResumeTest {
             val retried = workflow.run(listOf(step), runId = "safe-run-2", retryUnknown = true)
 
             assertTrue(blocked.isError)
-            assertTrue(blocked.content.contains("结果可能未知"))
+            assertTrue(blocked.content.contains("se desconozcan los resultados"))
             assertFalse(retried.isError)
         } finally {
             directory.deleteRecursively()
@@ -128,7 +128,7 @@ class AutomationWorkflowResumeTest {
             assertFalse(succeeded.isError)
             assertTrue(rejected.isError)
             assertTrue(rejectedRetry.isError)
-            assertFalse(rejectedRetry.content.contains("结果可能未知"))
+            assertFalse(rejectedRetry.content.contains("se desconozcan los resultados"))
             coVerify(exactly = 1) { displayManager.exec("input -d 42 tap 120 640") }
             coVerify(exactly = 0) { displayManager.exec(match { it.contains("reboot") }) }
         } finally {
@@ -171,7 +171,7 @@ class AutomationWorkflowResumeTest {
             )
 
             assertFalse(outcome.isError)
-            assertTrue(outcome.content.contains("验证=true"))
+            assertTrue(outcome.content.contains("verificar=true"))
             val persistedResult = journal.load("virtual-semantic-tap-run")[0]?.result.orEmpty()
             assertFalse(persistedResult.contains("Delete account"))
             assertFalse(persistedResult.contains("Account deleted"))
@@ -212,7 +212,7 @@ class AutomationWorkflowResumeTest {
             assertTrue(first.isError)
             assertTrue(first.isError)
             assertTrue(resume.isError)
-            assertTrue(resume.content.contains("结果可能未知"))
+            assertTrue(resume.content.contains("se desconozcan los resultados"))
             coVerify(exactly = 1) { displayManager.exec("input -d 42 swipe 360 1049 360 358 450") }
             coVerify(exactly = 1) { displayManager.exec("input -d 42 tap 140 230") }
         } finally {
@@ -252,7 +252,7 @@ class AutomationWorkflowResumeTest {
             assertFalse(persisted.contains(codeSecret))
             assertTrue(persisted.contains("test_enc:"))
             assertTrue(resumed.content.contains(outputSecret))
-            assertTrue(resumed.content.contains("安全断点恢复"))
+            assertTrue(resumed.content.contains("recuperación segura de puntos de interrupción"))
             assertTrue(resumed.content.contains("wait"))
             assertEquals(1, calls)
         } finally {
@@ -306,7 +306,7 @@ class AutomationWorkflowResumeTest {
             val resumed = workflow.run(listOf(step), runId = "node-script-corrupt-run")
 
             assertTrue(resumed.isError)
-            assertTrue(resumed.content.contains("结果可能未知"))
+            assertTrue(resumed.content.contains("se desconozcan los resultados"))
             assertEquals(0, calls)
         } finally {
             directory.deleteRecursively()
@@ -398,7 +398,7 @@ class AutomationWorkflowResumeTest {
             assertTrue(journal.load("cancel-run")[0]?.status == "running")
             val resumed = workflow.run(listOf(step), runId = "cancel-run")
             assertTrue(resumed.isError)
-            assertTrue(resumed.content.contains("结果可能未知"))
+            assertTrue(resumed.content.contains("se desconozcan los resultados"))
         } finally {
             directory.deleteRecursively()
         }

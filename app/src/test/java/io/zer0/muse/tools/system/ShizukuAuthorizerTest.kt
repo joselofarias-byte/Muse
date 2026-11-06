@@ -18,10 +18,10 @@ import java.lang.reflect.Field
  * when unauthorized, execute short-circuits to an exitCode=-1 denial result.
  * This test locks in that invariant:
  *
- *  - unauthorized (checkPermissionProbe={false}): execute returns "Shizuku 未授权"
+ *  - unauthorized (checkPermissionProbe={false}): execute returns "Shizuku No autorizado"
  *    and the shellService field is null (lazy binding was never triggered).
  *  - authorized but service binding failed (backoff window hit): returns
- *    "绑定失败" / "不可用" — rejection happens before IShellService.execute.
+ *    "Error al vincular" / "No disponible" — rejection happens before IShellService.execute.
  *
  * Robolectric provides the Android Context (the ShizukuAuthorizer constructor needs
  * a non-null Context but the rejection paths under test never call any Context method).
@@ -50,7 +50,7 @@ class ShizukuAuthorizerTest {
 
         assertEquals(-1, result.exitCode)
         assertFalse(result.isSuccess)
-        assertTrue(result.stderr.contains("Shizuku 未授权"))
+        assertTrue(result.stderr.contains("Shizuku No autorizado"))
         // shellService never bound when unauthorized — observable evidence that
         // IShellService was never reached
         assertEquals(null, readField(authorizer, "shellService"))
@@ -88,7 +88,7 @@ class ShizukuAuthorizerTest {
 
         assertEquals(-1, result.exitCode)
         assertFalse(result.isSuccess)
-        assertTrue(result.stderr.contains("绑定失败") || result.stderr.contains("不可用"))
+        assertTrue(result.stderr.contains("Error al vincular") || result.stderr.contains("No disponible"))
         // shellService is still null when binding fails — rejection happens before
         // IShellService.execute
         assertEquals(null, readField(authorizer, "shellService"))

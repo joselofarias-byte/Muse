@@ -14,13 +14,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 
 /**
- * P2-2 拆分：外观/主题子仓库。
+ * P2-2 Dividido: Apariencia/Subrepositorio de temas.
  *
- * 与 SettingsRepository 共用同一个 `muse_settings` DataStore 文件，
- * 只承载主题模式、主题 id、深色主题、定时切换、动态取色与自定义主题。
- * 后续 SettingsRepository 将逐步委托到本类，最终只保留聚合门面。
+ * Compartido con el repositorio de configuración `muse_settings` DataStore archivos,
+ * Solo incluye modo de tema, identificación de tema, tema oscuro, cambio programado, selección dinámica de color y temas personalizados.
+ * El SettingsRepository posterior se delegará gradualmente a esta clase y, finalmente, solo se conservará la fachada de agregación.
  */
-/** 派生配置流去重：DataStore.data 只对整份 Preferences 去重，map 后各自去重以抑制无关 key 触发的相同值重复发射。 */
+/** Derivar la deduplicación del flujo de configuración:DataStore.data Elimine únicamente los duplicados de todas las Preferencias.map Luego, cada uno se deduplica para suprimir la emisión repetida del mismo valor provocada por claves irrelevantes. */
 private fun <T> Flow<Preferences>.mapDistinct(transform: suspend (Preferences) -> T): Flow<T> = map(transform).distinctUntilChanged()
 
 class AppearanceSettingsStore(private val context: Context) {
@@ -42,17 +42,17 @@ class AppearanceSettingsStore(private val context: Context) {
         decodePrefsOrNull(prefs[KEY_CUSTOM_THEMES], ListSerializer(CustomTheme.serializer()), "CustomThemes") ?: emptyList()
     }
 
-    /** E2: 自定义正文字体文件绝对路径(filesDir/fonts/ 下);null 表示使用系统默认字体。 */
+    /** E2: Ruta absoluta al archivo de fuente de texto personalizado(filesDir/fonts/ abajo);null Indica el uso de la fuente predeterminada del sistema. */
     val customFontPathFlow: Flow<String?> = store.data.mapDistinct { prefs -> prefs[KEY_CUSTOM_FONT_PATH] }
 
-    /** H5: 高对比主题开关 — 增强前景/背景对比,面向弱视用户(a11y 策略)。 */
+    /** H5: Cambio de tema de alto contraste — Mejorar las perspectivas/contraste de fondo,Para usuarios con baja visión(a11y Estrategia). */
     val highContrastFlow: Flow<Boolean> = store.data.mapDistinct { prefs -> prefs[KEY_HIGH_CONTRAST] ?: false }
 
     /**
-     * v2.5.5: 液态玻璃模式 — off/water(水玻璃)/frost(磨砂玻璃)。
-     * 默认 frost（磨砂玻璃）—— 新用户首装与旧用户升级（未主动设置过）都拿到这个默认。
-     * 旧布尔键值兼容: true→frost, false→off。
-     * 注意:只有键为 null（从未写过）才用兜底，用户显式选过 off 不会被覆盖。
+     * v2.5.5: modo de vidrio líquido — off/water(vaso de agua)/frost(vidrio esmerilado).
+     * Escarcha predeterminada (vidrio esmerilado)—— Los nuevos usuarios obtendrán este valor predeterminado para su primera instalación y las actualizaciones de los usuarios antiguos (que no se han configurado activamente).
+     * Compatibilidad de valores clave booleanos antiguos: true→frost, false→off.
+     * Nota:Sólo si la clave es nula (nunca se ha escrito) se utilizará. Si el usuario lo desactiva explícitamente, no se sobrescribirá.
      */
     val liquidGlassModeFlow: Flow<String> = store.data.mapDistinct { prefs ->
         when (val legacy = prefs[KEY_LIQUID_GLASS]) {
@@ -62,8 +62,8 @@ class AppearanceSettingsStore(private val context: Context) {
     }
 
     /**
-     * v2.5.5: 玻璃强度(0..100 整数百分比)。默认 55（对应设置页「中」档）。
-     * 旧三档迁移: 低→25 中→50 高→85。
+     * v2.5.5: resistencia del vidrio(0..100 Porcentaje de números enteros). El valor predeterminado es 55 (correspondiente al rango "medio" de la página de configuración).
+     * Migración de la antigua tercera marcha.: bajo→25 en→50 alto→85.
      */
     val liquidGlassStrengthFlow: Flow<Int> = store.data.mapDistinct { prefs ->
         when (val legacy = prefs[KEY_LIQUID_GLASS_LEVEL]) {
@@ -112,20 +112,20 @@ class AppearanceSettingsStore(private val context: Context) {
         }
     }
 
-    /** H5: 保存高对比主题开关。 */
+    /** H5: Guarde el cambio de tema de alto contraste. */
     suspend fun saveHighContrast(enabled: Boolean) {
         store.edit { it[KEY_HIGH_CONTRAST] = enabled }
     }
 
-    /** v2.5.0: 保存液态玻璃模式(off/water/frost)。 */
+    /** v2.5.0: Guardar modo vidrio líquido(off/water/frost). */
     suspend fun saveLiquidGlassMode(mode: String) {
         store.edit {
             it[KEY_LIQUID_GLASS_MODE] = mode
-            it.remove(KEY_LIQUID_GLASS) // 清理旧布尔键
+            it.remove(KEY_LIQUID_GLASS) // Limpiar viejas claves booleanas
         }
     }
 
-    /** v2.5.0: 保存玻璃强度(0..100)。 */
+    /** v2.5.0: Preservar la resistencia del vidrio(0..100). */
     suspend fun saveLiquidGlassStrength(strength: Int) {
         store.edit { it[KEY_LIQUID_GLASS_STRENGTH] = strength.coerceIn(0, 100) }
     }
@@ -148,12 +148,12 @@ class AppearanceSettingsStore(private val context: Context) {
     private fun <T> decodePrefsOrNull(value: String?, serializer: kotlinx.serialization.KSerializer<T>, label: String): T? {
         if (value.isNullOrBlank()) return null
         return runCatching { AppJson.decodeFromString(serializer, value) }
-            .onFailure { e -> android.util.Log.w("AppearanceStore", "$label 解析失败", e) }
+            .onFailure { e -> android.util.Log.w("AppearanceStore", "$label El análisis falló", e) }
             .getOrNull()
     }
 
     companion object {
-        /** 默认主题 id — 与 MainActivity/ThemeSection 保持一致(R-UI-03)。 */
+        /** tema predeterminado id — Consistente con MainActivity/ThemeSection(R-UI-03). */
         const val DEFAULT_THEME_ID = "mono"
 
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")

@@ -48,12 +48,12 @@ import io.zer0.muse.ui.theme.MusePaddings
 import kotlinx.coroutines.launch
 
 /**
- * v1.0.15: 可缩放图片 — 支持双指缩放、双击缩放、缩放后拖拽平移。
+ * v1.0.15: Imágenes ampliables — Admite zoom con dos dedos, hacer doble clic para hacer zoom y arrastrar y desplazarse después de hacer zoom.
  *
- * 从 MessageBubble.kt v1.60-B 实现抽取为共享组件,供单聊与群聊全屏媒体查看器复用。
- * - 缩放范围 1x-5x(detectTransformGestures)
- * - 双击在 1x ↔ 2.5x 间平滑切换(300ms Animatable 过渡)
- * - scale/offset 用 rememberSaveable,旋屏后保持缩放状态
+ * Extraído de la implementación de MessageBubble.kt v1.60-B como componente compartido,Para la reutilización del visor multimedia en pantalla completa de chat individual y chat grupal.
+ * - Rango de zoom 1x-5x(detectTransformGestures)
+ * - Haga doble clic en 1x ↔ 2.5x Cambio suave entre(300ms Animatable Transición)
+ * - scale/offset usar rememberSaveable,Mantener el estado de zoom después de girar la pantalla
  */
 @Composable
 internal fun ZoomableImage(model: Any?, modifier: Modifier = Modifier, contentDescription: String? = null) {
@@ -120,18 +120,18 @@ internal fun ZoomableImage(model: Any?, modifier: Modifier = Modifier, contentDe
 }
 
 /**
- * v1.0.15: 全屏媒体查看器 — HorizontalPager 左右切换 + 双指/双击缩放。
+ * v1.0.15: Visor multimedia en pantalla completa — HorizontalPager Cambiar izquierda y derecha + dos dedos/Haga doble clic para ampliar.
  *
- * 从 MessageBubble.kt v1.60-B 抽取为共享组件,统一单聊与群聊的图片查看交互。
- * - 遮罩 colorScheme.scrim(0.95 alpha)
- * - 顶部:页码指示器(多图时)+ 关闭按钮
- * - dismissOnClickOutside = false,避免缩放手势误触关闭
+ * Extraído de MessageBubble.kt v1.60-B como componente compartido,Unifique la interacción de visualización de imágenes del chat individual y del chat grupal.
+ * - máscara colorScheme.scrim(0.95 alpha)
+ * - arriba:Indicador de página(Cuando hay varias imágenes)+ botón cerrar
+ * - dismissOnClickOutside = false,Evite cerrar accidentalmente el gesto de zoom
  *
- * @param images 图片 URL/data URI 列表
- * @param initialIndex 初始展示页索引
- * @param onDismiss 关闭回调
- * @param onSaveImage v1.0.80: 右下角下载按钮回调(传入当前页图片 URI);null 时不显示按钮。
- *   下载入口从消息气泡卡片移入大图预览,避免按钮遮挡画面。
+ * @param images Lista de URL de imagen/URI de datos
+ * @param initialIndex Índice de la página de visualización inicial
+ * @param onDismiss Cerrar devolución de llamada
+ * @param onSaveImage v1.0.80: Devolución de llamada del botón Descargar en la esquina inferior derecha(Pase en la imagen de la página actual. URI);null El botón no se muestra.
+ *   La entrada de descarga se ha movido de la tarjeta de burbujas de mensaje a la vista previa de la imagen grande.,Evite los botones que bloquean la pantalla.
  */
 @Composable
 internal fun FullScreenMediaViewer(
@@ -169,7 +169,7 @@ internal fun FullScreenMediaViewer(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            // 顶部:关闭按钮 + 页码指示器
+            // arriba:Botón cerrar + indicador de página
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -178,7 +178,7 @@ internal fun FullScreenMediaViewer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 左侧占位(宽度匹配关闭按钮触摸目标),使页码居中、关闭按钮靠右
+                // Marcador de posición a la izquierda(El ancho coincide con el objetivo táctil del botón de cierre),Centra el número de página y mueve el botón de cerrar hacia la derecha.
                 Spacer(modifier = Modifier.width(MuseIconSizes.touchTarget))
                 if (images.size > 1) {
                     Surface(
@@ -203,7 +203,7 @@ internal fun FullScreenMediaViewer(
                     )
                 }
             }
-            // v1.0.80: 右下角下载按钮(仅在回调非空时显示)
+            // v1.0.80: Botón de descarga en la esquina inferior derecha(Solo se muestra si la devolución de llamada no es nula)
             if (onSaveImage != null) {
                 val currentImage = images.getOrNull(pagerState.currentPage)
                 if (currentImage != null) {

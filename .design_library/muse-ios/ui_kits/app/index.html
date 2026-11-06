@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Muse iOS · 对话 / 记忆 / 设置</title>
+<title>Muse iOS · Diálogo/Memoria/Configuración</title>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -76,10 +76,10 @@ function LargeTitle({ title }) {
 
 function TabBar({ active, onTab }) {
   const tabs = [
-    { icon: 'message-circle', label: '对话' },
-    { icon: 'layers', label: '记忆' },
-    { icon: 'book-open', label: '知识库' },
-    { icon: 'settings', label: '设置' }
+    { icon: 'message-circle', label: 'dialogo' },
+    { icon: 'layers', label: 'memoria' },
+    { icon: 'book-open', label: 'base de conocimientos' },
+    { icon: 'settings', label: 'ajustes' }
   ];
   return (
     <div data-component="navigation-bar" className="tabbar">
@@ -100,54 +100,54 @@ function HomeIndicator() {
 function ChatView() {
   return (
     <div className="scroll-area">
-      <LargeTitle title="对话" />
+      <LargeTitle title="dialogo" />
       <div className="chat-content">
         <div data-component="conversation-list" className="conv-list">
           <div className="conv-item selected">
-            <div className="conv-avatar">缪</div>
+            <div className="conv-avatar">Miao</div>
             <div className="conv-content">
               <div className="conv-title-row">
-                <span className="conv-title uikit-truncate">与缪斯聊聊</span>
-                <span className="conv-time">刚刚</span>
+                <span className="conv-title uikit-truncate">Charla con la musa</span>
+                <span className="conv-time">justo ahora</span>
               </div>
-              <span className="conv-preview uikit-truncate">今天读到了一段很有意思的话…</span>
+              <span className="conv-preview uikit-truncate">Leí un pasaje muy interesante hoy.…</span>
             </div>
           </div>
         </div>
 
         <div data-component="message-bubble" className="msg end">
-          <div className="bubble bubble-user">帮我总结一下今天的读书笔记</div>
+          <div className="bubble bubble-user">Ayúdame a resumir las notas de lectura de hoy.</div>
         </div>
 
         <div data-component="thinking-card" className="tc tc--collapsed">
           <i data-lucide="brain" width="14" height="14" style={{ color: 'var(--muted)' }}></i>
-          <span className="tc__label">思考中…</span>
+          <span className="tc__label">Pensando…</span>
           <i data-lucide="chevron-down" width="14" height="14" style={{ color: 'var(--ink-tertiary)' }}></i>
         </div>
 
         <div data-component="message-bubble" className="msg">
-          <div className="bubble bubble-ai">今天你读到了王国维的《人间词话》，其中『境界』一说颇为精妙。所谓境界，不仅是景物描绘，更是词人真感情的流露…</div>
+          <div className="bubble bubble-ai">Hoy lees "Palabras humanas" de Wang Guowei, en las que el "reino" es bastante sutil. El llamado reino no es sólo la descripción del paisaje, sino también la expresión de los verdaderos sentimientos del poeta.…</div>
         </div>
 
         <div data-component="tool-call-card" className="tool-card">
           <div className="tc-header">
             <span className="tc-icon ok"><i data-lucide="check" width="12" height="12"></i></span>
             <span className="tc-name">web_search</span>
-            <span className="tc-status ok">成功</span>
+            <span className="tc-status ok">éxito</span>
           </div>
-          <div className="tc-result">找到 3 条相关结果</div>
+          <div className="tc-result">Se encontraron 3 resultados relacionados</div>
         </div>
 
         <div data-component="approval-card" className="acard low">
           <div className="ahd">
             <i data-lucide="shield-check" className="aico" width="20" height="20" style={{ color: 'var(--primary)' }}></i>
-            <span className="atitle">请求批准</span>
-            <span className="atool">工具调用</span>
+            <span className="atitle">solicitar aprobación</span>
+            <span className="atool">llamada de herramienta</span>
           </div>
-          <div className="adesc">即将执行 web_search，搜索「人间词话 境界」</div>
+          <div className="adesc">Web_search está a punto de ejecutarse para buscar "El reino de las palabras humanas"</div>
           <div className="acts">
-            <button className="abtn approve">批准</button>
-            <button className="abtn reject">拒绝</button>
+            <button className="abtn approve">aprobar</button>
+            <button className="abtn reject">rechazar</button>
           </div>
         </div>
       </div>
@@ -157,20 +157,20 @@ function ChatView() {
 
 function MemoryView() {
   const steps = [
-    { name: '搜索资料', state: 'completed' },
-    { name: '分析内容', state: 'completed' },
-    { name: '生成摘要', state: 'completed' },
-    { name: '整理要点', state: 'active' },
-    { name: '输出结果', state: 'pending' }
+    { name: 'Buscar información', state: 'completed' },
+    { name: 'Analizar contenido', state: 'completed' },
+    { name: 'Generar resumen', state: 'completed' },
+    { name: 'Organiza los puntos clave', state: 'active' },
+    { name: 'Resultados de salida', state: 'pending' }
   ];
   return (
     <div className="scroll-area">
-      <LargeTitle title="记忆" />
+      <LargeTitle title="memoria" />
       <div className="mem-content">
         <div data-component="agent-plan-card" className="plan-card executing">
           <div className="plan-header">
             <i data-lucide="brain" width="20" height="20" style={{ color: 'var(--primary)' }}></i>
-            <span className="plan-title">Agent 计划</span>
+            <span className="plan-title">Agent planear</span>
             <span className="plan-progress">3/5</span>
           </div>
           <ul className="timeline">
@@ -182,7 +182,7 @@ function MemoryView() {
             ))}
           </ul>
           <a className="plan-action" href="#" onClick={(e) => e.preventDefault()}>
-            <i data-lucide="pause" width="14" height="14"></i>暂停
+            <i data-lucide="pause" width="14" height="14"></i>pausa
           </a>
         </div>
 
@@ -191,7 +191,7 @@ function MemoryView() {
             <div className="mc-shimmer"></div>
             <div className="mc-gen">
               <i data-lucide="image" width="24" height="24" style={{ color: 'var(--muted)' }}></i>
-              <span className="mc-gen-txt">生成中…</span>
+              <span className="mc-gen-txt">generando…</span>
               <div className="mc-prog"><div className="mc-prog-fill"></div></div>
               <span className="mc-pct">65%</span>
             </div>
@@ -202,16 +202,16 @@ function MemoryView() {
           <div className="mc-media">
             <div className="mc-img"></div>
           </div>
-          <div className="mc-caption">王国维《人间词话》意境图</div>
+          <div className="mc-caption">La concepción artística de "Human Words" de Wang Guowei</div>
           <div className="mc-actions">
-            <a href="#" onClick={(e) => e.preventDefault()}>保存</a>
-            <a href="#" onClick={(e) => e.preventDefault()}>分享</a>
+            <a href="#" onClick={(e) => e.preventDefault()}>guardar</a>
+            <a href="#" onClick={(e) => e.preventDefault()}>Compartir</a>
           </div>
         </div>
 
         <div data-component="media-card" className="mc">
           <div className="mc-media mc-video-bg">
-            <button className="mc-play" aria-label="播放"></button>
+            <button className="mc-play" aria-label="jugar"></button>
           </div>
           <div className="mc-timeline">
             <span className="mc-time">0:00</span>
@@ -227,12 +227,12 @@ function MemoryView() {
 function KnowledgeView() {
   return (
     <div className="scroll-area">
-      <LargeTitle title="知识库" />
+      <LargeTitle title="base de conocimientos" />
       <div className="empty-wrap">
         <div data-component="conversation-list" className="empty-state">
-          <div className="empty-title">尚无收藏</div>
-          <div className="empty-body">将对话中的要点保存到知识库，随时回顾</div>
-          <a className="empty-cta" href="#" onClick={(e) => e.preventDefault()}>新建知识</a>
+          <div className="empty-title">Aún no hay favoritos</div>
+          <div className="empty-body">Guarde los puntos clave de la conversación en la base de conocimientos para revisarlos en cualquier momento.</div>
+          <a className="empty-cta" href="#" onClick={(e) => e.preventDefault()}>Crear nuevos conocimientos</a>
         </div>
       </div>
     </div>
@@ -244,54 +244,54 @@ function SettingsView() {
   const [stream, setStream] = useState(true);
   return (
     <div className="scroll-area">
-      <LargeTitle title="设置" />
+      <LargeTitle title="ajustes" />
       <div className="set-content">
         <div data-component="settings-page" className="profile-card">
-          <div className="avatar"><span className="avatar-initial">缪</span></div>
+          <div className="avatar"><span className="avatar-initial">Miao</span></div>
           <div className="profile-info">
-            <div className="profile-name">缪斯</div>
-            <div className="profile-sub">GPT-4 · 陪伴模式</div>
+            <div className="profile-name">musa</div>
+            <div className="profile-sub">GPT-4 · modo de compañía</div>
           </div>
-          <button className="profile-edit"><i data-lucide="edit" width="14" height="14"></i>编辑</button>
+          <button className="profile-edit"><i data-lucide="edit" width="14" height="14"></i>Editar</button>
         </div>
 
-        <div className="section-header">通用</div>
+        <div className="section-header">Universales</div>
         <div data-component="settings-page" className="settings-group">
           <div className="settings-row">
-            <span className="settings-label">深色模式</span>
-            <button className={'ios-switch' + (dark ? ' on' : '')} onClick={() => setDark(!dark)} aria-label="深色模式"></button>
+            <span className="settings-label">modo oscuro</span>
+            <button className={'ios-switch' + (dark ? ' on' : '')} onClick={() => setDark(!dark)} aria-label="modo oscuro"></button>
           </div>
           <div className="settings-row">
-            <span className="settings-label">语言</span>
+            <span className="settings-label">Idioma</span>
             <div className="row-value">
-              <span className="settings-value">简体中文</span>
+              <span className="settings-value">Chino simplificado</span>
               <i data-lucide="chevron-right" className="chevron" width="9" height="14"></i>
             </div>
           </div>
           <div className="settings-row">
-            <span className="settings-label">字体大小</span>
+            <span className="settings-label">tamaño de fuente</span>
             <div className="row-value">
-              <span className="settings-value">标准</span>
+              <span className="settings-value">Estándar</span>
               <i data-lucide="chevron-right" className="chevron" width="9" height="14"></i>
             </div>
           </div>
         </div>
 
-        <div className="section-header">AI 模型</div>
+        <div className="section-header">AI modelo</div>
         <div data-component="settings-page" className="settings-group">
           <div className="settings-row">
-            <span className="settings-label">模型</span>
+            <span className="settings-label">modelo</span>
             <div className="row-value">
               <span className="settings-value">GPT-4</span>
               <i data-lucide="chevron-right" className="chevron" width="9" height="14"></i>
             </div>
           </div>
           <div className="settings-row">
-            <span className="settings-label">流式输出</span>
-            <button className={'ios-switch' + (stream ? ' on' : '')} onClick={() => setStream(!stream)} aria-label="流式输出"></button>
+            <span className="settings-label">Salida de transmisión</span>
+            <button className={'ios-switch' + (stream ? ' on' : '')} onClick={() => setStream(!stream)} aria-label="Salida de transmisión"></button>
           </div>
           <div className="settings-row">
-            <span className="settings-label">温度</span>
+            <span className="settings-label">temperatura</span>
             <div className="slider-wrap">
               <div className="ios-slider">
                 <div className="ios-slider-track">
@@ -304,17 +304,17 @@ function SettingsView() {
           </div>
         </div>
 
-        <div className="section-header">关于</div>
+        <div className="section-header">Acerca de</div>
         <div data-component="settings-page" className="settings-group">
           <div className="settings-row">
-            <span className="settings-label">版本</span>
+            <span className="settings-label">versión</span>
             <div className="row-value">
               <span className="settings-value">1.0.0</span>
               <i data-lucide="chevron-right" className="chevron" width="9" height="14"></i>
             </div>
           </div>
           <div className="settings-row action-row">
-            <span className="settings-label">检查更新</span>
+            <span className="settings-label">Buscar actualizaciones</span>
             <i data-lucide="chevron-right" className="chevron" width="9" height="14"></i>
           </div>
         </div>
@@ -334,9 +334,9 @@ function App() {
       {view === 0 ? <ChatView /> : view === 1 ? <MemoryView /> : view === 2 ? <KnowledgeView /> : <SettingsView />}
       {view === 0 && (
         <div data-component="input-bar" className="inputbar">
-          <button className="ib-btn ib-tool" aria-label="工具"><i data-lucide="plus" width="20" height="20"></i></button>
-          <textarea placeholder="对话" rows="1"></textarea>
-          <button className="ib-btn ib-send">发送</button>
+          <button className="ib-btn ib-tool" aria-label="Herramientas"><i data-lucide="plus" width="20" height="20"></i></button>
+          <textarea placeholder="dialogo" rows="1"></textarea>
+          <button className="ib-btn ib-send">enviar</button>
         </div>
       )}
       <TabBar active={view} onTab={setView} />

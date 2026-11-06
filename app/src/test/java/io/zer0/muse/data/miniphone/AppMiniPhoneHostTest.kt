@@ -41,10 +41,10 @@ import org.koin.dsl.module
 import java.io.File
 
 /**
- * 小手机宿主实现的行为护栏。
+ * Barreras de comportamiento implementadas por pequeños hosts de teléfonos celulares.
  *
- * 生成端口、TTS 端口、语音存档端口全部注入假实现 —— 单测不连模型、不起 TTS 引擎，
- * 只验宿主自己做了哪些映射、哪些裁剪、失败时会不会白落盘。
+ * Generar puerto,TTS Los puertos y los puertos de archivo de voz están inyectados con implementaciones falsas. —— Prueba única sin modelo conectado, no puede permitirse el lujo del motor TTS,
+ * Simplemente verifique qué mapeo y recorte ha realizado el host y si el disco se perderá en caso de falla.
  */
 class AppMiniPhoneHostTest {
 
@@ -52,173 +52,173 @@ class AppMiniPhoneHostTest {
     val tempDir = TemporaryFolder()
 
     @Test
-    fun `observeCharacters 把助手映射成通讯录条目`() = runBlocking {
+    fun `observeCharacters Asistentes de mapas para direcciones de asientos en el libro de direcciones`() = runBlocking {
         val repo = mockk<AssistantRepository>(relaxed = true)
         every { repo.observeAll } returns flowOf(
             listOf(
                 AssistantEntity(
                     id = "a1",
-                    name = "阿绫",
+                    name = "un ling",
                     avatarImageUrl = "/data/avatar/a1.png",
-                    personaDefinition = "# 温柔的插画师\n喜欢夜里画画",
+                    personaDefinition = "# gentil ilustrador\nMe gusta dibujar por la noche",
                 ),
-                AssistantEntity(id = "a2", name = "无头像助手"),
+                AssistantEntity(id = "a2", name = "Sin asistente de avatar"),
             ),
         )
 
         val characters = host(repo = repo).observeCharacters().first()
 
-        assertEquals("两个助手应映射成两个角色", 2, characters.size)
+        assertEquals("Dos asistentes deben asignarse a dos roles", 2, characters.size)
         assertEquals("a1", characters[0].id)
-        assertEquals("阿绫", characters[0].name)
+        assertEquals("un ling", characters[0].name)
         assertEquals("/data/avatar/a1.png", characters[0].avatarUri)
-        assertEquals("一句话人设取人格定义首行", "温柔的插画师", characters[0].tagline)
+        assertEquals("La primera línea de la definición de personalidad en una frase.", "gentil ilustrador", characters[0].tagline)
         assertEquals("a2", characters[1].id)
-        assertNull("没设头像应为 null", characters[1].avatarUri)
-        assertEquals("没有人设给空串", "", characters[1].tagline)
+        assertNull("Ningún conjunto de avatar debe ser null", characters[1].avatarUri)
+        assertEquals("Nadie establece la cadena vacía.", "", characters[1].tagline)
     }
 
     @Test
-    fun `observeProfile 取用户画像的昵称头像与签名`() = runBlocking {
+    fun `observeProfile Obtenga el apodo, avatar y firma del retrato del usuario`() = runBlocking {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.userProfileFlow } returns flowOf(
             UserProfile(
-                userNickName = " 子奇 ",
+                userNickName = " Ziqi ",
                 avatarUri = "/data/avatar/me.png",
-                bio = "夜里写代码的人",
+                bio = "Personas que codifican por la noche",
             ),
         )
 
         val profile = host(settings = settings).observeProfile().first()
 
-        assertEquals("子奇", profile.nickname)
+        assertEquals("Ziqi", profile.nickname)
         assertEquals("/data/avatar/me.png", profile.avatarUri)
-        assertEquals("夜里写代码的人", profile.signature)
-        assertEquals("壁纸暂不接宿主", "", profile.wallpaperUri)
-        assertEquals("封面暂不接宿主", "", profile.coverImageUri)
+        assertEquals("Personas que codifican por la noche", profile.signature)
+        assertEquals("El fondo de pantalla aún no acepta host", "", profile.wallpaperUri)
+        assertEquals("La portada no acepta anfitriones temporalmente", "", profile.coverImageUri)
     }
 
     @Test
-    fun `respond 把活动事件原样透传并把文本剥干净`() = runBlocking {
+    fun `respond Transmita eventos activos tal como están y elimine el texto limpiamente`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
         every { runner.reply(any(), any(), any()) } returns flowOf(
             MpReplyEvent.Activity(MpActivityKind.SEARCHING),
-            MpReplyEvent.Text("<think>先想想</think>\"刚查到了。\""),
+            MpReplyEvent.Text("<think>piensa primero</think>\"Acabo de comprobarlo.\""),
         )
 
         val events = host(runner = runner, contextBuilder = conversationBuilder())
-            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "帮我看看天气")))
+            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "Comprueba el tiempo por mí")))
             .toList()
 
         assertEquals(
-            listOf(MpReplyEvent.Activity(MpActivityKind.SEARCHING), MpReplyEvent.Text("刚查到了。")),
+            listOf(MpReplyEvent.Activity(MpActivityKind.SEARCHING), MpReplyEvent.Text("Acabo de comprobarlo.")),
             events,
         )
     }
 
     @Test
-    fun `respond 用系统提示加历史拼出模型输入并滤掉系统行`() = runBlocking {
+    fun `respond Utilice las indicaciones del sistema y el historial para detallar la entrada del modelo y filtrar las líneas del sistema`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
         val captured = slot<List<UIMessage>>()
-        every { runner.reply(capture(captured), any(), any()) } returns flowOf(MpReplyEvent.Text("在"))
+        every { runner.reply(capture(captured), any(), any()) } returns flowOf(MpReplyEvent.Text("en"))
 
         val events = host(runner = runner, contextBuilder = conversationBuilder())
             .respond(
                 "a1",
                 listOf(
-                    MpChatTurn(MpActorType.USER, "在吗"),
-                    MpChatTurn(MpActorType.SYSTEM, "对方没有回应"),
-                    MpChatTurn(MpActorType.CHARACTER, "在"),
-                    MpChatTurn(MpActorType.USER, "帮我看看天气"),
+                    MpChatTurn(MpActorType.USER, "¿Está ahí?"),
+                    MpChatTurn(MpActorType.SYSTEM, "La otra parte no respondió."),
+                    MpChatTurn(MpActorType.CHARACTER, "en"),
+                    MpChatTurn(MpActorType.USER, "Comprueba el tiempo por mí"),
                 ),
             )
             .toList()
 
-        assertEquals(listOf(MpReplyEvent.Text("在")), events)
+        assertEquals(listOf(MpReplyEvent.Text("en")), events)
         val sent = captured.captured
         assertEquals(
             listOf(MessageRole.SYSTEM, MessageRole.USER, MessageRole.ASSISTANT, MessageRole.USER),
             sent.map { it.role },
         )
-        assertEquals("系统提示来自人格组装链", "你是阿绫", sent.first().content)
-        assertEquals("历史按原样接在后面", "帮我看看天气", sent.last().content)
+        assertEquals("El aviso del sistema proviene de la cadena de ensamblaje de personalidad.", "eres un ling", sent.first().content)
+        assertEquals("La historia sigue como es.", "Comprueba el tiempo por mí", sent.last().content)
     }
 
     @Test
-    fun `模型没给出文本时 respond 发 Failed`() = runBlocking {
+    fun `La respuesta se envía cuando el modelo no proporciona texto Failed`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
-        every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("<think>只有思考</think>"))
+        every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("<think>solo pensando</think>"))
 
         val events = host(runner = runner, contextBuilder = conversationBuilder())
-            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "在吗")))
+            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "¿Está ahí?")))
             .toList()
 
         assertEquals(listOf(MpReplyEvent.Failed), events)
     }
 
     @Test
-    fun `respond 向人格组装链申请语音标记约定`() = runBlocking {
+    fun `respond Aplicar a la cadena de ensamblaje de personalidad para la convención de marcado de voz`() = runBlocking {
         val runner = mockk<MiniPhoneToolTurnRunner>()
-        every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("在"))
+        every { runner.reply(any(), any(), any()) } returns flowOf(MpReplyEvent.Text("en"))
         val voiceEnabled = slot<Boolean>()
         val builder = mockk<MiniContextBuilder>(relaxed = true)
         coEvery {
             builder.buildMessages(assistant = any(), userContent = any(), sessionId = any(), capture(voiceEnabled))
         } answers {
             listOf(
-                UIMessage(role = MessageRole.SYSTEM, content = "你是阿绫"),
+                UIMessage(role = MessageRole.SYSTEM, content = "eres un ling"),
                 UIMessage(role = MessageRole.USER, content = secondArg()),
             )
         }
 
         host(runner = runner, contextBuilder = builder)
-            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "在吗")))
+            .respond("a1", listOf(MpChatTurn(MpActorType.USER, "¿Está ahí?")))
             .toList()
 
-        // 语音标记只在私信路径有意义:宿主必须主动要,否则模型永远不会输出标记
-        assertTrue("私信回复应开启语音标记约定", voiceEnabled.captured)
+        // Las etiquetas de voz sólo tienen significado en la ruta del mensaje privado:El anfitrión debe tomar la iniciativa.,De lo contrario, el modelo nunca generará el token.
+        assertTrue("Las respuestas a mensajes privados deben activar la convención de marcas de voz.", voiceEnabled.captured)
     }
 
     @Test
-    fun `composeMoment 走朋友圈口吻并且不注入动态评论文案`() = runBlocking {
+    fun `composeMoment Sigue el tono de Moments y no inyectes textos de comentarios dinámicos`() = runBlocking {
         val generator = mockk<MiniPhoneTextGenerator>(relaxed = true)
         val captured = slot<String>()
-        coEvery { generator.generate(any(), capture(captured), any()) } returns "<think>x</think>今天风很大，晾的衣服飞了。"
+        coEvery { generator.generate(any(), capture(captured), any()) } returns "<think>x</think>El viento era muy fuerte hoy y la ropa tendida a secar se fue volando."
 
-        val body = host(generator = generator).composeMoment("a1", "今天的天气")
+        val body = host(generator = generator).composeMoment("a1", "el clima de hoy")
 
-        assertEquals("今天风很大，晾的衣服飞了。", body)
-        assertTrue("素材应说明是发朋友圈: ${captured.captured}", captured.captured.contains("朋友圈"))
-        assertTrue("素材应带上 hint: ${captured.captured}", captured.captured.contains("今天的天气"))
+        assertEquals("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.", body)
+        assertTrue("Los materiales deben indicar que están publicados en Moments.: ${captured.captured}", captured.captured.contains("Moments"))
+        assertTrue("Se deben traer materiales hint: ${captured.captured}", captured.captured.contains("el clima de hoy"))
     }
 
     @Test
-    fun `朋友圈与私信的素材都压住系统标记`() = runBlocking {
+    fun `Los materiales en Moments y mensajes privados suprimen la marca del sistema`() = runBlocking {
         val captured = slot<String>()
         val generator = mockk<MiniPhoneTextGenerator>(relaxed = true)
-        coEvery { generator.generate(any(), capture(captured), any()) } returns "正文"
+        coEvery { generator.generate(any(), capture(captured), any()) } returns "Texto"
         val host = host(generator = generator)
 
         host.composeMoment("a1", null)
         assertBannedMarks(captured.captured)
-        assertTrue("动态要说明是自己发的: ${captured.captured}", captured.captured.contains("不是回复任何人"))
-        assertTrue("动态要求 30-80 字", captured.captured.contains("30-80"))
+        assertTrue("Al realizar actualizaciones, indique que las publicó usted mismo.: ${captured.captured}", captured.captured.contains("no es una respuesta para nadie"))
+        assertTrue("Requisitos dinámicos 30-80 palabras", captured.captured.contains("30-80"))
 
         host.composeProactiveMessage("a1", null)
         assertBannedMarks(captured.captured)
-        assertTrue("私信要说明是自己开口: ${captured.captured}", captured.captured.contains("你主动开口说的话"))
-        assertTrue("私信只要一两句", captured.captured.contains("一到两句话"))
+        assertTrue("Al enviar un mensaje privado, indique que está hablando usted mismo.: ${captured.captured}", captured.captured.contains("tomó la iniciativa de decir"))
+        assertTrue("Sólo una o dos frases en un mensaje privado.", captured.captured.contains("una o dos frases"))
     }
 
     @Test
-    fun `角色 maxTokens 不会把一句话放成几百 token`() = runBlocking {
+    fun `El rol maxTokens no pondrá una oración en cientos token`() = runBlocking {
         val captured = mutableListOf<Int>()
         val generator = mockk<MiniPhoneTextGenerator>(relaxed = true)
-        coEvery { generator.generate(any(), any(), capture(captured)) } returns "正文"
+        coEvery { generator.generate(any(), any(), capture(captured)) } returns "Texto"
         val repo = mockk<AssistantRepository>(relaxed = true)
         every { repo.observeAll } returns flowOf(emptyList())
-        coEvery { repo.getById("a1") } returns AssistantEntity(id = "a1", name = "阿绫", maxTokens = 4_000)
-        coEvery { repo.getById("a2") } returns AssistantEntity(id = "a2", name = "阿远", maxTokens = 40)
+        coEvery { repo.getById("a1") } returns AssistantEntity(id = "a1", name = "un ling", maxTokens = 4_000)
+        coEvery { repo.getById("a2") } returns AssistantEntity(id = "a2", name = "Ayuan", maxTokens = 40)
         val host = host(repo = repo, generator = generator)
 
         host.composeMoment("a1", null)
@@ -228,39 +228,39 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `cleanOutput 剥掉行尾的心情括号`() {
-        assertEquals("今天风很大，晾的衣服飞了。", composer().cleanOutput("今天风很大，晾的衣服飞了。\n（心情：平静）"))
-        assertEquals("今天风很大。", composer().cleanOutput("今天风很大。(心情: 有点低）"))
+    fun `cleanOutput Quita los corchetes de humor al final de la línea`() {
+        assertEquals("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.", composer().cleanOutput("El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.\n(estado de ánimo: tranquilo)"))
+        assertEquals("Hace mucho viento hoy.", composer().cleanOutput("Hace mucho viento hoy.(estado de ánimo: un poco bajo)"))
     }
 
     @Test
-    fun `cleanOutput 剥掉 MOOD 开头的整行`() {
-        assertEquals("今天风很大。", composer().cleanOutput("MOOD: happy\n今天风很大。"))
-        assertEquals("今天风很大。", composer().cleanOutput("今天风很大。\nMOOD：平静"))
+    fun `cleanOutput Elimina toda la línea comenzando con MOOD`() {
+        assertEquals("Hace mucho viento hoy.", composer().cleanOutput("MOOD: happy\nHace mucho viento hoy."))
+        assertEquals("Hace mucho viento hoy.", composer().cleanOutput("Hace mucho viento hoy.\nMOOD:calma"))
     }
 
     @Test
-    fun `cleanOutput 剥掉 mood 标签段`() {
-        assertEquals("今天风很大。", composer().cleanOutput("今天风很大。[mood]平静[/mood]"))
-        assertEquals("今天风很大。", composer().cleanOutput("<mood>emo=0.3</mood>今天风很大。"))
+    fun `cleanOutput Elimina el segmento de etiquetas de estado de ánimo`() {
+        assertEquals("Hace mucho viento hoy.", composer().cleanOutput("Hace mucho viento hoy.[mood]calma[/mood]"))
+        assertEquals("Hace mucho viento hoy.", composer().cleanOutput("<mood>emo=0.3</mood>Hace mucho viento hoy."))
     }
 
     @Test
-    fun `cleanOutput 对纯正文逐字符不变`() {
-        val raw = "今天风很大，晾的衣服飞了。\n顺便把窗台擦了。\n\n还拍了一张照。"
+    fun `cleanOutput Carácter por carácter sin cambios para texto sin formato`() {
+        val raw = "El viento era muy fuerte hoy y la ropa tendida a secar se fue volando.\nPor cierto, limpié el alféizar de la ventana.\n\nTambién tomó una foto."
 
         assertEquals(raw, composer().cleanOutput(raw))
     }
 
     @Test
-    fun `角色不存在时 respond 发 Failed 且 composeMoment 返回 null`() = runBlocking {
+    fun `Cuando el rol no existe, responder envía Error y composeMoment devuelve null`() = runBlocking {
         val repo = mockk<AssistantRepository>(relaxed = true)
         coEvery { repo.getById(any()) } returns null
         val generator = mockk<MiniPhoneTextGenerator>(relaxed = true)
         val runner = mockk<MiniPhoneToolTurnRunner>()
         val host = host(repo = repo, generator = generator, runner = runner)
 
-        val events = host.respond("missing", listOf(MpChatTurn(MpActorType.USER, "在干嘛"))).toList()
+        val events = host.respond("missing", listOf(MpChatTurn(MpActorType.USER, "¿Qué estás haciendo?"))).toList()
 
         assertEquals(listOf(MpReplyEvent.Failed), events)
         assertNull(host.composeMoment("missing", null))
@@ -269,25 +269,25 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `synthesizeVoice 在 TTS 返回 false 时不落盘并返回 null`() = runBlocking {
+    fun `synthesizeVoice No realizar el pedido y devolverlo cuando TTS devuelva falso null`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         val store = mockk<VoiceMessageArchiver>(relaxed = true)
         coEvery { synthesizer.synthesizeTo(any(), any(), any()) } answers {
             secondArg<File>().writeBytes(ByteArray(TEMP_BYTES))
-            TtsSynthResult.Failure("合成失败")
+            TtsSynthResult.Failure("La síntesis falló")
         }
         val cacheDir = tempDir.newFolder("cache")
 
         val result = voiceHost(synthesizer = synthesizer, store = store, cacheDir = cacheDir)
-            .synthesizeVoice("晚安", "soft")
+            .synthesizeVoice("buenas noches", "soft")
 
         assertNull(result)
         coVerify(exactly = 0) { store.persist(any(), any()) }
-        assertTrue("临时文件应删干净", cacheDir.listFiles().isNullOrEmpty())
+        assertTrue("Los archivos temporales deben eliminarse", cacheDir.listFiles().isNullOrEmpty())
     }
 
     @Test
-    fun `synthesizeVoice 成功时返回存档引用与时长并透传情绪`() = runBlocking {
+    fun `synthesizeVoice Cuando tiene éxito, se devuelve la referencia del archivo y la duración y la emoción se transmite de forma transparente`() = runBlocking {
         val synthesizer = mockk<VoiceSynthesizer>()
         val store = mockk<VoiceMessageArchiver>(relaxed = true)
         coEvery { synthesizer.synthesizeTo(any(), any(), "soft") } answers {
@@ -299,50 +299,50 @@ class AppMiniPhoneHostTest {
         val cacheDir = tempDir.newFolder("cache")
 
         val result = voiceHost(synthesizer = synthesizer, store = store, cacheDir = cacheDir)
-            .synthesizeVoice("晚安", "soft")
+            .synthesizeVoice("buenas noches", "soft")
 
         assertEquals(ARCHIVED_URI, result?.first)
         assertEquals(DURATION_MS, result?.second)
-        coVerify(exactly = 1) { store.persist(any(), "晚安" + KEY_SEPARATOR + "soft") }
-        assertTrue("临时文件应删干净", cacheDir.listFiles().isNullOrEmpty())
+        coVerify(exactly = 1) { store.persist(any(), "buenas noches" + KEY_SEPARATOR + "soft") }
+        assertTrue("Los archivos temporales deben eliminarse", cacheDir.listFiles().isNullOrEmpty())
     }
 
     @Test
-    fun `MomentChainTextGenerator 把素材交给 Persona 链路后再调 completeText`() = runBlocking {
+    fun `MomentChainTextGenerator Dale el material al enlace Persona y luego ajústalo completeText`() = runBlocking {
         val chatService = mockk<ChatService>()
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
-        val assistant = AssistantEntity(id = "a1", name = "阿绫")
+        val assistant = AssistantEntity(id = "a1", name = "un ling")
         val builtMessages = listOf(
-            UIMessage(role = MessageRole.SYSTEM, content = "你是阿绫"),
-            UIMessage(role = MessageRole.USER, content = "素材"),
+            UIMessage(role = MessageRole.SYSTEM, content = "eres un ling"),
+            UIMessage(role = MessageRole.USER, content = "Materiales"),
         )
-        coEvery { contextBuilder.buildMessages(assistant = assistant, userContent = "素材") } returns builtMessages
+        coEvery { contextBuilder.buildMessages(assistant = assistant, userContent = "Materiales") } returns builtMessages
         val captured = slot<List<UIMessage>>()
         coEvery {
             chatService.completeText(messages = capture(captured), temperature = 0.8f, maxTokens = 160)
-        } returns ChatCompletion(text = "好的")
+        } returns ChatCompletion(text = "OK")
 
         val text = MomentChainTextGenerator(chatService, contextBuilder, mockk(relaxed = true))
-            .generate(assistant, "素材", 160)
+            .generate(assistant, "Materiales", 160)
 
-        assertEquals("好的", text)
-        assertSame("必须交出上下文构建器的消息列表", builtMessages, captured.captured)
+        assertEquals("OK", text)
+        assertSame("Una lista de mensajes que deben entregarse al creador de contexto.", builtMessages, captured.captured)
     }
 
     @Test
-    fun `MomentChainTextGenerator 用角色绑定的模型与采样参数`() = runBlocking {
+    fun `MomentChainTextGenerator Parámetros de modelo y muestreo manipulados con roles`() = runBlocking {
         val chatService = mockk<ChatService>()
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
         coEvery { contextBuilder.buildMessages(assistant = any(), userContent = any()) } returns
-            listOf(UIMessage(role = MessageRole.USER, content = "素材"))
+            listOf(UIMessage(role = MessageRole.USER, content = "Materiales"))
         val boundModel = Model(id = "m-bound", providerId = "p1")
-        val boundProvider = ProviderConfig(id = "p1", displayName = "供应商一", models = listOf(boundModel))
+        val boundProvider = ProviderConfig(id = "p1", displayName = "Proveedor uno", models = listOf(boundModel))
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.providersFlow } returns flowOf(listOf(boundProvider))
         every { settings.activeProviderIdFlow } returns flowOf("p1")
         val assistant = AssistantEntity(
             id = "a1",
-            name = "阿绫",
+            name = "un ling",
             modelId = "m-bound",
             providerId = "p1",
             temperature = 0.35f,
@@ -360,26 +360,26 @@ class AppMiniPhoneHostTest {
                 topP = 0.9f,
                 maxTokens = 160,
             )
-        } returns ChatCompletion(text = "好的")
+        } returns ChatCompletion(text = "OK")
 
         val text = MomentChainTextGenerator(chatService, contextBuilder, settings)
-            .generate(assistant, "素材", 160)
+            .generate(assistant, "Materiales", 160)
 
-        assertEquals("好的", text)
-        assertEquals("模型来自角色绑定", "m-bound", capturedModel.captured.id)
-        assertEquals("供应商来自角色绑定", "p1", capturedProvider.captured.id)
+        assertEquals("OK", text)
+        assertEquals("Modelo de plataforma de personajes", "m-bound", capturedModel.captured.id)
+        assertEquals("El proveedor proviene de la vinculación de roles", "p1", capturedProvider.captured.id)
     }
 
     @Test
-    fun `MomentChainTextGenerator 在绑定模型不存在时回退默认模型`() = runBlocking {
+    fun `MomentChainTextGenerator Recurrir al modelo predeterminado cuando el modelo vinculado no existe`() = runBlocking {
         val chatService = mockk<ChatService>()
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
         coEvery { contextBuilder.buildMessages(assistant = any(), userContent = any()) } returns
-            listOf(UIMessage(role = MessageRole.USER, content = "素材"))
+            listOf(UIMessage(role = MessageRole.USER, content = "Materiales"))
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.providersFlow } returns flowOf(emptyList())
         every { settings.activeProviderIdFlow } returns flowOf(null)
-        val assistant = AssistantEntity(id = "a1", name = "阿绫", modelId = "deleted-model", providerId = "gone")
+        val assistant = AssistantEntity(id = "a1", name = "un ling", modelId = "deleted-model", providerId = "gone")
         coEvery {
             chatService.completeText(
                 messages = any(),
@@ -389,13 +389,13 @@ class AppMiniPhoneHostTest {
                 topP = null,
                 maxTokens = 160,
             )
-        } returns ChatCompletion(text = "好的")
+        } returns ChatCompletion(text = "OK")
 
         val text = MomentChainTextGenerator(chatService, contextBuilder, settings)
-            .generate(assistant, "素材", 160)
+            .generate(assistant, "Materiales", 160)
 
-        assertEquals("好的", text)
-        // 绑定解析不到时不传 model/providerConfig:交回给默认模型
+        assertEquals("OK", text)
+        // Si el enlace no se puede resolver, no pase model/providerConfig: devuélvalo al modelo predeterminado.
         coVerify(exactly = 1) {
             chatService.completeText(
                 messages = any(),
@@ -409,14 +409,14 @@ class AppMiniPhoneHostTest {
     }
 
     @Test
-    fun `MomentChainTextGenerator 在模型未配置时返回 null`() = runBlocking {
+    fun `MomentChainTextGenerator Devuelto cuando el modelo no está configurado null`() = runBlocking {
         val contextBuilder = mockk<MiniContextBuilder>(relaxed = true)
 
-        assertNull(MomentChainTextGenerator(null, contextBuilder, mockk(relaxed = true)).generate(null, "素材", 160))
+        assertNull(MomentChainTextGenerator(null, contextBuilder, mockk(relaxed = true)).generate(null, "Materiales", 160))
     }
 
     @Test
-    fun `宿主模块排在 miniphone 模块之后即覆盖占位实现`() {
+    fun `El módulo de host está clasificado después del módulo de miniteléfono y cubre la implementación del marcador de posición`() {
         val host = host()
         val koinApp = koinApplication {
             modules(
@@ -426,37 +426,37 @@ class AppMiniPhoneHostTest {
         }
 
         try {
-            assertSame("后加载的宿主定义必须胜出", host, koinApp.koin.get<MiniPhoneHost>())
+            assertSame("La definición de host cargada más tarde debe ganar", host, koinApp.koin.get<MiniPhoneHost>())
         } finally {
             koinApp.close()
         }
     }
 
-    // ── 夹具 ────────────────────────────────────────────────────────────
+    // ── accesorio ────────────────────────────────────────────────────────────
 
-    /** 生成链路的单元步骤:仓库与端口都用替身,只测拼素材与清输出。 */
+    /** Pasos unitarios para generar enlaces:Tanto los almacenes como los puertos utilizan sustitutos.,Pruebe únicamente el material combinado y obtenga un resultado claro. */
     private fun composer(): MiniPhoneTextComposer = MiniPhoneTextComposer(
         assistantRepository = mockk(relaxed = true),
         textGenerator = mockk(relaxed = true),
         contextBuilder = mockk(relaxed = true),
     )
 
-    /** 素材里必须出现的禁止项:模型不听话时也靠提示词压住。 */
+    /** Artículos prohibidos que deben aparecer en el material.:Cuando el modelo es desobediente, también es reprimido con palabras de estímulo. */
     private fun assertBannedMarks(material: String) {
         BANNED_MARKS.forEach { mark ->
-            assertTrue("素材缺少禁止项「$mark」: $material", material.contains(mark))
+            assertTrue("Al material le faltan elementos prohibidos \"$mark\": $material", material.contains(mark))
         }
-        assertTrue("素材要求只输出正文: $material", material.contains("只输出正文"))
+        assertTrue("El material requiere que solo se imprima el texto principal.: $material", material.contains("texto en sí"))
     }
 
-    /** 只有一条用户消息时的人格组装结果:一句系统提示 + 这条消息。 */
+    /** El ensamblaje de personalidad resulta cuando solo hay un mensaje de usuario:Un mensaje del sistema + este mensaje. */
     private suspend fun conversationBuilder(): MiniContextBuilder {
         val builder = mockk<MiniContextBuilder>(relaxed = true)
         coEvery {
             builder.buildMessages(assistant = any(), userContent = any(), sessionId = any(), voiceMessageEnabled = any())
         } answers {
             listOf(
-                UIMessage(role = MessageRole.SYSTEM, content = "你是阿绫"),
+                UIMessage(role = MessageRole.SYSTEM, content = "eres un ling"),
                 UIMessage(role = MessageRole.USER, content = secondArg()),
             )
         }
@@ -481,7 +481,7 @@ class AppMiniPhoneHostTest {
         cacheDir = cacheDir,
     )
 
-    /** 语音用例专用的宿主:只关心 TTS 端口与存档端口的配合。 */
+    /** Anfitrión dedicado a casos de uso de voz:Sólo nos preocupamos por la cooperación entre el puerto TTS y el puerto de archivo. */
     private fun voiceHost(
         synthesizer: VoiceSynthesizer,
         store: VoiceMessageArchiver,
@@ -497,10 +497,10 @@ class AppMiniPhoneHostTest {
         cacheDir = cacheDir,
     )
 
-    /** 默认角色仓库：只有一个助手，任何 id 都能取到。 */
+    /** Almacén de funciones predeterminado: solo hay un asistente, que se puede obtener mediante cualquier ID. */
     private fun defaultRepo(): AssistantRepository {
         val repo = mockk<AssistantRepository>(relaxed = true)
-        val assistant = AssistantEntity(id = "a1", name = "阿绫")
+        val assistant = AssistantEntity(id = "a1", name = "un ling")
         every { repo.observeAll } returns flowOf(listOf(assistant))
         coEvery { repo.getById(any()) } returns null
         coEvery { repo.getById("a1") } returns assistant
@@ -513,20 +513,20 @@ class AppMiniPhoneHostTest {
         const val DURATION_MS = 1_500L
         const val KEY_SEPARATOR = "\u0000"
 
-        /** 与宿主内部的朋友圈场景上限一致:30-80 字不需要更多额度。 */
+        /** Consistente con el límite superior de la escena del círculo de amigos dentro del anfitrión.:30-80 Las palabras no requieren más cuota. */
         const val MOMENT_TOKEN_CAP = 200
 
         val BANNED_MARKS = listOf(
             "MOOD",
-            "情绪值",
-            "好感度",
-            "状态栏",
-            "系统标签",
-            "括号动作",
-            "旁白",
-            "时间戳",
-            "引号",
-            "#话题",
+            "valor de opinión",
+            "preferencia",
+            "barra de estado",
+            "etiqueta del sistema",
+            "acción entre corchetes",
+            "narración",
+            "marca de tiempo",
+            "comillas",
+            "#tema",
         )
     }
 }

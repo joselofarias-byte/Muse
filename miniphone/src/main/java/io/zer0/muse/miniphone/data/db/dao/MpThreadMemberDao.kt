@@ -7,10 +7,10 @@ import androidx.room.Query
 import io.zer0.muse.miniphone.data.db.entity.MpThreadMemberEntity
 import kotlinx.coroutines.flow.Flow
 
-/** 群聊成员的读写。私信会话没有成员行。 */
+/** Lectura y escritura de los miembros del chat grupal. Las conversaciones de mensajes privados no tienen filas de miembros. */
 @Dao
 interface MpThreadMemberDao {
-    /** 一个群的成员,按入群先后(建群时按选择顺序)。 */
+    /** miembro de un grupo,Pulsa para unirte al grupo(Al crear un grupo, siga el orden de selección.). */
     @Query("SELECT * FROM mp_thread_member WHERE threadId = :threadId ORDER BY joinedAt ASC, characterId ASC")
     fun observeMembers(threadId: String): Flow<List<MpThreadMemberEntity>>
 
@@ -26,11 +26,11 @@ interface MpThreadMemberDao {
     @Query("DELETE FROM mp_thread_member WHERE threadId = :threadId")
     suspend fun deleteInThread(threadId: String)
 
-    /** 移出一个人;其余成员不动。 */
+    /** eliminar a una persona;Los miembros restantes permanecieron inmóviles. */
     @Query("DELETE FROM mp_thread_member WHERE threadId = :threadId AND characterId = :characterId")
     suspend fun deleteMember(threadId: String, characterId: String)
 
-    /** 清空全部成员行(群会话由调用方一并删)。 */
+    /** Borrar todas las filas de miembros(La sesión grupal es eliminada por la persona que llama.). */
     @Query("DELETE FROM mp_thread_member")
     suspend fun deleteAll()
 }

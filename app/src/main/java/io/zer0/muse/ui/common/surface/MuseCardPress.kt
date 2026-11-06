@@ -32,32 +32,32 @@ import io.zer0.muse.ui.theme.MuseHaptics
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * 卡片按压效果 — 触觉交互核心组件。
+ * Efecto de presión de tarjeta — El componente central de la interacción táctil.
  *
- * 按下时:
- *  - 背景颜色渐变 (200ms easeOutCubic): 浅色提亮 55%,深色模式轻微提亮 18%
- *  - 可选缩放 (0.98): 轻微缩小营造"陷入"感
- *    v1.0.23: 缩放曲线从 tween 改为 spring(MediumBouncy + StiffnessMediumLow),
- *    按下与回弹自带轻微过冲,呈现弹性反馈
- *  - 可选触觉反馈: 轻击
+ * cuando se presiona:
+ *  - Degradado de color de fondo (200ms easeOutCubic): Aclaramiento del color claro 55%,El modo oscuro se ilumina ligeramente 18%
+ *  - Zoom opcional (0.98): Reduzca ligeramente el tamaño del"caer en"sentido
+ *    v1.0.23: La curva de escala cambió de interpolación a spring(MediumBouncy + StiffnessMediumLow),
+ *    La presión y el rebote vienen con un ligero exceso.,Proporcionar comentarios flexibles
+ *  - Retroalimentación táctil opcional: toque
  *
- * 无涟漪效果 (indication = null), 替代标准 `clickable {}` 的 Surface。
+ * Sin efecto dominó (indication = null), estándar alternativo `clickable {}` Superficie.
  *
- * 用法:
+ * Uso:
  * ```
  * MuseCardPress(onClick = { ... }) {
- *     Text("卡片内容")
+ *     Text("Contenido de la tarjeta")
  * }
  * ```
  *
- * @param onClick 点击回调
- * @param modifier 修饰符
- * @param shape 卡片形状 (默认 12dp 圆角)
- * @param containerColor 背景色 (默认 `surface`)
- * @param elevation 阴影高度 (默认 0dp, 平坦风格)
- * @param enableScale 是否启用按压缩放 (默认 false)
- * @param enableHaptic 是否启用触觉反馈 (默认 true)
- * @param content 卡片内容
+ * @param onClick Haga clic en devolución de llamada
+ * @param modifier modificador
+ * @param shape forma de tarjeta (Esquinas redondeadas predeterminadas de 12 dp)
+ * @param containerColor color de fondo (Predeterminado `surface`)
+ * @param elevation altura de la sombra (Predeterminado 0dp, estilo plano)
+ * @param enableScale Ya sea para habilitar la compresión y el escalado (Predeterminado false)
+ * @param enableHaptic Si habilitar la retroalimentación táctil (Predeterminado true)
+ * @param content Contenido de la tarjeta
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,7 +69,7 @@ fun MuseCardPress(
     elevation: Dp = MuseElevation.none,
     enableScale: Boolean = false,
     enableHaptic: Boolean = true,
-    /** v1.0.16: 可选长按回调,用于长按菜单等场景;为空时使用普通 clickable。 */
+    /** v1.0.16: Devolución de llamada opcional con pulsación larga,Se utiliza para menús de pulsación larga y otros escenarios.;Cuando está vacío, se utiliza un clic normal. */
     onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -78,7 +78,7 @@ fun MuseCardPress(
     val reducedMotion = MuseMotion.isReducedMotion()
     val haptic = LocalHapticFeedback.current
 
-    // 按压颜色渐变: 两种主题都只做轻微提亮,避免白色横条和强烈闪烁。
+    // Presione gradiente de color: Ambos temas están sólo ligeramente iluminados.,Evite las barras blancas y los destellos fuertes.
     val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val pressedColor = if (isLight) {
         containerColor.copy(
@@ -97,16 +97,16 @@ fun MuseCardPress(
     val animatedColor by animateColorAsState(
         targetValue = if (isPressed) pressedColor else containerColor,
         animationSpec = MuseMotion.tween(
-            durationMillis = MuseAnimation.TACTILE_MS + 20, // 220ms, 比图标按钮稍慢
+            durationMillis = MuseAnimation.TACTILE_MS + 20, // 220ms, Ligeramente más lento que los botones de íconos
             easing = MuseAnimation.EaseOutCubic,
         ),
         label = "card_press_color",
     )
 
-    // v1.0.23: 按压缩放改为 spring 弹簧曲线,增强弹性反馈。
-    // 原 tween 线性曲线过渡生硬,spring 中等阻尼 + 中低刚度让卡片按下与回弹
-    // 自带轻微过冲,模拟指尖按压软质的物理感,与暖调质感呼应。
-    // 颜色渐变保留 MuseMotion.tween(触觉色彩变化不需要弹性,线性更稳)。
+    // v1.0.23: Presione la compresión y cambie a la curva del resorte del resorte.,Mejorar la retroalimentación elástica.
+    // La transición de curva lineal entre interpolación original es rígida,spring La amortiguación media + la rigidez media-baja permiten que la tarjeta presione y rebote
+    // Viene con un ligero exceso,Simula la sensación física de presionar un material suave con las yemas de los dedos.,Se hace eco de la textura cálida.
+    // gradiente de color conservado MuseMotion.tween(Los cambios de color táctiles no requieren elasticidad,Lineal y más estable).
     val animatedScale by animateFloatAsState(
         targetValue = if (isPressed && enableScale) 0.98f else 1f,
         animationSpec = if (reducedMotion) {
@@ -120,13 +120,13 @@ fun MuseCardPress(
         label = "card_press_scale",
     )
 
-    // v1.0.16: 根据是否有 onLongClick 选择 clickable/combinedClickable,两者均无 Material ripple 遮罩
+    // v1.0.16: Seleccione según si hay onLongClick clickable/combinedClickable,Ambos no tienen máscara de ondulación de material.
     val pressModifier = if (onLongClick != null) {
         Modifier.combinedClickable(
             interactionSource = interactionSource,
-            indication = null, // 无涟漪
-            // v1.0.74 fix (前端审计 3.4): 补 role=Button,与 clickable 分支对齐
-            // (原 combinedClickable 分支漏传 role,TalkBack 读不出按钮语义)
+            indication = null, // sin ondulaciones
+            // v1.0.74 fix (Auditoría inicial 3.4): suplemento role=Button,Alinear con rama en la que se puede hacer clic
+            // (Se perdió la rama Clickable combinada original role,TalkBack No puedo leer la semántica del botón)
             role = Role.Button,
             onClick = {
                 if (enableHaptic) {
@@ -139,7 +139,7 @@ fun MuseCardPress(
     } else {
         Modifier.clickable(
             interactionSource = interactionSource,
-            indication = null, // 无涟漪
+            indication = null, // sin ondulaciones
             role = Role.Button,
             onClick = {
                 if (enableHaptic) {

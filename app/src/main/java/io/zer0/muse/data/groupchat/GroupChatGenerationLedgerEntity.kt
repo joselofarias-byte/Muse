@@ -11,10 +11,10 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 
 /**
- * B5-02: 群聊生成账本。
+ * B5-02: El chat grupal genera un libro de contabilidad.
  *
- * 每次群聊轮转启动时写入一条记录，记录当前模式、轮次、成员下标和有序成员列表；
- * 进程被杀后，启动恢复逻辑按账本从断点继续，而不是重头触发全部成员。
+ * Se escribe un registro cada vez que se inicia la rotación del chat grupal, registrando el modo actual, la ronda, el subíndice de miembros y la lista ordenada de miembros;
+ * Una vez finalizado el proceso, la lógica de recuperación de inicio continúa desde el punto de interrupción según el libro mayor en lugar de volver a activar a todos los miembros.
  */
 @Entity(
     tableName = "group_chat_generation_ledger",

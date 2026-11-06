@@ -3,56 +3,56 @@ package io.zer0.muse.data
 import kotlinx.serialization.Serializable
 
 /**
- * 全局网络代理配置。
+ * Configuración del proxy de red global.
  *
- * 在设置页配置后同步到 io.zer0.ai.core.ProxyProvider，各 OkHttpClient 通过动态
- * ProxySelector 读取它。
- * v2.6.9 行为变更：改代理后**新连接立即生效**，不需要重启；
- * 只有已建立的 keep-alive 长连接会沿用到被回收为止。
+ * Después de configurarlo en la página de configuración, se sincroniza con io.zer0.ai.core.ProxyProvider y cada OkHttpClient pasa la dinámica
+ * ProxySelector Léelo.
+ * v2.6.9 Cambio de comportamiento: después de cambiar de agente**Las nuevas conexiones entran en vigor inmediatamente**, no es necesario reiniciar;
+ * Sólo se utilizarán conexiones largas de mantenimiento de vida establecidas hasta que se reciclen.
  *
- * M-PRX1: password 字段涉及敏感凭据,应走 [SecureKeyStore] 加密后再持久化,
- * 不应明文落盘。本数据类只承载字段定义,加解密通过 [encrypted] / [decrypted]
- * 成员方法在序列化边界(SettingsRepository.saveProxyConfig / proxyConfigFlow)
- * 完成:写入 DataStore 前 `encrypted()`,读出后 `decrypted()`。
+ * M-PRX1: password Los campos se refieren a credenciales confidenciales.,debería ir [SecureKeyStore] Cifrar y luego persistir,
+ * El pedido no debe realizarse explícitamente. Esta clase de datos solo lleva definiciones de campos.,Pase de cifrado y descifrado [encrypted] / [decrypted]
+ * Métodos de miembros en el límite de serialización(SettingsRepository.saveProxyConfig / proxyConfigFlow)
+ * Completo:Antes de escribir en DataStore `encrypted()`,despues de leer `decrypted()`.
  *
- * SettingsRepository 由阶段1统一修复,本类仅提供加解密入口与说明。
+ * SettingsRepository por etapa1Reparación unificada,Esta categoría solo proporciona entradas e instrucciones de cifrado y descifrado.
  */
 @Serializable
 data class ProxyConfig(
     val enabled: Boolean = false,
-    // HTTP 或 SOCKS5
+    // HTTP o SOCKS5
     val type: String = "HTTP",
     val host: String = "",
     val port: Int = 7890,
     val username: String = "",
     val password: String = "",
     /**
-     * v2.6.9: 不走代理的主机列表（逗号分隔，支持域名后缀与 IP）。
+     * v2.6.9: Lista de hosts sin proxy (separados por comas, admite sufijo de nombre de dominio e IP).
      *
-     * 实际痛点：国内用户常开全局代理，但本地模型（localhost:11434）
-     * 与内网服务如果也走代理会直接失败。这一栏就是给它们开的口子。
-     * 例：`localhost,127.0.0.1,192.168.,*.local`
+     * Punto débil real: los usuarios nacionales a menudo habilitan agentes globales, pero los modelos locales (localhost:11434)
+     * Si también utiliza un proxy para servicios de intranet, fallará directamente. Esta columna es la apertura para ellos.
+     * Ejemplo:`localhost,127.0.0.1,192.168.,*.local`
      */
     val bypassHosts: String = "",
 ) {
     /**
-     * M-PRX1: 返回 password 已加密(走 [SecureKeyStore.encrypt])的副本,
-     * 供持久化前调用。空密码原样保留(不加密空值)。
+     * M-PRX1: La contraseña de retorno está cifrada(ir [SecureKeyStore.encrypt])copia de,
+     * Por llamar antes que la perseverancia. Deje la contraseña vacía como está(No cifrar valores nulos).
      */
     suspend fun encrypted(): ProxyConfig = copy(password = SecureKeyStore.encrypt(password))
 
     /**
-     * M-PRX1: 返回 password 已解密(走 [SecureKeyStore.decrypt])的副本,
-     * 供从持久化层读出后调用。旧版明文 password 由 decrypt 透传(兼容)。
+     * M-PRX1: Contraseña de retorno descifrada(ir [SecureKeyStore.decrypt])copia de,
+     * Se llama después de leer desde la capa de persistencia. La antigua contraseña en texto plano se transmite de forma transparente mediante descifrado(compatibles).
      */
     suspend fun decrypted(): ProxyConfig = copy(password = SecureKeyStore.decrypt(password))
 
     /**
-     * v2.6.9: 转为 ai 模块的代理描述。
+     * v2.6.9: Convierta a la descripción del agente del módulo ai.
      *
-     * 为什么需要转换：`ai` 模块不能依赖 `app`（否则循环依赖），
-     * 所以 `io.zer0.ai.core.ProxyProvider` 用自己的纯数据结构承载代理。
-     * 这里做边界转换，避免两边各维护一份字段定义。
+     * Por qué es necesaria la conversión:`ai` Los módulos no pueden depender de `app`(de lo contrario dependencia circular),
+     * entonces `io.zer0.ai.core.ProxyProvider` Aloje el proxy con su propia estructura de datos pura.
+     * La conversión de límites se realiza aquí para evitar mantener una definición de campo en ambos lados.
      */
     fun toProxyDescriptor(): io.zer0.ai.core.ProxyProvider.Descriptor = io.zer0.ai.core.ProxyProvider.Descriptor(
         enabled = enabled,

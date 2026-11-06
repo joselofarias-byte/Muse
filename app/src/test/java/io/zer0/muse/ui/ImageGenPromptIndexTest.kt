@@ -13,31 +13,31 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 图片作品条提示词的预计算。
+ * Cálculo previo de palabras clave para obras ilustradas.
  *
- * 改前是「每个可见 item 各自向前扫一遍」，合计 O(n²) 且同一份参数被反复解析。
- * 改后列表外一次扫完，所以这里要钉住两件事：
- *  - 每条消息取到的提示词与逐条向前扫的结果完全一致（含「最近一次为空就不再往前找」）；
- *  - 每个生成调用只解析一次 JSON。
+ * Antes del cambio, era "escanear cada elemento visible hacia adelante", el total O(n²) Y el mismo parámetro se analiza repetidamente.
+ * Después del cambio, la lista se puede escanear de una sola vez, por lo que es necesario aclarar dos cosas aquí:
+ *  - Las palabras clave obtenidas para cada mensaje son exactamente las mismas que los resultados del escaneo hacia adelante uno por uno (incluido "Si el más reciente está vacío, no se realizarán más búsquedas");
+ *  - JSON se analiza solo una vez por llamada de compilación.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class ImageGenPromptIndexTest {
 
-    // ── 用例数据 ────────────────────────────────────────────────────────
+    // ── datos de casos de uso ────────────────────────────────────────────────────────
 
     private fun user(text: String) = UIMessage(role = MessageRole.USER, content = text)
 
     private fun assistant(text: String) = UIMessage(role = MessageRole.ASSISTANT, content = text)
 
-    /** 工具调用仍在内存里（toolCalls 路径）。 */
+    /** La llamada a la herramienta todavía está en la memoria (toolCalls camino). */
     private fun genCallMessage(prompt: String) = UIMessage(
         role = MessageRole.ASSISTANT,
         content = "",
         toolCalls = listOf(ToolCall(id = "call-1", name = "generate_image", arguments = """{"prompt":"$prompt"}""")),
     )
 
-    /** 重启后回放的持久化路径（toolCallInfo 路径）。 */
+    /** Ruta de persistencia para la reproducción después del reinicio (toolCallInfo camino). */
     private fun genInfoMessage(arguments: String) = UIMessage(
         role = MessageRole.ASSISTANT,
         content = "",
@@ -49,7 +49,7 @@ class ImageGenPromptIndexTest {
         ),
     )
 
-    /** 改前的实现：第 index 条消息向上找最近一次 generate_image，逐条独立扫描。 */
+    /** Implementación antes del cambio: el mensaje de índice se busca hacia arriba para generar la imagen más reciente y cada mensaje se escanea de forma independiente. */
     private fun legacyPrompts(messages: List<UIMessage>): Map<String, String?> = messages.indices.associate { index ->
         val genCall =
             messages.take(index + 1).asReversed().firstNotNullOfOrNull { m ->
@@ -72,16 +72,16 @@ class ImageGenPromptIndexTest {
     private fun promptOf(args: String): String? =
         runCatching { JSONObject(args).optString("prompt") }.getOrNull()
 
-    // ── 用例 ────────────────────────────────────────────────────────────
+    // ── caso de uso ────────────────────────────────────────────────────────────
 
     @Test
     fun `precomputed prompts equal the per message forward scan`() {
         val messages = listOf(
-            user("画一只猫"),
-            genCallMessage("第一张猫"),
-            assistant("好的，马上来"),
-            genInfoMessage("""{"prompt":"第二张狗"}"""),
-            assistant("完成"),
+            user("dibujar un gato"),
+            genCallMessage("primer gato"),
+            assistant("Está bien, ven ahora mismo"),
+            genInfoMessage("""{"prompt":"el segundo perro"}"""),
+            assistant("Completo"),
         )
 
         var parseCount = 0
@@ -90,23 +90,23 @@ class ImageGenPromptIndexTest {
             promptOf(args)
         }
 
-        assertEquals("结果必须与逐条向前扫一致", legacyPrompts(messages), actual)
-        assertEquals("两次生成调用只该解析两次 JSON（改前是每条消息各解析一次）", 2, parseCount)
+        assertEquals("El resultado debe ser coherente con el escaneo hacia adelante uno por uno.", legacyPrompts(messages), actual)
+        assertEquals("Las llamadas de dos generaciones solo deben analizar JSON dos veces (anteriormente, cada mensaje se analizaba una vez)", 2, parseCount)
 
         val ids = messages.map { it.id.toString() }
-        assertNull("第一条消息之前没有任何生成调用", actual[ids[0]])
-        assertEquals("第一张猫", actual[ids[1]])
-        assertEquals("向后沿用最近一次的提示词", "第一张猫", actual[ids[2]])
-        assertEquals("第二张狗", actual[ids[3]])
-        assertEquals("第二张狗", actual[ids[4]])
+        assertNull("El primer mensaje no está precedido por ninguna llamada de compilación.", actual[ids[0]])
+        assertEquals("primer gato", actual[ids[1]])
+        assertEquals("Utilice la palabra más reciente al revés", "primer gato", actual[ids[2]])
+        assertEquals("el segundo perro", actual[ids[3]])
+        assertEquals("el segundo perro", actual[ids[4]])
     }
 
     @Test
     fun `blank prompt yields null without scanning further back`() {
         val messages = listOf(
-            genCallMessage("第一个"),
+            genCallMessage("el primero"),
             genInfoMessage("""{"prompt":"   "}"""),
-            assistant("结束"),
+            assistant("fin"),
         )
 
         var parseCount = 0
@@ -115,29 +115,29 @@ class ImageGenPromptIndexTest {
             promptOf(args)
         }
 
-        assertEquals("最近一次提示词为空时整体为 null，不回退到更早那次", legacyPrompts(messages), actual)
+        assertEquals("Cuando la palabra del mensaje más reciente está vacía, el valor general es nulo y no retrocede a un momento anterior.", legacyPrompts(messages), actual)
         assertEquals(2, parseCount)
         val ids = messages.map { it.id.toString() }
-        assertEquals("第一个", actual[ids[0]])
+        assertEquals("el primero", actual[ids[0]])
         assertNull(actual[ids[1]])
         assertNull(actual[ids[2]])
     }
 
     @Test
     fun `long prompt is truncated exactly like before`() {
-        val long = "长".repeat(80)
-        val messages = listOf(genCallMessage(long), assistant("好"))
+        val long = "largo".repeat(80)
+        val messages = listOf(genCallMessage(long), assistant("bueno"))
 
         val actual = imageGenPromptsByMessage(messages)
         val ids = messages.map { it.id.toString() }
 
-        assertEquals("超长提示词截到 60 字并加省略号", "长".repeat(60) + "…", actual[ids[0]])
+        assertEquals("Las palabras breves extralargas están limitadas a 60 caracteres y agregan puntos suspensivos.", "largo".repeat(12) + "…", actual[ids[0]])
         assertEquals(legacyPrompts(messages), actual)
     }
 
     @Test
     fun `messages without any generation keep a null prompt`() {
-        val messages = listOf(user("你好"), assistant("在的"))
+        val messages = listOf(user("Hola"), assistant("en"))
 
         var parseCount = 0
         val actual = imageGenPromptsByMessage(messages) { args ->
@@ -145,7 +145,7 @@ class ImageGenPromptIndexTest {
             promptOf(args)
         }
 
-        assertEquals("没有生成调用就不该解析任何参数", 0, parseCount)
+        assertEquals("No se deben analizar parámetros sin generar una llamada", 0, parseCount)
         assertEquals(
             messages.map { it.id.toString() }.associateWith { null },
             actual,

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- v1.7: Android 12+ 启动屏主题 — 支持窗口内图标动画最大时长 -->
+    <!-- v1.7: Android 12+ tema de la pantalla de bienvenida — Admite la duración máxima de la animación del icono en la ventana. -->
     <style name="Theme.Muse.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_muse_logo</item>
         <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
-        <!-- Android 12+ 允许图标动画最长 1000ms -->
+        <!-- Android 12+ Permitir que la animación del icono sea máxima 1000ms -->
         <item name="windowSplashScreenAnimationDuration">1000</item>
         <item name="postSplashScreenTheme">@style/Theme.Muse</item>
     </style>

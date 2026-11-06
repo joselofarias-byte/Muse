@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 各 provider 的 usage 字段落到 [UsageTokens] 的哪个分项。
+ * El campo de uso de cada proveedor cae en [UsageTokens] De qué subelemento.
  */
 class CacheUsageProviderMappingTest {
 
@@ -30,7 +30,7 @@ class CacheUsageProviderMappingTest {
                 outputTokens = 50,
             )
 
-        // input_tokens 本身不含缓存部分，口径保持原样
+        // input_tokens No contiene la parte de caché y el calibre sigue siendo el mismo.
         assertEquals(100, usage.promptTokens)
         assertEquals(50, usage.completionTokens)
         assertEquals(1_000, usage.cachedTokens)
@@ -38,8 +38,8 @@ class CacheUsageProviderMappingTest {
         assertEquals(200, usage.cacheWriteTokens)
         assertEquals(1_200, usage.cachedTokensTotal)
         assertEquals(150, usage.total)
-        // Anthropic 的 input_tokens 不含缓存，计价时要声明口径
-        assertFalse("Anthropic 的 prompt 不含缓存部分", usage.promptTokensIncludeCache)
+        // Anthropic Los input_tokens no contienen caché y el calibre debe declararse al fijar el precio.
+        assertFalse("Anthropic El mensaje no contiene la parte del caché.", usage.promptTokensIncludeCache)
     }
 
     @Test
@@ -50,7 +50,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(7, usage.completionTokens)
         assertEquals(0, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        assertFalse("即使 usage 缺失，Anthropic 的 prompt 口径仍是「不含缓存」", usage.promptTokensIncludeCache)
+        assertFalse("Incluso si falta el uso,Anthropic El calibre del aviso todavía está \"sin caché\"", usage.promptTokensIncludeCache)
     }
 
     @Test
@@ -65,7 +65,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(800, usage.cachedTokens)
         assertEquals(800, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        // OpenAI 的 prompt_tokens 含缓存命中，计价时相减
+        // OpenAI Prompt_tokens contiene aciertos de caché y se resta al calcular el precio.
         assertTrue(usage.promptTokensIncludeCache)
     }
 
@@ -81,7 +81,7 @@ class CacheUsageProviderMappingTest {
         assertEquals(600, usage.cachedTokens)
         assertEquals(600, usage.cacheReadTokens)
         assertEquals(0, usage.cacheWriteTokens)
-        // Gemini 的 promptTokenCount 含缓存命中
+        // Gemini El avisoTokenCount contiene aciertos de caché
         assertTrue(usage.promptTokensIncludeCache)
     }
 }

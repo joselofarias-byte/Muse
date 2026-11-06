@@ -8,57 +8,57 @@ import android.os.Bundle
 import io.zer0.common.Logger
 
 /**
- * 语言包装 Context —— 保留 locale 覆盖能力，同时保证 Activity 启动不崩。
+ * Embalaje de idiomas Context —— Conserve la capacidad de cobertura local mientras garantiza que la actividad no falle cuando se inicie.
  *
- * ## 背景（用户反馈的崩溃）
+ * ## Antecedentes (fallo informado por los usuarios)
  *
- * 为了做应用内语言热切换，MainActivity 的 RuntimeLocaleProvider 用
- * `applicationContext.createConfigurationContext(config)` 覆盖 Compose 的
- * `LocalContext`（让 `stringResource` 读到目标语言）。但该 context 是
- * **Application context 派生**，不是 Activity。
+ * Para realizar un cambio activo de idioma en la aplicación,MainActivity Se utiliza RuntimeLocaleProvider
+ * `applicationContext.createConfigurationContext(config)` Anular Compose
+ * `LocalContext`(dejar `stringResource` leer en el idioma de destino). Pero el contexto es
+ * **Application context derivado**, no Actividad.
  *
- * Compose 的文本选择菜单（选中文字 → 系统浮动条 → 「处理文字」项，实现于
- * `androidx.compose.foundation.text.contextmenu.ProcessText_androidKt`）
- * 从 `LocalContext` 取 context 直接 `startActivity`，**不带
- * FLAG_ACTIVITY_NEW_TASK** → Android 抛
+ * Compose El menú de selección de texto (seleccionar texto → Sistema de barra flotante → El elemento "Procesar texto" está implementado en
+ * `androidx.compose.foundation.text.contextmenu.ProcessText_androidKt`)
+ * de `LocalContext` Tome el contexto directamente `startActivity`,**sin
+ * FLAG_ACTIVITY_NEW_TASK** → Android tirar
  * `AndroidRuntimeException: Calling startActivity() from outside of an Activity
- * context requires the FLAG_ACTIVITY_NEW_TASK flag`（用户实测崩溃）。
+ * context requires the FLAG_ACTIVITY_NEW_TASK flag`(Caída medida por los usuarios).
  *
- * ## 修法
+ * ## modificar la ley
  *
- * 不改语言逻辑，只把 locale context 包一层 [ContextWrapper]：
- *  - `base` 仍是那个带目标 locale 的 context → `getResources()` / `stringResource`
- *    行为完全不变；
- *  - 重写 [startActivity] / [startActivity] 两个重载：**非 Activity 场景补
- *    FLAG_ACTIVITY_NEW_TASK**，与 [ShareIntentHelper] 同一套思路。
+ * No cambie la lógica del idioma, simplemente ajuste el contexto local con una capa [ContextWrapper]:
+ *  - `base` Sigue siendo el que tiene la configuración regional de destino. context → `getResources()` / `stringResource`
+ *    El comportamiento permanece completamente sin cambios;
+ *  - reescribir [startActivity] / [startActivity] Dos sobrecargas:**Suplemento de escena sin actividad
+ *    FLAG_ACTIVITY_NEW_TASK**, con [ShareIntentHelper] Mismo conjunto de ideas.
  *
- * 这样一次修掉**所有**"从 `LocalContext` 启动 Activity"的隐患（不止 ProcessText），
- * 且不牺牲任何功能——「处理文字」仍可正常把选中文字发给其他 App。
+ * repararlo de esta manera**todos**"de `LocalContext` empezar Activity"Peligros ocultos (no solo ProcessText),
+ * sin sacrificar ninguna funcionalidad——"Procesar texto" aún puede enviar el texto seleccionado a otras aplicaciones normalmente.
  *
- * 为什么不直接改 Compose：那是库代码；且同类问题在 Muse 侧的统一根因就是
- * "LocalContext 被换成了非 Activity context"，在源头包装最省事。
+ * ¿Por qué no cambiar Redactar directamente? Ese es el código de la biblioteca; y la causa raíz común de problemas similares en el lado de Muse es
+ * "LocalContext fue reemplazado por no Activity context", el embalaje en origen es el que menos problemas presenta.
  */
 internal class LocaleContextWrapper(
     base: Context,
 ) : ContextWrapper(base) {
 
     /**
-     * 非 Activity 场景补 NEW_TASK 后启动。
+     * Las escenas sin actividad se inician después de agregar NEW_TASK.
      *
-     * Activity 场景（wrapper 包着 Activity 时）保持原样，避免改变既有跳转语义。
+     * Activity escena (wrapper Al envolver una actividad), manténgala como está para evitar cambiar la semántica de salto existente.
      */
     override fun startActivity(intent: Intent) {
         super.startActivity(withNewTaskIfNeeded(intent))
     }
 
-    /** Android 16+ 的带 options 重载，同样需要补 flag。 */
+    /** Android 16+ La sobrecarga de opciones también requiere agregar una bandera. */
     override fun startActivity(intent: Intent, options: Bundle?) {
         super.startActivity(withNewTaskIfNeeded(intent), options)
     }
 
     private fun withNewTaskIfNeeded(intent: Intent): Intent = when {
-        // wrapper 自身永不可能是 Activity（它继承 ContextWrapper）；
-        // 只判断被包装的 base 是否 Activity。
+        // wrapper Nunca puede ser una Actividad en sí misma (hereda ContextWrapper);
+        // Sólo determine si la base envuelta está activa.
         baseContext is Activity -> intent
         intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0 -> intent
         else -> Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -68,13 +68,13 @@ internal class LocaleContextWrapper(
         private const val TAG = "LocaleContextWrapper"
 
         /**
-         * 包装一个 locale context，使其可安全启动 Activity。
+         * Envuelva un contexto local para que sea seguro iniciar la actividad.
          *
-         * 幂等：已包装过的直接返回，避免重复嵌套。
+         * Idempotente: los datos empaquetados se devuelven directamente para evitar anidamientos repetidos.
          */
         fun wrap(base: Context): Context {
             if (base is LocaleContextWrapper) return base
-            Logger.d(TAG, "LocaleContextWrapper 已应用（非 Activity context 启动 Activity 时补 NEW_TASK）")
+            Logger.d(TAG, "LocaleContextWrapper Aplicado (NEW_TASK se agrega al iniciar una actividad en un contexto que no es de actividad)")
             return LocaleContextWrapper(base)
         }
     }

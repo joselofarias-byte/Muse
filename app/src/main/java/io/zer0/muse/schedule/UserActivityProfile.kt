@@ -8,25 +8,25 @@ import java.util.Calendar
 import kotlin.math.pow
 
 /**
- * 用户活跃度画像 — 记录用户最近 7 天每小时的活动频次,驱动自适应主动消息调度。
+ * Retrato de actividad del usuario — Registre la frecuencia de actividad horaria del usuario en los últimos 7 días,Impulsar la programación de mensajes proactiva y adaptativa.
  *
- * 用 24 维数组记录每小时的活动计数,每日应用衰减因子([DECAY_FACTOR]=0.85),使数据
- * 近似反映"最近 7 天"的活跃分布(7 天后权重 ≈ 0.32,旧数据自然淡出)。
+ * Registre recuentos de actividad por hora utilizando una matriz de 24 dimensiones,Factor de atenuación de aplicación diaria([DECAY_FACTOR]=0.85),hacer datos
+ * reflexión aproximada"últimos 7 días"distribución activa(7 peso de la reina ≈ 0.32,Los datos antiguos se desvanecen de forma natural).
  *
- * 冷启动:新用户前 7 天数据不足,用通用默认画像(早 8-10 / 晚 20-22 高活跃,
- * 午 12-14 中活跃,其他低活跃)兜底。过渡期(0-7 天)默认画像与真实画像按
- * "天数/7"权重混合,满 7 天后完全用真实画像。详见 [getActiveProbability]。
+ * arranque en frio:Datos insuficientes para nuevos usuarios en los primeros 7 días,Usar imagen predeterminada universal(8-10 a.m. / 20-22 p.m. Altamente activo,
+ * Activo 12-14pm,Otra baja actividad)Llega al fondo de esto. período de transición(0-7 dia)Botón de retrato predeterminado y retrato real
+ * "días/7"mezcla de peso,Después de 7 días, la imagen real se utilizará por completo. Ver detalles [getActiveProbability].
  *
- * 同时持久化 [lastConversationEndType] 与 [lastKnownMood],供 [ProactiveMessageRunner]
- * 计算自适应触发间隔时读取(对话连续性因子 / 情绪因子)。
+ * Persistencia simultánea [lastConversationEndType] con [lastKnownMood],suministro [ProactiveMessageRunner]
+ * Leer al calcular el intervalo de activación adaptativo(Factor de continuidad del diálogo/Factor emocional).
  *
- * 持久化到 SharedPreferences(JSON 序列化),App 重启后画像不丢失。
+ * persistir en SharedPreferences(JSON serialización),App Las imágenes no se pierden después de reiniciar.
  *
- * 调用方:
- *  - [ProactiveMessageRunner] 读取 [isHighActiveHour] / [getNextActiveWindow] /
- *    [getLastConversationEndType] / [getLastKnownMood] 决定下次触发时间
- *  - [io.zer0.muse.ui.ChatViewModel] 在用户发消息时调用 [recordActivity] 更新画像,
- *    并根据消息内容更新 [lastConversationEndType]
+ * llamador:
+ *  - [ProactiveMessageRunner] leer [isHighActiveHour] / [getNextActiveWindow] /
+ *    [getLastConversationEndType] / [getLastKnownMood] Determinar el próximo tiempo de activación
+ *  - [io.zer0.muse.ui.ChatViewModel] Llamado cuando el usuario envía un mensaje. [recordActivity] Actualizar retrato,
+ *    y actualizar según el contenido del mensaje [lastConversationEndType]
  */
 class UserActivityProfile(
     context: Context,
@@ -38,13 +38,13 @@ class UserActivityProfile(
     private var state: ProfileState = load()
 
     // ══════════════════════════════════════════════════════════════════════
-    // 活跃度记录
+    // Registro de actividad
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * 记录一次用户活动(通常在用户发消息时调用)。
+     * Registrar la actividad de un usuario(Generalmente se llama cuando el usuario envía un mensaje.).
      *
-     * @param timestamp 活动时间戳,默认当前时间
+     * @param timestamp Marca de tiempo de actividad,Hora actual predeterminada
      */
     @Synchronized
     fun recordActivity(timestamp: Long = System.currentTimeMillis()) {
@@ -52,8 +52,8 @@ class UserActivityProfile(
         val hour = hourOf(timestamp)
         val counts = state.hourlyCounts.toMutableList()
         counts[hour] = counts[hour] + 1
-        // 冷启动:首次记录活动时,记录起始天数(用于计算"已积累多少天数据",
-        // 驱动默认画像与真实画像的权重混合,满 [DEFAULT_PROFILE_DAYS] 天后完全用真实画像)
+        // arranque en frio:Cuando se registra la actividad por primera vez,Récord de días de inicio(utilizado para el cálculo"¿Cuántos días de datos se han acumulado?",
+        // Impulsar la combinación de pesos del retrato predeterminado y el retrato real,lleno [DEFAULT_PROFILE_DAYS] La Reina utiliza por completo retratos reales.)
         val currentDay = (timestamp / (24 * 60 * 60 * 1000L)).toInt()
         val firstDay = if (state.firstRecordDay == 0) currentDay else state.firstRecordDay
         state = state.copy(
@@ -66,28 +66,28 @@ class UserActivityProfile(
     }
 
     /**
-     * 返回某小时的活跃概率(归一化到 0-1)。
+     * Devuelve la probabilidad de actividad durante una hora determinada.(normalizado a 0-1).
      *
-     * 冷启动与过渡期(累计数据 < [DEFAULT_PROFILE_DAYS] 天):
-     *  - 默认画像([DEFAULT_HOURLY_COUNTS])与真实画像按权重混合
-     *  - 真实权重 = 已积累天数 / [DEFAULT_PROFILE_DAYS];默认权重 = 1 - 真实权重
-     *  - 随真实数据逐步替代,满 [DEFAULT_PROFILE_DAYS] 天后完全用真实画像
+     * Arranque en frío y período de transición(Datos acumulados < [DEFAULT_PROFILE_DAYS] dia):
+     *  - Retrato predeterminado([DEFAULT_HOURLY_COUNTS])Mezclar con imágenes reales por peso.
+     *  - peso real = Número de días acumulados / [DEFAULT_PROFILE_DAYS];Peso predeterminado = 1 - peso real
+     *  - Reemplazado gradualmente con datos reales,lleno [DEFAULT_PROFILE_DAYS] La Reina utiliza por completo retratos reales.
      *
-     * 若混合后总数为 0(长期未使用导致衰减殆尽),返回均匀分布(1/24 ≈ 0.042)。
+     * Si el número total después de mezclar es 0(Agotado por falta de uso a largo plazo),Devuelve distribución uniforme(1/24 ≈ 0.042).
      */
     @Synchronized
     fun getActiveProbability(hour: Int): Float {
         applyDecayIfNeeded(System.currentTimeMillis())
         val h = hour.coerceIn(0, 23)
         val daysCollected = getDaysCollected()
-        // 满 7 天:完全用真实画像
+        // 7 días o más:Utilizando completamente imágenes reales.
         if (daysCollected >= DEFAULT_PROFILE_DAYS) {
             val counts = state.hourlyCounts
             val total = counts.sum().toFloat()
             if (total <= 0f) return DEFAULT_PROBABILITY
             return (counts[h] / total).coerceIn(0f, 1f)
         }
-        // 冷启动/过渡期:默认画像 + 真实数据按权重混合
+        // arranque en frio/período de transición:Imagen por defecto + datos reales mezclados según peso
         val realWeight = daysCollected.toFloat() / DEFAULT_PROFILE_DAYS
         val defaultWeight = 1f - realWeight
         val realCounts = state.hourlyCounts
@@ -103,11 +103,11 @@ class UserActivityProfile(
     }
 
     /**
-     * 判断某小时是否属于"高活跃时段"。
+     * Determinar si una determinada hora pertenece a"Periodo de alta actividad".
      *
-     * 阈值 = 平均活跃概率 × [ACTIVE_THRESHOLD_FACTOR](1.5)。
-     * 冷启动/过渡期通过 [getActiveProbability] 的默认画像混合保证新用户也能拿到
-     * 合理的高活跃时段(早 8-10 / 晚 20-22),而非旧的"所有时段全活跃"策略。
+     * umbral = Probabilidad activa promedio × [ACTIVE_THRESHOLD_FACTOR](1.5).
+     * arranque en frio/Período de transición pasado [getActiveProbability] La combinación de retratos predeterminada garantiza que los nuevos usuarios también puedan obtenerla
+     * Períodos razonables de alta actividad.(Mañana 8-10/noche 20-22),en lugar del viejo"Activo en todo momento"Estrategia.
      */
     @Synchronized
     fun isHighActiveHour(hour: Int): Boolean {
@@ -118,32 +118,32 @@ class UserActivityProfile(
     }
 
     /**
-     * 返回从 [fromTime] 起下一个高活跃时段的开始时间(整点)。
+     * Regresar de [fromTime] La hora de inicio del próximo período de alta actividad.(a la hora).
      *
-     * - 若 [fromTime] 当前就在高活跃且在允许时段,返回 [fromTime](立即触发)
-     * - 否则扫描未来 48 小时,找下一个同时满足"高活跃 + 在允许时段"的整点
-     * - 找不到时回退到 [fromTime] + 1 小时(兜底,避免无限延后)
+     * - si [fromTime] Actualmente muy activo y dentro del periodo permitido.,Regresar [fromTime](disparar inmediatamente)
+     * - De lo contrario, escanee las próximas 48 horas,Encuentra el siguiente para satisfacer al mismo tiempo."Actividad alta + durante las horas permitidas"todo el punto
+     * - Volver a cuando no se encuentra [fromTime] + 1 horas(Ten todo en cuenta,Evita retrasos infinitos)
      *
-     * @param fromTime 起始时间戳
-     * @param allowedHourStart 允许发送时段开始小时(0-23),与 ProactiveMessageConfig 对齐
-     * @param allowedHourEnd 允许发送时段结束小时(0-23,支持跨夜,如 22-8 表示22点到次日8点)
+     * @param fromTime marca de tiempo de inicio
+     * @param allowedHourStart Horas de inicio de la ventana de envío permitidas(0-23),Alineado con ProactiveMessageConfig
+     * @param allowedHourEnd Horas de finalización de la ventana de envío permitidas(0-23,Soporte nocturno,Como indica 22-822Haga clic para pasar al día siguiente8punto)
      */
     @Synchronized
     fun getNextActiveWindow(fromTime: Long, allowedHourStart: Int = 8, allowedHourEnd: Int = 22): Long {
         applyDecayIfNeeded(fromTime)
         val currentHour = hourOf(fromTime)
-        // 当前就在高活跃且在允许时段 → 立即返回
+        // Actualmente muy activo y dentro del periodo permitido. → Regresar inmediatamente
         if (isInAllowedWindow(currentHour, allowedHourStart, allowedHourEnd) &&
             isHighActiveHour(currentHour)
         ) {
             return fromTime
         }
-        // 扫描未来 48 小时,找下一个高活跃整点
+        // Escanee las próximas 48 horas,Encuentra la próxima hora alta de actividad
         for (offset in 1..48) {
             val hour = (currentHour + offset) % 24
             if (!isInAllowedWindow(hour, allowedHourStart, allowedHourEnd)) continue
             if (!isHighActiveHour(hour)) continue
-            // 计算 hour 的下一个整点时间戳
+            // Calcular la próxima marca de tiempo horaria de la hora
             val candidate = Calendar.getInstance().apply {
                 timeInMillis = fromTime
                 add(Calendar.HOUR_OF_DAY, offset)
@@ -153,22 +153,22 @@ class UserActivityProfile(
             }
             return candidate.timeInMillis
         }
-        // 兜底:fromTime + 1 小时
+        // Ten todo en cuenta:fromTime + 1 horas
         return fromTime + 60 * 60 * 1000L
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 对话连续性
+    // continuidad del diálogo
     // ══════════════════════════════════════════════════════════════════════
 
-    /** 返回最近记录的对话结束类型(持久化)。 */
+    /** Devuelve el tipo de finalización de la conversación grabada más recientemente(persistencia). */
     fun getLastConversationEndType(): ConversationEndType {
         return runCatching {
             ConversationEndType.valueOf(state.lastConversationEndType)
         }.getOrDefault(ConversationEndType.NATURAL_FADE)
     }
 
-    /** 更新对话结束类型(持久化)。由 ChatViewModel / ProactiveMessageRunner 调用。 */
+    /** Actualizar tipo de fin de conversación(persistencia). Llamado por ChatViewModel/ProactiveMessageRunner. */
     @Synchronized
     fun setConversationEndType(type: ConversationEndType) {
         if (state.lastConversationEndType == type.name) return
@@ -177,13 +177,13 @@ class UserActivityProfile(
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 情绪连续性
+    // continuidad emocional
     // ══════════════════════════════════════════════════════════════════════
 
-    /** 返回最近记录的用户情绪(持久化,由 ProactiveMessageRunner 在巡检时更新)。 */
+    /** Devuelve la opinión del usuario registrada más recientemente.(persistencia,Actualizado por ProactiveMessageRunner en patrulla). */
     fun getLastKnownMood(): String = state.lastKnownMood
 
-    /** 更新最近已知情绪(持久化)。 */
+    /** Actualizar sentimientos conocidos recientes(persistencia). */
     @Synchronized
     fun setLastKnownMood(mood: String) {
         if (state.lastKnownMood == mood) return
@@ -192,15 +192,15 @@ class UserActivityProfile(
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 内部:冷启动画像混合
+    // interno:Mezcla de retratos con arranque en frío
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * 计算已积累的真实数据天数(用于冷启动画像混合)。
+     * Calcular el número de días de datos reales acumulados.(Para la fusión de retratos con inicio en frío).
      *
-     * - [ProfileState.firstRecordDay] 为 0(从未记录过活动)→ 返回 0(纯默认画像)
-     * - 衰减后 [ProfileState.totalRecords] ≤ 0(长期未使用导致数据衰减殆尽)→ 返回 0(回退默认画像)
-     * - 否则返回 currentDay - firstRecordDay + 1(1-indexed,首日即 1)
+     * - [ProfileState.firstRecordDay] para 0(Actividad nunca registrada)→ Regresar 0(Imagen predeterminada pura)
+     * - Después de la decadencia [ProfileState.totalRecords] ≤ 0(Los datos decaen debido a la falta de uso a largo plazo)→ Regresar 0(Volver a la imagen predeterminada)
+     * - De lo contrario regresar currentDay - firstRecordDay + 1(1-indexed,el primer dia 1)
      */
     private fun getDaysCollected(): Int {
         if (state.firstRecordDay == 0) return 0
@@ -210,17 +210,17 @@ class UserActivityProfile(
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    // 内部:衰减与持久化
+    // interno:decadencia y persistencia
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * 按日衰减(0.85/天)。每次读写时检查,若跨日则补算衰减。
+     * decadencia por día(0.85/dia). Compruébalo cada vez que leas o escribas,Si abarca varios días, se compensará la atenuación.
      */
     private fun applyDecayIfNeeded(timestamp: Long) {
         val currentDay = (timestamp / (24 * 60 * 60 * 1000L)).toInt()
         val lastDay = state.lastDecayDay
         if (lastDay == 0) {
-            // 首次:仅记录当天,不衰减
+            // primer tiempo:Registra solo el día actual,Sin atenuación
             state = state.copy(lastDecayDay = currentDay)
             return
         }
@@ -235,7 +235,7 @@ class UserActivityProfile(
             totalRecords = newTotal,
             lastDecayDay = currentDay,
         )
-        Logger.d(TAG, "活跃度画像衰减: elapsedDays=$elapsedDays, factor=$factor, total=$newTotal")
+        Logger.d(TAG, "Decaimiento del perfil de actividad: elapsedDays=$elapsedDays, factor=$factor, total=$newTotal")
     }
 
     private fun load(): ProfileState {
@@ -243,7 +243,7 @@ class UserActivityProfile(
         return runCatching {
             json.decodeFromString<ProfileState>(raw)
         }.onFailure { t ->
-            Logger.w(TAG, "加载活跃度画像失败,使用默认值: ${t.message}")
+            Logger.w(TAG, "No se pudo cargar el perfil de actividad,Usar valor predeterminado: ${t.message}")
         }.getOrDefault(ProfileState())
     }
 
@@ -257,7 +257,7 @@ class UserActivityProfile(
         return cal.get(Calendar.HOUR_OF_DAY)
     }
 
-    /** 判断某小时是否在允许发送时段(支持跨夜,如 22-8)。 */
+    /** Determinar si una hora determinada está dentro del período de envío permitido(Soporte nocturno,Como por ejemplo 22-8). */
     private fun isInAllowedWindow(hour: Int, start: Int, end: Int): Boolean {
         return if (start <= end) {
             hour in start until end
@@ -272,59 +272,59 @@ class UserActivityProfile(
         private const val KEY_STATE = "profile_state"
         private const val DEFAULT_PROBABILITY = 1f / 24f
 
-        /** 高活跃阈值因子:概率 ≥ 平均概率 × 此因子 才算高活跃。 */
+        /** Factor de umbral de actividad alto:probabilidad ≥ probabilidad promedio × Este factor se considera muy activo. */
         private const val ACTIVE_THRESHOLD_FACTOR = 1.5f
 
-        /** 每日衰减因子(0.85 → 7 天后权重 ≈ 0.32)。 */
+        /** factor de decaimiento diario(0.85 → 7 peso de la reina ≈ 0.32). */
         private const val DECAY_FACTOR = 0.85f
 
-        /** 单次最多补算的衰减天数(防止 App 长期未打开后衰减到 0)。 */
+        /** El número máximo de días de descomposición para un solo recálculo.(Evite que la aplicación se deteriore después de mucho tiempo sin abrirse 0). */
         private const val MAX_DECAY_DAYS = 30
 
         /**
-         * 冷启动默认画像覆盖天数 — 累计真实数据达到此天数后完全用真实画像。
-         * 不足此天数时,默认画像与真实画像按"天数/[DEFAULT_PROFILE_DAYS]"权重混合。
+         * Días de cobertura de imagen predeterminada de inicio en frío — Después de que los datos reales acumulados alcancen esta cantidad de días, las imágenes reales se utilizarán por completo.
+         * Cuando menos de este número de días,Botón de retrato predeterminado y retrato real"días/[DEFAULT_PROFILE_DAYS]"Mezcla de pesos.
          */
         private const val DEFAULT_PROFILE_DAYS = 7
 
         /**
-         * 冷启动默认画像 — 24 小时活动计数(相对权重,非绝对值)。
+         * Imagen predeterminada de arranque en frío — 24 Recuento de actividad por hora(peso relativo,valor no absoluto).
          *
-         * 通用人群作息模板,新用户前 7 天调度依赖此画像,随真实数据积累逐步替代:
-         *  - 早 8-10 点(8,9,10):高活跃(3.0)— 上班通勤/开始工作
-         *  - 午 12-14 点(12,13,14):中活跃(1.5)— 午休
-         *  - 晚 20-22 点(20,21,22):高活跃(3.0)— 晚间休闲
-         *  - 其他时段:低活跃(0.3)— 凌晨/工作时段
+         * Plantilla de horario general de multitudes,La programación para los primeros 7 días de nuevos usuarios se basa en este retrato,Reemplace gradualmente a medida que se acumulen datos reales:
+         *  - 8-10 a.m.(8,9,10):Altamente activo(3.0)— ir al trabajo/empezar a trabajar
+         *  - 12-14 del mediodía(12,13,14):medio activo(1.5)— pausa para el almuerzo
+         *  - 20-22 hs(20,21,22):Altamente activo(3.0)— Ocio nocturno
+         *  - otros períodos de tiempo:baja actividad(0.3)— madrugada/horas de trabajo
          */
         private val DEFAULT_HOURLY_COUNTS: List<Float> = listOf(
-            // 0-6: 凌晨低活跃
+            // 0-6: Baja actividad a primera hora de la mañana.
             0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f,
-            // 7: 起床过渡
+            // 7: despertar transición
             0.5f,
-            // 8-10: 早高峰
+            // 8-10: Hora punta de la mañana
             3.0f, 3.0f, 3.0f,
-            // 11: 午餐前过渡
+            // 11: transición antes del almuerzo
             0.5f,
-            // 12-14: 午休中活跃
+            // 12-14: activo durante la pausa del almuerzo
             1.5f, 1.5f, 1.5f,
-            // 15-19: 下午工作低活跃
+            // 15-19: Baja actividad en el trabajo por la tarde.
             0.3f, 0.3f, 0.3f, 0.3f, 0.3f,
-            // 20-22: 晚高峰
+            // 20-22: Hora punta de la tarde
             3.0f, 3.0f, 3.0f,
-            // 23: 睡前过渡
+            // 23: transición a la hora de dormir
             0.5f,
         )
 
         /**
-         * 用户主动结束对话的关键词(用于 [ConversationEndType.USER_EXPLICIT_END] 判定)。
+         * Palabras clave para que los usuarios finalicen activamente la conversación.(usado para [ConversationEndType.USER_EXPLICIT_END] juicio).
          */
         val END_KEYWORDS = listOf(
-            "晚安", "拜拜", "先这样", "再见", "走了", "下次聊", "回见",
+            "buenas noches", "Adiós", "primero así", "Adiós", "ido", "Charla la próxima vez", "Nos vemos luego",
             "bye", "goodbye", "good night", "gn", "see you", "cya",
         )
 
         /**
-         * 判断消息内容是否包含对话结束关键词。
+         * Determine si el contenido del mensaje contiene la palabra clave de fin de conversación.
          */
         fun containsEndKeyword(content: String): Boolean {
             val lower = content.lowercase().trim()
@@ -334,11 +334,11 @@ class UserActivityProfile(
 }
 
 /**
- * 对话结束类型 — 影响 [ProactiveMessageRunner] 的自适应触发间隔。
+ * Tipo de fin de conversación — influencia [ProactiveMessageRunner] Intervalo de disparo adaptativo.
  *
- * - [USER_EXPLICIT_END]:用户主动结束(说了"晚安"/"拜拜"等)→ 间隔 ×1.5,别急着打扰
- * - [NATURAL_FADE]:Agent 回复后用户没再说话(自然结束)→ 正常间隔
- * - [UNFINISHED_QUESTION]:Agent 问了问题但用户没答 → 间隔 ×0.6,赶紧跟进
+ * - [USER_EXPLICIT_END]:El usuario termina activamente(dijo"buenas noches"/"Adiós"espera)→ intervalo ×1.5,No me molestes con prisa
+ * - [NATURAL_FADE]:Agent El usuario no volvió a hablar tras responder.(final natural)→ intervalo normal
+ * - [UNFINISHED_QUESTION]:Agent Hizo una pregunta pero el usuario no respondió. → intervalo ×0.6,Seguimiento rápido
  */
 enum class ConversationEndType {
     USER_EXPLICIT_END,
@@ -346,25 +346,25 @@ enum class ConversationEndType {
     UNFINISHED_QUESTION,
 }
 
-/** 活跃度画像持久化状态。 */
+/** Estado de persistencia del retrato de actividad. */
 @Serializable
 private data class ProfileState(
-    /** 24 小时活动计数(索引 0-23 对应小时)。 */
+    /** 24 Recuento de actividad por hora(El índice 0-23 corresponde a la hora.). */
     val hourlyCounts: List<Int> = List(24) { 0 },
-    /** 累计活动总数(衰减后)。 */
+    /** Número total acumulado de actividades(Después de la decadencia). */
     val totalRecords: Int = 0,
-    /** 最后一次活动时间戳。 */
+    /** Marca de tiempo de la última actividad. */
     val lastRecordAt: Long = 0L,
-    /** 距 1970-01-01 的天数,用于按日衰减。 */
+    /** Número de días desde 1970-01-01,Utilizado para el decaimiento diario. */
     val lastDecayDay: Int = 0,
     /**
-     * 首次记录活动的天数(距 1970-01-01),用于冷启动画像混合。
-     * 0 表示尚未记录过任何活动;一旦设置后不再改变。
-     * 配合当前天数计算"已积累多少天数据",驱动默认画像与真实画像的权重混合。
+     * Número de días desde que se registró la actividad por primera vez(distancia 1970-01-01),Se utiliza para la fusión de retratos con inicio en frío.
+     * 0 Indica que aún no se ha registrado ninguna actividad;Una vez configurado, no se puede cambiar.
+     * Calculado en base al número actual de días."¿Cuántos días de datos se han acumulado?",Impulsa la combinación ponderada del retrato predeterminado y el retrato real.
      */
     val firstRecordDay: Int = 0,
-    /** 最近对话结束类型([ConversationEndType] 的 name)。 */
+    /** Tipo de fin de conversación reciente([ConversationEndType] de name). */
     val lastConversationEndType: String = "NATURAL_FADE",
-    /** 最近已知情绪([io.zer0.muse.data.proactive.Mood] 的 name)。 */
+    /** Emociones recientemente conocidas([io.zer0.muse.data.proactive.Mood] de name). */
     val lastKnownMood: String = "UNKNOWN",
 )

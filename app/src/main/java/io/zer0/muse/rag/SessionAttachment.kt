@@ -3,15 +3,15 @@ package io.zer0.muse.rag
 import io.zer0.muse.data.knowledge.KnowledgeDocEntity
 
 /**
- * v1.0.47 P7-2: 会话级附件索引状态。
+ * v1.0.47 P7-2: Estado del índice de archivos adjuntos a nivel de sesión.
  *
- * 描述一个会话附件的索引生命周期:
- *  - [QUEUED]:   已入队,等待分块
- *  - [CHUNKING]: 正在分块
- *  - [EMBEDDING]: 正在生成向量
- *  - [READY]:    索引完成,可被 kb_search 检索
- *  - [FAILED]:   索引失败(content 为空/embedding 失败等)
- *  - [DROPPED]:  会话结束已清理
+ * Describe el ciclo de vida del índice de un archivo adjunto de sesión.:
+ *  - [QUEUED]:   Se unió al equipo,Esperando fragmentación
+ *  - [CHUNKING]: fragmentación
+ *  - [EMBEDDING]: Generando vectores
+ *  - [READY]:    Indexación completada,Recuperable por kb_search
+ *  - [FAILED]:   Error en el índice(content esta vacio/embedding Fracaso, etc)
+ *  - [DROPPED]:  Sesión finalizada y borrada
  */
 enum class SessionAttachmentStatus {
     QUEUED,
@@ -23,23 +23,23 @@ enum class SessionAttachmentStatus {
 }
 
 /**
- * v1.0.47 P7-2: 会话级附件索引数据类。
+ * v1.0.47 P7-2: Clase de datos de índice de adjuntos a nivel de sesión.
  *
- * 会话附件添加时,自动 chunk + embed 到临时索引,使 AI 可通过 kb_search 检索附件内容。
- * 与全局知识库(KnowledgeBase)的区别:
- *  - 生命周期绑定会话:会话结束时可选保留或清理([DROPPED])
- *  - docId 前缀 "session-{sessionId}-":与全局 KB 文档区分,避免污染全局检索
- *  - 同步写入 KnowledgeDoc 元数据行与 KnowledgeChunk 分块,保证检索安全回填
+ * Cuando se agregan archivos adjuntos de sesión,Fragmento automático + incrustar en índice temporal,Permite que AI recupere el contenido del archivo adjunto a través de kb_search.
+ * y base de conocimiento global(KnowledgeBase)la diferencia:
+ *  - Sesión de enlace de ciclo de vida:Retención o limpieza opcional al final de la sesión.([DROPPED])
+ *  - docId prefijo "session-{sessionId}-":Diferenciarse de los documentos globales de KB,Evite las búsquedas globales contaminantes
+ *  - Escribir sincrónicamente filas de metadatos de KnowledgeDoc con fragmentación de KnowledgeChunk,Garantizar un reabastecimiento de recuperación seguro
  *
- * @property id 附件记录 ID(唯一)
- * @property sessionId 所属会话 ID
- * @property docId 索引文档 ID(前缀 "session-{sessionId}-",用于 chunk 表关联)
- * @property name 附件显示名(文件名)
- * @property status 索引状态
- * @property totalChunks 分块总数(READY 后填充)
- * @property embeddedChunks 已索引块数(进度跟踪)
- * @property errorMessage 失败原因(FAILED 时填充)
- * @property createdAt 创建时间戳
+ * @property id Registro de adjunto ID(solo)
+ * @property sessionId Perteneciente a la sesión ID
+ * @property docId Documentos indexados ID(prefijo "session-{sessionId}-",Se utiliza para la asociación de tablas fragmentadas.)
+ * @property name Nombre para mostrar del archivo adjunto(nombre de archivo)
+ * @property status estado del índice
+ * @property totalChunks Número total de bloques(READY post-llenado)
+ * @property embeddedChunks Número de bloques indexados(seguimiento del progreso)
+ * @property errorMessage Razón del fracaso(FAILED llenar cuando)
+ * @property createdAt Crear marca de tiempo
  */
 data class SessionAttachment(
     val id: String,
@@ -52,21 +52,21 @@ data class SessionAttachment(
     val errorMessage: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
-    /** 进度百分比(0-100),未开始或失败时为 0。 */
+    /** porcentaje de progreso(0-100),0 cuando no se inició o falló. */
     val progressPercent: Int
         get() = if (totalChunks == 0) 0 else (embeddedChunks * 100 / totalChunks).coerceIn(0, 100)
 
     companion object {
-        /** 会话附件 docId 前缀,用于在 chunk 表中区分全局 KB 与会话附件。 */
+        /** Prefijo de documento adjunto de sesión,Se utiliza para distinguir la KB global de los archivos adjuntos de sesión en la tabla de fragmentos. */
         const val DOC_ID_PREFIX = "session-attach-"
 
-        /** 生成会话附件的 docId。 */
+        /** Genere el docId del archivo adjunto de la sesión. */
         fun buildDocId(sessionId: String, attachmentId: String): String = "$DOC_ID_PREFIX$sessionId-$attachmentId"
 
-        /** 判断 docId 是否属于会话附件。 */
+        /** Determine si el docId pertenece al archivo adjunto de la sesión. */
         fun isSessionAttachmentDocId(docId: String): Boolean = docId.startsWith(DOC_ID_PREFIX)
 
-        /** 从 docId 解析出 sessionId(用于会话结束时清理)。 */
+        /** Analizado desde docId sessionId(Se utiliza para limpiar al final de la sesión.). */
         fun extractSessionIdFromDocId(docId: String): String? {
             if (!isSessionAttachmentDocId(docId)) return null
             val rest = docId.removePrefix(DOC_ID_PREFIX)
@@ -76,7 +76,7 @@ data class SessionAttachment(
     }
 }
 
-/** 将会话附件映射为 RAG 元数据行,使检索结果能通过文档安全回填。 */
+/** Asignar archivos adjuntos de sesión a filas de metadatos RAG,Permite rellenar los resultados de búsqueda de forma segura a través de documentos. */
 internal fun SessionAttachment.toKnowledgeDoc(
     content: String,
     chunkCount: Int = 0,

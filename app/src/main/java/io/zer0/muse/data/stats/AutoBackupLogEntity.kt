@@ -5,20 +5,20 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * v1.107 自动备份日志。
+ * v1.107 Realizar copias de seguridad de los registros automáticamente.
  *
- * 记录每次自动备份的结果,用于备份历史查看和恢复。
- *  - backupPath: 备份文件绝对路径
- *  - fileSizeBytes: 备份文件大小
+ * Registre los resultados de cada copia de seguridad automática.,Se utiliza para ver y recuperar el historial de copias de seguridad.
+ *  - backupPath: Ruta absoluta del archivo de copia de seguridad
+ *  - fileSizeBytes: Tamaño del archivo de respaldo
  *  - status: "success" / "failed"
- *  - errorMessage: 失败时的错误信息
- *  - messageCount: 备份时消息总数(用于追踪数据增长)
- *  - createdAt: 备份时间戳
+ *  - errorMessage: Mensaje de error en caso de falla
+ *  - messageCount: Número total de mensajes durante la copia de seguridad(Se utiliza para realizar un seguimiento del crecimiento de los datos.)
+ *  - createdAt: Marca de tiempo de respaldo
  *
- * 备份策略(WorkManager 周期任务):
- *  - 频率: 每日 1 次(只在实际有新消息时才真正复制)
- *  - 保留: 最近 7 份,超出自动清理最旧的
- *  - 路径: app 内部存储 backups/ 目录
+ * Estrategia de respaldo(WorkManager Tareas periódicas):
+ *  - Frecuencia: 1 vez por día(Solo replicar cuando realmente haya un mensaje nuevo)
+ *  - Reservar: últimos 7,Limpia automáticamente los más antiguos
+ *  - camino: app Directorio/copias de seguridad de almacenamiento interno
  */
 @Entity(tableName = "auto_backup_log")
 data class AutoBackupLogEntity(

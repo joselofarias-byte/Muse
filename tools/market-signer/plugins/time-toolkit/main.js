@@ -1,12 +1,12 @@
 /**
- * Muse 插件：时间工具箱
+ * Muse Complemento: Caja de herramientas de tiempo
  *
- * 运行契约（宿主 WebViewSkillEngine）：
- *  - 每个工具函数接收一个参数对象，如 function nowTime(args)；
- *  - 返回值可以是普通对象，宿主会自动 JSON 序列化后交给模型；
- *  - 出错时返回 { error: "原因" }，宿主会把这类结果标记为失败。
+ * Ejecute el contrato (alojado por WebViewSkillEngine):
+ *  - Cada función de utilidad recibe un objeto de parámetro, como function nowTime(args);
+ *  - El valor de retorno puede ser un objeto normal, y el host lo serializará JSON automáticamente y se lo entregará al modelo;
+ *  - Devolución en caso de error { error: "Razón" }, el anfitrión marcará dichos resultados como fracasos.
  *
- * 时区：除显式以 Z/UTC 标记的输入外，一律按设备本地时区解释与输出。
+ * Zona horaria: excepto las entradas marcadas explícitamente con Z/UTC, siempre se interpretará y emitirá de acuerdo con la zona horaria local del dispositivo.
  */
 
 var MS_PER_MINUTE = 60 * 1000;
@@ -15,7 +15,7 @@ var MS_PER_DAY = 24 * MS_PER_HOUR;
 
 var DATE_PATTERN = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?(Z)?$/;
 
-/** 把 "2026-09-19 15:30:00" / ISO 字符串 / 纯数字时间戳解析为毫秒。 */
+/** poner "2026-09-19 15:30:00" / ISO Marca de tiempo de cadena/numérica pura analizada en milisegundos. */
 function parseInstant(raw, unit) {
     var text = String(raw).trim();
     if (/^\d+$/.test(text)) {
@@ -43,7 +43,7 @@ function pad(value, width) {
     return text;
 }
 
-/** 本地时区 ISO 风格字符串（带偏移，便于与 UTC 区分）。 */
+/** Cadena de estilo ISO de zona horaria local (con desplazamiento para distinguirla de UTC). */
 function localIso(ms) {
     var date = new Date(ms);
     var offsetMinutes = -date.getTimezoneOffset();
@@ -67,7 +67,7 @@ function isoWeekNumber(date) {
 function nowTime() {
     var now = new Date();
     var ms = now.getTime();
-    var weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    var weekdays = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "Sábado"];
     return {
         result: {
             epochMillis: ms,
@@ -79,21 +79,21 @@ function nowTime() {
             weekday: weekdays[now.getDay()],
             isoWeek: isoWeekNumber(now)
         },
-        timezone: "设备本地时区，UTC 偏移 " + (-now.getTimezoneOffset() / 60) + " 小时"
+        timezone: "zona horaria local del dispositivo,UTC compensar " + (-now.getTimezoneOffset() / 60) + " horas"
     };
 }
 
 function timestampConvert(args) {
     var raw = args.value;
     if (raw === undefined || raw === null || String(raw).trim().length === 0) {
-        return { error: "value 不能为空" };
+        return { error: "value no puede estar vacío" };
     }
     var mode = typeof args.mode === "string" ? args.mode.trim().toLowerCase() : "";
     var unit = typeof args.unit === "string" ? args.unit.trim().toLowerCase() : "ms";
-    if (unit !== "ms" && unit !== "s") return { error: "unit 必须是 ms 或 s" };
+    if (unit !== "ms" && unit !== "s") return { error: "unit Debe ser ms o s" };
     if (mode === "to_date") {
         var ms = parseInstant(raw, unit);
-        if (isNaN(ms)) return { error: "无法解析时间戳: " + raw };
+        if (isNaN(ms)) return { error: "No se puede analizar la marca de tiempo: " + raw };
         var date = new Date(ms);
         return {
             result: {
@@ -104,9 +104,9 @@ function timestampConvert(args) {
             }
         };
     }
-    if (mode !== "to_timestamp") return { error: "mode 必须是 to_date 或 to_timestamp" };
+    if (mode !== "to_timestamp") return { error: "mode Debe ser hasta la fecha o to_timestamp" };
     var instant = parseInstant(raw, unit);
-    if (isNaN(instant)) return { error: "无法解析日期: " + raw };
+    if (isNaN(instant)) return { error: "No se puede analizar la fecha: " + raw };
     return {
         result: {
             epochMillis: instant,
@@ -119,9 +119,9 @@ function timestampConvert(args) {
 
 function durationFormat(args) {
     var value = typeof args.value === "number" ? args.value : parseFloat(args.value);
-    if (isNaN(value)) return { error: "value 必须是数字" };
+    if (isNaN(value)) return { error: "value debe ser un numero" };
     var unit = typeof args.unit === "string" ? args.unit.trim().toLowerCase() : "ms";
-    if (unit !== "ms" && unit !== "s") return { error: "unit 必须是 ms 或 s" };
+    if (unit !== "ms" && unit !== "s") return { error: "unit Debe ser ms o s" };
     var totalMs = unit === "s" ? value * 1000 : value;
     var negative = totalMs < 0;
     var remaining = Math.abs(Math.round(totalMs));
@@ -134,11 +134,11 @@ function durationFormat(args) {
     var seconds = Math.floor(remaining / 1000);
     var millis = remaining - seconds * 1000;
     var parts = [];
-    if (days > 0) parts.push(days + "天");
-    if (hours > 0) parts.push(hours + "小时");
-    if (minutes > 0) parts.push(minutes + "分");
-    if (seconds > 0) parts.push(seconds + "秒");
-    if (parts.length === 0) parts.push(millis + "毫秒");
+    if (days > 0) parts.push(days + "dia");
+    if (hours > 0) parts.push(hours + "horas");
+    if (minutes > 0) parts.push(minutes + "puntos");
+    if (seconds > 0) parts.push(seconds + "segundos");
+    if (parts.length === 0) parts.push(millis + "milisegundos");
     return {
         result: (negative ? "-" : "") + parts.join(""),
         breakdown: { days: days, hours: hours, minutes: minutes, seconds: seconds, millis: millis }
@@ -148,8 +148,8 @@ function durationFormat(args) {
 function dateDiff(args) {
     var fromMs = parseInstant(args.from, "ms");
     var toMs = parseInstant(args.to, "ms");
-    if (isNaN(fromMs)) return { error: "无法解析起始日期: " + args.from };
-    if (isNaN(toMs)) return { error: "无法解析结束日期: " + args.to };
+    if (isNaN(fromMs)) return { error: "No se puede analizar la fecha de inicio: " + args.from };
+    if (isNaN(toMs)) return { error: "No se puede analizar la fecha de finalización: " + args.to };
     var deltaMs = toMs - fromMs;
     var absolute = Math.abs(deltaMs);
     var days = Math.floor(absolute / MS_PER_DAY);
@@ -167,7 +167,7 @@ function dateDiff(args) {
             totalHours: Math.floor(absolute / MS_PER_HOUR),
             totalMinutes: Math.floor(absolute / MS_PER_MINUTE),
             totalSeconds: Math.floor(absolute / 1000),
-            text: days + "天" + hours + "小时" + minutes + "分"
+            text: days + "dia" + hours + "horas" + minutes + "puntos"
         },
         from: localIso(fromMs),
         to: localIso(toMs)

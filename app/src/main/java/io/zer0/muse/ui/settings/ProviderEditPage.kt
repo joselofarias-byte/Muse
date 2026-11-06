@@ -72,7 +72,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 
-/** ProviderType 枚举的 Saver(rememberSaveable 不能直接保存枚举,用 name 序列化/反序列化)。 */
+/** ProviderType enumerado Saver(rememberSaveable No se puede guardar la enumeración directamente,Serializar con nombre/Deserialización). */
 private val ProviderTypeSaver = Saver<ProviderType, String>(
     save = { it.name },
     restore = { runCatching { ProviderType.valueOf(it) }.getOrDefault(ProviderType.DEFAULT) },
@@ -92,7 +92,7 @@ internal fun ProviderEditPage(
     var baseUrl by rememberSaveable { mutableStateOf(config.baseUrl) }
     var apiKey by rememberSaveable { mutableStateOf(config.apiKey) }
     var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
-    // modelsState 为 Model 列表,需自定义 Saver,且旋转后可从 config 重建,保持 remember
+    // modelsState para lista de modelos,Necesidad de personalizar Saver,y se puede reconstruir desde la configuración después de la rotación,mantener remember
     val modelsState = remember { mutableStateListOf<Model>().apply { addAll(config.models) } }
     var enabled by rememberSaveable { mutableStateOf(config.enabled) }
     var balanceApiPath by rememberSaveable { mutableStateOf(config.balanceApiPath) }
@@ -100,11 +100,11 @@ internal fun ProviderEditPage(
     var isQueryingBalance by rememberSaveable { mutableStateOf(false) }
     var balanceResult by rememberSaveable { mutableStateOf<String?>(null) }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
-    // P1-3: 限流参数(RPM + 最大并发)。用 String 状态绑定文本框,保存时解析为 Int(空/非法 → 0=不限)
+    // P1-3: Parámetros limitantes actuales(RPM + Simultaneidad máxima). Vincular cuadro de texto con estado de cadena,Cuando se guarda, se analiza como Int(vacío/ilegal → 0=Sin límite)
     var requestLimitPerMinuteText by rememberSaveable { mutableStateOf(config.requestLimitPerMinute.takeIf { it > 0 }?.toString() ?: "") }
     var maxConcurrentRequestsText by rememberSaveable { mutableStateOf(config.maxConcurrentRequests.takeIf { it > 0 }?.toString() ?: "") }
 
-    // Vertex AI 配置(仅 GEMINI 类型显示)
+    // Vertex AI Configuración(Sólo se muestran los tipos GÉMINI)
     val geminiSpecific = (config.resolvedSpecific() as? io.zer0.ai.core.ProviderSpecificConfig.Gemini)
         ?: io.zer0.ai.core.ProviderSpecificConfig.Gemini()
     var useVertexAi by rememberSaveable { mutableStateOf(geminiSpecific.useVertexAI) }
@@ -115,7 +115,7 @@ internal fun ProviderEditPage(
     var vertexLocation by rememberSaveable { mutableStateOf(geminiSpecific.location) }
     var vertexProjectId by rememberSaveable { mutableStateOf(geminiSpecific.projectId) }
 
-    // OpenAI / Anthropic / Custom specific 字段
+    // OpenAI / Anthropic / Custom specific campo
     val resolvedSpecific = config.resolvedSpecific()
     var openAIChatCompletionsPath by rememberSaveable {
         mutableStateOf(
@@ -153,8 +153,8 @@ internal fun ProviderEditPage(
                 ?: ProviderSpecificConfig.OpenAI().stripModelPrefix,
         )
     }
-    // v2.6.2: OpenAI 型供应商也可自定义请求头（部分中转站要求 x-opencode-session 等）。
-    // 旧实现仅 Custom 型可填，OpenCode Go 等预设（OpenAI 型）因此无法加头。
+    // v2.6.2: OpenAI Los proveedores también pueden personalizar los encabezados de las solicitudes (algunas estaciones de transferencia requieren sesión x-opencode, etc.).
+    // En la implementación anterior, solo se podía completar el tipo Personalizado.OpenCode Go Espere por defecto (OpenAI tipo) por lo tanto no se puede agregar.
     var openAICustomHeadersText by rememberSaveable {
         mutableStateOf(
             formatCustomHeaders(
@@ -162,7 +162,7 @@ internal fun ProviderEditPage(
             ),
         )
     }
-    // v2.6.2: OpenAI 型供应商也可附加请求体字段（与自定义头同口径）。
+    // v2.6.2: OpenAI Los proveedores de tipos también pueden agregar campos del cuerpo de la solicitud (del mismo calibre que los encabezados personalizados).
     var openAICustomBodyText by rememberSaveable {
         mutableStateOf(
             formatCustomBody(
@@ -215,41 +215,42 @@ internal fun ProviderEditPage(
         )
     }
 
-    // 拉取上游模型状态(fetchedModels 为 List<Model>,需自定义 Saver,保持 remember)
+    // Obtener el estado del modelo ascendente(fetchedModels para List<Model>,Necesidad de personalizar Saver,mantener remember)
     var isFetchingModels by rememberSaveable { mutableStateOf(false) }
     var fetchError by rememberSaveable { mutableStateOf<String?>(null) }
     var fetchedModels by remember { mutableStateOf<List<Model>>(emptyList()) }
     var showModelsPicker by rememberSaveable { mutableStateOf(false) }
-    // P2-2: 上游模型差异 Sheet 显示状态(拉取成功后展示,让用户决定是否合并变更)
+    // P2-2: La hoja de diferencia del modelo ascendente muestra el estado(Se muestra después de una extracción exitosa,Permitir que los usuarios decidan si fusionar cambios)
     var showModelDiffSheet by remember { mutableStateOf(false) }
 
-    // 底部 Tab 选中项:0=配置,1=模型
+    // Selección de pestaña inferior:0=Configuración,1=modelo
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
-    // 添加新模型对话框
+    // Agregar nuevo cuadro de diálogo de modelo
     var showAddModelDialog by rememberSaveable { mutableStateOf(false) }
 
-    // 删除确认
+    // Eliminar confirmación
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
-    // 连接测试状态(v2.4: 独立测试,只测不改,不写入 modelsState)
-    // - isTestingConnection: 测试进行中(显示 CircularProgressIndicator)
-    // - testConnectionResult: 测试成功结果(含模型数量,显示绿色 ✓)
-    // - testConnectionError: 测试失败错误信息(分级显示,红色 ✗)
+    // Estado de prueba de conexión(v2.4: pruebas independientes,Solo prueba sin cambiar,no escribas modelsState)
+    // - isTestingConnection: Prueba en progreso(mostrar CircularProgressIndicator)
+    // - testConnectionResult: Resultado exitoso de la prueba(Incluyendo el número de modelos.,Pantalla verde ✓)
+    // - testConnectionError: Mensaje de error de prueba fallida(Pantalla delineada,rojo ✗)
     var isTestingConnection by rememberSaveable { mutableStateOf(false) }
     var testConnectionResult by rememberSaveable { mutableStateOf<String?>(null) }
     var testConnectionError by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // v1.0.8 (7.6): 单个模型健康检查状态(按 model.id 索引)
-    //  - 进入页面时为空(Idle),点击测试按钮后变为 InProgress,完成后变 Success/Failed
-    //  - 不持久化(remember 而非 rememberSaveable),退出页面后丢失,符合"即时反馈"语义
+    // v1.0.8 (7.6): Estado de verificación de estado del modelo individual(Índice por modelo.id)
+    //  - Vacío al entrar a la página(Idle),Después de hacer clic en el botón de prueba, se vuelve InProgress,Cambiar después de la finalización Success/Failed
+    //  - No persistente(remember en vez de rememberSaveable),Perdido después de salir de la página.,conformarse a"retroalimentación instantánea"Semántica
     var modelTestStatuses by remember { mutableStateOf<Map<String, ModelTestStatus>>(emptyMap()) }
 
-    // 从 Google Service Account JSON 文件导入 Vertex AI 凭证
+    // Importe credenciales de Vertex AI desde un archivo JSON de cuenta de servicio de Google
     val context = LocalContext.current
+    val localizedResources = androidx.compose.ui.platform.LocalResources.current
     val ioScope = rememberCoroutineScope()
     val settingsRepo: SettingsRepository = koinInject()
-    // v2.4: 先检查缓存(5分钟TTL,仅对当前配置有效),命中后按成功/失败分发到对应状态
+    // v2.4: Primero verifique el caché(5minutosTTL,Sólo válido para la configuración actual),Presione éxito tras golpe/El fallo se distribuye al estado correspondiente.
     LaunchedEffect(Unit) {
         val cached = settingsRepo.getCachedConnectionTest(config.id)
         if (cached != null) {
@@ -270,7 +271,7 @@ internal fun ProviderEditPage(
             resultOf {
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { stream ->
-                        // v1.114: 限制读取 10MB,防止超大文件 OOM
+                        // v1.114: Limitar lectura 10MB,Prevenir archivos muy grandes OOM
                         val MAX_READ_BYTES = 10L * 1024 * 1024
                         val sb = StringBuilder()
                         val buffer = CharArray(8192)
@@ -281,7 +282,7 @@ internal fun ProviderEditPage(
                                 if (read <= 0) break
                                 total += read
                                 if (total > MAX_READ_BYTES) {
-                                    error("文件过大,超过 ${MAX_READ_BYTES / 1024 / 1024}MB 限制")
+                                    error("Archivo demasiado grande,exceder ${MAX_READ_BYTES / 1024 / 1024}MB Límite")
                                 }
                                 sb.append(buffer, 0, read)
                             }
@@ -306,12 +307,12 @@ internal fun ProviderEditPage(
         }
     }
 
-    // 拉取上游模型业务逻辑
-    // v1.132 优化:
-    //  - 缓存优先:5 分钟 TTL,命中直接返回,跳过网络
-    //  - URL 多策略补全:base → base+/v1 → 剥离尾部 /v1 后重试(覆盖用户漏填/多填场景)
-    //  - 错误分级:401/403 立即报错不 fallback(凭证问题不掩盖)
-    //  - 手动刷新按钮可绕过缓存(forceFresh = true)
+    // Extraiga la lógica empresarial del modelo ascendente
+    // v1.132 Optimizar:
+    //  - caché primero:5 minutos TTL,Devuelve directamente al golpear,saltar red
+    //  - URL Finalización de estrategias múltiples:base → base+/v1 → Inténtalo de nuevo después de quitar la cola /v1(Cubrir la información faltante del usuario/Complete múltiples escenarios)
+    //  - Clasificación de errores:401/403 Informar un error inmediatamente o no fallback(Los problemas de credenciales no están cubiertos)
+    //  - Botón de actualización manual para omitir el caché(forceFresh = true)
     val fetchModels: (Boolean) -> Unit = { forceFresh ->
         if (apiKey.isBlank()) {
             fetchError = context.getString(R.string.settings_provider_fill_api_key_first)
@@ -339,7 +340,7 @@ internal fun ProviderEditPage(
             isFetchingModels = true
             fetchError = null
             ioScope.launch {
-                // v1.132: 缓存优先(5 分钟 TTL)
+                // v1.132: caché primero(5 minutos TTL)
                 if (!forceFresh) {
                     val cached = ModelListCache.get(tempConfig, forceFresh = false)
                     if (cached != null) {
@@ -348,7 +349,7 @@ internal fun ProviderEditPage(
                             fetchError = context.getString(R.string.settings_provider_no_models_returned)
                         } else {
                             val enriched = cached.map { ModelRegistry.enrich(it) }
-                            // P2-2: 不直接覆盖 modelsState,改为透明展示差异让用户决定
+                            // P2-2: No cubierto directamente modelsState,Cambie a una visualización transparente de las diferencias y deje que los usuarios decidan
                             fetchedModels = enriched
                             showModelDiffSheet = true
                             fetchError = null
@@ -357,7 +358,7 @@ internal fun ProviderEditPage(
                     }
                 }
 
-                // v1.132: URL 多策略补全 — 覆盖用户漏填/多填 /v1 场景
+                // v1.132: URL Finalización de estrategias múltiples — Cubrir la información faltante del usuario/Complete más escenarios /v1
                 val base = tempConfig.baseUrl.trimEnd('/')
                 val urlsToTry = mutableListOf<String>()
                 if (base.isNotBlank()) {
@@ -365,11 +366,11 @@ internal fun ProviderEditPage(
                     if (!base.endsWith("/v1") && !base.endsWith("/v1beta")) {
                         urlsToTry.add("$base/v1")
                     } else if (base.endsWith("/v1")) {
-                        // 用户填了 /v1 但可能上游实际不需要,也尝试剥掉
+                        // El usuario ha completado /v1 pero es posible que el upstream no lo necesite.,Prueba también a despegar
                         urlsToTry.add(base.removeSuffix("/v1"))
                     }
                 } else {
-                    // Base URL 为空时使用默认端点
+                    // Base URL Usar punto final predeterminado cuando esté vacío
                     urlsToTry.add(tempConfig.baseUrl)
                 }
 
@@ -388,12 +389,12 @@ internal fun ProviderEditPage(
                             if (models.isEmpty()) {
                                 fetchError = context.getString(R.string.settings_provider_no_models_returned)
                             } else {
-                                // v1.97: 对上游返回的模型逐个 enrich(自动推导
-                                // abilities/modalities/contextWindow),保留 Provider 已声明的字段
+                                // v1.97: Verifique los modelos devueltos por el upstream uno por uno enrich(derivación automática
+                                // abilities/modalities/contextWindow),Preservar los campos declarados por el proveedor
                                 val enriched = models.map { ModelRegistry.enrich(it) }
-                                // v1.132: 写入缓存(用最终成功的 url 对应的 config)
+                                // v1.132: escribir caché(Correspondiente a la URL final exitosa config)
                                 ModelListCache.put(tempConfig.copy(baseUrl = url), models)
-                                // P2-2: 不直接覆盖 modelsState,改为透明展示差异让用户决定
+                                // P2-2: No cubierto directamente modelsState,Cambie a una visualización transparente de las diferencias y deje que los usuarios decidan
                                 fetchedModels = enriched
                                 showModelDiffSheet = true
                                 fetchError = null
@@ -402,7 +403,7 @@ internal fun ProviderEditPage(
                         return@launch
                     } else {
                         lastError = (result as Result.Error).throwable
-                        // v1.132: 401/403 立即报错,不 fallback(凭证问题)
+                        // v1.132: 401/403 Informar un error inmediatamente,No fallback(Problemas de credenciales)
                         val msg = lastError?.message.orEmpty()
                         if (msg.contains("401") || msg.contains("403")) {
                             lastHttpCode = if (msg.contains("401")) 401 else 403
@@ -411,7 +412,7 @@ internal fun ProviderEditPage(
                     }
                 }
 
-                // 全部失败
+                // Todo falló
                 isFetchingModels = false
                 val msg = lastError?.message ?: context.getString(R.string.settings_provider_unknown_error)
                 fetchError = when {
@@ -427,17 +428,17 @@ internal fun ProviderEditPage(
         }
     }
 
-    // v1.32: 进入编辑页就自动拉取上游模型(不等到切到模型 Tab)
-    // v1.132: 改为走缓存(forceFresh=false),5 分钟内重复进入不重复打网络
+    // v1.32: Al ingresar a la página de edición, el modelo ascendente se extraerá automáticamente.(No esperes para pasar al modelo. Tab)
+    // v1.132: Utilice caché en su lugar(forceFresh=false),5 Acceso repetido en minutos sin acceso repetido a la red
     LaunchedEffect(Unit) {
         if (modelsState.isEmpty() && apiKey.isNotBlank() && !isFetchingModels) {
             fetchModels(false)
         }
     }
 
-    // v2.x（用户反馈 #3-2）: 测试失败的错误分级 + **完整原因**。
-    // 不再 take(80) 截断 —— 用户反馈"只显示一半看不到真实原因"，
-    // 现保留原始异常类名与完整消息，便于自排。
+    // v2.x(Comentarios del usuario n.º 3-2): Clasificación de errores por falla de prueba. + **razón completa**.
+    // no más take(80) Truncar —— Comentarios de los usuarios"Sólo se muestra la mitad y no se puede ver el motivo real.",
+    // El nombre de la clase de excepción original y el mensaje completo ahora se conservan para facilitar el enrutamiento automático.
     fun classifyTestFailure(ctx: android.content.Context, throwable: Throwable?): Pair<String, Boolean> {
         val msg = throwable?.message.orEmpty()
         val rawDetail = (throwable?.javaClass?.simpleName ?: "") +
@@ -459,7 +460,7 @@ internal fun ProviderEditPage(
         return classified to false
     }
 
-    // 构造当前表单对应的临时 ProviderConfig
+    // Construir un temporal correspondiente al formulario actual. ProviderConfig
     fun buildTempConfig(): ProviderConfig {
         val isCustom = config.resolvedSpecific() is ProviderSpecificConfig.Custom
         val tempSpecific = when (type) {
@@ -485,7 +486,7 @@ internal fun ProviderEditPage(
                     embeddingsPath = openAIEmbeddingsPath.trim(),
                     imagesPath = openAIImagesPath.trim(),
                     stripModelPrefix = openAIStripModelPrefix.trim(),
-                    // v2.6.2: OpenAI 型供应商也支持自定义请求头/请求体（中转站强制头场景）。
+                    // v2.6.2: OpenAI Los proveedores de tipos también admiten encabezados de solicitud personalizados/Cuerpo de la solicitud (escenario de encabezado obligatorio de la estación de transferencia).
                     customHeaders = parseCustomHeaders(openAICustomHeadersText),
                     customBody = parseCustomBody(openAICustomBodyText),
                 )
@@ -506,45 +507,45 @@ internal fun ProviderEditPage(
             specific = tempSpecific,
             balanceApiPath = balanceApiPath.trim(),
             balanceResultPath = balanceResultPath.trim(),
-            // P1-3: 限流参数(健康检查/拉取模型时也带上,保持配置一致)
+            // P1-3: Parámetros limitantes actuales(chequeo de salud/Tráelo también al tirar del modelo.,Mantenga la configuración consistente)
             requestLimitPerMinute = requestLimitPerMinuteText.trim().toIntOrNull() ?: 0,
             maxConcurrentRequests = maxConcurrentRequestsText.trim().toIntOrNull() ?: 0,
         )
     }
 
-    // v2.4: 独立测试连接业务逻辑
-    //  - 与 fetchModels 区分:只调用 ProviderRegistry.create().listModels() 做一次轻量测试,
-    //    不写入 modelsState,不写 ModelListCache,只显示结果
-    //  - 错误分级:401/403 → API Key 无效,404 → URL 不支持,timeout → 连接超时,
-    //    UnknownHost → 无法连接服务器(短消息,与 fetchModels 的详细错误区分)
-    //  - 成功显示模型数量(连接正常 · N 个模型)
-    //  - 用 ioScope.launch 协程执行,避免阻塞 UI
+    // v2.4: Pruebe de forma independiente la lógica empresarial de conexión
+    //  - Diferenciarse de fetchModels:solo llama ProviderRegistry.create().listModels() Haz una prueba de luz,
+    //    no escribas modelsState,no escribas ModelListCache,Mostrar solo resultados
+    //  - Clasificación de errores:401/403 → API Key Inválido,404 → URL No compatible,timeout → Tiempo de espera de conexión,
+    //    UnknownHost → No se puede conectar al servidor(mensaje corto,Distinción detallada de errores con fetchModels)
+    //  - Número de modelos mostrados correctamente(La conexión es normal. · N modelos)
+    //  - Ejecutado usando la rutina ioScope.launch,evitar el bloqueo UI
     val testConnection: () -> Unit = {
-        // 复用 buildTempConfig() 构造临时配置 —— 手搓 ProviderConfig 会丢
-        // useResponseApi / customHeaders 这类协议细节，测试结果就不可信。
+        // Reutilizar buildTempConfig() Construir configuración temporal —— ProviderConfig se perderá si lo frota con las manos
+        // useResponseApi / customHeaders Con tales detalles del protocolo, los resultados de las pruebas no son confiables.
         val tempConfig = buildTempConfig()
         isTestingConnection = true
         testConnectionResult = null
         testConnectionError = null
         ioScope.launch {
             val (result, isSuccess) = withContext(Dispatchers.IO) {
-                // 测试连接以「真实模型请求」为主，/models 只用来补充模型数量。
+                // La conexión de prueba se basa principalmente en la "solicitud de modelo real"./models Sólo se utiliza para complementar el número de modelos.
                 //
-                // 旧实现的顺序是反的：先打 /models，失败才降级到 chat 探测。
-                // 但 /models 恰好是最不可靠的一个端点 —— 大量兼容接口和中转站
-                // 要么不实现它、要么返回非标准结构、要么对它单独做鉴权限制，
-                // 于是一个完全能正常聊天的供应商在这里被判失败。用户看到的就是
-                // “几乎所有供应商测试都是失败”，而实际去聊天又是好的。
+                // El orden de la implementación anterior se invirtió: primero presione /models y luego, en caso de falla, se degradó a la sonda de chat.
+                // Pero /models resulta ser el punto final menos confiable —— Gran número de interfaces y estaciones de transferencia compatibles
+                // No lo implemente, devuelva una estructura no estándar o imponga restricciones de autenticación separadas.
+                // Por lo tanto, se considera que un proveedor que puede chatear normalmente ha fallado aquí. Lo que ve el usuario es
+                // “Casi todas las pruebas de proveedores fallan”, y realmente ir a charlar es bueno.
                 //
-                // 改成：先发一条真实消息（这才是用户真正要用的路径），
-                // 通了就成功；只有在拿不到可测模型名时，才退回 /models 探测。
+                // Cambiar a: Enviar primero un mensaje real (esta es la ruta que el usuario realmente quiere usar),
+                // Si se aprueba, será un éxito; Sólo cuando no se pueda obtener el nombre del modelo comprobable, se devolverá la detección /models.
                 val provider = ProviderRegistry.create(tempConfig)
                 val probeModelId =
                     config.models.firstOrNull { it.id.isNotBlank() }?.id
                         ?: modelsState.firstOrNull { it.id.isNotBlank() }?.id
 
                 if (probeModelId == null) {
-                    // 没有已知模型名：只能测 /models（新供应商没拉过列表的情形）。
+                    // Sin nombre de modelo conocido: solo se pueden probar /modelos (cuando el nuevo proveedor no ha obtenido la lista).
                     val listResult = resultOf { provider.listModels(tempConfig) }
                     if (listResult.isSuccess) {
                         context.getString(
@@ -562,8 +563,8 @@ internal fun ProviderEditPage(
                     val health = resultOf { provider.healthCheck(probeModel) }
                     val healthOk = health.getOrNull()?.success == true
                     if (healthOk) {
-                        // 聊得通就是真的通。顺手尝试拿模型数量让文案更具体，
-                        // 拿不到也不影响结论，所以用静默的 runCatching。
+                        // Si puedes hablar, realmente puedes. Simplemente intente obtener la cantidad de modelos para que la copia sea más específica.
+                        // Si no puede obtenerlo, no afectará la conclusión, así que use runCatching silencioso.
                         val modelCount = runCatching { provider.listModels(tempConfig).size }.getOrDefault(0)
                         if (modelCount > 0) {
                             context.getString(R.string.settings_provider_test_success_count, modelCount) to true
@@ -571,8 +572,8 @@ internal fun ProviderEditPage(
                             context.getString(R.string.settings_provider_test_success_chat_ok, probeModelId) to true
                         }
                     } else {
-                        // 聊天失败：优先报聊天链路的原因（它比 /models 的报错更接近真实使用），
-                        // healthCheck 已经把异常翻译成可操作的话了。
+                        // Fallo del chat: la razón por la que el enlace del chat se informa primero (está más cerca del uso real que el informe de error de /models),
+                        // healthCheck Las excepciones se han traducido en palabras prácticas.
                         val healthMessage = health.getOrNull()?.message
                         if (!healthMessage.isNullOrBlank()) {
                             context.getString(R.string.settings_provider_test_error_failed, healthMessage) to false
@@ -590,24 +591,24 @@ internal fun ProviderEditPage(
                 testConnectionResult = null
             }
             isTestingConnection = false
-            // v2.4: 缓存测试结果(5 分钟 TTL,下次进入页面直接显示)
+            // v2.4: Resultados de la prueba de almacenamiento en caché(5 minutos TTL,Se mostrará directamente la próxima vez que ingrese a la página.)
             ioScope.launch {
                 settingsRepo.saveConnectionTestCache(tempConfig.id, result, isSuccess)
             }
         }
     }
 
-    // v1.0.8 (7.6): 单个模型健康检查 — 用真实 LLM 调用验证 model + apiKey + baseUrl 是否可用
-    //  - 复用 buildTempConfig() 构造当前表单对应的临时配置(用户未保存的 apiKey/baseUrl 也能测)
-    //  - 调用 Provider.healthCheck(model) 发送 "Reply exactly OK." 测试消息,15s 超时
-    //  - 状态写入 modelTestStatuses(按 model.id 索引),ProviderModelRow 据此显示状态 chip
-    //  - 与 testConnection 区别:testConnection 只测 /models 端点(轻量),testModel 验证完整 chat 链路
+    // v1.0.8 (7.6): Comprobación de estado de modelo único — Verificar con una llamada real de LLM model + apiKey + baseUrl ¿Está disponible?
+    //  - Reutilizar buildTempConfig() Construir una configuración temporal correspondiente al formulario actual.(También se puede probar la apiKey/baseUrl no guardada del usuario.)
+    //  - llamar Provider.healthCheck(model) enviar "Reply exactly OK." mensaje de prueba,15s tiempo de espera
+    //  - escritura de estado modelTestStatuses(Índice por modelo.id),ProviderModelRow Mostrar estado en consecuencia chip
+    //  - Diferencia de testConnection:testConnection Solo punto final de prueba/modelos(ligero),testModel Verificar enlace de chat completo
     fun testModel(model: io.zer0.ai.core.Model) {
         if (apiKey.isBlank()) {
-            modelTestStatuses = modelTestStatuses + (model.id to ModelTestStatus.Failed("API Key 为空"))
+            modelTestStatuses = modelTestStatuses + (model.id to ModelTestStatus.Failed("API Key esta vacio"))
             return
         }
-        // 置为 InProgress,禁用测试按钮
+        // establecer en InProgress,Deshabilitar el botón de prueba
         modelTestStatuses = modelTestStatuses + (model.id to ModelTestStatus.InProgress)
         val tempConfig = buildTempConfig()
         ioScope.launch {
@@ -633,7 +634,7 @@ internal fun ProviderEditPage(
         }
     }
 
-    // 查询余额业务逻辑
+    // Consultar lógica empresarial de equilibrio.
     fun queryBalance(tempConfig: ProviderConfig) {
         if (tempConfig.balanceApiPath.isBlank()) {
             balanceResult = context.getString(R.string.settings_provider_configure_balance_first)
@@ -698,7 +699,7 @@ internal fun ProviderEditPage(
     }
 
     /**
-     * v1.97: 从当前编辑状态构建 ProviderConfig(供保存与二维码分享复用)。
+     * v1.97: Construir desde el estado de edición actual ProviderConfig(Para guardar y compartir con código QR para reutilizar).
      */
     fun buildCurrentConfig(): ProviderConfig {
         val parsedModels = if (modelsState.isEmpty() && fetchedModels.isNotEmpty()) {
@@ -730,7 +731,7 @@ internal fun ProviderEditPage(
                     embeddingsPath = openAIEmbeddingsPath.trim(),
                     imagesPath = openAIImagesPath.trim(),
                     stripModelPrefix = openAIStripModelPrefix.trim(),
-                    // v2.6.2: OpenAI 型供应商也支持自定义请求头/请求体（中转站强制头场景）。
+                    // v2.6.2: OpenAI Los proveedores de tipos también admiten encabezados de solicitud personalizados/Cuerpo de la solicitud (escenario de encabezado obligatorio de la estación de transferencia).
                     customHeaders = parseCustomHeaders(openAICustomHeadersText),
                     customBody = parseCustomBody(openAICustomBodyText),
                 )
@@ -758,48 +759,48 @@ internal fun ProviderEditPage(
             balanceApiPath = balanceApiPath.trim(),
             balanceResultPath = balanceResultPath.trim(),
             category = savedCategory,
-            // P1-3: 限流参数(0 表示不限,RateLimitDecorator 在 ProviderRegistry.create 时按需叠加)
+            // P1-3: Parámetros limitantes actuales(0 Indica que no hay límite,RateLimitDecorator Superposición bajo demanda cuando ProviderRegistry.create)
             requestLimitPerMinute = requestLimitPerMinuteText.trim().toIntOrNull() ?: 0,
             maxConcurrentRequests = maxConcurrentRequestsText.trim().toIntOrNull() ?: 0,
         )
     }
 
-    // 保存业务逻辑
+    // Guardar la lógica empresarial
     val save: () -> Unit = {
         onSave(buildCurrentConfig())
     }
 
-    // ── P1-6: OAuth 登录 ──────────────────────────────────────────────
-    // P2-11: OAuthManager 已在 MuseApp.onCreate 中注入 SecureCredentialStore,
-    // 这里直接通过 OAuthManager 间接访问(读取 / 刷新 / 撤销)。
-    // 观察 OAuthManager 状态流,驱动弹窗 / 自动填入 apiKey / 错误提示
+    // ── P1-6: OAuth Iniciar sesión ──────────────────────────────────────────────
+    // P2-11: OAuthManager Ya inyectado en MuseApp.onCreate SecureCredentialStore,
+    // Aquí accede directamente a través de OAuthManager.(Leer/Actualizar/Deshacer).
+    // Observe el flujo de estado de OAuthManager,Ventana emergente del controlador/completar automáticamente apiKey/mensaje de error
     val oauthState by OAuthManager.stateFlow.collectAsStateWithLifecycle()
-    // Device Flow 的 user_code 弹窗状态(userCode, verificationUri)
+    // Device Flow El estado emergente de código_usuario(userCode, verificationUri)
     var showDeviceCodeDialog by remember { mutableStateOf(false) }
     var deviceCodeInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
-    // P2-11: 是否已有已存储的 OAuth token(控制「撤销访问」按钮显示)
+    // P2-11: ¿Hay alguna almacenada? OAuth token(Controlar la visualización del botón "Revocar acceso")
     var hasStoredOAuthToken by remember { mutableStateOf(false) }
-    // P2-11: 「撤销访问」确认弹窗
+    // P2-11: Ventana emergente de confirmación "Revocar acceso"
     var showRevokeConfirm by remember { mutableStateOf(false) }
 
-    // P2-11: 进入页面时优先从 SecureCredentialStore 读取已存储 token,
-    // 未过期直接复用,过期则自动 refresh,失败则提示用户重新登录。
+    // P2-11: Al ingresar a la página, lea primero los datos almacenados en SecureCredentialStore. token,
+    // Reutilizar directamente sin caducidad,Caduca automáticamente refresh,Si falla, se le solicita al usuario que inicie sesión nuevamente.
     LaunchedEffect(config.id, config.oauthConfig) {
         if (config.oauthConfig == null) return@LaunchedEffect
         val stored = OAuthManager.getStoredToken(config.id) ?: return@LaunchedEffect
         hasStoredOAuthToken = true
         val now = System.currentTimeMillis()
-        val bufferMs = 60_000L // 60s 提前刷新窗口,与 OAuthManager.REFRESH_BUFFER_SECONDS 对齐
+        val bufferMs = 60_000L // 60s Actualizar ventana por adelantado,Alineado con OAuthManager.REFRESH_BUFFER_SECONDS
         if (stored.expiresAt == 0L || stored.expiresAt > now + bufferMs) {
-            // 未过期,直接填入 apiKey 输入框
+            // No caducado,Complete directamente el cuadro de entrada apiKey
             if (stored.accessToken.isNotBlank() && apiKey.isBlank()) {
                 apiKey = stored.accessToken
                 MuseToast.show(context.getString(R.string.oauth_stored))
             }
         } else {
-            // 过期,尝试自动刷新
-            // B-24: 把持久化的 config.oauthConfig 传入刷新路径 — 内存 providerConfigs 只在
-            // launch* 流程填充,App 重启后为空,必须显式注入 config 才能保证跨重启自动刷新可用。
+            // Caducado,Prueba la actualización automática
+            // B-24: Pase el config.oauthConfig persistente a la ruta de actualización — Configuraciones del proveedor de memoria solo en
+            // launch* proceso de llenado,App Vacío después de reiniciar,config debe inyectarse explícitamente para garantizar que la actualización automática esté disponible durante los reinicios.
             OAuthManager.refreshTokenIfNeeded(config.id, config.oauthConfig)
                 .onSuccess { newToken ->
                     apiKey = newToken
@@ -817,10 +818,10 @@ internal fun ProviderEditPage(
             is OAuthManager.State.SUCCESS -> {
                 apiKey = s.apiKey
                 hasStoredOAuthToken = true
-                // v2.6.2（Codex 登录修复）: 解析 ChatGPT 账号 ID 并写入 customHeaders ——
-                // Codex 端点请求除 Bearer 外必须携带 ChatGPT-Account-ID 头。
-                // 旧实现读顶层 claim（实际嵌套在 `https://api.openai.com/auth` 命名空间下），
-                // 恒为 null；且解析失败时整个 onSave 被跳过，连 access_token 都没落盘。
+                // v2.6.2(Codex Solución de inicio de sesión): Analizar el ID de la cuenta ChatGPT y escribir customHeaders ——
+                // Codex Las solicitudes de punto final deben llevar el encabezado ChatGPT-Account-ID además del portador.
+                // La implementación anterior lee el reclamo de nivel superior (en realidad anidado en `https://api.openai.com/auth` espacio de nombres),
+                // Siempre es nulo; y cuando el análisis falla, se omite todo el onSave e incluso el access_token no se guarda.
                 val accountId = io.zer0.muse.auth.parseChatGptAccountId(s.idToken)
                     ?: io.zer0.muse.auth.parseChatGptAccountId(s.apiKey)
                 val base = buildCurrentConfig()
@@ -830,7 +831,7 @@ internal fun ProviderEditPage(
                 val mergedHeaders = openAiSpecific.customHeaders +
                     mapOf("originator" to "muse") +
                     (accountId?.let { mapOf("ChatGPT-Account-ID" to it) } ?: emptyMap())
-                // 无论 account-id 是否解析成功，都把 access_token 落盘（否则登录形同白做）
+                // Independientemente de si el ID de cuenta se analiza correctamente o no, se guardará el token de acceso (de lo contrario, el inicio de sesión será en vano)
                 onSave(
                     base.copy(
                         apiKey = s.apiKey,
@@ -844,7 +845,7 @@ internal fun ProviderEditPage(
                 } else {
                     Logger.w(
                         "ProviderEditPage",
-                        "Codex 登录成功但未能从 id_token 解析 chatgpt_account_id（idToken 存在=${!s.idToken.isNullOrBlank()}）",
+                        "Codex Inicie sesión correctamente pero no se pudo analizar chatgpt_account_id de id_token (idToken existir=${!s.idToken.isNullOrBlank()})",
                     )
                 }
                 MuseToast.show(context.getString(R.string.oauth_login_success))
@@ -860,30 +861,30 @@ internal fun ProviderEditPage(
                 showDeviceCodeDialog = false
             }
             is OAuthManager.State.AWAITING_USER -> {
-                // Device Flow 携带 userCode,弹窗显示;Auth Code Flow 的 userCode 为空,由 ConfigTab 内联显示
+                // Device Flow llevar userCode,Visualización de ventana emergente;Auth Code Flow El código de usuario está vacío,Mostrado en línea por ConfigTab
                 if (s.userCode.isNotBlank()) {
                     deviceCodeInfo = s.userCode to s.verificationUri
                     showDeviceCodeDialog = true
                 }
             }
-            else -> { /* IDLE / POLLING: 由 ConfigTab 内联显示加载状态 */ }
+            else -> { /* IDLE / POLLING: Mostrar el estado de carga en línea mediante ConfigTab */ }
         }
     }
-    // 离开页面时取消进行中的 OAuth 流程,避免状态泄漏到下次进入
+    // Cancelar un flujo de OAuth en curso al salir de la página,Evite la fuga de estado a la siguiente entrada
     DisposableEffect(Unit) {
         onDispose { OAuthManager.cancel() }
     }
-    // OAuth 登录入口:Device Flow 优先,降级 Auth Code Flow
-    // P2-11: 透传 providerId = config.id,登录成功后由 OAuthManager 自动持久化 TokenBundle
+    // OAuth Portal de inicio de sesión:Device Flow Prioridad,Rebajar Auth Code Flow
+    // P2-11: paso a través providerId = config.id,OAuthManager persiste automáticamente después de iniciar sesión correctamente TokenBundle
     val onOAuthLogin: () -> Unit = lambda@{
         val oauthConfig = config.oauthConfig ?: run {
-            MuseToast.show(context.getString(R.string.oauth_login_failed, "OAuth 未配置"))
+            MuseToast.show(context.getString(R.string.oauth_login_failed, "OAuth No configurado"))
             return@lambda
         }
         if (oauthConfig.deviceCodeUrl.isNullOrBlank()) {
-            // Auth Code Flow 需要 Activity 上下文
+            // Auth Code Flow Requiere contexto de actividad
             val activity = context.findActivity() ?: run {
-                MuseToast.show(context.getString(R.string.oauth_login_failed, "无法获取 Activity 上下文"))
+                MuseToast.show(context.getString(R.string.oauth_login_failed, "No se puede obtener el contexto de la actividad"))
                 return@lambda
             }
             ioScope.launch { OAuthManager.launchAuthorizationCodeFlow(activity, oauthConfig, config.id) }
@@ -891,20 +892,20 @@ internal fun ProviderEditPage(
             ioScope.launch { OAuthManager.launchDeviceFlow(oauthConfig, config.id) }
         }
     }
-    // P2-11: 撤销访问 — 删除 SecureCredentialStore 中的 token + 清空 apiKey 输入框
+    // P2-11: revocar el acceso — Eliminar el token en SecureCredentialStore + borrar el cuadro de entrada apiKey
     val onRevokeOAuth: () -> Unit = {
         showRevokeConfirm = true
     }
     val isOAuthLoading = oauthState is OAuthManager.State.AWAITING_USER ||
         oauthState is OAuthManager.State.POLLING
 
-    // v1.35: 改用普通全屏 Scaffold(不再用 Dialog),系统导航栏 inset 正确传递
-    // v1.48: BackHandler 检查未保存修改,避免误退丢失编辑
+    // v1.35: Cambiar a pantalla completa normal Scaffold(ya no se usa Dialog),El inserto de la barra de navegación del sistema se pasó correctamente
+    // v1.48: BackHandler Comprobar cambios no guardados,Evite perder ediciones por error
     var showDiscardConfirm by remember { mutableStateOf(false) }
-    // v1.97: 二维码分享弹窗
+    // v1.97: Ventana emergente para compartir códigos QR
     var showQrShareDialog by remember { mutableStateOf(false) }
-    // v1.134 P1-2: 用 buildCurrentConfig() == config 全字段比对,
-    // 覆盖 specific / Vertex / OpenAI / Anthropic / Custom / balanceApiPath 等高级字段。
+    // v1.134 P1-2: usar buildCurrentConfig() == config Comparación de campo completo,
+    // Portada specific / Vertex / OpenAI / Anthropic / Custom / balanceApiPath y otros campos avanzados.
     val hasUnsavedChanges by remember {
         derivedStateOf { buildCurrentConfig() != config }
     }
@@ -933,7 +934,7 @@ internal fun ProviderEditPage(
                 },
                 onBack = onDismiss,
                 actions = {
-                    // v1.97: 分享二维码按钮(仅在已存在的 Provider 显示,新建时不显示)
+                    // v1.97: Botón compartir código QR(Solo se muestra en proveedores existentes,No se muestra cuando es nuevo)
                     if (!isNew) {
                         MuseTactileButton(
                             icon = MuseIcons.qrcode,
@@ -941,9 +942,9 @@ internal fun ProviderEditPage(
                             contentDescription = stringResource(R.string.qr_share_btn),
                         )
                     }
-                    // v2.4: 测试连接按钮已移至 ConfigTab(紧邻 baseUrl/apiKey 输入框,
-                    // 结果胶囊就近展示,符合系统设置页"操作就近反馈"风格)
-                    // v1.134 P0-2: 保存按钮用 Surface+clickable 胶囊(避免 Material3 默认 Button)
+                    // v2.4: El botón Probar conexión se ha movido a ConfigTab(Junto al cuadro de entrada baseUrl/apiKey,
+                    // La cápsula de resultados se muestra cerca,Cumplir con la página de configuración del sistema"Comentarios de operaciones cercanas"estilo)
+                    // v1.134 P0-2: Botón Guardar con Surface+cápsula en la que se puede hacer clic(Evitar el valor predeterminado de Material3 Button)
                     Surface(
                         shape = MuseShapes.pill,
                         color = MaterialTheme.colorScheme.primary,
@@ -962,7 +963,7 @@ internal fun ProviderEditPage(
             )
         },
         bottomBar = {
-            // 底部悬浮操作栏
+            // Barra de operación flotante inferior
             ProviderEditBottomBar(
                 canFetch = !isFetchingModels && apiKey.isNotBlank(),
                 isFetching = isFetchingModels,
@@ -977,13 +978,13 @@ internal fun ProviderEditPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // v1.125: 移除多余的 imePadding(),Scaffold 的 innerPadding 已包含 IME 偏移,
-                // 双重 imePadding 会把整个内容区推得过高,导致输入框被键盘遮挡。
+                // v1.125: eliminar redundante imePadding(),Scaffold El InnerPadding ya contiene el desplazamiento de IME.,
+                // El doble imePadding elevará demasiado toda el área de contenido,Esto hace que el teclado oscurezca el cuadro de entrada.
                 .padding(innerPadding),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // v1.0.90 fix: 原手写分段控件在高度不受限的容器里给页签用了 fillMaxHeight()，
-                // 两个页签被撑成整屏高、正文被挤出可视区（用户截图即如此）。改用统一的胶囊页签。
+                // v1.0.90 fix: El control segmentado de escritura a mano original se utiliza para pestañas en un contenedor con altura ilimitada. fillMaxHeight(),
+                // Las dos pestañas se extienden hasta toda la altura de la pantalla y el texto sale del área visible (como se muestra en la captura de pantalla del usuario). Utilice pestañas de cápsulas unificadas en su lugar.
                 MuseCapsuleTab(
                     tabs = listOf(
                         stringResource(R.string.settings_provider_tab_config),
@@ -1079,10 +1080,10 @@ internal fun ProviderEditPage(
                         oauthConfig = config.oauthConfig,
                         onOAuthLogin = onOAuthLogin,
                         isOAuthLoading = isOAuthLoading,
-                        // P2-11: 透传已存储 token 状态 + 撤销回调
+                        // P2-11: Transmisión transparente del estado del token almacenado + devolución de llamada de revocación
                         hasStoredOAuthToken = hasStoredOAuthToken,
                         onRevokeOAuth = onRevokeOAuth,
-                        // P1-3: 透传限流参数
+                        // P1-3: Parámetros limitantes de corriente de transmisión transparentes
                         requestLimitPerMinuteText = requestLimitPerMinuteText,
                         onRequestLimitPerMinuteTextChange = { requestLimitPerMinuteText = it.filter { ch -> ch.isDigit() } },
                         maxConcurrentRequestsText = maxConcurrentRequestsText,
@@ -1102,7 +1103,7 @@ internal fun ProviderEditPage(
                         isFetching = isFetchingModels,
                         onFetch = fetchModels,
                         onAddModel = { showAddModelDialog = true },
-                        // v1.0.8 (7.6): 透传模型健康检查回调 + 状态 Map
+                        // v1.0.8 (7.6): Devolución de llamada + estado transparente de verificación de estado del modelo Map
                         onTestModel = { testModel(it) },
                         modelTestStatuses = modelTestStatuses,
                     )
@@ -1111,8 +1112,8 @@ internal fun ProviderEditPage(
         }
     }
 
-    // 添加新模型对话框
-    // v1.97: 添加时通过 ModelRegistry 自动推导 abilities/modalities/contextWindow
+    // Agregar nuevo cuadro de diálogo de modelo
+    // v1.97: Deducido automáticamente a través de ModelRegistry al agregar abilities/modalities/contextWindow
     if (showAddModelDialog) {
         AddModelDialog(
             onDismiss = { showAddModelDialog = false },
@@ -1127,7 +1128,7 @@ internal fun ProviderEditPage(
         )
     }
 
-    // 删除确认对话框
+    // Eliminar cuadro de diálogo de confirmación
     if (showDeleteConfirm && onDelete != null) {
         MuseDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -1145,7 +1146,7 @@ internal fun ProviderEditPage(
         )
     }
 
-    // v1.97: 二维码分享弹窗(分享当前编辑状态的 ProviderConfig)
+    // v1.97: Ventana emergente para compartir códigos QR(Compartir el estado de edición actual ProviderConfig)
     if (showQrShareDialog) {
         val qrContent = io.zer0.muse.ui.qrcode.QrCodeGenerator.encodeProvider(buildCurrentConfig())
         io.zer0.muse.ui.qrcode.QrCodeShareDialog(
@@ -1154,7 +1155,7 @@ internal fun ProviderEditPage(
         )
     }
 
-    // 拉取成功后弹出的模型选择 Sheet
+    // Selección de modelo que aparece después de una extracción exitosa Sheet
     if (showModelsPicker) {
         val existingIds = modelsState.map { it.id }.toSet()
         FetchedModelsPickerSheet(
@@ -1170,10 +1171,10 @@ internal fun ProviderEditPage(
         )
     }
 
-    // P2-2: 上游模型差异 Sheet(拉取成功后透明展示新增/已删除/一致三类分组)
-    //  - onAdd: 把勾选的新增模型合并入 modelsState(按 id 忽略大小写去重)
-    //  - onRemove: 从 modelsState 移除勾选的已删除模型(按 id 忽略大小写匹配)
-    //  - onDismiss: 关闭 Sheet(点击遮罩 / 返回键 / 应用完成均触发)
+    // P2-2: Diferencias del modelo ascendente Sheet(Recién mostrado de forma transparente después de una extracción exitosa/Eliminado/Agrupación consistente de tres categorías)
+    //  - onAdd: Fusionar los nuevos modelos seleccionados en modelsState(Ignorar mayúsculas y minúsculas y deduplicar por ID)
+    //  - onRemove: Eliminar los modelos eliminados marcados de modelsState(Ignorar coincidencia de casos por identificación)
+    //  - onDismiss: cerrar Sheet(Se activa al hacer clic en la máscara/tecla de retorno/finalización de la aplicación)
     if (showModelDiffSheet) {
         ModelDiffSheet(
             localModels = modelsState.toList(),
@@ -1193,12 +1194,12 @@ internal fun ProviderEditPage(
         )
     }
 
-    // P1-6: Device Flow user_code 弹窗 — 显示 verification_uri + user_code 给用户
+    // P1-6: Device Flow user_code ventana emergente — Mostrar uri_verificación + código_usuario al usuario
     if (showDeviceCodeDialog && deviceCodeInfo != null) {
         val (userCode, verificationUri) = deviceCodeInfo!!
         MuseDialog(
             onDismissRequest = {
-                // 用户取消:中止 OAuth 流程
+                // El usuario cancela:Cancelar el proceso OAuth
                 OAuthManager.cancel()
                 showDeviceCodeDialog = false
                 deviceCodeInfo = null
@@ -1216,8 +1217,8 @@ internal fun ProviderEditPage(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(Modifier.size(MusePaddings.contentGap))
-                    // v2.6.0: 提供“直接打开授权页”按钮 —— 原实现只展示 URL 文本,
-                    // 用户需自己开浏览器拄地址,一键登录体验断裂。
+                    // v2.6.0: proporcionar“Abra la página de autorización directamente”botón —— La implementación original solo muestra el texto de la URL.,
+                    // Los usuarios deben abrir su propio navegador y proporcionar la dirección.,La experiencia de inicio de sesión con un solo clic no funciona.
                     MuseCapsuleButton(
                         text = stringResource(R.string.oauth_device_open_page),
                         onClick = {
@@ -1237,7 +1238,7 @@ internal fun ProviderEditPage(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.size(MusePaddings.contentGap))
-                    // user_code 用大字号 + 居中显示,便于用户抄写到授权页
+                    // user_code Utilice tamaño de fuente grande + centro,Conveniente para que los usuarios copien a la página de autorización
                     Surface(
                         shape = MuseShapes.medium,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -1263,14 +1264,14 @@ internal fun ProviderEditPage(
             },
             confirmText = stringResource(R.string.oauth_open_verification_uri),
             onConfirm = {
-                // 用 Intent 打开 verification_uri
+                // Abrir con intención verification_uri
                 runCatching {
                     val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(verificationUri))
                     openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(openIntent)
                 }.onFailure {
                     MuseToast.show(
-                        context.getString(R.string.oauth_login_failed, it.message ?: "无法打开浏览器"),
+                        localizedResources.getString(R.string.oauth_login_failed, it.message ?: "No puedo abrir el navegador"),
                     )
                 }
             },
@@ -1283,7 +1284,7 @@ internal fun ProviderEditPage(
         )
     }
 
-    // P2-11: 撤销 OAuth 访问确认弹窗 — 删除 SecureCredentialStore 中的 token
+    // P2-11: Revocar la ventana emergente de confirmación de acceso a OAuth — Eliminar SecureCredentialStore token
     if (showRevokeConfirm) {
         MuseDialog(
             onDismissRequest = { showRevokeConfirm = false },
@@ -1294,10 +1295,10 @@ internal fun ProviderEditPage(
                 showRevokeConfirm = false
                 ioScope.launch {
                     OAuthManager.revokeStoredToken(config.id)
-                    // 清空 apiKey 输入框 + 同步本地状态
+                    // Borre el cuadro de entrada apiKey + sincronice el estado local
                     apiKey = ""
                     hasStoredOAuthToken = false
-                    MuseToast.show(context.getString(R.string.oauth_revoke_success))
+                    MuseToast.show(localizedResources.getString(R.string.oauth_revoke_success))
                 }
             },
             dismissText = stringResource(R.string.settings_common_cancel),

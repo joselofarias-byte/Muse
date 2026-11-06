@@ -7,13 +7,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * R-TEST-04: 备份加密/解密往返与格式识别。
+ * R-TEST-04: Cifrado de respaldo/Descifrado de ida y vuelta con reconocimiento de formato.
  */
 class BackupCryptoTest {
 
     @Test
     fun `encrypt then decrypt restores original bytes`() {
-        val plaintext = "备份内容 with 中文 and apiKey=sk-secret-test".toByteArray(Charsets.UTF_8)
+        val plaintext = "Copia de seguridad de contenido con chino and apiKey=sk-secret-test".toByteArray(Charsets.UTF_8)
         val encrypted = BackupCrypto.encrypt(plaintext, "backup-password")
         assertTrue(BackupCrypto.isEncrypted(encrypted))
         assertFalse(BackupCrypto.isEncrypted(plaintext))

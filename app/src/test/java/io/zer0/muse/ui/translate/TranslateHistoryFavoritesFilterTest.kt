@@ -4,10 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * §11-6: 翻译收藏筛选。
+ * §11-6: Filtrar colección de traducciones.
  *
- * 收藏能点、能落库、能进 state.favorites，但历史上从来没有出口 —— UI 只渲染 history。
- * 这里钉住"开关切到收藏视图时展示的是 favorites，切回来还是完整历史"。
+ * Se puede hacer clic en la colección, se puede colocar en la biblioteca y se puede ingresar en los favoritos del estado, pero nunca ha habido una salida en la historia. —— UI Sólo renderiza la historia.
+ * Fijar aquí"Cuando se cambia a la vista de colección, se muestran los favoritos y, cuando se vuelve a cambiar, se muestra el historial completo.".
  */
 class TranslateHistoryFavoritesFilterTest {
 
@@ -15,7 +15,7 @@ class TranslateHistoryFavoritesFilterTest {
         id = id,
         sourceText = "source-$id",
         translatedText = "translated-$id",
-        sourceLanguage = "中文",
+        sourceLanguage = "chino",
         targetLanguage = "English",
         timestamp = 1_000L,
         favorite = favorite,

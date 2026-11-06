@@ -1,37 +1,37 @@
 package io.zer0.muse.workspace
 
 /**
- * 一条解析后的工作区路径。
+ * Una ruta de espacio de trabajo resuelta.
  *
- * @param mountId 目标挂载标识；为 null 表示没有写前缀，落到默认挂载。
- * @param relative 相对该挂载根目录的路径，已去掉首尾分隔符，根目录为空串。
+ * @param mountId ID de montaje de destino; si es nulo, significa que no se escribe ningún prefijo y se utiliza el montaje predeterminado.
+ * @param relative A la ruta relativa al directorio raíz de montaje se le han eliminado el primer y el último separador, y el directorio raíz es una cadena vacía.
  */
 data class WorkspacePath(
     val mountId: String?,
     val relative: String,
 ) {
-    /** 是否是挂载根目录本身。 */
+    /** Ya sea para montar el directorio raíz. */
     val isMountRoot: Boolean get() = relative.isEmpty()
 }
 
 /**
- * 工作区路径语法：`挂载标识:/相对路径`。
+ * Sintaxis de la ruta del espacio de trabajo:`ID de montaje:/ruta relativa`.
  *
- * 没写前缀的路径一律落到默认挂载，保证老调用点、老数据、老的模型习惯全部照常工作。
- * 前缀只认已注册的挂载标识：`相册:/a.jpg` 这种中文前缀不算挂载，会当成普通相对路径。
+ * Todas las rutas sin prefijos caerán en el montaje predeterminado, lo que garantiza que los puntos de llamada antiguos, los datos antiguos y los hábitos del modelo antiguo funcionen como de costumbre.
+ * El prefijo solo reconoce los ID de montaje registrados:`álbum de fotos:/a.jpg` Este prefijo chino no se cuenta como montaje y se tratará como una ruta relativa normal.
  */
 object WorkspacePathParser {
-    /** 挂载前缀与相对路径之间的分隔符。 */
+    /** Separador entre prefijo de montaje y ruta relativa. */
     const val PREFIX_SEPARATOR: String = ":/"
 
-    /** 不带挂载前缀时使用的默认挂载标识。 */
+    /** El ID de montaje predeterminado utilizado sin un prefijo de montaje. */
     const val DEFAULT_MOUNT_ID: String = WorkspaceMount.MAIN_ID
 
     /**
-     * 解析一条路径。
+     * Analizar un camino.
      *
-     * @param raw 原始路径，可能带 `mount:/` 前缀，也可能是空串（根目录）
-     * @param knownMountIds 当前已注册的挂载标识集合，用于判定前缀是否有效
+     * @param raw Camino original, posiblemente con `mount:/` Prefijo, que también puede ser una cadena vacía (directorio raíz)
+     * @param knownMountIds Una colección de ID de montaje registrados actualmente, que se utiliza para determinar si el prefijo es válido.
      */
     fun parse(raw: String, knownMountIds: Set<String>): WorkspacePath {
         val trimmed = raw.trim()
@@ -49,19 +49,19 @@ object WorkspacePathParser {
     }
 
     /**
-     * 规范化相对路径：去掉首尾分隔符，合并重复分隔符。
+     * Normalizar rutas relativas: eliminar el primer y último delimitador y fusionar delimitadores repetidos.
      *
-     * 不做 `..` 消解——越界判定必须由调用方在拼接成真实路径后再做一次，
-     * 否则 `a/../../b` 这类写法会在规范化阶段被「洗白」。
+     * no lo hagas `..` digerir——La persona que llama debe realizar nuevamente la determinación de fuera de límites después de unirla a la ruta real.
+     * De lo contrario `a/../../b` Este tipo de escritura será "blanqueada" durante la etapa de estandarización.
      */
     fun normalize(relative: String): String = relative.trim().trim('/').split('/').filter { it.isNotEmpty() && it != "." }.joinToString("/")
 
-    /** 把挂载标识与相对路径拼回一条可读路径。 */
+    /** Vuelva a colocar el ID de montaje y la ruta relativa en una ruta legible. */
     fun format(mountId: String, relative: String): String {
         val rel = normalize(relative)
         return if (rel.isEmpty()) "$mountId$PREFIX_SEPARATOR" else "$mountId$PREFIX_SEPARATOR$rel"
     }
 
-    /** 路径里是否含有越界段。 */
+    /** Si la ruta contiene segmentos fuera de límites. */
     fun hasParentSegment(relative: String): Boolean = relative.split('/').any { it == ".." }
 }

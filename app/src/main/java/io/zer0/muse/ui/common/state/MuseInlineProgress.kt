@@ -29,18 +29,18 @@ import io.zer0.muse.ui.theme.MuseIconSizes
 import io.zer0.muse.ui.theme.MuseMotion
 
 /**
- * 局部进度组件 — 按钮里、卡片角上、行内的小转圈和进度条。
+ * componente de progreso local — Pequeños círculos y barras de progreso en botones, esquinas de tarjetas y filas.
  *
- * 页面级加载仍用 [MuseLoadingState]；本文件只负责「页面里某个小块正在忙」。
+ * La carga a nivel de página todavía se utiliza [MuseLoadingState];Este archivo sólo es responsable de "una pequeña parte de la página está ocupada".
  *
- * 与 Material3 `CircularProgressIndicator` 的差别：
- *  - 颜色默认跟随 [LocalContentColor]，放在实心/危险色按钮里不会变成同色不可见；
- *  - 尺寸与线宽走令牌，全应用统一；
- *  - 自绘，不引入新的原生控件依赖。
+ * con Material3 `CircularProgressIndicator` La diferencia:
+ *  - El color sigue por defecto [LocalContentColor], colocado en sólido/Los botones de colores peligrosos no se volverán invisibles en el mismo color;
+ *  - El tamaño y el ancho de línea están estandarizados y unificados en todas las aplicaciones;
+ *  - Autodibujado, no se introducen nuevas dependencias de control nativo.
  *
- * @param size 直径
- * @param strokeWidth 线宽
- * @param color 弧线颜色（默认跟随当前文字色）
+ * @param size diámetro
+ * @param strokeWidth Ancho de línea
+ * @param color Color del arco (el valor predeterminado sigue el color del texto actual)
  */
 @Composable
 fun MuseSpinner(
@@ -69,8 +69,8 @@ fun MuseSpinner(
         )
         animated
     }
-    // 弧长呼吸：循环时长统一放慢后为 1.8 秒一圈;弧长在 60°↔300° 之间往复,避免硬重启闪烁。
-    // 视觉上接近 Material 标准指示器,既能看出在转又不抢注意力。
+    // Respiración de longitud de arco: la duración del ciclo se reduce uniformemente a 1,8 segundos por ciclo.;La longitud del arco es 60°↔300° ida y vuelta entre,Evite el reinicio completo.
+    // Visualmente cerca de los indicadores estándar de materiales.,Se puede ver que se mueve sin llamar la atención.
     val sweep = if (reducedMotion) {
         90f
     } else {
@@ -112,10 +112,10 @@ fun MuseSpinner(
 }
 
 /**
- * 确定性进度条（0..1）。
+ * Barra de progreso determinista (0..1).
  *
- * @param progress 进度，自动收敛到 0..1
- * @param height 轨道高度
+ * @param progress progreso, converge automáticamente a 0..1
+ * @param height altura orbital
  */
 @Composable
 fun MuseProgressBar(
@@ -144,7 +144,7 @@ fun MuseProgressBar(
 }
 
 /**
- * 不确定进度条 — 用于时长未知的加载（取代原生 LinearProgressIndicator 的无限模式）。
+ * Barra de progreso incierta — Se utiliza para cargas de duración desconocida (reemplazando el modo infinito del LinearProgressIndicator nativo).
  */
 @Composable
 fun MuseIndeterminateProgressBar(
@@ -186,11 +186,11 @@ fun MuseIndeterminateProgressBar(
     }
 }
 
-/** 进度组件的尺寸常量。 */
+/** Constantes de tamaño para el componente de progreso. */
 object MuseProgressDefaults {
-    /** 轨道高度。 */
+    /** Altura orbital. */
     val trackHeight: Dp = 4.dp
 
-    /** 不确定进度条滑动段的宽度占比。 */
+    /** No estoy seguro de la relación de ancho del segmento deslizante de la barra de progreso. */
     const val segmentFraction: Float = 0.3f
 }

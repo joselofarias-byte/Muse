@@ -33,14 +33,14 @@ import io.zer0.muse.ui.common.form.MuseBottomSheet
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 牵挂账本面板。
+ * Panel de libro mayor.
  *
- * 这块 UI 是新设计的兑现方式：用户能看见「它凭什么找我」，
- * 也能看见「它什么时候闭嘴」。
+ * Esta interfaz de usuario es la forma de realizar el nuevo diseño: los usuarios pueden ver "¿Por qué me busca?"
+ * También puedes ver "cuando se calla".
  *
- * 特意不展示 fitness 分数、阈值、intimacy 这些内部参数 ——
- * 那些是给日志看的，不是给用户看的。用户要看的是「它在惦记什么」
- * 和「今天还能不能被打扰」。
+ * Puntajes de condición física, umbrales,intimacy Estos parámetros internos ——
+ * Esos son para registros, no para usuarios. Lo que los usuarios quieren ver es "en qué está pensando".
+ * y "¿Todavía me pueden molestar hoy?"
  */
 @Composable
 fun ProactiveLedgerSheet(
@@ -64,7 +64,7 @@ fun ProactiveLedgerSheet(
             )
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── 主动等级 ──
+            // ── Nivel de iniciativa ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -75,8 +75,8 @@ fun ProactiveLedgerSheet(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                // 试过「黏人」想回默认时不该自己一格一格往回点，而且今天已经花掉的
-                // 额度也得跟着回满 —— 这是用户要的「重置」。
+                // Probé "sticky" y quise volver al valor predeterminado. No debería haber regresado uno por uno, y hoy ya gasté el dinero.
+                // La cuota también deberá reponerse en consecuencia. —— Este es el "reset" que quieren los usuarios.
                 Text(
                     text = stringResource(R.string.settings_proactive_v2_reset),
                     style = MaterialTheme.typography.labelMedium,
@@ -88,13 +88,13 @@ fun ProactiveLedgerSheet(
             IntensityRow(current = state.intensity, onSelect = onIntensityChange)
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── 今日额度 ──
+            // ── la cuota de hoy ──
             val unlimited = state.intensity.unlimited
             val remainingTimes = if (state.remainingBudget >= 1f) state.remainingBudget.toInt() else 0
             Text(
                 text = when {
                     state.cooldownUntil > state.now -> stringResource(R.string.settings_proactive_v2_cooldown_sub)
-                    // 黏人档的额度是 Int.MAX_VALUE，直接渲染会变成「今天还能说 2147483647 次」
+                    // El límite del archivo pegajoso es Int.MAX_VALUE. La representación directa se convertirá en "Puedo decir 2147483647 veces hoy"
                     unlimited -> stringResource(R.string.settings_proactive_v2_budget_unlimited)
                     else -> stringResource(R.string.settings_proactive_v2_budget, remainingTimes)
                 },
@@ -103,7 +103,7 @@ fun ProactiveLedgerSheet(
             )
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── 账本列表 ──
+            // ── lista de libro mayor ──
             if (state.thoughts.isEmpty()) {
                 Text(
                     text = stringResource(R.string.settings_proactive_v2_empty),
@@ -126,8 +126,8 @@ fun ProactiveLedgerSheet(
 
             Spacer(Modifier.size(MusePaddings.contentGap))
 
-            // ── 冷却开关 ──
-            // 冷却中时这里必须变成「恢复」：只给单向入口的话，点错了就只能等七天。
+            // ── interruptor de enfriamiento ──
+            // Al enfriarse, esta área debe convertirse en "Recuperación": si solo hay una entrada unidireccional, si hace clic en el botón incorrecto, tendrá que esperar siete días.
             val coolingDown = state.cooldownUntil > state.now
             Box(
                 modifier = Modifier
@@ -159,7 +159,7 @@ fun ProactiveLedgerSheet(
     }
 }
 
-/** 面板的全部展示状态。打包成一个类型，是为了让调用处只用一个参数就能对齐。 */
+/** Todo el estado de visualización del panel. Empaquetar en un tipo es permitir que el sitio de llamada se alinee con un solo parámetro. */
 data class LedgerUiState(
     val thoughts: List<PendingThoughtEntity>,
     val intensity: ProactiveIntensity,
@@ -168,7 +168,7 @@ data class LedgerUiState(
     val now: Long,
 )
 
-/** 五档等级横向排开。点一下即生效，不需要确认。 */
+/** Las pendientes de cinco velocidades están dispuestas horizontalmente. Entra en vigor una vez que hace clic en él, no se requiere confirmación. */
 @Composable
 private fun IntensityRow(current: ProactiveIntensity, onSelect: (ProactiveIntensity) -> Unit) {
     Row(
@@ -205,7 +205,7 @@ private fun IntensityRow(current: ProactiveIntensity, onSelect: (ProactiveIntens
     }
 }
 
-/** 单条牵挂。左侧性质标签，右侧事由与时间感。 */
+/** Una sola preocupación. La etiqueta de naturaleza a la izquierda, la razón y el sentido del tiempo a la derecha. */
 @Composable
 private fun ThoughtRow(thought: PendingThoughtEntity, now: Long) {
     Row(
@@ -241,14 +241,14 @@ private fun ThoughtRow(thought: PendingThoughtEntity, now: Long) {
     }
 }
 
-/** 事由的时间感。用户看「三天前想起」比看时间戳有感觉。 */
+/** sentido del tiempo. Los usuarios se sienten mejor cuando miran \"Hace tres días\" que cuando miran la marca de tiempo. */
 @Composable
 private fun describeAge(thought: PendingThoughtEntity, now: Long): String {
     val hours = (now - thought.createdAt).coerceAtLeast(0L) / 3_600_000L
     return when {
-        hours < 1 -> "刚刚"
-        hours < 24 -> "${hours} 小时前"
-        else -> "${hours / 24} 天前"
+        hours < 1 -> "justo ahora"
+        hours < 24 -> "${hours} hace horas"
+        else -> "${hours / 24} hace dias"
     }
 }
 

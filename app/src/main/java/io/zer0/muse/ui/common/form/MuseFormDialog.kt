@@ -18,10 +18,10 @@ import io.zer0.muse.ui.common.feedback.MuseDialog
 import io.zer0.muse.ui.theme.MusePaddings
 
 /**
- * 统一的短表单弹窗。
+ * Ventana emergente unificada de formato corto.
  *
- * 用于少量字段的编辑/选择。内容统一左对齐、控件之间保持固定间距，
- * 确认按钮支持禁用态；较长表单应升级为 [MuseBottomSheet] 或独立页面。
+ * Se utiliza para editar una pequeña cantidad de campos./Seleccionar. El contenido está alineado uniformemente hacia la izquierda y los controles mantienen un espaciado fijo.
+ * El botón de confirmación admite el estado deshabilitado; los formularios más largos deben actualizarse a [MuseBottomSheet] o página independiente.
  */
 @Composable
 fun MuseFormDialog(

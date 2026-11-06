@@ -14,33 +14,33 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * P2-10: Provider 插件注册中心。
+ * P2-10: Provider Centro de registro de complementos.
  *
- * 维护一份内存级插件清单(用 [mutableStateMapOf] 让 Compose 能直接观察增删),
- * 负责:
- *  - 注册 / 注销插件
- *  - 从本地 JSON 文件加载插件(SAF 选择文件后转入此方法)
- *  - 把插件转换为 [ProviderConfig],使其能被现有 Provider 系统(
- *    [io.zer0.ai.ProviderRegistry] / [io.zer0.ai.ChatService])直接使用
+ * Mantener una lista de complementos a nivel de memoria(usar [mutableStateMapOf] Permitir que Compose observe directamente las adiciones y eliminaciones),
+ * responsable:
+ *  - Registrar/cancelar registro del complemento
+ *  - Cargar complemento desde el archivo JSON local(SAF Vaya a este método después de seleccionar el archivo)
+ *  - Convertir el complemento a [ProviderConfig],Habilítelo para que lo utilicen los sistemas de proveedores existentes.(
+ *    [io.zer0.ai.ProviderRegistry] / [io.zer0.ai.ChatService])Usar directamente
  *
- * 设计取舍:
- *  - 仅 JSON 配置驱动,不执行 JS 沙盒(简化版)
- *  - 插件转出的 [ProviderConfig] 一律走 [ProviderType.OPENAI] 协议,
- *    因为 OpenAI Chat Completions 是事实上的兼容标准
- *  - v1.134 P1-3: 持久化到 [storageDir](由调用方注入 filesDir/muse_plugins/),
- *    App 重启后自动恢复;构造时同步扫描目录加载所有 .json 文件,
- *    [register] / [unregister] 同步落盘到对应文件
+ * Compensaciones de diseño:
+ *  - Solo controlador de configuración JSON,No ejecutar JS sandbox(Versión simplificada)
+ *  - Transferido por complemento [ProviderConfig] siempre ve [ProviderType.OPENAI] Acuerdo,
+ *    Porque OpenAI Chat Completions es el estándar de compatibilidad de facto
+ *  - v1.134 P1-3: persistir en [storageDir](Inyectado por la persona que llama filesDir/muse_plugins/),
+ *    App Restaurar automáticamente después del reinicio;Escanee sincrónicamente el directorio y cargue todos los archivos .json durante la construcción,
+ *    [register] / [unregister] Sincronizar el disco con el archivo correspondiente.
  *
- * @param storageDir 持久化目录;null 表示仅内存模式(向后兼容)
+ * @param storageDir directorio de persistencia;null Indica modo de sólo memoria(compatible con versiones anteriores)
  */
 class ProviderPluginRegistry(
     private val storageDir: File? = null,
 ) {
 
-    /** 插件表:id → 插件。Compose 可观察此 map 的增删。 */
+    /** tabla de complementos:id → complemento.Compose Puede observar las adiciones y eliminaciones de este mapa. */
     private val plugins = mutableStateMapOf<String, ProviderPlugin>()
 
-    /** JSON 解析器:容错未知字段,避免插件作者加额外元数据时崩溃。 */
+    /** JSON analizador:Tolerancia a fallos para campos desconocidos,Evite fallos cuando los autores de complementos agreguen metadatos adicionales. */
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -48,7 +48,7 @@ class ProviderPluginRegistry(
     }
 
     init {
-        // v1.134 P1-3: 启动时扫描 storageDir,自动加载所有已持久化的插件
+        // v1.134 P1-3: Escanear al iniciar storageDir,Cargue automáticamente todos los complementos persistentes
         storageDir?.let { dir ->
             runCatching {
                 if (dir.exists() && dir.isDirectory) {
@@ -57,67 +57,67 @@ class ProviderPluginRegistry(
                             runCatching {
                                 val plugin = json.decodeFromString<ProviderPlugin>(file.readText())
                                 validate(plugin)
-                                // 直接写入 map,绕过 register() 的落盘逻辑(文件已存在,无需重复写)
+                                // escribe directamente map,bypass register() lógica de colocación(El archivo ya existe,No es necesario volver a escribir)
                                 plugins[plugin.id] = plugin
-                                Logger.i(TAG, "已加载持久化插件: ${plugin.id} (${plugin.displayName})")
+                                Logger.i(TAG, "Complemento de persistencia cargado: ${plugin.id} (${plugin.displayName})")
                             }.onFailure { e ->
-                                Logger.e(TAG, "加载插件文件失败: ${file.absolutePath}", e)
+                                Logger.e(TAG, "No se pudo cargar el archivo del complemento: ${file.absolutePath}", e)
                             }
                         }
                 }
             }.onFailure { e ->
-                Logger.e(TAG, "扫描插件目录失败: ${dir.absolutePath}", e)
+                Logger.e(TAG, "Error al escanear el directorio del complemento: ${dir.absolutePath}", e)
             }
         }
     }
 
     /**
-     * 注册插件。同 id 覆盖。
-     * 若 [storageDir] 非空,同步把插件 JSON 写入 ${id}.json(覆盖式)。
+     * Registre el complemento. Anular con la misma identificación.
+     * si [storageDir] No vacío,Escriba sincrónicamente el JSON del complemento ${id}.json(Cubierto).
      */
     fun register(plugin: ProviderPlugin) {
         plugins[plugin.id] = plugin
         persist(plugin)
-        Logger.i(TAG, "插件已注册: ${plugin.id} (${plugin.displayName})")
+        Logger.i(TAG, "El complemento está registrado: ${plugin.id} (${plugin.displayName})")
     }
 
     /**
-     * 注销插件。不存在时静默忽略。
-     * 若 [storageDir] 非空,同步删除对应 ${id}.json 文件。
+     * Cancelar el registro del complemento. Ignorado silenciosamente si no está presente.
+     * si [storageDir] No vacío,Eliminación sincrónica correspondiente ${id}.json archivo.
      */
     fun unregister(pluginId: String) {
         val removed = plugins.remove(pluginId)
         if (removed != null) {
             removePersistedFile(pluginId)
-            Logger.i(TAG, "插件已注销: $pluginId")
+            Logger.i(TAG, "El complemento ha sido desconectado: $pluginId")
         }
     }
 
     /**
-     * 列出所有已注册插件(按 id 排序,保证 UI 列表稳定)。
+     * Listar todos los complementos registrados(Ordenar por identificación,Garantizar la estabilidad de la lista de UI).
      */
     fun list(): List<ProviderPlugin> = plugins.values.sortedBy { it.id }
 
     /**
-     * 加载本地 JSON 文件并注册为插件。
+     * Cargue un archivo JSON local y regístrelo como complemento.
      *
-     * 调用方通常先用 SAF (ActivityResultContracts.OpenDocument) 选定文件,
-     * 把 Uri 拷贝到 cache 目录得到 [File],再传入此方法。
+     * La persona que llama suele utilizar SAF (ActivityResultContracts.OpenDocument) archivo seleccionado,
+     * Copie Uri al directorio de caché para obtener [File],Luego páselo a este método.
      *
-     * 失败场景(返回 Result.failure):
-     *  - 文件读取失败
-     *  - JSON 解析失败
-     *  - id / displayName / baseUrl 为空
-     *  - apiKeyPattern 不是合法正则
+     * escenario de falla(Regresar Result.failure):
+     *  - Falló la lectura del archivo
+     *  - JSON El análisis falló
+     *  - id / displayName / baseUrl esta vacio
+     *  - apiKeyPattern No es una regla legal
      *
-     * 成功时插件已 [register] 到内存表并持久化,直接返回插件实例。
+     * Cuando tiene éxito, el complemento tiene [register] a la tabla de memoria y persistió,Devuelve la instancia del complemento directamente.
      */
     suspend fun loadFromFile(file: File): Result<ProviderPlugin> = withContext(Dispatchers.IO) {
-        // P2-28: JSON 直读无大小上限会 OOM — 先挡超大文件
+        // P2-28: JSON Lectura directa sin límite superior de tamaño OOM — Bloquee primero los archivos de gran tamaño
         if (file.length() > MAX_PROVIDER_JSON_BYTES) {
-            Logger.w(TAG, "Provider 插件 JSON 超过大小上限(${file.length()} > $MAX_PROVIDER_JSON_BYTES): ${file.absolutePath}")
+            Logger.w(TAG, "Provider El complemento JSON supera el límite de tamaño(${file.length()} > $MAX_PROVIDER_JSON_BYTES): ${file.absolutePath}")
             return@withContext Result.failure(
-                IllegalArgumentException("Provider 插件 JSON 超过大小上限(${MAX_PROVIDER_JSON_BYTES / 1024}KB)"),
+                IllegalArgumentException("Provider El complemento JSON supera el límite de tamaño(${MAX_PROVIDER_JSON_BYTES / 1024}KB)"),
             )
         }
         val r = resultOf {
@@ -127,7 +127,7 @@ class ProviderPluginRegistry(
             register(plugin)
             plugin
         }
-        r.onError { _, t -> Logger.e(TAG, "加载插件失败: ${file.absolutePath}", t) }
+        r.onError { _, t -> Logger.e(TAG, "No se pudo cargar el complemento: ${file.absolutePath}", t) }
         when (r) {
             is io.zer0.common.Result.Success -> Result.success(r.data)
             is io.zer0.common.Result.Error -> Result.failure(r.throwable ?: IllegalStateException(r.message))
@@ -135,14 +135,14 @@ class ProviderPluginRegistry(
     }
 
     /**
-     * 把插件转为 [ProviderConfig],使其能被现有 Provider 系统使用。
+     * Convertir el complemento a [ProviderConfig],Hacerlo utilizable por los sistemas de proveedores existentes.
      *
-     * - [ProviderType] 固定为 OPENAI(插件 JSON 描述的是 OpenAI 兼容协议)
-     * - [ProviderConfig.category] = [ProviderCategory.CUSTOM](用户自定义)
-     * - apiKey 留空,由 [io.zer0.muse.ui.settings.ProviderEditPage] 在用户编辑时填入
+     * - [ProviderType] fijo a OPENAI(El complemento JSON describe el protocolo compatible con OpenAI)
+     * - [ProviderConfig.category] = [ProviderCategory.CUSTOM](Definido por el usuario)
+     * - apiKey dejar en blanco,por [io.zer0.muse.ui.settings.ProviderEditPage] Complete cuando el usuario edite
      * - v1.134 P2-2: headers / requestTemplate / responsePath / streamResponsePath
-     *   已全部透传到 [ProviderSpecificConfig.Custom] 同名字段;ai 模块的 Provider 实现
-     *   后续可消费这些字段实现自定义请求模板与响应路径解析
+     *   Todos han sido transmitidos de forma transparente a [ProviderSpecificConfig.Custom] Campo con el mismo nombre;ai Implementación del módulo por parte del proveedor.
+     *   Estos campos se pueden utilizar más adelante para implementar plantillas de solicitud personalizadas y análisis de rutas de respuesta.
      */
     fun toProviderConfig(plugin: ProviderPlugin): ProviderConfig {
         val custom = io.zer0.ai.core.ProviderSpecificConfig.Custom(
@@ -166,26 +166,26 @@ class ProviderPluginRegistry(
         )
     }
 
-    /** 校验插件字段完整性,不合法时抛 [IllegalArgumentException]。 */
+    /** Verificar la integridad del campo del complemento,tirar cuando es ilegal [IllegalArgumentException]. */
     private fun validate(plugin: ProviderPlugin) {
-        require(plugin.id.isNotBlank()) { "插件 id 不能为空" }
-        require(plugin.displayName.isNotBlank()) { "插件 displayName 不能为空" }
-        require(plugin.baseUrl.isNotBlank()) { "插件 baseUrl 不能为空" }
-        // 文件名安全性:id 直接用作文件名,禁止路径分隔符与空字符
+        require(plugin.id.isNotBlank()) { "La identificación del complemento no puede estar vacía" }
+        require(plugin.displayName.isNotBlank()) { "El nombre para mostrar del complemento no puede estar vacío" }
+        require(plugin.baseUrl.isNotBlank()) { "La baseUrl del complemento no puede estar vacía" }
+        // Seguridad del nombre de archivo:id Usado directamente como nombre de archivo,No permitir separadores de ruta y caracteres nulos
         require(!plugin.id.contains('/') && !plugin.id.contains('\\') && !plugin.id.contains('\u0000')) {
-            "插件 id 不能包含路径分隔符: ${plugin.id}"
+            "La identificación del complemento no puede contener separadores de ruta: ${plugin.id}"
         }
         if (plugin.apiKeyPattern.isNotBlank()) {
-            // 提前校验正则合法性,避免用户填入 apiKey 时才发现 pattern 无法编译
+            // Verificar previamente la legalidad de la regularidad.,Evite que el usuario complete la apiKey solo para descubrir que el patrón no se puede compilar
             try {
                 Regex(plugin.apiKeyPattern)
             } catch (e: Exception) {
-                throw IllegalArgumentException("插件 apiKeyPattern 不是合法正则: ${plugin.apiKeyPattern}", e)
+                throw IllegalArgumentException("El complemento apiKeyPattern no es un patrón regular legal: ${plugin.apiKeyPattern}", e)
             }
         }
     }
 
-    /** [PluginModel] → [Model] 转换。 */
+    /** [PluginModel] → [Model] Convertir. */
     private fun PluginModel.toModel(providerId: String): Model = Model(
         id = id,
         name = displayName,
@@ -195,7 +195,7 @@ class ProviderPluginRegistry(
         abilities = if (supportsTools) setOf(ModelAbility.TOOL) else emptySet(),
     )
 
-    /** v1.134 P1-3: 把插件 JSON 写入 storageDir/${id}.json(同步落盘)。 */
+    /** v1.134 P1-3: Escribir complemento JSON storageDir/${id}.json(Colocación sincrónica). */
     private fun persist(plugin: ProviderPlugin) {
         val dir = storageDir ?: return
         runCatching {
@@ -203,25 +203,25 @@ class ProviderPluginRegistry(
             val file = File(dir, "${plugin.id}.json")
             file.writeText(json.encodeToString(ProviderPlugin.serializer(), plugin))
         }.onFailure { e ->
-            Logger.e(TAG, "持久化插件失败: ${plugin.id}", e)
+            Logger.e(TAG, "El complemento de persistencia falló: ${plugin.id}", e)
         }
     }
 
-    /** v1.134 P1-3: 删除 storageDir/${id}.json(若存在)。 */
+    /** v1.134 P1-3: Eliminar storageDir/${id}.json(si existe). */
     private fun removePersistedFile(pluginId: String) {
         val dir = storageDir ?: return
         runCatching {
             val file = File(dir, "$pluginId.json")
             if (file.exists()) file.delete()
         }.onFailure { e ->
-            Logger.e(TAG, "删除插件文件失败: $pluginId", e)
+            Logger.e(TAG, "No se pudo eliminar el archivo del complemento: $pluginId", e)
         }
     }
 
     companion object {
         internal const val TAG = "ProviderPluginRegistry"
 
-        /** P2-28: Provider 插件 JSON 导入大小上限(1MB)。 */
+        /** P2-28: Provider Límite de tamaño de importación JSON del complemento(1MB). */
         const val MAX_PROVIDER_JSON_BYTES: Long = 1_048_576L
     }
 }

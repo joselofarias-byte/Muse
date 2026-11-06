@@ -43,16 +43,16 @@ import androidx.compose.ui.unit.dp
 import io.zer0.muse.miniphone.ui.theme.MiniPhoneTheme
 
 /**
- * 消息页:会话列表。
+ * pagina de mensaje:Lista de sesiones.
  *
- * 行结构固定为「头像 / 名字 / 最后一条消息 / 时间 / 未读」,顺序和位置都来自本模块的尺寸阶梯,
- * 不跟着宿主的列表组件走。排序由 DAO 保证(置顶在前,其余按最后消息倒序),这里只负责画。
+ * La estructura de filas se fija como "avatar/nombre/último mensaje/hora/no leído",El orden y la posición se derivan de la escala de tamaños de este módulo.,
+ * No sigue el componente de lista del host. Pedido garantizado por DAO(traer al frente,El resto están en orden descendente de últimas noticias.),Aquí sólo soy responsable de pintar.
  *
- * 点击进会话,长按弹 [ThreadRowMenu]:置顶 / 取消置顶、标记已读(有未读时才列)、删除会话。
- * 菜单与删除确认都只用本页自己的状态,不影响列表数据。
+ * Haga clic para ingresar a la conversación.,Mantenga presionado para reproducir [ThreadRowMenu]:Anclar/desanclar, marcar como leído(Listar solo si hay elementos no leídos), elimina la sesión.
+ * El menú y la confirmación de eliminación solo utilizan el estado de esta página.,No afecta los datos de la lista.
  *
- * @param onGoContacts 一条会话都没有时,空态里的按钮用它把用户送进通讯录
- * @param actions 会话行上的三个动作(置顶 / 标记已读 / 删除),由外壳接到 ViewModel
+ * @param onGoContacts Cuando no hay conversación,Utilice el botón en el estado vacío para enviar al usuario a la libreta de direcciones
+ * @param actions Tres acciones en líneas de conversación(Anclar/Marcar como leído/Eliminar),Recibido del caparazón ViewModel
  */
 @Composable
 internal fun MessagesPage(
@@ -62,7 +62,7 @@ internal fun MessagesPage(
     onGoContacts: () -> Unit = {},
     actions: ThreadMenuActions = ThreadMenuActions(),
 ) {
-    // 正在弹菜单的会话与等待删除确认的会话:一个时间点只有一个
+    // La sesión en la que aparece el menú y la sesión que espera confirmación de eliminación:Solo hay uno a la vez
     var menuThreadId by remember { mutableStateOf<String?>(null) }
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
     if (threads.isEmpty()) {
@@ -115,7 +115,7 @@ internal fun MessagesPage(
     }
 }
 
-/** 一行会话。 */
+/** Sesión de una línea. */
 @Composable
 private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress: () -> Unit) {
     val colors = MiniPhoneTheme.colors
@@ -169,7 +169,7 @@ private fun ThreadRow(thread: MiniPhoneThreadUi, onOpen: () -> Unit, onLongPress
     }
 }
 
-/** 未读角标。超过两位数的按 99+ 收口,不让它把头像挤变形。 */
+/** Subíndice no leído. Si el número excede los dos dígitos, presione 99+.,No dejes que deforme el avatar. */
 @Composable
 private fun UnreadBadge(count: Int, threadId: String, modifier: Modifier = Modifier) {
     val colors = MiniPhoneTheme.colors
@@ -192,9 +192,9 @@ private fun UnreadBadge(count: Int, threadId: String, modifier: Modifier = Modif
 }
 
 /**
- * 空会话列表:一枚自己画的气泡、两行说明,加一个直接去通讯录的按钮。
+ * Lista de sesiones vacía:Un bocadillo dibujado por uno mismo y dos líneas de explicación.,Agregue un botón para ir directamente a la libreta de direcciones.
  *
- * 只写一行灰字等于把「怎么开始」交给用户自己猜 —— 按钮把这一步变成一次点击。
+ * Escribir solo una línea de texto gris equivale a dejar que el usuario adivine "cómo empezar". —— Los botones convierten este paso en un solo clic.
  */
 @Composable
 private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Modifier) {
@@ -213,12 +213,12 @@ private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Mod
         EmptyBubble()
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "还没有聊天",
+            text = "Aún no hay chat",
             style = typography.title.copy(color = colors.textPrimary),
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "去通讯录找个角色开始吧",
+            text = "Ve a la libreta de direcciones y busca un personaje para comenzar.",
             style = typography.caption.copy(color = colors.textSecondary),
         )
         Spacer(Modifier.height(18.dp))
@@ -236,7 +236,7 @@ private fun ThreadsEmptyState(onGoContacts: () -> Unit, modifier: Modifier = Mod
     }
 }
 
-/** 空态插画:一个空心气泡加三个点,颜色取强调色的低透明度。 */
+/** Ilustración vacía:Una burbuja hueca más tres puntos.,El color toma la baja opacidad del color de acento. */
 @Composable
 private fun EmptyBubble() {
     val ink = MiniPhoneTheme.colors.accent.copy(alpha = 0.4f)
@@ -270,10 +270,10 @@ private fun EmptyBubble() {
     }
 }
 
-/** 头像与文字之间的固定间距。 */
+/** Se corrigió el espacio entre avatar y texto. */
 private val ThreadTextGap = 12.dp
 
 private const val MAX_BADGE_COUNT: Int = 99
 private const val FULL_BADGE_TEXT: String = "99+"
-private const val EMPTY_PREVIEW_TEXT: String = "还没有消息"
-private const val GO_CONTACTS_LABEL: String = "去通讯录"
+private const val EMPTY_PREVIEW_TEXT: String = "Aún no hay noticias"
+private const val GO_CONTACTS_LABEL: String = "Ir a la libreta de direcciones"

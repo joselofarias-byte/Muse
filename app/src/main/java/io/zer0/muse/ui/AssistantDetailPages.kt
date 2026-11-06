@@ -100,12 +100,12 @@ import org.koin.compose.koinInject
 import java.io.File
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 即时保存 helper: 不用 ViewModel,直接读 AssistantRepository
+// Ayudante de guardado instantáneo: no es necesario ViewModel,Leer directamente AssistantRepository
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * 收集指定 [assistantId] 对应的 [AssistantEntity],自动跟随仓库变化。
- * 返回 null 表示尚未加载。
+ * Designación de colección [assistantId] correspondiente [AssistantEntity],Siga automáticamente los cambios del almacén.
+ * Devolver nulo significa que aún no se ha cargado.
  */
 @Composable
 fun rememberAssistant(assistantId: String): AssistantEntity? {
@@ -116,15 +116,15 @@ fun rememberAssistant(assistantId: String): AssistantEntity? {
 }
 
 /**
- * 返回一个更新闭包:调用时读取 DB 最新实体,应用 [transform] 后写回。
- * 用于子页即时保存(每次字段变更都 upsert)。
+ * Devuelve un cierre de actualización:Lea la última entidad de DB cuando se le llame,Solicitud [transform] Vuelve a escribir más tarde.
+ * Se utiliza para guardar instantáneamente subpáginas.(Cada vez que un campo cambia upsert).
  */
 @Composable
 fun rememberAssistantUpdater(assistantId: String): ((AssistantEntity) -> AssistantEntity) -> Unit {
     val repo: AssistantRepository = koinInject()
     val scope = rememberCoroutineScope()
-    // 审计修复 (3.4): Mutex 串行化读-改-写。快速连续更新(如温度 slider 拖动)时
-    // 各协程按顺序执行 getById → upsert,避免多协程乱序完成、旧结果覆盖新结果。
+    // Reparación de auditoría (3.4): Mutex lectura en serie-cambiar-Escribir. Actualizaciones en rápida sucesión(Como arrastre del control deslizante de temperatura)tiempo
+    // Cada rutina se ejecuta en orden. getById → upsert,Evite que se completen varias rutinas fuera de secuencia y que los resultados antiguos sobrescriban los nuevos.
     val mutex = remember { Mutex() }
     return remember(assistantId) {
         { transform ->
@@ -139,11 +139,11 @@ fun rememberAssistantUpdater(assistantId: String): ((AssistantEntity) -> Assista
 }
 
 /**
- * 防抖文本框:本地缓存输入,停止输入 400ms 后再写 DB,避免每次按键都 upsert 造成频繁数据库写入。
+ * Cuadro de texto antivibración:Entrada almacenada en caché local,Deje de ingresar durante 400 ms antes de volver a escribir DB,Evite la inserción cada vez que se presiona una tecla, lo que provoca escrituras frecuentes en la base de datos.
  *
- * - [value] 为当前持久化值(来自 DB);外部变化会同步到本地草稿。
- * - [onPersist] 在防抖结束后触发,传入的值为经过 [transform] 转换后的结果。
- * - [transform] 用于持久化前的转换(如 `take(2)` 限长、`serializeTagsForEdit` 序列化)。
+ * - [value] es el valor persistente actual(de DB);Los cambios externos se sincronizan con el borrador local.
+ * - [onPersist] Se activa después de que finaliza el sistema antivibración.,El valor pasado se pasa. [transform] El resultado convertido.
+ * - [transform] Se utiliza para la conversión antes de la persistencia.(Como por ejemplo `take(2)` longitud limitada,`serializeTagsForEdit` serialización).
  */
 @Composable
 @Suppress("FunctionNaming")
@@ -156,19 +156,19 @@ internal fun DebouncedTextField(
     transform: (String) -> String = { it },
 ) {
     var draft by remember { mutableStateOf(value) }
-    // 外部 value 变化(如 DB 回写)同步到草稿
+    // Cambios de valor externo(Como reescritura de base de datos)Sincronizar con borrador
     LaunchedEffect(value) {
         if (draft != value) draft = value
     }
-    // 草稿变化后延迟 400ms 持久化(每次输入重置计时,实现防抖)
+    // Retrasar la persistencia de 400 ms después de los cambios en el borrador(Restablecer el tiempo en cada entrada,Realizar anti-vibración)
     LaunchedEffect(draft) {
         if (draft != value) {
             delay(400)
             onPersist(transform(draft))
         }
     }
-    // MEM-02: 退出/转屏前强制 flush — 防抖窗口内离开页面时,最后一次编辑不丢。
-    // 用 rememberUpdatedState 读取最新草稿,onDispose 时若仍有未落盘改动则立即写入。
+    // MEM-02: Salir/Fuerza antes de girar la pantalla flush — Al salir de la página dentro de la ventana anti-vibración,La última edición no se pierde.
+    // Utilice RememberUpdatedState para leer el último borrador.,onDispose Si aún quedan cambios no escritos, se escribirán inmediatamente.
     val latestDraft by rememberUpdatedState(draft)
     val latestValue by rememberUpdatedState(value)
     DisposableEffect(Unit) {
@@ -188,13 +188,13 @@ internal fun DebouncedTextField(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 详情聚合页: 头部 + 5 个设置入口
+// Página de agregación de detalles: Encabezado + 5 entradas de configuración
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * 助手详情聚合页 — 头像 + 名称 + systemPrompt 摘要 + 5 个子页入口。
+ * Página de agregación de detalles del asistente — Avatar + nombre + sistemaResumen de avisos + 5 entradas de subpágina.
  *
- * P1-4 平板适配:[onBack] 改为可空(Expanded 双列模式下右栏无需返回按钮)。
+ * P1-4 Adaptación de tableta:[onBack] Cambiar a anulable(Expanded No es necesario un botón de retorno en la columna derecha en el modo de doble columna).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -212,26 +212,26 @@ fun AssistantDetailPage(
     val titleDefault = stringResource(R.string.assistant_detail_title_default)
     val title = assistant?.name?.ifBlank { titleDefault } ?: titleDefault
 
-    // v1.0.28: 助手详情页直接展示模型选择入口,避免用户不知道基础页有模型选择
+    // v1.0.28: La página de detalles del asistente muestra directamente la entrada de selección de modelo.,Evitar que los usuarios no sepan que la página básica tiene selección de modelo.
     val settings: SettingsRepository = koinInject()
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val allModels = remember(providers) { providers.flatMap { it.models } }
     val globalSelectedModelId by settings.selectedModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
     var showModelPicker by remember { mutableStateOf(false) }
 
-    // ── SillyTavern 角色卡导出 (PNG/JSON) ──
-    // SillyTavern 卡是业内通用格式: PNG tEXt chunk (key="chara") 存 base64 JSON, 或纯 JSON
+    // ── SillyTavern Exportación de tarjetas de personajes (PNG/JSON) ──
+    // SillyTavern La tarjeta es un formato común en la industria.: PNG tEXt chunk (key="chara") guardar base64 JSON, o puro JSON
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // SAF 回调时取出待导出实体 (避免在 launch lambda 内读 assistant 状态导致重组错位)
+    // SAF Saque la entidad que se exportará durante la devolución de llamada (Evite la reorganización y desalineación causada por la lectura del estado del asistente en el lanzamiento lambda)
     var exportPngTarget by remember { mutableStateOf<AssistantEntity?>(null) }
     var exportJsonTarget by remember { mutableStateOf<AssistantEntity?>(null) }
 
     val toastExported = stringResource(R.string.assistant_toast_sillytavern_exported)
     val toastExportFailed = stringResource(R.string.assistant_toast_sillytavern_export_failed)
 
-    // 从 avatarImageUrl 加载头像 Bitmap; 失败或无头像返回 null (导出器用 1x1 透明 PNG 作载体)
+    // Cargar avatar desde avatarImageUrl Bitmap; Fallo o no se devolvió ningún avatar null (El exportador utiliza un PNG transparente de 1x1 como vector.)
     fun loadAvatarBitmap(a: AssistantEntity): Bitmap? {
         if (a.avatarImageUrl.isBlank()) return null
         return runCatching {
@@ -272,8 +272,8 @@ fun AssistantDetailPage(
 
     SettingsSubPageScaffold(title = title, onBack = onBack) {
         item {
-            // 头部: 大头像 + 名称 + systemPrompt 摘要
-            // v2.x: 动效补齐 — 头部入场(令牌 animateItem)
+            // cabeza: Gran avatar + nombre + sistemaResumen rápido
+            // v2.x: Finalización del efecto de movimiento — entrada de cabeza(ficha animateItem)
             Column(
                 modifier = museAnimateItem()
                     .fillMaxWidth()
@@ -308,8 +308,8 @@ fun AssistantDetailPage(
                 }
             }
         }
-        // v1.0.28: 模型选择入口 — 在详情页直接展示当前使用的模型,点击可切换
-        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+        // v1.0.28: Portal de selección de modelos — Muestre directamente el modelo utilizado actualmente en la página de detalles,Haga clic para cambiar
+        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
         item {
             CardGroup(modifier = museAnimateItem()) {
                 item(
@@ -363,7 +363,7 @@ fun AssistantDetailPage(
         }
         item {
             CardGroup(
-                modifier = museAnimateItem().padding(horizontal = 0.dp), // inset-guard: allow（外层列表已提供 screen 边距）
+                modifier = museAnimateItem().padding(horizontal = 0.dp), // inset-guard: allow(La lista exterior ya proporciona márgenes de pantalla)
             ) {
                 item(
                     onClick = onOpenBasic,
@@ -402,8 +402,8 @@ fun AssistantDetailPage(
                 )
             }
         }
-        // SillyTavern 角色卡分享 (PNG/JSON 导出)
-        // 把当前助手导出为业内通用格式, 可在其他支持 SillyTavern 角色卡的 App 中导入
+        // SillyTavern Compartir tarjeta de personaje (PNG/JSON Exportar)
+        // Exportar el asistente actual a un formato común en la industria., Se puede importar a otras aplicaciones que admitan tarjetas de personajes de SillyTavern.
         item {
             CardGroup(
                 modifier = museAnimateItem(),
@@ -437,13 +437,13 @@ fun AssistantDetailPage(
                 )
             }
         }
-        // Muse 角色卡分享(系统分享 Intent)
+        // Muse Compartir tarjeta de personaje(Compartir sistema Intent)
         item {
             CardGroup(
                 modifier = museAnimateItem(),
                 title = { Text(stringResource(R.string.assistant_detail_share_section)) },
             ) {
-                // v2.x: 发送完整角色包(含头像,对方可直接导入) — 最常用入口,排首位
+                // v2.x: Enviar paquete de personajes completo(Contiene avatar,La otra parte puede importar directamente) — Entrada más utilizada,primer lugar
                 item(
                     onClick = {
                         val a = assistant ?: return@item
@@ -519,7 +519,7 @@ fun AssistantDetailPage(
         }
     }
 
-    // v1.0.28: 模型选择对话框(与 AssistantBasicPage 共用同一 UI 模式)
+    // v1.0.28: Diálogo de selección de modelo(Comparte el mismo patrón de interfaz de usuario que AssistantBasicPage)
     if (showModelPicker) {
         AssistantModelPickerDialog(
             assistant = assistant,
@@ -532,21 +532,21 @@ fun AssistantDetailPage(
     }
 }
 
-/** 占位助手实体(加载中时用于渲染头像)。 */
+/** entidad auxiliar de marcador de posición(Se utiliza para renderizar el avatar al cargar.). */
 private fun placeholderAssistant() = AssistantEntity(id = "", name = "")
 
 /**
- * CONS-04: 模型选择对话框(助手详情页 / 基础页共用,收敛重复 UI)。
+ * CONS-04: Diálogo de selección de modelo(Página de detalles del asistente/página básica compartida,La convergencia se repite UI).
  *
- * 顶部突出"使用全局默认"卡片,下方按 Provider 分组列出模型。
+ * parte superior sobresaliente"Usar valor predeterminado global"tarjeta,Los modelos se enumeran a continuación, agrupados por Proveedor.
  *
- * @param assistant 当前助手实体(null 表示加载中)
- * @param providers 可用 Provider 列表
- * @param allModels 所有 Provider 的模型扁平列表(用于显示全局默认模型名称)
- * @param globalSelectedModelId 全局当前选中模型 id
- * @param update 写回助手的更新闭包(与 rememberAssistantUpdater 返回类型一致)
- * @param onUseGlobalDefault 点击"使用全局默认"时的更新逻辑(各调用方保留原行为)
- * @param onDismiss 关闭对话框回调
+ * @param assistant Entidad auxiliar actual(null Indica cargando)
+ * @param providers Lista de proveedores disponibles
+ * @param allModels Lista plana de modelos para todos los Proveedores.(Se utiliza para mostrar el nombre del modelo predeterminado global.)
+ * @param globalSelectedModelId Modelo global seleccionado actualmente id
+ * @param update Vuelve a escribir el cierre de actualización del ayudante.(Consistente con el tipo de retorno de RememberAssistantUpdater)
+ * @param onUseGlobalDefault Haga clic"Usar valor predeterminado global"lógica de actualización(Cada persona que llama conserva el comportamiento original.)
+ * @param onDismiss Cerrar devolución de llamada de diálogo
  */
 @Composable
 private fun AssistantModelPickerDialog(
@@ -557,9 +557,9 @@ private fun AssistantModelPickerDialog(
     update: ((AssistantEntity) -> AssistantEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // P3-5: 「使用全局默认」语义收敛到组件内部 — 两处调用点此前分别传
-    // copy(modelId=null) 与 copy(modelId=null, providerId=null),漂移导致
-    // 一处仍残留旧 providerId;统一清空 modelId+providerId,完全跟随全局默认。
+    // P3-5: La semántica "Usar valor predeterminado global" converge en componentes — Los dos pulsadores se pasaban previamente por separado.
+    // copy(modelId=null) con copy(modelId=null, providerId=null),causado por la deriva
+    // Aún queda un lugar providerId;claro unificado modelId+providerId,Sigue completamente el valor predeterminado global.
     val useGlobalDefault: () -> Unit = { update { it.copy(modelId = null, providerId = null) } }
     val globalDefaultSelected = stringResource(R.string.assistant_detail_global_default_selected)
     val globalDefaultCard = stringResource(R.string.assistant_detail_use_global_default_card)
@@ -645,11 +645,11 @@ private fun AssistantModelPickerDialog(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 子页 1: 基础(基础信息 + 模型 + 头像)
+// Subpágina 1: Conceptos básicos(Información básica + modelo + avatar)
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * 基础子页 — 名称 / 头像 Emoji / 头像图片 / 模型 / 采样参数 / 推理等级 / 流式输出。
+ * Subpágina básica — Nombre/Avatar Emoji/Imagen de Avatar/Modelo/Parámetros de muestreo/Nivel de inferencia/Salida de transmisión.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -658,17 +658,17 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
     val update = rememberAssistantUpdater(assistantId)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // v1.52: 注入 SettingsRepository 获取 providers 列表,用于模型选择器
+    // v1.52: Inyecte SettingsRepository para obtener la lista de proveedores,para selector de modelo
     val settings: SettingsRepository = koinInject()
     val providers by settings.providersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    // 缓存所有 Provider 的模型扁平列表,避免在列表项内每次重组都 flatMap 创建新 List
+    // Almacenar en caché una lista plana de modelos para todos los proveedores,Evite que flatMap cree nuevos cada vez que se reorganiza un elemento de la lista List
     val allModels = remember(providers) { providers.flatMap { it.models } }
-    // Phase 6: 全局当前选中模型 id,用于显示全局默认模型名称
+    // Phase 6: Modelo global seleccionado actualmente id,Se utiliza para mostrar el nombre del modelo predeterminado global.
     val globalSelectedModelId by settings.selectedModelIdFlow.collectAsStateWithLifecycle(initialValue = null)
-    // 模型选择对话框
+    // Diálogo de selección de modelo
     var showModelPicker by remember { mutableStateOf(false) }
 
-    // 头像图片选择器(从相册选图 → 复制到内部存储 → upsert)
+    // Selector de imagen de avatar(Seleccionar imágenes del álbum de fotos. → Copiar al almacenamiento interno → upsert)
     val pickAvatarLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
@@ -678,7 +678,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 if (path != null) {
                     update { it.copy(avatarImageUrl = path) }
                 } else {
-                    // v1.69: 头像保存失败时告知用户,原仅静默不更新
+                    // v1.69: Notificar al usuario cuando falla el guardado del avatar,Originalmente solo silencioso y no actualizado.
                     MuseToast.show(context.getString(R.string.assistant_detail_avatar_save_failed), 3000)
                 }
             }
@@ -691,11 +691,11 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
             item { Text(stringResource(R.string.assistant_detail_loading), color = MaterialTheme.colorScheme.outline) }
             return@SettingsSubPageScaffold
         }
-        // 卡片组 1: 基础信息
-        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+        // Baraja de cartas 1: información básica
+        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
         item {
             CardGroup(modifier = museAnimateItem()) {
-                // 头像 + 选图按钮
+                // Avatar + botón de selección de imagen
                 item(
                     headlineContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -719,7 +719,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                     },
                     trailingContent = {
                         Row {
-                            // v1.69: launch 可能抛 ActivityNotFoundException(无相册 App),原 runCatching 静默吞异常
+                            // v1.69: launch puede ser arrojado ActivityNotFoundException(Sin álbum App),La ejecución original Catching traga silenciosamente excepciones
                             MuseCapsuleButton(
                                 text = stringResource(R.string.assistant_detail_pick_image),
                                 onClick = {
@@ -742,8 +742,8 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
             }
         }
-        // 卡片组 2: 名称与 Emoji
-        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+        // Baraja de cartas 2: nombre y nombre Emoji
+        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
         item {
             CardGroup(modifier = museAnimateItem()) {
                 item(
@@ -771,11 +771,11 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
             }
         }
-        // 卡片组 3: 模型与采样参数
-        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+        // Baraja de cartas 3: modelo y parámetros de muestreo
+        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
         item {
             CardGroup(modifier = museAnimateItem()) {
-                // Phase 6: 模型选择器 UX 改进 — 更大点击区域、前置图标、显示全局模型名称
+                // Phase 6: Mejoras en la experiencia de usuario del selector de modelos — Área de clic más grande, ícono frontal, muestra el nombre del modelo global
                 item(
                     onClick = { showModelPicker = true },
                     leadingContent = {
@@ -823,7 +823,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                     },
                     trailingContent = { ChevronRight() },
                 )
-                // Phase 6: 新建助手提示 — 未选择专属模型时显示引导提示
+                // Phase 6: Consejos para nuevos asistentes — Mostrar mensajes de guía cuando no se selecciona ningún modelo exclusivo
                 if (a.modelId == null) {
                     item(
                         headlineContent = {
@@ -877,7 +877,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
                 item(
                     headlineContent = {
-                        // v1.0.27: 改用 DebouncedTextField 避免 IME composing 被 update 异步回写打断
+                        // v1.0.27: Utilice DebouncedTextField en su lugar para evitar que la composición de IME se vea interrumpida por la actualización de escritura asincrónica
                         DebouncedTextField(
                             value = a.topP?.toString() ?: "",
                             onPersist = { v ->
@@ -892,7 +892,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
                 item(
                     headlineContent = {
-                        // v1.0.27: 改用 DebouncedTextField 避免 IME composing 被 update 异步回写打断
+                        // v1.0.27: Utilice DebouncedTextField en su lugar para evitar que la composición de IME se vea interrumpida por la actualización de escritura asincrónica
                         DebouncedTextField(
                             value = a.maxTokens?.toString() ?: "",
                             onPersist = { v ->
@@ -925,8 +925,8 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
                 item(
                     headlineContent = {
-                        // 推理等级下拉
-                        // v2.0.1: 显示名本地化（value 保持枚举 name 存储键）。
+                        // Menú desplegable de nivel de razonamiento
+                        // v2.0.1: Localización del nombre para mostrar (value Mantenga el nombre de la enumeración almacenado como clave).
                         val levelOptions = mutableListOf<Pair<String, String>>()
                         for (level in ReasoningLevel.entries) {
                             levelOptions += level.name to stringResource(reasoningLevelLabelRes(level))
@@ -951,8 +951,8 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
                 )
             }
         }
-        // 卡片组 4: 简介 + 显示名 + 群聊(v1.0.19 Assistant 字段补齐)
-        // v2.x: 动效补齐 — 卡片组入场(令牌 animateItem)
+        // Baraja de cartas 4: Introducción + nombre para mostrar + chat grupal(v1.0.19 Assistant Finalización del campo)
+        // v2.x: Finalización del efecto de movimiento — Entrada a la baraja de cartas(ficha animateItem)
         item {
             CardGroup(modifier = museAnimateItem()) {
                 item(
@@ -990,7 +990,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
             }
         }
 
-        // v2.6.2（用户反馈）: 助手级聊天背景 —— 优先级：会话级 > 助手级 > 全局默认。
+        // v2.6.2(comentarios de los usuarios): Fondo de chat a nivel de asistente —— Prioridad: nivel de sesión > nivel asistente > Incumplimiento global.
         item {
             val assistantBackgrounds by settings.assistantChatBackgroundFlow.collectAsStateWithLifecycle(
                 initialValue = emptyMap(),
@@ -1076,7 +1076,7 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
         }
     }
 
-    // Phase 6: 模型选择对话框 UX 改进 — 顶部突出“使用全局默认”卡片,显示全局模型名称
+    // Phase 6: Mejoras en la experiencia de usuario del cuadro de diálogo de selección de modelo — parte superior sobresaliente“Usar valor predeterminado global”tarjeta,Mostrar nombre de modelo global
     if (showModelPicker) {
         AssistantModelPickerDialog(
             assistant = assistant,
@@ -1090,11 +1090,11 @@ fun AssistantBasicPage(assistantId: String, onBack: () -> Unit) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 子页 2: 提示词
+// Subpágina 2: Palabras clave
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * 提示词子页 — systemPrompt / messageTemplate / presetMessagesJson。
+ * Subpágina de palabra rápida — systemPrompt / messageTemplate / presetMessagesJson.
  */
 @Composable
 fun AssistantPromptPage(assistantId: String, onBack: () -> Unit) {
@@ -1171,7 +1171,7 @@ fun AssistantPromptPage(assistantId: String, onBack: () -> Unit) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 子页 3: 扩展(关联资源)
+// Subpágina 3: Extensiones(Recursos relacionados)
 // ──────────────────────────────────────────────────────────────────────────────
 
 private enum class ExtensionType {
@@ -1184,7 +1184,7 @@ private enum class ExtensionType {
     KNOWLEDGE_BASE,
 }
 
-/** v2.4.6: 助手可绑定的知识库作用域条目(KB 整库或其中的文件夹)。 */
+/** v2.4.6: Entradas de alcance de la base de conocimientos a las que el asistente puede vincular(KB Toda la biblioteca o carpetas dentro de ella.). */
 private data class KbScopeItem(
     val id: String,
     val label: String,
@@ -1213,7 +1213,7 @@ private fun <T> rememberFlowList(flow: Flow<List<T>>): List<T> {
 }
 
 /**
- * 多选 chips 弹窗 — 用 FlowRow 展示所有候选项,点击即时切换。
+ * Ventana emergente de chips de selección múltiple — Utilice FlowRow para mostrar todos los candidatos,Haga clic para cambiar instantáneamente.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1239,7 +1239,7 @@ private fun <T> MultiSelectChipsDialog(
                     textAlign = TextAlign.Center,
                 )
             } else {
-                // v1.95: 全选 / 清空操作行
+                // v1.95: Seleccionar todo/borrar filas de acción
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -1247,7 +1247,7 @@ private fun <T> MultiSelectChipsDialog(
                     MuseCapsuleButton(
                         text = stringResource(R.string.assistant_detail_select_all),
                         onClick = {
-                            // 全选:选中所有选项
+                            // Seleccionar todo:Consulta todas las opciones
                             onSelectionChange(items.map { itemId(it) })
                         },
                         variant = IosCapsuleButtonVariant.Text,
@@ -1257,15 +1257,15 @@ private fun <T> MultiSelectChipsDialog(
                     MuseCapsuleButton(
                         text = stringResource(R.string.assistant_detail_clear_all),
                         onClick = {
-                            // 清空
+                            // Borrar
                             onSelectionChange(emptyList())
                         },
                         variant = IosCapsuleButtonVariant.Text,
                         fillWidth = false,
                     )
                 }
-                // v1.0.92: 由横向 LazyRow chips 改为竖向列表 — 候选项一多,
-                // 横向滚动既看不全也难点(用户实测技能列表溢出屏幕)。
+                // v1.0.92: Se cambió de chips LazyRow horizontales a lista vertical — Más de un candidato,
+                // El desplazamiento horizontal no es completo ni difícil(La lista de habilidades medidas por el usuario desborda la pantalla.).
                 Column(modifier = Modifier.fillMaxWidth()) {
                     items.forEach { item ->
                         val id = itemId(item)
@@ -1304,7 +1304,7 @@ private fun <T> MultiSelectChipsDialog(
 }
 
 /**
- * 扩展子页 — 显示 6 类关联资源,点击行弹出多选 chips 弹窗,切换后即时保存。
+ * Expandir subpágina — Mostrar 6 tipos de recursos relacionados,Haga clic en una fila para abrir una ventana emergente de fichas de selección múltiple,Guarde instantáneamente después de cambiar.
  */
 @Composable
 fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
@@ -1325,10 +1325,10 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
     val skills = rememberFlowList(skillRepo.observeAll)
     val mcpServers = rememberFlowList(settings.mcpServersFlow)
     val tools = remember(toolRegistry) { toolRegistry.listTools() }
-    // v1.133: 知识库列表(KB 多选用)
+    // v1.133: Lista de la base de conocimientos(KB Múltiples opciones)
     val kbDao: io.zer0.muse.data.knowledge.KnowledgeBaseDao = koinInject()
     val knowledgeBases = rememberFlowList(kbDao.observeAll())
-    // v2.4.6: 文件夹列表 — 让助手可绑定到某个文件夹(独立检索域)
+    // v2.4.6: lista de carpetas — Hacer que el asistente se vincule a una carpeta(dominio de búsqueda independiente)
     val knowledgeFolderDao: io.zer0.muse.data.knowledge.KnowledgeFolderDao = koinInject()
     val knowledgeFolders = rememberFlowList(knowledgeFolderDao.observeAll())
 
@@ -1372,7 +1372,7 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
                     count = repo.parseToolIds(a).size,
                     onClick = { activeType = ExtensionType.TOOL },
                 )
-                // v1.133/v2.4.6: 知识库/文件夹绑定(作用域条目数)
+                // v1.133/v2.4.6: base de conocimientos/encuadernación de carpetas(Número de entradas de alcance)
                 ExtensionRow(
                     type = ExtensionType.KNOWLEDGE_BASE,
                     count = repo.parseKnowledgeFolderScopes(a).size
@@ -1482,11 +1482,11 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
                 },
                 onDismiss = { activeType = null },
             )
-            // v2.4.6: 知识库绑定 — 多选「知识库 / 知识库内文件夹」,写入
-            // AssistantEntity.knowledgeFolderScopesJson(形如 kbId::path)。
-            // 一个文件夹 = 一个独立检索域,互不串。未选任何文件夹时退化为整库绑定。
+            // v2.4.6: Enlace de la base de conocimientos — Selección múltiple "Base de conocimientos/Carpeta en la base de conocimientos",escribir
+            // AssistantEntity.knowledgeFolderScopesJson(en forma de kbId::path).
+            // una carpeta = un campo de búsqueda independiente,No se crucen. Cuando no se selecciona ninguna carpeta, degenerará en el enlace completo de la biblioteca.
             ExtensionType.KNOWLEDGE_BASE -> {
-                // 展开:每个 KB 一行(整库) + 其下每个文件夹一行(独立域)
+                // Expandir:Una fila por KB(Toda la biblioteca) + Una línea para cada carpeta debajo de ella(dominio independiente)
                 val scopeItems: List<KbScopeItem> = run {
                     val foldersByKb = knowledgeFolders.groupBy { it.kbId }
                     knowledgeBases.flatMap { kb ->
@@ -1523,7 +1523,7 @@ fun AssistantExtensionsPage(assistantId: String, onBack: () -> Unit) {
                         update {
                             it.copy(
                                 knowledgeFolderScopesJson = repo.serializeStringList(repo.encodeKnowledgeFolderScopes(scopes)),
-                                // 同步 KB id 列表(兼容旧路径与旧数据读取)
+                                // Sincronizar lista de ID de KB(Compatible con rutas antiguas y lectura de datos antiguos.)
                                 knowledgeBaseIdsJson = repo.serializeStringList(scopes.map { s -> s.first }.distinct()),
                             )
                         }
@@ -1555,23 +1555,23 @@ private fun CardGroupScope.ExtensionRow(type: ExtensionType, count: Int, onClick
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 子页 4: 记忆
+// Subpágina 4: Memoria
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * 记忆子页 — memoryEnabled / useGlobalMemory / enableRecentChatsReference / enableTimeReminder。
+ * subpágina de memoria — memoryEnabled / useGlobalMemory / enableRecentChatsReference / enableTimeReminder.
  */
 @Composable
 fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
     val assistant = rememberAssistant(assistantId)
     val update = rememberAssistantUpdater(assistantId)
-    // v2.6.2: 预解析提示文案 —— 回调 lambda 中直接用 context.getString 会触发
-    // lint LocalContextGetResourceValueCall（应使用 stringResource 在组合期取值）。
+    // v2.6.2: Copia del mensaje de análisis previo —— El uso de context.getString directamente en la devolución de llamada lambda activará
+    // lint LocalContextGetResourceValueCall(Se debe utilizar un recurso de cadena para obtener el valor durante la combinación).
     val missingValueText = androidx.compose.ui.res.stringResource(R.string.assistant_detail_memory_edit_missing)
 
-    // P2-9: 手动记忆读写生产侧同源 store — 默认助手(空/"default")→ 全局 facts.db、
-    // scope "main";子助手 → FactDbProvider 分库 facts_<id>.db、scope = assistantId。
-    // 与 SystemPromptAssembler / ChatViewModel 的读取口径一致,修复此前读写全局池对 AI 无效。
+    // P2-9: Fuente del lado de producción de lectura y escritura de memoria manual store — Asistente predeterminado(vacío/"default")→ hechos globales.db,
+    // scope "main";sub-asistente → FactDbProvider biblioteca sucursal facts_<id>.db,scope = assistantId.
+    // Consistente con el calibre de lectura de SystemPromptAssembler/ChatViewModel,Se solucionó el problema por el cual el grupo global de lectura y escritura no funcionaba para la IA.
     val factDbProvider: FactDbProvider = koinInject()
     val settings: SettingsRepository = koinInject()
     val scope = rememberCoroutineScope()
@@ -1584,8 +1584,8 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
     val memoryScope: String =
         if (assistant == null || assistant.id.isBlank() || assistant.id == "default") "main" else assistant.id
     val memoryStore: FactStore =
-        // P3-4（审计报告）: 去掉 !! —— memoryScope != "main" 蕴含 assistant 非空，
-        // 但显式兜底比依赖这个隐含推理更安全（后续重构很容易破坏）。
+        // P3-4(informe de auditoría): eliminar !! —— memoryScope != "main" implica que el asistente no está vacío,
+        // Pero ser explícito es más seguro que confiar en este razonamiento implícito (que puede romperse fácilmente mediante una refactorización posterior).
         if (memoryScope == "main") {
             koinInject<FactStore>()
         } else {
@@ -1602,19 +1602,19 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
     ) {
         value =
             resultOf { pinnedMemoryStore.getForAssistant(assistantId, includeGlobal = includeGlobalPinned) }
-                .onError { message, error -> Logger.w("AssistantMemoryPage", "读取置顶记忆失败: $message", error) }
+                .onError { message, error -> Logger.w("AssistantMemoryPage", "No se pudo leer la memoria fija: $message", error) }
                 .getOrNull()
                 .orEmpty()
     }
-    // spaceId 取当前 Space,与生产读取(按 currentSpaceId 过滤)保持同一维度。
+    // spaceId Ponte al día Space,leer con producción(Filtrar por currentSpaceId)Mantenga la misma dimensión.
     val spaceId by produceState(initialValue = "default", refreshKey) {
         value = settings.currentSpaceIdFlow.first().ifBlank { "default" }
     }
-    // 注:此处按 scope+space 读取该 store 下 AI 实际使用的事实;增删后递增 refreshKey 触发重新拉取。
+    // Nota:Presione alcance+espacio aquí para leer los datos realmente utilizados por la IA en esta tienda.;Incremente la clave de actualización después de agregar o eliminar para activar la repetición.
     val facts by produceState<List<FactStore.Fact>>(initialValue = emptyList(), refreshKey, memoryScope, spaceId) {
         value =
             resultOf { memoryStore.getByScopeAndSpace(memoryScope, spaceId) }
-                .onError { message, error -> Logger.w("AssistantMemoryPage", "读取助手记忆失败: $message", error) }
+                .onError { message, error -> Logger.w("AssistantMemoryPage", "No se pudo leer la memoria del asistente: $message", error) }
                 .getOrNull()
                 .orEmpty()
     }
@@ -1669,7 +1669,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
                 )
             }
         }
-        // 手动记忆入口
+        // Entrada de memoria manual
         item {
             CardGroup(modifier = museAnimateItem(), title = { Text(stringResource(R.string.assistant_detail_manual_memory)) }) {
                 item(
@@ -1713,7 +1713,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
                 }
             }
         }
-        // 已存记忆列表(支持展开、长按编辑和删除)
+        // Lista de memoria guardada(Admite expansión, mantenga presionado para editar y eliminar)
         item {
             CardGroup(
                 modifier = museAnimateItem(),
@@ -1767,7 +1767,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
                                     ConfirmDeleteDialog(
                                         title = stringResource(R.string.assistant_detail_delete_memory),
                                         itemName = fact.fact,
-                                        // MEM-04: 统一句式 + 后果说明(该助手不再引用这条记忆)
+                                        // MEM-04: Estructura de oración unificada + explicación de consecuencias(El asistente ya no hace referencia a este recuerdo.)
                                         consequence = stringResource(R.string.assistant_memory_delete_consequence),
                                         onConfirm = {
                                             showDeleteConfirm = false
@@ -1782,7 +1782,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
                                                         )
                                                     }
                                                         .onError { message, error ->
-                                                            Logger.w("AssistantMemoryPage", "删除助手记忆失败: $message", error)
+                                                            Logger.w("AssistantMemoryPage", "No se pudo eliminar la memoria del asistente: $message", error)
                                                         }
                                                         .getOrNull() == true
                                                 if (deleted) expandedFactIds.remove(fact.id)
@@ -1800,7 +1800,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
         }
     }
 
-    // 手动新增/长按编辑共用对话框。
+    // Agregar manualmente/Mantenga presionado para editar el cuadro de diálogo compartido.
     if (showAddFactDialog || editingFactId != null) {
         val targetFactId = editingFactId
         val isEditing = targetFactId != null
@@ -1828,7 +1828,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
                 )
             },
             confirmText = stringResource(R.string.assistant_detail_save),
-            // MEM-07: 空内容禁用保存按钮
+            // MEM-07: El contenido vacío desactiva el botón guardar
             confirmEnabled = factInput.isNotBlank(),
             onConfirm = {
                 val content = factInput.trim()
@@ -1867,7 +1867,7 @@ fun AssistantMemoryPage(assistantId: String, onBack: () -> Unit) {
     }
 }
 
-/** v2.0.1: 推理等级本地化显示名（value 匹配仍用枚举 name）。 */
+/** v2.0.1: Nombre para mostrar localizado a nivel de inferencia (value La coincidencia todavía usa el nombre de enumeración). */
 @androidx.annotation.StringRes
 private fun reasoningLevelLabelRes(level: ReasoningLevel): Int = when (level) {
     ReasoningLevel.OFF -> R.string.reasoning_level_off

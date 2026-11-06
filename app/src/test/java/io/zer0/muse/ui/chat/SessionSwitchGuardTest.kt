@@ -5,9 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * v2.3.1: 会话切换序号守卫单测(纯逻辑,无 Android 依赖)。
+ * v2.3.1: Prueba única de protección del número de secuencia de cambio de sesión(pura logica,Sin dependencias de Android).
  *
- * 守卫是实例状态,每个界面实例各持一份；用例各自新建一个实例,不共享状态。
+ * Los guardias son estados de instancia.,Cada instancia de interfaz contiene una copia; cada caso de uso crea una nueva instancia.,Ningún estado es compartido.
  */
 class SessionSwitchGuardTest {
     private val guard = SessionSwitchGuard()
@@ -39,7 +39,7 @@ class SessionSwitchGuardTest {
         assertTrue(guard.isStale(old))
     }
 
-    /** 不变量:快速连续切换后,只有最后一次发起的切换可提交,更早的一律过期。 */
+    /** invariante:Después de cambiar en rápida sucesión,Solo se puede enviar el último cambio iniciado,Todo lo anterior caducará. */
     @Test
     fun `rapid switching keeps only the last committable`() {
         val first = guard.begin()
@@ -51,15 +51,15 @@ class SessionSwitchGuardTest {
     }
 
     /**
-     * 不变量:两个界面实例的序号互不干扰。
+     * invariante:Los números de serie de las dos instancias de interfaz no interfieren entre sí.
      *
-     * 这正是实例化的理由：一个实例里发起了新切换，不该让另一个实例刚发起的切换过期。
+     * Esta es exactamente la razón para la creación de instancias: un nuevo cambio iniciado en una instancia no debería permitir que caduque el cambio recién iniciado por otra instancia.
      */
     @Test
     fun `separate instances do not invalidate each other`() {
         val other = SessionSwitchGuard()
         val mine = guard.begin()
         other.begin()
-        assertFalse("另一个实例的切换不应让本实例的 token 过期", guard.isStale(mine))
+        assertFalse("Cambiar a otra instancia no debería hacer que caduque el token de esta instancia.", guard.isStale(mine))
     }
 }

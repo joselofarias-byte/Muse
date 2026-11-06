@@ -1,274 +1,338 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- App -->
-    <string name="app_name">Musa</string>
-    <!-- Splash -->
+    <string name="app_name">Muse</string>
+    <!-- pagina de inicio -->
 
-    <!-- Widget -->
-    <string name="widget_description">Inicio rápido del chat de Muse</string>
-    <string name="widget_new_session">Nuevo chat</string>
-    <string name="widget_recent_sessions">Chats recientes</string>
-    <!-- P3-16: 4x2 chat widget -->
+    <!-- widgets de escritorio -->
+    <string name="widget_description">Inicie rápidamente una conversación de Muse</string>
+    <string name="widget_new_session">Nueva conversación</string>
+    <string name="widget_recent_sessions">conversaciones recientes</string>
+    <!-- P3-16: 4x2 Widget de conversación -->
     <string name="widget_chat_description">Mostrar la última respuesta de IA</string>
-    <string name="widget_chat_no_content">Aún no hay conversación, toca para comenzar</string>
+    <string name="widget_chat_no_content">Aún no hay conversación, haz clic para iniciar</string>
     <string name="widget_voice_input">Entrada de voz rápida</string>
-    <string name="widget_chat_pick_assistant">Elige el asistente a mostrar</string>
-    <string name="widget_quick_pick_assistant">Elige el asistente de los accesos</string>
-    <string name="widget_launcher_title">Musa</string>
-    <string name="widget_launcher_open">Abrir Musa</string>
+    <string name="widget_chat_pick_assistant">Elige qué asistente mostrar</string>
+    <string name="widget_quick_pick_assistant">Seleccione el asistente correspondiente a la operación de acceso directo</string>
+    <!-- F-25: Widget de inicio de escritorio -->
+    <string name="widget_launcher_title">Muse</string>
+    <string name="widget_launcher_open">Abrir Muse</string>
 
-    <!-- Bottom navigation -->
+    <!-- Navegación inferior -->
 
     <!-- Splash & Onboarding -->
 
-    <!-- Onboarding v2 (5-step redesign) -->
-
-    <!-- Settings sections -->
+    <!-- Establecer título de sección de página -->
     <string name="section_about">Acerca de</string>
-    <string name="section_asr">Reconocimiento de voz (ASR)</string>
+    <string name="section_asr">reconocimiento de voz(ASR)</string>
     <string name="section_theme">Tema</string>
     <string name="section_mcp">Servidores MCP</string>
 
-    <!-- About page -->
-    <string name="about_oss_licenses">Licencias de código abierto</string>
-    <string name="licenses_title">Licencias de código abierto</string>
-    <string name="licenses_total_count">%1$d dependencias en total</string>
+    <!-- Acerca de la página -->
+    <string name="about_oss_licenses">Licencia de código abierto</string>
+    <string name="licenses_title">Licencia de código abierto</string>
+    <string name="licenses_total_count">total %1$d dependencia</string>
 
-    <!-- Common actions -->
-    <string name="action_back">Atrás</string>
-
-    <!-- Network proxy -->
-    <string name="proxy_title">Proxy de red</string>
-    <string name="proxy_enable">Habilitar proxy</string>
-    <string name="proxy_enabled">Activado</string>
-    <string name="proxy_disabled">Desactivado</string>
-    <string name="proxy_type">Tipo</string>
-    <string name="proxy_type_http">HTTP</string>
-    <string name="proxy_type_socks5">CALCETINES5</string>
-    <string name="proxy_host">Anfitrión</string>
-    <string name="proxy_port">Puerto</string>
-    <string name="proxy_username">Nombre de usuario</string>
-    <string name="proxy_password">Contraseña</string>
-    <string name="proxy_restart_hint">Se aplica a las conexiones nuevas de inmediato; las conexiones keep-alive existentes duran hasta su reciclaje</string>
-    <string name="action_save">Ahorrar</string>
+    <!-- botón universal -->
+    <string name="action_back">Regresar</string>
+    <string name="action_clear">Borrar</string>
+    <string name="action_save">Guardar</string>
     <string name="action_cancel">Cancelar</string>
-    <string name="action_delete">Borrar</string>
+    <string name="action_delete">Eliminar</string>
     <string name="action_edit">Editar</string>
-    <string name="action_close">Cerca</string>
+    <string name="action_close">Cerrar</string>
     <string name="action_more">Más</string>
     <string name="action_send">Enviar</string>
     <string name="action_copy">Copiar</string>
+    <string name="action_select_text">Seleccionar texto</string>
+    <string name="chat_select_text_hint">Mantenga presionado el texto para seleccionar y copiar</string>
     <string name="action_share">Compartir</string>
+    <string name="action_retry">Inténtalo de nuevo</string>
+    <string name="common_load_failed">Error al cargar</string>
+    <string name="action_undo">Cancelar</string>
+    <string name="chat_unarchived">Sin archivar</string>
     <string name="action_expand">Expandir</string>
-    <string name="action_collapse">Colapsar</string>
+    <string name="action_collapse">Contraer</string>
 
-    <!-- Quote reply -->
-    <string name="message_action_quote">Cita</string>
+    <!-- Cotización Responder -->
+    <string name="message_action_quote">Citar</string>
     <string name="quote_label_user">Usuario de cotización</string>
-    <string name="quote_label_assistant">Asistente de cotizaciones</string>
-    <string name="quote_clear">Cancelar cotización</string>
+    <string name="quote_label_assistant">Ayudante de cotización</string>
+    <string name="quote_clear">desreferenciación</string>
 
-    <!-- Edit message sheet -->
+    <!-- Editar mensaje Sheet -->
     <string name="edit_message_title">Editar mensaje</string>
-    <string name="edit_message_content_label">Contenido</string>
+    <string name="edit_message_content_label">contenido</string>
 
-    <!-- Recording / speech recognition status -->
-<string name="voice_release_to_recognize">Suelta para reconocer · desliza hacia arriba para cancelar</string>
-<string name="voice_recognizing">Reconociendo…</string>
-<!-- Task 1: ASR reconnecting status (WebSocket dropped, exponential backoff reconnect, audio buffered meanwhile) -->
-<string name="voice_reconnecting">Error de red, reconectando…</string>
+    <!-- Grabación/Estado de reconocimiento de voz -->
+    <string name="voice_release_to_recognize">Identificación de liberación · Desliza hacia arriba para cancelar</string>
+    <string name="voice_recognizing">Reconociendo…</string>
+    <!-- v1.0.4 (P2): ASR Copia de estado de conexión(Connecting El escenario aún no ha comenzado a grabar.,No se puede mostrar la forma de onda) -->
+    <string name="voice_connecting">Conexión al servicio de identificación…</string>
+    <!-- Tarea 1: Copia del estado de desconexión y reconexión de ASR(WebSocket Retroceso exponencial y reconexión después de la desconexión,Continúe grabando y almacenando en búfer fotogramas de audio durante) -->
+    <string name="voice_reconnecting">Anormalidad en la red, reconexión…</string>
+    <!-- Correcciones en la interfaz (i18n-6): Descripción de accesibilidad del botón de parada de la barra de mensajes de voz -->
+    <string name="voice_stop_recording">dejar de grabar</string>
+    <string name="voice_conversation_cd_idle">Haga clic para iniciar una conversación</string>
+    <string name="voice_conversation_cd_listening">Grabación en curso, haga clic para finalizar y enviar</string>
+    <string name="voice_conversation_cd_listening_waiting">Haga clic para empezar a hablar</string>
+    <string name="voice_conversation_cd_thinking">AI Pensando, haga clic para interrumpir</string>
+    <string name="voice_conversation_cd_speaking">Leyendo en voz alta, haga clic para interrumpir</string>
 
-<!-- 前端修复 (i18n-6): stop button a11y label on voice message bar -->
-<string name="voice_stop_recording">Stop recording</string>
-    <string name="voice_conversation_cd_idle">Toca para iniciar la conversación</string>
-    <string name="voice_conversation_cd_listening">Grabando, toca para interrumpir</string>
-    <string name="voice_conversation_cd_thinking">IA pensando, toca para interrumpir</string>
-    <string name="voice_conversation_cd_speaking">Hablando, toca para interrumpir</string>
-
-    <!-- ASR config hint -->
-    <string name="asr_missing_api_key_error">No hay clave API configurada.</string>
+    <!-- ASR Consejos de configuración -->
+    <string name="asr_missing_api_key_error">La clave API no está configurada actualmente y la entrada de voz no estará disponible.</string>
     <string name="asr_error_connect_failed">No se pudo establecer la conexión</string>
-    <string name="asr_error_send_session_update_failed">No se pudo enviar session.update</string>
-    <string name="asr_error_no_apikey">API Key no configurada</string>
-    <string name="asr_error_send_run_task_failed">Error al enviar run-task</string>
-    <string name="asr_error_no_task_started">No se recibió task-started</string>
-    <string name="asr_error_connection_exception">Error de conexión</string>
-    <string name="asr_error_mic_init_failed">Error al inicializar el micrófono. Comprueba los permisos o el dispositivo de grabación</string>
+    <string name="asr_error_send_session_update_failed">No se pudo enviar el comando de actualización de la sesión</string>
+    <string name="asr_error_no_apikey">Clave API no configurada</string>
+    <string name="asr_error_send_run_task_failed">Error al enviar la tarea de reconocimiento de voz</string>
+    <string name="asr_error_no_task_started">No se recibió confirmación de tarea de reconocimiento</string>
+    <string name="asr_error_connection_exception">Anormalidad de conexión</string>
+    <string name="asr_error_mic_init_failed">Error al inicializar el micrófono. Verifique los permisos o el dispositivo de grabación.</string>
     <string name="asr_error_recording_start_failed">Error al iniciar la grabación</string>
 
-    <string name="asr_error_recording_read_failed">Error al leer el micrófono (código: %1$d)</string>
-    <string name="asr_reconnecting_message">Conexión perdida, reconectando… (intento %1$d/%2$d)</string>
-    <string name="asr_reconnect_exhausted">Se perdió la conexión de voz. Falló la reconexión automática tras 3 intentos. El contenido reconocido se ha conservado. Comprueba la red y vuelve a iniciar la grabación.</string>
+    <string name="asr_error_recording_read_failed">Error en la lectura del micrófono (código de error:%1$d)</string>
+    <string name="asr_reconnecting_message">Conexión interrumpida, reconectando…(No. %1$d/%2$d veces)</string>
+    <string name="asr_reconnect_exhausted">La conexión de voz se interrumpió y se volvió a conectar automáticamente tres veces y aún no se restableció. El contenido identificado se ha conservado. Verifique la red y comience a grabar nuevamente.</string>
 
-    <!-- Memory add fact -->
-    <string name="memory_add_fact">Agregar hecho</string>
-    <string name="memory_add_fact_dialog_title">Agregar hecho</string>
+    <!-- Modo de conversación de voz(Conversación continua a pantalla completa:ASR + AI + TTS) -->
+    <string name="voice_conversation_close_cd">Desactivar conversación de voz</string>
+    <string name="voice_conversation_change_voice">Cambiar voz</string>
+    <string name="voice_conversation_idle_hint">Haga clic en el botón de abajo para iniciar una conversación.</string>
+    <string name="voice_conversation_idle_tap_hint">Reconocer y enviar automáticamente al hablar,AI Las respuestas se leerán automáticamente.</string>
+    <string name="voice_conversation_listening">escuchando…</string>
+    <string name="voice_conversation_listening_finish_hint">Después de hablar, haga clic en el botón para enviar</string>
+    <string name="voice_conversation_retry_hint">No te escuché claramente. Dilo de nuevo.</string>
+    <string name="voice_conversation_thinking">Pensando…</string>
+    <string name="voice_conversation_speaking">Leer en voz alta…</string>
+    <string name="voice_conversation_state_idle">Haga clic para comenzar</string>
+    <string name="voice_conversation_state_listening">escuchando</string>
+    <string name="voice_conversation_state_listening_idle">Haga clic para comenzar</string>
+    <string name="voice_conversation_state_thinking">Pensando</string>
+    <string name="voice_conversation_state_speaking">Leer en voz alta</string>
+    <string name="voice_conversation_pick_voice_title">Seleccionar voz</string>
+    <string name="voice_conversation_no_voices">No se encontró ninguna voz del sistema disponible. Primero instale el motor TTS en la configuración del sistema.</string>
 
-    <!-- v2.0: Favorite groups -->
-    <string name="favorites_group_inspiration">Inspiración</string>
-    <string name="favorites_group_code">Código</string>
-    <string name="favorites_group_learning">Aprendiendo</string>
-    <string name="favorites_group_custom">Costumbre</string>
+    <!-- proxy de red -->
+    <string name="proxy_title">proxy de red</string>
+    <string name="proxy_enable">Habilitar proxy</string>
+    <string name="proxy_enabled">Habilitado</string>
+    <string name="proxy_disabled">No habilitado</string>
+    <string name="proxy_type">Tipo</string>
+    <string name="proxy_type_http">HTTP</string>
+    <string name="proxy_type_socks5">SOCKS5</string>
+    <string name="proxy_host">Anfitrión</string>
+    <string name="proxy_port">puerto</string>
+    <string name="proxy_username">Nombre de usuario</string>
+    <string name="proxy_password">Contraseña</string>
+    <string name="proxy_restart_hint">Tendrá efecto en nuevas conexiones inmediatamente después de guardar; la conexión larga establecida se utilizará hasta su reciclaje.</string>
 
-    <!-- v2.0: Data Management -->
+    <!-- Nuevos metadatos agregados a la página de memoria. -->
+    <string name="memory_add_fact">Agregar metadato</string>
+    <string name="memory_add_fact_dialog_title">Agregar metadato</string>
+
+    <!-- v2.0: Categorías predeterminadas de agrupación de colecciones -->
+    <string name="favorites_group_inspiration">inspiración</string>
+    <string name="favorites_group_code">código</string>
+    <string name="favorites_group_learning">aprender</string>
+    <string name="favorites_group_custom">Personalizar</string>
+
+    <!-- v2.0: Página de gestión de datos -->
     <string name="data_management_title">Gestión de datos</string>
-    <string name="data_management_sessions">Conversaciones</string>
-    <string name="data_management_messages">Mensajes</string>
-    <string name="data_management_memories">Recuerdos</string>
+    <string name="data_management_sessions">Número de conversaciones</string>
+    <string name="data_management_messages">Número de mensajes</string>
+    <string name="data_management_memories">número de memoria</string>
     <string name="data_management_db_size">Tamaño de la base de datos</string>
-    <string name="data_management_cache_size">Tamaño de caché</string>
+    <string name="data_management_cache_size">tamaño de caché</string>
     <string name="data_management_clear_chats">Borrar todas las conversaciones</string>
-    <string name="data_management_clear_chats_confirm">¿Borrar todas las conversaciones?</string>
+    <string name="data_management_clear_chats_confirm">¿Estás seguro de que quieres borrar todas las conversaciones? Esta acción no se puede deshacer.</string>
     <string name="data_management_clear_chats_done">Todas las conversaciones borradas</string>
-    <string name="data_management_clear_cache">Borrar caché</string>
-    <string name="data_management_clear_cache_confirm">¿Borrar todo el caché?</string>
-    <string name="data_management_clear_cache_done">Caché borrado</string>
-    <string name="data_management_reset_memory">Restablecer memoria</string>
-    <string name="data_management_reset_memory_confirm">¿Restablecer toda la memoria?</string>
-    <string name="data_management_reset_memory_done">Restablecer memoria</string>
+    <string name="data_management_clear_cache">borrar caché</string>
+    <string name="data_management_clear_cache_confirm">¿Estás seguro de que quieres borrar todos los cachés? La recarga de datos puede llevar algún tiempo.</string>
+    <string name="data_management_clear_cache_done">caché borrado</string>
+    <string name="data_management_reset_memory">restablecer la memoria</string>
+    <string name="data_management_reset_memory_confirm">¿Estás seguro de que quieres restablecer todos los recuerdos?AI Olvidaré todo lo que sé sobre ti.</string>
+    <string name="data_management_reset_memory_done">reinicio de memoria</string>
     <string name="data_management_entry">Gestión de datos</string>
     <string name="data_management_entry_desc">Ver el uso, borrar el caché y administrar datos</string>
 
-    <!-- v2.0: Memory filters -->
+    <!-- v2.0: filtro de memoria -->
 
-    <!-- v9: Memory categories (reference: All / Core Facts / Preferences / Experiences / Relationships / Goals / Medical / Other) -->
-    <string name="memory_category_all">Todo</string>
-    <string name="memory_category_identity">Hechos centrales</string>
-    <string name="memory_category_preference">Preferencias</string>
-    <string name="memory_category_event">Experiencias</string>
-    <string name="memory_category_relationship">Relaciones</string>
-    <string name="memory_category_goal">Objetivos</string>
-    <string name="memory_category_medical">Médico</string>
-    <string name="memory_category_other">Otro</string>
-    <string name="memory_filter_today">Hoy</string>
-    <string name="memory_filter_week">Esta semana</string>
+    <!-- v9: clasificación de la memoria(Según la imagen de referencia.: Todo / Datos básicos / Preferencias / Experiencias / Relaciones / Metas / Médico / Otros) -->
+    <string name="memory_category_all">Todos</string>
+    <string name="memory_category_identity">hechos centrales</string>
+    <string name="memory_category_preference">Preferencia</string>
+    <string name="memory_category_event">experiencia</string>
+    <string name="memory_category_relationship">relación</string>
+    <string name="memory_category_goal">objetivo</string>
+    <string name="memory_category_medical">medico</string>
+    <string name="memory_category_other">Otros</string>
+    <string name="memory_filter_today">hoy</string>
+    <string name="memory_filter_week">esta semana</string>
     <string name="memory_filter_month">este mes</string>
 
-    <!-- v2.0: Recently Deleted -->
+    <!-- v2.0: papelera de reciclaje -->
     <string name="recently_deleted_title">Eliminado recientemente</string>
-    <string name="recently_deleted_empty">No hay conversaciones eliminadas</string>
-    <string name="recently_deleted_restore">Restaurar</string>
+    <string name="recently_deleted_empty">Aún no hay registros de eliminación</string>
+    <string name="recently_deleted_restore">restaurar</string>
     <string name="recently_deleted_restore_done">Restaurado</string>
     <string name="recently_deleted_permanent_delete">Eliminar permanentemente</string>
-    <string name="recently_deleted_permanent_delete_confirm">¿Eliminar permanentemente?</string>
-    <string name="recently_deleted_permanent_delete_done">Eliminado permanentemente</string>
-    <string name="recently_deleted_auto_clear">Eliminado automáticamente después de 7 días</string>
+    <string name="recently_deleted_permanent_delete_confirm">¿Estás seguro de que quieres eliminarlo permanentemente? Esta acción no se puede deshacer.</string>
+    <string name="recently_deleted_permanent_delete_done">eliminado permanentemente</string>
+    <string name="recently_deleted_auto_clear">7 Eliminado automática y permanentemente después de divas</string>
 
-    <string name="chat_draft_label">Borrador</string>
-    <string name="chat_list_status_in_progress">En curso</string>
-    <string name="chat_list_status_pending">Pendiente</string>
-    <string name="chat_list_status_completed">Terminado</string>
-    <string name="chat_list_time_just_now">Ahora mismo</string>
-    <string name="chat_list_time_minutes_ago">Hace %1$d min</string>
-    <string name="chat_list_time_hours_ago">Hace %1$d h</string>
-    <string name="chat_list_time_yesterday">Ayer</string>
-    <string name="chat_list_time_days_ago">Hace %1$d días</string>
-    <string name="err_api_error">Se produjo un error de API.</string>
-    <string name="err_auth_failed">La autenticación falló.</string>
-    <string name="err_image_api_key_missing">La generación de imágenes requiere una clave API.</string>
-    <string name="err_image_empty_response">La generación de imágenes arrojó una respuesta vacía.</string>
-    <string name="err_image_invalid_uri">URI o ruta de imagen no válida.</string>
-    <string name="err_image_no_results">No se generaron imágenes.</string>
-    <string name="err_image_reference_download_failed">No se pudo descargar la imagen de referencia. (%1$s)</string>
-    <string name="err_image_reference_too_large">La imagen de referencia es demasiado grande. (%1$s)</string>
-    <string name="err_image_response_too_large">La imagen generada es demasiado grande para mostrarse. (%1$s)</string>
-    <string name="err_image_unsupported_model">El modelo seleccionado no admite la generación de imágenes. (%1$s)</string>
-    <string name="err_invalid_argument">Se proporcionó un argumento no válido.</string>
-    <string name="err_invalid_response">Respuesta no válida del servidor. (%1$s)</string>
-    <string name="err_memory_config_invalid">La configuración de la memoria no es válida. (%1$s)</string>
-    <string name="err_memory_token_budget_invalid">Presupuesto de token de memoria no válido. (%1$s)</string>
-    <string name="err_network_error">Error de red.</string>
-    <string name="err_no_model_selected">Ningún modelo seleccionado.</string>
-    <string name="err_no_provider_configured">Ningún proveedor configurado.</string>
-    <string name="err_not_found">Recurso no encontrado.</string>
-    <string name="err_overloaded">El servidor está sobrecargado.</string>
-    <string name="err_permission_denied">Permiso denegado.</string>
-    <string name="err_precondition_failed">La condición previa de la operación falló.</string>
-    <string name="err_rate_limited">Se superó el límite de tarifa.</string>
-    <string name="err_request_timeout">Se agotó el tiempo de espera de la solicitud.</string>
-    <string name="err_resource_exhausted">Recurso agotado.</string>
-    <string name="err_service_unavailable">El servicio no está disponible temporalmente.</string>
-    <string name="err_stream_interrupted">La transmisión fue interrumpida.</string>
-    <string name="err_vertex_ai_config_invalid">La configuración de Vertex AI no es válida. (%1$s)</string>
-    <string name="err_vertex_ai_token_failed">No se pudo obtener el token de acceso de Vertex AI. (%1$s)</string>
+    <!-- ai/memory Mapa de mensajes de error del módulo ErrorCode -->
+    <string name="err_no_provider_configured">No hay proveedores configurados. Agrega uno e introduce su clave API desde Ajustes.</string>
+    <string name="err_no_model_selected">El proveedor no tiene modelos configurados. Agrega uno desde Ajustes.</string>
+    <string name="err_auth_failed">Error de autenticación. Comprueba tu clave API.</string>
+    <string name="err_rate_limited">La solicitud es demasiado frecuente, inténtelo de nuevo más tarde.</string>
+    <string name="err_request_timeout">Solicitar tiempo de espera</string>
+    <string name="err_service_unavailable">El servicio no está disponible temporalmente, inténtalo de nuevo más tarde.</string>
+    <string name="err_permission_denied">Permisos insuficientes</string>
+    <string name="err_invalid_response">AI Excepción de formato de respuesta (%1$s)</string>
+    <string name="err_api_error">AI El servicio devuelve error</string>
+    <string name="err_resource_exhausted">cupo agotado</string>
+    <string name="err_invalid_argument">Error de parámetro de solicitud</string>
+    <string name="err_precondition_failed">No se cumplen las condiciones previas</string>
+    <string name="err_overloaded">El servicio está sobrecargado, inténtalo de nuevo más tarde.</string>
+    <string name="err_not_found">El recurso no existe</string>
+    <string name="err_stream_interrupted">Conexión de transmisión interrumpida</string>
+    <string name="err_reply_truncated">(Respuesta truncada debido a restricciones de longitud)</string>
+    <string name="err_network_error">Conexión de red interrumpida, verifique la red</string>
+    <string name="err_image_response_too_large">La respuesta de generación de imágenes es demasiado grande (%1$sMB), límite superior 20MB</string>
+    <string name="err_image_empty_response">La generación de imágenes devuelve una respuesta vacía</string>
+    <string name="err_image_no_results">La generación de imágenes devuelve resultados vacíos</string>
+    <string name="err_image_unsupported_model">El proveedor actual no admite la generación de imágenes (%1$s)</string>
+    <string name="err_image_reference_too_large">La imagen de referencia es demasiado grande (%1$sMB), límite superior 10MB</string>
+    <string name="err_image_reference_download_failed">Falló la descarga de la imagen de referencia (%1$s)</string>
+    <string name="err_image_invalid_uri">Formato URI de imagen no compatible</string>
+    <string name="err_image_api_key_missing">No se ha configurado una clave API</string>
+    <string name="err_vertex_ai_config_invalid">Vertex AI Configuración no válida (%1$s)</string>
+    <string name="err_vertex_ai_token_failed">Vertex AI Error de autenticación (%1$s)</string>
+    <string name="err_memory_token_budget_invalid">El presupuesto del token de memoria no es válido (%1$s)</string>
+    <string name="err_memory_config_invalid">Configuración de memoria no válida (%1$s)</string>
+    <string name="memory_llm_empty_response">modelo %1$s Devuelve una respuesta vacía (tanto el texto como el contenido del pensamiento están vacíos) y la compilación de la memoria falla.</string>
+    <!-- Función1: Mensaje de respuesta de emoticono -->
+    <!-- Función2: borrador del mensaje -->
+    <string name="chat_draft_label">borrador</string>
+    <!-- Función3: Confirmación de archivo -->
+    <string name="chat_list_status_in_progress">En progreso</string>
+    <string name="chat_list_status_pending">Por confirmar</string>
+    <string name="chat_list_status_completed">Completado</string>
+    <string name="chat_list_time_just_now">justo ahora</string>
+    <string name="chat_list_time_minutes_ago">%1$d hace minutos</string>
+    <string name="chat_list_time_hours_ago">%1$d hace horas</string>
+    <string name="chat_list_time_yesterday">ayer</string>
+    <string name="chat_list_time_days_ago">%1$d hace dias</string>
 
-    <!-- Assistant detail: capabilities -->
-    <string name="assistant_detail_capabilities_title">Capacidades</string>
-    <string name="assistant_detail_capabilities_desc">Etiqueta los puntos fuertes de este asistente para el enrutamiento automático</string>
-    <string name="assistant_detail_custom_capability">Capacidad personalizada</string>
+    <!-- Tarjeta de aprobación de herramienta -->
+    <string name="tool_approval_title">llamada de herramienta</string>
+    <string name="tool_approval_approve">aprobar</string>
+    <string name="tool_approval_write_summary">a punto de escribir %1$s(%2$d personajes)</string>
+    <string name="tool_approval_advanced_details">Detalles avanzados</string>
+    <string name="tool_approval_show_full_args">Ver parámetros completos</string>
+    <string name="tool_approval_hide_full_args">Ocultar parámetros completos</string>
+    <string name="tool_approval_args_hidden">también %1$d Personajes no mostrados</string>
+    <string name="tool_approval_deny">rechazar</string>
+    <string name="tool_approval_confirm_deny">Confirmar rechazo</string>
+    <string name="tool_approval_deny_reason">Motivo del rechazo (opcional)</string>
+    <!-- v1.0.20: Botón de estrategia de persistencia — Escribir después de hacer clic ToolConfigStore,En el futuro, la herramienta ya no mostrará la tarjeta de aprobación. -->
+    <string name="tool_approval_always_approve">siempre permitido</string>
+    <!-- v1.x: Botón de permiso temporal a nivel de sesión — No vuelvas a preguntar en esta conversación.,Cambiar de sesión/Falla automáticamente después del arranque en frío -->
+    <string name="tool_approval_allow_this_session">Esta sesión permite</string>
+
+    <!-- Selector de rama de mensajes -->
+    <string name="branch_previous">Versión anterior</string>
+    <string name="branch_next">próxima versión</string>
+
+    <!-- Mensaje de error general -->
+
+    <!-- Advertencia de tarea programada no guardada -->
+    <string name="schedule_unsaved_title">¿Renunciar a la modificación?</string>
+    <string name="schedule_unsaved_message">Las modificaciones actuales no se han guardado. ¿Estás seguro de que quieres cerrar?</string>
+    <string name="schedule_discard">Descartar</string>
+
+    <!-- v1.0.75: AI Interacción en momentos -->
+    <string name="moment_sender_user">yo</string>
+    <string name="moment_banner_liked_by">%1$s te gustó</string>
+    <string name="moment_banner_commented_by">%1$s comentado sobre ti</string>
+    <string name="moment_separator_and">,</string>
+    <string name="moment_separator_dot">·</string>
+
+    <!-- Agent mensaje privado -->
+    <string name="agent_dm_title">Agent mensaje privado</string>
+    <string name="agent_dm_empty">Aún no hay mensaje privado</string>
+    <string name="agent_dm_mark_all_read">Todo leído</string>
+    <string name="agent_dm_unread_count">%d elementos no leídos</string>
+
+    <!-- Página de detalles del asistente: etiqueta de habilidad -->
+    <string name="assistant_detail_capabilities_title">Etiqueta de capacidad</string>
+    <string name="assistant_detail_capabilities_desc">Marque las áreas en las que el asistente es bueno para la coincidencia automática de rutas</string>
+    <string name="assistant_detail_custom_capability">Capacidades de personalización</string>
     <string name="assistant_detail_add">Agregar</string>
 
-    <!-- Multi-Agent team workflow -->
-    <string name="settings_multi_agent_workflow">Flujo de trabajo</string>
-    <string name="settings_multi_agent_workflow_desc">Definir orden de ejecución, dependencias y estrategia de agregación.</string>
-    <string name="settings_multi_agent_aggregation">Agregación</string>
-    <string name="settings_multi_agent_no_workflow">No hay flujo de trabajo configurado;</string>
+    <!-- Flujo de trabajo del equipo multiagente -->
+    <string name="settings_multi_agent_workflow">Orquestación del flujo de trabajo</string>
+    <string name="settings_multi_agent_workflow_desc">Definir el orden de ejecución, las dependencias y la estrategia de agregación de resultados de los Agentes dentro del equipo.</string>
+    <string name="settings_multi_agent_aggregation">Agregación de resultados</string>
+    <string name="settings_multi_agent_no_workflow">El flujo de trabajo no está configurado y se ejecutará en serie en el orden de los miembros.</string>
     <string name="settings_multi_agent_add_node">Agregar nodo</string>
     <string name="settings_multi_agent_edit_node">Editar nodo</string>
     <string name="settings_multi_agent_node_name">Nombre de nodo</string>
     <string name="settings_multi_agent_node_task">Plantilla de tarea</string>
-    <string name="settings_multi_agent_node_assistant">Agente</string>
-    <string name="settings_multi_agent_node_mode">Modo</string>
-    <string name="settings_multi_agent_node_dependencies">Dependencias</string>
+    <string name="settings_multi_agent_node_assistant">asistente de ejecución</string>
+    <string name="settings_multi_agent_node_mode">modo de ejecución</string>
+    <string name="settings_multi_agent_node_dependencies">Nodo de dependencia</string>
+    <!-- Report Screen (Página de informe estadístico) -->
     <string name="chat_delete_selected_title">Eliminar mensajes seleccionados</string>
-    <string name="chat_delete_selected_message">¿Seguro que quieres eliminar %1$d mensajes seleccionados? Esta acción no se puede deshacer.</string>
-    <string name="settings_agent_night_patrol_subtitle">Fuera del horario permitido: escribir diario/notas nocturnas en silencio, sin notificaciones</string>
-    <!-- v1.0.75: AI 朋友圈互动 -->
-    <string name="moment_sender_user">Yo</string>
-    <string name="moment_banner_liked_by">%1$s te gustó</string>
-    <string name="moment_banner_commented_by">%1$s comentó en tu publicación</string>
-    <string name="moment_separator_and">, </string>
-    <string name="moment_separator_dot"> · </string>
+    <string name="chat_delete_selected_message">Confirmar para eliminar seleccionado %1$d ¿mensaje? Esta operación es irreversible.</string>
+    <string name="settings_agent_night_patrol_subtitle">Fuera del horario permitido: escribe el diario en silencio/Notas nocturnas, sin notificaciones push</string>
 
-    <string name="action_clear">Borrar</string>
-    <string name="action_select_text">Seleccionar texto</string>
-    <string name="chat_select_text_hint">Mantén pulsado el texto para seleccionarlo y copiarlo</string>
-    <string name="proxy_saved_needs_restart">Proxy guardado. Las nuevas solicitudes lo usan de inmediato.</string>
-    <string name="proxy_bypass">Hosts sin proxy</string>
+    <string name="proxy_saved_needs_restart">El proxy se ha guardado y las nuevas solicitudes entrarán en vigor inmediatamente</string>
+    <string name="proxy_bypass">No vayas a la dirección del agente.</string>
     <string name="proxy_bypass_placeholder">localhost,127.0.0.1,192.168.,*.local</string>
-    <string name="proxy_bypass_hint">Separados por comas. Admite .sufijo, comodines *. y prefijos de IP. Añade aquí modelos locales y servicios de red local.</string>
-    <string name="proxy_test_action">Probar conexión</string>
-    <string name="proxy_test_running">Probando…</string>
+    <string name="proxy_bypass_hint">Separados por comas. Soporte .sufijo,*.comodín,IP prefijo. Se recomienda incluir modelos locales y servicios de intranet.</string>
+    <string name="proxy_test_action">conexión de prueba</string>
+    <string name="proxy_test_running">Bajo prueba…</string>
     <string name="launcher_alias_muse">Muse</string>
-    <string name="proxy_test_invalid_config">Introduce primero una dirección y un puerto válidos</string>
-    <string name="proxy_test_connected">Proxy accesible, </string>
-    <string name="proxy_test_need_auth">El proxy requiere autenticación; revisa usuario y contraseña</string>
-    <string name="proxy_test_reachable_failed">Proxy accesible pero la prueba falló: HTTP </string>
-    <string name="proxy_test_timeout">Tiempo de espera agotado: proxy inaccesible o puerto incorrecto</string>
-    <string name="proxy_test_dns_failed">Error de DNS: revisa el host del proxy</string>
-    <string name="proxy_test_connect_failed">Fallo de conexión: </string>
-    <string name="proxy_test_unexpected">Error de prueba: </string>
-    <string name="chat_favorite_selected_action">Guardar seleccionados</string>
-    <string name="chat_favorite_selected_ok">%1$d mensaje(s) guardados</string>
-    <string name="chat_favorite_selected_partial">%1$d guardados; %2$d ya estaban en favoritos</string>
-    <string name="chat_favorite_selected_all_exist">Los %1$d ya están en favoritos</string>
-    <string name="settings_chat_prefer_card_output">Preferir salida en tarjetas</string>
-    <string name="settings_chat_prefer_card_output_subtitle">Anima al modelo a usar tarjetas interactivas para tablas, comparativas y ajustes de parámetros en lugar de texto largo.</string>
-    <string name="chat_card_state_only">(contenido de la tarjeta actualizado)</string>
+    <string name="proxy_test_invalid_config">Primero complete la dirección de proxy válida y el puerto</string>
+    <string name="proxy_test_connected">conectividad proxy,</string>
+    <string name="proxy_test_need_auth">El agente requiere autenticación, verifique el nombre de usuario y la contraseña.</string>
+    <string name="proxy_test_reachable_failed">Se puede acceder al agente pero la sonda falla:HTTP </string>
+    <string name="proxy_test_timeout">Tiempo de espera de conexión: la dirección del proxy es inalcanzable o el puerto es incorrecto.</string>
+    <string name="proxy_test_dns_failed">Error en la resolución del nombre de dominio: verifique el nombre de host del proxy</string>
+    <string name="proxy_test_connect_failed">La conexión falló:</string>
+    <string name="proxy_test_unexpected">Excepción de prueba:</string>
+    <string name="chat_favorite_selected_action">Colección seleccionada</string>
+    <string name="chat_favorite_selected_ok">Recogido %1$d Artículo</string>
+    <string name="chat_favorite_selected_partial">Recogido %1$d artículo,%2$d Artículo ya en favoritos</string>
+    <string name="chat_favorite_selected_all_exist">esto %1$d Todos los artículos están en favoritos.</string>
+    <string name="settings_chat_prefer_card_output">Salida de tarjeta de preferencia</string>
+    <string name="settings_chat_prefer_card_output_subtitle">Se anima a los modelos a priorizar el uso de tarjetas interactivas para albergar tablas, comparaciones y selecciones de parámetros en lugar de largos párrafos de texto.</string>
+    <string name="chat_card_state_only">(Contenido de la tarjeta actualizado)</string>
     <string name="moment_action_edit">Editar</string>
-    <string name="groupchat_stop_generating">Detener la generación</string>
-    <string name="translate_page_stop_speaking">Detener la lectura</string>
-    <string name="settings_screen_group_cards">Tarjetas e interfaz generativa</string>
-    <string name="settings_screen_group_context_window">Ventana de contexto</string>
-    <string name="settings_screen_group_bubble">Burbujas de mensaje</string>
-    <string name="settings_proactive_v2_ledger">Registro de pendientes</string>
-    <string name="settings_proactive_v2_ledger_sub">Tiene %1$d cosas en mente</string>
+    <string name="groupchat_stop_generating">dejar de generar</string>
+    <string name="translate_page_stop_speaking">deja de leer</string>
+    <string name="settings_screen_group_cards">Tarjetas e Interfaces Generativas</string>
+    <string name="settings_screen_group_context_window">ventana contextual</string>
+    <string name="settings_screen_group_bubble">burbuja de mensaje</string>
+    <string name="settings_proactive_v2_ledger">Preocupado por el libro mayor</string>
+    <string name="settings_proactive_v2_ledger_sub">Ha estado pensando en mí últimamente %1$d cosa</string>
     <string name="settings_proactive_v2_intensity">Nivel de iniciativa</string>
-    <string name="settings_proactive_v2_budget">Puede hablar %1$d veces más hoy</string>
-    <string name="settings_proactive_v2_budget_unlimited">Sin límite hoy</string>
-    <string name="settings_proactive_v2_resume">Reanudar mensajes</string>
-    <string name="settings_proactive_v2_reset">Restablecer</string>
-    <string name="settings_proactive_v2_cooldown">No me molestes por un tiempo</string>
-    <string name="settings_proactive_v2_cooldown_sub">Silencio por 7 días; seguirá recordando pero sin hablar</string>
-    <string name="settings_proactive_v2_empty">Nada en mente por ahora</string>
-    <string name="settings_proactive_v2_close">Vale</string>
-    <string name="proactive_intensity_quiet">Silencioso · hasta 3 al día</string>
-    <string name="proactive_intensity_reserved">Reservado · hasta 8 al día</string>
-    <string name="proactive_intensity_standard">Estándar · hasta 15 al día</string>
-    <string name="proactive_intensity_active">Activo · hasta 30 al día</string>
-    <string name="proactive_intensity_clingy">Apegado · sin límite</string>
-    <string name="proactive_kind_reminder">Recordatorio</string>
-    <string name="proactive_kind_follow_up">Sin terminar</string>
-    <string name="proactive_kind_care">Cuidado</string>
+    <string name="settings_proactive_v2_budget">Todavía puedo decirlo hoy %1$d veces</string>
+    <string name="settings_proactive_v2_budget_unlimited">Tiempos ilimitados hoy</string>
+    <string name="settings_proactive_v2_resume">Restaurar mensajes activos</string>
+    <string name="settings_proactive_v2_reset">restablecer</string>
+    <string name="settings_proactive_v2_cooldown">No me molestes recientemente</string>
+    <string name="settings_proactive_v2_cooldown_sub">Silencio durante 7 días, tiempo durante el cual solo recuerda pero no habla.</string>
+    <string name="settings_proactive_v2_empty">Nada de qué preocuparse por ahora</string>
+    <string name="settings_proactive_v2_close">bueno</string>
+    <string name="proactive_intensity_quiet">tranquilo · Máximo 3 por día</string>
+    <string name="proactive_intensity_reserved">restringir · Máximo 8 entradas por día</string>
+    <string name="proactive_intensity_standard">Estándar · Máximo 15 mensajes por día</string>
+    <string name="proactive_intensity_active">Toma la iniciativa · Máximo 30 entradas por día</string>
+    <string name="proactive_intensity_clingy">pegajoso · tiempos ilimitados</string>
+    <string name="proactive_kind_reminder">recordatorio</string>
+    <string name="proactive_kind_follow_up">No terminé de chatear</string>
+    <string name="proactive_kind_care">cuidar</string>
     <string name="proactive_kind_share">Compartir</string>
-    <string name="proactive_kind_milestone">Hito</string>
+    <string name="proactive_kind_milestone">nodo</string>
 </resources>

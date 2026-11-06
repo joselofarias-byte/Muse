@@ -10,16 +10,16 @@ import kotlinx.serialization.Serializable
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * todo_write 工具。
+ * todo_write Herramientas.
  *
- * 替换式协议,三态状态机。
- * 每次调用替换会话的完整待办列表。
+ * protocolo alternativo,Máquina de estados de tres estados.
+ * Cada llamada reemplaza el trabajo pendiente completo de la sesión.
  *
- * v1.0.92: 新增 [todosFlow]/[observeTodos] — 供 UI 展示待办进度。
- * v2.6.7 fix (AUDIT F5/F6/F7): 会话 id 改由宿主注入；落库失败不再静默；
- * 新增 clearAll / syncFromDatabase 供恢复与切会话使用。
+ * v1.0.92: Nuevo [todosFlow]/[observeTodos] — Se utiliza para que la interfaz de usuario muestre el progreso de las tareas pendientes.
+ * v2.6.7 fix (AUDIT F5/F6/F7): En su lugar, el host inyecta la identificación de la sesión; el hecho de no descartar la base de datos ya no es silencioso;
+ * Se agregó clearAll / syncFromDatabase para usar en restaurar y cambiar sesiones.
  */
-@Suppress("TooManyFunctions") // 待办工具族本身需要执行/持久化/预热/清理多个入口，合并反而碎
+@Suppress("TooManyFunctions") // Es necesario ejecutar la propia familia de herramientas de tareas pendientes./persistencia/precalentar/Limpia varias entradas y combínalas en pedazos.
 object TodoTool {
 
     @Serializable
@@ -33,16 +33,16 @@ object TodoTool {
     @Serializable
     data class TodoList(val todos: List<TodoItem> = emptyList())
 
-    // 会话级存储:sessionId -> TodoList(v2.6.7: 内存快照 + 落库双层,写时一起更新)
+    // Almacenamiento a nivel de sesión:sessionId -> TodoList(v2.6.7: Instantánea de memoria + almacenamiento de doble capa,Actualiza mientras escribes)
     private val sessionTodos = ConcurrentHashMap<String, TodoList>()
 
-    // v1.0.92: 待办快照流 — 每次写入后发布全量映射,UI 据此实时展示进度。
+    // v1.0.92: Flujo de instantáneas de tareas pendientes — Publicar el mapa completo después de cada escritura.,UI Esto muestra el progreso en tiempo real.
     private val _todosFlow = MutableStateFlow<Map<String, TodoList>>(emptyMap())
 
-    /** v1.0.92: 全量待办快照流(只读)。 */
+    /** v1.0.92: Flujo completo de instantáneas de tareas pendientes(solo lectura). */
     val todosFlow: StateFlow<Map<String, TodoList>> = _todosFlow.asStateFlow()
 
-    /** v1.0.92: 订阅指定会话的待办列表(无内容时为空列表)。 */
+    /** v1.0.92: Suscríbete a la lista de tareas pendientes para una sesión específica(Lista vacía cuando no hay contenido). */
     fun observeTodos(sessionId: String): Flow<TodoList> = _todosFlow.map { it[sessionId] ?: TodoList() }
 
     private fun publish() {
@@ -51,10 +51,10 @@ object TodoTool {
 
     fun toolDef() = ToolRegistry.ToolDef(
         name = "todo_write",
-        description = "管理当前会话的待办清单,用于多步骤工作。" +
-            "把复杂任务拆成子任务;单步就能完成的简单任务不需要。" +
-            "每次调用会整体替换清单(替换式,不是增量)。" +
-            "会话由宿主提供,不要自己编造 session id。",
+        description = "Administrar la lista de tareas pendientes para la sesión actual,Para trabajos de varios pasos." +
+            "Divida tareas complejas en subtareas;No es necesario realizar tareas simples que se pueden completar en un solo paso." +
+            "Cada llamada reemplazará la lista completa(Reemplazo,No incremental)." +
+            "Las sesiones son proporcionadas por el anfitrión.,No inventes tu propia identificación de sesión.",
         parameters = mapOf(
             "todos" to
                 "Required. JSON array of todo items: " +
@@ -73,11 +73,11 @@ object TodoTool {
     }
 
     /**
-     * v2.6.7 fix (AUDIT F5): 用宿主会话 id 执行。
+     * v2.6.7 fix (AUDIT F5): Ejecutado con ID de sesión del host.
      *
-     * 旧实现要求模型自己传 `session_id`，但模型无可靠途径得知当前会话 UUID
-     * （系统提示不注入，`{{session_id}}` 只在用户自写模板里展开）。
-     * 现在由 `ToolExecutionContext.sessionId` 注入，模型不再需要也不应该猜。
+     * La implementación anterior requiere que el modelo se pase solo. `session_id`, pero el modelo no tiene una forma confiable de conocer la sesión actual UUID
+     * (El sistema solicita no inyectar,`{{session_id}}` Solo se expande en plantillas escritas por el usuario).
+     * ahora por `ToolExecutionContext.sessionId` Inyección, el modelo ya no necesita ni debe adivinar.
      */
     fun executeForSession(sessionId: String, args: Map<String, String>): String {
         val scoped = sessionId.trim()
@@ -91,20 +91,20 @@ object TodoTool {
         }
     }
 
-    /** 写入内存 + 发布快照，并生成给模型的摘要。 */
+    /** Escribe en la memoria + publica la instantánea y genera un resumen para el modelo. */
     private fun applyTodos(scoped: String, todos: TodoList): String {
         sessionTodos[scoped] = todos
         publish()
 
-        // 构建摘要
+        // Resumen de compilación
         val counts = mutableMapOf("pending" to 0, "in_progress" to 0, "completed" to 0)
         for (td in todos.todos) {
             counts[td.status] = (counts[td.status] ?: 0) + 1
         }
         val total = todos.todos.size
-        // v1.131: counts 由 mutableMapOf("pending" to 0, "in_progress" to 0, "completed" to 0)
-        // 初始化,key 一定存在。用 getValue 替代 []!! — 失败时抛 NoSuchElementException 而非 NPE,
-        // 契约更明确,且 IDE 不再标黄。
+        // v1.131: counts por mutableMapOf("pending" to 0, "in_progress" to 0, "completed" to 0)
+        // inicialización,key Debe existir. Utilice getValue en su lugar []!! — Lanza NoSuchElementException en caso de error en lugar de NPE,
+        // El contrato es más claro.,Y el IDE ya no está marcado en amarillo.
         val inProgressCount = counts.getValue("in_progress")
         val warning = if (inProgressCount > 1) {
             "Warning: multiple in_progress items ($inProgressCount). Convention: only one at a time."
@@ -124,10 +124,10 @@ object TodoTool {
     fun getTodos(sessionId: String): TodoList? = sessionTodos[sessionId]
 
     /**
-     * 解析模型传入的 todos。
+     * Analiza los todos pasados ​​por el modelo.
      *
-     * 兼容两种形状：裸数组 `[{...}]` 与包装对象 `{"todos":[...]}`。
-     * 都失败返回 null，由调用方给错误回执。
+     * Compatible con dos formas: matriz desnuda `[{...}]` con objetos envolventes `{"todos":[...]}`.
+     * Si falla, se devolverá nulo y la persona que llama dará un recibo de error.
      */
     private fun parseTodos(todosJson: String): TodoList? {
         val wrapped = runCatching {
@@ -149,10 +149,10 @@ object TodoTool {
     }
 
     /**
-     * v2.6.7 fix (AUDIT F7): 清空全部会话的内存快照。
+     * v2.6.7 fix (AUDIT F7): Borre la instantánea de la memoria de todas las sesiones.
      *
-     * 备份恢复会把 DB 里的 session_todos 整体替换，但 UI 订阅的是内存流；
-     * 不清就会继续显示恢复前的旧清单。
+     * La copia de seguridad y la recuperación reemplazarán todos los session_todos en la base de datos, pero la interfaz de usuario se suscribe al flujo de memoria;
+     * Si no está claro, se seguirá mostrando la lista anterior antes de la restauración.
      */
     fun clearAll() {
         sessionTodos.clear()
@@ -160,28 +160,28 @@ object TodoTool {
     }
 
     /**
-     * v2.6.7: 持久化出口。由 DI 在启动时注入;null 表示未注入(测试/早期初始化),
-     * 此时退化为纯内存,与改造前行为一致。
+     * v2.6.7: Exportación persistente. Inyectado por DI al inicio;null Indica no inyectado(prueba/inicialización temprana),
+     * En este punto se degrada a pura memoria.,Comportamiento consistente con la pre-transformación.
      */
     @Volatile
     private var persist: (suspend (sessionId: String, list: TodoList) -> Unit)? = null
 
-    /** v2.6.7: 启动时注入持久化实现(写库 + 更新 hasOpenItems)。 */
+    /** v2.6.7: Inyectar implementación de persistencia al inicio(Escribir biblioteca + actualizar hasOpenItems). */
     fun installPersistence(handler: suspend (sessionId: String, list: TodoList) -> Unit) {
         persist = handler
     }
 
-    /** v2.6.7: 从库里预热内存快照(进程启动/切会话时调用)。 */
+    /** v2.6.7: Calentar instantánea de memoria de la biblioteca(inicio del proceso/Llamado al cambiar de sesión.). */
     fun primeSnapshot(sessionId: String, list: TodoList) {
         sessionTodos[sessionId] = list
         publish()
     }
 
     /**
-     * v2.6.7 fix (AUDIT F7): 用库副本替换内存快照，包括空清单。
+     * v2.6.7 fix (AUDIT F7): Reemplace la instantánea de la memoria, incluido el manifiesto vacío, con una copia de la biblioteca.
      *
-     * [primeSnapshot] 的调用方只在非空时预热，于是「库里已经是空的」这个事实
-     * 永远覆盖不掉内存里的旧值。恢复备份后尤其明显：旧待办会一直挂在。
+     * [primeSnapshot] La persona que llama solo se calienta cuando no está vacía, por lo que el hecho de que "la biblioteca ya está vacía"
+     * Los valores antiguos en la memoria nunca se pueden sobrescribir. Esto es especialmente obvio después de restaurar una copia de seguridad: la antigua tarea pendiente siempre se bloqueará.
      */
     fun syncFromDatabase(sessionId: String, list: TodoList) {
         if (list.todos.isEmpty()) sessionTodos.remove(sessionId) else sessionTodos[sessionId] = list
@@ -189,10 +189,10 @@ object TodoTool {
     }
 
     /**
-     * v2.6.7: 带持久化的执行入口。
+     * v2.6.7: Entrada de ejecución con persistencia.
      *
-     * 与 [execute] 的差别只有一处:写内存后同时落库。分开两个入口是为了让
-     * 既有纯函数式测试不必构造数据库。
+     * con [execute] Sólo hay una diferencia:Después de escribir en la memoria, se coloca en la biblioteca al mismo tiempo. Las dos entradas están separadas para permitir
+     * No es necesario construir una base de datos para pruebas puramente funcionales existentes.
      */
     suspend fun executePersisted(args: Map<String, String>): String {
         val sessionId = args["session_id"]?.trim().orEmpty()
@@ -201,12 +201,12 @@ object TodoTool {
     }
 
     /**
-     * v2.6.7 fix (AUDIT F5/F6): 宿主注入会话 id 的持久化入口。
+     * v2.6.7 fix (AUDIT F5/F6): El host inyecta la entrada de persistencia de la identificación de la sesión.
      *
-     * 与旧 [executePersisted] 的两处差别：
-     *  1. 会话 id 由宿主管，不依赖模型传参与猜测；
-     *  2. 落库失败不再只记日志 —— 回执里明确告知模型「本条不会保留」，
-     *     否则用户听到「记下了」而库里没有，重启就没了。
+     * con el viejo [executePersisted] Dos diferencias:
+     *  1. El host administra la ID de la sesión y no depende de la transmisión del modelo para participar en las adivinanzas;
+     *  2. El error de registro ya no se registra solo en el registro —— En el recibo se informaba claramente a la modelo que "este artículo no será retenido".
+     *     De lo contrario, el usuario escucha "anotarlo", pero la biblioteca no lo tiene y desaparecerá después de reiniciar.
      */
     suspend fun executePersistedForSession(sessionId: String, args: Map<String, String>): String {
         val result = executeForSession(sessionId, args)
@@ -217,9 +217,9 @@ object TodoTool {
             .fold(
                 onSuccess = { result },
                 onFailure = { error ->
-                    io.zer0.common.Logger.w("TodoTool", "待办落库失败 session=$sessionId: ${error.message}")
-                    "$result\n[注意] 待办未能写入本地数据库（${error.message ?: "未知原因"}），" +
-                        "本次清单只存在于当前内存，重启后会丢失。请告知用户。"
+                    io.zer0.common.Logger.w("TodoTool", "Error en el inventario de tareas pendientes session=$sessionId: ${error.message}")
+                    "$result\n[Nota] Todo no pudo escribir en la base de datos local (${error.message ?: "razón desconocida"})," +
+                        "Esta lista solo existe en la memoria actual y se perderá después de reiniciar. Por favor informe a los usuarios."
                 },
             )
     }

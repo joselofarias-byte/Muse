@@ -5,8 +5,8 @@ import androidx.room.Entity
 import kotlinx.serialization.Serializable
 
 /**
- * 按 scope + space 隔离的编译产物。
- * 旧 compiled_sections 保留作为升级兼容回退，不在迁移中删除。
+ * Compilar productos aislados por alcance + espacio.
+ * Las secciones_compiladas antiguas se conservan como respaldo compatible con la actualización y no se eliminan en las migraciones.
  */
 @Serializable
 @Entity(

@@ -61,14 +61,14 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 阶段 7 + P1 修复: 备份与统计 section — 分组列表。
+ * Etapa 7 + Reparación P1: Copia de seguridad y estadísticas section — Lista agrupada.
  *
- * 三个 [SettingsGroup]:
- *  - 使用统计:会话总数 + 消息总数
- *  - 本地备份与恢复:导出 + 导入(SAF launcher)
- *  - 云备份(P1 新增):类型选择 + S3/WebDAV 配置 + 自动同步开关 + 立即同步 + 上次同步时间
+ * tres [SettingsGroup]:
+ *  - estadísticas de uso:Número total de sesiones + Número total de mensajes
+ *  - Copia de seguridad y recuperación local:Exportar + Importar(SAF launcher)
+ *  - Copia de seguridad en la nube(P1 Nuevo):Selección de tipo + Configuración S3/WebDAV + Cambio de sincronización automática + Sincronizar ahora + Hora de la última sincronización
  */
-@Suppress("LongMethod", "CyclomaticComplexMethod") // 屏幕级设置分组: 使用统计/本地备份/云备份/备份记录四个 SettingsGroup 与多个对话框为固有长结构(项目惯例,见 ChatListScreen)
+@Suppress("LongMethod", "CyclomaticComplexMethod") // Agrupación de configuraciones a nivel de pantalla: estadísticas de uso/copia de seguridad local/Copia de seguridad en la nube/El registro de respaldo de cuatro grupos de configuración con múltiples cuadros de diálogo es una estructura inherentemente larga(Prácticas de proyecto,ver ChatListScreen)
 @Composable
 internal fun BackupSection(
     sessionCount: Int,
@@ -76,7 +76,7 @@ internal fun BackupSection(
     backupService: BackupService,
     settings: SettingsRepository,
     sessionRepository: SessionRepository,
-    /** F-04: 备份记录持久化(诊断页可见最近备份结果)。 */
+    /** F-04: Persistencia del registro de respaldo(Los resultados de la copia de seguridad reciente son visibles en la página de diagnóstico). */
     autoBackupLogDao: io.zer0.muse.data.stats.AutoBackupLogDao,
     onOpenCloudBackup: () -> Unit = {},
 ) {
@@ -93,32 +93,32 @@ internal fun BackupSection(
             sessionExportQuery.isBlank() ||
                 session.title.contains(sessionExportQuery.trim(), ignoreCase = true)
         }
-    // P3-4: 云备份配置与自动同步间隔编辑收敛到独立「云备份」页(CloudBackupPage)。
-    // v2.x: 首页整组收敛为单行入口(状态展示 + 导航),开关与快捷操作统一在云备份页。
+    // P3-4: La configuración de la copia de seguridad en la nube y la edición automática del intervalo de sincronización convergen en una página separada "Copia de seguridad en la nube"(CloudBackupPage).
+    // v2.x: Todo el grupo de páginas de inicio converge en una única línea de entrada.(Visualización de estado + navegación),Las operaciones de interruptores y accesos directos están unificadas en la página de respaldo en la nube.
     val showGoToPageHint: () -> Unit = onOpenCloudBackup
 
-    // 进度反馈状态
+    // estado de retroalimentación de progreso
     var exporting by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var localBackupDialogVisible by remember { mutableStateOf(false) }
     var showSessionExportDialog by remember { mutableStateOf(false) }
     var pendingSessionExport by remember { mutableStateOf<SessionEntity?>(null) }
-    // F-27: 自动备份恢复
+    // F-27: Copia de seguridad y recuperación automáticas
     var autoRestoreTarget by remember { mutableStateOf<io.zer0.muse.data.stats.AutoBackupLogEntity?>(null) }
     var autoRestoring by remember { mutableStateOf(false) }
 
-    // 云端备份状态
+    // Estado de la copia de seguridad en la nube
     var hasCloudBackup by remember { mutableStateOf(false) }
     var checkingCloudBackup by remember { mutableStateOf(false) }
-    // v1.48: h17 区分"检查失败"与"无备份",不再静默吞错误
+    // v1.48: h17 distinguir"Verificación fallida"con"Sin respaldo",No más errores de deglución silenciosa
     var cloudCheckError by remember { mutableStateOf(false) }
 
-    // 配置变化后重新检查云端备份状态
+    // Vuelva a verificar el estado de la copia de seguridad en la nube después de los cambios de configuración
     LaunchedEffect(cloudConfig.type, cloudConfig.isConfigured) {
         if (cloudConfig.isConfigured) {
             checkingCloudBackup = true
             cloudCheckError = false
-            // v1.48: h17 用 onSuccess/onFailure 区分错误态,失败不再伪装成"无备份"
+            // v1.48: h17 Utilice onSuccess/onFailure para distinguir estados de error,El fracaso ya no pretende ser"Sin respaldo"
             resultOf { backupService.hasCloudBackup() }
                 .onSuccess { hasCloudBackup = it }
                 .onError { _, _ -> cloudCheckError = true }
@@ -129,9 +129,9 @@ internal fun BackupSection(
         }
     }
 
-    // 导出前明确处理未设置加密密码的情况,避免用户无感知地产生明文备份。
+    // Manejar explícitamente los casos en los que no se establece una contraseña de cifrado antes de exportar,Esto evita que los usuarios generen copias de seguridad en texto sin formato sin su conocimiento.
     var pendingPlainExportUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    // v2.6.0: 待执行的导出是否包含密钥（SAF 回调前记录用户勾选）
+    // v2.6.0: Si la exportación a realizar contiene la clave (SAF Registrar la verificación del usuario antes de la devolución de llamada)
     var pendingExportSecrets by remember { mutableStateOf(false) }
 
     fun startExport(uri: android.net.Uri, includeSecrets: Boolean = false) {
@@ -184,7 +184,7 @@ internal fun BackupSection(
         }
     }
 
-    // 导出 launcher(SAF CreateDocument)
+    // Exportar launcher(SAF CreateDocument)
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
@@ -207,17 +207,17 @@ internal fun BackupSection(
         }
     }
 
-    // U-4: 待导入的本地备份 URI — 选中文件后先弹覆盖确认框,确认后才真正执行导入
+    // U-4: Copia de seguridad local para importar URI — Después de seleccionar el archivo, aparece el cuadro de confirmación de sobrescritura.,En realidad, la importación se ejecuta después de la confirmación.
     var pendingImportUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    // 导入 launcher(SAF OpenDocument)
+    // importar launcher(SAF OpenDocument)
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
-        // U-4: 覆盖式导入不直接执行,先记录所选文件触发确认框,由确认对话框 onConfirm 发起导入
+        // U-4: La importación anulada no se ejecuta directamente,Grabe el archivo seleccionado primero para activar el cuadro de confirmación,Importación iniciada por el diálogo de confirmación al confirmar
         uri?.let { pendingImportUri = it }
     }
 
-    // ── 使用统计 ──
+    // ── estadísticas de uso ──
     SectionLabel(stringResource(R.string.settings_backup_usage_stats))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
@@ -245,13 +245,13 @@ internal fun BackupSection(
         }
     }
 
-    // ── 本地备份与恢复 ──
+    // ── Copia de seguridad y recuperación local ──
     SectionLabel(stringResource(R.string.settings_backup_local_title))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // v2.6.0: 包含供应商密钥（用户反馈：密钥多，希望备份能全量带走）。
-        // 默认关 —— 开启后 providers_json（含 apiKey/OAuth token）明文进入备份文件。
+        // v2.6.0: Contiene claves de proveedor (comentarios de los usuarios: hay demasiadas claves y espero que la copia de seguridad pueda eliminarlas todas).
+        // Desactivado predeterminado —— Después de habilitarlo, el texto claro de proveedores_json (incluido el token apiKey/OAuth) se ingresará en el archivo de respaldo.
         var includeSecrets by rememberSaveable { mutableStateOf(false) }
         SettingsSwitchRow(
             icon = MuseIcons.key,
@@ -269,8 +269,8 @@ internal fun BackupSection(
                 runCatching {
                     pendingExportSecrets = includeSecrets
                     exportLauncher.launch(
-                                    // 用可读日期而非 13 位毫秒：后者在选择器里会被截断，
-                                    // 既看不出导出时间，也看不到 .json 后缀，多份备份还同名。
+                                    // Utilice fechas legibles en lugar de milisegundos de 13 dígitos: estos últimos se truncarán en el selector,
+                                    // No se puede ver ni la hora de exportación ni el sufijo .json, y varias copias de seguridad tienen el mismo nombre.
                                     "muse-backup-${
                                         java.time.format
                                             .DateTimeFormatter
@@ -297,8 +297,8 @@ internal fun BackupSection(
             subtitle = stringResource(R.string.settings_backup_import_subtitle),
             onClick = {
                 runCatching {
-                    // 部分文件管理器会把 .json/.ndjson/.zip 标成 octet-stream 或未知类型;
-                    // 备份服务本身按内容识别格式,选择器不能只过滤 application/json。
+                    // Algunos administradores de archivos marcarán .json/.ndjson/.zip como octeto-stream o tipo desconocido;
+                    // El propio servicio de copia de seguridad reconoce formatos por contenido.,Los selectores no pueden filtrar solo aplicación/json.
                     importLauncher.launch(
                         arrayOf(
                             "application/json",
@@ -342,8 +342,8 @@ internal fun BackupSection(
                                 .heightIn(max = 420.dp),
                         ) {
                             items(filteredExportSessions, key = { it.id }) { session ->
-                                // v2.5.2 fix: 与首页列表(CHAT-16)同口径 —— 历史导入/自动命名
-                                // 可能把标题存成 "…"/"..." 等纯省略号,导出列表此前直接显示像坏数据。
+                                // v2.5.2 fix: con lista de páginas de inicio(CHAT-16)Mismo calibre —— Importación de historia/denominación automática
+                                // Quizás guarde el título como "…"/"..." puntos suspensivos puros iguales,Anteriormente, la lista de exportación se mostraba directamente como datos incorrectos.
                                 val sessionDefaultTitle = stringResource(R.string.session_repo_default_title)
                                 SettingsItemRow(
                                     icon = MuseIcons.chat,
@@ -389,12 +389,12 @@ internal fun BackupSection(
         )
     }
 
-    // ── 云备份(P1 新增;v2.x: 收敛为单行入口 — 配置、开关与操作统一在独立云备份页)──
+    // ── Copia de seguridad en la nube(P1 Nuevo;v2.x: Convergencia a la entrada de una sola línea — La configuración, los conmutadores y las operaciones están unificados en la página de respaldo en la nube independiente)──
     SectionLabel(stringResource(R.string.settings_backup_cloud_title))
     SettingsGroup(
         modifier = Modifier.padding(top = 8.dp),
     ) {
-        // 云端备份状态(StatusDot + 文字);点击进入独立云备份页
+        // Estado de la copia de seguridad en la nube(StatusDot + texto);Haga clic para ingresar a la página de respaldo en la nube independiente
         val statusColor = when {
             !cloudConfig.isConfigured -> MaterialTheme.colorScheme.outlineVariant
             checkingCloudBackup -> MaterialTheme.colorScheme.tertiary
@@ -428,7 +428,7 @@ internal fun BackupSection(
         )
     }
 
-    // ── F-04: 最近备份记录(诊断可见,来自 auto_backup_log 表)──
+    // ── F-04: Registros de respaldo recientes(El diagnóstico es visible,De la tabla auto_backup_log)──
     SectionLabel(stringResource(R.string.settings_backup_log_title))
     SettingsGroup {
         val logs by autoBackupLogDao.observeRecent(10)
@@ -452,16 +452,16 @@ internal fun BackupSection(
                                 R.string.settings_backup_log_failed
                             },
                         ),
-                    // 成功显示备份体量;失败显示错误摘要(errorMessage 为英文诊断串,
-                    // 缺失时回退失败文案,便于用户理解而非显示空行)
+                    // Volumen de copia de seguridad mostrado correctamente;Mostrar resumen de errores en caso de falla(errorMessage Cadena de diagnóstico para inglés,
+                    // Copia de falla alternativa cuando falta,Facilite la comprensión a los usuarios en lugar de mostrar líneas en blanco.)
                     subtitle = if (isSuccess) {
-                        // F-27: 成功行提示可点击恢复(含记忆/经验数据)
+                        // F-27: Se puede hacer clic en las indicaciones de la línea de éxito para restaurar(Con memoria/Datos empíricos)
                         stringResource(R.string.settings_backup_log_restore_hint, formatBackupSize(log.fileSizeBytes))
                     } else {
                         log.errorMessage.takeIf { it.isNotBlank() }
                             ?: stringResource(R.string.settings_backup_log_failed)
                     },
-                    // F-27: 成功的自动备份可一键恢复(含确认对话框 + 进度反馈)
+                    // F-27: Las copias de seguridad automáticas exitosas se pueden restaurar con un solo clic(Contiene un cuadro de diálogo de confirmación + comentarios sobre el progreso.)
                     onClick = if (isSuccess && !autoRestoring) {
                         { autoRestoreTarget = log }
                     } else {
@@ -472,7 +472,7 @@ internal fun BackupSection(
         }
     }
 
-    // F-27: 从自动备份恢复的确认对话框
+    // F-27: Cuadro de diálogo de confirmación para restaurar desde una copia de seguridad automática
     autoRestoreTarget?.let { target ->
         MuseDialog(
             onDismissRequest = { if (!autoRestoring) autoRestoreTarget = null },
@@ -490,7 +490,7 @@ internal fun BackupSection(
                             MuseToast.show(context.getString(R.string.settings_backup_restore_auto_done, s, m))
                         }
                         .onFailure { e ->
-                            Logger.w("BackupSection", "自动备份恢复失败: ${e.message}", e)
+                            Logger.w("BackupSection", "La copia de seguridad y la restauración automáticas fallaron: ${e.message}", e)
                             MuseToast.show(context.getString(R.string.settings_backup_restore_auto_failed))
                         }
                         .isSuccess
@@ -507,7 +507,7 @@ internal fun BackupSection(
         )
     }
 
-    // 导出明文确认
+    // Exportar confirmación en texto claro
     pendingPlainExportUri?.let { uri ->
         MuseDialog(
             onDismissRequest = { pendingPlainExportUri = null },
@@ -523,9 +523,9 @@ internal fun BackupSection(
         )
     }
 
-    // U-4: 本地导入覆盖确认(覆盖式操作,确认后才发起导入;恢复前自动生成保护副本)
+    // U-4: Confirmación de cobertura de importación local(operación de superposición,Comience a importar después de la confirmación;Generar automáticamente copias de protección antes de la recuperación.)
     pendingImportUri?.let { uri ->
-        // B-8: 导入加密备份时可手动输入备份密码(忘记/更换云备份密码后仍可解密旧备份)
+        // B-8: Puede ingresar manualmente la contraseña de la copia de seguridad al importar copias de seguridad cifradas(olvidar/Las copias de seguridad antiguas aún se pueden descifrar después de cambiar la contraseña de la copia de seguridad en la nube)
         var importPassword by remember { mutableStateOf("") }
         MuseDialog(
             onDismissRequest = { pendingImportUri = null },
@@ -571,10 +571,10 @@ internal fun BackupSection(
         )
     }
 
-    // 导出/导入进行中:进度对话框
+    // Exportar/Importación en curso:diálogo de progreso
     if (localBackupDialogVisible) {
         MuseDialog(
-            // 返回只关闭进度展示，导出/导入任务继续运行。
+            // Volver para cerrar solo la visualización de progreso y exportar/La tarea de importación continúa ejecutándose.
             onDismissRequest = { localBackupDialogVisible = false },
             title = if (exporting) {
                 stringResource(
@@ -603,11 +603,11 @@ internal fun BackupSection(
         )
     }
 
-    // 云备份配置编辑已收敛到独立「云备份」页(CloudBackupPage),此处不再内嵌字段表单与快捷操作
+    // La edición de la configuración de la copia de seguridad en la nube se ha reunido en una página separada "Copia de seguridad en la nube"(CloudBackupPage),Los formularios de campo y las operaciones de acceso directo ya no están integrados aquí.
 }
 
 /**
- * F-04: 备份体量展示(B/KB/MB,无 CJK 字面量)。
+ * F-04: Visualización del volumen de copia de seguridad(B/KB/MB,Sin literales CJK).
  */
 private fun safeExportFileName(title: String): String = title
     .replace(Regex("""[\\/:*?"<>|\n\r\t]"""), "_")
@@ -616,28 +616,28 @@ private fun safeExportFileName(title: String): String = title
     .ifBlank { "session" }
 
 private fun formatBackupSize(bytes: Long): String = when {
-    // I18N-06: 数字格式跟随系统 Locale(原 Locale.US 固定)
+    // I18N-06: Sistema de seguimiento del formato numérico Locale(Ex Locale.US arreglado)
     bytes >= 1_048_576L -> String.format(Locale.getDefault(), "%.1f MB", bytes / 1_048_576.0)
     bytes >= 1024L -> String.format(Locale.getDefault(), "%.1f KB", bytes / 1024.0)
     else -> "$bytes B"
 }
 
 /**
- * 把导入失败的内部错误翻译成用户能理解的一句话。
+ * Traduzca el error interno de error de importación en una oración que los usuarios puedan entender.
  *
- * 原始信息里有数据库表名（如 knowledgeDocs）、「声明 / 入库」这类内部术语，
- * 直接展示等于什么都没说。这里按常见成因给出可操作提示。
+ * La información original contiene términos internos como nombres de tablas de bases de datos (como KnowledgeDocs) y "declaración/almacenamiento".
+ * Mostrar directamente significa no decir nada. A continuación se ofrecen consejos prácticos basados ​​en causas comunes.
  */
 private fun friendlyImportError(raw: String?): String {
-    if (raw.isNullOrBlank()) return "备份文件无法读取，请确认文件完整"
+    if (raw.isNullOrBlank()) return "El archivo de copia de seguridad no se puede leer. Confirme que el archivo esté completo."
     val lower = raw.lowercase()
     val rules = listOf(
-        listOf("入库数不一致", "verify", "check") to "备份文件与当前版本不匹配，已回滚到导入前的状态",
-        listOf("password", "密码", "decrypt") to "解压失败，请检查备份密码是否正确",
-        listOf("version", "版本") to "备份版本过新或过旧，当前应用无法读取",
-        listOf("no such file", "not found", "找不到") to "找不到备份文件，可能已被移动或删除",
-        listOf("space", "磁盘", "空间") to "存储空间不足，请清理后重试",
+        listOf("La cantidad de almacenamiento es inconsistente", "verify", "check") to "El archivo de copia de seguridad no coincide con la versión actual y se ha revertido al estado anterior a la importación.",
+        listOf("password", "Contraseña", "decrypt") to "Error de descompresión, verifique si la contraseña de respaldo es correcta",
+        listOf("version", "versión") to "La versión de copia de seguridad es demasiado nueva o demasiado antigua y la aplicación actual no puede leerla.",
+        listOf("no such file", "not found", "no encontrado") to "No se encontró el archivo de copia de seguridad; es posible que se haya movido o eliminado",
+        listOf("space", "disco", "espacio") to "Espacio de almacenamiento insuficiente; límpielo e inténtelo nuevamente.",
     )
     val hit = rules.firstOrNull { (keys, _) -> keys.any { it in lower || it in raw } }
-    return hit?.second ?: "备份文件异常，已回滚到导入前的状态"
+    return hit?.second ?: "El archivo de copia de seguridad es anormal y se ha revertido al estado anterior a la importación."
 }
