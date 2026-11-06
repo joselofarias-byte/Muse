@@ -104,6 +104,30 @@ class ProactiveDailyGuaranteeTest {
         assertFalse(decision.dailyGuarantee)
     }
 
+    @Test
+    fun `La garantía diaria no interrumpe una generación activa`() {
+        val decision = ProactiveTimingEngine.evaluate(
+            input(lastProactiveSentAt = baseNow - 23 * hourMs).copy(isGenerating = true),
+        )
+
+        assertEquals(ProactiveTimingEngine.Verdict.IN_CONVERSATION, decision.verdict)
+        assertFalse(decision.shouldSend)
+        assertFalse(decision.dailyGuarantee)
+    }
+
+    @Test
+    fun `La garantía diaria no interrumpe la actividad reciente del usuario`() {
+        val decision = ProactiveTimingEngine.evaluate(
+            input(lastProactiveSentAt = baseNow - 23 * hourMs).copy(
+                lastUserMessageAt = baseNow - 60_000L,
+            ),
+        )
+
+        assertEquals(ProactiveTimingEngine.Verdict.USER_ACTIVE, decision.verdict)
+        assertFalse(decision.shouldSend)
+        assertFalse(decision.dailyGuarantee)
+    }
+
     private fun input(now: Long = baseNow, lastProactiveSentAt: Long = 0L, lastProactiveAttemptAt: Long = 0L, dailyGuaranteeMs: Long = ProactiveTimingEngine.DAILY_GUARANTEE_MS, spentToday: Int = 0, cooldownUntil: Long = 0L): ProactiveTimingEngine.Input = ProactiveTimingEngine.Input(
         now = now,
         relation = relation(spentToday, cooldownUntil),

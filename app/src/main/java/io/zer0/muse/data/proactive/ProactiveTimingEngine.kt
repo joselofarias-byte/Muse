@@ -185,16 +185,17 @@ object ProactiveTimingEngine {
 
         input.relation.cooldownUntil > input.now -> Verdict.COOLDOWN
 
+        // Las protecciones de conversación deben preceder al intervalo que la garantía puede omitir.
+        input.isGenerating -> Verdict.IN_CONVERSATION
+
+        input.lastUserMessageAt > 0 &&
+            input.now - input.lastUserMessageAt < USER_ACTIVE_WINDOW_MS -> Verdict.USER_ACTIVE
+
         tooSoon(input.now, input.lastProactiveSentAt, intervalMs) -> Verdict.TOO_SOON
 
         // La última ronda no comenzó lo suficientemente larga, por lo que también se consideró "demasiado reñida".
         // Este elemento es la barrera de seguridad en la ventana de generación: la cuenta de resultados aún está vacía, pero el intento se ha registrado.
         tooSoon(input.now, input.lastProactiveAttemptAt, intervalMs) -> Verdict.TOO_SOON
-
-        input.isGenerating -> Verdict.IN_CONVERSATION
-
-        input.lastUserMessageAt > 0 &&
-            input.now - input.lastUserMessageAt < USER_ACTIVE_WINDOW_MS -> Verdict.USER_ACTIVE
 
         else -> null
     }
