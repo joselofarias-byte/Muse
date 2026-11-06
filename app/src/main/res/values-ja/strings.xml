@@ -271,4 +271,5 @@
     <string name="proactive_kind_care">気づかい</string>
     <string name="proactive_kind_share">共有</string>
     <string name="proactive_kind_milestone">節目</string>
+    <string name="character_card_watermark">Muse で作成 · museai.ltd</string>
 </resources>

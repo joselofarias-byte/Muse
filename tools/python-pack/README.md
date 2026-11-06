@@ -125,3 +125,13 @@ pip guía → pip Instale el paquete Python puro e impórtelo.
    No aprobar resultará en un fracaso directo.
 5. **stdlib Cultivo**: Eliminar por defecto `test`(37MB)/`idlelib`/`turtledemo`/`tkinter`,
    No afecta la importación regular; si una biblioteca los requiere, cámbielos `PRUNE_DIRS`.
+
+## Integridad de las descargas
+
+`SHA256SUMS` fija los hashes SHA-256 publicados en `messageSignature.messageDigest`
+de los archivos `.tar.gz.sigstore` oficiales de Python 3.14.8 en
+`https://www.python.org/ftp/python/3.14.8/`. Al cambiar `PY_VER`, actualice también
+los hashes desde esos metadatos oficiales. El script comprueba tanto la caché como
+las nuevas descargas, rechaza errores HTTP y extrae de nuevo el paquete validado
+para no reutilizar directorios incompletos o de otra versión. Esta comprobación
+de integridad no sustituye una verificación de la firma Sigstore.

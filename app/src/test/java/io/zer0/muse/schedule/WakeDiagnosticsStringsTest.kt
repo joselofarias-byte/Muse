@@ -13,7 +13,7 @@ import java.nio.file.Path
  * En ese idioma sólo se expondrán otros idiomas o cadenas vacías.,Así que logra tres cosas con las pruebas.:
  *  1. El conjunto de claves es consistente en cada paquete de idioma.;
  *  2. tipo de marcador de posición(`%1$s` / `%1$d`)Igual que el paquete predeterminado,evitar el tiempo de ejecución `IllegalFormatConversionException`;
- *  3. Los nombres de estado no están traducidos —— Los usuarios y desarrolladores lo utilizan cuando buscan y brindan comentarios. `WorkInfo.State` Nombre inglés.
+ *  3. Las etiquetas españolas están traducidas; los demás idiomas conservan los nombres de estado técnicos.
  *
  * La relación correspondiente entre nombres clave y enumeraciones también está clara.:Al agregar un nuevo estado o tipo de tarea,Si no agrega redacción,Falla aquí primero.
  * Esta prueba ha sido sometida a una autocomprobación de mutaciones.:Después de cambiar deliberadamente el nombre de una clave`every locale carries the same wake keys`El paquete de idioma y el nombre de la clave se informarán con precisión.
@@ -73,13 +73,24 @@ class WakeDiagnosticsStringsTest {
     }
 
     @Test
-    fun `state names stay untranslated in every locale`() {
-        // El nombre del estado es coherente con la escritura en la salida de adb y los registros del sistema.,Después de la traducción, no se puede encontrar.
-        val expected = WakeState.values().associate { state -> "wake_state_${state.name.lowercase()}" to state.name }
+    fun `state labels match their locale`() {
+        val spanishLabels = mapOf(
+            WakeState.ENQUEUED to "En cola",
+            WakeState.RUNNING to "En ejecución",
+            WakeState.BLOCKED to "Bloqueada",
+            WakeState.SUCCEEDED to "Completada",
+            WakeState.FAILED to "Fallida",
+            WakeState.CANCELLED to "Cancelada",
+            WakeState.NOT_REGISTERED to "No registrada",
+            WakeState.UNKNOWN to "Desconocida",
+        )
+        assertEquals(WakeState.values().toSet(), spanishLabels.keys)
         locales.forEach { locale ->
             val strings = wakeStrings(locale)
-            expected.forEach { (key, value) ->
-                assertEquals("$locale de $key Se debe mantener el texto original en inglés.(WorkInfo.State nombre)", value, strings.getValue(key))
+            WakeState.values().forEach { state ->
+                val key = "wake_state_${state.name.lowercase()}"
+                val expected = if (locale == "values" || locale == "values-es") spanishLabels.getValue(state) else state.name
+                assertEquals("$locale de $key debe usar la etiqueta correspondiente al idioma", expected, strings.getValue(key))
             }
         }
     }
