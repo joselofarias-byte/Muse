@@ -522,23 +522,25 @@ dependencies {
     implementation(libs.mlkit.barcode.scanning)
 }
 
-// Seguridad de la versión: las compilaciones oficiales deben utilizar keystore.properties independientes y está prohibida la reversión silenciosa de las firmas de depuración.
-// CI Solo depurar compilaciones+Comprobación estática(Activará algunas tareas de lanzamiento),usar -PreleaseSkipKeystoreCheck=true Saltar.
+// Los análisis estáticos no necesitan una clave; empaquetar una release sí.
 gradle.taskGraph.whenReady {
-    val hasReleaseTask = allTasks.any { it.name.contains("Release") }
-    val skipKeystoreCheck = project.findProperty("releaseSkipKeystoreCheck") == "true"
-    if (hasReleaseTask && !skipKeystoreCheck && !keystorePropertiesFile.exists()) {
-        throw GradleException("La compilación oficial carece de keystore.properties: primero configure la firma de lanzamiento y deshabilite la reversión de la firma de depuración.")
+    val hasReleaseArtifactTask = allTasks.any {
+        it.project == project &&
+            it.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "validateSigningRelease")
     }
-    // Restricciones estrictas del número de versión: las compilaciones formales deben inyectar explícitamente nombre de versión/código de versión; la línea candidata predeterminada actual es 266/2.6.6.
-    // La verificación temporal local se puede transferir -PreleaseSkipVersionCheck=true Saltar.
-    val skipVersionCheck = project.findProperty("releaseSkipVersionCheck") == "true"
-    val hasVersionName = project.hasProperty("versionName") || !System.getenv("VERSION_NAME").isNullOrBlank()
-    val hasVersionCode = project.hasProperty("versionCode") || !System.getenv("VERSION_CODE").isNullOrBlank()
-    if (hasReleaseTask && !skipVersionCheck && (!hasVersionName || !hasVersionCode)) {
-        throw GradleException("El número de versión debe inyectarse en la compilación oficial: pase -PversionName/-PversionCode o configure VERSION_NAME/VERSION_CODE.")
+    if (hasReleaseArtifactTask && !keystorePropertiesFile.exists()) {
+        throw GradleException("La release requiere keystore.properties con una firma permanente.")
+    }
+    val releaseVersionName = (project.findProperty("versionName") as? String) ?: System.getenv("VERSION_NAME")
+    val releaseVersionCode = ((project.findProperty("versionCode") as? String) ?: System.getenv("VERSION_CODE"))?.toIntOrNull()
+    if (hasReleaseArtifactTask &&
+        (releaseVersionName.isNullOrBlank() || releaseVersionName == "0.0.0-dev" ||
+            releaseVersionCode == null || releaseVersionCode !in 1..2100000000)
+    ) {
+        throw GradleException("La release requiere versionName no vacío y versionCode entero positivo válidos.")
     }
 }
+
 kover {
     reports {
         verify {
