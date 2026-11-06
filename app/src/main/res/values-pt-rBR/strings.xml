@@ -271,4 +271,5 @@
     <string name="proactive_kind_care">Cuidado</string>
     <string name="proactive_kind_share">Compartilhar</string>
     <string name="proactive_kind_milestone">Marco</string>
+    <string name="character_card_watermark">Feito com Muse · museai.ltd</string>
 </resources>

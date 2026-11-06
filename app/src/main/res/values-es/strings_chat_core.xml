@@ -7,8 +7,8 @@
     <string name="chat_generated_video_cd">vídeo generado</string>
     <string name="chat_msg_selected">seleccionado</string>
     <string name="chat_msg_not_selected">No seleccionado</string>
-    <string name="moment_images_selected">Seleccionado %1$d Zhang (haga clic para continuar seleccionando)</string>
-    <string name="moment_add_images_hint">Añadir imágenes (hasta %1$d Zhang)</string>
+    <string name="moment_images_selected">Imágenes seleccionadas: %1$d (toca para añadir más)</string>
+    <string name="moment_add_images_hint">Añadir imágenes (hasta %1$d imágenes)</string>
     <!-- ===== diario (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Error al generar el diario. Vuelve a intentarlo más tarde.</string>
     <string name="diary_title">Muse diario</string>
@@ -157,7 +157,7 @@
     <string name="chat_copied_toast">copiado</string>
 
     <!-- Prompt Plantilla -->
-    <string name="chat_prompt_templates_title">Prompt Plantilla</string>
+    <string name="chat_prompt_templates_title">Plantillas de instrucciones</string>
 
     <!-- base de conocimientos -->
     <string name="chat_knowledge_dialog_title">Hacer referencia a un documento de base de conocimientos</string>
@@ -238,7 +238,7 @@
     <!-- v1.0.47 P6: Agent Mode Consejos para mejorar -->
     <string name="chat_agent_weak_tool_title">Mensaje de degradación de llamada de herramienta</string>
     <string name="chat_agent_hint_dismiss">Lo tengo</string>
-    <string name="chat_agent_session_locked">Agent Modo de sesión bloqueada</string>
+    <string name="chat_agent_session_locked">Sesión del agente bloqueada</string>
     <string name="chat_delete_message">Eliminar mensaje</string>
     <string name="chat_select_messages">elegir</string>
     <string name="chat_delete_message_confirm">Esta operación es irreversible. ¿Estás seguro de que deseas eliminar este mensaje?</string>
@@ -514,7 +514,7 @@
     <string name="slash_command_new_done">Nueva sesión creada</string>
     <string name="slash_command_reset_busy">No se puede restablecer durante la generación; detenga la generación primero</string>
     <string name="slash_command_archive_done">Conversación archivada</string>
-    <string name="chat_agent_tab_title">Agent</string>
+    <string name="chat_agent_tab_title">Agente</string>
     <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
     <string name="msg_info_title">información del mensaje</string>
     <string name="msg_info_model">Modelo</string>

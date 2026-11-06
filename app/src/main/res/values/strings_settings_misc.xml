@@ -134,13 +134,13 @@
     <string name="settings_assistant_manage_subtitle">Libro Mundial de Asistente de Gestión</string>
     <string name="settings_assistant_favorites">Favoritos</string>
     <string name="settings_assistant_favorites_subtitle">Ver mensajes favoritos en todas las sesiones</string>
-    <string name="settings_assistant_lorebook">libro mundial Lorebook</string>
+    <string name="settings_assistant_lorebook">Libro del mundo</string>
     <string name="settings_assistant_lorebook_subtitle">Inyección de contexto activada por palabras clave (juego de roles)/Configuración de visión mundial)</string>
     <string name="settings_assistant_quick_messages">Mensaje rápido</string>
     <string name="settings_assistant_quick_messages_subtitle">Plantillas de mensajes preestablecidas, compatibilidad con sustitución de variables e inserción con un solo clic en el cuadro de entrada</string>
     <string name="settings_assistant_prompt_injection">inyección de patrón</string>
     <string name="settings_assistant_prompt_injection_subtitle">Inyecte automáticamente las palabras clave correspondientes (creativo/Programación/juego de roles, etc).</string>
-    <string name="settings_assistant_skills">Skill gestión</string>
+    <string name="settings_assistant_skills">Gestión de habilidades</string>
     <string name="settings_assistant_skills_subtitle">Ver/habilitar/Deshabilitar las herramientas invocables de LLM (leer y escribir archivos)/HTTP etc)</string>
     <string name="settings_assistant_memory_enable">Habilitar sistema de memoria</string>
     <string name="settings_assistant_memory_enable_subtitle">Después del cierre, la conversación ya no se inyectará en la memoria a largo plazo y ya no se generarán resúmenes en segundo plano.</string>

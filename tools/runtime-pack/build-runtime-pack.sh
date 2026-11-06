@@ -43,8 +43,8 @@ OPENSSL_VER="1%3A3.6.5"   # URL en ':' Necesito escapar como %3A
 CARES_VER="1.34.9"
 ICU_VER="78.3"
 SQLITE_VER="3.54.1-1"
-ZLIB_VER="1.3.2"
-NPM_VER="12.2.1"
+ZLIB_VER="1.4"
+NPM_VER="12.2.2"
 LIBFFI_VER="3.8.0"
 
 # ─── Mapeo de archivos: nombre del archivo de la entidad de origen -> nombre de salida (jniLibs solo aceptar lib*.so nombrar) ────────
@@ -58,13 +58,13 @@ declare -A FILEMAP=(
   ["libicudata.so.78.3"]="libicudata.so"
   ["libffi.so"]="libffi.so"
   ["libsqlite3.54.1.so"]="libsqlite3.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
 )
 
 # ─── DT_NEEDED Mapeo: cadena original -> Nuevo nombre (incluido el nombre del enlace y el nombre de la entidad) ───────────
 declare -A NEEDMAP=(
   ["libz.so.1"]="libz.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libssl.so.3"]="libssl.so"
   ["libicui18n.so.78"]="libicui18n.so"
@@ -73,7 +73,7 @@ declare -A NEEDMAP=(
   ["libicuuc.so.78.3"]="libicuuc.so"
   ["libicudata.so.78"]="libicudata.so"
   ["libicudata.so.78.3"]="libicudata.so"
-  ["libsqlite3.so.3.53.4"]="libsqlite3.so"
+  ["libsqlite3.54.1.so"]="libsqlite3.so"
 )
 
 # ─── Termux Análisis de URL del paquete ─────────────────────────────────────────────────────
@@ -96,10 +96,29 @@ pkg_url() { # $1=paquete key  $2=abi(arm64|x86_64|all)
 }
 
 fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
-  if [ ! -f "$3" ]; then
-    echo "  Descargar $1 ($2) ..."
-    curl -sSL --retry 3 --connect-timeout 20 -o "$3" "$(pkg_url "$1" "$2")"
+  local url filename expected out="$3"
+  url="$(pkg_url "$1" "$2")"
+  filename="${url##*/}"
+  filename="${filename//%3A/:}"
+  filename="${filename//%2B/+}"
+  expected=$(awk -v name="$filename" '$2 == name {print $1}' "$SCRIPT_DIR/SHA256SUMS")
+  [ -n "$expected" ] || { echo "!! Falta SHA-256 para $filename" >&2; return 1; }
+  if [ -f "$out" ] && printf '%s  %s\n' "$expected" "$out" | sha256sum --check --status; then
+    return
   fi
+  echo "  Descargar $1 ($2) ..."
+  rm -f "$out" "$out.part"
+  if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
+    rm -f "$out.part"
+    return 1
+  fi
+  if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
+     ! ar t "$out.part" | grep -q '^data\.tar\.'; then
+    echo "!! Paquete inválido o SHA-256 incorrecto: $filename" >&2
+    rm -f "$out.part"
+    return 1
+  fi
+  mv "$out.part" "$out"
 }
 
 unpack_deb() { # $1=deb Archivo $2=Directorio de salida
@@ -131,7 +150,7 @@ build_abi() { # $1=arm64|x86_64
 
   echo "== [$abi] Desempacar =="
   for key in nodejs libcxx openssl cares libicu libsqlite zlib libffi; do
-    [ -d "$base/unpacked/$key" ] || unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
+    unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
   done
 
   echo "== [$abi] Recopilar archivos fuente =="
@@ -194,7 +213,7 @@ build_npm_assets() {
   echo "== [npm] Descargar y descomprimir =="
   mkdir -p "$base/debs"
   fetch_deb npm all "$base/debs/npm.deb"
-  [ -d "$base/unpacked" ] || unpack_deb "$base/debs/npm.deb" "$base/unpacked"
+  unpack_deb "$base/debs/npm.deb" "$base/unpacked"
 
   rm -rf "$stage"; mkdir -p "$stage"
   local npm_dir
