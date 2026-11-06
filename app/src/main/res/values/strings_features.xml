@@ -558,11 +558,11 @@
     <!-- ===== ui/taskcard: subagent task list (v1.202) ===== -->
     <string name="subagent_task_list_title">Tareas de subagente en segundo plano</string>
     <string name="skill_impl_not_configured">Herramienta de archivo no configurada</string>
-    <string name="subagent_task_detail_assistant">Assistant</string>
-    <string name="subagent_task_detail_user">User</string>
-    <string name="subagent_task_detail_count">Messages: %1$d</string>
-    <string name="subagent_task_detail_loading">Loading conversation...</string>
-    <string name="subagent_task_detail_empty">No conversation history yet</string>
+    <string name="subagent_task_detail_assistant">Asistente</string>
+    <string name="subagent_task_detail_user">Usuario</string>
+    <string name="subagent_task_detail_count">Mensajes: %1$d</string>
+    <string name="subagent_task_detail_loading">Cargando conversación…</string>
+    <string name="subagent_task_detail_empty">Todavía no hay historial de conversación</string>
     <string name="subagent_task_list_count">%1$d tareas</string>
     <string name="subagent_task_completed">Completado</string>
     <string name="subagent_task_failed">falló</string>
