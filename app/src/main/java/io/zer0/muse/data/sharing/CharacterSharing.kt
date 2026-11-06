@@ -15,6 +15,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
+import io.zer0.muse.R
 import io.zer0.muse.util.ShareIntentHelper
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -158,7 +159,7 @@ object CharacterSharer {
                 textSize = 22f
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("Made with Muse · museai.ltd", cx, h - 52f, markPaint)
+            canvas.drawText(context.getString(R.string.character_card_watermark), cx, h - 52f, markPaint)
 
             // ── guardar ──
             val file = File(context.cacheDir, "character_card_${System.currentTimeMillis()}.png")

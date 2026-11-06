@@ -13,7 +13,7 @@
     <string name="quick_msg_unnamed">(sin nombre)</string>
     <string name="quick_msg_disabled">Desactivado</string>
     <string name="quick_msg_scope_global">situación general</string>
-    <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
+    <string name="quick_msg_scope_assistant">Asistente: %1$s</string>
     <string name="quick_msg_scope_label">Alcance: %1$s</string>
     <string name="quick_msg_enabled_cd">Habilitado</string>
     <string name="quick_msg_disabled_cd">Desactivado</string>
