@@ -463,16 +463,7 @@ class SkillManagementToolsImplTest {
 
     // ── datos de prueba ─────────────────────────────────────────────────
 
-    private fun seedUserSkill(
-        id: String = "my_skill",
-        name: String = "mis habilidades",
-        description: String = "Descripciones de habilidades creadas por los propios usuarios.",
-        implementationKotlin: String = "web_search",
-        parametersJson: String = """{"type":"object","properties":{}}""",
-        requiredJson: String = "[]",
-        category: String = "user",
-        enabled: Boolean = true,
-    ): SkillEntity {
+    private fun seedUserSkill(id: String = "my_skill", name: String = "mis habilidades", description: String = "Descripciones de habilidades creadas por los propios usuarios.", implementationKotlin: String = "web_search", parametersJson: String = """{"type":"object","properties":{}}""", requiredJson: String = "[]", category: String = "user", enabled: Boolean = true): SkillEntity {
         val entity =
             SkillEntity(
                 id = id,
@@ -542,15 +533,7 @@ class SkillManagementToolsImplTest {
             rows.putIfAbsent(entity.id, entity)
         }
 
-        override suspend fun refreshBuiltInDefinition(
-            id: String,
-            name: String,
-            description: String,
-            parametersJson: String,
-            requiredJson: String,
-            category: String,
-            implementationKotlin: String,
-        ) {
+        override suspend fun refreshBuiltInDefinition(id: String, name: String, description: String, parametersJson: String, requiredJson: String, category: String, implementationKotlin: String) {
             rows[id]?.let {
                 rows[id] =
                     it.copy(
