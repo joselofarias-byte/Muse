@@ -3,6 +3,7 @@ package io.zer0.muse.tools
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.mockk
+import io.zer0.muse.R
 import io.zer0.muse.data.assistant.AssistantRepository
 import io.zer0.muse.data.skill.SkillDao
 import io.zer0.muse.data.skill.SkillEntity
@@ -21,8 +22,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-// zh-rCN:Recursos chinos fijos,Mensaje chino devuelto por herramienta de aserción(Mismo método que RagCitationChipsTest)
-@Config(sdk = [33], qualifiers = "zh-rCN")
+// Fija el idioma de los mensajes de usuario comprobados por estas pruebas.
+@Config(sdk = [33], qualifiers = "es")
 class SkillManagementToolsImplTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
@@ -58,7 +59,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertEquals(context.getString(R.string.skill_enabled_result, dao.rows["my_skill"]!!.name, "my_skill"), output)
         assertTrue(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -69,14 +70,14 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "read_file"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertEquals(context.getString(R.string.skill_enabled_result, "leer archivo", "read_file"), output)
         assertTrue(dao.rows["read_file"]!!.enabled)
     }
 
     @Test
     fun enableSkill_rejectsUnknownId() = runBlocking {
         val output = impl.enableSkill(mapOf("id" to "nope"))
-        assertTrue(output.contains("no encontrado"))
+        assertEquals(context.getString(R.string.skill_skill_not_found, "nope"), output)
     }
 
     @Test
@@ -118,7 +119,7 @@ class SkillManagementToolsImplTest {
                 mapOf("id" to "my_skill", "name" to "nuevo nombre", "description" to "Descripciones de habilidades actualizadas"),
             )
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, "nuevo nombre", "my_skill"), output)
         val row = dao.rows["my_skill"]!!
         assertEquals("nuevo nombre", row.name)
         assertEquals("Descripciones de habilidades actualizadas", row.description)
@@ -135,7 +136,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "parametersJson" to schema))
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, "mis habilidades", "my_skill"), output)
         assertTrue(dao.rows["my_skill"]!!.parametersJson.contains("query"))
     }
 
@@ -162,7 +163,7 @@ class SkillManagementToolsImplTest {
     @Test
     fun updateSkill_rejectsUnknownId() = runBlocking {
         val output = impl.updateSkill(mapOf("id" to "nope", "name" to "nuevo nombre"))
-        assertTrue(output.contains("no encontrado"))
+        assertEquals(context.getString(R.string.skill_skill_not_found, "nope"), output)
     }
 
     @Test
@@ -190,7 +191,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "prompt" to "nueva directiva"))
 
-        assertTrue("Las habilidades con palabras que no se solicitan no se pueden cambiar prompt,real: $output", output.contains("palabra de aviso"))
+        assertEquals(context.getString(R.string.skill_update_prompt_not_supported, "mis habilidades", "my_skill"), output)
         assertEquals("web_search", dao.rows["my_skill"]!!.implementationKotlin)
     }
 
@@ -200,7 +201,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_prompt_skill", "prompt" to "Nuevo texto de comando"))
 
-        assertTrue(output.contains("actualizado"))
+        assertEquals(context.getString(R.string.skill_updated, "Habilidades de palabras rápidas", "my_prompt_skill"), output)
         val row = dao.rows["my_prompt_skill"]!!
         assertEquals("prompt:Nuevo texto de comando", row.implementationKotlin)
         assertEquals(SkillImporter.EMPTY_PARAMETERS_JSON, row.parametersJson)
@@ -266,7 +267,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.execPromptSkill(skill)
 
-        assertTrue(output.contains("está vacío"))
+        assertEquals(context.getString(R.string.skill_prompt_empty), output)
     }
 
     @Test
@@ -337,7 +338,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.uninstallSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Desinstalado"))
+        assertEquals(context.getString(R.string.skill_uninstalled, "mis habilidades", "my_skill"), output)
         assertFalse(dao.rows.containsKey("my_skill"))
     }
 
@@ -347,7 +348,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Discapacitado"))
+        assertEquals(context.getString(R.string.skill_disabled_result, "mis habilidades", "my_skill"), output)
         assertFalse(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -390,7 +391,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "read_file"))
 
-        assertTrue("Las habilidades integradas permiten la desactivación manual,real: $output", output.contains("Discapacitado"))
+        assertEquals(context.getString(R.string.skill_disabled_result, "leer archivo", "read_file"), output)
         assertFalse(dao.rows["read_file"]!!.enabled)
     }
 

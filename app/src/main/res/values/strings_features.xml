@@ -558,11 +558,11 @@
     <!-- ===== ui/taskcard: subagent task list (v1.202) ===== -->
     <string name="subagent_task_list_title">Tareas de subagente en segundo plano</string>
     <string name="skill_impl_not_configured">Herramienta de archivo no configurada</string>
-    <string name="subagent_task_detail_assistant">Assistant</string>
-    <string name="subagent_task_detail_user">User</string>
-    <string name="subagent_task_detail_count">Messages: %1$d</string>
-    <string name="subagent_task_detail_loading">Loading conversation...</string>
-    <string name="subagent_task_detail_empty">No conversation history yet</string>
+    <string name="subagent_task_detail_assistant">Asistente</string>
+    <string name="subagent_task_detail_user">Usuario</string>
+    <string name="subagent_task_detail_count">Mensajes: %1$d</string>
+    <string name="subagent_task_detail_loading">Cargando conversación…</string>
+    <string name="subagent_task_detail_empty">Todavía no hay historial de conversación</string>
     <string name="subagent_task_list_count">%1$d tareas</string>
     <string name="subagent_task_completed">Completado</string>
     <string name="subagent_task_failed">falló</string>
@@ -716,14 +716,14 @@
     <string name="wake_diagnostics_read_failed">Error de lectura:%1$s</string>
     <!-- Los nombres de estado no están traducidos:Los problemas de comentarios de los usuarios y los desarrolladores utilizan el nombre en inglés WorkInfo.State cuando recuperan materiales en línea.,
          Por lo tanto, todos los paquetes de idiomas conservan el texto original en inglés y no escriben "cola"./Traducciones como "En funcionamiento". -->
-    <string name="wake_state_enqueued">ENQUEUED</string>
-    <string name="wake_state_running">RUNNING</string>
-    <string name="wake_state_blocked">BLOCKED</string>
-    <string name="wake_state_succeeded">SUCCEEDED</string>
-    <string name="wake_state_failed">FAILED</string>
-    <string name="wake_state_cancelled">CANCELLED</string>
-    <string name="wake_state_not_registered">NOT_REGISTERED</string>
-    <string name="wake_state_unknown">UNKNOWN</string>
+    <string name="wake_state_enqueued">En cola</string>
+    <string name="wake_state_running">En ejecución</string>
+    <string name="wake_state_blocked">Bloqueada</string>
+    <string name="wake_state_succeeded">Completada</string>
+    <string name="wake_state_failed">Fallida</string>
+    <string name="wake_state_cancelled">Cancelada</string>
+    <string name="wake_state_not_registered">No registrada</string>
+    <string name="wake_state_unknown">Desconocida</string>
     <string name="wake_kind_scheduled_task">tareas programadas</string>
     <string name="wake_kind_moment">Momentos</string>
     <string name="wake_kind_proactive">mensajes no solicitados</string>

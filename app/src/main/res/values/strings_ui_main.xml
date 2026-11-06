@@ -249,7 +249,7 @@
     <string name="settings_screen_group_developer">Desarrollador</string>
     <!-- ===== Establezca la categoría de primer nivel (12 líneas en la página de inicio; el orden es consistente con el catálogo de configuración) ===== -->
     <string name="settings_group_assistants">Asistentes y roles</string>
-    <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, recursos de roles y Agent</string>
+    <string name="settings_group_assistants_desc">Perfiles de usuario, asistentes, recursos de roles y agentes</string>
     <string name="settings_group_chat">Chat</string>
     <string name="settings_group_chat_desc">Visualización de chat, emoticonos, grabación rápida y uso compartido</string>
     <string name="settings_group_models">Modelos y Proveedores</string>
@@ -359,9 +359,9 @@
     <string name="connector_config_corrupt">La configuración está dañada, los datos se han conservado y se pueden volver a importar</string>
     <string name="connector_field_authorize">Punto final de autorización</string>
     <string name="connector_field_token">Token punto final</string>
-    <string name="connector_field_scope">Scope</string>
-    <string name="connector_field_client_id">Client ID</string>
-    <string name="connector_field_client_secret">Client Secret</string>
+    <string name="connector_field_scope">Ámbito</string>
+    <string name="connector_field_client_id">ID de cliente</string>
+    <string name="connector_field_client_secret">Secreto de cliente</string>
     <string name="channel_inbox_title">recibido recientemente</string>
     <string name="channel_intro_title">Enviar mensajes a tu IM</string>
     <string name="channel_intro">Después de la configuración, el asistente puede enviar mensajes a Feishu a través de la herramienta./QQ y otros canales. Las credenciales solo se almacenan cifradas localmente y no se cargarán.</string>
@@ -392,20 +392,20 @@
     <string name="channel_field_region">área</string>
     <string name="channel_region_feishu_cn">China</string>
     <string name="channel_region_lark_global">Lark en el extranjero</string>
-    <string name="channel_field_telegram_token">Bot Token</string>
-    <string name="channel_field_corp_id">Corp ID</string>
-    <string name="channel_field_client_id">Client ID / AppKey</string>
-    <string name="channel_field_client_secret">Client Secret / AppSecret</string>
-    <string name="channel_field_robot_code">Robot Code</string>
+    <string name="channel_field_telegram_token">Token del bot</string>
+    <string name="channel_field_corp_id">ID de empresa</string>
+    <string name="channel_field_client_id">ID de cliente / AppKey</string>
+    <string name="channel_field_client_secret">Secreto de cliente / AppSecret</string>
+    <string name="channel_field_robot_code">Código del robot</string>
     <string name="channel_robot_code_hint">Los bots internos suelen ser los mismos que el ID del cliente y se pueden dejar en blanco.</string>
-    <string name="channel_field_api_base">API Base URL</string>
+    <string name="channel_field_api_base">URL base de la API</string>
     <string name="channel_dingtalk_api_default">https://api.dingtalk.com/v1.0</string>
     <string name="channel_field_name">Nombre</string>
-    <string name="channel_field_app_id">App ID</string>
-    <string name="channel_field_app_secret">App Secret</string>
+    <string name="channel_field_app_id">ID de aplicación</string>
+    <string name="channel_field_app_secret">Secreto de aplicación</string>
     <string name="channel_webhook_receive">Habilitar devoluciones de llamada de la plataforma</string>
     <string name="channel_webhook_receive_desc">Desactivado de forma predeterminada; solo está habilitado si la plataforma ha configurado una URL de devolución de llamada externa.</string>
-    <string name="channel_webhook_verification_token">Verification Token</string>
+    <string name="channel_webhook_verification_token">Token de verificación</string>
     <string name="channel_webhook_feishu_hint">Solo para devoluciones de llamadas de eventos Feishu configuradas manualmente; complete el mismo token de verificación en la plataforma. Actualmente sólo se admiten devoluciones de llamadas no cifradas,Encrypt Key Déjelo en blanco; esto no es necesario para una recepción de conexión prolongada.</string>
     <string name="channel_webhook_qq_hint">Solo disponible para devoluciones de llamadas QQ configuradas manualmente. Establezca una clave aleatoria de alta seguridad y agréguela a la URL de devolución de llamada. ?token=...;La solicitud también debe llevar una firma Ed25519 nueva y una marca de tiempo, verificadas mediante el secreto de la aplicación anterior. Esto no es necesario para una recepción de conexión prolongada.</string>
     <string name="channel_field_target">Enviar objetivo ID</string>
@@ -599,7 +599,7 @@
     <!-- ===== Skill página SkillScreen ===== -->
     <string name="skill_management">Skill gestión</string>
     <string name="skill_import_cd">importar .skill.json</string>
-    <string name="skill_intro">Skill Es una herramienta invocable por LLM. Después de abrir,Assistant Se puede llamar a pedido en la conversación; cerrado no expuesto al modelo. Haga clic en el botón importar en la esquina superior derecha para importar .skill.json.</string>
+    <string name="skill_intro">Las habilidades son herramientas que el modelo de lenguaje puede utilizar. Cuando están habilitadas, el asistente puede invocarlas durante la conversación según sea necesario; cuando están deshabilitadas, no se exponen al modelo. Pulsa el botón de importación de la esquina superior derecha para importar un archivo .skill.json.</string>
     <string name="skill_no_skill_title">todavía no Skill</string>
     <string name="skill_no_skill_subtitle">Habla directamente con la IA"Ayúdame a crear una habilidad XX", o haga clic en + en la esquina inferior derecha para importar el archivo Skill</string>
     <string name="skill_importing">Importando</string>
