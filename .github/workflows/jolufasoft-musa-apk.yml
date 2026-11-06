@@ -1,0 +1,71 @@
+name: JolufaSoft Musa APK (es)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/jolufasoft-musa-apk.yml
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout Spanish translation
+        uses: actions/checkout@v4
+        with:
+          ref: cursor/spanish-default-locale-f884
+          persist-credentials: false
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare embedded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f web/package-lock.json ]; then
+            (cd web && npm ci && npm run build)
+          fi
+          if [ -f ci/script/pack_embedded_runtimes.py ]; then
+            python3 ci/script/pack_embedded_runtimes.py
+          fi
+      - name: Assemble debug APK independently of lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --stacktrace --no-daemon
+          find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M -print
+      - name: Publish prerelease without Actions artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk="$(find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M | head -n 1)"
+          test -n "$apk"
+          cp "$apk" Musa-es-debug.apk
+          sha256sum Musa-es-debug.apk > SHA256SUMS.txt
+          tag="musa-es-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" Musa-es-debug.apk SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Musa español - build ${GITHUB_RUN_ID}" \
+            --notes "APK de depuración de la rama cursor/spanish-default-locale-f884. Compilación independiente de lint; no es una release de producción." \
+            --prerelease
+          echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
