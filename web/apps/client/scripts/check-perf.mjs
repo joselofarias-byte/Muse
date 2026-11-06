@@ -66,7 +66,7 @@ try {
   assert(mod.areMessagesEqual(base, message("m1", { content: "cambiado" })) === false, "El texto ha cambiado y es necesario volver a renderizarlo.");
   assert(mod.areMessagesEqual(base, message("m1", { status: "failed" })) === false, "Los cambios de estado requieren volver a renderizarse");
   assert(mod.areMessagesEqual(base, message("m1", { reasoning: "piensa en ello" })) === false, "Es necesario volver a representar los cambios en el proceso de pensamiento.");
-  assert(mod.areMessagesEqual(base, message("m1", { quotedContent: "Cotización" })) === false, "Los cambios en el bloque de referencia requieren volver a renderizarse");
+  assert(mod.areMessagesEqual(base, message("m1", { quotedContent: "Cita" })) === false, "Los cambios en el bloque de referencia requieren volver a renderizarse");
   assert(mod.areMessagesEqual(base, message("m2")) === false, "Las diferentes identificaciones se juzgarán de manera diferente.");
   assert(
     mod.areMessagesEqual(

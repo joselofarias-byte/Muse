@@ -112,8 +112,7 @@
     <string name="model_switch_fetching">tirando</string>
     <string name="model_switch_refresh">Actualizar</string>
     <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor…</string>
-    <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
-Haga clic en Actualizar para extraer la lista desde arriba</string>
+    <string name="model_switch_no_models">No hay modelos disponibles en el proveedor actual.\nTocá Actualizar para consultar la lista.</string>
     <!-- v1.0.4 (P2): Botón de reintento fallido al extraer el modelo -->
     <string name="model_switch_retry">Inténtalo de nuevo</string>
     <string name="model_switch_default">%1$s(Predeterminado)</string>
@@ -123,7 +122,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="model_switch_ability_tool">Herramientas</string>
     <string name="model_switch_ability_image">Dibujo</string>
     <string name="model_switch_ability_search">Redes</string>
-    <string name="model_switch_search_placeholder">Modelo de búsqueda</string>
+    <string name="model_switch_search_placeholder">Buscar modelo</string>
     <string name="model_switch_expand_all">Expandir todo</string>
     <string name="model_switch_collapse_all">Contraer todo</string>
     <string name="model_switch_group_count">%1$s (%2$d)</string>
@@ -137,7 +136,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
 
     <!-- ===== ui/HomeScreen pagina de inicio ===== -->
     <string name="home_tab_tasks">Tarea</string>
-<string name="home_tab_agent">Agent</string>
+<string name="home_tab_agent">Agentes</string>
     <string name="home_tab_group_chat">chat grupal</string>
     <string name="home_settings_cd">ajustes</string>
     <string name="home_search_cd">Buscar</string>
@@ -150,7 +149,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="favorites_role_user">yo</string>
     <string name="favorites_role_system">sistema</string>
     <string name="favorites_role_tool">Herramientas</string>
-    <string name="favorites_unfavorite_cd">Cancelar favoritos</string>
+    <string name="favorites_unfavorite_cd">Quitar de favoritos</string>
     <string name="favorites_group_action_cd">Configurar grupos</string>
     <!-- v1.104 U7: Agrupación de colecciones/etiqueta -->
     <string name="favorites_filter_all">Todos (%1$d)</string>

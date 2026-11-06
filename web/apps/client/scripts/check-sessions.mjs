@@ -148,14 +148,14 @@ try {
     );
   const hidden = sidebar(false);
   assert(!hidden.includes("Archivado"), "Las sesiones de archivo no aparecen cuando el interruptor está apagado");
-  assert(hidden.includes("mostrar archivo") && hidden.includes('role="switch"'), "Hay un interruptor \"mostrar archivo\" en la cabeza.");
+  assert(hidden.includes("Mostrar archivadas") && hidden.includes('role="switch"'), "Hay un interruptor \"mostrar archivo\" en la cabeza.");
   const shown = sidebar(true);
   assert(shown.includes("Archivado") && shown.includes("Archivado"), "Después de activar el interruptor, aparece la sesión de archivo y está marcada como \"Archivada\".");
   assert(/onToggleArchived/.test(DRAWER), "El estado del interruptor lo mantiene la capa superior.");
 
   // ── 4. Elimine la copia de confirmación (la entrada está en la tabla i18n y el shell de chat es responsable de configurar los parámetros)────────
   assert(mod.ES["sessions.deleteConfirm"].includes("{name}"), "La confirmación de eliminación de sesión es una entrada con un marcador de posición");
-  assert(mod.ES["sessions.deleteConfirm"].includes("mensajes") && mod.ES["sessions.deleteConfirm"].includes("no se podrán restaurar"), "La confirmación avisa que se borran los mensajes y no se puede deshacer.");
+  assert(mod.ES["sessions.deleteConfirm"].includes("mensajes") && mod.ES["sessions.deleteConfirm"].includes("sin posibilidad de recuperarlos"), "La confirmación avisa que se borran los mensajes y no se puede deshacer.");
   assert(CHAT.includes('t("sessions.deleteConfirm", { name: title.trim() || t("sessions.untitled") })'), "El shell de chat inserta el nombre de la conversación y el nombre sin nombre en la entrada");
   assert(!CHAT.includes("Esta acción es irreversible."), "Se ha borrado la copia antigua muerta.");
 
@@ -180,7 +180,7 @@ try {
   // ── 6. focus_not_held Consejos exclusivos para ─────────────────────────────
   const zh = (key) => mod.translate("es", key);
   assert(mod.describeHostError("focus_not_held", "x", zh) === zh("error.focusNotHeld"), "focus_not_held Cambiar a consejos exclusivos");
-  assert(zh("error.focusNotHeld").includes("otros dispositivos"), `Aviso en español:${zh("error.focusNotHeld")}`);
+  assert(zh("error.focusNotHeld").includes("Otro dispositivo"), `Aviso en español:${zh("error.focusNotHeld")}`);
   assert(mod.translate("en", "error.focusNotHeld").includes("Another device"), "Los consejos en inglés también tienen redacción exclusiva.");
   assert(mod.describeHostError("session_not_found", "x", zh).includes("ya no existe"), "session_not_found También tiene copia legible.");
   const notInSession = mod.describeHostError("message_not_in_current_session", "x", zh);

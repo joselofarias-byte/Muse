@@ -13,7 +13,7 @@
     <string name="quick_msg_unnamed">(sin nombre)</string>
     <string name="quick_msg_disabled">Desactivado</string>
     <string name="quick_msg_scope_global">situación general</string>
-    <string name="quick_msg_scope_assistant">Assistant: %1$s</string>
+    <string name="quick_msg_scope_assistant">Asistente: %1$s</string>
     <string name="quick_msg_scope_label">Alcance: %1$s</string>
     <string name="quick_msg_enabled_cd">Habilitado</string>
     <string name="quick_msg_disabled_cd">Desactivado</string>
@@ -38,7 +38,7 @@
     <string name="quick_msg_section_behavior">comportamiento</string>
     <string name="quick_msg_field_sort_index">Número de clasificación (cuanto menor es el número, mayor es)</string>
     <string name="quick_msg_field_enabled">habilitar</string>
-    <string name="quick_msg_field_enabled_desc">Esta entrada no aparece en la fila del chip InputBar después del cierre.</string>
+    <string name="quick_msg_field_enabled_desc">Al desactivarlo, este mensaje deja de aparecer entre los accesos rápidos del campo de entrada.</string>
 
     <!-- ===== LorebookScreen páginas de libros del mundo ===== -->
     <!-- barra superior -->
@@ -82,16 +82,16 @@
     <string name="lorebook_field_whole_word">coincidencia de palabras completas</string>
     <string name="lorebook_field_whole_word_desc">Las palabras clave deben estar completamente formadas antes de activarse (aplicable al inglés; las palabras clave chinas se degradarán automáticamente)</string>
     <string name="lorebook_field_enabled">habilitar</string>
-    <string name="lorebook_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
+    <string name="lorebook_field_enabled_desc">Al desactivarlo, esta entrada deja de añadir contenido al contexto.</string>
 
     <!-- ===== PromptInjectionScreen Página de inyección de esquema ===== -->
     <!-- barra superior -->
-    <string name="prompt_injection_screen_title">inyección de patrón PromptInjection</string>
-    <string name="prompt_injection_new_cd">Nuevo PromptInjection</string>
+    <string name="prompt_injection_screen_title">Inyección de instrucciones</string>
+    <string name="prompt_injection_new_cd">Nueva inyección de instrucciones</string>
     <string name="prompt_injection_intro">Inyección de contexto activada por modo. El usuario cambia de modo a mitad de sesión (creativo/Programación/juegos de rol, etc.), la inyección correspondiente surte efecto inmediatamente.</string>
-    <string name="prompt_injection_empty_title">todavía no PromptInjection</string>
+    <string name="prompt_injection_empty_title">Todavía no hay inyecciones de instrucciones</string>
     <string name="prompt_injection_empty_subtitle">Haga clic en la esquina inferior derecha + Nuevo</string>
-    <string name="prompt_injection_delete_title">Eliminar PromptInjection</string>
+    <string name="prompt_injection_delete_title">Eliminar inyección de instrucciones</string>
     <!-- tarjeta -->
     <string name="prompt_injection_new_default_name">Nueva inyección</string>
     <string name="prompt_injection_unnamed">(sin nombre)</string>
@@ -105,8 +105,8 @@
     <string name="prompt_injection_unsaved_title">Hay cambios no guardados</string>
     <string name="prompt_injection_unsaved_content">Al salir se perderán las ediciones actuales. ¿Estás seguro de que quieres rendirte?</string>
     <string name="prompt_injection_discard">Descartar</string>
-    <string name="prompt_injection_new_title">Nuevo PromptInjection</string>
-    <string name="prompt_injection_edit_title">Editar PromptInjection</string>
+    <string name="prompt_injection_new_title">Nueva inyección de instrucciones</string>
+    <string name="prompt_injection_edit_title">Editar inyección de instrucciones</string>
     <string name="prompt_injection_save">Guardar</string>
     <string name="prompt_injection_section_basic">Conceptos básicos</string>
     <string name="prompt_injection_field_name">Nombre</string>
@@ -118,7 +118,7 @@
     <string name="prompt_injection_field_priority">Prioridad (ordenada cuando se realizan múltiples inyecciones en el mismo modo, cuanto mayor sea el número, se inyectará primero)</string>
     <string name="prompt_injection_field_insertion_position">Ubicación de la inyección</string>
     <string name="prompt_injection_field_enabled">habilitar</string>
-    <string name="prompt_injection_field_enabled_desc">Esta entrada ya no activa la inyección después del cierre.</string>
+    <string name="prompt_injection_field_enabled_desc">Al desactivarlo, esta entrada deja de añadir instrucciones al contexto.</string>
 
     <!-- ===== AssistantScreen Página del asistente ===== -->
     <!-- barra superior -->
