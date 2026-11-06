@@ -7,7 +7,7 @@
     <string name="chat_generated_video_cd">vídeo generado</string>
     <string name="chat_msg_selected">seleccionado</string>
     <string name="chat_msg_not_selected">No seleccionado</string>
-    <string name="moment_images_selected">Seleccionado %1$d Zhang (haga clic para continuar seleccionando)</string>
+    <string name="moment_images_selected">Imágenes seleccionadas: %1$d (toca para añadir más)</string>
     <string name="moment_add_images_hint">Añadir imágenes (hasta %1$d Zhang)</string>
     <!-- ===== diario (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Error al generar el diario. Vuelve a intentarlo más tarde.</string>
@@ -514,7 +514,7 @@
     <string name="slash_command_new_done">Nueva sesión creada</string>
     <string name="slash_command_reset_busy">No se puede restablecer durante la generación; detenga la generación primero</string>
     <string name="slash_command_archive_done">Conversación archivada</string>
-    <string name="chat_agent_tab_title">Agent</string>
+    <string name="chat_agent_tab_title">Agente</string>
     <!-- A5: Capa emergente de información del mensaje(modelo/Consume mucho tiempo/Token Dosis) -->
     <string name="msg_info_title">información del mensaje</string>
     <string name="msg_info_model">Modelo</string>

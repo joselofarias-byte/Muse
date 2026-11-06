@@ -137,7 +137,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
 
     <!-- ===== ui/HomeScreen pagina de inicio ===== -->
     <string name="home_tab_tasks">Tarea</string>
-<string name="home_tab_agent">Agent</string>
+<string name="home_tab_agent">Agente</string>
     <string name="home_tab_group_chat">chat grupal</string>
     <string name="home_settings_cd">ajustes</string>
     <string name="home_search_cd">Buscar</string>
