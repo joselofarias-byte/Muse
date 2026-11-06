@@ -11,6 +11,14 @@
 export type MessageDict = Readonly<Record<string, string>>;
 
 export const ES: MessageDict = {
+  "saas.providersHeading": "PROVEEDORES",
+  "saas.assistantsHeading": "ESTUDIO DE ASISTENTES",
+  "saas.storageHeading": "ALMACENAMIENTO DE OBJETOS",
+  "saas.workspaceHeading": "ESPACIO DE TRABAJO DE MUSA",
+  "saas.conversationHeading": "CONVERSACIÓN PRIVADA",
+  "saas.memorySpacePlaceholder": "Nuevo espacio de memoria",
+  "saas.brand": "Musa",
+
   "common.cancel": "Cancelar",
   "common.save": "Guardar",
   "common.delete": "Eliminar",
@@ -313,6 +321,14 @@ export const ES: MessageDict = {
 };
 
 export const EN: MessageDict = {
+  "saas.providersHeading": "PROVIDER VAULT",
+  "saas.assistantsHeading": "ASSISTANT STUDIO",
+  "saas.storageHeading": "OBJECT STORAGE",
+  "saas.workspaceHeading": "MUSE WORKSPACE",
+  "saas.conversationHeading": "PRIVATE CONVERSATION",
+  "saas.memorySpacePlaceholder": "New memory space",
+  "saas.brand": "Muse",
+
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.delete": "Delete",
@@ -615,6 +631,14 @@ export const EN: MessageDict = {
 };
 
 export const JA: MessageDict = {
+  "saas.providersHeading": "プロバイダー管理",
+  "saas.assistantsHeading": "アシスタントスタジオ",
+  "saas.storageHeading": "オブジェクトストレージ",
+  "saas.workspaceHeading": "MUSE ワークスペース",
+  "saas.conversationHeading": "プライベートな会話",
+  "saas.memorySpacePlaceholder": "新しいメモリスペース",
+  "saas.brand": "Muse",
+
   "common.cancel": "キャンセル",
   "common.save": "保存",
   "common.delete": "削除",
@@ -917,6 +941,14 @@ export const JA: MessageDict = {
 };
 
 export const KO: MessageDict = {
+  "saas.providersHeading": "제공업체 관리",
+  "saas.assistantsHeading": "어시스턴트 스튜디오",
+  "saas.storageHeading": "객체 저장소",
+  "saas.workspaceHeading": "MUSE 작업 공간",
+  "saas.conversationHeading": "비공개 대화",
+  "saas.memorySpacePlaceholder": "새 메모리 공간",
+  "saas.brand": "Muse",
+
   "common.cancel": "취소",
   "common.save": "저장",
   "common.delete": "삭제",
@@ -1219,6 +1251,14 @@ export const KO: MessageDict = {
 };
 
 export const RU: MessageDict = {
+  "saas.providersHeading": "ХРАНИЛИЩЕ ПРОВАЙДЕРОВ",
+  "saas.assistantsHeading": "СТУДИЯ АССИСТЕНТОВ",
+  "saas.storageHeading": "ОБЪЕКТНОЕ ХРАНИЛИЩЕ",
+  "saas.workspaceHeading": "РАБОЧЕЕ ПРОСТРАНСТВО MUSE",
+  "saas.conversationHeading": "ЛИЧНЫЙ РАЗГОВОР",
+  "saas.memorySpacePlaceholder": "Новое пространство памяти",
+  "saas.brand": "Muse",
+
   "common.cancel": "Отмена",
   "common.save": "Сохранить",
   "common.delete": "Удалить",
