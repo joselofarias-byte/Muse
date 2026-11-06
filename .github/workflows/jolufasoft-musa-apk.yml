@@ -1,4 +1,4 @@
-name: JolufaSoft Musa APK (es)
+name: JolufaSoft Musa APK release (es)
 on:
   workflow_dispatch:
   push:
@@ -43,13 +43,19 @@ jobs:
           if [ -f ci/script/pack_embedded_runtimes.py ]; then
             python3 ci/script/pack_embedded_runtimes.py
           fi
-      - name: Assemble debug APK independently of lint
+      - name: Create isolated release signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/musa-release.jks" -storetype PKCS12 -alias musa -keyalg RSA -keysize 3072 -validity 3650 -storepass "MusaCI2026Temporary" -keypass "MusaCI2026Temporary" -dname "CN=Musa CI, OU=JolufaSoft, O=JolufaSoft, C=UY"
+          printf 'storeFile=%s\\nstorePassword=%s\\nkeyAlias=musa\\nkeyPassword=%s\\n' "$RUNNER_TEMP/musa-release.jks" "MusaCI2026Temporary" "MusaCI2026Temporary" > keystore.properties
+      - name: Assemble release APK without LeakCanary
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --stacktrace --no-daemon
-          find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M -print
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon -PversionCode=266 -PversionName=2.6.6-musa-es
+          find app/build/outputs/apk/release -name '*.apk' -type f -size +1M -print
       - name: Publish prerelease without Actions artifacts
         shell: bash
         env:
@@ -58,14 +64,14 @@ jobs:
           set -euo pipefail
           apk="$(find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M | head -n 1)"
           test -n "$apk"
-          cp "$apk" Musa-es-debug.apk
+          cp "$apk" Musa-es-release-test.apk
           sha256sum Musa-es-debug.apk > SHA256SUMS.txt
           tag="musa-es-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" Musa-es-debug.apk SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Musa español - build ${GITHUB_RUN_ID}" \
-            --notes "APK de depuración de la rama cursor/spanish-default-locale-f884. Compilación independiente de lint; no es una release de producción." \
+            --title "Musa español release de prueba - build ${GITHUB_RUN_ID}" \
+            --notes "APK release sin LeakCanary, rama cursor/spanish-default-locale-f884. Firma temporal de CI: requiere desinstalar antes de actualizar y no debe usarse como firma de producción." \
             --prerelease
           echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
           echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
