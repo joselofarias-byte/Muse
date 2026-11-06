@@ -463,14 +463,14 @@ class SkillManagementToolsImplTest {
 
     // ── datos de prueba ─────────────────────────────────────────────────
 
-    private fun seedUserSkill(id: String = "my_skill", name: String = "mis habilidades", description: String = "Descripciones de habilidades creadas por los propios usuarios.", implementationKotlin: String = "web_search", parametersJson: String = """{"type":"object","properties":{}}""", requiredJson: String = "[]", category: String = "user", enabled: Boolean = true): SkillEntity {
+    private fun seedUserSkill(id: String = "my_skill", name: String = "mis habilidades", description: String = "Descripciones de habilidades creadas por los propios usuarios.", implementationKotlin: String = "web_search", parametersJson: String = """{"type":"object","properties":{}}""", category: String = "user", enabled: Boolean = true): SkillEntity {
         val entity =
             SkillEntity(
                 id = id,
                 name = name,
                 description = description,
                 parametersJson = parametersJson,
-                requiredJson = requiredJson,
+                requiredJson = "[]",
                 implementationKotlin = implementationKotlin,
                 enabled = enabled,
                 category = category,
