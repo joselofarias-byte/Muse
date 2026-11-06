@@ -716,14 +716,14 @@
     <string name="wake_diagnostics_read_failed">Error de lectura:%1$s</string>
     <!-- Los nombres de estado no están traducidos:Los problemas de comentarios de los usuarios y los desarrolladores utilizan el nombre en inglés WorkInfo.State cuando recuperan materiales en línea.,
          Por lo tanto, todos los paquetes de idiomas conservan el texto original en inglés y no escriben "cola"./Traducciones como "En funcionamiento". -->
-    <string name="wake_state_enqueued">EN COLA</string>
-    <string name="wake_state_running">EN EJECUCIÓN</string>
-    <string name="wake_state_blocked">BLOQUEADO</string>
-    <string name="wake_state_succeeded">COMPLETADO</string>
-    <string name="wake_state_failed">FALLIDO</string>
-    <string name="wake_state_cancelled">CANCELADO</string>
-    <string name="wake_state_not_registered">SIN REGISTRAR</string>
-    <string name="wake_state_unknown">DESCONOCIDO</string>
+    <string name="wake_state_enqueued">ENQUEUED</string>
+    <string name="wake_state_running">RUNNING</string>
+    <string name="wake_state_blocked">BLOCKED</string>
+    <string name="wake_state_succeeded">SUCCEEDED</string>
+    <string name="wake_state_failed">FAILED</string>
+    <string name="wake_state_cancelled">CANCELLED</string>
+    <string name="wake_state_not_registered">NOT_REGISTERED</string>
+    <string name="wake_state_unknown">UNKNOWN</string>
     <string name="wake_kind_scheduled_task">tareas programadas</string>
     <string name="wake_kind_moment">Momentos</string>
     <string name="wake_kind_proactive">mensajes no solicitados</string>
