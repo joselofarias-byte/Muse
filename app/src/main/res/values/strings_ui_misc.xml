@@ -137,7 +137,7 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
 
     <!-- ===== ui/HomeScreen pagina de inicio ===== -->
     <string name="home_tab_tasks">Tarea</string>
-<string name="home_tab_agent">Agent</string>
+<string name="home_tab_agent">Agente</string>
     <string name="home_tab_group_chat">chat grupal</string>
     <string name="home_settings_cd">ajustes</string>
     <string name="home_search_cd">Buscar</string>
@@ -196,11 +196,11 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="browser_status_blank">Esperando navegación</string>
     <string name="browser_status_loading">Cargando…</string>
     <string name="browser_status_ready">Listo</string>
-    <string name="browser_status_cd">Navegador:%1$s, haga clic para ver</string>
+    <string name="browser_status_cd">Navegador: %1$s, pulsa para ver</string>
     <string name="browser_viewer_blank_title">El navegador está abierto</string>
     <string name="browser_viewer_blank_message">Espere a que la IA abra la página web o utilice las herramientas del navegador para navegar.</string>
-    <string name="browser_menu_clear_cookies">Borrar Cookie</string>
+    <string name="browser_menu_clear_cookies">Borrar cookies</string>
     <string name="browser_menu_open_external">Abrir en el navegador del sistema</string>
     <string name="browser_menu_copy_link">Copiar enlace</string>
-    <string name="browser_cookies_cleared">despejado Cookie</string>
+    <string name="browser_cookies_cleared">Cookies borradas</string>
 </resources>
