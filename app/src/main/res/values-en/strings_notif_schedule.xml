@@ -12,7 +12,7 @@
     <string name="notif_channel_proactive_message_desc">Notification when assistant proactively sends you a message</string>
     <!-- Notification title/content -->
     <string name="notif_chat_completed_title">Reply completed · %1$s</string>
-    <string name="notif_chat_pending_approval_title">MUSE is waiting for your approval</string>
+    <string name="notif_chat_pending_approval_title">Musa is waiting for your approval</string>
     <string name="notif_chat_pending_approval_text">%1$s needs your confirmation</string>
     <string name="notif_proactive_message_title">%1$s sent a message</string>
     <string name="notif_proactive_action_dismiss">Not now</string>
@@ -69,9 +69,9 @@
     <string name="notif_listener_cleared_toast">Notification records cleared</string>
     <string name="notif_listener_clear_records">Clear Records</string>
     <string name="notif_listener_feature_title">Feature Description</string>
-    <string name="notif_listener_feature_desc">Once authorized, Muse can sense notifications from other apps as event sources for AI to query in chat. For example, you can ask: \"What notifications did I get on WeChat today?\" \"Are there any important unread messages?\"</string>
+    <string name="notif_listener_feature_desc">Once authorized, Musa can sense notifications from other apps as event sources for AI to query in chat. For example, you can ask: \"What notifications did I get on WeChat today?\" \"Are there any important unread messages?\"</string>
     <string name="notif_listener_privacy_title">Privacy Boundary</string>
-    <string name="notif_listener_privacy_desc">• Notification content is stored locally only (max 200 entries, oldest dropped when full)\n• System UI and Muse\'s own notifications are filtered out\n• No notification data is uploaded to any server\n• You can \"Clear Records\" here or revoke access in system settings at any time</string>
+    <string name="notif_listener_privacy_desc">• Notification content is stored locally only (max 200 entries, oldest dropped when full)\n• System UI and Musa\'s own notifications are filtered out\n• No notification data is uploaded to any server\n• You can \"Clear Records\" here or revoke access in system settings at any time</string>
     <string name="notif_listener_recent_header">Recent Notifications (%1$d/200)</string>
     <string name="notif_listener_empty_connected">No notification records yet\nNew notifications will appear here automatically once authorized</string>
     <string name="notif_listener_empty_disconnected">Not authorized yet\nPlease tap \"Grant Access\" above first</string>
@@ -102,7 +102,7 @@
     <string name="safe_mode_data_recovery_title">Data Recovery Guide</string>
     <string name="safe_mode_data_recovery_desc">This crash does not affect your local data; chats and settings are intact. To restore from a cloud backup: after restarting, go to Settings → Data Backup → Restore from Cloud.</string>
     <string name="safe_mode_data_recovery_ok">Got it</string>
-    <string name="safe_mode_continue_normal_desc">Keep chats and settings, then try opening Muse again</string>
+    <string name="safe_mode_continue_normal_desc">Keep chats and settings, then try opening Musa again</string>
     <string name="safe_mode_disable_plugins">Disable all plugins and restart</string>
     <string name="safe_mode_disable_plugins_desc">Plugins are the most common cause of crashes. The app still starts; you can restore them in the plugin page anytime.</string>
     <string name="plugin_kill_switch_title">All plugins are disabled</string>
@@ -121,9 +121,9 @@
     <string name="workspace_location_restart">Restart app</string>
     <string name="safe_mode_restore_plugins">Restore all plugins and restart</string>
     <string name="safe_mode_view_full_log_desc">View or share the full log to help diagnose the problem</string>
-    <string name="safe_mode_clear_data_restart_desc">Deletes chats, settings and local files; use only when Muse cannot open normally</string>
+    <string name="safe_mode_clear_data_restart_desc">Deletes chats, settings and local files; use only when Musa cannot open normally</string>
     <string name="safe_mode_clear_data_confirm_title">Delete all data?</string>
-    <string name="safe_mode_clear_data_confirm_desc">This deletes chats, settings, avatars and local files and cannot be undone. Use only if Muse still cannot open normally.</string>
+    <string name="safe_mode_clear_data_confirm_desc">This deletes chats, settings, avatars and local files and cannot be undone. Use only if Musa still cannot open normally.</string>
     <string name="safe_mode_clear_data_confirm_action">Delete all data</string>
     <string name="safe_mode_copy_crash_info_desc">Copy the time and stack trace to send with a bug report</string>
     <string name="safe_mode_data_recovery_desc_short">Learn what will be kept and how to restore a backup</string>

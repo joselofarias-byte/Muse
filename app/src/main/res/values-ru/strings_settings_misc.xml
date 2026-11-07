@@ -173,30 +173,30 @@
     <!-- Chapter 1 -->
     <string name="settings_tutorial_ch1_title">Глава 1: Начало работы (требуется новичок)</string>
     <string name="settings_tutorial_ch1_s1_title">Что такое Муза?</string>
-    <string name="settings_tutorial_ch1_s1_content">Muse — это приложение-умный помощник с искусственным интеллектом.</string>
+    <string name="settings_tutorial_ch1_s1_content">Musa — это приложение-умный помощник с искусственным интеллектом.</string>
     <string name="settings_tutorial_ch1_s2_title">Что делать при первом использовании?</string>
     <string name="settings_tutorial_ch1_s2_content">Не волнуйтесь, для начала всего три шага:\n\n1.</string>
     <string name="settings_tutorial_ch1_s3_title">Как начать свой первый разговор</string>
     <string name="settings_tutorial_ch1_s3_content">1. Откройте приложение и перейдите на страницу чата\n2.</string>
     <string name="settings_tutorial_ch1_s4_title">Введение в интерфейс: страницы задач, агентов и чата</string>
-    <string name="settings_tutorial_ch1_s4_content">Основной интерфейс Muse обычно разделен на три области.</string>
+    <string name="settings_tutorial_ch1_s4_content">Основной интерфейс Musa обычно разделен на три области.</string>
     <string name="settings_tutorial_ch1_s5_title">Подводные камни и советы для начинающих</string>
     <string name="settings_tutorial_ch1_s5_content">• Ловушка 1: Предполагается, что ИИ всеведущ.</string>
 
     <!-- Chapter 2 -->
     <string name="settings_tutorial_ch2_title">Глава 2. Настройка модели ИИ (важно)</string>
     <string name="settings_tutorial_ch2_s1_title">Зачем мне нужно настраивать модель?</string>
-    <string name="settings_tutorial_ch2_s1_content">Сама Muse не содержит ИИ — ей необходимо подключиться к внешнему сервису ИИ.</string>
+    <string name="settings_tutorial_ch2_s1_content">Сама Musa не содержит ИИ — ей необходимо подключиться к внешнему сервису ИИ.</string>
     <string name="settings_tutorial_ch2_s2_title">Где подать заявку на получение API-ключа?</string>
     <string name="settings_tutorial_ch2_s2_content">Here are some commonly used AI providers (in no particular order):\n\n• DeepSeek — domestic, affordable, great results\n  Website: platform.deepseek.com\n\n• Zhipu AI — domestic, free quota available\n  Website: open.bigmodel.cn\n\n• Alibaba Tongyi Qianwen — domestic, free quota available\n  Website: dashscope.aliyun.com\n\n• Moonshot Kimi — domestic, strong long-context capability\n  Website: platform.moonshot.cn\n\n• OpenAI (ChatGPT) — international, best results but requires overseas payment\n  Website: platform.openai.com\n\n• Anthropic (Claude) — international, excellent at writing and reasoning\n  Website: console.anthropic.com\n\n• Google Gemini — international, strong multimodal capability\n  Website: ai.google.dev\n\nBeginners should start with DeepSeek or Zhipu. After registering, find the \"API Keys\" page in the dashboard, click \"Create new Key\", and copy the code. Most domestic providers offer free credit on signup, so you can try it for free first.</string>
-    <string name="settings_tutorial_ch2_s3_title">Как добавить провайдера в Muse</string>
+    <string name="settings_tutorial_ch2_s3_title">Как добавить провайдера в Musa</string>
     <string name="settings_tutorial_ch2_s3_content">1. Нажмите в правом нижнем или левом верхнем углу, чтобы войти в «Настройки» \n2.</string>
     <string name="settings_tutorial_ch2_s4_title">Как выбрать текущую модель</string>
     <string name="settings_tutorial_ch2_s4_content">На странице чата название модели отображается вверху или на панели ввода.</string>
     <string name="settings_tutorial_ch2_s5_title">Как выбрать подходящую модель &amp; возможности модели</string>
     <string name="settings_tutorial_ch2_s5_content">Столкнувшись со многими моделями, новички могут выбрать следующее:\n\n• Ежедневный чат, написание: работает общая модель чата, например.</string>
     <string name="settings_tutorial_ch2_s6_title">Многоключевые запросы ротации и баланса</string>
-    <string name="settings_tutorial_ch2_s6_content">Если ключ одного провайдера исчерпан или его скорость ограничена, вы можете настроить несколько ключей для автоматической ротации Muse, чтобы разговоры не прерывались.\n\n• Добавить несколько ключей: в настройках провайдера вы можете ввести несколько ключей API (по одному в каждой строке);</string>
+    <string name="settings_tutorial_ch2_s6_content">Если ключ одного провайдера исчерпан или его скорость ограничена, вы можете настроить несколько ключей для автоматической ротации Musa, чтобы разговоры не прерывались.\n\n• Добавить несколько ключей: в настройках провайдера вы можете ввести несколько ключей API (по одному в каждой строке);</string>
 
     <!-- Chapter 3 -->
     <string name="settings_tutorial_ch3_title">Глава 3: Ежедневный чат</string>
@@ -249,7 +249,7 @@
     <string name="settings_tutorial_ch5_s3_title">Переключить язык интерфейса</string>
     <string name="settings_tutorial_ch5_s3_content">Настройки → Внешний вид → Язык, выберите «Следовать системе», «Китайский» или «Английский».</string>
     <string name="settings_tutorial_ch5_s4_title">Настройка помощника: трехуровневая архитектура персона/отношения/стиль</string>
-    <string name="settings_tutorial_ch5_s4_content">Настройка помощника Muse использует трехуровневую архитектуру, которая определяет поведение ИИ изнутри: \n\n• Уровень персоны (основной): определяет, «кто» ИИ — имя, личность, предыстория, личность.</string>
+    <string name="settings_tutorial_ch5_s4_content">Настройка помощника Musa использует трехуровневую архитектуру, которая определяет поведение ИИ изнутри: \n\n• Уровень персоны (основной): определяет, «кто» ИИ — имя, личность, предыстория, личность.</string>
     <string name="settings_tutorial_ch5_s5_title">Профиль пользователя &amp; настройки</string>
     <string name="settings_tutorial_ch5_s5_content">Настройки → Профиль пользователя, заполните свою основную информацию (имя, род занятий, интересы, предпочтения в общении, избегаемые темы).</string>
 
