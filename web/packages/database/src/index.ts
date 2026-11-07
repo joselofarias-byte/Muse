@@ -68,7 +68,7 @@ export const migrations: readonly Migration[] = [
         id uuid primary key,
         user_id uuid not null references user_accounts(id) on delete cascade,
         assistant_id uuid references assistants(id) on delete set null,
-        title text not null default '新对话',
+        title text not null default 'Nueva conversación',
         archived boolean not null default false,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
@@ -180,8 +180,8 @@ export const migrations: readonly Migration[] = [
       on conflict (id) do nothing;
       insert into plans(id, name, currency, included_credits, byok_allowed, hosted_models_allowed, limits_json, archived)
       values
-        ('free', '免费 BYOK', 'CNY', 0, true, false, '{"storageBytes":104857600,"mcpServers":2,"agentRuns":20}'::jsonb, false),
-        ('pro', 'Muse Pro', 'CNY', 1000, true, true, '{"storageBytes":5368709120,"mcpServers":10,"agentRuns":500}'::jsonb, false)
+        ('free', 'BYOK gratuito', 'CNY', 0, true, false, '{"storageBytes":104857600,"mcpServers":2,"agentRuns":20}'::jsonb, false),
+        ('pro', 'Musa Pro', 'CNY', 1000, true, true, '{"storageBytes":5368709120,"mcpServers":10,"agentRuns":500}'::jsonb, false)
       on conflict (id) do nothing;
       insert into plan_prices(id, plan_id, monthly_price_fen, annual_price_fen, effective_at, created_by)
       values

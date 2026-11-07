@@ -8,6 +8,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.zer0.ai.core.ProviderConfig
+import io.zer0.ai.core.ProviderSpecificConfig
 import io.zer0.common.AppJson
 import io.zer0.common.Logger
 
@@ -28,7 +29,7 @@ import io.zer0.common.Logger
  * val provider = QrCodeGenerator.parseProviderQr(qrContent)
  * ```
  *
- * 安全提示:二维码包含 apiKey 明文,扫描后请仅分享给信任的接收方。
+ * 默认排除凭据;显式包含凭据时,请仅分享给信任的接收方。
  */
 object QrCodeGenerator {
 
@@ -46,8 +47,31 @@ object QrCodeGenerator {
      * @param config Provider 配置
      * @return 形如 "ai-provider:v1:<Base64>" 的字符串
      */
-    fun encodeProvider(config: ProviderConfig): String {
-        val json = AppJson.encodeToString(ProviderConfig.serializer(), config)
+    fun encodeProvider(config: ProviderConfig): String = encodeProvider(config, includeSecrets = false)
+
+    fun encodeProvider(config: ProviderConfig, includeSecrets: Boolean): String {
+        val sharedConfig = if (includeSecrets) {
+            config
+        } else {
+            config.copy(
+                apiKey = "",
+                oauthConfig = config.oauthConfig?.copy(clientSecret = null),
+                specific = when (val specific = config.specific) {
+                    is ProviderSpecificConfig.Gemini -> specific.copy(privateKey = "")
+                    is ProviderSpecificConfig.OpenAI -> specific.copy(
+                        customHeaders = emptyMap(),
+                        customBody = emptyMap(),
+                    )
+                    is ProviderSpecificConfig.Custom -> specific.copy(
+                        customHeaders = emptyMap(),
+                        customBody = emptyMap(),
+                        requestTemplate = "",
+                    )
+                    else -> specific
+                },
+            )
+        }
+        val json = AppJson.encodeToString(ProviderConfig.serializer(), sharedConfig)
         val base64 = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         return QR_PREFIX + base64
     }

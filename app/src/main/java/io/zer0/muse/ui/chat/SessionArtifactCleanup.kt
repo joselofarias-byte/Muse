@@ -48,8 +48,8 @@ internal object SessionArtifactCleanup {
         var failures = 0
         sessionIds.forEach { id ->
             failures += step(id, "对话树快照") {
-                val store = snapshotStore ?: error("快照仓库不可用（未注入）")
-                check(store.delete(id)) { "快照文件没删净" }
+                val store = snapshotStore ?: error("El almacén de instantáneas no está disponible (no se ha inyectado)")
+                check(store.delete(id)) { "No se eliminaron todos los archivos de instantáneas" }
             }
             failures += step(id, "会话待办(内存)") { TodoTool.clearSession(id) }
             failures += step(id, "会话待办(库)") { koinGet<SessionTodoRepository>().delete(id) }

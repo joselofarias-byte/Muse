@@ -463,7 +463,7 @@ class ChatStreamCoordinator(
             } catch (e: Exception) {
                 Logger.e(tag, "persistCurrentAssistant failed", e)
                 // v1.65: 助手持久化失败给用户反馈
-                addError(ChatErrorType.UNKNOWN, "助手状态保存失败: ${e.message ?: "未知错误"}")
+                addError(ChatErrorType.UNKNOWN, "No se pudo guardar el estado del asistente: ${e.message ?: "Error desconocido"}")
             }
         }
     }

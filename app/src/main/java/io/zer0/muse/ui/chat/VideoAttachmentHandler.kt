@@ -90,7 +90,7 @@ class VideoAttachmentHandler {
                 // 1. 校验文件大小（>50MB 拒绝）
                 val size = queryFileSize(uri, context)
                 require(size in 1..MAX_VIDEO_SIZE_BYTES) {
-                    "视频过大（${formatBytes(size)}），请压缩到 50MB 以内后重试"
+                    "El vídeo es demasiado grande (${formatBytes(size)}). Redúcelo a 50 MB o menos e inténtalo de nuevo."
                 }
 
                 // 2. 提取元数据
