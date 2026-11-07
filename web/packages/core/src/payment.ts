@@ -57,7 +57,7 @@ export class AlipayPaymentProvider implements PaymentProvider {
       timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
       version: "1.0",
       notify_url: this.config.notifyUrl,
-      biz_content: JSON.stringify({ out_trade_no: order.id, product_code: "FAST_INSTANT_TRADE_PAY", total_amount: (order.amountFen / 100).toFixed(2), subject: `Muse ${order.planId}` }),
+      biz_content: JSON.stringify({ out_trade_no: order.id, product_code: "FAST_INSTANT_TRADE_PAY", total_amount: (order.amountFen / 100).toFixed(2), subject: `Musa ${order.planId}` }),
     };
     const { createSign } = await import("node:crypto");
     const signer = createSign("RSA-SHA256");

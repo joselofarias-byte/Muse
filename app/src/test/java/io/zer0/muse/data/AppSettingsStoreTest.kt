@@ -17,9 +17,20 @@ class AppSettingsStoreTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun language_defaultsToSystem() = runBlocking {
+    fun language_defaultsToSpanish() = runBlocking {
         val store = AppSettingsStore(context)
+        assertEquals("es", store.languageFlow.first())
+        assertEquals("es", store.getLanguageSync())
+    }
+
+    @Test
+    fun explicitlySelectedSystem_isPreserved() = runBlocking {
+        val store = AppSettingsStore(context)
+        store.saveLanguage("system")
         assertEquals("system", store.languageFlow.first())
+        assertEquals("system", store.getLanguageSync())
+        assertEquals("system", AppSettingsStore(context).languageFlow.first())
+        assertEquals("system", AppSettingsStore(context).getLanguageSync())
     }
 
     @Test
