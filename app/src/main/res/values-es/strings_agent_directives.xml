@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 「希望/不希望它做的事」页面文案（独立文件，避免与并行修改的 strings 冲突）。 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_screen_agent_directives">Lo que debe y no debe hacer</string>
     <string name="settings_screen_agent_directives_desc">Reglas de largo plazo que cumple en chats proactivos y normales</string>
     <string name="agent_directives_hint">Son requisitos explícitos tuyos y pesan más que el tono general. Ante conflicto gana la lista de «nunca».</string>

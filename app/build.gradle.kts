@@ -3,6 +3,8 @@ import java.io.FileInputStream
 import java.util.Properties
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
+// Solo para comprobar R8 sin credenciales; nunca es un artefacto publicable.
+val musaUnsignedVerification = providers.gradleProperty("musaUnsignedVerification").orNull == "true"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -58,7 +60,11 @@ androidComponents {
         val providerApk =
             rootProject.file(
                 if (isRelease) {
-                    "accessibility-provider/build/outputs/apk/release/accessibility-provider-release.apk"
+                    if (musaUnsignedVerification) {
+                        "accessibility-provider/build/outputs/apk/release/accessibility-provider-release-unsigned.apk"
+                    } else {
+                        "accessibility-provider/build/outputs/apk/release/accessibility-provider-release.apk"
+                    }
                 } else {
                     "accessibility-provider/build/outputs/apk/debug/accessibility-provider-debug.apk"
                 },
@@ -198,12 +204,12 @@ android {
             ?.toIntOrNull()
             ?: System.getenv("VERSION_CODE")?.takeIf { it.isNotBlank() }?.toIntOrNull()
             // 默认值跟随当前发行线；正式构建仍显式注入并与 tag 核对。
-            ?: 286
+            ?: 1000001
         versionName = (project.findProperty("versionName") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() }
             // 名称与编号保持同一发行线，防止本地构建无意产生错配。
-            ?: "2.6.23"
+            ?: "2.6.23-musa-es"
     }
 
     signingConfigs {
@@ -231,7 +237,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (musaUnsignedVerification) null else signingConfigs.getByName("release")
             // 用 optimize 版默认规则（AGP 9 已不再支持不带 optimize 的那份）。
             //
             // MessageBubble 是单个 2000+ 行、70+ 参数的 Composable，局部寄存器用量
@@ -552,7 +558,7 @@ dependencies {
 gradle.taskGraph.whenReady {
     val hasReleaseTask = allTasks.any { it.name.contains("Release") }
     val skipKeystoreCheck = project.findProperty("releaseSkipKeystoreCheck") == "true"
-    if (hasReleaseTask && !skipKeystoreCheck && !keystorePropertiesFile.exists()) {
+    if (hasReleaseTask && !skipKeystoreCheck && !musaUnsignedVerification && !keystorePropertiesFile.exists()) {
         throw GradleException("正式构建缺少 keystore.properties：请先配置 release 签名，禁止回退 debug 签名。")
     }
     // 版本号硬约束：正式构建必须显式注入 versionName/versionCode；当前默认候选线为 285/2.6.22。
