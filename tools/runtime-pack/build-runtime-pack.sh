@@ -37,14 +37,14 @@ WORK="${MUSE_RUNTIME_WORK:-/tmp/muse-runtime-pack}"
 TERMUX_BASE="https://packages.termux.dev/apt/termux-main/pool/main"
 
 # ─── 版本锁定 ───────────────────────────────────────────────────────────────
-NODE_VER="26.12.1"
+NODE_VER="26.13.0"
 LIBCXX_VER="30"
 OPENSSL_VER="1%3A3.6.5"   # URL 中 ':' 需转义为 %3A
 CARES_VER="1.34.9"
 ICU_VER="78.3"
-SQLITE_VER="3.54.1"
-ZLIB_VER="1.3.2"
-NPM_VER="11.21.1"
+SQLITE_VER="3.54.1-1"
+ZLIB_VER="1.4"
+NPM_VER="12.2.2"
 LIBFFI_VER="3.8.0"
 
 # ─── 文件映射：源实体文件名 -> 输出名（jniLibs 只接受 lib*.so 命名） ────────
@@ -58,13 +58,13 @@ declare -A FILEMAP=(
   ["libicudata.so.78.3"]="libicudata.so"
   ["libffi.so"]="libffi.so"
   ["libsqlite3.54.1.so"]="libsqlite3.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
 )
 
 # ─── DT_NEEDED 映射：原字符串 -> 新名（含链接名与实体名两种形态） ───────────
 declare -A NEEDMAP=(
   ["libz.so.1"]="libz.so"
-  ["libz.so.1.3.2"]="libz.so"
+  ["libz.so.1.4"]="libz.so"
   ["libcrypto.so.3"]="libcrypto.so"
   ["libssl.so.3"]="libssl.so"
   ["libicui18n.so.78"]="libicui18n.so"
@@ -73,7 +73,7 @@ declare -A NEEDMAP=(
   ["libicuuc.so.78.3"]="libicuuc.so"
   ["libicudata.so.78"]="libicudata.so"
   ["libicudata.so.78.3"]="libicudata.so"
-  ["libsqlite3.so.3.53.4"]="libsqlite3.so"
+  ["libsqlite3.54.1.so"]="libsqlite3.so"
 )
 
 # ─── Termux 包 URL 解析 ─────────────────────────────────────────────────────
@@ -95,11 +95,30 @@ pkg_url() { # $1=包 key  $2=abi(arm64|x86_64|all)
   esac
 }
 
-fetch_deb() { # $1=包 key $2=abi $3=目标文件
-  if [ ! -f "$3" ]; then
-    echo "  下载 $1 ($2) ..."
-    curl -sSL --retry 3 --connect-timeout 20 -o "$3" "$(pkg_url "$1" "$2")"
+fetch_deb() { # $1=paquete key $2=abi $3=archivo objeto
+  local url filename expected out="$3"
+  url="$(pkg_url "$1" "$2")"
+  filename="${url##*/}"
+  filename="${filename//%3A/:}"
+  filename="${filename//%2B/+}"
+  expected=$(awk -v name="$filename" '$2 == name {print $1}' "$SCRIPT_DIR/SHA256SUMS")
+  [ -n "$expected" ] || { echo "!! Falta SHA-256 para $filename" >&2; return 1; }
+  if [ -f "$out" ] && printf '%s  %s\n' "$expected" "$out" | sha256sum --check --status; then
+    return
   fi
+  echo "  Descargar $1 ($2) ..."
+  rm -f "$out" "$out.part"
+  if ! curl --fail --silent --show-error --location --retry 3 --connect-timeout 20 -o "$out.part" "$url"; then
+    rm -f "$out.part"
+    return 1
+  fi
+  if ! printf '%s  %s\n' "$expected" "$out.part" | sha256sum --check --status ||
+     ! ar t "$out.part" | grep -q '^data\.tar\.'; then
+    echo "!! Paquete inválido o SHA-256 incorrecto: $filename" >&2
+    rm -f "$out.part"
+    return 1
+  fi
+  mv "$out.part" "$out"
 }
 
 unpack_deb() { # $1=deb 文件 $2=输出目录
@@ -131,7 +150,7 @@ build_abi() { # $1=arm64|x86_64
 
   echo "== [$abi] 解包 =="
   for key in nodejs libcxx openssl cares libicu libsqlite zlib libffi; do
-    [ -d "$base/unpacked/$key" ] || unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
+    unpack_deb "$debs/$key.deb" "$base/unpacked/$key"
   done
 
   echo "== [$abi] 收集源文件 =="
@@ -194,7 +213,7 @@ build_npm_assets() {
   echo "== [npm] 下载并解包 =="
   mkdir -p "$base/debs"
   fetch_deb npm all "$base/debs/npm.deb"
-  [ -d "$base/unpacked" ] || unpack_deb "$base/debs/npm.deb" "$base/unpacked"
+  unpack_deb "$base/debs/npm.deb" "$base/unpacked"
 
   rm -rf "$stage"; mkdir -p "$stage"
   local npm_dir
