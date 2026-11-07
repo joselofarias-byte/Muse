@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Adicionar imagens (máx. %1$d)</string>
     <!-- ===== Diário (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Falha ao gerar o diário, tente novamente mais tarde</string>
-    <string name="diary_title">Diário do Muse</string>
+    <string name="diary_title">Diário do Musa</string>
     <string name="diary_date_title">%3$s/%2$d/%1$d</string>
     <string name="diary_empty_today">Ainda não há diário de hoje</string>
     <string name="diary_empty_other_day">Não há diário para este dia</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Comentar</string>
     <string name="moment_favorite">Favorito</string>
     <string name="moment_more_actions">Mais ações para esta publicação</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">Eu</string>
     <string name="moment_comment_hint">Publicar comentário:</string>
     <string name="moment_delete_title">Excluir publicação</string>
@@ -84,7 +84,7 @@
     <string name="moment_messages_cd">Mensagens</string>
     <string name="moment_publish_cd">Publicar (toque para imagem, pressione e segure para texto)</string>
     <string name="moment_empty_feed">Ainda não há publicações</string>
-    <string name="moment_empty_hint">Toque em + no canto superior direito para criar sua primeira publicação\nMuse e os assistentes também compartilharão suas vidas</string>
+    <string name="moment_empty_hint">Toque em + no canto superior direito para criar sua primeira publicação\nMusa e os assistentes também compartilharão suas vidas</string>
     <string name="moment_messages_empty">Ainda não há curtidas ou comentários</string>
     <string name="moment_notification_liked">%1$s curtiu sua publicação</string>
     <string name="moment_notification_commented">%1$s comentou sua publicação</string>

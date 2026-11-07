@@ -226,7 +226,7 @@ function defaultPlans(): BillingPlan[] {
   return [
     {
       id: "free",
-      name: "免费 BYOK",
+      name: "BYOK gratuito",
       currency: "CNY",
       includedCredits: 0,
       byokAllowed: true,
@@ -237,7 +237,7 @@ function defaultPlans(): BillingPlan[] {
     },
     {
       id: "pro",
-      name: "Muse Pro",
+      name: "Musa Pro",
       currency: "CNY",
       includedCredits: 1000,
       byokAllowed: true,

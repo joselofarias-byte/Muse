@@ -317,7 +317,7 @@
     <string name="stats_dashboard_subtitle">%1$d сеансов · %2$d активных дней</string>
     <string name="stats_export_cd">Сводная статистика экспорта</string>
     <string name="stats_export_chooser">Поделиться сводной статистикой</string>
-    <string name="stats_export_subject">Сводная статистика Muse</string>
+    <string name="stats_export_subject">Сводная статистика Musa</string>
     <string name="stats_empty_title">Статистика появится здесь после того, как вы начнете общаться</string>
     <string name="stats_empty_action">Начать разговор</string>
     <string name="stats_view_all">Посмотреть все</string>
@@ -337,7 +337,7 @@
     <string name="stats_hourly_chart_cd">Гистограмма распределения сообщений за 24 часа</string>
     <string name="stats_other">Другое</string>
     <string name="stats_model_donut_cd">Кольцевая диаграмма использования моделей</string>
-    <string name="stats_summary_header">===== Сводная статистика Muse =====</string>
+    <string name="stats_summary_header">===== Сводная статистика Musa =====</string>
     <string name="stats_summary_total_sessions">Всего сеансов: %1$d</string>
     <string name="stats_summary_total_messages">Всего сообщений: %1$d</string>
     <string name="stats_summary_ai_replies">Ответов ИИ: %1$d</string>
@@ -561,11 +561,11 @@
     <string name="cover_empty_hint">Нажмите кнопку внизу справа, чтобы импортировать изображение, или позвольте ИИ создать обложку</string>
     <string name="quick_notes_settings_title">Настройки быстрой заметки</string>
     <string name="quick_capture_swipe_title">Показывать быструю заметку свайпом</string>
-    <string name="quick_capture_swipe_desc">Показывать ручку быстрой заметки у правого края внутри Muse</string>
+    <string name="quick_capture_swipe_desc">Показывать ручку быстрой заметки у правого края внутри Musa</string>
     <string name="quick_capture_overlay_title">Включить системный оверлей</string>
-    <string name="quick_capture_overlay_desc">Сохранять плавающую капсулу доступной после выхода из Muse для быстрой заметки</string>
+    <string name="quick_capture_overlay_desc">Сохранять плавающую капсулу доступной после выхода из Musa для быстрой заметки</string>
     <string name="quick_capture_overlay_permission_error">Не удалось открыть настройки разрешения оверлея</string>
-    <string name="quick_capture_overlay_hint">Оверлей выключен по умолчанию. При включении система должна разрешить Muse отображаться поверх других приложений.</string>
+    <string name="quick_capture_overlay_hint">Оверлей выключен по умолчанию. При включении система должна разрешить Musa отображаться поверх других приложений.</string>
     <string name="chat_background_cd">Фон чата</string>
     <string name="chat_analyzing_image">Анализ изображения %1$d/%2$d…</string>
     <string name="msg_compressed">Сжато</string>
@@ -574,7 +574,7 @@
     <string name="plugin_models_summary">%1$d моделей · %2$s</string>
     <string name="accessibility_enable_btn">Открыть настройки системы</string>
     <string name="accessibility_section_title">Служба специальных возможностей</string>
-    <string name="accessibility_status_disabled">Не включено. Разрешите «Автоматизацию UI Muse» в настройках системы.</string>
+    <string name="accessibility_status_disabled">Не включено. Разрешите «Автоматизацию UI Musa» в настройках системы.</string>
     <string name="accessibility_status_enabled">Служба специальных возможностей включена. Доступны действия UI (клик/свайп/ввод/скриншот/чтение дерева UI).</string>
     <string name="action_retry">Повторить</string>
     <string name="common_load_failed">Не удалось загрузить</string>
@@ -646,7 +646,7 @@
     <string name="permission_level_none">Нет (автоматизация UI недоступна)</string>
     <string name="permission_level_root">Root одобрен (доступны все возможности)</string>
     <string name="permission_level_shizuku">Shizuku одобрен (доступны UI + команды оболочки)</string>
-    <string name="permission_wizard_desc">Автоматизация UI Muse использует трёхканальную модель прав. Включите каждый канал ниже: чем выше уровень, тем больше операций доступно. Действия UI требуют только «Специальные возможности»; команды оболочки требуют Shizuku или Root.</string>
+    <string name="permission_wizard_desc">Автоматизация UI Musa использует трёхканальную модель прав. Включите каждый канал ниже: чем выше уровень, тем больше операций доступно. Действия UI требуют только «Специальные возможности»; команды оболочки требуют Shizuku или Root.</string>
     <string name="permission_wizard_title">Мастер прав</string>
     <string name="root_section_title">Права root</string>
     <string name="root_status_available">Root одобрен (резервный канал, может напрямую выполнять команды su)</string>
@@ -657,10 +657,10 @@
     <string name="settings_about_join_qq_group">Вступить в группу QQ</string>
     <string name="settings_about_join_qq_group_subtitle">Группа QQ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ не найден; номер группы 905451314 скопирован в буфер обмена</string>
-    <string name="shizuku_authorize_btn">Авторизовать Muse</string>
+    <string name="shizuku_authorize_btn">Авторизовать Musa</string>
     <string name="permission_shizuku_opened_toast">Shizuku открыт. Запустите службу в нём, затем вернитесь и обновите</string>
     <string name="permission_shizuku_activation_hint">Служба не запущена. На Android 11+: включите параметры разработчика, затем выполните сопряжение и запуск через «Беспроводную отладку» в Shizuku; устройства с root могут запустить напрямую. После перезагрузки телефона требуется повторная активация.</string>
-    <string name="permission_shizuku_manual_grant_hint">Диалог разрешения навсегда отклонён («Больше не спрашивать»). Shizuku открыт — разрешите Muse вручную в приложении</string>
+    <string name="permission_shizuku_manual_grant_hint">Диалог разрешения навсегда отклонён («Больше не спрашивать»). Shizuku открыт — разрешите Musa вручную в приложении</string>
     <string name="permission_shizuku_denied_toast">Разрешение Shizuku отклонено</string>
     <string name="permission_shizuku_timeout_toast">Истекло время ожидания авторизации Shizuku; повторите попытку</string>
     <string name="permission_shizuku_unavailable_toast">Служба Shizuku не запущена; сначала запустите её в приложении Shizuku</string>
@@ -669,7 +669,7 @@
     <string name="permission_shizuku_version_old">Shizuku слишком старый (требуется v11+, рекомендуется v13+). Обновите и повторите.</string>
     <string name="shizuku_install_btn">Скачать Shizuku</string>
     <string name="shizuku_section_title">Shizuku</string>
-    <string name="shizuku_status_authorized">Muse авторизован для использования Shizuku</string>
+    <string name="shizuku_status_authorized">Musa авторизован для использования Shizuku</string>
     <string name="skill_agent_phone_not_configured">agent_phone не настроен: GroupChatScheduler не внедрён</string>
     <string name="skill_agent_phone_target_not_found">Целевой агент не существует</string>
     <string name="skill_message_blank">сообщение не может быть пустым</string>
