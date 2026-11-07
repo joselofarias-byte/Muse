@@ -119,7 +119,7 @@
     <string name="memory_menu_delete">削除</string>
     <string name="memory_center_fact_count">件の事実</string>
     <string name="memory_center_empty_title">まだ記憶はありません</string>
-    <string name="memory_center_empty_subtitle">Muse と話し続けるか、「これを覚えて」と伝えてください。</string>
+    <string name="memory_center_empty_subtitle">Musa と話し続けるか、「これを覚えて」と伝えてください。</string>
     <string name="memory_center_open_facts">事実ライブラリを開く</string>
     <string name="memory_center_tab_stream">記憶の流れ</string>
     <string name="memory_center_tab_constellation">記憶の星座</string>
