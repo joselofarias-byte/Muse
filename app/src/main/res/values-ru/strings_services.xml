@@ -279,7 +279,7 @@
     <string name="tool_write_verified"> (подтверждено)</string>
     <string name="tool_write_permission_denied">Система отклонила запись (вероятно, нет разрешения «Изменение системных настроек»)</string>
     <string name="automation_handoff_title">Передача виртуального экрана</string>
-    <string name="assist_service_label">Ассистент Muse</string>
+    <string name="assist_service_label">Ассистент Musa</string>
     <string name="automation_handoff_desc">Ассистент оставил экранов: %1$d; можно посмотреть и управлять</string>
     <string name="automation_handoff_bring_main">Вернуть на главный экран</string>
     <string name="automation_handoff_bring_main_hint">Приложение просто появится на главном экране; прежняя страница и состояние ввода зависят от приложения и могут быть потеряны.</string>
@@ -449,7 +449,7 @@
     <string name="app_control_reason_not_found">приложение не найдено; используйте app_list, чтобы узнать имя и пакет</string>
     <string name="app_control_reason_need_elevated">для этого действия нужен доступ Shizuku/adb или Root, которого нет на устройстве; используйте другой способ или выдайте доступ в настройках</string>
     <string name="app_control_reason_system_app">это действие запрещено для системных приложений</string>
-    <string name="app_control_reason_self">это действие запрещено для самого Muse</string>
+    <string name="app_control_reason_self">это действие запрещено для самого Musa</string>
     <string name="app_control_via_app">разрешение приложения</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

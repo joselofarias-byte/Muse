@@ -1,17 +1,10 @@
 /** 支持的语言与解析规则（纯函数，便于断言）。 */
-export type Locale = "zh" | "en" | "ja" | "ko" | "ru";
+export type Locale = "es" | "zh" | "en" | "ja" | "ko" | "ru";
 
-export const LOCALES: readonly Locale[] = ["zh", "en", "ja", "ko", "ru"];
+export const LOCALES: readonly Locale[] = ["es", "zh", "en", "ja", "ko", "ru"];
 
-/**
- * 浏览器语言也认不出来（例如 fr）时用的语言：**zh**。
- *
- * 与手机端保持一致（Host 的 LANGUAGE 枚举里 system 的兑底也是中文）：
- * 本产品的主要用户是中文用户，认不出的语言环境与其猜英文，不如给他们看得懂的。
- * 注意这和「词条缺失时的回落」不是一回事：缺词条按 translate() 回落到 en，
- * 因为那时已经明确选了某种语言，只是那一句还没翻译。
- */
-export const FALLBACK_LOCALE: Locale = "zh";
+/** Idioma de Musa cuando el navegador no coincide con un idioma disponible. */
+export const FALLBACK_LOCALE: Locale = "es";
 
 /**
  * 没套 Provider 时的基准语言（组件单测、HostChat 拿到设置之前）：zh 是词条基准，

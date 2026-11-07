@@ -1,85 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- ===== notification ===== -->
-    <!-- Notification channel names -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="notif_channel_chat_completed_name">Generación de mensajes completada</string>
     <string name="notif_channel_chat_completed_desc">Notificación cuando se completa la generación de transmisión en segundo plano</string>
-    <string name="notif_channel_chat_live_update_name">Progreso de generación</string>
-    <string name="notif_channel_chat_live_update_desc">Notificación de progreso en tiempo real durante la generación de streaming</string>
-    <string name="notif_channel_web_server_name">servidor web</string>
-    <string name="notif_channel_web_server_desc">Notificación de estado de ejecución del servidor web</string>
-    <string name="notif_channel_proactive_message_name">Mensaje proactivo</string>
+    <string name="notif_channel_chat_live_update_name">Construir progreso</string>
+    <string name="notif_channel_chat_live_update_desc">Notificaciones de progreso en tiempo real en compilaciones de transmisión</string>
+    <string name="notif_channel_web_server_name">Web servidor</string>
+    <string name="notif_channel_web_server_desc">Web Notificación de estado de ejecución del servidor</string>
+    <string name="notif_channel_proactive_message_name">mensajes no solicitados</string>
     <string name="notif_channel_proactive_message_desc">Notificación cuando el asistente le envía un mensaje de forma proactiva</string>
-    <!-- Notification title/content -->
     <string name="notif_chat_completed_title">Respuesta completada · %1$s</string>
-    <string name="notif_proactive_message_title">%1$s envió un mensaje</string>
-    <string name="notif_proactive_action_dismiss">Ahora no</string>
-    <string name="notif_live_progress_title">Generando · %1$s</string>
-    <string name="notif_live_progress_text">%1$d caracteres</string>
-    <string name="notif_web_server_title">servidor web muse ejecutándose</string>
-    <string name="notif_web_server_text">Puerto %1$d · Los dispositivos LAN pueden acceder</string>
-    <!-- v1.133: App update notification (reuses CHANNEL_CHAT_COMPLETED) -->
-    <string name="update_notif_title">Nueva versión disponible</string>
-    <string name="update_notif_text">%1$s ha sido lanzado, toque para ver detalles</string>
-    <!-- v1.133: In-app update banner -->
-    <string name="update_banner_published">%1$s liberado</string>
+    <string name="notif_chat_pending_approval_title">Musa Esperando su aprobación</string>
+    <string name="notif_chat_pending_approval_text">%1$s necesito tu confirmación</string>
+    <string name="notif_proactive_message_title">%1$s Vienen noticias</string>
+    <string name="notif_proactive_action_dismiss">No es necesario esta vez</string>
+    <string name="notif_live_progress_title">generando · %1$s</string>
+    <string name="notif_live_progress_text">%1$d palabra</string>
+    <string name="notif_web_server_title">muse Web El servidor está funcionando</string>
+    <string name="notif_web_server_text">puerto %1$d · LAN Dispositivo accesible</string>
+    <string name="update_notif_title">nueva versión encontrada</string>
+    <string name="update_notif_text">%1$s Publicado, haga clic para ver detalles</string>
+    <string name="update_banner_published">%1$s Publicado</string>
     <string name="update_banner_view_detail">Ver detalles</string>
     <string name="update_banner_download_apk">Descargar APK</string>
-    <string name="update_banner_close_cd">Descartar banner de nueva versión</string>
-    <string name="update_found_new">Se encontró una nueva versión, vea el banner en la parte superior</string>
-    <string name="update_already_latest">Ya al ​​día</string>
-
-    <!-- ===== schedule ===== -->
-    <!-- Scheduled task notification channel -->
-    <string name="schedule_channel_name">Tareas programadas</string>
-    <string name="schedule_channel_desc">Notificación de tarea programada vencida</string>
-    <!-- Scheduled task default session name -->
-    <string name="schedule_default_session_name">tarea programada</string>
-    <!-- Chat generation foreground service default notification title -->
+    <string name="update_banner_close_cd">Cerrar mensaje de nueva versión</string>
+    <string name="update_found_new">Se encontró una nueva versión; consulte la parte superior para obtener más detalles. Banner</string>
+    <string name="update_already_latest">Actualmente la última versión</string>
+    <string name="schedule_channel_name">tareas programadas</string>
+    <string name="schedule_channel_desc">Notificación de vencimiento de tarea programada</string>
+    <string name="schedule_default_session_name">tareas programadas</string>
     <string name="schedule_generating_default_title">generando</string>
-    <!-- v1.137: Execution summary when automation condition is not met -->
     <string name="schedule_condition_not_met">Condición no cumplida, omitida</string>
-
-    <!-- ===== main activity ===== -->
-    <!-- Safe mode -->
-    <string name="main_activity_safe_mode_desc">La última vez se produjo un accidente.</string>
+    <string name="schedule_tool_templates_title">Relleno rápido con herramientas comunes (haga clic para completar automáticamente)</string>
+    <string name="schedule_tool_advanced_hint">Consejo: las funciones avanzadas suelen ser más sencillas de describir utilizando IA</string>
+    <string name="schedule_err_tool_id_required">El ID de herramienta no puede estar vacío</string>
+    <string name="schedule_err_tool_params_invalid">El parámetro de herramienta no es legal. JSON: %1$s</string>
+    <string name="schedule_run_success_detail">Ejecución exitosa: %1$s</string>
+    <string name="schedule_run_failed_detail">La ejecución falló: %1$s</string>
+    <string name="schedule_view_all_history">Ver historial completo</string>
+    <string name="moment_generate_success">Dinámico generado</string>
+    <string name="moment_generate_no_material">No hay material para generar hoy</string>
+    <string name="moment_generate_failed">Error de compilación: inténtelo de nuevo más tarde</string>
+    <string name="main_activity_safe_mode_desc">Musa Se produjo un bloqueo en el último inicio, pero el historial de chat y la configuración no se eliminaron. Seleccione un método de procesamiento a continuación.</string>
     <string name="main_activity_crash_log_copied">Registro de fallos copiado al portapapeles</string>
-    <!-- v2.0+: SafeModeScreen new copy  -->
-    <string name="safe_mode_warning_title">El último lanzamiento falló</string>
-    <string name="safe_mode_continue_normal">Continuar con el inicio normal</string>
-    <string name="safe_mode_view_full_log">Ver registro de fallos completo</string>
-    <string name="safe_mode_clear_data_restart">Borrar todos los datos y reiniciar</string>
-    <string name="safe_mode_copy_crash_info">Copiar información de fallo</string>
-    <string name="safe_mode_crash_time_label">tiempo de choque</string>
-    <string name="safe_mode_stack_trace_label">Seguimiento de pila</string>
-    <string name="safe_mode_no_crash_log">No se registró ningún registro de fallos</string>
-    <string name="safe_mode_share_log_failed">No se pudo compartir el registro de fallas</string>
-    <!-- PIN lock screen -->
-
-    <!-- ===== NotificationListenerScreen.kt ===== -->
-    <string name="notif_listener_screen_title">Oyente de notificaciones</string>
-    <string name="notif_bridge_title">Acceso de puente</string>
-    <string name="notif_bridge_desc">Al activarlo para una fuente, su texto de notificación puede entrar al contexto del chat (solo local; las demás siguen ocultas)</string>
-    <string name="notif_listener_open_settings_failed">No se puede abrir la configuración del sistema</string>
-    <string name="notif_listener_auth_settings">Conceder acceso</string>
-    <string name="notif_listener_cleared_toast">Registros de notificación borrados</string>
-    <string name="notif_listener_clear_records">Borrar registros</string>
-    <string name="notif_listener_feature_title">Descripción de la característica</string>
-    <string name="notif_listener_feature_desc">Una vez autorizado, Muse puede detectar notificaciones de otras aplicaciones como fuentes de eventos para que la IA las consulte en el chat.</string>
-    <string name="notif_listener_privacy_title">Límite de privacidad</string>
-    <string name="notif_listener_privacy_desc">• El contenido de las notificaciones se almacena solo localmente (máximo 50 entradas, las más antiguas se eliminan cuando están llenas)\n• La interfaz de usuario del sistema y las notificaciones propias de Muse se filtran\n• No se cargan datos de notificaciones en ningún servidor\n• Puede \"Borrar registros\" aquí o revocar el acceso en la configuración del sistema en cualquier momento</string>
-    <string name="notif_listener_recent_header">Notificaciones recientes (%1$d/50)</string>
-    <string name="notif_listener_empty_connected">Aún no hay registros de notificaciones\nLas nuevas notificaciones aparecerán aquí automáticamente una vez autorizadas</string>
-    <string name="notif_listener_empty_disconnected">Aún no autorizado\nPrimero toque \"Conceder acceso\" arriba</string>
-    <string name="notif_listener_authorized">Autorizado</string>
-    <string name="notif_listener_unauthorized">No autorizado</string>
-    <string name="notif_listener_recent_count_disconnected">Notificaciones recientes: %1$d · Primero conceda acceso en la configuración del sistema</string>
-    <string name="notif_listener_refresh_cd">Actualizar estado</string>
-    <string name="safe_mode_data_recovery">Guía de recuperación de datos</string>
-    <string name="safe_mode_data_recovery_title">Guía de recuperación de datos</string>
-    <string name="safe_mode_data_recovery_desc">Este fallo no afecta a tus datos locales; los chats y ajustes están intactos. Para restaurar desde una copia en la nube: tras reiniciar, ve a Ajustes → Copia de seguridad → Restaurar desde la nube.</string>
-    <string name="safe_mode_data_recovery_ok">Entendido</string>
-    <string name="safe_mode_continue_normal_desc">Conserva tus chats y ajustes e intenta abrir Muse de nuevo</string>
+    <string name="safe_mode_warning_title">Musa Problemas al iniciar</string>
+    <string name="safe_mode_continue_normal">Abierto directamente normalmente Musa</string>
+    <string name="safe_mode_continue_normal_desc">Mantenga el historial y la configuración del chat, salga del modo seguro y comience de nuevo</string>
     <string name="safe_mode_disable_plugins">Desactivar todos los plugins y reiniciar</string>
     <string name="safe_mode_disable_plugins_desc">Los plugins son la causa mas comun de fallos. La app arranca igual; puedes restaurarlos en la pagina de plugins.</string>
     <string name="plugin_kill_switch_title">Todos los plugins estan desactivados</string>
@@ -97,54 +62,77 @@
     <string name="workspace_location_failed">No se pudo mover: %1$s</string>
     <string name="workspace_location_restart">Reiniciar app</string>
     <string name="safe_mode_restore_plugins">Restaurar todos los plugins y reiniciar</string>
-    <string name="safe_mode_view_full_log_desc">Consulta o comparte el registro completo para ayudar a localizar el problema</string>
-    <string name="safe_mode_clear_data_restart_desc">Borra chats, ajustes y archivos locales; úsalo solo si Muse no puede abrirse normalmente</string>
-    <string name="safe_mode_clear_data_confirm_title">¿Eliminar todos los datos?</string>
-    <string name="safe_mode_clear_data_confirm_desc">Esto elimina chats, ajustes, avatares y archivos locales y no se puede deshacer. Úsalo solo si Muse sigue sin abrirse normalmente.</string>
+    <string name="safe_mode_view_full_log">Ver registro de fallos</string>
+    <string name="safe_mode_view_full_log_desc">Vea o comparta el registro completo para localizar problemas fácilmente</string>
+    <string name="safe_mode_clear_data_restart">Eliminar todos los datos y empezar de nuevo (irreversible)</string>
+    <string name="safe_mode_clear_data_restart_desc">Eliminar chats, configuraciones y archivos locales, solo se usa si Musa no se inicia correctamente</string>
+    <string name="safe_mode_clear_data_confirm_title">¿Estás seguro de que deseas eliminar todos los datos?</string>
+    <string name="safe_mode_clear_data_confirm_desc">Esto eliminará el historial de chat, la configuración, los avatares y los archivos locales y no se podrá restaurar. Esto sólo se recomienda si Musa nunca se abre correctamente.</string>
     <string name="safe_mode_clear_data_confirm_action">Eliminar todos los datos</string>
-    <string name="safe_mode_copy_crash_info_desc">Copia la hora y la traza de error para incluirlas en un informe</string>
-    <string name="safe_mode_data_recovery_desc_short">Consulta qué datos se conservarán y cómo restaurar una copia de seguridad</string>
-    <string name="notif_auto_backup_success_title">Copia de seguridad automática completada</string>
-    <string name="notif_auto_backup_success_text">Tus datos se guardaron en la nube</string>
-    <string name="notif_auto_backup_failed_title">Falló la copia de seguridad automática</string>
-    <string name="notif_auto_backup_failed_write_text">No se pudo escribir en la nube. Revisa la red y la configuración de copia.</string>
-    <string name="notif_auto_backup_failed_verify_text">Copia escrita, pero la verificación falló. Los datos podrían estar incompletos.</string>
-    <string name="notif_permission_status_on">Permiso de notificaciones activado</string>
-    <string name="notif_permission_status_off">Permiso de notificaciones desactivado</string>
-    <string name="notif_permission_guide">Actívalo para recibir notificaciones de mensajes y copias</string>
-    <string name="notif_permission_open">Activar</string>
-    <!-- v1.0.85: release localization -->
-    <string name="notif_listener_search_hint">Buscar notificaciones</string>
+    <string name="safe_mode_copy_crash_info">Copiar información sobre fallos</string>
+    <string name="safe_mode_copy_crash_info_desc">Copie la pila de tiempo y errores para facilitar la retroalimentación a los desarrolladores.</string>
+    <string name="safe_mode_crash_time_label">tiempo de choque</string>
+    <string name="safe_mode_stack_trace_label">pila de choque</string>
+    <string name="safe_mode_no_crash_log">Sin registro de fallos</string>
+    <string name="safe_mode_share_log_failed">No se pudo compartir el registro de fallas</string>
+    <string name="notif_listener_screen_title">escucha de notificaciones</string>
+    <string name="notif_memory_title">memoria de notificaciones</string>
+    <string name="notif_memory_desc">Después de encenderlo, el asistente clasificará periódicamente las notificaciones recibidas (entrega urgente, programación, facturas, citas, etc.), las registrará en la memoria y las mencionará de forma natural en los mensajes activos. Las notificaciones pueden contener información privada, decida si desea activarlas o no.</string>
+    <string name="notif_bridge_title">Autorización de puente de mensajes</string>
+    <string name="notif_bridge_desc">Cuando se activa para una fuente, su texto de notificación puede ingresar al contexto de la conversación (solo se procesa localmente; las fuentes restantes permanecen ocultas)</string>
+    <string name="notif_listener_open_settings_failed">No se puede abrir la configuración del sistema</string>
+    <string name="notif_listener_auth_settings">Configuración de autorización</string>
+    <string name="notif_listener_cleared_toast">Registro de notificación borrado</string>
+    <string name="notif_listener_clear_records">borrar registro</string>
+    <string name="notif_listener_feature_title">Descripción de la función</string>
+    <string name="notif_listener_feature_desc">Después de la autorización,Musa Las notificaciones de otras aplicaciones pueden detectarse como fuentes de eventos para que la IA las consulte en los chats. Por ejemplo puedes preguntar:\"¿Qué notificaciones hay hoy en WeChat?\"\"¿Hay algún mensaje importante no leído?\"</string>
+    <string name="notif_listener_privacy_title">límite de privacidad</string>
+    <string name="notif_listener_privacy_desc">• El contenido de las notificaciones solo se almacena localmente (hasta 200, las más antiguas se descartarán automáticamente)\n• interfaz de usuario del sistema,Musa Las autonotificaciones se han filtrado y no se recopilarán.\n• No informe ningún dato de notificación al servidor.\n• Siempre puedes hacer clic en esta página.\"borrar registro\"O vaya a la configuración del sistema para revocar la autorización</string>
+    <string name="notif_listener_recent_header">Notificaciones recientes (%1$d/200)</string>
+    <string name="notif_listener_empty_connected">Aún no hay registro de notificaciones\nLas nuevas notificaciones aparecerán automáticamente aquí después de la autorización.</string>
+    <string name="notif_listener_empty_disconnected">Aún no autorizado\nPor favor haga clic arriba primero\"Configuración de autorización\"</string>
+    <string name="notif_listener_authorized">Autorizado</string>
+    <string name="notif_listener_unauthorized">No autorizado</string>
+    <string name="notif_listener_recent_count_disconnected">Notificaciones recientes: %1$d Artículo · Primero vaya al sistema para configurar la autorización.</string>
+    <string name="notif_listener_refresh_cd">estado de actualización</string>
+    <string name="notif_listener_search_hint">Notificaciones de búsqueda</string>
     <string name="notif_listener_all_apps">Todas las aplicaciones</string>
     <string name="notif_listener_show_all">Mostrar todo</string>
-    <string name="notif_listener_unread_only">Solo no leídas</string>
-    <string name="notif_listener_mark_all_read">Marcar todo como leído</string>
+    <string name="notif_listener_unread_only">Ver solo no leídos</string>
+    <string name="notif_listener_mark_all_read">Todo leído</string>
     <string name="notif_listener_export">Exportar</string>
-    <string name="notif_listener_export_success">Notificaciones exportadas</string>
-    <string name="notif_listener_export_failed">No se pudieron exportar las notificaciones: %1$s</string>
-    <string name="notif_listener_export_write_failed">No se pudo escribir el archivo exportado</string>
-    <string name="notif_listener_filter_empty">No hay notificaciones que coincidan con el filtro actual</string>
-    <string name="notif_listener_no_text">Esta notificación no tiene texto para mostrar</string>
-    <string name="notif_listener_unread_label">No leída</string>
-    <string name="notif_listener_active_only">Solo activas</string>
+    <string name="notif_listener_export_success">Registros de notificación exportados</string>
+    <string name="notif_listener_export_failed">Error al exportar el registro de notificación: %1$s</string>
+    <string name="notif_listener_export_write_failed">No se puede escribir en el archivo de exportación</string>
+    <string name="notif_listener_filter_empty">No hay notificaciones que coincidan con los filtros actuales.</string>
+    <string name="notif_listener_no_text">Esta notificación no tiene texto para mostrar.</string>
+    <string name="notif_listener_unread_label">no leído</string>
+    <string name="notif_listener_active_only">Solo mira en la barra de notificaciones.</string>
     <string name="notif_listener_show_history">Mostrar historial</string>
-    <string name="notif_listener_counts">%1$d en total · %2$d activas · %3$d no leídas</string>
-    <string name="notif_listener_active_label">En la bandeja</string>
-    <string name="notif_listener_removed_label">Eliminada</string>
+    <string name="notif_listener_counts">total %1$d Artículo · activo %2$d Artículo · no leído %3$d Artículo</string>
+    <string name="notif_listener_active_label">en la barra de notificaciones</string>
+    <string name="notif_listener_removed_label">Eliminado</string>
     <string name="notif_listener_channel_label">Canal: %1$s</string>
     <string name="notif_listener_category_label">Categoría: %1$s</string>
     <string-array name="greeting_notify_titles">
-        <item>¡Eh!</item>
-        <item>No lo olvides</item>
-        <item>Un recordatorio</item>
-        <item>Algo que decirte</item>
-        <item>Te lo digo en voz baja</item>
+        <item>presta atención</item>
+        <item>no lo olvides</item>
+        <item>recordarte</item>
+        <item>tengo algo que decirte</item>
+        <item>decirte en voz baja</item>
     </string-array>
-    <string name="schedule_err_tool_id_required">El ID de la herramienta no puede estar vacío</string>
-    <string name="schedule_err_tool_params_invalid">Los parámetros de la herramienta no son JSON válido: %1$s</string>
-    <string name="schedule_run_failed_detail">Ejecución fallida: %1$s</string>
-    <string name="schedule_run_success_detail">Ejecución correcta: %1$s</string>
-    <string name="schedule_tool_advanced_hint">Consejo: las funciones avanzadas suelen ser más fáciles de describir con IA</string>
-    <string name="schedule_tool_templates_title">Relleno rápido de herramientas comunes (toca para autocompletar)</string>
-    <string name="schedule_view_all_history">Ver todo el historial</string>
+    <string name="safe_mode_data_recovery">Lea primero las instrucciones de recuperación de datos.</string>
+    <string name="safe_mode_data_recovery_desc_short">Aprenda qué datos se conservan y cómo restaurarlos a partir de copias de seguridad</string>
+    <string name="safe_mode_data_recovery_title">guía de recuperación de datos</string>
+    <string name="safe_mode_data_recovery_desc">Este bloqueo no afecta los datos locales y los registros y configuraciones del chat están intactos. Si necesita restaurar datos desde la copia de seguridad en la nube: después del inicio, ingrese a Configuración → Copia de seguridad de datos → Recuperarse de la nube.</string>
+    <string name="safe_mode_data_recovery_ok">Lo tengo</string>
+    <string name="notif_auto_backup_success_title">Copia de seguridad automática exitosa</string>
+    <string name="notif_auto_backup_success_text">Tus datos se respaldan automáticamente en la nube</string>
+    <string name="notif_auto_backup_failed_title">Error en la copia de seguridad automática</string>
+    <string name="notif_auto_backup_failed_write_text">Error al escribir en la nube. Verifique la configuración de red y copia de seguridad en la nube.</string>
+    <string name="notif_auto_backup_failed_verify_text">La copia de seguridad se escribió correctamente pero la verificación falló y es posible que los datos estén incompletos.</string>
+    <string name="notif_permission_status_on">El permiso de notificación está habilitado.</string>
+    <string name="notif_permission_status_off">El permiso de notificación no está habilitado</string>
+    <string name="notif_permission_guide">Solo después de activarlo, Musa puede enviar recordatorios de finalización de mensajes y notificaciones de respaldo.</string>
+    <string name="notif_permission_open">abrir</string>
 </resources>

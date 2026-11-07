@@ -1,215 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    i18n review summary for ai / memory / transformer modules:
-    - ai module (standalone Gradle module): user-visible error messages are delivered
-      to UI via Result.Error/exceptions, but cannot reference app's R.string directly.
-      Each source file is annotated with // TODO i18n pending extraction; extraction
-      requires an error-code enum approach.
-    - memory module (standalone Gradle module): validation errors (MemoryConfig.validate)
-      and isZh time labels (Key Facts/Timeline etc.) are user-visible, but cross-module
-      and some labels participate in LLM output parsing contracts.
-      Each source file is annotated with // TODO i18n pending extraction.
-    - transformer module (inside app): per file review, all Chinese strings are LLM
-      prompt content (SYSTEM messages sent to LLM), logger messages, code comments, or
-      internal exception messages. No directly user-visible UI strings; kept as-is per
-      the "LLM prompts not extracted" rule.
-    This file currently has no string entries; it serves as a placeholder and review record.
--->
-<resources>
-    <string name="memory_meta_hit_count">Usada %1$d veces</string>
-    <string name="memory_menu_history">Historial</string>
-    <string name="memory_revision_title">Registro de cambios</string>
-    <string name="memory_revision_empty">Aún no hay cambios registrados</string>
-    <string name="memory_revision_revert">Restaurar esta versión</string>
-    <string name="memory_revision_reverted">Versión restaurada</string>
-    <string name="memory_revision_revert_failed">Error al restaurar</string>
-    <string name="memory_meta_last_hit">Último uso hace %1$d d</string>
-    <!-- v4: memory importance related -->
-    <string name="memory_importance_normal">Normal</string>
-    <string name="memory_importance_important">Importante</string>
-    <string name="memory_importance_critical">Crítico</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="memory_meta_hit_count">golpear %1$d veces</string>
+    <string name="memory_menu_history">Versión histórica</string>
+    <string name="memory_revision_title">Historial de cambios</string>
+    <string name="memory_revision_empty">Esta memoria aún no ha sido modificada.</string>
+    <string name="memory_revision_revert">Volver a esta versión</string>
+    <string name="memory_revision_reverted">Regresado a esta versión</string>
+    <string name="memory_revision_revert_failed">La reversión falló</string>
+    <string name="memory_meta_last_hit">éxitos recientes %1$d hace dias</string>
+    <string name="memory_importance_normal">ordinario</string>
+    <string name="memory_importance_important">importante</string>
+    <string name="memory_importance_critical">clave</string>
     <string name="memory_importance_set_title">Establecer importancia</string>
-    <string name="memory_importance_normal_desc">Preferencias diarias, inofensivas si se olvidan</string>
-    <string name="memory_importance_important_desc">Riesgo medio, los errores causan inconvenientes.</string>
-    <string name="memory_importance_critical_desc">Alto riesgo, los errores causan daño (nunca lo olvides)</string>
-    <string name="memory_source_session">Fuente: Sesión %1$s</string>
-    <string name="memory_created_today">Agregado hoy</string>
-    <string name="memory_created_yesterday">Añadido ayer</string>
-    <string name="memory_created_days_ago">Agregado hace %1$d días</string>
-    <string name="memory_sync_never">Memoria aún no compilada, conversaciones no en la memoria a largo plazo</string>
-    <string name="memory_sync_recent">Última compilación hace %1$d minutos, memoria sincronizada</string>
-    <string name="memory_sync_stale">Última compilación hace %1$d minutos, es posible que las conversaciones recientes aún no estén en la memoria.</string>
-    <string name="memory_chart_type_distribution_cd">Gráfico circular de distribución de tipos de memoria</string>
-    <string name="memory_chart_daily_trend_cd">Gráfico de tendencia diaria de memoria</string>
+    <string name="memory_importance_normal_desc">Preferencias diarias, está bien recordarlas mal</string>
+    <string name="memory_importance_important_desc">Riesgo medio, recordar mal puede causar malentendidos</string>
+    <string name="memory_importance_critical_desc">Alto riesgo, si recuerdas mal algo sucederá (nunca lo olvides)</string>
+    <string name="memory_source_session">Fuente: Conversación %1$s</string>
+    <string name="memory_created_today">En stock hoy</string>
+    <string name="memory_created_yesterday">Almacenado ayer</string>
+    <string name="memory_created_days_ago">%1$d días de almacenamiento por adelantado</string>
+    <string name="memory_sync_never">La memoria aún no se ha compilado y el contenido de la conversación aún no se ha ingresado en la memoria a largo plazo.</string>
+    <string name="memory_sync_recent">compilado recientemente %1$d Los recuerdos se sincronizaron hace minutos.</string>
+    <string name="memory_sync_stale">Los recuerdos recientes se han organizado en %1$d hace minutos; Continuar la conversación y continuaremos actualizando.</string>
+    <string name="memory_chart_type_distribution_cd">Gráfico de anillos de distribución del tipo de memoria</string>
+    <string name="memory_chart_daily_trend_cd">Gráfico de tendencia de memoria diaria</string>
     <string name="memory_sync_set_importance_cd">Establecer importancia</string>
-
-    <!-- v6: MemoryViewModel CRUD error messages -->
     <string name="memory_delete_failed">Error al eliminar: %1$s</string>
     <string name="memory_edit_failed">Error de edición: %1$s</string>
-    <string name="memory_set_failed">Error al configurar: %1$s</string>
+    <string name="memory_set_failed">La configuración falló: %1$s</string>
     <string name="memory_add_failed">Error al agregar: %1$s</string>
-    <string name="memory_add_experience_failed">Error al agregar experiencia: %1$s</string>
-    <string name="memory_edit_experience_failed">Error al editar la experiencia: %1$s</string>
-    <string name="memory_delete_experience_failed">Error al eliminar la experiencia: %1$s</string>
-
-    <!-- v6: Compile section display titles -->
-    <string name="memory_compile_section_facts">Resumen de hechos</string>
-    <string name="memory_compile_section_today">Hoy</string>
-    <string name="memory_compile_section_week">Esta semana</string>
-    <string name="memory_compile_section_longterm">A largo plazo</string>
-
-    <!-- v6: Summary item title -->
-    <string name="memory_summary_title">Sesión %1$s</string>
-
-    <!-- v6: Error trace labels -->
-    <string name="memory_error_trace_header">== Error de memoria de Muse ==</string>
-    <string name="memory_error_trace_time">Tiempo:</string>
-    <string name="memory_error_trace_exception">Excepción:</string>
-    <string name="memory_error_trace_message">Mensaje:</string>
-    <string name="memory_error_trace_device">Dispositivo:</string>
-    <string name="memory_error_trace_stack_header">== Seguimiento de pila ==</string>
-
-    <!-- v8: memory scope related -->
-    <string name="memory_scope_all">Todo</string>
-    <string name="memory_scope_main">Asistente principal</string>
-    <string name="memory_scope_assistant">Asistente de memoria</string>
-    <string name="memory_scope_label">Alcance de la memoria</string>
-
-    <!-- v1.0.52 P2-2: memory space related -->
-    <string name="memory_space_manage_title">Espacios de memoria</string>
-    <string name="memory_space_create">Crear espacio</string>
-    <string name="memory_space_create_title">Nuevo espacio de memoria</string>
-    <string name="memory_space_rename">Rebautizar</string>
+    <string name="memory_add_experience_failed">No se pudo agregar experiencia: %1$s</string>
+    <string name="memory_edit_experience_failed">La experiencia de edición falló: %1$s</string>
+    <string name="memory_delete_experience_failed">La experiencia de eliminación falló: %1$s</string>
+    <string name="memory_graph_empty_title">Aún no hay datos de relación de memoria</string>
+    <string name="memory_graph_empty_subtitle">Una vez que los recuerdos se acumulan en la conversación, aquí se muestra la relación entre los recuerdos.</string>
+    <string name="memory_graph_node_related">asociación %1$d Artículo</string>
+    <string name="memory_graph_load_failed">Error al cargar</string>
+    <string name="memory_graph_settings_title">Configuración de constelación</string>
+    <string name="memory_graph_ai_enhance_title">AI Profundizar conexiones</string>
+    <string name="memory_graph_ai_enhance_desc">Utilice modelos grandes para determinar la relación específica (causalidad) de asociaciones débiles/contradicciones, etcétera). Más preciso, pero una llamada por borde, mayor costo.</string>
+    <string name="memory_graph_frequency_title">frecuencia complementaria</string>
+    <string name="memory_graph_frequency_session_end">final de cada sesión</string>
+    <string name="memory_graph_frequency_on_open">Al abrir la página del horóscopo</string>
+    <string name="memory_graph_frequency_manual">solo manual</string>
+    <string name="memory_graph_rebuild_now">Restablecer la asociación ahora</string>
+    <string name="memory_graph_rebuild_hint">Vuelva a ejecutar el relleno de bordes para todas las memorias dentro del rango actual (se omitirán los bordes existentes).</string>
+    <string name="memory_graph_rebuild_started">Restablecer asociación…</string>
+    <string name="memory_graph_link_action">Conexión manual</string>
+    <string name="memory_graph_link_pick_target">Haga clic en otro nodo para completar la conexión.</string>
+    <string name="memory_graph_link_type_title">Seleccionar tipo de relación</string>
+    <string name="memory_graph_link_type_related">asociación</string>
+    <string name="memory_graph_link_type_causes">causa y efecto</string>
+    <string name="memory_graph_link_type_part_of">contiene</string>
+    <string name="memory_graph_link_type_contradicts">contradicción</string>
+    <string name="memory_graph_category_preference">Preferencia</string>
+    <string name="memory_graph_category_identity">identidad</string>
+    <string name="memory_graph_category_event">evento</string>
+    <string name="memory_graph_category_relationship">relación</string>
+    <string name="memory_graph_category_goal">objetivo</string>
+    <string name="memory_graph_category_medical">salud</string>
+    <string name="memory_graph_category_general">hechos</string>
+    <string name="memory_delete_group_chat_failed">No se pudo eliminar la memoria del chat grupal: %1$s</string>
+    <string name="memory_clear_group_chat_failed">No se pudo borrar la memoria del chat grupal: %1$s</string>
+    <string name="memory_compile_section_facts">resumen de hechos</string>
+    <string name="memory_compile_section_today">hoy</string>
+    <string name="memory_compile_section_week">esta semana</string>
+    <string name="memory_compile_section_longterm">largo plazo</string>
+    <string name="memory_summary_title">sesión %1$s</string>
+    <string name="memory_error_trace_header">== Musa Memory Error ==</string>
+    <string name="memory_error_trace_time">Hora: </string>
+    <string name="memory_error_trace_exception">Excepción: </string>
+    <string name="memory_error_trace_message">Mensaje: </string>
+    <string name="memory_error_trace_device">Equipo: </string>
+    <string name="memory_error_trace_stack_header">== Traza de la pila ==</string>
+    <string name="memory_scope_all">Todos</string>
+    <string name="memory_scope_main">asistente principal</string>
+    <string name="memory_scope_assistant">asistente de memoria</string>
+    <string name="memory_scope_label">alcance de la memoria</string>
+    <string name="memory_space_manage_title">gestión del espacio de memoria</string>
+    <string name="memory_space_create">crear espacio</string>
+    <string name="memory_space_create_title">Crear nuevo espacio de memoria</string>
+    <string name="memory_space_rename">Cambiar nombre</string>
     <string name="memory_space_rename_title">Cambiar el nombre del espacio de memoria</string>
-    <string name="memory_space_delete">Borrar</string>
+    <string name="memory_space_delete">Eliminar</string>
     <string name="memory_space_name_label">Nombre del espacio</string>
     <string name="memory_space_fact_count">%1$d hechos</string>
-    <string name="memory_space_entry">Espacios de memoria</string>
-
-    <!-- MemoryScreen.kt: view mode toggle / export / stats card -->
-    <string name="memory_stats_section_title">Estadísticas de memoria</string>
-    <string name="memory_stats_total">Total</string>
-    <string name="memory_stats_importance_distribution">Distribución de importancia</string>
+    <string name="memory_space_entry">espacio de memoria</string>
+    <string name="memory_stats_section_title">estadísticas de memoria</string>
+    <string name="memory_stats_total">total</string>
+    <string name="memory_stats_importance_distribution">distribución de importancia</string>
     <string name="memory_stats_top_sessions">Sesiones más activas</string>
-    <string name="memory_stats_session_count">%1$d entradas</string>
-    <string name="memory_stats_trend_30_days">Tendencia de los últimos 30 días</string>
-    <!-- 前端修复 (i18n-3.x): 群聊记忆 Tab + 时间轴筛选 i18n(临时复制中文,后续补译) -->
-    <string name="memory_timeline_filter_all">Todo</string>
-    <string name="memory_timeline_filter_fact">Hechos</string>
-    <string name="memory_timeline_filter_summary">Resumen</string>
-    <string name="memory_timeline_filter_milestone">Hitos</string>
-    <string name="memory_graph_empty_title">Sin datos de relaciones</string>
-    <string name="memory_graph_empty_subtitle">Cuando se acumulen recuerdos, las relaciones aparecerán aquí</string>
-    <string name="memory_graph_node_related">%1$d relacionadas</string>
-    <string name="memory_graph_load_failed">Error al cargar</string>
-    <string name="memory_graph_category_preference">Preferencia</string>
-    <string name="memory_graph_category_identity">Identidad</string>
-    <string name="memory_graph_category_event">Evento</string>
-    <string name="memory_graph_category_relationship">Relación</string>
-    <string name="memory_graph_category_goal">Objetivo</string>
-    <string name="memory_graph_category_medical">Salud</string>
-    <string name="memory_graph_category_general">Hecho</string>
-    <string name="memory_delete_group_chat_failed">Error al eliminar la memoria del grupo: %1$s</string>
-    <string name="memory_clear_group_chat_failed">Error al borrar la memoria del grupo: %1$s</string>
-    <string name="memory_menu_cd">Más acciones</string>
-    <string name="memory_menu_pin">Fijar</string>
-    <string name="memory_menu_unpin">Desfijar</string>
-    <string name="memory_menu_importance">Definir importancia</string>
-    <string name="memory_menu_edit">Editar</string>
-    <string name="memory_menu_delete">Eliminar</string>
+    <string name="memory_stats_session_count">%1$d Artículo</string>
+    <string name="memory_stats_session_live">sesión %1$d</string>
+    <string name="memory_stats_trend_30_days">Tendencias de los últimos 30 días</string>
+    <string name="memory_organize_action">organizar la memoria</string>
+    <string name="memory_organize_stage_prepare">Prepárate para organizar</string>
+    <string name="memory_organize_stage_compile">Resumen de compilación</string>
+    <string name="memory_organize_stage_dedup">Fusionar duplicados</string>
+    <string name="memory_organize_stage_complete">Terminado, fusionado %1$d Artículo</string>
+    <string name="memory_organize_stage_no_duplicates">Organización completada, no se han encontrado recuerdos duplicados que puedan fusionarse.</string>
     <string name="memory_center_fact_count">hechos</string>
-    <string name="memory_center_empty_title">Aún no hay recuerdos</string>
-    <string name="memory_center_empty_subtitle">Sigue hablando con Muse o di “recuerda esto” para añadir un hecho.</string>
-    <string name="memory_center_open_facts">Abrir biblioteca</string>
-    <string name="memory_center_tab_stream">Flujo de memoria</string>
-    <string name="memory_center_tab_constellation">Constelación</string>
-    <string name="memory_center_library_title">Biblioteca de hechos</string>
-    <string name="memory_center_constellation_hint">Los hechos importantes se acercan al centro. Los hechos siguen visibles antes de organizar relaciones.</string>
-    <string name="memory_center_constellation_empty">Aún no hay hechos para mostrar. Añade o crea uno y vuelve aquí.</string>
-    <string name="memory_center_filter_empty">No hay hechos en este ámbito o espacio. Prueba a cambiar los filtros.</string>
-    <string name="memory_center_scope_all">Todo</string>
+    <string name="memory_center_empty_title">Aún no se ha formado ningún recuerdo.</string>
+    <string name="memory_center_empty_subtitle">Sigue hablando con Musa y dímelo explícitamente.“recuerda esto”, los hechos aparecerán aquí.</string>
+    <string name="memory_center_open_facts">Ver base de datos</string>
+    <string name="memory_center_tab_stream">flujo de memoria</string>
+    <string name="memory_center_tab_constellation">constelación de memoria</string>
+    <string name="memory_center_library_title">base de hechos</string>
+    <string name="memory_center_constellation_hint">Los hechos importantes se priorizan más cerca del centro. Cuando las relaciones no se hayan ordenado, los nodos también se mostrarán individualmente.</string>
+    <string name="memory_center_constellation_empty">Actualmente no hay nodos de hechos para mostrar. Primero genere o agregue manualmente un hecho y vuelva a él más tarde.</string>
+    <string name="memory_center_filter_empty">No hay nodos de hechos en el ámbito o espacio actual. Intente cambiar las condiciones del filtro anteriores.</string>
+    <string name="memory_center_scope_all">Todos</string>
     <string name="memory_center_space_default">Predeterminado</string>
     <string name="memory_center_scope_line">%1$s · %2$s</string>
     <string name="memory_center_filter_title">Filtrar</string>
-    <string name="memory_center_filter_scope">Ámbito</string>
-    <string name="memory_center_filter_space">Espacio de memoria</string>
-    <string name="memory_organize_action">Organizar memoria</string>
-    <string name="memory_organize_stage_prepare">Preparando</string>
-    <string name="memory_organize_stage_compile">Compilando resúmenes</string>
-    <string name="memory_organize_stage_dedup">Fusionando duplicados</string>
-    <string name="memory_organize_stage_complete">Organizado, fusionados %1$d</string>
-    <string name="memory_organize_stage_no_duplicates">Organizado, no se encontraron recuerdos duplicados</string>
-    <string name="memory_organize_stage_failed">No se pudo organizar, inténtalo de nuevo</string>
-    <string name="memory_center_stream_subtitle">Agrupados por fecha: hechos acumulados de tus chats, ordenados en una línea temporal</string>
-    <string name="memory_center_facts_subtitle">Gestión por entradas: busca, añade, edita o elimina recuerdos individuales</string>
-    <string name="memory_center_filter_advanced">Filtro avanzado</string>
-    <string name="memory_center_filter_importance">Importancia</string>
-    <string name="memory_center_filter_importance_all">Todo</string>
-    <string name="memory_center_filter_time">Rango de tiempo</string>
-    <string name="memory_center_filter_time_30">Últimos 30 días</string>
-    <string name="memory_center_filter_time_7">Últimos 7 días</string>
-    <string name="memory_center_filter_time_90">Últimos 90 días</string>
-    <string name="memory_center_filter_time_all">Todo el tiempo</string>
-    <string name="memory_contradictions_dismiss_cd">Ahora no</string>
+    <string name="memory_center_filter_scope">Alcance</string>
+    <string name="memory_center_filter_advanced">Filtrado avanzado</string>
+    <string name="memory_center_filter_space">espacio de memoria</string>
+    <string name="memory_center_filter_importance">importancia</string>
+    <string name="memory_center_filter_importance_all">Todos</string>
+    <string name="memory_center_filter_time">rango de tiempo</string>
+    <string name="memory_center_filter_time_all">todo el tiempo</string>
+    <string name="memory_center_filter_time_7">últimos 7 días</string>
+    <string name="memory_center_filter_time_30">últimos 30 días</string>
+    <string name="memory_center_filter_time_90">últimos 90 días</string>
+    <string name="memory_organize_stage_failed">La organización falló, por favor inténtalo de nuevo.</string>
+    <string name="memory_menu_cd">Más acciones</string>
+    <string name="memory_menu_pin">fijar hacia arriba</string>
+    <string name="memory_menu_unpin">Desanclar</string>
+    <string name="memory_pin_failed">La operación del pin falló, inténtelo de nuevo</string>
+    <string name="memory_unpin_failed">No se pudo desbloquear. Inténtalo de nuevo.</string>
+    <string name="memory_menu_importance">Establecer importancia</string>
+    <string name="memory_menu_edit">Editar</string>
+    <string name="memory_menu_delete">Eliminar</string>
+    <string name="memory_delete_confirm_title">Eliminar recuerdo</string>
+    <string name="memory_menu_multi_select">opción múltiple</string>
+    <string name="memory_bulk_delete_confirm_title">Eliminar la memoria seleccionada</string>
+    <string name="memory_bulk_delete_item_name">%1$d memoria</string>
+    <string name="memory_bulk_delete_consequence">será eliminado %1$d La memoria no se puede recuperar después de la eliminación.</string>
+    <string name="memory_contradictions_title">Recuerdos contradictorios por confirmar</string>
+    <string name="memory_contradictions_dismiss_cd">Confirmar y borrar</string>
     <string name="memory_contradictions_keep_a">Conservar la primera</string>
     <string name="memory_contradictions_keep_b">Conservar la segunda</string>
     <string name="memory_evidence_line">Base: %1$s</string>
-    <string name="memory_contradictions_title">Recuerdos contradictorios pendientes de confirmar</string>
-    <string name="memory_delete_confirm_title">Eliminar recuerdo</string>
-    <string name="memory_menu_multi_select">Seleccionar varios</string>
-    <string name="memory_bulk_delete_confirm_title">Eliminar recuerdos seleccionados</string>
-    <string name="memory_bulk_delete_item_name">%1$d recuerdos</string>
-    <string name="memory_bulk_delete_consequence">Se eliminarán %1$d recuerdos y no se podrá deshacer.</string>
-    <string name="memory_pin_failed">Error al fijar. Inténtalo de nuevo.</string>
-    <string name="memory_stats_session_live">Sesión %1$d</string>
-    <string name="memory_stream_mode_list">Lista</string>
-    <string name="memory_stream_mode_timeline">Línea de tiempo</string>
-    <string name="memory_unpin_failed">Error al quitar la fijación. Inténtalo de nuevo.</string>
-    <string name="memory_graph_reset_view">Restablecer vista</string>
-    <!-- v2.2.1: avisos de archivo/recuperación de la biblioteca de memoria -->
-    <string name="memory_archive_rebuilt_hint">La biblioteca de memoria se archivó y reconstruyó por un cambio de versión; parte del historial podría no haberse conservado</string>
-    <string name="memory_archive_recovered">Se recuperaron %1$d memorias del archivo por cambio de versión</string>
+    <string name="memory_timeline_filter_all">Todos</string>
+    <string name="memory_timeline_filter_fact">metahechos</string>
+    <string name="memory_timeline_filter_summary">Resumen</string>
+    <string name="memory_timeline_filter_milestone">hito</string>
+    <string name="memory_center_stream_subtitle">Agregación por tiempo de ocurrencia: los hechos que se precipitan automáticamente en la conversación se organizan en una secuencia a lo largo del tiempo.</string>
+    <string name="memory_center_facts_subtitle">Gestión por ítem: buscar, agregar, editar o eliminar memorias individuales</string>
+    <string name="memory_stream_mode_list">lista</string>
+    <string name="memory_stream_mode_timeline">línea de tiempo</string>
+    <string name="memory_graph_reset_view">restablecer vista</string>
+    <string name="memory_archive_rebuilt_hint">Se detectó que la base de datos de la memoria había sido archivada y reconstruida debido a cambios de versión y la memoria histórica no se retuvo por completo.</string>
+    <string name="memory_archive_recovered">Restaurado desde el archivo de cambio de versión %1$d memoria</string>
     <string name="memory_archive_recovery_title">Archivo de memoria recuperable</string>
-    <string name="memory_archive_recovery_message">Se encontró un archivo de cambio de versión con %1$d resúmenes de sesión y %2$d secciones compiladas. La base de memoria actual está vacía y se puede restaurar de forma segura.</string>
-    <string name="memory_archive_recovery_action">Restaurar archivo</string>
+    <string name="memory_archive_recovery_message">Archivo de cambio de versión detectado, que contiene %1$d resumen de la sesión y %2$d una sección compilada. El banco de memoria está actualmente vacío y se puede restaurar de forma segura.</string>
+    <string name="memory_archive_recovery_action">restaurar archivo</string>
     <string name="memory_archive_recovery_confirm_title">¿Restaurar el archivo de memoria?</string>
-    <string name="memory_archive_recovery_confirm">Esto restaurará los resúmenes y la memoria compilada en la base actual vacía sin sobrescribir datos existentes. ¿Continuar?</string>
-    <string name="memory_archive_recovery_done">Se restauraron %1$d registros de memoria</string>
-    <string name="memory_archive_recovery_failed">Error al restaurar el archivo de memoria: %1$s</string>
-    <string name="memory_center_tab_group_chat">Recuerdos de grupo</string>
-    <string name="memory_group_chat_empty_title">Sin recuerdos de grupo</string>
-    <string name="memory_group_chat_empty_subtitle">Los resúmenes se guardan aquí al cerrar una discusión</string>
-    <string name="memory_group_chat_count">%1$d entradas</string>
+    <string name="memory_archive_recovery_confirm">Restaure los resúmenes de memoria y el contenido compilado del archivo al banco de memoria actualmente vacío sin sobrescribir los datos existentes. ¿Continuar?</string>
+    <string name="memory_archive_recovery_done">Restaurado %1$d registro de memoria</string>
+    <string name="memory_archive_recovery_failed">La recuperación del archivo de memoria falló:%1$s</string>
+    <string name="memory_center_tab_group_chat">Memoria de chat grupal</string>
+    <string name="memory_group_chat_empty_title">Aún no hay memoria de chat grupal</string>
+    <string name="memory_group_chat_empty_subtitle">Una vez finalizada la discusión del chat grupal, se resumirá y almacenará automáticamente aquí.</string>
+    <string name="memory_group_chat_count">total %1$d Artículo</string>
     <string name="memory_group_chat_clear_all">Borrar todo</string>
     <string name="memory_group_chat_meta">%1$s · %2$s</string>
-    <string name="memory_group_chat_delete_confirm_title">Eliminar recuerdo de grupo</string>
-    <string name="memory_group_chat_delete_consequence">Este resumen no se podrá recuperar</string>
-    <string name="memory_group_chat_clear_confirm_title">Borrar todos los recuerdos de grupo</string>
-    <string name="memory_group_chat_clear_item_name">todos los recuerdos de grupo</string>
-    <string name="memory_group_chat_clear_consequence">Se eliminarán todos los resúmenes. No se puede deshacer</string>
-
-    <!-- Fusión de varias memorias: borrador del modelo y confirmación manual -->
-    <string name="memory_center_merge_action">Fusionar</string>
-    <string name="memory_center_merge_title">Fusionar recuerdos</string>
-    <string name="memory_center_merge_sources_title">Recuerdos originales (%1$d)</string>
-    <string name="memory_center_merge_result_label">Resultado fusionado</string>
+    <string name="memory_group_chat_delete_confirm_title">Eliminar memoria de chat grupal</string>
+    <string name="memory_group_chat_delete_consequence">Después de la eliminación, el resumen de la discusión no se puede recuperar.</string>
+    <string name="memory_group_chat_clear_confirm_title">Borrar todos los recuerdos del chat grupal</string>
+    <string name="memory_group_chat_clear_item_name">Todos los recuerdos del chat grupal</string>
+    <string name="memory_group_chat_clear_consequence">Todos los resúmenes de las discusiones del chat grupal se eliminarán y no se podrán deshacer.</string>
+    <string name="memory_center_merge_action">fusionar</string>
+    <string name="memory_center_merge_title">fusionar memoria</string>
+    <string name="memory_center_merge_sources_title">memoria original (%1$d artículo)</string>
+    <string name="memory_center_merge_result_label">Fusionar resultados</string>
     <string name="memory_center_merge_confirm">Confirmar fusión</string>
     <string name="memory_center_merge_running">Fusionando…</string>
-
-    <!-- Insignias de estado: la lista y el detalle comparten un mismo criterio -->
-    <string name="memory_status_merged">Fusionada</string>
-    <string name="memory_status_suppressed">Desvanecida</string>
-    <string name="memory_status_superseded">Reemplazada</string>
-    <string name="memory_status_merged_detail">Fusionada en otro recuerdo, así que ya no se recupera automáticamente. El texto se conserva aquí para consultarlo.</string>
-    <string name="memory_status_suppressed_detail">Desvanecida: sin uso durante el tiempo suficiente para salir de la recuperación automática. La fila sigue aquí y vuelve cuando se la vuelve a encontrar o se la marca como más importante.</string>
-    <string name="memory_status_superseded_detail">Sustituida por un recuerdo más reciente, así que ya no se usa como el hecho actual.</string>
-
-    <!-- Mensajes de fallo al fusionar -->
-    <string name="memory_merge_error_min_items">Selecciona al menos dos recuerdos para fusionar</string>
-    <string name="memory_merge_error_no_model">No hay un modelo configurado, no se puede fusionar</string>
-    <string name="memory_merge_error_mixed_scope">Solo se pueden fusionar recuerdos del mismo espacio</string>
+    <string name="memory_status_merged">Fusionado</string>
+    <string name="memory_status_suppressed">Apareció</string>
+    <string name="memory_status_superseded">reemplazado</string>
+    <string name="memory_status_merged_detail">Se ha fusionado con otra memoria y ya no participará en la recuperación automática; este texto todavía está disponible aquí para su revisión.</string>
+    <string name="memory_status_suppressed_detail">Apareció: No se ha utilizado durante mucho tiempo y ha salido de la recuperación automática; la fila sigue ahí y volverá después de ser recuperada nuevamente o si aumenta la importancia.</string>
+    <string name="memory_status_superseded_detail">ha sido reemplazada por una memoria actualizada y ya no se utiliza como hecho actual.</string>
+    <string name="memory_merge_error_min_items">Seleccione al menos dos recuerdos para fusionar</string>
+    <string name="memory_merge_error_no_model">El modelo no está configurado y no se puede fusionar</string>
+    <string name="memory_merge_error_mixed_scope">Sólo se pueden fusionar recuerdos en el mismo espacio.</string>
     <string name="memory_merge_error_generate_failed">No se pudieron fusionar estos recuerdos</string>
-    <string name="memory_merge_error_empty_result">El resultado de la fusión no puede estar vacío</string>
-    <string name="memory_merge_error_commit_failed">La fusión falló, los recuerdos no cambiaron</string>
+    <string name="memory_merge_error_empty_result">El resultado combinado no puede estar vacío</string>
+    <string name="memory_merge_error_commit_failed">Error al fusionar, la memoria no ha cambiado</string>
     <string name="memory_space_default_name">Predeterminado</string>
 </resources>

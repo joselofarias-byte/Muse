@@ -170,8 +170,8 @@
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
     <string name="assistant_detail_share_muse_card">ミューズキャラクターカードをシェアする</string>
     <string name="assistant_detail_share_muse_card_desc">ビジュアルカードを生成し、システム経由で共有</string>
-    <string name="assistant_detail_share_muse_json">Muse JSONを共有する</string>
-    <string name="assistant_detail_share_muse_json_desc">システム経由で Muse JSON を共有する</string>
+    <string name="assistant_detail_share_muse_json">Musa JSONを共有する</string>
+    <string name="assistant_detail_share_muse_json_desc">システム経由で Musa JSON を共有する</string>
     <string name="assistant_detail_share_pack">キャラクターパックを送信</string>
     <string name="assistant_detail_share_pack_desc">アバター付きの完全なキャラクターパックを任意のアプリで送信できます。受信側はそのままインポート可能</string>
     <string name="assistant_import_preview_title">キャラクターカードをインポート</string>
