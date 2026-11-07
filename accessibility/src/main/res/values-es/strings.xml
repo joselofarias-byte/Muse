@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Servicio de automatización de la interfaz de Musa. Permite a Musa leer el contenido de la pantalla de cualquier aplicación y realizar acciones como tocar, deslizar e introducir texto para controlar el dispositivo. Actívalo solo si confías en este servicio; no supervisa la actividad en segundo plano.</string>
+</resources>
