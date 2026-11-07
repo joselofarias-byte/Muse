@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "./i18n/apiErrors.js";
 import type { ChatMessage, ChatStreamEvent, ProviderConfig } from "@muse/contracts";
 import { FetchProviderTransport } from "@muse/provider";
 // S6：发命令时声明的协议版本与「资源 ↔ App 是否匹配」的判断共用同一个常量，
@@ -63,7 +64,7 @@ export async function apiJson<T>(path: string, init: RequestInit = {}, session?:
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   const body: unknown = await response.json();
   if (!response.ok) {
-    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : `request failed (${response.status})`;
+    const message = apiErrorMessage(body, `Solicitud fallida (${response.status})`);
     throw new Error(message);
   }
   return body as T;
@@ -155,7 +156,7 @@ export async function completeFile(session: ClientSession, input: { fileId: stri
 
 export async function registerPushSubscription(session: ClientSession, subscription: PushSubscription): Promise<void> {
   const jsonSubscription = subscription.toJSON();
-  if (!jsonSubscription.endpoint || !jsonSubscription.keys?.p256dh || !jsonSubscription.keys.auth) throw new Error("browser push subscription is incomplete");
+  if (!jsonSubscription.endpoint || !jsonSubscription.keys?.p256dh || !jsonSubscription.keys.auth) throw new Error("La suscripción a notificaciones del navegador está incompleta");
   await apiJson("/api/v1/push/subscriptions", { method: "POST", body: JSON.stringify({ endpoint: jsonSubscription.endpoint, p256dh: jsonSubscription.keys.p256dh, auth: jsonSubscription.keys.auth, userAgent: navigator.userAgent }) }, session);
 }
 
@@ -527,7 +528,7 @@ export async function hostPinLogin(pin: string): Promise<void> {
   });
   const body: unknown = await response.json();
   if (!response.ok) {
-    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "Host PIN 登录失败";
+    const message = body && typeof body === "object" && "message" in body && typeof body.message === "string" ? body.message : "No se pudo iniciar sesión con el PIN del teléfono";
     throw new Error(message);
   }
 }
@@ -614,7 +615,7 @@ export class HostConnection {
 
   send(command: HostCommand): void {
     if (this.closed || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error("Muse Host 正在重新连接");
+      throw new Error("Reconectando con Musa en el teléfono");
     }
     const enriched = command.type === "state.sync" && command.cursor === undefined
       ? { ...command, protocolVersion: CLIENT_PROTOCOL_VERSION, cursor: this.lastCursor }
@@ -667,7 +668,7 @@ export async function connectHost(): Promise<HostConnection> {
           if (!settled) {
             settled = true;
             candidate.close();
-            reject(new Error("无法连接 Muse Host WebSocket"));
+            reject(new Error("No se puede establecer la conexión WebSocket con Musa en el teléfono"));
           }
         };
         candidate.addEventListener("open", () => {
@@ -685,7 +686,7 @@ export async function connectHost(): Promise<HostConnection> {
       await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
     }
   }
-  throw new Error("无法连接 Muse Host WebSocket");
+  throw new Error("No se puede establecer la conexión WebSocket con Musa en el teléfono");
 }
 
 export interface StreamChatInput {
@@ -715,7 +716,7 @@ export async function* streamChat(input: StreamChatInput): AsyncGenerator<ChatSt
     body: JSON.stringify({ sessionId: input.sessionId, messages: input.messages, provider: input.provider, providerId: input.providerId, model: input.model, mode: input.mode ?? "byok" }),
     ...(input.signal === undefined ? {} : { signal: input.signal }),
   });
-  if (!response.ok || !response.body) throw new Error(`chat request failed (${response.status})`);
+  if (!response.ok || !response.body) throw new Error(`Error en la solicitud de chat (${response.status})`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";

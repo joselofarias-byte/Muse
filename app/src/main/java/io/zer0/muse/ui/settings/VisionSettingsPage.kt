@@ -220,7 +220,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                     scope.launch {
                                         val result = resultOf {
                                             visionBridge.prepare(
-                                                text = "探针测试",
+                                                text = "Prueba de diagnóstico",
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
                                                 userRequest = "探针测试:这张图是什么颜色?",
                                                 sessionId = null, // 不走缓存 key 维度的 session
@@ -239,7 +239,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             )
                                             else -> ProbeState.Failed(
                                                 result.getOrNull()?.text
-                                                    ?: "视觉模型返回空结果或降级",
+                                                    ?: "El modelo de visión no devolvió resultados o se utilizó un modo alternativo",
                                             )
                                         }
                                     }

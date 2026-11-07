@@ -88,10 +88,10 @@ class KlingVideoProvider(
     override suspend fun submit(request: VideoGenRequest): VideoSubmitResult = withContext(Dispatchers.IO) {
         resultOf {
             if (request.apiKey.isBlank()) {
-                error("Kling API key 为空")
+                error("La clave API de Kling está vacía")
             }
             if (request.prompt.isBlank()) {
-                error("Prompt 为空")
+                error("La descripción está vacía")
             }
 
             val images = request.referenceImages.filter { it.isNotBlank() }
@@ -120,7 +120,7 @@ class KlingVideoProvider(
                 if (!resp.isSuccessful) {
                     val apiMsg = parseApiErrorMessage(respBody)
                     error(
-                        "Kling submit 失败: HTTP ${resp.code}" +
+                        "Error al enviar la solicitud a Kling: HTTP ${resp.code}" +
                             (apiMsg?.let { ": $it" }
                                 ?: ProviderError.safeErrorDetail(respBody)?.let { ": $it" }.orEmpty()),
                     )
@@ -130,12 +130,12 @@ class KlingVideoProvider(
                 // 可灵 API 业务错误:code != 0
                 if (code != null && code != "0") {
                     val msg = root["message"]?.jsonPrimitive?.content ?: "unknown error"
-                    error("Kling submit API error: code=$code message=$msg")
+                    error("Error de la API de Kling al enviar la solicitud: code=$code message=$msg")
                 }
                 val data = root["data"]?.jsonObject
-                    ?: error("Kling submit 响应缺少 data: $respBody")
+                    ?: error("La respuesta de envío de Kling no contiene data: $respBody")
                 val taskId = data["task_id"]?.jsonPrimitive?.content
-                    ?: error("Kling submit 响应缺少 task_id: $respBody")
+                    ?: error("La respuesta de envío de Kling no contiene task_id: $respBody")
                 apiKeyForQuery[taskId] = request.apiKey
                 baseUrlForQuery[taskId] = request.baseUrl?.trim()?.trimEnd('/')?.ifBlank { baseUrl } ?: baseUrl
                 Logger.i(TAG, "submit 成功: taskId=$taskId")
@@ -166,7 +166,7 @@ class KlingVideoProvider(
                 if (!resp.isSuccessful) {
                     return@use VideoPollResult(
                         status = PollStatus.PENDING,
-                        errorMessage = "Kling query HTTP ${resp.code}: $respBody",
+                        errorMessage = "Error HTTP al consultar Kling: ${resp.code}: $respBody",
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
@@ -178,7 +178,7 @@ class KlingVideoProvider(
                     baseUrlForQuery.remove(taskId)
                     return@use VideoPollResult(
                         status = PollStatus.FAILED,
-                        errorMessage = "Kling query API error: code=$code message=$msg",
+                        errorMessage = "Error de la API de Kling al consultar la tarea: code=$code message=$msg",
                     )
                 }
                 val data = root["data"]?.jsonObject
@@ -187,7 +187,7 @@ class KlingVideoProvider(
                         baseUrlForQuery.remove(taskId)
                         return@use VideoPollResult(
                             status = PollStatus.FAILED,
-                            errorMessage = "Kling query 响应缺少 data: $respBody",
+                            errorMessage = "La respuesta de consulta de Kling no contiene data: $respBody",
                         )
                     }
 
@@ -206,7 +206,7 @@ class KlingVideoProvider(
                         if (videoUrl == null) {
                             VideoPollResult(
                                 status = PollStatus.FAILED,
-                                errorMessage = "Kling 任务成功但未找到视频 URL: $respBody",
+                                errorMessage = "La tarea de Kling se completó, pero no se encontró la URL del vídeo: $respBody",
                             )
                         } else {
                             VideoPollResult(status = status, videoUrl = videoUrl)
@@ -215,7 +215,7 @@ class KlingVideoProvider(
                     PollStatus.FAILED -> {
                         val failInfo = data["task_fail_info"]?.jsonObject
                         val errMsg = failInfo?.get("message")?.jsonPrimitive?.content
-                            ?: "Kling 任务失败(status=$statusStr)"
+                            ?: "La tarea de Kling falló (status=$statusStr)"
                         apiKeyForQuery.remove(taskId)
                         baseUrlForQuery.remove(taskId)
                         VideoPollResult(status = status, errorMessage = errMsg)
@@ -228,7 +228,7 @@ class KlingVideoProvider(
             is io.zer0.common.Result.Success -> r.data
             is io.zer0.common.Result.Error -> VideoPollResult(
                 status = PollStatus.PENDING,
-                errorMessage = "Kling poll 异常: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
+                errorMessage = "Error al consultar la tarea de Kling: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
             )
         }
     }
@@ -292,7 +292,7 @@ class KlingVideoProvider(
     private fun readBody(resp: Response): String {
         val bytes = resp.body?.bytes() ?: return ""
         if (bytes.size > MAX_RESPONSE_BYTES) {
-            error("Kling response too large: ${bytes.size} bytes")
+            error("La respuesta de Kling es demasiado grande: ${bytes.size} bytes")
         }
         return String(bytes, Charsets.UTF_8)
     }

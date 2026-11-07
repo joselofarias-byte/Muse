@@ -550,7 +550,7 @@ internal fun DateSeparator(timestamp: Long) {
         val timeSdf = java.text.SimpleDateFormat(MuseDateFormats.TIME_SHORT, java.util.Locale.getDefault())
         val timeText = timeSdf.format(java.util.Date(timestamp))
         if (isToday) {
-            "今天 $timeText"
+            "Hoy $timeText"
         } else {
             val dateSdf = MuseDateFormats.dateTimeShort()
             dateSdf.format(java.util.Date(timestamp))

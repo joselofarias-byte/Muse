@@ -33,15 +33,16 @@ class AppSettingsStore(private val context: Context) {
     private val languageSyncCache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
     private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
 
-    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }
+    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "es" }
 
     init {
         // 历史用户升级到 v1.131+ 时 SP 为空，需从 DataStore 拷贝一次；异步执行不阻塞启动。
         cacheScope.launch {
             try {
-                val dsLang = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }.first()
-                if (languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
-                    languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang).apply()
+                val dsLang = store.data.first()[KEY_LANGUAGE]
+                // An old implicit system cache must not override the new default.
+                if (dsLang == null || languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
+                    languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang ?: "es").apply()
                 }
             } catch (e: Exception) {
                 Logger.w("AppSettingsStore", "language SP cache migration failed: ${e.message}", e)
@@ -55,7 +56,7 @@ class AppSettingsStore(private val context: Context) {
     }
 
     /** 同步读取语言设置，避免冷启动时主线程阻塞读 DataStore。 */
-    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "system") ?: "system"
+    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "es") ?: "es"
 
     private companion object {
         private val KEY_LANGUAGE = stringPreferencesKey("language")
