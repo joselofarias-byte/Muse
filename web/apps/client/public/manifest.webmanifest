@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Muse",
-  "short_name": "Muse",
-  "description": "持续认识你的 AI",
+  "name": "Musa",
+  "short_name": "Musa",
+  "description": "Tu IA que sigue conociéndote",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
