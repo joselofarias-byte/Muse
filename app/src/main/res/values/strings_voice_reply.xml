@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 「多常用语音回你」档位文案（独立文件，避开并行修改中的 strings）。 -->
 <resources>
-    <string name="agent_directives_voice_section">语音回复频率</string>
-    <string name="agent_directives_voice_hint">这只调整它的习惯，不做硬拦截：你当场要语音，它仍会发。</string>
-    <string name="voice_reply_never">从不主动</string>
-    <string name="voice_reply_rarely">偶尔（默认）</string>
-    <string name="voice_reply_often">常用</string>
-    <string name="voice_reply_always">总是</string>
-    <string name="voice_timbre_entry">语音音色与语速</string>
-    <string name="voice_timbre_entry_desc">在「设置 → 多媒体」里统一配置，这里不另存一份</string>
+    <string name="agent_directives_voice_section">Frecuencia de respuestas de voz</string>
+    <string name="agent_directives_voice_hint">Solo ajusta su costumbre; no bloquea una petición explícita de voz.</string>
+    <string name="voice_reply_never">Nunca por iniciativa propia</string>
+    <string name="voice_reply_rarely">A veces (predeterminado)</string>
+    <string name="voice_reply_often">A menudo</string>
+    <string name="voice_reply_always">Siempre</string>
+    <string name="voice_timbre_entry">Timbre y velocidad de voz</string>
+    <string name="voice_timbre_entry_desc">Se configura una vez en Ajustes → Multimedia; no hay una segunda copia</string>
 </resources>
