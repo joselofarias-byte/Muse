@@ -65,9 +65,9 @@
     <string name="notif_listener_cleared_toast">Registros de notificação apagados</string>
     <string name="notif_listener_clear_records">Limpar registros</string>
     <string name="notif_listener_feature_title">Descrição do recurso</string>
-    <string name="notif_listener_feature_desc">Uma vez autorizado, o Muse pode detectar notificações de outros aplicativos como fontes de eventos para a IA consultar no chat.</string>
+    <string name="notif_listener_feature_desc">Uma vez autorizado, o Musa pode detectar notificações de outros aplicativos como fontes de eventos para a IA consultar no chat.</string>
     <string name="notif_listener_privacy_title">Limite de privacidade</string>
-    <string name="notif_listener_privacy_desc">• O conteúdo da notificação é armazenado apenas localmente (máximo de 50 entradas, a mais antiga é descartada quando cheia)\n• A UI do sistema e as próprias notificações do Muse são filtradas\n• Nenhum dado de notificação é carregado em nenhum servidor\n• Você pode \"Limpar registros\" aqui ou revogar o acesso nas configurações do sistema a qualquer momento</string>
+    <string name="notif_listener_privacy_desc">• O conteúdo da notificação é armazenado apenas localmente (máximo de 50 entradas, a mais antiga é descartada quando cheia)\n• A UI do sistema e as próprias notificações do Musa são filtradas\n• Nenhum dado de notificação é carregado em nenhum servidor\n• Você pode \"Limpar registros\" aqui ou revogar o acesso nas configurações do sistema a qualquer momento</string>
     <string name="notif_listener_recent_header">Notificações recentes (%1$d/50)</string>
     <string name="notif_listener_empty_connected">Ainda não há registros de notificação\nNovas notificações aparecerão aqui automaticamente assim que autorizadas</string>
     <string name="notif_listener_empty_disconnected">Ainda não autorizado\nToque primeiro em \"Conceder acesso\" acima</string>
@@ -79,7 +79,7 @@
     <string name="safe_mode_data_recovery_title">Guia de recuperação de dados</string>
     <string name="safe_mode_data_recovery_desc">Esta falha não afeta seus dados locais; conversas e configurações estão intactas. Para restaurar de um backup na nuvem: após reiniciar, vá em Configurações → Backup de dados → Restaurar da nuvem.</string>
     <string name="safe_mode_data_recovery_ok">Entendi</string>
-    <string name="safe_mode_continue_normal_desc">Mantenha conversas e configurações e tente abrir o Muse novamente</string>
+    <string name="safe_mode_continue_normal_desc">Mantenha conversas e configurações e tente abrir o Musa novamente</string>
     <string name="safe_mode_disable_plugins">Desativar todos os plugins e reiniciar</string>
     <string name="safe_mode_disable_plugins_desc">Plugins sao a causa mais comum de falhas. O app inicia normalmente; voce pode restaura-los na pagina de plugins.</string>
     <string name="plugin_kill_switch_title">Todos os plugins estao desativados</string>
@@ -98,9 +98,9 @@
     <string name="workspace_location_restart">Reiniciar app</string>
     <string name="safe_mode_restore_plugins">Restaurar todos os plugins e reiniciar</string>
     <string name="safe_mode_view_full_log_desc">Veja ou compartilhe o registro completo para ajudar a diagnosticar o problema</string>
-    <string name="safe_mode_clear_data_restart_desc">Exclui conversas, configurações e arquivos locais; use apenas quando o Muse não abrir normalmente</string>
+    <string name="safe_mode_clear_data_restart_desc">Exclui conversas, configurações e arquivos locais; use apenas quando o Musa não abrir normalmente</string>
     <string name="safe_mode_clear_data_confirm_title">Excluir todos os dados?</string>
-    <string name="safe_mode_clear_data_confirm_desc">Isso exclui conversas, configurações, avatares e arquivos locais e não pode ser desfeito. Use apenas se o Muse continuar sem abrir normalmente.</string>
+    <string name="safe_mode_clear_data_confirm_desc">Isso exclui conversas, configurações, avatares e arquivos locais e não pode ser desfeito. Use apenas se o Musa continuar sem abrir normalmente.</string>
     <string name="safe_mode_clear_data_confirm_action">Excluir todos os dados</string>
     <string name="safe_mode_copy_crash_info_desc">Copie o horário e a pilha de erros para enviar em um relatório</string>
     <string name="safe_mode_data_recovery_desc_short">Veja o que será mantido e como restaurar um backup</string>

@@ -168,10 +168,10 @@
     <string name="assistant_detail_export_png_desc">Формат SillyTavern (с метаданными)</string>
     <string name="assistant_detail_export_json">Экспортировать как карточку персонажа JSON</string>
     <string name="assistant_detail_export_json_desc">SillyTavern V2 JSON</string>
-    <string name="assistant_detail_share_muse_card">Поделиться карточкой персонажа Muse</string>
+    <string name="assistant_detail_share_muse_card">Поделиться карточкой персонажа Musa</string>
     <string name="assistant_detail_share_muse_card_desc">Создайте визуальную карту и поделитесь ею через систему</string>
-    <string name="assistant_detail_share_muse_json">Поделиться Muse в формате JSON</string>
-    <string name="assistant_detail_share_muse_json_desc">Поделитесь JSON Muse через систему</string>
+    <string name="assistant_detail_share_muse_json">Поделиться Musa в формате JSON</string>
+    <string name="assistant_detail_share_muse_json_desc">Поделитесь JSON Musa через систему</string>
     <string name="assistant_detail_share_pack">Отправить карточку персонажа</string>
     <string name="assistant_detail_share_pack_desc">Отправьте полную карточку (с аватаром) через любое приложение — получатель сможет сразу импортировать</string>
     <string name="assistant_import_preview_title">Импорт карточки персонажа</string>

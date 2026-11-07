@@ -4,7 +4,7 @@
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">Muse チャットのクイック起動</string>
+    <string name="widget_description">Musa チャットのクイック起動</string>
     <string name="widget_new_session">新しいチャット</string>
     <string name="widget_recent_sessions">最近のチャット</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -228,7 +228,7 @@
     <string name="proxy_bypass_hint">カンマ区切り。.サフィックス、*. ワイルドカード、IP プレフィックスに対応。ローカルモデルや LAN のサービスはここに追加してください。</string>
     <string name="proxy_test_action">接続テスト</string>
     <string name="proxy_test_running">テスト中…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">有効なプロキシアドレスとポートを入力してください</string>
     <string name="proxy_test_connected">プロキシ接続 OK、</string>
     <string name="proxy_test_need_auth">プロキシが認証を要求しています。ユーザー名とパスワードを確認してください</string>

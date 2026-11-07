@@ -3,14 +3,14 @@
      单独成文件而不是塞进 strings_settings_sub.xml，是为了让新增条目
      不必去动那份正被并行修改的文件。 -->
 <resources>
-    <string name="settings_web_search_order_title">搜索顺序</string>
-    <string name="settings_web_search_order_subtitle">按此顺序依次尝试搜索服务；未配置的引擎会自动跳过。</string>
-    <string name="settings_web_search_order_move_up">上移</string>
-    <string name="settings_web_search_order_move_down">下移</string>
-    <string name="settings_web_search_order_reset">恢复默认顺序</string>
-    <string name="settings_web_search_key_verify">验证</string>
-    <string name="settings_web_search_key_verify_ok">可用：返回 %1$d 条结果</string>
-    <string name="settings_web_search_key_verify_failed">验证失败：%1$s</string>
-    <string name="settings_web_search_key_verify_no_key">该引擎还没有可用的 Key</string>
-    <string name="settings_web_search_key_verify_empty">连接正常，但没有返回结果</string>
+    <string name="settings_web_search_order_title">Orden de búsqueda</string>
+    <string name="settings_web_search_order_subtitle">Los servicios de búsqueda se prueban en este orden; los no configurados se omiten.</string>
+    <string name="settings_web_search_order_move_up">Subir</string>
+    <string name="settings_web_search_order_move_down">Bajar</string>
+    <string name="settings_web_search_order_reset">Restablecer el orden predeterminado</string>
+    <string name="settings_web_search_key_verify">Verificar</string>
+    <string name="settings_web_search_key_verify_ok">Funciona: devolvió %1$d resultados</string>
+    <string name="settings_web_search_key_verify_failed">Error de verificación: %1$s</string>
+    <string name="settings_web_search_key_verify_no_key">Este motor aún no tiene una clave utilizable</string>
+    <string name="settings_web_search_key_verify_empty">Se contactó el servicio, pero no devolvió resultados</string>
 </resources>
