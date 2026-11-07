@@ -2,11 +2,11 @@
 <resources>
     <string name="automation_settings_title">Автоматизация UI</string>
     <string name="automation_settings_subtitle">Разрешения на чтение и управление экраном</string>
-    <string name="accessibility_service_description">Позволяет Muse читать содержимое экрана и имитировать касания, свайпы и другие жесты для автоматизации задач между приложениями. Muse не выполняет действия без вашего подтверждения.</string>
-    <string name="automation_permission_a11y">UI-автоматизация Muse</string>
+    <string name="accessibility_service_description">Позволяет Musa читать содержимое экрана и имитировать касания, свайпы и другие жесты для автоматизации задач между приложениями. Musa не выполняет действия без вашего подтверждения.</string>
+    <string name="automation_permission_a11y">UI-автоматизация Musa</string>
     <string name="automation_settings_unavailable">Не удалось открыть системные настройки. Откройте их вручную, чтобы включить разрешение.</string>
     <!-- Страница разрешений автоматизации UI (v1.x): карточки уровней, запрос Root и автотест -->
-    <string name="automation_settings_intro">Позвольте Muse видеть экран и управлять устройством за вас, автоматизируя задачи между приложениями</string>
+    <string name="automation_settings_intro">Позвольте Musa видеть экран и управлять устройством за вас, автоматизируя задачи между приложениями</string>
     <string name="automation_tier_level">Уровень %1$d</string>
     <string name="automation_tier_accessibility">Служба специальных возможностей</string>
     <string name="automation_tier_accessibility_desc">Читает содержимое экрана и имитирует касания и свайпы. Самый простой уровень; рекомендуется включить.</string>

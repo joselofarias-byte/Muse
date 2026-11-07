@@ -260,7 +260,7 @@
     <string name="tool_battery_charging">charging</string>
     <string name="tool_battery_not_charging">not charging</string>
     <string name="tool_no_notifications">No notification records</string>
-    <string name="tool_notification_not_connected">Notification listener not connected; go to system Settings → Notification access and authorize Muse</string>
+    <string name="tool_notification_not_connected">Notification listener not connected; go to system Settings → Notification access and authorize Musa</string>
     <string name="tool_missing_param_location">Missing parameter: location (city name)</string>
     <string name="tool_weather_api_error">Weather API request failed: HTTP %1$d</string>
     <string name="tool_weather_no_data">No weather data for %1$s</string>
@@ -293,7 +293,7 @@
     <string name="tool_write_verified"> (verified)</string>
     <string name="tool_write_permission_denied">The system refused the write (a permission such as Modify system settings is likely missing)</string>
     <string name="automation_handoff_title">Virtual display handoff</string>
-    <string name="assist_service_label">Muse assistant</string>
+    <string name="assist_service_label">Musa assistant</string>
     <string name="automation_handoff_desc">%1$d display(s) left by the assistant; preview and take over</string>
     <string name="automation_handoff_bring_main">Bring to main screen</string>
     <string name="automation_handoff_bring_main_hint">Only the app is brought to the main screen; the previous page and input state depend on the app and may be lost.</string>
@@ -459,7 +459,7 @@
     <string name="app_control_reason_not_found">app not found — use app_list to look up its name and package name</string>
     <string name="app_control_reason_need_elevated">this action needs Shizuku/adb or Root access, which is not available on this device; use another approach or grant it in settings</string>
     <string name="app_control_reason_system_app">this action is not allowed on system apps</string>
-    <string name="app_control_reason_self">this action is not allowed on Muse itself</string>
+    <string name="app_control_reason_self">this action is not allowed on Musa itself</string>
     <string name="app_control_via_app">app permission</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

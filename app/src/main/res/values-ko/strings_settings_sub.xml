@@ -81,7 +81,7 @@
     <string name="settings_theme_font_preview_note">작은 메모 · 보조 힌트용</string>
     <!-- Phase 4: 말풍선 스킨 선택/미리보기 -->
     <string name="settings_bubble_skin_section">말풍선 스킨</string>
-    <string name="settings_bubble_skin_builtin">Muse 기본 말풍선</string>
+    <string name="settings_bubble_skin_builtin">Musa 기본 말풍선</string>
     <string name="settings_bubble_skin_builtin_desc">내장 스킨, 기본과 동일한 모양</string>
     <string name="settings_bubble_skin_custom_desc">사용자 지정 말풍선 스킨</string>
     <string name="settings_bubble_skin_import">스킨 가져오기</string>
@@ -204,7 +204,7 @@
     <string name="settings_memory_keep_awake">화면 켜짐 유지</string>
     <string name="settings_memory_keep_awake_subtitle">생성 중에만 유지하고, 배터리 부족 및 미충전 시 유지하지 않음</string>
     <string name="settings_memory_auto_launch">자동 실행</string>
-    <string name="settings_memory_auto_launch_subtitle">장치가 부팅되면 Muse를 자동으로 시작합니다.</string>
+    <string name="settings_memory_auto_launch_subtitle">장치가 부팅되면 Musa를 자동으로 시작합니다.</string>
     <string name="settings_memory_notification_section">알림</string>
     <string name="settings_memory_reply_notification_cd">답장 완료 알림</string>
     <string name="settings_memory_reply_notification">답장 완료 알림</string>
@@ -213,7 +213,7 @@
     <!-- Data Import -->
     <string name="settings_import_page_title">데이터 가져오기</string>
     <string name="settings_import_migrate_title">다른 앱에서 데이터 마이그레이션</string>
-    <string name="settings_import_migrate_desc">이전에 RikkaHub 또는 Kelivo를 사용한 경우 해당 백업 파일을 Muse로 가져올 수 있습니다.</string>
+    <string name="settings_import_migrate_desc">이전에 RikkaHub 또는 Kelivo를 사용한 경우 해당 백업 파일을 Musa로 가져올 수 있습니다.</string>
     <string name="settings_import_step1">1단계: 백업을 내보내는 방법 알아보기</string>
     <string name="settings_import_rikkahub_desc">안드로이드 AI 채팅 클라이언트</string>
     <string name="settings_import_rikkahub_step1">1. RikkaHub 앱에서 설정을 엽니다.</string>
@@ -530,7 +530,7 @@
     <string name="settings_import_chatgpt_step1">1. ChatGPT 열기 → 설정 → 프로필 → 데이터 제어</string>
     <string name="settings_import_chatgpt_step2">2. \'데이터 내보내기\'를 누르면 OpenAI가 zip을 이메일로 보냅니다</string>
     <string name="settings_import_chatgpt_step3">3. zip을 휴대폰에 다운로드하거나 압축을 풀고 conversations.json을 선택</string>
-    <string name="settings_import_chatgpt_step4">4. Muse에서 해당 파일을 선택하면 대화가 자동으로 가져와집니다</string>
+    <string name="settings_import_chatgpt_step4">4. Musa에서 해당 파일을 선택하면 대화가 자동으로 가져와집니다</string>
     <string name="settings_provider_media_gen_section">미디어 생성 모델</string>
     <string name="settings_asr_entry_title">음성 인식 엔진</string>
     <string name="settings_asr_entry_subtitle">음성-텍스트 엔진 선택(예: Paraformer / Whisper)</string>
@@ -669,7 +669,7 @@
     <string name="settings_preview_user_bubble">내 메시지 미리보기</string>
     <string name="settings_preview_assistant_bubble">AI 답장 미리보기. 글자 크기, 자간, 모서리가 실시간으로 바뀝니다.</string>
     <string name="settings_preview_timestamp">14:30</string>
-    <string name="settings_preview_model_name">Muse · 샘플 모델</string>
+    <string name="settings_preview_model_name">Musa · 샘플 모델</string>
     <string name="settings_theme_liquid_glass">리퀴드 글래스 효과</string>
     <string name="settings_theme_liquid_glass_desc">상단 바, 입력 바, 메시지 버블의 유리 질감.</string>
     <string name="settings_glass_off">끄기</string>
@@ -694,11 +694,11 @@
     <string name="settings_backup_include_secrets_subtitle">API 키와 로그인 자격 증명이 백업 파일에 평문으로 저장됩니다. 안전하게 보관하세요.</string>
     <string name="oauth_device_open_page">인증 페이지 열기</string>
     <string name="oauth_device_open_failed">브라우저를 열 수 없습니다</string>
-    <string name="keep_alive_notification_title">Muse가 백그라운드에서 실행 중</string>
+    <string name="keep_alive_notification_title">Musa가 백그라운드에서 실행 중</string>
     <string name="keep_alive_notification_text">예약 작업과 능동 메시지를 유지합니다</string>
     <string name="settings_keep_alive_title">백그라운드 상주</string>
     <string name="settings_keep_alive_subtitle">상주 알림으로 프로세스를 포그라운드에 유지합니다</string>
-    <string name="settings_keep_alive_hint">Muse는 상주 알림을 표시합니다. Android가 포그라운드 서비스에 요구하는 사항이며 숨길 수 없습니다. 일부 중국 ROM에서는 자동 시작도 허용해야 합니다.</string>
+    <string name="settings_keep_alive_hint">Musa는 상주 알림을 표시합니다. Android가 포그라운드 서비스에 요구하는 사항이며 숨길 수 없습니다. 일부 중국 ROM에서는 자동 시작도 허용해야 합니다.</string>
     <string name="settings_keep_alive_wakelock_title">화면이 꺼져도 연결 유지</string>
     <string name="settings_keep_alive_wakelock_subtitle">능동 메시지를 더 빨리 받지만 배터리를 더 씁니다</string>
     <string name="settings_keep_alive_battery_title">배터리 최적화 해제</string>
@@ -716,7 +716,7 @@
     <string name="settings_keep_alive_notification_custom_title">알림 문구</string>
     <string name="settings_keep_alive_notification_custom_subtitle">상주 알림의 제목과 본문을 사용자 지정</string>
     <string name="settings_keep_alive_notification_custom_hint">비워 두면 기본 문구를 사용합니다.</string>
-    <string name="settings_keep_alive_notification_title_placeholder">기본: Muse가 백그라운드에서 실행 중</string>
+    <string name="settings_keep_alive_notification_title_placeholder">기본: Musa가 백그라운드에서 실행 중</string>
     <string name="settings_keep_alive_notification_text_placeholder">기본: 예약 작업과 능동 메시지를 유지합니다</string>
     <string name="settings_relationship_proactive_enabled">능동 메시지 허용</string>
     <string name="settings_relationship_proactive_enabled_subtitle">끄면 이 캐릭터가 먼저 연락하지 않습니다. 당신이 시작하는 대화는 가능합니다</string>

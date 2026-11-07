@@ -337,7 +337,7 @@
     <string name="stats_hourly_chart_cd">24時間メッセージ分布棒グラフ</string>
     <string name="stats_other">その他</string>
     <string name="stats_model_donut_cd">モデル使用分布ドーナツチャート</string>
-    <string name="stats_summary_header">===== Muse 統計概要 =====</string>
+    <string name="stats_summary_header">===== Musa 統計概要 =====</string>
     <string name="stats_summary_total_sessions">合計セッション数: %1$d</string>
     <string name="stats_summary_total_messages">総メッセージ数: %1$d</string>
     <string name="stats_summary_ai_replies">AI 返信数: %1$d</string>
@@ -560,11 +560,11 @@
     <string name="cover_empty_hint">右下のボタンをタップして画像をインポートするか、AIにカバーを生成させます</string>
     <string name="quick_notes_settings_title">クイックキャプチャ設定</string>
     <string name="quick_capture_swipe_title">スワイプでクイックキャプチャを表示</string>
-    <string name="quick_capture_swipe_desc">Muse 内の右端にクイックキャプチャのハンドルを表示</string>
+    <string name="quick_capture_swipe_desc">Musa 内の右端にクイックキャプチャのハンドルを表示</string>
     <string name="quick_capture_overlay_title">システムオーバーレイを有効化</string>
-    <string name="quick_capture_overlay_desc">Muse を離れた後もフローティングカプセルを利用可能に保つ</string>
+    <string name="quick_capture_overlay_desc">Musa を離れた後もフローティングカプセルを利用可能に保つ</string>
     <string name="quick_capture_overlay_permission_error">オーバーレイ権限設定を開けませんでした</string>
-    <string name="quick_capture_overlay_hint">オーバーレイはデフォルトでオフです。有効にするには、Muse が他のアプリの上に表示することをシステムに許可させる必要があります。</string>
+    <string name="quick_capture_overlay_hint">オーバーレイはデフォルトでオフです。有効にするには、Musa が他のアプリの上に表示することをシステムに許可させる必要があります。</string>
     <string name="chat_background_cd">チャットの背景</string>
     <string name="chat_analyzing_image">画像を分析中 %1$d/%2$d…</string>
     <string name="msg_compressed">圧縮済み</string>
@@ -573,7 +573,7 @@
     <string name="plugin_models_summary">%1$d モデル · %2$s</string>
     <string name="accessibility_enable_btn">システム設定を開く</string>
     <string name="accessibility_section_title">アクセシビリティサービス</string>
-    <string name="accessibility_status_disabled">有効ではありません。システム設定で「Muse UI 自動化」を許可してください。</string>
+    <string name="accessibility_status_disabled">有効ではありません。システム設定で「Musa UI 自動化」を許可してください。</string>
     <string name="accessibility_status_enabled">アクセシビリティサービス有効。UI操作（クリック/スワイプ/入力/スクリーンショット/UIツリー読み取り）を利用できます。</string>
     <string name="action_retry">再試行</string>
     <string name="common_load_failed">読み込みに失敗しました</string>
@@ -602,7 +602,7 @@
     <string name="permission_level_none">なし（UI自動化を利用不可）</string>
     <string name="permission_level_root">Root 承認済み（全機能を利用可能）</string>
     <string name="permission_level_shizuku">Shizuku 承認済み（UI + シェルコマンドを利用可能）</string>
-    <string name="permission_wizard_desc">Muse の UI 自動化は3チャネルの権限モデルを使用します。下の各項目を有効にしてください。レベルが高いほど、より多くの操作が利用できます。UI操作はアクセシビリティのみ、シェルコマンドは Shizuku または Root が必要です。</string>
+    <string name="permission_wizard_desc">Musa の UI 自動化は3チャネルの権限モデルを使用します。下の各項目を有効にしてください。レベルが高いほど、より多くの操作が利用できます。UI操作はアクセシビリティのみ、シェルコマンドは Shizuku または Root が必要です。</string>
     <string name="permission_wizard_title">権限ウィザード</string>
     <string name="root_section_title">Root 権限</string>
     <string name="root_status_available">Root 承認済み（フォールバックチャネル。su コマンドを直接実行可能）</string>
@@ -613,10 +613,10 @@
     <string name="settings_about_join_qq_group">QQ グループに参加</string>
     <string name="settings_about_join_qq_group_subtitle">QQ グループ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ が見つかりません。グループ番号 905451314 をクリップボードにコピーしました</string>
-    <string name="shizuku_authorize_btn">Muse を承認</string>
+    <string name="shizuku_authorize_btn">Musa を承認</string>
     <string name="permission_shizuku_opened_toast">Shizuku を開きました。アプリ内でサービスを起動してから戻って更新してください</string>
     <string name="permission_shizuku_activation_hint">サービスが停止中です。Android 11 以降：開発者オプションを有効にし、Shizuku 内の「ワイヤレス デバッグ」でペアリングして起動します。root 済み端末は直接起動できます。端末の再起動後は再度有効化が必要です。</string>
-    <string name="permission_shizuku_manual_grant_hint">権限ダイアログは「今後表示しない」で拒否されています。Shizuku を開いたので、アプリ内で Muse を手動で許可してください</string>
+    <string name="permission_shizuku_manual_grant_hint">権限ダイアログは「今後表示しない」で拒否されています。Shizuku を開いたので、アプリ内で Musa を手動で許可してください</string>
     <string name="permission_shizuku_denied_toast">Shizuku の権限が拒否されました</string>
     <string name="permission_shizuku_timeout_toast">Shizuku の承認待ちがタイムアウトしました。再試行してください</string>
     <string name="permission_shizuku_unavailable_toast">Shizuku サービスが停止中です。先に Shizuku アプリで起動してください</string>
@@ -625,7 +625,7 @@
     <string name="permission_shizuku_version_old">Shizuku が古すぎます（v11+ 必須、v13+ 推奨）。更新して再試行してください。</string>
     <string name="shizuku_install_btn">Shizuku をダウンロード</string>
     <string name="shizuku_section_title">Shizuku</string>
-    <string name="shizuku_status_authorized">Muse の Shizuku 使用が承認済み</string>
+    <string name="shizuku_status_authorized">Musa の Shizuku 使用が承認済み</string>
     <string name="skill_agent_phone_not_configured">agent_phone 未設定: GroupChatScheduler が注入されていません</string>
     <string name="skill_agent_phone_target_not_found">対象エージェントが存在しません</string>
     <string name="skill_message_blank">メッセージは空にできません</string>
