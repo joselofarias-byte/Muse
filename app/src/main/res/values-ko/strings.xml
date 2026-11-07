@@ -4,7 +4,7 @@
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">빠른 실행 Muse 채팅</string>
+    <string name="widget_description">빠른 실행 Musa 채팅</string>
     <string name="widget_new_session">새 채팅</string>
     <string name="widget_recent_sessions">최근 채팅</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -228,7 +228,7 @@
     <string name="proxy_bypass_hint">쉼표로 구분합니다. .접미사, *. 와일드카드, IP 접두사를 지원합니다. 로컬 모델과 LAN 서비스를 여기에 추가하세요.</string>
     <string name="proxy_test_action">연결 테스트</string>
     <string name="proxy_test_running">테스트 중…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">먼저 올바른 프록시 주소와 포트를 입력하세요</string>
     <string name="proxy_test_connected">프록시 연결됨, </string>
     <string name="proxy_test_need_auth">프록시가 인증을 요구합니다. 사용자 이름과 비밀번호를 확인하세요</string>

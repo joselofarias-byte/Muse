@@ -81,7 +81,7 @@
     <string name="settings_theme_font_preview_note">Небольшое примечание · Для вспомогательных подсказок</string>
     <!-- Phase 4: выбор и предпросмотр скина пузырей -->
     <string name="settings_bubble_skin_section">Скин пузырей</string>
-    <string name="settings_bubble_skin_builtin">Пузырь Muse по умолчанию</string>
+    <string name="settings_bubble_skin_builtin">Пузырь Musa по умолчанию</string>
     <string name="settings_bubble_skin_builtin_desc">Встроенный скин, как по умолчанию</string>
     <string name="settings_bubble_skin_custom_desc">Пользовательский скин пузырей</string>
     <string name="settings_bubble_skin_import">Импорт скина</string>
@@ -204,7 +204,7 @@
     <string name="settings_memory_keep_awake">Держать экран включённым</string>
     <string name="settings_memory_keep_awake_subtitle">Удерживать только при активной генерации; пропускать при низком заряде и без зарядки</string>
     <string name="settings_memory_auto_launch">Автозапуск</string>
-    <string name="settings_memory_auto_launch_subtitle">Автоматически запускать Muse при загрузке устройства</string>
+    <string name="settings_memory_auto_launch_subtitle">Автоматически запускать Musa при загрузке устройства</string>
     <string name="settings_memory_notification_section">Уведомления</string>
     <string name="settings_memory_reply_notification_cd">Уведомление о завершении ответа</string>
     <string name="settings_memory_reply_notification">Уведомление о завершении ответа</string>
@@ -530,7 +530,7 @@
     <string name="settings_import_chatgpt_step1">1. Откройте ChatGPT → Настройки → Профиль → Управление данными</string>
     <string name="settings_import_chatgpt_step2">2. Нажмите «Экспорт данных» — OpenAI пришлёт zip на почту</string>
     <string name="settings_import_chatgpt_step3">3. Скачайте zip на телефон или распакуйте и выберите conversations.json</string>
-    <string name="settings_import_chatgpt_step4">4. Выберите файл в Muse — диалоги импортируются автоматически</string>
+    <string name="settings_import_chatgpt_step4">4. Выберите файл в Musa — диалоги импортируются автоматически</string>
     <string name="settings_provider_media_gen_section">Модели генерации медиа</string>
     <string name="settings_asr_entry_title">Движок распознавания речи</string>
     <string name="settings_asr_entry_subtitle">Выберите движок распознавания речи (напр., Paraformer / Whisper)</string>
@@ -669,7 +669,7 @@
     <string name="settings_preview_user_bubble">Предпросмотр вашего сообщения</string>
     <string name="settings_preview_assistant_bubble">Предпросмотр ответа ИИ; размер шрифта, интервалы и скругления меняются на лету.</string>
     <string name="settings_preview_timestamp">14:30</string>
-    <string name="settings_preview_model_name">Muse · Пример модели</string>
+    <string name="settings_preview_model_name">Musa · Пример модели</string>
     <string name="settings_theme_liquid_glass">Эффект жидкого стекла</string>
     <string name="settings_theme_liquid_glass_desc">Стеклянный вид верхней панели, панели ввода и пузырей сообщений.</string>
     <string name="settings_glass_off">Выкл</string>
@@ -694,11 +694,11 @@
     <string name="settings_backup_include_secrets_subtitle">API-ключи и учётные данные будут сохранены в файле резервной копии в открытом виде. Храните его в безопасности.</string>
     <string name="oauth_device_open_page">Открыть страницу авторизации</string>
     <string name="oauth_device_open_failed">Не удалось открыть браузер</string>
-    <string name="keep_alive_notification_title">Muse работает в фоне</string>
+    <string name="keep_alive_notification_title">Musa работает в фоне</string>
     <string name="keep_alive_notification_text">Поддерживает задачи по расписанию и инициативные сообщения</string>
     <string name="settings_keep_alive_title">Работать в фоне постоянно</string>
     <string name="settings_keep_alive_subtitle">Удерживает процесс на переднем плане постоянным уведомлением</string>
-    <string name="settings_keep_alive_hint">Muse покажет постоянное уведомление. Android требует этого для foreground-сервисов, скрыть его нельзя. На некоторых китайских прошивках нужно также разрешить автозапуск.</string>
+    <string name="settings_keep_alive_hint">Musa покажет постоянное уведомление. Android требует этого для foreground-сервисов, скрыть его нельзя. На некоторых китайских прошивках нужно также разрешить автозапуск.</string>
     <string name="settings_keep_alive_wakelock_title">Не терять связь при выключенном экране</string>
     <string name="settings_keep_alive_wakelock_subtitle">Инициативные сообщения приходят раньше, но расход батареи выше</string>
     <string name="settings_keep_alive_battery_title">Отключить оптимизацию батареи</string>
@@ -716,7 +716,7 @@
     <string name="settings_keep_alive_notification_custom_title">Текст уведомления</string>
     <string name="settings_keep_alive_notification_custom_subtitle">Настройте заголовок и текст постоянного уведомления</string>
     <string name="settings_keep_alive_notification_custom_hint">Оставьте пустым, чтобы использовать текст по умолчанию.</string>
-    <string name="settings_keep_alive_notification_title_placeholder">По умолчанию: Muse работает в фоне</string>
+    <string name="settings_keep_alive_notification_title_placeholder">По умолчанию: Musa работает в фоне</string>
     <string name="settings_keep_alive_notification_text_placeholder">По умолчанию: Поддерживает задачи по расписанию и инициативные сообщения</string>
     <string name="settings_relationship_proactive_enabled">Разрешить инициативные сообщения</string>
     <string name="settings_relationship_proactive_enabled_subtitle">Если выключено, персонаж не напишет первым; вы можете начать разговор сами</string>

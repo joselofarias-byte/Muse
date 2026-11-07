@@ -173,30 +173,30 @@
     <!-- Chapter 1 -->
     <string name="settings_tutorial_ch1_title">第 1 章: はじめに (初心者必須)</string>
     <string name="settings_tutorial_ch1_s1_title">ミューズとは何ですか？</string>
-    <string name="settings_tutorial_ch1_s1_content">MuseはAIスマートアシスタントアプリです。</string>
+    <string name="settings_tutorial_ch1_s1_content">MusaはAIスマートアシスタントアプリです。</string>
     <string name="settings_tutorial_ch1_s2_title">初めて使用する場合は何をすればよいですか?</string>
     <string name="settings_tutorial_ch1_s2_content">心配しないでください。開始するには、次の 3 つのステップだけを行ってください:\n\n1.</string>
     <string name="settings_tutorial_ch1_s3_title">最初の会話の始め方</string>
     <string name="settings_tutorial_ch1_s3_content">1. アプリを開いてチャット ページに移動します\n2.</string>
     <string name="settings_tutorial_ch1_s4_title">インターフェイスの概要: タスク、エージェント、およびチャット ページ</string>
-    <string name="settings_tutorial_ch1_s4_content">Muse のメイン インターフェイスは通常 3 つの領域に分かれています。</string>
+    <string name="settings_tutorial_ch1_s4_content">Musa のメイン インターフェイスは通常 3 つの領域に分かれています。</string>
     <string name="settings_tutorial_ch1_s5_title">初心者の落とし穴とヒント</string>
     <string name="settings_tutorial_ch1_s5_content">• 落とし穴 1: AI は全知であると仮定します。</string>
 
     <!-- Chapter 2 -->
     <string name="settings_tutorial_ch2_title">第 2 章: AI モデルの構成 (重要)</string>
     <string name="settings_tutorial_ch2_s1_title">なぜモデルを構成する必要があるのですか?</string>
-    <string name="settings_tutorial_ch2_s1_content">Muse 自体には AI は含まれていません。外部の AI サービスに接続する必要があります。</string>
+    <string name="settings_tutorial_ch2_s1_content">Musa 自体には AI は含まれていません。外部の AI サービスに接続する必要があります。</string>
     <string name="settings_tutorial_ch2_s2_title">API キーはどこに申請すればよいですか?</string>
     <string name="settings_tutorial_ch2_s2_content">Here are some commonly used AI providers (in no particular order):\n\n• DeepSeek — domestic, affordable, great results\n  Website: platform.deepseek.com\n\n• Zhipu AI — domestic, free quota available\n  Website: open.bigmodel.cn\n\n• Alibaba Tongyi Qianwen — domestic, free quota available\n  Website: dashscope.aliyun.com\n\n• Moonshot Kimi — domestic, strong long-context capability\n  Website: platform.moonshot.cn\n\n• OpenAI (ChatGPT) — international, best results but requires overseas payment\n  Website: platform.openai.com\n\n• Anthropic (Claude) — international, excellent at writing and reasoning\n  Website: console.anthropic.com\n\n• Google Gemini — international, strong multimodal capability\n  Website: ai.google.dev\n\nBeginners should start with DeepSeek or Zhipu. After registering, find the \"API Keys\" page in the dashboard, click \"Create new Key\", and copy the code. Most domestic providers offer free credit on signup, so you can try it for free first.</string>
-    <string name="settings_tutorial_ch2_s3_title">Muse にプロバイダーを追加する方法</string>
+    <string name="settings_tutorial_ch2_s3_title">Musa にプロバイダーを追加する方法</string>
     <string name="settings_tutorial_ch2_s3_content">1. 右下または左上をタップして「設定」に入ります\n2。</string>
     <string name="settings_tutorial_ch2_s4_title">現行モデルの選び方</string>
     <string name="settings_tutorial_ch2_s4_content">チャットページでは、上部または入力バーの近くにモデル名が表示されます。</string>
     <string name="settings_tutorial_ch2_s5_title">適切なモデルの選択方法 &amp; モデルの機能</string>
     <string name="settings_tutorial_ch2_s5_content">多くのモデルに直面して、初心者は次のように選択できます:\n\n• 毎日のチャット、書き込み: 一般的なチャット モデルが機能します。</string>
     <string name="settings_tutorial_ch2_s6_title">マルチキーのローテーションとバランスクエリ</string>
-    <string name="settings_tutorial_ch2_s6_content">1 つのプロバイダのキーがなくなったり、レート制限がかかったりした場合、会話が中断されないように Muse の複数のキーを自動ローテーションするように設定できます。\n\n• 複数のキーの追加: プロバイダの設定で複数の API キー (1 行に 1 つ) を入力できます。</string>
+    <string name="settings_tutorial_ch2_s6_content">1 つのプロバイダのキーがなくなったり、レート制限がかかったりした場合、会話が中断されないように Musa の複数のキーを自動ローテーションするように設定できます。\n\n• 複数のキーの追加: プロバイダの設定で複数の API キー (1 行に 1 つ) を入力できます。</string>
 
     <!-- Chapter 3 -->
     <string name="settings_tutorial_ch3_title">第 3 章: デイリーチャット</string>
@@ -249,7 +249,7 @@
     <string name="settings_tutorial_ch5_s3_title">インターフェース言語を切り替える</string>
     <string name="settings_tutorial_ch5_s3_content">設定 → 外観 → 言語で、「システムに従う」、「中国語」、または「英語」を選択します。</string>
     <string name="settings_tutorial_ch5_s4_title">アシスタントのカスタマイズ: ペルソナ/関係性/スタイルの 3 層アーキテクチャ</string>
-    <string name="settings_tutorial_ch5_s4_content">Muse のアシスタントのカスタマイズでは、AI の動作を徹底的に決定する 3 層アーキテクチャが使用されています。\n\n• ペルソナ層 (コア): AI が「誰」であるかを定義します (名前、身元、バックストーリー、性格)。</string>
+    <string name="settings_tutorial_ch5_s4_content">Musa のアシスタントのカスタマイズでは、AI の動作を徹底的に決定する 3 層アーキテクチャが使用されています。\n\n• ペルソナ層 (コア): AI が「誰」であるかを定義します (名前、身元、バックストーリー、性格)。</string>
     <string name="settings_tutorial_ch5_s5_title">ユーザー プロファイル &amp; の設定</string>
     <string name="settings_tutorial_ch5_s5_content">「設定」→「ユーザープロフィール」に基本情報（名前、職業、興味、コミュニケーションの好み、避けたトピック）を入力します。</string>
 
@@ -264,7 +264,7 @@
     <string name="settings_tutorial_ch6_s4_title">キャッシュをクリーンアップ&amp;スペースを節約</string>
     <string name="settings_tutorial_ch6_s4_content">長時間使用すると、アプリはキャッシュ (画像、一時ファイル、モデル リスト) を蓄積し、電話の容量を占有します。\n\n• 方法: 設定 → ストレージ/データ管理 → キャッシュの消去。</string>
     <string name="settings_tutorial_ch6_s5_title">データセキュリティ&amp;プライバシー</string>
-    <string name="settings_tutorial_ch6_s5_content">データのセキュリティは重要です:\n• デフォルトでは、会話データはデバイスとクラウド バックアップにのみ保存され、Muse のサーバーにアップロードされることはありません。\n• API キーなどの機密情報はローカルで暗号化され、プレーン テキストで保存されることはありません。\n• AI に送信されるコンテンツはプロバイダーのサーバーを通過します。銀行カード番号、パスワード、その他の情報は公開されません。</string>
+    <string name="settings_tutorial_ch6_s5_content">データのセキュリティは重要です:\n• デフォルトでは、会話データはデバイスとクラウド バックアップにのみ保存され、Musa のサーバーにアップロードされることはありません。\n• API キーなどの機密情報はローカルで暗号化され、プレーン テキストで保存されることはありません。\n• AI に送信されるコンテンツはプロバイダーのサーバーを通過します。銀行カード番号、パスワード、その他の情報は公開されません。</string>
 
     <!-- Chapter 7 -->
     <string name="settings_tutorial_ch7_title">第 7 章: よくある質問</string>
