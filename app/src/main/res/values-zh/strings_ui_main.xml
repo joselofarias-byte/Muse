@@ -116,9 +116,9 @@
     <string name="assistant_detail_regex_invalid">正则表达式语法错误</string>
     <string name="qr_share_title">分享供应商二维码</string>
     <string name="qr_share_cd">供应商配置二维码</string>
-    <string name="qr_share_warning">此二维码包含 API Key 明文，请仅分享给信任的接收方</string>
-    <string name="qr_share_warning_no_key">此二维码不含 API Key，接收方需在对端自行填写密钥。</string>
-    <string name="qr_share_include_key">二维码包含 API Key</string>
+    <string name="qr_share_warning">此二维码可能包含未加密的 API 密钥、OAuth 密钥、私钥，以及请求头、请求体和请求模板中的凭据。请仅分享给信任的接收方。</string>
+    <string name="qr_share_warning_no_key">此二维码不包含 API 密钥、OAuth 密钥、私钥，以及请求头、请求体和请求模板。URL 和其他配置数据仍会包含在内。接收方需自行填写所需凭据。</string>
+    <string name="qr_share_include_key">包含凭据：API 密钥、OAuth 密钥、私钥、请求头、请求体和请求模板</string>
     <string name="qr_scan_title">扫描二维码</string>
     <string name="qr_scan_pick_image">从相册选择二维码图片</string>
     <string name="qr_scan_scanning">正在识别…</string>

@@ -61,13 +61,13 @@ class MemorySpaceViewModel(
             val id = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.createSpace(name, icon, description) }
                     .onError { msg, t ->
-                        _operationMessage.value = "创建 Space 失败: $msg"
+                        _operationMessage.value = "No se pudo crear el espacio: $msg"
                         Logger.w("MemorySpaceViewModel", "createSpace 失败: $msg", t)
                     }
                     .getOrNull()
             }
             if (id != null) {
-                _operationMessage.value = "已创建空间: $name"
+                _operationMessage.value = "Espacio creado: $name"
             }
         }
     }
@@ -78,12 +78,12 @@ class MemorySpaceViewModel(
             val ok = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.renameSpace(id, newName) }
                     .onError { msg, t ->
-                        _operationMessage.value = "重命名失败: $msg"
+                        _operationMessage.value = "No se pudo cambiar el nombre: $msg"
                         Logger.w("MemorySpaceViewModel", "renameSpace 失败: $msg", t)
                     }
                     .getOrNull() ?: false
             }
-            if (ok) _operationMessage.value = "已重命名"
+            if (ok) _operationMessage.value = "Nombre actualizado"
         }
     }
 
@@ -117,12 +117,16 @@ class MemorySpaceViewModel(
             val ok = withContext(Dispatchers.IO) {
                 resultOf { spaceRepository.deleteSpace(id) }
                     .onError { msg, t ->
-                        _operationMessage.value = "删除失败: $msg"
+                        _operationMessage.value = "No se pudo eliminar: $msg"
                         Logger.w("MemorySpaceViewModel", "deleteSpace 失败: $msg", t)
                     }
                     .getOrNull() ?: false
             }
-            _operationMessage.value = if (ok) "已删除空间,事实已迁回默认空间" else "默认空间不可删除"
+            _operationMessage.value = if (ok) {
+                "Espacio eliminado; los datos se trasladaron al espacio predeterminado"
+            } else {
+                "No se puede eliminar el espacio predeterminado"
+            }
         }
     }
 

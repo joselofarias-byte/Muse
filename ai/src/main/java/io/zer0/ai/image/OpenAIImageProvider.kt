@@ -193,7 +193,7 @@ class OpenAIImageProvider(
 
     override suspend fun poll(taskId: String): ImagePollResult {
         // OpenAI 图片生成同步返回,不支持异步任务
-        error("OpenAI 图片生成不支持异步任务: $taskId")
+        error("La generación de imágenes de OpenAI no admite tareas asíncronas: $taskId")
     }
 
     /**

@@ -86,6 +86,7 @@ import io.zer0.muse.ui.theme.bodyMediumStrong
 
 /** B7-07: 加号工具面板的数据驱动条目。 */
 internal data class ToolEntry(
+    val id: Int,
     val icon: ImageVector,
     val title: String,
     val subtitle: String? = null,
@@ -263,7 +264,7 @@ internal fun MuseToolSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "已选 ${selectedGalleryImages.size} 张",
+                    text = "${selectedGalleryImages.size} imágenes seleccionadas",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -287,11 +288,8 @@ internal fun MuseToolSheet(
         Spacer(Modifier.height(MusePaddings.cardGap))
 
         // ── 第二行:联网搜索 + 深度思考 ──
-        val findEntry: (String) -> ToolEntry? = { keyword ->
-            entries.firstOrNull { it.title.contains(keyword) || keyword in it.title }
-        }
-        val webSearchEntry = findEntry("联网")
-        val deepThinkingEntry = findEntry("深度思考")
+        val webSearchEntry = entries.firstOrNull { it.id == R.string.chat_web_search_cd }
+        val deepThinkingEntry = entries.firstOrNull { it.id == R.string.chat_deep_thinking_cd }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(MusePaddings.contentGap),
@@ -335,18 +333,22 @@ internal fun MuseToolSheet(
                     },
                 ),
             )
-            entries.firstOrNull { it.title.contains("附件") || it.title.contains("文档") }?.let { entry ->
+            entries.firstOrNull { it.id == R.string.chat_tool_attachment }?.let { entry ->
                 add(QuickAttachEntry(entry.icon, entry.title, onClick = entry.onClick))
             }
-            entries.firstOrNull { it.title.contains("知识库") }?.let { entry ->
+            entries.firstOrNull { it.id == R.string.chat_tool_knowledge }?.let { entry ->
                 add(QuickAttachEntry(entry.icon, entry.title, onClick = entry.onClick))
             }
             // 第三层容纳所有剩余杂项：提示词、技能、绘图、委托、重启上下文等。
             // 只排除第二层的两个核心开关，以及已经放入本行的入口，避免重复。
-            val usedTitles = map { it.label }.toSet()
+            val usedIds = setOf(
+                R.string.chat_tool_attachment,
+                R.string.chat_tool_knowledge,
+                R.string.chat_web_search_cd,
+                R.string.chat_deep_thinking_cd,
+            )
             entries
-                .filter { it.title !in usedTitles }
-                .filter { it.title != webSearchEntry?.title && it.title != deepThinkingEntry?.title }
+                .filter { it.id !in usedIds }
                 .forEach { entry ->
                     add(
                         QuickAttachEntry(
