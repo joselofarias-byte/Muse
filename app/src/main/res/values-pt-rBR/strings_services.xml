@@ -279,7 +279,7 @@
     <string name="tool_write_verified"> (confirmado)</string>
     <string name="tool_write_permission_denied">O sistema recusou a gravacao (provavelmente falta uma permissao como Modificar configuracoes do sistema)</string>
     <string name="automation_handoff_title">Entrega de tela virtual</string>
-    <string name="assist_service_label">Assistente Muse</string>
+    <string name="assist_service_label">Assistente Musa</string>
     <string name="automation_handoff_desc">O assistente deixou %1$d tela(s); pre-visualize e opere</string>
     <string name="automation_handoff_bring_main">Trazer para a tela principal</string>
     <string name="automation_handoff_bring_main_hint">Apenas o app vai para a tela principal; a pagina e o estado anteriores dependem do app e podem ser perdidos.</string>
@@ -449,7 +449,7 @@
     <string name="app_control_reason_not_found">aplicativo nao encontrado; use app_list para consultar o nome e o pacote</string>
     <string name="app_control_reason_need_elevated">esta acao exige acesso Shizuku/adb ou Root, indisponivel neste dispositivo; use outro caminho ou conceda nas configuracoes</string>
     <string name="app_control_reason_system_app">esta acao nao e permitida em aplicativos do sistema</string>
-    <string name="app_control_reason_self">esta acao nao e permitida no proprio Muse</string>
+    <string name="app_control_reason_self">esta acao nao e permitida no proprio Musa</string>
     <string name="app_control_via_app">permissao do app</string>
     <string name="app_control_via_shell">Shizuku/adb</string>
     <string name="app_control_via_root">Root</string>

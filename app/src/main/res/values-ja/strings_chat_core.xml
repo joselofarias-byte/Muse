@@ -384,7 +384,7 @@
     <string name="moment_add_images_hint">画像を追加(最大 %1$d 枚)</string>
     <!-- ===== 日記 (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">日記の生成に失敗しました。後でもう一度お試しください</string>
-    <string name="diary_title">Muse の日記</string>
+    <string name="diary_title">Musa の日記</string>
     <string name="diary_date_title">%1$d年%2$d月%3$s日</string>
     <string name="diary_empty_today">今日の日記はまだありません</string>
     <string name="diary_empty_other_day">この日の日記はありません</string>
@@ -446,7 +446,7 @@
     <string name="moment_comment_cd">コメント</string>
     <string name="moment_favorite">お気に入り</string>
     <string name="moment_more_actions">この投稿のその他の操作</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">私</string>
     <string name="moment_comment_hint">コメントを書く：</string>
     <string name="moment_delete_title">投稿を削除</string>
@@ -457,7 +457,7 @@
     <string name="moment_messages_cd">メッセージ</string>
     <string name="moment_publish_cd">投稿する(短押しで画像、長押しでテキスト)</string>
     <string name="moment_empty_feed">まだ投稿がありません</string>
-    <string name="moment_empty_hint">右上の + をタップして最初の投稿を作成\nMuse やアシスタントたちも生活を共有します</string>
+    <string name="moment_empty_hint">右上の + をタップして最初の投稿を作成\nMusa やアシスタントたちも生活を共有します</string>
     <string name="moment_messages_empty">いいねやコメントはまだありません</string>
     <string name="moment_notification_liked">%1$s があなたの投稿にいいねしました</string>
     <string name="moment_notification_commented">%1$s があなたの投稿にコメントしました</string>
