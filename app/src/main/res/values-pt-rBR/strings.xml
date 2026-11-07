@@ -4,7 +4,7 @@
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">Início rápido do bate-papo do Muse</string>
+    <string name="widget_description">Início rápido do bate-papo do Musa</string>
     <string name="widget_new_session">Novo bate-papo</string>
     <string name="widget_recent_sessions">Bate-papos recentes</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -228,7 +228,7 @@
     <string name="proxy_bypass_hint">Separados por vírgula. Aceita .sufixo, curingas *. e prefixos de IP. Adicione aqui modelos locais e serviços da rede local.</string>
     <string name="proxy_test_action">Testar conexão</string>
     <string name="proxy_test_running">Testando…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">Informe um endereço e porta de proxy válidos primeiro</string>
     <string name="proxy_test_connected">Proxy acessível, </string>
     <string name="proxy_test_need_auth">O proxy exige autenticação; verifique usuário e senha</string>

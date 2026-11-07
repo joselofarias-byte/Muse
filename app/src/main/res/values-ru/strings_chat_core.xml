@@ -11,7 +11,7 @@
     <string name="moment_add_images_hint">Добавить изображения (макс. %1$d)</string>
     <!-- ===== Дневник (MiniDiaryScreen) ===== -->
     <string name="diary_generate_failed">Не удалось создать дневник, повторите попытку позже</string>
-    <string name="diary_title">Дневник Muse</string>
+    <string name="diary_title">Дневник Musa</string>
     <string name="diary_date_title">%3$s.%2$d.%1$d</string>
     <string name="diary_empty_today">Сегодня ещё нет дневника</string>
     <string name="diary_empty_other_day">В этот день нет дневника</string>
@@ -73,7 +73,7 @@
     <string name="moment_comment_cd">Комментарий</string>
     <string name="moment_favorite">В избранное</string>
     <string name="moment_more_actions">Дополнительные действия для этой публикации</string>
-    <string name="moment_sender_muse">Muse</string>
+    <string name="moment_sender_muse">Musa</string>
     <string name="moment_sender_me">Я</string>
     <string name="moment_comment_hint">Оставить комментарий:</string>
     <string name="moment_delete_title">Удалить запись</string>
@@ -84,7 +84,7 @@
     <string name="moment_messages_cd">Сообщения</string>
     <string name="moment_publish_cd">Опубликовать (нажмите для фото, удерживайте для текста)</string>
     <string name="moment_empty_feed">Записей пока нет</string>
-    <string name="moment_empty_hint">Нажмите + в правом верхнем углу, чтобы создать первую запись\nMuse и ассистенты тоже поделятся своей жизнью</string>
+    <string name="moment_empty_hint">Нажмите + в правом верхнем углу, чтобы создать первую запись\nMusa и ассистенты тоже поделятся своей жизнью</string>
     <string name="moment_messages_empty">Пока нет отметок «Нравится» и комментариев</string>
     <string name="moment_notification_liked">%1$s понравилась ваша запись</string>
     <string name="moment_notification_commented">%1$s прокомментировал(а) вашу запись</string>

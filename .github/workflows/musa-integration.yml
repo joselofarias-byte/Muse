@@ -1,0 +1,60 @@
+name: Musa upstream integration verification
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: musa-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.0.12077973 cmake;3.22.1
+      - name: Signing and release helper tests (no production key)
+        run: |
+          python3 -m unittest discover -s ci/script -p test_validate_release_signing.py
+          python3 ci/test/test_release_preflight.py
+          python3 -m unittest discover -s ci/test -p test_verify_musa_upgrade.py
+          bash tools/runtime-pack/test-downloads.sh
+      - name: Web checks and assets
+        working-directory: web
+        run: npm ci && npm test && npm run typecheck && npm run build
+      - name: Embedded runtimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf
+          bash tools/runtime-pack/build-runtime-pack.sh both
+          bash tools/python-pack/build-python-pack.sh both
+      - name: Localization
+        run: |
+          python3 ci/script/check_localizations.py --strict-locales en,es
+          python3 ci/script/check_translation_residue.py
+      - name: Static checks, tests and unsigned ARM64 release compilation
+        run: |
+          bash ./gradlew detekt ktlintCheck ktlintKotlinSourceCheck :app:lintRelease testDebugUnitTest :app:assembleRelease \
+            --stacktrace --no-daemon -PmusaUnsignedVerification=true -PreleaseSkipKeystoreCheck=true \
+            -PnoUniversal -PversionCode=1000001 -PversionName=2.6.23-musa-es
+      - name: Verification reports only (never distribute unsigned APKs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: musa-verification-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
