@@ -1624,7 +1624,9 @@ class MemoryViewModel(
                     .getOrNull() ?: false
             }
             if (!ok) {
-                _state.update { it.copy(errorTrace = "矛盾裁决未生效(记录可能已被整理或删除)") }
+                _state.update {
+                    it.copy(errorTrace = "No se resolvió el conflicto (el registro puede haberse reorganizado o eliminado)")
+                }
             }
             loadAll(silent = true)
         }

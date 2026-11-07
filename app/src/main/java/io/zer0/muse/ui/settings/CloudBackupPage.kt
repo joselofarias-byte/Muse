@@ -510,7 +510,7 @@ fun CloudBackupPage(onBack: () -> Unit) {
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = "${sliderValue.toInt()} 天",
+                                text = "${sliderValue.toInt()} días",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 // LAYOUT-01: 天数数值列限 1 行,不反向挤占标签。

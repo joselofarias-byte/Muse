@@ -598,7 +598,7 @@ fun AgentSettingsPage(
                         valueRange = 0f..5f,
                         // 0..5 共 6 档,steps=4 → start/end 之间 4 个停点
                         steps = 4,
-                        valueFormatter = { if (it.toInt() <= 0) "关闭" else "${it.toInt()} 条/天" },
+                        valueFormatter = { if (it.toInt() <= 0) "Desactivado" else "${it.toInt()} al día" },
                     )
                 }
             },

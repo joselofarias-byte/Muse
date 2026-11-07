@@ -35,7 +35,7 @@ import io.zer0.muse.ui.common.icons.MuseIcons
 
 /** 厂商识别结果与引导内容。 */
 data class KeepAliveGuide(
-    /** 品牌显示名,如"小米"。 */
+    /** 品牌显示名,如"Xiaomi"。 */
     val brandName: String,
     /** 引导步骤(用户手动操作路径)。 */
     val steps: List<String>,
@@ -77,21 +77,22 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
     }
     return when {
         manufacturer.contains("huawei") || manufacturer.contains("honor") -> KeepAliveGuide(
-            brandName = "华为",
+            brandName = "Huawei",
             steps = listOf(
-                "打开系统「设置」→「应用」→「应用启动管理」",
-                "找到 Muse，关闭「自动管理」，手动允许「自启动」「关联启动」「后台活动」",
-                "在「设置」→「电池」→「更多电池设置」中关闭「休眠时始终保持网络连接」的限制",
+                "Abre Ajustes del sistema → Aplicaciones → Inicio de aplicaciones",
+                "Busca Musa, desactiva la gestión automática y permite el inicio automático, " +
+                    "el inicio secundario y la actividad en segundo plano",
+                "En Ajustes → Batería → Más ajustes de batería, permite mantener la conexión de red durante la suspensión",
             ),
             openSystemSettings = fallbackToDetails,
         )
         manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco") ->
             KeepAliveGuide(
-                brandName = "小米",
+                brandName = "Xiaomi",
                 steps = listOf(
-                    "打开「设置」→「应用设置」→「应用管理」→ 找到 Muse",
-                    "开启「自启动」，在「省电策略」中选择「无限制」",
-                    "或直接跳转系统自启动管理页（下方按钮）",
+                    "Abre Ajustes → Ajustes de aplicaciones → Administrar aplicaciones → Musa",
+                    "Activa el inicio automático y selecciona Sin restricciones en Ahorro de batería",
+                    "También puedes abrir la gestión de inicio automático con el botón inferior",
                 ),
                 openSystemSettings = { ctx ->
                     attemptSettings(
@@ -110,9 +111,9 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             KeepAliveGuide(
                 brandName = "OPPO",
                 steps = listOf(
-                    "打开「设置」→「应用」→「应用管理」→ 找到 Muse",
-                    "开启「自启动」，在「电池」→「耗电管理」中选择「允许后台运行」",
-                    "或直接跳转系统自启动管理页（下方按钮）",
+                    "Abre Ajustes → Aplicaciones → Administrar aplicaciones → Musa",
+                    "Activa el inicio automático y permite la actividad en segundo plano en Batería → Gestión del consumo",
+                    "También puedes abrir la gestión de inicio automático con el botón inferior",
                 ),
                 openSystemSettings = { ctx ->
                     attemptSettings(
@@ -138,9 +139,9 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
         manufacturer.contains("vivo") || manufacturer.contains("iqoo") -> KeepAliveGuide(
             brandName = "vivo",
             steps = listOf(
-                "打开「设置」→「应用与权限」→「权限管理」→ 找到 Muse",
-                "开启「自启动」，在「电池」→「后台高耗电」中选择「允许后台运行」",
-                "或直接跳转系统自启动管理页（下方按钮）",
+                "Abre Ajustes → Aplicaciones y permisos → Gestión de permisos → Musa",
+                "Activa el inicio automático y permite la actividad en segundo plano en Batería → Alto consumo en segundo plano",
+                "También puedes abrir la gestión de inicio automático con el botón inferior",
             ),
             openSystemSettings = { ctx ->
                 attemptSettings(
@@ -160,11 +161,11 @@ fun detectKeepAliveGuide(): KeepAliveGuide {
             },
         )
         else -> KeepAliveGuide(
-            brandName = "通用",
+            brandName = "General",
             steps = listOf(
-                "在系统设置中允许 Muse 的「自启动 / 后台运行」",
-                "在电池优化中把 Muse 设为「不限制」（下方按钮可直达）",
-                "不要使用「强行停止」，直接划掉最近任务即可",
+                "En los ajustes del sistema, permite el inicio automático y la actividad en segundo plano de Musa",
+                "Configura Musa sin restricciones en Optimización de batería (puedes acceder con el botón inferior)",
+                "No uses Forzar detención; basta con deslizar la aplicación en la lista de aplicaciones recientes",
             ),
             openSystemSettings = { ctx ->
                 val ok = runCatching {
