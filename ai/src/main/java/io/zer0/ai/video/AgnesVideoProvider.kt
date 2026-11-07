@@ -116,10 +116,10 @@ class AgnesVideoProvider(
     override suspend fun submit(request: VideoGenRequest): VideoSubmitResult = withContext(Dispatchers.IO) {
         resultOf {
             if (request.apiKey.isBlank()) {
-                error("Agnes API key 为空")
+                error("La clave API de Agnes está vacía")
             }
             if (request.prompt.isBlank()) {
-                error("Prompt 为空")
+                error("La descripción está vacía")
             }
 
             val model = request.model.ifBlank { DEFAULT_MODEL }
@@ -150,7 +150,7 @@ class AgnesVideoProvider(
                 if (!resp.isSuccessful) {
                     val apiMsg = parseApiErrorMessage(respBody)
                     error(
-                        "Agnes submit 失败: HTTP ${resp.code}" +
+                        "Error al enviar la solicitud a Agnes: HTTP ${resp.code}" +
                             (apiMsg?.let { ": $it" }
                                 ?: ProviderError.safeErrorDetail(respBody)?.let { ": $it" }.orEmpty()),
                     )
@@ -161,7 +161,7 @@ class AgnesVideoProvider(
                     ?: root["task_id"]?.jsonPrimitive?.content
                     ?: root["id"]?.jsonPrimitive?.content
                     ?: error(
-                        "Agnes submit 响应缺少 video_id/task_id: " +
+                        "La respuesta de envío de Agnes no contiene video_id/task_id: " +
                             (ProviderError.safeErrorDetail(respBody) ?: "<empty>"),
                     )
 
@@ -204,7 +204,7 @@ class AgnesVideoProvider(
             if (apiKey.isBlank()) {
                 return@resultOf VideoPollResult(
                     status = PollStatus.FAILED,
-                    errorMessage = "Agnes poll 缺少 apiKey(taskId=$taskId, 任务上下文已丢失)",
+                    errorMessage = "Falta apiKey al consultar la tarea de Agnes (taskId=$taskId, se ha perdido el contexto de la tarea)",
                 )
             }
 
@@ -227,7 +227,7 @@ class AgnesVideoProvider(
                     // HTTP 错误不直接判失败,交给上层重试机制处理(连续 5 次才失败)
                     return@use VideoPollResult(
                         status = PollStatus.PENDING,
-                        errorMessage = "Agnes poll HTTP ${resp.code}: $respBody",
+                        errorMessage = "Error HTTP al consultar Agnes: ${resp.code}: $respBody",
                     )
                 }
                 val root = json.parseToJsonElement(respBody).jsonObject
@@ -239,7 +239,7 @@ class AgnesVideoProvider(
                         val videoUrl = extractVideoUrl(root)
                             ?: return@use VideoPollResult(
                                 status = PollStatus.PENDING,
-                                errorMessage = "Agnes 状态为成功但未找到视频 URL: $respBody",
+                                errorMessage = "Agnes indica que la tarea se completó, pero no se encontró la URL del vídeo: $respBody",
                             )
                         // 成功后清理上下文
                         taskContext.remove(taskId)
@@ -248,7 +248,7 @@ class AgnesVideoProvider(
                     PollStatus.FAILED -> {
                         val errMsg = root["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
                             ?: root["message"]?.jsonPrimitive?.content
-                            ?: "Agnes 视频生成失败(status=$statusStr)"
+                            ?: "La generación de vídeo de Agnes falló (status=$statusStr)"
                         taskContext.remove(taskId)
                         VideoPollResult(status = status, errorMessage = errMsg)
                     }
@@ -260,7 +260,7 @@ class AgnesVideoProvider(
             is io.zer0.common.Result.Success -> r.data
             is io.zer0.common.Result.Error -> VideoPollResult(
                 status = PollStatus.PENDING,
-                errorMessage = "Agnes poll 异常: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
+                errorMessage = "Error al consultar la tarea de Agnes: ${r.throwable?.message ?: r.throwable?.toString() ?: r.message}",
             )
         }
     }
@@ -375,7 +375,7 @@ class AgnesVideoProvider(
     private fun readBody(resp: Response): String {
         val bytes = resp.body?.bytes() ?: return ""
         if (bytes.size > MAX_RESPONSE_BYTES) {
-            error("Agnes 响应过大: ${bytes.size} bytes")
+            error("La respuesta de Agnes es demasiado grande: ${bytes.size} bytes")
         }
         return String(bytes, Charsets.UTF_8)
     }

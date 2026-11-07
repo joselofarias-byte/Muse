@@ -835,8 +835,8 @@ class GroupChatViewModel(
                 groupChatMemoryRepository?.deleteByGroupChat(chatId)
                 Logger.i(TAG, "已清空群聊记忆: $chatId")
             } catch (e: Exception) {
-                Logger.e(TAG, "清空群聊记忆失败", e)
-                _state.update { it.copy(errorMessage = "清空群聊记忆失败") }
+                Logger.e(TAG, "No se pudo borrar la memoria del chat grupal", e)
+                _state.update { it.copy(errorMessage = "No se pudo borrar la memoria del chat grupal") }
             }
         }
     }

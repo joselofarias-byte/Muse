@@ -325,7 +325,7 @@ fun KnowledgeScreen(
                                 if (count == 0) continue
                                 totalChars += count
                                 if (totalChars > maxFileSizeBytes) {
-                                    error("文件过大,超过 ${maxFileSizeBytes / 1024 / 1024}MB 限制")
+                                    error("El archivo supera el límite de ${maxFileSizeBytes / 1024 / 1024} MB")
                                 }
                                 if (preview.length < MAX_CONTENT_LENGTH) {
                                     preview.append(

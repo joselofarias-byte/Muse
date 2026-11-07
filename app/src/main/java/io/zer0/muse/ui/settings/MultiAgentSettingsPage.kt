@@ -339,7 +339,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
  * v1.201: 解析评审模型在 UI 上的展示名称。
  *
  * 规则:
- *  - reviewModelId 为空 → "默认模型"(回退到 Provider 首个模型)
+ *  - reviewModelId 为空 → "Modelo predeterminado"(回退到 Provider 首个模型)
  *  - 在所有 Provider 中按 id 查找 → 返回模型 name(若 name 为空回退到 id)
  *  - 找不到匹配模型 → "未知模型(<id>)"(可能用户切换了 Provider 或删除了该模型)
  *
@@ -347,7 +347,7 @@ fun MultiAgentSettingsPage(onBack: () -> Unit) {
  * 同样的查找并降级处理,二者查找逻辑保持一致。
  */
 private fun resolveReviewModelName(reviewModelId: String?, providers: List<ProviderConfig>, activeProviderId: String?): String {
-    if (reviewModelId.isNullOrBlank()) return "默认模型"
+    if (reviewModelId.isNullOrBlank()) return "Modelo predeterminado"
     // 优先在激活 Provider 中查找(最常见情况)
     val activeProvider = providers.firstOrNull { it.id == activeProviderId }
     activeProvider?.models?.firstOrNull { it.id == reviewModelId }?.let { model ->
@@ -360,7 +360,7 @@ private fun resolveReviewModelName(reviewModelId: String?, providers: List<Provi
             return matched.name.ifBlank { matched.id }
         }
     }
-    return "未知模型($reviewModelId)"
+    return "Modelo desconocido ($reviewModelId)"
 }
 
 /**
@@ -920,23 +920,23 @@ private fun WorkflowNodeEditDialog(
 }
 
 private fun aggregationName(strategy: DelegationContract.TeamWorkflow.AggregationStrategy): String = when (strategy) {
-    DelegationContract.TeamWorkflow.AggregationStrategy.MERGE -> "合并"
-    DelegationContract.TeamWorkflow.AggregationStrategy.VOTE -> "投票"
-    DelegationContract.TeamWorkflow.AggregationStrategy.EXPERT_REVIEW -> "专家评审"
-    DelegationContract.TeamWorkflow.AggregationStrategy.FIRST_SUCCESS -> "首个成功"
-    DelegationContract.TeamWorkflow.AggregationStrategy.LLM_REVIEW -> "LLM 综合评审"
+    DelegationContract.TeamWorkflow.AggregationStrategy.MERGE -> "Combinar"
+    DelegationContract.TeamWorkflow.AggregationStrategy.VOTE -> "Votación"
+    DelegationContract.TeamWorkflow.AggregationStrategy.EXPERT_REVIEW -> "Revisión experta"
+    DelegationContract.TeamWorkflow.AggregationStrategy.FIRST_SUCCESS -> "Primer éxito"
+    DelegationContract.TeamWorkflow.AggregationStrategy.LLM_REVIEW -> "Revisión integral del LLM"
 }
 
 private fun modeName(mode: DelegationContract.TeamWorkflowNode.Mode): String = when (mode) {
-    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "串行"
-    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "并行"
-    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "条件"
+    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "Secuencial"
+    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "Paralelo"
+    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Condicional"
 }
 
 private fun modeShortName(mode: DelegationContract.TeamWorkflowNode.Mode): String = when (mode) {
-    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "串"
-    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "并"
-    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "条"
+    DelegationContract.TeamWorkflowNode.Mode.SEQUENTIAL -> "Sec."
+    DelegationContract.TeamWorkflowNode.Mode.PARALLEL -> "Par."
+    DelegationContract.TeamWorkflowNode.Mode.CONDITIONAL -> "Cond."
 }
 
 /**
