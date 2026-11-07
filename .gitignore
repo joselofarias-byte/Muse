@@ -18,6 +18,7 @@ Thumbs.db
 
 # 项目文档（仅保留首页 README）
 /docs/*
+!/docs/MUSA_UPSTREAM_INTEGRATION.md
 !/docs/README.md
 !/docs/README_EN.md
 !/docs/ENGINEERING_DISCIPLINE.md
