@@ -163,7 +163,7 @@ class AgnesImageProvider(
 
     override suspend fun poll(taskId: String): ImagePollResult {
         // Agnes 同步返回,不会走到此分支;兜底返回 FAILED。
-        error("Agnes 图片生成不支持异步任务: $taskId")
+        error("La generación de imágenes de Agnes no admite tareas asíncronas: $taskId")
     }
 
     /**

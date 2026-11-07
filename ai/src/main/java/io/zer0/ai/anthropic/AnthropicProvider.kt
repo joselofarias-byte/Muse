@@ -158,6 +158,8 @@ class AnthropicProvider(
             connectionGeneration.incrementAndGet()
             currentEventSource.get()?.cancel()
             currentCall.get()?.cancel()
+            // During retry backoff there may be no remaining HTTP callback to close the flow.
+            producerScope.close()
         }
 
         fun connect() {
@@ -474,15 +476,15 @@ class AnthropicProvider(
                             delayMs = ProviderError.parseRetryAfter(response?.header("Retry-After"))
                                 ?.let { it * 1000L } ?: delayMs
                         }
-                        Logger.w(
-                            "AnthropicProvider",
-                            "streamChat retryable failure(code=$code t=${t?.message}), " +
-                                "retry $retryCount/$maxRetries after ${delayMs}ms, " +
-                                "accumulated=${accumulatedContent.length} chars, anyDeltaSent=${anyDeltaSent.get()}",
-                        )
                         connectionGeneration.incrementAndGet()
                         eventSource.cancel()
                         producerScope.launch {
+                            Logger.w(
+                                "AnthropicProvider",
+                                "streamChat retryable failure(code=$code t=${t?.message}), " +
+                                    "retry $retryCount/$maxRetries after ${delayMs}ms, " +
+                                    "accumulated=${accumulatedContent.length} chars, anyDeltaSent=${anyDeltaSent.get()}",
+                            )
                             delay(delayMs)
                             if (request.abortSignal.aborted || producerScope.isClosedForSend) return@launch
                             connect()

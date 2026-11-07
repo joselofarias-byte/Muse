@@ -145,11 +145,11 @@ class MainActivity : ComponentActivity() {
 
     private fun wrapWithLanguage(base: android.content.Context): android.content.Context {
         // Koin 在 Application.onCreate 启动,attachBaseContext 在其后执行,此时已可用。
-        val settings = GlobalContext.getOrNull()?.get<SettingsRepository>() ?: return base
+        val settings = GlobalContext.getOrNull()?.get<SettingsRepository>()
         // v1.131: 改用 SharedPreferences 同步缓存,消除主线程 runBlocking 读 DataStore 的 ANR 风险。
         // 历史 DataStore 值会在 SettingsRepository.init 中异步迁移到 SP,首次冷启动可能短暂返回默认值,
         // 但下次启动即正确,可接受(用户感知不到语言切换的差异)。
-        val lang = settings.getLanguageSync()
+        val lang = settings?.getLanguageSync() ?: "es"
         // I4: 语言解析收敛到 AppLocales,system/未知返回 null(跟随系统)。
         val locale = io.zer0.muse.util.AppLocales.parse(lang) ?: return base
         // v1.133: 复制当前 Configuration 并覆盖 locale,避免修改全局 Configuration。
@@ -300,7 +300,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 // I4: 语言热切换 — 收集语言流,经 RuntimeLocaleProvider 覆盖 Compose 资源,
                 // 切换语言仅重组 UI,不重建 Activity(冷启动初始语言仍由 attachBaseContext 保证)。
-                val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = "system")
+                val language by settings.languageFlow.collectAsStateWithLifecycle(initialValue = settings.getLanguageSync())
                 RuntimeLocaleProvider(lang = language) {
                     // v2.6.2 fix（用户反馈）: 系统深浅色 —— 不读 LocalConfiguration
                     // （会被 RuntimeLocaleProvider 的语言快照覆盖），改用 Activity 层

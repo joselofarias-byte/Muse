@@ -1075,7 +1075,7 @@ private fun TaskDialog(
                 if (parseError != null) {
                     errorMessage = context.getString(
                         R.string.schedule_err_tool_params_invalid,
-                        parseError.message ?: "JSON 语法错误",
+                        parseError.message ?: "Error de sintaxis JSON",
                     )
                     return@MuseDialog
                 }

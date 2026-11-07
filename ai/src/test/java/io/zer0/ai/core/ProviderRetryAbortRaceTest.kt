@@ -2,6 +2,7 @@ package io.zer0.ai.core
 
 import io.zer0.ai.anthropic.AnthropicProvider
 import io.zer0.ai.gemini.GeminiProvider
+import io.zer0.common.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -51,6 +52,7 @@ class ProviderRetryAbortRaceTest {
             ),
             provider = { config -> AnthropicProvider(config) },
             modelId = "claude-race",
+            abortAtBackoff = true,
         )
     }
 
@@ -74,6 +76,7 @@ class ProviderRetryAbortRaceTest {
         config: ProviderConfig,
         provider: (ProviderConfig) -> Provider,
         modelId: String,
+        abortAtBackoff: Boolean = false,
     ) = coroutineScope {
         val firstRequest = CountDownLatch(1)
         server.start()
@@ -95,17 +98,42 @@ class ProviderRetryAbortRaceTest {
             model = Model(id = modelId, providerId = config.id),
             abortSignal = signal,
         )
+        val backoffStarted = CountDownLatch(1)
+        val previousSink = Logger.sink
+        val previousLoggingEnabled = Logger.enabled
+        if (abortAtBackoff) {
+            Logger.enabled = true
+            Logger.sink = { _, tag, message, _ ->
+                if (tag == "AnthropicProvider" && message.startsWith("streamChat retryable failure(code=503")) {
+                    // Abort synchronously inside the retry coroutine, after the failed SSE was cancelled.
+                    signal.abort()
+                    backoffStarted.countDown()
+                }
+            }
+        }
         val collector = launch(Dispatchers.IO) {
             provider(config).streamChat(request).collect()
         }
 
-        assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
-        signal.abort()
-        withTimeout(5_000) { collector.join() }
+        try {
+            assertTrue("first retryable response should arrive", firstRequest.await(5, TimeUnit.SECONDS))
+            if (abortAtBackoff) {
+                assertTrue("retry backoff should start", backoffStarted.await(5, TimeUnit.SECONDS))
+            } else {
+                signal.abort()
+            }
+            withTimeout(5_000) { collector.join() }
 
-        // Allow the normal 1s retry backoff plus callback delivery time to elapse.
-        delay(1_500)
-        assertEquals("cancelled retry must not reconnect", 1, server.requestCount)
-        assertEquals("abort listener must be removed", 0, signal.listenerCount)
+            // Allow the normal 1s retry backoff plus callback delivery time to elapse.
+            delay(1_500)
+            assertEquals("cancelled retry must not reconnect", 1, server.requestCount)
+            assertEquals("abort listener must be removed", 0, signal.listenerCount)
+        } finally {
+            collector.cancel()
+            if (abortAtBackoff) {
+                Logger.sink = previousSink
+                Logger.enabled = previousLoggingEnabled
+            }
+        }
     }
 }

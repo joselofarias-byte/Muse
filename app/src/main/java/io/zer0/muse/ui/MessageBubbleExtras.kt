@@ -177,7 +177,7 @@ internal fun ToolCallCard(
     }
     val summary = remember(toolName, arguments, result, isSuccess) {
         when {
-            isRunning -> "正在执行…"
+            isRunning -> "En ejecución…"
             else -> ToolCallVisuals.terminalSummaryFor(result, resources)
                 ?: ToolCallVisuals.summaryFor(toolName, arguments, result, isSuccess, resources)
         }
@@ -563,7 +563,7 @@ private fun parseParamRows(arguments: String): List<Pair<String, String>> {
         val display: String = when (v) {
             is String -> v
             is Boolean, is Number -> v.toString()
-            is JSONArray -> "[${v.length()} 项]"
+            is JSONArray -> "[${v.length()} elementos]"
             is JSONObject -> "{…}"
             else -> v.toString()
         }

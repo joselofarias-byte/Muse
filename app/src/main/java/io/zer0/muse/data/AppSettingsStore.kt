@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * P2-2 拆分：应用级设置子仓库。
@@ -33,31 +35,37 @@ class AppSettingsStore(private val context: Context) {
     private val languageSyncCache = context.getSharedPreferences("muse_language_cache", Context.MODE_PRIVATE)
     private val cacheScope = CoroutineScope(SupervisorJob() + Dispatchers.IO + GlobalCoroutineExceptionHandler)
 
-    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }
+    val languageFlow: Flow<String> = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "es" }
 
     init {
         // 历史用户升级到 v1.131+ 时 SP 为空，需从 DataStore 拷贝一次；异步执行不阻塞启动。
         cacheScope.launch {
             try {
-                val dsLang = store.data.mapDistinct { prefs -> prefs[KEY_LANGUAGE] ?: "system" }.first()
-                if (languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
-                    languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang).apply()
-                }
+                migrateLanguageCache()
             } catch (e: Exception) {
                 Logger.w("AppSettingsStore", "language SP cache migration failed: ${e.message}", e)
             }
         }
     }
 
-    suspend fun saveLanguage(lang: String) {
+    internal suspend fun migrateLanguageCache() = languageMutex.withLock {
+        val dsLang = store.data.first()[KEY_LANGUAGE]
+        // An old implicit system cache must not override the new default.
+        if (dsLang == null || languageSyncCache.getString(KEY_LANGUAGE_SP, null) == null) {
+            languageSyncCache.edit().putString(KEY_LANGUAGE_SP, dsLang ?: "es").apply()
+        }
+    }
+
+    suspend fun saveLanguage(lang: String) = languageMutex.withLock {
         store.edit { it[KEY_LANGUAGE] = lang }
         languageSyncCache.edit().putString(KEY_LANGUAGE_SP, lang).apply()
     }
 
     /** 同步读取语言设置，避免冷启动时主线程阻塞读 DataStore。 */
-    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "system") ?: "system"
+    fun getLanguageSync(): String = languageSyncCache.getString(KEY_LANGUAGE_SP, "es") ?: "es"
 
     private companion object {
+        private val languageMutex = Mutex()
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private const val KEY_LANGUAGE_SP = "language"
     }
