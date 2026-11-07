@@ -158,7 +158,7 @@ internal fun ProviderEditPage(
     }
     // v2.6.2: OpenAI 型供应商也可自定义请求头（部分中转站要求 x-opencode-session 等）。
     // 旧实现仅 Custom 型可填，OpenCode Go 等预设（OpenAI 型）因此无法加头。
-    var openAICustomHeadersText by rememberSaveable {
+    var openAICustomHeadersText by remember {
         mutableStateOf(
             formatCustomHeaders(
                 (resolvedSpecific as? ProviderSpecificConfig.OpenAI)?.customHeaders ?: emptyMap(),
@@ -166,7 +166,7 @@ internal fun ProviderEditPage(
         )
     }
     // v2.6.2: OpenAI 型供应商也可附加请求体字段（与自定义头同口径）。
-    var openAICustomBodyText by rememberSaveable {
+    var openAICustomBodyText by remember {
         mutableStateOf(
             formatCustomBody(
                 (resolvedSpecific as? ProviderSpecificConfig.OpenAI)?.customBody ?: emptyMap(),
@@ -203,14 +203,14 @@ internal fun ProviderEditPage(
                 ?: ProviderSpecificConfig.Custom().chatCompletionsPath,
         )
     }
-    var customHeadersText by rememberSaveable {
+    var customHeadersText by remember {
         mutableStateOf(
             formatCustomHeaders(
                 (resolvedSpecific as? ProviderSpecificConfig.Custom)?.customHeaders ?: emptyMap(),
             ),
         )
     }
-    var customBodyText by rememberSaveable {
+    var customBodyText by remember {
         mutableStateOf(
             formatCustomBody(
                 (resolvedSpecific as? ProviderSpecificConfig.Custom)?.customBody ?: emptyMap(),
@@ -913,7 +913,6 @@ internal fun ProviderEditPage(
     var showDiscardConfirm by remember { mutableStateOf(false) }
     // v1.97: 二维码分享弹窗
     var showQrShareDialog by remember { mutableStateOf(false) }
-    var qrIncludeKey by remember { mutableStateOf(false) }
     // v1.134 P1-2: 用 buildCurrentConfig() == config 全字段比对,
     // 覆盖 specific / Vertex / OpenAI / Anthropic / Custom / balanceApiPath 等高级字段。
     val hasUnsavedChanges by remember {
@@ -1158,10 +1157,12 @@ internal fun ProviderEditPage(
 
     // v1.97: 二维码分享弹窗(分享当前编辑状态的 ProviderConfig)
     if (showQrShareDialog) {
+        var qrIncludeKey by remember { mutableStateOf(false) }
         // 默认不含密钥:屏幕展示/截图不再等于交出 API Key,对端手填一次即可;
         // 只有在信任的设备之间才由用户显式切到含密钥档。
         val qrContent = io.zer0.muse.ui.qrcode.QrCodeGenerator.encodeProvider(
-            if (qrIncludeKey) buildCurrentConfig() else buildCurrentConfig().copy(apiKey = ""),
+            buildCurrentConfig(),
+            includeSecrets = qrIncludeKey,
         )
         io.zer0.muse.ui.qrcode.QrCodeShareDialog(
             content = qrContent,
