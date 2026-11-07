@@ -570,9 +570,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">Share provider QR code</string>
     <string name="qr_share_cd">Provider config QR code</string>
-    <string name="qr_share_warning">This QR code contains the API Key in plain text. Only share it with trusted recipients.</string>
-    <string name="qr_share_warning_no_key">This QR code contains no API key. The receiving side must enter it manually.</string>
-    <string name="qr_share_include_key">Include the API key in the QR code</string>
+    <string name="qr_share_warning">This QR code may include API keys, OAuth secrets, private keys and credentials in request headers, bodies and templates, without encryption. Share it only with trusted recipients.</string>
+    <string name="qr_share_warning_no_key">This QR code excludes API keys, OAuth secrets, private keys and request headers, bodies and templates. URLs and other configuration data remain included. The recipient must enter any required credentials.</string>
+    <string name="qr_share_include_key">Include credentials: API keys, OAuth secrets, private keys, request headers, bodies and templates</string>
     <string name="qr_share_btn">Share QR code</string>
     <string name="qr_scan_title">Scan QR code</string>
     <string name="qr_scan_pick_image">Pick a QR code image from gallery</string>

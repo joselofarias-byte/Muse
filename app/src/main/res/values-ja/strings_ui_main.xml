@@ -474,9 +474,9 @@
     <!-- ===== QR code share/scan ===== -->
     <string name="qr_share_title">プロバイダーの QR コードを共有する</string>
     <string name="qr_share_cd">プロバイダー構成 QR コード</string>
-    <string name="qr_share_warning">この QR コードには、プレーンテキストの API キーが含まれています。</string>
-    <string name="qr_share_warning_no_key">この QR コードには API キーが含まれていません。受け取り側で手動入力してください。</string>
-    <string name="qr_share_include_key">QR コードに API キーを含める</string>
+    <string name="qr_share_warning">この QR コードには、暗号化されていない API キー、OAuth シークレット、秘密鍵、およびリクエストのヘッダー・本文・テンプレート内の認証情報が含まれる場合があります。信頼できる相手にのみ共有してください。</string>
+    <string name="qr_share_warning_no_key">この QR コードには、API キー、OAuth シークレット、秘密鍵、およびリクエストのヘッダー・本文・テンプレートは含まれません。URL やその他の設定情報は引き続き含まれます。受信者は必要な認証情報を入力してください。</string>
+    <string name="qr_share_include_key">認証情報を含める：API キー、OAuth シークレット、秘密鍵、リクエストのヘッダー・本文・テンプレート</string>
     <string name="qr_share_btn">QRコードをシェアする</string>
     <string name="qr_scan_title">QR コードをスキャン</string>
     <string name="qr_scan_pick_image">ギャラリーから QR コード画像を選択します</string>

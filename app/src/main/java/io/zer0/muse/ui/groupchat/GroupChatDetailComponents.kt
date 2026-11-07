@@ -1897,7 +1897,7 @@ internal fun readImageBytes(context: android.content.Context, uri: Uri): ByteArr
     val stream = context.contentResolver.openInputStream(uri)
     if (stream != null) return stream.use { it.readBytes() }
     val fd = context.contentResolver.openFileDescriptor(uri, "r")
-        ?: throw IllegalStateException("无法读取图片")
+        ?: throw IllegalStateException("No se pudo leer la imagen")
     return fd.use { java.io.FileInputStream(it.fileDescriptor).use { fis -> fis.readBytes() } }
 }
 
@@ -1918,7 +1918,7 @@ internal fun encodeBitmapToBase64(bitmap: Bitmap): String {
     } while (quality >= 20)
 
     if (base64.length > maxBase64Length) {
-        throw IllegalStateException("图片过大,请选择较小图片")
+        throw IllegalStateException("La imagen es demasiado grande; selecciona una más pequeña")
     }
     return base64
 }
