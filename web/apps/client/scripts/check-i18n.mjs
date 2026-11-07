@@ -16,9 +16,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMP = join(ROOT, ".i18n-check.mjs");
 
 const ENTRY = `
-export { MESSAGES, ZH, EN, JA, KO, RU, type MessageKey } from "./src/i18n/messages.ts";
+export { MESSAGES, ZH, EN, ES, JA, KO, RU, type MessageKey } from "./src/i18n/messages.ts";
 export { formatMessage, translate, createTranslator, resolveTemplate } from "./src/i18n/translate.ts";
-export { resolveLocale, matchLocale, isLocale, DEFAULT_LOCALE, LOCALES } from "./src/i18n/locale.ts";
+export { resolveLocale, matchLocale, isLocale, DEFAULT_LOCALE, FALLBACK_LOCALE, LOCALES } from "./src/i18n/locale.ts";
 export { formatRelativeTime, formatDayLabel, formatSessionTime, formatNumber } from "./src/i18n/format.ts";
 `;
 
@@ -67,7 +67,7 @@ try {
   assert(untranslated.length === 0, `英文词条里没有残留中文${untranslated.length === 0 ? "" : `：${untranslated.join(",")}`}`);
 
   // ── 2. ja / ko / ru：键集与 zh 完全一致、无空串、真的翻译了 ──
-  const DICTS = { ja: mod.JA, ko: mod.KO, ru: mod.RU };
+  const DICTS = { es: mod.ES, ja: mod.JA, ko: mod.KO, ru: mod.RU };
   for (const [locale, dict] of Object.entries(DICTS)) {
     const keys = Object.keys(dict).sort();
     const missing = zhKeys.filter((key) => !(key in dict));
@@ -137,11 +137,17 @@ try {
   // ── 4. 语言解析 ─────────────────────────────────────────────
   assert(mod.resolveLocale("en", ["zh-CN"]) === "en", "设置里指定了就优先");
   assert(mod.resolveLocale("system", ["ja-JP", "en"]) === "ja", "system 按浏览器语言列表首个可识别项");
-  assert(mod.resolveLocale("system", ["fr-FR"]) === "zh", "都匹配不到回落 zh");
-  assert(mod.resolveLocale(undefined, []) === mod.DEFAULT_LOCALE, "没有语言信息时回落默认");
+  assert(mod.resolveLocale("system", ["fr-FR"]) === "es", "Unknown browser language falls back to Spanish");
+  assert(mod.resolveLocale(undefined, []) === mod.FALLBACK_LOCALE, "没有语言信息时回落默认");
   assert(mod.resolveLocale("system", ["en-US"]) === "en", "区域标签取主语言");
   assert(mod.matchLocale("ko_KR") === "ko" && mod.matchLocale("xx") === undefined, "matchLocale 处理下划线与未知语言");
   assert(mod.resolveLocale("nonsense", ["en-GB"]) === "en", "不认识的值当作 system 处理");
+
+  assert(mod.matchLocale("es-AR") === "es", "Spanish region tags are supported");
+  assert(mod.resolveLocale("es", ["en-US"]) === "es", "Explicit Spanish overrides browser language");
+  assert(mod.translate("es", "error.noResponse") === "Musa no respondió; vuelve a intentarlo", "New timeout errors are Spanish and Musa-branded");
+  assert(mod.translate("es", "settings.dependencyHint", { title: "Prueba" }) === "Primero activa «Prueba»", "New settings hints preserve interpolation");
+  assert(mod.formatRelativeTime(Date.now(), Date.now(), "es") === "Ahora mismo", "Spanish relative time");
 
   // ── 5. 相对时间（zh / en 各分支）────────────────────────────
   const now = new Date(2026, 9, 30, 15, 0, 0).getTime();
