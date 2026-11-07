@@ -317,7 +317,7 @@
     <string name="stats_dashboard_subtitle">%1$d sessões · %2$d dias ativos</string>
     <string name="stats_export_cd">Exportar resumo de estatísticas</string>
     <string name="stats_export_chooser">Compartilhar resumo de estatísticas</string>
-    <string name="stats_export_subject">Resumo das estatísticas do Muse</string>
+    <string name="stats_export_subject">Resumo das estatísticas do Musa</string>
     <string name="stats_empty_title">As estatísticas aparecerão aqui depois que você começar a conversar</string>
     <string name="stats_empty_action">Inicie uma conversa</string>
     <string name="stats_view_all">Ver tudo</string>
@@ -337,7 +337,7 @@
     <string name="stats_hourly_chart_cd">Gráfico de barras de distribuição de mensagens 24 horas</string>
     <string name="stats_other">Outros</string>
     <string name="stats_model_donut_cd">Gráfico de rosca de uso de modelos</string>
-    <string name="stats_summary_header">===== Resumo das estatísticas do Muse =====</string>
+    <string name="stats_summary_header">===== Resumo das estatísticas do Musa =====</string>
     <string name="stats_summary_total_sessions">Total de sessões: %1$d</string>
     <string name="stats_summary_total_messages">Total de mensagens: %1$d</string>
     <string name="stats_summary_ai_replies">Respostas de IA: %1$d</string>
@@ -561,11 +561,11 @@
     <string name="cover_empty_hint">Toque no botão inferior direito para importar uma imagem, ou deixe a IA gerar uma capa</string>
     <string name="quick_notes_settings_title">Configurações de captura rápida</string>
     <string name="quick_capture_swipe_title">Mostrar captura rápida por deslize</string>
-    <string name="quick_capture_swipe_desc">Mostrar a alça de captura rápida na borda direita dentro do Muse</string>
+    <string name="quick_capture_swipe_desc">Mostrar a alça de captura rápida na borda direita dentro do Musa</string>
     <string name="quick_capture_overlay_title">Ativar sobreposição do sistema</string>
-    <string name="quick_capture_overlay_desc">Manter a cápsula flutuante disponível ao sair do Muse para captura rápida</string>
+    <string name="quick_capture_overlay_desc">Manter a cápsula flutuante disponível ao sair do Musa para captura rápida</string>
     <string name="quick_capture_overlay_permission_error">Não foi possível abrir as configurações de permissão de sobreposição</string>
-    <string name="quick_capture_overlay_hint">A sobreposição fica desativada por padrão. Ao ativá-la, o sistema deve permitir que o Muse seja exibido sobre outros apps.</string>
+    <string name="quick_capture_overlay_hint">A sobreposição fica desativada por padrão. Ao ativá-la, o sistema deve permitir que o Musa seja exibido sobre outros apps.</string>
     <string name="chat_background_cd">Fundo do chat</string>
     <string name="chat_analyzing_image">Analisando imagem %1$d/%2$d…</string>
     <string name="msg_compressed">Comprimido</string>
@@ -574,7 +574,7 @@
     <string name="plugin_models_summary">%1$d modelos · %2$s</string>
     <string name="accessibility_enable_btn">Abrir configurações do sistema</string>
     <string name="accessibility_section_title">Serviço de acessibilidade</string>
-    <string name="accessibility_status_disabled">Não habilitado. Autorize «Automação de UI do Muse» nas configurações do sistema.</string>
+    <string name="accessibility_status_disabled">Não habilitado. Autorize «Automação de UI do Musa» nas configurações do sistema.</string>
     <string name="accessibility_status_enabled">Serviço de acessibilidade habilitado. Ações de UI disponíveis (clicar/deslizar/entrada/captura/ler árvore de UI).</string>
     <string name="action_retry">Tentar novamente</string>
     <string name="common_load_failed">Falha ao carregar</string>
@@ -603,7 +603,7 @@
     <string name="permission_level_none">Nenhum (automação de UI indisponível)</string>
     <string name="permission_level_root">Root autorizado (todas as capacidades disponíveis)</string>
     <string name="permission_level_shizuku">Shizuku autorizado (UI + comandos de shell disponíveis)</string>
-    <string name="permission_wizard_desc">A automação de UI do Muse usa um modelo de permissão de três canais. Habilite cada um abaixo; níveis mais altos liberam mais operações. Ações de UI exigem apenas Acessibilidade; comandos de shell exigem Shizuku ou Root.</string>
+    <string name="permission_wizard_desc">A automação de UI do Musa usa um modelo de permissão de três canais. Habilite cada um abaixo; níveis mais altos liberam mais operações. Ações de UI exigem apenas Acessibilidade; comandos de shell exigem Shizuku ou Root.</string>
     <string name="permission_wizard_title">Assistente de permissões</string>
     <string name="root_section_title">Permissão de root</string>
     <string name="root_status_available">Root autorizado (canal de fallback, pode executar comandos su diretamente)</string>
@@ -614,10 +614,10 @@
     <string name="settings_about_join_qq_group">Entrar no grupo QQ</string>
     <string name="settings_about_join_qq_group_subtitle">Grupo QQ: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ não encontrado; o número do grupo 905451314 foi copiado para a área de transferência</string>
-    <string name="shizuku_authorize_btn">Autorizar Muse</string>
+    <string name="shizuku_authorize_btn">Autorizar Musa</string>
     <string name="permission_shizuku_opened_toast">Shizuku aberto. Inicie o serviço nele e volte para atualizar</string>
     <string name="permission_shizuku_activation_hint">O serviço não está em execução. No Android 11+, ative as Opções do desenvolvedor e pareie/inicie pela «Depuração sem fio» dentro do Shizuku; dispositivos com root podem iniciar diretamente. Após reiniciar o celular é preciso ativar novamente.</string>
-    <string name="permission_shizuku_manual_grant_hint">O diálogo de permissão foi negado permanentemente («Não perguntar novamente»). O Shizuku está aberto — permita o Muse manualmente dentro dele</string>
+    <string name="permission_shizuku_manual_grant_hint">O diálogo de permissão foi negado permanentemente («Não perguntar novamente»). O Shizuku está aberto — permita o Musa manualmente dentro dele</string>
     <string name="permission_shizuku_denied_toast">Permissão do Shizuku negada</string>
     <string name="permission_shizuku_timeout_toast">Tempo esgotado aguardando a autorização do Shizuku; tente novamente</string>
     <string name="permission_shizuku_unavailable_toast">O serviço do Shizuku não está em execução; inicie-o primeiro no app Shizuku</string>
@@ -626,7 +626,7 @@
     <string name="permission_shizuku_version_old">O Shizuku está desatualizado (v11+ obrigatório, v13+ recomendado). Atualize e tente novamente.</string>
     <string name="shizuku_install_btn">Baixar Shizuku</string>
     <string name="shizuku_section_title">Shizuku</string>
-    <string name="shizuku_status_authorized">Muse autorizado a usar Shizuku</string>
+    <string name="shizuku_status_authorized">Musa autorizado a usar Shizuku</string>
     <string name="skill_agent_phone_not_configured">agent_phone não configurado: GroupChatScheduler não injetado</string>
     <string name="skill_agent_phone_target_not_found">O agente de destino não existe</string>
     <string name="skill_message_blank">a mensagem não pode estar vazia</string>

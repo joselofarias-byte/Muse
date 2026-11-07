@@ -39,7 +39,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (providers.gradleProperty("musaUnsignedVerification").orNull == "true") {
+                null
+            } else {
+                signingConfigs.getByName("release")
+            }
         }
     }
 

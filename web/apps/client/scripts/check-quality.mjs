@@ -204,7 +204,7 @@ try {
   const placeholderNoDesc = mod.renderToStaticMarkup(
     mod.createElement(mod.HostPlaceholder, { title: "PROTO-终端", onBack: () => undefined }),
   );
-  assert(placeholderNoDesc.includes("只能在手机上的 Muse 里使用"), "没有说明时给一句中性话，不是空白");
+  assert(placeholderNoDesc.includes("只能在手机上的 Musa 里使用"), "没有说明时给一句中性话，不是空白");
   const settingsSource = readFileSync(join(ROOT, "src", "host", "HostSettings.tsx"), "utf8");
   assert(
     settingsSource.includes("<HostPlaceholder") && !settingsSource.includes("这个页面还在迁移中"),
@@ -285,9 +285,9 @@ try {
   assert(mod.resolveLocale("ja", ["zh-CN"]) === "ja", "设置里指定了语言就按它，不看浏览器");
   assert(mod.resolveLocale("system", ["ja-JP", "en-US"]) === "ja", "system 按浏览器语言列表逐个匹配");
   assert(mod.resolveLocale(undefined, ["en-GB"]) === "en", "没有语言值时按浏览器语言");
-  assert(mod.FALLBACK_LOCALE === "zh" && mod.resolveLocale("system", []) === "zh", "认不出的语言回落 zh（与手机端一致）");
-  assert(mod.resolveLocale("fr", ["fr-FR"]) === "zh", "Host 给了不认识的语言值时也是 zh 兜底");
-  assert(mod.LOCALES.join(",") === "zh,en,ja,ko,ru", "支持 zh / en / ja / ko / ru 五种语言");
+  assert(mod.FALLBACK_LOCALE === "es" && mod.resolveLocale("system", []) === "es", "Unknown languages fall back to Spanish");
+  assert(mod.resolveLocale("fr", ["fr-FR"]) === "es", "Unknown host languages fall back to Spanish");
+  assert(mod.LOCALES.join(",") === "es,zh,en,ja,ko,ru", "Supports es / zh / en / ja / ko / ru");
 
   const zhKeys = Object.keys(mod.ZH);
   const enKeys = Object.keys(mod.EN);

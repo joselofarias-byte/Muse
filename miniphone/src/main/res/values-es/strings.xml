@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 小手机界面的文案。这个模块原来没有 res 目录，界面文字全是 Kotlin 里的中文字面量，
-         于是英文界面里整个小手机都是中文。键名统一 mp_ 前缀，避免与 :app 的同名资源混淆。 -->
+    <!-- El prefijo mp_ evita conflictos con los recursos de la aplicación. -->
     <string name="mp_tab_messages">Mensajes</string>
     <string name="mp_tab_contacts">Contactos</string>
     <string name="mp_tab_discover">Descubrir</string>
@@ -13,7 +12,7 @@
     <string name="mp_msgs_empty_hint">Busca un personaje en Contactos para empezar</string>
     <string name="mp_msgs_empty_preview">Sin mensajes aún</string>
     <string name="mp_msgs_go_contacts">Ir a Contactos</string>
-    <string name="mp_contacts_empty_title">Contactos vacíos</string>
+    <string name="mp_contacts_empty_title">No hay contactos</string>
     <string name="mp_contacts_empty_hint">Tus contactos aparecerán aquí ordenados alfabéticamente</string>
     <string name="mp_discover_moments">Momentos</string>
     <string name="mp_me_empty_nickname">Sin apodo aún</string>
@@ -29,7 +28,7 @@
     <string name="mp_me_version">Información de versión</string>
     <string name="mp_me_version_label">Datos del miniphone v%1$d / aplicación %2$s</string>
     <string name="mp_me_clear_dialog_title">¿Borrar el historial de chats?</string>
-    <string name="mp_me_clear_dialog_hint">Se eliminarán todos los chats y mensajes sin recuperación. Los momentos no se tocan.</string>
+    <string name="mp_me_clear_dialog_hint">Se eliminarán todos los chats y mensajes sin recuperación. Los momentos no se verán afectados.</string>
     <string name="mp_cancel">Cancelar</string>
     <string name="mp_clear">Borrar</string>
     <string name="mp_delete">Eliminar</string>
@@ -47,14 +46,14 @@
     <string name="mp_chat_stop">Terminar</string>
     <string name="mp_chat_transcribing">Transcribiendo…</string>
     <string name="mp_chat_empty_transcript">No te escuché bien, repítelo</string>
-    <string name="mp_chat_start_failed">No se pudo iniciar la grabación; revisa si otra app usa el micrófono</string>
+    <string name="mp_chat_start_failed">No se pudo iniciar la grabación; revisa si otra aplicación usa el micrófono</string>
     <string name="mp_chat_mic_permission">Se necesita permiso del micrófono para mensajes de voz</string>
     <string name="mp_chat_voice_unsupported">El motor de voz actual no admite grabación; elige en Ajustes uno que admita transcripción</string>
     <string name="mp_chat_expand">Desplegar</string>
     <string name="mp_chat_collapse">Plegar</string>
     <string name="mp_chat_sending">Enviando</string>
     <string name="mp_chat_send_failed">No enviado; toca para reintentar</string>
-    <string name="mp_chat_typing">El otro está escribiendo…</string>
+    <string name="mp_chat_typing">Está escribiendo…</string>
     <string name="mp_chat_delete_title">¿Eliminar este mensaje?</string>
     <string name="mp_chat_delete_hint">Se elimina solo del historial de este dispositivo; el chat sigue igual.</string>
     <string name="mp_voice_unavailable">No se puede reproducir el audio</string>
@@ -86,7 +85,7 @@
     <string name="mp_group_contacts_empty_hint">Añade personajes primero para formar un grupo</string>
     <string name="mp_moment_reply_prefix">Responder a %1$s</string>
     <string name="mp_activity_searching">Buscando algo…</string>
-    <string name="mp_activity_remembering">Les ha venido algo a la memoria…</string>
+    <string name="mp_activity_remembering">Ha recordado algo…</string>
     <string name="mp_activity_calendar">Revisa el calendario…</string>
     <string name="mp_activity_weather">Ha mirado por la ventana…</string>
     <string name="mp_activity_notes">Revisa sus notas…</string>
@@ -108,13 +107,13 @@
     <string name="mp_members_add_label">+ Añadir miembros</string>
     <string name="mp_members_add_title">Añadir miembros</string>
     <string name="mp_members_add_empty_title">No quedan personajes por añadir</string>
-    <string name="mp_members_add_empty_hint">Todos los de Contactos ya están en el grupo</string>
+    <string name="mp_members_add_empty_hint">Todos los personajes de Contactos ya están en el grupo</string>
     <string name="mp_members_disband">Eliminar y salir</string>
     <string name="mp_members_disband_title">¿Eliminar y salir?</string>
     <string name="mp_members_disband_hint">El grupo entero y todos sus mensajes se eliminan de este dispositivo sin recuperación.</string>
     <string name="mp_members_remove">Quitar del grupo</string>
     <string name="mp_members_remove_title">¿Quitar a %1$s del grupo?</string>
-    <string name="mp_members_remove_hint">Lo que dijo antes permanece en el grupo.</string>
+    <string name="mp_members_remove_hint">Sus mensajes anteriores permanecerán en el grupo.</string>
     <string name="mp_members_untitled">Chat grupal</string>
     <string name="mp_save">Guardar</string>
     <string name="mp_chat_menu_copy">Copiar</string>
@@ -133,6 +132,6 @@
     <string name="mp_shell_untitled_group">Chat grupal</string>
     <string name="mp_shell_group_preview_mark">[Grupo]</string>
     <string name="mp_msg_image">[Foto]</string>
-    <string name="mp_msg_no_reply">Nadie respondió</string>
+    <string name="mp_msg_no_reply">Nadie respondió en esta ronda</string>
     <string name="mp_msg_voice">[Audio]</string>
 </resources>

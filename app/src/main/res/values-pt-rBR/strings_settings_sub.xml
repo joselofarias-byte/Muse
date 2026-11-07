@@ -81,7 +81,7 @@
     <string name="settings_theme_font_preview_note">Nota pequena · Para dicas auxiliares</string>
     <!-- Phase 4: seleção e prévia da pele de balões -->
     <string name="settings_bubble_skin_section">Pele de balões</string>
-    <string name="settings_bubble_skin_builtin">Balão padrão do Muse</string>
+    <string name="settings_bubble_skin_builtin">Balão padrão do Musa</string>
     <string name="settings_bubble_skin_builtin_desc">Pele integrada, igual ao padrão</string>
     <string name="settings_bubble_skin_custom_desc">Pele de balão personalizada</string>
     <string name="settings_bubble_skin_import">Importar pele</string>
@@ -204,7 +204,7 @@
     <string name="settings_memory_keep_awake">Mantenha-se acordado</string>
     <string name="settings_memory_keep_awake_subtitle">Manter apenas durante geração ativa; pular com bateria baixa e sem carregar</string>
     <string name="settings_memory_auto_launch">Inicialização automática na inicialização</string>
-    <string name="settings_memory_auto_launch_subtitle">Inicie o Muse automaticamente quando o dispositivo inicializar</string>
+    <string name="settings_memory_auto_launch_subtitle">Inicie o Musa automaticamente quando o dispositivo inicializar</string>
     <string name="settings_memory_notification_section">Notificações</string>
     <string name="settings_memory_reply_notification_cd">Notificação de conclusão de resposta</string>
     <string name="settings_memory_reply_notification">Notificação de conclusão de resposta</string>
@@ -530,7 +530,7 @@
     <string name="settings_import_chatgpt_step1">1. Abra o ChatGPT → Configurações → Perfil → Controles de dados</string>
     <string name="settings_import_chatgpt_step2">2. Toque em "Exportar dados"; a OpenAI envia o zip por e-mail</string>
     <string name="settings_import_chatgpt_step3">3. Baixe o zip para o celular ou extraia e escolha conversations.json</string>
-    <string name="settings_import_chatgpt_step4">4. Selecione o arquivo no Muse e as conversas serão importadas automaticamente</string>
+    <string name="settings_import_chatgpt_step4">4. Selecione o arquivo no Musa e as conversas serão importadas automaticamente</string>
     <string name="settings_provider_media_gen_section">Modelos de geração de mídia</string>
     <string name="settings_asr_entry_title">Mecanismo de reconhecimento de fala</string>
     <string name="settings_asr_entry_subtitle">Selecione um mecanismo de fala para texto (ex.: Paraformer / Whisper)</string>
@@ -669,7 +669,7 @@
     <string name="settings_preview_user_bubble">Pré-visualização da sua mensagem</string>
     <string name="settings_preview_assistant_bubble">Pré-visualização de uma resposta de IA; fonte, espaçamento e raio mudam ao vivo.</string>
     <string name="settings_preview_timestamp">14:30</string>
-    <string name="settings_preview_model_name">Muse · Modelo de exemplo</string>
+    <string name="settings_preview_model_name">Musa · Modelo de exemplo</string>
     <string name="settings_theme_liquid_glass">Efeito de vidro líquido</string>
     <string name="settings_theme_liquid_glass_desc">Visual de vidro para a barra superior, de entrada e balões de mensagem.</string>
     <string name="settings_glass_off">Desligado</string>
@@ -694,11 +694,11 @@
     <string name="settings_backup_include_secrets_subtitle">Chaves de API e credenciais serão salvas em texto plano no arquivo. Guarde com segurança.</string>
     <string name="oauth_device_open_page">Abrir página de autorização</string>
     <string name="oauth_device_open_failed">Não é possível abrir o navegador</string>
-    <string name="keep_alive_notification_title">Muse está em execução em segundo plano</string>
+    <string name="keep_alive_notification_title">Musa está em execução em segundo plano</string>
     <string name="keep_alive_notification_text">Mantendo tarefas agendadas e mensagens proativas online</string>
     <string name="settings_keep_alive_title">Manter em segundo plano</string>
     <string name="settings_keep_alive_subtitle">Mantém o processo em primeiro plano com uma notificação permanente</string>
-    <string name="settings_keep_alive_hint">O Muse mostrará uma notificação permanente. O Android exige isso para serviços em primeiro plano e não é possível ocultá-la. Em algumas ROMs chinesas também é preciso permitir a inicialização automática.</string>
+    <string name="settings_keep_alive_hint">O Musa mostrará uma notificação permanente. O Android exige isso para serviços em primeiro plano e não é possível ocultá-la. Em algumas ROMs chinesas também é preciso permitir a inicialização automática.</string>
     <string name="settings_keep_alive_wakelock_title">Manter conexão com a tela desligada</string>
     <string name="settings_keep_alive_wakelock_subtitle">Recebe mensagens proativas mais cedo, gastando mais bateria</string>
     <string name="settings_keep_alive_battery_title">Desativar otimização de bateria</string>
@@ -716,7 +716,7 @@
     <string name="settings_keep_alive_notification_custom_title">Texto da notificação</string>
     <string name="settings_keep_alive_notification_custom_subtitle">Personalize o título e o corpo da notificação permanente</string>
     <string name="settings_keep_alive_notification_custom_hint">Deixe em branco para usar o texto padrão.</string>
-    <string name="settings_keep_alive_notification_title_placeholder">Padrão: Muse está em execução em segundo plano</string>
+    <string name="settings_keep_alive_notification_title_placeholder">Padrão: Musa está em execução em segundo plano</string>
     <string name="settings_keep_alive_notification_text_placeholder">Padrão: Mantendo tarefas agendadas e mensagens proativas online</string>
     <string name="settings_relationship_proactive_enabled">Permitir mensagens proativas</string>
     <string name="settings_relationship_proactive_enabled_subtitle">Desativado, este personagem não falará primeiro; você ainda pode iniciar a conversa</string>
