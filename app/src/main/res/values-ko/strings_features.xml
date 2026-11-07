@@ -317,7 +317,7 @@
     <string name="stats_dashboard_subtitle">%1$d 세션 · %2$d 활성 날짜</string>
     <string name="stats_export_cd">통계 요약 내보내기</string>
     <string name="stats_export_chooser">통계 요약 공유</string>
-    <string name="stats_export_subject">Muse 통계 요약</string>
+    <string name="stats_export_subject">Musa 통계 요약</string>
     <string name="stats_empty_title">채팅을 시작하면 여기에 통계가 표시됩니다.</string>
     <string name="stats_empty_action">대화 시작</string>
     <string name="stats_view_all">모두 보기</string>
@@ -337,7 +337,7 @@
     <string name="stats_hourly_chart_cd">24시간 메시지 분포 막대 그래프</string>
     <string name="stats_other">기타</string>
     <string name="stats_model_donut_cd">모델 사용 분포 도넛 차트</string>
-    <string name="stats_summary_header">===== Muse 통계 요약 =====</string>
+    <string name="stats_summary_header">===== Musa 통계 요약 =====</string>
     <string name="stats_summary_total_sessions">총 세션수: %1$d</string>
     <string name="stats_summary_total_messages">총 메시지: %1$d</string>
     <string name="stats_summary_ai_replies">AI 응답 수: %1$d</string>
@@ -561,11 +561,11 @@
     <string name="cover_empty_hint">오른쪽 하단 버튼을 눌러 이미지를 가져오거나 AI가 표지를 생성하도록 하세요</string>
     <string name="quick_notes_settings_title">빠른 캡처 설정</string>
     <string name="quick_capture_swipe_title">스와이프 빠른 캡처 표시</string>
-    <string name="quick_capture_swipe_desc">Muse 내부 오른쪽 가장자리에 빠른 캡처 핸들 표시</string>
+    <string name="quick_capture_swipe_desc">Musa 내부 오른쪽 가장자리에 빠른 캡처 핸들 표시</string>
     <string name="quick_capture_overlay_title">시스템 오버레이 활성화</string>
-    <string name="quick_capture_overlay_desc">Muse를 떠난 뒤에도 플로팅 캡슐로 빠른 캡처 가능</string>
+    <string name="quick_capture_overlay_desc">Musa를 떠난 뒤에도 플로팅 캡슐로 빠른 캡처 가능</string>
     <string name="quick_capture_overlay_permission_error">오버레이 권한 설정을 열 수 없습니다</string>
-    <string name="quick_capture_overlay_hint">오버레이는 기본적으로 꺼져 있습니다. 활성화하면 시스템이 Muse가 다른 앱 위에 표시되도록 허용해야 합니다.</string>
+    <string name="quick_capture_overlay_hint">오버레이는 기본적으로 꺼져 있습니다. 활성화하면 시스템이 Musa가 다른 앱 위에 표시되도록 허용해야 합니다.</string>
     <string name="chat_background_cd">채팅 배경</string>
     <string name="chat_analyzing_image">이미지 분석 중 %1$d/%2$d…</string>
     <string name="msg_compressed">압축됨</string>
@@ -574,7 +574,7 @@
     <string name="plugin_models_summary">%1$d개 모델 · %2$s</string>
     <string name="accessibility_enable_btn">시스템 설정 열기</string>
     <string name="accessibility_section_title">접근성 서비스</string>
-    <string name="accessibility_status_disabled">사용 안 함. 시스템 설정에서 «Muse UI 자동화»를 승인하세요.</string>
+    <string name="accessibility_status_disabled">사용 안 함. 시스템 설정에서 «Musa UI 자동화»를 승인하세요.</string>
     <string name="accessibility_status_enabled">접근성 서비스 사용 중. UI 작업(클릭/스와이프/입력/스크린샷/UI 트리 읽기)을 사용할 수 있습니다.</string>
     <string name="action_retry">다시 시도</string>
     <string name="common_load_failed">불러오기 실패</string>
@@ -603,7 +603,7 @@
     <string name="permission_level_none">없음(UI 자동화 사용 불가)</string>
     <string name="permission_level_root">Root 승인됨(모든 기능 사용 가능)</string>
     <string name="permission_level_shizuku">Shizuku 승인됨(UI + 셸 명령 사용 가능)</string>
-    <string name="permission_wizard_desc">Muse UI 자동화는 3채널 권한 모델을 사용합니다. 아래 각 항목을 활성화하세요. 수준이 높을수록 더 많은 작업을 사용할 수 있습니다. UI 작업에는 접근성만, 셸 명령에는 Shizuku 또는 Root가 필요합니다.</string>
+    <string name="permission_wizard_desc">Musa UI 자동화는 3채널 권한 모델을 사용합니다. 아래 각 항목을 활성화하세요. 수준이 높을수록 더 많은 작업을 사용할 수 있습니다. UI 작업에는 접근성만, 셸 명령에는 Shizuku 또는 Root가 필요합니다.</string>
     <string name="permission_wizard_title">권한 마법사</string>
     <string name="root_section_title">Root 권한</string>
     <string name="root_status_available">Root 승인됨(대체 채널, su 명령 직접 실행 가능)</string>
@@ -614,10 +614,10 @@
     <string name="settings_about_join_qq_group">QQ 그룹 참여</string>
     <string name="settings_about_join_qq_group_subtitle">QQ 그룹: 905451314</string>
     <string name="settings_about_qq_not_installed">QQ를 찾을 수 없습니다. 그룹 번호 905451314가 클립보드에 복사되었습니다</string>
-    <string name="shizuku_authorize_btn">Muse 승인</string>
+    <string name="shizuku_authorize_btn">Musa 승인</string>
     <string name="permission_shizuku_opened_toast">Shizuku를 열었습니다. 앱에서 서비스를 시작한 후 돌아와 새로고침하세요</string>
     <string name="permission_shizuku_activation_hint">서비스가 실행 중이 아닙니다. Android 11+: 개발자 옵션을 켠 뒤 Shizuku의 \'무선 디버깅\'에서 페어링하고 시작하세요. 루팅된 기기는 바로 시작할 수 있습니다. 기기 재부팅 후에는 다시 활성화해야 합니다.</string>
-    <string name="permission_shizuku_manual_grant_hint">권한 대화상자가 \'다시 묻지 않음\'으로 영구 거부되었습니다. Shizuku를 열었으니 앱에서 Muse를 수동으로 허용하세요</string>
+    <string name="permission_shizuku_manual_grant_hint">권한 대화상자가 \'다시 묻지 않음\'으로 영구 거부되었습니다. Shizuku를 열었으니 앱에서 Musa를 수동으로 허용하세요</string>
     <string name="permission_shizuku_denied_toast">Shizuku 권한이 거부되었습니다</string>
     <string name="permission_shizuku_timeout_toast">Shizuku 승인 대기 시간이 초과되었습니다. 다시 시도하세요</string>
     <string name="permission_shizuku_unavailable_toast">Shizuku 서비스가 실행 중이 아닙니다. 먼저 Shizuku 앱에서 시작하세요</string>
@@ -626,7 +626,7 @@
     <string name="permission_shizuku_version_old">Shizuku가 너무 오래되었습니다(v11+ 필수, v13+ 권장). 업데이트 후 다시 시도하세요.</string>
     <string name="shizuku_install_btn">Shizuku 다운로드</string>
     <string name="shizuku_section_title">Shizuku</string>
-    <string name="shizuku_status_authorized">Muse의 Shizuku 사용 승인됨</string>
+    <string name="shizuku_status_authorized">Musa의 Shizuku 사용 승인됨</string>
     <string name="skill_agent_phone_not_configured">agent_phone 미설정: GroupChatScheduler가 주입되지 않았습니다</string>
     <string name="skill_agent_phone_target_not_found">대상 에이전트가 존재하지 않습니다</string>
     <string name="skill_message_blank">메시지는 비워 둘 수 없습니다</string>

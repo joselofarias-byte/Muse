@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="settings_web_search_order_title">搜索顺序</string>
+    <string name="settings_web_search_order_subtitle">按此顺序依次尝试搜索服务；未配置的引擎会自动跳过。</string>
+    <string name="settings_web_search_order_move_up">上移</string>
+    <string name="settings_web_search_order_move_down">下移</string>
+    <string name="settings_web_search_order_reset">恢复默认顺序</string>
+    <string name="settings_web_search_key_verify">验证</string>
+    <string name="settings_web_search_key_verify_ok">可用：返回 %1$d 条结果</string>
+    <string name="settings_web_search_key_verify_failed">验证失败：%1$s</string>
+    <string name="settings_web_search_key_verify_no_key">该引擎还没有可用的 Key</string>
+    <string name="settings_web_search_key_verify_empty">连接正常，但没有返回结果</string>
+</resources>

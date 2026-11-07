@@ -4,7 +4,7 @@
     <!-- Splash -->
 
     <!-- Widget -->
-    <string name="widget_description">Быстрый запуск чата Muse</string>
+    <string name="widget_description">Быстрый запуск чата Musa</string>
     <string name="widget_new_session">Новый чат</string>
     <string name="widget_recent_sessions">Недавние чаты</string>
     <!-- P3-16: 4x2 chat widget -->
@@ -228,7 +228,7 @@
     <string name="proxy_bypass_hint">Через запятую. Поддерживаются .суффикс, шаблоны *. и префиксы IP. Локальные модели и службы LAN добавьте сюда.</string>
     <string name="proxy_test_action">Проверить соединение</string>
     <string name="proxy_test_running">Проверка…</string>
-    <string name="launcher_alias_muse">Muse</string>
+    <string name="launcher_alias_muse">Musa</string>
     <string name="proxy_test_invalid_config">Сначала укажите корректный адрес и порт прокси</string>
     <string name="proxy_test_connected">Прокси доступен, </string>
     <string name="proxy_test_need_auth">Прокси требует авторизации; проверьте логин и пароль</string>

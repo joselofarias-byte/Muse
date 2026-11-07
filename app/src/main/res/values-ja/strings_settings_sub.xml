@@ -81,7 +81,7 @@
     <string name="settings_theme_font_preview_note">ちょっとしたメモ・補助ヒント用</string>
     <!-- Phase 4: 吹き出しスキンの選択/プレビュー -->
     <string name="settings_bubble_skin_section">吹き出しスキン</string>
-    <string name="settings_bubble_skin_builtin">Muse デフォルト吹き出し</string>
+    <string name="settings_bubble_skin_builtin">Musa デフォルト吹き出し</string>
     <string name="settings_bubble_skin_builtin_desc">内蔵スキン(デフォルトと同じ外観)</string>
     <string name="settings_bubble_skin_custom_desc">カスタム吹き出しスキン</string>
     <string name="settings_bubble_skin_import">スキンをインポート</string>
@@ -204,7 +204,7 @@
     <string name="settings_memory_keep_awake">起きていてください</string>
     <string name="settings_memory_keep_awake_subtitle">生成中のみ保持し、低バッテリーで未充電の場合は保持しない</string>
     <string name="settings_memory_auto_launch">起動時に自動起動</string>
-    <string name="settings_memory_auto_launch_subtitle">デバイスの起動時に Muse を自動的に開始する</string>
+    <string name="settings_memory_auto_launch_subtitle">デバイスの起動時に Musa を自動的に開始する</string>
     <string name="settings_memory_notification_section">通知</string>
     <string name="settings_memory_reply_notification_cd">返信完了通知</string>
     <string name="settings_memory_reply_notification">返信完了通知</string>
@@ -213,7 +213,7 @@
     <!-- Data Import -->
     <string name="settings_import_page_title">データインポート</string>
     <string name="settings_import_migrate_title">他のアプリからデータを移行する</string>
-    <string name="settings_import_migrate_desc">以前に RikkaHub または Kelivo を使用していた場合は、そのバックアップ ファイルを Muse にインポートできます。</string>
+    <string name="settings_import_migrate_desc">以前に RikkaHub または Kelivo を使用していた場合は、そのバックアップ ファイルを Musa にインポートできます。</string>
     <string name="settings_import_step1">ステップ 1: バックアップをエクスポートする方法を学ぶ</string>
     <string name="settings_import_rikkahub_desc">Android AIチャットクライアント</string>
     <string name="settings_import_rikkahub_step1">1. RikkaHub アプリで設定を開きます</string>
@@ -530,7 +530,7 @@
     <string name="settings_import_chatgpt_step1">1. ChatGPT を開く → 設定 → プロフィール → データコントロール</string>
     <string name="settings_import_chatgpt_step2">2.「データをエクスポート」をタップすると、OpenAI が zip をメールで送信します</string>
     <string name="settings_import_chatgpt_step3">3. zip を端末にダウンロードするか、解凍して conversations.json を選択</string>
-    <string name="settings_import_chatgpt_step4">4. Muse でそのファイルを選択すると、会話が自動的にインポートされます</string>
+    <string name="settings_import_chatgpt_step4">4. Musa でそのファイルを選択すると、会話が自動的にインポートされます</string>
     <string name="settings_provider_media_gen_section">メディア生成モデル</string>
     <string name="settings_asr_entry_title">音声認識エンジン</string>
     <string name="settings_asr_entry_subtitle">音声認識エンジンを選択(Paraformer / Whisper など)</string>
@@ -669,7 +669,7 @@
     <string name="settings_preview_user_bubble">あなたのメッセージのプレビュー</string>
     <string name="settings_preview_assistant_bubble">AIの返信のプレビュー。文字サイズ・字間・角丸がリアルタイムに変わります。</string>
     <string name="settings_preview_timestamp">14:30</string>
-    <string name="settings_preview_model_name">Muse · サンプルモデル</string>
+    <string name="settings_preview_model_name">Musa · サンプルモデル</string>
     <string name="settings_theme_liquid_glass">リキッドグラス効果</string>
     <string name="settings_theme_liquid_glass_desc">トップバー・入力バー・メッセージバブルのガラス質感。</string>
     <string name="settings_glass_off">オフ</string>
@@ -694,11 +694,11 @@
     <string name="settings_backup_include_secrets_subtitle">APIキーとログイン認証情報がバックアップに平文で保存されます。慎重に保管してください。</string>
     <string name="oauth_device_open_page">認証ページを開く</string>
     <string name="oauth_device_open_failed">ブラウザを開けません</string>
-    <string name="keep_alive_notification_title">Muse はバックグラウンドで実行中</string>
+    <string name="keep_alive_notification_title">Musa はバックグラウンドで実行中</string>
     <string name="keep_alive_notification_text">定期タスクと自発メッセージを維持しています</string>
     <string name="settings_keep_alive_title">バックグラウンドで常駐</string>
     <string name="settings_keep_alive_subtitle">常駐通知でプロセスをフォアグラウンドに保ちます</string>
-    <string name="settings_keep_alive_hint">Muse は常駐通知を表示します。Android がフォアグラウンドサービスに要求するもので、非表示にはできません。一部の中国製 ROM では自動起動も許可が必要です。</string>
+    <string name="settings_keep_alive_hint">Musa は常駐通知を表示します。Android がフォアグラウンドサービスに要求するもので、非表示にはできません。一部の中国製 ROM では自動起動も許可が必要です。</string>
     <string name="settings_keep_alive_wakelock_title">画面オフでも接続を維持</string>
     <string name="settings_keep_alive_wakelock_subtitle">自発メッセージを早く受け取れますが、電池を多く消費します</string>
     <string name="settings_keep_alive_battery_title">バッテリー最適化を解除</string>
@@ -716,7 +716,7 @@
     <string name="settings_keep_alive_notification_custom_title">通知文言</string>
     <string name="settings_keep_alive_notification_custom_subtitle">常駐通知のタイトルと本文をカスタマイズ</string>
     <string name="settings_keep_alive_notification_custom_hint">空欄の場合は既定の文言を使用します。</string>
-    <string name="settings_keep_alive_notification_title_placeholder">既定：Muse はバックグラウンドで実行中</string>
+    <string name="settings_keep_alive_notification_title_placeholder">既定：Musa はバックグラウンドで実行中</string>
     <string name="settings_keep_alive_notification_text_placeholder">既定：定期タスクと自発メッセージを維持しています</string>
     <string name="settings_relationship_proactive_enabled">自発メッセージを許可</string>
     <string name="settings_relationship_proactive_enabled_subtitle">オフにするとこのキャラからは連絡しません（あなたからの会話は可能）</string>

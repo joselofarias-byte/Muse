@@ -75,7 +75,7 @@
     <string name="groupchat_create_btn">Create</string>
 
     <!-- ===== ui/account ===== -->
-    <string name="account_default_user">Muse User</string>
+    <string name="account_default_user">Musa User</string>
     <string name="account_loading">Please wait…</string>
     <!-- v2.x: Edit profile page (no login/register UI, local avatar + name only) -->
     <string name="account_edit_profile">Edit Profile</string>
@@ -344,7 +344,7 @@
     <string name="stats_dashboard_subtitle">%1$d sessions · %2$d active days</string>
     <string name="stats_export_cd">Export stats summary</string>
     <string name="stats_export_chooser">Share stats summary</string>
-    <string name="stats_export_subject">Muse stats summary</string>
+    <string name="stats_export_subject">Musa stats summary</string>
     <string name="stats_empty_title">Stats will appear here after you start chatting</string>
     <string name="stats_empty_action">Start a conversation</string>
     <string name="stats_view_all">View all</string>
@@ -364,7 +364,7 @@
     <string name="stats_hourly_chart_cd">24-hour message distribution bar chart</string>
     <string name="stats_other">Other</string>
     <string name="stats_model_donut_cd">Model usage donut chart</string>
-    <string name="stats_summary_header">===== Muse stats summary =====</string>
+    <string name="stats_summary_header">===== Musa stats summary =====</string>
     <string name="stats_summary_total_sessions">Total sessions: %1$d</string>
     <string name="stats_summary_total_messages">Total messages: %1$d</string>
     <string name="stats_summary_ai_replies">AI replies: %1$d</string>
@@ -586,11 +586,11 @@
     <string name="groupchat_streaming_title">Typing...</string>
     <string name="quick_notes_settings_title">Quick Capture Settings</string>
     <string name="quick_capture_swipe_title">Show swipe quick capture</string>
-    <string name="quick_capture_swipe_desc">Show the quick capture handle at the right edge inside Muse</string>
+    <string name="quick_capture_swipe_desc">Show the quick capture handle at the right edge inside Musa</string>
     <string name="quick_capture_overlay_title">Enable system overlay</string>
-    <string name="quick_capture_overlay_desc">Keep the floating capsule available after leaving Muse for quick capture</string>
+    <string name="quick_capture_overlay_desc">Keep the floating capsule available after leaving Musa for quick capture</string>
     <string name="quick_capture_overlay_permission_error">Unable to open overlay permission settings</string>
-    <string name="quick_capture_overlay_hint">The overlay is off by default. When enabled, the system must allow Muse to display over other apps.</string>
+    <string name="quick_capture_overlay_hint">The overlay is off by default. When enabled, the system must allow Musa to display over other apps.</string>
     <string name="chat_background_cd">Chat background</string>
     <string name="chat_analyzing_image">Analyzing image %1$d/%2$d…</string>
     <string name="msg_compressed">Compressed</string>
