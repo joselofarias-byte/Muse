@@ -42,7 +42,10 @@ Todas tienen `CN=Android Debug`. No constituyen una referencia de firma de
 producción. Se reserva `1000001` para `2.6.23-musa-es`, superior al máximo publicado
 999999 y a la candidata anterior 1000000. No se puede garantizar actualización
 sobre esas APK con otro certificado: un número mayor no sustituye la firma.
-Debe aportarse una release previa de producción verificable, no su clave privada.
+Para futuras actualizaciones debe aportarse una release previa de producción verificable, no su clave privada.
+El propietario confirmó el 2026-11-08 que no tiene Muse instalada y autorizó
+una firma permanente nueva; esta primera instalación no requiere APK anterior
+ni prueba de conservación de datos.
 El workflow firmado compara certificado, paquete y versión contra esa release y
 rechaza certificados de depuración. No publica automáticamente.
 
@@ -85,7 +88,8 @@ la aplicación como el proveedor; no usa un keystore alternativo. No se suben AP
 sin firma como artefactos de entrega. La instalación de ese resultado no se
 considera verificada ni es una release distribuible.
 
-Con los secretos y una release de producción previa disponibles:
+Para esta primera instalación, con los secretos disponibles, usar
+`-f first_release=true` sin `previous_release_tag`. Para futuras actualizaciones:
 
 ```sh
 gh workflow run jolufasoft-musa-apk.yml \
@@ -186,3 +190,27 @@ también pasaron 390 pruebas de miniphone antes de reutilizar el flujo existente
 localización estricta y residuos. Estos resultados no sustituyen la verificación
 global del árbol final: Lint, pruebas completas y CI deben concluir en el nuevo
 head. No se acredita otra APK, firma, instalación ni prueba de actualización.
+
+## Firma permanente Musa (primera instalación)
+
+La identidad pública está fijada en `docs/MUSA_RELEASE_CERT.sha256`.
+El workflow rechaza otra clave incluso si los secretos se reemplazan por error.
+No regenerar la firma en versiones siguientes ni usar claves debug o de otras apps.
+
+El keystore JKS RSA-4096 y sus dos contraseñas aleatorias se mantienen fuera
+del repositorio, con permisos privados. No guardar material privado en commits,
+logs, descripciones de PR ni releases. La copia del workspace no sustituye un
+respaldo externo verificado; guardar un respaldo cifrado en custodia del propietario.
+
+Recuperación desde ese respaldo: restaurar el JKS y las credenciales en un
+directorio privado; cargar en GitHub Actions `KEYSTORE_BASE64` (base64 del JKS),
+`KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD`. Usar el helper existente
+`ci/script/validate_release_signing.py` para crear `keystore.properties` fuera de Git,
+y comprobar que el certificado coincide con la huella pública fijada.
+La app y el proveedor de accesibilidad comparten esa configuración de firma.
+
+Build local: `./gradlew :app:assembleRelease --no-daemon -PnoUniversal
+-PversionCode=1000001 -PversionName=2.6.23-musa-es` (en una sola línea).
+No usar `musaUnsignedVerification` ni saltarse las comprobaciones de firma.
+Para nuevas versiones incrementar versionCode, reutilizar la clave y comparar
+con esta primera release; no volver a seleccionar `first_release=true`.

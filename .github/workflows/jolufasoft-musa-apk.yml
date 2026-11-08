@@ -4,8 +4,13 @@ on:
     inputs:
       previous_release_tag:
         description: "Release de producción previa del fork para verificar continuidad de firma"
-        required: true
+        required: false
         type: string
+      first_release:
+        description: "Primera instalación Musa: sin APK de producción anterior"
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: write
 concurrency:
@@ -25,6 +30,16 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Validate release mode
+        env:
+          FIRST_RELEASE: ${{ inputs.first_release }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag }}
+        run: |
+          if [ "$FIRST_RELEASE" = true ]; then
+            test -z "$PREVIOUS_RELEASE_TAG"
+          else
+            test -n "$PREVIOUS_RELEASE_TAG"
+          fi
       - name: Java 21
         uses: actions/setup-java@v4
         with:
@@ -78,7 +93,11 @@ jobs:
               '-storepass:env', 'MUSE_STORE_PASSWORD', '-alias', values['alias'],
               '-file', str(cert),
           ], env=env, check=True)
-          cert.with_name('musa-cert.sha256').write_text(hashlib.sha256(cert.read_bytes()).hexdigest())
+          digest = hashlib.sha256(cert.read_bytes()).hexdigest()
+          expected = Path('docs/MUSA_RELEASE_CERT.sha256').read_text().strip()
+          if digest != expected:
+              raise SystemExit('Restored key does not match permanent Musa signing identity')
+          cert.with_name('musa-cert.sha256').write_text(digest)
           PYTHON
       - name: Android SDK
         uses: android-actions/setup-android@v3
@@ -198,6 +217,7 @@ jobs:
           PY
           (cd dist && sha256sum --check SHA256SUMS.txt)
       - name: Verify upgrade certificate against previous production release
+        if: ${{ !inputs.first_release }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
